@@ -84,6 +84,8 @@ _FIXTURE_HOOKS = ("pre-commit", "commit-msg")
 # relative path so each script's own `parent.parent` ROOT resolves to the fixture.
 _SUPPORT_SCRIPTS = (
     "tools/precommit_gate.py",
+    # The gate's shared 7-bit rule (MAIN FIX 1254 #13), loaded from beside it.
+    "tools/ascii_rule.py",
     "scripts/precommit_pycompile.py",
     "scripts/precommit_msg_check.py",
 )
@@ -289,6 +291,50 @@ class HookGateEndToEndTests(unittest.TestCase):
             f"an em-dash in the commit MESSAGE committed:\n{proc.stdout}\n{proc.stderr}",
         )
         self.assertEqual(self._head(), before, "HEAD advanced on a refused commit")
+
+    # ---- the gate FAILS CLOSED on the git path (C1b-3 S4 rework) --------
+    #
+    # Ruling 2026-10-22: MAIN FIX 1254 #10's fail-open applies to the Claude
+    # PreToolUse channel only. Through .githooks/ a broken gate must REFUSE,
+    # because the git hooks are the AUTHORITATIVE floor and a note lifts no
+    # safety floor (FLEET item 6). The positive control above
+    # (test_clean_ascii_change_commits) proves the same staged change commits
+    # when the gate is healthy, so these refusals are the gate's doing.
+
+    def _stage_clean_change(self) -> None:
+        (self.root / "sample_module.py").write_text(
+            'print("all ascii here")\n', encoding="utf-8", newline="\n"
+        )
+        self._git("add", "sample_module.py")
+
+    def test_injected_gate_crash_blocks_the_commit(self) -> None:
+        # The shared rule module raises at import: an unexpected exception
+        # inside the gate on the AUTHORITATIVE path.
+        (self.root / "tools" / "ascii_rule.py").write_text(
+            "raise RuntimeError('injected gate crash')\n", encoding="utf-8", newline="\n"
+        )
+        self._stage_clean_change()
+        before = self._head()
+
+        proc = self._commit("test: commit through a crashing gate")
+
+        out = proc.stdout + proc.stderr
+        self.assertNotEqual(proc.returncode, 0, f"a crashing gate PASSED a commit:\n{out}")
+        self.assertEqual(self._head(), before, "HEAD advanced through a crashed gate")
+        self.assertIn("RuntimeError", out)
+        self.assertNotIn("injected gate crash", out, "type name only, never the text")
+
+    def test_missing_ascii_rule_blocks_the_commit(self) -> None:
+        (self.root / "tools" / "ascii_rule.py").unlink()
+        self._stage_clean_change()
+        before = self._head()
+
+        proc = self._commit("test: commit with the shared rule missing")
+
+        out = proc.stdout + proc.stderr
+        self.assertNotEqual(proc.returncode, 0, f"a gate with no rule PASSED:\n{out}")
+        self.assertEqual(self._head(), before, "HEAD advanced with the rule missing")
+        self.assertIn("ascii_rule", out)
 
     # ---- RM-422 path length (commit-time half) -------------------------
 

@@ -1,29 +1,60 @@
 #!/usr/bin/env python3
 """PreToolUse gate on `git commit`: block NET-NEW ruff errors + banned glyphs.
 
-Wired in .claude/settings.json under PreToolUse matcher Bash(git commit:*).
-Reads the Claude Code hook payload on stdin (tool_name / tool_input.command).
+Wired in .claude/settings.json under PreToolUse matcher `Bash|PowerShell`
+(MAIN FIX 2026-10-21 1254 #4: the old `Bash(git commit:*)` is permission-rule
+syntax and never matched, so Bash-tool commits were ungated). Every shell
+command therefore reaches this script, and it filters for itself. Also run by
+.githooks/pre-commit and commit-msg (the AUTHORITATIVE channel). Reads the
+Claude Code hook payload on stdin (tool_name / tool_input.command).
 
 Self-gates: if the command is not a `git commit`, exits 0 before touching git
-(so it is a no-op on every other Bash call - zero overhead off the commit path).
+(so it is a no-op on every other shell call - zero overhead off the commit path).
 
 On a commit it inspects ONLY staged content of staged files (diff-filter ACM):
   0. RM-422 path length: a NEW tracked path (added / copied / rename target)
      longer than MAX_TRACKED_PATH_CHARS is refused; deletes always pass.
-  1. ruff check (no --fix) on staged .py, keeping findings whose row lands in an
-     ADDED line range of that file (net-new only - pre-existing repo debt in an
-     untouched region never blocks, so an unattended headless run cannot wedge
-     on unrelated errors).
-  2. banned-glyph byte scan (U+2014/2013/201C/201D/2018/2019) on ADDED (+) lines
-     only, plus the commit-message text in the command string itself.
+  1. ruff check (no --fix, --no-cache) on staged .py, keeping findings whose
+     row lands in an ADDED line range of that file (net-new only - pre-existing
+     repo debt in an untouched region never blocks, so an unattended headless
+     run cannot wedge on unrelated errors).
+  2. the 7-bit ASCII rule (every codepoint > 127) on ADDED (+) lines only, plus
+     the commit-message text in the command string itself. The rule lives in
+     tools/ascii_rule.py, shared with the edit hook tools/edit_lint_check.py
+     (#13): one reading, two populations (edit-time advisory on the written
+     text; commit-time blocking on net-new lines).
 
 Exit 2 (block) with a terse stderr report on any violation; exit 0 otherwise.
-Mirrors tools/edit_lint_check.py's banned set + frozen-skip; that hook is
-edit-time + advisory, this one is commit-time + blocking on net-new only.
+
+FAILURE MODES (#10, as RULED 2026-10-22 in the C1b-3 S4 rework). The ruff run
+is guarded (timeout, spawn error) and every entry point runs under
+safe_main(), which splits by CHANNEL:
+  * Claude PreToolUse (stdin is the hook JSON): FAIL-OPEN. A crash, a missing
+    rule module or a ruff timeout exits 0 with ONE line of PreToolUse
+    additionalContext naming the cause. A crash exit there was never blocking
+    anyway, and the git hook below still gates the same commit.
+  * git pre-commit (stdin is the text "git commit"), commit-msg
+    (--message-file) and CI's --scan-files: FAIL-CLOSED. Any unexpected
+    exception, a missing or unimportable tools/ascii_rule.py, or a ruff
+    timeout / spawn error exits non-zero with ONE stderr line naming the cause
+    (exception TYPE only - its text can carry staged content). These are the
+    AUTHORITATIVE floor (CLAUDE.md), and a MAIN note lifts no safety floor
+    (FLEET-COMMON item 6), so they never degrade to a pass.
+  * compile() raising MemoryError / RecursionError (a source nested too deep)
+    is a FINDING on every channel, never a crash.
+Unchanged and deliberate: no ruff installed anywhere is a warning and a pass
+(a fresh clone must not wedge; CI's ruff is the backstop), and an unreadable
+commit-message file passes (tests/test_precommit_gate_message_file.py).
+Reverses if: MAIN or the operator rules in writing that the git-hook gate may
+fail open.
+
+Every RC-specific list sits in ONE marked REPO CONFIG block below (#10);
+the logic is repo-agnostic. Dependency: tools/ascii_rule.py beside this file.
 """
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import pathlib
@@ -37,16 +68,14 @@ import sys
 # 0 elsewhere).
 _NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
-_BANNED = {
-    chr(0x2014): "em-dash",
-    chr(0x2013): "en-dash",
-    chr(0x201C): "smart-dquote-open",
-    chr(0x201D): "smart-dquote-close",
-    chr(0x2018): "smart-quote-open",
-    chr(0x2019): "smart-quote-close",
-}
+# ===========================================================================
+# BEGIN REPO CONFIG (MAIN FIX 1254 #10). Every RC-specific path list and pin
+# this gate reads. Another tree adopting the gate edits only this block. The
+# ASCII rule's exempt surfaces are in tools/ascii_rule.py (shared, #13).
+# ===========================================================================
+
+# Staged paths the content arms never read (frozen history / build output).
 _FROZEN_SKIP = ("logs/", "docs/_archive/", ".pyc", ".git/", "__pycache__/")
-_HUNK = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
 
 # RM-422 (LEDGER 1604): longest tracked path a fresh Windows clone can write
 # without core.longpaths. Clone root budget = MAX_PATH - cap - 1 = 130 chars.
@@ -54,7 +83,80 @@ _HUNK = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
 # guard) and tests/test_git_hook_gate_e2e.py import these, never restate them.
 MAX_PATH = 260
 MAX_TRACKED_PATH_CHARS = 129
+
+# Still an ABSOLUTE pin to the Python314 install (bare `py` resolves to the
+# dep-less pymanager runtime - tests/test_bare_py_ban.py), but the account-
+# specific prefix is read from the environment. A path naming one account's
+# home is a gate that silently does not run under another, and a gate that does
+# not run reports nothing. See _ruff_candidates for why it is a fallback.
+_CANONICAL_PY = (
+    pathlib.Path(os.environ.get("LOCALAPPDATA") or (pathlib.Path.home() / "AppData" / "Local"))
+    / "Programs" / "Python" / "Python314" / "python.exe"
+).as_posix()
+
+# The ruff run in main(). Under the 60 s PreToolUse timeout in settings.json.
+RUFF_TIMEOUT_S = 45
+
+# Advisory non-atomic-write check: SCOPE. Rationale in the slice-D section
+# further down. Production surfaces a poller can be reading mid-write:
+_ATOMIC_SCOPE_PREFIXES = (
+    "app/", "core/", "coaches/", "dashboard/", "game_reader/", "agents/",
+    "modes/", "lcu/", "vision_server/",
+)
+_ATOMIC_SCOPE_FILES = ("web_dashboard.py",)
+# tests/ and tools/ write scratch fixtures; ops/loop/ holds the BYTE-PINNED
+# slots.py + winmutex.py (tests/test_loop_concurrency.py SHARED_SHA256).
+_ATOMIC_EXEMPT_PREFIXES = ("tests/", "tools/", "scripts/", "docs/", "ops/loop/")
+# Any tests/ segment, not only a leading one: agents/daemon_slayer/tests/ is
+# under an in-scope prefix and is still a test tree.
+_ATOMIC_EXEMPT_PARTS = ("/tests/",)
+# pytest's own discovery convention, by BASENAME. MEASURED 2026-09-11 over the
+# whole tree: 14 of the 18 hits were agents/agent3_testing/suite/test_*.py, a
+# 42-file suite under an in-scope prefix with no tests/ segment, writing
+# tmp_path fixtures. The rule is about polled files; a fixture is not one.
+_ATOMIC_EXEMPT_BASENAME_PREFIXES = ("test_",)
+_ATOMIC_EXEMPT_BASENAMES = ("conftest.py",)
+
+# ===========================================================================
+# END REPO CONFIG
+# ===========================================================================
+
+_HUNK = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
 _NAME_STATUS = re.compile(r"^[ACDMRTUXB]\d*$")
+
+_RULE = None
+_RULE_PATH = pathlib.Path(__file__).resolve().with_name("ascii_rule.py")
+
+
+class RuleUnavailable(ImportError):
+    """tools/ascii_rule.py is missing or raised while loading. `reason` is a
+    fixed, content-free sentence, safe to print."""
+
+    def __init__(self, reason: str):
+        super().__init__(reason)
+        self.reason = reason
+
+
+def _ascii_rule():
+    """tools/ascii_rule.py, loaded from beside THIS file (never a same-named
+    module elsewhere on sys.path). Unavailable -> RuleUnavailable, which
+    safe_main() turns into a BLOCK on the git channels (no degrade to a pass)
+    and a one-line context on the Claude channel."""
+    global _RULE
+    if _RULE is None:
+        here = _RULE_PATH
+        if not here.is_file():
+            raise RuleUnavailable(f"tools/{here.name} is missing (ImportError)")
+        try:
+            spec = importlib.util.spec_from_file_location("rc_ascii_rule", here)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+        except Exception as exc:  # noqa: BLE001 - re-raised, typed, below
+            raise RuleUnavailable(
+                f"tools/{here.name} is unimportable: it raised "
+                f"{type(exc).__name__} while loading (ImportError)") from exc
+        _RULE = mod
+    return _RULE
 
 
 def _is_commit(command: str) -> bool:
@@ -171,99 +273,55 @@ def _path_length_hits(paths: list[str]) -> list[str]:
     ]
 
 
-# Surfaces CLAUDE.md's retroactive purge deliberately did NOT sweep (immutable
-# history / non-source), plus upstream DATA mirrors. DDragon and Meraki ship
-# champion and item names RC does not author and cannot fix - gating them would
-# block correct commits, and a gate that blocks correct work is one people learn
-# to bypass.
-_ASCII_EXEMPT_PARTS = ("logs/", "docs/_archive/", "__pycache__/", ".git/")
-_ASCII_EXEMPT_SUFFIXES = (".jsonl", ".log", ".pyc", ".png", ".jpg", ".ico", ".zip")
-# "data/" carries the DDragon / Meraki snapshots verbatim. They genuinely hold
-# em-dashes and bullets from upstream, so gating them would apply an
-# authored-content rule to content nobody here authored - a gate that blocks
-# correct work is one people learn to bypass.
-_ASCII_EXEMPT_PREFIXES = ("data/",)
-# The two APPEND-ONLY RECORDS. Same class as docs/_archive/ above - they only
-# live one directory up - and the exemption is written down here rather than
-# worked around per commit, which is what this gate's own failure text asks for.
-# Measured 2026-09-07: 3255 pre-existing non-ASCII characters between them,
-# almost all status markers and arrows accumulated over months of appends. They
-# never tripped the gate before because nobody EDITS those lines; the pre-public
-# name scrub touched hundreds at once and the gate then blocked a commit whose
-# every flagged glyph predated it. Stripping them instead would be a large
-# cosmetic rewrite of a record for no reader's benefit. New authored prose
-# anywhere else still gets the catch-all.
-_ASCII_EXEMPT_FILES = ("docs/history_notes.md", "docs/LEDGER.md")
-
-
 def _ascii_exempt(path: str) -> bool:
-    p = (path or "").replace("\\", "/")
-    if any(part in p for part in _ASCII_EXEMPT_PARTS):
-        return True
-    if p.endswith(_ASCII_EXEMPT_SUFFIXES):
-        return True
-    if p in _ASCII_EXEMPT_FILES:
-        return True
-    return p.startswith(_ASCII_EXEMPT_PREFIXES)
+    """The shared rule's exempt surfaces (tools/ascii_rule.py EXEMPT_*).
+
+    Kept under this name: tools/ascii_escape_py.py, the RM-300 census and the
+    hand-off check in ops/loop/intents.py call it as the gate's predicate."""
+    return _ascii_rule().is_exempt(path)
 
 
 def _glyph_hits(text: str, path: str = "") -> list[str]:
-    """Named diagnostics for the six historical glyphs, then a CATCH-ALL.
+    """The shared 7-bit rule (tools/ascii_rule.py, MAIN FIX 1254 #13).
 
-    WIDENED 2026-07-28. ``_BANNED`` held exactly six characters, so every other
-    non-ASCII codepoint passed this gate unremarked. That is how U+00D7 reached
-    the repo the same day: ``scripts/db_size_monitor.py`` used it as a
-    missing-file marker, its output is captured verbatim into the COMMITTED
-    weekly agent6 health report, and ``tests/test_smart_quote_hygiene.py``
-    asserts that report is byte-ASCII - so a scheduled task turned the suite red
-    through a gate working exactly as written.
-
-    The real defect was that two rules enforcing the same CLAUDE.md hard rule
-    ("7-bit ASCII authored content") disagreed about what it means, and the
-    looser one ran first. The catch-all closes that, and reports the codepoint
-    so the hit is actionable rather than just refused.
+    Named diagnostics for the six historical glyphs, then a catch-all over
+    every codepoint > 127 that names the codepoint. The edit hook imports the
+    same module, so the two hooks cannot hold two readings of one CLAUDE.md
+    rule again (the 2026-07-28 U+00D7 incident is recorded in ascii_rule.hits).
     """
-    if _ascii_exempt(path):
-        # Exempt surfaces are exempt from ALL of it, the six included. A
-        # DDragon champion name like Cho'Gath carries U+2019 upstream; RC did
-        # not author it and cannot fix it, so flagging it would block a correct
-        # mirror refresh. The authored-content rule does not reach these.
-        return []
-    hits = {name for ch, name in _BANNED.items() if ch in text}
-    hits |= {
-        f"non-ascii U+{ord(c):04X} ({c.encode('unicode_escape').decode()})"
-        for c in text
-        if ord(c) > 127 and c not in _BANNED
-    }
-    return sorted(hits)
+    return _ascii_rule().hits(text, path)
 
 
 def _compile_errors(pyfiles: list[str], root: str) -> list[str]:
-    """py_compile each staged .py; a syntax error crashes silently under
-    pythonw.exe at runtime (CLAUDE.md hard rule), so block it at commit."""
-    import py_compile
+    """Syntax-check each staged .py; a syntax error crashes silently under
+    pythonw.exe at runtime (CLAUDE.md hard rule), so block it at commit.
 
+    The builtin compile(), not py_compile: py_compile writes a .pyc into
+    __pycache__/ beside every staged file (the sibling of MAIN FIX 1254 #12 in
+    tools/pytest_guard.py), and its message's first line is the `File ...`
+    header rather than the error.
+
+    MemoryError / RecursionError (a source nested too deep to parse or
+    compile) are FINDINGS, exactly as py_compile reported them: they block the
+    commit with a reason, never escape as a crash (C1b-3 S4 rework ruling)."""
     out: list[str] = []
     for rel in pyfiles:
         path = os.path.join(root, rel)
         try:
-            py_compile.compile(path, doraise=True)
-        except py_compile.PyCompileError as exc:
-            out.append(f"  {rel}  py_compile: {exc.msg.splitlines()[0][:160]}")
+            with open(path, "rb") as fh:
+                source = fh.read()
         except OSError:
-            pass
+            continue
+        try:
+            compile(source, path, "exec", dont_inherit=True)
+        except SyntaxError as exc:
+            msg = " ".join(str(exc.msg or "invalid syntax").split())[:160]
+            out.append(f"  {rel}:{exc.lineno or 0}  py_compile: {type(exc).__name__}: {msg}")
+        except (ValueError, MemoryError, RecursionError) as exc:
+            # ValueError: e.g. a NUL byte. The other two: nested too deep.
+            out.append(f"  {rel}  py_compile: {type(exc).__name__} - the source "
+                       "cannot be compiled (NUL byte, or nested too deep)")
     return out
-
-
-# Still an ABSOLUTE pin to the Python314 install (bare `py` resolves to the
-# dep-less pymanager runtime - tests/test_bare_py_ban.py), but the account-
-# specific prefix is read from the environment. A path naming one account's
-# home is a gate that silently does not run under another, and a gate that does
-# not run reports nothing.
-_CANONICAL_PY = (
-    pathlib.Path(os.environ.get("LOCALAPPDATA") or (pathlib.Path.home() / "AppData" / "Local"))
-    / "Programs" / "Python" / "Python314" / "python.exe"
-).as_posix()
 
 
 def _ruff_candidates() -> list[list[str]]:
@@ -393,8 +451,8 @@ def _check_scan_files(paths: list[str]) -> int:
             f"\n{failures} banned-glyph hit(s). CLAUDE.md requires 7-bit ASCII in "
             f"authored content: ' - ' for a clause break, '->' for an arrow, a "
             f"word for a status glyph. If a path is genuinely external data, "
-            f"exempt it in _ASCII_EXEMPT_* so the gate and the guards keep ONE "
-            f"reading of the rule.",
+            f"exempt it in tools/ascii_rule.py EXEMPT_* so the gate, the edit "
+            f"hook and the guards keep ONE reading of the rule.",
             file=sys.stderr,
         )
     return 1 if failures else 0
@@ -420,23 +478,11 @@ def _check_scan_files(paths: list[str]) -> int:
 # Mode is read from RC_ATOMIC_WRITE_GATE. Default WARN: this is a first-cycle
 # MEASUREMENT of the false-positive rate, not enforcement. "block" reuses the
 # exit-2 path the glyph half uses; "off" skips the check entirely.
+#
+# The scope lists (_ATOMIC_SCOPE_* / _ATOMIC_EXEMPT_*) are RC paths, so they
+# live in the REPO CONFIG block at the top of this file (MAIN FIX 1254 #10).
 _ATOMIC_WRITE_MODE_ENV = "RC_ATOMIC_WRITE_GATE"
 _ATOMIC_WRITE_MODES = ("warn", "block", "off")
-_ATOMIC_SCOPE_PREFIXES = (
-    "app/", "core/", "coaches/", "dashboard/", "game_reader/", "agents/",
-    "modes/", "lcu/", "vision_server/",
-)
-_ATOMIC_SCOPE_FILES = ("web_dashboard.py",)
-_ATOMIC_EXEMPT_PREFIXES = ("tests/", "tools/", "scripts/", "docs/", "ops/loop/")
-# Any tests/ segment, not only a leading one: agents/daemon_slayer/tests/ is
-# under an in-scope prefix and is still a test tree.
-_ATOMIC_EXEMPT_PARTS = ("/tests/",)
-# pytest's own discovery convention, by BASENAME. MEASURED 2026-09-11 over the
-# whole tree: 14 of the 18 hits were agents/agent3_testing/suite/test_*.py, a
-# 42-file suite under an in-scope prefix with no tests/ segment, writing
-# tmp_path fixtures. The rule is about polled files; a fixture is not one.
-_ATOMIC_EXEMPT_BASENAME_PREFIXES = ("test_",)
-_ATOMIC_EXEMPT_BASENAMES = ("conftest.py",)
 # Same-line markers that say "this is the scratch half of the idiom". `tmp`
 # covers `_tmp` and `.tmp`; the comparison is case-insensitive.
 _ATOMIC_SCRATCH_MARKERS = ("tmp", "scratch", ".part")
@@ -510,27 +556,75 @@ def _atomic_write_hits(added_lines: list[tuple[int, str]], path: str) -> list[st
     return out
 
 
-def main() -> int:
-    # commit-msg mode. Explicit flag rather than sniffing argv, so the hook's
-    # intent is readable in the hook body itself.
-    if len(sys.argv) >= 3 and sys.argv[1] == "--message-file":
-        return _check_message_file(sys.argv[2])
-    # whole-file scan mode, for CI. Same engine, different input shape.
-    if len(sys.argv) >= 2 and sys.argv[1] == "--scan-files":
-        return _check_scan_files(sys.argv[2:])
+def _read_stdin() -> str:
+    """The hook's stdin. Unreadable reads as empty (= no commit in flight):
+    the channel is not known yet, so nothing here may raise."""
+    stream = sys.stdin
+    try:
+        if stream is None or stream.isatty():
+            return ""
+        return stream.read() or ""
+    except (OSError, ValueError, AttributeError):
+        return ""
 
-    raw = sys.stdin.read() if not sys.stdin.isatty() else ""
+
+def _parse_stdin(raw: str) -> tuple[str, bool]:
+    """(command, from_claude). Claude PreToolUse sends a JSON object; the git
+    pre-commit hook pipes the plain text "git commit"."""
     # PowerShell 5.1 pipes prepend a UTF-8 BOM; json.loads rejects it and the
     # raw-string fallback then never regex-matches -> silent pass. Strip it.
-    raw = raw.lstrip("\ufeff").strip()
-    command = ""
+    raw = (raw or "").lstrip(chr(0xFEFF)).strip()
     try:
-        command = (json.loads(raw).get("tool_input") or {}).get("command", "")
-    except (ValueError, AttributeError):
-        command = raw
+        obj = json.loads(raw)
+    except ValueError:
+        return raw, False
+    if not isinstance(obj, dict):
+        return raw, False
+    tool_input = obj.get("tool_input")
+    command = tool_input.get("command", "") if isinstance(tool_input, dict) else ""
+    return (command if isinstance(command, str) else ""), True
+
+
+def _claude_context(text: str) -> None:
+    """ONE stdout line of PreToolUse additionalContext (fleet UI/UX standard
+    section 5). Used only on the Claude channel and only on exit 0."""
+    line = json.dumps({"hookSpecificOutput": {
+        "hookEventName": "PreToolUse", "additionalContext": " ".join(text.split())}})
+    try:
+        sys.stdout.write(line + "\n")
+        sys.stdout.flush()
+    except (OSError, ValueError, AttributeError):
+        pass
+
+
+def _dispatch(args: list[str], state: dict) -> int:
+    # commit-msg mode. Explicit flag rather than sniffing argv, so the hook's
+    # intent is readable in the hook body itself.
+    if len(args) >= 3 and args[1] == "--message-file":
+        _ascii_rule()  # no rule -> no check -> refuse, never a silent pass
+        return _check_message_file(args[2])
+    # whole-file scan mode, for CI. Same engine, different input shape.
+    if len(args) >= 2 and args[1] == "--scan-files":
+        _ascii_rule()
+        return _check_scan_files(args[2:])
+
+    command, state["claude"] = _parse_stdin(_read_stdin())
     if not _is_commit(command):
         return 0
+    # Loaded up front, so even a commit with no added lines (a pure delete)
+    # cannot pass a gate that has no rule to check with.
+    _ascii_rule()
+    return _gate_commit(command, claude=state["claude"])
 
+
+def main(argv: list[str] | None = None) -> int:
+    """The gate WITHOUT the channel guard; exceptions propagate. Tests drive
+    this. The script entry point is safe_main()."""
+    return _dispatch(list(sys.argv if argv is None else argv), {"claude": False})
+
+
+def _gate_commit(command: str, claude: bool) -> int:
+    advisories: list[str] = []
     root = (
         _root_from_command(command)
         or _git(["rev-parse", "--show-toplevel"], os.getcwd()).strip()
@@ -589,17 +683,32 @@ def main() -> int:
             + "\n  Install it (python -m pip install ruff) or CI is your only "
             "lint gate.\n"
         )
+    proc = None
     if pyfiles and ruff is not None:
-        proc = subprocess.run(
-            [*ruff, "check", "--output-format=json", *pyfiles],
-            cwd=root,
-            capture_output=True,
-            text=True,
-            timeout=60,
-            creationflags=_NO_WINDOW,
-        )
+        # --no-cache (#11): ruff runs with cwd=root beside ruff.toml and used
+        # to leave .ruff_cache/ in the repo root. The call is guarded (#10): a
+        # hung or vanished ruff never crashes the gate. On the git channels it
+        # BLOCKS (a found ruff that cannot finish is not a pass); on the Claude
+        # channel it is one line of context, and the git hook re-runs it.
         try:
-            findings = json.loads(proc.stdout) if proc.stdout.strip() else []
+            proc = subprocess.run(
+                [*ruff, "check", "--no-cache", "--output-format=json", *pyfiles],
+                cwd=root,
+                capture_output=True,
+                text=True,
+                timeout=RUFF_TIMEOUT_S,
+                creationflags=_NO_WINDOW,
+            )
+        except (OSError, subprocess.SubprocessError) as exc:
+            note = (f"ruff timed out / not runnable ({type(exc).__name__}) - fix or "
+                    "rerun; the net-new ruff half could not run")
+            if claude:
+                advisories.append(note + " (the git pre-commit hook re-runs it)")
+            else:
+                violations.append("  " + note)
+    if proc is not None:
+        try:
+            findings = json.loads(proc.stdout) if (proc.stdout or "").strip() else []
         except ValueError:
             # ruff answered --version but could not lint (bad config, crash).
             # Same rule as above: pass, but never in silence.
@@ -624,12 +733,46 @@ def main() -> int:
         sys.stderr.write(
             "precommit_gate BLOCKED commit - net-new violations in staged files:\n"
             + "\n".join(violations)
-            + "\n\nFix the staged lines (ruff check --fix / strip the glyph / "
-            "shorten the path) and re-commit.\n"
+            + "\n\nFix the staged lines and re-commit. ruff: `ruff check --fix` "
+            "where safe. Glyphs: " + _ascii_rule().fix_hint() + ". Path: "
+            "shorten it.\n"
         )
         return 2
+    if advisories:
+        _claude_context("precommit_gate: " + "; ".join(advisories))
     return 0
 
 
+def safe_main(argv: list[str] | None = None) -> int:
+    """Script entry point: the per-CHANNEL failure contract (#10, as ruled).
+
+    Claude PreToolUse channel (stdin JSON): an internal fault FAILS OPEN -
+    exit 0 and one line of additionalContext. Every other mode - git
+    pre-commit, commit-msg, CI --scan-files, and a fault before the channel
+    is known - FAILS CLOSED: exit 1 (which any git hook treats as a refusal,
+    and which Claude PreToolUse treats as non-blocking) with ONE stderr line.
+    Only the exception TYPE (or RuleUnavailable's fixed sentence) is printed:
+    exception text can carry staged content.
+    """
+    args = list(sys.argv if argv is None else argv)
+    state = {"claude": False}
+    try:
+        return _dispatch(args, state)
+    except Exception as exc:  # noqa: BLE001 - the channel decides below
+        reason = exc.reason if isinstance(exc, RuleUnavailable) else type(exc).__name__
+        if state["claude"]:
+            _claude_context(
+                f"precommit_gate could not run ({reason}); this PreToolUse hook did "
+                "not gate the commit - the git pre-commit hook still does.")
+            return 0
+        try:
+            sys.stderr.write(
+                f"precommit_gate BLOCKED: the gate itself failed ({reason}) - fix "
+                "the gate or rerun; a broken gate never passes a commit.\n")
+        except (OSError, ValueError, AttributeError):
+            pass
+        return 1
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(safe_main())

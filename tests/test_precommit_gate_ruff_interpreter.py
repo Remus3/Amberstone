@@ -126,6 +126,16 @@ class TestEndToEnd:
         assert rc == 2, f"gate passed a net-new UP031; stderr={err!r}"
         assert "UP031" in err
 
+    @requires_ruff
+    def test_ruff_half_leaves_no_cache_dir(self, monkeypatch, tmp_path, capsys):
+        """MAIN FIX 1254 #11: ruff ran without --no-cache and left .ruff_cache/
+        in the repo root (the gate runs ruff with cwd=root, beside ruff.toml)."""
+        repo = _staged_repo(tmp_path)
+        monkeypatch.setattr(G, "_ruff_candidates", lambda: [_GOOD])
+        assert _run_gate(monkeypatch, repo) == 2
+        capsys.readouterr()
+        assert not (repo / ".ruff_cache").exists(), ".ruff_cache/ left in the repo root"
+
     def test_no_ruff_anywhere_warns_instead_of_passing_silently(
         self, monkeypatch, tmp_path, capsys
     ):
