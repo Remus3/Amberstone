@@ -1,7 +1,10 @@
 """Tests for tools/truth_gate.py - pure reconciliation logic, no live suite runs."""
 import json
+import os
 import sys
 from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -188,3 +191,187 @@ def test_default_suite_cmd_interpreter_has_pytest():
     assert probe.returncode == 0, (
         f"DEFAULT_SUITE_CMD interpreter {exe!r} cannot import pytest: "
         f"{probe.stderr.decode(errors='replace')}")
+
+
+# --- RM-757: claim commands run without a shell; only whole suites are gated ---
+
+_ECHO = ("import json, sys\n"
+         "print('ARGV=' + json.dumps(sys.argv[1:]))\n")
+
+
+def _echo_script(folder):
+    folder.mkdir(parents=True, exist_ok=True)
+    script = folder / "echo_args.py"
+    script.write_text(_ECHO, encoding="utf-8")
+    return script
+
+
+def _argv_from(out_file):
+    for line in Path(out_file).read_text(encoding="utf-8").splitlines():
+        if line.startswith("ARGV="):
+            return json.loads(line[len("ARGV="):])
+    raise AssertionError("echo script printed no ARGV line")
+
+
+def test_shell_metacharacters_reach_the_child_as_literal_args(tmp_path):
+    from tools.truth_gate import run_suite_fresh
+    script = _echo_script(tmp_path / "s")
+    out = tmp_path / "out.txt"
+    cmd = f'"{sys.executable}" "{script}" a & b | c ; d'
+    obs = run_suite_fresh(cmd, out)
+    assert obs["exit_code"] == 0
+    assert _argv_from(out) == ["a", "&", "b", "|", "c", ";", "d"]
+
+
+def test_quoted_script_path_with_a_space_runs(tmp_path):
+    from tools.truth_gate import run_suite_fresh
+    script = _echo_script(tmp_path / "dir with space")
+    out = tmp_path / "out.txt"
+    obs = run_suite_fresh(f'"{sys.executable}" "{script}" x', out)
+    assert obs["exit_code"] == 0
+    assert _argv_from(out) == ["x"]
+
+
+def test_list_command_runs_as_given(tmp_path):
+    from tools.truth_gate import run_suite_fresh
+    script = _echo_script(tmp_path / "s")
+    out = tmp_path / "out.txt"
+    obs = run_suite_fresh([sys.executable, str(script), "a b", "%NOPE%", "&"], out)
+    assert obs["exit_code"] == 0
+    assert _argv_from(out) == ["a b", "%NOPE%", "&"]
+
+
+def test_split_cmd_list_is_returned_as_given():
+    from tools.truth_gate import split_cmd
+    assert split_cmd(["a", "b c", "%X%"]) == ["a", "b c", "%X%"]
+
+
+@pytest.mark.skipif(os.name != "nt", reason="%VAR% expansion is Windows-only")
+def test_split_cmd_expands_percent_var_tokens(monkeypatch):
+    from tools.truth_gate import split_cmd
+    monkeypatch.setenv("RC_TG_RM757_DIR", r"C:\some dir")
+    argv = split_cmd(r'"%RC_TG_RM757_DIR%/python.exe" -m pytest tests/ -q')
+    assert argv == [r"C:\some dir/python.exe", "-m", "pytest", "tests/", "-q"]
+
+
+def test_split_cmd_expands_dollar_var_tokens(monkeypatch):
+    from tools.truth_gate import split_cmd
+    monkeypatch.setenv("RC_TG_RM757_PY", "pyexe")
+    assert split_cmd("$RC_TG_RM757_PY -m pytest -q") == ["pyexe", "-m", "pytest", "-q"]
+
+
+def test_whole_suite_argv_is_prefixed_by_the_gate():
+    from tools.truth_gate import GATE_SCRIPT, gate_argv
+    argv = [sys.executable, "-m", "pytest", "-q"]
+    assert gate_argv(argv, "o.1") == [sys.executable, str(GATE_SCRIPT), "run",
+                                      "--owner", "o.1", "--", *argv]
+
+
+def test_directory_argv_counts_as_a_whole_suite():
+    from tools.truth_gate import gate_argv
+    gated = gate_argv(["pytest", "tests/", "-q"], "o.1")
+    assert gated[2:6] == ["run", "--owner", "o.1", "--"]
+    assert gated[6:] == ["pytest", "tests/", "-q"]
+
+
+def test_single_file_argv_is_not_gated():
+    from tools.truth_gate import gate_argv
+    argv = [sys.executable, "-m", "pytest", "tests/test_a.py", "-q"]
+    assert gate_argv(argv, "o.1") == argv
+
+
+def test_non_pytest_argv_is_not_gated():
+    from tools.truth_gate import gate_argv
+    argv = [sys.executable, "script.py", "a"]
+    assert gate_argv(argv, "o.1") == argv
+
+
+def test_gate_naming_command_is_not_double_wrapped():
+    from tools.truth_gate import GATE_SCRIPT, gate_argv
+    argv = [sys.executable, str(GATE_SCRIPT), "run", "--owner", "x", "--",
+            sys.executable, "-m", "pytest", "-q"]
+    assert gate_argv(argv, "o.1") == argv
+
+
+def test_gate_owner_falls_back_to_the_claim_env(monkeypatch):
+    from tools.truth_gate import resolve_owner
+    monkeypatch.setenv("FLEET_CLAIM_OWNER", "sess.agent")
+    assert resolve_owner(None) == "sess.agent"
+    assert resolve_owner("given") == "given"
+    monkeypatch.delenv("FLEET_CLAIM_OWNER")
+    assert resolve_owner(None) is None
+
+
+def test_gate_without_an_owner_omits_the_flag(monkeypatch):
+    from tools.truth_gate import GATE_SCRIPT, gate_argv
+    monkeypatch.delenv("FLEET_CLAIM_OWNER", raising=False)
+    argv = ["pytest", "-q"]
+    assert gate_argv(argv, None) == [sys.executable, str(GATE_SCRIPT), "run", "--", *argv]
+
+
+class _FakeRun:
+    def __init__(self, rc):
+        self.rc = rc
+        self.calls = []
+
+    def __call__(self, argv, **kw):
+        self.calls.append((argv, kw))
+        return type("P", (), {"returncode": self.rc})()
+
+
+def test_default_suite_runs_through_the_gate_without_a_shell(monkeypatch, tmp_path):
+    from tools import truth_gate
+    fake = _FakeRun(0)
+    monkeypatch.setattr(truth_gate.subprocess, "run", fake)
+    obs = truth_gate.run_suite_fresh(truth_gate.DEFAULT_SUITE_CMD, tmp_path / "o.txt",
+                                     owner="o.1")
+    (argv, kw), = fake.calls
+    assert argv[:6] == [sys.executable, str(truth_gate.GATE_SCRIPT), "run",
+                        "--owner", "o.1", "--"]
+    assert argv[7:] == ["-m", "pytest", "-q"]
+    assert kw.get("shell") is not True
+    assert obs["gated"] is True
+    assert obs["gate_refused"] is False
+
+
+def test_gate_exit_3_is_a_suite_gate_refused_discrepancy(monkeypatch, tmp_path):
+    from tools import truth_gate
+    monkeypatch.setattr(truth_gate.subprocess, "run", _FakeRun(3))
+    obs = truth_gate.run_suite_fresh(truth_gate.DEFAULT_SUITE_CMD, tmp_path / "o.txt",
+                                     owner="o.1")
+    assert obs["gate_refused"] is True
+    rep = reconcile(_claims(), obs, {"S1": _ok_files()},
+                    git_obs={"clean": True, "head": "abc"}, ci_obs={"status": "success"})
+    assert rep["verdict"] == "REFUSE"
+    assert any(d.startswith("suite-gate refused") for d in rep["global_discrepancies"])
+    assert not any(d.startswith("suite exit_code") for d in rep["global_discrepancies"])
+    slice_disc = rep["slices"][0]["discrepancies"]
+    assert slice_disc and all("suite-gate refused" in d for d in slice_disc
+                              if "claimed_" in d)
+    assert not any("observed 0" in d for d in slice_disc)
+
+
+def test_ungated_exit_3_is_not_a_gate_refusal(monkeypatch, tmp_path):
+    from tools import truth_gate
+    monkeypatch.setattr(truth_gate.subprocess, "run", _FakeRun(3))
+    obs = truth_gate.run_suite_fresh([sys.executable, "-m", "pytest", "tests/test_a.py"],
+                                     tmp_path / "o.txt", owner="o.1")
+    assert obs["gated"] is False
+    assert obs["gate_refused"] is False
+
+
+def test_missing_executable_is_a_refusal_not_a_crash(tmp_path):
+    from tools import truth_gate
+    obs = truth_gate.run_suite_fresh([str(tmp_path / "no_such_exe"), "x"], tmp_path / "o.txt")
+    assert obs["exit_code"] == truth_gate.CANNOT_RUN_EXIT
+    rep = reconcile(_claims(), obs, {"S1": _ok_files()},
+                    git_obs={"clean": True, "head": "abc"}, ci_obs={"status": "success"})
+    assert rep["verdict"] == "REFUSE"
+
+
+def test_truth_gate_never_passes_shell_true():
+    import ast
+    src = (Path(__file__).parent.parent / "tools" / "truth_gate.py").read_text(encoding="utf-8")
+    for node in ast.walk(ast.parse(src)):
+        if isinstance(node, ast.keyword) and node.arg == "shell":
+            assert not (isinstance(node.value, ast.Constant) and node.value.value is True)
