@@ -466,6 +466,58 @@ def test_batch_claim_command_never_runs_end_to_end(tmp_path):
     assert "INJECTED_LINE" not in out.read_text(encoding="utf-8")
 
 
+# --- RM-757 round 3: every post-separator command; case-folded gate name ---
+
+def test_batch_head_behind_a_case_variant_gate_name():
+    from tools.truth_gate import batch_head
+    argv = [sys.executable, r"ops\fleet_kit\FLEET_SUITE_GATE.PY", "run", "--owner", "x",
+            "--", r"C:\d\x.bat", "a"]
+    assert batch_head(argv) == r"C:\d\x.bat"
+
+
+def test_batch_head_behind_a_trailing_dot_gate_name():
+    from tools.truth_gate import batch_head
+    argv = [sys.executable, "ops/fleet_kit/fleet_suite_gate.py.", "run", "--",
+            r"C:\d\x.cmd", "a"]
+    assert batch_head(argv) == r"C:\d\x.cmd"
+
+
+def test_batch_head_behind_an_unknown_wrapper():
+    from tools.truth_gate import batch_head
+    assert batch_head([sys.executable, "other.py", "--", "x.bat", "a"]) == "x.bat"
+
+
+def test_batch_head_after_every_separator():
+    from tools.truth_gate import batch_head
+    argv = [sys.executable, "w.py", "--", "a.exe", "b", "--", "y.CMD", "c"]
+    assert batch_head(argv) == "y.CMD"
+
+
+def test_case_variant_gate_names_are_not_double_wrapped(monkeypatch):
+    from tools import truth_gate
+    monkeypatch.setattr(truth_gate, "IS_WINDOWS", True)
+    for name in (r"C:\k\FLEET_SUITE_GATE.PY", "C:/k/fleet_suite_gate.py."):
+        argv = [sys.executable, name, "run", "--", sys.executable, "-m", "pytest", "-q"]
+        assert truth_gate.gate_argv(argv, "o.1") == argv
+
+
+@pytest.mark.skipif(not _is_windows(), reason="cmd.exe batch re-parse is Windows-only")
+def test_batch_behind_an_unknown_wrapper_never_runs_end_to_end(tmp_path):
+    from tools import truth_gate
+    wrapper = tmp_path / "other.py"
+    wrapper.write_text("import subprocess, sys\n"
+                       "i = sys.argv.index('--')\n"
+                       "sys.exit(subprocess.run(sys.argv[i + 1:]).returncode)\n",
+                       encoding="utf-8")
+    bat = tmp_path / "x.bat"
+    bat.write_text("@echo off\r\n", encoding="ascii")
+    inj = tmp_path / "inj.txt"
+    cmd = f'"{sys.executable}" "{wrapper}" -- "{bat}" a & echo INJECTED_LINE> "{inj}"'
+    obs = truth_gate.run_suite_fresh(cmd, tmp_path / "o.txt")
+    assert obs["batch_refused"] is True
+    assert not inj.exists()
+
+
 def test_truth_gate_never_passes_shell_true():
     import ast
     src = (Path(__file__).parent.parent / "tools" / "truth_gate.py").read_text(encoding="utf-8")

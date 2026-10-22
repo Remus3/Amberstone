@@ -23,7 +23,7 @@ and each word has %VAR% / $VAR expanded, so `&`, `|` and `;` are plain
 arguments to an executable. EXCEPT a batch file: on Windows CreateProcess runs
 a .bat / .cmd through cmd.exe even without a shell, and cmd.exe re-parses
 the arguments, so a command whose head (after expansion, quotes stripped,
-case-insensitive, also behind a gate wrapper) is a .bat / .cmd is REFUSED
+case-insensitive; argv[0] and the first word after every `--`) is a .bat / .cmd is REFUSED
 unrun ("batch-file refused"). A command the kit classifies as a whole suite
 (fleet_claims.bare_whole_suite) runs through fleet_suite_gate.py run (FLEET
 item 16 c); a targeted run is not gated. A gate refusal (exit 3) is reported
@@ -118,16 +118,23 @@ def split_cmd(cmd):
     return [os.path.expandvars(w) for w in words]
 
 
+def _file_key(word):
+    """A word's basename as the OS compares file names: on Windows case-folded,
+    trailing dots / spaces dropped (Windows ignores them in a file name)."""
+    base = _strip_quotes(word).replace("\\", "/").rsplit("/", 1)[-1]
+    return base.rstrip(" .").casefold() if IS_WINDOWS else base
+
+
 def _names_gate(word):
-    return word.replace("\\", "/").endswith("/" + GATE_SCRIPT.name) or word == GATE_SCRIPT.name
+    return _file_key(word) == _file_key(GATE_SCRIPT.name)
 
 
 def batch_head(argv):
-    """The .bat / .cmd word that would run as the command, else None: argv[0],
-    and the word after `--` when argv is a suite-gate wrapper."""
+    """The .bat / .cmd word that could run as a command, else None: argv[0] and
+    the first word after EVERY `--`, whatever the wrapper (a wrapper that runs
+    its tail runs it without our refusal)."""
     heads = list(argv[:1])
-    if any(_names_gate(w) for w in argv) and "--" in argv:
-        heads.extend(argv[argv.index("--") + 1:argv.index("--") + 2])
+    heads += [argv[i + 1] for i, w in enumerate(argv[:-1]) if _strip_quotes(w) == "--"]
     for head in heads:
         # Windows drops trailing dots / spaces from a file name: "x.bat." is x.bat.
         if _strip_quotes(head).rstrip(" .").lower().endswith(BATCH_SUFFIXES):
@@ -142,6 +149,8 @@ def resolve_owner(owner):
 
 def gate_argv(argv, owner):
     """argv wrapped in the kit suite gate when it is a whole suite, else as given."""
+    if any(_names_gate(w) for w in argv):
+        return list(argv)
     if not _kit_module("fleet_claims").bare_whole_suite(shlex.join(argv)):
         return list(argv)
     who = resolve_owner(owner)
