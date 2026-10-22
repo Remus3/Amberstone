@@ -24,9 +24,30 @@ ETA_S SEMANTICS (Step 0, measured 2026-10-04 over every writer of the dir):
   and merely LENIENT (late, never false) for whole-task. The false-alarm case
   is a running file with eta_s 0 / null / junk: that is floored to MIN_ETA_S.
 
-VERDICTS. running, done, failed, malformed, and for a running file whose age
-passes its ETA: overrun_1.5x (REPORT), stale (> 2x), overrun_3x (REPORT).
-Nothing is ever killed or restarted - this tool only reads and reports.
+VERDICTS. running, blocked (kit v14 state), done, failed, malformed, and for a
+running / blocked file whose age passes its ETA: overrun_1.5x (REPORT), stale
+(> 2x), overrun_3x (REPORT). The watch pass never kills, restarts or writes a
+progress file - it reads and reports.
+
+REAPER (RM-728, KF-P11; `--reap`, plan-only unless `--apply`). The watch pass
+alone let the dir grow without bound (152 files at the 2026-10-09 review, rows
+'running' for days): no writer expires its own file, and the kit's
+close_progress() fires only from spawn() / run_lane, never for an interactive
+sub-agent's row. The reaper closes that loop, touching ONLY files it can prove
+are item-12 records - a top-level *.json regular file whose stem is a kit task
+stem and whose "task" field equals that stem - and never lane-*.json,
+inbox-responder.json or loop.json (named by their readers). It never kills a
+process and never unlinks:
+  * a running / blocked row silent past 2x its ETA (item 12) is rewritten as
+    failed in the kit's close_progress() shape (fields kept, "reason" added),
+    compare-and-swap on the bytes it classified so a writer that came back
+    wins; held when
+    its recorded owner is PROVEN alive and the silence is inside the kit's
+    ABANDON_S grace (OWNER_ALIVE_GRACE_S);
+  * a done / failed row older than PRUNE_AGE_S by BOTH 'updated' and mtime
+    goes to the Recycle Bin through core.recycle_bin.recycle_checked; a
+    refusal keeps the file, a nuked result halts the pass;
+  * a progress dir that does not resolve inside the repo root is refused.
 
 ALERTS. One alert per (task, verdict) transition into failed / overrun_1.5x /
 stale / overrun_3x / malformed, delivered as a NOTE on the steer channel
@@ -46,23 +67,29 @@ Usage:
   python tools/progress_watch.py              # classify, alert, save state
   python tools/progress_watch.py --dry-run    # classify only: no send, no write
   python tools/progress_watch.py --json       # machine-readable report
+  python tools/progress_watch.py --reap       # + reaper plan (changes nothing)
+  python tools/progress_watch.py --reap --apply   # + mark failed / Recycle Bin
 """
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import importlib.util
 import json
 import math
 import os
 import re
+import stat
 import sys
 import time
 from datetime import datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-PROGRESS_DIR = ROOT / "ops" / "loop" / "control" / "progress"
+PROGRESS_REL = Path("ops") / "loop" / "control" / "progress"
+PROGRESS_DIR = ROOT / PROGRESS_REL
 STATE_PATH = ROOT / "ops" / "runtime" / "progress_watch.json"
+KIT_HEADLESS = ROOT / "ops" / "fleet_kit" / "fleet_headless.py"
 
 STATE_SCHEMA = 1
 # Floor for a RUNNING file's eta_s when it is 0 / null / junk. Derived from
@@ -75,9 +102,30 @@ OVERRUN_REPORT = (1.5, 3.0)        # report-only rungs either side of STALE
 # and one retry are tolerated, the third in a row is not.
 SELF_CHECK_K = 3
 
-STATUSES = ("running", "done", "failed")
+# Every kit PROGRESS_STATES value (fleet_headless.py; "blocked" since kit
+# v14). LIVE = the states a writer is still expected to update.
+STATUSES = ("running", "blocked", "done", "failed")
+LIVE_STATUSES = ("running", "blocked")
+FINISHED_STATUSES = ("done", "failed")
 ALERT_VERDICTS = ("failed", "overrun_1.5x", "stale", "overrun_3x", "malformed")
 KEY_PREFIX = "progress_watch"
+
+# ---- reaper (RM-728). Verdicts past 2x ETA (item 12) are reap candidates.
+REAP_VERDICTS = ("stale", "overrun_3x")
+# A finished row older than this (by 'updated' AND mtime) goes to the bin
+# (repo review B22-01: "prune finished progress files older than 7 days").
+PRUNE_AGE_S = 7 * 86400
+# The kit's ABANDON_S (fleet_headless.py, v16): a row silent this long is
+# abandoned even when its owner process is alive. Pinned by a test.
+OWNER_ALIVE_GRACE_S = 7200
+# Read by name by their consumers (lane widget, inbox responder, loop
+# controller): never reaped, whatever their state.
+KEEP_GLOBS = ("lane-*.json", "inbox-responder.json", "loop.json")
+# The kit's write_progress task-stem rule (fleet_headless._TASK).
+TASK_STEM = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
+REASON_MAX = 120                   # the kit's close_progress reason cap
+EXIT_REFUSED = 3
+EXIT_HALTED = 4
 
 
 # ---------------------------------------------------------------- timestamps
@@ -134,11 +182,11 @@ def classify(doc: dict, now: float) -> dict:
     ts = parse_updated(doc.get("updated"))
     if ts is not None:
         out["age_s"] = max(0.0, now - ts)     # a future stamp reads as fresh
-    if status != "running":
+    if status not in LIVE_STATUSES:
         out["verdict"] = status
         return out
     if ts is None:
-        raise ValueError(f"running but 'updated' {doc.get('updated')!r} is unparseable")
+        raise ValueError(f"{status} but 'updated' {doc.get('updated')!r} is unparseable")
     eta = _eta(doc.get("eta_s"))
     floored = eta is None or eta < MIN_ETA_S
     eta_used = MIN_ETA_S if floored else eta
@@ -150,7 +198,7 @@ def classify(doc: dict, now: float) -> dict:
     elif ratio >= OVERRUN_REPORT[0]:
         verdict = "overrun_1.5x"
     else:
-        verdict = "running"
+        verdict = status
     out.update(verdict=verdict, eta_used=eta_used, eta_floored=floored,
                ratio=round(ratio, 3))
     return out
@@ -209,6 +257,12 @@ def _save_state(path: Path, state: dict) -> None:
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
     data = (json.dumps(state, indent=1, ensure_ascii=True, sort_keys=True) + "\n").encode("ascii")
+    _atomic_write(p, data)
+
+
+def _atomic_write(p: Path, data: bytes) -> None:
+    """tmp + replace in the target's own dir. The tmp name ends in .tmp, so a
+    *.json scan of the progress dir never reads it as a record."""
     tmp = p.with_name(f"{p.name}.{os.getpid()}.tmp")
     try:
         tmp.write_bytes(data)
@@ -364,7 +418,8 @@ def run(*, progress_dir=PROGRESS_DIR, state_path=STATE_PATH, now=None, send=None
 
 
 def format_report(rep: dict) -> str:
-    order = ("overrun_3x", "stale", "overrun_1.5x", "failed", "malformed", "running", "done")
+    order = ("overrun_3x", "stale", "overrun_1.5x", "failed", "malformed", "blocked",
+             "running", "done")
     lines = [f"progress_watch: {rep['files_read']}/{rep['files_seen']} files read "
              f"(dir {rep['dir_state']}){' [dry-run]' if rep['dry_run'] else ''}"
              f"{' [baseline]' if rep['baseline'] else ''}"]
@@ -376,7 +431,7 @@ def format_report(rep: dict) -> str:
         for t in rows:
             if v == "malformed":
                 lines.append(f"    {t['task']}: {t['reason']}")
-            elif v in ("running", "overrun_1.5x", "stale", "overrun_3x"):
+            elif v in ("running", "blocked", "overrun_1.5x", "stale", "overrun_3x"):
                 lines.append(f"    {t['task']}: age {_age_phrase(t['age_s'])}, eta_s "
                              f"{t['eta_s']}{' (floored)' if t['eta_floored'] else ''}, "
                              f"{t['ratio']}x")
@@ -393,18 +448,263 @@ def format_report(rep: dict) -> str:
     return "\n".join(_ascii(line) for line in lines)
 
 
-def main(argv=None) -> int:
+# ---------------------------------------------------------------- reaper (RM-728)
+
+_KIT = None
+
+
+def _kit():
+    """The vendored kit's fleet_headless, bound by file path (consumed, never
+    edited; byte-pinned by ops/fleet_kit/MANIFEST.json). Raises if unloadable."""
+    global _KIT
+    if _KIT is None:
+        spec = importlib.util.spec_from_file_location(
+            "rc_fleet_kit_fleet_headless_pw", KIT_HEADLESS)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        _KIT = mod
+    return _KIT
+
+
+def main_root(path=ROOT) -> Path:
+    """The MAIN checkout for path - the kit's main_checkout(), so a linked
+    worktree answers its main tree, where every writer puts the progress dir
+    (kit v12). Falls back to path itself when the kit cannot load."""
+    try:
+        return Path(_kit().main_checkout(path)).resolve()
+    except Exception:  # noqa: BLE001 - the fallback is the pre-kit answer
+        return Path(path).resolve()
+
+
+def _alive_default(owner):
+    """The kit's owner_alive(owner): True / False / None. None (unknown) for a
+    row with no owner or when the kit cannot load; unknown never holds a row."""
+    if not isinstance(owner, dict):
+        return None
+    try:
+        return _kit().owner_alive(owner)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _recycle_default(path):
+    """core.recycle_bin.recycle_checked: bin-policy preflight, FOF_ALLOWUNDO,
+    then a confirmed $I record - it refuses rather than permanently delete."""
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
+    import core.recycle_bin as rb
+    return rb.recycle_checked(path)
+
+
+def _inside(child: Path, root: Path) -> bool:
+    c, r = os.path.normcase(str(child)), os.path.normcase(str(root))
+    try:
+        return os.path.commonpath([c, r]) == r
+    except ValueError:             # different drives
+        return False
+
+
+def _plain_file(p: Path) -> bool:
+    """A regular file that is not a link / reparse point (lstat, never follows)."""
+    try:
+        st = os.lstat(p)
+    except OSError:
+        return False
+    if getattr(st, "st_file_attributes", 0) & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400):
+        return False
+    return stat.S_ISREG(st.st_mode) and not stat.S_ISLNK(st.st_mode)
+
+
+def _iso_local(epoch: float) -> str:
+    """The kit's _iso() shape: local time with its offset, whole seconds."""
+    return datetime.fromtimestamp(epoch).astimezone().isoformat(timespec="seconds")
+
+
+def _mark_failed(path: Path, expected_raw: bytes, reason: str, now: float) -> bool:
+    """Rewrite one live row as failed in the kit's close_progress() shape
+    (every field kept; status, updated and reason set). Compare-and-swap on
+    the bytes the reaper classified: a writer that came back in between wins
+    and False is returned."""
+    raw = path.read_bytes()
+    if raw != expected_raw:
+        return False
+    doc = json.loads(raw.decode("utf-8-sig"))
+    if not isinstance(doc, dict) or doc.get("status") not in LIVE_STATUSES:
+        return False
+    doc.update(status="failed", updated=_iso_local(now), reason=reason)
+    _atomic_write(path, json.dumps(doc, ensure_ascii=True).encode("ascii"))
+    return True
+
+
+def reap(*, progress_dir=PROGRESS_DIR, root=None, now=None, apply=False, recycle=None,
+         alive=None, keep=KEEP_GLOBS, prune_age_s=PRUNE_AGE_S) -> dict:
+    """RM-728: mark abandoned live rows failed and move old finished rows to
+    the Recycle Bin. Plan-only (changes nothing) unless apply=True. Touches
+    only top-level *.json regular files that carry the ownership marker
+    ("task" == the file stem, a kit task stem) and are not kept by name."""
+    now = time.time() if now is None else float(now)
+    recycle = _recycle_default if recycle is None else recycle
+    alive = _alive_default if alive is None else alive
+    root_p = main_root() if root is None else Path(root).resolve()
+    d = Path(progress_dir).resolve()
+    rep = {"apply": bool(apply), "now": now, "root": str(root_p), "progress_dir": str(d),
+           "dir_state": "ok", "marked": [], "would_mark": [], "recycled": [],
+           "would_recycle": [], "held": [], "refused": [], "ignored": 0,
+           "halted": None, "exit_code": 0}
+
+    def held(name, why):
+        rep["held"].append({"file": name, "why": _ascii(why)[:160]})
+
+    if not _inside(d, root_p):
+        rep["dir_state"] = "refused"
+        rep["exit_code"] = EXIT_REFUSED
+        return rep
+    if not d.is_dir():
+        rep["dir_state"] = "missing"
+        return rep
+    try:
+        entries = sorted(d.iterdir(), key=lambda q: q.name)
+    except OSError:
+        rep["dir_state"] = "unreadable"
+        return rep
+    for p in entries:
+        name = p.name
+        if not name.endswith(".json"):
+            rep["ignored"] += 1                     # not a progress record: not ours
+            continue
+        stem = name[:-len(".json")]
+        if any(fnmatch.fnmatchcase(name, g) for g in keep):
+            held(name, "kept by name (read by its consumer)")
+            continue
+        if not TASK_STEM.match(stem):
+            held(name, "not a kit task stem")
+            continue
+        if not _plain_file(p):
+            held(name, "not a regular file")
+            continue
+        try:
+            raw = p.read_bytes()
+            mtime = os.lstat(p).st_mtime
+            doc = json.loads(raw.decode("utf-8-sig"))
+        except (OSError, UnicodeDecodeError, ValueError) as exc:
+            held(name, f"unreadable ({type(exc).__name__})")
+            continue
+        if not isinstance(doc, dict) or doc.get("task") != stem:
+            held(name, "no ownership marker (its task field is not the file stem)")
+            continue
+        try:
+            row = classify(doc, now)
+        except ValueError as exc:
+            held(name, f"not a progress record ({exc})")
+            continue
+
+        if row["status"] in LIVE_STATUSES:
+            if row["verdict"] not in REAP_VERDICTS:
+                continue
+            owner_state = alive(doc.get("owner"))
+            if owner_state is True and row["age_s"] <= OWNER_ALIVE_GRACE_S:
+                held(name, "owner alive, inside the kit's abandon grace")
+                continue
+            reason = _ascii(f"reaped by progress_watch: silent {_age_phrase(row['age_s'])}, "
+                            f"past 2x eta {row['eta_used']}s"
+                            + ("; owner dead" if owner_state is False else ""))[:REASON_MAX]
+            if not apply:
+                rep["would_mark"].append(stem)
+                continue
+            try:
+                ok = _mark_failed(p, raw, reason, now)
+            except (OSError, UnicodeDecodeError, ValueError) as exc:
+                held(name, f"mark failed did not write ({type(exc).__name__})")
+                continue
+            if ok:
+                rep["marked"].append(stem)
+            else:
+                held(name, "changed since read; left to its writer")
+            continue
+
+        ts = parse_updated(doc.get("updated"))
+        if ts is None:
+            held(name, "finished but 'updated' is unparseable")
+            continue
+        if now - max(ts, mtime) <= prune_age_s:     # BOTH clocks must be old
+            continue
+        if not apply:
+            rep["would_recycle"].append(stem)
+            continue
+        try:
+            unchanged = p.read_bytes() == raw
+        except OSError:
+            unchanged = False
+        if not unchanged:
+            held(name, "changed since read; left to its writer")
+            continue
+        res = recycle(p)
+        detail = _ascii(getattr(res, "detail", ""))[:200]
+        if getattr(res, "ok", False):
+            rep["recycled"].append(stem)
+        elif getattr(res, "nuked", False):
+            rep["halted"] = f"{name}: {detail}"
+            rep["exit_code"] = EXIT_HALTED
+            break
+        else:
+            rep["refused"].append({"file": name, "detail": detail})
+    return rep
+
+
+def format_reap(rep: dict) -> str:
+    mode = "apply" if rep["apply"] else "plan only"
+    lines = [f"progress_watch reaper ({mode}): dir {rep['dir_state']}; "
+             f"marked {len(rep['marked'])}, recycled {len(rep['recycled'])}, "
+             f"would mark {len(rep['would_mark'])}, would recycle "
+             f"{len(rep['would_recycle'])}, held {len(rep['held'])}, "
+             f"refused {len(rep['refused'])}, ignored {rep['ignored']}"]
+    if rep["dir_state"] == "refused":
+        lines.append(f"  REFUSED: {rep['progress_dir']} is not inside {rep['root']}")
+    lines += [f"  marked failed: {s}" for s in rep["marked"]]
+    lines += [f"  would mark failed: {s}" for s in rep["would_mark"]]
+    lines += [f"  recycled: {s}" for s in rep["recycled"]]
+    lines += [f"  would recycle: {s}" for s in rep["would_recycle"]]
+    lines += [f"  held: {h['file']} - {h['why']}" for h in rep["held"]]
+    lines += [f"  refused: {r['file']} - {r['detail']}" for r in rep["refused"]]
+    if rep["halted"]:
+        lines.append(f"  HALTED (file left the dir but is not in the bin): {rep['halted']}")
+    return "\n".join(_ascii(line) for line in lines)
+
+
+def main(argv=None, now=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
-    ap.add_argument("--dir", type=Path, default=PROGRESS_DIR)
+    ap.add_argument("--dir", type=Path, default=None,
+                    help="progress dir (default: the MAIN checkout's ops/loop/control/progress)")
+    ap.add_argument("--root", type=Path, default=None,
+                    help="repo root the reaped dir must sit inside (default: the MAIN checkout)")
     ap.add_argument("--state", type=Path, default=STATE_PATH)
     ap.add_argument("--dry-run", action="store_true",
-                    help="classify only: send nothing, write no state")
+                    help="classify only: send nothing, write no state; forces --reap plan-only")
     ap.add_argument("--json", action="store_true")
     ap.add_argument("-k", type=int, default=SELF_CHECK_K)
+    ap.add_argument("--reap", action="store_true",
+                    help="RM-728 reaper pass first; plan only unless --apply")
+    ap.add_argument("--apply", action="store_true",
+                    help="with --reap: mark abandoned rows failed, recycle old finished rows")
     a = ap.parse_args(argv)
-    rep = run(progress_dir=a.dir, state_path=a.state, dry_run=a.dry_run, k=max(1, a.k))
-    print(json.dumps(rep, indent=1, ensure_ascii=True) if a.json else format_report(rep))
-    return rep["exit_code"]
+    if a.apply and not a.reap:
+        ap.error("--apply needs --reap")
+    root = main_root() if a.root is None else a.root.resolve()
+    pdir = root / PROGRESS_REL if a.dir is None else a.dir
+    reaped = None
+    if a.reap:
+        reaped = reap(progress_dir=pdir, root=root, now=now,
+                      apply=a.apply and not a.dry_run)
+    rep = run(progress_dir=pdir, state_path=a.state, now=now, dry_run=a.dry_run,
+              k=max(1, a.k))
+    if reaped is not None:
+        rep["reap"] = reaped
+    if a.json:
+        print(json.dumps(rep, indent=1, ensure_ascii=True))
+    else:
+        print(format_report(rep) if reaped is None
+              else format_reap(reaped) + "\n" + format_report(rep))
+    return reaped["exit_code"] if reaped and reaped["exit_code"] else rep["exit_code"]
 
 
 if __name__ == "__main__":
