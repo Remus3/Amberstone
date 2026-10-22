@@ -369,6 +369,103 @@ def test_missing_executable_is_a_refusal_not_a_crash(tmp_path):
     assert rep["verdict"] == "REFUSE"
 
 
+# --- RM-757 follow-up: a .bat / .cmd head runs under cmd.exe, which re-parses argv ---
+
+def test_batch_head_literal_path():
+    from tools.truth_gate import batch_head
+    assert batch_head([r"C:\x\run.bat", "a"]) == r"C:\x\run.bat"
+    assert batch_head(["tool.cmd"]) == "tool.cmd"
+
+
+def test_batch_head_quoted_path_with_a_space():
+    from tools.truth_gate import batch_head
+    assert batch_head(['"C:\\some dir\\run.cmd"', "a"])
+
+
+def test_batch_head_mixed_case_and_trailing_dot():
+    from tools.truth_gate import batch_head
+    assert batch_head(["tool.BaT"])
+    assert batch_head(["tool.CmD"])
+    assert batch_head(["tool.bat.", "a"])
+
+
+def test_batch_head_ignores_non_batch_commands():
+    from tools.truth_gate import batch_head
+    assert batch_head([sys.executable, "-m", "pytest", "-q"]) is None
+    assert batch_head(["x.bat.py", "a.bat"]) is None
+    assert batch_head([]) is None
+
+
+def test_batch_head_sees_the_command_behind_a_gate_wrapper():
+    from tools.truth_gate import GATE_SCRIPT, batch_head
+    assert batch_head([sys.executable, str(GATE_SCRIPT), "run", "--owner", "o",
+                       "--", "x.cmd", "a"]) == "x.cmd"
+
+
+@pytest.mark.skipif(os.name != "nt", reason="%VAR% expansion is Windows-only")
+def test_batch_head_after_percent_var_expansion(monkeypatch):
+    from tools.truth_gate import batch_head, split_cmd
+    monkeypatch.setenv("RC_TG_RM757_BAT", r"C:\s\probe.bat")
+    assert batch_head(split_cmd("%RC_TG_RM757_BAT% a"))
+
+
+def test_batch_claim_is_refused_without_running(monkeypatch, tmp_path):
+    from tools import truth_gate
+    monkeypatch.setattr(truth_gate, "IS_WINDOWS", True)
+    fake = _FakeRun(0)
+    monkeypatch.setattr(truth_gate.subprocess, "run", fake)
+    obs = truth_gate.run_suite_fresh([r"C:\x\run.bat", "a", "&", "b"], tmp_path / "o.txt")
+    assert fake.calls == []
+    assert obs["batch_refused"] is True
+    rep = reconcile(_claims(), obs, {"S1": _ok_files()},
+                    git_obs={"clean": True, "head": "abc"}, ci_obs={"status": "success"})
+    assert rep["verdict"] == "REFUSE"
+    assert any(d.startswith("batch-file refused") for d in rep["global_discrepancies"])
+    slice_disc = rep["slices"][0]["discrepancies"]
+    assert slice_disc and all("batch-file refused" in d for d in slice_disc)
+
+
+@pytest.mark.skipif(os.name != "nt", reason="%VAR% expansion is Windows-only")
+def test_percent_var_expanding_to_a_batch_file_is_refused(monkeypatch, tmp_path):
+    from tools import truth_gate
+    fake = _FakeRun(0)
+    monkeypatch.setattr(truth_gate.subprocess, "run", fake)
+    monkeypatch.setenv("RC_TG_RM757_BAT", str(tmp_path / "probe.bat"))
+    obs = truth_gate.run_suite_fresh("%RC_TG_RM757_BAT% a", tmp_path / "o.txt")
+    assert fake.calls == []
+    assert obs["batch_refused"] is True
+
+
+def test_posix_batch_named_head_is_not_refused(monkeypatch, tmp_path):
+    from tools import truth_gate
+    monkeypatch.setattr(truth_gate, "IS_WINDOWS", False)
+    fake = _FakeRun(0)
+    monkeypatch.setattr(truth_gate.subprocess, "run", fake)
+    obs = truth_gate.run_suite_fresh(["./run.bat", "a"], tmp_path / "o.txt")
+    assert len(fake.calls) == 1
+    assert obs["batch_refused"] is False
+
+
+def _is_windows():
+    from tools import truth_gate
+    return truth_gate.IS_WINDOWS
+
+
+@pytest.mark.skipif(not _is_windows(), reason="cmd.exe batch re-parse is Windows-only")
+def test_batch_claim_command_never_runs_end_to_end(tmp_path):
+    from tools import truth_gate
+    folder = tmp_path / "probe dir"
+    folder.mkdir()
+    marker = tmp_path / "ran.txt"
+    bat = folder / "probe.BaT"
+    bat.write_text(f'@echo off\r\necho ran> "{marker}"\r\n', encoding="ascii")
+    out = tmp_path / "o.txt"
+    obs = truth_gate.run_suite_fresh(f'"{bat}" a & echo INJECTED_LINE', out)
+    assert obs["batch_refused"] is True
+    assert not marker.exists()
+    assert "INJECTED_LINE" not in out.read_text(encoding="utf-8")
+
+
 def test_truth_gate_never_passes_shell_true():
     import ast
     src = (Path(__file__).parent.parent / "tools" / "truth_gate.py").read_text(encoding="utf-8")
