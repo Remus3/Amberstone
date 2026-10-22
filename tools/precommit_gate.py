@@ -608,19 +608,19 @@ def _dispatch(args: list[str], state: dict) -> int:
         _ascii_rule()
         return _check_scan_files(args[2:])
 
-    command, state["claude"] = _parse_stdin(_read_stdin())
+    command, state["from_claude"] = _parse_stdin(_read_stdin())
     if not _is_commit(command):
         return 0
     # Loaded up front, so even a commit with no added lines (a pure delete)
     # cannot pass a gate that has no rule to check with.
     _ascii_rule()
-    return _gate_commit(command, claude=state["claude"])
+    return _gate_commit(command, claude=state["from_claude"])
 
 
 def main(argv: list[str] | None = None) -> int:
     """The gate WITHOUT the channel guard; exceptions propagate. Tests drive
     this. The script entry point is safe_main()."""
-    return _dispatch(list(sys.argv if argv is None else argv), {"claude": False})
+    return _dispatch(list(sys.argv if argv is None else argv), {"from_claude": False})
 
 
 def _gate_commit(command: str, claude: bool) -> int:
@@ -755,12 +755,16 @@ def safe_main(argv: list[str] | None = None) -> int:
     exception text can carry staged content.
     """
     args = list(sys.argv if argv is None else argv)
-    state = {"claude": False}
+    # The channel flag is keyed from_claude, never by the bare CLI name: this
+    # gate starts git and ruff only, and tests/test_headless_env.py's spawn
+    # inventory reads a bare-name string literal as a CLI reference, so the
+    # file stays IN that scan rather than on its non-spawn allowlist.
+    state = {"from_claude": False}
     try:
         return _dispatch(args, state)
     except Exception as exc:  # noqa: BLE001 - the channel decides below
         reason = exc.reason if isinstance(exc, RuleUnavailable) else type(exc).__name__
-        if state["claude"]:
+        if state["from_claude"]:
             _claude_context(
                 f"precommit_gate could not run ({reason}); this PreToolUse hook did "
                 "not gate the commit - the git pre-commit hook still does.")
