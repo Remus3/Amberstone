@@ -241,9 +241,14 @@ def test_csrf_reject_warning_names_the_peer(server, caplog_rc):
     with ``Host: 127.0.0.1`` this assertion passes on the pre-fix code for
     the wrong reason - it reads the echoed Host, not the peer. Sending a
     different Host makes the connection's own address the only source that
-    can satisfy it (feedback_acceptance_example_may_be_vacuous)."""
+    can satisfy it (feedback_acceptance_example_may_be_vacuous).
+
+    RM-759: that Host must also pass the Host allowlist, or the request is a
+    421 before the CSRF check runs. An IP literal always does (no rebinding
+    can produce one), so a documentation address (RFC 5737) other than the
+    peer keeps both properties without depending on per-host config."""
     _raw(server,
-         b"POST /api/command HTTP/1.0\r\nHost: rc-host\r\n"
+         b"POST /api/command HTTP/1.0\r\nHost: 192.0.2.10\r\n"
          b"Origin: https://evil.example\r\nContent-Length: 2\r\n\r\n{}")
     warnings = [r.getMessage() for r in caplog_rc if r.levelno >= logging.WARNING]
     assert warnings, "a cross-origin POST logged no warning"

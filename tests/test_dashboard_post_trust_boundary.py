@@ -97,7 +97,7 @@ class _Server:
         """
         s = socket.create_connection(("127.0.0.1", self.port), timeout=10)
         try:
-            hdr = ("POST /api/command HTTP/1.1\r\nHost: x\r\n"
+            hdr = ("POST /api/command HTTP/1.1\r\nHost: 127.0.0.1\r\n"
                    "Content-Type: application/json\r\n"
                    f"Content-Length: {content_length}\r\n\r\n").encode()
             s.sendall(hdr + body)

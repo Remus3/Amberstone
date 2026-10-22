@@ -252,7 +252,8 @@ class ErrorPathLogEmitUnaffectedTests(unittest.TestCase):
         self.assertIn('log.debug("proxy %s: %s"', src)
         self.assertIn('log.warning("do_POST CSRF reject', src)
         self.assertIn('log.debug("do_POST bad_body: %s"', src)
-        self.assertIn('log.debug("csrf_ok parse failed; allowing")', src)
+        # RM-759: a parse failure now refuses (it used to allow).
+        self.assertIn('log.debug("csrf_ok parse failed; refusing")', src)
 
     def test_warning_call_is_not_routed_through_log_message(self):
         # Sanity: log_message overrides debug-trace only. A direct

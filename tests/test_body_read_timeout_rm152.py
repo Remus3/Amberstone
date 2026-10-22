@@ -80,7 +80,7 @@ class _RawClient:
         """
         s = socket.create_connection(("127.0.0.1", self.port), timeout=10)
         try:
-            hdr = (f"POST {path} HTTP/1.1\r\nHost: x\r\n"
+            hdr = (f"POST {path} HTTP/1.1\r\nHost: 127.0.0.1\r\n"
                    "Content-Type: application/json\r\n"
                    f"Content-Length: {content_length}\r\n\r\n").encode()
             s.sendall(hdr + sent)
@@ -101,7 +101,7 @@ class _RawClient:
         """Return (status line, body) reading until the server closes."""
         s = socket.create_connection(("127.0.0.1", self.port), timeout=10)
         try:
-            s.sendall(f"GET {path} HTTP/1.1\r\nHost: x\r\n\r\n".encode())
+            s.sendall(f"GET {path} HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n".encode())
             s.settimeout(wait)
             buf = b""
             try:
@@ -253,7 +253,7 @@ class TestLegitimateDashboardClientsSurvive:
                 time.sleep(short_dash_deadline * 2)
                 s.sendall(b"GET /api/ui-version HTTP/1.1\r\n")
                 time.sleep(short_dash_deadline * 2)  # headers split by a gap
-                s.sendall(b"Host: x\r\n\r\n")
+                s.sendall(b"Host: 127.0.0.1\r\n\r\n")
                 s.settimeout(10.0)
                 got = s.recv(400)
             except (socket.timeout, ConnectionResetError,
@@ -323,7 +323,7 @@ class TestLegitimateDashboardClientsSurvive:
         with _Live(Handler) as c:
             s = socket.create_connection(("127.0.0.1", c.port), timeout=10)
             try:
-                s.sendall(b"GET /api/state-stream HTTP/1.1\r\nHost: x\r\n\r\n")
+                s.sendall(b"GET /api/state-stream HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n")
                 s.settimeout(3.0)
                 buf = b""
                 start = time.time()
