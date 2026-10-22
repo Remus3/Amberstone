@@ -86,10 +86,13 @@ def _body_object(body: bytes) -> tuple[dict | None, dict | None]:
     merely WRONG input, not hostile - raised AttributeError out of the
     handler, which ``do_POST`` turned into a bare HTTP 500 "internal error"
     with no stats record. Returns ``(obj, None)`` or ``(None, error_dict)``.
+
+    RM-760c: 100k-deep nesting raises RecursionError, not ValueError, and
+    escaped to the same bare 500; it is the same bad-input class.
     """
     try:
         d = json.loads(body or b"{}")
-    except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
+    except (json.JSONDecodeError, UnicodeDecodeError, ValueError, RecursionError):
         return None, {"error": "bad_json"}
     if not isinstance(d, dict):
         return None, {"error": "bad_body"}

@@ -122,7 +122,14 @@ def main() -> int:
     # in _frame/_relay/_stats was already lock-guarded, so concurrent
     # handlers are safe. RM-735 (2026-10-10) swapped the thread-per-request
     # ThreadingHTTPServer for a pre-started worker pool - see make_server.
-    s = make_server(host, PORT)
+    # RM-761b: a bind failure used to raise out of main(); under pythonw the
+    # traceback went nowhere and the watchdog saw only a dead child. Log it
+    # and exit 1, the same shape as tools/ds_matchdb_mcp_server.py.
+    try:
+        s = make_server(host, PORT)
+    except OSError as e:
+        log.error("bind %s:%d failed: %s", host, PORT, e)
+        return 1
     try:
         s.serve_forever()
     except KeyboardInterrupt:
