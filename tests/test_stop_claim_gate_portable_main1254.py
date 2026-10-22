@@ -84,10 +84,29 @@ def test_an_internal_error_fails_open_and_is_recorded(tmp_path, monkeypatch):
     assert data["exception"] == "RuntimeError"
 
 
-def test_a_bad_argument_never_exits_two(tmp_path, monkeypatch):
-    """Exit 2 from a Stop hook BLOCKS the stop; argparse exits 2 on a typo."""
+BAD_ARGVS = [
+    ["--no-such-flag"],
+    ["--own-codes"],  # malformed --own-codes: the value is missing
+    ["--history-max", "not-a-number"],
+]
+
+
+@pytest.mark.parametrize("argv", BAD_ARGVS)
+def test_a_bad_argument_exits_zero_and_prints_nothing(argv, monkeypatch, capsys):
+    """Exit 2 from a Stop hook BLOCKS the stop; argparse exits 2 on a typo and
+    writes its usage to stderr. Both must be gone: exit 0, silent."""
     monkeypatch.setattr(sys, "stdin", _Stdin("{}"))
-    assert gate.main(["--no-such-flag"]) == 0
+    assert gate.main(argv) == 0
+    out = capsys.readouterr()
+    assert out.out == "" and out.err == "", (out.out, out.err)
+
+
+@pytest.mark.parametrize("argv", BAD_ARGVS)
+def test_a_bad_argument_is_silent_end_to_end(argv, tmp_path):
+    proc = subprocess.run([sys.executable, str(GATE), *argv], input=b"{}",
+                          capture_output=True, cwd=str(tmp_path), check=False)
+    assert proc.returncode == 0
+    assert proc.stdout == b"" and proc.stderr == b"", (proc.stdout, proc.stderr)
 
 
 def test_help_still_exits_zero(capsys):

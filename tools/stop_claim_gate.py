@@ -26,9 +26,10 @@ Contract:
     `message`). Arming is deliberately opt-in - a gate that fires wrongly once gets disabled forever,
     so arming waits until the report is observed quiet on clean sessions.
   - FAILS OPEN (MAIN FIX 2026-10-21 1254 item #9): any internal error, an
-    unwritable report path or a bad argument exits 0 and prints nothing (an
-    argparse exit 2 would BLOCK the Stop). The error is recorded in the report
-    / history when they are writable. Only this Claude-hook channel fails
+    unwritable report path or a bad argument exits 0 and prints nothing, on
+    stdout or stderr (an argparse exit 2 would BLOCK the Stop; _SilentParser
+    stops its usage print too). An internal error after parsing is recorded in
+    the report / history when they are writable. Only this Claude-hook channel fails
     open; the git hooks stay the authoritative, fail-closed gate.
   - PORTABLE (same item): ROOT is the nearest ancestor of this file holding a
     `.git` (see find_root), `--state-dir` moves the report, history and seen
@@ -2636,8 +2637,23 @@ def prune_seen(seen_dir, keep=SEEN_MAX_SESSIONS):
         pass
 
 
+class _ArgumentError(Exception):
+    """A bad hook argument, raised in place of argparse's print-and-exit-2."""
+
+
+class _SilentParser(argparse.ArgumentParser):
+    """argparse's error() writes the usage and the message to stderr and only
+    THEN exits 2, so a guard catching the SystemExit is too late to keep the
+    hook silent (verifier refutation of W2-A, 2026-10-22: about 324 stderr
+    bytes for an unknown flag). Here it raises; main() returns 0 with nothing
+    printed. --help is untouched: it prints to stdout and exits 0 on purpose."""
+
+    def error(self, message):
+        raise _ArgumentError(message)
+
+
 def _parse_args(argv):
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = _SilentParser(description=__doc__)
     parser.add_argument("--state-dir", default=None,
                         help="directory for the default report and history "
                              "(default: <root>/ops/runtime); the seen set sits "
@@ -2685,16 +2701,17 @@ def _record_internal_error(args, exc):
 
 def main(argv=None):
     """Stop-hook entry under the MAIN 1254 #9 outer guard: exit 0, silent, on
-    any failure. `--help` (SystemExit 0) still exits normally; any other
-    SystemExit, an argparse error included, becomes 0, because exit 2 from a
-    Stop hook blocks the session from ending."""
+    any failure. A bad argument raises _ArgumentError before argparse prints
+    anything (see _SilentParser), because exit 2 from a Stop hook blocks the
+    session from ending. `--help` (SystemExit 0) still exits normally; any
+    other SystemExit becomes 0."""
     try:
         args = _parse_args(argv)
     except SystemExit as exc:
         if exc.code in (0, None):
             raise
         return 0
-    except Exception:  # noqa: BLE001 - fail open
+    except Exception:  # noqa: BLE001 - fail open; _ArgumentError lands here, silent
         return 0
     try:
         return _run(args)
