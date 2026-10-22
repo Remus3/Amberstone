@@ -244,7 +244,9 @@ def main() -> int:
     api_file = _PROJECT_ROOT / "API-Key-Claude.txt"
     if api_file.exists():
         try:
-            key = api_file.read_text(encoding="utf-8").strip()
+            # utf-8-sig, as core/anthropic_key.py reads it: a BOM written by
+            # Notepad or PowerShell 5.1 must not fail a key the app loads.
+            key = api_file.read_text(encoding="utf-8-sig").strip()
             if key.startswith("sk-ant-"):
                 _ok("API key format valid  (sk-ant-... prefix present)")
             else:

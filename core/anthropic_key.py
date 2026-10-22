@@ -19,8 +19,10 @@ fails every request, and clients are cached on first use).
 
 Never raises, never logs or prints the value, never writes os.environ - so a
 key read from the file is never re-exported into the environment that
-spawned ``claude`` children inherit. "" (or the unusable env value, as
-before) means degrade to no coaching.
+spawned ``claude`` children inherit. "" means degrade to no coaching: an
+unusable env value with no usable key file is "" too, never the raw value
+(ENV-APIKEY nit 4; it used to come back as-is, so a junk or whitespace-only
+variable reached the SDK as a truthy key and failed at request time).
 
 Consumers call ``read_anthropic_key`` through the MODULE attribute
 (``anthropic_key.read_anthropic_key(...)``), not a from-import, so a single
@@ -83,7 +85,4 @@ def read_anthropic_key(root: Path | str | None = None) -> str:
     env = os.environ.get(ENV_VAR, "")
     if usable_key(env.strip()):
         return env.strip()
-    key = _read_key_file(root)
-    if key:
-        return key
-    return env
+    return _read_key_file(root)

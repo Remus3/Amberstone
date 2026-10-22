@@ -322,6 +322,38 @@ def test_malformed_env_falls_through_to_the_file(key_root, monkeypatch):
     assert anthropic_key.read_anthropic_key() == FILE_KEY
 
 
+# ENV-APIKEY residual (4), verifier nit: with NO key file, an unusable env
+# value used to come back as-is (`return env`), so a junk or whitespace-only
+# variable reached the SDK as a truthy "key" and failed at request time
+# instead of degrading to the no-coaching state. Unusable = what
+# `usable_key` rejects: no sk-ant- prefix, whitespace, internal space,
+# non-ASCII.
+_UNUSABLE_ENV = (
+    pytest.param("not-a-key", id="junk"),
+    pytest.param("   ", id="whitespace-only"),
+    pytest.param("sk-ant-aaa bbb", id="internal-space"),
+    pytest.param("sk-ant-TESTONLY" + chr(0xE9) + "x", id="non-ascii"),  # rc-credential-scan: allow-fixture
+)
+
+
+@pytest.mark.parametrize("value", _UNUSABLE_ENV)
+def test_unusable_env_with_no_key_file_degrades_to_empty(value, key_root,
+                                                         monkeypatch):
+    from core import anthropic_key
+    monkeypatch.setenv(ENV_VAR, value)
+    assert not (key_root / KEY_FILE).exists()
+    assert anthropic_key.read_anthropic_key() == ""
+
+
+@pytest.mark.parametrize("load", CONSUMERS)
+def test_junk_env_with_no_key_file_degrades_every_consumer(load, key_root,
+                                                           monkeypatch, no_sdk):
+    """Same degraded state as both-absent, for every consumer."""
+    monkeypatch.setenv(ENV_VAR, "not-a-key")
+    assert not (key_root / KEY_FILE).exists()
+    assert load(key_root, monkeypatch) == ""
+
+
 def test_unreadable_key_file_degrades_instead_of_raising(key_root,
                                                          monkeypatch):
     from core import anthropic_key
@@ -806,6 +838,89 @@ def test_install_bat_writes_the_key_file_and_never_echoes_the_key():
                 r"\becho\b", line, re.IGNORECASE):
             assert line.strip().startswith('>"%KEY_TMP%"'), (
                 f"install.bat:{n} echoes the key: {line.strip()!r}")
+
+
+# ENV-APIKEY residual (4), verifier nit: install.bat step 3 rejected a key
+# file saved as UTF-8 WITH BOM (Notepad, PowerShell 5.1 -Encoding UTF8):
+# `set /p` keeps the EF BB BF bytes, so the sk-ant- prefix check failed on a
+# good key. Measured on cmd.exe (code page 437): the first seven characters
+# of the read value were the three BOM bytes plus "sk-a". This runs the REAL
+# step-3 block (cut from install.bat between its STEP 3 and STEP 4 headers)
+# in a harness that sets what steps 1-2 would have set; notepad is stubbed
+# out and TEMP points at tmp_path.
+
+def _step3_harness(tmp_path: Path, option_b: bool) -> Path:
+    lines = (REPO / "install.bat").read_text(encoding="ascii").splitlines()
+    start = next(i for i, ln in enumerate(lines) if "STEP 3 -- API Key" in ln)
+    end = next(i for i, ln in enumerate(lines) if "STEP 4 --" in ln)
+    block = ["rem notepad stubbed" if ln.strip().lower().startswith("notepad ")
+             else ln for ln in lines[start:end]]
+    head = [
+        "@echo off",
+        "setlocal enabledelayedexpansion",
+        "set OPTION_B=" + ("1" if option_b else "0"),
+        'set "EMBED_PY=' + sys.executable + '"',
+        "set LOG_FILE=%~dp0setup.log",
+        "set ERRORS=0",
+    ]
+    tail = [
+        '>"%~dp0key.out" echo(!API_KEY!',
+        "echo STEP3=PASS",
+        "goto :EOF",
+        ":SUMMARY",
+        "echo STEP3=FAIL",
+    ]
+    bat = tmp_path / "step3_harness.bat"
+    bat.write_bytes(("\r\n".join(head + block + tail) + "\r\n").encode("ascii"))
+    return bat
+
+
+def _run_step3(tmp_path: Path, raw: bytes, option_b: bool) -> tuple[str, str]:
+    (tmp_path / KEY_FILE).write_bytes(raw)
+    temp = tmp_path / "temp"
+    temp.mkdir()
+    env = dict(os.environ, TEMP=str(temp), TMP=str(temp))
+    env.pop(ENV_VAR, None)
+    # Option A runs `python` from PATH; put this interpreter first on it.
+    env["PATH"] = str(Path(sys.executable).parent) + os.pathsep + env.get("PATH", "")
+    bat = _step3_harness(tmp_path, option_b)
+    proc = subprocess.run(
+        ["cmd.exe", "/d", "/c", str(bat)], cwd=str(tmp_path), env=env,
+        capture_output=True, timeout=60,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    out = proc.stdout.decode("ascii", "replace")
+    key_out = tmp_path / "key.out"
+    got = key_out.read_bytes().decode("latin-1").strip() if key_out.exists() else ""
+    assert list(temp.iterdir()) == [], "step 3 left a temp file behind"
+    return out, got
+
+
+_BOM = b"\xef\xbb\xbf"
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="runs install.bat under cmd.exe")
+@pytest.mark.parametrize("option_b", [True, False], ids=["embedded", "path-python"])
+@pytest.mark.parametrize("raw", [
+    pytest.param(_BOM + FILE_KEY.encode("ascii") + b"\r\n", id="bom-crlf"),
+    pytest.param(_BOM + FILE_KEY.encode("ascii"), id="bom-no-newline"),
+    pytest.param(FILE_KEY.encode("ascii") + b"\r\n", id="plain-crlf"),
+])
+def test_install_bat_step3_accepts_a_good_key_with_or_without_a_bom(
+        tmp_path, raw, option_b):
+    out, got = _run_step3(tmp_path, raw, option_b)
+    assert "STEP3=PASS" in out
+    assert got == FILE_KEY
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="runs install.bat under cmd.exe")
+@pytest.mark.parametrize("raw", [
+    pytest.param(_BOM + b"not-a-key\r\n", id="bom-junk"),
+    pytest.param(b"not-a-key\r\n", id="junk"),
+])
+def test_install_bat_step3_still_rejects_a_bad_key(tmp_path, raw):
+    out, _ = _run_step3(tmp_path, raw, option_b=True)
+    assert "STEP3=FAIL" in out
+    assert "STEP3=PASS" not in out
 
 
 # ---------------------------------------------------------------------------

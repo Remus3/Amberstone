@@ -568,19 +568,32 @@ def _checkout_rx(value: str) -> tuple[str, re.Pattern] | None:
     """(prefilter literal, regex) for one checkout path, or None.
 
     The drive is NOT part of the identity: a checkout that moved drives is
-    still cited under its old drive in older text, so any drive letter (and
-    the POSIX-shell drive form) matches, with either separator.
+    still cited under its old drive in older text, so any drive letter (the
+    POSIX-shell drive form and the WSL mount form `/mnt/<letter>` included)
+    matches, with either separator. A WSL-resolved checkout value
+    (`/mnt/<letter>/...`) is read as drive-rooted too, so the drive
+    spellings of the same root still match it. Only a ONE-letter mount
+    segment is a drive; `/mnt/<word>/...` is an ordinary POSIX directory.
+
+    MONOTONE against the pre-WSL code: a mount value used to be matched as a
+    literal path with either separator, so the mount head takes either
+    separator too, and a mount value whose remainder is too short to stand
+    alone keeps the old literal form.
     """
     norm = value.strip().replace("\\", "/").rstrip("/")
     has_drive = False
+    mount = re.match(r"/mnt/[A-Za-z](?=/|$)", norm, re.IGNORECASE)
+    rest = norm[mount.end():] if mount else ""
     if len(norm) >= 2 and norm[1] == ":" and norm[0].isalpha():
         has_drive, norm = True, norm[2:]
+    elif mount and len("/".join(s for s in rest.split("/") if s)) >= _MIN_VALUE_CHARS:
+        has_drive, norm = True, rest
     elif re.match(r"/[A-Za-z](?:/|$)", norm):
         has_drive, norm = True, norm[2:]
     segments = [seg for seg in norm.split("/") if seg]
     if not segments or len("/".join(segments)) < _MIN_VALUE_CHARS:
         return None
-    head = r"(?:[A-Za-z]:|/[A-Za-z])" if has_drive else ""
+    head = r"(?:[A-Za-z]:|[\\/]{1,2}mnt[\\/]{1,2}[A-Za-z]|/[A-Za-z])" if has_drive else ""
     body = "".join(r"[\\/]{1,2}" + re.escape(seg) for seg in segments)
     return segments[-1].lower(), re.compile(
         _PATH_LEFT + head + body + _PATH_RIGHT, re.IGNORECASE
