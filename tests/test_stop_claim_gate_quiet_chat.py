@@ -243,7 +243,9 @@ def test_prune_keeps_the_newest_seen_files(tmp_path):
         path.write_text("{}", encoding="utf-8")
         os.utime(path, (1_000_000 + i, 1_000_000 + i))
     gate.prune_seen(tmp_path, keep=3)
-    assert sorted(p.name for p in tmp_path.iterdir()) == ["s4.json", "s5.json", "s6.json"]
+    # MAIN 1254 #9: the stale ones are MOVED into a pruned/ subdirectory, so
+    # only the top-level seen files count here.
+    assert sorted(p.name for p in tmp_path.glob("*.json")) == ["s4.json", "s5.json", "s6.json"]
 
 
 def test_live_seen_dir_sits_under_ops_runtime():

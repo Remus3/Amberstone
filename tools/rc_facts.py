@@ -6,12 +6,16 @@ Output (markdown to stdout) is injected as additional context, so the
 session starts with current state instead of relying on possibly-stale
 memory entries.
 
-Probes (all should complete within ~3s total):
+Probes (measured ~0.6 s total on Legion 2026-10-22; capped at PROBE_BUDGET_S):
   - Legion: health.json (pid, alive, mode, rc_version), listener ports
     8888/8889, RC scheduled tasks state, last boot.
   - Legion-local agents: /api/state's lcu block freshness (proves the
     relocated LCU agent is posting) + the Live Client relay age.
   - Anomaly summary: anything unexpected, listed first.
+
+The live probes run concurrently under ONE deadline (see _run_probes): a
+probe that does not finish in time is reported UNMEASURED, never as down and
+never silently as healthy.
 
 Cheap and idempotent. Caller (the hook) gets stdout; non-zero exit just
 means "couldn't probe" and is non-blocking.
@@ -28,6 +32,7 @@ import socket
 import ssl
 import subprocess
 import sys
+import threading
 import time
 import urllib.request
 from datetime import datetime
@@ -88,11 +93,73 @@ _SSL = ssl.create_default_context()
 _SSL.check_hostname = False
 _SSL.verify_mode = ssl.CERT_NONE
 
+# MAIN FIX 2026-10-21 1254 item #17. The SessionStart hook is killed at 8 s and
+# main() prints only at its END, so a kill drops the whole block, checklist
+# included. The probes used to run one after another: 2 ports x 3 attempts x
+# 1.0 s, 2 HTTP GETs x 2.5 s, the task PowerShell probe 8.0 s and the last-boot
+# one 2.0 s - a worst case near 21 s. They now run concurrently, each clamped
+# to ONE deadline PROBE_BUDGET_S after main() starts, and main() stops waiting
+# PROBE_JOIN_GRACE_S later. 4.5 + 0.25 s leaves the inbox section, the print
+# and the SESSIONSTART_RECORD_BUDGET_S record (6.0 s) inside the 8 s kill.
+# Measured typical cost on Legion 2026-10-22: tasks 0.58 s, last boot 0.16 s,
+# each port and HTTP probe <= 0.02 s.
+PROBE_BUDGET_S = 4.5
+PROBE_JOIN_GRACE_S = 0.25
+# A socket timeout of 0 means NON-BLOCKING, not "no time left", so a clamped
+# timeout never drops below this.
+_PROBE_MIN_TIMEOUT_S = 0.05
+# The deadline lives in the probe's OWN thread (set by _run_probes), so a direct
+# call - a test, the poller - keeps every probe's own default timeout.
+_probe_ctx = threading.local()
+
+
+def _probe_timeout(default: float) -> float:
+    """DEFAULT, clamped to the running probe's deadline when there is one."""
+    deadline = getattr(_probe_ctx, "deadline", None)
+    if deadline is None:
+        return default
+    return max(_PROBE_MIN_TIMEOUT_S, min(default, deadline - time.monotonic()))
+
+
+def _probe_expired() -> bool:
+    deadline = getattr(_probe_ctx, "deadline", None)
+    return deadline is not None and time.monotonic() >= deadline
+
+
+def _run_probes(probes: dict, budget_s: float) -> tuple[dict, list[str]]:
+    """Run each zero-argument probe in its own daemon thread under ONE deadline.
+
+    Returns ({name: value} for every probe that returned, [names that did not
+    finish by the deadline plus PROBE_JOIN_GRACE_S, or raised]). A late thread
+    is abandoned, not killed: it is a daemon, and every probe's own timeout is
+    clamped to the same deadline, so its socket or child process ends by then.
+    """
+    deadline = time.monotonic() + budget_s
+    results: dict = {}
+
+    def run(name, fn):
+        _probe_ctx.deadline = deadline
+        try:
+            results[name] = fn()
+        except Exception:  # noqa: BLE001 - a probe fault is "unmeasured", never a crash
+            pass
+
+    threads = []
+    for name, fn in probes.items():
+        t = threading.Thread(target=run, args=(name, fn), name=f"rc_facts-probe-{name}",
+                             daemon=True)
+        t.start()
+        threads.append((name, t))
+    for _name, t in threads:
+        t.join(max(0.0, deadline + PROBE_JOIN_GRACE_S - time.monotonic()))
+    got = {name: results[name] for name, t in threads if not t.is_alive() and name in results}
+    return got, [name for name, _t in threads if name not in got]
+
 
 def _http_get_json(url: str, headers: dict | None = None) -> dict | None:
     try:
         req = urllib.request.Request(url, headers=headers or {})
-        with urllib.request.urlopen(req, timeout=_TIMEOUT, context=_SSL) as r:
+        with urllib.request.urlopen(req, timeout=_probe_timeout(_TIMEOUT), context=_SSL) as r:
             return json.loads(r.read())
     except Exception:  # noqa: BLE001
         return None
@@ -105,10 +172,15 @@ def _port_listening(port: int, host: str = "127.0.0.1", attempts: int = 3) -> bo
 
     Without the retry a busy-but-listening port (e.g. the single-threaded vision
     server on :8889 mid frame-upload) false-alarms as down.
+
+    Under _run_probes each attempt is clamped to the deadline and no attempt
+    starts after it (MAIN 1254 #17).
     """
     for _ in range(attempts):
+        if _probe_expired():
+            break
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.settimeout(1.0)
+        s.settimeout(_probe_timeout(1.0))
         try:
             s.connect((host, port))
             return True
@@ -168,7 +240,7 @@ def _legion_tasks() -> list[dict] | None:
     try:
         p = subprocess.run(
             ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", TASK_PROBE_PS],
-            capture_output=True, timeout=8.0, text=True,
+            capture_output=True, timeout=_probe_timeout(8.0), text=True,
             encoding="utf-8", errors="replace", creationflags=_NO_WINDOW,
         )
         if p.returncode != 0 or not p.stdout.strip():
@@ -984,7 +1056,7 @@ def _last_boot_iso() -> str | None:
     try:
         p = subprocess.run(
             ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", cmd],
-            capture_output=True, timeout=2.0, text=True,
+            capture_output=True, timeout=_probe_timeout(2.0), text=True,
             encoding="utf-8", errors="replace", creationflags=_NO_WINDOW,
         )
         if p.returncode == 0:
@@ -1064,17 +1136,37 @@ def main(session: str | None = None) -> int:
     if last_reload_ok is False:
         anomalies.append("Legion: last RC reload failed")
 
+    # Every live probe, concurrently, under one deadline (MAIN 1254 #17). A
+    # probe that did not finish is UNMEASURED: it raises no "down" anomaly of
+    # its own, and one anomaly line names every such probe.
+    got, unmeasured = _run_probes({
+        "port8888": lambda: _port_listening(8888),
+        "port8889": lambda: _port_listening(8889),
+        "health_all": _health_all,
+        "tasks": _legion_tasks,
+        "last_boot": _last_boot_iso,
+        "state": lambda: _http_get_json(f"{_LEGION_BASE}/api/state"),
+    }, PROBE_BUDGET_S)
+    if unmeasured:
+        anomalies.append(f"rc_facts: probe budget {PROBE_BUDGET_S:g}s - unmeasured: "
+                         + ", ".join(unmeasured))
+
     # Listener ports
-    p_dash = _port_listening(8888)
-    p_vis = _port_listening(8889)
-    out.append(f"- Listeners: :8888 dashboard={p_dash}  :8889 vision={p_vis}")
-    if not p_dash:
+    p_dash = got.get("port8888")
+    p_vis = got.get("port8889")
+
+    def _shown(name, value):
+        return "unmeasured" if name in unmeasured else value
+
+    out.append(f"- Listeners: :8888 dashboard={_shown('port8888', p_dash)}  "
+               f":8889 vision={_shown('port8889', p_vis)}")
+    if "port8888" not in unmeasured and not p_dash:
         anomalies.append("Legion: dashboard :8888 not listening")
-    if not p_vis:
+    if "port8889" not in unmeasured and not p_vis:
         anomalies.append("Legion: vision server :8889 not listening")
 
     # Fetch /api/health/all once - used for DS health
-    health_all = _health_all() or {}
+    health_all = got.get("health_all") or {}
 
     # DS alive check used to suppress RC-DaemonSlayer task false-positive
     ds_health = health_all.get("daemon_slayer") or {}
@@ -1084,14 +1176,16 @@ def main(session: str | None = None) -> int:
     # a failed probe is loud, a Disabled periodic task surfaces as DISARMED,
     # and each weekly task is checked against the artifact it is supposed to
     # advance rather than only against its exit code.
+    # An unmeasured task probe reaches task_health_lines as None, its own loud
+    # "could not measure" path.
     task_lines, task_anomalies = task_health_lines(
-        _legion_tasks(), root=_APP, now=time.time(), ds_alive=ds_alive
+        got.get("tasks"), root=_APP, now=time.time(), ds_alive=ds_alive
     )
     out.extend(task_lines)
     anomalies.extend(task_anomalies)
 
     # Last boot
-    lb = _last_boot_iso()
+    lb = got.get("last_boot")
     if lb:
         out.append(f"- Last boot: {lb}")
 
@@ -1111,12 +1205,14 @@ def main(session: str | None = None) -> int:
     out.append("\n## Legion-local agents (LCU + Live Client relay)\n")
 
     # LCU agent freshness via Legion's /api/state
-    state = _http_get_json(f"{_LEGION_BASE}/api/state") or {}
+    state = got.get("state") or {}
     lcu = (state or {}).get("lcu") or {}
     lcu_ts = float(lcu.get("ts") or 0)
     lcu_age = int(time.time() - lcu_ts) if lcu_ts else None
     lcu_phase = _lcu_phase_label(lcu)
-    if lcu_age is not None:
+    if "state" in unmeasured:
+        out.append("- LCU agent: unmeasured (probe budget)")
+    elif lcu_age is not None:
         out.append(f"- LCU agent: phase={lcu_phase} age={lcu_age}s")
         if lcu_age > 30:
             anomalies.append(f"Legion: LCU agent stale ({lcu_age}s old)")
@@ -1127,7 +1223,9 @@ def main(session: str | None = None) -> int:
     # Liveclient block from /api/state
     lc = state.get("liveclient") or {}
     lc_ts = float(lc.get("ts") or 0) if isinstance(lc, dict) else 0
-    if lc_ts:
+    if "state" in unmeasured:
+        out.append("- Liveclient relay: unmeasured (probe budget)")
+    elif lc_ts:
         lc_age = int(time.time() - lc_ts)
         out.append(f"- Liveclient relay: age={lc_age}s")
     else:

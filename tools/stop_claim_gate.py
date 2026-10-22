@@ -25,6 +25,15 @@ Contract:
     error" (MAIN ORDER 2026-10-07 2237; the full message goes to the report's
     `message`). Arming is deliberately opt-in - a gate that fires wrongly once gets disabled forever,
     so arming waits until the report is observed quiet on clean sessions.
+  - FAILS OPEN (MAIN FIX 2026-10-21 1254 item #9): any internal error, an
+    unwritable report path or a bad argument exits 0 and prints nothing (an
+    argparse exit 2 would BLOCK the Stop). The error is recorded in the report
+    / history when they are writable. Only this Claude-hook channel fails
+    open; the git hooks stay the authoritative, fail-closed gate.
+  - PORTABLE (same item): ROOT is the nearest ancestor of this file holding a
+    `.git` (see find_root), `--state-dir` moves the report, history and seen
+    set together, and `--own-codes` names THIS tree's channel codes (default
+    RC,DS; see set_own_codes).
   - QUIET MAIN (operator, 2026-10-09; FLEET item 15): a finding reaches that
     line AT MOST ONCE per session (see SEEN SET), ADVISORY checks never reach
     it, and a Stop with nothing new prints nothing. The report still lists
@@ -53,9 +62,34 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_REPORT = ROOT / "ops" / "runtime" / "stop_claim_report.json"
-DEFAULT_HISTORY = ROOT / "ops" / "runtime" / "stop_claim_history.jsonl"
+# MAIN 1254 #9: `parent.parent` assumed the hook lives in <repo>/tools/. A copy
+# at <repo>/.claude/hooks/ or at the repo root resolved the wrong repo, which
+# moved the state AND pointed the subagent_hook_bypass check (_rc_common_dir)
+# at the wrong git common dir. The nearest `.git` (a directory, or a linked
+# worktree's file) within ROOT_SEARCH_DEPTH levels wins; with none, the old
+# parent-of-tools/ answer stands. The bound keeps the walk off unrelated
+# ancestors and makes the fallback testable in a temp dir.
+ROOT_SEARCH_DEPTH = 6
+
+
+def find_root(script):
+    """Repo root for the hook file SCRIPT: see ROOT_SEARCH_DEPTH."""
+    script = Path(script)
+    for candidate in list(script.parents)[:ROOT_SEARCH_DEPTH]:
+        try:
+            if (candidate / ".git").exists():
+                return candidate
+        except OSError:
+            continue
+    return script.parent.parent
+
+
+ROOT = find_root(Path(__file__).resolve())
+DEFAULT_STATE_DIR = ROOT / "ops" / "runtime"
+REPORT_NAME = "stop_claim_report.json"
+HISTORY_NAME = "stop_claim_history.jsonl"
+DEFAULT_REPORT = DEFAULT_STATE_DIR / REPORT_NAME
+DEFAULT_HISTORY = DEFAULT_STATE_DIR / HISTORY_NAME
 HISTORY_MAX = 500
 # SEEN SET (operator, 2026-10-09). The scan re-reads the WHOLE transcript every
 # Stop, so without a memory one finding re-fired on every later turn of the
@@ -66,6 +100,7 @@ HISTORY_MAX = 500
 SEEN_DIRNAME = "stop_claim_seen"
 DEFAULT_SEEN_DIR = DEFAULT_REPORT.parent / SEEN_DIRNAME
 SEEN_MAX_SESSIONS = 200
+PRUNED_DIRNAME = "pruned"
 
 # Claim patterns. Deliberately narrow: a false positive costs more than a miss,
 # because the first wrong flag is what gets the hook turned off.
@@ -325,18 +360,45 @@ CLAIM_COMMIT_THIRD_PARTY_LEAD = re.compile(
     + _THIRD_PARTY_AUX, re.I)
 # Shouted prose is not a channel code: "THE COMMITTED FIX IS IN MAIN" must keep
 # flagging, so English function words in capitals are refused too.
-_NOT_A_CHANNEL_CODE = (r"(?:RC|CI|PR|HEAD|WIP|TODO|API|URL|OK|LF|CRLF|JSON|UI|DS|"
-                       r"THE|THIS|THAT|ITS|AND|BUT|ALL|ANY|OUR|WE|US|IT|HE|SHE|"
-                       r"YOU|NOT|NOW|THEN|ALSO|JUST|HAS|HAD|HAVE|WAS|IS|ARE|"
-                       r"WERE|BEEN|SO|AS|ONE|EACH|BOTH|SOME|THEY|THEM)")
-CLAIM_COMMIT_CHANNEL_CODE_LEAD = re.compile(
-    r"(?<![\w-])(?!" + _NOT_A_CHANNEL_CODE + r"\b)[A-Z]{2,4}(?:'s)?"
-    + _THIRD_PARTY_AUX)
+_NOT_A_CODE_WORDS = ("CI", "PR", "HEAD", "WIP", "TODO", "API", "URL", "OK", "LF",
+                     "CRLF", "JSON", "UI",
+                     "THE", "THIS", "THAT", "ITS", "AND", "BUT", "ALL", "ANY", "OUR",
+                     "WE", "US", "IT", "HE", "SHE", "YOU", "NOT", "NOW", "THEN",
+                     "ALSO", "JUST", "HAS", "HAD", "HAVE", "WAS", "IS", "ARE", "WERE",
+                     "BEEN", "SO", "AS", "ONE", "EACH", "BOTH", "SOME", "THEY", "THEM")
+# THIS tree's own channel codes: a subject carrying one is the speaker, never
+# a third party. MAIN 1254 #9: RC and DS used to be hard-coded inside the
+# refusal list, so a copy of this hook in another tree laundered "RC committed
+# ..." and read its own code as a sibling. `--own-codes` replaces the default.
+DEFAULT_OWN_CODES = ("RC", "DS")
+_CODE_SHAPE = re.compile(r"[A-Z]{2,4}")
 CLAIM_COMMIT_THIRD_PARTY_BY = re.compile(
     r"\s+by\s+(?:(?:the|a|an|its|each|that|this)\s+)?(?:\w+\s+)?"
     r"(?:" + _AGENT_NOUN + r")\b", re.I)
-CLAIM_COMMIT_CHANNEL_CODE_BY = re.compile(
-    r"\s+by\s+(?!" + _NOT_A_CHANNEL_CODE + r"\b)[A-Z]{2,4}\b")
+
+
+def set_own_codes(codes):
+    """Rebuild the channel-code patterns with CODES as this tree's own codes.
+
+    Each code is stripped and upper-cased, and kept only when it has the shape
+    the patterns match ([A-Z]{2,4}); anything else could never match a subject,
+    so it is dropped rather than refused. Returns the codes in effect."""
+    global _NOT_A_CHANNEL_CODE, CLAIM_COMMIT_CHANNEL_CODE_LEAD, CLAIM_COMMIT_CHANNEL_CODE_BY
+    own = []
+    for raw in codes or ():
+        code = str(raw).strip().upper()
+        if _CODE_SHAPE.fullmatch(code) and code not in own:
+            own.append(code)
+    _NOT_A_CHANNEL_CODE = "(?:" + "|".join(own + list(_NOT_A_CODE_WORDS)) + ")"
+    CLAIM_COMMIT_CHANNEL_CODE_LEAD = re.compile(
+        r"(?<![\w-])(?!" + _NOT_A_CHANNEL_CODE + r"\b)[A-Z]{2,4}(?:'s)?"
+        + _THIRD_PARTY_AUX)
+    CLAIM_COMMIT_CHANNEL_CODE_BY = re.compile(
+        r"\s+by\s+(?!" + _NOT_A_CHANNEL_CODE + r"\b)[A-Z]{2,4}\b")
+    return tuple(own)
+
+
+set_own_codes(DEFAULT_OWN_CODES)
 # Check 10 (merge), added 2026-10-04 on a verifier finding: "Merged to main."
 # made no claim the gate could see - CLAIM_COMMIT and CLAIM_PUSH never read
 # "merged" - although in this repo a merge to main IS a deployment. Narrow on
@@ -2543,24 +2605,49 @@ def save_seen(path, session_id, keys):
 
 
 def prune_seen(seen_dir, keep=SEEN_MAX_SESSIONS):
-    """Keep only the newest KEEP seen-set files (regenerable bookkeeping: the
-    cost of a lost file is one more surfacing in a long-finished session)."""
+    """Keep only the newest KEEP seen-set files in SEEN_DIR itself.
+
+    MAIN 1254 #9 / fleet rule 9: the stale ones are MOVED into PRUNED_DIRNAME
+    beside them, never unlinked, under a name stamped with their mtime so a
+    later prune never overwrites an earlier move; a name that is still taken
+    leaves the file where it is. The pruned/ folder is not capped here: measured
+    2026-10-22, the live seen set grew 7 files in 12.7 days (~0.6/day, 151-417
+    bytes each), so the first prune is about a year out and pruned/ then gains
+    under one small file a day. Clearing it is a hand / hygiene act through the
+    Recycle Bin. Every failure is swallowed (bookkeeping, see SEEN SET)."""
     try:
-        files = sorted(Path(seen_dir).glob("*.json"),
+        seen_dir = Path(seen_dir)
+        files = sorted(seen_dir.glob("*.json"),
                        key=lambda p: p.stat().st_mtime, reverse=True)
-        for stale in files[keep:]:
-            stale.unlink()
+        stale = files[keep:]
+        if not stale:
+            return
+        pruned = seen_dir / PRUNED_DIRNAME
+        pruned.mkdir(exist_ok=True)
+        for path in stale:
+            try:
+                stamp = path.stat().st_mtime_ns
+                target = pruned / f"{path.stem}.{stamp}.json"
+                if not target.exists():
+                    os.replace(path, target)
+            except OSError:
+                continue
     except OSError:
         pass
 
 
-def main(argv=None):
+def _parse_args(argv):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--report", default=str(DEFAULT_REPORT))
-    parser.add_argument("--history", default=str(DEFAULT_HISTORY),
+    parser.add_argument("--state-dir", default=None,
+                        help="directory for the default report and history "
+                             "(default: <root>/ops/runtime); the seen set sits "
+                             "beside the report")
+    parser.add_argument("--report", default=None,
+                        help=f"report path (default: <state-dir>/{REPORT_NAME})")
+    parser.add_argument("--history", default=None,
                         help="rolling JSONL of every audit; the report is "
                              "overwritten per Stop and cannot answer 'quiet "
-                             "across sessions' on its own")
+                             f"across sessions' on its own (default: <state-dir>/{HISTORY_NAME})")
     parser.add_argument("--history-max", type=int, default=HISTORY_MAX,
                         help="keep only the newest N lines; 0 disables rolling")
     parser.add_argument("--arm", action="store_true",
@@ -2569,7 +2656,56 @@ def main(argv=None):
     parser.add_argument("--seen-dir", default=None,
                         help="per-session seen-set directory (default: "
                              f"'{SEEN_DIRNAME}' beside --report)")
+    parser.add_argument("--own-codes", default=None,
+                        help="comma-separated channel codes of THIS tree, never read "
+                             "as a third party (default: " + ",".join(DEFAULT_OWN_CODES) + ")")
     args = parser.parse_args(argv)
+    state = Path(args.state_dir) if args.state_dir else DEFAULT_STATE_DIR
+    if args.report is None:
+        args.report = str(state / REPORT_NAME)
+    if args.history is None:
+        args.history = str(state / HISTORY_NAME)
+    return args
+
+
+def _record_internal_error(args, exc):
+    """Best effort: name the failure in the report and history. Never raises."""
+    try:
+        report = {"mode": "armed" if args.arm else "report-only",
+                  "armed": bool(args.arm), "findings": [],
+                  "error": "internal-error", "exception": type(exc).__name__}
+        try:
+            write_report(report, args.report)
+        except (OSError, ValueError):
+            pass
+        append_history(report, args.history, args.history_max)
+    except Exception:  # noqa: BLE001 - the fail-open path itself must not raise
+        pass
+
+
+def main(argv=None):
+    """Stop-hook entry under the MAIN 1254 #9 outer guard: exit 0, silent, on
+    any failure. `--help` (SystemExit 0) still exits normally; any other
+    SystemExit, an argparse error included, becomes 0, because exit 2 from a
+    Stop hook blocks the session from ending."""
+    try:
+        args = _parse_args(argv)
+    except SystemExit as exc:
+        if exc.code in (0, None):
+            raise
+        return 0
+    except Exception:  # noqa: BLE001 - fail open
+        return 0
+    try:
+        return _run(args)
+    except Exception as exc:  # noqa: BLE001 - fail open, recorded
+        _record_internal_error(args, exc)
+        return 0
+
+
+def _run(args):
+    if args.own_codes is not None:
+        set_own_codes(args.own_codes.split(","))
 
     try:
         payload = json.loads(sys.stdin.read() or "{}")
