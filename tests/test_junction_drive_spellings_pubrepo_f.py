@@ -107,6 +107,70 @@ def test_synthetic_checkout_root_halts_in_every_drive_spelling():
     assert missed == [], missed
 
 
+# The WSL mount spelling (C1b-3 S1, push-guard WSL gap). A drive-root path
+# seen from WSL or a WSL shell transcript reads `/mnt/<letter>/<rest>`. The
+# checkout_path head took a drive colon or the one-letter POSIX-shell form
+# only, so this spelling passed the push gate. Assembled at run time.
+def _wsl(letter: str, name: str, *sub: str) -> str:
+    return "/".join(("", "mnt", letter.lower(), name) + tuple(sub))
+
+
+@pytest.mark.parametrize("sub", [(), _SUBPATH], ids=["root", "sub"])
+@pytest.mark.parametrize("letter_index", [0, 1])
+def test_synthetic_checkout_root_halts_in_the_wsl_mount_spelling(letter_index, sub):
+    variants = cp.checkout_path_variants(_synth_checkout())
+    text = "see " + _wsl(_SYNTH_LETTERS[letter_index], _SYNTH_NAME, *sub) + " here\n"
+    hit = bool(_gate(cp.scan_leaks(text, (), variants), "checkout_path"))
+    assert hit, f"drive{letter_index}"
+
+
+def test_a_wsl_resolved_checkout_root_halts_every_drive_spelling():
+    """The other direction: the scanner itself runs under WSL, so the checkout
+    root it resolves is `/mnt/<letter>/...`; text citing the root under a
+    drive letter must still halt."""
+    variants = cp.checkout_path_variants(_wsl(_SYNTH_LETTERS[0], _SYNTH_NAME))
+    forms = _spellings(_SYNTH_LETTERS, _SYNTH_NAME)
+    forms.append(("wsl/other-letter", _wsl(_SYNTH_LETTERS[1], _SYNTH_NAME)))
+    missed = [
+        label
+        for label, text in forms
+        if not _gate(cp.scan_leaks("see " + text + " here\n", (), variants), "checkout_path")
+    ]
+    assert missed == [], missed
+
+
+@pytest.mark.parametrize("sep", [_BS, _BS * 2, "/"], ids=["bs", "dbs", "fs"])
+@pytest.mark.parametrize("letter_index", [0, 1])
+def test_a_wsl_resolved_checkout_root_still_halts_its_own_mount_spellings(sep, letter_index):
+    """Monotone against the parent: a `/mnt/<letter>/...` checkout value was
+    matched literally (any separator) before it was read as drive-rooted, so
+    the backslash spellings of the mount itself must keep halting."""
+    variants = cp.checkout_path_variants(_wsl(_SYNTH_LETTERS[0], _SYNTH_NAME))
+    letter = _SYNTH_LETTERS[letter_index].lower()
+    text = "see " + sep.join(("", "mnt", letter, _SYNTH_NAME, "x")) + " here\n"
+    hit = bool(_gate(cp.scan_leaks(text, (), variants), "checkout_path"))
+    assert hit, f"drive{letter_index}"
+
+
+def test_a_mnt_word_directory_is_not_read_as_a_drive_mount():
+    """Only a ONE-letter mount segment is a drive: a longer one is an ordinary
+    POSIX directory, so the drive-free identity must not widen to it."""
+    variants = cp.checkout_path_variants(_synth_checkout())
+    text = "see " + "/".join(("", "mnt", "qz", _SYNTH_NAME)) + " here\n"
+    assert _gate(cp.scan_leaks(text, (), variants), "checkout_path") == []
+
+
+def test_push_halts_on_the_wsl_mount_spelling_of_the_checkout_root(repo, capsys):
+    base = _git(repo, "rev-parse", "HEAD")
+    _commit(repo, "docs/WSL.md",
+            "cd " + _wsl(_SYNTH_LETTERS[1], _SYNTH_NAME, "ops") + "\n")
+    rc = _push(repo, base, cp.checkout_path_variants(_synth_checkout()))
+    assert rc == chs.EXIT_HALT
+    err = capsys.readouterr().err
+    assert "class=checkout_path" in err
+    assert _SYNTH_NAME not in err
+
+
 def _git(repo: Path, *args: str) -> str:
     return subprocess.run(["git", *args], cwd=repo, capture_output=True,
                           text=True, check=True, creationflags=_NW).stdout.strip()

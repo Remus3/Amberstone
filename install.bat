@@ -131,6 +131,24 @@ if not exist "%API_FILE%" (
 )
 
 set /p API_KEY=<"%API_FILE%"
+
+:: A key file saved as UTF-8 WITH BOM (Notepad, PowerShell 5.1 -Encoding
+:: UTF8) starts with the bytes EF BB BF, and set /p keeps them, so the sk-ant-
+:: check below rejected a good key (ENV-APIKEY nit 4). The BOM is dropped in
+:: memory: the Python found in step 1 writes the three BOM bytes (never the
+:: key) to a private temp file, set /p reads them back in this console's code
+:: page, and they are removed from the key. Step 4 then rewrites the key file
+:: without the BOM. If any of this fails, the check below behaves as before.
+set PY_EXE=python
+if "%OPTION_B%"=="1" set PY_EXE=%EMBED_PY%
+set BOM_TMP=%TEMP%\rc-install-bom-%RANDOM%%RANDOM%.tmp
+set BOM=
+"%PY_EXE%" -c "import sys;open(sys.argv[1],'wb').write(bytes((239,187,191)))" "%BOM_TMP%" >nul 2>&1
+if exist "%BOM_TMP%" set /p BOM=<"%BOM_TMP%"
+if exist "%BOM_TMP%" del "%BOM_TMP%" 2>nul
+if defined BOM if defined API_KEY set "API_KEY=!API_KEY:%BOM%=!"
+set BOM=
+
 set API_KEY=%API_KEY: =%
 
 if "%API_KEY%"=="" (
