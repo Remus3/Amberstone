@@ -11,10 +11,10 @@ Read this before trusting one of them (lane 8 audit, 2026-08-03):
     never raises. ``dispatch_post`` then calls the route with the unchanged
     body whatever the result. A model here documents and observes a shape;
     it does not enforce one.
-  * The policy is also mixed, not uniform: of the 6 POST paths wired into
+  * The policy is also mixed, not uniform: of the 5 POST paths wired into
     ``_REQUEST_MODELS``, only ``/api/input`` and ``/api/command`` forbid
-    extra fields; ds-preview, build-order, speak and team-context/refresh
-    all allow them.
+    extra fields; ds-preview, build-order and team-context/refresh all
+    allow them. (A sixth, speak, was removed with its route in RM-762.)
 
 So a route may not assume its body was validated. The routes that matter do
 their own checking - ``_serve_command_post`` whitelists the command and 400s
@@ -172,13 +172,6 @@ class ArchetypeNudgePayload(_AllowExtra):
     message: str = ""
     expected_items: list[str] = []
     session_token: str = ""
-
-
-# -- POST /api/speak -------------------------------------------------------
-
-class SpeakRequest(_AllowExtra):
-    text: str
-    voice: str = ""
 
 
 # -- POST /api/team-context/refresh ----------------------------------------

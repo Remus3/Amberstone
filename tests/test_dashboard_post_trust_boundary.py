@@ -191,8 +191,9 @@ class TestSchemaContractIsHonest:
             "learns the truth from the module they are editing")
 
     def test_extra_policy_per_wired_post_path_is_pinned(self):
-        """4 of 6 allow extra. That may be the right call for forward-compat,
-        but it must be a DELIBERATE one - this test makes a change visible."""
+        """3 of 5 allow extra. That may be the right call for forward-compat,
+        but it must be a DELIBERATE one - this test makes a change visible.
+        (4 of 6 until RM-762 removed /api/speak and its model.)"""
         from dashboard._dispatch import _REQUEST_MODELS
         actual = {p: m.model_config.get("extra")
                   for p, m in _REQUEST_MODELS.items()}
@@ -201,7 +202,6 @@ class TestSchemaContractIsHonest:
             "/api/command": "forbid",
             "/api/ds-preview": "allow",
             "/api/build-order": "allow",
-            "/api/speak": "allow",
             "/api/team-context/refresh": "allow",
         }, f"the extra-policy census changed: {actual}"
 

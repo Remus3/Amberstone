@@ -129,23 +129,9 @@ def _serve_coach_state(h) -> None:
 
 
 # -- POST handlers (slice 2C-7c) --------------------------------------
-
-
-def _serve_speak_post(h, payload) -> None:
-    # Opt-in voice TTS for the Right Now headline. Body: {text, rate?}.
-    # Throttled + deduped server-side via voice_coach module.
-    try:
-        from coaches.voice_coach import speak
-        text = (payload.get("text") or "").strip()
-        rate = int(payload.get("rate") or 0)
-        if not text:
-            h._send(400, b'{"error":"empty_text"}', "application/json"); return
-        spoken = speak(text, rate=rate)
-        h._send(200, json.dumps({"ok": True, "spoken": spoken}).encode(),
-                "application/json")
-    except Exception as exc:  # noqa: BLE001
-        log.warning("api/speak: %s", exc)
-        send_error(h, exc)
+# RM-762 (2026-10-22): POST /api/speak and its handler were removed - no
+# in-tree sender, no token, and a remote command-injection path until
+# edd0e2622. Pinned by tests/test_dead_endpoint_cleanup_item186.py.
 
 
 def _serve_branch_review(h) -> None:
@@ -273,7 +259,6 @@ GET_ROUTES = [
 ]
 
 POST_ROUTES = [
-    (equals("/api/speak"),               _serve_speak_post),
     (equals("/api/champ-select-coach"),  _serve_champ_select_coach_post),
     (equals("/api/coach/toggle"),        _serve_coach_toggle_post),
     (equals("/api/aram-comp-verdict"),   _serve_aram_comp_verdict_post),

@@ -42,7 +42,6 @@ CASES = [
     ("/api/command", {"command": ["x"]}, "command"),
     ("/api/ds-preview", {"champion": "Ahri", "level": "six"}, "level"),
     ("/api/build-order", {"champion": "Ahri", "items": "3031"}, "items"),
-    ("/api/speak", {"text": {"a": 1}}, "text"),
     ("/api/team-context/refresh", {"queue_id": "ranked"}, "queue_id"),
 ]
 

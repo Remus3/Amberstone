@@ -7,9 +7,9 @@ read a panel, they hear it. Riot's third-party rules ban it in-game; the
 operator decision (docs/OVERLAY_COMPLIANCE_PLAN.md section 6c) moves coaching
 to pre-game and post-game.
 
-The gate sits inside speak() rather than on its one current caller
-(dashboard/routes_coach.py:137, the /api/speak route) so that any future
-caller inherits it. is_available() is a capability probe, not a gate, and is
+The gate sits inside speak() rather than on a caller (the only one, the
+POST /api/speak route, was removed in RM-762) so that any future caller
+inherits it. is_available() is a capability probe, not a gate, and is
 deliberately left alone.
 
 Spy shape matters here. The design forbids a raise-based spy: speak() wraps

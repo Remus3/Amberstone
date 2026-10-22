@@ -177,9 +177,9 @@ NOT gated.
 
 SHIPPED B4-c. Two details that are load-bearing:
 
-- The gate sits inside `speak()`, not on its one current caller
-  (`dashboard/routes_coach.py`, the `/api/speak` route), so any future caller
-  inherits it.
+- The gate sits inside `speak()`, not on a caller (the only one, the
+  `/api/speak` route, was removed in RM-762), so any future caller inherits
+  it.
 - It sits BEFORE the dedup / rate-limit bookkeeping. A suppressed in-game line
   must not consume the dedup slot, or the first legitimate post-game utterance
   of the same text is silently swallowed as a duplicate.

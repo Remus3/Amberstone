@@ -33,7 +33,6 @@ from dashboard.api_schema import (
     CommandRequest,
     DsPreviewRequest,
     InputRequest,
-    SpeakRequest,
     TeamContextRefreshRequest,
 )
 
@@ -242,7 +241,6 @@ _REQUEST_MODELS = {
     "/api/command":                 CommandRequest,
     "/api/ds-preview":              DsPreviewRequest,
     "/api/build-order":             BuildOrderRequest,
-    "/api/speak":                   SpeakRequest,
     "/api/team-context/refresh":    TeamContextRefreshRequest,
 }
 
@@ -268,7 +266,8 @@ def _validate_request_body(path: str, body) -> "list[dict] | None":
         slots / incumbent / enemies - extras are allowed on that model);
         /api/team-context/refresh tools/lcu_agent._build_team_context_body
         `{queue_id: int, roster: [{puuid, summoner_name, team_id,
-        locked_champion}]}`; /api/speak has no in-tree sender.
+        locked_champion}]}`. (A sixth model, for POST /api/speak, went with
+        that route in RM-762: it had no in-tree sender.)
     """
     base = path.split("?", 1)[0]
     model_cls = _REQUEST_MODELS.get(base)
