@@ -342,7 +342,14 @@ def run(args: argparse.Namespace, *,
     state = ReplayState(header, events_source=events_source)
     server = None
     if serve:
-        server = make_server(state, port=args.port, events_source=events_source)
+        # RM-761c: a held port is a one-line message and exit 2, not a
+        # raw OSError traceback.
+        try:
+            server = make_server(state, port=args.port, events_source=events_source)
+        except OSError as exc:
+            print(f"replay_session: cannot bind {LOOPBACK}:{args.port}: {exc}",
+                  file=sys.stderr)
+            return 2
         threading.Thread(target=server.serve_forever, daemon=True,
                          name="replay-http").start()
         ev_state = "on" if events_source else "absent"
