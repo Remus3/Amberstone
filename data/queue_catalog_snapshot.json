@@ -1,14 +1,14 @@
 {
   "source": "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/queues.json",
-  "fetched_at": "2026-08-02T12:20:56Z",
-  "fingerprint": "8039fde2e98fc392",
-  "entry_count": 408,
+  "fetched_at": "2026-10-22T21:52:00Z",
+  "fingerprint": "27fc1d4c3a99770c",
+  "entry_count": 410,
   "group_counts": {
     "kARAM": 16,
-    "kAlternativeLeagueGameModes": 256,
+    "kAlternativeLeagueGameModes": 254,
     "kJade": 17,
     "kSummonersRift": 36,
-    "kTeamfightTactics": 83
+    "kTeamfightTactics": 87
   },
   "mapped_queues": {
     "400": {

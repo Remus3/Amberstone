@@ -300,7 +300,7 @@ class TestRosterDistributionCharacterization:
     def test_modal_movespeed_is_335_not_the_fallback(self):
         hist = _movespeed_histogram()
         assert _modal_movespeed() == 335.0
-        assert hist[335.0] == 43
+        assert hist[335.0] == 42
         # The claim the module docstring used to make, pinned as false:
         assert hist[cms._FALLBACK_MS] < hist[335.0]
 
@@ -308,9 +308,9 @@ class TestRosterDistributionCharacterization:
         assert dict(_movespeed_histogram()) == {
             315.0: 1,
             325.0: 19,
-            # 16.15.1 moved Alistar 330 -> 335.
-            330.0: 37,
-            335.0: 43,
+            # 16.15.1 moved Alistar 330 -> 335; 16.21.1 moved Viktor 335 -> 330.
+            330.0: 38,
+            335.0: 42,
             340.0: 37,
             345.0: 28,
             350.0: 7,
