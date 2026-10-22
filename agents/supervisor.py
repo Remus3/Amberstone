@@ -1101,7 +1101,12 @@ async def _run() -> int:
         sig = getattr(signal, sig_name, None)
         if sig is None:
             continue
-        with contextlib.suppress(NotImplementedError, ValueError):
+        # No signal handlers is a supported mode: Windows' loop raises
+        # NotImplementedError, and on Unix a loop OFF the main thread raises
+        # RuntimeError (asyncio wraps set_wakeup_fd's ValueError / OSError;
+        # a documented add_signal_handler failure). This suppress covers ONLY
+        # add_signal_handler - sup.start()'s RuntimeError is handled below.
+        with contextlib.suppress(NotImplementedError, ValueError, RuntimeError):
             loop.add_signal_handler(sig, _handle_signal)
 
     try:
