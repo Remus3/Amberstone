@@ -205,10 +205,13 @@ def dashboard(monkeypatch):
         srv.server_close()
 
 
-def _raw(port: int, payload: bytes, timeout: float = 8.0) -> bytes:
+def _raw(port: int, payload: bytes, timeout: float = 8.0,
+         half_close: bool = False) -> bytes:
     buf = b""
     with socket.create_connection((_HOST, port), timeout=timeout) as s:
         s.sendall(payload)
+        if half_close:
+            s.shutdown(socket.SHUT_WR)
         while True:
             try:
                 chunk = s.recv(65536)
@@ -314,8 +317,13 @@ def _record_handle_error(srv) -> list:
 
 
 def _http09(port: int, path: str) -> bytes:
-    """A raw HTTP/0.9 request: a two-word request line, no headers at all."""
-    return _raw(port, f"GET {path}\r\n".encode())
+    """A raw HTTP/0.9 request: a two-word request line, no headers at all.
+
+    The write side is half-closed after the request line: Python 3.12's
+    ``parse_request`` still reads a header block after a 0.9 line (3.14
+    does not), so without EOF a 3.12 server waits for headers until the
+    client's recv times out (CI ubuntu 3.12, 2026-10-22)."""
+    return _raw(port, f"GET {path}\r\n".encode(), half_close=True)
 
 
 @pytest.fixture
