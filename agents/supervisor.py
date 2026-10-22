@@ -1109,9 +1109,11 @@ async def _run() -> int:
             await sup.start()
         except RuntimeError as e:
             # RM-761a: a held port (the preflight, ws_server's RM-756 guard or
-            # start_web_server) raises RuntimeError with a netstat hint. Log it
-            # as one line - under pythonw.exe an escaping traceback is lost.
-            log.error("supervisor failed to start: %s", e)
+            # start_web_server) raises RuntimeError with a netstat hint; so do
+            # the fail-closed verifiers and RuntimeError subclasses. Log it
+            # WITH the traceback (under pythonw.exe an escaping one is lost),
+            # so a non-bind failure keeps its stack.
+            log.error("supervisor failed to start: %s", e, exc_info=True)
             return 1
         await stop_evt.wait()
     finally:

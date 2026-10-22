@@ -105,6 +105,33 @@ def test_run_logs_one_error_stops_and_returns_1(monkeypatch, mem_log):
     assert _FailingSupervisor.stopped == 1
 
 
+def test_run_keeps_the_traceback_for_a_non_bind_runtimeerror(monkeypatch, mem_log):
+    # The real Supervisor.start(), failing at its FIRST step (a fail-closed
+    # verifier, not a bind): _run still returns 1, but the ERROR record must
+    # carry the stack. stop() is replaced so the real lock files of a live
+    # supervisor are never released by the test.
+    def _drift() -> None:
+        raise RuntimeError("decisions-file version drift")
+
+    stops: list[int] = []
+
+    async def _no_stop(self) -> None:
+        stops.append(1)
+
+    monkeypatch.setattr(supervisor, "acquire_lock", lambda: True)
+    monkeypatch.setattr(supervisor, "_verify_decisions_version", _drift)
+    monkeypatch.setattr(supervisor.Supervisor, "stop", _no_stop)
+    rc = run_coro(supervisor._run(), timeout=30.0)
+    assert rc == 1
+    assert stops == [1]
+    errors = [r for r in mem_log.records if r.levelno >= logging.ERROR]
+    assert len(errors) == 1, [r.getMessage() for r in errors]
+    assert "decisions-file version drift" in errors[0].getMessage()
+    assert errors[0].exc_info is not None
+    assert isinstance(errors[0].exc_info[1], RuntimeError)
+    assert errors[0].exc_info[2] is not None
+
+
 def test_run_does_not_swallow_non_runtime_errors(monkeypatch, mem_log):
     class _Boom(_FailingSupervisor):
         async def start(self) -> None:
