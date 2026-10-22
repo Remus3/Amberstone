@@ -139,7 +139,30 @@ CONFIG = ROOT / "ops" / "loop" / "config.json"
 # only `--forward-subagent-text` (the whole --help text is byte-identical to
 # 2.1.305's). Before the bump this test failed on '2.1.308 (Claude Code)'
 # against 2.1.305, so the tripwire still fires.
-PINNED_CLI = "2.1.308"
+#
+# RE-MEASURED 2026-10-22 on 2.1.309 (slice W2-F, after the CLI auto-updated
+# 2.1.308 -> 2.1.309 and this test went red in the gated suite on main
+# 915300765). The same RM-684 harness (four real `claude -p` runs through the
+# fleet kit's spawn(), sonnet / effort low, a FRESH random codeword placed only
+# in the flag value; the stream-json init of each of runs 1-3 reports
+# claude_code_version 2.1.309, while run 0 exits at argv parsing with an empty
+# stream; one kit usage line per run) re-run BEFORE the bump:
+#   0. UNKNOWN-OPTION control: `--definitely-not-a-flag` -> exit 1, "unknown
+#      option"; the canary run with the real flag -> exit 0.
+#   1. CANARY: one top-level `Agent` tool_use, the codeword absent from its
+#      input, the subagent's totalToolUseCount 0, and the codeword's FIRST
+#      appearance in the stream is the subagent's completion (its
+#      task_notification summary, then its hand-back) -> final result
+#      CANARY=<codeword>.
+#   2. NEGATIVE CONTROL: byte-identical prompt, no flag, same real spawn shape
+#      -> NO-CANARY, codeword count 0 in the stream.
+#   3. TOP-LEVEL LEAK CONTROL: flag present, no spawn, top level reads its OWN
+#      prompt -> NO-CANARY, codeword count 0.
+# Still UNDOCUMENTED on 2.1.309: a `subagent` grep of `claude --help` returns
+# only `--forward-subagent-text` (the whole --help text is byte-identical to
+# 2.1.305's, as 2.1.308's was). Before the bump this test failed on
+# '2.1.309 (Claude Code)' against 2.1.308, so the tripwire still fires.
+PINNED_CLI = "2.1.309"
 FLAG = "--append-subagent-system-prompt"
 
 
