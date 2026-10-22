@@ -4522,11 +4522,14 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Blade of The Ruined King",
         periodics=(PeriodicProc(
             name="Mist's Edge",
-            bonus_damage=lambda c: 0.09 * c.target_max_hp,
+            # DS target-current-HP% lever (RM-660): this IS a current-HP proc
+            # like its SR twin 3153, so the magnitude scales by
+            # c.target_current_hp_pct (default 1.0 = byte-identical).
+            bonus_damage=lambda c: 0.09 * c.target_max_hp * c.target_current_hp_pct,
             damage_type=PHYSICAL,
             every_n_attacks=1,
         ),),
-        note="Blade of the Ruined King (Arena 223153): same as SR 3153 - Mist's Edge 9% target max HP on-hit (Meraki melee value)",
+        note="Blade of the Ruined King (Arena 223153): same as SR 3153 - Mist's Edge 9% target current HP on-hit (scales by target_current_hp_pct; Meraki melee value)",
     ),
     "223181": ItemEffect(
         item_id="223181",
