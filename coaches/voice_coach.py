@@ -23,8 +23,10 @@ Design rules:
       script was injectable - PowerShell 5.1 also ends a single-quoted
       string on U+2018 / U+2019 / U+201A / U+201B, not just on ASCII '.
 
-Wired by the dashboard via /api/speak when the user enables the VOICE
-toggle in the footer.
+No HTTP route calls this any more: the dashboard's VOICE toggle speaks in
+the browser (Web Speech API) since 2026-04-25, and the unused POST
+/api/speak route was removed in RM-762. Kept as a library for a future
+in-process caller (BACKLOG F1) and exercised directly by its tests.
 """
 from __future__ import annotations
 
@@ -70,8 +72,8 @@ def speak(text: str, *, dedup: bool = True, rate: int = 0) -> bool:
     # they hear it. Operator decision 2026-08-11 moves coaching to pre-game
     # and post-game (docs/OVERLAY_COMPLIANCE_PLAN.md section 6c).
     #
-    # The gate sits here rather than on the one current caller
-    # (dashboard/routes_coach.py, the /api/speak route) so any future caller
+    # The gate sits here rather than on any caller (the only one was the
+    # POST /api/speak route, removed in RM-762) so every future caller
     # inherits it, and BEFORE the dedup / rate-limit bookkeeping below so a
     # suppressed in-game line does not consume the dedup slot and silence the
     # first legitimate post-game utterance of the same text.

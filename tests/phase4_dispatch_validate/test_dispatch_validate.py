@@ -21,7 +21,6 @@ _EXPECTED_KNOWN_PATHS = {
     "/api/command",
     "/api/ds-preview",
     "/api/build-order",
-    "/api/speak",
     "/api/team-context/refresh",
 }
 
@@ -80,11 +79,6 @@ class TestKnownPathValid:
                 "champion": "Vayne", "mode": "ARAM",
                 "level": 11, "items": ["3046", "3094"],
             })
-        assert _warnings(caplog) == []
-
-    def test_speak_minimal_valid(self, caplog):
-        with caplog.at_level(logging.WARNING, logger="rc.dispatch"):
-            _validate_request_body("/api/speak", {"text": "hello world"})
         assert _warnings(caplog) == []
 
 

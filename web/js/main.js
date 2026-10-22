@@ -7119,8 +7119,8 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   // (2026-04-25, revised same-day) Speech now uses the browser's
   // window.speechSynthesis (Web Speech API) so audio plays on the
   // device viewing the dashboard - iPad, Legion, whatever -
-  // not on the server. The server-side /api/speak endpoint is kept
-  // for parity / curl testing but the dashboard no longer uses it.
+  // not on the server. The old server-side speak endpoint had no
+  // other caller and was removed in RM-762.
   // State persisted in localStorage; off by default.
   (function setupVoiceToggle() {
     const btn = document.getElementById("voice-toggle");

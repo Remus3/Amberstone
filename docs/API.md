@@ -132,7 +132,6 @@ between-game ops panels page, which reads the three `/api/ops/*` routes).
 | `/api/loadout/list` | `{champion?, mode?}` | List available loadout variants |
 | `/api/loadout/rune-pages` | - | Rune-page ops via LCU |
 | `/api/scouting` | - | Player-scouting rank fan-out; each player row also carries `opening` (RM-613 opening tendencies from local timelines, '-' on thin samples) |
-| `/api/speak` | `SpeakRequest` | TTS speak (voice coach) |
 | `/api/sr-draft/apply` | `{profile_id}` | Apply SR draft coaching profile |
 | `/api/sr-draft/user-builds` | `{builds: [...]}` | Save SR user build list |
 | `/api/team-context/refresh` | `TeamContextRefreshRequest` | Force team-context recompute |

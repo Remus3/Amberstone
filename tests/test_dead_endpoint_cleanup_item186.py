@@ -1,6 +1,7 @@
-"""Item 186 + 194 dead-endpoint cleanup drift guard.
+"""Item 186 + 194 + RM-762 dead-endpoint cleanup drift guard.
 
-Pins the 11 routes deleted in item 186 + 1 in item 194 as PERMANENTLY removed.
+Pins the 11 routes deleted in item 186 + 1 in item 194 + 1 in RM-762 as
+PERMANENTLY removed.
 The item 186 batch was truly-dead endpoints from item 184 Phase 6's flagged
 candidate list: each had ZERO live callers across web/js/main.js, web/js/lib/,
 web/js/panels/, tests/, tools/, coaches/, core/, agents/, lcu/, tft/, ops/,
@@ -29,6 +30,14 @@ The 12 deletions also dropped these handler symbols:
   - _serve_ocr_crop
   - _serve_sr_draft_profile_post
 
+RM-762 (2026-10-22) removed POST /api/speak and `_serve_speak_post`. It had no
+in-tree sender (the dashboard moved to browser speechSynthesis 2026-04-25 and
+kept the route only "for parity / curl testing"), it needed no token, and until
+commit edd0e2622 its text reached a PowerShell script - a remote command
+injection. `coaches/voice_coach.speak()` is KEPT: BACKLOG F1 and the B4 gate
+tests call it directly. Bring the route back only with a real consumer AND as
+a control endpoint behind a token that is actually set.
+
 If you find yourself adding any of these back, first re-run the dead-endpoint
 audit pattern (grep callers across web/js/main.js + panels/ + tools/ + tests/)
 and confirm there is a real consumer. Otherwise the route is dead-on-arrival.
@@ -43,7 +52,7 @@ from tests import _repo_walk
 
 _PROJECT_ROOT = Path(__file__).parent.parent
 
-# 11 routes deleted in item 186 + 1 in item 194.
+# 11 routes deleted in item 186 + 1 in item 194 + 1 in RM-762.
 _DELETED_ROUTES: tuple[str, ...] = (
     "/api/aram-analyze",
     "/api/experimental/adapt",
@@ -55,6 +64,7 @@ _DELETED_ROUTES: tuple[str, ...] = (
     "/api/recommend-champ",
     "/api/reload-regions",
     "/api/replay-coach",
+    "/api/speak",
     "/api/sr-draft/profile",
     "/api/validate-ocr",
 )
@@ -72,6 +82,7 @@ _DELETED_HANDLERS: tuple[str, ...] = (
     "_serve_recommend_champ",
     "_serve_reload_regions",
     "_serve_replay_coach_post",
+    "_serve_speak_post",
     "_serve_sr_draft_profile_post",
     "_serve_validate_ocr",
 )
@@ -308,6 +319,55 @@ class HandlerSymbolAbsenceTests(unittest.TestCase):
             offenders, [],
             "Deleted handler symbols are still imported: " + "; ".join(offenders),
         )
+
+
+class SpeakRouteRemovedTests(unittest.TestCase):
+    """RM-762: POST /api/speak is gone from the live handler, not just the
+    route table - a valid body gets 404 and never reaches speak()."""
+
+    def test_post_api_speak_is_404_and_never_speaks(self):
+        import http.client
+        import json
+        import threading
+        from http.server import ThreadingHTTPServer
+        from unittest import mock
+
+        from dashboard._handler import Handler
+
+        # RECORDING spy, never a raise-based one: the old route wrapped its
+        # call in `except Exception`. Patched so a red run cannot speak aloud.
+        calls: list[tuple] = []
+        srv = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        srv.daemon_threads = True
+        t = threading.Thread(target=srv.serve_forever, daemon=True)
+        t.start()
+        try:
+            with mock.patch("coaches.voice_coach.speak",
+                            lambda *a, **k: calls.append((a, k)) or True):
+                conn = http.client.HTTPConnection("127.0.0.1",
+                                                  srv.server_address[1],
+                                                  timeout=10)
+                try:
+                    conn.request("POST", "/api/speak",
+                                 body=json.dumps({"text": "hello"}),
+                                 headers={"Content-Type": "application/json"})
+                    status = conn.getresponse().status
+                finally:
+                    conn.close()
+        finally:
+            srv.shutdown()
+            srv.server_close()
+            t.join(timeout=5)
+        self.assertEqual(status, 404)
+        self.assertEqual(calls, [], "the removed route still reached speak()")
+
+    def test_speak_has_no_request_model(self):
+        import dashboard.api_schema as api_schema
+        from dashboard._dispatch import _REQUEST_MODELS
+
+        self.assertNotIn("/api/speak", _REQUEST_MODELS)
+        self.assertFalse(hasattr(api_schema, "SpeakRequest"),
+                         "SpeakRequest models a route that no longer exists")
 
 
 if __name__ == "__main__":
