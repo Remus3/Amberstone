@@ -17,6 +17,11 @@ Design rules:
     - Rate limit: minimum 4 s between utterances regardless of dedup.
     - Length cap: 200 chars to keep utterances short.
     - Safe to call when voice is unavailable (e.g., headless Wine env).
+    - Text never enters the PowerShell script: the script is a constant and
+      the text + rate travel in the child's environment, read back as
+      $env: strings that PowerShell never parses. Quoting the text into the
+      script was injectable - PowerShell 5.1 also ends a single-quoted
+      string on U+2018 / U+2019 / U+201A / U+201B, not just on ASCII '.
 
 Wired by the dashboard via /api/speak when the user enables the VOICE
 toggle in the footer.
@@ -24,6 +29,7 @@ toggle in the footer.
 from __future__ import annotations
 
 import logging
+import os
 import subprocess
 import threading
 import time
@@ -41,9 +47,16 @@ _MAX_CHARS = 200
 _lock = threading.Lock()
 
 
-def _quote_for_ps(s: str) -> str:
-    """Single-quote string for PowerShell. Replace ' with '' (PS escape)."""
-    return "'" + s.replace("'", "''") + "'"
+# Out-of-band channel for the speech text and rate. The script below is a
+# constant; caller-supplied bytes only ever reach the child as these values.
+_ENV_TEXT = "RC_VOICE_TEXT"
+_ENV_RATE = "RC_VOICE_RATE"
+_SPEAK_PS = (
+    "Add-Type -AssemblyName System.Speech;"
+    "$s = New-Object System.Speech.Synthesis.SpeechSynthesizer;"
+    f"$s.Rate = [int]$env:{_ENV_RATE};"
+    f"$s.Speak($env:{_ENV_TEXT});"
+)
 
 
 def speak(text: str, *, dedup: bool = True, rate: int = 0) -> bool:
@@ -78,21 +91,19 @@ def speak(text: str, *, dedup: bool = True, rate: int = 0) -> bool:
         _LAST_TS = now
         _LAST_TEXT = text
 
-    quoted = _quote_for_ps(text)
-    cmd = (
-        "Add-Type -AssemblyName System.Speech;"
-        "$s = New-Object System.Speech.Synthesis.SpeechSynthesizer;"
-        f"$s.Rate = {int(rate)};"
-        f"$s.Speak({quoted});"
-    )
+    rate_s = str(int(rate))
     try:
+        env = dict(os.environ)
+        env[_ENV_TEXT] = text
+        env[_ENV_RATE] = rate_s
         # Detached, no window, ignore output. Process self-cleans on exit.
         subprocess.Popen(
             ["powershell.exe", "-NoProfile", "-NonInteractive",
-             "-WindowStyle", "Hidden", "-Command", cmd],
+             "-WindowStyle", "Hidden", "-Command", _SPEAK_PS],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             stdin=subprocess.DEVNULL,
+            env=env,
             creationflags=0x08000000,  # CREATE_NO_WINDOW
         )
         return True
