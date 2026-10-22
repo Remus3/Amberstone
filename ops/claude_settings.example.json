@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "env": {
+    "CLAUDE_CODE_USE_POWERSHELL_TOOL": "1",
+    "PYTHONIOENCODING": "utf-8",
+    "PYTHONUTF8": "1"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$LOCALAPPDATA/Programs/Python/Python314/pythonw.exe\" \"$CLAUDE_PROJECT_DIR/tools/precommit_gate.py\"",
+            "timeout": 60
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__Windows-MCP__Scrape|mcp__computer-use__read_clipboard",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$LOCALAPPDATA/Programs/Python/Python314/pythonw.exe\" \"$CLAUDE_PROJECT_DIR/tools/text_first_guard.py\"",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|PowerShell|Read|Edit|Write|Grep|Glob|NotebookEdit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_subagent_first.py\" || true",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|NotebookEdit|MultiEdit|Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_claims.py\" hook || true",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$LOCALAPPDATA/Programs/Python/Python314/pythonw.exe\" \"$CLAUDE_PROJECT_DIR/tools/pytest_guard.py\""
+          },
+          {
+            "type": "command",
+            "command": "\"$LOCALAPPDATA/Programs/Python/Python314/pythonw.exe\" \"$CLAUDE_PROJECT_DIR/tools/edit_lint_check.py\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$LOCALAPPDATA/Programs/Python/Python314/pythonw.exe\" \"$CLAUDE_PROJECT_DIR/tools/rc_facts.py\"",
+            "timeout": 8
+          },
+          {
+            "type": "command",
+            "command": "\"$LOCALAPPDATA/Programs/Python/Python314/pythonw.exe\" \"$CLAUDE_PROJECT_DIR/tools/caveman_default.py\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$LOCALAPPDATA/Programs/Python/Python314/pythonw.exe\" \"$CLAUDE_PROJECT_DIR/tools/rc_facts.py\" --inbox-only"
+          },
+          {
+            "type": "command",
+            "command": "\"$LOCALAPPDATA/Programs/Python/Python314/pythonw.exe\" \"$CLAUDE_PROJECT_DIR/tools/moon_sync_poller.py\" --ping \"$CLAUDE_PROJECT_DIR\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$LOCALAPPDATA/Programs/Python/Python314/python.exe\" \"$CLAUDE_PROJECT_DIR/tools/stop_claim_gate.py\" --arm",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "\"$LOCALAPPDATA/Programs/Python/Python314/pythonw.exe\" \"$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_done.py\" stop-hook || exit 0",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_claims.py\" release-hook || true",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

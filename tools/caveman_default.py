@@ -1,5 +1,9 @@
-"""caveman_default.py - SessionStart hook: declare CAVEMAN ULTRA as the default
-output dialect for every Legion Claude Code session (operator 2026-06-27).
+"""caveman_default.py - per-repo SessionStart hook: declare CAVEMAN ULTRA as the
+default output dialect for Claude Code sessions opened in THIS repo (operator
+2026-06-27). It is not machine-wide: it runs only where this repo's project
+.claude/settings.json wires it (template: ops/claude_settings.example.json), so
+a session in another tree or another machine does not get it (MAIN FIX
+2026-10-21 1254 item 20).
 
 Wired in .claude/settings.json SessionStart hooks (the prior file was missing, so
 the fleet caveman-default was silently dead - revived here). stdout is injected as
