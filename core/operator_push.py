@@ -304,7 +304,7 @@ def sweep_refusal(text: str, root: Path | None = None) -> str | None:
         needles = s.build_needles(cfg)
         s.assert_non_vacuous(needles)
         found = s.scan_text(needles, cfg.codes, text, path="push", source="push")
-        found += s.structural_findings(text, path="push", source="push")
+        found += s.structural_findings(text, path="push", source="push", slot_names=cfg.names)
     except Exception as exc:  # noqa: BLE001 - fail closed, never raise
         return f"sibling-name sweep could not run ({type(exc).__name__}): refused"
     if found:

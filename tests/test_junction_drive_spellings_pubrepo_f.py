@@ -9,7 +9,9 @@ guard (the matrix is in the commit body):
 
 * Sibling roots - `tools/sibling_name_sweep.py`. The needle arm's DRIVE shape
   matches any drive letter in either case, one or two separators, either
-  slash; the config-free structural arm does too. Both halt a push.
+  slash; the structural arm does too, as every ARMED gate path runs it (with
+  the loaded slot names), and config-free for every root its placeholder
+  allowlist does not shadow. Both halt a push.
 * RC's own root - `tools/credential_patterns.py` class `checkout_path`, run by
   `tools/credential_history_scan.py --pre-push`. The drive is not part of the
   identity, so every drive letter matches. It was ADVISORY (reported, never a
@@ -347,18 +349,34 @@ def test_every_sibling_root_halts_the_needle_drive_arm_in_both_spellings(host):
     assert missed == [], missed
 
 
+def _allowlist_shadows(name: str) -> bool:
+    """Mirror of the structural arm's config-free skip on the name itself: the
+    placeholder allowlist matches it or one of its leading-word prefixes."""
+    words = name.split()
+    return any(sweep._is_allowed(" ".join(words[:cut])) for cut in range(len(words), 0, -1))
+
+
 def test_every_sibling_root_with_a_subpath_halts_the_structural_arm(host):
-    """The config-free arm also sees both spellings of a sibling root."""
+    """The structural arm also sees both spellings of a sibling root: EVERY
+    root as the ARMED gate runs it (with the loaded slot names), and config-free
+    every root the placeholder allowlist does not shadow. A shadowed root is
+    the declared DEGRADED residual (tests/test_sibling_sweep_structural_slot_shadow.py)."""
     missed = []
+    missed_free = []
     for slot, name in enumerate(host.cfg.names):
+        shadowed = _allowlist_shadows(name)
         for label, text in _spellings(host.letters, name):
             if not label.endswith("/sub"):
                 continue
-            found = sweep.structural_findings("see " + text + " here\n",
-                                              path="probe.txt", source="TEST", status="A")
-            if not found:
+            probe = "see " + text + " here\n"
+            if not sweep.structural_findings(probe, path="probe.txt", source="TEST",
+                                             status="A", slot_names=host.cfg.names):
                 missed.append(f"slot {slot} {label}")
+            if not shadowed and not sweep.structural_findings(
+                    probe, path="probe.txt", source="TEST", status="A"):
+                missed_free.append(f"slot {slot} {label} (config-free)")
     assert missed == [], missed
+    assert missed_free == [], missed_free
 
 
 def test_rc_root_halts_the_leak_gate_in_both_spellings(host):
