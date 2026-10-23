@@ -20,6 +20,18 @@ envelope (``From ``) line, or any text the parser read as a body. A clean
 head is unchanged, including LF-only line ends and the multipart / message
 Content-Types whose empty body the parser itself flags.
 
+THE FOLLOW-UP (verifier bypass, 2026-10-23). The block's own Content-Type
+steered the parser into a multipart / message parse of the swallowed tail,
+which filed a Host as the root's preamble or epilogue (``multipart/mixed;
+boundary=x``, a bare CR, then ``Host: rebind.example`` before or after the
+``--x`` lines): no defect, no payload, so 200 on both servers. The handlers
+now parse heads with ``HeadOnlyMessage`` (no Content-Type while the parse
+runs: the block always parses flat) and ``head_parse_defect`` refuses any
+structured body, preamble or epilogue, under either message class. Controls:
+an empty-bodied multipart / message head is still served, a real multipart
+form POST still reaches the POST path and gets that path's own 400, and the
+route still sees the real Content-Type.
+
 Every name is a placeholder; the allowlist is INJECTED.
 """
 from __future__ import annotations
@@ -67,6 +79,35 @@ _DEFECTIVE = {
                           b"X-A: 1\r\rHost: {h}\r\n"),
     "message-bare-cr": (b"Content-Type: message/rfc822\r\n"
                         b"X-A: 1\r\rHost: {h}\r\n"),
+    # RM-773 follow-up (verifier bypass, 2026-10-23): a bare CR ends the
+    # headers and the Content-Type steers the rest into a multipart parse,
+    # which files the Host as the root's PREAMBLE or EPILOGUE - neither a
+    # defect nor a payload the first fix looked at (200 instead of 400).
+    "multipart-preamble-host": (b"Content-Type: multipart/mixed; boundary=x\r\n"
+                                b"\rHost: {h}\r\n--x\r\n--x--\r\n"),
+    "multipart-epilogue-host": (b"Content-Type: multipart/mixed; boundary=x\r\n"
+                                b"\r--x\r\n--x--\r\nHost: {h}\r\n"),
+    "multipart-epilogue-cr-lines": (b"Content-Type: multipart/mixed; boundary=x\r\n"
+                                    b"\r\r--x\r\n\r--x--\r\nHost: {h}\r\n"),
+    "multipart-nested-preamble": (b"Content-Type: multipart/mixed; boundary=x\r\n"
+                                  b"\r--x\r\n"
+                                  b"Content-Type: multipart/mixed; boundary=y\r\n"
+                                  b"\rHost: {h}\r\n--y\r\n--y--\r\n--x--\r\n"),
+    "multipart-nested-epilogue": (b"Content-Type: multipart/mixed; boundary=x\r\n"
+                                  b"\r--x\r\n"
+                                  b"Content-Type: multipart/mixed; boundary=y\r\n"
+                                  b"\r--y\r\n--y--\r\nHost: {h}\r\n--x--\r\n"),
+    "multipart-part-continuation": (b"Content-Type: multipart/mixed; boundary=x\r\n"
+                                    b"\r--x\r\n Host: {h}\r\n--x--\r\n"),
+    "multipart-boundaries-only": (b"Host: {h}\r\n"
+                                  b"Content-Type: multipart/mixed; boundary=x\r\n"
+                                  b"\r--x\r\n--x--\r\n"),
+    "message-nested-multipart-preamble": (
+        b"Content-Type: message/rfc822\r\n"
+        b"\rContent-Type: multipart/mixed; boundary=y\r\n"
+        b"\rHost: {h}\r\n--y\r\n--y--\r\n"),
+    "delivery-status-host": (b"Content-Type: message/delivery-status\r\n"
+                             b"\rHost: {h}\r\n"),
 }
 
 # Clean header blocks that must still parse as clean.
@@ -79,6 +120,11 @@ _CLEAN = {
                                b"Content-Type: multipart/form-data; boundary=zz\r\n"),
     "multipart-no-boundary": b"Host: {h}\r\nContent-Type: multipart/mixed\r\n",
     "message-content-type": b"Host: {h}\r\nContent-Type: message/rfc822\r\n",
+    "delivery-status-content-type": (b"Host: {h}\r\n"
+                                     b"Content-Type: message/delivery-status\r\n"),
+    "nested-looking-content-type": (b"Host: {h}\r\n"
+                                    b"Content-Type: multipart/mixed; boundary=x\r\n"
+                                    b"X-Note: --x\r\n"),
 }
 
 
@@ -93,20 +139,53 @@ def _terminator(template: bytes) -> bytes:
 
 # -- the classifier ----------------------------------------------------------
 
+def _parse(block: bytes, terminator: bytes, message_class) -> object:
+    """The stdlib head parse the handlers run (parse_request's own call)."""
+    return http.client.parse_headers(
+        io.BytesIO(block + terminator + b"BODY"), _class=message_class)
+
+
+# The class the handlers parse request heads with, and the stdlib default
+# (Content-Type-steered) one: the classifier must hold on both.
+_PARSE_CLASSES = {"handler": Handler.MessageClass,
+                  "stdlib": http.client.HTTPMessage}
+
+
+@pytest.mark.parametrize("cls", sorted(_PARSE_CLASSES))
 @pytest.mark.parametrize("name", sorted(_DEFECTIVE))
-def test_a_defective_block_is_named(name):
-    block = _block(_DEFECTIVE[name], _FOREIGN)
-    msg = http.client.parse_headers(io.BytesIO(block + b"\r\nBODY"))
-    assert _handler.head_parse_defect(msg), (name, msg.defects,
-                                             msg.get_payload())
+def test_a_defective_block_is_named(name, cls):
+    msg = _parse(_block(_DEFECTIVE[name], _FOREIGN), b"\r\n",
+                 _PARSE_CLASSES[cls])
+    assert _handler.head_parse_defect(msg), (name, cls, msg.defects,
+                                             msg.get_payload(), msg.preamble,
+                                             msg.epilogue)
 
 
 @pytest.mark.parametrize("name", sorted(_CLEAN))
 def test_a_clean_block_is_clean(name):
-    block = _block(_CLEAN[name], "127.0.0.1")
-    msg = http.client.parse_headers(
-        io.BytesIO(block + _terminator(_CLEAN[name]) + b"BODY"))
+    msg = _parse(_block(_CLEAN[name], "127.0.0.1"), _terminator(_CLEAN[name]),
+                 Handler.MessageClass)
     assert _handler.head_parse_defect(msg) is None, (name, msg.defects)
+
+
+def test_both_handlers_parse_heads_with_the_same_class():
+    from agents._supervisor_http import _QuietHandler
+    assert _QuietHandler.MessageClass is Handler.MessageClass
+    assert issubclass(Handler.MessageClass, http.client.HTTPMessage)
+
+
+@pytest.mark.parametrize("name", ["multipart-preamble-host",
+                                  "multipart-nested-preamble",
+                                  "message-nested-multipart-preamble"])
+def test_the_head_parse_is_never_steered_by_content_type(name):
+    """The whole class closed at the root: a header-only block never parses
+    into multipart parts or sub-messages, so nothing can hide in a preamble,
+    an epilogue or a part - swallowed text is the root's plain payload."""
+    msg = _parse(_block(_DEFECTIVE[name], _FOREIGN), b"\r\n",
+                 Handler.MessageClass)
+    assert isinstance(msg.get_payload(), str), msg.get_payload()
+    assert _FOREIGN in msg.get_payload()
+    assert msg.preamble is None and msg.epilogue is None
 
 
 def test_something_that_is_not_a_message_is_left_to_the_host_gate():
@@ -268,6 +347,64 @@ def test_a_defective_head_post_is_refused_before_dispatch(dashboard,
     reply = _raw(port, head + body)
     assert _status(reply) == 400, reply[:200]
     assert posted == [] and calls == []
+
+
+_BOUND = b"----WebKitFormBoundaryRm773"
+_FORM_BODY = (b"--" + _BOUND + b"\r\n"
+              b"Content-Disposition: form-data; name=\"a\"\r\n\r\n1\r\n"
+              b"--" + _BOUND + b"--\r\n")
+
+
+def _form_post(port: int, path: str) -> bytes:
+    """A real browser-shaped multipart form POST (head + body)."""
+    head = (b"POST " + path.encode("ascii") + b" HTTP/1.1\r\n"
+            b"Host: 127.0.0.1:" + str(port).encode() + b"\r\n"
+            b"Content-Type: multipart/form-data; boundary=" + _BOUND + b"\r\n"
+            b"Content-Length: " + str(len(_FORM_BODY)).encode() + b"\r\n"
+            b"Connection: close\r\n\r\n")
+    return _raw(port, head + _FORM_BODY)
+
+
+def test_a_real_multipart_form_post_still_reaches_the_post_path(dashboard,
+                                                                monkeypatch):
+    """Control: the head is clean, so do_POST runs and answers with its OWN
+    400 (the body is not JSON) - never the head refusal."""
+    port, _calls = dashboard
+    posted: list = []
+    monkeypatch.setattr(_dispatch, "dispatch_post",
+                        lambda h, p: posted.append(p) or True)
+    reply = _form_post(port, "/api/command")
+    assert _status(reply) == 400, reply[:200]
+    assert b"bad_body" in reply, reply[:300]
+    assert b"bad_header_block" not in reply
+    assert posted == []
+
+
+def test_a_real_multipart_form_post_still_reaches_the_supervisor_route(
+        supervisor):
+    port = supervisor.server_address[1]
+    reply = _form_post(port, "/api/file-task")
+    assert _status(reply) == 400, reply[:200]
+    assert b"bad_header_block" not in reply, reply[:300]
+    assert b"JSON" in reply, reply[:300]
+
+
+def test_the_route_sees_the_real_content_type(dashboard, monkeypatch):
+    """The head parse ignores Content-Type; the route, after it, does not."""
+    port, _calls = dashboard
+    seen: list = []
+
+    def _get(h):
+        seen.append((h.headers.get_content_type(), h.headers.get_boundary()))
+        h._send(200, b"ok", "text/plain")
+        return True
+
+    monkeypatch.setattr(_dispatch, "dispatch_get", _get)
+    reply = _raw(port, _request(
+        "/api/state", f"Host: 127.0.0.1:{port}\r\n"
+        "Content-Type: multipart/form-data; boundary=zz\r\n".encode()))
+    assert _status(reply) == 200, reply[:200]
+    assert seen == [("multipart/form-data", "zz")]
 
 
 def test_the_refusal_is_logged_scrubbed(dashboard):
