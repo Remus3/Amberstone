@@ -20,6 +20,18 @@ failed in two independent ways:
    its ``championKey`` and the extract produced ``scenarios=0`` and
    ``lanes=0`` - silently, with no exception.
 
+The DS 16.20.1 -> 16.21.1 refresh (RM-766, 2026-10-22) found a third shape:
+
+3. SPLIT SCENARIO PIECES. The one "scenarios chunk" that used to carry the
+   cooldown table, the roles factory, the ratings dict, the lane list and
+   every scenario record is now three chunks: the cooldown table and the
+   DEFAULT champion's (Aatrox) scenario in a root chunk (one
+   ``statPreference:`` hit), roles + ratings + lanes in a second root chunk,
+   and the other 172 scenarios in a LAZILY loaded chunk (175 hits). The
+   minifier also renamed the factory parameters (``(e,a,t)=>{a.exports=``
+   became ``(a,i,e)=>{i.exports=``, ``e=>{"use strict";`` became
+   ``a=>``/``l=>``), so the roles regex found nothing and raised.
+
 Every test here is synthetic (no network, no live tree).
 """
 from __future__ import annotations
@@ -237,7 +249,8 @@ def test_discovery_does_not_crawl_when_root_chunks_already_suffice(monkeypatch):
     pages = {
         dse.LOLMATH_ROOT: html,
         base + "root1.js": (
-            'statPreference:{},"static/chunks/never.js"'
+            "statPreference:{}," * dse.SCENARIO_ANCHOR_MIN_HITS
+            + '"static/chunks/never.js"'
             + _jp(ARAM) + _jp(DAMAGE) + _jp(SKILLS)
         ),
     }
@@ -264,3 +277,116 @@ def test_discovery_still_raises_when_the_graph_has_no_aram_block(monkeypatch):
     monkeypatch.setattr(dse, "_CHUNK_BODIES", {})
     with pytest.raises(RuntimeError, match="aramDamageTaken"):
         dse.discover_chunks()
+
+
+# --- (3) 16.21.1: factory parameter names are not pinned ----------------------
+
+def test_roles_factory_header_parameter_names_are_not_pinned():
+    # 16.21.1 minified the module factory as `(a,i,e)=>{i.exports=` instead of
+    # `(e,a,t)=>{a.exports=`; the pinned `a.exports` matched nothing.
+    chunk = (
+        ",26080,(a,i,e)=>{i.exports={Aatrox:\"General\",Ahri:\"General\"}}"
+        + ",34919,(a,i,e)=>{i.exports={Aatrox:[\"FIGHTER\"],Ahri:[\"MAGE\"]}}"
+    )
+    assert dse._extract_roles(chunk) == {"Aatrox": ["FIGHTER"], "Ahri": ["MAGE"]}
+
+
+@pytest.mark.parametrize("param", ["e", "a", "l", "$t"])
+def test_use_strict_factory_parameter_name_is_not_pinned(param):
+    chunk = '[0,1,' + param + '=>{"use strict";let w=[1,2]}]'
+    assert dse._extract_use_strict_factory_body(chunk) == '"use strict";let w=[1,2]'
+
+
+# --- (3) 16.21.1: scenario pieces split across chunks --------------------------
+
+_LANES = (
+    "[t.LanePosition.top,t.LanePosition.jungle,t.LanePosition.mid,"
+    "t.LanePosition.adc,t.LanePosition.support]"
+)
+
+
+def _scen(param: str, key: str) -> str:
+    return (
+        "," + param + '=>{"use strict";let w=[{name:"default",settings:'
+        "{championKey:h.ChampionKey." + key + "},statPreference:{}}];e.s([w])}"
+    )
+
+
+def _split_bodies() -> dict[str, str]:
+    return {
+        # root chunk: the cooldown table + the default champion's scenario
+        "u/root_cd.js": (
+            _jp('{"Aatrox":{"Q":[4,4]},"Ahri":{"Q":[7,7]}}')
+            + ',1,l=>{"use strict";let q={};}'
+            + _scen("l", "aatrox")
+        ),
+        # root chunk: roles + ratings + lanes, plus a lane-token decoy list
+        "u/root_meta.js": (
+            ',2,(a,i,e)=>{i.exports={Aatrox:"General",Ahri:"Squishy"}}'
+            + ',3,(a,i,e)=>{i.exports={Aatrox:["FIGHTER"],Ahri:["MAGE"]}}'
+            + ',4,a=>{"use strict";let i={Aatrox:{ratings:{healing:10,shielding:0}},'
+            + "Ahri:{ratings:{healing:4,shielding:0}}};"
+            + 'let z=["top","Aatrox","mid","x"];let u=' + _LANES + ";}"
+        ),
+        # lazily loaded chunk: every other champion's scenario
+        "u/lazy_scen.js": _scen("e", "ahri"),
+    }
+
+
+def test_scenario_pieces_are_found_when_split_across_chunks():
+    bodies = _split_bodies()
+    out = dse.extract_from_bodies(bodies, preferred="u/lazy_scen.js")
+    assert set(out.cooldowns) == {"Aatrox", "Ahri"}
+    assert out.roles == {"Aatrox": ["FIGHTER"], "Ahri": ["MAGE"]}
+    assert set(out.ratings) == {"Aatrox", "Ahri"}
+    assert out.lane_positions == ["top", "jungle", "mid", "adc", "support"]
+    assert set(out.scenarios) == {"aatrox", "ahri"}
+    assert out.chunk_url == "u/lazy_scen.js"
+    assert out.chunk_bytes == len(bodies["u/lazy_scen.js"])
+    assert out.scenario_sources == {
+        "cooldowns": "u/root_cd.js",
+        "roles": "u/root_meta.js",
+        "ratings": "u/root_meta.js",
+        "lane_positions": "u/root_meta.js",
+        "scenarios": ["u/lazy_scen.js", "u/root_cd.js"],
+    }
+    assert dse.check_lolmath_coverage(out) == []
+
+
+def test_single_chunk_layout_still_resolves_through_extract_from_chunk():
+    chunk = "".join(_split_bodies().values())
+    out = dse.extract_from_chunk(chunk, "u/one.js")
+    assert set(out.scenarios) == {"aatrox", "ahri"}
+    assert out.lane_positions == ["top", "jungle", "mid", "adc", "support"]
+    assert out.scenario_sources["scenarios"] == ["u/one.js"]
+    assert {
+        k: v for k, v in out.scenario_sources.items() if k != "scenarios"
+    } == dict.fromkeys(("cooldowns", "roles", "ratings", "lane_positions"), "u/one.js")
+
+
+def test_a_missing_cooldown_table_raises_naming_the_anchor():
+    bodies = _split_bodies()
+    del bodies["u/root_cd.js"]
+    with pytest.raises(RuntimeError, match="Aatrox"):
+        dse.extract_from_bodies(bodies, preferred="u/lazy_scen.js")
+
+
+def test_discovery_crawls_for_a_lazily_loaded_scenario_table(monkeypatch):
+    # 16.21.1: the root set carries every data block and ONE statPreference:
+    # hit (the default champion); the full scenario table is a lazy chunk.
+    base = "https://lolmath.net/_next/static/chunks/"
+    html = '<script src="/_next/static/chunks/root1.js"></script>'
+    pages = {
+        dse.LOLMATH_ROOT: html,
+        base + "root1.js": (
+            'statPreference:{},"static/chunks/hop11111.js"'
+            + _jp(ARAM) + _jp(DAMAGE) + _jp(SKILLS)
+        ),
+        base + "hop11111.js": '["static/chunks/lazyscen.js"]',
+        base + "lazyscen.js": "statPreference:{}," * (dse.SCENARIO_ANCHOR_MIN_HITS + 5),
+    }
+    monkeypatch.setattr(dse, "_fetch_text", lambda url, timeout=30: pages[url])
+    monkeypatch.setattr(dse, "_CHUNK_BODIES", {})
+    scen_url, data_url = dse.discover_chunks()
+    assert scen_url == base + "lazyscen.js"
+    assert data_url == base + "root1.js"

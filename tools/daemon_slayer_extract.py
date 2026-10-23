@@ -85,6 +85,14 @@ USER_AGENT = "Amberstone/DaemonSlayer-extract/1.0"
 SCENARIO_CHUNK_ANCHOR = "statPreference:"
 DATA_CHUNK_ANCHOR = "aramDamageTaken"
 COOLDOWN_PAYLOAD_ANCHOR = '{"Aatrox":{"Q":'
+# 16.21.1: the full scenario table (one `statPreference:` per champion
+# scenario - 175 hits) moved into a LAZILY loaded chunk; the root set keeps
+# only the default champion's scenario (1 hit). A root best below this floor
+# is a fragment, not the table, so discovery crawls the chunk graph for it.
+SCENARIO_ANCHOR_MIN_HITS = 100
+# The ratings dict (`{Aatrox:{ratings:{...}}}`) left the scenario chunk at
+# 16.21.1 too; a chunk carrying this marker is searched for it.
+_RATINGS_MARKER = "ratings:{"
 
 # Anchors for the three Phase 1.5 JSON.parse payloads inside the data chunk.
 # Each must appear inside the first 80 chars of its block's payload (the
@@ -203,14 +211,29 @@ def discover_chunks(scenario_override: str | None = None,
             data_best = (d_score, url, relpath)
 
     # 16.18.1: the ARAM table moved into a LAZILY loaded chunk the root HTML
-    # never names. Only when the root set misses it, walk the chunk graph.
-    if data_best is None and not data_override:
+    # never names; 16.21.1 did the same to the scenario table. Only when the
+    # root set misses one of them, walk the chunk graph for the missing ones.
+    need_data = data_best is None and not data_override
+    need_scen = not scenario_override and (
+        scenarios_best is None or scenarios_best[0] < SCENARIO_ANCHOR_MIN_HITS
+    )
+    if need_data or need_scen:
         roots = ["https://lolmath.net/_next/static/chunks/" + r for r in chunks]
-        anchors = tuple(a for _, a in _DATA_BLOCKS)
-        for url in _crawl_lazy_chunks(roots, anchors):
-            d_score = _CHUNK_BODIES[url].count(DATA_CHUNK_ANCHOR)
-            if d_score > 0 and (data_best is None or d_score > data_best[0]):
-                data_best = (d_score, url, url.rsplit("/", 1)[-1])
+        anchors = tuple(a for _, a in _DATA_BLOCKS) if need_data else ()
+        min_hits: dict[str, int] = {}
+        if need_scen:
+            anchors += (SCENARIO_CHUNK_ANCHOR,)
+            min_hits[SCENARIO_CHUNK_ANCHOR] = SCENARIO_ANCHOR_MIN_HITS
+        for url in _crawl_lazy_chunks(roots, anchors, min_hits):
+            body = _CHUNK_BODIES[url]
+            if need_data:
+                d_score = body.count(DATA_CHUNK_ANCHOR)
+                if d_score > 0 and (data_best is None or d_score > data_best[0]):
+                    data_best = (d_score, url, url.rsplit("/", 1)[-1])
+            if need_scen:
+                s_score = body.count(SCENARIO_CHUNK_ANCHOR)
+                if s_score > 0 and (scenarios_best is None or s_score > scenarios_best[0]):
+                    scenarios_best = (s_score, url, url.rsplit("/", 1)[-1])
 
     if scenario_override:
         s_url = scenario_override
@@ -260,17 +283,25 @@ def _referenced_chunks(body: str) -> list[str]:
     return sorted(refs)
 
 
-def _crawl_lazy_chunks(root_urls: list[str], anchors: tuple[str, ...]) -> list[str]:
+def _crawl_lazy_chunks(root_urls: list[str], anchors: tuple[str, ...],
+                       min_hits: dict[str, int] | None = None) -> list[str]:
     """Breadth-first walk of the chunk graph below ``root_urls``.
 
     Fetches (into ``_CHUNK_BODIES``) the chunks the roots reference, then the
     chunks those reference, up to ``LAZY_CHUNK_CRAWL_DEPTH`` hops and
     ``LAZY_CHUNK_CRAWL_MAX`` fetches, stopping as soon as every anchor in
-    ``anchors`` appears in some cached body. Returns the URLs fetched by the
-    crawl, in order. A chunk that fails to fetch is logged and skipped.
+    ``anchors`` appears in some cached body - at least ``min_hits[anchor]``
+    times in ONE body when ``min_hits`` names it (default once). Returns the
+    URLs fetched by the crawl, in order. A chunk that fails to fetch is
+    logged and skipped.
     """
+    floors = min_hits or {}
+
     def _all_present() -> bool:
-        return all(any(a in b for b in _CHUNK_BODIES.values()) for a in anchors)
+        return all(
+            any(b.count(a) >= floors.get(a, 1) for b in _CHUNK_BODIES.values())
+            for a in anchors
+        )
 
     seen = set(root_urls)
     frontier = list(root_urls)
@@ -367,13 +398,23 @@ def _extract_json_parse_string(chunk: str, anchor_substr: str) -> dict:
         pos = end + 1
 
 
+# Turbopack module-factory headers. The parameter names are minifier-assigned
+# and re-roll on a lolmath redeploy (16.21.1: `(e,a,t)=>{a.exports=` became
+# `(a,i,e)=>{i.exports=`, `e=>{"use strict";` became `a=>` / `l=>`), so match
+# ANY identifier, never a pinned letter.
+_OBJ_FACTORY_RE = re.compile(
+    r"\d+,\((?:[A-Za-z_$][\w$]*,?)+\)=>\{[A-Za-z_$][\w$]*\.exports="
+)
+_USE_STRICT_FACTORY_RE = re.compile(r'(?<![\w$])[A-Za-z_$][\w$]*=>\{"use strict";')
+
+
 def _extract_obj_factory(chunk: str, marker: str) -> dict:
     """Pull and parse a Turbopack module whose body starts with
-    ``a.exports={...}`` and whose factory contains the given marker.
+    ``<id>.exports={...}`` and whose factory contains the given marker.
     """
-    # Find every "<num>,(<params>)=>{a.exports=" header, look for one whose
+    # Find every "<num>,(<params>)=><id>.exports=" header, look for one whose
     # following object literal has the marker.
-    for m in re.finditer(r"\d+,\(([a-z],?)+\)=>\{a\.exports=", chunk):
+    for m in _OBJ_FACTORY_RE.finditer(chunk):
         body_start = m.end()
         if chunk[body_start] != "{":
             continue
@@ -398,7 +439,7 @@ def _extract_roles(chunk: str) -> dict:
     lists, so "first factory with Aatrox:" silently yielded strings. Pick the
     factory whose every value is a non-empty list of known class tokens.
     """
-    for m in re.finditer(r"\d+,\(([a-z],?)+\)=>\{a\.exports=", chunk):
+    for m in _OBJ_FACTORY_RE.finditer(chunk):
         body_start = m.end()
         if chunk[body_start] != "{":
             continue
@@ -421,8 +462,8 @@ def _extract_roles(chunk: str) -> dict:
 
 
 def _extract_use_strict_factory_body(chunk: str) -> str:
-    """Return the body text of the giant ``e=>{"use strict"; ...}`` factory."""
-    m = re.search(r'e=>\{"use strict";', chunk)
+    """Return the body text of the FIRST ``<id>=>{"use strict"; ...}`` factory."""
+    m = _USE_STRICT_FACTORY_RE.search(chunk)
     if not m:
         raise RuntimeError('"use strict" factory not found in chunk')
     body_open = chunk.index("{", m.start())
@@ -430,6 +471,23 @@ def _extract_use_strict_factory_body(chunk: str) -> str:
     if body_close < 0:
         raise RuntimeError("could not find end of use-strict factory body")
     return chunk[body_open + 1:body_close]
+
+
+def _iter_use_strict_factory_bodies(chunk: str):
+    """Yield the body text of EVERY balanced ``<id>=>{"use strict"; ...}``
+    factory in ``chunk``, in source order; an unbalanced one is skipped."""
+    pos = 0
+    while True:
+        m = _USE_STRICT_FACTORY_RE.search(chunk, pos)
+        if not m:
+            return
+        body_open = chunk.index("{", m.start())
+        body_close = _walk_balanced(chunk, body_open)
+        if body_close < 0:
+            pos = m.end()
+            continue
+        yield chunk[body_open + 1:body_close]
+        pos = body_close + 1
 
 
 # --- Top-level binding extraction & parsing ---------------------------------
@@ -634,68 +692,149 @@ class LolmathExtract:
     data_chunk_bytes: int
     # block -> chunk URL; the three blocks live in different chunks since 16.18.1.
     data_block_sources: dict[str, str] = field(default_factory=dict)
+    # piece -> chunk URL (``scenarios`` -> list of URLs); the scenario-chunk
+    # pieces live in different chunks since 16.21.1.
+    scenario_sources: dict[str, Any] = field(default_factory=dict)
+
+
+_LANE_TOKENS = frozenset({"top", "jungle", "mid", "adc", "support"})
+# A use-strict factory without one of these cannot hold a scenario record, the
+# ratings dict or the lane list, so it is not parsed.
+_SCENARIO_FACTORY_MARKERS = ("championKey", _RATINGS_MARKER, "LanePosition")
 
 
 def extract_from_chunk(chunk: str, chunk_url: str) -> LolmathExtract:
-    cooldowns = _extract_json_parse_string(chunk, COOLDOWN_PAYLOAD_ANCHOR)
-    roles = _extract_roles(chunk)
-    body = _extract_use_strict_factory_body(chunk)
-    bindings = _walk_top_level_bindings(body)
-    log.info("use-strict factory: %d top-level bindings", len(bindings))
-    parsed = _parse_top_level(bindings)
-    log.info("parsed %d/%d bindings", len(parsed), len(bindings))
+    """Single-chunk layout (through 16.20.1): every piece in ``chunk``."""
+    return extract_from_bodies({chunk_url: chunk}, preferred=chunk_url)
+
+
+def extract_from_bodies(bodies: dict[str, str], preferred: str) -> LolmathExtract:
+    """Pull the scenario-chunk pieces from WHICHEVER fetched chunk holds each.
+
+    Through 16.20.1 one chunk carried the cooldown ``JSON.parse`` table, the
+    roles factory, the ratings dict, the lane list and every scenario record.
+    16.21.1 split them: cooldowns + the default champion's scenario in one
+    root chunk, roles + ratings + lanes in another, the other scenarios in a
+    lazily loaded chunk. Each piece is searched in ``preferred`` (the
+    scenarios chunk) first, then every other body in URL order, so the
+    single-chunk layout resolves exactly as before. Scenario records are
+    merged across every use-strict factory of every body that carries
+    ``statPreference:`` or the ratings marker. ``chunk_url`` stays
+    ``preferred``.
+    """
+    order = ([preferred] if preferred in bodies else []) + sorted(
+        u for u in bodies if u != preferred
+    )
+    sources: dict[str, Any] = {}
+
+    cooldowns: dict | None = None
+    for url in order:
+        try:
+            payload = _extract_json_parse_string(bodies[url], COOLDOWN_PAYLOAD_ANCHOR)
+        except RuntimeError:
+            continue
+        if isinstance(payload, dict):
+            cooldowns = payload
+            sources["cooldowns"] = url
+            break
+    if cooldowns is None:
+        raise RuntimeError(
+            f"JSON.parse(...) with anchor {COOLDOWN_PAYLOAD_ANCHOR!r} not found "
+            "in any fetched chunk"
+        )
+
+    roles: dict | None = None
+    for url in order:
+        try:
+            roles = _extract_roles(bodies[url])
+        except RuntimeError:
+            continue
+        sources["roles"] = url
+        break
+    if roles is None:
+        raise RuntimeError("no lolmath roles factory with class-token lists found")
+
+    parsed_by_url: list[tuple[str, dict[str, Any]]] = []
+    for url in order:
+        chunk = bodies[url]
+        if SCENARIO_CHUNK_ANCHOR not in chunk and _RATINGS_MARKER not in chunk:
+            continue
+        for body in _iter_use_strict_factory_bodies(chunk):
+            if not any(m in body for m in _SCENARIO_FACTORY_MARKERS):
+                continue
+            bindings = _walk_top_level_bindings(body)
+            parsed = _parse_top_level(bindings)
+            log.info("use-strict factory in %s: parsed %d/%d bindings",
+                     url.rsplit("/", 1)[-1], len(parsed), len(bindings))
+            parsed_by_url.append((url, parsed))
 
     # Collect scenarios - they're arrays whose first element has settings.championKey.
     scenarios: dict[str, list[dict]] = {}
+    scenario_urls: list[str] = []
 
-    def collect_scenario(rec: Any) -> None:
+    def collect_scenario(rec: Any) -> bool:
         if not isinstance(rec, list) or not rec:
-            return
+            return False
         first = rec[0]
         if not isinstance(first, dict):
-            return
+            return False
         ck = first.get("settings", {}).get("championKey") if isinstance(first.get("settings"), dict) else None
         if ck:
             existing = scenarios.get(ck)
             if existing is None or len(rec) > len(existing):
                 scenarios[ck] = rec
+            return True
+        return False
 
-    for val in parsed.values():
-        collect_scenario(val)
-        # Wrapper arrays of scenarios show up at top-level too:
-        # they contain >=2 dicts each carrying championKey.
-        if isinstance(val, list) and len(val) >= 2 and all(isinstance(x, dict) for x in val):
-            ck = (
-                val[0].get("settings", {}).get("championKey")
-                if isinstance(val[0].get("settings"), dict)
-                else None
-            )
-            if ck:
-                scenarios[ck] = val
+    for url, parsed in parsed_by_url:
+        hit = False
+        for val in parsed.values():
+            hit = collect_scenario(val) or hit
+            # Wrapper arrays of scenarios show up at top-level too:
+            # they contain >=2 dicts each carrying championKey.
+            if isinstance(val, list) and len(val) >= 2 and all(isinstance(x, dict) for x in val):
+                ck = (
+                    val[0].get("settings", {}).get("championKey")
+                    if isinstance(val[0].get("settings"), dict)
+                    else None
+                )
+                if ck:
+                    scenarios[ck] = val
+        if hit and url not in scenario_urls:
+            scenario_urls.append(url)
+    sources["scenarios"] = scenario_urls
 
-    # Ratings, lane positions: lookup by content shape.
-    # `let D = {<champname>: {ratings: {...}}}` is the global ratings dict.
+    # Ratings, lane positions: lookup by content shape, first body in `order`.
+    # `let D = {<champname>: {ratings: {...}}}` is the global ratings dict; the
+    # lane table is a list of lane tokens ONLY (a broader multi-chunk scan
+    # meets long string lists that merely contain a lane word).
     ratings: dict[str, dict[str, Any]] = {}
     lane_positions: list[str] = []
-    for val in parsed.values():
-        if (
-            isinstance(val, dict)
-            and "Aatrox" in val
-            and isinstance(val["Aatrox"], dict)
-            and "ratings" in val["Aatrox"]
-        ):
-            ratings = val
-        elif (
-            isinstance(val, list)
-            and val
-            and all(isinstance(x, str) for x in val)
-            and any(x in {"top", "jungle", "mid", "adc", "support"} for x in val)
-        ):
-            lane_positions = val
+    for url, parsed in parsed_by_url:
+        for val in parsed.values():
+            if (
+                not ratings
+                and isinstance(val, dict)
+                and "Aatrox" in val
+                and isinstance(val["Aatrox"], dict)
+                and "ratings" in val["Aatrox"]
+            ):
+                ratings = val
+                sources["ratings"] = url
+            elif (
+                not lane_positions
+                and isinstance(val, list)
+                and val
+                and all(isinstance(x, str) for x in val)
+                and set(val) <= _LANE_TOKENS
+            ):
+                lane_positions = val
+                sources["lane_positions"] = url
 
     log.info(
-        "extract: cooldowns=%d roles=%d ratings=%d lanes=%d scenarios=%d",
+        "extract: cooldowns=%d roles=%d ratings=%d lanes=%d scenarios=%d sources=%s",
         len(cooldowns), len(roles), len(ratings), len(lane_positions), len(scenarios),
+        sources,
     )
     return LolmathExtract(
         cooldowns=cooldowns,
@@ -703,13 +842,14 @@ def extract_from_chunk(chunk: str, chunk_url: str) -> LolmathExtract:
         ratings=ratings,
         lane_positions=lane_positions,
         scenarios=scenarios,
-        chunk_url=chunk_url,
-        chunk_bytes=len(chunk),
+        chunk_url=preferred,
+        chunk_bytes=len(bodies.get(preferred, "")),
         aram_modifiers={},
         damage_distribution={},
         skill_orders={},
         data_chunk_url="",
         data_chunk_bytes=0,
+        scenario_sources=sources,
     )
 
 
@@ -1268,6 +1408,7 @@ def build_manifest(lolmath: LolmathExtract, dd: DDragonSnapshot,
             "lolmath_data_chunk": lolmath.data_chunk_url,
             "lolmath_data_chunk_bytes": lolmath.data_chunk_bytes,
             "lolmath_data_blocks": dict(lolmath.data_block_sources),
+            "lolmath_scenario_pieces": dict(lolmath.scenario_sources),
             "meraki_perlevel": f"{MERAKI_BASE}/<champion>.json",
             "meraki_items": MERAKI_ITEMS_URL,
         },
@@ -1338,9 +1479,9 @@ def main() -> int:
         log.info("patch dir %s exists but no manifest - re-extracting", patch_dir)
 
     scen_url, data_url = discover_chunks(args.chunk_url, args.data_chunk_url)
-    scen_chunk = fetch_chunk(scen_url)
+    fetch_chunk(scen_url)
     fetch_chunk(data_url)
-    lolmath = extract_from_chunk(scen_chunk, scen_url)
+    lolmath = extract_from_bodies(_CHUNK_BODIES, preferred=scen_url)
     check_lolmath_coverage(lolmath)
     data_extract = extract_data_blocks(_CHUNK_BODIES, preferred=data_url)
     lolmath.aram_modifiers = data_extract["aram_modifiers"]
