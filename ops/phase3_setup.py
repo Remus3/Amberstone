@@ -71,11 +71,20 @@ RESOLVED_DECISIONS = {
     # NOT authored here - merge_resolved_decisions() preserves an existing
     # register and only seeds this empty list on a fresh `to restore` scaffold.
     "decisions": [],
+    # 1-PC (ADR-011, phase3-d021; RM-768): Legion is the only runtime host.
+    # Game-PC is retired and the Peer bridge decommissioned (ADR-012,
+    # phase3-d024), so neither keeps a role here. The real node name and
+    # addresses are per-host config in the gitignored ops/local_hosts.json;
+    # this register carries placeholders only (rc-host, 100.64.0.x).
     "topology": {
-        "legion_pc": "192.0.2.230",
-        "game_pc": "192.0.2.237",
-        "moon_pc": "decommissioned",
+        "runtime_hosts": ["legion_pc"],
+        "legion_pc": "rc-host",
+        "legion_tailnet_address": "100.64.0.x",
         "install_root": "<repo>\\",
+        "retired": (
+            "Game-PC retired 2026-05-29 (ADR-011, phase3-d021); Peer bridge "
+            "decommissioned 2026-06-24 (ADR-012, phase3-d024)"
+        ),
     },
     "agents": {
         "0": {"role": "gatekeeper", "substrate": "python"},
@@ -154,17 +163,14 @@ RESOLVED_DECISIONS = {
         "soft_gate_agent0": [5],
         "ungated": [2, 3, 4, 6],
         "outbound_net_control": "blocklist_via_lib_http",
-        "cross_machine_mechanism": "smb_share_cmdkey_persistent",
+        "cross_machine_mechanism": "retired_see_phase3-d026",
     },
+    # The Legion -> Game-PC SMB share path is retired and its push module
+    # deleted (phase3-d026, C6 F4); no reader keys off these fields. The
+    # Agent 0 traversal guard keeps its own allowlist file (d026 KEPT).
     "cross_machine": {
-        "share_unc": "\\\\192.0.2.237\\RCClient",
-        "writable_zones": [
-            "\\\\192.0.2.237\\RCClient\\forwarder\\",
-            "\\\\192.0.2.237\\RCClient\\web\\",
-        ],
-        "credential_store": "cmdkey_on_legion_under_target_192.0.2.237",
-        "auth_user": "<user>",
-        "forwarder_restart_signal": "\\\\192.0.2.237\\RCClient\\forwarder\\restart_trigger.txt",
+        "status": "retired",
+        "superseded_by": ["phase3-d021", "phase3-d024", "phase3-d026"],
     },
     "agent0_rejection": {
         "reasons_1_2_3_6": "dead_letter_immediately",
