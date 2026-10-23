@@ -42,6 +42,10 @@ safe_main(), which splits by CHANNEL:
     (FLEET-COMMON item 6), so they never degrade to a pass.
   * compile() raising MemoryError / RecursionError (a source nested too deep)
     is a FINDING on every channel, never a crash.
+  * stdin that cannot be read (no handle, OSError, ValueError) is a fault
+    BEFORE the channel is known: exit 1 and ONE stderr line naming it, never
+    "no commit in flight" (RM-783). stdin is read as bytes and decoded UTF-8,
+    so a console code page cannot turn a payload into such a fault.
   * the Claude hook line's interpreter never starts (exit 127, any code
     outside 0-2): nothing in this file runs, so the shell tail on that line in
     ops/claude_settings.example.json prints the ONE context line (RM-782).
@@ -559,16 +563,37 @@ def _atomic_write_hits(added_lines: list[tuple[int, str]], path: str) -> list[st
     return out
 
 
+class StdinFault(Exception):
+    """stdin could not be read (RM-783). The channel is not known yet, so this
+    is a pre-channel fault: safe_main() exits 1 with ONE stderr line naming it
+    (a git hook refuses; Claude PreToolUse does not block on 1). It is never
+    read as "no commit in flight". `reason` is content-free, safe to print."""
+
+    def __init__(self, reason: str):
+        super().__init__(reason)
+        self.reason = reason
+
+
 def _read_stdin() -> str:
-    """The hook's stdin. Unreadable reads as empty (= no commit in flight):
-    the channel is not known yet, so nothing here may raise."""
+    """The hook's stdin, read as BYTES and decoded UTF-8 (RM-783): the console
+    code page never decides what the payload says (cp1252 has no 0x81, so a
+    UTF-8 message holding U+0101 used to fault and pass), and an undecodable
+    byte becomes U+FFFD - a glyph finding, not a fault. A tty is a manual run
+    (empty: no commit in flight). No stream, or a read that fails, raises
+    StdinFault: both real channels pipe stdin, so neither is "no commit"."""
     stream = sys.stdin
+    if stream is None:
+        raise StdinFault("stdin unreadable: no handle")
     try:
-        if stream is None or stream.isatty():
+        if stream.isatty():
             return ""
-        return stream.read() or ""
-    except (OSError, ValueError, AttributeError):
-        return ""
+        layer = getattr(stream, "buffer", None) or stream
+        data = layer.read()
+    except (OSError, ValueError, AttributeError) as exc:
+        raise StdinFault(f"stdin unreadable: {type(exc).__name__}") from None
+    if isinstance(data, (bytes, bytearray)):
+        return bytes(data).decode("utf-8", errors="replace")
+    return data or ""
 
 
 def _parse_stdin(raw: str) -> tuple[str, bool]:
@@ -765,6 +790,17 @@ def safe_main(argv: list[str] | None = None) -> int:
     state = {"from_claude": False}
     try:
         return _dispatch(args, state)
+    except StdinFault as exc:
+        # RM-783: before the channel is known, so the fail-closed half below
+        # in its own words - on Claude PreToolUse exit 1 does not block.
+        try:
+            sys.stderr.write(
+                f"precommit_gate: {exc.reason} - no command was checked; exit 1 "
+                "refuses a git hook, and a Claude PreToolUse hook does not block "
+                "on it (the git pre-commit hook still gates the commit).\n")
+        except (OSError, ValueError, AttributeError):
+            pass
+        return 1
     except Exception as exc:  # noqa: BLE001 - the channel decides below
         reason = exc.reason if isinstance(exc, RuleUnavailable) else type(exc).__name__
         if state["from_claude"]:
