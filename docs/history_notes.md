@@ -41,6 +41,18 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-19b - session 124: C1 gated dual suite GREEN, CLI pin 2.1.304, RM-695 closed, ROFL moved, lane 8 ws_server audit on a branch
+
+- **C1 / T2 DONE (LEDGER 1742):** gated `-n 8` dual suite on a2c3c0934: 40592 passed, 0 failed, exit 0, 478 s (attempt 1 on 01e951302: 2 deterministic reds + a ~20 min xdist loadfile deadlock after the timeout kills; attempt 2 killed by the harness at 96 percent memory). Low point 3.49 GB free.
+- **F1 `26963f363`:** `PINNED_CLI` 2.1.296 -> 2.1.304 after the 4-control canary through the kit spawn. **F2 `a2c3c0934` (LEDGER 1741):** sibling-sweep per-window prefilter, tree gate 922 s -> 41 s; RM-695 CLOSED by C1. **F3:** responder `PINNED_CLI_VERSION` 2.1.251 kept on purpose. **F4:** headless-uiux command mirror re-synced (gitignored).
+- **ROFL (MAIN ORDER 1121):** `01e951302` moved the archive to E: (54735 files, hash-verified, C: 14.66 -> 37.5 pct free); ANSWER 1215 reached MAIN 1/1; FIX 1709 + ORDER 1121 rows closed.
+- **TA1 lane 8:** `ws_server.py` (:8891) 8 weaknesses, 7 fixed, 60 tests; branch `lane/true-audit` e80d70fbe pushed, verifier CONFIRM, UNMERGED (merger's job; carry in the hand-off). RM-753 = same flaws in `agents/_supervisor_http.py`.
+- **Push:** `151a6e70d..a2c3c0934`, then the wrap commit.
+- **Do NOT redo:** C1, F1, F2, F3, F4, the ROFL move, the TA1 audit (merge it, do not re-audit).
+- **Next:** MAIN ORDER 2026-10-19-0034 DEPENDABOT-MERGE-RULE (ONE ANSWER), then merge `lane/true-audit`, then RM-747..RM-750.
+
+---
+
 # 2026-10-19 - session 123: inbox drained - kit v20 + v20.1 adopted, GH security 0 alerts, ONE ANSWER to MAIN
 
 - **Kit v20 (LEDGER 1739):** adopted `6a9711824`, guard `tests/test_fleet_kit_v20.py`, provenance verified 24/24. **Kit v20.1 / patch 1:** adopted `cd636d817` (outbound note cap 12/day, KIT_PATCH 1).
