@@ -13,11 +13,22 @@ DECLINED rather than fixed here.
 
 The last two tests read the live gitignored files when they exist (skip in a
 fresh clone, a worktree or CI) and hold them to the same no-inert-key rule.
+
+RM-782 (hooks fail visibly): every hook line is run end to end in a POSIX
+shell with a BROKEN interpreter path, and the outcome is pinned per line. An
+RC line on an event that reads additionalContext carries one shell tail
+(`_fallback`) that turns an interpreter that never started (exit 126 / 127,
+any code outside the hook's own 0-2) into ONE additionalContext line, and
+passes the hook's own exit codes through untouched (2 still blocks).
 """
 from __future__ import annotations
 
 import json
+import os
 import re
+import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -163,6 +174,174 @@ def test_template_has_no_machine_path():
     assert "perseus" not in text.lower(), "Perseus wiring is machine-only (item 19)"
 
 
+# ------------------------------------- RM-782: a hook that did not run says so
+
+#: Events whose hook stdout Claude Code reads as hookSpecificOutput.
+#: additionalContext. Stop is left out on purpose: a Stop context line keeps
+#: the session going (tools/stop_claim_gate.py docstring, measured), so a
+#: broken interpreter would re-enter on every Stop, and FLEET-COMMON item 15
+#: says never block on Stop.
+CONTEXT_EVENTS = {"PreToolUse", "PostToolUse", "SessionStart", "UserPromptSubmit"}
+
+#: Measured with a broken interpreter path (2026-10-23, Git Bash and POSIX
+#: sh): (exit code, stdout) of every hook line this tail does NOT cover.
+#: Kit lines: item 16 DECLINED - the kit owns that `|| true` form (CLAUDE.md
+#: ruling R3 / kit v12) and its silence is the known cost docs/OPERATIONS.md
+#: records; a change ships only as a kit version. Reverses if: MAIN ships one.
+#: The Stop claim gate exits 127 (a non-blocking "Stop hook error" row, never
+#: a context line, see CONTEXT_EVENTS); fleet_done's stop-hook keeps the kit
+#: contract "silent, never additionalContext or systemMessage".
+UNCOVERED_OUTCOME = {
+    ("PreToolUse", "ops/fleet_kit/fleet_subagent_first.py"): (0, ""),
+    ("PreToolUse", "ops/fleet_kit/fleet_claims.py"): (0, ""),
+    ("SubagentStop", "ops/fleet_kit/fleet_claims.py"): (0, ""),
+    ("Stop", "tools/stop_claim_gate.py"): (127, ""),
+    ("Stop", "ops/fleet_kit/fleet_done.py"): (0, ""),
+}
+
+
+def _fallback(event: str, script: str) -> str:
+    """The exact shell tail every RC hook line on a CONTEXT_EVENTS event ends
+    in. Exit codes 0-2 are the hook's own (allow / non-blocking error /
+    block) and pass through; anything else means the interpreter never ran
+    the hook, and the tail prints ONE additionalContext line and exits 0."""
+    ctx = (f"RC hook {script} did not run (exit %s, not one of its own codes "
+           "0-2): check the interpreter path in .claude/settings.json")
+    line = json.dumps({"hookSpecificOutput": {"hookEventName": event,
+                                              "additionalContext": ctx}},
+                      separators=(",", ":"))
+    return " || { r=$?; [ $r -le 2 ] && exit $r; printf '" + line + "\\n' $r; }"
+
+
+def _covered(event: str, cmd: str) -> bool:
+    return event in CONTEXT_EVENTS and cmd.startswith(INTERP)
+
+
+def _posix_sh() -> str | None:
+    """The POSIX shell Claude Code runs hook commands in. On Windows that is
+    Git Bash (CLAUDE_CODE_GIT_BASH_PATH, else the sh.exe of the git on PATH),
+    NEVER System32's bash.exe, which is WSL."""
+    if os.name != "nt":
+        return shutil.which("sh")
+    override = os.environ.get("CLAUDE_CODE_GIT_BASH_PATH", "").strip()
+    if override and Path(override).is_file():
+        return override
+    git = shutil.which("git")
+    if not git:
+        return None
+    for parent in list(Path(git).resolve().parents)[:3]:
+        for rel in ("bin/sh.exe", "usr/bin/sh.exe"):
+            if (parent / rel).is_file():
+                return str(parent / rel)
+    return None
+
+
+def _run_line(cmd: str, env_over: dict, stdin: str = "{}") -> subprocess.CompletedProcess:
+    sh = _posix_sh()
+    if sh is None:
+        pytest.skip("no POSIX shell (Git Bash on Windows) to run a hook line in")
+    env = dict(os.environ)
+    env["CLAUDE_PROJECT_DIR"] = str(ROOT).replace("\\", "/")
+    env.update(env_over)
+    return subprocess.run([sh, "-c", cmd], input=stdin, env=env, capture_output=True,
+                          text=True, encoding="utf-8", errors="replace", timeout=60)
+
+
+def _context_line(proc: subprocess.CompletedProcess, event: str) -> str:
+    lines = proc.stdout.splitlines()
+    assert lines, (proc.returncode, proc.stderr)
+    hso = json.loads(lines[-1])["hookSpecificOutput"]
+    assert hso["hookEventName"] == event
+    ctx = hso["additionalContext"]
+    assert ctx.isascii() and "\x1b" not in ctx and "\n" not in ctx
+    return ctx
+
+
+def _line_ids():
+    return [f"{i}-{e}-{Path(_SCRIPT.findall(c)[0]).stem}"
+            for i, (e, _, c) in enumerate(_entries(_template()))]
+
+
+def test_every_rc_context_line_ends_in_the_fallback_tail():
+    covered = [(e, c) for e, _, c in _entries(_template()) if _covered(e, c)]
+    assert len(covered) >= 6, covered
+    for event, cmd in covered:
+        script = _SCRIPT.findall(cmd)[0]
+        assert cmd.endswith(_fallback(event, script)), (event, cmd)
+        assert cmd.count(" || ") == 1, cmd
+
+
+def test_every_uncovered_line_is_a_named_kit_or_stop_line():
+    seen = {(e, _SCRIPT.findall(c)[0]) for e, _, c in _entries(_template())
+            if not _covered(e, c)}
+    assert seen == set(UNCOVERED_OUTCOME), sorted(seen ^ set(UNCOVERED_OUTCOME))
+    for event, _, cmd in _entries(_template()):
+        if not _covered(event, cmd):
+            assert "hookSpecificOutput" not in cmd, (event, cmd)
+
+
+@pytest.mark.parametrize("event,cmd", [(e, c) for e, _, c in _entries(_template())],
+                         ids=_line_ids())
+def test_each_hook_line_with_a_broken_interpreter(event, cmd, tmp_path):
+    """The acceptance measurement: the line as wired, its interpreter gone
+    ($LOCALAPPDATA for RC lines, `python` off PATH for the kit lines)."""
+    empty = tmp_path / "empty-bin"
+    empty.mkdir()
+    proc = _run_line(cmd, {"LOCALAPPDATA": str(tmp_path / "no-python"),
+                           "PATH": str(empty)})
+    script = _SCRIPT.findall(cmd)[0]
+    if not _covered(event, cmd):
+        assert (proc.returncode, proc.stdout) == UNCOVERED_OUTCOME[(event, script)], \
+            proc.stderr
+        return
+    assert proc.returncode == 0, proc.stderr
+    assert len(proc.stdout.splitlines()) == 1, proc.stdout
+    ctx = _context_line(proc, event)
+    assert f"RC hook {script} did not run (exit 127" in ctx, ctx
+
+
+def _working(cmd: str, script: Path) -> str:
+    """The same line with a working interpreter and `script` in place of the
+    hook, so only the template's own tail is under test."""
+    head = re.match(r'^"[^"]+" "[^"]+"', cmd)
+    assert head, cmd
+    py = sys.executable.replace("\\", "/")
+    return f'"{py}" "{script.as_posix()}"' + cmd[head.end():]
+
+
+@pytest.mark.parametrize("code", [0, 1, 2, 3, 120])
+def test_the_tail_passes_the_hooks_own_exit_codes_through(code, tmp_path):
+    probe = tmp_path / "probe.py"
+    probe.write_text("import os, sys\nsys.stdout.write('own line\\n')\n"
+                     "sys.exit(int(os.environ['PROBE_EXIT']))\n", encoding="ascii")
+    event, cmd = next((e, c) for e, _, c in _entries(_template())
+                      if "tools/precommit_gate.py" in c)
+    proc = _run_line(_working(cmd, probe), {"PROBE_EXIT": str(code)})
+    if code <= 2:
+        # 2 is a PreToolUse BLOCK: the tail must never turn it into an allow.
+        assert (proc.returncode, proc.stdout) == (code, "own line\n"), proc.stderr
+        return
+    assert proc.returncode == 0, proc.stderr
+    assert f"(exit {code}," in _context_line(proc, event)
+
+
+def test_working_guards_are_unchanged_by_the_tail(tmp_path):
+    lines = {_SCRIPT.findall(c)[0]: c for _, _, c in _entries(_template())}
+
+    def real(rel: str) -> str:
+        return _working(lines[rel], ROOT / rel)
+
+    quiet = _run_line(real("tools/precommit_gate.py"), {},
+                      json.dumps({"tool_name": "Bash", "tool_input": {"command": "ls"}}))
+    assert (quiet.returncode, quiet.stdout) == (0, ""), quiet.stderr
+    deny = _run_line(real("tools/text_first_guard.py"),
+                     {"TEXT_FIRST_FLAG": str(tmp_path / "no-such-flag")},
+                     json.dumps({"tool_name": "mcp__Windows-MCP__Scrape"}))
+    assert deny.returncode == 0, deny.stderr
+    out = json.loads(deny.stdout.splitlines()[-1])["hookSpecificOutput"]
+    assert out["permissionDecision"] == "deny"
+
+
 # ------------------------------------------------------------ docs and hooks
 
 def _operations_section() -> str:
@@ -185,6 +364,7 @@ def _operations_section() -> str:
     "remoteControlAtStartup",
     "~/.fleet/headless_route.json",
     "machine-only",
+    "RM-782",
 ])
 def test_operations_documents_the_settings_rules(needle):
     assert needle in _operations_section()

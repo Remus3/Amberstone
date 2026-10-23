@@ -42,6 +42,9 @@ safe_main(), which splits by CHANNEL:
     (FLEET-COMMON item 6), so they never degrade to a pass.
   * compile() raising MemoryError / RecursionError (a source nested too deep)
     is a FINDING on every channel, never a crash.
+  * the Claude hook line's interpreter never starts (exit 127, any code
+    outside 0-2): nothing in this file runs, so the shell tail on that line in
+    ops/claude_settings.example.json prints the ONE context line (RM-782).
 Unchanged and deliberate: no ruff installed anywhere is a warning and a pass
 (a fresh clone must not wedge; CI's ruff is the backstop), and an unreadable
 commit-message file passes (tests/test_precommit_gate_message_file.py).

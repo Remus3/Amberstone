@@ -12,7 +12,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$LOCALAPPDATA/Programs/Python/Python314/pythonw.exe\" \"$CLAUDE_PROJECT_DIR/tools/precommit_gate.py\"",
+            "command": "\"$LOCALAPPDATA/Programs/Python/Python314/pythonw.exe\" \"$CLAUDE_PROJECT_DIR/tools/precommit_gate.py\" || { r=$?; [ $r -le 2 ] && exit $r; printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"RC hook tools/precommit_gate.py did not run (exit %s, not one of its own codes 0-2): check the interpreter path in .claude/settings.json\"}}\\n' $r; }",
             "timeout": 60
           }
         ]
@@ -22,7 +22,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$LOCALAPPDATA/Programs/Python/Python314/pythonw.exe\" \"$CLAUDE_PROJECT_DIR/tools/text_first_guard.py\"",
+            "command": "\"$LOCALAPPDATA/Programs/Python/Python314/pythonw.exe\" \"$CLAUDE_PROJECT_DIR/tools/text_first_guard.py\" || { r=$?; [ $r -le 2 ] && exit $r; printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"RC hook tools/text_first_guard.py did not run (exit %s, not one of its own codes 0-2): check the interpreter path in .claude/settings.json\"}}\\n' $r; }",
             "timeout": 10
           }
         ]
@@ -54,11 +54,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$LOCALAPPDATA/Programs/Python/Python314/pythonw.exe\" \"$CLAUDE_PROJECT_DIR/tools/pytest_guard.py\""
+            "command": "\"$LOCALAPPDATA/Programs/Python/Python314/pythonw.exe\" \"$CLAUDE_PROJECT_DIR/tools/pytest_guard.py\" || { r=$?; [ $r -le 2 ] && exit $r; printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"RC hook tools/pytest_guard.py did not run (exit %s, not one of its own codes 0-2): check the interpreter path in .claude/settings.json\"}}\\n' $r; }"
           },
           {
             "type": "command",
-            "command": "\"$LOCALAPPDATA/Programs/Python/Python314/pythonw.exe\" \"$CLAUDE_PROJECT_DIR/tools/edit_lint_check.py\"",
+            "command": "\"$LOCALAPPDATA/Programs/Python/Python314/pythonw.exe\" \"$CLAUDE_PROJECT_DIR/tools/edit_lint_check.py\" || { r=$?; [ $r -le 2 ] && exit $r; printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"RC hook tools/edit_lint_check.py did not run (exit %s, not one of its own codes 0-2): check the interpreter path in .claude/settings.json\"}}\\n' $r; }",
             "timeout": 15
           }
         ]
@@ -69,12 +69,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$LOCALAPPDATA/Programs/Python/Python314/pythonw.exe\" \"$CLAUDE_PROJECT_DIR/tools/rc_facts.py\"",
+            "command": "\"$LOCALAPPDATA/Programs/Python/Python314/pythonw.exe\" \"$CLAUDE_PROJECT_DIR/tools/rc_facts.py\" || { r=$?; [ $r -le 2 ] && exit $r; printf '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"RC hook tools/rc_facts.py did not run (exit %s, not one of its own codes 0-2): check the interpreter path in .claude/settings.json\"}}\\n' $r; }",
             "timeout": 8
           },
           {
             "type": "command",
-            "command": "\"$LOCALAPPDATA/Programs/Python/Python314/pythonw.exe\" \"$CLAUDE_PROJECT_DIR/tools/caveman_default.py\"",
+            "command": "\"$LOCALAPPDATA/Programs/Python/Python314/pythonw.exe\" \"$CLAUDE_PROJECT_DIR/tools/caveman_default.py\" || { r=$?; [ $r -le 2 ] && exit $r; printf '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"RC hook tools/caveman_default.py did not run (exit %s, not one of its own codes 0-2): check the interpreter path in .claude/settings.json\"}}\\n' $r; }",
             "timeout": 5
           }
         ]
@@ -85,11 +85,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$LOCALAPPDATA/Programs/Python/Python314/pythonw.exe\" \"$CLAUDE_PROJECT_DIR/tools/rc_facts.py\" --inbox-only"
+            "command": "\"$LOCALAPPDATA/Programs/Python/Python314/pythonw.exe\" \"$CLAUDE_PROJECT_DIR/tools/rc_facts.py\" --inbox-only || { r=$?; [ $r -le 2 ] && exit $r; printf '{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"RC hook tools/rc_facts.py did not run (exit %s, not one of its own codes 0-2): check the interpreter path in .claude/settings.json\"}}\\n' $r; }"
           },
           {
             "type": "command",
-            "command": "\"$LOCALAPPDATA/Programs/Python/Python314/pythonw.exe\" \"$CLAUDE_PROJECT_DIR/tools/moon_sync_poller.py\" --ping \"$CLAUDE_PROJECT_DIR\""
+            "command": "\"$LOCALAPPDATA/Programs/Python/Python314/pythonw.exe\" \"$CLAUDE_PROJECT_DIR/tools/moon_sync_poller.py\" --ping \"$CLAUDE_PROJECT_DIR\" || { r=$?; [ $r -le 2 ] && exit $r; printf '{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"RC hook tools/moon_sync_poller.py did not run (exit %s, not one of its own codes 0-2): check the interpreter path in .claude/settings.json\"}}\\n' $r; }"
           }
         ]
       }
