@@ -38,6 +38,9 @@ ENV_ROOTS = {
     "RC_AGENT_STATE_FILE": "rc_agent_state.json",
     "RC_MOON_SYNC_STATE": "moonsync_state",
     "RC_ROFL_ARCHIVE_DIR": "rofl_archive",
+    # RM-776: agents/agent2_backend/ws_server.py logs/ws/{ingest,push}.log root;
+    # a test's `python -m agents.agent2_backend.ws_server` child inherits it.
+    "RC_WS_LOG_DIR": "ws_logs",
 }
 
 EXTRA_IGNORE = (

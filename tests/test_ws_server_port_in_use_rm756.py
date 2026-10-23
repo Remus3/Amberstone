@@ -19,10 +19,18 @@ Every coroutine runs through tests._asyncio_isolation.run_coro, and the
 module's file loggers are replaced by an in-memory handler (same fixture as
 tests/test_ws_server_true_audit.py), so the in-process tests write no
 logs/ws/ lines.
+
+RM-776: the entry-point test runs a CHILD process, which builds the real
+RotatingFileHandler loggers and cannot take the in-memory swap, so it used to
+append-open (and could rotate) the live logs/ws/*.log. ``WSServer`` now reads
+its log root from ``RC_WS_LOG_DIR`` at construction time, and
+tests/_fleet_guard_config.ENV_ROOTS points that at tmp_path for every test,
+so the child inherits a tmp log root and logs/ws/ is left alone.
 """
 from __future__ import annotations
 
 import logging
+import os
 import socket
 import subprocess
 import sys
@@ -31,6 +39,7 @@ from pathlib import Path
 import pytest
 
 from agents.agent2_backend import ws_server
+from tests import _fleet_guard_config
 from tests._asyncio_isolation import run_coro
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -103,7 +112,25 @@ def test_main_logs_one_error_and_returns_1(logs, held_port, monkeypatch, caplog)
     assert f"127.0.0.1:{held_port}" in errors[0].getMessage()
 
 
-def test_module_entry_point_exits_nonzero_without_traceback(held_port):
+_LOG_DIR_ENV = ws_server.LOG_DIR_ENV
+
+
+def test_the_suite_redirects_the_ws_log_root():
+    assert _LOG_DIR_ENV == "RC_WS_LOG_DIR"
+    assert _LOG_DIR_ENV in _fleet_guard_config.ENV_ROOTS
+
+
+def _redirected_log_root(tmp_path: Path) -> Path:
+    """The ws log root the suite hands every test (and every child it starts)."""
+    value = (os.environ.get(_LOG_DIR_ENV) or "").strip()
+    assert value, f"{_LOG_DIR_ENV} is not redirected for this test (RM-776)"
+    root = Path(value)
+    assert root.is_relative_to(tmp_path), (root, tmp_path)
+    return root
+
+
+def test_module_entry_point_exits_nonzero_without_traceback(held_port, tmp_path):
+    log_root = _redirected_log_root(tmp_path)
     out = subprocess.run(
         [sys.executable, "-m", "agents.agent2_backend.ws_server",
          "--host", "127.0.0.1", "--port", str(held_port)],
@@ -113,3 +140,39 @@ def test_module_entry_point_exits_nonzero_without_traceback(held_port):
     assert out.returncode == 1, (out.returncode, out.stderr[-800:])
     assert f"127.0.0.1:{held_port}" in out.stderr, out.stderr[-800:]
     assert "Traceback" not in out.stderr, out.stderr[-800:]
+    # RM-776: the child's RotatingFileHandlers opened their files under the
+    # tmp root it inherited, not under the checkout's logs/ws/.
+    assert sorted(p.name for p in log_root.iterdir()) == ["ingest.log", "push.log"]
+
+
+def test_log_root_follows_the_env_at_construction(monkeypatch, tmp_path):
+    seen: list[tuple[str, Path]] = []
+
+    def _record(name, path):
+        seen.append((name, path))
+        return logging.Logger(f"test_ws_server_port_in_use_rm756.rec.{name}")
+
+    monkeypatch.setattr(ws_server, "_build_logger", _record)
+    monkeypatch.setenv(_LOG_DIR_ENV, str(tmp_path / "elsewhere"))
+    ws_server.WSServer(host="127.0.0.1", port=0, origin_hosts=())
+    assert seen == [
+        ("ws.ingest", tmp_path / "elsewhere" / "ingest.log"),
+        ("ws.push", tmp_path / "elsewhere" / "push.log"),
+    ]
+
+
+@pytest.mark.parametrize("value", [None, "", "   "])
+def test_log_root_defaults_to_the_checkout_logs_ws(monkeypatch, value):
+    seen: list[Path] = []
+
+    def _record(name, path):
+        seen.append(path)
+        return logging.Logger(f"test_ws_server_port_in_use_rm756.def.{name}")
+
+    monkeypatch.setattr(ws_server, "_build_logger", _record)
+    if value is None:
+        monkeypatch.delenv(_LOG_DIR_ENV, raising=False)
+    else:
+        monkeypatch.setenv(_LOG_DIR_ENV, value)
+    ws_server.WSServer(host="127.0.0.1", port=0, origin_hosts=())
+    assert seen == [ROOT / "logs" / "ws" / "ingest.log", ROOT / "logs" / "ws" / "push.log"]
