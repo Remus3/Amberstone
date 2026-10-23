@@ -448,8 +448,12 @@ class PreChangeByteIdentityTests(_Base):
         # (78c95a77...4c1a4) still held at 16.19.1 with that engine change
         # stashed, so the move is attributed to RM-666 alone; this pin stays
         # a pre-change capture for RM-334's own key.
+        # Re-pinned by RM-766 (DS patch 16.21.1, ENGINE 1.289.0): DDragon moved
+        # Sion hpperlevel 87 -> 95. Attributed by substitution: the same code
+        # on the 16.20.1 snapshot reproduces the old c0361bb0...e63df8 exactly,
+        # so the move is data drift alone, not RM-334's key.
         "seams_armed_aram":
-            "c0361bb011cda3caebbc91119337d96fc0e5c5f6b271384c6ac203e97ee63df8",
+            "1c10228d340d94a097e67935d99fa9eed9093eecfe676f8938c3c2d567a25d83",
     }
 
     @staticmethod

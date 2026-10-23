@@ -1331,6 +1331,33 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.289.0 (2026-10-22) - DS patch 16.20.1 -> 16.21.1 (RM-766).
+- data: snapshot ``data/daemon_slayer/16.21.1/`` (19 files, parity with
+  16.20.1). DDragon base stats: Azir mpperlevel 40 -> 50, Jinx hp 630 -> 610,
+  Locke mpperlevel 70 -> 60, MonkeyKing hpregen 3.5 -> 5.5, Sion hpperlevel
+  87 -> 95, Viktor movespeed 335 -> 330. Items 706 -> 699: Gluttonous Greaves
+  (3008) and Immortal Path (3168) total 1000 -> 1100; seven 55xxxx cosmetics
+  dropped (550007 Party Favor was the one uncredited purchasable row). lolmath
+  cooldowns Darius Q 9..5 -> 9..4, LeeSin W 7 -> 8; skill orders moved for 17
+  champions; damage_distribution aggregate drift on all 173; scenarios
+  byte-identical. Abilities 0 changes (Meraki content patch 25.15, not forced).
+- data (adjudicated): the 16.21.1 lolmath ARAM table is all-neutral for
+  173/173 champions, never seen before (16.20.1: 132 non-neutral rows), while
+  the wiki sidecar fetched the same day still carries the 16.20.1 values, so
+  it was NOT adopted: ``aram_modifiers`` is carried forward verbatim from
+  16.20.1 and the manifest records it (``aram_modifiers_carry``). Reverses if
+  Riot notes confirm the ARAM modifiers were removed, the wiki drops them, a
+  live ARAM game measures neutral for a carried non-neutral champion, or
+  lolmath ships a non-neutral table again.
+- tool: ``tools/daemon_slayer_extract.py`` follows the split lolmath deploy -
+  scenario table in a lazily loaded chunk, cooldowns + default scenario and
+  roles + ratings + lanes in two root chunks, minifier-renamed factory
+  parameters - via ``extract_from_bodies``; no engine code change. The bump is
+  for the moved engine inputs. Every 16.21.1 build table is regenerated
+  against it in-process (static transport): Lane B 173 / 519 cells per mode,
+  HZ orders 692 and variants 346 cells per mode; only Sion's orders moved
+  (Lane B SR + ARAM, HZ Arena).
+
 1.288.0 (2026-10-22) - RM-600 Kled wiki sidecar, RM-660 Arena BotRK
 current-HP lever.
 - data (RM-600): the Kled ARAM block was read from a commented-out record

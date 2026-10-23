@@ -155,8 +155,20 @@ KNOWN_STATIC_BODY: dict[str, tuple[str, str]] = {
     # enchanter_items.json stays: copied forward and restamped only - DDragon
     # 16.20.1 changed the description of four items (1221, 1222, 3152, 223152)
     # and none of them is one of its 34 rows.
+    #
+    # Re-measured 2026-10-22 for the 16.20.1 -> 16.21.1 pair (RM-766).
+    # wiki_stats.json is re-added: a FRESH wiki_stats_extract run
+    # (source=both, cast measured 170/171, errors 0) returned a body identical
+    # to 16.20.1 apart from its _patch stamp, and its generator still stamps
+    # no vintage. scenarios.json stays: a FRESH daemon_slayer_extract run
+    # (scenarios 173, now merged from the lazily loaded scenario chunk plus the
+    # root chunk's default champion) returned identical bytes.
+    # enchanter_items.json stays: copied forward and restamped only - DDragon
+    # 16.21.1 moved the gold of 3008 and 3168 and dropped seven 55xxxx
+    # cosmetics, none of them one of its 34 rows.
     "enchanter_items.json": ("authored", "none"),
     "scenarios.json": ("pending-vintage", "tools/daemon_slayer_extract.py"),
+    "wiki_stats.json": ("pending-vintage", "tools/daemon_slayer_wiki_stats_extract.py"),
 }
 
 

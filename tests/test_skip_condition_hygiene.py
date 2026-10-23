@@ -2220,10 +2220,12 @@ _ALLOWLIST: dict[str, tuple[frozenset, str]] = {
     # REASON UPDATED 2026-10-09 (RM-700): pin re-measured and moved 16.14.1 ->
     # 16.20.1 with the RM-680 DS batch; the module's docstring now carries the
     # re-pin policy this reason used to ask for. Artifact set unchanged.
+    # REASON UPDATED 2026-10-22 (RM-766): pin re-measured and moved 16.20.1 ->
+    # 16.21.1 with that DS batch, per the policy. Artifact set unchanged.
     "tests/test_ds_ability_data_status_rm95.py": (
         frozenset({"data/daemon_slayer/current.txt"}),
         "FUTURE row in docs/_archive/2026-07/SKIPIF_AUDIT_2026-07-27.md - the skip pins an RM-95 "
-        "finding to patch 16.20.1 (re-measured by RM-700) and is decidable against "
+        "finding to patch 16.21.1 (re-measured by RM-766) and is decidable against "
         "tracked current.txt today, but converting it turns CI red on the next "
         "patch bump. Re-pin policy (RM-700, in the module docstring): the DS patch "
         "batch that moves current.txt re-measures and moves the pin.",

@@ -203,8 +203,11 @@ class TestPredicates:
         # map 453 only) while the canonical side stayed at 706, the 16.14.1
         # shape. Both halves are pinned: the band size alone would also pass a
         # predicate that dropped two canonical rows instead.
+        # RE-MEASURED 2026-10-22 at 16.21.1 (RM-766): the band stays 164 and
+        # the canonical side moved 706 -> 699 because DDragon dropped seven
+        # 55xxxx cosmetics (550001..550007), all canonical-side rows.
         assert len(rows) - len(kept) == 164
-        assert len(kept) == 706
+        assert len(kept) == 699
         assert "1001" in kept and "771001" not in kept
         assert "773161" not in kept and "773162" not in kept
 
@@ -265,7 +268,8 @@ class TestEngineRegistries:
         snap = DataSnapshot.load()
         assert len(full_roster()) == 173
         assert len(snap.champions) == 173
-        assert len(snap.items) == 706
+        # 706 -> 699 at 16.21.1 (RM-766): seven 55xxxx cosmetics dropped.
+        assert len(snap.items) == 699
 
 
 if __name__ == "__main__":  # pragma: no cover
