@@ -207,7 +207,13 @@ def test_a_trickling_plain_client_does_not_stall_a_tls_client():
             trickler.stop()
 
 
-def test_a_plain_http_client_still_gets_the_301():
+def test_a_plain_http_client_still_gets_the_301(monkeypatch):
+    # RM-772: the 301 echoes only an allowlisted Host; inject the placeholder
+    # name (never the live per-host config).
+    from dashboard import _handler
+    monkeypatch.setattr(_handler, "_allowed_names_cache",
+                        _handler.build_allowed_host_names(
+                            cfg={"tailnet_name": "rc-host"}, env=""))
     with _served(_no_cert_ctx()) as (_srv, port, _parked):
         with socket.create_connection((_HOST, port),
                                       timeout=_CLIENT_TIMEOUT_S) as raw:

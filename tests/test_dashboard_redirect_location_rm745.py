@@ -31,7 +31,7 @@ from http.server import BaseHTTPRequestHandler
 
 import pytest
 
-from dashboard import server
+from dashboard import _handler, server
 
 _HOST = "::1"
 _CLOSED = (ConnectionResetError, ConnectionAbortedError)
@@ -41,6 +41,17 @@ _HEADER_NAMES = [b"Location", b"Content-Type", b"Content-Length", b"Connection"]
 class _Ok(BaseHTTPRequestHandler):
     def log_message(self, *a: object) -> None:
         pass
+
+
+@pytest.fixture(autouse=True)
+def injected_allowlist(monkeypatch):
+    """RM-772: the 301 echoes only a Host the RM-759 allowlist passes, so the
+    placeholder names these tests redirect to are injected (never the live
+    per-host config)."""
+    names = _handler.build_allowed_host_names(
+        cfg={"tailnet_name": "rc-host",
+             "tailnet_fqdn": "rc-host.example-tailnet.ts.net"}, env="")
+    monkeypatch.setattr(_handler, "_allowed_names_cache", names)
 
 
 def _close(srv, serve: threading.Thread) -> None:
