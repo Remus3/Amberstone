@@ -35,6 +35,9 @@ WebSocket handshake, and any web page can open ws://127.0.0.1):
 Logging split:
   logs/ws/ingest.log   - /ingest connect/disconnect/frame traffic (SEND/ERROR)
   logs/ws/push.log     - /push connect/disconnect/broadcast fanout
+A non-empty ``RC_WS_LOG_DIR`` replaces logs/ws/ as the root of both files; it
+is read when a ``WSServer`` is constructed (RM-776: the test suite points it
+at tmp_path, so a child process a test starts leaves the live logs alone).
 
 Usage (standalone test):
   python -m agents.agent2_backend.ws_server --host 127.0.0.1 --port 8891
@@ -50,6 +53,7 @@ import ipaddress
 import json
 import logging
 import logging.handlers
+import os
 import sys
 import time
 from collections.abc import Iterable, Sequence
@@ -64,6 +68,7 @@ from websockets.http11 import Request, Response
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 _LOG_ROOT = _PROJECT_ROOT / "logs" / "ws"
+LOG_DIR_ENV = "RC_WS_LOG_DIR"
 
 log = logging.getLogger(__name__)
 
@@ -175,6 +180,12 @@ def handshake_refusal(
     return None
 
 
+def _log_root() -> Path:
+    """logs/ws/, or a non-empty ``RC_WS_LOG_DIR`` (RM-776)."""
+    override = (os.environ.get(LOG_DIR_ENV) or "").strip()
+    return Path(override) if override else _LOG_ROOT
+
+
 def _build_logger(name: str, path: Path) -> logging.Logger:
     lg = logging.getLogger(name)
     if lg.handlers:
@@ -200,8 +211,9 @@ class WSServer:
         self._push_clients: set[ServerConnection] = set()
         self._ingest_clients: set[ServerConnection] = set()
         self._last_frame: dict[str, Any] | None = None
-        self._ingest_log = _build_logger("ws.ingest", _LOG_ROOT / "ingest.log")
-        self._push_log = _build_logger("ws.push", _LOG_ROOT / "push.log")
+        log_root = _log_root()
+        self._ingest_log = _build_logger("ws.ingest", log_root / "ingest.log")
+        self._push_log = _build_logger("ws.push", log_root / "push.log")
         self._stop = asyncio.Event()
         self._server = None
         self._hb_task: asyncio.Task | None = None
