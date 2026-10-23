@@ -182,10 +182,18 @@ def _skippable(path: str) -> bool:
     return any(s in p for s in _FROZEN_SKIP)
 
 
+# RM-818: git and ruff write UTF-8 bytes whatever the console code page, so
+# every text-mode child here decodes UTF-8 (errors="replace"). Through the
+# locale (cp1252, a plain terminal's git hook) a staged U+201D (E2 80 9D; cp1252
+# has no 0x9D) faulted the reader thread: the diff came back None and the gate
+# blocked as "the gate itself failed", and a None ruff stdout passed in silence.
+_CHILD_TEXT = {"text": True, "encoding": "utf-8", "errors": "replace"}
+
+
 def _git(args: list[str], root: str | None) -> str:
     try:
         out = subprocess.run(
-            ["git", *args], cwd=root or None, capture_output=True, text=True,
+            ["git", *args], cwd=root or None, capture_output=True, **_CHILD_TEXT,
             timeout=20, creationflags=_NO_WINDOW,
         )
         return out.stdout
@@ -369,7 +377,7 @@ def _resolve_ruff() -> list[str] | None:
     for cmd in _ruff_candidates():
         try:
             probe = subprocess.run(
-                [*cmd, "--version"], capture_output=True, text=True,
+                [*cmd, "--version"], capture_output=True, **_CHILD_TEXT,
                 timeout=30, creationflags=_NO_WINDOW,
             )
         except (OSError, subprocess.SubprocessError):
@@ -723,7 +731,7 @@ def _gate_commit(command: str, claude: bool) -> int:
                 [*ruff, "check", "--no-cache", "--output-format=json", *pyfiles],
                 cwd=root,
                 capture_output=True,
-                text=True,
+                **_CHILD_TEXT,
                 timeout=RUFF_TIMEOUT_S,
                 creationflags=_NO_WINDOW,
             )

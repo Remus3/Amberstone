@@ -974,8 +974,8 @@ permission keys); C1b-3 S5, 2026-10-22. Guard:
   matters where the two MCP screen readers are installed; elsewhere its matcher
   never fires, and its deny list, state hint and escape flag are constants at
   the top with `TEXT_FIRST_STATE_HINT` / `TEXT_FIRST_FLAG` overrides (the flag
-  override counts only as a regular file inside the repo root; one outside is
-  ignored, RM-784).
+  override counts only as a regular file strictly inside `ops/runtime/`; one
+  anywhere else is ignored, RM-784 / RM-818).
   `tools/rc_facts.py` and `tools/moon_sync_poller.py --ping` (item 17) read RC's
   runtime, scheduled tasks and channel; another tree drops them.
   `tools/caveman_default.py` (item 20) is a per-repo SessionStart hook. Perseus
