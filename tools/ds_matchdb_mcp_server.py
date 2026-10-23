@@ -600,7 +600,9 @@ def _dispatch_tool(name: str, fn, args: dict) -> dict:
 def handle_tools_call(params: dict) -> dict:
     name = params.get("name", "")
     args = params.get("arguments", {}) or {}
-    fn = TOOL_FUNCS.get(name)
+    # RM-769 sibling: an unhashable (list / dict) name raised TypeError here,
+    # surfacing as -32603; a non-string name is simply an unknown tool.
+    fn = TOOL_FUNCS.get(name) if isinstance(name, str) else None
     if not fn:
         return {"isError": True,
                 "content": [{"type": "text", "text": f"unknown tool: {name}"}]}
@@ -698,6 +700,14 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         method = req.get("method", "")
         rid = req.get("id")
         params = req.get("params", {}) or {}
+        # RM-769: JSON-RPC 2.0 requires a string `method`. A list or dict is
+        # unhashable, so METHOD_HANDLERS.get() below raised TypeError out of
+        # do_POST and dropped the connection with no reply. Checked BEFORE the
+        # notification branch: the spec answers an invalid request even
+        # without an id (id null).
+        if not isinstance(method, str):
+            self._send_jsonrpc(rid, error=(-32600, "Invalid Request"))
+            return
         if is_notification:
             log.info("notification: %s", method)
             self._send(202, b"")
