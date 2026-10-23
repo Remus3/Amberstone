@@ -35,6 +35,11 @@ A wider "strip all newlines" dewrap was rejected: on a write-time hook it would
 manufacture false hits from adjacent unrelated lines, and a noisy gate is a
 gate that gets disabled.
 
+NAME CONTEXT (RM-781). A parent openai match that is a lowercase kebab-case
+name glued onto a lowercase word (a file, branch or decision name) is not
+reported; `_is_name_context` holds the allowlist and its reversal. It is a
+conjunction with the parent pattern, so it only ever removes a finding.
+
 PRAGMA. A line carrying `rc-credential-scan: allow-fixture` is exempt. It is
 line-scoped, never file-scoped, so an exemption cannot silently widen, and it
 is visible in the source it exempts. It exists for test fixtures and for docs
@@ -193,6 +198,42 @@ _PLACEHOLDER_MARKERS = (
 
 _GENERIC = "generic_secret_assignment"
 
+# NAME CONTEXT (RM-781; MAIN FIX 2026-10-21 1254 item 6). The openai shape has
+# no left edge, so a file, branch or decision name such as a "disk-" or
+# "task-" slug read as a key. Two rounds of EXCLUDING the characters that
+# "cannot" precede a real key leaked (ANSI / CSI, hex / octal escapes, cmd ^,
+# C1 controls), because a left context is open-ended. This is the opposite: an
+# ALLOWLIST of what a name looks like, asked ONLY about a parent match, so it
+# can remove a finding and never add one. A parent openai match is dropped
+# when all of these hold:
+#   - glue: the character before it is a lowercase ASCII letter or a digit
+#     (the sk- is the tail of a lowercase word);
+#   - name: the match is sk- plus two or more hyphen-joined words, each 1 to
+#     16 lowercase letters or digits (no uppercase, no underscore, no empty
+#     word);
+#   - words: at least two of those words carry a letter outside a-f, so hex
+#     or UUID groups are not a name.
+# Real keys are mixed case (and base64url ones carry underscores), so the left
+# context no longer decides anything. The anthropic shapes keep the parent
+# pattern: no false hit was measured on them. Reverses if: a measured real
+# credential shape is lowercase kebab-case words (then that family loses this
+# filter), or a name false hit is measured on an anthropic shape.
+_NAME_FAMILIES = frozenset({"openai"})
+_NAME_GLUE = frozenset("abcdefghijklmnopqrstuvwxyz0123456789")
+_NAME_SPAN = re.compile(r"sk-[a-z0-9]{1,16}(?:-[a-z0-9]{1,16})+")
+_NAME_WORD = re.compile(r"[a-z0-9]*[g-z][a-z0-9]*")
+
+
+def _is_name_context(text: str, start: int, end: int) -> bool:
+    """True when the parent match ``text[start:end]`` is an allowlisted name."""
+    if start <= 0 or text[start - 1] not in _NAME_GLUE:
+        return False
+    span = text[start:end]
+    if _NAME_SPAN.fullmatch(span) is None:
+        return False
+    words = span[3:].split("-")
+    return sum(1 for word in words if _NAME_WORD.fullmatch(word)) >= 2
+
 
 def _is_placeholder(matched: str) -> bool:
     low = matched.lower()
@@ -214,6 +255,8 @@ def _classes_in(text: str) -> list[str]:
         if name is None:
             continue
         if name == _GENERIC and _is_placeholder(match.group()):
+            continue
+        if name in _NAME_FAMILIES and _is_name_context(text, match.start(), match.end()):
             continue
         if name not in found:
             found.append(name)
@@ -300,6 +343,10 @@ def scan_text(text: str) -> list[Finding]:
         for name, rx in armed:
             for match in rx.finditer(text):
                 if name == _GENERIC and _is_placeholder(match.group()):
+                    continue
+                if name in _NAME_FAMILIES and _is_name_context(
+                    text, match.start(), match.end()
+                ):
                     continue
                 index = bisect_right(starts, match.start()) - 1
                 end = starts[index + 1] if index + 1 < len(starts) else total
