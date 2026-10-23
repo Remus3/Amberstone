@@ -1424,6 +1424,12 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # OFFENSE seam (compute_dps / compute_burst_damage assume_takedown).
         # Meraki 16.12.1: "Scoring a takedown ... generates a permanent stack
         # and grants you 15 (+2 per stack) bonus attack damage for 90 seconds".
+        # RM-804: kept on Meraki (CLAUDE.md Settled: the passive-formula
+        # source; the 16.21.1 snapshot still reads 15 (+2)). DDragon 16.21.1
+        # renders NO Eminence numbers ("gain  Attack Damage plus  per champion
+        # killed"), so it cannot be the source; DDragon 16.20.1's SR prose read
+        # 12 + 3 per champion killed - an unresolved Meraki-vs-DDragon delta
+        # recorded in agents/daemon_slayer/tests/test_passive_text_ddragon_sync_rm804.py.
         takedown_bonus_ad_base=15.0,
         takedown_bonus_ad_per_stack=2.0,
         note=(
@@ -1726,7 +1732,14 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="6621",
         name="Dawncore",
         defensive_only=True,
-        note="Dawncore: support scaling (AP scales with heal/shield power); no DPS contribution",
+        # First Light (RM-804, DDragon 16.21.1): the HSP half rides the R197
+        # _scaling_hsp lane; the AP half moved 10 -> 15 (Meraki 25.15 still
+        # reads 10) and is not modeled.
+        note=(
+            "Dawncore: First Light - 2% HSP (R197 _scaling_hsp lane) and 15 AP per 100% "
+            "base mana regen (DDragon 16.21.1, was 10; the AP half is not modeled); "
+            "no DPS contribution"
+        ),
     ),
     "4005": ItemEffect(
         item_id="4005",
@@ -1904,6 +1917,8 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # true damage" (ranged values; melee = 30 + 1.5/leth). Item CD = 45s is
         # the binding rate constraint (same CD-as-timer approach as HG active 40s).
         # Sabotage (takedown-conditional turret bonus) is utility-only.
+        # RM-804: DDragon 16.21.1 prints its duration as 25000 s (16.20.1 and
+        # Meraki: 90 s) - an upstream placeholder; nothing here reads it.
         # Lethality is the DDragon <stats> magnitude (CLAUDE.md Settled): 22 ->
         # 18 at 16.21.1 (RM-766; guarded by tests/test_item_pen_ddragon_sync.py
         # via ops/audit/item_pen_drift_check.py). The Shaped Charge formula is
@@ -2547,9 +2562,14 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="447100",
         name="Mirage Blade",
         defensive_only=True,
+        # RM-804: the old note described a different mechanic ("bonus MS and an
+        # untargetable dash illusion"); Blur is an on-hit dash / blink
+        # cooldown cut (DDragon 16.21.1 15% / 5% ult, 16.20.1 20%; Meraki
+        # 25.15 12% / 4%). Cooldown refunds are not modeled.
         note=(
-            "Mirage Blade: Blur grants bonus MS and a brief untargetable dash illusion "
-            "(movement utility + dodge mechanic; no DPS contribution)"
+            "Mirage Blade: Blur - on-hit cuts the remaining dash and blink ability cooldowns "
+            "by 15% (5% for ultimates) (DDragon 16.21.1, was 20%); cooldown utility, "
+            "not modeled; no DPS contribution"
         ),
     ),
     # -- Phase 4 batch 37 (2026-05-04): TRUE damage type + Arena item sweep --
@@ -2717,10 +2737,14 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="447110",
         name="Moonflair Spellblade",
         defensive_only=True,
+        # RM-804: DDragon 16.21.1 moved Relentless 2 -> 3 empowered attacks
+        # and the per-attack cooldown cut 0.5 -> 0.3 s (Meraki 25.15: two /
+        # 0.5 s). Neither is modeled.
         note=(
-            "Moonflair Spellblade: Relentless resets basic attack timer and empowers "
-            "next 2 attacks after ability cast - attack-reset/haste mechanic, "
-            "not a simple damage proc (ability-cast schema gap)"
+            "Moonflair Spellblade: Relentless - an ability cast resets the basic attack "
+            "timer and grants 90% bonus attack speed for the next 3 attacks; each attack "
+            "cuts non-dash / blink ability cooldowns by 0.3 s (DDragon 16.21.1, was 2 "
+            "attacks / 0.5 s) - attack-reset/haste mechanic, not modeled (ability-cast schema gap)"
         ),
     ),
     "447112": ItemEffect(
@@ -2961,9 +2985,12 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="443079",
         name="Turbo Chemtank",
         defensive_only=True,
+        # RM-804: DDragon 16.21.1 moved the canister heal 4% -> 20% max HP
+        # (Meraki 25.15 still describes the pre-rework Supercharged active).
         note=(
             "Turbo Chemtank: CC-immunity canister mechanic - ignore next immobilize, "
-            "drop canister restoring 4% max HP. CC mitigation + heal, no DPS proc"
+            "drop a canister; picking it up cuts the cooldown by 15 s and restores 20% "
+            "max HP (DDragon 16.21.1, was 4%). CC mitigation + heal, not modeled; no DPS proc"
         ),
     ),
     "443080": ItemEffect(
@@ -3134,7 +3161,14 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             damage_type=MAGICAL,
             every_n_seconds=10.0,
         ),),
-        note="Night Harvester (Arena 444636): Soulrend 125 (+15% AP) magic / 10s (Meraki confirmed)",
+        # RM-804: DDragon 16.21.1 moved Soulrend's move speed 40% -> 60% and
+        # its duration 1.5 -> 1 s (Meraki 25.15: 40% / 1.5 s; SR 4636 and
+        # 224636 read 25% / 1.5 s). MS is not modeled; the damage is unchanged.
+        note=(
+            "Night Harvester (Arena 444636): Soulrend 125 (+15% AP) magic / 10s (Meraki "
+            "confirmed); its 60% move speed for 1 s (DDragon 16.21.1, was 40% / 1.5 s) "
+            "is not modeled"
+        ),
     ),
     "444637": ItemEffect(
         item_id="444637",
@@ -3661,6 +3695,8 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Hubris",
         lethality=18.0,
         # DSV2 (1.125.0): Arena mirror of SR 6697 Eminence takedown AD.
+        # RM-804: DDragon 16.21.1 renders no Eminence numbers here either
+        # (16.20.1 Arena prose read 15, +2 each trigger - same as the engine).
         takedown_bonus_ad_base=15.0,
         takedown_bonus_ad_per_stack=2.0,
         note="Hubris (Arena 226697): 18 lethality + Eminence takedown AD 15 (+2/stack)",
@@ -3761,7 +3797,11 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="226621",
         name="Dawncore",
         defensive_only=True,
-        note="Dawncore (Arena 226621): empowers other enchanter items - support, no DPS proc",
+        note=(
+            "Dawncore (Arena 226621): First Light - 3% HSP (R197 _scaling_hsp lane) and 15 AP "
+            "per 100% base mana regen (DDragon 16.21.1, was 10; the AP half is not modeled) "
+            "- support, no DPS proc"
+        ),
     ),
     "226630": ItemEffect(
         item_id="226630",
@@ -4179,7 +4219,11 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="326621",
         name="Dawncore",
         defensive_only=True,
-        note="Dawncore (32xxxx 326621): empowers other enchanter items - support, no self DPS",
+        note=(
+            "Dawncore (32xxxx 326621): First Light - 2% HSP (R197 _scaling_hsp lane) and 15 AP "
+            "per 100% base mana regen (DDragon 16.21.1, was 10; the AP half is not modeled) "
+            "- support, no self DPS"
+        ),
     ),
     "326657": ItemEffect(
         item_id="326657",
