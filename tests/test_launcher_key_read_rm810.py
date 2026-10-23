@@ -31,9 +31,12 @@ run). On 11 and 12 the inherited variable is cleared, so junk never shadows
 the file in any reader (main.py included); the app then reads the file
 itself. start.bat refuses to start on 12, and when the check cannot run. The
 check runs after the launcher's `cd /d` to the repo root, with an absolute
-interpreter (python-embed first, else python.exe searched on PATH only): a
-bare `python` was looked up in the caller's folder first (second verifier,
-N1).
+interpreter (python-embed first, else python.exe found by the PATH search of
+`for`, which never looks in the CALLER's folder): a bare `python` was looked
+up in the caller's folder first (second verifier, N1). The PATH search does
+not consult the current folder as such, but an empty, "." or leading ";"
+PATH entry can still make it look in the repo root, where the launcher has
+cd'd by then (fourth verifier).
 
 Pinned here:
   (a) static, CONSERVATIVE AGAINST THE NAMED SHAPES ONLY - not a proof that
@@ -46,17 +49,24 @@ Pinned here:
       "(" mid-line; only the echo( idiom is skipped, and tracked text parens
       are allowlisted by exact line. KNOWN HOLES, accepted as residuals
       (third verifier, scratchpad s129-verify810c/holes2.py; all also in the
-      6836f8afd scanner, none in a tracked shape):
+      6836f8afd scanner):
         - a phase-1 quote substitution such as %VAR:"=% flips the scan's
-          quote parity and can hide a mid-line "(";
+          quote parity and can hide a mid-line "(". The launchers' own
+          `call set "RC_KEY_SP=%%PATH:"=%%"` line has this shape; it is
+          harmless there, as the line holds no "(";
         - a trailing ^ continuation makes the next line's ")" literal, so
-          the block the scan closes is still open in cmd;
+          the block the scan closes is still open in cmd. Tracked lines
+          ending in ^ (ops/install_startup.bat:27-34,
+          ops/run_deploy_test.bat:8, 12-13) sit outside any block, with no
+          ")" after them;
         - %errorlevel% read later on the same line, outside any block
           (`cmd /c exit 3 & echo %errorlevel%`);
         - a ^^& separator (a literal caret, then a real &) is not a
           command boundary to the same-line check;
         - variable names with a dash (RC-X) are not read or set names;
-        - only the first name of a multi-assign `set /a A=1, B=2` is seen;
+        - only the first name of a multi-assign `set /a A=1, B=2` is seen.
+      Measured 2026-10-23 over every tracked .bat / .cmd: no line other
+      than the ones named above has any of these shapes;
   (b) static: the three launchers share ONE key check, run it after cd /d
       with an absolute interpreter, call names that exist in
       core/anthropic_key.py, never read, parse or set the key, run every
@@ -412,22 +422,42 @@ def test_the_check_runs_after_cd_to_the_repo_root():
         assert [ln for ln in lines if ln.lower().startswith("cd ")] == [_CD_LINE[rel]], rel
 
 
+_EMBED_PICK = 'if exist "%RC_KEY_EMBED%" set "RC_KEY_PY=%RC_KEY_EMBED%"'
+_ON_PATH = 'if not defined RC_KEY_PY for %%I in (python.exe) do set "RC_KEY_PY=%%~$PATH:I"'
+# Only when python-embed is absent AND the PATH search missed: %%~$PATH:I
+# finds nothing in a QUOTED entry ("C:\Windows\py";...), so a quote-stripped copy is
+# searched (third verifier). The copy is built by `call`, so the line only
+# expands PATH when it runs: a whole PATH of about 8176 to 8191 characters on
+# one command line is "The input line is too long." and aborts the batch
+# (fourth verifier), and the common path must never pay that.
+_STRIP_COPY = 'if not defined RC_KEY_PY call set "RC_KEY_SP=%%PATH:"=%%"'
+_ON_COPY = 'if not defined RC_KEY_PY for %%I in (python.exe) do set "RC_KEY_PY=%%~$RC_KEY_SP:I"'
+
+
 def test_the_interpreter_is_an_absolute_path_embedded_first():
     shared = _shared_check(LAUNCHERS[0])
-    embed = 'if exist "%RC_KEY_EMBED%" set "RC_KEY_PY=%RC_KEY_EMBED%"'
-    # %%~$VAR:I finds nothing in a QUOTED PATH entry ("C:\Windows\py";...), so it
-    # searches a quote-stripped copy (third verifier); like %%~$PATH:I it
-    # never looks in the current folder.
-    unquoted = 'set "RC_KEY_SP=%PATH:"=%"'
-    on_path = ('if not defined RC_KEY_PY for %%I in (python.exe) do '
-               'set "RC_KEY_PY=%%~$RC_KEY_SP:I"')
-    order = [_SHARED_START, embed, unquoted, on_path, 'set "RC_KEY_SP="',
+    order = [_SHARED_START, _EMBED_PICK, _ON_PATH, _STRIP_COPY, _ON_COPY, 'set "RC_KEY_SP="',
              _check_line(LAUNCHERS[0])]
     assert [shared.index(ln) for ln in order] == sorted(shared.index(ln) for ln in order)
     for rel in LAUNCHERS:
         values = set(re.findall(r'set "RC_KEY_PY=([^"]*)"', "\n".join(_lines(rel))))
-        assert values == {"", "%RC_KEY_EMBED%", "%%~$RC_KEY_SP:I"}, (
+        assert values == {"", "%RC_KEY_EMBED%", "%%~$PATH:I", "%%~$RC_KEY_SP:I"}, (
             f"{rel} sets the interpreter to something else: {values}")
+
+
+def test_no_launcher_line_expands_path_on_the_common_path():
+    # A plain %PATH...% read is expanded when its line is parsed, whether or
+    # not the line runs. The one PATH read is the doubled %%PATH:"=%% under
+    # `if not defined RC_KEY_PY call`, which expands only when it runs.
+    for rel in LAUNCHERS:
+        for n, raw in enumerate(_lines(rel), 1):
+            s = raw.strip()
+            if not s or _is_comment(s):
+                continue
+            assert not re.search(r"(?<!%)%PATH[%:]", s, re.IGNORECASE), (
+                f"{rel}:{n} expands PATH whenever the line is parsed: {s}")
+            if re.search(r"%%PATH", s, re.IGNORECASE):
+                assert s == _STRIP_COPY, f"{rel}:{n}: {s}"
 
 
 # External Windows tools a launcher might call. Each must be named by its
@@ -560,7 +590,7 @@ def _harness(tmp_path: Path, rel: str, with_module: bool = True) -> Path:
     launches = [ln.strip() for ln in cut if _LAUNCH.search(ln.strip())]
     assert not launches, f"the {rel} cut would launch something: {launches}"
     head = ["@echo off", "setlocal"]
-    # The variables the launcher set before the cut (start.bat: EMBED_PY;
+    # The variables the launcher set before the cut (start.bat: EMBED_PYW;
     # scripts\*.bat: RC_ROOT, derived from their own folder by the real line).
     head += [ln for ln in lines[:start]
              if ln.strip().lower().startswith("set ") or 'set "RC_ROOT=' in ln]
@@ -593,7 +623,7 @@ def _run(tmp_path: Path, rel: str, env_value, file_bytes, with_module: bool = Tr
             (where / "python.bat").write_bytes(_PLANT)
             (where / "python.cmd").write_bytes(_PLANT)
     # NoDefaultCurrentDirectoryInExePath (set in agent shells) stops cmd from
-    # searching the current folder for a command; a user's console or
+    # searching the caller's folder for a command; a user's console or
     # Explorer launch does not have it, so neither does the harness.
     env = {k: v for k, v in os.environ.items()
            if k.upper() not in (ENV_VAR, "NODEFAULTCURRENTDIRECTORYINEXEPATH")
@@ -761,6 +791,48 @@ def _restart_tool_lines() -> list[str]:
     for ln in safe:
         assert "main.py" not in ln and "pythonw" not in ln.lower(), ln
     return safe
+
+
+@pytest.fixture(scope="module")
+def fake_embed(tmp_path_factory) -> Path:
+    """A venv of this interpreter: its Scripts\\python.exe (the venv
+    launcher), copied with pyvenv.cfg, is a working python-embed\\python.exe."""
+    ve = tmp_path_factory.mktemp("rm810-venv") / "ve"
+    subprocess.run([sys.executable, "-m", "venv", "--without-pip", str(ve)], check=True,
+                   capture_output=True, timeout=300,
+                   creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    return ve
+
+
+def _install_embed(root: Path, ve: Path) -> None:
+    emb = root / "python-embed"
+    emb.mkdir(exist_ok=True)
+    shutil.copyfile(ve / "Scripts" / "python.exe", emb / "python.exe")
+    for where in (emb, root):
+        shutil.copyfile(ve / "pyvenv.cfg", where / "pyvenv.cfg")
+
+
+@win_only
+@pytest.mark.parametrize("rel", LAUNCHERS)
+@pytest.mark.parametrize("length", [8180, 9000])
+@pytest.mark.parametrize("embed", [True, False], ids=["embed-present", "unquoted-path-hit"])
+def test_a_long_path_never_aborts_the_check(tmp_path, fake_embed, rel, length, embed):
+    # Fourth verifier: 870fe070a copied the whole PATH into one command line on
+    # every run; at 8176-8191 characters cmd said "The input line is too long."
+    # and aborted the batch (exit 255) even with python-embed present, and at
+    # 8192+ the copy came out empty. With python-embed present the PATH here
+    # holds no Python at all, so only the embedded interpreter can pass.
+    pad = "C:\\Windows\\rc810-pad-"
+    if embed:
+        _install_embed(tmp_path, fake_embed)
+        path = pad
+    else:
+        path = f"{Path(sys.executable).parent};{pad}"
+    path += "y" * (length - len(path))
+    assert len(path) == length
+    rc, out, seen = _run(tmp_path, rel, "junk", _line(FILE_KEY), path=path)
+    assert rc == 0, out
+    assert seen == [{}], f"the check did not run: {out!r}"
 
 
 @win_only

@@ -16,11 +16,17 @@ cd /d "%~dp0"
 :: own, so any other exit means the check could not run. On 11 and 12 the
 :: inherited variable is cleared, so junk never shadows the key file in any
 :: reader; the app then reads the file itself. The interpreter is an
-:: absolute path, python-embed first, else python.exe searched on PATH only
-:: (a quote-stripped copy of it: the PATH-only search finds nothing in a
-:: quoted entry), and the check runs after the cd above: a bare "python" was
-:: looked up in the caller's folder first, where a planted python.bat would
-:: run. (The old
+:: absolute path: python-embed first, else python.exe found by the PATH
+:: search of for, else (python-embed absent and that search missed, as it
+:: does for a quoted PATH entry) the same search over a quote-stripped copy
+:: of PATH. The copy is built by call, so PATH is expanded into a command
+:: line only on that last path: a whole PATH of about 8176 to 8191
+:: characters on one line aborts the batch ("The input line is too long."),
+:: and at 8192 or more the copy comes out empty. The check runs after the cd
+:: above, so the caller's folder is never searched: a bare "python" was
+:: looked up there first, where a planted python.bat would run (an empty,
+:: "." or leading ";" PATH entry can still point the search at the repo
+:: root, where this file now is). (The old
 :: read parsed the key inside a ( ... ) block, where cmd expands a variable
 :: when the block is parsed, before set /p ran: with no inherited variable
 :: the key became " =".) The same lines are in scripts\restart.bat and
@@ -30,7 +36,8 @@ set "RC_KEY_EMBED=%~dp0python-embed\python.exe"
 set "RC_KEY_MOD=%~dp0core\anthropic_key.py"
 set "RC_KEY_PY="
 if exist "%RC_KEY_EMBED%" set "RC_KEY_PY=%RC_KEY_EMBED%"
-set "RC_KEY_SP=%PATH:"=%"
+if not defined RC_KEY_PY for %%I in (python.exe) do set "RC_KEY_PY=%%~$PATH:I"
+if not defined RC_KEY_PY call set "RC_KEY_SP=%%PATH:"=%%"
 if not defined RC_KEY_PY for %%I in (python.exe) do set "RC_KEY_PY=%%~$RC_KEY_SP:I"
 set "RC_KEY_SP="
 set "RC_KEY_EC=none"
