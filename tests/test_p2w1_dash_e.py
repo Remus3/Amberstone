@@ -36,9 +36,13 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import mock
 
+import pytest
+
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
+
+from tests._module_view import bind_urlopen  # noqa: E402
 
 
 class _FakeHandler:
@@ -278,7 +282,9 @@ class LcuCmdResultQuoteTests(unittest.TestCase):
 
         um = mock.MagicMock(return_value=_Resp())
         h = _FakeHandler("/api/lcu-cmd-result?id=abc%20def%26x%3D1")
-        with mock.patch("urllib.request.urlopen", um):
+        # routes_loadout's own urllib only, never the shared module (RM-801).
+        with pytest.MonkeyPatch.context() as mp:
+            bind_urlopen(mp, rt, um)
             rt._serve_lcu_cmd_result_get(h)
         self.assertTrue(um.called, f"urlopen never reached: {h.sent}")
         req = um.call_args[0][0]

@@ -333,6 +333,7 @@ def test_sdk_timeout_kills_the_tree_and_fails_the_cycle(tmp_path: Path):
 
 from tests import _kit_platform  # noqa: E402
 from tests._kit_platform import assert_kit_killed  # noqa: E402
+from tests._module_view import bind_subprocess  # noqa: E402
 
 kit_platform = _kit_platform.kit_platform  # fixture, registered by module attribute
 
@@ -371,6 +372,18 @@ class _WedgedPopen:
         self.killed = True
 
 
+def _bind_launch_chain(monkeypatch: pytest.MonkeyPatch, **fakes) -> None:
+    """FAKES on the own `subprocess` of every module an sdk cycle crosses: the
+    executor, ops.loop.fleet_route and the vendored kit, whose `_run` is the
+    launch (`subprocess.Popen`, ops/fleet_kit/fleet_headless.py `_run`) and
+    whose `_kill_tree` runs taskkill (`subprocess.run`, same file). Never the
+    shared subprocess module every thread of the worker sees (RM-801,
+    tests/_module_view.py)."""
+    from ops.loop import fleet_route
+    for mod in (executor, fleet_route, fleet_route.kit()):
+        bind_subprocess(monkeypatch, mod, **fakes)
+
+
 @pytest.fixture
 def wedged(monkeypatch: pytest.MonkeyPatch, kit_platform):
     """The kit's production launch, with Popen and the taskkill call faked."""
@@ -380,10 +393,10 @@ def wedged(monkeypatch: pytest.MonkeyPatch, kit_platform):
     # process the faked Popen / run can see.
     monkeypatch.setattr(executor, "_git_head", lambda root: "")
     _WedgedPopen.made, _WedgedPopen.survive = [], False
-    monkeypatch.setattr(subprocess, "Popen", _WedgedPopen)
     kills = []
-    monkeypatch.setattr(subprocess, "run", lambda argv, **kw: kills.append(list(argv)) or
-                        subprocess.CompletedProcess(argv, 0, "", ""))
+    _bind_launch_chain(monkeypatch, Popen=_WedgedPopen,
+                       run=lambda argv, **kw: kills.append(list(argv)) or
+                       subprocess.CompletedProcess(argv, 0, "", ""))
     return kit_platform, kills
 
 
@@ -424,7 +437,7 @@ def test_the_sdk_spawn_carries_the_console_flash_flag(tmp_path: Path,
 
     monkeypatch.setattr(fleet_route, "_launch", None)
     monkeypatch.setattr(executor, "_git_head", lambda root: "")
-    monkeypatch.setattr(subprocess, "Popen", _popen)
+    _bind_launch_chain(monkeypatch, Popen=_popen)
     rec = _sdk(tmp_path).run(1, "b", "fixed")
     assert rec.error is None
     assert seen["creationflags"] == getattr(subprocess, "CREATE_NO_WINDOW", 0), (

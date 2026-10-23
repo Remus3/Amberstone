@@ -28,6 +28,7 @@ is not a package on sys.path).
 """
 from __future__ import annotations
 
+import contextlib
 import importlib.util
 import json
 import subprocess
@@ -35,6 +36,9 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
+
+from ops.loop import fleet_route
+from tests._module_view import bind_subprocess
 
 _ADJ = Path(__file__).resolve().parent.parent / "ops" / "loop" / "adjudicator.py"
 _LOOP = Path(__file__).resolve().parent.parent / "ops" / "loop"
@@ -74,6 +78,19 @@ def _run_returning(*stdouts):
     return fake, seen
 
 
+@contextlib.contextmanager
+def _routed_run(**mock_kw):
+    """The adjudicator's child, faked where it starts: tests/conftest.py
+    forwards the kit's launch to ops.loop.fleet_route's OWN `subprocess.run`
+    (the call in ops/loop/fleet_route.py spawn), so the Mock is bound there
+    only (tests/_module_view.py) - never on the shared subprocess module every
+    thread of the worker sees (RM-801)."""
+    run = mock.Mock(**mock_kw)
+    with pytest.MonkeyPatch.context() as mp:
+        bind_subprocess(mp, fleet_route, run=run)
+        yield run
+
+
 # --- resolution ----------------------------------------------------------
 
 
@@ -110,7 +127,7 @@ def test_invocation_is_read_only_and_non_interactive(adj, tmp_path):
     implementation to cross-check this against, so it is asserted directly.
     """
     fake, seen = _run_returning("answer")
-    with mock.patch.object(subprocess, "run", side_effect=fake):
+    with _routed_run(side_effect=fake):
         out = adj.ClaudeAdjudicator(_cfg(), tmp_path).ask("body", "inst")
     assert out == "answer"
     assert "--permission-mode plan" in seen[0]
@@ -124,12 +141,12 @@ def test_the_prompt_body_goes_to_a_file_not_the_command_line(adj, tmp_path):
     design avoids; the body must reach the CLI via stdin from a file."""
     fake, seen = _run_returning("ok")
     body = "quote ' and backslash \\ and newline\n" * 50
-    with mock.patch.object(subprocess, "run", side_effect=fake):
+    with _routed_run(side_effect=fake):
         adj.ClaudeAdjudicator(_cfg(), tmp_path).ask(body, "inst")
     assert (tmp_path / "_claude_in.txt").read_text(encoding="utf-8") == body
     assert body not in seen[0]
     # ... and it reaches the child on stdin, through the kit's run seam
-    with mock.patch.object(subprocess, "run", return_value=_cp("ok")) as run:
+    with _routed_run(return_value=_cp("ok")) as run:
         adj.ClaudeAdjudicator(_cfg(), tmp_path).ask(body, "inst")
     assert run.call_args.kwargs["input"] == body
 
@@ -141,18 +158,19 @@ def test_completed_but_empty_is_the_none_sentinel(adj, tmp_path):
     """Empty output is NEVER an answer: the director prompt mandates a directive
     or NO_WORK and the auditor mandates a VERDICT line, so empty is a swallowed
     error. Returning "" would read downstream as a real (blank) answer."""
-    with mock.patch.object(subprocess, "run", return_value=_cp("   \n")):
+    with _routed_run(return_value=_cp("   \n")) as run:
         assert adj.ClaudeAdjudicator(_cfg(), tmp_path).ask("b", "i") is None
+    assert run.called, "the sentinel must come from the faked child, not a real launch"
 
 
 def test_raised_subprocess_error_is_the_none_sentinel(adj, tmp_path):
-    with mock.patch.object(subprocess, "run",
-                           side_effect=subprocess.TimeoutExpired("claude", 1)):
+    with _routed_run(side_effect=subprocess.TimeoutExpired("claude", 1)) as run:
         assert adj.ClaudeAdjudicator(_cfg(), tmp_path).ask("b", "i") is None
+    assert run.called, "the sentinel must come from the faked child, not a real launch"
 
 
 def test_a_real_answer_is_never_the_sentinel(adj, tmp_path):
-    with mock.patch.object(subprocess, "run", return_value=_cp(" text ")):
+    with _routed_run(return_value=_cp(" text ")):
         assert adj.ClaudeAdjudicator(_cfg(), tmp_path).ask("b", "i") == "text"
 
 
@@ -164,7 +182,7 @@ def test_stderr_is_surfaced_when_the_answer_is_empty(adj, tmp_path):
     err = ("node.exe : Warning: Windows 10 detected.\n"
            "Attempt 1 failed with status 503. UNAVAILABLE high demand\n")
     lines = []
-    with mock.patch.object(subprocess, "run", return_value=_cp("", rc=1, stderr=err)):
+    with _routed_run(return_value=_cp("", rc=1, stderr=err)):
         a = adj.ClaudeAdjudicator(_cfg(), tmp_path, log=lines.append)
         out = a.ask("b", "i")
     assert out is None
@@ -178,16 +196,15 @@ def test_an_is_error_result_is_never_an_answer(adj, tmp_path):
     directive."""
     stdout = '{"type": "result", "is_error": true, "result": "API Error: 529 overloaded"}'
     lines = []
-    with mock.patch.object(subprocess, "run", return_value=_cp(stdout)):
+    with _routed_run(return_value=_cp(stdout)):
         a = adj.ClaudeAdjudicator(_cfg(), tmp_path, log=lines.append)
         assert a.ask("b", "i") is None
     assert "529" in a.last_stderr
 
 
 def test_the_json_result_is_the_answer(adj, tmp_path):
-    with mock.patch.object(subprocess, "run",
-                           return_value=_cp('{"type": "result", "is_error": false, '
-                                            '"result": " VERDICT: CLEAN "}')):
+    with _routed_run(return_value=_cp('{"type": "result", "is_error": false, '
+                                      '"result": " VERDICT: CLEAN "}')):
         assert adj.ClaudeAdjudicator(_cfg(), tmp_path).ask("b", "i") == "VERDICT: CLEAN"
 
 
@@ -199,7 +216,7 @@ def test_spend_survives_the_rebuild_the_controller_does_every_call(adj, tmp_path
     hot config edit both swap, so the wrapper is rebuilt per call. If spend did
     not survive that, the recorded workload signal would reset every cycle."""
     state = {"active": "", "usd": {}}
-    with mock.patch.object(subprocess, "run", return_value=_cp("a" * 400)):
+    with _routed_run(return_value=_cp("a" * 400)):
         for _ in range(3):
             sup = adj.Adjudicator(_cfg(), tmp_path, state=state)
             sup.ask("body" * 100, "inst")
@@ -213,7 +230,7 @@ def test_spend_survives_the_rebuild_the_controller_does_every_call(adj, tmp_path
 def test_spend_accumulates_monotonically(adj, tmp_path):
     state = {"active": "", "usd": {}}
     seen = []
-    with mock.patch.object(subprocess, "run", return_value=_cp("x" * 100)):
+    with _routed_run(return_value=_cp("x" * 100)):
         for _ in range(4):
             sup = adj.Adjudicator(_cfg(), tmp_path, state=state)
             sup.ask("b" * 50, "i")
@@ -304,7 +321,7 @@ def test_controller_call_reaches_the_claude_cli_read_only(lc, tmp_path):
             mock.patch.object(lc, "CTL", tmp_path), \
             mock.patch.object(lc, "_ADJ_STATE", state), \
             mock.patch.object(lc, "log", lambda *_a, **_k: None), \
-            mock.patch.object(lc.subprocess, "run", side_effect=fake):
+            _routed_run(side_effect=fake):
         assert lc.adjudicate("body", "inst") == "directive"
     # FLEET-KIT-v1: the kit resolves the exe (faked by tests/conftest.py)
     assert "claude-fake.exe" in seen[0]

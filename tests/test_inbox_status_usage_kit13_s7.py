@@ -26,7 +26,6 @@ from __future__ import annotations
 
 import importlib.util
 import json
-import subprocess
 import sys
 import time
 from datetime import datetime
@@ -36,6 +35,7 @@ from subprocess import CompletedProcess
 import pytest
 
 from ops.loop import fleet_route
+from tests._module_view import bind_subprocess
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -249,7 +249,11 @@ class _Rec:
 @pytest.fixture
 def rec(monkeypatch):
     r = _Rec()
-    monkeypatch.setattr(subprocess, "run", r)
+    # RM-801: the route's OWN subprocess names only (fleet_route: the conftest
+    # launch forwarder; the kit: its git probe ops/fleet_kit/fleet_headless.py
+    # :1613), never the shared module another worker thread also calls.
+    for mod in (fleet_route, fleet_route.kit()):
+        bind_subprocess(monkeypatch, mod, run=r)
     return r
 
 

@@ -56,6 +56,7 @@ from agents import _supervisor_ephemeral as eph
 from agents import supervisor as sup_mod
 from agents.supervisor import Supervisor
 from tests._asyncio_isolation import run_coro as _run_coro
+from tests._module_view import bind_subprocess
 from tests._replace_faults import scoped_fs_fault
 
 
@@ -263,11 +264,20 @@ def test_ephemeral_failure_message_redacts_stderr(tmp_path: Path) -> None:
     #   * LOG_ROOT -> tmp_path so no real logs/ writes
     #   * shutil.which -> a fake path so the CLI-missing branch is skipped
     #   * AGENT_CHARTERS -> {} so no charter file is required
-    #   * subprocess.run -> returns our non-zero fake proc (no real spawn)
+    #   * subprocess.run -> returns our non-zero fake proc (no real spawn), in
+    #     the spawn chain's OWN names only (RM-801, tests/_module_view.py): eph
+    #     and its facade, fleet_route (the conftest launch forwarder calls
+    #     fleet_route.subprocess.run) and the kit (its git probe
+    #     ops/fleet_kit/fleet_headless.py:1613) - never the shared module
+    #     another thread of the worker also calls.
+    from ops.loop import fleet_route
+    run = mock.MagicMock(return_value=_FakeProc())
     with mock.patch.object(eph, "LOG_ROOT", tmp_path), \
             mock.patch.object(eph.shutil, "which", return_value=str(tmp_path / "claude")), \
             mock.patch.object(eph, "AGENT_CHARTERS", {}), \
-            mock.patch.object(eph.subprocess, "run", return_value=_FakeProc()):
+            pytest.MonkeyPatch.context() as mp:
+        for mod in (eph, sup_mod, fleet_route, fleet_route.kit()):
+            bind_subprocess(mp, mod, run=run)
         with pytest.raises(eph.EphemeralSpawnFailed) as ei:
             eph.spawn_ephemeral_llm("4", "task-redact-1", "test-op", {})
 

@@ -29,7 +29,10 @@ import unittest
 from types import SimpleNamespace
 from unittest import mock
 
+import pytest
+
 import core.daemon_slayer_client as dsc
+from tests._module_view import bind_subprocess
 
 CREATE_NO_WINDOW = 0x08000000
 
@@ -86,8 +89,9 @@ class SpawnDsRoute(unittest.TestCase):
     def _spawn(self, sched: _Schtasks, *, use_task: bool = True):
         popen = _Popen()
         with mock.patch.object(dsc, "_USE_TASK", use_task, create=True), \
-                mock.patch.object(dsc.subprocess, "run", sched), \
-                mock.patch.object(dsc.subprocess, "Popen", popen):
+                pytest.MonkeyPatch.context() as mp:
+            # dsc's own subprocess name only (RM-801, tests/_module_view.py).
+            bind_subprocess(mp, dsc, run=sched, Popen=popen)
             try:
                 result = dsc.spawn_ds()
                 error = None
@@ -169,9 +173,9 @@ class WatchdogUsesTheTaskRoute(unittest.TestCase):
                             find_ds_process=lambda: None,
                             clock=lambda: 1000.0, sleep=lambda s: None)
         with mock.patch.object(dsc, "_USE_TASK", True, create=True), \
-                mock.patch.object(dsc.subprocess, "run", sched), \
-                mock.patch.object(dsc.subprocess, "Popen", popen), \
+                pytest.MonkeyPatch.context() as mp, \
                 self.assertLogs("rc.core.daemon_slayer_client", "WARNING") as logs:
+            bind_subprocess(mp, dsc, run=sched, Popen=popen)
             self.assertEqual(wd.tick(), "spawned")
         self.assertEqual([c[0][:2] for c in sched.calls], [["schtasks", "/Run"]])
         self.assertEqual(popen.calls, [])
@@ -185,9 +189,9 @@ class WatchdogUsesTheTaskRoute(unittest.TestCase):
                             find_ds_process=lambda: None,
                             clock=lambda: 1000.0, sleep=lambda s: None)
         with mock.patch.object(dsc, "_USE_TASK", True, create=True), \
-                mock.patch.object(dsc.subprocess, "run", sched), \
-                mock.patch.object(dsc.subprocess, "Popen", popen), \
+                pytest.MonkeyPatch.context() as mp, \
                 self.assertLogs("rc.core.daemon_slayer_client", "WARNING") as logs:
+            bind_subprocess(mp, dsc, run=sched, Popen=popen)
             self.assertEqual(wd.tick(), "spawned")
             self.assertEqual(wd.tick(), "grace")
         self.assertEqual(popen.calls, [])

@@ -13,6 +13,7 @@ The agent runs standalone (Legion-local) and is stdlib-only; tests import via
 """
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import sys
@@ -21,10 +22,28 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import pytest
+
 _PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT / "tools"))
 
 import lcu_agent as agent  # noqa: E402
+from tests._module_view import bind_urlopen  # noqa: E402
+
+
+@contextlib.contextmanager
+def _agent_urlopen(**mock_kwargs):
+    """lcu_agent's OWN urllib.request.urlopen (its module-global `urllib`,
+    tools/lcu_agent.py post_team_context_refresh) -> a Mock built from
+    MOCK_KWARGS, never the shared urllib.request a foreign thread of the
+    xdist worker also sees (RM-801, tests/_module_view.py). A normal exit
+    asserts the fake was reached, so an error-path result can never come
+    from the live dashboard."""
+    fake = mock.Mock(**mock_kwargs)
+    with pytest.MonkeyPatch.context() as mp:
+        bind_urlopen(mp, agent, fake)
+        yield fake
+    assert fake.called, "the scoped urlopen fake was never reached"
 
 
 def _reset_module_state():
@@ -198,8 +217,7 @@ class TestPostTeamContextRefresh(unittest.TestCase):
         body = {"queue_id": 420,
                 "roster": [{"puuid": "p1", "summoner_name": "S",
                             "team_id": 100, "locked_champion": "Camille"}]}
-        with mock.patch.object(agent.urllib.request, "urlopen",
-                               side_effect=_fake_urlopen):
+        with _agent_urlopen(side_effect=_fake_urlopen):
             ok, detail = agent.post_team_context_refresh(body)
         self.assertTrue(ok)
         self.assertEqual(detail, "ok")
@@ -220,8 +238,7 @@ class TestPostTeamContextRefresh(unittest.TestCase):
         def _fake_urlopen(*_, **__):
             raise urllib.error.HTTPError(
                 "u", 401, "unauth", hdrs=None, fp=None)
-        with mock.patch.object(agent.urllib.request, "urlopen",
-                               side_effect=_fake_urlopen):
+        with _agent_urlopen(side_effect=_fake_urlopen):
             ok, detail = agent.post_team_context_refresh(
                 {"queue_id": 0, "roster": []})
         self.assertFalse(ok)
@@ -232,8 +249,7 @@ class TestPostTeamContextRefresh(unittest.TestCase):
 
         def _fake_urlopen(*_, **__):
             raise urllib.error.URLError("connection refused")
-        with mock.patch.object(agent.urllib.request, "urlopen",
-                               side_effect=_fake_urlopen):
+        with _agent_urlopen(side_effect=_fake_urlopen):
             ok, detail = agent.post_team_context_refresh(
                 {"queue_id": 0, "roster": []})
         self.assertFalse(ok)

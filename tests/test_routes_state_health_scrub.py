@@ -35,12 +35,15 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import pytest
+
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from dashboard import routes_state  # noqa: E402
 from dashboard._errors import GENERIC_ERROR  # noqa: E402
+from tests._module_view import bind_urlopen  # noqa: E402
 
 # A raw exception string carrying every shape the rollup must not leak: an
 # absolute Windows path, a filename, and a distinctive secret-shaped token.
@@ -147,11 +150,18 @@ class HealthAllScrubTests(unittest.TestCase):
         self.assertIsNotNone(h.body, "handler sent no body")
         return json.loads(h.body.decode("utf-8"))
 
+    def _serve_with_failing_urlopen(self, h) -> None:
+        """routes_state's own urllib only, never the shared module (RM-801);
+        the probes must have reached the fake, not a live :8889 / :8860."""
+        fake = mock.Mock(side_effect=OSError(LEAKY))
+        with pytest.MonkeyPatch.context() as mp:
+            bind_urlopen(mp, routes_state, fake)
+            routes_state._serve_health_all(h)
+        self.assertTrue(fake.called, "the probes never reached the scoped fake")
+
     def test_vision_probe_failure_is_scrubbed(self):
         h = _FakeHandler()
-        with mock.patch.object(routes_state.urllib.request, "urlopen",
-                               side_effect=OSError(LEAKY)):
-            routes_state._serve_health_all(h)
+        self._serve_with_failing_urlopen(h)
         body = h.body.decode("utf-8")
         _assert_scrubbed(self, body)
         rollup = json.loads(body)
@@ -161,9 +171,7 @@ class HealthAllScrubTests(unittest.TestCase):
 
     def test_daemon_slayer_probe_failure_is_scrubbed(self):
         h = _FakeHandler()
-        with mock.patch.object(routes_state.urllib.request, "urlopen",
-                               side_effect=OSError(LEAKY)):
-            routes_state._serve_health_all(h)
+        self._serve_with_failing_urlopen(h)
         rollup = json.loads(h.body.decode("utf-8"))
         _assert_scrubbed(self, h.body.decode("utf-8"))
         self.assertFalse(rollup["daemon_slayer"]["alive"])

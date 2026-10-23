@@ -25,8 +25,11 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import pytest
+
 from coaches import voice_coach
 from core import live_game_gate
+from tests._module_view import bind_subprocess
 
 _REAL_POPEN = subprocess.Popen
 _QUOTES = ("'", chr(0x2018), chr(0x2019), chr(0x201A), chr(0x201B))
@@ -66,12 +69,13 @@ def _argv(call) -> list:
 class _Base(unittest.TestCase):
     def setUp(self):
         self.spy = _PopenSpy()
-        for p in (
-            mock.patch.object(voice_coach.subprocess, "Popen", self.spy),
-            mock.patch.object(live_game_gate, "live_game_now", return_value=False),
-        ):
-            p.start()
-            self.addCleanup(p.stop)
+        mp = pytest.MonkeyPatch()
+        self.addCleanup(mp.undo)
+        # voice_coach's own subprocess name only (RM-801, tests/_module_view.py).
+        bind_subprocess(mp, voice_coach, Popen=self.spy)
+        p = mock.patch.object(live_game_gate, "live_game_now", return_value=False)
+        p.start()
+        self.addCleanup(p.stop)
 
     def _speak(self, text: str, rate: int = 0):
         # speak() keeps module-level dedup + rate-limit state; reset it so
@@ -158,14 +162,15 @@ class PowerShellEndToEndTests(_Base):
                 + script.replace("Add-Type -AssemblyName System.Speech;", "")
                 .replace("New-Object System.Speech.Synthesis.SpeechSynthesizer",
                          _STUB_SYNTH))
-        # The Popen spy patches the shared subprocess module, so the real
-        # spawn needs the real Popen back for this one call.
-        with mock.patch.object(subprocess, "Popen", _REAL_POPEN):
-            r = subprocess.run(
-                [str(_PS51), "-NoProfile", "-NonInteractive", "-Command", stub],
-                env=kwargs.get("env"), capture_output=True, timeout=60,
-                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-            )
+        # The Popen spy sits on voice_coach's own `subprocess` name only, so
+        # this real spawn through the shared module needs no restore (RM-801).
+        self.assertIs(subprocess.Popen, _REAL_POPEN,
+                      "the voice_coach Popen spy leaked onto the shared module")
+        r = subprocess.run(
+            [str(_PS51), "-NoProfile", "-NonInteractive", "-Command", stub],
+            env=kwargs.get("env"), capture_output=True, timeout=60,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
         return r.stdout.decode("utf-8", "replace").splitlines()
 
     def test_quote_break_payloads_never_execute(self):

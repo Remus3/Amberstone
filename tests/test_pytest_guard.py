@@ -33,6 +33,7 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
+from tests._module_view import this_thread_only
 from tools import pytest_guard
 
 GUARD_SRC = REPO_ROOT / "tools" / "pytest_guard.py"
@@ -58,8 +59,12 @@ def captured_run(monkeypatch):
         calls.append((args, kwargs))
         raise AssertionError("pytest_guard must not spawn a process")
 
-    monkeypatch.setattr(subprocess, "run", fake_run)
-    monkeypatch.setattr(subprocess, "Popen", fake_popen)
+    # tools/pytest_guard.py imports no subprocess (no module-local name to
+    # scope through) and the pin is "however the guard reaches it", so the
+    # tripwire stays on the shared module - for this test's thread and the
+    # threads it starts only; a thread already alive keeps the real one (RM-801).
+    monkeypatch.setattr(subprocess, "run", this_thread_only(fake_run, subprocess.run))
+    monkeypatch.setattr(subprocess, "Popen", this_thread_only(fake_popen, subprocess.Popen))
     return calls
 
 

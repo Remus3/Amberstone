@@ -62,15 +62,17 @@ import sys
 import tempfile
 import unittest
 import urllib.error
-import urllib.request
 from pathlib import Path
 from unittest import mock
+
+import pytest
 
 _PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
 from core import riot_api as RA                     # noqa: E402
 from core import riot_api_cache as RIC              # noqa: E402
+from tests._module_view import bind_urlopen         # noqa: E402
 
 
 def _resp(status: int, body=None, headers: dict | None = None):
@@ -143,7 +145,9 @@ class TestHttpErrorBodyIsClosed(_RiotApiTestBase):
         fp = _TrackingBody(body)
         err = urllib.error.HTTPError(
             "https://americas.api.riotgames.com/x", status, "err", {}, fp)
-        with mock.patch.object(urllib.request, "urlopen", side_effect=err):
+        # riot_api's own urllib only, never the shared module (RM-801).
+        with pytest.MonkeyPatch.context() as mp:
+            bind_urlopen(mp, RA, mock.Mock(side_effect=err))
             resp = RA._http_get("https://americas.api.riotgames.com/x", "RGAPI-k")
         return fp, resp
 
@@ -185,7 +189,8 @@ class TestHttpErrorBodyIsClosed(_RiotApiTestBase):
         fp.read = mock.Mock(side_effect=OSError("connection reset"))
         err = urllib.error.HTTPError(
             "https://americas.api.riotgames.com/x", 404, "err", {}, fp)
-        with mock.patch.object(urllib.request, "urlopen", side_effect=err):
+        with pytest.MonkeyPatch.context() as mp:
+            bind_urlopen(mp, RA, mock.Mock(side_effect=err))
             resp = RA._http_get("https://americas.api.riotgames.com/x", "RGAPI-k")
         self.assertEqual(resp.status, 404)
         self.assertEqual(resp.body, b"")

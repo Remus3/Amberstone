@@ -24,8 +24,20 @@ from ops.loop import fleet_route
 from ops.loop import headless_env as he
 from tests import _kit_platform
 from tests._kit_platform import assert_kit_killed
+from tests._module_view import bind_subprocess
 
 kit_platform = _kit_platform.kit_platform  # fixture, registered by module attribute
+
+
+def _bind_chain(monkeypatch, **fakes):
+    """RM-801: FAKES (run= / Popen=) in the route's OWN `subprocess` names
+    only - fleet_route (the conftest launch forwarder calls
+    fleet_route.subprocess.run) and the kit (its launch
+    ops/fleet_kit/fleet_headless.py:1734 Popen, git :1613 and taskkill :1703
+    run) - never on the shared subprocess module that every other thread of
+    the xdist worker also calls."""
+    for mod in (fleet_route, fleet_route.kit()):
+        bind_subprocess(monkeypatch, mod, **fakes)
 
 FAKE_URL = "http://127.0.0.1:65530"
 
@@ -47,7 +59,7 @@ class _Rec:
 @pytest.fixture
 def rec(monkeypatch):
     r = _Rec()
-    monkeypatch.setattr(subprocess, "run", r)
+    _bind_chain(monkeypatch, run=r)
     return r
 
 
@@ -144,7 +156,7 @@ def test_budget_exhausted_refuses(rec, tmp_path):
 
 def test_timeout_leaves_status_idle_and_reraises(tmp_path, monkeypatch):
     r = _Rec(raise_exc=subprocess.TimeoutExpired("claude", 1))
-    monkeypatch.setattr(subprocess, "run", r)
+    _bind_chain(monkeypatch, run=r)
     with pytest.raises(subprocess.TimeoutExpired):
         fleet_route.spawn("T", caller="t", root=tmp_path)
     assert _status(tmp_path)["state"] == "idle"
@@ -154,7 +166,7 @@ def test_timeout_is_recorded_by_the_kit_before_the_reraise(tmp_path, monkeypatch
     """FLEET-KIT-v4 defect 5: the kit itself writes a usage line with rc null and
     error "timeout"; RC still re-raises TimeoutExpired for its callers."""
     r = _Rec(raise_exc=subprocess.TimeoutExpired("claude", 1))
-    monkeypatch.setattr(subprocess, "run", r)
+    _bind_chain(monkeypatch, run=r)
     with pytest.raises(subprocess.TimeoutExpired):
         fleet_route.spawn("T", caller="t", note="n", root=tmp_path)
     usage = (tmp_path / "ops/loop/control/headless_usage.jsonl").read_text().splitlines()
@@ -255,14 +267,13 @@ def kit_launch(monkeypatch):
     monkeypatch.setattr(fleet_route, "_launch", None)
     _FakePopen.instances = []
     _FakePopen.hang = False
-    monkeypatch.setattr(subprocess, "Popen", _FakePopen)
     taskkills = []
 
     def _run(argv, **kw):
         taskkills.append(list(argv))
         return CompletedProcess(args=argv, returncode=0, stdout="", stderr="")
 
-    monkeypatch.setattr(subprocess, "run", _run)
+    _bind_chain(monkeypatch, Popen=_FakePopen, run=_run)
     return taskkills
 
 

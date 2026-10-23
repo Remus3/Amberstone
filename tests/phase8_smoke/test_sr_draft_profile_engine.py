@@ -4,6 +4,7 @@ The integration test against a live engine on :8860 lives at the bottom
 and skips when the engine isn't reachable (mirrors phase2_smoke
 patterns). The unit tests stub urllib so they're fast and deterministic.
 """
+import contextlib
 import json
 import sys
 import unittest
@@ -13,10 +14,13 @@ from io import BytesIO
 from pathlib import Path
 from unittest import mock
 
+import pytest
+
 _PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
 from coaches import sr_draft_profile
+from tests._module_view import bind_urlopen
 from coaches.sr_draft_profile import (
     _normalize_role,
     _profile_from_beam,
@@ -63,6 +67,21 @@ def _fake_urlopen(resp_body: dict | bytes, code: int = 200):
         def __exit__(self_inner, *args):
             return False
     return _Resp()
+
+
+@contextlib.contextmanager
+def _stub_engine_open(**mock_kwargs):
+    """sr_draft_profile's OWN urllib.request.urlopen (its module-global
+    `urllib`, coaches/sr_draft_profile.py `with urllib.request.urlopen(...)`)
+    -> a Mock built from MOCK_KWARGS, never the shared urllib.request a
+    foreign thread of the xdist worker also sees (RM-801,
+    tests/_module_view.py). A normal exit asserts the fake was reached, so an
+    "engine unreachable" result can never come from the real :8860."""
+    fake = mock.Mock(**mock_kwargs)
+    with pytest.MonkeyPatch.context() as mp:
+        bind_urlopen(mp, sr_draft_profile, fake)
+        yield fake
+    assert fake.called, "the scoped urlopen fake was never reached"
 
 
 class TestRoleNormalize(unittest.TestCase):
@@ -180,8 +199,7 @@ class TestBuildProfileWithStubbedEngine(unittest.TestCase):
         clear_cache()
 
     def test_three_profiles_returned(self):
-        with mock.patch.object(sr_draft_profile.urllib.request, "urlopen",
-                               return_value=_fake_urlopen(_FAKE_BEAM)):
+        with _stub_engine_open(return_value=_fake_urlopen(_FAKE_BEAM)):
             out = build_profile(
                 champion="Tristana", role="BOTTOM",
                 my_team=[], their_team=[], queue_id=420,
@@ -201,8 +219,7 @@ class TestBuildProfileWithStubbedEngine(unittest.TestCase):
 
     def test_engine_unreachable(self):
         # Simulate URLError -> empty profiles + notes entry.
-        with mock.patch.object(sr_draft_profile.urllib.request, "urlopen",
-                               side_effect=urllib.error.URLError("connection refused")):
+        with _stub_engine_open(side_effect=urllib.error.URLError("connection refused")):
             out = build_profile(
                 champion="Yuumi", role="UTILITY",
                 my_team=None, their_team=None, queue_id=420,
@@ -217,8 +234,7 @@ class TestBuildProfileWithStubbedEngine(unittest.TestCase):
             "http://x", 422, "value error", {},  # type: ignore[arg-type]
             BytesIO(b'{"error":"bad level"}'),
         )
-        with mock.patch.object(sr_draft_profile.urllib.request, "urlopen",
-                               side_effect=err):
+        with _stub_engine_open(side_effect=err):
             out = build_profile(
                 champion="Sett", role="TOP",
                 my_team=None, their_team=None, queue_id=420,
@@ -231,8 +247,7 @@ class TestBuildProfileWithStubbedEngine(unittest.TestCase):
         def _open(req, **kwargs):
             call_count["n"] += 1
             return _fake_urlopen(_FAKE_BEAM)
-        with mock.patch.object(sr_draft_profile.urllib.request, "urlopen",
-                               side_effect=_open):
+        with _stub_engine_open(side_effect=_open):
             build_profile(champion="Tristana", role="BOTTOM",
                           my_team=[], their_team=[], queue_id=420)
             first_calls = call_count["n"]
@@ -247,8 +262,7 @@ class TestBuildProfileWithStubbedEngine(unittest.TestCase):
         def _open(req, **kwargs):
             call_count["n"] += 1
             return _fake_urlopen(_FAKE_BEAM)
-        with mock.patch.object(sr_draft_profile.urllib.request, "urlopen",
-                               side_effect=_open):
+        with _stub_engine_open(side_effect=_open):
             build_profile(champion="Tristana", role="BOTTOM",
                           my_team=[{"championId": 18}], their_team=[], queue_id=420)
             build_profile(champion="Tristana", role="BOTTOM",

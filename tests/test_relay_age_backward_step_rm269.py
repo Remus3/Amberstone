@@ -12,11 +12,11 @@ from __future__ import annotations
 import io
 import json
 import time
-import urllib.request
 
 import pytest
 
 from core import relay_age
+from tests._module_view import bind_urlopen
 
 
 class TestHelper:
@@ -37,7 +37,7 @@ class TestHelper:
         assert relay_age.is_stale(ts, 12.0, now=100.0) is True
 
 
-def _urlopen_returning(payload):
+def _urlopen_returning(payload, calls=None):
     class _Resp(io.BytesIO):
         def __enter__(self):
             return self
@@ -46,6 +46,8 @@ def _urlopen_returning(payload):
             return False
 
     def fake(req, timeout=None):
+        if calls is not None:
+            calls.append(req)
         return _Resp(json.dumps(payload).encode())
 
     return fake
@@ -56,27 +58,37 @@ class TestPollerSites:
         from game_reader.poller import _PollerMixin
         return _PollerMixin.__new__(_PollerMixin)
 
+    @staticmethod
+    def _serve(monkeypatch, payload):
+        """game_reader.poller's OWN urllib.request.urlopen (_try_relay and
+        _try_lcu_game_id call it through the module-global `urllib`) serves
+        PAYLOAD, never the shared module a foreign thread of the xdist worker
+        also sees (RM-801, tests/_module_view.py). Returns the call record,
+        so a rejecting test proves the fake - not the live relay - answered."""
+        import game_reader.poller as poller
+        calls = []
+        bind_urlopen(monkeypatch, poller, _urlopen_returning(payload, calls))
+        return calls
+
     def test_try_relay_rejects_future_ts(self, monkeypatch):
         future = time.time() + 3600.0
-        monkeypatch.setattr(urllib.request, "urlopen",
-                            _urlopen_returning({"ts": future, "data": {"x": 1}}))
+        calls = self._serve(monkeypatch, {"ts": future, "data": {"x": 1}})
         assert self._mixin()._try_relay() is None
+        assert calls, "the scoped urlopen fake was never reached"
 
     def test_try_relay_accepts_fresh_ts(self, monkeypatch):
         # Positive control: the same fake with a fresh ts is served.
-        monkeypatch.setattr(urllib.request, "urlopen",
-                            _urlopen_returning({"ts": time.time(), "data": {"x": 1}}))
+        self._serve(monkeypatch, {"ts": time.time(), "data": {"x": 1}})
         assert self._mixin()._try_relay() == {"x": 1}
 
     def test_lcu_game_id_rejects_future_ts(self, monkeypatch):
         future = time.time() + 3600.0
-        monkeypatch.setattr(urllib.request, "urlopen",
-                            _urlopen_returning({"ts": future, "data": {"game_id": 9}}))
+        calls = self._serve(monkeypatch, {"ts": future, "data": {"game_id": 9}})
         assert self._mixin()._try_lcu_game_id() == ""
+        assert calls, "the scoped urlopen fake was never reached"
 
     def test_lcu_game_id_accepts_fresh_ts(self, monkeypatch):
-        monkeypatch.setattr(urllib.request, "urlopen",
-                            _urlopen_returning({"ts": time.time(), "data": {"game_id": 9}}))
+        self._serve(monkeypatch, {"ts": time.time(), "data": {"game_id": 9}})
         assert self._mixin()._try_lcu_game_id() == "9"
 
 

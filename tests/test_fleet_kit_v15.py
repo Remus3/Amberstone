@@ -155,6 +155,7 @@ def test_every_kit_spawn_carries_the_foreground_switch(tmp_path, monkeypatch):
     # the conftest forwards the kit's launch to subprocess.run with the fake
     # claude image (same seam as tests/test_kit_v10_spawn_routes.py).
     from ops.loop import fleet_route
+    from tests._module_view import bind_subprocess
     calls = []
 
     def fake_run(argv, **kw):
@@ -162,7 +163,11 @@ def test_every_kit_spawn_carries_the_foreground_switch(tmp_path, monkeypatch):
         return subprocess.CompletedProcess(args=argv, returncode=0,
                                            stdout='{"result": "done"}', stderr="")
 
-    monkeypatch.setattr(subprocess, "run", fake_run)
+    # RM-801: the route's OWN subprocess names only (fleet_route: the conftest
+    # launch forwarder; the kit: its git probe ops/fleet_kit/fleet_headless.py
+    # :1613), never the shared module another worker thread also calls.
+    for mod in (fleet_route, fleet_route.kit()):
+        bind_subprocess(monkeypatch, mod, run=fake_run)
     monkeypatch.setenv(BG_OFF, "0")
     fleet_route.spawn("T", caller="t-v15", root=tmp_path)
     (_argv, kw), = [(a, k) for a, k in calls if a and a[0] == "claude-fake.exe"]

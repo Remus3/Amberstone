@@ -42,8 +42,20 @@ from ops.loop import fleet_route  # noqa: E402
 from ops.loop import headless_env as he  # noqa: E402
 from tests import _kit_platform  # noqa: E402
 from tests._kit_platform import assert_kit_killed  # noqa: E402
+from tests._module_view import bind_subprocess  # noqa: E402
 
 kit_platform = _kit_platform.kit_platform  # fixture, registered by module attribute
+
+
+def _bind_chain(monkeypatch, **fakes):
+    """RM-801: FAKES (run= / Popen=) in the spawn chain's OWN `subprocess`
+    names only - the executor (ops/loop/executor.py:945/977 git), fleet_route
+    (the conftest launch forwarder calls fleet_route.subprocess.run) and the
+    kit (launch ops/fleet_kit/fleet_headless.py:1734 Popen, git :1613 and
+    taskkill :1703 run) - never on the shared subprocess module that every
+    other thread of the xdist worker also calls."""
+    for mod in (executor, fleet_route, fleet_route.kit()):
+        bind_subprocess(monkeypatch, mod, **fakes)
 
 FAKE_URL = "http://127.0.0.1:65530"  # the conftest's fake open route
 RUN_LANE = REPO / "ops" / "loop" / "run_lane.ps1"
@@ -68,7 +80,7 @@ class _Rec:
 @pytest.fixture
 def rec(monkeypatch):
     r = _Rec()
-    monkeypatch.setattr(subprocess, "run", r)
+    _bind_chain(monkeypatch, run=r)
     return r
 
 
@@ -178,7 +190,7 @@ def test_cli_timeout_exits_4_like_the_kit_cli(tmp_path, monkeypatch, capsys):
     def _hang(argv, **kw):
         raise subprocess.TimeoutExpired(argv, 1)
 
-    monkeypatch.setattr(subprocess, "run", _hang)
+    _bind_chain(monkeypatch, run=_hang)
     assert fleet_route.main(["--caller", "c", "--prompt", "x", "--timeout", "1"]) == \
         fleet_route.EXIT_TIMEOUT == fleet_route.kit().CLI_TIMEOUT
     assert "timed out" in capsys.readouterr().err
@@ -440,10 +452,10 @@ def test_executor_timeout_kills_the_tree_through_the_kit(
         no_git, kit_platform, tmp_path, monkeypatch):
     monkeypatch.setattr(fleet_route, "_launch", None)  # production: the kit's launch
     _HangPopen.made = []
-    monkeypatch.setattr(subprocess, "Popen", _HangPopen)
     kills = []
-    monkeypatch.setattr(subprocess, "run", lambda argv, **kw: kills.append(list(argv)) or
-                        CompletedProcess(args=argv, returncode=0, stdout="", stderr=""))
+    _bind_chain(monkeypatch, Popen=_HangPopen,
+                run=lambda argv, **kw: kills.append(list(argv)) or
+                CompletedProcess(args=argv, returncode=0, stdout="", stderr=""))
     out = _sdk(tmp_path, cycle_deadline_sec=2).run(1, "b", "fixed")
     assert "timeout" in out.error
     (p,) = _HangPopen.made

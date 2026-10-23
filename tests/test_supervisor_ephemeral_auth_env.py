@@ -24,6 +24,7 @@ supervisor.
 """
 from __future__ import annotations
 
+import contextlib
 import os
 import subprocess
 from pathlib import Path
@@ -32,8 +33,25 @@ from unittest.mock import patch
 
 import pytest
 
+import agents._supervisor_ephemeral as _sup_eph
+import agents.supervisor as _sup
 from agents._supervisor_common import LOG_ROOT
 from agents.supervisor import EphemeralSpawnFailed, spawn_ephemeral_llm
+from ops.loop import fleet_route
+from tests._module_view import bind_subprocess
+
+
+@contextlib.contextmanager
+def _spawn_run(fake):
+    """FAKE as subprocess.run for the ephemeral spawn chain's OWN names only
+    (RM-801): agents/_supervisor_ephemeral.py and its facade agents.supervisor,
+    fleet_route (the conftest launch forwarder calls fleet_route.subprocess.run)
+    and the kit (its git probe ops/fleet_kit/fleet_headless.py:1613) - never
+    the shared subprocess module another thread of the worker also calls."""
+    with pytest.MonkeyPatch.context() as mp:
+        for mod in (_sup_eph, _sup, fleet_route, fleet_route.kit()):
+            bind_subprocess(mp, mod, run=fake)
+        yield
 
 # Agent 7 (haiku) has a real charter on disk and, unlike agent 6, does not
 # write a failure stub - so the failure-path tests leave no artifact behind.
@@ -73,7 +91,7 @@ class _Recorder:
 
 def _run(rec: _Recorder, task_id: str, agent: str = _AGENT):
     with patch("agents.supervisor.shutil.which", return_value="/fake/claude"), \
-         patch("agents.supervisor.subprocess.run", rec):
+         _spawn_run(rec):
         return spawn_ephemeral_llm(agent, task_id, "demo", {})
 
 
@@ -264,7 +282,7 @@ def test_agent6_failure_stub_still_written() -> None:
     """The agent-6 stub call is preserved (patched - no artifact is written)."""
     rec = _Recorder(returncode=1, stdout="", stderr=_SIG_OAUTH)
     with patch("agents.supervisor.shutil.which", return_value="/fake/claude"), \
-         patch("agents.supervisor.subprocess.run", rec), \
+         _spawn_run(rec), \
          patch("agents._supervisor_ephemeral._write_agent6_failure_stub") as stub:
         with pytest.raises(EphemeralSpawnFailed):
             spawn_ephemeral_llm("6", "t-authenv-stub", "demo", {})
@@ -284,7 +302,7 @@ def test_happy_path_envelope_and_timeout_preserved(monkeypatch: pytest.MonkeyPat
         raise subprocess.TimeoutExpired(cmd, 900)
 
     with patch("agents.supervisor.shutil.which", return_value="/fake/claude"), \
-         patch("agents.supervisor.subprocess.run", _boom):
+         _spawn_run(_boom):
         with pytest.raises(EphemeralSpawnFailed) as ei:
             spawn_ephemeral_llm(_AGENT, "t-authenv-timeout", "demo", {})
     assert "timed out" in str(ei.value)

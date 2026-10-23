@@ -17,6 +17,7 @@ from unittest import mock
 import pytest
 
 from game_reader import snapshot_normalizer as sn
+from tests._module_view import bind_urlopen
 
 
 @pytest.fixture(autouse=True)
@@ -86,9 +87,10 @@ def _rollup():
             return self._b
 
     h = _H()
+    # routes_state's own urllib only, never the shared module (RM-801).
     with mock.patch.object(routes_state, "read_json", side_effect=_rj), \
-            mock.patch.object(routes_state.urllib.request, "urlopen",
-                              side_effect=lambda url, timeout=None: _Resp(url)):
+            pytest.MonkeyPatch.context() as mp:
+        bind_urlopen(mp, routes_state, lambda url, timeout=None: _Resp(url))
         routes_state._serve_health_all(h)
     assert h.code == 200
     return json.loads(h.body)

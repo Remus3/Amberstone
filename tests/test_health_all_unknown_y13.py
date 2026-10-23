@@ -19,8 +19,11 @@ import re
 from pathlib import Path
 from unittest import mock
 
+import pytest
+
 from dashboard import api_schema
 from dashboard import routes_state as rs
+from tests._module_view import bind_urlopen
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -77,12 +80,14 @@ def _serve(*, a6=None, a6_raises=False, read_json=None, rc_alive=True):
         a6_patch = mock.patch.object(rs, "_agent6_audit_outcomes_ex",
                                      return_value=a6 if a6 is not None else ([], True))
     h = _H()
+    # rs's own urllib only, never the shared module (RM-801).
     with mock.patch.object(rs, "read_json", side_effect=_rj), \
-            mock.patch.object(rs.urllib.request, "urlopen", _healthy_urlopen), \
+            pytest.MonkeyPatch.context() as mp, \
             mock.patch("core.cost_tracker.get_tracker", lambda: _Tracker()), \
             mock.patch("ops.rc_dev_runtime.fatal_stats",
                        return_value={"count": 0, "last_at": None, "recent": []}), \
             a6_patch:
+        bind_urlopen(mp, rs, _healthy_urlopen)
         rs._serve_health_all(h)
     assert h.code == 200, h.code
     return json.loads(h.body.decode("utf-8"))

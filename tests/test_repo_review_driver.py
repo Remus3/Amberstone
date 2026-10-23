@@ -20,6 +20,7 @@ import pytest
 
 from ops.loop import fleet_route
 from ops.loop import headless_env as he
+from tests._module_view import bind_subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "ops" / "loop" / "repo_review.py"
@@ -254,10 +255,15 @@ def test_spawn_refuses_without_route_and_starts_nothing(rr, monkeypatch, tmp_pat
     monkeypatch.setattr(he, "_read_user_var", lambda name: None)
     monkeypatch.setattr(he, "_probe", lambda h, p, t: pytest.fail("probe on an unset var"))
     monkeypatch.setattr(he, "REFUSAL_LOG", tmp_path / "refusals.log")
-    with mock.patch("subprocess.run", side_effect=AssertionError("spawned with no route")), \
-         mock.patch("subprocess.Popen", side_effect=AssertionError("spawned with no route")):
-        with pytest.raises(rr.Halt):
-            rr._spawn("PROMPT", "B01", timeout=5)
+    trip = mock.Mock(side_effect=AssertionError("spawned with no route"))
+    # Every module the spawn crosses - the driver, its fleet_route door (the
+    # conftest launch forwarder calls fleet_route's own subprocess.run) and the
+    # kit's own Popen launch - never the shared subprocess module (RM-801).
+    for mod in (rr, fleet_route, fleet_route.kit()):
+        bind_subprocess(monkeypatch, mod, run=trip, Popen=trip)
+    with pytest.raises(rr.Halt):
+        rr._spawn("PROMPT", "B01", timeout=5)
+    assert trip.call_count == 0, "a refused route starts nothing"
 
 
 def test_spawn_goes_through_fleet_route_read_only(rr, monkeypatch):

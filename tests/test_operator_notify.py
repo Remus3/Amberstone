@@ -24,6 +24,7 @@ import pytest
 
 from core import operator_notify as on
 from tests import _repo_walk
+from tests._module_view import bind_subprocess, this_thread_only
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -89,7 +90,7 @@ def test_escape_link_attribute_is_valid_xml():
 
 def test_wintoast_ships_escaped_xml_in_one_hidden_powershell(monkeypatch, unheld, win_host):
     fake = _FakeRun()
-    monkeypatch.setattr(on.subprocess, "run", fake)
+    bind_subprocess(monkeypatch, on, run=fake)
     ok, detail = on.WinToastNotifier().notify(on.Notification("A & B <c>", "1 < 2"))
     assert ok, detail
     assert len(fake.calls) == 1
@@ -104,7 +105,7 @@ def test_wintoast_ships_escaped_xml_in_one_hidden_powershell(monkeypatch, unheld
 
 def test_wintoast_nonzero_exit_is_false_with_detail(monkeypatch, unheld, win_host):
     fake = _FakeRun(returncode=1, stdout="", stderr="LoadXml boom")
-    monkeypatch.setattr(on.subprocess, "run", fake)
+    bind_subprocess(monkeypatch, on, run=fake)
     ok, detail = on.WinToastNotifier().notify(on.Notification("t", "b"))
     assert ok is False
     assert "LoadXml boom" in detail
@@ -112,7 +113,7 @@ def test_wintoast_nonzero_exit_is_false_with_detail(monkeypatch, unheld, win_hos
 
 def test_wintoast_app_id_is_configurable(monkeypatch, unheld, win_host):
     fake = _FakeRun()
-    monkeypatch.setattr(on.subprocess, "run", fake)
+    bind_subprocess(monkeypatch, on, run=fake)
     on.WinToastNotifier(app_id="Some.App!Id").notify(on.Notification("t", "b"))
     assert "Some.App!Id" in _decode_ps(fake.calls[0][0])
 
@@ -191,7 +192,7 @@ def test_module_notify_never_raises_even_if_notify_itself_raises():
 
 def test_non_windows_host_spawns_nothing(monkeypatch, unheld):
     fake = _FakeRun()
-    monkeypatch.setattr(on.subprocess, "run", fake)
+    bind_subprocess(monkeypatch, on, run=fake)
     monkeypatch.setattr(on, "_on_windows", lambda: False)
     ok, detail = on.WinToastNotifier().notify(on.Notification("t", "b"))
     assert ok is False and detail == "not windows"
@@ -201,7 +202,7 @@ def test_non_windows_host_spawns_nothing(monkeypatch, unheld):
 def test_wintoast_spawn_oserror_is_false(monkeypatch, unheld, win_host):
     def _boom(*a, **k):
         raise FileNotFoundError("no powershell")
-    monkeypatch.setattr(on.subprocess, "run", _boom)
+    bind_subprocess(monkeypatch, on, run=_boom)
     ok, detail = on.WinToastNotifier().notify(on.Notification("t", "b"))
     assert ok is False and "no powershell" in detail
 
@@ -211,7 +212,7 @@ def test_wintoast_spawn_oserror_is_false(monkeypatch, unheld, win_host):
 def test_hold_makes_toast_send_nothing(monkeypatch):
     monkeypatch.setenv("RC_NOTIFY_HOLD", "1")
     fake = _FakeRun()
-    monkeypatch.setattr(on.subprocess, "run", fake)
+    bind_subprocess(monkeypatch, on, run=fake)
     ok, detail = on.WinToastNotifier().notify(on.Notification("t", "b"))
     assert ok is False
     assert detail.startswith("held: ")
@@ -242,8 +243,12 @@ def test_guard_under_hold_no_test_reaches_toast_subprocess(monkeypatch):
         calls.append((a, k))
         raise AssertionError("toast subprocess reached under RC_NOTIFY_HOLD")
 
+    # Any module's spawn counts ("end to end"), so the trap stays on the shared
+    # module, thread-scoped: another test's leftover thread keeps the real
+    # primitive and never lands in `calls` (RM-801, tests/_module_view.py).
     for attr in ("run", "Popen", "call", "check_call", "check_output"):
-        monkeypatch.setattr(subprocess, attr, _trap)
+        monkeypatch.setattr(subprocess, attr,
+                            this_thread_only(_trap, getattr(subprocess, attr)))
     ok, detail = on.notify("guard & <probe>", "body", priority="high",
                            tags=("test",))
     assert calls == []

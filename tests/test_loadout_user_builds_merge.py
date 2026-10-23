@@ -33,11 +33,14 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import pytest
+
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
 from dashboard import routes_loadout as rt  # noqa: E402
+from tests._module_view import bind_urlopen  # noqa: E402
 
 _UID = "723d445b"
 _VARIANT = "userbuild_" + _UID
@@ -238,10 +241,13 @@ class ApplyRouteTests(unittest.TestCase):
     def test_apply_enqueues_trio(self) -> None:
         p1, p2 = _patch_store([_REC])
         um = self._urlopen_mock()
-        with p1, p2, mock.patch("urllib.request.urlopen", um):
+        # routes_loadout's own urllib only, never the shared module (RM-801).
+        with p1, p2, pytest.MonkeyPatch.context() as mp:
+            bind_urlopen(mp, rt, um)
             h = StubHandler()
             rt._serve_loadout_apply_post(
                 h, {"champion": "Caitlyn", "variant": _VARIANT, "mode": "sr"})
+        self.assertTrue(um.called, "the enqueue never reached the scoped fake")
         self.assertEqual(h.last_status, 200)
         body = h.parsed()
         self.assertTrue(body["ok"])
@@ -251,7 +257,8 @@ class ApplyRouteTests(unittest.TestCase):
     def test_apply_unknown_id_404(self) -> None:
         p1, p2 = _patch_store([])
         um = self._urlopen_mock()
-        with p1, p2, mock.patch("urllib.request.urlopen", um):
+        with p1, p2, pytest.MonkeyPatch.context() as mp:
+            bind_urlopen(mp, rt, um)
             h = StubHandler()
             rt._serve_loadout_apply_post(
                 h, {"champion": "Caitlyn", "variant": "userbuild_deadbeef",

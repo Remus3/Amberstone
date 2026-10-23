@@ -30,6 +30,10 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from unittest import mock
 
+import pytest
+
+from tests._module_view import bind_subprocess
+
 REPO = Path(__file__).resolve().parent.parent
 
 
@@ -355,8 +359,11 @@ class RealSideEffects(unittest.TestCase):
 
     def test_spawn_is_windowless_and_detached_from_rc_stdio(self) -> None:
         vw = _wd()
-        with mock.patch.object(vw.subprocess, "Popen") as popen:
-            popen.return_value.pid = 99
+        popen = mock.MagicMock()
+        popen.return_value.pid = 99
+        with pytest.MonkeyPatch.context() as mp:
+            # vw's own subprocess name only (RM-801, tests/_module_view.py).
+            bind_subprocess(mp, vw, Popen=popen)
             self.assertEqual(vw.spawn_vision(REPO), 99)
         args, kwargs = popen.call_args
         self.assertTrue(str(args[0][1]).endswith("moon_vision_server.py"))
@@ -367,8 +374,10 @@ class RealSideEffects(unittest.TestCase):
 
     def test_kill_uses_taskkill_force_by_pid(self) -> None:
         vw = _wd()
-        with mock.patch.object(vw.subprocess, "run") as run:
-            run.return_value.returncode = 0
+        run = mock.MagicMock()
+        run.return_value.returncode = 0
+        with pytest.MonkeyPatch.context() as mp:
+            bind_subprocess(mp, vw, run=run)
             self.assertTrue(vw.kill_pid(1234))
         cmd = run.call_args.args[0]
         self.assertEqual(cmd, ["taskkill", "/F", "/PID", "1234"])
@@ -376,8 +385,10 @@ class RealSideEffects(unittest.TestCase):
 
     def test_capture_is_skipped_without_py_spy(self) -> None:
         vw = _wd()
+        run = mock.MagicMock()
         with mock.patch.object(vw.shutil, "which", return_value=None), \
-                mock.patch.object(vw.subprocess, "run") as run:
+                pytest.MonkeyPatch.context() as mp:
+            bind_subprocess(mp, vw, run=run)
             self.assertIsNone(vw.capture_stack(1234, REPO))
         run.assert_not_called()
 

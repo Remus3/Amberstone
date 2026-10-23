@@ -18,6 +18,8 @@ if str(_TOOLS) not in sys.path:
 
 import upstream_drift_check as M  # noqa: E402
 
+from tests._module_view import bind_subprocess  # noqa: E402
+
 
 class _FakeProc:
     def __init__(self, returncode: int = 0):
@@ -33,7 +35,7 @@ def test_trigger_refresh_runs_both_ddragon_and_rank_tiers(monkeypatch):
         calls.append(cmd)
         return _FakeProc(0)
 
-    monkeypatch.setattr(M.subprocess, "run", _fake_run)
+    bind_subprocess(monkeypatch, M, run=_fake_run)
     ok, detail = M.trigger_refresh()
     assert ok is True
     joined = [" ".join(str(x) for x in c) for c in calls]
@@ -45,7 +47,7 @@ def test_trigger_refresh_fail_soft_on_exception(monkeypatch):
     def _boom(cmd, **kwargs):
         raise RuntimeError("subprocess exploded")
 
-    monkeypatch.setattr(M.subprocess, "run", _boom)
+    bind_subprocess(monkeypatch, M, run=_boom)
     ok, detail = M.trigger_refresh()      # must not raise
     assert ok is False
     assert isinstance(detail, str)
@@ -53,12 +55,12 @@ def test_trigger_refresh_fail_soft_on_exception(monkeypatch):
 
 def test_trigger_refresh_ok_on_rc1(monkeypatch):
     # rc=1 is a benign "changed / no-op" exit for these refreshers, still ok.
-    monkeypatch.setattr(M.subprocess, "run", lambda cmd, **k: _FakeProc(1))
+    bind_subprocess(monkeypatch, M, run=lambda cmd, **k: _FakeProc(1))
     ok, _detail = M.trigger_refresh()
     assert ok is True
 
 
 def test_trigger_refresh_not_ok_on_rc2(monkeypatch):
-    monkeypatch.setattr(M.subprocess, "run", lambda cmd, **k: _FakeProc(2))
+    bind_subprocess(monkeypatch, M, run=lambda cmd, **k: _FakeProc(2))
     ok, _detail = M.trigger_refresh()
     assert ok is False

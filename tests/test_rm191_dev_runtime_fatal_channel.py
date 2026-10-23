@@ -17,6 +17,7 @@ from unittest import mock
 import pytest
 
 from ops import rc_dev_runtime as rdr
+from tests._module_view import bind_urlopen
 
 
 @pytest.fixture(autouse=True)
@@ -127,9 +128,10 @@ def _rollup(health):
     # the RC half alone (otherwise "red" would be vacuous - an offline
     # vision probe forces red by itself).
     h = _H()
+    # routes_state's own urllib only, never the shared module (RM-801).
     with mock.patch.object(routes_state, "read_json", side_effect=_rj), \
-            mock.patch.object(routes_state.urllib.request, "urlopen",
-                              side_effect=lambda url, timeout=None: _Resp(url)):
+            pytest.MonkeyPatch.context() as mp:
+        bind_urlopen(mp, routes_state, lambda url, timeout=None: _Resp(url))
         routes_state._serve_health_all(h)
     return json.loads(h.body)
 

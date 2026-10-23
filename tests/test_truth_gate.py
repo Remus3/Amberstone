@@ -8,6 +8,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# truth_gate's own `subprocess` name only, never the shared module (RM-801).
+from tests._module_view import bind_subprocess  # noqa: E402
 from tools.truth_gate import (
     parse_pytest_summary,
     check_file_claims,
@@ -322,7 +324,7 @@ class _FakeRun:
 def test_default_suite_runs_through_the_gate_without_a_shell(monkeypatch, tmp_path):
     from tools import truth_gate
     fake = _FakeRun(0)
-    monkeypatch.setattr(truth_gate.subprocess, "run", fake)
+    bind_subprocess(monkeypatch, truth_gate, run=fake)
     obs = truth_gate.run_suite_fresh(truth_gate.DEFAULT_SUITE_CMD, tmp_path / "o.txt",
                                      owner="o.1")
     (argv, kw), = fake.calls
@@ -336,7 +338,7 @@ def test_default_suite_runs_through_the_gate_without_a_shell(monkeypatch, tmp_pa
 
 def test_gate_exit_3_is_a_suite_gate_refused_discrepancy(monkeypatch, tmp_path):
     from tools import truth_gate
-    monkeypatch.setattr(truth_gate.subprocess, "run", _FakeRun(3))
+    bind_subprocess(monkeypatch, truth_gate, run=_FakeRun(3))
     obs = truth_gate.run_suite_fresh(truth_gate.DEFAULT_SUITE_CMD, tmp_path / "o.txt",
                                      owner="o.1")
     assert obs["gate_refused"] is True
@@ -353,7 +355,7 @@ def test_gate_exit_3_is_a_suite_gate_refused_discrepancy(monkeypatch, tmp_path):
 
 def test_ungated_exit_3_is_not_a_gate_refusal(monkeypatch, tmp_path):
     from tools import truth_gate
-    monkeypatch.setattr(truth_gate.subprocess, "run", _FakeRun(3))
+    bind_subprocess(monkeypatch, truth_gate, run=_FakeRun(3))
     obs = truth_gate.run_suite_fresh([sys.executable, "-m", "pytest", "tests/test_a.py"],
                                      tmp_path / "o.txt", owner="o.1")
     assert obs["gated"] is False
@@ -419,7 +421,7 @@ def test_batch_claim_is_refused_without_running(monkeypatch, tmp_path):
     from tools import truth_gate
     monkeypatch.setattr(truth_gate, "IS_WINDOWS", True)
     fake = _FakeRun(0)
-    monkeypatch.setattr(truth_gate.subprocess, "run", fake)
+    bind_subprocess(monkeypatch, truth_gate, run=fake)
     obs = truth_gate.run_suite_fresh([r"C:\x\run.bat", "a", "&", "b"], tmp_path / "o.txt")
     assert fake.calls == []
     assert obs["head_refused"] is True
@@ -435,7 +437,7 @@ def test_batch_claim_is_refused_without_running(monkeypatch, tmp_path):
 def test_percent_var_expanding_to_a_batch_file_is_refused(monkeypatch, tmp_path):
     from tools import truth_gate
     fake = _FakeRun(0)
-    monkeypatch.setattr(truth_gate.subprocess, "run", fake)
+    bind_subprocess(monkeypatch, truth_gate, run=fake)
     monkeypatch.setenv("RC_TG_RM757_BAT", str(tmp_path / "probe.bat"))
     obs = truth_gate.run_suite_fresh("%RC_TG_RM757_BAT% a", tmp_path / "o.txt")
     assert fake.calls == []
@@ -446,7 +448,7 @@ def test_posix_batch_named_head_is_not_refused(monkeypatch, tmp_path):
     from tools import truth_gate
     monkeypatch.setattr(truth_gate, "IS_WINDOWS", False)
     fake = _FakeRun(0)
-    monkeypatch.setattr(truth_gate.subprocess, "run", fake)
+    bind_subprocess(monkeypatch, truth_gate, run=fake)
     obs = truth_gate.run_suite_fresh(["./run.bat", "a"], tmp_path / "o.txt")
     assert len(fake.calls) == 1
     assert obs["head_refused"] is False
@@ -532,7 +534,7 @@ def _win(monkeypatch, which=None):
     if which is not None:
         monkeypatch.setattr(truth_gate, "_path_which", which)
     fake = _FakeRun(0)
-    monkeypatch.setattr(truth_gate.subprocess, "run", fake)
+    bind_subprocess(monkeypatch, truth_gate, run=fake)
     return truth_gate, fake
 
 
@@ -601,7 +603,7 @@ def test_exe_path_heads_are_launched(monkeypatch, tmp_path):
 def test_real_path_cmd_shim_is_refused_and_python_is_allowed(monkeypatch, tmp_path):
     from tools import truth_gate
     fake = _FakeRun(0)
-    monkeypatch.setattr(truth_gate.subprocess, "run", fake)
+    bind_subprocess(monkeypatch, truth_gate, run=fake)
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     (bin_dir / "zzprobe.cmd").write_text("@echo off\r\n", encoding="ascii")
@@ -627,7 +629,7 @@ def test_real_path_cmd_shim_is_refused_and_python_is_allowed(monkeypatch, tmp_pa
 def _real_win(monkeypatch, tmp_path, path_dirs):
     from tools import truth_gate
     fake = _FakeRun(0)
-    monkeypatch.setattr(truth_gate.subprocess, "run", fake)
+    bind_subprocess(monkeypatch, truth_gate, run=fake)
     monkeypatch.setenv("PATH", os.pathsep.join(str(d) for d in path_dirs))
     monkeypatch.setenv("PATHEXT", ".COM;.EXE;.BAT;.CMD")
     return truth_gate, fake

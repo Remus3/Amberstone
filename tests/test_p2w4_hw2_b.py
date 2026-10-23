@@ -40,6 +40,8 @@ from pathlib import Path
 
 import pytest
 
+from tests._module_view import bind_subprocess
+
 _OPS_LOOP = Path(__file__).resolve().parent.parent / "ops" / "loop"
 if str(_OPS_LOOP) not in sys.path:
     sys.path.insert(0, str(_OPS_LOOP))
@@ -97,7 +99,7 @@ class TestLoopControllerGitHasTimeout:
 
             return _R()
 
-        monkeypatch.setattr(lc.subprocess, "run", fake_run)
+        bind_subprocess(monkeypatch, lc, run=fake_run)
         out = lc.git("rev-parse", "HEAD")
         assert out == "deadbeef"
         assert "timeout" in captured, "git() must pass a timeout= to subprocess.run"
@@ -110,14 +112,14 @@ class TestLoopControllerGitHasTimeout:
         def fake_run(*args, **kwargs):
             raise subprocess.TimeoutExpired(cmd="git", timeout=kwargs.get("timeout", 1))
 
-        monkeypatch.setattr(lc.subprocess, "run", fake_run)
+        bind_subprocess(monkeypatch, lc, run=fake_run)
         assert lc.git("rev-parse", "HEAD") == ""
 
     def test_git_oserror_degrades_to_empty(self, lc, monkeypatch):
         def fake_run(*args, **kwargs):
             raise OSError("git binary missing")
 
-        monkeypatch.setattr(lc.subprocess, "run", fake_run)
+        bind_subprocess(monkeypatch, lc, run=fake_run)
         assert lc.git("rev-parse", "HEAD") == ""
 
     def test_head_degrades_to_empty_on_timeout(self, lc, monkeypatch):
@@ -126,7 +128,7 @@ class TestLoopControllerGitHasTimeout:
         def fake_run(*args, **kwargs):
             raise subprocess.TimeoutExpired(cmd="git", timeout=kwargs.get("timeout", 1))
 
-        monkeypatch.setattr(lc.subprocess, "run", fake_run)
+        bind_subprocess(monkeypatch, lc, run=fake_run)
         sha = lc.head()
         assert sha == ""
         assert sha[:8] == ""  # the actual downstream slice never raises
@@ -150,7 +152,7 @@ class TestDoneSentinelHeadHasTimeout:
 
             return _R()
 
-        monkeypatch.setattr(ds.subprocess, "run", fake_run)
+        bind_subprocess(monkeypatch, ds, run=fake_run)
         assert ds.head() == "cafef00d"
         assert captured.get("timeout") is not None
         assert captured["timeout"] > 0
@@ -162,7 +164,7 @@ class TestDoneSentinelHeadHasTimeout:
         def fake_run(*args, **kwargs):
             raise subprocess.TimeoutExpired(cmd="git", timeout=5)
 
-        monkeypatch.setattr(ds.subprocess, "run", fake_run)
+        bind_subprocess(monkeypatch, ds, run=fake_run)
         assert ds.head() == ""
 
 
@@ -183,7 +185,7 @@ class TestClaudeStubHeadHasTimeout:
 
             return _R()
 
-        monkeypatch.setattr(cs.subprocess, "run", fake_run)
+        bind_subprocess(monkeypatch, cs, run=fake_run)
         assert cs.head() == "0badf00d"
         assert captured.get("timeout") is not None
         assert captured["timeout"] > 0
@@ -218,7 +220,7 @@ class TestGitErrorPathDoesNotPolluteProductionLog:
         def fake_run(*args, **kwargs):
             raise OSError("git binary missing")
 
-        monkeypatch.setattr(lc.subprocess, "run", fake_run)
+        bind_subprocess(monkeypatch, lc, run=fake_run)
         assert lc.git("rev-parse", "HEAD") == ""  # still degrades to ""
 
         after = prod_log.stat().st_size if prod_log.exists() else -1

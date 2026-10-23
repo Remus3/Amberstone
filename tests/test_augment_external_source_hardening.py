@@ -39,10 +39,13 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import pytest
+
 _PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
 from core import augment_external_source as X
+from tests._module_view import bind_urlopen
 
 
 def _payload(stats: dict) -> dict:
@@ -166,7 +169,9 @@ class ResponseSizeCapTest(unittest.TestCase):
         (reference_flaky_only_under_full_parallel_suite). Any non-test URL now
         gets a benign non-recording response, so `seen` holds this test's read
         alone and the exact-list assertion - which is what catches an
-        unbounded-read mutant - stays sound."""
+        unbounded-read mutant - stays sound. RM-801: the stub is now bound to
+        X's own `urllib` only (tests/_module_view.py), so no foreign thread
+        reaches it at all; the URL filter stays as defence in depth."""
         seen = []
         test_url = "https://example.invalid/x"
 
@@ -204,7 +209,9 @@ class ResponseSizeCapTest(unittest.TestCase):
             url = getattr(req, "full_url", req)
             return _Resp() if url == test_url else _Benign()
 
-        with mock.patch.object(X.urllib.request, "urlopen", _urlopen):
+        # X's own urllib only (tests/_module_view.py, RM-801).
+        with pytest.MonkeyPatch.context() as mp:
+            bind_urlopen(mp, X, _urlopen)
             with self.assertRaises(X.AugmentSourceError) as ctx:
                 X._http_get(test_url, 1.0)
         self.assertIn("too large", str(ctx.exception).lower())
@@ -256,8 +263,8 @@ class NonFiniteTest(unittest.TestCase):
             def __exit__(self, *a):
                 return False
 
-        with mock.patch.object(X.urllib.request, "urlopen",
-                               lambda *a, **k: _Resp()):
+        with pytest.MonkeyPatch.context() as mp:
+            bind_urlopen(mp, X, lambda *a, **k: _Resp())
             with self.assertRaises(X.AugmentSourceError):
                 X._http_get("https://example.invalid/x", 1.0)
 
@@ -275,8 +282,8 @@ class NonFiniteTest(unittest.TestCase):
             def __exit__(self, *a):
                 return False
 
-        with mock.patch.object(X.urllib.request, "urlopen",
-                               lambda *a, **k: _Resp()):
+        with pytest.MonkeyPatch.context() as mp:
+            bind_urlopen(mp, X, lambda *a, **k: _Resp())
             self.assertEqual(
                 X._http_get("https://example.invalid/x", 1.0),
                 {"data": [], "meta": {"count": 0}})

@@ -69,9 +69,19 @@ import threading
 import unittest
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from unittest import mock
+
+import pytest
 
 from lib.http import client as http_client
+from tests._module_view import bind_urlopen
+
+
+def _spy_the_client_openers(mp, cli, spy) -> None:
+    """SPY on the client module's own urlopen (tests/_module_view.py, RM-801:
+    never the shared urllib.request) AND on the client's opener, which is the
+    path request() actually takes (lib/http/client.py `self._opener.open`)."""
+    bind_urlopen(mp, http_client, spy)
+    mp.setattr(cli._opener, "open", spy)
 
 
 def _write_blocklist(directory, hostnames, suffixes):
@@ -319,7 +329,8 @@ class TestSchemeAllowlist(_ClientTestBase):
         """W2: request() must raise Blocked without letting file:// touch the opener."""
         cli = self.make_client()
         spy = _UrlopenSpy()
-        with mock.patch("urllib.request.urlopen", spy):
+        with pytest.MonkeyPatch.context() as mp:
+            _spy_the_client_openers(mp, cli, spy)
             outcome = self.attempt(cli, "GET", "file://localhost/etc/passwd")
         self.assertEqual(outcome, "Blocked", f"urlopen saw {spy.calls!r}")
         self.assertEqual(spy.calls, [], "a file:// URL must never reach the urllib opener")
@@ -328,7 +339,8 @@ class TestSchemeAllowlist(_ClientTestBase):
         """W2: the same gate must cover every non-http scheme, not just file://."""
         cli = self.make_client()
         spy = _UrlopenSpy()
-        with mock.patch("urllib.request.urlopen", spy):
+        with pytest.MonkeyPatch.context() as mp:
+            _spy_the_client_openers(mp, cli, spy)
             outcome = self.attempt(cli, "GET", "ftp://example.com/x")
         self.assertEqual(outcome, "Blocked", f"urlopen saw {spy.calls!r}")
         self.assertEqual(spy.calls, [], "an ftp:// URL must never reach the urllib opener")

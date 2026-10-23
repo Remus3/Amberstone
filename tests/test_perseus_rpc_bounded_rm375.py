@@ -9,6 +9,7 @@ import io
 import itertools
 import json
 
+from tests._module_view import bind_subprocess
 from tools import _perseus_rpc as rpc
 
 
@@ -45,7 +46,10 @@ def test_eof_is_none():
 
 
 class _FakeProc:
+    made = 0  # proves the scoped fake is what the reader spawned (RM-801)
+
     def __init__(self, *a, **k):
+        type(self).made += 1
         self.stdin = io.StringIO()
         lines = itertools.repeat("not json\n")
         self.stdout = type("S", (), {"readline": staticmethod(lambda: next(lines))})()
@@ -57,12 +61,16 @@ class _FakeProc:
 def test_perseus_recall_returns_instead_of_looping(monkeypatch):
     from tools import perseus_recall as pr
     monkeypatch.setattr(pr.os.path, "exists", lambda p: True)
-    monkeypatch.setattr(pr.subprocess, "Popen", _FakeProc)
+    bind_subprocess(monkeypatch, pr, Popen=_FakeProc)
+    monkeypatch.setattr(_FakeProc, "made", 0)
     assert pr.recall("anything") == []
+    assert _FakeProc.made >= 1
 
 
 def test_perseus_sync_vault_rpc_returns_instead_of_looping(monkeypatch):
     from tools import perseus_sync as ps
-    monkeypatch.setattr(ps.subprocess, "Popen", _FakeProc)
+    bind_subprocess(monkeypatch, ps, Popen=_FakeProc)
+    monkeypatch.setattr(_FakeProc, "made", 0)
     vault = ps.Vault()          # __init__ runs initialize through rpc()
     assert vault.rpc("tools/list", {}) is None
+    assert _FakeProc.made == 1

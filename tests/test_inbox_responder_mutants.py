@@ -84,6 +84,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 from uuid import uuid4
@@ -93,6 +94,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import tools  # noqa: E402
+from tests._module_view import bind_subprocess, this_thread_only  # noqa: E402
 import tools.inbox_responder_exec as exec_mod  # noqa: E402
 import tools.inbox_responder_export as export_mod  # noqa: E402
 import tools.inbox_responder_procs as procs_mod  # noqa: E402
@@ -1007,6 +1009,20 @@ def b_bent_hops(w, mod):
     armed(w)
 
 
+def _procs_seams(mod) -> list:
+    """Every distinct procs module MOD's measure path can resolve: the tracked
+    module, the one bound as `tools.inbox_responder_procs` right now (a mutant
+    under a chained swap) and the `procs` global of the exec copy whose
+    `default_measure_runner` MOD imported."""
+    found: list = []
+    for cand in (procs_mod, sys.modules.get("tools.inbox_responder_procs"),
+                 getattr(tools, "inbox_responder_procs", None),
+                 mod.default_measure_runner.__globals__.get("procs")):
+        if cand is not None and all(cand is not s for s in found):
+            found.append(cand)
+    return found
+
+
 def b_exec_measure_seam(w, mod):
     """The gate 12 measure seam driven for real: the copy's own exec, a fake Popen.
 
@@ -1029,8 +1045,13 @@ def b_exec_measure_seam(w, mod):
         w.popen.append({"argv": list(argv), **kw})
         return FakeProc()
 
-    w.mp.setattr(procs_mod.subprocess, "Popen", fake_popen)
-    assert procs_mod.subprocess.Popen is fake_popen, "the replacement must precede the drive"
+    # Each procs module the driven path can reach gets the fake in its OWN
+    # `subprocess` name, never the shared module (RM-801): the tracked one, the
+    # one bound under the swap and the driven exec copy's own `procs` (under a
+    # chained swap, the MUTATED procs copy).
+    for seam in _procs_seams(mod):
+        bind_subprocess(w.mp, seam, Popen=fake_popen)
+        assert seam.subprocess.Popen is fake_popen, "the replacement must precede the drive"
     w.recorder = mod.default_measure_runner
     w.config.git_exe = str(w.tmp / "git.exe")
     w.spawner = StubSpawner(result_bytes(proposal(
@@ -1793,8 +1814,12 @@ def _popen_tripwire(w, mp):
         calls.append(a)
         raise AssertionError("a process was created")
 
-    mp.setattr(procs_mod.subprocess, "Popen", tripwire)
-    assert procs_mod.subprocess.Popen is tripwire, "the replacement must precede the drive"
+    # "Of any kind" is an open module set, so no one module-local name carries
+    # it: the shared Popen stays the tripwire for this thread and every thread
+    # it starts, while each thread already alive (another test's leftover
+    # server or poller) keeps the real Popen (RM-801, tests/_module_view.py).
+    mp.setattr(subprocess, "Popen", this_thread_only(tripwire, subprocess.Popen))
+    assert procs_mod.subprocess.Popen.fake is tripwire, "the replacement must precede the drive"
     return calls
 
 

@@ -23,6 +23,7 @@ urllib.request.urlopen are both stubbed.
 """
 from __future__ import annotations
 
+import contextlib
 import json
 import math
 import sys
@@ -33,11 +34,14 @@ from pathlib import Path
 from typing import Optional
 from unittest import mock
 
+import pytest
+
 _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from core import synergy_external_source as S  # noqa: E402
+from tests._module_view import bind_urlopen  # noqa: E402
 
 _GOOD_ROW = {
     "championid1": "498", "championid2": "497",
@@ -259,6 +263,21 @@ class _FakeResponse:
         return self._body[:amt]
 
 
+@contextlib.contextmanager
+def _fake_urlopen(**mock_kwargs):
+    """S's OWN urllib.request.urlopen (the `with urllib.request.urlopen(...)`
+    in core/synergy_external_source.py _http_get_json) -> a Mock built from
+    MOCK_KWARGS, never the shared urllib.request a foreign thread of the xdist
+    worker also sees (RM-801, tests/_module_view.py). A normal exit asserts
+    the fake was reached, so a None / fail-soft assertion can never pass on
+    the real network."""
+    fake = mock.Mock(**mock_kwargs)
+    with pytest.MonkeyPatch.context() as mp:
+        bind_urlopen(mp, S, fake)
+        yield fake
+    assert fake.called, "the scoped urlopen fake was never reached"
+
+
 def _padded_json(pad_bytes: int) -> bytes:
     """A VALID JSON envelope of at least pad_bytes. Valid on purpose: an
     invalid oversized body would raise SynergyError via the JSON path even
@@ -279,8 +298,7 @@ class ResponseSizeCapTests(_SeamBase):
 
     def test_oversized_body_raises_synergy_error(self) -> None:
         body = _padded_json(S._MAX_RESPONSE_BYTES + 64)
-        with mock.patch("urllib.request.urlopen",
-                        return_value=_FakeResponse(body)):
+        with _fake_urlopen(return_value=_FakeResponse(body)):
             with self.assertRaisesRegex(S.SynergyError, "too large"):
                 S._http_get_json("https://example.invalid/getRankDouble")
 
@@ -288,8 +306,7 @@ class ResponseSizeCapTests(_SeamBase):
         """Overflow must be DETECTED without buffering the whole stream."""
         seen: list = []
         body = _padded_json(S._MAX_RESPONSE_BYTES + 64)
-        with mock.patch("urllib.request.urlopen",
-                        return_value=_FakeResponse(body, seen=seen)):
+        with _fake_urlopen(return_value=_FakeResponse(body, seen=seen)):
             with self.assertRaises(S.SynergyError):
                 S._http_get_json("https://example.invalid/getRankDouble")
         self.assertEqual(
@@ -298,15 +315,13 @@ class ResponseSizeCapTests(_SeamBase):
 
     def test_fetch_rows_is_still_fail_soft_on_an_oversized_body(self) -> None:
         body = _padded_json(S._MAX_RESPONSE_BYTES + 64)
-        with mock.patch("urllib.request.urlopen",
-                        return_value=_FakeResponse(body)):
+        with _fake_urlopen(return_value=_FakeResponse(body)):
             self.assertIsNone(S.fetch_rows("bottom", "support"))
 
     def test_a_normal_sized_body_still_parses(self) -> None:
         body = b'{"code": 0, "data": [{"championid1": "498",' \
                b' "championid2": "497", "doublewinrate": 0.56}]}'
-        with mock.patch("urllib.request.urlopen",
-                        return_value=_FakeResponse(body)):
+        with _fake_urlopen(return_value=_FakeResponse(body)):
             data = S._http_get_json("https://example.invalid/getRankDouble")
             self.assertEqual(data["code"], 0)
             rows = S.fetch_rows("bottom", "support")
@@ -319,8 +334,7 @@ class ResponseSizeCapTests(_SeamBase):
         pad = S._MAX_RESPONSE_BYTES - 128
         body = _padded_json(pad)
         self.assertLessEqual(len(body), S._MAX_RESPONSE_BYTES)
-        with mock.patch("urllib.request.urlopen",
-                        return_value=_FakeResponse(body)):
+        with _fake_urlopen(return_value=_FakeResponse(body)):
             data = S._http_get_json("https://example.invalid/getRankDouble")
         self.assertEqual(data["code"], 0)
 
@@ -349,20 +363,17 @@ class NonFiniteRejectionTests(_SeamBase):
 
     # --- gate 1: the parse boundary ---------------------------------------
     def test_parse_boundary_rejects_nan(self) -> None:
-        with mock.patch("urllib.request.urlopen",
-                        return_value=_FakeResponse(self._body("NaN"))):
+        with _fake_urlopen(return_value=_FakeResponse(self._body("NaN"))):
             with self.assertRaisesRegex(S.SynergyError, "non-finite"):
                 S._http_get_json("https://example.invalid/getRankDouble")
 
     def test_parse_boundary_rejects_infinity(self) -> None:
-        with mock.patch("urllib.request.urlopen",
-                        return_value=_FakeResponse(self._body("Infinity"))):
+        with _fake_urlopen(return_value=_FakeResponse(self._body("Infinity"))):
             with self.assertRaisesRegex(S.SynergyError, "non-finite"):
                 S._http_get_json("https://example.invalid/getRankDouble")
 
     def test_parse_boundary_rejects_negative_infinity(self) -> None:
-        with mock.patch("urllib.request.urlopen",
-                        return_value=_FakeResponse(self._body("-Infinity"))):
+        with _fake_urlopen(return_value=_FakeResponse(self._body("-Infinity"))):
             with self.assertRaisesRegex(S.SynergyError, "non-finite"):
                 S._http_get_json("https://example.invalid/getRankDouble")
 
@@ -370,8 +381,7 @@ class NonFiniteRejectionTests(_SeamBase):
         """Not just doublewinrate - any non-standard literal in the payload."""
         body = (b'{"code": 0, "junk": Infinity, "data": [{"championid1": "1",'
                 b' "championid2": "2", "doublewinrate": 0.5}]}')
-        with mock.patch("urllib.request.urlopen",
-                        return_value=_FakeResponse(body)):
+        with _fake_urlopen(return_value=_FakeResponse(body)):
             with self.assertRaisesRegex(S.SynergyError, "non-finite"):
                 S._http_get_json("https://example.invalid/getRankDouble")
 
@@ -416,16 +426,14 @@ class NonFiniteRejectionTests(_SeamBase):
 
     # --- end to end --------------------------------------------------------
     def test_fetch_rows_returns_none_for_a_nan_payload(self) -> None:
-        with mock.patch("urllib.request.urlopen",
-                        return_value=_FakeResponse(self._body("NaN"))):
+        with _fake_urlopen(return_value=_FakeResponse(self._body("NaN"))):
             self.assertIsNone(S.fetch_rows("bottom", "support"))
 
     def test_the_happy_path_is_not_over_rejected(self) -> None:
         """A NEGATIVE assertion ("returns None") passes for the wrong reason
         if the gate rejects everything, so assert the finite payload STILL
         returns its rows and that every numeric value in them is finite."""
-        with mock.patch("urllib.request.urlopen",
-                        return_value=_FakeResponse(self._body("0.56"))):
+        with _fake_urlopen(return_value=_FakeResponse(self._body("0.56"))):
             rows = S.fetch_rows("bottom", "support")
         self.assertIsNotNone(rows)
         self.assertEqual(len(rows), 1)
@@ -440,8 +448,7 @@ class NonFiniteRejectionTests(_SeamBase):
         """The exact downstream failure: json.dumps re-emits a bare NaN token
         that a browser JSON.parse rejects. A strict re-parse proves the rows
         this module hands out cannot poison /api/duo-synergy."""
-        with mock.patch("urllib.request.urlopen",
-                        return_value=_FakeResponse(self._body("0.56"))):
+        with _fake_urlopen(return_value=_FakeResponse(self._body("0.56"))):
             rows = S.fetch_rows("bottom", "support")
         blob = json.dumps({"rows": rows})
 

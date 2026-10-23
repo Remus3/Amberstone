@@ -25,6 +25,7 @@ import pytest
 
 import lcu.lcu_client as lc
 from lcu.lcu_client import LcuClient
+from tests._module_view import bind_urlopen
 
 
 def _write_lockfile(path, port, pw):
@@ -68,7 +69,8 @@ def _install(monkeypatch, behaviour):
         calls.append((req.get_method(), req.full_url))
         return behaviour(req, len(calls))
 
-    monkeypatch.setattr(lc.urllib.request, "urlopen", fake_urlopen)
+    # lcu_client's own urllib only, never the shared module (RM-801).
+    bind_urlopen(monkeypatch, lc, fake_urlopen)
     return calls
 
 

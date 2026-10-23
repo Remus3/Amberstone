@@ -19,6 +19,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from tests._module_view import bind_urlopen
+
 
 # --------------------------------------------------------------------------
 # A1  core/log_setup.py:70  - day-roll drops the old stream even if close()
@@ -244,7 +246,8 @@ def test_request_swallows_transport_errors_and_returns_none(monkeypatch, exc):
     def _boom(*_a, **_kw):
         raise exc
 
-    monkeypatch.setattr(lc.urllib.request, "urlopen", _boom)
+    # lcu_client's own urllib only, never the shared module (RM-801).
+    bind_urlopen(monkeypatch, lc, _boom)
     # Defeat the one lockfile-rotation retry so the test is single-shot.
     monkeypatch.setattr(lc.LcuClient, "_refresh_conn_if_changed",
                         lambda self: None)

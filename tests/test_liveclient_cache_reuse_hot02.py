@@ -20,8 +20,18 @@ import time
 import unittest
 from unittest import mock
 
+import pytest
+
 from core.liveclient_cache import Snapshot
 from dashboard import _liveclient
+from tests._module_view import bind_urlopen
+
+
+def _bound_urlopen(mp, **kw) -> mock.MagicMock:
+    """_liveclient's own urllib.request.urlopen only (RM-801)."""
+    m_open = mock.MagicMock(**kw)
+    bind_urlopen(mp, _liveclient, m_open)
+    return m_open
 
 
 def _agd(active="Ashe", game_time=725.0):
@@ -77,7 +87,8 @@ class WarmCacheParityTests(unittest.TestCase):
         # NOT open its own HTTP connection.
         snap = Snapshot(data=_agd(), ts=time.time())
         with mock.patch("core.liveclient_cache.get", return_value=snap), \
-             mock.patch.object(_liveclient.urllib.request, "urlopen") as m_open:
+             pytest.MonkeyPatch.context() as mp:
+            m_open = _bound_urlopen(mp)
             out = _liveclient.liveclient_summary()
         self.assertTrue(out, "warm cache should yield a non-empty summary")
         self.assertEqual(m_open.call_count, 0,
@@ -99,7 +110,8 @@ class ColdOrStaleCacheTests(unittest.TestCase):
     def test_stale_frame_does_not_round_trip(self) -> None:
         snap = Snapshot(data=_agd(), ts=time.time() - 10.0)
         with mock.patch("core.liveclient_cache.get", return_value=snap), \
-             mock.patch.object(_liveclient.urllib.request, "urlopen") as m_open:
+             pytest.MonkeyPatch.context() as mp:
+            m_open = _bound_urlopen(mp)
             _liveclient.liveclient_summary()
         self.assertEqual(m_open.call_count, 0)
 
@@ -109,10 +121,11 @@ class LcuSummaryUntouchedTests(unittest.TestCase):
         # HOT-02 must NOT touch lcu_summary (the cache does not poll /latest-lcu).
         # A cache-get patch that would break a cache-sourced call must leave
         # lcu_summary returning {} via its own (unmocked, unreachable) urlopen.
-        with mock.patch.object(
-            _liveclient.urllib.request, "urlopen", side_effect=OSError("no relay")
-        ):
+        with pytest.MonkeyPatch.context() as mp:
+            m_open = _bound_urlopen(mp, side_effect=OSError("no relay"))
             self.assertEqual(_liveclient.lcu_summary(), {})
+        # The fake, not a real relay, decided the {}: lcu_summary reached it.
+        self.assertEqual(m_open.call_count, 1)
 
 
 if __name__ == "__main__":

@@ -19,6 +19,7 @@ import time
 import pytest
 
 from dashboard import routes_loop_status as mod
+from tests._module_view import bind_subprocess
 
 
 class FakeHandler:
@@ -172,7 +173,9 @@ def test_last_commit_suppresses_console_window(monkeypatch):
         captured["kwargs"] = kwargs
         return _Done()
 
-    monkeypatch.setattr(mod.subprocess, "run", _fake_run)
+    # dashboard/routes_loop_status.py _last_commit's own subprocess.run only
+    # (tests/_module_view.py, RM-801).
+    bind_subprocess(monkeypatch, mod, run=_fake_run)
     result = mod._last_commit()
     assert result == {
         "sha": "abc1234", "subject": "subject here",

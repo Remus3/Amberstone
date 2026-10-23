@@ -12,14 +12,33 @@ Coverage:
   - empty item_ids / unrecognised runes degrade gracefully (notes, no crash)
   - push_* flags suppress the corresponding enqueue
 """
+import contextlib
 import json
 import sys
 import unittest
+import urllib.request
 from pathlib import Path
 from unittest import mock
 
 _PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
+
+from tests._module_view import this_thread_only  # noqa: E402
+
+
+@contextlib.contextmanager
+def _patch_urlopen(urlopen_mock=None):
+    """Fake urlopen for the apply handler's LCU-cmd enqueue.
+
+    The handler imports urllib.request INSIDE _serve_sr_draft_apply_post
+    (dashboard/routes_sr_draft.py `import urllib.request as _ur`), so there is
+    no module-global name to bind: the patch stays on the shared module but
+    thread-scoped (RM-801, tests/_module_view.py) - a foreign thread of the
+    xdist worker keeps the real urlopen and never lands in this mock."""
+    urlopen_mock = mock.MagicMock() if urlopen_mock is None else urlopen_mock
+    with mock.patch("urllib.request.urlopen",
+                    this_thread_only(urlopen_mock, urllib.request.urlopen)):
+        yield urlopen_mock
 
 
 class TestApplyRoute(unittest.TestCase):
@@ -83,7 +102,7 @@ class TestApplyRoute(unittest.TestCase):
             return_value=mock.MagicMock(read=lambda: b'{"ok":true}')
         )
         urlopen_mock.return_value.__exit__ = mock.MagicMock(return_value=False)
-        with mock.patch("urllib.request.urlopen", urlopen_mock):
+        with _patch_urlopen(urlopen_mock):
             routes_sr_draft._serve_sr_draft_apply_post(h, self._full_payload())
         self.assertEqual(captured["code"], 200)
         body = json.loads(captured["body"])
@@ -115,7 +134,7 @@ class TestApplyRoute(unittest.TestCase):
         h, captured = self._handler()
         payload = self._full_payload()
         payload["item_ids"] = []
-        with mock.patch("urllib.request.urlopen") as urlopen_mock:
+        with _patch_urlopen() as urlopen_mock:
             urlopen_mock.return_value.__enter__ = mock.MagicMock(
                 return_value=mock.MagicMock(read=lambda: b'{"ok":true}')
             )
@@ -132,7 +151,7 @@ class TestApplyRoute(unittest.TestCase):
         payload = self._full_payload()
         payload["runes"] = {"keystone": "Bogus", "primary": "Precision",
                             "secondary": "Domination"}
-        with mock.patch("urllib.request.urlopen") as urlopen_mock:
+        with _patch_urlopen() as urlopen_mock:
             urlopen_mock.return_value.__enter__ = mock.MagicMock(
                 return_value=mock.MagicMock(read=lambda: b'{"ok":true}')
             )
@@ -150,7 +169,7 @@ class TestApplyRoute(unittest.TestCase):
         payload["push_runes"] = False
         payload["push_items"] = False
         # Only summoners should fire.
-        with mock.patch("urllib.request.urlopen") as urlopen_mock:
+        with _patch_urlopen() as urlopen_mock:
             urlopen_mock.return_value.__enter__ = mock.MagicMock(
                 return_value=mock.MagicMock(read=lambda: b'{"ok":true}')
             )
@@ -164,7 +183,7 @@ class TestApplyRoute(unittest.TestCase):
         h, captured = self._handler()
         payload = self._full_payload()
         payload["summoner_spells"] = ["bogus"]
-        with mock.patch("urllib.request.urlopen") as urlopen_mock:
+        with _patch_urlopen() as urlopen_mock:
             urlopen_mock.return_value.__enter__ = mock.MagicMock(
                 return_value=mock.MagicMock(read=lambda: b'{"ok":true}')
             )
@@ -176,7 +195,7 @@ class TestApplyRoute(unittest.TestCase):
     def test_response_echoes_kind_and_label(self):
         from dashboard import routes_sr_draft
         h, captured = self._handler()
-        with mock.patch("urllib.request.urlopen") as urlopen_mock:
+        with _patch_urlopen() as urlopen_mock:
             urlopen_mock.return_value.__enter__ = mock.MagicMock(
                 return_value=mock.MagicMock(read=lambda: b'{"ok":true}')
             )
