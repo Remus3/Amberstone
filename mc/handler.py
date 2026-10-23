@@ -44,6 +44,15 @@ log = logging.getLogger("rc.mc.handler")
 _MAX_POST_BYTES = 1 * 1024 * 1024
 
 
+def _peer(h) -> str:
+    """The client address for a log line, or '?' when ``h`` has none (the
+    fake-request tests drive ``do_POST`` on a bare object)."""
+    try:
+        return h.address_string()
+    except (AttributeError, IndexError, TypeError):
+        return "?"
+
+
 class Handler(HostAllowlistMixin, HeadDeadlineMixin, BaseHTTPRequestHandler):
     server_version = "RCMissionControl/1.0"
     # RM-819: the shared RM-759 Host gate (core/http_host_gate.py - core,
@@ -108,7 +117,10 @@ class Handler(HostAllowlistMixin, HeadDeadlineMixin, BaseHTTPRequestHandler):
                     return
             self._send_json(404, {"ok": False, "error": "not found"})
         except Exception as exc:  # noqa: BLE001 - never take the server down
-            log.warning("do_GET %s: %s", self.path, exc)
+            # RM-811: the request target and the exception text are the
+            # client's (RM-321 class), so both are scrubbed.
+            log.warning("do_GET %s: %s", scrub_log(self.path),
+                        scrub_log(str(exc)))
             self._send_json(500, {"ok": False, "error": "internal error"})
 
     def do_POST(self) -> None:
@@ -143,7 +155,14 @@ class Handler(HostAllowlistMixin, HeadDeadlineMixin, BaseHTTPRequestHandler):
             try:
                 payload = (json.loads(raw.decode("utf-8", errors="replace"))
                            if raw else {})
-            except (ValueError, RecursionError):
+            except (ValueError, RecursionError) as exc:
+                # RM-811: this 400 used to log nothing, so a client sending
+                # garbage to the control plane left no trace. Only a caller
+                # past the bearer check reaches it, so one line per request
+                # cannot be driven by a stranger. The reply stays fixed.
+                log.warning("do_POST %s from %s: invalid JSON body (%s: %s) "
+                            "refused (400)", scrub_log(self.path), _peer(self),
+                            type(exc).__name__, scrub_log(str(exc)))
                 self._send_json(400, {"ok": False, "error": "invalid json"})
                 return
             for matcher, handler in routes.POST_ROUTES:
@@ -151,8 +170,15 @@ class Handler(HostAllowlistMixin, HeadDeadlineMixin, BaseHTTPRequestHandler):
                     handler(self, payload)
                     return
             self._send_json(404, {"ok": False, "error": "not found"})
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as exc:
+            # A route's own JSON parse; logged like the body parse (RM-811).
+            log.warning("do_POST %s from %s: invalid JSON in a route (%s) "
+                        "refused (400)", scrub_log(self.path), _peer(self),
+                        scrub_log(str(exc)))
             self._send_json(400, {"ok": False, "error": "invalid json"})
         except Exception as exc:  # noqa: BLE001 - never take the server down
-            log.warning("do_POST %s: %s", self.path, exc)
+            # RM-811: the request target and the exception text are the
+            # client's (RM-321 class), so both are scrubbed.
+            log.warning("do_POST %s: %s", scrub_log(self.path),
+                        scrub_log(str(exc)))
             self._send_json(500, {"ok": False, "error": "internal error"})

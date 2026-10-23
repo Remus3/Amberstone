@@ -138,14 +138,54 @@ const TOOLS = [{
 
 const rl = readline.createInterface({ input: process.stdin, terminal: false });
 const send = obj => process.stdout.write(JSON.stringify(obj) + '\n');
+const rpcError = (id, code, message) =>
+  send({ jsonrpc: '2.0', id, error: { code, message } });
+
+// RM-811: control characters escaped before any client-derived text reaches
+// stderr (the RM-321 log-injection class), the core/log_scrub.py mapping.
+const scrubLog = text => String(text).replace(
+  /[\x00-\x1f\x7f-\x9f\\]/g,
+  ch => (ch === '\\' ? '\\\\' : '\\x' + ch.charCodeAt(0).toString(16).padStart(2, '0')));
+
+const isObject = v => v !== null && typeof v === 'object' && !Array.isArray(v);
 
 rl.on('line', async (raw) => {
+  // RM-811: one bad line must never end the server. A JSON `null` line threw
+  // on the destructure below inside this async handler - an unhandled
+  // rejection, so Node exited 1 and the MCP client lost the server.
+  let id = null;
+  try {
+    await handleLine(raw, rid => { id = rid; });
+  } catch (e) {
+    process.stderr.write(`usage-mcp: internal error: ${scrubLog(e && e.message)}\n`);
+    if (id !== null && id !== undefined) rpcError(id, -32603, 'Internal error');
+  }
+});
+
+async function handleLine(raw, noteId) {
   const line = raw.trim();
   if (!line) return;
   let msg;
-  try { msg = JSON.parse(line); } catch { return; }
+  // RM-811: JSON-RPC 2.0 answers a parse error and an invalid request (any
+  // JSON that is not an object; batches are not supported) with id null,
+  // rather than dropping the line with no reply.
+  try { msg = JSON.parse(line); } catch {
+    rpcError(null, -32700, 'Parse error');
+    return;
+  }
+  if (!isObject(msg)) {
+    rpcError(null, -32600, 'Invalid Request');
+    return;
+  }
 
   const { id, method, params } = msg;
+  noteId(id);
+
+  // RM-811 (the RM-769 shape): the method must be a string.
+  if (typeof method !== 'string') {
+    rpcError(id === undefined ? null : id, -32600, 'Invalid Request');
+    return;
+  }
 
   if (method === 'initialize') {
     send({ jsonrpc: '2.0', id, result: {
@@ -160,6 +200,12 @@ rl.on('line', async (raw) => {
   } else if (method === 'tools/list') {
     send({ jsonrpc: '2.0', id, result: { tools: TOOLS } });
   } else if (method === 'tools/call') {
+    // RM-811: params, when present, is an object (JSON-RPC 2.0 4.2; named
+    // params): anything else is -32602, not a "Unknown tool" result.
+    if (params !== undefined && params !== null && !isObject(params)) {
+      if (id !== undefined) rpcError(id, -32602, 'Invalid params');
+      return;
+    }
     const name = params?.name;
     const args = params?.arguments || {};
     try {
@@ -176,4 +222,4 @@ rl.on('line', async (raw) => {
   } else if (id !== undefined) {
     send({ jsonrpc: '2.0', id, error: { code: -32601, message: `Method not found: ${method}` } });
   }
-});
+}

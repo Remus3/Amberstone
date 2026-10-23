@@ -735,7 +735,8 @@ class _Handler(HostAllowlistMixin, http.server.BaseHTTPRequestHandler):
         try:
             req = json.loads(raw.decode("utf-8")) if raw else {}
         except (ValueError, RecursionError) as e:
-            log.warning("parse error: %s: %s", type(e).__name__, e)
+            log.warning("parse error: %s: %s", type(e).__name__,
+                        scrub_log(str(e)))
             self._send_jsonrpc(None, error=(-32700, "Parse error"))
             return
         if not isinstance(req, dict):
@@ -744,7 +745,13 @@ class _Handler(HostAllowlistMixin, http.server.BaseHTTPRequestHandler):
         is_notification = "id" not in req
         method = req.get("method", "")
         rid = req.get("id")
-        params = req.get("params", {}) or {}
+        # RM-811: an omitted or null params is the empty object; anything
+        # else that is not an object is checked below (-32602). The old
+        # `or {}` turned [] / 0 / "" into {} and let "x" / [1] / 5 reach a
+        # handler's params.get(), which raised and answered -32603.
+        params = req.get("params")
+        if params is None:
+            params = {}
         # RM-769: JSON-RPC 2.0 requires a string `method`. A list or dict is
         # unhashable, so METHOD_HANDLERS.get() below raised TypeError out of
         # do_POST and dropped the connection with no reply. Checked BEFORE the
@@ -754,18 +761,28 @@ class _Handler(HostAllowlistMixin, http.server.BaseHTTPRequestHandler):
             self._send_jsonrpc(rid, error=(-32600, "Invalid Request"))
             return
         if is_notification:
-            log.info("notification: %s", method)
+            # RM-811: the method is the client's text (RM-321 class).
+            log.info("notification: %s", scrub_log(method))
             self._send(202, b"")
             return
         handler = METHOD_HANDLERS.get(method)
         if not handler:
             self._send_jsonrpc(rid, error=(-32601, f"method not found: {method}"))
             return
+        # RM-811: JSON-RPC 2.0 section 4.2 - params, when present, is a
+        # structured value, and every method here takes named params, so a
+        # non-object is -32602 Invalid params (it used to raise inside the
+        # handler and answer -32603 Internal error).
+        if not isinstance(params, dict):
+            self._send_jsonrpc(rid, error=(-32602, "Invalid params"))
+            return
         try:
             result = handler(params)
         except Exception as e:  # noqa: BLE001
             # RM-760a: the exception text stays in the log, not the reply.
-            log.warning("handler %s raised: %s: %s", method, type(e).__name__, e)
+            # RM-811: scrubbed - it can carry the client's own text.
+            log.warning("handler %s raised: %s: %s", scrub_log(method),
+                        type(e).__name__, scrub_log(str(e)))
             self._send_jsonrpc(rid, error=(-32603, "Internal error"))
             return
         self._send_jsonrpc(rid, result=result)
