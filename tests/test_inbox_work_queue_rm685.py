@@ -61,7 +61,7 @@ def _record(**over):
     rec = {
         "schema": tick_mod.AGREEMENT_SCHEMA,
         "counterparties": ["CS", "EW", "LW", "MAIN", "RSC", "SS"],
-        "main": {"code": "MAIN", "outbox": "X:/main/moon_sync_outbox"},
+        "main": {"code": "MAIN", "outbox": "X:/example-supervisor/moon_sync_outbox"},
         "budget": "kit",
         "expires": "2026-11-01T00:00:00",
         "authored_by": "operator",

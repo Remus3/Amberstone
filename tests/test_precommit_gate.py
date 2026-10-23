@@ -81,7 +81,7 @@ class TestRootFromCommand:
 
     def test_chain_takes_commit_segment(self):
         # -C on the commit segment wins even when earlier segments differ.
-        cmd = 'git -C "C:/main" add f; git -C "C:/wt" commit -m "y"'
+        cmd = 'git -C "C:/repo" add f; git -C "C:/wt" commit -m "y"'
         assert G._root_from_command(cmd) == "C:/wt"
 
 
