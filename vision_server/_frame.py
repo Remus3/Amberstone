@@ -368,7 +368,10 @@ def handle_upload_frame(body: bytes) -> dict:
     t0 = time.time()
     try:
         d = json.loads(body)
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001
+        # RM-771 sibling: this refusal logged nothing; _relay's two upload
+        # refusals already log the parser's detail. Never echoed to the client.
+        log.warning("upload-frame: bad JSON body: %s: %s", type(e).__name__, e)
         _record("frame_upload", int((time.time() - t0) * 1000), ok=False)
         return {"error": "bad_json"}
     # AUDIT 2026-08-30 (lane 8 cycle 20, sibling of the _inference fix): the
