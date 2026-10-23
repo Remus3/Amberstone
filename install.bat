@@ -70,21 +70,40 @@ set PIP_LOG=%~dp0logs\_pip_install.tmp
 :: either file has the command), resolved for Python 3.11 (python-embed) up
 :: to 3.14. Every line carries --hash, so pip runs in hash-checking mode and
 :: refuses any package file whose sha256 is not listed.
+::
+:: Option B ships its packages pre-installed in python-embed, but a bundle can
+:: lag the lock (RM-764 measured anthropic 0.94.1 there against the 1.11.0
+:: pin) and an import check passes on ANY importable version. So pip itself
+:: compares the installed versions with every pin first, offline: RC_PIP_CMP
+:: (--dry-run --no-index) exits 0 only when every pin that applies to this
+:: interpreter is installed at exactly that version. On any difference the
+:: hashed lock is installed, then compared again; a runtime still behind the
+:: pins (offline) gets a WARN and keeps its pip log, and the import check
+:: below decides the step. Inside a ( ... ) block errorlevel is read as
+:: !errorlevel!: %errorlevel% there expands once, when the whole block is
+:: parsed, before any command in it runs.
+set RC_PIP_CMP=--dry-run --no-index --quiet --disable-pip-version-check
+set RC_PIP_KEEP=
 
 if "%OPTION_B%"=="1" (
-    :: Option B: packages are pre-installed in embedded runtime
-    "%EMBED_PY%" -c "import anthropic, PIL" >nul 2>&1
-    if %errorlevel% neq 0 (
-        echo  [INFO]  Packages missing from embedded runtime, installing...
+    "%EMBED_PY%" -m pip install -r "%~dp0requirements.txt" %RC_PIP_CMP% >nul 2>&1
+    if !errorlevel! neq 0 (
+        echo  [INFO]  Embedded runtime differs from the requirements.txt pins, installing...
         "%EMBED_PY%" -m pip install -r "%~dp0requirements.txt" --quiet >"%PIP_LOG%" 2>&1
+        "%EMBED_PY%" -m pip install -r "%~dp0requirements.txt" %RC_PIP_CMP% >nul 2>&1
+        if !errorlevel! neq 0 (
+            set RC_PIP_KEEP=1
+            echo  [WARN]  Embedded runtime still differs from the requirements.txt pins - see logs\_pip_install.tmp
+            echo  [WARN]  Step 2 - embedded runtime still differs from the requirements.txt pins >> "%LOG_FILE%"
+        )
     )
     "%EMBED_PY%" -c "import anthropic, PIL" >nul 2>&1
-    set IMPORT_EC=%errorlevel%
+    set IMPORT_EC=!errorlevel!
 ) else (
     python -m pip install --upgrade pip --quiet >nul 2>&1
     python -m pip install -r "%~dp0requirements.txt" --quiet >"%PIP_LOG%" 2>&1
     python -c "import anthropic, PIL" >nul 2>&1
-    set IMPORT_EC=%errorlevel%
+    set IMPORT_EC=!errorlevel!
 )
 
 if %IMPORT_EC% neq 0 (
@@ -109,7 +128,7 @@ if %IMPORT_EC% neq 0 (
 
 echo  [OK]   anthropic and Pillow installed and verified
 echo  [OK]   Step 2 - anthropic + Pillow installed >> "%LOG_FILE%"
-if exist "%PIP_LOG%" del "%PIP_LOG%" 2>nul
+if not defined RC_PIP_KEEP if exist "%PIP_LOG%" del "%PIP_LOG%" 2>nul
 
 :: 
 :: STEP 3 -- API Key
