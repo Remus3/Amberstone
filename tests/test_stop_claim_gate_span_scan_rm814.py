@@ -22,6 +22,7 @@ without the split ambiguity. Proofs at the two classes; the differential below
 pins every `search` against the PRIOR plain regexes.
 """
 
+import functools
 import itertools
 import random
 import re
@@ -47,8 +48,13 @@ OLD = {
 }
 NAMES = sorted(OLD)
 
-# Run in a child with a hard timeout: before the fix the worst shape takes 5 s
-# at the cap and 20 s at twice the cap.
+# Timing is a BACKSTOP only; the bounds that decide are the deterministic
+# counts below (authority tries, separator parses). Run in a child with a hard
+# timeout; each shape keeps the MIN of REPEATS samples, so a descheduled sample
+# on a loaded box (one read 0.326 s under 48 burners on 16 CPUs, idle 2-3 ms)
+# cannot fail it. Before the fix the worst shape took 5 s at the cap and 20 s
+# at twice the cap, so the generous bounds still catch the residue.
+REPEATS = 5
 _PROBE = r"""
 import sys, time
 sys.path.insert(0, sys.argv[1])
@@ -70,17 +76,20 @@ shapes = [
 ]
 worst, where = 0.0, ""
 for name, text in shapes:
-    start = time.perf_counter()
-    getattr(gate, name).search(text)
-    elapsed = time.perf_counter() - start
-    if elapsed > worst:
-        worst, where = elapsed, "%s %r" % (name, text[:16])
+    best = None
+    for _ in range(int(sys.argv[3])):
+        start = time.perf_counter()
+        getattr(gate, name).search(text)
+        elapsed = time.perf_counter() - start
+        best = elapsed if best is None else min(best, elapsed)
+    if best > worst:
+        worst, where = best, "%s %r" % (name, text[:16])
 print(round(worst, 3), where)
 """
 
 
 def _probe(scale):
-    run = subprocess.run([sys.executable, "-c", _PROBE, str(REPO), str(scale)],
+    run = subprocess.run([sys.executable, "-c", _PROBE, str(REPO), str(scale), str(REPEATS)],
                          capture_output=True, text=True, timeout=600, cwd=str(REPO))
     assert run.returncode == 0, run.stderr[-2000:]
     worst, _, where = run.stdout.strip().partition(" ")
@@ -89,13 +98,13 @@ def _probe(scale):
 
 def test_the_main_thread_patterns_are_fast_at_command_parse_max():
     worst, where = _probe(1)
-    assert worst < 0.25, (worst, where)
+    assert worst < 1.0, (worst, where)
 
 
 def test_the_main_thread_patterns_stay_fast_at_twice_the_cap():
     # audit() / collect_evidence() run these on every main command, uncapped.
     worst, where = _probe(2)
-    assert worst < 0.5, (worst, where)
+    assert worst < 2.0, (worst, where)
 
 
 def test_each_pattern_is_a_scan():
@@ -143,6 +152,61 @@ def test_unused_bindings_cost_no_authority_try(monkeypatch):
     assert _tries(monkeypatch, "EV_CI_VAR", binds) == (0, None)
     tries, match = _tries(monkeypatch, "EV_CI_VAR", binds + " $a1999 run")
     assert tries == 1 and match.group("name") == "a1999"
+
+
+def test_a_whitespace_run_after_a_bound_name_costs_at_most_one_try(monkeypatch):
+    """The shape that took 5 s at the cap. With no real use the run never
+    reaches the regex; with a later use it is read by ONE try, whose
+    separator then has one parse per prefix (next test), so the try is linear."""
+    run = " " * 20000
+    for sep in ("", ","):
+        lead = 'GH="gh" $GH' + sep + run + "x"
+        assert _tries(monkeypatch, "EV_CI_VAR", lead) == (0, None), repr(sep)
+        tries, match = _tries(monkeypatch, "EV_CI_VAR", lead + " $GH run")
+        assert tries == 1 and match.span() == (0, len(lead) + 8), repr(sep)
+
+
+# The separator as alternatives of atoms (the old one for contrast). Each
+# parse is a split of the word into slices that fullmatch their atoms, checked
+# by the engine; a failing tail attempt explores every parse of every prefix.
+_NEW_SEP = [[r"\s*", ",", r"\s*"], [r"\s", r"\s*"]]  # (?:\s*,|\s)\s*
+_OLD_SEP = [[r"\s*", r"[,\s]", r"\s*"]]  # \s*[,\s]\s*
+
+
+def _parses(alternatives, word):
+    total = 0
+    for atoms in alternatives:
+        compiled = [re.compile(atom) for atom in atoms]
+
+        @functools.cache
+        def ways(i, k, compiled=compiled):
+            if k == len(compiled):
+                return int(i == len(word))
+            return sum(ways(j, k + 1) for j in range(i, len(word) + 1)
+                       if compiled[k].fullmatch(word, i, j))
+        total += ways(0, 0)
+    return total
+
+
+def test_the_ci_var_separator_has_one_parse():
+    """Deterministic operation bound for the whitespace tail: at most ONE parse
+    of any whitespace / comma word (the old separator had one per whitespace
+    char, so a failing attempt on a run of w explored about w * w / 2)."""
+    assert gate._CI_VAR_SEP == r"(?:\s*,|\s)\s*"
+    assert gate._CI_VAR_SEP in gate.EV_CI_VAR.pattern
+    sep, old = re.compile(gate._CI_VAR_SEP), re.compile(r"\s*[,\s]\s*")
+    checked = 0
+    for length in range(7):
+        for chars in itertools.product(" \t,x", repeat=length):
+            word = "".join(chars)
+            new_parses, old_parses = _parses(_NEW_SEP, word), _parses(_OLD_SEP, word)
+            assert (new_parses > 0) == bool(sep.fullmatch(word)), repr(word)
+            assert (old_parses > 0) == bool(old.fullmatch(word)), repr(word)
+            assert new_parses <= 1, (repr(word), new_parses)
+            checked += 1
+    assert checked == sum(4 ** n for n in range(7))
+    assert _parses(_OLD_SEP, " " * 12) == 12, "the counter does see the old split"
+    assert _parses(_NEW_SEP, " " * 12) == 1
 
 
 def test_hand_checked_cases_match_the_prior_regexes():

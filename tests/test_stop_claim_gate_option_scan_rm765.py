@@ -1,5 +1,6 @@
 """RM-765: the git-option patterns kept a QUADRATIC residue after the s118
-exponential fix (LEDGER 1728).
+exponential fix (LEDGER 1728). RM-814 follow-up: the decision is a
+deterministic work count; wall-clock is a min-of-N backstop only.
 
 Re-measured at adbd2c93f (seconds per pattern, worst of the ten _GIT_OPTIONS
 patterns): `git -c git -c git ...` 0.08 / 0.31 / 1.31 at 5k / 10k / 20k
@@ -31,35 +32,46 @@ NAMES = ["EV_COMMIT_CREATING", "_EV_PUSH", "_EV_GIT_MERGE", "_EV_FETCH", "_EV_AN
          "_EV_GIT_COMMIT_MAKER"]
 MAIN_THREAD = ["EV_COMMIT_CREATING", "_EV_PUSH", "_EV_GIT_MERGE"]
 
-# Run in a child with a hard timeout: before the fix these take seconds each.
+SHAPES = [("git", " -c git"), ("git", " --git"), ("git", " -c x.git"), ("git", " --x=git"),
+          ("git.exe", " -C git.exe"), ("GIT", " -c GIT"), ("git", " -c -c git")]
+
+# Timing is a BACKSTOP only (RM-814 follow-up); the bound that decides is the
+# deterministic work count below. Run in a child with a hard timeout; each
+# case keeps the MIN of REPEATS samples so a descheduled sample on a loaded box
+# cannot fail it. Before the fix the worst case took 1.3-2.1 s at the cap, so
+# the generous bounds still catch the residue at twice the cap.
+REPEATS = 5
 _PROBE = r"""
-import sys, time
+import ast, sys, time
 sys.path.insert(0, sys.argv[1])
 from tools import stop_claim_gate as gate
 names = sys.argv[2].split(",")
 size = int(float(sys.argv[3]) * gate.COMMAND_PARSE_MAX)
-shapes = [("git", " -c git"), ("git", " --git"), ("git", " -c x.git"), ("git", " --x=git"),
-          ("git.exe", " -C git.exe"), ("GIT", " -c GIT"), ("git", " -c -c git")]
+repeats = int(sys.argv[4])
+shapes = ast.literal_eval(sys.argv[5])
 worst, where = 0.0, ""
 for prefix, unit in shapes:
     text = prefix + unit * ((size - len(prefix)) // len(unit))
     for name in names:
         for call in ("finditer", "search"):
-            start = time.perf_counter()
-            result = getattr(gate, name).finditer(text) if call == "finditer" else None
-            if result is not None:
-                list(result)
-            else:
-                getattr(gate, name).search(text)
-            elapsed = time.perf_counter() - start
-            if elapsed > worst:
-                worst, where = elapsed, f"{name}.{call} {prefix + unit!r}"
+            best = None
+            for _ in range(repeats):
+                start = time.perf_counter()
+                if call == "finditer":
+                    list(getattr(gate, name).finditer(text))
+                else:
+                    getattr(gate, name).search(text)
+                elapsed = time.perf_counter() - start
+                best = elapsed if best is None else min(best, elapsed)
+            if best > worst:
+                worst, where = best, f"{name}.{call} {prefix + unit!r}"
 print(round(worst, 3), where)
 """
 
 
 def _probe(names, scale):
-    run = subprocess.run([sys.executable, "-c", _PROBE, str(REPO), ",".join(names), str(scale)],
+    run = subprocess.run([sys.executable, "-c", _PROBE, str(REPO), ",".join(names), str(scale),
+                          str(REPEATS), repr(SHAPES)],
                          capture_output=True, text=True, timeout=300, cwd=str(REPO))
     assert run.returncode == 0, run.stderr[-2000:]
     worst, _, where = run.stdout.strip().partition(" ")
@@ -68,13 +80,58 @@ def _probe(names, scale):
 
 def test_dead_option_runs_at_command_parse_max_are_fast():
     worst, where = _probe(NAMES, 1)
-    assert worst < 0.25, (worst, where)
+    assert worst < 1.0, (worst, where)
 
 
 def test_the_uncapped_main_thread_patterns_stay_fast_past_the_cap():
     # audit() runs these three on every main-thread command with no length cap.
     worst, where = _probe(MAIN_THREAD, 2)
-    assert worst < 0.5, (worst, where)
+    assert worst < 2.0, (worst, where)
+
+
+def _try_cost(scan, text, start):
+    """Upper bound on what one failed try at START reads: its head, then the
+    readable option run after it (the loop cannot advance past that run, and
+    the s118 rewrite made each step unambiguous). A head ending inside a word
+    costs just the head (the loop needs whitespace first)."""
+    head_end = scan._head.match(text, start).end()
+    return max(gate._option_run_end(text, head_end), head_end) - start
+
+
+def test_a_dead_option_run_is_read_once(monkeypatch):
+    """Deterministic work bound: summed over the tries the scan makes, the
+    reading cost stays within twice the text, where trying every head (the
+    plain regex) costs about n * n / (2 * unit)."""
+    text_size = gate.COMMAND_PARSE_MAX
+    for prefix, unit in SHAPES:
+        text = prefix + unit * ((text_size - len(prefix)) // len(unit))
+        for name in NAMES:
+            scan = getattr(gate, name)
+            starts = []
+            real = scan.regex
+
+            class _Counting:
+                def match(self, s, pos=0, _real=real, _starts=starts):
+                    _starts.append(pos)
+                    return _real.match(s, pos)
+
+                def __getattr__(self, attr, _real=real):
+                    return getattr(_real, attr)
+
+            monkeypatch.setattr(scan, "regex", _Counting())
+            for call in ("finditer", "search"):
+                starts.clear()
+                if call == "finditer":
+                    list(scan.finditer(text))
+                else:
+                    scan.search(text)
+                work = sum(_try_cost(scan, text, s) for s in starts)
+                assert work <= 2 * len(text), (name, call, prefix + unit, len(starts), work)
+            monkeypatch.setattr(scan, "regex", real)
+    scan = gate._EV_PUSH
+    text = "git" + " -c git" * ((text_size - 3) // 7)
+    every_head = sum(_try_cost(scan, text, m.start()) for m in scan._head.finditer(text))
+    assert every_head > 100 * len(text), "the cost model does see the plain regex's residue"
 
 
 def test_every_option_pattern_uses_the_scan():

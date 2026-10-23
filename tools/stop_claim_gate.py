@@ -774,7 +774,10 @@ EV_CI = _SpanScan(re.compile(r"\bgh(?:\.exe)?\b[^|&\n]*?\b(?:run|pr|api|workflow
 # whose match is then the answer (one try, linear on the rewritten tail).
 # Pinned against the prior plain regex by tests/test_stop_claim_gate_span_scan_rm814.py.
 _CI_VAR_BIND = r"(?P<name>\b\w+)\s*=\s*r?[\"'][^\"'\n]*\bgh(?:\.exe)?[\"']"
-_CI_VAR_USE = r"[\$\{\"'\[,\s]NAME[\}\"']?(?:\s*,|\s)\s*[\"']?(?:run|pr|api|workflow)\b"
+# The separator between a use's name and its subcommand: one parse of any
+# whitespace / comma word (the old `\s*[,\s]\s*` had one per whitespace char).
+_CI_VAR_SEP = r"(?:\s*,|\s)\s*"
+_CI_VAR_USE = r"[\$\{\"'\[,\s]NAME[\}\"']?" + _CI_VAR_SEP + r"[\"']?(?:run|pr|api|workflow)\b"
 
 
 def _fold(word):
