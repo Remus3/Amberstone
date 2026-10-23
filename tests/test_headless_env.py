@@ -260,6 +260,8 @@ KIT_ROUTED = {
     "ops/loop/drain_waves_2_3.py",
     "ops/loop/executor.py",
     "ops/loop/repo_review.py",
+    # RM-795: the CLI re-pin canary (four controls, stream-json via log_path=)
+    "tools/repin_subagent_cli.py",
 }
 # KIT_ROUTED files that also start a NON-claude child (git / gh) hidden, so
 # CREATE_NO_WINDOW in them is not a second claude launcher. Reason per file.
