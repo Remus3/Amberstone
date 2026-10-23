@@ -292,7 +292,11 @@ class _DualProtocolHTTPServer(_DualStackMixin, _GuardedThreadStartMixin,
             path = _redirect_path(req[1][:512])
         for h in lines[1:]:
             if h.lower().startswith(b"host:"):
-                host = _redirect_host(h.split(b":", 1)[1]) or host
+                # RM-772: a name the RM-759 allowlist refuses is never
+                # echoed; the redirect falls back to the loopback default.
+                candidate = _redirect_host(h.split(b":", 1)[1])
+                if candidate and _redirect_host_allowed(candidate):
+                    host = candidate
                 break
         location = f"https://{host}:{PORT}{path}"
         link = html.escape(location, quote=True).encode("ascii")
@@ -357,6 +361,26 @@ def _redirect_host(value: bytes) -> str | None:
     if not _REDIRECT_PORT.fullmatch(port):
         return None
     return host
+
+
+def _redirect_host_allowed(host: str) -> bool:
+    """True when the 301 may name ``host`` (a ``_redirect_host`` result).
+
+    RM-772: the shape check alone let ANY well-formed name through, so a name
+    this machine does not answer to was redirected to itself (measured live:
+    ``Host: rebind.example`` -> ``Location: https://rebind.example:8888/``).
+    The redirect now applies the HTTPS handler's own RM-759 allowlist -
+    loopback, any IP literal, this machine's configured names - read the
+    same way (``host_header_hostname`` then ``is_allowed_host``). Any failure
+    refuses, so the caller keeps its loopback default.
+    """
+    try:
+        # Deferred like start_dashboard's Handler import: dashboard._handler
+        # pulls in the route dispatch, which a socket-layer import need not.
+        from dashboard._handler import host_header_hostname, is_allowed_host
+        return is_allowed_host(host_header_hostname(host))
+    except Exception:  # noqa: BLE001 - fail closed to the loopback default
+        return False
 
 
 def _redirect_path(target: bytes) -> str:
