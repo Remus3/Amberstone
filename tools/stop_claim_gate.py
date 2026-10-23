@@ -494,9 +494,88 @@ _GIT_OPTIONS = (r"(?:\s+-[Cc]\s+\S+"
                 r"|\s+-(?![Cc](?!\S))[\w-]+(?:=\S+)?"
                 r"|\s+-[Cc]\s+-[Cc]\s+(?!-[\w-]+(?:=\S+)?(?!\S))\S+"
                 r")*(?:\s+-[Cc])?")
-EV_COMMIT_CREATING = re.compile(
+
+# RM-765 (2026-10-23): the rewrite above left a QUADRATIC residue. finditer and
+# search re-try a pattern at EVERY `git` word, and a failed try re-reads the
+# whole option run after it, so a run holding k `git` words (`git -c git -c git
+# ... x`) costs k runs. Re-measured at adbd2c93f: 1.3 s per pattern at 20k
+# characters (` --git`: 2.1 s), four times the time for twice the input, and
+# the main-thread audit runs three of these on every command with NO length cap.
+#
+# _OptionScan keeps each regex as the ONLY authority for a match and skips just
+# the starts a failed try proves dead. PROOF. Read the text as whitespace-split
+# words. Every loop branch, the trailing `-c` and the subcommand tail begin with
+# \s+, so a boundary inside a word is a dead end. At word level the loop reads
+# OPTION words (-[\w-]+(?:=\S+)? whole, -c / -C included) and `-c ANYWORD`, so a
+# word run is readable iff each non-option word directly follows a -c / -C word
+# (_option_run_end), and a readable run that does not end in -c / -C is a loop-
+# iteration boundary: cover each block of m `-c` words with m // 2 `-c -c`
+# pairs, then `-c W`, `-c -c W` (W no option word) or the option word W itself.
+# Now let the try at start s fail, its run readable up to E. A later start t
+# whose `git` / `git.exe` word ends at e <= E begins its loop at e: the very
+# state (inside the loop, at e) the try at s could reach, with the same pattern
+# left to match - no capture group before the loop, no lookbehind into it - so
+# the try at t fails too and is skipped. A start ending inside a word fails at
+# once and is simply tried. Each run is read by one failed try: linear. Pinned
+# against the plain regexes by tests/test_stop_claim_gate_option_scan_rm765.py.
+_SCAN_WORD = re.compile(r"\S+")
+_SCAN_WORD_END = re.compile(r"\s|\Z")
+_SCAN_OPTION_WORD = re.compile(r"-[\w-]+(?:=\S+)?")
+
+
+def _option_run_end(text, pos):
+    """End of the longest readable word run after POS (see _OptionScan)."""
+    end, after_dash_c = pos, False
+    for word in _SCAN_WORD.finditer(text, pos):
+        token = word.group()
+        if not (after_dash_c or _SCAN_OPTION_WORD.fullmatch(token)):
+            break
+        end, after_dash_c = word.end(), token in ("-c", "-C")
+    return end
+
+
+class _OptionScan:
+    """A compiled _GIT_OPTIONS pattern whose finditer / search skip the starts
+    a failed try proved dead (RM-765, proof above). Their results equal the
+    plain regex's; every other attribute is the regex's own."""
+
+    def __init__(self, regex):
+        head, found, _tail = regex.pattern.partition(_GIT_OPTIONS)
+        if not found:
+            raise ValueError("not a _GIT_OPTIONS pattern")
+        self.regex = regex
+        self._head = re.compile(head, regex.flags)
+
+    def __getattr__(self, name):
+        # Reached only for names this class lacks; never for dunders or
+        # `regex`, so a copy / pickle probe cannot recurse before __init__.
+        if name.startswith("__") or name == "regex":
+            raise AttributeError(name)
+        return getattr(self.regex, name)
+
+    def finditer(self, text):
+        resume, dead = 0, -1
+        for head in self._head.finditer(text):
+            start, stop = head.span()
+            if start < resume:
+                continue
+            at_word_end = _SCAN_WORD_END.match(text, stop) is not None
+            if at_word_end and stop <= dead:
+                continue
+            match = self.regex.match(text, start)
+            if match is not None:
+                yield match
+                resume = match.end()
+            elif at_word_end:
+                dead = _option_run_end(text, stop)
+
+    def search(self, text):
+        return next(self.finditer(text), None)
+
+
+EV_COMMIT_CREATING = _OptionScan(re.compile(
     r"\bgit\b" + _GIT_OPTIONS + r"\s+"
-    r"(cherry-pick|revert|merge)\b([^|;&\n]*)", re.I)
+    r"(cherry-pick|revert|merge)\b([^|;&\n]*)", re.I))
 _NO_COMMIT_FLAG = re.compile(
     r"(?:^|\s)(?:--abort|--quit|--skip|--no-commit|--squash|--ff-only)(?=\s|$)")
 _PICK_NO_COMMIT_SHORT = re.compile(r"(?:^|\s)-n(?=\s|$)")
@@ -529,7 +608,7 @@ def _creates_commit(command):
 # The `git -c -c -c ...` exponential backtracking the round-4 verifier measured
 # here (2026-10-08, 6.1 s at ~20 repeats) is closed by _GIT_OPTIONS (above).
 _GIT_LEAD = r"\bgit(?:\.exe)?" + _GIT_OPTIONS + r"\s+"
-_EV_PUSH = re.compile(_GIT_LEAD + r"push(?![\w.-])([^|;&\n]*)", re.I)
+_EV_PUSH = _OptionScan(re.compile(_GIT_LEAD + r"push(?![\w.-])([^|;&\n]*)", re.I))
 # The dry-run test is spelling-aware (RM-687 verifier, 2026-10-08: `-nv` and
 # `--dry` were credited as real pushes). git accepts a short-option BUNDLE
 # (`-nv`, `-vn`, `-fn`) and any unambiguous prefix of a long option (`--dr` up;
@@ -539,7 +618,7 @@ _EV_PUSH = re.compile(_GIT_LEAD + r"push(?![\w.-])([^|;&\n]*)", re.I)
 # quoted -o value is already blanked by strip_command_noise and the next token
 # may be the real flag. `--no-verify` is a long option and never reads as -n.
 _PUSH_DRY_LONG = re.compile(r"--dr(?:y(?:-(?:r(?:u(?:n)?)?)?)?)?")
-_EV_GIT_MERGE = re.compile(_GIT_LEAD + r"merge(?![\w.-])([^|;&\n]*)", re.I)
+_EV_GIT_MERGE = _OptionScan(re.compile(_GIT_LEAD + r"merge(?![\w.-])([^|;&\n]*)", re.I))
 _MERGE_NO_OP = re.compile(r"(?:^|\s)(?:--abort|--quit)(?=\s|$)")
 # `pr merge` is matched without the binary because RC invokes gh through a
 # variable ("$GH" pr merge) - see EV_CI below.
@@ -1335,8 +1414,8 @@ _PUSH_UP_TO_DATE = re.compile(r"^Everything up-to-date[ \t]*$")
 # Every positional argument of a fetch / pull / `remote update` is taken as a
 # remote name - a deliberate superset of "the first non-option argument", so a
 # separate option value (`--depth 3 upstream`) cannot hide the real remote.
-_EV_FETCH = re.compile(_GIT_LEAD + r"(fetch|pull|remote[ \t]+update)(?![\w.-])([^|;&\n]*)",
-                       re.I)
+_EV_FETCH = _OptionScan(re.compile(
+    _GIT_LEAD + r"(fetch|pull|remote[ \t]+update)(?![\w.-])([^|;&\n]*)", re.I))
 
 # Kind "ancestry": `git merge-base --is-ancestor <rev> <ref>` where <ref> is a
 # REMOTE-TRACKING ref, matched on a quote-MASKED copy of the command (same
@@ -1345,9 +1424,9 @@ _EV_FETCH = re.compile(_GIT_LEAD + r"(fetch|pull|remote[ \t]+update)(?![\w.-])([
 # follows it up to end-of-command or `&&` (and the result is not an error), or
 # the next statement echoes `$?` / `$LASTEXITCODE` and the output carries that
 # literal prefix followed by 0.
-_EV_ANCESTRY = re.compile(
+_EV_ANCESTRY = _OptionScan(re.compile(
     _GIT_LEAD + r"merge-base(?![\w.-])[ \t]+--is-ancestor[ \t]+"
-    r"(?P<rev>[^\s;&|<>()]+)[ \t]+(?P<ref>[^\s;&|<>()]+)", re.I)
+    r"(?P<rev>[^\s;&|<>()]+)[ \t]+(?P<ref>[^\s;&|<>()]+)", re.I))
 # The tail after the probe is walked by hand (_ancestry_tail), one redirection
 # token at a time: the old single regex put `[ \t]*` beside `\s*` and went
 # quadratic on a run of spaces (re-verifier, 2026-10-08).
@@ -1362,7 +1441,7 @@ _HAS_LETTER = re.compile(r"[A-Za-z]")
 # Kind "reflog": `git reflog` or `git log -g/--walk-reflogs` whose output dates
 # an `update by push` at or after the session start. Undated `@{N}` lines and
 # lines without a timezone never credit.
-_EV_REFLOG = re.compile(_GIT_LEAD + r"(reflog|log)(?![\w.-])([^|;&\n]*)", re.I)
+_EV_REFLOG = _OptionScan(re.compile(_GIT_LEAD + r"(reflog|log)(?![\w.-])([^|;&\n]*)", re.I))
 _REFLOG_WALK = re.compile(r"(?:^|\s)(?:-g|--walk-reflogs)(?=\s|$)")
 _REFLOG_PUSH = re.compile(
     r"@\{(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})[ \t]*([+-]\d{2}:?\d{2}|Z)\}: update by push")
@@ -1621,7 +1700,7 @@ def _merge_output_ok(stripped, output, errored):
 # strict: a conflicted merge later resolved and committed, and a `merge
 # --continue`. As in checks 6 and 10 the commit's repo is not placed.
 _MERGE_STAGED = re.compile(r"Automatic merge went well; stopped before committing as requested")
-_EV_GIT_RESET = re.compile(_GIT_LEAD + r"reset(?![\w.-])", re.I)
+_EV_GIT_RESET = _OptionScan(re.compile(_GIT_LEAD + r"reset(?![\w.-])", re.I))
 # DECISION (orchestrator, s117, after the verifier refuted the fifth narrowing
 # 6ca81b47c): `git reset` is deny-all, as before (f): ANY reset in a call
 # un-stages a staged merge, including the forms git measurably keeps
@@ -1650,9 +1729,10 @@ _EV_GIT_RESET = re.compile(_GIT_LEAD + r"reset(?![\w.-])", re.I)
 # is ignored, and one after it denies credit unless the call's only
 # commit-creating command sits between the merge and that drop.
 _LITERAL_SLOT = "_quoted_"
-_EV_GIT_CHECKOUT = re.compile(_GIT_LEAD + r"checkout(?![\w.-])([^|;&\n]*)", re.I)
-_EV_GIT_STASH = re.compile(_GIT_LEAD + r"stash(?![\w.-])([^|;&\n]*)", re.I)
-_EV_GIT_COMMIT_MAKER = re.compile(_GIT_LEAD + r"(?:commit|cherry-pick|revert)(?![\w.-])", re.I)
+_EV_GIT_CHECKOUT = _OptionScan(re.compile(_GIT_LEAD + r"checkout(?![\w.-])([^|;&\n]*)", re.I))
+_EV_GIT_STASH = _OptionScan(re.compile(_GIT_LEAD + r"stash(?![\w.-])([^|;&\n]*)", re.I))
+_EV_GIT_COMMIT_MAKER = _OptionScan(re.compile(
+    _GIT_LEAD + r"(?:commit|cherry-pick|revert)(?![\w.-])", re.I))
 # A redirection: `>`, `2>`, `2>&1` and PowerShell's `*>` (see _keep_shape).
 _ARG_REDIRECT = re.compile(r"[\d*]?[<>]")
 # Shell word separators: a space or a tab only, so any other whitespace stays
