@@ -19,8 +19,10 @@ is dependency-injectable for tests and a safe no-op when psutil is unavailable;
 it must never raise (it is protecting the server it runs inside of).
 
 Note: the sibling Daemon Slayer launcher (tools/start_daemon_slayer.py) is NOT
-affected - it guards with a real bind() probe (no SO_REUSEADDR), so a held
-:8860 makes the fresh bind fail and it exits cleanly instead of co-binding.
+affected - it guards with a real bind() probe (no SO_REUSEADDR), so it never
+co-binds a held :8860: it waits for the holder to release the port
+(core/port_handoff.await_port, session 129), exits 0 if a live DS still holds
+it after the window and exits 1 for any other holder.
 """
 from __future__ import annotations
 
