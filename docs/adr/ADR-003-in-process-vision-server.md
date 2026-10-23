@@ -1,7 +1,7 @@
 # ADR-003: Vision server runs in-process on Legion at 127.0.0.1:8889
 
 **Date:** 2026-04  
-**Status:** Accepted
+**Status:** Accepted, AMENDED by the updates below: the server runs as a SEPARATE process, not in RC
 
 ## Context
 
@@ -24,3 +24,7 @@ The vision pipeline needs to receive JPEG frames from Game-PC, cache the latest 
 ## Update 2026-06-11 (deep-audit P2)
 
 Live reality refined: the server runs as a SEPARATE pythonw child process, not a thread - `dashboard/server.py` probes :8889 at RC startup and `subprocess.Popen`-spawns `moon_vision_server.py` if nothing is listening (self-heal). The `RC-VisionServer` scheduled task was a redundant boot-time launcher that lost the port race and exited 1 on every boot; it was REMOVED (XML archived in `docs/_archive/2026-06-11_RC-VisionServer_schtask_removed.xml`). The dashboard self-heal is now the sole launcher. Fallback when RC itself is down: vision is not needed without RC (its only consumers are RC coaches).
+
+## Update 2026-10-23 (re-measured, session 129)
+
+Still a separate `pythonw moon_vision_server.py` process. The one-shot startup probe is now the RM-735 `dashboard/_vision_watchdog.py` thread in RC (started by `dashboard/server.py`): `GET /health` every 15 s, spawn when nothing listens, kill + respawn a holder that stops answering. Consequence: an RC restart does NOT reload vision code; restart recipe in `docs/OPERATIONS.md` "Vision server".

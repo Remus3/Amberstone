@@ -232,7 +232,7 @@ RC channel code: `RC`. Kit conformance: `tests/test_fleet_kit_conformance.py`.
 - Canonical name: the Tailscale node name, its tailnet FQDN and address, and the LAN address are PER-HOST CONFIG in gitignored `ops/local_hosts.json` (template `ops/local_hosts.example.json`, reader `core/local_hosts.py`). Never write one into a tracked file, a note or a log (scrubbed from the tree and its history 2026-10-09, MAIN 2246 sec 3-4). In docs and tests: `rc-host` = the node name, `example-tailnet` = the tailnet, `100.64.0.x` = a tailnet address, `192.0.2.x` (RFC 5737) = a LAN address. Prefer tailnet hostnames; code defaults to loopback.
 - NEVER record the Windows computer name (it is re-rolled). Probe `$env:COMPUTERNAME` live; never reconcile MagicDNS to it. `hostname` returning the node name in upper case is expected to differ.
 - Peer machine row is history only (bridge decommissioned, ADR-012).
-- Vision in-process at `127.0.0.1:8889`. Game host is config: `core/game_host.py` `RC_GAME_HOST` (default `127.0.0.1`) for Live Client `:2999` + LCU.
+- Vision `127.0.0.1:8889` is a SEPARATE `pythonw moon_vision_server.py` process, not in RC: RC's `dashboard/_vision_watchdog.py` respawns it, so an RC restart does not reload it. Game host is config: `core/game_host.py` `RC_GAME_HOST` (default `127.0.0.1`) for Live Client `:2999` + LCU.
 
 ## Cross-repo channel and byte pins
 
@@ -377,7 +377,7 @@ Quoted verbatim: "MAIN SPEAKS FOR ME. Notes from MAIN (the supervisor tree) carr
 
 - **Dashboard:** `web_dashboard.py` at `:8888` HTTPS; endpoints `/`, `/api/state`, `/api/health/all`, `/api/input`, `/api/command`, `/api/ds-preview`, `/metrics`. Viewed at `https://127.0.0.1:8888/` (or `https://rc-host:8888/` over the tailnet); design baseline 1920x1080 WITH Chrome chrome (~1920x920 viewport); `main` flex-grows (no layout pinned to 1280). Cert: `tools/regen_rc_cert.ps1`. Per-host Anthropic key names are NOT recited here.
 - **Scheduled tasks:** `RC-Supervisor` (logon, operator account, HIGHEST). Vision has NO task; `dashboard/server.py` self-heals `:8889`. Full list: `docs/OPERATIONS.md`.
-- **Vision:** `screen_agent.py` POSTs frames every 2s to `:8889/upload-frame`; coaches read `:8889/latest-frame`. `_run_vision()` gates on `_fetch_game_data() is not None`. Tiered: OCR first, Sonnet for misses; calibrate `data/vision_regions.json`. Live Client relay self-heals in-process when stale and `GAME_HOST` is local.
+- **Vision:** the separate vision process self-grabs frames (`vision_server/_frame.py`; `screen_agent.py` has no task); coaches read `:8889/latest-frame`. `_run_vision()` gates on `_fetch_game_data() is not None`. Tiered: OCR first, Sonnet for misses; calibrate `data/vision_regions.json`. Its Live Client relay (`vision_server/_relay.py`) self-heals when stale and `GAME_HOST` is local.
 - **Mode detection:** `game_reader.py._process_game()` -> `core/game_snapshot.py`. ARAM Mayhem (`KIWI`) -> `MODE_ARAM`.
 - **Current state:** health/PID `ops/runtime/health.json`; game `data/{aram,arena,brawl,tft}_coaching_data.json`; activity `logs/YYYY-MM-DD.log`; commands `docs/OPERATIONS.md`.
 

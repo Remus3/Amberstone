@@ -12,7 +12,7 @@ adding a row here in the same commit.
 |---|---|---|
 | ~~001~~ | Remove tkinter overlays; keep `tk.Tk()` as scheduler | **RETIRED 2026-07-18** - its own "Watch for" note predicted the asyncio migration that has since happened. RC is tkinter-free (scheduler is the asyncio `AppLoop`), so the `tk.Tk()` half was stale guidance. The overlays-removed half is now just how RC works and needs no ADR. Record kept at `docs/_archive/ADR-001-tkinter-removal-RETIRED.md` |
 | [002](ADR-002-ds-before-haiku.md) | Daemon Slayer item ranking runs BEFORE the Haiku coaching call | Accepted |
-| [003](ADR-003-in-process-vision-server.md) | Vision server runs in-process on Legion at `127.0.0.1:8889` | Accepted |
+| [003](ADR-003-in-process-vision-server.md) | Vision server on Legion at `127.0.0.1:8889` (decided in-process) | Accepted, AMENDED 2026-06-11 / 2026-10-23: a SEPARATE `pythonw moon_vision_server.py` process that RC's VisionWatchdog respawns; an RC restart does not reload it |
 | [004](ADR-004-bridge-watcher-daemon.md) | Bridge tasks processed by an always-on daemon, not `/loop` polling | **Superseded by ADR-012** |
 | [005](ADR-005-tailscale-magicdns.md) | Cross-Claude bridge uses Tailscale MagicDNS hostnames, not LAN IPs | Accepted (bridge itself decommissioned - the MagicDNS preference still stands for the tailnet) |
 | [006](ADR-006-riot-api-key-policy.md) | Riot API key permitted for full-team context enrichment | Accepted (supersedes the earlier no-key stance) |
@@ -30,7 +30,7 @@ adding a row here in the same commit.
 
 ## Reading order for a new session
 
-Topology and where things run: **011** (one-PC), **003** (vision in-process),
+Topology and where things run: **011** (one-PC), **003** (vision server, now a separate process),
 **005** (tailnet naming). Coaching pipeline: **002** (DS before Haiku), **007**
 (event-driven pivot), **010** (Arena augments), **013** (laning-verdict flip
 retired - read before touching Lane A precompute or re-running its flip gate),
