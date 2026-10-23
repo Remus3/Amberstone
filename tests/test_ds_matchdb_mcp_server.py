@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import concurrent.futures
 import json
+import logging
 import threading
 import time
 from http.server import ThreadingHTTPServer
@@ -269,7 +270,119 @@ def test_handle_tools_call_tool_exception(monkeypatch):
     monkeypatch.setitem(mod.TOOL_FUNCS, "ds_health", boom)
     r = mod.handle_tools_call({"name": "ds_health", "arguments": {}})
     assert r["isError"] is True
-    assert "RuntimeError: kaboom" in r["content"][0]["text"]
+    # RM-770: the type is named, the exception text is not.
+    assert "RuntimeError" in r["content"][0]["text"]
+    assert "kaboom" not in r["content"][0]["text"]
+
+
+# RM-770: the dispatch catch-all answered with the exception text plus
+# traceback.format_exc(limit=3), whose frames name the checkout's absolute
+# file paths. The reply is now fixed (tool name + exception type); the
+# exception text and the traceback go to the log only.
+_RM770_FIXED = "tool 'ds_health' failed: {} (details in the server log)"
+
+
+def _rm770_leaks(text: str) -> list[str]:
+    from pathlib import Path
+    needles = ["secret", "Traceback", 'File "', str(mod._PROJECT_ROOT),
+               str(Path(__file__).resolve().parent)]
+    return [n for n in needles if n in text]
+
+
+def test_tool_exception_reply_is_fixed_rm770(monkeypatch, caplog):
+    def boom(**k):
+        raise RuntimeError("secret detail C:/some/abs/path")
+
+    monkeypatch.setitem(mod.TOOL_FUNCS, "ds_health", boom)
+    with caplog.at_level(logging.WARNING, logger="ds-matchdb-mcp"):
+        r = mod.handle_tools_call({"name": "ds_health", "arguments": {}})
+    assert r["isError"] is True
+    text = r["content"][0]["text"]
+    assert text == _RM770_FIXED.format("RuntimeError")
+    assert _rm770_leaks(text) == []
+    # The detail is not lost: one log record, carrying the traceback.
+    recs = [x for x in caplog.records
+            if x.name == "ds-matchdb-mcp" and x.exc_info]
+    assert len(recs) == 1
+    assert recs[0].levelno == logging.WARNING
+    assert "secret detail" in caplog.text
+    assert "Traceback" in caplog.text
+
+
+def test_tool_internal_type_error_is_not_bad_arguments_rm770(monkeypatch):
+    """A TypeError raised INSIDE a tool was caught by the bad-arguments branch
+    and echoed as `bad arguments: <exception text>`. Only an argument-binding
+    failure is the caller's bad arguments; anything else is a tool failure."""
+    def boom(**k):
+        raise TypeError("secret internal C:/some/abs/path")
+
+    monkeypatch.setitem(mod.TOOL_FUNCS, "ds_health", boom)
+    r = mod.handle_tools_call({"name": "ds_health", "arguments": {}})
+    assert r["isError"] is True
+    text = r["content"][0]["text"]
+    assert text == _RM770_FIXED.format("TypeError")
+    assert _rm770_leaks(text) == []
+
+
+@pytest.mark.parametrize("args", [[1], "s", 5], ids=["list", "str", "int"])
+def test_non_object_arguments_are_bad_arguments_rm770(args):
+    """`submit(fn, **args)` with a non-mapping raised TypeError OUTSIDE the
+    watchdog's try, out of handle_tools_call."""
+    r = mod.handle_tools_call({"name": "ds_archetype_for", "arguments": args})
+    assert r["isError"] is True
+    assert r["content"][0]["text"].startswith("bad arguments")
+
+
+def test_ds_health_read_error_text_not_returned_rm770(monkeypatch, caplog):
+    monkeypatch.setattr(mod, "_is_engine_up", lambda timeout=1.0: True)
+
+    def _raise(*a, **k):
+        raise OSError("secret C:/some/abs/path")
+
+    monkeypatch.setattr(mod, "urlopen", _raise)
+    with caplog.at_level(logging.WARNING, logger="ds-matchdb-mcp"):
+        out = mod.tool_ds_health()
+    assert out["health_error"] == "OSError"
+    assert "secret" not in json.dumps(out)
+    assert "secret C:/some/abs/path" in caplog.text
+
+
+@pytest.mark.parametrize("call", [
+    lambda: mod.tool_match_recent(),
+    lambda: mod.tool_match_mode_stats("SR"),
+    lambda: mod.tool_match_tft_comps(),
+    lambda: mod.tool_match_tft_streak(),
+], ids=["recent", "mode_stats", "tft_comps", "tft_streak"])
+def test_db_missing_reply_names_no_absolute_path_rm770(monkeypatch, call):
+    monkeypatch.setattr(mod, "_get_match_db", lambda: None)
+    out = call()
+    assert "not found" in out["error"]
+    assert out["path"] == "data/match_history.db"
+    assert str(mod._PROJECT_ROOT) not in json.dumps(out).replace("\\\\", "\\")
+
+
+def test_db_path_label_outside_root_is_basename_rm770(monkeypatch, tmp_path):
+    monkeypatch.setattr(mod, "_MATCH_DB_PATH", tmp_path / "elsewhere.db")
+    assert mod._db_path_label() == "elsewhere.db"
+
+
+def test_http_tool_exception_reply_is_fixed_rm770(server, monkeypatch):
+    base, tok = server
+
+    def boom(**k):
+        raise RuntimeError("secret detail C:/some/abs/path")
+
+    monkeypatch.setitem(mod.TOOL_FUNCS, "ds_health", boom)
+    st, env = _post(base, tok, {"jsonrpc": "2.0", "id": 21,
+                                "method": "tools/call",
+                                "params": {"name": "ds_health",
+                                           "arguments": {}}})
+    assert st == 200
+    assert env["id"] == 21
+    assert env["result"]["isError"] is True
+    assert env["result"]["content"][0]["text"] == \
+        _RM770_FIXED.format("RuntimeError")
+    assert _rm770_leaks(json.dumps(env).replace("\\\\", "\\")) == []
 
 
 def test_handle_tools_call_happy(monkeypatch):
@@ -623,7 +736,9 @@ def test_dispatch_tool_propagates_structured_errors():
 
     r = mod._dispatch_tool("x", _boom, {})
     assert r["isError"] is True
-    assert "RuntimeError: kaboom" in r["content"][0]["text"]
+    # RM-770: the type is named, the exception text is not.
+    assert "RuntimeError" in r["content"][0]["text"]
+    assert "kaboom" not in r["content"][0]["text"]
 
     def _needs_arg(required):
         return {"ok": required}

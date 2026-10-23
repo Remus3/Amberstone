@@ -87,6 +87,7 @@ from __future__ import annotations
 import argparse
 import concurrent.futures
 import http.server
+import inspect
 import json
 import logging
 import math
@@ -95,7 +96,6 @@ import socket
 import sys
 import threading
 import time
-import traceback
 from pathlib import Path
 from urllib.request import urlopen
 
@@ -247,6 +247,18 @@ def _get_match_db() -> MatchDB | None:
     return _match_db
 
 
+def _db_path_label() -> str:
+    """The db path a db-missing reply names: repo-relative, never absolute.
+
+    RM-770 sibling: the absolute path names the checkout's directory, the same
+    leak as the traceback frames, and the relative form tells a caller as much.
+    """
+    try:
+        return _MATCH_DB_PATH.relative_to(_PROJECT_ROOT).as_posix()
+    except ValueError:
+        return _MATCH_DB_PATH.name
+
+
 def _resolve_archetype(champion: str, archetype: str) -> str:
     """Blank archetype -> the champion's resolved primary (the same default
     the coaches use via dispatch_for_coach). Never raises."""
@@ -271,7 +283,9 @@ def tool_ds_health() -> dict:
         with urlopen(DS_HEALTH_URL, timeout=1.5) as resp:
             out["health"] = json.loads(resp.read().decode("utf-8"))
     except Exception as exc:  # noqa: BLE001
-        out["health_error"] = f"{type(exc).__name__}: {exc}"
+        # RM-770 sibling: the exception text stays in the log.
+        log.warning("ds health read failed: %s: %s", type(exc).__name__, exc)
+        out["health_error"] = type(exc).__name__
     return out
 
 
@@ -338,7 +352,7 @@ def tool_match_recent(mode: str = "", limit: int = 20) -> dict:
     db = _get_match_db()
     if db is None:
         return {"error": "match_history.db not found",
-                "path": str(_MATCH_DB_PATH)}
+                "path": _db_path_label()}
     cap = max(1, min(int(limit), 200))
     rows = db.get_recent(str(mode or ""), cap)
     return {"mode": str(mode or ""), "count": len(rows), "matches": rows}
@@ -350,7 +364,7 @@ def tool_match_mode_stats(mode: str, limit: int = 20) -> dict:
     db = _get_match_db()
     if db is None:
         return {"error": "match_history.db not found",
-                "path": str(_MATCH_DB_PATH)}
+                "path": _db_path_label()}
     cap = max(1, min(int(limit), 200))
     stats = db.get_mode_stats(str(mode), cap)
     return {"mode": str(mode), "stats": stats}
@@ -361,7 +375,7 @@ def tool_match_tft_comps(which: str = "best", min_games: int = 2,
     db = _get_match_db()
     if db is None:
         return {"error": "match_history.db not found",
-                "path": str(_MATCH_DB_PATH)}
+                "path": _db_path_label()}
     w = (which or "best").strip().lower()
     if w not in ("best", "worst"):
         return {"error": "which must be 'best' or 'worst'", "got": which}
@@ -377,7 +391,7 @@ def tool_match_tft_streak(limit: int = 10) -> dict:
     db = _get_match_db()
     if db is None:
         return {"error": "match_history.db not found",
-                "path": str(_MATCH_DB_PATH)}
+                "path": _db_path_label()}
     cap = max(1, min(int(limit), 100))
     return {"streak": db.get_tft_streak(cap)}
 
@@ -568,6 +582,25 @@ def _dispatch_tool(name: str, fn, args: dict) -> dict:
     a later response) and a structured error is returned immediately so
     the server stays responsive.
     """
+    # RM-770: bind BEFORE dispatch, so "bad arguments" means the caller's
+    # arguments. A TypeError raised INSIDE a tool used to land in the same
+    # branch and was echoed as caller error; it is a tool failure now and
+    # takes the fixed-message path below. A non-mapping `arguments` raised
+    # out of `submit(fn, **args)`, outside this function's try.
+    if not isinstance(args, dict):
+        return {"isError": True,
+                "content": [{"type": "text",
+                             "text": "bad arguments: arguments must be an "
+                                     "object"}]}
+    try:
+        inspect.signature(fn).bind(**args)
+    except TypeError as e:
+        # The bind message names only the caller's own keyword or the
+        # missing parameter.
+        return {"isError": True,
+                "content": [{"type": "text", "text": f"bad arguments: {e}"}]}
+    except ValueError:
+        pass    # no introspectable signature: the call itself decides
     timeout_s = _timeout_for(name)
     fut = _DISPATCH_POOL.submit(fn, **args)
     try:
@@ -587,14 +620,18 @@ def _dispatch_tool(name: str, fn, args: dict) -> dict:
                                      f"{timeout_s:.0f}s (dispatch watchdog); "
                                      f"abandoned to keep server responsive"}],
                 "_timeout": True}
-    except TypeError as e:
-        return {"isError": True,
-                "content": [{"type": "text", "text": f"bad arguments: {e}"}]}
     except Exception as e:  # noqa: BLE001
+        # RM-770: this answered with the exception text plus
+        # traceback.format_exc(limit=3), whose frames name the checkout's
+        # absolute file paths. Per RM-760a the exception text and the
+        # traceback stay in the log; the client gets a fixed message.
+        log.warning("tool %s raised %s", name, type(e).__name__,
+                    exc_info=True)
         return {"isError": True,
                 "content": [{"type": "text",
-                             "text": f"{type(e).__name__}: {e}\n"
-                                     + traceback.format_exc(limit=3)}]}
+                             "text": f"tool '{name}' failed: "
+                                     f"{type(e).__name__} "
+                                     "(details in the server log)"}]}
 
 
 def handle_tools_call(params: dict) -> dict:
