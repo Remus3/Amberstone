@@ -5,11 +5,20 @@
 setlocal
 for %%I in ("%~dp0..") do set "RC_ROOT=%%~fI"
 
+:: Read the API key (RM-810): the same lines as start.bat, which says why.
 set API_FILE=%RC_ROOT%\API-Key-Claude.txt
-if exist "%API_FILE%" (
-    set /p ANTHROPIC_API_KEY=<"%API_FILE%"
-    set ANTHROPIC_API_KEY=%ANTHROPIC_API_KEY: =%
-)
+setlocal enabledelayedexpansion
+set "RC_KEY="
+if defined ANTHROPIC_API_KEY set "RC_KEY=!ANTHROPIC_API_KEY: =!"
+if defined RC_KEY set "RC_NOQ=!RC_KEY:"=!"
+if not "!RC_KEY:~0,7!"=="sk-ant-" set "RC_KEY="
+if defined RC_KEY if not "!RC_NOQ!"=="!RC_KEY!" set "RC_KEY="
+if not defined RC_KEY if exist "!API_FILE!" set /p RC_KEY=<"!API_FILE!"
+if defined RC_KEY set "RC_KEY=!RC_KEY: =!"
+if defined RC_KEY set "RC_NOQ=!RC_KEY:"=!"
+if not "!RC_KEY:~0,7!"=="sk-ant-" set "RC_KEY="
+if defined RC_KEY if not "!RC_NOQ!"=="!RC_KEY!" set "RC_KEY="
+endlocal & set "ANTHROPIC_API_KEY=%RC_KEY%"
 set RIOT_COMMANDER_DEBUG=1
 
 cd /d "%RC_ROOT%"
