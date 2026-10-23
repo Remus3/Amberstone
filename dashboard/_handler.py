@@ -23,7 +23,8 @@ Tier 2 helper-shake (2026-05-01): extracted from web_dashboard.py.
   * Host gate  - `HostAllowlistMixin` (RM-759): a request whose Host is
                 not loopback, an IP literal or one of this machine's
                 configured names gets 421 before any route runs (DNS
-                rebinding); the :8890 supervisor server shares it
+                rebinding); the :8890 supervisor server shares it. A head
+                whose parse lost header lines gets 400 first (RM-773)
   * `log_message` / `_peer` - restore the two properties the stdlib
                 gives every handler and an override silently drops:
                 control characters escaped (`_scrub_log`) so a request
@@ -55,6 +56,7 @@ import json
 import logging
 import os
 import time
+from email import errors as _email_errors
 from http.server import BaseHTTPRequestHandler
 
 from core import local_hosts as _local_hosts
@@ -316,12 +318,74 @@ def is_allowed_host(hostname) -> bool:
     return hostname in allowed_host_names()
 
 
+# RM-773 (2026-10-23): the stdlib reads the header block with
+# http.client.parse_headers, i.e. the email feed parser (compat32), and that
+# parser does not refuse a malformed block - it LOSES lines of it. A line that
+# is not a header (no colon, `Host : x`, a NUL or non-ASCII byte in a name)
+# ends the headers there and it and every later line become a "body"; a bare
+# CR line is read as the header/body separator with no defect at all; a first
+# line that starts with whitespace, a `: value` line and a `From ` envelope
+# line are each dropped. A Host on a lost line never reaches the gate below,
+# which then passes the request as Host-less. Measured live before the fix on
+# :8888 and :8890: `X-Junk` then `Host: rebind.example` -> 200, while the same
+# Host on a clean head -> 421.
+#
+# So a head is refused (400, before the Host gate) when its parse lost or
+# misread any part of the block: one of these header-structure defects, an
+# envelope line, or any text the parser filed as a body (a request head has
+# none: the block ends at its blank line). NOT every defect: the parser also
+# flags the empty body of a multipart / message Content-Type (no start
+# boundary, no boundary parameter), which says nothing about the head.
+_HEAD_STRUCTURE_DEFECTS = (
+    _email_errors.MissingHeaderBodySeparatorDefect,
+    _email_errors.FirstHeaderLineIsContinuationDefect,
+    _email_errors.MisplacedEnvelopeHeaderDefect,
+    _email_errors.InvalidHeaderDefect,
+)
+
+
+def _parsed_body_text(msg) -> bool:
+    """True when the parser filed any of the header block as a body."""
+    payload = msg.get_payload()
+    if isinstance(payload, list):
+        # message/* (and a parsed multipart): the "body" is sub-messages; an
+        # empty one is the parser's own artefact, one with headers or text
+        # holds lines of the block.
+        return any(len(part) or part.get_unixfrom() or _parsed_body_text(part)
+                   for part in payload)
+    return bool(payload) or bool(msg.preamble) or bool(msg.epilogue)
+
+
+def head_parse_defect(headers) -> str | None:
+    """Why the parsed request head does not hold every line of its header
+    block (RM-773), or None when it does - or when ``headers`` is not a
+    parsed message at all (HTTP/0.9 sets a dict; the Host gate fails those
+    closed itself)."""
+    defects = getattr(headers, "defects", None)
+    if not isinstance(defects, list):
+        return None
+    for defect in defects:
+        if isinstance(defect, _HEAD_STRUCTURE_DEFECTS):
+            return type(defect).__name__
+    try:
+        if headers.get_unixfrom():
+            return "envelope line"
+        if _parsed_body_text(headers):
+            return "header lines read as a body"
+    except Exception:  # noqa: BLE001 - an unreadable parse is a defect too
+        return "unreadable header block"
+    return None
+
+
 class HostAllowlistMixin:
     """RM-759: 421 Misdirected Request for a Host this machine does not
     answer to, before any route runs. List it FIRST, before
     ``HeadDeadlineMixin`` and the ``BaseHTTPRequestHandler`` base, so the
     check runs on the parsed head with the head deadline already removed.
-    ``host_refusal_log`` is the logger the refusal is reported on."""
+    ``host_refusal_log`` is the logger the refusal is reported on.
+
+    RM-773: a head whose header block the stdlib parse lost lines of
+    (``head_parse_defect``) is 400 first, since a lost Host reads as none."""
 
     host_refusal_log = log
 
@@ -337,6 +401,15 @@ class HostAllowlistMixin:
         if getattr(self, "request_version", None) == "HTTP/0.9":
             self.close_connection = True
             self._note_host_refusal("HTTP/0.9 request refused, closed")
+            return False
+        # RM-773: a head whose parse lost lines (a Host among them, possibly)
+        # is refused before the Host gate, which would see no Host and pass.
+        defect = head_parse_defect(getattr(self, "headers", None))
+        if defect:
+            self._note_host_refusal(
+                f"header block parse defect ({defect}) refused (400)",
+                tag="RM-773")
+            self._refuse_head(400, "Bad Request", "bad_header_block")
             return False
         if self._host_header_allowed():
             return True
@@ -366,7 +439,7 @@ class HostAllowlistMixin:
                 return False
         return True
 
-    def _note_host_refusal(self, what: str) -> None:
+    def _note_host_refusal(self, what: str, tag: str = "RM-759") -> None:
         server = getattr(self, "server", None)
         count = getattr(server, "host_refusals", 0) + 1
         try:
@@ -381,16 +454,20 @@ class HostAllowlistMixin:
             except (AttributeError, IndexError, TypeError):
                 peer = "?"
             self.host_refusal_log.warning(
-                "RM-759 %s peer=%s host=%s path=%s count=%d", what, peer,
+                "%s %s peer=%s host=%s path=%s count=%d", tag, what, peer,
                 _scrub_log(repr(self._host_lines())),
                 _scrub_log(repr(getattr(self, "path", ""))), count)
 
     def _refuse_misdirected_host(self) -> None:
         self._note_host_refusal("misdirected Host refused (421)")
+        self._refuse_head(421, "Misdirected Request", "misdirected_host")
+
+    def _refuse_head(self, code: int, phrase: str, error: str) -> None:
+        """A fixed JSON refusal of the parsed head; the connection closes."""
         self._drain_small_body()
-        body = b'{"error":"misdirected_host"}'
+        body = json.dumps({"error": error}, separators=(",", ":")).encode()
         self.close_connection = True
-        self.send_response(421, "Misdirected Request")
+        self.send_response(code, phrase)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")

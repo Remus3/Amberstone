@@ -94,7 +94,9 @@ class _QuietHandler(HostAllowlistMixin, HeadDeadlineMixin,
     RM-759: a request whose Host this machine does not answer to (DNS
     rebinding: measured 200 on GET /api/queue for a rebound name before the
     fix) gets 421 before any route or file response, by the :8888
-    dashboard's own gate (``HostAllowlistMixin``).
+    dashboard's own gate (``HostAllowlistMixin``). RM-773: a head whose
+    header block the stdlib parse lost lines of gets 400 first, by the same
+    mixin (measured 200 for ``X-Junk`` then a rebound Host before the fix).
 
     Audit L4: deny dotfiles and common secret filenames so a misplaced
     ``.env`` in ``web/`` never reaches the wire, even inside the LAN.
