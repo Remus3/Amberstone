@@ -31,7 +31,31 @@ does no search of its own. Anything else - .bat, .cmd, .com, .ps1,
 extensionless, unresolvable - is refused unrun ("non-exe head refused").
 Deny-all, because suffix blocklists leaked. Out of scope: an attacker who can
 write into a PATH directory or the repo already has code execution. POSIX is
-unchanged. A command the kit classifies as a whole suite
+unchanged.
+
+RM-775 decisions on the Windows head check (adjudicated 2026-10-23):
+  (a) A head that still carries a double quote once one matched outer layer
+      is stripped is refused: list2cmdline escapes it as \\" but CreateProcess
+      reads the module name without honouring that escape, so it would launch
+      a different program than the path validated (and no Windows file name
+      contains a quote).
+  (b) A shell .exe head (`cmd.exe /c ...`, powershell.exe) is ALLOWED. The
+      rule is that an argument is never re-parsed by an IMPLICIT cmd.exe; a
+      caller naming a shell chose it, `python.exe -c` is equally arbitrary,
+      and a shell-name list is the blocklist shape that leaked. Alternative
+      refused: a shell-name denylist. Reverses if: a suite_cmd ever reaches
+      truth_gate from a source the calling session does not author (an inbox
+      or channel note, a headless worker's own file) - then re-open it as an
+      allowlist of known test launchers, never a shell denylist.
+  (c) `py.test -q` is refused (literal suffix `.test`), a change from the
+      shell era: without a shell CreateProcess never appends .exe to a dotted
+      name, so it could only run through cmd.exe's PATHEXT, the mechanism
+      RM-757 removed. Spell it `py.test.exe` or `python.exe -m pytest`.
+      Alternative refused: PATHEXT resolution for dotted bare names (a second
+      resolver beside the kit's path_which). Reverses if: a supported
+      suite_cmd with a dotted bare head is measured failing in live use.
+
+A command the kit classifies as a whole suite
 (fleet_claims.bare_whole_suite) runs through fleet_suite_gate.py run (FLEET
 item 16 c); a targeted run is not gated. A gate refusal (exit 3) is reported
 as "suite-gate refused", never as pytest counts.
@@ -145,7 +169,10 @@ def _path_which(name):
 
 def _resolve_head(word):
     """The absolute .exe path to launch for a command word on Windows, else None."""
-    word = ntpath.normpath(_strip_quotes(word))
+    word = _strip_quotes(word)
+    if '"' in word:
+        return None  # RM-775 (a): CreateProcess would not launch the validated path
+    word = ntpath.normpath(word)
     suffix = ntpath.splitext(word)[1]
     if suffix and suffix.casefold() != ".exe":
         return None  # the literal word is what CreateProcess would run
