@@ -35,6 +35,7 @@ import contextlib
 import json
 import logging
 import os
+import re
 import shutil
 import socket
 import subprocess
@@ -58,12 +59,20 @@ def _ctrl_in(text: str, allow: str = "") -> list[str]:
     return sorted({hex(ord(c)) for c in text if c in _CTRL and c not in allow})
 
 
+# The structural prefix a traceback line may carry before its content: the
+# indent, and an exception group's box drawing ("  | ", "  +-+---", nested
+# "    |   | "). A forged line is one whose content - after that prefix -
+# starts with the client's text.
+_LINE_PREFIX = re.compile(r"^[\s|+\-]*")
+
+
 def _assert_clean(text: str, *, multiline: bool = False) -> None:
     """No control character (bar the newlines a traceback is built from) and
-    no line that the client's text could have started."""
+    no line that the client's text could have started, group-prefixed lines
+    included."""
     assert _ctrl_in(text, allow="\n" if multiline else "") == [], repr(text)
     for line in text.split("\n"):
-        assert not line.startswith("FAKE"), repr(text)
+        assert not _LINE_PREFIX.sub("", line).startswith("FAKE"), repr(text)
 
 
 class _Cap(logging.Handler):
@@ -135,8 +144,7 @@ def test_scrub_traceback_keeps_frames_and_flattens_every_message():
     assert "ValueError: client said" in text
 
 
-def test_scrub_traceback_renders_an_exception_group_safely():
-    from core.log_scrub import scrub_traceback
+def _group() -> BaseException:
     # A builtin on every Python this tree runs on (CI 3.12, the checkout
     # 3.14), so there is no fallback to skip to.
     group_type = builtins.ExceptionGroup
@@ -144,9 +152,40 @@ def test_scrub_traceback_renders_an_exception_group_safely():
         raise group_type("grp\nFAKE-G", [ValueError("a\nFAKE-A"),
                                          TypeError("b")])
     except group_type as e:
-        text = scrub_traceback(e)
+        return e
+    raise AssertionError("unreachable")
+
+
+def test_scrub_traceback_renders_an_exception_group_safely():
+    from core.log_scrub import scrub_traceback
+    text = scrub_traceback(_group())
     _assert_clean(text, multiline=True)
     assert "FAKE-A" in text and "TypeError: b" in text
+
+
+def test_the_group_check_catches_a_raw_sub_exception_mutant(monkeypatch):
+    """Non-vacuity of the check above (verifier mutant, 2026-10-23): a
+    _render_group that renders each sub-exception RAW forges the line
+    "  | FAKE-A" behind the group's box prefix. _assert_clean must refuse
+    it - a bare startswith("FAKE") did not."""
+    import traceback
+
+    from core import log_scrub
+
+    def _raw_render_group(group, _seen, _depth):
+        out = []
+        for i, sub in enumerate(group.exceptions, 1):
+            out.append(f"  +---------------- {i} ----------------\n")
+            body = "".join(traceback.format_exception(sub))
+            out.extend(f"  | {line}\n"
+                       for line in body.rstrip("\n").split("\n"))
+        return out
+
+    monkeypatch.setattr(log_scrub, "_render_group", _raw_render_group)
+    text = log_scrub.scrub_traceback(_group())
+    assert "  | FAKE-A" in text                       # the mutant forges it
+    with pytest.raises(AssertionError):
+        _assert_clean(text, multiline=True)
 
 
 def test_scrub_filter_scrubs_message_and_traceback():
@@ -270,9 +309,12 @@ def _rpc(port: int, mod, body: bytes) -> tuple[int, dict | None]:
     return status, (json.loads(payload) if payload else None)
 
 
-_BAD_IDS = ['{"o":1}', "[1]", "[]", "{}", "true", "false", "NaN", "Infinity"]
+# 1e400 / -1e400 are valid JSON that both parsers read as +/-infinity
+# (verifier, 2026-10-23: JSON.parse('{"id":1e400}').id is Infinity).
+_BAD_IDS = ['{"o":1}', "[1]", "[]", "{}", "true", "false", "NaN", "Infinity",
+            "1e400", "-1e400"]
 _BAD_ID_NAMES = ["object", "array", "empty-array", "empty-object", "true",
-                 "false", "nan", "infinity"]
+                 "false", "nan", "infinity", "1e400", "neg-1e400"]
 
 
 @pytest.mark.parametrize("rid", _BAD_IDS, ids=_BAD_ID_NAMES)
@@ -321,9 +363,10 @@ def _usage(*lines: str, timeout: float = 30.0) -> tuple[int, list[dict], str]:
 
 
 @needs_node
-@pytest.mark.parametrize("rid", ['{"o":1}', "[1]", "[]", "{}", "true", "false"],
+@pytest.mark.parametrize("rid", ['{"o":1}', "[1]", "[]", "{}", "true", "false",
+                                 "1e400", "-1e400"],
                          ids=["object", "array", "empty-array", "empty-object",
-                              "true", "false"])
+                              "true", "false", "1e400", "neg-1e400"])
 @pytest.mark.parametrize("method", ["ping", "tools/list", "initialize",
                                     "tools/call", "nope",
                                     "notifications/initialized", "7"])
@@ -543,11 +586,33 @@ def test_the_per_site_detector_is_not_vacuous():
         4, 5, 6, 7, 10]
 
 
+_MIN_PY_FILES = {"dashboard": 50, "mc": 4}
+
+
+def _package_files(pkg: str) -> list[Path]:
+    """Every tracked .py file under ``pkg``, subpackages included - the git
+    index via tests/_repo_walk (ADR-015), not a one-level filesystem glob,
+    so a future subpackage's logger is enumerated too. Floored so an empty
+    (or shrunken) enumeration can never read as "every logger covered"."""
+    from tests._repo_walk import repo_files
+    files = repo_files(ROOT / pkg, ("*.py",))
+    assert len(files) >= _MIN_PY_FILES[pkg], (pkg, len(files))
+    assert (ROOT / pkg / "__init__.py") in files, files[:5]
+    return files
+
+
 def _logger_names(pkg: str) -> dict[str, str]:
     """name -> file:line for every getLogger call under ``pkg``."""
+    return _logger_names_in(_package_files(pkg), ROOT)
+
+
+def _logger_names_in(files: list[Path], root: Path) -> dict[str, str]:
     out: dict[str, str] = {}
-    for p in sorted((ROOT / pkg).glob("*.py")):
+    for p in files:
         src = p.read_text(encoding="utf-8")
+        rel = p.relative_to(root).with_suffix("")
+        module = ".".join(rel.parts[:-1] if rel.name == "__init__"
+                          else rel.parts)
         for n in ast.walk(ast.parse(src)):
             if not (isinstance(n, ast.Call) and n.args
                     and ((isinstance(n.func, ast.Attribute)
@@ -559,12 +624,29 @@ def _logger_names(pkg: str) -> dict[str, str]:
             if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
                 name = arg.value
             elif isinstance(arg, ast.Name) and arg.id == "__name__":
-                name = f"{pkg}.{p.stem}" if p.stem != "__init__" else pkg
+                name = module
             else:
-                raise AssertionError(f"{p.name}:{n.lineno}: a getLogger name "
+                raise AssertionError(f"{rel}:{n.lineno}: a getLogger name "
                                      "this guard cannot resolve")
-            out.setdefault(name, f"{p.name}:{n.lineno}")
+            out.setdefault(name, f"{rel.as_posix()}:{n.lineno}")
     return out
+
+
+def test_logger_enumeration_reaches_a_subpackage(tmp_path):
+    """A nested file is walked and named by its dotted module path: the
+    one-level glob this replaced never saw ``pkgx/sub/*.py``."""
+    from tests._repo_walk import repo_files
+    sub = tmp_path / "pkgx" / "sub"
+    sub.mkdir(parents=True)
+    (tmp_path / "pkgx" / "__init__.py").write_text(
+        "import logging\nlog = logging.getLogger(__name__)\n", encoding="utf-8")
+    (sub / "__init__.py").write_text("", encoding="utf-8")
+    (sub / "mod.py").write_text(
+        "import logging\nA = logging.getLogger(__name__)\n"
+        "B = logging.getLogger('rc.nested_name')\n", encoding="utf-8")
+    files = repo_files(tmp_path / "pkgx", ("*.py",), tracked_only=False)
+    names = _logger_names_in(files, tmp_path)
+    assert set(names) == {"pkgx", "pkgx.sub.mod", "rc.nested_name"}, names
 
 
 @pytest.mark.parametrize("pkg", ["dashboard", "mc"])

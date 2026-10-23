@@ -150,8 +150,9 @@ const scrubLog = text => String(text).replace(
 const isObject = v => v !== null && typeof v === 'object' && !Array.isArray(v);
 
 // RM-811 residuals: JSON-RPC 2.0 section 4 - an id is a string, a number or
-// null (JSON.parse never yields a non-finite number).
-const isValidId = v => v === null || typeof v === 'string' || typeof v === 'number';
+// null. The number must be finite: JSON.parse reads 1e400 / -1e400 (valid
+// JSON) as +/-Infinity, which JSON.stringify writes back as null.
+const isValidId = v => v === null || typeof v === 'string' || Number.isFinite(v);
 
 rl.on('line', async (raw) => {
   // RM-811: one bad line must never end the server. A JSON `null` line threw
