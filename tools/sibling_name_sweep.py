@@ -176,6 +176,9 @@ _REPLACEMENT = chr(0xFFFD)
 
 BYPASS_ENV = "RC_SIBLING_SWEEP_BYPASS"
 BYPASS_LOG = Path("ops") / "runtime" / "sibling_sweep_bypass.log"
+# RM-788: a non-empty value replaces REPO_ROOT / BYPASS_LOG (the test suite sets
+# it per test, so a bypass run in a child process leaves the live log alone).
+BYPASS_LOG_ENV = "RC_SIBLING_SWEEP_BYPASS_LOG"
 
 # ---------------------------------------------------------------------------
 # RM-688 RUN RECORD.
@@ -2043,9 +2046,16 @@ def _emit(text: str) -> None:
     sys.stderr.write(text + "\n")
 
 
+def bypass_log_path() -> Path:
+    """Where a BYPASS report goes: a non-empty ``RC_SIBLING_SWEEP_BYPASS_LOG``,
+    else ``REPO_ROOT / BYPASS_LOG`` (RM-788)."""
+    override = (os.environ.get(BYPASS_LOG_ENV) or "").strip()
+    return Path(override) if override else REPO_ROOT / BYPASS_LOG
+
+
 def _append_bypass_log(text: str) -> None:
     try:
-        log_path = REPO_ROOT / BYPASS_LOG
+        log_path = bypass_log_path()
         log_path.parent.mkdir(parents=True, exist_ok=True)
         with open(log_path, "a", encoding="utf-8") as fh:
             fh.write(text + "\n")

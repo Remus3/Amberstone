@@ -41,6 +41,9 @@ ENV_ROOTS = {
     # RM-776: agents/agent2_backend/ws_server.py logs/ws/{ingest,push}.log root;
     # a test's `python -m agents.agent2_backend.ws_server` child inherits it.
     "RC_WS_LOG_DIR": "ws_logs",
+    # RM-788: tools/sibling_name_sweep.py BYPASS report log (default
+    # ops/runtime/sibling_sweep_bypass.log beside the tool's own checkout).
+    "RC_SIBLING_SWEEP_BYPASS_LOG": "sibling_sweep_bypass.log",
 }
 
 EXTRA_IGNORE = (
