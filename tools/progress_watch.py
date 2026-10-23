@@ -40,13 +40,17 @@ inbox-responder.json or loop.json (named by their readers). It never kills a
 process and never unlinks:
   * a running / blocked row silent past 2x its ETA (item 12) is rewritten as
     failed in the kit's close_progress() shape (fields kept, "reason" added),
-    compare-and-swap on the bytes it classified so a writer that came back
-    wins; held when
-    its recorded owner is PROVEN alive and the silence is inside the kit's
-    ABANDON_S grace (OWNER_ALIVE_GRACE_S);
+    compare-and-swap on the bytes AND (mtime, size) it classified, re-checked
+    immediately before every replace attempt, so a writer that came back
+    wins (RM-785 a); held - the kit's progress_abandoned() rule - unless its
+    recorded owner is PROVEN dead or the silence is past the kit's ABANDON_S
+    grace (OWNER_ALIVE_GRACE_S): an unknown owner, no owner field included,
+    is held like a live one (RM-785 b);
   * a done / failed row older than PRUNE_AGE_S by BOTH 'updated' and mtime
-    goes to the Recycle Bin through core.recycle_bin.recycle_checked; a
+    goes to the Recycle Bin through core.recycle_bin.recycle_checked, the
+    same bytes + (mtime, size) check run immediately before the call; a
     refusal keeps the file, a nuked result halts the pass;
+  * the keep-list name match case-folds (RM-785 c: NTFS is case-blind);
   * a progress dir that does not resolve inside the repo root is refused.
 
 ALERTS. One alert per (task, verdict) transition into failed / overrun_1.5x /
@@ -116,7 +120,8 @@ REAP_VERDICTS = ("stale", "overrun_3x")
 # (repo review B22-01: "prune finished progress files older than 7 days").
 PRUNE_AGE_S = 7 * 86400
 # The kit's ABANDON_S (fleet_headless.py, v16): a row silent this long is
-# abandoned even when its owner process is alive. Pinned by a test.
+# abandoned even when its owner process is alive - or unknown (RM-785 b).
+# Pinned by a test.
 OWNER_ALIVE_GRACE_S = 7200
 # Read by name by their consumers (lane widget, inbox responder, loop
 # controller): never reaped, whatever their state.
@@ -260,20 +265,31 @@ def _save_state(path: Path, state: dict) -> None:
     _atomic_write(p, data)
 
 
-def _atomic_write(p: Path, data: bytes) -> None:
+def _replace(src: Path, dst: Path) -> None:
+    """Path.replace; a module seam so a test can interpose a writer (RM-785)."""
+    Path(src).replace(dst)
+
+
+def _atomic_write(p: Path, data: bytes, check=None) -> bool:
     """tmp + replace in the target's own dir. The tmp name ends in .tmp, so a
-    *.json scan of the progress dir never reads it as a record."""
+    *.json scan of the progress dir never reads it as a record. With check, it
+    is called IMMEDIATELY before every replace attempt (the PermissionError
+    retries included) and a False answer drops the tmp and returns False
+    (RM-785 (a): the window left is the replace call itself)."""
     tmp = p.with_name(f"{p.name}.{os.getpid()}.tmp")
     try:
         tmp.write_bytes(data)
         for attempt in range(6):        # a polling reader can share-lock the target
+            if check is not None and not check():
+                return False
             try:
-                tmp.replace(p)
-                break
+                _replace(tmp, p)
+                return True
             except PermissionError:
                 if attempt == 5:
                     raise
                 time.sleep(0.05 * (attempt + 1))
+        return False                    # unreachable: the last attempt raises
     finally:
         if tmp.exists():
             try:
@@ -478,7 +494,8 @@ def main_root(path=ROOT) -> Path:
 
 def _alive_default(owner):
     """The kit's owner_alive(owner): True / False / None. None (unknown) for a
-    row with no owner or when the kit cannot load; unknown never holds a row."""
+    row with no owner or when the kit cannot load; unknown holds a row like
+    True does, until the abandon grace (RM-785 b)."""
     if not isinstance(owner, dict):
         return None
     try:
@@ -520,20 +537,43 @@ def _iso_local(epoch: float) -> str:
     return datetime.fromtimestamp(epoch).astimezone().isoformat(timespec="seconds")
 
 
-def _mark_failed(path: Path, expected_raw: bytes, reason: str, now: float) -> bool:
-    """Rewrite one live row as failed in the kit's close_progress() shape
-    (every field kept; status, updated and reason set). Compare-and-swap on
-    the bytes the reaper classified: a writer that came back in between wins
-    and False is returned."""
-    raw = path.read_bytes()
-    if raw != expected_raw:
+def _sig(p: Path):
+    """(st_mtime_ns, st_size) by lstat, or None when p cannot be stat'ed."""
+    try:
+        st = os.lstat(p)
+    except OSError:
+        return None
+    return (st.st_mtime_ns, st.st_size)
+
+
+def _unchanged(p: Path, raw: bytes, sig) -> bool:
+    """RM-785 (a): p still holds exactly the bytes the reaper classified AND
+    its (mtime, size) have not moved since - stat'ed before that read, so a
+    write landing between the stat and the read also reads as a change. A
+    writer that re-wrote identical bytes moved the mtime: it is alive."""
+    if sig is None or _sig(p) != sig:
         return False
-    doc = json.loads(raw.decode("utf-8-sig"))
+    try:
+        same = p.read_bytes() == raw
+    except OSError:
+        return False
+    return same and _sig(p) == sig
+
+
+def _mark_failed(path: Path, expected_raw: bytes, expected_sig, reason: str,
+                 now: float) -> bool:
+    """Rewrite one live row as failed in the kit's close_progress() shape
+    (every field kept; status, updated and reason set), built from the bytes
+    the reaper classified. Compare-and-swap: _unchanged() runs immediately
+    before every replace attempt, so a writer that came back at any point
+    before the replace wins and False is returned (RM-785 (a))."""
+    doc = json.loads(expected_raw.decode("utf-8-sig"))
     if not isinstance(doc, dict) or doc.get("status") not in LIVE_STATUSES:
         return False
     doc.update(status="failed", updated=_iso_local(now), reason=reason)
-    _atomic_write(path, json.dumps(doc, ensure_ascii=True).encode("ascii"))
-    return True
+    data = json.dumps(doc, ensure_ascii=True).encode("ascii")
+    return _atomic_write(path, data,
+                         check=lambda: _unchanged(path, expected_raw, expected_sig))
 
 
 def reap(*, progress_dir=PROGRESS_DIR, root=None, now=None, apply=False, recycle=None,
@@ -573,7 +613,8 @@ def reap(*, progress_dir=PROGRESS_DIR, root=None, now=None, apply=False, recycle
             rep["ignored"] += 1                     # not a progress record: not ours
             continue
         stem = name[:-len(".json")]
-        if any(fnmatch.fnmatchcase(name, g) for g in keep):
+        folded = name.casefold()            # RM-785 (c): NTFS names are case-blind
+        if any(fnmatch.fnmatchcase(folded, g.casefold()) for g in keep):
             held(name, "kept by name (read by its consumer)")
             continue
         if not TASK_STEM.match(stem):
@@ -583,12 +624,13 @@ def reap(*, progress_dir=PROGRESS_DIR, root=None, now=None, apply=False, recycle
             held(name, "not a regular file")
             continue
         try:
+            st = os.lstat(p)                # BEFORE the read (see _unchanged)
             raw = p.read_bytes()
-            mtime = os.lstat(p).st_mtime
             doc = json.loads(raw.decode("utf-8-sig"))
         except (OSError, UnicodeDecodeError, ValueError) as exc:
             held(name, f"unreadable ({type(exc).__name__})")
             continue
+        sig, mtime = (st.st_mtime_ns, st.st_size), st.st_mtime
         if not isinstance(doc, dict) or doc.get("task") != stem:
             held(name, "no ownership marker (its task field is not the file stem)")
             continue
@@ -601,18 +643,26 @@ def reap(*, progress_dir=PROGRESS_DIR, root=None, now=None, apply=False, recycle
         if row["status"] in LIVE_STATUSES:
             if row["verdict"] not in REAP_VERDICTS:
                 continue
+            # RM-785 (b): the kit's progress_abandoned() - a live row is
+            # abandoned only when its owner is PROVEN dead or it has been
+            # silent past ABANDON_S. An unknown owner (no owner field, or a
+            # probe that cannot tell) is held like a live one until then: a
+            # long step past 2x its ETA is a STALE report, not a failure.
             owner_state = alive(doc.get("owner"))
-            if owner_state is True and row["age_s"] <= OWNER_ALIVE_GRACE_S:
-                held(name, "owner alive, inside the kit's abandon grace")
+            if owner_state is not False and row["age_s"] <= OWNER_ALIVE_GRACE_S:
+                held(name, "owner alive, inside the kit's abandon grace"
+                     if owner_state is True else
+                     "owner unknown, inside the kit's abandon grace")
                 continue
             reason = _ascii(f"reaped by progress_watch: silent {_age_phrase(row['age_s'])}, "
                             f"past 2x eta {row['eta_used']}s"
-                            + ("; owner dead" if owner_state is False else ""))[:REASON_MAX]
+                            + ("; owner dead" if owner_state is False
+                               else "; past the abandon grace"))[:REASON_MAX]
             if not apply:
                 rep["would_mark"].append(stem)
                 continue
             try:
-                ok = _mark_failed(p, raw, reason, now)
+                ok = _mark_failed(p, raw, sig, reason, now)
             except (OSError, UnicodeDecodeError, ValueError) as exc:
                 held(name, f"mark failed did not write ({type(exc).__name__})")
                 continue
@@ -631,11 +681,7 @@ def reap(*, progress_dir=PROGRESS_DIR, root=None, now=None, apply=False, recycle
         if not apply:
             rep["would_recycle"].append(stem)
             continue
-        try:
-            unchanged = p.read_bytes() == raw
-        except OSError:
-            unchanged = False
-        if not unchanged:
+        if not _unchanged(p, raw, sig):             # immediately before the act
             held(name, "changed since read; left to its writer")
             continue
         res = recycle(p)
