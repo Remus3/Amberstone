@@ -821,22 +821,22 @@ def test_no_tracked_script_persists_the_key_variable():
 def test_install_bat_writes_the_key_file_and_never_echoes_the_key():
     text = (REPO / "install.bat").read_text(encoding="ascii")
     assert not re.search(r"setx\s+ANTHROPIC_API_KEY", text, re.IGNORECASE)
-    # One line, no padding, staged in a private temp file, written IN PLACE
-    # (keeps a restricted ACL on the key file), skipped when unchanged.
-    assert '>"%KEY_TMP%" echo(!API_KEY!' in text
-    assert 'fc /b "%KEY_TMP%" "%API_FILE%"' in text
-    assert 'type "%KEY_TMP%" > "%API_FILE%"' in text
-    assert "set KEY_TMP=%TEMP%\\" in text
+    # One line, no padding, compared in memory (RM-779: no temp stage file),
+    # written IN PLACE (keeps a restricted ACL on the key file), skipped when
+    # unchanged. tests/test_install_bat_key_stage_rm779.py runs the block.
+    assert '>"%API_FILE%" echo(!API_KEY!' in text
+    assert '"%PY_EXE%" -c "%RC_KEY_SAME%" "%API_FILE%"' in text
+    assert "KEY_TMP" not in text
     code = [ln for ln in text.splitlines()
             if not ln.lstrip().lower().startswith(("::", "rem "))]
     assert not any(re.search(r"\bmove\b.*%API_FILE%", ln, re.IGNORECASE)
                    for ln in code), "a move over the key file drops its ACL"
     assert "(gitignored)" in text.replace("^(", "(").replace("^)", ")")
-    # The only line that expands the key next to an echo writes the temp file.
+    # The only line that expands the key next to an echo writes the key file.
     for n, line in enumerate(text.splitlines(), 1):
         if re.search(r"%API_KEY%|!API_KEY!", line) and re.search(
                 r"\becho\b", line, re.IGNORECASE):
-            assert line.strip().startswith('>"%KEY_TMP%"'), (
+            assert line.strip().startswith('>"%API_FILE%"'), (
                 f"install.bat:{n} echoes the key: {line.strip()!r}")
 
 

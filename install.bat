@@ -209,21 +209,26 @@ echo  [OK]   Step 3 - API key loaded ^(sk-ant-***^) >> "%LOG_FILE%"
 :: API-Key-Claude.txt (core\anthropic_key.py); start.bat sets the variable
 :: for its own launched process only.
 :: This step writes the validated key back as ONE ASCII line with no padding,
-:: and skips the write when the file already holds exactly that. The bytes are
-:: staged in a private %TEMP% file and compared first, then written over the
-:: key file IN PLACE: a move /Y would replace the file's restricted ACL with
-:: the folder's inherited one. The key is never echoed to the console or log.
+:: and skips the write when the file already holds exactly that. The compare
+:: runs in memory (RM-779): RC_KEY_SAME, run by the Python found in step 1,
+:: reads the key file and the key itself from API_KEY in this console's
+:: environment (which every child of this console already inherits; never a
+:: command-line argument) and exits 0 only on an exact match, key + CRLF. No
+:: key byte is staged anywhere else: the old %TEMP% stage file sat in a shared
+:: temp dir for the life of the step and survived a crash. On a difference the
+:: key is written over the key file IN PLACE (a move /Y would replace the
+:: file's restricted ACL with the folder's inherited one), then compared
+:: again. The key is never echoed to the console or log.
 echo.
 echo [4/6] Writing API-Key-Claude.txt ^(no environment variable is set^)...
-set KEY_TMP=%TEMP%\rc-install-key-%RANDOM%%RANDOM%.tmp
->"%KEY_TMP%" echo(!API_KEY!
-fc /b "%KEY_TMP%" "%API_FILE%" >nul 2>&1
+set "RC_KEY_SAME=import os,sys;sys.exit(0 if open(sys.argv[1],'rb').read()==(os.environ['API_KEY']+'\r\n').encode('ascii') else 1)"
+"%PY_EXE%" -c "%RC_KEY_SAME%" "%API_FILE%" >nul 2>&1
 if !errorlevel! equ 0 (
     echo  [OK]   API-Key-Claude.txt already holds the key - unchanged
     echo  [OK]   Step 4 - key file unchanged >> "%LOG_FILE%"
 ) else (
-    type "%KEY_TMP%" > "%API_FILE%"
-    fc /b "%KEY_TMP%" "%API_FILE%" >nul 2>&1
+    >"%API_FILE%" echo(!API_KEY!
+    "%PY_EXE%" -c "%RC_KEY_SAME%" "%API_FILE%" >nul 2>&1
     if !errorlevel! equ 0 (
         echo  [OK]   API-Key-Claude.txt rewritten as one line
         echo  [OK]   Step 4 - key file rewritten as one line >> "%LOG_FILE%"
@@ -234,7 +239,7 @@ if !errorlevel! equ 0 (
         set ERRORS=1
     )
 )
-if exist "%KEY_TMP%" del "%KEY_TMP%" 2>nul
+set RC_KEY_SAME=
 echo         The key lives in API-Key-Claude.txt ^(gitignored^), not in the user or machine environment.
 if %ERRORS% neq 0 goto :SUMMARY
 
