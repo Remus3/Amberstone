@@ -414,6 +414,76 @@ CLAIM_MERGE = re.compile(
     r"(?:the\s+)?(?:origin/)?(?:main|master)\b", re.I)
 CLAIM_FULL_SUITE = re.compile(r"\b(?:full suite|all tests|entire suite|whole suite)\b", re.I)
 
+# RM-814 (2026-10-23): EV_COMMIT, EV_CI and EV_NODE_TEST are `HEAD [^STOP]* TAIL`
+# (EV_CI's span lazy), and search re-tries them at EVERY head word; a failed
+# try re-reads the rest of its STOP-free segment, so k heads cost k reads.
+# Measured at f349e3178: ` git` x 20k chars 0.93 s, ` gh` 1.66 s, ` node` 0.12 s,
+# four times the time for twice the input, on every main command, uncapped.
+#
+# _SpanScan keeps the regex as the ONLY authority for the match it returns and
+# skips just the heads a failed try proves dead. PROOF. Let the try at head s
+# fail and let t > s be a later head with no STOP char in text[s:t]. Suppose
+# the try at t matched: HEAD at t ends at h_t, the span reads text[h_t:c], TAIL
+# matches at c. HEAD at s has a reading that ends at h_s <= t (it is a whole
+# word - `git`, `node`, or `gh` with an optional `.exe` the engine may drop -
+# so two head matches never overlap), and HEAD only reads STOP-free text, so
+# text[h_s:c] is STOP-free and the span (a star, greedy or lazy, either way
+# backtracked over every length) can read it from s too. TAIL reads only its
+# own text and the char before c (`\b`, `(?<!-)`), no group from HEAD or span,
+# so it matches at c again: the try at s matches, a contradiction. So a failed
+# try retires its whole segment, each segment is read by at most one failed
+# try, and search is linear. FREE is the pattern's other top-level alternative
+# (`actions/runs`, the `npm test` form): never skipped, searched once, and the
+# answer is the regex's own match at the smaller of the two leftmost starts.
+# Pinned against the plain regexes by tests/test_stop_claim_gate_span_scan_rm814.py.
+
+
+class _SpanScan:
+    """A `HEAD [^STOP]* TAIL` regex (plus at most one FREE alternative) whose
+    search skips the heads a failed try proved dead (RM-814, proof above). Its
+    result equals the plain regex's; every other attribute is the regex's own."""
+
+    def __init__(self, regex, head, stop, free=None):
+        span = regex.pattern
+        if free is not None:
+            if span.startswith(free + "|"):
+                span = span[len(free) + 1:]
+            elif span.endswith("|" + free):
+                span = span[:-len(free) - 1]
+            else:
+                raise ValueError("FREE is not a top-level alternative")
+        if not span.startswith(head + "[^" + stop + "]*"):
+            raise ValueError("not a HEAD [^STOP]* pattern")
+        self.regex = regex
+        self._head = re.compile(head, regex.flags)
+        self._stop = re.compile("[" + stop + "]")
+        self._free = None if free is None else re.compile(free, regex.flags)
+
+    def __getattr__(self, name):
+        # Reached only for names this class lacks; never for dunders or
+        # `regex`, so a copy / pickle probe cannot recurse before __init__.
+        if name.startswith("__") or name == "regex":
+            raise AttributeError(name)
+        return getattr(self.regex, name)
+
+    def search(self, text):
+        free = None if self._free is None else self._free.search(text)
+        limit = len(text) + 1 if free is None else free.start()
+        dead = -1
+        for head in self._head.finditer(text):
+            start = head.start()
+            if start >= limit:
+                break
+            if start < dead:
+                continue
+            match = self.regex.match(text, start)
+            if match is not None:
+                return match
+            stop = self._stop.search(text, start)
+            dead = len(text) if stop is None else stop.start()
+        return None if free is None else self.regex.match(text, limit)
+
+
 # Evidence patterns.
 EV_PYTEST = re.compile(r"(?:^|\s|-m\s)pytest\b", re.I)
 # A CI-log fetch. ADDED 2026-09-06: this gate indexed only LOCAL pytest
@@ -451,7 +521,8 @@ EV_CI_LOG = re.compile(r"\bgh(?:\.exe)?\s+run\s+view\b[^\n]*--log(?:-failed)?\b"
 # "N passed", so an accurate "rc-shell 328 passed" scored as count_mismatch -
 # and, more seriously, a FALSE rc-shell claim could never have been caught
 # either. Widening the evidence here is what makes the guard cover both suites.
-EV_NODE_TEST = re.compile(r"\bnpm\s+(?:run\s+)?test\b|\bnode\b[^|;&\n]*--test\b", re.I)
+EV_NODE_TEST = _SpanScan(re.compile(r"\bnpm\s+(?:run\s+)?test\b|\bnode\b[^|;&\n]*--test\b", re.I),
+                         head=r"\bnode\b", stop=r"|;&\n", free=r"\bnpm\s+(?:run\s+)?test\b")
 # Node prints "<marker> pass 328", not "328 passed" - keyword first, no trailing
 # "in X.Ys". Anchored to a WHOLE line whose only content is the marker, the
 # keyword and the number, so prose containing the word "pass" cannot feed the
@@ -468,7 +539,8 @@ EV_FILTERED = re.compile(r"\s-k\s|::|\btests?[\w/\\.-]*\.py\b"
                          r"|[\w/\\.-]+\.test\.[cm]?js\b", re.I)
 # (?<!-): `--no-commit` (cherry-pick / revert / merge) is the OPPOSITE of
 # committing, and \b alone let it count as evidence.
-EV_COMMIT = re.compile(r"\bgit\b[^|;&]*(?<!-)\bcommit\b", re.I)
+EV_COMMIT = _SpanScan(re.compile(r"\bgit\b[^|;&]*(?<!-)\bcommit\b", re.I),
+                      head=r"\bgit\b", stop="|;&")
 # Commit-CREATING subcommands other than `git commit` (measured 2026-10-04: a
 # merger cherry-picked slices onto main, said "X is committed in <sha>", and was
 # flagged). The subcommand must be git's FIRST non-option word, so `git log
@@ -656,8 +728,9 @@ def _did_merge(command):
 # list`), so requiring "gh run" made a real probe invisible on every wrap. The
 # span stops at | and & so a pipeline into an unrelated command cannot borrow
 # the match, and a bare `run` with no gh binary anywhere still proves nothing.
-EV_CI = re.compile(r"\bgh(?:\.exe)?\b[^|&\n]*?\b(?:run|pr|api|workflow)\b"
-                   r"|actions/runs", re.I)
+EV_CI = _SpanScan(re.compile(r"\bgh(?:\.exe)?\b[^|&\n]*?\b(?:run|pr|api|workflow)\b"
+                             r"|actions/runs", re.I),
+                  head=r"\bgh(?:\.exe)?\b", stop=r"|&\n", free="actions/runs")
 # FOURTH transport, same family, measured 2026-08-01: the span above is
 # single-line and &-terminated by construction, so it cannot see a probe whose
 # binary and subcommand are bound through a VARIABLE and then used on another
@@ -671,11 +744,81 @@ EV_CI = re.compile(r"\bgh(?:\.exe)?\b[^|&\n]*?\b(?:run|pr|api|workflow)\b"
 # that was assigned a gh binary path, then require THAT identifier immediately
 # ahead of a gh subcommand. An assignment alone is not evidence, and a `run` with
 # no gh-bound variable in front of it is not evidence.
-EV_CI_VAR = re.compile(
-    r"(?P<name>\b\w+)\s*=\s*r?[\"'][^\"'\n]*\bgh(?:\.exe)?[\"']"
-    r"[\s\S]*?"
-    r"[\$\{\"'\[,\s](?P=name)[\}\"']?\s*[,\s]\s*[\"']?(?:run|pr|api|workflow)\b",
-    re.I)
+#
+# RM-814 (2026-10-23): two quadratic residues, measured at f349e3178. (1) search
+# re-tries the pattern at EVERY binding and a failed try reads the WHOLE rest of
+# the text (`[\s\S]*?`), so k unused bindings cost k reads (` a="gh"` x 20k
+# chars 0.38 s). (2) The tail was `\s*[,\s]\s*`, which splits a whitespace run
+# every way: `GH="gh" $GH` + 20k spaces + `x` took 5.1 s (20 s at 40k). The tail
+# is now `(?:\s*,|\s)\s*` - the SAME language (one or more whitespace, or at
+# most one comma inside whitespace) with one parse per comma - and the match is
+# the same too: nothing but `}`, quotes, commas and whitespace may sit between
+# the name and the subcommand word, so where that word starts is forced.
+#
+# _BoundNameScan answers (1). PROOF. A binding's parse is FORCED: the name is the
+# whole word before `\s*=` (a shorter `\w+` leaves a word char where `\s*=`
+# needs whitespace or `=`), the opening quote follows `\s*r?`, and `[^"'\n]*`
+# cannot cross a quote, so the closing quote is the next one and the binding
+# ends at a fixed e. No other binding starts inside (start, e): a word in the
+# value would need its own opening quote, and the next quote there is the
+# closing one, which follows `gh` / `gh.exe`, never `=\s*r?`. So _BIND.finditer
+# yields every binding the regex could start at, in order. A use of the name
+# NAME is a class char, a backreference match, then the subcommand tail; the
+# char before and the char after the backreference are both non-word, so the
+# backreference consumed one WHOLE word W - the `(\w+)` of _USE - and the
+# engine compares a re.I backreference char by char on the simple lowercase
+# mapping, which is `ch.lower()[0]` (_fold). So the try at a binding matches
+# iff some use of a word W with _fold(W) == _fold(NAME) starts at or after e:
+# one pass indexes the LAST use of each folded word, each binding is decided
+# by one lookup, and only a binding that will match is handed to the regex,
+# whose match is then the answer (one try, linear on the rewritten tail).
+# Pinned against the prior plain regex by tests/test_stop_claim_gate_span_scan_rm814.py.
+_CI_VAR_BIND = r"(?P<name>\b\w+)\s*=\s*r?[\"'][^\"'\n]*\bgh(?:\.exe)?[\"']"
+_CI_VAR_USE = r"[\$\{\"'\[,\s]NAME[\}\"']?(?:\s*,|\s)\s*[\"']?(?:run|pr|api|workflow)\b"
+
+
+def _fold(word):
+    """WORD as the regex engine compares it in a re.I backreference: char by
+    char, on each char's SIMPLE lowercase mapping. For a one-char string that
+    is the first char of str.lower() (only U+0130 lowers to two chars, and its
+    simple mapping is the first of them); folding the whole string at once
+    would wrongly apply the final-sigma rule. Pinned against the engine by
+    tests/test_stop_claim_gate_span_scan_rm814.py."""
+    return "".join(ch.lower()[0] for ch in word)
+
+
+class _BoundNameScan:
+    """EV_CI_VAR: a gh-bound NAME, then that NAME ahead of a gh subcommand.
+    search returns the plain regex's own match (RM-814, proof above); every
+    other attribute is the regex's own."""
+
+    def __init__(self, bind, use, flags):
+        self.regex = re.compile(bind + r"[\s\S]*?" + use.replace("NAME", "(?P=name)"), flags)
+        self._bind = re.compile(bind, flags)
+        self._use = re.compile("(?=" + use.replace("NAME", r"(\w+)") + ")", flags)
+
+    def __getattr__(self, name):
+        # Reached only for names this class lacks; never for dunders or
+        # `regex`, so a copy / pickle probe cannot recurse before __init__.
+        if name.startswith("__") or name == "regex":
+            raise AttributeError(name)
+        return getattr(self.regex, name)
+
+    def search(self, text):
+        last_use = {}
+        for use in self._use.finditer(text):
+            last_use[_fold(use.group(1))] = use.start()
+        if not last_use:
+            return None
+        for bind in self._bind.finditer(text):
+            if last_use.get(_fold(bind.group("name")), -1) >= bind.end():
+                match = self.regex.match(text, bind.start())
+                if match is not None:
+                    return match
+        return None
+
+
+EV_CI_VAR = _BoundNameScan(_CI_VAR_BIND, _CI_VAR_USE, re.I)
 EV_BYPASS = re.compile(r"--no-verify\b|--no-gpg-sign\b|core\.hooksPath\s*=", re.I)
 EV_PASSED = re.compile(r"\b(\d[\d,]{0,9})\s+passed\b", re.I)
 # RM-490: a run that died with pytest's own `INTERNALERROR>` marker is vacuous
