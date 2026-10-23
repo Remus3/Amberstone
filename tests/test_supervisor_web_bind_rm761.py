@@ -3,10 +3,12 @@
 ``start_web_server`` constructed ``_WebServer((BIND_HOST, port), ...)`` bare,
 so a held :8890 surfaced as the raw ``OSError`` (WinError 10048) from
 socketserver, and ``_run`` let it escape ``asyncio.run`` - under pythonw.exe
-that traceback goes nowhere. The ``_port_available`` preflight does not close
-this: on Windows it reports a port as free when the holder set SO_REUSEADDR
-(measured for RM-756), and it is deliberately left as it is (an exclusive-bind
-preflight would read a TIME_WAIT port as busy and restart-loop). Now, in the
+that traceback goes nowhere. The ``_port_available`` preflight did not close
+this: on Windows it reported a port as free when the holder set SO_REUSEADDR
+(measured for RM-756). RM-777 since drops SO_REUSEADDR from the Windows probe
+(a plain bind, NOT an exclusive one, which this row ruled out as a TIME_WAIT
+restart-loop risk), but a holder can still appear between the preflight and
+the real bind, so this fail-loud path stays. Now, in the
 RM-756 (ws_server) shape:
 
   - ``start_web_server`` turns the bind ``OSError`` into a ``RuntimeError``

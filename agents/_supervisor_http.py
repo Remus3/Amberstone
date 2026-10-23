@@ -1206,7 +1206,8 @@ class _WebServer(socketserver.ThreadingTCPServer):
 def start_web_server(port: int = WEB_PORT, supervisor: "Supervisor" | None = None) -> socketserver.TCPServer:
     """Bind and serve the :8890 web app. A bind failure (RM-761a: a held port
     used to surface as socketserver's raw OSError, e.g. WinError 10048 - the
-    _port_available preflight misses an SO_REUSEADDR holder on Windows) raises
+    _port_available preflight missed an SO_REUSEADDR holder on Windows until
+    RM-777, and a holder can still arrive after the preflight) raises
     a RuntimeError naming host:port with the preflight's netstat hint; no
     "web-http" thread is started in that case."""
     WEB_ROOT.mkdir(parents=True, exist_ok=True)

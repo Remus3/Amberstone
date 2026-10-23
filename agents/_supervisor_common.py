@@ -457,11 +457,22 @@ def _verify_decisions_version() -> None:
         )
 
 
+# RM-777: the probe binds the way the real servers bind. asyncio's
+# create_server (the ws_server serve()) sets SO_REUSEADDR only on POSIX, and
+# the :8890 ThreadingTCPServer never sets it. On Windows SO_REUSEADDR lets a
+# probe CO-BIND a port another socket holds with the same option, so setting
+# it there made the preflight report a held port as free. A plain bind still
+# succeeds on a port left with only TIME_WAIT entries (measured), so this is
+# not the exclusive-bind restart loop RM-761 ruled out.
+_PROBE_REUSE_ADDRESS = os.name == "posix" and sys.platform != "cygwin"
+
+
 def _port_available(host: str, port: int) -> bool:
     """Audit L2: quick TCP bind check so supervisor fails with a clear message
     rather than raising deep inside an asyncio serve() call."""
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    if _PROBE_REUSE_ADDRESS:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     try:
         sock.bind((host, port))
     except OSError:
