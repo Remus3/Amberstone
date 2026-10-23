@@ -162,7 +162,9 @@ KNOWN_STATIC_BODY: dict[str, tuple[str, str]] = {
     # to 16.20.1 apart from its _patch stamp, and its generator still stamps
     # no vintage. scenarios.json stays: a FRESH daemon_slayer_extract run
     # (scenarios 173, now merged from the lazily loaded scenario chunk plus the
-    # root chunk's default champion) returned identical bytes.
+    # root chunk's default champion) returned a body content-identical under
+    # sort_keys (key order changed: Aatrox moved from index 0 to 172, because
+    # its record now comes from the root chunk, parsed after the lazy one).
     # enchanter_items.json stays: copied forward and restamped only - DDragon
     # 16.21.1 moved the gold of 3008 and 3168 and dropped seven 55xxxx
     # cosmetics, none of them one of its 34 rows.

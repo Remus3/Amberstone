@@ -1904,7 +1904,12 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # true damage" (ranged values; melee = 30 + 1.5/leth). Item CD = 45s is
         # the binding rate constraint (same CD-as-timer approach as HG active 40s).
         # Sabotage (takedown-conditional turret bonus) is utility-only.
-        lethality=22.0,
+        # Lethality is the DDragon <stats> magnitude (CLAUDE.md Settled): 22 ->
+        # 18 at 16.21.1 (RM-766; guarded by tests/test_item_pen_ddragon_sync.py
+        # via ops/audit/item_pen_drift_check.py). The Shaped Charge formula is
+        # Meraki-sourced and unchanged; it reads caster_lethality, so the lower
+        # stat line also lowers the proc.
+        lethality=18.0,
         periodics=(PeriodicProc(
             name="Shaped Charge",
             bonus_damage=lambda c: 15.0 + 0.75 * c.caster_lethality,
@@ -1912,7 +1917,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             every_n_seconds=45.0,
         ),),
         note=(
-            "Bastionbreaker: 22 Lethality + Shaped Charge 15 + 0.75 x lethality "
+            "Bastionbreaker: 18 Lethality + Shaped Charge 15 + 0.75 x lethality "
             "true damage every 45s (Meraki CD; ranged values; Sabotage takedown utility-only)"
         ),
     ),
