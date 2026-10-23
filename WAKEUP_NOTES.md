@@ -6,6 +6,20 @@
 
 ---
 
+# 2026-10-23 - session 128: 32 rows shipped (RM-801, RM-804..RM-806, RM-763..RM-796 slices S-A..S-K), gated suite green, RM-807..RM-823 filed
+
+- **Start (LEDGER 1762):** s127 wrap docs-guards green; s127 leftover worktree + RM-794's two removed (stale lock = the live claude.exe that survives /clear; unlocked, no force).
+- **DS (LEDGER 1763-1764):** RM-805 `0738e197f` (neutral ARAM table exits 3), RM-806 `1e14d0ba5` (pen drift check covers resist reduction), RM-804 `370d1b15a` (note text only, NO ENGINE bump - stays 1.289.0; DS :8860 restarted, /health 1.289.0 / 16.21.1).
+- **Slices (LEDGER 1765-1777):** S-A RM-780 / RM-781; S-E RM-776 / RM-788 / RM-777; S-F RM-769..RM-771; S-H RM-764 / RM-779; RM-801 `20fb4d9ed` (232 stdlib fakes scoped); S-C RM-796 / RM-765; S-G RM-767 / RM-768; S-I RM-785 / RM-786; S-K RM-795; S-J RM-763 / RM-775 / RM-790; S-B RM-782..RM-784; S-D RM-772..RM-774 + `fa371ab4f` (verifier REFUTE, flat head parse). Every slice verifier CONFIRM.
+- **Gate (LEDGER 1771):** gated dual suite on `951e62198` 41644 passed, EXIT=0; push CI green on all 7 pushes `adbd2c93f..fa371ab4f`; /done dispatched ONE full run `39976892990` on `fa371ab4f`.
+- **Housekeeping (LEDGER 1778):** RM-793 worktree to the Recycle Bin, branch `-D` by ruling (commits now held only by `worktree-agent-abd89ea3e70d8c92f` - tag `4f1424a91` before deleting it).
+- **Filed (LEDGER 1779):** RM-807..RM-823; RM-791 closed (false positive, template reworded); ROADMAP size pass (13 rows to ROADMAP_HISTORY).
+- **Do NOT redo:** any id above; RM-804's no-bump is adjudicated; the wave-2 push halt was fixed by a rebuild (allowlisted OS-root fixture), not a bypass.
+- **Operator's call (not done):** copy RM-782's tails into the live `.claude/settings.json`; RM-785 live APPLY. **Owed to MAIN:** RM-781 result + RM-823 + the `route: single` observation, one batched note.
+- **Next:** read back dispatch `39976892990`, then RM-807+ by topic (security first: RM-819 Host checks, RM-811 log injection, RM-810 launcher key read), RM-822 worktree estate; S6 at the next live game.
+
+---
+
 # 2026-10-22b - session 127: s126 CI red fixed, MAIN sweep slot armed narrowed, RM-799 / RM-802 / RM-803, DS 16.21.1 ENGINE 1.289.0
 
 - **C1 (LEDGER 1758):** dispatch run 39877078008 RED, 1 test bug (a process-wide fake socket); fixed test-only `ea008366b` (`tests/_module_view.py`); RM-802 deadline mutants killed `c4cf40a18`, `681997415`; RM-801 filed.
@@ -27,17 +41,3 @@
 - **Housekeeping (LEDGER 1757):** RM-703 - 53 branches bundled then deleted, 6 worktrees removed; moon_sync_repos.json drive fix; MAIN ANSWER delivered 1/1 TERMINAL; RM-736 CLOSED (rejected, record-only); RM-779..RM-798 filed.
 - **Do NOT redo:** any of the above; the 12 hand-off Reverses-if clauses are applied.
 - **Next:** S6 (vision decodes a live frame under Pillow 13, next game), RM-789 (HIGH: MAIN's name in no sweep slot), RM-766 (DS 16.21.1, Tier-2), then RM-763..RM-798 in order.
-
----
-
-# 2026-10-20 - session 125: DEPENDABOT rule (path B), TA1 merged, RM-747..RM-753 shipped, gated suite, CLI pin 2.1.305
-
-- **C1 MAIN ORDER 0034 DEPENDABOT-MERGE-RULE (`bdaff4426`, `ec06bbb21`):** RC adopts path B only (close the bot PR, re-apply as an operator commit); rule in CLAUDE.md, OPERATIONS, SECURITY, CONTRIBUTING, dependabot.yml, done.md section 2; new `tools/bot_merge_check.py` (9 tests). ANSWER delivered 1/1, re-hashed equal, row --done. Read-backs: contributors 1 (operator), 6225 default-branch commits 0 bot / web-merge / co-author; auto-merge off, no rulesets. Kit defect sent to MAIN: fleet_identity passes a HUMAN non-operator Co-authored-by.
-- **C2 TA1 merged `9faf39988`;** RM-256 + RM-521 closed `196f0c35d` (LEDGER 1743); RC-Phase3-Supervisor restarted, :8890 / :8891 loopback-only, /push Origin read back. Fixed the red nightly (test_rm_id_registry_drift). C3: worktree + local and remote `lane/true-audit` gone (remote deleted at /done).
-- **Servers:** RM-747/748/749 + RM-753 merged `74472daec` (idle close 30.0 s on :8860 / :8890 / :8895); RM-750 DS keepalive `4e38b8e4a` (DS back 28 s after a kill, 1 process); RM-752 TLS floor `fbf4d42da`; RM-751 dead secret blanked `515fc332f`.
-- **Docs:** ROADMAP size pass `b6ba5a028`; RM-754..RM-759 filed `e4447e14c`; ROFL root as %RC_ROFL_ARCHIVE_DIR% `525b0765e`.
-- **C14 gated dual suite (LEDGER 1748):** 1 failed (CLI auto-update vs pin), 40790 passed; **C15** re-pin `5d24766cb` after the canary (LEDGER 1749).
-- **Push:** `d8d45b798..5d24766cb`, then the wrap commit. GitHub reports 7 Dependabot vulnerabilities on main.
-- **OPERATOR STEP:** elevated `tools/install_ds_keepalive_task.ps1` (SYSTEM task RC-DSKeepalive), then the RM-750 live check with RC stopped.
-- **Do NOT redo:** C1 (ANSWER is TERMINAL), TA1, RM-747..RM-753, RM-750 code, the CLI re-pin.
-- **Next:** the carried OPEN - WORK ITEMS in hand-off order (C11 not reached); RM-759 is unblocked.

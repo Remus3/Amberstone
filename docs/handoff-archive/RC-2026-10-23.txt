@@ -1,0 +1,34 @@
+# archived from RC-NEXT-SESSION.txt at 2026-10-23T15:45:00Z
+====================
+CLOSED - DO NOT RE-LITIGATE, OLDER RECORDS (s108-s126 rulings and shipped records; each keeps its Reverses if:) - verbatim from fa371ab4f:RC-NEXT-SESSION.txt
+====================
+- s126 (LEDGER 1750-1757): 30 Dependabot alerts closed cef8bfd22; CLI pins 2.1.308 / 2.1.309; C1a
+  RM-759 / RM-756 / RM-758 / voice_coach / RM-757 (ff6797dde..c4f08fa7a); C1b RM-760a-c / RM-761a-c /
+  RM-762 (76d522efa..3d3f267e0); DDragon 16.21.1 76fcbd036; wave 1 8ed75ccac..915300765; wave 2
+  b7b44abb7..c6bbd1577 + 376443c8a (RM-728, RM-600, RM-660, ENGINE 1.288.0); RM-703 53 branches bundled
+  + deleted, 6 worktrees removed; MAIN ANSWER 1852 TERMINAL delivered 1/1. Reverses if: a live re-check
+  of one of those acceptances fails.
+- s125 (LEDGER 1743-1749): TA1 9faf39988; RM-747/748/749/753 74472daec; RM-750 4e38b8e4a; RM-752
+  fbf4d42da; RM-751 515fc332f. Reverses if: a live re-check of an RM-747..753 / RM-750 acceptance
+  fails.
+- s124 (LEDGER 1741-1742): C1 gated dual suite GREEN on a2c3c0934; RM-695 CLOSED; ROFL archive
+  answered. Reverses if: the gate self-test times out or reds in a gated suite, or MAIN re-opens the
+  ROFL ORDER.
+- C1 (s122, LEDGER 1737, 50744bdee): the in-tree tag bundle is KEPT (proved by a full restore).
+  Reverses if: one of the per-item Reverses-if clauses in LEDGER 1737 is met.
+- Dependabot s121 (LEDGER 1736): #14 / #16 electron DECLINED, #17 anthropic DECLINED under RM-681, #18
+  playwright applied a0123c8a7. Reverses if: per each commit body.
+- RM-743 CLOSED by measurement (LEDGER 1725-1727). Reverses if: any lane, loop, responder, prompt or
+  kit reader starts reading the label or acting on inbox_work.jsonl rows.
+- RM-740 (e) known cost (LEDGER 1722): while the task is DISABLED, or the RC token can query but not
+  run it, every relaunch is refused and DS stays down. Reverses if: a refusal is logged while
+  RC-DaemonSlayer is ENABLED and runnable by the RC token, or the box gains a battery.
+- Trade-off (s108, LEDGER 1714): on a thrashing box 3 x 3 s failed probes can replace a slow-but-alive
+  vision server; the respawn back-off (90 s doubling to 30 min) bounds the churn; same for DsWatchdog.
+  Reverses if: one server respawns more than 6 times in any 60-minute window (the back-off allows at
+  most 6), or a vision / DS restart is logged while its /health answered within the probe budget.
+- Task Scheduler RestartOnFailure is inert for a crash exit; the Operational log stays ENABLED (LEDGER
+  1731). Reverses if: a crash exit of a registered RC task is measured relaunched by RestartOnFailure
+  (re-measure after a Windows feature update), or the Operational log fills its cap, dropping RC events.
+- RM-512 self-adjudicated in wave 1 (main f21175b41; LEDGER 1503). Reverses if: the operator or MAIN
+  re-opens it in writing, or core/riot_api.py is measured reading RIOT_API_KEY (the FILE-ONLY premise).
