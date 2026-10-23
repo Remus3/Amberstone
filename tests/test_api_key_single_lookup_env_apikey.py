@@ -15,9 +15,9 @@ this change the readers did NOT share one lookup:
   * `vision_server/_config.py`  its own copy that ALSO read key files in the
     home folder and on the Desktop - outside the repo.
 
-The order (MAIN section 2): (1) process env ANTHROPIC_API_KEY, only if a
-launcher set it for that one process; (2) API-Key-Claude.txt at the RC repo
-root. `core/anthropic_key.read_anthropic_key` is that one lookup;
+The order (MAIN section 2): (1) process env ANTHROPIC_API_KEY, when the
+parent environment carries it (no launcher sets it; RM-810); (2)
+API-Key-Claude.txt at the RC repo root. `core/anthropic_key.read_anthropic_key` is that one lookup;
 `coaches/_base_coach.read_api_key` stays as a thin re-export.
 
 What is pinned here:

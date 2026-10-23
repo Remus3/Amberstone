@@ -4,8 +4,11 @@
 MAIN ORDER ENV-APIKEY (2026-10-13): every RC reader of the Anthropic key uses
 ONE lookup, in this order:
 
-  1. the process environment variable ANTHROPIC_API_KEY - present only when a
-     launcher set it for that one process (start.bat / restart.bat do);
+  1. the process environment variable ANTHROPIC_API_KEY, when the parent
+     environment carries it. No launcher sets it: start.bat,
+     scripts/restart.bat and scripts/start_debug.bat run THIS file (by path)
+     to check the key, keep a usable inherited value and clear an unusable
+     one (RM-810);
   2. API-Key-Claude.txt at the RC repo root (gitignored).
 
 So no reader depends on a Machine- or User-scope variable: once MAIN removes
