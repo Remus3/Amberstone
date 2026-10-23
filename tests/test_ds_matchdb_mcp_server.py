@@ -443,6 +443,60 @@ def test_http_server_still_serves_after_bad_body_rm760a(server):
     assert env["result"]["serverInfo"]["name"] == "ds-matchdb-mcp"
 
 
+# RM-769: JSON-RPC 2.0 says `method` MUST be a string. A list or dict is
+# unhashable, so `METHOD_HANDLERS.get(method)` raised TypeError out of do_POST
+# and the client got no reply at all (connection dropped); a number, bool or
+# null was misreported as -32601 "method not found".
+@pytest.mark.parametrize("method", [["initialize"], {"a": 1}, 7, None, True],
+                         ids=["list", "dict", "int", "null", "bool"])
+def test_http_non_string_method_is_invalid_request_rm769(server, method):
+    base, tok = server
+    st, env = _post(base, tok, {"jsonrpc": "2.0", "id": 11, "method": method})
+    assert st == 200
+    assert env["error"] == {"code": -32600, "message": "Invalid Request"}
+    assert env["id"] == 11
+
+
+# The spec's own example (section 7, "rpc call with invalid Request object")
+# is `{"jsonrpc": "2.0", "method": 1, "params": "bar"}` with NO id, answered
+# -32600 with id null - an invalid request is not a notification.
+@pytest.mark.parametrize("method", [["x"], {"a": 1}, 1],
+                         ids=["list", "dict", "int"])
+def test_http_non_string_method_without_id_is_answered_rm769(server, method):
+    base, tok = server
+    st, env = _post(base, tok, {"jsonrpc": "2.0", "method": method,
+                                "params": "bar"})
+    assert st == 200
+    assert env["error"] == {"code": -32600, "message": "Invalid Request"}
+    assert env["id"] is None
+
+
+def test_http_server_still_serves_after_non_string_method_rm769(server):
+    base, tok = server
+    _post(base, tok, {"jsonrpc": "2.0", "id": 1, "method": ["initialize"]})
+    st, env = _post(base, tok, {"jsonrpc": "2.0", "id": 2,
+                                "method": "initialize"})
+    assert st == 200
+    assert env["result"]["serverInfo"]["name"] == "ds-matchdb-mcp"
+
+
+# Sibling of RM-769 (same root cause, a client value used as a dict key):
+# `TOOL_FUNCS.get(name)` with a list / dict tool name raised TypeError, which
+# the handler catch-all turned into -32603 "Internal error". A non-string name
+# is an unknown tool, answered like any other.
+@pytest.mark.parametrize("name", [["ds_health"], {"a": 1}],
+                         ids=["list", "dict"])
+def test_http_non_string_tool_name_is_unknown_tool_rm769(server, name):
+    base, tok = server
+    st, env = _post(base, tok, {"jsonrpc": "2.0", "id": 12,
+                                "method": "tools/call",
+                                "params": {"name": name, "arguments": {}}})
+    assert st == 200
+    assert env["id"] == 12
+    assert env["result"]["isError"] is True
+    assert "unknown tool" in env["result"]["content"][0]["text"]
+
+
 def test_http_health_endpoint(server):
     base, tok = server
     req = Request(f"{base}/health",
