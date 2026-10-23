@@ -52,6 +52,7 @@ log-filter rules keep matching.
 from __future__ import annotations
 
 import hmac
+import http.client
 import ipaddress
 import json
 import logging
@@ -337,6 +338,22 @@ def is_allowed_host(hostname) -> bool:
 # none: the block ends at its blank line). NOT every defect: the parser also
 # flags the empty body of a multipart / message Content-Type (no start
 # boundary, no boundary parameter), which says nothing about the head.
+#
+# RM-773 follow-up (verifier bypass, 2026-10-23): the parser also lets the
+# block's own Content-Type STEER that "body" into a multipart or message
+# parse, which files swallowed lines where the first fix never looked - the
+# root's preamble or epilogue (`multipart/mixed; boundary=x`, a bare CR, then
+# `Host: rebind.example` before or after the `--x` lines -> 200), consumed
+# boundary lines, a part's dropped first line. Closed at the root: the
+# handlers parse heads with `HeadOnlyMessage`, which reports no Content-Type
+# while the parse runs, so a header-only block always parses FLAT and every
+# swallowed line is root payload text or a root defect; it is
+# `HeadOnlyMessage` that closes the class. `_parsed_body_text` is strict on
+# top of that (any structured body, preamble or epilogue refuses), but only as
+# defence in depth for the known preamble / epilogue shapes: under the stdlib
+# class it does NOT hold - `multipart/mixed; boundary=x`, a bare CR, `--x--`,
+# then a Host line loses every line after the close boundary with no payload,
+# preamble or epilogue left to find.
 _HEAD_STRUCTURE_DEFECTS = (
     _email_errors.MissingHeaderBodySeparatorDefect,
     _email_errors.FirstHeaderLineIsContinuationDefect,
@@ -345,16 +362,40 @@ _HEAD_STRUCTURE_DEFECTS = (
 )
 
 
+class HeadOnlyMessage(http.client.HTTPMessage):
+    """The request-head message class of ``HostAllowlistMixin`` (RM-773).
+
+    While the stdlib parses the header block, ``get_content_type`` reports
+    ``text/plain`` (the RFC default for no Content-Type), so the feed parser
+    never runs a multipart / message parse over the block's tail.
+    ``HostAllowlistMixin.parse_request`` calls ``head_parsed()`` as soon as
+    the parse returns; from then on the real Content-Type is reported, so a
+    route sees the same Content-Type, maintype, boundary, params and charset
+    as under the stdlib class. ``is_multipart()`` differs: a message/rfc822
+    or message/delivery-status head is True under the stdlib class and False
+    here (the flat parse makes no sub-message); no in-tree route reads it.
+    """
+
+    _head_parsed = False
+
+    def head_parsed(self) -> None:
+        self._head_parsed = True
+
+    def get_content_type(self) -> str:
+        if not self._head_parsed:
+            return "text/plain"
+        return super().get_content_type()
+
+
 def _parsed_body_text(msg) -> bool:
-    """True when the parser filed any of the header block as a body."""
-    payload = msg.get_payload()
-    if isinstance(payload, list):
-        # message/* (and a parsed multipart): the "body" is sub-messages; an
-        # empty one is the parser's own artefact, one with headers or text
-        # holds lines of the block.
-        return any(len(part) or part.get_unixfrom() or _parsed_body_text(part)
-                   for part in payload)
-    return bool(payload) or bool(msg.preamble) or bool(msg.epilogue)
+    """True when the parser filed any of the header block as a body.
+
+    A header-only block has an EMPTY body, so any text there, a preamble or
+    epilogue, or a body parsed into parts / sub-messages at all means lines
+    of the block were swallowed."""
+    if isinstance(msg.get_payload(), list):
+        return True
+    return bool(msg.get_payload()) or bool(msg.preamble) or bool(msg.epilogue)
 
 
 def head_parse_defect(headers) -> str | None:
@@ -414,9 +455,15 @@ class HostAllowlistMixin:
     since an absolute-form target's authority would replace Host."""
 
     host_refusal_log = log
+    # RM-773 follow-up: heads parse flat, never steered by their Content-Type.
+    MessageClass = HeadOnlyMessage
 
     def parse_request(self) -> bool:
-        if not super().parse_request():
+        parsed = super().parse_request()
+        headers = getattr(self, "headers", None)
+        if isinstance(headers, HeadOnlyMessage):
+            headers.head_parsed()   # routes see the real Content-Type
+        if not parsed:
             return False
         # HTTP/0.9 carries no headers at all (Python 3.14 sets headers =
         # {}), so no Host: letting it through would be a headerless bypass
