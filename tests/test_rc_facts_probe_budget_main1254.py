@@ -232,15 +232,13 @@ def test_the_port_probe_stops_retrying_at_the_deadline(monkeypatch):
     assert all(0 < t <= 0.6 for t in timeouts), timeouts
 
 
-def test_no_port_probe_attempt_starts_after_the_deadline(monkeypatch):
-    """RM-802. The timeout bound above cannot see a retry that STARTS after
-    the deadline: _PROBE_MIN_TIMEOUT_S floors that retry's timeout at 0.05 s,
-    under every bound, so with the _probe_expired() check in _port_listening
-    removed all its tests stayed green. Here rc_facts' own clock is virtual
-    and moves only inside connect, by the timeout the probe set, so the run
-    is deterministic and each attempt's start is compared to the deadline."""
+def _virtual_clock_and_a_timing_out_socket(monkeypatch):
+    """rc_facts' own clock is virtual and moves only inside connect, by the
+    timeout the probe set, so a run is deterministic. Returns (clock,
+    attempts): attempts holds (start, the probe thread's deadline or None,
+    timeout) per connect."""
     clock = [100.0]
-    attempts = []  # (start, the probe thread's deadline, timeout) per connect
+    attempts = []
 
     class TimingOutSocket:
         def __init__(self, *_a):
@@ -250,7 +248,8 @@ def test_no_port_probe_attempt_starts_after_the_deadline(monkeypatch):
             self._t = value
 
         def connect(self, _addr):
-            attempts.append((clock[0], rc_facts._probe_ctx.deadline, self._t))
+            attempts.append((clock[0], getattr(rc_facts._probe_ctx, "deadline", None),
+                             self._t))
             clock[0] += self._t  # the whole timeout elapses, then it times out
             raise socket.timeout()
 
@@ -262,6 +261,16 @@ def test_no_port_probe_attempt_starts_after_the_deadline(monkeypatch):
     # The runner's join is the one real-time wait left. The virtual clock stops
     # when the probe thread does, so the join returns as that thread ends.
     monkeypatch.setattr(rc_facts, "PROBE_JOIN_GRACE_S", 30.0)
+    return clock, attempts
+
+
+def test_no_port_probe_attempt_starts_after_the_deadline(monkeypatch):
+    """RM-802. The timeout bound above cannot see a retry that STARTS after
+    the deadline: _PROBE_MIN_TIMEOUT_S floors that retry's timeout at 0.05 s,
+    under every bound, so with the _probe_expired() check in _port_listening
+    removed all its tests stayed green. On the virtual clock each attempt's
+    start is compared to the deadline instead."""
+    clock, attempts = _virtual_clock_and_a_timing_out_socket(monkeypatch)
     budget_s = 1.5  # attempt 1 gets 1.0 s, attempt 2 the last 0.5 s, attempt 3 none
     got, late = rc_facts._run_probes({"port": lambda: rc_facts._port_listening(1)},
                                      budget_s)
@@ -273,6 +282,32 @@ def test_no_port_probe_attempt_starts_after_the_deadline(monkeypatch):
     # Not vacuous: the probe ran its clock to the deadline with an attempt to
     # spare, so only the expiry check stands between it and one more connect.
     assert clock[0] >= deadline and len(attempts) == 2, (clock, attempts)
+
+
+@pytest.mark.parametrize("late_by", [0.0, 0.5], ids=["at", "past"])
+def test_a_port_probe_entered_at_or_past_the_deadline_never_connects(
+        monkeypatch, late_by):
+    """RM-802 follow-up. The test above starts 1.5 s before the deadline, so
+    its FIRST attempt is never checked: an expiry check moved after the
+    timed-out connect, or skipped on loop pass 0, still passes it. Entered
+    with the deadline already reached (earlier work in the probe thread used
+    the budget), _port_listening must open no connect at all - "no attempt
+    starts after it" (its docstring)."""
+    clock, attempts = _virtual_clock_and_a_timing_out_socket(monkeypatch)
+    budget_s = 1.0
+    deadline = clock[0] + budget_s
+
+    def probe_entered_late():
+        clock[0] = deadline + late_by
+        return rc_facts._port_listening(1)
+
+    got, late = rc_facts._run_probes({"port": probe_entered_late}, budget_s)
+    assert late == [] and got == {"port": False}
+    assert attempts == [], f"connect attempt(s) at or past the deadline: {attempts}"
+    # Not vacuous: with no deadline (a direct call) the same probe does reach
+    # the fake socket, once per attempt.
+    assert rc_facts._port_listening(1) is False
+    assert [(d, t) for _s, d, t in attempts] == [(None, 1.0)] * 3, attempts
 
 
 def test_another_threads_socket_is_neither_recorded_nor_faked(monkeypatch):
