@@ -113,10 +113,17 @@ def _emit(text: str) -> None:
 
 
 def _read_payload() -> dict:
+    # stdin as BYTES, decoded UTF-8, BOM stripped (RM-784 sibling): a text
+    # read went through the console code page (cp1252 has no 0x81, so a
+    # UTF-8 path holding U+0101 faulted) and a PS 5.1 BOM was never stripped.
     try:
-        raw = sys.stdin.read() if sys.stdin is not None else ""
-    except (OSError, ValueError):
-        raw = ""
+        stream = sys.stdin
+        data = (getattr(stream, "buffer", None) or stream).read() if stream is not None else ""
+    except (OSError, ValueError, AttributeError):
+        data = ""
+    if isinstance(data, (bytes, bytearray)):
+        data = bytes(data).decode("utf-8", errors="replace")
+    raw = (data or "").lstrip(chr(0xFEFF))
     try:
         payload = json.loads(raw) if raw.strip() else {}
     except (ValueError, TypeError):
