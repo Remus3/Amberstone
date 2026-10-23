@@ -53,7 +53,21 @@ def _env_port(name: str, default: int) -> int:
 STATE_DIR = Path(os.environ.get("RC_PHASE3_STATE_DIR") or (_PROJECT_ROOT / "agents" / "state"))
 LOCKFILE = STATE_DIR / "lockfile"
 WEB_ROOT = _PROJECT_ROOT / "web"
-LOG_ROOT = _PROJECT_ROOT / "logs" / "agents"
+# RM-812: a non-empty RC_PHASE3_LOG_DIR relocates logs/agents/ - supervisor.log
+# (built at import below), agent<N>.log and task-<id>.log (the ephemeral spawn
+# and _run_deterministic) - as a unit, read at IMPORT like STATE_DIR above. The
+# test suites set it before anything imports this module, so neither an
+# in-process spawn nor a supervisor child a test starts writes the live logs.
+LOG_DIR_ENV = "RC_PHASE3_LOG_DIR"
+
+
+def _resolve_log_root(environ=os.environ) -> Path:
+    """logs/agents/, or a non-empty ``RC_PHASE3_LOG_DIR``."""
+    raw = (environ.get(LOG_DIR_ENV) or "").strip()
+    return Path(raw) if raw else _PROJECT_ROOT / "logs" / "agents"
+
+
+LOG_ROOT = _resolve_log_root()
 
 # CAUTION: these resolve at IMPORT time, and tests/test_ports.py asserts the
 # repo-wide port registry equals these two values. Pass the overrides in a

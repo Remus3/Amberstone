@@ -109,6 +109,17 @@ os.environ["RC_NOTIFY_JSONL"] = str(_SUITE_LOG_DIR / "operator_notify.jsonl")
 os.environ["RC_MOMENT_MARKS_JSONL"] = str(_SUITE_LOG_DIR / "moment_marks.jsonl")
 os.environ["RC_MOMENT_MARKS_DIR"] = str(_SUITE_LOG_DIR / "moment_marks_by_game")
 
+# RM-812: agents/_supervisor_common.py binds LOG_ROOT (logs/agents/) from this
+# at IMPORT, and test modules import it during collection, before any fixture
+# runs - so a per-test ENV_ROOTS entry would arrive too late. The ephemeral
+# spawn (agents/_supervisor_ephemeral.py) appends agent<N>.log / task-<id>.log
+# there by plain file I/O, which the FileHandler redirect below cannot see:
+# measured, tests/test_supervisor_ephemeral_auth_env.py and
+# tests/test_headless_route_spawn_paths.py wrote 13+ live task logs a run.
+# A supervisor child a test starts inherits it too.
+# Guarded by tests/test_live_log_isolation_rm812.py.
+os.environ["RC_PHASE3_LOG_DIR"] = str(_SUITE_LOG_DIR / "agents")
+
 # FLEET-KIT v14 (MAIN 2026-10-09 0930 step 4): RC tests acquire lanes through
 # the kit (ops/loop/lanes.py -> fleet_lanes.try_acquire_lane -> worktree_path),
 # which reads the user variable FLEET_SIDECAR_ROOT (process env first, then the
@@ -182,12 +193,19 @@ fleet_test_guard.install(
     extra_ignore=_fleet_guard_config.EXTRA_IGNORE)
 
 _REAL_LOG_DIR = _REPO_ROOT / "logs"
+# RM-812: live log FILES outside logs/. vision_server/_config.py builds its
+# FileHandler on <repo>/moon_vision_server.log at IMPORT, so a test module that
+# imports it during collection (before the RC_VISION_SERVER_LOG fixture runs)
+# opened - and in a fresh checkout created - the live file. Measured from
+# tests/test_p2w1_app_a.py and tests/test_api_key_single_lookup_env_apikey.py.
+_REAL_LOG_FILES = frozenset({_REPO_ROOT / "moon_vision_server.log"})
 
 
 def _tmp_log_path(filename):
-    """Map a path under the repo's real `logs/` onto `_SUITE_LOG_DIR`.
+    """Map a path under the repo's real `logs/` (or one of `_REAL_LOG_FILES`)
+    onto `_SUITE_LOG_DIR`.
 
-    Anything NOT under the real log dir is returned byte-identical, so a test
+    Anything else is returned byte-identical, so a test
     that hands a handler its own `tmp_path` keeps exactly the path it asked
     for and no assertion on that path can change meaning. That is the
     `ValueError` arm below and it is the only arm allowed to hand back the
@@ -219,6 +237,8 @@ def _tmp_log_path(filename):
             digest = hashlib.sha256(
                 str(filename).encode("utf-8", "replace")).hexdigest()[:16]
             return str(_SUITE_LOG_DIR / f"unresolvable-{digest}.log")
+    if resolved in _REAL_LOG_FILES:
+        return str(_SUITE_LOG_DIR / resolved.name)
     try:
         rel = resolved.relative_to(_REAL_LOG_DIR)
     except ValueError:  # not under logs/ - hand back exactly what was asked for
@@ -632,6 +652,13 @@ _PROD_PATH_GLOBALS = (
     # (module, attribute, leaf under the shared base, target is a directory)
     ("core.coaching_timestamps", "_RUNTIME_DIR", "coaching_ts", True),
     ("core.feature_policy", "_DATA_DIR", "feature_policy_data", True),
+    # RM-812 sibling sweep: the SR disabled placeholder goes to _SR_ARTIFACT
+    # (<repo>/coaching_data.json, the live SR coach output), not _DATA_DIR;
+    # tests/phase2_smoke/test_sr_aram_worker.py's gate-disabled test wrote it.
+    ("core.feature_policy", "_SR_ARTIFACT", "feature_policy_sr/coaching_data.json", False),
+    # RM-812 sibling sweep: _get_conn() opens _DB_PATH (data/postgame_stats.db)
+    # at call time; tests/test_p2w1_app_b.py's timeline tests created it.
+    ("lcu.lcu_postgame_collector", "_DB_PATH", "postgame_stats/postgame_stats.db", False),
     ("tft.placement_aggregator", "_RATINGS_DIR", "placement_ratings", True),
     ("tft.placement_aggregator", "_HEATMAP_FILE", "placement_heatmap.json", False),
     ("app._game_lifecycle", "SCRIPT_DIR", "app_root", True),

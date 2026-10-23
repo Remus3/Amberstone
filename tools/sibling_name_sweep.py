@@ -1981,7 +1981,7 @@ def render_report(
     lines.append("  2. Remove or redact the byte, amend the commit, push again.")
     lines.append(
         f"  3. Deliberate override: {BYPASS_ENV}=1 proceeds and appends the full "
-        f"would-have-halted report to {BYPASS_LOG.as_posix()}."
+        f"would-have-halted report to {bypass_log_display()}."
     )
     lines.append(
         "  Note plainly: `git push --no-verify` bypasses the WHOLE hook, this "
@@ -2051,6 +2051,18 @@ def bypass_log_path() -> Path:
     else ``REPO_ROOT / BYPASS_LOG`` (RM-788)."""
     override = (os.environ.get(BYPASS_LOG_ENV) or "").strip()
     return Path(override) if override else REPO_ROOT / BYPASS_LOG
+
+
+def bypass_log_display() -> str:
+    """``bypass_log_path()`` as the operator-facing text names it (RM-812: it
+    printed BYPASS_LOG even when the override sent the write elsewhere):
+    relative to the checkout root when inside it - the unchanged default text -
+    else the path itself."""
+    path = bypass_log_path()
+    try:
+        return path.relative_to(REPO_ROOT).as_posix()
+    except ValueError:
+        return path.as_posix()
 
 
 def _append_bypass_log(text: str) -> None:
@@ -2279,7 +2291,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 "working tree, so sibling-name matching did NOT run. Restore "
                 "ops/moon_sync_repos.json in the main working tree or set "
                 f"RC_MOON_SYNC_REPOS to arm it. Deliberate override: {BYPASS_ENV}=1 "
-                f"proceeds and appends this notice to {BYPASS_LOG.as_posix()}."
+                f"proceeds and appends this notice to {bypass_log_display()}."
             )
             _emit(notice)
             if not bypass:

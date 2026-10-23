@@ -74,11 +74,9 @@ def apply_grade(grade: str, last_state: Optional[dict],
 
     if cache is None:
         try:
-            from modules.cache_engine import CacheEngine
-            from pathlib import Path
+            from modules.cache_engine import CacheEngine, decisions_db_path
             if db_path is None:
-                db_path = str(Path(__file__).resolve().parent.parent
-                              / "data" / "decisions.db")
+                db_path = str(decisions_db_path())
             cache = CacheEngine(db_path)
         except Exception as exc:  # noqa: BLE001
             _log.debug("apply_grade: cache init failed: %s", exc)

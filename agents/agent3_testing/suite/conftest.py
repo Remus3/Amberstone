@@ -19,7 +19,9 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import sys
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -27,6 +29,14 @@ import pytest
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
+
+# RM-812: agents/_supervisor_common.py binds LOG_ROOT (logs/agents/) from this
+# at IMPORT, so it is set here, before any test module imports the supervisor.
+# The ephemeral-dispatch tests (test_supervisor_stub.py) otherwise appended
+# agent6.log / task-<id>.log to the live logs/agents/. Mirrors tests/conftest.py;
+# a combined run with tests/ keeps whichever tmp dir was set first.
+if not (os.environ.get("RC_PHASE3_LOG_DIR") or "").strip():
+    os.environ["RC_PHASE3_LOG_DIR"] = tempfile.mkdtemp(prefix="rc-agent3-agent-logs-")
 
 
 def _clear_running_loop() -> None:
