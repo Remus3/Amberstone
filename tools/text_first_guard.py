@@ -18,7 +18,11 @@ constant at the top - DENY_TOOLS, STATE_HINT, FLAG_REL - and a host without
 RC's dashboard overrides the last two through the environment:
   TEXT_FIRST_STATE_HINT  replaces the state hint ("" drops that clause);
   TEXT_FIRST_FLAG        the escape flag path (absolute, or relative to the
-                         repo root).
+                         repo root). RM-784: it counts only INSIDE the repo
+                         root and only as a regular file; an override outside
+                         the root (or naming the root itself) is ignored and
+                         the default FLAG_REL applies, so no existing system
+                         file or directory can switch the guard off.
 On a host where the two MCP readers are not installed the settings matcher
 never fires, so the hook is a no-op by construction. An interpreter that
 never starts is reported by the shell tail on the hook line in
@@ -54,15 +58,37 @@ ENV_FLAG = "TEXT_FIRST_FLAG"
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def flag_path() -> Path:
+def _override() -> "Path | None":
+    """The TEXT_FIRST_FLAG path when it resolves strictly inside the repo
+    root, else None (RM-784: an override outside the root is ignored)."""
     raw = os.environ.get(ENV_FLAG, "").strip()
-    path = Path(raw) if raw else Path(FLAG_REL)
-    return path if path.is_absolute() else ROOT / path
+    if not raw:
+        return None
+    path = Path(raw)
+    try:
+        resolved = (path if path.is_absolute() else ROOT / path).resolve()
+        if resolved == ROOT or not resolved.is_relative_to(ROOT):
+            return None
+    except (OSError, ValueError, RuntimeError):
+        return None
+    return resolved
+
+
+def flag_path() -> Path:
+    return _override() or ROOT / FLAG_REL
+
+
+def flag_set() -> bool:
+    """The escape hatch is a regular FILE; a directory never counts."""
+    try:
+        return flag_path().is_file()
+    except OSError:
+        return False
 
 
 def reason() -> str:
     hint = os.environ.get(ENV_STATE_HINT, STATE_HINT).strip()
-    flag = os.environ.get(ENV_FLAG, "").strip() or FLAG_REL
+    flag = os.environ.get(ENV_FLAG, "").strip() if _override() else FLAG_REL
     parts = [
         "Text-first (CLAUDE.md R1-R2): do not read text/state off the screen.",
         "File content -> Read/Grep.",
@@ -80,7 +106,7 @@ def decide(payload: object) -> "dict | None":
     tool = payload.get("tool_name")
     if not isinstance(tool, str) or tool not in DENY_TOOLS:
         return None
-    if flag_path().exists():
+    if flag_set():
         return None
     return {
         "hookSpecificOutput": {
@@ -91,9 +117,21 @@ def decide(payload: object) -> "dict | None":
     }
 
 
+def read_stdin() -> str:
+    """stdin as BYTES, the UTF-8 BOM stripped there, decoded UTF-8 (RM-784):
+    a text read plus a U+FEFF strip worked only when the console decoded
+    UTF-8; under cp1252 the BOM arrived as three other characters."""
+    stream = sys.stdin
+    layer = getattr(stream, "buffer", None) or stream
+    data = layer.read()
+    if isinstance(data, (bytes, bytearray)):
+        data = bytes(data).removeprefix(b"\xef\xbb\xbf").decode("utf-8", errors="replace")
+    return (data or "").lstrip(chr(0xFEFF))
+
+
 def main() -> int:
     try:
-        raw = sys.stdin.read().lstrip("\ufeff")
+        raw = read_stdin()
         payload = json.loads(raw) if raw.strip() else None
         out = decide(payload)
         if out is not None:

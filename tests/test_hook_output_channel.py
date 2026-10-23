@@ -136,6 +136,34 @@ def test_edit_lint_check_clean_edit_is_silent(tmp_path):
 
 
 @pytest.mark.parametrize("name", sorted(_HOOKS))
+def test_bom_payload_under_a_cp1252_console_still_reaches_the_hook(name, tmp_path):
+    """RM-784 sibling sweep: both edit hooks read stdin through the console
+    code page. Under cp1252 a PS 5.1 BOM arrived as three other characters
+    (edit_lint_check's U+FEFF strip missed it; pytest_guard never stripped a
+    BOM at all) and a UTF-8 path holding U+0101 (bytes C4 81; cp1252 has no
+    0x81) faulted the read, so either hook went silent. Now stdin is read as
+    bytes, the BOM stripped there, and decoded UTF-8."""
+    where = tmp_path / ("d" + chr(0x0101) + "ta")
+    where.mkdir()
+    bad = where / "both.py"
+    bad.write_text("def f(:\n" + "# " + _EMDASH + "\n", encoding="utf-8")
+    text = _payload("Write", {"file_path": str(bad),
+                              "content": bad.read_text(encoding="utf-8")}, where)
+    # Raw UTF-8 (ensure_ascii=False), as Claude Code sends it, behind a BOM.
+    raw = b"\xef\xbb\xbf" + json.dumps(json.loads(text), ensure_ascii=False).encode("utf-8")
+    env = {k: v for k, v in os.environ.items() if k not in ("CLAUDE_FILE_PATHS", "RC_FULL_SUITE")}
+    env.update(PYTHONIOENCODING="cp1252", PYTHONUTF8="0")
+    proc = subprocess.run([sys.executable, str(_HOOKS[name])], input=raw, capture_output=True,
+                          timeout=60, env=env, cwd=str(tmp_path))
+    out = proc.stdout.decode("ascii", errors="replace")
+    assert proc.returncode == 0, proc.stderr
+    lines = out.splitlines()
+    assert len(lines) == 1, f"the hook went silent (or spoke twice): {out!r}"
+    ctx = json.loads(lines[0])["hookSpecificOutput"]["additionalContext"]
+    assert "both.py" in ctx, ctx
+
+
+@pytest.mark.parametrize("name", sorted(_HOOKS))
 def test_hook_never_exits_non_zero_on_a_finding(name, tmp_path):
     bad = tmp_path / "both.py"
     bad.write_text("def f(:\n" + "# " + _EMDASH + "\n", encoding="utf-8")

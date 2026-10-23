@@ -87,15 +87,22 @@ def _is_skippable(p: Path) -> bool:
 
 
 def _read_stdin() -> str:
+    """stdin as BYTES, decoded UTF-8 (RM-784 sibling): through the console
+    code page a cp1252 BOM arrived as three other characters and a UTF-8
+    path holding U+0101 (C4 81; cp1252 has no 0x81) faulted the read, so
+    the hook went silent. _parse_payload strips the decoded BOM."""
     stream = sys.stdin
     if stream is None:  # pythonw with no standard handles
         return ""
     try:
         if stream.isatty():
             return ""
-        return stream.read() or ""
+        data = (getattr(stream, "buffer", None) or stream).read()
     except (OSError, ValueError, AttributeError):
         return ""
+    if isinstance(data, (bytes, bytearray)):
+        return bytes(data).decode("utf-8", errors="replace")
+    return data or ""
 
 
 def _parse_payload(raw: str) -> dict:
