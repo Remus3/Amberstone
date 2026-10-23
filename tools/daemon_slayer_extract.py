@@ -20,6 +20,10 @@ Usage:
     $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/daemon_slayer_extract.py --force    # re-extract regardless of patch state
     $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/daemon_slayer_extract.py --chunk-url URL  # override chunk autodiscovery
 
+A lolmath ARAM modifier table that comes back >= 95 percent neutral stops the
+extract with exit code 3 and nothing written (RM-805); ``--allow-neutral-aram
+REASON`` accepts it after an adjudication, logged and recorded in the manifest.
+
 Design rationale (see project_daemon_slayer_engine.md):
   - DDragon is the canonical source for champion/item/stat data.
   - lolmath provides only the *scenario* priors - playstyle weight tables,
@@ -909,6 +913,91 @@ def check_lolmath_coverage(lolmath: LolmathExtract) -> list[str]:
     return missing
 
 
+# RM-805: a (near) all-neutral ARAM modifier table is not a balance patch. The
+# committed snapshots 16.10.1 .. 16.20.1 carry 21-24 percent neutral rows; the
+# 16.21.1 lolmath table came back 173/173 neutral and was accepted silently
+# until an adjudication carried the 16.20.1 block forward. A table at or above
+# this fraction stops the extract before anything is written; the only way
+# past it is ``--allow-neutral-aram REASON``, which is logged and recorded in
+# the manifest (``aram_modifiers_neutral_override``).
+ARAM_NEUTRAL_FAIL_FRACTION = 0.95
+EXIT_ARAM_NEUTRAL = 3
+# Same field semantics as core/aram_balance_context.py (_GRID_MULT_FIELDS /
+# _GRID_FLAT_FIELDS): the multipliers are neutral at 1.0, ability haste is an
+# additive flat value, neutral at 0. A missing or non-numeric field carries no
+# information and counts as neutral.
+_ARAM_MULT_FIELDS = (
+    "aramDamageDealt",
+    "aramDamageTaken",
+    "aramHealing",
+    "aramShielding",
+    "aramTenacity",
+    "aramAttackSpeed",
+)
+_ARAM_FLAT_FIELDS = ("aramAbilityHaste",)
+
+
+class NeutralAramTableError(RuntimeError):
+    """The lolmath ARAM modifier table came back (near) all-neutral (RM-805)."""
+
+
+def _aram_row_is_neutral(row: Any) -> bool:
+    if not isinstance(row, dict):
+        return True
+    for fields, neutral in ((_ARAM_MULT_FIELDS, 1.0), (_ARAM_FLAT_FIELDS, 0.0)):
+        for key in fields:
+            val = row.get(key)
+            if isinstance(val, bool) or not isinstance(val, (int, float)):
+                continue
+            if val != neutral:
+                return False
+    return True
+
+
+def check_aram_neutrality(aram_modifiers: dict[str, Any],
+                          override_reason: str | None = None) -> dict[str, Any]:
+    """Fail loudly when the ARAM table is >= 95 percent neutral (RM-805).
+
+    Returns the measurement ``{rows, neutral_rows, neutral_fraction,
+    threshold}``. At or above ``ARAM_NEUTRAL_FAIL_FRACTION`` (an empty table
+    included) it raises ``NeutralAramTableError`` naming the counts, unless
+    ``override_reason`` is a non-blank string: then it logs a WARNING and adds
+    ``override_reason`` to the measurement so the caller records it.
+    """
+    rows = len(aram_modifiers)
+    neutral_rows = sum(1 for row in aram_modifiers.values() if _aram_row_is_neutral(row))
+    fraction = neutral_rows / rows if rows else 1.0
+    out: dict[str, Any] = {
+        "rows": rows,
+        "neutral_rows": neutral_rows,
+        "neutral_fraction": round(fraction, 4),
+        "threshold": ARAM_NEUTRAL_FAIL_FRACTION,
+    }
+    reason = (override_reason or "").strip()
+    if fraction < ARAM_NEUTRAL_FAIL_FRACTION:
+        if reason:
+            log.info("--allow-neutral-aram not needed: ARAM table %d/%d neutral",
+                     neutral_rows, rows)
+        return out
+    shape = f"{neutral_rows}/{rows} neutral ({fraction:.1%})" if rows else "empty (0 rows)"
+    if not reason:
+        raise NeutralAramTableError(
+            f"RM-805: the lolmath ARAM modifier table is {shape}, at or above "
+            f"the {ARAM_NEUTRAL_FAIL_FRACTION:.0%} floor - an upstream reset or "
+            "parser drift, not a balance patch; nothing was written. Adjudicate "
+            "it, then re-run with --allow-neutral-aram REASON to accept it as an "
+            "explicit, recorded act (a carry-forward is recorded in the manifest "
+            "as aram_modifiers_carry)."
+        )
+    log.warning(
+        "RM-805 override: accepting a lolmath ARAM modifier table that is %s "
+        "(floor %.0f%%) - reason: %s",
+        shape, ARAM_NEUTRAL_FAIL_FRACTION * 100, reason,
+    )
+    out["override_reason"] = reason
+    return out
+
+
 _DATA_BLOCKS = (
     ("aram_modifiers", ARAM_MODIFIERS_ANCHOR),
     ("damage_distribution", DAMAGE_DISTRIBUTION_ANCHOR),
@@ -1384,11 +1473,12 @@ def build_manifest(lolmath: LolmathExtract, dd: DDragonSnapshot,
                    patch_dir: Path,
                    perlevel_overlay: dict[str, dict[str, float]] | None = None,
                    arena_augments: dict | None = None,
-                   meraki_items: dict | None = None) -> dict:
+                   meraki_items: dict | None = None,
+                   aram_neutral_override: dict | None = None) -> dict:
     overlay = perlevel_overlay or {}
     augs = arena_augments or {}
     mer_items = meraki_items or {}
-    return {
+    manifest = {
         "engine": "daemon_slayer",
         "phase": 1.5,
         "extracted_at": time.strftime("%Y-%m-%dT%H:%M:%S%z") or time.strftime("%Y-%m-%dT%H:%M:%S"),
@@ -1446,6 +1536,17 @@ def build_manifest(lolmath: LolmathExtract, dd: DDragonSnapshot,
             "items_meraki": str((patch_dir / "items_meraki.json").relative_to(ROOT)),
         },
     }
+    if aram_neutral_override:
+        # RM-805: the gate was passed by the explicit flag; record who/why.
+        manifest["aram_modifiers_neutral_override"] = {
+            "flag": "--allow-neutral-aram",
+            "reason": aram_neutral_override["override_reason"],
+            "rows": aram_neutral_override["rows"],
+            "neutral_rows": aram_neutral_override["neutral_rows"],
+            "neutral_fraction": aram_neutral_override["neutral_fraction"],
+            "threshold": aram_neutral_override["threshold"],
+        }
+    return manifest
 
 
 # --- Entry point -------------------------------------------------------------
@@ -1460,6 +1561,12 @@ def main() -> int:
                     help="bypass autodiscovery and fetch this URL for the data chunk (Phase 1.5)")
     ap.add_argument("--patch", default=None,
                     help="override patch label for the output directory (default: DDragon current)")
+    ap.add_argument("--allow-neutral-aram", default=None, metavar="REASON",
+                    # argparse %-expands help text, so the literal percent is doubled.
+                    help="RM-805: accept a lolmath ARAM table that is >= 95%% neutral "
+                         f"(the extract otherwise exits {EXIT_ARAM_NEUTRAL} and writes "
+                         "nothing); REASON names the adjudication and is logged and "
+                         "recorded in the manifest")
     args = ap.parse_args()
 
     log.info("=" * 60)
@@ -1490,6 +1597,14 @@ def main() -> int:
     lolmath.data_chunk_url = data_extract["data_chunk_url"]
     lolmath.data_chunk_bytes = data_extract["data_chunk_bytes"]
     lolmath.data_block_sources = data_extract["block_sources"]
+    # RM-805: before the remaining fetches and before any write.
+    try:
+        aram_check = check_aram_neutrality(
+            lolmath.aram_modifiers, override_reason=args.allow_neutral_aram,
+        )
+    except NeutralAramTableError as exc:
+        log.error("%s", exc)
+        return EXIT_ARAM_NEUTRAL
 
     perlevel_overlay = fetch_meraki_perlevel_overlay(set(dd.champions.keys()))
     arena_augments = fetch_arena_augments()
@@ -1500,6 +1615,7 @@ def main() -> int:
     scenarios_payload = build_scenarios_payload(lolmath, dd)
     manifest = build_manifest(
         lolmath, dd, patch_dir, perlevel_overlay, arena_augments, meraki_items,
+        aram_neutral_override=aram_check if "override_reason" in aram_check else None,
     )
 
     _atomic_write_json(patch_dir / "champions.json", champions_payload)
