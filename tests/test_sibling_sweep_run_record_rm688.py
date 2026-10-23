@@ -219,6 +219,9 @@ def test_bypass_is_recorded_and_bypass_log_behaviour_is_unchanged(
     tmp_path, run_log, monkeypatch, capsys
 ):
     monkeypatch.setenv("RC_SIBLING_SWEEP_BYPASS", "1")
+    # This test reads the DEFAULT bypass-log location beside REPO_ROOT, so it
+    # drops the suite's per-test RC_SIBLING_SWEEP_BYPASS_LOG redirect (RM-788).
+    monkeypatch.delenv("RC_SIBLING_SWEEP_BYPASS_LOG", raising=False)
     fake_root = tmp_path / "fake_repo_root"
     fake_root.mkdir()
     monkeypatch.setattr(sweep, "REPO_ROOT", fake_root)

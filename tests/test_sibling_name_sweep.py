@@ -708,12 +708,25 @@ def test_an_argparse_argument_error_exits_one_and_not_two():
     assert "usage error" in (proc.stdout + proc.stderr)
 
 
+def _stat_or_none(path: Path):
+    try:
+        st = path.stat()
+    except OSError:
+        return None
+    return (st.st_size, st.st_mtime_ns)
+
+
 def test_bypass_env_proceeds_but_still_prints_the_report(tmp_path: Path):
     root = _write_config(
         tmp_path, {"repos": _SYNTH_REPOS, "participants": _SYNTH_PARTICIPANTS}
     )
     blob_path = tmp_path / "leak2.txt"
     blob_path.write_text("C:\\" + _SYNTH_REPOS[1].split("\\")[-1] + "\\x\n", "utf-8")
+    # RM-788: the child resolves its bypass log from its OWN file location, so
+    # without a redirect every run appended a BYPASS report to this checkout's
+    # live ops/runtime/sibling_sweep_bypass.log.
+    live_log = REPO_ROOT / sweep.BYPASS_LOG
+    live_before = _stat_or_none(live_log)
     env = dict(os.environ)
     env["RC_SIBLING_SWEEP_BYPASS"] = "1"
     proc = subprocess.run(
@@ -731,6 +744,30 @@ def test_bypass_env_proceeds_but_still_prints_the_report(tmp_path: Path):
     )
     assert proc.returncode == sweep.EXIT_CLEAN
     assert "BYPASS" in (proc.stdout + proc.stderr)
+    assert _stat_or_none(live_log) == live_before, (
+        "the bypass child appended to the live ops/runtime/sibling_sweep_bypass.log"
+    )
+    redirected = Path((env.get(sweep.BYPASS_LOG_ENV) or "").strip())
+    assert redirected.is_relative_to(tmp_path), redirected
+    assert "BYPASS" in redirected.read_text(encoding="utf-8")
+
+
+def test_bypass_log_path_honours_the_env_then_falls_back(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr(sweep, "REPO_ROOT", tmp_path / "repo")
+    monkeypatch.setenv(sweep.BYPASS_LOG_ENV, str(tmp_path / "elsewhere.log"))
+    assert sweep.bypass_log_path() == tmp_path / "elsewhere.log"
+    for blank in ("", "   "):
+        monkeypatch.setenv(sweep.BYPASS_LOG_ENV, blank)
+        assert sweep.bypass_log_path() == tmp_path / "repo" / sweep.BYPASS_LOG
+    monkeypatch.delenv(sweep.BYPASS_LOG_ENV, raising=False)
+    assert sweep.bypass_log_path() == tmp_path / "repo" / sweep.BYPASS_LOG
+
+
+def test_the_suite_redirects_the_bypass_log():
+    from tests import _fleet_guard_config
+
+    assert sweep.BYPASS_LOG_ENV == "RC_SIBLING_SWEEP_BYPASS_LOG"
+    assert sweep.BYPASS_LOG_ENV in _fleet_guard_config.ENV_ROOTS
 
 
 # --------------------------------------------------------------------------
@@ -989,6 +1026,9 @@ def test_pre_push_halts_when_degraded(monkeypatch, tmp_path: Path, capsys):
 def test_pre_push_degraded_bypass_proceeds_reports_and_logs(monkeypatch, tmp_path: Path, capsys):
     monkeypatch.delenv("RC_MOON_SYNC_REPOS", raising=False)
     monkeypatch.setenv(sweep.BYPASS_ENV, "1")
+    # The default bypass-log location (REPO_ROOT / BYPASS_LOG) is what this
+    # test reads, so drop the suite's per-test redirect (RM-788).
+    monkeypatch.delenv(sweep.BYPASS_LOG_ENV, raising=False)
     monkeypatch.setattr(sweep, "REPO_ROOT", tmp_path)
     monkeypatch.setattr(sys, "stdin", io.StringIO(""))
     rc = sweep.main(["--pre-push", "origin", "--config-root", str(_degraded_root(tmp_path))])
