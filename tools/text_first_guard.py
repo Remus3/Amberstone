@@ -20,7 +20,9 @@ RC's dashboard overrides the last two through the environment:
   TEXT_FIRST_FLAG        the escape flag path (absolute, or relative to the
                          repo root).
 On a host where the two MCP readers are not installed the settings matcher
-never fires, so the hook is a no-op by construction.
+never fires, so the hook is a no-op by construction. An interpreter that
+never starts is reported by the shell tail on the hook line in
+ops/claude_settings.example.json, not here (RM-782).
 
 PreToolUse JSON contract: permissionDecision "deny" feeds the reason back to
 the model and blocks the call, so the model retries with the text tool. The

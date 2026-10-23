@@ -354,7 +354,9 @@ def test_the_budget_fits_inside_the_record_budget():
 
 def test_the_template_hook_timeout_leaves_room_for_the_budget():
     hooks = json.loads(TEMPLATE.read_text(encoding="utf-8"))["hooks"]["SessionStart"]
+    # The no-argument rc_facts line; RM-782 adds a ` || { ... }` shell tail
+    # after the script token, so match the token, not the end of the line.
     timeouts = [h.get("timeout") for group in hooks for h in group["hooks"]
-                if h["command"].rstrip().endswith('rc_facts.py"')]
+                if h["command"].split(" || ", 1)[0].rstrip().endswith('rc_facts.py"')]
     assert timeouts, "the SessionStart rc_facts hook is not in the template"
     assert all(t >= rc_facts.SESSIONSTART_RECORD_BUDGET_S + 1.0 for t in timeouts)

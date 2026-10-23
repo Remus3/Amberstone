@@ -889,6 +889,19 @@ permission keys); C1b-3 S5, 2026-10-22. Guard:
   name or drive. Measured 2026-10-22 in Git Bash: the quoted
   `$LOCALAPPDATA/...` `python.exe` runs and `pythonw.exe` reads a JSON payload
   on stdin. A host whose Python lives elsewhere edits that one prefix.
+- **A hook that did not run says so (RM-782).** A broken interpreter path
+  exits 127 in the shell (measured 2026-10-23, Git Bash), which Claude Code
+  treats as a non-blocking error the model never sees, so a guard used to
+  allow everything without a word. Every RC line on a PreToolUse,
+  PostToolUse, SessionStart or UserPromptSubmit event therefore ends in one
+  shell tail, `|| { r=$?; [ $r -le 2 ] && exit $r; printf '<one JSON line>' $r; }`:
+  the hook's own exit codes 0-2 pass through untouched (2 still blocks),
+  and any other code prints ONE `additionalContext` line naming the hook and
+  the exit code, then exits 0. Stop lines carry no tail (a Stop context line
+  keeps the session going, and a Stop hook never blocks); the kit lines keep
+  their `|| true` form (item 16 below). The git hooks are unchanged and still
+  fail closed (`|| exit 1`). Guard: `tests/test_claude_settings_template.py`
+  runs every template line with a broken interpreter and pins each outcome.
 - **Matchers (items 4 and 5).** The commit gate runs on matcher
   `Bash|PowerShell` and filters the command itself (`_is_commit` in
   `tools/precommit_gate.py`; a non-commit call exits 0 before touching git).
