@@ -388,6 +388,18 @@ _IP_LEFT = r"(?<![0-9.])"
 _IP_RIGHT = r"(?![0-9]|\.[0-9])"
 _HOST_LEFT = r"(?<![A-Za-z0-9_\-])"
 _HOST_RIGHT = r"(?![A-Za-z0-9_\-])"
+# RM-780. The WSL UNC lead: Windows-side text reaches a distro's filesystem as
+# a two-separator lead (four when the backslashes are doubled), an optional
+# Win32 long-path `?` + `UNC` step, the host `wsl$` or `wsl.localhost`, and
+# the distro name. A path arm's own left edge is a non-word char, and the
+# distro name sits right before the mount (or the POSIX root), so without
+# this lead a drive path spelled through a distro passed every path arm. It is
+# only ever ADDED as a further alternative or an optional prefix, so no shape
+# the earlier arms matched can be lost (monotone by construction).
+_WSL_UNC_LEAD = (
+    r"[\\/]{2,4}(?:\?[\\/]{1,2}unc[\\/]{1,2})?wsl(?:\$|\.localhost)"
+    r"[\\/]{1,2}[^\\/\s]{1,64}"
+)
 
 _LEAK_FAMILIES = (
     (
@@ -434,10 +446,13 @@ _LEAK_FAMILIES = (
     ),
     (
         # ADVISORY. A profile path names the account. Drive form, forward-slash
-        # form and the POSIX-shell form; the stock non-account profiles and
-        # any placeholder (<user>, %USERNAME%, $USER) are not a hit.
+        # form, the POSIX-shell form and (RM-780) the WSL UNC mount form; the
+        # stock non-account profiles and any placeholder (<user>, %USERNAME%,
+        # $USER) are not a hit.
         "user_profile_path",
-        r"(?i:(?<![A-Za-z0-9_])(?:[a-z]:[\\/]{1,2}|/mnt/[a-z]/|/[a-z]/)users[\\/]{1,2}"
+        r"(?i:(?<![A-Za-z0-9_])(?:[a-z]:[\\/]{1,2}|/mnt/[a-z]/|/[a-z]/|"
+        + _WSL_UNC_LEAD
+        + r"[\\/]{1,2}mnt[\\/]{1,2}[a-z][\\/]{1,2})users[\\/]{1,2}"
         r"(?!(?:public|default|default user|all users)(?![A-Za-z0-9_.\-])"
         r"|example|your)"
         r"[A-Za-z0-9_.\-]*[A-Za-z0-9])",
@@ -579,6 +594,10 @@ def _checkout_rx(value: str) -> tuple[str, re.Pattern] | None:
     literal path with either separator, so the mount head takes either
     separator too, and a mount value whose remainder is too short to stand
     alone keeps the old literal form.
+
+    RM-780: the WSL UNC spelling (``_WSL_UNC_LEAD``) is a LAST alternative of
+    the drive head (lead + mount + letter) and an optional prefix of a
+    drive-free value, so every match of the earlier head is still a match.
     """
     norm = value.strip().replace("\\", "/").rstrip("/")
     has_drive = False
@@ -593,7 +612,14 @@ def _checkout_rx(value: str) -> tuple[str, re.Pattern] | None:
     segments = [seg for seg in norm.split("/") if seg]
     if not segments or len("/".join(segments)) < _MIN_VALUE_CHARS:
         return None
-    head = r"(?:[A-Za-z]:|[\\/]{1,2}mnt[\\/]{1,2}[A-Za-z]|/[A-Za-z])" if has_drive else ""
+    if has_drive:
+        head = (
+            r"(?:[A-Za-z]:|[\\/]{1,2}mnt[\\/]{1,2}[A-Za-z]|/[A-Za-z]|"
+            + _WSL_UNC_LEAD
+            + r"[\\/]{1,2}mnt[\\/]{1,2}[A-Za-z])"
+        )
+    else:
+        head = r"(?:" + _WSL_UNC_LEAD + r")?"
     body = "".join(r"[\\/]{1,2}" + re.escape(seg) for seg in segments)
     return segments[-1].lower(), re.compile(
         _PATH_LEFT + head + body + _PATH_RIGHT, re.IGNORECASE
