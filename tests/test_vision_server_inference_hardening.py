@@ -538,5 +538,67 @@ class SiblingBodyHandlerTests(unittest.TestCase):
             self.assertNotIn(leak, blob)
 
 
+# RM-771: ``_body_object`` refused bad JSON with {"error": "bad_json"} and
+# logged nothing, so a malformed body left no parser detail anywhere (RM-760c
+# rightly took the text out of the reply). The parser's own detail now goes to
+# ONE WARNING per refusal; the reply stays the fixed token.
+_BAD_JSON_BODIES = {
+    "malformed": b"{x",
+    "bad-utf8": b"\x80abc",
+    "long-int": b"1" * 5000,
+    "deep-nesting": b"[" * 100000,
+}
+
+
+def _parser_error(body: bytes) -> BaseException:
+    """The exception json.loads itself raises for ``body`` (measured, not
+    assumed: the type differs per body)."""
+    try:
+        json.loads(body)
+    except (ValueError, RecursionError) as e:
+        return e
+    raise AssertionError(f"fixture parsed: {body[:20]!r}")
+
+
+class BadJsonRefusalIsLoggedTests(unittest.TestCase):
+    def _assert_one_warning(self, call, body, route):
+        exc = _parser_error(body)
+        with self.assertLogs("moon_vision", level="WARNING") as cm:
+            r = call(body)
+        self.assertEqual(r, {"error": "bad_json"})
+        self.assertEqual(len(cm.records), 1, cm.output)
+        rec = cm.records[0]
+        self.assertEqual(rec.levelname, "WARNING")
+        msg = rec.getMessage()
+        self.assertIn(route, msg)
+        self.assertIn(type(exc).__name__, msg)
+        self.assertIn(str(exc), msg)
+        # Never echoed to the client.
+        self.assertNotIn(str(exc), json.dumps(r))
+
+    def test_inference_handlers_log_each_bad_json_refusal(self):
+        for route, call in (("vision", inf.handle_vision),
+                            ("coach", inf.handle_coach),
+                            ("ocr", inf.handle_ocr)):
+            for label, body in _BAD_JSON_BODIES.items():
+                with self.subTest(route=route, body=label):
+                    self._assert_one_warning(call, body, route)
+
+    def test_upload_frame_logs_its_bad_json_refusal(self):
+        """Sibling: _frame.handle_upload_frame refused bad JSON with the same
+        silent ``except Exception`` (its _relay neighbours already log)."""
+        from vision_server import _frame
+        for label, body in _BAD_JSON_BODIES.items():
+            with self.subTest(body=label):
+                self._assert_one_warning(_frame.handle_upload_frame, body,
+                                         "upload-frame")
+
+    def test_non_object_body_still_bad_body(self):
+        """The shape refusal is unchanged (no parser detail to log there)."""
+        for call in (inf.handle_vision, inf.handle_coach, inf.handle_ocr):
+            with self.subTest(call=call.__name__):
+                self.assertEqual(call(b"[1,2]"), {"error": "bad_body"})
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -78,7 +78,7 @@ _MODEL_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 _REQUEST_TIMEOUT_S = 10
 
 
-def _body_object(body: bytes) -> tuple[dict | None, dict | None]:
+def _body_object(body: bytes, route: str) -> tuple[dict | None, dict | None]:
     """Decode a request body that must be a JSON object.
 
     AUDIT 2026-08-30 (lane 8 cycle 20): all three handlers went straight to
@@ -89,10 +89,20 @@ def _body_object(body: bytes) -> tuple[dict | None, dict | None]:
 
     RM-760c: 100k-deep nesting raises RecursionError, not ValueError, and
     escaped to the same bare 500; it is the same bad-input class.
+
+    RM-771: the refusal logged nothing, so a malformed body left no parser
+    detail anywhere. One WARNING per refusal names ``route`` and the parser's
+    exception; the reply stays the fixed token. Not rate-limited: every route
+    here is X-RC-Token gated on a loopback bind, and the package's two other
+    bad-JSON refusals (``_http._json_object``, ``_relay``) already log one
+    unthrottled WARNING each.
     """
     try:
         d = json.loads(body or b"{}")
-    except (json.JSONDecodeError, UnicodeDecodeError, ValueError, RecursionError):
+    except (ValueError, RecursionError) as e:
+        # ValueError covers JSONDecodeError, UnicodeDecodeError and the
+        # 4300-digit int limit.
+        log.warning("%s: bad JSON body: %s: %s", route, type(e).__name__, e)
         return None, {"error": "bad_json"}
     if not isinstance(d, dict):
         return None, {"error": "bad_body"}
@@ -267,7 +277,7 @@ def handle_vision(body: bytes) -> dict:
     # field type and the model id BEFORE any work. Each rejection is recorded
     # ok=False so malformed traffic is visible in /stats - pre-fix these paths
     # raised before `t0` was ever set, so not one of them reached the ring.
-    d, err = _body_object(body)
+    d, err = _body_object(body, "vision")
     if err is not None:
         _record("vision", 0, ok=False)
         return err
@@ -335,7 +345,7 @@ def handle_vision(body: bytes) -> dict:
 
 def handle_coach(body: bytes) -> dict:
     # AUDIT 2026-08-30 (lane 8 cycle 20): same three gates as handle_vision.
-    d, err = _body_object(body)
+    d, err = _body_object(body, "coach")
     if err is not None:
         _record("coach", 0, ok=False)
         return err
@@ -394,7 +404,7 @@ def handle_ocr(body: bytes) -> dict:
     # `[]`. Both succeed on a str/list for `in` and raise TypeError on the
     # index, so a wrong-typed field became an HTTP 500. Validate the shape
     # BEFORE importing the OCR stack, so bad input costs nothing.
-    d, err = _body_object(body)
+    d, err = _body_object(body, "ocr")
     if err is not None:
         _record("ocr", 0, ok=False)
         return err
