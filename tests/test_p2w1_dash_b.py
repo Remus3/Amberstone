@@ -43,6 +43,8 @@ import time
 import unittest
 from unittest import mock
 
+from tests._module_view import this_thread_only
+
 
 class FakeHandler:
     """Minimal stand-in for the BaseHTTPRequestHandler the routes take.
@@ -241,9 +243,13 @@ class ErrorStringCapTests(unittest.TestCase):
         import urllib.request as ur
         from dashboard import routes_state as rs
         h = FakeHandler("/api/analyze")
-        with mock.patch.object(ur, "urlopen",
-                               side_effect=Exception("x" * 1000)):
+        # _serve_analyze_post imports urllib.request INSIDE the function
+        # (dashboard/routes_state.py:1373), so no module-local name exists:
+        # this thread only, every thread already alive keeps the real (RM-801).
+        boom = mock.MagicMock(side_effect=Exception("x" * 1000))
+        with mock.patch.object(ur, "urlopen", this_thread_only(boom, ur.urlopen)):
             rs._serve_analyze_post(h, {})
+        boom.assert_called_once()
         code, body, _ = h.last
         self.assertEqual(code, 500)
         err = json.loads(body.decode("utf-8")).get("error", "")

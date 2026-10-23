@@ -27,6 +27,7 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+from tests._module_view import bind_subprocess  # noqa: E402
 from tools import inbox_responder_procs as procs  # noqa: E402
 
 MODULE_REL = "tools/inbox_responder_procs.py"
@@ -89,7 +90,8 @@ class PopenRecorder:
 
 def _install(monkeypatch, *fake_procs):
     rec = PopenRecorder(fake_procs)
-    monkeypatch.setattr(procs.subprocess, "Popen", rec)
+    # procs' own `subprocess` name only, never the shared module (RM-801).
+    bind_subprocess(monkeypatch, procs, Popen=rec)
     assert procs.subprocess.Popen is rec, "the recorder must be in place BEFORE the drive"
     return rec
 
@@ -220,7 +222,7 @@ def test_a_spawn_that_cannot_start_is_recorded_not_raised(monkeypatch):
     def boom(argv, **kwargs):
         raise FileNotFoundError(2, "no such binary")
 
-    monkeypatch.setattr(procs.subprocess, "Popen", boom)
+    bind_subprocess(monkeypatch, procs, Popen=boom)
     res = _capture(procs.KillBudget(1))
 
     assert res.exc == "FileNotFoundError"
@@ -265,7 +267,7 @@ def test_kill_tree_on_nt_runs_taskkill_with_the_flag_and_a_timeout(monkeypatch):
         seen["kwargs"] = kwargs
         return None
 
-    monkeypatch.setattr(procs.subprocess, "run", fake_run)
+    bind_subprocess(monkeypatch, procs, run=fake_run)
     procs.kill_tree(4321)
 
     assert seen["argv"] == ["taskkill", "/F", "/T", "/PID", "4321"]
@@ -279,7 +281,7 @@ def test_kill_tree_swallows_a_taskkill_failure(monkeypatch):
     def blow_up(argv, **kwargs):
         raise OSError("taskkill is missing")
 
-    monkeypatch.setattr(procs.subprocess, "run", blow_up)
+    bind_subprocess(monkeypatch, procs, run=blow_up)
     procs.kill_tree(4321)  # must not raise
 
 

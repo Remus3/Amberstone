@@ -35,6 +35,7 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+from tests._module_view import bind_subprocess  # noqa: E402
 from tools import inbox_responder_procs as procs  # noqa: E402
 from tools import inbox_responder_spawn as spawn  # noqa: E402
 
@@ -611,7 +612,8 @@ class _RecordingPopen:
 @pytest.fixture
 def popen_recorder(monkeypatch):
     _RecordingPopen.instances = []
-    monkeypatch.setattr(procs.subprocess, "Popen", _RecordingPopen)
+    # procs' own `subprocess` name only, never the shared module (RM-801).
+    bind_subprocess(monkeypatch, procs, Popen=_RecordingPopen)
     # The replacement is asserted BEFORE any drive: no arm in this file may
     # reach a real process.
     assert procs.subprocess.Popen is _RecordingPopen
@@ -674,7 +676,7 @@ def test_real_spawner_passes_the_cycle_kill_budget_through(tmp_path, cfg, monkey
 
     tripwire = _RecordingPopen
     tripwire.instances = []
-    monkeypatch.setattr(procs.subprocess, "Popen", tripwire)
+    bind_subprocess(monkeypatch, procs, Popen=tripwire)
     monkeypatch.setattr(procs, "popen_capture", _recording_popen_capture)
     assert procs.subprocess.Popen is tripwire
     assert procs.popen_capture is _recording_popen_capture

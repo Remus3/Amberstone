@@ -20,9 +20,11 @@ from __future__ import annotations
 import json
 import time
 import unittest
+import urllib.request
 from unittest import mock
 
 import modes.shared_vision as sv
+from tests._module_view import this_thread_only
 
 
 class _FakeResp:
@@ -41,8 +43,12 @@ class _FakeResp:
 
 def _capture_with(payload: dict):
     sv._fail_streak = 0
+    # _capture_screen imports urllib.request INSIDE the function
+    # (modes/shared_vision.py:68), so no module-local name exists: this
+    # thread only, every thread already alive keeps the real (RM-801).
     with mock.patch("urllib.request.urlopen",
-                    lambda req, timeout=None: _FakeResp(payload)):
+                    this_thread_only(lambda req, timeout=None: _FakeResp(payload),
+                                     urllib.request.urlopen)):
         return sv._capture_screen()
 
 

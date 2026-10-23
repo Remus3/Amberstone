@@ -40,6 +40,7 @@ import tempfile
 import pytest
 
 import core.rofl_archive as ra
+from tests._module_view import bind_urlopen
 from tests._replace_faults import scoped_fs_fault
 
 
@@ -97,9 +98,8 @@ class _EndlessResponse:
 
 def test_http_get_bytes_refuses_a_body_past_the_ceiling(monkeypatch):
     """A pre-signed URL that streams forever must raise, not fill memory."""
-    monkeypatch.setattr(
-        ra.urllib.request, "urlopen", lambda url, timeout=None: _EndlessResponse(2048)
-    )
+    # rofl_archive's own urllib only, never the shared module (RM-801).
+    bind_urlopen(monkeypatch, ra, lambda url, timeout=None: _EndlessResponse(2048))
     with pytest.raises(ra.ReplayTooLarge):
         ra._http_get_bytes(_URL, max_bytes=2048)
 
@@ -121,7 +121,7 @@ def test_http_get_bytes_still_returns_a_body_inside_the_ceiling(monkeypatch):
         def __exit__(self, *exc):
             return False
 
-    monkeypatch.setattr(ra.urllib.request, "urlopen", lambda url, timeout=None: _Ok())
+    bind_urlopen(monkeypatch, ra, lambda url, timeout=None: _Ok())
     assert ra._http_get_bytes(_URL, max_bytes=len(_REAL) + 1) == _REAL
 
 

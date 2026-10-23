@@ -52,6 +52,7 @@ call path to assert against, and inventing one would prove nothing.
 """
 from __future__ import annotations
 
+import contextlib
 import sys
 import urllib.error
 from pathlib import Path
@@ -67,7 +68,9 @@ from dashboard._cs_retention import (  # noqa: E402
     apply_cs_retention,
     reset_cs_retention,
 )
+import lcu.lcu_pregame as _lcu_pregame_mod  # noqa: E402
 from lcu.lcu_pregame import LcuPregame  # noqa: E402
+from tests._module_view import bind_urlopen  # noqa: E402
 
 
 class _Pregame(LcuPregame):
@@ -108,12 +111,24 @@ class _FakeResponse:
         return self._body
 
 
+@contextlib.contextmanager
+def _bound_urlopen(**kw):
+    """lcu_pregame's own urllib.request.urlopen only, never the shared module
+    (tests/_module_view.py, RM-801); on a clean exit the fake must have been
+    reached, so a raw fetch that silently hit the real urlopen cannot pass."""
+    fake = mock.Mock(**kw)
+    with pytest.MonkeyPatch.context() as mp:
+        bind_urlopen(mp, _lcu_pregame_mod, fake)
+        yield fake
+    assert fake.called, "the raw fetch never reached the scoped urlopen fake"
+
+
 def _urlopen_returning(body: bytes):
-    return mock.patch("urllib.request.urlopen", return_value=_FakeResponse(body))
+    return _bound_urlopen(return_value=_FakeResponse(body))
 
 
 def _urlopen_raising(exc: BaseException):
-    return mock.patch("urllib.request.urlopen", side_effect=exc)
+    return _bound_urlopen(side_effect=exc)
 
 
 # -- The idle phase is still reported, and is still a string -------------------

@@ -67,6 +67,10 @@ sys.path.insert(0, str(_ROOT))
 
 from core import rank_tier_bench as RTB  # noqa: E402
 from core import rank_tier_source as RTS  # noqa: E402
+# RM-801: the urlopen fakes below bind RTS's OWN urllib.request (its
+# `with urllib.request.urlopen(...)` in _http_get_json), never the shared
+# module a foreign thread of the xdist worker would also see.
+from tests._module_view import bind_urlopen  # noqa: E402
 
 
 def _settle(timeout_s: float = 15.0) -> bool:
@@ -340,8 +344,8 @@ def test_defect_c_oversize_response_body_is_rejected(monkeypatch):
     # this test fails for the right reason instead of on a JSON error.
     body = b'{"data":[{"role":"all"}],"pad":"' + (b"x" * (cap + 1024)) + b'"}'
     reads = []
-    monkeypatch.setattr(RTS.urllib.request, "urlopen",
-                        lambda req, timeout=None: _FakeResponse(body, reads))
+    bind_urlopen(monkeypatch, RTS,
+                 lambda req, timeout=None: _FakeResponse(body, reads))
     with pytest.raises(RTS.RankTierSourceError, match="exceeds"):
         RTS._http_get_json("https://agg.example/agg")
 
@@ -351,8 +355,8 @@ def test_defect_c_response_read_is_size_bounded(monkeypatch):
     assert isinstance(cap, int) and cap > 0, "no response size cap"
     body = json.dumps({"data": _rows()}).encode("utf-8")
     reads = []
-    monkeypatch.setattr(RTS.urllib.request, "urlopen",
-                        lambda req, timeout=None: _FakeResponse(body, reads))
+    bind_urlopen(monkeypatch, RTS,
+                 lambda req, timeout=None: _FakeResponse(body, reads))
     out = RTS._http_get_json("https://agg.example/agg")
     assert out["data"]
     assert reads, "the response was never read"
@@ -430,8 +434,8 @@ def _raw_body(literal: str) -> bytes:
 @pytest.mark.parametrize("literal", _NON_FINITE_LITERALS)
 def test_defect_e_http_get_json_rejects_non_finite_literals(monkeypatch, literal):
     reads = []
-    monkeypatch.setattr(RTS.urllib.request, "urlopen",
-                        lambda req, timeout=None: _FakeResponse(_raw_body(literal), reads))
+    bind_urlopen(monkeypatch, RTS,
+                 lambda req, timeout=None: _FakeResponse(_raw_body(literal), reads))
     with pytest.raises(RTS.RankTierSourceError):
         RTS._http_get_json("https://agg.example/agg")
 
@@ -443,8 +447,8 @@ def test_defect_e_fetch_rows_is_none_and_yields_no_poisoned_row(
         "endpoint": "https://agg.example/agg", "tier_param": "tier", "enabled": True,
     })
     reads = []
-    monkeypatch.setattr(RTS.urllib.request, "urlopen",
-                        lambda req, timeout=None: _FakeResponse(_raw_body(literal), reads))
+    bind_urlopen(monkeypatch, RTS,
+                 lambda req, timeout=None: _FakeResponse(_raw_body(literal), reads))
     rows = RTS.fetch_rows("iron", "SR")
     # Not merely "is None" - a None can happen for the wrong reason. Pin that
     # NO row carrying a non-finite avg ever reaches a caller.
@@ -461,8 +465,8 @@ def test_defect_e_finite_payload_still_succeeds_through_the_whole_chain(
     })
     body = _raw_body("150.5")
     reads = []
-    monkeypatch.setattr(RTS.urllib.request, "urlopen",
-                        lambda req, timeout=None: _FakeResponse(body, reads))
+    bind_urlopen(monkeypatch, RTS,
+                 lambda req, timeout=None: _FakeResponse(body, reads))
     rows = RTS.fetch_rows("iron", "SR")
     assert rows and len(rows) == 1
     assert rows[0]["avg"] == 150.5
@@ -571,8 +575,8 @@ def _assert_no_credential(exc, *, url=None):
 
 def test_defect_f_http_status_message_carries_no_credential(monkeypatch):
     reads = []
-    monkeypatch.setattr(
-        RTS.urllib.request, "urlopen",
+    bind_urlopen(
+        monkeypatch, RTS,
         lambda req, timeout=None: _FakeResponse(b"{}", reads, status=503))
     with pytest.raises(RTS.RankTierSourceError) as ei:
         RTS._http_get_json(_dummy_url())
@@ -584,7 +588,7 @@ def test_defect_f_transport_failure_message_carries_no_credential(monkeypatch):
     def _boom(req, timeout=None):
         raise RTS.urllib.error.URLError("timed out")
 
-    monkeypatch.setattr(RTS.urllib.request, "urlopen", _boom)
+    bind_urlopen(monkeypatch, RTS, _boom)
     with pytest.raises(RTS.RankTierSourceError) as ei:
         RTS._http_get_json(_dummy_url())
     _assert_no_credential(ei.value)
@@ -598,7 +602,7 @@ def test_defect_f_a_transport_error_quoting_the_url_is_scrubbed(monkeypatch):
     def _boom(req, timeout=None):
         raise RTS.urllib.error.URLError(f"cannot reach {_dummy_url()}")
 
-    monkeypatch.setattr(RTS.urllib.request, "urlopen", _boom)
+    bind_urlopen(monkeypatch, RTS, _boom)
     with pytest.raises(RTS.RankTierSourceError) as ei:
         RTS._http_get_json(_dummy_url())
     _assert_no_credential(ei.value)
@@ -606,8 +610,8 @@ def test_defect_f_a_transport_error_quoting_the_url_is_scrubbed(monkeypatch):
 
 def test_defect_f_bad_json_message_carries_no_credential(monkeypatch):
     reads = []
-    monkeypatch.setattr(
-        RTS.urllib.request, "urlopen",
+    bind_urlopen(
+        monkeypatch, RTS,
         lambda req, timeout=None: _FakeResponse(b"{not json", reads))
     with pytest.raises(RTS.RankTierSourceError) as ei:
         RTS._http_get_json(_dummy_url())
@@ -617,8 +621,8 @@ def test_defect_f_bad_json_message_carries_no_credential(monkeypatch):
 
 def test_defect_f_non_dict_toplevel_message_carries_no_credential(monkeypatch):
     reads = []
-    monkeypatch.setattr(
-        RTS.urllib.request, "urlopen",
+    bind_urlopen(
+        monkeypatch, RTS,
         lambda req, timeout=None: _FakeResponse(b"[1, 2, 3]", reads))
     with pytest.raises(RTS.RankTierSourceError) as ei:
         RTS._http_get_json(_dummy_url())
@@ -630,8 +634,8 @@ def test_defect_f_oversize_body_message_carries_no_credential(monkeypatch):
     cap = RTS._MAX_BODY_BYTES
     body = b'{"data":[{"role":"all"}],"pad":"' + (b"x" * (cap + 1024)) + b'"}'
     reads = []
-    monkeypatch.setattr(
-        RTS.urllib.request, "urlopen",
+    bind_urlopen(
+        monkeypatch, RTS,
         lambda req, timeout=None: _FakeResponse(body, reads))
     with pytest.raises(RTS.RankTierSourceError) as ei:
         RTS._http_get_json(_dummy_url())
@@ -648,7 +652,7 @@ def test_defect_f_malformed_endpoint_message_carries_no_credential(monkeypatch):
     def _boom(req, timeout=None):
         raise RTS.urllib.error.URLError("stub - must not be reached")
 
-    monkeypatch.setattr(RTS.urllib.request, "urlopen", _boom)
+    bind_urlopen(monkeypatch, RTS, _boom)
     url = RTS._build_url(f"agg.example/agg?api_key={_DUMMY_KEY}", "tier", "iron", "SR")
     with pytest.raises(RTS.RankTierSourceError) as ei:
         RTS._http_get_json(url)

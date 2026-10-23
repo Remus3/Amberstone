@@ -10,7 +10,19 @@ min-interval rate floor.
 import os
 import unittest
 
+import pytest
+
 from core import lcu_pool
+from tests._module_view import bind_urlopen
+
+
+def _bind_urlopen(case: unittest.TestCase, module, fake) -> None:
+    """MODULE's OWN urllib.request.urlopen -> FAKE for this test only, never
+    the shared urllib.request a foreign thread of the xdist worker also sees
+    (RM-801, tests/_module_view.py)."""
+    mp = pytest.MonkeyPatch()
+    case.addCleanup(mp.undo)
+    bind_urlopen(mp, module, fake)
 
 
 class _FakeResp:
@@ -205,9 +217,7 @@ class PollerPilotTests(unittest.TestCase):
             calls.append(req.full_url)
             return _R()
 
-        orig = pmod.urllib.request.urlopen
-        pmod.urllib.request.urlopen = fake_urlopen
-        self.addCleanup(lambda: setattr(pmod.urllib.request, "urlopen", orig))
+        _bind_urlopen(self, pmod, fake_urlopen)
         out = self._stub()._lcu_get("/x")
         self.assertEqual(out, {"via": "urlopen"})
         self.assertEqual(len(calls), 1)
@@ -273,9 +283,7 @@ class LcuClientPoolPilotTests(unittest.TestCase):
             calls.append(req.full_url)
             return _R()
 
-        orig = cmod.urllib.request.urlopen
-        cmod.urllib.request.urlopen = fake_urlopen
-        self.addCleanup(lambda: setattr(cmod.urllib.request, "urlopen", orig))
+        _bind_urlopen(self, cmod, fake_urlopen)
         out = self._stub()._request("GET", "/x")
         self.assertEqual(out, {"via": "urlopen"})
         self.assertEqual(len(calls), 1)
@@ -364,9 +372,7 @@ class LcuClientPoolPilotTests(unittest.TestCase):
         orig_pool = lcu_pool.get_shared_pool
         lcu_pool.get_shared_pool = lambda: _P()
         self.addCleanup(lambda: setattr(lcu_pool, "get_shared_pool", orig_pool))
-        orig_uo = cmod.urllib.request.urlopen
-        cmod.urllib.request.urlopen = fake_urlopen
-        self.addCleanup(lambda: setattr(cmod.urllib.request, "urlopen", orig_uo))
+        _bind_urlopen(self, cmod, fake_urlopen)
         out = self._stub()._request("GET", "/x")
         self.assertEqual(out, {"via": "urlopen_fallback"})
 

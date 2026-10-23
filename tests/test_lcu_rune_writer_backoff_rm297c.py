@@ -12,12 +12,15 @@ import threading
 from pathlib import Path
 from unittest import mock
 
+import pytest
+
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import lcu.lcu_rune_writer as rw  # noqa: E402
 from lcu.lcu_rune_writer import RuneWriter  # noqa: E402
+from tests._module_view import bind_urlopen  # noqa: E402
 
 
 class _Lcu:
@@ -117,9 +120,11 @@ def test_frozen_client_records_the_http_status():
     def boom(req, *a, **kw):
         raise urllib.error.HTTPError(req.full_url, 403, "Forbidden", {}, None)
 
-    with mock.patch.object(lc.urllib.request, "urlopen", boom), \
+    # lcu_client's own urllib only, never the shared module (RM-801).
+    with pytest.MonkeyPatch.context() as mp, \
             mock.patch.object(c, "_refresh_conn_if_changed", lambda: None), \
             mock.patch("core.lcu_pool.pool_enabled", lambda: False):
+        bind_urlopen(mp, lc, boom)
         assert c._request("POST", "/lol-perks/v1/pages", {"a": 1}) is None
         assert c.last_request_error() == "http 403"
         c._port = None

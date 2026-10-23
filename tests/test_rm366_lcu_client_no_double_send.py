@@ -20,8 +20,11 @@ import io
 import unittest
 from unittest import mock
 
+import pytest
+
 from core import lcu_pool
 from lcu import lcu_client
+from tests._module_view import bind_urlopen
 
 
 class _Resp:
@@ -72,10 +75,12 @@ def _drive(method, mode):
     client = lcu_client.LcuClient()
     client._port = 54321
     client._auth = "cmlvdDpwdw=="
+    # lcu_client's own urllib only, never the shared module (RM-801).
     with mock.patch.dict("os.environ", {"RC_LCU_POOL": "1"}), \
             mock.patch.object(lcu_pool, "get_shared_pool", return_value=pool), \
-            mock.patch.object(lcu_client.urllib.request, "urlopen", side_effect=_urlopen), \
+            pytest.MonkeyPatch.context() as mp, \
             mock.patch.object(client, "_refresh_conn_if_changed"):
+        bind_urlopen(mp, lcu_client, _urlopen)
         out = client._request(method, "/lol-matchmaking/v1/ready-check/accept",
                               data={"x": 1})
     return out, sent

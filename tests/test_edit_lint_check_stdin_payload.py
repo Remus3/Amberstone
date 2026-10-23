@@ -31,6 +31,7 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
+from tests._module_view import bind_subprocess  # noqa: E402
 from tools import edit_lint_check  # noqa: E402
 
 _EMDASH = chr(0x2014)
@@ -213,7 +214,8 @@ def _capture_ruff(monkeypatch):
         calls.append((list(argv), kwargs))
         return _Proc()
 
-    monkeypatch.setattr(edit_lint_check.subprocess, "run", fake_run)
+    # edit_lint_check's own `subprocess` name only, never the shared module (RM-801).
+    bind_subprocess(monkeypatch, edit_lint_check, run=fake_run)
     return calls
 
 

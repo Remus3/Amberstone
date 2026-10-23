@@ -6,9 +6,14 @@ drives one real spawn path with the user variable deleted (the store reads
 fake open route and asserts the child env carries the routed URL while the
 parent env does not. All values are fakes; no real probe, registry read or
 process.
+
+RM-801: every process fake is bound into the spawn chain's OWN `subprocess`
+names (`_chain()`, tests/_module_view.py bind_subprocess), never onto the
+shared subprocess module that every other thread of the xdist worker calls.
 """
 from __future__ import annotations
 
+import contextlib
 import importlib.util
 import os
 import sys
@@ -19,9 +24,43 @@ from unittest import mock
 import pytest
 
 from ops.loop import headless_env as he
+from tests._module_view import bind_subprocess
 
 ROOT = Path(__file__).resolve().parent.parent
 FAKE_URL = "http://127.0.0.1:65534"
+_TRIP = "spawned with no route"
+
+
+def _chain():
+    """Every module on this file's spawn paths whose own globals call
+    subprocess: the callers (executor ops/loop/executor.py:945/977, ci_watchdog
+    tools/ci_watchdog.py:459, drain ops/loop/drain_waves_2_3.py:180, the
+    supervisor facade + agents/_supervisor_ephemeral.py), fleet_route (the
+    conftest launch forwarder calls fleet_route.subprocess.run) and the kit
+    (its launch ops/fleet_kit/fleet_headless.py:1734 Popen, its git probe :1613
+    and taskkill :1703 run). A tripwire bound here is as strong for these paths
+    as the old process-wide one, and blind to every other thread's module."""
+    import agents._supervisor_ephemeral as sup_eph  # noqa: PLC0415
+    import agents.supervisor as sup  # noqa: PLC0415
+    from ops.loop import fleet_route as fr  # noqa: PLC0415
+    return (executor, cw, drain, sup_eph, sup, fr, fr.kit())
+
+
+def _bind_chain(mp, **fakes):
+    for mod in _chain():
+        bind_subprocess(mp, mod, **fakes)
+
+
+@contextlib.contextmanager
+def _faked(**fakes):
+    """FAKES (run= / Popen=) for the spawn chain only, for the with-block."""
+    with pytest.MonkeyPatch.context() as mp:
+        _bind_chain(mp, **fakes)
+        yield
+
+
+def _trip():
+    return mock.MagicMock(side_effect=AssertionError(_TRIP))
 
 
 @pytest.fixture
@@ -71,8 +110,7 @@ _SDK_DONE = ('{"is_error": false, "structured_output": {"sha": "a", '
 
 def test_executor_refuses_without_route(refused, tmp_path, monkeypatch):
     monkeypatch.setattr(executor, "_git_head", lambda root: "")
-    with mock.patch("subprocess.run", side_effect=AssertionError("spawned with no route")), \
-         mock.patch("subprocess.Popen", side_effect=AssertionError("spawned with no route")):
+    with _faked(run=_trip(), Popen=_trip()):
         rec = _sdk(tmp_path).run(1, "b", "fixed")
     assert rec.error == "headless route refused: unset"
     assert '"reason": "unset"' in refused.read_text(encoding="utf-8")
@@ -80,7 +118,8 @@ def test_executor_refuses_without_route(refused, tmp_path, monkeypatch):
 
 def test_executor_child_env_carries_route(routed, tmp_path, monkeypatch):
     monkeypatch.setattr(executor, "_git_head", lambda root: "")
-    with mock.patch("subprocess.run", return_value=_done(_SDK_DONE)) as run:
+    run = mock.MagicMock(return_value=_done(_SDK_DONE))
+    with _faked(run=run):
         rec = _sdk(tmp_path).run(1, "b", "fixed")
     assert rec.error is None
     env = run.call_args.kwargs["env"]
@@ -104,14 +143,15 @@ def _done(stdout='{"result": "ok"}', rc=0, stderr=""):
 
 
 def test_adjudicator_refuses_without_route(refused, tmp_path):
-    with mock.patch("subprocess.run", side_effect=AssertionError("spawned with no route")):
+    with _faked(run=_trip()):
         adj = adjudicator.ClaudeAdjudicator(_ADJ_CFG, tmp_path)
         assert adj.ask("b", "i") is None
     assert "unset" in adj.last_stderr
 
 
 def test_adjudicator_child_env_carries_route(routed, tmp_path):
-    with mock.patch("subprocess.run", return_value=_done()) as run:
+    run = mock.MagicMock(return_value=_done())
+    with _faked(run=run):
         assert adjudicator.ClaudeAdjudicator(_ADJ_CFG, tmp_path).ask("b", "i") == "ok"
     assert run.call_args.kwargs["env"]["ANTHROPIC_BASE_URL"] == FAKE_URL
 
@@ -136,7 +176,7 @@ def test_ci_watchdog_refuses_claude_fix_without_route(refused, tmp_path, monkeyp
     calls = []
     monkeypatch.setattr(cw, "_run", _fake_run_factory(calls))
     monkeypatch.setattr(cw, "_write_context", lambda *a, **k: None)
-    with mock.patch("subprocess.run", side_effect=AssertionError("spawned with no route")):
+    with _faked(run=_trip()):
         res = cw.execute_dispatch(1, "h" * 12, arm=True, worktree=tmp_path)
     assert res["action"] == "error" and res["stage"] == "claude_fix_route"
     assert not any(c[0] and c[0][0] == "claude" for c in calls)
@@ -146,7 +186,8 @@ def test_ci_watchdog_claude_fix_env_carries_route(routed, tmp_path, monkeypatch)
     calls = []
     monkeypatch.setattr(cw, "_run", _fake_run_factory(calls))
     monkeypatch.setattr(cw, "_write_context", lambda *a, **k: None)
-    with mock.patch("subprocess.run", return_value=_done('{"result": "fixed"}')) as run:
+    run = mock.MagicMock(return_value=_done('{"result": "fixed"}'))
+    with _faked(run=run):
         cw.execute_dispatch(1, "h" * 12, arm=True, worktree=tmp_path)
     assert run.call_count == 1, "exactly one process: the kit's claude_fix run"
     kw = run.call_args.kwargs
@@ -167,8 +208,7 @@ def test_ci_watchdog_claude_fix_env_carries_route(routed, tmp_path, monkeypatch)
 def test_ephemeral_refuses_without_route(refused):
     from agents.supervisor import EphemeralSpawnFailed, spawn_ephemeral_llm
     with mock.patch("agents.supervisor.shutil.which", return_value="/fake/claude"), \
-         mock.patch("agents.supervisor.subprocess.run",
-                    side_effect=AssertionError("spawned with no route")):
+         _faked(run=_trip()):
         with pytest.raises(EphemeralSpawnFailed) as ei:
             spawn_ephemeral_llm("6", "t-route-refused", "demo", {})
     assert "headless route refused" in str(ei.value)
@@ -177,8 +217,9 @@ def test_ephemeral_refuses_without_route(refused):
 def test_ephemeral_child_env_carries_route(routed):
     from agents.supervisor import spawn_ephemeral_llm
     proc = CompletedProcess(args=["claude"], returncode=0, stdout='{"result":"x"}', stderr="")
+    run = mock.MagicMock(return_value=proc)
     with mock.patch("agents.supervisor.shutil.which", return_value="/fake/claude"), \
-         mock.patch("agents.supervisor.subprocess.run", return_value=proc) as run:
+         _faked(run=run):
         spawn_ephemeral_llm("6", "t-route-ok", "demo", {})
     assert run.call_args.kwargs["env"]["ANTHROPIC_BASE_URL"] == FAKE_URL
 
@@ -251,7 +292,8 @@ def kit_calls(routed, monkeypatch):
 
 
 def test_kit_call_adjudicator(kit_calls, tmp_path):
-    with mock.patch("subprocess.run", return_value=_done('{"result": "go"}')) as run:
+    run = mock.MagicMock(return_value=_done('{"result": "go"}'))
+    with _faked(run=run):
         assert adjudicator.ClaudeAdjudicator(_ADJ_CFG, tmp_path).ask("BODY", "INST") == "go"
     (c,) = kit_calls
     assert c["code"] == "RC" and c["prompt"] == "INST"
@@ -263,8 +305,10 @@ def test_kit_call_adjudicator(kit_calls, tmp_path):
 def test_kit_call_ci_watchdog(kit_calls, tmp_path, monkeypatch):
     monkeypatch.setattr(cw, "_run", _fake_run_factory([]))
     monkeypatch.setattr(cw, "_write_context", lambda *a, **k: None)
-    with mock.patch("subprocess.run", return_value=_done()):
+    run = mock.MagicMock(return_value=_done())
+    with _faked(run=run):
         cw.execute_dispatch(1, "h" * 12, arm=True, worktree=tmp_path)
+    assert run.called, "the kit's launch reached the chain's fake"
     (c,) = kit_calls
     assert c["code"] == "RC" and c["writes_code"] is True and c["bare"] is False
     extra = list(c["extra"])
@@ -275,8 +319,9 @@ def test_kit_call_ci_watchdog(kit_calls, tmp_path, monkeypatch):
 
 def test_kit_call_supervisor_ephemeral(kit_calls):
     from agents.supervisor import spawn_ephemeral_llm
+    run = mock.MagicMock(return_value=_done('{"result":"x"}'))
     with mock.patch("agents.supervisor.shutil.which", return_value="/fake/claude"), \
-         mock.patch("subprocess.run", return_value=_done('{"result":"x"}')) as run:
+         _faked(run=run):
         spawn_ephemeral_llm("6", "t-kit-call", "demo", {})
     (c,) = kit_calls
     assert c["code"] == "RC" and c["bare"] is False
@@ -303,14 +348,13 @@ def drain_dirs(monkeypatch, tmp_path):
 
 
 def test_drain_refuses_without_route(refused, drain_dirs):
-    with mock.patch("subprocess.run", side_effect=AssertionError("spawned with no route")), \
-         mock.patch("subprocess.Popen", side_effect=AssertionError("spawned with no route")):
+    with _faked(run=_trip(), Popen=_trip()):
         res = drain._spawn("P", task="t-refused", extra=(), cwd=drain_dirs, timeout=5)
     assert res["rc"] is None and res["error"].startswith("refused:")
 
 
 def test_kit_call_drain_waves(kit_calls, drain_dirs):
-    with mock.patch("subprocess.run", return_value=_done('{"result":"x"}')):
+    with _faked(run=mock.MagicMock(return_value=_done('{"result":"x"}'))):
         res = drain._spawn("PROMPT", task="t-kit", extra=drain.VERIFY_EXTRA,
                            cwd=drain_dirs, timeout=5)
     (c,) = kit_calls
@@ -358,13 +402,12 @@ def kit_hang(routed, kit_platform, monkeypatch):
     """REAL kit spawn + the kit's own `_run`; only Popen and taskkill faked.
     Runs once per kit kill branch (win32 taskkill /T, POSIX group kill) via
     `kit_platform`, so the ubuntu CI and Legion both cover both branches."""
-    import subprocess as _sp
     monkeypatch.setattr(fleet_route, "_launch", None)
     _HangPopen.made = []
-    monkeypatch.setattr(_sp, "Popen", _HangPopen)
     kills = []
-    monkeypatch.setattr(_sp, "run", lambda argv, **kw: kills.append(list(argv)) or
-                        CompletedProcess(args=argv, returncode=0, stdout="", stderr=""))
+    _bind_chain(monkeypatch, Popen=_HangPopen,
+                run=lambda argv, **kw: kills.append(list(argv)) or
+                CompletedProcess(args=argv, returncode=0, stdout="", stderr=""))
     return kit_platform, kills
 
 
@@ -407,7 +450,7 @@ def test_kit_call_executor(kit_calls, tmp_path, monkeypatch):
                          "cycle_deadline_sec": 60, "executor_effort": "high",
                          "executor_model": "claude-opus-5-5"}, tmp_path,
                         log=lambda m: None, stop=lambda m: None, awrite=lambda p, t: None)
-    with mock.patch("subprocess.run", return_value=_done(_SDK_DONE)):
+    with _faked(run=mock.MagicMock(return_value=_done(_SDK_DONE))):
         rec = ex.run(1, "BODY", "fixed")
     assert rec.error is None
     (c,) = kit_calls
@@ -431,8 +474,10 @@ def test_executor_timeout_kills_tree_via_kit(kit_hang, tmp_path, monkeypatch):
 
 def test_kit_call_supervisor_non_opus_agent_does_not_write_code(kit_calls):
     from agents.supervisor import spawn_ephemeral_llm
+    run = mock.MagicMock(return_value=_done('{"result":"x"}'))
     with mock.patch("agents.supervisor.shutil.which", return_value="/fake/claude"), \
-         mock.patch("subprocess.run", return_value=_done('{"result":"x"}')):
+         _faked(run=run):
         spawn_ephemeral_llm("7", "t-kit-call-7", "demo", {})
+    assert run.called, "the kit's launch reached the chain's fake"
     (c,) = kit_calls
     assert c["writes_code"] is False

@@ -13,6 +13,7 @@ from unittest import mock
 
 import pytest
 
+from tests._module_view import bind_urlopen
 from tests._sleep_probe import record_sleeps
 from tools import ddragon_mirror_refresh as ddr
 
@@ -495,7 +496,7 @@ def test_http_retries_on_url_error_then_succeeds(monkeypatch):
             raise ue.URLError("timed out")
         return _FakeResp()
 
-    monkeypatch.setattr(ddr.urllib_request, "urlopen", fake_open)
+    bind_urlopen(monkeypatch, ddr, fake_open)
 
     # record_sleeps, not a raw setattr on ddr.time: ddr.time IS the global time
     # module, so the patch is process-wide and any other thread's sleep would
@@ -517,7 +518,7 @@ def test_http_gives_up_after_max_retries(monkeypatch):
         calls.append(req.full_url)
         raise ue.URLError("timed out")
 
-    monkeypatch.setattr(ddr.urllib_request, "urlopen", always_fail)
+    bind_urlopen(monkeypatch, ddr, always_fail)
 
     with record_sleeps():
         with pytest.raises(ue.URLError):
@@ -542,7 +543,7 @@ def test_http_retries_on_5xx_then_succeeds(monkeypatch):
             raise ue.HTTPError(req.full_url, 503, "down", {}, None)
         return _FakeResp()
 
-    monkeypatch.setattr(ddr.urllib_request, "urlopen", flaky)
+    bind_urlopen(monkeypatch, ddr, flaky)
 
     with record_sleeps() as sleeps:
         res = ddr._http("GET", "https://example/asset.png")
@@ -561,7 +562,7 @@ def test_http_does_not_retry_on_404(monkeypatch):
         calls.append(req.full_url)
         raise ue.HTTPError(req.full_url, 404, "gone", {}, None)
 
-    monkeypatch.setattr(ddr.urllib_request, "urlopen", four_oh_four)
+    bind_urlopen(monkeypatch, ddr, four_oh_four)
 
     # `sleeps == []` is the most contamination-prone assertion in the file:
     # ANY background thread sleeping during the window would break it.

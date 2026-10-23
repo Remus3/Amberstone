@@ -18,6 +18,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 
 import precommit_gate as G  # noqa: E402
 
+# G's own `subprocess` name only, never the shared module (RM-801).
+from tests._module_view import bind_subprocess  # noqa: E402
+
 _EMDASH = chr(0x2014)
 
 
@@ -286,7 +289,7 @@ class TestRuffCallIsGuarded:
             calls.append((list(argv), kw))
             return _Proc()
 
-        monkeypatch.setattr(G.subprocess, "run", fake)
+        bind_subprocess(monkeypatch, G, run=fake)
         assert G.main() == 0
         checks = [(a, kw) for a, kw in calls if "check" in a]
         assert checks, calls
@@ -402,7 +405,7 @@ class TestFailureModesPerChannel:
                 raise OSError("vanished")
             raise G.subprocess.TimeoutExpired(cmd, kw.get("timeout", 0))
 
-        monkeypatch.setattr(G.subprocess, "run", fail)
+        bind_subprocess(monkeypatch, G, run=fail)
         self._closed(G.safe_main(argv), capsys, "ruff timed out / not runnable",
                      "fix or rerun")
 
@@ -414,7 +417,7 @@ class TestFailureModesPerChannel:
         def hang(cmd, **kw):
             raise G.subprocess.TimeoutExpired(cmd, kw.get("timeout", 0))
 
-        monkeypatch.setattr(G.subprocess, "run", hang)
+        bind_subprocess(monkeypatch, G, run=hang)
         self._open_with_context(G.safe_main(argv), capsys, "ruff")
 
     # ---- missing / unimportable tools/ascii_rule.py ----------------------

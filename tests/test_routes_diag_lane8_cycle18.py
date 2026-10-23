@@ -26,12 +26,16 @@ tailnet, not loopback only.
 """
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import sys
 import unittest
+import urllib.request
 from pathlib import Path
 from unittest import mock
+
+import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
@@ -39,6 +43,19 @@ if str(ROOT) not in sys.path:
 
 from dashboard import _errors  # noqa: E402
 import dashboard.routes_diag as rd  # noqa: E402
+from tests._module_view import this_thread_only  # noqa: E402
+
+
+@contextlib.contextmanager
+def _ocr_urlopen(fake):
+    """`_serve_ocr` imports urllib.request INSIDE the function
+    (dashboard/routes_diag.py:199), so no module-global name exists to scope
+    through: the patch stays process-wide but this thread only, never a
+    leftover thread of another test (tests/_module_view.py, RM-801)."""
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(urllib.request, "urlopen",
+                   this_thread_only(fake, urllib.request.urlopen))
+        yield fake
 
 # One raw exception string carrying every shape the envelope must not leak: an
 # absolute Windows path, a filename, and a distinctive secret-shaped token.
@@ -133,8 +150,9 @@ class OcrLeakTests(unittest.TestCase):
 
     def test_ocr_500_is_scrubbed(self):
         h = _FakeHandler("/api/ocr")
-        with mock.patch("urllib.request.urlopen", side_effect=OSError(LEAKY)):
+        with _ocr_urlopen(mock.Mock(side_effect=OSError(LEAKY))) as fake:
             rd._serve_ocr(h)
+        self.assertTrue(fake.called, "the scoped urlopen fake was never reached")
         self.assertEqual(h.status, 500)
         _assert_scrubbed(self, h.body["error"])
 
@@ -148,7 +166,7 @@ class OcrLeakTests(unittest.TestCase):
         """
         h = _FakeHandler("/api/ocr")
         with self.assertLogs(rd.log, level=logging.DEBUG) as cap:
-            with mock.patch("urllib.request.urlopen", side_effect=OSError(LEAKY)):
+            with _ocr_urlopen(mock.Mock(side_effect=OSError(LEAKY))):
                 rd._serve_ocr(h)
         self.assertTrue(
             any("relay" in line.lower() for line in cap.output),
@@ -282,7 +300,7 @@ class OcrGlobalStateTests(unittest.TestCase):
         try:
             vt.configure_drop_fields({"sentinel_field"})
             h = _FakeHandler("/api/ocr")
-            with mock.patch("urllib.request.urlopen", side_effect=OSError(LEAKY)):
+            with _ocr_urlopen(mock.Mock(side_effect=OSError(LEAKY))):
                 rd._serve_ocr(h)
             self.assertEqual(
                 set(vt._DROP_FIELDS), {"sentinel_field"},

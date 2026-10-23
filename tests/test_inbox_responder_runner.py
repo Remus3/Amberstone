@@ -43,6 +43,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import tools.inbox_responder_exec as exec_mod  # noqa: E402
+from tests._module_view import bind_subprocess, this_thread_only  # noqa: E402
 import tools.inbox_responder_export as export_mod  # noqa: E402
 import tools.inbox_responder_procs as procs  # noqa: E402
 import tools.inbox_responder_runner as runner  # noqa: E402
@@ -3183,7 +3184,8 @@ def test_measure_seam_carries_the_configured_git_and_the_closed_environment(worl
         recorded.append({"argv": list(argv), **kw})
         raise FileNotFoundError("no git here")
 
-    monkeypatch.setattr(procs.subprocess, "Popen", fake_popen)
+    # procs' own `subprocess` name only, never the shared module (RM-801).
+    bind_subprocess(monkeypatch, procs, Popen=fake_popen)
     world.recorder = exec_mod.default_measure_runner
     world.spawner = StubSpawner(result_bytes(proposal(
         {"kind": "measure", "argv": ["git", "log", "origin/main", "--format=%h %s"]},
@@ -4172,6 +4174,16 @@ def test_default_spawner_is_armed_by_one_variable_only():
         runner._default_spawner({})
 
 
+def _install_tripwire(monkeypatch, tripwire):
+    """TRIPWIRE as the Popen of EVERY module, for this thread and each thread it
+    starts. "No process of any kind" is an open module set, so no one
+    module-local name carries it; each thread already alive (another test's
+    leftover server or poller) keeps the real Popen (RM-801,
+    tests/_module_view.py this_thread_only)."""
+    monkeypatch.setattr(subprocess, "Popen", this_thread_only(tripwire, subprocess.Popen))
+    assert procs.subprocess.Popen.fake is tripwire, "the replacement must precede the drive"
+
+
 def test_real_spawn_guard_stops_before_any_subprocess(world, tmp_path, monkeypatch):
     monkeypatch.setattr(runner, "ROOT", tmp_path / "guardroot")
     (tmp_path / "guardroot" / "ops").mkdir(parents=True)
@@ -4181,8 +4193,7 @@ def test_real_spawn_guard_stops_before_any_subprocess(world, tmp_path, monkeypat
         calls.append(a)
         raise AssertionError("a process was created")
 
-    monkeypatch.setattr(procs.subprocess, "Popen", tripwire)
-    assert procs.subprocess.Popen is tripwire, "the replacement must precede the drive"
+    _install_tripwire(monkeypatch, tripwire)
     spy = RunSpy()
     live = tmp_path / "live"
     code = runner.main(["--cycle"], run=spy, export=world.export, singleton=_open_singleton,
@@ -4229,7 +4240,8 @@ def test_real_spawner_argv_is_constant_and_the_note_rides_on_stdin(world, monkey
         recorded.append({"argv": list(argv), **kw})
         return FakeProc()
 
-    monkeypatch.setattr(procs.subprocess, "Popen", fake_popen)
+    # procs' own `subprocess` name only, never the shared module (RM-801).
+    bind_subprocess(monkeypatch, procs, Popen=fake_popen)
     assert procs.subprocess.Popen is fake_popen, "the replacement must precede the drive"
 
     armed(world)
@@ -4323,10 +4335,21 @@ class KillerSpy:
 def _install_killer_spy(monkeypatch) -> KillerSpy:
     spy = KillerSpy()
     if os.name == "nt":
-        monkeypatch.setattr(procs.subprocess, "run", spy.nt_run)
+        bind_subprocess(monkeypatch, procs, run=spy.nt_run)
     else:
         monkeypatch.setattr(procs.os, "killpg", spy.posix_killpg, raising=False)
     return spy
+
+
+def _install_popen(monkeypatch, popen: PopenRecorder) -> None:
+    """POPEN is procs' own Popen, bound to procs' `subprocess` name (RM-801:
+    never the shared module), AND - thread-scoped - every other module's Popen
+    in this drive, so a count over POPEN still counts every process of the
+    cycle, as the process-wide patch did. Each thread already alive keeps the
+    real Popen (tests/_module_view.py this_thread_only)."""
+    bind_subprocess(monkeypatch, procs, Popen=popen)
+    monkeypatch.setattr(subprocess, "Popen", this_thread_only(popen, subprocess.Popen))
+    assert procs.subprocess.Popen is popen, "the replacement must precede the drive"
 
 
 def _assert_tree_killed(spy: KillerSpy, pid: int):
@@ -4351,8 +4374,7 @@ def test_a_spawn_timeout_takes_the_full_tree_kill_and_is_filed_as_spawn_failed(w
     """
     armed(world)
     popen = PopenRecorder()
-    monkeypatch.setattr(procs.subprocess, "Popen", popen)
-    assert procs.subprocess.Popen is popen, "the replacement must precede the drive"
+    _install_popen(monkeypatch, popen)
     killer = _install_killer_spy(monkeypatch)
     assert procs.KILL_ALLOWANCE_PER_CYCLE == 1
 
@@ -4392,8 +4414,7 @@ def test_a_timed_out_spawn_records_its_kill_allowance_in_the_hold(world, monkeyp
     """
     armed(world)
     popen = PopenRecorder()
-    monkeypatch.setattr(procs.subprocess, "Popen", popen)
-    assert procs.subprocess.Popen is popen, "the replacement must precede the drive"
+    _install_popen(monkeypatch, popen)
     _install_killer_spy(monkeypatch)
 
     result = world.drive(spawner=spawn_mod.real_spawner)
@@ -4409,8 +4430,7 @@ def test_a_measure_timeout_takes_the_kill_and_the_cycle_continues(world, monkeyp
     """Gate 12's measure seam, over the real `default_measure_runner`."""
     armed(world)
     popen = PopenRecorder()
-    monkeypatch.setattr(procs.subprocess, "Popen", popen)
-    assert procs.subprocess.Popen is popen, "the replacement must precede the drive"
+    _install_popen(monkeypatch, popen)
     killer = _install_killer_spy(monkeypatch)
     world.recorder = exec_mod.default_measure_runner
     world.spawner = StubSpawner(result_bytes(proposal(PUBLIC_MEASURE, reply_action())))
@@ -4445,8 +4465,7 @@ def test_the_second_timeout_of_a_cycle_is_killed_without_the_tree_walk(world, mo
     """
     armed(world)
     popen = PopenRecorder()
-    monkeypatch.setattr(procs.subprocess, "Popen", popen)
-    assert procs.subprocess.Popen is popen, "the replacement must precede the drive"
+    _install_popen(monkeypatch, popen)
     kills: list = []
     monkeypatch.setattr(procs, "kill_tree", kills.append)
 
@@ -4603,9 +4622,9 @@ def test_the_dry_flag_is_consumed_first_and_writes_only_into_scratch(world, tmp_
     flag.write_text(str(scratch), encoding="ascii")
 
     calls: list = []
-    monkeypatch.setattr(procs.subprocess, "Popen",
-                        lambda *a, **kw: calls.append(a) or (_ for _ in ()).throw(
-                            AssertionError("a process was created")))
+    _install_tripwire(monkeypatch,
+                      lambda *a, **kw: calls.append(a) or (_ for _ in ()).throw(
+                          AssertionError("a process was created")))
     live = tmp_path / "live-dry"
     runs: list = []
 
@@ -4737,9 +4756,9 @@ def _drive_dry_cycle(world, tmp_path, monkeypatch, *, label, proc_runner=None, s
     (export_dir / "README.md").write_text("public\n", encoding="ascii")
 
     created: list = []
-    monkeypatch.setattr(procs.subprocess, "Popen",
-                        lambda *a, **kw: created.append(a) or (_ for _ in ()).throw(
-                            AssertionError("a process was created")))
+    _install_tripwire(monkeypatch,
+                      lambda *a, **kw: created.append(a) or (_ for _ in ()).throw(
+                          AssertionError("a process was created")))
     live = tmp_path / f"live-{label}"
     _TMP_LOGS.append(runner.invocations_path(live))
     fired: list = []
@@ -5057,9 +5076,9 @@ def test_the_flag_file_path_prints_nothing_at_all(world, tmp_path, monkeypatch, 
     scratch.mkdir()
     (fake_root / "ops" / "runtime" / runner.DRY_FLAG_NAME).write_text(str(scratch),
                                                                      encoding="ascii")
-    monkeypatch.setattr(procs.subprocess, "Popen",
-                        lambda *a, **kw: (_ for _ in ()).throw(
-                            AssertionError("a process was created")))
+    _install_tripwire(monkeypatch,
+                      lambda *a, **kw: (_ for _ in ()).throw(
+                          AssertionError("a process was created")))
     live = tmp_path / "live-silent"
     _TMP_LOGS.append(runner.invocations_path(live))
     code = runner.main(["--cycle"], spawner=StubSpawner(result_bytes(proposal(reply_action()))),

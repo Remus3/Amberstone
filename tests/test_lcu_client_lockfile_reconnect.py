@@ -24,6 +24,7 @@ import pytest
 
 import lcu.lcu_client as lc
 from lcu.lcu_client import LcuClient
+from tests._module_view import bind_urlopen
 
 
 def _write_lockfile(path, port, pw):
@@ -119,7 +120,8 @@ def test_request_reconnects_and_retries_on_dead_port(lockfile, monkeypatch):
             raise urllib.error.URLError("connection refused")
         return _Resp()
 
-    monkeypatch.setattr(lc.urllib.request, "urlopen", fake_urlopen)
+    # lcu_client's own urllib only, never the shared module (RM-801).
+    bind_urlopen(monkeypatch, lc, fake_urlopen)
 
     out = c._request("GET", "/lol-champ-select/v1/session")
 
@@ -143,11 +145,12 @@ def test_request_no_infinite_retry_when_port_stays_dead(lockfile, monkeypatch):
         calls.append(req.full_url)
         raise urllib.error.URLError("connection refused")
 
-    monkeypatch.setattr(lc.urllib.request, "urlopen", always_fail)
+    bind_urlopen(monkeypatch, lc, always_fail)
 
     out = c._request("GET", "/lol-champ-select/v1/session")
 
     assert out is None
+    assert calls, "the scoped urlopen fake was never reached"
     assert len(calls) <= 2, f"expected at most one retry, got {len(calls)} calls"
 
 

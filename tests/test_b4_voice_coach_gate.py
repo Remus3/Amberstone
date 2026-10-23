@@ -23,8 +23,11 @@ from __future__ import annotations
 import unittest
 from unittest import mock
 
+import pytest
+
 from coaches import voice_coach
 from core import live_game_gate
+from tests._module_view import bind_subprocess
 
 
 class _PopenSpy:
@@ -46,9 +49,10 @@ class VoiceCoachLiveGateTests(unittest.TestCase):
         voice_coach._LAST_TS = 0.0
         voice_coach._LAST_TEXT = ""
         self.spy = _PopenSpy()
-        p = mock.patch.object(voice_coach.subprocess, "Popen", self.spy)
-        p.start()
-        self.addCleanup(p.stop)
+        mp = pytest.MonkeyPatch()
+        self.addCleanup(mp.undo)
+        # voice_coach's own subprocess name only (RM-801, tests/_module_view.py).
+        bind_subprocess(mp, voice_coach, Popen=self.spy)
 
     def _set_live(self, live: bool):
         p = mock.patch.object(live_game_gate, "live_game_now", return_value=live)
@@ -84,9 +88,11 @@ class VoiceCoachLiveGateTests(unittest.TestCase):
         capability question during a game, so it is NOT gated - the guard
         exists so nobody 'fixes' compliance by stubbing it to False."""
         self._set_live(True)
-        with mock.patch.object(voice_coach.subprocess, "run") as run:
-            run.return_value = mock.MagicMock(stdout="3")
+        run = mock.MagicMock(return_value=mock.MagicMock(stdout="3"))
+        with pytest.MonkeyPatch.context() as mp:
+            bind_subprocess(mp, voice_coach, run=run)
             self.assertTrue(voice_coach.is_available())
+        run.assert_called_once()
 
 
 class LiveGameGateTests(unittest.TestCase):

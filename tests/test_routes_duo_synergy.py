@@ -22,11 +22,14 @@ import time
 import unittest
 from pathlib import Path
 
+import pytest
+
 _PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
 from core import smoothed_rates_101qq as S101  # noqa: E402
 from dashboard import routes_duo_synergy as RDS  # noqa: E402
+from tests._module_view import this_thread_only  # noqa: E402
 
 import os  # noqa: E402
 
@@ -260,7 +263,11 @@ class _NetworkGuard:
         Each attempt is therefore recorded, and tearDown fails the test if
         any were made - a live Tencent fetch is loud, never silent.
 
-        The names are rebound on the process-wide socket module, so a thread
+        The names are rebound on the process-wide socket module - a network
+        guard has to catch the route's I/O in whatever module makes it
+        (http.client resolves `socket.create_connection` through its own
+        global), so no module-local name exists to scope through - but
+        through tests/_module_view.py `this_thread_only` (RM-801): a thread
         that was ALREADY running at install (not this test's: a leftover
         server or poller in the same xdist worker) passes straight through
         to the real call - neither refused nor recorded. Thread OBJECTS, not
@@ -268,30 +275,23 @@ class _NetworkGuard:
         still counts as this test's.
         """
         self._net_attempts: list[str] = []
-        self._orig_getaddrinfo = socket.getaddrinfo
-        self._orig_create_connection = socket.create_connection
-        foreign = frozenset(threading.enumerate()) - {threading.current_thread()}
 
         def _refuse(name: str):
-            real = getattr(socket, name)
-
             def _blocked(*args, **kwargs):
-                if threading.current_thread() in foreign:
-                    return real(*args, **kwargs)
                 self._net_attempts.append(f"{name}{args[:2]!r}")
                 raise OSError(f"network blocked in RouteHealthSurfaceTests: "
                               f"{name}{args[:2]!r}")
             return _blocked
 
-        socket.getaddrinfo = _refuse("getaddrinfo")
-        socket.create_connection = _refuse("create_connection")
+        mp = pytest.MonkeyPatch()
         # Cleanups run after tearDown AND even when setUp fails part-way,
         # so the socket module is never left patched for later tests.
-        self.addCleanup(self._remove_network_guard)
-
-    def _remove_network_guard(self) -> None:
-        socket.getaddrinfo = self._orig_getaddrinfo
-        socket.create_connection = self._orig_create_connection
+        self.addCleanup(mp.undo)
+        mp.setattr(socket, "getaddrinfo",
+                   this_thread_only(_refuse("getaddrinfo"), socket.getaddrinfo))
+        mp.setattr(socket, "create_connection",
+                   this_thread_only(_refuse("create_connection"),
+                                    socket.create_connection))
 
 
 class NetworkGuardScopeTests(_NetworkGuard, unittest.TestCase):

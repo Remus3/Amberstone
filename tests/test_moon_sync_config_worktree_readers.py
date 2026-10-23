@@ -27,6 +27,7 @@ import tests.test_channel_doc_rc_gate as channel_gate  # noqa: E402
 import tests.test_loop_concurrency as loop_conc  # noqa: E402
 import tests.test_outbound_reciprocity_check as orc_tests  # noqa: E402
 import tools.inbox_responder_runner as runner  # noqa: E402
+from tests._module_view import this_thread_only  # noqa: E402
 from tools import moon_sync_poller as poller  # noqa: E402
 from tools import outbound_reciprocity_check as orc  # noqa: E402
 from tools import sibling_name_sweep as sweep  # noqa: E402
@@ -97,7 +98,11 @@ def test_resolver_creates_no_process(layout, monkeypatch):
     def tripwire(*a, **kw):
         raise AssertionError(f"a process was created: {a[:1]}")
 
-    monkeypatch.setattr(subprocess, "Popen", tripwire)
+    # "No process" means none from ANY module (sweep, a helper, os.popen - which
+    # imports subprocess inside the call, no module-local name), so the tripwire
+    # stays on the shared module for this thread and the threads it starts
+    # only; a thread already alive keeps the real Popen (RM-801).
+    monkeypatch.setattr(subprocess, "Popen", this_thread_only(tripwire, subprocess.Popen))
     assert sweep.resolve_config_path(wt) == main / CONFIG_REL
 
 

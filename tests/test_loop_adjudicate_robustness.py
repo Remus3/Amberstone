@@ -13,12 +13,16 @@ the part that still runs.
 """
 from __future__ import annotations
 
+import contextlib
 import importlib.util
 import subprocess
 from pathlib import Path
 from unittest import mock
 
 import pytest
+
+from ops.loop import fleet_route
+from tests._module_view import bind_subprocess
 
 _LC = Path(__file__).resolve().parent.parent / "ops" / "loop" / "loop_controller.py"
 
@@ -41,6 +45,19 @@ def _cp(stdout="", rc=0, stderr=""):
                                        stderr=stderr)
 
 
+@contextlib.contextmanager
+def _routed_run(**mock_kw):
+    """The adjudicator's child, faked where it starts: tests/conftest.py
+    forwards the kit's launch to ops.loop.fleet_route's OWN `subprocess.run`
+    (the call in ops/loop/fleet_route.py spawn), so the Mock is bound there
+    only (tests/_module_view.py) - never on the shared subprocess module every
+    thread of the worker sees (RM-801)."""
+    run = mock.Mock(**mock_kw)
+    with pytest.MonkeyPatch.context() as mp:
+        bind_subprocess(mp, fleet_route, run=run)
+        yield run
+
+
 def test_a_raised_error_is_the_none_sentinel_not_empty_string(lc, tmp_path):
     """None and "" are NOT interchangeable here.
 
@@ -52,9 +69,10 @@ def test_a_raised_error_is_the_none_sentinel_not_empty_string(lc, tmp_path):
             mock.patch.object(lc, "CTL", tmp_path), \
             mock.patch.object(lc, "_ADJ_STATE", {"active": "", "usd": {}}), \
             mock.patch.object(lc, "log", lambda *_a, **_k: None), \
-            mock.patch.object(lc.subprocess, "run", side_effect=OSError("boom")):
+            _routed_run(side_effect=OSError("boom")) as run:
         out = lc.adjudicate("body", "inst")
     assert out is None and out != ""
+    assert run.called, "the None must come from the faked child, not a real launch"
 
 
 def test_a_completed_but_empty_call_is_also_none(lc, tmp_path):
@@ -62,8 +80,9 @@ def test_a_completed_but_empty_call_is_also_none(lc, tmp_path):
             mock.patch.object(lc, "CTL", tmp_path), \
             mock.patch.object(lc, "_ADJ_STATE", {"active": "", "usd": {}}), \
             mock.patch.object(lc, "log", lambda *_a, **_k: None), \
-            mock.patch.object(lc.subprocess, "run", return_value=_cp("  \n")):
+            _routed_run(return_value=_cp("  \n")) as run:
         assert lc.adjudicate("body", "inst") is None
+    assert run.called, "the None must come from the faked child, not a real launch"
 
 
 def test_stderr_is_logged_when_the_call_comes_back_empty(lc, tmp_path):
@@ -74,7 +93,7 @@ def test_stderr_is_logged_when_the_call_comes_back_empty(lc, tmp_path):
             mock.patch.object(lc, "CTL", tmp_path), \
             mock.patch.object(lc, "_ADJ_STATE", {"active": "", "usd": {}}), \
             mock.patch.object(lc, "log", lines.append), \
-            mock.patch.object(lc.subprocess, "run", return_value=_cp(
+            _routed_run(return_value=_cp(
                 "", rc=1, stderr="Error: something specific went wrong\n")):
         assert lc.adjudicate("body", "inst") is None
     assert any("something specific" in ln for ln in lines)
@@ -104,7 +123,7 @@ def test_adjudicate_is_robust_to_an_empty_cfg(lc, tmp_path):
             mock.patch.object(lc, "CTL", tmp_path), \
             mock.patch.object(lc, "_ADJ_STATE", {"active": "", "usd": {}}), \
             mock.patch.object(lc, "log", lambda *_a, **_k: None), \
-            mock.patch.object(lc.subprocess, "run", return_value=_cp("ok")):
+            _routed_run(return_value=_cp("ok")):
         assert lc.adjudicate("body", "inst") == "ok"
 
 

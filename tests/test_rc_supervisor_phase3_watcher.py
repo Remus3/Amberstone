@@ -19,8 +19,17 @@ from unittest.mock import MagicMock
 _PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
+import pytest  # noqa: E402
+
 from ops import rc_supervisor as rc_sup  # noqa: E402
 from ops.rc_supervisor import _Phase3Watcher  # noqa: E402
+from tests._module_view import bind_subprocess  # noqa: E402
+
+
+def _scoped_run(mp, side_effect):
+    """rc_sup's own subprocess.run only (RM-801, tests/_module_view.py): the
+    real taskkill / schtasks never runs, and no other thread is faked."""
+    bind_subprocess(mp, rc_sup, run=MagicMock(side_effect=side_effect))
 
 
 def _iso_utc(dt: datetime) -> str:
@@ -506,9 +515,9 @@ class DefaultRestarterTests(unittest.TestCase):
         # alive at the gate check, dead immediately after kill so the
         # bounded wait loop exits without a real sleep.
         alive = MagicMock(side_effect=[True, False])
-        with mock.patch.object(rc_sup.subprocess, "run",
-                               side_effect=self._fake_run_collector(calls)), \
+        with pytest.MonkeyPatch.context() as mp, \
              mock.patch.object(rc_sup, "_pid_alive", alive):
+            _scoped_run(mp, self._fake_run_collector(calls))
             ok = _Phase3Watcher._default_restarter("RC-Phase3-Supervisor", 4242)
         self.assertTrue(ok)
         self.assertEqual(len(calls), 2)
@@ -518,9 +527,9 @@ class DefaultRestarterTests(unittest.TestCase):
 
     def test_dead_pid_no_taskkill(self) -> None:
         calls = []
-        with mock.patch.object(rc_sup.subprocess, "run",
-                               side_effect=self._fake_run_collector(calls)), \
+        with pytest.MonkeyPatch.context() as mp, \
              mock.patch.object(rc_sup, "_pid_alive", lambda _p: False):
+            _scoped_run(mp, self._fake_run_collector(calls))
             ok = _Phase3Watcher._default_restarter("RC-Phase3-Supervisor", 4242)
         self.assertTrue(ok)
         self.assertEqual(
@@ -528,9 +537,9 @@ class DefaultRestarterTests(unittest.TestCase):
 
     def test_no_pid_no_taskkill(self) -> None:
         calls = []
-        with mock.patch.object(rc_sup.subprocess, "run",
-                               side_effect=self._fake_run_collector(calls)), \
+        with pytest.MonkeyPatch.context() as mp, \
              mock.patch.object(rc_sup, "_pid_alive", lambda _p: True):
+            _scoped_run(mp, self._fake_run_collector(calls))
             ok = _Phase3Watcher._default_restarter("RC-Phase3-Supervisor", None)
         self.assertTrue(ok)
         self.assertEqual(
@@ -541,8 +550,9 @@ class DefaultRestarterTests(unittest.TestCase):
             m = MagicMock()
             m.returncode = 1
             return m
-        with mock.patch.object(rc_sup.subprocess, "run", side_effect=fake_run), \
+        with pytest.MonkeyPatch.context() as mp, \
              mock.patch.object(rc_sup, "_pid_alive", lambda _p: False):
+            _scoped_run(mp, fake_run)
             ok = _Phase3Watcher._default_restarter("RC-Phase3-Supervisor", None)
         self.assertFalse(ok)
 

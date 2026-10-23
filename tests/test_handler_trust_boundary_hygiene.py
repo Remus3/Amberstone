@@ -46,6 +46,7 @@ import pytest
 
 from dashboard import _handler
 from dashboard._handler import Handler
+from tests._module_view import this_thread_only
 
 # C0 control characters, DEL, and the C1 range the stdlib table also covers.
 _FORBIDDEN = (set(range(0x00, 0x20)) - {0x09, 0x0A, 0x0D}) | set(range(0x7F, 0xA0))
@@ -217,7 +218,13 @@ def test_proxy_failure_log_escapes_the_exception_text(server, caplog_rc,
     def boom(*_a, **_k):
         raise RuntimeError("upstream said \x1b[31mFAIL\x1b[0m")
 
-    monkeypatch.setattr(urllib.request, "urlopen", boom)
+    # The proxy imports urllib.request INSIDE the method
+    # (dashboard/_handler.py:675), so no module-global name exists to scope
+    # through: process-wide, but every thread alive before this line (the
+    # server's accept loop, any leftover of another test) keeps the real one;
+    # the per-request handler thread starts after it (RM-801).
+    monkeypatch.setattr(urllib.request, "urlopen",
+                        this_thread_only(boom, urllib.request.urlopen))
     # /api/env is in SUPERVISOR_PROXY_PATHS, so this reaches the proxy.
     _raw(server, b"GET /api/env HTTP/1.0\r\nHost: 127.0.0.1\r\n\r\n")
     joined = "\n".join(_messages(caplog_rc))

@@ -29,6 +29,8 @@ import importlib
 
 import pytest
 
+from tests._module_view import bind_subprocess
+
 interrupt = importlib.import_module("ops.loop.interrupt")
 steer = importlib.import_module("ops.loop.steer")
 
@@ -285,7 +287,7 @@ def test_the_audit_record_survives_a_steer_log_failure(chan, monkeypatch):
 
 
 # --------------------------------------------------------------------------- taskkill argv
-def test_taskkill_does_not_pass_the_tree_flag():
+def test_taskkill_does_not_pass_the_tree_flag(monkeypatch):
     """/T would let taskkill walk the tree ITSELF and kill what it finds now.
 
     This module already enumerated the tree and named every member to the
@@ -306,13 +308,10 @@ def test_taskkill_does_not_pass_the_tree_flag():
             returncode = 0
         return R()
 
-    import subprocess as sp
-    real = sp.run
-    sp.run = fake_run
-    try:
-        interrupt._taskkill(1234)
-    finally:
-        sp.run = real
+    # ops/loop/interrupt.py _taskkill's own `subprocess.run` only, never the
+    # shared module another thread could be spawning through (RM-801).
+    bind_subprocess(monkeypatch, interrupt, run=fake_run)
+    interrupt._taskkill(1234)
 
     assert seen["cmd"] == ["taskkill", "/F", "/PID", "1234"]
     assert "/T" not in seen["cmd"]

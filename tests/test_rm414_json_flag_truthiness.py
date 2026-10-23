@@ -30,9 +30,12 @@ from __future__ import annotations
 import json
 import sys
 import types
+import urllib.request
 from unittest import mock
 
 import pytest
+
+from tests._module_view import this_thread_only
 
 _ABSENT = object()
 
@@ -110,7 +113,11 @@ def _sr_apply(monkeypatch, payload):
         return _Resp()
 
     h = _Handler()
-    with mock.patch("urllib.request.urlopen", _urlopen):
+    # _serve_sr_draft_apply_post imports urllib.request INSIDE the function
+    # (dashboard/routes_sr_draft.py:131), so no module-local name exists:
+    # this thread only, every thread already alive keeps the real (RM-801).
+    with mock.patch("urllib.request.urlopen",
+                    this_thread_only(_urlopen, urllib.request.urlopen)):
         routes_sr_draft._serve_sr_draft_apply_post(h, payload)
     return h, sent_cmds
 

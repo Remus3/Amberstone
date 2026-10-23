@@ -66,6 +66,7 @@ import time
 from pathlib import Path
 
 import tools.rc_facts as rc_facts
+from tests._module_view import bind_subprocess
 
 _DAY = 86400.0
 _WEEK = 7 * _DAY
@@ -104,7 +105,7 @@ def test_probe_returns_none_when_powershell_fails(monkeypatch):
         stdout = ""
         stderr = "boom"
 
-    monkeypatch.setattr(rc_facts.subprocess, "run", lambda *a, **k: _P())
+    bind_subprocess(monkeypatch, rc_facts, run=lambda *a, **k: _P())
     assert rc_facts._legion_tasks() is None
 
 
@@ -114,7 +115,7 @@ def test_probe_returns_none_on_unparseable_output(monkeypatch):
         stdout = "not json at all"
         stderr = ""
 
-    monkeypatch.setattr(rc_facts.subprocess, "run", lambda *a, **k: _P())
+    bind_subprocess(monkeypatch, rc_facts, run=lambda *a, **k: _P())
     assert rc_facts._legion_tasks() is None
 
 
@@ -124,7 +125,7 @@ def test_probe_returns_list_on_success(monkeypatch):
         stdout = json.dumps({"name": "RC-Supervisor", "state": "Running", "last_result": 267009})
         stderr = ""
 
-    monkeypatch.setattr(rc_facts.subprocess, "run", lambda *a, **k: _P())
+    bind_subprocess(monkeypatch, rc_facts, run=lambda *a, **k: _P())
     got = rc_facts._legion_tasks()
     assert isinstance(got, list) and len(got) == 1
     assert got[0]["name"] == "RC-Supervisor"

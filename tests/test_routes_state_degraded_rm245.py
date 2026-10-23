@@ -15,11 +15,14 @@ import time
 from pathlib import Path
 from unittest import mock
 
+import pytest
+
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import dashboard.routes_state as rs  # noqa: E402
+from tests._module_view import bind_urlopen  # noqa: E402
 
 
 class _H:
@@ -124,10 +127,12 @@ def test_d_cost_probe_failure_is_not_green():
         raise RuntimeError("cost db gone")
 
     h = _H()
+    # rs's own urllib only, never the shared module (RM-801).
     with mock.patch.object(rs, "read_json", return_value={"alive": True}), \
-            mock.patch.object(rs.urllib.request, "urlopen", fake_urlopen), \
+            pytest.MonkeyPatch.context() as mp, \
             mock.patch("core.cost_tracker.get_tracker", broken_tracker), \
             mock.patch.object(rs, "_agent6_audit_outcomes_ex", return_value=([], True)):
+        bind_urlopen(mp, rs, fake_urlopen)
         rs._serve_health_all(h)
     body = json.loads(h.sent[1])
     assert "banner" not in body["cost"]
