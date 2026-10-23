@@ -210,8 +210,10 @@ def test_a_trickling_plain_client_does_not_stall_a_tls_client():
 def test_a_plain_http_client_still_gets_the_301(monkeypatch):
     # RM-772: the 301 echoes only an allowlisted Host; inject the placeholder
     # name (never the live per-host config).
+    # RM-819: the cache lives in core.http_host_gate (the shared gate).
+    from core import http_host_gate as _host_gate
     from dashboard import _handler
-    monkeypatch.setattr(_handler, "_allowed_names_cache",
+    monkeypatch.setattr(_host_gate, "_allowed_names_cache",
                         _handler.build_allowed_host_names(
                             cfg={"tailnet_name": "rc-host"}, env=""))
     with _served(_no_cert_ctx()) as (_srv, port, _parked):

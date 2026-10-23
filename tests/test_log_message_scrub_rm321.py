@@ -21,7 +21,10 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 _BAD = set(range(0x00, 0x20)) - {9, 10, 13} | set(range(0x7F, 0xA0))
-_PROBE = b"GET /\x1b[31mFAKE-ADMIN-OK\x1b[0m\x08\x08\x7f HTTP/1.1\r\nHost: x\r\n\r\n"
+# RM-819: a loopback Host, so the probe reaches the route on every server
+# (a foreign Host is now a 421 before any route runs).
+_PROBE = (b"GET /\x1b[31mFAKE-ADMIN-OK\x1b[0m\x08\x08\x7f HTTP/1.1\r\n"
+          b"Host: 127.0.0.1\r\n\r\n")
 
 
 class _Grab(logging.Handler):

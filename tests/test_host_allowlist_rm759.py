@@ -36,6 +36,7 @@ from pathlib import Path
 
 import pytest
 
+from core import http_host_gate as _host_gate
 from dashboard import _dispatch, _handler
 from dashboard._handler import Handler
 
@@ -60,7 +61,8 @@ _REBOUND = ("rebind.example", "rebind.example.", "localhost.rebind.example",
 def injected_allowlist(monkeypatch):
     """The allowlist the servers see, built from placeholder config only."""
     names = _handler.build_allowed_host_names(cfg=_CFG, env="")
-    monkeypatch.setattr(_handler, "_allowed_names_cache", names)
+    # RM-819: the cache lives in core.http_host_gate (the shared gate).
+    monkeypatch.setattr(_host_gate, "_allowed_names_cache", names)
     return names
 
 

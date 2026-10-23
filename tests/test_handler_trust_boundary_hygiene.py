@@ -256,7 +256,8 @@ def test_csrf_reject_warning_names_the_peer(server, caplog_rc, monkeypatch):
     peer keeps both properties without depending on per-host config. The
     Origin check consults the allowlist too, so it is injected (loopback
     only) rather than built from the live per-host file."""
-    monkeypatch.setattr(_handler, "_allowed_names_cache",
+    from core import http_host_gate as _host_gate   # RM-819: cache home
+    monkeypatch.setattr(_host_gate, "_allowed_names_cache",
                         _handler.build_allowed_host_names(cfg={}, env=""))
     _raw(server,
          b"POST /api/command HTTP/1.0\r\nHost: 192.0.2.10\r\n"

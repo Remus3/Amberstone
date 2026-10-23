@@ -13,6 +13,7 @@ from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import unquote
 
+from core.http_host_gate import HostAllowlistMixin
 from core.log_scrub import scrub_log
 
 from ._config import (AUTH_HEADER, AUTH_TOKEN, SYNC_DIR, VISION_MODEL,
@@ -73,7 +74,15 @@ def _post_lcu_cmd_done(body: bytes) -> dict:
     return {"ok": True}
 
 
-class Handler(BaseHTTPRequestHandler):
+class Handler(HostAllowlistMixin, BaseHTTPRequestHandler):
+    # RM-819: the shared RM-759 Host gate (core/http_host_gate.py), FIRST so
+    # it runs on the parsed head: a Host this machine does not answer to is
+    # 421 before any route (DNS rebinding: /health and /monitor are public,
+    # and a rebound page reads them same-origin); a head whose parse lost
+    # lines (RM-773) or a target that is not origin-form (RM-774) is 400;
+    # HTTP/0.9 is closed. The X-RC-Token still gates every data route.
+    host_refusal_log = log
+
     def _auth(self) -> bool:
         # compare_digest, not ==: the token is compared against a header the
         # caller controls. RM-150 narrowed the bind to loopback, which makes

@@ -31,6 +31,7 @@ from http.server import BaseHTTPRequestHandler
 
 import pytest
 
+from core import http_host_gate as _host_gate
 from dashboard import _handler, server
 
 _HOST = "::1"
@@ -51,7 +52,8 @@ def injected_allowlist(monkeypatch):
     names = _handler.build_allowed_host_names(
         cfg={"tailnet_name": "rc-host",
              "tailnet_fqdn": "rc-host.example-tailnet.ts.net"}, env="")
-    monkeypatch.setattr(_handler, "_allowed_names_cache", names)
+    # RM-819: the cache lives in core.http_host_gate (the shared gate).
+    monkeypatch.setattr(_host_gate, "_allowed_names_cache", names)
 
 
 def _close(srv, serve: threading.Thread) -> None:

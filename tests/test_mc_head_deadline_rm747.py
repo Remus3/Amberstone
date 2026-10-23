@@ -161,7 +161,7 @@ def test_a_slow_speaker_inside_the_deadline_is_served(monkeypatch):
         time.sleep(0.6)
         s.sendall(b"GET /rm747-unrouted HTTP/1.1\r\n")
         time.sleep(0.6)
-        s.sendall(b"Host: x\r\nConnection: close\r\n\r\n")
+        s.sendall(b"Host: 127.0.0.1\r\nConnection: close\r\n\r\n")
         reply = _read_all(s)
     assert _status(reply) == b"404", reply[:120]
 
@@ -175,7 +175,7 @@ def test_a_post_body_slower_than_the_head_deadline_is_still_read(
     body = b'{"action":"noop"}'
     with _plain() as (port, parked):
         s = _connect(port, parked)
-        s.sendall(b"POST /rm747-unrouted HTTP/1.1\r\nHost: x\r\n"
+        s.sendall(b"POST /rm747-unrouted HTTP/1.1\r\nHost: 127.0.0.1\r\n"
                   b"Authorization: Bearer rm747-test-token\r\n"
                   b"Content-Type: application/json\r\nConnection: close\r\n"
                   b"Content-Length: " + str(len(body)).encode() + b"\r\n\r\n")
@@ -282,7 +282,7 @@ def test_a_tls_client_that_speaks_still_gets_json_404(
         raw = _connect(port, parked)
         tls = cctx.wrap_socket(raw, server_hostname=_HOST)
         parked.append(tls)
-        tls.sendall(b"GET /rm747-unrouted HTTP/1.0\r\nHost: x\r\n\r\n")
+        tls.sendall(b"GET /rm747-unrouted HTTP/1.0\r\nHost: 127.0.0.1\r\n\r\n")
         reply = _read_all(tls)
     head, _, payload = reply.partition(b"\r\n\r\n")
     assert _status(reply) == b"404", head
