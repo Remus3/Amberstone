@@ -36,7 +36,11 @@ TWO ARMS, AND WHY THERE ARE TWO
 2. The STRUCTURAL arm is config-free: it extracts drive-rooted first path
    segments and subtracts an allowlist. It therefore still catches "a Windows
    path to a project nobody recognises" in a fresh clone. It runs in DEGRADED
-   mode too, which is the whole reason DEGRADED is not silent.
+   mode too, which is the whole reason DEGRADED is not silent. When ARMED it is
+   handed the loaded slot names, and a segment starting with one is never
+   subtracted, so a slot whose basename an allowlist placeholder matches keeps
+   both arms. DEGRADED has no names: there, such a sibling is invisible to this
+   arm - a declared residual.
 
 THREE MODES
 -----------
@@ -694,10 +698,13 @@ def _override_coded_parts(base: Path):
     ``supervisor`` slot or a ``retired`` slot; before RM-799 the env branch read
     neither and every one of those slots dropped whenever the override was set.
     They are read from the per-host file here, validated as the file path
-    validates them, and armed BESIDE the override. The file's narrowing applies
-    to THOSE slots only, so a coded slot keeps its declared strength and a file
-    declaration never weakens a slot the override itself supplies. An absent
-    file contributes nothing (CI, a fresh clone).
+    validates them, and armed BESIDE the override. The file's narrowing is
+    filtered here to declarations naming a coded leaf, so a coded slot keeps its
+    declared strength. ``load_config`` then drops any that ALSO name a leaf the
+    override supplies (case-folded), because narrowing resolves over every
+    loaded name: so a file declaration never weakens a slot the override itself
+    supplies, and a coded slot sharing that key keeps full strength with it.
+    An absent file contributes nothing (CI, a fresh clone).
 
     Returns ``(retired, supervisor, narrowed, fault)``; ``fault`` is a FAULT
     config or None.
@@ -770,7 +777,15 @@ def load_config(
         retired, supervisor, file_narrowed, fault = _override_coded_parts(base)
         if fault is not None:
             return fault
-        narrowed = narrowed_env + [n for n in file_narrowed if n not in narrowed_env]
+        # A file declaration never narrows a leaf the override supplies: the
+        # declaration resolves over EVERY loaded name, so without this filter a
+        # coded leaf it names would narrow a case-folded-equal override slot too.
+        # Only RC_MOON_SYNC_NARROWED_NAMES (the override's own channel) may.
+        override_keys = {_narrow_key(_leaf(p)) for p in paths if _leaf(p)}
+        narrowed = narrowed_env + [
+            n for n in file_narrowed
+            if n not in narrowed_env and _narrow_key(n) not in override_keys
+        ]
         cfg = config_from_parts(paths, {}, narrowed, retired, supervisor)
         cfg.source = "RC_MOON_SYNC_REPOS"
         if cfg.mode == MODE_FAULT:
@@ -1413,31 +1428,66 @@ def _is_allowed(candidate: str) -> bool:
     return any(p.match(candidate) for p in _ALLOW_PATTERNS)
 
 
+def _slot_head_re(slot_names: Sequence[str]):
+    """One regex matching a loaded slot name, in any S4 spelling, right-edged
+    like the needle DRIVE arm, at the start of a captured first segment. None
+    when no name is loaded."""
+    frags = [
+        frag
+        for name in slot_names
+        if str(name).strip()
+        for frag in _variant_fragments(str(name)).values()
+    ]
+    if not frags:
+        return None
+    return re.compile(r"\s*(?:" + "|".join(frags) + ")" + _RIGHT_EDGE, re.I)
+
+
 def structural_findings(
-    text: str, *, path: str, source: str, status: str = "M", base_line: int = 1
+    text: str,
+    *,
+    path: str,
+    source: str,
+    status: str = "M",
+    base_line: int = 1,
+    slot_names: Sequence[str] = (),
 ) -> list:
     """Config-free arm: a drive-rooted first path segment that is not on the
     allowlist. This is what keeps the gate non-inert in a fresh clone and in CI.
+
+    ``slot_names`` are the LOADED slot names (``cfg.names``); every ARMED gate
+    path passes them. A first segment that starts with one is a finding, and
+    none of the config-free skips below (the allowlist, the C-escape class, the
+    word cap) subtracts it: the allowlist is placeholder spellings, and a
+    configured checkout that shares one is still a sibling root. Without this,
+    such a slot kept only the needle arm (measured on a live config by the
+    junction pin, ``tests/test_junction_drive_spellings_pubrepo_f.py``).
+    Narrowing plays no part here. With no names (DEGRADED, CI) the arm is
+    exactly the config-free one, and that blind spot stays a declared residual.
     """
     out: list = []
     seen: set = set()
+    slot_head = _slot_head_re(slot_names) if slot_names else None
     for m in STRUCTURAL_RE.finditer(text or ""):
         segment = _trim(m.group(2))
         if not segment:
             continue
+        is_slot = slot_head is not None and slot_head.match(text, m.start(2)) is not None
         # The `\n`-in-a-string class, rejected by name rather than by widening.
         # Only a SINGLE backslash can be a C-style escape, so the doubled form
         # (a genuine escaped Windows path) is deliberately left alone.
         sep = _SEP_RE.match(m.group(0)).group(1)
-        if sep == "\\" and _C_ESCAPE.match(segment):
+        if not is_slot and sep == "\\" and _C_ESCAPE.match(segment):
             continue
         words = segment.split()
-        if len(words) > _MAX_SEGMENT_WORDS:
+        if not is_slot and len(words) > _MAX_SEGMENT_WORDS:
             continue
         # Test the whole segment AND every leading-word prefix: the charclass is
         # greedy, so an allowlisted root followed by prose ("Riot Commander) it
         # PASSES ...") arrives here as one long segment.
-        if any(_is_allowed(" ".join(words[:cut])) for cut in range(len(words), 0, -1)):
+        if not is_slot and any(
+            _is_allowed(" ".join(words[:cut])) for cut in range(len(words), 0, -1)
+        ):
             continue
         line = _line_of(text, m.start(), base_line)
         key = (path, line, segment.lower())
@@ -1980,6 +2030,7 @@ def _run_scan(cfg: SweepConfig, blobs: Sequence, stats: ScanStats):
                 source=blob.source,
                 status=blob.status,
                 base_line=blob.base_line,
+                slot_names=cfg.names if cfg.mode == MODE_ARMED else (),
             )
         )
     dedup: dict = {}

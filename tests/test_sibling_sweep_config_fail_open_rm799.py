@@ -304,6 +304,25 @@ def test_env_override_carries_the_file_narrowing_for_coded_slots_only(tmp_path):
     assert _scan(cfg, "see " + _D + _MAIN_LEAF + "\\x"), "the path arm stays"
 
 
+@pytest.mark.parametrize("spelled", [_MAIN_LEAF, _MAIN_LEAF.lower()], ids=["same", "case"])
+def test_a_file_declaration_never_narrows_a_leaf_the_override_supplies(tmp_path, spelled):
+    """The RM-799 verifier's docstring nit, made true in code. The override
+    supplies a leaf that case-folds equal to a coded leaf the file narrows.
+    Narrowing resolves over every loaded name, so the file declaration used to
+    narrow the override's own slot too. It no longer does: the override's slot
+    keeps full strength, and so does the coded slot sharing its key, which is
+    the reading that keeps more detection."""
+    blob = dict(_GOOD, narrowed_names=[_MAIN_LEAF])
+    cfg = _cfg(tmp_path, blob, env=_env(spelled))
+    assert spelled in cfg.names and _MAIN_LEAF in cfg.names
+    assert cfg.narrowed_names == ()
+    assert _scan(cfg, "per the " + spelled + " ruling this is fine\n"), "the bare arm stays"
+    # The env path's OWN declaration still narrows an override slot.
+    env = dict(_env(spelled), RC_MOON_SYNC_NARROWED_NAMES=spelled)
+    cfg = _cfg(tmp_path, blob, env=env, name="envdecl")
+    assert spelled in cfg.narrowed_names
+
+
 @pytest.mark.parametrize("key", ["supervisor", "retired"])
 def test_env_override_faults_on_a_junk_coded_slot(tmp_path, key):
     cfg = _cfg(tmp_path, dict(_GOOD, **{key: [_D + _MAIN_LEAF]}), env=_env(_ENV_LEAF))
