@@ -96,7 +96,7 @@ def test_every_text_mode_child_decodes_utf8(tmp_path, monkeypatch):
     monkeypatch.setattr("sys.stdin", io.StringIO("git commit"))
     G.main()
     text_calls = [(argv, kw) for argv, kw in calls if kw.get("text")]
-    assert any(argv[:2] == ["git", "diff"] for argv, _ in text_calls), calls
+    assert any(argv[0] == "git" and "diff" in argv for argv, _ in text_calls), calls
     if _RUFF_IMPORTABLE:
         assert any("check" in argv for argv, _ in text_calls), calls
     bad = [argv for argv, kw in text_calls

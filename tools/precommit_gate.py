@@ -188,12 +188,18 @@ def _skippable(path: str) -> bool:
 # has no 0x9D) faulted the reader thread: the diff came back None and the gate
 # blocked as "the gate itself failed", and a None ruff stdout passed in silence.
 _CHILD_TEXT = {"text": True, "encoding": "utf-8", "errors": "replace"}
+# RM-818 N2: with core.quotePath on (git's default) a path holding a byte over
+# 0x7F reaches the diff header QUOTED - `+++ "b/d\304\201.py"` - and the gate
+# keyed that text as the path, so the file never reached ruff (a staged
+# d<U+0101>.py with an unused import passed, exit 0). Every git call here turns
+# it off; with the UTF-8 decode above the header then carries the real name.
+_GIT = ["git", "-c", "core.quotepath=false"]
 
 
 def _git(args: list[str], root: str | None) -> str:
     try:
         out = subprocess.run(
-            ["git", *args], cwd=root or None, capture_output=True, **_CHILD_TEXT,
+            [*_GIT, *args], cwd=root or None, capture_output=True, **_CHILD_TEXT,
             timeout=20, creationflags=_NO_WINDOW,
         )
         return out.stdout
