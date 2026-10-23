@@ -425,11 +425,29 @@ def _narrow_key(name: str) -> str:
     return " ".join(str(name).split()).lower()
 
 
+def _coded_slots(mapping: Optional[Mapping[str, Any]], names: list) -> list:
+    """Arm the slots of a sweep-only ``{CODE: path | [path, bare name, ...]}``
+    map (``retired``, ``supervisor``): every string value appends its leaf to
+    ``names`` in place, and the non-blank codes are returned in map order. A
+    non-dict map or a non-string value arms nothing and raises nothing."""
+    codes: list[str] = []
+    for code, value in (mapping.items() if hasattr(mapping, "items") else ()):
+        items = value if isinstance(value, (list, tuple)) else [value]
+        for raw in items:
+            leaf = _leaf(str(raw)) if isinstance(raw, str) else ""
+            if leaf and leaf not in names:
+                names.append(leaf)
+        if str(code).strip():
+            codes.append(str(code).strip())
+    return codes
+
+
 def config_from_parts(
     repos: Iterable[str],
     participants: Mapping[str, str],
     narrowed: Iterable[str] = (),
     retired: Optional[Mapping[str, Any]] = None,
+    supervisor: Optional[Mapping[str, Any]] = None,
 ) -> SweepConfig:
     """Build an ARMED config from already-loaded parts. Used by tests and by
     the env-override path, which carries paths only and therefore no codes.
@@ -457,17 +475,20 @@ def config_from_parts(
     # A value is one path / bare name, or a list of them, so a project's
     # internal name can ride beside its checkout path. Appended at the END with
     # a default, so every existing call is unchanged.
-    retired_codes: list[str] = []
-    for code, value in (retired or {}).items():
-        items = value if isinstance(value, (list, tuple)) else [value]
-        for raw in items:
-            leaf = _leaf(str(raw)) if isinstance(raw, str) else ""
-            if leaf and leaf not in names:
-                names.append(leaf)
-        if str(code).strip():
-            retired_codes.append(str(code).strip())
+    retired_codes = _coded_slots(retired, names)
+    # RM-789: the SUPERVISOR tree (MAIN). Its checkout name is a leak like any
+    # sibling's, but it can sit in none of the keys above, because each one has
+    # another reader that acts on it: `repos` is polled, a `participants` path
+    # outranks the arming record for delivery (ops/loop/inbox_tick.py
+    # `_make_deliver`; MAIN 0327 RULING keeps the record as the one source of
+    # MAIN's paths), and a `retired` code makes `validate_agreement` refuse the
+    # whole record, since MAIN is always a counterparty. So it has its own
+    # sweep-only key, same shape as `retired`. Appended at the END with a
+    # default, so every existing call is unchanged.
+    supervisor_codes = _coded_slots(supervisor, names)
     codes = tuple(str(c).strip() for c in (participants or {}) if str(c).strip())
-    codes += tuple(c for c in retired_codes if c not in codes)
+    for extra in (retired_codes, supervisor_codes):
+        codes += tuple(c for c in extra if c not in codes)
     declared = {_narrow_key(n) for n in (narrowed or ()) if str(n).strip()}
     narrowed_names = tuple(n for n in names if _narrow_key(n) in declared)
     return SweepConfig(
@@ -647,7 +668,10 @@ def load_config(
     # poller, so a retired code stays a needle without becoming a destination.
     retired_raw = blob.get("retired")
     retired = retired_raw if isinstance(retired_raw, dict) else {}
-    cfg = config_from_parts(repos, participants, narrowed, retired)
+    # RM-789: MAIN's checkout name, likewise read by THIS sweep only.
+    supervisor_raw = blob.get("supervisor")
+    supervisor = supervisor_raw if isinstance(supervisor_raw, dict) else {}
+    cfg = config_from_parts(repos, participants, narrowed, retired, supervisor)
     cfg.source = str(config_path)
     if cfg.mode == MODE_FAULT:
         cfg.detail = "config parsed but yields zero usable sibling names"
