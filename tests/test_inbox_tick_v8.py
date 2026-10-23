@@ -52,7 +52,7 @@ def _record(**over):
     rec = {
         "schema": tick_mod.AGREEMENT_SCHEMA,
         "counterparties": ["CS", "EW", "LW", "MAIN", "RSC", "SS"],
-        "main": {"code": "MAIN", "outbox": "X:/main/moon_sync_outbox"},
+        "main": {"code": "MAIN", "outbox": "X:/example-supervisor/moon_sync_outbox"},
         "budget": "kit",
         "expires": "2026-11-01T00:00:00",
         "authored_by": "operator",
@@ -188,7 +188,8 @@ def test_an_order_from_main_escalates_to_a_work_row_never_a_triage(tmp_path):
               verify=lambda note, outbox: asked.append((Path(note).name, outbox)) or True)
     assert spy.calls == []
     assert s["escalated"] == 1
-    assert asked == [(name, "X:/main/moon_sync_outbox")], "sha256 check vs MAIN outbox row"
+    assert asked == [(name, "X:/example-supervisor/moon_sync_outbox")], (
+        "sha256 check vs MAIN outbox row")
     rows = [json.loads(x) for x in (tmp_path / tick_mod.WORK_REL)
             .read_text(encoding="ascii").splitlines()]
     assert rows[0]["op"] == "queued", "RM-685: queued through kit enqueue_work"
