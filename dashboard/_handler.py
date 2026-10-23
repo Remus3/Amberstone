@@ -24,7 +24,8 @@ Tier 2 helper-shake (2026-05-01): extracted from web_dashboard.py.
                 not loopback, an IP literal or one of this machine's
                 configured names gets 421 before any route runs (DNS
                 rebinding); the :8890 supervisor server shares it. A head
-                whose parse lost header lines gets 400 first (RM-773)
+                whose parse lost header lines (RM-773) or whose target is
+                not origin-form (RM-774) gets 400 first
   * `log_message` / `_peer` - restore the two properties the stdlib
                 gives every handler and an override silently drops:
                 control characters escaped (`_scrub_log`) so a request
@@ -377,6 +378,29 @@ def head_parse_defect(headers) -> str | None:
     return None
 
 
+# RM-774 (2026-10-23): RFC 9112 section 3.2.2 - for an absolute-form target
+# (`GET http://<name>/<path>`) the target's authority REPLACES Host, and the
+# gate below reads only the Host header. Measured live before the fix: a
+# foreign name as the target's authority passed the gate on :8888 and :8890
+# (404 from the anchored route matchers, where the same name in Host is
+# 421), and :8890 SERVED the rootless target `index.html` (200).
+#
+# DECIDED: refuse (400) every target that is not origin-form, keeping
+# asterisk-form for `OPTIONS *` only. Alternative considered: check the
+# authority against the allowlist and rewrite the target to origin-form
+# (RFC's "MUST accept" path) - rejected because these are origin servers
+# that no browser and no in-tree client addresses in absolute-form, and it
+# would put a URL parser in front of every route for a form nothing sends.
+# Reverses if: a real client of these ports is measured sending one.
+def request_target_ok(command, target) -> bool:
+    """True for an origin-form target (``/...``), or ``*`` with OPTIONS."""
+    if not isinstance(target, str):
+        return False
+    if target.startswith("/"):
+        return True
+    return target == "*" and command == "OPTIONS"
+
+
 class HostAllowlistMixin:
     """RM-759: 421 Misdirected Request for a Host this machine does not
     answer to, before any route runs. List it FIRST, before
@@ -385,7 +409,9 @@ class HostAllowlistMixin:
     ``host_refusal_log`` is the logger the refusal is reported on.
 
     RM-773: a head whose header block the stdlib parse lost lines of
-    (``head_parse_defect``) is 400 first, since a lost Host reads as none."""
+    (``head_parse_defect``) is 400 first, since a lost Host reads as none.
+    RM-774: so is a target that is not origin-form (``request_target_ok``),
+    since an absolute-form target's authority would replace Host."""
 
     host_refusal_log = log
 
@@ -410,6 +436,14 @@ class HostAllowlistMixin:
                 f"header block parse defect ({defect}) refused (400)",
                 tag="RM-773")
             self._refuse_head(400, "Bad Request", "bad_header_block")
+            return False
+        # RM-774: an absolute-form target's authority would replace Host
+        # (RFC 9112 3.2.2), so only origin-form (and OPTIONS *) reaches it.
+        if not request_target_ok(getattr(self, "command", None),
+                                 getattr(self, "path", None)):
+            self._note_host_refusal(
+                "non-origin-form request target refused (400)", tag="RM-774")
+            self._refuse_head(400, "Bad Request", "bad_request_target")
             return False
         if self._host_header_allowed():
             return True

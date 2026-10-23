@@ -97,6 +97,8 @@ class _QuietHandler(HostAllowlistMixin, HeadDeadlineMixin,
     dashboard's own gate (``HostAllowlistMixin``). RM-773: a head whose
     header block the stdlib parse lost lines of gets 400 first, by the same
     mixin (measured 200 for ``X-Junk`` then a rebound Host before the fix).
+    RM-774: so does a target that is not origin-form (measured: the
+    rootless target ``index.html`` was served 200 before the fix).
 
     Audit L4: deny dotfiles and common secret filenames so a misplaced
     ``.env`` in ``web/`` never reaches the wire, even inside the LAN.
