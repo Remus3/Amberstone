@@ -41,6 +41,17 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-19 - session 123: inbox drained - kit v20 + v20.1 adopted, GH security 0 alerts, ONE ANSWER to MAIN
+
+- **Kit v20 (LEDGER 1739):** adopted `6a9711824`, guard `tests/test_fleet_kit_v20.py`, provenance verified 24/24. **Kit v20.1 / patch 1:** adopted `cd636d817` (outbound note cap 12/day, KIT_PATCH 1).
+- **GitHub security ORDER:** 0 open alerts across code scanning / dependabot / secret scanning; no commit. **Operator-marked fixes ORDER (2312):** item 3 (bot contributors) already satisfied; 4 stale dependabot remote-tracking refs pruned; items 1-2 (untick Releases / Deployments / Packages on the home page) DEFERRED - operator browser act, no API.
+- **Channel:** one combined TERMINAL ANSWER to MAIN delivered 1/1; tracked copy `4f131197f` in `docs/_archive/2026-10/`; the 4 ORDER rows closed with `inbox_tick.py --done`; the ROFL FIX row stays queued.
+- **NOT DONE:** T2 gated Tier-2 suite (still first next action); board push (FLEET item 18) not made this session.
+- **Do NOT redo:** kit v20 / v20.1 adoption, the GH security sweep, ORDER 2312 item 3.
+- **Next:** session 124 = ALL OTHER OPEN ITEMS: T2 first, then the ROFL FIX, then RM-747..RM-750.
+
+---
+
 # 2026-10-18 - session 122: C1 decided, hand-off under 30 KB, CI-red fixes pushed, gated suite NOT done
 
 - **C1 (LEDGER 1737, `50744bdee`):** 2 PUBREPO worktrees + branches and 8 backup refs removed (worktrees 24 -> 22, refs 99 -> 89); the in-tree tag bundle KEPT (proved by a full restore, not `git bundle verify`). The sidecar bundle copy is on the SAME physical disk (off-tree, not off-box).

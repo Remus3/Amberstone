@@ -6,6 +6,19 @@
 
 ---
 
+# 2026-10-22 - session 126: 30 Dependabot alerts closed, security batches C1a / C1b, C1b-3 waves 1-2, ENGINE 1.288.0, RM-703 cleanup
+
+- **Deps `cef8bfd22` (LEDGER 1750):** certifi / Pillow 13 / portalocker / CI ruff, PR #21 by path B; alerts 30 -> 0. CLI pin 2.1.308 `15e896080`, then 2.1.309 `09054d9cd`.
+- **C1a (LEDGER 1752):** RM-759 Host allowlist :8888 / :8890, RM-756 ws port guard, RM-758 DS 400, voice_coach PowerShell injection closed, RM-757 truth_gate runs no shell (`ff6797dde`..`c4f08fa7a`).
+- **C1b (LEDGER 1753):** RM-760a-c fixed JSON errors, RM-761a-c binds fail loud, RM-762 POST /api/speak removed (`76d522efa`..`3d3f267e0`). DDragon 16.21.1 `76fcbd036` (LEDGER 1754; DS stays 16.20.1 until RM-766).
+- **C1b-3 wave 1 (LEDGER 1755, `8ed75ccac`..`915300765`):** the retired Game-PC SMB push module deleted, done.md 2c dispatch rule, MAIN 1254 / 1300 hooks (git hooks fail closed), settings template, ENV-APIKEY nits, WSL /mnt gate; MAIN #6 deferred (RM-781). allow_visual.flag recycled.
+- **Wave 2 (LEDGER 1756, `b7b44abb7`..`376443c8a`):** stop_claim_gate #9, rc_facts #17, RM-728 reaper (applied), RM-600, RM-660, ENGINE 1.288.0 (DS :8860 reads it back); gated dual suite 41322 passed, 1 live-DS failure that passed after the restart.
+- **Housekeeping (LEDGER 1757):** RM-703 - 53 branches bundled then deleted, 6 worktrees removed; moon_sync_repos.json drive fix; MAIN ANSWER delivered 1/1 TERMINAL; RM-736 CLOSED (rejected, record-only); RM-779..RM-798 filed.
+- **Do NOT redo:** any of the above; the 12 hand-off Reverses-if clauses are applied.
+- **Next:** S6 (vision decodes a live frame under Pillow 13, next game), RM-789 (HIGH: MAIN's name in no sweep slot), RM-766 (DS 16.21.1, Tier-2), then RM-763..RM-798 in order.
+
+---
+
 # 2026-10-20 - session 125: DEPENDABOT rule (path B), TA1 merged, RM-747..RM-753 shipped, gated suite, CLI pin 2.1.305
 
 - **C1 MAIN ORDER 0034 DEPENDABOT-MERGE-RULE (`bdaff4426`, `ec06bbb21`):** RC adopts path B only (close the bot PR, re-apply as an operator commit); rule in CLAUDE.md, OPERATIONS, SECURITY, CONTRIBUTING, dependabot.yml, done.md section 2; new `tools/bot_merge_check.py` (9 tests). ANSWER delivered 1/1, re-hashed equal, row --done. Read-backs: contributors 1 (operator), 6225 default-branch commits 0 bot / web-merge / co-author; auto-merge off, no rulesets. Kit defect sent to MAIN: fleet_identity passes a HUMAN non-operator Co-authored-by.
@@ -29,14 +42,3 @@
 - **Push:** `151a6e70d..a2c3c0934`, then the wrap commit.
 - **Do NOT redo:** C1, F1, F2, F3, F4, the ROFL move, the TA1 audit (merge it, do not re-audit).
 - **Next:** MAIN ORDER 2026-10-19-0034 DEPENDABOT-MERGE-RULE (ONE ANSWER), then merge `lane/true-audit`, then RM-747..RM-750.
-
----
-
-# 2026-10-19 - session 123: inbox drained - kit v20 + v20.1 adopted, GH security 0 alerts, ONE ANSWER to MAIN
-
-- **Kit v20 (LEDGER 1739):** adopted `6a9711824`, guard `tests/test_fleet_kit_v20.py`, provenance verified 24/24. **Kit v20.1 / patch 1:** adopted `cd636d817` (outbound note cap 12/day, KIT_PATCH 1).
-- **GitHub security ORDER:** 0 open alerts across code scanning / dependabot / secret scanning; no commit. **Operator-marked fixes ORDER (2312):** item 3 (bot contributors) already satisfied; 4 stale dependabot remote-tracking refs pruned; items 1-2 (untick Releases / Deployments / Packages on the home page) DEFERRED - operator browser act, no API.
-- **Channel:** one combined TERMINAL ANSWER to MAIN delivered 1/1; tracked copy `4f131197f` in `docs/_archive/2026-10/`; the 4 ORDER rows closed with `inbox_tick.py --done`; the ROFL FIX row stays queued.
-- **NOT DONE:** T2 gated Tier-2 suite (still first next action); board push (FLEET item 18) not made this session.
-- **Do NOT redo:** kit v20 / v20.1 adoption, the GH security sweep, ORDER 2312 item 3.
-- **Next:** session 124 = ALL OTHER OPEN ITEMS: T2 first, then the ROFL FIX, then RM-747..RM-750.
