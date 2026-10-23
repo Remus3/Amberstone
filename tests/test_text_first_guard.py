@@ -17,8 +17,9 @@ RM-784: (a) stdin is read as BYTES and the UTF-8 BOM stripped there - a
 UTF-8, so under a cp1252 console the BOM arrived as three other characters
 and every deny became a silent allow; (b) TEXT_FIRST_FLAG used to accept ANY
 path, so any existing file or directory (".", a system file) disabled the
-guard. An override now counts only inside the repo root and only as a
-regular file; one outside is ignored and the default flag applies.
+guard. An override now counts only as a regular file; one outside the repo
+root is ignored and the default flag applies. RM-818 narrowed the root to
+`ops/runtime/` (tests/test_text_first_guard_scope_rm818.py).
 
 Each case runs a COPY of the guard inside a throwaway repo root under
 tmp_path, so ROOT is never this checkout and a live escape flag here cannot

@@ -14,15 +14,20 @@ game-monitor). The escape-hatch flag file (FLAG_REL below), when present,
 allows everything (rare case where no text path exists).
 
 Portability (MAIN FIX 2026-10-21 1254 item 15): every RC-specific value is a
-constant at the top - DENY_TOOLS, STATE_HINT, FLAG_REL - and a host without
-RC's dashboard overrides the last two through the environment:
+constant at the top - DENY_TOOLS, STATE_HINT, FLAG_REL, FLAG_DIR - and a host
+without RC's dashboard overrides the hint and the flag through the environment:
   TEXT_FIRST_STATE_HINT  replaces the state hint ("" drops that clause);
   TEXT_FIRST_FLAG        the escape flag path (absolute, or relative to the
-                         repo root). RM-784: it counts only INSIDE the repo
-                         root and only as a regular file; an override outside
-                         the root (or naming the root itself) is ignored and
-                         the default FLAG_REL applies, so no existing system
-                         file or directory can switch the guard off.
+                         repo root). It counts only as a regular file strictly
+                         inside FLAG_DIR (`ops/runtime/`, gitignored runtime
+                         state, where the default flag lives); an override
+                         anywhere else (or naming FLAG_DIR itself) is ignored
+                         and the default FLAG_REL applies, so no system file
+                         (RM-784) and no tracked repo file - this guard's own
+                         source, README.md (RM-818) - can switch the guard off.
+                         Reverses if: a host adopting the guard needs its flag
+                         outside `ops/runtime/` (name that host's directory,
+                         never the whole repo root again).
 On a host where the two MCP readers are not installed the settings matcher
 never fires, so the hook is a no-op by construction. An interpreter that
 never starts is reported by the shell tail on the hook line in
@@ -51,6 +56,8 @@ STATE_HINT = (
 )
 #: Escape-hatch flag, relative to the repo root.
 FLAG_REL = "ops/runtime/allow_visual.flag"
+#: The only directory a TEXT_FIRST_FLAG override may point into (RM-818).
+FLAG_DIR = "ops/runtime"
 ENV_STATE_HINT = "TEXT_FIRST_STATE_HINT"
 ENV_FLAG = "TEXT_FIRST_FLAG"
 # ---------------------------------------------------------------------------
@@ -59,15 +66,16 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 def _override() -> "Path | None":
-    """The TEXT_FIRST_FLAG path when it resolves strictly inside the repo
-    root, else None (RM-784: an override outside the root is ignored)."""
+    """The TEXT_FIRST_FLAG path when it resolves strictly inside FLAG_DIR,
+    else None (RM-784 outside the root, RM-818 elsewhere in the repo)."""
     raw = os.environ.get(ENV_FLAG, "").strip()
     if not raw:
         return None
     path = Path(raw)
     try:
+        flag_dir = (ROOT / FLAG_DIR).resolve()
         resolved = (path if path.is_absolute() else ROOT / path).resolve()
-        if resolved == ROOT or not resolved.is_relative_to(ROOT):
+        if resolved == flag_dir or not resolved.is_relative_to(flag_dir):
             return None
     except (OSError, ValueError, RuntimeError):
         return None

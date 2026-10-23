@@ -180,7 +180,12 @@ def _rule_path(path: Path) -> str:
 
 
 def _ruff_findings(py_files: list[Path]) -> list[str]:
-    """Report-only ruff. Silent when ruff is absent or produces no JSON."""
+    """Report-only ruff. Silent when ruff is absent or produces no JSON.
+
+    RM-818: ruff writes its JSON as UTF-8 whatever the console code page, so
+    it is decoded as UTF-8 here. Through the locale (cp1252) a non-ASCII path
+    or message (U+0101 = C4 81; cp1252 has no 0x81) faulted the reader
+    thread: the findings were dropped and a traceback went to stderr."""
     try:
         proc = subprocess.run(
             [sys.executable, "-m", "ruff", "check", "--no-cache",
@@ -188,6 +193,8 @@ def _ruff_findings(py_files: list[Path]) -> list[str]:
             check=False,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=RUFF_TIMEOUT_S,
             creationflags=_NO_WINDOW,
         )
