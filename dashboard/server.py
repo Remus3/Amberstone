@@ -373,11 +373,23 @@ def _redirect_host_allowed(host: str) -> bool:
     loopback, any IP literal, this machine's configured names - read the
     same way (``host_header_hostname`` then ``is_allowed_host``). Any failure
     refuses, so the caller keeps its loopback default.
+
+    RM-819 (c), DECIDED 2026-10-23: ANY IP literal is still echoed, exactly
+    as the RM-759 allowlist passes any IP literal; not narrowed to this
+    machine's own addresses. A browser sets Host from the URL it connected
+    to, so an IP-literal Host names the address the client already reached -
+    the 301 sends it back to that same address over TLS, never to a third
+    party - and a rebinding needs a NAME. Narrowing would break a LAN viewer
+    across a DHCP move (the RM-759 reason). Alternative considered: echo
+    only the configured / bound addresses. Reverses if: a proxy or other
+    in-path client is measured sending an IP-literal Host that differs from
+    the address it connected to, or the RM-759 allowlist narrows IP literals.
     """
     try:
-        # Deferred like start_dashboard's Handler import: dashboard._handler
-        # pulls in the route dispatch, which a socket-layer import need not.
-        from dashboard._handler import host_header_hostname, is_allowed_host
+        # Deferred like start_dashboard's Handler import, and from the
+        # shared gate (RM-819) rather than dashboard._handler, which pulls
+        # in the route dispatch that a socket-layer import need not.
+        from core.http_host_gate import host_header_hostname, is_allowed_host
         return is_allowed_host(host_header_hostname(host))
     except Exception:  # noqa: BLE001 - fail closed to the loopback default
         return False

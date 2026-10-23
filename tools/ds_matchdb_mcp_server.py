@@ -113,6 +113,7 @@ from core.daemon_slayer_client import (  # noqa: E402
     is_engine_up as _is_engine_up,
     rank_for_primary_archetype as _rank_for_primary_archetype,
 )
+from core.http_host_gate import HostAllowlistMixin  # noqa: E402
 from core.log_scrub import scrub_log  # noqa: E402
 from core.match_db import MatchDB  # noqa: E402
 
@@ -661,8 +662,15 @@ METHOD_HANDLERS = {
 
 
 # -- HTTP server ------------------------------------------------------------
-class _Handler(http.server.BaseHTTPRequestHandler):
+class _Handler(HostAllowlistMixin, http.server.BaseHTTPRequestHandler):
     server_version = f"{SERVER_NAME}/{SERVER_VERSION}"
+    # RM-819: the shared RM-759 Host gate (core/http_host_gate.py), FIRST so
+    # it runs on the parsed head: a Host this machine does not answer to is
+    # 421 before any route (DNS rebinding; the MCP transport spec asks a
+    # local server to guard against it); a head whose parse lost lines
+    # (RM-773) or a target that is not origin-form (RM-774) is 400; HTTP/0.9
+    # is closed. The bearer still gates every route.
+    host_refusal_log = log
 
     def log_message(self, fmt: str, *a: object) -> None:
         # RM-321: an override loses the stdlib's control-character escaping;

@@ -28,6 +28,7 @@ from http.server import BaseHTTPRequestHandler
 
 import pytest
 
+from core import http_host_gate as _host_gate
 from dashboard import _handler, server
 
 _HOST = "::1"
@@ -49,7 +50,8 @@ class _Ok(BaseHTTPRequestHandler):
 @pytest.fixture(autouse=True)
 def injected_allowlist(monkeypatch):
     names = _handler.build_allowed_host_names(cfg=_CFG, env="")
-    monkeypatch.setattr(_handler, "_allowed_names_cache", names)
+    # RM-819: the cache lives in core.http_host_gate (the shared gate).
+    monkeypatch.setattr(_host_gate, "_allowed_names_cache", names)
     return names
 
 
@@ -114,8 +116,8 @@ def test_an_unreadable_config_falls_back_to_loopback_names_only(
     configured name is no longer echoed, IP literals and loopback still are."""
     def _boom(*_a, **_kw):
         raise OSError("per-host config unreadable (RM-772 test)")
-    monkeypatch.setattr(_handler, "_allowed_names_cache", None)
-    monkeypatch.setattr(_handler, "build_allowed_host_names", _boom)
+    monkeypatch.setattr(_host_gate, "_allowed_names_cache", None)
+    monkeypatch.setattr(_host_gate, "build_allowed_host_names", _boom)
     assert _location(port, b"rc-host") == _expected("127.0.0.1")
     assert _location(port, b"localhost") == _expected("localhost")
     assert _location(port, b"192.0.2.7") == _expected("192.0.2.7")

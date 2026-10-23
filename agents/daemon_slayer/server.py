@@ -48,14 +48,17 @@ from pathlib import Path
 from typing import Any, Optional
 from urllib.parse import parse_qs, urlsplit
 
-# RM-748: the HTTP shell's one module-scope ``core`` import. It is the
+# RM-748: the HTTP shell's module-scope ``core`` imports. The first is the
 # shared RM-744 request-head deadline, reused rather than forked; the module
 # is stdlib-only (io, time) and ``core/__init__.py`` is empty, so it cannot
 # close a cycle with the core modules that import DS (``ult_rates`` keeps its
-# own core import lazy for exactly that reason). The engine modules stay
-# core-free; the Share mirror that once required the shell to be too was
-# removed 2026-09-07.
+# own core import lazy for exactly that reason). RM-819 adds the shared
+# RM-759 Host gate on the same terms: ``core.http_host_gate`` imports only
+# the stdlib, ``core.local_hosts`` and ``core.log_scrub`` (both stdlib-only),
+# never DS. The engine modules stay core-free; the Share mirror that once
+# required the shell to be too was removed 2026-09-07.
 from core.http_head_deadline import HeadDeadlineMixin
+from core.http_host_gate import HostAllowlistMixin
 
 from . import ENGINE_VERSION
 from .abilities import AbilitiesSnapshot
@@ -3031,8 +3034,14 @@ _POST_ROUTES = {
 _GET_DISPATCH_ROUTES = set(_POST_ROUTES.keys())
 
 
-class Handler(HeadDeadlineMixin, BaseHTTPRequestHandler):
+class Handler(HostAllowlistMixin, HeadDeadlineMixin, BaseHTTPRequestHandler):
     server_version = f"DaemonSlayer/{ENGINE_VERSION}"
+    # RM-819: the shared RM-759 Host gate (core/http_host_gate.py), FIRST so
+    # it runs on the parsed head: a Host this machine does not answer to is
+    # 421 before any route (DNS rebinding: a rebound name read every DS GET
+    # before the fix); a head whose parse lost lines (RM-773) or a target
+    # that is not origin-form (RM-774) is 400; HTTP/0.9 is closed.
+    host_refusal_log = _log
     # RM-748: one TOTAL deadline for the request line + headers
     # (``head_read_timeout_s``, core/http_head_deadline.py, RM-744), removed
     # once the head is parsed, so ``_read_body_deadlined`` (RM-152) and every

@@ -58,6 +58,7 @@ _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
+from core.http_host_gate import HostAllowlistMixin  # noqa: E402
 from core.live_session_recorder import (  # noqa: E402
     SessionFormatError,
     read_session,
@@ -266,7 +267,15 @@ def make_server(state: ReplayState, port: int = DEFAULT_PORT, host: str = LOOPBA
     if host != LOOPBACK:
         raise ValueError(f"replay binds 127.0.0.1 only, refused {host!r}")
 
-    class Handler(BaseHTTPRequestHandler):
+    class Handler(HostAllowlistMixin, BaseHTTPRequestHandler):
+        # RM-819: the shared RM-759 Host gate (core/http_host_gate.py),
+        # FIRST so it runs on the parsed head: a Host this machine does not
+        # answer to is 421 before any route (DNS rebinding: a rebound page
+        # read /api/state and the allgamedata mirror same-origin); a head
+        # whose parse lost lines (RM-773) or a target that is not
+        # origin-form (RM-774) is 400; HTTP/0.9 is closed. Refusals log on
+        # the gate's own logger (this server's access log is quiet).
+
         def log_message(self, fmt, *args):  # quiet
             return
 

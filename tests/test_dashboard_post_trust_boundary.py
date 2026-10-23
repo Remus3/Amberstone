@@ -234,7 +234,8 @@ class TestMatchDbMcpSibling:
         try:
             s = socket.create_connection(("127.0.0.1", port), timeout=10)
             try:
-                hdr = ("POST /mcp HTTP/1.1\r\nHost: x\r\n"
+                # RM-819: a loopback Host (a foreign one is 421 first).
+                hdr = ("POST /mcp HTTP/1.1\r\nHost: 127.0.0.1\r\n"
                        f"Authorization: Bearer {mcp.AUTH_TOKEN}\r\n"
                        "Content-Type: application/json\r\n"
                        "Content-Length: -1\r\n\r\n").encode()

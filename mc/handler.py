@@ -33,6 +33,7 @@ import logging
 from http.server import BaseHTTPRequestHandler
 
 from core.http_head_deadline import HeadDeadlineMixin
+from core.http_host_gate import HostAllowlistMixin
 from core.log_scrub import scrub_log
 from mc import auth, routes
 
@@ -43,8 +44,16 @@ log = logging.getLogger("rc.mc.handler")
 _MAX_POST_BYTES = 1 * 1024 * 1024
 
 
-class Handler(HeadDeadlineMixin, BaseHTTPRequestHandler):
+class Handler(HostAllowlistMixin, HeadDeadlineMixin, BaseHTTPRequestHandler):
     server_version = "RCMissionControl/1.0"
+    # RM-819: the shared RM-759 Host gate (core/http_host_gate.py - core,
+    # never dashboard/), FIRST so it runs on the parsed head: a Host this
+    # machine does not answer to is 421 before any route (DNS rebinding);
+    # a head whose parse lost lines (RM-773) or a target that is not
+    # origin-form (RM-774) is 400; HTTP/0.9 is closed. The bearer still
+    # gates every POST; this closes the unauthenticated GETs to a rebound
+    # page.
+    host_refusal_log = log
     # RM-747: one TOTAL deadline for the request line + headers
     # (``head_read_timeout_s``, core/http_head_deadline.py, shared with the
     # :8888 dashboard, RM-744), removed once the head is parsed. mc/server.py

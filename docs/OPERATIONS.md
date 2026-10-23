@@ -212,6 +212,31 @@ schtasks /Run /TN "RC-Supervisor"
 documented hard fallback AFTER the taskkill (CLAUDE.md "Restart workflow"), not an interactive-shell
 first resort.
 
+### Restart the Phase 3 supervisor (:8890 / :8891) - it does NOT hot-reload
+
+`agents.supervisor` (scheduled task `RC-Phase3-Supervisor`) is its own process. RC's hot_reload and
+`restart_trigger.txt` restart only the :8888 dashboard, so a change to code the supervisor imports -
+`dashboard/_handler.py`, the shared HTTP gates `core/http_host_gate.py` and
+`core/http_head_deadline.py`, `agents/_supervisor_*.py`, `agents/agent2_backend/ws_server.py` - keeps
+running the OLD code on :8890 / :8891 until this process restarts (measured session 128: the RM-772 ..
+RM-774 Host-gate change reached :8888 at once and :8890 only after a restart; RM-819 (b), recipe from
+LEDGER 1743 / 1748). After merging such a change:
+```powershell
+netstat -ano | findstr "LISTENING" | findstr ":8890"   # the last column is the pid
+taskkill /F /PID <pid>        # never Stop-Process
+schtasks /Run /TN "RC-Phase3-Supervisor"
+```
+If `schtasks /Run` answers that the task is already running, it relaunched by itself (IgnoreNew) -
+that is fine. **Verify, do not trust the exit code:** a NEW pid listens on :8890 and :8891
+(127.0.0.1 only), `curl http://127.0.0.1:8890/api/queue` answers 200, and the change's own shape
+holds (for a Host-gate change: the same GET with `-H "Host: rebind.example"` answers 421).
+
+The other servers that import the shared gates restart their own way: DS :8860 through its task
+(`taskkill /F /PID` of the DS pid; RC's DsWatchdog relaunches `RC-DaemonSlayer`, LEDGER 1748),
+Mission Control :8895 through `RC-MissionControl` (see Mission Control below), the vision server
+:8889 with RC (it runs in-process; `dashboard/server.py` self-heals it), and the DS + match-DB MCP
+server :8861 through `RC-DS-MatchDB-MCP` when it is registered.
+
 ---
 
 ## Scheduled tasks (Legion)
