@@ -120,8 +120,24 @@ def _string_literals(tree: ast.AST):
             yield node.value
 
 
+_DOT_PREFIXES = ("./", "../", "/")
+
+
+def _strip_dot_prefix(path: str) -> str:
+    """Drop leading `./`, `../` and `/` SEGMENTS - a prefix, never a character
+    set. RM-763: `lstrip("./")` also ate the dot that starts a name, so
+    `.github/CONTRIBUTING.md` became `github/CONTRIBUTING.md` and never
+    resolved against the tracked path."""
+    previous = None
+    while previous != path:
+        previous = path
+        for prefix in _DOT_PREFIXES:
+            path = path.removeprefix(prefix)
+    return path
+
+
 def _hits(literal: str, md_suffixes, tracked_md) -> bool:
-    normalized = literal.replace("\\", "/").lstrip("./")
+    normalized = _strip_dot_prefix(literal.replace("\\", "/"))
     if normalized in md_suffixes:
         return True
     if "*" in normalized or "?" in normalized:

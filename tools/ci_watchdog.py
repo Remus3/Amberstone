@@ -257,9 +257,21 @@ def record_pr_creation(now_ts: float, run_id: int, pr: str = "", path: Path = PR
         f.write(json.dumps({"ts": now_ts, "run_id": run_id, "pr": pr}) + "\n")
 
 
+def _strip_dot_prefix(path: str) -> str:
+    """Drop leading `./`, `../` and `/` SEGMENTS - a prefix, never a character
+    set (RM-763: `lstrip("./")` read `.app/__init__.py` as the frozen
+    `app/__init__.py`)."""
+    previous = None
+    while previous != path:
+        previous = path
+        for prefix in ("./", "../", "/"):
+            path = path.removeprefix(prefix)
+    return path
+
+
 def touches_frozen(changed_files: list[str]) -> list[str]:
     """Return the frozen files in ``changed_files`` (empty == fix is safe)."""
-    norm = {f.strip().replace("\\", "/").lstrip("./") for f in changed_files}
+    norm = {_strip_dot_prefix(f.strip().replace("\\", "/")) for f in changed_files}
     return sorted(norm & FROZEN_FILES)
 
 

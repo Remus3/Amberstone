@@ -210,9 +210,9 @@ class TestMainMergeHint(unittest.TestCase):
     def test_template_doc_matches_checker(self):
         # The refusal points at this doc, so the doc must carry the template,
         # the recipe and exactly the checker's type list.
-        # Spelled as `.github` / basename: tools/md_guard_selector.py strips a
-        # leading dot off `.github/...`, so only the basename literal selects
-        # this module for docs-only CI pushes.
+        # Spelled as `.github` / basename. Before RM-763 tools/md_guard_selector.py
+        # stripped the leading dot off `.github/...`, so only the basename
+        # literal selected this module for docs-only CI pushes; both select now.
         doc_path = _PROJECT_ROOT / ".github" / "CONTRIBUTING.md"
         self.assertEqual(
             doc_path, _PROJECT_ROOT / CM.MERGE_TEMPLATE_DOC,

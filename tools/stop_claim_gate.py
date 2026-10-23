@@ -1068,8 +1068,20 @@ def _group_sums(groups):
     return {str(total) for total in sums}
 
 
+def _strip_dot_prefix(path):
+    """Drop leading `./`, `../` and `/` SEGMENTS - a prefix, never a character
+    set (RM-763: `lstrip("./")` turned a `.github/...` claim into `github/...`,
+    which any `<dir>/github/...` edit then backed)."""
+    previous = None
+    while previous != path:
+        previous = path
+        for prefix in ("./", "../", "/"):
+            path = path.removeprefix(prefix)
+    return path
+
+
 def _same_file(claimed, edited_paths):
-    claim = claimed.replace("\\", "/").lower().lstrip("./")
+    claim = _strip_dot_prefix(claimed.replace("\\", "/").lower())
     for path in edited_paths:
         actual = path.replace("\\", "/").lower()
         if actual.endswith(claim) or claim.endswith(actual):
