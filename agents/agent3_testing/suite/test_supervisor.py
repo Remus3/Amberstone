@@ -152,6 +152,14 @@ def test_supervisor_starts_and_binds_ports(tmp_path: Path) -> None:
     db_dir = tmp_path / "db"
     db_dir.mkdir()
 
+    # RM-812: the child also builds its real log handlers - logs/ws/{ingest,
+    # push}.log (agents/agent2_backend/ws_server.py, RM-776) and
+    # logs/agents/supervisor.log (agents/_supervisor_common.py) - which a run
+    # in the main checkout appended to the LIVE files. Both roots move to tmp;
+    # the assertions after the run prove the child honoured them.
+    ws_log_dir = tmp_path / "ws_logs"
+    agent_log_dir = tmp_path / "agent_logs"
+
     web_port = _free_port()
     ws_port = _free_port()
 
@@ -160,6 +168,8 @@ def test_supervisor_starts_and_binds_ports(tmp_path: Path) -> None:
     env["RC_PHASE3_WS_PORT"] = str(ws_port)
     env["RC_PHASE3_STATE_DIR"] = str(state_dir)
     env["RC_PHASE3_DB_DIR"] = str(db_dir)
+    env["RC_WS_LOG_DIR"] = str(ws_log_dir)
+    env["RC_PHASE3_LOG_DIR"] = str(agent_log_dir)
 
     proc = subprocess.Popen(
         [str(PY), "-m", "agents.supervisor"],
@@ -224,3 +234,11 @@ def test_supervisor_starts_and_binds_ports(tmp_path: Path) -> None:
             proc.wait(timeout=5)
         except subprocess.TimeoutExpired:
             pass
+
+    assert (agent_log_dir / "supervisor.log").is_file(), (
+        "the supervisor child ignored RC_PHASE3_LOG_DIR - it logged to the live "
+        "logs/agents/supervisor.log")
+    for name in ("ingest.log", "push.log"):
+        assert (ws_log_dir / name).is_file(), (
+            f"the supervisor child ignored RC_WS_LOG_DIR - no {name} under the "
+            "redirect, so it went to the live logs/ws/")

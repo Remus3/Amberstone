@@ -77,3 +77,18 @@ def test_non_json_stdout_falls_back_to_raw() -> None:
          patch("agents.supervisor.subprocess.run", return_value=fake_proc):
         r = spawn_ephemeral_llm("6", "t-raw", "demo", {})
     assert r["result"]["raw_stdout"] == "plain text output"
+
+
+def test_ephemeral_logs_are_off_the_live_tree() -> None:
+    """RM-812: spawn_ephemeral_llm appends logs/agents/agent<N>.log and
+    task-<id>.log by plain file I/O on a LOG_ROOT bound at import, so the
+    tests above wrote the live tree. The suite conftest sets
+    RC_PHASE3_LOG_DIR before that import."""
+    from pathlib import Path
+
+    from agents import _supervisor_ephemeral as eph
+    from agents import supervisor as sup_mod
+
+    project_root = Path(__file__).resolve().parents[3]
+    for root in (eph.LOG_ROOT, sup_mod.LOG_ROOT):
+        assert not Path(root).resolve().is_relative_to(project_root), root

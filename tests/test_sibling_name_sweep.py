@@ -770,6 +770,48 @@ def test_the_suite_redirects_the_bypass_log():
     assert sweep.BYPASS_LOG_ENV in _fleet_guard_config.ENV_ROOTS
 
 
+def test_bypass_log_display_names_the_file_written(monkeypatch, tmp_path: Path):
+    """RM-812: the operator-facing text named BYPASS_LOG even when the RM-788
+    override sent the write elsewhere. Default: relative to the checkout root
+    (unchanged text); override: the override path itself."""
+    monkeypatch.setattr(sweep, "REPO_ROOT", tmp_path / "repo")
+    monkeypatch.delenv(sweep.BYPASS_LOG_ENV, raising=False)
+    assert sweep.bypass_log_display() == "ops/runtime/sibling_sweep_bypass.log"
+    elsewhere = tmp_path / "elsewhere.log"
+    monkeypatch.setenv(sweep.BYPASS_LOG_ENV, str(elsewhere))
+    assert sweep.bypass_log_display() == elsewhere.as_posix()
+    assert Path(sweep.bypass_log_display()) == sweep.bypass_log_path()
+
+
+def test_halt_report_names_the_redirected_bypass_log(synth_cfg, synth_needles,
+                                                     monkeypatch, tmp_path: Path):
+    redirected = tmp_path / "redirected-bypass.log"
+    monkeypatch.setenv(sweep.BYPASS_LOG_ENV, str(redirected))
+    findings = _hits(synth_cfg, synth_needles, "C:\\" + synth_cfg.names[0] + "\\x")
+    assert findings
+    text = sweep.render_report(findings, sweep.ScanStats(), synth_cfg)
+    assert redirected.as_posix() in text
+    assert sweep.BYPASS_LOG.as_posix() not in text
+
+
+def test_degraded_push_notice_names_the_redirected_bypass_log(monkeypatch, tmp_path: Path,
+                                                              capsys):
+    monkeypatch.delenv("RC_MOON_SYNC_REPOS", raising=False)
+    monkeypatch.setenv(sweep.BYPASS_ENV, "1")
+    redirected = tmp_path / "redirected-bypass.log"
+    monkeypatch.setenv(sweep.BYPASS_LOG_ENV, str(redirected))
+    fake_repo = tmp_path / "repo"
+    monkeypatch.setattr(sweep, "REPO_ROOT", fake_repo)
+    monkeypatch.setattr(sys, "stdin", io.StringIO(""))
+    rc = sweep.main(["--pre-push", "origin", "--config-root", str(_degraded_root(tmp_path))])
+    err = capsys.readouterr().err
+    assert rc == sweep.EXIT_CLEAN, err
+    assert f"appends this notice to {redirected.as_posix()}." in err
+    assert sweep.BYPASS_LOG.as_posix() not in err
+    assert "DEGRADED" in redirected.read_text(encoding="utf-8")
+    assert not (fake_repo / sweep.BYPASS_LOG).exists()
+
+
 # --------------------------------------------------------------------------
 # ANTI-VACUITY ANCHOR - a non-empty push that scanned ZERO bytes is a FAULT
 #

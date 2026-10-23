@@ -4,6 +4,7 @@ SQLite decision cache for auto-coaching.
 Thread-safe via connection-per-call. WAL mode for concurrent reads.
 """
 
+import os
 import sqlite3
 import hashlib
 import json
@@ -12,6 +13,20 @@ import logging
 from pathlib import Path
 
 logger = logging.getLogger("cache")
+
+# RM-812: the ONE default location of the auto-coach decision cache, read at
+# CALL time. A non-empty RC_DECISIONS_DB replaces it; the test suite points it
+# at tmp_path, so a test that reaches a default-path caller (performance_tracker
+# .save_rating -> coaches.feedback.apply_grade, CoachIntegration) leaves the
+# live database alone.
+DECISIONS_DB_ENV = "RC_DECISIONS_DB"
+_DEFAULT_DECISIONS_DB = Path(__file__).resolve().parent.parent / "data" / "decisions.db"
+
+
+def decisions_db_path() -> Path:
+    """data/decisions.db, or a non-empty ``RC_DECISIONS_DB``."""
+    override = (os.environ.get(DECISIONS_DB_ENV) or "").strip()
+    return Path(override) if override else _DEFAULT_DECISIONS_DB
 
 # RM-413: _conn opens a connection per operation, so the non-wal warning fires
 # once per db path per process, not on every call. A set.add race is a

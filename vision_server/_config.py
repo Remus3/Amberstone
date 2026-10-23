@@ -10,6 +10,7 @@ Split out of moon_vision_server.py during Phase 2.4. Owns:
 from __future__ import annotations
 
 import logging
+import os
 import sys
 import threading
 import time
@@ -21,11 +22,24 @@ from pathlib import Path
 # spawns this server by file path, so a CWD other than the repo root would
 # otherwise scatter moon_vision_server.log to wherever the spawn happened.
 _LOG_PATH = Path(__file__).resolve().parent.parent / "moon_vision_server.log"
+# RM-812: a non-empty RC_VISION_SERVER_LOG replaces _LOG_PATH (the default,
+# kept as the anchored constant) as the handler's file. Read at import, when
+# the handler is built; the test suite points it at tmp_path, so a child that
+# imports this module leaves the live log alone.
+LOG_PATH_ENV = "RC_VISION_SERVER_LOG"
+
+
+def _log_target() -> Path:
+    """``_LOG_PATH``, or a non-empty ``RC_VISION_SERVER_LOG``."""
+    override = (os.environ.get(LOG_PATH_ENV) or "").strip()
+    return Path(override) if override else _LOG_PATH
+
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[logging.StreamHandler(sys.stdout),
-              logging.FileHandler(str(_LOG_PATH), encoding="utf-8")]
+              logging.FileHandler(str(_log_target()), encoding="utf-8")]
 )
 log = logging.getLogger("moon_vision")
 

@@ -38,7 +38,20 @@ _ROOT = Path(__file__).resolve().parent.parent
 # module even documented that exact failure ("401s ... silently (pythonw, no
 # console) -> coach dead") and then reported through print() anyway. Log to a
 # file, on the in-tree precedent at tools/daemon_slayer_extract.py:98-105.
-_LOG_FILE = _ROOT / "logs" / "liveclient_relay.log"
+# RM-812: a non-empty RC_LIVECLIENT_RELAY_LOG replaces the default file. It is
+# read at import, when the handler is built; the test suite points it at
+# tmp_path, so a relay child a test starts leaves the live log alone.
+LOG_FILE_ENV = "RC_LIVECLIENT_RELAY_LOG"
+_DEFAULT_LOG_FILE = _ROOT / "logs" / "liveclient_relay.log"
+
+
+def _log_file() -> Path:
+    """logs/liveclient_relay.log, or a non-empty ``RC_LIVECLIENT_RELAY_LOG``."""
+    override = (os.environ.get(LOG_FILE_ENV) or "").strip()
+    return Path(override) if override else _DEFAULT_LOG_FILE
+
+
+_LOG_FILE = _log_file()
 _LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,

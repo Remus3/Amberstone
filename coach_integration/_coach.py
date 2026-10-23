@@ -57,9 +57,9 @@ class CoachIntegration:
                            "API-Key-Claude.txt) - auto-coaching disabled")
         self._client = anthropic.Anthropic(api_key=api_key, base_url="https://api.anthropic.com") if (api_key and anthropic) else None
 
-        db_path = Path(__file__).parent.parent / "data" / "decisions.db"
-        from modules.cache_engine import CacheEngine
-        self._cache = CacheEngine(db_path)
+        # RM-812: the one shared default (data/decisions.db, or RC_DECISIONS_DB).
+        from modules.cache_engine import CacheEngine, decisions_db_path
+        self._cache = CacheEngine(decisions_db_path())
 
         self._wave = WaveTracker()
         self._lock = threading.Lock()
