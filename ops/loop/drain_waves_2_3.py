@@ -19,6 +19,9 @@ headless addendum (result file, worktree, read-only verifier).
 Files (all gitignored, written atomically):
   ops/loop/control/progress/drain-waves-2-3.json   launcher progress (item 12)
   ops/loop/control/progress/<Wave>-<slice>[-verify].json, <Wave>-merge.json
+    - both in the MAIN checkout, also from a linked worktree (RM-786): the
+      launcher writes them through the kit's write_progress(), and the child
+      prompts name that dir as @@PROGRESS_DIR@@
   ops/loop/control/drain/*.json                     per-run result / input files
   ops/loop/control/drain/*.out.txt                  per-run final text + stderr
   ops/runtime/drain_waves_2_3_result.json           final result
@@ -77,7 +80,13 @@ TASK = "drain-waves-2-3"
 CALLER = "drain_waves_2_3"
 PROMPTS = ROOT / "ops" / "loop" / "prompts"
 CONTROL = ROOT / "ops" / "loop" / "control"
-PROGRESS = CONTROL / "progress"
+# FLEET-COMMON item 12 (RM-786): progress rows live in the MAIN checkout even
+# when this launcher runs from a linked worktree. The kit's write_progress()
+# resolves it from the root it is handed (main_checkout(): a worktree's .git
+# file points into the common dir); PROGRESS_ROOT is that root (a test seam).
+PROGRESS_ROOT = ROOT
+KIT_PATH = ROOT / "ops" / "fleet_kit" / "fleet_headless.py"
+KIT_MODULE = "rc_fleet_kit_fleet_headless"  # fleet_route's name: one kit copy per process
 DRAIN_DIR = CONTROL / "drain"
 STOP_FILE = CONTROL / "DRAIN_STOP"
 RESULT = ROOT / "ops" / "runtime" / "drain_waves_2_3_result.json"
@@ -152,13 +161,25 @@ def _write_json(path: Path, obj) -> None:
 
 
 def _progress(task: str, pct, step: str, eta_s, status: str) -> None:
-    doc = {"task": task, "pct": max(0, min(100, int(pct))), "step": str(step)[:200],
-           "eta_s": None if eta_s is None else max(0, int(eta_s)), "status": status,
-           "updated": time.strftime("%Y-%m-%dT%H:%M:%S%z")}
+    """One item-12 row through the kit's write_progress(): in the MAIN checkout
+    even from a linked worktree (RM-786), same fields and clamps as before, and
+    owned by this launcher's pid so a dead launcher's rows read as abandoned
+    (kit v16). A failed write is logged, never raised: it must not sink a run."""
     try:
-        _write_json(PROGRESS / f"{task}.json", doc)
-    except OSError:
-        pass
+        _kit().write_progress(PROGRESS_ROOT, task, pct, step, eta_s, status,
+                              owner=os.getpid())
+    except (OSError, ValueError) as exc:
+        _say(f"progress write {task} failed: {type(exc).__name__}: {exc}")
+
+
+def _progress_dir() -> Path:
+    """The MAIN checkout's progress dir, for the child prompts (RM-786)."""
+    k = _kit()
+    return Path(k.main_checkout(PROGRESS_ROOT)) / k.PROGRESS_REL
+
+
+def _kit():
+    return _load_by_path(KIT_MODULE, KIT_PATH)
 
 
 def _load_by_path(name: str, path: Path):
@@ -239,7 +260,7 @@ def build_prompt(tag: str, note: str, key: str, rows_file: str, base_sha: str) -
     p = _paths(tag, key)
     common = _fill(_prompt_file("drain_w23_common.md"), {
         "WORKTREE": p["worktree"], "BRANCH": p["branch"], "BASE_SHA": base_sha,
-        "RESULT_FILE": p["build_result"], "REPO": ROOT})
+        "RESULT_FILE": p["build_result"], "REPO": ROOT, "PROGRESS_DIR": _progress_dir()})
     wave_note = _fill(note, {"BASE_SHA": base_sha})
     rows = _prompt_file(rows_file)
     return (f"{common}\n{wave_note}\nSLICE: {tag}-{key}. Progress file name: "
@@ -251,7 +272,8 @@ def verify_prompt(tag: str, key: str) -> str:
     return _fill(_prompt_file("drain_w23_verifier.md"), {
         "BUILD_RESULT": p["build_result"], "WORKTREE": p["worktree"],
         "BRANCH": p["branch"], "SLICE": f"{tag}-{key}", "TASK": p["verify_task"],
-        "RESULT_FILE": p["verify_result"], "REPO": ROOT}) + "\n"
+        "RESULT_FILE": p["verify_result"], "REPO": ROOT,
+        "PROGRESS_DIR": _progress_dir()}) + "\n"
 
 
 def merge_prompt(tag: str, not_run=()) -> str:
@@ -264,7 +286,8 @@ def merge_prompt(tag: str, not_run=()) -> str:
                              for t, r in not_run))
     return _fill(_prompt_file("drain_w23_merger.md"), {
         "TAG": tag, "MERGE_INPUT": DRAIN_DIR / f"{tag}-merge-input.json",
-        "EXTRA": extra, "RESULT_FILE": DRAIN_DIR / f"{tag}.merge.json", "REPO": ROOT}) + "\n"
+        "EXTRA": extra, "RESULT_FILE": DRAIN_DIR / f"{tag}.merge.json", "REPO": ROOT,
+        "PROGRESS_DIR": _progress_dir()}) + "\n"
 
 
 # ---------------------------------------------------------------- spawning

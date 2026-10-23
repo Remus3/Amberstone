@@ -6,7 +6,7 @@
 You are the single MERGER for wave @@TAG@@ of an RC drain (repo @@REPO@@, branch main). Inputs (build reports + verifier verdicts): the JSON array in @@MERGE_INPUT@@ (one entry per slice: key, branch, worktree, build, verdict, error).
 @@EXTRA@@
 Steps:
-1. git fetch; fast-forward main to origin/main. Write progress to ops/loop/control/progress/@@TAG@@-merge.json.
+1. git fetch; fast-forward main to origin/main. Write progress to @@PROGRESS_DIR@@\@@TAG@@-merge.json.
 2. Cherry-pick ONLY commits whose verifier per_item ok=true (and status done/partial) onto main, slice by slice. Resolve conflicts carefully; if a conflict cannot be resolved safely, drop that commit and list it in dropped.
 3. On the merged tree: ruff on changed files, py_compile all changed .py, run repo-wide hygiene/doc guards (tests/test_*hygiene*, tests/test_*ascii*, tests/test_claude_md*, drift guard: python tools/drift_guard.py) and the targeted tests of every merged commit. Do NOT run the full suite locally (OOM); CI is the full gate. Fix or drop breakers.
 4. Bookkeeping (you alone own these): append one LEDGER entry per merged row in docs/LEDGER.md (newest-first, renumber after the current top number), mark those rows shipped/closed in ROADMAP.md/BACKLOG.md (keep ROADMAP under its size budget - relocate fully closed rows to docs/ROADMAP_HISTORY.md per existing practice), file any new rows reported (RM-516 for model pins if coach slice did it, then next free ids; update the next-free-id pin in docs/DS_SWEEP_TRACKER.md), and record already_done rows as closed with evidence. Commit with git commit -F.

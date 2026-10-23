@@ -16,7 +16,7 @@ Rules:
 - Run ruff on changed .py files before reporting.
 - Never touch ops/loop/slots.py, ops/loop/winmutex.py, docs/CHANNEL.md, SHARED_SHA256/CHANNEL_PIN, ops/fleet_kit/**, tools/inbox_responder_runner.py MODEL. No writes outside the worktree except your progress file. No push.
 - Rows needing a live game, an operator physical act, a 21:9 capture, or operator-present UI: status 'blocked' with reason.
-- Progress: after each row write @@REPO@@\ops\loop\control\progress\<slice>.json {"task","pct","step","eta_s","status","updated"} atomically (tmp then replace).
+- Progress: after each row write @@PROGRESS_DIR@@\<slice>.json {"task","pct","step","eta_s","status","updated"} atomically (tmp then replace).
 - Restarting live RC/DS is NOT your job (merger does it).
 Return the structured result: every assigned row exactly once.
 
