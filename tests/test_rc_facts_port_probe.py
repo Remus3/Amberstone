@@ -9,8 +9,12 @@ connection (truly down) must fail fast without retrying.
 from __future__ import annotations
 
 import socket
+import threading
 
 import tools.rc_facts as rc_facts
+from tests._module_view import bind_socket_class
+
+_REAL_SOCKET = socket.socket
 
 
 class _FakeSock:
@@ -60,19 +64,47 @@ def test_closed_port_false() -> None:
     assert rc_facts._port_listening(port) is False
 
 
+# Every fake below is bound to rc_facts' own `socket` name, never to the
+# process-wide socket module (tests/_module_view.py).
+
 def test_timeout_then_success_retries(monkeypatch) -> None:
-    monkeypatch.setattr(rc_facts.socket, "socket", _factory(["timeout", "ok"]))
+    bind_socket_class(monkeypatch, rc_facts, _factory(["timeout", "ok"]))
     assert rc_facts._port_listening(9999) is True
 
 
 def test_all_timeouts_false(monkeypatch) -> None:
-    monkeypatch.setattr(
-        rc_facts.socket, "socket", _factory(["timeout", "timeout", "timeout"])
-    )
+    bind_socket_class(monkeypatch, rc_facts, _factory(["timeout", "timeout", "timeout"]))
     assert rc_facts._port_listening(9999, attempts=3) is False
 
 
 def test_refused_does_not_retry(monkeypatch) -> None:
     # Only ONE _FakeSock provided; a retry would StopIteration -> proves no retry.
-    monkeypatch.setattr(rc_facts.socket, "socket", _factory(["refused"]))
+    bind_socket_class(monkeypatch, rc_facts, _factory(["refused"]))
+    assert rc_facts._port_listening(9999) is False
+
+
+def test_another_threads_socket_does_not_consume_the_fake_sequence(monkeypatch) -> None:
+    # The fake must reach rc_facts' probe only. Bound on the process-wide
+    # socket module it handed a sequence item to ANY thread's socket.socket()
+    # (an xdist worker runs leftover servers and pollers), so the probe then
+    # got the wrong outcome or StopIteration (CI run 39877078008 shape).
+    go, done, seen = threading.Event(), threading.Event(), []
+
+    def foreign() -> None:
+        go.wait(5)
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            seen.append(type(s))
+            s.close()
+        except Exception as exc:  # noqa: BLE001 - a broken foreign socket is the finding
+            seen.append(exc)
+        done.set()
+
+    worker = threading.Thread(target=foreign, daemon=True)
+    worker.start()
+    bind_socket_class(monkeypatch, rc_facts, _factory(["refused"]))
+    go.set()
+    assert done.wait(5)
+    worker.join(5)
+    assert seen == [_REAL_SOCKET], seen
     assert rc_facts._port_listening(9999) is False

@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import socket
 import sys
+import threading
 import time
 import unittest
 from pathlib import Path
@@ -248,14 +249,8 @@ def _live_rows(pairs: list) -> list:
     ]
 
 
-class RouteHealthSurfaceTests(unittest.TestCase):
-    """RM-416: `health()` must reach an operator THROUGH the served route.
-
-    Every assertion here reads the JSON body `_serve_duo_synergy` emits,
-    never `S101.health()` directly - a test that calls the function proves
-    the function, which tests/test_smoothed_rates_101qq.py already proves.
-    The live seam is stubbed (`_live_data_rows`), so no network is touched.
-    """
+class _NetworkGuard:
+    """Mixin: refuse and record this test's DNS lookups / outbound connects."""
 
     def _install_network_guard(self) -> None:
         """Refuse AND record every DNS lookup / outbound connect.
@@ -264,13 +259,25 @@ class RouteHealthSurfaceTests(unittest.TestCase):
         exception by design, so a refused call would still pass quietly.
         Each attempt is therefore recorded, and tearDown fails the test if
         any were made - a live Tencent fetch is loud, never silent.
+
+        The names are rebound on the process-wide socket module, so a thread
+        that was ALREADY running at install (not this test's: a leftover
+        server or poller in the same xdist worker) passes straight through
+        to the real call - neither refused nor recorded. Thread OBJECTS, not
+        idents: a reused ident on a new thread (the S101 refresh thread)
+        still counts as this test's.
         """
         self._net_attempts: list[str] = []
         self._orig_getaddrinfo = socket.getaddrinfo
         self._orig_create_connection = socket.create_connection
+        foreign = frozenset(threading.enumerate()) - {threading.current_thread()}
 
         def _refuse(name: str):
+            real = getattr(socket, name)
+
             def _blocked(*args, **kwargs):
+                if threading.current_thread() in foreign:
+                    return real(*args, **kwargs)
                 self._net_attempts.append(f"{name}{args[:2]!r}")
                 raise OSError(f"network blocked in RouteHealthSurfaceTests: "
                               f"{name}{args[:2]!r}")
@@ -285,6 +292,68 @@ class RouteHealthSurfaceTests(unittest.TestCase):
     def _remove_network_guard(self) -> None:
         socket.getaddrinfo = self._orig_getaddrinfo
         socket.create_connection = self._orig_create_connection
+
+
+class NetworkGuardScopeTests(_NetworkGuard, unittest.TestCase):
+    """The guard rebinds names on the process-wide socket module, so every
+    thread in the pytest(-xdist) worker sees it. A thread that was already
+    running when the guard went up (a leftover server or poller from an
+    earlier test file) is not this test's I/O: it must pass through, neither
+    refused nor recorded - recorded, it failed tearDown for I/O the route
+    never made (the CI run 39877078008 shape, see
+    tests/test_rc_facts_probe_budget_main1254.py). A thread started after
+    install - the S101 refresh thread - is still refused and recorded."""
+
+    @staticmethod
+    def _lookup_in(thread_go: threading.Event | None = None) -> tuple:
+        """A numeric-host lookup (never DNS) for a thread to run."""
+        out: list = []
+
+        def lookup() -> None:
+            if thread_go is not None:
+                thread_go.wait(5)
+            try:
+                out.append(socket.getaddrinfo("127.0.0.1", 80))
+            except OSError as exc:
+                out.append(exc)
+        return lookup, out
+
+    def test_a_thread_running_before_install_passes_through(self) -> None:
+        go = threading.Event()
+        lookup, out = self._lookup_in(go)
+        worker = threading.Thread(target=lookup, daemon=True)
+        worker.start()
+        self._install_network_guard()
+        go.set()
+        worker.join(5)
+        self.assertEqual(self._net_attempts, [])
+        self.assertEqual(len(out), 1)
+        self.assertIsInstance(out[0], list, out[0])
+
+    def test_a_thread_started_after_install_is_refused_and_recorded(self) -> None:
+        self._install_network_guard()
+        lookup, out = self._lookup_in()
+        worker = threading.Thread(target=lookup, daemon=True)
+        worker.start()
+        worker.join(5)
+        self.assertIsInstance(out[0], OSError)
+        self.assertEqual(self._net_attempts, ["getaddrinfo('127.0.0.1', 80)"])
+
+    def test_the_test_thread_is_refused_and_recorded(self) -> None:
+        self._install_network_guard()
+        with self.assertRaises(OSError):
+            socket.create_connection(("127.0.0.1", 9), 1)
+        self.assertEqual(self._net_attempts, ["create_connection(('127.0.0.1', 9), 1)"])
+
+
+class RouteHealthSurfaceTests(_NetworkGuard, unittest.TestCase):
+    """RM-416: `health()` must reach an operator THROUGH the served route.
+
+    Every assertion here reads the JSON body `_serve_duo_synergy` emits,
+    never `S101.health()` directly - a test that calls the function proves
+    the function, which tests/test_smoothed_rates_101qq.py already proves.
+    The live seam is stubbed (`_live_data_rows`), so no network is touched.
+    """
 
     def setUp(self):
         self._install_network_guard()

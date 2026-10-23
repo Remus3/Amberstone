@@ -15,13 +15,17 @@ UNMEASURED - never as down, never silently as healthy.
 import io
 import json
 import socket
+import subprocess
 import sys
 import threading
 import time
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 import pytest
 
+from tests._module_view import ModuleView, bind_module_view, bind_socket_class
 from tools import rc_facts
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -108,39 +112,79 @@ def test_a_probe_that_raises_is_unmeasured_not_a_crash(tmp_path, monkeypatch):
 
 # ------------------------------------------------- each probe obeys the deadline
 
-def test_the_task_probe_timeout_is_clamped_under_the_runner(monkeypatch):
+def _record_run_timeouts(monkeypatch):
+    """rc_facts' subprocess.run records its timeout and times out."""
     seen = []
 
     def fake_run(*_a, **kw):
         seen.append(kw["timeout"])
         raise rc_facts.subprocess.TimeoutExpired("powershell.exe", kw["timeout"])
 
-    monkeypatch.setattr(rc_facts.subprocess, "run", fake_run)
-    got, late = rc_facts._run_probes({"tasks": rc_facts._legion_tasks}, 1.0)
-    assert got == {"tasks": None} and late == []
-    assert seen and 0 < seen[0] <= 1.0, seen
+    # rc_facts' own names only, never the shared modules (tests/_module_view.py).
+    bind_module_view(monkeypatch, rc_facts, "subprocess", run=fake_run)
+    return seen
 
 
-def test_a_direct_call_keeps_its_own_timeout(monkeypatch):
-    seen = []
-
-    def fake_run(*_a, **kw):
-        seen.append(kw["timeout"])
-        raise rc_facts.subprocess.TimeoutExpired("powershell.exe", kw["timeout"])
-
-    monkeypatch.setattr(rc_facts.subprocess, "run", fake_run)
-    assert rc_facts._legion_tasks() is None
-    assert seen == [8.0]
-
-
-def test_the_http_timeout_is_clamped_under_the_runner(monkeypatch):
+def _record_urlopen_timeouts(monkeypatch):
+    """rc_facts' urllib.request.urlopen records its timeout and fails."""
     seen = []
 
     def fake_urlopen(_req, timeout=None, context=None):
         seen.append(timeout)
         raise OSError("synthetic")
 
-    monkeypatch.setattr(rc_facts.urllib.request, "urlopen", fake_urlopen)
+    bind_module_view(monkeypatch, rc_facts, "urllib",
+                     request=ModuleView(urllib.request, urlopen=fake_urlopen))
+    return seen
+
+
+def test_the_task_probe_timeout_is_clamped_under_the_runner(monkeypatch):
+    seen = _record_run_timeouts(monkeypatch)
+    got, late = rc_facts._run_probes({"tasks": rc_facts._legion_tasks}, 1.0)
+    assert got == {"tasks": None} and late == []
+    assert seen and 0 < seen[0] <= 1.0, seen
+
+
+def test_a_direct_call_keeps_its_own_timeout(monkeypatch):
+    seen = _record_run_timeouts(monkeypatch)
+    assert rc_facts._legion_tasks() is None
+    assert seen == [8.0]
+
+
+def test_another_threads_run_and_urlopen_reach_the_real_functions(monkeypatch):
+    """Same root cause as the socket case below: a fake bound on the shared
+    subprocess / urllib.request module also records - and breaks - every
+    other thread's call in the worker (an RC poller's urlopen(timeout=3)),
+    so `seen == [8.0]` / `seen == [_TIMEOUT]` read foreign timeouts."""
+    go, done, errors = threading.Event(), threading.Event(), []
+
+    def foreign():
+        go.wait(5)
+        try:
+            subprocess.run([sys.executable, "-c", "pass"], timeout=60, check=True)
+        except Exception as exc:  # noqa: BLE001 - a faked foreign call is the finding
+            errors.append(exc)
+        try:
+            urllib.request.urlopen("http://127.0.0.1:9/", timeout=0.5)
+        except urllib.error.URLError:
+            pass  # the REAL urlopen: nothing listens on :9
+        except Exception as exc:  # noqa: BLE001
+            errors.append(exc)
+        done.set()
+
+    worker = threading.Thread(target=foreign, name="foreign-io-user", daemon=True)
+    worker.start()
+    run_seen = _record_run_timeouts(monkeypatch)
+    url_seen = _record_urlopen_timeouts(monkeypatch)
+    go.set()
+    assert done.wait(60)
+    worker.join(5)
+    assert run_seen == [] and url_seen == [], (run_seen, url_seen)
+    assert errors == [], errors
+
+
+def test_the_http_timeout_is_clamped_under_the_runner(monkeypatch):
+    seen = _record_urlopen_timeouts(monkeypatch)
     rc_facts._run_probes({"state": lambda: rc_facts._http_get_json("https://x")}, 0.75)
     assert seen and 0 < seen[0] <= 0.75, seen
     seen.clear()
@@ -148,7 +192,12 @@ def test_the_http_timeout_is_clamped_under_the_runner(monkeypatch):
     assert seen == [rc_facts._TIMEOUT]
 
 
-def test_the_port_probe_stops_retrying_at_the_deadline(monkeypatch):
+_REAL_SOCKET = socket.socket
+
+
+def _probe_a_port_that_never_answers(monkeypatch, budget_s=0.6):
+    """Run the port probe under _run_probes against a socket whose connect
+    sleeps its whole timeout, and return every timeout the probe set."""
     timeouts = []
 
     class SlowSocket:
@@ -166,12 +215,56 @@ def test_the_port_probe_stops_retrying_at_the_deadline(monkeypatch):
         def close(self):
             pass
 
-    monkeypatch.setattr(rc_facts.socket, "socket", SlowSocket)
+    # rc_facts' own `socket` name only: other threads in this worker keep the
+    # real module (tests/_module_view.py).
+    bind_socket_class(monkeypatch, rc_facts, SlowSocket)
     start = time.monotonic()
-    got, late = rc_facts._run_probes({"port": lambda: rc_facts._port_listening(1)}, 0.6)
-    assert time.monotonic() - start < 0.6 + rc_facts.PROBE_JOIN_GRACE_S + 0.5
+    got, late = rc_facts._run_probes({"port": lambda: rc_facts._port_listening(1)},
+                                     budget_s)
+    assert time.monotonic() - start < budget_s + rc_facts.PROBE_JOIN_GRACE_S + 0.5
     assert late == [] and got == {"port": False}
+    assert timeouts, "the probe never opened a socket - the check below is vacuous"
+    return timeouts
+
+
+def test_the_port_probe_stops_retrying_at_the_deadline(monkeypatch):
+    timeouts = _probe_a_port_that_never_answers(monkeypatch)
     assert all(0 < t <= 0.6 for t in timeouts), timeouts
+
+
+def test_another_threads_socket_is_neither_recorded_nor_faked(monkeypatch):
+    """CI run 39877078008 (xdist gw0, linux): [0.5997.., 2.0, 3, 3, 3, ...].
+    The probe's one timeout respected the budget; 2.0 and 3 were set by
+    sockets OTHER threads in the same worker opened while the fake was bound
+    on the process-wide socket module. The fake must reach rc_facts' probe
+    only: another thread neither lands in its record nor gets a fake socket."""
+    stop = threading.Event()
+    opened = []
+
+    def foreign():
+        while not stop.is_set():
+            try:
+                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                s.settimeout(2.0)
+                s.settimeout(3)
+                opened.append(type(s))
+                s.close()
+            except Exception as exc:  # noqa: BLE001 - a broken foreign socket is the finding
+                opened.append(exc)
+            time.sleep(0.005)
+
+    worker = threading.Thread(target=foreign, name="foreign-socket-user", daemon=True)
+    worker.start()
+    try:
+        before = len(opened)
+        timeouts = _probe_a_port_that_never_answers(monkeypatch)
+        during = opened[before:]
+    finally:
+        stop.set()
+        worker.join(5)
+    assert during, "the foreign thread opened no socket while the fake was bound"
+    assert all(0 < t <= 0.6 for t in timeouts), timeouts
+    assert all(kind is _REAL_SOCKET for kind in during), during[:5]
 
 
 # ---------------------------------------------------------------- the numbers
