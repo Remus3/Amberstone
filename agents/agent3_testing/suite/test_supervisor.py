@@ -69,8 +69,11 @@ def test_resolved_decisions_written() -> None:
     assert p.exists()
     data = json.loads(p.read_text(encoding="utf-8"))
     assert data["version"] == "phase3-1.1"
-    assert data["topology"]["legion_pc"] == "192.0.2.230"
-    assert data["topology"]["game_pc"] == "192.0.2.237"
+    # RM-768: 1-PC (ADR-011) - Legion is the only runtime host, placeholders
+    # only; the retired Game-PC keeps no topology role.
+    assert data["topology"]["runtime_hosts"] == ["legion_pc"]
+    assert data["topology"]["legion_pc"] == "rc-host"
+    assert "game_pc" not in data["topology"]
     assert data["db"]["files"] == MODE_DBS
 
 
