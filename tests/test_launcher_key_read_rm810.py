@@ -36,25 +36,43 @@ bare `python` was looked up in the caller's folder first (second verifier,
 N1).
 
 Pinned here:
-  (a) static: no tracked batch file reads a %VAR% (or %errorlevel%) set
-      earlier in the same ( ... ) block, or in an earlier command on the same
-      line, or anywhere on the line that closes the block - the RM-764
-      install.bat errorlevel guard, widened to every batch file and every
-      variable (it also caught install.bat step 1's PY_VER echo). A block
-      opens on a line ending in "(" or at any unmatched "(" mid-line; the
-      scan errs toward over-detection (only the echo( idiom is skipped, and
-      tracked text parens are allowlisted by exact line);
+  (a) static, CONSERVATIVE AGAINST THE NAMED SHAPES ONLY - not a proof that
+      no parse-time read exists: the scan flags a %VAR% read of a variable
+      set earlier in the same ( ... ) block, or in an earlier command on the
+      same line, or on the line that closes the block, and an %errorlevel%
+      read inside a block, in every tracked batch file (the RM-764
+      install.bat errorlevel guard, widened; it caught install.bat step 1's
+      PY_VER echo). A block opens on a line ending in "(" or at an unmatched
+      "(" mid-line; only the echo( idiom is skipped, and tracked text parens
+      are allowlisted by exact line. KNOWN HOLES, accepted as residuals
+      (third verifier, scratchpad s129-verify810c/holes2.py; all also in the
+      6836f8afd scanner, none in a tracked shape):
+        - a phase-1 quote substitution such as %VAR:"=% flips the scan's
+          quote parity and can hide a mid-line "(";
+        - a trailing ^ continuation makes the next line's ")" literal, so
+          the block the scan closes is still open in cmd;
+        - %errorlevel% read later on the same line, outside any block
+          (`cmd /c exit 3 & echo %errorlevel%`);
+        - a ^^& separator (a literal caret, then a real &) is not a
+          command boundary to the same-line check;
+        - variable names with a dash (RC-X) are not read or set names;
+        - only the first name of a multi-assign `set /a A=1, B=2` is seen;
   (b) static: the three launchers share ONE key check, run it after cd /d
       with an absolute interpreter, call names that exist in
-      core/anthropic_key.py, and never read, parse or set the key;
+      core/anthropic_key.py, never read, parse or set the key, run every
+      system tool by its absolute System32 path and set no variable they do
+      not use;
   (c) behaviour: each launcher's REAL key check runs under cmd.exe in
       tmp_path against a copy of core/anthropic_key.py, started from an
-      unrelated folder (one test plants python.bat / python.cmd there). No
-      launch: the cut runs from the launcher's `cd /d` to the end of its
-      check and is refused if it holds a start / main.py / taskkill / wmic
-      line. A child Python prints the environment the launched app would
-      inherit, and read_anthropic_key over it must give what it gives over
-      the original environment;
+      unrelated folder (one test plants python.bat / python.cmd there, one
+      quotes the Python folder on PATH). No launch: the cut runs from the
+      launcher's `cd /d` to the end of its check and is refused if it holds
+      a start / main.py / taskkill / wmic line. A child Python prints the
+      environment the launched app would inherit, and read_anthropic_key over
+      it must give what it gives over the original environment. Separately,
+      restart.bat's system-tool lines run with planted taskkill / timeout /
+      wmic scripts in the caller's folder (taskkill aimed at an image that
+      does not exist; wmic is pinned statically only);
   (d) static: no tracked batch or PowerShell file sets a variable in pip's
       PIP_ namespace. pip reads PIP_<OPTION> as its own --<option> (measured:
       PIP_LOG made `pip list` write a 6 KB debug log), and install.bat:67 set
@@ -161,9 +179,10 @@ def parse_time_reads(lines: list[str],
     Depth follows the layout of the tracked batch files: a code line ending
     in an unescaped `(` opens a block, and so does each "(" a line leaves
     unmatched mid-line (`if x (set A=1`), except on a `text_paren` line; a
-    code line starting with `)` closes one (`) else (` does both). It errs
-    toward over-detection (an else branch reading what its if branch set is
-    flagged too).
+    code line starting with `)` closes one (`) else (` does both). Where it
+    is unsure it flags (an else branch reading what its if branch set is
+    flagged too), but it is conservative against the named shapes only: the
+    module docstring lists the known holes it does NOT catch.
     """
     stack: list[set[str]] = []
     hits = []
@@ -396,13 +415,67 @@ def test_the_check_runs_after_cd_to_the_repo_root():
 def test_the_interpreter_is_an_absolute_path_embedded_first():
     shared = _shared_check(LAUNCHERS[0])
     embed = 'if exist "%RC_KEY_EMBED%" set "RC_KEY_PY=%RC_KEY_EMBED%"'
-    on_path = 'if not defined RC_KEY_PY for %%I in (python.exe) do set "RC_KEY_PY=%%~$PATH:I"'
-    assert shared.index(_SHARED_START) < shared.index(embed) < shared.index(on_path) < (
-        shared.index(_check_line(LAUNCHERS[0])))
+    # %%~$VAR:I finds nothing in a QUOTED PATH entry ("C:\Windows\py";...), so it
+    # searches a quote-stripped copy (third verifier); like %%~$PATH:I it
+    # never looks in the current folder.
+    unquoted = 'set "RC_KEY_SP=%PATH:"=%"'
+    on_path = ('if not defined RC_KEY_PY for %%I in (python.exe) do '
+               'set "RC_KEY_PY=%%~$RC_KEY_SP:I"')
+    order = [_SHARED_START, embed, unquoted, on_path, 'set "RC_KEY_SP="',
+             _check_line(LAUNCHERS[0])]
+    assert [shared.index(ln) for ln in order] == sorted(shared.index(ln) for ln in order)
     for rel in LAUNCHERS:
         values = set(re.findall(r'set "RC_KEY_PY=([^"]*)"', "\n".join(_lines(rel))))
-        assert values == {"", "%RC_KEY_EMBED%", "%%~$PATH:I"}, (
+        assert values == {"", "%RC_KEY_EMBED%", "%%~$RC_KEY_SP:I"}, (
             f"{rel} sets the interpreter to something else: {values}")
+
+
+# External Windows tools a launcher might call. Each must be named by its
+# absolute System32 path: a bare name is looked up in the caller's folder
+# first, where a planted taskkill.bat / timeout.bat would run (third
+# verifier; same root cause as N1).
+_SYSTEM_TOOLS = {"wmic": "%SystemRoot%\\System32\\wbem\\wmic.exe"} | {
+    tool: f"%SystemRoot%\\System32\\{tool}.exe"
+    for tool in ("taskkill", "timeout", "tasklist", "where", "findstr", "reg", "schtasks",
+                 "choice", "ping", "sc", "net", "powershell", "wscript", "cscript")}
+
+
+# The command token of each command on a line: at its start, or after & | (
+# or a for's `do`. A tool named only as an argument (wmic's `where`) is not
+# a command.
+_CMD_TOKEN = re.compile(r'(?:^|[&|(]|\bdo\s)\s*@?("[^"]*"|[^\s&|()]+)', re.IGNORECASE)
+
+
+def test_launchers_name_every_system_tool_by_its_absolute_path():
+    seen = set()
+    for rel in LAUNCHERS:
+        for n, raw in enumerate(_lines(rel), 1):
+            s = raw.strip()
+            if not s or _is_comment(s):
+                continue
+            for m in _CMD_TOKEN.finditer(s):
+                token = m.group(1)
+                name = re.split(r"[\\/]", token.strip('"'))[-1].lower()
+                name = name[:-4] if name.endswith(".exe") else name
+                if name in _SYSTEM_TOOLS:
+                    seen.add(name)
+                    assert token == f'"{_SYSTEM_TOOLS[name]}"', (
+                        f"{rel}:{n} runs {name} as {token}, not by its System32 path: {s}")
+    # Anchor: restart.bat's three tools must be found, or this proves nothing.
+    assert {"wmic", "taskkill", "timeout"} <= seen, seen
+
+
+def test_launchers_set_no_variable_they_do_not_use():
+    # Third verifier nit 3: start.bat kept `set EMBED_PY=...` after the key
+    # check stopped using it. RIOT_COMMANDER_DEBUG is read by the app.
+    passed_to_the_app = {"RIOT_COMMANDER_DEBUG", "ANTHROPIC_API_KEY"}
+    for rel in LAUNCHERS:
+        code = [ln.strip() for ln in _lines(rel) if ln.strip() and not _is_comment(ln.strip())]
+        text = "\n".join(code)
+        for name in {m.group(1).upper() for m in _SET.finditer(text)} - passed_to_the_app:
+            used = re.search(rf"%{name}[%:]|!{name}[!:]|\bdefined\s+{name}\b|%~\${name}:",
+                             text, re.IGNORECASE)
+            assert used, f"{rel} sets {name} but never reads it"
 
 
 def test_the_check_exit_codes_are_ones_no_interpreter_emits():
@@ -656,6 +729,62 @@ def test_a_planted_python_in_the_callers_folder_never_runs(tmp_path, rel):
     assert not list(tmp_path.rglob("planted.txt")), f"a planted python ran: {out!r}"
     assert rc == 0, out
     assert seen == [{}], "the real check clears the unusable inherited value"
+
+
+@win_only
+@pytest.mark.parametrize("rel", LAUNCHERS)
+def test_a_quoted_python_folder_on_path_is_still_found(tmp_path, rel):
+    # Third verifier: %%~$PATH:I finds nothing in a QUOTED PATH entry, so
+    # with no python-embed start.bat said Python was missing and refused,
+    # where 5edd5bd88 (a bare `python`) started. Windows accepts the form.
+    system32 = str(Path(os.environ.get("SystemRoot", r"C:\Windows")) / "System32")
+    quoted = f'"{Path(sys.executable).parent}";{system32}'
+    rc, out, seen = _run(tmp_path, rel, "junk", _line(FILE_KEY), path=quoted)
+    assert rc == 0, out
+    assert seen == [{}], f"the check did not run: {out!r}"
+    rc, out, seen = _run(tmp_path, rel, ENV_KEY, None, path=quoted, plant=True)
+    assert rc == 0, out
+    assert seen == [{ENV_VAR: ENV_KEY}]
+    assert not list(tmp_path.rglob("planted.txt"))
+
+
+def _restart_tool_lines() -> list[str]:
+    """restart.bat's system-tool lines, made harmless: taskkill and wmic aim
+    at names no process has, so only WHICH executable runs is observed."""
+    lines = [ln.strip() for ln in _lines("scripts/restart.bat")]
+    start = next(i for i, ln in enumerate(lines) if ln.startswith("echo [Amberstone] Restarting"))
+    end = lines.index("setlocal", start)
+    tools = [ln for ln in lines[start + 1:end] if ln]
+    assert len(tools) == 3, tools
+    safe = [ln.replace("'%%main.py%%'", "'%%rc810-no-such-process%%'")
+              .replace("/IM pythonw.exe", "/IM rc810-no-such-image.exe") for ln in tools]
+    for ln in safe:
+        assert "main.py" not in ln and "pythonw" not in ln.lower(), ln
+    return safe
+
+
+@win_only
+def test_restart_bat_system_tools_never_resolve_from_the_callers_folder(tmp_path):
+    # Third verifier: restart.bat ran wmic / taskkill / timeout by bare name
+    # before its cd, so a timeout.bat in the caller's folder ran. wmic is
+    # pinned statically only (test above); taskkill and timeout run here.
+    caller = tmp_path / "caller"
+    caller.mkdir()
+    for tool in ("wmic", "taskkill", "timeout"):
+        for ext in (".bat", ".cmd"):
+            (caller / f"{tool}{ext}").write_bytes(_PLANT)
+    body = [ln for ln in _restart_tool_lines() if "wmic" not in ln.lower()]
+    bat = tmp_path / "tools_harness.bat"
+    bat.write_bytes(("\r\n".join(["@echo off", "setlocal"] + body + ["echo TOOLS=DONE"])
+                     + "\r\n").encode("ascii"))
+    env = {k: v for k, v in os.environ.items()
+           if k.upper() != "NODEFAULTCURRENTDIRECTORYINEXEPATH"}
+    proc = subprocess.run(["cmd.exe", "/d", "/c", str(bat)], cwd=str(caller), env=env,
+                          stdin=subprocess.DEVNULL, capture_output=True, timeout=60,
+                          creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    out = proc.stdout.decode("ascii", "replace")
+    assert "TOOLS=DONE" in out, out
+    assert not list(tmp_path.rglob("planted.txt")), f"a planted system tool ran: {out!r}"
 
 
 # ---------------------------------------------------------------------------

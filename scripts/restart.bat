@@ -3,9 +3,9 @@
 :: (moved from the repo root 2026-10-09, MAIN 2246 sec 3); the repo root is
 :: this file's parent folder.
 echo [Amberstone] Restarting...
-wmic process where "commandline like '%%main.py%%'" delete >nul 2>&1
-taskkill /F /IM pythonw.exe >nul 2>&1
-timeout /t 2 /nobreak >nul
+"%SystemRoot%\System32\wbem\wmic.exe" process where "commandline like '%%main.py%%'" delete >nul 2>&1
+"%SystemRoot%\System32\taskkill.exe" /F /IM pythonw.exe >nul 2>&1
+"%SystemRoot%\System32\timeout.exe" /t 2 /nobreak >nul
 
 setlocal
 for %%I in ("%~dp0..") do set "RC_ROOT=%%~fI"
@@ -16,7 +16,9 @@ set "RC_KEY_EMBED=%RC_ROOT%\python-embed\python.exe"
 set "RC_KEY_MOD=%RC_ROOT%\core\anthropic_key.py"
 set "RC_KEY_PY="
 if exist "%RC_KEY_EMBED%" set "RC_KEY_PY=%RC_KEY_EMBED%"
-if not defined RC_KEY_PY for %%I in (python.exe) do set "RC_KEY_PY=%%~$PATH:I"
+set "RC_KEY_SP=%PATH:"=%"
+if not defined RC_KEY_PY for %%I in (python.exe) do set "RC_KEY_PY=%%~$RC_KEY_SP:I"
+set "RC_KEY_SP="
 set "RC_KEY_EC=none"
 if defined RC_KEY_PY "%RC_KEY_PY%" -I -c "import os,runpy,sys;k=runpy.run_path(sys.argv[1]);e=os.environ.get(k['ENV_VAR'],'').strip();sys.exit(10 if k['usable_key'](e) else 11 if k['read_anthropic_key']() else 12)" "%RC_KEY_MOD%"
 if defined RC_KEY_PY set RC_KEY_EC=%errorlevel%
