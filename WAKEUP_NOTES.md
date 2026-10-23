@@ -6,6 +6,20 @@
 
 ---
 
+# 2026-10-23b - session 129: RM-810 / RM-811 / RM-812 / RM-814 / RM-818 / RM-832 shipped, RM-819 / RM-822 partial, RM-824..RM-834 filed
+
+- **Start (LEDGER 1780):** s128 dispatch `39976892990` green (41764 passed); s128 wrap push ci + docs-guards green.
+- **Security (LEDGER 1781-1782):** RM-819 `0daee3441` one Host gate (`core/http_host_gate.py`) on all seven HTTP servers, live 421 on a foreign Host ((d) quiet-box flaky check NOT done); RM-811 `aec59bf5c` + `5df8f79e1` + `7445c3f38` MCP JSON-RPC codes, scrubbed logs (`ScrubFilter`).
+- **Launchers / tests / hooks (LEDGER 1783-1785):** RM-810 five verifier rounds `1d2ed354f`..`36b14cb73`; RM-812 `007572591`; RM-814 `ba960ce34` + `9744f7522`; RM-818 `21aa8027d` + `5543cc56d`.
+- **Housekeeping (LEDGER 1786):** RM-822 PARTIAL - 8 branches / 6 worktrees removed, tags `archive/rm793-abd89ea3`, `archive/rm822-abd89ea3-tip`, `archive/rm822adj-8f2-5-tip`, bundles `ops/runtime/backup/rm822*-branches-*.bundle`; 3 KEEP branches open.
+- **Channel (LEDGER 1787):** one batched ANSWER to MAIN delivered 1/1 (`28c1ed5c0`); MAIN's `route: single` ruling pending.
+- **Push (LEDGER 1788):** 12 unpushed commits REBUILT to drop drive-root fixture literals (old tip = local tag `archive/s129-pre-rebuild`); gated dual suite on `5543cc56d` 42515 passed / 106 skipped, exit 0 (skips 101 -> 106 = RM-833 watch).
+- **C10 = RM-832 (LEDGER 1789):** `7042438eb`, `7b5ccfc53`, `6eae852d3` - vision :8889 is a separate process (docs); launchers wait out a dying port holder (`core/port_handoff.py`); live: /End + /Run -> new pid on :8861 in 1.7 s.
+- **Do NOT redo:** any id above; the rebuild map is LEDGER 1788 (old shas resolve via the tag).
+- **Next:** read back /done dispatch `40034861146`; then RM-824 (security), RM-830, RM-825, then RM-807 / RM-808 / RM-809 / RM-813 / RM-815..RM-817 / RM-820 / RM-821 / RM-823; S6 at the next live game.
+
+---
+
 # 2026-10-23 - session 128: 32 rows shipped (RM-801, RM-804..RM-806, RM-763..RM-796 slices S-A..S-K), gated suite green, RM-807..RM-823 filed
 
 - **Start (LEDGER 1762):** s127 wrap docs-guards green; s127 leftover worktree + RM-794's two removed (stale lock = the live claude.exe that survives /clear; unlocked, no force).
@@ -28,16 +42,3 @@
 - **Filed:** RM-801, RM-804, RM-805, RM-806 OPEN. **Push:** `9aac2d261..eece8243b`, then the wrap commit (LEDGER 1761).
 - **Do NOT redo:** any of the above; the s127 leftover worktree `agent-a29112905430c41bd` is merged - just remove it.
 - **Next:** read the push CI, remove the leftover worktrees (s127 + RM-794), then RM-801, RM-805 / RM-806, RM-804 (Tier-2), then RM-763..RM-798; S6 at the next live game.
-
----
-
-# 2026-10-22 - session 126: 30 Dependabot alerts closed, security batches C1a / C1b, C1b-3 waves 1-2, ENGINE 1.288.0, RM-703 cleanup
-
-- **Deps `cef8bfd22` (LEDGER 1750):** certifi / Pillow 13 / portalocker / CI ruff, PR #21 by path B; alerts 30 -> 0. CLI pin 2.1.308 `15e896080`, then 2.1.309 `09054d9cd`.
-- **C1a (LEDGER 1752):** RM-759 Host allowlist :8888 / :8890, RM-756 ws port guard, RM-758 DS 400, voice_coach PowerShell injection closed, RM-757 truth_gate runs no shell (`ff6797dde`..`c4f08fa7a`).
-- **C1b (LEDGER 1753):** RM-760a-c fixed JSON errors, RM-761a-c binds fail loud, RM-762 POST /api/speak removed (`76d522efa`..`3d3f267e0`). DDragon 16.21.1 `76fcbd036` (LEDGER 1754; DS stays 16.20.1 until RM-766).
-- **C1b-3 wave 1 (LEDGER 1755, `8ed75ccac`..`915300765`):** the retired Game-PC SMB push module deleted, done.md 2c dispatch rule, MAIN 1254 / 1300 hooks (git hooks fail closed), settings template, ENV-APIKEY nits, WSL /mnt gate; MAIN #6 deferred (RM-781). allow_visual.flag recycled.
-- **Wave 2 (LEDGER 1756, `b7b44abb7`..`376443c8a`):** stop_claim_gate #9, rc_facts #17, RM-728 reaper (applied), RM-600, RM-660, ENGINE 1.288.0 (DS :8860 reads it back); gated dual suite 41322 passed, 1 live-DS failure that passed after the restart.
-- **Housekeeping (LEDGER 1757):** RM-703 - 53 branches bundled then deleted, 6 worktrees removed; moon_sync_repos.json drive fix; MAIN ANSWER delivered 1/1 TERMINAL; RM-736 CLOSED (rejected, record-only); RM-779..RM-798 filed.
-- **Do NOT redo:** any of the above; the 12 hand-off Reverses-if clauses are applied.
-- **Next:** S6 (vision decodes a live frame under Pillow 13, next game), RM-789 (HIGH: MAIN's name in no sweep slot), RM-766 (DS 16.21.1, Tier-2), then RM-763..RM-798 in order.

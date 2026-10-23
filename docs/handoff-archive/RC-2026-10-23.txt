@@ -32,3 +32,42 @@ CLOSED - DO NOT RE-LITIGATE, OLDER RECORDS (s108-s126 rulings and shipped record
   (re-measure after a Windows feature update), or the Operational log fills its cap, dropping RC events.
 - RM-512 self-adjudicated in wave 1 (main f21175b41; LEDGER 1503). Reverses if: the operator or MAIN
   re-opens it in writing, or core/riot_api.py is measured reading RIOT_API_KEY (the FILE-ONLY premise).
+# archived from RC-NEXT-SESSION.txt at 2026-10-23T22:42:08Z
+====================
+CLOSED - DO NOT RE-LITIGATE, OLDER RECORDS (s120-s127 rulings and shipped records; each keeps its Reverses if:) - verbatim from 0781e3c83:RC-NEXT-SESSION.txt
+====================
+- s127 (LEDGER 1758-1761): C1 fix ea008366b; RM-802 c4cf40a18 / 681997415; RM-789 18646ad2e; RM-799
+  b6f4043bd; fixtures 25da2f0b2; RM-803 b61059c72; RM-766 d1e3883bf / e8d6336a7 / 33d551beb (ENGINE
+  1.289.0). Reverses if: a live re-check of one of those acceptances fails.
+- RM-746 CLOSED WON'T-FIX (7aaf8541e, LEDGER 1735): no round 3 of regex widening. Reverses if: the
+  gate gains a real shell parser with measured coverage, or a false staged-merge credit is seen in a
+  real session. LOCAL tag archive/rm746-r2 (NEVER pushed); probes in gitignored ops/runtime/rm746/.
+- Every `git reset` form stays DENY-ALL in stop_claim_gate. Reverses if: the gate gains a real shell
+  parser (e.g. bashlex) with measured coverage, or an operator ruling.
+- Staged-merge credit is a conjunction with the unchanged pre-(f) 1a1fa703d step
+  (`_pre_f_staged_step`; LEDGER 1726-1727). Reverses if: a differential fuzz (seeds 7 / 13 / 23 x 60k
+  or new) finds a staged-merge input the gate credits and pre-(f) does not, or the step is removed.
+- ACCEPTED DEVIATION: a heredoc-heavy command just under COMMAND_PARSE_MAX runs ~1.56x pre-(f).
+  Reverses if: a measured under-cap input crosses the 30 s Stop timeout while pre-(f) does not.
+- RM-515 AST exemption (c44ea289f; LEDGER 1718): never go back to text. PINNED_CLI_VERSION 2.1.251
+  (tools/inbox_responder_runner.py) is a SEPARATE pin from PINNED_CLI (2.1.309 since s126; LEDGER
+  1718, 1742; re-pin tool tools/repin_subagent_cli.py since s128). Reverses if: an optional-dependency
+  test the AST rule exempts reddens the whole-suite import guard (fix the AST rule, never text), or
+  the runner starts reading PINNED_CLI (then the pins move together).
+- RM-687 accepted limits: a hand-echoed fake push / `rc=0` line is credited; ancestry and reflog are
+  not tied to the claimed sha (LEDGER 1692, 1727). Reverses if: a session's stop-gate log shows a
+  credited push or count that git (reflog / ls-remote) contradicts in a real session.
+- stop_claim_gate accepted gaps ("I'll note CI is green" passes; a shouted word as a channel code;
+  future-tense push_claim_without_push; a per-sentence finding cannot be withdrawn; LEDGER
+  1726-1727). Reverses if: one shape gives a wrong verdict in a real session log twice (s122: once).
+- RC atlas.html stays the hand-built pre-10/7 page (LEDGER 1713, 7f3ed345f; s128 RM-767 copy fix only),
+  font block = HEAD's OFL-compliant block. Reverses if: the operator or MAIN re-orders a generated
+  atlas or the byte-exact page in writing; for the font: the Orbitron holders permit the subset name,
+  upstream drops the RFN, or a render difference is measured.
+- ops/fleet_kit/*.py is ruff-exempt (ruff.toml:79-81 per-file ignore; kit pinned by
+  ops/fleet_kit/MANIFEST.json; no LEDGER entry records the current ignore - LEDGER 1470 records an
+  earlier removal). Reverses if: MAIN ships a kit version whose files pass RC's ruff rules, or MAIN
+  rules that trees lint the kit (the ignore then goes, never a local kit edit).
+- Lane driver files under ops/loop/control/lane_prompts/ are untracked AND gitignored (.gitignore:338
+  `ops/loop/control/`; no LEDGER entry). Reverses if: `git check-ignore -v
+  ops/loop/control/lane_prompts/<file>` stops matching, or MAIN / the operator orders them tracked.

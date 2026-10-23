@@ -1,43 +1,53 @@
 NEXT SESSION
 ------------
-SESSION: 129
-Session 129 = the carried OPEN - WORK ITEMS below. s128: LEDGER 1762-1779 (32 ids shipped; see DO NOT
-RE-LITIGATE).
+SESSION: 130
+Session 130 = the carried OPEN - WORK ITEMS below. s129: LEDGER 1780-1790 (RM-810 / 811 / 812 / 814 /
+818 / 832 shipped, RM-819 / RM-822 partial, RM-824..RM-834 filed; see DO NOT RE-LITIGATE).
 HISTORY REWRITTEN TWICE 2026-10-09 (LEDGER 1699 B, 1701 rw2): old SHAs via .git/filter-repo/commit-map
 (rw2), then filter-repo-20261009 (B), then filter-repo-20260621 (June); copies beside the sidecar
 Backup bundles. Other clones re-clone (ASKS 5); a fresh clone runs scripts/install_hooks.py and sets
 LOCAL git config fleet.operatorIdent before any push. s122 trim: history verbatim in
 docs/handoff-archive/RC-2026-10-18.txt (pre-trim: git show e4e3ef1bc:RC-NEXT-SESSION.txt).
+s129 also REBUILT 12 unpushed commits before its push (drive-root fixture literals): old tip = LOCAL
+tag archive/s129-pre-rebuild (ba757f7d6), old -> new map in LEDGER 1788.
 
 CPU (session 120 steer): glance at the CPU load, FREE MEMORY and for orphaned pytest / python / node
 trees (the RM-695 orphan shape) BEFORE heavy work (suites, many agents).
 SCRATCH (s127 lesson): the session scratchpad is shared by every sub-agent - every sub-agent prompt
 names a UNIQUE scratch subfolder and helper / progress file name.
 
-Next action: FIRST read back the s128 /done full-suite dispatch: `gh run view 39976892990` (ci.yml
-workflow_dispatch on fa371ab4f, in_progress at the wrap); a red is the first fix (forward on main).
-Then the s128 wrap push's docs-guards / ci. Then the RM-807..RM-823 rows by topic, security first:
-RM-819 (a) Host checks on the other HTTP servers, RM-811 log injection, RM-810 launcher key read;
-then RM-822 (worktree estate; TAG 4f1424a91 before touching worktree-agent-abd89ea3e70d8c92f).
-Owed outbound (one batched note to MAIN, under the 12/day cap): the RM-781 result (MAIN 1254 #6),
-the RM-823 fleet_board observation, and the `route: single` observation (below). S6 at the next
-live game: vision decodes a live game frame under Pillow 13 (cef8bfd22).
+Next action: FIRST read back the s129 /done full-suite dispatch: `gh run view 40034861146` (ci.yml
+workflow_dispatch on 0781e3c83, in_progress at the wrap); a red is the first fix (forward on main).
+Then docs-guards 40034820217 + codeql 40034820135 on 0781e3c83 and the wrap push's docs-guards (the
+commit carrying this file). Then the rows by topic, security first: RM-824 (Mission Control reply
+bodies), RM-830 (quoted-path sweep; tools/ci_impact_selector.py:303 is MEDIUM - a quoted non-ASCII
+name can skip a needed CI job), RM-825; then RM-819 (d) quiet-box flaky check; then RM-807, RM-808,
+RM-809, RM-813, RM-815, RM-816, RM-817, RM-820, RM-821, RM-823, RM-826, RM-828, RM-829, RM-833 (watch),
+RM-834. Owed outbound (one batched note to MAIN, under the 12/day cap): RM-831 (kit fleet_done.py:144-145
+git decode); RM-778 / RM-798 still open; the `route: single` ruling is still pending from MAIN (asked
+28c1ed5c0). S6 at the next live game: vision decodes a live game frame under Pillow 13 (cef8bfd22).
 FIRST at session start: the CPU / memory glance; git log @{u}.. (expect empty); python
-ops/loop/inbox_tick.py --pending (empty at the s128 wrap); gh pr list (0 open at the s128 wrap).
+ops/loop/inbox_tick.py --pending; gh pr list (0 open at the s128 wrap). Re-batch the operator asks
+in ONE chat line (not done in s129).
 
 ====================
 OPEN - WORK ITEMS (by topic)
 ====================
-Filed s128, OPEN in BACKLOG "Session 128 filings" (bodies, file:line + acceptance there; LEDGER
-1779): 807 DS extractor silent-accept siblings; 808 Tier-2 RM-804 follow-ups (SR Hubris source, may
-re-open the Meraki Settled line; Dawncore AP; prose-number checker; Meraki staleness); 809 Tier-0
-CLAUDE.md Share mirror; 810 launcher key-read early expansion (breaks once MAIN removes the Machine
-variable) + install.bat PIP_LOG; 811 MCP / mc log injection + error codes; 812 tests touching live
-logs; 813 narrowed sweep slot spellings + UNC device form; 814 stop_claim_gate EV_* quadratic; 815
-RM-801 guard residuals; 816 reaper os.replace window + RM-785 APPLY (ASKS 30); 817 push-CI shape
-guard gaps; 818 edit_lint_check cp1252 + TEXT_FIRST_FLAG scope; 819 Host checks on DS :8860 / mc /
-matchdb / vision :8889 / replay_session + document the :8890 restart in OPERATIONS.md; 820 RM-768
-siblings; 821 live re-pin controls; 822 worktree estate (below); 823 kit: fleet_board version bump.
+Filed s129, OPEN in BACKLOG "Session 129 filings" (bodies, file:line + acceptance there; LEDGER
+1790): 824 Mission Control loop routes return exception text in reply bodies; 825 usage-mcp
+notification replies + ids above 2^53, scrub ranges (U+2028 / U+2029 / bidi) and line caps, IPv6
+zone-id Host; 826 batch-file hygiene siblings of RM-810 + the six accepted scanner holes; 827 frozen
+key readers without utf-8-sig (operator-gated, folds into ASKS 24); 828 RM-812 residuals; 829 stop-gate
+_HEREDOC / EV_SUMMARY_LINE quadratics + test nits; 830 quoted-path sweep + RM-818 N3; 831 kit
+fleet_done.py git decode (MAIN); 833 gated-suite skips 101 -> 106 (watch); 834 port-handoff residuals.
+Still open from s128 (BACKLOG "Session 128 filings"; LEDGER 1779): 807 DS extractor silent-accept
+siblings; 808 Tier-2 RM-804 follow-ups (SR Hubris source, may re-open the Meraki Settled line;
+Dawncore AP; prose-number checker; Meraki staleness); 809 Tier-0 CLAUDE.md Share mirror; 813 narrowed
+sweep slot spellings + UNC device form; 815 RM-801 guard residuals; 816 reaper os.replace window +
+RM-785 APPLY (ASKS 30); 817 push-CI shape guard gaps; 819 PARTIAL ((d) the test_rm740_cg /
+test_body_read_timeout_rm152 flaky report needs its quiet-box measurement); 820 RM-768 siblings; 821
+live re-pin controls; 822 PARTIAL (below); 823 kit: fleet_board version bump (reported to MAIN
+28c1ed5c0; open until a kit version ships the fix).
 Still open from the s126 filings (BACKLOG "Session 126 filings" / "Session 126 /done filings"):
 - RM-778 kit defect for MAIN: fleet_claims.bare_whole_suite matches the gate name case-sensitively.
 - RM-787 RM-600 siblings: lib/game_data/sources.py:195 (Kled hp / range),
@@ -80,50 +90,50 @@ Lanes and loop:
   pct / started for the kit v20 item-13a running format; plain ~ETA is allowed.
 - NOTE: fleet_rewrite.py plan did not finish in 4 min on this clone (matters only if ordered).
 Channel and MAIN:
-- ROUTE (s128): both S-K canary usage lines read `route: single`, while CLAUDE.md KIT v20 says `split`
-  was read back at adoption. Re-check against the MAIN inbox (`fleet_headless.py route show`); RC never
-  edits ~/.fleet/headless_route.json. Goes in the owed batched note.
+- ROUTE: both s128 S-K canary usage lines and s129's `fleet_headless.py route show` read `single`
+  (route file rewritten 2026-10-22 19:22), while CLAUDE.md KIT v20 says `split` was read back at
+  adoption. Reported to MAIN in 28c1ed5c0 (LEDGER 1787); awaiting the ruling. RC never edits
+  ~/.fleet/headless_route.json and arms no fallback.
 - B3 read-back of MAIN 2237: next pane shows the acct2 status line and no [Legion] line.
 - mission_control.py holds the old worktree base until restart; the old lane folder and its
   system-drive junction are MAIN's to release.
-Worktrees, branches, refs (measured at the s128 wrap: 19 worktrees = main + 5 agent + 2 drain + 11
-out-of-root lift; 38 refs):
-- RM-822: git cherry main <branch> (s126 figures): agent a1f2b1c7 +1, a25593521 +1/-1 (old locked W-L
-  attempt, superseded by cf72989eb), a5ae4bf4 +1, abd89ea3 +9 (NOW the only ref holding RM-793's
-  commits: tag 4f1424a91 before deleting it), af827986 +4 (kit v6-v8 work; "said squashed" -
-  unverified); drain/wave2-atomic +1/-4, drain/wave2-tail-backlog +4/-9 (RM-432 ADR-016, RM-229). Most
-  content matches squash 7916b3535. Review each before -D (RM-703 / RM-793 method; back up ignored
-  files first). Branches with no worktree: worktree-agent-a0a31cf1b05f41e28,
-  worktree-wf_0815ac54-8f2-4 / -5 / -7 (git cherry before -D).
-- Refs: refs/rw2-backup/remote-old/* (7) kept by the C1 ruling (ASKS 6). Never `git push --tags`
-  (local tag archive/rm746-r2; the in-tree tag bundle restores with git fetch <bundle>
-  'refs/*:refs/restored/*'). RM-703 deletions are restorable from
-  ops/runtime/backup/rm703-branches-20261022-183705.bundle.
+Worktrees, branches, refs (measured at the s129 wrap: 13 worktrees = main + drain-wave2-tail-backlog +
+11 out-of-root lift; 16 local branches; 34 refs; the 7 s129 agent worktrees + branches removed):
+- RM-822 PARTIAL (LEDGER 1786): KEEP drain/wave2-tail-backlog (RM-229), worktree-agent-a0a31cf1b05f41e28
+  (RM-519), worktree-wf_0815ac54-8f2-4 (RM-239 / RM-242 / RM-297b); WATCH m2-prebuild-56e5572e4 (the
+  only ref holding the a25593521 commits that 348d5e3b7 / beff33b88 cite - tag 3a484e425 before
+  deleting it). Full table: gitignored ops/runtime/rm822-result.md.
+- Refs: refs/rw2-backup/remote-old/* (7) kept by the C1 ruling (ASKS 6). LOCAL tags, never `git push
+  --tags`: archive/rm746-r2, archive/rm793-abd89ea3, archive/rm822-abd89ea3-tip,
+  archive/rm822adj-8f2-5-tip, archive/s129-pre-rebuild. The in-tree tag bundle restores with git fetch
+  <bundle> 'refs/*:refs/restored/*'. Bundles: ops/runtime/backup/rm703-branches-20261022-183705.bundle,
+  rm822-branches-20261023-135026.bundle, rm822adj-branches-20261023-135811.bundle.
 - RM-681 PARTIAL: owes one attended live call per path + a truststore read-back on Legion (it also
   holds the dependabot anthropic range). Then origin c1/deps-pip-anthropic1-measure (24c54ec39) can go.
 Rows and decisions:
 - Still open rows: RM-681 (PARTIAL), RM-682, RM-683, RM-686 (operator-gated), RM-690..RM-693, RM-697
   (gate range across a rewrite), RM-698, RM-699 (hot_reload watches tests/), RM-702 (MAIN-ordered
   only), RM-704..RM-731 except RM-728 (shipped), RM-734, RM-737, RM-740 (e) fu3, RM-754, RM-755,
-  RM-778, RM-787, RM-792, RM-797, RM-798, RM-800 (BLOCKED-BOUNDARY), RM-807..RM-823, RM-279, RM-280,
-  RM-368, RM-381, RM-292b-d, RM-251(b), RM-370, RM-229, RM-290, RM-27, RM-248, RM-189, RM-167, RM-204,
-  RM-12/RM-14 flips, RM-15(b), RM-16, RM-423, RM-239/RM-242 (operator fence), RM-297b (non-author
-  adjudicator + CI), RM-519. Next free RM id RM-824; next free LEDGER id 1780.
+  RM-778, RM-787, RM-792, RM-797, RM-798, RM-800 (BLOCKED-BOUNDARY), RM-807..RM-809, RM-813,
+  RM-815..RM-817, RM-819 (PARTIAL), RM-820..RM-831, RM-833, RM-834, RM-279, RM-280, RM-368, RM-381,
+  RM-292b-d, RM-251(b), RM-370, RM-229, RM-290, RM-27, RM-248, RM-189, RM-167, RM-204, RM-12/RM-14
+  flips, RM-15(b), RM-16, RM-423, RM-239/RM-242 (operator fence), RM-297b (non-author adjudicator +
+  CI), RM-519. Next free RM id RM-835; next free LEDGER id 1791.
 - ROADMAP top open: RM-488, RM-482, RM-483, RM-485, RM-513, RM-596, RM-597, then the RM-681.. rows;
-  EXTERNAL-LIFT Band 2 / 4 stay in BACKLOG. ROADMAP.md 67990 B after the s128 size pass (drift_guard 90
-  percent line 73728 of 81920; ~5.7 KB headroom); before an edit that would cross it, move closed rows
-  to docs/ROADMAP_HISTORY.md (ids named literally; Edit with an EMPTY new_string also eats the line's
-  newline - s128 joined 6 rows that way and re-split them).
+  EXTERNAL-LIFT Band 2 / 4 stay in BACKLOG. ROADMAP.md 69685 B after s129 (drift_guard 90 percent line
+  73728 of 81920; ~4 KB headroom); before an edit that would cross it, move closed rows to
+  docs/ROADMAP_HISTORY.md (ids named literally; Edit with an EMPTY new_string also eats the line's
+  newline).
 - Desktop EXTERNAL-LIFT-DIRECTIVE.md / -2.md (-2 ingested: RM-526..RM-594). Operator APPROVED Y-44
   (frozen lcu_client.py) and Y-45 (2026-10-03); Y-45 phone push needs ntfy (host local-only).
 
 BLOCKED-OPERATOR: main.py:54 (frozen; ENV-APIKEY); RM-603 in-game callout compliance; RM-681 attended
 calls; the RM-750 live check (after ASKS 20, with RC stopped: DS must come back without RC; residual
 edges in its row); the frozen app/_game_lifecycle.py mid-game start fix; the ops/rc_supervisor.py
-half of RM-258; the board URL location (ASKS 18); the RM-803 residual (ASKS 28); RM-782's live
-settings tails (ASKS 29); the RM-785 live APPLY (ASKS 30). The GitHub About "Include in the home
-page" untick (MAIN 2312 items 1-2; no API; do not touch the v0.1.0 release, its tag or Pages) stays
-DEFERRED.
+half of RM-258; RM-827 (frozen key readers); the board URL location (ASKS 18); the RM-803 residual
+(ASKS 28); RM-782's live settings tails (ASKS 29); the RM-785 live APPLY (ASKS 30). The GitHub About
+"Include in the home page" untick (MAIN 2312 items 1-2; no API; do not touch the v0.1.0 release, its
+tag or Pages) stays DEFERRED.
 BLOCKED-LIVE-GAME: S6 (above); the RM-752 follow-up (probe the :2999 tools/liveclient_relay.py at a
 TLSv1_2 floor in a live game; it keeps TLSv1 until measured); Y-01 (5 real game ends).
 BLOCKED-BOUNDARY (halt: out-of-tree, joint, or MAIN's act):
@@ -131,7 +141,8 @@ BLOCKED-BOUNDARY (halt: out-of-tree, joint, or MAIN's act):
   835277934); clearing history needs MAIN's ORDER via fleet_rewrite.py.
 - RM-740 (e) fu3: on the child-fallback path (RC-DaemonSlayer unregistered), does `schtasks /End
   RC-Supervisor` kill a DS child via the job.
-- ENV-APIKEY (1): the Machine-key removal is MAIN's act (RM-810 must land before it).
+- ENV-APIKEY (1): the Machine-key removal is MAIN's act; RM-810 has now landed (36b14cb73), so the
+  launchers no longer depend on the Machine variable.
 - fleet_identity flags only AI / bot co-authors; a HUMAN non-operator Co-authored-by passes
   (bot_merge_check catches it post-merge). Adopt MAIN's fix when a kit version ships it.
 - Kit suite-gate defect (b): fleet_suite_gate runs bare on an empty selection (KIT-16, MAIN) - re-check
@@ -143,14 +154,14 @@ BLOCKED-BOUNDARY (halt: out-of-tree, joint, or MAIN's act):
 - Joint re-pins, never solo: CHANNEL_PIN (docs/CHANNEL.md still lists LL / lacks EW - five-way),
   RM-502, RM-429, RM-430; any further SHARED_SHA256 re-pin.
 - SessionStart anomaly "slot bucket 0.lock DEAD_PID (pid 6668)" (machine-wide, outside the repo):
-  re-check (not done s116-s128).
+  re-check (not done s116-s129).
 - One sibling-to-sibling note stuck in a stale folder: moving it is out-of-tree.
 
 ====================
 OPEN - OPERATOR ASKS (batched, re-ask in ONE line)
 ====================
-1-7, 9-12 unanswered in sessions 111-128; 15, 17, 18, 20-26, 28 open; 29 and 30 new in s128; 19
-WITHDRAWN s126; 27 RESOLVED s127. Last re-batched in chat in s127.
+1-7, 9-12 unanswered in sessions 111-129; 15, 17, 18, 20-26, 28-30 open; 19 WITHDRAWN s126; 27
+RESOLVED s127. Last re-batched in chat in s127 (s129's re-batch was not done).
 GitHub security read-back 2026-10-22 (gh api): Dependabot alerts, secret scanning, push protection ON;
 CodeQL ADVANCED setup (.github/workflows/codeql.yml), DEFAULT query suite; Dependabot security updates
 read DISABLED (automated-security-fixes enabled=false) though the operator reports them on.
@@ -186,7 +197,7 @@ read DISABLED (automated-security-fixes enabled=false) though the operator repor
 23. Account-level Claude settings outside the repo still carry `remoteControlAtStartup` (operator
     act; no RC-owned template carries it).
 24. Frozen-file approvals: main.py:54 (ENV-APIKEY), app/_game_lifecycle.py (mid-game start fix),
-    ops/rc_supervisor.py (the RM-258 half).
+    ops/rc_supervisor.py (the RM-258 half), and the RM-827 key readers (utf-8-sig / BOM handling).
 25. OK to remove the 11 out-of-root lift worktrees (RM-703; content 85-100 percent on main)?
 26. OK to move the one sibling-to-sibling note stuck in a stale folder (out-of-tree)?
 28. RM-803 residual (halt boundary): with no per-host config (CI, a fresh clone) the sweep's structural
@@ -205,7 +216,8 @@ OPEN - WATCH AND DATA (act only when seen)
 - RM-699 (hot_reload): edits under tests/, tools/ and dashboard/ restart RC. Storms: s108 8; s113 27
   (2026-10-14 07:58-08:47 local, unattributed); s116 8. Pids s117-s126: git show
   9aac2d261:RC-NEXT-SESSION.txt (causes of 22136 and 10108 not investigated); s127 24404 -> 5192;
-  s128 wrap RC 18476, :8890 2108 (restarted by hand, LEDGER 1777); fatal_count 0.
+  s128 wrap RC 18476, :8890 2108; s129 wrap RC 7700; fatal_count 0.
+- RM-833 (s129): the gated dual suite's skip count rose 101 -> 106; candidates in its BACKLOG row.
 - Timing flake (not RM-740): tests/test_dashboard_server_thread_start_rm738.py
   ::StillOneThreadPerRequest::test_long_lived_requests_do_not_starve_a_short_one (1.0 s bound) failed
   2 of 4 runs at 100 percent CPU (s113); if it reds, widen the bound or measure on a quiet box.
@@ -225,10 +237,28 @@ OPEN - WATCH AND DATA (act only when seen)
   pre-existing) on every LEDGER edit - expected, not a finding. The BACKLOG row is fixed (RM-791).
 - The s128 S-E builder's six manual sweep checks appended 6 records to the live
   ops/runtime/sibling_sweep_runs.jsonl (append-only, left in place).
+- s129: the stop-claim gate flagged push / merge claims in main-session chat because sub-agents did
+  the pushes (read-backs in LEDGER 1788) - the RM-687 credit-only shape, not a defect so far.
+- s129 orphans: pids 9232 server.ew, 19916 lw_monitor, 17584 node console server (not RC's) left
+  alone. The /done executor killed (taskkill /F /T) one orphan bash tree (pid 8320, the finished C10
+  verifier's shell hung on the WindowsApps python3 stub reading a heredoc) that held an agent worktree
+  folder: a verifier helper must name the canonical interpreter, never `python3`.
 
 ====================
 DO NOT RE-LITIGATE (each with Reverses if:)
 ====================
+- s129 (LEDGER 1780-1790; every sha in the ROADMAP "SESSION 129 SHIPPED" row): RM-810, RM-811,
+  RM-812, RM-814, RM-818, RM-832 shipped; RM-819 (a)-(c); RM-822 deletions; MAIN ANSWER 28c1ed5c0
+  delivered 1/1; gated dual suite on 5543cc56d 42515 passed / 106 skipped, exit 0; push CI 6eae852d3
+  ci 40033559345 success, docs-guards 40033559344 success, codeql 40033559405 success. Reverses if: a
+  live re-check of one of those acceptances fails.
+- RM-811 one logger-level ScrubFilter (adjudicated s129, decision in the 5df8f79e1 body; LEDGER 1782)
+  and RM-819 (c) the plain-HTTP 301 keeps echoing any IP literal (0daee3441 body). Reverses if: per
+  each commit body.
+- RM-793 / RM-822 branch deletions (adjudicated s128 / s129; LEDGER 1778, 1786): every deleted branch's
+  commits stay reachable via the local archive/* tags or the verified bundles (Refs, above). Reverses
+  if: an open row cites a deleted branch name or a bundled sha as work still to land (restore that
+  branch from the bundle), or `m2-prebuild-56e5572e4` is deleted (tag 3a484e425 first).
 - s128 (LEDGER 1762-1779; every sha in the ROADMAP "SESSION 128 SHIPPED" row): RM-801, RM-804..RM-806,
   RM-763..RM-777, RM-779..RM-786, RM-788, RM-790, RM-791 (false positive), RM-793 / RM-794 (worktrees
   removed), RM-795, RM-796; gated dual suite on 951e62198 41644 passed, EXIT=0. Reverses if: a live
@@ -236,14 +266,10 @@ DO NOT RE-LITIGATE (each with Reverses if:)
 - RM-804 NO ENGINE bump (adjudicated s128; engine AST identical except note= strings; LEDGER 890 / 469
   precedent): ENGINE stays 1.289.0. Reverses if: a modeled number moves in an RM-804-class change,
   or RM-808 (a) settles SR Hubris on a non-Meraki number.
-- RM-793 `branch -D` (adjudicated s128): "tip 4f1424a91; content identical at main 7916b3535; after -D
-  reachable via worktree-agent-abd89ea3e70d8c92f (6c28d6b04) only, no reflog". Reverses if: a branch
-  file not identical at 7916b3535, a live reader of the branch name, or a plan to delete
-  worktree-agent-abd89ea3e70d8c92f first (then tag 4f1424a91 before either delete).
-- Stale worktree lock (adjudicated s128): a lock naming the live interactive claude.exe (it survives
-  /clear) whose agent finished and whose branch is merged is stale; `git worktree unlock` is not a
-  force. Reverses if: the pid is a still-running agent's own process, or the worktree holds content
-  not on main.
+- Stale worktree lock (adjudicated s128; applied again s129 to agent-a0b430aa23a79c22c, pid 5684): a
+  lock naming the live interactive claude.exe (it survives /clear) whose agent finished and whose
+  branch is merged is stale; `git worktree unlock` is not a force. Reverses if: the pid is a
+  still-running agent's own process, or the worktree holds content not on main.
 - RM-796 option A, RM-775 (b) shell .exe heads allowed / (c) py.test refused, RM-795 newer CLI stays
   RED (not skip), RM-785 (b) ownerless rows fail only past 2x ETA AND kit-abandoned, RM-768
   cross_machine retired, RM-774 refuse (not re-route), RM-764 WARN (not FAIL), RM-779 in-memory
@@ -254,13 +280,12 @@ DO NOT RE-LITIGATE (each with Reverses if:)
 - RM-766 ARAM modifiers carried forward from 16.20.1 (adjudicated; manifest `aram_modifiers_carry`):
   lolmath 16.21.1 returned 173/173 neutral. Reverses if: lolmath serves a non-neutral table for
   16.21.1 or later (re-extract and replace the carried block; RM-805 now makes the neutral case exit 3).
-- s127 (LEDGER 1758-1761): C1 fix ea008366b; RM-802 c4cf40a18 / 681997415; RM-789 18646ad2e; RM-799
-  b6f4043bd; fixtures 25da2f0b2; RM-803 b61059c72; RM-766 d1e3883bf / e8d6336a7 / 33d551beb (ENGINE
-  1.289.0). Reverses if: a live re-check of one of those acceptances fails.
 - OLDER RECORDS moved VERBATIM, each with its Reverses if:, to docs/handoff-archive/RC-2026-10-23.txt
-  (s128 trim): the s126 / s125 / s124 shipped records; C1 s122 (tag bundle KEPT); Dependabot s121;
-  RM-743; RM-740 (e) known cost; the s108 probe trade-off; RestartOnFailure inert; RM-512. Read it
-  before re-opening any of them.
+  (s128 trim: s126 / s125 / s124 records, C1 s122 tag bundle KEPT, Dependabot s121, RM-743, RM-740 (e)
+  known cost, the s108 probe trade-off, RestartOnFailure inert, RM-512; s129 trim: the s127 record,
+  RM-746 WON'T-FIX, git reset DENY-ALL, staged-merge credit, the 1.56x heredoc deviation, RM-515 AST
+  exemption + the two CLI pins, RM-687 accepted limits, stop_claim_gate accepted gaps, atlas.html
+  hand-built, ops/fleet_kit ruff-exempt, lane_prompts gitignored). Read it before re-opening any.
 - RM-736 gate change REJECTED, record-only (the TIER TABLE rule: a graded count appears in the output
   of the call that ran it). Reverses if: 3 or more live false flags of this class occur.
 - S4 ruling: fail-open only on the Claude PreToolUse channel; git pre-commit / commit-msg /
@@ -276,46 +301,14 @@ DO NOT RE-LITIGATE (each with Reverses if:)
   bdaff4426, ec06bbb21; tools/bot_merge_check.py). Reverses if: MAIN re-orders path A, or
   bot_merge_check exits 1 on a new default-branch commit (fix only via fleet_rewrite.py under MAIN
   2312's scope, at the halt boundary).
-- RM-746 CLOSED WON'T-FIX (7aaf8541e, LEDGER 1735): no round 3 of regex widening. Reverses if: the
-  gate gains a real shell parser with measured coverage, or a false staged-merge credit is seen in a
-  real session. LOCAL tag archive/rm746-r2 (NEVER pushed); probes in gitignored ops/runtime/rm746/.
-- Every `git reset` form stays DENY-ALL in stop_claim_gate. Reverses if: the gate gains a real shell
-  parser (e.g. bashlex) with measured coverage, or an operator ruling.
-- Staged-merge credit is a conjunction with the unchanged pre-(f) 1a1fa703d step
-  (`_pre_f_staged_step`; LEDGER 1726-1727). Reverses if: a differential fuzz (seeds 7 / 13 / 23 x 60k
-  or new) finds a staged-merge input the gate credits and pre-(f) does not, or the step is removed.
-- ACCEPTED DEVIATION: a heredoc-heavy command just under COMMAND_PARSE_MAX runs ~1.56x pre-(f).
-  Reverses if: a measured under-cap input crosses the 30 s Stop timeout while pre-(f) does not.
-- RM-515 AST exemption (c44ea289f; LEDGER 1718): never go back to text. PINNED_CLI_VERSION 2.1.251
-  (tools/inbox_responder_runner.py) is a SEPARATE pin from PINNED_CLI (2.1.309 since s126; LEDGER
-  1718, 1742; re-pin tool tools/repin_subagent_cli.py since s128). Reverses if: an optional-dependency
-  test the AST rule exempts reddens the whole-suite import guard (fix the AST rule, never text), or
-  the runner starts reading PINNED_CLI (then the pins move together).
-- RC atlas.html stays the hand-built pre-10/7 page (LEDGER 1713, 7f3ed345f; s128 RM-767 copy fix only),
-  font block = HEAD's OFL-compliant block. Reverses if: the operator or MAIN re-orders a generated
-  atlas or the byte-exact page in writing; for the font: the Orbitron holders permit the subset name,
-  upstream drops the RFN, or a render difference is measured.
 - CI's sibling-sweep-tree arm is structural-only on CI ("This green is PARTIAL"; RM-488, LEDGER 1456 /
   1459). Reverses if: the RC_MOON_SYNC_REPOS CI secret is set (a remote act, RM-488) and a CI run is
   read back loading a non-empty sibling list; the "ARMED WITH A MEASURED ESCAPE RATE ABOVE ZERO"
   phrasing stays either way.
-- RM-687 accepted limits: a hand-echoed fake push / `rc=0` line is credited; ancestry and reflog are
-  not tied to the claimed sha (LEDGER 1692, 1727). Reverses if: a session's stop-gate log shows a
-  credited push or count that git (reflog / ls-remote) contradicts in a real session.
-- stop_claim_gate accepted gaps ("I'll note CI is green" passes; a shouted word as a channel code;
-  future-tense push_claim_without_push; a per-sentence finding cannot be withdrawn; LEDGER
-  1726-1727). Reverses if: one shape gives a wrong verdict in a real session log twice (s122: once).
-- ops/fleet_kit/*.py is ruff-exempt (ruff.toml:79-81 per-file ignore; kit pinned by
-  ops/fleet_kit/MANIFEST.json; no LEDGER entry records the current ignore - LEDGER 1470 records an
-  earlier removal). Reverses if: MAIN ships a kit version whose files pass RC's ruff rules, or MAIN
-  rules that trees lint the kit (the ignore then goes, never a local kit edit).
 - Lane widget: a stale checklist renders "- checklist STALE". Reverses if: MAIN wants the literal.
 - Local branch m2-prebuild-56e5572e4 KEPT (git cherry: 4 equivalent, 2 unique; LEDGER 1701, 1707).
   Reverses if: `git cherry` shows 0 patch-unique commits (then `git branch -d` and it may go), or the
   2 unique commits are mapped to main commits that shipped them (RM-703 / RM-793 method).
-- Lane driver files under ops/loop/control/lane_prompts/ are untracked AND gitignored (.gitignore:338
-  `ops/loop/control/`; no LEDGER entry). Reverses if: `git check-ignore -v
-  ops/loop/control/lane_prompts/<file>` stops matching, or MAIN / the operator orders them tracked.
 
 ====================
 PROCEDURE (full list: docs/OPERATIONS.md "Session procedure (moved from the hand-off, s122)")
@@ -325,9 +318,9 @@ PROCEDURE (full list: docs/OPERATIONS.md "Session procedure (moved from the hand
   push --tags`. Read `inbox_tick.py --pending` at session START.
 - fleet_gitlock refuses cherry-pick: `git cherry-pick --no-commit <sha>` then `fleet_gitlock.py run
   -- git commit -C <sha>` (or a fast-forward when linear; memory).
-- The pre-push sweep scans EVERY commit in the range: a synthetic or made-up drive-root path in any
-  local commit halts it - use the allowlisted OS-root folder name in fixtures; rebuild the unpushed
-  commits (tree-hash check), never bypass (memory).
+- The pre-push sweep scans EVERY commit in the range (messages too): a synthetic or made-up drive-root
+  path in any local commit halts it - use the allowlisted OS-root folder name in fixtures; rebuild the
+  unpushed commits (tree-hash check), never bypass (memory; s129 rebuilt 12, LEDGER 1788).
 - After a DS data change run `tools/ds_feed_index.py --write` and CI's check-job sync steps before
   pushing (RM-790; the done.md TIER TABLE now lists them).
 - Board: `fleet_board.py calls` bumps the version on every render - render right before pushing;
@@ -336,32 +329,39 @@ PROCEDURE (full list: docs/OPERATIONS.md "Session procedure (moved from the hand
 - Hand-off cap: kit v18 `fleet_done.py mark` FAILS over 30720 B. Tighten, or archive verbatim.
 - A whole-suite command whose test paths sit in a shell variable is denied by the suite-gate hook:
   name the files literally. The claims hook reads `--owner $VAR` literally: type the owner id.
+- Worktree cleanup after a REBUILT push: verify each agent branch by file equality against main OR
+  the archive/s129-pre-rebuild tag chain (cherry / rebuild shas differ), never by ancestry alone.
 
 ====================
 STATUS, CONTEXT, ACCEPTANCE
 ====================
-Status (s128 wrap): 7 session pushes adbd2c93f..fa371ab4f (31 commits), push CI green on every head
-(run ids in LEDGER 1779; bot_merge_check clean on each), then the wrap commit (LEDGER 1762-1779, BACKLOG flips + RM-807..RM-823,
-ROADMAP size pass, registry pin RM-824, WAKEUP_NOTES + prune, docs/handoff-archive/RC-2026-10-23.txt,
-this file); its push CI and docs-guards are the next session's read-back after the dispatch.
-Full suite (2c): dispatched run 39976892990 on fa371ab4f (no candidate covered HEAD: nightly and the
-local gated run were on 951e62198; the three later pushes read mode=slice); pending 39976892990
-(in_progress at the wrap).
-Gate: ruff all passed; hygiene trio 14 passed; drift_guard 0 breaches; md-reading guard slice (106
-modules) 2669 passed + the one registry red fixed in the same edit and re-run green (113 passed).
-DS :8860 1.289.0 / 16.21.1 / 173 / 699. RC pid 18476 alive, last_reload_ok true, fatal_count 0; no
-game (mode_key client); session file 3.6 MB; no intent; no steers; inbox empty; open PRs 0.
-Board: the --final push follows this file's commit (state.json and the server doc at v17 at the wrap
-start); a failed push would be recorded here in a follow-up commit.
-In flight: none (the main session reported none; this executor's background items: none).
+Status (s129 wrap): session pushes f349e3178..5543cc56d, 5543cc56d..6eae852d3, then the /done
+fast-forward to 0781e3c83 (the s129 docs record) pushed 6eae852d3..0781e3c83; bot_merge_check clean;
+then the wrap commit (WAKEUP_NOTES + prune, handoff-archive trim, this file) and its push.
+CI: 5543cc56d ci 40029493032 CANCELLED by the newer push (never graded; its push read mode=full via
+tests/conftest.py); 6eae852d3 ci 40033559345 success (watched to exit 0), docs-guards 40033559344 and
+codeql 40033559405 success; 0781e3c83 docs-guards 40034820217 + codeql 40034820135 in progress at the
+wrap; the wrap push's docs-guards is the next session's read-back.
+Full suite (2c): dispatched run 40034861146 on 0781e3c83 (headSha read back = HEAD). No candidate
+covered HEAD: nightly 951e62198, dispatch fa371ab4f, the local gated run on 5543cc56d (7b5ccfc53 is
+code), and 5543cc56d..6eae852d3 read mode=slice. Pending 40034861146 (in_progress at the wrap).
+Gate (at 0781e3c83): ruff all passed; hygiene trio 14 passed; drift_guard 0 breaches.
+DS :8860 1.289.0 / 16.21.1 / 173 / 699. RC pid 7700 alive, last_reload_ok true, fatal_count 0; no
+game (mode_key client); session file 2.7 MB; no intent; no steers; no new memory files this session.
+Worktree cleanup: 7 s129 agent worktrees removed (no force; ignored files backed up to the session
+scratch first) and 7 branches deleted after a file-equality check; worktrees 20 -> 13, local branches
+23 -> 16, refs 41 -> 34.
+Board: the --final push follows this file's commit; a failed push would be recorded here in a
+follow-up commit.
+In flight: none (the main session reported none; this executor's background items: none left).
 
-Context: BACKLOG "Session 128 filings" (RM-807..RM-823); ROADMAP NOW rows "SESSION 128 SHIPPED" and
-RM-807..RM-823; docs/ROADMAP_HISTORY.md `## 2026-10-23`; ops/claude_settings.example.json (RM-782,
-ASKS 29); tools/repin_subagent_cli.py; ops/runtime/inbox_responder_agreement.json (expires
-2026-11-01).
+Context: BACKLOG "Session 129 filings" (RM-824..RM-834) and "Session 128 filings"; ROADMAP NOW rows
+"SESSION 129 SHIPPED" and RM-824..RM-834; docs/handoff-archive/RC-2026-10-23.txt;
+core/http_host_gate.py; core/port_handoff.py; core/log_scrub.py; ops/runtime/inbox_responder_agreement.json
+(expires 2026-11-01).
 
-Acceptance: dispatch 39976892990 read back green (or its red fixed forward); the owed MAIN note
-delivered (N/M reached, hashes re-checked); each RM-807+ row per its BACKLOG acceptance (failing test
+Acceptance: dispatch 40034861146 read back green (or its red fixed forward); the owed MAIN note
+delivered (N/M reached, hashes re-checked); each RM row per its BACKLOG acceptance (failing test
 first, verifier CONFIRM); S6 read back in a live game; operator asks answered or re-batched.
 
 Start with: read this file first, then CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
