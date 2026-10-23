@@ -252,11 +252,13 @@ registry-count or ASCII-hygiene failure, and never "fix" a data file on the stre
    run.
 7. **`Path.write_text` rewrites LF as CRLF on Windows and corrupts byte counts.** `read_text` hides it, so a round-trip looks clean while the file on disk grew. Write
    BYTES whenever a count matters - a size budget, a hash, a byte-identity assertion. Memory `reference_windows_write_text_crlf_byte_count`.
-8. **`schtasks /End` then an immediate `/Run` leaves the target DEAD while every status signal says success.** For DS `:8860`: `/End` kills the process, `/Run` fires a
-   second later, `tools/start_daemon_slayer.py:85` sees the port still bound by the dying process, logs "port 8860 already bound - skipping (exit 0)" and exits cleanly;
-   the old process finishes dying, the port frees, no server was started - while `schtasks /Query /V` reports `Status: Ready`, `Last Result: 0`. The fix is a SECOND
-   `/Run` once the port is free, and **the only honest check is an HTTP probe**, never the task's exit code. `schtasks /End|/Run` also cannot be issued from the Bash
-   tool (Git Bash rewrites the switches as paths) - use the PowerShell tool. This lane owns "health and supervisors", so it will meet this.
+8. **`schtasks /End` then an immediate `/Run` used to leave the target DEAD while every status signal said success (closed session 129).** `/End` returns before the
+   old process lets go of its port; the old one-shot bind preflight in `tools/start_daemon_slayer.py` (:8860) and `tools/start_ds_matchdb_mcp.py` (:8861) logged
+   "already bound - skipping (exit 0)", and once the old process died nothing listened. Both launchers' `main()` now wait through `core/port_handoff.await_port`
+   (up to `WINDOW_S`) and start once the port frees; they exit 0 only when a live instance (`holder_is_ds` / `holder_is_matchdb`) still holds it after that window,
+   and log "not started (exit 1)" for any other holder. Recipe: `docs/OPERATIONS.md` ("Local DS + match-DB MCP" restart; the DS line under "Restart RC").
+   **The only honest check is still an HTTP probe** from a NEW pid, never the task's exit code. `schtasks /End|/Run` also cannot be issued from the Bash tool
+   (Git Bash rewrites the switches as paths) - use the PowerShell tool. This lane owns "health and supervisors", so it will meet this.
 9. **RC restart is `echo restart > restart_trigger.txt`** (supervisor clears and restarts within ~5s); verify by reading `ops/runtime/health.json` for a NEW `pid`,
    `alive=true`, `last_reload_ok=true`. DS `:8860` is NOT supervisor-watched and ignores that trigger. Editing `web/{js,css}/panels/*` needs no RC restart at all
    (ADR-008 unified asset-hash, `compute_asset_hash`) - say so rather than bouncing RC for an asset-only change.

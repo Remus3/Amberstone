@@ -198,12 +198,14 @@ and the RC supervisor does not bounce it.
 **Restart: `taskkill /F /PID <ds-pid>` then `schtasks /Run /TN RC-DaemonSlayer`.** Find the pid via `Get-NetTCPConnection -LocalPort 8860 -State Listen`
 (verified pid 16988 at authoring). **NEVER `Stop-Process`** - CLAUDE.md hard rule, it hangs the MCP pipe.
 
-**Trap: `schtasks /End` then an immediate `/Run` leaves :8860 DEAD while every status signal says success.** `/End` kills the process; `/Run` fires a second
-later and `tools/start_daemon_slayer.py:85` sees the port still bound by the dying process, logs `port 8860 already bound - skipping (exit 0)` to
-`logs/daemon_slayer_startup.log`, and exits cleanly. The old process then finishes dying, the port frees, and no server was ever started - while `schtasks
-/Query /V` reports `Status: Ready`, `Last Result: 0`, because the launcher genuinely succeeded at its job of declining a taken port. The fix is a SECOND `/Run`
-once the port is free. **The only honest check is an HTTP probe**, never the task's exit code. Separately, `schtasks /End|/Run` cannot be issued from the Bash
-tool (Git Bash rewrites the switches as paths: `Invalid argument/option - 'C:/Program Files/Git/End'`) - use the PowerShell tool.
+**Trap (closed session 129): `schtasks /End` then an immediate `/Run` used to leave :8860 DEAD while every status signal said success.** `/End` returns
+before the old process has let go of the port; the launcher's old one-shot bind preflight saw it still bound, logged `port 8860 already bound - skipping
+(exit 0)` and exited, and once the old process died nothing listened. Now `tools/start_daemon_slayer.py` `main()` waits for the port through
+`core/port_handoff.await_port` (up to `WINDOW_S`) and starts once it frees; it exits 0 only when a live DS (`holder_is_ds`: `/health` 200 naming
+`engine_version`) still holds the port after that window, and logs `not started (exit 1)` to `logs/daemon_slayer_startup.log` for any other holder.
+Recipe: `docs/OPERATIONS.md` (the DS line under "Restart RC"; the RC-DS-MatchDB-MCP restart in "Local DS + match-DB MCP" has the same shape). **The only
+honest check is still an HTTP probe** of `/health` from a NEW pid, never the task's exit code or `Last Result`. Separately, `schtasks /End|/Run` cannot be
+issued from the Bash tool (Git Bash rewrites the switches as paths: `Invalid argument/option - 'C:/Program Files/Git/End'`) - use the PowerShell tool.
 
 ### 9. The wrap
 

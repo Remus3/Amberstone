@@ -481,8 +481,10 @@ class DsWatchdog:
             logger.warning("daemon_slayer hung - could not kill pid %d", holder)
             self._start_grace(now)
             return "kill-failed"
-        # taskkill returns before the socket is always released; spawning onto
-        # a held port only makes the launcher's preflight skip (exit 0).
+        # taskkill returns before the socket is always released. The launcher
+        # waits out a holder that is still exiting (core/port_handoff
+        # await_port, session 129) but exits 1 if one outlives its window, so
+        # wait for the release here too and leave a slower one to next tick.
         for _ in range(max(1, int(self.release_wait_s / 0.5))):
             if self._find_holder(self.port) is None:
                 break
