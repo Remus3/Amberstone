@@ -4298,10 +4298,14 @@ class DuskAndDawnSpellbladeTests(unittest.TestCase):
 class Batch32LethAllyPromotionsTests(unittest.TestCase):
     """The Collector (667666), Prowler's Claw (6693), Bastionbreaker (2520) lethality."""
 
+    # DDragon <stats> magnitudes (CLAUDE.md Settled). 2520 re-derived at
+    # 16.21.1 (RM-766) from its stats line "<attention>18</attention>
+    # Lethality" (16.20.1 read 22); tests/test_item_pen_ddragon_sync.py keeps
+    # every engine pen pin tied to the live DDragon line.
     EXPECTED_LETH: dict[str, float] = {
         "667666": 10.0,
         "6693": 22.0,
-        "2520": 22.0,
+        "2520": 18.0,
     }
     EXPECTED_NAMES: dict[str, str] = {
         "667666": "The Collector",
@@ -7294,13 +7298,17 @@ class Batch59BastionbreakerLethScalingTests(unittest.TestCase):
         self.assertEqual(procs[0].damage_type, "true")
         self.assertAlmostEqual(procs[0].every_n_seconds, 45.0)
 
-    def test_2520_formula_at_lethality_22(self) -> None:
+    def test_2520_formula_at_its_own_lethality(self) -> None:
+        # Re-derived at 16.21.1 (RM-766): the item's DDragon <stats> line reads
+        # 18 Lethality (16.20.1: 22), and the Meraki Shaped Charge formula is
+        # 15 + 0.75 x lethality, so a lone Bastionbreaker's proc is
+        # 15 + 0.75 * 18 = 15 + 13.5 = 28.5 (was 31.5 at 22).
         from agents.daemon_slayer.effects import CallContext
-        ctx = CallContext(base_ad=100.0, bonus_ad=0.0, level=11, caster_lethality=22.0)
+        ctx = CallContext(base_ad=100.0, bonus_ad=0.0, level=11, caster_lethality=18.0)
         eff = ITEM_EFFECTS["2520"]
+        self.assertAlmostEqual(eff.lethality, 18.0)
         dmg = eff.periodics[0].bonus_damage(ctx)
-        # 15 + 0.75 * 22 = 15 + 16.5 = 31.5
-        self.assertAlmostEqual(dmg, 31.5, places=2)
+        self.assertAlmostEqual(dmg, 28.5, places=2)
 
     def test_2520_formula_at_zero_lethality(self) -> None:
         from agents.daemon_slayer.effects import CallContext
@@ -7315,8 +7323,9 @@ class Batch59BastionbreakerLethScalingTests(unittest.TestCase):
         self.assertGreater(with_bb.weighted_dps, bare.weighted_dps)
 
     def test_2520_lethality_still_contributes(self) -> None:
+        # DDragon 16.21.1 <stats>: 18 Lethality (RM-766; 16.20.1 read 22).
         eff = ITEM_EFFECTS["2520"]
-        self.assertAlmostEqual(eff.lethality, 22.0)
+        self.assertAlmostEqual(eff.lethality, 18.0)
 
 
 class Batch60RealityFractureVoidmitesTests(unittest.TestCase):

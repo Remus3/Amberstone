@@ -1340,7 +1340,17 @@ ENGINE_VERSION 1.10.0):
   dropped (550007 Party Favor was the one uncredited purchasable row). lolmath
   cooldowns Darius Q 9..5 -> 9..4, LeeSin W 7 -> 8; skill orders moved for 17
   champions; damage_distribution aggregate drift on all 173; scenarios
-  byte-identical. Abilities 0 changes (Meraki content patch 25.15, not forced).
+  content-identical under sort_keys (key order changed). Abilities 0 changes
+  (Meraki content patch 25.15, not forced).
+- data (DDragon <stats>, verifier finding): Bastionbreaker (2520) Lethality
+  22 -> 18 - the only canonical-item <stats> change at 16.21.1, missed by the
+  first pass because only Ability Haste had a drift checker. ``_effects_data``
+  2520 re-pinned to 18.0; Shaped Charge (Meraki formula 15 + 0.75 x
+  lethality, unchanged) therefore drops 31.5 -> 28.5 for a lone
+  Bastionbreaker. New guard ``ops/audit/item_pen_drift_check.py`` +
+  ``tests/test_item_pen_ddragon_sync.py`` diff every engine Lethality / %
+  armor pen / flat + % magic pen pin against DDragon <stats> at current.txt.
+  Still 1.289.0: the fix lands inside the same unmerged batch.
 - data (adjudicated): the 16.21.1 lolmath ARAM table is all-neutral for
   173/173 champions, never seen before (16.20.1: 132 non-neutral rows), while
   the wiki sidecar fetched the same day still carries the 16.20.1 values, so
@@ -1355,8 +1365,12 @@ ENGINE_VERSION 1.10.0):
   parameters - via ``extract_from_bodies``; no engine code change. The bump is
   for the moved engine inputs. Every 16.21.1 build table is regenerated
   against it in-process (static transport): Lane B 173 / 519 cells per mode,
-  HZ orders 692 and variants 346 cells per mode; only Sion's orders moved
-  (Lane B SR + ARAM, HZ Arena).
+  HZ orders 692 and variants 346 cells per mode; Sion's orders moved (Lane B
+  SR + ARAM, HZ Arena), and after the 2520 re-pin the SR tables were
+  regenerated again: the lethality assassins whose orders carry
+  Bastionbreaker moved (Lane B SR 8 champions, HZ SR 10, HZ SR variants 7 -
+  Kha'Zix, Naafiri, Pyke, Qiyana, Rengar, Talon, Zed plus Shaco / Camille /
+  Riven); ARAM and Arena tables came out content-identical.
 
 1.288.0 (2026-10-22) - RM-600 Kled wiki sidecar, RM-660 Arena BotRK
 current-HP lever.
