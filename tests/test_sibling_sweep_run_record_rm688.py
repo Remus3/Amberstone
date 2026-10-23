@@ -52,6 +52,8 @@ _FAKE_PARTICIPANTS = {"VXD": _FAKE_REPOS[0], "QMH": _FAKE_REPOS[1], "BWS": _FAKE
 _KEYS = {
     "v", "ts", "arm", "explain", "cfg", "verdict", "exit", "hits",
     "commits", "files", "bytes", "range", "head", "worktree", "bypass_env",
+    # RM-799: the malformed-key COUNT (an int; additive, so the version stays 1).
+    "malformed",
 }
 
 

@@ -133,11 +133,14 @@ def test_a_config_holding_only_the_supervisor_is_still_armed(tmp_path):
     assert cfg.names == (_MAIN_LEAF,)
 
 
-def test_a_junk_supervisor_shape_arms_nothing_and_breaks_nothing(tmp_path):
+def test_a_junk_supervisor_shape_is_a_fault_not_a_silent_gap(tmp_path):
+    """RM-799 reversed the RM-789 'arms nothing and breaks nothing' contract:
+    a junk shape used to drop MAIN's slot silently, so it is now a FAULT that
+    names the key and refuses the push (tests/test_sibling_sweep_config_fail_open_rm799.py)."""
     for junk in ("MAIN", ["MAIN"], 7, None, {"MAIN": 7}, {"MAIN": [None, 3]}):
         cfg = _cfg(tmp_path, dict(_BASE, supervisor=junk))
-        assert cfg.mode == sweep.MODE_ARMED, junk
-        assert cfg.names == (_SIB_LEAF,), junk
+        assert cfg.mode == sweep.MODE_FAULT, junk
+        assert len(cfg.malformed) == 1 and "'supervisor'" in cfg.detail, junk
 
 
 def test_the_supervisor_slot_is_narrowable_by_declaration_only(tmp_path):

@@ -43,7 +43,8 @@ THREE MODES
 ARMED     - config parsed, needles loaded, both arms run.
 DEGRADED  - no override AND no config file. The needle arm proves NOTHING and
             says so on EVERY push. The structural arm still runs.
-FAULT     - config present but unparseable, zero usable paths, a failed git
+FAULT     - config present but unparseable, a key this sweep reads that is
+            malformed or mis-spelled (RM-799), zero usable paths, a failed git
             invocation, or zero bytes scanned against a non-empty diff. Exit 3.
             FAULT is never collapsed into HALT: "the gate fired" and "the gate
             could not run" are different facts and must stay different.
@@ -339,6 +340,9 @@ class SweepConfig:
     # Holds the CANONICAL slot spellings that resolved from the declaration, so
     # a declared name matching no slot simply is not here and narrows nothing.
     narrowed_names: tuple = ()
+    # RM-799: one problem line per malformed / mis-spelled key, naming the key
+    # and its expected shape, never its value. Non-empty only on a FAULT.
+    malformed: tuple = ()
 
 
 def _leaf(path_like: str) -> str:
@@ -429,7 +433,9 @@ def _coded_slots(mapping: Optional[Mapping[str, Any]], names: list) -> list:
     """Arm the slots of a sweep-only ``{CODE: path | [path, bare name, ...]}``
     map (``retired``, ``supervisor``): every string value appends its leaf to
     ``names`` in place, and the non-blank codes are returned in map order. A
-    non-dict map or a non-string value arms nothing and raises nothing."""
+    non-dict map or a non-string value arms nothing and raises nothing HERE;
+    ``load_config`` refuses such a shape as a FAULT before it reaches this
+    (RM-799), so the skip only ever serves a direct ``config_from_parts`` call."""
     codes: list[str] = []
     for code, value in (mapping.items() if hasattr(mapping, "items") else ()):
         items = value if isinstance(value, (list, tuple)) else [value]
@@ -600,6 +606,132 @@ def resolve_config_path(base: Path) -> Path:
     return local
 
 
+# ---------------------------------------------------------------------------
+# RM-799: a key this sweep cannot read is a FAULT, never a silently lost slot.
+#
+# MEASURED (the RM-789 verifier): a junk-shaped `supervisor` / `retired` value,
+# a mis-cased key and any RC_MOON_SYNC_REPOS override each armed NOTHING and
+# raised nothing; only the banner's slot count moved, and nobody compares that
+# across pushes. The sweep already fails CLOSED on a broken config (unreadable
+# JSON and zero usable names are both FAULT, exit 3), so a key it cannot read
+# joins them rather than degrading with a warning a headless push never shows
+# anyone. Each problem names the KEY and its expected SHAPE, never the value:
+# the FAULT banner lands in hook stderr and CI logs.
+# ---------------------------------------------------------------------------
+_CODED_SHAPE = (
+    "an object mapping a non-blank CODE to one path string or a non-empty list "
+    "of path / name strings, each naming a checkout"
+)
+CONFIG_KEY_SHAPES = {
+    "repos": "a list of path strings, each naming a checkout",
+    "participants": "an object mapping a non-blank CODE to one path string naming a checkout",
+    "narrowed_names": "a list of non-blank basename strings",
+    "retired": _CODED_SHAPE,
+    "supervisor": _CODED_SHAPE,
+}
+# The sweep-only coded keys: the only keys still read from the per-host file
+# when RC_MOON_SYNC_REPOS supplies the repo list instead.
+CODED_KEYS = ("retired", "supervisor")
+
+
+def _names_checkout(raw: Any) -> bool:
+    return isinstance(raw, str) and bool(_leaf(raw))
+
+
+def _shape_ok(key: str, value: Any) -> bool:
+    if key == "repos":
+        return isinstance(value, list) and all(_names_checkout(v) for v in value)
+    if key == "narrowed_names":
+        return isinstance(value, list) and all(isinstance(v, str) and v.strip() for v in value)
+    if not isinstance(value, dict) or not all(str(c).strip() for c in value):
+        return False
+    if key == "participants":
+        return all(_names_checkout(v) for v in value.values())
+    return all(
+        (bool(v) and all(_names_checkout(x) for x in v)) if isinstance(v, list)
+        else _names_checkout(v)
+        for v in value.values()
+    )
+
+
+def config_problems(blob: Any, keys: Sequence[str] = tuple(CONFIG_KEY_SHAPES)) -> list:
+    """One line per malformed or mis-spelled key among ``keys`` (RM-799).
+
+    An absent key and an empty container are NOT problems: absence is the
+    documented empty declaration. A key spelled differently from a known key
+    only by case or surrounding whitespace is a problem, because it is never
+    read. Lines name keys and shapes only, never a value.
+    """
+    if not isinstance(blob, dict):
+        return ["the top level must be a JSON object"]
+    problems: list = []
+    for key in keys:
+        if any(raw != key and str(raw).strip().lower() == key for raw in blob):
+            problems.append(
+                f"'{key}' is mis-spelled (key names are exact and case-sensitive), "
+                "so that key is NOT read"
+            )
+        elif key in blob and not _shape_ok(key, blob[key]):
+            problems.append(f"'{key}' must be {CONFIG_KEY_SHAPES[key]}")
+    return problems
+
+
+def _malformed_fault(source: str, problems: Sequence[str], lead: str) -> SweepConfig:
+    detail = (
+        f"{lead} has {len(problems)} malformed key(s) (RM-799): "
+        + "; ".join(problems)
+        + ". A key the sweep cannot read arms no slot, so the gate refuses to run "
+        "rather than pass with a slot silently missing. Fix "
+        f"{CONFIG_RELATIVE.as_posix()}; ops/moon_sync_repos.example.json shows every shape"
+    )
+    return SweepConfig(mode=MODE_FAULT, source=source, detail=detail, malformed=tuple(problems))
+
+
+def _override_coded_parts(base: Path):
+    """The per-host file's sweep-only coded keys, for the env path (RM-799).
+
+    ``RC_MOON_SYNC_REPOS`` is a repos-only path list, so it cannot carry MAIN's
+    ``supervisor`` slot or a ``retired`` slot; before RM-799 the env branch read
+    neither and every one of those slots dropped whenever the override was set.
+    They are read from the per-host file here, validated as the file path
+    validates them, and armed BESIDE the override. The file's narrowing applies
+    to THOSE slots only, so a coded slot keeps its declared strength and a file
+    declaration never weakens a slot the override itself supplies. An absent
+    file contributes nothing (CI, a fresh clone).
+
+    Returns ``(retired, supervisor, narrowed, fault)``; ``fault`` is a FAULT
+    config or None.
+    """
+    config_path = resolve_config_path(base)
+    if not config_path.exists():
+        return {}, {}, [], None
+    lead = "RC_MOON_SYNC_REPOS is set, and the per-host config beside it"
+    try:
+        blob = json.loads(config_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        return {}, {}, [], SweepConfig(
+            mode=MODE_FAULT,
+            source=str(config_path),
+            detail=f"{lead} is present but unreadable: {type(exc).__name__}, so its "
+            "supervisor / retired slots cannot be armed",
+        )
+    problems = config_problems(blob, CODED_KEYS)
+    if problems:
+        return {}, {}, [], _malformed_fault(str(config_path), problems, lead)
+    retired = blob.get("retired") or {}
+    supervisor = blob.get("supervisor") or {}
+    coded_leaves: list = []
+    _coded_slots(retired, coded_leaves)
+    _coded_slots(supervisor, coded_leaves)
+    leaf_keys = {_narrow_key(n) for n in coded_leaves}
+    declared = blob.get("narrowed_names")
+    narrowed = [
+        n for n in (declared if isinstance(declared, list) else [])
+        if isinstance(n, str) and n.strip() and _narrow_key(n) in leaf_keys
+    ]
+    return retired, supervisor, narrowed, None
+
+
 def load_config(
     root: Optional[Path] = None, env: Optional[Mapping[str, str]] = None
 ) -> SweepConfig:
@@ -616,6 +748,12 @@ def load_config(
     ``;`` and the naive split is correct; this gate additionally runs in a Linux
     CI job, where ``:`` cuts every drive-letter path in half. Same file, same
     keys, one reader that has to survive a platform the other never sees.
+
+    RM-799: every key this sweep reads is shape-checked by ``config_problems``
+    and a malformed or mis-spelled one is a FAULT, like an unreadable file. The
+    override still REPLACES ``repos`` and carries no ``participants``, but the
+    file's sweep-only ``supervisor`` / ``retired`` slots stay armed beside it
+    (``_override_coded_parts``).
     """
     base = Path(root) if root is not None else REPO_ROOT
     environ = os.environ if env is None else env
@@ -629,7 +767,11 @@ def load_config(
     raw = (environ.get("RC_MOON_SYNC_REPOS") or "").strip()
     if raw:
         paths = split_repo_list(raw)
-        cfg = config_from_parts(paths, {}, narrowed_env)
+        retired, supervisor, file_narrowed, fault = _override_coded_parts(base)
+        if fault is not None:
+            return fault
+        narrowed = narrowed_env + [n for n in file_narrowed if n not in narrowed_env]
+        cfg = config_from_parts(paths, {}, narrowed, retired, supervisor)
         cfg.source = "RC_MOON_SYNC_REPOS"
         if cfg.mode == MODE_FAULT:
             cfg.detail = "RC_MOON_SYNC_REPOS is set but yields zero usable names"
@@ -654,6 +796,9 @@ def load_config(
             source=str(config_path),
             detail=f"config present but unreadable: {type(exc).__name__}",
         )
+    problems = config_problems(blob)
+    if problems:
+        return _malformed_fault(str(config_path), problems, "config")
 
     repos = [str(p) for p in (blob.get("repos") or []) if str(p).strip()]
     participants = {
@@ -666,11 +811,10 @@ def load_config(
     narrowed += [n for n in narrowed_env if n not in narrowed]
     # Retired siblings: read by THIS sweep only, never by the responder or the
     # poller, so a retired code stays a needle without becoming a destination.
-    retired_raw = blob.get("retired")
-    retired = retired_raw if isinstance(retired_raw, dict) else {}
+    # Shape-checked above (RM-799), so a non-object never reaches this.
+    retired = blob.get("retired") or {}
     # RM-789: MAIN's checkout name, likewise read by THIS sweep only.
-    supervisor_raw = blob.get("supervisor")
-    supervisor = supervisor_raw if isinstance(supervisor_raw, dict) else {}
+    supervisor = blob.get("supervisor") or {}
     cfg = config_from_parts(repos, participants, narrowed, retired, supervisor)
     cfg.source = str(config_path)
     if cfg.mode == MODE_FAULT:
@@ -1918,6 +2062,8 @@ class _RunContext:
     stats: Optional[ScanStats] = None
     ref_lines: list = field(default_factory=list)
     bypassed: bool = False
+    # RM-799: how many config keys were malformed (a count, never a key name).
+    malformed: int = 0
 
 
 def _hex_or_none(value: str) -> Optional[str]:
@@ -1987,6 +2133,7 @@ def _record_run(ctx: _RunContext, rc: Optional[int]) -> None:
             "head": _run_head(),
             "worktree": main_working_tree(REPO_ROOT) is not None,
             "bypass_env": _bypass_env_set(),
+            "malformed": int(ctx.malformed),
         }
     except Exception:  # noqa: BLE001 - the record is advisory; the exit code is the gate
         _run_record_failed()
@@ -2047,6 +2194,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         root = Path(args.config_root) if args.config_root else REPO_ROOT
         cfg = load_config(root=root)
         ctx.cfg_mode = cfg.mode
+        ctx.malformed = len(cfg.malformed)
         stats = ScanStats()
         ctx.stats = stats
 
