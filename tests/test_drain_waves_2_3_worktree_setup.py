@@ -10,11 +10,14 @@ not-run in the result JSON and the merger prompt.
 from __future__ import annotations
 
 import importlib.util
+import json
+import os
 import subprocess
 import sys
 import threading
 import time
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -35,7 +38,9 @@ def dw(tmp_path, monkeypatch):
     spec.loader.exec_module(mod)
     monkeypatch.setattr(mod, "WT_BASE", tmp_path / "wt")
     monkeypatch.setattr(mod, "DRAIN_DIR", tmp_path / "drain")
-    monkeypatch.setattr(mod, "PROGRESS", tmp_path / "progress")
+    # RM-786: rows go through the kit to main_checkout(PROGRESS_ROOT); tmp_path
+    # has no .git, so they land in tmp_path/ops/loop/control/progress
+    monkeypatch.setattr(mod, "PROGRESS_ROOT", tmp_path)
     monkeypatch.setattr(mod, "LOG", tmp_path / "drain.log")
     monkeypatch.setattr(mod, "RESULT", tmp_path / "result.json")
     monkeypatch.setattr(mod, "STOP_FILE", tmp_path / "DRAIN_STOP")
@@ -297,3 +302,96 @@ def test_cli_rejects_unknown_slice(dw):
     with pytest.raises(SystemExit) as ei:
         dw.main(["--only", "nope"])
     assert ei.value.code == 2
+
+
+# ---------------------------------------------------------------- 4. progress in MAIN (RM-786)
+# FLEET-COMMON item 12: a progress file lives in the MAIN checkout even when
+# its writer runs from a linked worktree. The launcher derived its progress dir
+# from its own checkout (ROOT / ops/loop/control/progress), so a run from a
+# worktree wrote rows the main-checkout readers never see.
+
+_KIT_NAME = "rc_fleet_kit_fleet_headless"   # the name fleet_route loads the kit under
+_kspec = importlib.util.spec_from_file_location(
+    "rc_fleet_kit_fleet_headless_rm786", ROOT / "ops" / "fleet_kit" / "fleet_headless.py")
+_REAL_KIT = importlib.util.module_from_spec(_kspec)
+_kspec.loader.exec_module(_REAL_KIT)
+_REL = Path("ops") / "loop" / "control" / "progress"
+
+
+@pytest.fixture()
+def wt_copy(tmp_path, monkeypatch):
+    """The launcher as it runs from a LINKED worktree: a byte copy of the
+    script (and its prompts) under <tmp>/wt, whose .git file points into
+    <tmp>/main/.git/worktrees/wt. Everything it writes stays under tmp."""
+    main = tmp_path / "main"
+    (main / ".git" / "worktrees" / "wt").mkdir(parents=True)
+    wt = tmp_path / "wt"
+    (wt / "ops" / "loop" / "prompts").mkdir(parents=True)
+    (wt / ".git").write_text("gitdir: " + str(main / ".git" / "worktrees" / "wt") + "\n",
+                             encoding="ascii")
+    copy = wt / "ops" / "loop" / "drain_waves_2_3.py"
+    copy.write_bytes(SRC.read_bytes())
+    for f in (ROOT / "ops" / "loop" / "prompts").glob("drain_w*.md"):
+        (wt / "ops" / "loop" / "prompts" / f.name).write_bytes(f.read_bytes())
+    monkeypatch.setattr(sys, "path", list(sys.path))     # the module inserts its ROOT
+    monkeypatch.setitem(sys.modules, _KIT_NAME, _REAL_KIT)
+    name = "drain_waves_2_3_wt_copy_rm786"
+    spec = importlib.util.spec_from_file_location(name, copy)
+    mod = importlib.util.module_from_spec(spec)
+    monkeypatch.setitem(sys.modules, name, mod)
+    spec.loader.exec_module(mod)
+    assert mod.ROOT == wt.resolve()
+    return SimpleNamespace(mod=mod, main=main.resolve(), wt=wt.resolve())
+
+
+def test_progress_from_a_linked_worktree_lands_in_the_main_checkout(wt_copy):
+    m = wt_copy.mod
+    m._progress("drain-waves-2-3", 5, "Wave2: fetch origin", 600, "running")
+    m._progress("Wave2-atomic", 0, "build run starting", 7200, "running")
+    assert not (wt_copy.wt / _REL).exists()
+    for task in ("drain-waves-2-3", "Wave2-atomic"):
+        doc = json.loads((wt_copy.main / _REL / f"{task}.json").read_text(encoding="ascii"))
+        assert doc["task"] == task and doc["status"] == "running"
+    doc = json.loads((wt_copy.main / _REL / "drain-waves-2-3.json").read_text(encoding="ascii"))
+    assert doc["pct"] == 5 and doc["eta_s"] == 600
+    # the launcher owns its rows: a dead launcher's rows read as abandoned (kit v16)
+    assert doc["owner"]["pid"] == os.getpid()
+
+
+def test_run_wave_rows_land_under_the_redirected_root_only(dw, monkeypatch, tmp_path):
+    """The dw fixture's PROGRESS_ROOT redirect catches every row a wave writes
+    (the live progress dir is outside the test guard's view: it is ignored)."""
+    monkeypatch.setattr(dw, "_git", FakeGit(always_fail=frozenset({"drain-wave2-atomic"})))
+    monkeypatch.setattr(dw, "_spawn", _fake_spawn_factory({}))
+    dw.run_wave(dw.WAVES[0], {"blocked_rows": []})
+    got = {p.stem: json.loads(p.read_text(encoding="ascii"))
+           for p in (tmp_path / _REL).glob("*.json")}
+    assert got["Wave2-atomic"]["status"] == "failed"            # setup failed: not run
+    assert got["Wave2-tail-roadmap"]["status"] == "running"     # build row, child never wrote
+    assert got["Wave2-tail-roadmap-verify"]["status"] == "done"
+    assert got["drain-waves-2-3"]["task"] == "drain-waves-2-3"
+    assert all(d["owner"]["pid"] == os.getpid() for d in got.values())
+
+
+def test_a_failed_progress_write_is_logged_not_raised(dw, monkeypatch, tmp_path):
+    monkeypatch.setattr(dw, "PROGRESS_ROOT", tmp_path / "nope")
+    (tmp_path / "nope").write_text("a file where the root dir should be", encoding="ascii")
+    dw._progress("drain-waves-2-3", 1, "step", 60, "running")
+    assert "progress write drain-waves-2-3 failed" in (tmp_path / "drain.log").read_text(
+        encoding="ascii")
+
+
+def test_child_prompts_point_progress_at_the_main_checkout(wt_copy):
+    m = wt_copy.mod
+    want = str(wt_copy.main / _REL)
+    wrong = str(wt_copy.wt / _REL)
+    prompts = {
+        "build": m.build_prompt("Wave2", "note", "atomic", "drain_w2_atomic.md", "a" * 40),
+        "verify": m.verify_prompt("Wave2", "atomic"),
+        "merge": m.merge_prompt("Wave2"),
+    }
+    for kind, text in prompts.items():
+        assert want in text, kind
+        assert wrong not in text, kind
+        assert "ops/loop/control/progress" not in text.replace("\\", "/").replace(
+            want.replace("\\", "/"), ""), kind
