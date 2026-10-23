@@ -98,9 +98,24 @@ class SendErrorScrubTests(unittest.TestCase):
         fn = body.body[0]
         if ast.get_docstring(fn):
             fn.body = fn.body[1:]
+        # RM-811 residuals: the raw cause IS logged, as
+        # scrub_log(str(exc)) (the log-injection fix). This guard is about
+        # the RESPONSE, so the log statements are dropped before the scan -
+        # and there must be exactly one, so the drop cannot hide the body.
+        def _is_log(stmt) -> bool:
+            return (isinstance(stmt, ast.Expr)
+                    and isinstance(stmt.value, ast.Call)
+                    and isinstance(stmt.value.func, ast.Attribute)
+                    and isinstance(stmt.value.func.value, ast.Name)
+                    and stmt.value.func.value.id == "log")
+        logs = [s for s in fn.body if _is_log(s)]
+        self.assertEqual(len(logs), 1, ast.unparse(fn))
+        self.assertIn("scrub_log(str(exc))", ast.unparse(logs[0]))
+        fn.body = [s for s in fn.body if not _is_log(s)]
         code = ast.unparse(fn)
         self.assertNotIn("str(exc)", code)
         self.assertNotIn("format(exc)", code)
+        self.assertNotIn("exc", code.replace("exc: Exception", ""))
 
 
 class MissionControlRouteScrubTests(unittest.TestCase):

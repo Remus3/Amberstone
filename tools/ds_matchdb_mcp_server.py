@@ -114,7 +114,7 @@ from core.daemon_slayer_client import (  # noqa: E402
     rank_for_primary_archetype as _rank_for_primary_archetype,
 )
 from core.http_host_gate import HostAllowlistMixin  # noqa: E402
-from core.log_scrub import scrub_log  # noqa: E402
+from core.log_scrub import install_scrub_filter, scrub_log  # noqa: E402
 from core.match_db import MatchDB  # noqa: E402
 
 HOST = "127.0.0.1"
@@ -155,6 +155,11 @@ _MATCH_DB_PATH = _PROJECT_ROOT / "data" / "match_history.db"
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("ds-matchdb-mcp")
+# RM-811 residuals: the log-injection backstop (core/log_scrub.py). Above all
+# it renders an exc_info traceback with each exception's text scrubbed onto
+# one line - a tool that raised on the client's arguments used to write that
+# text, CR/LF and escapes included, into the log verbatim.
+install_scrub_filter(log)
 
 _START = time.time()
 
@@ -285,7 +290,8 @@ def tool_ds_health() -> dict:
             out["health"] = json.loads(resp.read().decode("utf-8"))
     except Exception as exc:  # noqa: BLE001
         # RM-770 sibling: the exception text stays in the log.
-        log.warning("ds health read failed: %s: %s", type(exc).__name__, exc)
+        log.warning("ds health read failed: %s: %s", type(exc).__name__,
+                    scrub_log(str(exc)))
         out["health_error"] = type(exc).__name__
     return out
 
@@ -626,6 +632,9 @@ def _dispatch_tool(name: str, fn, args: dict) -> dict:
         # traceback.format_exc(limit=3), whose frames name the checkout's
         # absolute file paths. Per RM-760a the exception text and the
         # traceback stay in the log; the client gets a fixed message.
+        # RM-811 residuals: the logger's ScrubFilter renders this traceback
+        # (frames kept, every exception's text scrubbed onto one line);
+        # guarded by tests/test_log_scrub_residuals_rm811b.py.
         log.warning("tool %s raised %s", name, type(e).__name__,
                     exc_info=True)
         return {"isError": True,
@@ -662,6 +671,17 @@ METHOD_HANDLERS = {
 
 
 # -- HTTP server ------------------------------------------------------------
+def _valid_id(rid) -> bool:
+    """A JSON-RPC 2.0 id: a string, a finite number (never a bool), or null."""
+    if rid is None or isinstance(rid, str):
+        return True
+    if isinstance(rid, bool):
+        return False
+    if isinstance(rid, int):
+        return True
+    return isinstance(rid, float) and math.isfinite(rid)
+
+
 class _Handler(HostAllowlistMixin, http.server.BaseHTTPRequestHandler):
     server_version = f"{SERVER_NAME}/{SERVER_VERSION}"
     # RM-819: the shared RM-759 Host gate (core/http_host_gate.py), FIRST so
@@ -745,6 +765,14 @@ class _Handler(HostAllowlistMixin, http.server.BaseHTTPRequestHandler):
         is_notification = "id" not in req
         method = req.get("method", "")
         rid = req.get("id")
+        # RM-811 residuals: JSON-RPC 2.0 section 4 - an id is a string, a
+        # number or null. An object / array / boolean id (or the NaN /
+        # Infinity json.loads accepts) used to be echoed in an ordinary
+        # reply; it is an invalid request, answered with id null, checked
+        # before the notification branch like the method check below.
+        if not is_notification and not _valid_id(rid):
+            self._send_jsonrpc(None, error=(-32600, "Invalid Request"))
+            return
         # RM-811: an omitted or null params is the empty object; anything
         # else that is not an object is checked below (-32602). The old
         # `or {}` turned [] / 0 / "" into {} and let "x" / [1] / 5 reach a
@@ -917,7 +945,7 @@ def serve_forever(host: str = HOST, port: int = PORT) -> int:
     try:
         srv = _MatchDBHTTPServer((host, port), _Handler)
     except OSError as e:
-        log.error("bind %s:%d failed: %s", host, port, e)
+        log.error("bind %s:%d failed: %s", host, port, scrub_log(str(e)))
         return 1
     try:
         srv.serve_forever()

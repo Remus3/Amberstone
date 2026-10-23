@@ -8,4 +8,13 @@ dashboard.routes_loop_{status,control} modules, imported rather than forked.
 
 Nothing in this package may import game-dashboard code. See
 tests/test_mission_control_server.py for the guard that enforces it.
+
+RM-811 residuals (2026-10-23): this package's loggers carry the
+core.log_scrub backstop (the route modules' logger gets it from
+dashboard/__init__). Guarded by tests/test_log_scrub_residuals_rm811b.py.
 """
+from core.log_scrub import install_scrub_filter as _install_scrub_filter
+
+LOGGER_NAMES = ("rc.mc.handler", "rc.mc.server")
+
+_install_scrub_filter(*LOGGER_NAMES)
