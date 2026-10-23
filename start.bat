@@ -4,7 +4,6 @@ setlocal
 :: Option B launch: use embedded Python runtime if present,
 :: fall back to PATH-based pythonw.exe if not (Option A compatibility).
 set EMBED_PYW=%~dp0python-embed\pythonw.exe
-set EMBED_PY=%~dp0python-embed\python.exe
 
 cd /d "%~dp0"
 
@@ -17,9 +16,11 @@ cd /d "%~dp0"
 :: own, so any other exit means the check could not run. On 11 and 12 the
 :: inherited variable is cleared, so junk never shadows the key file in any
 :: reader; the app then reads the file itself. The interpreter is an
-:: absolute path, python-embed first, else python.exe searched on PATH only,
-:: and the check runs after the cd above: a bare "python" was looked up in
-:: the caller's folder first, where a planted python.bat would run. (The old
+:: absolute path, python-embed first, else python.exe searched on PATH only
+:: (a quote-stripped copy of it: the PATH-only search finds nothing in a
+:: quoted entry), and the check runs after the cd above: a bare "python" was
+:: looked up in the caller's folder first, where a planted python.bat would
+:: run. (The old
 :: read parsed the key inside a ( ... ) block, where cmd expands a variable
 :: when the block is parsed, before set /p ran: with no inherited variable
 :: the key became " =".) The same lines are in scripts\restart.bat and
@@ -29,7 +30,9 @@ set "RC_KEY_EMBED=%~dp0python-embed\python.exe"
 set "RC_KEY_MOD=%~dp0core\anthropic_key.py"
 set "RC_KEY_PY="
 if exist "%RC_KEY_EMBED%" set "RC_KEY_PY=%RC_KEY_EMBED%"
-if not defined RC_KEY_PY for %%I in (python.exe) do set "RC_KEY_PY=%%~$PATH:I"
+set "RC_KEY_SP=%PATH:"=%"
+if not defined RC_KEY_PY for %%I in (python.exe) do set "RC_KEY_PY=%%~$RC_KEY_SP:I"
+set "RC_KEY_SP="
 set "RC_KEY_EC=none"
 if defined RC_KEY_PY "%RC_KEY_PY%" -I -c "import os,runpy,sys;k=runpy.run_path(sys.argv[1]);e=os.environ.get(k['ENV_VAR'],'').strip();sys.exit(10 if k['usable_key'](e) else 11 if k['read_anthropic_key']() else 12)" "%RC_KEY_MOD%"
 if defined RC_KEY_PY set RC_KEY_EC=%errorlevel%
