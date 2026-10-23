@@ -7,8 +7,9 @@ ops/loop/control/progress/ only ever grew (152 files at the 2026-10-09 review;
 rows 'running' for days). The reaper:
 
 - marks a running (or kit 'blocked') row failed once it is silent past 2x
-  its ETA - unless its recorded owner is PROVEN alive and the silence is
-  still inside the kit's ABANDON_S grace;
+  its ETA - unless its recorded owner is alive or unknown and the silence is
+  still inside the kit's ABANDON_S grace (RM-785 b: only a PROVEN-dead owner
+  is reaped at 2x; tests/test_progress_reaper_rm785.py);
 - moves finished (done / failed) rows older than 7 days - by BOTH the
   'updated' stamp and the file mtime - to the Recycle Bin, through the
   checked core.recycle_bin path, never an unlink;
@@ -45,6 +46,9 @@ _kspec.loader.exec_module(kit)
 
 NOW = 1_800_000_000.0
 DAY = 86400.0
+# RM-785 (b): a row is reaped at 2x its ETA only when its owner is PROVEN
+# dead, so the mark-at-2x tests plant this owner and answer Alive(False).
+OWNER = {"pid": 4242, "start": 1.0}
 
 
 def _iso_utc(epoch: float) -> str:
@@ -126,8 +130,8 @@ def _doc(p: Path) -> dict:
 # ---------------------------------------------------------------- mark failed
 
 def test_running_row_past_2x_eta_is_marked_failed_keeping_its_fields(tmp_path, d):
-    p = _plant(d, "job", age_s=1500, eta_s=600)            # 2.5x
-    rep = _reap(tmp_path, d)
+    p = _plant(d, "job", age_s=1500, eta_s=600, extra={"owner": OWNER})   # 2.5x
+    rep = _reap(tmp_path, d, alive=Alive(False))
     assert rep["marked"] == ["job"]
     doc = _doc(p)
     assert doc["status"] == "failed"
@@ -148,16 +152,16 @@ def test_running_row_past_2x_eta_is_marked_failed_keeping_its_fields(tmp_path, d
     (601, None, True),
 ])
 def test_only_rows_past_2x_their_eta_are_marked(tmp_path, d, age, eta, marked):
-    _plant(d, "job", age_s=age, eta_s=eta)
-    rep = _reap(tmp_path, d)
+    _plant(d, "job", age_s=age, eta_s=eta, extra={"owner": OWNER})
+    rep = _reap(tmp_path, d, alive=Alive(False))
     assert (rep["marked"] == ["job"]) is marked
     assert (_doc(d / "job.json")["status"] == "failed") is marked
 
 
 def test_kit_blocked_row_is_reaped_like_running(tmp_path, d):
     _plant(d, "blk", status="blocked", age_s=5000, eta_s=600,
-           extra={"reason": "proxy unreachable"})
-    assert _reap(tmp_path, d)["marked"] == ["blk"]
+           extra={"reason": "proxy unreachable", "owner": OWNER})
+    assert _reap(tmp_path, d, alive=Alive(False))["marked"] == ["blk"]
 
 
 def test_fresh_blocked_row_classifies_as_blocked_not_malformed(tmp_path, d):
@@ -195,7 +199,7 @@ def test_owner_dead_is_marked_and_says_so(tmp_path, d):
 
 
 def test_a_row_rewritten_between_read_and_mark_is_left_alone(tmp_path, d):
-    p = _plant(d, "race", age_s=1500, eta_s=600)
+    p = _plant(d, "race", age_s=1500, eta_s=600, extra={"owner": OWNER})
 
     def writer_comes_back():
         doc = _doc(p)
@@ -203,7 +207,7 @@ def test_a_row_rewritten_between_read_and_mark_is_left_alone(tmp_path, d):
         doc["pct"] = 90
         p.write_text(json.dumps(doc), encoding="ascii")
 
-    rep = _reap(tmp_path, d, alive=Alive(None, hook=writer_comes_back))
+    rep = _reap(tmp_path, d, alive=Alive(False, hook=writer_comes_back))
     assert rep["marked"] == []
     assert any("changed" in h["why"] for h in rep["held"])
     doc = _doc(p)
@@ -318,11 +322,11 @@ def test_missing_dir_is_a_quiet_no_op(tmp_path, d):
 # ---------------------------------------------------------------- plan-only
 
 def test_plan_only_by_default_changes_nothing(tmp_path, d):
-    _plant(d, "stale", age_s=1500, eta_s=600)
+    _plant(d, "stale", age_s=1500, eta_s=600, extra={"owner": OWNER})
     _plant(d, "old", status="done", age_s=8 * DAY)
     before = {p.name: p.read_bytes() for p in d.iterdir()}
     bin_ = Bin(tmp_path)
-    rep = pw.reap(progress_dir=d, root=tmp_path, now=NOW, recycle=bin_, alive=Alive(None))
+    rep = pw.reap(progress_dir=d, root=tmp_path, now=NOW, recycle=bin_, alive=Alive(False))
     assert rep["apply"] is False
     assert rep["would_mark"] == ["stale"] and rep["would_recycle"] == ["old"]
     assert rep["marked"] == [] and rep["recycled"] == [] and bin_.calls == []
@@ -332,8 +336,9 @@ def test_plan_only_by_default_changes_nothing(tmp_path, d):
 # ---------------------------------------------------------------- integration
 
 def test_kit_written_rows_are_recognised_and_reaped(tmp_path):
+    # ownerless (owner=0): reaped once silent past the kit's abandon grace
     kit.write_progress(tmp_path, "kitjob", 30, "kit step", 600, "running",
-                       clock=lambda: NOW - 1500, owner=0)
+                       clock=lambda: NOW - pw.OWNER_ALIVE_GRACE_S - 600, owner=0)
     kit.write_progress(tmp_path, "kitdone", 100, "end", 0, "done",
                        clock=lambda: NOW - 9 * DAY, owner=0)
     d = tmp_path / "ops" / "loop" / "control" / "progress"
@@ -349,8 +354,8 @@ def test_a_marked_row_alerts_once_as_failed_on_the_next_watch_run(tmp_path, d):
     state = tmp_path / "runtime" / "pw.json"
     sent = []
     pw.run(progress_dir=d, state_path=state, now=NOW, send=lambda t, k: sent.append(k))
-    _plant(d, "job", age_s=1500, eta_s=600)
-    _reap(tmp_path, d)
+    _plant(d, "job", age_s=1500, eta_s=600, extra={"owner": OWNER})
+    _reap(tmp_path, d, alive=Alive(False))
     pw.run(progress_dir=d, state_path=state, now=NOW, send=lambda t, k: sent.append(k))
     pw.run(progress_dir=d, state_path=state, now=NOW, send=lambda t, k: sent.append(k))
     assert sent == ["progress_watch:job:failed"]
@@ -411,7 +416,7 @@ def test_cli_dry_run_forces_plan_only_even_with_apply(tmp_path, d, monkeypatch, 
 
 
 def test_cli_apply_marks_and_recycles_through_the_defaults(tmp_path, d, monkeypatch, capsys):
-    _plant(d, "stale", age_s=1500, eta_s=600)
+    _plant(d, "stale", age_s=pw.OWNER_ALIVE_GRACE_S + 600, eta_s=600)   # ownerless
     _plant(d, "old", status="done", age_s=10 * DAY)
     bin_ = Bin(tmp_path)
     monkeypatch.setattr(pw, "_recycle_default", bin_)
