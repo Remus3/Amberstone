@@ -202,6 +202,10 @@ echo restart > restart_trigger.txt
 
 **Verify:** read `ops/runtime/health.json` - confirm new `pid`, `alive=true`, `last_reload_ok=true`.
 
+This restarts the RC process (:8888) only. The vision server (:8889), DS (:8860), the match-DB MCP
+(:8861) and the Phase 3 supervisor (:8890 / :8891) are SEPARATE processes that keep running their old
+code; each restarts its own way (below).
+
 **Hard fallback** (if supervisor is also dead):
 ```powershell
 taskkill /F /PID <pid>        # never Stop-Process - hangs MCP pipe
@@ -234,8 +238,9 @@ holds (for a Host-gate change: the same GET with `-H "Host: rebind.example"` ans
 The other servers that import the shared gates restart their own way: DS :8860 through its task
 (`taskkill /F /PID` of the DS pid; RC's DsWatchdog relaunches `RC-DaemonSlayer`, LEDGER 1748),
 Mission Control :8895 through `RC-MissionControl` (see Mission Control below), the vision server
-:8889 with RC (it runs in-process; `dashboard/server.py` self-heals it), and the DS + match-DB MCP
-server :8861 through `RC-DS-MatchDB-MCP` when it is registered.
+:8889 by killing its own process (it is a separate `pythonw moon_vision_server.py`, NOT in RC, so an
+RC restart does not reload it; RC's VisionWatchdog respawns it - see Vision server below), and the
+DS + match-DB MCP server :8861 through `RC-DS-MatchDB-MCP` (see Local DS + match-DB MCP below).
 
 ---
 
@@ -469,6 +474,19 @@ Regenerate after a patch (the table is patch-pinned): `python -c "import core.la
 curl http://127.0.0.1:8889/health
 curl http://127.0.0.1:8889/latest-frame     # check if frames flowing
 ```
+
+The :8889 server is its OWN process (`pythonw moon_vision_server.py`, cwd = the repo root), not a
+thread in RC. RC's `dashboard/_vision_watchdog.py` (RM-735, started by `dashboard/server.py`) probes
+`GET /health` every 15 s, spawns the server when nothing listens, and kills + respawns a holder that
+stops answering. So an RC restart (`restart_trigger.txt`, hot_reload) does NOT reload vision code
+(`vision_server/`, or a shared module it imports such as `core/http_host_gate.py`). To load it:
+```powershell
+netstat -ano | findstr "LISTENING" | findstr ":8889"   # the last column is the pid
+taskkill /F /PID <pid>        # never Stop-Process
+```
+With RC running, the watchdog spawns a fresh server within ~15 s. **Verify:** a NEW pid listens on
+:8889 and `curl http://127.0.0.1:8889/health` answers 200. With RC down, use "Vision MANUAL
+recovery" under Session procedure near the end of this file.
 
 Vision token is in `config/vision_token.txt` (Legion). Rotate quarterly (no fixed calendar date is recorded here - an absolute date only drifts stale; gauge from the token file's own last-modified time).
 

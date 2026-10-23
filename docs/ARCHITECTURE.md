@@ -10,11 +10,14 @@ Canonical topology table (Legion 1-PC ADR-011 + Peer; tailnet names/IPs) lives i
 "Topology" - not restated here. Durable architecture facts: the dashboard is viewed locally on
 Legion; the relocated relay agents (`lcu_agent` / `liveclient_relay`) run Legion-local (reading
 the local lockfile + Live Client `:2999`); every live reader finds the game host via
-`core/game_host.py` `RC_GAME_HOST` (default `127.0.0.1`). The in-process vision collapse has
-LANDED - both relay halves self-heal off `:2999`/GDI in-process (items 267/276), so the relay
-agents are non-integral cache pre-warmers, not a dependency. The `:8889` endpoint stays the
+`core/game_host.py` `RC_GAME_HOST` (default `127.0.0.1`). The vision collapse has LANDED - both
+relay halves self-heal off `:2999`/GDI inside the vision server process (items 267/276), so the
+relay agents are non-integral cache pre-warmers, not a dependency. The `:8889` endpoint stays the
 shared self-healing read path for all consumers (poller + dashboard + `core/liveclient_cache`)
-and is retained by design.
+and is retained by design. That server is a SEPARATE `pythonw moon_vision_server.py` process, not a
+thread in RC: RC's `dashboard/_vision_watchdog.py` (RM-735) spawns it and respawns it when it stops
+answering `/health`, so an RC restart does not reload vision code (restart recipe:
+`docs/OPERATIONS.md` "Vision server").
 
 ---
 
@@ -22,7 +25,7 @@ and is retained by design.
 
 | From | To | Protocol | Purpose | Cadence |
 |---|---|---|---|---|
-| `liveclient_relay` | `:8889/upload-liveclient` | HTTP POST (JSON) | Live game telemetry (Legion-local; self-heals in-process, item 267) | every 1s |
+| `liveclient_relay` | `:8889/upload-liveclient` | HTTP POST (JSON) | Live game telemetry (Legion-local; the vision process self-heals off `:2999`, item 267) | every 1s |
 | `lcu_agent` | `:8889/upload-lcu` | HTTP POST (JSON) | Champ-select, queue, lobby state (Legion-local) | every 1s |
 | `lcu_agent` (local) | `:8889/lcu-cmd-pending` | HTTP GET | Drain queued commands | every 0.5s |
 | Dashboard | `:8889/lcu-cmd` | HTTP POST | Queue a command for LCU (accept, bench, runes) | on user action |
@@ -297,9 +300,9 @@ These run LEGION-LOCAL as ONLOGON scheduled tasks post-1-PC. The 2-PC-era
 | File | Status | Role |
 |---|---|---|
 | `lcu_agent.py` | RUNNING (RC-LCUAgent) | LCU auth + champ-select/lobby state + command drain; reads local lockfile |
-| `liveclient_relay.py` | RUNNING (RC-LiveClientRelay) | Live Client `:2999` -> `:8889/upload-liveclient`; self-heals in-process when stale + host local (item 267) |
+| `liveclient_relay.py` | RUNNING (RC-LiveClientRelay) | Live Client `:2999` -> `:8889/upload-liveclient`; the vision process reads `:2999` itself when stale + host local (item 267) |
 | `hotkey_listener.py` | RUNNING (RC-HotkeyListener) | In-game Ctrl+Shift hotkeys via a WH_KEYBOARD_LL low-level hook (observes, never swallows; RegisterHotKey was swallowed under League focus): 1/2 coach choice, A overlay ACTIVE, B panel cycle, K mark this moment (RM-638) |
-| `screen_agent.py` | DISABLED (no task) | Continuous DXGI screen capture - retired in favor of the in-process self-grab relay (1-PC, ADR-011). Now non-integral: the frame relay self-grabs in-process (single GDI BitBlt fallback, item 276). Deploy-allowlisted |
+| `screen_agent.py` | DISABLED (no task) | Continuous DXGI screen capture - retired in favor of the vision server's own self-grab (1-PC, ADR-011). Now non-integral: the frame relay self-grabs inside the vision process (single GDI BitBlt fallback, item 276). Deploy-allowlisted |
 | `phase_watcher.py` | DISABLED (no task) | LCU-phase DXGI capture - retired with the 1-PC consolidation (ADR-011). Patched item 209, has a test, deploy-allowlisted; kept as reference |
 | `keybind_listener.py` | OPTIONAL (unscheduled) | ADR-007 Alt+1/2/3 decision-respond keybinds; dashboard banner buttons are the live fallback. A working feature, not dead; safe to archive in a dedicated cleanup |
 
@@ -311,8 +314,8 @@ feature. A clean archival would prune the deploy allowlist + relocate the
 phase_watcher test - a dedicated cleanup slice, not a blind move.
 
 **Vision-frame self-heal (item 276, LANDED + live-proven LEDGER 685/688/711):**
-`vision_server/_frame.py` `get_latest_frame()` self-grabs ONE frame in-process
-(single on-demand GDI BitBlt via `PIL.ImageGrab`; throttled 1/1.5s, fail-soft,
+`vision_server/_frame.py` `get_latest_frame()` self-grabs ONE frame inside the
+vision server process (single on-demand GDI BitBlt via `PIL.ImageGrab`; throttled 1/1.5s, fail-soft,
 source-less requests only, local `RC_GAME_HOST` only) when the cached frame is
 stale/missing - the retired screen-agent is non-integral. The continuous
 DXGI/bettercam loop stays retired (1-PC, ADR-011). Full ship narrative relocated
