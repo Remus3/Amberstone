@@ -34,7 +34,7 @@ if "%OPTION_B%"=="1" (
     echo  [OK]   Step 1 - Embedded Python ^(Option B^) >> "%LOG_FILE%"
     :: Use embedded python for version check
     for /f "tokens=2 delims= " %%v in ('"%EMBED_PY%" --version 2^>^&1') do set PY_VER=%%v
-    echo  [OK]   Python %PY_VER% ^(embedded^)
+    echo  [OK]   Python !PY_VER! ^(embedded^)
     goto :STEP2
 )
 :: Option A: check system PATH python
@@ -64,7 +64,10 @@ echo.
 echo [2/6] Checking required packages ^(anthropic, Pillow^)...
 echo       This may take a moment on first install...
 
-set PIP_LOG=%~dp0logs\_pip_install.tmp
+:: RC_PIP_LOG, never PIP_LOG (RM-810): pip reads every PIP_ variable as one of
+:: its own options (PIP_LOG is --log), so a PIP_LOG here made each pip call
+:: below append its debug log to the same file its stdout is redirected into.
+set RC_PIP_LOG=%~dp0logs\_pip_install.tmp
 
 :: requirements.txt is a HASHED lock generated from requirements.in (header of
 :: either file has the command), resolved for Python 3.11 (python-embed) up
@@ -89,7 +92,7 @@ if "%OPTION_B%"=="1" (
     "%EMBED_PY%" -m pip install -r "%~dp0requirements.txt" %RC_PIP_CMP% >nul 2>&1
     if !errorlevel! neq 0 (
         echo  [INFO]  Embedded runtime differs from the requirements.txt pins, installing...
-        "%EMBED_PY%" -m pip install -r "%~dp0requirements.txt" --quiet >"%PIP_LOG%" 2>&1
+        "%EMBED_PY%" -m pip install -r "%~dp0requirements.txt" --quiet >"%RC_PIP_LOG%" 2>&1
         "%EMBED_PY%" -m pip install -r "%~dp0requirements.txt" %RC_PIP_CMP% >nul 2>&1
         if !errorlevel! neq 0 (
             set RC_PIP_KEEP=1
@@ -101,7 +104,7 @@ if "%OPTION_B%"=="1" (
     set IMPORT_EC=!errorlevel!
 ) else (
     python -m pip install --upgrade pip --quiet >nul 2>&1
-    python -m pip install -r "%~dp0requirements.txt" --quiet >"%PIP_LOG%" 2>&1
+    python -m pip install -r "%~dp0requirements.txt" --quiet >"%RC_PIP_LOG%" 2>&1
     python -c "import anthropic, PIL" >nul 2>&1
     set IMPORT_EC=!errorlevel!
 )
@@ -110,10 +113,10 @@ if %IMPORT_EC% neq 0 (
     color 0C
     echo  [FAIL] Package install failed - anthropic or Pillow could not be imported.
     echo.
-    if exist "%PIP_LOG%" (
+    if exist "%RC_PIP_LOG%" (
         echo  pip output:
         echo  ----------------------------------------
-        type "%PIP_LOG%"
+        type "%RC_PIP_LOG%"
         echo  ----------------------------------------
     )
     echo.
@@ -128,7 +131,7 @@ if %IMPORT_EC% neq 0 (
 
 echo  [OK]   anthropic and Pillow installed and verified
 echo  [OK]   Step 2 - anthropic + Pillow installed >> "%LOG_FILE%"
-if not defined RC_PIP_KEEP if exist "%PIP_LOG%" del "%PIP_LOG%" 2>nul
+if not defined RC_PIP_KEEP if exist "%RC_PIP_LOG%" del "%RC_PIP_LOG%" 2>nul
 
 :: 
 :: STEP 3 -- API Key
