@@ -156,12 +156,17 @@ _PROBES: dict[str, tuple[str, tuple[str, ...]]] = {
 # Ryze armorperlevel 4.2 -> 4.7 raises both halves of the Seraph's pair
 # (16.18.1 read 3601.8210250000006 / 4279.22489125). The ON-minus-OFF lift
 # still moves, so the wire is still proven live.
+# Re-measured at 16.21.1 (RM-766, DDragon stat move only, no registry change):
+# Sion hpperlevel 87 -> 95 raises both halves of the Fimbulwinter pair. Attributed
+# by substitution: the same code on the 16.20.1 snapshot reproduces the old
+# 5328.295964243422 / 5729.085216995396 exactly. The ON-minus-OFF lift is
+# unchanged (400.789...), so the wire is still proven live.
 _MEASURED: dict[str, tuple[float, float]] = {
     _KAENIC: (6560.949098552632, 7002.336717677632),
     _ECLIPSE: (4299.715930460527, 4674.362273881579),
     _CHAINLACED: (5863.31949375, 6048.055390808824),
     _SERAPHS: (3655.9633000000003, 4343.5498450000005),
-    _FIMBUL: (5328.295964243422, 5729.085216995396),
+    _FIMBUL: (5514.429885032895, 5915.2191377848685),
 }
 # The full curated item set each seam arms, base id plus every mode mirror.
 _ARMED_IDS: dict[str, tuple[str, ...]] = {

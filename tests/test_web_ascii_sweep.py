@@ -617,7 +617,15 @@ _WEB = _REPO_ROOT / "web"
 # against the previous commit: swapping exactly web/js/lib/lol_descriptions.js
 # and web/js/panels/codeql_js_hardening.test.mjs back reproduces 8c19101b...
 # EXACTLY. No glyph change.
-_LIVE_HALF_DIGEST = "c0fb54b2ac48df4d851f16015c6415fc444bfa6a7e9cd1638403d2197960cf05"
+# superseded by the RM-766 re-capture below: "c0fb54b2ac48df4d851f16015c6415fc444bfa6a7e9cd1638403d2197960cf05"
+#
+# RE-CAPTURED 2026-10-22 at RM-766 (DS patch 16.20.1 -> 16.21.1), in the same
+# batch as the bump. Ordinary case, no tokeniser change. ATTRIBUTED BY
+# SUBSTITUTION: swapping exactly web/js/lib/items_index.js back to its
+# 9aac2d261 blob (the DDRAGON_FALLBACK_VERSION literal 16.21.1 -> 16.20.1)
+# reproduces the superseded c0fb54b2... value EXACTLY. That one path is the
+# whole change. No glyph change.
+_LIVE_HALF_DIGEST = "3a3a40b47fea396edb10201ec723dc1d83e84daf14b396a3d010c2ac71416dd6"
 
 
 def _web_sources() -> list[Path]:
