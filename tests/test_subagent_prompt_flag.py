@@ -19,6 +19,24 @@ REAL CLI (RM-684): test_cli_version_still_matches_the_pin execs the installed
 `claude --version` (no session, no API call; it skips when the CLI is absent or
 not runnable). Never include this module in a fake-only pass (LEDGER 1684); it
 stays IN the gated whole suite, where its tripwire is the point.
+
+RE-PIN (RM-795): `python tools/repin_subagent_cli.py` runs the four RM-684
+controls through the fleet kit's spawn() and rewrites PINNED_CLI only on a
+full pass, with the version those runs reported. Never bump it by hand.
+
+DECISION (RM-795, 2026-10-23): a runnable CLI newer than the pin stays a RED,
+not a skip-with-warning. Why: the version drift IS the event this file exists
+to catch (failure mode 1 above is silent by nature); a skip is invisible among
+the gated suite's ~100 skips and a pytest warning is read by nobody, so a skip
+would turn the tripwire into a pass on exactly the CLI that was never
+canaried. The red's cost (two hand re-pins in s126) is paid instead by making
+the re-pin one command. Alternatives rejected: skip/xfail with a warning (as
+above); pin major.minor only (the flag is undocumented, any patch can drop
+it); stop the CLI auto-update (machine config outside the tree, not RC's
+call). An ABSENT or unrunnable CLI still skips (an environment capability, not
+drift). Reverses if: the flag becomes documented in `claude --help` (then a
+--help grep can replace the version pin), or the operator / MAIN rules that
+CLI drift is a warning.
 """
 import json
 import shutil
@@ -233,4 +251,6 @@ def test_cli_version_still_matches_the_pin():
         f"{FLAG} is UNDOCUMENTED - re-run the canary before trusting it: spawn a "
         "subagent with a secret codeword in the appended prompt, then run the "
         "SAME prompt without the flag and confirm the codeword does NOT appear. "
-        "Update PINNED_CLI only after that negative control passes.")
+        "Update PINNED_CLI only after that negative control passes: run "
+        "`python tools/repin_subagent_cli.py` (RM-795; four real kit runs, it "
+        "writes the pin only on a full pass).")

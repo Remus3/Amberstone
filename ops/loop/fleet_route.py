@@ -175,7 +175,8 @@ def spawn(prompt: str, *, caller: str, note: str = "", writes_code: bool = False
           stdin: Optional[str] = None, cwd=None, timeout: float = 3600,
           root=None, kind: Optional[str] = None, model: Optional[str] = None,
           effort: Optional[str] = None, prompt_on_stdin: bool = False,
-          session_id: Optional[str] = None, resume: Optional[str] = None):
+          session_id: Optional[str] = None, resume: Optional[str] = None,
+          log_path: Optional[str] = None):
     """Start ONE headless run through the kit. Returns `(usage_line, proc)`.
 
     `kind` (kit v8, FLEET-COMMON 14 e) labels the usage line build / inbox /
@@ -184,8 +185,10 @@ def spawn(prompt: str, *, caller: str, note: str = "", writes_code: bool = False
     empty `note` is replaced by `caller`, so the row is never unlabelled
     (module docstring item 7); `root` omitted is `_kit_root` (the MAIN
     checkout), with the child's cwd kept in this tree.
-    `model`, `effort`, `session_id` and `resume` are the kit's own parameters,
-    passed through only when set (module docstring item 6).
+    `model`, `effort`, `session_id`, `resume` and `log_path` are the kit's own
+    parameters, passed through only when set (module docstring item 6);
+    `log_path` (RM-795) makes the kit stream the run as stream-json into that
+    file instead of capturing one json result.
     `prompt_on_stdin=True` is the kit's `stdin=True`: the WHOLE prompt rides
     stdin and the argv carries none of it. It cannot be combined with `stdin`
     (a body beside an argv instruction): both would feed the one pipe.
@@ -251,7 +254,8 @@ def spawn(prompt: str, *, caller: str, note: str = "", writes_code: bool = False
     # earlier call shape byte-for-byte and leaves the kit's own pick in force.
     opt_kw = {key: value for key, value in (
         ("kind", kind), ("model", model), ("effort", effort),
-        ("session_id", session_id), ("resume", resume)) if value is not None}
+        ("session_id", session_id), ("resume", resume),
+        ("log_path", log_path)) if value is not None}
     if prompt_on_stdin:
         opt_kw["stdin"] = True
     try:
