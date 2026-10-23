@@ -9,20 +9,17 @@ timeout /t 2 /nobreak >nul
 
 setlocal
 for %%I in ("%~dp0..") do set "RC_ROOT=%%~fI"
-:: Read the API key (RM-810): the same lines as start.bat, which says why.
-set API_FILE=%RC_ROOT%\API-Key-Claude.txt
-setlocal enabledelayedexpansion
-set "RC_KEY="
-if defined ANTHROPIC_API_KEY set "RC_KEY=!ANTHROPIC_API_KEY: =!"
-if defined RC_KEY set "RC_NOQ=!RC_KEY:"=!"
-if not "!RC_KEY:~0,7!"=="sk-ant-" set "RC_KEY="
-if defined RC_KEY if not "!RC_NOQ!"=="!RC_KEY!" set "RC_KEY="
-if not defined RC_KEY if exist "!API_FILE!" set /p RC_KEY=<"!API_FILE!"
-if defined RC_KEY set "RC_KEY=!RC_KEY: =!"
-if defined RC_KEY set "RC_NOQ=!RC_KEY:"=!"
-if not "!RC_KEY:~0,7!"=="sk-ant-" set "RC_KEY="
-if defined RC_KEY if not "!RC_NOQ!"=="!RC_KEY!" set "RC_KEY="
-endlocal & set "ANTHROPIC_API_KEY=%RC_KEY%"
+:: RM-810 key check: the same lines as start.bat, which says why. A check
+:: that cannot run leaves the variable alone and the relaunch goes ahead.
+set "RC_KEY_PY=python"
+set "RC_KEY_MOD=%RC_ROOT%\core\anthropic_key.py"
+"%RC_KEY_PY%" -I -c "import os,runpy,sys;k=runpy.run_path(sys.argv[1]);e=os.environ.get(k['ENV_VAR'],'').strip();sys.exit(0 if k['usable_key'](e) else 2 if k['read_anthropic_key']() else 3)" "%RC_KEY_MOD%"
+set RC_KEY_EC=%errorlevel%
+if "%RC_KEY_EC%"=="2" set "ANTHROPIC_API_KEY="
+if "%RC_KEY_EC%"=="3" set "ANTHROPIC_API_KEY="
+set "RC_KEY_PY="
+set "RC_KEY_MOD="
+set "RC_KEY_EC="
 cd /d "%RC_ROOT%"
 :: Apply any pending patches
 if exist "apply_patches.py" (

@@ -209,8 +209,8 @@ echo  [OK]   Step 3 - API key loaded ^(sk-ant-***^) >> "%LOG_FILE%"
 :: or machine environment. An inherited ANTHROPIC_API_KEY can move a claude
 :: session's billing from the subscription to the API, so this step used to
 :: run setx and no longer does. RC reads the key from the gitignored
-:: API-Key-Claude.txt (core\anthropic_key.py); start.bat sets the variable
-:: for its own launched process only.
+:: API-Key-Claude.txt (core\anthropic_key.py); start.bat only checks the key
+:: through that module and never sets the variable (RM-810).
 :: This step writes the validated key back as ONE ASCII line with no padding,
 :: and skips the write when the file already holds exactly that. The compare
 :: runs in memory (RM-779): RC_KEY_SAME, run by the Python found in step 1,
