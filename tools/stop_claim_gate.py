@@ -2516,7 +2516,7 @@ def history_row(report):
     quiet across sessions", which is an n greater than 1 - that is what this is.
     """
     findings = report.get("findings", [])
-    return {
+    row = {
         "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "session_id": report.get("session_id", ""),
         "mode": report.get("mode", ""),
@@ -2526,6 +2526,11 @@ def history_row(report):
         "blocked": bool(report.get("blocked", False)),
         "reason": report.get("reason", report.get("error", "")),
     }
+    # RM-796: its own field, only when set - `reason` already carries
+    # stop_hook_active / the error, and a clean row keeps its old shape.
+    if report.get("report_error"):
+        row["report_error"] = report["report_error"]
+    return row
 
 
 def append_history(report, target, cap=HISTORY_MAX):
@@ -2557,6 +2562,24 @@ def write_report(report, target):
     tmp = target.with_suffix(target.suffix + ".tmp")
     tmp.write_text(json.dumps(report, indent=2), encoding="utf-8")
     tmp.replace(target)
+
+
+# RM-796: the report is bookkeeping like the history and the seen set, so an
+# unwritable one must not take the verdict with it. Until 2026-10-23 an OSError
+# here escaped to main()'s outer guard, which recorded a findings-free
+# internal-error row and emitted nothing: an armed finding reached neither the
+# model nor any file. Adjudicated (option A): _run records the failure in
+# report_error, keeps going, and the fired line says "report unwritable".
+REPORT_UNWRITABLE = "report-unwritable"
+
+
+def _write_report_quietly(report, target):
+    """write_report, returning False instead of raising on a bad path."""
+    try:
+        write_report(report, target)
+        return True
+    except (OSError, ValueError):
+        return False
 
 
 # ---------------------------------------------------------------- SEEN SET
@@ -2741,7 +2764,8 @@ def _run(args):
     transcript = payload.get("transcript_path")
     if not transcript or not Path(transcript).exists():
         report["error"] = "transcript-unreadable"
-        write_report(report, args.report)
+        if not _write_report_quietly(report, args.report):
+            report["report_error"] = REPORT_UNWRITABLE
         append_history(report, args.history, args.history_max)
         return 0
 
@@ -2785,7 +2809,9 @@ def _run(args):
     report["blocked"] = should_block
     if args.arm and fresh and reentry:
         report["reason"] = "stop_hook_active"
-    write_report(report, args.report)
+    report_written = _write_report_quietly(report, args.report)
+    if not report_written:
+        report["report_error"] = REPORT_UNWRITABLE
     append_history(report, args.history, args.history_max)
 
     if should_block:
@@ -2828,10 +2854,15 @@ def _run(args):
         # stderr, or decision:block). It keeps the conversation going under the
         # same loop protections, so the stop_hook_active handling above stands.
         report["message"] = "\n".join(lines)
-        write_report(report, args.report)
+        # RM-796: a failure here leaves the first write (this Stop's findings)
+        # on disk, so the line may still point at it; no retry on a path that
+        # already failed once.
+        if report_written:
+            _write_report_quietly(report, args.report)
         out = {"hookSpecificOutput": {
             "hookEventName": "Stop",
-            "additionalContext": feedback_line(fresh, args.report)}}
+            "additionalContext": feedback_line(fresh, args.report,
+                                               unwritable=not report_written)}}
         # Under pythonw.exe sys.stdout can be None. Never let the emit raise.
         try:
             if sys.stdout is not None:
@@ -2845,26 +2876,37 @@ def _run(args):
 FEEDBACK_MAX = 160
 
 
-def feedback_line(findings, report_path, limit=FEEDBACK_MAX):
+def feedback_line(findings, report_path, limit=FEEDBACK_MAX, unwritable=False):
     """One line, at most `limit` chars: gate, count, finding codes, report path.
 
     The path is shown ROOT-relative when the report sits under ROOT (the live
     case: ops/runtime/stop_claim_report.json). The code list is cut first, with
     a `+N more` tail, down to one code; only then is an overlong path shortened,
-    by eliding its middle so the drive and the file name both survive."""
+    by eliding its middle so the drive and the file name both survive.
+
+    UNWRITABLE (RM-796): this Stop's report was not written, so the line ends
+    `; report unwritable` in place of `; see <path>` - the path may still hold
+    an EARLIER Stop's report. The codes are cut the same way."""
     codes = []
     for finding in findings:
         if finding["check"] not in codes:
             codes.append(finding["check"])
     n = len(findings)
     noun = "unbacked claim" if n == 1 else "unbacked claims"
-    path = _display_path(report_path)
     head = f"stop_claim_gate: {n} {noun}"
 
     def build(shown, rest, shown_path):
         listed = ",".join(shown) + (f",+{rest} more" if rest else "")
-        return f"{head} ({listed}); see {shown_path}"
+        where = "report unwritable" if unwritable else f"see {shown_path}"
+        return f"{head} ({listed}); {where}"
 
+    if unwritable:
+        for keep in range(len(codes), 0, -1):
+            line = build(codes[:keep], len(codes) - keep, "")
+            if len(line) <= limit:
+                return line
+        return f"{head}; report unwritable"[:limit]
+    path = _display_path(report_path)
     if not codes:
         return f"{head}; see {path}"[:limit]
     for keep in range(len(codes), 0, -1):

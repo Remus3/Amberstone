@@ -15,7 +15,9 @@ Measured at main 915300765 before the fix:
   (e) prune_seen() unlinked stale seen-set files directly (fleet rule 9).
 
 The Claude-hook channel may fail OPEN (the git hooks are the authoritative,
-fail-closed gate), so every failure here is exit 0 and silent.
+fail-closed gate), so every failure here is exit 0 with nothing on stderr;
+stdout stays silent except that an armed finding whose report is unwritable
+still prints its one feedback line (RM-796).
 """
 import json
 import os
@@ -58,14 +60,21 @@ def _checks(report_path):
 
 # ------------------------------------------------------------ (d) fail open
 
-def test_an_unwritable_report_path_exits_zero_and_silent(tmp_path):
+def test_an_unwritable_report_path_exits_zero_with_no_error_output(tmp_path):
+    """(d): exit 0, nothing on stderr. RM-796 (adjudicated 2026-10-23): stdout
+    was pinned EMPTY here, which pinned the dropped armed finding; the hook now
+    emits its one feedback line, saying the report is unwritable."""
     blocker = tmp_path / "blocker"
     blocker.write_text("a file, not a directory", encoding="utf-8")
     proc = _run(tmp_path, _transcript(tmp_path, CLAIM), "--arm",
                 "--report", str(blocker / "r.json"),
                 "--history", str(tmp_path / "h.jsonl"))
     assert proc.returncode == 0, proc.stderr
-    assert proc.stdout == "" and proc.stderr == "", (proc.stdout, proc.stderr)
+    assert proc.stderr == "", proc.stderr
+    lines = proc.stdout.splitlines()
+    assert len(lines) == 1, proc.stdout
+    context = json.loads(lines[0])["hookSpecificOutput"]["additionalContext"]
+    assert context.endswith("; report unwritable"), context
 
 
 def test_an_internal_error_fails_open_and_is_recorded(tmp_path, monkeypatch):
