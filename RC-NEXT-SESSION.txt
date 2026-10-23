@@ -1,7 +1,7 @@
 NEXT SESSION
 ------------
-SESSION: 127
-Session 127 = the carried OPEN - WORK ITEMS below. s126: LEDGER 1750-1757 (all of it shipped; see DO NOT RE-LITIGATE).
+SESSION: 128
+Session 128 = the carried OPEN - WORK ITEMS below. s127: LEDGER 1758-1761 (all of it shipped; see DO NOT RE-LITIGATE).
 HISTORY REWRITTEN TWICE 2026-10-09 (LEDGER 1699 B, 1701 rw2): old SHAs via .git/filter-repo/commit-map
 (rw2), then filter-repo-20261009 (B), then filter-repo-20260621 (June); copies beside the sidecar
 Backup bundles. Other clones re-clone (ASKS 5); a fresh clone runs scripts/install_hooks.py and sets
@@ -10,21 +10,33 @@ docs/handoff-archive/RC-2026-10-18.txt (pre-trim: git show e4e3ef1bc:RC-NEXT-SES
 
 CPU (session 120 steer): glance at the CPU load, FREE MEMORY and for orphaned pytest / python / node
 trees (the RM-695 orphan shape) BEFORE heavy work (suites, many agents).
+SCRATCH (s127 lesson): the session scratchpad is shared by every sub-agent - every sub-agent prompt
+names a UNIQUE scratch subfolder and helper / progress file name.
 
-Next action: FIRST `gh run view 39877078008` (the s126 /done full-suite dispatch; see Status) - a red
-is the first fix [s127: that red = 1 test, test_the_port_probe_stops_retrying_at_the_deadline
-(its socket fake was bound process-wide); FIXED at ea008366b, Tier-1 read-back 47 passed exit 0;
-follow-ups RM-801 / RM-802]. Then RM-789 (HIGH: MAIN's checkout name is in no sibling-sweep name slot), then
-RM-766 (Tier-2 DS patch 16.20.1 -> 16.21.1, the merger's ONE gated dual suite), then RM-763..RM-798
-by topic. S6 at the next live game: vision decodes a live game frame under Pillow 13 (cef8bfd22).
+Next action: FIRST read back docs-guards on the s127 wrap push (ci on eece8243b GREEN). Then remove
+the s127 leftover worktree .claude/worktrees/agent-a29112905430c41bd + branch
+worktree-agent-a29112905430c41bd (C1 fix, already merged as ea008366b; git cherry empty): `git worktree
+remove` + `git branch -d` (it was locked by the s127 claude process; never force), with RM-794's two
+(unlocked at the s127 wrap). Then RM-801 (the CI-red shape), RM-805 / RM-806 (Tier-1 DS tooling),
+RM-804 (Tier-2 DS, the merger's ONE gated dual suite), then RM-763..RM-798 by topic. S6 at the next
+live game: vision decodes a live game frame under Pillow 13 (cef8bfd22).
 FIRST at session start: the CPU / memory glance; git log @{u}.. (expect empty); python
-ops/loop/inbox_tick.py --pending (empty at the s126 wrap); gh pr list (0 open at the s126 wrap).
+ops/loop/inbox_tick.py --pending (empty at the s127 wrap); gh pr list (0 open at the s127 wrap).
 
 ====================
 OPEN - WORK ITEMS (by topic)
 ====================
+Filed s127, OPEN in BACKLOG "Session 127 filings" (bodies + acceptance there):
+- RM-801 ~73 process-wide stdlib fakes (subprocess.run / Popen, urlopen) in 20 test files leak into other
+  threads of the same xdist worker - the CI 39877078008 failure shape (the fix pattern: tests/_module_view.py).
+- RM-804 Tier-2 DS: DDragon 16.21.1 passive-text numeric changes the engine does not take from DDragon
+  (Hubris, Turbo Chemtank, Dawncore, Night Harvester, Mirage Blade, Moonflair, Sabotage).
+- RM-805 the extractor accepts an all-neutral lolmath ARAM table silently (16.21.1: 173/173 neutral,
+  carried forward by adjudication): fail loudly at >= 95 percent neutral.
+- RM-806 ops/audit/item_pen_drift_check.py misses the 7 resist-reduction rows; the Terminus exemption
+  skips every axis.
 Filed s126, OPEN in BACKLOG (bodies + acceptance there; RM-779..RM-798 in "Session 126 /done filings"):
-- RM-766 DS 16.21.1 (Tier-2); RM-767..RM-778 (RM-778 = kit defect for MAIN).
+- RM-767..RM-778 (RM-778 = kit defect for MAIN).
 - RM-779 install.bat step 4 writes the key to a %TEMP% file (pre-existing).
 - RM-780 the `\\wsl$\<distro>\mnt\<x>` spelling escapes the /mnt gate.
 - RM-781 MAIN #6 redesign: an allowlisted file-name context, not an escape-set exclusion.
@@ -38,15 +50,15 @@ Filed s126, OPEN in BACKLOG (bodies + acceptance there; RM-779..RM-798 in "Sessi
 - RM-787 RM-600 siblings: lib/game_data/sources.py:195 (Kled hp / range),
   tools/daemon_slayer_wiki_ability_extract.py:319 ("Kled & Skaarl"), tools/ds_windup_offset_compare.py:63.
 - RM-788 tests/test_sibling_name_sweep.py:715-733 appends to the live sibling_sweep_bypass.log.
-- RM-789 HIGH: MAIN's checkout name is in no sibling-sweep name slot (a leak of it is undetectable).
 - RM-790 the done.md Tier-2 command omits CI check-job sync steps (`tools/ds_feed_index.py --check`;
   a DS data change needs `--write`).
 - RM-791 the BACKLOG "LCU WebSocket event stream" row matches a connection_string_password shape
-  (pre-existing; the PostToolUse scan flags it on every BACKLOG edit) - confirm false positive.
+  (pre-existing; the PostToolUse scan flags it on every BACKLOG edit) - confirm false positive. s127:
+  the scan also flags the LEDGER "W3" line (a fake test key in prose, pre-existing) on LEDGER edits.
 - RM-792 RM-754 datum: no test hit 300 s in the 523 s run; peak commit 23.7 GB; wedge untested.
 - RM-793 branch worktree-agent-a28bb1b0d158cab30: 2 `+` cherry lines, content not confirmed on main.
-- RM-794 worktrees agent-aeb60a42f78783dff + agent-a0065ab2e63badfd2 (locked by s126's process):
-  remove them and their branches.
+- RM-794 worktrees agent-aeb60a42f78783dff + agent-a0065ab2e63badfd2 (no longer locked at the s127
+  wrap): remove them and their branches.
 - RM-795 the CLI pin goes red on every CLI auto-update (2 re-pins in s126): re-pin tooling.
 - RM-796 stop_claim_gate drops an armed finding when its report is unwritable (parity with before).
 - RM-797 one stray line in the suite-gate durations.jsonl (early s126 verifier probe; kit state,
@@ -70,6 +82,9 @@ Suites and box:
   workers reach ~3 GB); MAIN ruled slots=1 (1324). Box rule: WinError 1455 or MemoryError = VOID,
   re-run once, never graded; no local full suite while 2+ others run.
 - RM-734 datum: the push impact slice missed tests/test_atomic_write_guard_rm258_rm261.py (RM-735).
+- SWEEP CONFIG (s127 lesson): after ANY change to the gitignored per-host sweep config run every
+  tests/test_sibling_sweep_*.py + tests/test_ci_sibling_sweep_tree_wiring.py +
+  tests/test_junction_drive_spellings_pubrepo_f.py BEFORE the gated suite (LOCAL-only reds CI never sees).
 Lanes and loop:
 - Lane 8 has no worktree / branch: creating one at the sidecar base is out-of-tree (halt).
 - Global ops/loop/control/STOP (2026-09-11) left untouched; only tools/headless-queue.md checks it.
@@ -87,14 +102,14 @@ Channel and MAIN:
 - B3 read-back of MAIN 2237: next pane shows the acct2 status line and no [Legion] line.
 - mission_control.py holds the old worktree base until restart; the old lane folder and its
   system-drive junction are MAIN's to release.
-Worktrees, branches, refs (measured at the s126 wrap):
-- 22 worktrees: main + 8 agent + 2 drain + 11 out-of-root lift. git cherry main <branch> (+unique /
-  -equivalent): agent a1f2b1c7 +1, a25593521 +1/-1 (old locked W-L attempt, superseded by
-  cf72989eb), a28bb1b0 +2 (RM-793), a5ae4bf4 +1, abd89ea3 +9, af827986 +4 (kit v6-v8 work; "said
-  squashed" - unverified), a0065ab2 -1 and aeb60a42 ancestor (RM-794); drain/wave2-atomic +1/-4,
-  drain/wave2-tail-backlog +4/-9 (RM-432 ADR-016, RM-229). Review each before -D (RM-703 method; back
-  up ignored files first). Branches with no worktree: worktree-agent-a0a31cf1b05f41e28,
-  worktree-wf_0815ac54-8f2-4 / -5 / -7 (git cherry before -D).
+Worktrees, branches, refs (count measured at the s127 wrap; git cherry figures from the s126 wrap):
+- 23 worktrees: main + 9 agent (incl. the s127 leftover, Next action) + 2 drain + 11 out-of-root lift.
+  git cherry main <branch> (+unique / -equivalent): agent a1f2b1c7 +1, a25593521 +1/-1 (old locked W-L
+  attempt, superseded by cf72989eb), a28bb1b0 +2 (RM-793), a5ae4bf4 +1, abd89ea3 +9, af827986 +4 (kit
+  v6-v8 work; "said squashed" - unverified), a0065ab2 -1 and aeb60a42 ancestor (RM-794), a29112905
+  empty (s127 leftover); drain/wave2-atomic +1/-4, drain/wave2-tail-backlog +4/-9 (RM-432 ADR-016,
+  RM-229). Review each before -D (RM-703 method; back up ignored files first). Branches with no
+  worktree: worktree-agent-a0a31cf1b05f41e28, worktree-wf_0815ac54-8f2-4 / -5 / -7 (git cherry before -D).
 - Refs: 41. refs/rw2-backup/remote-old/* (7) kept by the C1 ruling (ASKS 6). Never `git push --tags`
   (local tag archive/rm746-r2; the in-tree tag bundle restores with git fetch <bundle>
   'refs/*:refs/restored/*'). RM-703 deletions are restorable from
@@ -105,24 +120,29 @@ Rows and decisions:
 - Still open rows: RM-681 (PARTIAL), RM-682, RM-683, RM-686 (operator-gated), RM-690..RM-693, RM-697
   (gate range across a rewrite), RM-698, RM-699 (hot_reload watches tests/), RM-702 (MAIN-ordered
   only), RM-704..RM-731 except RM-728 (shipped), RM-734, RM-737, RM-740 (e) fu3, RM-754, RM-755,
-  RM-763..RM-798, RM-279, RM-280, RM-368, RM-381, RM-292b-d, RM-251(b), RM-370, RM-229, RM-290, RM-27,
+  RM-763..RM-798 except RM-766 / RM-789 (shipped s127), RM-800 (BLOCKED-BOUNDARY), RM-801,
+  RM-804..RM-806, RM-279, RM-280, RM-368, RM-381, RM-292b-d, RM-251(b), RM-370, RM-229, RM-290, RM-27,
   RM-248, RM-189, RM-167, RM-204, RM-12/RM-14 flips, RM-15(b), RM-16, RM-423, RM-239/RM-242 (operator
-  fence), RM-297b (non-author adjudicator + CI), RM-519. Next free RM id RM-799; next free LEDGER
-  id 1758.
+  fence), RM-297b (non-author adjudicator + CI), RM-519. Next free RM id RM-807; next free LEDGER
+  id 1762.
 - ROADMAP top open: RM-488, RM-482, RM-483, RM-485, RM-513, RM-596, RM-597, then the RM-681.. rows;
-  EXTERNAL-LIFT Band 2 / 4 stay in BACKLOG. ROADMAP.md 69963 B (drift_guard 90 percent line 73728 of
-  81920): before a big edit, move closed rows to docs/ROADMAP_HISTORY.md (ids named literally).
+  EXTERNAL-LIFT Band 2 / 4 stay in BACKLOG. ROADMAP.md 72061 B (drift_guard 90 percent line 73728 of
+  81920; 1.6 KB headroom): before ANY edit that adds text, move closed rows to docs/ROADMAP_HISTORY.md
+  (ids named literally).
 - Desktop EXTERNAL-LIFT-DIRECTIVE.md / -2.md (-2 ingested: RM-526..RM-594). Operator APPROVED Y-44
   (frozen lcu_client.py) and Y-45 (2026-10-03); Y-45 phone push needs ntfy (host local-only).
 
 BLOCKED-OPERATOR: main.py:54 (frozen; ENV-APIKEY); RM-603 in-game callout compliance; RM-681 attended
 calls; the RM-750 live check (after ASKS 20, with RC stopped: DS must come back without RC; residual
 edges in its row); the frozen app/_game_lifecycle.py mid-game start fix; the ops/rc_supervisor.py
-half of RM-258; the board URL location (ASKS 18). The GitHub About "Include in the home page" untick (MAIN
-2312 items 1-2; no API; do not touch the v0.1.0 release, its tag or Pages) stays DEFERRED.
+half of RM-258; the board URL location (ASKS 18); the RM-803 residual (ASKS 28). The GitHub About
+"Include in the home page" untick (MAIN 2312 items 1-2; no API; do not touch the v0.1.0 release, its
+tag or Pages) stays DEFERRED.
 BLOCKED-LIVE-GAME: S6 (above); the RM-752 follow-up (probe the :2999 tools/liveclient_relay.py at a
 TLSv1_2 floor in a live game; it keeps TLSv1 until measured); Y-01 (5 real game ends).
 BLOCKED-BOUNDARY (halt: out-of-tree, joint, or MAIN's act):
+- RM-800: MAIN's checkout path sits in the HISTORY of docs/history_notes.md (HEAD line redacted
+  835277934); clearing history needs MAIN's ORDER via fleet_rewrite.py.
 - RM-740 (e) fu3: on the child-fallback path (RC-DaemonSlayer unregistered), does `schtasks /End
   RC-Supervisor` kill a DS child via the job.
 - ENV-APIKEY (1): the Machine-key removal is MAIN's act.
@@ -137,20 +157,18 @@ BLOCKED-BOUNDARY (halt: out-of-tree, joint, or MAIN's act):
 - Joint re-pins, never solo: CHANNEL_PIN (docs/CHANNEL.md still lists LL / lacks EW - five-way),
   RM-502, RM-429, RM-430; any further SHARED_SHA256 re-pin.
 - SessionStart anomaly "slot bucket 0.lock DEAD_PID (pid 6668)" (machine-wide, outside the repo):
-  re-check (not done s116-s126).
+  re-check (not done s116-s127).
 - One sibling-to-sibling note stuck in a stale folder: moving it is out-of-tree.
 
 ====================
 OPEN - OPERATOR ASKS (batched, re-ask in ONE line)
 ====================
-1-12 unanswered in sessions 111-126; 15, 17, 18, 20-22 open; 19 WITHDRAWN s126 (operator: the GitHub
-security settings were already on; read-back below); 23-27 new in s126.
-GitHub security read-back 2026-10-22 (gh api, not the screenshot): Dependabot alerts ON
-(vulnerability-alerts 204), secret scanning ON, push protection ON; CodeQL runs as ADVANCED setup
-(.github/workflows/codeql.yml; default-setup state not-configured) with the DEFAULT query suite (no
-`queries:` in .github/codeql/codeql-config.yml); Dependabot security updates read DISABLED
-(security_and_analysis + automated-security-fixes enabled=false) although the operator reports them
-on - the operator's screenshot shows alerts / code scanning / secret scanning enabled, not updates.
+1-7, 9-12 unanswered in sessions 111-127; 15, 17, 18, 20-26 open; 19 WITHDRAWN s126; 27 RESOLVED s127
+(MAIN's slot lives in the in-tree gitignored per-host config, RM-789); 28 new in s127. All open asks
+were re-batched in chat in s127.
+GitHub security read-back 2026-10-22 (gh api): Dependabot alerts, secret scanning, push protection ON;
+CodeQL ADVANCED setup (.github/workflows/codeql.yml), DEFAULT query suite; Dependabot security updates
+read DISABLED (automated-security-fixes enabled=false) though the operator reports them on.
 1. GitHub repo topics (README item 8, RM-731): pick them (20 today).
 2. Pages deployment records: 240 = 231 active, 9 error: mark old ones inactive and delete them
    (irreversible), or leave them? Backup in the sidecar Backup folder: pages-deployments-20261009-131815.json.
@@ -158,10 +176,9 @@ on - the operator's screenshot shows alerts / code scanning / secret scanning en
 4. Re-create the Desktop Amberstone.lnk and Lane Widget.lnk (Lane Widget via the operator-run
    tools/install_lane_widget_shortcut.ps1 - it writes outside the tree).
 5. Re-clone (or hard-reset) every other clone after the two rewrites.
-6. Retention for RC's sidecar Backup folder (pre-rewrite bundles 080439 1.5 GB, 093601 1.5 GB, rw2
-   165148 4.3 GB, rw2 remote-old-refs 1.5 GB; the C1-op tag bundle copy; maps; protection JSON;
-   worktree-ignored-* backups). The sidecar copy is on the SAME physical disk as the repo: copy one
-   tag bundle to a different physical device (out-of-tree act).
+6. Retention for RC's sidecar Backup folder (bundles 080439 1.5 GB, 093601 1.5 GB, rw2 165148 4.3 GB,
+   rw2 remote-old-refs 1.5 GB; the C1-op tag bundle copy; maps; protection JSON; worktree-ignored-*).
+   It is on the SAME physical disk as the repo: copy one tag bundle to another device (out-of-tree).
 7. The CI-watchdog checkout (per-host folder outside the tree) is missing; recreate only if re-arming.
 9. RM-686: OK to kill the proxy once for the read-back (task restarts it within ~1 min)? Body in
    BACKLOG "Session 103 filings". No "continue" form so far was an OK for this.
@@ -187,15 +204,17 @@ on - the operator's screenshot shows alerts / code scanning / secret scanning en
     ops/rc_supervisor.py (the RM-258 half).
 25. OK to remove the 11 out-of-root lift worktrees (RM-703; content 85-100 percent on main)?
 26. OK to move the one sibling-to-sibling note stuck in a stale folder (out-of-tree)?
-27. RM-789: if MAIN's name needs a sweep slot outside the tree, add it (never a tracked file).
+28. RM-803 residual (halt boundary): with no per-host config (CI, a fresh clone) the sweep's structural
+    arm is still blind to one configured slot; removing that word from the tracked placeholder
+    allowlist would publish it. Leave it (CI's arm stays structural-only, RM-488), or name a route?
 
 ====================
 OPEN - WATCH AND DATA (act only when seen)
 ====================
 - RM-699 (hot_reload): edits under tests/, tools/ and dashboard/ restart RC. Storms: s108 8; s113 27
-  (2026-10-14 07:58-08:47 local, unattributed); s116 8. Pids s117-s126: 18272, 14820, 15236, 22136,
-  23232, 10108, 14304, 25200, 19960 -> 23324 -> 10868 (s125), 25892 (s126 wrap); causes of 22136 and
-  10108 not investigated; fatal_count 0.
+  (2026-10-14 07:58-08:47 local, unattributed); s116 8. Pids s117-s126: git show
+  9aac2d261:RC-NEXT-SESSION.txt (causes of 22136 and 10108 not investigated); s127 24404 -> 5192;
+  fatal_count 0.
 - Timing flake (not RM-740): tests/test_dashboard_server_thread_start_rm738.py
   ::StillOneThreadPerRequest::test_long_lived_requests_do_not_starve_a_short_one (1.0 s bound) failed
   2 of 4 runs at 100 percent CPU (s113); if it reds, widen the bound or measure on a quiet box.
@@ -206,23 +225,31 @@ OPEN - WATCH AND DATA (act only when seen)
 - The 2026-10-10 07:36-10:02 hang stays UNATTRIBUTED (in the RM-737 note to MAIN); RC starts at 06:37
   / 06:51 that day unexplained. Uninvestigated: RC-Phase3-Supervisor last_result=2; a heartbeat_error
   fatal at 2026-10-10T04:51:23Z.
-- s104: one verifier run saw 24 children die at startup with 0xC0000142; not reproduced.
-- W1 (subagent_first deny mode blocks undispatchable work): step in the OPERATIONS.md section.
+- s104: one verifier run saw 24 children die at startup with 0xC0000142; not reproduced. W1
+  (subagent_first deny mode blocks undispatchable work): step in the OPERATIONS.md section.
 - A future kit version will likely change the /done closing line to "Done ritual processed, safe to
   clear and continue". Do NOT pre-edit the byte-pinned block.
+- The b61059c72 commit body says "11 of 12 red"; measured 12 of 13 (commit messages are never edited).
 
 ====================
 DO NOT RE-LITIGATE (each with Reverses if:)
 ====================
+- s127 (LEDGER 1758-1761): C1 CI 39877078008 red fixed test-only ea008366b (tests/_module_view.py);
+  RM-802 c4cf40a18 / 681997415; RM-789 18646ad2e; RM-799 b6f4043bd; fixtures 25da2f0b2; RM-803
+  b61059c72; RM-766 d1e3883bf / e8d6336a7 / 33d551beb (ENGINE 1.289.0; DS :8860 /health 1.289.0 /
+  16.21.1 / 173 / 699). Reverses if: a live re-check of one of those acceptances fails.
+- RM-789 slot ARMED NARROWED (adjudicated s127): full strength = 10,033 findings in 2,039 files (every
+  push halts); a bare-word mention stays undetectable ("ARMED WITH A MEASURED ESCAPE RATE ABOVE ZERO").
+  Reverses if: MAIN's checkout is renamed to a non-dictionary word (then arm it full strength).
+- RM-766 ARAM modifiers carried forward from 16.20.1 (adjudicated; manifest `aram_modifiers_carry`):
+  lolmath 16.21.1 returned 173/173 neutral. Reverses if: lolmath serves a non-neutral table for
+  16.21.1 or later (re-extract and replace the carried block; RM-805 makes the neutral case loud).
 - s126 (LEDGER 1750-1757): 30 Dependabot alerts closed cef8bfd22; CLI pins 2.1.308 / 2.1.309; C1a
   RM-759 / RM-756 / RM-758 / voice_coach / RM-757 (ff6797dde..c4f08fa7a); C1b RM-760a-c / RM-761a-c /
-  RM-762 (76d522efa..3d3f267e0); DDragon 16.21.1 76fcbd036; wave 1 8ed75ccac..915300765 (C6 F3 / F4,
-  done.md 2c, CLOSED RM-595 / RM-486 / ENV-APIKEY (2), RM-763..RM-778 filed, MAIN 1254 #1-3 / #10-14,
-  1300, ENV-APIKEY nits a-c, WSL /mnt gate); wave 2 b7b44abb7..c6bbd1577 + 376443c8a (MAIN #9 / #17,
-  RM-728, from_claude key, RM-600, RM-660, ENGINE 1.288.0, DS :8860 reads 1.288.0); RM-703 53 branches
-  bundled + deleted, 6 worktrees removed; moon_sync_repos.json drive fixed; MAIN ANSWER 1852 TERMINAL
-  delivered 1/1, both MAIN FIX notes seen and closed; allow_visual.flag recycled; auditor proposal +
-  report recycled. Reverses if: a live re-check of one of those acceptances fails.
+  RM-762 (76d522efa..3d3f267e0); DDragon 16.21.1 76fcbd036; wave 1 8ed75ccac..915300765; wave 2
+  b7b44abb7..c6bbd1577 + 376443c8a (RM-728, RM-600, RM-660, ENGINE 1.288.0); RM-703 53 branches bundled
+  + deleted, 6 worktrees removed; MAIN ANSWER 1852 TERMINAL delivered 1/1. Reverses if: a live re-check
+  of one of those acceptances fails.
 - RM-736 gate change REJECTED, record-only (the TIER TABLE rule: a graded count appears in the output
   of the call that ran it). Reverses if: 3 or more live false flags of this class occur.
 - S4 ruling: fail-open only on the Claude PreToolUse channel; git pre-commit / commit-msg /
@@ -257,32 +284,28 @@ DO NOT RE-LITIGATE (each with Reverses if:)
   parser (e.g. bashlex) with measured coverage, or an operator ruling.
 - Staged-merge credit is a conjunction with the unchanged pre-(f) 1a1fa703d step
   (`_pre_f_staged_step`; LEDGER 1726-1727). Reverses if: a differential fuzz (seeds 7 / 13 / 23 x 60k
-  or a new seed) measures a staged-merge input the gate credits that the pre-(f) step does not, or
-  `_pre_f_staged_step` is removed from the conjunction.
+  or new) finds a staged-merge input the gate credits and pre-(f) does not, or the step is removed.
 - ACCEPTED DEVIATION: a heredoc-heavy command just under COMMAND_PARSE_MAX runs ~1.56x pre-(f).
   Reverses if: a measured under-cap input crosses the 30 s Stop timeout while pre-(f) does not.
 - RM-515 AST exemption (c44ea289f; LEDGER 1718): never go back to text. PINNED_CLI_VERSION 2.1.251
   (tools/inbox_responder_runner.py) is a SEPARATE pin from PINNED_CLI (2.1.309 since s126; LEDGER
-  1718, re-checked LEDGER 1742). Reverses if: an optional-dependency test the AST rule exempts is
-  measured reddening the whole-suite import guard (fix the AST rule, never back to text), or the
-  runner starts reading PINNED_CLI instead of PINNED_CLI_VERSION (then the pins move together).
+  1718, 1742). Reverses if: an optional-dependency test the AST rule exempts reddens the whole-suite
+  import guard (fix the AST rule, never text), or the runner starts reading PINNED_CLI (then the pins
+  move together).
 - RM-740 (e) known cost (LEDGER 1722): while the task is DISABLED, or the RC token can query but not
-  run it, every relaunch is refused and DS stays down. Reverses if: a relaunch refusal is logged while
-  RC-DaemonSlayer is ENABLED and runnable by the RC token, or the box gains a battery
-  (DisallowStartIfOnBatteries / StopIfGoingOnBatteries stop being inert).
+  run it, every relaunch is refused and DS stays down. Reverses if: a refusal is logged while
+  RC-DaemonSlayer is ENABLED and runnable by the RC token, or the box gains a battery.
 - Trade-off (s108, LEDGER 1714): on a thrashing box 3 x 3 s failed probes can replace a slow-but-alive
   vision server; the respawn back-off (90 s doubling to 30 min) bounds the churn; same for DsWatchdog.
-  Reverses if: one server is measured respawning more than 6 times in any 60-minute window (the
-  doubling back-off allows at most 6), or a vision / DS restart is logged while its /health answered
-  within the probe budget.
+  Reverses if: one server respawns more than 6 times in any 60-minute window (the back-off allows at
+  most 6), or a vision / DS restart is logged while its /health answered within the probe budget.
 - Task Scheduler RestartOnFailure is inert for a crash exit; the Operational log stays ENABLED (LEDGER
   1731). Reverses if: a crash exit of a registered RC task is measured relaunched by RestartOnFailure
-  (re-measure after a Windows feature update), or the Operational log is measured filling its cap and
-  dropping RC task events.
-- RC atlas.html stays the hand-built pre-10/7 page (LEDGER 1713, 7f3ed345f). Reverses if: the
-  operator or MAIN re-orders a generated atlas. Its font block is HEAD's OFL-compliant block. Reverses
-  if: the Orbitron holders permit the subset name, upstream drops the RFN, a render difference is
-  measured, or the operator or MAIN orders the byte-exact page in writing.
+  (re-measure after a Windows feature update), or the Operational log fills its cap, dropping RC events.
+- RC atlas.html stays the hand-built pre-10/7 page (LEDGER 1713, 7f3ed345f), font block = HEAD's
+  OFL-compliant block. Reverses if: the operator or MAIN re-orders a generated atlas or the byte-exact
+  page in writing; for the font: the Orbitron holders permit the subset name, upstream drops the RFN,
+  or a render difference is measured.
 - CI's sibling-sweep-tree arm is structural-only on CI ("This green is PARTIAL"; RM-488, LEDGER 1456 /
   1459). Reverses if: the RC_MOON_SYNC_REPOS CI secret is set (a remote act, RM-488) and a CI run is
   read back loading a non-empty sibling list; the "ARMED WITH A MEASURED ESCAPE RATE ABOVE ZERO"
@@ -292,8 +315,7 @@ DO NOT RE-LITIGATE (each with Reverses if:)
   credited push or count that git (reflog / ls-remote) contradicts in a real session.
 - stop_claim_gate accepted gaps ("I'll note CI is green" passes; a shouted word as a channel code;
   future-tense push_claim_without_push; a per-sentence finding cannot be withdrawn; LEDGER
-  1726-1727). Reverses if: one of these shapes is measured producing a wrong verdict in a real session
-  log twice (s122 already showed descriptive phrases flagged once).
+  1726-1727). Reverses if: one shape gives a wrong verdict in a real session log twice (s122: once).
 - RM-512 self-adjudicated in wave 1 (main f21175b41; LEDGER 1503). Reverses if: the operator or MAIN
   re-opens it in writing, or core/riot_api.py is measured reading RIOT_API_KEY (the FILE-ONLY premise).
 - ops/fleet_kit/*.py is ruff-exempt (ruff.toml:79-81 per-file ignore; kit pinned by
@@ -325,25 +347,26 @@ PROCEDURE (full list: docs/OPERATIONS.md "Session procedure (moved from the hand
 ====================
 STATUS, CONTEXT, ACCEPTANCE
 ====================
-Status (s126 wrap): 36 session commits on origin/main 07572c380..376443c8a, then the wrap commits
-376443c8a..66a6b65bf (LEDGER 1750-1757, WAKEUP_NOTES + prune, BACKLOG / ROADMAP / registry, the outbound copy)
-and this file. CI 376443c8a: ci, codeql, pages GREEN. Full suite (2c): dispatched run 39877078008 on 66a6b65bf (pending at the wrap; HEAD differs from it only by this file); docs-guards on 66a6b65bf: GREEN (39877062190; pages green, codeql pending; the .md-only push ran no ci). Gate: ruff all
-passed; hygiene trio 14 passed; drift_guard 0 (1.287.0 anchor sweep: one false positive fixed by
-dating the v0.1.0 release-notes heading); md-reading guard slice (103 modules): 2 failed, 2530 passed - both fixed in 66a6b65bf (a registry-pin pointer read as an allocation; a WAKEUP line naming the deleted module), those guards then 120 passed. Gated Tier-2 on the wave-2
-tree: 1 failed (live DS before restart; passed after), 41322 passed (LEDGER 1756). DS :8860 1.288.0 /
-16.20.1. RC pid 25892 alive, last_reload_ok true, fatal_count 0; no game; session file 5.6 MB; no
-intent; steers #7 / #8 = the RM-728 reaper marking gh-hygiene and rc-s125-c1 failed (MAIN's
-gh-hygiene row had sat at running 70 percent; nothing else to do); inbox empty; open PRs 0; Dependabot
-alerts 0; bot_merge_check clean (66a6b65bf). Board: --final pushed, datasets/board v9 -> v10 (first success since s123; the --final render shows
-every row done, S6 included - S6 is carried, BLOCKED-LIVE-GAME).
-In flight: none (the main session reported none; this executor started no background task).
+Status (s127 wrap): 13 session commits pushed 9aac2d261..eece8243b (push CI ci 39892406609, impact
+slice: GREEN; codeql, docs-guards, pages GREEN on eece8243b), then the wrap commit (LEDGER 1758-1761, WAKEUP_NOTES + prune, BACKLOG
+RM-799 / RM-802 shas, this file); md-reading guard slice (104 modules) 2582 passed. Full suite (2c): covered by
+b61059c72 (local gated run 41435 passed, 100 skipped, 18830 subtests, 501.54 s, EXIT=0;
+<scratchpad>/final127/suite.txt + suite.exit; HEAD differs only in .md). s126 dispatch 39877078008 read
+back RED (1 failed, 41061 passed; fixed ea008366b). Gate: ruff all passed; hygiene trio 14 passed;
+drift_guard 1.288.0 0 breaches; pre-push sweep 0 findings; bot_merge_check clean (13 commits). DS :8860
+1.289.0 / 16.21.1 / 173 / 699. RC pid 5192 alive, last_reload_ok true, fatal_count 0; no game
+(mode_key client); session file 2.2 MB; no intent; no steers; inbox empty; open PRs 0; Dependabot
+alerts 0. Board: --final pushed, datasets/board v12 -> v13 (the render marks every row done; S6 and
+RM-763..RM-798 are carried).
+In flight: none (the main session reported none; this executor's one CI watch finished green).
 
-Context: BACKLOG "Session 126 /done filings" (RM-779..RM-798) and "Session 126 filings" (RM-763..RM-778);
-tools/sibling_name_sweep.py + gitignored ops/moon_sync_repos.json (RM-789); data/daemon_slayer/current.txt
-(RM-766); ops/runtime/inbox_responder_agreement.json (expires 2026-11-01).
+Context: BACKLOG "Session 127 filings" (RM-799..RM-806) and "Session 126 /done filings" (RM-779..RM-798);
+tools/sibling_name_sweep.py + gitignored ops/moon_sync_repos.json; ops/audit/item_pen_drift_check.py;
+data/daemon_slayer/16.21.1/manifest.json (aram_modifiers_carry); ops/runtime/inbox_responder_agreement.json
+(expires 2026-11-01).
 
-Acceptance: the dispatch run read back green (or its red fixed forward); each filed row per its
-BACKLOG acceptance (failing test first, verifier CONFIRM); RM-766 /health reports 16.21.1; S6 read
-back in a live game; operator asks answered or re-batched.
+Acceptance: the wrap push's docs-guards read back green; the leftover worktrees gone; each
+filed row per its BACKLOG acceptance (failing test first, verifier CONFIRM); S6 read back in a live
+game; operator asks answered or re-batched.
 
 Start with: read this file first, then CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.

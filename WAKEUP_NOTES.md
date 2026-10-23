@@ -6,6 +6,17 @@
 
 ---
 
+# 2026-10-22b - session 127: s126 CI red fixed, MAIN sweep slot armed narrowed, RM-799 / RM-802 / RM-803, DS 16.21.1 ENGINE 1.289.0
+
+- **C1 (LEDGER 1758):** dispatch run 39877078008 RED, 1 test bug (a process-wide fake socket); fixed test-only `ea008366b` (`tests/_module_view.py`); RM-802 deadline mutants killed `c4cf40a18`, `681997415`; RM-801 filed.
+- **Sweep (LEDGER 1759):** RM-789 `18646ad2e` - MAIN's checkout name gets a slot, ARMED NARROWED by adjudication (full strength = 10,033 findings); RM-799 `b6f4043bd` (bad config key = FAULT); fixtures `25da2f0b2`; RM-803 `b61059c72` (allowlist never shadows a loaded slot). RM-800 BLOCKED-BOUNDARY; ask 27 resolved, ask 28 new (the RM-803 residual).
+- **RM-766 (LEDGER 1760):** `d1e3883bf` / `e8d6336a7` / `33d551beb` - DS 16.21.1, ENGINE 1.289.0, Bastionbreaker lethality 18, pen drift guard; ARAM table carried from 16.20.1 (lolmath all-neutral); DS :8860 reads 1.289.0. Gated dual suite on `b61059c72`: 41435 passed, EXIT=0.
+- **Filed:** RM-801, RM-804, RM-805, RM-806 OPEN. **Push:** `9aac2d261..eece8243b`, then the wrap commit (LEDGER 1761).
+- **Do NOT redo:** any of the above; the s127 leftover worktree `agent-a29112905430c41bd` is merged - just remove it.
+- **Next:** read the push CI, remove the leftover worktrees (s127 + RM-794), then RM-801, RM-805 / RM-806, RM-804 (Tier-2), then RM-763..RM-798; S6 at the next live game.
+
+---
+
 # 2026-10-22 - session 126: 30 Dependabot alerts closed, security batches C1a / C1b, C1b-3 waves 1-2, ENGINE 1.288.0, RM-703 cleanup
 
 - **Deps `cef8bfd22` (LEDGER 1750):** certifi / Pillow 13 / portalocker / CI ruff, PR #21 by path B; alerts 30 -> 0. CLI pin 2.1.308 `15e896080`, then 2.1.309 `09054d9cd`.
@@ -30,15 +41,3 @@
 - **OPERATOR STEP:** elevated `tools/install_ds_keepalive_task.ps1` (SYSTEM task RC-DSKeepalive), then the RM-750 live check with RC stopped.
 - **Do NOT redo:** C1 (ANSWER is TERMINAL), TA1, RM-747..RM-753, RM-750 code, the CLI re-pin.
 - **Next:** the carried OPEN - WORK ITEMS in hand-off order (C11 not reached); RM-759 is unblocked.
-
----
-
-# 2026-10-19b - session 124: C1 gated dual suite GREEN, CLI pin 2.1.304, RM-695 closed, ROFL moved, lane 8 ws_server audit on a branch
-
-- **C1 / T2 DONE (LEDGER 1742):** gated `-n 8` dual suite on a2c3c0934: 40592 passed, 0 failed, exit 0, 478 s (attempt 1 on 01e951302: 2 deterministic reds + a ~20 min xdist loadfile deadlock after the timeout kills; attempt 2 killed by the harness at 96 percent memory). Low point 3.49 GB free.
-- **F1 `26963f363`:** `PINNED_CLI` 2.1.296 -> 2.1.304 after the 4-control canary through the kit spawn. **F2 `a2c3c0934` (LEDGER 1741):** sibling-sweep per-window prefilter, tree gate 922 s -> 41 s; RM-695 CLOSED by C1. **F3:** responder `PINNED_CLI_VERSION` 2.1.251 kept on purpose. **F4:** headless-uiux command mirror re-synced (gitignored).
-- **ROFL (MAIN ORDER 1121):** `01e951302` moved the archive to E: (54735 files, hash-verified, C: 14.66 -> 37.5 pct free); ANSWER 1215 reached MAIN 1/1; FIX 1709 + ORDER 1121 rows closed.
-- **TA1 lane 8:** `ws_server.py` (:8891) 8 weaknesses, 7 fixed, 60 tests; branch `lane/true-audit` e80d70fbe pushed, verifier CONFIRM, UNMERGED (merger's job; carry in the hand-off). RM-753 = same flaws in `agents/_supervisor_http.py`.
-- **Push:** `151a6e70d..a2c3c0934`, then the wrap commit.
-- **Do NOT redo:** C1, F1, F2, F3, F4, the ROFL move, the TA1 audit (merge it, do not re-audit).
-- **Next:** MAIN ORDER 2026-10-19-0034 DEPENDABOT-MERGE-RULE (ONE ANSWER), then merge `lane/true-audit`, then RM-747..RM-750.
