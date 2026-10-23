@@ -12,7 +12,9 @@ CPU (session 120 steer): glance at the CPU load, FREE MEMORY and for orphaned py
 trees (the RM-695 orphan shape) BEFORE heavy work (suites, many agents).
 
 Next action: FIRST `gh run view 39877078008` (the s126 /done full-suite dispatch; see Status) - a red
-is the first fix. Then RM-789 (HIGH: MAIN's checkout name is in no sibling-sweep name slot), then
+is the first fix [s127: that red = 1 test, test_the_port_probe_stops_retrying_at_the_deadline
+(its socket fake was bound process-wide); FIXED at ea008366b, Tier-1 read-back 47 passed exit 0;
+follow-ups RM-801 / RM-802]. Then RM-789 (HIGH: MAIN's checkout name is in no sibling-sweep name slot), then
 RM-766 (Tier-2 DS patch 16.20.1 -> 16.21.1, the merger's ONE gated dual suite), then RM-763..RM-798
 by topic. S6 at the next live game: vision decodes a live game frame under Pillow 13 (cef8bfd22).
 FIRST at session start: the CPU / memory glance; git log @{u}.. (expect empty); python
