@@ -355,7 +355,9 @@ def rc_watchdog_live(path: Path = RC_WATCHDOG_HEARTBEAT, *,
 def _spawn_child() -> int:
     """Start ``tools/start_daemon_slayer.py`` windowless, detached from RC stdio.
 
-    The launcher's own bind preflight exits 0 if :8860 is already bound.
+    The launcher's own bind preflight waits out a holder of :8860 that is
+    still exiting and exits 0 only if a live DS engine keeps it
+    (``core/port_handoff.py``, session 129).
     """
     if not _LAUNCHER.exists():
         raise FileNotFoundError(f"daemon_slayer launcher not found at {_LAUNCHER}")

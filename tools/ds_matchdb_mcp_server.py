@@ -92,7 +92,6 @@ import json
 import logging
 import math
 import os
-import socket
 import sys
 import threading
 import time
@@ -116,9 +115,22 @@ from core.daemon_slayer_client import (  # noqa: E402
 from core.http_host_gate import HostAllowlistMixin  # noqa: E402
 from core.log_scrub import install_scrub_filter, scrub_log  # noqa: E402
 from core.match_db import MatchDB  # noqa: E402
+from core.port_handoff import (  # noqa: E402
+    LIVE as _HANDOFF_LIVE,
+    POLL_S as _DEFAULT_HANDOFF_POLL_S,
+    STUCK as _HANDOFF_STUCK,
+    WINDOW_S as _DEFAULT_HANDOFF_WINDOW_S,
+    await_port as _await_port,
+    health_answers as _health_answers,
+    json_check as _json_check,
+)
 
 HOST = "127.0.0.1"
 PORT = 8861
+# Session 129: how long a start waits for a predecessor that still holds the
+# port (core/port_handoff.py). Module-level so a test can shorten it.
+_HANDOFF_WINDOW_S = _DEFAULT_HANDOFF_WINDOW_S
+_HANDOFF_POLL_S = _DEFAULT_HANDOFF_POLL_S
 PROTOCOL_VERSION = "2025-06-18"
 SERVER_NAME = "ds-matchdb-mcp"
 SERVER_VERSION = "0.1.0"
@@ -919,27 +931,41 @@ class _MatchDBHTTPServer(http.server.ThreadingHTTPServer):
         self.shutdown_request(request)
 
 
+def holder_is_matchdb(host: str = HOST, port: int = PORT) -> bool:
+    """True when ``host:port`` answers ``/health`` as THIS server.
+
+    The bearer token is ours and the body has this server's shape
+    (``alive`` true, a ``tools`` list): a 401, a foreign 200 or no answer
+    is not a live ds-matchdb-mcp instance.
+    """
+    return _health_answers(
+        host, port, headers={"Authorization": f"Bearer {AUTH_TOKEN}"},
+        check=_json_check(lambda d: d.get("alive") is True
+                          and isinstance(d.get("tools"), list)))
+
+
 def serve_forever(host: str = HOST, port: int = PORT) -> int:
     """Bind + serve. Returns an int exit code (mirrors
     agents.daemon_slayer.server.serve_forever so the launcher contract
     matches tools/start_daemon_slayer.py)."""
-    # Connect-probe preflight: if another instance already serves, exit
-    # cleanly instead of crashing with OSError 10048.
-    probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    probe.settimeout(0.5)
-    try:
-        probe.connect(("127.0.0.1", port))
-        probe.close()
+    # Port hand-off preflight (session 129). This was a one-shot connect
+    # probe: "something answers now" meant exit 0, so a start racing a
+    # predecessor that was still exiting skipped, the predecessor died, and
+    # nothing listened. Now: wait up to _HANDOFF_WINDOW_S for the port to
+    # free; exit 0 only if a live instance still holds it after that.
+    h = _await_port(host, port, holder_live=lambda: holder_is_matchdb(host, port),
+                    window_s=_HANDOFF_WINDOW_S, poll_s=_HANDOFF_POLL_S)
+    if h.state == _HANDOFF_LIVE:
         log.warning("port %d already serving - another ds-matchdb-mcp "
                     "instance is running; exiting cleanly", port)
         return 0
-    except (ConnectionRefusedError, socket.timeout, OSError):
-        pass
-    finally:
-        try:
-            probe.close()
-        except Exception:  # noqa: BLE001
-            pass
+    if h.state == _HANDOFF_STUCK:
+        log.error("port %d still bound after %.0fs by a holder that does not "
+                  "answer as ds-matchdb-mcp - not started", port, h.waited_s)
+        return 1
+    if h.waited_s >= _HANDOFF_POLL_S:
+        log.info("port %d released by its previous holder after %.1fs",
+                 port, h.waited_s)
     log.info("ds-matchdb-mcp listening on %s:%d (tools=%d, token=...%s)",
              host, port, len(TOOL_FUNCS), AUTH_TOKEN[-4:])
     try:

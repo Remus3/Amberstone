@@ -216,6 +216,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `core/obs_recorder.py` | OBS match recorder (operator-gated, default OFF) |
 | `core/ops_panels.py` | data layer for the three ops dashboard panels |
 | `core/pickban_targets.py` | deterministic pick/ban targets reader (matchup-engine DB) |
+| `core/port_handoff.py` | launcher port hand-off - wait out a dying holder before skipping a start |
 | `core/ports.py` | canonical TCP port registry for RC + Daemon Slayer, and the cross-project block reservations |
 | `core/precomputed_anvil_advisor.py` | arena item-anvil deterministic substrate |
 | `core/precomputed_build_coach.py` | HZ-C2 precomputed BUILD A/B choice-coach over the HZ-B2 variants table |
