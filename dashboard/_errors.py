@@ -33,6 +33,8 @@ from __future__ import annotations
 import json
 import logging
 
+from core.log_scrub import scrub_log
+
 log = logging.getLogger("rc.web_dashboard")
 
 # The wording already used by dashboard/builders_last_match.py for the same class
@@ -48,6 +50,9 @@ def send_error(h, exc: Exception, status: int = 500, *,
     degraded-mode line; omit it for the generic one.
     """
     msg = public_msg or GENERIC_ERROR
-    log.warning("%s: %s: %s", msg, type(exc).__name__, exc)
+    # RM-811 residuals: the raw cause is scrubbed (RM-321) - this is the
+    # last-resort path of every route, Mission Control's two included, and an
+    # exception's text can carry the client's own characters.
+    log.warning("%s: %s: %s", msg, type(exc).__name__, scrub_log(str(exc)))
     payload = json.dumps({"error": msg}).encode("utf-8")
     h._send(status, payload, "application/json")

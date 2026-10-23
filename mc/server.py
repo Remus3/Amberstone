@@ -30,6 +30,7 @@ from http.server import ThreadingHTTPServer
 from pathlib import Path
 
 from core import local_hosts
+from core.log_scrub import scrub_log
 from core.tls_policy import server_context
 from mc.handler import Handler
 
@@ -209,7 +210,9 @@ def main() -> int:
     try:
         ctx = _ssl_context()
     except (ssl.SSLError, OSError) as exc:
-        log.error("Mission Control: TLS setup failed: %s", exc)
+        # RM-811 residuals: exception text is scrubbed wherever mc logs it
+        # (RM-321), server-side causes included - one rule, no judgement.
+        log.error("Mission Control: TLS setup failed: %s", scrub_log(str(exc)))
         return 2
 
     servers = []
@@ -221,7 +224,8 @@ def main() -> int:
         for srv in servers:
             srv.server_close()
         log.error("Mission Control: bind failed on :%d (%s). Exiting so the "
-                  "scheduled task records the failure.", PORT, exc)
+                  "scheduled task records the failure.", PORT,
+                  scrub_log(str(exc)))
         return 3
 
     threads = []

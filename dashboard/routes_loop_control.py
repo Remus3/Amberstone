@@ -91,6 +91,7 @@ import sys
 import time
 from pathlib import Path
 
+from core.log_scrub import scrub_log
 from core.polled_json import atomic_write_bytes
 from dashboard import _arm_confirm as armgate
 from dashboard import _idempotency as idem
@@ -252,7 +253,10 @@ def _fire_lane(body: dict) -> tuple[int, dict]:
     try:
         lanes = _lanes()
     except ModuleNotFoundError as exc:
-        log.warning("api/loop-control fire_lane: %s", exc)
+        # RM-811 residuals: every exception this module logs is scrubbed
+        # (RM-321) - the text of one raised on the request body (lane, run
+        # id, worktree, steer text) carries the client's own characters.
+        log.warning("api/loop-control fire_lane: %s", scrub_log(str(exc)))
         return 503, {"ok": False, "action": "fire_lane",
                      "error": "lane control unavailable: ops/loop/lanes.py is not installed"}
 
@@ -276,7 +280,8 @@ def _fire_lane(body: dict) -> tuple[int, dict]:
         try:
             worktree = str(_launcher().worktree_path(lane))
         except Exception as exc:  # noqa: BLE001 - fall through to the 400 below
-            log.warning("api/loop-control fire_lane: no default worktree: %s", exc)
+            log.warning("api/loop-control fire_lane: no default worktree: %s",
+                        scrub_log(str(exc)))
     if not worktree:
         return 400, {"ok": False, "action": "fire_lane",
                      "error": "fire_lane requires non-empty 'worktree'"}
@@ -304,7 +309,8 @@ def _fire_lane(body: dict) -> tuple[int, dict]:
         launcher = _launcher()
     except ModuleNotFoundError as exc:
         lanes.release_lane(result.get("token"))
-        log.warning("api/loop-control fire_lane: launcher missing: %s", exc)
+        log.warning("api/loop-control fire_lane: launcher missing: %s",
+                    scrub_log(str(exc)))
         return 503, {"ok": False, "action": "fire_lane",
                      "error": "lane launcher unavailable: "
                               "ops/loop/lane_launcher.py is not installed"}
@@ -312,7 +318,8 @@ def _fire_lane(body: dict) -> tuple[int, dict]:
         run = launcher.launch_lane(lane, run_id=run_id,
                                    token=result.get("token"))
     except Exception as exc:  # noqa: BLE001 - launch_lane already released the lane
-        log.warning("api/loop-control fire_lane: launch failed: %s", exc)
+        log.warning("api/loop-control fire_lane: launch failed: %s",
+                    scrub_log(str(exc)))
         # 503, NOT 200: only settled answers are remembered by the idempotency
         # table, and remembering a launch fault would replay it forever.
         return 503, {"ok": False, "action": "fire_lane",
@@ -366,7 +373,7 @@ def _steer(body: dict, key: str) -> tuple[int, dict]:
         steer = sys.modules.get(_STEER_MODULE) or \
             importlib.import_module(_STEER_MODULE)
     except ModuleNotFoundError as exc:
-        log.warning("api/loop-control steer: %s", exc)
+        log.warning("api/loop-control steer: %s", scrub_log(str(exc)))
         return 503, {"ok": False, "action": "steer",
                      "error": "steer channel unavailable: "
                               "ops/loop/steer.py is not installed"}
@@ -380,7 +387,7 @@ def _steer(body: dict, key: str) -> tuple[int, dict]:
     except ValueError as exc:
         return 400, {"ok": False, "action": "steer", "error": str(exc)}
     except OSError as exc:
-        log.warning("api/loop-control steer: %s", exc)
+        log.warning("api/loop-control steer: %s", scrub_log(str(exc)))
         return 503, {"ok": False, "action": "steer", "error": str(exc)}
     except RuntimeError as exc:
         # ops/loop/steer.py:146 serializes the append on a Win32 named mutex and
@@ -398,7 +405,8 @@ def _steer(body: dict, key: str) -> tuple[int, dict]:
         # it). Anything else re-raises to the generic guard.
         if type(exc).__name__ != "MutexTimeout":
             raise
-        log.warning("api/loop-control steer: lock contention: %s", exc)
+        log.warning("api/loop-control steer: lock contention: %s",
+                    scrub_log(str(exc)))
         return 503, {"ok": False, "action": "steer",
                      "error": "steer channel busy - retry"}
     return 200, {"ok": True, "action": "steer", "state": _state(),
@@ -426,14 +434,16 @@ def _interrupt_preview() -> tuple[int, dict]:
     try:
         mod_i = _interrupt()
     except ModuleNotFoundError as exc:
-        log.warning("api/loop-control interrupt_preview: %s", exc)
+        log.warning("api/loop-control interrupt_preview: %s",
+                    scrub_log(str(exc)))
         return 503, {"ok": False, "action": "interrupt_preview",
                      "error": "interrupt unavailable: "
                               "ops/loop/interrupt.py is not installed"}
     try:
         out = dict(mod_i.preview())
     except Exception as exc:  # noqa: BLE001 - a probe fault must not 500
-        log.warning("api/loop-control interrupt_preview: %s", exc)
+        log.warning("api/loop-control interrupt_preview: %s",
+                    scrub_log(str(exc)))
         return 503, {"ok": False, "action": "interrupt_preview",
                      "error": f"preview failed: {exc}"}
     out["action"] = "interrupt_preview"
@@ -459,14 +469,14 @@ def _do_interrupt(body: dict, key: str) -> tuple[int, dict]:
     try:
         mod_i = _interrupt()
     except ModuleNotFoundError as exc:
-        log.warning("api/loop-control interrupt: %s", exc)
+        log.warning("api/loop-control interrupt: %s", scrub_log(str(exc)))
         return 503, {"ok": False, "action": "interrupt",
                      "error": "interrupt unavailable: "
                               "ops/loop/interrupt.py is not installed"}
     try:
         out = dict(mod_i.execute(fp, key=key))
     except Exception as exc:  # noqa: BLE001 - never 500 the server on a kill path
-        log.warning("api/loop-control interrupt: %s", exc)
+        log.warning("api/loop-control interrupt: %s", scrub_log(str(exc)))
         # 503, not 200: only settled answers are remembered, and remembering a
         # fault would replay it forever against a machine that has moved on.
         return 503, {"ok": False, "action": "interrupt",
@@ -736,14 +746,15 @@ def _serve_loop_control(h, body) -> None:
         # tell "your halt did not land, press it again" from "the server is
         # broken". CLAUDE.md Error Handling: friendly message out, raw cause
         # to logs.
-        log.warning("api/loop-control: control file busy: %s", exc)
+        log.warning("api/loop-control: control file busy: %s",
+                    scrub_log(str(exc)))
         try:
             send_error(h, exc, status=503,
                        public_msg="control file busy - the loop is mid-poll, retry")
         except Exception:  # noqa: BLE001
             pass
     except Exception as exc:  # noqa: BLE001 - last-resort guard, never 500 the server
-        log.warning("api/loop-control: %s", exc)
+        log.warning("api/loop-control: %s", scrub_log(str(exc)))
         try:
             send_error(h, exc)
         except Exception:  # noqa: BLE001

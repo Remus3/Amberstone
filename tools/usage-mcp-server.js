@@ -149,6 +149,10 @@ const scrubLog = text => String(text).replace(
 
 const isObject = v => v !== null && typeof v === 'object' && !Array.isArray(v);
 
+// RM-811 residuals: JSON-RPC 2.0 section 4 - an id is a string, a number or
+// null (JSON.parse never yields a non-finite number).
+const isValidId = v => v === null || typeof v === 'string' || typeof v === 'number';
+
 rl.on('line', async (raw) => {
   // RM-811: one bad line must never end the server. A JSON `null` line threw
   // on the destructure below inside this async handler - an unhandled
@@ -179,6 +183,15 @@ async function handleLine(raw, noteId) {
   }
 
   const { id, method, params } = msg;
+
+  // RM-811 residuals: an object / array / boolean id was echoed in an
+  // ordinary reply. A present id of the wrong type makes the request
+  // invalid (it is not a notification either): -32600 with id null, before
+  // the id is noted for the internal-error reply.
+  if (id !== undefined && !isValidId(id)) {
+    rpcError(null, -32600, 'Invalid Request');
+    return;
+  }
   noteId(id);
 
   // RM-811 (the RM-769 shape): the method must be a string.

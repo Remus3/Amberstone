@@ -71,6 +71,7 @@ from __future__ import annotations
 
 import importlib
 import json
+from core.log_scrub import scrub_log
 from dashboard._errors import send_error
 import logging
 import os
@@ -222,7 +223,9 @@ def _lane_log() -> dict | None:
                          and run == held_run),
         }
     except Exception as exc:  # noqa: BLE001 - a log preview must never 500 the poll
-        log.warning("loop-status: lane_log failed: %s", exc)
+        # RM-811 residuals: every exception this module logs is scrubbed
+        # (RM-321); a lane log name or a lock record is not ours to trust.
+        log.warning("loop-status: lane_log failed: %s", scrub_log(str(exc)))
         return None
 
 
@@ -273,7 +276,7 @@ def _last_commit() -> dict | None:
             return None
         return {"sha": parts[0], "subject": parts[1], "iso": parts[2]}
     except Exception as exc:  # noqa: BLE001 - git env is heterogeneous; never fatal
-        log.warning("loop-status: last_commit failed: %s", exc)
+        log.warning("loop-status: last_commit failed: %s", scrub_log(str(exc)))
         return None
 
 
@@ -353,7 +356,7 @@ def _lanes_available() -> dict | None:
     try:
         lanes = _lanes()
     except Exception as exc:  # noqa: BLE001
-        log.warning("loop-status: lanes import failed: %s", exc)
+        log.warning("loop-status: lanes import failed: %s", scrub_log(str(exc)))
         return None
     wired: list = []
     try:
@@ -361,7 +364,7 @@ def _lanes_available() -> dict | None:
             importlib.import_module(_LAUNCHER_MODULE)
         wired = sorted(getattr(launcher, "LANE_COMMANDS", {}))
     except Exception as exc:  # noqa: BLE001 - an absent launcher means none wired
-        log.warning("loop-status: launcher unavailable: %s", exc)
+        log.warning("loop-status: launcher unavailable: %s", scrub_log(str(exc)))
     return {"all": list(getattr(lanes, "LANES", ())), "wired": wired}
 
 
@@ -375,7 +378,8 @@ def _steer_summary() -> dict | None:
             importlib.import_module(_STEER_MODULE)
         return dict(steer.summary())
     except Exception as exc:  # noqa: BLE001 - an absent channel is not an error
-        log.warning("loop-status: steer summary unavailable: %s", exc)
+        log.warning("loop-status: steer summary unavailable: %s",
+                    scrub_log(str(exc)))
         return None
 
 
@@ -394,7 +398,7 @@ def _lane_lock() -> dict | None:
     try:
         return dict(_lanes().lane_state(root=LANES_ROOT))
     except Exception as exc:  # noqa: BLE001 - a missing/broken S1 must not 500 the poll
-        log.warning("loop-status: lane_state failed: %s", exc)
+        log.warning("loop-status: lane_state failed: %s", scrub_log(str(exc)))
         return None
 
 
@@ -408,7 +412,7 @@ def _controller_lock() -> dict | None:
     try:
         lanes = _lanes()
     except Exception as exc:  # noqa: BLE001
-        log.warning("loop-status: lanes import failed: %s", exc)
+        log.warning("loop-status: lanes import failed: %s", scrub_log(str(exc)))
         return None
     lock = controller_lock_path()
     free = {"state": lanes.FREE, "pid": None, "run_id": None, "age_s": None}
@@ -473,7 +477,7 @@ def build_loop_status() -> dict:
     try:
         last_commit = _last_commit()
     except Exception as exc:  # noqa: BLE001 - the seam must never break the route
-        log.warning("loop-status: last_commit raised: %s", exc)
+        log.warning("loop-status: last_commit raised: %s", scrub_log(str(exc)))
         last_commit = None
 
     return {
@@ -505,7 +509,7 @@ def _serve_loop_status(h) -> None:
         payload = build_loop_status()
         h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
     except Exception as exc:  # noqa: BLE001 - last-resort guard
-        log.warning("api/loop-status: %s", exc)
+        log.warning("api/loop-status: %s", scrub_log(str(exc)))
         try:
             send_error(h, exc)
         except Exception:  # noqa: BLE001
