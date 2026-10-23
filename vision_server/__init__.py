@@ -24,6 +24,8 @@ import os
 import socket
 import sys
 
+from core import port_handoff as _port_handoff
+
 from ._config import PORT, _get_client, api_key_present, log
 from ._frame import get_latest_frame, handle_upload_frame
 from ._http import Handler
@@ -72,6 +74,12 @@ def _bind_host() -> str:
     return (os.environ.get("RC_VISION_BIND") or "").strip() or "127.0.0.1"
 
 
+# Session 129: how long main() waits for a predecessor that still holds :8889
+# (core/port_handoff.py). Module-level so a test can shorten it.
+_HANDOFF_WINDOW_S = _port_handoff.WINDOW_S
+_HANDOFF_POLL_S = _port_handoff.POLL_S
+
+
 def make_server(host: str, port: int, handler=None) -> PooledHTTPServer:
     """Build the :8889 HTTP server (bound, not yet serving).
 
@@ -98,8 +106,29 @@ def main() -> int:
     already = probe.connect_ex(("127.0.0.1", PORT)) == 0
     probe.close()
     if already:
-        log.warning("Port %d already in use - another instance is running. Exiting.", PORT)
-        return 0   # clean exit, not error - autostart VBS sees success
+        # Session 129 (sibling of the RC-DS-MatchDB-MCP restart race): an
+        # answering connect is not yet "another instance is running". The
+        # watchdog kills a hung holder and spawns at once, and the dying
+        # holder still accepts connections for a moment; exiting on sight
+        # left :8889 down until the watchdog's grace ran out. Wait for the
+        # port to free (core/port_handoff.py); exit only if it stays held.
+        h = _port_handoff.await_port(
+            _bind_host(), PORT, window_s=_HANDOFF_WINDOW_S, poll_s=_HANDOFF_POLL_S,
+            holder_live=lambda: _port_handoff.health_answers(
+                "127.0.0.1", PORT,
+                check=_port_handoff.json_check(lambda d: d.get("alive") is True)))
+        if h.state != _port_handoff.FREE:
+            # A holder that holds on but does not answer /health is left to
+            # the RC vision watchdog, which verifies it is a vision process
+            # before it kills it - never bound over from here.
+            log.warning("Port %d already in use after %.0fs - %s. Exiting.", PORT,
+                        h.waited_s,
+                        "another instance is running"
+                        if h.state == _port_handoff.LIVE else
+                        "its holder does not answer /health (left to the watchdog)")
+            return 0   # clean exit, not error - autostart VBS sees success
+        log.info("port %d released by its previous holder after %.1fs",
+                 PORT, h.waited_s)
 
     # Port did not answer: reap any wedged/orphaned predecessor instances that
     # would otherwise co-bind :8889 via SO_REUSEADDR and jam the port so every

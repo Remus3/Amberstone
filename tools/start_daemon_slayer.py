@@ -8,6 +8,11 @@ SYSTEM-context tasks), and ``data_loader`` resolves snapshots relative to
 
 Used by the ``RC-DaemonSlayer`` scheduled task. Manual invocation works
 too - ``$env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/start_daemon_slayer.py``.
+
+Port preflight (session 129, sibling of the RC-DS-MatchDB-MCP restart race):
+a start that finds :8860 bound WAITS for the holder to let go
+(``core/port_handoff.py``) and exits 0 only when a live DS engine still holds
+it after the window, never on the first sight of a bound port.
 """
 from __future__ import annotations
 
@@ -23,10 +28,23 @@ if str(_PROJECT_ROOT) not in sys.path:
 
 import datetime
 import logging
-import socket
 import traceback
+from typing import Callable, Optional
 
-from agents.daemon_slayer.server import serve_forever  # noqa: E402
+from agents.daemon_slayer.server import (  # noqa: E402
+    DEFAULT_HOST,
+    DEFAULT_PORT,
+    serve_forever,
+)
+from core.port_handoff import (  # noqa: E402
+    LIVE,
+    POLL_S,
+    STUCK,
+    WINDOW_S,
+    await_port,
+    health_answers,
+    json_check,
+)
 
 _LOG_FILE = _PROJECT_ROOT / "logs" / "daemon_slayer_startup.log"
 # The RC-DaemonSlayer scheduled task runs as SYSTEM; appends under
@@ -73,24 +91,48 @@ def _log_startup(msg: str) -> Path | None:
     return written
 
 
-if __name__ == "__main__":
-    # If port is already bound (e.g. task re-triggered while still running),
-    # exit 0 so the scheduled task doesn't record a failure.
-    s = socket.socket()
-    try:
-        s.bind(("127.0.0.1", 8860))
-        s.close()
-    except OSError:
-        s.close()
-        _log_startup("port 8860 already bound - skipping (exit 0)")
-        sys.exit(0)
+def holder_is_ds(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT) -> bool:
+    """True when ``host:port`` answers ``/health`` as the DS engine
+    (a 200 JSON object naming ``engine_version``, ``_route_health``)."""
+    return health_answers(host, port,
+                          check=json_check(lambda d: "engine_version" in d))
 
-    _log_startup("starting serve_forever()")
+
+def main(*, host: str = DEFAULT_HOST, port: int = DEFAULT_PORT,
+         serve: Callable[..., int] = serve_forever,
+         log: Optional[Callable[[str], object]] = None,
+         window_s: float = WINDOW_S, poll_s: float = POLL_S,
+         holder_live: Optional[Callable[[], bool]] = None) -> int:
+    """Start DS unless a LIVE DS engine already serves ``port``.
+
+    A held port is waited out (up to ``window_s``), never skipped on sight:
+    exit 0 only when a live DS still holds it after the window, exit 1 when
+    something else holds it (nothing was started).
+    """
+    log = log or _log_startup
+    live = holder_live or (lambda: holder_is_ds(host, port))
+    h = await_port(host, port, holder_live=live, window_s=window_s, poll_s=poll_s)
+    if h.state == LIVE:
+        log(f"port {port} already bound by a live DS engine "
+            f"(checked after {h.waited_s:.0f}s) - skipping (exit 0)")
+        return 0
+    if h.state == STUCK:
+        log(f"port {port} still bound after {h.waited_s:.0f}s and the holder "
+            f"does not answer as DS - not started (exit 1)")
+        return 1
+    if h.waited_s >= poll_s:
+        log(f"port {port} was bound; its holder released it after "
+            f"{h.waited_s:.1f}s")
+    log("starting serve_forever()")
     try:
-        code = serve_forever()
+        code = serve(host=host, port=port)
     except Exception:
         tb = traceback.format_exc()
-        _log_startup(f"UNHANDLED EXCEPTION (exit 1):\n{tb}")
-        sys.exit(1)
-    _log_startup(f"serve_forever() returned {code}")
-    sys.exit(code)
+        log(f"UNHANDLED EXCEPTION (exit 1):\n{tb}")
+        return 1
+    log(f"serve_forever() returned {code}")
+    return code
+
+
+if __name__ == "__main__":
+    sys.exit(main())

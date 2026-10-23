@@ -515,6 +515,23 @@ schtasks /Create /TN "RC-DS-MatchDB-MCP" /SC ONLOGON /RL HIGHEST /F ^
   /TR "pythonw <repo>\tools\start_ds_matchdb_mcp.py"
 ```
 
+**Restart** (to load new code - an RC restart does not touch this process):
+```powershell
+schtasks /End /TN "RC-DS-MatchDB-MCP"
+schtasks /Run /TN "RC-DS-MatchDB-MCP"
+```
+`/End` can return before the old process has let go of :8861. Measured session 129: the immediate
+`/Run` logged "port 8861 already bound - skipping (exit 0)" and exited, then the old pid died and
+nothing listened until a second `/Run`. Since then the launcher (`tools/start_ds_matchdb_mcp.py`,
+`core/port_handoff.py`) waits up to 30 s for the port to free and starts; it exits 0 only when a live
+ds-matchdb-mcp instance (bearer `/health` 200 with this server's shape) still holds :8861 after that
+window, and logs "not started (exit 1)" for any other holder. **Verify, do not trust the exit
+code:** a NEW pid listens on :8861 (`netstat -ano | findstr "LISTENING" | findstr ":8861"`), the
+bearer `/health` above answers 200, and `logs/ds_matchdb_mcp_startup.log` ends with "starting
+serve_forever()". If `/Run` answers that the task is already running (IgnoreNew), the new launcher is
+inside its wait: re-check after 30 s. `tools/start_daemon_slayer.py` (:8860) and the vision server's
+start guard (:8889) wait the same way.
+
 Client wiring (also operator-gated - editing `.mcp.json` changes a live
 Claude session's own tool surface): add an `mcpServers` entry with
 `"type": "http"`, `"url": "http://127.0.0.1:8861/mcp"`, and the bearer
