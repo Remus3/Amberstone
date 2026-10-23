@@ -26,7 +26,7 @@ Exit codes:
 Design rules:
   - Allowlisted subcommands only -- no arbitrary shell passthrough.
   - Each subcommand delegates to the established scripts/tools.
-  - start delegates to start.bat (API key loading + pythonw main.py).
+  - start delegates to start.bat (API key check + pythonw main.py).
   - start-clean delegates to scripts/restart_clean.bat (kills pythonw, clears cache, relaunches).
   - Missing required tools produce a clear error, not silent fallback.
   - Destructive commands (rollback-last) require --yes flag or interactive prompt.
@@ -215,7 +215,8 @@ def cmd_status() -> int:
 
 def cmd_start() -> int:
     """Launch via start.bat -- the supported project entrypoint.
-    start.bat loads the API key from API-Key-Claude.txt, then launches
+    start.bat checks the API key through core/anthropic_key.py (it never
+    sets it; the app reads API-Key-Claude.txt itself), then launches
     pythonw.exe main.py. Non-blocking: the CLI returns immediately.
     """
     start_bat = _require_tool("start.bat")
@@ -326,7 +327,7 @@ Usage: python tools/dev_cli.py <subcommand> [options]
 
 Subcommands:
   status           Print environment diagnostics (read-only)
-  start            Launch via start.bat (API key load + pythonw main.py)
+  start            Launch via start.bat (API key check + pythonw main.py)
   start-clean      Launch via scripts/restart_clean.bat (kill old, clear cache, relaunch)
   preflight        Run lint + syntax checks (tools/preflight.cmd)
   smoke            Run Phase 2 smoke test harness
