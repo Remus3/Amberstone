@@ -162,6 +162,92 @@ def test_a_mnt_word_directory_is_not_read_as_a_drive_mount():
     assert _gate(cp.scan_leaks(text, (), variants), "checkout_path") == []
 
 
+# RM-780: the WSL UNC spelling. Windows-side text reaches a distro's view of
+# a drive as `<lead>wsl$<sep><distro><sep>mnt<sep><letter><sep><rest>` (or
+# the `wsl.localhost` host). The mount arm's left edge is a non-word char,
+# and the distro name sits right before the mount, so the whole spelling
+# passed the push gate. Synthetic distro name, assembled at run time.
+_DISTRO = "Synth-Distro"
+_UNC_HOSTS = ("wsl$", "wsl.localhost")
+
+
+def _unc(host: str, sep: str, *parts: str) -> str:
+    """`<sep><sep>host<sep>distro<sep>parts...` - a doubled sep doubles the lead."""
+    return sep * 2 + sep.join((host, _DISTRO) + tuple(parts))
+
+
+def _unc_mount(host: str, sep: str, letter: str, name: str, *sub: str) -> str:
+    return _unc(host, sep, "mnt", letter.lower(), name, *sub)
+
+
+@pytest.mark.parametrize("sub", [(), _SUBPATH], ids=["root", "sub"])
+@pytest.mark.parametrize("letter_index", [0, 1])
+@pytest.mark.parametrize("sep", [_BS, _BS * 2, "/"], ids=["bs", "dbs", "fs"])
+@pytest.mark.parametrize("host", _UNC_HOSTS, ids=["wsl-dollar", "wsl-localhost"])
+def test_synthetic_checkout_root_halts_in_the_wsl_unc_spelling(host, sep, letter_index, sub):
+    variants = cp.checkout_path_variants(_synth_checkout())
+    text = "see " + _unc_mount(host, sep, _SYNTH_LETTERS[letter_index], _SYNTH_NAME, *sub) + " here\n"
+    hit = bool(_gate(cp.scan_leaks(text, (), variants), "checkout_path"))
+    assert hit, f"{host} drive{letter_index}"
+
+
+@pytest.mark.parametrize("sep", [_BS, "/"], ids=["bs", "fs"])
+@pytest.mark.parametrize("host", _UNC_HOSTS, ids=["wsl-dollar", "wsl-localhost"])
+def test_a_wsl_resolved_checkout_root_halts_its_unc_spelling(host, sep):
+    """Both directions: a `/mnt/<letter>/...` checkout value is drive-rooted,
+    so the UNC spelling of the same root, under either letter, halts."""
+    variants = cp.checkout_path_variants(_wsl(_SYNTH_LETTERS[0], _SYNTH_NAME))
+    missed = [
+        index
+        for index, letter in enumerate(_SYNTH_LETTERS)
+        if not _gate(cp.scan_leaks("see " + _unc_mount(host, sep, letter, _SYNTH_NAME, "x")
+                                   + " here\n", (), variants), "checkout_path")
+    ]
+    assert missed == [], missed
+
+
+def test_the_long_path_unc_prefix_of_the_wsl_spelling_halts():
+    """The Win32 long-path form puts `?<sep>UNC<sep>` between the lead and the
+    host; it is the same root."""
+    variants = cp.checkout_path_variants(_synth_checkout())
+    text = ("see " + _BS * 2 + "?" + _BS + "UNC" + _BS
+            + _BS.join(("wsl$", _DISTRO, "mnt", "z", _SYNTH_NAME)) + " here\n")
+    assert _gate(cp.scan_leaks(text, (), variants), "checkout_path")
+
+
+@pytest.mark.parametrize("host", _UNC_HOSTS, ids=["wsl-dollar", "wsl-localhost"])
+def test_a_posix_checkout_root_halts_its_wsl_unc_spelling(host):
+    """Sibling case, same root cause: a checkout inside the distro (no drive)
+    cited from Windows as `<lead>host<sep>distro<sep><posix path>`."""
+    variants = cp.checkout_path_variants("/" + "/".join(("srv", "synth", _SYNTH_NAME)))
+    for sep in (_BS, "/"):
+        text = "see " + _unc(host, sep, "srv", "synth", _SYNTH_NAME, "ops") + " here\n"
+        assert _gate(cp.scan_leaks(text, (), variants), "checkout_path"), sep
+
+
+@pytest.mark.parametrize("host", _UNC_HOSTS, ids=["wsl-dollar", "wsl-localhost"])
+def test_the_wsl_unc_spelling_keeps_the_root_identity_edges(host):
+    """Widening the head never widens the body: a two-letter mount is not a
+    drive, and a longer sibling folder is not the root."""
+    variants = cp.checkout_path_variants(_synth_checkout())
+    two_letter = "see " + _unc(host, _BS, "mnt", "qz", _SYNTH_NAME) + " here\n"
+    longer = "see " + _unc_mount(host, _BS, "q", _SYNTH_NAME + "X") + " here\n"
+    assert _gate(cp.scan_leaks(two_letter, (), variants), "checkout_path") == []
+    assert _gate(cp.scan_leaks(longer, (), variants), "checkout_path") == []
+
+
+def test_push_halts_on_the_wsl_unc_spelling_of_the_checkout_root(repo, capsys):
+    base = _git(repo, "rev-parse", "HEAD")
+    _commit(repo, "docs/UNC.md",
+            "open " + _unc_mount("wsl.localhost", _BS, _SYNTH_LETTERS[1], _SYNTH_NAME, "ops") + "\n")
+    rc = _push(repo, base, cp.checkout_path_variants(_synth_checkout()))
+    assert rc == chs.EXIT_HALT
+    err = capsys.readouterr().err
+    assert "class=checkout_path" in err
+    assert _SYNTH_NAME not in err
+    assert _DISTRO not in err
+
+
 def test_push_halts_on_the_wsl_mount_spelling_of_the_checkout_root(repo, capsys):
     base = _git(repo, "rev-parse", "HEAD")
     _commit(repo, "docs/WSL.md",

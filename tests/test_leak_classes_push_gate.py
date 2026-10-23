@@ -162,6 +162,26 @@ def test_user_profile_path_is_advisory():
     assert _classes(cp.scan_leaks(bash)) == {"user_profile_path"}
 
 
+def _unc_profile(host: str, sep: str, account: str) -> str:
+    """A profile path as Windows-side text reaches it through a WSL distro."""
+    return sep * 2 + sep.join((host, "Synth-Distro", "mnt", "c", "Users", account, "AppData"))
+
+
+@pytest.mark.parametrize("sep", ["\\", "\\\\", "/"], ids=["bs", "dbs", "fs"])
+@pytest.mark.parametrize("host", ["wsl$", "wsl.localhost"], ids=["wsl-dollar", "wsl-localhost"])
+def test_user_profile_path_is_caught_in_the_wsl_unc_spelling(host, sep):
+    """RM-780 sibling: the profile class's mount head had the same left-edge
+    gap as checkout_path (the distro name sits right before the mount)."""
+    findings = cp.scan_leaks("log = " + _unc_profile(host, sep, "someone") + "\n")
+    assert _classes(findings) == {"user_profile_path"}
+    assert all(cp.is_advisory(f) for f in findings)
+
+
+@pytest.mark.parametrize("account", ["Public", "Default", "<user>", "%USERNAME%"])
+def test_profile_placeholders_are_not_flagged_in_the_wsl_unc_spelling(account):
+    assert cp.scan_leaks(_unc_profile("wsl$", "\\", account) + "\n") == []
+
+
 @pytest.mark.parametrize(
     "text",
     [
