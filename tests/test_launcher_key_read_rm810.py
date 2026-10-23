@@ -23,28 +23,38 @@ still differed from read_anthropic_key (verifier nits): a key file opening
 with a blank line was refused, and an inherited "sk-ant-AB CD" was squashed
 to "sk-ant-ABCD" and exported, so it beat a good key file in every Python
 reader. So no launcher parses, prints or sets the key any more. Each runs
-core/anthropic_key.py itself (runpy, by path, `python -I`) to decide: exit 0
-= the inherited ANTHROPIC_API_KEY is usable (left as it is); 2 = it is
-absent or unusable and API-Key-Claude.txt is usable; 3 = no usable key. On 2
-and 3 the inherited variable is cleared, so junk never shadows the file in
-any reader (main.py included); the app then reads the file itself.
-start.bat refuses to start on 3, and when the check cannot run at all.
+core/anthropic_key.py itself (runpy, by path, `python -I`) to decide: exit
+10 = the inherited ANTHROPIC_API_KEY is usable (left as it is); 11 = it is
+absent or unusable and API-Key-Claude.txt is usable; 12 = no usable key
+(codes no interpreter emits on its own; anything else = the check could not
+run). On 11 and 12 the inherited variable is cleared, so junk never shadows
+the file in any reader (main.py included); the app then reads the file
+itself. start.bat refuses to start on 12, and when the check cannot run. The
+check runs after the launcher's `cd /d` to the repo root, with an absolute
+interpreter (python-embed first, else python.exe searched on PATH only): a
+bare `python` was looked up in the caller's folder first (second verifier,
+N1).
 
 Pinned here:
   (a) static: no tracked batch file reads a %VAR% (or %errorlevel%) set
       earlier in the same ( ... ) block, or in an earlier command on the same
-      line - the RM-764 install.bat errorlevel guard, widened to every batch
-      file and every variable (it also caught install.bat step 1's PY_VER
-      echo). A block opens on a line ending in "(" or holding an unmatched
-      "(" mid-line;
-  (b) static: the three launchers share ONE key check, call names that exist
-      in core/anthropic_key.py, and never read, parse or set the key;
+      line, or anywhere on the line that closes the block - the RM-764
+      install.bat errorlevel guard, widened to every batch file and every
+      variable (it also caught install.bat step 1's PY_VER echo). A block
+      opens on a line ending in "(" or at any unmatched "(" mid-line; the
+      scan errs toward over-detection (only the echo( idiom is skipped, and
+      tracked text parens are allowlisted by exact line);
+  (b) static: the three launchers share ONE key check, run it after cd /d
+      with an absolute interpreter, call names that exist in
+      core/anthropic_key.py, and never read, parse or set the key;
   (c) behaviour: each launcher's REAL key check runs under cmd.exe in
-      tmp_path against a copy of core/anthropic_key.py. No launch: the cut
-      stops before the launcher's `cd /d` and is refused if it holds a start /
-      main.py / taskkill / wmic line. A child Python prints the environment
-      the launched app would inherit, and read_anthropic_key over it must give
-      what it gives over the original environment;
+      tmp_path against a copy of core/anthropic_key.py, started from an
+      unrelated folder (one test plants python.bat / python.cmd there). No
+      launch: the cut runs from the launcher's `cd /d` to the end of its
+      check and is refused if it holds a start / main.py / taskkill / wmic
+      line. A child Python prints the environment the launched app would
+      inherit, and read_anthropic_key over it must give what it gives over
+      the original environment;
   (d) static: no tracked batch or PowerShell file sets a variable in pip's
       PIP_ namespace. pip reads PIP_<OPTION> as its own --<option> (measured:
       PIP_LOG made `pip list` write a 6 KB debug log), and install.bat:67 set
@@ -87,43 +97,58 @@ def _is_comment(stripped: str) -> bool:
     return low.startswith("::") or low == "rem" or low.startswith(("rem ", "rem\t"))
 
 
-# A command whose arguments are text, so a "(" in them opens nothing
-# (`echo(`, `echo a (b`, `set X=a(b`), behind any leading redirection.
-_TEXT_CMD = re.compile(
-    r'^@?(?:\d?>>?\s*(?:"[^"]*"|\S+)\s*)*(?:echo|set|title|rem|prompt)'
-    r'(?:$|[\s.(:;,=/\\+\[\]])', re.IGNORECASE)
-_IF_TEXT_CMD = re.compile(r"^if\b.*\b(?:echo|set|title)\b", re.IGNORECASE)
+# The ONE "(" that is never a block open: the echo( / echo.( idiom, where
+# echo is the command token at the very start of a command segment. Every
+# other unquoted, unescaped "(" counts, text or not - the scan errs toward
+# over-detection, and a tracked line that false-hits is allowlisted by its
+# exact file and text (TEXT_PAREN_LINES), never by a broader skip.
+_ECHO_PAREN = re.compile(r"^\s*@?echo\.?\($", re.IGNORECASE)
 
 
 def _unmatched_opens(s: str) -> list[int]:
-    """Positions of the block-opening "(" on a line that no ")" on it closes.
+    """Positions of the "(" on a line that no ")" on it closes.
 
-    A "(" opens a block only where a command may start: not inside double
-    quotes, not caret-escaped, and not in the text of an echo / set / title.
-    A leading ")" (the close of `) else (`) is the caller's business.
+    Quotes toggle only when not caret-escaped (`^"` is a literal quote
+    outside quotes); a caret outside quotes makes the next character literal,
+    and inside quotes a caret is literal itself. A leading ")" (the close of
+    `) else (`) is the caller's business.
     """
     opens: list[int] = []
     quoted = False
-    seg = 0  # where the current command starts
-    for i, ch in enumerate(s):
-        if ch == '"':
-            quoted = not quoted
-        elif quoted or (i and s[i - 1] == "^"):
-            continue
+    seg = 0  # where the current command segment starts
+    i = 0
+    while i < len(s):
+        ch = s[i]
+        if quoted:
+            quoted = ch != '"'
+        elif ch == "^":
+            i += 1  # the next character is literal
+        elif ch == '"':
+            quoted = True
         elif ch in "&|":
             seg = i + 1
         elif ch == "(":
-            pre = s[seg:i].strip()
-            if _TEXT_CMD.match(pre) or _IF_TEXT_CMD.match(pre):
-                continue
-            opens.append(i)
+            if not _ECHO_PAREN.match(s[seg:i + 1]):
+                opens.append(i)
             seg = i + 1
         elif ch == ")" and opens:
             opens.pop()
+        i += 1
     return opens
 
 
-def parse_time_reads(lines: list[str]) -> list[tuple[int, str, str]]:
+# Tracked lines whose mid-line "(" is text, not a block open, by exact file
+# and stripped line. Each entry was read and confirmed by hand. Measured
+# 2026-10-23: the only tracked line the mid-line opener counts beyond the
+# old line-ends-in-"(" trigger is this one - the echo( idiom behind a
+# leading redirection (install.bat step 4, the in-place key-file write).
+TEXT_PAREN_LINES: dict[str, frozenset[str]] = {
+    "install.bat": frozenset({'>"%API_FILE%" echo(!API_KEY!'}),
+}
+
+
+def parse_time_reads(lines: list[str],
+                     text_paren: frozenset[str] = frozenset()) -> list[tuple[int, str, str]]:
     """(line number, variable, line) for each %VAR% read that cmd expands
     before the assignment it means to see has run.
 
@@ -131,11 +156,14 @@ def parse_time_reads(lines: list[str]) -> list[tuple[int, str, str]]:
     that block (or in an inner block that has closed: the outer block is
     still one parse), and a read in a LATER command on the same line as its
     set (after an & or a |; `set X=%X: =%` reads the old value on purpose).
-    Every %errorlevel% inside a block counts. Depth follows the layout of the
-    tracked batch files: a code line ending in an unescaped `(` opens a
-    block, and so does each "(" a line leaves unmatched mid-line
-    (`if x (set A=1`); a code line starting with `)` closes one (`) else (`
-    does both).
+    Every %errorlevel% inside a block counts, and so does every read on the
+    line that closes a block (`) & echo %A%` is still part of its parse).
+    Depth follows the layout of the tracked batch files: a code line ending
+    in an unescaped `(` opens a block, and so does each "(" a line leaves
+    unmatched mid-line (`if x (set A=1`), except on a `text_paren` line; a
+    code line starting with `)` closes one (`) else (` does both). It errs
+    toward over-detection (an else branch reading what its if branch set is
+    flagged too).
     """
     stack: list[set[str]] = []
     hits = []
@@ -143,13 +171,16 @@ def parse_time_reads(lines: list[str]) -> list[tuple[int, str, str]]:
         s = raw.strip()
         if not s or _is_comment(s):
             continue
+        # Reads on a closing line are checked before the pop: they belong to
+        # the same parse as the block they close.
+        in_block = set().union(*stack) if stack else set()
+        in_any = bool(stack)
         rest_at = 0
         if s.startswith(")") and stack:
             closed = stack.pop()
             if stack:
                 stack[-1] |= closed
             rest_at = 1
-        in_block = set().union(*stack) if stack else set()
         sets_here = []  # (where the set command starts, where it ends, variable)
         for m in _SET.finditer(s):
             sep = _SEP.search(s, m.end())
@@ -157,9 +188,10 @@ def parse_time_reads(lines: list[str]) -> list[tuple[int, str, str]]:
         for m in _READ.finditer(s):
             name = m.group(1).upper()
             same_line = any(end < m.start() and var == name for _, end, var in sets_here)
-            if same_line or (stack and (name in in_block or name == "ERRORLEVEL")):
+            if same_line or (in_any and (name in in_block or name == "ERRORLEVEL")):
                 hits.append((n, m.group(1), s))
-        opens = [rest_at + i for i in _unmatched_opens(s[rest_at:])]
+        opens = ([] if s in text_paren
+                 else [rest_at + i for i in _unmatched_opens(s[rest_at:])])
         pushes = max(len(opens), 1 if (s.endswith("(") and not s.endswith("^(")) else 0)
         first_open = opens[0] if opens else len(s)
         if stack:
@@ -206,10 +238,10 @@ def test_scanner_catches_the_old_key_read_and_its_siblings():
 def test_scanner_catches_a_block_opened_mid_line():
     # Verifier nit 7: a block opened mid-line used to escape the scan.
     assert _hits(['if x==x (set A=1', '    echo %A%', ')']) == [(2, "A")]
-    # The else branch runs only when the if branch did not, so its read of the
-    # pre-statement value is right and stays unflagged.
+    # Over-detection by design: an else branch reading what its if branch set
+    # is flagged too (it only ever sees the pre-statement value).
     assert _hits(['if x==x (set A=1', '    set B=%A%', ') else (echo %A%', ')']) == [
-        (2, "A")]
+        (2, "A"), (3, "A")]
     assert _hits(['if x==x (', '    if y==y (set A=1', '    )', '    echo %A%', ')']) == [
         (4, "A")]
     assert _hits(['if x==x (', '    cmd /c exit 3 & (echo %errorlevel%', '    )', ')']) == [
@@ -219,11 +251,62 @@ def test_scanner_catches_a_block_opened_mid_line():
     # A set before a mid-line open belongs to the enclosing scope, not the block.
     assert _hits(['set C=1 & if x==x (echo %C%', ')']) == [(1, "C")]
     assert _hits(['if x==x (set "D=a(b" & echo !D!', ')']) == []
-    # Text parens open nothing, so the depth after them is unchanged.
-    text = ['>"%F%" echo(!K!', 'echo a (b', 'set E=a(b', 'if defined E set E=(x',
-            'set G=1', 'echo %G%']
-    assert _unmatched_opens('>"%F%" echo(!K!') == []
-    assert parse_time_reads(text) == []
+
+
+# The second verifier's repros (scratchpad s129-verify810b/scan_holes.py),
+# verbatim, each with what cmd.exe printed: the read saw the stale value.
+_REPROS = {
+    "if_cond_has_set_word": (['if exist set.txt (set A=1', '    echo A=[%A%]', ')'],
+                             [(2, "A")], "A=[]"),
+    "if_cond_has_title_word": (['if /i "x"=="x" if exist title.txt (set "T=new"',
+                                '    echo T=[%T%]', ')'], [(2, "T")], "T=[old]"),
+    "escaped_quote_hides_open": (['echo ^" & if 1==1 (set A=1', '    echo A=[%A%]', ')'],
+                                 [(2, "A")], "A=[]"),
+    "read_after_close_paren": (['if 1==1 (', '    set A=1', ') & echo A=[%A%]'],
+                               [(3, "A")], "A=[]"),
+    "control_mid_line_open": (['if 1==1 (set A=1', '    echo A=[%A%]', ')'],
+                              [(2, "A")], "A=[]"),
+}
+
+
+@pytest.mark.parametrize("name", sorted(_REPROS))
+def test_scanner_catches_the_second_verifier_repros(name):
+    body, expected, _ = _REPROS[name]
+    assert _hits(body) == expected
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="runs the repros under cmd.exe")
+@pytest.mark.parametrize("name", sorted(_REPROS))
+def test_the_repros_really_read_a_stale_value(tmp_path, name):
+    body, _, stale = _REPROS[name]
+    (tmp_path / "set.txt").write_text("x", encoding="ascii")
+    (tmp_path / "title.txt").write_text("x", encoding="ascii")
+    bat = tmp_path / "repro.bat"
+    bat.write_bytes(("\r\n".join(["@echo off", "setlocal", 'set "A="', 'set "T=old"'] + body)
+                     + "\r\n").encode("ascii"))
+    proc = subprocess.run(["cmd.exe", "/d", "/v:off", "/c", str(bat)], cwd=str(tmp_path),
+                          capture_output=True, timeout=60,
+                          creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    out = proc.stdout.decode("ascii", "replace")
+    assert stale in [ln.strip() for ln in out.splitlines()], out
+
+
+def test_only_the_echo_paren_idiom_is_skipped():
+    assert _unmatched_opens("echo(") == []
+    assert _unmatched_opens("  @ECHO.(x") == []
+    assert _unmatched_opens("x & echo(y") == []
+    # Anything else counts: text, keywords elsewhere, redirection first.
+    assert _unmatched_opens("echo a (b") == [7]
+    assert _unmatched_opens("set E=a(b") == [7]
+    assert _unmatched_opens('>"f" echo(x') == [9]
+    assert _unmatched_opens("title (x") == [6]
+    assert _unmatched_opens('echo "(" ^( (') == [12]
+    assert _unmatched_opens('echo ^" (') == [8]
+    assert _unmatched_opens("echo ^^(") == [7]
+    assert _hits(['echo a (b', 'set G=1', 'echo %G%']) == [(3, "G")]
+    # An allowlisted exact line opens nothing mid-line.
+    assert parse_time_reads(['echo a (b', 'set G=1', 'echo %G%'],
+                            text_paren=frozenset({"echo a (b"})) == []
 
 
 def _batch_files() -> list[Path]:
@@ -237,9 +320,13 @@ def _batch_files() -> list[Path]:
 def test_no_tracked_batch_file_reads_a_variable_at_parse_time():
     offenders = []
     for path in _batch_files():
+        rel = _repo_walk.relative_posix(path, REPO)
         lines = path.read_text(encoding="latin-1").splitlines()
-        for n, var, line in parse_time_reads(lines):
-            offenders.append(f"{_repo_walk.relative_posix(path, REPO)}:{n} %{var}%: {line}")
+        allowed = TEXT_PAREN_LINES.get(rel, frozenset())
+        missing = allowed - {ln.strip() for ln in lines}
+        assert not missing, f"{rel}: stale TEXT_PAREN_LINES entries {sorted(missing)}"
+        for n, var, line in parse_time_reads(lines, allowed):
+            offenders.append(f"{rel}:{n} %{var}%: {line}")
     assert not offenders, (
         "cmd expands %VAR% once per ( ... ) block (and once per line) before any "
         "command in it runs - read it as !VAR! under delayed expansion, or move it "
@@ -250,14 +337,23 @@ def test_no_tracked_batch_file_reads_a_variable_at_parse_time():
 # (b) one shared key check that never touches the key itself.
 # ---------------------------------------------------------------------------
 
-_CHECK_PREFIX = '"%RC_KEY_PY%" -I -c '
+_SHARED_START = 'set "RC_KEY_PY="'
+_CHECK_PREFIX = 'if defined RC_KEY_PY "%RC_KEY_PY%" -I -c '
 _CHECK_END = 'set "RC_KEY_MOD="'
+_EC_END = 'set "RC_KEY_EC="'
 _MARKER = ":: RM-810 key check"
-_MOD_LINE = {
-    "start.bat": 'set "RC_KEY_MOD=%~dp0core\\anthropic_key.py"',
-    "scripts/restart.bat": 'set "RC_KEY_MOD=%RC_ROOT%\\core\\anthropic_key.py"',
-    "scripts/start_debug.bat": 'set "RC_KEY_MOD=%RC_ROOT%\\core\\anthropic_key.py"',
-}
+_ROOT = {"start.bat": "%~dp0", "scripts/restart.bat": "%RC_ROOT%\\",
+         "scripts/start_debug.bat": "%RC_ROOT%\\"}
+_CD_LINE = {"start.bat": 'cd /d "%~dp0"', "scripts/restart.bat": 'cd /d "%RC_ROOT%"',
+            "scripts/start_debug.bat": 'cd /d "%RC_ROOT%"'}
+
+
+def _mod_line(rel: str) -> str:
+    return f'set "RC_KEY_MOD={_ROOT[rel]}core\\anthropic_key.py"'
+
+
+def _embed_line(rel: str) -> str:
+    return f'set "RC_KEY_EMBED={_ROOT[rel]}python-embed\\python.exe"'
 
 
 def _lines(rel: str) -> list[str]:
@@ -266,9 +362,13 @@ def _lines(rel: str) -> list[str]:
 
 def _shared_check(rel: str) -> list[str]:
     lines = [ln.strip() for ln in _lines(rel)]
-    start = next(i for i, ln in enumerate(lines) if ln.startswith(_CHECK_PREFIX))
+    start = lines.index(_SHARED_START)
     end = lines.index(_CHECK_END, start)
     return lines[start:end + 1]
+
+
+def _check_line(rel: str) -> str:
+    return next(ln for ln in _shared_check(rel) if ln.startswith(_CHECK_PREFIX))
 
 
 def test_the_three_launchers_share_one_key_check():
@@ -277,13 +377,52 @@ def test_the_three_launchers_share_one_key_check():
         lines = [ln.strip() for ln in _lines(rel)]
         assert _shared_check(rel) == first, f"{rel} checks the key differently"
         assert sum(ln.startswith(_MARKER) for ln in lines) == 1, rel
-        assert _MOD_LINE[rel] in lines, f"{rel} does not name its own core/anthropic_key.py"
-        assert lines.index(_MOD_LINE[rel]) < lines.index(first[0])
-    assert first[1] == "set RC_KEY_EC=%errorlevel%"
+        for own in (_mod_line(rel), _embed_line(rel)):
+            assert own in lines, f"{rel} lacks {own}"
+            assert lines.index(own) < lines.index(_SHARED_START)
+    assert 'if defined RC_KEY_PY set RC_KEY_EC=%errorlevel%' in first
+
+
+def test_the_check_runs_after_cd_to_the_repo_root():
+    # Verifier N1: a bare `python` run before `cd /d` was looked up in the
+    # caller's folder first.
+    for rel in LAUNCHERS:
+        lines = [ln.strip() for ln in _lines(rel)]
+        cd = lines.index(_CD_LINE[rel])
+        assert cd < lines.index(_SHARED_START), f"{rel}: the key check runs before cd /d"
+        assert [ln for ln in lines if ln.lower().startswith("cd ")] == [_CD_LINE[rel]], rel
+
+
+def test_the_interpreter_is_an_absolute_path_embedded_first():
+    shared = _shared_check(LAUNCHERS[0])
+    embed = 'if exist "%RC_KEY_EMBED%" set "RC_KEY_PY=%RC_KEY_EMBED%"'
+    on_path = 'if not defined RC_KEY_PY for %%I in (python.exe) do set "RC_KEY_PY=%%~$PATH:I"'
+    assert shared.index(_SHARED_START) < shared.index(embed) < shared.index(on_path) < (
+        shared.index(_check_line(LAUNCHERS[0])))
+    for rel in LAUNCHERS:
+        values = set(re.findall(r'set "RC_KEY_PY=([^"]*)"', "\n".join(_lines(rel))))
+        assert values == {"", "%RC_KEY_EMBED%", "%%~$PATH:I"}, (
+            f"{rel} sets the interpreter to something else: {values}")
+
+
+def test_the_check_exit_codes_are_ones_no_interpreter_emits():
+    # Verifier N2: 2 is CPython's own usage-error exit. 10 / 11 / 12 are not
+    # emitted by python on its own; any other code means "could not run".
+    code = re.search(r'-c "([^"]*)"', _check_line(LAUNCHERS[0])).group(1)
+    assert code.endswith("sys.exit(10 if k['usable_key'](e) else 11 if "
+                         "k['read_anthropic_key']() else 12)"), code
+    shared = _shared_check(LAUNCHERS[0])
+    assert 'set "RC_KEY_EC=none"' in shared
+    assert [ln for ln in shared if "ANTHROPIC_API_KEY" in ln] == [
+        'if "%RC_KEY_EC%"=="11" set "ANTHROPIC_API_KEY="',
+        'if "%RC_KEY_EC%"=="12" set "ANTHROPIC_API_KEY="']
+    start = [ln.strip() for ln in _lines("start.bat")]
+    assert 'if "%RC_KEY_EC%"=="12" (' in start
+    assert 'if not "%RC_KEY_EC%"=="10" if not "%RC_KEY_EC%"=="11" (' in start
 
 
 def test_the_key_check_calls_what_core_anthropic_key_defines():
-    code = re.search(r'-c "([^"]*)"', _shared_check(LAUNCHERS[0])[0]).group(1)
+    code = re.search(r'-c "([^"]*)"', _check_line(LAUNCHERS[0])).group(1)
     names = set(re.findall(r"k\['(\w+)'\]", code))
     assert names == {"ENV_VAR", "usable_key", "read_anthropic_key"}, names
     for name in names:
@@ -309,26 +448,27 @@ def test_no_launcher_reads_parses_or_sets_the_key():
                 assert m.group(1) == "", "the launcher sets the key: " + where
 
 
-def test_start_bat_prefers_the_embedded_interpreter_for_the_check():
-    lines = [ln.strip() for ln in _lines("start.bat")]
-    assert "set EMBED_PY=%~dp0python-embed\\python.exe" in lines
-    assert 'set "RC_KEY_PY=python"' in lines
-    assert lines.index('set "RC_KEY_PY=python"') < lines.index(
-        'if exist "%EMBED_PY%" set "RC_KEY_PY=%EMBED_PY%"') < lines.index(
-        _shared_check("start.bat")[0])
-
-
 _LAUNCH = re.compile(r"^(?:start|pythonw|taskkill|wmic)\b|main\.py|apply_patches",
                      re.IGNORECASE)
 
 
-def test_start_bat_starts_nothing_in_the_harness():
-    # The cut stops before `cd /d`; prove the launch line really sits after it.
+def _cut_bounds(rel: str) -> tuple[int, int]:
+    """The harness cut: the launcher's `cd /d` to the repo root through the
+    line that clears RC_KEY_EC (start.bat: after its two refusal blocks)."""
+    stripped = [ln.strip() for ln in _lines(rel)]
+    marker = next(i for i, ln in enumerate(stripped) if ln.startswith(_MARKER))
+    start = stripped.index(_CD_LINE[rel])
+    assert start < marker
+    return start, stripped.index(_EC_END, marker) + 1
+
+
+def test_no_harness_cut_starts_anything():
     # Reads files only, so it runs on every OS (verifier nit 6).
-    lines = [ln.strip() for ln in _lines("start.bat")]
-    cd = next(i for i, ln in enumerate(lines) if ln.lower().startswith("cd /d"))
-    assert any(_LAUNCH.search(ln) for ln in lines[cd:]), "start.bat launches nothing?"
-    assert not any(_LAUNCH.search(ln) for ln in lines[:cd])
+    for rel in LAUNCHERS:
+        lines = [ln.strip() for ln in _lines(rel)]
+        start, end = _cut_bounds(rel)
+        assert not [ln for ln in lines[start:end] if _LAUNCH.search(ln)], rel
+        assert any(_LAUNCH.search(ln) for ln in lines[end:]), f"{rel} launches nothing?"
 
 
 # ---------------------------------------------------------------------------
@@ -342,11 +482,9 @@ _PROBE = ("\"{exe}\" -c \"import json,os;"
 
 def _harness(tmp_path: Path, rel: str, with_module: bool = True) -> Path:
     lines = _lines(rel)
-    stripped = [ln.strip() for ln in lines]
-    start = next(i for i, ln in enumerate(stripped) if ln.startswith(_MARKER))
-    end = next(i for i in range(start, len(lines)) if stripped[i].lower().startswith("cd /d"))
+    start, end = _cut_bounds(rel)
     cut = lines[start:end]
-    launches = [ln for ln in stripped[start:end] if _LAUNCH.search(ln)]
+    launches = [ln.strip() for ln in cut if _LAUNCH.search(ln.strip())]
     assert not launches, f"the {rel} cut would launch something: {launches}"
     head = ["@echo off", "setlocal"]
     # The variables the launcher set before the cut (start.bat: EMBED_PY;
@@ -363,19 +501,37 @@ def _harness(tmp_path: Path, rel: str, with_module: bool = True) -> Path:
     return bat
 
 
-def _run(tmp_path: Path, rel: str, env_value, file_bytes, with_module: bool = True):
+# A planted interpreter: it leaves a marker next to itself and claims the
+# inherited variable is usable.
+_PLANT = b"@echo off\r\necho PLANTED>\"%~dp0planted.txt\"\r\nexit /b 10\r\n"
+
+
+def _run(tmp_path: Path, rel: str, env_value, file_bytes, with_module: bool = True,
+         plant: bool = False, path: str | None = None):
     if file_bytes is not None:
         (tmp_path / KEY_FILE).write_bytes(file_bytes)
     bat = _harness(tmp_path, rel, with_module)
+    # The launcher is started from an unrelated folder, as from a shortcut or
+    # another console; its own `cd /d` moves it to the repo root.
+    caller = tmp_path / "caller"
+    caller.mkdir(exist_ok=True)
+    if plant:
+        for where in (caller, tmp_path):
+            (where / "python.bat").write_bytes(_PLANT)
+            (where / "python.cmd").write_bytes(_PLANT)
+    # NoDefaultCurrentDirectoryInExePath (set in agent shells) stops cmd from
+    # searching the current folder for a command; a user's console or
+    # Explorer launch does not have it, so neither does the harness.
     env = {k: v for k, v in os.environ.items()
-           if k.upper() != ENV_VAR and not k.upper().startswith("RC_KEY")}
+           if k.upper() not in (ENV_VAR, "NODEFAULTCURRENTDIRECTORYINEXEPATH")
+           and not k.upper().startswith("RC_KEY")}
     if env_value is not None:
         env[ENV_VAR] = env_value
-    # `python` from PATH must be this interpreter (start.bat finds no
-    # python-embed in tmp_path; the scripts use PATH python anyway).
-    env["PATH"] = str(Path(sys.executable).parent) + os.pathsep + env.get("PATH", "")
+    # python.exe on PATH must be this interpreter: tmp_path has no python-embed.
+    env["PATH"] = path if path is not None else (
+        str(Path(sys.executable).parent) + os.pathsep + env.get("PATH", ""))
     proc = subprocess.run(
-        ["cmd.exe", "/d", "/c", str(bat)], cwd=str(bat.parent), env=env,
+        ["cmd.exe", "/d", "/c", str(bat)], cwd=str(caller), env=env,
         stdin=subprocess.DEVNULL, capture_output=True, timeout=60,
         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     out = proc.stdout.decode("ascii", "replace")
@@ -474,9 +630,14 @@ def test_a_root_with_a_space_and_a_bang_still_checks(tmp_path, rel):
 
 @win_only
 @pytest.mark.parametrize("rel", LAUNCHERS)
-def test_a_check_that_cannot_run_changes_nothing(tmp_path, rel):
-    # No core/anthropic_key.py under the root: Python exits 1, not 0 / 2 / 3.
-    rc, out, seen = _run(tmp_path, rel, "junk", _line(FILE_KEY), with_module=False)
+@pytest.mark.parametrize("how", ["module-missing", "no-interpreter"])
+def test_a_check_that_cannot_run_changes_nothing(tmp_path, rel, how):
+    # module-missing: Python exits 1, not 10 / 11 / 12. no-interpreter: no
+    # python-embed and no python.exe on PATH, so the check never starts.
+    system32 = str(Path(os.environ.get("SystemRoot", r"C:\Windows")) / "System32")
+    rc, out, seen = _run(tmp_path, rel, "junk", _line(FILE_KEY),
+                         with_module=how != "module-missing",
+                         path=system32 if how == "no-interpreter" else None)
     if rel == "start.bat":
         assert rc == 1, out
         assert "Could not check the Anthropic API key" in out
@@ -484,6 +645,17 @@ def test_a_check_that_cannot_run_changes_nothing(tmp_path, rel):
         return
     assert rc == 0, out
     assert seen == [{ENV_VAR: "junk"}], "a failed check must leave the variable alone"
+
+
+@win_only
+@pytest.mark.parametrize("rel", LAUNCHERS)
+def test_a_planted_python_in_the_callers_folder_never_runs(tmp_path, rel):
+    # Verifier N1: python.bat / python.cmd planted in the folder the launcher
+    # is started from (and in the root itself) must not be the interpreter.
+    rc, out, seen = _run(tmp_path, rel, "junk", _line(FILE_KEY), plant=True)
+    assert not list(tmp_path.rglob("planted.txt")), f"a planted python ran: {out!r}"
+    assert rc == 0, out
+    assert seen == [{}], "the real check clears the unusable inherited value"
 
 
 # ---------------------------------------------------------------------------
