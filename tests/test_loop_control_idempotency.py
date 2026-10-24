@@ -679,7 +679,10 @@ def test_fire_lane_propagates_a_lanes_value_error_as_400(ctldir, monkeypatch):
                                 "run_id": "cafe0001", "worktree": "C:/Example Repo",
                                 "idempotency_key": KEY_A})
     assert status == 400 and payload["ok"] is False
-    assert "worktree is mandatory" in payload["error"]
+    # RM-824: a fixed line names the field; the exception's own text (the
+    # real one names REPO_ROOT) stays in the log, never the reply.
+    assert "worktree" in payload["error"]
+    assert "worktree is mandatory" not in payload["error"]
     assert idem.seen(KEY_A) is None
 
 
