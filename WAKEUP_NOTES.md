@@ -6,6 +6,18 @@
 
 ---
 
+# 2026-10-24b - session 131: RM-824 shipped, RC board recreated, suite-guard board ignores, RM-835..RM-837 filed
+
+- **C1 = RM-824 (LEDGER 1791):** `ca5b44e41` (cherry-pick of `f290eaa91`) - six Mission Control loop-control reply sites through `_fault()`: fixed "see logs" line, raw cause logged via `scrub_log`; status codes and keys unchanged. Verifier CONFIRM (91 passed; old module 13 failed); merged-tree 108 passed.
+- **Guard (LEDGER 1792):** `3f3712009` - `tests/_fleet_guard_config.EXTRA_IGNORE` gains the two board files `fleet_board.py` rewrites (kit IGNORE misses them; SS 1525 FIX to MAIN). Comes out when a kit version lists them (the v14 overlap test goes red).
+- **Board (LEDGER 1793):** `6eb820a87` - seeded board not_found for this account (s124..s131); new Dashboard artifact `12ChcPAR8o3RuVb9qStHK8`, `ops/status_board.json` dataset_version 1; session-start push read back (datasets/board v2). ASKS 18 keeps only the URL-in-a-public-repo question.
+- **Filed (LEDGER 1794):** `129e28287` RM-835 (17 :8888 routes leak `str(exc)`), RM-836 (lane-lock write fault reads "lane held by None"), RM-837 (RM-824 AST guard misses assign-then-reply); next free RM-838.
+- **Inbox:** SS 1243 (INFORMATION / TERMINAL) and 1525 (FIX), both to MAIN, triaged; no replies.
+- **Do NOT redo:** RM-824 (only `dashboard/routes_loop_control.py`), the board recreation, the EXTRA_IGNORE entries.
+- **Next:** RM-835 (security, the RM-824 class), then the carried s130 list (RM-830, RM-825, ...); RM-836 / RM-837 with it; the batched MAIN note; S6 at the next live game.
+
+---
+
 # 2026-10-24 - session 130: read-backs only (C1-C3 green), nothing shipped, C4-C25 carried
 
 - **Start:** operator typed "continue"; a read-only helper read the hand-off and rendered the board (`fleet_board.py calls --session 130`, exit 0, if_version 21); the session-start board push was NOT made.
@@ -29,17 +41,3 @@
 - **C10 = RM-832 (LEDGER 1789):** `7042438eb`, `7b5ccfc53`, `6eae852d3` - vision :8889 is a separate process (docs); launchers wait out a dying port holder (`core/port_handoff.py`); live: /End + /Run -> new pid on :8861 in 1.7 s.
 - **Do NOT redo:** any id above; the rebuild map is LEDGER 1788 (old shas resolve via the tag).
 - **Next:** read back /done dispatch `40034861146`; then RM-824 (security), RM-830, RM-825, then RM-807 / RM-808 / RM-809 / RM-813 / RM-815..RM-817 / RM-820 / RM-821 / RM-823; S6 at the next live game.
-
----
-
-# 2026-10-23 - session 128: 32 rows shipped (RM-801, RM-804..RM-806, RM-763..RM-796 slices S-A..S-K), gated suite green, RM-807..RM-823 filed
-
-- **Start (LEDGER 1762):** s127 wrap docs-guards green; s127 leftover worktree + RM-794's two removed (stale lock = the live claude.exe that survives /clear; unlocked, no force).
-- **DS (LEDGER 1763-1764):** RM-805 `0738e197f` (neutral ARAM table exits 3), RM-806 `1e14d0ba5` (pen drift check covers resist reduction), RM-804 `370d1b15a` (note text only, NO ENGINE bump - stays 1.289.0; DS :8860 restarted, /health 1.289.0 / 16.21.1).
-- **Slices (LEDGER 1765-1777):** S-A RM-780 / RM-781; S-E RM-776 / RM-788 / RM-777; S-F RM-769..RM-771; S-H RM-764 / RM-779; RM-801 `20fb4d9ed` (232 stdlib fakes scoped); S-C RM-796 / RM-765; S-G RM-767 / RM-768; S-I RM-785 / RM-786; S-K RM-795; S-J RM-763 / RM-775 / RM-790; S-B RM-782..RM-784; S-D RM-772..RM-774 + `fa371ab4f` (verifier REFUTE, flat head parse). Every slice verifier CONFIRM.
-- **Gate (LEDGER 1771):** gated dual suite on `951e62198` 41644 passed, EXIT=0; push CI green on all 7 pushes `adbd2c93f..fa371ab4f`; /done dispatched ONE full run `39976892990` on `fa371ab4f`.
-- **Housekeeping (LEDGER 1778):** RM-793 worktree to the Recycle Bin, branch `-D` by ruling (commits now held only by `worktree-agent-abd89ea3e70d8c92f` - tag `4f1424a91` before deleting it).
-- **Filed (LEDGER 1779):** RM-807..RM-823; RM-791 closed (false positive, template reworded); ROADMAP size pass (13 rows to ROADMAP_HISTORY).
-- **Do NOT redo:** any id above; RM-804's no-bump is adjudicated; the wave-2 push halt was fixed by a rebuild (allowlisted OS-root fixture), not a bypass.
-- **Operator's call (not done):** copy RM-782's tails into the live `.claude/settings.json`; RM-785 live APPLY. **Owed to MAIN:** RM-781 result + RM-823 + the `route: single` observation, one batched note.
-- **Next:** read back dispatch `39976892990`, then RM-807+ by topic (security first: RM-819 Host checks, RM-811 log injection, RM-810 launcher key read), RM-822 worktree estate; S6 at the next live game.

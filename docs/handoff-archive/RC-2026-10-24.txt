@@ -16,3 +16,33 @@ CLOSED - DO NOT RE-LITIGATE, OLDER RECORDS (s127-s128 records and rulings; each 
 - MAIN 1254 #6: SHIPPED s128 as RM-781 (allowlisted name context, 7b31fbdd3; verifier built its own
   corpus). Reverses if: a measured real credential shape is lowercase kebab-case words, or a name false
   hit is measured on an anthropic shape.
+# archived from RC-NEXT-SESSION.txt at 2026-10-24T23:45:00Z
+====================
+CLOSED - DO NOT RE-LITIGATE, OLDER RECORDS (s129-s130 records and rulings, plus three rules already carried by CLAUDE.md / tools/done.md; each keeps its Reverses if:) - verbatim from e9261314d:RC-NEXT-SESSION.txt
+====================
+- s130 read-backs (all success): dispatch 40034861146 on 0781e3c83 (42176 passed / 448 skipped,
+  check 48m36s); 0781e3c83 docs-guards 40034820217, codeql 40034820135; c107a1725 push ci
+  40035677558, docs-guards 40035677605, codeql 40035677509. Reverses if: a re-run of one reds.
+- s129 (LEDGER 1780-1790; every sha in the ROADMAP "SESSION 129 SHIPPED" row): RM-810, RM-811,
+  RM-812, RM-814, RM-818, RM-832 shipped; RM-819 (a)-(c); RM-822 deletions; MAIN ANSWER 28c1ed5c0
+  delivered 1/1; gated dual suite on 5543cc56d 42515 passed / 106 skipped, exit 0; push CI 6eae852d3
+  ci 40033559345 success, docs-guards 40033559344 success, codeql 40033559405 success. Reverses if: a
+  live re-check of one of those acceptances fails.
+- RM-811 one logger-level ScrubFilter (adjudicated s129, decision in the 5df8f79e1 body; LEDGER 1782)
+  and RM-819 (c) the plain-HTTP 301 keeps echoing any IP literal (0daee3441 body). Reverses if: per
+  each commit body.
+- RM-804 NO ENGINE bump (adjudicated s128; engine AST identical except note= strings; LEDGER 890 / 469
+  precedent): ENGINE stays 1.289.0. Reverses if: a modeled number moves in an RM-804-class change,
+  or RM-808 (a) settles SR Hubris on a non-Meraki number.
+- RM-766 ARAM modifiers carried forward from 16.20.1 (adjudicated; manifest `aram_modifiers_carry`):
+  lolmath 16.21.1 returned 173/173 neutral. Reverses if: lolmath serves a non-neutral table for
+  16.21.1 or later (re-extract and replace the carried block; RM-805 now makes the neutral case exit 3).
+- RM-736 gate change REJECTED, record-only (the TIER TABLE rule: a graded count appears in the output
+  of the call that ran it). Reverses if: 3 or more live false flags of this class occur.
+- done.md 2c conditional dispatch (c1b3 ruling Q1, s126). Reverses if: ci.yml's push gate runs the
+  full suite again, the repo goes private and hits the spending limit, 10 consecutive dispatches add
+  no signal, or MAIN / the operator rules.
+- s125 MAIN ORDER 2026-10-19-0034 DEPENDABOT-MERGE-RULE: RC adopts path B ONLY (never merge on GitHub;
+  bdaff4426, ec06bbb21; tools/bot_merge_check.py). Reverses if: MAIN re-orders path A, or
+  bot_merge_check exits 1 on a new default-branch commit (fix only via fleet_rewrite.py under MAIN
+  2312's scope, at the halt boundary).

@@ -41,6 +41,20 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-23 - session 128: 32 rows shipped (RM-801, RM-804..RM-806, RM-763..RM-796 slices S-A..S-K), gated suite green, RM-807..RM-823 filed
+
+- **Start (LEDGER 1762):** s127 wrap docs-guards green; s127 leftover worktree + RM-794's two removed (stale lock = the live claude.exe that survives /clear; unlocked, no force).
+- **DS (LEDGER 1763-1764):** RM-805 `0738e197f` (neutral ARAM table exits 3), RM-806 `1e14d0ba5` (pen drift check covers resist reduction), RM-804 `370d1b15a` (note text only, NO ENGINE bump - stays 1.289.0; DS :8860 restarted, /health 1.289.0 / 16.21.1).
+- **Slices (LEDGER 1765-1777):** S-A RM-780 / RM-781; S-E RM-776 / RM-788 / RM-777; S-F RM-769..RM-771; S-H RM-764 / RM-779; RM-801 `20fb4d9ed` (232 stdlib fakes scoped); S-C RM-796 / RM-765; S-G RM-767 / RM-768; S-I RM-785 / RM-786; S-K RM-795; S-J RM-763 / RM-775 / RM-790; S-B RM-782..RM-784; S-D RM-772..RM-774 + `fa371ab4f` (verifier REFUTE, flat head parse). Every slice verifier CONFIRM.
+- **Gate (LEDGER 1771):** gated dual suite on `951e62198` 41644 passed, EXIT=0; push CI green on all 7 pushes `adbd2c93f..fa371ab4f`; /done dispatched ONE full run `39976892990` on `fa371ab4f`.
+- **Housekeeping (LEDGER 1778):** RM-793 worktree to the Recycle Bin, branch `-D` by ruling (commits now held only by `worktree-agent-abd89ea3e70d8c92f` - tag `4f1424a91` before deleting it).
+- **Filed (LEDGER 1779):** RM-807..RM-823; RM-791 closed (false positive, template reworded); ROADMAP size pass (13 rows to ROADMAP_HISTORY).
+- **Do NOT redo:** any id above; RM-804's no-bump is adjudicated; the wave-2 push halt was fixed by a rebuild (allowlisted OS-root fixture), not a bypass.
+- **Operator's call (not done):** copy RM-782's tails into the live `.claude/settings.json`; RM-785 live APPLY. **Owed to MAIN:** RM-781 result + RM-823 + the `route: single` observation, one batched note.
+- **Next:** read back dispatch `39976892990`, then RM-807+ by topic (security first: RM-819 Host checks, RM-811 log injection, RM-810 launcher key read), RM-822 worktree estate; S6 at the next live game.
+
+---
+
 # 2026-10-22b - session 127: s126 CI red fixed, MAIN sweep slot armed narrowed, RM-799 / RM-802 / RM-803, DS 16.21.1 ENGINE 1.289.0
 
 - **C1 (LEDGER 1758):** dispatch run 39877078008 RED, 1 test bug (a process-wide fake socket); fixed test-only `ea008366b` (`tests/_module_view.py`); RM-802 deadline mutants killed `c4cf40a18`, `681997415`; RM-801 filed.
