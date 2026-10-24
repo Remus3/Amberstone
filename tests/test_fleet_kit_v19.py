@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -71,6 +72,36 @@ def test_board_state_dir_is_gitignored():
     ignored = subprocess.run(["git", "check-ignore", "-q", "ops/loop/control/board/state.json"],
                              cwd=ROOT, capture_output=True)
     assert ignored.returncode == 0
+
+
+BOARD_FILES = ("ops/loop/control/board/status.json", "ops/loop/control/board/state.json")
+
+
+def test_the_suite_guard_ignores_the_two_files_a_board_push_rewrites(tmp_path):
+    # SS 2026-10-24 1525 FIX to MAIN: fleet_board render / pushed rewrite both
+    # board files at every interactive push (session start, each item-13 b
+    # reprint, /done --final), resolved via the main checkout, so env_roots cannot
+    # reroute them, and the kit IGNORE does not list them. RC adds them file by
+    # file in EXTRA_IGNORE until a kit version does (then the v14 overlap test
+    # goes red and the local entries leave).
+    from tests import _fleet_guard_config as cfg
+
+    board, guard = _load("fleet_board"), _load("fleet_test_guard")
+    (tmp_path / "ops").mkdir()
+    (tmp_path / "ops" / "status_board.json").write_text(
+        '{"code": "RC", "url": "https://claude.ai/artifact/probe"}\n', encoding="ascii")
+    assert board.render(tmp_path, 1, [], environ={})["push"] is True
+    for rel in BOARD_FILES:
+        os.utime(tmp_path / rel, ns=(10**18, 10**18))
+    ignore = tuple(guard.IGNORE) + tuple(cfg.EXTRA_IGNORE)
+    raw, eff = guard.snapshot(tmp_path, ignore=()), guard.snapshot(tmp_path, ignore=ignore)
+    board.render(tmp_path, 2, [], environ={})
+    board.pushed(tmp_path, 7)
+    changed = guard.compare(raw, guard.snapshot(tmp_path, ignore=()))[0]
+    assert set(BOARD_FILES) <= set(changed), "positive control: the push touched nothing"
+    assert guard.verdict(*guard.compare(eff, guard.snapshot(tmp_path, ignore=ignore))) == ""
+    for rel in BOARD_FILES:
+        assert rel in cfg.EXTRA_IGNORE, f"{rel} must be ignored file by file"
 
 
 def test_done_pushes_the_board_once_between_handoff_readback_and_marker():

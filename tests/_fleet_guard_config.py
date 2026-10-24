@@ -24,7 +24,12 @@ kit's IGNORE for the same reason the kit ignores inbox_status.json: a change the
 live tick made says nothing about a test. Kit v14 (MAIN 2026-10-09 0930 step 3):
 passed as install(..., extra_ignore=EXTRA_IGNORE), which ADDS to the kit IGNORE;
 the v14 IGNORE itself now holds every *.lock and headless_budget.json, so
-inbox_tick.lock and headless_budget.json left this list. ASCII only.
+inbox_tick.lock and headless_budget.json left this list. Kit v19 board files
+(SS 2026-10-24 1525 FIX to MAIN): fleet_board render / pushed rewrite
+board/status.json and board/state.json at every interactive board push, in the
+main checkout (not env-routable), and the kit IGNORE misses them; listed file by
+file until a kit version adds them (tests/test_fleet_kit_v14.py then flags the
+overlap). ASCII only.
 """
 
 ENV_ROOTS = {
@@ -60,4 +65,6 @@ ENV_ROOTS = {
 EXTRA_IGNORE = (
     "ops/loop/control/inbox_tick_last.json",
     "ops/loop/control/inbox_held/*",
+    "ops/loop/control/board/status.json",
+    "ops/loop/control/board/state.json",
 )
