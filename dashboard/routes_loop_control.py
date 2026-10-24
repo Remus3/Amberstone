@@ -212,6 +212,26 @@ def _awrite(path: Path, text: str) -> None:
         raise
 
 
+def _fault(status: int, action: str, exc: BaseException, error: str, *,
+           log_as: str, **extra) -> tuple[int, dict]:
+    """A failure reply with a FIXED client message; the raw cause goes to the log.
+
+    RM-824: six action sites here put the exception's text into the reply's
+    `error` field - a ValueError from ops/loop/lanes.py names REPO_ROOT, an
+    OSError names its file, a launch fault carries git / spawn text. That is
+    the RM-134 contract in dashboard/_errors.py (a reply never carries
+    exception text) applied to the action layer, which returns
+    (status, payload) for the idempotency and arm gates to settle rather
+    than sending, so send_error itself cannot be used here. `error` is the
+    site's fixed line; the cause is logged scrubbed (RM-321), type included.
+    """
+    log.warning("api/loop-control %s: %s: %s: %s", action, log_as,
+                type(exc).__name__, scrub_log(str(exc)))
+    payload = {"ok": False, "action": action, "error": error}
+    payload.update(extra)
+    return status, payload
+
+
 def _state() -> str:
     """Mirror routes_loop_status: stopped > running (cycle.txt present) > idle."""
     if (CONTROL_DIR / "STOP").exists():
@@ -291,7 +311,14 @@ def _fire_lane(body: dict) -> tuple[int, dict]:
         result = lanes.try_acquire_lane(lane, run_id=run_id, worktree=worktree)
     except ValueError as exc:
         # A rejected worktree (empty, or the main tree) - operator error, 400.
-        return 400, {"ok": False, "action": "fire_lane", "error": str(exc)}
+        # The lane name and an empty worktree are refused above, so the cause
+        # left is the main-tree refusal, whose text names REPO_ROOT (RM-824);
+        # a lane-cap / lane-root misconfiguration also lands here, and the log
+        # line names which one it was.
+        return _fault(400, "fire_lane", exc,
+                      "fire_lane rejected the request - check 'worktree' (a "
+                      "lane never runs against the main tree), see logs",
+                      log_as="rejected")
 
     payload = {"ok": bool(result.get("ok")), "action": "fire_lane",
                "state": _state()}
@@ -318,12 +345,11 @@ def _fire_lane(body: dict) -> tuple[int, dict]:
         run = launcher.launch_lane(lane, run_id=run_id,
                                    token=result.get("token"))
     except Exception as exc:  # noqa: BLE001 - launch_lane already released the lane
-        log.warning("api/loop-control fire_lane: launch failed: %s",
-                    scrub_log(str(exc)))
         # 503, NOT 200: only settled answers are remembered by the idempotency
         # table, and remembering a launch fault would replay it forever.
-        return 503, {"ok": False, "action": "fire_lane",
-                     "error": f"launch failed: {exc}", "released": True}
+        return _fault(503, "fire_lane", exc,
+                      "launch failed - the lane was released, see logs",
+                      log_as="launch failed", released=True)
 
     # `progress` is the fire's in-process checklist handle (kit v7 item 13),
     # not JSON - the operator reads it from progress/lane-<i>.json instead.
@@ -385,10 +411,16 @@ def _steer(body: dict, key: str) -> tuple[int, dict]:
     try:
         rec = steer.append(body.get("text"), tier=tier, key=key)
     except ValueError as exc:
-        return 400, {"ok": False, "action": "steer", "error": str(exc)}
+        # The tier is checked above, so the cause left is an empty text.
+        return _fault(400, "steer", exc,
+                      "steer rejected the text - it must be non-empty, see logs",
+                      log_as="rejected")
     except OSError as exc:
-        log.warning("api/loop-control steer: %s", scrub_log(str(exc)))
-        return 503, {"ok": False, "action": "steer", "error": str(exc)}
+        # An OSError's text names its file (RM-824) - the log has it.
+        return _fault(503, "steer", exc,
+                      "steer channel unavailable - the steer log could not be "
+                      "written, see logs",
+                      log_as="write failed")
     except RuntimeError as exc:
         # ops/loop/steer.py:146 serializes the append on a Win32 named mutex and
         # raises winmutex.MutexTimeout (a RuntimeError, NOT an OSError) after
@@ -442,10 +474,9 @@ def _interrupt_preview() -> tuple[int, dict]:
     try:
         out = dict(mod_i.preview())
     except Exception as exc:  # noqa: BLE001 - a probe fault must not 500
-        log.warning("api/loop-control interrupt_preview: %s",
-                    scrub_log(str(exc)))
-        return 503, {"ok": False, "action": "interrupt_preview",
-                     "error": f"preview failed: {exc}"}
+        return _fault(503, "interrupt_preview", exc,
+                      "interrupt preview failed - see logs",
+                      log_as="preview failed")
     out["action"] = "interrupt_preview"
     out["state"] = _state()
     return 200, out
@@ -476,11 +507,13 @@ def _do_interrupt(body: dict, key: str) -> tuple[int, dict]:
     try:
         out = dict(mod_i.execute(fp, key=key))
     except Exception as exc:  # noqa: BLE001 - never 500 the server on a kill path
-        log.warning("api/loop-control interrupt: %s", scrub_log(str(exc)))
         # 503, not 200: only settled answers are remembered, and remembering a
         # fault would replay it forever against a machine that has moved on.
-        return 503, {"ok": False, "action": "interrupt",
-                     "error": f"interrupt failed: {exc}"}
+        # A fault mid-kill leaves the set unknown, so the line says re-preview.
+        return _fault(503, "interrupt", exc,
+                      "interrupt failed - run interrupt_preview to see what "
+                      "is still running, see logs",
+                      log_as="interrupt failed")
     out["action"] = "interrupt"
     out["state"] = _state()
     out["key"] = key
