@@ -8,7 +8,8 @@ what the ORDER's section 4 asks RC to do around them:
   * step 1: the vendored kit is v19 and carries the new fleet_board.py;
   * step 2: the FLEET-COMMON block carries item 18 and conformance() == [];
   * step 3: ops/status_board.json is tracked config (ASCII, LF, code RC,
-    dataset_version 2, the RC board url) and the board state dir is ignored;
+    dataset_version 1, the RC board url - recreated in the current account
+    2026-10-24, s131) and the board state dir is ignored;
   * step 4: /done pushes the board once with --final after the hand-off
     read-back and before the done marker; the session-start DIRECTIVE wires
     the start / reprint pushes; a headless render pushes nothing;
@@ -26,7 +27,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 KIT = ROOT / "ops" / "fleet_kit"
-RC_BOARD_URL = "https://claude.ai/artifact/7ofQL8BtTQfzjLPbfyi6aJ"
+RC_BOARD_URL = "https://claude.ai/artifact/12ChcPAR8o3RuVb9qStHK8"
 
 
 def _load(name):
@@ -61,7 +62,7 @@ def test_status_board_config_is_tracked_ascii_lf_and_names_rc():
     raw = (ROOT / "ops" / "status_board.json").read_bytes()
     raw.decode("ascii")
     assert b"\r\n" not in raw and raw.endswith(b"\n")
-    assert json.loads(raw) == {"code": "RC", "dataset_version": 2, "url": RC_BOARD_URL}
+    assert json.loads(raw) == {"code": "RC", "dataset_version": 1, "url": RC_BOARD_URL}
     tracked = subprocess.run(["git", "ls-files", "--error-unmatch", "ops/status_board.json"],
                              cwd=ROOT, capture_output=True)
     assert tracked.returncode == 0
