@@ -41,6 +41,17 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-22b - session 127: s126 CI red fixed, MAIN sweep slot armed narrowed, RM-799 / RM-802 / RM-803, DS 16.21.1 ENGINE 1.289.0
+
+- **C1 (LEDGER 1758):** dispatch run 39877078008 RED, 1 test bug (a process-wide fake socket); fixed test-only `ea008366b` (`tests/_module_view.py`); RM-802 deadline mutants killed `c4cf40a18`, `681997415`; RM-801 filed.
+- **Sweep (LEDGER 1759):** RM-789 `18646ad2e` - MAIN's checkout name gets a slot, ARMED NARROWED by adjudication (full strength = 10,033 findings); RM-799 `b6f4043bd` (bad config key = FAULT); fixtures `25da2f0b2`; RM-803 `b61059c72` (allowlist never shadows a loaded slot). RM-800 BLOCKED-BOUNDARY; ask 27 resolved, ask 28 new (the RM-803 residual).
+- **RM-766 (LEDGER 1760):** `d1e3883bf` / `e8d6336a7` / `33d551beb` - DS 16.21.1, ENGINE 1.289.0, Bastionbreaker lethality 18, pen drift guard; ARAM table carried from 16.20.1 (lolmath all-neutral); DS :8860 reads 1.289.0. Gated dual suite on `b61059c72`: 41435 passed, EXIT=0.
+- **Filed:** RM-801, RM-804, RM-805, RM-806 OPEN. **Push:** `9aac2d261..eece8243b`, then the wrap commit (LEDGER 1761).
+- **Do NOT redo:** any of the above; the s127 leftover worktree `agent-a29112905430c41bd` is merged - just remove it.
+- **Next:** read the push CI, remove the leftover worktrees (s127 + RM-794), then RM-801, RM-805 / RM-806, RM-804 (Tier-2), then RM-763..RM-798; S6 at the next live game.
+
+---
+
 # 2026-10-22 - session 126: 30 Dependabot alerts closed, security batches C1a / C1b, C1b-3 waves 1-2, ENGINE 1.288.0, RM-703 cleanup
 
 - **Deps `cef8bfd22` (LEDGER 1750):** certifi / Pillow 13 / portalocker / CI ruff, PR #21 by path B; alerts 30 -> 0. CLI pin 2.1.308 `15e896080`, then 2.1.309 `09054d9cd`.

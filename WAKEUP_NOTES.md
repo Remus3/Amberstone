@@ -6,6 +6,18 @@
 
 ---
 
+# 2026-10-24 - session 130: read-backs only (C1-C3 green), nothing shipped, C4-C25 carried
+
+- **Start:** operator typed "continue"; a read-only helper read the hand-off and rendered the board (`fleet_board.py calls --session 130`, exit 0, if_version 21); the session-start board push was NOT made.
+- **C1 (read back):** s129 /done dispatch `40034861146` on `0781e3c83` success - 42176 passed, 448 skipped, 18852 subtests, 2683.82 s; advisory mypy 417 errors / 84 files (was 400 / 82 in `39976892990`); skips 340 -> 448 vs that dispatch (attached to RM-833, cause not investigated).
+- **C2 (read back):** CPU 40 percent, 15.8 / 31.6 GB free; no RC orphans; HEAD == @{u} == `c107a1725`; inbox_tick --pending 0 rows; 0 open PRs.
+- **C3 (read back):** docs-guards `40034820217` + codeql `40034820135` success; wrap commit `c107a1725` ci `40035677558`, docs-guards `40035677605`, codeql `40035677509` success.
+- **Full suite (2c):** covered by `c107a1725` (nightly `40094097286`, in progress at the wrap); no dispatch.
+- **Do NOT redo:** C1-C3 above. No tracked edit this session besides this wrap.
+- **Next:** RM-824 (security), RM-830, RM-825, then RM-819 (d), RM-807 .. RM-834 by topic; one batched MAIN note; S6 at the next live game.
+
+---
+
 # 2026-10-23b - session 129: RM-810 / RM-811 / RM-812 / RM-814 / RM-818 / RM-832 shipped, RM-819 / RM-822 partial, RM-824..RM-834 filed
 
 - **Start (LEDGER 1780):** s128 dispatch `39976892990` green (41764 passed); s128 wrap push ci + docs-guards green.
@@ -31,14 +43,3 @@
 - **Do NOT redo:** any id above; RM-804's no-bump is adjudicated; the wave-2 push halt was fixed by a rebuild (allowlisted OS-root fixture), not a bypass.
 - **Operator's call (not done):** copy RM-782's tails into the live `.claude/settings.json`; RM-785 live APPLY. **Owed to MAIN:** RM-781 result + RM-823 + the `route: single` observation, one batched note.
 - **Next:** read back dispatch `39976892990`, then RM-807+ by topic (security first: RM-819 Host checks, RM-811 log injection, RM-810 launcher key read), RM-822 worktree estate; S6 at the next live game.
-
----
-
-# 2026-10-22b - session 127: s126 CI red fixed, MAIN sweep slot armed narrowed, RM-799 / RM-802 / RM-803, DS 16.21.1 ENGINE 1.289.0
-
-- **C1 (LEDGER 1758):** dispatch run 39877078008 RED, 1 test bug (a process-wide fake socket); fixed test-only `ea008366b` (`tests/_module_view.py`); RM-802 deadline mutants killed `c4cf40a18`, `681997415`; RM-801 filed.
-- **Sweep (LEDGER 1759):** RM-789 `18646ad2e` - MAIN's checkout name gets a slot, ARMED NARROWED by adjudication (full strength = 10,033 findings); RM-799 `b6f4043bd` (bad config key = FAULT); fixtures `25da2f0b2`; RM-803 `b61059c72` (allowlist never shadows a loaded slot). RM-800 BLOCKED-BOUNDARY; ask 27 resolved, ask 28 new (the RM-803 residual).
-- **RM-766 (LEDGER 1760):** `d1e3883bf` / `e8d6336a7` / `33d551beb` - DS 16.21.1, ENGINE 1.289.0, Bastionbreaker lethality 18, pen drift guard; ARAM table carried from 16.20.1 (lolmath all-neutral); DS :8860 reads 1.289.0. Gated dual suite on `b61059c72`: 41435 passed, EXIT=0.
-- **Filed:** RM-801, RM-804, RM-805, RM-806 OPEN. **Push:** `9aac2d261..eece8243b`, then the wrap commit (LEDGER 1761).
-- **Do NOT redo:** any of the above; the s127 leftover worktree `agent-a29112905430c41bd` is merged - just remove it.
-- **Next:** read the push CI, remove the leftover worktrees (s127 + RM-794), then RM-801, RM-805 / RM-806, RM-804 (Tier-2), then RM-763..RM-798; S6 at the next live game.
