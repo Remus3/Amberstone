@@ -1,0 +1,18 @@
+# archived from RC-NEXT-SESSION.txt at 2026-10-24T12:45:25Z
+====================
+CLOSED - DO NOT RE-LITIGATE, OLDER RECORDS (s127-s128 records and rulings; each keeps its Reverses if:) - verbatim from c107a1725:RC-NEXT-SESSION.txt
+====================
+- s128 (LEDGER 1762-1779; every sha in the ROADMAP "SESSION 128 SHIPPED" row): RM-801, RM-804..RM-806,
+  RM-763..RM-777, RM-779..RM-786, RM-788, RM-790, RM-791 (false positive), RM-793 / RM-794 (worktrees
+  removed), RM-795, RM-796; gated dual suite on 951e62198 41644 passed, EXIT=0. Reverses if: a live
+  re-check of one of those acceptances fails.
+- RM-796 option A, RM-775 (b) shell .exe heads allowed / (c) py.test refused, RM-795 newer CLI stays
+  RED (not skip), RM-785 (b) ownerless rows fail only past 2x ETA AND kit-abandoned, RM-768
+  cross_machine retired, RM-774 refuse (not re-route), RM-764 WARN (not FAIL), RM-779 in-memory
+  compare: each decision and its Reverses-if is in its commit body (LEDGER 1764-1777).
+- RM-789 slot ARMED NARROWED (adjudicated s127): full strength = 10,033 findings in 2,039 files (every
+  push halts); a bare-word mention stays undetectable ("ARMED WITH A MEASURED ESCAPE RATE ABOVE ZERO").
+  Reverses if: MAIN's checkout is renamed to a non-dictionary word (then arm it full strength).
+- MAIN 1254 #6: SHIPPED s128 as RM-781 (allowlisted name context, 7b31fbdd3; verifier built its own
+  corpus). Reverses if: a measured real credential shape is lowercase kebab-case words, or a name false
+  hit is measured on an anthropic shape.
