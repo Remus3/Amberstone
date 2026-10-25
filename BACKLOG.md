@@ -7,6 +7,12 @@ _Competitor-lift teardown RECORDS (what was already shipped, what is closed, do-
 
 ---
 
+## Session 133 lane filings (2026-10-24) - RM-850 (gated lane PREP), indexed in ROADMAP NOW
+
+Line numbers below are at main `373c693bb`; re-grep by symbol before fixing.
+
+- **RM-850 OPEN (Tier-1, web + one route test; gated: none for the fix, the live eyeball stays G3-03): the live ARAM comp-verdict POST never sends the champion's build variants, so the VARIANT verdict is unreachable live.** `core/aram_comp_verdict.py` returns `variant` only through `_find_variant` over `state["variants"]` (`:381-383`, `:395-414`, `:333-340`; text match on `key` / `label` / `summary`, `:328-330`). The champ-select panel POST to `/api/aram-comp-verdict` sends only `my_champion` / `my_team` / `their_team` / `bench` (`web/js/panels/champ_select.js:1685-1691`), although `dashboard/routes_coach.py:205-206` documents `variants` / `current_variant` as accepted fields and the panel already builds them (`champ_select.js:865` `_csvBuildVariantsFor`). No other live caller feeds variants (`/api/champ-select-coach` `:167-177` sends none; `coaches/aram_team_analyzer.analyze()` has no importer). Acceptance: the POST carries the locked champion's variants (`key`, `label`, `summary`) and the active one as `current_variant`; the cache key at the fetch (`_CSV_COMPVERDICT.key`) includes the variant set so a change refetches; a test pins the POST body fields; the mock path is unchanged. Do-not-redo: OQ22 (LEDGER 746) already fixed the variant reason LABEL; this row is the missing INPUT. Found by the s133 gated lane (adversarial pass CONFIRMED); unblocks `docs/LIVE_GAME_GATED_SYNC.md` G3-03.
+
 ## Session 132 filings (2026-10-24) - RM-838, indexed in ROADMAP NOW (the RM-835 merger follow-up: reply-body exception text outside the RM-835 set)
 
 Line numbers below are at main `965b7bb92` (re-read by grep on the merged tree); re-grep by symbol before fixing.
