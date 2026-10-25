@@ -193,6 +193,10 @@ Hotkeys override auto-behavior:
   set (coach / build / threat)
 - `Alt+Shift+R` - reset the movable widget field to its default positions
   (`OVERLAY_DEFAULTS.hotkeyReset`, `main.js:1234`)
+- `Ctrl+Shift+O` (in-game) - overlay content ON/OFF, the keyboard twin of the
+  ON/OFF icon below. Acted on only while the in-game surface is up
+  (`overlay_toggle.acceptsToggleInput`), because the Win32 hook also sees the
+  chord out of a game, where VS Code / Chrome own it.
 - In-game vs out-of-game: the `Alt+Shift+*` binds use Electron `globalShortcut`,
   which does NOT deliver while League holds foreground focus. The `Ctrl+Shift+*`
   binds are owned by the Win32 `tools/hotkey_listener.py` (RegisterHotKey), which
@@ -204,6 +208,21 @@ Hotkeys override auto-behavior:
 
 The auto-hide of the companion when a match starts keeps everything to one
 screen: companion for idle, overlay for the match.
+
+Overlay ON/OFF icon (S134, operator 2026-10-25). A small movable icon
+(`rc-shell/src/overlay_toggle.html`) shows over the game in every game mode
+whenever the `overlay` row above is `show`; a tap hides or shows the overlay
+content and the icon itself stays up, so OFF is always one tap from ON. It is
+its own tiny window, not an overlay widget, because OFF hides the overlay
+window outright: `focusable:false` (never activates, never on the taskbar),
+`screen-saver` always-on-top, and sized exactly to the icon, so everything else
+stays click-through to the game. Drag (past 4px) moves it; the spot persists
+per display as fractions of that display (`overlay.toggle.pos` in
+`rc-shell-state.json`) and is re-clamped on-screen after a resolution or monitor
+change. The ON/OFF choice persists too (`overlay.toggle.visible`, default ON).
+The icon does not change any row of the table: it only layers over the
+`overlay` cell (`overlay_toggle.applyContentToggle`), and the `Alt+Shift+O`
+force-hide still hides everything, the icon included.
 
 -------------------------------------------------------------------------------
 

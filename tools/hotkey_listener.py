@@ -1,7 +1,8 @@
 """hotkey_listener.py - Legion-local global hotkeys for coach decisions.
 
 Background process that watches Ctrl+Shift+1 / Ctrl+Shift+2 / Ctrl+Shift+A /
-Ctrl+Shift+B / Ctrl+Shift+K via a WH_KEYBOARD_LL low-level keyboard hook.
+Ctrl+Shift+B / Ctrl+Shift+K / Ctrl+Shift+O via a WH_KEYBOARD_LL low-level
+keyboard hook.
 
 Mechanism note: this used RegisterHotKey (the quiet registered-accelerator API)
 specifically to AVOID a low-level hook, on the theory that hooks trip anti-cheat
@@ -31,6 +32,10 @@ When a hotkey fires:
      post-game collector attaches the marks and PGR / Replay show them as
      "you flagged" pins. If :2999 is down (loading screen) the mark is dropped
      and logged. No OBS dependency.
+  6. Ctrl+Shift+O -> stamp the overlay content ON/OFF signal file (S134) so
+     rc-shell hides / shows the visual overlay - the keyboard twin of the
+     in-game toggle icon. rc-shell acts on it only while the in-game overlay
+     surface is up, so a press meant for another app out of a game is inert.
 
 This lets the player answer a coach decision OR move the overlay without
 alt-tabbing out of League. The Edge dashboard updates from its own poll loop
@@ -92,6 +97,12 @@ TOGGLE_SIGNAL_FILE = str(_REPO_ROOT / "ops" / "runtime" / "overlay_active_toggle
 # in-game build panel was otherwise unreachable: its only switch (Electron
 # Alt+Shift+C) is dead while League holds foreground focus, same as Ctrl+Shift+A.
 PANEL_CYCLE_SIGNAL_FILE = str(_REPO_ROOT / "ops" / "runtime" / "overlay_panel_cycle.txt")
+
+# Overlay content ON/OFF signal file (S134 toggle icon). Ctrl+Shift+O (slot 6)
+# stamps this with the current epoch on each press; rc-shell polls it and hides /
+# shows the overlay content (rc-shell/src/main.js startVisibleToggleWatch), the
+# keyboard twin of the movable ON/OFF icon.
+VISIBLE_TOGGLE_SIGNAL_FILE = str(_REPO_ROOT / "ops" / "runtime" / "overlay_visible_toggle.txt")
 
 def _setup_logging() -> logging.Logger:
     """Log to a durable file (always) plus the console when one exists.
@@ -217,6 +228,17 @@ def signal_overlay_panel_cycle() -> None:
         log.warning("overlay panel-cycle signal failed: %s", exc)
 
 
+def signal_overlay_visible_toggle() -> None:
+    """Stamp the content ON/OFF signal file (atomic tmp+replace) so rc-shell
+    hides / shows the overlay. Fire-and-forget: a write failure must never crash
+    the loop."""
+    try:
+        atomic_write_text(Path(VISIBLE_TOGGLE_SIGNAL_FILE), f"{time.time():.3f}")
+        log.info("overlay content ON/OFF signaled")
+    except Exception as exc:  # noqa: BLE001
+        log.warning("overlay content ON/OFF signal failed: %s", exc)
+
+
 # -- Mark this moment (RM-638) ---------------------------------------------------
 # Short on purpose: a hung :2999 must not stall the dispatch worker behind it.
 MARK_HTTP_TIMEOUT = 1.0
@@ -310,11 +332,13 @@ _VK_2        = 0x32
 _VK_A        = 0x41
 _VK_B        = 0x42
 _VK_K        = 0x4B
+_VK_O        = 0x4F
 _VK_CONTROL  = 0x11
 _VK_SHIFT    = 0x10
 _SLOT_OVERLAY_TOGGLE = 3
 _SLOT_OVERLAY_PANEL_CYCLE = 4
 _SLOT_MOMENT_MARK = 5
+_SLOT_OVERLAY_VISIBLE = 6
 
 # Hotkeys we claim, as (slot, vk). Ctrl+Shift+1/2 = coach slots, A = overlay
 # ACTIVE toggle, B = overlay panel-set cycle (coach/build/threat). (B not C:
@@ -330,13 +354,19 @@ _SLOT_MOMENT_MARK = 5
 # hook never swallows it). In a normal match K carries no default. M was
 # rejected: Ctrl+Shift+M is a common chat-app mute toggle. RC carries no
 # League keybind data to check against (no input.ini parser in the tree), so
-# a player rebind onto Ctrl+Shift+K is the residual risk. This table
+# a player rebind onto Ctrl+Shift+K is the residual risk. O = overlay content
+# ON/OFF (S134; O for overlay, matching the Electron Alt+Shift+O show/hide).
+# O is not in League's default Ctrl set above either. Out of a game the chord
+# belongs to whatever app has focus (VS Code / Chrome bind Ctrl+Shift+O); the
+# hook still observes it there, so rc-shell - not this file - gates it to the
+# in-game surface (overlay_toggle.acceptsToggleInput). This table
 # is the source of truth; the decoder's vk->slot map is derived from it so the
 # two cannot drift.
 _HOTKEYS = (
     (1, _VK_1), (2, _VK_2),
     (_SLOT_OVERLAY_TOGGLE, _VK_A), (_SLOT_OVERLAY_PANEL_CYCLE, _VK_B),
     (_SLOT_MOMENT_MARK, _VK_K),
+    (_SLOT_OVERLAY_VISIBLE, _VK_O),
 )
 _VK_TO_SLOT = {vk: slot for slot, vk in _HOTKEYS}
 
@@ -453,6 +483,8 @@ def _dispatch_one(cache: DecisionCache, slot: int) -> None:
         signal_overlay_panel_cycle()
     elif slot == _SLOT_MOMENT_MARK:
         handle_moment_mark()
+    elif slot == _SLOT_OVERLAY_VISIBLE:
+        signal_overlay_visible_toggle()
     else:
         handle_hotkey(cache, slot)
 
@@ -504,7 +536,7 @@ def message_loop() -> None:
 def main() -> int:
     log.info("hotkey_listener starting "
              "(Ctrl+Shift+1 / Ctrl+Shift+2 / Ctrl+Shift+A / Ctrl+Shift+B / "
-             "Ctrl+Shift+K, "
+             "Ctrl+Shift+K / Ctrl+Shift+O, "
              "WH_KEYBOARD_LL)")
     cache = DecisionCache()
     stop = threading.Event()

@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' file:; style-src 'unsafe-inline'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Amberstone Overlay Toggle</title>
+<!--
+  rc-shell/src/overlay_toggle.html - the in-game overlay ON/OFF toggle icon.
+  Loaded by main.js createToggleWindow into a tiny focusable:false,
+  always-on-top, transparent window that is exactly the icon, so the icon is
+  the only hit area and the game keeps focus. Local file, no remote content.
+  Palette = the overlay Hextech tokens (web/css/overlay.css --ovx-*).
+  ASCII only.
+-->
+<style>
+  :root {
+    --ovx-bg: 22, 32, 46;
+    --ovx-gold: 200, 170, 110;
+  }
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  #rc-toggle {
+    display: block;
+    box-sizing: border-box;
+    width: 100vw;
+    height: 100vh;
+    margin: 0;
+    padding: 18%;
+    border: 1px solid rgba(var(--ovx-gold), 0.70);
+    border-radius: 22%;
+    background: rgba(var(--ovx-bg), 0.88);
+    color: rgb(var(--ovx-gold));
+    cursor: pointer;
+    touch-action: none;
+    outline: none;
+  }
+  #rc-toggle:hover {
+    border-color: rgba(var(--ovx-gold), 1);
+    background: rgba(var(--ovx-bg), 0.96);
+  }
+  #rc-toggle:focus-visible {
+    box-shadow: inset 0 0 0 2px rgba(var(--ovx-gold), 0.9);
+  }
+  #rc-toggle.dragging {
+    cursor: grabbing;
+  }
+  #rc-toggle svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  #rc-toggle .slash {
+    display: none;
+  }
+  /* OFF: slashed eye, no pupil, slightly dimmer - the SHAPE carries the state,
+     not transparency, so the glyph keeps >= 3:1 (WCAG 1.4.11) even over bright
+     game scenery (UI audit S134: a 0.72 backing measured ~2.8:1 there). */
+  #rc-toggle.off {
+    border-color: rgba(var(--ovx-gold), 0.60);
+    background: rgba(var(--ovx-bg), 0.86);
+    color: rgba(var(--ovx-gold), 0.85);
+  }
+  #rc-toggle.off .slash {
+    display: inline;
+  }
+  #rc-toggle.off .pupil {
+    display: none;
+  }
+</style>
+</head>
+<body>
+<button id="rc-toggle" type="button" aria-pressed="true" aria-label="Overlay on/off" title="Overlay on/off">
+  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path class="eye" d="M2 12c2.6-4.4 6-6.6 10-6.6s7.4 2.2 10 6.6c-2.6 4.4-6 6.6-10 6.6S4.6 16.4 2 12z"></path>
+    <circle class="pupil" cx="12" cy="12" r="3"></circle>
+    <line class="slash" x1="4" y1="20" x2="20" y2="4"></line>
+  </svg>
+</button>
+<script src="overlay_toggle_page.js"></script>
+</body>
+</html>
