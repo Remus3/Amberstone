@@ -174,6 +174,12 @@ class TftPayload(_Base):
     Client only while it is None / "" / 0, and a seeded ``level`` of 1 used
     to pin the dashboard's top-bar level. Defaults never affect validation
     (``validate_default=False``).
+
+    S136 T11: ``level`` / ``gold`` / ``health`` are null when UNKNOWN (OCR
+    silent, no per-round file of this game): the live engine wrote the
+    reader's level 1 / gold 0 and a health of 100, and this blank wrote
+    gold 0 / health 100, all painted as fact by the TFT overlay
+    (web/js/lib/overlay_tft.js). A known 0 gold stays 0.
     """
     board: str = ""
     econ: str = ""
@@ -186,9 +192,9 @@ class TftPayload(_Base):
     game_time_s: float = 0.0
     stage: int = 0
     round: int = 0
-    level: int = 0
-    gold: int = 0
-    health: int = 100
+    level: Optional[int] = None
+    gold: Optional[int] = None
+    health: Optional[int] = None
 
 
 # RM-292 (d): the advice strings every TFT artifact carries. The disabled

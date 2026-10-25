@@ -214,7 +214,8 @@ class TestOneShapeAuthority(_Tmp):
         declared = set(TftPayload.model_fields) - {"combat_stats", "stat_shards"}
         self.assertEqual(set(out), declared)
         self.assertEqual(out["mode"], "tft")
-        self.assertEqual(out["health"], 100)
+        # S136 T11: unknown HP is null, not a placeholder 100 the overlay paints
+        self.assertIsNone(out["health"])
 
     def test_helpers_return_a_new_dict_every_call(self):
         from core.coaching_payload import tft_advice_payload, tft_blank_payload

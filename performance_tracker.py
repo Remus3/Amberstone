@@ -441,7 +441,11 @@ def _legacy_tft_placement(tft_live, tft_coaching, is_duo):
     if alive is None or alive < 0:
         return 0, ""
     hp = _num(tc.get("health"), None)
-    if tc.get("is_dead") is not True and hp is not None and hp > 0 and alive > 0:
+    # S136 T11: a null health is UNKNOWN (the coach payload's no-read value,
+    # where it used to write a placeholder 100), never "out": only a measured
+    # 0 / is_dead, or nobody else alive, makes alive_others a result.
+    out = tc.get("is_dead") is True or (hp is not None and hp <= 0)
+    if not out and alive > 0:
         return 0, ""
     alive = int(alive)
     placement = max(1, (alive + 1) // 2) if is_duo else max(1, alive + 1)

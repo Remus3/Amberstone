@@ -429,6 +429,30 @@ test("model: a later valid source wins over an earlier sentinel / garbage", () =
   assert.strictEqual(vit(m).hp, "64");
 });
 
+// S136 T11: the coach payload carries null for an UNKNOWN health / level / gold
+// (tft/tft_coach_engine.py _write_fields; it used to write the placeholders
+// health 100, level 1, gold 0). null is the no-data "-" (plain ASCII hyphen);
+// a READ gold of 0 stays "0".
+test("model: the coach payload's null hp / level / gold read '-', never a placeholder", () => {
+  const st = fixture("tft_overlay_live");
+  st.coach = { ...st.coach, health: null, level: null, gold: null };
+  const m = tft.tftOverlayModel(st);
+  const v = vit(m);
+  assert.deepStrictEqual([v.level, v.gold], ["-", "-"]);
+  assert.strictEqual(v.hp, "96", "the per-round HP still reads");
+  assert.strictEqual(m.board.count, "7", "an unknown level is no '/cap'");
+  const none = tft.tftOverlayModel({
+    mode_key: "tft",
+    liveclient: { source: "tft_standalone", hp: -1, standing: null },
+    coach: { mode: "tft", health: null, hp: -1, level: null, gold: null },
+  });
+  const nv = vit(none);
+  assert.deepStrictEqual([nv.hp, nv.level, nv.gold], ["-", "-", "-"]);
+  assert.ok(/^[\x20-\x7e]+$/.test(Object.values(nv).join("")), "ASCII sentinel");
+  const zero = tft.tftOverlayModel({ mode_key: "tft", coach: { level: 4, gold: 0 } });
+  assert.deepStrictEqual([vit(zero).level, vit(zero).gold], ["4", "0"], "a read 0 gold is data");
+});
+
 test("stageOf: stage_round, an N-M stage string, stage + round ints; garbage -> null", () => {
   assert.strictEqual(tft.stageOf({ stage_round: "3-2" }), "3-2");
   assert.strictEqual(tft.stageOf({ stage_round: " 4 - 5 " }), "4-5");
