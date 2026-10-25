@@ -207,11 +207,15 @@ def test_an_unneeded_override_is_not_recorded():
 # --- main(): the gate is wired before any later fetch or write ------------------
 
 NEUTRAL_OK_ARAM = {f"Champ{i:03d}": {"aramDamageDealt": 1.05} for i in range(173)}
+# The cooldown table is the roster the blocks are measured against (RM-887),
+# so it names the same 173 ids the block fixtures do.
+ROSTER_CD = {f"Champ{i:03d}": {"Q": [4.0]} for i in range(173)}
+ROSTER_ROLES = {f"Champ{i:03d}": ["FIGHTER"] for i in range(173)}
 
 
 def _lolmath():
     return dse.LolmathExtract(
-        cooldowns={"Aatrox": {"Q": [4.0]}}, roles={"Aatrox": ["FIGHTER"]},
+        cooldowns=ROSTER_CD, roles=ROSTER_ROLES,
         ratings={}, lane_positions=["top"], scenarios={"aatrox": [{}]},
         chunk_url="u/scen.js", chunk_bytes=1,
         aram_modifiers={}, damage_distribution={}, skill_orders={},

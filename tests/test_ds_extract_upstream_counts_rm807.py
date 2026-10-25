@@ -145,7 +145,10 @@ CLEAN_ARAM = {f"Champ{i:03d}": {"aramDamageDealt": 1.05} for i in range(173)}
 
 def _lolmath():
     return dse.LolmathExtract(
-        cooldowns={"Aatrox": {"Q": [4.0]}}, roles={"Aatrox": ["FIGHTER"]},
+        # The same 173 ids as the blocks: the cooldown table is the roster
+        # they are measured against (RM-887).
+        cooldowns={cid: {"Q": [4.0]} for cid in CLEAN_DAMAGE},
+        roles={cid: ["FIGHTER"] for cid in CLEAN_DAMAGE},
         ratings={}, lane_positions=["top"], scenarios={"aatrox": [{}]},
         chunk_url="u/scen.js", chunk_bytes=1,
         aram_modifiers={}, damage_distribution={}, skill_orders={},
