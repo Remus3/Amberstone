@@ -44,8 +44,10 @@ or a fixture's path far more often than os.path), `shutil.which`,
 (class attributes: one patch reaches every instance). A non-literal name
 bound by `@pytest.mark.parametrize("NAME", [...])` resolves like a constant
 for-loop, scoped to the decorated function. The RM-411 fault helper is ruled
-scoped by design (ALLOWLIST below). Still RM-880: the `this_thread_only`
-late-thread gap (b), the scope-aware alias pass (c), the tripwires (d).
+scoped by design (ALLOWLIST below). RM-880 (b) closed the `this_thread_only`
+late-thread gap: a thread a leftover thread starts after install gets the
+real function, by creator lineage. Still RM-880: the scope-aware alias pass
+(c), the tripwires (d).
 """
 from __future__ import annotations
 
@@ -1017,6 +1019,119 @@ def test_this_thread_only_spares_threads_alive_at_install():
     t2.start()
     t2.join(5)
     assert late == ["fake"]
+
+
+def _run_in_thread(fn):
+    out = []
+    t = threading.Thread(target=lambda: out.append(fn()), daemon=True)
+    t.start()
+    t.join(5)
+    assert out, "thread did not finish"
+    return out[0]
+
+
+_OTHER_FILE_NODEID = "tests/test_some_earlier_file_rm880.py::test_x (call)"
+
+
+def _start(thread, monkeypatch=None):
+    """Start THREAD; with MONKEYPATCH, as if an earlier test FILE started it
+    (the lineage hook reads `PYTEST_CURRENT_TEST` at start)."""
+    if monkeypatch is None:
+        thread.start()
+        return
+    own = os.environ.get("PYTEST_CURRENT_TEST")
+    monkeypatch.setenv("PYTEST_CURRENT_TEST", _OTHER_FILE_NODEID)
+    try:
+        thread.start()
+    finally:
+        if own is None:
+            monkeypatch.delenv("PYTEST_CURRENT_TEST")
+        else:
+            monkeypatch.setenv("PYTEST_CURRENT_TEST", own)
+
+
+def _leftover_children(monkeypatch=None):
+    """What a thread alive at install sees in the child and grandchild it
+    starts AFTER install."""
+    go, done = threading.Event(), threading.Event()
+    seen = {}
+    box = {}
+
+    def leftover():
+        go.wait(5)
+        seen["child"] = _run_in_thread(box["scoped"])
+        seen["grandchild"] = _run_in_thread(
+            lambda: _run_in_thread(box["scoped"]))
+        done.set()
+
+    _start(threading.Thread(target=leftover, daemon=True), monkeypatch)
+    box["scoped"] = scoped = this_thread_only(lambda: "fake", lambda: "real")
+    go.set()
+    assert done.wait(5)
+    assert scoped() == "fake"
+    return seen
+
+
+def test_this_thread_only_hands_a_leftover_threads_late_child_the_real(
+        monkeypatch):
+    """RM-880 (b): a thread an earlier file's leftover thread starts AFTER
+    install is the leftover's, not this test's: it gets the real function."""
+    assert _leftover_children(monkeypatch) == {"child": "real",
+                                               "grandchild": "real"}
+
+
+def test_this_thread_only_keeps_the_fake_for_this_files_own_threads():
+    """A thread this test file started before install (its own server or
+    poller fixture) still hands the fake to the threads it starts later,
+    the shape tests/test_handler_trust_boundary_hygiene.py relies on."""
+    assert _leftover_children() == {"child": "fake", "grandchild": "fake"}
+
+
+def test_this_thread_only_hands_the_installers_descendants_the_fake():
+    scoped = this_thread_only(lambda: "fake", lambda: "real")
+    assert _run_in_thread(scoped) == "fake"
+    assert _run_in_thread(lambda: _run_in_thread(scoped)) == "fake"
+
+
+def _leftover_server_answer(monkeypatch=None):
+    import socket
+    import socketserver
+
+    box, seen = {}, []
+
+    class Handler(socketserver.BaseRequestHandler):
+        def handle(self):
+            seen.append(box["scoped"]())
+            self.request.sendall(b"k")
+
+    server = socketserver.ThreadingTCPServer(("127.0.0.1", 0), Handler)
+    server.daemon_threads = True
+    loop = threading.Thread(target=server.serve_forever,
+                            kwargs={"poll_interval": 0.05}, daemon=True)
+    _start(loop, monkeypatch)
+    try:
+        box["scoped"] = scoped = this_thread_only(lambda: "fake",
+                                                  lambda: "real")
+        with socket.create_connection(server.server_address, timeout=5) as c:
+            assert c.recv(1) == b"k"
+        assert scoped() == "fake"
+        return seen
+    finally:
+        server.shutdown()
+        server.server_close()
+        loop.join(5)
+
+
+def test_this_thread_only_spares_a_leftover_servers_request_threads(
+        monkeypatch):
+    """RM-880 (b), the shape its row names: a ThreadingMixIn server an
+    earlier test file left running serves a request after install in a
+    thread its own accept loop starts - that thread keeps the real one."""
+    assert _leftover_server_answer(monkeypatch) == ["real"]
+
+
+def test_this_thread_only_fakes_this_files_own_servers_request_threads():
+    assert _leftover_server_answer() == ["fake"]
 
 
 def test_bind_which_reaches_only_the_module(monkeypatch):
