@@ -675,7 +675,7 @@ def save_tft_rating(script_dir,tft_live,tft_coaching=None,report=None,game_id=No
     except Exception as _e:  # noqa: BLE001
         _log.warning("TFT rating save failed: %s", _e)  # QUAL-002
     _report_set(report, True, _written)
-    _tft_db_write(script_dir, row)
+    _report_set_db(report, _tft_db_write(script_dir, row))
     _tft_heatmap()
     return grade, notes
 
@@ -750,7 +750,7 @@ def plan_tft_rating(script_dir, game_id, store_dir=None):
             "ended": ended, "newest": _tft_is_newest(script_dir, gid, ended)}
 
 
-def rate_tft_game(script_dir, game_id, store_dir=None):
+def rate_tft_game(script_dir, game_id, store_dir=None, report=None):
     """(Re)rate one TFT game from its RM-616 store record - called when the
     record lands (lcu/lcu_postgame_collector.py), and by the N8 backfill.
 
@@ -760,19 +760,25 @@ def rate_tft_game(script_dir, game_id, store_dir=None):
     in place (matched on game_id; inserted when the game had none, stamped
     with the game's end), and last_tft.json is rewritten only when this is the
     newest rated game. Returns (grade, notes); ("", []) when the store has no
-    usable record."""
+    usable record. RM-904: ``report`` (the RM-259 dict) receives "rated",
+    "file_written" (False also when a newer game's file is kept) and
+    "db_written" - the grade alone is no evidence the row landed."""
+    _report_set(report, False, False)
     plan = plan_tft_rating(script_dir, game_id, store_dir=store_dir)
     if plan is None:
         return ("", [])
     gid = plan["game_id"]
+    _written = False
     if plan["newest"]:
         try:
             _atomic_write_json(_mode_file(script_dir, "TFT"), plan["data"])
+            _written = True
         except Exception as _e:  # noqa: BLE001 - logged at ERROR, the db row still lands
             _log.error("TFT rating save failed (game %s): %s", gid, _e)
     else:
         _log.info("TFT rating for game %s: last_tft.json holds a newer game - kept", gid)
-    _tft_db_write(script_dir, plan["row"])
+    _report_set(report, True, _written)
+    _report_set_db(report, _tft_db_write(script_dir, plan["row"]))
     _tft_heatmap()
     return plan["grade"], plan["notes"]
 
@@ -785,6 +791,15 @@ def _report_set(report, rated, written):
     if isinstance(report, dict):
         report["rated"] = bool(rated)
         report["file_written"] = bool(written)
+        report.pop("db_written", None)
+
+
+def _report_set_db(report, landed):
+    """RM-904: the match_history.db outcome of a rating, beside RM-259's
+    file outcome. Set only once the DB write was attempted, so an unrated
+    game's report carries no "db_written" key."""
+    if isinstance(report, dict):
+        report["db_written"] = bool(landed)
 
 
 def save_rating(script_dir,champion,game_state,ally_kills_total,report=None):
@@ -821,6 +836,9 @@ def save_rating(script_dir,champion,game_state,ally_kills_total,report=None):
         _log.warning("Rating save failed (%s): %s", category, _e)  # QUAL-002
     _report_set(report, True, _written)
     db=_get_db(script_dir)
+    # RM-904: MatchDB.save_match returns False when the row was lost (it logs
+    # the ERROR and never raises); the outcome reaches the caller's report.
+    _db_ok=False
     if db:
         # 2026-05-09: snapshot the engine's last DS pick set into raw_data
         # so the persisted row carries the engine recommendation alongside
@@ -842,8 +860,9 @@ def save_rating(script_dir,champion,game_state,ally_kills_total,report=None):
             _gid = int(game_state.get("game_id") or game_state.get("gameId") or 0)
         except (TypeError, ValueError):
             _gid = 0
-        try:db.save_match({"mode":category,"champion":champion,"grade":grade,"game_time_s":game_secs,"kills":stats["kills"],"deaths":stats["deaths"],"assists":stats["assists"],"cs":game_state.get("cs",0),"cs_per_min":stats["cs_per_min"],"gold":game_state.get("gold",0),"gold_per_min":gpm,"kda_str":kda_str,"kp_pct":kp,"arena_rounds_won":game_state.get("arena_rounds_won",0),"arena_placement":game_state.get("arena_rank",0),"notes":notes,"label":GRADE_LABEL.get(grade,""),"raw_data":json.dumps(_raw,default=str),"game_id":_gid})
+        try:_db_ok=db.save_match({"mode":category,"champion":champion,"grade":grade,"game_time_s":game_secs,"kills":stats["kills"],"deaths":stats["deaths"],"assists":stats["assists"],"cs":game_state.get("cs",0),"cs_per_min":stats["cs_per_min"],"gold":game_state.get("gold",0),"gold_per_min":gpm,"kda_str":kda_str,"kp_pct":kp,"arena_rounds_won":game_state.get("arena_rounds_won",0),"arena_placement":game_state.get("arena_rank",0),"notes":notes,"label":GRADE_LABEL.get(grade,""),"raw_data":json.dumps(_raw,default=str),"game_id":_gid}) is not False
         except Exception as e:_log.warning("Match DB save failed: %s",e)  # noqa: BLE001
+    _report_set_db(report, _db_ok)
     # 2026-04-25: adaptation feedback loop. Translate the user's grade
     # (S/A/B/C/D/F) into a confidence multiplier on the cache entry for
     # this game's final state. Future similar states get advice weighted

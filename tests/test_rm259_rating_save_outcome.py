@@ -50,7 +50,8 @@ def test_save_rating_reports_written(tmp_path, _no_side_effects):
     rep = {}
     g, n = pt.save_rating(str(tmp_path), "Ahri", _valid_sr_state(), 15, report=rep)
     assert g
-    assert rep == {"rated": True, "file_written": True}
+    # RM-904: no match database under _no_side_effects, so no row landed.
+    assert rep == {"rated": True, "file_written": True, "db_written": False}
 
 
 def test_save_rating_reports_failed_write(tmp_path, monkeypatch, _no_side_effects):
@@ -60,7 +61,36 @@ def test_save_rating_reports_failed_write(tmp_path, monkeypatch, _no_side_effect
     rep = {}
     g, n = pt.save_rating(str(tmp_path), "Ahri", _valid_sr_state(), 15, report=rep)
     assert g, "the grade is still computed (DB row path unchanged)"
-    assert rep == {"rated": True, "file_written": False}
+    assert rep == {"rated": True, "file_written": False, "db_written": False}
+
+
+class _FakeDb:
+    """MatchDB.save_match stand-in: returns the bool the real one does
+    (core/match_db.py save_match -> bool, never raises), or raises."""
+
+    def __init__(self, outcome):
+        self.outcome = outcome
+        self.rows = []
+
+    def save_match(self, row):
+        self.rows.append(row)
+        if isinstance(self.outcome, Exception):
+            raise self.outcome
+        return self.outcome
+
+
+@pytest.mark.parametrize("outcome,landed", [
+    (True, True), (False, False), (RuntimeError("db locked"), False)])
+def test_rm904_save_rating_reports_the_db_write(tmp_path, monkeypatch, _no_side_effects,
+                                               outcome, landed):
+    """RM-904 SIBLING: save_rating dropped MatchDB.save_match's bool, so a
+    lost row was indistinguishable from a saved one to its caller."""
+    db = _FakeDb(outcome)
+    monkeypatch.setattr(pt, "_get_db", lambda sd: db)
+    rep = {}
+    g, _n = pt.save_rating(str(tmp_path), "Ahri", _valid_sr_state(), 15, report=rep)
+    assert g and len(db.rows) == 1
+    assert rep == {"rated": True, "file_written": True, "db_written": landed}
 
 
 def test_save_rating_reports_unrated(tmp_path, _no_side_effects):

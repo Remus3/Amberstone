@@ -538,7 +538,8 @@ def test_league_rating_positive_control(tmp_path, _no_rating_side_effects):
     g, _n = pt.save_rating(str(tmp_path), "Kai'Sa", _state("CLASSIC"), 15,
                            report=rep)
     assert g
-    assert rep == {"rated": True, "file_written": True}
+    # RM-904: _get_db is stubbed to None here, so no match row landed.
+    assert rep == {"rated": True, "file_written": True, "db_written": False}
 
 
 # ------------------------------------------------- game end (frozen lifecycle)
