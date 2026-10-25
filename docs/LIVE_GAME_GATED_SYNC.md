@@ -151,6 +151,8 @@ Per gate: G1 6 / G2 41 / G3 12 / G4 28 / G5 10 / G6 3 / G7 18. Of these, 9 carry
 tag (3 inline at G5-10 / G7-16 / G7-19, 6 in the PARKED section) and 1 (G3-15) is a cross-reference
 that adds no new work. G3-03 is BLOCKED ON WIRING since 2026-10-24 (RM-850): still counted OPEN, but
 no game drains it until RM-850 lands. G1-03 was re-tagged the same day (draft lobby only); no count moved.
+The 2026-08-12 `hz_choice_shadow` game_id row was filed as a SECOND "G3-14"; it is G3-16 since
+2026-10-24 and, like G6-04, was never in the 111 (its commit `0dc5dbd0d` did not touch this line).
 
 **SYNTHETIC-TRIAGE PASS 2026-07-18 - read before proposing this again.** All 124 rows were run
 through a 14-agent triage-then-adversarial-refutation pass asking whether recorded data
@@ -721,11 +723,15 @@ survivability flips below cannot roll otherwise.
 
 ### In-game
 
-- **G3-14** (filed 2026-08-12, B4-d / RM-189) **`hz_choice_shadow` records must carry a REAL
+- **G3-16** (filed 2026-08-12 as "G3-14", B4-d / RM-189; RENUMBERED 2026-10-24 by lane 9 PREP s133
+  because G3-14 was already the C17 row below since the 2026-07-18 reorg - the filing commit
+  `0dc5dbd0d` added this row and never touched the OPEN count, so like G6-04 it sits OUTSIDE the
+  111; LEDGER 1240 still says "G3-14" and is append-only) **`hz_choice_shadow` records must carry a REAL
   `game_id` during a live game.** The plumbing is proven headless: `game_id` is threaded from
   `lcu_snapshot` through `shadow_log_precomputed_choices` into the record, and
   `tests/test_b4_shadow_match_id.py` pins the contract at that boundary. What CANNOT be proven
-  without a game is that the value arrives non-null, because `lcu/snapshot_shape.py:431-439` only
+  without a game is that the value arrives non-null, because `lcu/snapshot_shape.py:431-439` (drifted;
+  `:543-557` at `bc5d38dce`, `state["game_id"] = gid` on `GameStart` / `InProgress`) only
   sets `state["game_id"]` while the gameflow phase is `GameStart` / `InProgress` - idle and
   champ-select ticks legitimately carry nothing, so a headless run cannot distinguish "correctly
   absent" from "silently never populated". **Do NOT close this by asserting the key EXISTS** - it
@@ -735,6 +741,17 @@ survivability flips below cannot roll otherwise.
   `local-aram-<ts>` fallback). One row closes it. **Also worth one glance:** that every row of the
   SAME game shares one `game_run_id`, which is the property the post-game review (B4-e) depends on.
   Applies equally at GATE 2 / 4 / 5 - ARAM is simply the cheapest gate that reaches it.
+  **READY (lane 9 PREP s133 cycle 2, source read at `bc5d38dce`; NOT a tick).** The file has had NO
+  live row since `2026-08-02T22:34:15Z` (last row; the 2026-08-06 mtime is the RM-158 tag rewrite
+  `2bd5714a5`), so the row has never been observable since it was filed - the FIRST row of the next
+  game is the evidence. PREDICATE (stated before looking): PASS iff a row with `ts` after the game's
+  start has `game_id` matching `^[0-9]+$` and `game_run_id == game_id`; FAIL if `game_run_id` starts
+  `local-` (the `_run_id_for` fallback, `core/hz_choice_shadow.py:63`, form `local-<mode>-<ts>`) while
+  `/api/state` shows the LCU phase `InProgress`. PROBE (repo root, mid-game):
+  `python -c "import json;r=json.loads(open('data/hz_choice_shadow.jsonl',encoding='utf-8').readlines()[-1]);print(r['ts'],r['mode'],r['game_id'],r['game_run_id'])"`
+  plus the same-game check: every row since the game's first `ts` shares one `game_run_id`. A row
+  only lands on a live tick with `lc.champion` set and mode `sr` / `aram` / `arena`
+  (`dashboard/_deterministic_coaching.py:1623-1634`).
 
 - **G3-04** (was C3) DSP3 ARAM archetype-override (`prefer_aram_win_axis=True`) - **MIS-FILED, NOT
   VALIDATED. RE-FILE source: GATE 3; destination: headless CODE work, off the live-gated list.**
@@ -881,6 +898,13 @@ survivability flips below cannot roll otherwise.
 - **G3-14** (was C17) R78 ARAM deterministic tail item_extra + objective Haiku->deterministic flip
   (`8f013ee4`): SHIPPED SHADOW-only. Needs ARAM shadow accrual + operator OK before flipping the ARAM
   coach tail off Haiku. SOURCE: docs/ORCHESTRATION_PLAN.md:296.
+  **ACCRUAL CAVEAT (lane 9 PREP s133 cycle 2, measured on `data/aram_coach_shadow.jsonl`; NOT a
+  tick): do not read the accrual off a raw row count.** All 282 rows since `2026-08-03` are NOT ARAM
+  game ticks: 282 / 282 carry `enemy_comp == []` (every earlier row with enemies lists exactly 5), `champ`
+  Kai'Sa every time across 21 days, and ONE distinct `live_haiku` block across all 282 (the coach file frozen at 2026-08-02; the
+  4972 earlier rows carry 2234 distinct blocks). `tools/aram_shadow_report.py` filters on neither
+  field, so those rows count toward flip readiness. Filed **RM-852**; until it lands, count only
+  rows with a non-empty `enemy_comp`.
 - **G3-15** ARAM re-checks of GATE 2 rows (no separate work, just look while you are here): G2-12 R49
   reflect ranking-vs-real-comp (the stricter read), G2-29 the ARAM flood-tint question, G2-38 PD->Kraken
   level-tick stability (ARAM-suitable, no enemy-comp dependency).
