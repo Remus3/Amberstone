@@ -206,8 +206,9 @@ def _wire_main(monkeypatch, tmp_path, aram, argv, *, network_ok):
                         lambda bodies, preferred: _lolmath())
     monkeypatch.setattr(dse, "extract_data_blocks", lambda bodies, preferred: {
         "aram_modifiers": aram,
-        "damage_distribution": {},
-        "skill_orders": {},
+        # Clean blocks, so only the RM-805 gate decides (RM-807 gates these two).
+        "damage_distribution": {"Aatrox": {"physical": 0.9, "magical": 0.0, "trued": 0.1}},
+        "skill_orders": {"Aatrox": ["Q", "E", "W"]},
         "data_chunk_url": "u/aram.js",
         "data_chunk_bytes": 1,
         "block_sources": {"aram_modifiers": "u/aram.js"},
