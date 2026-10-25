@@ -457,6 +457,27 @@ def test_stale_round_after_a_restart_is_ignored(queue):
     assert (v.kind, v.reason, v.stage, v.rnd) == (g.ACCEPT, "first", 1, 1)
 
 
+@pytest.mark.parametrize("queue", ["hyper_roll", None, "standard"])
+def test_stale_last_raw_read_after_a_restart_is_ignored(queue):
+    """Verifier-4 reproducer: the guard remembered only the round the gate
+    had accepted, so a last RAW read the gate was holding back (4-3 here)
+    slipped through after the restart and was held 9 polls on unrated
+    queues. The last read before the restart is stale too."""
+    gate = _gate(queue)
+    t = _fill(gate, (4, 2), 1000.0, 8)
+    for sr in ((4, 1), (4, 1), (4, 3)):
+        gate.observe(*sr, t)
+        t += POLL
+    assert gate.accepted == (4, 2)
+    acted = []
+    for i in range(6):
+        v = gate.observe(4, 3, 2.0 + i * POLL)
+        acted.append(v.stage_round)
+    assert "4-3" not in acted, acted
+    v = gate.observe(1, 1, 12.0)
+    assert (v.stage, v.rnd) == (1, 1)
+
+
 def test_stale_guard_spares_a_stage_1_round():
     """A game always starts in stage 1, so a stage-1 round held before the
     restart may be the new game's own: it is not ignored."""
@@ -471,6 +492,7 @@ def test_pathological_pace_gives_no_rate():
     """Verifier-3 reproducer: rows 1e-310 s apart overflowed the allowance
     arithmetic. A floor under MIN_PACE_S is no rate."""
     assert g.pace_floor_from_table([(0.0, 1, 1), (1e-310, 1, 2)]) is None
+    assert g.pace_floor_from_table([(0, 1, 1), (10 ** 400, 1, 2)]) is None   # no OverflowError
     assert g.StageGate("standard", min_round_s=g.MIN_PACE_S / 2).rate is None
     gate = g.StageGate("standard", min_round_s=1e-310)
     gate.observe(3, 2, 500.0)
@@ -480,10 +502,11 @@ def test_pathological_pace_gives_no_rate():
 def test_two_of_three_lag_after_a_flicker_is_bounded_recorded_trade_off():
     """Verifier-3 reproducer, kept as a RECORDED TRADE-OFF (module docstring):
     a real change to 3-4 read on a 2-of-3 majority, with the window still
-    holding 3-3 after an earlier one-poll flicker, lags 7 polls. The same
-    window must not move on test_verifier_reproducers_a1_to_c's (a1) burst
-    (three misreads inside a 2-of-3 stream of the old round), and no window /
-    margin pair satisfies both. Pinned so the lag cannot silently grow."""
+    holding 3-3 after an earlier one-poll flicker, lags 7 polls. A 5-read
+    window cuts it to 5 and still holds test_verifier_reproducers_a1_to_c's
+    (a1) burst (verifier 4 measured it), but acts on the wrong round more
+    often for +1 misreads on the seeded model, so 7 was kept. Pinned so the
+    lag cannot silently grow."""
     A, B = (3, 3), (3, 4)
     seq = [A] * 7 + [B, A, A] + [A, B, B, A, B, B, A] + [B, B, A] * 5
     truth = [A] * 10 + [B] * (len(seq) - 10)
