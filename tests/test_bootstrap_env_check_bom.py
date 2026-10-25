@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import pytest
 
+from tests._module_view import bind_which
 from tools import bootstrap_env_check as bec
 
 FAKE_KEY = "sk-ant-TESTONLY111bootstrap"  # rc-credential-scan: allow-fixture
@@ -28,7 +29,8 @@ INVALID = "API key format invalid"
 def run_check(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(bec, "_PROJECT_ROOT", tmp_path)
     monkeypatch.setattr(bec, "_issues", [])
-    monkeypatch.setattr(bec.shutil, "which", lambda *_a, **_kw: None)
+    # bec's OWN shutil only (RM-880), never the shared module's `which`.
+    bind_which(monkeypatch, bec, lambda *_a, **_kw: None)
 
     def _run(raw: bytes) -> tuple[str, list]:
         (tmp_path / KEY_FILE).write_bytes(raw)

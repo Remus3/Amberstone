@@ -9,7 +9,7 @@ import io
 import itertools
 import json
 
-from tests._module_view import bind_subprocess
+from tests._module_view import bind_os_path, bind_subprocess
 from tools import _perseus_rpc as rpc
 
 
@@ -60,7 +60,8 @@ class _FakeProc:
 
 def test_perseus_recall_returns_instead_of_looping(monkeypatch):
     from tools import perseus_recall as pr
-    monkeypatch.setattr(pr.os.path, "exists", lambda p: True)
+    # pr's OWN `os.path` only (RM-880), never the shared module's `exists`.
+    bind_os_path(monkeypatch, pr, exists=lambda p: True)
     bind_subprocess(monkeypatch, pr, Popen=_FakeProc)
     monkeypatch.setattr(_FakeProc, "made", 0)
     assert pr.recall("anything") == []

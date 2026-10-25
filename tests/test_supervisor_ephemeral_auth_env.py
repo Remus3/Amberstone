@@ -38,7 +38,19 @@ import agents.supervisor as _sup
 from agents._supervisor_common import LOG_ROOT
 from agents.supervisor import EphemeralSpawnFailed, spawn_ephemeral_llm
 from ops.loop import fleet_route
-from tests._module_view import bind_subprocess
+from tests._module_view import bind_subprocess, bind_which
+
+
+@contextlib.contextmanager
+def _claude_on_path():
+    """`claude` resolves to /fake/claude for the ephemeral spawn chain's OWN
+    `shutil` names only (RM-880): agents/_supervisor_ephemeral.py calls
+    shutil.which(CLAUDE_CLI); its facade agents.supervisor keeps `import
+    shutil`. The shared shutil module another thread calls stays real."""
+    with pytest.MonkeyPatch.context() as mp:
+        for mod in (_sup_eph, _sup):
+            bind_which(mp, mod, lambda *_a, **_k: "/fake/claude")
+        yield
 
 
 @contextlib.contextmanager
@@ -90,8 +102,7 @@ class _Recorder:
 
 
 def _run(rec: _Recorder, task_id: str, agent: str = _AGENT):
-    with patch("agents.supervisor.shutil.which", return_value="/fake/claude"), \
-         _spawn_run(rec):
+    with _claude_on_path(), _spawn_run(rec):
         return spawn_ephemeral_llm(agent, task_id, "demo", {})
 
 
@@ -285,7 +296,7 @@ def test_secrets_still_redacted_in_log_and_exception() -> None:
 def test_agent6_failure_stub_still_written() -> None:
     """The agent-6 stub call is preserved (patched - no artifact is written)."""
     rec = _Recorder(returncode=1, stdout="", stderr=_SIG_OAUTH)
-    with patch("agents.supervisor.shutil.which", return_value="/fake/claude"), \
+    with _claude_on_path(), \
          _spawn_run(rec), \
          patch("agents._supervisor_ephemeral._write_agent6_failure_stub") as stub:
         with pytest.raises(EphemeralSpawnFailed):
@@ -305,8 +316,7 @@ def test_happy_path_envelope_and_timeout_preserved(monkeypatch: pytest.MonkeyPat
         assert "ANTHROPIC_API_KEY" not in kwargs["env"]
         raise subprocess.TimeoutExpired(cmd, 900)
 
-    with patch("agents.supervisor.shutil.which", return_value="/fake/claude"), \
-         _spawn_run(_boom):
+    with _claude_on_path(), _spawn_run(_boom):
         with pytest.raises(EphemeralSpawnFailed) as ei:
             spawn_ephemeral_llm(_AGENT, "t-authenv-timeout", "demo", {})
     assert "timed out" in str(ei.value)

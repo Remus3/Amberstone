@@ -43,7 +43,11 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import tools.inbox_responder_exec as exec_mod  # noqa: E402
-from tests._module_view import bind_subprocess, this_thread_only  # noqa: E402
+from tests._module_view import (  # noqa: E402
+    bind_module_view,
+    bind_subprocess,
+    this_thread_only,
+)
 import tools.inbox_responder_export as export_mod  # noqa: E402
 import tools.inbox_responder_procs as procs  # noqa: E402
 import tools.inbox_responder_runner as runner  # noqa: E402
@@ -4337,7 +4341,8 @@ def _install_killer_spy(monkeypatch) -> KillerSpy:
     if os.name == "nt":
         bind_subprocess(monkeypatch, procs, run=spy.nt_run)
     else:
-        monkeypatch.setattr(procs.os, "killpg", spy.posix_killpg, raising=False)
+        # procs' OWN `os` only (RM-880), never the shared module's killpg.
+        bind_module_view(monkeypatch, procs, "os", killpg=spy.posix_killpg)
     return spy
 
 
