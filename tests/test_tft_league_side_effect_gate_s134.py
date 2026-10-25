@@ -558,6 +558,73 @@ def test_league_game_end_positive_control(monkeypatch, tmp_path):
     assert calls == {"rewind": 1, "league": 1, "tft": 0}
 
 
+class _StartApp(_LifecycleApp):
+    """on_game_start needs the envelope flag flip and a scheduler."""
+
+    def __init__(self):
+        super().__init__({})
+        self.scheduler = types.SimpleNamespace(schedule=lambda *a, **k: None)
+
+    def _update_envelope(self, mode, payload=None):
+        from core.game_snapshot import MODE_TFT
+        self._tft_mode = (mode == MODE_TFT)
+
+
+def _tft_game_start(monkeypatch, tmp_path):
+    """Run on_game_start(MODE_TFT) with a recording TftWorker; its kwargs."""
+    from app import _game_lifecycle as gl
+    from core import feature_policy
+    from core.game_snapshot import MODE_TFT
+    made: list[dict] = []
+
+    class _RecWorker:
+        def __init__(self, **kw):
+            made.append(kw)
+
+        def start(self):
+            pass
+
+    class _Coach:
+        def __init__(self, *a, **k):
+            pass
+
+        def set_worker(self, w):
+            pass
+
+    fake_coach = types.ModuleType("coaches.tft_coach")
+    fake_coach.Coach = _Coach
+    monkeypatch.setitem(sys.modules, "coaches.tft_coach", fake_coach)
+    monkeypatch.setattr(feature_policy, "is_allowed", lambda *a, **k: True)
+    monkeypatch.setattr(gl, "SCRIPT_DIR", tmp_path)
+    monkeypatch.setattr(gl, "HAS_TFT_WORKER", True)
+    monkeypatch.setattr(gl, "TftWorker", _RecWorker, raising=False)
+    gl.GameLifecycleManager(_StartApp()).on_game_start(MODE_TFT)
+    assert len(made) == 1
+    return made[0]
+
+
+def test_tft_game_start_hands_the_worker_an_lcu_reader(monkeypatch, tmp_path):
+    # S18-COACH: TftWorker(..., lcu_request=make_lcu_request()) lets
+    # tft_set.set_from_lcu read mDefaultSet. Never a real LCU here.
+    import core.tft_worker as tw
+    sentinel = object()
+    monkeypatch.setattr(tw, "make_lcu_request", lambda: sentinel,
+                        raising=False)
+    kw = _tft_game_start(monkeypatch, tmp_path)
+    assert kw["lcu_request"] is sentinel
+
+
+def test_tft_game_start_guarded_without_make_lcu_request(monkeypatch,
+                                                         tmp_path):
+    # A core.tft_worker that predates make_lcu_request gets no kwarg, so the
+    # older TftWorker signature is never handed one it cannot take.
+    import core.tft_worker as tw
+    monkeypatch.delattr(tw, "make_lcu_request", raising=False)
+    kw = _tft_game_start(monkeypatch, tmp_path)
+    assert "lcu_request" not in kw
+    assert kw["result_queue"] is not None
+
+
 def test_tft_game_ended_never_raises_on_odd_state():
     from app import _game_lifecycle as gl
     assert gl._tft_game_ended(_LifecycleApp(None)) is False
