@@ -225,5 +225,97 @@ def test_the_driver_ignores_stay_inside_lane_prompts_and_off_the_templates():
             tail = tail[len(REPORTS_GLOB_DIR):]
         assert "/" not in tail, f"{gl} reaches below lane_prompts/"
         for probe in ("s133-common.tmpl", "s133-gated.tmpl", "s133_lane_driver.py",
-                      "s133_lane_progress.py", "queue-rm740e-s115.tmpl"):
+                      "s133_lane_progress.py", "queue-rm740e-s115.tmpl",
+                      "s134-common.tmpl", "s134-repo.tmpl", "s134_lane_driver.py",
+                      "s134_lane_progress.py"):
             assert not fnmatch.fnmatchcase(f"{LP}/{probe}", gl), (gl, probe)
+
+
+# ---------------------------------------------------------------- s134 driver
+#
+# Measured 2026-10-25 (session 134 lane repo cycle 4) on the gitignored s134
+# driver ops/loop/control/lane_prompts/s134_lane_driver.py: besides the two
+# RM-874 families it writes, while lanes run and a suite may be running,
+#   * main() -> s134_<lane>_last.json via atomic_json (tmp then replace) at
+#     the end of EVERY lane cycle, and on a refused mutex;
+#   * each lane worker -> s134_reports/<lane>_<run_id>.md, a NEW file per
+#     cycle (the driver's REPORTS dir; the directive orders it every cycle).
+# Neither matched the kit IGNORE or the RM-874 globs, so a merger's gated
+# suite straddling a lane cycle end failed at the guard teardown. Its
+# s134_rotator_state.json already matches the RM-874 *_state.json glob, and
+# its *.log / *.jsonl are in the kit IGNORE.
+
+S134_LANES = ("repo", "queue", "gated", "ds", "research", "true-audit", "uiux")
+S134_LAST = tuple(f"{LP}/s134_{lane}_last.json" for lane in S134_LANES)
+
+
+def _s134_tree(root: Path) -> None:
+    for lane in S134_LANES:
+        _put(root, f"{LP}/s134_{lane}_last.json", '{"outcome": "completed"}\n')
+        _put(root, f"{LP}/s134_{lane}_state.json", '{"status": "waiting"}\n')
+        _put(root, f"{LP}/s134-{lane}.tmpl", "@@LANE@@\n")
+    _put(root, f"{LP}/s134_reports/repo_s134p001-17b1c5.md", "## SUMMARY\n")
+    _put(root, f"{LP}/s134-common.tmpl", "@@LANE_DIRECTIVE@@\n")
+    _put(root, f"{LP}/s134_lane_driver.py", "# driver\n")
+    _put(root, f"{LP}/s134_lane_progress.py", "# progress\n")
+    _put(root, "ops/loop/control/lane_exclusions_s134.txt", "CLAUDE.md\n")
+    _age(root, [p.relative_to(root).as_posix() for p in root.rglob("*") if p.is_file()])
+
+
+@pytest.mark.parametrize("lane", S134_LANES)
+def test_an_s134_cycle_end_and_its_report_do_not_fail_the_guard(tmp_path, lane):
+    g = _guard()
+    _s134_tree(tmp_path)
+    raw = g.snapshot(tmp_path, g.WATCH, ())
+    before = g.snapshot(tmp_path, g.WATCH, _ignore())
+    last = tmp_path / LP / f"s134_{lane}_last.json"
+    tmp = last.with_name(last.name + ".tmp")
+    tmp.write_bytes(b'{\n "outcome": "completed",\n "rc": 0\n}\n')
+    tmp.replace(last)
+    report = f"{LP}/s134_reports/{lane}_s134x009-abcdef.md"
+    _put(tmp_path, report, "## SUMMARY\none cycle\n")
+    changed, _deleted, created = g.compare(raw, g.snapshot(tmp_path, g.WATCH, ()), g.INFLOW)
+    # Positive control: without any ignore the cycle end IS a live-state change.
+    assert f"{LP}/s134_{lane}_last.json" in changed
+    assert report in created
+    assert _verdict(tmp_path, before) == ""
+
+
+@pytest.mark.parametrize("rel", S134_LAST + (
+        f"{LP}/s134_reports/repo_s134p004-fcd8ae.md",
+        f"{LP}/s135_reports/queue_s135q001-000000.md"))
+def test_each_measured_s134_driver_file_is_ignored_by_rc_not_the_kit(rel):
+    import fnmatch
+    lowered = rel.lower()
+    assert [gl for gl in _ignore() if fnmatch.fnmatchcase(lowered, gl.lower())], rel
+    assert not [gl for gl in _guard().IGNORE if fnmatch.fnmatchcase(lowered, gl.lower())]
+
+
+@pytest.mark.parametrize("rel", [
+    "ops/loop/control/lane_exclusions_s134.txt",
+    f"{LP}/s134-common.tmpl",
+    f"{LP}/s134-repo.tmpl",
+    f"{LP}/s134_lane_driver.py",
+    f"{LP}/s134_lane_progress.py",
+])
+def test_an_s134_driver_source_or_exclusion_edit_still_fails_the_guard(tmp_path, rel):
+    _s134_tree(tmp_path)
+    before = _guard().snapshot(tmp_path, _guard().WATCH, _ignore())
+    _put(tmp_path, rel, "corrupted by a test - longer than before\n")
+    assert f"changed 1 ({rel})" in _verdict(tmp_path, before)
+
+
+@pytest.mark.parametrize("rel", [
+    f"{LP}/s134_reports/notes.txt",
+    f"{LP}/s134_reports.md",
+    f"{LP}/reports/repo_s134p001.md",
+    f"{LP}/s134_last.json",
+    "ops/loop/control/s134_repo_last.json",
+])
+def test_a_near_miss_of_the_s134_globs_still_fails_the_guard(tmp_path, rel):
+    _s134_tree(tmp_path)
+    before = _guard().snapshot(tmp_path, _guard().WATCH, _ignore())
+    _put(tmp_path, rel, "written by a test\n")
+    msg = _verdict(tmp_path, before)
+    assert msg.startswith("fleet_test_guard:"), rel
+    assert rel in msg
