@@ -1634,6 +1634,12 @@ stays playable beside it, so record which set the game ran).
   is the LCU team planner's `"setId": "TFTSet17"`. Close with the key, its value for a Set 18 game, and
   whether `tft_state_reader.read` then notes Set 18 (resolver log), or record that neither surface
   exposes it (the `RC_TFT_SET` pin and the newest-ingested default stay the only routes).
+  RM-855 (same game): Set 18's round schedule is UNVERIFIED - the CommunityDragon extract names
+  carousel rounds and a Stage 3-7 in augment text but no round index - so a Set 18 state carries
+  `round_schedule: "neutral_unverified"` (no event, PvE, god or tempo label; only Set 17 gets the
+  Realm of the Gods schedule). Record which rounds are carousel, PvE and augment rounds, and whether
+  the Set 17 calibrated `_TIME_TO_ROUND` table tracks Set 18 stage timing, so a grounded Set 18
+  schedule can replace the neutral one.
 - **LT-02** (RM-840, Set 18 roll odds + pool sizes) Read the in-client shop odds per level and the
   champion pool sizes per cost for Set 18 and compare them with the constants modules
   (`tft/tft_data.py`, `tft/tft_pbe_data.py`; `CONSTANTS_SET_VERIFIED` stays False in both and
