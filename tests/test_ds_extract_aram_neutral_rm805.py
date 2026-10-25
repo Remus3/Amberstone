@@ -219,8 +219,11 @@ def _wire_main(monkeypatch, tmp_path, aram, argv, *, network_ok):
 
     if network_ok:
         monkeypatch.setattr(dse, "fetch_meraki_perlevel_overlay", lambda ids: {})
-        monkeypatch.setattr(dse, "fetch_arena_augments", lambda: {"count": 0})
-        monkeypatch.setattr(dse, "fetch_meraki_items", lambda: {"count": 0})
+        # Full-size payloads, so the RM-807 (d) upstream floor stays out of the way.
+        monkeypatch.setattr(dse, "fetch_arena_augments", lambda: {
+            "count": 225, "augments": [{"id": i} for i in range(225)]})
+        monkeypatch.setattr(dse, "fetch_meraki_items", lambda: {
+            "count": 320, "items": {str(i): {} for i in range(320)}})
     else:
         monkeypatch.setattr(dse, "fetch_meraki_perlevel_overlay", _no_network)
         monkeypatch.setattr(dse, "fetch_arena_augments", _no_network)
