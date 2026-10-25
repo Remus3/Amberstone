@@ -92,12 +92,13 @@ def _rule(css: str, selector: str) -> str:
     return re.sub(r"/\*.*?\*/", "", css[i:j], flags=re.S)
 
 
-def _run_node(script: str) -> dict:
-    """Import callouts.js as an ES module in node and return its JSON stdout."""
+def _run_node(script: str, module: Path = CALLOUTS_JS) -> dict:
+    """Import `module` (callouts.js by default) as an ES module in node and
+    return its JSON stdout."""
     node = shutil.which("node")
     if not node:  # pragma: no cover - node is present on Legion
         pytest.skip("node not on PATH")
-    full = script.replace("__URI__", CALLOUTS_JS.resolve().as_uri())
+    full = script.replace("__URI__", module.resolve().as_uri())
     res = subprocess.run(
         [node, "--input-type=module", "-e", full],
         capture_output=True, text=True, cwd=str(REPO), timeout=30,
@@ -446,9 +447,67 @@ def test_overlay_layout_still_owns_these_two_mounts():
     assert 'id: "w-callouts", sel: "#rn-callouts"' in src
 
 
+def _fn_body(src: str, name: str) -> str:
+    """Source of top-level `function <name>(` up to the next top-level one."""
+    head = f"\nfunction {name}("
+    i = src.find(head)
+    assert i != -1, f"overlay_layout.js has no top-level function {name}"
+    j = src.find("\nfunction ", i + len(head))
+    return src[i:] if j == -1 else src[i:j]
+
+
 def test_overlay_layout_still_owns_the_classes_this_panel_must_not_touch():
     """Pins WHY MUST-FIX 1 matters: these are the foreign writes on the same
-    node that a wholesale className assignment would destroy."""
+    node that a wholesale className assignment would destroy. `ovx-widget` is
+    added by `_placeAll` on every registered mount (source-scoped to that
+    function: it is not exported). `ovx-hidden` is DRIVEN through the real
+    `_applyPos` (exported in `_internals`) on a mount that already carries the
+    frame class, so the assertion is the ownership itself - hidden or
+    mode-off adds it, shown removes it, the frame class survives - not one
+    spelling of the toggle's condition (S135 N9 widened it to
+    `p.hidden || p.modeOff === true`)."""
     src = OVERLAY_LAYOUT_JS.read_text(encoding="utf-8")
-    assert 'el.classList.add("ovx-widget")' in src
-    assert 'el.classList.toggle("ovx-hidden", p.hidden)' in src
+    assert 'el.classList.add("ovx-widget")' in _fn_body(src, "_placeAll")
+    out = _run_node(
+        """
+globalThis.window = { innerWidth: 1920, innerHeight: 1080 };
+globalThis.document = { body: {} };
+globalThis.getComputedStyle = () => ({ zoom: "1" });
+const { _internals } = await import("__URI__");
+function mount() {
+  const s = new Set(["ovx-widget"]);
+  return { dataset: { ovxId: "w-lead" }, _s: s,
+    classList: {
+      add: (...c) => c.forEach((x) => s.add(x)),
+      remove: (...c) => c.forEach((x) => s.delete(x)),
+      contains: (x) => s.has(x),
+      toggle: (x, on) => {
+        if (on === undefined) on = !s.has(x);
+        on ? s.add(x) : s.delete(x);
+        return on;
+      },
+    },
+    style: { setProperty() {}, removeProperty() {} } };
+}
+const cases = {
+  hidden: { x: 10, y: 10, hidden: true },
+  modeOff: { x: 10, y: 10, hidden: false, modeOff: true },
+  shown: { x: 10, y: 10, hidden: false },
+};
+const out = {};
+for (const [k, p] of Object.entries(cases)) {
+  const el = mount();
+  _internals._applyPos(el, p);
+  const first = [...el._s].sort();
+  _internals._applyPos(el, { x: 10, y: 10, hidden: false });
+  out[k] = { applied: first, reshown: [...el._s].sort() };
+}
+console.log(JSON.stringify(out));
+""",
+        module=OVERLAY_LAYOUT_JS,
+    )
+    assert out["hidden"]["applied"] == ["ovx-hidden", "ovx-widget"], out
+    assert out["modeOff"]["applied"] == ["ovx-hidden", "ovx-widget"], out
+    assert out["shown"]["applied"] == ["ovx-widget"], out
+    for k in ("hidden", "modeOff", "shown"):
+        assert out[k]["reshown"] == ["ovx-widget"], (k, out)
