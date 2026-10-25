@@ -227,10 +227,51 @@ def test_the_separator_table_matches_the_fragment_construction(name):
         assert re.fullmatch(frags[family], sep.join(toks), re.I), family
 
 
+def _top_level_bar(prefix: str) -> bool:
+    """True when ``prefix`` has a `|` outside every group and char class.
+
+    Only a TOP-LEVEL bar splits the shape into `prefix-half | rest`, a branch
+    that could match with no fragment at all. A bar inside a group (RM-813's
+    drive head `(?:<drive>|<mount>|...)`) still leaves `group + fragment`, so
+    every match keeps a whole fragment match.
+    """
+    depth = 0
+    i = 0
+    in_class = False
+    while i < len(prefix):
+        ch = prefix[i]
+        if ch == "\\":
+            i += 2
+            continue
+        if in_class:
+            in_class = ch != "]"
+        elif ch == "[":
+            in_class = True
+            if prefix[i + 1:i + 2] == "]":
+                i += 1
+        elif ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        elif ch == "|" and depth == 0:
+            return True
+        i += 1
+    return False
+
+
+def test_the_top_level_bar_check_tells_a_group_from_a_split():
+    assert _top_level_bar(r"a|b") is True
+    assert _top_level_bar(r"(?:a|b)c") is False
+    assert _top_level_bar(r"[|]x") is False
+    assert _top_level_bar(r"\|x") is False
+    assert _top_level_bar(r"(?:a)|b") is True
+
+
 def test_every_shape_is_a_prefix_plus_one_family_fragment(needles):
     """Soundness needs every match of every shape to CONTAIN a whole family
     fragment match. True for `prefix + fragment [+ right edge]` with no
-    alternation in the prefix; a new shape of another form fails here."""
+    TOP-LEVEL alternation in the prefix (a grouped one is fine, see
+    `_top_level_bar`); a new shape of another form fails here."""
     for n in needles:
         toks = [t for t in re.split(r"\s+", n.name.strip()) if t]
         tight = "".join(re.escape(t) for t in toks)
@@ -241,7 +282,7 @@ def test_every_shape_is_a_prefix_plus_one_family_fragment(needles):
             owners = [f for f in frags if f and body.endswith(f)]
             assert owners, (n.slot, shape.shape)
             prefix = body[: -len(max(owners, key=len))]
-            assert "|" not in prefix, (n.slot, shape.shape)
+            assert not _top_level_bar(prefix), (n.slot, shape.shape)
 
 
 def test_build_needles_attaches_a_prefilter_to_every_needle(needles):
