@@ -2,9 +2,8 @@
 
 docs/TFT_PROGRAM.md section 0 item 2: the standalone TFT client rewrites
 `%LOCALAPPDATA%/TFT/Saved/Logs/TFTEoGStats.json` once per round at planning
-start. Each rewrite carries, for all 8 players, `health`, `ffaStanding`,
-`isInteractable` and `boardPieces` ({championName, starLevel, itemNames,
-price}) - the section 1.4 source for rows 2, 7, 8, 12 and the opponent boards
+start. Each rewrite carries, for all 8 players, `health`, `ffaStanding` and
+`boardPieces` ({championName, starLevel, itemNames, price}) - the section 1.4 source for rows 2, 7, 8, 12 and the opponent boards
 of row 16, src `eog_file`, conf 1.0 (section 1.1).
 
 Reuse (slice row: "import tft/tft_standalone.py helpers rather than
@@ -23,15 +22,21 @@ exception into a poll loop):
     per-game slot), and are never copied. Unit and item ids must have the game
     api shape (DA_18_Yorick, DA_GiantSlayer, TFT_Item_...); anything else is
     dropped from that one unit or list.
+  * LOCAL PLAYER: only from the injected `local_player_id` - the LCU summoner
+    id (an int or digit string, matched against a row's `playerId`) or a PUUID
+    (matched against `PUUID`); a callable returning either is resolved on every
+    poll. Exactly one matching row is the local player; no id, no match, two
+    matches or a failing callable = unknown (`local_key` None, `is_local` None),
+    never a guess and never carried from another rewrite. `isInteractable` is
+    NOT read: it does not mark the local player in a human lobby (s135 verifier:
+    8/8 in every end-of-game copy; mid-match the first interactable row was the
+    8th-place player - bug N13). The id is compared in memory, never copied.
   * `EogFileSource` - stats the file each poll and emits a snapshot only for a
     NEW rewrite: identical content is skipped, a changed game length opens the
-    next rewrite index, a changed game id restarts it. The local player is the
-    single `isInteractable` row; when that is ambiguous (measured s135: the
-    final file of a match marks ALL 8 players interactable) the local key seen
-    earlier in the same game is carried forward.
+    next rewrite index, a changed game id restarts it.
   * `EogIngest` - writes snapshots into the TFT-01 round store: the match row
     (found by game_id, else created with a deterministic match_id), player rows
-    (slot 1 = local, final_standing, eliminated_round_seq), per round all-8
+    (slot 1 = local when known, final_standing, eliminated_round_seq), per round all-8
     `player_round` (hp clamped at 0; overkill stays in the raw obs), the board
     `unit_obs` (phase planning_start, zone board), the local `hp_start`
     envelope, one `eog.player` obs per player (raw values), one `eog.round` obs
@@ -78,17 +83,21 @@ MATCH_START_SLACK_S = 120.0
 # enumerates every key of the file against these sets) -------------------------
 DOC_FIELDS = frozenset({"gameId", "gameMode", "queueId", "statsBlock"})
 STATS_FIELDS = frozenset({"gameLengthSeconds", "setCoreName", "players"})
-PLAYER_FIELDS = frozenset({"health", "ffaStanding", "isInteractable", "boardPieces", "augments"})
+PLAYER_FIELDS = frozenset({"health", "ffaStanding", "boardPieces", "augments"})
 PIECE_FIELDS = frozenset({"championName", "starLevel", "itemNames", "price"})
 # identity: read in memory for the HMAC key at most (KEY_BASIS_FIELDS), never copied
 KEY_BASIS_FIELDS = ("PUUID", "riotIdGameName", "riotIdTagLine", "summonerName")
+# identity compared in memory with the injected local_player_id, never copied
+LOCAL_MATCH_FIELDS = ("playerId", "PUUID")
 IDENTITY_KEYS = frozenset({
     "PUUID", "puuid", "riotIdGameName", "riotIdTagLine", "gameName", "tagLine",
     "summonerName", "summonerId", "accountId", "playerId",
     "companionContentId", "companionName", "companionSkinId", "summonerIconID",
 })
 # never read: cosmetics, event-mode blobs, the Double Up team id
-IGNORED_KEYS = frozenset({"isRanked", "queueType", "customAugmentContainer", "eventPVEData",
+# isInteractable: NOT a local-player signal (bug N13), so it is never read
+IGNORED_KEYS = frozenset({"isInteractable", "isRanked", "queueType", "customAugmentContainer",
+                          "eventPVEData",
                           "eventSkillDeltas", "partnerGroupId", "playbookItemId",
                           "endOfGameAlias"})
 
@@ -113,7 +122,6 @@ class EogPlayer:
     hp: Optional[int]  # hit points, clamped at 0
     alive: Optional[bool]
     standing: Optional[int]  # ffaStanding 1-8 once placed; None while 0
-    interactable: bool
     board: tuple  # EogUnit
     augments: tuple  # api names; measured empty although augments were taken
     is_local: Optional[bool] = None  # None = the local player is not known
@@ -208,7 +216,7 @@ def _board(pieces) -> tuple:
 
 def _fingerprint(game_id, length, players) -> str:
     body = json.dumps([game_id, length, [
-        [p.player_key, p.hp_raw, p.standing, p.interactable, list(p.augments),
+        [p.player_key, p.hp_raw, p.standing, list(p.augments),
          [[u.champion_api, u.star, list(u.items), u.cost] for u in p.board]]
         for p in players]], separators=(",", ":"))
     return hashlib.sha256(body.encode("ascii", "replace")).hexdigest()[:16]
@@ -220,17 +228,54 @@ def _with_local(snap: EogSnapshot, local: Optional[str]) -> EogSnapshot:
     return replace(snap, players=players, local_key=local)
 
 
-def parse_eog(doc, *, salt: bytes, mtime: Optional[float] = None) -> Optional[EogSnapshot]:
+def _local_id(v) -> Optional[tuple]:
+    """("player_id", int) | ("puuid", str) | None for an injected local id."""
+    if isinstance(v, bool) or v is None:
+        return None
+    if isinstance(v, int):
+        return ("player_id", v) if v > 0 else None
+    if isinstance(v, str):
+        s = v.strip()
+        if not s or _ZERO_ID.fullmatch(s):
+            return None
+        if s.isdigit():
+            return ("player_id", int(s)) if int(s) > 0 else None
+        return ("puuid", s)
+    return None
+
+
+def _local_index(rows, local_player_id) -> Optional[int]:
+    """The index of the ONE row the injected id names, else None."""
+    want = _local_id(local_player_id)
+    if want is None:
+        return None
+    kind, val = want
+    hits = []
+    for i, p in enumerate(rows):
+        if kind == "player_id":
+            got = p.get("playerId")
+            got = int(got) if isinstance(got, str) and got.strip().isdigit() else _as_int(got)
+        else:
+            got = p.get("PUUID").strip() if isinstance(p.get("PUUID"), str) else None
+        if got == val:
+            hits.append(i)
+    return hits[0] if len(hits) == 1 else None
+
+
+def parse_eog(doc, *, salt: bytes, mtime: Optional[float] = None,
+              local_player_id=None) -> Optional[EogSnapshot]:
     """One decoded TFTEoGStats.json -> EogSnapshot, or None when it is not a
-    TFT stats document. Never raises."""
+    TFT stats document. `local_player_id` (summoner id / playerId or PUUID)
+    names the local player; without a single matching row it stays unknown.
+    Never raises."""
     try:
-        return _parse(doc, salt, mtime)
+        return _parse(doc, salt, mtime, local_player_id)
     except Exception as exc:  # noqa: BLE001 - a malformed file never reaches a poll loop
         _log.debug("tft eog: parse failed (%s)", type(exc).__name__)
         return None
 
 
-def _parse(doc, salt, mtime) -> Optional[EogSnapshot]:
+def _parse(doc, salt, mtime, local_player_id) -> Optional[EogSnapshot]:
     if not isinstance(doc, dict) or "TFT" not in str(doc.get("gameMode") or ""):
         return None
     sb = doc.get("statsBlock")
@@ -249,18 +294,17 @@ def _parse(doc, salt, mtime) -> Optional[EogSnapshot]:
             hp=None if hp_raw is None else max(hp_raw, 0),
             alive=None if hp_raw is None else hp_raw > 0,
             standing=_as_int(p.get("ffaStanding"), 1, 8),
-            interactable=p.get("isInteractable") is True,
             board=_board(p.get("boardPieces")), augments=_api_list(p.get("augments"))))
     core = sb.get("setCoreName")
     core = core if isinstance(core, str) and _SET_CORE.fullmatch(core) else None
     length = _as_int(sb.get("gameLengthSeconds"), lo=0)
-    interactable = [p.player_key for p in players if p.interactable]
+    li = _local_index(rows, local_player_id)
     snap = EogSnapshot(
         game_id=game_id, queue_id=_as_int(doc.get("queueId"), lo=0), set_core_name=core,
         set_id=tft_set.parse_set_id(core) if core else None, game_length_s=length,
         mtime=None if mtime is None else float(mtime), players=tuple(players),
         fingerprint=_fingerprint(game_id, length, players))
-    return _with_local(snap, interactable[0] if len(interactable) == 1 else None)
+    return _with_local(snap, None if li is None else players[li].player_key)
 
 
 # ---------------------------------------------------------------- the file source
@@ -272,9 +316,12 @@ class EogFileSource:
     Every poll is one stat; the file is read (through the P0 `read_eog`) only
     when its (mtime, size) changed and it is at most `max_bytes`."""
 
-    def __init__(self, *, salt: bytes, clock: Callable[[], float] = time.time,
+    def __init__(self, *, salt: bytes, local_player_id=None,
+                 clock: Callable[[], float] = time.time,
                  max_age_s: float = p0.EOG_MAX_AGE_S, max_bytes: int = MAX_EOG_BYTES):
         self.salt = bytes(salt)
+        # int | str | Callable[[], int | str | None] | None - see the module docstring
+        self.local_player_id = local_player_id
         self.clock = clock
         self.max_age_s = max_age_s
         self.max_bytes = max_bytes
@@ -283,7 +330,6 @@ class EogFileSource:
         self._index = 0
         self._length = None
         self._fp = None
-        self._local = None
         self.stats = {"polls": 0, "snapshots": 0, "unchanged": 0, "stale_or_torn": 0,
                       "unparsed": 0, "oversize": 0, "errors": 0}
 
@@ -315,27 +361,32 @@ class EogFileSource:
             self.stats["stale_or_torn"] += 1
             return None
         self._sig = sig
-        snap = parse_eog(doc, salt=self.salt, mtime=doc.get("_mtime") or st.st_mtime)
+        snap = parse_eog(doc, salt=self.salt, mtime=doc.get("_mtime") or st.st_mtime,
+                         local_player_id=self._resolve_local_id())
         if snap is None:
             self.stats["unparsed"] += 1
             return None
         return self._sequence(snap)
 
+    def _resolve_local_id(self):
+        v = self.local_player_id
+        if not callable(v):
+            return v
+        try:
+            return v()
+        except Exception as exc:  # noqa: BLE001 - a failing helper = local unknown
+            _log.debug("tft eog: local id helper failed (%s)", type(exc).__name__)
+            return None
+
     def _sequence(self, snap: EogSnapshot) -> Optional[EogSnapshot]:
         if snap.game_id != self._game or self._index == 0:
-            self._game, self._index, self._length, self._fp, self._local = (
-                snap.game_id, 0, None, None, None)
-        local = snap.local_key
-        if local is None and self._local in {p.player_key for p in snap.players}:
-            local = self._local  # ambiguous rewrite: carry the local player forward
-        self._local = local or self._local
-        snap = _with_local(snap, local)
-        if snap.fingerprint == self._fp:
+            self._game, self._index, self._length, self._fp = snap.game_id, 0, None, None
+        if (snap.fingerprint, snap.local_key) == self._fp:
             self.stats["unchanged"] += 1
             return None
         if self._index == 0 or snap.game_length_s != self._length:
             self._index += 1
-        self._length, self._fp = snap.game_length_s, snap.fingerprint
+        self._length, self._fp = snap.game_length_s, (snap.fingerprint, snap.local_key)
         self.stats["snapshots"] += 1
         return replace(snap, rewrite_index=self._index)
 
@@ -375,10 +426,13 @@ class EogIngest:
     """Writes EoG snapshots into the round store (see the module docstring)."""
 
     def __init__(self, store: RoundStore, *, salt: bytes, source: Optional[EogFileSource] = None,
-                 extractor_version: str = EXTRACTOR_VERSION):
+                 local_player_id=None, extractor_version: str = EXTRACTOR_VERSION):
+        """`local_player_id` configures the default source; a passed `source`
+        carries its own."""
         self.store = store
         self.salt = bytes(salt)
-        self.source = source if source is not None else EogFileSource(salt=self.salt)
+        self.source = source if source is not None else EogFileSource(
+            salt=self.salt, local_player_id=local_player_id)
         self.extractor_version = extractor_version
         self._m: Optional[_Match] = None
         self.stats = {"rounds": 0, "updates": 0, "match_dropped": 0, "errors": 0}
