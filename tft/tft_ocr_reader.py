@@ -2,25 +2,33 @@
 tft/tft_ocr_reader.py
 
 Free OCR-based reader for TFT structured UI data.
-Replaces Claude vision for: stage/round and level.
-Uses Tesseract 5.x via pytesseract - zero API cost.
+Replaces Claude vision for: stage/round, level, gold and your own HP.
+Uses Tesseract 5.x - zero API cost.
 
-Regions are authored against the 1280x720 frame the vision relay serves
-(vision_server/_frame.py _SELF_GRAB_MAX_WIDTH downscales the primary-monitor
-grab to 1280 wide) and scaled to the size of the frame actually received, so
-a native 1920x1080 or 2560x1440 frame reads the same HUD boxes. A frame that is
-not 16:9 (a stitched multi-monitor grab) is refused rather than misread, and a
-box that falls outside the frame yields no crop: PIL pads an out-of-frame crop
-with black instead of raising, which is how the previous 1600x900 boxes went
-silently inert on the 1280x720 relay frames (s134 true-audit: 0 of 80 recorded
-live frames yielded any field before the recalibration).
+Live path (TftOcrReader.read / read_stage_round_only, the TftStateReader OCR
+thread): since TFT-04 the crops come from the resolution-relative region
+profile ``config/tft_regions/2560x1440.json`` through
+``tft.cv.ocr_fields.read_frame``, scaled to whatever frame the relay serves
+(1280x720 today, 1920x1080, 2560x1440) and gated by the layout classifier, so a
+hidden panel yields no value; a frame of any other aspect ratio (a stitched
+multi-monitor grab) has no profile and reads absent. Match-3 QA N7
+(2026-10-25): the old absolute boxes were authored at 1600x900 (Set 17) and on
+the 1280x720 relay frame the stage box saw only the phase timer - 0 of 12 stage
+reads right, a latched 6-2 and a false "new game". Gold and own HP on the live
+path come from the cv profile's own boxes, not from the legacy boxes below.
 
-Gold and HP are NOT published. Gold: the centred coin glyph bleeds into the
-digits, and the best measured variant still read 24 as 5 and 52 as 520 on the
-recorded frames - a wrong gold number is worse than none. HP: the previous
-"brightest row" locator keyed on the sky behind the player list, and its
-fallback returned the first number in the panel, i.e. the TOP-ranked player's
-HP, not yours. Both need a validated locator before they come back.
+Legacy helpers (``_REGIONS`` / ``_grab_region`` / ``_ocr_*``; used by
+``save_debug_crops`` and their own timeout tests, NOT by the live reads): the
+regions are authored against the 1280x720 frame the vision relay serves
+(vision_server/_frame.py _SELF_GRAB_MAX_WIDTH) and scaled to the size of the
+frame actually received. A frame that is not 16:9 is refused rather than
+misread, and a box that falls outside the frame yields no crop: PIL pads an
+out-of-frame crop with black instead of raising, which is how the 1600x900
+boxes went silently inert (s134 true-audit: 0 of 80 recorded live frames
+yielded any field before the recalibration). The legacy gold box and the
+"brightest row" HP locator are gone: the centred coin glyph bled into the
+gold digits (24 read as 5, 52 as 520), and the HP fallback returned the first
+number in the panel, i.e. the TOP-ranked player's HP, not yours.
 """
 
 import logging
@@ -56,6 +64,11 @@ _SCALE = 4
 # this is text. 140 at x4 read every sampled stage right on the recorded
 # frames; 110 / 170, or x6, misread a 3 as a 5.
 _THRESHOLD = 140
+
+# Fields the live OCR thread reads every tick through tft.cv.ocr_fields (cheap:
+# about four Tesseract calls; shop / scoreboard / traits belong to the TFT-07
+# capture bursts, not the 2 s poll).
+_LIVE_FIELDS = ("stage", "level", "gold", "own_hp")
 
 # How often to try OCR (seconds). Vision already runs every round; OCR runs faster.
 _OCR_INTERVAL = 2.0
@@ -254,22 +267,35 @@ def _ocr_gold(img, tess) -> Optional[int]:
 class TftOcrReader:
     """
     Fast, free OCR reader for TFT structured UI data.
-    Replaces Claude vision for: stage_round, level.
+    Replaces Claude vision for: stage_round, level, gold, hp.
 
     Usage:
         reader = TftOcrReader()
-        data = reader.read()  # -> {"stage_round": "3-6", "level": 8}
+        data = reader.read()  # -> {"stage_round": "3-6", "level": 8, "gold": 51, "hp": 65}
+
+    ``engine`` / ``profile`` are seams for tests; by default the Tesseract CLI
+    engine of ``tft.cv.ocr_fields`` and the region profile for the resolution
+    the local client is configured to (``load_client_profile``).
     """
 
-    def __init__(self) -> None:
-        self._tess = _init_tesseract()
+    def __init__(self, engine=None, profile=None) -> None:
+        self._tess = _init_tesseract()  # legacy helpers (save_debug_crops) only
         self._last_read = 0.0
         self._cache: dict = {}
-        self._region_overrides: dict = {}  # allow runtime calibration
-        self._available = self._tess is not None
+        self._region_overrides: dict = {}  # legacy save_debug_crops calibration
+        self._engine = engine
+        self._profile = profile
+        self._profile_loaded = profile is not None
+        if self._engine is None:
+            try:
+                from tft.cv.ocr_fields import TesseractEngine
+                self._engine = TesseractEngine()
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("TftOcrReader: OCR engine unavailable: %s", exc)
+        check = getattr(self._engine, "available", None)
+        self._available = self._engine is not None and (check() if callable(check) else True)
         if self._available:
-            logger.info("TftOcrReader ready (Tesseract %s)",
-                        _resolve_tesseract_cmd())
+            logger.info("TftOcrReader ready (resolution-relative TFT regions)")
         else:
             logger.warning("TftOcrReader: Tesseract unavailable, OCR disabled")
 
@@ -278,7 +304,8 @@ class TftOcrReader:
         return self._available
 
     def calibrate(self, field: str, bbox: tuple) -> None:
-        """Override a region bbox at runtime for fine-tuning.
+        """Override a legacy region bbox (``save_debug_crops`` only; the live
+        reads take their regions from config/tft_regions).
 
         `bbox` is (left, top, right, bottom) in _BASE_SIZE coordinates, like
         _REGIONS. Raises ValueError on an unknown field or a box that is not
@@ -301,12 +328,43 @@ class TftOcrReader:
     def _region(self, field: str) -> tuple:
         return self._region_overrides.get(field, _REGIONS[field])
 
+    def _get_profile(self):
+        if not self._profile_loaded:
+            self._profile_loaded = True
+            try:
+                from tft.cv.profile import load_client_profile
+                self._profile = load_client_profile()
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("TftOcrReader: region profile load failed: %s", exc)
+                self._profile = None
+            if self._profile is None:
+                logger.warning("TftOcrReader: no TFT region profile for this client "
+                               "resolution; OCR fields read absent")
+        return self._profile
+
+    def read_frame_fields(self, full_img, fields=_LIVE_FIELDS) -> dict:
+        """The live-path mapping: one frame -> {stage_round, level, gold, hp}.
+
+        Absent fields are omitted (never 0); any frame size of the profile's
+        aspect ratio works (1280x720 relay, 1920x1080, 2560x1440)."""
+        prof = self._get_profile()
+        if full_img is None or prof is None:
+            return {}
+        from tft.cv.ocr_fields import read_frame
+        fr = read_frame(full_img, profile=prof, engine=self._engine, fields=fields)
+        result = {}
+        for src, dst in (("label", "stage_round"), ("level", "level"), ("gold", "gold"),
+                         ("own_hp", "hp")):
+            fv = fr.fields.get(src)
+            if fv is not None and fv.present:
+                result[dst] = fv.value
+        return result
+
     def read(self, force: bool = False) -> dict:
         """
         Read all OCR fields. Returns dict with keys:
-          stage_round, level
-        Missing/failed fields are omitted from the dict (gold and hp are
-        never published - see the module docstring).
+          stage_round, level, gold, hp
+        Missing/failed fields are omitted from the dict.
         Cached for _OCR_INTERVAL seconds unless force=True.
         """
         if not self._available:
@@ -316,8 +374,7 @@ class TftOcrReader:
             return dict(self._cache)
 
         result = {}
-        # Fetch the full frame once and crop from it for each region.
-        # Cuts the per-tick relay round-trips from 4 to 1.
+        # One relay frame per tick; every field crops from it.
         full_img = _capture_full_frame()
         if full_img is None:
             logger.debug("OCR read: no relay frame available")
@@ -325,24 +382,11 @@ class TftOcrReader:
             self._last_read = now
             return result
         try:
-            # Stage/Round
-            img = _grab_region(self._region("stage_round"), full_img)
-            if img is not None:
-                sr = _ocr_stage_round(img, self._tess)
-                if sr:
-                    result["stage_round"] = sr
-                    logger.debug("OCR stage_round=%s", sr)
-
-            # Level
-            img = _grab_region(self._region("level"), full_img)
-            if img is not None:
-                lv = _ocr_level(img, self._tess)
-                if lv:
-                    result["level"] = lv
-                    logger.debug("OCR level=%d", lv)
-
+            result = self.read_frame_fields(full_img)
+            logger.debug("OCR read: %s", result)
         except Exception as e:  # noqa: BLE001
             logger.warning("OCR read error: %s", e)
+            result = {}
 
         self._cache = dict(result)
         self._last_read = now
@@ -353,10 +397,7 @@ class TftOcrReader:
         if not self._available:
             return None
         try:
-            img = _grab_region(self._region("stage_round"))
-            if img is None:
-                return None
-            return _ocr_stage_round(img, self._tess)
+            return self.read_frame_fields(_capture_full_frame(), ("stage",)).get("stage_round")
         except Exception:  # noqa: BLE001
             return None
 
