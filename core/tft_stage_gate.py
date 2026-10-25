@@ -24,9 +24,9 @@ The gate judges one read at a time and names the round to act on:
                  the next read does not fall below it), resets the gate: the
                  bypass, a genuine new game never waits on the gate. One
                  glitched clock value, behind or ahead, is not a new game.
-                 After a restart the round held before it is stale (the
-                 reader's OCR cache outlives the game) and is ignored until
-                 another round is read. With no clock the pre-RM-615 rule
+                 After a restart the rounds held and last read before it
+                 are stale (the reader's OCR cache outlives the game) and
+                 are ignored until another round is taken. With no clock the pre-RM-615 rule
                  (stage > 2 -> stage <= 2) still decides, so nothing
                  regresses.
   fast path      while the last WINDOW_READS reads all agreed with the
@@ -85,12 +85,16 @@ scans fall 46-70 percent and false new games from 16-113 to 0. The cost: the
 longest wrong run grows (7-24 polls against 4-9) because a burst of
 misreads can win a window. A stream misread HALF the time has no majority:
 the gate then holds the round it has instead of flipping per frame.
-RECORDED TRADE-OFF: a real round change read on a 2-of-3 majority can lag
-up to about 7 polls (10.5 s) when the window still holds the old round,
-because the same window must NOT move on a 3-read misread burst inside a
-2-of-3 stream of the old round; no window and margin satisfy both (W +
-margin > 6 for the burst, <= 6 for a 5-poll lag), and the burst case is the
-one that cost real work before RM-615 (both pinned in the tests).
+RECORDED TRADE-OFF (window size chosen on the seeded model, not forced):
+a real round change read on a 2-of-3 majority can lag up to 7 polls
+(10.5 s) when the window still holds the old round. WINDOW_READS = 5 with
+SWITCH_MIN_READS = 3 also holds the 3-read misread burst case and cuts that
+lag to 5-6 polls, but on the same model it acts on the wrong round more
+often for +1 misreads (standard, 10 percent: 3798 -> 5010 wrong polls) and
+lengthens the longest run at 20 percent (24 -> 33); 7 / 4 was kept. The lag
+is pinned by a test so it cannot silently grow.
+RESIDUAL: two consecutive clock values AHEAD of the real clock still read
+as a restart (CLOCK_RESET_READS is symmetric); one is absorbed.
 """
 from __future__ import annotations
 
@@ -235,7 +239,13 @@ def pace_floor_from_table(table: object) -> Optional[float]:
         if not isinstance(row, (list, tuple)) or len(row) != 3:
             return None
         t, s, r = row
-        if isinstance(t, bool) or not isinstance(t, (int, float)) or not math.isfinite(t):
+        if isinstance(t, bool) or not isinstance(t, (int, float)):
+            return None
+        try:
+            t = float(t)
+        except OverflowError:   # an int past the float range
+            return None
+        if not math.isfinite(t):
             return None
         o = ordinal(s, r)
         if o is None:
@@ -315,9 +325,11 @@ class StageGate:
         self._t_conf: Optional[float] = None
         self._t_prev: Optional[float] = None
         self._reset_n = 0
-        # The round held before a clock restart: the reader's OCR cache can
-        # still show it in the new game, so it is not news there.
-        self._stale: Optional[int] = None
+        # The rounds held or last READ before a clock restart: the reader's
+        # OCR cache can still show either in the new game, so neither is
+        # news there. _last_read is the last in-range read before it.
+        self._stale: frozenset = frozenset()
+        self._last_read: Optional[int] = None
 
     @property
     def timing(self) -> QueueTiming:
@@ -340,7 +352,7 @@ class StageGate:
         s, r = stage_round_of(o)
         p = self._prev
         self._prev = self._anchor
-        self._stale = None
+        self._stale = frozenset()
         if kind == REVERT and p is not None:
             self._anchor = p     # back to the round before: keep its clock
         else:
@@ -377,21 +389,24 @@ class StageGate:
                 self._reset_n += 1
                 if self._reset_n < CLOCK_RESET_READS:
                     return self._verdict(REJECT, "clock_reset_pending")
-                old = self._anchor
+                held = {self._anchor.ordinal if self._anchor else None, self._last_read}
                 self.reset()
                 self._t_prev = t
-                if old is not None and old.stage > 1:
-                    self._stale = old.ordinal
-                if o is not None and o != self._stale and self._first_ok(o, t):
+                # a game starts in stage 1, so a stage-1 round is never stale
+                stale = frozenset(x for x in held if x is not None and x > STAGE1_ROUNDS)
+                if o is not None and o not in stale and self._first_ok(o, t):
                     self._window.append(o)
                     self._move(o, t, NEW_GAME, "clock_reset")
                     self._prev = None
+                else:
+                    self._stale = stale
                 return self._verdict(NEW_GAME, "clock_reset")
             self._reset_n = 0
 
         if o is None:
             return self._verdict(REJECT, "out_of_range")
-        if self._stale is not None and o == self._stale:
+        self._last_read = o
+        if o in self._stale:
             return self._verdict(REJECT, "stale_after_reset")
         if not self._first_ok(o, t):
             return self._verdict(REJECT, "implausible_at_clock")
