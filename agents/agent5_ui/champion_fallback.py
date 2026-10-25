@@ -31,7 +31,10 @@ logger = logging.getLogger("agent5.champion_fallback")
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 _MATCH_DB_PATH = _PROJECT_ROOT / "data" / "match_history.db"
-_QUEUE_LOG_PATH = _PROJECT_ROOT / "data" / "task_queue.jsonl"
+# Must match agents.agent1_lead.scheduler.QUEUE_LOG (path literal, not an
+# import, to keep this module free of the scheduler import chain).
+_QUEUE_LOG_PATH = _PROJECT_ROOT / "agents" / "state" / "task_queue.jsonl"
+_QUEUE_TAIL_BYTES = 64 * 1024
 
 # Well-known LoL champion names - cheap filter when scanning free-text
 # user input. Not exhaustive; additions go here as needed.
@@ -136,10 +139,16 @@ def _try_recent_user_note() -> str | None:
     if not _QUEUE_LOG_PATH.exists():
         return None
     try:
-        with _QUEUE_LOG_PATH.open("r", encoding="utf-8") as f:
-            lines = f.readlines()
+        with _QUEUE_LOG_PATH.open("rb") as f:
+            f.seek(0, 2)
+            size = f.tell()
+            f.seek(max(0, size - _QUEUE_TAIL_BYTES))
+            raw = f.read()
     except OSError:
         return None
+    lines = raw.decode("utf-8", errors="replace").splitlines()
+    if size > _QUEUE_TAIL_BYTES and lines:
+        lines = lines[1:]  # first line is likely truncated mid-record
     word_re = re.compile(r"\b([A-Z][a-zA-Z]{2,15})\b")
     # Walk newest-first.
     for line in reversed(lines[-200:]):
