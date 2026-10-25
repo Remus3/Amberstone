@@ -14,6 +14,8 @@ THREE independent blockers that make it a verified dead end:
    corroborated by item 273's tft_pbe note "2450-tok > 2048 haiku floor"). The
    STATIC portion of each target prompt is far below that floor:
        aram_aug_select      static ~62 tok   (full template 279 chars)
+                            - RETIRED 2026-10-25 (RM-877) with its call, so
+                              it left _TARGETS; the measurement is history
        arena_aug_select     static ~80 tok   (315 static chars)
        tft_live_analysis    static ~669 tok  (full template 2605 chars)
        tft_live_aug_select  static ~51 tok   (full template 242 chars)
@@ -67,8 +69,11 @@ def _static_chars(template: str) -> int:
 
 
 # (label, source file, module-level template constant)
+# `aram_aug_select` (coaches/aram_coach.py `_AUG_SELECT_PROMPT`) is not here:
+# RM-877 retired that Haiku call and its template, so there is no prompt left
+# to cache. tests/test_aram_mayhem_augment_reco_rm860.py pins that it stays
+# gone (zero client calls, no template constant).
 _TARGETS = [
-    ("aram_aug_select", "coaches/aram_coach.py", "_AUG_SELECT_PROMPT"),
     ("arena_aug_select", "coaches/arena_coach.py", "_AUGMENT_SELECT_PROMPT"),
     ("tft_live_analysis", "tft/tft_live_analysis.py", "_ANALYSIS_PROMPT_TEMPLATE"),
     ("tft_live_aug_select", "tft/tft_live_analysis.py", "_AUGMENT_SELECT_PROMPT"),

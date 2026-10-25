@@ -166,23 +166,30 @@ def test_arena_augment_select_ocr_choices_cannot_inject(tmp_path, monkeypatch):
 
 
 # ==============================================================================
-# 3. coaches/aram_coach.py - the third OCR-join builder
+# 3. coaches/aram_coach.py - the third OCR-join builder, RETIRED by RM-877
 # ==============================================================================
+# The ARAM augment-select builder joined `augment_choices` OCR into the Haiku
+# `aram_aug_select` prompt and was sanitised here by RM-364. RM-877 retired
+# that call (its output had no reader), so the OCR text now reaches no prompt
+# at all. Pinned as "no client call", the strongest form of the contract; the
+# three-part neutralisation check needs a prompt and no longer applies.
 
-def test_aram_augment_select_ocr_choices_cannot_inject(tmp_path, monkeypatch):
+def test_aram_augment_select_ocr_choices_reach_no_prompt(tmp_path, monkeypatch):
     import core.coach_trace as trace_mod
     from coaches import aram_coach as mod
 
     _kill_cost_tracker(monkeypatch)
     monkeypatch.setattr(trace_mod, "append", lambda **kw: None)
-    c = mod.Coach.__new__(mod.Coach)
-    c._out = tmp_path / "aram_coaching_data.json"
-    c._client = _CaptureClient("Take: X\nWhy: w\nGameplan: g")
-    c._overlay = {}
-    c._last_state = {"game_mode": "ARAM", "champion": "Lux", "hp_pct": 80,
-                     "ally_comp": ["Ahri"], "enemy_comp": ["Sion"]}
-    c._handle_augment_select({"augment_choices": [_INJ, "Aug B"]})
-    _assert_neutralised(c._client.prompt, field="augment_choices")
+    for mode in ("ARAM", "KIWI"):
+        c = mod.Coach.__new__(mod.Coach)
+        c._out = tmp_path / f"aram_coaching_data_{mode}.json"
+        c._client = _CaptureClient("Take: X\nWhy: w\nGameplan: g")
+        c._overlay = {}
+        c._last_state = {"game_mode": mode, "champion": "Lux", "hp_pct": 80,
+                         "ally_comp": ["Ahri"], "enemy_comp": ["Sion"]}
+        c._handle_augment_select({"augment_choices": [_INJ, "Aug B"]})
+        assert c._client.calls == [], (
+            f"{mode}: the retired ARAM augment builder sent OCR text to a model")
 
 
 # ==============================================================================
@@ -357,7 +364,9 @@ def test_champ_select_every_post_list_field_is_sanitized(field, monkeypatch):
 # fields this row ranked are cleaned at assembly in this file". Two of those
 # files also contain a lower-ranked builder that is NOT yet sanitized -
 # `_run_coach` in aram_coach and arena_coach - and those are part of the
-# RM-381 residual named below, not a claim made by this bucket.
+# RM-381 residual named below, not a claim made by this bucket. RM-877
+# retired aram_coach's ranked builder (the augment OCR join), which left
+# `_run_coach` as its only builder, so the file moved to _RESIDUAL_RM381.
 
 _EGRESS_RE = re.compile(r"messages\.create\(|moon_proxy\.get_coaching\(")
 
@@ -369,7 +378,6 @@ _CENSUS_ROOTS = ("coaches", "tft", "core", "dashboard", "agents", "modes",
 _SANITIZED = {
     "coach_integration/_coach.py":     "assembly in _sr_prompt.py (RM-361)",
     "coaches/arena_coach.py":          "anvil + augment OCR joins (RM-364)",
-    "coaches/aram_coach.py":           "augment OCR join (RM-364)",
     "coaches/champ_select_coach.py":   "whole POST body (RM-364)",
     "tft/tft_live_analysis.py":        "augment descriptions + items_equipped (RM-364)",
 }
@@ -377,6 +385,8 @@ _SANITIZED = {
 # Known-unsanitized builders. Filed as RM-381, NOT overlooked. Each carries
 # wire or model text but sits below the ranked OCR/POST set in exposure.
 _RESIDUAL_RM381 = {
+    "coaches/aram_coach.py":               "_run_coach joins HUD `augments` OCR; its "
+                                           "sanitised augment-choices join was retired (RM-877)",
     "coaches/brawl_coach.py":              "champion name lands in the SYSTEM block",
     "coaches/replay_coach.py":             "Match-V5 rows; existing caps bound LENGTH only",
     "coaches/experimental_builder.py":     "prior Haiku output re-fed to Haiku",

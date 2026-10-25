@@ -16,7 +16,10 @@ stubbed, the meta table is built in-test, and the REAL
   - a Mayhem augment state stamps `aug_reco*` in exactly the field shape the
     arena helper produces, with zero Haiku calls;
   - plain ARAM gets no Mayhem reco;
-  - Haiku is fallback-only (fires when no offered name resolves);
+  - the Haiku `aram_aug_select` fallback is RETIRED (RM-877): an unrankable
+    Mayhem offer or a plain-ARAM augment state makes zero client calls and
+    writes no `aug_*` key, because its `aug_take` / `aug_why` / `aug_plan`
+    had no reader in `web/` or `dashboard/`;
   - a new unrankable offer drops the previous panel's ranking;
   - `_run_vision` persists the reco and clears `augment_select` once a scan
     reports the panel gone, keeping the standing reco;
@@ -106,7 +109,9 @@ def _coach(out: Path, *, mode: str = "KIWI", game_seconds: float = 5.0,
         "ally_comp": ["Ahri"], "enemy_comp": ["Sion"],
     }
     c._init_extra()
-    # _record_coach_call is BaseCoach telemetry; the Haiku fallback calls it.
+    # _record_coach_call is BaseCoach telemetry. No augment path reaches it
+    # since RM-877 retired the Haiku fallback; stubbed so a regression that
+    # brings a call back fails on the call count, not on missing telemetry.
     c._record_coach_call = lambda *a, **k: None
     return c
 
@@ -177,18 +182,6 @@ class MayhemRecoShapeTests(_Stubbed):
         self.assertFalse([k for k in art if k.startswith("aug_reco")],
                          f"plain ARAM must carry no Mayhem reco: {art}")
 
-    def test_haiku_is_fallback_only(self) -> None:
-        client = _CaptureClient()
-        c = _coach(self.out, client=client)
-        c._handle_augment_select(
-            {"augment_select": True, "augment_choices": ["Aug A", "Aug B"]})
-        art = self.artifact()
-        self.assertEqual(len(client.calls), 1,
-                         "an unrankable offer falls back to one Haiku call")
-        self.assertEqual(client.calls[0]["model"], "claude-haiku-4-5-20251001")
-        self.assertEqual(art.get("aug_take"), "Aug A")
-        self.assertNotIn("aug_reco", art)
-
     def test_ranked_offer_drops_a_stale_haiku_take(self) -> None:
         self.out.write_text(json.dumps(
             {"mode": "aram", "aug_take": "Old", "aug_why": "w", "aug_plan": "p"}),
@@ -210,6 +203,73 @@ class MayhemRecoShapeTests(_Stubbed):
         art = self.artifact()
         self.assertFalse([k for k in art if k.startswith("aug_reco")],
                          "a previous panel's ranking must not show for a new offer")
+
+
+def _aug_keys(art: dict) -> list[str]:
+    return sorted(k for k in art if k.startswith("aug_"))
+
+
+class HaikuAugSelectRetiredTests(_Stubbed):
+    """RM-877: the residual Haiku `aram_aug_select` call is retired.
+
+    After RM-860 the call still fired whenever no offered name resolved, and
+    in plain ARAM, and wrote `aug_take` / `aug_why` / `aug_plan`. No file in
+    `web/` or `dashboard/` reads any of the three (the panel reads only
+    `aug_reco*` and `augment_select`), so it was a paid call whose output
+    nothing read. Each test hands the coach a counting client and asserts the
+    count stays at zero.
+    """
+
+    def test_unrankable_mayhem_offer_makes_zero_calls_and_no_aug_keys(self) -> None:
+        client = _CaptureClient()
+        c = _coach(self.out, client=client)
+        c._handle_augment_select(
+            {"augment_select": True, "augment_choices": ["Aug A", "Aug B"]})
+        self.assertEqual(client.calls, [],
+                         "an unrankable Mayhem offer must cost zero Haiku calls")
+        self.assertEqual(_aug_keys(self.artifact()), [])
+
+    def test_plain_aram_augment_state_makes_zero_calls_and_no_aug_keys(self) -> None:
+        # _CHOICES all resolve, so only the plain-ARAM mode keeps them unranked.
+        client = _CaptureClient()
+        c = _coach(self.out, mode="ARAM", client=client)
+        c._handle_augment_select(
+            {"augment_select": True, "augment_choices": list(_CHOICES)})
+        self.assertEqual(client.calls, [],
+                         "a plain-ARAM augment state must cost zero Haiku calls")
+        self.assertEqual(_aug_keys(self.artifact()), [])
+
+    def test_resolvable_mayhem_offer_still_gets_the_deterministic_reco(self) -> None:
+        client = _CaptureClient()
+        c = _coach(self.out, client=client)
+        c._handle_augment_select(
+            {"augment_select": True, "augment_choices": list(_CHOICES)})
+        art = self.artifact()
+        self.assertEqual(client.calls, [])
+        self.assertEqual(art["aug_reco_top"], "Pursuit of Haste")
+        self.assertEqual(art["aug_reco_mode"], "mayhem")
+        self.assertEqual(_aug_keys(art), sorted(aram_coach._AUG_RECO_KEYS),
+                         "a ranked offer writes the aug_reco* keys and no other aug_ key")
+
+    def test_unrankable_offer_drops_a_legacy_haiku_take(self) -> None:
+        """An artifact written before the retirement must not keep a take."""
+        self.out.write_text(json.dumps(
+            {"mode": "aram", "aug_take": "Old", "aug_why": "w", "aug_plan": "p"}),
+            encoding="utf-8")
+        client = _CaptureClient()
+        c = _coach(self.out, client=client)
+        c._handle_augment_select(
+            {"augment_select": True, "augment_choices": ["Unknown Card"]})
+        self.assertEqual(client.calls, [])
+        self.assertEqual(_aug_keys(self.artifact()), [])
+
+    def test_the_aram_aug_select_call_path_is_gone(self) -> None:
+        import inspect
+        self.assertFalse(hasattr(aram_coach, "_AUG_SELECT_PROMPT"),
+                         "the retired Haiku augment prompt is back")
+        src = inspect.getsource(aram_coach.Coach._handle_augment_select)
+        self.assertNotIn("messages.create", src)
+        self.assertNotIn("aram_aug_select\"", src)
 
 
 class RunVisionLifecycleTests(_Stubbed):

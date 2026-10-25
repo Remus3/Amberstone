@@ -25,7 +25,6 @@ from coaches._base_coach import (
     load_json,
     safe_write,
     mirror_live_stats,
-    parse_field,
     parse_fields,
 )
 from core.aram_tenacity_context import (
@@ -38,9 +37,9 @@ from core.cc_conditional_impact_context import (
     cc_conditional_impact_line,
 )
 from core.enemy_cc_threat_context import enemy_cc_threat_line
-# RM-364: `augment_choices` is Haiku-VISION OCR output. Sanitised at prompt
-# ASSEMBLY, which is the point both egress paths share.
-from core.prompt_sanitize import clean_iter as _clean_for_prompt
+# RM-877: the one RM-364-sanitised join here (`augment_choices` OCR into the
+# Haiku augment prompt) was retired with that call, so the sanitiser import
+# went with it; the `_run_coach` HUD-augments join is the RM-381 residual.
 from core.death_patterns_loader import personal_context_block
 from core.mayhem_detect import is_mayhem
 
@@ -439,20 +438,8 @@ DS top items ({ds_label} ranked, own-items-accounted): {ds_picks}
 {event_line}
 """
 
-# NOT a cache_control candidate (item 286): static portion ~62 tok, far below
-# the 2048-tok Haiku prompt-cache floor - a static/data split caches nothing.
-# Guard: tests/test_prompt_cache_floor_item286.py.
-_AUG_SELECT_PROMPT = """\
-ARAM{mayhem} augment select. Challenger coaching.
-Your champion: {champion}  HP: {hp}%
-Allies: {allies}
-Enemies: {enemies}
-Choices: {choices}
-NO markdown. Output exactly:
-Take: <augment name>
-Why: <one sentence mechanical reason>
-Gameplan: <how this changes your fight window>
-"""
+# RM-877: the Haiku `aram_aug_select` prompt (`_AUG_SELECT_PROMPT`) is retired
+# with its call - see Coach._handle_augment_select.
 
 # RM-860: the augment panel (web/js/panels/augment_reco.js renderAugmentReco)
 # renders only `aug_reco*`, the shape coaches/arena_coach.py
@@ -464,9 +451,10 @@ _AUG_RECO_KEYS = (
     "aug_reco", "aug_reco_top", "aug_reco_top_score", "aug_reco_conf",
     "aug_reco_mode", "aug_reco_stage", "aug_reco_n_matches", "aug_reco_external",
 )
-# The Haiku fallback's keys. No web file reads them; they are kept only for
-# the fallback path and dropped when the deterministic reco answers.
-_HAIKU_AUG_KEYS = ("aug_take", "aug_why", "aug_plan")
+# The retired Haiku fallback's keys (RM-877). Nothing in web/ or dashboard/
+# ever read them and nothing writes them now; listed only so an artifact
+# written before the retirement drops them on the next augment panel.
+_RETIRED_HAIKU_AUG_KEYS = ("aug_take", "aug_why", "aug_plan")
 # Mayhem augment stages the external prior carries (core/augment_external_source
 # AugmentPriorTable.stage_win_rate, "per-Mayhem-round (1-5)").
 _MAYHEM_STAGE_MAX = 5
@@ -917,10 +905,9 @@ class Coach(BaseCoach):
             self._vision_state = state
             if state.get("augment_select") and state.get("augment_choices"):
                 # Latch BEFORE the reco call: the fast poll's contract is "land
-                # a scan inside the window", and a landed scan fulfils it.
-                # _handle_augment_select re-raises on API failure, so gating the
-                # cadence latch on its success would couple vision spend to an
-                # unrelated Haiku outcome.
+                # a scan inside the window", and a landed scan fulfils it, so
+                # the cadence latch never depends on the handler's outcome
+                # (which makes no model call since RM-877).
                 self._augment_resolved = True
                 self._track_augment_panel(True)
                 # RM-860: the handler writes the artifact itself, so it runs
@@ -1426,15 +1413,17 @@ class Coach(BaseCoach):
 
     @safe_coach_output("ARAM")
     def _handle_augment_select(self, vs: dict) -> None:
-        """Augment-select surface: the deterministic Mayhem reco, Haiku fallback.
+        """Augment-select surface: the deterministic Mayhem reco, no model call.
 
-        RM-860 decision (Haiku-to-ZERO): the Haiku `aram_aug_select` call is
-        FALLBACK-ONLY. When any offered card resolves, the deterministic
-        recommender (core.augment_recommender, mode "mayhem") answers with the
-        `aug_reco*` fields the panel renders and no Haiku call is made. Haiku
-        fires only when the reco is empty (no card name resolves, or plain
-        ARAM). Its `aug_take` is still unrendered, exactly as before this fix;
-        retiring or rendering that residual call is a follow-up.
+        RM-860 made the deterministic recommender (core.augment_recommender,
+        mode "mayhem") answer whenever an offered card resolves, with the
+        `aug_reco*` fields the panel renders. RM-877 (Haiku-to-ZERO) retired
+        the residual Haiku `aram_aug_select` fallback: its `aug_take` /
+        `aug_why` / `aug_plan` had no reader in web/ or dashboard/, so it was
+        a paid call whose output nothing read. An unrankable offer (no card
+        name resolves) or plain ARAM now makes zero model calls and writes no
+        `aug_*` key; it only drops the previous panel's ranking and any key
+        the retired fallback left in an older artifact.
         """
         gs = self._last_state or {}
         choices = vs.get("augment_choices", [])
@@ -1444,7 +1433,7 @@ class Coach(BaseCoach):
                 choices, vs.get("augments"), self._augment_stage())
         cur = load_json(self._out)
         if reco:
-            for k in _HAIKU_AUG_KEYS:
+            for k in _RETIRED_HAIKU_AUG_KEYS:
                 cur.pop(k, None)
             cur.update({
                 "augment_select":  True,
@@ -1455,50 +1444,12 @@ class Coach(BaseCoach):
             return
         # No ranking for this offer: drop the previous panel's ranking so the
         # panel hides instead of showing another pick's rows for these cards.
-        stale = [k for k in _AUG_RECO_KEYS if k in cur]
+        stale = [k for k in (*_AUG_RECO_KEYS, *_RETIRED_HAIKU_AUG_KEYS)
+                 if k in cur]
         if stale:
             for k in stale:
                 cur.pop(k, None)
             safe_write(self._out, cur)
-        if not self._client:
-            return
-        # Canonical Mayhem detection - the live value is "KIWI", which the
-        # old '"MAYHEM" in gm' substring check never matched (same bug
-        # fixed in _run_coach 2026-05-03; this path was missed).
-        mayhem  = " Mayhem" if is_mayhem(gs) else ""
-        prompt  = _AUG_SELECT_PROMPT.format(
-            mayhem   = mayhem,
-            champion = gs.get("champion", "?"),
-            hp       = gs.get("hp_pct", 100),
-            allies   = ", ".join(gs.get("ally_comp",  [])) or "unknown",
-            enemies  = ", ".join(gs.get("enemy_comp", [])) or "unknown",
-            # RM-364: a newline inside one OCR choice forges an extra bullet.
-            choices  = "\n".join(f"- {c}" for c in _clean_for_prompt(choices)),
-        )
-        try:
-            import time as _time_b
-            _t0b = _time_b.perf_counter()
-            resp = self._client.messages.create(
-                model="claude-haiku-4-5-20251001", max_tokens=250,
-                messages=[{"role": "user", "content": prompt}], timeout=15,
-            )
-            # AUDIT 2026-04-29 (gap A): augment-select call telemetry.
-            self._record_coach_call(resp, system="", user=prompt,
-                                    t0_perf=_t0b,
-                                    model="claude-haiku-4-5-20251001",
-                                    purpose="aram_aug_select")
-            raw = resp.content[0].text
-            cur = load_json(self._out)
-            cur.update({
-                "augment_select":  True,
-                "aug_take":        parse_field(raw, "Take"),
-                "aug_why":         parse_field(raw, "Why"),
-                "aug_plan":        parse_field(raw, "Gameplan"),
-                "augment_choices": choices,
-            })
-            safe_write(self._out, cur)
-        except Exception as exc:
-            raise exc
 
 
 # ==============================================================================
