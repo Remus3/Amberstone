@@ -1082,8 +1082,11 @@ def get_top_champion_masteries(
 # Paths per the Riot API schema (checked 2026-10-25): TFT-Match-V1 is REGIONAL
 # (`americas` / `europe` / `asia` / `sea`), TFT-League-V1 is PLATFORM (`na1`
 # ...). Call these inside `tft_key_scope()`: the LoL product key is not
-# entitled to /tft/* (403, measured 2026-10-25), and a 403 here is negative-
-# cached like any other (RM-163), scoped to the key that earned it.
+# entitled to /tft/* (403, measured 2026-10-25). Only the immutable match
+# detail negative-caches a 403/404 (RM-163, scoped to the key that earned it);
+# the id list and the league entries are mutable and never do. All of them
+# share the one `_BUCKET` with the LoL calls - deliberately conservative: a
+# TFT-key 429 also pauses LoL calls until its Retry-After passes.
 
 _TFT_LEAGUE_TTL_S = 300
 _MAX_TFT_MATCH_IDS = 100

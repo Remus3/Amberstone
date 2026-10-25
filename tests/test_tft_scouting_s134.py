@@ -462,6 +462,41 @@ def test_riot_429_persisting_degrades_to_rate_limited(riot_env, monkeypatch):
     assert "429" not in json.dumps(doc)
 
 
+def test_riot_match_loop_stops_when_still_rate_limited(riot_env, monkeypatch):
+    """Verifier s134 (low): a persistent 429 on match detail must not be paid
+    once per match id."""
+    def handler(url, n):
+        if "/tft/match/v1/matches/NA1_" in url:
+            return 429, {}, {"Retry-After": "0"}
+        return _riot_ok(url, n)
+    spy = RiotSpy(handler)
+    monkeypatch.setattr(RA, "_http_get", spy)
+    sc = make_scouter(riot_env, None, riot=RA, sources=("riot_api",))
+    card = sc.scout([TS.Identity("Alpha", "TST")])["opponents"][0]
+    detail = [u for u in spy.urls if "/tft/match/v1/matches/NA1_" in u]
+    assert len(detail) == TS.RETRY_ATTEMPTS, "first id retried, the rest skipped"
+    assert card["reason"] == "rate_limited"
+
+
+def test_riot_path_skipped_past_the_run_deadline(riot_env, monkeypatch):
+    spy = RiotSpy(_riot_ok)
+    monkeypatch.setattr(RA, "_http_get", spy)
+    sc = make_scouter(riot_env, _lcu_for({"Alpha#TST": (opp_puuid(1), [2, 3, 4])}),
+                      riot=RA, deadline_s=0.0)
+    card = sc.scout([TS.Identity("Alpha", "TST")])["opponents"][0]
+    assert spy.urls == [] and card["source"] == "lcu"
+
+
+def test_digest_cache_survives_a_damaged_row(tmp_path):
+    p = tmp_path / "cache.json"
+    p.write_text(json.dumps({"junk": {"at": "not-a-time", "digest": {}}}), encoding="ascii")
+    cache = TS.DigestCache(p, clock=lambda: 1_800_000_000.0)
+    ident = TS.Identity("Opp", "TST")
+    cache.put(ident, {"status": "ready"})
+    assert cache.get(ident) == {"status": "ready"}
+    assert "junk" not in json.loads(p.read_text(encoding="ascii"))
+
+
 def test_riot_account_404_then_lcu_not_found(riot_env, monkeypatch):
     monkeypatch.setattr(RA, "_http_get", RiotSpy(lambda url, n: (404, {}, None)))
     sc = make_scouter(riot_env, _lcu_for({}), riot=RA)
@@ -558,6 +593,26 @@ def test_watcher_waits_when_self_is_unknown():
     lcu.routes["/lol-summoner/v1/current-summoner"] = {"puuid": SELF_LCU, "summonerId": 900001}
     assert w.tick() == "started"
     assert SELF_LCU not in [i.lcu_puuid for i in sp.starts[0][0]]
+
+
+def test_watcher_rereads_self_each_game_after_an_account_switch():
+    """Verifier s134 (medium): a self cached forever scouts the local player
+    after a client re-login as another account."""
+    acct_a, acct_b = opp_puuid(50), opp_puuid(51)
+    me = [{"puuid": acct_a, "summonerId": 1}]
+    sess = [ingame_session([entry(acct_a, 1)] + [entry(opp_puuid(i), 100 + i)
+                                                 for i in range(7)], game_id=1)]
+    lcu = _watch_lcu(["InProgress"], sess)
+    lcu.routes["/lol-summoner/v1/current-summoner"] = lambda ep: me[0]
+    sp = SpyScouter()
+    w = TS.ScoutingWatcher(sp, lcu)
+    assert w.tick() == "started"
+    me[0] = {"puuid": acct_b, "summonerId": 2}
+    sess[0] = ingame_session([entry(acct_b, 2), entry(acct_a, 1)]
+                             + [entry(opp_puuid(i), 100 + i) for i in range(6)], game_id=2)
+    assert w.tick() == "started"
+    second = [i.lcu_puuid for i in sp.starts[1][0]]
+    assert acct_b not in second and acct_a in second
 
 
 def test_watcher_ignores_non_tft_games():
