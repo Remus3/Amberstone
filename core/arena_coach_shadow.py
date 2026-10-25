@@ -17,12 +17,24 @@ GATE (item-386 lesson): logs ONLY a real in-game tick - lc["champion"]
 present. The stale coach artifact keeps `champion` after a game ends, so the
 gate keys on the LIVECLIENT champion (populated only during a live game),
 never logging a lobby / idle / Champ0 row.
+
+FOCUS BOARD COLUMN (RM-844, SHADOW-ONLY): each fresh row also carries
+``focus_board`` - the DS focus board's top ``kill_order`` pick for the live
+roster (core.focus_board_live, in-process, cached + throttled, engine loaded
+off this thread) beside the rule's pick read back from
+``deterministic.target_priority``, plus where the board ranks the rule's pick.
+The ``deterministic`` column is untouched, so the rule stays authoritative and
+the served coach never changes. Computed only after the dedup check (one
+lookup per written row, never per tick). Any adapter failure becomes a
+``status`` + note in the column, never a dropped row. ``RC_FOCUS_BOARD_SHADOW=0``
+omits the column (the row keeps its pre-RM-844 shape).
 """
 
 from __future__ import annotations
 
 import json
 import logging
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -73,6 +85,79 @@ def _norm_block(block: object) -> dict:
         else:
             out[key] = val.strip() if isinstance(val, str) else ""
     return out
+
+
+# RM-844: the rule's kill-order line is "Kill {name} first - ..." (both shapes
+# of core.arena_target_rule.target_priority); the rule's pick is read back from
+# it, so the rule module itself stays untouched.
+_RULE_PICK_RE = re.compile(r"^Kill (.+?) first(?:\s|$)")
+
+
+def _rule_pick(target_line: object) -> str:
+    """The champion the target_priority rule names, or "" when unparseable."""
+    if not isinstance(target_line, str):
+        return ""
+    m = _RULE_PICK_RE.match(target_line.strip())
+    return m.group(1).strip() if m else ""
+
+
+def _name_key(text: object) -> str:
+    """Case- and punctuation-insensitive name key ("Kai'Sa" == "Kaisa")."""
+    if not isinstance(text, str):
+        return ""
+    return "".join(ch for ch in text.casefold() if ch.isalnum())
+
+
+def _focus_board_column(det: dict, lc: dict, mode_key: str) -> dict | None:
+    """RM-844 SHADOW column: the focus board's top pick beside the rule's pick.
+
+    None when the kill switch is off. Never raises: an adapter that cannot be
+    imported or that raises becomes a ``status`` + note, never a dropped row.
+    ``agree`` is None unless both picks exist; ``rule_pick_board_rank`` is the
+    rule pick's index in the board's ``kill_order`` (None when not on it).
+    """
+    rule_pick = _rule_pick(det.get("target_priority"))
+    try:
+        from core import focus_board_live  # lazy: keeps DS off this import path
+    except Exception as exc:  # noqa: BLE001
+        log.debug("arena_coach_shadow: focus board adapter import failed",
+                  exc_info=True)
+        fb: dict = {"status": "unavailable", "notes": [
+            f"focus board adapter could not load ({type(exc).__name__})"]}
+    else:
+        try:
+            if not focus_board_live.enabled():
+                return None
+            fb = focus_board_live.board_for_lc(lc, mode_key)
+        except Exception as exc:  # noqa: BLE001
+            log.debug("arena_coach_shadow: focus board failed", exc_info=True)
+            fb = {"status": focus_board_live.STATUS_ERROR, "notes": [
+                f"focus board failed ({type(exc).__name__}) - no board"]}
+    if not isinstance(fb, dict):
+        fb = {"status": "error", "notes": ["focus board returned no result"]}
+
+    top = fb.get("top_kill") if isinstance(fb.get("top_kill"), dict) else {}
+    board_pick = str(top.get("champion_name") or "")
+    rank = None
+    if rule_pick:
+        want = _name_key(rule_pick)
+        ids = fb.get("kill_order") if isinstance(fb.get("kill_order"), list) else []
+        names = (fb.get("kill_order_names")
+                 if isinstance(fb.get("kill_order_names"), list) else [])
+        for i, cid in enumerate(ids):
+            name = names[i] if i < len(names) else cid
+            if want in (_name_key(cid), _name_key(name)):
+                rank = i
+                break
+    column: dict = {
+        "rule_pick": rule_pick,
+        "board_pick": board_pick,
+        "agree": (rank == 0) if (rule_pick and board_pick) else None,
+        "rule_pick_board_rank": rank,
+    }
+    for key, val in fb.items():
+        column.setdefault(key, val)
+    return column
 
 
 def log_arena_coach(
@@ -146,6 +231,19 @@ def log_arena_coach(
             "deterministic": det,
             "live_haiku": live,
         }
+        # RM-844 shadow column, AFTER the dedup check so the board is looked
+        # up once per written row. Its own guard: a failure here is a status
+        # in the column, never a dropped row.
+        try:
+            fb_col = _focus_board_column(det, lc, mode_key)
+        except Exception as exc:  # noqa: BLE001
+            log.debug("arena_coach_shadow: focus board column failed",
+                      exc_info=True)
+            fb_col = {"rule_pick": "", "board_pick": "", "agree": None,
+                      "rule_pick_board_rank": None, "status": "error",
+                      "notes": [f"focus board column failed ({type(exc).__name__})"]}
+        if fb_col is not None:
+            record["focus_board"] = fb_col
 
         target.parent.mkdir(parents=True, exist_ok=True)
         with target.open("a", encoding="utf-8") as fh:
