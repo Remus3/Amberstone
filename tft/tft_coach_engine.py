@@ -4,6 +4,7 @@ tft/tft_coach_engine.py
 Challenger-level TFT coaching engine.
 Analyses live game state and produces structured advice for all coaching panels.
 Writes structured JSON to data/tft_coaching_data.json for the overlay.
+The system prompt is built per resolved set by tft/tft_prompt.py (RM-845).
 """
 
 import json
@@ -19,60 +20,43 @@ from core.polled_json import atomic_write_json
 
 logger = logging.getLogger("rc.tft.coach")
 
-TFT_SYSTEM_PROMPT = """\
-Challenger TFT Set 17 "Space Gods" Double Up coach. Max density, no padding.
-
-ROUND STRUCTURE: Stage 1=3 rounds. Stages 2-7: X-1/2/3=PvP, X-4=Realm of Gods (NOT carousel), X-5=PvE, X-6=PvP, 4-7=God Boon armory. NO carousels in Set 17. Never say "carousel"  -  say "God boon"/"Realm of Gods".
-
-LEVEL TIMING: Lv6@3-2, Lv7@4-1, Lv8@4-2(rolldown), Lv9@5-1+. Fast8=Lv8@4-1 with 50g+. Fast9=Lv9@5-1 needs econ aug or winstreak. HP<35=roll now, board>econ. Never suggest Lv9 before stage 5.
-
-AUGMENTS: Heart=+1 trait (free slot). Crest=emblem item (commit to that trait). Crown=emblem+bonus (hard pivot). Prismatic>Gold>Silver. Reflect augment in Action/Items/Econ/Upgrade every call. Never invent augment names.
-
-DOUBLE UP: Shared HP pool. Placement field MUST have donation note every round ("Donate X to partner" / "Hold"). Partner HP<30=donate 2nd tank now. Never contest partner reroll targets. Stagger rolldowns. Split AD/AP carry between boards.
-
-BOARD (Row A=front/enemy, D=back/bench, cols 1-7): Tanks A-row spread wide (A1,A3,A5). Ranged carry D6-7. Melee carry B-row. Support C-row near carry. Anti-assassin: move carry to D1. HP>40=fine. HP<35=low pressure. HP<25=critical. Stage 1 HP=100 (vision error if lower).
-
-COMP ID: Name after dominant trait (most units). 1-unit splash = ignore. Crest/Crown active = comp named after that trait. Commit to ID once set.
-
-FEASIBILITY: Never suggest actions that require gold you don't have. No PvP tips during PVE rounds. No board swaps during God rounds.
-
-GOD ALIGNMENT (Set 17 mechanic  -  replaces carousel):
-  Stage X-4 = choose between 2 god offerings. Stage 4-7 = God Boon armory. Every offering includes a component.
-  ALIGN RULE: Take same god >=2 times on stages 2/3/4 to unlock their Boon at 4-7.
-  
-  9 GODS  -  tier and strategy:
-  S-TIER BOONS (take these):
-  - Evelynn (Temptation): Instinct artifact boon. Strong frontline-light boards. Execute + AS burst.
-  - Yasuo (Abyss): Empowers hexes. Best for comps that want hex positioning (Stargazer, Conduit).
-  
-  A-TIER BOONS:
-  - Ekko (???): Delayed value  -  delayed components/power. Prioritize when loss-streaking.
-  - Varus (Love): Offers 3/4/5-cost unit selectors. Best when you need a specific 4-5 cost.
-  - Soraka (Stars): HP-focused. Soraka's Miracle artifact. Best when HP-pressured or loss-streaking.
-  
-  B-TIER BOONS:
-  - Ahri (Opulence): Gold/econ boons. Good for fast-9 boards. Foxfire artifact for AP carries.
-  - Aurelion Sol (Wonders): Quest boon  -  complete trait breakpoints for bonus. Risky/conditional.
-  - Kayle (Exaltation): Extra components. Kayle's Exaltation artifact  -  radiant items after 18s.
-  - Thresh (???): Pulls bench unit to board. Thresh's Lantern artifact  -  redirects damage.
-  
-  OFFERING CHOICE: Take the offering that best fits current streak/board state.
-  Win streak -> take combat-power offering. Loss streak -> take econ/delayed-value offering.
-  Pengu offering: higher cost units if HP is low (catch-up mechanism).
+# RM-845: the system prompt is no longer a constant. The hand-written Set 17
+# copy that lived here (3471 chars: Realm of Gods round structure, nine gods
+# with hand-graded boon tiers) went to every game after RM-840 made Set 18 the
+# default. tft/tft_prompt.py now builds it per resolved set from that set's
+# ingested data files, and tft/tft_pbe_engine.py sends the same text.
 
 
+def _system_prompt() -> str:
+    """The resolved set's system prompt (tft/tft_prompt.py; never raises)."""
+    from tft import tft_prompt
+    return tft_prompt.build_system_prompt()
 
-OUTPUT  -  9 fields only, no markdown, no bullets, max 15 words each:
-Action: ALL-CAPS 1-3 words
-Board: actual unit names + grid positions (tanks A wide, carries D6-7)
-Econ: level/gold timing
-Rolldown: trigger + stagger note
-Items: component names + holder
-God pick: Realm of Gods offering choice (component->carry; God Boon->best boon for comp)
-Placement: anti-flank + Double Up donation/request (required every round)
-Upgrade: pivot trigger
-Risk: single threat (include partner HP if critical)
-"""
+
+def _set_has_gods() -> bool:
+    """True only when the resolved set's meta records Realm of the Gods."""
+    try:
+        from tft import tft_prompt
+        return tft_prompt.set_has_gods()
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _meta_verified() -> bool:
+    """True only when the resolved set's meta holds verified comp data.
+
+    RM-845 / RM-846: the meta's comps, trait_augments and double_up sections
+    were third-party opinion (tiers, ratings, comp plans) until RM-846 cut
+    Set 17 to a skeleton like Set 18. _build_prompt uses those sections only
+    behind this gate, so a skeleton - or the same content flagged unverified
+    - adds no line rather than a borrowed or invented tier.
+    """
+    try:
+        from tft import tft_prompt
+        return tft_prompt.meta_verified()
+    except Exception:  # noqa: BLE001
+        return False
+
 
 FIELD_MAP = {
     "action":    "action",
@@ -85,10 +69,13 @@ FIELD_MAP = {
     # reset defaults in coaches/tft_coach.py) reads god_pick. FIELD_MAP knew
     # only "carousel", so the God pick line matched NO prefix, fell into the
     # continuation branch, and was appended to the PRECEDING field (items).
-    # Both spellings now land in god_pick; "carousel" is kept only so a model
-    # that regresses to the pre-Set-17 label still parses.
+    # RM-845: the label is per set (tft/tft_prompt.py pick_label) - "God
+    # pick" for a Realm of the Gods set, "Carousel" when the set's data names
+    # carousel rounds, else "Pick". All three land in god_pick, the one key
+    # the payload contract declares.
     "god pick":  "god_pick",
     "carousel":  "god_pick",
+    "pick":      "god_pick",
     "placement": "placement",
     "upgrade":   "upgrade",
     "risk":      "risk",
@@ -127,13 +114,14 @@ def _load_double_up_rules() -> dict:
     return _load_meta_section("double_up")
 
 
-def _build_augment_context(items_str: str, trait_augments: dict) -> list:
+def _build_augment_context(items_str: str, trait_augments: dict, gods: bool = True) -> list:
     """
     Parse active augments from items_str and inject trait augment bonuses.
     Handles three augment name formats:
       1. Standard Heart/Crest/Crown: "Vanguard Heart", "Rogue Crest", "N.O.V.A. Crown"
       2. Reversed: "Heart of Vanguard", "Crest of Rogue"
-      3. Set 17 God boon: "Soraka God of Stars - Giant's Belt", "Aurelion Sol God of Wonders - Trait Quest"
+      3. Realm of the Gods boon: "Soraka God of Stars - Giant's Belt", "Aurelion Sol God of Wonders - Trait Quest"
+         - only when ``gods`` (RM-845: the resolved set's meta records that mechanic)
     Returns a list of prompt lines describing each active trait augment and its decision impact.
     """
     if not items_str or not trait_augments:
@@ -152,9 +140,9 @@ def _build_augment_context(items_str: str, trait_augments: dict) -> list:
         if len(aug_lower) < 4:
             continue
 
-        # Handle Set 17 God boon format: "[God] God of [Domain] - [Item/Effect]"
+        # Realm of the Gods boon format: "[God] God of [Domain] - [Item/Effect]"
         # These provide item components, not trait bonuses  -  note them but skip DB match
-        if " god of " in aug_lower or " god " in aug_lower:
+        if gods and (" god of " in aug_lower or " god " in aug_lower):
             item_part = ""
             if " - " in aug_name:
                 item_part = aug_name.split(" - ", 1)[1].strip()
@@ -229,6 +217,12 @@ def _build_prompt(state: dict) -> str:
     streak_str = (f"WIN+{streak}" if streak > 0
                   else f"LOSS{streak}" if streak < 0 else "NEUTRAL")
 
+    # RM-845: set-specific wording follows the resolved set's data, and the
+    # meta's opinion sections are read only from a verified meta.
+    _gods = _set_has_gods()
+    _pick_noun = "God boon" if _gods else "carousel"
+    _verified = _meta_verified()
+
     round_type = "CAROUSEL" if is_car else ("PVE" if event == "pve" else "PVP")
     max_level_for_stage = {1: 3, 2: 5, 3: 6, 4: 8, 5: 9, 6: 9, 7: 9}.get(stage, 9)
 
@@ -296,9 +290,10 @@ def _build_prompt(state: dict) -> str:
     elif items_str and items_str != "none":
         _aug_str = items_str
 
-    # Inject trait augment decision data
-    trait_augment_db = _load_trait_augment_data()
-    augment_context_lines = _build_augment_context(_aug_str, trait_augment_db)
+    # Inject trait augment decision data (verified meta only - the ratings
+    # in this section were third-party until RM-846 emptied it)
+    trait_augment_db = _load_trait_augment_data() if _verified else {}
+    augment_context_lines = _build_augment_context(_aug_str, trait_augment_db, gods=_gods)
     if augment_context_lines:
         lines.append("")
         lines.extend(augment_context_lines)
@@ -317,7 +312,7 @@ def _build_prompt(state: dict) -> str:
         lines.append(f"Current gold: {int(_live_gold)}g | Interest: +{_interest}g/round | {'AT CAP' if _interest >= 5 else f'Next bracket: {(_interest+1)*10}g'}")
 
     if is_car:
-        lines.append("CAROUSEL ROUND: Do NOT suggest rolling or leveling  -  only carousel/God boon pick advice.")
+        lines.append(f"CAROUSEL ROUND: Do NOT suggest rolling or leveling  -  only {_pick_noun} pick advice.")
         try:
             import json as _json
             from pathlib import Path as _Path
@@ -326,7 +321,7 @@ def _build_prompt(state: dict) -> str:
             _traits = ", ".join(_live.get("traits_active") or [])
             if _comp or _traits:
                 lines.append(f"Current comp: {_comp}  Active traits: {_traits}")
-                lines.append("Carousel/God boon advice: recommend completed items for this carry, or emblems for active traits.")
+                lines.append(f"{_pick_noun.capitalize()} advice: recommend completed items for this carry, or emblems for active traits.")
         except Exception:  # noqa: BLE001
             pass
 
@@ -343,8 +338,10 @@ def _build_prompt(state: dict) -> str:
             "Win condition: 3-star a 1-2 cost carry ASAP. Reroll aggressively every round.",
         ]
     elif variant == "double_up":
-        du_rules = _load_double_up_rules()
+        du_rules = _load_double_up_rules() if _verified else {}
         coord_signals = du_rules.get("coordination_signals", {})
+        if not isinstance(coord_signals, dict):
+            coord_signals = {}
         lines += [
             "",
             "MODE: DOUBLE UP (PBE)  -  Playing with a partner. Shared HP pool.",
@@ -369,10 +366,14 @@ def _build_prompt(state: dict) -> str:
         if _cs and _meta_file.exists():
             _comp_name = _cs.get("selected", "")
             _ignore_emb = _cs.get("ignore_emblems", False)
-            if _comp_name:
+            # RM-845: a comp is cited only from a verified meta. On a
+            # skeleton (Set 17 and 18 since RM-846) a stale comp_state
+            # selection adds no line, so no comp plan is borrowed or invented.
+            if _comp_name and _verified:
                 _meta = _ts.load_json_file(_meta_file)
-                _cd = _meta.get("comps", {}).get(_comp_name, {})
-                if _cd:
+                _comps = _meta.get("comps")
+                _cd = _comps.get(_comp_name, {}) if isinstance(_comps, dict) else {}
+                if _cd and isinstance(_cd, dict):
                     _lvplan = _cd.get("level_plan", "")
                     _gplan  = _cd.get("gameplan", "")
                     _core   = ", ".join(_cd.get("core_units", [])[:5])
@@ -389,12 +390,6 @@ def _build_prompt(state: dict) -> str:
                     if _lv9:    lines.append(f"  Lv9 board: {_lv9}")
                     if _pivot:  lines.append(f"  Pivot trigger: {_pivot}")
                     # BIS items per carry
-                    _built = _cs.get("built_items", {})
-                    if _built:
-                        _bl = [f"{k}: {v}" for k,v in _built.items() if v]
-                        if _bl:
-                            lines.append(f"  BUILT ITEMS (equipped): {' | '.join(_bl[:6])}")
-                            lines.append("  Do NOT re-recommend already-built items.")
                     _built = _cs.get("built_items", {})
                     if _built:
                         _bl = [f"{k}: {v}" for k,v in _built.items() if v]
@@ -442,8 +437,12 @@ def _build_prompt(state: dict) -> str:
     return "\n".join(lines)
 
 
-def _parse_response(text: str) -> dict:
+def _parse_response(text: str, *, gods: bool | None = None) -> dict:
+    """Model reply -> payload fields. ``gods`` None = the resolved set's
+    (RM-845): only a Realm of the Gods set rewrites "carousel" to "God boon"."""
     import re
+    if gods is None:
+        gods = _set_has_gods()
     fields      = {}
     current_key = None
     current_val = []
@@ -502,14 +501,17 @@ def _parse_response(text: str) -> dict:
                 _fval = _fval.replace(_cw, "uncertain")
             fields[_fkey] = _fval
 
-    # Set 17: replace "carousel" with "God boon"
-    for _fk2 in list(fields.keys()):
-        _fv2 = fields.get(_fk2, "")
-        if isinstance(_fv2, str) and "carousel" in _fv2.lower():
-            _fv2 = _fv2.replace("carousel", "God boon").replace("Carousel", "God boon").replace("CAROUSEL", "GOD BOON")
-            fields[_fk2] = _fv2
-    if fields.get("action", "").upper() in ("CAROUSEL PICK", "CAROUSEL"):
-        fields["action"] = "GOD BOON"
+    # A Realm of the Gods set has no carousel: replace "carousel" with
+    # "God boon". RM-845: ONLY for such a set - this ran for every set, so it
+    # rewrote real carousel advice in a Set 18 game.
+    if gods:
+        for _fk2 in list(fields.keys()):
+            _fv2 = fields.get(_fk2, "")
+            if isinstance(_fv2, str) and "carousel" in _fv2.lower():
+                _fv2 = _fv2.replace("carousel", "God boon").replace("Carousel", "God boon").replace("CAROUSEL", "GOD BOON")
+                fields[_fk2] = _fv2
+        if fields.get("action", "").upper() in ("CAROUSEL PICK", "CAROUSEL"):
+            fields["action"] = "GOD BOON"
 
     # Validate ACTION against current stage
     _stage = 0
@@ -768,7 +770,7 @@ class TftCoachEngine:
             model      = self._model,
             max_tokens = self._max_tokens,
             timeout    = self._timeout,
-            system     = [{"type": "text", "text": TFT_SYSTEM_PROMPT,
+            system     = [{"type": "text", "text": _system_prompt(),
                            "cache_control": {"type": "ephemeral"}}],
             messages   = [{"role": "user", "content": prompt}],
         )

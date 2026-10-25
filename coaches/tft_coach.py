@@ -1,4 +1,4 @@
-# arch: TFT Set 17 mode coach | section=coaching | frozen=no
+# arch: TFT mode coach (set resolved by tft/tft_set.py) | section=coaching | frozen=no
 """
 coaches/tft_coach.py
 Phase 1 Step 5 - TFT coach facade (post-T2 #6 dashboard-only).
