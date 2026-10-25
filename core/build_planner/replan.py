@@ -20,10 +20,11 @@ profile, it re-plans the remaining build each tick WITHOUT whiplash:
     enforced, inclusive boundaries, no flicker inside the band, denom guarded).
   * WP-D3 operator overrides (ItemOverrideStore): a manual Build-Earlier /
     Build-Later shift, a Defer-Once sink (re-enters after one full item), a Keep
-    pin (stops re-ranking the incumbent), and a Silence flag (drops the item
-    from swap suggestions) are honored by ``tick`` when an optional store is
-    passed. The store is PURE stdlib and lives in THIS module so the import
-    purity holds (no new importable module).
+    pin (stops re-ranking the incumbent, and forces a kept not-owned item into
+    the plan via ``plan_build(forced_item_ids=...)`` - RM-483), and a Silence
+    flag (drops the item from swap suggestions) are honored by ``tick`` when an
+    optional store is passed. The store is PURE stdlib and lives in THIS module
+    so the import purity holds (no new importable module).
 
 Master plan: docs/OVERLAY_BUILD_MASTER_PLAN.md WP-C4 (lines 202-212) + WP-D3.
 
@@ -190,7 +191,8 @@ class ItemOverrideStore:
       * deferred - Defer-Once: sink the item until exactly one full item buys,
         then it RE-ENTERS (the "after one full item completes" timing the client
         approximates and the server makes exact via reconcile()).
-      * keep     - lock the pick; the loop stops re-ranking a kept incumbent.
+      * keep     - lock the pick; the loop stops re-ranking a kept incumbent,
+        and a kept item not owned yet is forced into the plan (RM-483).
       * silenced - drop the item from swap / sell suggestions.
 
     ``action_log`` is an action-ONLY ledger (no build-state) - one dict per
@@ -302,6 +304,15 @@ class ItemOverrideStore:
     def is_silenced(self, item_id) -> bool:
         ent = self._ov.get(str(item_id))
         return bool(ent and ent["silenced"])
+
+    def kept_ids(self) -> list:
+        """Every kept id, in the order the operator first touched it (RM-483).
+
+        That order is the priority ``plan_build(forced_item_ids=...)`` honours
+        when it truncates to the planning depth or drops a second forced id
+        from an already-forced unique family.
+        """
+        return [iid for iid, ent in self._ov.items() if ent["keep"]]
 
     # ------------------------------------------------------------------- #
     # pure reorder (byte-for-byte port of the client applyItemOverrides)
@@ -602,9 +613,21 @@ class ReplanLoop:
             self._last_stage = stg
 
         # 3. re-plan the remaining build (owned excluded from the pool already).
+        # RM-483: every kept id the player does not own yet is FORCED into the
+        # plan. plan_build owns the semantics (planner.py _resolve_forced):
+        # caller order is priority, an id outside the candidate pool is noted,
+        # never invented (an owned-unique-family conflict lands here - the
+        # engine filters that row from the seed), and a second forced id in an
+        # already-forced unique family is dropped. Nothing kept -> None, the
+        # unchanged-behaviour value.
+        forced = None
+        if overrides is not None:
+            forced = [i for i in overrides.kept_ids() if i not in owned_set]
+            forced = forced or None
         plan = plan_build(
             champion, seed_fn=seed_fn, owned_item_ids=owned, clock_s=clock_s,
-            beam_width=beam_width, depth=depth, mode=mode)
+            beam_width=beam_width, depth=depth, mode=mode,
+            forced_item_ids=forced)
         plan_tail = tuple(pi.item_id for pi in plan.items)
 
         # Rebuild the candidate row pool for the single-item gate + pivot.
