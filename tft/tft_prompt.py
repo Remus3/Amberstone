@@ -115,7 +115,7 @@ _RULES = (
 _OUTPUT = (
     "OUTPUT - 9 fields only, no markdown, no bullets, max 15 words each:\n"
     "Action: ALL-CAPS 1-3 words\n"
-    "Board: actual unit names + grid positions (tanks A wide, carries D6-7)\n"
+    "Board: each listed unit once + its grid slot (tanks A wide, carries D6-7)\n"
     "Econ: level/gold timing\n"
     "Rolldown: trigger + stagger note\n"
     "Items: component names + holder\n"

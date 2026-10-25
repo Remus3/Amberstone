@@ -158,9 +158,16 @@ def _authoritative_board(state: dict) -> list:
 
 
 def _fmt_board(units: list) -> str:
+    """One entry per board piece: ``Name (2-star) [items]``; a 1-star (or
+    unreadable star) unit is untagged. S136 T14: the old ``Name*2`` had no
+    legend and the model read it as two copies (live game: 2-star units given
+    two slots in 55 of 102 outputs, 11 slots for 7 units)."""
     parts = []
     for u in units:
-        text = f"{u['name']}*{u.get('star', 1)}"
+        star = u.get("star")
+        text = u["name"]
+        if isinstance(star, int) and not isinstance(star, bool) and star >= 2:
+            text += f" ({star}-star)"
         items = [i for i in (u.get("items") or []) if isinstance(i, str) and i]
         if items:
             text += f" [{', '.join(items)}]"
@@ -380,9 +387,12 @@ def _build_prompt(state: dict) -> str:
         # traits / comp derived from that same read (QA 2-1: eight traits
         # listed, none active).
         _live_board = _fmt_board(_auth_board)
+        _board_n = len(_auth_board)
         _live_traits = ""
     else:
-        _live_board = ", ".join(_vision_board(_ld, _set_n))
+        _vis_units = _vision_board(_ld, _set_n)
+        _live_board = ", ".join(_vis_units)
+        _board_n = len(_vis_units)
         _live_traits = ", ".join(str(t) for t in (_ld.get("traits_active") or []) if t)
     _live_augments = _ld.get("augments") or []
     if not isinstance(_live_augments, list):
@@ -451,6 +461,13 @@ def _build_prompt(state: dict) -> str:
         lines.append(f"Active traits: {_live_traits}")
     if _live_board:
         lines.append(f"Board units: {_live_board}")
+        # S136 T14: the count, one slot per unit, and what a star tag means.
+        # Only the EoG board leaves a 1-star unit untagged; vision leaves an
+        # unread star untagged too, so it makes no 1-star claim.
+        _legend = '"2-star" = star level, not copies'
+        if _auth_board:
+            _legend += "; untagged = 1-star"
+        lines.append(f"Units on board: {_board_n} (one slot each; {_legend})")
 
     #  -  -  Augment context  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
     # Build augment string from live data or items_str

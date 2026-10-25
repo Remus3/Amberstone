@@ -164,8 +164,10 @@ def test_authoritative_board_replaces_the_vision_board_and_traits():
     state = _d1_state(ocr={"gold": 10, "level": 3, "stage_round": "2-2"})
     prompt = eng._build_prompt(state)
     board = _line(prompt, "Board units:")
-    assert board == ("Board units: Yorick*2, Leona*2, Rakan*2, "
-                     "Xayah*1 [Sparring Gloves]"), board
+    # S136 T14: the star level is spelled out (``Yorick*2`` read as 2 copies)
+    assert board == ("Board units: Yorick (2-star), Leona (2-star), Rakan (2-star), "
+                     "Xayah [Sparring Gloves]"), board
+    assert _line(prompt, "Units on board:").startswith("Units on board: 4 ")
     for ghost in ("Krug", "Ornn", "Warwick", "Master Yi"):
         assert ghost not in prompt, ghost
     # the traits came off the same wrong vision read
@@ -313,7 +315,7 @@ def test_file_written_before_the_current_game_started_is_not_a_match(monkeypatch
     assert state["eog_match"] is True
     prompt = eng._build_prompt(state)
     assert _line(prompt, "Board units:") == (
-        "Board units: Krug*3 [Sparring Gloves], Warwick*2")
+        "Board units: Krug (3-star) [Sparring Gloves], Warwick (2-star)")
     assert "HP: 37" in _line(prompt, "HP:")
 
 
