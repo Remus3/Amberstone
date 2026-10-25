@@ -52,6 +52,20 @@ class TestShouldWatch:
         # s134: RC never imports tests/; 9 of the 18 in-match restarts of TFT
         # match 20261025-070350 were test-file edits (RESTART_DIAG.md).
         assert not _should_watch("tests/test_example.py")
+        assert not _should_watch("tests/fixtures/state_dicts.py")
+
+    def test_nested_test_trees_are_not_watched(self):
+        # Every tracked test tree under a watch dir, at any depth.
+        assert not _should_watch("agents/daemon_slayer/tests/test_x.py")
+        assert not _should_watch("tools/tests/test_x.py")
+
+    def test_code_beside_test_trees_still_watched(self):
+        assert _should_watch("agents/daemon_slayer/engine.py")
+        assert _should_watch("tools/edit_lint_check.py")
+        assert _should_watch("web_dashboard.py")
+        # A segment match, not a substring: "tests" is not "test_utils".
+        assert _should_watch("core/test_utils.py")
+        assert _should_watch("tools/latests/x.py")
 
     def test_git_dir_skipped(self):
         assert not _should_watch(".git/objects/something.py")
@@ -202,6 +216,8 @@ _DECOY_FILES: frozenset[str] = frozenset({
     # ops/loop/control/ - the two trees behind 16 of the 18 in-match restarts.
     "tests/unit/sub/z.py",
     "ops/loop/control/lane_prompts/s134_lane_driver.py",
+    # RM-699: a test tree nested under a watch dir is pruned too.
+    "tools/tests/sub/z.py",
 })
 
 # The directory at the top of each decoy tree - the exact directory the
@@ -218,11 +234,12 @@ _DECOY_TREES: frozenset[str] = frozenset({
     "docs/_archive",
     "tests",
     "ops/loop/control",
+    "tools/tests",
 })
 
 # The ONLY directories a scan of the fixture tree may enumerate ("" is the
 # repo root, listed non-recursively for root-level *.py). Every watch dir
-# that does not exist in the fixture (agents, dashboard, tests) is absent
+# that does not exist in the fixture (agents, dashboard) is absent
 # on purpose: a missing watch dir must cost a stat, not an enumeration.
 _ALLOWED_DIRS: frozenset[str] = frozenset({
     "",
