@@ -37,19 +37,32 @@ sub-agent's row. The reaper closes that loop, touching ONLY files it can prove
 are item-12 records - a top-level *.json regular file whose stem is a kit task
 stem and whose "task" field equals that stem - and never lane-*.json,
 inbox-responder.json or loop.json (named by their readers). It never kills a
-process and never unlinks:
+process and never unlinks a row (its only unlinks are its own tmp, and its
+own aside once a newer row superseded it - the bytes a replace would drop):
   * a running / blocked row silent past 2x its ETA (item 12) is rewritten as
     failed in the kit's close_progress() shape (fields kept, "reason" added),
-    compare-and-swap on the bytes AND (mtime, size) it classified, re-checked
-    immediately before every replace attempt, so a writer that came back
-    wins (RM-785 a); held - the kit's progress_abandoned() rule - unless its
-    recorded owner is PROVEN dead or the silence is past the kit's ABANDON_S
-    grace (OWNER_ALIVE_GRACE_S): an unknown owner, no owner field included,
-    is held like a live one (RM-785 b);
+    compare-and-swap on the bytes AND (mtime, size) it classified (RM-785 a)
+    with a create-only commit (RM-816): the row is MOVED aside to a private
+    name, the aside is compared (no writer races that name), and the failed
+    row lands by a no-replace move, so a writer that came back at ANY point
+    wins (measured in a free race: 0 of 300 writes lost, 53 of 300 before).
+    The price is a short gap in which the target does not exist; a pass
+    that dies inside it leaves its aside, and the next applying pass moves
+    it back while the target is still missing. Held - the kit's
+    progress_abandoned() rule - unless its recorded owner is PROVEN dead or
+    the silence is past the kit's ABANDON_S grace (OWNER_ALIVE_GRACE_S): an
+    unknown owner, no owner field included, is held like a live one
+    (RM-785 b);
   * a done / failed row older than PRUNE_AGE_S by BOTH 'updated' and mtime
     goes to the Recycle Bin through core.recycle_bin.recycle_checked, the
     same bytes + (mtime, size) check run immediately before the call; a
-    refusal keeps the file, a nuked result halts the pass;
+    refusal keeps the file, a nuked result halts the pass. The window left
+    is the recycle call itself, ACCEPTED (RM-816): a write landing inside it
+    goes to the bin with the row (FOF_ALLOWUNDO, restorable), so it is
+    recoverable, not destroyed, and it needs a writer to revive a row that
+    has been finished for PRUNE_AGE_S. Reverses if: a recycled row is found
+    holding a write newer than the reaper's read, or recycle_checked stops
+    sending to an undo-able bin;
   * the keep-list name match case-folds (RM-785 c: NTFS is case-blind);
   * a progress dir that does not resolve inside the repo root is refused.
 
@@ -129,6 +142,9 @@ KEEP_GLOBS = ("lane-*.json", "inbox-responder.json", "loop.json")
 # The kit's write_progress task-stem rule (fleet_headless._TASK).
 TASK_STEM = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 REASON_MAX = 120                   # the kit's close_progress reason cap
+# RM-816: a row the mark path moved aside, '<stem>.json.<pid>.reap'. Not a
+# *.json name, so no scan reads it as a record.
+ASIDE_RE = re.compile(r"^([A-Za-z0-9][A-Za-z0-9._-]{0,63}\.json)\.\d+\.reap$")
 EXIT_REFUSED = 3
 EXIT_HALTED = 4
 
@@ -270,18 +286,16 @@ def _replace(src: Path, dst: Path) -> None:
     Path(src).replace(dst)
 
 
-def _atomic_write(p: Path, data: bytes, check=None) -> bool:
-    """tmp + replace in the target's own dir. The tmp name ends in .tmp, so a
-    *.json scan of the progress dir never reads it as a record. With check, it
-    is called IMMEDIATELY before every replace attempt (the PermissionError
-    retries included) and a False answer drops the tmp and returns False
-    (RM-785 (a): the window left is the replace call itself)."""
+def _atomic_write(p: Path, data: bytes) -> bool:
+    """tmp + replace in the target's own dir (the watcher's own state file).
+    The tmp name ends in .tmp, so a *.json scan of the progress dir never
+    reads it as a record. A progress row the reaper rewrites does NOT come
+    through here: a replace would overwrite a writer that came back, so that
+    path is _swap_if_unchanged's create-only commit (RM-816)."""
     tmp = p.with_name(f"{p.name}.{os.getpid()}.tmp")
     try:
         tmp.write_bytes(data)
         for attempt in range(6):        # a polling reader can share-lock the target
-            if check is not None and not check():
-                return False
             try:
                 _replace(tmp, p)
                 return True
@@ -560,20 +574,115 @@ def _unchanged(p: Path, raw: bytes, sig) -> bool:
     return same and _sig(p) == sig
 
 
+def _move(src: Path, dst: Path) -> None:
+    """Create-only rename (RM-816): FileExistsError when dst exists, never a
+    replace. Windows os.rename already refuses an existing target; a POSIX
+    rename replaces, so there it is a hard link (refused on an existing name)
+    then an unlink of the source name. A module seam for the race tests."""
+    if os.name == "nt":
+        os.rename(src, dst)
+    else:
+        os.link(src, dst)
+        os.unlink(src)
+
+
+def _drop(p: Path) -> None:
+    try:
+        p.unlink()
+    except OSError:
+        pass
+
+
+def _put_back(aside: Path, p: Path) -> None:
+    """A captured row goes back under its own name, create-only. A target
+    that exists again is a writer's row written after the capture, so the
+    aside is the older copy and is dropped."""
+    try:
+        _move(aside, p)
+    except FileExistsError:
+        _drop(aside)
+
+
+def _swap_if_unchanged(p: Path, data: bytes, raw: bytes, sig) -> bool:
+    """RM-816: replace p with data only if p still holds what the reaper
+    classified, with no window in which a writer's write can be lost.
+    1. capture: move p aside (atomic). A writer write after this creates p
+       again, and nothing the reaper does next can overwrite it.
+    2. compare the ASIDE (a private name: no writer races it). A change means
+       a writer landed before the capture: put it back, return False.
+    3. commit create-only. A writer that came back after the capture owns p,
+       so the move is refused and the writer wins (False).
+    The compare on p first is only a cheap early-out, retried with the
+    capture when a polling reader share-locks the file (PermissionError)."""
+    tmp = p.with_name(f"{p.name}.{os.getpid()}.tmp")
+    aside = p.with_name(f"{p.name}.{os.getpid()}.reap")
+    tmp.write_bytes(data)
+    try:
+        for attempt in range(6):
+            if not _unchanged(p, raw, sig):
+                return False
+            try:
+                _move(p, aside)
+                break
+            except (FileNotFoundError, FileExistsError):
+                return False
+            except PermissionError:
+                if attempt == 5:
+                    raise
+                time.sleep(0.05 * (attempt + 1))
+        if not _unchanged(aside, raw, sig):
+            _put_back(aside, p)
+            return False
+        try:
+            _move(tmp, p)
+        except FileExistsError:
+            _drop(aside)                # a writer's newer row owns p
+            return False
+        except OSError:
+            _put_back(aside, p)
+            raise
+        _drop(aside)                    # the classified row, now superseded
+        return True
+    finally:
+        _drop(tmp)
+
+
 def _mark_failed(path: Path, expected_raw: bytes, expected_sig, reason: str,
                  now: float) -> bool:
     """Rewrite one live row as failed in the kit's close_progress() shape
     (every field kept; status, updated and reason set), built from the bytes
-    the reaper classified. Compare-and-swap: _unchanged() runs immediately
-    before every replace attempt, so a writer that came back at any point
-    before the replace wins and False is returned (RM-785 (a))."""
+    the reaper classified. Compare-and-swap with a create-only commit
+    (_swap_if_unchanged, RM-816): a writer that came back at any point wins
+    and False is returned (RM-785 (a) left the replace call itself open)."""
     doc = json.loads(expected_raw.decode("utf-8-sig"))
     if not isinstance(doc, dict) or doc.get("status") not in LIVE_STATUSES:
         return False
     doc.update(status="failed", updated=_iso_local(now), reason=reason)
     data = json.dumps(doc, ensure_ascii=True).encode("ascii")
-    return _atomic_write(path, data,
-                         check=lambda: _unchanged(path, expected_raw, expected_sig))
+    return _swap_if_unchanged(path, data, expected_raw, expected_sig)
+
+
+def _recover_asides(d: Path, entries: list, apply: bool, held) -> bool:
+    """RM-816: an aside left by a pass that died between its capture and its
+    commit goes back under its own name while that name is still free (apply
+    only). A target that exists again is a writer's newer row: the aside is
+    reported and left as is. True when anything was moved back."""
+    moved = False
+    for a in entries:
+        m = ASIDE_RE.match(a.name)
+        if not m or not _plain_file(a):
+            continue
+        if not apply:
+            held(a.name, "aside of an earlier reaper pass; an applying pass moves it back")
+            continue
+        try:
+            _move(a, d / m.group(1))
+            moved = True
+        except FileExistsError:
+            held(a.name, "aside of an earlier reaper pass; its target was rewritten, left as is")
+        except OSError as exc:
+            held(a.name, f"aside of an earlier reaper pass; not moved back ({type(exc).__name__})")
+    return moved
 
 
 def reap(*, progress_dir=PROGRESS_DIR, root=None, now=None, apply=False, recycle=None,
@@ -607,8 +716,16 @@ def reap(*, progress_dir=PROGRESS_DIR, root=None, now=None, apply=False, recycle
     except OSError:
         rep["dir_state"] = "unreadable"
         return rep
+    if _recover_asides(d, entries, apply, held):
+        try:
+            entries = sorted(d.iterdir(), key=lambda q: q.name)
+        except OSError:
+            rep["dir_state"] = "unreadable"
+            return rep
     for p in entries:
         name = p.name
+        if ASIDE_RE.match(name):
+            continue                                # reported by _recover_asides
         if not name.endswith(".json"):
             rep["ignored"] += 1                     # not a progress record: not ours
             continue
