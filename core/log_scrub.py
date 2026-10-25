@@ -38,17 +38,41 @@ import logging
 import traceback
 from http.server import BaseHTTPRequestHandler
 
+# RM-825 (c): the stdlib table stops at C1, so these reached a log raw:
+# U+2028 / U+2029 (a line break to a log viewer and to str.splitlines) and
+# the bidi embedding / override controls and isolates (U+202A..U+202E,
+# U+2066..U+2069) plus the bidi marks (U+061C, U+200E, U+200F), which
+# reorder the text a terminal shows. Escaped as ``\\uHHHH``; the backslash
+# escape keeps that injective too.
+EXTRA_SCRUB = ((0x061C, 0x200E, 0x200F, 0x2028, 0x2029)
+               + tuple(range(0x202A, 0x202F)) + tuple(range(0x2066, 0x206A)))
+# The ONE range table (dashboard._handler re-exports it, RM-825).
+SCRUB_RANGES = (tuple(range(0x00, 0x20)) + tuple(range(0x7F, 0xA0))
+                + EXTRA_SCRUB)
+
+
+def _escape(cp: int) -> str:
+    return f"\\x{cp:02x}" if cp <= 0xFF else f"\\u{cp:04x}"
+
+
 # Borrowed from the stdlib rather than re-rolled so it tracks any future
-# widening of the table; the fallback covers a Python that drops the private
-# attribute and is asserted equivalent by tests.
-CONTROL_CHAR_TABLE = getattr(BaseHTTPRequestHandler, "_control_char_table", None)
-SCRUB_RANGES = tuple(range(0x00, 0x20)) + tuple(range(0x7F, 0xA0))
+# widening of the table, then widened by EXTRA_SCRUB; the fallback covers a
+# Python that drops the private attribute and is asserted equivalent by tests.
+_STDLIB_TABLE = getattr(BaseHTTPRequestHandler, "_control_char_table", None)
+CONTROL_CHAR_TABLE = (None if _STDLIB_TABLE is None else
+                      {**_STDLIB_TABLE, **{c: _escape(c) for c in EXTRA_SCRUB}})
 
 _UNSET = object()
 
 # Control characters only - no backslash entry, which is what makes
 # scrub_controls idempotent.
-_CONTROLS_ONLY = {c: f"\\x{c:02x}" for c in SCRUB_RANGES}
+_CONTROLS_ONLY = {c: _escape(c) for c in SCRUB_RANGES}
+
+# RM-825 (d): the longest rendered traceback line. A client's text in an
+# exception message is put onto ONE line, so without a cap a 100k-character
+# message was one 100k-character log line. A longer line keeps its first
+# MAX_LINE_CHARS characters and a "[... N chars cut]" marker.
+MAX_LINE_CHARS = 4096
 
 _CAUSE = ("\nThe above exception was the direct cause of the following "
           "exception:\n\n")
@@ -72,16 +96,24 @@ def scrub_log(text: str, table=_UNSET) -> str:
     # could type the literal six characters `\x1b[31m` and produce a line
     # byte-identical to a scrubbed real ESC. The stdlib table does the same.
     return "".join(
-        f"\\x{ord(ch):02x}" if ord(ch) in SCRUB_RANGES
+        _escape(ord(ch)) if ord(ch) in _CONTROLS_ONLY
         else ("\\\\" if ch == "\\" else ch)
         for ch in text
     )
 
 
 def scrub_controls(text: str) -> str:
-    """Escape C0, DEL and C1 as ``\\xHH``; leave every other character,
-    backslashes included, as it is. Idempotent (see the module docstring)."""
+    """Escape C0, DEL and C1 as ``\\xHH`` and the RM-825 extras as
+    ``\\uHHHH``; leave every other character, backslashes included, as it
+    is. Idempotent (see the module docstring)."""
     return text.translate(_CONTROLS_ONLY)
+
+
+def _cap_line(line: str) -> str:
+    if len(line) <= MAX_LINE_CHARS:
+        return line
+    return (f"{line[:MAX_LINE_CHARS]} [... "
+            f"{len(line) - MAX_LINE_CHARS} chars cut]")
 
 
 def _exception_text(exc: BaseException) -> str:
@@ -153,10 +185,12 @@ def scrub_traceback(exc: BaseException, tb=_UNSET) -> str:
     ``tb`` overrides the outermost exception's traceback (a logging
     ``exc_info`` triple carries its own); by default ``exc.__traceback__``.
     The result ends in a newline, as ``traceback.format_exception`` does.
+    Every line is at most ``MAX_LINE_CHARS`` plus the cut marker (RM-825).
     """
     if tb is _UNSET:
         tb = exc.__traceback__
-    return "".join(_render(exc, tb, set(), 0))
+    text = "".join(_render(exc, tb, set(), 0))
+    return "\n".join(_cap_line(line) for line in text.split("\n"))
 
 
 class ScrubFilter(logging.Filter):

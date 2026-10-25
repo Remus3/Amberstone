@@ -136,36 +136,57 @@ const TOOLS = [{
   },
 }];
 
-const rl = readline.createInterface({ input: process.stdin, terminal: false });
 const send = obj => process.stdout.write(JSON.stringify(obj) + '\n');
 const rpcError = (id, code, message) =>
   send({ jsonrpc: '2.0', id, error: { code, message } });
 
 // RM-811: control characters escaped before any client-derived text reaches
 // stderr (the RM-321 log-injection class), the core/log_scrub.py mapping.
+// RM-825: that mapping now also escapes U+2028 / U+2029, the bidi marks
+// (U+061C, U+200E, U+200F) and the bidi controls (U+202A..U+202E,
+// U+2066..U+2069) as \uHHHH;
+// tests/test_rm825_jsonrpc_scrub_host_residuals.py pins the two equal.
+const hex = (cp, width) => cp.toString(16).padStart(width, '0');
 const scrubLog = text => String(text).replace(
-  /[\x00-\x1f\x7f-\x9f\\]/g,
-  ch => (ch === '\\' ? '\\\\' : '\\x' + ch.charCodeAt(0).toString(16).padStart(2, '0')));
+  /[\x00-\x1f\x7f-\x9f\\\u061c\u200e\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069]/g,
+  ch => {
+    if (ch === '\\') return '\\\\';
+    const cp = ch.charCodeAt(0);
+    return cp <= 0xff ? '\\x' + hex(cp, 2) : '\\u' + hex(cp, 4);
+  });
 
 const isObject = v => v !== null && typeof v === 'object' && !Array.isArray(v);
 
 // RM-811 residuals: JSON-RPC 2.0 section 4 - an id is a string, a number or
 // null. The number must be finite: JSON.parse reads 1e400 / -1e400 (valid
 // JSON) as +/-Infinity, which JSON.stringify writes back as null.
-const isValidId = v => v === null || typeof v === 'string' || Number.isFinite(v);
+// RM-825 (b): and an integer id must be a SAFE integer. JSON.parse rounds an
+// integer beyond 2^53 (9007199254740993 reads as ...992), so the reply would
+// echo a different id; such an id is refused (-32600, id null) instead. 2^53
+// itself is refused too: once parsed it cannot be told from 2^53 + 1.
+const isValidId = v => v === null || typeof v === 'string'
+  || (Number.isFinite(v) && (!Number.isInteger(v) || Number.isSafeInteger(v)));
 
-rl.on('line', async (raw) => {
-  // RM-811: one bad line must never end the server. A JSON `null` line threw
-  // on the destructure below inside this async handler - an unhandled
-  // rejection, so Node exited 1 and the MCP client lost the server.
-  let id = null;
-  try {
-    await handleLine(raw, rid => { id = rid; });
-  } catch (e) {
-    process.stderr.write(`usage-mcp: internal error: ${scrubLog(e && e.message)}\n`);
-    if (id !== null && id !== undefined) rpcError(id, -32603, 'Internal error');
-  }
-});
+// RM-825: the stdio loop runs only when this file is the program, so a test
+// can require() it for scrubLog / isValidId without starting a server.
+if (require.main === module) {
+  const rl = readline.createInterface({ input: process.stdin, terminal: false });
+  rl.on('line', async (raw) => {
+    // RM-811: one bad line must never end the server. A JSON `null` line
+    // threw on the destructure below inside this async handler - an
+    // unhandled rejection, so Node exited 1 and the MCP client lost the
+    // server.
+    let id = null;
+    try {
+      await handleLine(raw, rid => { id = rid; });
+    } catch (e) {
+      process.stderr.write(`usage-mcp: internal error: ${scrubLog(e && e.message)}\n`);
+      if (id !== null && id !== undefined) rpcError(id, -32603, 'Internal error');
+    }
+  });
+} else {
+  module.exports = { scrubLog, isValidId };
+}
 
 async function handleLine(raw, noteId) {
   const line = raw.trim();
@@ -201,6 +222,14 @@ async function handleLine(raw, noteId) {
     return;
   }
 
+  // RM-825 (a): a notification (no id member) gets no reply - JSON-RPC 2.0
+  // section 4.1 - and does no work. initialize / ping / tools/list /
+  // tools/call each used to answer one with the id absent. The invalid
+  // shapes above are still answered with id null even without an id: such
+  // an object is not a valid Request, so it is not a notification either
+  // (the spec's section 7 example answers `"method": 1` exactly so).
+  if (id === undefined) return;
+
   if (method === 'initialize') {
     send({ jsonrpc: '2.0', id, result: {
       protocolVersion: '2024-11-05',
@@ -217,7 +246,7 @@ async function handleLine(raw, noteId) {
     // RM-811: params, when present, is an object (JSON-RPC 2.0 4.2; named
     // params): anything else is -32602, not a "Unknown tool" result.
     if (params !== undefined && params !== null && !isObject(params)) {
-      if (id !== undefined) rpcError(id, -32602, 'Invalid params');
+      rpcError(id, -32602, 'Invalid params');
       return;
     }
     const name = params?.name;
@@ -233,7 +262,7 @@ async function handleLine(raw, noteId) {
     } catch (e) {
       send({ jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: `Error: ${e.message}` }], isError: true } });
     }
-  } else if (id !== undefined) {
+  } else {
     send({ jsonrpc: '2.0', id, error: { code: -32601, message: `Method not found: ${method}` } });
   }
 }

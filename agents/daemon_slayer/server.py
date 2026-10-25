@@ -56,9 +56,11 @@ from urllib.parse import parse_qs, urlsplit
 # RM-759 Host gate on the same terms: ``core.http_host_gate`` imports only
 # the stdlib, ``core.local_hosts`` and ``core.log_scrub`` (both stdlib-only),
 # never DS. The engine modules stay core-free; the Share mirror that once
-# required the shell to be too was removed 2026-09-07.
+# required the shell to be too was removed 2026-09-07. RM-825 imports
+# ``core.log_scrub`` directly for ``log_message`` (the same stdlib-only module).
 from core.http_head_deadline import HeadDeadlineMixin
 from core.http_host_gate import HostAllowlistMixin
+from core.log_scrub import scrub_log as _scrub_log
 
 from . import ENGINE_VERSION
 from .abilities import AbilitiesSnapshot
@@ -3053,18 +3055,11 @@ class Handler(HostAllowlistMixin, HeadDeadlineMixin, BaseHTTPRequestHandler):
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
         # RM-321: an override loses the stdlib's control-character escaping
         # (`message.translate(self._control_char_table)` lives inside the
-        # base method). The DS engine stays core-free (the shell's only core
-        # import is the stdlib-only RM-748 head deadline), so use the handler's
-        # own stdlib table, with an equivalent escape if it is ever dropped.
-        msg = format % args
-        table = getattr(self, "_control_char_table", None)
-        if table is not None:
-            msg = msg.translate(table)
-        else:
-            msg = "".join(
-                f"\\x{ord(c):02x}" if ord(c) < 0x20 or 0x7F <= ord(c) < 0xA0
-                else ("\\\\" if c == "\\" else c) for c in msg)
-        _log.debug("%s - %s", self.address_string(), msg)
+        # base method). RM-825: the shell's own C1-only copy of that table is
+        # gone; it uses the shared ``core.log_scrub`` one, which also escapes
+        # U+2028 / U+2029 and the bidi controls. That module is stdlib-only
+        # and already loaded here through ``core.http_host_gate`` (RM-819).
+        _log.debug("%s - %s", self.address_string(), _scrub_log(format % args))
 
     # ----- helpers
 
