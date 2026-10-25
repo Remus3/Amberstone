@@ -161,6 +161,20 @@ class SrPayload(_Base):
 
 
 class TftPayload(_Base):
+    """data/tft_coaching_data.json - the shape authority for every writer.
+
+    RM-292 (d): ``stage`` / ``round`` are INTS, as the live producer emits
+    them (tft/tft_state_reader.py ``_parse``) and tft/tft_coach_engine.py
+    copies them through. They were declared ``str``, so every engine
+    artifact failed its own schema and each /api/state build logged two
+    WARNINGs (dashboard/_state_builder.py validates on every build).
+
+    Defaults are what the blank seeds below write, so they are
+    overlay-neutral: the state builder fills a coach key from the Live
+    Client only while it is None / "" / 0, and a seeded ``level`` of 1 used
+    to pin the dashboard's top-bar level. Defaults never affect validation
+    (``validate_default=False``).
+    """
     board: str = ""
     econ: str = ""
     rolldown: str = ""
@@ -170,11 +184,47 @@ class TftPayload(_Base):
     upgrade: str = ""
     risk: str = ""
     game_time_s: float = 0.0
-    stage: str = ""
-    round: str = ""
-    level: int = 1
+    stage: int = 0
+    round: int = 0
+    level: int = 0
     gold: int = 0
     health: int = 100
+
+
+# RM-292 (d): the advice strings every TFT artifact carries. The disabled
+# placeholder (core/feature_policy.py), the degraded-status write and the
+# facade seed (coaches/tft_coach.py) carry ONLY these plus mode / action:
+# no numeric key, because a present 0 renders as "0:00" / level 0 on the
+# dashboard whenever the Live Client summary is stale, while an ABSENT key
+# lets the live value through.
+TFT_ADVICE_FIELDS: tuple[str, ...] = (
+    "board", "econ", "rolldown", "items",
+    "god_pick", "placement", "upgrade", "risk",
+)
+
+# SR-family championStats keys on the shared base; no TFT writer emits them.
+_SR_FAMILY_BASE_FIELDS = frozenset({"combat_stats", "stat_shards"})
+
+
+def tft_advice_payload(**overrides: Any) -> dict:
+    """mode, action and the advice strings at their TftPayload defaults.
+
+    The disabled / degraded TFT shape. A NEW dict on every call, so a
+    caller's overrides can never leak into another write."""
+    seed = TftPayload(mode="tft")
+    data: dict = {"mode": seed.mode, "action": seed.action}
+    for name in TFT_ADVICE_FIELDS:
+        data[name] = getattr(seed, name)
+    data.update(overrides)
+    return data
+
+
+def tft_blank_payload(**overrides: Any) -> dict:
+    """The whole declared TftPayload shape at its defaults - the blank
+    artifact the live engine writes on reset. A NEW dict on every call."""
+    data = TftPayload(mode="tft").model_dump(exclude=set(_SR_FAMILY_BASE_FIELDS))
+    data.update(overrides)
+    return data
 
 
 _MODE_TO_MODEL: dict[str, type[_Base]] = {

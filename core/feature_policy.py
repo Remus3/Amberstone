@@ -110,17 +110,20 @@ def _disabled_payload_for(mode: str) -> dict:
     return {**_SR_DISABLED_PAYLOAD, "mode": mode}
 
 
-_TFT_COACHING_DISABLED_PAYLOAD = {
-    "mode": "tft",
-    "action": "COACHING DISABLED",
-    "board": "", "econ": "", "rolldown": "", "items": "",
-    # LANE 8 CYCLE 30: this said "carousel". This module is a co-writer of
-    # data/tft_coaching_data.json, whose shape is declared by
-    # core/coaching_payload.TftPayload (god_pick) and seeded by
-    # coaches/tft_coach.py (god_pick). The disabled payload was the third
-    # disagreeing spelling of one field.
-    "god_pick": "", "placement": "", "upgrade": "", "risk": "",
-}
+def _tft_coaching_disabled_payload() -> dict:
+    """The disabled data/tft_coaching_data.json placeholder.
+
+    RM-292 (d): derived from the shape authority
+    (core.coaching_payload ``tft_advice_payload``: mode, action and the
+    advice strings), not hand-copied. LANE 8 CYCLE 30 found the literal
+    that lived here spelling ``god_pick`` as "carousel" - the third
+    disagreeing spelling of one field. Imported lazily so ``is_allowed``
+    never depends on pydantic: every policy caller treats an import failure
+    here as "policy unavailable - allow". This payload is written every
+    poll while TFT coaching is disabled, mid-game, so it carries no numeric
+    key that could render as 0 over a live value."""
+    from core.coaching_payload import tft_advice_payload
+    return tft_advice_payload(action="COACHING DISABLED")
 
 _TFT_LIVE_DISABLED_PAYLOAD = {
     "mode": "tft_live",
@@ -472,7 +475,7 @@ def write_disabled_placeholder(mode: str, feature: Optional[str] = None,
         elif mode_key == "tft":
             if feature is None or feature == "live_coaching":
                 _write_json(_data / "tft_coaching_data.json",
-                            _TFT_COACHING_DISABLED_PAYLOAD)
+                            _tft_coaching_disabled_payload())
             if feature is None or feature == "tft_vision_analysis":
                 _write_json(_data / "tft_live_data.json",
                             _TFT_LIVE_DISABLED_PAYLOAD)
