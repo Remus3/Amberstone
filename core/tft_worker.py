@@ -291,27 +291,32 @@ class TftWorker(BaseCoachWorker):
         already carries (tft/tft_standalone.py relay_lcu_snapshot); it has no
         mDefaultSet, so only a queue that names its own set (QUEUE_SETS, the
         Set 17 revival) is noted and a normal queue keeps resolve_set's
-        default. Never raises.
+        default - and clears a set an earlier (revival) game noted, so it
+        cannot ride into this game for LIVE_TTL_S. Never raises.
         """
-        now = self._lcu_clock()
-        if self._lcu_set_at is not None and now - self._lcu_set_at < LCU_SET_REFRESH_S:
-            return None
-        self._lcu_set_at = now
         try:
+            now = getattr(self, "_lcu_clock", time.monotonic)()
+            last = getattr(self, "_lcu_set_at", None)
+            if last is not None and now - last < LCU_SET_REFRESH_S:
+                return None
+            self._lcu_set_at = now
             from tft import tft_set
-            if self._lcu_request is not None:
-                default_set, queue_id = tft_set.read_lcu_set_facts(
-                    self._lcu_request, self._lcu_default_set)
+            request = getattr(self, "_lcu_request", None)
+            default_set = getattr(self, "_lcu_default_set", None)
+            if request is not None:
+                default_set, queue_id = tft_set.read_lcu_set_facts(request, default_set)
             else:
                 from tft import tft_standalone
-                default_set = self._lcu_default_set
                 queue_id = tft_set.snapshot_tft_queue_id(
                     tft_standalone.relay_lcu_snapshot())
             if default_set:
                 self._lcu_default_set = default_set
             if queue_id is None:
                 return None
-            return tft_set.note_live_set_from_lcu(default_set, queue_id)
+            noted = tft_set.note_live_set_from_lcu(default_set, queue_id)
+            if noted is None:
+                tft_set.clear_live_set()  # a TFT queue that names no set
+            return noted
         except Exception:  # noqa: BLE001
             _log.debug("TftWorker: LCU set read failed", exc_info=True)
             return None
