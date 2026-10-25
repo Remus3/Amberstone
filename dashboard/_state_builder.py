@@ -295,6 +295,9 @@ _TFT_STANDALONE_COACH_FILL = (
     # local board (unit, star, items) and every player's placement + HP.
     # Own keys - coach.board is the TFT engine's advice TEXT.
     ("board", "tft_board"), ("players", "tft_players"),
+    # what those values were read from: the last per-round write (combat
+    # start / elimination) on the game clock + its age (match 3 QA N11)
+    ("as_of", "tft_as_of"),
 )
 
 
