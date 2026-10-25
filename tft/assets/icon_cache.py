@@ -28,8 +28,9 @@ WHAT IS FETCHED
     tfttraits.json      [{"trait_id", "set", "icon_path"}]
     tftitems.json       [{"nameId", "squareIconPath"}]  (augments included)
   All 1481 Set 18 members (74 units, 36 traits, 776 items, 595 augments)
-  resolved to a `/lol-game-data/assets/...` .png / .jpg path that day, 690
-  distinct paths (items share icons, so a run GETs each path once).
+  resolved to a `/lol-game-data/assets/...` .png / .jpg path that day, 686
+  distinct paths (items share icons, so a run GETs each path once: the live
+  fill made 686 LCU GETs).
 
 SOURCES, IN ORDER (passive GET only - no other HTTP method exists here)
 1. LCU: https://<RC_GAME_HOST>:<lockfile port>/lol-game-data/assets/... with
@@ -347,10 +348,16 @@ def build_catalogue(set_number, docs, extract=None) -> Catalogue:
 
 # -- HTTP (GET only) ------------------------------------------------------------------
 
-def _http_get(url, *, headers=None, context=None, timeout=CDRAGON_TIMEOUT_S,
-              max_bytes=MAX_ICON_BYTES) -> bytes | None:
-    """One passive GET; the body, or None on any failure or an oversize body."""
+def _http_get(url, *, headers=None, private_headers=None, context=None,
+              timeout=CDRAGON_TIMEOUT_S, max_bytes=MAX_ICON_BYTES) -> bytes | None:
+    """One passive GET; the body, or None on any failure or an oversize body.
+
+    private_headers are attached as urllib UNREDIRECTED headers: the redirect
+    handler never copies them onto a redirected request, so a credential sent
+    to one host cannot follow a redirect to another."""
     req = urllib_request.Request(url, headers=dict(headers or {}), method="GET")
+    for key, value in (private_headers or {}).items():
+        req.add_unredirected_header(key, value)
     try:
         with urllib_request.urlopen(req, context=context, timeout=timeout) as resp:
             body = resp.read(max_bytes + 1)
@@ -386,7 +393,8 @@ class LcuSource:
         self.min_interval_s = float(min_interval_s)
         self.timeout = float(timeout)
         token = base64.b64encode(f"riot:{password}".encode()).decode("ascii")
-        self._headers = {"Authorization": f"Basic {token}", "Accept": "*/*"}
+        self._headers = {"Accept": "*/*"}
+        self._auth = {"Authorization": f"Basic {token}"}
         # The LCU serves Riot's self-signed certificate on loopback: the RC
         # no-verify client context at the RM-752 protocol floor.
         self._ctx = tls_policy.client_context_noverify()
@@ -406,7 +414,8 @@ class LcuSource:
 
     def _get(self, path, max_bytes):
         return _http_get(f"https://{self.host}:{self.port}{path}", headers=self._headers,
-                         context=self._ctx, timeout=self.timeout, max_bytes=max_bytes)
+                         private_headers=self._auth, context=self._ctx,
+                         timeout=self.timeout, max_bytes=max_bytes)
 
     def game_data(self, doc):
         if doc not in GAME_DATA_DOCS and doc != DOC_SETS:
