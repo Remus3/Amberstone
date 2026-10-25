@@ -28,7 +28,9 @@ The damage-split and skill-order blocks get the same gate (RM-807): a block
 that is >= 95 percent degenerate (all-zero split rows, empty skill orders, or
 an empty block) exits 5 with nothing written, past it only with
 ``--allow-degenerate-lolmath REASON``; a degenerate row below the floor is
-named in a WARNING.
+named in a WARNING. A Meraki items payload under 160 or an Arena augments
+payload under 110 (RM-807 (d); every snapshot measured 320 / 220-227) exits 6
+with nothing written, past it only with ``--allow-short-upstream REASON``.
 
 ``--lolmath-only`` re-runs ONLY the lolmath extract against an EXISTING
 snapshot (it needs ``<patch>/manifest.json``; ``--patch`` defaults to
@@ -1406,6 +1408,73 @@ def fetch_arena_augments() -> dict:
     }
 
 
+# RM-807 (d): both fetchers above read an empty upstream (an empty dict, a
+# missing "augments" key, a non-dict body) as count 0, and it was written into
+# items_meraki.json / arena_augments.json and the manifest like real data.
+# Every committed snapshot 16.10.1 .. 16.21.1 carries 320 Meraki items and
+# 220-227 Arena augments, so the floors sit at half the measured minimum: a
+# count below one is an upstream reset or shape drift, not a patch. The gate
+# runs before the per-champion overlay fetch and any write; the only way past
+# it is ``--allow-short-upstream REASON``, logged and recorded in the manifest
+# (``upstream_short_override``).
+MERAKI_ITEMS_MIN = 160
+ARENA_AUGMENTS_MIN = 110
+EXIT_UPSTREAM_SHORT = 6
+
+
+class ShortUpstreamError(RuntimeError):
+    """The Meraki items or CDragon Arena augment upstream came back short (RM-807)."""
+
+
+def check_upstream_counts(arena_augments: dict | None, meraki_items: dict | None,
+                          override_reason: str | None = None) -> dict[str, Any]:
+    """Fail loudly when the Meraki items or Arena augments payload is short (RM-807).
+
+    The count is measured from the payload body (``augments`` list, ``items``
+    dict), never its ``count`` key. Returns ``{arena_augments: {count, floor},
+    meraki_items: {count, floor}}``. A payload under its floor raises
+    ``ShortUpstreamError`` naming every such source, unless
+    ``override_reason`` is a non-blank string: then it logs a WARNING and adds
+    ``override_reason``.
+    """
+    augs = arena_augments if isinstance(arena_augments, dict) else {}
+    mer = meraki_items if isinstance(meraki_items, dict) else {}
+    aug_body = augs.get("augments")
+    mer_body = mer.get("items")
+    counts = (
+        ("arena_augments", len(aug_body) if isinstance(aug_body, list) else 0,
+         ARENA_AUGMENTS_MIN),
+        ("meraki_items", len(mer_body) if isinstance(mer_body, dict) else 0,
+         MERAKI_ITEMS_MIN),
+    )
+    out: dict[str, Any] = {name: {"count": n, "floor": floor}
+                           for name, n, floor in counts}
+    failing = [f"{name} {n} (floor {floor})" for name, n, floor in counts if n < floor]
+    reason = (override_reason or "").strip()
+    if not failing:
+        if reason:
+            log.info("--allow-short-upstream not needed: every upstream at its floor")
+        return out
+    detail = "; ".join(failing)
+    if not reason:
+        raise ShortUpstreamError(
+            f"RM-807: upstream {detail} - an upstream reset or shape drift, not "
+            "a patch; nothing was written. Adjudicate it, then re-run with "
+            "--allow-short-upstream REASON to accept it as an explicit, recorded act."
+        )
+    log.warning("RM-807 override: accepting upstream %s - reason: %s", detail, reason)
+    out["override_reason"] = reason
+    return out
+
+
+def _short_upstream_override_record(upstream_check: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "flag": "--allow-short-upstream",
+        "reason": upstream_check["override_reason"],
+        **{name: dict(upstream_check[name]) for name in ("arena_augments", "meraki_items")},
+    }
+
+
 # --- Patch stamping (RM-81 residual) -----------------------------------------
 
 # arena_augments.json and items_meraki.json were the only two artifacts under
@@ -1607,7 +1676,8 @@ def build_manifest(lolmath: LolmathExtract, dd: DDragonSnapshot,
                    arena_augments: dict | None = None,
                    meraki_items: dict | None = None,
                    aram_neutral_override: dict | None = None,
-                   lolmath_degenerate_override: dict | None = None) -> dict:
+                   lolmath_degenerate_override: dict | None = None,
+                   upstream_short_override: dict | None = None) -> dict:
     overlay = perlevel_overlay or {}
     augs = arena_augments or {}
     mer_items = meraki_items or {}
@@ -1662,6 +1732,9 @@ def build_manifest(lolmath: LolmathExtract, dd: DDragonSnapshot,
     if lolmath_degenerate_override:
         manifest["lolmath_degenerate_override"] = _degenerate_override_record(
             lolmath_degenerate_override)
+    if upstream_short_override:
+        manifest["upstream_short_override"] = _short_upstream_override_record(
+            upstream_short_override)
     return manifest
 
 
@@ -1765,6 +1838,11 @@ def main() -> int:
                          "that is >= 95%% degenerate (all-zero splits / empty orders; "
                          f"the extract otherwise exits {EXIT_LOLMATH_DEGENERATE} and "
                          "writes nothing); REASON is logged and recorded in the manifest")
+    ap.add_argument("--allow-short-upstream", default=None, metavar="REASON",
+                    help=f"RM-807: accept a Meraki items payload under {MERAKI_ITEMS_MIN} "
+                         f"or an Arena augments payload under {ARENA_AUGMENTS_MIN} "
+                         f"(the extract otherwise exits {EXIT_UPSTREAM_SHORT} and writes "
+                         "nothing); REASON is logged and recorded in the manifest")
     ap.add_argument("--lolmath-only", action="store_true",
                     help="refresh ONLY the lolmath data of an existing snapshot "
                          "(needs <patch>/manifest.json; --patch defaults to "
@@ -1805,9 +1883,17 @@ def main() -> int:
         log.error("%s", exc)
         return EXIT_LOLMATH_DEGENERATE
 
-    perlevel_overlay = fetch_meraki_perlevel_overlay(set(dd.champions.keys()))
+    # RM-807 (d): the two bulk fetches are gated before the per-champion
+    # overlay fetch and any write.
     arena_augments = fetch_arena_augments()
     meraki_items = fetch_meraki_items()
+    try:
+        upstream_check = check_upstream_counts(arena_augments, meraki_items,
+                                               args.allow_short_upstream)
+    except ShortUpstreamError as exc:
+        log.error("%s", exc)
+        return EXIT_UPSTREAM_SHORT
+    perlevel_overlay = fetch_meraki_perlevel_overlay(set(dd.champions.keys()))
 
     champions_payload = build_champions_payload(lolmath, dd, perlevel_overlay)
     items_payload = build_items_payload(dd)
@@ -1816,6 +1902,8 @@ def main() -> int:
         lolmath, dd, patch_dir, perlevel_overlay, arena_augments, meraki_items,
         aram_neutral_override=aram_check if "override_reason" in aram_check else None,
         lolmath_degenerate_override=block_check if "override_reason" in block_check else None,
+        upstream_short_override=(upstream_check if "override_reason" in upstream_check
+                                 else None),
     )
 
     _atomic_write_json(patch_dir / "champions.json", champions_payload)
