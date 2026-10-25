@@ -1,0 +1,12 @@
+{
+ "_set": 18,
+ "_set_name": "Enchanted Wilds",
+ "_data_type": "live",
+ "_updated": "2026-10-24",
+ "_source": "RC-authored skeleton (RM-840). Game data for this set lives in tft_set18_cdragon.json (CommunityDragon, scripts/fetch_cdragon_tft.py).",
+ "_note": "SKELETON - UNVERIFIED. comps, tier_list, trait_augments and double_up are intentionally empty: no third-party comp or tier data is absorbed into the public tree, and no Set 18 coaching data has been measured in client. Set name from public patch notes (TFT 18.1); CDragon carries only the internal name Set10. Fill from operator-measured play, never from an aggregator dump.",
+ "comps": {},
+ "tier_list": {},
+ "trait_augments": {},
+ "double_up": {}
+}

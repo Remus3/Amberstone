@@ -18,6 +18,12 @@ These are CHARACTERIZATION assertions. They pin what is true today. When the
 operator verifies the tables in client and corrects them, several of these
 SHOULD go red - that is the point. Update them together with the fix and flip
 CONSTANTS_SET_VERIFIED.
+
+RM-840 (2026-10-24): the lane's set is no longer read off a hard-wired
+tft_set17_meta.json. tft/tft_set.py resolves it (live set id, RC_TFT_SET,
+then the newest ingested set), and Set 18 is the newest ingested set, so the
+lane is on Set 18 and BOTH constants modules are now stale. The Set 17
+patch-note evidence below still reads Set 17's own meta file on purpose.
 """
 from __future__ import annotations
 
@@ -29,13 +35,24 @@ from pathlib import Path
 import pytest
 
 from tft import tft_roll_odds as ro
+from tft import tft_set
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-LIVE_META = REPO_ROOT / "data" / "meta" / "tft_set17_meta.json"
+SET17_META = REPO_ROOT / "data" / "meta" / "tft_set17_meta.json"
+
+
+@pytest.fixture(autouse=True)
+def _no_live_set_or_pin(monkeypatch):
+    """The lane set under test is the committed tree's default, not a live
+    set noted by another test or an operator RC_TFT_SET pin."""
+    monkeypatch.delenv(tft_set.ENV_PIN, raising=False)
+    tft_set.clear_live_set()
+    yield
+    tft_set.clear_live_set()
 
 
 def _lane_set() -> int:
-    return int(json.loads(LIVE_META.read_text(encoding="utf-8"))["_set"])
+    return tft_set.resolve_set()
 
 
 def _constants_modules():
@@ -104,15 +121,26 @@ def test_a_stale_module_is_never_silently_stale(mod):
 
 # -- the measured discrepancy table, pinned ----------------------------------
 
-def test_measured_lane_set_is_17():
-    assert _lane_set() == 17
+def test_measured_lane_set_is_18():
+    """RM-840: Set 18 is the newest ingested set (tft_set18_cdragon.json)."""
+    assert _lane_set() == 18
 
 
-def test_measured_tft_data_declares_set_14_against_a_set_17_lane():
+def test_measured_tft_data_declares_set_14_against_a_set_18_lane():
     from tft import tft_data
 
     assert tft_data.CONSTANTS_SET == 14
-    assert _lane_set() == 17
+    assert _lane_set() == 18
+
+
+def test_measured_both_modules_are_stale_against_the_set_18_lane():
+    """RM-840: tft_pbe_data.py declares Set 17, so it went stale too."""
+    from tft import tft_data, tft_pbe_data
+
+    assert tft_pbe_data.CONSTANTS_SET == 17
+    problems = ro.constants_health()["problems"]
+    for mod in (tft_data, tft_pbe_data):
+        assert any(mod.__name__ in p and "STALE" in p for p in problems), mod.__name__
 
 
 def test_measured_neither_module_is_in_client_verified():
@@ -162,7 +190,7 @@ def test_measured_patch_notes_contradict_the_l7_three_cost_odds():
     """
     from tft import tft_data, tft_pbe_data
 
-    meta = json.loads(LIVE_META.read_text(encoding="utf-8"))
+    meta = json.loads(SET17_META.read_text(encoding="utf-8"))
     note = meta["_patch_notes_17.1"]["shop_lv7"]
     pcts = [int(x) for x in re.findall(r"(\d+)%", note)]
     assert pcts == [16, 19], f"patch note text moved: {note!r}"
@@ -180,7 +208,7 @@ def test_measured_patch_notes_contradict_the_l7_three_cost_odds():
 
 def test_constants_health_reports_every_known_problem():
     report = ro.constants_health()
-    assert report["lane_set"] == 17
+    assert report["lane_set"] == 18
     assert set(report["modules"]) == {"tft.tft_data", "tft.tft_pbe_data"}
     blob = " | ".join(report["problems"])
     assert "STALE" in blob

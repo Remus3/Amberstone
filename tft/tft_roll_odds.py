@@ -281,17 +281,15 @@ def rolls_for_confidence(
 def constants_health(lane_set: int | None = None) -> dict:
     """Report how stale / unverifiable the TFT roll constants are.
 
-    lane_set defaults to the "_set" the TFT lane's live meta file declares.
+    lane_set defaults to the set the TFT lane resolves to (tft/tft_set.py:
+    live set id, then RC_TFT_SET, then the newest ingested set - RM-840;
+    it was the "_set" of a hard-wired tft_set17_meta.json before).
     Returns a plain dict so a test can pin it and a caller can render it.
     """
-    import json
-    from pathlib import Path
-
-    from tft import tft_data, tft_pbe_data
+    from tft import tft_data, tft_pbe_data, tft_set
 
     if lane_set is None:
-        meta = Path(__file__).parent.parent / "data" / "meta" / "tft_set17_meta.json"
-        lane_set = int(json.loads(meta.read_text(encoding="utf-8"))["_set"])
+        lane_set = tft_set.resolve_set()
 
     modules = [load_constants(m) for m in (tft_data, tft_pbe_data)]
     report = {

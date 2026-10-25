@@ -115,6 +115,13 @@ class TftStateReader:
         if not raw or not isinstance(raw,dict): return None
         gd=raw.get("gameData",{})
         if "TFT" not in gd.get("gameMode",""): return None
+        # RM-840: a set id in the live game data (if :2999 carries one -
+        # UNMEASURED, live-game-gated) overrides the newest-set default in
+        # tft/tft_set.py. Fail-soft: never blocks the read.
+        try:
+            from tft import tft_set
+            tft_set.note_live_set_from_game_data(gd)
+        except Exception: pass  # noqa: BLE001
         return self._parse(raw,gd=gd)
     @staticmethod
     def detect_variant(gd: dict) -> str:
