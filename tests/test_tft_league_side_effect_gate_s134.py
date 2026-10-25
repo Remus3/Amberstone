@@ -406,6 +406,42 @@ def test_rewind_writer_league_pin_is_not_tft_excluded():
     assert rlw._is_tft_pin({"queue_id": 1100, "game_mode": ""})
 
 
+def test_rewind_writer_league_pin_passes_the_tft_gate():
+    # Positive control through _staged_attempt itself: a League pin gets past
+    # the TFT gate (and stops at the unconfigured key, before any Riot call).
+    from core import riot_api
+    with mock.patch.object(riot_api, "is_configured", return_value=False):
+        res = _staged({"target_id": "NA1_5", "queue_id": 450,
+                       "game_mode": "ARAM", "riot_id": None})
+    assert res["status"] == "no_api_key", res
+
+
+def test_tft_excluded_is_an_excluded_receipt():
+    from lib import ingest_receipt
+    assert ingest_receipt.classify("tft_excluded") == ingest_receipt.CLASS_EXCLUDED
+
+
+def _ingest_lag_state(tmp_path, queue_id, game_mode):
+    import json
+    import time
+
+    from core import ops_panels
+    pin = tmp_path / "last_game_end.json"
+    pin.write_text(json.dumps({"game_id": "5", "queue_id": queue_id,
+                               "game_mode": game_mode,
+                               "written_at": time.time()}), encoding="utf-8")
+    return ops_panels._ingest_lag(pin, tmp_path / "absent.db",
+                                  time.time())["state"]
+
+
+def test_ops_panel_reads_a_tft_pin_as_excluded(tmp_path):
+    assert _ingest_lag_state(tmp_path, 1090, "TFT") == "excluded"
+
+
+def test_ops_panel_league_pin_is_not_excluded(tmp_path):
+    assert _ingest_lag_state(tmp_path, 420, "CLASSIC") != "excluded"
+
+
 # ------------------------------------------------- League performance rating
 
 
