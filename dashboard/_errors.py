@@ -43,16 +43,28 @@ GENERIC_ERROR = "internal error - see logs"
 
 
 def send_error(h, exc: Exception, status: int = 500, *,
-               public_msg: str | None = None) -> None:
+               public_msg: str | None = None, fields: dict | None = None,
+               log_traceback: bool = False) -> None:
     """Send a user-safe JSON error envelope and log the raw cause.
 
     ``exc`` never reaches the response body. Pass ``public_msg`` for a curated
     degraded-mode line; omit it for the generic one.
+
+    RM-835: ``fields`` are a route's own envelope keys, placed before
+    ``error`` (``{"ok": False}`` keeps a route's ``{ok, error}`` shape), so a
+    route can adopt this path without changing the keys its client reads.
+    They are server-authored constants - never put the exception in them -
+    and an ``error`` key among them is overwritten by the fixed line.
+    ``log_traceback=True`` adds the traceback to the one log line (the
+    logger's RM-811 scrub filter renders it).
     """
     msg = public_msg or GENERIC_ERROR
     # RM-811 residuals: the raw cause is scrubbed (RM-321) - this is the
     # last-resort path of every route, Mission Control's two included, and an
     # exception's text can carry the client's own characters.
-    log.warning("%s: %s: %s", msg, type(exc).__name__, scrub_log(str(exc)))
-    payload = json.dumps({"error": msg}).encode("utf-8")
+    log.warning("%s: %s: %s", msg, type(exc).__name__, scrub_log(str(exc)),
+                exc_info=exc if log_traceback else None)
+    body = dict(fields or {})
+    body["error"] = msg
+    payload = json.dumps(body).encode("utf-8")
     h._send(status, payload, "application/json")

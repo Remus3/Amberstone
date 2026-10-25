@@ -46,7 +46,8 @@ Failure modes (mirror routes_ds_profile):
   - 200  ok=false reason=no_matchup when the engine responded with a non-dict
          or a dict lacking the "verdict" key (defensive - never leaks a partial
          shape as ok=true).
-  - 500  any unexpected top-level exception (body str(exc)[:200]).
+  - 500  any unexpected top-level exception: {ok:false, error:<fixed line
+         ending "see logs">}; the cause is logged, never sent (RM-835).
 
 5-min TTL in-process cache keyed (champ_a, champ_b, level_a, level_b, mode).
 cached flag + elapsed_ms on every 200. _reset_caches() clears the response
@@ -62,6 +63,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from dashboard._dispatch import equals
+from dashboard._errors import send_error
 
 log = logging.getLogger("rc.web_dashboard")
 
@@ -266,11 +268,11 @@ def _serve_ds_matchup(h) -> None:
                 "application/json")
 
     except Exception as exc:  # noqa: BLE001
-        log.warning("api/ds-matchup: %s", exc)
+        # RM-835: a fixed line, never str(exc); send_error logs the cause
+        # once, scrubbed, with its type name.
         try:
-            h._send(500, json.dumps({
-                "ok": False, "error": str(exc)[:200],
-            }).encode("utf-8"), "application/json")
+            send_error(h, exc, public_msg="ds-matchup failed - see logs",
+                       fields={"ok": False})
         except Exception:  # noqa: BLE001
             pass
 

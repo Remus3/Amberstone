@@ -44,6 +44,7 @@ Errors:
 import json
 import logging
 
+from core.log_scrub import scrub_log
 from dashboard._dispatch import equals
 from dashboard._json_flags import (
     bad_flag_body,
@@ -181,8 +182,11 @@ def _serve_sr_draft_apply_post(h, payload) -> None:
                     r.read()
                 queued.append(cmd_obj.get("cmd"))
             except Exception as exc:  # noqa: BLE001
-                log.warning("sr-draft enqueue %s: %s", cmd_obj.get("cmd"), exc)
-                notes.append(f"{cmd_obj.get('cmd')}: {exc}")
+                # RM-835: the note is a fixed line (it rode the reply's
+                # `notes` as the exception's text); the cause is logged.
+                log.warning("sr-draft enqueue %s: %s: %s", cmd_obj.get("cmd"),
+                            type(exc).__name__, scrub_log(str(exc)))
+                notes.append(f"{cmd_obj.get('cmd')}: enqueue failed - see logs")
 
         if push_runes and rune_cmd is None and isinstance(runes, dict) and runes:
             notes.append("runes: keystone/tree unrecognised - skipped")
