@@ -1,0 +1,30 @@
+{
+ "_note": "SYNTHETIC per-round fixture for tests/test_tft_sources_*.py (TFT-02). Every identity value is a Sentinel; shapes follow the live TFTEoGStats.json and TFT.log measured 2026-10-25. t = seconds after t0_epoch (UTC); each rewrite file is written as TFTEoGStats.json with mtime t0_epoch + t.",
+ "t0_epoch": 1792929600,
+ "rewrites": [
+  {
+   "file": "eog_rewrite_01.json",
+   "t": 50.0
+  },
+  {
+   "file": "eog_rewrite_02.json",
+   "t": 97.0
+  },
+  {
+   "file": "eog_rewrite_03.json",
+   "t": 110.0
+  },
+  {
+   "file": "eog_rewrite_04.json",
+   "t": 131.0
+  },
+  {
+   "file": "eog_rewrite_05.json",
+   "t": 162.0
+  },
+  {
+   "file": "eog_rewrite_06.json",
+   "t": 200.0
+  }
+ ]
+}
