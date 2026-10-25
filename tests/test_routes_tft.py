@@ -560,9 +560,12 @@ def test_no_route_opens_a_network_connection(env, monkeypatch):
     def refuse(*_a, **_kw):
         raise AssertionError("network call on the request path")
 
-    monkeypatch.setattr(socket.socket, "connect", refuse)
     # this_thread_only, not a process-wide fake (RM-801 guard): a leftover
-    # server thread of an earlier file keeps the real function.
+    # server thread of an earlier file keeps the real function. connect is a
+    # CLASS attribute every socket instance shares (s135 C1: it was faked
+    # process-wide here).
+    monkeypatch.setattr(socket.socket, "connect",
+                        this_thread_only(refuse, socket.socket.connect))
     monkeypatch.setattr(socket, "create_connection",
                         this_thread_only(refuse, socket.create_connection))
     paths = ["/api/tft/live", "/api/tft/matches", "/api/tft/match/m-done-0",

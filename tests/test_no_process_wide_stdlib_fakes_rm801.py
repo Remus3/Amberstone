@@ -85,7 +85,10 @@ SHARED_ATTRS: dict[str, frozenset[str]] = {
     }),
     # `urllib.request` ends in `request`; only urllib.request owns `urlopen`.
     "request": frozenset({"urlopen"}),
-    "socket": frozenset({"socket", "create_connection", "getaddrinfo"}),
+    # `connect`: `socket.socket` ends in `socket` too, so a patch of the
+    # CLASS attribute every socket instance shares resolves here (s135 C1:
+    # tests/test_routes_tft.py faked socket.socket.connect process-wide).
+    "socket": frozenset({"socket", "create_connection", "getaddrinfo", "connect"}),
     # RM-880: the shared attributes the RM-815 census found faked process-wide.
     "os": frozenset({"name", "kill", "killpg"}),
     # `os.path` ends in `path`; read as os.path only under an `os` (_QUALIFIED).
@@ -703,6 +706,13 @@ def test_the_detector_resolves_a_non_literal_attribute_name():
 
 def test_the_detector_covers_getaddrinfo():
     assert scan_source("monkeypatch.setattr(socket, 'getaddrinfo', f)")
+
+
+def test_the_detector_covers_the_socket_class_connect():
+    assert scan_source("monkeypatch.setattr(socket.socket, 'connect', f)")
+    assert scan_source("monkeypatch.setattr('socket.socket.connect', f)")
+    assert not scan_source("monkeypatch.setattr(socket.socket, 'connect',"
+                           " this_thread_only(f, socket.socket.connect))")
 
 
 # RM-815: the six shapes the RM-801 verifier found the detector blind to.
