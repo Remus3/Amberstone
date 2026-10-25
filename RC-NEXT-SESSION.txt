@@ -2,41 +2,38 @@ NEXT SESSION
 ------------
 SESSION: 136
 PUSH HOLD IS ON from this session's start (operator 2026-10-25: "push hold will remain in effect next
-session start"): commit locally; push only when the operator lifts it in chat. The one push the
-operator authorized for the s135 /done did NOT happen - HALTED at its own pre-push dry run (below).
+session start"): commit locally; push only when the operator lifts it in chat. The s135 /done's
+one authorized push was halted by the credential scan, then cleared by ASKS 37 (LEDGER 1904).
 s135 landed all s134 work on local main (C1 gated suite green), scrubbed 3 real game ids from the
-unpushed history, ran the N8 / TFT-08 backfills live, merged GH1 locally (LEDGER 1883-1903; WAKEUP
+unpushed history, ran the N8 / TFT-08 backfills live, merged GH1 (LEDGER 1883-1904; WAKEUP
 2026-10-25c). s134 blocks: docs/handoff-archive/RC-2026-10-25.txt 4-5; prior file: f51cd2f32.
 HISTORY REWRITTEN TWICE 2026-10-09 (LEDGER 1699 B, 1701): old SHAs via .git/filter-repo/commit-map*;
-s135 id scrub (LEDGER 1899): pre-scrub SHAs via docs/_archive/2026-10/s135-id-scrub-commit-map.txt.
-A fresh clone runs scripts/install_hooks.py and sets LOCAL fleet.operatorIdent before any push.
-NEVER PUSH (real game ids inside): lane/* and the old s134 / s135 builder branches, refs/stash, every
-archive/* tag (never `git push --tags`), ops/runtime/branch_bundles/*. Push main only.
+s135 SHAs: docs/_archive/2026-10/s135-id-scrub-commit-map.txt (LEDGER 1899), then
+s135-cred-pragma-commit-map.txt beside it (LEDGER 1904). Fresh clone: scripts/install_hooks.py and
+LOCAL fleet.operatorIdent before any push.
+NEVER PUSH (real game ids or the bare fixture line inside): lane/*, s135-land and the old s134 / s135
+builder branches, refs/stash, every archive/* tag incl. s135-pre-credpragma-main (never `git push
+--tags`), ops/runtime/branch_bundles/* incl. s135-pre-credpragma.bundle. Push main only.
 CPU (s120): glance at CPU, FREE MEMORY and orphaned pytest / python / node trees BEFORE heavy work.
 SCRATCH (s127; collided twice again s134): every sub-agent prompt names a UNIQUE scratch subfolder.
 FROZEN: the s135 grant was SESSION-scoped (ASKS 35) - re-ask before any frozen edit.
 
-Next action: get the operator's ASKS 37 call and the push-hold lift, then push per
-ops/runtime/gh1/PLAN.txt. In the next TFT game confirm N13 (RC follows YOU, not an opponent),
+Next action: read the PUSH block (result of the s135 /done push). In the next TFT game confirm N13 (RC follows YOU, not an opponent),
 stage / level / gold non-empty (D1) and coaching sane, and QA it (ops/runtime/tft_qa/<match>/).
 FIRST: CPU / memory glance; inbox_tick.py --pending (empty at the /done); gh pr list (0);
 git fetch + origin/main == df946b00d still (else re-plan: the lease would fail).
 
 ====================
-PUSH BLOCKED (s135 /done, LEDGER 1903) - FIRST NEXT ACTION
+PUSH (s135 /done, LEDGER 1903-1904)
 ====================
-- Local main = 7cb2b412d + 595f89540 (wrap docs) + 66a468dc8 (GH1 merge) + the hand-off commit;
-  origin/main df946b00d (the 3 web-UI commits) is not an ancestor of main.
-- Dry runs over df946b00d..main (164 commits): identity rc 0; sibling sweep clean ("ARMED WITH A
-  MEASURED ESCAPE RATE ABOVE ZERO"); scrubbed ids 0; bot_merge_check --range 4023fa2a3..main clean;
-  CREDENTIAL SCAN HALT: tests/test_gated_frame_readback.py line 28 `TOKEN = "tok-..."` (fake fixture,
-  checked unequal to the live vision token), class generic_secret_assignment, added by unpushed
-  03bdc92f3 (s134 gated lane c14, LEDGER 1888). The scan reads each commit's ADDED lines, no
-  baseline: only `rc-credential-scan: allow-fixture` on that line IN that commit clears it. Fix = a
-  history edit of the 52 unpushed commits from 03bdc92f3 on (as the id scrub: filter-repo --refs
-  range, --replace-text on that one line; map appended to docs/_archive/2026-10/; backup tags +
-  bundle) - the operator's call (ASKS 37).
-- Then push exactly per ops/runtime/gh1/PLAN.txt: P1 fetch + lease check; re-run the 3 dry runs + the
+- Halted first (LEDGER 1903): the credential scan flagged the fake tok- fixture line added by
+  unpushed 03bdc92f3. ASKS 37 ADJUDICATED (FLEET item 1, LEDGER 1904): the scanner's own line pragma
+  added IN that commit by a range filter-repo (52 commits; 03bdc92f3 -> 4ed279e8a, 7cb2b412d ->
+  7814951c6, 66a468dc8 -> b083af9d3 GH1 merge; GH1 commits kept their SHAs). Main e9c133973 + the
+  wrap commit. Dry runs over df946b00d..main: credential scan 0 findings, identity rc 0, sibling
+  sweep clean ("ARMED WITH A MEASURED ESCAPE RATE ABOVE ZERO"), bot_merge_check clean, ids 0.
+- Push per ops/runtime/gh1/PLAN.txt follows this commit in the same /done; result in the next commit.
+- PLAN.txt: P1 fetch + lease check; re-run the 3 dry runs + the
   id check; protection allow_force_pushes true -> `fleet_gitlock.py run --owner <id> -- git push
   --force-with-lease=main:df946b00d origin main` (hooks run; never --no-verify, tags or other refs)
   -> restore from ops/runtime/gh1/protection-before.json, read back equal (s135 /done read:
@@ -215,7 +212,7 @@ Rows and decisions:
 BLOCKED-OPERATOR: main.py:54 (frozen; ENV-APIKEY); RM-603 in-game callout compliance; RM-681 attended
 calls; the RM-750 live check (after ASKS 20, with RC stopped: DS must come back without RC); the frozen
 app/_game_lifecycle.py mid-game start fix; the ops/rc_supervisor.py half of RM-258; RM-827 (frozen key
-readers); ASKS 18 / 28 / 29 / 30 / 32 / 36 / 37. The GitHub About "Include in the home page" untick
+readers); ASKS 18 / 28 / 29 / 30 / 32 / 36. The GitHub About "Include in the home page" untick
 (MAIN 2312 items 1-2; no API; do not touch the v0.1.0 release, its tag or Pages) stays DEFERRED.
 BLOCKED-LIVE-GAME: S6 (above); the RM-752 follow-up (probe the :2999 tools/liveclient_relay.py at a
 TLSv1_2 floor in a live game; it keeps TLSv1 until measured); Y-01 (5 real game ends); the s133 live
@@ -242,8 +239,8 @@ BLOCKED-BOUNDARY (halt: out-of-tree, joint, or MAIN's act):
 ====================
 OPEN - OPERATOR ASKS (batched, re-ask in ONE line; last re-batched in chat s135)
 ====================
-1-7, 9-12 unanswered s111-s135; 15, 17, 18, 20-26, 28-33, 36, 37 open; 19 WITHDRAWN s126; 27
-RESOLVED s127; 34 APPROVED s135 (GH1 rebuilt + merged locally); 35 granted for s135 only.
+1-7, 9-12 unanswered s111-s135; 15, 17, 18, 20-26, 28-33, 36 open; 19 WITHDRAWN s126; 27
+RESOLVED s127; 34 APPROVED s135 (GH1); 35 granted for s135 only; 37 ADJUDICATED s135 (LEDGER 1904).
 GitHub security read-back 2026-10-22: alerts, secret scanning, push protection ON; CodeQL ADVANCED,
 DEFAULT suite; Dependabot security updates read DISABLED though the operator reports them on.
 1. GitHub repo topics (README item 8, RM-731): pick them (20 today).
@@ -291,9 +288,6 @@ DEFAULT suite; Dependabot security updates read DISABLED though the operator rep
 33. Disable the old Anthropic key "sadf" in the Console if not already (replaced s134).
 36. RM-906: real Riot game / match ids are already in PUBLISHED origin/main history (pre-s134): leave
     them, or order a published-history rewrite + force-push?
-37. PUSH: OK to edit unpushed commit 03bdc92f3 (add the allow-fixture pragma to the fake TOKEN line in
-    tests/test_gated_frame_readback.py; filter-repo over the 52 unpushed commits after it, map
-    appended), then push per ops/runtime/gh1/PLAN.txt? (Alternative: leave main unpushed.)
 
 ====================
 OPEN - WATCH AND DATA (act only when seen)
@@ -324,10 +318,10 @@ OPEN - WATCH AND DATA (act only when seen)
 ====================
 DO NOT RE-LITIGATE (each with Reverses if:)
 ====================
-- s135 (LEDGER 1883-1903; WAKEUP_NOTES 2026-10-25c): every landing (P0-F, 7 lanes, TFT-04 / -09 / -08 /
-  -02, N9, N8, N13), the C1 fixes and the green gated run on 7cb2b412d, the id scrub (map in
-  docs/_archive/2026-10/), the N8 / TFT-08 live backfills (re-dry plans 0), RM-902 closed, the GH1
-  rebuild + local merge, adjudications N9 baf8644b9 LAND / TFT-09 recommend withheld while live /
+- s135 (LEDGER 1883-1904; WAKEUP_NOTES 2026-10-25c): every landing (P0-F, 7 lanes, TFT-04 / -09 / -08 /
+  -02, N9, N8, N13), the C1 fixes and the green gated run on 7cb2b412d (now 7814951c6), the id scrub
+  and the cred-pragma rewrite (maps in docs/_archive/2026-10/), the N8 / TFT-08 live backfills
+  (re-dry plans 0), RM-902 closed, the GH1 rebuild + merge, adjudications ASKS 37 pragma / N9 baf8644b9 LAND / TFT-09 recommend withheld while live /
   N8's comp-name rule kept (the queue lane's rule made "Dark Star Vertical") / TFT-04's live OCR path
   kept. Reverses if: a live re-check of one of those acceptances fails.
 - s134 (LEDGER 1861-1882): every shipped row, VERBATIM with its Reverses if: in archive block 5.
@@ -347,8 +341,8 @@ docs/handoff-archive/RC-2026-10-25.txt block 3 - read them before landing or pus
   -- git commit -C <sha>`.
 - The pre-push gates (identity, sibling sweep, credential scan) read EVERY commit in the range, the
   credential scan per commit's added lines with no baseline: dry-run all three (stdin = the ref line,
-  args = origin <url>) plus the scrubbed-id check BEFORE any push; a hit in an old unpushed commit
-  needs a history edit, never a bypass.
+  args = origin <url>) plus the scrubbed-id check BEFORE any push; a fake-fixture hit in an old
+  unpushed commit gets the line pragma IN that commit (LEDGER 1904 method), never a bypass.
 - Builders' LEDGER numbers and RM ids are PROVISIONAL: the merger renumbers at landing.
 - Land TFT code only between games (M1c polled the LCU phase every 60 s): a .py merge restarts RC.
 - Gated Tier-2: -n 6 + FLEET_SUITE_COMMIT_MARGIN_MB=18432 (s135 datum), output to a file, summary +
@@ -360,13 +354,14 @@ docs/handoff-archive/RC-2026-10-25.txt block 3 - read them before landing or pus
 ====================
 STATUS, CONTEXT, ACCEPTANCE
 ====================
-Status (s135 wrap): NO PUSH - halted by the credential scan; nothing left the tree; protection
-untouched (read back). Commits: 595f89540 (LEDGER 1898-1902, BACKLOG, ROADMAP, WAKEUP + prune),
-66a468dc8 (GH1 merge), the hand-off commit (LEDGER 1903, archive blocks 4-5). Gate: ruff passed;
+Status (s135 wrap): push per PLAN.txt follows this commit (result in the next commit). Commits
+(post-rewrite SHAs): 2e23ce8d1 (LEDGER 1898-1902, BACKLOG, ROADMAP, WAKEUP + prune), b083af9d3 (GH1
+merge), cd450e687 + e9c133973 (hand-off, LEDGER 1903, archive blocks 4-5, board line), the ASKS 37
+commit (LEDGER 1904, cred-pragma map, this file). Gate: ruff passed;
 hygiene trio 14 passed; drift_guard 0 (after re-mirroring ship-batch / test-first-autopilot into the
 gitignored .claude/commands); md guards (108 modules) 2686 passed, 4 skipped, exit 0; tracker /
-roadmap / checklist guards 138 passed. Full suite (2c): no push, no dispatch (it would test origin);
-C1 run 2 on 7cb2b412d (45565 passed, exit 0) covers main but docs + riot.txt. CI: none. DS 1.290.0 /
+roadmap / checklist guards 138 passed. Full suite (2c): C1 run 2 on 7cb2b412d (45565 passed, exit
+0); main differs by docs, riot.txt and one test comment; dispatch: next commit. DS 1.290.0 /
 16.21.1 / 173 (pid 26232); RC pid 7084 alive, last_reload_ok, fatal 0; restart_trigger empty; LCU
 Lobby, no game; session file 3.3 MB; no intent / steers; inbox empty; 0 PRs. Memory: 3 new.
 Board: pushed at /done NON-final (datasets/board v26, blob 0e29a50a; --final marks carried rows done).
@@ -376,8 +371,8 @@ Context: docs/TFT_PROGRAM.md (slices, ADR-018); tft/engine (Augur); tft/rounds (
 tft/local_player.py (N13); data/tft_matches (RM-616); ops/runtime/tft_qa/ (QA reports incl.
 20261025-104400/QA_REPORT.md); ops/runtime/gh1/ (PLAN.txt, protection-before.json).
 
-Acceptance: ASKS 37 ruled and, once the hold is lifted, main pushed per PLAN.txt with protection
-restored and riot.txt read back live; a TFT game shows RC following YOU with non-empty stage / level
+Acceptance: the s135 push read back (origin/main == main, protection restored, riot.txt live, CI
+result); a TFT game shows RC following YOU with non-empty stage / level
 / gold and coaching, QA written; the 10 locked worktrees removed; the operator asks re-batched in one
 line.
 
