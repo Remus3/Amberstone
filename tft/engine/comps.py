@@ -49,6 +49,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from typing import Any, Iterable, Mapping, Optional
@@ -88,12 +89,8 @@ def envelope_value(row: Any, name: str, *, min_conf: float = FIELD_MIN_CONF):
     if isinstance(src, str) and src in NOT_EVIDENCE_SRC:
         return None
     conf = row.get(name + "_conf")
-    if conf is not None:
-        try:
-            if float(conf) < min_conf:
-                return None
-        except (TypeError, ValueError):
-            return None
+    if conf is not None and not _conf_ok(conf, min_conf):
+        return None
     return value
 
 
@@ -105,24 +102,31 @@ def row_is_evidence(row: Any, *, min_conf: float = FIELD_MIN_CONF) -> bool:
     if isinstance(src, str) and src in NOT_EVIDENCE_SRC:
         return False
     conf = row.get("conf")
-    if conf is None:
-        return True
-    try:
-        return float(conf) >= min_conf
-    except (TypeError, ValueError):
-        return False
+    return conf is None or _conf_ok(conf, min_conf)
 
 
 def as_int(value) -> Optional[int]:
+    """An int, or None for anything that is not a plain finite number (never raises)."""
     if isinstance(value, bool) or value is None:
         return None
     if isinstance(value, int):
         return value
-    if isinstance(value, float) and value == value:
-        return int(value)
-    if isinstance(value, str) and value.strip().lstrip("-").isdigit():
-        return int(value.strip())
+    if isinstance(value, float):
+        return int(value) if math.isfinite(value) else None
+    if isinstance(value, str):
+        s = value.strip()
+        body = s[1:] if s.startswith("-") else s
+        if body and body.isascii() and body.isdigit():
+            return int(s)
     return None
+
+
+def _conf_ok(conf, min_conf: float) -> bool:
+    try:
+        c = float(conf)
+    except (TypeError, ValueError):
+        return False
+    return math.isfinite(c) and c >= min_conf
 
 
 def jaccard(a: Iterable, b: Iterable) -> float:
@@ -143,8 +147,17 @@ def placement_of(record: Mapping) -> Optional[int]:
     return p if p is not None and 1 <= p <= 8 else None
 
 
+def _plain(obj):
+    """Mapping keys as strings, recursively, so any record has one canonical text."""
+    if isinstance(obj, Mapping):
+        return {str(k): _plain(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_plain(v) for v in obj]
+    return obj
+
+
 def canonical(obj) -> str:
-    return json.dumps(obj, sort_keys=True, default=str)
+    return json.dumps(_plain(obj), sort_keys=True, default=str)
 
 
 # ------------------------------------------------------------------ set data
@@ -456,7 +469,8 @@ def ordered_records(records: Any) -> list:
 def _exclusion(record: Mapping, setdata: SetData, excluded: frozenset) -> Optional[str]:
     if setdata.set_id is not None and tft_set.parse_set_id(record.get("set_id")) != setdata.set_id:
         return "other_set"
-    if record.get("queue_kind") in excluded:
+    queue_kind = record.get("queue_kind")
+    if isinstance(queue_kind, str) and queue_kind in excluded:
         return "queue_kind"
     return None
 
@@ -465,7 +479,9 @@ def _board_of(mid: str, record: Mapping, setdata: SetData) -> Optional[_Board]:
     units = normalize_board(record.get("final_board"), setdata)
     if not units:
         return None
-    augments = tuple(sorted({a for a in (record.get("augments") or []) if isinstance(a, str) and a}))
+    raw_augments = record.get("augments")
+    raw_augments = raw_augments if isinstance(raw_augments, (list, tuple)) else []
+    augments = tuple(sorted({a for a in raw_augments if isinstance(a, str) and a}))
     return _Board(
         match_id=mid, placement=placement_of(record), units=units,
         unit_set=frozenset(x.api for x in units), signature=trait_signature(units, setdata),
@@ -657,11 +673,23 @@ def assign_comp(board: Any, catalogue: Mapping, setdata: SetData) -> Optional[di
     sig = trait_signature(units, setdata)
     best, best_key = None, None
     for comp in catalogue.get("comps") or []:
-        pool = {c["api"] for c in comp.get("core", [])} | {f["api"] for f in comp.get("flex", [])}
-        s = UNIT_WEIGHT * jaccard(unit_set, pool) + (1.0 - UNIT_WEIGHT) * jaccard(sig, comp.get("signature", []))
-        key = (-s, comp.get("comp_id", ""))
+        if not isinstance(comp, Mapping) or not isinstance(comp.get("comp_id"), str):
+            continue
+        pool = set(comp_units(comp, "core")) | set(comp_units(comp, "flex"))
+        signature = [t for t in comp.get("signature") or [] if isinstance(t, str)]
+        s = UNIT_WEIGHT * jaccard(unit_set, pool) + (1.0 - UNIT_WEIGHT) * jaccard(sig, signature)
+        key = (-s, comp["comp_id"])
         if best_key is None or key < best_key:
             best, best_key = comp, key
     if best is None or -best_key[0] < JOIN_SIMILARITY:
         return None
-    return {"comp_id": best["comp_id"], "label": best["label"], "similarity": round(-best_key[0], 3)}
+    return {"comp_id": best["comp_id"], "label": best.get("label"), "similarity": round(-best_key[0], 3)}
+
+
+def comp_units(comp: Any, key: str) -> list:
+    """The apiNames of a catalogue comp's "core" / "flex" / "three_star" rows (tolerant of junk)."""
+    if not isinstance(comp, Mapping):
+        return []
+    rows = comp.get(key) or []
+    return [r["api"] for r in rows if isinstance(r, Mapping) and isinstance(r.get("api"), str)] \
+        if isinstance(rows, (list, tuple)) else []

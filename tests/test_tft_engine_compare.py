@@ -55,6 +55,12 @@ def test_compare_lobby_orders_opponents_by_strength(sd):
     json.dumps(rows)
 
 
+def test_compare_lobby_accepts_a_plain_list_of_boards(sd):
+    rows = compare.compare_lobby([u("U_Gale")], [[u("U_Ace")], [u("U_Jinx", 2)]], sd)
+    assert [r["player_key"] for r in rows] == ["1", "0"]
+    assert compare.compare_lobby([u("U_Gale")], None, sd) == []
+
+
 def test_empty_boards_compare_cleanly(sd):
     c = compare.compare_boards([], [], sd)
     assert c["own"]["units"] == 0 and c["contested"] == []

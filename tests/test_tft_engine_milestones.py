@@ -54,7 +54,7 @@ def test_worked_example_levels_and_rolldowns(s18):
     first, second = m["rolldowns"]
     assert (first["rerolls"], first["reroll_gold"], first["gold_start"], first["gold_end"]) == (13, 26, 64, 3)
     assert (second["rerolls"], second["reroll_gold"], second["gold_end"]) == (6, 12, 0)
-    assert m["gold_at"] == {"3-2": 40, "4-1": 53}
+    assert m["gold_at"] == {"4-1": 53}  # the report has no 3-2 gold reading
     assert m["hp_at"] == {"4-1": 100}
     assert m["first_label"] == "2-2" and m["last_label"] == "6-1" and m["rounds"] == 28
     assert m["first_slam"] is None and m["slam_censored"] is False
@@ -202,6 +202,32 @@ def test_compare_to_average_reads_earlier_same_later(sd):
     assert rows["level_6"]["verdict"] == "later"
     assert rows["gold_at_3-2"] == {"milestone": "gold_at_3-2", "this_match": 2, "median": 40.0, "verdict": "lower"}
     assert "level_8" not in rows  # never reached in this match
+
+
+def test_duplicate_round_rows_resolve_by_content_not_input_order(sd):
+    rec = timeline_record("d", 1, {"2-1": 4})
+    dup = dict(rec["rounds"][1], level=5)            # a second 2-2 row that disagrees
+    forward = dict(rec, rounds=rec["rounds"] + [dup])
+    backward = dict(rec, rounds=[dup] + list(reversed(rec["rounds"])))
+    assert milestones.mine_match(forward, sd) == milestones.mine_match(backward, sd)
+
+
+def test_malformed_rows_never_raise(sd):
+    rec = timeline_record("bad", 1, {"2-1": 4, "3-1": 6})
+    by_label = {r["label"]: r for r in rec["rounds"]}
+    by_label["2-2"]["level"] = float("inf")
+    by_label["2-3"]["level"] = chr(0xB2)
+    by_label["2-4"]["label"] = "--"
+    rec["units"] = [dict(obs("2-2", "U_Cora"), phase=["planning_start"]), dict(obs("2-3", "U_Cora"), zone=["board"]),
+                    "junk", None]
+    rec["shop_refreshes"] = [{"round_seq": "x"}, 5]
+    m = milestones.mine_match(rec, sd)
+    assert m["level_reached"]["6"] == "3-1"
+    assert milestones.mine_match(None, sd)["rounds"] == 0
+    weird = {"match_id": "w", "rounds": 5, "units": "abc", "shop_refreshes": {"a": 1}}
+    assert milestones.mine_match(weird, sd)["rounds"] == 0
+    assert milestones.compare_to_average({"level_reached": None, "gold_at": None}, {"level_reached": None}) == []
+    assert milestones.compare_to_average(m, None) == []
 
 
 # ------------------------------------------------------------ store adapter

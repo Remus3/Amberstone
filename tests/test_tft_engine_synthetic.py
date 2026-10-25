@@ -15,7 +15,12 @@ Two kinds of input:
   gitignored), rebuilt as TFT-01 store rows: the level / econ table, the
   roll-downs at 5-3 and 5-5, the 4-2 level-plus-Draven spend that is NOT a
   roll-down, and the final EoG board (Set 18 apiNames, which are game data).
-  Stage 1 and 2-1 were not captured, so the rows start at 2-2.
+  Stage 1 and 2-1 were not captured, so the rows start at 2-2. Levels fill
+  every round between the report's rows (it lists the round each level was
+  first seen); gold is set only on the rounds the report lists. The REROLL
+  COUNTS are synthetic - the report gives gold totals only - chosen so the
+  spends add up: 5-3 = level to 9 (64 -> 30) then 13 rerolls (30 -> 4) and a
+  1-gold buy (-> 3); 5-5 = 6 rerolls (12 -> 0); 4-2 and 3-5 one reroll each.
 """
 from __future__ import annotations
 
@@ -184,7 +189,7 @@ _WORKED_LEVELS = {
     "5-1": 8, "5-2": 8, "5-3": 9, "5-4": 9, "5-5": 9, "5-6": 9, "5-7": 9, "6-1": 9,
 }
 _WORKED_GOLD = {  # (gold at planning start, gold at planning end)
-    "2-2": (12, 12), "2-5": (28, 24), "2-7": (43, 43), "3-1": (56, 36), "3-2": (40, 40),
+    "2-2": (12, 12), "2-5": (28, 24), "2-7": (43, 43), "3-1": (56, 36),
     "3-3": (57, 59), "3-5": (71, 50), "3-6": (64, 50), "4-1": (53, 68), "4-2": (57, 12),
     "4-6": (47, 47), "4-7": (72, 72), "5-1": (50, 50), "5-2": (52, 52), "5-3": (64, 3),
     "5-5": (12, 0), "5-7": (13, 13), "6-1": (31, 34),

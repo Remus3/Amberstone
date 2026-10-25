@@ -48,10 +48,17 @@ def compare_boards(own: Any, other: Any, setdata: SetData) -> dict:
                 contested=sorted(own_apis & other_apis))
 
 
-def compare_lobby(own: Any, others: Mapping, setdata: SetData) -> list:
-    """compare_boards against each opponent, strongest (star_cost) first."""
+def compare_lobby(own: Any, others: Any, setdata: SetData) -> list:
+    """compare_boards against each opponent, strongest (star_cost) first.
+
+    others = {player_key: board}; a plain list of boards is keyed by its index.
+    """
+    if isinstance(others, (list, tuple)):
+        others = {str(i): board for i, board in enumerate(others)}
+    if not isinstance(others, Mapping):
+        return []
     rows = []
-    for key in sorted(others or {}, key=str):
+    for key in sorted(others, key=str):
         row = compare_boards(own, others[key], setdata)
         row["player_key"] = key
         rows.append(row)

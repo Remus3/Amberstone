@@ -239,6 +239,43 @@ def test_catalogue_is_json_and_ascii(sd):
     assert blob.isascii()
 
 
+def test_as_int_never_raises():
+    cases = ["--5", chr(0xB2), float("inf"), float("-inf"), float("nan"), "12", "-3", " 7 ", True, None, 3.9, [1]]
+    assert [comps.as_int(v) for v in cases] == [None, None, None, None, None, 12, -3, 7, None, None, 3, None]
+
+
+def test_envelope_rejects_nan_confidence():
+    assert comps.envelope_value({"gold": 5, "gold_conf": float("nan")}, "gold") is None
+    assert comps.envelope_value({"gold": 5, "gold_conf": "high"}, "gold") is None
+    assert comps.envelope_value({"gold": 5, "gold_conf": 0.9, "gold_src": "ocr"}, "gold") == 5
+    assert comps.row_is_evidence({"conf": float("nan")}) is False
+
+
+def test_malformed_records_never_stop_the_catalogue(sd):
+    junk = [
+        {"match_id": "j1", "set_id": SYNTH_SET_ID, "placement": "--3", "final_board": board_a(0)},
+        {"match_id": "j2", "set_id": SYNTH_SET_ID, "queue_kind": ["double_up"], "final_board": board_a(1)},
+        {"match_id": "j3", "set_id": SYNTH_SET_ID, 1: "mixed keys", "augments": "A_Rich", "final_board": board_a(2)},
+        {"match_id": "j4", "set_id": SYNTH_SET_ID, "final_board": "junk"},
+        {"match_id": "j5", "set_id": SYNTH_SET_ID, "placement": float("inf"),
+         "final_board": [None, 7, {"champion_api": "U_Gale", "star": "x", "items_json": "{bad"}] + board_a(0)[1:]},
+        None, "not a record", 42,
+    ]
+    cat = comps.build_catalogue(junk, sd)
+    assert cat["games"] == 4 and cat["skipped"]["no_board"] == 1
+    (comp,) = cat["comps"]
+    assert comp["placed_games"] == 0 and comp["augments"] == []
+    again = comps.build_catalogue(list(reversed(junk)), sd)
+    assert json.dumps(again, sort_keys=True) == json.dumps(cat, sort_keys=True)
+
+
+def test_assign_comp_skips_malformed_catalogue_rows(sd):
+    cat = comps.build_catalogue(synth_history(), sd)
+    broken = dict(cat, comps=[{"label": "no id"}, "junk", {"comp_id": 5}] + cat["comps"])
+    assert comps.assign_comp(board_a(4), broken, sd)["comp_id"] == cat["comps"][0]["comp_id"]
+    assert comps.assign_comp(board_a(4), {"comps": [{"label": "no id"}]}, sd) is None
+
+
 def test_worked_example_catalogue_on_real_set18_data(s18):
     cat = comps.build_catalogue([worked_example_record()], s18)
     (comp,) = cat["comps"]
