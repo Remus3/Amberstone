@@ -142,8 +142,12 @@ def test_real_tft_row_renders_the_honest_tft_fallback(mock_server, pw_browser):
             ["STAGE", "-", True], ["LEVEL", "-", True],
             ["HP", "-", True], ["GOLD", "-", True],
         ]
-        assert _text(page, "am-build-body").strip() == "No League item build in TFT."
-        assert _text(page, "am-map-body").strip() == "No map intel in TFT."
+        assert _text(page, "am-build-body").strip() == (
+            "UNITS\nUnits appear after the TFT client writes its first round."
+        )
+        assert _text(page, "am-map-body").strip() == (
+            "LOBBY\nLobby placements and HP appear after the first round."
+        )
 
         view = _text(page, "view-active-match")
         for needle in _LOL_ONLY:
@@ -290,7 +294,9 @@ def test_lcu_phase_blink_holds_then_sr_game_rebuilds_league_panes(
         assert page.locator(_FALLBACK_HEAD).get_attribute(
             "data-am-fallback"
         ) == "tft", "LCU phase blink flipped the live TFT panes"
-        assert _text(page, "am-map-body").strip() == "No map intel in TFT."
+        assert _text(page, "am-map-body").strip() == (
+            "LOBBY\nLobby placements and HP appear after the first round."
+        )
 
         sr = _load("sr")
         sr["lcu"] = copy.deepcopy(tft["lcu"])
@@ -302,7 +308,8 @@ def test_lcu_phase_blink_holds_then_sr_game_rebuilds_league_panes(
         )
         assert page.locator(_FALLBACK_HEAD).count() == 0
         view = _text(page, "view-active-match")
-        for needle in ("No map intel in TFT.", "No League item build in TFT.",
+        for needle in ("Lobby placements and HP appear after the first round.",
+                       "Units appear after the TFT client writes its first round.",
                        "TFT LIVE DATA"):
             assert needle not in view, f"TFT text {needle!r} left in SR game"
         assert _text(page, "am-build-body").strip(), "SR build pane left blank"
