@@ -34,12 +34,21 @@ a `locate(ts)` callable returns (`tft.sources.eog_file.EogIngest.locate`). An
 event is placed only `settle_s` after its stamp, so the EoG rewrite that opens
 its round has been seen; events with no match yet wait in a bounded buffer and
 age out when they belong to no match.
+
+RESTART-IDEMPOTENT: the tail keeps no offset across processes (a restarted RC
+re-reads the current TFT.log from 0, bounded per poll), and the store's event
+insert is a plain INSERT, so LogIngest skips every event the store already
+holds under its stable key (kind, stamp to the millisecond, canonical
+payload). The keys of a match are loaded once per process from the store's
+read API the first time an event lands in it. A rotated / new log carries new
+stamps, so its events are new keys and land; no state file is written.
 """
 from __future__ import annotations
 
 import calendar
 import collections
 import datetime
+import json
 import logging
 import os
 import re
@@ -279,6 +288,13 @@ class TftLogTail:
 # ---------------------------------------------------------------- into the round store
 
 
+def event_key(kind, ts, payload) -> tuple:
+    """The stable identity of one log event: the same line read twice (after a
+    restart, or a re-read) maps to the same key."""
+    return (kind, round(float(ts), 3),
+            json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True))
+
+
 class LogIngest:
     """Tail -> round store. `locate(ts)` returns (match_id, round_seq or None)
     or None when no match owns ts yet (see the module docstring)."""
@@ -295,8 +311,10 @@ class LogIngest:
         self.max_pending_age_s = max_pending_age_s
         self._pending = collections.deque()
         self._newest = None
+        self._seen_mid = None
+        self._seen = set()  # event_key()s already in the store for _seen_mid
         self.stats = {"read": 0, "written": 0, "pending": 0, "dropped_buffer": 0,
-                      "dropped_stale": 0, "write_dropped": 0, "errors": 0}
+                      "dropped_stale": 0, "duplicates": 0, "write_dropped": 0, "errors": 0}
 
     def poll(self) -> int:
         """Read new events and write every placeable one; returns how many
@@ -307,6 +325,21 @@ class LogIngest:
             self.stats["errors"] += 1
             _log.debug("tft log: ingest failed (%s)", type(exc).__name__)
             return 0
+
+    def _seen_for(self, match_id) -> set:
+        """The tft_log event keys the store holds for this match (one read per
+        match per process; only the current match is kept in memory)."""
+        if match_id != self._seen_mid:
+            keys = set()
+            doc = self.store.get_match(match_id) or {}
+            rows = list(doc.get("events") or [])
+            for r in doc.get("rounds") or []:
+                rows.extend(r.get("events") or [])
+            for e in rows:
+                if e.get("src") == SRC and e.get("ts") is not None:
+                    keys.add(event_key(e.get("kind"), e["ts"], e.get("payload")))
+            self._seen_mid, self._seen = match_id, keys
+        return self._seen
 
     def _poll(self) -> int:
         for ev in self.tail.poll():
@@ -331,7 +364,12 @@ class LogIngest:
                     keep.append(ev)
                 continue
             mid, seq = where
+            seen, key = self._seen_for(mid), event_key(ev.kind, ev.ts, ev.payload)
+            if key in seen:
+                self.stats["duplicates"] += 1
+                continue
             if self.store.put_event(mid, ev.kind, ev.payload, ts=ev.ts, round_seq=seq, src=SRC):
+                seen.add(key)
                 written += 1
             else:
                 self.stats["write_dropped"] += 1

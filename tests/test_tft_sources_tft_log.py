@@ -403,3 +403,65 @@ def test_stale_pending_events_age_out(tmp_path, monkeypatch, store, log_path):
     li = tl.LogIngest(store, tl.TftLogTail(log_path), ing.locate, clock=Clock(T0 + 3600))
     assert li.poll() == 1  # the draft departure; the 2 h old line belongs to no match
     assert li.stats["dropped_stale"] == 1 and li.stats["pending"] == 0
+
+
+# ---------------------------------------------------------------- restart idempotency
+
+
+def _log_event_count(db: Path) -> int:
+    import sqlite3
+    conn = sqlite3.connect(db)
+    try:
+        return conn.execute("SELECT COUNT(*) FROM event WHERE src = 'tft_log'").fetchone()[0]
+    finally:
+        conn.close()
+
+
+def _rc_process(tmp_path, monkeypatch, db, log_path, rewrites):
+    """One RC process lifetime: open the store, resume the match from the EoG
+    file, tail TFT.log from its start (no saved offset), close."""
+    st = RoundStore.open(db)
+    try:
+        ing = _eog_ingest(tmp_path, monkeypatch, st, rewrites)
+        li = tl.LogIngest(st, tl.TftLogTail(log_path), ing.locate, clock=Clock(T0 + 3600))
+        for _ in range(50):
+            li.poll()
+            if li.tail.stats["last_read"] == 0:
+                break
+        assert st.flush()
+        return li.stats
+    finally:
+        st.close()
+
+
+def test_restarts_never_duplicate_log_events_and_a_rotated_log_still_lands(
+        tmp_path, monkeypatch, log_path):
+    db = tmp_path / "tft" / "tft_rounds.db"
+    rw = _eog_rewrites()
+    _write(log_path, _excerpt_bytes())
+    counts = []
+    for i in range(3):  # three processes over the same log and store
+        stats = _rc_process(tmp_path, monkeypatch, db, log_path, rw if i == 0 else rw[-1:])
+        counts.append(_log_event_count(db))
+        if i:
+            assert stats["duplicates"] == len(EXPECTED) and stats["written"] == 0
+    assert counts == [len(EXPECTED)] * 3
+    # the client rotates TFT.log: a NEW file whose lines are new events
+    new = ("Log file open, 10/25/26 07:03:30\n"
+           "[2026.10.25-12.03.25:000][1]" + PHASE_BODY.format("PlanningDeparture") + "\n"
+           "[2026.10.25-12.03.40:000][2]" + PHASE_BODY.format("CombatDeparture") + "\n")
+    _write(log_path, new.encode("ascii"))
+    for _ in range(2):
+        _rc_process(tmp_path, monkeypatch, db, log_path, rw[-1:])
+        counts.append(_log_event_count(db))
+    assert counts[3:] == [len(EXPECTED) + 2] * 2
+
+
+def test_an_in_process_reread_writes_nothing_twice(tmp_path, monkeypatch, store, log_path):
+    ing = _eog_ingest(tmp_path, monkeypatch, store, _eog_rewrites())
+    _write(log_path, _excerpt_bytes())
+    li = tl.LogIngest(store, tl.TftLogTail(log_path), ing.locate, clock=Clock(T0 + 3600))
+    assert li.poll() == len(EXPECTED)
+    # the same bytes again under a new header (a false rotation) re-read from 0
+    _write(log_path, b"Log file open, 10/25/26 07:00:01\n" + _excerpt_bytes())
+    assert li.poll() == 0 and li.stats["duplicates"] == len(EXPECTED)
