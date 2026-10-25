@@ -720,7 +720,13 @@ def test_an_identity_used_as_a_key_is_refused_and_scrubbed(store, db_path, tmp_p
     assert not store.record_obs(mid, 1, "planning_start", "scoreboard", {uuid: 5}, 0.9, "ocr")
     assert not store.put_event(mid, "phase", {NAMES[3]: 5}, src="tft_log")
     assert not store.put_event(mid, "phase", {"hp": {token: 5}}, src="tft_log")
-    assert store.stats()["invalid"] == 3
+    assert not store.record_obs(mid, 1, "planning_start", "eog", {"summoners": ["Bob"]}, 1.0,
+                                "eog_file")
+    assert store.stats()["invalid"] == 4
+    # Riot's game-data name fields are not identities: an EoG-shaped board row stores
+    assert store.record_obs(mid, 1, "planning_start", "eog_board",
+                            {"championName": "DA_18_Yorick", "itemNames": ["TFT_Item_BFSword"],
+                             "apiName": "DA_18_Summoner", "starLevel": 2}, 1.0, "eog_file")
     cases = (({uuid: 1}, uuid), ({NAMES[3]: 1}, "SyntheticPlayer"), ({token: 1}, token),
              ({"0123456789ab": 1}, "0123456789ab"), ({"riotId:SomeBody#EUW1": 1}, "SomeBody"),
              ({"x": {"Big Al#NA1": {"hp": 3}}}, "Big Al"))
@@ -875,6 +881,8 @@ def test_scrub_guard_catches_every_identity_shape():
         # any key holding a name / nick, and game / match id keys of a payload
         {"opponentName": "Bob"}, {"enemy_name": "Bob"}, {"names": ["Bob"]},
         {"nickname": "Bob"}, {"gameId": 1}, {"matchId": "x"},
+        {"summoner": "Bob"}, {"summoners": ["Bob"]}, {"riotTag": "EUW"},
+        {"v": "na1_1000000911"}, {"v": "Euw1_1000000911"}, {"v": "2026-10-25T07:03:50Z"},
         {"t": T0}, {"t": T0 * 1000.0},  # an absolute epoch, seconds or ms
         {"player_key": "0123456789ab"}, {"opponent_key": "SomeBody"},
         [{"deep": [{"puuid": "x"}]}],
@@ -891,6 +899,10 @@ def test_scrub_guard_catches_every_identity_shape():
           "champion_api": "DA_18_Yorick", "sha256": "0" * 64,
           "set_core_name": "TFTSet18", "label": "3-2", "trait_api": "DA_18_Summoner",
           "traits": {"DA_18_Summoner": 3}, "eliminated_at": 1740.0, "ts": 61.5,
+          # Riot's own game-data name fields name data, never a player
+          "apiName": "DA_18_Yorick", "itemNames": ["TFT_Item_BFSword"],
+          "championName": "DA_18_Yorick", "traitName": "DA_18_Summoner",
+          "items": {"TFT_Item_BFSword": 1},
           "augments": ["TFT_Augment_MirroredMonetization_TotalGoldTooltip",
                        "TFT_Augment_NoScoutNoPivot_TrackerTRAKEY_Holder",
                        "TFT_Augment_BronzeForLife_CurrentDamageAmp",
