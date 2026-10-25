@@ -1022,8 +1022,9 @@ class ScoutingWatcher:
             ids, source = [], ""
             rf = self._round_file()
             # The file is rewritten per round and survives the game: only a
-            # file stamped with THIS game's id is this game's lobby.
-            if isinstance(rf, dict) and round_file_game_id(rf) in ("", gid):
+            # file stamped with THIS game's id is this game's lobby (an
+            # unstamped file could be the previous game's, so it is refused).
+            if isinstance(rf, dict) and round_file_game_id(rf) == gid:
                 ids, source = identities_from_round_file(rf, self._self_puuid), "tft_round_file"
             if not ids:
                 ids = identities_from_session(session, self._self_puuid, self._self_sid)
