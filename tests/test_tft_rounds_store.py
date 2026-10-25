@@ -695,6 +695,18 @@ def test_identity_never_reaches_the_store(store):
                               "riotIdGameName": "x"}) is None
     assert store.upsert_player(mid, k, slot=1, is_local=True)
     assert store.stats()["invalid"] == 7
+    # id-like fields share an id's character class with a UUID / PUUID, so they
+    # get the shape check too; a stored event is never 'absent' either
+    uuid = "123e4567-e89b-12d3-a456-426614174000"
+    assert not store.record_obs(mid, 1, "planning_start", uuid, 1, 0.9, "ocr")
+    assert not store.put_accuracy(mid, [{"field": uuid, "n": 1, "correct": 1}])
+    assert not store.put_frame(mid, 1, "planning_start", "m1/Big Al#NA1.jpg")
+    assert store.put_frame(mid, 1, "planning_start", "m1/r01.jpg", frame_id="A" * 39 + "b" * 39) \
+        is None
+    assert not store.begin_match({"match_id": uuid, "game_id": 1, "queue_id": 1090})
+    assert not store.put_event(mid, "phase", {"who": "Big Al#NA1"}, src="tft_log")
+    assert not store.put_event(mid, "phase", {}, src="absent")
+    assert store.stats()["invalid"] == 14
 
 
 def test_an_identity_used_as_a_key_is_refused_and_scrubbed(store, db_path, tmp_path):
@@ -706,17 +718,23 @@ def test_an_identity_used_as_a_key_is_refused_and_scrubbed(store, db_path, tmp_p
     assert not store.put_event(mid, "phase", {NAMES[3]: 5}, src="tft_log")
     assert not store.put_event(mid, "phase", {"hp": {token: 5}}, src="tft_log")
     assert store.stats()["invalid"] == 3
-    for doc in ({uuid: 1}, {NAMES[3]: 1}, {token: 1}, {"0123456789ab": 1}):
+    cases = (({uuid: 1}, uuid), ({NAMES[3]: 1}, "SyntheticPlayer"), ({token: 1}, token),
+             ({"0123456789ab": 1}, "0123456789ab"), ({"riotId:SomeBody#EUW1": 1}, "SomeBody"),
+             ({"x": {"Big Al#NA1": {"hp": 3}}}, "Big Al"))
+    for doc, needle in cases:
         bad = st.scrub_violations(doc)
-        assert bad and not any(next(iter(doc)) in b for b in bad), doc  # key never echoed
+        assert bad, doc
+        assert needle not in " ".join(bad) and needle not in str(st.ScrubError(bad)), doc
     # a store player key used as a payload key is mapped to its P-number on export
     k = _keys()
     for i, key in enumerate(k):
         assert store.upsert_player(mid, key, slot=i + 1, is_local=(i == 0))
-    assert store.put_event(mid, "disagreement", {k[1]: {"hp": 40}}, src="derived", round_seq=1)
+    assert store.put_event(mid, "disagreement", {k[1]: {"hp": 40}, "note": f"opp={k[2]}"},
+                           src="derived", round_seq=1)
     assert store.flush()
     fx = json.loads(store.export_fixture(mid, tmp_path / "fx", name="keys").read_text("ascii"))
-    assert [e["payload"] for e in fx["rounds"][0]["events"]] == [{"P2": {"hp": 40}}]
+    assert [e["payload"] for e in fx["rounds"][0]["events"]] == \
+        [{"P2": {"hp": 40}, "note": "opp=P3"}]  # whole or embedded, a key becomes Pn
     # and a raw row smuggling an identity key past the writer is refused on export
     _exec(db_path, "INSERT INTO obs(match_id, round_seq, field, value_json, conf, src) "
                    "VALUES (?, 1, 'scoreboard', ?, 0.9, 'ocr')", (mid, json.dumps({uuid: 5})))
@@ -844,6 +862,10 @@ def test_scrub_guard_catches_every_identity_shape():
         {"v": "A" * 39 + "b" * 39},
         {"player_key": "0123456789ab"}, {"opponent_key": "SomeBody"},
         [{"deep": [{"puuid": "x"}]}],
+        # Riot game names may hold spaces / non-ASCII, and the hash may be fullwidth
+        {"v": "Big Al#NA1"}, {"v": "Mr X#EUW"}, {"v": "SomeBody #EUW1"},
+        {"v": "SomeBody" + chr(0xFF03) + "EUW1"},
+        {"v": "opp=0123456789ab"},  # a store key inside a longer string
     ]
     for doc in bad:
         assert st.scrub_violations(doc), doc

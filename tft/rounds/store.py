@@ -144,11 +144,16 @@ _IDENTITY_KEY = re.compile(
     r"puuid|riot_?id|summoner|game_?name|tag_?line|player_?id|account_?id|"
     r"display_?name|player_?name|^name$", re.IGNORECASE)
 _UUID36 = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
-_RIOT_ID = re.compile(r"[^\s#]{3,16}#[A-Za-z0-9]{2,5}(?![A-Za-z0-9])")
+# Riot id = game name (may hold spaces / non-ASCII) + '#' (or the fullwidth
+# U+FF03) + a 3-5 char tag. Any non-space char, optional spaces, the hash, optional
+# spaces and a 3-5 word-char tag is enough: a privacy guard fails closed.
+_FULLWIDTH_HASH = chr(0xFF03)  # source stays 7-bit ASCII
+_RIOT_ID = re.compile(r"\S\s*[#" + _FULLWIDTH_HASH + r"]\s*\w{3,5}(?!\w)")
 _ID_WORDS = re.compile(r"puuid|riot[ _]?id|summoner", re.IGNORECASE)
 _TOKEN = re.compile(r"(?<![A-Za-z0-9_-])[A-Za-z0-9_-]{70,90}(?![A-Za-z0-9_-])")
 _HEX = re.compile(r"[0-9a-f]+")
 _KEY12 = re.compile(r"[0-9a-f]{12}")
+_KEY12_RUN = re.compile(r"(?<![0-9a-f])[0-9a-f]{12}(?![0-9a-f])")  # a key inside a longer string
 _FIXTURE_KEY = re.compile(r"P[1-8]")
 
 
@@ -165,22 +170,31 @@ def _string_violation(s: str) -> Optional[str]:
     return None
 
 
+_PLAIN_KEY = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,63}")
+
+
+def _key_label(k, i) -> str:
+    """How a dict key appears in a violation path: itself only when it is a plain
+    identifier with no identity shape and is not a store key, else its position."""
+    if (isinstance(k, str) and _PLAIN_KEY.fullmatch(k) and _string_violation(k) is None
+            and not _KEY12_RUN.search(k)):
+        return k
+    return f"<key {i}>"
+
+
 def identity_violations(obj: Any, path: str = "$") -> list:
     """Every identity shape in a JSON-like value, as 'path: reason' strings.
     The offending VALUE is never part of the message."""
     out = []
     if isinstance(obj, dict):
         for i, (k, v) in enumerate(obj.items()):
+            kp = f"{path}.{_key_label(k, i)}"
             if isinstance(k, str) and _IDENTITY_KEY.search(k):
-                out.append(f"{path}.{k}: identity key")
-                kp = f"{path}.{k}"
-            elif isinstance(k, str) and _string_violation(k):
-                # a KEY can carry an identity as well as a value can ({puuid: 5});
-                # the path names the position, never the key itself
-                out.append(f"{path}.<key {i}>: key is {_string_violation(k)}")
-                kp = f"{path}.<key {i}>"
-            else:
-                kp = f"{path}.{k}"
+                out.append(f"{kp}: identity key")
+            # a KEY can carry an identity as well as a value can ({puuid: 5})
+            shaped = _string_violation(k) if isinstance(k, str) else None
+            if shaped:
+                out.append(f"{kp}: key is {shaped}")
             out.extend(identity_violations(v, kp))
     elif isinstance(obj, (list, tuple)):
         for i, v in enumerate(obj):
@@ -201,11 +215,9 @@ def scrub_violations(doc: Any) -> list:
     def walk(obj, path):
         if isinstance(obj, dict):
             for i, (k, v) in enumerate(obj.items()):
-                kp = f"{path}.{k}"
-                if isinstance(k, str) and (_KEY12.fullmatch(k) or _string_violation(k)):
-                    kp = f"{path}.<key {i}>"  # never echo an identity-shaped key
-                if isinstance(k, str) and _KEY12.fullmatch(k):
-                    out.append(f"{kp}: a raw 12-hex player key used as a key")
+                kp = f"{path}.{_key_label(k, i)}"  # never echo an identity-shaped key
+                if isinstance(k, str) and _KEY12_RUN.search(k):
+                    out.append(f"{kp}: a raw 12-hex player key in a key")
                 if k in ("player_key", "opponent_key") and v is not None and not (
                         isinstance(v, str) and _FIXTURE_KEY.fullmatch(v)):
                     out.append(f"{kp}: not a P1..P8 fixture key")
@@ -213,7 +225,7 @@ def scrub_violations(doc: Any) -> list:
         elif isinstance(obj, (list, tuple)):
             for i, v in enumerate(obj):
                 walk(v, f"{path}[{i}]")
-        elif isinstance(obj, str) and _KEY12.fullmatch(obj):
+        elif isinstance(obj, str) and _KEY12_RUN.search(obj):
             out.append(f"{path}: a raw 12-hex player key")
 
     walk(doc, "$")
@@ -245,9 +257,20 @@ def _is_int(v):
     return isinstance(v, int) and not isinstance(v, bool)
 
 
-def _v_match_id(v):
-    _need(isinstance(v, str) and _MATCH_ID.fullmatch(v), "match_id must be 1-64 chars [A-Za-z0-9_.-]")
+def _v_ident(v, pattern, name, nullable=False):
+    """An id-like string (match_id, frame_id, field name): its own format AND no
+    identity shape - a UUID or PUUID fits the character class of an id."""
+    if v is None:
+        _need(nullable, f"{name} is required")
+        return None
+    _need(isinstance(v, str) and pattern.fullmatch(v), f"{name} format")
+    _need(_string_violation(v) is None and not _IDENTITY_KEY.search(v),
+          f"{name} carries an identity shape")
     return v
+
+
+def _v_match_id(v):
+    return _v_ident(v, _MATCH_ID, "match_id")
 
 
 def _v_key(v, name="player_key"):
@@ -384,6 +407,7 @@ def _v_relpath(v):
     parts = v.replace("\\", "/").split("/")
     _need(not v.startswith(("/", "\\")) and ":" not in v and ".." not in parts,
           "relpath must be relative to data/tft/frames")
+    _need(_string_violation(v) is None, "relpath carries an identity shape")
     return "/".join(parts)
 
 
@@ -846,8 +870,7 @@ class RoundStore:
                 pconf, psrc = _v_pair(u.get("pos_conf"), u.get("pos_src", rs.ABSENT),
                                       value=None if where == (None, None, None) else where,
                                       name="pos_conf")
-                fid = u.get("frame_id")
-                _need(fid is None or (isinstance(fid, str) and _FRAME_ID.fullmatch(fid)), "frame_id format")
+                fid = _v_ident(u.get("frame_id"), _FRAME_ID, "frame_id", nullable=True)
                 rows.append((mid, seq, ph, key, z,
                              _v_int(u.get("hex_row"), "hex_row", 0, rs.HEX_ROWS - 1),
                              _v_int(u.get("hex_col"), "hex_col", 0, rs.HEX_COLS - 1),
@@ -1010,6 +1033,7 @@ class RoundStore:
             row = (mid, time.time() if ts is None else _v_num(ts, "ts"), seq,
                    _v_enum(kind, rs.EVENT_KINDS, "kind"), _v_json(payload, "payload"),
                    _v_src(src))
+            _need(src != rs.ABSENT, "a stored row cannot carry src absent")
             sql = _insert_sql("event", ("match_id", "ts", "round_seq", "kind", "payload_json", "src"))
 
             def fn(conn):
@@ -1030,7 +1054,7 @@ class RoundStore:
             seq = _v_seq(round_seq, nullable=True)
             ph = _v_enum(phase, rs.CAPTURE_PHASES, "phase", nullable=True)
             fid = frame_id or f"{mid}-{seq or 0}-{ph or 'x'}-{secrets.token_hex(3)}"
-            _need(isinstance(fid, str) and _FRAME_ID.fullmatch(fid), "frame_id format")
+            _v_ident(fid, _FRAME_ID, "frame_id")
             _need(sha256 is None or (isinstance(sha256, str) and _SHA256.fullmatch(sha256)),
                   "sha256 must be 64 lowercase hex")
             row = (fid, mid, seq, ph, time.time() if ts is None else _v_num(ts, "ts"),
@@ -1053,11 +1077,9 @@ class RoundStore:
         def build():
             mid = _v_match_id(match_id)
             seq = _v_seq(round_seq, nullable=True)
-            _need(isinstance(field, str) and _FIELD.fullmatch(field) and not _IDENTITY_KEY.search(field),
-                  "field must be a 1-64 char name and not an identity field")
+            _v_ident(field, _FIELD, "field")
             c, s = _v_pair(conf, src, value=value)
-            _need(frame_id is None or (isinstance(frame_id, str) and _FRAME_ID.fullmatch(frame_id)),
-                  "frame_id format")
+            _v_ident(frame_id, _FRAME_ID, "frame_id", nullable=True)
             row = (mid, seq, _v_enum(phase, rs.CAPTURE_PHASES, "phase", nullable=True), field,
                    _v_json(value, "value"), c, s, _v_text(extractor_version, "extractor_version"),
                    frame_id, time.time() if ts is None else _v_num(ts, "ts"))
@@ -1152,7 +1174,7 @@ class RoundStore:
                 _need(isinstance(r, dict) and not set(r) - self._ACC_FIELDS,
                       "an accuracy row has a field outside accuracy")
                 field = r.get("field")
-                _need(isinstance(field, str) and _FIELD.fullmatch(field), "field name")
+                _v_ident(field, _FIELD, "field")
                 cov = _v_num(r.get("coverage"), "coverage")
                 _need(cov is None or 0.0 <= cov <= 1.0, "coverage must be within 0..1")
                 computed = r.get("computed_at")
@@ -1423,13 +1445,20 @@ def _scrub_for_fixture(doc: dict, name: str) -> dict:
                 elif k in _TS_KEYS and isinstance(v, (int, float)) and not isinstance(v, bool):
                     out[k] = round(v - t0, 3)
                 else:  # a player key used as a dict key is mapped like a value
-                    out[mapping.get(k, k) if isinstance(k, str) else k] = walk(v)
+                    out[remap(k) if isinstance(k, str) else k] = walk(v)
             return out
         if isinstance(obj, list):
             return [walk(v) for v in obj]
-        if isinstance(obj, str) and obj in mapping:
-            return mapping[obj]
+        if isinstance(obj, str):
+            return remap(obj)
         return obj
+
+    def remap(s):
+        """A store key, whole or inside a longer string, becomes its P-number;
+        an unknown 12-hex run is left for the scrub guard to refuse."""
+        if s in mapping:
+            return mapping[s]
+        return _KEY12_RUN.sub(lambda m: mapping.get(m.group(0), m.group(0)), s)
 
     fixture = walk(doc)
     fixture["fixture"] = {"kind": "tft_rounds_fixture", "schema_version": rs.SCHEMA_VERSION}
