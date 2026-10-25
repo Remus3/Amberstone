@@ -680,8 +680,9 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
     # surviving file holds that code - and rewriting the bodies would make
     # each row assert something it never asserted. The research refill is a
     # dated artifact. Same treatment as the MC block above, and the same
-    # rule: a living doc does not belong in this family (see the ROT entry
-    # after this block).
+    # rule: a living doc does not belong in this family (the one living-doc
+    # citation, the docs/COST_TRACE.md tft_pbe matrix row, was removed from
+    # the doc instead, and its ROT entry with it).
     (doc, raw, "HISTORICAL",
      "Points into the TFT PBE coach subsystem deleted by RM-292 (b) on "
      "2026-10-25, from a retained row body or dated artifact - see the "
@@ -704,16 +705,6 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
         ("BACKLOG.md", "tft_pbe_engine.py:118"),             # RM-130
         ("docs/_research_refill_2026-09-05.md", "tft/tft_pbe_engine.py:420"),
     )
-) + (
-    (
-        "docs/COST_TRACE.md",
-        "tft/tft_pbe_engine.py:357",
-        "ROT",
-        "A LIVING cost inventory row for the PBE engine's Haiku call site, "
-        "deleted by RM-292 (b) on 2026-10-25. The right fix is removing the "
-        "row, a doc edit outside the RM-292 (b) slice's file set, reported to "
-        "the merger; when the row goes, this entry must go with it.",
-    ),
 )
 
 _REASON_FAMILIES = frozenset({"EXTERNAL", "DELETED", "HISTORICAL", "ROT"})

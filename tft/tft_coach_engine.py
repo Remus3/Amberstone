@@ -25,7 +25,8 @@ logger = logging.getLogger("rc.tft.coach")
 # copy that lived here (3471 chars: Realm of Gods round structure, nine gods
 # with hand-graded boon tiers) went to every game after RM-840 made Set 18 the
 # default. tft/tft_prompt.py now builds it per resolved set from that set's
-# ingested data files, and tft/tft_pbe_engine.py sends the same text.
+# ingested data files. (The PBE twin engine that sent the same text was
+# deleted by RM-292 (b), 2026-10-25.)
 
 
 def _system_prompt() -> str:
@@ -862,9 +863,9 @@ class TftCoachEngine:
 
         LANE 8 CYCLE 30 (RM-211): this wrote the polled destination DIRECTLY -
         no scratch file, no rename - so a poller mid-read saw a truncated
-        artifact. The sibling engine tft/tft_pbe_engine.py has carried the
-        atomic fix since 2026-04-27; the audit that fixed the twin missed the
-        LIVE engine.
+        artifact. The sibling PBE engine (deleted by RM-292 (b), 2026-10-25)
+        had carried the atomic fix since 2026-04-27; the audit that fixed the
+        twin missed the LIVE engine.
 
         RM-292 (d): the keys are the ADVICE shape (core.coaching_payload
         ``tft_advice_payload``: mode, action and the advice strings), the

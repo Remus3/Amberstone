@@ -32,7 +32,6 @@ records there. moon_proxy only does the 2s vision dedupe accounting.
 | coaches/replay_coach.py:192 | HAIKU | YES (record_anthropic_response) | ON-DEMAND (replay) | replay_coach |
 | ~~dashboard/_champ_select.py:92~~ | RETIRED 2026-06-06 | n/a | n/a | ~~champ_select_brief~~ |
 | tft/tft_coach_engine.py:769 | HAIKU | YES (record_anthropic_response, cache_control ephemeral) | POLLING (45s debounce) | tft_coach |
-| tft/tft_pbe_engine.py:357 | HAIKU | YES (record_anthropic_response, cache_control ephemeral) | POLLING (game tick) | tft_pbe |
 | tft/tft_live_analysis.py:292 | HAIKU | YES (record_anthropic_response) | POLLING (vision cycle) | tft_live_analysis |
 | tft/tft_live_analysis.py:316 | HAIKU | YES (record_anthropic_response) | POLLING (aug select) | tft_live_aug_select |
 | tft/tft_vision_reader.py:186 | SONNET | YES (record_anthropic_response) | POLLING (vision local fallback) | tft_vision |
@@ -78,9 +77,12 @@ wrong: `tests/test_cost_trace_matrix_is_live.py` identifies a row by its
 `path.py:N` shape, so a row without one silently drops out of the guard's view.
 The guard therefore requires EVERY row of this table to carry one, and fails if
 any row stops parsing. Re-point them if you like; deleting them disarms the
-guard. The table is 21 rows (19 live-tier plus two struck retired rows,
+guard. The table is 20 rows (18 live-tier plus two struck retired rows,
 `champ_select_brief` and, since RM-877, `aram_aug_select`) and the guard pins
-that count exactly.
+that count exactly. The `tft_pbe` row was DELETED, not struck, by RM-292 (b)
+(2026-10-25): the PBE engine had no caller since the initial commit, so its
+purpose key never reached a `data/spend/*.json` ledger and there is nothing
+for a struck row to explain.
 
 Tracked sites correctly extract `usage.input_tokens / output_tokens /
 cache_read_input_tokens / cache_creation_input_tokens` (see
@@ -159,9 +161,9 @@ Wired sites (`purpose` label is the by_purpose key in
 - `aram_team_analyzer`, `experimental_builder`, `champ_select_coach`,
   `replay_coach`, ~~`champ_select_brief`~~ (retired 2026-06-06, see the
   correction above - its `WiredSitesGrepTests` case was removed with the wire,
-  so 10 of the 11 sites below are pinned, not 11), `agent7_warm`
-- `tft_coach`, `tft_pbe`, `tft_live_analysis`, `tft_live_aug_select`,
-  `tft_vision`
+  so 9 of the 10 sites below are pinned, not 10), `agent7_warm`
+- `tft_coach`, `tft_live_analysis`, `tft_live_aug_select`, `tft_vision`
+  (`tft_pbe` left with the PBE engine, RM-292 (b) 2026-10-25)
 
 Tests pin the wire-in at each site (grep-based; see
 `tests/test_cost_tracker_response_helper.py::WiredSitesGrepTests`) so a
@@ -201,4 +203,7 @@ hand-written prompt constant: `TFT_SYSTEM_PROMPT` (`tft_coach`) and
 system block from `tft/tft_prompt.py` `build_system_prompt()` (capped at
 `MAX_PROMPT_CHARS` 4000 chars; measured 3432 for Set 18, 3364 for Set 17), so
 both markers are sub-floor/inert (forward-markers, left as-is). Before RM-845,
-`tft_pbe` was the one live beneficiary.
+`tft_pbe` was the one live beneficiary on paper. RM-292 (b) (2026-10-25) then
+deleted the PBE engine (unreachable since the initial commit), so
+`tft/tft_coach_engine.py` is the one TFT engine left and its marker is the
+only one.

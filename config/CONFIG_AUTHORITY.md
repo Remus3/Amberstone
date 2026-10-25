@@ -73,10 +73,14 @@ Owns:
 - `debounce_seconds` (minimum interval between coaching calls)
 - `timeout` (Claude API call timeout in seconds)
 - `max_tokens` (max response tokens per coaching call)
-- `tft_pbe` (route TFT sessions to PBE coach when true)
+- `tft_pbe` - RETIRED by RM-292 (b) (2026-10-25): nothing reads it. It used
+  to route TFT to the PBE coach through the dead `coaches/__init__.py`
+  loader; that loader and the PBE coach were deleted. A legacy config that
+  still carries the key validates unchanged (`core/config_validator.py`
+  tolerates it); the example config no longer ships it.
 
 Read by (NOT an exhaustive list - grep `coach_settings.json` before relying on
-it; RM-380): `coach_integration/_coach.py`, `coaches/__init__.py`, and others.
+it; RM-380): `coach_integration/_coach.py` and others.
 Does NOT affect the control plane, supervisor, or self-monitor.
 
 ### config/feature_flags.json - Feature Policy Authority [Phase 1 Step 7]
