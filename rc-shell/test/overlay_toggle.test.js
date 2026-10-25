@@ -588,10 +588,36 @@ test("the state read channel follows the same sender rule as the action channel"
   assert.match(MAIN_SRC.slice(i, i + 400), /event\.sender !== toggleWindow\.webContents/);
 });
 
-test("a crash-looping icon fails safe to overlay content ON", () => {
+test("toggleShowable: only a painted, live, in-game icon may be shown", () => {
+  assert.strictEqual(tog.toggleShowable(true, ov.SURFACES.OVERLAY, false), true);
+  // A crash-guard give-up keeps the window dark whatever else holds.
+  assert.strictEqual(tog.toggleShowable(true, ov.SURFACES.OVERLAY, true), false);
+  assert.strictEqual(tog.toggleShowable(false, ov.SURFACES.OVERLAY, false), false, "not painted yet");
+  for (const s of [ov.SURFACES.COMPANION, ov.SURFACES.HIDDEN, null]) {
+    assert.strictEqual(tog.toggleShowable(true, s, false), false, String(s));
+  }
+  for (const v of [1, "true", {}, undefined]) {
+    assert.strictEqual(tog.toggleShowable(v, ov.SURFACES.OVERLAY, false), false, JSON.stringify(v));
+  }
+});
+
+test("the ONLY icon show path goes through toggleShowable with the give-up flag", () => {
+  const shows = MAIN_SRC.match(/toggleWindow\.showInactive\(\)/g) || [];
+  assert.strictEqual(shows.length, 1, "exactly one show site (raiseToggle)");
+  const fn = fnBody("raiseToggle");
+  assert.match(fn, /toggleWindow\.showInactive\(\)/);
+  assert.match(fn, /tog\.toggleShowable\(toggleReady, lastSurface, toggleGaveUp\)/);
+});
+
+test("a crash-looping icon stays dark AND fails safe to overlay content ON", () => {
   assert.match(fnBody("attachCrashGuard"), /onGiveUp\(\)/);
   const fn = fnBody("createToggleWindow");
-  assert.match(fn, /attachCrashGuard\(toggleWindow, "toggle", \(\) => \{[\s\S]*?setOverlayContent\(true\)/);
+  const m = fn.match(/attachCrashGuard\(toggleWindow, "toggle", \(\) => \{([\s\S]*?)\n  \}\);/);
+  assert.ok(m, "toggle crash guard passes an onGiveUp callback");
+  const body = m[1];
+  const flag = body.indexOf("toggleGaveUp = true;");
+  const on = body.indexOf("setOverlayContent(true)");
+  assert.ok(flag >= 0 && on > flag, "mark given-up BEFORE the fail-safe re-apply can re-raise the icon");
 });
 
 test("a display change re-clamps the toggle icon", () => {

@@ -126,6 +126,7 @@ let updateIntervalTimer = null; // recurring update-check handle.
 const crashGuard = cg.makeCrashGuard({}); // per-window renderer restart budget (Phase 5).
 let toggleWindow = null; // S134: the overlay ON/OFF icon - its own tiny window, so it stays up while the content is OFF.
 let toggleReady = false; // false until the icon window's first paint (same gate as overlayReady).
+let toggleGaveUp = false; // the crash guard gave up on the icon window: it stays dark (never re-raised).
 let overlayContentOn = tog.TOGGLE_DEFAULTS.visible; // overlay content ON/OFF (persisted overlay.toggle.visible; default ON).
 const toggleDrag = tog.makeToggleDrag({ thresholdPx: tog.TOGGLE_DEFAULTS.dragThresholdPx }); // tap-vs-drag for one icon press.
 
@@ -836,13 +837,13 @@ function pushToggleState() {
 // Show the icon (inactive - never a focus steal) and lift it above the overlay
 // window: both sit at the screen-saver level and Windows orders same-band
 // topmost windows by show order, so a later overlay show would cover it.
-// First show is owned by the icon's ready-to-show (toggleReady), like the HUD.
+// First show is owned by the icon's ready-to-show (toggleReady), like the HUD;
+// a crash-guard give-up keeps it dark for good (tog.toggleShowable).
 function raiseToggle() {
   if (
     toggleWindow &&
     !toggleWindow.isDestroyed() &&
-    toggleReady &&
-    lastSurface === ov.SURFACES.OVERLAY
+    tog.toggleShowable(toggleReady, lastSurface, toggleGaveUp)
   ) {
     toggleWindow.showInactive();
     toggleWindow.moveTop();
@@ -893,9 +894,12 @@ function createToggleWindow() {
     raiseToggle();
   });
   toggleWindow.webContents.on("did-finish-load", pushToggleState);
-  // A crash-looping icon is hidden by the guard; with the content OFF that would
-  // leave only Ctrl+Shift+O as a way back, so fail safe to the default ON.
+  // A crash-looping icon is hidden by the guard. Mark it given-up FIRST so no
+  // re-raise path (including the surface re-apply just below) can show the
+  // dead window again, then - since with the content OFF only Ctrl+Shift+O
+  // would be left as a way back - fail safe to the default ON.
   attachCrashGuard(toggleWindow, "toggle", () => {
+    toggleGaveUp = true;
     if (!overlayContentOn) {
       setOverlayContent(true);
     }
@@ -903,6 +907,7 @@ function createToggleWindow() {
   toggleWindow.on("closed", () => {
     toggleWindow = null;
     toggleReady = false;
+    toggleGaveUp = false; // a recreated window starts fresh (its crash budget does not).
     toggleDrag.cancel();
   });
   return toggleWindow;
