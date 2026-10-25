@@ -17,8 +17,10 @@ source - the in-game scoreboard names via vision / OCR - plugs in through
   InProgress - the standalone client's per-round file
     ``%LOCALAPPDATA%/TFT/Saved/Logs/TFTEoGStats.json`` (read through
     ``tft.tft_standalone.read_eog``) ``statsBlock.players[]``: riot id
-    (riotIdGameName / riotIdTagLine) for ALL 8, ``isInteractable`` marks the
-    local player, non-local ``PUUID`` and ``playerId`` ZEROED. First written
+    (riotIdGameName / riotIdTagLine) for ALL 8; in the bot-like lobbies
+    ``isInteractable`` marks the local player and non-local ``PUUID`` /
+    ``playerId`` are ZEROED, in a human lobby all 8 are flagged with real ids
+    (S135 N13: the local entry comes from ``tft/local_player.py``). First written
     at the first planning phase, so that is the earliest moment opponents are
     knowable. THIS is the in-game trigger. ``/lol-gameflow/v1/session``
     ``teamOne`` was measured in a live TFT game (match 2) to list ONLY the
@@ -281,20 +283,26 @@ def round_file_game_id(round_file: Any) -> str:
     return "" if s in ("", "0") else s
 
 
-def identities_from_round_file(round_file: Any, self_puuid: str = "") -> list:
+def identities_from_round_file(round_file: Any, self_puuid: str = "",
+                               self_summoner_id: Any = None) -> list:
     """Opponents from the standalone client's per-round ``TFTEoGStats.json``
-    (``statsBlock.players[]``; ``isInteractable`` marks the local player -
-    measured 2026-10-25 - and non-local PUUIDs are zeroed)."""
+    (``statsBlock.players[]``). ``isInteractable`` marked the local player in
+    the bot-like lobbies (non-local PUUIDs / playerIds zeroed), but a human
+    lobby flags all 8 with real ids (S135 N13), so the local entry is picked
+    by ``tft/local_player.py`` (our puuid / summoner id first). When it cannot
+    be told, nothing is scouted from this source - scouting ourselves as an
+    opponent (or dropping all 8) is worse than the next source."""
     if not isinstance(round_file, dict):
         return []
     sb = round_file.get("statsBlock") if isinstance(round_file.get("statsBlock"), dict) else {}
     players = sb.get("players") if isinstance(sb.get("players"), list) else []
-    me_p = real_puuid(self_puuid)
-
-    def is_self(e: dict) -> bool:
-        return e.get("isInteractable") is True or bool(me_p and _entry_puuid(e) == me_p)
-
-    return _collect(players, is_self)
+    from tft.local_player import local_player_index
+    idx, _why = local_player_index(players, summoner_id=self_summoner_id,
+                                   puuid=real_puuid(self_puuid))
+    if idx is None:
+        return []
+    me = players[idx]
+    return _collect(players, lambda e: e is me)
 
 
 def identities_from_riot_ids(riot_ids: Any, self_riot_id: str = "") -> list:
@@ -1025,7 +1033,8 @@ class ScoutingWatcher:
             # file stamped with THIS game's id is this game's lobby (an
             # unstamped file could be the previous game's, so it is refused).
             if isinstance(rf, dict) and round_file_game_id(rf) == gid:
-                ids, source = identities_from_round_file(rf, self._self_puuid), "tft_round_file"
+                ids, source = identities_from_round_file(
+                    rf, self._self_puuid, self._self_sid), "tft_round_file"
             if not ids:
                 ids = identities_from_session(session, self._self_puuid, self._self_sid)
                 source = "lcu_gameflow_session"

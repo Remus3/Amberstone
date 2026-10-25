@@ -697,16 +697,24 @@ def _local_first(plist, flag: str) -> list:
     return [local] + [p for p in rows if p is not local]
 
 
-def eog_file_players(doc, set_number: int = 18) -> dict:
+def eog_file_players(doc, set_number: int = 18, *, summoner_id=None,
+                     puuid=None) -> dict:
     """Per-round TFTEoGStats.json -> {"P1": {"hp", "board"}, ...}; P1 = the local
-    player (isInteractable), the rest in file order. Only health, boardPieces
-    (championName, starLevel, itemNames) and the local flag are read. A document
-    with no local player (or more than 8) cannot be keyed and yields {}."""
+    player, the rest in file order. Only health, boardPieces (championName,
+    starLevel, itemNames), the local flag and the ids that pick the local entry
+    are read. The local entry comes from tft/local_player.py: the playerId /
+    PUUID matching ``summoner_id`` / ``puuid``, else the ONE isInteractable
+    entry (a human lobby flags all 8 - S135 N13). A document whose local player
+    cannot be told (or with more than 8 players) cannot be keyed and yields {}."""
     block = doc.get("statsBlock") if isinstance(doc, dict) else None
     plist = block.get("players") if isinstance(block, dict) else None
     if not isinstance(plist, list):
         return {}
-    ordered = _local_first(plist, "isInteractable")
+    from tft.local_player import local_player_index
+    rows = [p for p in plist if isinstance(p, dict)]
+    idx, _basis = local_player_index(rows, summoner_id=summoner_id, puuid=puuid)
+    ordered = ([] if idx is None or len(rows) > 8
+               else [rows[idx]] + [p for i, p in enumerate(rows) if i != idx])
     out = {}
     for n, p in enumerate(ordered, start=1):
         board = []
@@ -832,7 +840,7 @@ def _read_json(path: Path):
     return json.loads(Path(path).read_text(encoding="utf-8-sig"))
 
 
-def load_eog_snapshots(path, set_number: int = 18) -> list:
+def load_eog_snapshots(path, set_number: int = 18, summoner_id=None) -> list:
     """[(time, players)] sorted by time from a snapshot file or directory."""
     path = Path(path)
     files = [path] if path.is_file() else sorted(path.glob("*.json"))
@@ -842,7 +850,7 @@ def load_eog_snapshots(path, set_number: int = 18) -> list:
             doc = _read_json(f)
         except (OSError, ValueError):
             continue
-        players = eog_file_players(doc, set_number)
+        players = eog_file_players(doc, set_number, summoner_id=summoner_id)
         if not players:
             continue
         stamp = doc.get("_rc_captured_at") if isinstance(doc, dict) else None
@@ -993,6 +1001,9 @@ def _parser() -> argparse.ArgumentParser:
     src.add_argument("--extractor", help="package.module:function run on each frame")
     src.add_argument("--predictions", help="predictions JSON instead of running an extractor")
     ap.add_argument("--eog", help="TFTEoGStats.json snapshot file or directory (oracle A)")
+    ap.add_argument("--local-summoner-id", type=int, default=None,
+                    help="the local summonerId: keys P1 in a human lobby, where the "
+                         "file flags all 8 players isInteractable (S135 N13)")
     ap.add_argument("--lcu-eog", help="LCU tft-eog-stats JSON or its RM-616 record "
                                       "data/tft_matches/<gameId>.eog.json (oracle B, final boards)")
     ap.add_argument("--max-age", type=float, default=75.0,
@@ -1062,7 +1073,7 @@ def main(argv=None) -> int:
         return 2
 
     if args.eog:
-        snaps = load_eog_snapshots(args.eog, args.set_number)
+        snaps = load_eog_snapshots(args.eog, args.set_number, args.local_summoner_id)
         idx = align_frames({k: times[k] for k in gt if k in times}, [s[0] for s in snaps],
                            args.max_age)
         for name, i in idx.items():

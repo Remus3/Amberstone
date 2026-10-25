@@ -285,6 +285,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 |---|---|
 | `tests/test_rm301_tft_force_scan_lock.py` | regression - RM-301 TFT force_scan RMW serialized against loop-thread writers |
 | `tests/test_rm303_tft_unit_list_sanitizer.py` | regression - RM-303 one sanitizer for TFT board/bench/shop + numeric hp clamp |
+| `tft/local_player.py` | the ONE local-player selector for TFT per-round / EoG player lists |
 | `tft/tft_scouting.py` | TFT opponent scouting digest (LCU identities + Riot TFT API / LCU history) |
 | `tft/tft_standalone.py` | standalone Unreal TFT client live source (no :2999) |
 
@@ -361,9 +362,9 @@ _Inline `# arch: phase <id> [(YYYY-MM-DD)] - <note>` markers across the tree, su
 | 0.9 | - | `ops/rc_self_monitor.py:339` | _check_health() returns a (state, detail) tuple |
 | 0.9 | - | `ops/rc_self_monitor.py:547` | _check_health() returns 3-value state string instead of plain bool |
 | 1 step 3 | - | `game_reader/snapshot_normalizer.py:1514` | snapshot factory helpers (to_rift_snapshot, to_aram_snapshot) |
-| 1 step 3 | - | `tft/tft_state_reader.py:260` | snapshot factory helper (only path that may produce TftSnapshot) |
+| 1 step 3 | - | `tft/tft_state_reader.py:262` | snapshot factory helper (only path that may produce TftSnapshot) |
 | 3 | - | `agents/agent2_backend/migration_rewind.py:60` | rewind timeline_events -> match_events migration (coach-decision moments per S9) |
-| 3 step 1.1 | - | `tft/tft_coach_engine.py:868` | write TFT coaching timestamp only after payload write succeeds |
+| 3 step 1.1 | - | `tft/tft_coach_engine.py:890` | write TFT coaching timestamp only after payload write succeeds |
 | 7 P2 | - | `tft/tft_live_analysis.py:447` | C - clear stale choices on augment-select force scan |
 
 <!-- phasejournal:end -->

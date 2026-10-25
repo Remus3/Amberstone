@@ -16,8 +16,12 @@ ops/runtime/tft_qa/TFT_CLIENT_PROBE.md):
 - The client rewrites ``%LOCALAPPDATA%/TFT/Saved/Logs/TFTEoGStats.json`` once
   per round (observed at each planning phase: gameLengthSeconds 650 -> 828).
   It holds all 8 players: health, ffaStanding, boardPieces (unit, star level,
-  items), and ``isInteractable`` marks the local player. That is a real,
-  passive, per-round board feed - read-only, no injection, no network call.
+  items). That is a real, passive, per-round board feed - read-only, no
+  injection, no network call. ``isInteractable`` marked the local player in
+  the bot-like lobbies only: in a human lobby (S135 N13) all 8 carry it, so
+  the local entry is the one whose ``playerId`` equals the LCU summoner id
+  (``tft/local_player.py``); when that cannot be told the local player is
+  UNKNOWN (no HP / standing / board served), never a guess.
 
 This module turns those signals into an allgamedata-SHAPED dict so the
 existing TFT pipeline (game_reader -> mode_router.tft_minimal_state ->
@@ -37,6 +41,8 @@ import re
 import threading
 import time
 from pathlib import Path
+
+from tft import local_player as _lp
 
 _log = logging.getLogger("rc.tft.standalone")
 
@@ -60,11 +66,15 @@ LCU_RELAY_MAX_AGE_S = 20.0
 
 _cache_lock = threading.Lock()
 _proc_cache: dict = {"ts": 0.0, "running": False, "create_time": None}
+# (game id, index, basis) already logged by _note_local: one line per game and
+# outcome, not one per 2 Hz tick.
+_local_logged: set = set()
 
 
 def _reset_caches_for_tests() -> None:
     with _cache_lock:
         _proc_cache.update({"ts": 0.0, "running": False, "create_time": None})
+        _local_logged.clear()
 
 
 # -- process detection ---------------------------------------------------------
@@ -211,14 +221,20 @@ def _board(pieces) -> list:
     return out
 
 
-def _hp(v):
-    """A player's HP, or None while unknown. Measured live (match 3 QA): for
-    ~20 s at game start the file carries health -1 / ffaStanding -1 for every
-    player; those are sentinels, never values to serve or render."""
-    if v is None:
-        return None
-    n = _int(v, -1)
-    return n if n >= 0 else None
+def _status_hp(p):
+    """A player's HP to serve, by the ONE alive rule (tft/local_player.py
+    ``player_status``): alive -> its health; eliminated (health <= 0 on a
+    scored entry) -> 0, never the file's negative value; unknown -> None.
+    Measured live (match 3 QA, N10): for ~20 s at game start the file carries
+    health -1 / ffaStanding -1 for every player; those are placeholders,
+    never values to serve or render. An eliminated player keeps a real
+    standing and a health of -11..0 (S135 N13 human lobby), so a value-only
+    reading that took every negative HP as unknown emptied the lobby at the
+    first elimination."""
+    status = _lp.player_status(p)
+    if status == _lp.ALIVE:
+        return _int(p.get("health"))
+    return 0 if status == _lp.ELIMINATED else None
 
 
 def _place(v):
@@ -227,27 +243,26 @@ def _place(v):
     return n if 1 <= n <= 8 else None
 
 
-def _lobby(players: list) -> list:
+def _lobby(players: list, local_index=None) -> list:
     """All players' public round state - placement, HP, board size, and which
     one is the local player - sorted by placement. No identity fields: the
     per-round file names every player, RC carries none of it.
 
-    Empty until EVERY player's HP is known (the start-of-game file is all
-    sentinels), so a half-written lobby never renders. At most one row is
-    "you" even if the file marks more than one player interactable."""
+    Empty until EVERY player's status is knowable (``_lp.count_alive`` is
+    None while the start-of-game placeholders stand), so a half-written lobby
+    never renders; an eliminated player is a row with HP 0. The one "you" row
+    is ``local_index``, the entry tft/local_player.py picked (S135 N13: never
+    the first isInteractable entry - a human lobby flags all 8); none while
+    the local player is unknown."""
+    if _lp.count_alive(players) is None:
+        return []
     rows = []
-    seen_you = False
-    for p in players:
-        hp = _hp(p.get("health"))
-        if hp is None:
-            return []
-        you = p.get("isInteractable") is True and not seen_you
-        seen_you = seen_you or you
+    for i, p in enumerate(players):
         pieces = p.get("boardPieces")
         rows.append({
             "standing": _place(p.get("ffaStanding")),
-            "health": hp,
-            "you": you,
+            "health": _status_hp(p),
+            "you": i == local_index,
             "board_size": len(pieces) if isinstance(pieces, list) else 0,
         })
     rows.sort(key=lambda r: (r["standing"] or 99, -r["health"]))
@@ -350,12 +365,32 @@ def standalone_in_game(lcu, running=None, eog=_UNSET) -> bool:
     return bool(running)
 
 
+def _note_local(game_id: str, idx, basis: str) -> None:
+    """Log how the local entry was chosen - or why it is unknown - once per
+    game and outcome. Counts / basis only, never an identity."""
+    key = (game_id, idx, basis)
+    with _cache_lock:
+        if key in _local_logged:
+            return
+        if len(_local_logged) > 64:
+            _local_logged.clear()
+        _local_logged.add(key)
+    if idx is None:
+        _log.info("standalone TFT game %s: local player unknown (%s) - HP, "
+                  "standing and board withheld", game_id or "?", basis)
+    else:
+        _log.info("standalone TFT game %s: local player = entry %d (by %s)",
+                  game_id or "?", idx, basis)
+
+
 def _round_state(lcu, eog, now: float) -> dict:
     """The local player's round state from a fresh, same-game EoG file."""
     game_id = str((lcu or {}).get("game_id") or "") if isinstance(lcu, dict) else ""
     out = {"eog": False, "local": {}, "players_alive": None,
            "players_total": None, "game_length_s": None, "eog_age_s": None,
-           "game_id": game_id, "queue_id": None, "set": None, "lobby": []}
+           "game_id": game_id, "queue_id": None, "set": None, "lobby": [],
+           "local_index": None, "local_basis": "",
+           "alive_others": None, "dead_others": None}
     if not isinstance(eog, dict):
         return out
     eog_gid = str(eog.get("gameId") or "")
@@ -363,31 +398,40 @@ def _round_state(lcu, eog, now: float) -> dict:
         return out  # a previous game's file: never mix its board in
     players = _players(eog)
     sb = eog.get("statsBlock") if isinstance(eog.get("statsBlock"), dict) else {}
-    local = next((p for p in players if p.get("isInteractable") is True), None)
-    hps = [_hp(p.get("health")) for p in players]
+    # S135 N13: by the LCU summoner id, never the first isInteractable entry
+    # (a human lobby flags all 8); unknown rather than a stranger.
+    idx, basis = _lp.local_player_index(players, summoner_id=_lp.summoner_id_of(lcu))
+    _note_local(game_id or eog_gid, idx, basis)
+    local = players[idx] if idx is not None else None
     game_len = _int(sb.get("gameLengthSeconds"))
     out.update({
+        "local_index": idx,
+        "local_basis": basis,
         "eog": True,
         "game_id": game_id or eog_gid,
         "queue_id": eog.get("queueId"),
         "set": sb.get("setCoreName"),
         "players_total": len(players),
-        # None (unknown), not 0, while the start-of-game sentinels stand
-        "players_alive": (sum(1 for h in hps if h > 0)
-                          if hps and all(h is not None for h in hps) else None),
         "game_length_s": game_len,
         "eog_age_s": max(0.0, now - float(eog.get("_mtime") or now)),
-        "lobby": _lobby(players),
+        "lobby": _lobby(players, idx),
         # Match 3 QA: the client rewrites the file at combat start and on an
         # elimination only, so during planning board / HP / placement are the
         # LAST combat's (HP lags 10-20 s, placement up to 40 s). The file has
         # no round id; its own game clock is the honest "as of".
         "as_of_game_s": game_len if game_len > 0 else None,
     })
+    # players_alive / alive_others / dead_others: ONE rule
+    # (tft/local_player.lobby_counts), None (unknown, not 0) while the
+    # start-of-game placeholders stand - never "8 eliminated".
+    out.update(_lp.lobby_counts(players, idx))
     if local is not None:
+        status = _lp.player_status(local)
         out["local"] = {
-            "health": _hp(local.get("health")),
+            # unknown (start-of-game -1) -> None; eliminated -> 0, never -11
+            "health": _status_hp(local),
             "standing": _place(local.get("ffaStanding")),
+            "eliminated": None if status is None else status == _lp.ELIMINATED,
             "board": _board(local.get("boardPieces")),
         }
     return out
@@ -434,18 +478,18 @@ def _synth_allgamedata(*, lcu, running, eog, now):
         game_time = max(0.0, now - ct) if ct else 0.0
     players = []
     if rs["eog"]:
-        seen_local = False
         for i, p in enumerate(_players(eog) if isinstance(eog, dict) else []):
-            hp = _hp(p.get("health"))
-            # one local player only (the reader matches by name, and two
-            # LOCAL_NAME rows made it pick the LAST - a different HP than the
-            # panel's first); mirrors _lobby and _round_state's next()
-            is_local = p.get("isInteractable") is True and not seen_local
-            seen_local = seen_local or is_local
+            hp = _status_hp(p)
             row = {
-                "summonerName": LOCAL_NAME if is_local else f"opponent-{i}",
-                # unknown HP (start-of-game -1) is neither dead nor a value
-                "isDead": hp == 0,
+                # ONE local row, the selected entry (TftStateReader matches the
+                # local row by name; several LOCAL_NAME rows made it read the
+                # LAST one - S134 verifier, S135 N13 / N14)
+                "summonerName": (LOCAL_NAME if i == rs["local_index"]
+                                 else f"opponent-{i}"),
+                # the ONE rule (tft/local_player.player_status): eliminated =
+                # HP <= 0 on a SCORED entry; the start-of-game -1 / -1 is
+                # unknown - neither dead nor a value (N14)
+                "isDead": _lp.player_status(p) == _lp.ELIMINATED,
                 "scores": {"kills": 0, "deaths": 0},
                 "items": [],
             }
@@ -496,8 +540,10 @@ def _summary_from_raw(raw: dict) -> dict:
     local = st.get("local") or {}
     if local:
         board = local.get("board") or []
+        # null (unknown) at game start, 0 + eliminated once out - never -1 / -11
         out["hp"] = local.get("health")
         out["standing"] = local.get("standing")
+        out["eliminated"] = local.get("eliminated")
         out["board_size"] = len(board)
         if board:
             out["board_str"] = ", ".join(

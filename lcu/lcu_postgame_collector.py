@@ -962,7 +962,15 @@ class PostgameCollector:
         if rec is None:
             doc = (doc_hint if doc_hint is not None
                    else self._lcu_get(_tft_placement.GAMECLIENT_EOG_PATH))
-            rec = _tft_placement.parse_gameclient_eog(doc)
+            # S135 N13: this block flags all 8 players isInteractable in a
+            # human lobby; the local entry is the one carrying OUR summoner
+            # id / puuid (one GET, only on this fallback).
+            me = (self._lcu_get("/lol-summoner/v1/current-summoner")
+                  if isinstance(doc, dict) else None)
+            me = me if isinstance(me, dict) else {}
+            rec = _tft_placement.parse_gameclient_eog(
+                doc, local_summoner_id=me.get("summonerId"),
+                local_puuid=me.get("puuid"))
         if rec is None:
             _log.debug("postgame: TFT EOG document unavailable")
             return False

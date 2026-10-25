@@ -286,26 +286,34 @@ def final_from_record(rec, *, root=None, source: str = SOURCE_STORE) -> Optional
 
 # -- sources -------------------------------------------------------------------------
 
-def per_round_is_final(doc) -> bool:
+def per_round_is_final(doc, *, summoner_id=None) -> bool:
     """True when a per-round document records a FINISHED game for the local
-    player: they are eliminated (health 0), or every opponent outside their
-    Double Up team is (health 0). A mid-game write - local alive, someone else
-    alive - holds a standing, not a result. The game-start -1 placeholders
-    (QA N10) are neither alive nor eliminated."""
+    player: they are eliminated, or every opponent outside their Double Up
+    team is. A mid-game write - local alive, someone else alive - holds a
+    standing, not a result.
+
+    S135 N13 (merged at the s135 landing): the local entry is the one
+    tft/local_player.py picks - by the LCU summoner id; a human lobby flags all
+    8 ``isInteractable`` - and an unknown local is NOT final, never a
+    stranger's result. "Eliminated" is the ONE rule (``player_status``):
+    health <= 0 on a scored entry (an eliminated player keeps a real standing
+    and a health of -11..0); the game-start -1 / -1 placeholders (QA N10) are
+    neither alive nor eliminated, so they never end a game."""
+    from tft import local_player as _lp
     sb = doc.get("statsBlock") if isinstance(doc, dict) else None
     players = sb.get("players") if isinstance(sb, dict) else None
     if not isinstance(players, list):
         return False
     players = [p for p in players if isinstance(p, dict)]
-    local = next((p for p in players if p.get("isInteractable") is True), None)
+    local, _basis = _lp.local_player(players, summoner_id=summoner_id)
     if local is None:
         return False
-    if _int(local.get("health")) == 0:
+    if _lp.player_status(local) == _lp.ELIMINATED:
         return True
     team = _int(local.get("partnerGroupId")) or 0
     others = [p for p in players if p is not local
               and not (team and (_int(p.get("partnerGroupId")) or 0) == team)]
-    return bool(others) and all(_int(p.get("health")) == 0 for p in others)
+    return bool(others) and all(_lp.player_status(p) == _lp.ELIMINATED for p in others)
 
 
 def per_round_record(now: Optional[float] = None) -> Optional[dict]:
@@ -318,11 +326,15 @@ def per_round_record(now: Optional[float] = None) -> Optional[dict]:
         doc = tft_standalone.read_eog(now=now, max_age_s=PER_ROUND_MAX_AGE_S)
         if doc is None:
             return None
-        rec = tft_placement.parse_gameclient_eog(doc, now=now)
+        # S135 N13: the local entry by the LCU summoner id (the relay snapshot
+        # the live source already reads), never the first isInteractable one.
+        from tft.local_player import summoner_id_of
+        sid = summoner_id_of(tft_standalone.relay_lcu_snapshot())
+        rec = tft_placement.parse_gameclient_eog(doc, now=now, local_summoner_id=sid)
         if not rec:
             return None
         rec = tft_placement.merge(rec, None)
-        rec["per_round_final"] = per_round_is_final(doc)
+        rec["per_round_final"] = per_round_is_final(doc, summoner_id=sid)
         return rec
     except Exception as exc:  # noqa: BLE001 - a bad file is "no file"
         _log.debug("TFT per-round file unusable: %s", exc)

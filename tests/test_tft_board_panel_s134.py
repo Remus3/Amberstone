@@ -186,8 +186,12 @@ def test_tft_state_reader_health_is_unknown_not_dead_at_start(eog_file, monkeypa
 
 
 def test_partial_lobby_is_not_served(eog_file):
+    # The start-of-game placeholder is health -1 AND ffaStanding -1 (QA N10):
+    # unknown, so no lobby and no count. A negative HP on a SCORED entry is an
+    # elimination instead (tft/local_player.player_status, S135 N13).
     d = _fixture()
     d["statsBlock"]["players"][3]["health"] = -1
+    d["statsBlock"]["players"][3]["ffaStanding"] = -1
     eog_file.write_text(json.dumps(d), encoding="ascii")
     lc = ts.standalone_liveclient_summary(LCU, running=True)
     assert "players" not in lc
@@ -208,20 +212,23 @@ def test_as_of_labels_the_round_file(eog_file):
     assert out["tft_as_of"] == a
 
 
-def test_only_one_you_even_if_the_file_marks_two(eog_file):
+def test_two_marked_players_and_no_id_name_no_local_player(eog_file):
+    """S135 N13 (reconciled at the s135 landing): two isInteractable entries
+    with no LCU id to tell them apart is the human-lobby ambiguity, so the
+    local player is UNKNOWN - never the first flagged entry. The lobby still
+    renders (every status is known) with no "you" row; no local HP, standing
+    or board is served and the synthesized allgamedata names no local row."""
     d = _fixture()
     for p in d["statsBlock"]["players"][:2]:
         p["isInteractable"] = True
     eog_file.write_text(json.dumps(d), encoding="ascii")
     lc = ts.standalone_liveclient_summary(LCU, running=True)
-    assert sum(1 for r in lc["players"] if r["you"]) == 1
-    # the synthesized allgamedata names exactly one local player too, the
-    # same (first) one the panel shows
+    assert lc["players"] and sum(1 for r in lc["players"] if r["you"]) == 0
+    assert "hp" not in lc and "board" not in lc
     raw = ts.synth_allgamedata(lcu=LCU, running=True)
-    locals_ = [p for p in raw["allPlayers"] if p["summonerName"] == ts.LOCAL_NAME]
-    assert len(locals_) == 1
-    first = d["statsBlock"]["players"][0]
-    assert locals_[0]["health"] == first["health"] == raw["rc_standalone"]["local"]["health"]
+    assert [p for p in raw["allPlayers"] if p["summonerName"] == ts.LOCAL_NAME] == []
+    assert raw["rc_standalone"]["local"] == {}
+    assert "currentHP" not in raw["activePlayer"]
 
 
 def test_engine_written_board_rows_win_over_the_file(eog_file):

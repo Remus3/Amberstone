@@ -72,7 +72,8 @@ _SOURCES = (SOURCE_EOG, SOURCE_HISTORY)
 EOG_PATH = "/lol-end-of-game/v1/tft-eog-stats"
 # N4 (match-2 QA): the game client's own EOG block also serves TFT post-game.
 # Same document as the standalone client's per-round TFTEoGStats.json
-# (statsBlock.players[], isInteractable = local, boardPieces championName /
+# (statsBlock.players[], local = playerId == the LCU summoner id - a human
+# lobby flags all 8 isInteractable, S135 N13 -, boardPieces championName /
 # starLevel / itemNames / price; docs/TFT_PROGRAM.md section 0 item 2).
 GAMECLIENT_EOG_PATH = "/lol-end-of-game/v1/gameclient-eog-stats-block"
 HISTORY_PATH = "/lol-match-history/v1/products/tft/{puuid}/matches?begin=0&count={count}"
@@ -367,10 +368,17 @@ def _gameclient_unit(raw) -> Optional[dict]:
             "traits": []}
 
 
-def parse_gameclient_eog(doc, *, now: Optional[float] = None) -> Optional[dict]:
+def parse_gameclient_eog(doc, *, now: Optional[float] = None,
+                         local_summoner_id=None,
+                         local_puuid: Optional[str] = None) -> Optional[dict]:
     """Sanitised record from a gameclient-eog-stats-block TFT document, or
     None. Units carry no traits here, so per-player traits stay [] (the
-    history record supplies the tiers on merge) rather than partial counts."""
+    history record supplies the tiers on merge) rather than partial counts.
+
+    S135 N13: the local entry is the one whose playerId / PUUID matches the
+    LCU summoner id / puuid (``tft/local_player.py``); a human lobby flags all
+    8 ``isInteractable``, so the flag alone decides only when exactly one
+    entry carries it. Unknown -> no local placement / HP, never a stranger's."""
     if not isinstance(doc, dict):
         return None
     gid = _int(doc.get("gameId"))
@@ -378,12 +386,15 @@ def parse_gameclient_eog(doc, *, now: Optional[float] = None) -> Optional[dict]:
     raw_players = sb.get("players") if isinstance(sb, dict) else None
     if not gid or gid <= 0 or not isinstance(raw_players, list) or not raw_players:
         return None
+    from tft.local_player import local_player_index
+    local_idx, _basis = local_player_index(raw_players, summoner_id=local_summoner_id,
+                                           puuid=local_puuid)
     players, local_raw = [], None
-    for p in raw_players:
+    for i, p in enumerate(raw_players):
         if not isinstance(p, dict):
             continue
-        local = p.get("isInteractable") is True
-        if local and local_raw is None:
+        local = i == local_idx
+        if local:
             local_raw = p
         players.append({
             "placement": _placement(p.get("ffaStanding")),
