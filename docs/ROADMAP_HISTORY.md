@@ -1,5 +1,21 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-10-25c - size-budget relocation (session 133 batch I merger), 7 rows
+
+`ROADMAP.md` stood at 81504 of 81920 bytes on `fb901450f`, so the batch I
+rows (RM-878 / RM-857 / RM-866 SHIPPED, LEDGER 1853-1855) did not fit. The
+seven batch E / F rows below (six SHIPPED, one CLOSED mis-filed) move here
+VERBATIM as they stood at `fb901450f`, in their ROADMAP order; one stub in
+`ROADMAP.md` names them.
+
+- **[x] RM-867 SHIPPED s133 batch F (`d37e806c1`, LEDGER 1838; Tier-1 data, low; gated: G5-01 live half): the 30 live `data/anvil_shadow.jsonl` rows were one pre-RM-406 test fixture; `core/anvil_shadow.py` refuses and skips injection-probe offers, and the rows were archive-split (gitignored, byte-identical, nothing deleted; live file absent until a real anvil row).** Follow-up RM-873. Body in `BACKLOG.md` gated lane cycle 5.
+- **[x] RM-870 SHIPPED s133 batch E (`c6a8fae50`, LEDGER 1831; found and filed s133 by the v483 verifier side repro; Tier-1 route, med; gated: none): live `/api/ds-preview` rows carry `unique_passive_key`, so `/api/build-plan` no longer plans two items sharing one unique passive.** `dashboard/routes_state.py` projected the engine key as `family` only, which the planner never reads; each row now carries both names with the one engine value (no family map, no literal). Display-only residue: `coach_integration/archetype_dispatch.py` `_build_display_rows` also drops the key; no planner reads it. Detail in LEDGER 1831.
+- **[x] RM-860 SHIPPED s133 batch E (`9b51bc90f` + `32f625d4c`, LEDGER 1832; filed s133 by the gated lane; Tier-1 coach + web, low-med; gated: G3-13 for the live half): surface (A) - in a Mayhem game the ARAM coach stamps the `aug_reco*` fields from `core.augment_recommender.recommend(mode="mayhem")` in the arena coach's field shape, so the existing augment panel renders; the `aram_aug_select` Haiku call is fallback-only (no offered name resolves, or plain ARAM); `augment_select` clears on the first scan that reports the panel gone; `_run_vision` no longer writes a stale artifact over the handler's fields; every emitted CommunityDragon rarity token (kSilver / kGold / kPrismatic / kEventChoice / kBronze) maps to a styled pip.** Residual: retire or render the fallback `aug_take` [RETIRED by RM-877, LEDGER 1845]. Body in `BACKLOG.md` "Session 133 lane filings (gated lane cycle 4)".
+- **[x] RM-872 SHIPPED s133 batch F (`f103226d0`, agent s133-a18, LEDGER 1835; Tier-1, low; gated: none): the WS3 / WS4 objective + macro shadow logs held 3314 / 3312 pre-RM-406 test rows (null clock or `Champ0`); the writers refuse them, the reports exclude them at read time (gates unchanged), and each file's all-leaked 832-row tail is archive-split.** Detail in LEDGER 1835.
+- **[x] RM-862 SHIPPED s133 batch F (`a7705e1ac`, LEDGER 1837; Tier-1 TFT, low; gated: LT-01 live read-back): `coaches/tft_pbe_coach.py` `_inject_pbe_events` reads `round_schedule()` (the RM-858 pattern); only the Set 17 gods schedule injects, Set 17 unchanged.** Body in `BACKLOG.md` "Session 133 batch D filings".
+- **[x] RM-863 SHIPPED s133 batch F (`4c87094b4` + `aca9e878d`, LEDGER 1836; Tier-1, low; gated: none): RM-853 follow-ups - `_send_error` logs a scrubbed cause and always replies, the ephemeral comment fixed, the RM-835 reply guard sweeps the supervisor with `fail` as a reply, exact-match `public_last_error` tests.** Body in `BACKLOG.md` "Session 133 batch D filings".
+- **[x] RM-865 CLOSED (mis-filed) s133 batch F (LEDGER 1839): the orphan-worker reload cannot happen in production - `ops/rc_dev_runtime.py` reloads only `SAFE_RELOAD_MODULES` (`:155-163`, `:458-476`) and `core.focus_board_live` is not one.** Row text kept in `BACKLOG.md` "Session 133 batch D filings".
+
 ## 2026-10-25b - size-budget relocation (session 133 batch F merger), 6 rows
 
 `ROADMAP.md` stood at 81082 of 81920 bytes after the RM-872 landing
