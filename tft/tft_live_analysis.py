@@ -498,7 +498,7 @@ class TftLiveAnalysis:
         """Judge one read (once per state object: the worker hands the SAME
         dict to notify_coach_state and notify_round) and return the state to
         act on - the read itself, or a copy holding the accepted round."""
-        from core.tft_stage_gate import NEW_GAME, REJECT
+        from core.tft_stage_gate import NEW_GAME, REJECT, REVERT
         if not isinstance(state, dict): return state
         if state is getattr(self, "_gate_seen", None): return self._gate_view
         gate = self._gate(); gate.set_queue(state.get("variant"))
@@ -512,7 +512,27 @@ class TftLiveAnalysis:
             logger.debug("Stage read %s held (%s); acting on %s", state.get("stage_round"), v.reason,
                          view.get("stage_round") or "none")
         self._gate_seen = state; self._gate_view = view
+        # The round bookkeeping moves HERE, on the first sight of each state:
+        # core/tft_worker.py:310-312 and coaches/tft_pbe_coach.py:149-151 call
+        # notify_round only when the RAW read changed, so a round the gate
+        # accepts on a poll with no raw change (a confirmation) reaches only
+        # notify_coach_state.
+        self._apply_round(view, v.kind == REVERT)
         return view
+    def _apply_round(self, view, revert):
+        """Start the gated round's timer when it changes. A REVERT (the last
+        advance was a misread) restores the round bookkeeping it replaced, so
+        a flicker re-arms no planning scan for the round that never began."""
+        sr = (view.get("stage",0), view.get("round",0))
+        if sr == self._last_round: return
+        before = getattr(self, "_round_before", None)
+        if revert and before and before[0] == sr:
+            self._last_round, self._round_start_time, self._scanned_planning, self._scanned_mid = before
+            self._round_before = None
+            return
+        self._round_before = (self._last_round, self._round_start_time, self._scanned_planning, self._scanned_mid)
+        self._last_round=sr; self._round_start_time=time.time()
+        self._scanned_planning=False; self._scanned_mid=False
     @staticmethod
     def _held_view(state, accepted):
         """A copy of state carrying the accepted round (none yet = 0-0 / "")
@@ -527,13 +547,8 @@ class TftLiveAnalysis:
         except Exception:  # noqa: BLE001
             pass
         return view
-    def notify_round(self, state: dict) -> None:
-        view = self._gated(state)
-        self._coach_state = view
-        sr = (view.get("stage",0), view.get("round",0)) if isinstance(view, dict) else (0, 0)
-        if sr!=self._last_round:
-            self._last_round=sr; self._round_start_time=time.time()
-            self._scanned_planning=False; self._scanned_mid=False
+    # Both entry points gate the read; the round change is applied in _gated.
+    def notify_round(self, state: dict) -> None: self._coach_state=self._gated(state)
     def notify_coach_state(self, state: dict) -> None: self._coach_state=self._gated(state)
     def _is_carousel_or_spectate(self):
         cs=self._coach_state; return cs.get("round_event","") in self._CAROUSEL_EVENTS or cs.get("is_carousel",False)
