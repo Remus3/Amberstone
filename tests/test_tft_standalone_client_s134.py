@@ -218,7 +218,10 @@ def test_no_lcu_and_no_fresh_file_never_scans(tmp_path, monkeypatch):
     assert ts.synth_allgamedata(lcu=None) is None
 
 
-def test_snapshot_shape_stamps_the_in_game_queue(monkeypatch):
+@pytest.mark.parametrize("phase", ["InProgress", "GameStart", "Reconnect"])
+def test_snapshot_shape_stamps_the_in_game_queue(monkeypatch, phase):
+    """Verifier pass 3: Reconnect must carry the game id + queue too, or the
+    same-game check on a reconnect is inert."""
     from lcu import snapshot_shape
     # the draft recorder may persist a pending draft under the game id
     monkeypatch.setattr(snapshot_shape._draft_log, "note_game_id",
@@ -229,15 +232,20 @@ def test_snapshot_shape_stamps_the_in_game_queue(monkeypatch):
     def request(method, path):
         assert method == "GET"
         if path == "/lol-gameflow/v1/gameflow-phase":
-            return "InProgress", None
+            return phase, None
         if path == "/lol-gameflow/v1/session":
             return {"gameData": {"gameId": 1000000911,
                                  "queue": {"id": 1090, "gameMode": "TFT"}}}, None
         return None, None
     state = snapshot_shape.shape_snapshot(request, {}, enrich=False)
+    assert state["phase"] == phase
+    assert state["game_id"] == "1000000911"
     assert state["game_queue_id"] == 1090
     assert state["game_queue_mode"] == "TFT"
     assert ts.lcu_tft_verdict(state) is True
+    # an SR / ARAM reconnect with a lingering TFT binary decides by queue
+    aram = dict(state, game_queue_mode="ARAM", game_queue_id=450)
+    assert ts.lcu_tft_verdict(aram) is False
 
 
 # -- name cleanup ------------------------------------------------------------

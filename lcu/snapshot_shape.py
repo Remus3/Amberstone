@@ -540,7 +540,10 @@ def shape_snapshot(request: Callable[..., tuple], config,
     # Capture Riot game_id from gameflow session when a game is live.
     # Used by Legion's DS calibration pipeline for post-game correlation.
     state["cherry_augment_open"] = False
-    if state["phase"] in ("GameStart", "InProgress"):
+    # S134 P0: Reconnect is also a live game (same gameId); reading the
+    # session there too lets consumers keep the game id + queue across a
+    # reconnect (tft/tft_standalone.lcu_tft_verdict). Same single GET.
+    if state["phase"] in ("GameStart", "InProgress", "Reconnect"):
         gflow, _ = request("GET", "/lol-gameflow/v1/session")
         if isinstance(gflow, dict):
             # `.get("gameData", {})` hands back the DEFAULT only when the key

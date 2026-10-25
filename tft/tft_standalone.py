@@ -257,10 +257,11 @@ def lcu_tft_verdict(lcu):
         if mk is not None:
             return mk == "tft"
     if phase == "Reconnect":
-        # snapshot_shape stamps the queue only in GameStart / InProgress, so a
-        # Reconnect carries none: unknown, and the caller then requires a
-        # FRESH per-round file (an SR / ARAM reconnect with a lingering TFT
-        # binary has none; a TFT reconnect mid-match does).
+        # An LCU agent older than S134 stamps no queue (or game id) in
+        # Reconnect: unknown, and the caller then requires a FRESH per-round
+        # file (an SR / ARAM reconnect with a lingering TFT binary has none;
+        # a TFT reconnect mid-match does). The current snapshot_shape stamps
+        # the queue in Reconnect too, which the branches above decide.
         return None
     return True
 
