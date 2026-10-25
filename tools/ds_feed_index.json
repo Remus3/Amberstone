@@ -884,6 +884,11 @@
         "declared_patch": "16.21.1",
         "stamp_field": "ddragon_version"
       },
+      "mayhem_augments.json": {
+        "body_md5": "f1f2c754",
+        "declared_patch": "16.21.1",
+        "stamp_field": "rc_patch"
+      },
       "pickban_targets.json": {
         "body_md5": "ae183bd6",
         "declared_patch": "16.21.1",
