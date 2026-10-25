@@ -651,7 +651,18 @@ _WEB = _REPO_ROOT / "web"
 # web/css/panels/augment_reco.css back to their HEAD blobs reproduces the
 # superseded 1ec49f88... value EXACTLY. Those two paths are the whole
 # change. No glyph change.
-_LIVE_HALF_DIGEST = "971372e120d080d45a2ec569d494de0cb459c57be2078c59dac472ecf74ef5eb"
+# superseded by the RM-857 re-capture below: "971372e120d080d45a2ec569d494de0cb459c57be2078c59dac472ecf74ef5eb"
+#
+# RE-CAPTURED 2026-10-25 at RM-857 (the Replay scrubber's item icons load
+# from the local DDragon mirror through last_match.js _itemIconUrl, now
+# exported; the UI audit's alt-text MUST-FIX in the same slice). Ordinary
+# case, no tokeniser change. ATTRIBUTED BY SUBSTITUTION against d4ec01210:
+# swapping exactly web/js/panels/dev.js and web/js/panels/last_match.js back
+# to their HEAD blobs reproduces the superseded 971372e1... value EXACTLY.
+# Those two paths are the whole change; the new
+# web/js/panels/dev_replay_item_icon.test.mjs is not a swept language. No
+# glyph change.
+_LIVE_HALF_DIGEST = "6d356f2cf1f851c08625e7fcd528b1ce74581ae51daf9e860fa3a0d67901c68f"
 
 
 def _web_sources() -> list[Path]:

@@ -9,6 +9,8 @@ import { loadReplayEvents, wireReplayEventsOnce, setReplaySeekHandler } from './
 // RM-612 (X-12): pure minimap logic (death windows, last-known + age halo).
 import { buildModel, stateAt, worldToCanvas, mapArtUrls, monogram, MAP_WORLD } from './replay_minimap.js';
 import { loadReviewPlayer } from './review_player.js';
+// RM-857: the one DDragon item-icon URL builder (local mirror, ITEMS.version).
+import { _itemIconUrl } from './last_match.js';
 
 // -- Settings view (2026-04-26) -----------------------------------
 function _settingsRefresh() {
@@ -245,9 +247,10 @@ function _replayChampIconUrl(name) {
   const cid = _resolveChampId(name) || String(name).replace(/[^A-Za-z]/g, "");
   return "/icons/champions/" + encodeURIComponent(cid) + ".png";
 }
-function _replayItemIconUrl(id) {
-  return "/icons/items/" + id + ".png";
-}
+// RM-857: /icons/items/ serves name-slug files (data/icons/aram_items/), so a
+// numeric id there 404'd and every replay item icon hid. Use the shared local
+// DDragon builder instead ("" for an empty slot, so no request is made).
+const _replayItemIconUrl = _itemIconUrl;
 function _replayLoadItemsIndex() {
   if (_REPLAY.itemsIndex) return Promise.resolve(_REPLAY.itemsIndex);
   return fetch("/data/items_index.json")
@@ -425,12 +428,17 @@ function _replayRenderSnapshot(idx, mapTms) {
     const itemsCell = document.createElement("td");
     itemsCell.className = "replay-col-items";
     for (const itemId of (e.items || []).slice(0, 7)) {
+      const src = _replayItemIconUrl(itemId);
+      if (!src) continue;
       const img = document.createElement("img");
       img.className = "replay-item-icon";
-      img.src = _replayItemIconUrl(itemId);
-      img.alt = String(itemId);
+      img.src = src;
+      // RM-857 UI audit: now that the icons render, the accessible name is
+      // the item name (was the bare numeric id), same text as the hover title.
       const lookup = _REPLAY.itemsIndex && _REPLAY.itemsIndex.byId;
-      img.title = (lookup && lookup[String(itemId)]) || ("item " + itemId);
+      const label = (lookup && lookup[String(itemId)]) || ("item " + itemId);
+      img.alt = label;
+      img.title = label;
       img.onerror = () => { img.style.display = "none"; };
       itemsCell.appendChild(img);
     }
@@ -655,3 +663,6 @@ export {
   _settingsRefresh, renderSpendGates,
   _replayViewWireOnce, _replayViewRefresh, _replayLoadMatch,
 };
+
+// --- test hooks (web/js/panels/dev_replay_item_icon.test.mjs) ---------
+export const __test = { _replayItemIconUrl };
