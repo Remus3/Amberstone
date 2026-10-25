@@ -1,0 +1,71 @@
+{
+  "note": "REAL-SHAPE live TFT in-game state, the DOMINANT row of the session 134 TFT QA recorder capture (Normal TFT, 2026-10-25): 81 of the 83 recorded states have this shape - mode_key client (RC did not resolve TFT after a restart), lcu.phase InProgress, liveclient empty (TFTClient serves nothing on :2999), and a stale SR coach payload whose action / immediate is the live imperative 'Drake spawns 5:00 - set up vision'. Row taken from the middle of the client-mode run; every value kept is the served value. Changes: identifiers dropped (coach.team_context, lcu.config, lcu.lcu_port, lcu.game_id, lcu.summoner_id, lcu.cs_debug, lcu.ts, lcu.champ_select when present; screen_read dropped - its Sonnet text is not under test). What it pins: no SR imperative reaches the page during a live game with no :2999 feed.",
+  "mode_key": "client",
+  "coach_source": "coaching_data.json",
+  "health": {
+    "alive": true,
+    "pid": 10072,
+    "mode": "client",
+    "has_game": false,
+    "aram_mode": false,
+    "arena_mode": false,
+    "brawl_mode": null,
+    "tft_mode": false,
+    "ui_pulse_age_s": 1.5,
+    "game_poll_age_s": 0.1
+  },
+  "coach": {
+    "mode": "client",
+    "action": "Drake spawns 5:00 - set up vision",
+    "immediate": "Drake spawns 5:00 - set up vision",
+    "next": "",
+    "fight_rule": "FAIR FIGHT - trade only on cooldowns, avoid coinflips",
+    "wave": "",
+    "objective": "",
+    "reset_item": "",
+    "risk": "MEDIUM",
+    "map": "",
+    "win_pct": null,
+    "log": [],
+    "pregame": "Waiting for draft data...\n\nPaste game state in chat to begin coaching.",
+    "choices": []
+  },
+  "liveclient": {},
+  "lcu": {
+    "phase": "InProgress",
+    "cherry_augment_open": false,
+    "mastery": {}
+  },
+  "cs_archetype_pick": {},
+  "archetype_nudge": {},
+  "callouts": [
+    {
+      "tag": "dragon",
+      "line": "Drake spawns 5:00 - set up vision",
+      "eta_s": 300.0,
+      "kind": "objective"
+    },
+    {
+      "tag": "playbook_dragon",
+      "line": "Drake: match prio, ward both pits - fight only with numbers",
+      "eta_s": 300.0,
+      "kind": "playbook"
+    },
+    {
+      "tag": "herald",
+      "line": "Rift Herald 14:00 - ward river",
+      "eta_s": 840.0,
+      "kind": "objective"
+    }
+  ],
+  "lead_projection": {
+    "state": "even",
+    "magnitude": "slight",
+    "line": "Even: farm cleanly, trade only on cooldowns.",
+    "source_tag": "lead-proj"
+  },
+  "minimap_dots": [],
+  "minimap_rect": null,
+  "summoner_cooldowns": null,
+  "zoi": null
+}

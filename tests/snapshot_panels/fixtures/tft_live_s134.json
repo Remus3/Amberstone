@@ -1,0 +1,66 @@
+{
+  "note": "REAL-SHAPE TFT in-game state, not state-coverage shaped. Rooted in the session 134 TFT QA recorder capture of a live Normal TFT game (queue 1090, map 22), first states.jsonl row with mode_key tft (2026-10-25). Every value kept is the served value; the changes are: identifiers dropped (puuid, summoner_id, game_id, lcu_port, coach.team_context), the lcu block trimmed to phase / cherry_augment_open / mastery plus five champ_select keys (lcu.config, lcu.cs_debug, lcu.ts and the other champ_select keys - my_team carries a summoner id - dropped), pid kept as recorded, the stale screen_read text ASCII-normalised (one em dash -> ' - '). What it pins: the TFT coach payload ships with EVERY TFT field empty while SR leftovers (risk, fight_rule) and a stale champ-select pick ride along, health.mode reads client while tft_mode is true, and liveclient is empty.",
+  "mode_key": "tft",
+  "coach_source": "data/tft_coaching_data.json",
+  "health": {
+    "alive": true,
+    "pid": 22888,
+    "mode": "client",
+    "has_game": false,
+    "aram_mode": false,
+    "arena_mode": false,
+    "brawl_mode": null,
+    "tft_mode": true,
+    "ui_pulse_age_s": 1.1,
+    "game_poll_age_s": 5.3
+  },
+  "coach": {
+    "mode": "tft",
+    "action": "",
+    "board": "",
+    "econ": "",
+    "rolldown": "",
+    "items": "",
+    "god_pick": "",
+    "placement": "",
+    "upgrade": "",
+    "risk": "MEDIUM",
+    "choices": [],
+    "immediate": "",
+    "fight_rule": "FAIR FIGHT - trade only on cooldowns, avoid coinflips"
+  },
+  "liveclient": {},
+  "lcu": {
+    "phase": "InProgress",
+    "cherry_augment_open": false,
+    "mastery": {},
+    "champ_select": {
+      "queue_id": 1090,
+      "is_aram": false,
+      "my_champion": 145,
+      "my_champion_locked": 145,
+      "phase": "GAME_STARTING"
+    }
+  },
+  "cs_archetype_pick": {
+    "champion": "Kai'Sa",
+    "primary": "carry",
+    "secondary": "mage",
+    "source": "default"
+  },
+  "screen_read": {
+    "status": "ok",
+    "text": "Screen shows Crunchyroll anime, not a live League game - no tactical read possible.",
+    "error": null,
+    "ts": 1785687318.232867,
+    "requested_ts": 1785687315.4869523,
+    "model": "claude-sonnet-4-6"
+  },
+  "archetype_nudge": {},
+  "callouts": [],
+  "lead_projection": {},
+  "minimap_dots": [],
+  "minimap_rect": null,
+  "summoner_cooldowns": null,
+  "zoi": null
+}
