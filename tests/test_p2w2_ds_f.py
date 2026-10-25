@@ -115,12 +115,13 @@ class FiveHundredBodyNoLeakTests(unittest.TestCase):
 
     def test_known_route_4xx_mapping_unaffected(self) -> None:
         # Guard the fix did not disturb the explicit ApiError mapping: an
-        # unknown champion is still a 404 with the engine's own message.
+        # unknown champion is still a 404, with the fixed RM-838 (d) line
+        # (the engine's KeyError text goes to the log, never the body).
         status, body = _post_json(
             self.base + "/stats", {"champion": "NotAChampionXYZ", "level": 1}
         )
         self.assertEqual(status, 404)
-        self.assertIn("Unknown champion", body["error"])
+        self.assertEqual(body["error"], server._ENGINE_REJECT_MSG[404])
 
 
 class NonFiniteFloatRejectTests(unittest.TestCase):

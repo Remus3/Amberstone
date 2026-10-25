@@ -20,6 +20,7 @@ of the report continues. ASCII only (no em/en dash, no smart quotes).
 
 from __future__ import annotations
 
+import logging
 import math
 from dataclasses import dataclass, field
 from typing import List, Optional, Sequence, Tuple
@@ -35,6 +36,8 @@ from .missile import is_projectile, spell_travel_time
 from .recharge_ledger import compute_recharge_ledger
 from .scenario_matrix import check_invariants, sweep_scenarios
 from .self_shred import compute_self_shred_uplift
+
+_LOG = logging.getLogger(__name__)
 
 # Default rotation when the caller does not supply one. Matches the spirit of
 # the burst/combo default (Q-W-E-AA-R) but interleaves an AA after R so the
@@ -160,9 +163,15 @@ class FightReport:
         }
 
 
-def _short(exc: Exception) -> str:
-    """One-line, length-capped exception summary for a section note."""
-    return f"{type(exc).__name__}: {str(exc)[:120]}"
+def _section_failed(section: str, exc: Exception) -> str:
+    """Log a failed section's cause and return its FIXED note line.
+
+    RM-838 (d): the notes ride the :8860 /v2/fight-report reply, so the
+    exception text (a path, a client-typed id) goes to the log, repr()-escaped,
+    and never into the note."""
+    _LOG.warning("fight report %s section failed: %s: %r", section,
+                 type(exc).__name__, str(exc))
+    return f"{section} section failed - see logs"
 
 
 def compute_fight_report(
@@ -243,7 +252,7 @@ def compute_fight_report(
         for n in (mr.notes or ()):
             notes.append(f"mana: {n}")
     except Exception as exc:  # fail-soft
-        notes.append(f"mana section failed: {_short(exc)}")
+        notes.append(_section_failed("mana", exc))
 
     # ----- ABILITY-HPS section -----------------------------------------
     ability_heal_hps = 0.0
@@ -266,7 +275,7 @@ def compute_fight_report(
         if champion_name == champ and hps.champion_name:
             champion_name = hps.champion_name
     except Exception as exc:  # fail-soft
-        notes.append(f"ability_hps section failed: {_short(exc)}")
+        notes.append(_section_failed("ability_hps", exc))
 
     # ----- SELF-SHRED section ------------------------------------------
     shred_ability = ""
@@ -302,7 +311,7 @@ def compute_fight_report(
         shred_uplift_pct = shred.dps_uplift_pct
         shred_dps_gain = shred.dps_uplift_abs
     except Exception as exc:  # fail-soft
-        notes.append(f"self_shred section failed: {_short(exc)}")
+        notes.append(_section_failed("self_shred", exc))
 
     # ----- RUNE section -------------------------------------------------
     rune_entries: List[dict] = []
@@ -358,7 +367,7 @@ def compute_fight_report(
             if entry["proc_type"] == "stacking_amp":
                 keystone_amp_mult *= float(entry["amp_mult"])
     except Exception as exc:  # fail-soft
-        notes.append(f"rune section failed: {_short(exc)}")
+        notes.append(_section_failed("rune", exc))
         rune_entries = []
         rune_burst_total = 0.0
         keystone_amp_mult = 1.0
@@ -384,7 +393,7 @@ def compute_fight_report(
             {"invariant": v.invariant, "detail": v.detail} for v in violations
         ]
     except Exception as exc:  # fail-soft
-        notes.append(f"scenario section failed: {_short(exc)}")
+        notes.append(_section_failed("scenario", exc))
         scenario_cells = 0
         invariant_violations = []
 
@@ -407,7 +416,7 @@ def compute_fight_report(
                     "total_casts_available": ledger.total_casts_available,
                 })
     except Exception as exc:  # fail-soft
-        notes.append(f"recharge section failed: {_short(exc)}")
+        notes.append(_section_failed("recharge", exc))
         recharge_slots = []
 
     # ----- MISSILE section ---------------------------------------------
@@ -429,7 +438,7 @@ def compute_fight_report(
                 "travel_time_s": tt,
             })
     except Exception as exc:  # fail-soft
-        notes.append(f"missile section failed: {_short(exc)}")
+        notes.append(_section_failed("missile", exc))
         missile_slots = []
 
     return FightReport(

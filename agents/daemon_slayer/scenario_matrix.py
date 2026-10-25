@@ -64,11 +64,14 @@ break.
 
 from __future__ import annotations
 
+import logging
 import math
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Sequence, Tuple
 
 from .data_loader import DataSnapshot
+
+_LOG = logging.getLogger(__name__)
 
 # Metrics this harness can dispatch. Each maps to one existing scorer.
 VALID_METRICS: Tuple[str, ...] = (
@@ -212,7 +215,11 @@ def _score_cell(
             return (float(r.total_burst_damage), "")
         return (float("nan"), f"unknown metric {metric!r}")
     except Exception as exc:  # fail-soft: record NaN + reason, never raise
-        return (float("nan"), f"scorer raised: {type(exc).__name__}: {str(exc)[:120]}")
+        # RM-838 (d): a FIXED note; the cell notes reach the :8860
+        # /v2/fight-report reply, so the cause goes to the log, repr()-escaped.
+        _LOG.warning("scenario cell %r/%s L%s scorer raised: %s: %r", champion,
+                     metric, level, type(exc).__name__, str(exc))
+        return (float("nan"), "scorer raised - see logs")
 
 
 def sweep_scenarios(
