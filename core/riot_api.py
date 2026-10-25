@@ -7,6 +7,16 @@ Single permitted module for Riot Web API access per ADR-006. Wraps:
   Match-V5                  - get_recent_matches, get_match, get_match_timeline
   League-V4                 - get_summoner_rank
   Champion-Mastery-V4       - get_champion_mastery
+  TFT-Match-V1              - get_tft_match_ids, get_tft_match
+  TFT-League-V1             - get_tft_league_entries
+
+TFT KEY (s134): the TFT routes are a SEPARATE Riot product entitlement. MEASURED
+2026-10-25: the LoL product key in `API-Key-Riot.txt` answers 403 on
+`/tft/league/v1/by-puuid`, `/tft/summoner/v1/summoners/by-puuid` and
+`/tft/match/v1/matches/by-puuid/{puuid}/ids` while Account-V1 answers 200 on
+the same key. A TFT-entitled key goes in the gitignored
+`API-Key-Riot-TFT.txt`; `tft_key_scope()` routes one thread's calls through it
+(and falls back to the main key when the file is absent).
 
 Rate limiting is per-process: a dual token bucket sized to Personal-tier
 headline limits (20/s + 100/2min). Method-level limits surfaced by Riot
@@ -72,6 +82,18 @@ _KEY_LOCK = threading.Lock()
 _KEY_CACHE: Optional[str] = None
 _KEY_WARNED_MISSING = False
 
+# s134: TFT-entitled key (see the module docstring). Read lazily, cached like
+# the main key, cleared by `reload_api_key`. Never logged, never fingerprinted
+# anywhere but `_key_fingerprint` (which already truncates a sha256).
+_TFT_API_KEY_FILE = _PROJECT_ROOT / "API-Key-Riot-TFT.txt"
+_TFT_KEY_CACHE: Optional[str] = None
+
+# Per-THREAD key override set by `tft_key_scope()`. Thread-local for the same
+# reason `OutcomeScope` is: this module has concurrent callers (the team-context
+# fan-out, party mains, request handlers), and a module-global switch would
+# route THEIR LoL calls through the TFT key for as long as a scouting run lasts.
+_KEY_OVERRIDE_TLS = threading.local()
+
 
 def _get_api_key() -> Optional[str]:
     """Read + cache the Riot API key.
@@ -98,6 +120,10 @@ def _get_api_key() -> Optional[str]:
     tests/test_riot_api_key_precedence_rm512.py.
     """
     global _KEY_CACHE, _KEY_WARNED_MISSING
+    override = getattr(_KEY_OVERRIDE_TLS, "key", None)
+    if override:
+        # s134: inside `tft_key_scope()` on THIS thread only.
+        return override
     with _KEY_LOCK:
         if _KEY_CACHE is not None:
             return _KEY_CACHE
@@ -150,11 +176,65 @@ def _key_fingerprint() -> str:
 
 
 def reload_api_key() -> None:
-    """Force re-read of the API key file. Call after operator rotates."""
-    global _KEY_CACHE, _KEY_WARNED_MISSING
+    """Force re-read of the API key files. Call after operator rotates."""
+    global _KEY_CACHE, _KEY_WARNED_MISSING, _TFT_KEY_CACHE
     with _KEY_LOCK:
         _KEY_CACHE = None
         _KEY_WARNED_MISSING = False
+        _TFT_KEY_CACHE = None
+
+
+def _get_tft_api_key() -> Optional[str]:
+    """Read + cache the TFT-entitled key from `API-Key-Riot-TFT.txt`, or None.
+
+    Same parse rules as `_get_api_key` (surrounding quotes stripped, `RGAPI-`
+    prefix required). Absent is the NORMAL case today and is not logged:
+    `tft_key_scope` then leaves the main key active.
+    """
+    global _TFT_KEY_CACHE
+    with _KEY_LOCK:
+        if _TFT_KEY_CACHE is not None:
+            return _TFT_KEY_CACHE
+        if not _TFT_API_KEY_FILE.exists():
+            return None
+        try:
+            raw = _TFT_API_KEY_FILE.read_text(encoding="utf-8").strip()
+        except (OSError, UnicodeDecodeError) as exc:
+            log.warning("riot_api: read %s failed: %s", _TFT_API_KEY_FILE.name, exc)
+            return None
+        if (raw.startswith('"') and raw.endswith('"')) or (
+                raw.startswith("'") and raw.endswith("'")):
+            raw = raw[1:-1].strip()
+        if not raw.startswith(_KEY_PREFIX):
+            log.warning("riot_api: %s missing %s prefix; ignored.",
+                        _TFT_API_KEY_FILE.name, _KEY_PREFIX)
+            return None
+        _TFT_KEY_CACHE = raw
+        return raw
+
+
+@contextlib.contextmanager
+def tft_key_scope():
+    """Route THIS thread's Riot calls through the TFT-entitled key.
+
+    Yields True when a TFT key file was found (the override is active), False
+    when it was not - the main key then stays active, so a main key that later
+    gains TFT entitlement just works. Everything key-scoped follows the
+    override for free because it all reads `_get_api_key()`: the Account-V1
+    cache key and the RM-163 negative keys both embed `_key_fingerprint()`, so
+    a PUUID resolved under the TFT key is never served to a LoL call or the
+    other way round (PUUIDs are encrypted per key - memory
+    reference_riot_puuid_rotation). Restores the previous override on exit,
+    exception included, so scopes nest.
+    """
+    key = _get_tft_api_key()
+    prev = getattr(_KEY_OVERRIDE_TLS, "key", None)
+    if key:
+        _KEY_OVERRIDE_TLS.key = key
+    try:
+        yield bool(key)
+    finally:
+        _KEY_OVERRIDE_TLS.key = prev
 
 
 # -- dual-bucket rate limiter --------------------------------------------
@@ -997,6 +1077,98 @@ def get_top_champion_masteries(
     return None
 
 
+# -- TFT (s134) ------------------------------------------------------------
+#
+# Paths per the Riot API schema (checked 2026-10-25): TFT-Match-V1 is REGIONAL
+# (`americas` / `europe` / `asia` / `sea`), TFT-League-V1 is PLATFORM (`na1`
+# ...). Call these inside `tft_key_scope()`: the LoL product key is not
+# entitled to /tft/* (403, measured 2026-10-25), and a 403 here is negative-
+# cached like any other (RM-163), scoped to the key that earned it.
+
+_TFT_LEAGUE_TTL_S = 300
+_MAX_TFT_MATCH_IDS = 100
+
+
+def get_tft_match_ids(
+    puuid: str,
+    count: int = 20,
+    region: str = "americas",
+    start: int = 0,
+) -> Optional[list]:
+    """TFT-Match-V1: recent TFT match ids for a PUUID, newest first.
+
+    Not cached - the list grows every game (same reasoning as
+    `get_recent_matches`). ``count`` is clamped to 1..100.
+    """
+    if not puuid:
+        return None
+    try:
+        count = max(1, min(_MAX_TFT_MATCH_IDS, int(count)))
+        start = max(0, int(start))
+    except (TypeError, ValueError):
+        count, start = 20, 0
+    url = (
+        f"https://{region}.api.riotgames.com"
+        f"/tft/match/v1/matches/by-puuid/{urllib.parse.quote(puuid, safe='')}"
+        f"/ids?start={start}&count={count}"
+    )
+    data = _call("tft_match_v1_ids", url)
+    if data is None:
+        return None
+    if not isinstance(data, list):
+        log.warning("riot_api: tft_match_v1_ids unexpected shape: %s",
+                    type(data).__name__)
+        return None
+    return data
+
+
+def get_tft_match(
+    match_id: str,
+    region: str = "americas",
+) -> Optional[dict]:
+    """TFT-Match-V1: full match detail. Immutable cache (a finished match never
+    changes); its own `tft:match:v1:` namespace so a TFT id can never meet a
+    Match-V5 row. Colon ids are refused for the RM-317 reason."""
+    if not match_id or not _match_id_ok(match_id):
+        return None
+    cache_key = f"tft:match:v1:{match_id}"
+    return _cached_or_fetch("tft_match_v1_detail", cache_key, lambda: (
+        f"https://{region}.api.riotgames.com"
+        f"/tft/match/v1/matches/{urllib.parse.quote(match_id, safe='')}"
+    ))
+
+
+def get_tft_league_entries(
+    puuid: str,
+    region: str = "na1",
+) -> Optional[list]:
+    """TFT-League-V1: ranked entries for a PUUID (one per TFT queue:
+    RANKED_TFT, RANKED_TFT_TURBO, RANKED_TFT_DOUBLE_UP). Empty list = unranked.
+    TTL-cached 5 min, no negative cache - same mutable-resource reasoning as
+    `get_summoner_rank`. In a TFT entry `wins` is FIRST placements only and
+    `losses` is second through eighth (Riot schema)."""
+    if not puuid:
+        return None
+    cache_key = f"tft:league:v1:{region}:{puuid}"
+    cached = get_cache().get_ttl(cache_key)
+    if cached is not None:
+        _bump_metric("tft_league_v1", "cache")
+        return cached.get("entries") if isinstance(cached, dict) else cached
+    url = (
+        f"https://{region}.api.riotgames.com"
+        f"/tft/league/v1/by-puuid/{urllib.parse.quote(puuid, safe='')}"
+    )
+    data = _call("tft_league_v1", url)
+    if data is None:
+        return None
+    if not isinstance(data, list):
+        log.warning("riot_api: tft_league_v1 unexpected shape: %s",
+                    type(data).__name__)
+        return None
+    get_cache().set_ttl(cache_key, {"entries": data}, _TFT_LEAGUE_TTL_S)
+    return data
+
+
 # -- high-level helpers used by the team-context fan-out -----------------
 
 # Mapping from Riot tier name -> ordinal for sorting / formatting.
@@ -1152,8 +1324,12 @@ __all__ = [
     "get_match_timeline",
     "get_recent_matches",
     "get_summoner_rank",
+    "get_tft_league_entries",
+    "get_tft_match",
+    "get_tft_match_ids",
     "is_configured",
     "pick_solo_rank",
     "reload_api_key",
     "summarize_recent",
+    "tft_key_scope",
 ]

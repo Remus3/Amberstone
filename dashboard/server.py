@@ -483,6 +483,15 @@ def start_dashboard(app_dir: Path) -> None:
     except Exception as exc:  # noqa: BLE001
         _log.warning("daemon_slayer startup check failed: %s", exc)
 
+    # TFT opponent scouting (s134): a GET-only LCU poller that fires ONE
+    # scouting run per TFT game at game start (EOG fallback post-game) and
+    # publishes data/tft_scouting.json. Kill switch RC_TFT_SCOUTING=0.
+    try:
+        from tft.tft_scouting import start_scouting_watcher
+        start_scouting_watcher()
+    except Exception as exc:  # noqa: BLE001
+        _log.warning("tft scouting watcher failed to start: %s", exc)
+
     # Vision tracker: derives fog-of-war state from Live Client position
     # freshness, writes data/vision_state.json. Consumed by the minimap
     # overlay layer and (later) by coach prompt builders.
