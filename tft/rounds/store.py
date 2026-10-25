@@ -136,37 +136,76 @@ def load_salt(path=None) -> bytes:
 
 
 # Identity shapes (section 1.2 and the section 2 scrub guard). KEYS: any JSON key
-# matching these is an identity field. VALUES: a 36-char UUID, a Riot id
-# (name#TAG), a PUUID-like base64url token, or the words puuid / riot id /
-# summoner. A bare display name without a tag cannot be recognised by shape;
+# matching _IDENTITY_KEY is an identity field - fail closed: ANY key holding
+# "name" or "nick" (opponentName, enemy_name, names ...), and game / match ids
+# (gameId, matchId: a match id lets anyone look up all 8 players) - except the
+# schema's own columns in _SCHEMA_KEYS (name_text = a shop card's OCR text,
+# set_core_name = "TFTSet18"; game_id / match_id are replaced on export).
+# VALUES: a UUID (dashed or not), a Riot id (name#TAG), a Riot match id
+# (NA1_<digits>), an encrypted-id / PUUID-like token, or the words puuid / riot
+# id / summoner. A bare display name with no tag cannot be recognised by shape;
 # that is why names are joined to keys in memory only and never handed here.
+# (Bare "summoner" is NOT an identity word: DA_18_Summoner is a Set 18 trait.)
 _IDENTITY_KEY = re.compile(
-    r"puuid|riot_?id|summoner|game_?name|tag_?line|player_?id|account_?id|"
-    r"display_?name|player_?name|^name$", re.IGNORECASE)
+    r"puuid|riot_?id|summoner_?id|name|nick|tag_?line|player_?id|account_?id|"
+    r"game_?id|match_?id", re.IGNORECASE)
+_SCHEMA_KEYS = frozenset({"name_text", "set_core_name", "game_id", "match_id"})
 _UUID36 = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
+_UUID32 = re.compile(r"(?<![0-9a-fA-F])[0-9a-fA-F]{32}(?![0-9a-fA-F])")  # a dashless UUID
 # Riot id = game name (may hold spaces / non-ASCII) + '#' (or the fullwidth
-# U+FF03) + a 3-5 char tag. Any non-space char, optional spaces, the hash, optional
-# spaces and a 3-5 word-char tag is enough: a privacy guard fails closed.
-_FULLWIDTH_HASH = chr(0xFF03)  # source stays 7-bit ASCII
-_RIOT_ID = re.compile(r"\S\s*[#" + _FULLWIDTH_HASH + r"]\s*\w{3,5}(?!\w)")
-_ID_WORDS = re.compile(r"puuid|riot[ _]?id|summoner", re.IGNORECASE)
-_TOKEN = re.compile(r"(?<![A-Za-z0-9_-])[A-Za-z0-9_-]{70,90}(?![A-Za-z0-9_-])")
-_HEX = re.compile(r"[0-9a-f]+")
+# U+FF03 / small U+FE5F) + a 3-5 char tag. Any non-space char, optional spaces,
+# the hash, optional spaces and a 3-5 word-char tag is enough: fail closed.
+_HASHES = "#" + chr(0xFF03) + chr(0xFE5F)  # built with chr(): source stays 7-bit ASCII
+_RIOT_ID = re.compile(r"\S\s*[" + _HASHES + r"]\s*\w{3,5}(?!\w)")
+_MATCH_REF = re.compile(r"(?<![A-Za-z0-9])[A-Z]{2,5}[0-9]{0,2}_[0-9]{6,}(?![0-9])")
+_ID_WORDS = re.compile(r"puuid|riot[ _]?id|summoner[ _]?(?:name|id)", re.IGNORECASE)
+_TOKEN = re.compile(r"(?<![A-Za-z0-9_-])[A-Za-z0-9_-]{40,}(?![A-Za-z0-9_-])")
+
+
+def _char_class(c):
+    return 0 if c.isupper() else 1 if c.islower() else 2 if c.isdigit() else 3
+
+
+_CAMEL = re.compile(r"(?:[A-Z][a-z]*|[0-9]+|[_-])+")
+_DIGEST = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}|[0-9A-F]{40}|[0-9A-F]{64}")
+
+
+def _looks_encrypted(tok: str) -> bool:
+    """A 40+ char base64url token that is an encrypted id rather than an api
+    name. PUUIDs are 78 chars, encrypted summoner / account ids 47-63; real TFT
+    api names reach 49 (TFT_Augment_MirroredMonetization_TotalGoldTooltip) but are
+    CamelCase words (lowercase only inside a capitalised word) and change
+    character class at <= 0.415 of positions (measured over every 40+ char token
+    in tracked data/*.json, s134), random base64url at ~0.65. Rule: 70+ chars
+    always; 40-69 when not CamelCase or flipping class at >= 0.45 - measured 0
+    false positives on that data and 21 misses per 100k random ids."""
+    if _DIGEST.fullmatch(tok):
+        return False  # a sha1 / sha256 digest, not an id (a dashless UUID is _UUID32)
+    if len(tok) >= 70 or not _CAMEL.fullmatch(tok):
+        return True
+    flips = sum(_char_class(a) != _char_class(b) for a, b in zip(tok, tok[1:]))
+    return flips / (len(tok) - 1) >= 0.45
+
+
+def _is_identity_key(k) -> bool:
+    return isinstance(k, str) and k not in _SCHEMA_KEYS and bool(_IDENTITY_KEY.search(k))
 _KEY12 = re.compile(r"[0-9a-f]{12}")
 _KEY12_RUN = re.compile(r"(?<![0-9a-f])[0-9a-f]{12}(?![0-9a-f])")  # a key inside a longer string
 _FIXTURE_KEY = re.compile(r"P[1-8]")
 
 
 def _string_violation(s: str) -> Optional[str]:
-    if _UUID36.search(s):
-        return "a 36-char UUID"
+    if _UUID36.search(s) or _UUID32.search(s):
+        return "a UUID"
     if _RIOT_ID.search(s):
         return "a Riot id shape (name#TAG)"
+    if _MATCH_REF.search(s):
+        return "a Riot match id"
     if _ID_WORDS.search(s):
         return "an identity word"
     for tok in _TOKEN.findall(s):
-        if not _HEX.fullmatch(tok):
-            return "a PUUID-like token"
+        if _looks_encrypted(tok):
+            return "a PUUID / encrypted-id token"
     return None
 
 
@@ -189,7 +228,7 @@ def identity_violations(obj: Any, path: str = "$") -> list:
     if isinstance(obj, dict):
         for i, (k, v) in enumerate(obj.items()):
             kp = f"{path}.{_key_label(k, i)}"
-            if isinstance(k, str) and _IDENTITY_KEY.search(k):
+            if _is_identity_key(k):
                 out.append(f"{kp}: identity key")
             # a KEY can carry an identity as well as a value can ({puuid: 5})
             shaped = _string_violation(k) if isinstance(k, str) else None
@@ -227,6 +266,8 @@ def scrub_violations(doc: Any) -> list:
                 walk(v, f"{path}[{i}]")
         elif isinstance(obj, str) and _KEY12_RUN.search(obj):
             out.append(f"{path}: a raw 12-hex player key")
+        elif _is_epoch(obj):
+            out.append(f"{path}: an absolute epoch timestamp (fixtures are match-relative)")
 
     walk(doc, "$")
     return out
@@ -533,6 +574,22 @@ class _Barrier:
 _STOP = object()
 _TS_KEYS = frozenset({"started_at", "ended_at", "planning_ts", "combat_ts", "end_ts", "ts",
                       "computed_at"})
+# A payload's own wall-clock fields are made match-relative too; eliminated_at is
+# already seconds-into-game (LCU match history time_eliminated), so it is kept.
+_TS_KEY_SHAPE = re.compile(r"(?:^|_)(?:ts|time|timestamp)$|_at$|(?:Time|Timestamp|At)$")
+_RELATIVE_TS_KEYS = frozenset({"eliminated_at"})
+
+
+def _is_ts_key(k) -> bool:
+    return isinstance(k, str) and k not in _RELATIVE_TS_KEYS and (
+        k in _TS_KEYS or bool(_TS_KEY_SHAPE.search(k)))
+
+
+def _is_epoch(v) -> bool:
+    """An absolute wall-clock instant: epoch seconds 2001..2103 or the same in ms."""
+    if isinstance(v, bool) or not isinstance(v, (int, float)):
+        return False
+    return 1.0e9 <= v <= 4.3e9 or 1.0e12 <= v <= 4.3e12
 
 
 # ---------------------------------------------------------------- the store
@@ -1442,8 +1499,11 @@ def _scrub_for_fixture(doc: dict, name: str) -> dict:
                     out[k] = name
                 elif k == "game_id":
                     out[k] = FIXTURE_GAME_ID
-                elif k in _TS_KEYS and isinstance(v, (int, float)) and not isinstance(v, bool):
-                    out[k] = round(v - t0, 3)
+                elif (k in _TS_KEYS and isinstance(v, (int, float)) and not isinstance(v, bool)) \
+                        or (_is_ts_key(k) and _is_epoch(v)):
+                    # schema instants always; a payload's own clock only when it is an
+                    # absolute epoch (seconds into game stay as they are); ms in ms
+                    out[k] = round(v - t0 * 1000.0, 3) if v >= 1.0e12 else round(v - t0, 3)
                 else:  # a player key used as a dict key is mapped like a value
                     out[remap(k) if isinstance(k, str) else k] = walk(v)
             return out
