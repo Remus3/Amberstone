@@ -422,12 +422,15 @@ def spawn_ephemeral_llm(agent: str, task_id: str, op: str, payload: dict) -> dic
             log.error("ephemeral spawn auth failure (task %s): %s", task_id, auth_cause)
         if agent == "6":
             _write_agent6_failure_stub(task_id, op, payload, proc.returncode, per_task_log, stamp)
-        # The exception text becomes Scheduler.fail(error=str(e)) -> the
-        # task's ``last_error`` -> the /api/task/<id> wire body. stderr can
+        # The exception text no longer reaches a reply: since RM-853 the
+        # dispatcher (supervisor.py _dispatch_loop) stores the fixed
+        # TASK_FAILED_ERROR line as the task's ``last_error``, and the
+        # /api/task/<id> reply maps every stored value through
+        # ``public_last_error``. The dispatcher still LOGS this text (and
+        # its traceback), control-character scrubbed only, and stderr can
         # carry an ANTHROPIC_API_KEY echo or a secret-shaped traceback
-        # fragment (same threat the per-task log redaction guards), so
-        # redact the embedded stderr here too - never leak it raw to the
-        # dashboard (CLAUDE.md Error-Handling rule).
+        # fragment (same threat the per-task log redaction guards), so the
+        # embedded stderr is redacted here too.
         # The AUTH-CAUSE suffix is appended, not substituted, so the message
         # PREFIX shape ("claude exit N for task T: ...") is preserved for the
         # dispatcher and for the existing callers that assert on it.
