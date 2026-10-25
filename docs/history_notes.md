@@ -41,6 +41,18 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-24b - session 131: RM-824 shipped, RC board recreated, suite-guard board ignores, RM-835..RM-837 filed
+
+- **C1 = RM-824 (LEDGER 1791):** `ca5b44e41` (cherry-pick of `f290eaa91`) - six Mission Control loop-control reply sites through `_fault()`: fixed "see logs" line, raw cause logged via `scrub_log`; status codes and keys unchanged. Verifier CONFIRM (91 passed; old module 13 failed); merged-tree 108 passed.
+- **Guard (LEDGER 1792):** `3f3712009` - `tests/_fleet_guard_config.EXTRA_IGNORE` gains the two board files `fleet_board.py` rewrites (kit IGNORE misses them; SS 1525 FIX to MAIN). Comes out when a kit version lists them (the v14 overlap test goes red).
+- **Board (LEDGER 1793):** `6eb820a87` - seeded board not_found for this account (s124..s131); new Dashboard artifact `12ChcPAR8o3RuVb9qStHK8`, `ops/status_board.json` dataset_version 1; session-start push read back (datasets/board v2). ASKS 18 keeps only the URL-in-a-public-repo question.
+- **Filed (LEDGER 1794):** `129e28287` RM-835 (17 :8888 routes leak `str(exc)`), RM-836 (lane-lock write fault reads "lane held by None"), RM-837 (RM-824 AST guard misses assign-then-reply); next free RM-838.
+- **Inbox:** SS 1243 (INFORMATION / TERMINAL) and 1525 (FIX), both to MAIN, triaged; no replies.
+- **Do NOT redo:** RM-824 (only `dashboard/routes_loop_control.py`), the board recreation, the EXTRA_IGNORE entries.
+- **Next:** RM-835 (security, the RM-824 class), then the carried s130 list (RM-830, RM-825, ...); RM-836 / RM-837 with it; the batched MAIN note; S6 at the next live game.
+
+---
+
 # 2026-10-24 - session 130: read-backs only (C1-C3 green), nothing shipped, C4-C25 carried
 
 - **Start:** operator typed "continue"; a read-only helper read the hand-off and rendered the board (`fleet_board.py calls --session 130`, exit 0, if_version 21); the session-start board push was NOT made.

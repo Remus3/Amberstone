@@ -6,6 +6,18 @@
 
 ---
 
+# 2026-10-25b - session 134: scoped TFT session - standalone TFT client, Augur engine, RM-615 / RM-616 / RM-699, three 1st-place QA reports
+
+- **Operator steers:** TFT only today; plays without interacting, wants terse output and a TFT QA after each match; "keep updates push commits locally for now" (NO push this session); "global frozen edit allowed" (session-scoped, re-confirm next session); engine name "Augur" provisional ("Hexwright" rejected; alternatives Rollwise, Tempo).
+- **Shipped on LOCAL main (LEDGER 1861-1881, mergers M1a-M1c, each verifier-gated):** F1 read-back of dispatch `40189033501` (2 RM-816 rename cases -> RM-885 `4113b0039`; RM-886 filed); LT-01 / LT-02 (L4-L9) / LT-04 `a64f90c67`, LT-03 `2f254da18` (LT-02r residual filed); RM-292 (b) + (d); T1; P0 standalone TFT client `852b85e4b..8f9b531f4` (live PASS); overlay toggle `d93834b8e..06777e6ab`; TFT program spec + ADR-018 `5004e7986` (`docs/TFT_PROGRAM.md`); M1c: RM-699 hot-reload, TFT-06, TFT-03, RM-616 + QA D4 / D5 / N4, SCOUT, TFT-13 (engine `tft/engine`), RM-615 stage gate, guard fixes `ff711999b` / `4e764a167` / `e9753d41c`; M1d (LEDGER 1882, merger terminated by the usage limit after landing): S18-COACH, TFT-01, GATE `abff87f9d..04a39e5a0`, gated suite 1 failed (socket-abort flake, file 76/76 alone) / 44755 passed.
+- **Live:** QA of matches 1-3 (`ops/runtime/tft_qa/20261025-070350`, `-081234`, `-085349`; all 1st place); LCU TFT inventory, restart and Anthropic-400 diagnoses (`ops/runtime/tft_qa/`). D1 fixed: the RC Anthropic key was not workspace-scoped (every call 400'd); a new workspace key is in `API-Key-Claude.txt`, RC pid 20788, vision bounced 20036 -> 27176.
+- **Not landed at /done (branches carried in the hand-off; builders INTERRUPTED by the usage limit, work saved in their worktrees):** P0-F `s134-tft-board-panel` 67fbc3ca0 (verified x3, ff-ready), seven s134 headless lanes (local commits only), N8 / N9 / TFT-02 / TFT-04 / TFT-08 / TFT-09 builders.
+- **Blocked:** GH1 rewrite of the 3 origin web-UI riot.txt commits halted at the scope gate (kit plan = 20 commits / 1401 SHAs, approved 3); the Riot key 403s on TFT-Match-V1 / TFT-League-V1 (operator act).
+- **Do NOT redo:** everything above; the next push MERGES origin/main (never rebase / reset local main) and never deletes `riot.txt`.
+- **Next:** land P0-F + the lane commits, resume the interrupted builders, then push (merge origin/main first, `fleet_gitlock`, `tools/bot_merge_check.py`).
+
+---
+
 # 2026-10-25 - session 133: upstream + DS 1.290.0 + TFT Set 18 ingest, A1-A27 shipped, three headless lanes
 
 - **Operator steers:** check upstream / scheduled tasks / lolmath / engines / TFT; expand DS; then headless research + queue + gated lanes (account 2) while away, every hook and spawn window-silent; interrupt 2026-10-25 "finish up current; i want to work on tft specifically today".
@@ -31,15 +43,3 @@
 - **Memory (LEDGER 1797):** 3 Share-mirror memories marked SUPERSEDED (`7c0ff1624` removed Share/ 2026-09-07); CLAUDE.md's two Share-mirror lines stay RM-809.
 - **Do NOT redo:** RM-835 (all 18 sites), the 2.1.310 pin. RM-838's sites are the follow-up, not RM-835 residue.
 - **Next:** RM-837 (AST guard, assign-then-reply), RM-838, RM-836, then RM-830 / RM-825 and the carried list; the batched MAIN note; S6 at the next live game.
-
----
-
-# 2026-10-24b - session 131: RM-824 shipped, RC board recreated, suite-guard board ignores, RM-835..RM-837 filed
-
-- **C1 = RM-824 (LEDGER 1791):** `ca5b44e41` (cherry-pick of `f290eaa91`) - six Mission Control loop-control reply sites through `_fault()`: fixed "see logs" line, raw cause logged via `scrub_log`; status codes and keys unchanged. Verifier CONFIRM (91 passed; old module 13 failed); merged-tree 108 passed.
-- **Guard (LEDGER 1792):** `3f3712009` - `tests/_fleet_guard_config.EXTRA_IGNORE` gains the two board files `fleet_board.py` rewrites (kit IGNORE misses them; SS 1525 FIX to MAIN). Comes out when a kit version lists them (the v14 overlap test goes red).
-- **Board (LEDGER 1793):** `6eb820a87` - seeded board not_found for this account (s124..s131); new Dashboard artifact `12ChcPAR8o3RuVb9qStHK8`, `ops/status_board.json` dataset_version 1; session-start push read back (datasets/board v2). ASKS 18 keeps only the URL-in-a-public-repo question.
-- **Filed (LEDGER 1794):** `129e28287` RM-835 (17 :8888 routes leak `str(exc)`), RM-836 (lane-lock write fault reads "lane held by None"), RM-837 (RM-824 AST guard misses assign-then-reply); next free RM-838.
-- **Inbox:** SS 1243 (INFORMATION / TERMINAL) and 1525 (FIX), both to MAIN, triaged; no replies.
-- **Do NOT redo:** RM-824 (only `dashboard/routes_loop_control.py`), the board recreation, the EXTRA_IGNORE entries.
-- **Next:** RM-835 (security, the RM-824 class), then the carried s130 list (RM-830, RM-825, ...); RM-836 / RM-837 with it; the batched MAIN note; S6 at the next live game.

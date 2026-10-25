@@ -35,3 +35,132 @@ inbox_tick --pending 0 rows; 0 open PRs.
 Board: updated at session start (datasets/board v4) and after the C2 reprint (v5); the /done --final
 update follows this write (a failure would be recorded on the line below).
 In flight: none (main session: none, no monitors armed; this executor: its CI watch finished).
+
+# archived from RC-NEXT-SESSION.txt at 2026-10-25T15:20:00Z
+====================
+CLOSED - SESSION 133 HEADER, FIRST CHECKS, TFT SESSION LIST AND STATUS (s134 /done trim; the full prior file is git show 4023fa2a3:RC-NEXT-SESSION.txt) - verbatim from 4023fa2a3:RC-NEXT-SESSION.txt
+====================
+Session 134 = a scoped TFT session (operator 2026-10-25: "finish up current; i want to work on tft
+specifically today"). s133 shipped U1-U5 / D1-D2 / F1 / A1-A27 plus the lane rows (LEDGER 1798-1860;
+WAKEUP_NOTES 2026-10-25). s132 header / records / status: docs/handoff-archive/RC-2026-10-25.txt.
+HISTORY REWRITTEN TWICE 2026-10-09 (LEDGER 1699 B, 1701 rw2): old SHAs via .git/filter-repo/commit-map
+(rw2, then -20261009, then -20260621); other clones re-clone (ASKS 5); a fresh clone runs
+scripts/install_hooks.py and sets LOCAL fleet.operatorIdent before any push. s122 trim:
+docs/handoff-archive/RC-2026-10-18.txt (pre-trim e4e3ef1bc). s129 rebuilt 12 unpushed commits (old tip = LOCAL tag
+archive/s129-pre-rebuild ba757f7d6, map LEDGER 1788).
+CPU (s120): glance at CPU, FREE MEMORY and orphaned pytest / python / node trees (RM-695 shape)
+BEFORE heavy work. SCRATCH (s127): every sub-agent prompt names a UNIQUE scratch subfolder.
+
+Next action: the scoped TFT session - work the TFT SESSION LIST below, after the FIRST checks.
+FIRST at session start (read-backs; a red is the first fix, forward on main):
+- CI: the /done dispatch 40189033501 (full suite on 97a8cf321; EXPECTED red only on the two RM-816
+  [rename-move] cases) and the wrap push's docs-guards / codeql: gh run list --branch main --limit 8.
+- RM-816 Linux red (push ci 40183543043 + 40184315636: tests/test_progress_reaper_rm816.py
+  [rename-move] x2; Linux `_move` uses link + unlink, the test forced os.rename). Queue cycle 9
+  stopped on S133_LANES_STOP before committing its fix (`_use_move` skip; verifier CONFIRM, mutation
+  2/2): UNCOMMITTED in .claude/worktrees/rc-lane-queue, copy ops/runtime/s133_q009_rm816_linux_fix.patch.
+  Land it (Tier-1), then file under RM-885+: that fix, and ops/loop/queue_loop.py `_ci_step_verdict`
+  reading only the "full dual suite" step (a red push slice reads "skipped"). Its planned RM-883 /
+  RM-884 collided with s133-a26's filed rows: never reuse them.
+- Lanes: all three s133 drivers exited 0 (queue 06:09 after its CI wait read "failure"; research and
+  gated 05:24); lane-0/1/2 progress done. S133_LANES_STOP stays; clear it only to re-arm on purpose.
+- CPU / memory glance; git log @{u}.. (expect empty); python ops/loop/inbox_tick.py --pending (0 at
+  the s133 wrap); gh pr list (0 open).
+
+TFT SESSION LIST (re-grepped at the s133 /done; bodies in the cited rows):
+- LT-01 (docs/LIVE_GAME_GATED_SYNC.md "TFT SET 18 live halves", RM-840): in a real TFT game capture
+  which :2999 / LCU key names the running set (tft/tft_set.py:45 LIVE_SET_KEYS are candidates only;
+  the one measured spelling is the team planner's "setId": "TFTSet17"; else the RC_TFT_SET pin /
+  newest-ingested default). Same game (RM-855): record the carousel / PvE / augment rounds - Set 18
+  runs SCHEDULE_NEUTRAL "neutral_unverified" (tft/tft_set.py:248) - and whether the Set 17
+  _TIME_TO_ROUND table (tft/tft_state_reader.py:21) tracks Set 18 stage timing.
+- LT-02 Set 18 roll odds + pool sizes: CONSTANTS_SET_VERIFIED = False in tft/tft_data.py:21 and
+  tft/tft_pbe_data.py:28; tft/tft_roll_odds.py reports both STALE. Close only from an in-client read
+  (ROADMAP "TFT: Set 17 patch 17.3" line: never from a third-party odds table); pin it with a test.
+- LT-03 Set 18 team-planner codes: LCU agent in a Set 18 lobby, scripts/discover_champion_codes.py
+  shape -> data/meta/tft_set18_champion_codes.json (only Set 17 has a codes file).
+- Set 18 meta: data/meta/tft_set18_meta.json is an empty UNVERIFIED skeleton (comps, tier_list,
+  trait_augments, double_up all {}). Any tier or comp source passes the CLAUDE.md licence gate first
+  (repo PUBLIC; RM-846 removed the uncleared Set 16 / 17 meta, NOTICE TFT entry + provenance guard);
+  the default source is operator-measured play.
+- Built s133, do not rebuild: resolver tft/tft_set.py + CommunityDragon ingest
+  scripts/fetch_cdragon_tft.py -> data/meta/tft_set18_cdragon.json (RM-840); the set-aware coach
+  prompt tft/tft_prompt.py (RM-845); per-set round schedule in the state reader, PBE engine, live
+  analysis and PBE coach (RM-855 / RM-858 / RM-862).
+- Other open TFT rows: RM-292 (b) wire-or-delete the unreachable PBE subsystem, (c) live
+  tft_live_data.json keys, (d) the TftPayload decision (BACKLOG.md:1024); RM-615 stage-round
+  plausibility gate (BACKLOG.md:501); RM-616 TFT placement from LCU end-of-game data, live-gated
+  (BACKLOG.md:502).
+[...]
+Status (s133 wrap): HEAD == origin/main == 97a8cf321 (batch J) at the /done start; bot_merge_check
+clean. The wrap commit (ROADMAP size pass + ROADMAP_HISTORY `## 2026-10-25d`, LEDGER 1860, WAKEUP
+entry + prune, this file, handoff-archive RC-2026-10-25.txt) and its .md-only push follow this write
+(its docs-guards = next read-back). 97a8cf321: push ci 40187787557, docs-guards, codeql success;
+024d146e8 push ci 40184315636 FAILURE (RM-816 Linux, above). Full suite (2c): not covered (nightly
+c107a1725, dispatches 3ee954531 / 77fde3d51 / 0ab6d07e6 differ outside *.md) - dispatched ONE run
+40189033501 on 97a8cf321 (headSha == HEAD). Gate: ruff passed; hygiene trio 14 passed; drift_guard 1
+breach (ROADMAP 99 percent) -> 0; ROADMAP guard files 158 passed before and after. DS 1.290.0 /
+16.21.1 / 173; RC pid 22888 alive, last_reload_ok, fatal 0; restart_trigger empty; no game; session
+file 6.9 MB; no intent / steers; inbox 0 pending; 0 PRs. Memory: 3 new + 2 updated.
+Board: the /done --final update follows this write (a failure would be recorded on the line below).
+
+Context: tft/ (tft_set.py, tft_state_reader.py, tft_prompt.py, tft_data.py, tft_pbe_data.py,
+tft_roll_odds.py); data/meta/tft_set18_cdragon.json + tft_set18_meta.json;
+scripts/fetch_cdragon_tft.py; docs/LIVE_GAME_GATED_SYNC.md "TFT SET 18 live halves"; BACKLOG
+"Session 133" filings; ops/runtime/inbox_responder_agreement.json (expires 2026-11-01).
+
+Acceptance: the RM-816 Linux fix landed and dispatch 40189033501 read back (red only on those cases,
+or green after the fix); LT-01..LT-03 closed in a live TFT game or each recorded as not exposed; any
+Set 18 meta filled only through the licence gate; the owed MAIN note delivered (N/M reached, hashes
+re-checked); operator asks answered or re-batched.
+
+# archived from RC-NEXT-SESSION.txt at 2026-10-25T16:10:00Z
+====================
+CLOSED - SESSION 133 DO NOT RE-LITIGATE RECORDS AND PROCEDURE LINES (s134 /done trim; standing records and rules, not open items; the s134 hand-off keeps a pointer here) - verbatim from 4023fa2a3:RC-NEXT-SESSION.txt
+====================
+- s133 (LEDGER 1798-1860; WAKEUP_NOTES 2026-10-25; ROADMAP_HISTORY `## 2026-10-25`..`25d`): every
+  shipped row, incl. the Arena 0.7% root cause = relay plumbing (RM-868), live-route double-unique
+  (RM-870), the shadow test-leak family archived (RM-859 / RM-867 / RM-872), guard ignores lane-driver
+  state (RM-874), per-run pytest temp root (RM-878), RM-865 CLOSED mis-filed, C1 RM-837 by the queue
+  lane (7a832062c / ee882c98a), the window flashes (54d61bfa1). Reverses if: a live re-check of one
+  of those acceptances fails.
+- lolmath refresh via the new extractor --lolmath-only, not --force (adjudicated s133: the Meraki
+  Settled line bars a --force re-extract; the line was amended 48b012f22). Reverses if: that Settled
+  line is lifted.
+- RC board recreated (DECISION in the 6eb820a87 body; LEDGER 1793): Dashboard artifact
+  12ChcPAR8o3RuVb9qStHK8 (its data/users/me doc appears only once a reader opens the page - not a
+  failure). Reverses if: the seeded 7ofQL8BtTQfzjLPbfyi6aJ is reachable again from this account, or
+  MAIN ships a different RC board URL.
+- OLDER RECORDS moved VERBATIM, each with its Reverses if:, to docs/handoff-archive/RC-2026-10-23.txt
+  (s128 / s129 trims), RC-2026-10-24.txt (s130 / s131 / s132 trims) and RC-2026-10-25.txt (s133 trim:
+  the s132 header, record, Share memories SUPERSEDED and status). Read them before re-opening any.
+- S4 ruling: fail-open only on the Claude PreToolUse channel; git pre-commit / commit-msg /
+  --scan-files fail CLOSED. Reverses if: MAIN or the operator rules in writing that the git-hook gate
+  may fail open.
+- CI's sibling-sweep-tree arm is structural-only on CI ("This green is PARTIAL"; RM-488, LEDGER 1456 /
+  1459). Reverses if: the RC_MOON_SYNC_REPOS CI secret is set (a remote act, RM-488) and a CI run is
+  read back loading a non-empty sibling list; the "ARMED WITH A MEASURED ESCAPE RATE ABOVE ZERO"
+  phrasing stays either way.
+[...]
+- RACE GUARDS + UNIQUE -F file per commit, NEVER `--amend`, owner-id probe, merge shape, dependabot
+  shape (CLAUDE.md BOT-PR MERGE RULE: path B only), inbox_tick --done, index.lock
+  (fleet_gitlock.clear_index_lock), pre-push dry runs. Never `git push --tags`. Read `inbox_tick.py
+  --pending` at session START.
+- fleet_gitlock refuses cherry-pick: `git cherry-pick --no-commit <sha>` then `fleet_gitlock.py run
+  -- git commit -C <sha>` (or a fast-forward when linear; memory).
+- The pre-push sweep scans EVERY commit in the range (messages too): a synthetic or made-up drive-root
+  path in any local commit halts it - use the allowlisted OS-root folder name in fixtures; rebuild the
+  unpushed commits (tree-hash check), never bypass (memory; s129 rebuilt 12, LEDGER 1788).
+- After a DS data change run `tools/ds_feed_index.py --write` and CI's check-job sync steps before
+  pushing (RM-790; the done.md TIER TABLE lists them).
+- Board: `fleet_board.py calls` bumps the local version on every render - read the server version
+  (ArtifactData get datasets/board), `pushed --version <it>`, then render ONCE right before pushing
+  (memory reference_fleet_board_calls_bumps_dataset_version; RM-823).
+- Parallel landings: builders' LEDGER numbers and RM ids are PROVISIONAL; the merger re-reads main's
+  top LEDGER number and the DS_SWEEP_TRACKER pin at landing and renumbers (memory, s133 addendum).
+- :8890 does not hot-reload dashboard/_handler.py: restart RC-Phase3-Supervisor and re-probe (memory).
+- Hand-off cap: kit v18 `fleet_done.py mark` FAILS over 30720 B. Tighten, or archive verbatim.
+- A whole-suite command whose test paths sit in a shell variable is denied by the suite-gate hook:
+  name the files literally. The claims hook reads `--owner $VAR` literally: type the owner id.
+- Worktree cleanup after a REBUILT push: verify each agent branch by file equality against main OR
+  the archive/s129-pre-rebuild tag chain (cherry / rebuild shas differ), never by ancestry alone.
