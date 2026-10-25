@@ -188,7 +188,9 @@ def _board(pieces) -> list:
         name = clean_unit_name(pc.get("championName"))
         if not name:
             continue
-        items = [i for i in (pc.get("itemNames") or []) if isinstance(i, str)]
+        raw_items = pc.get("itemNames")
+        items = ([i for i in raw_items if isinstance(i, str)]
+                 if isinstance(raw_items, list) else [])
         out.append({"name": name, "star": _int(pc.get("starLevel"), 1),
                     "items": items})
     return out
@@ -239,7 +241,8 @@ def lcu_tft_verdict(lcu):
     """
     if not isinstance(lcu, dict) or lcu.get("phase") is None:
         return None
-    if str(lcu.get("phase") or "") not in IN_GAME_PHASES:
+    phase = str(lcu.get("phase") or "")
+    if phase not in IN_GAME_PHASES:
         return False
     qmode = str(lcu.get("game_queue_mode") or "")
     if qmode:
@@ -253,6 +256,12 @@ def lcu_tft_verdict(lcu):
             mk = None
         if mk is not None:
             return mk == "tft"
+    if phase == "Reconnect":
+        # snapshot_shape stamps the queue only in GameStart / InProgress, so a
+        # Reconnect carries none: unknown, and the caller then requires a
+        # FRESH per-round file (an SR / ARAM reconnect with a lingering TFT
+        # binary has none; a TFT reconnect mid-match does).
+        return None
     return True
 
 
@@ -271,6 +280,11 @@ def standalone_in_game(lcu, running=None, eog=_UNSET) -> bool:
         if eog is _UNSET:
             eog = read_eog()
         if eog is None:
+            return False
+        # A known LCU game id that the file does not carry = the file is an
+        # earlier game's (e.g. an SR reconnect minutes after a TFT match).
+        gid = str(lcu.get("game_id") or "") if isinstance(lcu, dict) else ""
+        if gid and str(eog.get("gameId") or "") not in ("", gid):
             return False
     if running is None:
         running = standalone_client_running()
@@ -317,8 +331,17 @@ def synth_allgamedata(*, lcu=_UNSET, running=None, eog=_UNSET,
     Shape matches what the Live Client API would have served closely enough
     for ``snapshot_normalizer._process_game`` (TFT early exit) and
     ``TftStateReader._parse``; the RC-only ``rc_source`` / ``rc_standalone``
-    keys carry the honest provenance (``live_api`` False).
+    keys carry the honest provenance (``live_api`` False). Never raises: a
+    malformed per-round file or snapshot reads as "no standalone game".
     """
+    try:
+        return _synth_allgamedata(lcu=lcu, running=running, eog=eog, now=now)
+    except Exception as exc:  # noqa: BLE001
+        _log.debug("standalone TFT synth failed: %s", exc)
+        return None
+
+
+def _synth_allgamedata(*, lcu, running, eog, now):
     now = time.time() if now is None else now
     # Cheapest gates first: the SR/ARAM poller reaches this on every no-game
     # tick. An explicit running=False ends it; otherwise the loopback LCU
