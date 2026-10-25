@@ -444,6 +444,40 @@ def test_a_tft_block_on_the_lol_path_goes_to_the_tft_store_not_sr(pgc, tmp_path)
     assert rec["local_placement"] == 1 and rec["local_hp"] == 96
 
 
+def test_a_lol_game_client_block_is_not_taken_for_the_eog_document(pgc, tmp_path):
+    """Verifier risk on 0f833bddd: with the spelling fixed, route 2 answers
+    for a LoL game too. Its statsBlock shape has no teams / players list, so
+    _save_eog would save nothing while the capture reported success and the
+    wrong document became the game's raw EOG copy. It must be skipped, so the
+    loop keeps polling for the real block (or falls to history)."""
+    import sqlite3
+
+    from core import raw_documents as rd
+    lol_client_block = {"gameId": 4242, "gameMode": "CLASSIC", "queueId": 420,
+                        "queueType": "RANKED_SOLO_5x5",
+                        "statsBlock": {"gameLengthSeconds": 1500, "players": [{}]}}
+    real = {"gameId": 4242, "gameMode": "CLASSIC", "gameLength": 1500,
+            "teams": [{"teamId": 100, "win": "Win", "players": [
+                {"championName": "Ashe", "stats": {}}]}]}
+    ready = {"v": False}
+    c = _collector(pgc, {"/lol-end-of-game/v1/eog-stats-block":
+                         lambda: real if ready["v"] else None,
+                         "/lol-end-of-game/v1/gameclient-eog-stats-block": lol_client_block})
+    c._publish_game_end_pin = lambda *a, **k: None
+    c._attach_moment_marks = lambda *a, **k: None
+    c._try_fetch_timeline = lambda *a, **k: None
+    assert c._fetch_eog_stats_block() is None
+    assert c._capture_from_eog("CLASSIC") is False
+    ready["v"] = True
+    assert c._capture_from_eog("CLASSIC") is True
+    conn = sqlite3.connect(str(tmp_path / "pg.db"))
+    try:
+        assert conn.execute("SELECT COUNT(*) FROM sr_matches").fetchone()[0] == 1
+        assert rd.load(conn, "4242", "eog") == real
+    finally:
+        conn.close()
+
+
 def test_tft_capture_falls_back_to_the_gameclient_block(pgc, tmp_path):
     import sqlite3
 
