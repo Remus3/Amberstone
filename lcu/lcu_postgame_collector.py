@@ -339,12 +339,19 @@ def _rate_tft_game(game_id) -> None:
     match_history.db row is corrected in place and last_tft.json is rewritten
     when this is the newest game (performance_tracker.rate_tft_game). Called
     only after a NEW record was persisted. Best-effort: never costs the
-    capture."""
+    capture. RM-904: "rated" is logged only when the match_history.db row
+    landed (the report's "db_written"); a grade whose row did not land is a
+    warning, beside performance_tracker's ERROR."""
     try:
         import performance_tracker as _pt
-        grade, _notes = _pt.rate_tft_game(_RATING_ROOT, game_id)
-        if grade:
+        rep: dict = {}
+        grade, _notes = _pt.rate_tft_game(_RATING_ROOT, game_id, report=rep)
+        if grade and rep.get("db_written"):
             _log.info("postgame: TFT game %s rated %s from the store", game_id, grade)
+        elif grade:
+            _log.warning("postgame: TFT game %s rating NOT saved: grade %s computed but "
+                         "its match_history.db row did not land (see the ERROR above)",
+                         game_id, grade)
     except Exception as exc:  # noqa: BLE001
         _log.warning("postgame: TFT game %s rating not refreshed: %s", game_id, exc)
 

@@ -501,6 +501,101 @@ def test_a_rating_db_write_that_fails_is_logged_not_silent(root, monkeypatch, ca
     assert errs and str(GID) in errs[0].getMessage()
 
 
+# -- RM-904: the DB write outcome reaches the caller ------------------------------
+#
+# rate_tft_game dropped _tft_db_write's bool (performance_tracker.py, the
+# `_tft_db_write(script_dir, plan["row"])` line), so a rating whose row did not
+# land still returned its grade and lcu/lcu_postgame_collector.py
+# _rate_tft_game logged "TFT game <id> rated <grade> from the store" right
+# after the ERROR. The outcome rides the RM-259 out-of-band ``report`` dict
+# (performance_tracker._report_set): the (grade, notes) return is unpacked by
+# the collector and the frozen lifecycle, so it cannot grow.
+
+def _fail_upsert(monkeypatch):
+    from core.match_db import MatchDB
+    monkeypatch.setattr(MatchDB, "upsert_by_game_id", lambda self, data: "failed")
+
+
+def test_rm904_rate_tft_game_reports_a_db_write_that_did_not_land(root, monkeypatch):
+    _store_eog()
+    _fail_upsert(monkeypatch)
+    rep: dict = {}
+    grade, _notes = pt.rate_tft_game(str(root), GID, report=rep)
+    assert grade == "S"
+    assert rep["rated"] is True
+    assert rep["db_written"] is False
+    # The rating file write stays independent of the DB write.
+    assert rep["file_written"] is True
+    assert _last(root)["tft_game_id"] == GID
+    assert _rows(root) == []
+
+
+def test_rm904_rate_tft_game_reports_a_db_write_that_landed(root):
+    _store_eog()
+    rep: dict = {}
+    assert pt.rate_tft_game(str(root), GID, report=rep)[0] == "S"
+    assert (rep["rated"], rep["file_written"], rep["db_written"]) == (True, True, True)
+    assert [r["game_id"] for r in _rows(root)] == [GID]
+
+
+def test_rm904_rate_tft_game_report_unrated_and_kept_newer_file(root):
+    rep: dict = {"db_written": True}
+    assert pt.rate_tft_game(str(root), GID, report=rep) == ("", [])
+    assert rep.get("rated") is False and not rep.get("db_written")
+    # An older game: last_tft.json is kept (not a failure), the row lands.
+    newer = _store_eog(now=time.time())
+    pt.rate_tft_game(str(root), GID)
+    old_doc = json.loads(json.dumps(EOG_DOC))
+    old_doc["gameId"] = GID + 7
+    assert tp.persist(tp.parse_eog(old_doc, now=newer["captured_at_unix"] - 3600))
+    rep = {}
+    assert pt.rate_tft_game(str(root), GID + 7, report=rep)[0]
+    assert (rep["rated"], rep["file_written"], rep["db_written"]) == (True, False, True)
+
+
+def test_rm904_save_tft_rating_reports_the_db_write(root, tmp_path, monkeypatch):
+    """SIBLING: save_tft_rating calls the same _tft_db_write and dropped it too."""
+    _write_per_round(tmp_path, monkeypatch, _per_round_doc())
+    rep: dict = {}
+    assert pt.save_tft_rating(str(root), dict(BLANK_LIVE), dict(BLANK_COACH),
+                              report=rep)[0] == "S"
+    assert (rep["rated"], rep["file_written"], rep["db_written"]) == (True, True, True)
+    _fail_upsert(monkeypatch)
+    rep = {}
+    assert pt.save_tft_rating(str(root), dict(BLANK_LIVE), dict(BLANK_COACH),
+                              report=rep)[0] == "S"
+    assert (rep["rated"], rep["file_written"], rep["db_written"]) == (True, True, False)
+
+
+def _postgame_msgs(caplog):
+    return [(r.levelno, r.getMessage()) for r in caplog.records if r.name == "rc.postgame"]
+
+
+def test_rm904_collector_logs_no_rated_line_when_the_db_row_did_not_land(
+        root, collector, monkeypatch, caplog):
+    import logging
+    _fail_upsert(monkeypatch)
+    c = collector({tp.EOG_PATH: EOG_DOC, "/lol-gameflow/v1/session": _SESSION})
+    with caplog.at_level(logging.INFO):
+        assert c._capture_tft_eog() is True
+    msgs = _postgame_msgs(caplog)
+    assert not [m for _lv, m in msgs if f"TFT game {GID} rated" in m], msgs
+    warns = [m for lv, m in msgs if lv >= logging.WARNING and str(GID) in m]
+    assert warns and "NOT saved" in warns[0], msgs
+    # The rating file still landed: the grade was computed and written.
+    assert _last(root)["tft_game_id"] == GID
+
+
+def test_rm904_collector_rated_line_positive_control(root, collector, caplog):
+    import logging
+    c = collector({tp.EOG_PATH: EOG_DOC, "/lol-gameflow/v1/session": _SESSION})
+    with caplog.at_level(logging.INFO):
+        assert c._capture_tft_eog() is True
+    msgs = _postgame_msgs(caplog)
+    assert [m for _lv, m in msgs if f"TFT game {GID} rated S from the store" in m], msgs
+    assert not [m for lv, m in msgs if lv >= logging.WARNING], msgs
+
+
 def test_get_db_follows_the_script_root(tmp_path, monkeypatch):
     """The pollution vector behind the junk rows: _get_db cached the FIRST
     root it saw, so every later save in the process - whatever root it was
