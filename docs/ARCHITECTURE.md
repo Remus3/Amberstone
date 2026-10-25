@@ -274,6 +274,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `tools/session_checklist.py` | session counter + FLEET-COMMON item 13 checklist block |
 | `tools/shadow_archive_split.py` | archive-split test-leaked rows out of a live shadow jsonl (data-fix doctrine) |
 | `tools/spec_watch.py` | game-data spec / patch watch - key and field diff of the DDragon index, idempotent post, exit 2 on fetch/parse failure |
+| `tools/tft_cv_accuracy.py` | TFT CV accuracy harness - grades a vision extractor field by field vs labelled frames (TFT-06) |
 | `tools/unresolved_token_scan.py` | RM-108 unresolved-template-token detector over vendored feeds |
 | `tools/upstream_drift_check.py` | daily upstream content-drift detector (ddragon / meraki / cdragon / qq / queues) |
 

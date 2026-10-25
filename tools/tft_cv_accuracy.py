@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# arch: TFT CV accuracy harness - grades a vision extractor field by field vs labelled frames (TFT-06) | section=tools | frozen=no
 """TFT CV accuracy harness (docs/TFT_PROGRAM.md section 3.4, slice TFT-06).
 
 Grades a computer-vision extractor field by field against ground truth and
