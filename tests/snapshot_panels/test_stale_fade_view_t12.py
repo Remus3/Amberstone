@@ -49,6 +49,44 @@ _AGE_AND_READ = """async ([key, pid, age, klass, child]) => {
 
 _NO_TRANSITIONS = "*, *::before, *::after { transition: none !important; }"
 
+# Geometry of the #rn-lead pill, read only once the page has SETTLED. The s136
+# verifier measured the first cut racing the Lato swap (web/css/dashboard.css
+# loads it with display=swap): "before" read the fallback face (line 140.89px
+# wide, tag 21px tall), "after" the loaded one (138.22 / 19) - a font race,
+# not a layout change. Settled = layout forced (so the pill's faces are
+# requested), document.fonts.ready awaited (the S136 T11 idiom in
+# test_overlay_tft_view._wait_tft), then the same geometry on two consecutive
+# reads, each two animation frames apart. The panel's staleness age is held
+# for the whole wait (age 0 = fresh, re-stamped so the 4 s sweep cannot flip it
+# mid-wait), and the stage the read ran under is returned for the caller to pin.
+_SETTLED_LEAD_GEO = """async ([age, want]) => {
+  const m = await import('/js/lib/state.js');
+  const e = document.getElementById('rn-lead');
+  const root = document.getElementById('right-now');
+  const raf = () => new Promise((r) => requestAnimationFrame(() => r()));
+  const stage = () => root.classList.contains('severe') ? 'severe'
+    : (root.classList.contains('stale') ? 'stale' : '');
+  const r = (s) => { const q = e.querySelector(s).getBoundingClientRect();
+    return [q.x, q.y, q.width, q.height]; };
+  const read = () => ({ line: r('.rc-lead-line'), tag: r('.rc-lead-tag'),
+    h: e.getBoundingClientRect().height, overflow: e.scrollHeight - e.clientHeight });
+  let prev = null;
+  for (let i = 0; i < 60; i++) {
+    m.state.lastTouch.right_now = Date.now() / 1000 - age;
+    read();                                   // force layout: request the faces
+    await document.fonts.ready;
+    await raf(); await raf();
+    const cur = read();
+    const key = JSON.stringify(cur);
+    if (stage() === want && document.fonts.status === 'loaded' && key === prev) {
+      return Object.assign(cur, { settled: true, cls: stage() });
+    }
+    prev = stage() === want ? key : null;
+    await new Promise((res) => setTimeout(res, 50));
+  }
+  return Object.assign(read(), { settled: false, cls: stage() });
+}"""
+
 
 def _open(mock_server, pw_browser, overlay: bool):
     from tests.snapshot_panels.conftest import _WS_STUB
@@ -117,16 +155,12 @@ def test_overlay_stale_tag_replaces_the_dim(mock_server, pw_browser):
           e.hidden = false; e.classList.add('rc-lead', 'rc-lead-even');
           e.innerHTML = '<span class="rc-lead-line">Push mid wave then reset</span>'
             + '<span class="rc-lead-tag">EVEN</span>'; }""")
-        geo = """() => { const e = document.getElementById('rn-lead');
-          const r = (s) => { const q = e.querySelector(s).getBoundingClientRect();
-            return [q.x, q.y, q.width, q.height]; };
-          return { line: r('.rc-lead-line'), tag: r('.rc-lead-tag'),
-                   h: e.getBoundingClientRect().height,
-                   overflow: e.scrollHeight - e.clientHeight }; }"""
-        before = page.evaluate(geo)
+        before = page.evaluate(_SETTLED_LEAD_GEO, [0, ""])
         st = page.evaluate(_AGE_AND_READ, ["right_now", "right-now", 5, "stale", "rn-lead"])
         sv = page.evaluate(_AGE_AND_READ, ["right_now", "right-now", 13, "severe", "rn-lead"])
-        after = page.evaluate(geo)
+        after = page.evaluate(_SETTLED_LEAD_GEO, [13, "severe"])
+        assert before["settled"] and after["settled"], (before, after)
+        assert before["cls"] == "" and after["cls"] == "severe", (before, after)
         # STRUCTURE: the tag takes its own row at the foot - the line and the
         # state tag do not move, the pill grows, nothing scrolls or clips.
         assert after["line"] == before["line"] and after["tag"] == before["tag"], (
