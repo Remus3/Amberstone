@@ -528,8 +528,16 @@ body:not([data-mode="client"])[data-phase="late"]  .stats-group:not([data-stage~
 .staleness.fresh  { color: var(--good); background: var(--good-soft); }
 .staleness.stale  { color: var(--gold); background: var(--gold-soft); }
 .staleness.severe { color: var(--bad);  background: var(--bad-soft); }
-.panel.stale  .panel-body { opacity: 0.6; }
-.panel.severe .panel-body { opacity: 0.45; filter: grayscale(0.4); }
+/* s136-T12 (operator 2026-10-25: "dont have the panels fade as much when the
+ * data is out of date"). The CADENCE thresholds (lib/state.js) and the age
+ * badge above are unchanged - the badge (gold "Ns" at stale, red at severe) is
+ * the stale cue, not the fade. The dim is now gentle: was 0.6 / 0.45 +
+ * grayscale(0.4); the fade depth (1 - opacity) scales by 0.15 / 0.55, so severe
+ * sits at the 0.85 floor and stale at 0.89. No filter at all: the grayscale
+ * muddied text, and any filter on .panel-body makes it the containing block of
+ * the overlay's position:fixed #rn-* widget mounts (overlay.css section 6b). */
+.panel.stale  .panel-body { opacity: 0.89; }
+.panel.severe .panel-body { opacity: 0.85; }
 
 .counter {
   font-size: 16px;

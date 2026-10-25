@@ -3,7 +3,8 @@
 // The non-intrusive overlay should stop competing with the game when nothing
 // is happening. After no coach-content change AND no pointer activity for
 // ~IDLE_DELAY_MS the renderer stamps data-rc-idle="1" on the body and
-// overlay.css drops the dock to a low opacity; the next coach change or a mouse
+// overlay.css eases the dock to a gentle 0.85 opacity (s136-T12: was 0.12, which
+// left a quiet TFT HUD near-invisible); the next coach change or a mouse
 // move over the HUD snaps it back to full. This is an OPACITY recede, not
 // display:none - a hard hide mid-game would remove coaching the operator may
 // need at a glance.
@@ -19,7 +20,7 @@
 const IDLE_ATTR = "data-rc-idle";
 // Quiet-time before the HUD recedes. 8s: long enough that a steadily-updating
 // coach (1Hz state ticks that change content) never dims, short enough that a
-// genuinely idle lane fades within a few seconds.
+// genuinely idle lane recedes within a few seconds.
 const IDLE_DELAY_MS = 8000;
 // How often the idle check loop runs (cheap; just a time compare + maybe one
 // attribute write).

@@ -826,12 +826,53 @@ body[data-shell="overlay"] .ov-pulse {
 }
 
 /* 6. Idle recede (overlay_idle.js stamps data-rc-idle="1" after ~8s quiet). The
- * field recedes so a quiet HUD stops competing with the game; opacity only. */
+ * field recedes so a quiet HUD stops competing with the game; opacity only.
+ * s136-T12 (operator 2026-10-25: "dont have the panels fade as much when the
+ * data is out of date"): 0.12 -> 0.85, a gentle recede - same 8s timer. In TFT
+ * the coach mounts change rarely, so the 0.12 recede left the HUD near-invisible
+ * most of the game. 0.85 is the floor every stale / idle dim now respects. */
 body[data-shell="overlay"] .ovx-widget {
   transition: opacity 400ms ease;
 }
 body[data-shell="overlay"][data-rc-idle="1"] .ovx-widget {
-  opacity: 0.12;
+  opacity: 0.85;
+}
+
+/* 6b. Stale cue on the overlay (s136-T12). The #rn-lead / #rn-choices /
+ * #rn-callouts widget mounts live inside #right-now .panel-body, so the
+ * dashboard staleness sweep (main.js applyStaleness, lib/state.js CADENCE
+ * right_now 4s / 12s) dimmed them too - but section 3 hides the panel head that
+ * carries the .staleness age badge, so in-game the fade was the ONLY cue, and it
+ * compounded with the idle recede (measured 0.45 x 0.12 = 0.054). The overlay
+ * now takes no stale dim (section 6 is its one dim, floor 0.85) and says it in
+ * words instead: a small STALE tag at the foot of each visible widget, in the
+ * pane-head type (.am-pane-head: --fs-ov-head, 700, uppercase, 0.15em), gold at
+ * stale and warn amber at severe - never red (doctrine section 5 reserves red
+ * for the Emergency winner). In flow, so it never covers content or the
+ * top-right drag handle, and pointer-events:none so it is never a hit target.
+ * width:100% gives it its own row in the flex-wrap #rn-lead pill (the column
+ * #rn-choices / #rn-callouts stack it at the foot either way). */
+body[data-shell="overlay"] #right-now.stale .panel-body,
+body[data-shell="overlay"] #right-now.severe .panel-body {
+  opacity: 1;
+}
+body[data-shell="overlay"] #right-now.stale .ovx-widget::after,
+body[data-shell="overlay"] #right-now.severe .ovx-widget::after {
+  content: "stale";
+  display: block;
+  width: 100%;
+  margin-top: 3px;
+  text-align: right;
+  font-size: var(--fs-ov-head);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(var(--ovx-gold), 0.90);
+  pointer-events: none;
+}
+body[data-shell="overlay"] #right-now.severe .ovx-widget::after {
+  color: rgb(var(--ovx-warn));
 }
 
 /* 7. Combat declutter (doctrine section 6). right_now.js stamps body[data-fight]
