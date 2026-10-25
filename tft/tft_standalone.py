@@ -434,11 +434,16 @@ def _synth_allgamedata(*, lcu, running, eog, now):
         game_time = max(0.0, now - ct) if ct else 0.0
     players = []
     if rs["eog"]:
+        seen_local = False
         for i, p in enumerate(_players(eog) if isinstance(eog, dict) else []):
             hp = _hp(p.get("health"))
+            # one local player only (the reader matches by name, and two
+            # LOCAL_NAME rows made it pick the LAST - a different HP than the
+            # panel's first); mirrors _lobby and _round_state's next()
+            is_local = p.get("isInteractable") is True and not seen_local
+            seen_local = seen_local or is_local
             row = {
-                "summonerName": LOCAL_NAME if p.get("isInteractable") is True
-                else f"opponent-{i}",
+                "summonerName": LOCAL_NAME if is_local else f"opponent-{i}",
                 # unknown HP (start-of-game -1) is neither dead nor a value
                 "isDead": hp == 0,
                 "scores": {"kills": 0, "deaths": 0},

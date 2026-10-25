@@ -215,6 +215,13 @@ def test_only_one_you_even_if_the_file_marks_two(eog_file):
     eog_file.write_text(json.dumps(d), encoding="ascii")
     lc = ts.standalone_liveclient_summary(LCU, running=True)
     assert sum(1 for r in lc["players"] if r["you"]) == 1
+    # the synthesized allgamedata names exactly one local player too, the
+    # same (first) one the panel shows
+    raw = ts.synth_allgamedata(lcu=LCU, running=True)
+    locals_ = [p for p in raw["allPlayers"] if p["summonerName"] == ts.LOCAL_NAME]
+    assert len(locals_) == 1
+    first = d["statsBlock"]["players"][0]
+    assert locals_[0]["health"] == first["health"] == raw["rc_standalone"]["local"]["health"]
 
 
 def test_engine_written_board_rows_win_over_the_file(eog_file):
