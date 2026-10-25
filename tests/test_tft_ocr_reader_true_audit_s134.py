@@ -28,6 +28,7 @@ if str(_REPO_ROOT) not in sys.path:
 from PIL import Image  # noqa: E402
 
 from tft import tft_ocr_reader as m  # noqa: E402
+from tests._module_view import bind_which  # noqa: E402
 
 
 class _FakeTess:
@@ -127,14 +128,14 @@ def test_live_read_on_a_stitched_frame_returns_nothing() -> None:
 def test_missing_binary_is_unavailable(monkeypatch) -> None:
     pytest.importorskip("pytesseract")
     monkeypatch.setattr(m, "_TESS_CMD", str(_REPO_ROOT / "no-such-tesseract.exe"))
-    monkeypatch.setattr(m.shutil, "which", lambda name: None)
+    bind_which(monkeypatch, m, lambda name: None)
     assert m._init_tesseract() is None
 
 
 def test_binary_on_path_is_used_when_default_is_absent(monkeypatch) -> None:
     pytesseract = pytest.importorskip("pytesseract")
     monkeypatch.setattr(m, "_TESS_CMD", str(_REPO_ROOT / "no-such-tesseract.exe"))
-    monkeypatch.setattr(m.shutil, "which", lambda name: "found-tesseract")
+    bind_which(monkeypatch, m, lambda name: "found-tesseract")
     monkeypatch.setattr(pytesseract.pytesseract, "tesseract_cmd",
                         pytesseract.pytesseract.tesseract_cmd)
     assert m._init_tesseract() is pytesseract

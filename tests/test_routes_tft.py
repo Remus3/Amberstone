@@ -37,6 +37,7 @@ from tft import tft_scouting
 from tft.assets import icon_cache
 from tft.rounds import store as st
 from tft.rounds.store import Env, RoundStore
+from tests._module_view import this_thread_only
 
 REPO = Path(__file__).resolve().parent.parent
 FIX = REPO / "tests" / "fixtures"
@@ -560,7 +561,10 @@ def test_no_route_opens_a_network_connection(env, monkeypatch):
         raise AssertionError("network call on the request path")
 
     monkeypatch.setattr(socket.socket, "connect", refuse)
-    monkeypatch.setattr(socket, "create_connection", refuse)
+    # this_thread_only, not a process-wide fake (RM-801 guard): a leftover
+    # server thread of an earlier file keeps the real function.
+    monkeypatch.setattr(socket, "create_connection",
+                        this_thread_only(refuse, socket.create_connection))
     paths = ["/api/tft/live", "/api/tft/matches", "/api/tft/match/m-done-0",
              f"/api/tft/match/{FIXTURE_GAME_ID}", "/api/tft/icon/champion/DA_18_Yorick?set=18",
              "/api/tft/scouting", "/api/tft/engine/recommend", "/api/tft/engine/milestones",
