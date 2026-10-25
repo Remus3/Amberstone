@@ -24,6 +24,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from core import log_rotation                                    # noqa: E402
 from core import riot_api                                        # noqa: E402
 from core import replay_roster as rr                             # noqa: E402
 from core.riot_retry import fetch_unthrottled                    # noqa: E402
@@ -142,6 +143,21 @@ def _pull_one(entry, root, queues, dry_run, extract):
     return 1 if res.failed else 0
 
 
+# RM-718 (a). The hourly task appends ~40 KB a run to logs/replay_roster.log,
+# and the plain append mode here grew it to 59.5 MB by 2026-10-24 - most of a
+# 100 MiB logs/ cap that core/log_retention.py then enforced against RC's own
+# dated daily logs. Rotate at open: at most (1 + backups) * max_bytes on disk.
+_LOG_SINK_MAX_BYTES = log_rotation.DEFAULT_MAX_BYTES
+_LOG_SINK_BACKUPS = log_rotation.DEFAULT_BACKUP_COUNT
+
+
+def _open_log_sink(sink: Path):
+    """Open the --log-file for append, rotating it first when oversize."""
+    sink.parent.mkdir(parents=True, exist_ok=True)
+    log_rotation.rotate_if_oversize(sink, _LOG_SINK_MAX_BYTES, _LOG_SINK_BACKUPS)
+    return sink.open("a", encoding="utf-8", buffering=1)
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(
         description="Pull ranked replays for tracked players into the corpus.")
@@ -168,9 +184,7 @@ def main(argv=None) -> int:
 
     level = logging.WARNING if args.quiet else logging.INFO
     if args.log_file:
-        sink = Path(args.log_file)
-        sink.parent.mkdir(parents=True, exist_ok=True)
-        stream = sink.open("a", encoding="utf-8", buffering=1)
+        stream = _open_log_sink(Path(args.log_file))
         sys.stdout = stream
         sys.stderr = stream
         logging.basicConfig(level=level, stream=stream,

@@ -216,6 +216,82 @@ def test_info_line_distinguishes_age_deletions_from_cap_deletions(tmp_path, capl
     assert "1 to hold the 1MB cap" in msg, msg
 
 
+# -- RM-718 (a): the size pass spares RC's dated daily logs while it can ---
+
+def test_size_pass_takes_a_large_current_tool_log_before_dated_daily_logs(tmp_path):
+    """DECISION (RM-718 a, 2026-10-24): inside the age window the size pass
+    deletes every non-daily `*.log*` (oldest first) BEFORE any dated daily
+    log. Measured that day: two unrotated tool logs held 87 of 94 MiB, and
+    plain oldest-first would have deleted RC's own `YYYY-MM-DD.log` history
+    while the offender - newest mtime, still growing - survived every sweep.
+    Here the big file is the NEWEST, so plain oldest-first would take all
+    three daily logs and still be over cap."""
+    dailies = [
+        _write(tmp_path / f"2026-10-{d:02d}.log", 300_000, age_days=age)
+        for d, age in ((20, 4), (21, 3), (22, 2))
+    ]
+    big = _write(tmp_path / "replay_roster.log", 1_200_000, age_days=0.01)
+
+    deleted, freed = log_retention.prune(tmp_path, max_age_days=14, max_total_mb=1)
+
+    assert deleted == 1 and freed == 1_200_000
+    assert not big.exists()
+    assert all(p.exists() for p in dailies)
+
+
+def test_size_pass_orders_non_daily_files_oldest_first_among_themselves(tmp_path):
+    older_backup = _write(tmp_path / "replay_roster.log.2", 600_000, age_days=6)
+    newer_backup = _write(tmp_path / "replay_roster.log.1", 600_000, age_days=3)
+    daily = _write(tmp_path / "2026-10-24.log", 300_000, age_days=5)
+
+    deleted, _ = log_retention.prune(tmp_path, max_age_days=14, max_total_mb=1)
+
+    assert deleted == 1
+    assert not older_backup.exists()
+    assert newer_backup.exists() and daily.exists()
+
+
+def test_cap_stays_hard_daily_logs_go_oldest_first_once_nothing_else_is_deletable(
+    tmp_path, monkeypatch
+):
+    """Sparing the daily logs is an ORDER, not an exemption: a cap that may
+    only delete what the age pass already deleted is not a cap (LEDGER 1200).
+    The tool log here is refused (held open by its writer, as on Windows), so
+    the daily logs must still go, oldest first, until under cap. Daily size
+    backups (`YYYY-MM-DD.log.N`, core/log_setup's own rotation) count as
+    daily."""
+    stubborn = _write(tmp_path / "lcu_agent.log", 700_000, age_days=0.01)
+    oldest = _write(tmp_path / "2026-10-20.log.1", 200_000, age_days=4)
+    middle = _write(tmp_path / "2026-10-21.log", 200_000, age_days=3)
+    newest = _write(tmp_path / "2026-10-22.log", 200_000, age_days=2)
+
+    def _deny_tool_log(real, self, *a, **kw):
+        if self.name == "lcu_agent.log":
+            raise PermissionError("held open by another process")
+        return real(self, *a, **kw)
+
+    with scoped_path_fault("unlink", tmp_path, _deny_tool_log):
+        deleted, freed = log_retention.prune(tmp_path, max_age_days=14, max_total_mb=1)
+
+    assert stubborn.exists()
+    assert not oldest.exists() and not middle.exists()
+    assert newest.exists()
+    assert deleted == 2 and freed == 400_000
+
+
+@pytest.mark.parametrize("name,daily", [
+    ("2026-10-24.log", True),
+    ("2026-10-24.log.3", True),
+    ("replay_roster.log", False),
+    ("replay_roster.log.1", False),
+    ("mission_control-2026-10-24.log", False),
+    ("postmortem_analyze.2026-10-18.log", False),
+    ("2026-10-24.log.gz", False),
+])
+def test_daily_log_classifier(name, daily):
+    assert log_retention._is_daily_log(Path(name)) is daily
+
+
 # -- Regression: policy knobs are validated --------------------------------
 
 @pytest.mark.parametrize("bad", [0, -1, -365])

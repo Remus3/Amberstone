@@ -201,6 +201,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `core/live_item_tape.py` | RM-607 live inventory tape - item buy/sell/combine diff over allPlayers |
 | `core/live_item_tape_store.py` | RM-607 live inventory tape - game-end timeline_events persistence |
 | `core/log_retention.py` | periodic logs/ trimmer (age + hard size cap) |
+| `core/log_rotation.py` | size rotation for logs outside core/log_setup |
 | `core/log_setup.py` | log init [FROZEN] |
 | `core/macro_context.py` | fog-only macro snapshot for the deterministic decision tree |
 | `core/macro_decision_tree.py` | ordered pure-rule registry for deterministic macro callouts |
