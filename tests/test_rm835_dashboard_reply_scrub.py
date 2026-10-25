@@ -350,6 +350,100 @@ def test_sr_draft_enqueue_fault_note_is_fixed(monkeypatch):
     assert raw1 == raw2
 
 
+# --------------------------------------------------------------------------- DS engine notes
+# Verifier finding (RM-835 pass 2): agents/daemon_slayer/combo.py's fail-soft
+# around the burst walker appended f"burst walker failed: {str(exc)[:120]}" to
+# the result notes, and routes_ds_combo replies with "notes":
+# list(result.notes) - a 200 carrying the exception text. Fixed at the source:
+# the note is a fixed line and the engine logs the cause. mana_sim.py wraps the
+# same burst-walker call with the identical line, and the burst walker's own
+# abilities-snapshot-missing note put AbilitiesNotFound's text (an absolute
+# path) into BurstResult.notes; both are fixed with it.
+@pytest.fixture
+def ds_cap():
+    lg = logging.getLogger("agents.daemon_slayer")
+    handler, prior = _Cap(), lg.level
+    lg.addHandler(handler)
+    lg.setLevel(logging.DEBUG)
+    try:
+        yield handler
+    finally:
+        lg.removeHandler(handler)
+        lg.setLevel(prior)
+
+
+# The /api/ds-combo 200 envelope, measured at fbcdc9952 on this fault path.
+_COMBO_KEYS = {"ok", "champion", "champion_name", "level", "mode", "sequence",
+               "hits", "totals", "ttk", "notes", "count", "cached",
+               "elapsed_ms"}
+
+
+def _drive_combo_burst_fault(monkeypatch, marker: str):
+    import agents.daemon_slayer.combo as combo
+    from dashboard import routes_ds_combo as r
+
+    def _boom(*_a, **_k):
+        raise _os_error(marker)
+    monkeypatch.setattr(combo, "compute_burst_damage", _boom)
+    r._reset_caches()
+    h = _H("/api/ds-combo?champion=Lux&seq=Q,W,E")
+    r._serve_ds_combo(h)
+    r._reset_caches()
+    assert h.sent is not None
+    status, raw, ctype = h.sent
+    assert ctype == "application/json"
+    return status, raw, json.loads(raw.decode("utf-8"))
+
+
+def test_ds_combo_burst_walker_fault_notes_carry_no_exception_text(
+        monkeypatch, ds_cap):
+    status, raw, payload = _drive_combo_burst_fault(monkeypatch, "RM835MARKA")
+    assert status == 200, payload
+    assert set(payload) == _COMBO_KEYS, payload
+    assert payload["ok"] is True
+    assert payload["hits"] == []
+    assert payload["notes"] == ["burst walker failed - see logs"], payload
+    _assert_clean(raw, payload, "RM835MARKA")
+    _assert_logged(ds_cap, "RM835MARKA", "OSError")
+
+
+def test_ds_combo_burst_walker_fault_reply_is_fixed(monkeypatch):
+    _s1, _r1, first = _drive_combo_burst_fault(monkeypatch, "RM835MARKA")
+    _s2, _r2, second = _drive_combo_burst_fault(monkeypatch, "RM835MARKB")
+    first.pop("elapsed_ms")
+    second.pop("elapsed_ms")
+    assert first == second
+
+
+def test_mana_sim_burst_walker_fault_note_carries_no_exception_text(
+        monkeypatch, ds_cap):
+    import agents.daemon_slayer.mana_sim as ms
+
+    def _boom(*_a, **_k):
+        raise _os_error("RM835MARKA")
+    monkeypatch.setattr(ms, "compute_burst_damage", _boom)
+    res = ms.compute_mana_bounded_combo("Lux", 11, sequence=["Q", "W", "E"])
+    assert list(res.notes) == ["burst walker failed - see logs"], res.notes
+    for n in res.notes:
+        assert "RM835MARKA" not in n and "Example Repo" not in n
+    _assert_logged(ds_cap, "RM835MARKA", "OSError")
+
+
+def test_burst_abilities_missing_note_carries_no_exception_text(
+        monkeypatch, ds_cap):
+    import agents.daemon_slayer.abilities as ab
+    from agents.daemon_slayer.burst import compute_burst_damage
+    from agents.daemon_slayer.data_loader import DataSnapshot
+
+    def _missing(*_a, **_k):
+        raise ab.AbilitiesNotFound(_evil("RM835MARKA"))
+    monkeypatch.setattr(ab, "load_default", _missing)
+    res = compute_burst_damage(DataSnapshot.load(), "Lux", 11,
+                               combo_sequence=["Q", "W", "E"])
+    assert tuple(res.notes) == ("abilities snapshot missing - see logs",)
+    _assert_logged(ds_cap, "RM835MARKA", "AbilitiesNotFound")
+
+
 # --------------------------------------------------------------------------- docstrings
 @pytest.mark.parametrize("name", ["routes_ds_matchup", "routes_ds_shape"])
 def test_no_docstring_states_the_leak_as_the_contract(name):
@@ -433,6 +527,12 @@ def _route_modules() -> list[Path]:
 
 
 _SWEPT = _route_modules()
+# RM-835 pass 2: the engine modules whose result notes reach a :8888 reply
+# (combo.py -> /api/ds-combo "notes") or sit on that burst-walker code path
+# (burst.py, mana_sim.py). The rest of agents/daemon_slayer is :8860-only and
+# out of this row's scope (listed in the RM-835 report).
+_DS_SWEPT = [ROOT / "agents" / "daemon_slayer" / n
+             for n in ("combo.py", "burst.py", "mana_sim.py")]
 
 
 def test_the_sweep_sees_every_route_module():
@@ -459,7 +559,7 @@ def test_the_sweep_has_except_handlers_to_look_at():
     assert bound >= 200, bound
 
 
-@pytest.mark.parametrize("path", _SWEPT,
+@pytest.mark.parametrize("path", _SWEPT + _DS_SWEPT,
                          ids=lambda p: p.relative_to(ROOT).as_posix())
 def test_no_8888_reply_names_a_bound_exception(path):
     assert _reply_leaks(path.read_text(encoding="utf-8")) == [], path

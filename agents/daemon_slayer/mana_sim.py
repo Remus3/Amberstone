@@ -83,6 +83,7 @@ ENGINE_VERSION bump.
 
 from __future__ import annotations
 
+import logging
 import math
 from dataclasses import dataclass, field
 from typing import List, Optional, Sequence, Tuple
@@ -91,6 +92,8 @@ from ._item_ability_haste import effective_cooldown, total_item_ability_haste
 from .burst import compute_burst_damage
 from .data_loader import DataSnapshot
 from .stats import aggregate_item_stats, scaled
+
+_LOG = logging.getLogger(__name__)
 
 # Hard rotation cap (seconds). A cast whose cooldown-ready time would push the
 # clock past this is recorded "on_cooldown" instead of waited on, so the
@@ -567,7 +570,11 @@ def compute_mana_bounded_combo(
             combo_sequence=seq,
         )
     except Exception as exc:  # fail-soft: surface a note, never raise
-        notes.append(f"burst walker failed: {str(exc)[:120]}")
+        # RM-835: a FIXED note, the same line as combo.py's wrap of this same
+        # burst-walker call; the cause goes to the log, repr()-escaped.
+        _LOG.warning("compute_mana_bounded_combo %s: burst walker failed: "
+                     "%s: %r", champ, type(exc).__name__, str(exc))
+        notes.append("burst walker failed - see logs")
         return _empty(champ, int(level), mode, tuple(seq), notes, champ_name=champ)
 
     champ_id = burst.champion_id or champ

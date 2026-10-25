@@ -59,12 +59,15 @@ sequence yields empty ``hits``.
 from __future__ import annotations
 
 import json
+import logging
 import pathlib
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Sequence, Tuple
 
 from .burst import compute_burst_damage
 from .data_loader import DataSnapshot
+
+_LOG = logging.getLogger(__name__)
 
 _DATA_DIR = (
     pathlib.Path(__file__).resolve().parent.parent.parent
@@ -292,7 +295,13 @@ def compute_combo(
             score_completion_runes=score_completion_runes,
         )
     except Exception as exc:  # fail-soft: surface a note, never raise
-        notes.append(f"burst walker failed: {str(exc)[:120]}")
+        # RM-835: the note is a FIXED line - routes_ds_combo replies with
+        # these notes on :8888, and the exception's text (an OSError names
+        # its file) must never reach a reply. The cause goes to the log, its
+        # text repr()-escaped so a control character cannot start a log line.
+        _LOG.warning("compute_combo %s: burst walker failed: %s: %r", champ,
+                     type(exc).__name__, str(exc))
+        notes.append("burst walker failed - see logs")
         return ComboResult(
             champion=champ, champion_name=champ, level=int(level), mode=mode,
             sequence=tuple(seq), notes=tuple(notes),
