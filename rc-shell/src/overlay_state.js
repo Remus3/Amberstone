@@ -71,7 +71,17 @@ const PANEL_SETS = Object.freeze(["coach", "build", "threat"]);
 // "raise-companion" (bring the kept dashboard forward beside the HUD). Neither
 // hides the overlay, so - unlike the toggle-hidden hotkey - there is no
 // stranding risk and they are safe to surface as on-screen buttons.
-const OVERLAY_ACTIONS = Object.freeze(["set-panel", "set-active", "rearrange", "raise-companion"]);
+// S134 N9 adds "set-passive": the overlay menu's "Done (back to play)" button.
+// It used to send "set-active", i.e. flip the full-screen overlay INTERACTIVE
+// for the 20 s auto-revert - every game click in that window hit the overlay.
+// Passive is never a stranding risk either (it only restores click-through).
+const OVERLAY_ACTIONS = Object.freeze([
+  "set-panel",
+  "set-active",
+  "set-passive",
+  "rearrange",
+  "raise-companion",
+]);
 
 // Normalize a mode_key to the canonical lower-case token. Non-string -> "".
 function normMode(modeKey) {
@@ -565,6 +575,22 @@ function effectiveIgnoreMouse(clickThrough, zoneHover, zonesEnabled) {
   return zoneHover !== true; // PASSIVE: click-through except over a zone
 }
 
+// S134 N9: may the overlay window take OS focus? ONLY on the operator's
+// explicit ACTIVE intent (clickThrough false - the Ctrl+Shift+A flip or the
+// "Interact now" button). A PASSIVE zone hover makes the window take CLICKS
+// (effectiveIgnoreMouse) but must not let it take FOCUS: main.js used to pass
+// the zone-hover result straight to setFocusable, so the window was focusable
+// whenever the cursor sat on the menu launcher or a drag handle, and Windows
+// activates a focusable window on click - the game would lose the keyboard
+// (TFT's D / F hotkeys, League's abilities) until clicked back into (inferred
+// from the Win32 activation rule, not measured live). focusable:false is
+// WS_EX_NOACTIVATE on Windows - mouse input still lands (the ON/OFF toggle
+// icon window runs on exactly that and took taps live in QA match 3).
+// Strict boolean: anything but a real false keeps the window non-focusable.
+function effectiveFocusable(clickThrough) {
+  return clickThrough === false;
+}
+
 // --- RC2 Stage 4.3: single-monitor window management (separated windows) ------
 // On a SINGLE monitor the keepCompanion fix (E1/3.4) shows the full dashboard
 // alongside the right-docked in-game overlay - but a companion last left under
@@ -831,6 +857,7 @@ module.exports = {
   OVERLAY_OPACITY_MAX,
   clampOpacity,
   effectiveIgnoreMouse,
+  effectiveFocusable,
   rectsOverlap,
   resolveSeparatedCompanionBounds,
 };
