@@ -9,7 +9,8 @@ the file. Seven consumers read the key and they did NOT agree on precedence:
   * `coach_integration/_coach.py:50`  env only                  (correct)
   * `coaches/_base_coach.py`          FILE first                (flipped here)
   * `agents/agent7_context/warm_session.py`  FILE first         (flipped here)
-  * `coaches/tft_pbe_coach.py`        FILE first                (flipped here)
+  * `coaches/tft_pbe_coach.py`        FILE first                (flipped here;
+                                      deleted by RM-292 (b), unreachable)
   * `app/_game_lifecycle.py:315`      FILE first  (FROZEN - flipped 2026-09-29
                                       under an explicit, edit-scoped operator
                                       approval; it was the last file-first read)
@@ -81,11 +82,6 @@ def _load_base_coach(app_dir: Path, monkeypatch) -> str:
 def _load_warm_session(app_dir: Path, monkeypatch) -> str:
     from agents.agent7_context import warm_session
     return warm_session._load_api_key(app_dir)
-
-
-def _load_tft_pbe(app_dir: Path, monkeypatch) -> str:
-    from coaches import tft_pbe_coach
-    return tft_pbe_coach._read_api_key(app_dir)
 
 
 class _Handler:
@@ -215,7 +211,6 @@ CONSUMERS = [
                  id="performance_tracker.save_rating"),
     pytest.param(_load_vision_server, id="vision_server._config._load_key"),
     pytest.param(_load_warm_session, id="agent7.warm_session._load_api_key"),
-    pytest.param(_load_tft_pbe, id="coaches.tft_pbe_coach._read_api_key"),
     pytest.param(_load_routes_coach, id="dashboard.routes_coach"),
     pytest.param(_load_game_lifecycle, id="app._game_lifecycle.try_read_api_key"),
 ]

@@ -419,6 +419,10 @@ _RC_CONFIG_SPEC = _ConfigSpec(
 )
 
 
+# `tft_pbe` is RETIRED (RM-292 b): nothing reads it since the PBE coach and
+# its dead loader were deleted. It stays a tolerated optional key so an
+# existing config that still carries it validates unchanged; an unlisted key
+# would not be flagged either, but listing it keeps its type documented.
 _COACH_SETTINGS_SPEC = _ConfigSpec(
         rel_path="config/coach_settings.json",
         required_keys=["model", "debounce_seconds", "timeout", "max_tokens"],

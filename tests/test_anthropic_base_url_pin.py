@@ -39,9 +39,10 @@ CONSTRUCT_FILES = [
     "agents/agent7_context/warm_session.py",
     "tft/tft_coach_engine.py",
     "tft/tft_live_analysis.py",
-    "tft/tft_pbe_engine.py",
     "tft/tft_vision_reader.py",
 ]
+# RM-292 (b): tft/tft_pbe_engine.py left this list when the unreachable PBE
+# coach subsystem was deleted.
 
 # Per-line pin check: an actual construction is `= anthropic.Anthropic(`.
 # The `=` prefix skips the docstring mention in core/anthropic_client.py.

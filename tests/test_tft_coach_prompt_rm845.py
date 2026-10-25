@@ -21,8 +21,9 @@ Every name used below, cited:
   data/meta/tft_set18_meta.json: _note ("SKELETON - UNVERIFIED"), comps
   tft/tft_coach_engine.py:77 FIELD_MAP, :445 _parse_response, :564
       TftCoachEngine, :746 _run (system=... at :771), :789 _write_fields
-  tft/tft_pbe_engine.py:179 FIELD_MAP, :285 _parse_response, :338
-      TftPbeCoachEngine, :463 _run (system=... at :483)
+  (tft/tft_pbe_engine.py and coaches/tft_pbe_coach.py, the PBE twins this
+      file also drove, were deleted by RM-292 (b) - unreachable; pinned by
+      tests/test_rm292b_pbe_coach_retired.py)
   core/cost_tracker.py get_tracker / record_anthropic_response (patched so
       no spend row is written)
 """
@@ -281,17 +282,14 @@ def test_meta_label_tracks_the_meta_file(tmp_path):
     assert "SELECTED COMP" in verified
 
 
-# -- the PBE coach: no private Set 17 prompt left -----------------------------
+# -- no private Set 17 prompt left --------------------------------------------
 
 def test_engines_carry_no_hand_written_set_prompt():
     import tft.tft_coach_engine as live
-    import tft.tft_pbe_engine as pbe
     assert not hasattr(live, "TFT_SYSTEM_PROMPT")
-    assert not hasattr(pbe, "TFT_PBE_SYSTEM_PROMPT")
     stale = {}
-    for rel in ("tft/tft_coach_engine.py", "tft/tft_pbe_engine.py",
-                "tft/tft_pbe_data.py",
-                "coaches/tft_coach.py", "coaches/tft_pbe_coach.py"):
+    for rel in ("tft/tft_coach_engine.py", "tft/tft_pbe_data.py",
+                "coaches/tft_coach.py"):
         src = (REPO_ROOT / rel).read_text("utf-8")
         hits = [s for s in _RETIRED_COPY if s in src]
         if hits:
@@ -305,7 +303,8 @@ def test_pbe_data_keeps_only_consumed_tables_and_no_tier_or_comp_calls():
     of them) - comp tiers, item tiers, god "strategy" advice. What stays is
     what something reads: the roll constants (tft/tft_roll_odds.py:93
     load_constants), the Realm of the Gods schedule and the tempo notes
-    (tft/tft_state_reader.py:164, coaches/tft_pbe_coach.py, the PBE engine).
+    (tft/tft_state_reader.py:164; the PBE coach and engine that also read
+    them were deleted by RM-292 (b)).
     """
     from tft import tft_pbe_data as d
     for gone in ("GODS", "ORIGINS", "CLASSES", "CHAMPIONS", "META_COMPS",
@@ -355,15 +354,12 @@ def _drive(engine_cls, tmp_path: Path) -> dict:
 
 
 @pytest.mark.parametrize("pin", ["17", "18"])
-@pytest.mark.parametrize("which", ["live", "pbe"])
-def test_both_engines_send_the_shared_builder_prompt(which, pin, tmp_path, monkeypatch):
+def test_engine_sends_the_shared_builder_prompt(pin, tmp_path, monkeypatch):
     from tft import tft_prompt
     from tft.tft_coach_engine import TftCoachEngine
-    from tft.tft_pbe_engine import TftPbeCoachEngine
 
     monkeypatch.setenv(tft_set.ENV_PIN, pin)
-    cls = TftCoachEngine if which == "live" else TftPbeCoachEngine
-    seen = _drive(cls, tmp_path)
+    seen = _drive(TftCoachEngine, tmp_path)
     text = seen["system"][0]["text"]
     assert text == tft_prompt.build_system_prompt()
     assert f"SET {pin}" in text
@@ -442,14 +438,9 @@ def test_carousel_answer_is_rewritten_to_god_boon_only_for_a_gods_set():
 
 def test_every_pick_label_lands_in_the_payload_pick_key():
     from tft.tft_coach_engine import _parse_response as live
-    from tft.tft_pbe_engine import _parse_response as pbe
     for label in ("God pick", "Carousel", "Pick"):
         r = live(f"Items: BF Sword\n{label}: Tear -> Ahri\n", gods=False)
         assert r.get("god_pick") == "Tear -> Ahri", label
-        assert r.get("items") == "BF Sword", label
-    for label in ("God", "God pick", "Carousel", "Pick"):
-        r = pbe(f"Items: BF Sword\n{label}: Tear -> Ahri\n")
-        assert r.get("god") == "Tear -> Ahri", label
         assert r.get("items") == "BF Sword", label
 
 
