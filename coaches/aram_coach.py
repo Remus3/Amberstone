@@ -538,7 +538,9 @@ Return ONLY valid JSON with no markdown:
   "augment_choices": [],
   "hp_packs": [true, true],
   "wave_pct": 50,
-  "fight_state": "poke"
+  "fight_state": "poke",
+  "gold": null,
+  "level": null
 }
 Rules:
 - my_tower_hp: YOUR nearest tower HP% (0-100), or null if not visible
@@ -555,6 +557,7 @@ Rules:
   Accurate pack detection directly affects coaching quality
 - wave_pct: estimated minion wave position as 0-100 (0=at your base, 100=at enemy base)
 - fight_state: "poke" / "all-in" / "retreating" / "idle"
+- gold / level: YOUR gold and champion level from the HUD, integers, null if not readable
 - Return ONLY the JSON object, no markdown
 """
 
@@ -674,7 +677,10 @@ class Coach(BaseCoach):
         # the consumed `augment_select`, so it IS a requested field for this
         # mode - declaring it here stops RC_VISION_MERGE_STRICT filtering it out
         # before the alias runs. ARAM Mayhem has augments (live-verified
-        # 2026-07-12), so this coach owns the flag.
+        # 2026-07-12), so this coach owns the flag. RM-869: the reader now
+        # goes direct (_build_vision_reader) and _VISION_PROMPT asks for
+        # `augment_select` itself; the alias key stays declared so a reader
+        # that still rides the relay keeps its flag.
         "is_augment_select",
         "ally_1_hp", "ally_2_hp", "ally_3_hp", "ally_4_hp",
         "gold", "level", "cs", "kda",
@@ -840,6 +846,38 @@ class Coach(BaseCoach):
             )
         self._update_vision_cadence(state)
 
+    def _build_vision_reader(self):
+        """The ARAM tiered vision reader, configured for this mode.
+
+        RM-869 (the RM-144 pattern, dashboard/_screen_read.py ScreenReadVision):
+        USE_RELAY = False. The relay transport carries no prompt - the relay
+        (vision_server/_inference.py _VISION_PROMPT) answers with its fixed TFT
+        schema - so my_tower_hp / enemy_tower_hp / wave_pct / hp_packs /
+        fight_state never arrived (data/vision_merge_shadow.jsonl, 2026-10-25:
+        requested 230 times, returned 0), and augment_select only via the
+        is_augment_select alias. Going direct sends _VISION_PROMPT, which
+        asks for augment_select itself and now also for gold / level, the two
+        OCR SHADOW_FIELDS the relay's TFT answer used to carry. Rejected:
+        adding ARAM keys to the shared relay prompt changes every mode's
+        schema, and core/moon_proxy.py is frozen. Cost: the same Sonnet read
+        count per game (cadence unchanged); the direct path skips the relay's
+        image-key dedupe, and the daily cost gate in
+        GameVisionReader._extract still applies. Frame capture (:8889 with
+        X-RC-Token) is untouched - only the extraction transport changes.
+        """
+        import anthropic
+        from modes.shared_vision import SONNET_MODEL, GameVisionReader
+        r = GameVisionReader.__new__(GameVisionReader)
+        r._client = anthropic.Anthropic(api_key=self._api_key, base_url="https://api.anthropic.com")
+        r._model  = SONNET_MODEL
+        r._last   = {}
+        r.PROMPT  = _VISION_PROMPT
+        r.USE_RELAY = False
+        r.TIERED_FIELDS = self._ARAM_TIERED_FIELDS
+        r.SHADOW_FIELDS = self._ARAM_SHADOW_FIELDS
+        r.TIERED_VALIDATORS = self._ARAM_TIERED_VALIDATORS
+        return r
+
     def _run_vision(self) -> None:
         if self._fetch_game_data() is None:
             return
@@ -872,16 +910,7 @@ class Coach(BaseCoach):
             except Exception:  # noqa: BLE001
                 pass
         try:
-            import anthropic
-            from modes.shared_vision import SONNET_MODEL, GameVisionReader
-            r = GameVisionReader.__new__(GameVisionReader)
-            r._client = anthropic.Anthropic(api_key=self._api_key, base_url="https://api.anthropic.com")
-            r._model  = SONNET_MODEL
-            r._last   = {}
-            r.PROMPT  = _VISION_PROMPT
-            r.TIERED_FIELDS = self._ARAM_TIERED_FIELDS
-            r.SHADOW_FIELDS = self._ARAM_SHADOW_FIELDS
-            r.TIERED_VALIDATORS = self._ARAM_TIERED_VALIDATORS
+            r = self._build_vision_reader()
             state = r.read_tiered()
             if not state:
                 return
