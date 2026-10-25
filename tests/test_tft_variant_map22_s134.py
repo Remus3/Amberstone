@@ -12,9 +12,11 @@ assetMutator "TFT_PAIRS"). tft/tft_state_reader.py detect_variant returned
 "double_up" for every mapNumber 22 game, so a normal game's coach prompt
 carried "MODE: DOUBLE UP" and partner-HP / donation lines.
 
-RM-615 (core/tft_stage_gate.py) reads tft_state_reader._TIME_TO_ROUND at
-runtime: that name stays (the legacy Set 17 table); time_table(set) is the
-set-aware accessor (Set 18 -> _TIME_TO_ROUND_SET18).
+The RM-615 stage-gate pace (tft/tft_live_analysis.py _reader_pace) reads
+time_table() since S134 M1d, the set-aware accessor (Set 18 ->
+_TIME_TO_ROUND_SET18); the legacy _TIME_TO_ROUND name (the Set 17 table)
+stays for its direct importers. core/tft_stage_gate.py's module doc no
+longer carries the "every mapNumber-22 game is Double Up" note.
 
 Names used, cited at the fix tree: tft/tft_state_reader.py
 `TftStateReader.detect_variant`, `DOUBLE_UP_QUEUES`, `time_table`,
@@ -74,5 +76,30 @@ def test_time_table_accessor_is_set_aware(monkeypatch):
 
 
 def test_legacy_table_name_is_kept_for_its_readers():
-    """core/tft_stage_gate.py (RM-615) reads this name at runtime."""
+    """Tests and the set router import this name directly."""
     assert isinstance(tsr._TIME_TO_ROUND, list) and tsr._TIME_TO_ROUND[0] == (0, 1, 1)
+
+
+def test_stage_gate_doc_drops_the_map22_double_up_note():
+    """S134 M1d: the gate's module doc said detect_variant "calls every
+    mapNumber-22 game Double Up"; map 22 is every TFT map, so the note was
+    stale. The doc names the set-aware accessor instead."""
+    from core import tft_stage_gate
+    doc = " ".join((tft_stage_gate.__doc__ or "").split())
+    assert doc, "the gate's module doc is the thing under test"
+    assert "mapNumber-22 game Double Up" not in doc
+    assert "map 22 is every TFT game's map" in doc
+    assert "time_table()" in doc
+    assert "time_table()" in tft_stage_gate.QUEUE_TIMINGS["standard"].source
+
+
+def test_live_analysis_pace_reads_the_set_aware_accessor():
+    """S134 M1d: tft/tft_live_analysis.py _reader_pace calls time_table(),
+    never getattr(..., "_TIME_TO_ROUND") (source pin; the behaviour is
+    tests/test_tft_live_analysis_stage_gate_rm615.py)."""
+    import inspect
+
+    from tft import tft_live_analysis
+    src = inspect.getsource(tft_live_analysis.TftLiveAnalysis._reader_pace)
+    assert "tft_state_reader.time_table()" in src
+    assert '"_TIME_TO_ROUND"' not in src

@@ -72,8 +72,8 @@ def _time_table(set_number=None):
 def time_table(set_number=None):
     """The set-aware gameTime -> round table for other modules (S134): the
     resolved set's (tft/tft_set.py resolve_set) when set_number is None.
-    _TIME_TO_ROUND keeps its name and meaning (the Set 17 calibration) for
-    readers that import it directly (core/tft_stage_gate.py, RM-615)."""
+    _TIME_TO_ROUND keeps its name and meaning (the Set 17 calibration); the
+    RM-615 stage-gate pace (tft_live_analysis _reader_pace) reads this."""
     if set_number is None:
         try:
             from tft import tft_set

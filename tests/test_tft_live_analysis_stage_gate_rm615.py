@@ -33,8 +33,10 @@ Names used, cited at the fix tree:
       _round_start_time, _scanned_planning, _scanned_mid, _coach_state.
   core/tft_stage_gate.py  QUEUE_TIMINGS, UNMEASURED, WINDOW_READS,
       SWITCH_MIN_READS, SWITCH_MARGIN, PACE_SAFETY, pace_floor_from_table.
-  tft/tft_state_reader.py  `_TIME_TO_ROUND`, round_schedule,
-      RoundSchedule.fields.
+  tft/tft_state_reader.py  `time_table` (the set-aware accessor _reader_pace
+      reads since S134 M1d), `_TIME_TO_ROUND`, `_TIME_TO_ROUND_SET18`,
+      round_schedule, RoundSchedule.fields.
+  tft/tft_set.py  resolve_set.
 """
 from __future__ import annotations
 
@@ -311,16 +313,16 @@ def test_gate_takes_its_pace_from_the_reader_table(monkeypatch):
     flows in, and an unreadable one means no rate, never a guessed one."""
     la = _mk()
     _poll(la, _st(2, 1, 200.0))
-    assert la._stage_gate.rate == g.pace_floor_from_table(tft_state_reader._TIME_TO_ROUND)
+    assert la._stage_gate.rate == g.pace_floor_from_table(tft_state_reader.time_table())
     assert la._stage_gate.rate is not None
 
     table63 = [(63.0 * i, *g.stage_round_of(i + 1)) for i in range(20)]
-    monkeypatch.setattr(tft_state_reader, "_TIME_TO_ROUND", table63)
+    monkeypatch.setattr(tft_state_reader, "time_table", lambda *a, **k: table63)
     la2 = _mk()
     _poll(la2, _st(2, 1, 300.0))
     assert la2._stage_gate.rate == pytest.approx(g.PACE_SAFETY * 63.0)
 
-    monkeypatch.setattr(tft_state_reader, "_TIME_TO_ROUND", "unreadable")
+    monkeypatch.setattr(tft_state_reader, "time_table", lambda *a, **k: "unreadable")
     la3 = _mk()
     _poll(la3, _st(2, 1, 300.0))
     assert la3._stage_gate.rate is None
@@ -331,10 +333,37 @@ def test_new_game_refreshes_the_pace(monkeypatch):
     _polls(la, (5, 3), 1300.0, 3)
     old = la._stage_gate.rate
     table63 = [(63.0 * i, *g.stage_round_of(i + 1)) for i in range(20)]
-    monkeypatch.setattr(tft_state_reader, "_TIME_TO_ROUND", table63)
+    monkeypatch.setattr(tft_state_reader, "time_table", lambda *a, **k: table63)
     _poll(la, _st(1, 1, 5.0))
     _poll(la, _st(1, 1, 6.5))               # new game
     assert la._stage_gate.rate == pytest.approx(g.PACE_SAFETY * 63.0) != old
+
+
+@pytest.mark.parametrize("set_n, table_name", [
+    (18, "_TIME_TO_ROUND_SET18"), (17, "_TIME_TO_ROUND")])
+def test_gate_pace_follows_the_resolved_set(monkeypatch, set_n, table_name):
+    """S134 M1d: _reader_pace reads time_table() (the resolved set's table),
+    not the legacy `_TIME_TO_ROUND` name, so a Set 18 game is rated on the
+    Set 18 timings."""
+    from tft import tft_set
+    monkeypatch.setattr(tft_set, "resolve_set", lambda *a, **k: set_n)
+    la = _mk()
+    _poll(la, _st(2, 1, 200.0))
+    want = g.pace_floor_from_table(getattr(tft_state_reader, table_name))
+    assert want is not None
+    assert la._stage_gate.rate == pytest.approx(want)
+
+
+def test_set18_pace_never_reads_the_legacy_table_name(monkeypatch):
+    """A Set 18 game's pace survives an unreadable legacy table, so the seam
+    is the set-aware accessor, never a direct `_TIME_TO_ROUND` read."""
+    from tft import tft_set
+    monkeypatch.setattr(tft_set, "resolve_set", lambda *a, **k: 18)
+    monkeypatch.setattr(tft_state_reader, "_TIME_TO_ROUND", "unreadable")
+    la = _mk()
+    _poll(la, _st(2, 1, 200.0))
+    assert la._stage_gate.rate == pytest.approx(
+        g.pace_floor_from_table(tft_state_reader._TIME_TO_ROUND_SET18))
 
 
 @pytest.mark.parametrize("bad", [None, "not a dict", 7])

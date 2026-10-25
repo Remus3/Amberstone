@@ -52,21 +52,22 @@ PURE: no I/O, no clock of its own, no RC imports. The caller passes the game
 clock (seconds), so the gate is deterministic under test and in replay.
 
 PER-QUEUE PACE is our own measurement only, and it is NOT copied here: the
-caller computes it at runtime from the reader's calibrated round table
-(tft/tft_state_reader.py `_TIME_TO_ROUND`, fitted to confirmed live points)
-with pace_floor_from_table(): PACE_SAFETY (half) of the fastest per-round
-pace between consecutive table entries, so a re-measured or per-set table
-(the Set 18 timings) flows in without an edit here. Half admits a
-legitimate catch-up after missed reads at twice the fastest measured pace,
-and covers the gate's anchor time trailing the true round start by a poll
-or an OCR cycle. The table is measured on standard-structure games, so it
-rates "standard" and "double_up" (detect_variant, tft/tft_state_reader.py
-:127, calls every mapNumber-22 game Double Up, and the LCU reported mapId 22
-for a queue-1090 Normal game on 2026-10-25, so the table's games are one or
-the other). Hyper Roll has never been measured here and carries NO rate (it
-never borrows the standard one, the RM-855 doctrine); an unknown queue is
-UNMEASURED the same way. No pace (unreadable table) means no rate, never a
-guessed one.
+caller computes it at runtime from the reader's calibrated round table for
+the resolved set (tft/tft_state_reader.py `time_table()`: Set 18's measured
+`_TIME_TO_ROUND_SET18`, else the legacy `_TIME_TO_ROUND`) with
+pace_floor_from_table(): PACE_SAFETY (half) of the fastest per-round pace
+between consecutive table entries, so a re-measured or per-set table flows
+in without an edit here. Half admits a legitimate catch-up after missed
+reads at twice the fastest measured pace, and covers the gate's anchor time
+trailing the true round start by a poll or an OCR cycle. The Set 18 table
+is measured on queue-1090 Normal games, which run on map 22: map 22 is every
+TFT game's map, so detect_variant names Double Up only from its own queue
+(1160) or a mode string (S134). The rate covers "standard" and "double_up";
+the double_up rate is carried over from RM-615 and no Double Up game has
+been measured on its own. Hyper Roll has never been measured here and
+carries NO rate (it never borrows the standard one, the RM-855 doctrine); an
+unknown queue is UNMEASURED the same way. No pace (unreadable table) means
+no rate, never a guessed one.
 
 WINDOW CONSTANTS are sized on the read cadence: the worker polls every
 1.5 s (core/tft_worker.py:44) and the reader's OCR cache refreshes about
@@ -160,7 +161,7 @@ class QueueTiming(NamedTuple):
 
 
 _MEASURED_SOURCE = ("measured: the reader's calibrated round table "
-                    "(tft/tft_state_reader.py _TIME_TO_ROUND), via pace_floor_from_table")
+                    "(tft/tft_state_reader.py time_table()), via pace_floor_from_table")
 QUEUE_TIMINGS = {
     "standard": QueueTiming("standard", True, _MEASURED_SOURCE),
     "double_up": QueueTiming("double_up", True, _MEASURED_SOURCE),
