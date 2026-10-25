@@ -399,8 +399,20 @@ Gameplan: <what changes>
 """
 
 class TftLiveAnalysis:
+    # RM-858: a hard-coded _GOD_ROUNDS={(2,4),(3,4),(4,4)} (the Set 17 Realm
+    # of the Gods table) sat here and _loop acted on it for every set. God
+    # rounds now come from the resolved set's round schedule (_is_god_round,
+    # RM-855 round_schedule), so Set 18 and unknown sets get none.
+    # _AUGMENT_ROUNDS STAYS, for every set (RM-858 decision): it only sets
+    # the scan cadence (every 20 s instead of one planning scan) and writes no
+    # label to the state, a panel or a prompt; augment-select advice is driven
+    # by the vision read (is_augment_select in _run_cycle), not by this set.
+    # It is not part of the Set 17 god tables (tft/tft_pbe_data.py carries no
+    # augment round) and RoundSchedule has no augment field to route through.
+    # A wrong guess on a set with other augment rounds costs extra scans or
+    # leaves the one planning scan plus the force scan, never a wrong label.
+    # Set 18's augment rounds are unverified: docs/LIVE_GAME_GATED_SYNC.md LT-01.
     _AUGMENT_ROUNDS={(2,1),(3,2),(4,2)}
-    _GOD_ROUNDS={(2,4),(3,4),(4,4)}
     _CAROUSEL_EVENTS={"carousel","opening_carousel","realm_of_gods"}
     def __init__(self, api_key: str, data_file, model: str = "claude-haiku-4-5-20251001") -> None:
         import anthropic
@@ -474,6 +486,17 @@ class TftLiveAnalysis:
     def notify_coach_state(self, state: dict) -> None: self._coach_state=state
     def _is_carousel_or_spectate(self):
         cs=self._coach_state; return cs.get("round_event","") in self._CAROUSEL_EVENTS or cs.get("is_carousel",False)
+    @staticmethod
+    def _is_god_round(sr) -> bool:
+        """RM-858: True only when the resolved set's round schedule
+        (tft/tft_state_reader.py round_schedule, RM-855) marks sr a god round:
+        the Set 17 Realm of the Gods table for Set 17 with that mechanic, no
+        round for any other set. Never raises."""
+        try:
+            from tft import tft_state_reader
+            return bool(tft_state_reader.round_schedule().fields(*sr)["is_god_round"])
+        except Exception:  # noqa: BLE001
+            return False
     def _loop(self):
         while self._running:
             try:
@@ -481,7 +504,7 @@ class TftLiveAnalysis:
                 if self._force_flag:
                     self._force_flag=False; self._last_vision=now; self._run_cycle(); time.sleep(1.5); continue
                 if self._is_carousel_or_spectate(): time.sleep(2.0); continue
-                if sr in self._AUGMENT_ROUNDS or sr in self._GOD_ROUNDS:
+                if sr in self._AUGMENT_ROUNDS or self._is_god_round(sr):
                     # Augment/God rounds: scan once when it starts, then every 20s max
                     # (was every 5s - too expensive with sonnet)
                     if (now-self._last_vision)>=20.0: self._last_vision=now; self._run_cycle()
