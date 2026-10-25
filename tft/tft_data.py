@@ -2,27 +2,57 @@
 tft/tft_data.py
 TFT Set data - units, traits, items, tier probabilities, carousel logic.
 Set-agnostic structure: update UNITS / TRAITS / ITEMS dicts each set patch.
-Currently seeded for TFT Set 14 (patch 15.x baseline).
+Roll odds: Set 18 (LT-02, in-client measured at L4-L9), the Set 14 table kept
+beside it and routed by set key (tier_odds_for_set). The other tables below
+(pool sizes, XP, rounds, items) are still the Set 14 transcription.
 """
 
 # -- Set declaration ----------------------------------------------------------
-# CONSTANTS_SET is the TFT set the tables below were transcribed for. The set
-# the rest of the TFT lane is actually running comes from tft/tft_set.py
-# resolve_set() (RM-840; newest ingested set by default, Set 18 at
-# 2026-10-24). When these two disagree, everything
-# below is STALE. tests/test_tft_constants_staleness.py is the guard; it fails
-# the moment this declaration, the lane's set, or the known discrepancies move
-# without someone updating the expectation.
-CONSTANTS_SET = 14
-# True only once the tables below were read off the IN-CLIENT display for
-# CONSTANTS_SET. Third-party aggregator tables are NOT sufficient - two
-# reviewed sources disagreed on the L7-L9 rows - so this stays False until an
-# operator verifies in client. Live-gated; no headless run can flip it.
+# CONSTANTS_SET is the TFT set the roll-odds table TIER_ODDS was transcribed
+# for. The set the rest of the TFT lane is actually running comes from
+# tft/tft_set.py resolve_set() (RM-840; newest ingested set by default, Set 18
+# at 2026-10-24). When these two disagree, TIER_ODDS is STALE.
+# tests/test_tft_constants_staleness.py is the guard; it fails the moment this
+# declaration, the lane's set, or the known discrepancies move without someone
+# updating the expectation.
+CONSTANTS_SET = 18
+# True only once EVERY roll table below (all TIER_ODDS rows, POOL_SIZES,
+# UNITS_PER_COST) was read off the IN-CLIENT display for CONSTANTS_SET.
+# Third-party aggregator tables are NOT sufficient. Stays False: L1-L3,
+# L10-L11 and the pool sizes were not read in client (LT-02, session 134).
 CONSTANTS_SET_VERIFIED = False
+# Per-level pin (LT-02): the TIER_ODDS rows read off the live Set 18 HUD odds
+# bar (ops/runtime/tft_qa/20261025-070350 frames, QA_REPORT.md section 3) AND
+# cross-checked against published data. Guard:
+# tests/test_tft_set18_odds_lt02.py.
+TIER_ODDS_VERIFIED_LEVELS = frozenset({4, 5, 6, 7, 8, 9})
 
 # -- Tier probability tables (standard) --------------------------------------
 # {player_level: {cost: probability}}
+# Set 18. L4-L9: the live client HUD (each row identical in every frame at
+# that level). Cross-checks: CommunityDragon game data (map22 TFTSet18
+# DropRateTables "Shop", content 16.21) equals the HUD at L4-L6 and L8-L9 but
+# says 19/30/40/10/1 at L7 - the live client wins and that row is recorded
+# here only; one third-party aggregator table equals the HUD at L4-L9.
+# L1-L3, L10, L11: that game-data table only (never seen in client).
 TIER_ODDS = {
+    1:  {1: 1.00, 2: 0.00, 3: 0.00, 4: 0.00, 5: 0.00},
+    2:  {1: 1.00, 2: 0.00, 3: 0.00, 4: 0.00, 5: 0.00},
+    3:  {1: 0.75, 2: 0.25, 3: 0.00, 4: 0.00, 5: 0.00},
+    4:  {1: 0.55, 2: 0.30, 3: 0.15, 4: 0.00, 5: 0.00},
+    5:  {1: 0.45, 2: 0.33, 3: 0.20, 4: 0.02, 5: 0.00},
+    6:  {1: 0.30, 2: 0.40, 3: 0.25, 4: 0.05, 5: 0.00},
+    7:  {1: 0.16, 2: 0.30, 3: 0.43, 4: 0.10, 5: 0.01},
+    8:  {1: 0.15, 2: 0.20, 3: 0.32, 4: 0.30, 5: 0.03},
+    9:  {1: 0.10, 2: 0.17, 3: 0.25, 4: 0.33, 5: 0.15},
+    10: {1: 0.05, 2: 0.10, 3: 0.20, 4: 0.40, 5: 0.25},
+    11: {1: 0.01, 2: 0.02, 3: 0.12, 4: 0.50, 5: 0.35},
+}
+
+# Set 14 (patch 15.x baseline), kept intact for a Set 14 lookup. Never
+# in-client verified; tft/tft_pbe_data.py ships a byte-identical copy as its
+# Set 17 table.
+TIER_ODDS_SET14 = {
     1:  {1: 1.00, 2: 0.00, 3: 0.00, 4: 0.00, 5: 0.00},
     2:  {1: 1.00, 2: 0.00, 3: 0.00, 4: 0.00, 5: 0.00},
     3:  {1: 0.75, 2: 0.25, 3: 0.00, 4: 0.00, 5: 0.00},
@@ -35,10 +65,36 @@ TIER_ODDS = {
     10: {1: 0.05, 2: 0.10, 3: 0.20, 4: 0.35, 5: 0.30},
 }
 
-# Pool sizes per cost
+# Roll odds by set key. Set 17's table lives in tft/tft_pbe_data.py.
+TIER_ODDS_BY_SET = {14: TIER_ODDS_SET14, 18: TIER_ODDS}
+
+
+def tier_odds_for_set(set_number=None):
+    """TIER_ODDS for a TFT set, or None when RC has no table for it.
+
+    set_number defaults to the lane's resolved set (tft/tft_set.py
+    resolve_set: live set noted from the LCU or game data, RC_TFT_SET, then
+    the newest ingested set). Set 17 comes from tft/tft_pbe_data.py. No other
+    set's table is ever borrowed.
+    """
+    if set_number is None:
+        from tft import tft_set
+        set_number = tft_set.resolve_set()
+    if set_number in TIER_ODDS_BY_SET:
+        return TIER_ODDS_BY_SET[set_number]
+    from tft import tft_pbe_data
+    if set_number == tft_pbe_data.CONSTANTS_SET:
+        return tft_pbe_data.TIER_ODDS
+    return None
+
+
+# Pool sizes per cost. NOT Set 18 values: carried over from the Set 14
+# transcription (POOL_SIZES_FROM_SET). The HUD does not show pool sizes and no
+# measured Set 18 source exists yet, so they stay unpinned (LT-02).
+POOL_SIZES_FROM_SET = 14
 POOL_SIZES = {1: 29, 2: 22, 3: 18, 4: 12, 5: 10}
 
-# Units in pool per cost tier
+# Units in pool per cost tier (Set 14 carry-over, as POOL_SIZES)
 UNITS_PER_COST = {1: 13, 2: 13, 3: 13, 4: 12, 5: 8}
 
 # -- Econ thresholds ----------------------------------------------------------
