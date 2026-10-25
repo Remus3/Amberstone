@@ -57,6 +57,7 @@ amplification.
 from __future__ import annotations
 
 import json
+import logging
 import threading
 from dataclasses import dataclass, field, replace
 from pathlib import Path
@@ -132,6 +133,7 @@ from .rune_procs import (
 # (ranged iff ar >= 350) so the boundary champion Urgot (350) is ranged - the
 # prior strict ``> 350.0`` here wrongly called Urgot melee.
 _RANGED_ATTACK_RANGE = MELEE_RANGED_ATTACKRANGE_SPLIT
+_LOG = logging.getLogger(__name__)
 from .rank import (
     DEFAULT_SLOT_COUNT,
     DEFAULT_TOP_N,
@@ -657,6 +659,13 @@ def compute_burst_damage(
         try:
             abil_snap = load_default()
         except AbilitiesNotFound as e:
+            # RM-835: the note is a FIXED line. AbilitiesNotFound's text names
+            # the snapshot's absolute path, and these notes ride the :8860
+            # /burst reply and the combo walk behind :8888 /api/ds-combo. The
+            # cause goes to the log, repr()-escaped.
+            _LOG.warning("compute_burst_damage %s: abilities snapshot "
+                         "missing: %s: %r", champion_id, type(e).__name__,
+                         str(e))
             return _empty_burst(
                 snapshot, champion_id, level, item_ids, mode,
                 target_armor, target_mr, target_max_hp, target_bonus_hp,
@@ -668,7 +677,7 @@ def compute_burst_damage(
                 form_index_resolved=form_index_overrides,
                 block_index_source=block_index_source,
                 block_index_resolved=block_index_overrides,
-                note=f"abilities snapshot missing: {e}",
+                note="abilities snapshot missing - see logs",
             )
 
     # Resolve the build once. Reused for ability stats AND the AA per-hit
