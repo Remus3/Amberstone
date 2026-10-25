@@ -56,11 +56,16 @@ def log_macro_response(
 
     A record is written even when ``macro`` is None (no lost-objective / stall in
     range): a tick where Haiku emits an ``objective`` but the deterministic macro
-    table is silent is itself a validation signal. The gate only requires an
-    operator champion (a real in-game tick); the caller additionally gates on a
-    live liveclient champion + SR mode."""
+    table is silent is itself a validation signal. The gate requires an
+    operator champion (a real in-game tick) and refuses a test-only signature
+    (``is_test_signature``: no game clock, or a placeholder champion); the
+    caller additionally gates on a live liveclient champion + SR mode."""
     try:
         if not my_champion or not isinstance(my_champion, str):
+            return None
+        # RM-872: refuse BEFORE the dedup, so a refused row records no
+        # signature that could suppress the next real tick in its bucket.
+        if is_test_signature(my_champion, game_time_s):
             return None
 
         mac = macro if isinstance(macro, dict) else None
@@ -127,4 +132,33 @@ def log_macro_response(
         return None
 
 
-__all__ = ["SHADOW_PATH", "log_macro_response"]
+# RM-872 - the test-only row signature, the same predicate as
+# core.objective_playbook_shadow.is_test_signature (a test pins the two equal;
+# kept local so each writer stays standalone). Placed below the writer so the
+# SHADOW_PATH / log_macro_response line citations in
+# tests/test_suite_does_not_write_live_tree.py and
+# tests/test_rm443_core_loader_retry.py stay exact.
+#
+# Measured 2026-10-25 on the live data/macro_response_shadow.jsonl: 3312 of
+# 48890 rows were suite leakage (same tests, same RM-406 window as the WS3
+# shadow), every one with game_time_s None or the placeholder champion
+# "Champ0", and no other row with either. A real tick never carries either
+# signature (dashboard/_liveclient.py liveclient_summary stamps game_time_s
+# before champion; no League champion is named Champ<digits>).
+_PLACEHOLDER_PREFIX = "Champ"
+
+
+def is_test_signature(my_champion: object, game_time_s: object) -> bool:
+    """True for a row only a test can produce: no game clock, or a generated
+    placeholder champion name (``Champ0``, ``Champ12``). A game clock of 0 is
+    real (load screen). Never raises."""
+    if game_time_s is None:
+        return True
+    if not isinstance(my_champion, str):
+        return False
+    tail = my_champion[len(_PLACEHOLDER_PREFIX):]
+    return (my_champion.startswith(_PLACEHOLDER_PREFIX) and tail.isascii()
+            and tail.isdigit())
+
+
+__all__ = ["SHADOW_PATH", "is_test_signature", "log_macro_response"]

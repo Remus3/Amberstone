@@ -1,5 +1,17 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-10-25 - size-budget relocation (session 133 agent s133-a18), 3 rows
+
+`ROADMAP.md` stood at 81911 of 81920 bytes on `6c7269ed8`, so the RM-872 row
+(LEDGER 1835) did not fit. The three SHIPPED rows below move here VERBATIM as
+they stood at `6c7269ed8`, in their ROADMAP order; one stub in `ROADMAP.md`
+names them. RM-859 (the RM-852 follow-up) and RM-863 (the RM-853 follow-ups)
+keep their own rows there.
+
+- **[x] RM-850 SHIPPED s133 batch C (`14f804fc2`, LEDGER 1816; filed s133 by the gated lane; Tier-1, low; gated: none): the ARAM comp-verdict POST now sends the chooser's build `variants` + `current_variant` and the cache key folds them in, so the VARIANT verdict is reachable live (unblocks gated G3-03 for its eyeball).** Body in `BACKLOG.md` "Session 133 lane filings".
+- **[x] RM-852 SHIPPED s133 batch C (`35b2524f3`, LEDGER 1817; filed s133 by the gated lane; Tier-1, low; gated: none): the 669 enemy-less `data/aram_coach_shadow.jsonl` rows were test-suite leakage (pre-RM-406 harness runs); the writer now refuses an enemy-less tick and `tools/aram_shadow_report.py` excludes them from the G3-14 flip (gate still met, 0.735 over 4585 gated rows).** The live rows stay, excluded at read time: follow-up RM-859. Body in `BACKLOG.md` "Session 133 lane filings (gated lane cycle 2)".
+- **[x] RM-853 SHIPPED s133 batch D (`0a8d6b84a`, LEDGER 1823; filed s133 by the queue lane; Tier-1, low; gated: none): a supervisor task's raw exception text no longer reaches `/api/task/<id>` as `last_error` - the dispatcher stores a fixed line and logs the scrubbed cause, and the reply maps every stored value (pre-fix rows included) through `public_last_error`.** Follow-ups RM-863. Body in `BACKLOG.md` "Session 133 lane filings (queue lane)".
+
 ## 2026-10-24 - size-budget relocation (session 133 merger), 3 rows
 
 `ROADMAP.md` reached 73966 bytes with the session 133 rows added

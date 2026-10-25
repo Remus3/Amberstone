@@ -186,6 +186,30 @@ def classify_register(text) -> Optional[str]:
     return None
 
 
+_PLACEHOLDER_PREFIX = "Champ"
+
+
+def is_test_leak_row(rec: dict) -> bool:
+    """RM-872: True for a row only the test suite could have written - no game
+    clock (``game_time_s`` null OR missing: fail closed, the writer always
+    records the key) or a generated placeholder champion (``Champ0``). The
+    same predicate as ``core.macro_response_shadow.is_test_signature`` (a test
+    pins the two equal; a local copy because this tool runs as a script with
+    no repo root on sys.path).
+
+    Measured 2026-10-25 on the live log: 3312 of 48890 rows, all written by
+    build_state test harnesses before RM-406 redirected the writer. They are
+    excluded from EVERY block at READ time; the store is not rewritten here.
+    A game clock of 0 is real (load screen) and is kept."""
+    if rec.get("game_time_s") is None:
+        return True
+    champ = rec.get("my_champion")
+    if not isinstance(champ, str):
+        return False
+    tail = champ[len(_PLACEHOLDER_PREFIX):]
+    return champ.startswith(_PLACEHOLDER_PREFIX) and tail.isascii() and tail.isdigit()
+
+
 def _both_present(rec: dict) -> bool:
     """True when the record carries BOTH a deterministic macro_line AND a
     native_objective - the only rows where the two surfaces can be compared."""
@@ -360,9 +384,14 @@ def _flip_hint(coverage: dict, alignment: dict) -> str:
 
 
 def build_report(path: Path) -> dict:
-    """Assemble the full macro_response_shadow report dict from the log."""
-    records = load_jsonl(path)
+    """Assemble the full macro_response_shadow report dict from the log.
+
+    Test-leak rows (``is_test_leak_row``) are dropped before every block and
+    counted in ``coverage.test_leak_excluded`` (RM-872)."""
+    raw = load_jsonl(path)
+    records = [r for r in raw if not is_test_leak_row(r)]
     coverage = _coverage_block(records)
+    coverage["test_leak_excluded"] = len(raw) - len(records)
     alignment = summarize_alignment(records)
     by_lead = summarize_by_lead_state(records)
     confusion = summarize_confusion(records)
@@ -383,7 +412,8 @@ def _print_human(report: dict) -> None:
     cf = report.get("confusion") or {}
     print(
         f"[coverage] total={cov.get('total', 0)} "
-        f"both_present={cov.get('both_present', 0)}"
+        f"both_present={cov.get('both_present', 0)} "
+        f"test_leak_excluded={cov.get('test_leak_excluded', 0)}"
     )
     if cov.get("by_mode"):
         modes = ", ".join(
