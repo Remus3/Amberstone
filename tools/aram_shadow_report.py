@@ -27,11 +27,11 @@ ENEMY-LESS EXCLUSION (RM-852): a row with no enemy team is not an ARAM game
 tick - in production the champion and the enemy team come from the same
 Live Client allPlayers list, so a real tick that names a champion always names
 its enemies. 669 enemy-less Kai'Sa rows reached the live corpus from
-build_state test harnesses before RM-406 redirected the writer in tests. They
-stay in the durable store (never deleted) and are excluded HERE, at read time:
-counted as ``enemy_less_excluded`` and left out of every gate summary (dead
-state, action, choices, field presence, flip hint). A row without the
-``enemy_comp`` key fails closed the same way.
+build_state test harnesses before RM-406; RM-859 archive-split them byte-exact
+(nothing deleted) to data/aram_coach_rm859_test_leak_2026-06_2026-09_shadow.jsonl.
+This read-time exclusion stays as the backstop: counted as ``enemy_less_excluded``
+and left out of every gate summary (dead state, action, choices, field presence,
+flip hint). A row without the ``enemy_comp`` key fails closed the same way.
 
 This is a READ-ONLY report (no engine, no network, no write). Fail-soft: a
 missing / empty / malformed log yields a zeroed section, never an exception.
