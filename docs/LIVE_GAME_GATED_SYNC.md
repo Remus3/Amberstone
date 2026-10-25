@@ -149,7 +149,8 @@ subtracted from it. Check this line's history before adjusting the tally for any
 2026-07-20.
 Per gate: G1 6 / G2 41 / G3 12 / G4 28 / G5 10 / G6 3 / G7 18. Of these, 9 carry a PARKED/HOLD
 tag (3 inline at G5-10 / G7-16 / G7-19, 6 in the PARKED section) and 1 (G3-15) is a cross-reference
-that adds no new work.
+that adds no new work. G3-03 is BLOCKED ON WIRING since 2026-10-24 (RM-850): still counted OPEN, but
+no game drains it until RM-850 lands. G1-03 was re-tagged the same day (draft lobby only); no count moved.
 
 **SYNTHETIC-TRIAGE PASS 2026-07-18 - read before proposing this again.** All 124 rows were run
 through a 14-agent triage-then-adversarial-refutation pass asking whether recorded data
@@ -304,8 +305,26 @@ Cheapest gate in the file. Enter a lobby, capture, leave. Nothing here needs a m
   PARTY / MY TOP-8; if empty, capture the agent's live `/lol-lobby/v2/lobby` read + `_slim_lobby_member`
   output) + eyeball the overlay surface gate `bc4625d8` (companion in lobby/CS, lean HUD once
   liveclient populates). SOURCE: ledger 2026-06-20.
-- **G1-03** `[CS-SCENARIO]` (was A3) CC-conditional pairing UI renders on champ-select (`a685a530`) -
-  needs a CC-pairing lobby to roll; never rolled 2026-07-04. Rides every champ-select at any gate.
+- **G1-03** `[RE-FILED 2026-10-24: CS-SCENARIO -> CS-CAPTURE, draft lobby only]` (was A3) CC-conditional
+  pairing UI renders on champ-select (`a685a530`) - ~~needs a CC-pairing lobby to roll; never rolled
+  2026-07-04. Rides every champ-select at any gate.~~ **MIS-FILED TAG (lane 9 PREP s133, source read at
+  `373c693bb`, adversarial pass PARTLY -> corrected below; NOT a tick).** The ally CC-PAIRING card (B12)
+  was REMOVED from champ select 2026-07-03, the day before "never rolled": `web/js/panels/champ_select.js:49-53`
+  and `:2113`, `web/index.html:1151-1153`, pinned absent by `tests/snapshot_panels/test_champ_select_view.py:56`
+  and `tests/test_cs3_panel_relocation_dom.py:60` (backend `/api/cc-pairing` stays). `a685a530` does not
+  resolve and is not in `.git/filter-repo/commit-map`. The ONLY surviving champ-select CC-conditional
+  surface is the pressure chip `#csv-sugg-cc-conditional-pressure` (`web/index.html:1133-1135`, renderer
+  `web/js/panels/cc_conditional_pressure.js:147`, gate `champ_select.js:1788-1819`, reached every render via
+  `_csvRenderTeamAnalysis` `:1947`), and it has NO CC scenario gate: route "scored" = did not raise
+  (`dashboard/routes_cc_conditional_pressure.py:205-224`), zero CC on both sides still answers ok in the
+  `warn` tier (`:247-249`). Its one real gate is a MODE condition: hidden while `their_team` is empty
+  (`champ_select.js:1796-1799`; `lcu/champ_select_shape.py:436` passes LCU `theirTeam` through), so expect
+  HIDDEN in blind ARAM / Mayhem select (LCU behaviour, not proven in source - record it, not a fail).
+  **CHECK (any DRAFT champ-select once one enemy pick is visible, e.g. q400 / q420):** predicate stated
+  first - PASS iff `lcu.champ_select.their_team[]` has a `championId > 0` on `/api/state` AND the rendered
+  champ-select view shows `#csv-sugg-cc-conditional-pressure` with `hidden` false and a non-empty
+  `data-cc-cond-tier` in {`good`, `warn`, `bad`}; FAIL = still hidden with both rosters committed. A GET
+  of `/api/cc-conditional-pressure` is the COMPUTE half only (SUBSTITUTION) - never tick from it.
 - **G1-04** (was A4 + QA24) LOBBY1 top-8 friend-invite live verify (`b9cb0092`) + the QA24 non-friend
   invite path end-to-end + the operator-reported defect that inviting others does not send unless the
   confirm dialog is accepted. BLOCKED ON: a real invite target / second account. SOURCE:
@@ -684,8 +703,21 @@ survivability flips below cannot roll otherwise.
   ARAM champ-select and confirm the swap registers visibly faster.
 - **G3-02** (was A10) KEYSTONE residual: operator visual reassurance of the rendered bench (data path
   proven; no capture pursued). SOURCE: ROADMAP.md:100.
-- **G3-03** `[CS-SCENARIO]` (was C2) Comp-verdict VARIANT branch still unobserved (SWAP + STAY
-  validated at LGS2; never surfaced in-game 2026-07-04). Soundness discharged headless (OQ22).
+- **G3-03** `[BLOCKED ON WIRING - RE-TAGGED 2026-10-24, was CS-SCENARIO]` (was C2) Comp-verdict VARIANT
+  branch still unobserved (SWAP + STAY validated at LGS2; never surfaced in-game 2026-07-04). Soundness
+  discharged headless (OQ22). **WHY IT NEVER ROLLED (lane 9 PREP s133, source read at `373c693bb`,
+  adversarial pass CONFIRMED; NOT a tick): it CANNOT roll live.** `core/aram_comp_verdict.py` returns
+  `variant` only through `_find_variant` over `state["variants"]` (`:381-383`, `:395-414`, `:333-340`);
+  the live panel POST to `/api/aram-comp-verdict` sends only `my_champion` / `my_team` / `their_team` /
+  `bench` (`web/js/panels/champ_select.js:1685-1691`; `dashboard/routes_coach.py:208-209` passes it
+  verbatim, and `:205-206` documents `variants` / `current_variant` as accepted fields); the
+  `/api/champ-select-coach` POST (`champ_select.js:167-177`) sends none either and its `advise_pick` is
+  shadow-log only; `coaches/aram_team_analyzer.analyze()` has no importer. The panel already builds the
+  variants (`champ_select.js:865` `_csvBuildVariantsFor`) and never posts them. Riding more ARAM lobbies
+  drains nothing until **RM-850** (send the variants) lands; do NOT count this row in a gate session
+  before then. **CHECK (after RM-850, any ARAM / Mayhem champ-select with an all-AD / all-AP or no-sustain
+  ally comp):** PASS iff the rendered `.csv-bench-verdict--variant` banner shows `VARIANT -> <key>` with a
+  `<key>` from that champion's posted variants; a POST of our own payload is the COMPUTE half only.
 
 ### In-game
 
