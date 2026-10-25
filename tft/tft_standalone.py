@@ -402,10 +402,16 @@ def eog_matches_game(eog, current_game_id, game_start=None) -> bool:
 
 
 def _round_state(lcu, eog, now: float) -> dict:
-    """The local player's round state from a fresh, same-game EoG file.
+    """The local player's round state from a fresh EoG file that is
+    POSITIVELY this game's (``eog_matches_game``), else the no-file shape.
 
-    ``eog_match`` says whether the file is POSITIVELY this game's
-    (``eog_matches_game``); the fields are served either way, as before."""
+    S136 T9 verifier round 2: a file was accepted unless BOTH game ids were
+    present and differed, so with no current game id (an LCU snapshot without
+    one, or no LCU at all) a previous game's file up to EOG_MAX_AGE_S old set
+    the game clock (prompt "Stage 5-7" in a 200 s old game) and fed every
+    file field of /api/state (hp, standing, board, lobby, counts, as_of, its
+    game id). A file that is not positively this game's is no file here, so
+    no caller (synth_allgamedata, tft_live_status) can serve it."""
     game_id = str((lcu or {}).get("game_id") or "") if isinstance(lcu, dict) else ""
     out = {"eog": False, "eog_match": False, "local": {}, "players_alive": None,
            "players_total": None, "game_length_s": None, "eog_age_s": None,
@@ -414,24 +420,25 @@ def _round_state(lcu, eog, now: float) -> dict:
            "alive_others": None, "dead_others": None}
     if not isinstance(eog, dict):
         return out
-    eog_gid = str(eog.get("gameId") or "")
-    if game_id and eog_gid and eog_gid != game_id:
-        return out  # a previous game's file: never mix its board in
+    if not eog_matches_game(eog, game_id, _game_create_time() if game_id else None):
+        _log.debug("standalone TFT: per-round file not positively game %s "
+                   "(file game %s) - not served", game_id or "?",
+                   "set" if eog.get("gameId") else "missing")
+        return out
     players = _players(eog)
     sb = eog.get("statsBlock") if isinstance(eog.get("statsBlock"), dict) else {}
     # S135 N13: by the LCU summoner id, never the first isInteractable entry
     # (a human lobby flags all 8); unknown rather than a stranger.
     idx, basis = _lp.local_player_index(players, summoner_id=_lp.summoner_id_of(lcu))
-    _note_local(game_id or eog_gid, idx, basis)
+    _note_local(game_id, idx, basis)
     local = players[idx] if idx is not None else None
     game_len = _int(sb.get("gameLengthSeconds"))
     out.update({
         "local_index": idx,
         "local_basis": basis,
         "eog": True,
-        "eog_match": eog_matches_game(
-            eog, game_id, _game_create_time() if game_id else None),
-        "game_id": game_id or eog_gid,
+        "eog_match": True,
+        "game_id": game_id,
         "queue_id": eog.get("queueId"),
         "set": sb.get("setCoreName"),
         "players_total": len(players),
