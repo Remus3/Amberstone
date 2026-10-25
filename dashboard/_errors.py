@@ -68,3 +68,37 @@ def send_error(h, exc: Exception, status: int = 500, *,
     body["error"] = msg
     payload = json.dumps(body).encode("utf-8")
     h._send(status, payload, "application/json")
+
+
+# RM-838: the fixed line a :8888 proxy sends in place of an upstream's non-2xx
+# body. The proxies used to forward that body (and the supervisor proxy its
+# Content-Type) verbatim, so any upstream that put exception text in an error
+# reply leaked it through :8888. Decision: scrub here, at the trust boundary,
+# rather than rely on every upstream staying clean - the live consumers branch
+# on the STATUS (kept), never on the error body.
+_UPSTREAM_ERROR_LINES = {
+    400: "bad request",
+    401: "unauthorized",
+    403: "forbidden",
+    404: "not found",
+}
+UPSTREAM_ERROR = "upstream error - see logs"
+_UPSTREAM_LOG_CAP = 200
+
+
+def forward_upstream_error(h, status: int, body: bytes, where: str, *,
+                           lines: dict[int, str] | None = None) -> None:
+    """Send an upstream's non-2xx status with a fixed JSON line, never its body.
+
+    ``lines`` lets a route keep a status word its client knows (the
+    ``/api/lcu-cmd-result`` pollers' 404 ``pending``). The upstream body is
+    logged once at debug (a polled 404 must not flood the log), capped and
+    scrubbed, with the status.
+    """
+    snippet = (body or b"")[:_UPSTREAM_LOG_CAP].decode("utf-8", "replace")
+    log.debug("%s: upstream HTTPError %s: %s", scrub_log(where), status,
+              scrub_log(snippet))
+    line = ((lines or {}).get(status) or _UPSTREAM_ERROR_LINES.get(status)
+            or UPSTREAM_ERROR)
+    h._send(status, json.dumps({"error": line}).encode("utf-8"),
+            "application/json")

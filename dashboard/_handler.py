@@ -76,6 +76,7 @@ from core.http_host_gate import (  # noqa: F401 - re-exports
 )
 from core.log_scrub import scrub_log as _core_scrub_log
 from dashboard import _dispatch
+from dashboard._errors import forward_upstream_error
 
 log = logging.getLogger("rc.web_dashboard")
 
@@ -450,14 +451,16 @@ class Handler(HostAllowlistMixin, HeadDeadlineMixin, BaseHTTPRequestHandler):
             if proxy_error_status(self.path, e.code) == 204:
                 self._minimap_no_frame()
                 return
-            # Forward the non-2xx response - 404 from supervisor should
-            # still look like 404 to the dashboard, not 500 here.
+            # Forward the non-2xx STATUS - 404 from supervisor should still
+            # look like 404 to the dashboard, not 500 here. RM-838: the
+            # upstream body and Content-Type are not forwarded (a fixed JSON
+            # line), so an upstream error reply carrying exception text
+            # cannot leak through :8888.
             try:
                 body = e.read() or b""
             except Exception:  # noqa: BLE001
                 body = b""
-            ctype = e.headers.get("Content-Type", "application/json") if e.headers else "application/json"
-            self._send(e.code, body, ctype)
+            forward_upstream_error(self, e.code, body, f"proxy {self.path}")
         except Exception as exc:  # noqa: BLE001
             # The exception text is scrubbed too. MEASURED: no currently
             # reachable exception here carries raw control bytes (int()'s

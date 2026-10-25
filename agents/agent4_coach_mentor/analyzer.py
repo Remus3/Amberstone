@@ -28,6 +28,7 @@ import logging
 import os
 import sqlite3
 import time
+import traceback
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -42,6 +43,7 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 DB_DIR = Path(os.environ.get("RC_PHASE3_DB_DIR") or (_PROJECT_ROOT / "data" / "db"))
 
 from lib.modes import PHASE3_MODES as SUPPORTED_MODES
+from core.log_scrub import scrub_log
 
 # Spec S8: matchup modifier activates only at >=5 games sample size.
 MATCHUP_ACTIVATE_THRESHOLD = 5
@@ -648,8 +650,13 @@ def analyze_all() -> dict[str, dict]:
         except FileNotFoundError:
             results[m] = {"skipped": True, "reason": "mode DB missing"}
         except Exception as e:                 # noqa: BLE001
-            logger.exception("analyze %s failed: %s", m, e)
-            results[m] = {"error": str(e)}
+            # RM-838: the supervisor's POST /api/analyze returns this dict
+            # (through the :8888 /api/analyze route), so it carries a fixed
+            # line; the cause and traceback are logged once, scrubbed.
+            logger.error("analyze %s failed: %s: %s | %s", m,
+                         type(e).__name__, scrub_log(str(e)),
+                         scrub_log(traceback.format_exc()))
+            results[m] = {"error": "analyze failed - see supervisor log"}
     return results
 
 
