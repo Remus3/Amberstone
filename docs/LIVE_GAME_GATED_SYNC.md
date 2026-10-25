@@ -705,8 +705,51 @@ survivability flips below cannot roll otherwise.
 
 - **G3-01** (was A6) E7a bench-swap queue-drain eyeball (`eb361c27`): click a bench champ in a real
   ARAM champ-select and confirm the swap registers visibly faster.
+  **PREP 2026-10-25 (lane 9 s133 cycle 8, source read at `f210f5cd9`; NOT a tick).** "Visibly faster" is
+  not a predicate, so it is restated as a measured latency. E7a re-polls the command queue at 0.1 s
+  after a `bench_swap` (`tools/lcu_agent.py:150-151`, `drain_once` `:1681`), and E7 TODO-1 wakes the
+  capture loop (`_signal_state_refresh` `:1720`, `_swap_wake` in `_state_push_loop` `:1614`) so the new
+  pick lands OFF the 1.0 s capture cadence. Both clocks live in the agent process: the
+  `[cmd] bench_swap -> {...}` line in `logs/lcu_agent.log` (T_cmd) and the relay capture
+  `GET :8889/latest-lcu` -> `data.ts` (stamped at the end of the shape, `lcu/snapshot_shape.py:598`).
+  `/api/state` is NOT the source: it is cached for `RC_STATE_CADENCE_SEC` (0.5 s,
+  `dashboard/routes_state.py:207`) and merges captures. Plumbing: `tools/gated_bench_swap_probe.py`
+  (tests `tests/test_gated_bench_swap_probe.py`). Idle shape measured 2026-10-25 03:47 local, phase
+  `None`: 12 distinct captures in 12 s, median gap 1.031 s (so c_est is about 0.03 s at idle; expect
+  more in champ select). The vision token does not resolve inside a lane worktree (no
+  `config/vision_token.txt`), so run it from the main checkout.
+  **CHECK (any ARAM / Mayhem champ-select with a non-empty bench):** run
+  `python tools/gated_bench_swap_probe.py --watch 90`, then click a bench champion on the RC DASHBOARD
+  bench strip (`.csv-bench-cell`); a swap made in the League client writes no `[cmd]` line and tests
+  nothing. Swap twice if the bench allows. Predicate stated first (the tool docstring is the full
+  form). With one agent every natural capture gap is longer than its 1.0 s wait, so a gap under
+  0.95 s is the WAKE (absolute: a missed poll only widens gaps and cannot fake one). PASS iff the
+  first capture showing the new `champ_select.my_champion` is a WAKE and lands within
+  2 x c_est + 0.25 s of T_cmd (c_est = median baseline gap - 1.0 s). FAIL iff the polls were dense
+  (no poll gap over 0.3 s) and no WAKE appeared before the new pick, or before a 3 s deadline when the
+  champion never changed after an ok POST. NO RESULT, never a pass: a natural tick inside the bound
+  (coincidence: under the OLD code a quarter to a half of all clicks look that fast), a WAKE that still
+  shows the old champion (LCU applied it late), any capture inside the bound that still shows the
+  old champion (a click mid-capture: the woken capture after it can live in the relay for less than
+  one poll, so a missed capture can HIDE a wake, though never fake one), an off-cadence capture BEFORE
+  the click (a second writer or another wake), or sparse polls. Row PASS = at least one PASS and zero
+  FAIL. Two independent verifier passes refuted the first two drafts of this predicate; both sets of
+  corrections are in.
 - **G3-02** (was A10) KEYSTONE residual: operator visual reassurance of the rendered bench (data path
   proven; no capture pursued). SOURCE: ROADMAP.md:100.
+  **PREP 2026-10-25 (lane 9 s133 cycle 8; NOT a tick). PRUNE CANDIDATE for a human.** The KEYSTONE bug
+  this residual trails (Mayhem q2400 missing from the ARAM queue set, so the bench never rendered) was
+  fixed and proven live 2026-05-17 (`docs/history_notes.md:24438`; the set is now
+  `lcu/champ_select_shape.py:60`, `is_aram` `:417`). In the operator's annotated-screenshot triage
+  "KEYSTONE residual 'none functional'" carries the operator mark `?` (verify, then prune) and the plan
+  disposition PRUNE (`docs/history_notes.md:35846`). Not struck here:
+  moving a row is a human call. If it stays, it rides the G3-01 champ-select for free.
+  **CHECK:** predicate first - PASS iff the bench strip (`web/js/panels/champ_select.js:1348`
+  `_csvBenchHtml`) shows one `.csv-bench-cell` per id, with the `data-bench-id` order equal to
+  `champ_select.bench[:10]` from a relay capture taken within 2 s (the G3-01 probe reports it as
+  `bench_after`), and every cell shows a champion icon, not `?`. With an empty bench, PASS iff the
+  "no bench champs yet" line shows. FAIL = a missing, extra or reordered cell, or no strip at all while
+  `champ_select.is_aram` is true.
 - **G3-03** `[CS-SCENARIO - UNBLOCKED 2026-10-24 by RM-850; was BLOCKED ON WIRING the same day]` (was C2) Comp-verdict VARIANT
   branch still unobserved (SWAP + STAY validated at LGS2; never surfaced in-game 2026-07-04). Soundness
   discharged headless (OQ22). **WHY IT NEVER ROLLED (lane 9 PREP s133, source read at `373c693bb`,
