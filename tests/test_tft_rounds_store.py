@@ -971,41 +971,68 @@ def test_default_paths_are_under_gitignored_data_tft():
     assert st.default_exports_dir() == ROOT / "data" / "tft" / "exports"
 
 
+# tft/rounds may import: stdlib, itself, and these. core.polled_json is the
+# sanctioned atomic writer (RM-258). TFT-08 (ground_truth.py) adds the two
+# modules it cannot do without: tft.tft_placement (the RM-616 store's read
+# API + parse_eog / persist for the --eog-raw backfill) and tft.tft_set
+# (parse_set_id: an RM-616 EOG record carries set_number None).
+PKG_ALLOWED = frozenset({"core.polled_json", "tft.tft_placement", "tft.tft_set"})
+# Offsetting check: those two hop modules may import only stdlib plus these
+# stdlib-only core helpers, so "stdlib only, no LLM / coach / DS" holds one
+# import hop out of the package.
+HOP_MODULES = ("tft/tft_placement.py", "tft/tft_set.py")
+HOP_ALLOWED = frozenset({"core.polled_json", "core.queue_modes"})
+
+
+def _imported_modules(src: str) -> list:
+    """Every absolute module an import statement names (function-level
+    imports included, relative imports skipped)."""
+    mods = []
+    for node in ast.walk(ast.parse(src)):
+        if isinstance(node, ast.Import):
+            mods.extend(a.name for a in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.level == 0:
+            mods.append(node.module or "")
+    return mods
+
+
+def _disallowed(src: str, allowed, own_prefix=None) -> list:
+    return [m for m in _imported_modules(src)
+            if not (m.split(".")[0] in sys.stdlib_module_names or m in allowed
+                    or (own_prefix and m.startswith(own_prefix)))]
+
+
 def test_package_is_stdlib_only_llm_free_ascii_lf():
-    """No LLM client, no coach, no DS: stdlib plus the one sanctioned atomic
-    writer (core/polled_json.py `atomic_write_bytes`, RM-258 guard
-    tests/test_atomic_write_guard_rm258_rm261.py). TFT-08's ground_truth.py
-    also reads the RM-616 placement store through its read API
-    (tft.tft_placement) and parses set ids with tft.tft_set; both are pinned
-    below to stdlib plus the same core helpers, so the rule holds one hop out."""
-    allowed = {"core.polled_json", "tft.tft_placement", "tft.tft_set"}
+    """No LLM client, no coach, no DS: stdlib plus PKG_ALLOWED in the
+    package, and stdlib plus HOP_ALLOWED in the two TFT-08 hop modules."""
     files = sorted(PKG.glob("*.py"))
     assert {p.name for p in files} == {"__init__.py", "schema.py", "store.py",
                                        "ground_truth.py", "accuracy.py"}
-    hop = [ROOT / "tft" / "tft_placement.py", ROOT / "tft" / "tft_set.py"]
-    for p in hop:
-        for node in ast.walk(ast.parse(p.read_text(encoding="utf-8"))):
-            if isinstance(node, ast.ImportFrom) and node.level == 0:
-                mods = [node.module or ""]
-            elif isinstance(node, ast.Import):
-                mods = [a.name for a in node.names]
-            else:
-                continue
-            for m in mods:
-                assert (m.split(".")[0] in sys.stdlib_module_names
-                        or m in ("core.polled_json", "core.queue_modes")), (p, m)
+    for rel in HOP_MODULES:
+        p = ROOT / rel
+        assert _disallowed(p.read_text(encoding="utf-8"), HOP_ALLOWED) == [], p
     for p in [*files, Path(__file__)]:
         raw = p.read_bytes()
         assert raw.isascii() and b"\r" not in raw, p
     for p in files:
-        for node in ast.walk(ast.parse(p.read_text(encoding="ascii"))):
-            if isinstance(node, ast.Import):
-                mods = [a.name for a in node.names]
-            elif isinstance(node, ast.ImportFrom) and node.level == 0:
-                mods = [node.module or ""]
-            else:
-                continue
-            for m in mods:
-                top = m.split(".")[0]
-                assert (top in sys.stdlib_module_names or m.startswith("tft.rounds")
-                        or m in allowed), (p, m)
+        assert _disallowed(p.read_text(encoding="ascii"), PKG_ALLOWED, "tft.rounds") == [], p
+
+
+def test_import_guard_flags_a_planted_non_stdlib_import():
+    """Positive control for both checks above: the real hop-module source
+    with one planted import fails, and so does a planted package import."""
+    for rel in HOP_MODULES:
+        src = (ROOT / rel).read_text(encoding="utf-8")
+        assert _disallowed(src, HOP_ALLOWED) == []
+        for plant, want in (("import requests\n", "requests"),
+                            ("from anthropic import Anthropic\n", "anthropic"),
+                            ("def f():\n    from coaches import base_coach\n", "coaches"),
+                            ("from tft import tft_data\n", "tft"),
+                            ("import tft.tft_placement\n", "tft.tft_placement")):
+            assert _disallowed(src + plant, HOP_ALLOWED) == [want], (rel, plant)
+    pkg_src = (PKG / "ground_truth.py").read_text(encoding="ascii")
+    assert _disallowed(pkg_src, PKG_ALLOWED, "tft.rounds") == []
+    assert _disallowed(pkg_src + "import agents.daemon_slayer\n", PKG_ALLOWED,
+                       "tft.rounds") == ["agents.daemon_slayer"]
+    assert _disallowed(pkg_src + "import tft.tft_coach_engine\n", PKG_ALLOWED,
+                       "tft.rounds") == ["tft.tft_coach_engine"]
