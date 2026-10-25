@@ -97,6 +97,22 @@ body[data-mode="client"] header .lvl-pill,
 body[data-mode="client"] header .ult-pill {
   display: none !important;
 }
+/* (S134 T1, measured 2026-10-25 in a live TFT match) TFT has no win
+ * probability, ZOI zone, creep score, vision score, champion level pill or
+ * ultimate - the header painted faded "- WIN" / "CS -" / "-" placeholders
+ * there for the whole game. renderHeader's TFT branch adds .hidden to the CS
+ * pill, but the static-pill rule above turns .hidden into "faded but visible",
+ * the same defeat the client-mode block fixed. These slots carry no data
+ * anywhere in TFT, so they collapse for the whole mode rather than reserving
+ * space (heartbeat stays right-pinned by its own margin-left:auto). */
+body[data-mode="tft"] header .win-pill,
+body[data-mode="tft"] header .zone-pill,
+body[data-mode="tft"] header .cs-pill,
+body[data-mode="tft"] header .vis-pill,
+body[data-mode="tft"] header .lvl-pill,
+body[data-mode="tft"] header .ult-pill {
+  display: none !important;
+}
 
 /* (s162 2026-05-10) View-scoped hide. data-mode can be "sr" / "aram"
  * etc. while the operator is on a pre-game view (lobby - LCU detected

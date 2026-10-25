@@ -92,6 +92,44 @@ test("liveGameFromState: empty / null / missing liveclient -> false (lobby/champ
   assert.strictEqual(ov.liveGameFromState({ mode_key: "aram" }), false);
 });
 
+// S134 T1 (measured 2026-10-25, live TFT match): TFT runs as a standalone
+// TFTClient process with nothing on :2999, so liveclient stays {} for the whole
+// match and the HUD never appeared. For mode_key "tft" ONLY, the LCU gameflow
+// phase is the live signal. The :2999 modes keep the liveclient contract, so
+// their loading screen still stays on the companion.
+test("liveGameFromState: tft + LCU phase InProgress -> true (no :2999 in TFT)", () => {
+  assert.strictEqual(
+    ov.liveGameFromState({ mode_key: "tft", liveclient: {}, lcu: { phase: "InProgress" } }),
+    true
+  );
+  assert.strictEqual(
+    ov.liveGameFromState({ mode_key: " TFT ", lcu: { phase: "InProgress" } }),
+    true
+  );
+});
+
+test("liveGameFromState: tft outside InProgress -> false (lobby / champ-select / post-game)", () => {
+  for (const phase of ["ChampSelect", "GameStart", "WaitingForStats", "EndOfGame", "Lobby", "", null]) {
+    assert.strictEqual(
+      ov.liveGameFromState({ mode_key: "tft", liveclient: {}, lcu: { phase } }),
+      false,
+      String(phase)
+    );
+  }
+  assert.strictEqual(ov.liveGameFromState({ mode_key: "tft", liveclient: {} }), false);
+  assert.strictEqual(ov.liveGameFromState({ mode_key: "tft", lcu: "InProgress" }), false);
+});
+
+test("liveGameFromState: :2999 modes still need liveclient (loading screen stays companion)", () => {
+  for (const m of ["sr", "aram", "arena", "brawl", "client", "game"]) {
+    assert.strictEqual(
+      ov.liveGameFromState({ mode_key: m, liveclient: {}, lcu: { phase: "InProgress" } }),
+      false,
+      m
+    );
+  }
+});
+
 test("liveGameFromState: garbage-safe (null / arrays / strings / non-object liveclient)", () => {
   for (const g of [null, undefined, [], "junk", 42, { liveclient: [] }, { liveclient: "x" }]) {
     assert.strictEqual(ov.liveGameFromState(g), false, JSON.stringify(g));

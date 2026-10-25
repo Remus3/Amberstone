@@ -157,6 +157,42 @@ body[data-shell="overlay"] #right-now .panel-body > *:not(#rn-lead):not(#rn-choi
 body[data-shell="overlay"] #view-active-match .am-pane-map {
   display: none !important;
 }
+/* S134 T1: TFT has no League item build, so the BUILD widget would only carry
+ * the "No League item build in TFT." placeholder over the board. The coach
+ * widget carries the honest TFT state (active_match.js amLiveFallbackModel). */
+body[data-shell="overlay"][data-mode="tft"] #view-active-match .am-pane-build {
+  display: none !important;
+}
+/* The 1920 stat strip is four wide columns; inside the ~210px coach widget it
+ * folds to 2x2 on the overlay type scale so STAGE / LEVEL / HP / GOLD never
+ * clip. The w-call selector is needed to outrank the CALL tiering rule below
+ * (#am-call-body > div is a flex column there). The status row's label drops
+ * with the other CALL labels (rule 8); its value takes the chip rung instead
+ * of _line's inline --fs-md, which wrapped it down the widget. */
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div.am-tft-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+}
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div[data-am-fallback] > span:last-child {
+  font-size: var(--fs-ov-chip) !important;
+  font-weight: 600;
+  line-height: 1.25;
+  /* Two lines reserved: the unavailable sentence wraps to two at the widget
+   * width and "Live" is one, so the card keeps its height when data lands. */
+  min-height: 2.5em;
+  color: rgba(var(--ovx-text), 0.75) !important;
+}
+body[data-shell="overlay"] #view-active-match .am-tft-stat {
+  padding: 3px 6px;
+  background: rgba(var(--ovx-bg-nested), 0.9);
+}
+body[data-shell="overlay"] #view-active-match .am-tft-stat-label {
+  font-size: var(--fs-ov-head);
+}
+body[data-shell="overlay"] #view-active-match .am-tft-stat-value {
+  font-size: var(--fs-ov-call);
+}
 /* GPU-light: canvas / sparkline / DS-analysis widgets off. */
 body[data-shell="overlay"] #am-spike-curve,
 body[data-shell="overlay"] #am-spike-markers,
