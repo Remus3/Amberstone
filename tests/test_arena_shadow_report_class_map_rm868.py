@@ -333,6 +333,42 @@ def test_partner_or_enemy_dead_is_not_player_dead(action, strategy):
                                   haiku_strategy=strategy)) is False
 
 
+# -- the post-fix cohort (--since) -------------------------------------------------
+# The 617 live rows predate the camp_phase fix; the G7-17 live check must score
+# the post-fix rows only, never mixed. The writer stamps ts as UTC isoformat
+# (core/arena_coach_shadow.py log_arena_coach), which sorts as a string.
+
+def test_since_scores_only_the_post_fix_cohort(tmp_path):
+    old = [dict(_row(champ=f"O{i}", det_action="PLAY AGGRO",
+                     haiku_action="CAMP PHASE"),
+                ts="2026-07-21T03:00:00.000000+00:00") for i in range(30)]
+    new = [dict(_row(champ=f"N{i}", det_action="BUY ITEMS",
+                     haiku_action="CAMP PHASE"),
+                ts="2026-10-26T12:00:00.000000+00:00") for i in range(20)]
+    no_ts = {k: v for k, v in _row(champ="X").items() if k != "ts"}
+    p = tmp_path / "cohort.jsonl"
+    _write(p, old + new + [no_ts])
+    report = rep.build_report(p, min_sample=20, since="2026-10-26")
+    assert report["since"] == "2026-10-26"
+    assert report["coverage"]["total"] == 20
+    assert report["coverage"]["before_since"] == 31
+    assert report["agreement"]["agree"] == 20
+    assert report["flip_readiness"]["state"] == "ready"
+    # without --since the pre-fix rows dilute it below the gate
+    assert rep.build_report(p, min_sample=20)["flip_readiness"]["state"] \
+        == "not_ready"
+
+
+def test_since_on_the_cli(tmp_path, capsys):
+    p = tmp_path / "cli.jsonl"
+    _write(p, [dict(_row(), ts="2026-07-21T03:00:00+00:00"),
+               dict(_row(champ="Lux"), ts="2026-10-27T00:00:00+00:00")])
+    assert rep.main(["--path", str(p), "--since", "2026-10-26", "--json"]) == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["coverage"]["total"] == 1
+    assert out["since"] == "2026-10-26"
+
+
 # -- human summary -----------------------------------------------------------------
 
 def test_human_summary_names_the_gate_and_the_class_axis(tmp_path, capsys):
