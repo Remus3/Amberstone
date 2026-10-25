@@ -17,7 +17,7 @@ Responsibilities that moved to TftWorker:
   - TftCoachEngine ownership and coaching submission
   - TftLiveAnalysis ownership and vision loop
   - _poll_loop() background thread
-  - force scans (core/tft_worker.py force_scan, fed by data/force_scan.json)
+  - force scans (core/tft_worker.py _maybe_force_scan reads data/force_scan.json)
 
 Single authoritative TFT coaching path: TftWorker._run().
 

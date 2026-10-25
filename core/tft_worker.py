@@ -124,7 +124,13 @@ class TftWorker(BaseCoachWorker):
     Thread safety:
       - result_queue is a thread-safe queue.Queue.
       - pulse_ts / last_success_ts are floats; GIL-atomic on CPython.
-      - All other state is private, accessed only from the worker thread.
+      - The three components are built on the worker thread and torn down
+        by shutdown() on the caller's thread, so that can overlap a worker
+        thread that outlived its join (an LCU call or a slow init).
+        _teardown_components() detaches each one BEFORE shutting it down,
+        so two teardowns never shut one component down twice, and an init
+        that is still running when shutdown() arrives tears down what it
+        built instead of starting the vision loop (lane 8 s134, W1/W4).
 
     No Tk calls in this module.
     """
@@ -134,6 +140,8 @@ class TftWorker(BaseCoachWorker):
     # `shutdown()` for component teardown and the _run loop body only.
     _thread_name_prefix = "TftWorker"
     _restart_join_timeout_s = POLL_INTERVAL_S * 2
+    # shutdown()'s bounded wait for the poll thread (see shutdown()).
+    _shutdown_join_timeout_s: float = 3.0
 
     def __init__(
         self,
@@ -162,11 +170,21 @@ class TftWorker(BaseCoachWorker):
         self._engine: Any = None   # TftCoachEngine
         self._live:   Any = None   # TftLiveAnalysis
 
-        # AI status bar reference - stored here so it survives the race between
-        # wire_ai_bar() (called from Tk thread on overlay attach) and
-        # _init_components() (called from worker thread on first poll).
-        # Invariant: _ai_bar is always applied to _live whenever both exist.
-        self._ai_bar: Any = None
+        # Set by shutdown() BEFORE it stops and joins the poll thread. An
+        # init still in progress reads it and tears down instead of starting
+        # the vision loop; plain stop() (restart) leaves the components alone.
+        self._shutdown_requested = False
+        # Failure sites already logged at WARNING (see _log_failure).
+        self._failed_sites: set = set()
+        # Newest data/force_scan.json press acted on (wall clock, the
+        # writers' own time.time()). Starts at construction so a press left
+        # over from an earlier game never fires a paid scan at game start.
+        self._force_seen: float = time.time()
+
+        # wire_ai_bar(), force_scan() and the stored _ai_bar were removed in
+        # the lane 8 s134 audit: no production caller (TftAiStatusBar is
+        # defined nowhere; the facade's right-click went in cycle 5). Forced
+        # scans now arrive through data/force_scan.json (_maybe_force_scan).
 
     # -- Public lifecycle API (start/stop/join/restart/is_alive on base) --
 
@@ -174,18 +192,48 @@ class TftWorker(BaseCoachWorker):
         """
         Full teardown: stop the poll thread and shut down TFT components.
         Called by app.py on TFT game end.
+
+        The join is bounded. A poll thread still inside an LCU call, a
+        Live Client read or a slow first init when it expires keeps
+        running; the components are torn down here anyway. The flag is set
+        first: an init still in progress sees it and tears down what it
+        built instead of starting the vision loop (_init_components), and a
+        read that returns late publishes nothing (_run), so no vision loop
+        and no board outlive the game.
         """
+        self._shutdown_requested = True
         self.stop()
-        if self._thread is not None:
-            self._thread.join(timeout=3.0)
+        thread = self._thread
+        if thread is not None:
+            thread.join(timeout=self._shutdown_join_timeout_s)
+            if thread.is_alive():
+                _log.warning(
+                    "TftWorker: poll thread did not exit within %.1fs of "
+                    "shutdown; it publishes nothing more",
+                    self._shutdown_join_timeout_s,
+                )
         self._teardown_components()
 
     # -- Internal -------------------------------------------------------------
+
+    def _log_failure(self, site: str, what: str) -> None:
+        """Log the exception being handled: the first at each site at WARNING
+        with its traceback, repeats at DEBUG. One worker lives for one game,
+        so a failure that repeats every 1.5 s tick costs one WARNING per game
+        instead of being invisible at the default level."""
+        level = logging.DEBUG if site in self._failed_sites else logging.WARNING
+        self._failed_sites.add(site)
+        _log.log(level, "TftWorker: %s", what, exc_info=True)
 
     def _init_components(self) -> bool:
         """
         Lazily initialise TftStateReader, TftCoachEngine, TftLiveAnalysis.
         Returns True on success.  Idempotent - safe to call multiple times.
+
+        All or nothing: a failure part-way tears down what was built, so a
+        retry rebuilds every component instead of finding `_reader` set and
+        reporting success with the vision loop never started. Returns False
+        without starting the vision loop when shutdown() has been requested.
         """
         if self._reader is not None:
             return True
@@ -203,15 +251,6 @@ class TftWorker(BaseCoachWorker):
                 api_key=self._api_key,
                 data_file=live_data_file,
             )
-            # Apply any pending AI bar reference stored before _live existed.
-            # This closes the race between wire_ai_bar() (Tk thread, called on
-            # overlay attach) and _init_components() (worker thread, called on
-            # first poll).  If wire_ai_bar() ran first, _ai_bar is already set.
-            if self._ai_bar is not None:
-                try:
-                    self._live.set_ai_bar(self._ai_bar)
-                except Exception:  # noqa: BLE001
-                    pass
 
             # Phase 1 Step 7: policy gate for tft_vision_analysis.
             # If disabled, skip starting the live-analysis loop.
@@ -224,62 +263,54 @@ class TftWorker(BaseCoachWorker):
                     write_disabled_placeholder("tft", "tft_vision_analysis")
                     _log.info("TftWorker: tft_vision_analysis disabled by policy")
             except Exception:  # noqa: BLE001
-                pass  # policy unavailable - allow
+                self._log_failure(
+                    "vision_policy",
+                    "tft_vision_analysis policy check failed - vision allowed")
 
-            if _vision_allowed:
-                self._live.start()
+            if self._shutdown_requested:
+                # shutdown() arrived while this was building (its join timed
+                # out): never start a vision loop for a finished game.
+                self._teardown_components()
+                return False
+
+            live = self._live
+            if _vision_allowed and live is not None:
+                live.start()
+                if self._shutdown_requested:
+                    # shutdown() set the flag before tearing down, so a
+                    # teardown that shut `live` down before this start() is
+                    # caught here and the loop is stopped again.
+                    live.shutdown()
             else:
                 self._live = None  # don't hold reference when not started
 
             _log.info("TftWorker: TFT components initialised (vision=%s)", _vision_allowed)
             return True
         except Exception as exc:  # noqa: BLE001
-            _log.error("TftWorker: component init failed: %s", exc)
+            _log.error("TftWorker: component init failed: %s: %s",
+                       type(exc).__name__, exc)
+            self._teardown_components()
             return False
 
     def _teardown_components(self) -> None:
-        """Shut down TFT runtime components if they were initialised."""
-        if self._live is not None:
-            try:
-                self._live.shutdown()
-            except Exception:  # noqa: BLE001
-                pass
-            self._live = None
-        self._ai_bar = None  # clear stored reference on teardown
-        if self._engine is not None:
-            try:
-                self._engine.shutdown()
-            except Exception:  # noqa: BLE001
-                pass
-            self._engine = None
-        if self._reader is not None:
-            try:
-                self._reader.shutdown()
-            except Exception:  # noqa: BLE001
-                pass
-            self._reader = None
+        """Shut down TFT runtime components if they were initialised.
 
-    def wire_ai_bar(self, ai_bar: Any) -> None:
+        Each component is detached BEFORE its shutdown() runs, so a second
+        teardown (the caller's and the exiting poll thread's can overlap, or
+        a shutdown hook can re-enter) finds None and never shuts one down
+        twice. A failing shutdown is logged and the rest still run.
         """
-        Wire a TftAiStatusBar into TftLiveAnalysis.
-
-        Durable across startup order (Step 5.3):
-          - Always stores the reference in self._ai_bar.
-          - If _live already exists (worker initialised first), applies immediately.
-          - If _live does not exist yet, the stored reference is applied by
-            _init_components() when TftLiveAnalysis is created.
-          - Safe to call multiple times (reattach) - always updates both the
-            stored reference and the live object if present.
-
-        Thread-safe: TftLiveAnalysis.set_ai_bar() is a simple object assignment
-        guarded by the GIL on CPython.  No Tk calls are made here.
-        """
-        self._ai_bar = ai_bar
-        if self._live is not None:
+        for attr, name in (("_live", "TftLiveAnalysis"),
+                           ("_engine", "TftCoachEngine"),
+                           ("_reader", "TftStateReader")):
+            component = getattr(self, attr)
+            setattr(self, attr, None)
+            if component is None:
+                continue
             try:
-                self._live.set_ai_bar(ai_bar)
+                component.shutdown()
             except Exception:  # noqa: BLE001
-                pass
+                _log.warning("TftWorker: %s shutdown failed", name, exc_info=True)
 
     def _maybe_note_lcu_set(self) -> Optional[int]:
         """Note the running set from the LCU (mDefaultSet + queue id) at most
@@ -318,16 +349,41 @@ class TftWorker(BaseCoachWorker):
                 tft_set.clear_live_set()  # a TFT queue that names no set
             return noted
         except Exception:  # noqa: BLE001
-            _log.debug("TftWorker: LCU set read failed", exc_info=True)
+            self._log_failure("lcu_set", "LCU set read failed")
             return None
 
-    def force_scan(self) -> None:
-        """Trigger an immediate vision scan (right-click force refresh)."""
-        if self._live is not None:
-            try:
-                self._live.force_scan()
-            except Exception:  # noqa: BLE001
-                pass
+    def _maybe_force_scan(self) -> bool:
+        """Run a forced vision scan when data/force_scan.json carries a press
+        newer than the last one acted on; returns True when one fired.
+
+        Ctrl+Tab (core/hotkeys.py _trigger_force_scan) and the dashboard
+        button (dashboard/_writers.py force_vision_scan) both write
+        {"force": time.time()}. Before the lane 8 s134 audit only
+        coaches/_base_coach.py read that file, and the TFT coach is not a
+        BaseCoach, so a forced scan did nothing in TFT. A missing or
+        unreadable file means no press this tick.
+        """
+        live = self._live
+        if live is None:
+            return False
+        import json  # lazy: an import line above would move POLL_INTERVAL_S off line 44
+        try:
+            doc = json.loads((self._data_dir / "force_scan.json").read_text(encoding="utf-8"))
+            pressed = float(doc.get("force", 0))
+        except FileNotFoundError:
+            return False
+        except (OSError, ValueError, AttributeError, TypeError):
+            _log.debug("TftWorker: force_scan.json unreadable", exc_info=True)
+            return False
+        if not pressed > self._force_seen:  # also rejects NaN
+            return False
+        self._force_seen = pressed
+        try:
+            live.force_scan()
+        except Exception:  # noqa: BLE001
+            self._log_failure("force_scan", "forced scan failed")
+            return False
+        return True
 
     def _run(self, my_gen: int) -> None:
         """
@@ -338,7 +394,10 @@ class TftWorker(BaseCoachWorker):
         Exits when stopped or superseded by a new generation.
         """
         if not self._init_components():
-            _log.error("TftWorker gen=%d: component init failed - exiting", my_gen)
+            if self._shutdown_requested:
+                _log.info("TftWorker gen=%d: shut down during init", my_gen)
+            else:
+                _log.error("TftWorker gen=%d: component init failed - exiting", my_gen)
             return
 
         was_in_game  = False
@@ -356,12 +415,17 @@ class TftWorker(BaseCoachWorker):
             # roll odds and XP table); throttled, never raises.
             self._maybe_note_lcu_set()
 
+            reader = self._reader
+            if reader is None:  # torn down by shutdown() mid-iteration
+                return
             try:
-                state = self._reader.read()
+                state = reader.read()
 
-                # -- Post-read generation check -----------------------------
-                if my_gen != self._generation:
-                    _log.debug("TftWorker gen=%d superseded post-read", my_gen)
+                # -- Post-read generation / stop check -----------------------
+                # A read that returns after shutdown() (its join may have
+                # timed out) must not publish the finished game's board.
+                if my_gen != self._generation or self._stop_event.is_set():
+                    _log.debug("TftWorker gen=%d superseded or stopped post-read", my_gen)
                     return
 
                 if state:
@@ -371,7 +435,8 @@ class TftWorker(BaseCoachWorker):
                     # -- Coaching orchestration -----------------------------
                     # Submit to TftCoachEngine (text coaching)
                     # Phase 1 Step 7: gated by feature_policy tft.live_coaching.
-                    if self._engine is not None:
+                    engine = self._engine
+                    if engine is not None:
                         _submit_ok = True
                         try:
                             from core.feature_policy import is_allowed as _fp_ok, write_disabled_placeholder as _fp_wr
@@ -379,23 +444,27 @@ class TftWorker(BaseCoachWorker):
                                 _fp_wr("tft", "live_coaching")
                                 _submit_ok = False
                         except Exception:  # noqa: BLE001
-                            pass
+                            self._log_failure(
+                                "coaching_policy",
+                                "live_coaching policy check failed - submitting")
                         if _submit_ok:
                             try:
-                                self._engine.submit(state)
+                                engine.submit(state)
                             except Exception:  # noqa: BLE001
-                                _log.debug("TftWorker: engine submit error", exc_info=True)
+                                self._log_failure("submit", "engine submit error")
 
                     # Notify TftLiveAnalysis of round transitions
-                    if self._live is not None:
+                    live = self._live
+                    if live is not None:
                         try:
-                            self._live.notify_coach_state(state)
+                            live.notify_coach_state(state)
                             sr = (state.get("stage", 0), state.get("round", 0))
                             if sr != _last_sr:
                                 _last_sr = sr
-                                self._live.notify_round(state)
+                                live.notify_round(state)
                         except Exception:  # noqa: BLE001
-                            _log.debug("TftWorker: live notify error", exc_info=True)
+                            self._log_failure("live_notify", "live notify error")
+                        self._maybe_force_scan()
 
                     self._enqueue(TftWorkerResult(
                         state=state,
@@ -415,7 +484,7 @@ class TftWorker(BaseCoachWorker):
                         ))
 
             except Exception:  # noqa: BLE001
-                _log.debug("TftWorker: read error", exc_info=True)
+                self._log_failure("read", "read error")
 
             self._stop_event.wait(POLL_INTERVAL_S)
 
