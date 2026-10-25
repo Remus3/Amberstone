@@ -20,6 +20,7 @@ Responsibilities (S7, S11.7):
 """
 from __future__ import annotations
 
+import contextlib
 import heapq
 import itertools
 import json
@@ -231,36 +232,79 @@ class Scheduler:
 
     # ----- persistence --------------------------------------------
     @staticmethod
-    def _lock_file_exclusive(f: Any) -> None:
-        """Block on a cross-process exclusive lock with a retry budget."""
+    def _lock_file_exclusive(f: Any) -> bool:
+        """Block on a cross-process exclusive lock; True when acquired.
+
+        Writers lock the dedicated sidecar handle (see ``_queue_lock``):
+        msvcrt locks bytes at the CURRENT position, so locking the data file
+        from an "a" handle (EOF) and an "r+" handle (0) never excluded. Every
+        holder is pinned to offset 0. The one lock on the data file itself is
+        compact()'s byte 0 under the sidecar (``_open_for_rewrite``), held so
+        lockless readers fail instead of reading the mid-rewrite file.
+        """
         deadline = time.monotonic() + _APPEND_LOCK_MAX_WAIT_SEC
         while True:
             try:
                 if _HAS_MSVCRT:
+                    f.seek(0)
                     msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
                 elif _HAS_FCNTL:
                     fcntl.flock(f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-                else:
-                    # No locking primitives available - proceed without.
-                    # Logged once at module level via the scheduler.
-                    return
-                return
+                return True
             except (OSError, BlockingIOError):
                 if time.monotonic() >= deadline:
-                    logger.error("append lock wait exceeded %ss - proceeding unlocked",
+                    logger.error("queue lock wait exceeded %ss",
                                  _APPEND_LOCK_MAX_WAIT_SEC)
-                    return
+                    return False
                 time.sleep(_APPEND_LOCK_RETRY_SEC)
 
     @staticmethod
     def _unlock_file(f: Any) -> None:
         try:
             if _HAS_MSVCRT:
+                f.seek(0)
                 msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
             elif _HAS_FCNTL:
                 fcntl.flock(f.fileno(), fcntl.LOCK_UN)
         except OSError:
             pass
+
+    @contextlib.contextmanager
+    def _queue_lock(self):
+        """Yield True if the cross-process sidecar lock was acquired."""
+        lock_path = self._queue_log.with_name(self._queue_log.name + ".lock")
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+        with lock_path.open("a+b") as lf:
+            if lf.seek(0, 2) == 0:
+                lf.write(b"0")
+                lf.flush()
+            got = self._lock_file_exclusive(lf)
+            try:
+                yield got
+            finally:
+                if got:
+                    self._unlock_file(lf)
+
+    @contextlib.contextmanager
+    def _open_for_rewrite(self):
+        """Yield the queue opened "r+" with byte 0 of the DATA file locked,
+        or None when that lock is not acquired. Call only under _queue_lock.
+
+        Writers are excluded by the sidecar; this lock is for READERS, which
+        take none. On Windows it is mandatory, so a cross-process read that
+        lands in compact()'s truncate + rewrite gap fails with PermissionError
+        (_load then keeps its state) instead of reading an empty file and
+        clearing the task list - the protection the pre-sidecar lock gave.
+        POSIX flock is advisory, so there the gap stays as it always was.
+        """
+        with self._queue_log.open("r+", encoding="utf-8") as f:
+            if not self._lock_file_exclusive(f):
+                yield None
+                return
+            try:
+                yield f
+            finally:
+                self._unlock_file(f)
 
     def _append_log(self, event_type: str, task: QueueTask, extra: dict | None = None) -> None:
         rec: dict[str, Any] = {
@@ -276,13 +320,13 @@ class Scheduler:
         # already serialised by self._lock (RLock); this protects against
         # a second Python process writing to the same jsonl file (e.g.
         # the supervisor process + an ops/ helper script).
-        with self._queue_log.open("a", encoding="utf-8") as f:
-            try:
-                self._lock_file_exclusive(f)
-                f.write(line)
-                f.flush()
-            finally:
-                self._unlock_file(f)
+        # A lock timeout degrades to an unlocked append (logged), as before,
+        # rather than dropping the event. That fallback is NOT atomic across
+        # processes on Windows (the CRT's O_APPEND is seek-then-write), so it
+        # can still interleave under contention; the locked path is the fix.
+        with self._queue_lock(), self._queue_log.open("a", encoding="utf-8") as f:
+            f.write(line)
+            f.flush()
 
     # ----- compaction ---------------------------------------------
     def compact(self) -> tuple[int, int]:
@@ -302,9 +346,12 @@ class Scheduler:
 
         with self._lock:
             try:
-                with self._queue_log.open("r+", encoding="utf-8") as f:
-                    self._lock_file_exclusive(f)
-                    try:
+                with self._queue_lock() as got:
+                    if not got:
+                        return (0, 0)
+                    with self._open_for_rewrite() as f:
+                        if f is None:
+                            return (0, 0)
                         f.seek(0)
                         lines = f.read().splitlines()
 
@@ -356,8 +403,6 @@ class Scheduler:
                             non_empty, len(latest),
                         )
                         return (non_empty, len(latest))
-                    finally:
-                        self._unlock_file(f)
             except OSError as exc:
                 logger.warning("task_queue.jsonl compact failed: %s", exc)
                 return (0, 0)
