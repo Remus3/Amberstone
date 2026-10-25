@@ -382,8 +382,9 @@ class ComputeBurstSeam(unittest.TestCase):
         self.assertAlmostEqual(
             ITEM_EFFECTS[_HUBRIS].takedown_bonus_ad_base, 15.0
         )
+        # RM-808 (a): SR per stack 2 -> 3 (CommunityDragon 16.21 game data).
         self.assertAlmostEqual(
-            ITEM_EFFECTS[_HUBRIS].takedown_bonus_ad_per_stack, 2.0
+            ITEM_EFFECTS[_HUBRIS].takedown_bonus_ad_per_stack, 3.0
         )
         self.assertAlmostEqual(
             ITEM_EFFECTS[_COLLECTOR].execute_max_hp_pct, 0.05
@@ -392,8 +393,9 @@ class ComputeBurstSeam(unittest.TestCase):
             self.snap, "Veigar", 11, item_ids=_SIBLING_BUILD,
             target_mr=60, target_max_hp=2000, assume_takedown=True,
         )
-        # Hubris Eminence at 1 assumed stack: 15 + 2*1 = 17 bonus AD.
-        self.assertAlmostEqual(on.takedown_bonus_ad, 17.0)
+        # Hubris Eminence at 1 assumed stack, Veigar is RANGED (RM-808 (a)):
+        # (15 + 3*1) x 0.667 = 12.006 bonus AD.
+        self.assertAlmostEqual(on.takedown_bonus_ad, 12.006)
         # Collector execute: 5% of 2000 target max HP = 100 true damage.
         self.assertAlmostEqual(on.execute_finisher_damage, 100.0)
         # And the HR eruption is credited alongside, not instead.

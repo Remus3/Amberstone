@@ -54,13 +54,22 @@ class KillStateSchemaDefaults(unittest.TestCase):
 
 
 class HubrisEminenceData(unittest.TestCase):
-    """Hubris ids pin Eminence to Meraki 15 (+2 per stack) bonus AD."""
+    """Hubris ids pin Eminence melee values to the game data (RM-808 (a)).
+
+    DSV2 took Meraki 15 (+2 per stack) on all three rows; RM-808 (a) moved SR
+    6697 to the CommunityDragon 16.21 game data (15 + 3 melee; the ranged split
+    and its provenance live in test_hubris_eminence_cdragon_rm808a.py).
+    """
+
+    _MELEE_PER_STACK = {"6697": 3.0, "226697": 2.0, "126697": 2.0}
 
     def test_hubris_eminence_pins(self) -> None:
         for iid in _HUBRIS_IDS:
             eff = ITEM_EFFECTS[iid]
             self.assertAlmostEqual(eff.takedown_bonus_ad_base, 15.0, msg=iid)
-            self.assertAlmostEqual(eff.takedown_bonus_ad_per_stack, 2.0, msg=iid)
+            self.assertAlmostEqual(
+                eff.takedown_bonus_ad_per_stack, self._MELEE_PER_STACK[iid], msg=iid
+            )
             # Lethality stat is untouched by the Eminence add.
             self.assertAlmostEqual(eff.lethality, 18.0, msg=iid)
 
@@ -95,12 +104,13 @@ class EffectsHelpers(unittest.TestCase):
 
     def test_takedown_bonus_ad_single_stack(self) -> None:
         effs = collect_effects(["6697"])
-        # 15 base + 2 per stack * 1 assumed stack = 17 bonus AD.
+        # RM-808 (a): 15 base + 3 per stack * 1 assumed stack = 18 bonus AD
+        # (SR melee arm, the helper default).
         self.assertEqual(_ASSUMED_TAKEDOWN_STACKS, 1)
         self.assertAlmostEqual(
-            total_takedown_bonus_ad(effs, _ASSUMED_TAKEDOWN_STACKS), 17.0
+            total_takedown_bonus_ad(effs, _ASSUMED_TAKEDOWN_STACKS), 18.0
         )
-        self.assertAlmostEqual(total_takedown_bonus_ad(effs, 5), 25.0)
+        self.assertAlmostEqual(total_takedown_bonus_ad(effs, 5), 30.0)
 
     def test_execute_pct_helper(self) -> None:
         self.assertAlmostEqual(
@@ -164,7 +174,8 @@ class ComputeBurstSeam(unittest.TestCase):
                                   item_ids=["6697"], target_armor=80,
                                   target_max_hp=2000, assume_takedown=True)
         self.assertGreater(on.total_burst_damage, off.total_burst_damage)
-        self.assertAlmostEqual(on.takedown_bonus_ad, 17.0)
+        # RM-808 (a): Talon is melee -> 15 + 3 * 1 = 18.
+        self.assertAlmostEqual(on.takedown_bonus_ad, 18.0)
         # The AD raises ability AND auto-attack damage (Talon scales off AD).
         self.assertGreater(on.ability_damage, off.ability_damage)
 

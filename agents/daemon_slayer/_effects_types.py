@@ -799,9 +799,11 @@ class ItemEffect:
     # construction + every existing test).
     #
     # Hubris 6697 Eminence: a champion takedown grants bonus AD = base +
-    # per_stack * stacks, lasting 90s (Meraki 16.12.1: "15 (+2 per stack)").
+    # per_stack * stacks, lasting 90s (DSV2 took Meraki 16.12.1 "15 (+2 per
+    # stack)"; RM-808 (a) moved SR to the CommunityDragon 16.21 game data:
+    # melee 15 + 3, ranged split in the two *_ranged_*_mult fields at the END).
     # The consumer assumes ``dps._ASSUMED_TAKEDOWN_STACKS`` (= 1) stack worth
-    # when the seam is ON -> 15 + 2*1 = 17 bonus AD folded into the wielder's
+    # when the seam is ON -> 15 + 3*1 = 18 bonus AD (SR melee) folded into the wielder's
     # bonus AD for both the AA rotation and the ability scaling.
     takedown_bonus_ad_base: float = 0.0
     takedown_bonus_ad_per_stack: float = 0.0
@@ -1001,3 +1003,17 @@ class ItemEffect:
     # ratio * 0.0 = 0.0); appended at the END per the dataclass convention (a
     # mid-class insert breaks positional construction + every existing test).
     physical_burst_total_ad_ratio: float = 0.0
+    # RM-808 (a): the melee / ranged split of the DSV2 takedown bonus AD. The
+    # game's item data (CommunityDragon <patch>/game/items.cdtb.bin.json,
+    # Items/<id> mDataValues) states Hubris Eminence as a MELEE value plus a
+    # RANGED multiplier per term: 16.21 SR 6697 BaseADBonusMelee 15 x
+    # BaseADRangedMult 0.667, ADPerStatueMelee 3 x ADPerStatueRangedMult 0.667;
+    # ARAM 126697 15 x 0.667, 2 x 0.5; Arena 226697 1.0 on both. The
+    # ``takedown_bonus_ad_base`` / ``takedown_bonus_ad_per_stack`` fields above
+    # carry the MELEE values; these two scale them for a RANGED caster (base
+    # attackrange >= ``_melee_ranged.MELEE_RANGED_ATTACKRANGE_SPLIT``) inside
+    # ``effects.total_takedown_bonus_ad(..., caster_is_ranged=True)``. Default
+    # 1.0 keeps every row without a split byte-identical; appended at the END
+    # per the dataclass convention.
+    takedown_bonus_ad_ranged_base_mult: float = 1.0
+    takedown_bonus_ad_ranged_per_stack_mult: float = 1.0

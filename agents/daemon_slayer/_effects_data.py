@@ -1422,19 +1422,25 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         lethality=18.0,
         # DSV2 (1.125.0): Eminence is now valued by the takedown / kill-state
         # OFFENSE seam (compute_dps / compute_burst_damage assume_takedown).
-        # Meraki 16.12.1: "Scoring a takedown ... generates a permanent stack
-        # and grants you 15 (+2 per stack) bonus attack damage for 90 seconds".
-        # RM-804: kept on Meraki (CLAUDE.md Settled: the passive-formula
-        # source; the 16.21.1 snapshot still reads 15 (+2)). DDragon 16.21.1
-        # renders NO Eminence numbers ("gain  Attack Damage plus  per champion
-        # killed"), so it cannot be the source; DDragon 16.20.1's SR prose read
-        # 12 + 3 per champion killed - an unresolved Meraki-vs-DDragon delta
-        # recorded in agents/daemon_slayer/tests/test_passive_text_ddragon_sync_rm804.py.
+        # DSV2 took Meraki 16.12.1: "15 (+2 per stack) bonus attack damage for
+        # 90 seconds". RM-804 kept it while DDragon 16.21.1 renders NO Eminence
+        # numbers. RM-808 (a) settles it on the game's own item data
+        # (CommunityDragon <patch>/game/items.cdtb.bin.json, Items/6697
+        # mDataValues): 16.20 BaseADBonus 12 / ADPerStatue 3 (= the DDragon
+        # 16.20.1 prose "12 + 3 per champion killed", so bin and prose agree
+        # when DDragon renders); 16.21 BaseADBonusMelee 15 x BaseADRangedMult
+        # 0.667, ADPerStatueMelee 3 x ADPerStatueRangedMult 0.667 - a melee /
+        # ranged split calc DDragon leaves blank. Meraki (stuck at content
+        # patch 25.15) still reads 15 (+2): stale, no split. Pinned by
+        # agents/daemon_slayer/tests/test_hubris_eminence_cdragon_rm808a.py.
         takedown_bonus_ad_base=15.0,
-        takedown_bonus_ad_per_stack=2.0,
+        takedown_bonus_ad_per_stack=3.0,
+        takedown_bonus_ad_ranged_base_mult=0.667,
+        takedown_bonus_ad_ranged_per_stack_mult=0.667,
         note=(
             "Hubris: 18 Lethality (level-scaled flat pen) + Eminence "
-            "takedown bonus AD 15 (+2/stack), 90s - valued under assume_takedown"
+            "takedown bonus AD 15 (+3/stack) melee, x0.667 ranged, 90s "
+            "(CommunityDragon 16.21 game data) - valued under assume_takedown"
         ),
     ),
 
@@ -3697,9 +3703,14 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # DSV2 (1.125.0): Arena mirror of SR 6697 Eminence takedown AD.
         # RM-804: DDragon 16.21.1 renders no Eminence numbers here either
         # (16.20.1 Arena prose read 15, +2 each trigger - same as the engine).
+        # RM-808 (a): CommunityDragon 16.21 Items/226697 BaseADBonusMelee 15,
+        # ADPerStatueMelee 2, both ranged multipliers 1.0 - no split in Arena.
         takedown_bonus_ad_base=15.0,
         takedown_bonus_ad_per_stack=2.0,
-        note="Hubris (Arena 226697): 18 lethality + Eminence takedown AD 15 (+2/stack)",
+        note=(
+            "Hubris (Arena 226697): 18 lethality + Eminence takedown AD 15 (+2/stack), "
+            "melee and ranged alike (CommunityDragon 16.21 game data)"
+        ),
     ),
     "226698": ItemEffect(
         item_id="226698",
@@ -5931,9 +5942,18 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Hubris",
         lethality=18.0,
         # DSV2 (1.125.0): ARAM mirror of SR 6697 Eminence takedown AD.
+        # RM-808 (a): CommunityDragon 16.21 Items/126697 BaseADBonusMelee 15 x
+        # BaseADRangedMult 0.667, ADPerStatueMelee 2 x ADPerStatueRangedMult
+        # 0.5 (16.20 stated the same split as values: 15 / 10 base, 2 / 1 per
+        # stack). The engine credited ranged casters the melee 15 (+2).
         takedown_bonus_ad_base=15.0,
         takedown_bonus_ad_per_stack=2.0,
-        note="Hubris (ARAM 126697): 55 AD + 18 lethality + Eminence takedown AD 15 (+2/stack)",
+        takedown_bonus_ad_ranged_base_mult=0.667,
+        takedown_bonus_ad_ranged_per_stack_mult=0.5,
+        note=(
+            "Hubris (ARAM 126697): 55 AD + 18 lethality + Eminence takedown AD 15 (+2/stack) "
+            "melee, x0.667 base / x0.5 per stack ranged (CommunityDragon 16.21 game data)"
+        ),
     ),
     "446693": ItemEffect(
         item_id="446693",
