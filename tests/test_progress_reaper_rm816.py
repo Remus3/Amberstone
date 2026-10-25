@@ -111,6 +111,23 @@ class Alive:
         return self.answer
 
 
+MOVES = pytest.mark.parametrize("link_move", [False, True],
+                                ids=["rename-move", "posix-link-move"])
+
+
+def _use_move(monkeypatch, link_move: bool) -> None:
+    """Select the commit move for one test. The rename move is create-only
+    only where os.rename refuses an existing target (Windows), so it runs
+    only where the module itself picks it; on POSIX os.rename REPLACES, the
+    module uses the link move, and a forced rename move is a path production
+    never takes (RM-885: CI on Linux reddened on exactly that). The link move
+    runs everywhere (NTFS has hard links too). Read before the monkeypatch."""
+    if not link_move and pw._LINK_MOVE:
+        pytest.skip("rename-move is the production move only where os.rename "
+                    "refuses an existing target (Windows)")
+    monkeypatch.setattr(pw, "_LINK_MOVE", link_move)
+
+
 @pytest.fixture
 def d(tmp_path):
     return tmp_path / "ops" / "loop" / "control" / "progress"
@@ -204,13 +221,13 @@ def test_a_writer_back_before_the_capture_is_put_back(tmp_path, d, monkeypatch):
     assert _leftovers(d) == []
 
 
-@pytest.mark.parametrize("link_move", [False, True], ids=["rename-move", "posix-link-move"])
+@MOVES
 def test_the_public_name_is_never_moved_by_link_and_unlink(tmp_path, d, monkeypatch, link_move):
     """The verifier's POSIX find: a capture by link + unlink unlinks BY NAME,
     so a writer's replace landing between the two is destroyed. The public
     name must leave only by one atomic rename (_capture); the create-only
     _move is for the reaper's private names (tmp, aside)."""
-    monkeypatch.setattr(pw, "_LINK_MOVE", link_move)
+    _use_move(monkeypatch, link_move)
     p = _plant(d, "pub")
     real_move, real_capture = pw._move, pw._capture
     moved, captured = [], []
@@ -232,9 +249,9 @@ def test_the_public_name_is_never_moved_by_link_and_unlink(tmp_path, d, monkeypa
     assert _leftovers(d) == []
 
 
-@pytest.mark.parametrize("link_move", [False, True], ids=["rename-move", "posix-link-move"])
+@MOVES
 def test_the_commit_move_never_replaces_an_existing_target(tmp_path, monkeypatch, link_move):
-    monkeypatch.setattr(pw, "_LINK_MOVE", link_move)
+    _use_move(monkeypatch, link_move)
     src, dst = tmp_path / "a.tmp", tmp_path / "b.json"
     src.write_bytes(b"new")
     dst.write_bytes(b"writer")
@@ -294,7 +311,7 @@ def test_a_plan_only_pass_never_moves_an_aside(tmp_path, d):
 TRIALS = 300
 
 
-@pytest.mark.parametrize("link_move", [False, True], ids=["rename-move", "posix-link-move"])
+@MOVES
 def test_a_free_race_loses_zero_writer_writes(tmp_path, monkeypatch, link_move):
     """Measured, not argued: the writer is released at the reaper's owner
     probe (after its classifying read) and lands at a random point across the
@@ -302,7 +319,7 @@ def test_a_free_race_loses_zero_writer_writes(tmp_path, monkeypatch, link_move):
     only correct end state is the writer's row. Base code: a non-zero count
     (s128: 5-6 of 400; this test: 53 of 300). Fixed code: 0 of TRIALS, on
     the native move and on the POSIX link move (run on this filesystem)."""
-    monkeypatch.setattr(pw, "_LINK_MOVE", link_move)
+    _use_move(monkeypatch, link_move)
     rng = random.Random(816)
     losses = []
     for i in range(TRIALS):
