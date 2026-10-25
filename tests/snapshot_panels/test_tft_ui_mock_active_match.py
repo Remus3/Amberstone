@@ -130,8 +130,12 @@ def test_tft_ui_mock_renders_the_tft_fallback(mode, mock_server, pw_browser):
         assert "TFT LIVE DATA" in head_text
         assert want["status"] in head_text
         assert _stat_cells(page) == want["cells"]
-        assert _text(page, "am-build-body").strip() == "No League item build in TFT."
-        assert _text(page, "am-map-body").strip() == "No map intel in TFT."
+        assert _text(page, "am-build-body").strip() == (
+            "UNITS\nUnits appear after the TFT client writes its first round."
+        )
+        assert _text(page, "am-map-body").strip() == (
+            "LOBBY\nLobby placements and HP appear after the first round."
+        )
         view = _text(page, "view-active-match")
         for needle in _LOL_ONLY:
             assert needle not in view, f"League text {needle!r} in TFT mock ({mode})"
