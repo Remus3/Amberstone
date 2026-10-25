@@ -346,7 +346,9 @@ def plan_dispatch(run_id: int, head_sha: str, *, worktree: Path = WORKTREE,
                         "--log-failed"]),
         ("gather_diff", ["git", "-C", wt, "show", head_sha]),
         ("claude_fix", claude),
-        ("diff_names", ["git", "-C", wt, "diff", "--name-only", "origin/main"]),
+        # RM-830: quotepath off, so the frozen guard reads real names.
+        ("diff_names", ["git", "-C", wt, "-c", "core.quotepath=false", "diff",
+                        "--name-only", "origin/main"]),
         ("push", ["git", "-C", wt, "push", "-u", "origin", branch]),
         ("pr_create", ["gh", "pr", "create", "--repo", repo, "--base", "main",
                        "--head", branch,
@@ -468,9 +470,13 @@ def _run(cmd: list[str], cwd: Path | None = None, timeout: int = 120,
     # 2 min; without it each git/gh child allocates a console that flashes onscreen.
     no_window = 0x08000000 if os.name == "nt" else 0
     try:
+        # RM-830: git and gh write UTF-8; decode it as such with errors=replace.
+        # Through the locale (or strict UTF-8 mode) an undecodable byte faulted
+        # the reader thread and stdout came back None - "never raises" was false.
         p = subprocess.run(
             cmd, cwd=str(cwd) if cwd else None, capture_output=True,
-            text=True, timeout=timeout, creationflags=no_window, env=env,
+            text=True, encoding="utf-8", errors="replace",
+            timeout=timeout, creationflags=no_window, env=env,
         )
         return p.returncode, (p.stdout or "") + (p.stderr or "")
     except (OSError, subprocess.SubprocessError) as exc:

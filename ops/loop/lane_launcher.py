@@ -208,7 +208,10 @@ def command_path(lane: str, root: Path | None = None) -> Path:
 def _git(args, cwd=None, timeout=120, input=None):  # noqa: A002 - subprocess kwarg
     return subprocess.run(
         ["git", *args], cwd=str(cwd) if cwd else None,
-        capture_output=True, text=True, timeout=timeout,
+        # RM-830: git writes path names as UTF-8; through the locale a
+        # non-ASCII name was mojibake, or faulted the reader (stdout None).
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
+        timeout=timeout,
         creationflags=_NO_WINDOW, input=input,
     )
 

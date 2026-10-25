@@ -1670,8 +1670,11 @@ def _git(
     timeout: Optional[float] = None,
 ) -> str:
     try:
+        # RM-830: core.quotepath off, so a non-ASCII PATH / DIFF-ADDED name
+        # reaches the scan as itself, not C-quoted (an allowlist match on the
+        # quoted text failed closed). Output is decoded UTF-8 below.
         proc = subprocess.run(
-            ["git", "-C", str(root), *args],
+            ["git", "-C", str(root), "-c", "core.quotepath=false", *args],
             input=stdin_text.encode("utf-8") if stdin_text else None,
             capture_output=True,
             creationflags=_NO_WINDOW,

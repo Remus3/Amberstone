@@ -79,6 +79,7 @@ def _git_tracked(repo_root: Path) -> list:
     out = subprocess.run(
         [git, "ls-files", "-z"],
         cwd=str(repo_root), capture_output=True, text=True, timeout=300, check=True,
+        encoding="utf-8", errors="replace",   # RM-830: UTF-8 names, never the locale
     ).stdout
     return [p.replace("\\", "/") for p in out.split("\0") if p]
 
