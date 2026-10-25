@@ -21,7 +21,7 @@ records there. moon_proxy only does the 2s vision dedupe accounting.
 | coaches/arena_coach.py:695 | HAIKU | YES | EVENT (augment select) | arena_aug_select |
 | coaches/arena_coach.py:805 | HAIKU | YES | EVENT (anvil) | arena_anvil |
 | coaches/aram_coach.py:743 | HAIKU | YES (cache_control ephemeral) | POLLING (game tick) | aram_coach |
-| coaches/aram_coach.py:910 | HAIKU | YES | EVENT (augment select) | aram_aug_select |
+| ~~coaches/aram_coach.py:910~~ | RETIRED 2026-10-25 (RM-877) | n/a | n/a | ~~aram_aug_select~~ |
 | coaches/brawl_coach.py:439 | HAIKU | YES (cache_control ephemeral) | POLLING (game tick) | brawl_coach |
 | vision_server/_inference.py:141 | SONNET | YES (_record_to_cost_tracker) | ON-DEMAND (/vision relay) | vision_relay |
 | vision_server/_inference.py:176 | HAIKU | YES (_record_to_cost_tracker) | ON-DEMAND (/coach relay) | coach_relay |
@@ -51,6 +51,22 @@ can no longer accrue spend. The row is struck rather than deleted so the
 The `champ_select_coach` row above it is a DIFFERENT surface
 (`coaches/champ_select_coach.py`, the pick-advisor) and IS still on Haiku.
 
+**CORRECTION 2026-10-25 - the `aram_aug_select` row above is RETIRED (RM-877).**
+RM-860 made the deterministic Mayhem recommender answer whenever an offered
+augment card resolves; the Haiku call survived only as a fallback (no card
+name resolves, or plain ARAM). Its `aug_take` / `aug_why` / `aug_plan` output
+had no reader anywhere in `web/` or `dashboard/` (the augment panel reads only
+`aug_reco*` and `augment_select`), so RM-877 deleted the call and its
+`_AUG_SELECT_PROMPT` template: `coaches/aram_coach.py`
+`Coach._handle_augment_select` now makes zero model calls. The file still
+calls Anthropic - the `aram_coach` row above (per-tick `_run_coach`) is live -
+which is why the struck row is not in the path-keyed `_RETIRED` map of
+`tests/test_cost_trace_matrix_is_live.py`. The `aram_aug_select` purpose key
+survives in `core/cost_tracker.py` `GATE_META["aram"]` (a purpose-map entry,
+not a producer), so old `data/spend/*.json` ledgers still attribute it to the
+ARAM gate. Measured in the local ledgers at retirement: 33 calls, about
+$0.018, on 4 days (2026-07-12 / 07-14 / 07-20 / 08-02), about $0.00055 a call.
+
 **Every line number in the matrix above is from the 2026-05-19 audit and most
 have since drifted** (measured 2026-08-06: e.g. `coaches/arena_coach.py:587` is
 now `:797`, `coaches/aram_coach.py:743` is now `:1099`). Trust the matrix for
@@ -62,8 +78,9 @@ wrong: `tests/test_cost_trace_matrix_is_live.py` identifies a row by its
 `path.py:N` shape, so a row without one silently drops out of the guard's view.
 The guard therefore requires EVERY row of this table to carry one, and fails if
 any row stops parsing. Re-point them if you like; deleting them disarms the
-guard. The table is 21 rows (20 live-tier plus the struck retired row) and the
-guard pins that count exactly.
+guard. The table is 21 rows (19 live-tier plus two struck retired rows,
+`champ_select_brief` and, since RM-877, `aram_aug_select`) and the guard pins
+that count exactly.
 
 Tracked sites correctly extract `usage.input_tokens / output_tokens /
 cache_read_input_tokens / cache_creation_input_tokens` (see
@@ -153,6 +170,9 @@ hits the missing telemetry.
 
 ## Prompt-cache floor (item 286) - aram_aug_select / tft_live_analysis CLOSED
 
+(2026-10-25: the `aram_aug_select` call and its template were RETIRED by
+RM-877, so its row below is history and it left the guard's target list.)
+
 The min cacheable prompt prefix for `claude-haiku-4-5-20251001` is **2048
 tokens** (vs 1024 for Sonnet/Opus). A `cache_control` marker on a prefix below
 that floor is INERT - the API does not cache it. The `aram_aug_select` /
@@ -162,7 +182,7 @@ not-viable. Static portions (placeholders blanked):
 
 | Prompt (purpose) | static chars | ~tok | vs 2048 floor |
 |---|---|---|---|
-| `aram_aug_select` (`_AUG_SELECT_PROMPT`) | 231 | ~62 | far below |
+| ~~`aram_aug_select` (`_AUG_SELECT_PROMPT`)~~ RETIRED (RM-877) | 231 | ~62 | far below |
 | `tft_live_analysis` (`_ANALYSIS_PROMPT_TEMPLATE`) | 2477 | ~669 | below |
 | `tft_live_aug_select` (`_AUGMENT_SELECT_PROMPT`) | 188 | ~51 | far below |
 

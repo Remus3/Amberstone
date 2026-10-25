@@ -8,6 +8,7 @@ Covers (TDD - each test was written failing-first against the live bug):
      parsers with ValueError/OverflowError (json.loads accepts NaN).
   3. aram_coach._handle_augment_select still used the pre-2026-05-03
      '"MAYHEM" in gm' check that never matches the live "KIWI" value.
+     (RM-877 retired that Haiku prompt; section 3 now pins zero calls.)
   4. arena_coach._augment_name_map picked the patch snapshot dir by
      reverse LEXICOGRAPHIC sort ("16.9.1" beats "16.10.1").
   5. aram_team_analyzer leaked the raw exception type name into the
@@ -259,8 +260,13 @@ def test_aram_parse_state_normal_values_unchanged():
 
 
 # ==============================================================================
-# 3. ARAM augment-select Mayhem tag (KIWI mode string)
+# 3. ARAM augment-select makes no Haiku call (RM-877)
 # ==============================================================================
+# Before RM-877 these two tests pinned the ' Mayhem' tag in the Haiku
+# `aram_aug_select` prompt (the KIWI fix above). RM-877 retired that call:
+# its `aug_take` / `aug_why` / `aug_plan` had no reader in web/ or dashboard/.
+# The KIWI branch still matters - it decides whether the deterministic Mayhem
+# recommender runs - so both modes are pinned to zero client calls here.
 
 def _aram_coach_for_select(tmp_path, monkeypatch, reply: str):
     import core.coach_trace as trace_mod
@@ -274,10 +280,16 @@ def _aram_coach_for_select(tmp_path, monkeypatch, reply: str):
     return c
 
 
-def test_aram_augment_select_tags_mayhem_for_kiwi(tmp_path, monkeypatch):
-    """Live Mayhem reports gameMode=KIWI; the select prompt must carry the
-    ' Mayhem' tag. Pre-fix the handler used '"MAYHEM" in gm' which never
-    matched (same bug fixed in _run_coach on 2026-05-03)."""
+def _written_aug_keys(c) -> list:
+    if not c._out.exists():
+        return []
+    return sorted(k for k in json.loads(c._out.read_text(encoding="utf-8"))
+                  if k.startswith("aug_"))
+
+
+def test_aram_augment_select_kiwi_unrankable_makes_no_haiku_call(tmp_path, monkeypatch):
+    """Live Mayhem reports gameMode=KIWI. An offer no augment name resolves
+    in used to fall back to one Haiku call; it now costs nothing."""
     c = _aram_coach_for_select(
         tmp_path, monkeypatch, "Take: A\nWhy: w\nGameplan: g")
     c._last_state = {
@@ -285,21 +297,17 @@ def test_aram_augment_select_tags_mayhem_for_kiwi(tmp_path, monkeypatch):
         "ally_comp": ["Ahri"], "enemy_comp": ["Sion"],
     }
     c._handle_augment_select({"augment_choices": ["Aug A", "Aug B"]})
-    assert len(c._client.calls) == 1
-    prompt = c._client.calls[0]["messages"][0]["content"]
-    assert "ARAM Mayhem augment select" in prompt
-    written = json.loads(c._out.read_text(encoding="utf-8"))
-    assert written["aug_take"] == "A"
-    assert written["augment_select"] is True
+    assert c._client.calls == []
+    assert _written_aug_keys(c) == []
 
 
-def test_aram_augment_select_plain_aram_untagged(tmp_path, monkeypatch):
+def test_aram_augment_select_plain_aram_makes_no_haiku_call(tmp_path, monkeypatch):
     c = _aram_coach_for_select(
         tmp_path, monkeypatch, "Take: A\nWhy: w\nGameplan: g")
     c._last_state = {"game_mode": "ARAM", "champion": "Lux", "hp_pct": 80}
     c._handle_augment_select({"augment_choices": ["Aug A"]})
-    prompt = c._client.calls[0]["messages"][0]["content"]
-    assert "Mayhem" not in prompt
+    assert c._client.calls == []
+    assert _written_aug_keys(c) == []
 
 
 def test_vision_postprocess_aliases_is_augment_select():
