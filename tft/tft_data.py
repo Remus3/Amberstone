@@ -7,8 +7,9 @@ Currently seeded for TFT Set 14 (patch 15.x baseline).
 
 # -- Set declaration ----------------------------------------------------------
 # CONSTANTS_SET is the TFT set the tables below were transcribed for. The set
-# the rest of the TFT lane is actually running is read off disk from
-# data/meta/tft_set17_meta.json ("_set"). When these two disagree, everything
+# the rest of the TFT lane is actually running comes from tft/tft_set.py
+# resolve_set() (RM-840; newest ingested set by default, Set 18 at
+# 2026-10-24). When these two disagree, everything
 # below is STALE. tests/test_tft_constants_staleness.py is the guard; it fails
 # the moment this declaration, the lane's set, or the known discrepancies move
 # without someone updating the expectation.

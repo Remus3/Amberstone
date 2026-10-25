@@ -95,52 +95,36 @@ FIELD_MAP = {
 }
 
 
-def _load_trait_augment_data() -> dict:
-    """Load trait augment definitions -- cached at module level after first call."""
-    if _load_trait_augment_data._cache is None:
-        try:
-            # Phase 7 P1-A: PBE-aware meta path
-            _cs = Path(__file__).parent.parent / "data" / "comp_state.json"
-            try:
-                import json as _jx
-                _pbe = _jx.loads(_cs.read_text(encoding="utf-8")).get("pbe", False) if _cs.exists() else False
-            except Exception:  # noqa: BLE001
-                _pbe = False
-            _mfn = "tft_set17_pbe_meta.json" if _pbe else "tft_set17_meta.json"
-            meta_path = Path(__file__).parent.parent / "data" / "meta" / _mfn
-            if not meta_path.exists():
-                meta_path = Path(__file__).parent.parent / "data" / "meta" / "tft_set17_meta.json"
-            meta = json.loads(meta_path.read_text(encoding="utf-8"))
-            _load_trait_augment_data._cache = meta.get("trait_augments", {})
-        except Exception:  # noqa: BLE001
-            _load_trait_augment_data._cache = {}
-    return _load_trait_augment_data._cache
+# RM-840: one section of the RESOLVED set's meta file (tft/tft_set.py picks
+# the set: live set id, then RC_TFT_SET, then the newest ingested set; PBE
+# twin when comp_state.json says pbe and the set has one). Cached per
+# (path, section), so a set change mid-process reads the new set's file
+# instead of serving the first set forever. Before RM-840 both loaders were
+# hard-wired to tft_set17_*.json and cached for the process lifetime.
+_META_SECTION_CACHE: dict = {}
 
-_load_trait_augment_data._cache = None
+
+def _load_meta_section(section: str) -> dict:
+    try:
+        from tft import tft_set
+        path = tft_set.meta_path(pbe=tft_set.pbe_flag())
+    except Exception:  # noqa: BLE001
+        return {}
+    key = (str(path), section)
+    if key not in _META_SECTION_CACHE:
+        value = tft_set.load_json_file(path).get(section, {})
+        _META_SECTION_CACHE[key] = value if isinstance(value, dict) else {}
+    return _META_SECTION_CACHE[key]
+
+
+def _load_trait_augment_data() -> dict:
+    """Trait augment definitions of the resolved set (cached per meta path)."""
+    return _load_meta_section("trait_augments")
 
 
 def _load_double_up_rules() -> dict:
-    """Load Double Up rules -- cached at module level after first call."""
-    if _load_double_up_rules._cache is None:
-        try:
-            # Phase 7 P1-A: PBE-aware meta path
-            _cs = Path(__file__).parent.parent / "data" / "comp_state.json"
-            try:
-                import json as _jy
-                _pbe = _jy.loads(_cs.read_text(encoding="utf-8")).get("pbe", False) if _cs.exists() else False
-            except Exception:  # noqa: BLE001
-                _pbe = False
-            _mfn = "tft_set17_pbe_meta.json" if _pbe else "tft_set17_meta.json"
-            meta_path = Path(__file__).parent.parent / "data" / "meta" / _mfn
-            if not meta_path.exists():
-                meta_path = Path(__file__).parent.parent / "data" / "meta" / "tft_set17_meta.json"
-            meta = json.loads(meta_path.read_text(encoding="utf-8"))
-            _load_double_up_rules._cache = meta.get("double_up", {})
-        except Exception:  # noqa: BLE001
-            _load_double_up_rules._cache = {}
-    return _load_double_up_rules._cache
-
-_load_double_up_rules._cache = None
+    """Double Up rules of the resolved set (cached per meta path)."""
+    return _load_meta_section("double_up")
 
 
 def _build_augment_context(items_str: str, trait_augments: dict) -> list:
@@ -377,24 +361,16 @@ def _build_prompt(state: dict) -> str:
 
     #  -  -  Selected comp context (from overlay comp selector)  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
     try:
-        import json as _cj
-        from pathlib import Path as _cp
-        _cs_file = _cp(__file__).parent.parent / "data" / "comp_state.json"
-        # Phase 7 P1-A: use PBE-aware meta path
-        _pbe_flag = False
-        if _cs_file.exists():
-            _cs = _cj.loads(_cs_file.read_text(encoding="utf-8"))
-            _pbe_flag = _cs.get("pbe", False)
-        _meta_fn = "tft_set17_pbe_meta.json" if _pbe_flag else "tft_set17_meta.json"
-        _meta_file = _cp(__file__).parent.parent / "data" / "meta" / _meta_fn
-        if not _meta_file.exists():
-            _meta_file = _cp(__file__).parent.parent / "data" / "meta" / "tft_set17_meta.json"
-        if _cs_file.exists() and _meta_file.exists():
-            _cs = _cj.loads(_cs_file.read_text(encoding="utf-8"))
+        # Phase 7 P1-A PBE-aware meta path; RM-840: the set comes from
+        # tft/tft_set.py, never a hard-wired tft_set17_*.json.
+        from tft import tft_set as _ts
+        _cs = _ts.comp_state()
+        _meta_file = _ts.meta_path(pbe=bool(_cs.get("pbe", False)))
+        if _cs and _meta_file.exists():
             _comp_name = _cs.get("selected", "")
             _ignore_emb = _cs.get("ignore_emblems", False)
             if _comp_name:
-                _meta = _cj.loads(_meta_file.read_text(encoding="utf-8"))
+                _meta = _ts.load_json_file(_meta_file)
                 _cd = _meta.get("comps", {}).get(_comp_name, {})
                 if _cd:
                     _lvplan = _cd.get("level_plan", "")

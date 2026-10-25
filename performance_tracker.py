@@ -372,9 +372,12 @@ def save_tft_rating(script_dir,tft_live,tft_coaching=None,report=None):
         _cs = _j.loads((_sd / "data" / "comp_state.json").read_text(encoding="utf-8"))
         _sel = _cs.get("selected", "")
         if _sel:
-            _meta_f = _sd / "data" / "meta" / "tft_set17_meta.json"
+            # RM-840: the resolved set's meta (tft/tft_set.py), its PBE twin
+            # second - never a hard-wired tft_set17_*.json.
+            from tft import tft_set as _ts
+            _meta_f = _ts.meta_path(root=_sd)
             if not _meta_f.exists():
-                _meta_f = _sd / "data" / "meta" / "tft_set17_pbe_meta.json"
+                _meta_f = _ts.meta_path(pbe=True, root=_sd)
             if _meta_f.exists():
                 _meta = _j.loads(_meta_f.read_text(encoding="utf-8-sig"))
                 _cd = _meta.get("comps", {}).get(_sel, {})

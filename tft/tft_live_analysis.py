@@ -183,6 +183,25 @@ _TFT_CHAMPIONS = {
     "Renekton","Olaf","Sylas","Darius","Sion","Irelia",
     "Yone","Yasuo","Lee Sin","Galio","Malphite","Garen","Taric",
 }
+
+
+def _ingested_names():
+    """RM-840: champion + trait names of EVERY ingested set (tft/tft_set.py).
+
+    The literal roster above is Set 17 plus legacy names. Set 18 is live
+    beside Set 17 and which one a game runs is live-game-gated, so the
+    whitelist takes the union of all ingested rosters; without it every Set
+    18 unit on the board read as "unknown". Fail-soft: no data, no change.
+    """
+    try:
+        from tft import tft_set
+        return tft_set.all_champion_names(), tft_set.all_trait_names()
+    except Exception:  # noqa: BLE001
+        return set(), set()
+
+
+_INGESTED_CHAMPIONS, _INGESTED_TRAITS = _ingested_names()
+_TFT_CHAMPIONS |= _INGESTED_CHAMPIONS
 _TFT_CHAMP_LOWER={c.lower() for c in _TFT_CHAMPIONS}
 _FAKE_AUGMENT_RE=re.compile(r'^augment\d*$',re.IGNORECASE)
 _NOT_UNIT_LABELS={
@@ -219,6 +238,27 @@ _TRAIT_NAMES = frozenset({
     "stellar","automata","conqueror","soul","void","arcane","channeler",
     "party crasher","divine","factory new","darkin","dragonborn",
     "astron","astronaut","primordial"})
+
+
+def _collision_free(traits, champs_lower):
+    """Ingested trait names that can never swallow a champion name.
+
+    _is_trait_label runs BEFORE the roster check in _sanitize_units, so a
+    trait equal to (or a "<trait> "/"<trait>/" prefix of) any champion would
+    turn that champion into "unknown". Such a trait is left out.
+    """
+    out = set()
+    for t in traits:
+        tl = str(t).lower().strip()
+        if not tl or any(c == tl or c.startswith(tl + " ") or c.startswith(tl + "/")
+                         for c in champs_lower):
+            continue
+        out.add(tl)
+    return out
+
+
+# RM-840: every ingested set's traits (Set 18 Elderwood, Fae, Coven, ...).
+_TRAIT_NAMES = _TRAIT_NAMES | frozenset(_collision_free(_INGESTED_TRAITS, _TFT_CHAMP_LOWER))
 _STAR_SUFFIX_RE = re.compile(r"\s*[1-3]\s*-?\s*(?:star|\*)\s*$", re.IGNORECASE)
 
 
@@ -252,7 +292,8 @@ def _sanitize_units(units):
     Roster measured 2026-10-03 against data/meta/tft_set17_champion_codes.json
     (64 names) and every comp unit in tft_set17_meta.json /
     tft_set17_pbe_meta.json (61 names): zero missing, so extending the
-    whitelist to the BOARD rewrites no legitimate champion.
+    whitelist to the BOARD rewrites no legitimate champion. RM-840 widened
+    the roster to every ingested set (tft/tft_set.py), Set 18 included.
     """
     out = []
     for u in (units if isinstance(units, list) else []):
