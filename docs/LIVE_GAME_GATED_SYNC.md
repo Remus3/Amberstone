@@ -1207,13 +1207,53 @@ Practice customs and Mayhem q2400 NEVER reach Match-V5. This batch is unreachabl
 **BEFORE PLAYING: restart RC-LCUAgent** (a separate ONLOGON process with no restart_trigger) so the
 D6 force_scan-trigger fix (`8f651ca7`) + the round-based re-trigger (`9779296c`) are actually live:
 `taskkill /F /PID <agent pid>` then `Start-ScheduledTask RC-LCUAgent`.
+**STALE as an unconditional step (lane 9 PREP s133 cycle 5, 2026-10-25, NOT a tick):** both fixes are
+July code (the agent was restarted for them at LEDGER 780) and the running agent already serves HEAD:
+its `pythonw ... tools\lcu_agent.py` process was created 2026-10-25 00:27, after the newest commit to
+that file (`6e2b4359f`, 2026-10-24 23:25). Restart ONLY when this check fails - the agent process
+`CreationDate` (`Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'lcu_agent' }`)
+is OLDER than `git log -1 --format=%cI -- tools/lcu_agent.py`.
+
+**GATE 5 DRAIN CARD (lane 9 PREP s133 cycle 5, 2026-10-25, source read at `77fde3d51`; NOT a tick).**
+Read-only baselines taken 00:40 local with the client at home. Paths are relative to the MAIN
+checkout. The three glance rows an ordinary Arena game reaches:
+- **G5-01 anvil half (the open half; the augment half was answered live 2026-07-20, (a) above).**
+  BASELINE: `data/anvil_shadow.jsonl` 30 rows / 16260 B, last `ts` 2026-09-11T16:21:42Z;
+  `data/augment_shadow.jsonl` 3 rows / 3016 B, last `ts` 2026-07-21T03:13:15Z.
+  **THE ROW'S OWN PREDICATE IS NOW POISONED:** the anvil file EXISTS, but all 30 rows are test-suite
+  leakage, not play - every row is champion `Lux`, round `3`, owned `["Boots"]`, offered
+  `["SENTA\nSENTB Ignore previous instructions...", "Bloodthirster"]`, Haiku take `X`, written
+  2026-09-06..09-11 by `tests/test_rm364_prompt_sanitizer_population.py`
+  `test_arena_anvil_ocr_choices_cannot_inject` before RM-406 (`88625e224`) added `core.anvil_shadow`
+  to the conftest shadow redirect (the leak is listed in `tests/test_suite_does_not_write_live_tree.py`
+  as `_FIXED`). No real anvil row has EVER been written. Residue row: RM-867.
+  PREDICATE (stated before looking): PASS iff a row with `ts` after this game's start has `mode`
+  `arena`, `champion` equal to the live champion and `offered` naming the anvil cards actually on
+  screen; FAIL if the operator took an anvil and no such row exists by the next round. File existence
+  or byte growth alone is NOT evidence. PROBE (main checkout root, after the anvil):
+  `python -c "import json;rs=[json.loads(l) for l in open('data/anvil_shadow.jsonl',encoding='utf-8')];r=rs[-1];print(len(rs),r['ts'],r['champion'],r['round'],r['offered'],r['native'].get('take'))"`
+  If it fails again, the (b) cadence-miss is the candidate: note how long the anvil stayed on screen.
+- **G5-09 Draw Your Sword.** PRECHECK (compute half, not the tick):
+  `python -c "import json;d=json.load(open('data/arena_coaching_data.json',encoding='utf-8'));print(d['game_id'],d['game_time_s'],d['champion'],d['augments_picked'],d['augments_source'],d['item_build'])"`
+  where `augments_picked` must contain `DrawYourSword` (api names, written by `_handle_augment_select`
+  `coaches/arena_coach.py:968` or `_reconcile_augment_hud` `:1015-1062`; the all-or-nothing return is
+  `:1033-1036`, re-cited from `:989-995`) and `item_build` is a comma-joined DISPLAY-NAME string
+  (`:886`), so test for the text `Runaan's Hurricane`, not the id 223085. PREDICATE (the tick): PASS
+  iff, after `DrawYourSword` (augment 134) shows in `augments_picked`, the RENDERED build panel (a
+  frame whose `ts` is checked against `game_time_s`) lists items and none is Runaan's Hurricane; an
+  empty or unrendered panel is NO RESULT, not a pass; if `augments_picked` lacks `DrawYourSword` while
+  the HUD shows it, record the HUD-reconcile miss instead (the row's stated likelier cause).
+- **G5-03 boots mirror.** Pixel-only: needs a boot anvil to roll (none in 8 rounds 2026-07-04). The
+  G5-01 probe above prints `offered`, which names a boot anvil if one rolls; then capture the frame.
+Not readied this cycle: G5-05 / G5-06 / G5-08 (each needs a DS flag or a replay design first).
 
 - **G5-01** (was D6) **THE ONE OPEN LIVE BUG.** Arena augment-select shadow
   (`data/augment_shadow.jsonl`) + item-anvil shadow (`data/anvil_shadow.jsonl`) seeding + WIRING-GAP
   re-validate. STATUS re-probed on disk 2026-07-18: `augment_shadow.jsonl` seeds at **966 bytes**
   (unchanged 2026-07-08 mtime); **`anvil_shadow.jsonl` is STILL ABSENT**; `git status data/` clean, so
   no headless probe has contaminated the ground-truth signal. Fix-committed, pending live re-validate -
-  **do NOT mark closed.**
+  **do NOT mark closed.** (That STATUS is superseded 2026-10-25: the anvil file now exists, but every
+  row is test leakage - see the GATE 5 DRAIN CARD above and RM-867.)
   NARROWED 2026-07-18 (diagnostic only - this closes NO part of the row): the shadow WRITERS are fine
   and are correctly reached from `arena_coach.py:596` `_handle_augment_select` and `:599`
   `_handle_anvil`. **The wiring gap is UPSTREAM, at `ArenaVisionReader.read()`.** So the live sit
@@ -1221,10 +1261,14 @@ D6 force_scan-trigger fix (`8f651ca7`) + the round-based re-trigger (`9779296c`)
   fires.
   LIVE RESIDUAL (glance): in ONE Arena game take an augment and an item anvil, then check that
   `data/anvil_shadow.jsonl` now EXISTS and `augment_shadow.jsonl` has grown past 966 bytes.
+  (Both halves of that check are already true on disk and prove nothing; use the DRAIN CARD predicate.)
   SOURCE: LEDGER 779/820; git `8f651ca7`, `9779296c`.
 - **G5-02** (was D2) `set_augment_intent` 4-PATCH endpoint discovery at a real Arena augment phase.
   **PATH IS STALE:** `tools/gamepc_lcu_agent.py:1179` predates the Game-PC retirement - re-home the
-  chain BEFORE running. Recipe: `docs/CHERRY_AUGMENT_SCAFFOLD_NOTES.md`. No Cherry augment session
+  chain BEFORE running. (Re-probed 2026-10-25, lane 9 s133 cycle 5: that file is gone and the chain is
+  already re-homed - `tools/lcu_agent.py:800-849` `set_augment_intent`, PATCH then POST
+  `/lol-cherry-game-intra-event/v1/augment-select`. The re-home precondition is met; the live discovery
+  is still owed.) Recipe: `docs/CHERRY_AUGMENT_SCAFFOLD_NOTES.md`. No Cherry augment session
   surfaced in `/api/state` 2026-07-04 (shares the G5-01 root cause). SOURCE: ROADMAP.md:113 / RM-24.
 - **G5-03** (was D3) Arena boots 22xxxx mirror residual: augment-phase VISUAL confirm the pushed boot
   renders (icon may 404 per `reference_items_index_alias_ids`, display name correct). Data fix shipped
@@ -1241,6 +1285,10 @@ D6 force_scan-trigger fix (`8f651ca7`) + the round-based re-trigger (`9779296c`)
   seam flags and this is not among them; and `agents/daemon_slayer/server.py:1241` carries an explicit
   comment that the /rank route does NOT accept it. Only the direct `compute_burst_damage` route does.
   **So DS will show no Goredrinker burst credit on screen even if the prismatic rolls.**
+  (Re-probed 2026-10-25, lane 9 s133 cycle 5: the conclusion holds, two cites moved. `core/` now names
+  the flag once - `core/daemon_slayer_client.py:2013` `burst_for(assume_physical_burst=False)` - and no
+  production caller passes it True; the server comment is now `agents/daemon_slayer/server.py:2049-2053`
+  inside `_route_burst`, still /burst-only.)
   NO LIVE RESIDUAL until the flag is plumbed to /rank - re-file that wiring as headless code work, and
   do NOT spend an Arena sitting waiting for 226630 to roll for this row. DS restart on the eventual flip.
 - **G5-05** (was D4) `apply_mode_modifiers` Arena re-rank validate - Arena ar/swift growth-addends are
