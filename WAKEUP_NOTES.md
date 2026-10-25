@@ -6,6 +6,21 @@
 
 ---
 
+# 2026-10-25 - session 133: upstream + DS 1.290.0 + TFT Set 18 ingest, A1-A27 shipped, three headless lanes
+
+- **Operator steers:** check upstream / scheduled tasks / lolmath / engines / TFT; expand DS; then headless research + queue + gated lanes (account 2) while away, every hook and spawn window-silent; interrupt 2026-10-25 "finish up current; i want to work on tft specifically today".
+- **U1-U5:** git == origin, upstream drift clean; feed-watch rename blindness RM-839 `53cd0f889`; 26 RC-* tasks healthy (no change); lolmath 26.21 via the new `--lolmath-only` (adjudicated over `--force`, which the Meraki Settled line bars); RM-808 (a)-(d); ENGINE 1.290.0 + build tables `136019129`; CLAUDE.md Meraki Settled amended `48b012f22`; TFT set resolver + CommunityDragon Set 18 ingest RM-840 `e490a1eeb`. DS :8860 1.290.0 / 16.21.1 / 173.
+- **D1-D2:** DS facet research; focus board RM-841, live-wired shadow-only RM-844 / RM-854.
+- **F1:** the window flashes were pythonw `-m ruff` in the PostToolUse lint hook and `precommit_gate`; `54d61bfa1` runs `-m` through python.exe + CREATE_NO_WINDOW; FIX note to MAIN 1/1.
+- **A1-A27 (mergers B-J, each verifier-gated; LEDGER 1801-1859):** RM-846 (third-party Set 16 / 17 meta removed), RM-845 (set-aware TFT prompt), RM-855 / RM-858 / RM-862 (TFT schedule per set), RM-868 (Arena 0.7% = relay plumbing), RM-869, RM-870, RM-860 / RM-877, RM-852 / RM-859 / RM-867 / RM-872 (shadow test-leak family), RM-853 / RM-863, RM-850, RM-483, RM-718a, RM-874, RM-875, RM-878, RM-857, RM-866, RM-851b, RM-880a, RM-882; RM-865 closed mis-filed. Gated dual suites: batch H 43452 and batch I 43535 passed.
+- **Lanes (kit route, account 2):** queue shipped RM-837, RM-838 non-DS, RM-836, RM-830, RM-825, RM-813, RM-815 partial, RM-816 partial; research re-probed long-open rows in 7 cycles; gated drained nothing (no game in any window) and shipped RM-879. All three drivers stopped on S133_LANES_STOP (last at 06:09).
+- **Known red:** batch I push ci `40184315636` failed on `tests/test_progress_reaper_rm816.py` [rename-move] x2, Linux only; the verified fix is UNCOMMITTED in `.claude/worktrees/rc-lane-queue` (copy `ops/runtime/s133_q009_rm816_linux_fix.patch`). Batch J push ci `40187787557` green (its slice did not run that file).
+- **/done (LEDGER 1860):** ROADMAP size pass 80814 -> 73166 B (`docs/ROADMAP_HISTORY.md` `## 2026-10-25d`); memory 3 new + 2 updated; full suite dispatched `40189033501`.
+- **Do NOT redo:** everything above; C1 RM-837 was shipped by the queue lane (`7a832062c`).
+- **Next:** a scoped TFT session (LT-01..LT-03, Set 18 meta skeleton, roll odds), after landing the RM-816 Linux test fix.
+
+---
+
 # 2026-10-24c - session 132: RM-835 shipped (18 sites), CLI pin 2.1.310, RM-838 filed
 
 - **C1 = RM-835 (LEDGER 1795):** `fbcdc9952` - 17 :8888 reply sites (15 catch-all 500s + `routes_ds_statcheck` detail + `routes_sr_draft` notes) send a fixed "see logs" line, cause logged scrubbed; `dashboard/_errors.py` `send_error` gained `fields` / `log_traceback`; test `tests/test_rm835_dashboard_reply_scrub.py`. Verifier pass 1 PARTIAL found an 18th: `agents/daemon_slayer/combo.py:295` burst-walker note reached `/api/ds-combo`; `965b7bb92` fixed it at the source (+ `mana_sim.py:570`, `burst.py:671`); pass 2 CONFIRM (125 passed). No ENGINE_VERSION bump.
@@ -28,15 +43,3 @@
 - **Inbox:** SS 1243 (INFORMATION / TERMINAL) and 1525 (FIX), both to MAIN, triaged; no replies.
 - **Do NOT redo:** RM-824 (only `dashboard/routes_loop_control.py`), the board recreation, the EXTRA_IGNORE entries.
 - **Next:** RM-835 (security, the RM-824 class), then the carried s130 list (RM-830, RM-825, ...); RM-836 / RM-837 with it; the batched MAIN note; S6 at the next live game.
-
----
-
-# 2026-10-24 - session 130: read-backs only (C1-C3 green), nothing shipped, C4-C25 carried
-
-- **Start:** operator typed "continue"; a read-only helper read the hand-off and rendered the board (`fleet_board.py calls --session 130`, exit 0, if_version 21); the session-start board push was NOT made.
-- **C1 (read back):** s129 /done dispatch `40034861146` on `0781e3c83` success - 42176 passed, 448 skipped, 18852 subtests, 2683.82 s; advisory mypy 417 errors / 84 files (was 400 / 82 in `39976892990`); skips 340 -> 448 vs that dispatch (attached to RM-833, cause not investigated).
-- **C2 (read back):** CPU 40 percent, 15.8 / 31.6 GB free; no RC orphans; HEAD == @{u} == `c107a1725`; inbox_tick --pending 0 rows; 0 open PRs.
-- **C3 (read back):** docs-guards `40034820217` + codeql `40034820135` success; wrap commit `c107a1725` ci `40035677558`, docs-guards `40035677605`, codeql `40035677509` success.
-- **Full suite (2c):** covered by `c107a1725` (nightly `40094097286`, in progress at the wrap); no dispatch.
-- **Do NOT redo:** C1-C3 above. No tracked edit this session besides this wrap.
-- **Next:** RM-824 (security), RM-830, RM-825, then RM-819 (d), RM-807 .. RM-834 by topic; one batched MAIN note; S6 at the next live game.

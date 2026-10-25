@@ -41,6 +41,18 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-24 - session 130: read-backs only (C1-C3 green), nothing shipped, C4-C25 carried
+
+- **Start:** operator typed "continue"; a read-only helper read the hand-off and rendered the board (`fleet_board.py calls --session 130`, exit 0, if_version 21); the session-start board push was NOT made.
+- **C1 (read back):** s129 /done dispatch `40034861146` on `0781e3c83` success - 42176 passed, 448 skipped, 18852 subtests, 2683.82 s; advisory mypy 417 errors / 84 files (was 400 / 82 in `39976892990`); skips 340 -> 448 vs that dispatch (attached to RM-833, cause not investigated).
+- **C2 (read back):** CPU 40 percent, 15.8 / 31.6 GB free; no RC orphans; HEAD == @{u} == `c107a1725`; inbox_tick --pending 0 rows; 0 open PRs.
+- **C3 (read back):** docs-guards `40034820217` + codeql `40034820135` success; wrap commit `c107a1725` ci `40035677558`, docs-guards `40035677605`, codeql `40035677509` success.
+- **Full suite (2c):** covered by `c107a1725` (nightly `40094097286`, in progress at the wrap); no dispatch.
+- **Do NOT redo:** C1-C3 above. No tracked edit this session besides this wrap.
+- **Next:** RM-824 (security), RM-830, RM-825, then RM-819 (d), RM-807 .. RM-834 by topic; one batched MAIN note; S6 at the next live game.
+
+---
+
 # 2026-10-23b - session 129: RM-810 / RM-811 / RM-812 / RM-814 / RM-818 / RM-832 shipped, RM-819 / RM-822 partial, RM-824..RM-834 filed
 
 - **Start (LEDGER 1780):** s128 dispatch `39976892990` green (41764 passed); s128 wrap push ci + docs-guards green.
