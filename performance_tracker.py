@@ -7,6 +7,7 @@ import json
 import os
 import re
 import logging
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -125,26 +126,40 @@ _MODE_CATEGORY = {"CLASSIC":"SR","RANKED_SOLO":"SR","RANKED_FLEX":"SR","PRACTICE
 _EXCLUDED_MODES = {"PRACTICETOOL","TUTORIAL","TUTORIAL_MODULE_1","TUTORIAL_MODULE_2","TUTORIAL_MODULE_3"}
 _match_db = None
 def _get_db(sd):
-    # RM-888: keyed by the resolved path. The cache used to bind the FIRST
-    # caller's root for the whole process, so a later root's rows landed in
-    # the earlier root's match_history.db (in a test process: the live one).
-    # The key is the cached instance's OWN path, so a caller that swaps
-    # `_match_db` directly can never leave a stale key behind.
+    """The MatchDB under THIS script root.
+
+    s134 N8 / RM-888: this cached the first root it was ever handed and
+    returned that database for every later call, whatever ``sd`` said - so one
+    process that touched the real root first sent every later save (a tmp test
+    root included) into the live data/match_history.db. That is the measured
+    shape of the 8,209 TFT junk rows (one game id, 7,817 x "Dark Star Vertical"
+    / 8th / 0 s, 114 x "Test Comp" - tests/test_tft_set_resolver.py's literal).
+    The cache now holds only while the root is the same: it is keyed by the
+    RESOLVED path, compared against the cached instance's OWN path (so a caller
+    that swaps `_match_db` directly can never leave a stale key behind), and the
+    instance replaced is closed. The instance keeps the path as given."""
     global _match_db
     try:
-        path = (Path(sd) / "data" / "match_history.db").resolve()
+        given = Path(sd) / "data" / "match_history.db"
+        path = given.resolve()
     except (OSError, TypeError, ValueError, RuntimeError) as e:
         _log.warning("MatchDB path for %r unusable: %s", sd, e)
         return None
-    if _match_db is None or getattr(_match_db, "_path", None) != path:
-        old = _match_db
+    cur = _match_db
+    try:
+        cur_path = Path(getattr(cur, "_path", "")).resolve() if cur is not None else None
+    except (OSError, TypeError, ValueError, RuntimeError):
+        cur_path = None
+    if cur is None or cur_path != path:
         _match_db = None
-        if old is not None:
-            try: old.close()
+        if cur is not None:
+            try: cur.close()
             except Exception as e: _log.debug("MatchDB close failed: %s", e)  # noqa: BLE001
         try:
-            from core.match_db import MatchDB; _match_db = MatchDB(path)
-        except Exception as e: _log.warning("MatchDB init failed: %s", e)  # noqa: BLE001
+            from core.match_db import MatchDB; _match_db = MatchDB(given)
+        except Exception as e:  # noqa: BLE001
+            _log.warning("MatchDB init failed: %s", e)
+            return None
     return _match_db
 
 
@@ -325,7 +340,12 @@ def _identify_comp(traits,units):
         if top: return " / ".join(top)
     if units: return " + ".join([u for u in units if u and u != "unknown"][:3])
     return ""
-def _core_units(units): return [u.split(" ")[0] if " " in u and "star" in u else u for u in (units or []) if u and u != "unknown"][:3]
+_STAR_SUFFIX = re.compile(r"\s+\d+\s*-?\s*star$", re.IGNORECASE)
+def _core_units(units):
+    # The star suffix only: "Mama Beak 1-star" -> "Mama Beak" (a bare split on
+    # the first space cut a two-word unit name to its first word).
+    return [_STAR_SUFFIX.sub("", u) for u in (units or [])
+            if isinstance(u, str) and u and u != "unknown"][:3]
 
 def calculate_tft_rating(placement,stage=0,level=0,game_mins=0.0,traits=None,units=None,augments=None,is_duo=False):
     mx=4 if is_duo else 8
@@ -346,14 +366,13 @@ def _tft_game_id() -> int:
     """RM-889 (4): the finished TFT game's Riot gameId, or 0 = unknown (the
     matches.game_id schema DEFAULT, the same "no id" value save_rating writes).
 
-    The TFT row used to carry no game_id at all, so every TFT row held 0 and
-    none could be joined to the RM-616 store (data/tft_matches/<gameId>.*).
-    Neither TFT data file the frozen caller hands over carries an id; the
-    standalone client's per-round TFTEoGStats.json does, and read_eog returns
-    it only while FRESH (EOG_MAX_AGE_S) and a TFT game, so a file older than
-    that window reads as unknown (a game lasts far longer, so a fresh file is
-    this game's). Never raises, and never returns a value the INTEGER column
-    rejects: the id is metadata, never worth the row."""
+    The legacy-path fallback since s134 N8 (the game's own record names its id
+    when one exists): neither TFT data file the frozen caller hands over
+    carries an id; the standalone client's per-round TFTEoGStats.json does, and
+    read_eog returns it only while FRESH (EOG_MAX_AGE_S) and a TFT game, so a
+    file older than that window reads as unknown (a game lasts far longer, so a
+    fresh file is this game's). Never raises, and never returns a value the
+    INTEGER column rejects: the id is metadata, never worth the row."""
     try:
         from tft import tft_standalone as _tsa
         eog = _tsa.read_eog()
@@ -371,106 +390,237 @@ def _tft_game_id() -> int:
     # save_match and lost the whole row (S134 verifier).
     return gid if 0 < gid < 2**63 else 0
 
-def save_tft_rating(script_dir,tft_live,tft_coaching=None,report=None):
-    _report_set(report, False, False)
-    if not tft_live: return ("", [])
-    variant=(tft_coaching or {}).get("variant","standard")
-    # _num on both feed-supplied numbers: same root cause as the save_rating
-    # nulls. A null alive_others crashed at the (alive_others+1) placement
-    # derivation below, and a null stage crashed the `0<stage<=4` compare in
-    # calculate_tft_rating - reached only when stage_round fails to parse, so
-    # the obvious probe (a well-formed stage_round) hides it.
-    alive_others=_num((tft_coaching or {}).get("alive_others",7),7)
-    is_duo=variant in ("double_up","TFT_DOUBLE_UP","TFT_PAIRS")
-    mx=4 if is_duo else 8
-    placement=_parse_tft_placement(tft_live.get("last_round_result","") or "")
-    if placement<1 and tft_coaching:
-        if is_duo:
-            placement=max(1,(alive_others+1)//2)
-        else:
-            placement=max(1,alive_others+1)
-    if placement<1 or placement>mx: return ("", [])
-    ss=tft_live.get("stage_round","");sn=0
-    if ss:
-        # Narrowed 2026-07-19: the only raising statement is int(); it raises
-        # ValueError on a non-numeric stage prefix. TypeError covers a
-        # stage_round whose str()/split shape is not a plain string. No other
-        # statement in the try can raise.
-        try:sn=int(str(ss).split("-")[0])
-        except (TypeError, ValueError) as _e: _log.debug("TFT stage parse: %s", _e)  # QUAL-002
-    if not sn and tft_coaching:sn=_num(tft_coaching.get("stage",0))
-    lv=tft_live.get("level") or (tft_coaching or {}).get("level",0) or 0
-    gs=(tft_coaching or {}).get("game_time_s",0);gm=max(0,gs/60) if gs else 0
-    traits=tft_live.get("traits_active",[]) or [];units=tft_live.get("board_units",[]) or []
-    augments=tft_live.get("augments",[]) or []
-    # Bound BEFORE the try: the enrichment below is best-effort, but _sel is
-    # read unconditionally at the `comp=` line past the handler. Binding it
-    # inside the try meant a missing/corrupt comp_state.json turned a swallowed
-    # read error into an UnboundLocalError one line later (data/comp_state.json
-    # is a gitignored data/ artifact, so a clean checkout hits this; the caller
-    # is app/_game_lifecycle.py:168 at TFT game end).
-    _sel = ""
-    _target = None
+
+_TFT_DUO_VARIANTS = ("double_up", "TFT_DOUBLE_UP", "TFT_PAIRS")
+# A legacy-path rating (vision feed / coaching file) has no end time of its
+# own; it is the game that just ended.
+_TFT_SOURCE_VISION = "vision_last_round"
+_TFT_SOURCE_ALIVE = "coaching_alive_others"
+
+
+def _tft_final(script_dir, game_id=None, store_only=False):
+    """s134 N8: the ended game's real record (tft/tft_final_board.py) - the
+    RM-616 store first, the standalone client's finished per-round file
+    second - or None. Never raises: the legacy inputs still rate."""
     try:
-        import json as _j
+        from tft import tft_final_board as _fb
+        if store_only:
+            return _fb.store_final(game_id, root=Path(script_dir))
+        return _fb.resolve_final(Path(script_dir), game_id=game_id)
+    except Exception as e:  # noqa: BLE001
+        _log.warning("TFT final-board read failed: %s", e)
+        return None
+
+
+def _tft_input_game_id(tft_live, tft_coaching):
+    for src in (tft_live, tft_coaching):
+        gid = _num((src or {}).get("game_id"), 0)
+        if isinstance(gid, (int, float)) and gid > 0:
+            return int(gid)
+    return None
+
+
+def _legacy_tft_placement(tft_live, tft_coaching, is_duo):
+    """(placement, source) from the pre-N8 inputs, (0, "") when they hold none.
+
+    N8 root cause: ``alive_others`` used to default to 7 when the coaching
+    file did not carry it - and the declared blank it is reset to at TFT game
+    end never does - so every unknown placement became 8th / F. It now counts
+    only when the file carries it AND it can be a result: the local player is
+    out (health 0 / is_dead) or nobody else is alive. A live player with others
+    alive is a mid-game snapshot, not a placement."""
+    placement = _parse_tft_placement((tft_live or {}).get("last_round_result", "") or "")
+    if placement >= 1:
+        return placement, _TFT_SOURCE_VISION
+    tc = tft_coaching or {}
+    # _num: a null alive_others / health is "absent" (lane 8 cycle 23).
+    alive = _num(tc.get("alive_others"), None)
+    if alive is None or alive < 0:
+        return 0, ""
+    hp = _num(tc.get("health"), None)
+    if tc.get("is_dead") is not True and hp is not None and hp > 0 and alive > 0:
+        return 0, ""
+    alive = int(alive)
+    placement = max(1, (alive + 1) // 2) if is_duo else max(1, alive + 1)
+    return placement, _TFT_SOURCE_ALIVE
+
+
+def _planner_target(script_dir):
+    """RM-889: the selected comp's TARGET board, under its own key
+    (``tft_comp_target``), or None. It used to OVERWRITE the measured units /
+    traits / augments (and back-fill an empty reading), so the rating file and
+    the match_history.db row recorded the guide, not the game. Only when the
+    resolved set's meta defines the selected comp (the _planner_comp rule);
+    only on the legacy game-end path, never on a re-rate of a stored game."""
+    try:
         _sd = Path(script_dir)
-        _cs = _j.loads((_sd / "data" / "comp_state.json").read_text(encoding="utf-8"))
-        _sel = _cs.get("selected", "")
-        if _sel:
-            # RM-840: the resolved set's meta (tft/tft_set.py), its PBE twin
-            # second - never a hard-wired tft_set17_*.json.
-            from tft import tft_set as _ts
-            _meta_f = _ts.meta_path(root=_sd)
-            if not _meta_f.exists():
-                _meta_f = _ts.meta_path(pbe=True, root=_sd)
-            if _meta_f.exists():
-                _meta = _j.loads(_meta_f.read_text(encoding="utf-8-sig"))
-                _cd = _meta.get("comps", {}).get(_sel, {})
-                if _cd:
-                    # RM-889: the comp's TARGET board, under its own key.
-                    # It used to overwrite units / traits / augments (and
-                    # back-fill an empty reading), so the rating file and the
-                    # match_history.db row recorded the guide, not the game.
-                    _target = {
-                        "units": list(_cd.get("lv8") or _cd.get("lv7") or _cd.get("core_units") or []),
-                        "traits": [_sel] + [f"{e} Emblem" for e in (_cd.get("emblem_value") or [])[:2]],
-                        "augments": list(_cd.get("augments_best") or [])[:3],
-                    }
-    except Exception as _e:  # QUAL-002  # noqa: BLE001
-        import logging as _lg; _lg.getLogger(__name__).debug("TFT data enrichment: %s", _e)
-    comp=_sel if _sel else _identify_comp(traits,units);core=_core_units(units)
-    if not comp:comp=_identify_comp(traits,units)
-    grade,notes=calculate_tft_rating(placement,sn,lv,gm,traits,units,augments,is_duo=is_duo)
-    if not grade: return ("", [])
-    lmap=_TFT_LABEL_DUO if is_duo else _TFT_LABEL
-    _log.info("TFT rating: placement=%d is_duo=%s alive=%d variant=%s grade=%s",placement,is_duo,alive_others,variant,grade)
-    _raw_placement = tft_live.get("unit_placement", "") or ""
+        _cs = json.loads((_sd / "data" / "comp_state.json").read_text(encoding="utf-8"))
+        _sel = _cs.get("selected", "") if isinstance(_cs, dict) else ""
+        if not _sel or not isinstance(_sel, str):
+            return None
+        from tft import tft_set as _ts
+        _meta_f = _ts.meta_path(root=_sd)
+        if not _meta_f.exists():
+            _meta_f = _ts.meta_path(pbe=True, root=_sd)
+        if not _meta_f.exists():
+            return None
+        _meta = json.loads(_meta_f.read_text(encoding="utf-8-sig"))
+        comps = _meta.get("comps") if isinstance(_meta, dict) else None
+        _cd = comps.get(_sel) if isinstance(comps, dict) else None
+        if not isinstance(_cd, dict) or not _cd:
+            return None
+        return {
+            "units": list(_cd.get("lv8") or _cd.get("lv7") or _cd.get("core_units") or []),
+            "traits": [_sel] + [f"{e} Emblem" for e in (_cd.get("emblem_value") or [])[:2]],
+            "augments": list(_cd.get("augments_best") or [])[:3],
+        }
+    except Exception as _e:  # QUAL-002  # noqa: BLE001 - best-effort label
+        _log.debug("TFT planner target: %s", _e)
+        return None
+
+
+def _planner_comp(script_dir):
+    """The overlay comp planner's selection (data/comp_state.json), ONLY when
+    the resolved set's meta defines that comp. N8: the live file held a Set 17
+    comp ("Dark Star Vertical", 2026-09-03) that the Set 18 meta does not have,
+    and it named a Set 18 game. The selection is a plan, not the board, so it
+    never replaces observed units / traits / augments."""
+    try:
+        _sd = Path(script_dir)
+        _cs = json.loads((_sd / "data" / "comp_state.json").read_text(encoding="utf-8"))
+        _sel = _cs.get("selected", "") if isinstance(_cs, dict) else ""
+        if not _sel or not isinstance(_sel, str):
+            return ""
+        # RM-840: the resolved set's meta (tft/tft_set.py), its PBE twin
+        # second - never a hard-wired tft_set17_*.json.
+        from tft import tft_set as _ts
+        _meta_f = _ts.meta_path(root=_sd)
+        if not _meta_f.exists():
+            _meta_f = _ts.meta_path(pbe=True, root=_sd)
+        if not _meta_f.exists():
+            return ""
+        _meta = json.loads(_meta_f.read_text(encoding="utf-8-sig"))
+        comps = _meta.get("comps") if isinstance(_meta, dict) else None
+        return _sel if isinstance(comps, dict) and comps.get(_sel) else ""
+    except Exception as _e:  # QUAL-002  # noqa: BLE001 - best-effort label
+        _log.debug("TFT planner comp: %s", _e)
+        return ""
+
+
+def _tft_rating_record(script_dir, final, tft_live, tft_coaching, variant):
+    """Build (grade, notes, data, row) for one TFT game, or None.
+
+    ``final`` (tft/tft_final_board.final_from_record) wins outright when
+    present: placement, board, traits, level, stage and length all come from
+    the game's own record. Otherwise the legacy live / coaching inputs."""
+    tft_live = tft_live or {}
+    tc = tft_coaching or {}
+    is_duo = variant in _TFT_DUO_VARIANTS
+    if final:
+        is_duo = is_duo or bool(final.get("is_duo"))
+        placement = final["placement"]
+        if is_duo and placement > 4 and placement == final.get("lobby_placement"):
+            placement = (placement + 1) // 2
+        source = final.get("source") or ""
+        sn = int(final.get("stage") or 0)
+        lv = int(final.get("level") or 0)
+        gs = final.get("game_length_s") or 0
+        traits = list(final.get("traits") or [])
+        units = list(final.get("units") or [])
+        augments = list(final.get("augments") or [])
+        comp = final.get("comp") or _identify_comp(traits, units)
+        game_id = int(final.get("game_id") or 0)
+        extra = {"tft_game_id": game_id, "tft_set": final.get("set_number") or 0,
+                 "tft_hp": final.get("hp"), "tft_board": final.get("board") or [],
+                 "tft_placement_source": source,
+                 "tft_lobby_placement": final.get("lobby_placement")}
+        ended = final.get("ended_at_unix")
+        raw_placement = ""
+    else:
+        placement, source = _legacy_tft_placement(tft_live, tc, is_duo)
+        if placement < 1:
+            return None
+        ss = tft_live.get("stage_round", ""); sn = 0
+        if ss:
+            # Narrowed 2026-07-19: the only raising statement is int(); it raises
+            # ValueError on a non-numeric stage prefix. TypeError covers a
+            # stage_round whose str()/split shape is not a plain string.
+            try: sn = int(str(ss).split("-")[0])
+            except (TypeError, ValueError) as _e: _log.debug("TFT stage parse: %s", _e)  # QUAL-002
+        # _num on the feed-supplied stage: a null used to crash the `0<stage<=4`
+        # compare in calculate_tft_rating (lane 8 cycle 23).
+        if not sn: sn = _num(tc.get("stage", 0))
+        lv = tft_live.get("level") or tc.get("level", 0) or 0
+        gs = tc.get("game_time_s", 0) or 0
+        traits = tft_live.get("traits_active", []) or []
+        units = tft_live.get("board_units", []) or []
+        augments = tft_live.get("augments", []) or []
+        comp = ((_planner_comp(script_dir) if not (traits or units) else "")
+                or _identify_comp(traits, units))
+        game_id = _tft_input_game_id(tft_live, tc) or _tft_game_id()
+        extra = {"tft_game_id": game_id, "tft_placement_source": source}
+        target = _planner_target(script_dir)
+        if target:
+            extra["tft_comp_target"] = target
+        ended = None
+        raw_placement = tft_live.get("unit_placement", "") or ""
+    mx = 4 if is_duo else 8
+    if placement < 1 or placement > mx:
+        return None
+    gm = max(0, gs / 60) if gs else 0
+    core = _core_units(units)
+    grade, notes = calculate_tft_rating(placement, sn, lv, gm, traits, units, augments, is_duo=is_duo)
+    if not grade:
+        return None
+    lmap = _TFT_LABEL_DUO if is_duo else _TFT_LABEL
     try:
         from tft.placement_aggregator import parse_unit_placement as _pup
-        _unit_positions = _pup(_raw_placement)
+        _unit_positions = _pup(raw_placement)
     except Exception:  # noqa: BLE001
         _unit_positions = {}
-    data={"rating":grade,"label":lmap.get(placement,""),"champion":comp or f"TFT #{placement}",
-        "game_mode":"TFT_DOUBLE_UP" if is_duo else "TFT","mode_category":"TFT",
-        "game_time":f"{int(gm)}:{int(gs%60):02d}" if gs else "?",
-        "stats":{"kda":f"#{placement}","cs_per_min":f"Lv{lv}","gold_per_min":f"Stage {sn}" if sn else "?"},
-        "notes":notes,"timestamp":datetime.now().strftime("%Y-%m-%d %H:%M"),
-        "tft_placement":placement,"tft_stage":sn,"tft_level":lv,
-        "tft_comp":comp,"tft_traits":traits,"tft_units":units,"tft_augments":augments,"tft_core_units":core,
-        "tft_unit_positions":_unit_positions,"tft_unit_placement":_raw_placement}
-    if _target:
-        data["tft_comp_target"] = _target
-    _written = False
+    data = {"rating": grade, "label": lmap.get(placement, ""), "champion": comp or f"TFT #{placement}",
+            "game_mode": "TFT_DOUBLE_UP" if is_duo else "TFT", "mode_category": "TFT",
+            "game_time": f"{int(gm)}:{int(gs % 60):02d}" if gs else "?",
+            "stats": {"kda": f"#{placement}", "cs_per_min": f"Lv{lv}" if lv else "Lv?",
+                      "gold_per_min": f"Stage {sn}" if sn else "?"},
+            "notes": notes, "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "tft_placement": placement, "tft_stage": sn, "tft_level": lv,
+            "tft_comp": comp, "tft_traits": traits, "tft_units": units, "tft_augments": augments,
+            "tft_core_units": core,
+            "tft_unit_positions": _unit_positions, "tft_unit_placement": raw_placement}
+    data.update(extra)
+    data["tft_ended_at_unix"] = float(ended) if ended else time.time()
+    items = [i for u in (extra.get("tft_board") or []) for i in (u.get("items") or [])]
+    row = {"mode": "TFT", "champion": comp, "grade": grade, "game_time_s": gs,
+           "tft_placement": placement, "tft_stage": sn, "tft_level": lv, "tft_comp": comp,
+           "tft_traits": traits, "tft_units": units, "tft_augments": augments,
+           "tft_items": items, "notes": notes, "label": lmap.get(placement, ""),
+           "game_id": game_id,
+           "raw_data": json.dumps({"game_mode": data["game_mode"], "placement_source": source,
+                                   "set": extra.get("tft_set"), "hp": extra.get("tft_hp"),
+                                   "lobby_placement": extra.get("tft_lobby_placement"),
+                                   "board": extra.get("tft_board") or []}, default=str)}
+    _log.info("TFT rating: placement=%d is_duo=%s source=%s game=%s variant=%s grade=%s",
+              placement, is_duo, source or "-", game_id or "-", variant, grade)
+    return grade, notes, data, row
+
+
+def _tft_db_write(script_dir, row) -> None:
+    db = _get_db(script_dir)
+    if not db:
+        return
     try:
-        _atomic_write_json(_mode_file(script_dir, "TFT"), data)
-        _written = True
-    except Exception as _e:  # noqa: BLE001
-        _log.warning("TFT rating save failed: %s", _e)  # QUAL-002
-    _report_set(report, True, _written)
-    db=_get_db(script_dir)
-    if db:
-        try:db.save_match({"mode":"TFT","champion":comp,"grade":grade,"game_time_s":gs,"tft_placement":placement,"tft_stage":sn,"tft_level":lv,"tft_comp":comp,"tft_traits":traits,"tft_units":units,"tft_augments":augments,"tft_items":"","notes":notes,"label":lmap.get(placement,""),"game_id":_tft_game_id()})
-        except Exception as e:_log.warning("TFT DB save failed: %s",e)  # noqa: BLE001
+        # One row per game: a known game id updates the row an earlier rating
+        # of the same game wrote (game end, then the store record landing).
+        if row.get("game_id"):
+            db.upsert_by_game_id(row)
+        else:
+            db.save_match(row)
+    except Exception as e:  # noqa: BLE001
+        _log.warning("TFT DB save failed: %s", e)
+
+
+def _tft_heatmap() -> None:
     try:
         from tft.placement_aggregator import update_heatmap as _uh
         _uh()
@@ -479,12 +629,142 @@ def save_tft_rating(script_dir,tft_live,tft_coaching=None,report=None):
     # dir, so the reachable set is at least ImportError / OSError / KeyError /
     # TypeError / ValueError and is not closed by inspection. Could not rule out
     # further types from build_heatmap's own callees, so the handler stays broad.
-    # Level lifted debug -> warning: the two sibling save failures in this same
-    # function (the rating write and the DB write above) both log at warning, so
-    # a silently-dead heatmap was the only invisible failure here.
+    # Level lifted debug -> warning: the two sibling save failures (the rating
+    # write and the DB write) both log at warning, so a silently-dead heatmap
+    # was the only invisible failure here.
     except Exception as _e:  # noqa: BLE001
         _log.warning("Heatmap update: %s", _e)
+
+
+def save_tft_rating(script_dir,tft_live,tft_coaching=None,report=None,game_id=None):
+    """Rate the TFT game that just ended (the lifecycle game-end trigger).
+
+    s134 N8: placement / board / traits / comp come from the game's own record
+    (``_tft_final``) whenever one exists; the vision / coaching inputs are the
+    fallback, and with no placement source at all NOTHING is written (it used
+    to write a fabricated 8th / F). ``game_id`` is optional: the standalone
+    client's per-round file names the game otherwise."""
+    _report_set(report, False, False)
+    tft_live = tft_live if isinstance(tft_live, dict) else {}
+    tc = tft_coaching if isinstance(tft_coaching, dict) else {}
+    variant = tc.get("variant", "standard") or "standard"
+    final = _tft_final(script_dir, game_id or _tft_input_game_id(tft_live, tc))
+    if final is None and not tft_live:
+        return ("", [])
+    built = _tft_rating_record(script_dir, final, tft_live, tc, variant)
+    if built is None:
+        _log.info("TFT rating skipped: no placement source (store, per-round file, "
+                  "vision, coaching) holds this game's result")
+        return ("", [])
+    grade, notes, data, row = built
+    _written = False
+    try:
+        _atomic_write_json(_mode_file(script_dir, "TFT"), data)
+        _written = True
+    except Exception as _e:  # noqa: BLE001
+        _log.warning("TFT rating save failed: %s", _e)  # QUAL-002
+    _report_set(report, True, _written)
+    _tft_db_write(script_dir, row)
+    _tft_heatmap()
     return grade, notes
+
+
+def _tft_file_end(cur: dict):
+    """End time of the game a last_tft.json describes: its own stamp, else
+    the minute-resolution local timestamp of a pre-N8 file, else None."""
+    v = cur.get("tft_ended_at_unix")
+    if isinstance(v, (int, float)) and not isinstance(v, bool) and v > 0:
+        return float(v), 0.0
+    ts = cur.get("timestamp")
+    if isinstance(ts, str):
+        try:
+            return datetime.strptime(ts, "%Y-%m-%d %H:%M").timestamp(), 120.0
+        except ValueError:
+            return None
+    return None
+
+
+def _tft_is_newest(script_dir, game_id, ended) -> bool:
+    """May the rating of ``game_id`` (ended at ``ended``) replace last_tft.json?
+    Yes for the same game, a missing / unreadable file, or a game that ended
+    no earlier than the file's (a pre-N8 file's minute stamp gets 120 s)."""
+    try:
+        cur = json.loads(_mode_file(script_dir, "TFT").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return True
+    if not isinstance(cur, dict):
+        return True
+    if _num(cur.get("tft_game_id"), 0) == game_id:
+        return True
+    fe = _tft_file_end(cur)
+    if fe is None:
+        return True
+    if not ended:
+        return False
+    return float(ended) >= fe[0] - fe[1]
+
+
+def plan_tft_rating(script_dir, game_id, store_dir=None):
+    """The rating rate_tft_game would write for ``game_id``, WITHOUT writing:
+    {"game_id", "grade", "notes", "data" (last_tft.json body), "row" (the
+    match_history.db row), "ended", "newest" (may it replace last_tft.json)},
+    or None when the store has no usable record. Reads only (the N8 backfill's
+    dry run plans with it)."""
+    try:
+        gid = int(game_id)
+    except (TypeError, ValueError):
+        return None
+    if gid <= 0:
+        return None
+    if store_dir is None:
+        final = _tft_final(script_dir, gid, store_only=True)
+    else:
+        try:
+            from tft import tft_final_board as _fb
+            final = _fb.store_final(gid, root=Path(script_dir), store_dir=store_dir)
+        except Exception as e:  # noqa: BLE001
+            _log.warning("TFT store read for game %s failed: %s", gid, e)
+            final = None
+    if not final:
+        return None
+    built = _tft_rating_record(script_dir, final, {}, {}, "standard")
+    if built is None:
+        return None
+    grade, notes, data, row = built
+    ended = final.get("ended_at_unix")
+    if ended:
+        data["timestamp"] = datetime.fromtimestamp(ended).strftime("%Y-%m-%d %H:%M")
+        row["timestamp"] = datetime.fromtimestamp(ended).strftime("%Y-%m-%d %H:%M:%S")
+    return {"game_id": gid, "grade": grade, "notes": notes, "data": data, "row": row,
+            "ended": ended, "newest": _tft_is_newest(script_dir, gid, ended)}
+
+
+def rate_tft_game(script_dir, game_id, store_dir=None):
+    """(Re)rate one TFT game from its RM-616 store record - called when the
+    record lands (lcu/lcu_postgame_collector.py), and by the N8 backfill.
+
+    The EOG capture can land after the lifecycle game-end rating (match 3:
+    09:29:44 vs 09:28:52) and the match-history record later still, so this
+    is where the rating catches up: the game's match_history.db row is updated
+    in place (matched on game_id; inserted when the game had none, stamped
+    with the game's end), and last_tft.json is rewritten only when this is the
+    newest rated game. Returns (grade, notes); ("", []) when the store has no
+    usable record."""
+    plan = plan_tft_rating(script_dir, game_id, store_dir=store_dir)
+    if plan is None:
+        return ("", [])
+    gid = plan["game_id"]
+    if plan["newest"]:
+        try:
+            _atomic_write_json(_mode_file(script_dir, "TFT"), plan["data"])
+        except Exception as _e:  # noqa: BLE001
+            _log.warning("TFT rating save failed (game %s): %s", gid, _e)
+    else:
+        _log.info("TFT rating for game %s: last_tft.json holds a newer game - kept", gid)
+    _tft_db_write(script_dir, plan["row"])
+    _tft_heatmap()
+    return plan["grade"], plan["notes"]
+
 
 def _report_set(report, rated, written):
     """RM-259: fill the caller's optional out-of-band outcome dict. The

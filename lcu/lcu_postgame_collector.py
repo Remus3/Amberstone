@@ -43,6 +43,11 @@ _WAL_WARNED: set[str] = set()
 # -- Paths ---------------------------------------------------------------------
 _ROOT    = Path(__file__).parent.parent
 _DB_PATH = _ROOT / "data" / "postgame_stats.db"
+# s134 N8: the script root performance_tracker.rate_tft_game rates under
+# (data/ratings/last_tft.json, data/match_history.db). Its own name so tests
+# redirect it (tests/conftest.py _PROD_PATH_GLOBALS) without moving _ROOT's
+# read-only meta lookups.
+_RATING_ROOT = _ROOT
 
 # RM-107: the canonical LCU post-game timeline route, keyed on gameId alone.
 # Named so the pin-test asserts against a constant and a future path edit has
@@ -323,6 +328,25 @@ def _save_raw_document(match_id, kind: str, doc) -> None:
     except Exception as exc:  # noqa: BLE001
         _log.warning("postgame: raw %s not retained for match %s: %s",
                      kind, match_id, exc)
+
+
+def _rate_tft_game(game_id) -> None:
+    """s134 N8: re-rate a TFT game from the store record that just landed.
+
+    The lifecycle game-end rating can run before the EOG capture (match 3:
+    rating 09:28:52, EOG record 09:29:44) and always runs before the
+    match-history record, so the rating catches up here: the game's
+    match_history.db row is corrected in place and last_tft.json is rewritten
+    when this is the newest game (performance_tracker.rate_tft_game). Called
+    only after a NEW record was persisted. Best-effort: never costs the
+    capture."""
+    try:
+        import performance_tracker as _pt
+        grade, _notes = _pt.rate_tft_game(_RATING_ROOT, game_id)
+        if grade:
+            _log.info("postgame: TFT game %s rated %s from the store", game_id, grade)
+    except Exception as exc:  # noqa: BLE001
+        _log.warning("postgame: TFT game %s rating not refreshed: %s", game_id, exc)
 
 
 # -- Stat extraction helpers ---------------------------------------------------
@@ -959,6 +983,7 @@ class PostgameCollector:
                 _save_raw_document(gid, "eog", _tft_placement.scrub_raw(doc))
                 _log.info("postgame: TFT game %s placement %s stored from EOG",
                           gid, rec.get("local_placement"))
+                _rate_tft_game(gid)
         except Exception as exc:  # noqa: BLE001 - one bad write costs one record
             # The idle tick retries every few seconds on the post-game screen:
             # warn once per game, then debug.
@@ -993,10 +1018,17 @@ class PostgameCollector:
             if isinstance(j, dict) and j.get("game_id"):
                 raw_by_id[str(j.get("game_id"))] = g
         new = 0
+        # s134 N8: the first history read of a process re-rates EVERY game it
+        # returns that the store holds, not only new records - a record that
+        # landed while an older build ran (no re-rate hook) or while the
+        # rating write failed is caught up here once; later reads re-rate
+        # only what they add. rate_tft_game is idempotent (upsert by game id).
+        rate_all = not st.get("history_rated_once")
         for rec in _tft_placement.parse_history(doc, puuid):
             gid = rec["game_id"]
             try:
-                if _tft_placement.persist(rec):
+                stored = _tft_placement.persist(rec)
+                if stored:
                     new += 1
                     raw = raw_by_id.get(str(gid))
                     if raw is not None:
@@ -1005,7 +1037,10 @@ class PostgameCollector:
                 _log.warning("postgame: TFT history record for game %s not stored: %s",
                              gid, exc)
                 continue
+            if stored or rate_all:
+                _rate_tft_game(gid)
             st["awaiting"].pop(gid, None)
+        st["history_rated_once"] = True
         if new:
             _log.info("postgame: TFT match history stored %d new game(s)", new)
         return new

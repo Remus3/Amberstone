@@ -51,6 +51,18 @@ _REAL_COLS = frozenset({
     "game_time_s", "cs_per_min", "gold_per_min", "kp_pct",
 })
 NUMERIC_COLS = _INT_COLS | _REAL_COLS
+# Columns upsert_by_game_id may rewrite: everything save_match writes except
+# the key (mode, game_id) and the game-end timestamp.
+_UPDATABLE_COLS = frozenset({
+    "champion", "grade", "game_time_s",
+    "kills", "deaths", "assists", "cs", "cs_per_min",
+    "gold", "gold_per_min", "kda_str", "kp_pct",
+    "tft_placement", "tft_stage", "tft_level", "tft_comp",
+    "tft_traits", "tft_units", "tft_augments", "tft_items",
+    "arena_rounds_won", "arena_placement",
+    "notes", "label", "raw_data",
+})
+_JSON_COLS = frozenset({"tft_traits", "tft_units", "tft_augments", "tft_items", "notes"})
 
 
 def _as_int(value) -> int:
@@ -276,6 +288,52 @@ class MatchDB:
         except Exception as exc:  # noqa: BLE001
             _log.error("Match save failed: %s", exc)
             return False
+
+    def upsert_by_game_id(self, data: dict) -> str:
+        """One row per (mode, game_id): update the newest row of that game in
+        place, else insert one. Returns "updated", "inserted" or "failed".
+
+        s134 N8: a TFT game is rated at game end and again when its post-game
+        record lands (the EOG capture can follow the game-end trigger, the
+        match-history record later still), so the second rating must correct
+        the first row, not add a second one. The row's id and timestamp are
+        kept on update - the timestamp is when the game ended. A game_id of 0
+        is "unknown" (the column default) and is refused, never matched.
+        Never raises."""
+        mode = data.get("mode") or ""
+        gid = coerce_numeric("game_id", data.get("game_id"))
+        if not mode or gid <= 0:
+            return "failed"
+        try:
+            c = self._conn()
+            row = c.execute(
+                "SELECT id FROM matches WHERE mode = ? AND game_id = ? "
+                "ORDER BY id DESC LIMIT 1", (mode, gid)).fetchone()
+        except Exception as exc:  # noqa: BLE001
+            _log.error("Match upsert lookup failed: %s", exc)
+            return "failed"
+        if row is None:
+            return "inserted" if self.save_match(data) else "failed"
+        cols = [k for k in data if k in _UPDATABLE_COLS]
+        vals = {}
+        for k in cols:
+            v = data[k]
+            if k in _JSON_COLS and isinstance(v, (list, dict)):
+                v = json.dumps(v)
+            vals[k] = coerce_numeric(k, v) if k in NUMERIC_COLS else v
+        if not vals:
+            return "updated"
+        vals["_id"] = row["id"]
+        sets = ", ".join(f"{k} = :{k}" for k in cols)
+        try:
+            c.execute(f"UPDATE matches SET {sets} WHERE id = :_id", vals)
+            c.commit()
+            _log.info("Match updated: id=%s mode=%s game_id=%s grade=%s",
+                      row["id"], mode, gid, vals.get("grade", ""))
+            return "updated"
+        except Exception as exc:  # noqa: BLE001
+            _log.error("Match update failed: %s", exc)
+            return "failed"
 
     def get_recent(self, mode: str = "", limit: int = 20) -> list:
         """Get recent matches, optionally filtered by mode.

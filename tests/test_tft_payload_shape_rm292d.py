@@ -282,7 +282,11 @@ class TestPerformanceTrackerReadsAreUnchanged(_Tmp):
         out.mkdir()
         return self.pt.save_tft_rating(out, dict(live), dict(coach))
 
-    _LIVE = {"last_round_result": "", "stage_round": "4-2", "level": 8,
+    # s134 N8: the placement now has to come from a real source. These tests
+    # used the coaching file's alive_others DEFAULT of 7 (an 8th nobody
+    # measured - exactly the N8 defect); a vision last-round placement keeps
+    # them on the stage / grade reads they are about.
+    _LIVE = {"last_round_result": "6th", "stage_round": "4-2", "level": 8,
              "traits_active": [], "board_units": [], "augments": []}
 
     def _new_files(self):

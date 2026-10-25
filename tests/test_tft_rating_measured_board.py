@@ -12,10 +12,13 @@ not the game. Set 18's `comps` is `{}` today, so the overwrite is inert on
 the live box only until the meta is filled.
 
 These tests diff the CONSUMER artifacts (the rating file and the dict handed
-to `save_match`), not only the function's locals. The selected comp NAME is
-still carried as `comp` (`tests/test_silent_except_merge_hardening.py`
-pins that), and the comp's target board is kept under its own labelled key,
-`tft_comp_target`, so the guide stays visible without posing as measurement.
+to `save_match`), not only the function's locals. Since s134 N8 (merged at
+the s135 landing) the selected comp NAME is carried as `comp` only when the
+resolved set's meta defines it AND no board was observed; an observed board
+names its own comp, and a selection the meta does not define never names the
+game (the live 1st-place Set 18 game rated "Dark Star Vertical"). The comp's
+target board is kept under its own labelled key, `tft_comp_target`, so the
+guide stays visible without posing as measurement.
 """
 from __future__ import annotations
 
@@ -80,7 +83,9 @@ def test_measured_board_survives_a_selected_comp_in_the_meta(rig):
         assert blob["tft_units"] == ["Jinx 2-star", "Vi"]
         assert blob["tft_traits"] == ["Rebel 3"]
         assert blob["tft_augments"] == ["Measured Aug"]
-        assert blob["tft_comp"] == "Test Comp"
+        # N8: an observed board names its own comp, never the planner's.
+        assert blob["tft_comp"] == pt._identify_comp(["Rebel 3"], ["Jinx 2-star", "Vi"])
+        assert blob["tft_comp"] != "Test Comp"
     assert saved["tft_core_units"] == ["Jinx", "Vi"]
 
 
@@ -111,4 +116,6 @@ def test_no_target_key_without_a_meta_entry(rig, monkeypatch, tmp_path):
         json.dumps({"selected": "Not In Meta"}), encoding="utf-8")
     saved, _row = rig(_live())
     assert "tft_comp_target" not in saved
-    assert saved["tft_comp"] == "Not In Meta"
+    # N8: a selection the resolved set's meta does not define never names
+    # the game.
+    assert saved["tft_comp"] != "Not In Meta"

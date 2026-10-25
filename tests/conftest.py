@@ -666,6 +666,9 @@ _PROD_PATH_GLOBALS = (
     # by tft.tft_placement.persist() from the postgame collector and read by
     # the Post Game Review builder - both reach it through this default.
     ("tft.tft_placement", "_STORE_DIR", "tft_matches", True),
+    # s134 N8: the collector re-rates a TFT game when its store record lands,
+    # under this root (data/ratings/last_tft.json + data/match_history.db).
+    ("lcu.lcu_postgame_collector", "_RATING_ROOT", "postgame_rating_root", True),
     ("app._game_lifecycle", "SCRIPT_DIR", "app_root", True),
     ("coaches._base_coach", "_APP_DIR", "base_coach_root", True),
     # ENV-APIKEY (s112): a READ, not a write leak. The one shared Anthropic
