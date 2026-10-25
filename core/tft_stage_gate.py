@@ -11,65 +11,80 @@ placement dropped), reset the round timer (one extra planning vision scan,
 a paid call) on every flicker, and handed the misread label to the coach
 prompt.
 
-This module judges one read at a time against the last ACCEPTED read and
-the game clock:
+The gate judges one read at a time and names the round to act on:
 
-  out of range   outside the round structure below: held, never confirmed.
-  backward       behind the accepted round while the game clock runs
-                 forward: held (an OCR glitch, not a new game).
-  at clock       not reachable from 1-1 by this game time at the queue's
+  screened out   a read outside the round structure below, or one not
+                 reachable from 1-1 by this game time at the queue's
                  MEASURED round pace (a stale previous-game OCR value at a
-                 fresh clock, a stage-6 misread at minute 8): held.
-  forward jump   further ahead of the accepted round than the time since it
-                 was accepted allows at the measured pace: held. A queue
-                 with no measured pace takes UNRATED_SLACK_ROUNDS at once
-                 and a bigger jump only after confirmation.
-  new game       the game clock restarted (:2999 gameTime starts at 0 each
-                 game): the gate resets and the read is judged as a first
-                 read. This is the bypass: a genuine new game never waits on
-                 the gate. With no clock, the pre-RM-615 rule (stage > 2 ->
-                 stage <= 2) still stands, so nothing regresses.
-  revert         an immediate advance is provisional until CONFIRM_READS
-                 consecutive reads of the new round arrive; if a round from
-                 the one before it up to it is read first, the advance was a
-                 misread (OCR flickering between the true round and a later
-                 one): the gate goes back at once and the misread round
-                 becomes SUSPECT - advancing onto it again needs
-                 confirmation. So a flicker cannot hold the gate ahead of
-                 the true round, and cannot make it flip every poll.
-  confirmation   CONFIRM_READS consecutive identical held reads re-anchor
-                 the gate when the ANCHOR may be the error (a backward or
-                 forward-jump read after an anchor taken a round early or
-                 confirmed onto a repeated misread, an unrated jump, a
-                 suspect round), so a wrong anchor cannot lock the gate in;
-                 the round a confirmed backward re-anchor abandons becomes
-                 suspect. An "at clock" or
-                 out-of-range read is never confirmed by repetition: a stale
-                 OCR cache repeats the same impossible value.
+                 fresh clock, a stage-6 misread at minute 8), is rejected
+                 and never counts toward anything.
+  new game       the game clock restarting (:2999 gameTime starts at 0 each
+                 game) on CLOCK_RESET_READS consecutive reads resets the
+                 gate: the bypass, a genuine new game never waits on the
+                 gate. One glitched clock value is not a new game. With no
+                 clock the pre-RM-615 rule (stage > 2 -> stage <= 2) still
+                 decides, so nothing regresses.
+  fast path      while the last WINDOW_READS reads all agreed with the
+                 accepted round, a forward read within the pace allowance
+                 (FORWARD_SLACK_ROUNDS plus the measured pace since the
+                 round was accepted; UNRATED_SLACK_ROUNDS for a queue with
+                 no measured pace) is taken at once - a real round change,
+                 or a one-off misread the next reads overturn.
+  majority       otherwise the accepted round moves only to a round that
+                 holds at least SWITCH_MIN_READS of the last WINDOW_READS
+                 reads AND leads the accepted round there by SWITCH_MARGIN.
+                 The hysteresis margin is what stops a flicker: a value that
+                 keeps returning (the true round, or a stubborn misread)
+                 holds its ground, so the gate neither sticks to a misread
+                 the true round outvotes nor flips with every frame. A
+                 backward read is held unless the majority carries it (the
+                 gate may have taken a one-off misread on the fast path).
+  revert         a majority move back to the round before the last change
+                 is reported as REVERT, so the live analysis restores that
+                 round's timer instead of re-arming its planning scan.
 
 PURE: no I/O, no clock of its own, no RC imports. The caller passes the game
 clock (seconds), so the gate is deterministic under test and in replay.
 
-PER-QUEUE CONSTANTS are our own measurements only. The tree holds one set:
-the four confirmed live points of tft/tft_state_reader.py:22-24, copied into
-MEASURED_POINTS below. Their per-round pace between consecutive points is
-45.1 / 43.6 / 46.2 s (ordinal steps of the structure below), so the floor
-MIN_ROUND_S_MEASURED = 20.0 sits under HALF the fastest one: a legitimate
-catch-up after missed reads is admitted at twice the fastest measured pace,
-which also covers stage-1 rounds being shorter than the average and the
-gate's anchor time trailing the true round start by a poll or an OCR cycle.
-Those points were recorded as "Set 17 Space Gods Double Up", a label set by
-`detect_variant` (tft/tft_state_reader.py:127), which calls every
-mapNumber-22 game Double Up; the LCU reported mapId 22 for a queue-1090
-Normal game on 2026-10-25 (the s134 recorder). So the measured queue is
-Double Up OR Standard and the floor is applied to both; it is a floor well
-under either pace, not a schedule. Hyper Roll has never been measured here
-and carries NO rate (it never borrows the standard one, the RM-855
-doctrine); an unknown queue is UNMEASURED the same way.
+PER-QUEUE PACE is our own measurement only, and it is NOT copied here: the
+caller computes it at runtime from the reader's calibrated round table
+(tft/tft_state_reader.py `_TIME_TO_ROUND`, fitted to confirmed live points)
+with pace_floor_from_table(): PACE_SAFETY (half) of the fastest per-round
+pace between consecutive table entries, so a re-measured or per-set table
+(the Set 18 timings) flows in without an edit here. Half admits a
+legitimate catch-up after missed reads at twice the fastest measured pace,
+and covers the gate's anchor time trailing the true round start by a poll
+or an OCR cycle. The table is measured on standard-structure games, so it
+rates "standard" and "double_up" (detect_variant, tft/tft_state_reader.py
+:127, calls every mapNumber-22 game Double Up, and the LCU reported mapId 22
+for a queue-1090 Normal game on 2026-10-25, so the table's games are one or
+the other). Hyper Roll has never been measured here and carries NO rate (it
+never borrows the standard one, the RM-855 doctrine); an unknown queue is
+UNMEASURED the same way. No pace (unreadable table) means no rate, never a
+guessed one.
+
+WINDOW CONSTANTS are sized on the read cadence: the worker polls every
+1.5 s (core/tft_worker.py:44) and the reader's OCR cache refreshes about
+every 2 s (tft/tft_state_reader.py:84), so two polls can see one OCR
+refresh; WINDOW_READS = 7 polls (about 10.5 s) span about five refreshes and
+SWITCH_MIN_READS = 4 needs a majority of them. SWITCH_MARGIN = 2 is the
+hysteresis that keeps a 50/50 flicker from flipping the gate (a margin of 1
+flips it every few polls); FAST_PATH_MAX_DISSENT = 1 lets a genuine round
+change through at once after one stray read. Measured on a seeded misread
+model (2 s OCR frames, 1.5 s polls, the reader's table as truth, 25 games
+per setting, 5 / 10 / 20 percent of frames misread; s134): versus
+pre-RM-615, wrong-round polls fall 43-53 percent for -1 misreads and 16-31
+percent for mixed ones, and change -3 to +14 percent for +1-only misreads
+(the filter's latency when a misread of round N is round N+1); planning
+scans fall 46-70 percent and false new games from 16-113 to 0. The cost: the
+longest wrong run grows (7-24 polls against 4-9) because a burst of
+misreads can win a window. A stream misread HALF the time has no majority:
+the gate then holds the round it has instead of flipping per frame.
 """
 from __future__ import annotations
 
 import math
+from collections import deque
 from typing import NamedTuple, Optional, Tuple
 
 # -- round structure ---------------------------------------------------------
@@ -82,48 +97,47 @@ STAGE1_ROUNDS = 4
 STAGE_ROUNDS = 7
 
 # -- verdict kinds -----------------------------------------------------------
-ACCEPT = "accept"      # first read, a plausible advance, or a confirmed re-anchor
+ACCEPT = "accept"      # first read, a fast-path advance, or a majority move
 SAME = "same"          # the accepted round again
 NEW_GAME = "new_game"  # a genuine new game: the gate reset
-REJECT = "reject"      # implausible: the accepted round holds
-REVERT = "revert"      # the last immediate advance was a misread: the round before is back
+REJECT = "reject"      # not taken: the accepted round holds
+REVERT = "revert"      # a majority move back to the round before the last change
 
 # -- tuning ------------------------------------------------------------------
 # One round at once on a measured queue; the clock admits more.
 FORWARD_SLACK_ROUNDS = 1
 # One round plus one for a stage that ends a round before the structure cap
-# (the reader's calibrated table runs stage 1 to 1-3 and stages 2-6 to x-6,
-# tft/tft_state_reader.py:25-31), so the reader's own table stream never
-# waits on confirmation on a queue with no measured pace.
+# (a set's stage 1 may end at 1-3, a stage at x-6), so a round table's stream
+# takes the fast path on a queue with no measured pace.
 UNRATED_SLACK_ROUNDS = 2
-# Consecutive identical held reads that re-anchor the gate. At the worker's
-# 1.5 s poll (core/tft_worker.py:44) this is about 4.5 s; the reader's OCR
-# loop refreshes every 2 s (tft/tft_state_reader.py:84), so a one-off misread
-# rarely survives three polls.
-CONFIRM_READS = 3
-# The game clock must fall by more than this to count as a restart.
+WINDOW_READS = 7
+SWITCH_MIN_READS = 4
+SWITCH_MARGIN = 2
+FAST_PATH_MAX_DISSENT = 1
+PACE_SAFETY = 0.5
+# The game clock must fall by more than this, on this many consecutive
+# reads, to count as a restart.
 CLOCK_RESET_SLACK_S = 5.0
-
-# The four confirmed live points, verbatim from tft/tft_state_reader.py:23:
-# (game time s, stage, round).
-MEASURED_POINTS = ((32.0, 1, 2), (348.0, 2, 5), (1002.0, 4, 6), (1879.0, 7, 4))
-MIN_ROUND_S_MEASURED = 20.0
+CLOCK_RESET_READS = 2
+# A :2999 game clock past this is not a TFT game clock (TFT games end well
+# inside an hour); it is treated as no clock.
+MAX_GAME_S = 7200.0
 
 
 class QueueTiming(NamedTuple):
     variant: str
-    min_round_s: Optional[float]   # None = unmeasured: no clock-rate check
+    rated: bool    # takes the measured pace (the reader's round table)
     source: str
 
 
-_MEASURED_SOURCE = ("measured: tft/tft_state_reader.py:22-24 confirmed live points, "
-                    "fastest pace 43.6 s/round; floor under half of it")
+_MEASURED_SOURCE = ("measured: the reader's calibrated round table "
+                    "(tft/tft_state_reader.py _TIME_TO_ROUND), via pace_floor_from_table")
 QUEUE_TIMINGS = {
-    "standard": QueueTiming("standard", MIN_ROUND_S_MEASURED, _MEASURED_SOURCE),
-    "double_up": QueueTiming("double_up", MIN_ROUND_S_MEASURED, _MEASURED_SOURCE),
-    "hyper_roll": QueueTiming("hyper_roll", None, "unmeasured: no Hyper Roll pace recorded"),
+    "standard": QueueTiming("standard", True, _MEASURED_SOURCE),
+    "double_up": QueueTiming("double_up", True, _MEASURED_SOURCE),
+    "hyper_roll": QueueTiming("hyper_roll", False, "unmeasured: no Hyper Roll pace recorded"),
 }
-UNMEASURED = QueueTiming("unknown", None, "unmeasured: unknown queue")
+UNMEASURED = QueueTiming("unknown", False, "unmeasured: unknown queue")
 
 # LCU queue ids (names: lcu/snapshot_shape.py:74-78) -> the state's "variant"
 # (tft/tft_state_reader.py detect_variant).
@@ -170,6 +184,14 @@ def ordinal(stage: object, rnd: object) -> Optional[int]:
     return r if s == 1 else STAGE1_ROUNDS + (s - 2) * STAGE_ROUNDS + r
 
 
+def stage_round_of(o: int) -> Tuple[int, int]:
+    """Inverse of ordinal() for a legal ordinal."""
+    if o <= STAGE1_ROUNDS:
+        return 1, o
+    q, r = divmod(o - STAGE1_ROUNDS - 1, STAGE_ROUNDS)
+    return q + 2, r + 1
+
+
 def parse_stage_round(label: object) -> Optional[Tuple[int, int]]:
     """'3-2' -> (3, 2); None for anything outside the structure."""
     if not isinstance(label, str):
@@ -183,17 +205,50 @@ def parse_stage_round(label: object) -> Optional[Tuple[int, int]]:
     return s, r
 
 
+def pace_floor_from_table(table: object) -> Optional[float]:
+    """PACE_SAFETY x the fastest per-round pace (seconds per ordinal step)
+    between consecutive entries of a round table shaped like the reader's
+    `_TIME_TO_ROUND`: an ordered sequence of (game seconds, stage, round).
+
+    None when the table is unreadable or yields no forward step, so a
+    missing or reshaped table means "no rate", never a guessed one.
+    """
+    if not isinstance(table, (list, tuple)):
+        return None
+    prev = None
+    best = None
+    for row in table:
+        if not isinstance(row, (list, tuple)) or len(row) != 3:
+            return None
+        t, s, r = row
+        if isinstance(t, bool) or not isinstance(t, (int, float)) or not math.isfinite(t):
+            return None
+        o = ordinal(s, r)
+        if o is None:
+            return None
+        if prev is not None:
+            dt, steps = t - prev[0], o - prev[1]
+            if dt <= 0 or steps <= 0:
+                return None
+            pace = dt / steps
+            best = pace if best is None else min(best, pace)
+        prev = (float(t), o)
+    if best is None:
+        return None
+    return PACE_SAFETY * best
+
+
 def _clock(t: object) -> Optional[float]:
     """A usable game clock, else None. The reader defaults a missing gameTime
     to 0 (tft/tft_state_reader.py:145), so 0 means "no clock", never "the
-    game restarted"."""
+    game restarted"; past MAX_GAME_S is no clock either."""
     if isinstance(t, bool) or not isinstance(t, (int, float)):
         return None
     try:
         t = float(t)
     except OverflowError:   # an int past the float range
         return None
-    if not math.isfinite(t) or t <= 0:
+    if not math.isfinite(t) or t <= 0 or t > MAX_GAME_S:
         return None
     return t
 
@@ -213,39 +268,34 @@ class _Anchor(NamedTuple):
     stage: int
     rnd: int
     ordinal: int
-    t: Optional[float]   # game clock when this round was first accepted
-
-
-# Held reasons a repetition may overturn, because the ANCHOR may be the error
-# (taken a round early, or confirmed onto a repeated misread): a backward
-# read, and a forward read the clock allows from 1-1 but the anchor's pace
-# does not. A read the clock rules out from 1-1 ("implausible_at_clock") and
-# an out-of-range read are never overturned: a stale OCR cache repeats them.
-_CONFIRMABLE = frozenset({"backward", "forward_jump", "forward_unrated", "forward_suspect"})
+    t: Optional[float]   # game clock when this round was accepted
 
 
 class StageGate:
     """Stateful wrapper over the rules above: one instance per reader."""
 
-    def __init__(self, queue: object = None) -> None:
+    def __init__(self, queue: object = None, min_round_s: Optional[float] = None) -> None:
         self._timing = timing_for(queue)
+        self._pace: Optional[float] = None
+        self.set_pace(min_round_s)
         self.reset()
+
+    def set_pace(self, min_round_s: object) -> None:
+        """The measured pace floor (seconds per round) for rated queues, from
+        pace_floor_from_table() over the reader's table; None = no rate."""
+        self._pace = _clock(min_round_s)   # a positive finite number, else None
+
+    @property
+    def rate(self) -> Optional[float]:
+        """The pace floor in force: the measured pace on a rated queue, else None."""
+        return self._pace if self._timing.rated else None
 
     def reset(self) -> None:
         self._anchor: Optional[_Anchor] = None
+        self._prev: Optional[_Anchor] = None   # the anchor before the last change
+        self._window: deque = deque(maxlen=WINDOW_READS)   # ordinals of counted reads
         self._last_t: Optional[float] = None
-        self._pending: Optional[Tuple[int, int]] = None
-        self._pending_n = 0
-        # The anchor before the last IMMEDIATE advance, until CONFIRM_READS
-        # consecutive reads of the new round corroborate it (None = nothing
-        # to revert to). Two polls can read the same OCR refresh (1.5 s poll,
-        # 2 s OCR cycle), so one repeat is not corroboration; three
-        # consecutive reads span at least two refreshes.
-        self._prev: Optional[_Anchor] = None
-        self._prev_n = 0
-        # A round shown to be a misread (reverted, or abandoned by a confirmed
-        # backward re-anchor): advancing onto it again needs confirmation.
-        self._suspect: Optional[_Anchor] = None
+        self._reset_n = 0
 
     @property
     def timing(self) -> QueueTiming:
@@ -264,105 +314,95 @@ class StageGate:
         a = self._anchor
         return Verdict(kind, reason, a.stage if a else None, a.rnd if a else None)
 
-    def _take(self, s: int, r: int, o: int, t: Optional[float], kind: str, reason: str,
-              provisional: bool = False) -> Verdict:
-        old = self._anchor
-        self._anchor = _Anchor(s, r, o, t)
-        self._pending, self._pending_n = None, 0
-        self._prev = old if provisional else None
-        self._prev_n = 1 if provisional else 0
-        if self._suspect is not None and o >= self._suspect.ordinal:
-            self._suspect = None   # the game has reached it: no longer a misread
+    def _move(self, o: int, t: Optional[float], kind: str, reason: str) -> Verdict:
+        s, r = stage_round_of(o)
+        p = self._prev
+        self._prev = self._anchor
+        if kind == REVERT and p is not None:
+            self._anchor = p     # back to the round before: keep its clock
+        else:
+            self._anchor = _Anchor(s, r, o, t)
         return self._verdict(kind, reason)
 
-    def _hold(self, s: int, r: int, o: int, t: Optional[float], reason: str) -> Verdict:
-        if reason not in _CONFIRMABLE:
-            self._pending, self._pending_n = None, 0
-            return self._verdict(REJECT, reason)
-        if self._pending == (s, r):
-            self._pending_n += 1
-        else:
-            self._pending, self._pending_n = (s, r), 1
-        if self._pending_n >= CONFIRM_READS:
-            old = self._anchor
-            v = self._take(s, r, o, t, ACCEPT, "confirmed_" + reason)
-            if reason == "backward" and old is not None:
-                self._suspect = old   # the abandoned anchor was the misread
-            return v
-        return self._verdict(REJECT, reason)
-
     def _first_ok(self, o: int, t: Optional[float]) -> bool:
-        rate = self._timing.min_round_s
+        rate = self.rate
         if rate is None or t is None:
             return True
         return o - 1 <= FORWARD_SLACK_ROUNDS + int(t // rate)
+
+    def _within_pace(self, a: _Anchor, o: int, t: Optional[float]) -> bool:
+        steps = o - a.ordinal
+        rate = self.rate
+        if rate is not None and t is not None and a.t is not None:
+            return steps <= FORWARD_SLACK_ROUNDS + int(max(0.0, t - a.t) // rate)
+        return steps <= UNRATED_SLACK_ROUNDS
 
     # -- the rule ------------------------------------------------------------
     def observe(self, stage: object, rnd: object, game_time_s: object = None) -> Verdict:
         """Judge one read; the returned verdict names the round to act on."""
         t = _clock(game_time_s)
         o = ordinal(stage, rnd)
-        s, r = _as_int(stage), _as_int(rnd)
 
-        # A restarted game clock is a new game: the bypass.
+        # A restarted game clock, held for CLOCK_RESET_READS reads: new game.
         if t is not None and self._last_t is not None and t + CLOCK_RESET_SLACK_S < self._last_t:
+            self._reset_n += 1
+            if self._reset_n < CLOCK_RESET_READS:
+                return self._verdict(REJECT, "clock_reset_pending")
             self.reset()
             self._last_t = t
             if o is not None and self._first_ok(o, t):
-                return self._take(s, r, o, t, NEW_GAME, "clock_reset")
+                self._window.append(o)
+                self._move(o, t, NEW_GAME, "clock_reset")
+                self._prev = None
+                return self._verdict(NEW_GAME, "clock_reset")
             return self._verdict(NEW_GAME, "clock_reset")
+        self._reset_n = 0
         if t is not None:
             self._last_t = t if self._last_t is None else max(self._last_t, t)
 
         if o is None:
-            return self._hold(0, 0, 0, t, "out_of_range")
+            return self._verdict(REJECT, "out_of_range")
+        if not self._first_ok(o, t):
+            return self._verdict(REJECT, "implausible_at_clock")
         a = self._anchor
         if a is None:
-            if self._first_ok(o, t):
-                return self._take(s, r, o, t, ACCEPT, "first")
-            return self._hold(s, r, o, t, "implausible_at_clock")
+            self._window.append(o)
+            return self._move(o, t, ACCEPT, "first")
+        if t is None and o < a.ordinal and a.stage > 2 and stage_round_of(o)[0] <= 2:
+            # No clock to tell a glitch from a new game: the pre-RM-615
+            # tft_live_analysis rule decides, so nothing regresses.
+            self.reset()
+            self._window.append(o)
+            return self._move(o, None, NEW_GAME, "stage_reset_no_clock")
+
+        # Clean: at most FAST_PATH_MAX_DISSENT stray reads, none of them this
+        # value (a value that already came and went is a flicker, not news).
+        clean = (o not in self._window
+                 and sum(1 for x in self._window if x != a.ordinal) <= FAST_PATH_MAX_DISSENT)
+        self._window.append(o)
         if o == a.ordinal:
-            self._pending, self._pending_n = None, 0
-            if self._prev is not None:
-                self._prev_n += 1
-                if self._prev_n >= CONFIRM_READS:
-                    self._prev, self._prev_n = None, 0   # corroborated
             return self._verdict(SAME, "same")
-        self._prev_n = 0   # another round read: corroboration must restart
+        if clean and o > a.ordinal and self._within_pace(a, o, t):
+            return self._move(o, t, ACCEPT, "advance")
+
+        # Majority: the round being READ now moves the gate only if it holds
+        # SWITCH_MIN_READS of the window and leads EVERY other value (the
+        # accepted round included) by SWITCH_MARGIN. Only the read itself is
+        # a candidate: an unrelated stray read just after a real advance must
+        # not hand the round back to the stale reads still in the window, and
+        # a split vote (a 50/50 flicker) moves nothing.
+        n_o = sum(1 for x in self._window if x == o)
+        others: dict = {}
+        for x in self._window:
+            if x != o:
+                others[x] = others.get(x, 0) + 1
+        runner_up = max(others.values(), default=0)
+        if n_o >= SWITCH_MIN_READS and n_o >= runner_up + SWITCH_MARGIN:
+            if self._prev is not None and o == self._prev.ordinal:
+                return self._move(o, t, REVERT, "revert")
+            return self._move(o, t, ACCEPT, "majority")
         if o < a.ordinal:
-            p = self._prev
-            if p is not None and o >= p.ordinal:
-                # A round at or after the one before an uncorroborated advance
-                # is read: the advance was the misread (an OCR value
-                # flickering between the true round and a later one). Go back
-                # at once, to the round before it or to the read when the
-                # game has moved on meanwhile, and make the misread round
-                # need confirmation from now on.
-                self._suspect = a
-                self._pending, self._pending_n = None, 0
-                if o == p.ordinal:
-                    self._anchor, self._prev = p, None
-                else:
-                    self._anchor, self._prev, self._prev_n = _Anchor(s, r, o, t), p, 1
-                return self._verdict(REVERT, "revert")
-            if t is None and a.stage > 2 and s <= 2:
-                # No clock to tell a glitch from a new game: the pre-RM-615
-                # tft_live_analysis rule decides, so nothing regresses.
-                self.reset()
-                return self._take(s, r, o, None, NEW_GAME, "stage_reset_no_clock")
-            return self._hold(s, r, o, t, "backward")
-        if not self._first_ok(o, t):
-            # Not reachable from 1-1 at this game time at the measured pace,
-            # whatever the anchor says: never confirmed by repetition.
-            return self._hold(s, r, o, t, "implausible_at_clock")
-        if self._suspect is not None and o == self._suspect.ordinal:
-            return self._hold(s, r, o, t, "forward_suspect")
-        steps = o - a.ordinal
-        rate = self._timing.min_round_s
-        if rate is not None and t is not None and a.t is not None:
-            if steps <= FORWARD_SLACK_ROUNDS + int(max(0.0, t - a.t) // rate):
-                return self._take(s, r, o, t, ACCEPT, "advance", provisional=True)
-            return self._hold(s, r, o, t, "forward_jump")
-        if steps <= UNRATED_SLACK_ROUNDS:
-            return self._take(s, r, o, t, ACCEPT, "advance", provisional=True)
-        return self._hold(s, r, o, t, "forward_unrated")
+            return self._verdict(REJECT, "backward")
+        if not self._within_pace(a, o, t):
+            return self._verdict(REJECT, "forward_jump")
+        return self._verdict(REJECT, "unconfirmed")

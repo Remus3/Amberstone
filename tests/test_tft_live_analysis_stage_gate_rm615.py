@@ -9,32 +9,36 @@ Before RM-615 `TftLiveAnalysis.notify_round` (pre-fix tft/tft_live_analysis.py
   * any change reset the round timer, so a flicker re-armed the planning
     vision scan (a paid call) for a round that had not started;
   * `_coach_state` took the misread label, which `_run_analysis` formats
-    into the prompt (`stage_round=cs.get("stage_round", "?")`, :600) and
-    `_write` publishes (:708);
+    into the prompt (`stage_round=cs.get("stage_round", "?")`) and `_write`
+    publishes;
   * a game left at stage 2 was never detected as over, so its augments
     leaked into the next game.
 
 Shape of the calls, as production makes them: core/tft_worker.py:308-312
 calls `notify_coach_state(state)` on every poll and `notify_round(state)`
-with the SAME dict when the raw stage-round changed; coaches/tft_pbe_coach.py
-:147-151 does the same. Each poll is a fresh dict (TftStateReader._parse,
-tft/tft_state_reader.py:206-221, which sets "stage", "round",
-"stage_round", "game_time_s", "round_event" and "variant").
+with the SAME dict only when the raw stage-round changed (initial (0, 0),
+:265); coaches/tft_pbe_coach.py:147-151 does the same. Each poll is a fresh
+dict (TftStateReader._parse, tft/tft_state_reader.py, which sets "stage",
+"round", "stage_round", "game_time_s", "round_event" and "variant").
+
+Two earlier cuts were REFUTED by independent verifiers; W1-W3 below are the
+first verifier's wiring reproducers (a round accepted on a poll with no raw
+change never reached `_last_round`).
 
 Names used, cited at the fix tree:
   tft/tft_live_analysis.py  TftLiveAnalysis, notify_round, notify_coach_state,
       _is_carousel_or_spectate, _stage_gate (lazy via _gate), _gated,
-      _apply_round, _AUGMENT_ROUNDS, the module-level `time` import,
-      _known_augments, _last_placement, _last_round, _round_start_time,
-      _scanned_planning, _scanned_mid, _coach_state.
-  core/tft_stage_gate.py  QUEUE_TIMINGS, CONFIRM_READS, UNMEASURED.
-
-The first cut of this slice was REFUTED by its verifier (wiring lag on a
-confirmed re-anchor, a flicker that held the gate a round ahead); the W1-W3
-cases below are its reproducers, and the call shape is now the worker's.
-  tft/tft_state_reader.py  round_schedule (:271), RoundSchedule.fields (:259).
+      _apply_round, _reader_pace, _AUGMENT_ROUNDS, the module-level `time`
+      import, _known_augments, _last_placement, _last_round,
+      _round_start_time, _scanned_planning, _scanned_mid, _coach_state.
+  core/tft_stage_gate.py  QUEUE_TIMINGS, UNMEASURED, WINDOW_READS,
+      SWITCH_MIN_READS, SWITCH_MARGIN, PACE_SAFETY, pace_floor_from_table.
+  tft/tft_state_reader.py  `_TIME_TO_ROUND`, round_schedule,
+      RoundSchedule.fields.
 """
 from __future__ import annotations
+
+import types
 
 import pytest
 
@@ -47,7 +51,7 @@ def _mk():
     """A TftLiveAnalysis with no SDK client and no vision reader (the
     tests/test_tft_live_analysis_lane8_cycle43.py:86 shape). `_stage_gate`
     is deliberately NOT set: the gate must come up lazily for objects built
-    without __init__."""
+    without __init__, with its pace read from the reader's table."""
     la = tla.TftLiveAnalysis.__new__(tla.TftLiveAnalysis)
     la._last_round = (0, 0)
     la._coach_state = {}
@@ -78,11 +82,18 @@ def _poll(la, state):
         la.notify_round(state)
 
 
+def _polls(la, sr, t0, n, variant="standard"):
+    t = t0
+    for _ in range(n):
+        _poll(la, _st(*sr, t, variant=variant))
+        t += 1.5
+    return t
+
+
 @pytest.fixture
 def clock(monkeypatch):
     """A fake wall clock for the round timer (tft_live_analysis calls
     time.time() for _round_start_time); each read advances it 1 s."""
-    import types
     now = [1000.0]
 
     def _time():
@@ -119,14 +130,15 @@ def test_forward_glitch_does_not_reset_the_round_timer():
     assert la._coach_state["stage_round"] == "3-2"
 
 
-def test_real_advance_resets_the_round_timer():
+def test_real_advance_resets_the_round_timer(clock):
     la = _mk()
     _poll(la, _st(3, 2, 500.0))
+    before = la._round_start_time
     la._scanned_planning = True
     la._scanned_mid = True
     _poll(la, _st(3, 3, 545.0))
     assert la._last_round == (3, 3)
-    assert la._round_start_time > 0
+    assert la._round_start_time > before
     assert la._scanned_planning is False and la._scanned_mid is False
     assert la._coach_state["stage_round"] == "3-3"
     assert la._known_augments                # an advance clears nothing
@@ -135,7 +147,8 @@ def test_real_advance_resets_the_round_timer():
 def test_genuine_new_game_bypasses_the_gate():
     la = _mk()
     _poll(la, _st(5, 3, 1300.0))
-    _poll(la, _st(1, 2, 40.0))              # the game clock restarted
+    _poll(la, _st(1, 2, 40.0))              # the game clock restarted ...
+    _poll(la, _st(1, 2, 41.5))              # ... and stayed restarted
     assert la._known_augments == []
     assert la._last_placement == ""
     assert la._last_round == (1, 2)
@@ -148,6 +161,7 @@ def test_new_game_after_a_game_left_at_stage_2_is_detected():
     la = _mk()
     _poll(la, _st(2, 3, 400.0))
     _poll(la, _st(1, 1, 5.0))
+    _poll(la, _st(1, 1, 6.5))
     assert la._known_augments == []
     assert la._last_placement == ""
 
@@ -158,7 +172,16 @@ def test_new_game_reset_runs_on_the_coach_state_poll_alone():
     la = _mk()
     _poll(la, _st(5, 3, 1300.0))
     la.notify_coach_state(_st(1, 2, 40.0))
+    la.notify_coach_state(_st(1, 2, 41.5))
     assert la._known_augments == []
+
+
+def test_one_glitched_clock_value_does_not_clear_the_augments():
+    la = _mk()
+    _poll(la, _st(4, 2, 1000.0))
+    for gt in (0.5, 1001.5, 1003.0):
+        _poll(la, _st(4, 2, gt))
+    assert la._known_augments == ["Pandora's Items", "Cybernetic Uplink"]
 
 
 def test_no_clock_keeps_the_legacy_new_game_rule():
@@ -171,12 +194,12 @@ def test_no_clock_keeps_the_legacy_new_game_rule():
 
 def test_one_observation_per_state_object():
     """notify_coach_state + notify_round with the same dict is ONE read: a
-    glitch handed to BOTH on each of two polls is still held (double counting
-    would have confirmed it)."""
+    misread handed to BOTH on each of half the polls a majority needs is
+    still held (double counting would have reached the majority)."""
     la = _mk()
     _poll(la, _st(4, 2, 820.0))
     t = 821.5
-    for _ in range(g.CONFIRM_READS - 1):
+    for _ in range(g.SWITCH_MIN_READS // 2):
         s = _st(2, 1, t)
         la.notify_coach_state(s)
         la.notify_round(s)
@@ -185,20 +208,17 @@ def test_one_observation_per_state_object():
     assert la._coach_state["stage_round"] == "4-2"
 
 
-def test_confirmed_re_anchor_lands_without_notify_round():
-    """Verifier reproducer W1: in the worker shape only the FIRST of three
-    identical reads reaches notify_round, so the confirmation on the third
-    must move the round from notify_coach_state. The first cut left
-    _last_round at (4, 2) while _coach_state said 2-1."""
+def test_w1_majority_move_lands_without_notify_round():
+    """In the worker shape only the FIRST of several identical reads reaches
+    notify_round, so a majority move on a later read must move the round from
+    notify_coach_state. The first cut left _last_round at (4, 2) while
+    _coach_state said 2-1."""
     la = _mk()
     _poll(la, _st(4, 2, 820.0))
-    t = 821.5
-    for _ in range(g.CONFIRM_READS):
-        _poll(la, _st(2, 1, t))
-        t += 1.5
+    _polls(la, (2, 1), 821.5, g.SWITCH_MIN_READS)
     assert la._coach_state["stage_round"] == "2-1"
     assert la._last_round == (2, 1)
-    assert la._known_augments                # a confirmed re-anchor is not a new game
+    assert la._known_augments                # a majority move is not a new game
 
 
 def test_flicker_reverts_and_restores_the_round_bookkeeping(clock):
@@ -206,51 +226,41 @@ def test_flicker_reverts_and_restores_the_round_bookkeeping(clock):
     reverts, and the round timer / planning flags the misread replaced come
     back, so no planning scan is re-armed for a round that never began."""
     la = _mk()
-    _poll(la, _st(3, 3, 600.0))
+    t = _polls(la, (3, 3), 590.0, g.WINDOW_READS)
     started = la._round_start_time
     la._scanned_planning = True
-    _poll(la, _st(3, 4, 601.5))             # misread, taken provisionally
+    _poll(la, _st(3, 4, t))                 # misread, taken on a clean window
     assert la._last_round == (3, 4) and la._scanned_planning is False
-    _poll(la, _st(3, 3, 603.0))             # the true round again: revert
+    _poll(la, _st(3, 3, t + 1.5))           # the true round again: revert
     assert la._last_round == (3, 3)
     assert la._round_start_time == started
     assert la._scanned_planning is True
     assert la._coach_state["stage_round"] == "3-3"
 
 
-def test_genuine_round_after_a_flicker_starts_its_timer(clock):
-    """Verifier reproducer W2: 3-3, misread 3-4, 3-3 x4, then the genuine
-    3-4. The first cut never moved _last_round to (3, 4) and skipped that
-    round's planning scan."""
+def test_w2_genuine_round_after_a_flicker_starts_its_timer(clock):
+    """3-3, misread 3-4, 3-3 x4, then the genuine 3-4. The first cut never
+    moved _last_round to (3, 4) and skipped that round's planning scan."""
     la = _mk()
-    _poll(la, _st(3, 3, 600.0))
-    _poll(la, _st(3, 4, 601.5))
-    for i in range(4):
-        _poll(la, _st(3, 3, 603.0 + 1.5 * i))
+    t = _polls(la, (3, 3), 590.0, g.WINDOW_READS)
+    _poll(la, _st(3, 4, t))
+    t = _polls(la, (3, 3), t + 1.5, 4)
     assert la._last_round == (3, 3)
     before = la._round_start_time
     la._scanned_planning = True
-    t = 640.0
-    for _ in range(g.CONFIRM_READS):        # the suspect round, read steadily
-        _poll(la, _st(3, 4, t))
-        t += 1.5
+    _polls(la, (3, 4), t + 30.0, g.WINDOW_READS)   # the genuine round, read steadily
     assert la._last_round == (3, 4)
     assert la._round_start_time > before
     assert la._scanned_planning is False
     assert la._coach_state["stage_round"] == "3-4"
 
 
-def test_unrated_jump_confirmed_moves_the_round():
-    """Verifier reproducer W3: Hyper Roll 2-1 -> 2-5 confirmed. The first cut
-    left _last_round at (2, 1), an _AUGMENT_ROUNDS member
-    (tft/tft_live_analysis.py `_AUGMENT_ROUNDS`), so _loop kept running the
-    20 s augment scans."""
+def test_w3_unrated_jump_by_majority_moves_the_round():
+    """Hyper Roll 2-1 -> 2-5. The first cut left _last_round at (2, 1), an
+    _AUGMENT_ROUNDS member, so _loop kept running the 20 s augment scans."""
     la = _mk()
     _poll(la, _st(2, 1, 200.0, variant="hyper_roll"))
-    t = 230.0
-    for _ in range(g.CONFIRM_READS):
-        _poll(la, _st(2, 5, t, variant="hyper_roll"))
-        t += 1.5
+    _polls(la, (2, 5), 230.0, g.SWITCH_MIN_READS, variant="hyper_roll")
     assert la._last_round == (2, 5)
     assert (2, 1) in tla.TftLiveAnalysis._AUGMENT_ROUNDS
 
@@ -276,14 +286,54 @@ def test_held_view_takes_the_round_fields_of_the_accepted_round(monkeypatch):
     assert la._is_carousel_or_spectate() is False
 
 
+def test_non_int_spelling_of_the_round_is_normalised():
+    la = _mk()
+    _poll(la, _st("3", "2", 500.0))
+    assert la._last_round == (3, 2)
+    assert (la._coach_state["stage"], la._coach_state["round"]) == (3, 2)
+
+
 def test_variant_selects_the_queue_timing():
     la = _mk()
     _poll(la, _st(2, 1, 200.0, variant="hyper_roll"))
     assert la._stage_gate.timing is g.QUEUE_TIMINGS["hyper_roll"]
+    assert la._stage_gate.rate is None
     _poll(la, _st(2, 2, 230.0, variant="standard"))
     assert la._stage_gate.timing is g.QUEUE_TIMINGS["standard"]
     _poll(la, _st(2, 3, 260.0, variant=None))
     assert la._stage_gate.timing is g.UNMEASURED
+
+
+def test_gate_takes_its_pace_from_the_reader_table(monkeypatch):
+    """The pace is computed from tft_state_reader's own round table at run
+    time, never copied: a re-measured table (a Set 18 ~63 s/round schedule)
+    flows in, and an unreadable one means no rate, never a guessed one."""
+    la = _mk()
+    _poll(la, _st(2, 1, 200.0))
+    assert la._stage_gate.rate == g.pace_floor_from_table(tft_state_reader._TIME_TO_ROUND)
+    assert la._stage_gate.rate is not None
+
+    table63 = [(63.0 * i, *g.stage_round_of(i + 1)) for i in range(20)]
+    monkeypatch.setattr(tft_state_reader, "_TIME_TO_ROUND", table63)
+    la2 = _mk()
+    _poll(la2, _st(2, 1, 300.0))
+    assert la2._stage_gate.rate == pytest.approx(g.PACE_SAFETY * 63.0)
+
+    monkeypatch.setattr(tft_state_reader, "_TIME_TO_ROUND", "unreadable")
+    la3 = _mk()
+    _poll(la3, _st(2, 1, 300.0))
+    assert la3._stage_gate.rate is None
+
+
+def test_new_game_refreshes_the_pace(monkeypatch):
+    la = _mk()
+    _poll(la, _st(5, 3, 1300.0))
+    old = la._stage_gate.rate
+    table63 = [(63.0 * i, *g.stage_round_of(i + 1)) for i in range(20)]
+    monkeypatch.setattr(tft_state_reader, "_TIME_TO_ROUND", table63)
+    _poll(la, _st(1, 1, 5.0))
+    _poll(la, _st(1, 1, 6.5))               # new game
+    assert la._stage_gate.rate == pytest.approx(g.PACE_SAFETY * 63.0) != old
 
 
 @pytest.mark.parametrize("bad", [None, "not a dict", 7])

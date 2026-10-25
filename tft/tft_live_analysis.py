@@ -492,22 +492,37 @@ class TftLiveAnalysis:
         g = getattr(self, "_stage_gate", None)
         if g is None:
             from core.tft_stage_gate import StageGate
-            g = self._stage_gate = StageGate()
+            g = self._stage_gate = StageGate(min_round_s=self._reader_pace())
         return g
+    @staticmethod
+    def _reader_pace():
+        """The measured pace floor, computed from the reader's own round table
+        at runtime (never copied), so a re-measured or per-set table flows
+        in; None (no rate) when the table cannot be read."""
+        try:
+            from core.tft_stage_gate import pace_floor_from_table
+            from tft import tft_state_reader
+            return pace_floor_from_table(getattr(tft_state_reader, "_TIME_TO_ROUND", None))
+        except Exception:  # noqa: BLE001
+            return None
     def _gated(self, state):
         """Judge one read (once per state object: the worker hands the SAME
         dict to notify_coach_state and notify_round) and return the state to
         act on - the read itself, or a copy holding the accepted round."""
-        from core.tft_stage_gate import NEW_GAME, REJECT, REVERT
+        from core.tft_stage_gate import NEW_GAME, REVERT
         if not isinstance(state, dict): return state
         if state is getattr(self, "_gate_seen", None): return self._gate_view
         gate = self._gate(); gate.set_queue(state.get("variant"))
         v = gate.observe(state.get("stage"), state.get("round"), state.get("game_time_s"))
         if v.kind == NEW_GAME:
             self._known_augments=[]; self._last_placement=""
+            gate.set_pace(self._reader_pace())   # the new game may run another set's table
             logger.info("New game detected (%s, read %s) - augments cleared", v.reason, state.get("stage_round"))
         view = state
-        if v.kind == REJECT or v.stage is None:
+        if gate.accepted is None or tuple(gate.accepted) != (state.get("stage"), state.get("round")):
+            # The read is not the round to act on (held, or a majority move
+            # decided by earlier reads, or a non-int spelling of it): act on
+            # the gate's accepted round instead.
             view = self._held_view(state, gate.accepted)
             logger.debug("Stage read %s held (%s); acting on %s", state.get("stage_round"), v.reason,
                          view.get("stage_round") or "none")
