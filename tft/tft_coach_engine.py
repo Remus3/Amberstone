@@ -44,6 +44,17 @@ def _set_has_gods() -> bool:
         return False
 
 
+def _resolved_set():
+    """The TFT set this prompt is for (tft/tft_set.py resolve_set: a live set
+    noted from the LCU queue or game data, RC_TFT_SET, then the newest
+    ingested set); None when it cannot be resolved."""
+    try:
+        from tft import tft_set
+        return tft_set.resolve_set()
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def _meta_verified() -> bool:
     """True only when the resolved set's meta holds verified comp data.
 
@@ -224,6 +235,10 @@ def _build_prompt(state: dict) -> str:
     _gods = _set_has_gods()
     _pick_noun = "God boon" if _gods else "carousel"
     _verified = _meta_verified()
+    # S134: roll odds and XP come from the resolved set's own tables, resolved
+    # once here. Importing tft_data.TIER_ODDS directly sent a Set 17 game
+    # (revival queue 6110) the Set 18 odds.
+    _set_n = _resolved_set()
 
     round_type = "CAROUSEL" if is_car else ("PVE" if event == "pve" else "PVP")
     max_level_for_stage = {1: 3, 2: 5, 3: 6, 4: 8, 5: 9, 6: 9, 7: 9}.get(stage, 9)
@@ -300,13 +315,14 @@ def _build_prompt(state: dict) -> str:
         lines.append("")
         lines.extend(augment_context_lines)
 
-    # XP context for leveling decisions
-    from tft.tft_data import XP_TO_LEVEL, XP_BUY_COST
-    next_lv = level + 1
-    if next_lv <= 10:
-        xp_needed = XP_TO_LEVEL.get(next_lv, 0)
-        gold_for_level = (xp_needed // XP_BUY_COST) * XP_BUY_COST
-        lines.append(f"XP to Lv{next_lv}: {xp_needed}XP = ~{xp_needed//XP_BUY_COST} buys ({gold_for_level}g at {XP_BUY_COST}g each)")
+    # XP context for leveling decisions. The tables are keyed by the CURRENT
+    # level (the HUD "x/68" denominator); reading level + 1 was one level off
+    # (S134). Buys round UP: 10 XP is 3 buys, not 2.
+    from tft.tft_data import XP_BUY_COST, xp_to_next_level
+    xp_needed = xp_to_next_level(level, _set_n) if _set_n is not None else None
+    if xp_needed and level < 10:
+        buys = -(-xp_needed // XP_BUY_COST)
+        lines.append(f"XP to Lv{level + 1}: {xp_needed}XP = {buys} buys ({buys * XP_BUY_COST}g at {XP_BUY_COST}g each)")
 
     # Interest context from vision
     if _live_gold and isinstance(_live_gold, (int, float)) and _live_gold > 0:
@@ -364,7 +380,7 @@ def _build_prompt(state: dict) -> str:
         # tft/tft_set.py, never a hard-wired tft_set17_*.json.
         from tft import tft_set as _ts
         _cs = _ts.comp_state()
-        _meta_file = _ts.meta_path(pbe=bool(_cs.get("pbe", False)))
+        _meta_file = _ts.meta_path(_set_n, pbe=bool(_cs.get("pbe", False)))
         if _cs and _meta_file.exists():
             _comp_name = _cs.get("selected", "")
             _ignore_emb = _cs.get("ignore_emblems", False)
@@ -423,11 +439,13 @@ def _build_prompt(state: dict) -> str:
     except Exception:  # noqa: BLE001
         pass
 
-    from tft.tft_data import TIER_ODDS
+    # Roll odds of the resolved set; none for a set RC has no table for.
+    from tft.tft_data import tier_odds_for_set
+    odds = tier_odds_for_set(_set_n) if _set_n is not None else None
     next_lvl = level + 1
-    if next_lvl <= 10:
-        odds_now  = TIER_ODDS.get(level, {})
-        odds_next = TIER_ODDS.get(next_lvl, {})
+    if odds and next_lvl <= 10:
+        odds_now  = odds.get(level, {})
+        odds_next = odds.get(next_lvl, {})
         lines += [
             "",
             f"Roll odds at Lv{level}: " +
