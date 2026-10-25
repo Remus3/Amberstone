@@ -13,9 +13,12 @@ file, measured 2026-10-25 and re-measured s135: the same 18 player keys and
 it to an absent file session-wide) points at, with the mtime from
 timeline.json. Nothing here reads %LOCALAPPDATA%, data/ or logs/.
 
-Measured s135 on the live final file (shape only, no value copied): at game
-end ALL 8 players carry isInteractable true, so the local player is carried
-forward from an earlier rewrite (test_all_interactable_*).
+Local player: `isInteractable` does NOT mark it in a human lobby (s135
+verifier: every end-of-game copy shows 8/8; mid-match the first interactable
+row served the 8th-place player - bug N13), so the source never reads it.
+The local player comes ONLY from the injected `local_player_id` (the LCU
+summoner id, matched against a row's playerId, or a PUUID) and is unknown
+otherwise - never a guess, never carried forward.
 """
 from __future__ import annotations
 
@@ -34,6 +37,7 @@ ROOT = Path(__file__).resolve().parents[1]
 FIX = ROOT / "tests" / "fixtures" / "tft_sources"
 SALT = b"tft02-synthetic-salt-0123456789ab"
 LOCAL_UUID = "00000000-0000-4000-8000-00000000c0de"  # the fixture's sentinel PUUID
+LOCAL_PLAYER_ID = 900002  # the fixture's sentinel playerId of that row (others: 0)
 GAME_ID = 5000000123
 
 # docs/TFT_PROGRAM.md section 0 item 2 - identity fields RC must never copy,
@@ -130,11 +134,45 @@ def test_parse_emits_all_8_players_hp_standing_and_board():
     assert (dead.hp_raw, dead.hp, dead.alive, dead.standing) == (-4, 0, False, 8)
 
 
-def test_local_player_is_the_single_interactable():
-    doc, mtime = _rewrites()[0]
-    snap = ef.parse_eog(doc, salt=SALT, mtime=mtime)
+def _unknown(snap):
+    return snap.local_key is None and all(p.is_local is None for p in snap.players)
+
+
+def test_without_an_injected_id_the_local_player_is_unknown():
+    doc, mtime = _rewrites()[0]  # exactly one isInteractable row: still NOT the local player
+    assert sum(p["isInteractable"] for p in _players(doc)) == 1
+    assert _unknown(ef.parse_eog(doc, salt=SALT, mtime=mtime))
+
+
+@pytest.mark.parametrize("local_id", [LOCAL_PLAYER_ID, str(LOCAL_PLAYER_ID), LOCAL_UUID])
+def test_the_injected_id_picks_the_matching_entry_whatever_isinteractable_says(local_id):
+    doc, mtime = copy.deepcopy(_rewrites()[0])
+    for p in _players(doc):
+        p["isInteractable"] = p["PUUID"] != LOCAL_UUID  # the flags lie: ignored
+    snap = ef.parse_eog(doc, salt=SALT, mtime=mtime, local_player_id=local_id)
     assert snap.local_key == player_key(LOCAL_UUID, SALT)
     assert [p.is_local for p in snap.players] == [i == 2 for i in range(8)]
+
+
+@pytest.mark.parametrize("local_id", [None, 0, "0", 123, "", "  ", True, 1.5, "nobody",
+                                      "00000000-0000-0000-0000-000000000000", ["x"]])
+def test_an_id_that_matches_no_single_entry_leaves_the_local_unknown(local_id):
+    doc, mtime = _rewrites()[0]
+    assert _unknown(ef.parse_eog(doc, salt=SALT, mtime=mtime, local_player_id=local_id))
+
+
+@pytest.mark.parametrize("local_id", [0, "0", "000"])
+def test_a_zero_id_never_selects_a_zero_player_id_row(local_id):
+    doc, mtime = copy.deepcopy(_rewrites()[0])
+    for i, p in enumerate(_players(doc)):  # live shape: non-zero ids, here one stray 0
+        p["playerId"] = 0 if i == 4 else 800000 + i
+    assert _unknown(ef.parse_eog(doc, salt=SALT, mtime=mtime, local_player_id=local_id))
+
+
+def test_an_id_matching_two_entries_is_not_a_guess():
+    doc, mtime = copy.deepcopy(_rewrites()[0])
+    _players(doc)[5]["playerId"] = LOCAL_PLAYER_ID
+    assert _unknown(ef.parse_eog(doc, salt=SALT, mtime=mtime, local_player_id=LOCAL_PLAYER_ID))
 
 
 def test_zero_puuid_falls_back_to_the_riot_id_and_keys_stay_distinct():
@@ -165,29 +203,47 @@ def test_no_identity_anywhere_falls_back_to_a_stable_slot_key():
     assert [p.player_key for p in a.players] == [p.player_key for p in b.players]
 
 
-def test_all_interactable_has_no_local_without_history():
+def test_eight_of_eight_interactable_is_unknown_without_the_id_and_exact_with_it():
     doc, mtime = copy.deepcopy(_rewrites()[5])
     for p in _players(doc):
-        p["isInteractable"] = True  # the live final-file shape (measured s135)
-    snap = ef.parse_eog(doc, salt=SALT, mtime=mtime)
-    assert snap.local_key is None
-    assert all(p.is_local is None for p in snap.players)
+        p["isInteractable"] = True  # the live end-of-game shape (measured s135)
+    assert _unknown(ef.parse_eog(doc, salt=SALT, mtime=mtime))
+    snap = ef.parse_eog(doc, salt=SALT, mtime=mtime, local_player_id=LOCAL_PLAYER_ID)
+    assert [p.is_local for p in snap.players] == [i == 2 for i in range(8)]
 
 
-def test_all_interactable_carries_the_local_forward(eog_path):
-    clock = Clock()
-    src = ef.EogFileSource(salt=SALT, clock=clock)
-    docs = copy.deepcopy(_rewrites())
-    for p in _players(docs[5][0]):
-        p["isInteractable"] = True
-    snaps = []
+def _poll_all(eog_path, src, clock, docs):
+    out = []
     for doc, mtime in docs:
         _put(eog_path, doc, mtime)
         clock.now = mtime + 1
-        snaps.append(src.poll())
+        out.append(src.poll())
+    return out
+
+
+def test_an_earlier_single_interactable_round_is_not_carried_forward(eog_path):
+    docs = copy.deepcopy(_rewrites())
+    for p in _players(docs[5][0]):
+        p["isInteractable"] = True
+    clock = Clock()
+    snaps = _poll_all(eog_path, ef.EogFileSource(salt=SALT, clock=clock), clock, docs)
+    assert [s.local_key for s in snaps] == [None] * 6  # rounds 1-5 had ONE interactable row
+
+
+def test_a_late_or_lost_id_is_never_back_or_forward_filled(eog_path):
     local = player_key(LOCAL_UUID, SALT)
-    assert [s.local_key for s in snaps] == [local] * 6
-    assert [p.is_local for p in snaps[5].players] == [i == 2 for i in range(8)]
+    ids = iter([None, LOCAL_PLAYER_ID, None, "boom", LOCAL_PLAYER_ID, None])
+
+    def resolve():
+        v = next(ids)
+        if v == "boom":
+            raise RuntimeError("helper failed")
+        return v
+
+    clock = Clock()
+    src = ef.EogFileSource(salt=SALT, clock=clock, local_player_id=resolve)
+    snaps = _poll_all(eog_path, src, clock, _rewrites())
+    assert [s.local_key for s in snaps] == [None, local, None, None, local, None]
 
 
 def test_malformed_values_are_dropped_never_raised():
@@ -221,6 +277,9 @@ def test_every_file_key_is_classified_and_identity_is_never_copied():
     assert SPEC_IDENTITY <= ef.IDENTITY_KEYS
     assert not ef.IDENTITY_KEYS & (ef.PLAYER_FIELDS | ef.PIECE_FIELDS | ef.DOC_FIELDS | ef.STATS_FIELDS)
     assert set(ef.KEY_BASIS_FIELDS) <= ef.IDENTITY_KEYS
+    assert set(ef.LOCAL_MATCH_FIELDS) <= ef.IDENTITY_KEYS
+    # isInteractable is NOT a local-player signal (bug N13): never read
+    assert "isInteractable" in ef.IGNORED_KEYS and "isInteractable" not in ef.PLAYER_FIELDS
     seen = {"doc": set(), "stats": set(), "player": set(), "piece": set()}
     for doc, _ in _rewrites():
         seen["doc"] |= set(doc)
@@ -276,10 +335,12 @@ def test_no_identity_value_or_key_reaches_a_snapshot_or_the_store(eog_path, tmp_
     db = tmp_path / "guard" / "tft_rounds.db"
     st = RoundStore.open(db)
     clock = Clock()
-    ing = ef.EogIngest(st, salt=SALT, source=ef.EogFileSource(salt=SALT, clock=clock))
+    # the injected id is identity too: it may select the row, never be copied
+    ing = ef.EogIngest(st, salt=SALT, source=ef.EogFileSource(
+        salt=SALT, clock=clock, local_player_id="CANARYPUUID2"))
     docs = _canaried()
     results = _replay(eog_path, ing, clock, docs)
-    assert all(r is not None for r in results)
+    assert all(r is not None and r.snapshot.local_key is not None for r in results)
     st.flush()
     reprs = repr([r.snapshot for r in results])
     doc = st.get_match(results[0].match_id)
@@ -384,9 +445,15 @@ def _rows(db: Path, sql, args=()):
         conn.close()
 
 
+def test_ingest_hands_the_injected_id_to_its_default_source(store):
+    ing = ef.EogIngest(store, salt=SALT, local_player_id=LOCAL_PLAYER_ID)
+    assert ing.source.local_player_id == LOCAL_PLAYER_ID
+
+
 def test_replay_writes_every_round_for_all_8_players(eog_path, store):
     clock = Clock()
-    ing = ef.EogIngest(store, salt=SALT, source=ef.EogFileSource(salt=SALT, clock=clock))
+    ing = ef.EogIngest(store, salt=SALT, source=ef.EogFileSource(
+        salt=SALT, clock=clock, local_player_id=LOCAL_PLAYER_ID))
     results = _replay(eog_path, ing, clock)
     assert [r.round_seq for r in results] == [1, 2, 3, 4, 5, 6]
     mid = results[0].match_id
@@ -454,6 +521,22 @@ def test_replay_writes_every_round_for_all_8_players(eog_path, store):
                          "local_known": True}]
 
 
+def test_without_the_id_the_store_records_the_local_player_as_unknown(eog_path, store):
+    clock = Clock()
+    ing = ef.EogIngest(store, salt=SALT, source=ef.EogFileSource(salt=SALT, clock=clock))
+    results = _replay(eog_path, ing, clock)
+    assert store.flush()
+    doc = store.get_match(results[0].match_id)
+    assert len(doc["players"]) == 8
+    assert all(p["is_local"] == 0 and p["slot"] is None for p in doc["players"])
+    for r in doc["rounds"]:
+        assert (r["hp_start"], r["hp_start_src"]) == (None, "absent")
+        assert len(r["players"]) == 8  # all 8 players are still recorded
+        ob = [o["value"] for o in r["obs"] if o["field"] == ef.OBS_PLAYER]
+        assert len(ob) == 8 and all(v["is_local"] is None for v in ob)
+        assert [o["value"]["local_known"] for o in r["obs"] if o["field"] == ef.OBS_ROUND] == [False]
+
+
 def test_restart_resumes_the_same_match_without_duplicating_rounds(eog_path, store):
     rw = _rewrites()
     clock = Clock()
@@ -495,7 +578,8 @@ def test_locate_maps_a_timestamp_to_its_round(eog_path, store):
 
 def test_export_fixture_of_an_ingested_match_passes_the_scrub_guard(eog_path, store, tmp_path):
     clock = Clock()
-    ing = ef.EogIngest(store, salt=SALT, source=ef.EogFileSource(salt=SALT, clock=clock))
+    ing = ef.EogIngest(store, salt=SALT, source=ef.EogFileSource(
+        salt=SALT, clock=clock, local_player_id=LOCAL_PLAYER_ID))
     results = _replay(eog_path, ing, clock)
     assert store.flush()
     out = store.export_fixture(results[0].match_id, tmp_path / "fx", name="tft02")
