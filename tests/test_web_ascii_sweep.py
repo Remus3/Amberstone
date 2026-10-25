@@ -676,7 +676,16 @@ _WEB = _REPO_ROOT / "web"
 # the new web/js/panels/active_match_tft.test.mjs is not a swept language. No
 # glyph change. Parallel S134 slices touching web/ race on this pin: the
 # merger recomputes it over the merged tree.
-_LIVE_HALF_DIGEST = "2f74201798554bac5361ec26257108b428cc6e3a33e03d1789cd1c27928f11f6"
+# superseded by the S134 T1 verifier follow-up re-capture below: "2f74201798554bac5361ec26257108b428cc6e3a33e03d1789cd1c27928f11f6"
+#
+# RE-CAPTURED 2026-10-25 at the S134 T1 verifier follow-up (leaving the TFT
+# fallback restores the MAP pane's neutral scaffold text so "No map intel in
+# TFT." cannot survive into the next League loading screen). Ordinary case, no
+# tokeniser change. ATTRIBUTED BY SUBSTITUTION against 5861ebc86: swapping
+# exactly web/js/panels/active_match.js back to its HEAD blob reproduces the
+# superseded 2f742017... value EXACTLY. That one path is the whole change. No
+# glyph change.
+_LIVE_HALF_DIGEST = "94b87cba596b82e3171c4708769f69f25908b59206825ef4b572005708899bfe"
 
 
 def _web_sources() -> list[Path]:
