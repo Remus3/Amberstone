@@ -19,7 +19,41 @@ Usage (in app bootstrap)::
 
 Signals:
   - HALT: write anything to ops/runtime/hot_reload_halt.txt to stop the watcher.
-  - Status: ops/runtime/hot_reload.json has {watching, last_change, last_compile}.
+  - Status: ops/runtime/hot_reload.json has {watching, last_change, last_compile,
+    pending, deferred_reason, deferred_since}.
+  - Trail: every trigger, every deferral and every compile refusal is ONE
+    INFO/WARNING line on logger "rc.hot_reload" (logs/YYYY-MM-DD.log) naming
+    the changed files. hot_reload.json is rewritten at startup, so the log is
+    the only record that survives the restart a trigger causes.
+
+Scope (s134). Session 134 measured 18 RC restarts during ONE TFT match
+(ops/runtime/tft_qa/RESTART_DIAG.md); each restart drops live TFT state.
+Every one came from an edit to a file the RC process never imports: tests/*,
+agents/agent1_lead/*, agents/agent3_testing/* and the gitignored lane driver
+files under ops/loop/control/. Two rules close it:
+  - WATCH ONLY WHAT RC LOADED. A changed file restarts RC only when its path
+    is the __file__ of a module in this process's sys.modules (the watcher
+    runs inside the RC process: main.py imports web_dashboard, which starts
+    it). A module RC has not loaded cannot be stale in RC, so a new file, a
+    test, a Phase-3 agent module or a Daemon Slayer module that only the
+    separate :8860 process loads never restarts RC. tests/ (at any depth) and
+    ops/loop/control/ are also excluded by PATH, so even a process that did
+    load them (pytest) never treats them as candidates. Tracked ops/loop
+    modules stay candidates: dashboard/routes_loop_status.py and
+    routes_loop_control.py importlib-load ops.loop.lanes / lane_launcher /
+    steer / interrupt at call time, so RC can hold them.
+  - DEFER WHILE A GAME IS LIVE. When a loaded file changes while a League or
+    TFT game is running (a game process - League of Legends.exe or
+    TFTClient-Win64-Shipping.exe - is alive, checked at most every
+    PROCESS_CACHE_S; or the RC-LCUAgent snapshot reports a gameflow phase in
+    IN_GAME_PHASES), the restart is held as PENDING and fired once, when
+    both signals say the game is over. The game check runs only while a
+    restart is pending, never on an idle tick.
+  - Daemon Slayer :8860 is unchanged: it is its own scheduled-task process
+    (RC-DaemonSlayer) and this watcher never restarted it; an RC restart
+    never touched it either (core/daemon_slayer_client.ensure_running is a
+    no-op while :8860 answers). DS modules RC imports in-process still
+    restart RC when edited, exactly as before.
 
 Caveats:
   - Polling interval is 2s (not inotify - cross-platform). Each poll is a
@@ -43,13 +77,18 @@ Caveats:
 from __future__ import annotations
 
 import json
+import logging
 import os
 import py_compile
+import sys
 import threading
 import time
 from pathlib import Path
+from typing import Callable, Iterable, Mapping, Optional
 
 from core.polled_json import atomic_write_text
+
+_log = logging.getLogger("rc.hot_reload")
 
 # Frozen files (CLAUDE.md hard rule) - absolute repo-relative paths.
 _FROZEN_PATHS: set[str] = {
@@ -91,6 +130,14 @@ _SKIP_DIRS: tuple[str, ...] = (
     ".claude",
     # Gitignored cross-repo inbox (see CLAUDE.md, cross-repo channel).
     "moon_sync_inbox",
+    # s134: test trees at ANY depth (tests/, agents/daemon_slayer/tests/,
+    # tools/tests/). The RC process never imports one; 9 of the 18 in-match
+    # restarts in RESTART_DIAG.md were edits under tests/.
+    "tests",
+    # s134: gitignored lane prompts, lane drivers and loop control state.
+    # Never imported by RC; 9 of the 18 in-match restarts were edits to
+    # ops/loop/control/lane_prompts/s134_lane_*.py.
+    "ops/loop/control",
 )
 
 # Derived from _SKIP_DIRS (which stays the single source of truth) so the
@@ -103,18 +150,49 @@ _SKIP_RUNS: tuple[tuple[str, ...], ...] = tuple(
     tuple(s.split("/")) for s in _SKIP_DIRS if "/" in s
 )
 
-# Directories we DO watch (only these subtrees contain editable .py). The
-# "" entry is the repo root and means ROOT-LEVEL FILES ONLY (e.g.
-# web_dashboard.py): it is listed non-recursively, never walked.
+# Directories we DO scan for candidates (a SUPERSET of what can restart RC:
+# a candidate restarts RC only if RC has loaded it, see _loaded_repo_files).
+# The "" entry is the repo root and means ROOT-LEVEL FILES ONLY (e.g.
+# web_dashboard.py): it is listed non-recursively, never walked. "tests" left
+# this list in s134 - RC never imports a test module.
 _WATCH_DIRS: tuple[str, ...] = (
     "agents",
     "core",
     "dashboard",
     "ops",
-    "tests",
     "tools",
     "",
 )
+
+# s134 game deferral. Lower-case process image names of a running League or
+# TFT game (NOT the League client, LeagueClientUx.exe, which is up between
+# games too).
+GAME_PROCESS_NAMES: frozenset[str] = frozenset({
+    "league of legends.exe",
+    "tftclient-win64-shipping.exe",
+})
+# LCU gameflow phases during which a game is loading or running. GameStart
+# (loading screen) and Reconnect (game up, client reconnecting) drop live
+# state on a restart exactly like InProgress does.
+IN_GAME_PHASES: frozenset[str] = frozenset({
+    "GameStart",
+    "InProgress",
+    "Reconnect",
+})
+# The process scan is the expensive signal (one psutil.process_iter); its
+# answer is reused for this many seconds.
+PROCESS_CACHE_S = 10.0
+# Paths named per log line before the rest are summarised as "(+N more)".
+_LOG_PATH_CAP = 40
+
+# Windows paths compare case-insensitively; the scan keys keep on-disk case
+# and a module __file__ may not, so membership is tested on a folded key.
+if os.name == "nt":
+    def _fold(rel: str) -> str:
+        return rel.lower()
+else:
+    def _fold(rel: str) -> str:
+        return rel
 
 
 def _is_frozen(rel: str) -> bool:
@@ -270,21 +348,317 @@ def _write_json(path: Path, data: dict) -> None:
         pass
 
 
-def _watch_loop(root: Path, halt_path: Path, status_path: Path) -> None:
-    """Background thread: poll mtimes, trigger restart on change."""
-    trigger = root / "restart_trigger.txt"
-    # Initial scan - do NOT trigger on first pass.
-    try:
-        known = _scan_py_files(root)
-    except OSError:
-        known = {}
+def _loaded_repo_files(
+    root: Path, modules: Optional[Mapping[str, object]] = None,
+) -> frozenset[str]:
+    """Repo-relative posix paths of the .py files behind loaded modules.
 
-    _write_json(status_path, {
-        "watching": True,
-        "last_change": None,
-        "last_compile": None,
-        "file_count": len(known),
-    })
+    ``modules`` defaults to this process's ``sys.modules``. A module counts
+    when its ``__file__`` is a ``.py`` path inside ``root`` (anchored on a
+    path-separator boundary, so a sibling directory whose name merely starts
+    with the root's name does not match). Namespace packages, built-ins,
+    extension modules and sourceless ``.pyc`` loads carry no ``.py`` file and
+    are skipped.
+
+    ``dict(sys.modules)`` is one C-level copy under the GIL; an importing
+    thread that resizes the dict mid-copy (free-threaded builds) is retried.
+    Raises RuntimeError only if three copies in a row fail - the watcher then
+    keeps its last good answer.
+    """
+    src = sys.modules if modules is None else modules
+    values: Optional[list] = None
+    for _ in range(3):
+        try:
+            values = list(dict(src).values())
+            break
+        except RuntimeError:
+            continue
+    if values is None:
+        raise RuntimeError("sys.modules changed size during three copies")
+    base = os.path.abspath(str(root))
+    prefix = os.path.normcase(os.path.join(base, ""))
+    cut = len(prefix)
+    out: set[str] = set()
+    for mod in values:
+        try:
+            f = getattr(mod, "__file__", None)
+        except Exception:  # noqa: BLE001 - a lazy module's __getattr__
+            continue
+        if not isinstance(f, str) or not f.endswith(".py"):
+            continue
+        p = os.path.abspath(f)
+        if os.path.normcase(p).startswith(prefix):
+            out.add(p[cut:].replace("\\", "/"))
+    return frozenset(out)
+
+
+def _default_process_names() -> frozenset[str]:
+    """Lower-case image names of every running process (psutil, pinned).
+
+    No psutil -> an empty set: the process signal is then silent and the
+    LCU phase alone decides.
+    """
+    try:
+        import psutil
+    except ImportError:
+        return frozenset()
+    names: set[str] = set()
+    for proc in psutil.process_iter(["name"]):
+        try:
+            n = proc.info.get("name")
+        except Exception:  # noqa: BLE001 - a process that exited mid-scan
+            continue
+        if isinstance(n, str) and n:
+            names.add(n.lower())
+    return frozenset(names)
+
+
+def _default_lcu_phase() -> Optional[str]:
+    """Gameflow phase from the RC-LCUAgent snapshot, or None.
+
+    Reads the same agent-posted snapshot /api/state uses
+    (``dashboard._liveclient.lcu_summary``: localhost :8889, 1 s timeout,
+    ``{}`` when the agent is down or its last push is older than 5 s).
+    Imported lazily: this module must stay importable without the dashboard.
+    """
+    from dashboard._liveclient import lcu_summary
+
+    snap = lcu_summary()
+    phase = snap.get("phase") if isinstance(snap, dict) else None
+    return phase if isinstance(phase, str) and phase else None
+
+
+class GameActivity:
+    """Is a League or TFT game loading or running right now?
+
+    ``check()`` (also ``__call__``) returns a short reason string when a game
+    is live - ``"process league of legends.exe"`` or
+    ``"lcu phase InProgress"`` - and None when it is not. The process scan is
+    cached for ``cache_s`` seconds whatever it answered; the LCU phase is read
+    only when no game process was seen. Never raises: a failing probe counts
+    as "no evidence of a game" for that signal.
+    """
+
+    def __init__(
+        self,
+        *,
+        process_names: Optional[Callable[[], Iterable[str]]] = None,
+        lcu_phase: Optional[Callable[[], Optional[str]]] = None,
+        clock: Callable[[], float] = time.monotonic,
+        cache_s: float = PROCESS_CACHE_S,
+    ) -> None:
+        self._process_names = process_names or _default_process_names
+        self._lcu_phase = lcu_phase or _default_lcu_phase
+        self._clock = clock
+        self._cache_s = cache_s
+        self._proc_at: Optional[float] = None
+        self._proc_hit: Optional[str] = None
+
+    def _game_process(self) -> Optional[str]:
+        now = self._clock()
+        if self._proc_at is not None and now - self._proc_at < self._cache_s:
+            return self._proc_hit
+        try:
+            hits = sorted(
+                n.lower() for n in self._process_names()
+                if isinstance(n, str) and n.lower() in GAME_PROCESS_NAMES
+            )
+        except Exception:  # noqa: BLE001
+            hits = []
+        self._proc_at = now
+        self._proc_hit = hits[0] if hits else None
+        return self._proc_hit
+
+    def check(self) -> Optional[str]:
+        proc = self._game_process()
+        if proc:
+            return f"process {proc}"
+        try:
+            phase = self._lcu_phase()
+        except Exception:  # noqa: BLE001
+            phase = None
+        if isinstance(phase, str) and phase in IN_GAME_PHASES:
+            return f"lcu phase {phase}"
+        return None
+
+    __call__ = check
+
+
+def _fmt_paths(paths: list[str]) -> str:
+    shown = ", ".join(paths[:_LOG_PATH_CAP])
+    rest = len(paths) - _LOG_PATH_CAP
+    return f"{shown} (+{rest} more)" if rest > 0 else shown
+
+
+class HotReloadWatcher:
+    """One poll of the watchdog per ``tick()``; the loop lives in _watch_loop.
+
+    ``tick()`` returns what it did, one of:
+      "idle"           nothing changed (or nothing is pending)
+      "ignored"        files changed, none of them loaded by RC
+      "deferred"       a loaded file changed (now or earlier) and a game is
+                       live; the restart is pending
+      "triggered"      restart_trigger.txt written (pending set fired)
+      "compile_failed" a pending file does not compile; no trigger, pending
+                       cleared (the fixing edit triggers on its own)
+
+    Injection seams (tests): ``loaded`` returns the repo-relative files RC
+    has loaded (default: _loaded_repo_files over sys.modules), ``game``
+    returns a reason string while a game is live (default: GameActivity),
+    ``scan`` is the candidate walker.
+    """
+
+    def __init__(
+        self,
+        root: Path,
+        *,
+        status_path: Path,
+        trigger_path: Optional[Path] = None,
+        loaded: Optional[Callable[[], Iterable[str]]] = None,
+        game: Optional[Callable[[], Optional[str]]] = None,
+        scan: Callable[[Path], dict] = _scan_py_files,
+    ) -> None:
+        self.root = Path(root)
+        self.status_path = status_path
+        self.trigger = trigger_path or self.root / "restart_trigger.txt"
+        self._loaded = loaded or (lambda: _loaded_repo_files(self.root))
+        self._game = game if game is not None else GameActivity()
+        self._scan = scan
+        self._last_loaded: frozenset[str] = frozenset()
+        # Initial scan - never triggers.
+        try:
+            self.known: dict[str, float] = self._scan(self.root)
+        except OSError:
+            self.known = {}
+        # Insertion-ordered set of loaded files whose restart is still owed.
+        self.pending: dict[str, None] = {}
+        self.deferred_since: Optional[str] = None
+        self.deferred_reason: Optional[str] = None
+
+    # -- helpers ---------------------------------------------------------
+    def _loaded_set(self) -> frozenset[str]:
+        try:
+            got = frozenset(_fold(r) for r in self._loaded())
+        except Exception as exc:  # noqa: BLE001
+            _log.debug("hot-reload: loaded-module census failed (%s); "
+                       "reusing the last one", type(exc).__name__)
+            return self._last_loaded
+        self._last_loaded = got
+        return got
+
+    def _in_game(self) -> Optional[str]:
+        try:
+            return self._game() or None
+        except Exception:  # noqa: BLE001
+            return None
+
+    def _status(self, **extra) -> None:
+        doc = {
+            "watching": True,
+            "file_count": len(self.known),
+            "pending": list(self.pending),
+            "deferred_reason": self.deferred_reason,
+            "deferred_since": self.deferred_since,
+        }
+        doc.update(extra)
+        _write_json(self.status_path, doc)
+
+    def _clear_pending(self) -> None:
+        self.pending = {}
+        self.deferred_since = None
+        self.deferred_reason = None
+
+    def write_initial_status(self) -> None:
+        loaded = self._loaded_set()
+        self._status(
+            last_change=None,
+            last_compile=None,
+            loaded_count=sum(1 for r in self.known if _fold(r) in loaded),
+        )
+
+    # -- the poll --------------------------------------------------------
+    def tick(self) -> str:
+        try:
+            current = self._scan(self.root)
+        except OSError:
+            return "idle"
+        raw = [
+            rel for rel, mtime in current.items()
+            # 0.5 s buffer for write latency.
+            if mtime > self.known.get(rel, 0) + 0.5
+        ]
+        self.known = current
+
+        changed: list[str] = []
+        if raw:
+            loaded = self._loaded_set()
+            changed = [r for r in raw if _fold(r) in loaded]
+            ignored = [r for r in raw if _fold(r) not in loaded]
+            if ignored:
+                _log.debug("hot-reload: ignored %d change(s) RC has not "
+                           "loaded: %s", len(ignored), _fmt_paths(ignored))
+            for rel in changed:
+                self.pending[rel] = None
+
+        if not self.pending:
+            return "ignored" if raw else "idle"
+
+        reason = self._in_game()
+        if reason:
+            if self.deferred_since is None:
+                self.deferred_since = time.strftime("%Y-%m-%dT%H:%M:%S")
+            self.deferred_reason = reason
+            if changed:
+                _log.info(
+                    "hot-reload: restart deferred, game in progress (%s): "
+                    "%d changed file(s): %s; %d pending",
+                    reason, len(changed), _fmt_paths(changed),
+                    len(self.pending))
+                self._status(last_change=self.deferred_since,
+                             last_compile="DEFERRED (game in progress)")
+            return "deferred"
+        return self._fire()
+
+    def _fire(self) -> str:
+        files = list(self.pending)
+        for rel in files:
+            try:
+                py_compile.compile(str(self.root / rel), doraise=True)
+            except (py_compile.PyCompileError, OSError) as exc:
+                lines = str(exc).splitlines()
+                msg = (lines[0] if lines else type(exc).__name__)[:160]
+                # py_compile failed - do NOT write restart_trigger
+                # (silent crash risk under pythonw.exe, CLAUDE.md hard rule).
+                _log.warning(
+                    "hot-reload: restart NOT triggered, py_compile failed "
+                    "for %s: %s (pending dropped: %s)",
+                    rel, msg, _fmt_paths(files))
+                self._clear_pending()
+                self._status(last_change=rel, last_compile=f"FAILED: {msg}")
+                return "compile_failed"
+
+        try:
+            atomic_write_text(self.trigger, "auto-hot-reload")
+        except OSError as exc:
+            _log.warning("hot-reload: could not write %s: %s",
+                         self.trigger.name, type(exc).__name__)
+        held = (f" (deferred since {self.deferred_since}, game over)"
+                if self.deferred_since else "")
+        _log.info("hot-reload: restart triggered by %d file(s)%s: %s",
+                  len(files), held, _fmt_paths(files))
+        self._clear_pending()
+        self._status(
+            last_change=time.strftime("%Y-%m-%dT%H:%M:%S"),
+            last_compile=f"OK ({len(files)} file(s))",
+            changed=files,
+        )
+        return "triggered"
+
+
+def _watch_loop(root: Path, halt_path: Path, status_path: Path) -> None:
+    """Background thread: poll every 2 s, trigger restart on a loaded change."""
+    watcher = HotReloadWatcher(root, status_path=status_path)
+    watcher.write_initial_status()
 
     while True:
         time.sleep(2.0)
@@ -298,59 +672,9 @@ def _watch_loop(root: Path, halt_path: Path, status_path: Path) -> None:
             return
 
         try:
-            current = _scan_py_files(root)
-        except OSError:
-            continue
-
-        changed: list[str] = []
-        for rel, mtime in current.items():
-            prev = known.get(rel, 0)
-            if mtime > prev + 0.5:  # 0.5s buffer for write latency
-                changed.append(rel)
-
-        if not changed:
-            known = current
-            continue
-
-        # Compile-check changed files first.
-        compile_ok = True
-        for rel in changed:
-            path = root / rel
-            try:
-                py_compile.compile(str(path), doraise=True)
-            except (py_compile.PyCompileError, OSError) as exc:
-                compile_ok = False
-                msg = str(exc).splitlines()[0][:160]
-                _write_json(status_path, {
-                    "watching": True,
-                    "last_change": rel,
-                    "last_compile": f"FAILED: {msg}",
-                    "file_count": len(known),
-                })
-                break
-
-        if not compile_ok:
-            # py_compile failed - do NOT write restart_trigger
-            # (silent crash risk under pythonw.exe, CLAUDE.md hard rule).
-            known = current
-            continue
-
-        # All changed files compile clean -> trigger restart.
-        try:
-            atomic_write_text(trigger, "auto-hot-reload")
-        except OSError:
-            pass
-
-        ts = time.strftime("%Y-%m-%dT%H:%M:%S")
-        _write_json(status_path, {
-            "watching": True,
-            "last_change": ts,
-            "last_compile": f"OK ({len(changed)} file(s))",
-            "changed": changed,
-            "file_count": len(current),
-        })
-
-        known = current
+            watcher.tick()
+        except Exception:  # noqa: BLE001 - one bad tick must not end the thread
+            _log.warning("hot-reload: tick failed", exc_info=True)
 
 
 def start_watcher(project_root: Path) -> threading.Thread:

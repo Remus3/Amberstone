@@ -48,8 +48,10 @@ class TestShouldWatch:
     def test_py_file_in_tools_is_watched(self):
         assert _should_watch("tools/edit_lint_check.py")
 
-    def test_py_file_in_tests_is_watched(self):
-        assert _should_watch("tests/test_example.py")
+    def test_py_file_in_tests_is_not_watched(self):
+        # s134: RC never imports tests/; 9 of the 18 in-match restarts of TFT
+        # match 20261025-070350 were test-file edits (RESTART_DIAG.md).
+        assert not _should_watch("tests/test_example.py")
 
     def test_git_dir_skipped(self):
         assert not _should_watch(".git/objects/something.py")
@@ -156,7 +158,7 @@ class TestScanPyFiles:
 
             assert "core/test_module.py" in rels
             assert "tools/tool.py" in rels
-            assert "tests/test_thing.py" in rels
+            assert "tests/test_thing.py" not in rels
             assert ".git/ignored.py" not in rels
             assert "__pycache__/cached.py" not in rels
             assert "web/panel.js" not in rels
@@ -196,6 +198,10 @@ _DECOY_FILES: frozenset[str] = frozenset({
     "moon_sync_inbox/sub/deep/z.py",
     "node_modules/pkg/lib/z.py",
     "docs/_archive/old/z.py",
+    # s134: RC never imports tests/ or the gitignored lane driver files under
+    # ops/loop/control/ - the two trees behind 16 of the 18 in-match restarts.
+    "tests/unit/sub/z.py",
+    "ops/loop/control/lane_prompts/s134_lane_driver.py",
 })
 
 # The directory at the top of each decoy tree - the exact directory the
@@ -210,6 +216,8 @@ _DECOY_TREES: frozenset[str] = frozenset({
     "moon_sync_inbox",
     "node_modules",
     "docs/_archive",
+    "tests",
+    "ops/loop/control",
 })
 
 # The ONLY directories a scan of the fixture tree may enumerate ("" is the
@@ -440,3 +448,347 @@ class TestResponderExportCopiesAreNotWatched:
             assert (
                 "ops/runtime/responder_export/abcdef123456/core/x.py" not in got
             )
+
+
+# ---------------------------------------------------------------------------
+# s134: watch only what RC loads, defer while a game is live, log every act.
+#
+# Measured incident (ops/runtime/tft_qa/RESTART_DIAG.md): 18 RC restarts in
+# one TFT match, every one caused by an edit to a file the RC process never
+# imports - tests/*, agents/agent1_lead/*, agents/agent3_testing/* and the
+# gitignored ops/loop/control/lane_prompts/s134_lane_*.py. Each restart drops
+# live TFT state. The watcher logged nothing, so the evidence self-erased.
+# ---------------------------------------------------------------------------
+
+import logging  # noqa: E402
+import types  # noqa: E402
+
+import core.hot_reload as hr  # noqa: E402
+
+# The incident's edited files, repo-relative, one per distinct tree.
+_INCIDENT_FILES = (
+    "tests/test_progress_reaper_rm816.py",
+    "tests/test_tft_set_resolver.py",
+    "agents/agent1_lead/scheduler.py",
+    "agents/agent3_testing/suite/test_scheduler_queue_lock.py",
+    "ops/loop/control/lane_prompts/s134_lane_driver.py",
+    "ops/loop/control/lane_prompts/s134_lane_progress.py",
+)
+
+# Files the RC process does load in the fixture below.
+_RC_LOADED = (
+    "core/live.py",
+    "dashboard/routes_x.py",
+    "agents/daemon_slayer/dps.py",
+    "ops/loop/lanes.py",
+    "web_dashboard.py",
+)
+
+_LOG = "rc.hot_reload"
+
+
+def _tree(root: Path) -> Path:
+    for rel in _INCIDENT_FILES + _RC_LOADED + ("agents/daemon_slayer/server.py",):
+        p = root / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text("X = 1\n", encoding="utf-8")
+    (root / "ops" / "runtime").mkdir(parents=True, exist_ok=True)
+    return root
+
+
+def _touch(root: Path, rel: str, text: str = "X = 2\n") -> None:
+    """Rewrite rel and push its mtime well past the 0.5 s buffer."""
+    p = root / rel
+    p.parent.mkdir(parents=True, exist_ok=True)
+    before = p.stat().st_mtime if p.exists() else time.time()
+    p.write_text(text, encoding="utf-8")
+    t = before + 10.0
+    os.utime(p, (t, t))
+
+
+class _Game:
+    """Settable in-game verdict: None = no game, a string = the reason."""
+
+    def __init__(self, reason=None):
+        self.reason = reason
+        self.calls = 0
+
+    def __call__(self):
+        self.calls += 1
+        return self.reason
+
+
+def _watcher(root: Path, loaded=_RC_LOADED, game=None):
+    return hr.HotReloadWatcher(
+        root,
+        status_path=root / "ops" / "runtime" / "hot_reload.json",
+        loaded=lambda: frozenset(loaded),
+        game=game if game is not None else _Game(),
+    )
+
+
+def _records(caplog, needle: str) -> list[str]:
+    return [r.getMessage() for r in caplog.records
+            if r.name == _LOG and needle in r.getMessage()]
+
+
+class TestWatchScopeIsWhatRcLoads:
+    """Path filter: tests/ and ops/loop/control/ are never candidates."""
+
+    @pytest.mark.parametrize("rel", [
+        "tests/test_progress_reaper_rm816.py",
+        "tests/unit/deep/test_x.py",
+        # RM-699: a tests directory at ANY depth.
+        "agents/daemon_slayer/tests/test_x.py",
+        "tools/tests/test_x.py",
+        "ops/loop/control/lane_prompts/s134_lane_driver.py",
+        ".claude/worktrees/agent-x/core/live.py",
+        "ops/runtime/responder_export/abcdef123456/core/x.py",
+    ])
+    def test_never_a_candidate(self, rel):
+        assert not _should_watch(rel)
+
+    @pytest.mark.parametrize("rel", [
+        # RC imports these lazily (dashboard/routes_loop_status.py _lanes,
+        # importlib) - they stay candidates and are watched only if loaded.
+        "ops/loop/lanes.py",
+        "agents/daemon_slayer/dps.py",
+        "core/live.py",
+        # RM-699 acceptance: runtime siblings of the test trees stay.
+        "agents/daemon_slayer/engine.py",
+        "tools/edit_lint_check.py",
+        "web_dashboard.py",
+    ])
+    def test_still_a_candidate(self, rel):
+        assert _should_watch(rel)
+
+    def test_loaded_repo_files_maps_modules_under_root_only(self, tmp_path):
+        root = tmp_path / "repo"
+        ns = types.SimpleNamespace
+        mods = {
+            "core.live": ns(__file__=str(root / "core" / "live.py")),
+            "core.pkg": ns(__file__=str(root / "core" / "pkg" / "__init__.py")),
+            "outside": ns(__file__=str(tmp_path / "other" / "x.py")),
+            # Prefix trap: "repo2" starts with "repo" as a string.
+            "sibling": ns(__file__=str(tmp_path / "repo2" / "core" / "b.py")),
+            "namespace_pkg": ns(__file__=None),
+            "builtin": ns(),
+            "extension": ns(__file__=str(root / "core" / "fast.pyd")),
+        }
+        got = hr._loaded_repo_files(root, mods)
+        assert got == {"core/live.py", "core/pkg/__init__.py"}
+
+    def test_loaded_repo_files_default_reads_sys_modules(self):
+        root = Path(hr.__file__).resolve().parent.parent
+        got = hr._loaded_repo_files(root)
+        # This very module and the module under test are loaded right now.
+        assert "core/hot_reload.py" in got
+        assert "tests/test_hot_reload.py" in got
+
+
+class TestWatcherTriggers:
+
+    def test_loaded_change_outside_game_triggers_and_logs(self, tmp_path, caplog):
+        root = _tree(tmp_path)
+        w = _watcher(root)
+        _touch(root, "core/live.py")
+        with caplog.at_level(logging.INFO, logger=_LOG):
+            assert w.tick() == "triggered"
+        assert (root / "restart_trigger.txt").read_text() == "auto-hot-reload"
+        lines = _records(caplog, "core/live.py")
+        assert len(lines) == 1 and "trigger" in lines[0]
+
+    def test_incident_files_never_trigger_nor_defer(self, tmp_path, caplog):
+        root = _tree(tmp_path)
+        # Even a loaded-set that CLAIMS the tests/ and ops/loop/control/
+        # files (a pytest process does load tests/*) must not make them
+        # candidates: those two trees are excluded by path. The agents/
+        # files are excluded because RC has not loaded them.
+        hard = tuple(r for r in _INCIDENT_FILES if not r.startswith("agents/"))
+        assert len(hard) == 4  # anchor: the claim is not vacuous
+        game = _Game()
+        w = _watcher(root, loaded=_RC_LOADED + hard, game=game)
+        with caplog.at_level(logging.DEBUG, logger=_LOG):
+            for in_game in (None, "process league of legends.exe"):
+                game.reason = in_game
+                for rel in _INCIDENT_FILES:
+                    _touch(root, rel)
+                    assert w.tick() in ("idle", "ignored"), rel
+        assert not (root / "restart_trigger.txt").exists()
+        assert _records(caplog, "deferred") == []
+        assert _records(caplog, "triggered") == []
+
+    def test_unloaded_ds_module_does_not_trigger(self, tmp_path):
+        # agents/daemon_slayer/server.py runs in the separate :8860 process;
+        # RC has not loaded it, so an edit there is not RC's to reload.
+        root = _tree(tmp_path)
+        w = _watcher(root)
+        _touch(root, "agents/daemon_slayer/server.py")
+        assert w.tick() == "ignored"
+        assert not (root / "restart_trigger.txt").exists()
+
+    def test_loaded_ds_module_still_triggers(self, tmp_path):
+        root = _tree(tmp_path)
+        w = _watcher(root)
+        _touch(root, "agents/daemon_slayer/dps.py")
+        assert w.tick() == "triggered"
+
+    def test_new_unloaded_file_does_not_trigger(self, tmp_path):
+        root = _tree(tmp_path)
+        w = _watcher(root)
+        _touch(root, "core/brand_new_module.py")
+        assert w.tick() == "ignored"
+        assert not (root / "restart_trigger.txt").exists()
+
+    def test_no_change_is_idle(self, tmp_path):
+        root = _tree(tmp_path)
+        w = _watcher(root)
+        assert w.tick() == "idle"
+        assert not (root / "restart_trigger.txt").exists()
+
+    def test_game_check_not_consulted_without_a_loaded_change(self, tmp_path):
+        root = _tree(tmp_path)
+        game = _Game()
+        w = _watcher(root, game=game)
+        w.tick()
+        _touch(root, "tests/test_tft_set_resolver.py")
+        w.tick()
+        assert game.calls == 0
+
+
+class TestWatcherDefersDuringGame:
+
+    def test_deferred_then_fires_once_after_game(self, tmp_path, caplog):
+        root = _tree(tmp_path)
+        trig = root / "restart_trigger.txt"
+        game = _Game("process tftclient-win64-shipping.exe")
+        w = _watcher(root, game=game)
+        with caplog.at_level(logging.INFO, logger=_LOG):
+            _touch(root, "core/live.py")
+            assert w.tick() == "deferred"
+            assert not trig.exists()
+            # Still in game, nothing new: stays pending, no new log line.
+            assert w.tick() == "deferred"
+            _touch(root, "dashboard/routes_x.py")
+            assert w.tick() == "deferred"
+            assert not trig.exists()
+            deferrals = _records(caplog, "deferred")
+            assert len(deferrals) == 2, deferrals
+            assert "core/live.py" in deferrals[0]
+            assert "tftclient-win64-shipping.exe" in deferrals[0]
+            assert "dashboard/routes_x.py" in deferrals[1]
+            assert "core/live.py" not in deferrals[1]
+
+            game.reason = None
+            assert w.tick() == "triggered"
+            assert trig.read_text() == "auto-hot-reload"
+            fired = _records(caplog, "triggered")
+            assert len(fired) == 1
+            assert "core/live.py" in fired[0]
+            assert "dashboard/routes_x.py" in fired[0]
+
+            trig.unlink()
+            assert w.tick() == "idle"
+            assert not trig.exists()
+
+    def test_status_file_shows_pending_while_deferred(self, tmp_path):
+        import json
+        root = _tree(tmp_path)
+        w = _watcher(root, game=_Game("lcu phase InProgress"))
+        _touch(root, "core/live.py")
+        w.tick()
+        doc = json.loads((root / "ops" / "runtime" / "hot_reload.json")
+                         .read_text(encoding="utf-8"))
+        assert doc["pending"] == ["core/live.py"]
+        assert doc["deferred_reason"] == "lcu phase InProgress"
+
+    def test_broken_pending_file_blocks_the_deferred_trigger(self, tmp_path, caplog):
+        root = _tree(tmp_path)
+        game = _Game("process league of legends.exe")
+        w = _watcher(root, game=game)
+        _touch(root, "core/live.py", "def broken(:\n")
+        assert w.tick() == "deferred"
+        game.reason = None
+        with caplog.at_level(logging.INFO, logger=_LOG):
+            assert w.tick() == "compile_failed"
+        assert not (root / "restart_trigger.txt").exists()
+        assert any("core/live.py" in m for m in _records(caplog, "py_compile"))
+        # Pending is cleared: the next fix edit triggers on its own.
+        assert w.tick() == "idle"
+
+
+class TestGameActivity:
+
+    def _ga(self, names=(), phase=None, clock=None, counter=None):
+        def _names():
+            if counter is not None:
+                counter["procs"] += 1
+            return frozenset(names)
+
+        def _phase():
+            if counter is not None:
+                counter["lcu"] += 1
+            return phase
+        return hr.GameActivity(process_names=_names, lcu_phase=_phase,
+                               clock=clock or (lambda: 0.0))
+
+    @pytest.mark.parametrize("proc", [
+        "League of Legends.exe", "league of legends.exe",
+        "TFTClient-Win64-Shipping.exe",
+    ])
+    def test_game_process_means_in_game(self, proc):
+        reason = self._ga(names={"explorer.exe", proc}).check()
+        assert reason and proc.lower() in reason.lower()
+
+    @pytest.mark.parametrize("phase", ["InProgress", "GameStart", "Reconnect"])
+    def test_live_lcu_phase_means_in_game(self, phase):
+        assert phase in (self._ga(phase=phase).check() or "")
+
+    @pytest.mark.parametrize("phase", [
+        None, "", "Lobby", "ChampSelect", "WaitingForStats", "PreEndOfGame",
+        "EndOfGame", "None",
+    ])
+    def test_out_of_game(self, phase):
+        assert self._ga(names={"explorer.exe"}, phase=phase).check() is None
+
+    def test_process_check_cached_for_ten_seconds(self):
+        now = {"t": 100.0}
+        counter = {"procs": 0, "lcu": 0}
+        ga = self._ga(names={"chrome.exe"}, clock=lambda: now["t"],
+                      counter=counter)
+        ga.check()
+        now["t"] = 105.0
+        ga.check()
+        assert counter["procs"] == 1
+        now["t"] = 110.5
+        ga.check()
+        assert counter["procs"] == 2
+        assert hr.PROCESS_CACHE_S == 10.0
+
+    def test_lcu_not_asked_when_game_process_running(self):
+        counter = {"procs": 0, "lcu": 0}
+        ga = self._ga(names={"League of Legends.exe"}, phase="InProgress",
+                      counter=counter)
+        assert ga.check()
+        assert counter["lcu"] == 0
+
+    def test_check_never_raises(self):
+        def _boom():
+            raise RuntimeError("probe failed")
+        ga = hr.GameActivity(process_names=_boom, lcu_phase=_boom,
+                             clock=lambda: 0.0)
+        assert ga.check() is None
+
+    def test_default_process_names_sees_this_process(self):
+        psutil = pytest.importorskip("psutil")
+        me = psutil.Process().name().lower()
+        names = hr._default_process_names()
+        assert isinstance(names, frozenset)
+        assert me in names
+
+    def test_default_lcu_phase_reads_the_agent_snapshot(self, monkeypatch):
+        import dashboard._liveclient as lc
+        monkeypatch.setattr(lc, "lcu_summary", lambda: {"phase": "InProgress"})
+        assert hr._default_lcu_phase() == "InProgress"
+        monkeypatch.setattr(lc, "lcu_summary", lambda: {})
+        assert hr._default_lcu_phase() is None
