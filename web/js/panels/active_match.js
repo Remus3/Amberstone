@@ -1037,6 +1037,54 @@ function _amTftStage(p) {
   return (s && r) ? `${s}-${r}` : null;
 }
 
+// S134: the per-round board + lobby the backend serves for the standalone TFT
+// client (coach.tft_board / coach.tft_players, from the client's
+// TFTEoGStats.json - dashboard/_state_builder.py tft_coach_for_standalone).
+// Untrusted file data: printable ASCII only, clipped, bounded counts.
+function _amText(v, max) {
+  if (typeof v !== "string") return null;
+  const s = v.replace(/[^\x20-\x7e]/g, "").trim();
+  return s ? s.slice(0, max) : null;
+}
+
+// A TFT board holds at most 10 units on the field (level 10) plus a few
+// summons; 12 bounds a malformed file without dropping a real board.
+const _AM_TFT_MAX_UNITS = 12;
+
+function _amTftBoard(p) {
+  const raw = Array.isArray(p.tft_board) ? p.tft_board : [];
+  const out = [];
+  for (const u of raw.slice(0, _AM_TFT_MAX_UNITS)) {
+    if (!u || typeof u !== "object" || Array.isArray(u)) continue;
+    const name = _amText(u.name, 24);
+    if (!name) continue;
+    const star = _amIntIn(u.star, 1, 4) || 1;
+    const items = (Array.isArray(u.items) ? u.items : [])
+      .map((i) => _amText(i, 28)).filter(Boolean).slice(0, 3);
+    out.push({ name, star, items });
+  }
+  return out;
+}
+
+function _amTftLobby(p) {
+  const raw = Array.isArray(p.tft_players) ? p.tft_players : [];
+  const out = [];
+  for (const r of raw.slice(0, 8)) {
+    if (!r || typeof r !== "object" || Array.isArray(r)) continue;
+    const hp = _amIntIn(r.health, 0, 100);
+    if (hp === null) continue;
+    out.push({ place: _amIntIn(r.standing, 1, 8), hp, you: r.you === true });
+  }
+  return out;
+}
+
+// 1 -> "1st", 2 -> "2nd" ... 8 -> "8th".
+export function amOrdinal(n) {
+  const v = _amIntIn(n, 1, 8);
+  if (v === null) return "-";
+  return v + (v === 1 ? "st" : v === 2 ? "nd" : v === 3 ? "rd" : "th");
+}
+
 /**
  * Pure model for the Active Match panes during a live game that has no :2999
  * feed. Returns null when the existing render path owns the frame (a feed
@@ -1049,8 +1097,13 @@ function _amTftStage(p) {
  * HP / GOLD, "-" when absent), so the feed landing changes text, never
  * geometry.
  *
+ * The BUILD pane carries the local board and the MAP pane the 8-player lobby
+ * (placement + HP) when the per-round file has landed; before that each shows
+ * its one-line empty state in the same pane, so the panes never move.
+ *
  * @returns {null|{kind:string, sub:string, status:string[], rows:string[][],
- *   build:string, map:string, hasData:boolean}}
+ *   build:string, map:string, board:object[], players:object[],
+ *   place:(number|null), hasData:boolean}}
  */
 export function amLiveFallbackModel(mode, phase, payload) {
   if (phase !== "InProgress") return null;
@@ -1065,6 +1118,9 @@ export function amLiveFallbackModel(mode, phase, payload) {
       rows: [],
       build: "Item build needs the live game feed.",
       map: "Map intel needs the live game feed.",
+      board: [],
+      players: [],
+      place: null,
       hasData: false,
     };
   }
@@ -1072,18 +1128,28 @@ export function amLiveFallbackModel(mode, phase, payload) {
   const level = _amIntIn(p.level, 1, 10);
   const hp = _amIntIn(typeof p.hp === "number" ? p.hp : p.health, 1, 100);
   const gold = _amIntIn(p.gold, 0, 999);
-  const hasData = !!(stage || level || hp);
+  const board = _amTftBoard(p);
+  const players = _amTftLobby(p);
+  const youRow = players.find((r) => r.you);
+  const place = _amIntIn(p.standing, 1, 8) || (youRow ? youRow.place : null);
+  const hasData = !!(stage || level || hp || board.length || players.length || place);
   const dash = (v) => (v === null ? "-" : String(v));
-  let sub = "TFT - phase InProgress - live data unavailable";
-  if (hasData) sub = stage ? `TFT - stage ${stage} - phase InProgress` : "TFT - phase InProgress";
+  const parts = ["TFT"];
+  if (stage) parts.push(`stage ${stage}`);
+  if (place) parts.push(`${amOrdinal(place)} of ${players.length || 8}`);
+  parts.push("phase InProgress");
+  if (!hasData) parts.push("live data unavailable");
   return {
     kind: "tft",
-    sub,
+    sub: parts.join(" - "),
     status: ["TFT LIVE DATA",
              hasData ? "Live" : "Unavailable - no live feed from the TFT client yet."],
     rows: [["STAGE", dash(stage)], ["LEVEL", dash(level)], ["HP", dash(hp)], ["GOLD", dash(gold)]],
-    build: "No League item build in TFT.",
-    map: "No map intel in TFT.",
+    build: "Units appear after the TFT client writes its first round.",
+    map: "Lobby placements and HP appear after the first round.",
+    board,
+    players,
+    place,
     hasData,
   };
 }
@@ -1168,14 +1234,27 @@ function _amRenderLiveFallback(fb, p, ctx) {
   if (wh && wh.style.display !== "none") wh.style.display = "none";
   _amRenderDsCluster(p, ctx, false);
 
+  // The static pane head reads BUILD; in TFT that pane holds the board.
+  const head = _amBuildHead();
+  const wantHead = fb.kind === "tft" ? "BOARD" : "BUILD";
+  if (head && head.textContent !== wantHead) head.textContent = wantHead;
+
   const build = _AM.buildBody();
-  if (build && build.dataset.amFallbackSig !== fb.build) {
+  const buildSig = JSON.stringify([fb.build, fb.board || []]);
+  if (build && build.dataset.amFallbackSig !== buildSig) {
     build.innerHTML = "";
-    const d = document.createElement("div");
-    d.className = "am-empty";
-    d.textContent = fb.build;
-    build.appendChild(d);
-    build.dataset.amFallbackSig = fb.build;
+    if (fb.kind === "tft") {
+      // Board or its empty state in the SAME fixed-height wrapper
+      // (active_match.css .am-tft-board-wrap), so the round-1 data landing
+      // never resizes the pane grid.
+      build.appendChild(_amTftBoardNode(fb.board || [], fb.build));
+    } else {
+      const d = document.createElement("div");
+      d.className = "am-empty";
+      d.textContent = fb.build;
+      build.appendChild(d);
+    }
+    build.dataset.amFallbackSig = buildSig;
   }
 
   const map = _AM.mapBody();
@@ -1188,16 +1267,140 @@ function _amRenderLiveFallback(fb, p, ctx) {
       _AM_MAP.pollHandle = null;
     }
     _AM_MAP.vsCache = null;
-    const tag = "fallback:" + fb.map;
+    const tag = "fallback:" + JSON.stringify([fb.map, fb.players || []]);
     if (_AM_MAP.attachedMode !== tag) {
       _AM_MAP.attachedMode = tag;
       map.innerHTML = "";
-      const d = document.createElement("div");
-      d.className = "am-empty";
-      d.textContent = fb.map;
-      map.appendChild(d);
+      if (fb.kind === "tft") {
+        map.appendChild(_amTftLobbyNode(fb.players || [], fb.map));
+      } else {
+        const d = document.createElement("div");
+        d.className = "am-empty";
+        d.textContent = fb.map;
+        map.appendChild(d);
+      }
     }
   }
+}
+
+function _amBuildHead() {
+  return document.querySelector("#view-active-match .am-pane-build .am-pane-head");
+}
+
+function _amSectionHead(text) {
+  const h = document.createElement("div");
+  h.className = "am-tft-sec";
+  h.textContent = text;
+  return h;
+}
+
+function _amEmptyIn(wrap, text) {
+  const d = document.createElement("div");
+  d.className = "am-empty";
+  d.textContent = text;
+  wrap.appendChild(d);
+  return wrap;
+}
+
+// Local board: one chip per unit - name + star level on the first line, its
+// items (or "no items") on the second. Pure DOM, textContent only. An empty
+// board renders its empty-state line inside the same fixed-height wrapper.
+function _amTftBoardNode(board, emptyText) {
+  const wrap = document.createElement("div");
+  wrap.className = "am-tft-board-wrap";
+  // An over-full board (11+ units) makes this wrapper a keyboard scroll
+  // region in Chromium; name it so that Tab stop is not anonymous (audit S4).
+  wrap.setAttribute("role", "region");
+  wrap.setAttribute("aria-label", "Your board");
+  // The pane head already reads BOARD, so the eyebrow carries the count only
+  // (audit S3: "board" was said two or three times).
+  if (!board.length) {
+    wrap.appendChild(_amSectionHead("UNITS"));
+    return _amEmptyIn(wrap, emptyText);
+  }
+  wrap.appendChild(_amSectionHead(`${board.length} UNIT${board.length === 1 ? "" : "S"}`));
+  const list = document.createElement("ul");
+  list.className = "am-tft-board";
+  list.setAttribute("aria-label", "Units");
+  for (const u of board) {
+    const li = document.createElement("li");
+    li.className = "am-tft-unit";
+    const label = `${u.name}, ${u.star} star${u.items.length ? ", " + u.items.join(", ") : ", no items"}`;
+    li.setAttribute("aria-label", label);
+    li.title = label;  // full item names when the chip line is ellipsised
+    const top = document.createElement("div");
+    top.className = "am-tft-unit-top";
+    const name = document.createElement("span");
+    name.className = "am-tft-unit-name";
+    name.textContent = u.name;
+    const star = document.createElement("span");
+    star.className = "am-tft-unit-star";
+    star.dataset.star = String(u.star);
+    star.textContent = "*".repeat(u.star);
+    star.setAttribute("aria-hidden", "true");
+    top.appendChild(name);
+    top.appendChild(star);
+    const items = document.createElement("div");
+    items.className = "am-tft-unit-items";
+    if (!u.items.length) items.classList.add("is-empty");
+    items.textContent = u.items.length ? u.items.join(" / ") : "no items";
+    items.setAttribute("aria-hidden", "true");
+    li.appendChild(top);
+    li.appendChild(items);
+    list.appendChild(li);
+  }
+  wrap.appendChild(list);
+  return wrap;
+}
+
+// Lobby: every player's placement + HP, by placement. Opponents are
+// anonymous on purpose (the backend carries no names); the local row is
+// marked "You" and highlighted.
+function _amTftLobbyNode(players, emptyText) {
+  const wrap = document.createElement("div");
+  wrap.className = "am-tft-lobby-wrap";
+  if (!players.length) {
+    wrap.appendChild(_amSectionHead("LOBBY"));
+    return _amEmptyIn(wrap, emptyText);
+  }
+  const alive = players.filter((r) => r.hp > 0).length;
+  wrap.appendChild(_amSectionHead(`LOBBY - ${alive} of ${players.length} alive`));
+  const list = document.createElement("ol");
+  list.className = "am-tft-lobby";
+  list.setAttribute("aria-label", "Lobby placements and HP");
+  for (const r of players) {
+    const li = document.createElement("li");
+    li.className = "am-tft-lob-row";
+    if (r.you) li.classList.add("is-you");
+    if (r.hp <= 0) li.classList.add("is-out");
+    const who = r.you ? "You" : "Opponent";
+    li.setAttribute("aria-label",
+      `${amOrdinal(r.place)}, ${who}, ${r.hp > 0 ? r.hp + " HP" : "out"}`);
+    const place = document.createElement("span");
+    place.className = "am-tft-lob-place";
+    place.textContent = amOrdinal(r.place);
+    const name = document.createElement("span");
+    name.className = "am-tft-lob-who";
+    name.textContent = who;
+    const bar = document.createElement("span");
+    bar.className = "am-tft-lob-bar";
+    const fill = document.createElement("span");
+    fill.className = "am-tft-lob-fill";
+    fill.style.width = `${r.hp}%`;
+    if (r.hp <= 25) fill.classList.add("is-low");
+    bar.appendChild(fill);
+    const hp = document.createElement("span");
+    hp.className = "am-tft-lob-hp";
+    hp.textContent = r.hp > 0 ? String(r.hp) : "out";
+    for (const el of [place, name, bar, hp]) el.setAttribute("aria-hidden", "true");
+    li.appendChild(place);
+    li.appendChild(name);
+    li.appendChild(bar);
+    li.appendChild(hp);
+    list.appendChild(li);
+  }
+  wrap.appendChild(list);
+  return wrap;
 }
 
 export function renderActiveMatch(payload, ctx) {
@@ -1225,6 +1428,9 @@ export function renderActiveMatch(payload, ctx) {
       delete _pane.dataset.amFallbackSig;
     }
   }
+  // The TFT fallback renames the BUILD pane head to BOARD; put it back.
+  const _bh = _amBuildHead();
+  if (_bh && _bh.textContent !== "BUILD") _bh.textContent = "BUILD";
   // The non-live branch below returns before the MAP pane, so a TFT
   // placeholder there would otherwise survive into the next League game's
   // loading screen. Put back the neutral scaffold text; the next live render

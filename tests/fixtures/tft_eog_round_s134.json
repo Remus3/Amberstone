@@ -1,0 +1,395 @@
+{
+ "gameId": 1000000001,
+ "gameMode": "TFT",
+ "isRanked": false,
+ "queueId": 1090,
+ "queueType": "NORMAL_TFT",
+ "statsBlock": {
+  "gameLengthSeconds": 741,
+  "players": [
+   {
+    "augments": [],
+    "boardPieces": [
+     {
+      "championName": "DA_18_Yorick",
+      "itemNames": [],
+      "price": 1,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_18_Xayah",
+      "itemNames": [
+       "DA_InfinityEdge"
+      ],
+      "price": 1,
+      "starLevel": 2
+     },
+     {
+      "championName": "DA_Karma18",
+      "itemNames": [],
+      "price": 1,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_18_Yunara",
+      "itemNames": [
+       "DA_InfinityEdge"
+      ],
+      "price": 2,
+      "starLevel": 2
+     },
+     {
+      "championName": "DA_18_Diana",
+      "itemNames": [
+       "DA_SpiritVisage",
+       "DA_TitansResolve"
+      ],
+      "price": 3,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_18_Ahri",
+      "itemNames": [
+       "DA_ArchangelsStaff"
+      ],
+      "price": 4,
+      "starLevel": 1
+     }
+    ],
+    "ffaStanding": 2,
+    "health": 96,
+    "isInteractable": true
+   },
+   {
+    "augments": [],
+    "boardPieces": [
+     {
+      "championName": "DA_18_Xayah",
+      "itemNames": [
+       "DA_GiantSlayer",
+       "DA_Component_SparringGloves"
+      ],
+      "price": 1,
+      "starLevel": 2
+     },
+     {
+      "championName": "DA_18_Ornn",
+      "itemNames": [
+       "DA_GargoyleStoneplate"
+      ],
+      "price": 1,
+      "starLevel": 2
+     },
+     {
+      "championName": "DA_18_LeBlanc",
+      "itemNames": [
+       "DA_JeweledGauntlet",
+       "DA_Component_NegatronCloak"
+      ],
+      "price": 2,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_18_Alistar",
+      "itemNames": [
+       "DA_Component_TearOfTheGoddess"
+      ],
+      "price": 2,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_18_Diana",
+      "itemNames": [],
+      "price": 3,
+      "starLevel": 1
+     }
+    ],
+    "ffaStanding": 4,
+    "health": 87,
+    "isInteractable": false
+   },
+   {
+    "augments": [],
+    "boardPieces": [
+     {
+      "championName": "DA_KogMaw18_AD",
+      "itemNames": [
+       "DA_Component_RecurveBow"
+      ],
+      "price": 3,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_18_Akali_AD",
+      "itemNames": [
+       "DA_HandOfJustice",
+       "DA_Component_RecurveBow"
+      ],
+      "price": 1,
+      "starLevel": 2
+     },
+     {
+      "championName": "DA_18_Ornn",
+      "itemNames": [
+       "DA_IonicSpark"
+      ],
+      "price": 1,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_18_Xayah",
+      "itemNames": [
+       "DA_Component_GiantsBelt"
+      ],
+      "price": 1,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_Fiddlesticks18",
+      "itemNames": [
+       "DA_Morellonomicon"
+      ],
+      "price": 3,
+      "starLevel": 1
+     }
+    ],
+    "ffaStanding": 8,
+    "health": 70,
+    "isInteractable": false
+   },
+   {
+    "augments": [],
+    "boardPieces": [
+     {
+      "championName": "DA_18_Teemo",
+      "itemNames": [
+       "DA_NashorsTooth",
+       "DA_ProtectorsVow",
+       "DA_SunfireCape"
+      ],
+      "price": 2,
+      "starLevel": 2
+     },
+     {
+      "championName": "DA_18_Yunara",
+      "itemNames": [
+       "DA_TitansResolve"
+      ],
+      "price": 2,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_Karma18",
+      "itemNames": [
+       "DA_Component_TearOfTheGoddess",
+       "DA_AdaptiveHelm"
+      ],
+      "price": 1,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_18_RekSai",
+      "itemNames": [],
+      "price": 1,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_18_Yorick",
+      "itemNames": [],
+      "price": 1,
+      "starLevel": 1
+     }
+    ],
+    "ffaStanding": 1,
+    "health": 97,
+    "isInteractable": false
+   },
+   {
+    "augments": [],
+    "boardPieces": [
+     {
+      "championName": "DA_18_Yorick",
+      "itemNames": [
+       "DA_SunfireCape",
+       "DA_AdaptiveHelm"
+      ],
+      "price": 1,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_18_Shen",
+      "itemNames": [],
+      "price": 2,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_Scuttlecrab18",
+      "itemNames": [],
+      "price": 2,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_Cinderling18",
+      "itemNames": [
+       "DA_Component_RecurveBow",
+       "DA_InfinityEdge",
+       "DA_HextechGunblade"
+      ],
+      "price": 1,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_18_Kayle",
+      "itemNames": [],
+      "price": 2,
+      "starLevel": 1
+     }
+    ],
+    "ffaStanding": 5,
+    "health": 79,
+    "isInteractable": false
+   },
+   {
+    "augments": [],
+    "boardPieces": [
+     {
+      "championName": "DA_Karma18",
+      "itemNames": [
+       "DA_Morellonomicon"
+      ],
+      "price": 1,
+      "starLevel": 2
+     },
+     {
+      "championName": "DA_18_Yorick",
+      "itemNames": [
+       "DA_GargoyleStoneplate",
+       "DA_Component_ChainVest",
+       "DA_SteraksGage"
+      ],
+      "price": 1,
+      "starLevel": 2
+     },
+     {
+      "championName": "DA_18_Yunara",
+      "itemNames": [
+       "DA_HandOfJustice"
+      ],
+      "price": 2,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_18_Azir",
+      "itemNames": [
+       "DA_Component_NeedlesslyLargeRod"
+      ],
+      "price": 3,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_CrimsonRaptor18",
+      "itemNames": [],
+      "price": 3,
+      "starLevel": 1
+     }
+    ],
+    "ffaStanding": 6,
+    "health": 75,
+    "isInteractable": false
+   },
+   {
+    "augments": [],
+    "boardPieces": [
+     {
+      "championName": "DA_18_Yorick",
+      "itemNames": [
+       "DA_Evenshroud"
+      ],
+      "price": 1,
+      "starLevel": 2
+     },
+     {
+      "championName": "DA_Vi18",
+      "itemNames": [
+       "DA_IonicSpark",
+       "DA_SteadfastHeart"
+      ],
+      "price": 3,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_18_Ornn",
+      "itemNames": [],
+      "price": 1,
+      "starLevel": 2
+     },
+     {
+      "championName": "DA_18_Azir",
+      "itemNames": [
+       "DA_Component_BFSword"
+      ],
+      "price": 3,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_18_Xayah",
+      "itemNames": [],
+      "price": 1,
+      "starLevel": 1
+     }
+    ],
+    "ffaStanding": 3,
+    "health": 96,
+    "isInteractable": false
+   },
+   {
+    "augments": [],
+    "boardPieces": [
+     {
+      "championName": "DA_18_Caitlyn",
+      "itemNames": [],
+      "price": 2,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_18_Sentry",
+      "itemNames": [
+       "DA_LastWhisper"
+      ],
+      "price": 1,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_18_Rakan",
+      "itemNames": [
+       "DA_GargoyleStoneplate",
+       "DA_Evenshroud"
+      ],
+      "price": 1,
+      "starLevel": 2
+     },
+     {
+      "championName": "DA_Cinderling18",
+      "itemNames": [
+       "DA_Component_RecurveBow"
+      ],
+      "price": 1,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_Murkwolf18",
+      "itemNames": [
+       "DA_Component_GiantsBelt"
+      ],
+      "price": 2,
+      "starLevel": 1
+     }
+    ],
+    "ffaStanding": 7,
+    "health": 74,
+    "isInteractable": false
+   }
+  ],
+  "setCoreName": "TFTSet18"
+ }
+}
