@@ -784,7 +784,20 @@ _WEB = _REPO_ROOT / "web"
 # blobs before this landing (23d9c20d8) and dropping the new
 # web/js/lib/overlay_tft.js
 # reproduces the superseded 85fd1169... value EXACTLY. No glyph change.
-_LIVE_HALF_DIGEST = "7e8a22671512b6446773302535f0a402405e9834a8652459c3ac579d7d7a22e1"
+# superseded by the s136-T12 re-capture below: "7e8a22671512b6446773302535f0a402405e9834a8652459c3ac579d7d7a22e1"
+#
+# RE-CAPTURED 2026-10-25 at s136-T12 (gentle stale / idle dim: new opacity
+# values in web/css/panels/map_state.css, the light minimap-image desaturation
+# + " - STALE" caption suffix in web/css/panels/grid.css, the overlay idle 0.85
+# + section 6b STALE tag in web/css/overlay.css, and a one-line-longer comment
+# in web/js/lib/overlay_idle.js). Ordinary case, no tokeniser change.
+# ATTRIBUTED BY SUBSTITUTION against 7f3d9e124: swapping exactly those four
+# paths back to their HEAD blobs (in memory) reproduces the superseded
+# 7e8a2267... value EXACTLY; swapping only the three CSS files does not (the
+# comment edit moves a newline in the live half). Those four paths are the
+# whole change. No glyph change - the two new CSS content strings are ASCII.
+# If another slice re-captures in parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "2b50f9cd70c36aa79ec0f501ea0ce19b181503ed91462ef1104d223287dd5e43"
 
 
 def _web_sources() -> list[Path]:

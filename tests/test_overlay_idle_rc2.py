@@ -2,8 +2,9 @@
 
 The non-intrusive overlay recedes when nothing is happening: after no coach
 content change AND no pointer activity for ~8s the renderer stamps
-data-rc-idle="1" on the body and overlay.css drops the dock to a low opacity;
-any coach change or hover snaps it back to full. A hard hide mid-game would
+data-rc-idle="1" on the body and overlay.css eases the dock to a gentle 0.85
+opacity (s136-T12; was 0.12 - the value is pinned in
+tests/test_stale_fade_gentle_t12.py); any coach change or hover snaps it back. A hard hide mid-game would
 remove coaching, so 4.2's "auto-hide" is an opacity recede, not display:none.
 
 Mirrors tests/test_dashboard_condense_rc2.py: node require()s the CJS export

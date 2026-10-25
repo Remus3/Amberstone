@@ -304,5 +304,14 @@ body[data-mode="brawl"] #mm-img { image-rendering: auto; }
   letter-spacing: 0.08em;
   font-weight: 700;
 }
-.minimap-img-wrap.stale #mm-img { opacity: 0.5; filter: grayscale(0.5); }
+/* Failed minimap refresh (main.js refreshMinimap adds .stale). s136-T12: was
+ * opacity 0.5 + grayscale(0.5); now a light desaturation only, and the caption
+ * says it in words. No own opacity: the image already sits inside #minimap
+ * .panel-body, which the CADENCE sweep dims to 0.89 / 0.85 (map_state.css), so
+ * a second dim here would compound below the 0.85 floor. */
+.minimap-img-wrap.stale #mm-img { filter: grayscale(0.15); }
+.minimap-img-wrap.stale .minimap-img-caption::after {
+  content: " - STALE";
+  color: var(--gold);
+}
 
