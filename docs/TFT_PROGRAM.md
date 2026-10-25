@@ -711,3 +711,332 @@ slice each.
   identity-free, bounded allowlist tail, restart-idempotent by event key); the local player
   comes only from an injected id, never `isInteractable`. Nothing calls `tft/sources` yet;
   TFT-07 wires it.
+- 2026-10-25 (session 136, T16): section 10 written, SPEC ONLY (no code): the live HUD
+  reader, deterministic and without an external dependency, slices TFT-HUD-00..TFT-HUD-12.
+  Its baseline was measured on QA runs 20261025-153652 and 20261025-162857. The operator's
+  ruling and the correction of the July Overlay Platform M closing call are in 10.1.
+
+---
+
+## 10. Live HUD reader - deterministic, no external dependency
+
+Status: SPEC (session 136, task T16). No slice is built. Every number in 10.2 was measured
+this session; the scratch scripts were not committed. Hand labels are in each run's
+gitignored `hud_labels_s136_t16.csv`.
+
+### 10.1 Decision context
+
+- **Operator ruling (chat, 2026-10-25, verbatim):** "I want to do what they are doing; not
+  utilize their software as a dependency." The TFT companion apps on Overlay Platform M
+  (the overlay platform named in the archived teardowns) know at once which champions the
+  player owns, and they show exact live gold / level / HP / round. RC must reach the same
+  live quality on its own, with no Overlay Platform M dependency. This decision is now the
+  operator's own, not the loop's.
+- **History of the earlier closing call.** The July "Overlay Platform M / GEP = CLOSED"
+  call was made by the headless loop director: refill cycle 18, R120, 2026-07-14, commit
+  `5cdaed8cc` (`docs/_archive/COMPETITOR_LIFT_2026-07-14.md:3`, `:36-38`;
+  `docs/LEDGER.md:3119`). It was repeated at R125 (`docs/LEDGER.md:3109`), at R220
+  (`docs/LEDGER.md:2695`) and in the 07-30 TFT lift F17
+  (`docs/_archive/2026-07/COMPETITOR_LIFT_2026-07-30.md:525-563`). No operator sign-off
+  was recorded.
+- **Correction.** The cited reason, "RC is Live Client :2999-only per ADR-006"
+  (`docs/_archive/COMPETITOR_LIFT_2026-07-14.md:32-33`), is wrong. ADR-006
+  (`docs/adr/ADR-006-riot-api-key-policy.md:25`) is the Riot API key policy and never
+  mentions ":2999-only" or the overlay platform. The archive and the LEDGER are left
+  untouched (append-only, not swept); the correction is recorded here only.
+- **Hard floor.**
+  - Allowed inputs: screen pixels taken by OS desktop capture of the composited screen
+    (today GDI BitBlt, `vision_server/_frame.py:234`; the same class of capture as OBS or
+    Discord screen share), Riot's public APIs, and passive LCU GETs.
+  - Allowed only as cross-checks and test oracles, never as a dependency of the reader:
+    the client's own passive files, which are already in use (`TFTEoGStats.json` and
+    `TFT.log`, section 0 items 2 and 4).
+  - Forbidden: any process handle on the game, any memory read, any injection or hook,
+    any driver, and any synthetic input to the game window.
+  - Memory reading and injection are out of scope PERMANENTLY (anti-cheat and ToS).
+  - The RC overlay stays a separate click-through window.
+- **No LLM in the hot path** (the Haiku-to-ZERO north star). Tesseract is used only to
+  bootstrap a template the first time a new string is seen, never once per tick.
+- **The ow-electron port** (`docs/OVERLAY_COMPLIANCE_PLAN.md:110` step 6, ROADMAP RM-189)
+  is a separate plan and stays gated. This ruling makes it OPTIONAL; it is no longer the
+  route to live data.
+- **The F17 field list** (Overlay Platform M's published TFT categories, `me` / `roster` /
+  `store` / `board` / `bench` / `carousel` / `augments`) is used only as a parity checklist
+  (10.4). No code or text from it is lifted.
+- Reverses if: the operator orders an external game-events dependency, or Riot ships a
+  public TFT live-game API. In that case the API replaces the screen reader for the fields
+  it covers.
+
+### 10.2 Baseline: measured on the two s136 QA runs
+
+**Sources.**
+- Runs `20261025-153652` (A, 35 rounds, placement 3) and `20261025-162857` (B, placement
+  3), in gitignored `ops/runtime/tft_qa/`.
+- Truth:
+  - Stage changes come from the TFT.log `Phase[ETFTPhaseType::CombatDeparture|DraftDeparture]`
+    stamps (35 / 32 boundaries in the match windows).
+  - Gold, level, XP and streak were hand-read from every recorder vision frame (99 + 100
+    frames at 1280x720, about every 20 s).
+  - Own HP was hand-read from every third frame (65 frames).
+- RC values:
+  - The OCR stream is the `tft/tft_ocr_reader.py:386` log lines: 851 + 844 reads in the
+    two match windows, median cadence 2.48 s.
+  - `/api/state` is the recorder's 5 s change poll, so every lag measured against
+    `/api/state` is up to 5 s high.
+
+| Field | Read today by | OCR read exact (A / B) | `/api/state` exact at frame time (A / B) | Lag (median) |
+|---|---|---|---|---|
+| Stage / round | Tesseract, two recipes (`tft/cv/ocr_fields.py`), stage gate `tft/tft_state_reader.py:415-443` | 92/92, 88/89 labelled frames; 705/706, 680/684 steady-state reads (more than 6 s after a boundary); about 90% of reads carry a stage | 75/92 (82%), 76/91 (84%); correct for 77% / 73% of match time | truth to OCR 3.9 / 4.2 s; truth to `/api/state` 12.5 / 12.2 s |
+| Gold | Tesseract (`tft/tft_state_reader.py:449`) | 86/87 (98.9%), 80/83 (96.4%) | 35/87 (40%), 37/85 (44%) | OCR to `/api/state` 9.9 / 10.7 s; only 72/128 and 68/124 OCR gold changes ever reach `/api/state` |
+| Level | Tesseract (`:446`) | 87/87, 83/83 | 80/87 (92%), 77/85 (91%) | OCR to `/api/state` 17.0 / 16.7 s |
+| XP | not read (`xp_current` stays 0, `tft/tft_state_reader.py:473`) | 0% | 0% | n/a |
+| Streak | not read (`"streak": kills - deaths`, `tft/tft_state_reader.py:464`, always 0 here) | 0% | 0% | n/a |
+| Own HP | EoG file first; OCR box `config/tft_regions/2560x1440.json:16` covers only the TOP scoreboard row, so it reads only while the player is first | OCR value on 0/32 and 2/33 HP-labelled frames | `hp` (EoG) 24/32 (75%), 23/33 (70%); `coach.health` 17/32 (53%), 21/33 (64%) | round boundary to `/api/state` 34.2 / 34.1 s |
+| All-8 HP | EoG file only | 0 (scoreboard rows not read live) | per round, after the same lag | 34.0 / 35.7 s |
+| Board units / star / items | EoG file | n/a | after the same lag; no positions | 34.1 / 35.7 s |
+| Shop, bench, traits, item bench, augments | not in `/api/state` (`"unavailable"` in 204/204 state samples, `tft/tft_state_reader.py:472`); only a Haiku vision side file | 0% | 0% | n/a |
+
+**What the numbers say.**
+- The deterministic OCR is already accurate where it looks: 96-100% exact.
+- `/api/state` is wrong 16-60% of the time because of the path the values take to get
+  there (10.3), not because of the OCR.
+- `coach.health` carries stale values: 55 and 6 were shown while the player had 92.
+
+**Other measurements.**
+- **LLM calls per match.** Haiku coach: 131 / 133 calls, median response 3.4 / 3.9 s.
+  Haiku vision crops: 42 / 43 (`tft/tft_live_analysis.py:599` planning scan; `:595` every
+  20 s on augment rounds; flag `config/feature_flags.json:17`).
+- **Tesseract cost.** Back-to-back subprocess calls are 137 ms apart (median of 2126
+  calls in the log's 13:30-14:01 debug window), and one read makes several calls.
+- **Stage 1.** The stage-1 label sits outside the `stage` box, so stage 1 was served from
+  the game clock and ran up to 83 s ahead in run B. s136 T15 (`847b99f75`) fixed the lead,
+  but stage 1 is still not OCR-read.
+
+### 10.3 Where the lag comes from
+
+The chain from a HUD change to `/api/state` today:
+
+1. **Grab on demand.** A frame is grabbed only when the cached one is older than 1.0 s
+   (`vision_server/_frame.py:69`, `:482`). It is then downscaled to 1280 wide (`:71`),
+   JPEG-encoded at quality 85 (`:72`), sent as base64 over `:8889`, and decoded.
+2. **OCR thread.** The thread sleeps 2.0 s between reads (`tft/tft_state_reader.py:241-251`).
+   Each Tesseract call costs about 137 ms.
+3. **Worker poll.** `core/tft_worker.py:44` polls every 1.5 s.
+4. **The bottleneck.** The HUD scalars reach `/api/state` ONLY through the coach file
+   (`dashboard/_state_builder.py:691-692`). That file is written only after a Haiku coach
+   call:
+   - a new round fires one call;
+   - otherwise there is a 45 s debounce (`tft/tft_coach_engine.py:772`, `:892-897`);
+   - the write is SKIPPED when the advice text did not change (`:995-1001`).
+   So gold, level and stage wait for an LLM round trip, and most gold changes never land.
+   `coach.health` is a snapshot from the last write. `coach.hp` is refilled from the EoG
+   file, and the fill only replaces blanks (`dashboard/_state_builder.py:289`, `:327`), so
+   a stale `health` survives next to a fresh `hp`.
+5. **State cadence.** `/api/state` is rebuilt every 0.5 s (`RC_STATE_CADENCE_SEC`,
+   `dashboard/routes_state.py:207`).
+6. **EoG lag.** The EoG file is rewritten at combat start only
+   (`tft/tft_standalone.py:499-503`). Every EoG field is therefore a full planning phase
+   behind the screen: the 34 s median above.
+
+### 10.4 Parity target (what the reference apps expose, and RC's deterministic source)
+
+| Category (F17 list) | RC source after this program | Slice |
+|---|---|---|
+| me: gold, level, xp, health | HUD digit templates; own HP from the scoreboard local row | HUD-01, 04, 05 |
+| match_info: round, round_type, round_outcome, opponent | stage digits + TFT.log phases; outcome from HP delta + streak sign; opponent stays TFT-07 / OCR banner | HUD-04, 06 |
+| roster: health per player | scoreboard rows (live) + EoG (combat-start oracle) | HUD-05 |
+| store: shop_pieces | shop name strips against the set roster + cost digit + tier colour | HUD-07 |
+| bench / board: pieces, level (star), items | ledger (buys / sells / star-ups) + bench occupancy + EoG board; positions TFT-05 | HUD-08, 09 |
+| owned champions (the shop highlight) | owned multiset from the ledger | HUD-08, 12 |
+| augments: offered, picked | choice-card name OCR against the set augment lexicon (Settled: augment-OCR is the path) | HUD-10 |
+| item bench, traits | icon match against the runtime icon cache; trait panel lexicon | HUD-11 |
+| carousel | icon match (TFT-05), unchanged | - |
+
+### 10.5 Design per field
+
+**Common pipeline (HUD-02).**
+- The reader runs in the RC process, next to `TftWorker`. It does not go through the
+  `:8889` relay, so it skips the downscale, the JPEG encode and the HTTP hop.
+- **Capture.** Each tick grabs only the named regions of interest (ROIs) at native
+  resolution with ctypes GDI BitBlt (no new dependency): the stage bar, the HUD bar
+  (level / XP / odds / gold / streak), the scoreboard column, the shop strip and the bench
+  row.
+- **Gates.** The same foreground and locked-desktop rules apply as in
+  `vision_server/_frame.py:104` and the lock check.
+- **Change detection.** An 8 Hz tick takes a cheap 8x-downsampled hash per ROI. A ROI is
+  classified only when its hash changed, and the result goes straight to an in-memory
+  `tft_hud` block with its capture timestamp.
+- **Profiles.** Regions come from the existing `config/tft_regions/2560x1440.json` and are
+  scaled per profile. A missing profile means every field reads `absent`.
+- **Display mode.** Exclusive fullscreen can return black to GDI; the layout classifier
+  then marks the fields `absent`. The client measured borderless (section 0 item 1).
+
+**Digit fields (HUD-04).**
+- Fields: gold, level, XP (two numbers split on the `/` glyph), stage (plus a stage-1
+  box), streak count, timer and odds.
+- **Binarize.** Key on the HUD text colour, then take connected components.
+- **Classify.** Normalised cross-correlation against per-profile glyph templates `0-9`,
+  `-`, `/` and `%`, self-captured from the operator's own frames (HUD-03).
+- **Validate.** Level 1-10; gold 0-999; XP `a < b`; the stage moves monotone through the
+  TFT.log phase clock.
+- **Expected:** at least 99.5% exact wherever the panel is visible (fixed font, fixed
+  scale, no language model); under 2 ms per field; never a value on a hidden panel.
+
+**Scoreboard (HUD-05).**
+- There are 8 row slots at a fixed pitch (about 106.7 px at 2560x1440). The local row is
+  the enlarged one, found with a probe on its larger ring. Its HP digits are bigger and
+  shifted left. This replaces the fixed top-row `own_hp` box, which is right only while
+  the player is first.
+- Digits may be negative: eliminated players show `-5` / `-9` on screen.
+- **Oracle.** Each EoG rewrite (all 8 healths at combat start) is a free per-round ground
+  truth for every row.
+- **Expected:** own HP at least 99% exact, within 250 ms of the on-screen change. Today
+  the screen leads by 34 s.
+
+**Streak and round verdict (HUD-06).**
+- The count comes from the digit templates. The sign comes from the flame icon colour,
+  measured on the labelled frames: blue = win streak, orange = loss streak, a larger red
+  disc at 3 or more.
+- The verdict comes from the own-HP delta at round end, cross-checked with the streak
+  change.
+
+**Shop (HUD-07).**
+- Each of the 5 cards has a name strip and a cost digit. Cards are classified against the
+  closed roster vocabulary from `tft/cv/ocr_fields.py:651` `load_vocab`, which reads the
+  tracked `data/meta/tft_set18_cdragon.json` (74 champions with `unit_costs`).
+- **First sight** of a name strip: Tesseract plus edit distance to the roster, then the
+  strip is stored as a per-champion template in the gitignored cache. **Every later
+  sight:** NCC only.
+- **Cross-checks:** the card's tier colour, the cost digit and `unit_costs[name]` must all
+  agree.
+- A change in the hash of the 5 strips emits one `shop_refresh` event (reroll / buy /
+  round start).
+- **Expected:** names at least 98% exact on first sight and at least 99.5% once templated;
+  each changed card classified in under 20 ms.
+
+**Owned champions (HUD-08), the "know instantly which champions you own" feature.**
+- **Owned multiset** = board + bench.
+- **Board:** the EoG file at the last combat start, then moved by the ledger.
+- **Bench ledger events:**
+  - Buy: a shop card empties AND gold drops by that card's cost within one tick window.
+    The champion lands in the leftmost free bench slot.
+  - Sell: gold rises by a sell value during planning AND a bench or board occupancy drops.
+    Identity comes from that slot's ledger entry.
+  - Star-up: three copies merge into one.
+  - Grant (carousel, augment, encounter): occupancy rises with no gold change. Identity is
+    `unknown` until an EoG rewrite, or until the inspect panel (name text, OCR'd when the
+    operator clicks a unit) resolves it.
+- **Reconciliation:** at every EoG rewrite the board part resets to the file, and the
+  bench part is checked against the bench occupancy count (HUD-09).
+- **Output:** `owned` {champion: copies, best star} and `owned_copies` per shop card.
+- **Expected:** at least 97% correct owned highlights, within 250 ms of the purchase.
+
+**Bench occupancy (HUD-09).** There are 9 fixed slots per profile. An empty-slot
+background model is learned from the operator's own frames (gitignored). Occupancy uses
+difference plus edge energy. Expected at least 99%.
+
+**Augments (HUD-10).**
+- A layout probe detects the choice overlay. The 3 card names are read against the set's
+  augment lexicon (595 names in the tracked extract).
+- The chosen augment is the card picked when the overlay closes, cross-checked later by
+  icon match on the HUD augment slots.
+- **Expected:** offered names at least 98% exact; chosen augment at least 99%.
+
+**Item bench and traits (HUD-11).**
+- Item-bench orbs are matched against the TFT-03 runtime icon cache.
+- The trait panel uses the TFT-04 trait lexicon plus the count digits. It is cross-checked
+  against traits derived from the owned units.
+- **Expected:** items at least 97%; traits at least 98%.
+
+**Hard fields and their fallbacks.**
+- **3D board identity and hex position.** Not in this program. Identity comes from the
+  EoG list plus ledger moves; positions come from TFT-05 / TFT-18 candidate sets.
+  Fallback: the EoG list without positions, shown with its honest `as_of`.
+- **Identity of a granted bench unit.** Fallback: `unknown` until EoG or the inspect panel.
+- **Items held by bench units.** EoG carries board units only. Fallback: `absent`.
+- **Opponent boards during combat.** Fallback: that player's EoG row at combat start.
+
+### 10.6 Licence gate (verdicts)
+
+| Asset | Licence found | May RC (Apache-2.0, PUBLIC) ship it? | Decision |
+|---|---|---|---|
+| HUD digit glyphs, shop name strips, bench backgrounds captured from the operator's screen | none: renders of Riot's client typeface and art | NO | DO-NOT-VENDOR. Generated at runtime by `tools/tft_hud_calibrate.py` into gitignored `data/tft/templates/<profile>/`; never committed, never inside a fixture; a guard keeps every image or array file under `data/tft/` out of the git index |
+| CommunityDragon icons (`raw.communitydragon.org`) | none published; it mirrors Riot game files (NOTICE "CommunityDragon (CDragon)") | NO | runtime cache only (section 3.6, TFT-03) |
+| Data Dragon TFT images | Riot property under Riot's developer terms; no open licence | NO | runtime cache only, same as CommunityDragon |
+| League client `lol-game-data` assets over the LCU | Riot client files | NO | runtime cache only (section 3.6) |
+| Champion / augment / trait NAMES and costs (text) | factual data in the tracked `data/meta/tft_set18_cdragon.json`, recorded in NOTICE | already tracked; no new asset | used as the closed OCR vocabulary |
+| Test glyphs | synthetic 7-segment bitmaps drawn in the test (no font file) | yes (RC's own code) | the only glyph images any committed test uses |
+| Tesseract, numpy, Pillow | Apache-2.0 / BSD-3 / HPND; already dependencies; Tesseract is an external binary, not vendored | n/a | no new dependency |
+
+### 10.7 Test harness (most slices need no live game)
+
+**Corpus.**
+- The recorded runs under gitignored `ops/runtime/tft_qa/`: 7 runs today, each with vision
+  frames, `frames.jsonl`, `states.jsonl`, `events.jsonl` and the EoG file.
+- The TFT.log backups `TFT-backup-*.log` give one phase stamp list per match.
+- The existing frames are 1280x720. HUD-00 adds a native-resolution ROI corpus, recorded
+  at 8 Hz during live matches into gitignored `data/tft/hud_corpus/`.
+
+**Oracles, strongest first.**
+1. TFT.log phase stamps: stage timing, free for every match.
+2. EoG rewrites: all-8 HP and boards at each combat start.
+3. LCU end-of-game data and match history (TFT-08 `gt_*` rows): final level, `gold_left`,
+   placement and final boards.
+4. Hand labels: the s136 CSVs and the TFT-06 JSON, authored by one agent and verified by
+   another.
+5. Self-consistency: gold parity, level / XP monotone, `+4` XP per buy, and the streak
+   agreeing with HP deltas.
+
+**Replay.** `tools/tft_hud_replay.py` feeds a run directory through the reader with a fake
+clock. It prints per-field accuracy, coverage and lag (capture timestamp to `tft_hud`
+timestamp). Tests skip cleanly when the gitignored frames are absent. Unit tests use
+synthetic glyphs and synthetic event scripts.
+
+### 10.8 Slices
+
+**Legend.**
+- OFFLINE = buildable and acceptable from recorded or synthetic evidence; LIVE = needs a
+  real TFT match for the named number.
+- All slices are Tier-1: no DS, no `ENGINE_VERSION`, no frozen file.
+- Serial file: `config/tft_regions/2560x1440.json` is touched by HUD-04, HUD-05, HUD-07,
+  HUD-09 and HUD-10, so those land one after another on that file.
+
+**Order.**
+- HUD-00, HUD-01 and HUD-02 start now, in parallel.
+- HUD-03 comes before HUD-04, HUD-05, HUD-06, HUD-07, HUD-10 and HUD-11.
+- HUD-09 comes before HUD-08.
+- HUD-12 comes last.
+- TFT-16 (LLM default-off) consumes the HUD gates; it is not re-specified here.
+
+| Id | One-line acceptance | Files | Gate | Deps |
+|---|---|---|---|---|
+| TFT-HUD-00 | Replay harness prints per-field accuracy / coverage / lag and reproduces 10.2's OCR numbers within 1 point on both s136 runs; s136 labels imported as scrubbed TFT-06-schema fixtures (numbers and frame file names only); a native ROI corpus recorder (foreground-gated, no console window); skips cleanly without frames | `tools/tft_hud_replay.py`, `tools/tft_hud_capture.py`, `tests/test_tft_hud_replay.py`, `tests/fixtures/tft_cv/labels_20261025-153652.json`, `tests/fixtures/tft_cv/labels_20261025-162857.json` | OFFLINE (recorder: LIVE) | none |
+| TFT-HUD-01 | HUD scalars leave the coach file: an in-memory `tft_hud` block (value, conf, src, capture ts) attached to `/api/state` AFTER the cached build and pushed on change over the state stream. A failing test first proves the 55-vs-92 stale `health` case, then `coach.health` equals the fresher HP; replaying the s136 OCR log gives OCR to `/api/state.tft_hud` p95 <= 250 ms (fake clock); no LLM call on the path (guard) | `tft/hud/__init__.py`, `tft/hud/publish.py`, `core/tft_worker.py`, `dashboard/routes_state.py`, `dashboard/_state_builder.py`, `tests/test_tft_hud_publish.py` | OFFLINE | none |
+| TFT-HUD-02 | ROI capture + 8 Hz change-detect loop at native resolution, in-process, foreground and lock gated; LIVE: all-ROI grab p95 <= 25 ms, loop CPU <= 5% of one core (median), 0 grabs while TFT is not foreground; if the budget fails it drops to 4 Hz and records why | `tft/hud/capture.py`, `tft/hud/loop.py`, `tests/test_tft_hud_capture.py` | OFFLINE build, LIVE timing | HUD-01 |
+| TFT-HUD-03 | Calibration tool builds the glyph classes `0-9 - / %` (at least 5 exemplars each) from the labelled frames into gitignored `data/tft/templates/<profile>/` with a sha256 index; held-out half >= 99.5% exact; guard: nothing under `data/tft/` is in the git index | `tools/tft_hud_calibrate.py`, `tft/hud/templates.py`, `tests/test_tft_hud_templates.py` | OFFLINE | HUD-00 |
+| TFT-HUD-04 | Template digit reader: gold, level, XP, stage (incl. stage 1), streak count, timer, odds each >= 99.5% exact on the 199 s136 frames + the 47 TFT-06 frames where visible; 0 values on hidden panels; <= 2 ms per field; no Tesseract call for these fields | `tft/hud/digits.py`, `config/tft_regions/2560x1440.json`, `tests/test_tft_hud_digits.py` | OFFLINE | HUD-03 |
+| TFT-HUD-05 | Scoreboard: local row found in any of 8 slots; own HP >= 99% exact on the 65 HP-labelled s136 frames (today 2/65); every row equals the EoG value at each rewrite >= 99%; LIVE: own HP in `tft_hud` <= 250 ms after the on-screen change (p95) | `tft/hud/scoreboard.py`, `config/tft_regions/2560x1440.json`, `tests/test_tft_hud_scoreboard.py` | OFFLINE, LIVE lag | HUD-03, HUD-04 (region file) |
+| TFT-HUD-06 | Signed streak >= 99% exact on the labelled s136 frames that show it; round verdict equals the EoG HP-delta verdict on 100% of rounds of both runs | `tft/hud/streak.py`, `tests/test_tft_hud_streak.py` | OFFLINE | HUD-04 |
+| TFT-HUD-07 | Shop: >= 150 new labelled cards (agent-authored, agent-verified); names >= 98% exact, cost 100% exact and equal to `unit_costs`; one `shop_refresh` per change (recall >= 99%, 0 duplicates); <= 20 ms per changed card once templated | `tft/hud/shop.py`, `config/tft_regions/2560x1440.json`, `tests/test_tft_hud_shop.py` | OFFLINE | HUD-03, HUD-05 (region file) |
+| TFT-HUD-08 | Owned-set ledger exact on synthetic buy / sell / star-up / grant scripts; on the replayed corpus the owned highlight per shop card is right >= 97% (truth: EoG board + labelled bench); LIVE: highlight <= 250 ms after a purchase | `tft/hud/ledger.py`, `tests/test_tft_hud_ledger.py` | OFFLINE then LIVE (1 match) | HUD-07, HUD-09 |
+| TFT-HUD-09 | Bench occupancy of the 9 slots >= 99% on >= 60 labelled frames; the background model is local and gitignored | `tft/hud/bench.py`, `config/tft_regions/2560x1440.json`, `tests/test_tft_hud_bench.py` | OFFLINE | HUD-03, HUD-07 (region file) |
+| TFT-HUD-10 | Augments: offered names >= 98% and chosen >= 99% exact on >= 9 labelled picks (3 per match x 3 matches) | `tft/hud/augments.py`, `config/tft_regions/2560x1440.json`, `tests/test_tft_hud_augments.py` | LIVE (corpus) | HUD-03, HUD-09 (region file) |
+| TFT-HUD-11 | Item bench >= 97% and trait panel >= 98% exact on labelled frames; icons come only from the runtime cache | `tft/hud/item_bench.py`, `tft/hud/traits.py`, `tests/test_tft_hud_item_bench.py`, `tests/test_tft_hud_traits.py` | OFFLINE | HUD-03, TFT-03 |
+| TFT-HUD-12 | Dashboard header and the overlay read `tft_hud`; the shop strip shows owned-copy counts ("2/3"); there are no reflows on absence and the 5-phase UI audit passes. Recommendation text in-game stays with ROADMAP RM-189 B4-f | `web/js/panels/tft_hud.js`, `web/js/panels/tft_hud.test.mjs`, `web/css/panels/tft_hud.css` | OFFLINE then LIVE | HUD-01, HUD-08 |
+
+**Program-level acceptance (3 live matches).**
+- Gold, level, stage, XP, streak and own HP: at least 99% exact on sampled frames, and
+  capture to `/api/state.tft_hud` p95 at or below 250 ms.
+- Shop names: at least 98% exact.
+- Owned highlight: at least 97% correct.
+- Haiku calls per TFT match for these fields: 0 (TFT-16).
+
+### 10.9 Relation to the existing slices
+
+- TFT-04's Tesseract reader (`tft/cv/`) stays as the bootstrap and the fallback when
+  templates are missing for a profile.
+- TFT-05 / TFT-18 keep board geometry.
+- TFT-07's resolver takes `tft_hud` values as `src = 'ocr'`, or as `src = 'icon'` for
+  template reads, with conf from the HUD-00 harness.
+- TFT-17 reads the odds strip through HUD-04.
+- TFT-19 retires the 1600x900 reader as before.
