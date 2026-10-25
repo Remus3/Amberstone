@@ -37,7 +37,10 @@ with:
   "units":          [unit_obs rows of the LOCAL player: round_seq, phase, zone,
                      champion_api, star, items_json, conf, src]
 records_from_store() builds these records from the TFT-01 read API
-(list_matches / get_match / iter_rounds); a record without rounds (match
+(list_matches / get_match / iter_rounds; the real store nests unit_obs and
+shop_refresh rows in each round bundle, so they are flattened from there) and
+takes the final board from TFT-08 ground truth (tft/rounds/ground_truth.py
+final_boards, else the match's gt_board rows); a record without rounds (match
 history cold start) still feeds the catalogue and simply mines nothing.
 """
 from __future__ import annotations
@@ -489,9 +492,28 @@ def _local_gt_board(detail: Mapping, local_key: Optional[str]) -> list:
     return rows
 
 
+def _bundled(rounds: list, key: str) -> list:
+    """Child rows nested in the TFT-01 round bundles (store.iter_rounds: each
+    round row carries its "units" (unit_obs) and "shop" (shop_refresh) lists)."""
+    return [row for bundle in rounds if isinstance(bundle, Mapping)
+            for row in (bundle.get(key) if isinstance(bundle.get(key), list) else [])
+            if isinstance(row, Mapping)]
+
+
+def _detail(getter, mid: str) -> Any:
+    """get_match(mid) without its round bundles when the store supports it
+    (they are read once, through iter_rounds), else the plain call."""
+    detail = _call(getter, mid, rounds=False)
+    return detail if detail is not None else _call(getter, mid)
+
+
 def records_from_store(store: Any, *, set_id: Any = None, final_boards: Any = None,
                        top4_only: bool = False) -> list:
-    """Match records from the TFT-01 read API; fail-soft (a store error yields fewer records)."""
+    """Match records from the TFT-01 read API; fail-soft (a store error yields fewer records).
+
+    The real store (tft/rounds/store.py) nests unit_obs and shop_refresh rows
+    inside each round bundle; flat top-level lists (unit_obs / units,
+    shop_refresh / shop_refreshes) are read when a store provides them."""
     lister = getattr(store, "list_matches", None)
     matches = _call(lister, set_id=set_id, top4_only=top4_only) if callable(lister) else None
     boards = _final_boards_map(final_boards)
@@ -501,25 +523,32 @@ def records_from_store(store: Any, *, set_id: Any = None, final_boards: Any = No
             continue
         mid = str(m["match_id"])
         getter = getattr(store, "get_match", None)
-        detail = _call(getter, mid) if callable(getter) else None
-        detail = detail if isinstance(detail, Mapping) else {}
         rounds_fn = getattr(store, "iter_rounds", None)
+        if not callable(getter):
+            detail = None
+        elif callable(rounds_fn):
+            detail = _detail(getter, mid)
+        else:
+            detail = _call(getter, mid)
+        detail = detail if isinstance(detail, Mapping) else {}
         rounds = _call(_listed, rounds_fn, mid) if callable(rounds_fn) else None
         if rounds is None:
             rounds = list(detail.get("rounds") or [])
         players = [p for p in (detail.get("player") or detail.get("players") or []) if isinstance(p, Mapping)]
         local_key = next((p.get("player_key") for p in players if p.get("is_local")), None)
         units = [r for r in (detail.get("unit_obs") or detail.get("units") or []) if isinstance(r, Mapping)]
+        if not units:
+            units = _bundled(rounds, "units")
         if local_key is not None:
             units = [r for r in units if r.get("player_key") == local_key]
+        shop = list(detail.get("shop_refresh") or detail.get("shop_refreshes") or []) or _bundled(rounds, "shop")
         board = boards.get(mid)
         if board is None:
             board = _local_gt_board(detail, local_key)
         rec = {k: m.get(k) for k in ("match_id", "set_id", "queue_kind", "placement", "placement_conf",
                                      "placement_src") if k in m}
         rec.update(match_id=mid, final_board=_board_rows(board), rounds=rounds,
-                   shop_refreshes=list(detail.get("shop_refresh") or detail.get("shop_refreshes") or []),
-                   units=units)
+                   shop_refreshes=shop, units=units)
         if isinstance(m.get("augments"), list):
             rec["augments"] = list(m["augments"])
         out.append(rec)

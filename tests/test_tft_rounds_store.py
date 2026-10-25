@@ -974,10 +974,26 @@ def test_default_paths_are_under_gitignored_data_tft():
 def test_package_is_stdlib_only_llm_free_ascii_lf():
     """No LLM client, no coach, no DS: stdlib plus the one sanctioned atomic
     writer (core/polled_json.py `atomic_write_bytes`, RM-258 guard
-    tests/test_atomic_write_guard_rm258_rm261.py)."""
-    allowed = {"core.polled_json"}
+    tests/test_atomic_write_guard_rm258_rm261.py). TFT-08's ground_truth.py
+    also reads the RM-616 placement store through its read API
+    (tft.tft_placement) and parses set ids with tft.tft_set; both are pinned
+    below to stdlib plus the same core helpers, so the rule holds one hop out."""
+    allowed = {"core.polled_json", "tft.tft_placement", "tft.tft_set"}
     files = sorted(PKG.glob("*.py"))
-    assert {p.name for p in files} == {"__init__.py", "schema.py", "store.py"}
+    assert {p.name for p in files} == {"__init__.py", "schema.py", "store.py",
+                                       "ground_truth.py", "accuracy.py"}
+    hop = [ROOT / "tft" / "tft_placement.py", ROOT / "tft" / "tft_set.py"]
+    for p in hop:
+        for node in ast.walk(ast.parse(p.read_text(encoding="utf-8"))):
+            if isinstance(node, ast.ImportFrom) and node.level == 0:
+                mods = [node.module or ""]
+            elif isinstance(node, ast.Import):
+                mods = [a.name for a in node.names]
+            else:
+                continue
+            for m in mods:
+                assert (m.split(".")[0] in sys.stdlib_module_names
+                        or m in ("core.polled_json", "core.queue_modes")), (p, m)
     for p in [*files, Path(__file__)]:
         raw = p.read_bytes()
         assert raw.isascii() and b"\r" not in raw, p
