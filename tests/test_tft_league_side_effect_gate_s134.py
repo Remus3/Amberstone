@@ -77,9 +77,11 @@ def test_tft_context_reads_every_signal():
 class _FakeLcu:
     """Champ-select LCU stand-in that records every mutating call."""
 
-    def __init__(self, session, lobby_mode):
+    def __init__(self, session, lobby_mode, gameflow=None):
         self.session = session
         self.lobby_mode = lobby_mode
+        self.gameflow = gameflow
+        self.gameflow_gets = 0
         self.writes: list[tuple] = []
 
     def get_champ_select(self):
@@ -90,6 +92,9 @@ class _FakeLcu:
             if self.lobby_mode is None:
                 return None  # lobby gone (the CLASSIC-fallback poll)
             return {"gameConfig": {"gameMode": self.lobby_mode}}
+        if method == "GET" and path == "/lol-gameflow/v1/session":
+            self.gameflow_gets += 1
+            return self.gameflow
         if method == "GET":
             return None
         self.writes.append((method, path))
@@ -113,6 +118,45 @@ def _session(queue_id):
                         "championPickIntent": 0, "assignedPosition": "",
                         "spell1Id": 4, "spell2Id": 7}],
             "theirTeam": []}
+
+
+def _gameflow(queue_id, game_mode, map_id):
+    return {"gameData": {"queue": {"id": queue_id, "gameMode": game_mode,
+                                   "mapId": map_id}},
+            "map": {"id": map_id}}
+
+
+def test_runewriter_gates_on_gameflow_queue_when_session_has_none():
+    # Match 3 (2026-10-25 08:53:47): mode=CLASSIC from the first poll. With
+    # no queue id on the session, the gameflow queue (1090) must decide -
+    # read once per champ select, never per poll.
+    fake = _FakeLcu(_session(0), None, gameflow=_gameflow(1090, "TFT", 22))
+    rw = _writer(fake)
+    with mock.patch.object(rw, "_write_page",
+                           side_effect=AssertionError("rune write")):
+        rw._poll()
+        rw._poll()
+    assert fake.writes == []
+    assert fake.gameflow_gets == 1
+
+
+def test_runewriter_gameflow_league_queue_positive_control():
+    fake = _FakeLcu(_session(0), "CLASSIC", gameflow=_gameflow(420, "CLASSIC",
+                                                               11))
+    rw = _writer(fake)
+    with mock.patch.object(rw, "_write_page", return_value=True) as wp:
+        rw._poll()
+    assert wp.call_count == 1
+    assert any(w[0] == "SPELLS" for w in fake.writes)
+
+
+def test_runewriter_session_queue_skips_the_gameflow_read():
+    fake = _FakeLcu(_session(420), "CLASSIC", gameflow=_gameflow(1090, "TFT",
+                                                                 22))
+    rw = _writer(fake)
+    with mock.patch.object(rw, "_write_page", return_value=True):
+        rw._poll()
+    assert fake.gameflow_gets == 0
 
 
 def _writer(fake):
@@ -223,6 +267,21 @@ def test_agent_auto_summoner_override_skips_tft(agent):
                          "summoner_d": 4, "summoner_f": 14})
     agent._session_state["last_summoner_set_for"] = None
     fake, calls = _agent_fake(_session(1090))
+    with mock.patch.object(agent, "lcu_request", side_effect=fake):
+        agent.auto_features()
+    assert _mutations(calls) == []
+
+
+def test_agent_auto_summoner_override_uses_snapshot_queue(agent):
+    # Session carries no queue id; the snapshot's (gameflow-fallback) queue
+    # says TFT, so no PATCH.
+    agent._lcu["port"] = 1
+    agent.CONFIG.update({"auto_accept": False, "summoner_override": True,
+                         "summoner_d": 4, "summoner_f": 14})
+    agent._session_state["last_summoner_set_for"] = None
+    agent._note_live_queue({"phase": "ChampSelect",
+                            "champ_select": {"queue_id": 1090}})
+    fake, calls = _agent_fake(_session(0))
     with mock.patch.object(agent, "lcu_request", side_effect=fake):
         agent.auto_features()
     assert _mutations(calls) == []
