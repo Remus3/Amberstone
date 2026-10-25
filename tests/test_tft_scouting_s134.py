@@ -527,6 +527,29 @@ def test_deadline_before_any_match_is_reported_as_deadline(riot_env, monkeypatch
     assert card["message"] == TS._MESSAGES["deadline"]
 
 
+def test_listed_matches_that_all_fail_never_make_a_ready_card(riot_env, monkeypatch):
+    """Verifier s134 re-check (low): ids listed, every detail 5xx -> unavailable,
+    not a cached 'ready' card with an empty sample."""
+    def handler(url, n):
+        if "/tft/match/v1/matches/NA1_" in url:
+            return 503, {}, None
+        return _riot_ok(url, n)
+    monkeypatch.setattr(RA, "_http_get", RiotSpy(handler))
+    sc = make_scouter(riot_env, None, riot=RA, sources=("riot_api",))
+    ident = TS.Identity("Alpha", "TST")
+    card = sc.scout([ident])["opponents"][0]
+    assert card["status"] == "unavailable" and card["reason"] == "unavailable"
+    assert card["partial"] is False
+    assert sc._cache.get(ident) is None
+
+
+def test_every_card_shape_carries_partial(tmp_path):
+    lcu = _lcu_for({"Opp#TST": (opp_puuid(1), [2, 3, 4])})
+    doc = make_scouter(tmp_path, lcu, sources=("lcu",)).scout(
+        [TS.Identity("Opp", "TST", slot=0), TS.Identity("Ghost", "TST", slot=1)])
+    assert [o["partial"] for o in doc["opponents"]] == [False, False]
+
+
 def test_digest_cache_survives_a_damaged_row(tmp_path):
     p = tmp_path / "cache.json"
     p.write_text(json.dumps({"junk": {"at": "not-a-time", "digest": {}}}), encoding="ascii")

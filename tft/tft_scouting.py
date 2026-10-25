@@ -480,6 +480,7 @@ def build_digest(ident: Identity, rank: Optional[dict], rows: list, *,
         "status": "ready",
         "source": source,
         "cached": False,
+        "partial": False,
         "rank": rank,
         "games_this_set": rank["games"] if rank and rank.get("ranked") else None,
         "sample": sample,
@@ -507,7 +508,8 @@ def apply_current_set(digest: dict, current_set: Optional[int]) -> None:
 def unavailable_digest(ident: Identity, reason: str) -> dict:
     return {
         "slot": ident.slot, "riot_id": ident.riot_id, "status": "unavailable",
-        "source": None, "cached": False, "rank": None, "games_this_set": None,
+        "source": None, "cached": False, "partial": False, "rank": None,
+        "games_this_set": None,
         "sample": None, "top_traits": [], "top_carries": [], "last_match": None,
         "streak": {"kind": "none", "length": 0},
         "threat": {"level": "unknown", "score": None, "summary": ""},
@@ -747,9 +749,8 @@ class Scouter:
                 continue
             if got is not None:
                 digest = build_digest(ident, got["rank"], got["rows"], n=self.n, source=src)
-                if got.get("partial"):
-                    digest["partial"] = True
-                else:
+                digest["partial"] = bool(got.get("partial"))
+                if not digest["partial"]:
                     self._cache.put(ident, digest)
                 return digest
             reasons.append(why)
@@ -837,8 +838,10 @@ class Scouter:
                     if row:
                         rows.append(row)
                 rank = rank_from_riot_entries(entries)
-                if truncated and not rows:
-                    return None, truncated
+                if ids and not rows:
+                    # Riot listed matches but none loaded: never a "ready" card
+                    # with an empty sample (verifier s134 re-check).
+                    return None, truncated or self._classify(sc.outcomes)
         except Exception as exc:  # noqa: BLE001
             log.warning("tft_scouting: riot_api path raised: %s", exc)
             return None, "error"
