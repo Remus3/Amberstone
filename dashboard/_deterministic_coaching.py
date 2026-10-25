@@ -913,6 +913,13 @@ def compute_deterministic(coach: dict, lc: dict | None, mode_key: str,
         source - empty when the engine is down or no enemy is resolvable, in
         which case build_state falls back to the coach's native / synth choices.
     """
+    # S134 P0: "client" / "game" borrow the SR tables (_MODE_KEY_TO_UPPER) so
+    # an SR game whose mode flag lags its :2999 feed still gets coached. With
+    # NO feed at all that borrowing fabricated Rift timers at game_time 0
+    # ("Drake spawns 5:00 - set up vision") through a whole standalone-client
+    # TFT match. No live feed under an unresolved mode -> no SR directives.
+    if str(mode_key or "").strip().lower() in ("client", "game") and not lc:
+        return dict(_EMPTY_RESULT)
     try:
         gs = _build_game_state(coach, lc, mode_key)
         # RC2 P5.5: read the fog summary once here so the cache sig + the

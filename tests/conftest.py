@@ -1181,25 +1181,33 @@ def _no_live_standalone_tft():
     ``TFTClient-Win64-Shipping.exe``, and ``game_reader.poller.read_game`` /
     ``TftStateReader._fetch`` fall back to it whenever :2999 is down - which is
     every test. Unpatched, a suite run while the operator plays TFT would turn
-    "relay 404 -> no game" tests into live TFT reads (plus real HTTP to the
-    :8889 LCU relay). Session-scoped for the same reason as
-    ``_no_live_tft_ocr`` above; tests that need a running client inject
-    ``running=`` / ``names=`` or monkeypatch ``standalone_client_running``.
+    "relay 404 -> no game" tests into live TFT reads. All three live inputs
+    are closed: the process walk (``_process_snapshot``, the module's only
+    one), the real HTTP GET to the :8889 LCU relay (``relay_lcu_snapshot``)
+    and the operator's real per-round file (``eog_stats_path`` -> a path that
+    never exists). Session-scoped for the same reason as ``_no_live_tft_ocr``
+    above; tests that need a live input inject ``running=`` / ``names=`` /
+    ``lcu=`` or monkeypatch the seam themselves.
     """
     try:
         from tft import tft_standalone
     except Exception:  # noqa: BLE001 - no TFT stack present is not a failure
         yield
         return
-    # _process_snapshot is the module's ONLY process-table walk (running +
-    # create time both come from it), so patching it closes every path.
-    patcher = mock.patch.object(tft_standalone, "_process_snapshot", lambda: {})
-    patcher.start()
+    _absent = Path(__file__).resolve().parent / "_no_such_tft_eog_stats.json"
+    patchers = [
+        mock.patch.object(tft_standalone, "_process_snapshot", lambda: {}),
+        mock.patch.object(tft_standalone, "relay_lcu_snapshot", lambda: None),
+        mock.patch.object(tft_standalone, "eog_stats_path", lambda: _absent),
+    ]
+    for p in patchers:
+        p.start()
     tft_standalone._reset_caches_for_tests()
     try:
         yield
     finally:
-        patcher.stop()
+        for p in reversed(patchers):
+            p.stop()
         tft_standalone._reset_caches_for_tests()
 
 

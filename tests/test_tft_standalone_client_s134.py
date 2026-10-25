@@ -100,6 +100,48 @@ def test_suite_never_sees_the_real_tft_client():
     assert ts._process_snapshot() == {}
     assert ts.standalone_client_running() is False
     assert ts._game_create_time() is None
+    # verifier pass 2: no real :8889 GET and no real per-round file either
+    assert ts.relay_lcu_snapshot() is None
+    assert not ts.eog_stats_path().exists()
+    assert ts.read_eog() is None
+    assert ts.synth_allgamedata() is None
+
+
+def test_synth_never_raises_on_malformed_items(eog_file):
+    """verifier pass 2 finding 3: an int itemNames used to raise TypeError."""
+    bad = _eog()
+    bad["statsBlock"]["players"][1]["boardPieces"][0]["itemNames"] = 7
+    eog_file.write_text(json.dumps(bad), encoding="utf-8")
+    raw = _synth()
+    assert raw is not None
+    assert raw["rc_standalone"]["local"]["board"][0]["items"] == []
+    eog_file.write_text(json.dumps({"gameMode": "TFT", "statsBlock": 5}),
+                        encoding="utf-8")
+    assert _synth() is not None  # minimal, not a raise
+
+
+def test_reconnect_without_queue_needs_same_game_file(eog_file):
+    """verifier pass 2 finding 2: Reconnect carries no queue stamp; it is TFT
+    only with a fresh per-round file of THIS game."""
+    assert ts.lcu_tft_verdict({"phase": "Reconnect"}) is None
+    assert ts.standalone_in_game({"phase": "Reconnect",
+                                  "game_id": "1000000911"}, running=True)
+    assert not ts.standalone_in_game({"phase": "Reconnect", "game_id": "42"},
+                                     running=True)
+    old = time.time() - 3600
+    os.utime(eog_file, (old, old))
+    assert not ts.standalone_in_game({"phase": "Reconnect"}, running=True)
+
+
+def test_client_mode_without_feed_yields_no_rift_directives():
+    """Post-match QA (1): _deterministic_coaching maps client -> SR; with no
+    live feed that fabricated "Drake spawns 5:00" at game_time 0."""
+    from dashboard import _deterministic_coaching as dc
+    for mk in ("client", "game", "CLIENT"):
+        out = dc.compute_deterministic({"mode": "client"}, {}, mk)
+        assert out == {"choices": [], "callouts": [], "lead_projection": {}}
+        out = dc.compute_deterministic({"mode": "client"}, None, mk)
+        assert out["callouts"] == []
 
 
 def test_running_probe_failure_reads_not_running(monkeypatch):
