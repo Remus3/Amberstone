@@ -492,3 +492,99 @@ def test_rating_takes_no_placement_from_unknown_alive_others(tmp_path, monkeypat
              "game_time_s": 1500, "level": 8}
     assert pt.save_tft_rating(str(tmp_path), dict(live), dict(coach)) == ("", [])
     assert not (tmp_path / "data").exists(), "nothing rated, nothing written"
+
+
+# -- S136 T5: the LCU snapshot carries the summoner id across a reconnect -----------
+# lcu/snapshot_shape.py stamped ``summoner_id`` only inside its mastery block:
+# that block's phase list had no Reconnect, and it stamped only when the mastery
+# GET answered a list. A TFT reconnect therefore served a snapshot with no id,
+# and in a human lobby (all 8 entries isInteractable) the local player read as
+# unknown - HP, standing and board withheld for the rest of the match.
+
+_PHASE_PATH = "/lol-gameflow/v1/gameflow-phase"
+_CURRENT_PATH = "/lol-summoner/v1/current-summoner"
+_MASTERY_PATH = "/lol-champion-mastery/v1/local-player/champion-mastery"
+
+
+def _shaped(monkeypatch, phase, *, mastery=True) -> dict:
+    """lcu/snapshot_shape.shape_snapshot at ``phase`` over a fake LCU serving
+    this fixture's game (TFT queue) and the local summoner id; unknown paths
+    answer (None, "404") as LCU does."""
+    from lcu import snapshot_shape as ss
+    monkeypatch.setattr(ss._draft_log, "note_game_id", lambda gid: None)
+    monkeypatch.setattr(ss._draft_log, "observe_phase", lambda ph: None)
+    routes = {
+        _PHASE_PATH: phase,
+        "/lol-gameflow/v1/session": {"gameData": {
+            "gameId": GID, "queue": {"id": 1090, "gameMode": "TFT"}}},
+        _CURRENT_PATH: {"summonerId": LOCAL_SID},
+    }
+    if mastery:
+        routes[_MASTERY_PATH] = [{"championId": 1, "championLevel": 3,
+                                  "championPoints": 1000}]
+
+    def request(method, path, body=None):
+        assert method == "GET"
+        return (routes[path], None) if path in routes else (None, "404")
+    ss._reset_mastery_cache_for_tests()
+    try:
+        return ss.shape_snapshot(request, {}, enrich=False)
+    finally:
+        ss._reset_mastery_cache_for_tests()
+
+
+def test_reconnect_snapshot_carries_the_in_progress_summoner_id_t5(monkeypatch):
+    live = _shaped(monkeypatch, "InProgress")
+    rec = _shaped(monkeypatch, "Reconnect")
+    assert live["summoner_id"] == LOCAL_SID
+    assert rec["phase"] == "Reconnect"
+    assert rec.get("summoner_id") == live["summoner_id"]
+
+
+def test_reconnect_snapshot_resolves_the_local_tft_player_t5(monkeypatch):
+    rec = _shaped(monkeypatch, "Reconnect")
+    assert ts.lcu_tft_verdict(rec) is True
+    rs = ts._round_state(rec, _doc(), time.time())
+    assert rs["local_index"] == LOCAL_IDX
+    assert rs["local_basis"] == lp.BASIS_SUMMONER_ID
+    assert rs["local"]["health"] == 73 and rs["local"]["standing"] == 2
+    raw = _synth(lcu=rec)
+    mine = [i for i, p in enumerate(raw["allPlayers"])
+            if p["summonerName"] == ts.LOCAL_NAME]
+    assert mine == [LOCAL_IDX]
+
+
+@pytest.mark.parametrize("phase", ["GameStart", "InProgress", "Reconnect",
+                                   "WaitingForStats", "PreEndOfGame", "EndOfGame"])
+def test_summoner_id_is_stamped_without_a_mastery_answer_t5(monkeypatch, phase):
+    """The id is the local player's identity, not a mastery by-product: a
+    mastery GET that answers no list must not cost the TFT local player, in
+    the live phases or in the post-game ones the final-board read runs in."""
+    snap = _shaped(monkeypatch, phase, mastery=False)
+    assert "mastery" not in snap
+    assert snap.get("summoner_id") == LOCAL_SID
+
+
+@pytest.mark.parametrize("phase", ["None", ""])
+def test_idle_or_unknown_phase_stamps_no_summoner_id_t5(monkeypatch, phase):
+    snap = _shaped(monkeypatch, phase)
+    assert "summoner_id" not in snap and "mastery" not in snap
+
+
+def test_end_of_game_snapshot_lets_the_per_round_file_name_the_local_entry_t5(
+        monkeypatch):
+    """tft/tft_final_board.per_round_record reads the relay snapshot's id at
+    the lifecycle game-end rating, when the LCU phase is already post-game."""
+    from tft import tft_final_board as fb
+    doc = _doc()
+    players = doc["statsBlock"]["players"]
+    for i, p in enumerate(players):  # the local entry won: everyone else is out
+        if i != LOCAL_IDX and p["health"] > 0:
+            p["health"] = 0
+    players[LOCAL_IDX]["ffaStanding"] = 1
+    snap = _shaped(monkeypatch, "EndOfGame")
+    monkeypatch.setattr(ts, "relay_lcu_snapshot", lambda: snap)
+    monkeypatch.setattr(ts, "read_eog", lambda now=None, max_age_s=None: doc)
+    rec = fb.per_round_record(now=time.time())
+    assert rec is not None
+    assert rec["per_round_final"] is True
