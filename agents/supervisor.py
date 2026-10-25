@@ -68,9 +68,12 @@ import subprocess
 import sys
 import threading
 import time
+import traceback
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+from core.log_scrub import scrub_log as _scrub_log_text
 
 from agents.agent0_gatekeeper.evaluator import Evaluator, Task as Agent0Task
 from agents.agent1_lead.scheduler import Scheduler, TaskStatus
@@ -997,8 +1000,14 @@ class Supervisor:
             self._auto_analyze_scheduled_at = None
             raise
         except Exception as e:  # noqa: BLE001
-            log.exception("auto-analyze failed: %s", e)
-            self._auto_analyze_last_summary = {"error": str(e)}
+            # RM-838: /api/env serves this summary (through the :8888 proxy)
+            # as auto_analyze.last_summary, so it carries a fixed line. The
+            # cause and its traceback are logged once, scrubbed (this logger
+            # has no scrub filter).
+            log.error("auto-analyze failed: %s: %s | %s", type(e).__name__,
+                      _scrub_log_text(str(e)),
+                      _scrub_log_text(traceback.format_exc()))
+            self._auto_analyze_last_summary = {"error": "auto-analyze failed - see supervisor log"}
         finally:
             self._auto_analyze_running_since = None
             self._auto_analyze_last_done_at = time.monotonic()

@@ -42,7 +42,15 @@ _BAD_JSON = "invalid JSON body"
 
 class _BadBody(ValueError):
     """A POST body the dispatch refuses with a 400 before anything is queued.
-    The message is always one of the fixed tokens above."""
+
+    RM-838: the client gets ``public_msg``, never ``str(self)``: the token it
+    was raised with when that is one of the fixed tokens above, else
+    ``_BAD_BODY``. The reply used to be ``str(e)``, safe only while every
+    raiser passed a fixed token."""
+
+    def __init__(self, token: str) -> None:
+        super().__init__(token)
+        self.public_msg = token if token in (_BAD_BODY, _BAD_JSON) else _BAD_BODY
 
 
 def _json_object(body: bytes) -> dict:
@@ -282,7 +290,11 @@ class Handler(HostAllowlistMixin, BaseHTTPRequestHandler):
             else:
                 self._j(404, {"error": "unknown"})
         except _BadBody as e:
-            self._j(400, {"error": str(e)})
+            if str(e) != e.public_msg:
+                # A raiser passed its own text: log it, never send it.
+                log.warning("bad body on %s: %s: %s", scrub_log(self.path),
+                            type(e).__name__, scrub_log(str(e)))
+            self._j(400, {"error": e.public_msg})
         except Exception as e:  # noqa: BLE001
             self._err500(self.path, e)
 

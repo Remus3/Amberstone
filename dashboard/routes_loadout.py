@@ -38,6 +38,7 @@ import urllib.request
 from urllib.parse import parse_qs, quote, urlparse
 
 from dashboard._dispatch import equals, prefix
+from dashboard._errors import forward_upstream_error
 from dashboard._json_flags import FALSE_TOKENS, TRUE_TOKENS, coerce_json_flag
 
 log = logging.getLogger("rc.web_dashboard")
@@ -777,8 +778,11 @@ def _serve_lcu_cmd_result_get(h) -> None:
             # `urllib.response.addbase`, so this close() is hygiene that
             # keeps the warning out of the test log - NOT a leak fix. The
             # `finally` is still right: it must run if _send raises.
+            # RM-838: the status is forwarded, the upstream body is not (a
+            # fixed line; the pollers read the body only on a 200).
             try:
-                h._send(e.code, e.read(), "application/json")
+                forward_upstream_error(h, e.code, e.read(), "api/lcu-cmd-result",
+                                       lines={404: "pending"})
             finally:
                 e.close()
     except Exception as exc:  # noqa: BLE001
