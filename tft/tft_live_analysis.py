@@ -499,12 +499,16 @@ class TftLiveAnalysis:
         """The measured pace floor, computed from the reader's own round table
         at runtime (never copied), so a re-measured or per-set table flows
         in; None (no rate) when the table cannot be read."""
+        pace = None
         try:
             from core.tft_stage_gate import pace_floor_from_table
             from tft import tft_state_reader
-            return pace_floor_from_table(getattr(tft_state_reader, "_TIME_TO_ROUND", None))
+            pace = pace_floor_from_table(getattr(tft_state_reader, "_TIME_TO_ROUND", None))
         except Exception:  # noqa: BLE001
-            return None
+            pace = None
+        if pace is None:
+            logger.info("Stage gate: no measured pace from the reader's round table - running unrated")
+        return pace
     def _gated(self, state):
         """Judge one read (once per state object: the worker hands the SAME
         dict to notify_coach_state and notify_round) and return the state to

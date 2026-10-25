@@ -146,7 +146,7 @@ def test_real_advance_resets_the_round_timer(clock):
 
 def test_genuine_new_game_bypasses_the_gate():
     la = _mk()
-    _poll(la, _st(5, 3, 1300.0))
+    _polls(la, (5, 3), 1300.0, 3)           # the previous game's clock, confirmed
     _poll(la, _st(1, 2, 40.0))              # the game clock restarted ...
     _poll(la, _st(1, 2, 41.5))              # ... and stayed restarted
     assert la._known_augments == []
@@ -159,7 +159,7 @@ def test_new_game_after_a_game_left_at_stage_2_is_detected():
     """Pre-fix the detector needed the old stage > 2, so a game abandoned at
     stage 2 leaked its augments into the next one."""
     la = _mk()
-    _poll(la, _st(2, 3, 400.0))
+    _polls(la, (2, 3), 400.0, 3)
     _poll(la, _st(1, 1, 5.0))
     _poll(la, _st(1, 1, 6.5))
     assert la._known_augments == []
@@ -170,17 +170,18 @@ def test_new_game_reset_runs_on_the_coach_state_poll_alone():
     """The worker calls notify_round only when the RAW read changed, so the
     new-game reset cannot depend on it."""
     la = _mk()
-    _poll(la, _st(5, 3, 1300.0))
+    _polls(la, (5, 3), 1300.0, 3)
     la.notify_coach_state(_st(1, 2, 40.0))
     la.notify_coach_state(_st(1, 2, 41.5))
     assert la._known_augments == []
 
 
-def test_one_glitched_clock_value_does_not_clear_the_augments():
+@pytest.mark.parametrize("glitch", [0.5, 1020.0, 3000.0])
+def test_one_glitched_clock_value_does_not_clear_the_augments(glitch):
     la = _mk()
-    _poll(la, _st(4, 2, 1000.0))
-    for gt in (0.5, 1001.5, 1003.0):
-        _poll(la, _st(4, 2, gt))
+    t = _polls(la, (4, 2), 1000.0, 7)
+    _poll(la, _st(4, 2, glitch))
+    _polls(la, (4, 2), t, 4)
     assert la._known_augments == ["Pandora's Items", "Cybernetic Uplink"]
 
 
@@ -327,7 +328,7 @@ def test_gate_takes_its_pace_from_the_reader_table(monkeypatch):
 
 def test_new_game_refreshes_the_pace(monkeypatch):
     la = _mk()
-    _poll(la, _st(5, 3, 1300.0))
+    _polls(la, (5, 3), 1300.0, 3)
     old = la._stage_gate.rate
     table63 = [(63.0 * i, *g.stage_round_of(i + 1)) for i in range(20)]
     monkeypatch.setattr(tft_state_reader, "_TIME_TO_ROUND", table63)

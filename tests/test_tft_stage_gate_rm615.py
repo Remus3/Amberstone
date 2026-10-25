@@ -426,13 +426,80 @@ def test_clock_reset_with_a_stale_read_resets_and_holds_the_read():
     assert (v.kind, v.reason, v.stage, v.rnd) == (g.ACCEPT, "first", 1, 1)
 
 
-@pytest.mark.parametrize("glitch", [0.5, 1e300, 10 ** 400, g.MAX_GAME_S + 1])
+@pytest.mark.parametrize("glitch", [0.5, 1e300, 10 ** 400, g.MAX_GAME_S + 1,
+                                    1020.0, 3000.0, 7000.0])   # behind, absurd, AHEAD
 def test_one_glitched_clock_value_mid_game_is_not_a_new_game(glitch):
+    """Verifier-3 reproducer: one clock value 11-6000 s AHEAD raised the
+    high-water mark, so the real clock then looked like a restart and the
+    augments were cleared two polls later. A read's clock now counts only
+    once the next read does not fall below it."""
     gate = _gate()
     t = _fill(gate, (4, 2), 1000.0)
     kinds = [gate.observe(4, 2, glitch).kind]
     kinds += [gate.observe(4, 2, t + POLL * i).kind for i in range(3)]
     assert g.NEW_GAME not in kinds and gate.accepted == (4, 2)
+
+
+@pytest.mark.parametrize("queue", ["standard", "hyper_roll", None])
+def test_stale_round_after_a_restart_is_ignored(queue):
+    """Verifier-3 reproducer: with no rate (Hyper Roll, unknown) the
+    previous game's round, still in the reader's OCR cache, was taken as
+    the new game's first read and held about 10 polls. The round held before
+    a clock restart is not news after it."""
+    gate = _gate(queue)
+    _fill(gate, (4, 2), 1000.0)
+    assert gate.observe(4, 2, 2.0).reason == "clock_reset_pending"
+    v = gate.observe(4, 2, 3.5)
+    assert (v.kind, v.stage) == (g.NEW_GAME, None)
+    for i in range(g.WINDOW_READS):
+        assert gate.observe(4, 2, 5.0 + i * POLL).reason == "stale_after_reset"
+    v = gate.observe(1, 1, 20.0)
+    assert (v.kind, v.reason, v.stage, v.rnd) == (g.ACCEPT, "first", 1, 1)
+
+
+def test_stale_guard_spares_a_stage_1_round():
+    """A game always starts in stage 1, so a stage-1 round held before the
+    restart may be the new game's own: it is not ignored."""
+    gate = _gate()
+    _fill(gate, (1, 2), 40.0)
+    gate.observe(1, 2, 2.0)
+    v = gate.observe(1, 2, 3.5)
+    assert (v.kind, v.stage, v.rnd) == (g.NEW_GAME, 1, 2)
+
+
+def test_pathological_pace_gives_no_rate():
+    """Verifier-3 reproducer: rows 1e-310 s apart overflowed the allowance
+    arithmetic. A floor under MIN_PACE_S is no rate."""
+    assert g.pace_floor_from_table([(0.0, 1, 1), (1e-310, 1, 2)]) is None
+    assert g.StageGate("standard", min_round_s=g.MIN_PACE_S / 2).rate is None
+    gate = g.StageGate("standard", min_round_s=1e-310)
+    gate.observe(3, 2, 500.0)
+    assert gate.observe(3, 3, 502.0).kind == g.ACCEPT
+
+
+def test_two_of_three_lag_after_a_flicker_is_bounded_recorded_trade_off():
+    """Verifier-3 reproducer, kept as a RECORDED TRADE-OFF (module docstring):
+    a real change to 3-4 read on a 2-of-3 majority, with the window still
+    holding 3-3 after an earlier one-poll flicker, lags 7 polls. The same
+    window must not move on test_verifier_reproducers_a1_to_c's (a1) burst
+    (three misreads inside a 2-of-3 stream of the old round), and no window /
+    margin pair satisfies both. Pinned so the lag cannot silently grow."""
+    A, B = (3, 3), (3, 4)
+    seq = [A] * 7 + [B, A, A] + [A, B, B, A, B, B, A] + [B, B, A] * 5
+    truth = [A] * 10 + [B] * (len(seq) - 10)
+    gate = _gate()
+    acted = []
+    for i, sr in enumerate(seq):
+        v = gate.observe(*sr, 600.0 + POLL * i)
+        acted.append((v.stage, v.rnd))
+    lag = 0
+    for i in range(10, len(seq)):
+        if acted[i] == truth[i]:
+            break
+        lag += 1
+    assert lag <= 7, acted
+    assert acted[-1] == B
+    assert all(a == truth[i] for i, a in enumerate(acted) if i >= 10 + lag)
 
 
 def test_small_clock_wobble_is_not_a_new_game():
