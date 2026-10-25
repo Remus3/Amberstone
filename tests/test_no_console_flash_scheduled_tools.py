@@ -135,6 +135,11 @@ SCHEDULED_SPAWNERS = (
     # under RC-Phase3-Supervisor imports it). Both check_output sites already
     # passed the flag; listed so they stay that way.
     "agents/_supervisor_common.py",
+    # 2026-10-25 s135 TFT-04: found by the discoverable scope through the live
+    # TFT OCR reader (tft/tft_ocr_reader.py imports it). Its one
+    # tesseract.exe spawn per OCR field passes CREATE_NO_WINDOW (plus
+    # BELOW_NORMAL priority); listed so it stays that way.
+    "tft/cv/ocr_fields.py",
 )
 
 # Modules run by a CLAUDE HOOK, which is the same exposure by a different route:
