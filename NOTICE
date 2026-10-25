@@ -31,6 +31,20 @@ Source by source:
   Community-maintained mirror of Riot game files. Governed by the upstream
   project's terms and, underneath them, Riot's.
 
+  Teamfight Tactics: `data/meta/tft_set<N>_cdragon.json` are reduced CDragon
+  extracts written by `scripts/fetch_cdragon_tft.py`. The
+  `data/meta/tft_set<N>_meta.json` files carry game data only - roster fields
+  re-derived from those extracts, short factual summaries of Riot's TFT patch
+  notes, and empty RC-authored skeleton sections - and
+  `data/meta/tft_set17_champion_codes.json` holds the League client's own
+  team-planner codes. None of them carries a third-party tier list, comp,
+  augment rating or ladder statistic. The Set 16 and Set 17 files that did,
+  sourced from third-party guide sites and stats aggregators, were removed on
+  2026-10-24 (RM-846); older revisions in this repository's git history still
+  contain them, and no right to that content is granted.
+  `tests/test_tft_meta_provenance_rm846.py` fails if a tracked TFT meta file
+  names a source this file does not credit.
+
 * Meraki Analytics - item passive formulas and champion stat lines.
   Governed by Meraki Analytics' own terms.
 
