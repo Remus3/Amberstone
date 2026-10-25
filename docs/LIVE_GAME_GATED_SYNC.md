@@ -272,6 +272,23 @@ beside LCU gameflow-phase updates at 08:12:29). Every TFT row whose probe needs 
 or `health.has_game` is BLOCKED by that, not drainable.
 `:8889/latest-frame` answers JSON (`b64` plus meta), not raw image bytes: decode with
 `base64.b64decode(body["b64"])` before handing it to Pillow.
+In TFT that frame is also STALE or ABSENT almost all the time, so a TFT row whose probe needs a fresh
+`:8889` frame (the S6 read-back, any TFT OCR / vision-reader live half) is not drainable on demand: a
+fresh frame appears only now and then (match -081234 has `self_grab` frames at 08:12:35, 08:12:59 and
+08:20:54 local, cause not measured; likely an admitted image briefly holding focus). The GDI
+self-grab foreground gate admits only `vision_server/_frame.py` `_GAME_CONTENT_IMAGES` (League, the
+RC shell, `electron.exe`), which omits `tftclient-win64-shipping.exe`; the OBS frame source (config
+`frame_source` true, OBS running) is tried first and also yields nothing, since `not_foreground` is
+counted only after it returns None. Measured 2026-10-25 08:31 local, game 1000000913, queue 1090:
+foreground image `tftclient-win64-shipping.exe`; `:8889` `/stats` `capture_skip.not_foreground` 158
+(last_ts 1792935074.6); `/latest-frame/meta` `ts` still 1792934454.5 (08:20:54, 618 s old). The
+recorder agrees: at 08:31 all 49 `game` rows in match 20261025-081234 `frames.jsonl` carried `why`
+`vision_stale_<age>` (min age 40.0 s), and all 80 in match -070350 carry `vision_status_404`.
+Expected unblock (unmeasured: nobody has yet seen a GDI grab of the TFT client pass the blank check)
+= add the TFT image to that set and to its mirror `tools/screen_agent.py` `GAME_CONTENT_IMAGES`
+(pinned by `tests/test_vision_capture_fail_closed_y03.py`), then restart the SEPARATE `:8889` vision
+process between games (an RC restart does not reload it); or point the OBS capture source at the TFT
+client.
 
 ---
 
