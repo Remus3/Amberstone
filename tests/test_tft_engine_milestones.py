@@ -228,6 +228,9 @@ def test_malformed_rows_never_raise(sd):
     assert milestones.mine_match(weird, sd)["rounds"] == 0
     assert milestones.compare_to_average({"level_reached": None, "gold_at": None}, {"level_reached": None}) == []
     assert milestones.compare_to_average(m, None) == []
+    cat = comps.build_catalogue([rec], sd)
+    broken = dict(cat, assignments={"bad": ["not", "an", "id"]})
+    assert milestones.milestones_by_comp([rec], broken, sd)["comps"][cat["comps"][0]["comp_id"]]["games"] == 0
 
 
 # ------------------------------------------------------------ store adapter

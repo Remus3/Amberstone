@@ -4,6 +4,8 @@
    tft.engine.ENGINE_NAME (ADR-018 Decision): a rename is a one-line change,
    so the name (read from the constant, never spelled in this file) may
    appear in exactly one source file - tft/engine/__init__.py - exactly once.
+   The match is a strict case-insensitive substring (camelCase identifiers
+   count); only a whole word in ALLOWED_CONTAINING_WORDS (empty) is exempt.
    Prose (docs/*.md, the ADR, its README row) and data files (*.json: game
    data may legitimately carry a similar word) are out of scope by design,
    as are untracked files outside tft/engine (named blind spots).
@@ -83,10 +85,21 @@ def test_engine_constants():
 
 # ------------------------------------------------------------ 1. one name
 
-def _name_hits(text, name):
-    # Case-insensitive, but not inside a longer word ("in" + name + "ate" is
-    # not the engine name); a prefix like "<name>Panel" or "MY_<NAME>" still is.
-    return len(re.findall(r"(?<![A-Za-z])" + re.escape(name), text, flags=re.IGNORECASE))
+# Lower-case words that merely CONTAIN the engine name (an English word, not a
+# hard-coded label). Empty today: nothing in the swept tree needs it. Adding a
+# word here is a deliberate, reviewed act; never add an identifier.
+ALLOWED_CONTAINING_WORDS: frozenset = frozenset()
+
+
+def _name_hits(text, name, allowed=ALLOWED_CONTAINING_WORDS):
+    # Strict: case-insensitive substring, so camelCase / snake_case / CSS uses
+    # ("get<Name>Picks", "tft<Name>", "MY_<NAME>") all count. Only an allowed
+    # whole word that contains the name is subtracted.
+    hits = len(re.findall(re.escape(name), text, flags=re.IGNORECASE))
+    for word in allowed:
+        hits -= len(re.findall(r"(?<![A-Za-z])" + re.escape(word) + r"(?![A-Za-z])", text, flags=re.IGNORECASE)) \
+            * len(re.findall(re.escape(name), word, flags=re.IGNORECASE))
+    return hits
 
 
 def _swept_files():
@@ -119,8 +132,14 @@ def test_name_sweep_fires_on_a_planted_copy():
     assert _name_hits(f'label = "{name} picks"', name) == 1
     assert _name_hits(f"<h1>{name.upper()}</h1>", name) == 1
     assert _name_hits(f"const {name.lower()}Panel = 1; MY_{name.upper()} = 2", name) == 2
+    # camelCase with a letter on either side still counts (the rename trap).
+    assert _name_hits(f"get{name}Picks(); tft{name} = 1; render{name.upper()}", name) == 3
     assert _name_hits("label = ENGINE_NAME", name) == 0
-    assert _name_hits("we in" + name.lower() + "ate it", name) == 0
+    # Only an explicitly allowed whole English word is subtracted, nothing else.
+    word = "in" + name.lower() + "ate"
+    assert _name_hits(f"we {word} it", name) == 1
+    assert _name_hits(f"we {word} it; tft{name} = 1", name, allowed=frozenset({word})) == 1
+    assert ALLOWED_CONTAINING_WORDS == frozenset()
 
 
 # --------------------------------------------- 2-4. AST / literal sweeps

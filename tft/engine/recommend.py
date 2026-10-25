@@ -112,13 +112,18 @@ def nearest_comps(state: Mapping, catalogue: Mapping, setdata: SetData, *, limit
     owned = set(held)
     units = as_units(_list(state.get("board")) + _list(state.get("bench")), setdata)
     sig = trait_signature(units, setdata)
+    # Items the player has or can build now: completable recipes + finished items already held.
     buildable = {item for item, _recipe in _completable(state.get("items"), setdata)}
+    buildable |= {api for api in (setdata.resolve_item_api(i) for i in _list(state.get("items")))
+                  if api and setdata.item_kind(api) != "component"}
     rows = []
     for comp in _comps(catalogue):
         core = set(_core(comp))
         if not core:
             continue
         pool = core | set(_flex(comp))
+        if not owned & pool:
+            continue  # items alone never make a comp "near": it must share a unit
         used = comp.get("item_freq") if isinstance(comp.get("item_freq"), Mapping) else {}
         item_fit = len(buildable & set(used)) / len(buildable) if buildable else 0.0
         signature = [t for t in _list(comp.get("signature")) if isinstance(t, str)]
@@ -294,8 +299,9 @@ def recommend(state: Mapping, catalogue: Mapping, milestones_payload: Optional[M
     target = None
     if comp is not None:
         target = next((n for n in nearest if n["comp_id"] == comp["comp_id"]),
-                      {"comp_id": comp["comp_id"], "label": comp["label"], "score": None})
-    agg = ((milestones_payload or {}).get("comps") or {}).get(comp["comp_id"]) if comp else None
+                      {"comp_id": comp["comp_id"], "label": comp.get("label"), "score": None})
+    per_comp = milestones_payload.get("comps") if isinstance(milestones_payload, Mapping) else None
+    agg = per_comp.get(comp["comp_id"]) if comp is not None and isinstance(per_comp, Mapping) else None
     return dict(
         engine_meta(), set_id=setdata.set_id, target=target,
         alternatives=[n for n in nearest if target is None or n["comp_id"] != target["comp_id"]],
@@ -329,61 +335,83 @@ def _milestone_line(agg: Optional[Mapping]) -> Optional[str]:
     return ", ".join(parts) or None
 
 
-def _digest(comp: Mapping, agg: Optional[Mapping], contest: Optional[int], setdata: SetData) -> list:
-    lines = ["Core: " + ", ".join(c["name"] for c in comp.get("core") or [])]
-    if comp.get("three_star"):
-        lines.append("3-star: " + ", ".join(c["name"] for c in comp["three_star"]))
+def _unit_rows(comp: Mapping, key: str, setdata: SetData) -> list:
+    """[{"api", "name", "cost"}] for a comp's core / three_star rows, names and costs from set data when absent."""
+    out = []
+    for row in _list(comp.get(key)):
+        if not isinstance(row, Mapping) or not isinstance(row.get("api"), str):
+            continue
+        api = row["api"]
+        name = row.get("name") if isinstance(row.get("name"), str) else setdata.unit_name(api)
+        cost = as_int(row.get("cost"))
+        out.append({"api": api, "name": name, "cost": cost if cost is not None else setdata.unit_cost(api)})
+    return out
+
+
+def _carry_row(comp: Mapping, setdata: SetData) -> Optional[dict]:
     carry = comp.get("carry")
+    if not isinstance(carry, Mapping) or not isinstance(carry.get("api"), str):
+        return None
+    api = carry["api"]
+    sets = [s for s in _list(carry.get("item_sets")) if isinstance(s, Mapping)]
+    items = [a for a in _list(sets[0].get("items")) if isinstance(a, str)] if sets else []
+    cost = as_int(carry.get("cost"))
+    return {"api": api, "name": carry.get("name") if isinstance(carry.get("name"), str) else setdata.unit_name(api),
+            "cost": cost if cost is not None else setdata.unit_cost(api),
+            "items": [{"api": a, "name": setdata.item_name(a)} for a in items]}
+
+
+def _digest(core: list, three_star: list, carry: Optional[Mapping], agg: Optional[Mapping],
+            contest: Optional[int], setdata: SetData) -> list:
+    lines = ["Core: " + ", ".join(c["name"] for c in core)]
+    if three_star:
+        lines.append("3-star: " + ", ".join(c["name"] for c in three_star))
     if carry:
-        sets = carry.get("item_sets") or []
-        items = ", ".join(sets[0]["names"]) if sets else ""
+        items = ", ".join(i["name"] for i in carry["items"])
         lines.append(f"Carry: {carry['name']}" + (f" - {items}" if items else ""))
-    line = _milestone_line(agg)
+    line = _milestone_line(agg if isinstance(agg, Mapping) else None)
     if line:
         lines.append(line)
-    opener = (agg or {}).get("opener") or []
-    if opener:
-        lines.append("Opener: " + ", ".join(setdata.unit_name(o["api"]) for o in opener))
+    opener = agg.get("opener") if isinstance(agg, Mapping) else None
+    names = [setdata.unit_name(o["api"]) for o in _list(opener) if isinstance(o, Mapping) and isinstance(o.get("api"), str)]
+    if names:
+        lines.append("Opener: " + ", ".join(names))
     if contest is not None:
-        lines.append(f"Contested: {contest} of {len(comp.get('core') or [])} core on other boards")
+        lines.append(f"Contested: {contest} of {len(core)} core on other boards")
     return [_fit(x) for x in lines[:DIGEST_MAX_LINES]]
 
 
 def _summary(comp: Mapping) -> str:
-    games = comp.get("games") or 0
-    if comp.get("avg_placement") is None:
+    games = as_int(comp.get("games")) or 0
+    avg, rate = comp.get("avg_placement"), comp.get("top4_rate")
+    if not isinstance(avg, (int, float)) or isinstance(avg, bool):
         return f"{games} games, no placement yet"
-    rate = comp.get("top4_rate") or 0.0
-    return f"{games} games, avg {comp['avg_placement']:.1f}, top-4 {rate * 100:.0f}%"
+    rate = rate if isinstance(rate, (int, float)) and not isinstance(rate, bool) else 0.0
+    return f"{games} games, avg {avg:.1f}, top-4 {rate * 100:.0f}%"
 
 
 def planner_choices(catalogue: Mapping, milestones_payload: Optional[Mapping], setdata: SetData, *,
                     lobby_boards: Any = None, limit: int = PLANNER_LIMIT) -> dict:
     """Up to `limit` comps with at least one top-4 game, each with its hover digest."""
     lobby_apis = set(_lobby_copies(lobby_boards, setdata)) if lobby_boards is not None else None
-    per_comp = (milestones_payload or {}).get("comps") or {}
+    payload = milestones_payload if isinstance(milestones_payload, Mapping) else {}
+    per_comp = payload.get("comps") if isinstance(payload.get("comps"), Mapping) else {}
     choices = []
     for comp in _comps(catalogue):
         if len(choices) >= limit:
             break
-        if (comp.get("top4_games") or 0) < 1:
+        if (as_int(comp.get("top4_games")) or 0) < 1:
             continue
-        agg = per_comp.get(comp["comp_id"]) if milestones_payload else None
-        core = [{"api": c["api"], "name": c["name"], "cost": c["cost"]} for c in comp.get("core") or []]
+        agg = per_comp.get(comp["comp_id"]) if payload else None
+        core = _unit_rows(comp, "core", setdata)
+        three_star = _unit_rows(comp, "three_star", setdata)
         contest = sum(1 for c in core if c["api"] in lobby_apis) if lobby_apis is not None else None
-        carry = comp.get("carry")
-        carry_row = None
-        if carry:
-            sets = carry.get("item_sets") or []
-            carry_row = {"api": carry["api"], "name": carry["name"], "cost": carry["cost"],
-                         "items": [{"api": a, "name": setdata.item_name(a)} for a in (sets[0]["items"] if sets else [])]}
+        carry_row = _carry_row(comp, setdata)
         choices.append({
-            "comp_id": comp["comp_id"], "label": comp["label"], "games": comp.get("games"),
+            "comp_id": comp["comp_id"], "label": comp.get("label"), "games": comp.get("games"),
             "top4_games": comp.get("top4_games"), "avg_placement": comp.get("avg_placement"),
             "top4_rate": comp.get("top4_rate"), "summary": _summary(comp), "core": core,
-            "three_star": [{"api": c["api"], "name": c["name"], "cost": c["cost"]} for c in comp.get("three_star") or []],
-            "carry": carry_row, "milestones": agg, "contest": contest,
-            "digest": _digest(comp, agg, contest, setdata),
+            "three_star": three_star, "carry": carry_row, "milestones": agg, "contest": contest,
+            "digest": _digest(core, three_star, carry_row, agg, contest, setdata),
         })
-    top4_only = (milestones_payload or {}).get("top4_only", True)
-    return dict(engine_meta(), set_id=setdata.set_id, top4_only=top4_only, choices=choices)
+    return dict(engine_meta(), set_id=setdata.set_id, top4_only=payload.get("top4_only", True), choices=choices)

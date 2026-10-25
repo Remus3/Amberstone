@@ -148,15 +148,16 @@ def placement_of(record: Mapping) -> Optional[int]:
 
 
 def _plain(obj):
-    """Mapping keys as strings, recursively, so any record has one canonical text."""
+    """Mapping keys as strings and lists in sorted order, recursively: one text per content."""
     if isinstance(obj, Mapping):
         return {str(k): _plain(v) for k, v in obj.items()}
     if isinstance(obj, (list, tuple)):
-        return [_plain(v) for v in obj]
+        return sorted((_plain(v) for v in obj), key=lambda v: json.dumps(v, sort_keys=True, default=str))
     return obj
 
 
 def canonical(obj) -> str:
+    """Order-insensitive canonical text: used only as a deterministic tie-break key."""
     return json.dumps(_plain(obj), sort_keys=True, default=str)
 
 

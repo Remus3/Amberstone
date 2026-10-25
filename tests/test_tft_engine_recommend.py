@@ -89,6 +89,13 @@ def test_nearest_comps_reads_held_items(sd, built):
     vests = recommend.nearest_comps({"board": [u("U_Bolt")], "items": ["C_Vest", "C_Vest"]}, cat, sd)
     assert vests[0]["label"] == "Beast / Ward - Hex" and vests[0]["item_fit"] == 1.0
     assert {r["comp_id"]: r["item_fit"] for r in vests}[comp_a["comp_id"]] == 0.0
+    # A finished item already held counts the same as one buildable from components.
+    plate = recommend.nearest_comps({"board": [u("U_Bolt")], "items": ["I_Plate"]}, cat, sd)
+    assert plate[0]["label"] == "Beast / Ward - Hex" and plate[0]["item_fit"] == 1.0
+    # Items alone never make a comp near: it must share a unit with the board.
+    # Ira is B flex only; Staff is used only by the A comp.
+    no_share = recommend.nearest_comps({"board": [u("U_Ira")], "items": ["I_Staff"]}, cat, sd)
+    assert [r["label"] for r in no_share] == ["Beast / Ward - Hex"]
 
 
 def test_nearest_comps_on_an_empty_board_is_empty(sd, built):
@@ -241,6 +248,18 @@ def test_planner_choices_payload_for_the_overlay_picker(sd, built):
     # Every listed comp has at least one top-4 game; at most 8 rows.
     assert all(c["top4_games"] >= 1 for c in out["choices"]) and len(out["choices"]) <= 8
     json.dumps(out)
+
+
+def test_planner_choices_tolerate_sparse_catalogue_rows(sd, built):
+    cat, ms, comp_a = built
+    sparse = dict(comp_a, core=[{"api": "U_Gale"}, {"name": "no api"}, "junk"], three_star=None,
+                  carry={"api": "U_Gale"}, top4_games="2", avg_placement=None)
+    out = recommend.planner_choices(dict(cat, comps=[sparse, {"comp_id": None}]), "junk", sd)
+    (row,) = out["choices"]
+    assert row["core"] == [{"api": "U_Gale", "name": "Gale", "cost": 4}]
+    assert row["carry"] == {"api": "U_Gale", "name": "Gale", "cost": 4, "items": []}
+    assert row["summary"] == "8 games, no placement yet" and row["milestones"] is None
+    assert row["digest"][:2] == ["Core: Gale", "Carry: Gale"]
 
 
 def test_planner_choices_cap_and_no_lobby(sd, built):
