@@ -166,7 +166,7 @@ server-side TFT context authority: `{"active": bool, "phase": "lobby" | "match" 
 | `/api/sr-draft/apply` | `{profile_id}` | Apply SR draft coaching profile |
 | `/api/sr-draft/user-builds` | `{builds: [...]}` | Save SR user build list |
 | `/api/team-context/refresh` | `TeamContextRefreshRequest` | Force team-context recompute |
-| `/api/tft/match/<id>/export` | `{name?}` (`[A-Za-z0-9_-]`, max 64) | Write the match's scrubbed fixture (players `P1`..`P8`, relative times) to `data/tft/exports/<name>.json`; returns `{ok, match_id, name, path}`. 400 `bad_name`, 404 `not_found`, 422 `scrub_failed` (violation count only), 503 `store_unavailable` |
+| `/api/tft/match/<id>/export` | `{name?}` (`[A-Za-z0-9_-]`, max 64) | Write the match's scrubbed fixture (players `P1`..`P8`, relative times) to `data/tft/exports/<name>.json`; returns `{ok, match_id, name, path}`. 400 `bad_name`, 404 `not_found`, 422 `scrub_failed` (fixed reply; the violation detail goes to `logs/` only, RM-835), 503 `store_unavailable` |
 | `/api/top8` | - | Lobby top-8 refresh |
 | `/api/vision-reference` / `/api/vision-regions` | - | Vision-calibrator reference/region writes |
 

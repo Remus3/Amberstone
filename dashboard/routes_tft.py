@@ -580,8 +580,12 @@ def export_match(ident: str, body: Any) -> tuple[int, dict]:
     try:
         path = store.export_fixture(mid, out_dir, name=name)
     except ScrubError as exc:
-        # The violations name paths inside the document; count only.
-        return 422, {"ok": False, "error": "scrub_failed", "violations": len(exc.violations)}
+        # RM-835: the reply is fixed and derived from nothing the exception
+        # carries; the detail (type + the store's value-free violation paths)
+        # goes to the log only.
+        log.warning("api/tft: export %s refused by the scrub guard: %s: %s",
+                    name, type(exc).__name__, exc)
+        return 422, {"ok": False, "error": "scrub_failed"}
     except ValueError:
         return 404, {"ok": False, "error": "not_found"}
     try:
