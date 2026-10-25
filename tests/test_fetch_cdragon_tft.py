@@ -110,7 +110,9 @@ def test_extract_keeps_raw_counts_and_drops_non_playables_from_the_roster():
     assert [u["apiName"] for u in ex["units"]][0] == "DA_18_Kobuko"
     assert ex["units"][0] == {"apiName": "DA_18_Kobuko", "name": "Kobuko",
                               "cost": 1, "traits": ["Sprykin", "Brawler"],
-                              "role": "APTank"}
+                              "role": "APTank", "stats": {"hp": 600.0},
+                              "ability": {"name": "y", "desc": "x",
+                                          "variables": {}}}
 
 
 def test_extract_traits_carry_breakpoints():

@@ -5,6 +5,15 @@ every set) and writes a REDUCED extract for one set to
 data/meta/tft_set<N>_cdragon.json - champions, costs, traits + breakpoints,
 items and augments. Never the raw payload.
 
+Numbers are kept, not just words (RM-891): augment and item `desc`
+placeholders (`@Gold@`, `@AS*100@`) are filled from the row's own `effects` by
+name (exact, then case-folded, then the FNV-1a bin hash of the name); units keep
+`stats` and their ability variables; traits keep each breakpoint's variables,
+with a hashed key renamed only when the trait's own desc names a placeholder
+whose hash equals it. A placeholder with no value in the payload (runtime
+counters such as `@TFTUnitProperty.item:...@`) stays in the text verbatim, never
+guessed; `_placeholders` records the total and resolved count per kind.
+
     python scripts/fetch_cdragon_tft.py --set 18
     python scripts/fetch_cdragon_tft.py --set 17 --branch pbe
     python scripts/fetch_cdragon_tft.py --set 18 --source <local en_us.json>
@@ -25,7 +34,10 @@ from __future__ import annotations
 
 import argparse
 import datetime as _dt
+import decimal
 import json
+import math
+import re
 import sys
 import time
 from pathlib import Path
@@ -76,6 +88,155 @@ def _http_get(url: str, *, timeout: float = DEFAULT_TIMEOUT) -> bytes:
     raise RuntimeError("unreachable")
 
 
+# No whitespace inside: a stray single `@` in prose must not pair with the next
+# placeholder's opening `@` and swallow it.
+_PLACEHOLDER_RE = re.compile(r"@([^@\s]*)@")
+
+
+def bin_hash(name: str) -> str:
+    """CDragon's hashed-key form: FNV-1a 32 of the lower-cased name, `{%08x}`."""
+    h = 0x811C9DC5
+    for b in str(name).lower().encode("utf-8"):
+        h = ((h ^ b) * 0x01000193) & 0xFFFFFFFF
+    return "{" + format(h, "08x") + "}"
+
+
+# Past 1e15 a value (or a product) no longer prints exactly through a float;
+# game values never get near it, so such a value stays unresolved.
+_MAX_MAGNITUDE = 10 ** 15
+# CDragon multipliers are short (`*100`); bounded so a product is exact.
+_MULTIPLIER_RE = re.compile(r"[0-9]{1,9}(?:\.[0-9]{1,9})?")
+# repr of a float carries at most 17 significant digits and a multiplier 18,
+# so 40 digits hold every product exactly (the default context rounds at 28).
+_EXACT = decimal.Context(prec=40)
+_SIX = decimal.Context(prec=6)  # six significant digits, round half even
+
+
+def _number(value):
+    """A finite real number, or None (bools, strings, nan, inf are not values)."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    return value if abs(value) <= _MAX_MAGNITUDE else None
+
+
+def _clean_value(value):
+    """A number, or a list of numbers, made JSON-safe (a bad entry -> None)."""
+    if isinstance(value, list):
+        return [_number(v) for v in value]
+    return _number(value)
+
+
+def _fmt_number(value) -> str:
+    """One rounding, from the payload's own decimal text (a float's shortest
+    repr, or the exact Decimal product of it and a multiplier): six significant
+    digits under 1e5, so float32 noise such as 3.999996 or 10.000002 reads as
+    the game shows it; exact at or above 1e5; ints exact; never rounded to 0."""
+    if isinstance(value, int):
+        return str(value)
+    d = value if isinstance(value, decimal.Decimal) else decimal.Decimal(repr(value))
+    return _decimal_text(d if abs(d) >= 100000 else _SIX.plus(d))
+
+
+def _decimal_text(d: decimal.Decimal) -> str:
+    """Plain text for a Decimal, trailing zeros dropped, never rounded."""
+    if d == 0:
+        return "0"
+    if d.adjusted() < -6:
+        mantissa, _, exp = format(d, "e").partition("e")
+        if "." in mantissa:
+            mantissa = mantissa.rstrip("0").rstrip(".")
+        return f"{mantissa}e{exp}"
+    text = format(d, "f")
+    return text.rstrip("0").rstrip(".") if "." in text else text
+
+
+def _lookup(name: str, values: dict):
+    """Value for a placeholder name: exact key, case-folded key, bin hash."""
+    if name in values:
+        return _number(values[name])
+    folded = [v for k, v in values.items() if str(k).lower() == name.lower()]
+    if len(folded) > 1:
+        return None  # two keys differ only in case: ambiguous, never guessed
+    if folded:
+        return _number(folded[0])
+    if bin_hash(name) in values:
+        return _number(values[bin_hash(name)])
+    return None
+
+
+def _resolve(text: str, values: dict, tally: dict) -> str:
+    """Fill `@Name@` / `@Name*K@` from values; leave the rest verbatim."""
+    def _sub(m):
+        tally["total"] += 1
+        name, star, mult = m.group(1).partition("*")
+        value = _lookup(name, values) if name else None
+        if star and not _MULTIPLIER_RE.fullmatch(mult):
+            value = None
+        if value is not None and star:
+            # Decimal from the value's shortest repr times the multiplier as
+            # written: binary float would print 1234567 * 0.1 as 123456.70000000001.
+            product = _EXACT.multiply(decimal.Decimal(repr(value)), decimal.Decimal(mult))
+            value = product if abs(product) <= _MAX_MAGNITUDE else None
+        if value is None:
+            return m.group(0)
+        tally["resolved"] += 1
+        return _fmt_number(value)
+    return _PLACEHOLDER_RE.sub(_sub, text)
+
+
+def _ability(raw) -> dict:
+    ab = raw if isinstance(raw, dict) else {}
+    rows = ab.get("variables") if isinstance(ab.get("variables"), list) else []
+    variables = {}
+    for v in rows:
+        if isinstance(v, dict) and isinstance(v.get("name"), str) and v["name"]:
+            variables[_text(v["name"])] = _clean_value(v.get("value"))
+    return {"name": _text(ab.get("name")), "desc": _text(ab.get("desc")),
+            "variables": variables}
+
+
+def _stats(raw) -> dict:
+    """Unit stats, numbers only (a nan would write a non-JSON NaN token)."""
+    rows = raw if isinstance(raw, dict) else {}
+    return {str(k): v for k, v in rows.items() if _number(v) is not None}
+
+
+def _usable(value) -> bool:
+    if isinstance(value, list):
+        return any(v is not None for v in value)
+    return value is not None
+
+
+def _trait_key(key, by_hash: dict, variables: dict):
+    """The desc's name for a hashed key, unless that name is already a key."""
+    name = by_hash.get(key)
+    return name if name is not None and name not in variables else key
+
+
+def _trait_effects(trait: dict, tally: dict) -> list:
+    """Per-breakpoint variables; a hashed key is named only by its own desc."""
+    names = [m.partition("*")[0] for m in _PLACEHOLDER_RE.findall(_text(trait.get("desc")))]
+    by_hash = {bin_hash(n): n for n in names if n}
+    rows = [e for e in trait.get("effects") or [] if isinstance(e, dict)]
+    keys = set()  # keys holding a usable value at one breakpoint at least
+    out = []
+    for e in rows:
+        variables = e.get("variables") if isinstance(e.get("variables"), dict) else {}
+        keys |= {k for k, v in variables.items() if _usable(_clean_value(v))}
+        out.append({"minUnits": _number(e.get("minUnits")),
+                    "maxUnits": _number(e.get("maxUnits")),
+                    "variables": {_trait_key(k, by_hash, variables): _clean_value(v)
+                                  for k, v in variables.items()}})
+    folded = {str(k).lower() for k in keys}
+    for n in names:
+        tally["total"] += 1
+        if n.lower() in ("minunits", "maxunits") or n.lower() in folded or bin_hash(n) in keys:
+            tally["resolved"] += 1
+    return out
+
+
 def _text(value) -> str:
     return str(value or "").translate(_STRIP_CHARS).strip()
 
@@ -113,7 +274,9 @@ def build_extract(raw: dict, set_number: int, *, branch: str,
         ({"apiName": _text(c.get("apiName")), "name": _text(c.get("name")),
           "cost": c.get("cost"),
           "traits": [_text(t) for t in c.get("traits") or []],
-          "role": c.get("role")}
+          "role": c.get("role"),
+          "stats": _stats(c.get("stats")),
+          "ability": _ability(c.get("ability"))}
          for c in champs if c.get("traits")),
         key=lambda u: (u["cost"] if isinstance(u["cost"], int) else 99,
                        u["name"], u["apiName"]),
@@ -124,11 +287,13 @@ def build_extract(raw: dict, set_number: int, *, branch: str,
         unit_costs.setdefault(u["name"], u["cost"])
         unit_traits[u["name"]] = _unique(unit_traits.get(u["name"], []) + u["traits"])
 
+    tallies = {k: {"total": 0, "resolved": 0} for k in ("augments", "items", "traits")}
     traits = sorted(
         ({"apiName": _text(t.get("apiName")), "name": _text(t.get("name")),
           "breakpoints": [e.get("minUnits") for e in t.get("effects") or []
                           if isinstance(e, dict)],
-          "desc": _text(t.get("desc"))}
+          "desc": _text(t.get("desc")),
+          "effects": _trait_effects(t, tallies["traits"])}
          for t in s.get("traits") or [] if isinstance(t, dict)),
         key=lambda t: (t["name"], t["apiName"]),
     )
@@ -143,8 +308,10 @@ def build_extract(raw: dict, set_number: int, *, branch: str,
             it = by_api.get(api)
             if not it or bool(it.get("isAugment")) != want_augment:
                 continue
+            effects = it.get("effects") if isinstance(it.get("effects"), dict) else {}
+            tally = tallies["augments" if want_augment else "items"]
             e = {"apiName": _text(api), "name": _text(it.get("name")),
-                 "desc": _text(it.get("desc"))}
+                 "desc": _resolve(_text(it.get("desc")), effects, tally)}
             if want_augment:
                 e["associatedTraits"] = [_text(t) for t in it.get("associatedTraits") or []]
             else:
@@ -170,10 +337,13 @@ def build_extract(raw: dict, set_number: int, *, branch: str,
                  "Game data only - no third-party comps or tier lists. "
                  "units = champion rows that carry traits (shop roster plus "
                  "trait-bearing summons/variants); PvE monsters and anvils "
-                 "are counted in _counts.champions_raw but not listed.",
+                 "are counted in _counts.champions_raw but not listed. "
+                 "Augment / item desc placeholders are filled from the row's "
+                 "effects; one left as @Name@ had no value in the payload.",
         "_counts": {"champions_raw": len(champs), "units": len(units),
                     "champions": len(champions), "traits": len(traits),
                     "items": len(items), "augments": len(augments)},
+        "_placeholders": tallies,
         "champions": champions,
         "unit_costs": {k: unit_costs[k] for k in champions},
         "unit_traits": {k: unit_traits[k] for k in champions},
