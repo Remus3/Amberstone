@@ -6,7 +6,7 @@
 
 ---
 
-# 2026-10-25c - session 135: s134 work LANDED on main (C1 gated suite green), id scrub, live backfills, GH1 merge + the one authorized push
+# 2026-10-25c - session 135: s134 work LANDED on main (C1 gated suite green), id scrub, live backfills, GH1 merged locally; the authorized push HALTED by the credential scan
 
 - **Operator rulings (chat):** push and commit at this /done, then the push hold is back ON at session 136 start; frozen-file grant re-confirmed for s135 ONLY (ASKS 35, session-scoped); GH1 range-limited rewrite approved (ASKS 34); id scrub ordered ("rewrite the id's no need to ask").
 - **Landed (LEDGER 1883-1897):** P0-F, the 7 s134 lanes (RM-887..RM-903 mapped), TFT-04 (N7), TFT-09, N9 overlay (`baf8644b9` adjudicated LAND), TFT-08, TFT-02, N8, N13 (`tft/local_player.py`, tree-wide isInteractable guard) - each verifier-gated.
@@ -15,8 +15,9 @@
 - **Live (LEDGER 1900):** lane markers, DS restart + 404 probe, N8 backfill (8169 quarantined, RM-888 (c)) and TFT-08 backfill applied with RC stopped; RC pid 7084 healthy.
 - **Q1 (LEDGER 1902):** QA 1st place; live coach 132 calls / 0 errors (RM-902 closed); N13 found (RC followed the 8th-place opponent); RM-905 filed (RC-ReplayRosterPull).
 - **WT (LEDGER 1901):** 22 worktrees removed (bundled); 10 locked by the session process stay - remove next session.
-- **Do NOT redo:** the landings, the scrub, the backfills (re-dry plans 0), GH1 (LEDGER 1903).
-- **Next:** next TFT game: confirm N13 (RC follows YOU) + stage / level / gold non-empty; QA match 20261025-131926; N9 PASSIVE-mode boxes + overlay toggle live check; remove the 10 locked worktrees.
+- **PUSH HALTED (LEDGER 1903):** GH1 merged into local main (`66a468dc8`); the pre-push dry run's credential scan flags the fake `TOKEN` fixture in `tests/test_gated_frame_readback.py` added by unpushed `03bdc92f3` (per-commit added lines, no baseline), so no forward commit clears it. Nothing pushed, protection untouched. Operator call (ASKS 37): pragma edit of that commit (52 unpushed commits rewritten) then the PLAN push.
+- **Do NOT redo:** the landings, the scrub, the backfills (re-dry plans 0), the GH1 rebuild + local merge.
+- **Next:** the ASKS 37 call and the push (hold ON otherwise); next TFT game: confirm N13 (RC follows YOU) + stage / level / gold non-empty; QA match 20261025-131926; N9 PASSIVE-mode boxes + overlay toggle live check; remove the 10 locked worktrees.
 
 ---
 
