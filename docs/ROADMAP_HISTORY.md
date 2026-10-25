@@ -1,5 +1,14 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-10-25e - closed rows relocated (session 135 merger, s135 landing), 4 rows
+
+The s135 landing of the s134 lanes closed these four rows: RM-838 ((d) by the ds lane, LEDGER 1884), RM-856, RM-864 and RM-873 (the repo lane, LEDGER 1890); the `BACKLOG.md` bodies carry the SHIPPED heads. The lines below move here VERBATIM as they stood in `ROADMAP.md` at `dc5eca8aa`, in their ROADMAP order; one open index line for the newly mapped ids (RM-888..RM-894, RM-896, RM-899..RM-902) takes their place.
+
+- **[ ] RM-838 (filed s132 by the RM-835 merger; Tier-1 per surface, low; gated: none): reply bodies outside the RM-835 set still carry exception text.** Non-DS half SHIPPED s133 queue lane (`f120fce09`, LEDGER 1808: vision :8889 `_BadBody` 400, the two :8888 HTTPError proxy passthroughs scrubbed to a fixed line per status, the supervisor auto-analyze summary, sibling `analyze_all`); OPEN: the DS :8860 half (d). Body in `BACKLOG.md` "Session 132 filings".
+- **[ ] RM-856 (filed s133 by the batch B merger; Tier-0 doc, low; gated: none): `tools/ship-batch.md` names a `.claude/skills/ship-batch/` mirror that has not existed since 2026-05-28.** Body in `BACKLOG.md` "Session 133 batch B filings".
+- **[ ] RM-864 (filed s133 by the batch D merger; Tier-1, low; gated: none): `core/log_rotation.py` follow-ups - `_move_no_clobber` check-then-rename can overwrite on POSIX (Windows-safe), a retention test for `recovered-*` aging, the atomic-write allowlist reason (WinError 32, not 5; rollback best-effort).** Body in `BACKLOG.md` "Session 133 batch D filings".
+- **[ ] RM-873 (filed s133 by the batch F merger; Tier-1, low; gated: none):** the G5-01 doc probe tracebacks on the absent `data/anvil_shadow.jsonl` - print a clean FAIL. Body in `BACKLOG.md` "Session 133 batch F filings".
+
 ## 2026-10-25d - size-budget relocation (session 133 /done), 20 lines
 
 `ROADMAP.md` stood at 80814 of 81920 bytes on `97a8cf321`, a
