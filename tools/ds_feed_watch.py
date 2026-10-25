@@ -16,6 +16,18 @@ What one run does (network: HEAD + GET only, never a write upstream):
   3. GET each live chunk and hash its body with ds_feed_index.body_md5 (raw
      bytes, verbatim). A hash differing from the one recorded beside the URL
      is reported as MOVED.
+  4. LIVE BUILD (RM-839) - steps 2-3 are blind to a rebuild: chunk names are
+     content hashes, a rebuild publishes NEW names, and the old files stay on
+     the CDN answering 200 with their old, unchanged bytes. So GET <origin>/
+     and walk the live chunk reference graph (the extractor's two reference
+     shapes, bounded by LIVE_CRAWL_MAX_FETCH / LIVE_CRAWL_MAX_DEPTH). Every
+     chunk URL the manifest records (data blocks, and every other recorded
+     chunk under the same directory) that the live build no longer references
+     is MOVED, with the live chunk now carrying the block's anchor (read from
+     the extractor's _DATA_BLOCKS table by AST, never by import) as its new
+     name. The walk stops as soon as every recorded name is seen. A capped or
+     partial walk reports UNVERIFIED instead of guessing; an unreadable root
+     says so instead of printing "MOVED: none".
 
 Default is report-only. Writes happen only on explicit flags:
   --record      write {block: {url, status, body_md5, fetched_at}} under
@@ -34,6 +46,7 @@ Run:
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import re
 import sys
@@ -66,6 +79,16 @@ CHANGELOG_PATH = "/info/changelog/"
 WATCH_FILE = _TOOLS / "ds_feed_watch.json"
 USER_AGENT = "Amberstone/DaemonSlayer-feed-watch/1.0"
 TIMEOUT_S = 30
+# The extractor that owns the block -> anchor table. Read by AST only: an
+# import configures logging and opens its log file at module load.
+EXTRACTOR = _TOOLS / "daemon_slayer_extract.py"
+DATA_BLOCKS_TABLE = "_DATA_BLOCKS"
+# Bounds on the live chunk-graph walk (measured 2026-10-24: 294 chunks, 4
+# levels deep). Reaching either one reports "capped", never a guess.
+LIVE_CRAWL_MAX_FETCH = 600
+LIVE_CRAWL_MAX_DEPTH = 6
+# The bare loader-call reference shape (`"<id>.js"`), as the extractor reads it.
+_BARE_CHUNK_RE = re.compile(r"\"([A-Za-z0-9_\-]{8,20}\.js)\"")
 
 _MONTHS = {m: i + 1 for i, m in enumerate(
     ("jan", "feb", "mar", "apr", "may", "jun",
@@ -176,15 +199,241 @@ def check_blocks(manifest: dict, http, now_iso: Optional[str] = None) -> dict:
     return rows
 
 
+# -- live build discovery (RM-839) ----------------------------------------------
+
+
+def extractor_anchors(path: Optional[Path] = None) -> dict:
+    """block -> anchor from the extractor's _DATA_BLOCKS table, read by AST.
+
+    Each entry is ("block", ANCHOR_NAME) or ("block", "literal"); a name is
+    resolved against the module-level string constants. Returns {} when the
+    file or the table cannot be read, so discovery still reports renamed files,
+    only without naming their replacement.
+    """
+    try:
+        tree = ast.parse(Path(path or EXTRACTOR).read_text(encoding="utf-8"))
+    except (OSError, SyntaxError, ValueError):
+        return {}
+    consts, table = {}, None
+    for node in tree.body:
+        if not (isinstance(node, ast.Assign) and len(node.targets) == 1
+                and isinstance(node.targets[0], ast.Name)):
+            continue
+        name, value = node.targets[0].id, node.value
+        if isinstance(value, ast.Constant) and isinstance(value.value, str):
+            consts[name] = value.value
+        elif name == DATA_BLOCKS_TABLE:
+            table = value
+    out = {}
+    for elt in getattr(table, "elts", None) or []:
+        if not (isinstance(elt, ast.Tuple) and len(elt.elts) == 2):
+            continue
+        key_node, anchor_node = elt.elts
+        key = key_node.value if isinstance(key_node, ast.Constant) else None
+        if isinstance(anchor_node, ast.Constant):
+            anchor = anchor_node.value
+        elif isinstance(anchor_node, ast.Name):
+            anchor = consts.get(anchor_node.id)
+        else:
+            anchor = None
+        if isinstance(key, str) and isinstance(anchor, str) and anchor:
+            out[key] = anchor
+    return out
+
+
+def chunk_dir_of(urls: Iterable[str]) -> Optional[str]:
+    """The one directory URL (trailing slash) every chunk URL sits in."""
+    dirs = {u.rsplit("/", 1)[0] + "/" for u in urls if "/" in u}
+    if len(dirs) != 1:
+        return None
+    d = dirs.pop()
+    return d if origin_of([d]) else None
+
+
+def _walk_urls(value, label: str):
+    if isinstance(value, str):
+        yield label, value
+    elif isinstance(value, dict):
+        for k in sorted(value, key=str):
+            yield from _walk_urls(value[k], f"{label}.{k}")
+    elif isinstance(value, list):
+        for i, v in enumerate(value):
+            yield from _walk_urls(v, f"{label}[{i}]")
+
+
+def watched_chunks(manifest: dict) -> dict:
+    """label -> URL for every chunk the manifest records.
+
+    The data blocks (by block name), then every other recorded URL in the same
+    chunk directory that is not already a block's URL. Labels are the sources
+    key path with the extractor's own key prefix stripped, so the external
+    source is never spelled here.
+    """
+    blocks = dict(sorted(block_urls(manifest).items()))
+    src = manifest.get("sources") if isinstance(manifest, dict) else None
+    key = data_blocks_key(src)
+    cdir = chunk_dir_of(blocks.values())
+    if not key or not cdir:
+        return blocks
+    prefix = key[: -len(DATA_BLOCKS_SUFFIX)] + "_"
+    taken = set(blocks.values())
+    extra = {}
+    for k, v in src.items():
+        if not isinstance(k, str) or k in (key, HASHES_KEY):
+            continue
+        label = k[len(prefix):] if k.startswith(prefix) else k
+        for sub, url in _walk_urls(v, label):
+            name = url[len(cdir):] if url.startswith(cdir) else ""
+            if name and "/" not in name and url not in taken:
+                extra[sub] = url
+    blocks.update(sorted(extra.items()))
+    return blocks
+
+
+def _chunk_refs(text: str, cdir_path: str) -> list:
+    """Chunk names a page or chunk body references, in first-seen order.
+
+    The two shapes the extractor crawls: `<last two dir segments>/<id>.js`
+    (root script tags and worker manifests) and a bare `"<id>.js"` loader
+    argument. The directory comes from the manifest's own URLs.
+    """
+    segs = [s for s in cdir_path.split("/") if s]
+    tail = "/".join(segs[-2:]) + "/" if segs else ""
+    pats = [_BARE_CHUNK_RE]
+    if tail:
+        pats.insert(0, re.compile(re.escape(tail) + r"([A-Za-z0-9_\-.]+\.js)"))
+    seen, out = set(), []
+    for rx in pats:
+        for name in rx.findall(text):
+            if name not in seen:
+                seen.add(name)
+                out.append(name)
+    return out
+
+
+def live_chunk_graph(root_url: str, cdir: str, http, want=(),
+                     anchors: Optional[dict] = None):
+    """Walk the live build's chunk graph from its root page. Never raises.
+
+    Returns (summary, seen, candidates): summary.status is "ok" (every name in
+    `want` is referenced; the walk stopped early), "complete" (graph
+    exhausted), "partial" (exhausted, but a chunk failed to fetch), "capped"
+    (a bound was hit) or "failed" (root page unreadable). `seen` is every
+    chunk name referenced; `candidates` maps block -> live chunk names that
+    carry its anchor, most hits first.
+    """
+    anchors = anchors or {}
+    want = set(want)
+    summary = {"root": root_url, "root_status": None, "status": "failed",
+               "referenced": 0, "fetched": 0, "fetch_errors": 0}
+    seen: set = set()
+    hits: dict = {b: [] for b in anchors}
+    try:
+        st, body = http.get(root_url)
+        summary["root_status"] = st
+    except Exception:
+        return summary, seen, {}
+    if st != 200 or not body:
+        return summary, seen, {}
+    cdir_path = urlsplit(cdir).path
+
+    def note(text: str) -> list:
+        fresh = [n for n in _chunk_refs(text, cdir_path) if n not in seen]
+        seen.update(fresh)
+        return fresh
+
+    frontier = note(bytes(body).decode("utf-8", "replace"))
+    status, depth = None, 0
+    while frontier and not want <= seen:
+        if depth >= LIVE_CRAWL_MAX_DEPTH:
+            status = "capped"
+            break
+        nxt = []
+        for name in frontier:
+            if want <= seen:
+                break
+            if summary["fetched"] >= LIVE_CRAWL_MAX_FETCH:
+                status = "capped"
+                break
+            summary["fetched"] += 1
+            try:
+                cst, cbody = http.get(cdir + name)
+            except Exception:
+                cst, cbody = None, b""
+            if cst != 200 or not cbody:
+                summary["fetch_errors"] += 1
+                continue
+            text = bytes(cbody).decode("utf-8", "replace")
+            for block, anchor in anchors.items():
+                n = text.count(anchor)
+                if n:
+                    hits[block].append((n, name))
+            nxt.extend(note(text))
+        if status:
+            break
+        frontier, depth = nxt, depth + 1
+    if want <= seen:
+        status = "ok"
+    elif status is None:
+        status = "partial" if summary["fetch_errors"] else "complete"
+    summary["status"] = status
+    summary["referenced"] = len(seen)
+    candidates = {b: [n for _, n in sorted(v, key=lambda t: (-t[0], t[1]))]
+                  for b, v in hits.items() if v}
+    return summary, seen, candidates
+
+
+def check_live(manifest: dict, http, anchors: Optional[dict] = None):
+    """Compare every recorded chunk URL against the live build's chunk set.
+
+    Returns (summary, relocated, unverified). relocated maps label ->
+    {old, new, candidates}: the recorded file is no longer referenced by the
+    live build, and `new` is the live chunk now carrying the block's anchor
+    (None when no anchor is known or none was found). A label not seen on a
+    capped or partial walk, with no anchor match elsewhere, is unverified.
+    """
+    blocks = block_urls(manifest)
+    cdir = chunk_dir_of(blocks.values())
+    origin = origin_of(blocks.values())
+    if not cdir or not origin:
+        return ({"root": None, "root_status": None, "status": "failed",
+                 "referenced": 0, "fetched": 0, "fetch_errors": 0}, {}, [])
+    watched = watched_chunks(manifest)
+    if anchors is None:
+        anchors = extractor_anchors()
+    anchors = {b: a for b, a in anchors.items() if b in blocks}
+    want = {u[len(cdir):] for u in watched.values()}
+    summary, seen, cands = live_chunk_graph(origin + "/", cdir, http, want,
+                                            anchors)
+    relocated, unverified = {}, []
+    if summary["status"] == "failed":
+        return summary, relocated, unverified
+    certain = summary["status"] in ("ok", "complete")
+    for label, url in watched.items():
+        if url[len(cdir):] in seen:
+            continue
+        names = cands.get(label, [])
+        if names or certain:
+            relocated[label] = {"old": url,
+                                "new": cdir + names[0] if names else None,
+                                "candidates": [cdir + n for n in names]}
+        else:
+            unverified.append(label)
+    return summary, relocated, sorted(unverified)
+
+
 def watch(manifest: dict, high_water: str, http,
-          now_iso: Optional[str] = None) -> dict:
+          now_iso: Optional[str] = None,
+          anchors: Optional[dict] = None) -> dict:
     blocks = check_blocks(manifest, http, now_iso)
     prior = (manifest.get("sources") or {}).get(HASHES_KEY) or {}
-    moved = sorted(
+    rehashed = {
         b for b, row in blocks.items()
         if row["body_md5"] and isinstance(prior.get(b), dict)
         and prior[b].get("body_md5") and prior[b]["body_md5"] != row["body_md5"]
-    )
+    }
+    live, relocated, unverified = check_live(manifest, http, anchors)
+    moved = sorted(rehashed | set(relocated))
     unreachable = sorted(b for b, row in blocks.items() if row["status"] != 200)
 
     origin = origin_of(block_urls(manifest).values())
@@ -202,7 +451,8 @@ def watch(manifest: dict, high_water: str, http,
                 changelog["new_entries"] = new_since(dates, high_water)
         except Exception:
             changelog["status"] = None
-    return {"changelog": changelog, "blocks": blocks, "moved": moved,
+    return {"changelog": changelog, "blocks": blocks, "live": live,
+            "relocated": relocated, "moved": moved, "unverified": unverified,
             "unreachable": unreachable}
 
 
@@ -246,7 +496,26 @@ def render(rep: dict) -> str:
     for b, row in rep["blocks"].items():
         lines.append(f"block {b:<22} status={row['status']}"
                      f" body_md5={row['body_md5']}  {row['url']}")
+    lv = rep.get("live") or {}
+    if lv.get("status") == "failed":
+        lines.append(f"live build {lv.get('root')} status=FAILED"
+                     f" root_status={lv.get('root_status')} - files rebuilt"
+                     " under new names cannot be seen this run")
+    else:
+        lines.append(f"live build {lv.get('root')} status={lv.get('status')}"
+                     f" referenced={lv.get('referenced')}"
+                     f" fetched={lv.get('fetched')}"
+                     f" fetch_errors={lv.get('fetch_errors')}")
     lines.append(f"MOVED: {', '.join(rep['moved']) or 'none'}")
+    relocated = rep.get("relocated") or {}
+    for label in rep["moved"]:
+        r = relocated.get(label)
+        if r is None:
+            lines.append(f"  {label:<30} body hash changed at the same URL")
+            continue
+        new = r["new"].rsplit("/", 1)[-1] if r["new"] else "not in the live build"
+        lines.append(f"  {label:<30} {r['old'].rsplit('/', 1)[-1]} -> {new}")
+    lines.append(f"UNVERIFIED: {', '.join(rep.get('unverified') or []) or 'none'}")
     lines.append(f"UNREACHABLE: {', '.join(rep['unreachable']) or 'none'}")
     return "\n".join(lines)
 
