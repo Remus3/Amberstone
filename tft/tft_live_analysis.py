@@ -473,17 +473,68 @@ class TftLiveAnalysis:
                 _DATA_FILE_LOCK.release()
         self._force_flag = True
         logger.info("Force vision scan triggered (augment reroll path)")
+    # -- RM-615: stage-round plausibility gate --------------------------------
+    # Pre-RM-615 notify_round trusted every read: any stage > 2 -> stage <= 2
+    # read was a NEW GAME (augments + placement cleared), so one OCR misread
+    # mid game wiped them; any change reset the round timer and re-armed the
+    # planning scan (a paid vision call); the misread label reached the
+    # prompt via _coach_state; and a game left at stage 2 was never seen to
+    # end. Every read now goes through core/tft_stage_gate.py. A genuine new
+    # game BYPASSES the gate: the gate itself reports it when the game clock
+    # restarts (or, with no clock, by the old stage rule), and the reset
+    # below runs on that verdict.
+    # The gate is created and imported lazily, here and not in __init__ or at
+    # module top: one gate per instance, objects built without __init__
+    # (tests) get one too, and the lines above the phase-7 P2-C arch marker
+    # in force_scan stay put (tools/gen_archmap.py cites it by line in
+    # docs/ARCHITECTURE.md). The queue comes from each state's "variant".
+    def _gate(self):
+        g = getattr(self, "_stage_gate", None)
+        if g is None:
+            from core.tft_stage_gate import StageGate
+            g = self._stage_gate = StageGate()
+        return g
+    def _gated(self, state):
+        """Judge one read (once per state object: the worker hands the SAME
+        dict to notify_coach_state and notify_round) and return the state to
+        act on - the read itself, or a copy holding the accepted round."""
+        from core.tft_stage_gate import NEW_GAME, REJECT
+        if not isinstance(state, dict): return state
+        if state is getattr(self, "_gate_seen", None): return self._gate_view
+        gate = self._gate(); gate.set_queue(state.get("variant"))
+        v = gate.observe(state.get("stage"), state.get("round"), state.get("game_time_s"))
+        if v.kind == NEW_GAME:
+            self._known_augments=[]; self._last_placement=""
+            logger.info("New game detected (%s, read %s) - augments cleared", v.reason, state.get("stage_round"))
+        view = state
+        if v.kind == REJECT or v.stage is None:
+            view = self._held_view(state, gate.accepted)
+            logger.debug("Stage read %s held (%s); acting on %s", state.get("stage_round"), v.reason,
+                         view.get("stage_round") or "none")
+        self._gate_seen = state; self._gate_view = view
+        return view
+    @staticmethod
+    def _held_view(state, accepted):
+        """A copy of state carrying the accepted round (none yet = 0-0 / "")
+        and that round's schedule fields, so a held read leaves no label of
+        its own (a misread onto a carousel round would park _loop)."""
+        st, rn = accepted if accepted else (0, 0)
+        view = dict(state)
+        view.update({"stage": st, "round": rn, "stage_round": f"{st}-{rn}" if accepted else ""})
+        try:
+            from tft import tft_state_reader
+            view.update(tft_state_reader.round_schedule().fields(st, rn))
+        except Exception:  # noqa: BLE001
+            pass
+        return view
     def notify_round(self, state: dict) -> None:
-        self._coach_state=state; sr=(state.get("stage",0),state.get("round",0))
+        view = self._gated(state)
+        self._coach_state = view
+        sr = (view.get("stage",0), view.get("round",0)) if isinstance(view, dict) else (0, 0)
         if sr!=self._last_round:
-            # Detect new game: stage resets to <=2 from a higher stage
-            prev_stage=self._last_round[0]; new_stage=sr[0]
-            if prev_stage > 2 and new_stage <= 2 and sr != (0,0):
-                self._known_augments=[]; self._last_placement=""
-                logger.info("New game detected (stage %s->%s) - augments cleared",self._last_round,sr)
             self._last_round=sr; self._round_start_time=time.time()
             self._scanned_planning=False; self._scanned_mid=False
-    def notify_coach_state(self, state: dict) -> None: self._coach_state=state
+    def notify_coach_state(self, state: dict) -> None: self._coach_state=self._gated(state)
     def _is_carousel_or_spectate(self):
         cs=self._coach_state; return cs.get("round_event","") in self._CAROUSEL_EVENTS or cs.get("is_carousel",False)
     @staticmethod
