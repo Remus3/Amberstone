@@ -24,8 +24,10 @@ hard-codes an odds or pool table.
 
 NEAREST COMPS score = CORE_WEIGHT x share of the comp's core owned
 + POOL_WEIGHT x Jaccard(owned units, core + flex) + TRAIT_WEIGHT x Jaccard of
-the trait signatures + ITEM_WEIGHT x share of the items completable from the
-held components that the comp itself has used.
+the trait signatures + ITEM_WEIGHT x share of the held-or-buildable items
+(recipes completable from held components, plus finished items held that the
+set data knows) that the comp itself has used. A comp that shares no unit
+with the board is never listed, whatever the items say.
 """
 from __future__ import annotations
 
@@ -112,10 +114,11 @@ def nearest_comps(state: Mapping, catalogue: Mapping, setdata: SetData, *, limit
     owned = set(held)
     units = as_units(_list(state.get("board")) + _list(state.get("bench")), setdata)
     sig = trait_signature(units, setdata)
-    # Items the player has or can build now: completable recipes + finished items already held.
+    # Items the player has or can build now: completable recipes + finished items already held
+    # (known to the set data only - an unrecognised string is not an item and never dilutes the fit).
     buildable = {item for item, _recipe in _completable(state.get("items"), setdata)}
     buildable |= {api for api in (setdata.resolve_item_api(i) for i in _list(state.get("items")))
-                  if api and setdata.item_kind(api) != "component"}
+                  if api in setdata.item_names and setdata.item_kind(api) != "component"}
     rows = []
     for comp in _comps(catalogue):
         core = set(_core(comp))

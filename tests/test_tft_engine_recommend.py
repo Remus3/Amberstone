@@ -92,6 +92,13 @@ def test_nearest_comps_reads_held_items(sd, built):
     # A finished item already held counts the same as one buildable from components.
     plate = recommend.nearest_comps({"board": [u("U_Bolt")], "items": ["I_Plate"]}, cat, sd)
     assert plate[0]["label"] == "Beast / Ward - Hex" and plate[0]["item_fit"] == 1.0
+    # An unrecognised string is not an item: it never dilutes the fit.
+    junk = recommend.nearest_comps({"board": [u("U_Bolt")], "items": ["C_Vest", "C_Vest", "junk_item"]}, cat, sd)
+    assert junk == vests
+    # A held emblem counts only as far as the comp has used it (A / B never did: fit halves).
+    emblem = recommend.nearest_comps({"board": [u("U_Bolt")], "items": ["C_Vest", "C_Vest", "I_BladeEmblem"]},
+                                     cat, sd)
+    assert emblem[0]["label"] == "Beast / Ward - Hex" and emblem[0]["item_fit"] == 0.5
     # Items alone never make a comp near: it must share a unit with the board.
     # Ira is B flex only; Staff is used only by the A comp.
     no_share = recommend.nearest_comps({"board": [u("U_Ira")], "items": ["I_Staff"]}, cat, sd)
