@@ -168,8 +168,20 @@ KNOWN_STATIC_BODY: dict[str, tuple[str, str]] = {
     # enchanter_items.json stays: copied forward and restamped only - DDragon
     # 16.21.1 moved the gold of 3008 and 3168 and dropped seven 55xxxx
     # cosmetics, none of them one of its 34 rows.
+    #
+    # Re-measured 2026-10-24 for the same 16.20.1 -> 16.21.1 pair after the
+    # lolmath 26.21 refresh (`daemon_slayer_extract.py --lolmath-only --patch
+    # 16.21.1`, chunks resolved live from the lolmath.net root + lazy crawl).
+    # scenarios.json is DROPPED: its body MOVED (body_md5 877c4bf8, the 16.20.1
+    # body, -> e2552d9e;
+    # lolmath reworked Varus - 'AD Caster Varus' became 'Poke Varus' and both
+    # Varus variants' settings changed), so it reads 'body-moved' against
+    # 16.20.1 and needs no exemption. Its generator still stamps no vintage, so
+    # the row comes back the next time a fresh run returns identical bytes; the
+    # pending-vintage remedy stays exercised by _HISTORICAL_STATIC_BODY in
+    # tests/test_ds_feed_index.py. enchanter_items.json and wiki_stats.json are
+    # untouched by that refresh and stay.
     "enchanter_items.json": ("authored", "none"),
-    "scenarios.json": ("pending-vintage", "tools/daemon_slayer_extract.py"),
     "wiki_stats.json": ("pending-vintage", "tools/daemon_slayer_wiki_stats_extract.py"),
 }
 

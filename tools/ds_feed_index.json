@@ -855,7 +855,7 @@
         "stamp_field": "version"
       },
       "champions.json": {
-        "body_md5": "9dbf00c7",
+        "body_md5": "7c817a9d",
         "declared_patch": "16.21.1",
         "stamp_field": "version"
       },
@@ -880,7 +880,7 @@
         "stamp_field": "patch"
       },
       "manifest.json": {
-        "body_md5": "84b9c254",
+        "body_md5": "ca50d29d",
         "declared_patch": "16.21.1",
         "stamp_field": "ddragon_version"
       },
@@ -890,7 +890,7 @@
         "stamp_field": "patch"
       },
       "scenarios.json": {
-        "body_md5": "877c4bf8",
+        "body_md5": "e2552d9e",
         "declared_patch": "16.21.1",
         "stamp_field": "version"
       },
@@ -912,10 +912,6 @@
     "enchanter_items.json": [
       "authored",
       "none"
-    ],
-    "scenarios.json": [
-      "pending-vintage",
-      "tools/daemon_slayer_extract.py"
     ],
     "wiki_stats.json": [
       "pending-vintage",
