@@ -1018,8 +1018,53 @@ survivability flips below cannot roll otherwise.
   game ticks: 282 / 282 carry `enemy_comp == []` (every earlier row with enemies lists exactly 5), `champ`
   Kai'Sa every time across 21 days, and ONE distinct `live_haiku` block across all 282 (the coach file frozen at 2026-08-02; the
   4972 earlier rows carry 2234 distinct blocks). `tools/aram_shadow_report.py` filters on neither
-  field, so those rows count toward flip readiness. Filed **RM-852**; until it lands, count only
-  rows with a non-empty `enemy_comp`.
+  field, so those rows count toward flip readiness. Filed **RM-852**; ~~until it lands, count only
+  rows with a non-empty `enemy_comp`.~~ (caveat RESOLVED: RM-852 read-time exclusion + RM-859
+  archive-split `c5c70beb3`, LEDGER 1846; the live file is 4585 rows, `enemy_less_excluded` 0.)
+  **PREP (lane 9 s133 cycle 9, 2026-10-25, source read at `6be7956da`, data read-only in the main
+  checkout; NOT a tick).** Three findings change what this row can accrue.
+  (1) THE OBJECTIVE HALF HAS NO HAIKU BASELINE, EVER. The live ARAM prompt's OUTPUT FORMAT
+  (`coaches/aram_coach.py:403-412`) lists Action / Fight rule / Reset / item / Risk / Item build / Item
+  extra / Item reasons / Choices - no Objective - and `parse_fields` (`:1262-1266`) never asks for
+  "objective", so the artifact's `"objective": flds.get("objective", "")` (`:1340`) is always "".
+  Measured: 370 non-dead rows after the live-side reader fix (`e569821e1`, 2026-07-29), 6 ARAM games on
+  2026-08-02 (champion + enemy comp groups; 5 champions, Aphelios twice): `objective` det-only 370, live 0. So "Haiku -> deterministic" agreement on `objective`
+  can never accrue; the deterministic line ADDS a field the live coach never served. That half is a
+  surfacing decision for the operator, not an accrual gate.
+  (2) THE FLIP REPORT DOES NOT MEASURE EITHER R78 FIELD. `tools/aram_shadow_report.py` `_FIELDS`
+  (`:56-59`) omits `item_extra` and `objective`, though both sides of every row since R78 carry them
+  (3581 rows). Inline read: `item_extra` both 218 / det-only 152 over those 370 rows; equal 154 / 218 =
+  0.706 case-folded (152 / 218 = 0.697 exact); the deterministic side is always "omit" (by design, `8f013ee4`), live "omit" 152. Filed
+  **RM-882** (report the two fields; say "no live baseline" for `objective`, never 0 %).
+  (3) THE DETERMINISTIC OBJECTIVE MAY BE READING SEED VALUES, NOT TOWERS. Over all 3581 R78 rows it took
+  only two of its six branches: "Poke the enemy tower" 3562, "Enemy tower down" 18 (2026-07-11/12), ""
+  1; "Defend your tower" / "Your tower fell" / "Enemy tower is low" never once. Its inputs are the
+  artifact's `my_tower_hp` / `enemy_tower_hp` (`dashboard/_deterministic_coaching.py:1350-1351`), seeded
+  100 / 100 by `_blank_artifact_data` (`coaches/aram_coach.py:800`) and overwritten only when the
+  Sonnet vision read returns a non-null value (`:918-926`). The artifact still holds 100 / 100 from
+  the 2026-08-02 game. No ARAM row since 2026-08-02T22:34Z, and `data/aram_coaching_data.json` is
+  untouched since that minute too, so the silence is "no ARAM game", not a dead writer.
+  **CHECK (next ARAM Mayhem game; predicate stated first).** Sample every 25-30 s while in game:
+  `data/aram_coaching_data.json` (main checkout) `my_tower_hp` / `enemy_tower_hp` / `my_team`, and
+  `/api/state` -> `liveclient.turret_events` (`[{down_at_s, name}]`, `dashboard/_liveclient.py:422-433`)
+  with `liveclient.game_time_s`. WRITER ALIVE: `data/aram_coach_shadow.jsonl` gains rows with `ts` after
+  the game start, `mode` `aram`, a 5-name `enemy_comp` (else FAIL: writer dead; note the line count
+  before queueing). TOWER INPUT: on the first `TurretKilled`, read its `name` and decide the side from
+  `my_team` (`_T1_` = ORDER, `_T2_` = CHAOS - confirm on that first event, do not assume). PASS iff
+  that side's `*_tower_hp` takes at least two DIFFERENT values across the samples from 90 s before to
+  60 s after that turret's `down_at_s`, at least one of them below 100 (a value CHANGE inside the
+  window; a single held value is not enough, because `:918-926` keeps the last non-null read through
+  every null read, so an old reading of another tower can sit there). FAIL iff `my_tower_hp` and `enemy_tower_hp` both read
+  exactly 100 at every sample from 90 s before to 60 s after the kill, while the player is alive and
+  the frame is fresh (`:8889/latest-frame/meta` `ts`) AND that turret is on screen BELOW FULL HP in at
+  least one sampled frame (on screen at full HP, 100 is the right reading) (vision returning null for an off-screen tower is legitimate silence, not a FAIL).
+  Any other outcome, a turret that never falls, a dead or tabbed-out player, or a stale frame is NO
+  RESULT. Also RECORD (not a predicate): after the kill, "nearest tower"
+  (`coaches/aram_coach.py:534-535`) may be the next tower at full HP, so `enemy_tower_hp` may never reach 0
+  (`_TOWER_DEAD`, `core/aram_deterministic_coach.py:268`) on most kills, though the 18 rows of
+  2026-07-11/12 show it has - note which value vision reports after the kill. A FAIL files a row against the vision
+  tower read; it does not touch `item_extra`. The `item_extra` half still accrues and still needs the
+  operator's OK.
 - **G3-15** ARAM re-checks of GATE 2 rows (no separate work, just look while you are here): G2-12 R49
   reflect ranking-vs-real-comp (the stricter read), G2-29 the ARAM flood-tint question, G2-38 PD->Kraken
   level-tick stability (ARAM-suitable, no enemy-comp dependency).
@@ -1380,15 +1425,30 @@ waits on the RM-875 wiring.)
   gap / 4 (Arena does not apply the addend). Any other outcome is NO RESULT (record the four numbers).
   A PASS on (A) closes
   only the stat half; the coach half stays open.
-  **CHECK B - coach half (only after RM-875 ships and RC runs with its DEFAULT-OFF flag ON):** a
-  wiring sub-check, not validation of the numbers. PASS iff a `data/ds_calibration.jsonl` row (main
-  checkout) with `mode` `ARENA`, the live champion and a `ts` after this game's start has a `ds_picks`
-  `item_id` order equal to the flag-ON `dispatch_for_coach` re-run for that row's `level` and
-  `owned_items`, and that order differs from the flag-OFF one. FAIL = the order equals the OFF one. NO
-  RESULT = no ARENA row was written (the writer runs only when the dispatch returns rows,
-  `arena_coach.py:716`), ON and OFF agree, or the row matches NEITHER (the row records no enemy stats
-  or augments, so the re-run is approximate until RM-875 item 5 lands). The newest row in that file
-  is 2026-08-02 (an ARAM game); record the baseline line count before queueing.
+  **CHECK B - coach half (RM-875 SHIPPED `f5782b25b`; needs RC STARTED with `RC_ARENA_MODE_MODIFIERS=1`,
+  read once at import, `coaches/arena_coach.py:84` - a merger / operator restart, never a lane act):**
+  a wiring sub-check, not validation of the numbers. Rewritten 2026-10-25 by lane 9 s133 cycle 9
+  (RM-879, source read at `6be7956da`); the old text said rows record no enemy stats or augments.
+  ROW VINTAGE: since `f5782b25b` the Arena coach's `log_ds_run` call (`coaches/arena_coach.py:742-752`)
+  appends `enemy_stats` (the six `core/ds_calibration.py:25-28` `_ENEMY_STATS_FIELDS`), `augments`,
+  `engine_version` and `apply_mode_modifiers` after `match_key`, each only when supplied. Rows written
+  before it, and every ARAM / SR / Brawl row, carry none of the four. The row records neither
+  `caster_hp` nor `caster_hp_max`, so a re-run passes no self-HP (an R5 term the live call had).
+  Predicate stated before any look. SAMPLE = a `data/ds_calibration.jsonl` row (main checkout) with
+  `mode` `ARENA`, the live champion and a `ts` after this game's start. FLAG PROOF = the row's
+  `apply_mode_modifiers` is `true`. A row with `false` was written flag OFF; a row WITHOUT the key was
+  written by pre-RM-875 code (the seam did not exist, so an old-vintage row is NEVER re-run). Both are
+  NO RESULT; the keyless case is a merger follow-up (RC not restarted onto `f5782b25b`). Re-run
+  `dispatch_for_coach(champion, mode_engine="ARENA", level=<row>, item_ids=<row owned_items>,
+  enemy_stats=EnemyStats(**<row enemy_stats>), augments=<row augments> or None, top=5)` with
+  `apply_mode_modifiers` True and False, and compare `display_rows` `id` order to the row's `ds_picks`
+  `item_id` order. PASS iff it equals the ON order and differs from the OFF order. FAIL iff it equals
+  the OFF order (with the flag proof present, the flag did not reach the wire). NO RESULT = no ARENA
+  row (the writer runs only when the dispatch returns rows, `arena_coach.py:728`), ON and OFF agree,
+  the row's `engine_version` differs from `current_engine_version()` at re-run time, or the row
+  matches NEITHER order (the missing self-HP is the first suspect). The newest row in that file is
+  still 2026-08-02 (an ARAM game; 10469 lines on 2026-10-25); record the baseline line count before
+  queueing.
 - **G5-06** (was D5) `RC_ARENA_STATE_DEBOUNCE` default-ON flip validation. **TRY THE REPLAY
   ALTERNATIVE FIRST to dodge the Arena game entirely.** NOT attempted 2026-07-04.
   **PREP 2026-10-25 (lane 9 s133 cycle 6, source read at `6af9f081f`; NOT a tick).**
