@@ -133,6 +133,90 @@ def test_build_state_fills_tft_board_and_players(eog_file, monkeypatch):
     assert all(ord(ch) < 128 for ch in blob)
 
 
+def _start_of_game(eog_file):
+    """Match 3 QA N10: for ~20 s after the game starts the client writes
+    health -1 / ffaStanding -1 for every player (measured live)."""
+    d = _fixture()
+    d["statsBlock"]["gameLengthSeconds"] = 0
+    for p in d["statsBlock"]["players"]:
+        p["health"] = -1
+        p["ffaStanding"] = -1
+        p["boardPieces"] = []
+    eog_file.write_text(json.dumps(d), encoding="ascii")
+
+
+def test_start_of_game_sentinels_are_served_as_unknown(eog_file):
+    _start_of_game(eog_file)
+    lc = ts.standalone_liveclient_summary(LCU, running=True)
+    assert lc["hp"] is None
+    assert lc["standing"] is None
+    assert lc["players_alive"] is None
+    assert "players" not in lc       # no lobby of -1s / zeros
+    assert "as_of" not in lc         # game clock 0 is not a real round
+    blob = json.dumps(lc)
+    assert "-1" not in blob
+
+
+def test_start_of_game_never_marks_players_dead(eog_file):
+    _start_of_game(eog_file)
+    raw = ts.synth_allgamedata(lcu=LCU, running=True)
+    assert raw is not None
+    assert all(p["isDead"] is False for p in raw["allPlayers"])
+    assert all("health" not in p for p in raw["allPlayers"])
+    assert "currentHP" not in raw["activePlayer"]
+    from game_reader import GameReader
+    gr = GameReader.__new__(GameReader)
+    state = gr._process_game(raw)
+    assert state["hp_pct"] == 100  # the Live Client default, not -1 / 0
+
+
+def test_tft_state_reader_health_is_unknown_not_dead_at_start(eog_file, monkeypatch):
+    import threading
+
+    from tft import tft_state_reader as tsr
+    _start_of_game(eog_file)
+    raw = ts.synth_allgamedata(lcu=LCU, running=True)
+    r = tsr.TftStateReader.__new__(tsr.TftStateReader)
+    r._my_name, r._last_level, r._last_gold = "", 1, 0
+    r._confirmed_stage, r._confirmed_round = 1, 1
+    r._ocr, r._ocr_cache, r._ocr_lock = None, {}, threading.Lock()
+    state = r._parse(raw)
+    assert state["is_dead"] is False
+    assert state["health"] is None  # unknown -> OCR fallback, none here
+
+
+def test_partial_lobby_is_not_served(eog_file):
+    d = _fixture()
+    d["statsBlock"]["players"][3]["health"] = -1
+    eog_file.write_text(json.dumps(d), encoding="ascii")
+    lc = ts.standalone_liveclient_summary(LCU, running=True)
+    assert "players" not in lc
+    assert lc["players_alive"] is None
+
+
+def test_as_of_labels_the_round_file(eog_file):
+    """Match 3 QA N11: the file is rewritten at combat start / eliminations
+    only; board / HP / placement carry the write's game clock + age."""
+    lc = ts.standalone_liveclient_summary(LCU, running=True)
+    a = lc["as_of"]
+    assert a["game_s"] == _fixture()["statsBlock"]["gameLengthSeconds"]
+    assert a["clock"] == "12:21"
+    assert a["age_s"] >= 0
+    assert a["basis"] == "combat_start"
+    from dashboard import _state_builder as sb
+    out = sb.tft_coach_for_standalone({"mode": "tft"}, "x.json", lc)
+    assert out["tft_as_of"] == a
+
+
+def test_only_one_you_even_if_the_file_marks_two(eog_file):
+    d = _fixture()
+    for p in d["statsBlock"]["players"][:2]:
+        p["isInteractable"] = True
+    eog_file.write_text(json.dumps(d), encoding="ascii")
+    lc = ts.standalone_liveclient_summary(LCU, running=True)
+    assert sum(1 for r in lc["players"] if r["you"]) == 1
+
+
 def test_engine_written_board_rows_win_over_the_file(eog_file):
     from dashboard import _state_builder as sb
     lc = ts.standalone_liveclient_summary(LCU, running=True)

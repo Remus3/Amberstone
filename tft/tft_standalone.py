@@ -211,21 +211,46 @@ def _board(pieces) -> list:
     return out
 
 
+def _hp(v):
+    """A player's HP, or None while unknown. Measured live (match 3 QA): for
+    ~20 s at game start the file carries health -1 / ffaStanding -1 for every
+    player; those are sentinels, never values to serve or render."""
+    if v is None:
+        return None
+    n = _int(v, -1)
+    return n if n >= 0 else None
+
+
+def _place(v):
+    """A placement 1..8, or None while unknown (the file writes -1 / 0)."""
+    n = _int(v, 0)
+    return n if 1 <= n <= 8 else None
+
+
 def _lobby(players: list) -> list:
     """All players' public round state - placement, HP, board size, and which
     one is the local player - sorted by placement. No identity fields: the
-    per-round file names every player, RC carries none of it."""
+    per-round file names every player, RC carries none of it.
+
+    Empty until EVERY player's HP is known (the start-of-game file is all
+    sentinels), so a half-written lobby never renders. At most one row is
+    "you" even if the file marks more than one player interactable."""
     rows = []
+    seen_you = False
     for p in players:
+        hp = _hp(p.get("health"))
+        if hp is None:
+            return []
+        you = p.get("isInteractable") is True and not seen_you
+        seen_you = seen_you or you
         pieces = p.get("boardPieces")
         rows.append({
-            "standing": _int(p.get("ffaStanding")),
-            "health": max(0, _int(p.get("health"))),
-            "you": p.get("isInteractable") is True,
+            "standing": _place(p.get("ffaStanding")),
+            "health": hp,
+            "you": you,
             "board_size": len(pieces) if isinstance(pieces, list) else 0,
         })
-    rows.sort(key=lambda r: (r["standing"] if r["standing"] > 0 else 99,
-                             -r["health"]))
+    rows.sort(key=lambda r: (r["standing"] or 99, -r["health"]))
     return rows
 
 
@@ -339,21 +364,30 @@ def _round_state(lcu, eog, now: float) -> dict:
     players = _players(eog)
     sb = eog.get("statsBlock") if isinstance(eog.get("statsBlock"), dict) else {}
     local = next((p for p in players if p.get("isInteractable") is True), None)
+    hps = [_hp(p.get("health")) for p in players]
+    game_len = _int(sb.get("gameLengthSeconds"))
     out.update({
         "eog": True,
         "game_id": game_id or eog_gid,
         "queue_id": eog.get("queueId"),
         "set": sb.get("setCoreName"),
         "players_total": len(players),
-        "players_alive": sum(1 for p in players if _int(p.get("health")) > 0),
-        "game_length_s": _int(sb.get("gameLengthSeconds")),
+        # None (unknown), not 0, while the start-of-game sentinels stand
+        "players_alive": (sum(1 for h in hps if h > 0)
+                          if hps and all(h is not None for h in hps) else None),
+        "game_length_s": game_len,
         "eog_age_s": max(0.0, now - float(eog.get("_mtime") or now)),
         "lobby": _lobby(players),
+        # Match 3 QA: the client rewrites the file at combat start and on an
+        # elimination only, so during planning board / HP / placement are the
+        # LAST combat's (HP lags 10-20 s, placement up to 40 s). The file has
+        # no round id; its own game clock is the honest "as of".
+        "as_of_game_s": game_len if game_len > 0 else None,
     })
     if local is not None:
         out["local"] = {
-            "health": _int(local.get("health"), 100),
-            "standing": _int(local.get("ffaStanding")),
+            "health": _hp(local.get("health")),
+            "standing": _place(local.get("ffaStanding")),
             "board": _board(local.get("boardPieces")),
         }
     return out
@@ -401,19 +435,22 @@ def _synth_allgamedata(*, lcu, running, eog, now):
     players = []
     if rs["eog"]:
         for i, p in enumerate(_players(eog) if isinstance(eog, dict) else []):
-            hp = _int(p.get("health"))
-            players.append({
+            hp = _hp(p.get("health"))
+            row = {
                 "summonerName": LOCAL_NAME if p.get("isInteractable") is True
                 else f"opponent-{i}",
-                "health": hp,
-                "isDead": hp <= 0,
+                # unknown HP (start-of-game -1) is neither dead nor a value
+                "isDead": hp == 0,
                 "scores": {"kills": 0, "deaths": 0},
                 "items": [],
-            })
+            }
+            if hp is not None:
+                row["health"] = hp
+            players.append(row)
     st = dict(rs)
     st["live_api"] = False
     active = {"summonerName": LOCAL_NAME}
-    if rs["local"]:
+    if rs["local"] and rs["local"].get("health") is not None:
         # read by mode_router.tft_minimal_state (hp_pct) on the poller path
         active["currentHP"] = rs["local"]["health"]
     return {
@@ -462,11 +499,19 @@ def _summary_from_raw(raw: dict) -> dict:
                 f"{u.get('name')}*{u.get('star', 1)}" for u in board)
             # the local board as structured rows for the TFT panel
             out["board"] = [dict(u) for u in board]
-    if st.get("players_alive") is not None:
-        out["players_alive"] = st["players_alive"]
+    if st.get("eog"):
+        # null (unknown) until the file carries real counts - never a 0 / -1
+        out["players_alive"] = st.get("players_alive")
     if st.get("lobby"):
         # every player's placement + HP (opponents anonymous), by placement
         out["players"] = [dict(r) for r in st["lobby"]]
+    if st.get("as_of_game_s") is not None:
+        # what board / HP / placement / lobby were read from: the last
+        # per-round write (combat start or an elimination), on the game clock
+        out["as_of"] = {"game_s": st["as_of_game_s"],
+                        "clock": _clock(st["as_of_game_s"]),
+                        "age_s": round(float(st.get("eog_age_s") or 0.0), 1),
+                        "basis": "combat_start"}
     return out
 
 

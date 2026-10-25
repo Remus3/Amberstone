@@ -231,8 +231,46 @@ test("untrusted board / lobby rows are sanitised and bounded", () => {
   assert.deepStrictEqual(m.board[0].items, ["A", "B", "C"]); // strings only, max 3
   assert.ok(m.board.length <= 12);
   assert.ok(m.players.length <= 8);
-  assert.deepStrictEqual(m.players[0], { place: null, hp: 40, you: false });
-  for (const r of m.players) assert.ok(r.hp >= 0 && r.hp <= 100);
+  // HP above 100 is kept (an effect can lift it; the bar just caps), sorted
+  // by placement with the unknown placement last
+  assert.deepStrictEqual(m.players[0], { place: 1, hp: 150, you: false });
+  assert.deepStrictEqual(m.players[m.players.length - 1], { place: null, hp: 40, you: false });
+  for (const r of m.players) assert.ok(r.hp >= 0 && r.hp <= 999);
+});
+
+test("unknown HP (null - the start-of-game file) is skipped, never drawn as 0", () => {
+  const m = amLiveFallbackModel("tft", "InProgress", {
+    tft_players: [{ standing: null, health: null, you: true }, { standing: 2, health: null }],
+    standing: null, health: null, players_alive: null,
+  });
+  assert.deepStrictEqual(m.players, []);
+  assert.strictEqual(m.place, null);
+  assert.strictEqual(m.hasData, false);
+  assert.deepStrictEqual(m.rows, EMPTY_STATS);
+});
+
+test("at most one 'you' row, and the lobby is re-sorted by placement", () => {
+  const m = amLiveFallbackModel("tft", "InProgress", {
+    tft_players: [
+      { standing: 3, health: 50, you: true },
+      { standing: 1, health: 90, you: true },
+      { standing: 2, health: 70, you: false },
+    ],
+  });
+  assert.deepStrictEqual(m.players.map((r) => r.place), [1, 2, 3]);
+  assert.strictEqual(m.players.filter((r) => r.you).length, 1);
+});
+
+test("as-of provenance: the status line names the round file's game clock", () => {
+  const m = amLiveFallbackModel("tft", "InProgress",
+    { ...ROUND_PAYLOAD, tft_as_of: { game_s: 741, clock: "12:21", age_s: 18.5, basis: "combat_start" } });
+  assert.strictEqual(m.asOf, "12:21");
+  assert.strictEqual(m.status[1], "Board, HP and placement as of 12:21 (last combat start)");
+  // a malformed clock is dropped, never echoed
+  const bad = amLiveFallbackModel("tft", "InProgress",
+    { ...ROUND_PAYLOAD, tft_as_of: { clock: "<b>9</b>" } });
+  assert.strictEqual(bad.asOf, null);
+  assert.strictEqual(bad.status[1], "Live");
 });
 
 test("amOrdinal", () => {
