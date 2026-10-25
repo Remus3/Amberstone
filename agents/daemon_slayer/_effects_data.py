@@ -1737,14 +1737,19 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "6621": ItemEffect(
         item_id="6621",
         name="Dawncore",
-        defensive_only=True,
         # First Light (RM-804, DDragon 16.21.1): the HSP half rides the R197
         # _scaling_hsp lane; the AP half moved 10 -> 15 (Meraki 25.15 still
-        # reads 10) and is not modeled.
+        # reads 10). RM-808 (b) models the AP half: 15 AP per 100% base mana
+        # regen (DDragon 16.21.1 and CommunityDragon 16.21 APPerManaRegen 15
+        # agree) x floor(own printed 100% / 100) = 1 step -> +15 AP via the
+        # bonus_ap_stacked AP-not-in-DDragon-stats field (R197 own-item step
+        # rule; other items' regen is not counted on this axis). Pinned by
+        # agents/daemon_slayer/tests/test_dawncore_first_light_ap_rm808b.py.
+        bonus_ap_stacked=15.0,
         note=(
             "Dawncore: First Light - 2% HSP (R197 _scaling_hsp lane) and 15 AP per 100% "
-            "base mana regen (DDragon 16.21.1, was 10; the AP half is not modeled); "
-            "no DPS contribution"
+            "base mana regen (DDragon 16.21.1, was 10); 100% printed regen = 1 step "
+            "-> +15 AP modeled (RM-808 b)"
         ),
     ),
     "4005": ItemEffect(
@@ -3807,11 +3812,14 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "226621": ItemEffect(
         item_id="226621",
         name="Dawncore",
-        defensive_only=True,
+        # RM-808 (b): First Light AP half modeled - 15 AP per 100% base mana
+        # regen x floor(own printed 200% / 100) = 2 steps -> +30 AP (R161
+        # doctrine B: the mirror credits its OWN printed regen line).
+        bonus_ap_stacked=30.0,
         note=(
             "Dawncore (Arena 226621): First Light - 3% HSP (R197 _scaling_hsp lane) and 15 AP "
-            "per 100% base mana regen (DDragon 16.21.1, was 10; the AP half is not modeled) "
-            "- support, no DPS proc"
+            "per 100% base mana regen (DDragon 16.21.1, was 10); 200% printed regen = 2 steps "
+            "-> +30 AP modeled (RM-808 b) - support, no DPS proc"
         ),
     ),
     "226630": ItemEffect(
@@ -4229,11 +4237,14 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "326621": ItemEffect(
         item_id="326621",
         name="Dawncore",
-        defensive_only=True,
+        # RM-808 (b): First Light AP half modeled - 15 AP per 100% base mana
+        # regen x floor(own printed 150% / 100) = 1 step -> +15 AP (the R197
+        # floor: the 50% remainder earns nothing).
+        bonus_ap_stacked=15.0,
         note=(
             "Dawncore (32xxxx 326621): First Light - 2% HSP (R197 _scaling_hsp lane) and 15 AP "
-            "per 100% base mana regen (DDragon 16.21.1, was 10; the AP half is not modeled) "
-            "- support, no self DPS"
+            "per 100% base mana regen (DDragon 16.21.1, was 10); 150% printed regen = 1 step "
+            "-> +15 AP modeled (RM-808 b) - support, no self DPS proc"
         ),
     ),
     "326657": ItemEffect(

@@ -13,8 +13,9 @@ is one the engine does NOT model numerically, so no modeled number moves:
 
   * 443079 Turbo Chemtank - canister heal 4% -> 20% max HP (not modeled).
   * 6621 / 226621 / 326621 Dawncore - First Light AP per 100% base mana regen
-    10 -> 15 (AP half not modeled; the modeled HSP half, 2% / 3% / 2% per
-    step in ``_scaling_hsp``, did not move).
+    10 -> 15 (AP half not modeled at RM-804; RM-808 (b) later modeled it as
+    +15 / +30 / +15 AP, test_dawncore_first_light_ap_rm808b.py; the modeled
+    HSP half, 2% / 3% / 2% per step in ``_scaling_hsp``, did not move).
   * 444636 Night Harvester (Arena) - Soulrend Move Speed 40% -> 60%, duration
     1.5 -> 1 s (MS not modeled; the modeled Soulrend damage did not move).
   * 447100 Mirage Blade - Blur dash / blink cooldown cut 20% -> 15% (5% for
@@ -105,9 +106,10 @@ REVIEWED: dict[str, tuple[str, tuple[float, ...], str | None]] = {
 }
 
 # Clauses the engine deliberately does not model: these rows must stay
-# defensive_only with no periodic proc (the canister heal, the First Light AP
-# half, Blur, Relentless).
-UNMODELED_DEFENSIVE_ONLY = ("443079", "6621", "226621", "326621", "447100", "447110")
+# defensive_only with no periodic proc (the canister heal, Blur, Relentless).
+# The Dawncore rows left this list when RM-808 (b) modeled the First Light AP
+# half (test_dawncore_first_light_ap_rm808b.py).
+UNMODELED_DEFENSIVE_ONLY = ("443079", "447100", "447110")
 
 _HUBRIS_IDS = ("6697", "226697", "126697")
 

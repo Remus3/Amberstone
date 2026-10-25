@@ -31,8 +31,10 @@ ADDITIVE with the flat item sum and the rune sum, per the real-LoL additive HSP
 model and the "(1 + hsp_pct)" convention at ``_hsp_amp.py:27-30``. The AP half of
 First Light ("and 10 Ability Power"; DDragon 16.21.1 reads 15 on all three
 mirrors, Meraki 25.15 still 10 - RM-804) is deliberately NOT modelled here - this
-is an HSP lane, and the AP axis has its own consumers. The HSP half did not move
-at 16.21.1.
+is an HSP lane, and the AP axis has its own consumers: RM-808 (b) credits it on
+the Dawncore rows' ``ItemEffect.bonus_ap_stacked`` (15 / 30 / 15 AP, this
+module's floor step rule over the item's OWN printed regen only). The HSP half
+did not move at 16.21.1.
 
 THE SHIPPED READING OF "for every ADDITIONAL 100%" - STATED AS AN ASSUMPTION,
 not a measurement. A champion's innate base mana regeneration is 100%; items

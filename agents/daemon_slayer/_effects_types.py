@@ -727,6 +727,10 @@ class ItemEffect:
     # stacks the simulated rotation itself generates within one fight; Glory is
     # earned across the game from takedowns and loses 10 stacks per death, so
     # its entry is an assumed sustained count (see _effects_data 3041).
+    # RM-808 (b): the field is the engine's general "AP not captured in the
+    # DDragon FlatMagicDamageMod stat" carrier - Dawncore 6621 / 226621 / 326621
+    # First Light AP (15 per 100% own printed base mana regen, floor steps:
+    # 15 / 30 / 15) rides it too, a deterministic value rather than a stack.
     # Default 0.0 -> no contribution.
     bonus_ap_stacked: float = 0.0
     # Phase 4 batch 54 (2026-05-04): conditional bonus AS not modeled as a stat.
