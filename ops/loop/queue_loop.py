@@ -845,6 +845,27 @@ def wait_for_ci(sha, *, budget_s: float = DEFAULT_CI_WAIT_S,
     return _watch(again)
 
 
+def _refusal_detail(claim: dict) -> str:
+    """A refused acquire's record detail, keyed on `refused` (RM-836).
+
+    Every refusal is still recorded as OUTCOME_LANE_HELD (the "refused, move
+    on" bucket the loop and its drivers key on), but only a `lane_held` one
+    names a holder: a lock-write fault used to read "lane held by None (pid
+    None)". The lanes `detail` is never copied in.
+    """
+    refused = claim.get("refused")
+    if refused == "lane_lock_unwritable":
+        return "lane lock could not be written (refused lane_lock_unwritable)"
+    if refused == "lanes_full":
+        names = ", ".join(str(h) for h in claim.get("holders") or [])
+        return f"every lane slot is held ({names or 'holders unknown'})"
+    if refused == "lane_held":
+        return f"lane held by {claim.get('holder')!r} (pid {claim.get('pid')})"
+    if not refused:
+        return "lane refused (no reason given)"
+    return f"lane refused ({str(refused)[:40]!r})"
+
+
 def run_cycle(cycle: int, *, lane: str = LANE, worktree=None, run_id=None,
               poll_s: float = DEFAULT_POLL_S,
               cycle_timeout_s: float = DEFAULT_CYCLE_TIMEOUT_S,
@@ -901,11 +922,9 @@ def run_cycle(cycle: int, *, lane: str = LANE, worktree=None, run_id=None,
         if attempt < attempts:
             sleep(acquire_wait_s)
     if not (claim and claim.get("ok")):
-        holder = (claim or {}).get("holder")
-        return _record(
-            OUTCOME_LANE_HELD, False, None, clock(),
-            f"lane held by {holder!r} (pid {(claim or {}).get('pid')}) "
-            f"after {attempts} attempts")
+        return _record(OUTCOME_LANE_HELD, False, None, clock(),
+                       f"{_refusal_detail(claim or {})} after {attempts} "
+                       "attempts")
 
     token = claim.get("token")
     outcome, detail, pid = OUTCOME_COMPLETED, "", None

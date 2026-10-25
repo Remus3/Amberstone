@@ -232,6 +232,28 @@ def _fault(status: int, action: str, exc: BaseException, error: str, *,
     return status, payload
 
 
+def _refusal_detail(result: dict) -> str:
+    """The fire_lane refusal line, keyed on `refused` (RM-836).
+
+    Only a `lane_held` refusal names a holder. A `lane_lock_unwritable` one is
+    a disk or permission fault that ops/loop/lanes.py logged; it used to read
+    "lane held by None (pid None)". Every line is fixed text plus lane names,
+    so a lanes `detail` (exception text before RM-836) is never forwarded.
+    """
+    refused = result.get("refused")
+    if refused == "lane_held":
+        pid = result.get("pid")
+        tail = f" (pid {pid})" if pid is not None else ""
+        return f"lane held by {result.get('holder')}{tail}"
+    if refused == "lanes_full":
+        names = ", ".join(str(h) for h in result.get("holders") or [])
+        return ("every lane slot is held" + (f" ({names})" if names else ""))
+    if refused == "lane_lock_unwritable":
+        return ("the lane lock could not be written - the claim was released, "
+                "see logs")
+    return "the lane was refused, see logs"
+
+
 def _state() -> str:
     """Mirror routes_loop_status: stopped > running (cycle.txt present) > idle."""
     if (CONTROL_DIR / "STOP").exists():
@@ -324,8 +346,7 @@ def _fire_lane(body: dict) -> tuple[int, dict]:
                "state": _state()}
     payload.update(result)
     if not payload["ok"]:
-        payload["detail"] = (
-            f"lane held by {result.get('holder')} (pid {result.get('pid')})")
+        payload["detail"] = _refusal_detail(result)
         # A refusal is a normal answer - 200 with ok=false, never 4xx/5xx.
         return 200, payload
 
