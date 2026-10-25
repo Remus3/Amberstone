@@ -30,9 +30,41 @@ _TIME_TO_ROUND = [
     (1419, 6, 1), (1470, 6, 2), (1521, 6, 3), (1572, 6, 4), (1623, 6, 5), (1674, 6, 6),
     (1725, 7, 1), (1776, 7, 2), (1827, 7, 3), (1878, 7, 4),
 ]
-def _estimate_round(t):
+# Set 18 (LT-01, session 134), measured off the HUD stage label of a live Set 18
+# normal game: ops/runtime/tft_qa/20261025-070350 (QA_REPORT.md section 2).
+# Clock zero = game start from the LCU EOG gameLength (2097 s). The Set 17
+# table above matched 0 of its 28 observed rounds (about 65 s per round, not
+# 51). Stage 1 has 4 rounds and stages 2+ have 7 (CommunityDragon
+# StageRoundData agrees). Guard: tests/test_tft_set18_schedule_lt01.py.
+_TIME_TO_ROUND_SET18 = [
+    # EXTRAPOLATED, not observed (recorder gap before 2-2): stage 1 from the
+    # game-data phase durations, 2-1 / 2-2 back from the measured 2-3 start.
+    (0,    1, 1), (25,   1, 2), (65,   1, 3), (115,  1, 4),
+    (175,  2, 1), (268,  2, 2),
+    # MEASURED: each start = midpoint of the previous round's last frame and
+    # this round's first frame (frames 20-45 s apart).
+    (332,  2, 3), (396,  2, 4), (422,  2, 5), (496,  2, 6), (586,  2, 7),
+    (612,  3, 1), (704,  3, 2), (786,  3, 3), (856,  3, 4), (899,  3, 5), (962,  3, 6), (1044, 3, 7),
+    (1089, 4, 1), (1176, 4, 2), (1272, 4, 3), (1354, 4, 4), (1376, 4, 5), (1459, 4, 6), (1544, 4, 7),
+    (1586, 5, 1), (1646, 5, 2), (1726, 5, 3), (1814, 5, 4), (1834, 5, 5), (1922, 5, 6), (1989, 5, 7),
+    (2029, 6, 1),
+    # EXTRAPOLATED (the game ended in 6-1; 6-1 was still in planning, timer
+    # 18, at 2084 s): 6-2 after that planning plus one combat, then 65 s per
+    # round, the measured 2-3..6-1 mean.
+    (2140, 6, 2), (2205, 6, 3), (2270, 6, 4), (2335, 6, 5), (2400, 6, 6), (2465, 6, 7),
+    (2530, 7, 1), (2595, 7, 2), (2660, 7, 3), (2725, 7, 4), (2790, 7, 5), (2855, 7, 6), (2920, 7, 7),
+]
+
+
+def _time_table(set_number=None):
+    """The gameTime -> round table for a set: Set 18's measured table, else the
+    legacy Set 17 calibration (the only table for any other set)."""
+    return _TIME_TO_ROUND_SET18 if set_number == 18 else _TIME_TO_ROUND
+
+
+def _estimate_round(t, set_number=None):
     s, r = 1, 1
-    for ms, st, rn in _TIME_TO_ROUND:
+    for ms, st, rn in _time_table(set_number):
         if t >= ms: s, r = st, rn
         else: break
     return s, r
@@ -155,7 +187,11 @@ class TftStateReader:
         gt=float(gd.get("gameTime",0));lv=int(ap.get("level",self._last_level));gold=0
         mn=ap.get("summonerName") or ap.get("riotIdGameName") or self._my_name or ""
         if mn: self._my_name=mn
-        self._last_level=lv; stage,rnd=_estimate_round(gt); _log_round_calibration(gt, stage, rnd)
+        try:  # LT-01: the round table and schedule follow the resolved set
+            from tft import tft_set
+            set_n = tft_set.resolve_set()
+        except Exception: set_n = None  # noqa: BLE001
+        self._last_level=lv; stage,rnd=_estimate_round(gt, set_n); _log_round_calibration(gt, stage, rnd)
         me={};others=[]
         for p in (all_p if isinstance(all_p,list) else []):
             if not isinstance(p,dict): continue
@@ -183,7 +219,7 @@ class TftStateReader:
                 max_rnd = 4 if os == 1 else 7
                 if 1 <= os <= 7 and 1 <= ornd <= max_rnd:
                     # Cross-validate: OCR stage must be within 2 of time-table
-                    tbl_stage, tbl_rnd = _estimate_round(gt)
+                    tbl_stage, tbl_rnd = _estimate_round(gt, set_n)
                     stage_delta = abs(os - tbl_stage)
                     # Forward-only: OCR must not go backward more than 1 stage
                     ocr_idx  = os * 10 + ornd
@@ -212,7 +248,7 @@ class TftStateReader:
         # Store raw OCR hp in state for fallback
         ocr_hp = ocr.get("hp")
         # -----------------------------------------------------------------
-        rf = round_schedule().fields(stage, rnd)  # RM-855: the resolved set's schedule
+        rf = round_schedule(set_n).fields(stage, rnd)  # RM-855: the resolved set's schedule
         out = {"game_mode":gd.get("gameMode","TFT"),"game_time_s":gt,"level":lv,"gold":gold,
             "health":0 if me.get("isDead") else (
                 int(float(me.get("health") or me.get("tftHP") or 0))
@@ -221,7 +257,7 @@ class TftStateReader:
             ),"is_dead":me.get("isDead",False),
             "interest":0,"streak":k-d,"kills":k,"deaths":d,
             "stage":stage,"round":rnd,"stage_round":sr,
-            "round_event":rf["round_event"],"is_pve":rf["is_pve"],"is_carousel":False,
+            "round_event":rf["round_event"],"is_pve":rf["is_pve"],"is_carousel":rf["is_carousel"],
             "is_god_round":rf["is_god_round"],"tempo_note":rf["tempo_note"],
             "round_schedule":rf["round_schedule"],"items":items,"items_str":", ".join(items) or "none",
             "alive_others":alive,"dead_others":dead,"total_players":1+len(others),
@@ -279,25 +315,40 @@ def _apply_standalone(out: dict, raw) -> None:
 # Set 18 game carried Set 17 god rounds, PvE rounds and tempo notes (a tempo
 # note reaches the coach prompt as "Milestone: ...").
 #
-# Two schedules, chosen through tft/tft_set.py resolve_set:
+# Three schedules, chosen through tft/tft_set.py resolve_set:
 #   set17_realm_of_gods  the tft_pbe_data tables, only when the resolved set
 #                        is the set those tables declare (CONSTANTS_SET) AND
 #                        its own meta records Realm of the Gods
 #                        (tft/tft_prompt.py set_has_gods, the gate the coaches
 #                        use for the god-round prompt and parse).
-#   neutral_unverified   every other set: Set 18, an unknown or un-ingested
-#                        set, a set whose files cannot be read. No event, PvE,
-#                        god or tempo label; round_event is the schema default
-#                        "pvp" (core/game_snapshot.py TftSnapshot), which means
-#                        "no event known", not a claim that the round is PvP.
-#
-# Set 18 has no grounded schedule: its CommunityDragon extract
-# (data/meta/tft_set18_cdragon.json) names carousel rounds and a Stage 3-7 in
-# augment text but no round index for a carousel, PvE or augment round, and
-# its meta is a skeleton. Another set's timings are never borrowed for it.
-# LIVE-GAME-GATED: docs/LIVE_GAME_GATED_SYNC.md LT-01.
+#   set18_measured       Set 18 (LT-01, session 134), read off the HUD round
+#                        strip of a live Set 18 game (QA_REPORT.md section 2,
+#                        ops/runtime/tft_qa/20261025-070350): carousel x-4,
+#                        PvE x-7 (stages 2-6 seen in the strip), augment 2-1 /
+#                        3-2 / 4-2 and none in stages 5-6. CommunityDragon
+#                        StageRoundData agrees and adds what the game did not
+#                        show: stage 1 = carousel + 3 minion PvE rounds, stage
+#                        7 = stage 6's shape. No god round, no tempo note.
+#   neutral_unverified   every other set: an unknown or un-ingested set, a set
+#                        whose files cannot be read. No event, PvE, god or
+#                        tempo label; round_event is the schema default "pvp"
+#                        (core/game_snapshot.py TftSnapshot), which means "no
+#                        event known", not a claim that the round is PvP.
+# Another set's schedule or timings are never borrowed for a set.
 SCHEDULE_GODS = "set17_realm_of_gods"
+SCHEDULE_SET18 = "set18_measured"
 SCHEDULE_NEUTRAL = "neutral_unverified"
+
+# round_event "pve" (not a monster name) because the HUD shows only "PvE"; the
+# game data names them (2-7 krugs, 3-7 wolves, 4-7 raptors, 5-7 drake, 6-7 /
+# 7-7 herald; 1-2..1-4 minions).
+_SET18_EVENTS = {
+    (1, 1): "carousel", (1, 2): "pve", (1, 3): "pve", (1, 4): "pve",
+    (2, 1): "augment", (3, 2): "augment", (4, 2): "augment",
+    **{(s, 4): "carousel" for s in range(2, 8)},
+    **{(s, 7): "pve" for s in range(2, 8)},
+}
+_SET18_PVE = frozenset(rk for rk, ev in _SET18_EVENTS.items() if ev == "pve")
 
 
 class RoundSchedule(NamedTuple):
@@ -310,9 +361,13 @@ class RoundSchedule(NamedTuple):
 
     def fields(self, stage: int, rnd: int) -> dict:
         rk = (stage, rnd)
-        return {"round_event": self.events.get(rk, "pvp"),
+        event = self.events.get(rk, "pvp")
+        return {"round_event": event,
                 "is_pve": rk in self.pve,
                 "is_god_round": rk in self.gods,
+                # a plain carousel only (Set 17's "opening_carousel" and god
+                # rounds keep the pre-LT-01 False)
+                "is_carousel": event == "carousel",
                 "tempo_note": self.tempo.get(f"{stage}-{rnd}", ""),
                 "round_schedule": self.label}
 
@@ -337,6 +392,9 @@ def round_schedule(set_number=None, *, root=None) -> RoundSchedule:
             sched = RoundSchedule(n, SCHEDULE_GODS, dict(d.ROUND_EVENTS),
                                   frozenset(d.PVE_ROUNDS), frozenset(d.GOD_ROUNDS),
                                   dict(d.TEMPO_MILESTONES))
+        elif n == 18:
+            sched = RoundSchedule(n, SCHEDULE_SET18, dict(_SET18_EVENTS),
+                                  _SET18_PVE, frozenset(), {})
     except Exception as e:  # noqa: BLE001
         logger.debug("TFT round schedule: set data unreadable, neutral: %s", e)
     if sched is None:

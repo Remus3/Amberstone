@@ -14,9 +14,11 @@ coach prompt as "Milestone: ..." (`tft/tft_coach_engine.py` :330-331,
 Set 18's schedule is NOT in the ingested data: the CommunityDragon extract
 (`data/meta/tft_set18_cdragon.json`) names carousel rounds and a Stage 3-7 in
 augment text but no round index for a carousel, PvE or augment round, and
-the Set 18 meta is a skeleton. So Set 18 (and any set without a grounded
-schedule) gets the set-neutral schedule, labelled `neutral_unverified`;
-the live read-back is `docs/LIVE_GAME_GATED_SYNC.md` LT-01.
+the Set 18 meta is a skeleton. So any set without a grounded schedule gets
+the set-neutral schedule, labelled `neutral_unverified`. LT-01 (session 134)
+grounded Set 18 from a live game: it gets `set18_measured` (carousel x-4, PvE
+x-7, augments 2-1 / 3-2 / 4-2) and its own measured time table
+(tests/test_tft_set18_schedule_lt01.py) - still never a Set 17 label.
 
 Every name used here, cited at the fix tree:
   tft/tft_state_reader.py  `_TIME_TO_ROUND` :21, `TftStateReader._parse`
@@ -51,11 +53,12 @@ import pytest
 
 from tft import tft_pbe_data as pbe
 from tft import tft_set
-from tft.tft_state_reader import _TIME_TO_ROUND, TftStateReader
+from tft.tft_state_reader import _TIME_TO_ROUND, _TIME_TO_ROUND_SET18, TftStateReader
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 GODS = "set17_realm_of_gods"
+SET18 = "set18_measured"
 NEUTRAL = "neutral_unverified"
 
 # The one Realm of the Gods record left in the tracked Set 17 meta
@@ -163,32 +166,32 @@ def test_set17_keeps_the_realm_of_the_gods_schedule(two_sets, monkeypatch):
     assert s.get("round_schedule") == GODS
 
 
-def test_set18_gets_the_neutral_schedule_and_no_set17_label(two_sets):
-    """Set 18 resolves by default (newest ingested). Its data grounds no
-    round index, so no round carries a Set 17 event, PvE, god or tempo label,
-    on the time-table path or on an OCR override."""
+def test_set18_gets_its_own_schedule_and_no_set17_label(two_sets):
+    """Set 18 resolves by default (newest ingested). LT-01 grounded its
+    schedule, so it carries Set 18 labels - never a Set 17 event, god or
+    tempo label - on the time-table path and on an OCR override."""
     assert tft_set.resolve_set() == 18
     set17_events = set(pbe.ROUND_EVENTS.values())
     set17_tempo = set(pbe.TEMPO_MILESTONES.values())
     rdr = _reader()
-    for ms, st, rn in _TIME_TO_ROUND:
+    for ms, st, rn in _TIME_TO_ROUND_SET18:
         s = rdr._parse(_raw(ms + 1.0))
         assert s["stage_round"] == f"{st}-{rn}"
         assert s["round_event"] not in set17_events, s["stage_round"]
-        assert s["round_event"] == "pvp", s["stage_round"]
+        assert s["round_event"] in {"pvp", "carousel", "pve", "augment"}, s["stage_round"]
         assert s["is_god_round"] is False, s["stage_round"]
-        assert s["is_pve"] is False, s["stage_round"]
         assert s["tempo_note"] not in set17_tempo, s["stage_round"]
         assert s["tempo_note"] == "", s["stage_round"]
-        assert s.get("round_schedule") == NEUTRAL, s["stage_round"]
+        assert s.get("round_schedule") == SET18, s["stage_round"]
 
-    # OCR override (pre-fix :186-189): the table says 4-6, OCR says 4-7.
-    s = _reader({"stage_round": "4-7"})._parse(_raw(_at(4, 6)))
+    # OCR override (pre-fix :186-189): the Set 18 table says 4-6, OCR says 4-7.
+    t46 = next(ms for ms, st, rn in _TIME_TO_ROUND_SET18 if (st, rn) == (4, 6))
+    s = _reader({"stage_round": "4-7"})._parse(_raw(t46 + 1.0))
     assert s["stage_round"] == "4-7"
-    assert s["round_event"] == "pvp"
+    assert s["round_event"] == "pve" and s["is_pve"] is True
     assert s["is_god_round"] is False
     assert s["tempo_note"] == ""
-    assert s.get("round_schedule") == NEUTRAL
+    assert s.get("round_schedule") == SET18
 
 
 def test_unknown_set_gets_no_god_rounds(tmp_path, monkeypatch):
@@ -223,7 +226,9 @@ def test_unknown_set_gets_no_god_rounds(tmp_path, monkeypatch):
 
 def test_committed_tree_selects_gods_for_17_only():
     """The tracked data/meta: Set 17's meta records Realm of the Gods, Set
-    18's does not, so only Set 17 gets the god schedule."""
+    18's does not, so only Set 17 gets the god schedule; Set 18 gets its
+    measured one (LT-01)."""
     from tft.tft_state_reader import round_schedule
     assert round_schedule(17, root=REPO_ROOT).label == GODS
-    assert round_schedule(18, root=REPO_ROOT).label == NEUTRAL
+    assert round_schedule(18, root=REPO_ROOT).label == SET18
+    assert not round_schedule(18, root=REPO_ROOT).gods

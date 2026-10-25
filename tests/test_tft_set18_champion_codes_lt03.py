@@ -11,7 +11,13 @@ every name is in the CommunityDragon Set 18 roster (the roster's other 9
 entries are the "Lux (<trait>)" variants the planner shows as one "Lux");
 every planner tier equals that unit's CommunityDragon cost. The same
 game-data table agrees with the legacy-probe Set 17 file on 63 of its 64
-units (only Morgana differs: file 0, game data 88).
+units (only Morgana differed: file 0, game data 88).
+
+LT-04 (session 134): the Set 17 file's Morgana is corrected to 88. Two
+sources agree: the live client's game data (the LT-03 capture above) and the
+CommunityDragon copy of the same tftchampions-teamplanner.json ("TFTSet17"
+Morgana team_planner_code "88", fetched 2026-10-25; a fact, nothing vendored).
+The 0 was a legacy-probe decode miss (code[2:5]), not a real code.
 """
 from __future__ import annotations
 
@@ -43,6 +49,18 @@ def test_set18_codes_file_is_a_flat_name_to_int_map():
     assert all(isinstance(k, str) and k and type(v) is int for k, v in doc.items())
     assert len(set(doc.values())) == len(doc), "two units share a code"
     assert min(doc.values()) == 1001 and max(doc.values()) == 1085
+
+
+def test_set17_morgana_code_is_the_game_data_value_lt04():
+    path = REPO_ROOT / "data" / "meta" / "tft_set17_champion_codes.json"
+    raw = path.read_bytes()
+    assert b"\r" not in raw and all(b < 0x80 for b in raw)
+    doc = json.loads(raw.decode("utf-8"))
+    assert len(doc) == 64 and all(type(v) is int for v in doc.values())
+    assert doc["Morgana"] == 88
+    assert min(doc.values()) > 0, "a 0 code is a decode miss, not a planner code"
+    # 88 is Morgana's alone (Nunu / Nunu & Willump share 57 by design).
+    assert [k for k, v in doc.items() if v == 88] == ["Morgana"]
 
 
 def test_set18_codes_bytes_are_the_script_format():

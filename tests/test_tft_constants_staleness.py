@@ -24,6 +24,15 @@ tft_set17_meta.json. tft/tft_set.py resolves it (live set id, RC_TFT_SET,
 then the newest ingested set), and Set 18 is the newest ingested set, so the
 lane is on Set 18 and BOTH constants modules are now stale. The Set 17
 patch-note evidence below still reads Set 17's own meta file on purpose.
+
+LT-02 (2026-10-25, session 134): tft_data.py's TIER_ODDS is now the Set 18
+table, read off the live client HUD at L4-L9 (game data for L1-L3 and
+L10-L11), and the module declares Set 18; the Set 14 table is kept as
+TIER_ODDS_SET14. CONSTANTS_SET_VERIFIED stays False in both modules (pool
+sizes and five levels were not read in client); the per-level pin is
+tft_data.TIER_ODDS_VERIFIED_LEVELS (tests/test_tft_set18_odds_lt02.py). So
+only tft_pbe_data.py (Set 17) is STALE against the Set 18 lane now, and the
+pool sizes are still the copied Set 14 numbers in both modules.
 """
 from __future__ import annotations
 
@@ -126,21 +135,24 @@ def test_measured_lane_set_is_18():
     assert _lane_set() == 18
 
 
-def test_measured_tft_data_declares_set_14_against_a_set_18_lane():
+def test_measured_tft_data_declares_set_18_the_lane_set():
+    """LT-02: the Set 18 table (HUD-measured L4-L9) replaced the Set 14 one."""
     from tft import tft_data
 
-    assert tft_data.CONSTANTS_SET == 14
+    assert tft_data.CONSTANTS_SET == 18
     assert _lane_set() == 18
 
 
-def test_measured_both_modules_are_stale_against_the_set_18_lane():
-    """RM-840: tft_pbe_data.py declares Set 17, so it went stale too."""
+def test_measured_only_the_set17_module_is_stale_against_the_set_18_lane():
+    """RM-840 made both stale; LT-02 brought tft_data.py onto Set 18."""
     from tft import tft_data, tft_pbe_data
 
     assert tft_pbe_data.CONSTANTS_SET == 17
     problems = ro.constants_health()["problems"]
-    for mod in (tft_data, tft_pbe_data):
-        assert any(mod.__name__ in p and "STALE" in p for p in problems), mod.__name__
+    assert any(
+        tft_pbe_data.__name__ in p and "STALE" in p for p in problems)
+    assert not any(
+        tft_data.__name__ in p and "STALE" in p for p in problems)
 
 
 def test_measured_neither_module_is_in_client_verified():
@@ -155,14 +167,15 @@ def test_measured_neither_module_is_in_client_verified():
 def test_measured_set14_and_set17_modules_ship_identical_tables():
     """Evidence the Set 17 module was COPIED, not re-derived.
 
-    Two modules that declare different sets have byte-identical TIER_ODDS and
-    POOL_SIZES. At least one of them is wrong; nothing in the repo can say
-    which. This test breaks as soon as either is corrected.
+    The Set 17 module's TIER_ODDS is byte-identical to the Set 14 table (kept
+    in tft_data.py as TIER_ODDS_SET14 since LT-02), and both modules still
+    ship the same POOL_SIZES. This test breaks as soon as either is corrected.
     """
     from tft import tft_data, tft_pbe_data
 
     assert tft_data.CONSTANTS_SET != tft_pbe_data.CONSTANTS_SET
-    assert tft_data.TIER_ODDS == tft_pbe_data.TIER_ODDS
+    assert tft_data.TIER_ODDS_SET14 == tft_pbe_data.TIER_ODDS
+    assert tft_data.TIER_ODDS != tft_pbe_data.TIER_ODDS
     assert tft_data.POOL_SIZES == tft_pbe_data.POOL_SIZES
 
 
@@ -186,7 +199,9 @@ def test_measured_patch_notes_contradict_the_l7_three_cost_odds():
     "3-cost 16%->19% at lv7", i.e. Set 17 level-7 3-cost odds are 19 percent.
     TIER_ODDS[7][3] says 33 percent - a Set 14 number. This is the single
     most concrete piece of evidence that the tables are for the wrong set,
-    and it needs no external source to see.
+    and it needs no external source to see. (Since LT-02 tft_data.TIER_ODDS
+    is Set 18 - L7 3-cost 43 percent, read in client - so this now pins the
+    Set 17 module and the Set 14 table it copied.)
     """
     from tft import tft_data, tft_pbe_data
 
@@ -196,11 +211,13 @@ def test_measured_patch_notes_contradict_the_l7_three_cost_odds():
     assert pcts == [16, 19], f"patch note text moved: {note!r}"
     from_pct, to_pct = pcts
 
-    for mod in (tft_data, tft_pbe_data):
-        table_pct = round(mod.TIER_ODDS[7][3] * 100)
-        assert table_pct == 33, f"{mod.__name__} L7 3-cost moved to {table_pct}"
+    assert round(tft_data.TIER_ODDS[7][3] * 100) == 43
+    for name, table in (("tft.tft_data.TIER_ODDS_SET14", tft_data.TIER_ODDS_SET14),
+                        ("tft.tft_pbe_data.TIER_ODDS", tft_pbe_data.TIER_ODDS)):
+        table_pct = round(table[7][3] * 100)
+        assert table_pct == 33, f"{name} L7 3-cost moved to {table_pct}"
         assert table_pct not in (from_pct, to_pct), (
-            f"{mod.__name__} TIER_ODDS[7][3] = {table_pct}% but the Set 17 "
+            f"{name}[7][3] = {table_pct}% but the Set 17 "
             f"patch notes say the value went {from_pct}% -> {to_pct}%. "
             "OPERATOR: verify L7 in client and correct the table."
         )
@@ -214,15 +231,16 @@ def test_constants_health_reports_every_known_problem():
     assert "STALE" in blob
     assert "not in-client verified" in blob
     assert "UNITS_PER_COST" in blob
-    assert "IDENTICAL TIER_ODDS" in blob
+    # LT-02: TIER_ODDS differ now (Set 18 vs the Set 14 copy); pools do not.
+    assert "IDENTICAL TIER_ODDS" not in blob
     assert "IDENTICAL POOL_SIZES" in blob
 
 
 def test_constants_health_accepts_an_explicit_lane_set():
     """Pure enough to reason about without touching disk state."""
-    report = ro.constants_health(lane_set=14)
-    assert report["lane_set"] == 14
+    report = ro.constants_health(lane_set=17)
+    assert report["lane_set"] == 17
     assert not any(
-        "tft.tft_data" in p and "STALE" in p for p in report["problems"]
+        "tft.tft_pbe_data" in p and "STALE" in p for p in report["problems"]
     )
-    assert any("tft.tft_pbe_data" in p and "STALE" in p for p in report["problems"])
+    assert any("tft.tft_data" in p and "STALE" in p for p in report["problems"])

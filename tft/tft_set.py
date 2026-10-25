@@ -25,6 +25,18 @@ planner's previous-context "setId": "TFTSet17" (Set 17 era) and "TFTSet18"
 (Set 18 lobby) - the planner's view, not the game's (scripts/
 discover_champion_codes.py PLANNER_CONTEXT).
 
+LT-01 closure (session 134, measured): post-game only, the LCU
+/lol-end-of-game/v1/tft-eog-stats document carries players[].setCoreName
+"TFTSet18" (the local player's own setCoreName is ""; read the players[]
+row whose isLocalPlayer is true). In ANY phase the LCU game data
+tftsets.json "mDefaultSet" names the default set ("TFTSet18"), but the
+client also offers a revival queue for an older set (queue 6110 "Set 17
+(Normal)"), so the running set = mDefaultSet PAIRED with the gameflow
+session queue id: set_from_lcu / note_live_set_from_lcu (QUEUE_SETS). A
+caller that polls the LCU feeds them; the noted set then routes the round
+schedule (tft/tft_state_reader.py round_schedule) and the roll odds
+(tft/tft_data.py tier_odds_for_set) through resolve_set.
+
 A set's meta file is that set's own: a missing tft_set<N>_meta.json is
 never replaced by another set's file (the old sites fell back to Set 17,
 which fed Set 17 comps to a Set 18 game).
@@ -136,6 +148,30 @@ def note_live_set_from_game_data(game_data) -> int | None:
         if n is not None:
             return n
     return None
+
+
+# Queues that run a set other than the client's mDefaultSet, measured from the
+# LCU queue list 2026-10-25 (lol-game-queues: 6110 "Set 17 (Normal)").
+QUEUE_SETS = {6110: 17}
+
+
+def set_from_lcu(default_set=None, queue_id=None) -> int | None:
+    """The running set from LCU facts: a revival queue's own set first, else
+    the tftsets.json mDefaultSet ("TFTSet18" -> 18); None when neither parses."""
+    q = None
+    if isinstance(queue_id, int) and not isinstance(queue_id, bool):
+        q = queue_id
+    elif isinstance(queue_id, str) and queue_id.strip().isdigit():
+        q = int(queue_id.strip())
+    if q in QUEUE_SETS:
+        return QUEUE_SETS[q]
+    return parse_set_id(default_set)
+
+
+def note_live_set_from_lcu(default_set=None, queue_id=None) -> int | None:
+    """Note the running set from mDefaultSet + queue id (see set_from_lcu)."""
+    n = set_from_lcu(default_set, queue_id)
+    return note_live_set(n) if n is not None else None
 
 
 def env_pin() -> int | None:
