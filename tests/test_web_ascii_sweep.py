@@ -707,7 +707,33 @@ _WEB = _REPO_ROOT / "web"
 # their e9753d41c blobs reproduces the superseded 55397e31... value EXACTLY.
 # Those two paths are the whole change; web/js/panels/active_match_tft.test.mjs
 # is not a swept language. No glyph change.
-_LIVE_HALF_DIGEST = "a811aac7c4da36d26815e4100f58c27783ff4fad9efe9d28799b271bae722d4e"
+# superseded by the session 135 merger re-capture below (S134 lane uiux cycle 4, RM-896): "a811aac7c4da36d26815e4100f58c27783ff4fad9efe9d28799b271bae722d4e"
+#
+# RE-CAPTURED 2026-10-25 at S134 lane uiux cycle 4 (RM-896 next.js half:
+# the NEXT panel reads the coach payload through the B4 client mirror
+# withoutLiveDirectives while a game is live; plus the cycle-3 ?ui_mock=1
+# mode=tft / tft_live routes in main.js _amMockUrl, which changed two live
+# lines and were not re-captured then). Ordinary case, no tokeniser change.
+# ATTRIBUTED BY SUBSTITUTION against local main 06777e6ab + the lane: swapping
+# exactly web/js/panels/next.js and web/js/lib/live_directive_gate.js back to
+# the lane HEAD blobs and web/js/main.js back to its main blob reproduces the
+# superseded 94b87cba... value EXACTLY. Those three paths are the whole change.
+# No glyph change. Parallel S134 slices touching web/ race on this pin: the
+# merger recomputes it over the merged tree.
+# REBASED 2026-10-25 at S134 lane uiux cycle 5: the cycle-4 lane re-capture
+# (5fbe6e16...) and the post-match re-capture (55397e31...) were each taken
+# against a tree missing the other side; this value is recomputed over the
+# rebased tree (local main 91d56ed37 + the three lane commits). ATTRIBUTED BY
+# SUBSTITUTION: swapping exactly web/js/panels/next.js,
+# web/js/lib/live_directive_gate.js and web/js/main.js back to their main
+# blobs reproduces the superseded 55397e31... value EXACTLY.
+# MERGED 2026-10-25 by the session 135 merger onto s135-land (the TFT
+# board / lobby slice and the earlier lanes already landed); recomputed over
+# the merged tree. ATTRIBUTED BY SUBSTITUTION: swapping exactly
+# web/js/panels/next.js, web/js/lib/live_directive_gate.js and web/js/main.js
+# back to their s135-land blobs before this landing (b134282e3)
+# reproduces the superseded a811aac7... value EXACTLY. No glyph change.
+_LIVE_HALF_DIGEST = "f467715b6bebba93fb76178cd43bdc4f628ff94de341d5228cd5a4a30bae319a"
 
 
 def _web_sources() -> list[Path]:
