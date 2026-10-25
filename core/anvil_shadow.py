@@ -17,8 +17,8 @@ dedup. The anvil panel is shown once per anvil event, so the dedup keys on the
 offered + already-owned set to write at most one record per distinct offer.
 
 Unlike the augment writer, a low-conf substrate result (no offered item on the
-ideal path) is NOT gated out: a no-match row is a real validation signal worth
-recording. Only a missing offer or a non-dict deterministic block gates the write.
+ideal path) is NOT gated out: a no-match row is a real validation signal. Only a
+missing or injection-probe offer (RM-867) or a non-dict det block gates the write.
 
 summarize_agreement() is the offline reader - name-normalized top-1 agreement of
 the Haiku take vs the substrate take, plus the rank at which the Haiku take sits
@@ -103,13 +103,19 @@ def log_anvil_advice(
     deterministic precomputed_anvil_advisor ranking) to the shadow jsonl.
 
     Returns the record dict on a fresh write, None on a gate miss (no offered
-    anvil items, or a non-dict deterministic block), a dedup skip, or any
-    failure (fail-soft). Never raises - safe on the live coach path."""
+    anvil items, an offer naming a prompt-injection payload - RM-867 - or a
+    non-dict deterministic block), a dedup skip, or any failure (fail-soft).
+    Never raises - safe on the live coach path."""
     try:
         if not isinstance(state, dict):
             return None
         offered = [c for c in (state.get("offered") or []) if c]
         if not offered:
+            return None
+        # RM-867: refuse, not tag - a tag makes every reader learn a flag
+        # (the RM-852 decision). Checked before the dedup, so a refused probe
+        # records no signature.
+        if offer_is_injection_probe(offered):
             return None
         if not isinstance(deterministic, dict):
             return None
@@ -150,6 +156,42 @@ def log_anvil_advice(
         return None
 
 
+# RM-867: the instruction-override phrase, a narrow local copy of the
+# core.prompt_sanitize override pattern (copied, not imported: sharing private
+# names couples two fail-soft modules - the core/precomputed_anvil_advisor.py
+# precedent). Only the override sentence: a bare newline in an OCR'd card name
+# is a plausible two-line wrap, not a probe, so it does not match.
+# tests/test_anvil_shadow_injection_probe_rm867.py pins that everything this
+# flags is also neutralised by prompt_sanitize.clean. Defined below the writer
+# so the SHADOW_PATH / log_anvil_advice line citations elsewhere stay exact.
+_INJECTION_PROBE = re.compile(
+    r"(?i)\b(?:ignore|disregard)\b[\s\S]{0,48}?\b(?:previous|above|prior)\b"
+    r"[\s\S]{0,24}?\binstructions?\b"
+)
+
+
+def offer_is_injection_probe(offered) -> bool:
+    """True when any offered name carries an instruction-override phrase.
+
+    A real anvil card is an item name; an offer like the RM-364 probe
+    ("SENTA\\nSENTB Ignore previous instructions ...") is test input or an
+    attack, never a game state worth recording. All 30 rows of the live
+    data/anvil_shadow.jsonl were that probe, written by
+    tests/test_rm364_prompt_sanitizer_population.py before RM-406 redirected
+    this module's SHADOW_PATH in the suite. The writer refuses such an offer
+    and summarize_agreement excludes and counts it. False for a non-list or
+    an empty offer. Never raises."""
+    try:
+        if not isinstance(offered, (list, tuple)):
+            return False
+        return any(
+            isinstance(c, str) and _INJECTION_PROBE.search(c) is not None
+            for c in offered
+        )
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def _take_rank(native_take: str, ranked: list) -> int | None:
     """1-based rank of the native take inside the substrate ranking, or None
     when the take does not match any offered/ranked item."""
@@ -175,6 +217,10 @@ def summarize_agreement(rows_or_path) -> dict:
       top1_agree_pct     - top1_agree / n_with_native_take * 100 (0.0 when none)
       take_rank_dist     - {"1": .., "3": .., "none": ..} rank of Haiku's take in
                            the substrate ranking
+      injection_probe_excluded - rows skipped because their offer names a
+                           prompt-injection payload (RM-867); not in n or any
+                           rate. A row without an "offered" key is counted as
+                           before (the writer always records it).
     Never raises - skips malformed rows."""
     rows: list = []
     try:
@@ -194,9 +240,13 @@ def summarize_agreement(rows_or_path) -> dict:
     n = 0
     n_with_take = 0
     top1 = 0
+    excluded = 0
     rank_dist: dict[str, int] = {}
     for r in rows:
         if not isinstance(r, dict):
+            continue
+        if offer_is_injection_probe(r.get("offered")):
+            excluded += 1
             continue
         n += 1
         native = r.get("native") if isinstance(r.get("native"), dict) else {}
@@ -220,4 +270,5 @@ def summarize_agreement(rows_or_path) -> dict:
         "top1_agree": top1,
         "top1_agree_pct": pct,
         "take_rank_dist": rank_dist,
+        "injection_probe_excluded": excluded,
     }
