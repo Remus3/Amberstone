@@ -748,7 +748,23 @@ _WEB = _REPO_ROOT / "web"
 # web/js/main.js back to its s135-land blob before this landing
 # (a2f6ddcc6)
 # reproduces the superseded f467715b... value EXACTLY. No glyph change.
-_LIVE_HALF_DIGEST = "1cf1a44e7b1d4648fd358c57c5a3f67cccc27a40eb7fcea44280356021c3d2ec"
+# superseded by the session 135 merger re-capture below (S134 lane uiux cycle 6, RM-897): "1cf1a44e7b1d4648fd358c57c5a3f67cccc27a40eb7fcea44280356021c3d2ec"
+#
+# RE-CAPTURED 2026-10-25 at S134 lane uiux cycle 6 (RM-897: main.js
+# _amMockLoad stamps setMode("tft") when a TFT ui_mock fixture lands, and
+# onHealth holds that stamp against the no-game "client" downgrade, so the
+# body[data-mode="tft"] overlay and header rules apply on the audit path).
+# Ordinary case, no tokeniser change. ATTRIBUTED BY SUBSTITUTION: hashing the
+# tree with exactly web/js/main.js replaced by its lane HEAD blob (in memory)
+# reproduces the superseded c0c64f3c... value EXACTLY. That one path is the
+# whole change. No glyph change.
+# MERGED 2026-10-25 by the session 135 merger onto s135-land (the TFT
+# board / lobby slice and the earlier lanes already landed); recomputed over
+# the merged tree. ATTRIBUTED BY SUBSTITUTION: swapping exactly
+# web/js/main.js back to its s135-land blob before this landing
+# (ede09196e)
+# reproduces the superseded 1cf1a44e... value EXACTLY. No glyph change.
+_LIVE_HALF_DIGEST = "85fd1169eb04109bb40039e9ee42d7797855489c22d5d450cc05b40a115c2185"
 
 
 def _web_sources() -> list[Path]:
