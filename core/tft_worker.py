@@ -150,7 +150,8 @@ class TftWorker(BaseCoachWorker):
         self._debug        = debug
 
         # S134: LCU source of the running TFT set (make_lcu_request). None =
-        # the worker reads nothing from the LCU and notes no set.
+        # the queue id from the relayed LCU agent snapshot only (no
+        # mDefaultSet; see _maybe_note_lcu_set).
         self._lcu_request     = lcu_request
         self._lcu_default_set: Optional[str] = None
         self._lcu_set_at: Optional[float] = None
@@ -284,19 +285,28 @@ class TftWorker(BaseCoachWorker):
         """Note the running set from the LCU (mDefaultSet + queue id) at most
         once per LCU_SET_REFRESH_S; returns the set noted, else None.
 
-        tftsets.json is read once per worker (the default set does not change
-        within a game); the queue id every refresh. Never raises.
+        With an lcu_request: tftsets.json is read once per worker (the default
+        set does not change within a game), the queue id every refresh.
+        Without one: the queue id from the LCU agent snapshot the vision relay
+        already carries (tft/tft_standalone.py relay_lcu_snapshot); it has no
+        mDefaultSet, so only a queue that names its own set (QUEUE_SETS, the
+        Set 17 revival) is noted and a normal queue keeps resolve_set's
+        default. Never raises.
         """
-        if self._lcu_request is None:
-            return None
         now = self._lcu_clock()
         if self._lcu_set_at is not None and now - self._lcu_set_at < LCU_SET_REFRESH_S:
             return None
         self._lcu_set_at = now
         try:
             from tft import tft_set
-            default_set, queue_id = tft_set.read_lcu_set_facts(
-                self._lcu_request, self._lcu_default_set)
+            if self._lcu_request is not None:
+                default_set, queue_id = tft_set.read_lcu_set_facts(
+                    self._lcu_request, self._lcu_default_set)
+            else:
+                from tft import tft_standalone
+                default_set = self._lcu_default_set
+                queue_id = tft_set.snapshot_tft_queue_id(
+                    tft_standalone.relay_lcu_snapshot())
             if default_set:
                 self._lcu_default_set = default_set
             if queue_id is None:

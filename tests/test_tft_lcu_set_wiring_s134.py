@@ -9,20 +9,23 @@ Set 17 whatever mDefaultSet says). tft/tft_set.py set_from_lcu /
 note_live_set_from_lcu encode the rule but had no caller.
 
 This slice adds the reads (tft/tft_set.py read_lcu_set_facts /
-lcu_default_set / lcu_tft_queue_id) and a throttled call from the TFT poll
-loop (core/tft_worker.py TftWorker, kwarg lcu_request). The noted set lives
-LIVE_TTL_S, so a one-shot note at game start would expire mid-game: the
-worker refreshes it every LCU_SET_REFRESH_S. The worker reads the LCU only
-when it is handed a request (lcu_request=None reads nothing), so the game
-start site that builds the worker - app/_game_lifecycle.py on_game_start, a
-P0 / frozen file this slice does not edit - passes
-lcu_request=core.tft_worker.make_lcu_request().
+lcu_default_set / lcu_tft_queue_id / snapshot_tft_queue_id) and a throttled
+call from the TFT poll loop (core/tft_worker.py TftWorker, kwarg
+lcu_request). The noted set lives LIVE_TTL_S, so a one-shot note at game
+start would expire mid-game: the worker refreshes it every
+LCU_SET_REFRESH_S. With no lcu_request the worker reads only the queue id
+off the LCU agent snapshot the vision relay already carries (live today,
+no edit elsewhere: it notes the 6110 revival as Set 17). The full rule
+(mDefaultSet too) needs the game-start site that builds the worker -
+app/_game_lifecycle.py on_game_start, a P0 / frozen file this slice does
+not edit - to pass lcu_request=core.tft_worker.make_lcu_request().
 
 Names used, cited at the fix tree: tft/tft_set.py `TFTSETS_URI`,
 `GAMEFLOW_SESSION_URI`, `lcu_default_set`, `lcu_tft_queue_id`,
-`read_lcu_set_facts`, `note_live_set_from_lcu`, `noted_live_set`,
-`clear_live_set`, `LIVE_TTL_S`, `QUEUE_SETS`; core/tft_worker.py `TftWorker`,
-`LCU_SET_REFRESH_S`, `make_lcu_request`, `_maybe_note_lcu_set`.
+`snapshot_tft_queue_id`, `read_lcu_set_facts`, `note_live_set_from_lcu`,
+`noted_live_set`, `resolve_set`, `clear_live_set`, `LIVE_TTL_S`,
+`QUEUE_SETS`; tft/tft_standalone.py `relay_lcu_snapshot`; core/tft_worker.py
+`TftWorker`, `LCU_SET_REFRESH_S`, `make_lcu_request`, `_maybe_note_lcu_set`.
 """
 from __future__ import annotations
 
@@ -151,10 +154,80 @@ def test_worker_notes_set17_for_the_revival_queue():
     assert tft_set.noted_live_set() == 17
 
 
-def test_worker_without_a_request_reads_and_notes_nothing():
+def test_worker_without_a_request_or_relay_snapshot_notes_nothing():
+    # conftest closes tft_standalone.relay_lcu_snapshot (-> None) suite-wide
     w = _worker(None)
     assert w._maybe_note_lcu_set() is None
     assert tft_set.noted_live_set() is None
+
+
+# Without a direct request the worker reads the LCU agent snapshot the vision
+# relay already carries (tft/tft_standalone.py relay_lcu_snapshot); the S134
+# P0 lcu/snapshot_shape.py stamps game_queue_id / game_queue_mode into it in
+# game. It carries no mDefaultSet, so only a queue that names its own set
+# (QUEUE_SETS: the 6110 revival) is noted; a normal queue leaves resolve_set
+# on its default (the newest ingested set).
+SNAP_6110 = {"phase": "InProgress", "game_queue_id": 6110, "game_queue_mode": "TFT"}
+SNAP_1090 = {"phase": "InProgress", "game_queue_id": 1090, "game_queue_mode": "TFT"}
+
+
+@pytest.mark.parametrize("snap, want", [
+    (SNAP_6110, 6110), (SNAP_1090, 1090),
+    ({"phase": "Reconnect", "game_queue_id": 6110, "game_queue_mode": "TFT"}, 6110),
+    ({"phase": "InProgress", "game_queue_id": 420, "game_queue_mode": "CLASSIC"}, None),
+    ({"phase": "Lobby", "game_queue_id": 6110, "game_queue_mode": "TFT"}, None),
+    ({"phase": "InProgress", "game_queue_id": 6110}, None),
+    ({"phase": "InProgress", "game_queue_id": 0, "game_queue_mode": "TFT"}, None),
+    ({"phase": "InProgress", "game_queue_id": True, "game_queue_mode": "TFT"}, None),
+    ({"phase": "InProgress", "game_queue_id": "6110", "game_queue_mode": "TFT"}, 6110),
+    ({}, None), (None, None), ([], None),
+])
+def test_snapshot_tft_queue_id(snap, want):
+    assert tft_set.snapshot_tft_queue_id(snap) == want
+
+
+def _relay(monkeypatch, snap):
+    from tft import tft_standalone
+    seen = []
+
+    def _snap():
+        seen.append(1)
+        return snap
+
+    monkeypatch.setattr(tft_standalone, "relay_lcu_snapshot", _snap)
+    return seen
+
+
+def test_worker_relay_fallback_notes_the_revival_queue(monkeypatch):
+    seen = _relay(monkeypatch, SNAP_6110)
+    w = _worker(None)
+    assert w._maybe_note_lcu_set() == 17
+    assert tft_set.noted_live_set() == 17 and tft_set.resolve_set() == 17
+    assert seen == [1]
+
+
+def test_worker_relay_fallback_leaves_a_normal_queue_on_the_default(monkeypatch):
+    _relay(monkeypatch, SNAP_1090)
+    w = _worker(None)
+    assert w._maybe_note_lcu_set() is None
+    assert tft_set.noted_live_set() is None
+
+
+def test_a_direct_request_wins_over_the_relay(monkeypatch):
+    seen = _relay(monkeypatch, SNAP_6110)
+    w = _worker(FakeLcu(SESSION_1090))
+    assert w._maybe_note_lcu_set() == 18
+    assert seen == []
+
+
+def test_relay_fallback_is_throttled_too(monkeypatch):
+    seen = _relay(monkeypatch, SNAP_6110)
+    now = [50.0]
+    w = _worker(None, clock=lambda: now[0])
+    assert w._maybe_note_lcu_set() == 17
+    now[0] += 1
+    assert w._maybe_note_lcu_set() is None
+    assert seen == [1]
 
 
 def test_worker_refresh_is_throttled_and_inside_the_ttl():

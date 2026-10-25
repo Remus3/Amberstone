@@ -34,8 +34,9 @@ client also offers a revival queue for an older set (queue 6110 "Set 17
 (Normal)"), so the running set = mDefaultSet PAIRED with the gameflow
 session queue id: set_from_lcu / note_live_set_from_lcu (QUEUE_SETS).
 read_lcu_set_facts does the two LCU reads; core/tft_worker.py TftWorker
-calls it from the TFT poll loop, refreshed inside LIVE_TTL_S, whenever it
-is built with an LCU request (S134). The noted set then routes the round
+calls it from the TFT poll loop, refreshed inside LIVE_TTL_S, when it is
+built with an LCU request, else reads only the queue id off the relayed LCU
+agent snapshot (snapshot_tft_queue_id) (S134). The noted set then routes the round
 schedule (tft/tft_state_reader.py round_schedule), the roll odds
 (tft/tft_data.py tier_odds_for_set) and the XP table (xp_to_next_level)
 through resolve_set.
@@ -210,6 +211,27 @@ def lcu_tft_queue_id(session) -> int | None:
     if isinstance(qid, bool) or not isinstance(qid, int) or qid <= 0:
         return None
     return qid
+
+
+_SNAPSHOT_IN_GAME = frozenset({"GameStart", "InProgress", "Reconnect"})
+
+
+def snapshot_tft_queue_id(snapshot) -> int | None:
+    """The TFT queue id stamped into an LCU agent snapshot in game, or None.
+
+    lcu/snapshot_shape.py (S134 P0) writes game_queue_id / game_queue_mode
+    from the gameflow session at GameStart / InProgress / Reconnect; the
+    vision relay carries that snapshot (tft/tft_standalone.py
+    relay_lcu_snapshot). It carries no mDefaultSet.
+    """
+    if not isinstance(snapshot, dict):
+        return None
+    if snapshot.get("phase") not in _SNAPSHOT_IN_GAME:
+        return None
+    mode = snapshot.get("game_queue_mode")
+    return lcu_tft_queue_id({"gameData": {"queue": {
+        "id": snapshot.get("game_queue_id"),
+        "gameMode": mode.strip().upper() if isinstance(mode, str) else None}}})
 
 
 def read_lcu_set_facts(request, default_set=None) -> tuple:
