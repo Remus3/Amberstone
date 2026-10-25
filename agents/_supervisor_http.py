@@ -334,10 +334,17 @@ class _QuietHandler(HostAllowlistMixin, HeadDeadlineMixin,
         (str(exc) / f"...{exc}") in a wire-JSON error field reachable by the
         dashboard - it can leak internal paths, import details, or secret-
         shaped traceback fragments. The caller passes a friendly message; the
-        raw ``exc`` (if any) goes to the supervisor log only.
+        cause ``exc`` (if any) goes to the supervisor log only.
+
+        RM-863: logged with its type name and its text through ``_scrub_log``
+        (the RM-321 delegate of ``core.log_scrub.scrub_log``; the RM-853
+        dispatcher idiom). The supervisor logger has no scrub filter, so an
+        exception carrying a client's control characters (a terminal escape,
+        a CR/LF that forges a log line) used to reach the log raw.
         """
         if exc is not None:
-            log.warning("%s: %s", public_msg, exc)
+            log.warning("%s: %s: %s", public_msg, type(exc).__name__,
+                        _scrub_log(str(exc)))
         self._send_json(status, {"error": public_msg})
 
     def _handle_input(self) -> None:

@@ -40,7 +40,7 @@ import pytest
 
 from tests._module_view import this_thread_only
 from tests._reply_leak_ast import (ASSIGNMENT_SHAPES, SAFE_ASSIGNMENTS,
-                                   reply_leaks)
+                                   call_name, reply_leaks)
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -462,7 +462,10 @@ _LOG_LEVELS = {"debug", "info", "warning", "warn", "error", "exception",
 # isinstance() (only the class, server text, can come out of them).
 _SAFE_CALLS = {"scrub_log", "_scrub_log", "scrub_controls", "send_error",
                "_send_validation_error", "_fault", "type", "isinstance"}
-_REPLY_CALLS = {"_send", "_send_json", "send_json"}
+# RM-863: and ``Scheduler.fail`` - its ``error=`` is stored as the task's
+# ``last_error``, which ``/api/task/<id>`` serves and the :8888 proxy
+# forwards as a 2xx body (the RM-853 path; no :8888 route module calls it).
+_REPLY_CALLS = {"_send", "_send_json", "send_json", "fail"}
 # RM-835: a reply list or dict built up by mutation (routes_sr_draft's
 # `notes.append(f"{cmd}: {exc}")`) is a reply shape too.
 _MUTATION_CALLS = {"append", "extend", "insert", "update", "setdefault"}
@@ -573,3 +576,122 @@ def test_the_reply_detector_follows_an_assignment():
     as well as the reply it feeds."""
     assert _reply_leaks(ASSIGNMENT_SHAPES) == [6, 12, 17, 18, 24, 31]
     assert _reply_leaks(SAFE_ASSIGNMENTS) == []
+
+
+# --------------------------------------------------- RM-863 supervisor sweep
+# The Phase 3 supervisor (:8890, proxied by :8888 for /api/task and friends):
+# the facade and its s243 split siblings. Its own error reply is
+# ``_QuietHandler._send_error(status, public_msg, exc=None)`` - ``public_msg``
+# goes on the wire, ``exc`` to the log only - so the sweep masks the ``exc``
+# argument and counts the call as a reply; ``_BadJsonBody.public_msg`` is
+# wire-safe by construction. The scrubbers are NOT safe here: they escape
+# control characters for a log, and their output is still exception text
+# (``fail(error=scrub_log(str(e)))`` would put it in ``last_error``).
+_SUPERVISOR_SWEPT = sorted({ROOT / "agents" / "supervisor.py",
+                            *(ROOT / "agents").glob("_supervisor_*.py")})
+_SUPERVISOR_SAFE_CALLS = _SAFE_CALLS - {"scrub_log", "_scrub_log",
+                                        "scrub_controls"}
+_SUPERVISOR_REPLY_CALLS = _REPLY_CALLS | {"_send_error"}
+_SUPERVISOR_SAFE_ATTRS = _SAFE_ATTRS | {"public_msg"}
+
+
+def _mask_log_only_args(src: str) -> str:
+    """``src`` with every ``_send_error`` call's log-only ``exc`` argument
+    (third positional or ``exc=``) replaced by ``None``, line numbers kept."""
+    spans = []
+    for node in ast.walk(ast.parse(src)):
+        if isinstance(node, ast.Call) and call_name(node) == "_send_error":
+            spans += node.args[2:3]
+            spans += [k.value for k in node.keywords if k.arg == "exc"]
+    lines = [ln.encode("utf-8") for ln in src.splitlines(keepends=True)]
+    # Last span first, so an earlier span's offsets stay valid. ast column
+    # offsets are UTF-8 byte offsets, hence the bytes.
+    for n in sorted(spans, key=lambda a: (a.lineno, a.col_offset),
+                    reverse=True):
+        first, last = n.lineno - 1, n.end_lineno - 1
+        lines[first:last + 1] = [lines[first][:n.col_offset] + b"None"
+                                 + b"\n" * (last - first)
+                                 + lines[last][n.end_col_offset:]]
+    return b"".join(lines).decode("utf-8")
+
+
+def _supervisor_reply_leaks(src: str) -> list[int]:
+    return reply_leaks(_mask_log_only_args(src),
+                       safe_calls=_SUPERVISOR_SAFE_CALLS,
+                       log_levels=_LOG_LEVELS,
+                       reply_calls=_SUPERVISOR_REPLY_CALLS,
+                       mutation_calls=_MUTATION_CALLS,
+                       safe_attrs=_SUPERVISOR_SAFE_ATTRS)
+
+
+def test_the_supervisor_sweep_sees_its_modules():
+    """Floor: the two RM-853 modules are swept, and they hold except
+    handlers to look at (measured at 6c7269ed8: 4 files, 62 bound handlers,
+    27 each in supervisor.py and _supervisor_http.py)."""
+    names = {p.name for p in _SUPERVISOR_SWEPT}
+    assert {"supervisor.py", "_supervisor_http.py"} <= names, names
+    assert len(names) >= 4, names
+    bound = 0
+    for p in _SUPERVISOR_SWEPT:
+        tree = ast.parse(p.read_text(encoding="utf-8"))
+        bound += sum(1 for h in ast.walk(tree)
+                     if isinstance(h, ast.ExceptHandler) and h.name)
+    assert bound >= 50, bound
+
+
+@pytest.mark.parametrize("path", _SUPERVISOR_SWEPT,
+                         ids=lambda p: p.relative_to(ROOT).as_posix())
+def test_no_supervisor_reply_names_a_bound_exception(path):
+    assert _supervisor_reply_leaks(path.read_text(encoding="utf-8")) == [], path
+
+
+def test_the_supervisor_guard_flags_the_rm853_pre_fix_writer():
+    """RM-853's measured leak, rebuilt in the real file: the dispatcher's
+    ``fail(task.id, error=str(e))`` (supervisor.py:602 before 0a8d6b84a) is
+    flagged on its own line, and only there."""
+    src = (ROOT / "agents" / "supervisor.py").read_text(encoding="utf-8")
+    fixed = "self._scheduler.fail(task.id, error=TASK_FAILED_ERROR)"
+    assert src.count(fixed) == 1, "the RM-853 writer moved; re-anchor"
+    line = src[:src.index(fixed)].count("\n") + 1
+    pre_fix = src.replace(fixed, "self._scheduler.fail(task.id, error=str(e))")
+    assert _supervisor_reply_leaks(src) == []
+    assert _supervisor_reply_leaks(pre_fix) == [line]
+
+
+def test_the_supervisor_detector_is_not_vacuous():
+    """The supervisor shapes, line for line: ``fail`` is a reply call, a
+    scrubbed cause is still a leak, ``_send_error``'s ``public_msg`` is a
+    reply and its ``exc`` argument is not."""
+    src = (
+        "def d(self, task):\n"
+        "    try:\n"
+        "        pass\n"
+        "    except Exception as e:\n"
+        "        log.error('task %s failed: %s', task.id, _scrub(str(e)))\n"
+        "        self._scheduler.fail(task.id, error=str(e))\n"          # 6
+        "    except OSError as e:\n"
+        "        self._scheduler.fail(task.id, error=TASK_FAILED_ERROR)\n"
+        "    except ValueError as e:\n"
+        "        self._scheduler.fail(task.id, error=scrub_log(str(e)))\n"  # 10
+        "def h(self):\n"
+        "    try:\n"
+        "        pass\n"
+        "    except _BadJsonBody as e:\n"
+        "        self._send_error(400, e.public_msg, e.__cause__ or e)\n"
+        "    except OSError as e:\n"
+        "        self._send_error(502, 'vision server unreachable', e)\n"
+        "    except RuntimeError as e:\n"
+        "        self._send_error(500, f'crop failed: {e}')\n"           # 19
+        "    except ValueError as e:\n"
+        "        msg = str(e)\n"
+        "        self._send_error(500, msg, exc=e)\n"                    # 22
+        "    except KeyError as e:\n"
+        "        self._send_json(500, {'error': str(e)})\n"              # 24
+        "    except TypeError as e:\n"
+        "        self._send_error(500, 'x', (e.__cause__\n"
+        "                                    or e))\n"
+    )
+    assert _supervisor_reply_leaks(src) == [6, 10, 19, 22, 24]
+    masked = _mask_log_only_args(src)
+    assert masked.count("\n") == src.count("\n")
+    assert "e.__cause__" not in masked and "exc=None" in masked

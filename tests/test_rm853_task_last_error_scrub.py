@@ -360,3 +360,42 @@ def test_a_task_without_an_error_still_serves_null(tmp_path):
     sched = _scheduler(tmp_path)
     t = sched.file_task(op="audit-pass", owner_agent="4")
     assert _reply(sched, t.id)["last_error"] is None
+
+
+# ---------------------------------------------------- RM-863 (d) exact match
+def _public_reasons() -> list[str]:
+    from agents._supervisor_http import _PUBLIC_TASK_ERRORS
+    return sorted(_PUBLIC_TASK_ERRORS)
+
+
+def _near_misses(reason: str) -> list[str]:
+    """A server reason with other text around it - none of these may pass."""
+    return [reason + " " + _evil("SUFFIXED"), reason + "x",
+            _evil("PREFIXED") + " " + reason, " " + reason, reason + "\n",
+            reason.upper()]
+
+
+@pytest.mark.parametrize("reason", _public_reasons())
+def test_a_server_reason_passes_only_on_an_exact_match(reason, tmp_path):
+    """RM-863 (d): ``public_last_error`` passes a stored reason only when it
+    EQUALS a server-authored one. A prefix-match mutant (``startswith``
+    instead of the set lookup) survived every RM-853 test above: a row
+    stored as ``<reason>: <exception text>`` would have reached the wire."""
+    from agents._supervisor_http import TASK_FAILED_ERROR, public_last_error
+    assert public_last_error(reason) == reason
+    for stored in _near_misses(reason):
+        assert public_last_error(stored) == TASK_FAILED_ERROR, stored
+    # And through the real reply, from the store.
+    sched = _scheduler(tmp_path)
+    t = sched.file_task(op="audit-pass", owner_agent="4")
+    sched.fail(t.id, error=reason + ": " + _evil("THROUGH-REPLY"))
+    body = _reply(sched, t.id)
+    assert body["last_error"] == TASK_FAILED_ERROR
+    _assert_clean(json.dumps(body), "THROUGH-REPLY")
+
+
+def test_the_exact_match_census_is_not_vacuous():
+    from agents._supervisor_http import TASK_FAILED_ERROR
+    reasons = _public_reasons()
+    assert len(reasons) >= 6, reasons
+    assert TASK_FAILED_ERROR in reasons
