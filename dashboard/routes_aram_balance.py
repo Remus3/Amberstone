@@ -33,6 +33,7 @@ import logging
 import threading
 
 from dashboard._dispatch import equals
+from dashboard._errors import send_error
 
 log = logging.getLogger("rc.web_dashboard")
 
@@ -86,12 +87,11 @@ def _serve_aram_balance(h) -> None:
         body = json.dumps(payload).encode("utf-8")
         h._send(200, body, "application/json")
     except Exception as exc:  # noqa: BLE001
-        log.warning("aram-balance failed: %s", exc, exc_info=True)
+        # RM-835: a fixed line, never str(exc); send_error logs the cause
+        # once, scrubbed, with its type name and the traceback.
         try:
-            body = json.dumps(
-                {"ok": False, "error": str(exc)[:200]}
-            ).encode("utf-8")
-            h._send(500, body, "application/json")
+            send_error(h, exc, public_msg="aram-balance failed - see logs",
+                       fields={"ok": False}, log_traceback=True)
         except Exception:  # noqa: BLE001
             pass
 

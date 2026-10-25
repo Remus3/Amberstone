@@ -70,6 +70,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from dashboard._dispatch import equals
+from dashboard._errors import send_error
 
 log = logging.getLogger("rc.web_dashboard")
 
@@ -319,11 +320,11 @@ def _serve_ds_skill_order(h) -> None:
                 "application/json")
 
     except Exception as exc:  # noqa: BLE001
-        log.warning("api/ds-skill-order: %s", exc)
+        # RM-835: a fixed line, never str(exc); send_error logs the cause
+        # once, scrubbed, with its type name.
         try:
-            h._send(500, json.dumps({
-                "ok": False, "error": str(exc)[:200],
-            }).encode("utf-8"), "application/json")
+            send_error(h, exc, public_msg="ds-skill-order failed - see logs",
+                       fields={"ok": False})
         except Exception:  # noqa: BLE001
             pass
 

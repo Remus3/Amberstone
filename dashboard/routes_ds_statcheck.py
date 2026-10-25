@@ -54,6 +54,8 @@ import time
 from typing import Any, Callable
 from urllib.parse import parse_qs, urlparse
 
+from core.log_scrub import scrub_log
+
 log = logging.getLogger("rc.web_dashboard")
 
 # ----------------------------------------------------------------------------
@@ -269,7 +271,8 @@ def _serve_ds_statcheck(handler: Any) -> None:
         try:
             snap, dps_fn = _load_engine()
         except Exception as exc:  # pragma: no cover - import guard  # noqa: BLE001
-            log.warning("api/ds-statcheck engine load: %s", exc)
+            log.warning("api/ds-statcheck engine load: %s: %s",
+                        type(exc).__name__, scrub_log(str(exc)))
             _send(handler, 503, {"ok": False, "error": "DS engine unavailable"})
             return
 
@@ -287,16 +290,22 @@ def _serve_ds_statcheck(handler: Any) -> None:
                 target_bonus_hp=(bonus_hp if bonus_hp is not None else 0.0),
             )
         except (KeyError, ValueError) as exc:
-            # unknown champion name (engine lookup miss) - fail soft, not 503
+            # unknown champion name (engine lookup miss) - fail soft, not 503.
+            # RM-835: `detail` was str(exc)[:120] and nothing was logged; it
+            # is a fixed line now and the cause goes to the log, scrubbed.
+            log.info("api/ds-statcheck lookup miss: %s: %s",
+                     type(exc).__name__, scrub_log(str(exc)))
             _send(
                 handler,
                 200,
                 {"ok": False, "error": f"unknown champion: {champion}",
-                 "champion": champion, "detail": str(exc)[:120]},
+                 "champion": champion,
+                 "detail": "engine lookup failed - see logs"},
             )
             return
         except Exception as exc:  # noqa: BLE001
-            log.warning("api/ds-statcheck compute: %s", exc)
+            log.warning("api/ds-statcheck compute: %s: %s",
+                        type(exc).__name__, scrub_log(str(exc)))
             _send(handler, 503, {"ok": False, "error": "DS engine compute failed"})
             return
 
@@ -331,7 +340,8 @@ def _serve_ds_statcheck(handler: Any) -> None:
         # Outer guard mirrors the sibling routes: a handler exception must
         # never escape into the HTTP server (pre-fix an OverflowError from
         # a non-finite query param dropped the connection with no response).
-        log.warning("api/ds-statcheck: %s", exc)
+        log.warning("api/ds-statcheck: %s: %s",
+                    type(exc).__name__, scrub_log(str(exc)))
         try:
             _send(handler, 500, {"ok": False, "error": "internal error"})
         except Exception:  # noqa: BLE001
