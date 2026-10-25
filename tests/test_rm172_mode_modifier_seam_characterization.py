@@ -119,6 +119,10 @@ EXPECTED_GATE_A = {
     "matchup.compute_matchup",
     "matchup._combo_into",
     "matchup._defensive_stats",
+    # RM-841 (1). The focus board forwards the kwarg to compute_dps,
+    # compute_ability_dps and matchup._defensive_stats; no route parses it
+    # yet (the Gate B / C wiring is a filed ROADMAP row).
+    "focus_board.compute_focus_board",
 }
 
 # GATE B - HTTP routes that PARSE the flag out of the POST body.
