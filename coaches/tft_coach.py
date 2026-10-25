@@ -7,17 +7,24 @@ This module is a thin facade. Runtime polling, coaching orchestration, and
 TftLiveAnalysis are owned by core/tft_worker.TftWorker - not this class.
 
 Responsibilities retained here:
-  - _force_refresh_all() right-click callback (delegates to worker)
-  - reset_state() - clears data files and engine/live state via worker refs
-  - shutdown() - clears worker reference and resets data (app.py owns TftWorker lifecycle)
+  - reset_state() - blanks the two TFT data files (the worker's state is
+    never touched: app/_game_lifecycle.py builds a fresh TftWorker per game)
+  - shutdown() - drops the worker reference and blanks the data files
+    (app/_game_lifecycle.py owns TftWorker lifecycle)
 
 Responsibilities that moved to TftWorker:
   - TftStateReader ownership
   - TftCoachEngine ownership and coaching submission
   - TftLiveAnalysis ownership and vision loop
   - _poll_loop() background thread
+  - force scans (core/tft_worker.py force_scan, fed by data/force_scan.json)
 
 Single authoritative TFT coaching path: TftWorker._run().
+
+Removed in the lane 8 session 134 audit (tests/test_tft_coach_lane8_s134.py):
+the Tk right-click `_force_refresh_all`, which had no caller once RC went
+tkinter-free, and the worker branch of `reset_state`, which no production
+caller could reach and which half-reset another module's private state.
 """
 
 import logging
@@ -144,10 +151,14 @@ class Coach:
         self._data_file      = Path(data_file) if not isinstance(data_file, Path) else data_file
         self._debug          = debug
         self._overlay: dict  = {}
+        # Written by app/_game_lifecycle.py (frozen) on every drained TFT
+        # result. Its only reader was the retired right-click refresh; it is
+        # declared here so that writer lands on a known attribute.
         self._last_data: dict = {}
         self._tft_data_file  = self._data_file.parent / "tft_coaching_data.json"
         self._live_data_file = self._data_file.parent / "tft_live_data.json"
-        # TftWorker reference - set by app.py via set_worker() after construction
+        # TftWorker reference - set by app.py via set_worker() after
+        # construction. Held, never driven: shutdown() drops it.
         self._worker = None
         self._ensure_data_files()
         self.reset_state()
@@ -175,22 +186,16 @@ class Coach:
         reachable for real, since unlike `_ensure_data_files` this path never
         created the parent directory, and a Defender lock can also exhaust
         safe_write's three retries.
+
+        The worker is deliberately NOT reset here. A branch that did so poked
+        `_engine.reset_state()` and three private `_live` fields inside
+        silenced excepts, but no production caller could reach it - the only
+        callers are `__init__` (before set_worker) and `shutdown` (after it
+        drops the worker) - and when reached it reset only part of the live
+        analysis (not `_last_placement`, `_round_before`, the scan flags or
+        the stage gate). The worker is built fresh per game, so there is no
+        previous-game state of it for the facade to clear.
         """
-        # Delegate to worker if available
-        if self._worker is not None:
-            if getattr(self._worker, "_engine", None) is not None:
-                try:
-                    self._worker._engine.reset_state()
-                except Exception:  # noqa: BLE001
-                    pass
-            if getattr(self._worker, "_live", None) is not None:
-                try:
-                    live = self._worker._live
-                    live._known_augments = []
-                    live._last_write     = {}
-                    live._last_round     = (0, 0)
-                except Exception:  # noqa: BLE001
-                    pass
         # Clear data files (atomic - the dashboard polls these mid-write).
         # mkdir first: this path used to assume the directory existed, which
         # is the failure mode that made the old unconditional success log wrong.
@@ -214,36 +219,26 @@ class Coach:
         logger.info("TFT state reset - data files cleared")
         return True
 
-    def shutdown(self) -> None:
+    def shutdown(self) -> bool:
         """
-        Reset facade state at game end.
+        Reset facade state at game end. True if the data files were blanked.
 
         Phase 1 Step 5.1: app.py is the sole owner of TftWorker lifecycle.
         This method does NOT call self._worker.shutdown() - that is done
         exclusively by app.py._on_game_end() to avoid dual shutdown paths.
+
+        It used to log "shutdown complete" whatever the reset reported, so a
+        failed blank (the lobby then keeps the last game's board) read clean.
         """
         # Clear worker reference without shutting it down - app.py owns that
         self._worker = None
         # Clear data files so lobby shows blank, not last game's data
-        self.reset_state()
-        logger.info("TFT Coach facade shutdown complete")
-
-    def _force_refresh_all(self) -> None:
-        """Right-click: force vision scan + immediate coach engine re-run."""
-        logger.info("Force refresh ALL triggered (right-click)")
-        if self._worker is not None:
-            try:
-                self._worker.force_scan()
-            except Exception:  # noqa: BLE001
-                pass
-            # Reset engine debounce so it re-runs at next poll
-            if getattr(self._worker, "_engine", None) is not None:
-                try:
-                    self._worker._engine._last_call = 0
-                    if self._last_data:
-                        self._worker._engine.submit(self._last_data)
-                except Exception:  # noqa: BLE001
-                    pass
+        ok = self.reset_state()
+        if ok:
+            logger.info("TFT Coach facade shutdown complete")
+        else:
+            logger.warning("TFT Coach facade shutdown - data files NOT cleared")
+        return ok
 
     def _default_payloads(self):
         """The blank payload for each data file - ONE definition, two callers.

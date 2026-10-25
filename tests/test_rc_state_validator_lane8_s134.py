@@ -6,7 +6,7 @@ screen validation (rc_supervisor.py:1508-1513 is its only constructor).
 
 Ground truth cited before writing:
   - the TFT facade seeds data/tft_live_data.json with hp=0 and
-    stage_round="" at every reset (coaches/tft_coach.py:264-268), and the
+    stage_round="" at every reset (coaches/tft_coach.py:259-266), and the
     live producer clamps an out-of-range hp to 0 (tft/tft_live_analysis.py
     _coerce_hp, :311-328). Measured live 2026-10-25 during a TFT game: the
     file held exactly that seed, 13 minutes old, with health.json
