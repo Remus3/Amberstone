@@ -64,6 +64,9 @@ from pathlib import Path
 import pytest
 
 from tests._module_view import (
+    _current_test_file,
+    _lineage_of,
+    _record_lineage,
     bind_module_view,
     bind_os_path,
     bind_subprocess,
@@ -1101,6 +1104,43 @@ def test_this_thread_only_hands_the_installers_descendants_the_fake():
     scoped = this_thread_only(lambda: "fake", lambda: "real")
     assert _run_in_thread(scoped) == "fake"
     assert _run_in_thread(lambda: _run_in_thread(scoped)) == "fake"
+
+
+@pytest.mark.parametrize("event", [
+    "_thread.start_new_thread",       # Thread.start on Python 3.12 (CI)
+    "_thread.start_joinable_thread",  # Thread.start on Python 3.13+
+])
+def test_the_lineage_hook_hears_thread_start_on_every_python(event):
+    """CI run 40230847617 (Python 3.12): Thread.start raises
+    `_thread.start_new_thread` there and `_thread.start_joinable_thread` from
+    3.13 on, each with the Thread's bound `_bootstrap` first. A hook that
+    hears one name records no lineage on the other Python, so every late
+    thread falls back to FAKE and the RM-880 (b) tests above go red."""
+    t = threading.Thread(target=lambda: None)
+    _record_lineage(event, (t._bootstrap, (), None))
+    assert _lineage_of(t) == (threading.current_thread(), _current_test_file())
+
+
+@pytest.mark.parametrize("event, first", [
+    ("_thread.start_new_thread", "run"),       # a raw start of a bound run
+    ("_thread.start_new_thread", "plain"),     # a raw start of a function
+    ("_thread.start", "_bootstrap"),           # some other _thread event
+    ("os.system", "_bootstrap"),
+])
+def test_the_lineage_hook_ignores_what_is_not_a_thread_start(event, first):
+    t = threading.Thread(target=lambda: None)
+    fn = {"run": t.run, "plain": lambda: None, "_bootstrap": t._bootstrap}
+    _record_lineage(event, (fn[first], (), None))
+    assert _lineage_of(t)[0] is None
+
+
+def test_the_lineage_hook_records_a_real_thread_start():
+    """End to end on whatever Python runs the suite: a real Thread.start
+    leaves the starting thread as the recorded creator."""
+    t = threading.Thread(target=lambda: None, daemon=True)
+    t.start()
+    t.join(5)
+    assert _lineage_of(t)[0] is threading.current_thread()
 
 
 def _leftover_server_answer(monkeypatch=None):
