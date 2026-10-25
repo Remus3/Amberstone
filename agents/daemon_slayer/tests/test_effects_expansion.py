@@ -4174,7 +4174,8 @@ class Batch31DefensiveOnlyCoverageTests(unittest.TestCase):
         "6616": "Staff of Flowing Water",
         "6620": "Echoes of Helia",
         "6617": "Moonstone Renewer",
-        "6621": "Dawncore",
+        # 6621 Dawncore promoted off defensive_only by RM-808 (b): First Light
+        # AP half (+15 AP); pins in test_dawncore_first_light_ap_rm808b.py.
         "4005": "Imperial Mandate",
         "6657": "Rod of Ages",
         "3119": "Winter's Approach",
@@ -5745,7 +5746,8 @@ class Batch41Arena226MirrorTests(unittest.TestCase):
             "226616": "Staff of Flowing Water",
             "226617": "Moonstone Renewer",
             "226620": "Echoes of Helia",
-            "226621": "Dawncore",
+            # 226621 Dawncore promoted by RM-808 (b) (First Light +30 AP);
+            # pins in test_dawncore_first_light_ap_rm808b.py.
             "226630": "Goredrinker",
             # 226655 Luden's Echo promoted to active periodic in batch 52
             "226657": "Rod of Ages",
@@ -5869,7 +5871,8 @@ class Batch42ArenaMirror222x224x32xTests(unittest.TestCase):
             "224005", "224401", "224628", "224629",
             "323050", "323075", "323107", "323109", "323110",
             "323119", "323190", "323222", "323504", "324005",
-            "326616", "326617", "326620", "326621", "326657",
+            # 326621 Dawncore promoted by RM-808 (b) (First Light +15 AP).
+            "326616", "326617", "326620", "326657",
         ]
         for iid in expected:
             with self.subTest(item_id=iid):

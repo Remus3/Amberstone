@@ -85,8 +85,10 @@ class MejaisExpectedStackConstantTests(unittest.TestCase):
 class MejaisStackedApSiblingSweepTests(unittest.TestCase):
     """Every other full-stack / full-ramp AP pin, adjudicated.
 
-    ``bonus_ap_stacked`` has exactly two occupants in the registry. The sweep
-    result is recorded here so a later patch cannot silently re-open it.
+    ``bonus_ap_stacked`` had exactly two occupants in the registry (RM-808 (b)
+    later added the three Dawncore rows, a deterministic value, not a ramp).
+    The sweep result is recorded here so a later patch cannot silently re-open
+    it.
     """
 
     def test_dark_seal_carries_no_stacked_ap_pin(self) -> None:
@@ -113,10 +115,14 @@ class MejaisStackedApSiblingSweepTests(unittest.TestCase):
         self.assertAlmostEqual(eff.bonus_ap_stacked, 175.0, places=1)
 
     def test_stacked_ap_field_has_no_other_occupants(self) -> None:
+        # RM-808 (b) added the three Dawncore rows: First Light's AP half is a
+        # deterministic own-regen step value (15 / 30 / 15), not a stack ramp,
+        # so the RM-94 expected-value reasoning does not apply to them; pins in
+        # test_dawncore_first_light_ap_rm808b.py.
         occupied = sorted(
             iid for iid, e in ITEM_EFFECTS.items() if e.bonus_ap_stacked > 0.0
         )
-        self.assertEqual(occupied, ["3041", "447104"])
+        self.assertEqual(occupied, ["226621", "3041", "326621", "447104", "6621"])
 
 
 class MejaisMageRankDemotionTests(unittest.TestCase):
