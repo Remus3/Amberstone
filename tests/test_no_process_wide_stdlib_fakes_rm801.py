@@ -33,8 +33,10 @@ alias variable (`sp = mod.subprocess`, also via `importlib.import_module`),
 the module's own dict (`setitem(subprocess.__dict__, ...)`, `vars(...)`,
 `patch.dict`), `patch.multiple('subprocess', ...)` on a string target, a
 keyword-only `patch.object(target=..., attribute=...)`, and `delattr` /
-`del`. The attribute set itself (`os.name`, `shutil.which`, class methods)
-is NOT widened here; that census is its own row.
+`del` (siblings swept: `delitem`, `setdefault` / `update`, `import sys as
+_s`, `from sys import modules`). The attribute set itself (`os.name`,
+`shutil.which`, class methods) is NOT widened here, nor is the alias pass
+scope-aware; both are RM-877.
 """
 from __future__ import annotations
 
@@ -120,6 +122,34 @@ def repo_module_aliases() -> dict[str, str]:
             if name not in SHARED_ATTRS:
                 out[name] = term
     return out
+
+
+def _normalise_sys(tree: ast.AST) -> ast.AST:
+    """Rewrite `import sys as _s` names to `sys` and `from sys import modules
+    [as m]` names to `sys.modules`, so one predicate reads every spelling of
+    `sys.modules` (RM-815)."""
+    sys_names: set[str] = set()
+    mod_names: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            sys_names.update(a.asname for a in node.names
+                             if a.name == "sys" and a.asname)
+        elif isinstance(node, ast.ImportFrom) and node.module == "sys":
+            mod_names.update(a.asname or a.name for a in node.names
+                             if a.name == "modules")
+    if not (sys_names or mod_names):
+        return tree
+
+    class _Rename(ast.NodeTransformer):
+        def visit_Name(self, n: ast.Name) -> ast.AST:
+            if n.id in sys_names:
+                return ast.copy_location(ast.Name("sys", n.ctx), n)
+            if n.id in mod_names:
+                return ast.copy_location(
+                    ast.Attribute(ast.Name("sys", ast.Load()), "modules", n.ctx), n)
+            return n
+
+    return ast.fix_missing_locations(_Rename().visit(tree))
 
 
 def _is_sys_modules(expr: ast.AST) -> bool:
@@ -269,7 +299,7 @@ def scan_source(src: str,
     """
     if attr_aliases is None:
         attr_aliases = repo_module_aliases()
-    tree = ast.parse(src)
+    tree = _normalise_sys(ast.parse(src))
     aliases = _variable_aliases(tree, _aliases(tree), attr_aliases)
     loops = _loop_constants(tree)
     hits: list[tuple[int, str]] = []
@@ -331,9 +361,27 @@ def scan_source(src: str,
                                   second if fname == "setattr" else None)
                 elif first is not None and second is not None:
                     obj_attr(first, names_of(second), node.lineno, value)
-            elif fname == "setitem" and isinstance(f, ast.Attribute):
+            elif fname in ("setitem", "delitem") and isinstance(f, ast.Attribute):
+                value = (_arg(args, kw, 2, "value") if fname == "setitem"
+                         else None)
                 mapping_item(_arg(args, kw, 0, "dic"), _arg(args, kw, 1, "name"),
-                             node.lineno, _arg(args, kw, 2, "value"))
+                             node.lineno, value)
+            elif (fname in ("setdefault", "update")
+                  and isinstance(f, ast.Attribute)):
+                # `sys.modules.setdefault('subprocess', m)`,
+                # `vars(subprocess).update(run=f)`; mapping_item ignores any
+                # other mapping.
+                if fname == "setdefault" and args:
+                    mapping_item(f.value, args[0], node.lineno,
+                                 args[1] if len(args) > 1 else None)
+                elif fname == "update":
+                    pairs = [(ast.Constant(k), v) for k, v in kw.items()]
+                    if args and isinstance(args[0], ast.Dict):
+                        pairs += [(k, v) for k, v in zip(args[0].keys,
+                                                         args[0].values)
+                                  if k is not None]
+                    for key, value in pairs:
+                        mapping_item(f.value, key, node.lineno, value)
             elif _is_patch_func(f):
                 dotted = _str(_arg(args, kw, 0, "target"))
                 if dotted is not None:
@@ -548,6 +596,12 @@ _FLAGGED_RM815 = {
         "monkeypatch.setattr(sys.modules.get('socket'), 'socket', f)",
         "mock.patch.dict(sys.modules, {'socket': fake_mod})",
         "mock.patch.dict('sys.modules', subprocess=fake_mod)",
+        "import sys as _s\n_s.modules['subprocess'] = fake_mod",
+        "from sys import modules\nmodules['socket'] = fake_mod",
+        "from sys import modules as mm\nmonkeypatch.setattr(mm['subprocess'], 'run', f)",
+        "sys.modules.setdefault('subprocess', fake_mod)",
+        "sys.modules.update({'urllib.request': fake_mod})",
+        "monkeypatch.delitem(sys.modules, 'subprocess')",
     ],
     "plain alias variable": [
         "sp = mod.subprocess\nmonkeypatch.setattr(sp, 'run', f)",
@@ -563,6 +617,8 @@ _FLAGGED_RM815 = {
         "subprocess.__dict__['run'] = f",
         "mock.patch.dict(subprocess.__dict__, {'run': f})",
         "mock.patch.dict(vars(socket), socket=f)",
+        "monkeypatch.delitem(subprocess.__dict__, 'run')",
+        "vars(subprocess).update(run=f)",
     ],
     "patch.multiple on a string target": [
         "patch.multiple('subprocess', run=f)",
@@ -587,6 +643,11 @@ _CLEAN_RM815 = [
     "sys.modules['tools.x'] = fake_mod",
     "x = sys.modules['subprocess']",
     "u = __import__('urllib.request')\nu.urlopen = f",
+    "import sys as _s\n_s.modules['mypkg'] = fake_mod",
+    "sys.modules.update({'mypkg': fake_mod})",
+    "sys.modules.setdefault('mypkg', fake_mod)",
+    "cfg.update(run=f)",
+    "monkeypatch.delitem(os.environ, 'run')",
     "m = importlib.import_module('tools.x')\nm.run = f",
     "mock.patch.dict(sys.modules, {'mypkg': fake_mod})",
     "sp = mod.helpers\nmonkeypatch.setattr(sp, 'run', f)",
