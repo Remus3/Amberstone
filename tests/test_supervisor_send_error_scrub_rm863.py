@@ -110,6 +110,25 @@ def test_no_cause_logs_nothing(cap):
     assert h.responses == [(411, {"error": "chunked request bodies are not supported"})]
 
 
+class _Unprintable(Exception):
+    def __str__(self) -> str:
+        raise RuntimeError("STR-BOOM at " + SECRET_PATH)
+
+
+def test_an_unprintable_cause_still_sends_the_reply(cap):
+    """An exception whose own ``str()`` raises must not cost the reply: the
+    old lazy ``%s`` argument was rendered inside logging (which swallows a
+    formatting error), so the eager scrub must not raise either."""
+    from agents._supervisor_http import _UNPRINTABLE_CAUSE
+    h = _send_error(500, "minimap crop failed", _Unprintable())
+    assert h.responses == [(500, {"error": "minimap crop failed"})]
+    (rec,) = cap.records
+    text = rec.getMessage()
+    assert _UNPRINTABLE_CAUSE in text
+    assert "minimap crop failed" in text
+    assert "STR-BOOM" not in text and "Example Repo" not in text
+
+
 def test_a_backslash_cannot_forge_a_scrubbed_escape(cap):
     """scrub_log escapes the backslash too (injective), so a client that
     types the literal characters of an escape cannot produce a line equal to
