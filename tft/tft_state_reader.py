@@ -331,6 +331,7 @@ class TftStateReader:
     def _parse(self,raw,gd=None):
         ap=raw.get("activePlayer",{});gd=raw.get("gameData",{});all_p=raw.get("allPlayers",[])
         gt=float(gd.get("gameTime",0));lv=int(ap.get("level",self._last_level));gold=0
+        gold_known=False  # S136 T9: the 0 above is a default until OCR reads gold
         mn=ap.get("summonerName") or ap.get("riotIdGameName") or self._my_name or ""
         if mn: self._my_name=mn
         try:  # LT-01: the round table and schedule follow the resolved set
@@ -403,12 +404,14 @@ class TftStateReader:
             lv = ocr["level"]
         if ocr.get("gold") is not None and 0 <= ocr["gold"] <= 999:
             gold = ocr["gold"]
+            gold_known = True
         # OCR HP stored in cache but merged at coach layer (vision HP preferred over OCR)
         # Store raw OCR hp in state for fallback
         ocr_hp = ocr.get("hp")
         # -----------------------------------------------------------------
         rf = sched.fields(stage, rnd)  # RM-855: the resolved set's schedule
         out = {"game_mode":gd.get("gameMode","TFT"),"game_time_s":gt,"level":lv,"gold":gold,
+            "gold_known":gold_known,
             "health":0 if me.get("isDead") else (
                 int(float(me.get("health") or me.get("tftHP") or 0))
                 if (me.get("health") or me.get("tftHP")) and 0 < float(me.get("health") or me.get("tftHP") or 0) <= 100
