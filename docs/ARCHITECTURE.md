@@ -283,6 +283,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 |---|---|
 | `tests/test_rm301_tft_force_scan_lock.py` | regression - RM-301 TFT force_scan RMW serialized against loop-thread writers |
 | `tests/test_rm303_tft_unit_list_sanitizer.py` | regression - RM-303 one sanitizer for TFT board/bench/shop + numeric hp clamp |
+| `tft/tft_scouting.py` | TFT opponent scouting digest (LCU identities + Riot TFT API / LCU history) |
 | `tft/tft_standalone.py` | standalone Unreal TFT client live source (no :2999) |
 
 ### Tests

@@ -1,0 +1,688 @@
+{
+ "gameId": 1000000001,
+ "gameLength": 2097,
+ "isRanked": false,
+ "localPlayer": {
+  "augments": [],
+  "boardPieces": [
+   {
+    "championId": "DA_Draven18",
+    "items": [
+     {
+      "id": 0,
+      "name": "Thief's Gloves",
+      "nameId": "DA_ThiefsGloves"
+     },
+     {
+      "id": 0,
+      "name": "Sterak's Gage",
+      "nameId": "DA_SteraksGage"
+     },
+     {
+      "id": 0,
+      "name": "Kraken's Fury",
+      "nameId": "DA_KrakensFury"
+     }
+    ],
+    "level": 2,
+    "name": "Draven",
+    "price": 5,
+    "traits": [
+     {
+      "id": "DA_DravenUniqueTrait18",
+      "name": "Bounty Seeker"
+     }
+    ]
+   },
+   {
+    "championId": "DA_Taric18",
+    "items": [],
+    "level": 2,
+    "name": "Taric",
+    "price": 5,
+    "traits": [
+     {
+      "id": "DA_Emerald18",
+      "name": "Emerald Aspect"
+     },
+     {
+      "id": "DA_18_Vanguard",
+      "name": "Vanguard"
+     }
+    ]
+   }
+  ],
+  "ffaStanding": 1,
+  "health": 100,
+  "iconId": 1,
+  "isInteractable": true,
+  "isLocalPlayer": true,
+  "partnerGroupId": 0,
+  "puuid": "00000000-0000-4000-8000-000000000001",
+  "rank": 1,
+  "riotIdGameName": "TestPlayer1",
+  "riotIdTagLine": "TST1",
+  "setCoreName": "TFTSet18",
+  "summonerId": 900001,
+  "summonerName": "TestPlayer1"
+ },
+ "players": [
+  {
+   "augments": [],
+   "boardPieces": [
+    {
+     "championId": "DA_Draven18",
+     "items": [
+      {
+       "id": 0,
+       "name": "Thief's Gloves",
+       "nameId": "DA_ThiefsGloves"
+      },
+      {
+       "id": 0,
+       "name": "Sterak's Gage",
+       "nameId": "DA_SteraksGage"
+      },
+      {
+       "id": 0,
+       "name": "Kraken's Fury",
+       "nameId": "DA_KrakensFury"
+      }
+     ],
+     "level": 2,
+     "name": "Draven",
+     "price": 5,
+     "traits": [
+      {
+       "id": "DA_DravenUniqueTrait18",
+       "name": "Bounty Seeker"
+      }
+     ]
+    },
+    {
+     "championId": "DA_Taric18",
+     "items": [],
+     "level": 2,
+     "name": "Taric",
+     "price": 5,
+     "traits": [
+      {
+       "id": "DA_Emerald18",
+       "name": "Emerald Aspect"
+      },
+      {
+       "id": "DA_18_Vanguard",
+       "name": "Vanguard"
+      }
+     ]
+    }
+   ],
+   "ffaStanding": 1,
+   "health": 100,
+   "iconId": 1,
+   "isInteractable": true,
+   "isLocalPlayer": true,
+   "partnerGroupId": 0,
+   "puuid": "00000000-0000-4000-8000-000000000001",
+   "rank": 1,
+   "riotIdGameName": "TestPlayer1",
+   "riotIdTagLine": "TST1",
+   "setCoreName": "TFTSet18",
+   "summonerId": 900001,
+   "summonerName": "TestPlayer1"
+  },
+  {
+   "augments": [],
+   "boardPieces": [
+    {
+     "championId": "DA_18_Tristana",
+     "items": [
+      {
+       "id": 0,
+       "name": "Last Whisper",
+       "nameId": "DA_LastWhisper"
+      },
+      {
+       "id": 0,
+       "name": "Needlessly Large Rod",
+       "nameId": "DA_Component_NeedlesslyLargeRod"
+      },
+      {
+       "id": 0,
+       "name": "Dragon's Claw",
+       "nameId": "DA_DragonsClaw"
+      }
+     ],
+     "level": 2,
+     "name": "Tristana",
+     "price": 3,
+     "traits": [
+      {
+       "id": "DA_18_Fae",
+       "name": "Fae"
+      },
+      {
+       "id": "DA_18_Sprykin",
+       "name": "Sprykin"
+      },
+      {
+       "id": "DA_18_Hunter",
+       "name": "Hunter"
+      }
+     ]
+    },
+    {
+     "championId": "DA_Vi18",
+     "items": [
+      {
+       "id": 0,
+       "name": "Tear Of The Goddess",
+       "nameId": "DA_Component_TearOfTheGoddess"
+      },
+      {
+       "id": 0,
+       "name": "Giant Slayer",
+       "nameId": "DA_GiantSlayer"
+      },
+      {
+       "id": 0,
+       "name": "Void Staff",
+       "nameId": "DA_VoidStaff"
+      }
+     ],
+     "level": 2,
+     "name": "Vi",
+     "price": 3,
+     "traits": [
+      {
+       "id": "DA_Primal18",
+       "name": "Primal"
+      },
+      {
+       "id": "DA_Juggernaut18",
+       "name": "Juggernaut"
+      }
+     ]
+    }
+   ],
+   "ffaStanding": 2,
+   "health": 247,
+   "iconId": 1,
+   "isInteractable": false,
+   "isLocalPlayer": false,
+   "partnerGroupId": 0,
+   "puuid": "00000000-0000-0000-0000-000000000000",
+   "rank": 2,
+   "riotIdGameName": "TestPlayer2",
+   "riotIdTagLine": "TST2",
+   "setCoreName": "TFTSet18",
+   "summonerId": 0,
+   "summonerName": "TestPlayer2"
+  },
+  {
+   "augments": [],
+   "boardPieces": [
+    {
+     "championId": "DA_18_Xayah",
+     "items": [
+      {
+       "id": 0,
+       "name": "Blossom Emblem",
+       "nameId": "DA_18_EmblemBlossom"
+      },
+      {
+       "id": 0,
+       "name": "Kraken's Fury",
+       "nameId": "DA_KrakensFury"
+      },
+      {
+       "id": 0,
+       "name": "Deathblade",
+       "nameId": "DA_Deathblade"
+      }
+     ],
+     "level": 3,
+     "name": "Xayah",
+     "price": 1,
+     "traits": [
+      {
+       "id": "DA_18_Elderwood",
+       "name": "Elderwood"
+      },
+      {
+       "id": "DA_18_Fae",
+       "name": "Fae"
+      },
+      {
+       "id": "DA_18_Rapidfire",
+       "name": "Rapidfire"
+      }
+     ]
+    },
+    {
+     "championId": "DA_18_Tristana",
+     "items": [],
+     "level": 2,
+     "name": "Tristana",
+     "price": 3,
+     "traits": [
+      {
+       "id": "DA_18_Fae",
+       "name": "Fae"
+      },
+      {
+       "id": "DA_18_Sprykin",
+       "name": "Sprykin"
+      },
+      {
+       "id": "DA_18_Hunter",
+       "name": "Hunter"
+      }
+     ]
+    }
+   ],
+   "ffaStanding": 3,
+   "health": 247,
+   "iconId": 1,
+   "isInteractable": false,
+   "isLocalPlayer": false,
+   "partnerGroupId": 0,
+   "puuid": "00000000-0000-0000-0000-000000000000",
+   "rank": 3,
+   "riotIdGameName": "TestPlayer3",
+   "riotIdTagLine": "TST3",
+   "setCoreName": "TFTSet18",
+   "summonerId": 0,
+   "summonerName": "TestPlayer3"
+  },
+  {
+   "augments": [],
+   "boardPieces": [
+    {
+     "championId": "DA_18_Diana",
+     "items": [
+      {
+       "id": 0,
+       "name": "Blossom Emblem",
+       "nameId": "DA_18_EmblemBlossom"
+      },
+      {
+       "id": 0,
+       "name": "Brawler Emblem",
+       "nameId": "DA_18_EmblemBrawler"
+      },
+      {
+       "id": 0,
+       "name": "Ionic Spark",
+       "nameId": "DA_IonicSpark"
+      }
+     ],
+     "level": 2,
+     "name": "Diana",
+     "price": 3,
+     "traits": [
+      {
+       "id": "DA_18_Lunar",
+       "name": "Lunar"
+      },
+      {
+       "id": "DA_18_Slayer",
+       "name": "Ravager"
+      },
+      {
+       "id": "DA_18_Vanguard",
+       "name": "Vanguard"
+      }
+     ]
+    },
+    {
+     "championId": "DA_18_Kayle",
+     "items": [
+      {
+       "id": 0,
+       "name": "Recurve Bow",
+       "nameId": "DA_Component_RecurveBow"
+      },
+      {
+       "id": 0,
+       "name": "Quicksilver",
+       "nameId": "DA_Quicksilver"
+      }
+     ],
+     "level": 2,
+     "name": "Kayle",
+     "price": 2,
+     "traits": [
+      {
+       "id": "DA_18_Solar",
+       "name": "Solar"
+      },
+      {
+       "id": "DA_18_Rapidfire",
+       "name": "Rapidfire"
+      }
+     ]
+    }
+   ],
+   "ffaStanding": 4,
+   "health": 238,
+   "iconId": 1,
+   "isInteractable": false,
+   "isLocalPlayer": false,
+   "partnerGroupId": 0,
+   "puuid": "00000000-0000-0000-0000-000000000000",
+   "rank": 4,
+   "riotIdGameName": "TestPlayer4",
+   "riotIdTagLine": "TST4",
+   "setCoreName": "TFTSet18",
+   "summonerId": 0,
+   "summonerName": "TestPlayer4"
+  },
+  {
+   "augments": [],
+   "boardPieces": [
+    {
+     "championId": "DA_18_RekSai",
+     "items": [
+      {
+       "id": 0,
+       "name": "Sprykin Emblem",
+       "nameId": "DA_18_EmblemSprykin"
+      },
+      {
+       "id": 0,
+       "name": "Spellweaver Emblem",
+       "nameId": "DA_18_EmblemSpellweaver"
+      },
+      {
+       "id": 0,
+       "name": "Protector's Vow",
+       "nameId": "DA_ProtectorsVow"
+      }
+     ],
+     "level": 3,
+     "name": "Rek'Sai",
+     "price": 1,
+     "traits": [
+      {
+       "id": "DA_18_Blackthorn",
+       "name": "Blackthorn"
+      },
+      {
+       "id": "DA_18_Brawler",
+       "name": "Brawler"
+      }
+     ]
+    },
+    {
+     "championId": "DA_18_Rammus",
+     "items": [],
+     "level": 2,
+     "name": "Rammus",
+     "price": 3,
+     "traits": [
+      {
+       "id": "DA_18_Sprykin",
+       "name": "Sprykin"
+      },
+      {
+       "id": "DA_18_Defender",
+       "name": "Defender"
+      }
+     ]
+    }
+   ],
+   "ffaStanding": 5,
+   "health": 239,
+   "iconId": 1,
+   "isInteractable": false,
+   "isLocalPlayer": false,
+   "partnerGroupId": 0,
+   "puuid": "00000000-0000-0000-0000-000000000000",
+   "rank": 5,
+   "riotIdGameName": "TestPlayer5",
+   "riotIdTagLine": "TST5",
+   "setCoreName": "TFTSet18",
+   "summonerId": 0,
+   "summonerName": "TestPlayer5"
+  },
+  {
+   "augments": [],
+   "boardPieces": [
+    {
+     "championId": "DA_Murkwolf18",
+     "items": [
+      {
+       "id": 0,
+       "name": "Edge of Night",
+       "nameId": "DA_EdgeOfNight"
+      }
+     ],
+     "level": 2,
+     "name": "Murkwolf",
+     "price": 2,
+     "traits": [
+      {
+       "id": "DA_Riftbeast18",
+       "name": "Riftbeast"
+      },
+      {
+       "id": "DA_18_Slayer",
+       "name": "Ravager"
+      }
+     ]
+    },
+    {
+     "championId": "DA_Cinderling18",
+     "items": [
+      {
+       "id": 0,
+       "name": "Inferno Emblem",
+       "nameId": "DA_18_EmblemInferno"
+      },
+      {
+       "id": 0,
+       "name": "Hand Of Justice",
+       "nameId": "DA_HandOfJustice"
+      },
+      {
+       "id": 0,
+       "name": "Infinity Edge",
+       "nameId": "DA_InfinityEdge"
+      }
+     ],
+     "level": 2,
+     "name": "Cinderling",
+     "price": 1,
+     "traits": [
+      {
+       "id": "DA_Riftbeast18",
+       "name": "Riftbeast"
+      },
+      {
+       "id": "DA_18_Hunter",
+       "name": "Hunter"
+      }
+     ]
+    }
+   ],
+   "ffaStanding": 6,
+   "health": 253,
+   "iconId": 1,
+   "isInteractable": false,
+   "isLocalPlayer": false,
+   "partnerGroupId": 0,
+   "puuid": "00000000-0000-0000-0000-000000000000",
+   "rank": 6,
+   "riotIdGameName": "TestPlayer6",
+   "riotIdTagLine": "TST6",
+   "setCoreName": "TFTSet18",
+   "summonerId": 0,
+   "summonerName": "TestPlayer6"
+  },
+  {
+   "augments": [],
+   "boardPieces": [
+    {
+     "championId": "DA_18_Ornn",
+     "items": [
+      {
+       "id": 0,
+       "name": "Blossom Emblem",
+       "nameId": "DA_18_EmblemBlossom"
+      }
+     ],
+     "level": 2,
+     "name": "Ornn",
+     "price": 1,
+     "traits": [
+      {
+       "id": "DA_18_Elderwood",
+       "name": "Elderwood"
+      },
+      {
+       "id": "DA_18_Defender",
+       "name": "Defender"
+      }
+     ]
+    },
+    {
+     "championId": "DA_18_Yorick",
+     "items": [
+      {
+       "id": 0,
+       "name": "Elderwood Emblem",
+       "nameId": "DA_18_EmblemElderwood"
+      },
+      {
+       "id": 0,
+       "name": "B.F. Sword",
+       "nameId": "DA_Component_BFSword"
+      },
+      {
+       "id": 0,
+       "name": "Gargoyle Stoneplate",
+       "nameId": "DA_GargoyleStoneplate"
+      }
+     ],
+     "level": 2,
+     "name": "Yorick",
+     "price": 1,
+     "traits": [
+      {
+       "id": "DA_18_Blossom",
+       "name": "Blossom"
+      },
+      {
+       "id": "DA_Juggernaut18",
+       "name": "Juggernaut"
+      },
+      {
+       "id": "DA_18_Summoner",
+       "name": "Summoner"
+      }
+     ]
+    }
+   ],
+   "ffaStanding": 7,
+   "health": 0,
+   "iconId": 1,
+   "isInteractable": false,
+   "isLocalPlayer": false,
+   "partnerGroupId": 0,
+   "puuid": "00000000-0000-0000-0000-000000000000",
+   "rank": 7,
+   "riotIdGameName": "TestPlayer7",
+   "riotIdTagLine": "TST7",
+   "setCoreName": "TFTSet18",
+   "summonerId": 0,
+   "summonerName": "TestPlayer7"
+  },
+  {
+   "augments": [],
+   "boardPieces": [
+    {
+     "championId": "DA_Gromp18_AP",
+     "items": [
+      {
+       "id": 0,
+       "name": "Needlessly Large Rod",
+       "nameId": "DA_Component_NeedlesslyLargeRod"
+      },
+      {
+       "id": 0,
+       "name": "Quicksilver",
+       "nameId": "DA_Quicksilver"
+      },
+      {
+       "id": 0,
+       "name": "Defender Emblem",
+       "nameId": "DA_18_EmblemDefender"
+      }
+     ],
+     "level": 2,
+     "name": "Gromp",
+     "price": 2,
+     "traits": [
+      {
+       "id": "DA_Riftbeast18",
+       "name": "Riftbeast"
+      },
+      {
+       "id": "DA_18_Adaptor",
+       "name": "Adaptor"
+      }
+     ]
+    },
+    {
+     "championId": "DA_18_Sentry",
+     "items": [
+      {
+       "id": 0,
+       "name": "Executioner Emblem",
+       "nameId": "DA_18_EmblemExecutioner"
+      },
+      {
+       "id": 0,
+       "name": "Striker's Flail",
+       "nameId": "DA_StrikersFlail"
+      },
+      {
+       "id": 0,
+       "name": "Recurve Bow",
+       "nameId": "DA_Component_RecurveBow"
+      }
+     ],
+     "level": 2,
+     "name": "Pebbles",
+     "price": 1,
+     "traits": [
+      {
+       "id": "DA_Riftbeast18",
+       "name": "Riftbeast"
+      },
+      {
+       "id": "DA_18_Invoker",
+       "name": "Invoker"
+      }
+     ]
+    }
+   ],
+   "ffaStanding": 8,
+   "health": 252,
+   "iconId": 1,
+   "isInteractable": false,
+   "isLocalPlayer": false,
+   "partnerGroupId": 0,
+   "puuid": "00000000-0000-0000-0000-000000000000",
+   "rank": 8,
+   "riotIdGameName": "TestPlayer8",
+   "riotIdTagLine": "TST8",
+   "setCoreName": "TFTSet18",
+   "summonerId": 0,
+   "summonerName": "TestPlayer8"
+  }
+ ],
+ "queueId": 1090,
+ "queueType": "NORMAL_TFT"
+}

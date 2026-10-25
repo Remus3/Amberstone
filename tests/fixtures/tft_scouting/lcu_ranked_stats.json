@@ -1,0 +1,16 @@
+{
+ "queueMap": {
+  "RANKED_TFT": {
+   "division": "NA",
+   "isProvisional": true,
+   "leaguePoints": 0,
+   "losses": 0,
+   "provisionalGamesRemaining": 5,
+   "queueType": "RANKED_TFT",
+   "ratedRating": 0,
+   "ratedTier": "NONE",
+   "tier": "",
+   "wins": 0
+  }
+ }
+}

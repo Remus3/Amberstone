@@ -1,6 +1,7 @@
 # Secrets - NEVER commit
 API-Key-Claude.txt
 API-Key-Riot.txt
+API-Key-Riot-TFT.txt
 *.key
 *.pem
 .env
@@ -76,6 +77,10 @@ data/aram_coaching_data.json
 data/arena_coaching_data.json
 data/brawl_coaching_data.json
 data/tft_coaching_data.json
+# s134 TFT opponent scouting artifact + digest cache (other players' riot ids; local only)
+data/tft_scouting.json
+data/tft_scouting_cache.json
+data/tft_scouting*.tmp
 data/cold_advisories.json
 data/insight_cooldowns.json
 data/ratings/last_*.json
