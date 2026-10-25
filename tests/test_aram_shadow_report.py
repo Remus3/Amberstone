@@ -1,7 +1,8 @@
 """ARAM shadow report tests - tools.aram_shadow_report. Pins the per-field
 deterministic-vs-live_haiku agreement math, the dead-state exclusion (the
 cycle-53 false-0% lesson), the choices/field-presence coverage, and the JSON
-shape over synthetic shadow logs.
+shape over synthetic shadow logs. The RM-852 enemy-less exclusion is pinned in
+tests/test_aram_shadow_enemy_less_rm852.py.
 """
 from __future__ import annotations
 
@@ -12,6 +13,15 @@ from tools import aram_shadow_report as rep
 
 def _write(path, records):
     path.write_text("\n".join(json.dumps(r) for r in records) + "\n", encoding="utf-8")
+
+
+def _game(det_action, live_action):
+    """One shadow row from a real ARAM game tick. build_report only scores rows
+    that list an enemy team (RM-852); the summarize_* helpers below take an
+    already-filtered list and need no enemy_comp."""
+    return {"enemy_comp": ["Ashe", "Annie", "Leona", "Malphite", "Sett"],
+            "deterministic": {"action": det_action},
+            "live_haiku": {"action": live_action}}
 
 
 # ---- 1. load_jsonl fail-soft (copied from the HZ test style) ----
@@ -206,15 +216,14 @@ def test_summarize_field_presence():
 
 def test_build_report_shape(tmp_path):
     p = tmp_path / "c.jsonl"
-    _write(p, [
-        {"deterministic": {"action": "FALL BACK"},
-         "live_haiku": {"action": "back off"}},
-    ])
+    _write(p, [_game("FALL BACK", "back off")])
     r = rep.build_report(p)
     assert r["schema"] == "aram_shadow_report/v1"
-    for key in ("total", "dead_state", "non_dead", "action", "choices",
-                "field_presence", "flip_ready_hint"):
+    for key in ("total", "enemy_less_excluded", "gated", "dead_state",
+                "non_dead", "action", "choices", "field_presence",
+                "flip_ready_hint"):
         assert key in r
+    assert (r["total"], r["enemy_less_excluded"], r["gated"]) == (1, 0, 1)
 
 
 # ---- 10. build_report empty ----
@@ -232,10 +241,8 @@ def test_build_report_empty(tmp_path):
 def test_flip_hint_gate_met_when_all_agree(tmp_path):
     p = tmp_path / "c.jsonl"
     _write(p, [
-        {"deterministic": {"action": "FALL BACK"},
-         "live_haiku": {"action": "back off"}},
-        {"deterministic": {"action": "TRADE"},
-         "live_haiku": {"action": "poke him"}},
+        _game("FALL BACK", "back off"),
+        _game("TRADE", "poke him"),
     ])
     r = rep.build_report(p)
     assert "gate MET" in r["flip_ready_hint"]
@@ -244,14 +251,10 @@ def test_flip_hint_gate_met_when_all_agree(tmp_path):
 def test_flip_hint_below_gate_when_mostly_disagree(tmp_path):
     p = tmp_path / "c.jsonl"
     _write(p, [
-        {"deterministic": {"action": "ALL IN"},
-         "live_haiku": {"action": "back off"}},
-        {"deterministic": {"action": "ALL IN"},
-         "live_haiku": {"action": "fall back"}},
-        {"deterministic": {"action": "ALL IN"},
-         "live_haiku": {"action": "retreat"}},
-        {"deterministic": {"action": "TRADE"},
-         "live_haiku": {"action": "poke"}},
+        _game("ALL IN", "back off"),
+        _game("ALL IN", "fall back"),
+        _game("ALL IN", "retreat"),
+        _game("TRADE", "poke"),
     ])
     r = rep.build_report(p)
     assert "below 70% gate" in r["flip_ready_hint"]
@@ -262,10 +265,7 @@ def test_flip_hint_below_gate_when_mostly_disagree(tmp_path):
 
 def test_main_human(tmp_path, capsys):
     p = tmp_path / "c.jsonl"
-    _write(p, [
-        {"deterministic": {"action": "FALL BACK"},
-         "live_haiku": {"action": "back off"}},
-    ])
+    _write(p, [_game("FALL BACK", "back off")])
     rc = rep.main(["--path", str(p)])
     assert rc == 0
     out = capsys.readouterr().out
@@ -275,10 +275,7 @@ def test_main_human(tmp_path, capsys):
 
 def test_main_json(tmp_path, capsys):
     p = tmp_path / "c.jsonl"
-    _write(p, [
-        {"deterministic": {"action": "FALL BACK"},
-         "live_haiku": {"action": "back off"}},
-    ])
+    _write(p, [_game("FALL BACK", "back off")])
     rc = rep.main(["--path", str(p), "--json"])
     assert rc == 0
     out = json.loads(capsys.readouterr().out)
