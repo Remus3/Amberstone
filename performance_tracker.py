@@ -366,6 +366,7 @@ def save_tft_rating(script_dir,tft_live,tft_coaching=None,report=None):
     # is a gitignored data/ artifact, so a clean checkout hits this; the caller
     # is app/_game_lifecycle.py:168 at TFT game end).
     _sel = ""
+    _target = None
     try:
         import json as _j
         _sd = Path(script_dir)
@@ -382,12 +383,15 @@ def save_tft_rating(script_dir,tft_live,tft_coaching=None,report=None):
                 _meta = _j.loads(_meta_f.read_text(encoding="utf-8-sig"))
                 _cd = _meta.get("comps", {}).get(_sel, {})
                 if _cd:
-                    _lv8 = _cd.get("lv8") or _cd.get("lv7") or _cd.get("core_units", [])
-                    _core_u = _cd.get("core_units", [])
-                    _traits_from_meta = [_sel] + [f"{e} Emblem" for e in (_cd.get("emblem_value") or [])[:2]]
-                    units = _lv8 if _lv8 else units
-                    traits = _traits_from_meta if _traits_from_meta else traits
-                    augments = augments or _cd.get("augments_best", [])[:3]
+                    # RM-889: the comp's TARGET board, under its own key.
+                    # It used to overwrite units / traits / augments (and
+                    # back-fill an empty reading), so the rating file and the
+                    # match_history.db row recorded the guide, not the game.
+                    _target = {
+                        "units": list(_cd.get("lv8") or _cd.get("lv7") or _cd.get("core_units") or []),
+                        "traits": [_sel] + [f"{e} Emblem" for e in (_cd.get("emblem_value") or [])[:2]],
+                        "augments": list(_cd.get("augments_best") or [])[:3],
+                    }
     except Exception as _e:  # QUAL-002  # noqa: BLE001
         import logging as _lg; _lg.getLogger(__name__).debug("TFT data enrichment: %s", _e)
     comp=_sel if _sel else _identify_comp(traits,units);core=_core_units(units)
@@ -410,6 +414,8 @@ def save_tft_rating(script_dir,tft_live,tft_coaching=None,report=None):
         "tft_placement":placement,"tft_stage":sn,"tft_level":lv,
         "tft_comp":comp,"tft_traits":traits,"tft_units":units,"tft_augments":augments,"tft_core_units":core,
         "tft_unit_positions":_unit_positions,"tft_unit_placement":_raw_placement}
+    if _target:
+        data["tft_comp_target"] = _target
     _written = False
     try:
         _atomic_write_json(_mode_file(script_dir, "TFT"), data)
