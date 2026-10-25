@@ -38,6 +38,10 @@ DATA SOURCES, IN ORDER (``Scouter.sources``):
     for ``RIOT_OFF_TTL_S``.
   lcu - ``/lol-ranked/v1/ranked-stats/{puuid}`` (queueMap.RANKED_TFT) and the
     LCU TFT match history. Client-side data, no Web API key, GET only.
+  The Riot path needs a riot id. Game-start session entries are expected to
+  carry only an LCU puuid (summonerName is "" on current clients), so those
+  opponents are served by the LCU path; the Riot path serves riot-id
+  identities (the EOG fallback, or a session that does carry names).
 
 ADR-006 ENVELOPE. The Web API key must not drive real-time in-game advisory.
 This is a STATIC history digest captured ONCE per game at game start (the TFT
@@ -550,9 +554,17 @@ class DigestCache:
             row = self._load().get(self._hkey(ident))
             if not isinstance(row, dict) or not isinstance(row.get("digest"), dict):
                 return None
-            if self._clock() - float(row.get("at") or 0) > self._ttl:
+            if self._clock() - self._at(row) > self._ttl:
                 return None
             return json.loads(json.dumps(row["digest"]))
+
+    @staticmethod
+    def _at(row: Any) -> float:
+        """The row's write time; a damaged value reads as expired, never raises."""
+        try:
+            return float(row.get("at") or 0) if isinstance(row, dict) else 0.0
+        except (TypeError, ValueError):
+            return 0.0
 
     def put(self, ident: Identity, digest: dict) -> None:
         with self._lock:
@@ -560,9 +572,9 @@ class DigestCache:
             now = self._clock()
             data[self._hkey(ident)] = {"at": now, "digest": digest}
             live = {k: v for k, v in data.items() if isinstance(v, dict)
-                    and now - float(v.get("at") or 0) <= self._ttl}
+                    and now - self._at(v) <= self._ttl}
             if len(live) > CACHE_MAX_ENTRIES:
-                keep = sorted(live.items(), key=lambda kv: -float(kv[1].get("at") or 0))
+                keep = sorted(live.items(), key=lambda kv: -self._at(kv[1]))
                 live = dict(keep[:CACHE_MAX_ENTRIES])
             self._data = live
             try:
@@ -783,6 +795,10 @@ class Scouter:
             return None, "no_identity"
         if self._clock() < self._riot_off_until:
             return None, self._riot_state
+        if self._clock() >= deadline:
+            # Past the run deadline every call could still wait up to the
+            # limiter's 5 s acquire; the LCU path (no Web API budget) takes over.
+            return None, "rate_limited"
         R = self._riot_mod()
         try:
             with R.tft_key_scope(), R.track_outcomes() as sc:
@@ -803,8 +819,13 @@ class Scouter:
                     return None, self._classify(sc.outcomes)
                 rows = []
                 for mid in ids[: self.n]:
+                    if self._clock() >= deadline:
+                        break
+                    before = len(sc.outcomes)
                     m = self._retry(lambda mid=mid: R.get_tft_match(mid, region=self.regional),
                                     sc, deadline)
+                    if m is None and any(o in _RATE_LIMIT for o in sc.outcomes[before:]):
+                        break   # still limited after the retries: the rest would be too
                     row = match_row(m, puuid=puuid, riot_id=ident.riot_id)
                     if row:
                         rows.append(row)
@@ -888,16 +909,23 @@ class ScoutingWatcher:
         self._no_opp: set = set()
         self._self_puuid = ""
         self._self_sid: Any = None
+        self._self_gid = ""
         self._stop = threading.Event()
         self._thread: Optional[threading.Thread] = None
 
-    def _me(self) -> None:
-        if self._self_puuid:
+    def _me(self, gid: str) -> None:
+        """Our own puuid / summonerId, re-read ONCE PER GAME: an account switch
+        or client re-login without an RC restart must not leave a stale self,
+        which would scout the local player as an opponent (verifier s134)."""
+        if self._self_puuid and self._self_gid == gid:
             return
         cur = self._get("/lol-summoner/v1/current-summoner")
-        if isinstance(cur, dict):
+        if isinstance(cur, dict) and real_puuid(cur.get("puuid")):
             self._self_puuid = real_puuid(cur.get("puuid"))
             self._self_sid = cur.get("summonerId")
+            self._self_gid = gid
+        else:
+            self._self_puuid, self._self_sid, self._self_gid = "", None, ""
 
     def tick(self) -> Optional[str]:
         """One poll. Returns what it did (for tests / logs)."""
@@ -912,7 +940,7 @@ class ScoutingWatcher:
             gid = session_game_id(session)
             if not gid or gid in self._done:
                 return "idle"
-            self._me()
+            self._me(gid)
             if not self._self_puuid:
                 # Without our own puuid the local player would be scouted as an
                 # opponent (and push a real one past the 7-cap). Retry next tick.
@@ -937,7 +965,7 @@ class ScoutingWatcher:
             gid = str(eog.get("gameId") or "")
             if gid not in self._no_opp:
                 return "idle"
-            self._me()
+            self._me(gid)
             ids = identities_from_eog(eog, self._self_puuid)
             self._no_opp.discard(gid)
             self._done.add(gid)
