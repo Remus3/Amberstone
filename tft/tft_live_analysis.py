@@ -496,14 +496,14 @@ class TftLiveAnalysis:
         return g
     @staticmethod
     def _reader_pace():
-        """The measured pace floor, computed from the reader's own round table
-        at runtime (never copied), so a re-measured or per-set table flows
-        in; None (no rate) when the table cannot be read."""
+        """The measured pace floor, computed at runtime from the reader's round
+        table for the resolved set (time_table(), never copied), so the Set 18
+        or a re-measured table flows in; None (no rate) when it is unreadable."""
         pace = None
         try:
             from core.tft_stage_gate import pace_floor_from_table
             from tft import tft_state_reader
-            pace = pace_floor_from_table(getattr(tft_state_reader, "_TIME_TO_ROUND", None))
+            pace = pace_floor_from_table(tft_state_reader.time_table())
         except Exception:  # noqa: BLE001
             pace = None
         if pace is None:
