@@ -90,9 +90,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.8763519557615679,
-          "magical": 0.07855574530373262,
-          "trued": 0.04509229893469952
+          "physical": 0.8759891196834817,
+          "magical": 0.07875865479723046,
+          "trued": 0.045252225519287835
         },
         "skill_order": [
           "Q",
@@ -207,9 +207,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.06830836797113952,
-          "magical": 0.7188847933495413,
-          "trued": 0.2128068386793193
+          "physical": 0.06852113782806853,
+          "magical": 0.7188040232594688,
+          "trued": 0.2126748389124627
         },
         "skill_order": [
           "W",
@@ -322,9 +322,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.0570979369583557,
-          "magical": 0.8668226090957896,
-          "trued": 0.07607945394585475
+          "physical": 0.056933805876300446,
+          "magical": 0.8665066117907092,
+          "trued": 0.07655958233299036
         },
         "skill_order": [
           "Q",
@@ -439,13 +439,13 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.8607797497817864,
-          "magical": 0.08263020075647366,
-          "trued": 0.05659004946173989
+          "physical": 0.8614791704899981,
+          "magical": 0.0810790970820334,
+          "trued": 0.057441732427968434
         },
         "skill_order": [
-          "Q",
           "E",
+          "Q",
           "Q",
           "W",
           "Q",
@@ -556,13 +556,13 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.14421343588510996,
-          "magical": 0.7833193125826223,
-          "trued": 0.07246725153226775
+          "physical": 0.14527109166058838,
+          "magical": 0.7851932895696572,
+          "trued": 0.06953561876975443
         },
         "skill_order": [
-          "W",
           "Q",
+          "W",
           "E",
           "Q",
           "Q",
@@ -673,9 +673,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.921776411583886,
-          "magical": 0.01783691959229898,
-          "trued": 0.06038666882381492
+          "physical": 0.9220731408001308,
+          "magical": 0.01832610652049415,
+          "trued": 0.05960075267937495
         },
         "skill_order": [
           "Q",
@@ -790,9 +790,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.08425941283794991,
-          "magical": 0.779620722065572,
-          "trued": 0.13611986509647814
+          "physical": 0.08585830609870936,
+          "magical": 0.7783193928986872,
+          "trued": 0.13582230100260345
         },
         "skill_order": [
           "W",
@@ -905,9 +905,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.0637924991237294,
-          "magical": 0.8819225376796355,
-          "trued": 0.05428496319663512
+          "physical": 0.06532641015399636,
+          "magical": 0.8800869835352594,
+          "trued": 0.05458660631074424
         },
         "skill_order": [
           "Q",
@@ -1022,9 +1022,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.03592501307043095,
-          "magical": 0.9125028008066324,
-          "trued": 0.051572186122936736
+          "physical": 0.03620428238600643,
+          "magical": 0.911652675566732,
+          "trued": 0.05214304204726156
         },
         "skill_order": [
           "Q",
@@ -1137,26 +1137,26 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.9396837209302326,
-          "magical": 0.04349767441860465,
-          "trued": 0.01681860465116279
+          "physical": 0.9390949950483736,
+          "magical": 0.04418374342957264,
+          "trued": 0.016721261522053783
         },
         "skill_order": [
+          "Q",
+          "Q",
+          "Q",
+          "E",
+          "Q",
+          "R",
+          "E",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "E",
+          "R",
+          "E",
           "W",
-          "Q",
-          "Q",
-          "Q",
-          "Q",
-          "R",
-          "E",
-          "Q",
-          "E",
-          "Q",
-          "E",
-          "R",
-          "E",
-          "E",
-          "E",
           "R",
           "W",
           "W"
@@ -1254,9 +1254,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.9006892366379123,
-          "magical": 0.0847457627118644,
-          "trued": 0.014565000650223245
+          "physical": 0.9011592698330304,
+          "magical": 0.08409031923176745,
+          "trued": 0.014750410935202006
         },
         "skill_order": [
           "W",
@@ -1369,9 +1369,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.01,
-          "magical": 0.9646816479400748,
-          "trued": 0.025318352059925095
+          "physical": 0.00966646989374262,
+          "magical": 0.9649867178276268,
+          "trued": 0.02534681227863046
         },
         "skill_order": [
           "E",
@@ -1381,17 +1381,17 @@
           "Q",
           "R",
           "Q",
-          "W",
+          "E",
           "Q",
-          "W",
-          "R",
-          "W",
-          "W",
-          "E",
           "E",
           "R",
           "E",
-          "E"
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
         ]
       }
     },
@@ -1486,9 +1486,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.05331826587220054,
-          "magical": 0.896787891240326,
-          "trued": 0.049893842887473464
+          "physical": 0.053763808611785625,
+          "magical": 0.8956872670063956,
+          "trued": 0.0505489243818188
         },
         "skill_order": [
           "Q",
@@ -1603,9 +1603,9 @@
           "aramAttackSpeed": 1.025
         },
         "damage_distribution": {
-          "physical": 0.027078875525713864,
-          "magical": 0.9546594849848742,
-          "trued": 0.018261639489411938
+          "physical": 0.027688030655947105,
+          "magical": 0.9536779622811632,
+          "trued": 0.018634007062889774
         },
         "skill_order": [
           "W",
@@ -1720,9 +1720,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.3030127940569542,
-          "magical": 0.6017333883615353,
-          "trued": 0.09525381758151052
+          "physical": 0.3037453812562983,
+          "magical": 0.6027040644944575,
+          "trued": 0.0935505542492442
         },
         "skill_order": [
           "Q",
@@ -1835,9 +1835,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.6868643150833152,
-          "magical": 0.09548798961263796,
-          "trued": 0.2176476953040467
+          "physical": 0.6890656918610902,
+          "magical": 0.09423717879797872,
+          "trued": 0.21669712934093108
         },
         "skill_order": [
           "Q",
@@ -1952,9 +1952,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.29961812364537105,
-          "magical": 0.6170915471152854,
-          "trued": 0.08329032923934358
+          "physical": 0.3012435233160622,
+          "magical": 0.6170984455958549,
+          "trued": 0.08165803108808291
         },
         "skill_order": [
           "Q",
@@ -2069,9 +2069,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.03960815911114881,
-          "magical": 0.9214621941393496,
-          "trued": 0.03892964674950171
+          "physical": 0.040003397316120265,
+          "magical": 0.9205028027857992,
+          "trued": 0.03949379989808051
         },
         "skill_order": [
           "W",
@@ -2186,9 +2186,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.184287812041116,
-          "magical": 0.7727606461086637,
-          "trued": 0.042951541850220265
+          "physical": 0.1843238587424634,
+          "magical": 0.773717238833518,
+          "trued": 0.0419589024240187
         },
         "skill_order": [
           "Q",
@@ -2303,9 +2303,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.812792699035344,
-          "magical": 0.0913020854180843,
-          "trued": 0.09590521554657166
+          "physical": 0.8110723031835883,
+          "magical": 0.0920550804929945,
+          "trued": 0.09687261632341725
         },
         "skill_order": [
           "W",
@@ -2418,9 +2418,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.953222611610544,
-          "magical": 0.028264513179948193,
-          "trued": 0.018512875209507847
+          "physical": 0.9525845164326614,
+          "magical": 0.028825790258059456,
+          "trued": 0.01858969330927916
         },
         "skill_order": [
           "Q",
@@ -2535,9 +2535,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.608988040107921,
-          "magical": 0.057705472556678614,
-          "trued": 0.33330648733540047
+          "physical": 0.6092265394412324,
+          "magical": 0.05818137710750819,
+          "trued": 0.33259208345125946
         },
         "skill_order": [
           "W",
@@ -2650,13 +2650,13 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.017587113740959896,
-          "magical": 0.9671268902038131,
-          "trued": 0.015285996055226824
+          "physical": 0.017844396859386154,
+          "magical": 0.96708233614645,
+          "trued": 0.015073266994163831
         },
         "skill_order": [
-          "Q",
           "E",
+          "Q",
           "W",
           "E",
           "E",
@@ -2767,9 +2767,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.20131482834185535,
-          "magical": 0.504991477964451,
-          "trued": 0.2936936936936937
+          "physical": 0.2033616730186651,
+          "magical": 0.5025896609010065,
+          "trued": 0.29404866608032837
         },
         "skill_order": [
           "E",
@@ -2884,9 +2884,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.6609150696556113,
-          "magical": 0.18534757089314757,
-          "trued": 0.15373735945124106
+          "physical": 0.6595911949685535,
+          "magical": 0.18707118353344768,
+          "trued": 0.15333762149799884
         },
         "skill_order": [
           "E",
@@ -3001,9 +3001,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.7724550898203593,
-          "magical": 0.0027705782464920903,
-          "trued": 0.22477433193314864
+          "physical": 0.7721101713294296,
+          "magical": 0.002602472348731295,
+          "trued": 0.22528735632183908
         },
         "skill_order": [
           "W",
@@ -3118,9 +3118,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.1238826815642458,
-          "magical": 0.804096834264432,
-          "trued": 0.07202048417132216
+          "physical": 0.08128508572295555,
+          "magical": 0.8513503262023973,
+          "trued": 0.06736458807464725
         },
         "skill_order": [
           "Q",
@@ -3233,9 +3233,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.980705424120023,
-          "magical": 0.0030294287362954415,
-          "trued": 0.016265147143681477
+          "physical": 0.9804935717452342,
+          "magical": 0.002955519432540269,
+          "trued": 0.016550908822225506
         },
         "skill_order": [
           "Q",
@@ -3350,9 +3350,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.4476197695573075,
-          "magical": 0.5391904184354154,
-          "trued": 0.013189812007277138
+          "physical": 0.44795965153599265,
+          "magical": 0.5390111569616384,
+          "trued": 0.013029191502368944
         },
         "skill_order": [
           "Q",
@@ -3467,9 +3467,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.1066505074988638,
-          "magical": 0.7756779275867293,
-          "trued": 0.1176715649144069
+          "physical": 0.1060398078242965,
+          "magical": 0.7748798901853123,
+          "trued": 0.1190803019903912
         },
         "skill_order": [
           "Q",
@@ -3584,9 +3584,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.06829315147440207,
-          "magical": 0.8452117952165978,
-          "trued": 0.08649505330900009
+          "physical": 0.06825039513386656,
+          "magical": 0.8438622539393649,
+          "trued": 0.08788735092676853
         },
         "skill_order": [
           "W",
@@ -3701,9 +3701,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.0281198003327787,
-          "magical": 0.9066139767054908,
-          "trued": 0.06526622296173044
+          "physical": 0.02786571142952349,
+          "magical": 0.9065728090636456,
+          "trued": 0.06556147950683106
         },
         "skill_order": [
           "Q",
@@ -3818,9 +3818,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.6955742887249736,
-          "magical": 0.28840885142255007,
-          "trued": 0.016016859852476292
+          "physical": 0.69631259537921,
+          "magical": 0.2877524221883096,
+          "trued": 0.015934982432480392
         },
         "skill_order": [
           "Q",
@@ -3935,9 +3935,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.010505764224618816,
-          "magical": 0.924460766084046,
-          "trued": 0.06503346969133507
+          "physical": 0.01062986619422817,
+          "magical": 0.9217212923679424,
+          "trued": 0.06764884143782927
         },
         "skill_order": [
           "W",
@@ -4052,9 +4052,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.5915940376313432,
-          "magical": 0.04846460861774049,
-          "trued": 0.35994135375091635
+          "physical": 0.5901472622243918,
+          "magical": 0.04828736473842649,
+          "trued": 0.36156537303718167
         },
         "skill_order": [
           "Q",
@@ -4169,9 +4169,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.11366111402411971,
-          "magical": 0.7937321018029282,
-          "trued": 0.09260678417295204
+          "physical": 0.11414804016844832,
+          "magical": 0.7928814382896016,
+          "trued": 0.09297052154195012
         },
         "skill_order": [
           "E",
@@ -4286,9 +4286,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.01982651796778191,
-          "magical": 0.9479058240396532,
-          "trued": 0.032267657992565056
+          "physical": 0.019576666997913147,
+          "magical": 0.9484746099572692,
+          "trued": 0.03194872304481765
         },
         "skill_order": [
           "Q",
@@ -4401,9 +4401,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.6543413327840149,
-          "magical": 0.18429635733168537,
-          "trued": 0.16136230988429978
+          "physical": 0.6555428094691834,
+          "magical": 0.18333507143602043,
+          "trued": 0.16112211909479612
         },
         "skill_order": [
           "E",
@@ -4518,9 +4518,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.7703501978639207,
-          "magical": 0.002170120420407642,
-          "trued": 0.22747968171567168
+          "physical": 0.7701871260661094,
+          "magical": 0.0022064751559383883,
+          "trued": 0.22760639877795225
         },
         "skill_order": [
           "E",
@@ -4635,9 +4635,9 @@
           "aramAttackSpeed": 1.025
         },
         "damage_distribution": {
-          "physical": 0.8149256212083438,
-          "magical": 0.16625114269093327,
-          "trued": 0.018823236100723013
+          "physical": 0.8164049448713665,
+          "magical": 0.16459238222519212,
+          "trued": 0.01900267290344136
         },
         "skill_order": [
           "Q",
@@ -4752,9 +4752,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.08229360233607645,
-          "magical": 0.8936819750464561,
-          "trued": 0.02402442261746748
+          "physical": 0.08230127360562144,
+          "magical": 0.894115063680281,
+          "trued": 0.023583662714097495
         },
         "skill_order": [
           "Q",
@@ -4867,9 +4867,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.8575721662575129,
-          "magical": 0.0351731143655295,
-          "trued": 0.1072547193769576
+          "physical": 0.8544095665171898,
+          "magical": 0.035618193465727095,
+          "trued": 0.10997224001708308
         },
         "skill_order": [
           "E",
@@ -4982,9 +4982,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.1331278773351596,
-          "magical": 0.6876307879618004,
-          "trued": 0.17924133470304
+          "physical": 0.1340765060700924,
+          "magical": 0.6867221501107124,
+          "trued": 0.17920134381919522
         },
         "skill_order": [
           "Q",
@@ -5099,9 +5099,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.8209197045508697,
-          "magical": 0.1475339528234453,
-          "trued": 0.031546342625685016
+          "physical": 0.8211342938370356,
+          "magical": 0.14788223389389485,
+          "trued": 0.030983472269069532
         },
         "skill_order": [
           "Q",
@@ -5216,9 +5216,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.04414405589839031,
-          "magical": 0.9306167760472784,
-          "trued": 0.025239168054331147
+          "physical": 0.04436691570944278,
+          "magical": 0.9304216173518086,
+          "trued": 0.025211466938748643
         },
         "skill_order": [
           "Q",
@@ -5333,9 +5333,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.03630883538359093,
-          "magical": 0.9515648547296112,
-          "trued": 0.012126309886797745
+          "physical": 0.03705949493508347,
+          "magical": 0.9505635611356829,
+          "trued": 0.012376943929233842
         },
         "skill_order": [
           "Q",
@@ -5450,9 +5450,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.9537033923948492,
-          "magical": 0.029654036243822075,
-          "trued": 0.016642571361328715
+          "physical": 0.9539945836154368,
+          "magical": 0.02985781990521327,
+          "trued": 0.016147596479350036
         },
         "skill_order": [
           "W",
@@ -5567,9 +5567,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.7128879183639188,
-          "magical": 0.24159072775374796,
-          "trued": 0.04552135388233318
+          "physical": 0.7141887880586888,
+          "magical": 0.24103129505555085,
+          "trued": 0.04477991688576033
         },
         "skill_order": [
           "Q",
@@ -5684,9 +5684,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.2674810830522381,
-          "magical": 0.6225727048956149,
-          "trued": 0.10994621205214695
+          "physical": 0.26611418047882135,
+          "magical": 0.622744014732965,
+          "trued": 0.11114180478821364
         },
         "skill_order": [
           "Q",
@@ -5801,24 +5801,24 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.14177623418506574,
-          "magical": 0.8026544281815926,
-          "trued": 0.055569337633341605
+          "physical": 0.1426809717597731,
+          "magical": 0.8005919348871624,
+          "trued": 0.056727093353064494
         },
         "skill_order": [
           "W",
-          "E",
           "Q",
           "E",
-          "E",
-          "R",
-          "E",
           "W",
-          "E",
           "W",
           "R",
           "W",
+          "E",
           "W",
+          "E",
+          "R",
+          "E",
+          "E",
           "Q",
           "Q",
           "R",
@@ -5918,9 +5918,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.8514694201747418,
-          "magical": 0.06624305003971406,
-          "trued": 0.08228752978554409
+          "physical": 0.8535366815671838,
+          "magical": 0.06584275571916907,
+          "trued": 0.08062056271364712
         },
         "skill_order": [
           "E",
@@ -6033,9 +6033,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.5247030773985606,
-          "magical": 0.43087995054969314,
-          "trued": 0.04441697205174621
+          "physical": 0.5256381699113467,
+          "magical": 0.43092618167238383,
+          "trued": 0.04343564841626944
         },
         "skill_order": [
           "E",
@@ -6150,9 +6150,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.7703615108607585,
-          "magical": 0.19560939851074505,
-          "trued": 0.03402909062849647
+          "physical": 0.770854271356784,
+          "magical": 0.19555469655972169,
+          "trued": 0.03359103208349439
         },
         "skill_order": [
           "Q",
@@ -6267,9 +6267,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.922650572730632,
-          "magical": 0.06100915547891776,
-          "trued": 0.016340271790450382
+          "physical": 0.9236114017830982,
+          "magical": 0.05985517558913398,
+          "trued": 0.016533422627767778
         },
         "skill_order": [
           "Q",
@@ -6382,9 +6382,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.9533117869241852,
-          "magical": 0.030878859857482184,
-          "trued": 0.01580935321833262
+          "physical": 0.9529784334161788,
+          "magical": 0.03126753788182474,
+          "trued": 0.01575402870199631
         },
         "skill_order": [
           "Q",
@@ -6397,8 +6397,8 @@
           "W",
           "Q",
           "W",
-          "W",
           "R",
+          "W",
           "W",
           "E",
           "E",
@@ -6499,9 +6499,9 @@
           "aramAttackSpeed": 1.025
         },
         "damage_distribution": {
-          "physical": 0.5651958919741347,
-          "magical": 0.4190947128185622,
-          "trued": 0.01570939520730316
+          "physical": 0.5668344411572598,
+          "magical": 0.41752795174242135,
+          "trued": 0.0156376071003189
         },
         "skill_order": [
           "Q",
@@ -6614,9 +6614,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.7574712198147215,
-          "magical": 0.17151827590216676,
-          "trued": 0.07101050428311174
+          "physical": 0.7579903336451512,
+          "magical": 0.1704864359214219,
+          "trued": 0.07152323043342688
         },
         "skill_order": [
           "E",
@@ -6731,9 +6731,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.08568472535741159,
-          "magical": 0.8867569601203913,
-          "trued": 0.02755831452219714
+          "physical": 0.0872692853762423,
+          "magical": 0.885660198769522,
+          "trued": 0.02707051585423569
         },
         "skill_order": [
           "Q",
@@ -6846,9 +6846,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.00629542723058433,
-          "magical": 0.91017569965089,
-          "trued": 0.08352887311852572
+          "physical": 0.006309238323626813,
+          "magical": 0.9099577480872444,
+          "trued": 0.0837330135891287
         },
         "skill_order": [
           "Q",
@@ -6963,9 +6963,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.08431276217830014,
-          "magical": 0.8504969577869317,
-          "trued": 0.06519028003476815
+          "physical": 0.08222121691924904,
+          "magical": 0.8533891276483451,
+          "trued": 0.06438965543240593
         },
         "skill_order": [
           "Q",
@@ -7080,9 +7080,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.1860507050380468,
-          "magical": 0.7405964874319305,
-          "trued": 0.07335280753002273
+          "physical": 0.1809309581685593,
+          "magical": 0.7458549504770888,
+          "trued": 0.07321409135435185
         },
         "skill_order": [
           "Q",
@@ -7197,9 +7197,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.2658470310481536,
-          "magical": 0.7148648046683594,
-          "trued": 0.019288164283487015
+          "physical": 0.2679085673146148,
+          "magical": 0.7117980561555075,
+          "trued": 0.02029337652987761
         },
         "skill_order": [
           "E",
@@ -7314,9 +7314,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.8607610834345041,
-          "magical": 0.053711223678151294,
-          "trued": 0.08552769288734458
+          "physical": 0.8633135600300778,
+          "magical": 0.05359679171192246,
+          "trued": 0.08308964825799983
         },
         "skill_order": [
           "Q",
@@ -7429,9 +7429,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.1283821758329988,
-          "magical": 0.8312725812926536,
-          "trued": 0.04034524287434765
+          "physical": 0.12781620353516968,
+          "magical": 0.8314524936294139,
+          "trued": 0.040731302835416414
         },
         "skill_order": [
           "Q",
@@ -7544,9 +7544,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.8173378445288001,
-          "magical": 0.05594982670407658,
-          "trued": 0.1267123287671233
+          "physical": 0.8204309656823623,
+          "magical": 0.05653799302726089,
+          "trued": 0.1230310412903768
         },
         "skill_order": [
           "Q",
@@ -7659,9 +7659,9 @@
           "aramAttackSpeed": 1.025
         },
         "damage_distribution": {
-          "physical": 0.759879298941799,
-          "magical": 0.1384341931216931,
-          "trued": 0.10168650793650794
+          "physical": 0.7601742377100187,
+          "magical": 0.1384360091267372,
+          "trued": 0.10138975316324414
         },
         "skill_order": [
           "W",
@@ -7766,9 +7766,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.8813083340216403,
-          "magical": 0.06401255472040968,
-          "trued": 0.05467911125794995
+          "physical": 0.8809962327333613,
+          "magical": 0.06458769359564671,
+          "trued": 0.05441607367099205
         },
         "skill_order": [
           "Q",
@@ -7883,9 +7883,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.3359537501529426,
-          "magical": 0.562645295485134,
-          "trued": 0.1014009543619234
+          "physical": 0.3316748554014553,
+          "magical": 0.5679146713104049,
+          "trued": 0.1004104732881398
         },
         "skill_order": [
           "W",
@@ -8000,9 +8000,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.8491107286288009,
-          "magical": 0.08715815643526487,
-          "trued": 0.06373111493593421
+          "physical": 0.8501612980884973,
+          "magical": 0.08724541383793154,
+          "trued": 0.06259328807357119
         },
         "skill_order": [
           "Q",
@@ -8117,9 +8117,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.05042703304864463,
-          "magical": 0.8624210917192722,
-          "trued": 0.08715187523208318
+          "physical": 0.051068928076678274,
+          "magical": 0.8614324759444382,
+          "trued": 0.08749859597888353
         },
         "skill_order": [
           "W",
@@ -8234,9 +8234,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.7850035901118063,
-          "magical": 0.13237255103087495,
-          "trued": 0.0826238588573187
+          "physical": 0.7813548657718121,
+          "magical": 0.13470008389261745,
+          "trued": 0.08394505033557047
         },
         "skill_order": [
           "E",
@@ -8351,9 +8351,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.2768639810893332,
-          "magical": 0.6498571850684527,
-          "trued": 0.07327883384221412
+          "physical": 0.27964495861174826,
+          "magical": 0.6485489179216116,
+          "trued": 0.07180612346664007
         },
         "skill_order": [
           "Q",
@@ -8468,9 +8468,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.036285788426606694,
-          "magical": 0.7574171784447712,
-          "trued": 0.2062970331286221
+          "physical": 0.03667995968272054,
+          "magical": 0.755905166747009,
+          "trued": 0.2074148735702704
         },
         "skill_order": [
           "Q",
@@ -8583,9 +8583,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.048485593671871795,
-          "magical": 0.9088897085946144,
-          "trued": 0.04262469773351367
+          "physical": 0.0490744549568079,
+          "magical": 0.9083916083916084,
+          "trued": 0.04253393665158371
         },
         "skill_order": [
           "Q",
@@ -8700,9 +8700,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.04840825086443305,
-          "magical": 0.8478995270458249,
-          "trued": 0.10369222208974206
+          "physical": 0.04829046173510145,
+          "magical": 0.8490174149225116,
+          "trued": 0.10269212334238696
         },
         "skill_order": [
           "Q",
@@ -8817,9 +8817,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.8916761687571265,
-          "magical": 0.09081546327288778,
-          "trued": 0.017508367969985655
+          "physical": 0.8917900704987132,
+          "magical": 0.09086500801969488,
+          "trued": 0.017344921481592
         },
         "skill_order": [
           "Q",
@@ -8934,9 +8934,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.15418627870489232,
-          "magical": 0.8219940094137783,
-          "trued": 0.02381971188132934
+          "physical": 0.1561066513761468,
+          "magical": 0.8209575688073395,
+          "trued": 0.022935779816513763
         },
         "skill_order": [
           "E",
@@ -9051,9 +9051,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.05777578206855261,
-          "magical": 0.8918824527266377,
-          "trued": 0.05034176520480966
+          "physical": 0.05846045764753111,
+          "magical": 0.8917603372139703,
+          "trued": 0.049779205138498595
         },
         "skill_order": [
           "E",
@@ -9168,9 +9168,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.2645707266026662,
-          "magical": 0.7129077756039857,
-          "trued": 0.0225214977933482
+          "physical": 0.26644615950018374,
+          "magical": 0.7107680999632489,
+          "trued": 0.02278574053656744
         },
         "skill_order": [
           "Q",
@@ -9283,9 +9283,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.02268920966584257,
-          "magical": 0.9600845362469096,
-          "trued": 0.017226254087247785
+          "physical": 0.022928187946554716,
+          "magical": 0.95955273886893,
+          "trued": 0.0175190731845154
         },
         "skill_order": [
           "E",
@@ -9400,9 +9400,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.12465060058925738,
-          "magical": 0.8137795573015033,
-          "trued": 0.061569842109239256
+          "physical": 0.12514475411101675,
+          "magical": 0.8152551532463522,
+          "trued": 0.05960009264263105
         },
         "skill_order": [
           "W",
@@ -9517,9 +9517,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.6708226165046427,
-          "magical": 0.02567679497798509,
-          "trued": 0.30350058851737216
+          "physical": 0.6707322442869095,
+          "magical": 0.026110695257804583,
+          "trued": 0.303157060455286
         },
         "skill_order": [
           "Q",
@@ -9634,9 +9634,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.05979050956126291,
-          "magical": 0.9255600700786522,
-          "trued": 0.01464942036008499
+          "physical": 0.0601230632367114,
+          "magical": 0.9261620579731632,
+          "trued": 0.013714878790125288
         },
         "skill_order": [
           "Q",
@@ -9751,9 +9751,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.1776978417266187,
-          "magical": 0.7942446043165468,
-          "trued": 0.02805755395683453
+          "physical": 0.18,
+          "magical": 0.7931531531531532,
+          "trued": 0.026846846846846847
         },
         "skill_order": [
           "E",
@@ -9868,9 +9868,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.929324497326606,
-          "magical": 0.03859477370283907,
-          "trued": 0.032080728970555014
+          "physical": 0.9209718478586404,
+          "magical": 0.049453429170410304,
+          "trued": 0.029574722970949385
         },
         "skill_order": [
           "Q",
@@ -9985,9 +9985,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.7891594413581849,
-          "magical": 0.13545506463838847,
-          "trued": 0.07538549400342662
+          "physical": 0.7905132111151967,
+          "magical": 0.13494773336134896,
+          "trued": 0.07453905552345433
         },
         "skill_order": [
           "E",
@@ -10102,9 +10102,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.116949086819962,
-          "magical": 0.8326030478110823,
-          "trued": 0.05044786536895576
+          "physical": 0.11781025320412628,
+          "magical": 0.8314707721162864,
+          "trued": 0.05071897467958737
         },
         "skill_order": [
           "Q",
@@ -10219,9 +10219,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.057526484355752645,
-          "magical": 0.8841463414634146,
-          "trued": 0.05832717418083272
+          "physical": 0.05880140421263792,
+          "magical": 0.8838390170511534,
+          "trued": 0.05735957873620862
         },
         "skill_order": [
           "Q",
@@ -10336,9 +10336,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.9054314860766474,
+          "physical": 0.9070397941365684,
           "magical": 0.0014245014245014246,
-          "trued": 0.0931440124988512
+          "trued": 0.09153570443893023
         },
         "skill_order": [
           "Q",
@@ -10453,9 +10453,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.1183483255662729,
-          "magical": 0.8604096672808064,
-          "trued": 0.021242007152920777
+          "physical": 0.11966090642321486,
+          "magical": 0.859471796543854,
+          "trued": 0.020867297032931203
         },
         "skill_order": [
           "W",
@@ -10570,9 +10570,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.7475576950304403,
-          "magical": 0.23818962669309549,
-          "trued": 0.014252678276464203
+          "physical": 0.7486167119947482,
+          "magical": 0.2372690612398012,
+          "trued": 0.014114226765450624
         },
         "skill_order": [
           "Q",
@@ -10687,9 +10687,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.28870816390365966,
-          "magical": 0.6377854238348452,
-          "trued": 0.07350641226149515
+          "physical": 0.2905057302071286,
+          "magical": 0.637682683208916,
+          "trued": 0.07181158658395542
         },
         "skill_order": [
           "Q",
@@ -10804,9 +10804,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.07038621578854833,
-          "magical": 0.887768856590283,
-          "trued": 0.041844927621168614
+          "physical": 0.0701150096327865,
+          "magical": 0.8875591102808104,
+          "trued": 0.04232588008640317
         },
         "skill_order": [
           "Q",
@@ -10921,9 +10921,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.06544438452865337,
-          "magical": 0.8164615912544733,
-          "trued": 0.11809402421687336
+          "physical": 0.06577963821198983,
+          "magical": 0.8142223551103802,
+          "trued": 0.11999800667762994
         },
         "skill_order": [
           "Q",
@@ -11038,9 +11038,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.9663611170326156,
-          "magical": 0.004860370923044127,
-          "trued": 0.028778512044340225
+          "physical": 0.965245001287222,
+          "magical": 0.005191796104007552,
+          "trued": 0.02956320260877027
         },
         "skill_order": [
           "Q",
@@ -11155,9 +11155,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.8338598506605399,
-          "magical": 0.05399195864445721,
-          "trued": 0.11214819069500288
+          "physical": 0.8346418296191545,
+          "magical": 0.05378651192275808,
+          "trued": 0.11157165845808747
         },
         "skill_order": [
           "Q",
@@ -11272,9 +11272,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.06247325631151048,
-          "magical": 0.8850785500336207,
-          "trued": 0.05244819365486888
+          "physical": 0.06035641250365176,
+          "magical": 0.8912065439672802,
+          "trued": 0.048437043529068066
         },
         "skill_order": [
           "Q",
@@ -11389,9 +11389,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.7064476255034092,
-          "magical": 0.0026715578771083375,
-          "trued": 0.29088081661948245
+          "physical": 0.7073180603901886,
+          "magical": 0.002792843843600745,
+          "trued": 0.28988909576621064
         },
         "skill_order": [
           "Q",
@@ -11506,9 +11506,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.05066438062580369,
-          "magical": 0.9375910844406344,
-          "trued": 0.011744534933561935
+          "physical": 0.049976920817422686,
+          "magical": 0.9389031093953254,
+          "trued": 0.0111199697872519
         },
         "skill_order": [
           "Q",
@@ -11621,9 +11621,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.33805008509603696,
-          "magical": 0.6396790663749088,
-          "trued": 0.02227084852905422
+          "physical": 0.3389178395753178,
+          "magical": 0.6383869868017338,
+          "trued": 0.022695173622948425
         },
         "skill_order": [
           "Q",
@@ -11738,9 +11738,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.8902471231843049,
-          "magical": 0.04372759856630824,
-          "trued": 0.0660252782493869
+          "physical": 0.8856049410783979,
+          "magical": 0.04478799590769581,
+          "trued": 0.06960706301390626
         },
         "skill_order": [
           "Q",
@@ -11855,9 +11855,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.7851245816288583,
-          "magical": 0.12086277426552622,
-          "trued": 0.09401264410561548
+          "physical": 0.7866756393001346,
+          "magical": 0.11843876177658144,
+          "trued": 0.09488559892328398
         },
         "skill_order": [
           "E",
@@ -11972,9 +11972,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.7377683380110749,
-          "magical": 0.0009861184859288475,
-          "trued": 0.2612455435029963
+          "physical": 0.7378147378147378,
+          "magical": 0.001001001001001001,
+          "trued": 0.2611842611842612
         },
         "skill_order": [
           "Q",
@@ -12087,9 +12087,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.7817992503123699,
-          "magical": 0.0687213660974594,
-          "trued": 0.14947938359017077
+          "physical": 0.7855960264900662,
+          "magical": 0.07110491460439178,
+          "trued": 0.143299058905542
         },
         "skill_order": [
           "Q",
@@ -12204,9 +12204,9 @@
           "aramAttackSpeed": 1.025
         },
         "damage_distribution": {
-          "physical": 0.8897567766134333,
-          "magical": 0.0027454468118015543,
-          "trued": 0.10749777657476509
+          "physical": 0.8883104401105282,
+          "magical": 0.0026831124103960592,
+          "trued": 0.10900644747907572
         },
         "skill_order": [
           "Q",
@@ -12219,8 +12219,8 @@
           "W",
           "Q",
           "W",
-          "W",
           "R",
+          "W",
           "W",
           "E",
           "E",
@@ -12319,9 +12319,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.2016310461192351,
-          "magical": 0.7332677165354331,
-          "trued": 0.06510123734533184
+          "physical": 0.2068522483940043,
+          "magical": 0.7346181299072091,
+          "trued": 0.05852962169878658
         },
         "skill_order": [
           "W",
@@ -12434,9 +12434,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.308203254732647,
-          "magical": 0.649950182663567,
-          "trued": 0.041846562603786115
+          "physical": 0.3096254475351143,
+          "magical": 0.6462407050399339,
+          "trued": 0.04413384742495181
         },
         "skill_order": [
           "W",
@@ -12551,9 +12551,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.6108907707149748,
-          "magical": 0.13227569943187908,
-          "trued": 0.2568335298531461
+          "physical": 0.611598814879842,
+          "magical": 0.13360035114671348,
+          "trued": 0.25480083397344455
         },
         "skill_order": [
           "Q",
@@ -12668,9 +12668,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.2174711154302991,
-          "magical": 0.7206565165748839,
-          "trued": 0.061872367994816976
+          "physical": 0.21780986762936225,
+          "magical": 0.722678043977683,
+          "trued": 0.05951208839295482
         },
         "skill_order": [
           "W",
@@ -12785,9 +12785,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.16456658700847274,
-          "magical": 0.6256789050619161,
-          "trued": 0.20975450792961112
+          "physical": 0.16721599648428917,
+          "magical": 0.6255767963085036,
+          "trued": 0.2072072072072072
         },
         "skill_order": [
           "E",
@@ -12902,9 +12902,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.7706099266731657,
-          "magical": 0.17551816216674437,
-          "trued": 0.05387191116008986
+          "physical": 0.7708852736108177,
+          "magical": 0.17502641031058525,
+          "trued": 0.054088316078597085
         },
         "skill_order": [
           "Q",
@@ -13019,9 +13019,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.8522234503868719,
-          "magical": 0.04642462375648329,
-          "trued": 0.10135192585664483
+          "physical": 0.8536276002029427,
+          "magical": 0.046127177405716216,
+          "trued": 0.10024522239134112
         },
         "skill_order": [
           "Q",
@@ -13136,9 +13136,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.9321352330834534,
-          "magical": 0.0014397061013751676,
-          "trued": 0.06642506081517152
+          "physical": 0.9321933379460314,
+          "magical": 0.001482652960363744,
+          "trued": 0.06632400909360482
         },
         "skill_order": [
           "Q",
@@ -13253,9 +13253,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.038683737996721056,
-          "magical": 0.9168163010383324,
-          "trued": 0.04449996096494653
+          "physical": 0.038487242992491254,
+          "magical": 0.918583166253882,
+          "trued": 0.04292959075362661
         },
         "skill_order": [
           "E",
@@ -13368,9 +13368,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.039931685100845805,
-          "magical": 0.9483165256994144,
-          "trued": 0.011751789199739753
+          "physical": 0.03943515063986842,
+          "magical": 0.949452401010952,
+          "trued": 0.011112448349179604
         },
         "skill_order": [
           "E",
@@ -13485,9 +13485,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.8680125355294803,
-          "magical": 0.10338167772028278,
-          "trued": 0.028605786750236863
+          "physical": 0.8681849804108235,
+          "magical": 0.1035846362271612,
+          "trued": 0.028230383362015304
         },
         "skill_order": [
           "Q",
@@ -13600,9 +13600,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.578661041412235,
-          "magical": 0.3667702897746198,
-          "trued": 0.05456866881314533
+          "physical": 0.577623542476402,
+          "magical": 0.36674069961132705,
+          "trued": 0.05563575791227096
         },
         "skill_order": [
           "E",
@@ -13717,9 +13717,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.8883596775881922,
-          "magical": 0.09457761959593844,
-          "trued": 0.01706270281586936
+          "physical": 0.8889418746357229,
+          "magical": 0.09341387166852116,
+          "trued": 0.01764425369575584
         },
         "skill_order": [
           "Q",
@@ -13834,9 +13834,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.11186414864453244,
-          "magical": 0.8720682302771855,
-          "trued": 0.01606762107828206
+          "physical": 0.11284762123649736,
+          "magical": 0.8714471768942006,
+          "trued": 0.015705201869302077
         },
         "skill_order": [
           "Q",
@@ -13951,9 +13951,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.7412105283205729,
-          "magical": 0.003999542909381785,
-          "trued": 0.2547899287700453
+          "physical": 0.7424004293326177,
+          "magical": 0.003794993675010542,
+          "trued": 0.2538045769923717
         },
         "skill_order": [
           "W",
@@ -14066,9 +14066,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.3385774133166949,
-          "magical": 0.5085569123807826,
-          "trued": 0.15286567430252251
+          "physical": 0.33752992286550226,
+          "magical": 0.5095753169607234,
+          "trued": 0.15289476017377426
         },
         "skill_order": [
           "W",
@@ -14181,9 +14181,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.5190682229824914,
-          "magical": 0.4224693097202656,
-          "trued": 0.05846246729724291
+          "physical": 0.5196862348178137,
+          "magical": 0.4220647773279352,
+          "trued": 0.05824898785425101
         },
         "skill_order": [
           "Q",
@@ -14298,9 +14298,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.45713256484149856,
-          "magical": 0.3632925072046109,
-          "trued": 0.1795749279538905
+          "physical": 0.4561198851399856,
+          "magical": 0.3634691313711414,
+          "trued": 0.18041098348887297
         },
         "skill_order": [
           "Q",
@@ -14415,15 +14415,15 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.04209873260657627,
-          "magical": 0.9229814765576532,
-          "trued": 0.034919790835770625
+          "physical": 0.042025429399955384,
+          "magical": 0.9225072496096364,
+          "trued": 0.03546732099040821
         },
         "skill_order": [
           "Q",
           "E",
-          "Q",
           "W",
+          "Q",
           "Q",
           "R",
           "Q",
@@ -14532,9 +14532,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.6086192862956775,
-          "magical": 0.36829027974125006,
-          "trued": 0.02309043396307244
+          "physical": 0.6112196947644197,
+          "magical": 0.3668648895912172,
+          "trued": 0.02191541564436312
         },
         "skill_order": [
           "W",
@@ -14647,9 +14647,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.9779052870822312,
-          "magical": 0.007824434591452737,
-          "trued": 0.01427027832631618
+          "physical": 0.9779630957322364,
+          "magical": 0.008075166974831138,
+          "trued": 0.013961737292932342
         },
         "skill_order": [
           "W",
@@ -14764,9 +14764,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.6222019186843307,
-          "magical": 0.3176488503121669,
-          "trued": 0.06014923100350236
+          "physical": 0.618036459924636,
+          "magical": 0.3187697321519503,
+          "trued": 0.0631938079234138
         },
         "skill_order": [
           "Q",
@@ -14881,9 +14881,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.6942586493735783,
-          "magical": 0.20103215292160392,
-          "trued": 0.10470919770481785
+          "physical": 0.6922044860327508,
+          "magical": 0.2023187009770194,
+          "trued": 0.1054768129902298
         },
         "skill_order": [
           "Q",
@@ -14998,9 +14998,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.2111027897397491,
-          "magical": 0.772982587530425,
-          "trued": 0.015914622729825877
+          "physical": 0.21163772876583764,
+          "magical": 0.7726888784608165,
+          "trued": 0.015673392773345847
         },
         "skill_order": [
           "Q",
@@ -15115,9 +15115,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.12402396949337208,
-          "magical": 0.8171418195024515,
-          "trued": 0.058834211004176504
+          "physical": 0.1241179663470237,
+          "magical": 0.8190700199022978,
+          "trued": 0.056812013750678486
         },
         "skill_order": [
           "Q",
@@ -15232,9 +15232,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.07839934667211107,
-          "magical": 0.860912617394855,
-          "trued": 0.060688035933033894
+          "physical": 0.07843837713702476,
+          "magical": 0.8605766777239091,
+          "trued": 0.06098494513906609
         },
         "skill_order": [
           "E",
@@ -15349,14 +15349,14 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.027067915116326613,
-          "magical": 0.9074702539150346,
-          "trued": 0.06546183096863883
+          "physical": 0.02699276103226862,
+          "magical": 0.9081019181219582,
+          "trued": 0.06490532084577318
         },
         "skill_order": [
           "E",
-          "W",
           "Q",
+          "W",
           "W",
           "W",
           "R",
@@ -15464,9 +15464,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.03291464891041162,
-          "magical": 0.9051528450363197,
-          "trued": 0.06193250605326876
+          "physical": 0.033309168606203976,
+          "magical": 0.9065969705063146,
+          "trued": 0.0600938608874814
         },
         "skill_order": [
           "Q",
@@ -15479,8 +15479,8 @@
           "W",
           "Q",
           "W",
-          "W",
           "R",
+          "W",
           "W",
           "E",
           "E",
@@ -15581,9 +15581,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.2113370301910043,
-          "magical": 0.7397412199630314,
-          "trued": 0.048921749845964264
+          "physical": 0.21279128038085693,
+          "magical": 0.7387246304184415,
+          "trued": 0.04848408920070158
         },
         "skill_order": [
           "Q",
@@ -15698,9 +15698,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.03741940587793204,
-          "magical": 0.9452157746924568,
-          "trued": 0.01736481942961117
+          "physical": 0.037290098436595254,
+          "magical": 0.9461107894228912,
+          "trued": 0.016599112140513416
         },
         "skill_order": [
           "Q",
@@ -15813,9 +15813,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.8787673417317812,
-          "magical": 0.0010365173018657312,
-          "trued": 0.12019614096635306
+          "physical": 0.8879532354985079,
+          "magical": 0.0009810734578751584,
+          "trued": 0.1110656910436169
         },
         "skill_order": [
           "W",
@@ -15930,9 +15930,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.3134961251644977,
-          "magical": 0.626261149290832,
-          "trued": 0.06024272554467027
+          "physical": 0.32052608245899217,
+          "magical": 0.6252401359538939,
+          "trued": 0.054233781587113936
         },
         "skill_order": [
           "E",
@@ -16047,9 +16047,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.16020362841231336,
-          "magical": 0.7828077488127371,
-          "trued": 0.05698862277494961
+          "physical": 0.15891539385618672,
+          "magical": 0.7841427835936159,
+          "trued": 0.05694182255019736
         },
         "skill_order": [
           "E",
@@ -16164,9 +16164,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.1430752453653217,
-          "magical": 0.7871319520174482,
-          "trued": 0.0697928026172301
+          "physical": 0.14486700373708508,
+          "magical": 0.7878654649373489,
+          "trued": 0.06726753132556605
         },
         "skill_order": [
           "Q",
@@ -16281,9 +16281,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.9010771085274332,
-          "magical": 0.0810358906559863,
-          "trued": 0.017887000816580474
+          "physical": 0.8987726333697897,
+          "magical": 0.08316117794790781,
+          "trued": 0.018066188682302427
         },
         "skill_order": [
           "E",
@@ -16398,9 +16398,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.8259338567689746,
-          "magical": 0.12381632167499404,
-          "trued": 0.05024982155603141
+          "physical": 0.827412134488999,
+          "magical": 0.1230117154014668,
+          "trued": 0.04957615010953424
         },
         "skill_order": [
           "Q",
@@ -16515,9 +16515,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.8977427474930879,
-          "magical": 0.006685098832171006,
-          "trued": 0.09557215367474106
+          "physical": 0.8968096536903877,
+          "magical": 0.006694768162658071,
+          "trued": 0.0964955781469543
         },
         "skill_order": [
           "E",
@@ -16632,14 +16632,14 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.10793868455849943,
-          "magical": 0.8674763700475048,
-          "trued": 0.024584945393995788
+          "physical": 0.10754810064134188,
+          "magical": 0.8673902318697583,
+          "trued": 0.02506166748889985
         },
         "skill_order": [
           "W",
-          "E",
           "Q",
+          "E",
           "Q",
           "Q",
           "R",
@@ -16749,9 +16749,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.8340917775384722,
-          "magical": 0.02980512036683225,
-          "trued": 0.13610310209469553
+          "physical": 0.8340965128566397,
+          "magical": 0.029059528002817893,
+          "trued": 0.13684395914054245
         },
         "skill_order": [
           "Q",
@@ -16866,9 +16866,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.5978060282960836,
-          "magical": 0.35698175107648145,
-          "trued": 0.0452122206274349
+          "physical": 0.6189289528556171,
+          "magical": 0.337384936174541,
+          "trued": 0.04368611096984183
         },
         "skill_order": [
           "Q",
@@ -16983,29 +16983,29 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.8864758144126358,
-          "magical": 0.006169792694965449,
-          "trued": 0.1073543928923988
+          "physical": 0.8856953532676219,
+          "magical": 0.00662635633231177,
+          "trued": 0.10767829040006628
         },
         "skill_order": [
           "E",
           "W",
           "Q",
-          "Q",
+          "W",
           "W",
           "R",
           "W",
-          "W",
-          "W",
-          "Q",
-          "R",
-          "Q",
-          "Q",
           "E",
+          "W",
           "E",
           "R",
           "E",
-          "E"
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "Q"
         ]
       }
     },
@@ -17100,9 +17100,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.5598914938965317,
-          "magical": 0.4241813602015113,
-          "trued": 0.015927145901956985
+          "physical": 0.64909056816051,
+          "magical": 0.3357209825614101,
+          "trued": 0.01518844927807988
         },
         "skill_order": [
           "E",
@@ -17217,9 +17217,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.7538363931956065,
-          "magical": 0.04960545620365597,
-          "trued": 0.19655815060073753
+          "physical": 0.7527153220311811,
+          "magical": 0.05005811390325037,
+          "trued": 0.19722656406556852
         },
         "skill_order": [
           "Q",
@@ -17332,9 +17332,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.027590321017113457,
-          "magical": 0.9504865590395586,
-          "trued": 0.02192311994332799
+          "physical": 0.02757181713178583,
+          "magical": 0.950594284436827,
+          "trued": 0.02183389843138716
         },
         "skill_order": [
           "Q",
@@ -17449,9 +17449,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.023630724022528773,
-          "magical": 0.7312872418578076,
-          "trued": 0.2450820341196637
+          "physical": 0.02378356551584898,
+          "magical": 0.7188774480113063,
+          "trued": 0.25733898647284476
         },
         "skill_order": [
           "Q",
@@ -17564,9 +17564,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.059815116911364874,
-          "magical": 0.9034620264636578,
-          "trued": 0.036722856624977346
+          "physical": 0.06056097826481367,
+          "magical": 0.903116949091041,
+          "trued": 0.03632207264414529
         },
         "skill_order": [
           "E",
@@ -17681,9 +17681,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.908498152575527,
-          "magical": 0.0024451206259508804,
-          "trued": 0.08905672679852206
+          "physical": 0.9104689979751546,
+          "magical": 0.002243747605757128,
+          "trued": 0.08728725441908827
         },
         "skill_order": [
           "W",
@@ -17798,9 +17798,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.8253533109609112,
-          "magical": 0.08493642765987616,
-          "trued": 0.08971026137921255
+          "physical": 0.8274517264339389,
+          "magical": 0.08513269285646342,
+          "trued": 0.08741558070959764
         },
         "skill_order": [
           "Q",
@@ -17913,25 +17913,25 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.02419746238646606,
-          "magical": 0.9631838036469528,
-          "trued": 0.012618733966581155
+          "physical": 0.0240446543580936,
+          "magical": 0.9633247459567768,
+          "trued": 0.012630599685129529
         },
         "skill_order": [
-          "E",
           "Q",
           "E",
           "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "Q",
+          "E",
+          "Q",
+          "R",
+          "Q",
+          "Q",
           "W",
-          "R",
-          "E",
-          "E",
-          "E",
-          "Q",
-          "R",
-          "Q",
-          "Q",
-          "Q",
           "W",
           "R",
           "W",
@@ -18030,9 +18030,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.031243505368895048,
-          "magical": 0.9498094908209214,
-          "trued": 0.01894700381018358
+          "physical": 0.03150456032862215,
+          "magical": 0.950149690176147,
+          "trued": 0.0183457494952308
         },
         "skill_order": [
           "Q",
@@ -18147,9 +18147,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.48668748459199607,
-          "magical": 0.4675404716903607,
-          "trued": 0.04577204371764319
+          "physical": 0.4833843101595437,
+          "magical": 0.47135653467801936,
+          "trued": 0.04525915516243697
         },
         "skill_order": [
           "E",
@@ -18264,9 +18264,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.4937634188733258,
-          "magical": 0.4600245373683672,
-          "trued": 0.04621204375830692
+          "physical": 0.4921915668922437,
+          "magical": 0.461634565330557,
+          "trued": 0.046173867777199375
         },
         "skill_order": [
           "Q",
@@ -18379,9 +18379,9 @@
           "aramAttackSpeed": 1.03
         },
         "damage_distribution": {
-          "physical": 0.9786992975300248,
-          "magical": 0.006835863735931717,
-          "trued": 0.014464838734043356
+          "physical": 0.978738807391884,
+          "magical": 0.0069346542198514,
+          "trued": 0.01432653838826443
         },
         "skill_order": [
           "Q",
@@ -18496,9 +18496,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.022316859793337956,
-          "magical": 0.9611105608926744,
-          "trued": 0.016572579313987652
+          "physical": 0.022616964374153926,
+          "magical": 0.9605771453098688,
+          "trued": 0.01680589031597715
         },
         "skill_order": [
           "Q",
@@ -18613,9 +18613,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.8531973961324909,
-          "magical": 0.08452996362243921,
-          "trued": 0.062272640245069885
+          "physical": 0.8645551257253384,
+          "magical": 0.07746615087040619,
+          "trued": 0.05797872340425532
         },
         "skill_order": [
           "E",
@@ -18730,9 +18730,9 @@
           "aramAttackSpeed": 1.025
         },
         "damage_distribution": {
-          "physical": 0.8815234471921264,
-          "magical": 0.08440162104044331,
-          "trued": 0.03407493176743032
+          "physical": 0.8825812914805694,
+          "magical": 0.08427599449012814,
+          "trued": 0.0331427140293025
         },
         "skill_order": [
           "Q",
@@ -18847,9 +18847,9 @@
           "aramAttackSpeed": 1.025
         },
         "damage_distribution": {
-          "physical": 0.7186127517794941,
-          "magical": 0.1552703316674239,
-          "trued": 0.12611691655308194
+          "physical": 0.7176566630384077,
+          "magical": 0.1572461514538952,
+          "trued": 0.12509718550769708
         },
         "skill_order": [
           "Q",
@@ -18964,9 +18964,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.6646520744854623,
-          "magical": 0.3075792224763149,
-          "trued": 0.0277687030382228
+          "physical": 0.6632619575026664,
+          "magical": 0.30925424563130693,
+          "trued": 0.027483796866026745
         },
         "skill_order": [
           "Q",
@@ -19079,9 +19079,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.6563051394676578,
-          "magical": 0.3266133573600631,
-          "trued": 0.01708150317227916
+          "physical": 0.6561178247734138,
+          "magical": 0.32681268882175224,
+          "trued": 0.01706948640483384
         },
         "skill_order": [
           "Q",
@@ -19094,8 +19094,8 @@
           "W",
           "Q",
           "W",
-          "R",
           "W",
+          "R",
           "W",
           "E",
           "E",
@@ -19196,9 +19196,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.04230444739062312,
-          "magical": 0.927684705315174,
-          "trued": 0.030010847294202725
+          "physical": 0.04339417381844555,
+          "magical": 0.924936540553608,
+          "trued": 0.03166928562794633
         },
         "skill_order": [
           "Q",
@@ -19311,9 +19311,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.8881020996294772,
-          "magical": 0.049732400164676824,
-          "trued": 0.062165500205846026
+          "physical": 0.8843152636142191,
+          "magical": 0.050741092440444245,
+          "trued": 0.0649436439453367
         },
         "skill_order": [
           "Q",
@@ -19428,9 +19428,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.0625994092251761,
-          "magical": 0.8811065666893888,
-          "trued": 0.05629402408543513
+          "physical": 0.06182979694273329,
+          "magical": 0.8826716860597764,
+          "trued": 0.0554985169974903
         },
         "skill_order": [
           "W",
@@ -19543,9 +19543,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.8717748506246605,
-          "magical": 0.03452607278652906,
-          "trued": 0.09369907658881042
+          "physical": 0.8754159733777038,
+          "magical": 0.03466444814198558,
+          "trued": 0.0899195784803106
         },
         "skill_order": [
           "Q",
@@ -19658,9 +19658,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.7696899111952249,
-          "magical": 0.20767215024020963,
-          "trued": 0.02263793856456544
+          "physical": 0.7692736185383244,
+          "magical": 0.2082961972667855,
+          "trued": 0.02243018419489008
         },
         "skill_order": [
           "Q",
@@ -19773,9 +19773,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.031440296531638864,
-          "magical": 0.9542957373576912,
-          "trued": 0.014263966110669844
+          "physical": 0.03184584860611359,
+          "magical": 0.953458654201836,
+          "trued": 0.014695497192050308
         },
         "skill_order": [
           "Q",
@@ -19890,9 +19890,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.1331134283890189,
-          "magical": 0.824111513087891,
-          "trued": 0.04277505852309002
+          "physical": 0.1351035581518853,
+          "magical": 0.8230483271375465,
+          "trued": 0.04184811471056824
         },
         "skill_order": [
           "Q",
@@ -20005,9 +20005,9 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.07526047439592108,
-          "magical": 0.7594768344047883,
-          "trued": 0.16526269119929063
+          "physical": 0.07584498188003846,
+          "magical": 0.7588565934472302,
+          "trued": 0.16529842467273131
         },
         "skill_order": [
           "Q",
@@ -20122,24 +20122,24 @@
           "aramAttackSpeed": 1
         },
         "damage_distribution": {
-          "physical": 0.053124139829342144,
-          "magical": 0.901458849435728,
-          "trued": 0.04541701073492981
+          "physical": 0.05302299958683377,
+          "magical": 0.9020796033604188,
+          "trued": 0.044897397052747555
         },
         "skill_order": [
-          "Q",
+          "E",
           "W",
-          "E",
-          "Q",
-          "Q",
-          "R",
           "Q",
           "E",
-          "Q",
           "E",
           "R",
           "E",
+          "Q",
           "E",
+          "Q",
+          "R",
+          "Q",
+          "Q",
           "W",
           "W",
           "R",
