@@ -4090,6 +4090,10 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   // forced phase=InProgress so the active_match.js isLive freshness gate
   // passes). Mirrors _csMockLoad (items 165 + 181) + _lmMockLoad
   // (item 183) + _lobbyMockLoad (item 163) patterns.
+  // S134: ?mode=tft is the TFT payload RC really served (no :2999 feed, every
+  // TFT field empty); ?mode=tft_live is the same no-feed game with the TFT
+  // coach file's stage / level / health / gold filled. Both render the
+  // active_match.js no-feed fallback (amLiveFallbackModel).
   let _amMockPromise = null;
   let _amMockData = null;
   function _amIsMock() {
@@ -4105,6 +4109,8 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       else if (m === "arena") url = "/data/ui_mock/active_match_arena.json";
       else if (m === "mayhem") url = "/data/ui_mock/active_match_aram_mayhem.json";
       else if (m === "complete") url = "/data/ui_mock/active_match_complete.json";
+      else if (m === "tft") url = "/data/ui_mock/active_match_tft.json";
+      else if (m === "tft_live") url = "/data/ui_mock/active_match_tft_live.json";
     } catch (_) {}
     return url;
   }

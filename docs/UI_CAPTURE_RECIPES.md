@@ -35,6 +35,8 @@ Mock per mode (item 188):
 - SR:    `https://127.0.0.1:8888/?ui_mock=1&mode=sr#active-match`
 - ARAM:  `https://127.0.0.1:8888/?ui_mock=1&mode=aram#active-match`
 - Arena: `https://127.0.0.1:8888/?ui_mock=1&mode=arena#active-match`
+- TFT, no live data: `https://127.0.0.1:8888/?ui_mock=1&mode=tft#active-match`
+- TFT, live data:    `https://127.0.0.1:8888/?ui_mock=1&mode=tft_live#active-match`
 
 Fixtures:
 - `web/data/ui_mock/active_match_sr.json` (5v5 standard, coach
@@ -45,6 +47,14 @@ Fixtures:
 - `web/data/ui_mock/active_match_arena.json` (6x2 = 12 players per
   item 180 `_arena_teams()` distil; NOT 6x3 - that was a stale
   c3a1e23 premise corrected at item 183)
+- `web/data/ui_mock/active_match_tft.json` (session 134: the TFT
+  payload RC really served in a recorded live TFT game - every TFT
+  field empty, liveclient `{}` because the standalone TFT client has
+  nothing on :2999; renders the no-feed fallback's Unavailable state)
+- `web/data/ui_mock/active_match_tft_live.json` (same game shape with
+  the TFT coach file's stage / level / health / gold set to the HUD
+  read at 4-2: STAGE 4-2, LEVEL 8, HP 100, GOLD 57). Rendered pins:
+  `tests/snapshot_panels/test_tft_ui_mock_active_match.py`
 
 Capture step: navigate to URL, hard-reload, wait 2s for the mock
 fetch + DS rerank + spike_curve + ward_heat + draft_elo modules to

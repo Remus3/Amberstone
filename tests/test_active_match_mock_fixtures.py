@@ -264,6 +264,65 @@ class AsciiHygieneTests(unittest.TestCase):
     def test_arena_ascii_clean(self) -> None:
         self._check(_FIXTURE_DIR / "active_match_arena.json")
 
+    def test_tft_ascii_clean(self) -> None:
+        self._check(_FIXTURE_DIR / "active_match_tft.json")
+        self._check(_FIXTURE_DIR / "active_match_tft_live.json")
+
+
+class TftFixtureTests(unittest.TestCase):
+    """RM-895: the ?ui_mock=1&mode=tft / tft_live Active Match fixtures.
+
+    Real TFT shape: the standalone TFT client has nothing on :2999, so the
+    liveclient block is empty, and the no-feed fallback (active_match.js
+    amLiveFallbackModel) reads stage / level / health / gold off the coach
+    payload. The rendered page is pinned by
+    tests/snapshot_panels/test_tft_ui_mock_active_match.py.
+    """
+
+    def test_main_js_routes_both_tft_modes(self) -> None:
+        src = _read(_MAIN_JS)
+        self.assertIn(
+            'm === "tft") url = "/data/ui_mock/active_match_tft.json"', src
+        )
+        self.assertIn(
+            'm === "tft_live") url = "/data/ui_mock/active_match_tft_live.json"',
+            src,
+        )
+
+    def test_both_fixtures_are_a_live_tft_game_with_no_feed(self) -> None:
+        for name in ("active_match_tft.json", "active_match_tft_live.json"):
+            data = _load_fixture(name)
+            self.assertEqual(data.get("mode"), "tft", name)
+            self.assertEqual(data.get("phase"), "InProgress", name)
+            self.assertEqual(data.get("liveclient"), {}, name)
+            self.assertEqual((data.get("coach") or {}).get("mode"), "tft", name)
+
+    def test_no_coach_imperative_in_either_fixture(self) -> None:
+        # Real shape: the served TFT payload carried every advice field empty.
+        # An invented imperative here would also be one the B4 live-directive
+        # ban forbids any surface to show mid-game.
+        for name in ("active_match_tft.json", "active_match_tft_live.json"):
+            coach = _load_fixture(name).get("coach") or {}
+            for key in ("action", "immediate", "board", "econ", "rolldown",
+                        "items", "god_pick", "placement", "upgrade"):
+                self.assertEqual(coach.get(key, ""), "", f"{name}: {key}")
+
+    def test_unavailable_fixture_carries_no_tft_state(self) -> None:
+        coach = _load_fixture("active_match_tft.json").get("coach") or {}
+        for key in ("stage_round", "stage", "round", "level", "hp", "health",
+                    "gold"):
+            self.assertNotIn(key, coach, key)
+
+    def test_live_fixture_uses_the_tft_coach_file_key_set(self) -> None:
+        coach = _load_fixture("active_match_tft_live.json").get("coach") or {}
+        # tft/tft_coach_engine.py writes health (not hp) and stage_round.
+        self.assertEqual(coach.get("stage_round"), "4-2")
+        self.assertEqual((coach.get("stage"), coach.get("round")), (4, 2))
+        self.assertEqual(coach.get("level"), 8)
+        self.assertEqual(coach.get("health"), 100)
+        self.assertEqual(coach.get("gold"), 57)
+        self.assertNotIn("hp", coach)
+
 
 if __name__ == "__main__":
     unittest.main()
