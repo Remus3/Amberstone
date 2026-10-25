@@ -289,6 +289,104 @@ def test_restart_before_backfill_supersedes_the_old_game_end_rows(world):
     assert r2["nothing_to_do"] is True
 
 
+def _tree(root: Path) -> dict:
+    """Every file under root: relative name -> (size, sha256)."""
+    return {str(p.relative_to(root)): (p.stat().st_size, _sha(p))
+            for p in sorted(root.rglob("*")) if p.is_file()}
+
+
+def test_dry_run_with_a_live_wal_writer_changes_no_byte(world):
+    """The live state: RC holds the database open in WAL mode with frames not
+    yet checkpointed (-wal and -shm on disk). A `mode=ro` open rewrote bytes
+    of the -shm (verifier, s135). The dry run must leave every file of the
+    root - names, sizes and bytes, sidecars included - as it found them, and
+    still see the uncheckpointed rows."""
+    root, qa = world
+    writer = sqlite3.connect(str(root / "data" / "match_history.db"))
+    try:
+        assert writer.execute("PRAGMA journal_mode").fetchone()[0].lower() == "wal"
+        writer.execute("PRAGMA wal_autocheckpoint = 0")
+        writer.execute("INSERT INTO matches (mode, champion, grade, timestamp) "
+                       "VALUES ('SR', 'Lux', 'A', '2026-09-12 10:00:00')")
+        writer.commit()
+        wal = root / "data" / "match_history.db-wal"
+        assert wal.exists() and wal.stat().st_size > 0
+        assert (root / "data" / "match_history.db-shm").exists()
+        before = _tree(root)
+        r = rep.run(root, qa, out=_quiet)
+        assert _tree(root) == before
+        assert r["before"]["by_mode"]["SR"] == 2          # the WAL-only row was read
+        assert r["quarantine_rows"] == QUARANTINE
+    finally:
+        writer.close()
+
+
+def test_apply_replans_inside_the_write_transaction(world, monkeypatch):
+    """The fixed collector inserts G2's own row after the plan was read (its
+    first history read after a restart). The apply re-plans inside BEGIN
+    IMMEDIATE, sees the plan changed, and refuses with nothing quarantined or
+    stamped - never two rows for one game. A re-run plans the new shape."""
+    root, qa = world
+    store = root / "data" / "tft_matches"
+
+    def collector_insert():
+        assert pt.rate_tft_game(root, G2, store_dir=store)[0] == "S"
+
+    monkeypatch.setattr(rep, "_BEFORE_WRITE_LOCK", collector_insert)
+    with pytest.raises(SystemExit, match="changed since the plan"):
+        rep.run(root, qa, apply=True, expect_quarantine=QUARANTINE, skip_live_check=True,
+                out=_quiet)
+    rows = _rows(root)
+    assert len([x for x in rows if x["game_id"] == G2]) == 1
+    assert len([x for x in rows if x["mode"] == "TFT"]) == 17   # 16 + the collector's row
+    c = sqlite3.connect(str(root / "data" / "match_history.db"))
+    try:
+        tables = c.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+    finally:
+        c.close()
+    assert (rep.QUARANTINE_TABLE,) not in tables
+    assert not (root / "ops" / "runtime" / "backups").exists()   # refused before the backup
+    assert "changed since the plan" in (root / "logs" / rep.LOG_NAME).read_text(encoding="utf-8")
+    monkeypatch.setattr(rep, "_BEFORE_WRITE_LOCK", None)
+    r = rep.run(root, qa, out=_quiet)
+    assert r["quarantine_rows"] == QUARANTINE + 1            # + the superseded end row
+    rep.run(root, qa, apply=True, expect_quarantine=QUARANTINE + 1, skip_live_check=True,
+            out=_quiet)
+    tft = [x for x in _rows(root) if x["mode"] == "TFT" and x["game_id"]]
+    assert sorted(x["game_id"] for x in tft) == [G1, G2]
+
+
+def test_apply_refuses_while_rc_is_running(world, monkeypatch):
+    import os
+    root, qa = world
+    (root / "ops" / "runtime").mkdir(parents=True)
+    (root / "ops" / "runtime" / "health.json").write_text(
+        json.dumps({"app": "riot-commander", "pid": os.getpid(), "alive": True}),
+        encoding="utf-8")
+    monkeypatch.setattr(rep, "live_game_reason", lambda _root: "")
+    before = _files(root)
+    with pytest.raises(SystemExit, match="stop RC") as exc:
+        rep.run(root, qa, apply=True, expect_quarantine=QUARANTINE, out=_quiet)
+    assert "supervisor" in str(exc.value).lower()
+    assert _files(root) == before
+    r = rep.run(root, qa, apply=True, expect_quarantine=QUARANTINE, allow_rc_running=True,
+                out=_quiet)
+    assert r["quarantined"] == QUARANTINE
+
+
+def test_a_rating_that_does_not_land_fails_the_apply_and_is_logged(world, monkeypatch):
+    """The re-rate runs after the commit; a write that does not land (the
+    db write swallowed, the rating returned a grade anyway) must not pass
+    as repaired: the read-back fails the run and the reason is in logs/."""
+    root, qa = world
+    monkeypatch.setattr(pt, "rate_tft_game", lambda *a, **k: ("S", []))
+    with pytest.raises(SystemExit, match="read-back"):
+        rep.run(root, qa, apply=True, expect_quarantine=QUARANTINE, skip_live_check=True,
+                out=_quiet)
+    log = root / "logs" / "repair_tft_match_rows.log"
+    assert log.exists() and "read-back" in log.read_text(encoding="utf-8")
+
+
 def test_store_input_for_another_game_is_refused(world, tmp_path):
     root, qa = world
     bad = tmp_path / "qa" / "m1" / "eog_raw.json"
