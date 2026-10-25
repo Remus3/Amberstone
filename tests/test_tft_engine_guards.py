@@ -4,7 +4,9 @@
    tft.engine.ENGINE_NAME (ADR-018 Decision): a rename is a one-line change,
    so the name (read from the constant, never spelled in this file) may
    appear in exactly one source file - tft/engine/__init__.py - exactly once.
-   Prose (docs/*.md, the ADR, its README row) is out of scope by design.
+   Prose (docs/*.md, the ADR, its README row) and data files (*.json: game
+   data may legitimately carry a similar word) are out of scope by design,
+   as are untracked files outside tft/engine (named blind spots).
    Enumeration: the git index via tests/_repo_walk (ADR-015) plus the
    engine package on disk, so a brand-new, unstaged engine file is still
    swept; the walker self-check keeps an empty enumeration from reading as
@@ -82,7 +84,9 @@ def test_engine_constants():
 # ------------------------------------------------------------ 1. one name
 
 def _name_hits(text, name):
-    return len(re.findall(re.escape(name), text, flags=re.IGNORECASE))
+    # Case-insensitive, but not inside a longer word ("in" + name + "ate" is
+    # not the engine name); a prefix like "<name>Panel" or "MY_<NAME>" still is.
+    return len(re.findall(r"(?<![A-Za-z])" + re.escape(name), text, flags=re.IGNORECASE))
 
 
 def _swept_files():
@@ -114,7 +118,9 @@ def test_name_sweep_fires_on_a_planted_copy():
     name = tft_engine.ENGINE_NAME
     assert _name_hits(f'label = "{name} picks"', name) == 1
     assert _name_hits(f"<h1>{name.upper()}</h1>", name) == 1
+    assert _name_hits(f"const {name.lower()}Panel = 1; MY_{name.upper()} = 2", name) == 2
     assert _name_hits("label = ENGINE_NAME", name) == 0
+    assert _name_hits("we in" + name.lower() + "ate it", name) == 0
 
 
 # --------------------------------------------- 2-4. AST / literal sweeps

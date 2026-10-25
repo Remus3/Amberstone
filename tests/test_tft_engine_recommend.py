@@ -81,6 +81,16 @@ def test_nearest_comps_ranks_by_core_coverage(sd, built):
     assert recommend.nearest_comps(beast, cat, sd)[0]["label"] == "Beast / Ward - Hex"
 
 
+def test_nearest_comps_reads_held_items(sd, built):
+    cat, _ms, comp_a = built
+    # Bolt sits in both cores; two Vests build Plate, which only the B comp uses.
+    no_items = recommend.nearest_comps({"board": [u("U_Bolt")], "items": []}, cat, sd)
+    assert no_items[0]["comp_id"] == comp_a["comp_id"]          # tie broken by top-4 rate
+    vests = recommend.nearest_comps({"board": [u("U_Bolt")], "items": ["C_Vest", "C_Vest"]}, cat, sd)
+    assert vests[0]["label"] == "Beast / Ward - Hex" and vests[0]["item_fit"] == 1.0
+    assert {r["comp_id"]: r["item_fit"] for r in vests}[comp_a["comp_id"]] == 0.0
+
+
 def test_nearest_comps_on_an_empty_board_is_empty(sd, built):
     cat, _ms, _a = built
     assert recommend.nearest_comps({"board": [], "bench": []}, cat, sd) == []
@@ -102,9 +112,27 @@ def test_shop_picks_rank_star_up_then_core_then_flex(sd, built):
             {"slot": 4, "kind": "empty"},
         ],
     }
-    out = recommend.shop_picks(state, comp_a, sd, consts=_consts())
+    consts = _consts()
+    out = recommend.shop_picks(state, comp_a, sd, consts=consts)
     assert [(p["slot"], p["reason"]) for p in out["picks"]] == [(2, "star_up"), (3, "core_copy"), (0, "flex")]
     assert out["odds_stale"] is False
+    # Each pick carries its own next-shop odds: Cora has 2 copies out, cost-2 copies out = Cora 2 + Kite 1.
+    cora = out["picks"][0]
+    assert cora["p_shop"] == round(tft_roll_odds.shop_hit_probability(
+        8, 2, target_copies_taken=2, cost_copies_taken=3, consts=consts), 4)
+    assert cora["rolls_50"] == tft_roll_odds.rolls_for_confidence(
+        8, 2, confidence=0.5, target_copies_taken=2, cost_copies_taken=3, consts=consts)
+
+
+def test_shop_picks_and_recommend_survive_junk(sd, built):
+    cat, ms, comp_a = built
+    state = {"level": "x", "board": "junk", "bench": [None, 3],
+             "offers": [{"kind": ["empty"]}, "junk", {"champion_api": None}, {"champion_api": "U_Jinx"}]}
+    out = recommend.shop_picks(state, comp_a, sd, lobby_boards={"P2": [u("U_Jinx")], "P3": "junk"},
+                               consts=_consts())
+    assert [p["api"] for p in out["picks"]] == ["U_Jinx"] and out["picks"][0]["p_shop"] is None
+    assert recommend.recommend("junk", cat, ms, sd, consts=_consts())["target"] is None
+    assert recommend.level_advice({"label": "3-2", "level": 5}, "junk")["status"] == "unknown"
 
 
 def test_wanted_units_carry_hit_odds_from_tft_roll_odds(sd, built):

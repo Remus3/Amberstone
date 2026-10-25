@@ -16,11 +16,16 @@ the per-round EoG file minus the local one: they drive contest counts and the
 copies-taken arguments of the odds model.
 
 ODDS: shop_hit_probability / rolls_for_confidence read the constants bundle
-the caller passes, else tft_roll_odds.default_constants(). odds_stale is True
-whenever that bundle is not in-client verified or was written for another set
-than the engine's - the numbers are then shown, but marked STALE (until LT-02
-closes, which a parallel slice is doing in tft/tft_data.py; nothing here
-hard-codes a table).
+the caller passes, else tft_roll_odds.default_constants() (the tables in
+tft/tft_data.py, whatever set they declare). odds_stale is True whenever that
+bundle is not in-client verified as a whole or was written for another set
+than the engine's - the numbers are then shown, but marked STALE. Nothing here
+hard-codes an odds or pool table.
+
+NEAREST COMPS score = CORE_WEIGHT x share of the comp's core owned
++ POOL_WEIGHT x Jaccard(owned units, core + flex) + TRAIT_WEIGHT x Jaccard of
+the trait signatures + ITEM_WEIGHT x share of the items completable from the
+held components that the comp itself has used.
 """
 from __future__ import annotations
 
@@ -29,7 +34,7 @@ from typing import Any, Iterable, Mapping, Optional
 
 from tft import tft_roll_odds
 from tft.engine import engine_meta
-from tft.engine.comps import SetData, as_int, as_units, copies, jaccard, trait_signature
+from tft.engine.comps import SetData, as_int, as_units, comp_units, copies, jaccard, trait_signature
 from tft.engine.milestones import LEVELS, parse_label
 
 NEAREST_LIMIT = 3
@@ -37,9 +42,10 @@ SLAM_LIMIT = 5
 PLANNER_LIMIT = 8
 DIGEST_MAX_LINES = 6
 DIGEST_MAX_CHARS = 64
-CORE_WEIGHT = 0.6
-POOL_WEIGHT = 0.3
-TRAIT_WEIGHT = 0.1
+CORE_WEIGHT = 0.55
+POOL_WEIGHT = 0.25
+TRAIT_WEIGHT = 0.10
+ITEM_WEIGHT = 0.10
 ROLL_CONFIDENCE = 0.5
 SKIP_OFFER_KINDS = frozenset({"empty", "special"})
 
@@ -48,51 +54,81 @@ _PRIORITY = {("star_up", True): 0, ("core", True): 1, ("star_up", False): 2, ("c
              ("flex", False): 4}
 
 
+def _state(state: Any) -> Mapping:
+    return state if isinstance(state, Mapping) else {}
+
+
+def _list(value: Any) -> list:
+    return list(value) if isinstance(value, (list, tuple)) else []
+
+
 def _owned(state: Mapping, setdata: SetData) -> Counter:
     held: Counter = Counter()
     for zone in ("board", "bench"):
-        for unit in as_units(state.get(zone) or [], setdata):
+        for unit in as_units(_list(state.get(zone)), setdata):
             held[unit.api] += copies(unit.star)
     return held
 
 
-def _comp_by_id(catalogue: Mapping, comp_id: Any) -> Optional[dict]:
-    for comp in (catalogue or {}).get("comps") or []:
-        if comp.get("comp_id") == comp_id:
+def _comps(catalogue: Any) -> list:
+    rows = catalogue.get("comps") if isinstance(catalogue, Mapping) else None
+    return [c for c in _list(rows) if isinstance(c, Mapping) and isinstance(c.get("comp_id"), str)]
+
+
+def _comp_by_id(catalogue: Mapping, comp_id: Any) -> Optional[Mapping]:
+    for comp in _comps(catalogue):
+        if comp["comp_id"] == comp_id:
             return comp
     return None
 
 
 def _core(comp: Mapping) -> list:
-    return [c["api"] for c in comp.get("core") or []]
+    return comp_units(comp, "core")
 
 
 def _flex(comp: Mapping) -> list:
-    return [c["api"] for c in comp.get("flex") or []]
+    return comp_units(comp, "flex")
+
+
+def _completable(held_items: Any, setdata: SetData) -> list:
+    """(item, recipe) for every recipe the held components can build now."""
+    components = Counter(api for api in (setdata.resolve_item_api(i) for i in _list(held_items))
+                         if api and setdata.item_kind(api) == "component")
+    out = []
+    for item, recipe in setdata.recipes.items():
+        if all(components[c] >= n for c, n in Counter(recipe).items()):
+            out.append((item, recipe))
+    return sorted(out)
 
 
 # ------------------------------------------------------------ nearest comps
 
 def nearest_comps(state: Mapping, catalogue: Mapping, setdata: SetData, *, limit: int = NEAREST_LIMIT) -> list:
-    """Catalogue comps closest to the current board + bench, best first."""
-    held = _owned(state or {}, setdata)
+    """Catalogue comps closest to the current board + bench + held items, best first."""
+    state = _state(state)
+    held = _owned(state, setdata)
     if not held:
         return []
     owned = set(held)
-    units = as_units(list((state or {}).get("board") or []) + list((state or {}).get("bench") or []), setdata)
+    units = as_units(_list(state.get("board")) + _list(state.get("bench")), setdata)
     sig = trait_signature(units, setdata)
+    buildable = {item for item, _recipe in _completable(state.get("items"), setdata)}
     rows = []
-    for comp in (catalogue or {}).get("comps") or []:
+    for comp in _comps(catalogue):
         core = set(_core(comp))
         if not core:
             continue
         pool = core | set(_flex(comp))
+        used = comp.get("item_freq") if isinstance(comp.get("item_freq"), Mapping) else {}
+        item_fit = len(buildable & set(used)) / len(buildable) if buildable else 0.0
+        signature = [t for t in _list(comp.get("signature")) if isinstance(t, str)]
         score = (CORE_WEIGHT * len(owned & core) / len(core) + POOL_WEIGHT * jaccard(owned, pool)
-                 + TRAIT_WEIGHT * jaccard(sig, comp.get("signature") or []))
+                 + TRAIT_WEIGHT * jaccard(sig, signature) + ITEM_WEIGHT * item_fit)
         if score <= 0:
             continue
-        rows.append({"comp_id": comp["comp_id"], "label": comp["label"], "score": round(score, 3),
+        rows.append({"comp_id": comp["comp_id"], "label": comp.get("label"), "score": round(score, 3),
                      "core_owned": sorted(owned & core), "core_missing": sorted(core - owned),
+                     "item_fit": round(item_fit, 3),
                      "games": comp.get("games"), "avg_placement": comp.get("avg_placement"),
                      "top4_rate": comp.get("top4_rate")})
     rows.sort(key=lambda r: (-r["score"], -(r["top4_rate"] or 0), r["comp_id"]))
@@ -111,8 +147,9 @@ def odds_stale(consts, setdata: SetData) -> bool:
 
 def _lobby_copies(lobby_boards: Any, setdata: SetData) -> Counter:
     taken: Counter = Counter()
-    for board in lobby_boards or []:
-        for unit in as_units(board or [], setdata):
+    boards = lobby_boards.values() if isinstance(lobby_boards, Mapping) else _list(lobby_boards)
+    for board in boards:
+        for unit in as_units(_list(board), setdata):
             taken[unit.api] += copies(unit.star)
     return taken
 
@@ -133,14 +170,27 @@ def _odds(level, cost, target_taken, cost_taken, consts) -> tuple:
 
 def shop_picks(state: Mapping, comp: Mapping, setdata: SetData, *, lobby_boards: Any = None,
                consts=None) -> dict:
-    """Which current offers advance the target comp, plus hit odds for the core units still missing."""
-    state = state or {}
+    """Which current offers advance the target comp, plus hit odds.
+
+    Every pick and every still-missing core unit ("wanted") carries p_shop (at
+    least one copy in the next shop) and rolls_50 (shops for a 50 percent hit),
+    with copies taken = the player's own + every lobby board's.
+    """
+    state = _state(state)
     consts = _consts(consts)
     held = _owned(state, setdata)
+    lobby = _lobby_copies(lobby_boards, setdata)
+    everyone = held + lobby
+    level = as_int(state.get("level"))
+
+    def cost_taken(cost):
+        return sum(n for a, n in everyone.items() if setdata.unit_cost(a) == cost) if cost else 0
+
     core, flex = set(_core(comp)), set(_flex(comp))
     picks, offered = [], set()
-    for offer in state.get("offers") or []:
-        if not isinstance(offer, Mapping) or offer.get("kind") in SKIP_OFFER_KINDS:
+    for offer in _list(state.get("offers")):
+        kind = offer.get("kind") if isinstance(offer, Mapping) else None
+        if not isinstance(offer, Mapping) or (isinstance(kind, str) and kind in SKIP_OFFER_KINDS):
             continue
         key = offer.get("champion_api") or offer.get("name_text") or offer.get("name")
         api = setdata.resolve_unit_api(key) or (key.strip() if isinstance(key, str) and key.strip() else None)
@@ -160,21 +210,19 @@ def shop_picks(state: Mapping, comp: Mapping, setdata: SetData, *, lobby_boards:
         else:
             continue
         cost = as_int(offer.get("cost"))
+        cost = cost if cost is not None else setdata.unit_cost(api)
+        p, rolls = _odds(level, cost, everyone.get(api, 0), cost_taken(cost), consts)
         picks.append({"slot": as_int(offer.get("slot")), "api": api, "name": setdata.unit_name(api),
-                      "cost": cost if cost is not None else setdata.unit_cost(api), "reason": reason,
+                      "cost": cost, "reason": reason, "p_shop": p, "rolls_50": rolls,
                       "_p": _PRIORITY.get((reason, in_core), 5)})
     picks.sort(key=lambda p: (p["_p"], p["slot"] if p["slot"] is not None else 99, p["api"]))
     for p in picks:
         p.pop("_p")
 
-    lobby = _lobby_copies(lobby_boards, setdata)
-    everyone = held + lobby
-    level = as_int(state.get("level"))
     wanted = []
     for api in sorted(core - set(held) - offered):
         cost = setdata.unit_cost(api)
-        cost_taken = sum(n for a, n in everyone.items() if setdata.unit_cost(a) == cost) if cost else 0
-        p, rolls = _odds(level, cost, everyone.get(api, 0), cost_taken, consts)
+        p, rolls = _odds(level, cost, everyone.get(api, 0), cost_taken(cost), consts)
         wanted.append({"api": api, "name": setdata.unit_name(api), "cost": cost,
                        "copies_taken": everyone.get(api, 0), "contested": lobby.get(api, 0) > 0,
                        "p_shop": p, "rolls_50": rolls})
@@ -187,18 +235,15 @@ def shop_picks(state: Mapping, comp: Mapping, setdata: SetData, *, lobby_boards:
 
 def item_slams(held_items: Iterable, comp: Optional[Mapping], setdata: SetData, *, limit: int = SLAM_LIMIT) -> list:
     """Completed items buildable from the held components, ranked by the comp's own usage."""
-    components = Counter(api for api in (setdata.resolve_item_api(i) for i in held_items or [])
-                         if api and setdata.item_kind(api) == "component")
-    carry = (comp or {}).get("carry") or {}
-    carry_freq = carry.get("item_freq") or {}
-    comp_freq = (comp or {}).get("item_freq") or {}
+    comp = comp if isinstance(comp, Mapping) else {}
+    carry = comp.get("carry") if isinstance(comp.get("carry"), Mapping) else {}
+    carry_freq = carry.get("item_freq") if isinstance(carry.get("item_freq"), Mapping) else {}
+    comp_freq = comp.get("item_freq") if isinstance(comp.get("item_freq"), Mapping) else {}
     out = []
-    for item, recipe in setdata.recipes.items():
-        need = Counter(recipe)
-        if all(components[c] >= n for c, n in need.items()):
-            out.append({"item": item, "name": setdata.item_name(item), "components": list(recipe),
-                        "on": carry.get("api"), "carry_games": carry_freq.get(item, 0),
-                        "comp_games": comp_freq.get(item, 0)})
+    for item, recipe in _completable(held_items, setdata):
+        out.append({"item": item, "name": setdata.item_name(item), "components": list(recipe),
+                    "on": carry.get("api"), "carry_games": carry_freq.get(item, 0),
+                    "comp_games": comp_freq.get(item, 0)})
     out.sort(key=lambda r: (-r["carry_games"], -r["comp_games"], r["item"]))
     return out[:limit]
 
@@ -207,12 +252,12 @@ def item_slams(held_items: Iterable, comp: Optional[Mapping], setdata: SetData, 
 
 def level_advice(current: Mapping, agg: Optional[Mapping]) -> dict:
     """The current level against the comp's top-4 median at this round, plus the next milestone."""
-    current = current or {}
+    current = _state(current)
     label = current.get("label") if isinstance(current.get("label"), str) else None
     key = parse_label(label)
     level = as_int(current.get("level"))
     out = {"status": "unknown", "message": "No top-4 level data yet", "next": None, "roll": None}
-    if not agg or key is None:
+    if not isinstance(agg, Mapping) or not agg or key is None:
         return out
     curve = (agg.get("level_curve") or {}).get(label)
     if curve and level is not None:
@@ -241,7 +286,7 @@ def level_advice(current: Mapping, agg: Optional[Mapping]) -> dict:
 def recommend(state: Mapping, catalogue: Mapping, milestones_payload: Optional[Mapping], setdata: SetData, *,
               lobby_boards: Any = None, consts=None) -> dict:
     """The whole live answer: target comp, shop picks, item slams, level / roll advice."""
-    state = state or {}
+    state = _state(state)
     nearest = nearest_comps(state, catalogue, setdata)
     comp = _comp_by_id(catalogue, state.get("target_comp_id"))
     if comp is None and nearest:
@@ -318,7 +363,7 @@ def planner_choices(catalogue: Mapping, milestones_payload: Optional[Mapping], s
     lobby_apis = set(_lobby_copies(lobby_boards, setdata)) if lobby_boards is not None else None
     per_comp = (milestones_payload or {}).get("comps") or {}
     choices = []
-    for comp in (catalogue or {}).get("comps") or []:
+    for comp in _comps(catalogue):
         if len(choices) >= limit:
             break
         if (comp.get("top4_games") or 0) < 1:

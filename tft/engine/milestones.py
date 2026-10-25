@@ -53,6 +53,8 @@ from tft.engine.comps import (
     TOP4_MAX_PLACEMENT,
     SetData,
     as_int,
+    canonical,
+    comp_units,
     envelope_value,
     normalize_unit,
     ordered_records,
@@ -104,20 +106,29 @@ def _round_key(row: Mapping) -> Optional[tuple]:
     return (stage, rnd)
 
 
+def _rows(value: Any) -> list:
+    """The Mapping rows of a list-valued record field; anything else is no rows."""
+    if not isinstance(value, (list, tuple)):
+        return []
+    return [r for r in value if isinstance(r, Mapping)]
+
+
 def _timeline(record: Mapping) -> list:
-    """[(round_seq, (stage, round), row)] in round_seq order, labelled rows only."""
+    """[(round_seq, (stage, round), row)] in round_seq order, labelled rows only.
+
+    Two rows for one round_seq resolve by content (canonical text), never by
+    input order, so a duplicated round cannot make the result order-dependent.
+    """
     rows = []
-    for row in record.get("rounds") or []:
-        if not isinstance(row, Mapping):
-            continue
+    for row in _rows(record.get("rounds")):
         seq = as_int(row.get("round_seq"))
         key = _round_key(row)
         if seq is None or key is None:
             continue
-        rows.append((seq, key, row))
-    rows.sort(key=lambda t: (t[0], t[1]))
+        rows.append((seq, key, canonical(row), row))
+    rows.sort(key=lambda t: (t[0], t[1], t[2]))
     out, seen = [], set()
-    for seq, key, row in rows:
+    for seq, key, _text, row in rows:
         if seq not in seen:
             seen.add(seq)
             out.append((seq, key, row))
@@ -153,12 +164,12 @@ def _levels(timeline: list) -> tuple:
 
 def _rolldowns(timeline: list, refreshes: Iterable) -> list:
     by_seq: dict = defaultdict(list)
-    for row in refreshes or []:
+    for row in _rows(refreshes):
         if row_is_evidence(row) and as_int(row.get("round_seq")) is not None:
             by_seq[as_int(row["round_seq"])].append(row)
     out = []
     for seq, key, row in timeline:
-        rows = sorted(by_seq.get(seq, []), key=lambda r: as_int(r.get("refresh_idx")) or 0)
+        rows = sorted(by_seq.get(seq, []), key=lambda r: (as_int(r.get("refresh_idx")) or 0, canonical(r)))
         rolls = [r for r in rows if r.get("cause") == "reroll"]
         gold = 0
         last_after = None
@@ -183,10 +194,11 @@ def _unit_rounds(record: Mapping, timeline: list, setdata: SetData) -> list:
     """[(key, [Unit on board/bench], [Unit on board])] per observed round, in order."""
     key_of = {seq: key for seq, key, _row in timeline}
     per: dict = defaultdict(lambda: ([], []))
-    for row in record.get("units") or []:
-        if not isinstance(row, Mapping) or not row_is_evidence(row):
+    for row in _rows(record.get("units")):
+        if not row_is_evidence(row):
             continue
-        if row.get("phase") in SKIP_PHASES or row.get("zone", "board") not in BOARD_ZONES:
+        phase, zone = row.get("phase"), row.get("zone", "board")
+        if (isinstance(phase, str) and phase in SKIP_PHASES) or not isinstance(zone, str) or zone not in BOARD_ZONES:
             continue
         seq = as_int(row.get("round_seq"))
         if seq not in key_of:
@@ -196,7 +208,7 @@ def _unit_rounds(record: Mapping, timeline: list, setdata: SetData) -> list:
             continue
         both, board = per[seq]
         both.append(unit)
-        if row.get("zone", "board") == "board":
+        if zone == "board":
             board.append(unit)
     return [(key_of[seq], per[seq][0], per[seq][1]) for seq in sorted(per)]
 
@@ -243,6 +255,7 @@ def _opener(unit_rounds: list) -> list:
 
 def mine_match(record: Mapping, setdata: SetData) -> dict:
     """Every milestone of one match (see the module docstring)."""
+    record = record if isinstance(record, Mapping) else {}
     timeline = _timeline(record)
     reached, censored, level_at = _levels(timeline)
     rolldowns = _rolldowns(timeline, record.get("shop_refreshes"))
@@ -351,8 +364,9 @@ def aggregate(mined: Iterable, *, key_units: Optional[Iterable] = None) -> dict:
 
 def milestones_by_comp(records: Any, catalogue: Mapping, setdata: SetData, *, top4_only: bool = True) -> dict:
     """aggregate() per catalogue comp, over its top-4 matches unless top4_only=False."""
-    assignments = (catalogue or {}).get("assignments") or {}
-    comps = {c["comp_id"]: c for c in (catalogue or {}).get("comps") or []}
+    assignments = _section(catalogue, "assignments")
+    raw_comps = catalogue.get("comps") if isinstance(catalogue, Mapping) else None
+    comps = {c["comp_id"]: c for c in _rows(raw_comps) if isinstance(c.get("comp_id"), str)}
     mined: dict = defaultdict(list)
     for mid, rec in ordered_records(records):
         comp_id = assignments.get(mid)
@@ -365,9 +379,10 @@ def milestones_by_comp(records: Any, catalogue: Mapping, setdata: SetData, *, to
     out = {}
     for comp_id in sorted(comps):
         comp = comps[comp_id]
-        key_units = [c["api"] for c in comp.get("core", [])]
-        if comp.get("carry") and comp["carry"]["api"] not in key_units:
-            key_units.append(comp["carry"]["api"])
+        key_units = comp_units(comp, "core")
+        carry_api = _section(comp, "carry").get("api")
+        if isinstance(carry_api, str) and carry_api not in key_units:
+            key_units.append(carry_api)
         out[comp_id] = aggregate(mined.get(comp_id, []), key_units=key_units)
     return dict(engine_meta(), set_id=setdata.set_id, top4_only=top4_only, comps=out)
 
@@ -382,27 +397,36 @@ def _number_verdict(this, median) -> str:
     return "lower" if this < median else ("higher" if this > median else "same")
 
 
+def _section(obj: Any, name: str) -> dict:
+    value = obj.get(name) if isinstance(obj, Mapping) else None
+    return value if isinstance(value, Mapping) else {}
+
+
+def _is_num(value) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
 def compare_to_average(mined: Mapping, agg: Mapping) -> list:
     """Rows of this match's milestones next to the comp's top-4 medians (post-match digest)."""
     rows = []
+
+    def order_row(name, this, med):
+        a, b = parse_label(this), parse_label(med)
+        if a is not None and b is not None:
+            rows.append({"milestone": name, "this_match": this, "median": med, "verdict": _order_verdict(a, b)})
+
+    reached, agg_reached = _section(mined, "level_reached"), _section(agg, "level_reached")
     for lv in LEVELS:
-        this = mined.get("level_reached", {}).get(str(lv))
-        med = (agg.get("level_reached", {}).get(str(lv)) or {}).get("median")
-        if this and med:
-            rows.append({"milestone": f"level_{lv}", "this_match": this, "median": med,
-                         "verdict": _order_verdict(parse_label(this), parse_label(med))})
-    for name, this, med in (
-        ("first_rolldown", mined.get("first_rolldown"), (agg.get("first_rolldown") or {}).get("median")),
-        ("first_slam", (mined.get("first_slam") or {}).get("label"), (agg.get("first_slam") or {}).get("median")),
-    ):
-        if this and med:
-            rows.append({"milestone": name, "this_match": this, "median": med,
-                         "verdict": _order_verdict(parse_label(this), parse_label(med))})
+        order_row(f"level_{lv}", reached.get(str(lv)), _section(agg_reached, str(lv)).get("median"))
+    order_row("first_rolldown", mined.get("first_rolldown") if isinstance(mined, Mapping) else None,
+              _section(agg, "first_rolldown").get("median"))
+    order_row("first_slam", _section(mined, "first_slam").get("label"), _section(agg, "first_slam").get("median"))
     for group, prefix in (("gold_at", "gold_at_"), ("hp_at", "hp_at_")):
-        for label, this in sorted(mined.get(group, {}).items()):
-            med = (agg.get(group, {}).get(label) or {}).get("median")
-            if this is not None and med is not None:
-                rows.append({"milestone": prefix + label, "this_match": this, "median": med,
+        agg_group = _section(agg, group)
+        for label, this in sorted(_section(mined, group).items(), key=lambda kv: str(kv[0])):
+            med = _section(agg_group, label).get("median")
+            if _is_num(this) and _is_num(med):
+                rows.append({"milestone": prefix + str(label), "this_match": this, "median": med,
                              "verdict": _number_verdict(this, med)})
     return rows
 
