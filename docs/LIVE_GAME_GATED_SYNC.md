@@ -1264,7 +1264,7 @@ Not readied this cycle: G5-05 / G5-06 / G5-08 (each needs a DS flag or a replay 
   (Both halves of that check are already true on disk and prove nothing; use the DRAIN CARD predicate.)
   2026-10-25 (RM-868, consistent but NOT proven live): the upstream gap is the relay - its TFT schema
   has no `anvil_choices`, so `ArenaVisionReader` could never emit an anvil; the reader now goes direct
-  (`USE_RELAY = False`, `e88543bef`). The DRAIN CARD predicate is the test; G7-17 step (d) runs it.
+  (`USE_RELAY = False`, `d47e9906b`). The DRAIN CARD predicate is the test; G7-17 step (d) runs it.
   SOURCE: LEDGER 779/820; git `8f651ca7`, `9779296c`.
 - **G5-02** (was D2) `set_augment_intent` 4-PATCH endpoint discovery at a real Arena augment phase.
   **PATH IS STALE:** `tools/gamepc_lcu_agent.py:1179` predates the Game-PC retirement - re-home the
@@ -1547,7 +1547,7 @@ Rail tools: `tools/hz_shadow_report.py`, `tools/replay_build_order_validate.py`,
   `core/arena_coach_shadow.py`), then re-run the report. Treat the PLAY AGGRO vs CAMP PHASE
   disagreement as a deterministic-coach DEFECT to diagnose, not a threshold to wait out. Operator OK
   before any Haiku->deterministic flip.
-  **RE-FILED 2026-10-25 (RM-868, s133; fix `e88543bef` + `a43b75616`): ROOT-CAUSED - the 0.7% was
+  **RE-FILED 2026-10-25 (RM-868, s133; fix `d47e9906b` + `4d07738aa`): ROOT-CAUSED - the 0.7% was
   PLUMBING, not a coach defect.** (1) `ArenaVisionReader` rode the promptless relay (fixed TFT schema,
   no `camp_phase`), so the artifact's `camp_phase` was always False and the det camp rule never fired
   (det BUY ITEMS 1 of 480 live-fight rows); it now sets `USE_RELAY = False` (the RM-144 pattern). (2)
@@ -1560,7 +1560,7 @@ Rail tools: `tools/hz_shadow_report.py`, `tools/replay_build_order_validate.py`,
   146 dead-state, `not_ready`; most disagreements are Haiku SHOP vs a det fight posture, the
   dead-camp-signal signature; fight axis 9/32 same band, 30/32 within one band.
   LIVE VERIFICATION (G7-17 now waits on this, needs one real Arena game AFTER an RC restart that loads
-  `e88543bef`; note the restart time): (a) at a camp, `data/arena_coaching_data.json` reads
+  `d47e9906b`; note the restart time): (a) at a camp, `data/arena_coaching_data.json` reads
   `camp_phase: true` at least once (vision now goes direct to Sonnet, about 3 reads/min at
   `_VISION_INTERVAL` 20 s); (b) the new `data/arena_coach_shadow.jsonl` rows carry det `BUY ITEMS` > 0
   and no blank-Haiku / round-0 row; (c) `python tools/arena_shadow_report.py --since <restart ISO
