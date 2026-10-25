@@ -26,6 +26,7 @@ stubbed, the meta table is built in-test, and the REAL
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -370,6 +371,68 @@ class PanelRenderTests(_Stubbed):
         self.assertNotIn("ar-rar ksilver", r["list"])
         self.assertEqual(r["list"].count('class="ar-rar gold"'), 2,
                          "the fixture-style plain token must still map")
+
+    def test_every_emitted_rarity_maps_to_a_styled_class(self) -> None:
+        """Every rarity the emitters can produce gets a pip class that
+        augment_reco.css actually colours.
+
+        Emitter chain: core/augment_recommender.py `AugmentScore.rarity` <-
+        core/augment_external_source.py `AugmentMetaTable.rarity`, which is
+        the raw CommunityDragon `rarity` of a tracked
+        data/daemon_slayer/<patch>/cherry_augments.json snapshot (a degraded
+        load can serve any of them). The universe is read from those files,
+        so a token CommunityDragon adds later fails here instead of greying
+        out silently; the plain tokens are the snapshot fixtures' shape.
+        """
+        emitted = set()
+        for p in sorted((_PROJECT_ROOT / "data" / "daemon_slayer").glob(
+                "*/cherry_augments.json")):
+            snap = json.loads(p.read_text(encoding="utf-8"))
+            for row in (snap.get("augments") or {}).values():
+                emitted.add(row.get("rarity"))
+        # Anchor: an empty or partial enumeration must not pass vacuously.
+        self.assertTrue({"kSilver", "kGold", "kPrismatic", "kEventChoice"} <= emitted,
+                        emitted)
+        none_seen = None in emitted
+        emitted.discard(None)
+        universe = sorted(emitted | {"kBronze", "silver", "gold", "prismatic"})
+
+        css = (_PROJECT_ROOT / "web" / "css" / "panels" / "augment_reco.css"
+               ).read_text(encoding="utf-8")
+        styled = set(re.findall(
+            r"\.ar-rar\.([a-z]+)\s*\{\s*background\s*:", css))
+        self.assertTrue({"silver", "gold", "prismatic"} <= styled, styled)
+
+        rows = [{"id": i + 1, "name": f"R{i}", "rarity": r, "score": 0.5}
+                for i, r in enumerate(universe)]
+        program = (
+            _DOM_STUB
+            + "(async () => {\n"
+            + f"  const m = await import({json.dumps(PANEL_JS.as_uri())});\n"
+            + "  const out = {};\n"
+            + f"  for (const row of {json.dumps(rows)}) {{\n"
+            + "    m._resetAugmentRecoSig();\n"
+            + "    m.renderAugmentReco({aug_reco: [row]});\n"
+            + "    const h = document.getElementById('ib-aug-reco-list').innerHTML;\n"
+            + "    const mm = h.match(/class=\"ar-rar ([^\"]*)\"/);\n"
+            + "    out[row.rarity] = mm ? mm[1] : null;\n"
+            + "  }\n"
+            + "  m._resetAugmentRecoSig();\n"
+            + "  m.renderAugmentReco({aug_reco: [{id: 9, name: 'N', rarity: null, score: 0.5}]});\n"
+            + "  out.__null__ = document.getElementById('ib-aug-reco-list').innerHTML.includes('ar-rar');\n"
+            + "  console.log(JSON.stringify(out));\n"
+            + "})();\n"
+        )
+        proc = subprocess.run([NODE, "-e", program], capture_output=True,
+                              text=True, timeout=60, encoding="utf-8")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        got = json.loads(proc.stdout.strip())
+        unstyled = {r: got.get(r) for r in universe if got.get(r) not in styled}
+        self.assertEqual(unstyled, {}, f"rarities with no coloured pip class: {unstyled}")
+        self.assertEqual(got["kEventChoice"], "event")
+        self.assertEqual(got["kBronze"], "bronze")
+        self.assertFalse(got["__null__"],
+                         f"a null rarity renders no pip (seen in data: {none_seen})")
 
     def test_plain_aram_artifact_keeps_the_panel_hidden(self) -> None:
         c = _coach(self.out, mode="ARAM", client=None)
