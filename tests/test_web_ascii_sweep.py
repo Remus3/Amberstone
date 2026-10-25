@@ -625,7 +625,15 @@ _WEB = _REPO_ROOT / "web"
 # 9aac2d261 blob (the DDRAGON_FALLBACK_VERSION literal 16.21.1 -> 16.20.1)
 # reproduces the superseded c0fb54b2... value EXACTLY. That one path is the
 # whole change. No glyph change.
-_LIVE_HALF_DIGEST = "3a3a40b47fea396edb10201ec723dc1d83e84daf14b396a3d010c2ac71416dd6"
+# superseded by the RM-850 re-capture below: "3a3a40b47fea396edb10201ec723dc1d83e84daf14b396a3d010c2ac71416dd6"
+#
+# RE-CAPTURED 2026-10-24 at RM-850 (the ARAM comp-verdict POST carries the
+# build variants + current_variant). Ordinary case, no tokeniser change.
+# ATTRIBUTED BY SUBSTITUTION against 36cba0ea2: swapping exactly
+# web/js/panels/champ_select.js back to its HEAD blob reproduces the
+# superseded 3a3a40b4... value EXACTLY. That one path is the whole change.
+# No glyph change.
+_LIVE_HALF_DIGEST = "26d42f61e1580575e4d2546c1a52af8111d94d2177406eae3c43b28736aa7dfc"
 
 
 def _web_sources() -> list[Path]:
