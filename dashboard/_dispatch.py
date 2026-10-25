@@ -109,6 +109,7 @@ def _gather_get() -> list:
                                routes_session_hygiene,
                                routes_playstyle_labels,
                                routes_draft_score,
+                               routes_tft,
                                routes_vision_calibrator)
         _GET_CACHE = (list(routes_static.GET_ROUTES)
                       + list(routes_state.GET_ROUTES)
@@ -177,6 +178,7 @@ def _gather_get() -> list:
                       + list(routes_session_hygiene.GET_ROUTES)
                       + list(routes_playstyle_labels.GET_ROUTES)
                       + list(routes_draft_score.GET_ROUTES)
+                      + list(routes_tft.GET_ROUTES)
                       + list(routes_vision_calibrator.GET_ROUTES))
     return _GET_CACHE
 
@@ -195,6 +197,7 @@ def _gather_post() -> list:
                                routes_sr_draft, routes_sr_user_builds,
                                routes_team_context,
                                routes_archetype, routes_last_match,
+                               routes_tft,
                                routes_vision_calibrator)
         _POST_CACHE = (list(routes_static.POST_ROUTES)
                        + list(routes_state.POST_ROUTES)
@@ -213,6 +216,7 @@ def _gather_post() -> list:
                        + list(routes_team_context.POST_ROUTES)
                        + list(routes_archetype.POST_ROUTES)
                        + list(routes_last_match.POST_ROUTES)
+                       + list(routes_tft.POST_ROUTES)
                        + list(routes_vision_calibrator.POST_ROUTES))
     return _POST_CACHE
 

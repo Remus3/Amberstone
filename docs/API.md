@@ -12,7 +12,7 @@ Ground truth = `dashboard/_dispatch.py` + each `dashboard/routes_*.py` module's
 
 | Path | Description | Schema |
 |---|---|---|
-| `/api/state` | Current coach payload + health + LCU snapshot (500 ms poll target) | `StateResponse` |
+| `/api/state` | Current coach payload + health + LCU snapshot (500 ms poll target); `tft_context` see "TFT view endpoints" | `StateResponse` |
 | `/api/state-stream` | SSE stream of `/api/state` on change (heartbeat every 15 s) | `StateResponse` events |
 | `/api/events` | RM-604: discrete live events (death/respawn/level_up/item_completed/objective_taken) as SSE with monotonic `id:`; resume via `?since=<id>` (wins) or `Last-Event-ID`; bounded 1024 ring, `gap` {from,to} when fallen off; `hello` {head} for a fresh client (late joiners read `/api/state`); `: hb` every 15 s idle. Non-SSE Accept returns JSON `{head, events, gap, state}` | see `dashboard/routes_events.py` |
 | `/api/health` | RC process health (`ops/runtime/health.json` + `rc_version`) | `HealthResponse` |
@@ -106,6 +106,37 @@ between-game ops panels page, which reads the three `/api/ops/*` routes).
 
 ---
 
+## TFT view endpoints (`dashboard/routes_tft.py`, TFT-09)
+
+Read-only JSON for the TFT lobby / in-match / post-match panes
+(`docs/TFT_PROGRAM.md` sections 4 and 7). Sources: the per-round store
+`data/tft/tft_rounds.db` (opened read-only, one short-lived connection per read)
+and the RM-616 post-game store `data/tft_matches/`. No route makes a network
+call; a missing or unreadable store reads as empty with `store` set to
+`absent` / `error`; an unexpected failure is HTTP 500
+`{"ok": false, "error": "internal error - see logs"}` (raw text to the log only).
+
+| Path | Returns |
+|---|---|
+| `/api/tft/live` | The open match: `status` (`no_match` / `no_round` / `live` / `stale`, stale after `stale_after_s` = 120 s), `store`, `fresh`, `age_s`, `match` (summary row), `local_key`, `round` (latest round bundle, raw `obs` / `frames` dropped), `series` (per-round rows without bundles), `opponents` (8 rows by HP: `hp`, `level_badge`, `alive`, `standing`, `hp_series` `[[round_seq, hp], ...]`, `last_board`) |
+| `/api/tft/matches?limit=N` | `{ok, store, postgame_store, count, matches}`, newest first; `limit` 1-200 (default 50). Row: `id`, `match_id` (store id, or null for a match only the post-game store knows; then `id` = the game id), `game_id`, `set_id`, `queue_id`, `queue_kind`, `placement`, `placement_src`, `started_at`, `ended_at`, `open`, `gt_status`, `sources` |
+| `/api/tft/match/<id>` | One match by store id or game id: `{ok, found, id, source: "store", store, match, rounds_db, postgame, engine}`; `rounds_db` drops raw `obs` / `frames` unless `?raw=1`; `engine` = Augur digest (`status` `no_set` / `warming` / `not_in_catalogue` / `no_comp` / `ready`, plus `comp` and `milestones` versus that comp's top-4 medians). 404 `bad_id` / `not_found` |
+| `/api/tft/match/<any>?fixture=<name>` | A scrubbed fixture (`tests/fixtures/tft_rounds/<name>.json` first, then `data/tft/exports/`), `source: "fixture"`; the scrub guard runs on every load, so an unscrubbed file is 404 `fixture_not_found` |
+| `/api/tft/icon/<category>/<apiName>?set=N` | A cached icon from `data/tft/icon_cache/` (`tft/assets/icon_cache.py`; category `champion` / `item` / `trait` / `augment`), `image/png` or `image/jpeg` by its bytes, `Cache-Control: private, max-age=3600`. 404 `{"ok": false, "error": "not_cached"}` when not cached; nothing is fetched |
+| `/api/tft/scouting` | `{ok, available, age_s, scouting}`: the opponent scouting digest (`tft/tft_scouting.py`) as published; `available: false` when absent or unreadable |
+| `/api/tft/engine/milestones?set=N` | Augur (`engine`, `schema`) + `{ok, set_id, status, milestones, catalogue}`; `status` `warming` (the model builds on a background thread) / `no_history` / `ready` |
+| `/api/tft/engine/planner?set=N` | `{..., status, live_status, planner}`: prior top-4 comp choices with hover digests; on a fresh round the choices count live contest from the other boards |
+| `/api/tft/engine/recommend?set=N&comp=<comp_id>` | `{..., status, live_status, suppressed, recommendation}` on the latest captured round. B4 (RM-189): while a game is live (health flags via `core/live_game_gate.py`, or the round is still fresh) `recommendation` is null and `suppressed` is `"live_game"` |
+
+`/api/state` carries `tft_context` (`docs/TFT_PROGRAM.md` section 4.1), the one
+server-side TFT context authority: `{"active": bool, "phase": "lobby" | "match" |
+"post" | null, "queue_id": int | null, "source": "mode_key" | "lcu_queue" |
+"standalone" | "last_match" | null}`. Lobby comes from the LCU queue through
+`core/queue_modes.py` (1090, 1100, 1130, 1160, 1220, 1230, 6110); `post` holds for
+30 min after a TFT match while the client is post-game or idle.
+
+---
+
 ## POST endpoints
 
 | Path | Body schema | Description |
@@ -135,6 +166,7 @@ between-game ops panels page, which reads the three `/api/ops/*` routes).
 | `/api/sr-draft/apply` | `{profile_id}` | Apply SR draft coaching profile |
 | `/api/sr-draft/user-builds` | `{builds: [...]}` | Save SR user build list |
 | `/api/team-context/refresh` | `TeamContextRefreshRequest` | Force team-context recompute |
+| `/api/tft/match/<id>/export` | `{name?}` (`[A-Za-z0-9_-]`, max 64) | Write the match's scrubbed fixture (players `P1`..`P8`, relative times) to `data/tft/exports/<name>.json`; returns `{ok, match_id, name, path}`. 400 `bad_name`, 404 `not_found`, 422 `scrub_failed` (violation count only), 503 `store_unavailable` |
 | `/api/top8` | - | Lobby top-8 refresh |
 | `/api/vision-reference` / `/api/vision-regions` | - | Vision-calibrator reference/region writes |
 
