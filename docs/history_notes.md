@@ -41,6 +41,19 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-24c - session 132: RM-835 shipped (18 sites), CLI pin 2.1.310, RM-838 filed
+
+- **C1 = RM-835 (LEDGER 1795):** `fbcdc9952` - 17 :8888 reply sites (15 catch-all 500s + `routes_ds_statcheck` detail + `routes_sr_draft` notes) send a fixed "see logs" line, cause logged scrubbed; `dashboard/_errors.py` `send_error` gained `fields` / `log_traceback`; test `tests/test_rm835_dashboard_reply_scrub.py`. Verifier pass 1 PARTIAL found an 18th: `agents/daemon_slayer/combo.py:295` burst-walker note reached `/api/ds-combo`; `965b7bb92` fixed it at the source (+ `mana_sim.py:570`, `burst.py:671`); pass 2 CONFIRM (125 passed). No ENGINE_VERSION bump.
+- **Gated dual suite on `965b7bb92`:** 1 failed / 42693 passed / 106 skipped; the one failure was the pre-existing CLI pin (red on `f1ff24958` too).
+- **C2 (LEDGER 1796):** `0ffd9320b` subagent CLI pin 2.1.309 -> 2.1.310 via `tools/repin_subagent_cli.py`, all four RM-684 controls passed; 6 passed.
+- **Filed:** `97e501500` RM-835 SHIPPED in ROADMAP + BACKLOG, RM-838 (reply leaks outside the RM-835 set: vision `_http.py:285`, proxy passthroughs, `agents/supervisor.py:1001`, DS :8860-only sites); next free RM-839.
+- **Deployed:** RC restarted (pid 3100 then; 7736 at the /done probe), DS :8860 relaunched (16.21.1); /burst and /api/ds-combo 200.
+- **Memory (LEDGER 1797):** 3 Share-mirror memories marked SUPERSEDED (`7c0ff1624` removed Share/ 2026-09-07); CLAUDE.md's two Share-mirror lines stay RM-809.
+- **Do NOT redo:** RM-835 (all 18 sites), the 2.1.310 pin. RM-838's sites are the follow-up, not RM-835 residue.
+- **Next:** RM-837 (AST guard, assign-then-reply), RM-838, RM-836, then RM-830 / RM-825 and the carried list; the batched MAIN note; S6 at the next live game.
+
+---
+
 # 2026-10-24b - session 131: RM-824 shipped, RC board recreated, suite-guard board ignores, RM-835..RM-837 filed
 
 - **C1 = RM-824 (LEDGER 1791):** `ca5b44e41` (cherry-pick of `f290eaa91`) - six Mission Control loop-control reply sites through `_fault()`: fixed "see logs" line, raw cause logged via `scrub_log`; status codes and keys unchanged. Verifier CONFIRM (91 passed; old module 13 failed); merged-tree 108 passed.

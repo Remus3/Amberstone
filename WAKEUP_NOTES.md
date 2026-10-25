@@ -6,6 +6,20 @@
 
 ---
 
+# 2026-10-25c - session 135: s134 work LANDED on main (C1 gated suite green), id scrub, live backfills, GH1 merge + the one authorized push
+
+- **Operator rulings (chat):** push and commit at this /done, then the push hold is back ON at session 136 start; frozen-file grant re-confirmed for s135 ONLY (ASKS 35, session-scoped); GH1 range-limited rewrite approved (ASKS 34); id scrub ordered ("rewrite the id's no need to ask").
+- **Landed (LEDGER 1883-1897):** P0-F, the 7 s134 lanes (RM-887..RM-903 mapped), TFT-04 (N7), TFT-09, N9 overlay (`baf8644b9` adjudicated LAND), TFT-08, TFT-02, N8, N13 (`tft/local_player.py`, tree-wide isInteractable guard) - each verifier-gated.
+- **C1 (LEDGER 1898):** verifier fixes 1-5, gated run 1 (-n 8) 5 failed -> fixes 6-8, run 2 on `7cb2b412d` (-n 6 + `FLEET_SUITE_COMMIT_MARGIN_MB=18432`) 45565 passed, exit 0. -n 8 nearly exhausts commit (44.8 / 48.4 GB) - use -n 6 until RM-737 / RM-755 is measured.
+- **ID scrub (LEDGER 1899):** 3 real game ids -> 1000000911..913 in the 155 unpushed commits; map `docs/_archive/2026-10/s135-id-scrub-commit-map.txt`; lane / builder branches, archive tags, stash and bundles still hold them - NEVER push those. Older pushed ids: RM-906 (operator ask).
+- **Live (LEDGER 1900):** lane markers, DS restart + 404 probe, N8 backfill (8169 quarantined, RM-888 (c)) and TFT-08 backfill applied with RC stopped; RC pid 7084 healthy.
+- **Q1 (LEDGER 1902):** QA 1st place; live coach 132 calls / 0 errors (RM-902 closed); N13 found (RC followed the 8th-place opponent); RM-905 filed (RC-ReplayRosterPull).
+- **WT (LEDGER 1901):** 22 worktrees removed (bundled); 10 locked by the session process stay - remove next session.
+- **Do NOT redo:** the landings, the scrub, the backfills (re-dry plans 0), GH1 (LEDGER 1903).
+- **Next:** next TFT game: confirm N13 (RC follows YOU) + stage / level / gold non-empty; QA match 20261025-131926; N9 PASSIVE-mode boxes + overlay toggle live check; remove the 10 locked worktrees.
+
+---
+
 # 2026-10-25b - session 134: scoped TFT session - standalone TFT client, Augur engine, RM-615 / RM-616 / RM-699, three 1st-place QA reports
 
 - **Operator steers:** TFT only today; plays without interacting, wants terse output and a TFT QA after each match; "keep updates push commits locally for now" (NO push this session); "global frozen edit allowed" (session-scoped, re-confirm next session); engine name "Augur" provisional ("Hexwright" rejected; alternatives Rollwise, Tempo).
@@ -30,16 +44,3 @@
 - **/done (LEDGER 1860):** ROADMAP size pass 80814 -> 73166 B (`docs/ROADMAP_HISTORY.md` `## 2026-10-25d`); memory 3 new + 2 updated; full suite dispatched `40189033501`.
 - **Do NOT redo:** everything above; C1 RM-837 was shipped by the queue lane (`7a832062c`).
 - **Next:** a scoped TFT session (LT-01..LT-03, Set 18 meta skeleton, roll odds), after landing the RM-816 Linux test fix.
-
----
-
-# 2026-10-24c - session 132: RM-835 shipped (18 sites), CLI pin 2.1.310, RM-838 filed
-
-- **C1 = RM-835 (LEDGER 1795):** `fbcdc9952` - 17 :8888 reply sites (15 catch-all 500s + `routes_ds_statcheck` detail + `routes_sr_draft` notes) send a fixed "see logs" line, cause logged scrubbed; `dashboard/_errors.py` `send_error` gained `fields` / `log_traceback`; test `tests/test_rm835_dashboard_reply_scrub.py`. Verifier pass 1 PARTIAL found an 18th: `agents/daemon_slayer/combo.py:295` burst-walker note reached `/api/ds-combo`; `965b7bb92` fixed it at the source (+ `mana_sim.py:570`, `burst.py:671`); pass 2 CONFIRM (125 passed). No ENGINE_VERSION bump.
-- **Gated dual suite on `965b7bb92`:** 1 failed / 42693 passed / 106 skipped; the one failure was the pre-existing CLI pin (red on `f1ff24958` too).
-- **C2 (LEDGER 1796):** `0ffd9320b` subagent CLI pin 2.1.309 -> 2.1.310 via `tools/repin_subagent_cli.py`, all four RM-684 controls passed; 6 passed.
-- **Filed:** `97e501500` RM-835 SHIPPED in ROADMAP + BACKLOG, RM-838 (reply leaks outside the RM-835 set: vision `_http.py:285`, proxy passthroughs, `agents/supervisor.py:1001`, DS :8860-only sites); next free RM-839.
-- **Deployed:** RC restarted (pid 3100 then; 7736 at the /done probe), DS :8860 relaunched (16.21.1); /burst and /api/ds-combo 200.
-- **Memory (LEDGER 1797):** 3 Share-mirror memories marked SUPERSEDED (`7c0ff1624` removed Share/ 2026-09-07); CLAUDE.md's two Share-mirror lines stay RM-809.
-- **Do NOT redo:** RM-835 (all 18 sites), the 2.1.310 pin. RM-838's sites are the follow-up, not RM-835 residue.
-- **Next:** RM-837 (AST guard, assign-then-reply), RM-838, RM-836, then RM-830 / RM-825 and the carried list; the batched MAIN note; S6 at the next live game.
