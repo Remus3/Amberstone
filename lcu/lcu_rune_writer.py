@@ -643,6 +643,10 @@ class RuneWriter:
     # S134 N2: latched True for the rest of a champ-select session once it is
     # known to be TFT; cleared only when champ select ends.
     _no_loadout_session = False
+    # S134 N2: (queue id, gameMode, map id) from /lol-gameflow/v1/session,
+    # read at most once per champ select and only when the champ-select
+    # session itself carries no queue id. Cleared when champ select ends.
+    _gameflow_queue_cache: Optional[tuple] = None
 
     def _reset_fail_state(self) -> None:
         self._fail_key = None
@@ -736,6 +740,7 @@ class RuneWriter:
                 self._reset_spell_state()
                 self._reset_fail_state()
                 self._no_loadout_session = False
+                self._gameflow_queue_cache = None
             return
 
         # INFO on the enter transition so the game-1-only silence bug
@@ -817,11 +822,14 @@ class RuneWriter:
     def _league_loadout_blocked(self, session: dict, mode: str) -> bool:
         """True when this champ select must get no rune or spell write (TFT).
 
-        The session's own ``queueId`` (top level in the recorded TFT session,
-        ``gameData.queue.id`` on older shapes) is checked as well as the lobby
-        mode, because the lobby read can fail and fall back to "CLASSIC" - the
-        exact path of the measured second write. Once TFT is seen the verdict
-        is latched until champ select ends.
+        The QUEUE decides, never the lobby mode alone: the lobby read can fail
+        and fall back to "CLASSIC" (match 3 on 2026-10-25 logged mode=CLASSIC
+        from the first poll). The queue comes from the session's own
+        ``queueId`` (top level in the recorded TFT session, ``gameData.queue.id``
+        on older shapes) and, when the session carries none, from
+        /lol-gameflow/v1/session - the same fallback lcu/champ_select_shape.py
+        uses, read once per champ select. A lobby mode of "TFT" also counts.
+        Once TFT is seen the verdict is latched until champ select ends.
         """
         if self._no_loadout_session:
             return True
@@ -830,12 +838,36 @@ class RuneWriter:
             gd = session.get("gameData")
             q = gd.get("queue") if isinstance(gd, dict) else None
             qid = q.get("id") if isinstance(q, dict) else None
-        if not is_tft_context(queue_id=qid, game_mode=mode):
+        gf_mode = gf_map = None
+        if not qid:
+            qid, gf_mode, gf_map = self._gameflow_queue()
+        if not (is_tft_context(queue_id=qid, game_mode=mode)
+                or is_tft_context(game_mode=gf_mode, map_id=gf_map)):
             return False
         self._no_loadout_session = True
         _log.info("RuneWriter: TFT champ select (queue=%s mode=%s) - no rune "
                   "or summoner-spell writes", qid, mode)
         return True
+
+    def _gameflow_queue(self) -> tuple:
+        """(queue id, gameMode, map id) from the gameflow session; memoized
+        per champ select on a successful read. Never raises."""
+        if self._gameflow_queue_cache is not None:
+            return self._gameflow_queue_cache
+        try:
+            gf = self._lcu._request("GET", "/lol-gameflow/v1/session")
+        # Same D-CLASS as _detect_game_mode: LCUClient._request already
+        # swallows transport / JSON errors; this only guards odd fakes.
+        except Exception:  # noqa: BLE001
+            gf = None
+        if not isinstance(gf, dict):
+            return (None, None, None)
+        gd = gf.get("gameData") if isinstance(gf.get("gameData"), dict) else {}
+        q = gd.get("queue") if isinstance(gd.get("queue"), dict) else {}
+        mp = gf.get("map") if isinstance(gf.get("map"), dict) else {}
+        self._gameflow_queue_cache = (q.get("id"), q.get("gameMode"),
+                                      q.get("mapId") or mp.get("id"))
+        return self._gameflow_queue_cache
 
     def _reset_spell_state(self) -> None:
         """Clear per-lock spell-push state (champ-select exit / champ change)."""

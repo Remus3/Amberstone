@@ -1196,8 +1196,11 @@ def auto_features() -> None:
     # Auto-set summoner spells in champ select if override enabled
     if CONFIG.get("summoner_override"):
         sess, _ = lcu_request("GET", "/lol-champ-select/v1/session")
-        # S134 N2: never PATCH League spells into a TFT champ select.
-        if isinstance(sess, dict) and not _session_is_tft(sess):
+        # S134 N2: never PATCH League spells into a TFT champ select. The
+        # snapshot flag covers a session that carries no queue id (its queue
+        # then comes from the gameflow fallback in champ_select_shape).
+        if (isinstance(sess, dict) and not _session_is_tft(sess)
+                and not _session_state.get("live_tft")):
             local_cell = sess.get("localPlayerCellId", -1)
             my_pick = next((p for p in sess.get("myTeam", [])
                             if p.get("cellId") == local_cell), None)
