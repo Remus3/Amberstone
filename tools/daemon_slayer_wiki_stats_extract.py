@@ -104,6 +104,10 @@ Design (don't re-litigate):
     aborts the whole run; a failed wiki raw fetch degrades to per-champ getter;
     a failed CDragon fetch records an error + leaves that champ's nulls.
   * Atomic write: tmp.write_text + os.replace (overlays poll mid-write).
+  * ARAM floor (RM-807 (e)): a wiki-sourced run whose ``mode_modifiers.aram``
+    is >= 95 percent neutral (no block counts as neutral) exits 3 and writes
+    nothing, the lolmath RM-805 gate on the wiki side; ``--allow-neutral-aram
+    REASON`` accepts it and records ``_aram_neutral_override`` in the payload.
   * ASCII-only output (ensure_ascii=True) - the no-em-dash repo rule.
   * champion-id source = the committed abilities snapshot's ``data`` dict
     (171 champs at 16.11.1; keyed by DDragon id). The wiki block's ``apiname``
@@ -772,6 +776,82 @@ def _atomic_write_json(path: Path, payload: Any) -> None:
     tmp.replace(path)
 
 
+# RM-807 (e): a failed raw-module fetch or a wiki rename of the ARAM block (or
+# its keys) leaves every champion neutral, and the sidecar was written anyway.
+# Every committed snapshot 16.11.1 .. 16.21.1 has at most 39/171 neutral, so a
+# run at or above the floor stops before the write; the only way past it is
+# ``--allow-neutral-aram REASON``. Same floor and exit code as the lolmath
+# RM-805 gate in daemon_slayer_extract.py. Keys outside these two sets are not
+# read, so a renamed key reads neutral (parser drift, not data).
+ARAM_NEUTRAL_FAIL_FRACTION = 0.95
+EXIT_ARAM_NEUTRAL = 3
+_ARAM_MULT_KEYS = ("dmg_dealt", "dmg_taken", "healing", "shielding", "tenacity",
+                   "total_as", "energyregen_mod")
+_ARAM_FLAT_KEYS = ("ability_haste",)
+
+
+class NeutralAramModifiersError(RuntimeError):
+    """The wiki ARAM modifier block is at or above the neutral floor."""
+
+
+def _aram_block_is_neutral(block: Any) -> bool:
+    if not isinstance(block, dict):
+        return True
+    for keys, neutral in ((_ARAM_MULT_KEYS, 1.0), (_ARAM_FLAT_KEYS, 0.0)):
+        for key in keys:
+            val = block.get(key)
+            if isinstance(val, bool) or not isinstance(val, (int, float)):
+                continue
+            if val != neutral:
+                return False
+    return True
+
+
+def check_aram_neutrality(champions: dict[str, Any],
+                          override_reason: Optional[str] = None) -> dict[str, Any]:
+    """Fail loudly when the wiki ARAM block is >= 95 percent neutral (RM-807 (e)).
+
+    ``champions`` is the payload's per-champion map; a champion with no ARAM
+    block counts as neutral. Returns ``{rows, neutral_rows, neutral_fraction,
+    threshold}``; at or above the floor (an empty roster included) raises
+    ``NeutralAramModifiersError`` unless ``override_reason`` is non-blank, which
+    prints a WARNING and adds ``override_reason``.
+    """
+    def _aram_of(rec: Any) -> Any:
+        modes = rec.get(_FIELD_MODE_MODIFIERS) if isinstance(rec, dict) else None
+        return modes.get("aram") if isinstance(modes, dict) else None
+
+    rows = len(champions)
+    neutral_rows = sum(1 for rec in champions.values() if _aram_block_is_neutral(_aram_of(rec)))
+    fraction = neutral_rows / rows if rows else 1.0
+    out: dict[str, Any] = {
+        "rows": rows,
+        "neutral_rows": neutral_rows,
+        "neutral_fraction": round(fraction, 4),
+        "threshold": ARAM_NEUTRAL_FAIL_FRACTION,
+    }
+    reason = (override_reason or "").strip()
+    if fraction < ARAM_NEUTRAL_FAIL_FRACTION:
+        if reason:
+            print(f"--allow-neutral-aram not needed: wiki ARAM block "
+                  f"{neutral_rows}/{rows} neutral", file=sys.stderr)
+        return out
+    shape = f"{neutral_rows}/{rows} neutral ({fraction:.1%})" if rows else "empty (0 rows)"
+    if not reason:
+        raise NeutralAramModifiersError(
+            f"RM-807: the wiki ARAM modifier block is {shape}, at or above the "
+            f"{ARAM_NEUTRAL_FAIL_FRACTION:.0%} floor - a failed raw-module fetch "
+            "or a wiki rename, not a balance patch; nothing was written. "
+            "Adjudicate it, then re-run with --allow-neutral-aram REASON to "
+            "accept it as an explicit, recorded act."
+        )
+    print(f"WARNING: RM-807 override: accepting a wiki ARAM modifier block that is "
+          f"{shape} (floor {ARAM_NEUTRAL_FAIL_FRACTION:.0%}) - reason: {reason}",
+          file=sys.stderr)
+    out["override_reason"] = reason
+    return out
+
+
 def extract(patch: str, sleep_s: float, limit: Optional[int], verbose: bool,
             source: str = "both", default_cast: bool = True,
             *, full_roster: bool = False) -> dict[str, Any]:
@@ -971,6 +1051,11 @@ def main(argv: Optional[list[str]] = None) -> int:
         help="A-26/RM-95b: source champs from champions.json (173) instead of "
              "champion_abilities.json (171); the only way Locke + Zaahen are reached",
     )
+    ap.add_argument("--allow-neutral-aram", default=None, metavar="REASON",
+                    help="RM-807 (e): accept a wiki ARAM modifier block that is >= 95%% "
+                         f"neutral (the run otherwise exits {EXIT_ARAM_NEUTRAL} and "
+                         "writes nothing); REASON is printed and recorded in the "
+                         "payload as _aram_neutral_override")
     ap.add_argument("--dry-run", action="store_true", help="extract but do not write")
     ap.add_argument("-v", "--verbose", action="store_true", help="per-champ progress")
     args = ap.parse_args(argv)
@@ -996,6 +1081,23 @@ def main(argv: Optional[list[str]] = None) -> int:
     if payload["_with_cast_measured"] == 0:
         print("WARNING: 0 champs resolved a MEASURED cast time - host likely cannot reach "
               "the source(s); NOT a committable sidecar (only engine defaults present).")
+
+    # cdragon-only never parses mode_modifiers, so an empty block is by design
+    if args.source != "cdragon":
+        try:
+            aram_check = check_aram_neutrality(payload["champions"],
+                                               override_reason=args.allow_neutral_aram)
+        except NeutralAramModifiersError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return EXIT_ARAM_NEUTRAL
+        if "override_reason" in aram_check:
+            payload["_aram_neutral_override"] = {
+                "reason": aram_check["override_reason"],
+                "rows": aram_check["rows"],
+                "neutral_rows": aram_check["neutral_rows"],
+                "neutral_fraction": aram_check["neutral_fraction"],
+                "threshold": aram_check["threshold"],
+            }
 
     if args.dry_run:
         print("(dry-run; not written)")
