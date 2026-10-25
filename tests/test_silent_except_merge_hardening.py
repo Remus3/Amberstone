@@ -24,7 +24,6 @@ converted into a worse failure somewhere the swallow did not look.
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from unittest import mock
 
 import pytest
@@ -120,18 +119,31 @@ def test_save_tft_rating_survives_corrupt_comp_state(tmp_path):
         )
 
 
-def test_comp_state_enrichment_still_applies_when_present(tmp_path):
+def test_comp_state_enrichment_still_applies_when_present(tmp_path, monkeypatch):
     """Guard the hardening did not break the happy path: a valid comp_state
-    with a selected comp must still be picked up as `comp`."""
+    with a selected comp must still be picked up as `comp`.
+
+    Since s134 N8 the selection names a game only when the resolved set's
+    meta defines it (and no board was observed - `_TFT_LIVE` has none), so
+    the happy path seeds that meta. s135 C1: this test used to grep every
+    `data/*.json` and passed on reading back the comp_state.json it wrote
+    itself while the rating said `tft_comp` ''; it reads ONLY the rating
+    output now."""
     import performance_tracker as pt
+    from tft import tft_set
 
     (tmp_path / "data").mkdir()
     (tmp_path / "data" / "comp_state.json").write_text(
         json.dumps({"selected": "Test Comp"}), encoding="utf-8"
     )
+    meta = tmp_path / "meta.json"
+    meta.write_text(json.dumps({"comps": {"Test Comp": {"lv8": ["Unit A"]}}}),
+                    encoding="utf-8")
+    monkeypatch.setattr(tft_set, "meta_path", lambda *a, **k: meta)
 
     grade, _notes = pt.save_tft_rating(str(tmp_path), _TFT_LIVE, _TFT_COACHING)
     assert grade, "happy path produced no grade - the enrichment path regressed"
-    rated = sorted((tmp_path / "data").rglob("*.json"))
-    blob = "\n".join(Path(p).read_text(encoding="utf-8") for p in rated)
-    assert "Test Comp" in blob, "selected comp was not carried into the rating"
+    rating = json.loads(
+        (tmp_path / "data" / "ratings" / "last_tft.json").read_text(encoding="utf-8"))
+    assert rating["tft_comp"] == "Test Comp", "selected comp was not carried into the rating"
+    assert rating["champion"] == "Test Comp"
