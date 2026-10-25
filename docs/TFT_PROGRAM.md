@@ -689,6 +689,22 @@ slice each.
   provisional name Augur). Slices TFT-01..TFT-20 filed in section 7. The LCU TFT
   inventory landed during the write and fills the section 1.4 LCU column; the operator's
   session-134 frozen-file grant is recorded for TFT-14's planner-route fix.
+- 2026-10-25 (session 135): TFT-09 landed (LEDGER 1891; commit `351cded1d`):
+  `dashboard/routes_tft.py` serves `/api/tft/live`, `/api/tft/matches`,
+  `/api/tft/match/<id>` (+ `?fixture=`), the icon, scouting and engine routes and the POST
+  export; `/api/state.tft_context` is built in `dashboard/_state_builder.py`; the engine
+  recommendation is withheld while a game is live.
+- 2026-10-25 (session 135): TFT-04 landed (LEDGER 1892; commit `8e473a81f`): `tft/cv/`
+  reads the HUD from the 2560x1440 region profile scaled to any 16:9 frame, OCR behind a
+  Tesseract seam; the live `TftOcrReader` moved onto it (QA N7: 1280x720 relay frames,
+  match-3 stage 83/89 right, was 0/12); TFT-06 47-frame accuracy has 9 fields with no
+  wrong answer.
+- 2026-10-25 (session 135): TFT-08 landed (LEDGER 1894; commit `234c1449e`; live backfill
+  LEDGER 1900): `tft/rounds/ground_truth.py` bridges the RM-616 EoG / match-history store
+  into `gt_*` rows with per-field accuracy (`tft/rounds/accuracy.py`) and exposes
+  `final_boards` for Augur; backfill CLI with `--eog-raw` and a byte-read-only `--dry-run`.
+  The live run over 5 recorded matches wrote 562 gt_board and 25 accuracy rows; the rerun
+  was unchanged.
 - 2026-10-25 (session 135): TFT-02 landed (LEDGER 1895; redo of the interrupted s134
   builder): `tft/sources/eog_file.py` and `tft/sources/tft_log.py` write the per-round EoG
   file and TFT.log into the TFT-01 store (all-8 HP / standing / boards, phase / VO events,
