@@ -197,6 +197,8 @@ def test_lockfile_with_non_numeric_port_is_rejected(monkeypatch, tmp_path):
     monkeypatch.setattr(type(r), "_LCU_LOCKFILE_PATHS", [lf])
     r._ensure_lcu()
     assert r._lcu_port != "NOTAPORT"
+    # RM-851 (a): nothing else may supply a port either (wmic is cut off).
+    assert r._lcu_port is None
 
 
 def test_lockfile_with_out_of_range_port_is_rejected(monkeypatch, tmp_path):
@@ -207,6 +209,8 @@ def test_lockfile_with_out_of_range_port_is_rejected(monkeypatch, tmp_path):
     monkeypatch.setattr(type(r), "_LCU_LOCKFILE_PATHS", [lf])
     r._ensure_lcu()
     assert r._lcu_port != "99999"
+    # RM-851 (a): nothing else may supply a port either (wmic is cut off).
+    assert r._lcu_port is None
 
 
 def test_lockfile_with_empty_password_is_rejected(monkeypatch, tmp_path):
