@@ -36,6 +36,8 @@ import pytest
 from dashboard import _arm_confirm as armgate
 from dashboard import _idempotency as idem
 from dashboard import routes_loop_control as mod
+from tests._reply_leak_ast import (ASSIGNMENT_SHAPES, SAFE_ASSIGNMENTS,
+                                   reply_leaks)
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -285,43 +287,13 @@ _SAFE_CALLS = {"scrub_log", "scrub_controls", "send_error", "_fault", "type",
 _REPLY_CALLS = {"_send", "_send_json", "send_json"}
 
 
-def _call_name(node: ast.Call) -> str:
-    fn = node.func
-    if isinstance(fn, ast.Name):
-        return fn.id
-    if isinstance(fn, ast.Attribute):
-        return fn.attr
-    return ""
-
-
 def _reply_leaks(src: str) -> list[int]:
-    """Lines where an except-bound name reaches a reply shape - a dict
-    literal, a ``return`` value or a ``_send`` call - before any safe call.
-    A log call is not a reply (its scrubbing is RM-811's guard)."""
-    tree = ast.parse(src)
-    parents = {c: p for p in ast.walk(tree) for c in ast.iter_child_nodes(p)}
-    bad: set[int] = set()
-    for h in ast.walk(tree):
-        if not (isinstance(h, ast.ExceptHandler) and h.name):
-            continue
-        for stmt in h.body:
-            for n in ast.walk(stmt):
-                if not (isinstance(n, ast.Name) and n.id == h.name):
-                    continue
-                cur = n
-                while cur is not h and cur in parents:
-                    cur = parents[cur]
-                    if isinstance(cur, ast.Call):
-                        name = _call_name(cur)
-                        if name in _SAFE_CALLS or name in _LOG_LEVELS:
-                            break
-                        if name in _REPLY_CALLS:
-                            bad.add(n.lineno)
-                            break
-                    if isinstance(cur, (ast.Dict, ast.Return)):
-                        bad.add(n.lineno)
-                        break
-    return sorted(bad)
+    """Lines where an except-bound name, or a name assigned from it (RM-837),
+    reaches a reply shape - a dict literal, a ``return`` value or a ``_send``
+    call - before any safe call. A log call is not a reply (its scrubbing is
+    RM-811's guard). The walk lives in ``tests/_reply_leak_ast.py``."""
+    return reply_leaks(src, safe_calls=_SAFE_CALLS, log_levels=_LOG_LEVELS,
+                       reply_calls=_REPLY_CALLS)
 
 
 def _swept_files() -> list[Path]:
@@ -373,3 +345,11 @@ def test_the_reply_detector_is_not_vacuous():
         "        raise RuntimeError('wrapped') from exc\n"
     )
     assert _reply_leaks(src) == [5, 7, 9, 11]
+
+
+def test_the_reply_detector_follows_an_assignment():
+    """RM-837: a name assigned from the bound exception - directly, by a
+    subscript store, an ``update`` call or an augmented assignment, or one
+    hop further - is followed to the reply it reaches."""
+    assert _reply_leaks(ASSIGNMENT_SHAPES) == [6, 12, 18, 24, 31]
+    assert _reply_leaks(SAFE_ASSIGNMENTS) == []
