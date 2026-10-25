@@ -136,6 +136,68 @@ const WIDGETS = [
   { id: "w-arambalance", sel: "#aram-balance-panel", x: 1050, y: 290, tier: "ambient", label: "ARAM Balance" },
 ];
 
+// TFT widget set (S134 N9, docs/TFT_PROGRAM.md 4.3). The WIDGETS above are the
+// League set; in a TFT match the field shows ONLY these and the menu lists ONLY
+// these (see _isTftNow / _inGame). Mounts are created by lib/overlay_tft.js,
+// which also renders them. `w` is the fixed width in design px, applied as the
+// widget's --ovx-w (web/css/** is the dashboard slice's, so the width rides
+// the registry instead of overlay.css). `game: "tft"` scopes the entry.
+//
+// Defaults are measured against the TFT HUD on real 2560x1440 frames (match 3,
+// ops/runtime/tft_qa/20261025-085349/frames, mapped to 1920x1080 design px).
+// tests/test_overlay_tft_layout.py holds the keep-out regions (stage strip,
+// FPS block, scoreboard, trait panel, board + bench, shop, augment cards) and
+// fails on any default box that enters one, leaves the screen, or overlaps the
+// launcher, the rc-shell ON/OFF icon, another TFT widget or the reserved
+// TFT-14 planner slot (overlay_tft.js TFT_PLANNER_SLOT, bottom-left).
+//   w-tft-hud    top-left scenery, right of the launcher + ON/OFF icon and
+//                above the trait panel (y 240), left of the board corner.
+//   w-tft-lobby  directly under it (data-gated: hidden until opponents' HP
+//                exists in /api/state).
+//   w-tft-board  bottom-right scenery: right of the shop (x 1465), under the
+//                scoreboard (y 850).
+const TFT_WIDGETS = [
+  { id: "w-tft-hud", sel: "#ovt-hud", x: 70, y: 10, w: 296, tier: "primary", label: "TFT Vitals", game: "tft" },
+  { id: "w-tft-lobby", sel: "#ovt-lobby", x: 70, y: 140, w: 296, tier: "ambient", label: "TFT Lobby HP", game: "tft" },
+  { id: "w-tft-board", sel: "#ovt-board", x: 1476, y: 864, w: 428, tier: "ambient", label: "TFT Board", game: "tft" },
+];
+
+// Widgets registered at runtime by later slices (overlay_tft.js
+// registerTftOverlayPanel - the TFT-14 planner hook). Same entry shape.
+const _extraWidgets = [];
+
+// The whole runtime registry: League set + TFT set + registered extras.
+function _registry() {
+  return WIDGETS.concat(TFT_WIDGETS, _extraWidgets);
+}
+
+// Which game family the field is showing. lib/overlay_tft.js stamps
+// body[data-ovx-game] ("tft" | "lol") from /api/state.mode_key on every state
+// tick; that wins because body[data-mode] can flap on a health tick. Before the
+// first state lands the body mode tag is the fallback.
+function _isTftNow() {
+  try {
+    const ds = document.body.dataset || {};
+    if (ds.ovxGame) return ds.ovxGame === "tft";
+    return String(ds.mode || "").toLowerCase() === "tft";
+  } catch (_e) {
+    return false;
+  }
+}
+
+// Does widget w belong on the field right now? game "*" = every game (the
+// launcher), "tft" = TFT only, absent = the League set (every non-TFT mode).
+function _inGame(w, tft) {
+  if (!w) return false;
+  if (w.game === "*") return true;
+  return w.game === "tft" ? tft === true : tft !== true;
+}
+
+// The panel rows the launcher menu offers for a game family, in registry order.
+function _menuWidgets(tft) {
+  return _registry().filter((w) => _inGame(w, tft));
+}
+
 // The launcher is a CONTROL widget, not a panel: a small always-visible square
 // (HUD summoner-spell sized) the operator drags anywhere and taps (in ACTIVE) to
 // open the layout control center - per-panel show/hide + reset + panel-set. It is
@@ -145,11 +207,15 @@ const WIDGETS = [
 // WIDGETS - it is never itself hideable and never appears in its own panel list.
 // Its position rides the same _layout mirror under its own id; a reset clears that
 // entry, so it returns to the default corner (and stays visible) like every panel.
-const LAUNCHER = { id: "w-launcher", sel: "#w-launcher", x: 24, y: 24, tier: "control", label: "Overlay menu" };
+const LAUNCHER = { id: "w-launcher", sel: "#w-launcher", x: 24, y: 24, tier: "control", label: "Overlay menu", game: "*" };
 
 // Panel sets the menu can switch to (mirror of rc-shell overlay_state PANEL_SETS;
 // the shell's normOverlayAction re-validates, so this list is only the UI source).
 const PANEL_SETS = ["coach", "build", "threat"];
+
+// Set by initOverlayLayout; placeOverlayField / registerOverlayWidget only
+// place once the field exists (a plain dashboard never initializes it).
+let _inited = false;
 
 // Widgets that anchor by their BOTTOM (growing upward) when dropped in the lower
 // half - only the tall content panels that would otherwise shrink against the
@@ -246,6 +312,10 @@ function _posFor(w) {
     // Per-panel opacity (operator 2026-06-28): a 0.3-1.0 multiplier so each cue
     // can recede independently of the global window opacity. Absent -> 1 (opaque).
     opacity: Number.isFinite(saved.opacity) ? saved.opacity : 1,
+    // S134 N9: out of its game family (a League widget in TFT, a TFT widget
+    // outside TFT) a widget is off the field. Computed, never persisted, so the
+    // operator's own per-widget hide survives a game switch untouched.
+    modeOff: !_inGame(w, _isTftNow()),
   };
 }
 
@@ -291,7 +361,7 @@ function _applyPos(el, p) {
   } else {
     el.style.opacity = ""; // standard prop - clearing the string removes it
   }
-  el.classList.toggle("ovx-hidden", p.hidden);
+  el.classList.toggle("ovx-hidden", p.hidden || p.modeOff === true);
 }
 
 function _bodyZoom() {
@@ -631,12 +701,15 @@ function _markFieldReady() {
 }
 
 function _placeAll() {
-  for (const w of WIDGETS) {
+  for (const w of _registry()) {
     const el = document.querySelector(w.sel);
     if (!el) continue;
     el.classList.add("ovx-widget");
     el.dataset.ovxId = w.id;
     el.dataset.ovxTier = w.tier;
+    // Registry-owned fixed width (TFT set + registered extras); the League set
+    // keeps its overlay.css --ovx-w map.
+    if (Number.isFinite(w.w) && w.w > 0) el.style.setProperty("--ovx-w", w.w + "px");
     // Zone widgets (operator 2026-06-28: the spell/CD panel) are interactive while
     // playing - mark them [data-rc-zone] so the rc-shell makes the window
     // interactive on hover in PASSIVE, no ACTIVE toggle needed. (A/B/C #rn-choices
@@ -927,10 +1000,14 @@ function _renderMenu(menu) {
   menu.innerHTML = "";
   const head = document.createElement("div");
   head.className = "ovx-menu-head";
-  head.textContent = "PANELS";
+  // S134 N9: the menu lists the panels of the game on screen - the TFT set in a
+  // TFT match, the League set otherwise (QA match 3: a TFT menu offered only
+  // SR / ARAM panels).
+  const tft = _isTftNow();
+  head.textContent = tft ? "TFT PANELS" : "PANELS";
   menu.appendChild(head);
 
-  for (const w of WIDGETS) _menuPanelRow(menu, w);
+  for (const w of _menuWidgets(tft)) _menuPanelRow(menu, w);
 
   const reset = document.createElement("button");
   reset.type = "button";
@@ -950,7 +1027,12 @@ function _renderMenu(menu) {
   done.textContent = "Done (back to play)";
   done.addEventListener("click", () => {
     _setMenu(false);
-    _shellAction({ action: "set-active" }); // flip back to PASSIVE / click-through
+    // Back to PASSIVE / click-through. This sent "set-active" until S134, which
+    // the shell runs as the Ctrl+Shift+A flip TO interactive: "back to play"
+    // left a full-screen overlay eating game clicks (and holding focus) for the
+    // 20 s auto-revert. An rc-shell without "set-passive" drops the unknown
+    // action (normOverlayAction allow-list), which is still the safe side.
+    _shellAction({ action: "set-passive" });
   });
   menu.appendChild(done);
 
@@ -1009,8 +1091,53 @@ function _ensureLauncher() {
   }
 }
 
+// Re-run the place pass now (idempotent). lib/overlay_tft.js calls it right
+// after it creates a mount or flips the game family, so a new widget is
+// positioned before it is un-hidden and the field never shows the wrong set
+// for a frame. No-op until initOverlayLayout ran (plain dashboard / tests).
+export function placeOverlayField() {
+  if (!_inited) return false;
+  try {
+    _placeAll();
+    _ensureLauncher();
+  } catch (_e) {
+    return false; // additive; never break a state render over placement.
+  }
+  return true;
+}
+
+// Register one widget at runtime (the TFT-14 planner hook rides this through
+// overlay_tft.js registerTftOverlayPanel). Same entry shape as the registries:
+// { id: "w-...", sel, x, y, label, w?, tier?, game? }. A malformed entry or an
+// id owned by a built-in registry is refused (false); re-registering an extra
+// id replaces it. Placed immediately once the field exists.
+export function registerOverlayWidget(entry) {
+  const e = entry && typeof entry === "object" && !Array.isArray(entry) ? entry : null;
+  if (!e) return false;
+  if (typeof e.id !== "string" || !/^w-[a-z0-9-]+$/.test(e.id)) return false;
+  if (typeof e.sel !== "string" || !e.sel.trim()) return false;
+  if (!Number.isFinite(e.x) || !Number.isFinite(e.y)) return false;
+  if (WIDGETS.concat(TFT_WIDGETS, [LAUNCHER]).some((w) => w.id === e.id)) return false;
+  const clean = {
+    id: e.id,
+    sel: e.sel,
+    x: Math.round(e.x),
+    y: Math.round(e.y),
+    tier: typeof e.tier === "string" && e.tier ? e.tier : "ambient",
+    label: typeof e.label === "string" && e.label ? e.label : e.id,
+  };
+  if (Number.isFinite(e.w) && e.w > 0) clean.w = Math.round(e.w);
+  if (e.game === "tft" || e.game === "*") clean.game = e.game;
+  const i = _extraWidgets.findIndex((w) => w.id === clean.id);
+  if (i >= 0) _extraWidgets[i] = clean;
+  else _extraWidgets.push(clean);
+  placeOverlayField();
+  return true;
+}
+
 export function initOverlayLayout() {
   if (document.body.dataset.shell !== "overlay") return;
+  _inited = true;
   _layout = _readLayout();
 
   // Expose the field reset so the rc-shell Alt+Shift+R global hotkey can call it
@@ -1056,11 +1183,28 @@ export function initOverlayLayout() {
   // The body zoom can change with the window (ovscale); re-apply on resize so
   // the design-px positions keep their on-screen anchor.
   window.addEventListener("resize", () => {
-    for (const w of WIDGETS) {
+    for (const w of _registry()) {
       const el = document.querySelector(w.sel);
       if (el) _applyPos(el, _posFor(w));
     }
   });
+
+  // S134 N9: a game-family switch (body data-ovx-game from overlay_tft.js, or
+  // the data-mode fallback) re-places the field so the right set shows, and
+  // repaints an open menu so it lists that game's panels.
+  try {
+    const gameMo = new MutationObserver(() => {
+      _placeAll();
+      if (_menuEl && _menuEl.classList.contains("ovx-menu-open")) _renderMenu(_menuEl);
+    });
+    gameMo.observe(document.body, {
+      attributes: true,
+      attributeFilter: ["data-ovx-game", "data-mode"],
+    });
+  } catch (_e) {
+    // no MutationObserver (headless stub): overlay_tft's placeOverlayField call
+    // still re-places on every flip it makes.
+  }
 
   // Survive re-renders. The lead / choices / callouts mounts are rebuilt by
   // their panel renderers (replaceWith / innerHTML), which drops the .ovx-widget
@@ -1101,6 +1245,12 @@ export function resetOverlayLayout() {
 // contextmenu + reset behavior can be exercised without a real rc-shell bridge.
 export const _internals = {
   WIDGETS,
+  TFT_WIDGETS,
+  _registry,
+  _isTftNow,
+  _inGame,
+  _menuWidgets,
+  _extraWidgets,
   LAUNCHER,
   PANEL_SETS,
   TALL_IDS,
