@@ -392,9 +392,10 @@ _RESIDUAL_RM381 = {
     "coaches/experimental_builder.py":     "prior Haiku output re-fed to Haiku",
     "coaches/aram_team_analyzer.py":       "no production caller measured; test-only today",
     "tft/tft_coach_engine.py":             "LiveClient-derived state fields",
-    "tft/tft_pbe_engine.py":               "LiveClient-derived state fields",
     "agents/agent7_context/warm_session.py": "operator-typed text on every measured path",
 }
+# RM-292 (b): tft/tft_pbe_engine.py left the residual set when the unreachable
+# PBE coach subsystem was deleted (it no longer carries an egress call).
 
 # Not prompt builders at all. Three of these were REFUTED by the row's own
 # census and must not be "fixed"; the rest are transport or relay legs that

@@ -15,6 +15,8 @@ Covers (TDD - each test was written failing-first against the live bug):
      user-facing `reason` field (hard rule: friendly degrade only).
   6. tft_coach / tft_pbe_coach wrote data files non-atomically
      (path.write_text) - hard rule is tmp.write_text + tmp.replace.
+     (tft_pbe_coach was deleted by RM-292 (b), unreachable; its pin went
+     with it, tests/test_rm292b_pbe_coach_retired.py.)
   7. safe_write concurrency smoke (two writer threads share one .tmp
      name; serialized via module lock).
   8. replay_coach._load_match characterization (missing/corrupt db).
@@ -429,26 +431,6 @@ def test_tft_reset_state_uses_atomic_safe_write(tmp_path, monkeypatch):
     data = json.loads(c._tft_data_file.read_text(encoding="utf-8"))
     assert data["mode"] == "tft"
     assert not list(tmp_path.glob("*.tmp")), "leftover tmp file"
-
-
-def test_tft_pbe_data_files_use_atomic_safe_write(tmp_path, monkeypatch):
-    from coaches import tft_pbe_coach as mod
-    written: list = []
-    real = safe_write
-
-    def _spy(path, data):
-        written.append(path)
-        return real(path, data)
-
-    monkeypatch.setattr(mod, "safe_write", _spy)
-    c = mod.Coach.__new__(mod.Coach)
-    c._tft_data_file = tmp_path / "tft_pbe_coaching_data.json"
-    c._live_data_file = tmp_path / "tft_pbe_live_data.json"
-    c._ensure_data_files()
-    assert {p.name for p in written} == {
-        "tft_pbe_coaching_data.json", "tft_pbe_live_data.json"}
-    data = json.loads(c._tft_data_file.read_text(encoding="utf-8"))
-    assert data["mode"] == "tft_pbe"
 
 
 # ==============================================================================

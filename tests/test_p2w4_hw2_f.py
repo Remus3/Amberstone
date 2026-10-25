@@ -5,19 +5,10 @@ no tesseract subprocess, no network - pure parse/aggregate/error-path helpers
 exercised with fakes and tiny fixtures.
 
 API surface verified before writing (cited file:line):
-  1. raw-API-error-leak (HARD RULE):
-     - TftPbeCoachEngine.__init__(data_file, debug=) -> tft/tft_pbe_engine.py:336
-     - _run_safe(state) acquires self._lock, calls self._run, on Exception
-       calls self._write_status(<msg>) -> tft/tft_pbe_engine.py:403-413
-     - _write_status writes {"mode":"tft_pbe","action":"ERROR","risk":msg}
-       atomically to self._data_file -> tft/tft_pbe_engine.py:496-505
-     - the risk field is rendered user-facing by the pbe coach
-       (coaches/tft_pbe_coach.py:166 carries "risk"; _tft_data_file ->
-       data/tft_pbe_coaching_data.json at coaches/tft_pbe_coach.py:62)
-     Pre-fix: _write_status(f"Coach error: {str(exc)[:60]}") leaked the raw
-     exception body (which can carry a credit/balance/400/rate-limit string)
-     into the panel. Sibling tft_coach_engine._run_safe was already fixed
-     (tft/tft_coach_engine.py:684 -> "Coaching paused - retrying").
+  1. retired: the raw-API-error-leak pins on tft/tft_pbe_engine.py
+     `_run_safe` went with that engine (RM-292 (b), PBE coach subsystem
+     deleted - unreachable; tests/test_rm292b_pbe_coach_retired.py). The
+     live twin's degraded message is tft/tft_coach_engine.py `_run_safe`.
 
   2. OCR no-timeout (friction-class-3, stuck-tesseract hang):
      - _OCR_TIMEOUT module constant -> tft/tft_ocr_reader.py
@@ -29,7 +20,6 @@ API surface verified before writing (cited file:line):
 """
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 
@@ -40,14 +30,6 @@ if str(_REPO_ROOT) not in sys.path:
 from PIL import Image  # noqa: E402  (third-party, used by the OCR helpers)
 
 from tft import tft_ocr_reader  # noqa: E402
-from tft.tft_pbe_engine import TftPbeCoachEngine  # noqa: E402
-
-
-# A fake raw API-error body that must NEVER reach the user-facing risk field.
-_RAW_API_ERROR = (
-    "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', "
-    "'message': 'credit balance is too low to access the Anthropic API'}}"
-)
 
 
 class _FakeTess:
@@ -64,46 +46,6 @@ class _FakeTess:
 def _tiny_img() -> Image.Image:
     """A 6x4 black RGB image - small but real so _preprocess() succeeds."""
     return Image.new("RGB", (6, 4))
-
-
-# ---------------------------------------------------------------------------
-# 1. raw-API-error-leak (HARD RULE) - tft_pbe_engine._run_safe
-# ---------------------------------------------------------------------------
-
-def test_pbe_run_safe_does_not_leak_raw_error_to_risk(tmp_path: Path) -> None:
-    data_file = tmp_path / "tft_pbe_coaching_data.json"
-    engine = TftPbeCoachEngine(data_file)
-
-    # Force the inner run to raise with a raw API-error body.
-    def _boom(_state: dict) -> None:
-        raise RuntimeError(_RAW_API_ERROR)
-
-    engine._run = _boom  # type: ignore[assignment]
-    engine._run_safe({"stage": 4, "round": 2})
-
-    written = json.loads(data_file.read_text(encoding="utf-8"))
-    risk = written.get("risk", "")
-    # The friendly degraded message is shown ...
-    assert risk == "Coaching paused - retrying"
-    # ... and NONE of the raw error body leaks into any user-facing field.
-    blob = json.dumps(written).lower()
-    assert "credit balance" not in blob
-    assert "400" not in blob
-    assert "invalid_request_error" not in blob
-
-
-def test_pbe_run_safe_releases_lock_after_error(tmp_path: Path) -> None:
-    # The error path must still release the lock so the next tick can run.
-    engine = TftPbeCoachEngine(tmp_path / "tft_pbe_coaching_data.json")
-
-    def _boom(_state: dict) -> None:
-        raise RuntimeError(_RAW_API_ERROR)
-
-    engine._run = _boom  # type: ignore[assignment]
-    engine._run_safe({"stage": 2, "round": 1})
-    # Lock is free -> acquirable without blocking.
-    assert engine._lock.acquire(blocking=False) is True
-    engine._lock.release()
 
 
 # ---------------------------------------------------------------------------

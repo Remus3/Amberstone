@@ -129,15 +129,17 @@ for fname in ("rc.pem", "rc-key.pem"):
 
 
 # ── Hidden imports ─────────────────────────────────────────────────────
-# Coaches are lazy-loaded by string name in coaches/__init__.py and
+# Coaches are lazy-loaded by string name (core/coach_registry.py
+# MODE_COACH_MAP, imported by app/_game_lifecycle.py) and in
 # core/game_snapshot.py - PyInstaller's static analysis misses these.
+# RM-292 (b): coaches.tft_pbe_coach was retired with the dead
+# coaches/__init__.py loader that was its only route.
 hiddenimports = [
     "coaches.aram_coach",
     "coaches.arena_coach",
     "coaches.brawl_coach",
     "coaches.sr_coach",
     "coaches.tft_coach",
-    "coaches.tft_pbe_coach",
     "coaches._base_coach",
     "coaches.adaptation_hint",
     "coaches.experimental_builder",

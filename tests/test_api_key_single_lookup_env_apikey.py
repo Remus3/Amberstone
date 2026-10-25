@@ -14,6 +14,8 @@ this change the readers did NOT share one lookup:
     their own env-then-file copies;
   * `vision_server/_config.py`  its own copy that ALSO read key files in the
     home folder and on the Desktop - outside the repo.
+  (The two PBE files above were later deleted by RM-292 (b) - unreachable -
+  so they left the consumer lists below.)
 
 The order (MAIN section 2): (1) process env ANTHROPIC_API_KEY, when the
 parent environment carries it (no launcher sets it; RM-810); (2)
@@ -132,11 +134,6 @@ def _c_base_coach_app_dir(root, monkeypatch):
     return _base_coach.read_api_key(_base_coach._APP_DIR)
 
 
-def _c_tft_pbe_coach(root, monkeypatch):
-    from coaches import tft_pbe_coach
-    return tft_pbe_coach._read_api_key()
-
-
 def _c_warm_session(root, monkeypatch):
     from agents.agent7_context.warm_session import WarmAgent7Session
     return WarmAgent7Session(charter="C")._api_key
@@ -153,12 +150,6 @@ def _c_coach_integration(root, monkeypatch):
     monkeypatch.setattr(ce, "CacheEngine", lambda *a, **kw: object())
     ci = CoachIntegration(root / "sr_coaching_data.json")
     return ci._client.api_key if ci._client is not None else ""
-
-
-def _c_tft_pbe_engine(root, monkeypatch):
-    from tft.tft_pbe_engine import TftPbeCoachEngine
-    eng = TftPbeCoachEngine(root / "tft_pbe_coaching_data.json")
-    return eng._client.api_key if eng._client is not None else ""
 
 
 def _c_tft_coach_engine(root, monkeypatch):
@@ -220,11 +211,9 @@ CONSUMERS = [
     pytest.param(_c_shared, id="core.anthropic_key.read_anthropic_key"),
     pytest.param(_c_base_coach_default, id="coaches._base_coach.read_api_key()"),
     pytest.param(_c_base_coach_app_dir, id="coaches._base_coach.read_api_key(_APP_DIR)"),
-    pytest.param(_c_tft_pbe_coach, id="coaches.tft_pbe_coach"),
     pytest.param(_c_warm_session, id="agent7.warm_session"),
     pytest.param(_c_vision_server, id="vision_server._config"),
     pytest.param(_c_coach_integration, id="coach_integration._coach"),
-    pytest.param(_c_tft_pbe_engine, id="tft.tft_pbe_engine"),
     pytest.param(_c_tft_coach_engine, id="tft.tft_coach_engine"),
     pytest.param(_c_screen_read, id="dashboard._screen_read"),
     pytest.param(_c_routes_coach, id="dashboard.routes_coach"),
@@ -502,13 +491,8 @@ run("core.anthropic_key", lambda: anthropic_key.read_anthropic_key())
 run("coaches._base_coach.read_api_key", lambda: __import__(
     "coaches._base_coach", fromlist=["x"]).read_api_key())
 run("coaches._base_coach BaseCoach(_APP_DIR)", _base_coach_app_dir)
-run("coaches.tft_pbe_coach", lambda: __import__(
-    "coaches.tft_pbe_coach", fromlist=["x"])._read_api_key())
 run("coach_integration._coach", _coach_integration)
 run("vision_server._config", _vision)
-run("tft.tft_pbe_engine", lambda: __import__(
-    "tft.tft_pbe_engine", fromlist=["x"]).TftPbeCoachEngine(
-        root / "p.json")._client.api_key)
 run("tft.tft_coach_engine", lambda: __import__(
     "tft.tft_coach_engine", fromlist=["x"]).TftCoachEngine(
         root / "t.json")._client.api_key)
@@ -528,10 +512,8 @@ CHILD_CONSUMERS = (
     "core.anthropic_key",
     "coaches._base_coach.read_api_key",
     "coaches._base_coach BaseCoach(_APP_DIR)",
-    "coaches.tft_pbe_coach",
     "coach_integration._coach",
     "vision_server._config",
-    "tft.tft_pbe_engine",
     "tft.tft_coach_engine",
     "agents.agent7_context.warm_session",
     "dashboard.routes_coach champ-select",

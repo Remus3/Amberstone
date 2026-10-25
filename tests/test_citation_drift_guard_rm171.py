@@ -665,6 +665,55 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
         ("docs/superpowers/specs/2026-07-31-mission-control-s10-decouple-design.md",
          "test_interrupt_panel.py:5"),
     )
+) + tuple(
+    # 2026-10-25, RM-292 (b). THE TFT PBE COACH SUBSYSTEM WAS DELETED:
+    # coaches/tft_pbe_coach.py and tft/tft_pbe_engine.py are gone, and
+    # coaches/__init__.py lost its dead loader (so its :66 is past the end).
+    # Adjudicated DELETE: reachable only through coaches/__init__.py
+    # load_coach, which had no caller since the initial commit (pinned by
+    # tests/test_rm292b_pbe_coach_retired.py).
+    #
+    # Every BACKLOG.md citation below sits in a retained shipped / closed /
+    # filed row body (RM-130, RM-211, RM-258, RM-286, RM-292, RM-314, RM-316,
+    # RM-364, RM-845, RM-858) recording what was measured in those files
+    # when the row was written. Re-pointing them is not possible - no
+    # surviving file holds that code - and rewriting the bodies would make
+    # each row assert something it never asserted. The research refill is a
+    # dated artifact. Same treatment as the MC block above, and the same
+    # rule: a living doc does not belong in this family (see the ROT entry
+    # after this block).
+    (doc, raw, "HISTORICAL",
+     "Points into the TFT PBE coach subsystem deleted by RM-292 (b) on "
+     "2026-10-25, from a retained row body or dated artifact - see the "
+     "block comment above for why it is not re-pointed.")
+    for doc, raw in (
+        ("BACKLOG.md", "coaches/__init__.py:66"),            # RM-292
+        ("BACKLOG.md", "coaches/tft_pbe_coach.py:100"),      # RM-292
+        ("BACKLOG.md", "tft/tft_pbe_engine.py:395"),         # RM-292
+        ("BACKLOG.md", "tft/tft_pbe_engine.py:423"),         # RM-292
+        ("BACKLOG.md", "coaches/tft_pbe_coach.py:4-10"),     # RM-845
+        ("BACKLOG.md", "tft/tft_pbe_engine.py:24-25"),       # RM-845
+        ("BACKLOG.md", "tft/tft_pbe_engine.py:189"),         # RM-364
+        ("BACKLOG.md", "tft/tft_pbe_engine.py:357"),         # RM-364
+        ("BACKLOG.md", "tft/tft_pbe_engine.py:348"),         # RM-314
+        ("BACKLOG.md", "tft/tft_pbe_engine.py:353"),         # RM-286
+        ("BACKLOG.md", "tft/tft_pbe_engine.py:422"),         # RM-258
+        ("BACKLOG.md", "tft/tft_pbe_engine.py:428"),         # RM-211
+        ("BACKLOG.md", "tft/tft_pbe_engine.py:433"),         # RM-316
+        ("BACKLOG.md", "tft/tft_pbe_engine.py:86"),          # RM-858
+        ("BACKLOG.md", "tft_pbe_engine.py:118"),             # RM-130
+        ("docs/_research_refill_2026-09-05.md", "tft/tft_pbe_engine.py:420"),
+    )
+) + (
+    (
+        "docs/COST_TRACE.md",
+        "tft/tft_pbe_engine.py:357",
+        "ROT",
+        "A LIVING cost inventory row for the PBE engine's Haiku call site, "
+        "deleted by RM-292 (b) on 2026-10-25. The right fix is removing the "
+        "row, a doc edit outside the RM-292 (b) slice's file set, reported to "
+        "the merger; when the row goes, this entry must go with it.",
+    ),
 )
 
 _REASON_FAMILIES = frozenset({"EXTERNAL", "DELETED", "HISTORICAL", "ROT"})

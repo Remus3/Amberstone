@@ -3,7 +3,6 @@
   "debounce_seconds": 15,
   "timeout": 20,
   "max_tokens": 700,
-  "tft_pbe": true,
   "obs": {
     "enabled": false,
     "host": "127.0.0.1",

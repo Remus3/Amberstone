@@ -335,10 +335,8 @@ class WiredSitesGrepTests(unittest.TestCase):
         self.assertIn("record_anthropic_response", src)
         self.assertIn('purpose="tft_coach"', src)
 
-    def test_tft_pbe_engine_wired(self):
-        src = self._read("tft/tft_pbe_engine.py")
-        self.assertIn("record_anthropic_response", src)
-        self.assertIn('purpose="tft_pbe"', src)
+    # test_tft_pbe_engine_wired retired: tft/tft_pbe_engine.py was deleted by
+    # RM-292 (b) (unreachable PBE coach subsystem).
 
     def test_tft_live_analysis_main_wired(self):
         src = self._read("tft/tft_live_analysis.py")

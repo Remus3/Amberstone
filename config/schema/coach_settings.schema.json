@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "coach_settings.schema.json",
-  "_doc": "Minimal schema for config/coach_settings.json. Read by coach_integration.py and coaches/__init__.py at runtime.",
+  "_doc": "Minimal schema for config/coach_settings.json. Read by coach_integration.py and the coach engines at runtime.",
 
   "required_keys": [
     "model",
@@ -30,6 +30,6 @@
 
   "_notes": {
     "model": "Must be a valid Anthropic model string. claude-haiku-4-5-20251001 is the default for low-latency live coaching.",
-    "tft_pbe": "When true, coaches/__init__.py routes TFT sessions to tft_pbe_coach.py (Set 17 data). Defaults to false if absent."
+    "tft_pbe": "RETIRED (RM-292 b, 2026-10-25): read by nothing. It used to route TFT to a PBE coach through a loader that had no caller; both were deleted. Still TOLERATED as a legacy key so an existing config keeps validating; new configs should omit it."
   }
 }
