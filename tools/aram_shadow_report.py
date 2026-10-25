@@ -23,6 +23,16 @@ dead-state; scoring them against a laning recommendation is meaningless and
 floods the gate with false ticks (the cycle-53 false-0% finding). Every
 summary excludes dead-state rows first.
 
+ENEMY-LESS EXCLUSION (RM-852): a row with no enemy team is not an ARAM game
+tick - in production the champion and the enemy team come from the same
+Live Client allPlayers list, so a real tick that names a champion always names
+its enemies. 669 enemy-less Kai'Sa rows reached the live corpus from
+build_state test harnesses before RM-406 redirected the writer in tests. They
+stay in the durable store (never deleted) and are excluded HERE, at read time:
+counted as ``enemy_less_excluded`` and left out of every gate summary (dead
+state, action, choices, field presence, flip hint). A row without the
+``enemy_comp`` key fails closed the same way.
+
 This is a READ-ONLY report (no engine, no network, no write). Fail-soft: a
 missing / empty / malformed log yields a zeroed section, never an exception.
 It does NOT flip anything - the operator decides; this only flags readiness.
@@ -179,6 +189,18 @@ def _is_dead_state(rec: dict) -> bool:
         return False
     norm = _normalize_verdict_text(action)
     return any(marker in norm for marker in _NON_LANING_STATE_MARKERS)
+
+
+def has_enemy_comp(rec: dict) -> bool:
+    """True when the row lists at least one named enemy champion.
+
+    Only such a row is an ARAM game tick (RM-852). A missing key, a non-list,
+    or a list of blanks reads as enemy-less: fail closed, because a row that
+    cannot show it came from a game must not move the flip gate."""
+    comp = rec.get("enemy_comp") if isinstance(rec, dict) else None
+    if not isinstance(comp, list):
+        return False
+    return any(isinstance(e, str) and e.strip() for e in comp)
 
 
 def _first_choice_label(choices) -> Optional[str]:
@@ -343,11 +365,16 @@ def summarize_field_presence(records: list[dict]) -> dict:
     return out
 
 
-def _flip_hint(action: dict, choices: dict, total: int) -> str:
+def _flip_hint(action: dict, choices: dict, total: int,
+               enemy_less: int = 0) -> str:
     """A coarse human read of flip-readiness. NOT a flip authorization - the
-    operator decides; this only flags the obvious not-ready states."""
+    operator decides; this only flags the obvious not-ready states. ``total``
+    is the GATED row count (enemy-less rows already removed)."""
     if total == 0:
-        return "no shadow data yet - play real ARAM games to accrue coverage"
+        excluded = (f" ({enemy_less} enemy-less rows excluded - not game ticks)"
+                    if enemy_less else "")
+        return ("no shadow data yet - play real ARAM games to accrue coverage"
+                + excluded)
     comparable = action["comparable"]
     if comparable == 0:
         return ("coverage accruing - no comparable action ticks yet (mostly "
@@ -364,24 +391,34 @@ def _flip_hint(action: dict, choices: dict, total: int) -> str:
 
 
 def build_report(path) -> dict:
-    """Assemble the full ARAM shadow report dict from one shadow log path."""
-    records = load_jsonl(Path(path))
+    """Assemble the full ARAM shadow report dict from one shadow log path.
+
+    ``total`` is every row in the log; ``enemy_less_excluded`` the rows with no
+    enemy team (RM-852); ``gated`` the rest, which is the ONLY population the
+    dead-state split and every gate summary below are computed over."""
+    all_records = load_jsonl(Path(path))
+    records = [r for r in all_records if has_enemy_comp(r)]
+    enemy_less = len(all_records) - len(records)
     action = summarize_action(records)
     choices = summarize_choices(records)
     return {
         "schema": "aram_shadow_report/v1",
-        "total": len(records),
+        "total": len(all_records),
+        "enemy_less_excluded": enemy_less,
+        "gated": len(records),
         "dead_state": sum(1 for r in records if _is_dead_state(r)),
         "non_dead": sum(1 for r in records if not _is_dead_state(r)),
         "action": action,
         "choices": choices,
         "field_presence": summarize_field_presence(records),
-        "flip_ready_hint": _flip_hint(action, choices, len(records)),
+        "flip_ready_hint": _flip_hint(action, choices, len(records), enemy_less),
     }
 
 
 def _print_human(report: dict) -> None:
     print(f"total {report.get('total', 0)}, "
+          f"enemy_less_excluded {report.get('enemy_less_excluded', 0)}, "
+          f"gated {report.get('gated', 0)}, "
           f"dead_state {report.get('dead_state', 0)}, "
           f"non_dead {report.get('non_dead', 0)}")
     act = report.get("action") or {}

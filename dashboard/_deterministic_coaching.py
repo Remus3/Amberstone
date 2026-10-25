@@ -1199,7 +1199,9 @@ def shadow_log_aram_coach(coach: dict, lc: dict | None, mode_key: str,
 
     Fires only for an ARAM in-game tick - mode_key == "aram" AND lc["champion"]
     present (the item-386 live-game gate; the stale coach file keeps `champion`
-    after a game ends, so coach-side presence alone is not enough). ``path``
+    after a game ends, so coach-side presence alone is not enough) AND a
+    non-empty enemy team (the RM-852 gate: an enemy-less tick is not a game
+    tick and would otherwise count toward the Haiku-retire gate). ``path``
     overrides the jsonl target and ``live_path`` the live-artifact source (test
     seams).
 
@@ -1222,6 +1224,19 @@ def shadow_log_aram_coach(coach: dict, lc: dict | None, mode_key: str,
         if not champ:
             return
         enemy_comp = [str(e) for e in (gs.get("enemy_comp") or [])]
+        # RM-852 enemy gate: a tick with no enemy team is not an ARAM game tick
+        # and must never reach the Haiku-retire gate (tools/aram_shadow_report
+        # FLIP_GATE; docs/LIVE_GAME_GATED_SYNC.md G3-14 "ARAM shadow accrual").
+        # In production lc["champion"] and lc["enemy_team"] come from the SAME
+        # allPlayers list (dashboard/_liveclient.py, under `if me_pl:`), so a
+        # real game that names a champion always names its enemies; the 669
+        # enemy-less Kai'Sa rows in the live corpus were test-suite leakage
+        # (build_state harnesses feeding lc={"champion": "Kai'Sa"} before
+        # RM-406). Refused rather than tagged: the deterministic fight_rule /
+        # risk / item reasons are all enemy-driven, so the row has nothing to
+        # compare, and det_coach_shadow already gates the same way.
+        if not any(e.strip() for e in enemy_comp):
+            return
 
         # hp_pct: prefer a direct coach hp_pct, else derive from the 0..1
         # hp_fraction _build_game_state already resolved (lc hp / hp_max).
