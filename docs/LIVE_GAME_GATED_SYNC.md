@@ -847,6 +847,18 @@ survivability flips below cannot roll otherwise.
   LIVE RESIDUAL (glance, telemetry-gated): playing with or against Leona, how often do allies ACTUALLY
   consume a Sunlight mark - is 0.5 about right, high, or low? The seam is linear in that single
   fraction, so it is the whole remaining calibration. DS restart.
+  **PREP 2026-10-24 (lane 9 s133 cycle 3, measured at HEAD `0ab6d07e6`; NOT a tick).** Correction (a)
+  STILL HOLDS: `assume_ally_detonation` appears only in `agents/daemon_slayer/burst.py`, `dps.py` and
+  `_ally_detonation_overrides.py` - no DS route, no `core/` / `coaches/` / `dashboard/` caller - so a
+  live game still exercises nothing. Correction (b) re-measured: DS serves patch 16.21.1 (engine
+  1.290.0), the override note still cites 16.13.1, and
+  `data/daemon_slayer/16.21.1/champion_abilities.json` `Leona.P` carries the SAME "32 : 151 ...
+  2.5 seconds" text. That is NOT a fresh confirmation: this is the Meraki-sourced ability file, frozen at
+  content 25.15 (CLAUDE.md Settled, RM-808). NO DRAIN PATH EVEN AFTER PLUMBING: no RC surface records a
+  mark being consumed (INFERENCE, not probed in a game: the Live Client `eventdata` feed lists
+  kill / objective / multikill events, no per-hit or mark event), so "how often do allies consume
+  Sunlight" has no known probe. Telemetry, not a game, is the missing piece - check the live
+  `eventdata` list once in any game before trusting this.
 - **G3-11** (was C11) cc_blended_ehp + cc_conditional ecosystem: the DATA-PATH half is validated live
   (DS /ehp cc_blended 5776 -> 2888 vs a real CC comp, 9 consumer surfaces grep-confirmed) but it is
   served only on the tank/bruiser scorer - a full close needs a **TANK/BRUISER PICK against a real CC
@@ -864,6 +876,33 @@ survivability flips below cannot roll otherwise.
   2026-07-08 "debounce OFF, coach refreshes coherently") - the LEDGER 820 headline reads "C14
   live-verified" but its body records the OFF case only. The DEFAULT-ON flip is still un-validated. A
   replayed-game feed is an allowed alternative - try headless first. SOURCE: BACKLOG.md:64.
+  **PREP 2026-10-24 (lane 9 s133 cycle 3, measured at HEAD `0ab6d07e6`; NOT a tick).**
+  (1) CITE DRIFT: `BACKLOG.md` no longer carries this row (no "same-state" / `STATE_DEBOUNCE` line
+  left); the origin record is LEDGER 506 (ARAM seam) + 507 (Arena sibling).
+  (2) PRECONDITION, NOT A LANE ACT: the default is still OFF - `coaches/aram_coach.py:62` reads
+  `os.getenv("RC_ARAM_STATE_DEBOUNCE", "0") == "1"` ONCE at import, the variable is unset at both User
+  and Machine scope, and no launcher under `ops/` / `scripts/` sets it. So no game drains this row until
+  RC is restarted with the flag ON (or the default flipped) - an operator / merger act, never the
+  watcher's. `config/feature_flags.json` has `aram.live_coaching = allow` (the `_run_coach` gate at
+  `:870` passes).
+  (3) The REPLAY alternative has NO INPUT today: `tools/aram_raw_replay.py` reads the `ARAM Haiku raw`
+  log lines (written at `:1119`), and none of the 15 retained day logs (`logs/2026-10-10.log` onward)
+  carries one. Only a fresh ARAM game produces replay input.
+  CHECK, predicate stated before any look. PROOF THE FLAG IS ON in the process: at least one
+  `ARAM state-debounce: signature unchanged` line in `logs/<date>.log` during the game (`:1082`; it
+  is `logger.debug`, and the file handler is always DEBUG, `core/log_setup.py:161`). Zero such lines
+  = INCONCLUSIVE (the seam did not run), never a pass. PASS iff, in one ARAM / Mayhem game of 8+ min
+  game_time with that proof, sampled every 20-30 s while alive: `data/aram_coaching_data.json`
+  `game_time_s` (written at `:1206`) never trails `/api/state` -> `liveclient.game_time_s` (the field
+  `tools/gated_live_probe.py:210` reads) by more than 90 s. Bound: the signature carries a 30 s
+  game-time band (`:117`), so a re-call is forced within one band plus one 25 s stable poll, plus Haiku
+  latency (20 s timeout, stamp taken after the call at `:1254`); the 45 s ceiling is NOT the binding
+  term in a live game, so this predicate cannot isolate the ceiling (that half stays on
+  `tests/test_aram_state_debounce.py`, past-ceiling case). A skip returns before `safe_write`, so a
+  frozen file means no Haiku refresh landed. FAIL only if a lag over 90 s while alive has NO Haiku
+  error, budget-gate or kill-switch log line in its window; with one, the sample is INCONCLUSIVE.
+  The coherence half stays an operator eyeball. (Adversarial pass 2026-10-24 corrected a first draft
+  that bounded the lag on the 45 s ceiling.)
 - **G3-13** (was C15+C16) Augment OCR rank-vs-pick + live on-screen render validation. The alias fix
   SHIPPED (`8fbff14e`, LEDGER 867). **The cadence defect behind it is now FIXED IN CODE (`66e6835e`,
   2026-07-29) and the RM-25 hold-an-augment-25s workaround is NO LONGER NEEDED** - a bounded fast
