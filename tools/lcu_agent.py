@@ -63,6 +63,11 @@ from lcu.snapshot_shape import (  # noqa: E402,F401
     shape_snapshot,
 )
 from lcu.lcu_rune_writer import is_rc_owned_page  # noqa: E402
+from core.log_rotation import (  # noqa: E402
+    DEFAULT_BACKUP_COUNT,
+    DEFAULT_MAX_BYTES,
+    SafeRotatingFileHandler,
+)
 from core.polled_json import atomic_write_text  # noqa: E402
 from core.tls_policy import client_context_noverify  # noqa: E402
 
@@ -74,12 +79,19 @@ from core.tls_policy import client_context_noverify  # noqa: E402
 # Precedent: tools/liveclient_relay.py:41-51.
 _LOG_FILE = Path(__file__).resolve().parent.parent / "logs" / "lcu_agent.log"
 _LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+# RM-718 (a). A plain FileHandler here grew lcu_agent.log to 27.3 MB by
+# 2026-10-24 (~0.34 MB/day, never rotated) inside a 100 MiB logs/ cap that
+# core/log_retention.py enforces against RC's own dated daily logs. Size-bounded
+# now: at most (1 + backups) * max_bytes, and a refused rollover keeps appending.
+_FILE_HANDLER = SafeRotatingFileHandler(
+    str(_LOG_FILE), maxBytes=DEFAULT_MAX_BYTES, backupCount=DEFAULT_BACKUP_COUNT,
+    encoding="utf-8")
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(message)s",
     handlers=[
         logging.StreamHandler(sys.stdout),
-        logging.FileHandler(str(_LOG_FILE), encoding="utf-8"),
+        _FILE_HANDLER,
     ],
 )
 log = logging.getLogger("lcu_agent")

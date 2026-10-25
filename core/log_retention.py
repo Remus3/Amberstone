@@ -9,7 +9,8 @@ space; the audit on 2026-05-01 found logs/ at 191 MB.
 This module adds:
   - tighter age policy (14 days vs. 30)
   - hard size cap (100 MB): if the dir is STILL over cap after the age
-    sweep, delete oldest-first until it is under - including files that
+    sweep, delete oldest-first (dated daily logs last, RM-718 a) until it is
+    under - including files that
     are inside the age window, because a cap that may only delete what
     the age pass already deleted is not a cap at all
   - hourly periodic sweep from a daemon thread, not just at boot
@@ -48,6 +49,19 @@ Five weaknesses were closed; `tests/test_log_retention.py` pins all of them.
      task ended the flag latched and `start()` returned early for the rest
      of the process lifetime. It now asks the task whether it is done.
 
+RM-718 (a), 2026-10-24: SIZE-PASS ORDER. Measured that day: logs/ at 94.3 of
+100 MiB, 87 MB of it in two unrotated tool logs (replay_roster.log,
+lcu_agent.log) with the NEWEST mtimes in the dir. Plain oldest-first would
+have spent the whole cap on RC's own dated daily logs (core/log_setup's
+`YYYY-MM-DD.log`, the primary record tools/rc_facts.py and diagnosis read
+inside the age window) while the offenders kept growing. DECISION: the size
+pass deletes every other deletable `*.log*` (oldest first) before ANY dated
+daily log (oldest first). Alternatives rejected: plain oldest-first (above);
+largest-first (deletes whatever is busiest, including today's log the moment
+it is unpinned); exempting the daily logs (the cap would stop being hard,
+weakness 1's lesson). The two writers now rotate themselves
+(core/log_rotation.py), so the size pass is the backstop, not the policy.
+
 Thread safety: the periodic worker is the sole writer. `prune()` is
 re-entrant - multiple calls from different threads are safe; worst case one
 observes files the other already deleted (handled per-file on unlink).
@@ -57,6 +71,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import threading
 import time
 from pathlib import Path
@@ -70,6 +85,11 @@ _DEFAULT_INTERVAL_S = 3600  # 1h
 
 # How long stop() waits for the sweep worker before reporting it stuck.
 _STOP_JOIN_TIMEOUT_S = 3.0
+
+# RC's dated daily log (core/log_setup.DailyRotatingFileHandler) and its size
+# backups: `YYYY-MM-DD.log` and `YYYY-MM-DD.log.N`. The size pass reaches these
+# last (RM-718 a).
+_DAILY_LOG_RE = re.compile(r"^\d{4}-\d{2}-\d{2}\.log(?:\.\d+)?$")
 
 _thread: Optional[threading.Thread] = None
 _task: Optional[Any] = None  # asyncio.Task / Future
@@ -134,6 +154,11 @@ def _candidates(log_dir: Path) -> list[Path]:
         return []
 
 
+def _is_daily_log(path: Path) -> bool:
+    """True for RC's own dated daily log or one of its size backups."""
+    return bool(_DAILY_LOG_RE.match(path.name))
+
+
 def _resolve(path: Path) -> Path:
     try:
         return path.resolve()
@@ -151,8 +176,9 @@ def prune(
     Policy (run in order):
       1. Delete every `*.log*` whose mtime is older than `max_age_days`.
       2. If the total size of the remaining `*.log*` is still above
-         `max_total_mb`, delete oldest-first until under cap. This pass DOES
-         reach inside the age window - that is what makes the cap hard.
+         `max_total_mb`, delete until under cap: every non-daily file oldest
+         first, then the dated daily logs oldest first (RM-718 a). This pass
+         DOES reach inside the age window - that is what makes the cap hard.
 
     A file held open by a live logging handler is exempt from both passes but
     still counts toward the cap total. Per-file errors are logged and skipped
@@ -203,7 +229,9 @@ def prune(
     cap_bytes = max_total_mb * 1024 * 1024
     total = pinned_bytes + sum(sz for _, _, sz in survivors)
     if total > cap_bytes:
-        survivors.sort(key=lambda t: t[1])  # oldest first
+        # Non-daily files first, then RC's dated daily logs; oldest first
+        # within each tier (RM-718 a).
+        survivors.sort(key=lambda t: (_is_daily_log(t[0]), t[1]))
         for f, _mt, sz in survivors:
             if total <= cap_bytes:
                 break
