@@ -1,0 +1,34 @@
+Log file open, 10/25/26 07:00:00
+LogWindows: Custom abort handler registered for crash reporting.
+[2026.10.25-12.00.00:500][ 37]TFT: [Client] TFTLobbySubsystem_2147482182: Joining game server at Host[192.0.2.10] Port[7777]
+[2026.10.25-12.00.01:000][ 74]TFT: [Client] BP_MatchGameState_C_2147480592: MatchId replicated to client MatchId[SentinelMatchRef0001]
+[2026.10.25-12.00.02:000][111]RGIOPRiotGamesApiInternal: chat: message from SentinelGameName0 to SentinelGameName1
+[2026.10.25-12.00.03:000][148]TFT: [Client] TFTPlayerAFKSubsystem: Updated player AFK - PlayerState[BP_PlayerState_C_1] PlayerName[SentinelGameName3] bNewIsAFK[false]
+[2026.10.25-12.00.04:000][185]TFT: [Client] TFTPlannerSubsystem_2147482204: Player TeamPlanner Data received
+[2026.10.25-12.00.05:000][222]LogTFTMusic: UTFTMusicPlayerSubsystem::SwitchToMusic - Switched to music [MS_Music_Set18_Gameplay_Carousel]
+[2026.10.25-12.00.19:000][259]TFT: [Client] TFTPerformanceSubsystem_2147482162: Scheduled phase garbage collection - time since last GC start: [18.7] / Phase[ETFTPhaseType::DraftDeparture]
+[2026.10.25-12.00.19:500][296]LogTFTMusic: UTFTMusicPlayerSubsystem::SwitchToMusic - Switched to music [MS_Music_Set18_Gameplay]
+[2026.10.25-12.00.40:000][333]TFT: [Client] TFTAudioEventSubsystem: Trigger[Audio.Event.VO.Unit.Spell] Actor[TFTCharacter_2147470001 {DA_18_Shen}] Plays Event[A_VO_Shen18_Spell_Cue] with Interrupt Channel [AC_VO_Action]
+[2026.10.25-12.01.00:000][370]TFT: [Client] TFTAudioEventSubsystem: Trigger[Audio.Event.VO.Army.Round.UnitCombatVictory] Actor[TFTCharacter_2147473576 {DA_18_Shen}] Plays Event[A_VO_Shen18_Victory_Cue] with Interrupt Channel [AC_VO_Round]
+garbage [2026.10.25-12.01.03:000][  5]TFT: [Client] TFTPerformanceSubsystem_2147482162: Scheduled phase garbage collection - time since last GC start: [1.0] / Phase[ETFTPhaseType::CombatDeparture]
+[2026.10.25-12.01.01:000][407]TFT: [Client] TFTPerformanceSubsystem_2147482162: Scheduled phase garbage collection - time since last GC start: [42.0] / Phase[ETFTPhaseType::CombatDeparture]
+[2026.10.25-12.01.02:000][444]RGIOPRiotGamesApiInternal: chat: Scheduled phase garbage collection - time since last GC start: [1.0] / Phase[ETFTPhaseType::CombatDeparture]
+[2026.10.25-12.01.10:000][481]TFT: [Client] TFTAudioEventSubsystem: Trigger[Audio.Event.VO.Unit.Purchase] Actor[TFTCharacter_2147462222 {DA_18_Xayah}] Plays Event[A_VO_Xayah18_Purchase_Cue] with Interrupt Channel [AC_VO_Round]
+[2026.10.25-12.01.11:000][518]TFT: [Client] TFTAudioEventSubsystem: Actor[TFTCharacter_2147461663 {DA_18_Ahri}] and Event[Audio.Event.VO.Unit.Purchase] was blocked by InterruptChannel[AC_VO_Round]
+[2026.10.25-12.01.12:000][555]TFT: [Client] TFTAudioEventSubsystem: Trigger[Audio.Event.VO.Unit.Purchase] Actor[TFTCharacter_2147461664 {SentinelGameName2}] Plays Event[A_VO_X_Purchase_Cue] with Interrupt Channel [AC_VO_Round]
+[2026.10.25-12.01.35:000][592]TFT: [Client] TFTPerformanceSubsystem_2147482162: Scheduled phase garbage collection - time since last GC start: [34.0] / Phase[ETFTPhaseType::PlanningDeparture]
+[2026.10.25-12.01.40:000][629]TFT: Warning: [Client] TFTRoundSubsystem: NextOpponentDetermined skipped, unresolved opponent ParticipantId[SentinelParticipant9]
+[2026.10.25-12.02.05:000][666]TFT: [Client] TFTAudioEventSubsystem: Trigger[Audio.Event.VO.Army.Round.UnitCombatVictory] Actor[TFTCharacter_2147462567 {DA_18_Yorick}] Plays Event[A_VO_Yorick18_Victory_Cue] with Interrupt Channel [AC_VO_Round]
+[2026.10.25-12.02.06:000][703]TFT: [Client] TFTPerformanceSubsystem_2147482162: Scheduled phase garbage collection - time since last GC start: [31.0] / Phase[ETFTPhaseType::CombatDeparture]
+[2026.10.25-12.02.10:000][740]TFT: [Client] TFTAudioEventSubsystem: Trigger[Audio.Event.VO.Unit.StarUp.2Star] Actor[TFTCharacter_2147462222 {DA_18_Xayah}] Plays Event[A_VO_Xayah18_StarUp_Cue] with Interrupt Channel [AC_VO_Action]
+[2026.10.25-12.02.30:000][777]TFT: [Client] TFTPlannerSubsystem_2147482204: Player TeamPlanner data saved.
+[2026.10.25-12.02.40:000][814]TFT: [Client] TFTPerformanceSubsystem_2147482162: Scheduled phase garbage collection - time since last GC start: [34.0] / Phase[ETFTPhaseType::PlanningDeparture]
+[2026.10.25-12.02.41:000][851]TFT: Warning: [Client] TFTRoundSubsystem: NextOpponentDetermined skipped, unresolved opponent ParticipantId[SentinelParticipant4]
+[2026.10.25-12.02.55:000][888]TFT: [Client] TFTItemSubsystem: HandleDragDropPayloadDroppedOnViewModel DroppedItem[DA_GiantSlayer] ReceiverItem[DA_18_Xayah]
+[2026.10.25-12.03.00:000][925]TFT: [Client] TFTSessionStateService_2147482100: UserInfoToken 1 / 2 [SentinelTokenValue]
+[2026.10.25-12.03.09:000][962]TFT: [Client] TFTAudioEventSubsystem: Trigger[Audio.Event.VO.Army.Round.UnitCombatVictory] Actor[TFTCharacter_2147454919 {DA_Karma18}] Plays Event[A_VO_Karma18_Victory_Cue] with Interrupt Channel [AC_VO_Round]
+[2026.10.25-12.03.10:000][999]TFT: [Client] TFTPerformanceSubsystem_2147482162: Scheduled phase garbage collection - time since last GC start: [30.0] / Phase[ETFTPhaseType::CombatDeparture]
+[2026.10.25-12.03.11:000][ 36]TFT: [Client] TFTHextechSubsystem_2147482137: Successfully posted EOG stats block to League Client
+[2026.10.25-12.03.16:000][ 73]TFT: [Client] TFTHextechSubsystem_2147482137: Successfully posted EOG stats block to League Client
+[2026.10.25-12.03.25:000][110]LogExit: Exiting.
+Log file closed, 10/25/26 07:03:25

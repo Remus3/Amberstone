@@ -1,0 +1,459 @@
+{
+ "gameId": 5000000123,
+ "gameMode": "TFT",
+ "isRanked": false,
+ "queueId": 1090,
+ "queueType": "NORMAL_TFT",
+ "statsBlock": {
+  "customAugmentContainer": "TFT_Portals_Default_NoPortal",
+  "gameLengthSeconds": 157,
+  "players": [
+   {
+    "PUUID": "00000000-0000-0000-0000-000000000000",
+    "augments": [],
+    "boardPieces": [
+     {
+      "championName": "DA_18_Yorick",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_InfinityEdge",
+       "DA_Component_SparringGloves"
+      ],
+      "price": 1,
+      "starLevel": 2
+     },
+     {
+      "championName": "DA_18_Xayah",
+      "endOfGameAlias": "",
+      "itemNames": [],
+      "price": 1,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_Karma18",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_GiantSlayer"
+      ],
+      "price": 2,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_18_Diana",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_ArchangelsStaff",
+       "DA_Component_NegatronCloak"
+      ],
+      "price": 3,
+      "starLevel": 1
+     }
+    ],
+    "companionContentId": "SentinelCompanionContent0",
+    "companionName": "SentinelCompanionName0",
+    "companionSkinId": 7000,
+    "eventPVEData": [],
+    "eventSkillDeltas": [],
+    "ffaStanding": 0,
+    "health": 91,
+    "isInteractable": false,
+    "partnerGroupId": 0,
+    "playbookItemId": 31330,
+    "playerId": 0,
+    "riotIdGameName": "SentinelGameName0",
+    "riotIdTagLine": "ST00",
+    "summonerIconID": 4240,
+    "summonerName": "SentinelGameName0"
+   },
+   {
+    "PUUID": "00000000-0000-0000-0000-000000000000",
+    "augments": [],
+    "boardPieces": [
+     {
+      "championName": "DA_18_Shen",
+      "endOfGameAlias": "",
+      "itemNames": [],
+      "price": 1,
+      "starLevel": 2
+     },
+     {
+      "championName": "DA_18_Elise",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_GiantSlayer"
+      ],
+      "price": 2,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_18_Ahri",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_ArchangelsStaff",
+       "DA_Component_NegatronCloak"
+      ],
+      "price": 3,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_18_Soraka",
+      "endOfGameAlias": "",
+      "itemNames": [],
+      "price": 4,
+      "starLevel": 1
+     }
+    ],
+    "companionContentId": "SentinelCompanionContent1",
+    "companionName": "SentinelCompanionName1",
+    "companionSkinId": 7001,
+    "eventPVEData": [],
+    "eventSkillDeltas": [],
+    "ffaStanding": 0,
+    "health": 100,
+    "isInteractable": false,
+    "partnerGroupId": 0,
+    "playbookItemId": 31331,
+    "playerId": 0,
+    "riotIdGameName": "SentinelGameName1",
+    "riotIdTagLine": "ST01",
+    "summonerIconID": 4241,
+    "summonerName": "SentinelGameName1"
+   },
+   {
+    "PUUID": "00000000-0000-4000-8000-00000000c0de",
+    "augments": [],
+    "boardPieces": [
+     {
+      "championName": "DA_18_Xayah",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_GiantSlayer"
+      ],
+      "price": 1,
+      "starLevel": 2
+     },
+     {
+      "championName": "DA_18_Yunara",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_ArchangelsStaff",
+       "DA_Component_NegatronCloak"
+      ],
+      "price": 2,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_18_Diana",
+      "endOfGameAlias": "",
+      "itemNames": [],
+      "price": 3,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_18_Aphelios",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_InfinityEdge"
+      ],
+      "price": 4,
+      "starLevel": 1
+     }
+    ],
+    "companionContentId": "SentinelCompanionContent2",
+    "companionName": "SentinelCompanionName2",
+    "companionSkinId": 7002,
+    "eventPVEData": [],
+    "eventSkillDeltas": [],
+    "ffaStanding": 0,
+    "health": 100,
+    "isInteractable": true,
+    "partnerGroupId": 0,
+    "playbookItemId": 31332,
+    "playerId": 900002,
+    "riotIdGameName": "SentinelGameName2",
+    "riotIdTagLine": "ST02",
+    "summonerIconID": 4242,
+    "summonerName": "SentinelGameName2"
+   },
+   {
+    "PUUID": "00000000-0000-0000-0000-000000000000",
+    "augments": [],
+    "boardPieces": [
+     {
+      "championName": "DA_18_Yorick",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_ArchangelsStaff",
+       "DA_Component_NegatronCloak"
+      ],
+      "price": 1,
+      "starLevel": 2
+     },
+     {
+      "championName": "DA_18_Shen",
+      "endOfGameAlias": "",
+      "itemNames": [],
+      "price": 1,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_18_Ahri",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_InfinityEdge"
+      ],
+      "price": 3,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_18_Alune",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_Component_SparringGloves",
+       "DA_GiantSlayer"
+      ],
+      "price": 5,
+      "starLevel": 1
+     }
+    ],
+    "companionContentId": "SentinelCompanionContent3",
+    "companionName": "SentinelCompanionName3",
+    "companionSkinId": 7003,
+    "eventPVEData": [],
+    "eventSkillDeltas": [],
+    "ffaStanding": 0,
+    "health": 90,
+    "isInteractable": false,
+    "partnerGroupId": 0,
+    "playbookItemId": 31333,
+    "playerId": 0,
+    "riotIdGameName": "SentinelGameName3",
+    "riotIdTagLine": "ST03",
+    "summonerIconID": 4243,
+    "summonerName": "SentinelGameName3"
+   },
+   {
+    "PUUID": "00000000-0000-0000-0000-000000000000",
+    "augments": [],
+    "boardPieces": [
+     {
+      "championName": "DA_Karma18",
+      "endOfGameAlias": "SentinelAlias",
+      "itemNames": [],
+      "price": 2,
+      "starLevel": 2
+     },
+     {
+      "championName": "DA_18_Elise",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_InfinityEdge"
+      ],
+      "price": 2,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_Taric18",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_Component_SparringGloves",
+       "DA_GiantSlayer"
+      ],
+      "price": 3,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_18_Sett",
+      "endOfGameAlias": "",
+      "itemNames": [],
+      "price": 4,
+      "starLevel": 1
+     }
+    ],
+    "companionContentId": "SentinelCompanionContent4",
+    "companionName": "SentinelCompanionName4",
+    "companionSkinId": 7004,
+    "eventPVEData": [],
+    "eventSkillDeltas": [],
+    "ffaStanding": 0,
+    "health": 100,
+    "isInteractable": false,
+    "partnerGroupId": 0,
+    "playbookItemId": 31334,
+    "playerId": 0,
+    "riotIdGameName": "SentinelGameName4",
+    "riotIdTagLine": "ST04",
+    "summonerIconID": 4244,
+    "summonerName": "SentinelGameName4"
+   },
+   {
+    "PUUID": "00000000-0000-0000-0000-000000000000",
+    "augments": [],
+    "boardPieces": [
+     {
+      "championName": "DA_18_Xayah",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_InfinityEdge"
+      ],
+      "price": 1,
+      "starLevel": 2
+     },
+     {
+      "championName": "DA_Fiddlesticks18",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_Component_SparringGloves",
+       "DA_GiantSlayer"
+      ],
+      "price": 2,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_18_Soraka",
+      "endOfGameAlias": "",
+      "itemNames": [],
+      "price": 4,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_18_Ashe",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_ArchangelsStaff"
+      ],
+      "price": 5,
+      "starLevel": 1
+     }
+    ],
+    "companionContentId": "SentinelCompanionContent5",
+    "companionName": "SentinelCompanionName5",
+    "companionSkinId": 7005,
+    "eventPVEData": [],
+    "eventSkillDeltas": [],
+    "ffaStanding": 0,
+    "health": 88,
+    "isInteractable": false,
+    "partnerGroupId": 0,
+    "playbookItemId": 31335,
+    "playerId": 0,
+    "riotIdGameName": "SentinelGameName5",
+    "riotIdTagLine": "ST05",
+    "summonerIconID": 4245,
+    "summonerName": "SentinelGameName5"
+   },
+   {
+    "PUUID": "00000000-0000-0000-0000-000000000000",
+    "augments": [],
+    "boardPieces": [
+     {
+      "championName": "DA_18_Shen",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_Component_SparringGloves",
+       "DA_GiantSlayer"
+      ],
+      "price": 1,
+      "starLevel": 2
+     },
+     {
+      "championName": "DA_18_Yunara",
+      "endOfGameAlias": "",
+      "itemNames": [],
+      "price": 2,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_Draven18",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_ArchangelsStaff"
+      ],
+      "price": 3,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_18_Alune",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_Component_NegatronCloak",
+       "DA_InfinityEdge"
+      ],
+      "price": 5,
+      "starLevel": 1
+     }
+    ],
+    "companionContentId": "SentinelCompanionContent6",
+    "companionName": "SentinelCompanionName6",
+    "companionSkinId": 7006,
+    "eventPVEData": [],
+    "eventSkillDeltas": [],
+    "ffaStanding": 7,
+    "health": -2,
+    "isInteractable": false,
+    "partnerGroupId": 0,
+    "playbookItemId": 31336,
+    "playerId": 0,
+    "riotIdGameName": "SentinelGameName6",
+    "riotIdTagLine": "ST06",
+    "summonerIconID": 4246,
+    "summonerName": "SentinelGameName6"
+   },
+   {
+    "PUUID": "00000000-0000-0000-0000-000000000000",
+    "augments": [],
+    "boardPieces": [
+     {
+      "championName": "DA_18_Yorick",
+      "endOfGameAlias": "",
+      "itemNames": [],
+      "price": 1,
+      "starLevel": 2
+     },
+     {
+      "championName": "DA_18_Elise",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_ArchangelsStaff"
+      ],
+      "price": 2,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_18_Diana",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_Component_NegatronCloak",
+       "DA_InfinityEdge"
+      ],
+      "price": 3,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_18_Sett",
+      "endOfGameAlias": "",
+      "itemNames": [],
+      "price": 4,
+      "starLevel": 1
+     }
+    ],
+    "companionContentId": "SentinelCompanionContent7",
+    "companionName": "SentinelCompanionName7",
+    "companionSkinId": 7007,
+    "eventPVEData": [],
+    "eventSkillDeltas": [],
+    "ffaStanding": 8,
+    "health": -4,
+    "isInteractable": false,
+    "partnerGroupId": 0,
+    "playbookItemId": 31337,
+    "playerId": 0,
+    "riotIdGameName": "SentinelGameName7",
+    "riotIdTagLine": "ST07",
+    "summonerIconID": 4247,
+    "summonerName": "SentinelGameName7"
+   }
+  ],
+  "setCoreName": "TFTSet18"
+ }
+}
