@@ -849,10 +849,8 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
 
   let extraHtml = "";
   if (mode === "aram") {
-    // Trigger the deterministic comp-verdict fetch on every ARAM render;
-    // it no-ops when already cached / inflight and re-fires the render via
-    // _csvScheduleRender once the verdict lands (folded into the sig).
-    _csvFetchCompVerdict(cs);
+    // The comp-verdict fetch fires below, once the chooser variants and
+    // the active selection resolve (RM-850).
     extraHtml = _csvBenchHtml(cs);
   }
   // Archetype-pick UI removed (LEDGER 823 root cause): the option-button
@@ -922,6 +920,16 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
     || { pages: [], builds: [] };
   const _activeSel = _csvActiveBuildSelection(myName, mode, variants);
   const _activeBuildId = _activeSel ? _activeSel.composedKey : "";
+  if (mode === "aram") {
+    // Trigger the deterministic comp-verdict fetch on every ARAM render;
+    // it no-ops when already cached / inflight and re-fires the render via
+    // _csvScheduleRender once the verdict lands (folded into the sig).
+    // RM-850: it carries the chooser variants + the active variant's bare
+    // key, so the engine can recommend a VARIANT and a chooser click
+    // (which re-renders) re-requests.
+    _csvFetchCompVerdict(cs, variants,
+      (_activeSel && _activeSel.variant && _activeSel.variant.key) || "");
+  }
   _CSV_RUNE_OVERRIDE = _csvRuneOverrideOnBuildChange(
     _CSV_RUNE_OVERRIDE, myName, _activeBuildId);
   const _runeDefaults = _csvSavedRuneDefault(myName);
@@ -1632,32 +1640,59 @@ const _CSV_ADAPT_INFLIGHT = Object.create(null);
 // function of my pick + my-team comp + the current bench), not a per-key
 // map - the whole champ-select carries one live verdict at a time. Keyed
 // by `${my_champion}|<my-team ids>|<bench ids>` so a teammate reroll or a
-// fresh bench refetches. Backed by POST /api/aram-comp-verdict (the
-// parallel backend slice); mock mode reads the aram_comp_verdict key from
-// the champ_select_aram.json fixture.
+// fresh bench refetches; the live key also folds in the build-variant set
+// + the active variant (RM-850) so user variants landing or a chooser click
+// refetches. Backed by POST /api/aram-comp-verdict (the parallel backend
+// slice); mock mode reads the aram_comp_verdict key from the
+// champ_select_aram.json fixture and keeps the variant-less key.
 const _CSV_COMPVERDICT = { key: "", data: null, inflight: false };
 
-function _csvCompVerdictKey(cs) {
+// RM-850: the chooser rows reduced to the fields the engine reads
+// (core/aram_comp_verdict.py _variant_addresses text-matches key / label /
+// summary; _find_variant skips the current_variant key). The "empty"
+// no-champion placeholder row is not a variant.
+function _csvCompVerdictVariants(variants) {
+  return (Array.isArray(variants) ? variants : [])
+    .filter((v) => v && v.key && v.key !== "empty")
+    .map((v) => ({
+      key: String(v.key),
+      label: String(v.label || v.key),
+      summary: String(v.summary || ""),
+    }));
+}
+
+// `variants` is the _csvCompVerdictVariants payload. Omitted (mock path)
+// returns the pre-RM-850 champion|team|bench key unchanged.
+function _csvCompVerdictKey(cs, variants, currentVariant) {
   if (!cs) return "";
   const teamIds = (cs.my_team || [])
     .map((p) => (p && p.championId) | 0).join(",");
   const benchIds = (Array.isArray(cs.bench) ? cs.bench : [])
     .map((c) => c | 0).join(",");
-  return `${cs.my_champion | 0}|${teamIds}|${benchIds}`;
+  const base = `${cs.my_champion | 0}|${teamIds}|${benchIds}`;
+  if (variants === undefined) return base;
+  return `${base}|${JSON.stringify([variants, currentVariant || ""])}`;
 }
 
 // Trigger an async fetch for the deterministic ARAM comp-verdict. No-op
 // when already cached for this key or a request is inflight. The render
 // re-fires via _csvScheduleRender once the verdict lands (its presence is
 // folded into _csvComputeSig). Mock mode short-circuits the live POST and
-// reads the fixture, mirroring _csvFetchUserVariants.
-function _csvFetchCompVerdict(cs) {
+// reads the fixture, mirroring _csvFetchUserVariants. RM-850: `variants`
+// are the chooser rows from _csvBuildVariantsFor and `currentVariant` the
+// active row's bare key; the live POST carries both so the engine can
+// return its VARIANT verdict.
+function _csvFetchCompVerdict(cs, variants, currentVariant) {
   if (!cs) return;
-  const key = _csvCompVerdictKey(cs);
-  if (key === _CSV_COMPVERDICT.key && _CSV_COMPVERDICT.data) return;
-  if (_CSV_COMPVERDICT.inflight) return;
   const isMock = !!(document && document.body
     && document.body.dataset.uiMock === "1");
+  const variantRows = _csvCompVerdictVariants(variants);
+  const activeVariant = String(currentVariant || "");
+  const key = isMock
+    ? _csvCompVerdictKey(cs)
+    : _csvCompVerdictKey(cs, variantRows, activeVariant);
+  if (key === _CSV_COMPVERDICT.key && _CSV_COMPVERDICT.data) return;
+  if (_CSV_COMPVERDICT.inflight) return;
   if (isMock) {
     _CSV_COMPVERDICT.inflight = true;
     fetch("/data/ui_mock/champ_select_aram.json", { cache: "no-store" })
@@ -1688,6 +1723,7 @@ function _csvFetchCompVerdict(cs) {
     body: JSON.stringify({
       my_champion: myName, my_team: team,
       their_team: enemies, bench: bench,
+      variants: variantRows, current_variant: activeVariant,
     }),
   })
     .then((r) => (r && r.ok ? r.json() : null))
@@ -2921,6 +2957,7 @@ function _csvBuildVariantsFor(cid, name, mode, cs) {
     return {
       key:        v.key,
       label:      v.label || v.key,
+      summary:    v.summary || "",   // RM-850: comp-verdict variant text
       keystone:   v.keystone  || "user variant",
       primary:    v.primary   || "",
       secondary:  v.secondary || "",
