@@ -1,5 +1,17 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-10-24 - size-budget relocation (session 133 merger), 3 rows
+
+`ROADMAP.md` reached 73966 bytes with the session 133 rows added
+(`tools/drift_guard.py`'s 90 percent line is 73728 of 81920). The three
+SHIPPED sha-list rows below move here VERBATIM as they stood at `4b0fe609a`,
+in their ROADMAP order; every id they name is shipped or recorded in its own
+`[ ]` row, which stays in `ROADMAP.md`, and one stub names the relocated ids.
+
+- **[x] SESSION 128 SHIPPED (LEDGER 1762-1779; bodies in `BACKLOG.md` "Session 126 filings", "Session 126 /done filings", "Session 127 filings"):** RM-801 `20fb4d9ed`; RM-804 `370d1b15a` (note text, no ENGINE bump); RM-805 `0738e197f`; RM-806 `1e14d0ba5`; RM-763 `b840a571d`; RM-764 `9dea8ea61`; RM-765 `951e62198`; RM-767 `4e1bf229f`; RM-768 `612fde38d`; RM-769 `993c0d671`; RM-770 `f6832cff6`; RM-771 `3cc2dfe00`; RM-772 `677991bc3`; RM-773 `bef4b3bc3` + `fa371ab4f`; RM-774 `b8356601b`; RM-775 `731b402dd`; RM-776 `ab6b905ad`; RM-777 `547bfcf84`; RM-779 `d75ceb0b6`; RM-780 `73c20982f`; RM-781 `7b31fbdd3`; RM-782 `b422ae0d8` (tracked template only); RM-783 `0eadb41e2`; RM-784 `d3c9df90a`; RM-785 `5be52f9ce` (live APPLY operator-gated); RM-786 `7a049ad1f`; RM-788 `cf3553dec`; RM-790 `a488c8858`; RM-791 (the /done wrap commit); RM-793 / RM-794 (worktrees removed, no commit); RM-795 `e4729bd4d`; RM-796 `3bc705cc3`.
+- **[x] SESSION 129 SHIPPED (LEDGER 1780-1790; bodies in `BACKLOG.md` "Session 128 filings" / "Session 129 filings"; the 12 unpushed commits were rebuilt before the push, map in LEDGER 1788):** RM-810 `1d2ed354f` + `7dd572a21` + `7c59e43fa` + `68ab95b8f` + `36b14cb73`; RM-811 `aec59bf5c` + `5df8f79e1` + `7445c3f38`; RM-812 `007572591`; RM-814 `ba960ce34` + `9744f7522`; RM-818 `21aa8027d` + `5543cc56d`; RM-832 (the C10 slice) `7042438eb` + `7b5ccfc53` + `6eae852d3`. Partly done: RM-819 `0daee3441` ((d) the quiet-box flaky check left); RM-822 (no commit; 8 branches + 6 worktrees removed, 3 local tags; 3 KEEP branches + the m2-prebuild watch left). RM-823 reported to MAIN (`28c1ed5c0`).
+- **[x] SESSION 131 SHIPPED (LEDGER 1791-1794):** RM-824 `ca5b44e41`; test guard ignores the two kit v19 board files `3f3712009` (until a kit version lists them); RC status board recreated in this account `6eb820a87` (new URL in `ops/status_board.json`); RM-835..RM-837 filed `129e28287`.
+
 ## 2026-10-23 - size-budget relocation (session 128 /done), 13 rows
 
 `ROADMAP.md` sat at 72061 bytes at `fa371ab4f` (`tools/drift_guard.py`'s 90

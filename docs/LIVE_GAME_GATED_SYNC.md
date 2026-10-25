@@ -1558,6 +1558,28 @@ Ids `LX-nn` map to the RM rows in `BACKLOG.md` "External-lift intake".
   vision_state; then replay it into the headless UI with `tools/replay_session.py`. A replay never
   closes any gated row.
 
+## TFT SET 18 live halves (filed 2026-10-24, RM-840; counted HERE, not in the OPEN figure above)
+
+RM-840 made the TFT lane set-agnostic (`tft/tft_set.py` resolver, CommunityDragon Set 18 ingest in
+`data/meta/tft_set18_cdragon.json`). The rows below are the halves only a real TFT game or the live
+client can close; no gate above covers a TFT game, so each needs one (Set 18 ranked or normal; Set 17
+stays playable beside it, so record which set the game ran).
+
+- **LT-01** (RM-840, running-set detection) During a real TFT game, capture whether `:2999`
+  `/liveclientdata/allgamedata` `gameData` or any LCU endpoint names the running set. The
+  `tft/tft_set.py` `LIVE_SET_KEYS` are CANDIDATE key names only; the one measured spelling in the tree
+  is the LCU team planner's `"setId": "TFTSet17"`. Close with the key, its value for a Set 18 game, and
+  whether `tft_state_reader.read` then notes Set 18 (resolver log), or record that neither surface
+  exposes it (the `RC_TFT_SET` pin and the newest-ingested default stay the only routes).
+- **LT-02** (RM-840, Set 18 roll odds + pool sizes) Read the in-client shop odds per level and the
+  champion pool sizes per cost for Set 18 and compare them with the constants modules
+  (`tft/tft_data.py`, `tft/tft_pbe_data.py`; `CONSTANTS_SET_VERIFIED` stays False in both and
+  `tft/tft_roll_odds.py` reports both STALE against the Set 18 lane until this closes). Close by pinning the measured table with a test, or recording
+  that Set 18 kept the Set 17 values.
+- **LT-03** (RM-840, Set 18 team-planner codes) With the LCU agent running in a Set 18 lobby, capture
+  the team-planner champion codes (`scripts/discover_champion_codes.py` shape) so a
+  `data/meta/tft_set18_champion_codes.json` can be written; Set 17 is the only set with a codes file.
+
 ## PARKED / HOLD - deliberately OFF the active checklist
 
 Do not drain these. They are listed so nobody re-adds them.
