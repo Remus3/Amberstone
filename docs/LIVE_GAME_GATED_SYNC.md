@@ -262,6 +262,16 @@ output). It prints the RC pid timeline (each pid change mid-match is a restart),
 how many InProgress samples RC did NOT read as tft and the callout tags it served then, plus event and
 frame counts. READ-ONLY on the recorder files; a summary is the INPUT to the evidence contract, never
 the evidence itself.
+The TFT game process is the standalone Unreal client `TFTClient-Win64-Shipping.exe` (plus
+`TFTClient.exe`), NEVER `League of Legends.exe`, and NOTHING listens on `:2999` (`docs/TFT_PROGRAM.md`
+measured fact 1; empty `liveclient` in every recorder sample of matches 20261025-070350 and -081234).
+So "no `League of Legends.exe`" plus "`:2999` refused" is NOT a launch stall and NOT "no game": the
+game-up discriminator is `tasklist` showing `TFTClient-Win64-Shipping.exe` while `lcu.phase` is
+`InProgress` (measured 2026-10-25 08:24 local, game 1000000913, queue 1090: process started 08:12:30,
+beside LCU gameflow-phase updates at 08:12:29). Every TFT row whose probe needs `liveclient`, `:2999`
+or `health.has_game` is BLOCKED by that, not drainable.
+`:8889/latest-frame` answers JSON (`b64` plus meta), not raw image bytes: decode with
+`base64.b64decode(body["b64"])` before handing it to Pillow.
 
 ---
 
