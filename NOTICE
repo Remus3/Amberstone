@@ -45,6 +45,13 @@ Source by source:
   `tests/test_tft_meta_provenance_rm846.py` fails if a tracked TFT meta file
   names a source this file does not credit.
 
+  Teamfight Tactics icons: `scripts/fetch_tft_icons.py` caches the running
+  set's champion, item, trait and augment icons at runtime - from the local
+  League client's own `lol-game-data` assets first, CommunityDragon's mirror
+  of them second - into the gitignored `data/tft/icon_cache/` tree. They are
+  Riot art, used locally only: never committed and never exported in a
+  fixture, and no right to redistribute them is granted.
+
 * Meraki Analytics - item passive formulas and champion stat lines.
   Governed by Meraki Analytics' own terms.
 
