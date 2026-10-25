@@ -8,7 +8,9 @@
  * panel is genuinely open (p.augment_select === true).
  *
  * Colours/spacing reuse the base.css design tokens; rarity dot colours
- * match the champ-select augment tiers (silver/gold/prismatic). */
+ * match the champ-select augment tiers (silver/gold/prismatic), plus
+ * bronze and event (RM-860). The ARAM coach stamps the same fields in a
+ * Mayhem game (RM-860). */
 
 .ib-aug-reco-block[hidden] { display: none !important; }
 
@@ -120,6 +122,14 @@
 .ib-aug-reco-block .ar-rar.silver    { background: #6b7280; }
 .ib-aug-reco-block .ar-rar.gold      { background: #b88410; }
 .ib-aug-reco-block .ar-rar.prismatic { background: #a855f7; }
+/* RM-860: the two other CommunityDragon rarity tokens the meta table can
+ * emit (augment_reco.js _rarityClass). Bronze reuses the bronze tier tint
+ * of the post-game augment strip (last_match.css .lm-tc-aug bronze).
+ * EventChoice cards (augment slot / anvil / "Abstain From ...") are not a
+ * power tier and no tier colour exists for them, so they take the --info
+ * design token (base.css: info / intents) instead of a tier they lack. */
+.ib-aug-reco-block .ar-rar.bronze    { background: #c08457; }
+.ib-aug-reco-block .ar-rar.event     { background: var(--info); }
 
 .ib-aug-reco-block .ar-score {
   font-variant-numeric: tabular-nums;

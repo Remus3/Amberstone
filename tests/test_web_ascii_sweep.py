@@ -642,7 +642,16 @@ _WEB = _REPO_ROOT / "web"
 # exactly web/js/panels/augment_reco.js back to its HEAD blob reproduces the
 # superseded 26d42f61... value EXACTLY. That one path is the whole change.
 # No glyph change.
-_LIVE_HALF_DIGEST = "1ec49f88fe51694d3f59f4516f384d3b2bd66347f7696601537786adf0b12c3e"
+# superseded by the RM-860 verifier fix-up re-capture below: "1ec49f88fe51694d3f59f4516f384d3b2bd66347f7696601537786adf0b12c3e"
+#
+# RE-CAPTURED 2026-10-25 at the RM-860 verifier fix-up (kEventChoice and
+# kBronze rarity tokens mapped to styled pip classes). Ordinary case, no
+# tokeniser change. ATTRIBUTED BY SUBSTITUTION against the RM-860 commit:
+# swapping exactly web/js/panels/augment_reco.js and
+# web/css/panels/augment_reco.css back to their HEAD blobs reproduces the
+# superseded 1ec49f88... value EXACTLY. Those two paths are the whole
+# change. No glyph change.
+_LIVE_HALF_DIGEST = "971372e120d080d45a2ec569d494de0cb459c57be2078c59dac472ecf74ef5eb"
 
 
 def _web_sources() -> list[Path]:

@@ -62,13 +62,30 @@ function _hide() {
   _lastSig = "";
 }
 
-// Rarity -> the CSS tier class (.ar-rar.silver / .gold / .prismatic). The
-// coaches pass the augment meta table's rarity through as-is, and that table
-// carries CommunityDragon tokens (kSilver / kGold / kPrismatic), so the raw
-// value lower-cased to "kgold" and every real pip fell back to grey (RM-860
-// UI audit). Plain tokens pass through unchanged.
+// Rarity -> the CSS pip class in augment_reco.css. The coaches pass the
+// augment meta table's rarity through as-is (core/augment_recommender.py
+// AugmentScore.rarity <- core/augment_external_source.py
+// AugmentMetaTable.rarity), and that table carries the raw CommunityDragon
+// cherry-augments token. Every token in the tracked snapshots is kSilver /
+// kGold / kPrismatic / kEventChoice / kBronze (kBronze only in the
+// 16.10.1-stamped copies a degraded meta load can still serve). Lower-cased
+// raw, they matched no rule and every real pip fell back to grey (RM-860 UI
+// audit). Plain tokens (the snapshot fixtures) map too. kEventChoice is not
+// a power tier (augment slot / anvil / "Abstain From ..." event cards), so
+// it gets its own "event" class rather than a tier colour it does not have.
+// A null rarity (id missing from the meta table) renders no pip; an unknown
+// future token keeps the neutral grey pip (tests pin every emitted token).
+const _RARITY_CLASS = {
+  ksilver: "silver", silver: "silver",
+  kgold: "gold", gold: "gold",
+  kprismatic: "prismatic", prismatic: "prismatic",
+  kbronze: "bronze", bronze: "bronze",
+  keventchoice: "event", eventchoice: "event", event: "event",
+};
+
 function _rarityClass(v) {
-  return String(v || "").toLowerCase().replace(/^k(silver|gold|prismatic)$/, "$1");
+  const k = String(v || "").toLowerCase();
+  return Object.hasOwn(_RARITY_CLASS, k) ? _RARITY_CLASS[k] : k;
 }
 
 function _pct(v) {
