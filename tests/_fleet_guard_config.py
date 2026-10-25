@@ -29,7 +29,18 @@ inbox_tick.lock and headless_budget.json left this list. Kit v19 board files
 board/status.json and board/state.json at every interactive board push, in the
 main checkout (not env-routable), and the kit IGNORE misses them; listed file by
 file until a kit version adds them (tests/test_fleet_kit_v14.py then flags the
-overlap). ASCII only.
+overlap). RM-874 (s133): the per-session lane driver
+ops/loop/control/lane_prompts/s<NNN>_lane_driver.py (gitignored, main checkout,
+not env-routable) rewrites two files of its own on its own cadence while suites
+run - write_state() -> s<NNN>_<lane>_state.json at every claim / launch / wait,
+and build_prompt() -> the rendered directive s<NNN>-<lane>.md once per cycle -
+and three s133 batches ERRORED at the guard teardown on exactly those paths. Its
+*.log / *.jsonl / *.tmp writes and the kit spawn writers (headless_budget.json,
+inbox_status.json, progress/, lanes/) are in the kit IGNORE already. The two
+globs carry the session tag as three digits because the driver is re-copied per
+session under its session tag (s115 precedent); they stay inside lane_prompts/
+and never match the driver's sources (*.py, *.tmpl) or any other control file.
+ASCII only.
 """
 
 ENV_ROOTS = {
@@ -67,4 +78,8 @@ EXTRA_IGNORE = (
     "ops/loop/control/inbox_held/*",
     "ops/loop/control/board/status.json",
     "ops/loop/control/board/state.json",
+    # RM-874: live lane driver state (write_state, tmp then replace).
+    "ops/loop/control/lane_prompts/s[0-9][0-9][0-9]_*_state.json",
+    # RM-874: live lane driver's rendered per-cycle directive (build_prompt).
+    "ops/loop/control/lane_prompts/s[0-9][0-9][0-9]-*.md",
 )
