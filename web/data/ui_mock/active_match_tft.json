@@ -1,0 +1,26 @@
+{
+  "mock": true,
+  "note": "Active Match TFT mock fixture (session 134, lane uiux, RM-895). Activated via ?ui_mock=1&mode=tft#active-match. REAL-SHAPE, not state-coverage shaped: the coach payload is the one /api/state served in the session 134 TFT QA recorder capture of a live Normal TFT game (queue 1090, first states.jsonl row with mode_key tft, 2026-10-25), with coach.team_context dropped. Every TFT field is empty and the SR leftovers risk / fight_rule ride along, exactly as served; liveclient is {} because the standalone TFT client has nothing on :2999. Renders the S134 T1 no-feed fallback (web/js/panels/active_match.js amLiveFallbackModel) in its Unavailable state. Populated twin: active_match_tft_live.json (?mode=tft_live).",
+  "mode": "tft",
+  "phase": "InProgress",
+  "coach": {
+    "mode": "tft",
+    "action": "",
+    "board": "",
+    "econ": "",
+    "rolldown": "",
+    "items": "",
+    "god_pick": "",
+    "placement": "",
+    "upgrade": "",
+    "risk": "MEDIUM",
+    "choices": [],
+    "immediate": "",
+    "fight_rule": "FAIR FIGHT - trade only on cooldowns, avoid coinflips"
+  },
+  "liveclient": {},
+  "minimap_rect": null,
+  "minimap_dots": [],
+  "zoi": null,
+  "summoner_cooldowns": null
+}
