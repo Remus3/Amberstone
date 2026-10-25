@@ -6,6 +6,19 @@
 
 ---
 
+# 2026-10-24c - session 132: RM-835 shipped (18 sites), CLI pin 2.1.310, RM-838 filed
+
+- **C1 = RM-835 (LEDGER 1795):** `fbcdc9952` - 17 :8888 reply sites (15 catch-all 500s + `routes_ds_statcheck` detail + `routes_sr_draft` notes) send a fixed "see logs" line, cause logged scrubbed; `dashboard/_errors.py` `send_error` gained `fields` / `log_traceback`; test `tests/test_rm835_dashboard_reply_scrub.py`. Verifier pass 1 PARTIAL found an 18th: `agents/daemon_slayer/combo.py:295` burst-walker note reached `/api/ds-combo`; `965b7bb92` fixed it at the source (+ `mana_sim.py:570`, `burst.py:671`); pass 2 CONFIRM (125 passed). No ENGINE_VERSION bump.
+- **Gated dual suite on `965b7bb92`:** 1 failed / 42693 passed / 106 skipped; the one failure was the pre-existing CLI pin (red on `f1ff24958` too).
+- **C2 (LEDGER 1796):** `0ffd9320b` subagent CLI pin 2.1.309 -> 2.1.310 via `tools/repin_subagent_cli.py`, all four RM-684 controls passed; 6 passed.
+- **Filed:** `97e501500` RM-835 SHIPPED in ROADMAP + BACKLOG, RM-838 (reply leaks outside the RM-835 set: vision `_http.py:285`, proxy passthroughs, `agents/supervisor.py:1001`, DS :8860-only sites); next free RM-839.
+- **Deployed:** RC restarted (pid 3100 then; 7736 at the /done probe), DS :8860 relaunched (16.21.1); /burst and /api/ds-combo 200.
+- **Memory (LEDGER 1797):** 3 Share-mirror memories marked SUPERSEDED (`7c0ff1624` removed Share/ 2026-09-07); CLAUDE.md's two Share-mirror lines stay RM-809.
+- **Do NOT redo:** RM-835 (all 18 sites), the 2.1.310 pin. RM-838's sites are the follow-up, not RM-835 residue.
+- **Next:** RM-837 (AST guard, assign-then-reply), RM-838, RM-836, then RM-830 / RM-825 and the carried list; the batched MAIN note; S6 at the next live game.
+
+---
+
 # 2026-10-24b - session 131: RM-824 shipped, RC board recreated, suite-guard board ignores, RM-835..RM-837 filed
 
 - **C1 = RM-824 (LEDGER 1791):** `ca5b44e41` (cherry-pick of `f290eaa91`) - six Mission Control loop-control reply sites through `_fault()`: fixed "see logs" line, raw cause logged via `scrub_log`; status codes and keys unchanged. Verifier CONFIRM (91 passed; old module 13 failed); merged-tree 108 passed.
@@ -27,17 +40,3 @@
 - **Full suite (2c):** covered by `c107a1725` (nightly `40094097286`, in progress at the wrap); no dispatch.
 - **Do NOT redo:** C1-C3 above. No tracked edit this session besides this wrap.
 - **Next:** RM-824 (security), RM-830, RM-825, then RM-819 (d), RM-807 .. RM-834 by topic; one batched MAIN note; S6 at the next live game.
-
----
-
-# 2026-10-23b - session 129: RM-810 / RM-811 / RM-812 / RM-814 / RM-818 / RM-832 shipped, RM-819 / RM-822 partial, RM-824..RM-834 filed
-
-- **Start (LEDGER 1780):** s128 dispatch `39976892990` green (41764 passed); s128 wrap push ci + docs-guards green.
-- **Security (LEDGER 1781-1782):** RM-819 `0daee3441` one Host gate (`core/http_host_gate.py`) on all seven HTTP servers, live 421 on a foreign Host ((d) quiet-box flaky check NOT done); RM-811 `aec59bf5c` + `5df8f79e1` + `7445c3f38` MCP JSON-RPC codes, scrubbed logs (`ScrubFilter`).
-- **Launchers / tests / hooks (LEDGER 1783-1785):** RM-810 five verifier rounds `1d2ed354f`..`36b14cb73`; RM-812 `007572591`; RM-814 `ba960ce34` + `9744f7522`; RM-818 `21aa8027d` + `5543cc56d`.
-- **Housekeeping (LEDGER 1786):** RM-822 PARTIAL - 8 branches / 6 worktrees removed, tags `archive/rm793-abd89ea3`, `archive/rm822-abd89ea3-tip`, `archive/rm822adj-8f2-5-tip`, bundles `ops/runtime/backup/rm822*-branches-*.bundle`; 3 KEEP branches open.
-- **Channel (LEDGER 1787):** one batched ANSWER to MAIN delivered 1/1 (`28c1ed5c0`); MAIN's `route: single` ruling pending.
-- **Push (LEDGER 1788):** 12 unpushed commits REBUILT to drop drive-root fixture literals (old tip = local tag `archive/s129-pre-rebuild`); gated dual suite on `5543cc56d` 42515 passed / 106 skipped, exit 0 (skips 101 -> 106 = RM-833 watch).
-- **C10 = RM-832 (LEDGER 1789):** `7042438eb`, `7b5ccfc53`, `6eae852d3` - vision :8889 is a separate process (docs); launchers wait out a dying port holder (`core/port_handoff.py`); live: /End + /Run -> new pid on :8861 in 1.7 s.
-- **Do NOT redo:** any id above; the rebuild map is LEDGER 1788 (old shas resolve via the tag).
-- **Next:** read back /done dispatch `40034861146`; then RM-824 (security), RM-830, RM-825, then RM-807 / RM-808 / RM-809 / RM-813 / RM-815..RM-817 / RM-820 / RM-821 / RM-823; S6 at the next live game.
