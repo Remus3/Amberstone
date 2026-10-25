@@ -118,6 +118,22 @@ def _prompt_gold(state: dict, live: dict):
     return _bounded_int(live.get("gold"), 999) or None
 
 
+# tft/tft_state_reader.py _parse: the *_str default before any read.
+_NO_READ_STR = "unavailable"
+
+
+def _known_vital(state: dict, key: str, known_flag: str, lo: int, hi: int):
+    """S136 T11: the reader's ``key`` for the coach payload; None = unknown.
+    None while the reader flags it unread (``known_flag`` False: the value
+    is its default, level 1 / gold 0) or when it is not an int in lo..hi.
+    The payload wrote those defaults and the overlay painted them as fact
+    ("LEVEL 1 / GOLD 0"); a READ gold of 0 stays 0."""
+    if state.get(known_flag) is False:
+        return None
+    value = _bounded_int(state.get(key), hi)
+    return value if value is not None and value >= lo else None
+
+
 def _stale_standalone(state: dict) -> bool:
     """True for a standalone-source state whose per-round file is NOT
     positively this game's (tft/tft_standalone.py eog_matches_game: game id
@@ -829,12 +845,14 @@ class TftCoachEngine:
         except Exception:  # noqa: BLE001
             return None
 
-    def _resolve_hp(self, state: dict, default: int = 100) -> int:
+    def _resolve_hp(self, state: dict, default: int | None = 100) -> int | None:
         """The state reader's HP wins (Live Client / standalone EoG health,
         its OCR fallback; never a per-round file that is not positively this
         game's), then vision, then the default. S136 T9: vision won
         first, so a vision read of 35 with every player at 100 (QA run
-        20261025-153652) reached the payload and the urgency gate."""
+        20261025-153652) reached the payload and the urgency gate.
+        The payload passes ``default=None`` (S136 T11: unknown is null, never
+        a painted 100); submit()'s urgency gate keeps 100 = not critical."""
         api = None if _stale_standalone(state) else self._coerce_hp(state.get("health"))
         if api is not None:
             return api
@@ -966,16 +984,19 @@ class TftCoachEngine:
                 return
         self._last_fields = dict(fields)
 
-        # Resolve HP: the reader's health, fallback vision, fallback 100 (S136 T9)
-        _out_hp = self._resolve_hp(state)
+        # Resolve HP: the reader's health, fallback vision (S136 T9). S136 T11:
+        # an unknown HP / level / gold is null (None), never the placeholder
+        # 100 / 1 / 0 the overlay painted as fact; the same signals the prompt
+        # reads (level_known / gold_known, _stale_standalone).
+        _out_hp = self._resolve_hp(state, default=None)
 
         output = {
             "mode":         "tft",
             "game_time_s":  state.get("game_time_s",  0),
             "stage":        state.get("stage",         1),
             "round":        state.get("round",         1),
-            "level":        state.get("level",         1),
-            "gold":         state.get("gold",          0),
+            "level":        _known_vital(state, "level", "level_known", 1, 10),
+            "gold":         _known_vital(state, "gold", "gold_known", 0, 999),
             "health":       _out_hp,
             "stage_round":  state.get("stage_round",   ""),
             "kills":        state.get("kills",         0),
@@ -983,7 +1004,11 @@ class TftCoachEngine:
             "alive_others": state.get("alive_others",  7),
             "items_str":    state.get("items_str",     ""),
             "traits_str":   state.get("traits_str",    ""),
-            "board_str":    state.get("board_str",     ""),
+            # S136 T11 UI audit: the reader's no-read "unavailable" is no
+            # board; web/js/lib/overlay_tft.js parseBoardStr painted it as a
+            # unit chip ("unavailable", board count 1) with no per-round file.
+            "board_str":    ("" if state.get("board_str") == _NO_READ_STR
+                             else state.get("board_str", "")),
             "bench_str":    state.get("bench_str",     ""),
             "shop_str":     state.get("shop_str",      ""),
             "variant":      state.get("variant",       "standard"),

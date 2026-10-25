@@ -83,6 +83,10 @@ def _wait_tft(page):
         " && document.body.dataset.ovxGame === 'tft'; }",
         timeout=15_000,
     )
+    # S136 T11: web/css/dashboard.css pulls Lato with display=swap, so a box
+    # measured before the swap was 1px shorter (the no-reflow size checks
+    # flaked 122 vs 123 px). Measure after the pending font loads settle.
+    page.evaluate("() => document.fonts.ready.then(() => true)")
 
 
 def _text(page, sel):
@@ -191,6 +195,82 @@ def test_tft_overlay_does_not_reflow_when_data_lands(mock_server, pw_browser):
             page.close()
             ctx.close()
         assert not errors, f"JS errors [{name}]: {errors[:3]}"
+    assert len({json.dumps(v) for v in sizes.values()}) == 1, sizes
+
+
+def _with_engine_unknown_coach(st, tmp_path):
+    """``st`` with the coach envelope /api/state serves when the TFT engine
+    wrote HP / level / gold UNKNOWN (s136 T11): the engine's own write
+    (tests/test_tft_payload_unknown_vitals_s136.py _UNKNOWN), then the state
+    builder's standalone fill (dashboard/_state_builder.py
+    tft_coach_for_standalone) from the fixture's liveclient."""
+    from unittest.mock import patch
+
+    from dashboard import _state_builder as sb
+    from tests.test_tft_payload_unknown_vitals_s136 import _ADVICE, _UNKNOWN, _engine
+    from tft import tft_coach_engine as tce
+
+    with patch("core.coaching_timestamps.write_coaching_ts"), \
+         patch.object(tce, "_live_data", return_value={}):
+        eng = _engine(tmp_path)
+        eng._write_fields(_ADVICE, dict(_UNKNOWN))
+    coach = json.loads(eng._data_file.read_text(encoding="utf-8"))
+    with patch.object(sb, "_coach_file_mtime", return_value=None):
+        coach = sb.tft_coach_for_standalone(coach, "tft_coaching_data.json", st["liveclient"])
+    return {**st, "coach": coach}
+
+
+def test_tft_overlay_unknown_vitals_paint_the_no_data_sentinel(mock_server, pw_browser, tmp_path):
+    """S136 T11 (STRUCTURE / TYPOGRAPHY / ASCII / NO-REFLOW): the payload the
+    TFT engine writes with HP / level / gold unknown paints "-" there, dimmed
+    like every placeholder (is-empty), in the same boxes as the real feed. It
+    painted "HP 100 / LEVEL 1 / GOLD 0" and a board count of "7/1"; with no
+    per-round file, the reader's "unavailable" board_str as a unit chip."""
+    want = {"tft_overlay_sentinel": ("-", "-"), "tft_overlay_live": ("96", "7")}
+    sizes = {}
+    for name in ("tft_overlay_feed", *want):
+        st = _fixture(name) if name not in want else _with_engine_unknown_coach(_fixture(name), tmp_path)
+        ctx, page, errors = _open(pw_browser, mock_server, st)
+        try:
+            _wait_tft(page)
+            sizes[name] = page.evaluate(
+                "() => ['ovt-hud','ovt-board'].map(i => {"
+                " const r = document.getElementById(i).getBoundingClientRect();"
+                " return [Math.round(r.width), Math.round(r.height)]; })")
+            if name not in want:
+                continue
+            hp, count = want[name]
+            assert _val(page, "hp") == hp, f"{name} hp"
+            for k in ("level", "gold"):
+                assert _val(page, k) == "-", f"{name} {k}"
+            assert _text(page, "#ovt-board .ovt-time") == count, f"{name} board count"
+            dimmed = page.eval_on_selector_all(
+                "#ovt-hud .ovt-cell.is-empty",
+                "els => els.map(e => [e.dataset.k, e.querySelector('.ovt-val').textContent,"
+                " /rgba?\\(([^)]+)\\)/.exec(getComputedStyle(e.querySelector('.ovt-val')).color)[1]"
+                ".split(',').map(Number)[3]])")
+            by_key = {k: (text, alpha) for k, text, alpha in dimmed}
+            for k in ("level", "gold") + (("hp",) if hp == "-" else ()):
+                assert k in by_key, f"{name} {k} not dimmed as empty"
+                assert by_key[k][0] == "-" and abs(by_key[k][1] - 0.45) < 0.01, (name, k, by_key[k])
+            names = page.eval_on_selector_all("#ovt-board .ovt-unit-name", "els => els.map(e => e.textContent)")
+            assert "unavailable" not in names, f"{name}: a no-read placeholder painted as a unit"
+            painted = page.evaluate(
+                "() => ['ovt-hud','ovt-board'].map(i => document.getElementById(i).textContent).join('')")
+            assert all(ord(c) < 128 for c in painted), painted
+            # HIERARCHY: the "-" in the major HP cell still outranks the minor ones.
+            assert _fs(page, '#ovt-hud .ovt-cell[data-k="hp"] .ovt-val') > _fs(
+                page, '#ovt-hud .ovt-cell[data-k="level"] .ovt-val')
+            # HIT-TARGETS: still display-only (the drag handle is the one zone).
+            zones = page.evaluate(
+                "() => ['ovt-hud','ovt-board'].flatMap(i => [...document.getElementById(i)"
+                ".querySelectorAll('[data-rc-zone]')].filter(n => !n.classList.contains('ovx-handle'))"
+                ".map(n => n.className))")
+            assert zones == [], zones
+        finally:
+            page.close()
+            ctx.close()
+        assert not errors, f"JS errors [{name} unknown vitals]: {errors[:3]}"
     assert len({json.dumps(v) for v in sizes.values()}) == 1, sizes
 
 

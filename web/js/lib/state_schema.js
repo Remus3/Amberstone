@@ -146,9 +146,9 @@
  * @property {number} game_time_s
  * @property {number} stage
  * @property {number} round
- * @property {number} level
- * @property {number} gold
- * @property {number} health
+ * @property {number|null} level
+ * @property {number|null} gold
+ * @property {number|null} health
  */
 
 /**
