@@ -267,13 +267,15 @@ def _tracked_feeds() -> set[str]:
     emitting an EMPTY index, which would read as "no drift" forever.
     """
     try:
+        # RM-830: -z, so a non-ASCII feed name is not C-quoted; UTF-8 decode.
         out = subprocess.run(
-            ["git", "-C", str(ROOT), "ls-files", "data/daemon_slayer"],
-            capture_output=True, text=True, check=True, timeout=60,
+            ["git", "-C", str(ROOT), "ls-files", "-z", "data/daemon_slayer"],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            check=True, timeout=60,
         ).stdout
     except (OSError, subprocess.SubprocessError):
         return set()
-    return {line.strip() for line in out.splitlines() if line.strip()}
+    return {p for p in out.split("\0") if p.strip()}
 
 
 def build_index() -> dict:

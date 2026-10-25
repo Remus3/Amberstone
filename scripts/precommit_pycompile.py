@@ -23,11 +23,14 @@ ROOT = Path(__file__).resolve().parent.parent
 
 def staged_python_files() -> list[Path]:
     """Files added/modified/copied in the upcoming commit (excluding deletes)."""
+    # RM-830: -z, so git does not C-quote a non-ASCII name (`"d\304\201.py"`
+    # ends in `.py"`, so the file was never compiled), decoded UTF-8 rather
+    # than through the locale.
     out = subprocess.check_output(
-        ["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"],
-        cwd=str(ROOT), text=True,
+        ["git", "diff", "--cached", "--name-only", "-z", "--diff-filter=ACMR"],
+        cwd=str(ROOT), text=True, encoding="utf-8", errors="replace",
     )
-    return [ROOT / line for line in out.splitlines() if line.endswith(".py")]
+    return [ROOT / p for p in out.split("\0") if p.endswith(".py")]
 
 
 def main() -> int:

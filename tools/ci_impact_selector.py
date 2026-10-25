@@ -272,9 +272,16 @@ def _git() -> str:
     return git
 
 
+# RM-830: git writes path names as UTF-8 bytes whatever the console code page,
+# and C-quotes a name holding a byte over 0x7F unless asked for -z. Every path
+# read here is -z and decoded UTF-8, never through the locale (cp1252 has no
+# 0x81, so a reader thread faulted and stdout came back None).
+_PATH_TEXT = {"text": True, "encoding": "utf-8", "errors": "replace"}
+
+
 def git_tracked(root: Path) -> List[str]:
     out = subprocess.run([_git(), "ls-files", "-z"], cwd=str(root), capture_output=True,
-                         text=True, timeout=300, check=True).stdout
+                         timeout=300, check=True, **_PATH_TEXT).stdout
     return [_norm(p) for p in out.split("\0") if p]
 
 
@@ -300,11 +307,11 @@ def changed_paths(root: Path, base: str, head: str) -> Optional[List[str]]:
                                capture_output=True, text=True, timeout=60)
         if probe.returncode != 0:
             return None
-    diff = subprocess.run([git, "diff", "--name-only", "--no-renames", base, head],
-                          cwd=str(root), capture_output=True, text=True, timeout=300)
+    diff = subprocess.run([git, "diff", "--name-only", "-z", "--no-renames", base, head],
+                          cwd=str(root), capture_output=True, timeout=300, **_PATH_TEXT)
     if diff.returncode != 0:
         return None
-    return [_norm(p) for p in diff.stdout.splitlines() if p.strip()]
+    return [_norm(p) for p in diff.stdout.split("\0") if p.strip()]
 
 
 def _write(path: Optional[str], text: str, *, append: bool = False) -> None:

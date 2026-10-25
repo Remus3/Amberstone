@@ -377,13 +377,15 @@ def check_untracked_authored(
         candidates = sorted(d.glob("*.md"))
         if not candidates:
             continue
+        # RM-830: -z (no C-quoting of a non-ASCII name, no whitespace split
+        # of a name holding a space), decoded UTF-8, never the locale.
         r = subprocess.run(
-            ["git", "-C", str(root), "ls-files", f"{a}/"],
-            capture_output=True, text=True,
+            ["git", "-C", str(root), "ls-files", "-z", f"{a}/"],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
         )
         if r.returncode != 0:
             continue
-        tracked = set(r.stdout.split())
+        tracked = {p for p in r.stdout.split("\0") if p}
         for f in candidates:
             rel = f.relative_to(root).as_posix()
             if rel not in tracked:

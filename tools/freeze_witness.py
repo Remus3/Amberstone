@@ -68,8 +68,11 @@ def diff(before: dict, after: dict) -> dict:
 
 
 def git_witness(root: Path) -> str:
-    proc = subprocess.run(["git", "-C", str(root), "status", "--porcelain", "--", "."],
-                          capture_output=True, text=True, check=False)
+    # RM-830: quotepath off and a UTF-8 decode, so a non-ASCII name reads as itself.
+    proc = subprocess.run(["git", "-C", str(root), "-c", "core.quotepath=false",
+                           "status", "--porcelain", "--", "."],
+                          capture_output=True, text=True, encoding="utf-8",
+                          errors="replace", check=False)
     return proc.stdout
 
 

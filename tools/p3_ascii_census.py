@@ -42,9 +42,10 @@ def excluded(rel):
 
 
 def tracked():
-    out = subprocess.run(["git", "-C", ROOT, "ls-files"],
-                         capture_output=True, text=True).stdout
-    return out.splitlines()
+    # RM-830: -z (no C-quoted non-ASCII names), decoded UTF-8.
+    out = subprocess.run(["git", "-C", ROOT, "ls-files", "-z"], capture_output=True,
+                         text=True, encoding="utf-8", errors="replace").stdout
+    return [p for p in out.split("\0") if p]
 
 
 def bucket_of(rel):
