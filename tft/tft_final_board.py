@@ -25,7 +25,9 @@ The real record of the game exists in two places this module reads:
      only when the store has no record of that game yet - the post-game capture
      can land AFTER the lifecycle game-end rating (match 3: 09:29:44 vs
      09:28:52), and then the collector re-rates from the store
-     (performance_tracker.rate_tft_game).
+     (performance_tracker.rate_tft_game). Only when the file is POSITIVELY
+     the ended game's (S136 T10, per_round_record): the file survives the
+     game, so fresh is not proof of whose it is.
 
 Trait activation and the comp name come from the GAME'S OWN set's CommunityDragon
 breakpoints (data/meta/tft_set<N>_cdragon.json, N from the record's
@@ -316,20 +318,32 @@ def per_round_is_final(doc, *, summoner_id=None) -> bool:
     return bool(others) and all(_lp.player_status(p) == _lp.ELIMINATED for p in others)
 
 
-def per_round_record(now: Optional[float] = None) -> Optional[dict]:
+def per_round_record(now: Optional[float] = None, game_id=None) -> Optional[dict]:
     """The standalone client's per-round file as a merged tft_placement
-    record, or None (missing, stale, not TFT, unparsable). The file read goes
-    through tft_standalone.read_eog - its path seam is what tests redirect.
-    The record carries `per_round_final` (per_round_is_final)."""
+    record, or None (missing, stale, not TFT, unparsable, or not POSITIVELY
+    the game). The file read goes through tft_standalone.read_eog - its path
+    seam is what tests redirect. The record carries `per_round_final`
+    (per_round_is_final).
+
+    S136 T10: the game is `game_id` when the caller knows it, else
+    tft_standalone.current_game_id (the LCU snapshot's id, else the live game
+    this process served); a file that is not that game's - another game's
+    id, no id, or no current game at all - is no file (the T9 rule,
+    tft_standalone.eog_for_game). It used to be taken whatever its game."""
     try:
         from tft import tft_placement, tft_standalone
         doc = tft_standalone.read_eog(now=now, max_age_s=PER_ROUND_MAX_AGE_S)
         if doc is None:
             return None
+        lcu = tft_standalone.relay_lcu_snapshot()
+        gid = str(game_id or "") or tft_standalone.current_game_id(lcu, now=now)
+        doc = tft_standalone.eog_for_game(doc, gid)
+        if doc is None:
+            return None
         # S135 N13: the local entry by the LCU summoner id (the relay snapshot
         # the live source already reads), never the first isInteractable one.
         from tft.local_player import summoner_id_of
-        sid = summoner_id_of(tft_standalone.relay_lcu_snapshot())
+        sid = summoner_id_of(lcu)
         rec = tft_placement.parse_gameclient_eog(doc, now=now, local_summoner_id=sid)
         if not rec:
             return None
@@ -357,20 +371,24 @@ def resolve_final(root=None, *, game_id=None, now: Optional[float] = None,
     """The just-ended game's rating inputs: the store record of that game,
     else the per-round file's standing when that file records a finished
     game (per_round_is_final). The game is `game_id` when the caller knows
-    it, else the per-round file's gameId. None when neither source holds the
-    game's result - the caller then has no placement, and must not invent
-    one; the collector re-rates when the store record lands."""
+    it, else tft_standalone.current_game_id - never the per-round file's own
+    gameId (S136 T10: a fresh file of ANOTHER game named "the game", so its
+    store record or standing was rated as the one that just ended); the file
+    counts only when it is positively that game's (per_round_record). None
+    when neither source holds the game's result - the caller then has no
+    placement, and must not invent one; the collector re-rates when the
+    store record lands."""
     gid = _int(game_id) if game_id is not None else None
     if gid is not None and gid <= 0:
         gid = None
-    pr = per_round_record(now=now if now is not None else time.time())
+    pr = per_round_record(now=now if now is not None else time.time(), game_id=gid)
     pr_gid = _int(pr.get("game_id")) if pr else None
     if gid is None:
-        gid = pr_gid
+        gid = pr_gid       # matched to the current game, so it IS that game
     if gid:
         fin = store_final(gid, root=root, store_dir=store_dir)
         if fin:
             return fin
-    if pr and pr.get("per_round_final") and (gid is None or pr_gid == gid):
+    if pr and pr.get("per_round_final") and pr_gid == gid:
         return final_from_record(pr, root=root, source=SOURCE_PER_ROUND)
     return None

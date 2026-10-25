@@ -369,13 +369,16 @@ def _tft_game_id() -> int:
     The legacy-path fallback since s134 N8 (the game's own record names its id
     when one exists): neither TFT data file the frozen caller hands over
     carries an id; the standalone client's per-round TFTEoGStats.json does, and
-    read_eog returns it only while FRESH (EOG_MAX_AGE_S) and a TFT game, so a
-    file older than that window reads as unknown (a game lasts far longer, so a
-    fresh file is this game's). Never raises, and never returns a value the
-    INTEGER column rejects: the id is metadata, never worth the row."""
+    read_eog returns it only while FRESH (EOG_MAX_AGE_S) and a TFT game.
+    S136 T10: fresh is not "this game's" - the file's id is taken only when it
+    is POSITIVELY the current game's (tft_standalone.eog_for_game against
+    current_game_id, the T9 rule); another game's id would make
+    _tft_db_write upsert, i.e. overwrite, THAT game's row. Never raises, and
+    never returns a value the INTEGER column rejects: the id is metadata,
+    never worth the row."""
     try:
         from tft import tft_standalone as _tsa
-        eog = _tsa.read_eog()
+        eog = _tsa.eog_for_game(_tsa.read_eog(), _tsa.current_game_id())
         # ASCII digits only: int() alone takes True, 1.5, "-5", "1_000" and
         # full-width digits, none of which is a game id.
         s = str(eog.get("gameId") if isinstance(eog, dict) else "").strip()
