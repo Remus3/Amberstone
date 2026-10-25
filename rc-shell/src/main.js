@@ -438,7 +438,9 @@ function injectActiveIndicator(win) {
 // live game. killed/clean-exit are deliberate terminations - never resurrected.
 // The budget is keyed per window identity, so it survives an overlay
 // destroy/recreate cycle (a crash-looping page cannot reset its own budget).
-function attachCrashGuard(win, key) {
+// onGiveUp (optional) runs after a give-up hide - the toggle icon uses it to
+// fail safe to overlay content ON so a dead icon can never strand an OFF HUD.
+function attachCrashGuard(win, key, onGiveUp) {
   if (!win || win.isDestroyed()) {
     return;
   }
@@ -455,6 +457,9 @@ function attachCrashGuard(win, key) {
       win.webContents.reload();
     } else if (verdict.action === "give-up") {
       win.hide();
+      if (typeof onGiveUp === "function") {
+        onGiveUp();
+      }
     }
   });
   win.webContents.on("unresponsive", () => {
@@ -696,6 +701,11 @@ function createOverlayWindow() {
     injectClickThroughZones(overlayWindow);
   });
   attachCrashGuard(overlayWindow, "overlay");
+  // S134: a click on an ACTIVE overlay makes Windows activate it, which lifts
+  // it above the ON/OFF icon in the topmost band - the icon would then sit
+  // under an interactive window and stop taking taps. Re-lift the icon on every
+  // overlay focus (moveTop on a non-activating window never takes the focus).
+  overlayWindow.on("focus", raiseToggle);
   overlayWindow.on("move", persistOverlayState);
   overlayWindow.on("closed", () => {
     overlayWindow = null;
@@ -883,7 +893,13 @@ function createToggleWindow() {
     raiseToggle();
   });
   toggleWindow.webContents.on("did-finish-load", pushToggleState);
-  attachCrashGuard(toggleWindow, "toggle");
+  // A crash-looping icon is hidden by the guard; with the content OFF that would
+  // leave only Ctrl+Shift+O as a way back, so fail safe to the default ON.
+  attachCrashGuard(toggleWindow, "toggle", () => {
+    if (!overlayContentOn) {
+      setOverlayContent(true);
+    }
+  });
   toggleWindow.on("closed", () => {
     toggleWindow = null;
     toggleReady = false;
@@ -934,21 +950,20 @@ function endToggleDrag(kind) {
 
 // Turn the overlay content ON or OFF: persist the choice (a one-shot act, no
 // debounce), re-apply the surface (lastSurface = null defeats applySurface's
-// no-op guard) and tell the icon page. Hiding also drops the HUD back to
-// PASSIVE so it can never come back interactive and eat a click meant for the
-// game.
+// no-op guard) and tell the icon page. Either direction also drops the HUD
+// back to PASSIVE, so it can never come back interactive and eat a click meant
+// for the game - including an ACTIVE flip (Ctrl+Shift+A) pressed while it was
+// OFF.
 function setOverlayContent(on) {
   overlayContentOn = on !== false;
   store.save(
     statePath(),
     tog.mergeToggleStatePatch(store.load(statePath(), {}), { visible: overlayContentOn })
   );
-  if (!overlayContentOn) {
-    overlayZoneHover = false;
-    overlayClickThrough = true;
-    applyClickThrough();
-    scheduleActiveRevert(); // PASSIVE cancels any pending revert.
-  }
+  overlayZoneHover = false;
+  overlayClickThrough = true;
+  applyClickThrough();
+  scheduleActiveRevert(); // PASSIVE cancels any pending revert.
   lastSurface = null;
   refreshSurface(lastMode);
   pushToggleState();
@@ -1231,7 +1246,10 @@ function registerIpc() {
       handleToggleAction(action);
     }
   });
-  ipcMain.handle("rc-shell:overlay-toggle:get", () => {
+  ipcMain.handle("rc-shell:overlay-toggle:get", (event) => {
+    if (!toggleWindow || toggleWindow.isDestroyed() || event.sender !== toggleWindow.webContents) {
+      return null; // same sender rule as the action channel.
+    }
     return { visible: overlayContentOn };
   });
 }
