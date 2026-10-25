@@ -428,7 +428,8 @@ def _ingest_lag(pin_path: Path, db_path: Path, now: float) -> dict:
         out["last_eog_target"] = f"{operator_identity.platform()}_{pin['game_id']}"
     from lib import rewind_live_writer as rlw
     if (pin["queue_id"] in rlw.EVENT_MODE_QUEUE_IDS
-            or pin["game_mode"] in rlw.EVENT_MODE_GAME_MODES):
+            or pin["game_mode"] in rlw.EVENT_MODE_GAME_MODES
+            or rlw._is_tft_pin(pin)):  # S134 N3: never on Match-V5
         out["state"] = "excluded"
         return out
     if present is None:

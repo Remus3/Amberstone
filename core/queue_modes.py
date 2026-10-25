@@ -89,6 +89,17 @@ QUEUE_ID_TO_MODE_KEY: dict[int, str] = {
     1090: "tft",  # TFT Normal
     1100: "tft",  # TFT Ranked
     1130: "tft",  # TFT Hyper Roll
+    # S134 (2026-10-25): the live LCU inventory (gitignored
+    # ops/runtime/tft_qa/LCU_TFT_INVENTORY.md, docs/TFT_PROGRAM.md TFT-09 and
+    # risk 10) measured the client OFFERING four more TFT queues, which
+    # reverses the "only three" note above for these ids. Every one is
+    # present in CDragon queues.json with gameSelectModeGroup
+    # kTeamfightTactics (gameSelectPriority 0 there, so the CDragon census
+    # alone would never have surfaced them). 1101 / 1102 stay out as before.
+    1160: "tft",  # TFT Double Up (CDragon name "Teamfight Tactics (Double Up)")
+    1220: "tft",  # TFT event queue (CDragon name "Tocker's Trials")
+    1230: "tft",  # TFT event queue (CDragon name "Choncc or Treat")
+    6110: "tft",  # TFT Set 17 revival (CDragon name "Set 17 (Normal)")
     # Jade ("League Classic" throwback) - RM-141, 2026-08-02. Ids enumerated
     # from the refreshed CDragon catalog: every kJade row whose
     # gameSelectCategory is kPvP or kVersusAI. The whole group is genuinely
@@ -141,3 +152,39 @@ def mode_key_from_queue_id(queue_id: Optional[int]) -> Optional[str]:
     if qid <= 0:
         return None
     return QUEUE_ID_TO_MODE_KEY.get(qid)
+
+
+# S134 N2 / N3 (2026-10-25): the ONE predicate every League-only side effect
+# (rune / spell / item-set writes, Match-V5 fetches, the League rating) asks
+# before it fires. Measured: RC wrote a League rune page and summoner spells
+# into the account during BOTH TFT queues that day, because the RuneWriter had
+# no queue gate at all. TFT reaches RC through three independent signals and
+# any ONE is enough, because each can be missing on its own: the queue id
+# (absent when the lobby read fails), the gameMode string "TFT" (present for
+# TFT queues this map does not list), and map id 22 (the TFT board).
+TFT_MAP_ID = 22
+
+
+def is_tft_queue(queue_id: object) -> bool:
+    """True when ``queue_id`` is a mapped TFT queue."""
+    return mode_key_from_queue_id(queue_id) == "tft"  # type: ignore[arg-type]
+
+
+def is_tft_game_mode(game_mode: object) -> bool:
+    """True for a TFT gameMode string ("TFT", and the TFT_* spellings)."""
+    return str(game_mode or "").strip().upper().startswith("TFT")
+
+
+def is_tft_context(
+    *,
+    queue_id: object = None,
+    game_mode: object = None,
+    map_id: object = None,
+) -> bool:
+    """True when ANY of queue id, gameMode or map id says TFT. Never raises."""
+    if is_tft_queue(queue_id) or is_tft_game_mode(game_mode):
+        return True
+    try:
+        return int(map_id) == TFT_MAP_ID  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return False

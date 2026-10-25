@@ -63,6 +63,7 @@ from lcu.snapshot_shape import (  # noqa: E402,F401
     shape_snapshot,
 )
 from lcu.lcu_rune_writer import is_rc_owned_page  # noqa: E402
+from core.queue_modes import is_tft_context  # noqa: E402
 from core.log_rotation import (  # noqa: E402
     DEFAULT_BACKUP_COUNT,
     DEFAULT_MAX_BYTES,
@@ -183,7 +184,10 @@ except ssl.SSLError: pass
 _lcu = {"port": None, "auth": None, "header": None}
 _lcu_lock = threading.Lock()  # guards _lcu dict updates across threads
 _session_state = {"phase": None, "last_summoner_set_for": None,
-                  "last_accepted_check_id": None}
+                  "last_accepted_check_id": None,
+                  # S134 N2: refreshed from every captured snapshot by
+                  # _note_live_queue; read by the loadout-command gate.
+                  "live_tft": False, "live_queue_id": None}
 
 
 # -- Lockfile / connection ---------------------------------------------------
@@ -433,8 +437,60 @@ def _resolve_invitee_summoner_id(rid: str, sid, puuid: str):
     return None, "unresolved"
 
 
+# S134 N2: commands that write a League loadout (rune page, item sets, summoner
+# spells) into the account. None of them may run while the client is in a TFT
+# queue: the champ-select view auto-pushes through these, and a TFT queue shows
+# that view as plain SR (queue 1090 has no JS mode, so it reads as "sr").
+_LEAGUE_LOADOUT_CMDS = frozenset({
+    "apply_item_set", "apply_item_sets_batch", "delete_stale_rc_item_sets",
+    "apply_runes", "set_summoners", "set_summoner_spell",
+})
+
+
+def _session_is_tft(sess: dict) -> bool:
+    """True for a TFT champ-select session (its own queueId, or gameData)."""
+    qid = sess.get("queueId")
+    if not qid:
+        gd = sess.get("gameData")
+        q = gd.get("queue") if isinstance(gd, dict) else None
+        qid = q.get("id") if isinstance(q, dict) else None
+    return is_tft_context(queue_id=qid)
+
+
+def _note_live_queue(state: dict) -> None:
+    """Record whether the latest captured snapshot is a TFT queue.
+
+    Reads the queue the snapshot already carries (champ select, lobby, or the
+    in-game gameflow queue) - no extra LCU call. A snapshot with none of them
+    (client closed, home screen) clears the flag.
+    """
+    st = state if isinstance(state, dict) else {}
+    cs = st.get("champ_select") if isinstance(st.get("champ_select"), dict) else {}
+    lob = st.get("lobby") if isinstance(st.get("lobby"), dict) else {}
+    qid = (cs.get("queue_id") or lob.get("queue_id")
+           or st.get("game_queue_id") or None)
+    tft = (is_tft_context(queue_id=qid)
+           or is_tft_context(game_mode=lob.get("game_mode"),
+                             map_id=lob.get("map_id"))
+           or is_tft_context(game_mode=st.get("game_queue_mode")))
+    _session_state["live_tft"] = bool(tft)
+    _session_state["live_queue_id"] = qid
+
+
+def _loadout_refusal(verb: str) -> dict | None:
+    """The refusal for a League loadout command during a TFT queue, or None."""
+    if verb not in _LEAGUE_LOADOUT_CMDS or not _session_state.get("live_tft"):
+        return None
+    log.info(f"[cmd] {verb} refused: TFT queue "
+             f"{_session_state.get('live_queue_id')} has no League loadout")
+    return {"ok": False, "err": "tft queue: no League loadout writes"}
+
+
 def execute_command(cmd: dict) -> dict:
     name = cmd.get("cmd", "")
+    refusal = _loadout_refusal(name)
+    if refusal is not None:
+        return refusal
     if name == "set_config":
         for k in ("auto_accept", "summoner_override", "summoner_d", "summoner_f"):
             if k in cmd:
@@ -1140,7 +1196,8 @@ def auto_features() -> None:
     # Auto-set summoner spells in champ select if override enabled
     if CONFIG.get("summoner_override"):
         sess, _ = lcu_request("GET", "/lol-champ-select/v1/session")
-        if isinstance(sess, dict):
+        # S134 N2: never PATCH League spells into a TFT champ select.
+        if isinstance(sess, dict) and not _session_is_tft(sess):
             local_cell = sess.get("localPlayerCellId", -1)
             my_pick = next((p for p in sess.get("myTeam", [])
                             if p.get("cellId") == local_cell), None)
@@ -1623,6 +1680,10 @@ def _state_push_loop():
         _swap_wake.clear()
         try:
             state = capture_state()
+            try:
+                _note_live_queue(state)
+            except Exception as e:  # noqa: BLE001
+                log.error(f"  [live-queue err] {e}")
             try:
                 post("/upload-lcu", state)
                 consecutive_fail = 0

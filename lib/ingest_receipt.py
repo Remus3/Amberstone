@@ -64,7 +64,8 @@ CLASS_UNKNOWN = "unknown"     # a status this module cannot name
 # new status appears here in no class.
 STATUS_CLASSES: dict[str, frozenset[str]] = {
     CLASS_INGESTED: frozenset({"ok", "already_present"}),
-    CLASS_EXCLUDED: frozenset({"event_mode_excluded", "short_game"}),
+    CLASS_EXCLUDED: frozenset({"event_mode_excluded", "tft_excluded",
+                               "short_game"}),
     CLASS_DEFERRED: frozenset({"target_not_indexed", "detail_rate_limited",
                                "staged_cap_reached", "rate_limited"}),
     CLASS_FAILED: frozenset({"no_puuid", "no_api_key", "no_id", "no_detail",

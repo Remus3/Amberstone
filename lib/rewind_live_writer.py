@@ -404,6 +404,15 @@ def _is_event_mode(pin: dict[str, Any]) -> bool:
             or pin.get("game_mode") in EVENT_MODE_GAME_MODES)
 
 
+def _is_tft_pin(pin: dict[str, Any]) -> bool:
+    """S134 N3: a TFT game is never on Match-V5 (League-only), so a TFT pin
+    would spend the whole staged chain on ids calls and then park a TFT id
+    in the catchup drain. Never raises."""
+    from core.queue_modes import is_tft_context
+    return is_tft_context(queue_id=pin.get("queue_id"),
+                          game_mode=pin.get("game_mode"))
+
+
 # ---------------------------------------------------------------------------
 # Y-01 staging: Timer cap + per-target dedupe (both under _WRITE_LOCK)
 # ---------------------------------------------------------------------------
@@ -560,6 +569,9 @@ def _staged_attempt(
     target = str(pin["target_id"])
     if _is_event_mode(pin):
         return {"status": "event_mode_excluded", "match_id": target,
+                "pinned": True, "queue_id": pin.get("queue_id")}
+    if _is_tft_pin(pin):
+        return {"status": "tft_excluded", "match_id": target,
                 "pinned": True, "queue_id": pin.get("queue_id")}
     if not _claim_target(target, chain):
         return {"status": "duplicate_target", "match_id": target,
