@@ -46,7 +46,7 @@ STORE. `data/tft_matches/` (gitignored), one file per (game, source):
 never overwritten once written - and atomic (tmp + replace via
 core.polled_json). Single writer: the postgame collector thread. Readers
 (`load`, `latest`) merge the two sources of one game; the upcoming per-round
-database / Augur engine join on `game_id`.
+database / the tft/engine package join on `game_id`.
 """
 from __future__ import annotations
 

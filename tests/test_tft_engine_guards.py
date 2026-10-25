@@ -235,8 +235,13 @@ def test_pipeline_runs_with_meta_files_network_and_open_blocked(monkeypatch):
     for attr in ("load_meta", "meta_path", "comp_state", "pbe_flag"):
         monkeypatch.setattr(tft_set, attr, boom)
     import socket
-    monkeypatch.setattr(socket, "socket", boom)
-    monkeypatch.setattr(socket, "create_connection", boom)
+    # RM-801: tft/engine holds no module-local socket name to bind, so the
+    # process-wide fake is thread-scoped - another test's live server or
+    # poller thread keeps the real socket.
+    from tests._module_view import this_thread_only
+    monkeypatch.setattr(socket, "socket", this_thread_only(boom, socket.socket))
+    monkeypatch.setattr(socket, "create_connection",
+                        this_thread_only(boom, socket.create_connection))
     monkeypatch.setattr("builtins.open", boom)
     monkeypatch.setattr("io.open", boom)
 
