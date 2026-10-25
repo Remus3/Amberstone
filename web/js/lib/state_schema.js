@@ -144,8 +144,8 @@
  * @property {string} upgrade
  * @property {string} risk
  * @property {number} game_time_s
- * @property {string} stage
- * @property {string} round
+ * @property {number} stage
+ * @property {number} round
  * @property {number} level
  * @property {number} gold
  * @property {number} health

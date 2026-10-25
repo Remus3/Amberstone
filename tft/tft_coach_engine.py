@@ -16,6 +16,7 @@ from pathlib import Path
 import anthropic
 
 from core import anthropic_key
+from core.coaching_payload import tft_advice_payload, tft_blank_payload
 from core.polled_json import atomic_write_json
 
 logger = logging.getLogger("rc.tft.coach")
@@ -715,16 +716,15 @@ class TftCoachEngine:
         self._last_fields = {}
         # Phase 6 Step 2 Fix 7: write blank TFT coaching artifact on reset
         # so stale TFT advice from the previous game is not visible.
+        # RM-292 (d): the blank is the declared TftPayload shape, not a
+        # hand-copied literal. Its numbers are overlay-neutral (0), where the
+        # literal's level 1 pinned the dashboard level and its stage 1 fed
+        # performance_tracker's stage fallback a stage nobody measured.
+        # alive_others is not declared (an undeclared key's default is its
+        # own decision), so the blank omits it and save_tft_rating keeps its
+        # .get default of 7 - the same placement the old literal produced.
         try:
-            blank = {
-                "mode": "tft",
-                "action": "", "board": "", "econ": "", "rolldown": "",
-                "items": "", "god_pick": "", "placement": "",
-                "upgrade": "", "risk": "",
-                "stage": 1, "round": 1, "level": 1,
-                "gold": 0, "health": 100, "alive_others": 7,
-            }
-            atomic_write_json(self._data_file, blank)
+            atomic_write_json(self._data_file, tft_blank_payload())
         except Exception as exc:  # noqa: BLE001
             logger.error("Failed to reset TFT coaching data: %s", exc)
 
@@ -864,16 +864,17 @@ class TftCoachEngine:
         no scratch file, no rename - so a poller mid-read saw a truncated
         artifact. The sibling engine tft/tft_pbe_engine.py has carried the
         atomic fix since 2026-04-27; the audit that fixed the twin missed the
-        LIVE engine. The keys mirror the reset payload so a degraded write
-        never shrinks the artifact's shape out from under a consumer.
+        LIVE engine.
+
+        RM-292 (d): the keys are the ADVICE shape (core.coaching_payload
+        ``tft_advice_payload``: mode, action and the advice strings), the
+        same shape as the disabled placeholder. This docstring used to say
+        they "mirror the reset payload"; they never did, and they must not:
+        this write lands MID-GAME, and a numeric seed key would render as 0
+        on the dashboard wherever the live value is absent.
         """
         try:
-            payload = {
-                "mode": "tft", "action": "ERROR",
-                "board": "", "econ": "", "rolldown": "", "items": "",
-                "god_pick": "", "placement": "", "upgrade": "",
-                "risk": msg,
-            }
+            payload = tft_advice_payload(action="ERROR", risk=msg)
             atomic_write_json(self._data_file, payload)
         except Exception as exc:  # noqa: BLE001
             logger.error("Failed to write TFT status payload: %s", exc)
