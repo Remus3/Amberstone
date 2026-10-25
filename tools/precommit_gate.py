@@ -75,6 +75,25 @@ import sys
 # 0 elsewhere).
 _NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
+
+def _console_interpreter(exe: str | None = None) -> str:
+    """The console twin of a pythonw.exe interpreter, for `-m` child runs.
+
+    CREATE_NO_WINDOW governs CONSOLE-subsystem children only. pythonw.exe is a
+    GUI binary, so `pythonw -m ruff` gets no console at all, and ruff's own
+    wrapper then spawns ruff.exe unflagged: a visible, focus-stealing console
+    per call (measured 2026-10-24, s133, through the edit hook's identical
+    call). python.exe under CREATE_NO_WINDOW gets a hidden console that
+    ruff.exe inherits. Same install, same packages.
+    """
+    path = pathlib.Path(exe or sys.executable)
+    if path.name.lower() == "pythonw.exe":
+        twin = path.with_name("python.exe")
+        if twin.is_file():
+            return str(twin)
+    return str(path)
+
+
 # ===========================================================================
 # BEGIN REPO CONFIG (MAIN FIX 1254 #10). Every RC-specific path list and pin
 # this gate reads. Another tree adopting the gate edits only this block. The
@@ -352,7 +371,9 @@ def _ruff_candidates() -> list[list[str]]:
     used to be hardcoded wrong for the other:
 
       * Claude PreToolUse - .claude/settings.json launches Python314's
-        pythonw.exe, and that interpreter owns ruff, so sys.executable works.
+        pythonw.exe, and that install owns ruff. It runs through the console
+        twin (python.exe): `pythonw -m ruff` flashes a console per call
+        (_console_interpreter).
       * .githooks/pre-commit - launches the gate through the `py` launcher,
         which on Legion resolves to a bare pythoncore build with NO ruff, so
         sys.executable is exactly the interpreter that cannot run it. This is
@@ -371,7 +392,7 @@ def _ruff_candidates() -> list[list[str]]:
     that docs/OPERATIONS.md pins.
     """
     return [
-        [sys.executable, "-m", "ruff"],
+        [_console_interpreter(), "-m", "ruff"],
         ["ruff"],
         [_CANONICAL_PY, "-m", "ruff"],
         ["python", "-m", "ruff"],

@@ -11,8 +11,9 @@ A relative path resolves against the payload's `cwd`. $CLAUDE_FILE_PATHS is
 read ONLY when stdin names no path (older harnesses; tests drive it).
 
 ARMS:
-  1. ruff on .py targets: `<this interpreter> -m ruff check --no-cache
-     --output-format=json`. REPORT ONLY (#3): `--fix` mid-edit deleted a
+  1. ruff on .py targets: `<this interpreter's console twin> -m ruff check
+     --no-cache --output-format=json` (python.exe, never pythonw.exe - see
+     _console_interpreter for the console flash). REPORT ONLY (#3): `--fix` mid-edit deleted a
      just-added import as unused before its first use was written.
      `--no-cache` (#11): no .ruff_cache/ is left in the repo or the cwd.
   2. the 7-bit ASCII rule, tools/ascii_rule.py (#13) - the SAME predicate and
@@ -67,6 +68,26 @@ except ImportError:  # hook runs as a bare script, so sys.path[0] is tools/
 # would otherwise get a fresh console allocated - an on-screen + taskbar flash
 # on every edit. CREATE_NO_WINDOW suppresses it (Windows-only; 0 elsewhere).
 _NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
+
+def _console_interpreter(exe: str | None = None) -> str:
+    """The console twin of a pythonw.exe interpreter, for `-m` child runs.
+
+    CREATE_NO_WINDOW governs CONSOLE-subsystem children only. pythonw.exe is a
+    GUI binary, so `pythonw -m ruff` gets no console at all, and ruff's own
+    wrapper then spawns ruff.exe unflagged: a fresh, visible, focus-stealing
+    console on every edit. Measured 2026-10-24 (s133): all 34 console windows
+    created on the desktop in a 15 min capture were this ruff.exe, 25 of them
+    took the foreground. python.exe under CREATE_NO_WINDOW gets a hidden
+    console that ruff.exe inherits. Same install, same packages.
+    """
+    path = Path(exe or sys.executable)
+    if path.name.lower() == "pythonw.exe":
+        twin = path.with_name("python.exe")
+        if twin.is_file():
+            return str(twin)
+    return str(path)
+
 
 _FROZEN_SKIP = ("logs/", "docs/_archive/", ".pyc", ".git/", "__pycache__/")
 
@@ -188,7 +209,7 @@ def _ruff_findings(py_files: list[Path]) -> list[str]:
     thread: the findings were dropped and a traceback went to stderr."""
     try:
         proc = subprocess.run(
-            [sys.executable, "-m", "ruff", "check", "--no-cache",
+            [_console_interpreter(), "-m", "ruff", "check", "--no-cache",
              "--output-format=json", *[str(p) for p in py_files]],
             check=False,
             capture_output=True,

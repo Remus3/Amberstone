@@ -32,6 +32,7 @@ never passed the flag to anything.
 from __future__ import annotations
 
 import ast
+import json
 import re
 from pathlib import Path
 
@@ -130,6 +131,10 @@ SCHEDULED_SPAWNERS = (
     # the periodic liveness watchdog (spawn, taskkill, py-spy dump); every
     # child passes _NO_WINDOW. server.py itself no longer spawns.
     "dashboard/_vision_watchdog.py",
+    # 2026-10-24 s133: found by the pythonw entry-point half (agents/supervisor.py
+    # under RC-Phase3-Supervisor imports it). Both check_output sites already
+    # passed the flag; listed so they stay that way.
+    "agents/_supervisor_common.py",
 )
 
 # Modules run by a CLAUDE HOOK, which is the same exposure by a different route:
@@ -157,6 +162,12 @@ HOOK_SPAWNERS = (
     "tools/rc_facts.py",
     "tools/precommit_gate.py",
     "tools/edit_lint_check.py",
+    # 2026-10-24 s133: the kit's Stop hook, run under pythonw by the settings
+    # template and found by the template half of the scope. A vendored kit file
+    # is never edited here; it was compliant when swept (4688: git.exe children,
+    # no console window) and listing it turns a kit regression into a red test
+    # to report to MAIN rather than a flicker nobody traces.
+    "ops/fleet_kit/fleet_done.py",
 )
 
 #: Both tests below run over the union. Unattended-by-schedule and
@@ -452,11 +463,81 @@ def _import_closure(roots: set[str], universe: frozenset[str], root: Path) -> se
     return seen
 
 
+# ---------------------------------------------------------------------------
+# PYTHONW ENTRY POINTS (2026-10-24, s133 window-silence pass). Halves 1-3 find
+# task targets only through TRACKED task definitions under ops/ or tools/, and
+# measured against the live `schtasks` store that day 16 of the 22 RC-* tasks
+# running a .py under pythonw sat OUTSIDE the scope, as did main.py (the
+# supervisor's app_cmd) and moon_vision_server.py (respawned by
+# dashboard/_vision_watchdog.py). Two more halves close that, each joined with
+# its in-repo import closure:
+#   4. every hook script the tracked settings template
+#      (ops/claude_settings.example.json) launches under pythonw.exe - READ from
+#      the template, so a new pythonw hook is in scope without a list edit;
+#   5. the supervisor's app_cmd script (ops/rc_config.json) plus
+#      PYTHONW_ENTRY_POINTS below - hand-listed from the 2026-10-24 schtasks
+#      sweep, because the machine's task store is not a tracked file.
+# ---------------------------------------------------------------------------
+
+_SETTINGS_TEMPLATE = "ops/claude_settings.example.json"
+_RC_CONFIG = "ops/rc_config.json"
+_PYTHONW_HOOK = re.compile(r"pythonw\.exe\W+\$CLAUDE_PROJECT_DIR/([A-Za-z0-9_./-]+\.py)")
+
+#: Live pythonw targets of RC-* scheduled tasks and supervisor-spawned daemons,
+#: from `schtasks /query` on 2026-10-24. A `-m pkg.mod` target is spelled as
+#: its file. An entry that stops existing fails test_pythonw_entry_points_exist.
+PYTHONW_ENTRY_POINTS = (
+    "mission_control.py",
+    "moon_vision_server.py",
+    "agents/supervisor.py",
+    "ops/phase3_file_audit.py",
+    "ops/rc_supervisor.py",
+    "ops/loop/inbox_tick.py",
+    "scripts/data_pipeline.py",
+    "scripts/rewind_catchup.py",
+    "tools/claude_quota_watch.py",
+    "tools/cost_health_watchdog.py",
+    "tools/ddragon_mirror_refresh.py",
+    "tools/hotkey_listener.py",
+    "tools/lcu_agent.py",
+    "tools/live_flip_watcher.py",
+    "tools/liveclient_relay.py",
+    "tools/moon_sync_poller.py",
+    "tools/replay_chain_watch.py",
+    "tools/replay_roster_pull.py",
+    "tools/rofl_archiver.py",
+    "tools/rofl_dedupe.py",
+    "tools/start_daemon_slayer.py",
+    "tools/start_ds_matchdb_mcp.py",
+    "tools/upstream_drift_check.py",
+)
+
+
+def _pythonw_roots(root: Path, universe: frozenset[str]) -> set[str]:
+    """Halves 4 and 5: pythonw-hosted hook scripts, the supervisor's app
+    script and the hand-listed live entry points that exist in this tree."""
+    roots = {rel for rel in PYTHONW_ENTRY_POINTS if rel in universe}
+    template = root / _SETTINGS_TEMPLATE
+    if template.is_file():
+        text = template.read_text(encoding="utf-8", errors="replace")
+        roots |= {m for m in _PYTHONW_HOOK.findall(text) if m in universe}
+    config = root / _RC_CONFIG
+    if config.is_file():
+        try:
+            app_cmd = json.loads(config.read_text(encoding="utf-8")).get("app_cmd") or []
+        except (ValueError, AttributeError):
+            app_cmd = []
+        roots |= {str(a).replace("\\", "/") for a in app_cmd
+                  if str(a).replace("\\", "/") in universe}
+    return roots
+
+
 def _discoverable_scope(root: Path) -> set[str]:
     py = {_repo_walk.relative_posix(p, root)
           for p in _repo_walk.repo_files(root, ("*.py",))}
     universe = frozenset(py)
     scope = {rel for rel in py if rel.startswith(_LOOP_DIR)}
+    scope |= _import_closure(_pythonw_roots(root, universe), universe, root)
     task_targets: set[str] = set()
     for path in _repo_walk.repo_files(root, ("*.xml", "*.ps1")):
         rel = _repo_walk.relative_posix(path, root)
@@ -492,7 +573,10 @@ def test_discoverable_scope_is_not_vacuous() -> None:
     _repo_walk.self_check(ROOT)
     scope = _discoverable_scope(ROOT)
     for anchor in ("ops/loop/executor.py", "ops/loop/adjudicator.py",
-                   "tools/ci_watchdog.py", "tools/upstream_drift_check.py"):
+                   "tools/ci_watchdog.py", "tools/upstream_drift_check.py",
+                   # halves 4 and 5 (2026-10-24): a template hook, the
+                   # supervisor's app_cmd, a hand-listed live task target.
+                   "tools/edit_lint_check.py", "main.py", "tools/hotkey_listener.py"):
         assert anchor in scope, f"{anchor} fell out of the discoverable scope"
     spawning = [rel for rel in scope
                 if _spawn_sites(ast.parse((ROOT / rel).read_text(encoding="utf-8")))]
@@ -543,3 +627,129 @@ def test_completeness_check_catches_a_synthetic_spawn(tmp_path: Path) -> None:
     assert set(found) == {"ops/loop/adjudicator.py", "tools/nightly.py"}, found
     assert _unlisted_spawners(
         tmp_path, {"ops/loop/adjudicator.py", "tools/nightly.py"}) == {}
+
+
+def test_pythonw_entry_points_exist() -> None:
+    # A renamed or retired entry point would silently shrink half 5.
+    missing = [rel for rel in PYTHONW_ENTRY_POINTS if not (ROOT / rel).is_file()]
+    assert not missing, f"PYTHONW_ENTRY_POINTS names files that are gone: {missing}"
+
+
+def test_pythonw_halves_reach_hooks_app_and_tasks(tmp_path: Path) -> None:
+    # Positive control for halves 4 and 5 on a tree with no git index: a
+    # pythonw hook in the template, the supervisor's app_cmd and a hand-listed
+    # entry point each pull a spawning import into the scope; a console-python
+    # hook (python.exe, not pythonw) does not.
+    (tmp_path / "ops").mkdir()
+    (tmp_path / "tools").mkdir()
+    (tmp_path / "core").mkdir()
+    hook = ('"$LOCALAPPDATA/Programs/Python/Python314/pythonw.exe" '
+            '\\"$CLAUDE_PROJECT_DIR/tools/hook_a.py\\"')
+    console = ('"$LOCALAPPDATA/Programs/Python/Python314/python.exe" '
+               '\\"$CLAUDE_PROJECT_DIR/tools/hook_b.py\\"')
+    (tmp_path / _SETTINGS_TEMPLATE).write_text(
+        json.dumps({"hooks": {"Stop": [{"hooks": [{"command": hook}, {"command": console}]}]}}),
+        encoding="utf-8")
+    (tmp_path / _RC_CONFIG).write_text(
+        json.dumps({"app_cmd": ["pythonw.exe", "main.py"]}), encoding="utf-8")
+    spawn = "import subprocess\nsubprocess.run(['git', 'status'])\n"
+    (tmp_path / "tools" / "hook_a.py").write_text("import core.via_hook\n", encoding="utf-8")
+    (tmp_path / "tools" / "hook_b.py").write_text(spawn, encoding="utf-8")
+    (tmp_path / "core" / "via_hook.py").write_text(spawn, encoding="utf-8")
+    (tmp_path / "main.py").write_text("from core import via_app\n", encoding="utf-8")
+    (tmp_path / "core" / "via_app.py").write_text(spawn, encoding="utf-8")
+    (tmp_path / "tools" / "hotkey_listener.py").write_text(spawn, encoding="utf-8")
+
+    found = set(_unlisted_spawners(tmp_path, set()))
+    assert found == {"core/via_hook.py", "core/via_app.py", "tools/hotkey_listener.py"}, found
+
+
+# ---------------------------------------------------------------------------
+# THE FLAG THAT DOES NOTHING (2026-10-24, s133). Every check above asks whether
+# a spawn passes CREATE_NO_WINDOW. That flag governs CONSOLE-subsystem children
+# only, and pythonw.exe is a GUI binary: `[sys.executable, "-m", "ruff"]` run
+# from a pythonw-hosted module passes the flag, goes green above, and still
+# flashes, because the pythonw child has no console and ruff's own wrapper then
+# spawns ruff.exe unflagged. Measured that day with Security 4688 events plus a
+# SetWinEventHook watcher: all 34 console windows created on the desktop in 15
+# minutes were that ruff.exe, from tools/edit_lint_check.py on every Edit/Write
+# of any Claude session in the tree, and 25 of them stole the foreground.
+# A `-m` run from these modules goes through the interpreter's console twin
+# (python.exe), which under CREATE_NO_WINDOW gets a hidden console the
+# grandchild inherits.
+# ---------------------------------------------------------------------------
+
+
+def _module_runner_sites(tree: ast.AST) -> list[int]:
+    """Line of every `[sys.executable, "-m", ...]` argv literal (list or tuple)."""
+    out = []
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.List, ast.Tuple)) or len(node.elts) < 2:
+            continue
+        head, flag = node.elts[0], node.elts[1]
+        if (isinstance(head, ast.Attribute) and head.attr == "executable"
+                and isinstance(head.value, ast.Name) and head.value.id == "sys"
+                and isinstance(flag, ast.Constant) and flag.value == "-m"):
+            out.append(node.lineno)
+    return out
+
+
+def _module_runners(root: Path, rels: set[str]) -> dict[str, list[int]]:
+    out = {}
+    for rel in sorted(rels):
+        path = root / rel
+        if not path.is_file():
+            continue
+        sites = _module_runner_sites(ast.parse(path.read_text(encoding="utf-8")))
+        if sites:
+            out[rel] = sites
+    return out
+
+
+def test_no_module_runner_is_rehosted_in_pythonw() -> None:
+    offenders = _module_runners(ROOT, set(ALL_SPAWNERS) | _discoverable_scope(ROOT))
+    assert not offenders, (
+        f"`[sys.executable, '-m', ...]` in a pythonw-hosted module: {offenders}. "
+        f"Under pythonw that child is a GUI process, CREATE_NO_WINDOW does "
+        f"nothing for it, and the module's own console grandchild (ruff.exe "
+        f"from `-m ruff`) flashes a visible console. Run it through the console "
+        f"twin: `_console_interpreter()` in tools/edit_lint_check.py."
+    )
+
+
+def test_module_runner_check_catches_a_synthetic_rehost(tmp_path: Path) -> None:
+    # Positive control: the exact 2026-10-24 call shape is found, the fixed
+    # shape is not, and an empty enumeration would fail the first assertion.
+    tools = tmp_path / "tools"
+    tools.mkdir()
+    (tools / "bad.py").write_text(
+        "import subprocess, sys\n"
+        "subprocess.run([sys.executable, '-m', 'ruff', 'check'], creationflags=0x08000000)\n",
+        encoding="utf-8")
+    (tools / "good.py").write_text(
+        "import subprocess\n"
+        "subprocess.run([_console_interpreter(), '-m', 'ruff'], creationflags=0x08000000)\n",
+        encoding="utf-8")
+    assert _module_runners(tmp_path, {"tools/bad.py", "tools/good.py"}) == {"tools/bad.py": [2]}
+
+
+@pytest.mark.parametrize("rel", ["tools/edit_lint_check.py", "tools/precommit_gate.py"])
+def test_console_interpreter_maps_pythonw_to_its_console_twin(rel: str, tmp_path: Path) -> None:
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(f"_twin_{Path(rel).stem}", ROOT / rel)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    both = tmp_path / "both"
+    both.mkdir()
+    (both / "pythonw.exe").write_bytes(b"")
+    (both / "python.exe").write_bytes(b"")
+    lone = tmp_path / "lone"
+    lone.mkdir()
+    (lone / "pythonw.exe").write_bytes(b"")
+    assert mod._console_interpreter(str(both / "pythonw.exe")) == str(both / "python.exe")
+    assert mod._console_interpreter(str(both / "PYTHONW.EXE")) == str(both / "python.exe")
+    # No twin on disk: keep the interpreter rather than return a path that is not there.
+    assert mod._console_interpreter(str(lone / "pythonw.exe")) == str(lone / "pythonw.exe")
+    # A console interpreter is already right.
+    assert mod._console_interpreter(str(both / "python.exe")) == str(both / "python.exe")
