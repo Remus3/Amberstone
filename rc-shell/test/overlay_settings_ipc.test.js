@@ -123,6 +123,29 @@ test("main.js shares the panel-set apply between the cycle hotkey and the IPC", 
   assert.ok(mainjs.includes("setOverlayActive"), "uses the shared setOverlayActive");
 });
 
+// S134 N9: the menu's "Done (back to play)" sends set-passive; main.js must run
+// a PASSIVE primitive for it (never the ACTIVE flip it used to get).
+test("main.js dispatches set-passive to a click-through primitive", () => {
+  assert.ok(/m\.action === "set-passive"/.test(mainjs), "dispatches set-passive");
+  const body = mainjs.match(/function setOverlayPassive\(\) \{([\s\S]*?)\n\}/);
+  assert.ok(body, "setOverlayPassive is defined");
+  assert.ok(/overlayClickThrough = true;/.test(body[1]), "restores click-through");
+  assert.ok(/overlayZoneHover = false;/.test(body[1]), "drops the stale zone hover");
+  assert.ok(/applyClickThrough\(\);/.test(body[1]), "re-applies the window state");
+  assert.ok(!/overlayClickThrough = false/.test(body[1]), "never flips to ACTIVE");
+});
+
+// S134 N9: focus follows the ACTIVE intent, never the transient zone hover.
+test("main.js sets overlay focusability through the pure ACTIVE-intent decision", () => {
+  const body = mainjs.match(/function applyClickThrough\(\) \{([\s\S]*?)\n\}/);
+  assert.ok(body, "applyClickThrough is defined");
+  assert.ok(
+    /setFocusable\(ov\.effectiveFocusable\(overlayClickThrough\)\)/.test(body[1]),
+    "setFocusable takes ov.effectiveFocusable(overlayClickThrough)"
+  );
+  assert.ok(!/setFocusable\(!ignore\)/.test(mainjs), "the zone-hover-driven focus is gone");
+});
+
 // --- RC2 Stage 4.5: overlay + dashboard coexistence actions ------------------
 
 test("main.js dispatches the coexistence actions on the same action channel", () => {

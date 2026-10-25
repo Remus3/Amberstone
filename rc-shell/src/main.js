@@ -1047,7 +1047,10 @@ function applyClickThrough() {
       overlaySettings.clickThroughZones
     );
     overlayWindow.setIgnoreMouseEvents(ignore, { forward: true });
-    overlayWindow.setFocusable(!ignore);
+    // S134 N9: focus follows the ACTIVE intent only, never a zone hover - a
+    // PASSIVE click on a zone (menu launcher, drag handle) must not take the
+    // keyboard from the game (ov.effectiveFocusable).
+    overlayWindow.setFocusable(ov.effectiveFocusable(overlayClickThrough));
     // The ACTIVE glow tracks the operator intent (clickThrough), NOT the
     // transient zone hover - a micro-hover should not light the full frame.
     overlayWindow.webContents
@@ -1103,6 +1106,17 @@ function applyPanelSet(next) {
 // ACTIVE arms the same 20s auto-revert back to the passive HUD.
 function setOverlayActive() {
   overlayClickThrough = false;
+  applyClickThrough();
+  scheduleActiveRevert();
+}
+
+// S134 N9: drop the overlay back to the PASSIVE click-through HUD on demand -
+// the overlay menu's "Done (back to play)" button. Clears the transient zone
+// hover too (the menu that held the cursor just closed), so the very next game
+// click passes through; PASSIVE cancels any pending ACTIVE revert.
+function setOverlayPassive() {
+  overlayClickThrough = true;
+  overlayZoneHover = false;
   applyClickThrough();
   scheduleActiveRevert();
 }
@@ -1209,6 +1223,8 @@ function registerIpc() {
       applyPanelSet(m.panelSet);
     } else if (m.action === "set-active") {
       setOverlayActive();
+    } else if (m.action === "set-passive") {
+      setOverlayPassive();
     } else if (m.action === "rearrange") {
       // RC2 4.5: re-separate the overlay + kept dashboard NOW (force past the
       // separateWindows auto kill switch - an explicit operator request).

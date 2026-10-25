@@ -979,6 +979,26 @@ test("effectiveIgnoreMouse: non-true args coerce safely (no NaN/undefined leak)"
   assert.strictEqual(ov.effectiveIgnoreMouse(1, 1, 1), false); // non-boolean zonesEnabled -> legacy, clickThrough=1 !== true -> false
 });
 
+// S134 N9: focus follows the ACTIVE intent only. A PASSIVE zone hover makes the
+// window take clicks, never the keyboard.
+test("effectiveFocusable: only the explicit ACTIVE intent (clickThrough false) is focusable", () => {
+  assert.strictEqual(ov.effectiveFocusable(false), true);
+  assert.strictEqual(ov.effectiveFocusable(true), false);
+});
+
+test("effectiveFocusable: garbage never makes the overlay focusable", () => {
+  for (const v of [undefined, null, 0, "", "false", NaN, {}]) {
+    assert.strictEqual(ov.effectiveFocusable(v), false, JSON.stringify(v));
+  }
+});
+
+test("a PASSIVE zone hover takes clicks but not focus (the two decisions differ)", () => {
+  // PASSIVE + zones on + hovering a zone: clicks land (ignore false) ...
+  assert.strictEqual(ov.effectiveIgnoreMouse(true, true, true), false);
+  // ... but the window stays non-activating.
+  assert.strictEqual(ov.effectiveFocusable(true), false);
+});
+
 test("OVERLAY_SETTINGS_DEFAULTS: overlayOpacity 1.0, clickThroughZones on", () => {
   assert.strictEqual(ov.OVERLAY_SETTINGS_DEFAULTS.overlayOpacity, 1);
   assert.strictEqual(ov.OVERLAY_SETTINGS_DEFAULTS.clickThroughZones, true);
@@ -1176,12 +1196,22 @@ test("mergeOverlaySettingsPatch: separateWindows false persists; non-boolean dro
 
 test("OVERLAY_ACTIONS is the frozen no-hotkey action allow-list", () => {
   // RC2 4.5 adds the two coexistence actions (rearrange + raise-companion) to
-  // the 4.4 set (set-panel + set-active).
+  // the 4.4 set (set-panel + set-active); S134 N9 adds set-passive (the menu's
+  // "Done (back to play)").
   assert.deepStrictEqual(
     [...ov.OVERLAY_ACTIONS].sort(),
-    ["raise-companion", "rearrange", "set-active", "set-panel"]
+    ["raise-companion", "rearrange", "set-active", "set-panel", "set-passive"]
   );
   assert.ok(Object.isFrozen(ov.OVERLAY_ACTIONS));
+});
+
+test("normOverlayAction: set-passive needs no payload and drops a stray panelSet", () => {
+  assert.deepStrictEqual(ov.normOverlayAction({ action: "set-passive" }), { action: "set-passive" });
+  assert.deepStrictEqual(ov.normOverlayAction({ action: " Set-Passive " }), { action: "set-passive" });
+  assert.deepStrictEqual(
+    ov.normOverlayAction({ action: "set-passive", panelSet: "build" }),
+    { action: "set-passive" }
+  );
 });
 
 test("normOverlayAction: set-panel with a valid set normalizes through", () => {
