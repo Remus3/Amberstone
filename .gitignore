@@ -73,6 +73,11 @@ tools/mcp_token.txt
 coaching_data.json
 # RM-637 / ADR-016 OBS recording sidecars (name other players' events; local only)
 data/recordings/
+# TFT-01 per-round TFT store (docs/TFT_PROGRAM.md section 2): tft_rounds.db, the
+# player-key salt (.salt), frames (other players' names + Riot art), icon_cache,
+# exports and exemplars. Local only; no tracked file lives here. A scrubbed bug-test
+# fixture is committed under tests/fixtures/tft_rounds/ instead, never from here.
+data/tft/
 data/aram_coaching_data.json
 data/arena_coaching_data.json
 data/brawl_coaching_data.json
