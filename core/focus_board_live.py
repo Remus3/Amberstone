@@ -46,6 +46,38 @@ COST (measured 2026-10-24 on Legion)
       ``MIN_COMPUTE_INTERVAL_S``; inside that window a changed roster returns
       ``throttled``.
 
+OFF THE STATE THREAD (RM-854)
+    ``board_for_lc(..., background=True)`` is the state-builder read (the
+    shadow calls it from ``dashboard/_state_builder.py`` via
+    ``shadow_log_arena_coach``): it maps the roster (cheap), returns a cached
+    board on a hit, and on a miss hands the roster to ONE daemon worker
+    (``WORKER_THREAD_NAME``) and returns ``pending`` at once - it never
+    computes and never waits. The worker's queue is one slot: a newer roster
+    replaces a queued one (latest wins), so it can never grow. The throttle
+    still caps the worker at one compute per ``MIN_COMPUTE_INTERVAL_S``; the
+    worker waits a throttled job out instead of dropping it, so a background
+    read never sees ``throttled``. A worker failure is logged and cached as an
+    ``error`` board for that roster (never re-tried per tick, never raised);
+    the kill switch drops a queued job. ``prefetch`` is the same read without
+    a result (the shadow's dedup ticks feed the worker the latest roster, so
+    the next written row usually finds its board ready). The default
+    ``board_for_lc`` (``background=False``) is the old synchronous compute.
+    ``TRANSIENT_STATUSES`` (warming / throttled / pending) are the not-yet-
+    ready answers the shadow re-logs once (``core.arena_coach_shadow``).
+
+NO ARAM ``fight_rule`` COLUMN (RM-854 c, decided 2026-10-25: NOT BUILT)
+    ARAM ``fight_rule`` comes from ``core.aram_fight_risk`` over the enemy-CC
+    threat line (``core.enemy_cc_threat_context.enemy_cc_threat_line``, ranked
+    by total CC seconds): it names a CC threat, not a target. The board has no
+    CC axis - ``kill_order`` is by focus value (my TTK), ``danger_order`` by
+    their TTK on me - so any comparison (e.g. the board's rank of the named
+    threat) sets a CC ranking against a damage ranking, and a disagreement
+    would say nothing about whether the rule is right; such a column could
+    never inform a flip. The Arena column it would copy is not live-verified
+    yet either (GATE 5). Reverses if: the board gains a per-enemy CC /
+    lockdown term, or ARAM gains a target-naming rule (a ``target_priority``
+    analogue) to compare against.
+
 DEGRADE (never raises; every no-board result carries a note)
     No roster / me not found -> ``no_roster`` (checked BEFORE the engine is
     touched). DS import or load failure -> ``unavailable``, retried after
@@ -86,6 +118,12 @@ STATUS_UNAVAILABLE = "unavailable"
 STATUS_THROTTLED = "throttled"
 STATUS_DISABLED = "disabled"
 STATUS_ERROR = "error"
+STATUS_PENDING = "pending"
+
+# RM-854: the answers that mean "no board YET" (a later tick can have one).
+TRANSIENT_STATUSES = frozenset({STATUS_WARMING, STATUS_THROTTLED, STATUS_PENDING})
+
+WORKER_THREAD_NAME = "rc-focus-board-worker"
 
 _RAW_PREFIX = "game_character_displayname_"
 _MODE_BY_KEY = {"arena": "ARENA", "aram": "ARAM", "sr": "SR"}
@@ -435,29 +473,51 @@ def _compute(compute: Callable[..., Any], snapshot: Any, roster: LiveRoster,
     )
 
 
-def _board_for_lc(lc: Any, mode_key: Any, now: Optional[float],
-                  wait_engine: bool) -> dict:
-    global _LAST_COMPUTE_AT
+def _roster_sig(mode: str, roster: LiveRoster) -> tuple:
+    return (mode, roster.me, roster.allies, roster.enemies)
+
+
+def _store(sig: tuple, result: dict) -> None:
+    with _STATE_LOCK:
+        _CACHE[sig] = result
+        _CACHE.move_to_end(sig)
+        while len(_CACHE) > _CACHE_MAX:
+            _CACHE.popitem(last=False)
+
+
+def _prepare(lc: Any, mode_key: Any, wait_engine: bool
+             ) -> tuple[Optional[dict], Optional[tuple]]:
+    """The cheap front half shared by both reads: ``(early result, None)``
+    when there is nothing to compute, else ``(None, job)`` with
+    ``job = (mode, roster, notes, snapshot, compute)``."""
     mode = _mode(mode_key)
     if not enabled():
         return _result(STATUS_DISABLED, mode,
-                       notes=[f"{KILL_SWITCH_ENV}=0 - focus board off"])
+                       notes=[f"{KILL_SWITCH_ENV}=0 - focus board off"]), None
     # Cheap roster pre-check BEFORE the engine: a tick with no roster never
     # starts the DS import.
     if not _players(lc):
-        return _result(STATUS_NO_ROSTER, mode,
-                       notes=["no live roster: allPlayers missing or empty"])
+        return _result(STATUS_NO_ROSTER, mode, notes=[
+            "no live roster: allPlayers missing or empty"]), None
     eng, est = _engine(wait_engine)
     if eng is None:
         note = ("DS engine still loading - no board yet" if est == STATUS_WARMING
                 else "DS engine unavailable - no board, see logs")
-        return _result(est, mode, notes=[note])
+        return _result(est, mode, notes=[note]), None
     snapshot, compute = eng
     roster, notes = roster_from_lc(lc, snapshot.champions)
     if roster is None:
-        return _result(STATUS_NO_ROSTER, mode, notes=notes)
+        return _result(STATUS_NO_ROSTER, mode, notes=notes), None
+    return None, (mode, roster, notes, snapshot, compute)
 
-    sig = (mode, roster.me, roster.allies, roster.enemies)
+
+def _board_for_roster(compute: Callable[..., Any], snapshot: Any,
+                      roster: LiveRoster, mode: str, notes: list,
+                      now: Optional[float]) -> dict:
+    """A cached board, a ``throttled`` answer, or a fresh compute (cached).
+    Returns a copy. Computes on the CALLER's thread."""
+    global _LAST_COMPUTE_AT
+    sig = _roster_sig(mode, roster)
     t = time.monotonic() if now is None else float(now)
     with _STATE_LOCK:
         hit = _CACHE.get(sig)
@@ -471,25 +531,137 @@ def _board_for_lc(lc: Any, mode_key: Any, now: Optional[float],
                 "board - not recomputed"])
         _LAST_COMPUTE_AT = t
     result = _compute(compute, snapshot, roster, mode, notes)
-    with _STATE_LOCK:
-        _CACHE[sig] = result
-        while len(_CACHE) > _CACHE_MAX:
-            _CACHE.popitem(last=False)
+    _store(sig, result)
     return copy.deepcopy(result)
 
 
+def _board_for_lc(lc: Any, mode_key: Any, now: Optional[float],
+                  wait_engine: bool) -> dict:
+    early, job = _prepare(lc, mode_key, wait_engine)
+    if early is not None:
+        return early
+    mode, roster, notes, snapshot, compute = job
+    return _board_for_roster(compute, snapshot, roster, mode, notes, now)
+
+
+# -- the worker (RM-854: the compute never runs on the state-builder thread) -----
+
+_WORKER_COND = threading.Condition()
+_JOB: Optional[tuple] = None          # the ONE queued job; a newer one replaces it
+_WORKER_BUSY = False
+_WORKER_THREAD: Optional[threading.Thread] = None
+_WORKER_STOP: Optional[threading.Event] = None
+# Test seam (_set_engine_for_tests): run a background read's compute inline.
+_WORKER_INLINE = False
+
+
+def _submit(job: tuple) -> None:
+    """Queue ``job`` (latest wins) and make sure the daemon worker is up."""
+    global _JOB, _WORKER_THREAD, _WORKER_STOP
+    with _WORKER_COND:
+        _JOB = job
+        if _WORKER_THREAD is None or not _WORKER_THREAD.is_alive():
+            stop = threading.Event()
+            thread = threading.Thread(target=_worker_loop, args=(stop,),
+                                      name=WORKER_THREAD_NAME, daemon=True)
+            _WORKER_STOP, _WORKER_THREAD = stop, thread
+            thread.start()
+        _WORKER_COND.notify_all()
+
+
+def _run_job(job: tuple, stop: threading.Event) -> None:
+    """Compute one queued roster, waiting out the throttle. Never raises."""
+    mode, roster, notes, snapshot, compute = job
+    while not stop.is_set():
+        if not enabled():
+            return                      # the kill switch drops a queued job
+        try:
+            out = _board_for_roster(compute, snapshot, roster, mode, notes, None)
+        except Exception as exc:  # noqa: BLE001 - never raise into the coach loop
+            # Cached as a settled ``error`` board so the read stops re-queueing
+            # this roster every tick; class name only (RM-835).
+            log.warning("focus_board_live: board worker failed (%s) - no board "
+                        "for this roster", type(exc).__name__)
+            _store(_roster_sig(mode, roster), _result(STATUS_ERROR, mode, notes=(
+                notes + [f"board worker failed ({type(exc).__name__}) - no "
+                         "board, see logs"])))
+            return
+        if out.get("status") != STATUS_THROTTLED:
+            return
+        with _STATE_LOCK:
+            last = _LAST_COMPUTE_AT
+        wait_s = (MIN_COMPUTE_INTERVAL_S - (time.monotonic() - last)
+                  if last is not None else 0.0)
+        if stop.wait(max(wait_s, 0.01)):
+            return
+        with _WORKER_COND:
+            if _JOB is not None:
+                return                  # a newer roster is queued: it wins
+
+
+def _worker_loop(stop: threading.Event) -> None:
+    global _JOB, _WORKER_BUSY
+    while True:
+        with _WORKER_COND:
+            while _JOB is None and not stop.is_set():
+                _WORKER_COND.wait()
+            if stop.is_set():
+                return
+            job, _JOB = _JOB, None
+            _WORKER_BUSY = True
+        try:
+            _run_job(job, stop)
+        except Exception:  # noqa: BLE001 - the worker never dies on a job
+            log.warning("focus_board_live: board worker job failed",
+                        exc_info=True)
+        finally:
+            with _WORKER_COND:
+                _WORKER_BUSY = False
+                _WORKER_COND.notify_all()
+
+
+def _background_board(lc: Any, mode_key: Any, want_result: bool
+                      ) -> Optional[dict]:
+    """The state-thread read: a cached board, or queue the roster and say
+    ``pending``. Never computes and never waits (unless the test seam
+    ``_WORKER_INLINE`` is on)."""
+    early, job = _prepare(lc, mode_key, False)
+    if early is not None:
+        return early
+    mode, roster, notes, snapshot, compute = job
+    if _WORKER_INLINE:
+        return _board_for_roster(compute, snapshot, roster, mode, notes, None)
+    sig = _roster_sig(mode, roster)
+    with _STATE_LOCK:
+        hit = _CACHE.get(sig)
+        if hit is not None:
+            _CACHE.move_to_end(sig)
+            return copy.deepcopy(hit) if want_result else None
+    _submit(job)
+    if not want_result:
+        return None
+    return _result(STATUS_PENDING, mode, notes=notes + [
+        "board computing off the state thread - not ready yet"])
+
+
 def board_for_lc(lc: Any, mode_key: Any, *, now: Optional[float] = None,
-                 wait_engine: bool = False) -> dict:
+                 wait_engine: bool = False, background: bool = False) -> dict:
     """The focus board for the live roster in ``lc``, as a JSON-able dict.
 
     ``lc`` is ``liveclient_summary()``; ``mode_key`` the dashboard mode key
     ("arena" / "aram" / "sr"). Always returns the full key set (``status``,
     ``mode``, ``kill_order`` / ``kill_order_names`` / ``danger_order`` as
     lists, ``top_kill`` as ``{"champion_id", "champion_name"}`` or None,
-    compact ``rows``, ``notes``). ``now`` (monotonic seconds) and
-    ``wait_engine`` are test seams. Never raises.
+    compact ``rows``, ``notes``). ``background=True`` (RM-854, the
+    state-builder read) never computes: a cached board, else ``pending`` with
+    the roster handed to the daemon worker; ``now`` / ``wait_engine`` are
+    ignored there. Without it the board is computed on the caller's thread
+    (``now`` in monotonic seconds and ``wait_engine`` are test seams). Never
+    raises.
     """
     try:
+        if background:
+            return _background_board(lc, mode_key, True)
         return _board_for_lc(lc, mode_key, now, wait_engine)
     except Exception as exc:  # noqa: BLE001 - hard fail-soft contract
         log.warning("focus_board_live: adapter failed (%s) - no board",
@@ -498,12 +670,27 @@ def board_for_lc(lc: Any, mode_key: Any, *, now: Optional[float] = None,
             f"adapter failed ({type(exc).__name__}) - no board, see logs"])
 
 
+def prefetch(lc: Any, mode_key: Any) -> None:
+    """Hand the worker the latest roster when its board is not cached (the
+    shadow's dedup ticks). Non-blocking, no result, never raises."""
+    try:
+        _background_board(lc, mode_key, False)
+    except Exception as exc:  # noqa: BLE001 - hard fail-soft contract
+        log.debug("focus_board_live: prefetch failed (%s)", type(exc).__name__)
+
+
 # -- test seams -----------------------------------------------------------------
 
-def _set_engine_for_tests(engine: Optional[tuple]) -> None:
-    global _ENGINE
+def _set_engine_for_tests(engine: Optional[tuple], *,
+                          inline_worker: bool = True) -> None:
+    """Install a ready engine. ``inline_worker`` (default True, what the
+    RM-844 one-tick tests rely on) runs a background read's compute on the
+    caller, synchronously, until ``reset_for_tests``; False exercises the real
+    daemon worker (the RM-854 tests)."""
+    global _ENGINE, _WORKER_INLINE
     with _ENGINE_LOCK:
         _ENGINE = engine
+    _WORKER_INLINE = bool(inline_worker) and engine is not None
 
 
 def _join_warm_for_tests(timeout: float) -> None:
@@ -512,13 +699,44 @@ def _join_warm_for_tests(timeout: float) -> None:
         thread.join(timeout)
 
 
+def _wait_worker_idle_for_tests(timeout: float) -> bool:
+    """True once no job is queued or running (False on timeout)."""
+    end = time.monotonic() + timeout
+    with _WORKER_COND:
+        while _JOB is not None or _WORKER_BUSY:
+            remaining = end - time.monotonic()
+            if remaining <= 0:
+                return False
+            _WORKER_COND.wait(remaining)
+    return True
+
+
+def _stop_worker_for_tests(timeout: float) -> None:
+    global _JOB, _WORKER_THREAD, _WORKER_STOP, _WORKER_BUSY
+    with _WORKER_COND:
+        stop, thread = _WORKER_STOP, _WORKER_THREAD
+        _JOB = None
+        if stop is not None:
+            stop.set()
+        _WORKER_COND.notify_all()
+    if thread is not None:
+        thread.join(timeout)
+    with _WORKER_COND:
+        _WORKER_THREAD = None
+        _WORKER_STOP = None
+        _WORKER_BUSY = False
+
+
 def reset_for_tests() -> None:
-    """Drop the engine, the cache, the throttle clock and the failure gate."""
-    global _ENGINE, _WARM_THREAD, _LAST_COMPUTE_AT, _INDEX
+    """Stop the worker; drop the engine, the cache, the throttle clock, the
+    failure gate and the inline seam."""
+    global _ENGINE, _WARM_THREAD, _LAST_COMPUTE_AT, _INDEX, _WORKER_INLINE
+    _stop_worker_for_tests(5.0)
     _join_warm_for_tests(5.0)
     with _ENGINE_LOCK:
         _ENGINE = None
         _WARM_THREAD = None
+    _WORKER_INLINE = False
     _ENGINE_GATE.reset()
     with _STATE_LOCK:
         _CACHE.clear()
@@ -531,8 +749,11 @@ __all__ = [
     "KILL_SWITCH_ENV",
     "LiveRoster",
     "MIN_COMPUTE_INTERVAL_S",
+    "TRANSIENT_STATUSES",
+    "WORKER_THREAD_NAME",
     "board_for_lc",
     "enabled",
+    "prefetch",
     "resolve_champion_id",
     "roster_from_lc",
 ]
