@@ -345,3 +345,68 @@ def test_placeholder_level_renders_unknown():
     read = _d1_state(ocr={"level": 3, "gold": 10, "stage_round": "2-2"})
     assert read["level_known"] is True
     assert "| Level 3 |" in _line(eng._build_prompt(read), "=== Stage")
+
+
+# -- verifier round 2: every field the file feeds ------------------------------
+# Round 1 gated the prompt's board / HP only; the same previous-game file still
+# set the game clock (tft/tft_standalone.py _synth_allgamedata game_time from
+# the file's gameLengthSeconds -> tft/tft_state_reader.py _parse round clock,
+# so the prompt said "Stage 5-7" in a game 200 s old) and still fed /api/state
+# (dashboard/_state_builder.py standalone_liveclient_summary -> _summary_from_raw
+# hp / standing / board / lobby / as_of / game id, tft_coach_for_standalone,
+# tft_live_status). The gate now sits where the file is read for the live
+# source (_round_state): a file that is not POSITIVELY this game's is no file.
+
+_FILE_FIELDS = ("hp", "standing", "eliminated", "board_size", "board_str",
+                "board", "players", "players_alive", "as_of")
+
+
+@pytest.mark.parametrize("shape", sorted(_LEAK_SHAPES))
+def test_previous_game_file_sets_no_stage(shape, _pin, monkeypatch):
+    _pin["doc"] = {}
+    lcu, single = _LEAK_SHAPES[shape]
+    now = time.time()
+    monkeypatch.setattr(ts, "_game_create_time", lambda: now - 200)
+    state = _stale_state(lcu, _prev_game_doc(now, only_local_interactable=single), now)
+    assert state["game_time_s"] == pytest.approx(200, abs=5)  # the process clock
+    assert (state["stage"], state["stage_round"]) == (2, "2-1")
+    header = _line(eng._build_prompt(state), "=== Stage")
+    assert header.startswith("=== Stage 2-1 |"), header
+
+
+@pytest.mark.parametrize("shape", sorted(_LEAK_SHAPES))
+def test_previous_game_file_feeds_no_api_state_field(shape, monkeypatch):
+    lcu, single = _LEAK_SHAPES[shape]
+    now = time.time()
+    monkeypatch.setattr(ts, "_game_create_time", lambda: now - 200)
+    doc = _prev_game_doc(now, only_local_interactable=single)
+    # /api/state liveclient (dashboard/_state_builder.py build_state)
+    lc = ts.standalone_liveclient_summary(lcu, running=True, eog=copy.deepcopy(doc))
+    assert lc and lc["source"] == ts.SOURCE_TAG
+    leaked = {k: lc[k] for k in _FILE_FIELDS if k in lc}
+    assert leaked == {}, (shape, leaked)
+    assert lc["game_time_s"] == pytest.approx(200, abs=5)
+    assert lc["game_id"] != str(GID)  # never the previous game's id
+    # coach.tft_live and the coach fill from lc
+    assert ts.tft_live_status(lcu, running=True, eog=copy.deepcopy(doc))["eog"] is False
+    from dashboard._state_builder import tft_coach_for_standalone
+    coach = tft_coach_for_standalone({}, "", lc)
+    for k in ("health", "hp", "standing", "board_str", "tft_board",
+              "tft_players", "tft_as_of", "players_alive"):
+        assert k not in coach, (shape, k)
+    # the poller's hp_pct reads activePlayer.currentHP / allPlayers health
+    raw = ts.synth_allgamedata(lcu=lcu, running=True, eog=copy.deepcopy(doc), now=now)
+    assert "currentHP" not in raw["activePlayer"]
+    assert all("health" not in p for p in raw["allPlayers"])
+
+
+def test_positive_match_still_feeds_the_live_fields(monkeypatch):
+    now = time.time()
+    monkeypatch.setattr(ts, "_game_create_time", lambda: now - 2100)
+    lcu = {"phase": "InProgress", "game_id": str(GID), "game_queue_mode": "TFT",
+           "summoner_id": LOCAL_SID}
+    lc = ts.standalone_liveclient_summary(lcu, running=True, eog=_prev_game_doc(now))
+    assert lc["hp"] == 37 and lc["board_str"] == "Krug*3, Warwick*2"
+    assert lc["game_id"] == str(GID) and lc["players"]
+    state = _stale_state(lcu, _prev_game_doc(now), now)
+    assert state["eog_match"] is True and state["game_time_s"] > 1900
