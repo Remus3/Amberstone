@@ -359,7 +359,9 @@ on 04a39e5a0: 1 failed (matchdb socket abort; 76 passed alone) / 44755 passed / 
 Gate: ruff passed; hygiene trio 14 passed; drift_guard 0. DS 1.290.0 / 16.21.1 / 173; RC pid 25204
 alive, last_reload_ok, fatal 0; restart_trigger empty; TFT game in progress; session file 4.1 MB; no
 intent / steers; inbox empty; 0 PRs. Memory: 3 new (key workspace 400, Riot TFT 403, rewrite range).
-Board: the /done --final update follows this write (a failure would be recorded on the line below).
+Board: pushed at /done (datasets/board v22, blob fc295907) NON-final - DECISION: --final marks every
+carried row done (the s130 finding), so 16 carried rows stay open; alternative --final as written.
+Progress files: the 6 interrupted builders now read failed (INTERRUPTED step); m1d, hotreload done.
 
 Context: docs/TFT_PROGRAM.md (slices, ADR-018); tft/engine (Augur); tft/rounds (TFT-01 store);
 data/tft_matches (RM-616); ops/runtime/tft_qa/ (QA reports, LIVECHECK_M3.md, LCU_TFT_INVENTORY.md,
