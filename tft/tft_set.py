@@ -32,10 +32,13 @@ row whose isLocalPlayer is true). In ANY phase the LCU game data
 tftsets.json "mDefaultSet" names the default set ("TFTSet18"), but the
 client also offers a revival queue for an older set (queue 6110 "Set 17
 (Normal)"), so the running set = mDefaultSet PAIRED with the gameflow
-session queue id: set_from_lcu / note_live_set_from_lcu (QUEUE_SETS). A
-caller that polls the LCU feeds them; the noted set then routes the round
-schedule (tft/tft_state_reader.py round_schedule) and the roll odds
-(tft/tft_data.py tier_odds_for_set) through resolve_set.
+session queue id: set_from_lcu / note_live_set_from_lcu (QUEUE_SETS).
+read_lcu_set_facts does the two LCU reads; core/tft_worker.py TftWorker
+calls it from the TFT poll loop, refreshed inside LIVE_TTL_S, whenever it
+is built with an LCU request (S134). The noted set then routes the round
+schedule (tft/tft_state_reader.py round_schedule), the roll odds
+(tft/tft_data.py tier_odds_for_set) and the XP table (xp_to_next_level)
+through resolve_set.
 
 A set's meta file is that set's own: a missing tft_set<N>_meta.json is
 never replaced by another set's file (the old sites fell back to Set 17,
@@ -172,6 +175,62 @@ def note_live_set_from_lcu(default_set=None, queue_id=None) -> int | None:
     """Note the running set from mDefaultSet + queue id (see set_from_lcu)."""
     n = set_from_lcu(default_set, queue_id)
     return note_live_set(n) if n is not None else None
+
+
+# The two LCU reads behind set_from_lcu, at the paths measured 2026-10-25
+# (ops/runtime/tft_qa/LCU_TFT_INVENTORY.md, rows "Set / patch metadata" and
+# "Queue / mode"). Caller: core/tft_worker.py TftWorker (S134).
+TFTSETS_URI = "/lol-game-data/assets/v1/tftsets.json"
+GAMEFLOW_SESSION_URI = "/lol-gameflow/v1/session"
+
+
+def lcu_default_set(tftsets) -> str | None:
+    """tftsets.json LCTFTModeData.mDefaultSet.SetName ("TFTSet18"), or None."""
+    node = tftsets
+    for key in ("LCTFTModeData", "mDefaultSet", "SetName"):
+        if not isinstance(node, dict):
+            return None
+        node = node.get(key)
+    if isinstance(node, str) and node.strip():
+        return node.strip()
+    return None
+
+
+def lcu_tft_queue_id(session) -> int | None:
+    """gameData.queue.id of a gameflow session whose queue gameMode is TFT."""
+    if not isinstance(session, dict):
+        return None
+    data = session.get("gameData")
+    q = data.get("queue") if isinstance(data, dict) else None
+    if not isinstance(q, dict) or q.get("gameMode") != "TFT":
+        return None
+    qid = q.get("id")
+    if isinstance(qid, str) and qid.strip().isdigit():
+        qid = int(qid.strip())
+    if isinstance(qid, bool) or not isinstance(qid, int) or qid <= 0:
+        return None
+    return qid
+
+
+def read_lcu_set_facts(request, default_set=None) -> tuple:
+    """(mDefaultSet name, TFT queue id) through an LCU ``request(method, path)
+    -> (payload, err)`` callable (lcu/snapshot_shape.py transport contract).
+
+    (None, None) when the session is not a TFT game: with no queue id the set
+    is not noted at all, because mDefaultSet alone is wrong for a revival
+    queue. tftsets.json is read only when the queue does not already name its
+    set (QUEUE_SETS) and the caller holds no default_set from an earlier read.
+    """
+    session, _ = request("GET", GAMEFLOW_SESSION_URI)
+    qid = lcu_tft_queue_id(session)
+    if qid is None:
+        return None, None
+    if qid in QUEUE_SETS:
+        return default_set, qid
+    if default_set is None:
+        tftsets, _ = request("GET", TFTSETS_URI)
+        default_set = lcu_default_set(tftsets)
+    return default_set, qid
 
 
 def env_pin() -> int | None:

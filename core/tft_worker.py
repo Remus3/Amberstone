@@ -34,7 +34,7 @@ import logging
 import queue
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 
 from core.base_worker import BaseCoachWorker
 
@@ -42,6 +42,37 @@ _log = logging.getLogger("rc.tft_worker")
 
 # Poll cadence (matches coaches/tft_coach.py historical interval)
 POLL_INTERVAL_S: float = 1.5
+
+# S134: how often the poll loop re-notes the running set from the LCU
+# (tft/tft_set.py read_lcu_set_facts). Must stay below tft_set.LIVE_TTL_S
+# (180 s) or the noted set lapses between refreshes.
+LCU_SET_REFRESH_S: float = 60.0
+
+
+def make_lcu_request() -> Callable:
+    """An LCU ``request(method, path, body=None) -> (payload, None)`` over a
+    worker-owned, lazily built ``LcuClient`` (the frozen client is only READ,
+    as dashboard/_lcu_inprocess.py does). Nothing connects until the first
+    call; each call connects when not yet connected, else re-checks the
+    lockfile so a League restart is followed. A None payload means no data.
+
+    For the TFT game-start site that builds the worker:
+    ``TftWorker(..., lcu_request=make_lcu_request())``.
+    """
+    holder: Dict[str, Any] = {}
+
+    def _request(method, path, body=None):
+        client = holder.get("client")
+        if client is None:
+            from lcu.lcu_client import LcuClient
+            client = holder["client"] = LcuClient()
+        if not client._port:
+            client.connect()
+        else:
+            client._refresh_conn_if_changed()
+        return client._request(method, path, data=body), None
+
+    return _request
 
 
 # -- TftWorkerResult -----------------------------------------------------------
@@ -110,12 +141,20 @@ class TftWorker(BaseCoachWorker):
         data_dir: Optional[Path] = None,
         api_key: str = "",
         debug: bool = False,
+        lcu_request: Optional[Callable] = None,
     ) -> None:
         super().__init__()
         self._result_queue = result_queue
         self._data_dir     = data_dir or (Path(__file__).parent.parent / "data")
         self._api_key      = api_key
         self._debug        = debug
+
+        # S134: LCU source of the running TFT set (make_lcu_request). None =
+        # the worker reads nothing from the LCU and notes no set.
+        self._lcu_request     = lcu_request
+        self._lcu_default_set: Optional[str] = None
+        self._lcu_set_at: Optional[float] = None
+        self._lcu_clock       = time.monotonic
 
         # TFT runtime components - lazily initialised in _init_components()
         self._reader: Any = None   # TftStateReader
@@ -241,6 +280,32 @@ class TftWorker(BaseCoachWorker):
             except Exception:  # noqa: BLE001
                 pass
 
+    def _maybe_note_lcu_set(self) -> Optional[int]:
+        """Note the running set from the LCU (mDefaultSet + queue id) at most
+        once per LCU_SET_REFRESH_S; returns the set noted, else None.
+
+        tftsets.json is read once per worker (the default set does not change
+        within a game); the queue id every refresh. Never raises.
+        """
+        if self._lcu_request is None:
+            return None
+        now = self._lcu_clock()
+        if self._lcu_set_at is not None and now - self._lcu_set_at < LCU_SET_REFRESH_S:
+            return None
+        self._lcu_set_at = now
+        try:
+            from tft import tft_set
+            default_set, queue_id = tft_set.read_lcu_set_facts(
+                self._lcu_request, self._lcu_default_set)
+            if default_set:
+                self._lcu_default_set = default_set
+            if queue_id is None:
+                return None
+            return tft_set.note_live_set_from_lcu(default_set, queue_id)
+        except Exception:  # noqa: BLE001
+            _log.debug("TftWorker: LCU set read failed", exc_info=True)
+            return None
+
     def force_scan(self) -> None:
         """Trigger an immediate vision scan (right-click force refresh)."""
         if self._live is not None:
@@ -271,6 +336,10 @@ class TftWorker(BaseCoachWorker):
                 return
 
             self.pulse_ts = time.monotonic()
+
+            # S134: keep the running set noted (it routes the round schedule,
+            # roll odds and XP table); throttled, never raises.
+            self._maybe_note_lcu_set()
 
             try:
                 state = self._reader.read()

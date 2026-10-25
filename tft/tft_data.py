@@ -3,8 +3,10 @@ tft/tft_data.py
 TFT Set data - units, traits, items, tier probabilities, carousel logic.
 Set-agnostic structure: update UNITS / TRAITS / ITEMS dicts each set patch.
 Roll odds: Set 18 (LT-02, in-client measured at L4-L9), the Set 14 table kept
-beside it and routed by set key (tier_odds_for_set). The other tables below
-(pool sizes, XP, rounds, items) are still the Set 14 transcription.
+beside it and routed by set key (tier_odds_for_set). XP to the next level:
+Set 18 (S134, in-client measured at L4-L9) beside the Set 14 table, routed by
+xp_to_next_level. The other tables below (pool sizes, rounds, items) are
+still the Set 14 transcription.
 """
 
 # -- Set declaration ----------------------------------------------------------
@@ -101,12 +103,50 @@ UNITS_PER_COST = {1: 13, 2: 13, 3: 13, 4: 12, 5: 8}
 INTEREST_BRACKETS = [10, 20, 30, 40, 50]   # gold thresholds for interest
 INTEREST_PER_10   = 1                        # +1g per 10g held
 
-# XP cost per level
+# XP to the next level. Every table here is {CURRENT level: XP needed at that
+# level to reach the next}, the denominator of the HUD level box
+# ("Lvl. 8  60/68" = 68 at L8). Read it through xp_to_next_level only: the
+# coach once read XP_TO_LEVEL[level + 1] and was one level off (S134).
+#
+# Set 14 transcription (never in-client verified), kept intact. Its L4-L7
+# rows equal the Set 18 HUD; L8 / L9 do not.
 XP_TO_LEVEL = {
     2:  2,   3:  6,  4: 10,  5: 20,
     6: 36,  7: 56,  8: 80,  9: 100,
    10: 120,
 }
+
+# Set 18 (session 134), read off the HUD level box in every game frame of
+# ops/runtime/tft_qa/20261025-070350 (QA_REPORT.md section 5; build
+# rls-18.5). Cross-check, facts only: Riot's B-patch 18.2 notes (as reported
+# by gamewave.fr, 2026-09-15) set L8 -> 9 and L9 -> 10 to 68 and keep the
+# L7 -> 8 cut to 56. L1-L3 (before capture) and L10 (never reached) were not
+# seen, so they have no row: no other set's value is borrowed for them.
+# Guard: tests/test_tft_coach_set18_xp_odds_s134.py.
+XP_TO_NEXT_SET18 = {4: 10, 5: 20, 6: 36, 7: 56, 8: 68, 9: 68}
+
+# XP tables by set key. Set 17 has no table of its own; it keeps the table it
+# was always served (as its roll odds keep the Set 14 copy).
+XP_TO_NEXT_BY_SET = {14: XP_TO_LEVEL, 17: XP_TO_LEVEL, 18: XP_TO_NEXT_SET18}
+
+
+def xp_to_next_level(level, set_number=None):
+    """XP needed at ``level`` to reach ``level + 1`` in a TFT set, or None.
+
+    set_number defaults to the lane's resolved set (tft/tft_set.py
+    resolve_set). None for a set with no table and for a level the set's
+    table does not carry; never another set's row.
+    """
+    if isinstance(level, bool) or not isinstance(level, int):
+        return None
+    if set_number is None:
+        from tft import tft_set
+        set_number = tft_set.resolve_set()
+    table = XP_TO_NEXT_BY_SET.get(set_number)
+    if table is None:
+        return None
+    return table.get(level)
+
 
 # Gold cost to buy XP
 XP_BUY_COST = 4   # 4g = +4 XP
