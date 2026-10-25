@@ -19,10 +19,23 @@ Usage:
     $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/daemon_slayer_extract.py            # idempotent - skips if patch is already extracted
     $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/daemon_slayer_extract.py --force    # re-extract regardless of patch state
     $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/daemon_slayer_extract.py --chunk-url URL  # override chunk autodiscovery
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/daemon_slayer_extract.py --lolmath-only --patch 16.21.1  # refresh lolmath only
 
 A lolmath ARAM modifier table that comes back >= 95 percent neutral stops the
 extract with exit code 3 and nothing written (RM-805); ``--allow-neutral-aram
 REASON`` accepts it after an adjudication, logged and recorded in the manifest.
+
+``--lolmath-only`` re-runs ONLY the lolmath extract against an EXISTING
+snapshot (it needs ``<patch>/manifest.json``; ``--patch`` defaults to
+``current.txt``) and never combines with ``--force``: lolmath ships on its own
+cadence, and a forced re-extract would re-fetch Meraki, which is never forced.
+It fetches nothing from DDragon, Meraki or CDragon (ids and version come from
+the snapshot's ``champions.json``) and rewrites only each champion's
+``lolmath`` sub-object in ``champions.json``, ``scenarios.json``, and the
+lolmath sources / counts / refresh stamp in ``manifest.json``. The RM-805 gate
+applies unchanged. A table that passes it without an override supersedes an
+adjudicated ``aram_modifiers_carry`` (dropped); with ``--allow-neutral-aram``
+the carry and its carried rows stay.
 
 Design rationale (see project_daemon_slayer_engine.md):
   - DDragon is the canonical source for champion/item/stat data.
@@ -41,6 +54,7 @@ sufficient - 172/172 champions resolved, 196/196 top-level records parse.
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import logging
 import re
@@ -1357,6 +1371,24 @@ def _championkey_to_ddragon_id(key: str, ddragon_ids: set[str]) -> str | None:
     return None
 
 
+def _lolmath_block(lolmath: LolmathExtract, champ_id: str) -> dict[str, Any]:
+    """One champion's ``lolmath`` sub-object in ``champions.json``.
+
+    Shared by the full extract and ``--lolmath-only`` so both write the same
+    shape for the same lolmath data.
+    """
+    rating_rec = lolmath.ratings.get(champ_id)
+    ratings = rating_rec.get("ratings") if isinstance(rating_rec, dict) else None
+    return {
+        "cooldowns": lolmath.cooldowns.get(champ_id),                    # {Q: [...], W: [...], E: [...], R: [...]}
+        "roles": lolmath.roles.get(champ_id),                            # ["FIGHTER", "TANK"]
+        "ratings": ratings,                                              # {healing, shielding}
+        "aram_modifiers": lolmath.aram_modifiers.get(champ_id),          # {aramDamageTaken, aramDamageDealt, ...}
+        "damage_distribution": lolmath.damage_distribution.get(champ_id),  # {physical, magical, trued}
+        "skill_order": lolmath.skill_orders.get(champ_id),               # ["Q","E","W",...]  (length 18)
+    }
+
+
 def build_champions_payload(
     lolmath: LolmathExtract,
     dd: DDragonSnapshot,
@@ -1380,9 +1412,6 @@ def build_champions_payload(
     # Start with lolmath's PascalCase champion key set (it's the canonical set the
     # engine cares about). For each, find the DDragon id if any.
     for champ_id, dd_record in dd_champions.items():
-        cooldown = lolmath.cooldowns.get(champ_id)
-        roles = lolmath.roles.get(champ_id)
-        ratings = lolmath.ratings.get(champ_id, {}).get("ratings") if isinstance(lolmath.ratings.get(champ_id), dict) else None
         stats = dict(dd_record.get("stats", {}))
         if perlevel_overlay:
             for field, value in perlevel_overlay.get(champ_id, {}).items():
@@ -1397,14 +1426,7 @@ def build_champions_payload(
             "stats": stats,
             "info": dd_record.get("info", {}),
             "partype": dd_record.get("partype"),
-            "lolmath": {
-                "cooldowns": cooldown,                                       # {Q: [...], W: [...], E: [...], R: [...]}
-                "roles": roles,                                               # ["FIGHTER", "TANK"]
-                "ratings": ratings,                                           # {healing, shielding}
-                "aram_modifiers": lolmath.aram_modifiers.get(champ_id),       # {aramDamageTaken, aramDamageDealt, ...}
-                "damage_distribution": lolmath.damage_distribution.get(champ_id),  # {physical, magical, trued}
-                "skill_order": lolmath.skill_orders.get(champ_id),            # ["Q","E","W",...]  (length 18)
-            },
+            "lolmath": _lolmath_block(lolmath, champ_id),
         }
 
     # Surface lolmath champions DDragon doesn't know about (newly released, etc.)
@@ -1493,25 +1515,11 @@ def build_manifest(lolmath: LolmathExtract, dd: DDragonSnapshot,
             "ddragon_versions": f"{DDRAGON_BASE}/api/versions.json",
             "ddragon_champions": f"{DDRAGON_BASE}/cdn/{dd.version}/data/en_US/champion.json",
             "ddragon_items": f"{DDRAGON_BASE}/cdn/{dd.version}/data/en_US/item.json",
-            "lolmath_scenarios_chunk": lolmath.chunk_url,
-            "lolmath_scenarios_chunk_bytes": lolmath.chunk_bytes,
-            "lolmath_data_chunk": lolmath.data_chunk_url,
-            "lolmath_data_chunk_bytes": lolmath.data_chunk_bytes,
-            "lolmath_data_blocks": dict(lolmath.data_block_sources),
-            "lolmath_scenario_pieces": dict(lolmath.scenario_sources),
+            **_lolmath_sources(lolmath),
             "meraki_perlevel": f"{MERAKI_BASE}/<champion>.json",
             "meraki_items": MERAKI_ITEMS_URL,
         },
-        "lolmath_counts": {
-            "cooldowns": len(lolmath.cooldowns),
-            "roles": len(lolmath.roles),
-            "ratings": len(lolmath.ratings),
-            "lane_positions": len(lolmath.lane_positions),
-            "scenarios": len(lolmath.scenarios),
-            "aram_modifiers": len(lolmath.aram_modifiers),
-            "damage_distribution": len(lolmath.damage_distribution),
-            "skill_orders": len(lolmath.skill_orders),
-        },
+        "lolmath_counts": _lolmath_counts(lolmath),
         "meraki_perlevel_backfill": {
             "champions_filled": len(overlay),
             "fields_filled": sum(len(v) for v in overlay.values()),
@@ -1538,15 +1546,80 @@ def build_manifest(lolmath: LolmathExtract, dd: DDragonSnapshot,
     }
     if aram_neutral_override:
         # RM-805: the gate was passed by the explicit flag; record who/why.
-        manifest["aram_modifiers_neutral_override"] = {
-            "flag": "--allow-neutral-aram",
-            "reason": aram_neutral_override["override_reason"],
-            "rows": aram_neutral_override["rows"],
-            "neutral_rows": aram_neutral_override["neutral_rows"],
-            "neutral_fraction": aram_neutral_override["neutral_fraction"],
-            "threshold": aram_neutral_override["threshold"],
-        }
+        manifest["aram_modifiers_neutral_override"] = _neutral_override_record(
+            aram_neutral_override)
     return manifest
+
+
+def _lolmath_sources(lolmath: LolmathExtract) -> dict[str, Any]:
+    """The lolmath keys of ``manifest["sources"]`` (full extract and refresh)."""
+    return {
+        "lolmath_scenarios_chunk": lolmath.chunk_url,
+        "lolmath_scenarios_chunk_bytes": lolmath.chunk_bytes,
+        "lolmath_data_chunk": lolmath.data_chunk_url,
+        "lolmath_data_chunk_bytes": lolmath.data_chunk_bytes,
+        "lolmath_data_blocks": dict(lolmath.data_block_sources),
+        "lolmath_scenario_pieces": dict(lolmath.scenario_sources),
+    }
+
+
+def _lolmath_counts(lolmath: LolmathExtract) -> dict[str, int]:
+    return {
+        "cooldowns": len(lolmath.cooldowns),
+        "roles": len(lolmath.roles),
+        "ratings": len(lolmath.ratings),
+        "lane_positions": len(lolmath.lane_positions),
+        "scenarios": len(lolmath.scenarios),
+        "aram_modifiers": len(lolmath.aram_modifiers),
+        "damage_distribution": len(lolmath.damage_distribution),
+        "skill_orders": len(lolmath.skill_orders),
+    }
+
+
+def _neutral_override_record(aram_check: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "flag": "--allow-neutral-aram",
+        "reason": aram_check["override_reason"],
+        "rows": aram_check["rows"],
+        "neutral_rows": aram_check["neutral_rows"],
+        "neutral_fraction": aram_check["neutral_fraction"],
+        "threshold": aram_check["threshold"],
+    }
+
+
+def refresh_manifest_lolmath(manifest: dict[str, Any], lolmath: LolmathExtract,
+                             aram_check: dict[str, Any], *,
+                             keep_carry: bool) -> dict[str, Any]:
+    """Return a copy of an existing manifest with only its lolmath parts renewed.
+
+    ``--lolmath-only``: the lolmath keys of ``sources`` are replaced in place
+    (key order kept), ``lolmath_counts`` is recomputed and ``lolmath_refresh``
+    records when and how. ``extracted_at``, the DDragon / Meraki / arena
+    blocks and ``outputs`` keep describing the full extract that fetched
+    them. The RM-805 records follow the gate: an override is recorded (a stale
+    one dropped when the gate passes cleanly), and ``aram_modifiers_carry``
+    is dropped unless ``keep_carry``.
+    """
+    out = copy.deepcopy(manifest)
+    sources = out.get("sources")
+    if not isinstance(sources, dict):
+        sources = {}
+    sources.update(_lolmath_sources(lolmath))
+    out["sources"] = sources
+    out["lolmath_counts"] = _lolmath_counts(lolmath)
+    out["lolmath_refresh"] = {
+        "flag": "--lolmath-only",
+        "refreshed_at": time.strftime("%Y-%m-%dT%H:%M:%S%z") or time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "note": ("lolmath only; DDragon, Meraki and CDragon were not re-fetched, "
+                 "so their provenance stays at extracted_at"),
+    }
+    if "override_reason" in aram_check:
+        out["aram_modifiers_neutral_override"] = _neutral_override_record(aram_check)
+    else:
+        out.pop("aram_modifiers_neutral_override", None)
+    if not keep_carry:
+        out.pop("aram_modifiers_carry", None)
+    return out
 
 
 # --- Entry point -------------------------------------------------------------
@@ -1567,9 +1640,21 @@ def main() -> int:
                          f"(the extract otherwise exits {EXIT_ARAM_NEUTRAL} and writes "
                          "nothing); REASON names the adjudication and is logged and "
                          "recorded in the manifest")
+    ap.add_argument("--lolmath-only", action="store_true",
+                    help="refresh ONLY the lolmath data of an existing snapshot "
+                         "(needs <patch>/manifest.json; --patch defaults to "
+                         "current.txt): no DDragon / Meraki / CDragon fetch; rewrites "
+                         "the champions.json lolmath sub-objects, scenarios.json and "
+                         "the manifest lolmath fields. Never combines with --force")
     args = ap.parse_args()
+    if args.lolmath_only and args.force:
+        ap.error("--lolmath-only cannot be combined with --force: a forced "
+                 "re-extract re-fetches Meraki, which is never forced")
 
     log.info("=" * 60)
+    if args.lolmath_only:
+        log.info("daemon_slayer extract starting (lolmath-only)")
+        return _main_lolmath_only(args)
     log.info("daemon_slayer extract starting (force=%s)", args.force)
 
     # Fetch DDragon first - its version is also the patch label for output.
@@ -1585,23 +1670,9 @@ def main() -> int:
             return 0
         log.info("patch dir %s exists but no manifest - re-extracting", patch_dir)
 
-    scen_url, data_url = discover_chunks(args.chunk_url, args.data_chunk_url)
-    fetch_chunk(scen_url)
-    fetch_chunk(data_url)
-    lolmath = extract_from_bodies(_CHUNK_BODIES, preferred=scen_url)
-    check_lolmath_coverage(lolmath)
-    data_extract = extract_data_blocks(_CHUNK_BODIES, preferred=data_url)
-    lolmath.aram_modifiers = data_extract["aram_modifiers"]
-    lolmath.damage_distribution = data_extract["damage_distribution"]
-    lolmath.skill_orders = data_extract["skill_orders"]
-    lolmath.data_chunk_url = data_extract["data_chunk_url"]
-    lolmath.data_chunk_bytes = data_extract["data_chunk_bytes"]
-    lolmath.data_block_sources = data_extract["block_sources"]
-    # RM-805: before the remaining fetches and before any write.
+    # RM-805: the gate runs before the remaining fetches and before any write.
     try:
-        aram_check = check_aram_neutrality(
-            lolmath.aram_modifiers, override_reason=args.allow_neutral_aram,
-        )
+        lolmath, aram_check = _extract_lolmath(args)
     except NeutralAramTableError as exc:
         log.error("%s", exc)
         return EXIT_ARAM_NEUTRAL
@@ -1628,6 +1699,94 @@ def main() -> int:
 
     log.info("wrote %s/{champions,items,scenarios,arena_augments,items_meraki,manifest}.json", patch_dir)
     log.info("current.txt -> %s", patch)
+    return 0
+
+
+def _extract_lolmath(args: argparse.Namespace) -> tuple[LolmathExtract, dict[str, Any]]:
+    """Fetch and parse every lolmath dataset, then run the RM-805 gate.
+
+    Shared by the full extract and ``--lolmath-only``. Returns the extract and
+    the gate measurement; raises ``NeutralAramTableError`` (nothing written)
+    on a neutral table without an override.
+    """
+    scen_url, data_url = discover_chunks(args.chunk_url, args.data_chunk_url)
+    fetch_chunk(scen_url)
+    fetch_chunk(data_url)
+    lolmath = extract_from_bodies(_CHUNK_BODIES, preferred=scen_url)
+    check_lolmath_coverage(lolmath)
+    data_extract = extract_data_blocks(_CHUNK_BODIES, preferred=data_url)
+    lolmath.aram_modifiers = data_extract["aram_modifiers"]
+    lolmath.damage_distribution = data_extract["damage_distribution"]
+    lolmath.skill_orders = data_extract["skill_orders"]
+    lolmath.data_chunk_url = data_extract["data_chunk_url"]
+    lolmath.data_chunk_bytes = data_extract["data_chunk_bytes"]
+    lolmath.data_block_sources = data_extract["block_sources"]
+    aram_check = check_aram_neutrality(
+        lolmath.aram_modifiers, override_reason=args.allow_neutral_aram,
+    )
+    return lolmath, aram_check
+
+
+EXIT_LOLMATH_ONLY_NO_SNAPSHOT = 4
+
+
+def _main_lolmath_only(args: argparse.Namespace) -> int:
+    """``--lolmath-only``: renew the lolmath parts of an existing snapshot.
+
+    No DDragon / Meraki / CDragon fetch: champion ids and the version come
+    from the snapshot's own ``champions.json``. Writes ``champions.json``
+    (each champion's ``lolmath`` sub-object only), ``scenarios.json`` and
+    ``manifest.json``; never ``current.txt`` or any other file.
+    """
+    patch = args.patch
+    if not patch:
+        current = DATA_ROOT / "current.txt"
+        patch = current.read_text(encoding="utf-8").strip() if current.is_file() else ""
+    if not patch:
+        log.error("--lolmath-only: no --patch and no current.txt - nothing to refresh")
+        return EXIT_LOLMATH_ONLY_NO_SNAPSHOT
+    patch_dir = DATA_ROOT / patch
+    manifest_path = patch_dir / "manifest.json"
+    champions_path = patch_dir / "champions.json"
+    missing = [p.name for p in (manifest_path, champions_path) if not p.is_file()]
+    if missing:
+        log.error("--lolmath-only: patch %s has no %s at %s - run a full extract first",
+                  patch, " / ".join(missing), patch_dir)
+        return EXIT_LOLMATH_ONLY_NO_SNAPSHOT
+    champions_doc = json.loads(champions_path.read_text(encoding="utf-8"))
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    champ_data = champions_doc["data"]
+
+    try:
+        lolmath, aram_check = _extract_lolmath(args)
+    except NeutralAramTableError as exc:
+        log.error("%s", exc)
+        return EXIT_ARAM_NEUTRAL
+
+    # An adjudicated carry survives only an explicit override: then the carried
+    # rows stay too, so the manifest never claims a carry champions.json lacks.
+    keep_carry = bool(manifest.get("aram_modifiers_carry")) and "override_reason" in aram_check
+    for champ_id, rec in champ_data.items():
+        block = _lolmath_block(lolmath, champ_id)
+        if keep_carry:
+            block["aram_modifiers"] = (rec.get("lolmath") or {}).get("aram_modifiers")
+        rec["lolmath"] = block
+    absent = sorted(set(lolmath.cooldowns) - set(champ_data))
+    if absent:
+        log.warning("lolmath has %d champions absent from the %s snapshot: %s",
+                    len(absent), patch, absent)
+
+    dd = DDragonSnapshot(version=champions_doc["version"], champions=champ_data, items={})
+    scenarios_payload = build_scenarios_payload(lolmath, dd)
+    new_manifest = refresh_manifest_lolmath(manifest, lolmath, aram_check,
+                                            keep_carry=keep_carry)
+
+    _atomic_write_json(champions_path, champions_doc)
+    _atomic_write_json(patch_dir / "scenarios.json", scenarios_payload)
+    _atomic_write_json(manifest_path, new_manifest)
+    log.info("lolmath-only: wrote %s/{champions,scenarios,manifest}.json "
+             "(carry %s)", patch_dir,
+             "kept" if keep_carry else ("dropped" if manifest.get("aram_modifiers_carry") else "none"))
     return 0
 
 
