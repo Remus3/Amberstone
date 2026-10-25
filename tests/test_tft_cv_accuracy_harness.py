@@ -394,6 +394,45 @@ def test_lcu_eog_final_boards_and_placement():
     assert "hp" not in gt["players"]["P2"]   # non-local LCU health is not HP
 
 
+def test_adapters_refuse_to_key_players_without_a_local_player():
+    doc = _eog_file_doc()
+    for p in doc["statsBlock"]["players"]:
+        p["isInteractable"] = False
+    assert acc.eog_file_players(doc) == {}
+    assert acc.lcu_eog_ground_truth({"players": [
+        {"isLocalPlayer": False, "boardPieces": []}] * 8}) == {}
+    nine = _eog_file_doc()
+    nine["statsBlock"]["players"] = nine["statsBlock"]["players"] * 5   # 10 rows
+    assert acc.eog_file_players(nine) == {}
+
+
+def test_two_argument_extractor_gets_frame_meta_not_labels(mini_corpus, tmp_path,
+                                                          monkeypatch, capsys):
+    corpus, labels = mini_corpus
+    (corpus / "frames.jsonl").write_text("\n".join(json.dumps(
+        {"t": 500.0 + i, "file": f"frames/{n}"}) for i, n in enumerate(FRAMES)),
+        encoding="utf-8")
+    seen = tmp_path / "seen.json"
+    mod = tmp_path / "rc_tft06_meta.py"
+    mod.write_text(textwrap.dedent(f"""
+        import json
+        SEEN = []
+        def extract(frame_path, meta):
+            SEEN.append(meta)
+            open({str(seen)!r}, "w").write(json.dumps(SEEN))
+            return {{}}
+    """), encoding="utf-8")
+    monkeypatch.syspath_prepend(str(tmp_path))
+    sys.modules.pop("rc_tft06_meta", None)
+    assert acc.main(["--corpus", str(corpus), "--labels", str(labels),
+                     "--extractor", "rc_tft06_meta:extract"]) == 0
+    capsys.readouterr()
+    metas = json.loads(seen.read_text())
+    assert [m["frame"] for m in metas] == FRAMES
+    assert [m["t"] for m in metas] == [500.0, 501.0, 502.0, 503.0]
+    assert all(set(m) == {"frame", "t"} for m in metas)
+
+
 def test_align_frames_to_latest_snapshot_within_a_round():
     frames = {"a.jpg": 100.0, "b.jpg": 165.0, "c.jpg": 400.0, "d.jpg": 50.0}
     idx = acc.align_frames(frames, [90.0, 160.0, 220.0], max_age_s=75.0)
