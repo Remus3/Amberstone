@@ -210,6 +210,65 @@ def test_real_client_row_paints_no_sr_imperative_anywhere(mock_server, pw_browse
     assert not errors, f"JS errors: {errors[:3]}"
 
 
+def _next_text(page) -> dict:
+    """#next subtree text via textContent (the DOM, hidden or not) plus the
+    #nx-next headline alone."""
+    return page.evaluate(
+        "() => ({all: document.getElementById('next').textContent,"
+        " head: document.getElementById('nx-next').textContent})"
+    )
+
+
+def test_real_client_row_next_panel_holds_no_sr_imperative(
+    mock_server, pw_browser
+):
+    """RM-896 (next.js half). The live view pin hides #next, so the visible
+    page was clean while #nx-next still HELD "Drake spawns 5:00 - set up
+    vision" (next.js aftergame branch: advice_headline || next || action).
+    textContent, not innerText: the guarantee must not rest on view routing.
+    next.js now runs the coach payload through the B4 client mirror
+    (live_directive_gate.withoutLiveDirectives) while a game is live."""
+    ctx, page, errors = _open(
+        mock_server, pw_browser, _load("tft_live_s134_client")
+    )
+    try:
+        _wait_fallback(page, "game")
+        _wait_state_ticks(page, 1)
+        nx = _next_text(page)
+        for needle in _SR_IMPERATIVES:
+            assert needle not in nx["all"], (
+                f"SR imperative {needle!r} held in #next mid-game"
+            )
+        assert nx["head"] == "-"
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors: {errors[:3]}"
+
+
+def test_client_row_after_the_game_keeps_the_next_headline(
+    mock_server, pw_browser
+):
+    """Positive control: the same row with the LCU at EndOfGame is not a live
+    game, so the post-game NEXT surface still paints coach.action - the gate
+    is phase-driven, not a blanket strip."""
+    row = _load("tft_live_s134_client")
+    row["lcu"]["phase"] = "EndOfGame"
+    ctx, page, errors = _open(mock_server, pw_browser, row)
+    try:
+        page.wait_for_function(
+            "() => (document.getElementById('nx-next')?.textContent || '')"
+            ".includes('Drake spawns')",
+            timeout=_LIVE_TICK_MS,
+        )
+        _wait_state_ticks(page, 2)
+        assert _next_text(page)["head"] == "Drake spawns 5:00 - set up vision"
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors: {errors[:3]}"
+
+
 def test_lcu_phase_blink_holds_then_sr_game_rebuilds_league_panes(
     mock_server, pw_browser
 ):

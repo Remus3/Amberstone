@@ -68,6 +68,33 @@ function isLiveGame(state) {
   return FEED_MODE_KEYS.indexOf(state.mode_key) === -1 && _lcuInProgress(state);
 }
 
+// The coach fields the server blanks while a game is live - a mirror of
+// LIVE_SUPPRESSED_FIELDS in dashboard/_state_builder.py, pinned equal by
+// tests/test_b4_client_directive_gate.py.
+const LIVE_SUPPRESSED_FIELDS = [
+  "action", "immediate", "fight_rule", "next", "risk",
+  "target_priority", "round_strategy", "choices",
+];
+
+/**
+ * A copy of a coach payload with every LIVE_SUPPRESSED_FIELDS key blanked
+ * ("" - or [] for choices, as the server does). For renderers that read the
+ * coach payload directly instead of a feed this module already gates; the
+ * input is never mutated (it is the replayed state.latest cache). Absent
+ * fields stay absent; a non-object passes through unchanged.
+ *
+ * @param {object} coach - the coach payload (/api/state.coach).
+ * @returns {object}
+ */
+function withoutLiveDirectives(coach) {
+  if (!coach || typeof coach !== "object" || Array.isArray(coach)) return coach;
+  const out = Object.assign({}, coach);
+  for (const f of LIVE_SUPPRESSED_FIELDS) {
+    if (f in out) out[f] = (f === "choices") ? [] : "";
+  }
+  return out;
+}
+
 /**
  * True when a coach imperative may be painted.
  *
@@ -87,6 +114,8 @@ function directivesAllowed(state) {
 // Dual export, mirroring web/js/lib/overlay_priority.js: ES module for the
 // browser, CommonJS for the node-run test. The browser never sees `module`.
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { isLiveGame, directivesAllowed, GAME_MODE_KEYS, FEED_MODE_KEYS };
+  module.exports = { isLiveGame, directivesAllowed, withoutLiveDirectives,
+    GAME_MODE_KEYS, FEED_MODE_KEYS, LIVE_SUPPRESSED_FIELDS };
 }
-export { isLiveGame, directivesAllowed, GAME_MODE_KEYS, FEED_MODE_KEYS };
+export { isLiveGame, directivesAllowed, withoutLiveDirectives,
+  GAME_MODE_KEYS, FEED_MODE_KEYS, LIVE_SUPPRESSED_FIELDS };

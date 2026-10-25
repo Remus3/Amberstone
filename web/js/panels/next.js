@@ -3,6 +3,7 @@ import { el, safe, isArenaPayload } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
 import { formatDsDelta } from '../lib/scorer_units.js';
 import { condenseKvRows } from '../lib/condense.js';
+import { directivesAllowed, withoutLiveDirectives } from '../lib/live_directive_gate.js';
 
 const NX = {
   root: el("next"),
@@ -95,7 +96,13 @@ function _renderWaveState(p) {
   }
 }
 
-function renderNext(p) {
+function renderNext(payload) {
+  // B4 defence in depth (RM-896): while a game is live, read the payload
+  // with the server's live-suppressed imperatives blanked. MEASURED on the
+  // real session-134 TFT row (mode_key client, lcu InProgress, no :2999
+  // feed): the server did not see a live game, so coach.action "Drake spawns
+  // 5:00 - set up vision" reached #nx-next through the aftergame branch.
+  const p = directivesAllowed(state.latest) ? payload : withoutLiveDirectives(payload);
   const arena = isArenaPayload(p);
   const aftergame = state.mode === "client";
   if (aftergame) {

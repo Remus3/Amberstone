@@ -253,6 +253,64 @@ class RendererGoesQuietTests(unittest.TestCase):
         self.assertTrue(r["afterHidden"])
 
 
+@unittest.skipIf(NODE is None, "node not available")
+class WithoutLiveDirectivesTests(unittest.TestCase):
+    """RM-896 (next.js half): withoutLiveDirectives is the client mirror of
+    the server's suppress_live_directives field sweep, for renderers that read
+    the coach payload directly (web/js/panels/next.js) rather than a feed the
+    three renderers above blank to []."""
+
+    def _strip(self, coach):
+        out = _run_node(
+            f"const g = require({json.dumps(GATE_JS.as_posix())});\n"
+            f"const c = {json.dumps(coach)};\n"
+            "const before = JSON.stringify(c);\n"
+            "const r = g.withoutLiveDirectives(c);\n"
+            "console.log(JSON.stringify({r, mutated: JSON.stringify(c) !== "
+            "before, same: r === c}));")
+        return json.loads(out)
+
+    def test_field_list_mirrors_the_server_sweep(self):
+        """Drift guard: a field the server starts blanking must be blanked by
+        the client mirror too, or a replayed cached tick repaints it."""
+        from dashboard._state_builder import LIVE_SUPPRESSED_FIELDS
+        out = _run_node(
+            f"const g = require({json.dumps(GATE_JS.as_posix())});\n"
+            "console.log(JSON.stringify(g.LIVE_SUPPRESSED_FIELDS));")
+        self.assertEqual(json.loads(out), list(LIVE_SUPPRESSED_FIELDS))
+
+    def test_blanks_every_imperative_and_keeps_descriptive_state(self):
+        coach = {"action": "Drake spawns 5:00 - set up vision",
+                 "immediate": "Drake spawns 5:00 - set up vision",
+                 "fight_rule": "FAIR FIGHT", "next": "Back at 6:30",
+                 "risk": "MEDIUM", "target_priority": "focus Jinx",
+                 "round_strategy": "play wide", "choices": CHOICES,
+                 "objective": "Dragon 5:00", "wave": "wave 40%", "gold": 57,
+                 "advice_headline": "Review the 4-2 rolldown"}
+        r = self._strip(coach)
+        self.assertFalse(r["mutated"], "input mutated - the cache replays it")
+        self.assertFalse(r["same"], "must return a copy")
+        out = r["r"]
+        for f in ("action", "immediate", "fight_rule", "next", "risk",
+                  "target_priority", "round_strategy"):
+            with self.subTest(field=f):
+                self.assertEqual(out[f], "")
+        # choices blanks to [] for the same reason the server's does
+        # (_LIVE_SUPPRESSED_EMPTY): coach_choices.js Array.isArray-tests it.
+        self.assertEqual(out["choices"], [])
+        for f in ("objective", "wave", "gold", "advice_headline"):
+            with self.subTest(field=f):
+                self.assertEqual(out[f], coach[f])
+
+    def test_absent_fields_stay_absent(self):
+        self.assertEqual(self._strip({"gold": 3})["r"], {"gold": 3})
+
+    def test_non_object_passes_through(self):
+        for bad in (None, "x", 7, []):
+            with self.subTest(bad=bad):
+                self.assertEqual(self._strip(bad)["r"], bad)
+
+
 MAIN_JS = REPO_ROOT / "web" / "js" / "main.js"
 
 
