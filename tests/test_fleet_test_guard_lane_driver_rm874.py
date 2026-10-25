@@ -44,6 +44,17 @@ LANES = ("research", "queue", "gated")
 # IGNORE misses (the failure messages above name them).
 DRIVER_STATE = tuple(f"{LP}/s133_{lane}_state.json" for lane in LANES)
 DRIVER_DIRECTIVE = tuple(f"{LP}/s133-{lane}.md" for lane in LANES)
+# RM-874 residual, measured s134 M1c gated run (8 teardown ERRORs + the NOW-6
+# nested run): the s134 driver adds two more families of its own -
+# s134_<lane>_last.json (the per-cycle result record, s134_lane_driver.py
+# `last = HERE / f"s134_{lane}_last.json"`) and the headless lane worker's
+# report under s134_reports/ (`REPORTS = HERE / "s134_reports"`,
+# `report = REPORTS / f"{lane}_{run_id}.md"`). Named from the failure lines.
+DRIVER_LAST = (f"{LP}/s134_ds_last.json", f"{LP}/s134_queue_last.json",
+               f"{LP}/s134_uiux_last.json")
+DRIVER_REPORT = (f"{LP}/s134_reports/ds_s134d005-c95b9a.md",
+                 f"{LP}/s134_reports/uiux_s134u005-c944ac.md")
+REPORTS_GLOB_DIR = "s[0-9][0-9][0-9]_reports/"
 
 
 def _guard():
@@ -131,7 +142,7 @@ def test_a_driver_cycle_mid_session_does_not_fail_the_guard(tmp_path, lane):
     assert _verdict(tmp_path, before) == ""
 
 
-@pytest.mark.parametrize("rel", DRIVER_STATE + DRIVER_DIRECTIVE)
+@pytest.mark.parametrize("rel", DRIVER_STATE + DRIVER_DIRECTIVE + DRIVER_LAST + DRIVER_REPORT)
 def test_each_measured_driver_file_is_ignored(rel):
     lowered = rel.lower()
     import fnmatch
@@ -161,6 +172,11 @@ def test_the_driver_files_appearing_mid_session_do_not_fail_the_guard(tmp_path):
     f"{LP}/notes.md",
     f"{LP}/queue-rm740e-s115.md",
     f"{LP}/s133_state.json",
+    f"{LP}/s134_last.json",
+    f"{LP}/s134_reports.md",
+    f"{LP}/notes/s134_queue_last.json",
+    f"{LP}/s134_reports/queue_s134q005-90ee93.json",
+    f"{LP}/reports/queue_s134q005-90ee93.md",
 ])
 def test_a_new_non_driver_control_file_still_fails_the_guard(tmp_path, rel):
     _driver_tree(tmp_path)
@@ -202,7 +218,12 @@ def test_the_driver_ignores_stay_inside_lane_prompts_and_off_the_templates():
     new = [gl for gl in cfg.EXTRA_IGNORE if gl.startswith(f"{LP}/")]
     assert new, "RM-874 adds its driver globs under lane_prompts/"
     for gl in new:
-        assert "/" not in gl[len(LP) + 1:], f"{gl} reaches below lane_prompts/"
+        tail = gl[len(LP) + 1:]
+        # The one sanctioned subdirectory is the driver's own reports dir
+        # (s<NNN>_reports/), and only its direct children.
+        if tail.startswith(REPORTS_GLOB_DIR):
+            tail = tail[len(REPORTS_GLOB_DIR):]
+        assert "/" not in tail, f"{gl} reaches below lane_prompts/"
         for probe in ("s133-common.tmpl", "s133-gated.tmpl", "s133_lane_driver.py",
                       "s133_lane_progress.py", "queue-rm740e-s115.tmpl"):
             assert not fnmatch.fnmatchcase(f"{LP}/{probe}", gl), (gl, probe)

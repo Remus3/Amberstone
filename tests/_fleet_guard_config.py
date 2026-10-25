@@ -40,6 +40,10 @@ inbox_status.json, progress/, lanes/) are in the kit IGNORE already. The two
 globs carry the session tag as three digits because the driver is re-copied per
 session under its session tag (s115 precedent); they stay inside lane_prompts/
 and never match the driver's sources (*.py, *.tmpl) or any other control file.
+RM-874 residual (s134 M1c gated run: 8 teardown ERRORs + the NOW-6 nested run,
+all green in isolation): the s134 driver adds s<NNN>_<lane>_last.json (its
+per-cycle result record) and s<NNN>_reports/<lane>_<run_id>.md (the headless
+lane worker's report); the reports glob is the one sanctioned subdirectory.
 ASCII only.
 """
 
@@ -82,4 +86,9 @@ EXTRA_IGNORE = (
     "ops/loop/control/lane_prompts/s[0-9][0-9][0-9]_*_state.json",
     # RM-874: live lane driver's rendered per-cycle directive (build_prompt).
     "ops/loop/control/lane_prompts/s[0-9][0-9][0-9]-*.md",
+    # RM-874 residual (s134 M1c): the s134 driver's per-cycle result record
+    # (s<NNN>_<lane>_last.json) and its headless lane workers' reports
+    # (s<NNN>_reports/<lane>_<run_id>.md), both written mid-suite.
+    "ops/loop/control/lane_prompts/s[0-9][0-9][0-9]_*_last.json",
+    "ops/loop/control/lane_prompts/s[0-9][0-9][0-9]_reports/*.md",
 )
