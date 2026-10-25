@@ -451,6 +451,19 @@ def test_worker_threads_are_capped_at_two(prof, vocab):
     assert of.MAX_WORKERS == 2 and 1 <= live["peak"] <= 2
 
 
+def test_a_raising_field_is_absent_and_never_raises(prof, vocab):
+    class BoomEngine(FakeEngine):
+        def read(self, img, **kw):
+            if kw.get("field") == "gold":
+                raise RuntimeError("tesseract exploded")
+            return super().read(img, **kw)
+
+    fr = of.read_frame(synthetic_frame(prof), profile=prof, engine=BoomEngine(ANSWERS),
+                       vocab=vocab, workers=2)
+    assert fr.fields["gold"].src == "absent" and fr.fields["gold"].reason == "error"
+    assert fr.fields["label"].value == "3-6" and fr.fields["level"].value == 7
+
+
 def test_unknown_field_name_is_rejected(prof):
     with pytest.raises(ValueError):
         of.read_frame(Image.new("RGB", SIZE), profile=prof, engine=FakeEngine(), fields=["hp"])
