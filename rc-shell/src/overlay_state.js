@@ -101,16 +101,33 @@ function resolveSurface(modeKey, hidden, inGame = true) {
 // object (the in-game :2999 read). mode_key alone is insufficient - RC pre-
 // flips it to the game mode during the lobby / champ-select, where there is no
 // game to overlay yet, so the surface gate keys off this, not the bare mode.
+//
+// S134 T1 - the TFT arm. MEASURED 2026-10-25 in a live TFT match: TFT runs as a
+// standalone TFTClient process with nothing listening on :2999, so liveclient
+// stayed {} for the whole match and the HUD never appeared. For mode_key "tft"
+// ONLY, the LCU gameflow phase InProgress is the live signal (never champ
+// select). The :2999 modes keep the liveclient contract above, so their loading
+// screen still stays on the companion (docs/ELECTRON_OVERLAY.md section 5).
 function liveGameFromState(state) {
   if (!state || typeof state !== "object" || Array.isArray(state)) {
     return false;
   }
   const lc = state.liveclient;
-  return (
+  if (
     !!lc &&
     typeof lc === "object" &&
     !Array.isArray(lc) &&
     Object.keys(lc).length > 0
+  ) {
+    return true;
+  }
+  const lcu = state.lcu;
+  return (
+    normMode(state.mode_key) === "tft" &&
+    !!lcu &&
+    typeof lcu === "object" &&
+    !Array.isArray(lcu) &&
+    lcu.phase === "InProgress"
   );
 }
 

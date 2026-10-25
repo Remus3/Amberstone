@@ -998,6 +998,208 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
   }
 }
 
+// --- S134 T1: live game WITHOUT a :2999 feed (TFT / unresolved mode) ---------
+//
+// MEASURED 2026-10-25 in a live TFT match: TFT now runs as a standalone
+// TFTClient process with NOTHING listening on :2999, so /api/state.liveclient
+// stayed {} for the whole match; mode_key was "tft" only while the LCU
+// champ-select retention held and fell to "client" after an RC restart. The
+// CALL / BUILD / MAP panes are built on the League feed, so they painted SR
+// scaffolding through the TFT game: "Drake spawns 5:00 - set up vision" (a B4
+// live imperative the server failed to blank, because the game never looked
+// live to it), the TOP/JG/MID/BOT ward strip, "0:00 - 0 VISIBLE - 0 MIA", the DS
+// item build, and a 2 req/s /api/vision-state poll for a minimap TFT has not got.
+//
+// amLiveFallbackModel replaces that with an honest state. It never paints a coach
+// imperative (action / immediate / econ / rolldown ...: B4 bans live directives,
+// and those are what the stale SR payload carried). It paints DESCRIPTIVE TFT
+// state when the payload carries it - stage_round (or stage + round), level, hp,
+// gold, the tft_live_data shape tft/tft_live_analysis.py produces - as four
+// fixed rows, so a partial tick keeps the geometry (no reflow on data absence).
+// The producer's zero defaults (level 0, hp 0, stage_round "") are not data.
+
+// Modes whose live state arrives through the League :2999 Live Client API -
+// the existing render path owns them.
+const _AM_FEED_MODES = new Set(["sr", "classic", "aram", "arena", "brawl"]);
+const _AM_STAGE_RE = /^\s*(\d{1,2})\s*-\s*(\d{1,2})\s*$/;
+
+function _amIntIn(v, lo, hi) {
+  if (typeof v !== "number" || !Number.isFinite(v)) return null;
+  const n = Math.round(v);
+  return (n >= lo && n <= hi) ? n : null;
+}
+
+function _amTftStage(p) {
+  const sr = (typeof p.stage_round === "string") ? _AM_STAGE_RE.exec(p.stage_round) : null;
+  if (sr) return `${+sr[1]}-${+sr[2]}`;
+  const s = _amIntIn(p.stage, 1, 9);
+  const r = _amIntIn(p.round, 1, 9);
+  return (s && r) ? `${s}-${r}` : null;
+}
+
+/**
+ * Pure model for the Active Match panes during a live game that has no :2999
+ * feed. Returns null when the existing render path owns the frame (a feed
+ * mode, or no live game).
+ *
+ * @param {string} mode - the dashboard mode tag (state.mode).
+ * @param {string} phase - the effective LCU gameflow phase.
+ * @param {object} payload - the coach payload (/api/state.coach).
+ * TFT always carries the same status row + four stat slots (STAGE / LEVEL /
+ * HP / GOLD, "-" when absent), so the feed landing changes text, never
+ * geometry.
+ *
+ * @returns {null|{kind:string, sub:string, status:string[], rows:string[][],
+ *   build:string, map:string, hasData:boolean}}
+ */
+export function amLiveFallbackModel(mode, phase, payload) {
+  if (phase !== "InProgress") return null;
+  const m = String(mode || "").toLowerCase();
+  if (_AM_FEED_MODES.has(m)) return null;
+  const p = (payload && typeof payload === "object" && !Array.isArray(payload)) ? payload : {};
+  if (m !== "tft") {
+    return {
+      kind: "game",
+      sub: "GAME IN PROGRESS - mode not detected - live data unavailable",
+      status: ["LIVE DATA", "Unavailable - RC has no live feed for this game yet."],
+      rows: [],
+      build: "Item build needs the live game feed.",
+      map: "Map intel needs the live game feed.",
+      hasData: false,
+    };
+  }
+  const stage = _amTftStage(p);
+  const level = _amIntIn(p.level, 1, 10);
+  const hp = _amIntIn(typeof p.hp === "number" ? p.hp : p.health, 1, 100);
+  const gold = _amIntIn(p.gold, 0, 999);
+  const hasData = !!(stage || level || hp);
+  const dash = (v) => (v === null ? "-" : String(v));
+  let sub = "TFT - phase InProgress - live data unavailable";
+  if (hasData) sub = stage ? `TFT - stage ${stage} - phase InProgress` : "TFT - phase InProgress";
+  return {
+    kind: "tft",
+    sub,
+    status: ["TFT LIVE DATA",
+             hasData ? "Live" : "Unavailable - no live feed from the TFT client yet."],
+    rows: [["STAGE", dash(stage)], ["LEVEL", dash(level)], ["HP", dash(hp)], ["GOLD", dash(gold)]],
+    build: "No League item build in TFT.",
+    map: "No map intel in TFT.",
+    hasData,
+  };
+}
+
+/**
+ * Effective LCU phase for the no-feed panes. The LCU agent can drop
+ * /api/state.lcu.phase for several seconds mid-game
+ * (dashboard/_liveclient.lcu_summary discards snapshots older than 5 s); with
+ * no :2999 feed that blink would flip the panes to "no in-game session" and
+ * back. A blank phase holds the last InProgress for the SAME mode; any definite
+ * phase or a mode change releases it. Mutates memo.
+ */
+export function amStickyPhase(memo, mode, phase) {
+  const m = String(mode || "");
+  const ph = (phase === undefined || phase === null) ? "" : String(phase);
+  if (ph === "InProgress") {
+    memo.mode = m;
+    memo.live = true;
+    return ph;
+  }
+  if (ph === "" || ph === "-") {
+    if (memo.live && memo.mode === m) return "InProgress";
+    memo.live = false;
+    return ph;
+  }
+  memo.live = false;
+  return ph;
+}
+
+const _AM_PHASE_MEMO = {};
+
+// Paint a fallback model into the three panes. Each pane is rebuilt only when its
+// own text changes (signature on the node), so a 2 s state tick is a no-op - no
+// churn, no focus loss, no layout jump.
+function _amRenderLiveFallback(fb, p, ctx) {
+  const sub = _AM.sub();
+  if (sub && sub.textContent !== fb.sub) sub.textContent = fb.sub;
+
+  const call = _AM.callBody();
+  if (call) {
+    const sig = JSON.stringify([fb.status, fb.rows]);
+    if (call.dataset.amFallbackSig !== sig) {
+      call.innerHTML = "";
+      const head = _line(fb.status[0], fb.status[1]);
+      head.dataset.amFallback = fb.kind;
+      head.setAttribute("role", "status");
+      call.appendChild(head);
+      if (fb.rows.length) {
+        // Stat strip: label over a large value, fixed four columns
+        // (panels/active_match.css .am-tft-stats).
+        const grid = document.createElement("div");
+        grid.className = "am-tft-stats";
+        grid.setAttribute("role", "group");
+        grid.setAttribute("aria-label", "TFT live state");
+        for (const [label, value] of fb.rows) {
+          const cell = document.createElement("div");
+          cell.className = "am-tft-stat";
+          if (value === "-") cell.classList.add("is-empty");
+          const l = document.createElement("span");
+          l.className = "am-tft-stat-label";
+          l.textContent = label;
+          const v = document.createElement("span");
+          v.className = "am-tft-stat-value";
+          v.textContent = value;
+          cell.appendChild(l);
+          cell.appendChild(v);
+          grid.appendChild(cell);
+        }
+        call.appendChild(grid);
+      }
+      call.dataset.amFallbackSig = sig;
+    }
+  }
+
+  // League-only strips: the spike curve, spike markers and draft-elo chip
+  // already hide themselves outside their modes; the ward-heat strip and the DS
+  // cluster do not, so they are dropped here (and restored by the feed path).
+  _renderSpikeCurveFromCtx(ctx);
+  _renderSpikeMarkersFromCtx(ctx, p, []);
+  _renderDraftEloFromCtx(ctx);
+  const wh = _AM.wardHeat();
+  if (wh && wh.style.display !== "none") wh.style.display = "none";
+  _amRenderDsCluster(p, ctx, false);
+
+  const build = _AM.buildBody();
+  if (build && build.dataset.amFallbackSig !== fb.build) {
+    build.innerHTML = "";
+    const d = document.createElement("div");
+    d.className = "am-empty";
+    d.textContent = fb.build;
+    build.appendChild(d);
+    build.dataset.amFallbackSig = fb.build;
+  }
+
+  const map = _AM.mapBody();
+  if (map) {
+    // Stop the /api/vision-state poll - there is no minimap to draw. A later
+    // feed-mode render sees attachedMode differ, rebuilds the shell and
+    // restarts the poll (_renderAmMap -> _amStartMapPolling).
+    if (_AM_MAP.pollHandle != null) {
+      clearInterval(_AM_MAP.pollHandle);
+      _AM_MAP.pollHandle = null;
+    }
+    _AM_MAP.vsCache = null;
+    const tag = "fallback:" + fb.map;
+    if (_AM_MAP.attachedMode !== tag) {
+      _AM_MAP.attachedMode = tag;
+      map.innerHTML = "";
+      const d = document.createElement("div");
+      d.className = "am-empty";
+      d.textContent = fb.map;
+      map.appendChild(d);
+    }
+  }
+}
+
 export function renderActiveMatch(payload, ctx) {
   // ctx: { mode: state.mode, lcuPhase: lcu.phase }
   // Defensive: every getter is null-safe so a missing pane in DOM
@@ -1005,6 +1207,24 @@ export function renderActiveMatch(payload, ctx) {
   const p = payload || {};
   const mode = (ctx && ctx.mode) || "-";
   const phase = (ctx && ctx.lcuPhase) || "-";
+
+  // S134 T1: a live game with no :2999 feed (TFT, or a mode RC has not
+  // resolved) gets the honest no-feed panes instead of the League scaffold.
+  const fb = amLiveFallbackModel(mode, amStickyPhase(_AM_PHASE_MEMO, mode, phase), p);
+  if (fb) {
+    _amRenderLiveFallback(fb, p, ctx);
+    return;
+  }
+  // Leaving the fallback: clear the placeholders so the feed path repaints the
+  // panes it owns. The BUILD pane must be emptied, not just un-signed: its
+  // retain-last-good guard (_shouldRetainBuild) would otherwise keep the TFT
+  // placeholder on screen into the next League game until DS picks land.
+  for (const _pane of [_AM.callBody(), _AM.buildBody()]) {
+    if (_pane && _pane.dataset.amFallbackSig !== undefined) {
+      _pane.innerHTML = "";
+      delete _pane.dataset.amFallbackSig;
+    }
+  }
 
   // s171.2: freshness gate. The coach payload (state.coach.*) lives in
   // memory across games - when a game ends, the previous game's

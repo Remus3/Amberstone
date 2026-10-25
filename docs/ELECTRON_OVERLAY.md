@@ -151,11 +151,17 @@ game mode_key set: {sr, arena, aram, tft, brawl}
 
 Measured notes (these are the reasons the rows above read the way they do):
 
-- **`liveclient` is the gate, not `mode_key`.** The shell reads NO LCU phase at
-  all. RC pre-flips `mode_key` to the game mode during lobby / champ-select, so
+- **TFT is the one LCU-phase exception (S134 T1, measured 2026-10-25).** TFT
+  now runs as a standalone TFTClient process with nothing on :2999, so
+  `liveclient` stays `{}` for a whole TFT match and the HUD never appeared.
+  For `mode_key` `tft` ONLY, `liveGameFromState` also accepts
+  `lcu.phase === "InProgress"`; the :2999 modes below keep the liveclient
+  gate, so their loading screen still stays on the companion.
+- **`liveclient` is the gate, not `mode_key`.** Outside TFT the shell reads NO
+  LCU phase. RC pre-flips `mode_key` to the game mode during lobby / champ-select, so
   rows 2, 3 and 5 land on the companion because `liveGameFromState` is false (a
   missing / empty / null `liveclient` object), not because of any phase handling
-  (`overlay_state.js:87` `surfaceForMode(modeKey, inGame)` + `:104`
+  (`overlay_state.js:87` `surfaceForMode(modeKey, inGame)` + `:111`
   `liveGameFromState`). "in match" therefore means a game `mode_key` AND a
   non-empty `liveclient`; "post-game" is the same `mode_key` with `liveclient`
   gone. `GAME_MODES` also accepts a generic `game` alias beyond the five above.
@@ -163,9 +169,9 @@ Measured notes (these are the reasons the rows above read the way they do):
   `showInactive()` on the existing window; a destroyed / never-built companion
   stays absent. That is what the old "show (if open)" cell meant.
 - **The in-match companion `hide` is the DEFAULT, not the only option.**
-  `keepCompanion` (`overlay_state.js:455`, default FALSE per operator
+  `keepCompanion` (`overlay_state.js:503`, default FALSE per operator
   2026-06-27) is an opt-in that keeps the dashboard shown BESIDE the HUD
-  (`windowActionsWithPolicy`, `overlay_state.js:276`). Flipping that default
+  (`windowActionsWithPolicy`, `overlay_state.js:293`). Flipping that default
   fails the contract test until this table is updated with it.
 - **`passive` = click-through.** `OVERLAY_DEFAULTS.clickThrough` is true
   (`overlay_state.js:50`), so the HUD passes clicks to the game until the ACTIVE

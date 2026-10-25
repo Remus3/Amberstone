@@ -6887,6 +6887,9 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
           // CDS rail rendered "no live game" mid-game and the threat-donut
           // strip got null liveclient.
           state.latest.liveclient = st.liveclient || null;
+          // S134 T1: the B4 gate (lib/live_directive_gate.js) reads mode_key
+          // off this cache; without it the liveclient arm never fired here.
+          state.latest.mode_key = st.mode_key || null;
           // Item-378 tail (chip task_8a4ebe04): the W3A deterministic keys
           // are /api/state TOP-LEVEL siblings too; renderCoachChoices /
           // renderLead / renderCallouts read them off state.latest, so
@@ -6945,6 +6948,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
           const coachPayload = st.coach || st;
           // 2026-05-25 item 201 fix: see HTTP-fallback site above.
           state.latest.liveclient = st.liveclient || null;
+          state.latest.mode_key = st.mode_key || null;  // S134 T1: B4 gate
           // Item-378 tail: see HTTP-fallback site above.
           state.latest.coach = st.coach || null;
           state.latest.lead_projection = st.lead_projection || null;
@@ -6991,6 +6995,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
           // independent LCU poller path also keeps state.latest fresh.
           if (st) {
             state.latest.liveclient = st.liveclient || null;
+            state.latest.mode_key = st.mode_key || null;  // S134 T1: B4 gate
             // Item-378 tail: see HTTP-fallback site above.
             state.latest.coach = st.coach || null;
             state.latest.lead_projection = st.lead_projection || null;
@@ -7103,6 +7108,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
             state.latest.callouts = st.callouts || null;
             state.latest.coach = st.coach || null;
             state.latest.liveclient = st.liveclient || null;
+            state.latest.mode_key = st.mode_key || null;  // S134 T1: B4 gate
             renderLead(st);
             renderCallouts(st);
             renderCoachChoices(st);

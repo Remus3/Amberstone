@@ -13,7 +13,8 @@
 //
 // The test supplies only the GIVEN side as literals - one /api/state-shaped
 // fixture per doc phase label, because "champ-select" is a human phrase the shell
-// never sees (it reads no LCU phase at all; the gate is the liveclient object).
+// never sees (outside mode_key "tft" it reads no LCU phase; the gate is the
+// liveclient object - the TFT LCU arm is pinned in overlay_state.test.js).
 // The EXPECTED side is entirely doc-derived.
 
 "use strict";

@@ -160,6 +160,49 @@ body:not([data-shell="overlay"]) #view-active-match
   text-align: center;
 }
 
+/* S134 T1: TFT live state strip (active_match.js _amRenderLiveFallback). Four
+ * fixed columns - STAGE / LEVEL / HP / GOLD - present with the "-" sentinel
+ * before the feed lands, so data arriving changes text, never geometry. The
+ * value is the focal point (--fs-lg, tabular), the label the faint eyebrow
+ * (--fs-xs), matching the CALL pane _line hierarchy. */
+#view-active-match .am-tft-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 4px;
+}
+#view-active-match .am-tft-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  /* Pane surface, not --surface-2: the faint label measures 4.9-5.1:1 on the
+   * pane background in every theme but only 4.3-4.4:1 on the raised one. */
+  background: transparent;
+  min-width: 0;
+}
+#view-active-match .am-tft-stat-label {
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+#view-active-match .am-tft-stat-value {
+  color: var(--text);
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#view-active-match .am-tft-stat.is-empty .am-tft-stat-value {
+  color: var(--text-faint);
+}
+
 /* MAP pane will host an <img> (static mode map) + an absolutely-
  * positioned overlay layer for ZOI/threat coloring. The img-bound
  * box keeps the overlay aligned regardless of pane resize. Empty

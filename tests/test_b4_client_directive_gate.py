@@ -46,6 +46,12 @@ LIVE = {"mode_key": "aram", "liveclient": {"champion": "Kai'Sa",
 CHAMP_SELECT = {"mode_key": "aram", "liveclient": {},
                 "health": {"aram_mode": True}}
 IDLE = {"mode_key": "client", "liveclient": {}}
+# A live TFT match as /api/state served it on 2026-10-25: no :2999 feed, so
+# liveclient is {} while the LCU gameflow phase says InProgress.
+TFT_LIVE = {"mode_key": "tft", "liveclient": {},
+            "lcu": {"phase": "InProgress"}}
+TFT_CHAMP_SELECT = {"mode_key": "tft", "liveclient": {},
+                    "lcu": {"phase": "ChampSelect"}}
 
 CHOICES = [{"key": "A", "label": "Force a short trade", "confidence": "high"},
            {"key": "B", "label": "Back off", "confidence": "low"}]
@@ -99,6 +105,51 @@ class GatePredicateTests(unittest.TestCase):
             with self.subTest(mode_key=mk):
                 self.assertTrue(self._gate(
                     "isLiveGame", {"mode_key": mk, "liveclient": {"a": 1}}))
+
+    # S134 T1 (measured 2026-10-25, live TFT match): TFT runs as a standalone
+    # TFTClient process with NOTHING on :2999, so liveclient stayed {} for the
+    # whole match and the predicate never fired - the dashboard painted SR
+    # callouts ("Drake spawns 5:00 - set up vision") through a live TFT game.
+    # Outside the :2999 feed modes the LCU gameflow phase is the live signal.
+    def test_tft_live_with_empty_liveclient_is_live(self):
+        self.assertTrue(self._gate("isLiveGame", TFT_LIVE))
+        self.assertFalse(self._gate("directivesAllowed", TFT_LIVE))
+
+    def test_unresolved_mode_in_a_live_game_is_live(self):
+        """mode_key fell to "client" after an RC restart mid-TFT-match."""
+        self.assertTrue(self._gate("isLiveGame", {
+            "mode_key": "client", "liveclient": {},
+            "lcu": {"phase": "InProgress"}}))
+
+    def test_dashboard_cache_shape_without_mode_key_is_live(self):
+        """The dashboard hands the gate its state.latest cache, which carries
+        lcu (handleChampSelect) but no mode_key unless main.js stamps it."""
+        self.assertTrue(self._gate("isLiveGame", {
+            "liveclient": {}, "lcu": {"phase": "InProgress"}}))
+
+    def test_feed_mode_loading_screen_is_unchanged(self):
+        """The :2999 modes keep the liveclient contract: LCU says InProgress
+        through the loading screen, before liveclient answers, and that
+        window stays coached exactly as before."""
+        for mk in ("sr", "aram", "arena", "brawl"):
+            with self.subTest(mode_key=mk):
+                self.assertFalse(self._gate("isLiveGame", {
+                    "mode_key": mk, "liveclient": {},
+                    "lcu": {"phase": "InProgress"}}))
+
+    def test_tft_champ_select_and_post_game_are_not_live(self):
+        for phase in ("ChampSelect", "GameStart", "WaitingForStats",
+                      "EndOfGame", "Lobby", "", None):
+            with self.subTest(phase=phase):
+                self.assertFalse(self._gate("isLiveGame", {
+                    "mode_key": "tft", "liveclient": {},
+                    "lcu": {"phase": phase}}))
+
+    def test_garbage_lcu_is_not_live(self):
+        for lcu in ("InProgress", [], 7, None, {"phase": ["InProgress"]}):
+            with self.subTest(lcu=lcu):
+                self.assertFalse(self._gate("isLiveGame", {
+                    "mode_key": "tft", "liveclient": {}, "lcu": lcu}))
 
     def test_garbage_fails_open_not_closed(self):
         """Fail-SAFE, deliberately. A fail-closed default would blank the
@@ -175,6 +226,21 @@ class RendererGoesQuietTests(unittest.TestCase):
         self.assertEqual(r["after"], "")
         self.assertTrue(r["afterHidden"])
 
+    def test_callouts_clear_when_a_tft_game_starts(self):
+        """The measured TFT case: liveclient never populates, only the LCU
+        phase moves. The SR objective callouts the server served through the
+        match must still go quiet."""
+        sr_callout = [{"tag": "dragon", "eta_s": 300.0, "kind": "objective",
+                       "line": "Drake spawns 5:00 - set up vision"}]
+        r = self._render_transition(
+            CALLOUTS_JS, "renderCallouts", "rn-callouts",
+            {**TFT_CHAMP_SELECT, "callouts": sr_callout},
+            {**TFT_LIVE, "callouts": sr_callout},
+        )
+        self.assertIn("set up vision", r["painted"])
+        self.assertEqual(r["after"], "")
+        self.assertTrue(r["afterHidden"])
+
     def test_lead_clears_when_the_game_starts(self):
         r = self._render_transition(
             CALLOUTS_JS, "renderLead", "rn-lead",
@@ -185,6 +251,30 @@ class RendererGoesQuietTests(unittest.TestCase):
         self.assertFalse(r["paintedHidden"])
         self.assertEqual(r["after"], "")
         self.assertTrue(r["afterHidden"])
+
+
+MAIN_JS = REPO_ROOT / "web" / "js" / "main.js"
+
+
+class DashboardCacheCarriesModeKeyTests(unittest.TestCase):
+    """The dashboard calls the three renderers with its state.latest cache,
+    not the raw envelope. MEASURED 2026-10-25: that cache carried liveclient /
+    coach / callouts / lead_projection / lcu but never mode_key, so the
+    liveclient half of isLiveGame could not fire on the real page at all.
+    Every /api/state handler that stamps the liveclient sibling must stamp
+    mode_key beside it."""
+
+    def test_every_liveclient_stamp_also_stamps_mode_key(self):
+        lines = MAIN_JS.read_text(encoding="utf-8").splitlines()
+        stamp = "state.latest.liveclient = st.liveclient"
+        sites = [i for i, ln in enumerate(lines) if stamp in ln]
+        self.assertGreaterEqual(len(sites), 3,
+                                "expected the SSE, HTTP-fallback and LCU-poller "
+                                "stamp sites; an empty scan proves nothing")
+        for i in sites:
+            window = "\n".join(lines[i:i + 20])
+            with self.subTest(line=i + 1):
+                self.assertIn("state.latest.mode_key = st.mode_key", window)
 
 
 if __name__ == "__main__":

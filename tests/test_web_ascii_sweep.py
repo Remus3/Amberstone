@@ -662,7 +662,21 @@ _WEB = _REPO_ROOT / "web"
 # Those two paths are the whole change; the new
 # web/js/panels/dev_replay_item_icon.test.mjs is not a swept language. No
 # glyph change.
-_LIVE_HALF_DIGEST = "6d356f2cf1f851c08625e7fcd528b1ce74581ae51daf9e860fa3a0d67901c68f"
+# superseded by the S134 T1 re-capture below: "6d356f2cf1f851c08625e7fcd528b1ce74581ae51daf9e860fa3a0d67901c68f"
+#
+# RE-CAPTURED 2026-10-25 at S134 T1 (TFT live dashboard + overlay: the honest
+# no-:2999-feed Active Match panes, the B4 gate's LCU-phase arm, the
+# state.latest.mode_key stamp, the TFT header-pill collapse and the overlay
+# stat strip). Ordinary case, no tokeniser change. ATTRIBUTED BY SUBSTITUTION
+# against 4023fa2a3: swapping exactly web/js/main.js,
+# web/js/panels/active_match.js, web/js/lib/live_directive_gate.js,
+# web/css/overlay.css, web/css/panels/header.css and
+# web/css/panels/active_match.css back to their HEAD blobs reproduces the
+# superseded 6d356f2c... value EXACTLY. Those six paths are the whole change;
+# the new web/js/panels/active_match_tft.test.mjs is not a swept language. No
+# glyph change. Parallel S134 slices touching web/ race on this pin: the
+# merger recomputes it over the merged tree.
+_LIVE_HALF_DIGEST = "2f74201798554bac5361ec26257108b428cc6e3a33e03d1789cd1c27928f11f6"
 
 
 def _web_sources() -> list[Path]:

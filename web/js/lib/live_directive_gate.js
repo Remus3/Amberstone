@@ -28,22 +28,44 @@
 // is_live_game(health, preflip_active), which HAS the preflip flag and does
 // not need this proxy.
 
+//
+// S134 T1 - the second arm. MEASURED 2026-10-25 in a live TFT match: TFT now
+// runs as a standalone TFTClient process with NOTHING listening on :2999, so
+// `liveclient` stayed {} for the whole match and the arm above never fired; the
+// dashboard painted SR callouts ("Drake spawns 5:00 - set up vision") through
+// the game. Outside the :2999 feed modes the LCU gameflow phase is the live
+// signal: `lcu.phase === "InProgress"` is never champ select. The feed modes
+// keep the liveclient contract, so their loading screen (LCU already
+// InProgress, liveclient not answering yet) stays coached exactly as before.
+
 const GAME_MODE_KEYS = ["sr", "aram", "arena", "tft", "brawl"];
+
+// Modes whose live state arrives through the League :2999 Live Client API.
+const FEED_MODE_KEYS = ["sr", "aram", "arena", "brawl"];
 
 function _isNonEmptyObject(v) {
   return !!v && typeof v === "object" && Object.keys(v).length > 0;
 }
 
+function _lcuInProgress(state) {
+  const lcu = state.lcu;
+  return !!lcu && typeof lcu === "object" && !Array.isArray(lcu)
+    && lcu.phase === "InProgress";
+}
+
 /**
  * True when a game is actually running.
  *
- * @param {object|null} state - the /api/state envelope.
+ * @param {object|null} state - the /api/state envelope (or the dashboard's
+ *   state.latest cache, which carries the same mode_key / liveclient / lcu).
  * @returns {boolean} false for null/garbage/idle/champ-select.
  */
 function isLiveGame(state) {
   if (!state || typeof state !== "object") return false;
-  if (GAME_MODE_KEYS.indexOf(state.mode_key) === -1) return false;
-  return _isNonEmptyObject(state.liveclient);
+  if (GAME_MODE_KEYS.indexOf(state.mode_key) !== -1
+      && _isNonEmptyObject(state.liveclient)) return true;
+  // No :2999 feed (TFT, or a live game whose mode RC has not resolved).
+  return FEED_MODE_KEYS.indexOf(state.mode_key) === -1 && _lcuInProgress(state);
 }
 
 /**
@@ -65,6 +87,6 @@ function directivesAllowed(state) {
 // Dual export, mirroring web/js/lib/overlay_priority.js: ES module for the
 // browser, CommonJS for the node-run test. The browser never sees `module`.
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { isLiveGame, directivesAllowed, GAME_MODE_KEYS };
+  module.exports = { isLiveGame, directivesAllowed, GAME_MODE_KEYS, FEED_MODE_KEYS };
 }
-export { isLiveGame, directivesAllowed, GAME_MODE_KEYS };
+export { isLiveGame, directivesAllowed, GAME_MODE_KEYS, FEED_MODE_KEYS };
