@@ -2,7 +2,7 @@
 
 `LcuPregame.get_gameflow_phase` returned the string `"None"` from all
 three of its bail-out paths, and `"None"` is a REAL phase:
-`/lol-gameflow/v1/phase` serializes the client's no-flow state (sitting
+`/lol-gameflow/v1/gameflow-phase` serializes the client's no-flow state (sitting
 at the home screen) to exactly that string, which is why the method's own
 docstring listed it first among the values it returns.
 
@@ -224,9 +224,20 @@ def test_quoted_phase_is_unwrapped():
 
 
 def test_request_is_issued_against_the_gameflow_endpoint():
+    """QA D5 (s134): /lol-gameflow/v1/phase answers 404 "Invalid URI
+    format" on the live client; gameflow-phase is the measured route."""
     pg = _Pregame("Lobby")
     pg.get_gameflow_phase()
-    assert pg.calls == [("GET", "/lol-gameflow/v1/phase")]
+    assert pg.calls == [("GET", "/lol-gameflow/v1/gameflow-phase")]
+
+
+def test_raw_fetch_targets_the_gameflow_phase_route():
+    pg = _Pregame(None)
+    with _urlopen_returning(b'"Lobby"') as fake:
+        assert pg.get_gameflow_phase() == "Lobby"
+    req = fake.call_args.args[0]
+    assert req.full_url.endswith("/lol-gameflow/v1/gameflow-phase")
+    assert req.get_method() == "GET"
 
 
 # -- Raw-fetch fallback --------------------------------------------------------

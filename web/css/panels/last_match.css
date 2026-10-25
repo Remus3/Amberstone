@@ -30,6 +30,134 @@
   padding: 14px 18px;
 }
 
+/* RM-616 / s134 QA D4: TFT Post Game Review card (#lm-tft, rendered by
+ * last_match.js _renderTftLastMatch). The class display rules above would
+ * beat the UA [hidden] rule, so the toggle between #lm-tft and #lm-body is
+ * made explicit here. Tokens only; every font-size sits on the type scale. */
+#view-last-match .lm-body[hidden],
+#view-last-match .lm-tft[hidden] {
+  display: none;
+}
+.lm-tft {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 18px;
+}
+.lm-tft-hero {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--panel-radius-sm);
+}
+.lm-tft-hero[data-top="1"] { border-left-color: var(--good); }
+.lm-tft-hero[data-top="0"] { border-left-color: var(--bad); }
+.lm-tft-place {
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  color: var(--text);
+}
+.lm-tft-sub {
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+}
+.lm-tft-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-2);
+}
+.lm-tft-fact {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2);
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--panel-radius-sm);
+}
+.lm-tft-fact-label,
+.lm-tft-section h3 {
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.lm-tft-fact-value {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--text);
+}
+.lm-tft-section h3 {
+  margin: 0 0 var(--space-2);
+  font-weight: 600;
+}
+.lm-tft-board,
+.lm-tft-traits,
+.lm-tft-lobby {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.lm-tft-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-2);
+}
+.lm-tft-unit {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--panel-radius-sm);
+}
+.lm-tft-unit-name {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text);
+}
+.lm-tft-unit-meta,
+.lm-tft-unit-items,
+.lm-tft-lobby li {
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+}
+.lm-tft-traits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+.lm-tft-trait {
+  font-size: var(--fs-xs);
+  color: var(--text);
+  padding: 2px var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--panel-radius-sm);
+}
+.lm-tft-trait[data-active="1"] { border-color: var(--accent); }
+.lm-tft-trait[data-active="0"] { color: var(--text-faint); }
+.lm-tft-lobby {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.lm-tft-lobby li[data-local="1"] {
+  color: var(--text);
+  font-weight: 600;
+}
+.lm-tft-note {
+  margin: 0;
+  font-size: var(--fs-xs);
+  font-style: italic;
+  color: var(--text-faint);
+}
+
 /* R30 page-3 design review: autopsy takeaway headline. The single most
  * actionable quick_review signal, lifted above the hero so the PGR answers
  * "what do I change next game?" at a glance instead of burying it in the

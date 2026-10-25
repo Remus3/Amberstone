@@ -31,6 +31,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from core import raw_documents as _raw_docs
+from tft import tft_placement as _tft_placement
 
 _log = logging.getLogger("rc.postgame")
 
@@ -47,6 +48,14 @@ _DB_PATH = _ROOT / "data" / "postgame_stats.db"
 # Named so the pin-test asserts against a constant and a future path edit has
 # to consciously break the test rather than silently rot.
 _TIMELINE_PATH = "/lol-match-history/v1/game-timelines/{game_id}"
+# D5 (s134 post-match QA, re-measured by a passive GET): the former
+# "/lol-gameflow/v1/phase" answers 404 "Invalid URI format", so the EOG poll
+# never saw EndOfGame and every capture fell through to the history fallback.
+# The live route is gameflow-phase (a bare JSON string).
+_GAMEFLOW_PHASE_PATH = "/lol-gameflow/v1/gameflow-phase"
+_GAMEFLOW_SESSION_PATH = "/lol-gameflow/v1/session"
+# Exact post-game phases (the TFT EOG document is served in both).
+_POSTGAME_PHASES = ("PreEndOfGame", "EndOfGame")
 _DDRAGON_ITEMS = _ROOT / "data" / "meta" / "ddragon_items.json"
 _DDRAGON_RUNES = _ROOT / "data" / "meta" / "ddragon_runes.json"
 
@@ -707,6 +716,17 @@ class PostgameCollector:
     _POLL_INTERVAL  = 3.0
     # Short delay after EOG phase detected before fetching (client needs moment to populate)
     _FETCH_DELAY    = 4.0
+    # RM-616: the trigger wait doubles as the idle tick that watches the LCU
+    # for a TFT post-game on its own. The standalone TFT client gives RC no
+    # Live Client feed (s134 QA D1), so the lifecycle game-end trigger may
+    # never fire for TFT, and tft-eog-stats 404s once the client is back in
+    # Lobby. One tiny gameflow-phase GET per tick outside post-game.
+    _IDLE_WAIT_S    = 5.0
+    # TFT match-history backfill: games per read, retry cadence while an
+    # EOG-captured game still lacks its history record, and how long to try.
+    _TFT_HISTORY_COUNT    = 5
+    _TFT_HISTORY_RETRY_S  = 60.0
+    _TFT_HISTORY_WINDOW_S = 900.0
 
     def __init__(self, lcu_client):
         self._lcu   = lcu_client
@@ -777,11 +797,12 @@ class PostgameCollector:
     def _run(self) -> None:
         """Background loop - waits for trigger, then captures EOG data."""
         while not self._stop.is_set():
-            # Wait for a game-end trigger
-            triggered = self._trigger.wait(timeout=30.0)
+            # Wait for a game-end trigger; a timeout is the RM-616 idle tick.
+            triggered = self._trigger.wait(timeout=self._IDLE_WAIT_S)
             if self._stop.is_set():
                 break
             if not triggered:
+                self._idle_tick_guarded()
                 continue
             self._trigger.clear()
             # Lane 8 deep audit 2026-08-03: this call was UNGUARDED while the
@@ -804,10 +825,14 @@ class PostgameCollector:
         EOG-poll/HTTP burst in asyncio.to_thread so the AppLoop never
         blocks on the embedded time.sleep + synchronous LCU calls."""
         while not self._stop.is_set():
-            triggered = await asyncio.to_thread(self._trigger.wait, 30.0)
+            triggered = await asyncio.to_thread(self._trigger.wait, self._IDLE_WAIT_S)
             if self._stop.is_set():
                 break
             if not triggered:
+                try:
+                    await asyncio.to_thread(self._idle_tick_guarded)
+                except asyncio.CancelledError:
+                    return
                 continue
             self._trigger.clear()
             try:
@@ -823,32 +848,189 @@ class PostgameCollector:
         _log.info("PostgameCollector: waiting for EndOfGame phase (mode=%s)", game_mode)
         deadline = time.time() + self._EOG_TIMEOUT_S
         captured = False
+        seen_postgame = False
         while time.time() < deadline and not self._stop.is_set():
             phase = self._get_gameflow_phase()
+            # Substring on purpose: PreEndOfGame counts (the TFT document is
+            # served there, measured s134). Until D5 this never matched at all.
             if phase and "EndOfGame" in phase:
-                _log.info("PostgameCollector: EndOfGame phase detected, waiting %ss then fetching", self._FETCH_DELAY)
-                time.sleep(self._FETCH_DELAY)
-                captured = self._capture(game_mode)
-                break
+                if not seen_postgame:
+                    seen_postgame = True
+                    _log.info("PostgameCollector: %s phase detected, waiting %ss then fetching",
+                              phase, self._FETCH_DELAY)
+                    time.sleep(self._FETCH_DELAY)
+                # EOG only, retried while post-game: a document that is not
+                # ready on the first read must not hand the game to a history
+                # fallback that may still list the PREVIOUS game first.
+                captured = self._capture_from_eog(game_mode)
+                if captured:
+                    break
             time.sleep(self._POLL_INTERVAL)
         if not captured:
-            _log.info("PostgameCollector: EOG phase not detected, trying match history fallback")
-            self._capture_via_history(game_mode)
+            _log.info("PostgameCollector: no EOG document by the deadline (post-game seen: %s), "
+                      "trying match history fallback", seen_postgame)
+            self._capture_history_fallback(game_mode)
 
     def _capture(self, game_mode: str) -> bool:
         """Try all EOG endpoints in order. Returns True if something was saved."""
-        eog = self._fetch_eog_stats_block()
-        if eog:
-            self._publish_game_end_pin(eog, mode_hint=game_mode)
-            self._attach_moment_marks(eog)
-            _save_eog(eog, game_mode, _ITEM_MAP, _RUNE_MAP)
-            _save_raw_document(eog.get("gameId"), "eog", eog)
-            # Best-effort: try to get item timeline from match history
-            self._try_fetch_timeline(str(eog.get("gameId") or ""), game_mode)
+        if self._capture_from_eog(game_mode):
             return True
-
         # Fallback: try match history
+        return self._capture_history_fallback(game_mode)
+
+    def _capture_from_eog(self, game_mode: str) -> bool:
+        """The EOG half of _capture: True when an EOG document was saved."""
+        if _norm_mode(str(game_mode or "")) == "TFT":
+            return self._capture_tft_eog()
+        eog = self._fetch_eog_stats_block()
+        if not eog:
+            return False
+        self._publish_game_end_pin(eog, mode_hint=game_mode)
+        self._attach_moment_marks(eog)
+        _save_eog(eog, game_mode, _ITEM_MAP, _RUNE_MAP)
+        _save_raw_document(eog.get("gameId"), "eog", eog)
+        # Best-effort: try to get item timeline from match history
+        self._try_fetch_timeline(str(eog.get("gameId") or ""), game_mode)
+        return True
+
+    def _capture_history_fallback(self, game_mode: str) -> bool:
+        """The match-history half of _capture, product-aware (RM-616): the
+        LoL product route for LoL modes, the TFT product route for TFT."""
+        if _norm_mode(str(game_mode or "")) == "TFT":
+            return self._tft_history_backfill() > 0
         return self._capture_via_history(game_mode)
+
+    # -- RM-616: TFT post-game ------------------------------------------------
+
+    def _tft_state(self) -> dict:
+        """Per-collector TFT bookkeeping, created lazily so a collector built
+        without __init__ (the test idiom) works too."""
+        st = self.__dict__.get("_tft")
+        if st is None:
+            st = {"backfilled": False, "awaiting": {}, "history_next_at": 0.0,
+                  "idle_error_logged": False}
+            self.__dict__["_tft"] = st
+        return st
+
+    def _capture_tft_eog(self, session=None, require_session: bool = False) -> bool:
+        """Fast path: read /lol-end-of-game/v1/tft-eog-stats, check it belongs
+        to the gameflow session's game, store the sanitised record. True when
+        the game's EOG record is (now) stored."""
+        doc = self._lcu_get(_tft_placement.EOG_PATH)
+        rec = _tft_placement.parse_eog(doc)
+        if rec is None:
+            _log.debug("postgame: TFT EOG document unavailable")
+            return False
+        gid = rec["game_id"]
+        if session is None:
+            session = self._lcu_get(_GAMEFLOW_SESSION_PATH)
+        sid = _tft_placement.session_game_id(session)
+        if sid and sid != gid:
+            _log.debug("postgame: TFT EOG document is game %s, session is %s - "
+                       "not ready yet", gid, sid)
+            return False
+        if not sid and require_session:
+            return False
+        try:
+            if _tft_placement.persist(rec):
+                _save_raw_document(gid, "eog", doc)
+                _log.info("postgame: TFT game %s placement %s stored from EOG",
+                          gid, rec.get("local_placement"))
+        except Exception as exc:  # noqa: BLE001 - one bad write costs one record
+            _log.warning("postgame: TFT EOG record for game %s not stored: %s", gid, exc)
+            return False
+        st = self._tft_state()
+        if not _tft_placement.has_record(gid, _tft_placement.SOURCE_HISTORY):
+            st["awaiting"][gid] = time.time() + self._TFT_HISTORY_WINDOW_S
+            st["history_next_at"] = 0.0
+        return True
+
+    def _tft_history_backfill(self, count: Optional[int] = None) -> int:
+        """Durable path: read the TFT match-history route (served in any
+        phase) and store every game not yet held. Returns how many new
+        history records landed."""
+        st = self._tft_state()
+        summoner = self._lcu_get("/lol-summoner/v1/current-summoner")
+        puuid = summoner.get("puuid") if isinstance(summoner, dict) else None
+        if not isinstance(puuid, str) or not puuid:
+            return 0
+        doc = self._lcu_get(_tft_placement.history_path(
+            puuid, count or self._TFT_HISTORY_COUNT))
+        raw_by_id = {}
+        games = doc.get("games") if isinstance(doc, dict) else None
+        for g in games if isinstance(games, list) else []:
+            j = g.get("json") if isinstance(g, dict) else None
+            if isinstance(j, dict) and j.get("game_id"):
+                raw_by_id[str(j.get("game_id"))] = g
+        new = 0
+        for rec in _tft_placement.parse_history(doc, puuid):
+            gid = rec["game_id"]
+            try:
+                if _tft_placement.persist(rec):
+                    new += 1
+                    raw = raw_by_id.get(str(gid))
+                    if raw is not None:
+                        _save_raw_document(gid, "match", raw)
+            except Exception as exc:  # noqa: BLE001
+                _log.warning("postgame: TFT history record for game %s not stored: %s",
+                             gid, exc)
+                continue
+            st["awaiting"].pop(gid, None)
+        if new:
+            _log.info("postgame: TFT match history stored %d new game(s)", new)
+        return new
+
+    def _idle_tick(self) -> None:
+        """One RM-616 idle check. Post-game TFT: the EOG fast path, matched
+        on the gameflow session. Elsewhere: one history backfill per process,
+        then only while an EOG-captured game still lacks its history record."""
+        phase = self._get_gameflow_phase()
+        if not phase:
+            return                                  # LCU down / no client
+        st = self._tft_state()
+        if phase in _POSTGAME_PHASES:
+            # One decision per post-game screen: once the game is known to be
+            # non-TFT or its EOG record is stored, stop re-reading the session.
+            if st.get("postgame_done"):
+                return
+            session = self._lcu_get(_GAMEFLOW_SESSION_PATH)
+            if not isinstance(session, dict):
+                return
+            if not _tft_placement.session_is_tft(session):
+                st["postgame_done"] = True
+                return
+            sid = _tft_placement.session_game_id(session)
+            if not sid:
+                return
+            if (_tft_placement.has_record(sid, _tft_placement.SOURCE_EOG)
+                    or self._capture_tft_eog(session=session, require_session=True)):
+                st["postgame_done"] = True
+            return
+        st["postgame_done"] = False
+        now = time.time()
+        for gid, until in list(st["awaiting"].items()):
+            if now > until:
+                st["awaiting"].pop(gid, None)
+                _log.info("postgame: TFT game %s never reached match history in %ds",
+                          gid, int(self._TFT_HISTORY_WINDOW_S))
+        due = (not st["backfilled"]) or (st["awaiting"] and now >= st["history_next_at"])
+        if due:
+            st["backfilled"] = True
+            st["history_next_at"] = now + self._TFT_HISTORY_RETRY_S
+            self._tft_history_backfill()
+
+    def _idle_tick_guarded(self) -> None:
+        """The idle tick must never kill the collector loop. The first failure
+        logs at warning, later ones at debug (the tick runs every few seconds)."""
+        try:
+            self._idle_tick()
+        except Exception as exc:  # noqa: BLE001
+            st = self._tft_state()
+            if not st.get("idle_error_logged"):
+                st["idle_error_logged"] = True
+                _log.warning("postgame: TFT idle tick failed: %s", exc)
+            else:
+                _log.debug("postgame: TFT idle tick failed: %s", exc)
 
     def _publish_game_end_pin(self, eog: dict, summoner=None,
                               mode_hint: str = "") -> None:
@@ -1175,7 +1357,9 @@ class PostgameCollector:
             return (0, None)
 
     def _get_gameflow_phase(self) -> str:
-        result = self._lcu_get("/lol-gameflow/v1/phase")
+        """The gameflow phase string, or "" when unreadable. D5: the route
+        was "/lol-gameflow/v1/phase", which 404s on the live client."""
+        result = self._lcu_get(_GAMEFLOW_PHASE_PATH)
         if isinstance(result, str):
             return result
         return ""

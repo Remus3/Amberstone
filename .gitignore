@@ -107,6 +107,9 @@ data/macro_response_shadow.jsonl
 # anvil + future writers; supersedes the individual *_shadow.jsonl lines above)
 data/*_shadow.jsonl
 data/placement_heatmap.json
+# RM-616 append-only TFT post-game store (tft/tft_placement.py): one file per
+# (gameId, source); runtime data, never tracked.
+data/tft_matches/
 data/tft_live_data.json
 data/rewind_catchup.state.json
 data/coaching/death_patterns.json

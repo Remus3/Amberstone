@@ -685,7 +685,17 @@ _WEB = _REPO_ROOT / "web"
 # exactly web/js/panels/active_match.js back to its HEAD blob reproduces the
 # superseded 2f742017... value EXACTLY. That one path is the whole change. No
 # glyph change.
-_LIVE_HALF_DIGEST = "94b87cba596b82e3171c4708769f69f25908b59206825ef4b572005708899bfe"
+# superseded by the S134 post-match re-capture below: "94b87cba596b82e3171c4708769f69f25908b59206825ef4b572005708899bfe"
+#
+# RE-CAPTURED 2026-10-25 at S134 post-match (RM-616 / QA D4: the TFT Post
+# Game Review card - the #lm-tft mount, last_match.js _renderTftLastMatch and
+# its .lm-tft* styles). Ordinary case, no tokeniser change. ATTRIBUTED BY
+# SUBSTITUTION against 9dab16aeb: swapping exactly web/index.html,
+# web/js/panels/last_match.js and web/css/panels/last_match.css back to their
+# HEAD blobs reproduces the superseded 94b87cba... value EXACTLY. Those three
+# paths are the whole change. No glyph change. Parallel S134 slices touching
+# web/ race on this pin: the merger recomputes it over the merged tree.
+_LIVE_HALF_DIGEST = "55397e313853b960a6d3c3168e500790d74d75d18a1893f18139cddf0ec0a530"
 
 
 def _web_sources() -> list[Path]:

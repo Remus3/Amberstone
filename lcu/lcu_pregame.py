@@ -93,10 +93,14 @@ def _as_int(value) -> int:
         return 0
 
 
+# The live gameflow phase route (QA D5, s134: the former /phase path 404s).
+_GAMEFLOW_PHASE_PATH = "/lol-gameflow/v1/gameflow-phase"
+
+
 def _phase_or_none(raw: str) -> Optional[str]:
     """Unwrap an LCU gameflow-phase body, or None when it holds no phase.
 
-    `/lol-gameflow/v1/phase` answers a bare JSON string, so the body
+    `/lol-gameflow/v1/gameflow-phase` answers a bare JSON string, so the body
     arrives quoted (`"Lobby"`) on some client versions and unquoted on
     others. An EMPTY body is not a phase name - reporting it as one
     would hand a caller a value that claims to be a live read (RM-347).
@@ -329,7 +333,10 @@ class LcuPregame:
     def get_gameflow_phase(self) -> Optional[str]:
         """
         Return the current gameflow phase string, or None if it could not
-        be READ. Handles LCU versions where /phase returns a raw string.
+        be READ. Handles LCU versions where gameflow-phase returns a raw
+        string. The route is /lol-gameflow/v1/gameflow-phase: the former
+        /lol-gameflow/v1/phase answers 404 "Invalid URI format" on the live
+        client (measured s134, QA D5), so this method could only fail.
 
         Returns: 'Lobby', 'ChampSelect', 'InProgress', 'EndOfGame', etc.,
         and also the literal string 'None' - which is a REAL phase, the
@@ -356,7 +363,7 @@ class LcuPregame:
         A polling caller can log at its own cadence.
         """
         try:
-            result = self._request("GET", "/lol-gameflow/v1/phase")
+            result = self._request("GET", _GAMEFLOW_PHASE_PATH)
             if isinstance(result, str):
                 return _phase_or_none(result)
             # Some LCU versions return a string-as-JSON
@@ -367,7 +374,7 @@ class LcuPregame:
                     return None
                 import ssl as _ssl
                 from core.game_host import GAME_HOST
-                url = f"https://{GAME_HOST}:{self._port}/lol-gameflow/v1/phase"
+                url = f"https://{GAME_HOST}:{self._port}{_GAMEFLOW_PHASE_PATH}"
                 req = urllib.request.Request(
                     url,
                     headers={"Authorization": f"Basic {self._auth}",

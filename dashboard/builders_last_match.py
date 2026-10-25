@@ -462,6 +462,65 @@ def _clamp_baseline(baseline) -> int:
     return max(5, min(50, baseline))
 
 
+def _latest_tft_record() -> dict | None:
+    """Newest finished TFT game in the RM-616 store (tft/tft_placement.py),
+    merged across its EOG and match-history records, or None. Fail-soft: a
+    broken store must never cost the Post Game Review its LoL path."""
+    try:
+        from tft import tft_placement
+        return tft_placement.latest()
+    except Exception as exc:  # noqa: BLE001
+        _log.warning("_build_last_match: TFT store unreadable: %s", exc)
+        return None
+
+
+def _tft_unit_summary(u: dict) -> dict:
+    return {"name": u.get("name") or "", "star": u.get("star"),
+            "cost": u.get("cost")}
+
+
+def _build_tft_last_match(rec: dict) -> dict:
+    """Post Game Review payload for a TFT game (s134 QA D4).
+
+    Placement, final board, traits and augments come from the store record.
+    The client records no augments and no HP curve (measured s134, both LCU
+    routes), so both carry an explicit "recorded" flag instead of a silent
+    empty list - the panel says "not recorded", never "none taken"."""
+    players = rec.get("players") or []
+    local = next((p for p in players if p.get("is_local")), None) or {}
+    match = {
+        "mode":              "TFT",
+        "id":                None,
+        "game_id":           rec.get("game_id"),
+        "timestamp":         rec.get("ended_at_effective") or "",
+        "sources":           rec.get("sources") or [],
+        "duration_s":        int(rec.get("game_length_s") or 0),
+        "queue_id":          rec.get("queue_id"),
+        "queue_type":        rec.get("queue_type") or "",
+        "set_core_name":     rec.get("set_core_name") or "",
+        "set_number":        rec.get("set_number"),
+        "placement":         rec.get("local_placement"),
+        "lobby_size":        int(rec.get("lobby_size") or len(players)),
+        "hp_final":          rec.get("local_hp"),
+        "level":             local.get("level"),
+        "gold_left":         local.get("gold_left"),
+        "last_round":        local.get("last_round"),
+        "board":             local.get("board") or [],
+        "traits":            local.get("traits") or [],
+        "augments":          local.get("augments") or [],
+        "augments_recorded": bool(rec.get("augments_recorded")),
+        "hp_curve":          [],
+        "hp_curve_recorded": False,
+        "lobby": [{"placement": p.get("placement"),
+                   "is_local":  bool(p.get("is_local")),
+                   "level":     p.get("level"),
+                   "units":     [_tft_unit_summary(u) for u in (p.get("board") or [])]}
+                  for p in players],
+    }
+    return {"found": True, "kind": "tft", "match": match, "history_count": 0,
+            "quick_review": {"right": [], "wrong_team": [], "my_chronic": []}}
+
+
 def _build_last_match(baseline: int = 20, match_ts: str | None = None) -> dict:
     """Post Game Review payload for the Last Match page.
 
@@ -471,7 +530,9 @@ def _build_last_match(baseline: int = 20, match_ts: str | None = None) -> dict:
     that path.
 
     `match_ts` (HIST2): when None (the live default) the newest non-TFT
-    row is returned - byte-identical to pre-HIST2 behavior. When set to a
+    row is returned - unless the RM-616 TFT store holds a game that ended
+    later, which is then returned as a kind "tft" payload
+    (_build_tft_last_match; s134 QA D4). When set to a
     "YYYY-MM-DD HH:MM:SS" timestamp, the row whose timestamp matches
     EXACTLY is returned instead, so a History / Session match-row click
     can open that specific match's detached historical PGR. An unknown ts
@@ -496,9 +557,16 @@ def _build_last_match(baseline: int = 20, match_ts: str | None = None) -> dict:
     baseline = _clamp_baseline(baseline)
     match_ts = (str(match_ts).strip() or None) if match_ts is not None else None
     out: dict = {"found": False, "match": None, "history_count": 0}
+    # s134 QA D4: the live path serves the newest TFT game from the RM-616
+    # store when it ended after the newest non-TFT row. match_history.db TFT
+    # rating rows (estimated placement) stay excluded; the historical
+    # match_ts path never serves TFT.
+    tft_rec = _latest_tft_record() if match_ts is None else None
     db_path = _APP_DIR / "data" / "match_history.db"
     conn = _ro_conn(db_path)
     if conn is None:
+        if tft_rec is not None:
+            return _build_tft_last_match(tft_rec)
         out["error"] = "match_history.db missing"
         return out
     try:
@@ -520,6 +588,11 @@ def _build_last_match(baseline: int = 20, match_ts: str | None = None) -> dict:
                 "ORDER BY timestamp DESC LIMIT 1"
             )
         latest = cur.fetchone()
+        # Both stamps are local "YYYY-MM-DD HH:MM:SS", so they order as text.
+        if tft_rec is not None and (
+                not latest
+                or str(tft_rec.get("ended_at_effective") or "") > str(latest[1] or "")):
+            return _build_tft_last_match(tft_rec)
         if not latest:
             return out
 
