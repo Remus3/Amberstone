@@ -364,6 +364,17 @@ def test_export_refusals_are_clean(env):
     assert not (env / "escape.json").exists()
 
 
+def test_the_default_store_and_export_paths_are_redirected_out_of_the_tree():
+    """No `env` fixture here on purpose: tests/conftest.py _PROD_PATH_GLOBALS
+    must move the call-time defaults (None = the live data/tft/ store and
+    exports) out of the repo for every test, or a route test that forgets
+    `env` reads the live store and writes the live export dir. Resolved
+    through the route's own helpers, so a deleted conftest row (None again)
+    fails here instead of passing as 'not a repo path'."""
+    for resolved in (rt._exports_dir(), rt._rounds_db_path()):
+        assert not resolved.resolve().is_relative_to(REPO), resolved
+
+
 def test_a_scrub_refusal_is_a_fixed_422_derived_from_no_exception(env, monkeypatch, caplog):
     """RM-835 rule: no :8888 reply is derived from an except-bound exception.
     A scrub refusal replies a FIXED 422 (two different violation lists give

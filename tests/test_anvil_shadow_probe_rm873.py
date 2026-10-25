@@ -42,12 +42,18 @@ def _write_rows(path: Path, rows: list[dict]) -> Path:
 
 def test_default_path_is_the_writers_shadow_path():
     # The probe must read the file the live writer appends to, not a copy.
-    # tests/conftest.py redirects anvil_shadow.SHADOW_PATH into tmp for the
-    # suite (RM-406), so pin the writer's SOURCE default, not the attribute.
+    # tests/conftest.py redirects BOTH SHADOW_PATH attributes into tmp for
+    # the suite (RM-406; the probe joined _SHADOW_MODULES in s135), so pin
+    # each module's SOURCE default, not the attribute.
     src = Path(anvil_shadow.__file__).read_text(encoding="utf-8")
     assert 'SHADOW_PATH: Path = _APP_DIR / "data" / "anvil_shadow.jsonl"' in src
     assert anvil_shadow._APP_DIR.resolve() == _REPO
-    assert probe.SHADOW_PATH == _REPO / "data" / "anvil_shadow.jsonl"
+    probe_src = Path(probe.__file__).read_text(encoding="utf-8")
+    assert 'SHADOW_PATH: Path = _REPO / "data" / "anvil_shadow.jsonl"' in probe_src
+    assert probe._REPO.resolve() == _REPO
+    # ...and the redirect keeps the two on one file name, outside the tree.
+    assert probe.SHADOW_PATH.name == anvil_shadow.SHADOW_PATH.name == "anvil_shadow.jsonl"
+    assert not probe.SHADOW_PATH.resolve().is_relative_to(_REPO)
 
 
 def test_absent_file_prints_the_clean_fail_line(tmp_path):
