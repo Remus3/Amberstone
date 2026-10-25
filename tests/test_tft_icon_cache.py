@@ -198,6 +198,9 @@ def test_running_set_reads_the_default_set_core_name():
 
 def test_queue_6110_runs_set_17_whatever_the_default_set_says():
     # LCU inventory 2026-10-25: queue 6110 is the "Set 17 (Normal)" revival.
+    # One table: tft/tft_set.py QUEUE_SETS (LT-01), aliased, never copied.
+    from tft import tft_set
+    assert ic.QUEUE_SET is tft_set.QUEUE_SETS
     assert ic.QUEUE_SET[6110] == 17
     assert ic.running_set(TFTSETS, queue_id=6110) == 17
     assert ic.running_set(None, queue_id=6110) == 17
