@@ -12,7 +12,8 @@
 // to the header pill in the first place; the *recommendation* is a
 // distinct, augment-select-scoped signal, not the owned-glance).
 //
-// Reads the coach payload `p` fields the arena coach stamps:
+// Reads the coach payload `p` fields the arena coach stamps (and, since
+// RM-860, the ARAM coach in a Mayhem game - KIWI routes to the ARAM coach):
 //   p.aug_reco          [{id,name,rarity,score,conf,n_own,ext_wr,own_wr,syn}]
 //   p.aug_reco_top      name of the #1 pick
 //   p.aug_reco_conf     blend weight = how much own-history is trusted
@@ -59,6 +60,15 @@ function _hide() {
   if (!AR.block.hidden) AR.block.hidden = true;
   AR.block.classList.remove("is-active");
   _lastSig = "";
+}
+
+// Rarity -> the CSS tier class (.ar-rar.silver / .gold / .prismatic). The
+// coaches pass the augment meta table's rarity through as-is, and that table
+// carries CommunityDragon tokens (kSilver / kGold / kPrismatic), so the raw
+// value lower-cased to "kgold" and every real pip fell back to grey (RM-860
+// UI audit). Plain tokens pass through unchanged.
+function _rarityClass(v) {
+  return String(v || "").toLowerCase().replace(/^k(silver|gold|prismatic)$/, "$1");
 }
 
 function _pct(v) {
@@ -114,7 +124,7 @@ export function renderAugmentReco(p) {
   AR.list.innerHTML = reco.slice(0, 5).map((r, i) => {
     const rk   = i + 1;
     const name = _esc(r.name || String(r.id || "?"));
-    const rar  = _esc((r.rarity || "").toLowerCase());
+    const rar  = _esc(_rarityClass(r.rarity));
     const own  = _pct(r.own_wr);
     const exv  = (r.ext_wr == null) ? "-" : _pct(r.ext_wr);
     const synV = anySyn ? _syn(r.syn) : "";
