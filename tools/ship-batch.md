@@ -32,13 +32,28 @@ to check in. ASCII only, no em/en dashes or smart quotes in any authored byte.
   here every batch and at least every 3-4 weeks; it is not a poller and has no
   scheduled task: `python tools/ds_feed_watch.py`. It diffs the upstream
   changelog against the tracked high-water date in `tools/ds_feed_watch.json`,
-  HEADs every chunk URL in the current manifest's data-block list, and hashes
-  each live chunk body (`ds_feed_index.body_md5`, raw bytes). Act on it:
-  new changelog entries = read them, then `--ack YYYY-MM-DD`; a MOVED or
-  UNREACHABLE block = the extractor's numbers may be stale, so scope a
-  re-extract into this batch. When the batch re-extracts, record the fresh
-  hashes beside the URLs with `--record` and then
-  `python tools/ds_feed_index.py --write` (the manifest is an indexed feed).
+  HEADs every chunk URL in the current manifest's data-block list, hashes
+  each live chunk body (`ds_feed_index.body_md5`, raw bytes), and (RM-839)
+  walks the live build's chunk graph from the upstream root, because chunk
+  names are content hashes: a rebuild publishes NEW names while the old URLs
+  keep answering 200 with the old bytes. It ends with three verdict lines.
+  Act on each:
+  - new changelog entries = read them, then `--ack YYYY-MM-DD`;
+  - `MOVED:` a block whose recorded body hash changed, or a recorded chunk
+    the live build no longer references (printed with the live chunk now
+    carrying the block's anchor) = the extractor's numbers may be stale, so
+    scope a re-extract into this batch (when only this upstream moved, the
+    extractor's single-source refresh flag skips the other fetches; see
+    `tools/daemon_slayer_extract.py --help`);
+  - `UNVERIFIED:` the live walk was capped or partial, so a rebuild can be
+    neither confirmed nor ruled out - re-run it, never read it as "none
+    moved" (a `live build ... status=FAILED` line means the root itself was
+    unreadable: same reading);
+  - `UNREACHABLE:` a recorded data-block URL no longer answers 200 =
+    re-extract, the extractor re-discovers the chunks.
+  When the batch re-extracts, record the fresh hashes beside the URLs with
+  `--record` and then `python tools/ds_feed_index.py --write` (the manifest
+  is an indexed feed).
 - State the batch scope + assumptions explicitly before editing.
 
 ## 1. Implement
