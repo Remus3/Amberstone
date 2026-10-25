@@ -897,7 +897,7 @@ class PostgameCollector:
         """The match-history half of _capture, product-aware (RM-616): the
         LoL product route for LoL modes, the TFT product route for TFT."""
         if _norm_mode(str(game_mode or "")) == "TFT":
-            return self._tft_history_backfill() > 0
+            return bool(self._tft_history_backfill())
         return self._capture_via_history(game_mode)
 
     # -- RM-616: TFT post-game ------------------------------------------------
@@ -931,31 +931,40 @@ class PostgameCollector:
             return False
         if not sid and require_session:
             return False
+        st = self._tft_state()
         try:
             if _tft_placement.persist(rec):
-                _save_raw_document(gid, "eog", doc)
+                # RM-611 retention, scrubbed: no riot id / puuid reaches the db.
+                _save_raw_document(gid, "eog", _tft_placement.scrub_raw(doc))
                 _log.info("postgame: TFT game %s placement %s stored from EOG",
                           gid, rec.get("local_placement"))
         except Exception as exc:  # noqa: BLE001 - one bad write costs one record
-            _log.warning("postgame: TFT EOG record for game %s not stored: %s", gid, exc)
+            # The idle tick retries every few seconds on the post-game screen:
+            # warn once per game, then debug.
+            warned = st.setdefault("write_warned", set())
+            log = _log.debug if gid in warned else _log.warning
+            warned.add(gid)
+            log("postgame: TFT EOG record for game %s not stored: %s", gid, exc)
             return False
-        st = self._tft_state()
         if not _tft_placement.has_record(gid, _tft_placement.SOURCE_HISTORY):
             st["awaiting"][gid] = time.time() + self._TFT_HISTORY_WINDOW_S
             st["history_next_at"] = 0.0
         return True
 
-    def _tft_history_backfill(self, count: Optional[int] = None) -> int:
+    def _tft_history_backfill(self, count: Optional[int] = None) -> Optional[int]:
         """Durable path: read the TFT match-history route (served in any
         phase) and store every game not yet held. Returns how many new
-        history records landed."""
+        history records landed, or None when the route could not be read
+        (no summoner / no client), so a caller can retry."""
         st = self._tft_state()
         summoner = self._lcu_get("/lol-summoner/v1/current-summoner")
         puuid = summoner.get("puuid") if isinstance(summoner, dict) else None
         if not isinstance(puuid, str) or not puuid:
-            return 0
+            return None
         doc = self._lcu_get(_tft_placement.history_path(
             puuid, count or self._TFT_HISTORY_COUNT))
+        if not isinstance(doc, dict):
+            return None
         raw_by_id = {}
         games = doc.get("games") if isinstance(doc, dict) else None
         for g in games if isinstance(games, list) else []:
@@ -970,7 +979,7 @@ class PostgameCollector:
                     new += 1
                     raw = raw_by_id.get(str(gid))
                     if raw is not None:
-                        _save_raw_document(gid, "match", raw)
+                        _save_raw_document(gid, "match", _tft_placement.scrub_raw(raw))
             except Exception as exc:  # noqa: BLE001
                 _log.warning("postgame: TFT history record for game %s not stored: %s",
                              gid, exc)
@@ -1013,11 +1022,13 @@ class PostgameCollector:
                 st["awaiting"].pop(gid, None)
                 _log.info("postgame: TFT game %s never reached match history in %ds",
                           gid, int(self._TFT_HISTORY_WINDOW_S))
-        due = (not st["backfilled"]) or (st["awaiting"] and now >= st["history_next_at"])
+        due = now >= st["history_next_at"] and (not st["backfilled"] or st["awaiting"])
         if due:
-            st["backfilled"] = True
+            # Throttled either way; the one-per-process backfill only counts
+            # as done once the route was actually read.
             st["history_next_at"] = now + self._TFT_HISTORY_RETRY_S
-            self._tft_history_backfill()
+            if self._tft_history_backfill() is not None:
+                st["backfilled"] = True
 
     def _idle_tick_guarded(self) -> None:
         """The idle tick must never kill the collector loop. The first failure

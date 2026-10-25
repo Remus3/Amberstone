@@ -395,6 +395,21 @@ def test_default_store_is_a_gitignored_data_dir():
     assert "data/tft_matches/" in gi
 
 
+def test_scrub_raw_drops_every_identity_and_keeps_the_boards():
+    for doc in (_eog(), _hist()):
+        out = tp.scrub_raw(doc)
+        assert not set(_walk_keys(out)) & set(tp.IDENTITY_KEYS)
+        blob = json.dumps(out)
+        assert "player1" not in blob and LOCAL_PUUID not in blob
+        assert "DA_Draven18" in blob
+    hist = tp.scrub_raw(_hist())
+    assert "participants" not in hist["games"][0]["metadata"]
+    assert len(hist["games"][0]["json"]["participants"]) == 8
+    raw = _eog()
+    tp.scrub_raw(raw)
+    assert raw["players"][0]["puuid"], "the input is not mutated"
+
+
 def test_display_from_id():
     assert tp.display_from_id("DA_18_Yorick") == "Yorick"
     assert tp.display_from_id("DA_Gromp18_AP") == "Gromp"

@@ -160,8 +160,77 @@ def test_tft_capture_retains_the_raw_eog_document(pgc, tmp_path):
     conn = sqlite3.connect(str(tmp_path / "pg.db"))
     try:
         assert rd.kinds_for(conn, str(GID)) == ["eog"]
+        kept = rd.load(conn, str(GID), "eog")
     finally:
         conn.close()
+    # Scrubbed: boards survive, identities do not (the db is local but the
+    # store contract is "nothing identifying", s134 verifier finding).
+    assert kept["players"][0]["boardPieces"][0]["championId"] == "DA_Draven18"
+    _assert_no_identity(kept)
+
+
+def _assert_no_identity(doc):
+    def keys(o):
+        if isinstance(o, dict):
+            for k, v in o.items():
+                yield k
+                yield from keys(v)
+        elif isinstance(o, list):
+            for v in o:
+                yield from keys(v)
+    found = set(keys(doc)) & set(tp.IDENTITY_KEYS)
+    assert not found, found
+    blob = json.dumps(doc)
+    assert "player1" not in blob and LOCAL_PUUID not in blob
+
+
+def test_history_backfill_retains_a_scrubbed_match_document(pgc, tmp_path):
+    import sqlite3
+
+    from core import raw_documents as rd
+    c = _collector(pgc, {"/lol-summoner/v1/current-summoner": {"puuid": LOCAL_PUUID},
+                         _history_route(): HIST_DOC})
+    assert c._tft_history_backfill() == 1
+    conn = sqlite3.connect(str(tmp_path / "pg.db"))
+    try:
+        kept = rd.load(conn, str(GID), "match")
+    finally:
+        conn.close()
+    assert kept["json"]["participants"][0]["units"]
+    assert "participants" not in kept["metadata"]
+    _assert_no_identity(kept)
+
+
+def test_backfill_is_retried_when_the_first_read_fails(pgc):
+    me = {"v": None}
+    c = _collector(pgc, {"/lol-gameflow/v1/gameflow-phase": "Lobby",
+                         "/lol-summoner/v1/current-summoner": lambda: me["v"],
+                         _history_route(): HIST_DOC})
+    c._idle_tick()                    # summoner not readable yet
+    assert c._tft_state()["backfilled"] is False
+    assert tp.has_record(GID) is False
+    me["v"] = {"puuid": LOCAL_PUUID}
+    c._tft_state()["history_next_at"] = 0.0     # the 60 s throttle elapsed
+    c._idle_tick()
+    assert c._tft_state()["backfilled"] is True
+    assert tp.has_record(GID, tp.SOURCE_HISTORY)
+
+
+def test_a_failing_store_write_warns_once_per_game(pgc, monkeypatch, caplog):
+    import logging
+
+    def boom(rec, store_dir=None):
+        raise OSError("disk full")
+    monkeypatch.setattr(tp, "persist", boom)
+    c = _collector(pgc, {"/lol-gameflow/v1/gameflow-phase": "PreEndOfGame",
+                         "/lol-gameflow/v1/session": SESSION_TFT,
+                         tp.EOG_PATH: EOG_DOC})
+    with caplog.at_level(logging.DEBUG, logger="rc.postgame"):
+        for _ in range(3):
+            c._idle_tick()
+    warn = [r for r in caplog.records if r.levelno == logging.WARNING
+            and "not stored" in r.getMessage()]
+    assert len(warn) == 1
 
 
 def test_tft_capture_refuses_a_previous_games_document(pgc):
