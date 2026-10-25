@@ -1225,6 +1225,19 @@ export function renderActiveMatch(payload, ctx) {
       delete _pane.dataset.amFallbackSig;
     }
   }
+  // The non-live branch below returns before the MAP pane, so a TFT
+  // placeholder there would otherwise survive into the next League game's
+  // loading screen. Put back the neutral scaffold text; the next live render
+  // rebuilds the shell (attachedMode null never matches a mode).
+  const _mp = _AM.mapBody();
+  if (_mp && String(_AM_MAP.attachedMode || "").startsWith("fallback:")) {
+    _AM_MAP.attachedMode = null;
+    _mp.innerHTML = "";
+    const _d = document.createElement("div");
+    _d.className = "am-empty";
+    _d.textContent = "Static mode map + ZOI/threat overlay will render here mid-game.";
+    _mp.appendChild(_d);
+  }
 
   // s171.2: freshness gate. The coach payload (state.coach.*) lives in
   // memory across games - when a game ends, the previous game's
