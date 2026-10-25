@@ -21,9 +21,16 @@ generation is dropped, so the bound is (1 + backup_count) * max_bytes):
 Windows refuses to rename a file another process holds open. Both shapes
 therefore treat a refused rename as "keep appending to the oversize file":
 the bound slips until the next attempt, but no record is lost and nothing
-raises into the writer. A refused rotation changes NOTHING on disk: the base
-file is staged aside first (the step a holder refuses), and a later refusal
-rolls every applied rename back, so no backup generation is lost to it.
+raises into the writer. A refused rotation normally changes NOTHING on disk:
+the base file is staged aside first (the step a holder refuses - measured
+2026-10-25 as PermissionError WinError 32, a sharing violation), and a later
+refusal rolls the applied renames back. The roll-back is best effort: a rename
+refused during it leaves that file where the failed step put it - one backup
+slot higher, or a scratch name that recover_orphans() puts back in the chain
+or preserves under a recovered name. Every roll-back rename is no-clobber
+(`_move_no_clobber`, RM-864 a), so a refused step never lets a later one
+overwrite its file: the refusal itself loses nothing, but a file it leaves one
+slot higher is dropped one rotation earlier than it would have been.
 
 CRASH SAFETY. Scratch names are per writer (`<name>.rotating.<pid>.<token>`,
 `<name>.dropping.<pid>.<token>`), so a rotation never renames onto a file a
@@ -119,13 +126,42 @@ def _recovered_name(path: Path, kind: str) -> Path:
         f"{path.name}.{_RECOVERED_LABEL[kind]}.{os.getpid()}.{_token()}")
 
 
+# RM-864 (a). Windows os.rename refuses an existing destination, so a rename
+# there is already no-replace. POSIX os.rename silently replaces one, so the
+# exists() check alone leaves a window in which a file created at `dst` is
+# overwritten: off Windows the move is os.link (which refuses an existing
+# `dst` everywhere) plus an unlink of `src`.
+_NO_REPLACE_BY_LINK = os.name != "nt"
+
+
 def _move_no_clobber(src: Path, dst: Path) -> bool:
-    """Rename `src` to `dst` only if `dst` does not exist. Never overwrites."""
+    """Rename `src` to `dst` only if `dst` does not exist. Never overwrites.
+
+    False means `src` was not moved: `dst` exists, a primitive refused, or
+    (off Windows) the filesystem has no hard links. `src` keeps its bytes and
+    its name - for the recovery callers a unique scratch name no rotation
+    reuses, for the try_rotate roll-back the slot the failed step put it in."""
     if dst.exists():
         return False
+    if not _NO_REPLACE_BY_LINK:
+        try:
+            os.rename(src, dst)  # refuses an existing dst on Windows
+        except OSError:
+            return False
+        return True
     try:
-        os.rename(src, dst)  # refuses an existing dst on Windows
+        os.link(src, dst)  # refuses an existing dst on every platform
     except OSError:
+        return False
+    try:
+        os.unlink(src)
+    except OSError:
+        # Both names would survive, and the next recovery would preserve the
+        # same orphan again. Undo the link; `src` is where it was.
+        try:
+            os.unlink(dst)
+        except OSError:
+            pass
         return False
     return True
 
@@ -180,20 +216,23 @@ def recover_orphans(path: PathLike, backup_count: int = DEFAULT_BACKUP_COUNT) ->
 
 
 def try_rotate(path: PathLike, backup_count: int = DEFAULT_BACKUP_COUNT) -> Optional[OSError]:
-    """Shift `path` -> `path.1` -> ... -> `path.<backup_count>`, all or nothing.
+    """Shift `path` -> `path.1` -> ... -> `path.<backup_count>`, all or
+    nothing as far as the roll-back allows.
 
     Returns None on success (the previous `path.<backup_count>` is dropped),
-    or the OSError that stopped it - in which case every file is where it was.
-    A missing `path` returns FileNotFoundError. Never logs (module docstring).
+    or the OSError that stopped it - in which case every file is back where it
+    was, unless a roll-back rename is refused too (best effort, see the module
+    docstring). A missing `path` returns FileNotFoundError. Never logs.
 
     Order: 0) recover any scratch a crashed rotation left behind; 1) stage the
     base file aside under a per-writer name - the rename a holder refuses,
     tried before anything else is touched; 2) move the oldest backup to a
     per-writer drop name instead of overwriting it; 3) shift the rest up;
-    4) staged -> `.1`. A refusal after step 1 undoes every applied rename in
-    reverse. When step 0 recovered anything, the drop in step 2 is preserved
-    under a recovered name instead of deleted: right after a crash the chain
-    holds more generations than the bound, and none of them is lost to it.
+    4) staged -> `.1`. A refusal after step 1 tries to undo every applied
+    rename in reverse, each no-clobber. When step 0 recovered anything, the
+    drop in step 2 is preserved under a recovered name instead of deleted:
+    right after a crash the chain holds more generations than the bound, and
+    none of them is lost to it.
     """
     _validate_backups(backup_count)
     path = Path(path)
@@ -221,12 +260,10 @@ def try_rotate(path: PathLike, backup_count: int = DEFAULT_BACKUP_COUNT) -> Opti
         os.replace(staged, _backup(path, 1))
     except OSError as exc:
         for src, dst in reversed(applied):
-            try:
-                # rename, not replace: never overwrite a file that appeared at
-                # the original name in the meantime.
-                os.rename(dst, src)
-            except OSError:
-                pass
+            # No-clobber, not replace: never overwrite a file that appeared at
+            # the original name in the meantime, or one a refused earlier step
+            # left in place (a plain rename replaces both off Windows, RM-864).
+            _move_no_clobber(dst, src)
         return exc
     if dropped.exists():
         if recovered:
@@ -241,7 +278,7 @@ def try_rotate(path: PathLike, backup_count: int = DEFAULT_BACKUP_COUNT) -> Opti
 
 def rotate(path: PathLike, backup_count: int = DEFAULT_BACKUP_COUNT) -> bool:
     """True when `path` was rotated; False when it is missing or the rotation
-    was refused (nothing changed - see try_rotate)."""
+    was refused (nothing changed, roll-back permitting - see try_rotate)."""
     return try_rotate(path, backup_count) is None
 
 

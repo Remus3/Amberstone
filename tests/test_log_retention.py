@@ -239,6 +239,32 @@ def test_size_pass_takes_a_large_current_tool_log_before_dated_daily_logs(tmp_pa
     assert all(p.exists() for p in dailies)
 
 
+def test_a_recovered_rotation_orphan_ages_out_like_any_non_daily_log(tmp_path):
+    """RM-864 (b): core/log_rotation preserves a crash orphan under a unique
+    `<name>.recovered-*` name and leaves its cleanup to this module
+    (`_recovered_name` docstring). The names are built by that function, so
+    a rename of the scheme cannot leave this test asserting on a stale
+    spelling: an old one goes in the age pass, a fresh one in the size pass
+    before any dated daily log, though it is the newest file in the dir."""
+    from core import log_rotation
+
+    base = tmp_path / "lcu_agent.log"
+    old = _write(tmp_path / log_rotation._recovered_name(base, "rotating").name,
+                 10, age_days=30)
+    fresh = _write(tmp_path / log_rotation._recovered_name(base, "dropping").name,
+                   600_000, age_days=0.01)
+    daily = _write(tmp_path / "2026-10-24.log", 600_000, age_days=5)
+    assert ".recovered-staged." in old.name
+    assert ".recovered-dropped." in fresh.name
+
+    deleted, freed = log_retention.prune(tmp_path, max_age_days=14, max_total_mb=1)
+
+    assert (deleted, freed) == (2, 600_010)
+    assert not old.exists()
+    assert not fresh.exists()
+    assert daily.exists()
+
+
 def test_size_pass_orders_non_daily_files_oldest_first_among_themselves(tmp_path):
     older_backup = _write(tmp_path / "replay_roster.log.2", 600_000, age_days=6)
     newer_backup = _write(tmp_path / "replay_roster.log.1", 600_000, age_days=3)
