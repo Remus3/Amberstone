@@ -1,12 +1,12 @@
 NEXT SESSION
 ------------
-SESSION: 136
-PUSH HOLD IS ON from this session's start (operator 2026-10-25: "push hold will remain in effect next
-session start"): commit locally; push only when the operator lifts it in chat. The s135 /done's
-one authorized push went out after ASKS 37 was adjudicated (LEDGER 1903-1905).
-s135 landed all s134 work on local main (C1 gated suite green), scrubbed 3 real game ids from the
-unpushed history, ran the N8 / TFT-08 backfills live, merged GH1 (LEDGER 1883-1904; WAKEUP
-2026-10-25c). s134 blocks: docs/handoff-archive/RC-2026-10-25.txt 4-5; prior file: f51cd2f32.
+SESSION: 137
+PUSH HOLD IS ON (operator, s135 + s136): commit locally; push only when the operator lifts it in chat.
+main is 16 commits ahead of origin/main (7f3d9e124, an ancestor) counting this hand-off commit; the
+C1 fix c7e2c0b0c is among them, so CI cannot confirm it until a push. NEVER delete riot.txt from
+origin. s136 (LEDGER 1906-1910; WAKEUP 2026-10-25d) and s135 (LEDGER 1883-1905) are on main; the s135
+push record, fence, procedure lines and status moved VERBATIM to docs/handoff-archive/RC-2026-10-25.txt
+block 6.
 HISTORY REWRITTEN TWICE 2026-10-09 (LEDGER 1699 B, 1701): old SHAs via .git/filter-repo/commit-map*;
 s135 SHAs: docs/_archive/2026-10/s135-id-scrub-commit-map.txt (LEDGER 1899), then
 s135-cred-pragma-commit-map.txt beside it (LEDGER 1904). Fresh clone: scripts/install_hooks.py and
@@ -18,58 +18,73 @@ CPU (s120): glance at CPU, FREE MEMORY and orphaned pytest / python / node trees
 SCRATCH (s127; collided twice again s134): every sub-agent prompt names a UNIQUE scratch subfolder.
 FROZEN: the s135 grant was SESSION-scoped (ASKS 35) - re-ask before any frozen edit.
 
-Next action: `gh run view 40230847617` (the full-suite dispatch on the pushed tip; red = fix forward
-first). In the next TFT game confirm N13 (RC follows YOU, not an opponent), stage / level / gold
-non-empty (D1) and coaching sane, and QA it (ops/runtime/tft_qa/<match>/).
-FIRST: CPU / memory glance; inbox_tick.py --pending (empty at the /done); gh pr list (0);
-git fetch + origin/main == main.
+Next action (operator, 2026-10-25, verbatim intent): "full Q/A on the ow-electron port and having the
+repo be a proper packaged output; not needing others to use claude to try and figure out how to get
+it to connect everything etc." Plus: "I also would like it to be live-updatable ; so that
+essentially I would be running the packaged output, and for updates/changes to local/github
+restarting of the app etc is minimal/not needed. *do not have the app start at boot* local services
+start on app launch." Context: docs/OVERLAY_COMPLIANCE_PLAN.md (PLAN ONLY; its "Electron 33" is
+stale - rc-shell/package.json electron 44.5.1); ROADMAP PKG row + RM-189 gates (Riot dev-portal
+registration, public site + ToS + Privacy Policy, B4-f live-advice ruling). Operator ruling
+2026-10-25 "I want to do what they are doing; not utilize their software as a dependency" = no
+Overwolf data dependency, build in-house (TFT_PROGRAM sec 10; the July 2026 GEP CLOSED call was the
+headless loop's, not the operator's, and mis-cited ADR-006). The ONLOGON tasks (RC-Supervisor,
+RC-LCUAgent / RC-LiveClientRelay / RC-HotkeyListener) were deliberately NOT changed s136 - the
+packaged launcher replaces them. Memory: project_packaged_app_requirements.md.
+FIRST: CPU / memory glance; inbox_tick.py --pending (empty at the /done); gh pr list (0); git fetch
++ origin/main still an ancestor of main.
 
 ====================
-PUSHED (s135 /done, LEDGER 1903-1905)
+SESSION 136 NEW ITEMS (bodies: LEDGER 1907-1910)
 ====================
-- Halted first (LEDGER 1903): the credential scan flagged the fake tok- fixture line added by
-  unpushed 03bdc92f3. ASKS 37 ADJUDICATED (FLEET item 1, LEDGER 1904): the scanner's own line pragma
-  added IN that commit by a range filter-repo (52 commits; 03bdc92f3 -> 4ed279e8a, 7cb2b412d ->
-  7814951c6, 66a468dc8 -> b083af9d3 GH1 merge; GH1 commits kept their SHAs). Reverses if: a ruling
-  that a local edit of unpushed commits needs the operator (restore archive/s135-pre-credpragma-main).
-- Pushed per ops/runtime/gh1/PLAN.txt: `df946b00d...3ad31ec6d main -> main (forced update)` with a
-  lease on df946b00d, all pre-push hooks ran (credential 0 findings, identity, sweep "ARMED WITH A
-  MEASURED ESCAPE RATE ABOVE ZERO", LFS); protection toggled and restored, read back equal to
-  ops/runtime/gh1/protection-before.json (allow_force_pushes false, enforce_admins true). Read back:
-  ls-remote main == local; Pages riot.txt 200 / 37 B / sha256 a2c52fbb...; bot_merge_check clean
-  (range and default); contributors = the operator's login only; s135-gh1 worktree + branch removed.
-  The hand-off commit after it is a plain fast-forward push. NEVER delete riot.txt from origin.
+- T13 PARKED unmerged on branch worktree-agent-a2969c932e74f20d7 (81f83a268 + fcf913467; worktree
+  kept): an id-0 game-end rating (in-game game-id cache lost + vision placement) must not stick in
+  last_tft.json and block the real store rating. Round 1 REFUTED (900 s window let an older game
+  replace a newer id-0 record after early elimination + requeue: store end = lobby end,
+  tft_placement.py:552-554); round 2 REFUTED (the collector's EOG store rating lands ~19 s BEFORE the
+  game-end rating - logs 14:00:22.8 vs 14:00:41.9, 16:12:08.7 vs 16:12:26.6, 17:05:12.0 vs
+  17:05:31.5 - so the id-0 floor anchors on the same game and the later history re-rate is refused
+  at performance_tracker.py:802; a regression on early elimination). Redesign; keep the
+  eog_matches_game "0" != "0" fix idea.
+- TFT-HUD-00..12 (TFT_PROGRAM sec 10), HUD-01 first: OCR is accurate (stage 99-100%, gold 96-99%,
+  level 100%) but values reach /api/state only via the coach file after each Haiku call (gold
+  40-44% exact, 10-34 s lag).
+- T8 LT-02r still needs an L1 shop frame, L10 / L11 and Set 18 pool sizes (L2 / L3 odds PASS).
+- Frozen app/_game_lifecycle.py:73-85 logs "rating saved" ignoring the DB outcome (ASKS 24).
+- lcu/snapshot_shape.py:619 re-requests current-summoner on failure; the summoner id cache is stale
+  after an account switch (resolves to unknown, safe).
+- T9 siblings: streak (tft_state_reader.py:418), augments, partner_hp, MasterYi_AD naming
+  (tft_standalone.py:176). T10 siblings: standalone_in_game accepts a file with no game id;
+  tft/sources/eog_file.py None == None reuse (:382, :460); duplicate id-0 + real row
+  (performance_tracker.py:627-631); unconditional overwrite (:680).
+- Match row 8685 has level / stage 0 (no history store). The coach prompt is only logged under
+  _debug (tft_coach_engine.py:918). Coach slip "LEVEL TO 10" at 17 g. RM-899: a 7 s blank coaching
+  stub after an RC restart.
+- Worktree agent-ad9cd227b367a8606 (s135) kept: it holds a 1484-file icon cache main lacks - keep
+  or move the cache, then remove (branch in s135-worktrees.bundle; the s135 removals' artefacts are in
+  ops/runtime/branch_bundles/s135-wt-preserved/). s136's 9 merged agent worktrees
+  were removed at the /done (branches kept; renders in ops/runtime/branch_bundles/s136-wt-preserved/).
 
 ====================
-SESSION 135 NEW ITEMS
+SESSION 135 ITEMS STILL OPEN (s135 live checks, QA, N9, TFT_PROGRAM lines, RM-904, the Reconnect
+summoner id and 9 of the 10 locked worktrees were DONE s136)
 ====================
-- LIVE CHECKS (next TFT game): N13 + D1 above; QA owed for match 20261025-131926 (no report; it ran
-  on pre-fix code and followed the 3rd-place opponent live); N9 PASSIVE-mode overlay number boxes
-  are mouse-only now (baf8644b9) + the overlay toggle click / drag / Ctrl+Shift+O (OVL).
-- WT: remove the 10 worktrees locked by pid 3104 (the s135 claude.exe) once it has exited:
-  agent-a0a210ff, a143df8c, a200980b, a23478da, a277dd2c, a96407e8, aaf63b71, ab52a7bd, ad9cd227,
-  aeb7d700 (branches in ops/runtime/branch_bundles/s135-worktrees.bundle; unlock, check file
-  equality against main, remove, keep the branches). Preserved artefacts of the 22 removed (and the
-  agent-a5c660 staged copies): ops/runtime/branch_bundles/s135-wt-preserved/.
-- LANES: rotator pid 24260 (s134_lane_driver.py --rotate) still running; confirm each lane rebased onto
-  main via ops/loop/control/lanes/S134_LANDED_<LANE> (7 written s135, full SHAs).
+- LANES: rotator pid 24260 (s134_lane_driver.py --rotate) still running (alive at the s136 /done);
+  confirm each lane rebased onto main via ops/loop/control/lanes/S134_LANDED_<LANE> (7 written s135).
 - TFT recorder pid 6652 (stop ops/runtime/tft_qa/STOP) and LCU listener pid 1724 (LCU_LISTEN_STOP)
-  still running.
-- RM-904 (rate_tft_game ignores the DB write result); RM-905 (RC-ReplayRosterPull exit 1: the new key
-  returns not_found for 10 of 108 roster Riot IDs, replay-list 403 for every account); RM-906 (real
-  ids already in PUBLISHED origin/main history, e.g. core/replay_*.py,
+  still running (alive at the s136 /done).
+- RM-905 (RC-ReplayRosterPull exit 1: the new key returns not_found for 10 of 108 roster Riot IDs,
+  replay-list 403 for every account; last_result=1 again at the s136 start); RM-906 (real ids
+  already in PUBLISHED origin/main history, e.g. core/replay_*.py,
   tests/test_ds_calibration_match_key.py; ASKS 36). Bodies: BACKLOG "Session 135 landing filings".
-- docs/TFT_PROGRAM.md section 9 change-log lines missing for TFT-04 / TFT-08 / TFT-09.
 - TFT-04 follow-ups: the gold-on-streak box is caught only by real-Tesseract tests that CI skips; the
   legacy stage helper misreads 3-6 as 5-6 on a 2x upscale (unpinned); scoreboard HP 10 / 266 misreads
   in the 0.5-0.8 confidence band.
 - TFT-02: switching match A -> B -> A reloads keys and could miss unflushed writes; TFT-07 wires
   tft/sources with local_player_id.
-- lcu/snapshot_shape.py stamps summoner_id only after a mastery fetch and not in Reconnect (a TFT
-  reconnect reads the local player as unknown).
 - N9: the lobby would show 7 "-" chips if TFT ever came via :2999.
-- P0-F follow-ups (s134): tft/tft_coach_engine.py:244 writes "HP: None" into the prompt when HP is
-  unknown; an eliminated player's real HP 0 rendered "-" (check whether N13's _status_hp closed it).
+- P0-F follow-up: an eliminated player's real HP 0 rendered "-" (re-check after s136 T11; "HP:
+  None" is closed, tft_coach_engine.py:405).
 - OPERATIONS datum to add: a whole suite at -n 8 nearly exhausts commit (44.8 / 48.4 GB, 824 MB
   free); use -n 6 + FLEET_SUITE_COMMIT_MARGIN_MB=18432 until RM-737 / RM-755 is measured.
 - FYI: test_routes_tft + the true-audit tests are thread-scoped (RM-801); the export scrub refusal
@@ -96,7 +111,7 @@ engine name "Augur" provisional; one Riot key for League + TFT. The full s134 st
 SECURITY record (rotated console keys; D1 workspace key) moved VERBATIM to archive block 5.
 
 ====================
-CARRIED FROM s133 (not reached s134 / s135; bodies in BACKLOG)
+CARRIED FROM s133 (not reached s134-s136; bodies in BACKLOG)
 ====================
 - RM-880 (c)-(d) RM-815 residue ((b) SHIPPED s135; RM-838 and RM-807 CLOSED s135, LEDGER 1884).
 - Fix RM-817 push-CI shape guard gaps; measure RM-819 d (test_rm740_cg / test_body_read_timeout_rm152
@@ -109,7 +124,7 @@ CARRIED FROM s133 (not reached s134 / s135; bodies in BACKLOG)
   RM-871, RM-876, RM-881 (RM-856 / RM-864 / RM-873 SHIPPED s135); the research lane's `queue-ready`
   index = the ROADMAP "s133 research lane" row.
 - Re-check RM-823 (kit fleet_board version bump; open until MAIN ships a fix). Watch RM-833.
-- Send ONE batched note to MAIN (not a REPLY, so outside the carve-out; not sent s131-s135): RM-831,
+- Send ONE batched note to MAIN (not a REPLY, so outside the carve-out; not sent s131-s136): RM-831,
   RM-778 / RM-798 status, the route single ruling, the s130 board finding (kit v20 --final still
   marks listed rows done, re-read s135), RC's board at a new URL (6eb820a87, INFORMATION), and the
   GH1 outcome (operator-approved range-limited rebuild, s135; a kit range option still helps);
@@ -118,8 +133,7 @@ CARRIED FROM s133 (not reached s134 / s135; bodies in BACKLOG)
 - Decisions: RM-883 (show the deterministic ARAM objective? no Haiku baseline, ever; an Objective
   field grows the Haiku call R78 retires); RM-884 (the deterministic item_extra is a constant "omit",
   so not a Haiku replacement yet).
-- MAIN rulings pending: RM-846 history rewrite for the removed third-party TFT meta (REVIEW delivered
-  1/1; fleet_rewrite.py has no path-removal option); the s133 window-flash FIX note's kit guard.
+- MAIN ruling pending: the s133 window-flash FIX note's kit guard (RM-846 ruled B s136, LEDGER 1906).
 - Live checks queued: G7-17 Arena agreement (tools/arena_shadow_report.py --since <restart>; RM-868 +
   0.70 gate); the ARAM Mayhem augment panel on screen (RM-860; that open_bug memory is code-closed,
   screen-pending); ARAM / Brawl / Nexus Blitz / URF vision fields (RM-869); focus-board Arena layout
@@ -178,7 +192,7 @@ Channel and MAIN:
 - B3 read-back of MAIN 2237: next pane shows the acct2 status line and no [Legion] line.
 - mission_control.py holds the old worktree base until restart; the old lane folder and its junction
   are MAIN's to release.
-Worktrees, branches, refs (s135: 22 worktrees removed; left: the 10 locked, 7 lanes, drain):
+Worktrees, branches, refs (left after s136: agent-ad9cd227 + the T13 agent-a2969c932, 7 lanes, drain):
 - RM-822 PARTIAL (LEDGER 1786): KEEP drain/wave2-tail-backlog (RM-229), worktree-agent-a0a31cf1b05f41e28
   (RM-519), worktree-wf_0815ac54-8f2-4 (RM-239 / RM-242 / RM-297b); WATCH m2-prebuild-56e5572e4 (the
   only ref holding the a25593521 commits that 348d5e3b7 / beff33b88 cite - tag 3a484e425 before
@@ -196,25 +210,26 @@ Rows and decisions:
   (live), RM-754, RM-755, RM-778, RM-787, RM-792, RM-797, RM-798, RM-800, RM-809, RM-816 (APPLY),
   RM-817, RM-819, RM-820..RM-823, RM-826..RM-829, RM-831, RM-833, RM-834, RM-842, RM-843, RM-847,
   RM-848, RM-861, RM-871, RM-876, RM-880 (c)-(d), RM-881, RM-883, RM-884, RM-886, RM-888 (review),
-  RM-890..RM-894, RM-896, RM-899..RM-901, RM-904..RM-906, LT-02r, RM-279, RM-280, RM-368, RM-381,
-  RM-292c, RM-251(b), RM-370, RM-229, RM-290, RM-27, RM-248, RM-189, RM-167, RM-204, RM-12/RM-14
-  flips, RM-15(b), RM-16, RM-423, RM-239/RM-242 (operator fence), RM-297b, RM-517, RM-596, RM-597.
-  Next free RM-907 (pin docs/DS_SWEEP_TRACKER.md); next free LEDGER 1904.
-- ROADMAP top open: RM-488 (operator), RM-596, RM-597, then the RM-681.. rows; EXTERNAL-LIFT Band 2 /
-  4 stay in BACKLOG. ROADMAP.md 73217 B (drift_guard 90 percent line 73728 of 81920; ~510 B headroom):
-  before crossing it, move closed rows to docs/ROADMAP_HISTORY.md (ids named literally; verify
-  verbatim by script).
+  RM-890..RM-894, RM-896, RM-899..RM-901, RM-905, RM-906, LT-02r, TFT-HUD-00..12, PKG, RM-279,
+  RM-280, RM-368, RM-381, RM-292c, RM-251(b), RM-370, RM-229, RM-290, RM-27, RM-248, RM-189, RM-167,
+  RM-204, RM-12/RM-14 flips, RM-15(b), RM-16, RM-423, RM-239/RM-242 (operator fence), RM-297b,
+  RM-517, RM-596, RM-597. Next free RM-907 (pin docs/DS_SWEEP_TRACKER.md); next free LEDGER 1911.
+- ROADMAP top open: PKG (s136 NEXT), RM-488 (operator), RM-596, RM-597, then the RM-681.. rows;
+  EXTERNAL-LIFT Band 2 / 4 stay in BACKLOG. ROADMAP.md 73530 B after the s136 size pass (drift_guard
+  90 percent line 73728; ~200 B headroom): before crossing it, move closed rows to
+  docs/ROADMAP_HISTORY.md (ids named literally; verify verbatim by script).
 - Desktop EXTERNAL-LIFT-DIRECTIVE.md / -2.md (-2 ingested: RM-526..RM-594). Operator APPROVED Y-44
   (frozen lcu_client.py) and Y-45 (2026-10-03); Y-45 phone push needs ntfy (host local-only).
 
 BLOCKED-OPERATOR: main.py:54 (frozen; ENV-APIKEY); RM-603 in-game callout compliance; RM-681 attended
 calls; the RM-750 live check (after ASKS 20, with RC stopped: DS must come back without RC); the frozen
-app/_game_lifecycle.py mid-game start fix; the ops/rc_supervisor.py half of RM-258; RM-827 (frozen key
-readers); ASKS 18 / 28 / 29 / 30 / 32 / 36. The GitHub About "Include in the home page" untick
-(MAIN 2312 items 1-2; no API; do not touch the v0.1.0 release, its tag or Pages) stays DEFERRED.
+app/_game_lifecycle.py mid-game start fix + its :73-85 "rating saved" line; the ops/rc_supervisor.py
+half of RM-258; RM-827 (frozen key readers); ASKS 18 / 28 / 29 / 30 / 32 / 36. The GitHub About
+"Include in the home page" untick (MAIN 2312 items 1-2; no API; do not touch the v0.1.0 release, its
+tag or Pages) stays DEFERRED.
 BLOCKED-LIVE-GAME: S6 (above); the RM-752 follow-up (probe the :2999 tools/liveclient_relay.py at a
 TLSv1_2 floor in a live game; it keeps TLSv1 until measured); Y-01 (5 real game ends); the s133 live
-list above; RM-292 (c); LT-02r; TFT-15; the s135 live checks.
+list above; RM-292 (c); LT-02r; TFT-15; TFT-HUD live slices.
 BLOCKED-BOUNDARY (halt: out-of-tree, joint, or MAIN's act):
 - RM-800: MAIN's checkout path in the HISTORY of docs/history_notes.md (HEAD redacted 835277934);
   clearing it needs MAIN's ORDER via fleet_rewrite.py.
@@ -231,13 +246,14 @@ BLOCKED-BOUNDARY (halt: out-of-tree, joint, or MAIN's act):
 - Joint re-pins, never solo: CHANNEL_PIN (docs/CHANNEL.md still lists LL / lacks EW - five-way),
   RM-502, RM-429, RM-430; any further SHARED_SHA256 re-pin.
 - SessionStart anomalies: "slot bucket 0.lock DEAD_PID (pid 6668)" (machine-wide; not re-checked
-  s116-s135); RC-ClaudeQuotaWatch FAILURE 0x800710E0 (s131 / s132 ExecutionTimeLimit kill; no RM id).
+  s116-s136); RC-ClaudeQuotaWatch FAILURE 0x800710E0 (s131 / s132 ExecutionTimeLimit kill; no RM id);
+  RC-ReplayRosterPull last_result=1 (s136 start; RM-905).
 - One sibling-to-sibling note stuck in a stale folder: moving it is out-of-tree.
 
 ====================
 OPEN - OPERATOR ASKS (batched, re-ask in ONE line; last re-batched in chat s135)
 ====================
-1-7, 9-12 unanswered s111-s135; 15, 17, 18, 20-26, 28-33, 36 open; 19 WITHDRAWN s126; 27
+1-7, 9-12 unanswered s111-s136; 15, 17, 18, 20-26, 28-33, 36 open; 19 WITHDRAWN s126; 27
 RESOLVED s127; 34 APPROVED s135 (GH1); 35 granted for s135 only; 37 ADJUDICATED s135 (LEDGER 1904).
 GitHub security read-back 2026-10-22: alerts, secret scanning, push protection ON; CodeQL ADVANCED,
 DEFAULT suite; Dependabot security updates read DISABLED though the operator reports them on.
@@ -269,8 +285,9 @@ DEFAULT suite; Dependabot security updates read DISABLED though the operator rep
     bot_merge_check exits 1 on them until then).
 22. Optional: rotate the dead bridge secret (blanked locally s125, RM-751; no consumer, ADR-012).
 23. Account-level Claude settings outside the repo still carry `remoteControlAtStartup`.
-24. Frozen-file approvals: main.py:54 (ENV-APIKEY), app/_game_lifecycle.py (mid-game start fix),
-    ops/rc_supervisor.py (the RM-258 half), the RM-827 key readers (utf-8-sig / BOM).
+24. Frozen-file approvals: main.py:54 (ENV-APIKEY), app/_game_lifecycle.py (mid-game start fix; s136:
+    :73-85 logs "rating saved" ignoring the DB outcome), ops/rc_supervisor.py (the RM-258 half), the
+    RM-827 key readers (utf-8-sig / BOM).
 25. OK to remove the 11 out-of-root lift worktrees (RM-703; content 85-100 percent on main)?
 26. OK to move the one sibling-to-sibling note stuck in a stale folder (out-of-tree)?
 28. RM-803 residual: with no per-host config the sweep's structural arm is blind to one configured
@@ -299,13 +316,15 @@ OPEN - WATCH AND DATA (act only when seen)
 - Timing flake: tests/test_dashboard_server_thread_start_rm738.py test_long_lived_requests_do_not_
   starve_a_short_one (1.0 s bound) failed 2 of 4 at 100 percent CPU (s113): widen or measure quietly.
 - ubuntu-latest = Ubuntu 26 from 2026-10-19: a first red on an unchanged test may be the image.
+- CI runs Python 3.12, the box 3.14: an audit-event / stdlib-internals test can be green here and red
+  in CI (s136 C1); run such tests on a 3.12 venv before merging.
 - logs/vision_wedge_*.txt or "vision server hung" on the POOLED server = new evidence (stack dump).
 - UNATTRIBUTED: the 2026-10-10 07:36-10:02 hang (RM-737 note) + RC starts 06:37 / 06:51, a
   heartbeat_error fatal 04:51:23Z; s104: 24 children died 0xC0000142 once. W1: OPERATIONS.md section.
 - A future kit may change the /done closing line; do NOT pre-edit the byte-pinned block.
 - b61059c72's body says "11 of 12 red"; measured 12 of 13 (commit messages are never edited).
-- The PostToolUse credential scan flags the LEDGER "W3" fake test key on every LEDGER edit (s135:
-  LEDGER.md:2114) - expected, not a finding.
+- The PostToolUse credential scan flags the LEDGER "W3" fake test key on every LEDGER edit (s136:
+  LEDGER.md:2128) - expected, not a finding.
 - The s128 S-E builder appended 6 records to the live ops/runtime/sibling_sweep_runs.jsonl (left).
 - The stop-claim gate flags main-chat push claims when sub-agents pushed (RM-687); say "board updated".
 - Non-RC orphans (s129: server.ew, lw_monitor, node console server) are left alone; helpers name the
@@ -316,12 +335,12 @@ OPEN - WATCH AND DATA (act only when seen)
 ====================
 DO NOT RE-LITIGATE (each with Reverses if:)
 ====================
-- s135 (LEDGER 1883-1905; WAKEUP_NOTES 2026-10-25c): every landing (P0-F, 7 lanes, TFT-04 / -09 /
-  -08 / -02, N9, N8, N13), the C1 fixes and the green gated run on 7cb2b412d (now 7814951c6), the id
-  scrub and the cred-pragma rewrite (maps in docs/_archive/2026-10/), the N8 / TFT-08 live backfills
-  (re-dry plans 0), RM-902 closed, the GH1 rebuild + merge + push, adjudications ASKS 37 pragma / N9
-  baf8644b9 LAND / TFT-09 recommend withheld while live / N8's comp-name rule kept (the queue lane's rule made "Dark Star Vertical") / TFT-04's live OCR path
-  kept. Reverses if: a live re-check of one of those acceptances fails.
+- s136 (LEDGER 1906-1910; WAKEUP 2026-10-25d): C1 c7e2c0b0c, T4 / T5 / T9 / T10 / T11 / T12 / T14 /
+  T15 fixes, the T6 / T16 docs, the two live QAs (rated A, 3rd), the worktree removals, RM-846 = B (no
+  history rewrite). Reverses if: a live re-check of one of those acceptances fails, or CI on 3.12
+  reds the C1 file after the push.
+- s135 (LEDGER 1883-1905): every landing, the C1 fixes, the id scrub + cred-pragma rewrite, the
+  backfills, GH1 and the adjudications, VERBATIM with its Reverses if: in archive block 6.
 - s134 (LEDGER 1861-1882): every shipped row, VERBATIM with its Reverses if: in archive block 5.
 - The s133 records (shipped rows, built-not-rebuilt TFT set resolver / prompt / schedule), lolmath via
   --lolmath-only (not --force), the RC board recreated (Dashboard artifact 12ChcPAR8o3RuVb9qStHK8),
@@ -331,48 +350,37 @@ DO NOT RE-LITIGATE (each with Reverses if:)
   RC-2026-10-24.txt (s130-s132) and RC-2026-10-25.txt (block 1). Read them before re-opening any.
 
 ====================
-PROCEDURE (docs/OPERATIONS.md "Session procedure"; the s133 lines VERBATIM in
-docs/handoff-archive/RC-2026-10-25.txt block 3 - read them before landing or pushing)
+PROCEDURE: docs/OPERATIONS.md "Session procedure" + the lines VERBATIM in docs/handoff-archive/
+RC-2026-10-25.txt blocks 3 and 6 - READ them before landing or pushing (pre-push dry runs of all
+three gates, gitlock cherry-pick form, Gated Tier-2 -n 6 + FLEET_SUITE_COMMIT_MARGIN_MB=18432,
+board NON-final, the 30720 B hand-off cap).
 ====================
-- RACE GUARDS, a UNIQUE -F file per commit, never --amend, never `git push --tags`; owner-id probe.
-- fleet_gitlock refuses cherry-pick: `git cherry-pick --no-commit <sha>` then `fleet_gitlock.py run
-  -- git commit -C <sha>`.
-- The pre-push gates (identity, sibling sweep, credential scan) read EVERY commit in the range, the
-  credential scan per commit's added lines with no baseline: dry-run all three (stdin = the ref line,
-  args = origin <url>) plus the scrubbed-id check BEFORE any push; a fake-fixture hit in an old
-  unpushed commit gets the line pragma IN that commit (LEDGER 1904 method), never a bypass.
-- Builders' LEDGER numbers and RM ids are PROVISIONAL: the merger renumbers at landing.
-- Land TFT code only between games (M1c polled the LCU phase every 60 s): a .py merge restarts RC.
-- Gated Tier-2: -n 6 + FLEET_SUITE_COMMIT_MARGIN_MB=18432 (s135 datum), output to a file, summary +
-  exit code in the launch call.
-- Board: read the server version, `fleet_board.py pushed --version <it>`, render ONCE, then push;
-  NON-final at /done (kit v20 --final marks carried rows done).
-- Hand-off cap: kit v18 `fleet_done.py mark` FAILS over 30720 B. Tighten, or archive verbatim.
 
 ====================
 STATUS, CONTEXT, ACCEPTANCE
 ====================
-Status (s135 wrap): PUSHED df946b00d...3ad31ec6d (forced, leased); this hand-off commit follows as a
-fast-forward push. Commits (post-rewrite SHAs): 2e23ce8d1 (LEDGER 1898-1902, BACKLOG, ROADMAP,
-WAKEUP + prune), b083af9d3 (GH1 merge), cd450e687 + e9c133973 (hand-off, LEDGER 1903, archive
-blocks 4-5), 3ad31ec6d (LEDGER 1904, cred-pragma map), this one (LEDGER 1905). Gate: ruff passed;
-hygiene trio 14 passed; drift_guard 0 (after re-mirroring ship-batch / test-first-autopilot into the
-gitignored .claude/commands); md guards (108 modules) 2686 passed, 4 skipped, exit 0; tracker /
-roadmap / checklist guards 138 passed. CI on 3ad31ec6d: push ci 40230806851 (mode=full; cancelled
-by this hand-off's push, same concurrency group), docs-guards 40230806841, codeql 40230806909,
-pages 40230803053 success. Full suite (2c): dispatched run 40230847617 on 3ad31ec6d (pending at the
-/done; it covers the final tip - docs and hand-off only differ). DS 1.290.0 /
-16.21.1 / 173 (pid 26232); RC pid 7084 alive, last_reload_ok, fatal 0; restart_trigger empty; LCU
-Lobby, no game; session file 3.3 MB; no intent / steers; inbox empty; 0 PRs. Memory: 3 new.
-Board: pushed at /done NON-final (datasets/board v27, blob d51b0f61; --final marks carried rows done).
-Progress files: ops/loop/control/progress/s135-*.json (s135-done = this ritual).
+Status (s136 wrap): NOTHING PUSHED (push hold). Local commits 99c9db198..7a40a5cb4 (15; shas in
+LEDGER 1907-1910) plus this /done commit (LEDGER 1907-1910, WAKEUP + prune, ROADMAP size pass +
+ROADMAP_HISTORY 25f, archive block 6, this file). Gate at the
+/done: ruff all passed; hygiene trio 14 passed; the 18 touched test files 436 passed, exit 0;
+md / hand-off guards (116 modules, gated) 3405 passed, 4 skipped, exit 0; drift_guard 0 after the
+ROADMAP pass. CI: dispatch 40230847617 (on 3ad31ec6d) was RED (C1, fixed
+locally); no CI on the s136 commits (push hold). Full suite (2c): not dispatched - a dispatch builds
+origin's main, which lacks every s136 commit; the first push after the hold lifts needs one. DS
+:8860 not re-probed; RC pid 23224 alive, last_reload_ok, fatal 0; restart_trigger empty; LCU
+PreEndOfGame at the /done (no live game); session file 3 MB; no intent / steers; 0 PRs. Memory: 1
+new (project_packaged_app_requirements.md). Board: push skipped by the operator ("i dont need the
+board at this time"); the session-start asset upload to the URL in ops/status_board.json failed
+`not_found` (artifact not visible to this account).
 
-Context: docs/TFT_PROGRAM.md (slices, ADR-018); tft/engine (Augur); tft/rounds (TFT-01 store);
-tft/local_player.py (N13); data/tft_matches (RM-616); ops/runtime/tft_qa/ (QA reports incl.
-20261025-104400/QA_REPORT.md); ops/runtime/gh1/ (PLAN.txt, protection-before.json).
+Context: rc-shell/ (electron shell), docs/OVERLAY_COMPLIANCE_PLAN.md, ROADMAP RM-189 + PKG;
+docs/TFT_PROGRAM.md (slices, ADR-018, sec 10 HUD spec); tft/engine (Augur); tft/rounds (TFT-01
+store); tft/local_player.py (N13); data/tft_matches (RM-616); ops/runtime/tft_qa/ (QA reports incl.
+20261025-153652 and -162857); ops/runtime/gh1/ (PLAN.txt, protection-before.json).
 
-Acceptance: dispatch 40230847617 green (or fixed forward); a TFT game shows RC following YOU with
-non-empty stage / level / gold and coaching, QA written; the 10 locked worktrees removed; the operator asks re-batched in one
-line.
+Acceptance: a QA'd packaged build of the ow-electron shell that starts every local service on
+launch, takes local / GitHub updates with minimal or no restart and never starts at boot; the
+operator lifts the push hold and the first CI on 3.12 is green (C1) with one full-suite dispatch;
+the operator asks re-batched in one line.
 
 Start with: read this file first, then CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
