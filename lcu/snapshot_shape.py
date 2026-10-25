@@ -302,6 +302,17 @@ def _derive_search_state(phase: str, search_payload) -> str:
 
 MASTERY_TTL_S = 300.0  # 5 min - mastery doesn't shift faster than that
 
+# Session-relevant phases: the local player's mastery is published in these.
+# Reconnect is the same live game as InProgress (S136 T5).
+_MASTERY_PHASES = frozenset({
+    "Lobby", "Matchmaking", "ReadyCheck",
+    "ChampSelect", "GameStart", "InProgress", "Reconnect", "WaitingForStats",
+})
+# The local summoner id is stamped in every mastery phase AND the post-game
+# phases, where the TFT game-end rating still names the local entry by it
+# (S136 T5). Idle / unknown phases stamp nothing.
+_SUMMONER_ID_PHASES = _MASTERY_PHASES | {"PreEndOfGame", "EndOfGame"}
+
 _mastery_cache: dict = {
     "summoner_id": None,
     "data": None,
@@ -415,8 +426,9 @@ def shape_snapshot(request: Callable[..., tuple], config,
     Reproduces ``tools/lcu_agent.capture_state()``'s PURE assembly exactly:
     the gameflow phase, the cs_debug breadcrumb, ready-check + lobby for the
     queueing phases, champ-select via ``shape_champ_select``, the Arena
-    cherry-augment probe + game_id for the in-game phases, and the local
-    player's mastery for session-relevant phases. ``ts`` is stamped at the
+    cherry-augment probe + game_id for the in-game phases, the local
+    player's mastery for session-relevant phases, and the local summoner id
+    for those plus the post-game phases. ``ts`` is stamped at the
     END so consumers see when capture finished.
 
     Deliberately does NOT emit ``config`` or ``lcu_port`` - those are
@@ -589,10 +601,7 @@ def shape_snapshot(request: Callable[..., tuple], config,
     # the lobby + champ-select loops don't hammer LCU. Legion's
     # team-context route can prefer this number for the operator and fall
     # back to Riot Web mastery for teammates/enemies.
-    if state["phase"] in (
-        "Lobby", "Matchmaking", "ReadyCheck",
-        "ChampSelect", "GameStart", "InProgress", "WaitingForStats",
-    ):
+    if state["phase"] in _MASTERY_PHASES:
         # 2026-05-11 live-fix: write mastery + summoner_id at the TOP level of
         # the snapshot. Legion's bridge handler wraps the entire agent state
         # as ``legion_state["lcu"]`` on POST, so the desired dashboard path
@@ -600,9 +609,16 @@ def shape_snapshot(request: Callable[..., tuple], config,
         mastery = _maybe_refresh_mastery(request)
         if mastery is not None:
             state["mastery"] = mastery
-            sid = _mastery_cache.get("summoner_id")
-            if sid:
-                state["summoner_id"] = sid
+    # S136 T5: the summoner id is stamped on its own, never as a by-product of
+    # a mastery answer, and through Reconnect + the post-game phases too:
+    # tft/local_player.summoner_id_of picks the local TFT player by it (a human
+    # lobby flags all 8 entries isInteractable), live in
+    # tft/tft_standalone._round_state and at the game-end rating in
+    # tft/tft_final_board.per_round_record. Cached after the first resolve.
+    if state["phase"] in _SUMMONER_ID_PHASES:
+        sid = _resolve_local_summoner_id(request)
+        if sid:
+            state["summoner_id"] = sid
 
     state["ts"] = time.time()
     return state
