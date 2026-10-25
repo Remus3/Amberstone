@@ -89,8 +89,11 @@ already have and proves it with derived tests before a line of impl exists.
 
 ## Mirror discipline
 
-Canonical copy is the tracked `tools/test-first-autopilot.md`. The gitignored
-`.claude/skills/test-first-autopilot/SKILL.md` and
-`.claude/commands/test-first-autopilot.md` are byte-identical ASCII mirrors of
-it (tracked tools/ wins; never let a `.claude/` copy diverge or re-inject
-non-ASCII). Re-mirror after any edit.
+Canonical copy is the tracked `tools/test-first-autopilot.md`. Its one mirror
+is the gitignored `.claude/commands/test-first-autopilot.md`, kept
+byte-identical ASCII (tracked tools/ wins; never let the `.claude/` copy
+diverge or re-inject non-ASCII). Re-mirror after any edit. The pair is checked
+by `tools/drift_guard.py` `MIRROR_PAIRS` (`tools` <-> `.claude/commands`,
+compared at every /done). There is no skill-folder `SKILL.md` copy (that
+folder has been empty since 2026-05-28; RM-856); do not recreate one, since
+nothing compares it.
