@@ -423,6 +423,29 @@ def test_absent_is_null_never_zero(store):
     assert (rd["hp_end"], rd["hp_end_conf"], rd["hp_end_src"]) == (None, None, "absent")
 
 
+def test_rows_obey_the_absent_rule_too(store):
+    """A stored row is an observation (its src is never 'absent'); a row's
+    optional sub-envelopes (position, bought) pair null with absent, only."""
+    mid = store.begin_match({"game_id": 1, "queue_id": 1090, "started_at": T0})
+    k = _keys()[0]
+    assert not store.put_player_round(mid, 1, k, hp=50, conf=None, src="absent")
+    unit = {"zone": "board", "champion_api": "DA_18_Yorick", "star": 1, "conf": 1.0,
+            "src": "eog_file"}
+    assert not store.put_units(mid, 1, "planning_start", k, [{**unit, "hex_row": 1,
+                                                              "hex_col": 2}])  # pos absent
+    assert not store.put_units(mid, 1, "planning_start", k, [{**unit, "pos_conf": 0.9,
+                                                              "pos_src": "geom"}])  # no pos
+    offer = {"slot": 0, "kind": "champion", "champion_api": "DA_18_Yorick", "cost": 1,
+             "conf": 0.9, "src": "ocr"}
+    assert not store.put_shop_refresh(mid, 1, 0, cause="round_start", conf=0.9, src="ocr",
+                                      offers=[{**offer, "bought": True}])  # bought absent
+    assert not store.put_shop_odds(mid, 1, 3, (75, 25, 0, 0, 0), conf=None, src="absent")
+    assert store.stats()["invalid"] == 5
+    assert store.put_units(mid, 1, "planning_start", k, [unit])  # no position, absent: fine
+    assert store.put_shop_refresh(mid, 1, 0, cause="round_start", conf=0.9, src="ocr",
+                                  offers=[offer])  # bought unknown, absent: fine
+
+
 def test_queue_kind_comes_from_the_queue_id():
     assert rs.queue_kind_for(1090) == "normal"
     assert rs.queue_kind_for(1100) == "ranked"
@@ -530,7 +553,8 @@ def test_rewrites_replace_rows_and_upserts_merge(store):
     mid = _write(store, plan, match_id="m-x")
     k = plan["keys"][0]
     one = [{"zone": "board", "hex_row": 0, "hex_col": 0, "champion_api": "DA_18_Yorick",
-            "star": 2, "items": [], "cost": 1, "conf": 1.0, "src": "eog_file"}]
+            "star": 2, "items": [], "cost": 1, "conf": 1.0, "src": "eog_file",
+            "pos_conf": 0.8, "pos_src": "geom"}]
     assert store.put_units(mid, 1, "planning_start", k, one)
     assert store.upsert_round(mid, 1, gold_start=Env(44, 0.5, "ocr"))
     # a zone-scoped rewrite leaves the other zone alone
@@ -580,8 +604,8 @@ def test_writes_never_raise_and_a_closed_store_drops(db_path):
 def test_invalid_writes_log_once_per_streak(store, caplog):
     mid = store.begin_match({"game_id": 1, "queue_id": 1090, "started_at": T0})
     with caplog.at_level(logging.INFO, logger=st.__name__):
-        for _ in range(3):
-            assert not store.put_player_round(mid, 1, "not-a-key", hp=1, level_badge=1,
+        for _ in range(3):  # a raw name where a player key belongs
+            assert not store.put_player_round(mid, 1, NAMES[0], hp=1, level_badge=1,
                                               alive=True, standing=1, conf=1.0, src="lcu")
         assert store.put_event(mid, "phase", {}, src="tft_log")
         assert not store.put_event(mid, "bogus_kind", {}, src="tft_log")
@@ -589,7 +613,10 @@ def test_invalid_writes_log_once_per_streak(store, caplog):
     warns = [r for r in mine if r.levelno == logging.WARNING]
     infos = [r for r in mine if r.levelno == logging.INFO]
     assert len(warns) == 2  # one per streak, not one per dropped row
-    assert not any("not-a-key" in r.getMessage() for r in mine)  # values never logged
+    # section 1.2: the rejected name is never echoed into a log line
+    assert "player_key" in warns[0].getMessage()
+    assert not any("SyntheticPlayer" in r.getMessage() or "SYN" in r.getMessage()
+                   for r in mine)
     assert len(infos) == 1 and "3" in infos[0].getMessage()
     assert store.stats()["invalid"] == 4
 
@@ -668,6 +695,34 @@ def test_identity_never_reaches_the_store(store):
                               "riotIdGameName": "x"}) is None
     assert store.upsert_player(mid, k, slot=1, is_local=True)
     assert store.stats()["invalid"] == 7
+
+
+def test_an_identity_used_as_a_key_is_refused_and_scrubbed(store, db_path, tmp_path):
+    """A dict KEY can carry an identity as well as a value can."""
+    uuid = "123e4567-e89b-12d3-a456-426614174000"
+    token = "A" * 39 + "b" * 39
+    mid = store.begin_match({"game_id": 1, "queue_id": 1090, "started_at": T0})
+    assert not store.record_obs(mid, 1, "planning_start", "scoreboard", {uuid: 5}, 0.9, "ocr")
+    assert not store.put_event(mid, "phase", {NAMES[3]: 5}, src="tft_log")
+    assert not store.put_event(mid, "phase", {"hp": {token: 5}}, src="tft_log")
+    assert store.stats()["invalid"] == 3
+    for doc in ({uuid: 1}, {NAMES[3]: 1}, {token: 1}, {"0123456789ab": 1}):
+        bad = st.scrub_violations(doc)
+        assert bad and not any(next(iter(doc)) in b for b in bad), doc  # key never echoed
+    # a store player key used as a payload key is mapped to its P-number on export
+    k = _keys()
+    for i, key in enumerate(k):
+        assert store.upsert_player(mid, key, slot=i + 1, is_local=(i == 0))
+    assert store.put_event(mid, "disagreement", {k[1]: {"hp": 40}}, src="derived", round_seq=1)
+    assert store.flush()
+    fx = json.loads(store.export_fixture(mid, tmp_path / "fx", name="keys").read_text("ascii"))
+    assert [e["payload"] for e in fx["rounds"][0]["events"]] == [{"P2": {"hp": 40}}]
+    # and a raw row smuggling an identity key past the writer is refused on export
+    _exec(db_path, "INSERT INTO obs(match_id, round_seq, field, value_json, conf, src) "
+                   "VALUES (?, 1, 'scoreboard', ?, 0.9, 'ocr')", (mid, json.dumps({uuid: 5})))
+    with pytest.raises(st.ScrubError):
+        store.export_fixture(mid, tmp_path / "fx", name="keys_leak")
+    assert not (tmp_path / "fx" / "keys_leak.json").exists()
 
 
 # ---------------------------------------------------------------- open / migrate
@@ -821,6 +876,16 @@ def test_analysis_exports(store, tmp_path):
         {p.name for p in paths}
     rnd = (tmp_path / "csv" / "round.csv").read_text(encoding="ascii").splitlines()
     assert rnd[0].split(",")[:2] == ["match_id", "round_seq"] and len(rnd) == 4
+
+
+def test_analysis_exports_default_under_data_tft_exports(store, tmp_path, monkeypatch):
+    monkeypatch.setattr(st, "default_exports_dir", lambda: tmp_path / "exports")
+    mid = _write(store, _plan(rounds=1))
+    assert store.flush()
+    jl = store.export_jsonl([mid])
+    paths = store.export_csv([mid])
+    assert jl.parent == tmp_path / "exports" and jl.name.startswith("tft-rounds-")
+    assert {p.parent.parent for p in paths} == {tmp_path / "exports"}
 
 
 # ---------------------------------------------------------------- repo hygiene
