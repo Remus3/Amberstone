@@ -1123,14 +1123,25 @@ def _serve_ds_preview_post(h, payload) -> None:
         # its display (drop a 2nd/3rd same-unique-family item, e.g. two
         # Last-Whisper). The engine no-double rule is authoritative - the client
         # holds NO family-literal map; it reads this field. "" when the row has
-        # no unique-passive family. Additive; every other consumer ignores it.
-        result = [{"item_id": r.get("item_id", ""),
-                   "item_name": r.get("item_name", ""),
-                   "delta_dps": round(_delta(r), 1),
-                   "gold": int(r.get("gold", 0) or 0),
-                   "scorer": scorer,
-                   "family": str(r.get("unique_passive_key") or "")}
-                  for r in ranked_in]
+        # no unique-passive family.
+        # RM-870: the same engine value ALSO ships under its own name,
+        # ``unique_passive_key`` - the key the build planner reads
+        # (core/build_planner/planner.py beam + forced resolve,
+        # scoring._seed_family). /api/build-plan seeds the planner from these
+        # rows (routes_build_plan._make_route_seed_fn), and with ``family``
+        # alone every live row looked family-less, so the planner could plan
+        # two items sharing one unique passive. ``family`` stays for the
+        # active_match.js display reader.
+        result = []
+        for r in ranked_in:
+            upk = str(r.get("unique_passive_key") or "")
+            result.append({"item_id": r.get("item_id", ""),
+                           "item_name": r.get("item_name", ""),
+                           "delta_dps": round(_delta(r), 1),
+                           "gold": int(r.get("gold", 0) or 0),
+                           "scorer": scorer,
+                           "unique_passive_key": upk,
+                           "family": upk})
         # s171.6: defensive-pick ranker. Computes the enemy team's
         # threat profile (AD/AP/burst/tank) and recommends defensive
         # items keyed to the threat. Cheap - pure stat math, no
