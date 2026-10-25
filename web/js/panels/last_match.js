@@ -97,7 +97,10 @@ function _onErrCdnFallback(ver, kind, id) {
   );
 }
 
-function _itemIconUrl(iid) {
+// The shared DDragon item-icon URL builder: local mirror, by item id, patch
+// from ITEMS.version. Exported for the Replay scrubber's item column
+// (dev.js, RM-857) so that panel carries no second builder.
+export function _itemIconUrl(iid) {
   return iid ? `/data/ddragon/${_ddragonVersion()}/img/item/${iid}.png` : "";
 }
 function _itemImgTag(iid, cls = "", title = "") {
