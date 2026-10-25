@@ -128,7 +128,10 @@ to check in. ASCII only, no em/en dashes or smart quotes in any authored byte.
 
 ## Mirror discipline
 
-Canonical copy is the tracked `tools/ship-batch.md`. The gitignored
-`.claude/skills/ship-batch/SKILL.md` and `.claude/commands/ship-batch.md` are
-byte-identical mirrors of it (tracked tools/ wins; never let a `.claude/` copy
-diverge or re-inject non-ASCII). Re-mirror after any edit.
+Canonical copy is the tracked `tools/ship-batch.md`. Its one mirror is the
+gitignored `.claude/commands/ship-batch.md`, kept byte-identical (tracked tools/
+wins; never let the `.claude/` copy diverge or re-inject non-ASCII). Re-mirror
+after any edit. The pair is checked by `tools/drift_guard.py` `MIRROR_PAIRS`
+(`tools` <-> `.claude/commands`, compared at every /done). There is no
+skill-folder `SKILL.md` copy (that folder has been empty since 2026-05-28;
+RM-856); do not recreate one, since nothing compares it.
