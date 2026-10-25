@@ -1,0 +1,394 @@
+{
+ "gameId": 5000000001,
+ "gameMode": "TFT",
+ "isRanked": false,
+ "queueId": 1090,
+ "queueType": "NORMAL_TFT",
+ "statsBlock": {
+  "customAugmentContainer": "TFT_Portals_Default_NoPortal",
+  "gameLengthSeconds": 647,
+  "players": [
+   {
+    "PUUID": "00000000-0000-4000-8000-000000000001",
+    "augments": [],
+    "boardPieces": [
+     {
+      "championName": "DA_18_Yorick",
+      "endOfGameAlias": "",
+      "itemNames": [],
+      "price": 1,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_18_Xayah",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_InfinityEdge"
+      ],
+      "price": 1,
+      "starLevel": 2
+     },
+     {
+      "championName": "DA_Karma18",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_ArchangelsStaff"
+      ],
+      "price": 1,
+      "starLevel": 1
+     }
+    ],
+    "companionContentId": "",
+    "companionName": "",
+    "companionSkinId": 0,
+    "eventPVEData": [],
+    "eventSkillDeltas": [],
+    "ffaStanding": 2,
+    "health": 96,
+    "isInteractable": true,
+    "partnerGroupId": 0,
+    "playbookItemId": 0,
+    "playerId": 900001,
+    "riotIdGameName": "TestPlayer1",
+    "riotIdTagLine": "TST1",
+    "summonerIconID": 1,
+    "summonerName": "TestPlayer1"
+   },
+   {
+    "PUUID": "00000000-0000-0000-0000-000000000000",
+    "augments": [],
+    "boardPieces": [
+     {
+      "championName": "DA_18_Xayah",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_GiantSlayer",
+       "DA_Component_SparringGloves"
+      ],
+      "price": 1,
+      "starLevel": 2
+     },
+     {
+      "championName": "DA_18_Ornn",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_GargoyleStoneplate"
+      ],
+      "price": 1,
+      "starLevel": 2
+     },
+     {
+      "championName": "DA_18_LeBlanc",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_JeweledGauntlet",
+       "DA_Component_NegatronCloak"
+      ],
+      "price": 2,
+      "starLevel": 1
+     }
+    ],
+    "companionContentId": "",
+    "companionName": "",
+    "companionSkinId": 0,
+    "eventPVEData": [],
+    "eventSkillDeltas": [],
+    "ffaStanding": 5,
+    "health": 87,
+    "isInteractable": false,
+    "partnerGroupId": 0,
+    "playbookItemId": 0,
+    "playerId": 0,
+    "riotIdGameName": "TestPlayer2",
+    "riotIdTagLine": "TST2",
+    "summonerIconID": 1,
+    "summonerName": "TestPlayer2"
+   },
+   {
+    "PUUID": "00000000-0000-0000-0000-000000000000",
+    "augments": [],
+    "boardPieces": [
+     {
+      "championName": "DA_KogMaw18_AD",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_Component_RecurveBow"
+      ],
+      "price": 3,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_18_Akali_AD",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_HandOfJustice",
+       "DA_Component_RecurveBow"
+      ],
+      "price": 1,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_18_Ornn",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_IonicSpark"
+      ],
+      "price": 1,
+      "starLevel": 1
+     }
+    ],
+    "companionContentId": "",
+    "companionName": "",
+    "companionSkinId": 0,
+    "eventPVEData": [],
+    "eventSkillDeltas": [],
+    "ffaStanding": 8,
+    "health": 81,
+    "isInteractable": false,
+    "partnerGroupId": 0,
+    "playbookItemId": 0,
+    "playerId": 0,
+    "riotIdGameName": "TestPlayer3",
+    "riotIdTagLine": "TST3",
+    "summonerIconID": 1,
+    "summonerName": "TestPlayer3"
+   },
+   {
+    "PUUID": "00000000-0000-0000-0000-000000000000",
+    "augments": [],
+    "boardPieces": [
+     {
+      "championName": "DA_18_Sejuani",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_ProtectorsVow"
+      ],
+      "price": 2,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_18_Yunara",
+      "endOfGameAlias": "",
+      "itemNames": [],
+      "price": 2,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_18_Shen",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_Component_TearOfTheGoddess"
+      ],
+      "price": 2,
+      "starLevel": 1
+     }
+    ],
+    "companionContentId": "",
+    "companionName": "",
+    "companionSkinId": 0,
+    "eventPVEData": [],
+    "eventSkillDeltas": [],
+    "ffaStanding": 1,
+    "health": 97,
+    "isInteractable": false,
+    "partnerGroupId": 0,
+    "playbookItemId": 0,
+    "playerId": 0,
+    "riotIdGameName": "TestPlayer4",
+    "riotIdTagLine": "TST4",
+    "summonerIconID": 1,
+    "summonerName": "TestPlayer4"
+   },
+   {
+    "PUUID": "00000000-0000-0000-0000-000000000000",
+    "augments": [],
+    "boardPieces": [
+     {
+      "championName": "DA_18_Yorick",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_SunfireCape",
+       "DA_AdaptiveHelm"
+      ],
+      "price": 1,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_18_Shen",
+      "endOfGameAlias": "",
+      "itemNames": [],
+      "price": 2,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_Scuttlecrab18",
+      "endOfGameAlias": "",
+      "itemNames": [],
+      "price": 2,
+      "starLevel": 1
+     }
+    ],
+    "companionContentId": "",
+    "companionName": "",
+    "companionSkinId": 0,
+    "eventPVEData": [],
+    "eventSkillDeltas": [],
+    "ffaStanding": 4,
+    "health": 87,
+    "isInteractable": false,
+    "partnerGroupId": 0,
+    "playbookItemId": 0,
+    "playerId": 0,
+    "riotIdGameName": "TestPlayer5",
+    "riotIdTagLine": "TST5",
+    "summonerIconID": 1,
+    "summonerName": "TestPlayer5"
+   },
+   {
+    "PUUID": "00000000-0000-0000-0000-000000000000",
+    "augments": [],
+    "boardPieces": [
+     {
+      "championName": "DA_Karma18",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_Component_GiantsBelt"
+      ],
+      "price": 1,
+      "starLevel": 2
+     },
+     {
+      "championName": "DA_18_Yorick",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_GargoyleStoneplate"
+      ],
+      "price": 1,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_18_Yunara",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_HandOfJustice"
+      ],
+      "price": 2,
+      "starLevel": 1
+     }
+    ],
+    "companionContentId": "",
+    "companionName": "",
+    "companionSkinId": 0,
+    "eventPVEData": [],
+    "eventSkillDeltas": [],
+    "ffaStanding": 6,
+    "health": 84,
+    "isInteractable": false,
+    "partnerGroupId": 0,
+    "playbookItemId": 0,
+    "playerId": 0,
+    "riotIdGameName": "TestPlayer6",
+    "riotIdTagLine": "TST6",
+    "summonerIconID": 1,
+    "summonerName": "TestPlayer6"
+   },
+   {
+    "PUUID": "00000000-0000-0000-0000-000000000000",
+    "augments": [],
+    "boardPieces": [
+     {
+      "championName": "DA_18_Yorick",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_Evenshroud"
+      ],
+      "price": 1,
+      "starLevel": 2
+     },
+     {
+      "championName": "DA_Vi18",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_IonicSpark",
+       "DA_SteadfastHeart"
+      ],
+      "price": 3,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_18_Ornn",
+      "endOfGameAlias": "",
+      "itemNames": [],
+      "price": 1,
+      "starLevel": 2
+     }
+    ],
+    "companionContentId": "",
+    "companionName": "",
+    "companionSkinId": 0,
+    "eventPVEData": [],
+    "eventSkillDeltas": [],
+    "ffaStanding": 3,
+    "health": 96,
+    "isInteractable": false,
+    "partnerGroupId": 0,
+    "playbookItemId": 0,
+    "playerId": 0,
+    "riotIdGameName": "TestPlayer7",
+    "riotIdTagLine": "TST7",
+    "summonerIconID": 1,
+    "summonerName": "TestPlayer7"
+   },
+   {
+    "PUUID": "00000000-0000-0000-0000-000000000000",
+    "augments": [],
+    "boardPieces": [
+     {
+      "championName": "DA_18_Sentry",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_LastWhisper"
+      ],
+      "price": 1,
+      "starLevel": 1
+     },
+     {
+      "championName": "DA_18_Rakan",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_GargoyleStoneplate",
+       "DA_Evenshroud"
+      ],
+      "price": 1,
+      "starLevel": 2
+     },
+     {
+      "championName": "DA_Cinderling18",
+      "endOfGameAlias": "",
+      "itemNames": [
+       "DA_Component_RecurveBow"
+      ],
+      "price": 1,
+      "starLevel": 1
+     }
+    ],
+    "companionContentId": "",
+    "companionName": "",
+    "companionSkinId": 0,
+    "eventPVEData": [],
+    "eventSkillDeltas": [],
+    "ffaStanding": 7,
+    "health": 83,
+    "isInteractable": false,
+    "partnerGroupId": 0,
+    "playbookItemId": 0,
+    "playerId": 0,
+    "riotIdGameName": "TestPlayer8",
+    "riotIdTagLine": "TST8",
+    "summonerIconID": 1,
+    "summonerName": "TestPlayer8"
+   }
+  ],
+  "setCoreName": "TFTSet18"
+ }
+}
