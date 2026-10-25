@@ -9,24 +9,24 @@
     "ddragon_versions": "https://ddragon.leagueoflegends.com/api/versions.json",
     "ddragon_champions": "https://ddragon.leagueoflegends.com/cdn/16.21.1/data/en_US/champion.json",
     "ddragon_items": "https://ddragon.leagueoflegends.com/cdn/16.21.1/data/en_US/item.json",
-    "lolmath_scenarios_chunk": "https://lolmath.net/_next/static/chunks/1cunlyaeur-s2.js",
-    "lolmath_scenarios_chunk_bytes": 695861,
-    "lolmath_data_chunk": "https://lolmath.net/_next/static/chunks/2ojorqjskm9ky.js",
-    "lolmath_data_chunk_bytes": 321574,
+    "lolmath_scenarios_chunk": "https://lolmath.net/_next/static/chunks/3swurnjqjey1h.js",
+    "lolmath_scenarios_chunk_bytes": 696949,
+    "lolmath_data_chunk": "https://lolmath.net/_next/static/chunks/15rnns74084ah.js",
+    "lolmath_data_chunk_bytes": 326998,
     "lolmath_data_blocks": {
-      "aram_modifiers": "https://lolmath.net/_next/static/chunks/2ojorqjskm9ky.js",
-      "damage_distribution": "https://lolmath.net/_next/static/chunks/25kbaz0fzsx24.js",
-      "skill_orders": "https://lolmath.net/_next/static/chunks/3x0x_hxpqm_jr.js"
+      "aram_modifiers": "https://lolmath.net/_next/static/chunks/15rnns74084ah.js",
+      "damage_distribution": "https://lolmath.net/_next/static/chunks/16u2rp8dv61kr.js",
+      "skill_orders": "https://lolmath.net/_next/static/chunks/08vh-uxoj071y.js"
     },
     "lolmath_scenario_pieces": {
-      "cooldowns": "https://lolmath.net/_next/static/chunks/3x0x_hxpqm_jr.js",
-      "roles": "https://lolmath.net/_next/static/chunks/25kbaz0fzsx24.js",
+      "cooldowns": "https://lolmath.net/_next/static/chunks/08vh-uxoj071y.js",
+      "roles": "https://lolmath.net/_next/static/chunks/16u2rp8dv61kr.js",
       "scenarios": [
-        "https://lolmath.net/_next/static/chunks/1cunlyaeur-s2.js",
-        "https://lolmath.net/_next/static/chunks/3x0x_hxpqm_jr.js"
+        "https://lolmath.net/_next/static/chunks/3swurnjqjey1h.js",
+        "https://lolmath.net/_next/static/chunks/08vh-uxoj071y.js"
       ],
-      "ratings": "https://lolmath.net/_next/static/chunks/25kbaz0fzsx24.js",
-      "lane_positions": "https://lolmath.net/_next/static/chunks/25kbaz0fzsx24.js"
+      "ratings": "https://lolmath.net/_next/static/chunks/16u2rp8dv61kr.js",
+      "lane_positions": "https://lolmath.net/_next/static/chunks/16u2rp8dv61kr.js"
     },
     "meraki_perlevel": "https://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/champions/<champion>.json",
     "meraki_items": "https://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/items.json"
@@ -66,12 +66,9 @@
     "arena_augments": "data\\daemon_slayer\\16.21.1\\arena_augments.json",
     "items_meraki": "data\\daemon_slayer\\16.21.1\\items_meraki.json"
   },
-  "aram_modifiers_carry": {
-    "carried_from": "16.20.1",
-    "rows": 173,
-    "rows_changed_by_carry": 132,
-    "reason": "The 16.21.1 lolmath ARAM table was all-neutral for 173/173 champions (never seen at any prior patch; 16.20.1 had 132 non-neutral rows) while the wiki Module:ChampionData sidecar fetched the same day still carries the 16.20.1 values unchanged; not adopted. lolmath stays the source of record at its last deploy with real values.",
-    "ruling": "RM-766 adjudication 2026-10-22, option B",
-    "reverses_if": "Riot notes for 26.21 or later confirm the ARAM per-champion modifiers were removed or reset; or the wiki drops or zeroes its ARAM blocks; or a live ARAM game measures neutral for a champion whose carried value is not neutral; or lolmath ships a non-neutral table again (adopt it)."
+  "lolmath_refresh": {
+    "flag": "--lolmath-only",
+    "refreshed_at": "2026-10-24T20:18:20-0500",
+    "note": "lolmath only; DDragon, Meraki and CDragon were not re-fetched, so their provenance stays at extracted_at"
   }
 }
