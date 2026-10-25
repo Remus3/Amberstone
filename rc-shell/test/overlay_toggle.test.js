@@ -606,7 +606,11 @@ test("the ONLY icon show path goes through toggleShowable with the give-up flag"
   assert.strictEqual(shows.length, 1, "exactly one show site (raiseToggle)");
   const fn = fnBody("raiseToggle");
   assert.match(fn, /toggleWindow\.showInactive\(\)/);
-  assert.match(fn, /tog\.toggleShowable\(toggleReady, lastSurface, toggleGaveUp\)/);
+  // The WHOLE condition, so a widened gate (e.g. "|| true") cannot pass.
+  assert.match(
+    fn,
+    /if \(\s*toggleWindow &&\s*!toggleWindow\.isDestroyed\(\) &&\s*tog\.toggleShowable\(toggleReady, lastSurface, toggleGaveUp\)\s*\) \{/
+  );
 });
 
 test("a crash-looping icon stays dark AND fails safe to overlay content ON", () => {
