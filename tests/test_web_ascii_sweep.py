@@ -796,6 +796,9 @@ _WEB = _REPO_ROOT / "web"
 # 7e8a2267... value EXACTLY; swapping only the three CSS files does not (the
 # comment edit moves a newline in the live half). Those four paths are the
 # whole change. No glyph change - the two new CSS content strings are ASCII.
+# Re-checked after the rebase onto 15e39d167 (its web/js/lib/state_schema.js
+# edit is comment-only): the same four-path swap against 15e39d167
+# reproduces 7e8a2267... EXACTLY.
 # If another slice re-captures in parallel, the merger recomputes.
 _LIVE_HALF_DIGEST = "2b50f9cd70c36aa79ec0f501ea0ce19b181503ed91462ef1104d223287dd5e43"
 
