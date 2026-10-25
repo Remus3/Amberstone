@@ -882,6 +882,8 @@ def test_scrub_guard_catches_every_identity_shape():
         {"opponentName": "Bob"}, {"enemy_name": "Bob"}, {"names": ["Bob"]},
         {"nickname": "Bob"}, {"gameId": 1}, {"matchId": "x"},
         {"summoner": "Bob"}, {"summoners": ["Bob"]}, {"riotTag": "EUW"},
+        {"DA_player_name": "Bob"}, {"TFT_opponentName": "Bob"},  # api-shaped smuggling
+        {"".join(chr(0xFF00 + ord(c) - 0x20) for c in "name"): "Bob"},  # fullwidth key
         {"v": "na1_1000000911"}, {"v": "Euw1_1000000911"}, {"v": "2026-10-25T07:03:50Z"},
         {"t": T0}, {"t": T0 * 1000.0},  # an absolute epoch, seconds or ms
         {"player_key": "0123456789ab"}, {"opponent_key": "SomeBody"},
@@ -902,7 +904,8 @@ def test_scrub_guard_catches_every_identity_shape():
           # Riot's own game-data name fields name data, never a player
           "apiName": "DA_18_Yorick", "itemNames": ["TFT_Item_BFSword"],
           "championName": "DA_18_Yorick", "traitName": "DA_18_Summoner",
-          "items": {"TFT_Item_BFSword": 1},
+          "nameId": "TFT_Item_BFSword", "bossName": "", "tft_set_core_name": "TFTSet18",
+          "items": {"TFT_Item_BFSword": 1, "DA_KnickKnackBag18": 1},  # "nick" in an api id
           "augments": ["TFT_Augment_MirroredMonetization_TotalGoldTooltip",
                        "TFT_Augment_NoScoutNoPivot_TrackerTRAKEY_Holder",
                        "TFT_Augment_BronzeForLife_CurrentDamageAmp",

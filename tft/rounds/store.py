@@ -51,6 +51,7 @@ import secrets
 import sqlite3
 import threading
 import time
+import unicodedata
 from pathlib import Path
 from typing import Any, Callable, Iterable, Iterator, NamedTuple, Optional, Sequence
 
@@ -155,9 +156,14 @@ _IDENTITY_KEY = re.compile(
     r"game_?id|match_?id", re.IGNORECASE)
 _SCHEMA_KEYS = frozenset({"name_text", "set_core_name", "game_id", "match_id"})
 _GAME_NAME_KEY = re.compile(
-    r"(?:api|item|champion|unit|trait|augment|set|set_?core|core|species|skin|map|mode|"
-    r"queue|shop|card|icon|ability|spell)_?names?", re.IGNORECASE)
+    r"(?:api|item|champion|unit|trait|augment|set|set_?core|tft_?set_?core|core|species|"
+    r"skin|map|mode|queue|shop|card|icon|ability|spell|boss|buddy|color)_?names?|name_?id",
+    re.IGNORECASE)  # nameId = an item's api name in the LCU EoG payload
 _GAME_API_KEY = re.compile(r"(?:DA|TFT[0-9]*)_[A-Za-z0-9_]+")
+# a game-api-shaped key is still refused when it smuggles a person-word (no bare
+# "nick": DA_KnickKnackBag18 is a real item; a nickname is caught by "name")
+_PERSON_WORD = re.compile(r"name|riot|puuid|account|player|opponent|enemy|tag_?line",
+                          re.IGNORECASE)
 _UUID36 = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
 _UUID32 = re.compile(r"(?<![0-9a-fA-F])[0-9a-fA-F]{32}(?![0-9a-fA-F])")  # a dashless UUID
 # Riot id = game name (may hold spaces / non-ASCII) + '#' (or the fullwidth
@@ -201,10 +207,13 @@ def _looks_encrypted(tok: str) -> bool:
 
 
 def _is_identity_key(k) -> bool:
-    if not isinstance(k, str) or k in _SCHEMA_KEYS:
+    if not isinstance(k, str):
         return False
-    if _GAME_NAME_KEY.fullmatch(k) or _GAME_API_KEY.fullmatch(k):
+    k = unicodedata.normalize("NFKC", k)  # a fullwidth "name" is still "name"
+    if k in _SCHEMA_KEYS or _GAME_NAME_KEY.fullmatch(k):
         return False
+    if _GAME_API_KEY.fullmatch(k) and not _PERSON_WORD.search(k):
+        return False  # DA_18_Summoner, TFT_Item_BFSword: game data, not a person
     return bool(_IDENTITY_KEY.search(k))
 
 
