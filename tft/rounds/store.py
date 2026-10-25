@@ -137,19 +137,27 @@ def load_salt(path=None) -> bytes:
 
 # Identity shapes (section 1.2 and the section 2 scrub guard). KEYS: any JSON key
 # matching _IDENTITY_KEY is an identity field - fail closed: ANY key holding
-# "name" or "nick" (opponentName, enemy_name, names ...), and game / match ids
-# (gameId, matchId: a match id lets anyone look up all 8 players) - except the
-# schema's own columns in _SCHEMA_KEYS (name_text = a shop card's OCR text,
-# set_core_name = "TFTSet18"; game_id / match_id are replaced on export).
+# "name", "nick" or "summoner" (opponentName, enemy_name, names, summoners ...),
+# Riot id / tag keys, and game / match ids (gameId, matchId: a match id lets
+# anyone look up all 8 players). Exempt, because they name game DATA, never a
+# player: the schema's own columns (_SCHEMA_KEYS: name_text = a shop card's OCR
+# text, set_core_name = "TFTSet18"; game_id / match_id are replaced on export),
+# Riot's game-data name fields (_GAME_NAME_KEY: apiName, itemNames, championName,
+# traitName ...) and game api ids used as keys (_GAME_API_KEY: DA_18_Summoner,
+# TFT_Item_BFSword - a trait / item count dict).
 # VALUES: a UUID (dashed or not), a Riot id (name#TAG), a Riot match id
-# (NA1_<digits>), an encrypted-id / PUUID-like token, or the words puuid / riot
-# id / summoner. A bare display name with no tag cannot be recognised by shape;
-# that is why names are joined to keys in memory only and never handed here.
-# (Bare "summoner" is NOT an identity word: DA_18_Summoner is a Set 18 trait.)
+# (NA1_<digits>), an encrypted-id / PUUID-like token, or puuid / riot id /
+# summonerName / summonerId. A bare display name with no tag cannot be recognised
+# by shape; that is why names are joined to keys in memory only and never handed
+# here. (A bare "summoner" VALUE is allowed: DA_18_Summoner is a Set 18 trait.)
 _IDENTITY_KEY = re.compile(
-    r"puuid|riot_?id|summoner_?id|name|nick|tag_?line|player_?id|account_?id|"
+    r"puuid|riot_?id|riot_?tag|summoner|name|nick|tag_?line|player_?id|account_?id|"
     r"game_?id|match_?id", re.IGNORECASE)
 _SCHEMA_KEYS = frozenset({"name_text", "set_core_name", "game_id", "match_id"})
+_GAME_NAME_KEY = re.compile(
+    r"(?:api|item|champion|unit|trait|augment|set|set_?core|core|species|skin|map|mode|"
+    r"queue|shop|card|icon|ability|spell)_?names?", re.IGNORECASE)
+_GAME_API_KEY = re.compile(r"(?:DA|TFT[0-9]*)_[A-Za-z0-9_]+")
 _UUID36 = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
 _UUID32 = re.compile(r"(?<![0-9a-fA-F])[0-9a-fA-F]{32}(?![0-9a-fA-F])")  # a dashless UUID
 # Riot id = game name (may hold spaces / non-ASCII) + '#' (or the fullwidth
@@ -157,7 +165,12 @@ _UUID32 = re.compile(r"(?<![0-9a-fA-F])[0-9a-fA-F]{32}(?![0-9a-fA-F])")  # a das
 # the hash, optional spaces and a 3-5 word-char tag is enough: fail closed.
 _HASHES = "#" + chr(0xFF03) + chr(0xFE5F)  # built with chr(): source stays 7-bit ASCII
 _RIOT_ID = re.compile(r"\S\s*[" + _HASHES + r"]\s*\w{3,5}(?!\w)")
-_MATCH_REF = re.compile(r"(?<![A-Za-z0-9])[A-Z]{2,5}[0-9]{0,2}_[0-9]{6,}(?![0-9])")
+# a Riot match id: PLATFORM_<game id>, upper case generically, any case for the
+# known platform routes
+_MATCH_REF = re.compile(
+    r"(?<![A-Za-z0-9])(?:[A-Z]{2,5}[0-9]{0,2}|(?i:na1|euw1|eun1|kr|jp1|br1|la1|la2|oc1|tr1|"
+    r"ru|ph2|sg2|th2|tw2|vn2|me1|pbe1))_[0-9]{6,}(?![0-9])")
+_ISO_INSTANT = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}[T ][0-9]{2}:[0-9]{2}")
 _ID_WORDS = re.compile(r"puuid|riot[ _]?id|summoner[ _]?(?:name|id)", re.IGNORECASE)
 _TOKEN = re.compile(r"(?<![A-Za-z0-9_-])[A-Za-z0-9_-]{40,}(?![A-Za-z0-9_-])")
 
@@ -188,7 +201,13 @@ def _looks_encrypted(tok: str) -> bool:
 
 
 def _is_identity_key(k) -> bool:
-    return isinstance(k, str) and k not in _SCHEMA_KEYS and bool(_IDENTITY_KEY.search(k))
+    if not isinstance(k, str) or k in _SCHEMA_KEYS:
+        return False
+    if _GAME_NAME_KEY.fullmatch(k) or _GAME_API_KEY.fullmatch(k):
+        return False
+    return bool(_IDENTITY_KEY.search(k))
+
+
 _KEY12 = re.compile(r"[0-9a-f]{12}")
 _KEY12_RUN = re.compile(r"(?<![0-9a-f])[0-9a-f]{12}(?![0-9a-f])")  # a key inside a longer string
 _FIXTURE_KEY = re.compile(r"P[1-8]")
@@ -268,6 +287,8 @@ def scrub_violations(doc: Any) -> list:
             out.append(f"{path}: a raw 12-hex player key")
         elif _is_epoch(obj):
             out.append(f"{path}: an absolute epoch timestamp (fixtures are match-relative)")
+        elif isinstance(obj, str) and _ISO_INSTANT.search(obj):
+            out.append(f"{path}: an absolute ISO timestamp (fixtures are match-relative)")
 
     walk(doc, "$")
     return out
@@ -305,8 +326,11 @@ def _v_ident(v, pattern, name, nullable=False):
         _need(nullable, f"{name} is required")
         return None
     _need(isinstance(v, str) and pattern.fullmatch(v), f"{name} format")
-    _need(_string_violation(v) is None and not _IDENTITY_KEY.search(v),
-          f"{name} carries an identity shape")
+    # stricter than a JSON key: "game_id" / "match_id" are refused as a field
+    # name too, since an obs value under them would survive export untouched
+    _need(_string_violation(v) is None and (
+        not _IDENTITY_KEY.search(v) or _GAME_NAME_KEY.fullmatch(v) or _GAME_API_KEY.fullmatch(v)),
+        f"{name} carries an identity shape")
     return v
 
 
