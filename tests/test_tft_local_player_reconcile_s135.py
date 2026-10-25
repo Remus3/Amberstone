@@ -170,11 +170,13 @@ def test_final_check_placeholders_never_end_a_game():
 def test_per_round_record_passes_the_relay_summoner_id(monkeypatch):
     won = _with(_doc(), {1: (-4, 2), 6: (-2, 3), LOCAL_IDX: (60, 1)})
     monkeypatch.setattr(ts, "read_eog", lambda **_kw: won)
-    monkeypatch.setattr(ts, "relay_lcu_snapshot", lambda: {"summoner_id": LOCAL_SID})
+    # S136 T10: the snapshot also names the game, or the file is no file.
+    monkeypatch.setattr(ts, "relay_lcu_snapshot",
+                        lambda: {"summoner_id": LOCAL_SID, "game_id": str(GID)})
     rec = fb.per_round_record(now=time.time())
     assert rec["per_round_final"] is True
     assert rec["local_placement"] == 1 and rec["local_hp"] == 60
-    monkeypatch.setattr(ts, "relay_lcu_snapshot", lambda: None)
+    monkeypatch.setattr(ts, "relay_lcu_snapshot", lambda: {"game_id": str(GID)})
     rec = fb.per_round_record(now=time.time())
     assert rec["per_round_final"] is False
     assert rec["local_placement"] is None

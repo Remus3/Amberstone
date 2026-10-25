@@ -94,7 +94,13 @@ def root(tmp_path, monkeypatch):
     monkeypatch.setattr(tft_standalone, "eog_stats_path",
                         lambda: tmp_path / "no_such_TFTEoGStats.json")
     monkeypatch.setattr("tft.placement_aggregator.update_heatmap", lambda *a, **k: None)
-    return r
+    # S136 T10: the game that just ended is GID - the LCU game id the live
+    # path served during the match (tft_standalone.current_game_id); the
+    # per-round file counts only when it is that game's.
+    tft_standalone._reset_caches_for_tests()
+    tft_standalone._note_live_game(str(GID), time.time())
+    yield r
+    tft_standalone._reset_caches_for_tests()
 
 
 def _write_per_round(tmp_path, monkeypatch, doc):
@@ -314,7 +320,10 @@ def test_plan_tft_rating_is_the_rating_without_any_write(root):
 def test_per_round_file_of_another_game_is_not_used(root, tmp_path, monkeypatch):
     _write_per_round(tmp_path, monkeypatch, _per_round_doc(gid=GID + 1))
     assert fb.resolve_final(root, game_id=GID) is None
-    assert fb.resolve_final(root)["game_id"] == GID + 1
+    # S136 T10: with no caller id the ended game is still GID (the live
+    # game), never the file's own id.
+    assert fb.resolve_final(root) is None
+    assert fb.resolve_final(root, game_id=GID + 1)["game_id"] == GID + 1
 
 
 def test_legacy_last_file_without_game_id_is_replaced_only_by_a_newer_game(root):

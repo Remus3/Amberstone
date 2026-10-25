@@ -43,7 +43,9 @@ def root(tmp_path, monkeypatch):
     (tmp_path / "data").mkdir()
     monkeypatch.setattr(pt, "_match_db", None)
     monkeypatch.setattr("tft.placement_aggregator.update_heatmap", lambda: None)
+    tft_standalone._reset_caches_for_tests()
     yield tmp_path
+    tft_standalone._reset_caches_for_tests()
     db = pt._match_db
     if db is not None:
         try:
@@ -59,6 +61,12 @@ def _round_file(tmp_path, monkeypatch, doc, age_s=0.0):
         t = time.time() - age_s
         os.utime(p, (t, t))
     monkeypatch.setattr(tft_standalone, "eog_stats_path", lambda: p)
+    # S136 T10: the id is taken only from a file that is POSITIVELY the
+    # current game's; here the live game IS the file's game, so what is under
+    # test is the id parsing (the mismatch cases live in
+    # tests/test_tft_postgame_round_file_game_s136.py).
+    tft_standalone._reset_caches_for_tests()
+    tft_standalone._note_live_game(str(doc.get("gameId")), time.time())
     return p
 
 

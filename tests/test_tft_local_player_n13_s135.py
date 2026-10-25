@@ -582,7 +582,13 @@ def test_end_of_game_snapshot_lets_the_per_round_file_name_the_local_entry_t5(
         if i != LOCAL_IDX and p["health"] > 0:
             p["health"] = 0
     players[LOCAL_IDX]["ffaStanding"] = 1
+    # S136 T10: the post-game snapshot carries no game id, so the file is
+    # matched to the game the live path served (an in-game tick first).
+    live = _shaped(monkeypatch, "InProgress")
+    assert live["game_id"] == str(GID)
+    ts.synth_allgamedata(lcu=live, running=True, eog=doc, now=time.time())
     snap = _shaped(monkeypatch, "EndOfGame")
+    assert "game_id" not in snap
     monkeypatch.setattr(ts, "relay_lcu_snapshot", lambda: snap)
     monkeypatch.setattr(ts, "read_eog", lambda now=None, max_age_s=None: doc)
     rec = fb.per_round_record(now=time.time())

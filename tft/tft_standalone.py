@@ -69,12 +69,17 @@ _proc_cache: dict = {"ts": 0.0, "running": False, "create_time": None}
 # (game id, index, basis) already logged by _note_local: one line per game and
 # outcome, not one per 2 Hz tick.
 _local_logged: set = set()
+# S136 T10: the LCU game id of the live standalone game this process last
+# served (_round_state) and when (epoch s) - what current_game_id names once
+# the LCU snapshot has left the game and carries no id.
+_last_live: dict = {"game_id": "", "seen": 0.0}
 
 
 def _reset_caches_for_tests() -> None:
     with _cache_lock:
         _proc_cache.update({"ts": 0.0, "running": False, "create_time": None})
         _local_logged.clear()
+        _last_live.update({"game_id": "", "seen": 0.0})
 
 
 # -- process detection ---------------------------------------------------------
@@ -401,6 +406,48 @@ def eog_matches_game(eog, current_game_id, game_start=None) -> bool:
     return True
 
 
+def _note_live_game(game_id: str, now: float) -> None:
+    with _cache_lock:
+        _last_live.update({"game_id": game_id, "seen": float(now)})
+
+
+def current_game_id(lcu=_UNSET, now: float | None = None,
+                    max_age_s: float = EOG_MAX_AGE_S) -> str:
+    """The game a POST-GAME reader matches the per-round file against, or ""
+    when nothing names it (S136 T10).
+
+    The LCU snapshot's ``game_id`` when it carries one; else the LCU game id
+    of the live game this process served (``_round_state``) when seen within
+    ``max_age_s``. At the game-end rating the snapshot carries none:
+    lcu/snapshot_shape.py stamps it in GameStart / InProgress / Reconnect
+    only, and the rating runs once the phase has left the game. Never the
+    per-round file's own id - that is what is being checked."""
+    now = time.time() if now is None else now
+    if lcu is _UNSET:
+        lcu = relay_lcu_snapshot()
+    gid = str(lcu.get("game_id") or "") if isinstance(lcu, dict) else ""
+    if gid and gid != "0":
+        return gid
+    with _cache_lock:
+        gid, seen = _last_live["game_id"], _last_live["seen"]
+    return gid if gid and 0 <= now - seen <= max_age_s else ""
+
+
+def eog_for_game(eog, game_id):
+    """``eog`` when it is POSITIVELY game ``game_id``'s (``eog_matches_game``,
+    plus the TFT process start when one is running), else None. The one gate
+    every post-game per-round reader applies (S136 T10: the game-end rating
+    took any fresh file - another game's store record, standing or id)."""
+    gid = str(game_id or "")
+    if not eog_matches_game(eog, gid, _game_create_time() if gid else None):
+        if isinstance(eog, dict):
+            _log.debug("standalone TFT: per-round file not positively game %s "
+                       "(file game %s) - not used post-game", gid or "?",
+                       "set" if eog.get("gameId") else "missing")
+        return None
+    return eog
+
+
 def _round_state(lcu, eog, now: float) -> dict:
     """The local player's round state from a fresh EoG file that is
     POSITIVELY this game's (``eog_matches_game``), else the no-file shape.
@@ -418,6 +465,10 @@ def _round_state(lcu, eog, now: float) -> dict:
            "game_id": game_id, "queue_id": None, "set": None, "lobby": [],
            "local_index": None, "local_basis": "",
            "alive_others": None, "dead_others": None}
+    if game_id:
+        # Callers reach here only for a live standalone match: remember its
+        # LCU id for the post-game readers (current_game_id).
+        _note_live_game(game_id, now)
     if not isinstance(eog, dict):
         return out
     if not eog_matches_game(eog, game_id, _game_create_time() if game_id else None):
