@@ -863,8 +863,9 @@ def _live_game_now() -> bool:
 
 
 def build_engine_recommend(qs: dict, now: Optional[float] = None) -> dict:
-    """Augur's answer on the latest captured round. B4 (RM-189, Riot's ban on
-    notifications that dictate player action from the current game state):
+    """The TFT engine's answer on the latest captured round. B4 (RM-189,
+    Riot's ban on notifications that dictate player action from the current
+    game state):
     shop / slam / level advice is withheld while a game is running - the
     health flags say so (core.live_game_gate) or the round is still fresh -
     so the answer is only ever served pre- or post-game."""
