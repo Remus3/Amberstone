@@ -11,9 +11,10 @@ enqueues a closure and returns at once - True when enqueued, False when the row
 was dropped. Nothing here raises into the caller's poll loop:
 
   * invalid input (unknown field, src outside the closed enum, a value claimed
+    'absent' or a null value claimed observed, a stored row whose src is
     'absent', a conf outside 0..1 or an llm_fallback conf above 0.5, a player
-    key that is not a 12-hex HMAC key, a JSON payload carrying an identity
-    shape) is dropped and counted as `invalid`;
+    key that is not a 12-hex HMAC key, a JSON payload whose keys or values
+    carry an identity shape) is dropped and counted as `invalid`;
   * a full queue drops the row (`queue_full`), so a stalled disk never blocks
     the TFT poll thread;
   * a database error inside the writer rolls back that ONE row (a savepoint per
@@ -169,10 +170,17 @@ def identity_violations(obj: Any, path: str = "$") -> list:
     The offending VALUE is never part of the message."""
     out = []
     if isinstance(obj, dict):
-        for k, v in obj.items():
-            kp = f"{path}.{k}"
+        for i, (k, v) in enumerate(obj.items()):
             if isinstance(k, str) and _IDENTITY_KEY.search(k):
-                out.append(f"{kp}: identity key")
+                out.append(f"{path}.{k}: identity key")
+                kp = f"{path}.{k}"
+            elif isinstance(k, str) and _string_violation(k):
+                # a KEY can carry an identity as well as a value can ({puuid: 5});
+                # the path names the position, never the key itself
+                out.append(f"{path}.<key {i}>: key is {_string_violation(k)}")
+                kp = f"{path}.<key {i}>"
+            else:
+                kp = f"{path}.{k}"
             out.extend(identity_violations(v, kp))
     elif isinstance(obj, (list, tuple)):
         for i, v in enumerate(obj):
@@ -192,8 +200,12 @@ def scrub_violations(doc: Any) -> list:
 
     def walk(obj, path):
         if isinstance(obj, dict):
-            for k, v in obj.items():
+            for i, (k, v) in enumerate(obj.items()):
                 kp = f"{path}.{k}"
+                if isinstance(k, str) and (_KEY12.fullmatch(k) or _string_violation(k)):
+                    kp = f"{path}.<key {i}>"  # never echo an identity-shaped key
+                if isinstance(k, str) and _KEY12.fullmatch(k):
+                    out.append(f"{kp}: a raw 12-hex player key used as a key")
                 if k in ("player_key", "opponent_key") and v is not None and not (
                         isinstance(v, str) and _FIXTURE_KEY.fullmatch(v)):
                     out.append(f"{kp}: not a P1..P8 fixture key")
@@ -306,11 +318,20 @@ def _v_conf(conf, src, name="conf"):
 
 
 def _v_pair(conf, src, value=_UNSET, name="conf"):
-    """A row-level (conf, src) pair; with a value, the absent rule too."""
+    """A (conf, src) pair; with a value, the absent rule too (a null value pairs
+    with src 'absent', and only a null value does)."""
     src = _v_src(src, name.replace("conf", "src"))
     if value is not _UNSET:
-        _need((value is None) == (src == rs.ABSENT), "a null value pairs with src absent, only")
+        _need((value is None) == (src == rs.ABSENT), f"{name}: a null value pairs with src absent, only")
     return _v_conf(conf, src, name), src
+
+
+def _v_row(conf, src):
+    """The (conf, src) of a stored row: a row is an observation, so its src can
+    never be 'absent' (an unobserved thing is not written as a row at all)."""
+    conf, src = _v_pair(conf, src)
+    _need(src != rs.ABSENT, "a stored row cannot carry src absent")
+    return conf, src
 
 
 def _v_json(v, name):
@@ -820,8 +841,11 @@ class RoundStore:
                       "a unit has a field outside unit_obs")
                 z = _v_enum(u.get("zone", scope), rs.ZONES, "zone")
                 _need(scope is None or z == scope, "a unit's zone differs from the zone rewritten")
-                conf, src = _v_pair(u.get("conf"), u.get("src"))
-                pconf, psrc = _v_pair(u.get("pos_conf"), u.get("pos_src", rs.ABSENT), name="pos_conf")
+                conf, src = _v_row(u.get("conf"), u.get("src"))
+                where = tuple(u.get(f) for f in ("hex_row", "hex_col", "bench_idx"))
+                pconf, psrc = _v_pair(u.get("pos_conf"), u.get("pos_src", rs.ABSENT),
+                                      value=None if where == (None, None, None) else where,
+                                      name="pos_conf")
                 fid = u.get("frame_id")
                 _need(fid is None or (isinstance(fid, str) and _FRAME_ID.fullmatch(fid)), "frame_id format")
                 rows.append((mid, seq, ph, key, z,
@@ -861,7 +885,7 @@ class RoundStore:
         def build():
             mid, seq = _v_match_id(match_id), _v_seq(round_seq)
             idx = _v_int(refresh_idx, "refresh_idx", lo=0, nullable=False)
-            c, s = _v_pair(conf, src)
+            c, s = _v_row(conf, src)
             ref = (mid, seq, idx, _v_enum(cause, rs.REFRESH_CAUSES, "cause"),
                    time.time() if ts is None else _v_num(ts, "ts"),
                    _v_int(gold_before, "gold_before"), _v_int(gold_after, "gold_after"), c, s)
@@ -873,9 +897,9 @@ class RoundStore:
                 slot = _v_int(o.get("slot"), "slot", 0, 4, nullable=False)
                 _need(slot not in slots, "two offers share a slot")
                 slots.add(slot)
-                oc, osrc = _v_pair(o.get("conf"), o.get("src"))
+                oc, osrc = _v_row(o.get("conf"), o.get("src"))
                 bc, bsrc = _v_pair(o.get("bought_conf"), o.get("bought_src", rs.ABSENT),
-                                   name="bought_conf")
+                                   value=o.get("bought"), name="bought_conf")
                 rows.append((mid, seq, idx, slot, _v_enum(o.get("kind"), rs.OFFER_KINDS, "kind"),
                              _v_text(o.get("champion_api"), "champion_api"),
                              _v_text(o.get("name_text"), "name_text"),
@@ -902,7 +926,7 @@ class RoundStore:
             _need(isinstance(odds, (list, tuple)) and len(odds) == 5, "odds must be 5 numbers")
             ps = [_v_num(p, "odds") for p in odds]
             _need(all(p is None or 0.0 <= p <= 100.0 for p in ps), "odds must be percents")
-            c, s = _v_pair(conf, src)
+            c, s = _v_row(conf, src)
             row = (mid, seq, _v_int(level, "level", 1, 10, nullable=False), *ps, c, s)
             sql = _insert_sql("shop_odds", rs.COLUMNS["shop_odds"], replace=True)
 
@@ -929,7 +953,7 @@ class RoundStore:
                 api = _v_text(t.get("trait_api"), "trait_api", nullable=False)
                 _need(api not in seen, "a trait is listed twice")
                 seen.add(api)
-                c, s = _v_pair(t.get("conf"), t.get("src"))
+                c, s = _v_row(t.get("conf"), t.get("src"))
                 rows.append((mid, seq, ph, key, api, _v_int(t.get("count"), "count", lo=0),
                              _v_int(t.get("tier_index"), "tier_index", lo=0),
                              _v_bool(t.get("active"), "active"), c, s))
@@ -948,7 +972,7 @@ class RoundStore:
         """One augment choice: the offered api names and the one chosen."""
         def build():
             mid, seq = _v_match_id(match_id), _v_seq(round_seq)
-            c, s = _v_pair(conf, src)
+            c, s = _v_row(conf, src)
             row = (mid, seq, _v_int(pick_idx, "pick_idx", lo=0, nullable=False),
                    _v_str_list(offered, "offered"), _v_text(chosen_api, "chosen_api"), c, s)
             sql = _insert_sql("augment", rs.COLUMNS["augment"], replace=True)
@@ -965,7 +989,7 @@ class RoundStore:
         """One player's HP / level badge / alive / standing for a round."""
         def build():
             mid, seq = _v_match_id(match_id), _v_seq(round_seq)
-            c, s = _v_pair(conf, src)
+            c, s = _v_row(conf, src)
             row = (mid, seq, _v_key(player_key), _v_int(hp, "hp"),
                    _v_int(level_badge, "level_badge", 1, 10), _v_bool(alive, "alive"),
                    _v_int(standing, "standing", 1, 8), c, s)
@@ -1310,10 +1334,12 @@ class RoundStore:
         _atomic_write_text(out, json.dumps(fixture, ensure_ascii=True, sort_keys=True, indent=1) + "\n")
         return out
 
-    def export_jsonl(self, match_ids: Iterable[str], out) -> Path:
-        """Analysis export (local only, default under gitignored data/tft/exports):
-        per match one {"record": "match"} line, then one {"record": "round"} line
-        per round bundle."""
+    def export_jsonl(self, match_ids: Iterable[str], out=None) -> Path:
+        """Analysis export (local only; default `data/tft/exports/` (gitignored)
+        / tft-rounds-<stamp>.jsonl): per match one {"record": "match"} line, then
+        one {"record": "round"} line per round bundle."""
+        if out is None:
+            out = default_exports_dir() / f"tft-rounds-{time.strftime('%Y%m%d-%H%M%S')}.jsonl"
         lines = []
         for mid in match_ids:
             doc = self.get_match(mid)
@@ -1328,9 +1354,12 @@ class RoundStore:
         _atomic_write_text(out, "".join(line + "\n" for line in lines))
         return out
 
-    def export_csv(self, match_ids: Iterable[str], out_dir) -> list:
+    def export_csv(self, match_ids: Iterable[str], out_dir=None) -> list:
         """Analysis export: one CSV per section 1.5 table (schema_meta aside),
-        raw columns, rows of the given matches only. Returns the files written."""
+        raw columns, rows of the given matches only, into `out_dir` (default
+        `data/tft/exports/tft-rounds-<stamp>/`, gitignored). Returns the files."""
+        if out_dir is None:
+            out_dir = default_exports_dir() / f"tft-rounds-{time.strftime('%Y%m%d-%H%M%S')}"
         ids = list(match_ids)
         marks = ", ".join("?" * len(ids)) or "NULL"
         tables = [t for t in rs.TABLE_NAMES if t != "schema_meta"]
@@ -1393,8 +1422,8 @@ def _scrub_for_fixture(doc: dict, name: str) -> dict:
                     out[k] = FIXTURE_GAME_ID
                 elif k in _TS_KEYS and isinstance(v, (int, float)) and not isinstance(v, bool):
                     out[k] = round(v - t0, 3)
-                else:
-                    out[k] = walk(v)
+                else:  # a player key used as a dict key is mapped like a value
+                    out[mapping.get(k, k) if isinstance(k, str) else k] = walk(v)
             return out
         if isinstance(obj, list):
             return [walk(v) for v in obj]
