@@ -137,6 +137,7 @@ from agents._supervisor_ephemeral import (
     spawn_ephemeral_llm,
 )
 from agents._supervisor_http import _QuietHandler, _WebServer, start_web_server
+from agents._supervisor_http import TASK_FAILED_ERROR
 
 __all__ = [
     "AGENT_CHARTERS",
@@ -598,8 +599,15 @@ class Supervisor:
                     raise RuntimeError(f"unknown owner agent: {agent}")
                 self._scheduler.complete(task.id, result=result)
             except Exception as e:  # noqa: BLE001
-                log.exception("task %s failed: %s", task.id, e)
-                self._scheduler.fail(task.id, error=str(e))
+                # RM-853: last_error is persisted to task_queue.jsonl and
+                # served by /api/task/<id> (through the :8888 proxy), so it
+                # is a fixed line. The cause and its traceback are logged
+                # once, scrubbed (this logger has no scrub filter).
+                log.error("task %s failed: %s: %s | %s",
+                          _scrub_log_text(str(task.id)), type(e).__name__,
+                          _scrub_log_text(str(e)),
+                          _scrub_log_text(traceback.format_exc()))
+                self._scheduler.fail(task.id, error=TASK_FAILED_ERROR)
 
     # ---- substrate handlers ------------------------------------------
     def _run_deterministic(self, task) -> dict:
