@@ -513,24 +513,43 @@ class MetricsCache:
 
         last_coaching_ts = most recent successful coaching timestamp across all modes.
         Missing or malformed individual mode artifacts are non-fatal and ignored.
+
+        RM-298b: values are compared as INSTANTS, not strings.  A string
+        compare was right only while one writer emitted every artifact: a
+        `Z` suffix sorts after every `+00:00` value in the same second, and
+        a non-UTC offset sorts by its wall-clock digits.  The winner's
+        original string is published unchanged.  A value that cannot be
+        placed on the timeline (non-string, unparseable, or naive) is
+        skipped and named on `faults` rather than competing.
         """
         _MODES = ("sr", "aram", "arena", "brawl", "tft")
         latest: Optional[str] = None
+        latest_at: Optional[datetime] = None
         for mode in _MODES:
             # Per-mode isolation: an unusable sr artifact must not stop the
             # aram one from being considered.
-            data = self._load_json(f"coaching_ts_{mode}.json", faults)
+            rel_path = f"coaching_ts_{mode}.json"
+            data = self._load_json(rel_path, faults)
             if data is None:
                 continue
             ts = data.get("ts")
-            if not ts:
+            if ts is None or ts == "":
                 continue
-            ts_str = str(ts)
-            # Keep the lexicographically latest ISO-8601 UTC string.
-            # ISO-8601 UTC strings with consistent formatting sort correctly
-            # as plain strings.
-            if latest is None or ts_str > latest:
-                latest = ts_str
+            at: Optional[datetime] = None
+            if isinstance(ts, str):
+                try:
+                    at = datetime.fromisoformat(ts)
+                except ValueError:
+                    at = None
+            if at is None or at.tzinfo is None or at.utcoffset() is None:
+                if faults is not None:
+                    faults.append(
+                        f"{rel_path}: ts is not an ISO-8601 time with a UTC "
+                        f"offset: {ts!r}"
+                    )
+                continue
+            if latest_at is None or at > latest_at:
+                latest, latest_at = ts, at
         s.last_coaching_ts = latest
 
     def _read_policy_state(
