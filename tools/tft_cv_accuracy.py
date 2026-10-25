@@ -28,7 +28,8 @@ player id, companion) are never read past the local flag, so nothing here can
 copy one into a report.
 
 Predictions come from ``--extractor pkg.module:function`` (called once per
-frame with the frame path, plus a meta dict when it takes two arguments) or
+frame with the frame path, plus a meta dict {"frame", "t"} when it takes two
+arguments; never a label value) or
 from ``--predictions <json>`` (``{"frames": [{"frame", "fields"}]}`` or a plain
 ``{frame: fields}`` map). Fields use the label field names; any field may be an
 envelope ``{"value": v, "conf": c}``; values below ``--gate`` count as absent.
@@ -683,19 +684,28 @@ def _int_or_none(v):
     return int(v) if isinstance(v, (int, float)) and not isinstance(v, bool) else None
 
 
+def _local_first(plist, flag: str) -> list:
+    """Players with the local one first (it becomes P1), or [] when no player
+    carries the local flag or there are more than 8: P1..P8 cannot be keyed."""
+    rows = [p for p in plist if isinstance(p, dict)]
+    local = next((p for p in rows if p.get(flag) is True), None)
+    if local is None or len(rows) > 8:
+        return []
+    return [local] + [p for p in rows if p is not local]
+
+
 def eog_file_players(doc, set_number: int = 18) -> dict:
     """Per-round TFTEoGStats.json -> {"P1": {"hp", "board"}, ...}; P1 = the local
     player (isInteractable), the rest in file order. Only health, boardPieces
-    (championName, starLevel, itemNames) and the local flag are read."""
+    (championName, starLevel, itemNames) and the local flag are read. A document
+    with no local player (or more than 8) cannot be keyed and yields {}."""
     block = doc.get("statsBlock") if isinstance(doc, dict) else None
     plist = block.get("players") if isinstance(block, dict) else None
     if not isinstance(plist, list):
         return {}
-    rows = [p for p in plist if isinstance(p, dict)]
-    local = next((p for p in rows if p.get("isInteractable") is True), None)
-    ordered = ([local] if local is not None else []) + [p for p in rows if p is not local]
+    ordered = _local_first(plist, "isInteractable")
     out = {}
-    for n, p in enumerate(ordered, start=1 if local is not None else 2):
+    for n, p in enumerate(ordered, start=1):
         board = []
         for piece in p.get("boardPieces") or []:
             if not isinstance(piece, dict):
@@ -718,11 +728,12 @@ def lcu_eog_ground_truth(doc, set_number: int = 18) -> dict:
     plist = doc.get("players") if isinstance(doc, dict) else None
     if not isinstance(plist, list):
         return {}
-    rows = [p for p in plist if isinstance(p, dict)]
-    local = next((p for p in rows if p.get("isLocalPlayer") is True), None)
-    ordered = ([local] if local is not None else []) + [p for p in rows if p is not local]
+    ordered = _local_first(plist, "isLocalPlayer")
+    if not ordered:
+        return {}
+    local = ordered[0]
     players = {}
-    for n, p in enumerate(ordered, start=1 if local is not None else 2):
+    for n, p in enumerate(ordered, start=1):
         board = []
         for piece in p.get("boardPieces") or []:
             if not isinstance(piece, dict):
@@ -967,10 +978,15 @@ def main(argv=None) -> int:
                 print(f"{name:<16}{have:>7}{none:>7}")
         return 1 if (args.strict and frame_failed) else 0
 
+    root = frames_dir.parent if frames_dir is not None and frames_dir.name == "frames" else frames_dir
+    times = frame_times(root) if root is not None else {}
     errors = 0
     try:
         if args.extractor:
-            preds, errors = run_extractor(load_extractor(args.extractor), frames_dir, list(gt))
+            # Frame metadata only (capture time, file name); never a label value.
+            meta = {name: {"frame": name, "t": times.get(name)} for name in gt}
+            preds, errors = run_extractor(load_extractor(args.extractor), frames_dir, list(gt),
+                                          meta=meta)
         else:
             preds = load_predictions(args.predictions)
     except (ImportError, AttributeError, ValueError, OSError) as exc:
@@ -978,8 +994,6 @@ def main(argv=None) -> int:
         return 2
 
     if args.eog:
-        root = frames_dir.parent if frames_dir is not None and frames_dir.name == "frames" else frames_dir
-        times = frame_times(root) if root is not None else {}
         snaps = load_eog_snapshots(args.eog, args.set_number)
         idx = align_frames({k: times[k] for k in gt if k in times}, [s[0] for s in snaps],
                            args.max_age)
@@ -996,6 +1010,9 @@ def main(argv=None) -> int:
         if final:
             gt["final"] = final
             if "final" not in preds:
+                # Fallback: the latest-named frame that carries players. With hand
+                # labels that is the last labelled frame, not necessarily game end;
+                # pass a "final" prediction record to grade the true end state.
                 last = [k for k in sorted(preds) if isinstance(preds[k], dict)
                         and preds[k].get("players")]
                 if last:
