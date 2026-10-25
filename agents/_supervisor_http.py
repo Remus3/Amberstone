@@ -79,6 +79,11 @@ def public_last_error(raw: object) -> str | None:
     return TASK_FAILED_ERROR
 
 
+# RM-863: the logged cause when an exception's own str() raises - the reply
+# must still go out (see _QuietHandler._send_error).
+_UNPRINTABLE_CAUSE = "<unprintable exception>"
+
+
 class _BadJsonBody(ValueError):
     """A request body the routes cannot use; ``public_msg`` is wire-safe."""
 
@@ -340,11 +345,17 @@ class _QuietHandler(HostAllowlistMixin, HeadDeadlineMixin,
         (the RM-321 delegate of ``core.log_scrub.scrub_log``; the RM-853
         dispatcher idiom). The supervisor logger has no scrub filter, so an
         exception carrying a client's control characters (a terminal escape,
-        a CR/LF that forges a log line) used to reach the log raw.
+        a CR/LF that forges a log line) used to reach the log raw. The text
+        is rendered eagerly now, so an exception whose own ``str()`` raises
+        is logged as ``_UNPRINTABLE_CAUSE``: the reply always goes out (the
+        old lazy ``%s`` was rendered inside logging, which swallows that).
         """
         if exc is not None:
-            log.warning("%s: %s: %s", public_msg, type(exc).__name__,
-                        _scrub_log(str(exc)))
+            try:
+                cause = f"{type(exc).__name__}: {_scrub_log(str(exc))}"
+            except Exception:  # noqa: BLE001 - never cost the reply
+                cause = _UNPRINTABLE_CAUSE
+            log.warning("%s: %s", public_msg, cause)
         self._send_json(status, {"error": public_msg})
 
     def _handle_input(self) -> None:
