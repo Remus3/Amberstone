@@ -96,6 +96,7 @@ _RATE_LIMIT = frozenset({"429", "rate_limited"})
 _MESSAGES = {
     "not_found": "No public TFT profile found (bot or renamed account).",
     "rate_limited": "Riot is busy right now - this card will fill in next game.",
+    "deadline": "Ran out of time loading this profile - it will fill in next game.",
     "no_identity": "This player's identity is hidden.",
     "unavailable": "Profile unavailable right now.",
 }
@@ -746,11 +747,14 @@ class Scouter:
                 continue
             if got is not None:
                 digest = build_digest(ident, got["rank"], got["rows"], n=self.n, source=src)
-                self._cache.put(ident, digest)
+                if got.get("partial"):
+                    digest["partial"] = True
+                else:
+                    self._cache.put(ident, digest)
                 return digest
             reasons.append(why)
         log.info("tft_scouting: slot %d unavailable (%s)", ident.slot, ",".join(reasons))
-        for r in ("rate_limited", "not_found", "no_identity"):
+        for r in ("rate_limited", "deadline", "not_found", "no_identity"):
             if r in reasons:
                 return unavailable_digest(ident, r)
         return unavailable_digest(ident, "unavailable")
@@ -798,7 +802,7 @@ class Scouter:
         if self._clock() >= deadline:
             # Past the run deadline every call could still wait up to the
             # limiter's 5 s acquire; the LCU path (no Web API budget) takes over.
-            return None, "rate_limited"
+            return None, "deadline"
         R = self._riot_mod()
         try:
             with R.tft_key_scope(), R.track_outcomes() as sc:
@@ -818,25 +822,30 @@ class Scouter:
                 if ids is None:
                     return None, self._classify(sc.outcomes)
                 rows = []
+                truncated = ""
                 for mid in ids[: self.n]:
                     if self._clock() >= deadline:
+                        truncated = "deadline"
                         break
                     before = len(sc.outcomes)
                     m = self._retry(lambda mid=mid: R.get_tft_match(mid, region=self.regional),
                                     sc, deadline)
                     if m is None and any(o in _RATE_LIMIT for o in sc.outcomes[before:]):
+                        truncated = "rate_limited"
                         break   # still limited after the retries: the rest would be too
                     row = match_row(m, puuid=puuid, riot_id=ident.riot_id)
                     if row:
                         rows.append(row)
                 rank = rank_from_riot_entries(entries)
-                if ids and not rows and sc.rate_limited:
-                    return None, "rate_limited"
+                if truncated and not rows:
+                    return None, truncated
         except Exception as exc:  # noqa: BLE001
             log.warning("tft_scouting: riot_api path raised: %s", exc)
             return None, "error"
         self._riot_state = "ok"
-        return {"rank": rank, "rows": rows}, "ok"
+        # A truncated sample is shown but never cached: a 15-min "ready" card
+        # built from 1 of 10 matches would read as a thin history.
+        return {"rank": rank, "rows": rows, "partial": bool(truncated)}, "ok"
 
     def _classify(self, outcomes: list) -> str:
         """Why the Riot path produced nothing. A 403 on these routes is the
