@@ -1971,9 +1971,17 @@ stays playable beside it, so record which set the game ran).
   (`tft/tft_data.py`, `tft/tft_pbe_data.py`; `CONSTANTS_SET_VERIFIED` stays False in both and
   `tft/tft_roll_odds.py` reports both STALE against the Set 18 lane until this closes). Close by pinning the measured table with a test, or recording
   that Set 18 kept the Set 17 values.
-- **LT-03** (RM-840, Set 18 team-planner codes) With the LCU agent running in a Set 18 lobby, capture
+- **LT-03 CLOSED 2026-10-25** (`2f254da18`, LEDGER 1864: 65 Set 18 codes read with GETs only in a
+  live Set 18 lobby; `scripts/discover_champion_codes.py` is passive by default) (RM-840, Set 18
+  team-planner codes) With the LCU agent running in a Set 18 lobby, capture
   the team-planner champion codes (`scripts/discover_champion_codes.py` shape) so a
   `data/meta/tft_set18_champion_codes.json` can be written; Set 17 is the only set with a codes file.
+- **LT-04** (filed s134 from LT-03, Set 17 Morgana planner code) `data/meta/tft_set17_champion_codes.json`
+  (legacy mutating probe) gives Morgana `0`; the game data LT-03 read
+  (`/lol-game-data/assets/v1/tftchampions-teamplanner.json`) gives `88`, and the other 63 Set 17 units
+  agree. In a Set 17 lobby, read the planner code with the passive GET path
+  (`scripts/discover_champion_codes.py --set 17 --dry-run`) and close by correcting the file to the
+  measured value, or record why `0` is right.
 
 ## PARKED / HOLD - deliberately OFF the active checklist
 
