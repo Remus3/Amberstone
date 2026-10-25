@@ -175,6 +175,49 @@ def test_render_is_ascii_and_cli_json(tmp_path, capsys):
     assert out["rc_restarts"] == 2
 
 
+def _match_s134_2(tmp_path: Path, start_extra=None) -> Path:
+    # The s134-2 recorder writes no ev=game_id event: the game id rides the
+    # match_start event and MATCH_START.json, the queue rides MATCH_START.json
+    # session_queue, and MATCH_START.json queue is an all-None dict (match
+    # 20261025-085349, s134 gated c11 printed "queue None None None").
+    d = tmp_path / "20261025-085349"
+    d.mkdir()
+    start = {"start_iso": "2026-10-25T13:53:49+00:00", "joined_late": False,
+             "mode_key": "tft", "game_id": 1000000912,
+             "session_queue": {"id": 1090, "gameMode": "TFT", "type": "NORMAL_TFT",
+                               "mapId": 22, "isRanked": False},
+             "queue": {"queue_id": None, "queue_name": None, "game_mode": None,
+                       "map_id": None}}
+    start.update(start_extra or {})
+    (d / "MATCH_START.json").write_text(json.dumps(start), encoding="utf-8")
+    _write_jsonl(d / "events.jsonl", [
+        {"ev": "match_start", "joined_late": False, "game_id": 1000000912},
+        {"ev": "coach_first", "field": "mode", "new": "tft"},
+    ])
+    return d
+
+
+def test_s134_2_shape_reads_game_id_and_session_queue(tmp_path):
+    s = g.summarize(_match_s134_2(tmp_path))
+    assert s["game"]["game_id"] == 1000000912
+    assert s["game"]["queue"]["id"] == 1090
+    assert "queue 1090 TFT NORMAL_TFT" in g.render(s)
+
+
+def test_s134_2_game_id_from_match_start_event_when_start_file_lacks_it(tmp_path):
+    d = _match_s134_2(tmp_path, {"game_id": None, "session_queue": None})
+    s = g.summarize(d)
+    assert s["game"] == {"game_id": 1000000912}
+
+
+def test_game_id_event_queue_wins_over_session_queue(tmp_path):
+    d = _match(tmp_path)
+    start = json.loads((d / "MATCH_START.json").read_text(encoding="utf-8"))
+    start["session_queue"] = {"id": 1100, "gameMode": "TFT", "type": "RANKED_TFT"}
+    (d / "MATCH_START.json").write_text(json.dumps(start), encoding="utf-8")
+    assert g.summarize(d)["game"]["queue"]["id"] == 1090
+
+
 def test_cli_rejects_missing_dir(tmp_path):
     assert g.main([str(tmp_path / "nope")]) == 2
 
