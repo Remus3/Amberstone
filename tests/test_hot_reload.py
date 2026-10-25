@@ -461,6 +461,7 @@ class TestResponderExportCopiesAreNotWatched:
 # ---------------------------------------------------------------------------
 
 import logging  # noqa: E402
+import sys  # noqa: E402
 import types  # noqa: E402
 
 import core.hot_reload as hr  # noqa: E402
@@ -779,12 +780,32 @@ class TestGameActivity:
                              clock=lambda: 0.0)
         assert ga.check() is None
 
-    def test_default_process_names_sees_this_process(self):
-        psutil = pytest.importorskip("psutil")
-        me = psutil.Process().name().lower()
+    def test_default_process_names_reads_psutil_lower_cased(self, monkeypatch):
+        # A fake psutil, never the live process table: a suite run while the
+        # operator plays must not see the real game (same rule as conftest's
+        # _no_live_standalone_tft).
+        class _Proc:
+            def __init__(self, name):
+                self.info = {"name": name}
+
+        class _Gone:
+            @property
+            def info(self):
+                raise RuntimeError("process exited mid-scan")
+
+        fake = types.ModuleType("psutil")
+        fake.process_iter = lambda attrs=None: iter([
+            _Proc("TFTClient-Win64-Shipping.exe"), _Proc(None), _Gone(),
+            _Proc("Explorer.EXE"),
+        ])
+        monkeypatch.setitem(sys.modules, "psutil", fake)
         names = hr._default_process_names()
-        assert isinstance(names, frozenset)
-        assert me in names
+        assert names == frozenset({"tftclient-win64-shipping.exe",
+                                   "explorer.exe"})
+
+    def test_default_process_names_without_psutil_is_empty(self, monkeypatch):
+        monkeypatch.setitem(sys.modules, "psutil", None)  # import -> ImportError
+        assert hr._default_process_names() == frozenset()
 
     def test_default_lcu_phase_reads_the_agent_snapshot(self, monkeypatch):
         import dashboard._liveclient as lc
