@@ -35,6 +35,11 @@
 //     keys intact) so a relaunch restores the HUD where the operator left it.
 //   - ACTIVE indicator: injected glow frame on the overlay page lights while
 //     the overlay is interactive - see ./active_indicator (overlay-only).
+//   - Overlay ON/OFF icon (S134): a tiny movable always-on-top icon window
+//     (overlay_toggle.html, focusable:false) shown over the game in every game
+//     mode; a tap hides / shows the overlay content, the icon itself stays up.
+//     Pure decisions in ./overlay_toggle; keyboard twin = Ctrl+Shift+O via the
+//     Win32 listener signal file (startVisibleToggleWatch).
 //
 // Phase 5 (stabilization): electron-updater + GitHub Releases, on stable/dev
 // channels (see ./update_channel, the pure channel/plan core). The updater is
@@ -65,6 +70,7 @@ const ind = require("./active_indicator");
 const ctz = require("./clickthrough_zones");
 const upd = require("./update_channel");
 const cg = require("./crash_guard");
+const tog = require("./overlay_toggle");
 
 // In-game overlay liveness (CRITICAL). A fullscreen League window fully OCCLUDES
 // this always-on-top transparent overlay. On Windows, Chromium's native window-
@@ -118,6 +124,10 @@ let updateChannel = upd.DEFAULT_CHANNEL; // stable/dev release channel (Phase 5)
 let updateInitialTimer = null; // one-shot delay before the first update check.
 let updateIntervalTimer = null; // recurring update-check handle.
 const crashGuard = cg.makeCrashGuard({}); // per-window renderer restart budget (Phase 5).
+let toggleWindow = null; // S134: the overlay ON/OFF icon - its own tiny window, so it stays up while the content is OFF.
+let toggleReady = false; // false until the icon window's first paint (same gate as overlayReady).
+let overlayContentOn = tog.TOGGLE_DEFAULTS.visible; // overlay content ON/OFF (persisted overlay.toggle.visible; default ON).
+const toggleDrag = tog.makeToggleDrag({ thresholdPx: tog.TOGGLE_DEFAULTS.dragThresholdPx }); // tap-vs-drag for one icon press.
 
 // Debounced state writer so a drag (many move events) does not hammer the disk.
 let saveTimer = null;
@@ -462,6 +472,8 @@ function createWindow() {
   // the saved delay before any hotkey can arm it.
   overlaySettings = ov.overlaySettingsFrom(saved);
   activeRevert = ov.makeActiveRevert({ delayMs: overlaySettings.activeRevertSec * 1000 });
+  // S134: restore the overlay content ON/OFF choice before any surface applies.
+  overlayContentOn = tog.toggleStateFrom(saved).visible;
 
   originHost = cfgmod.originHost(cfg.origin);
   resolvedOrigin = cfg.origin;
@@ -662,10 +674,13 @@ function createOverlayWindow() {
   // the FIRST show to 'ready-to-show' (first paint), and only if the surface still
   // wants the overlay. applySurface owns every LATER show (overlayReady is true by
   // then), so this fires at most once per window lifetime.
+  // S134: the content toggle gates the first show too - a window created just
+  // before the operator tapped the icon OFF must not pop up on its first paint.
   overlayWindow.once("ready-to-show", () => {
     overlayReady = true;
-    if (ov.shouldShowOverlayNow(overlayReady, lastSurface === ov.SURFACES.OVERLAY)) {
+    if (ov.shouldShowOverlayNow(overlayReady, lastSurface === ov.SURFACES.OVERLAY && overlayContentOn)) {
       overlayWindow.showInactive();
+      raiseToggle(); // keep the ON/OFF icon above the freshly shown HUD.
     }
   });
   // The overlay is a display-PINNED fullscreen canvas - it must NEVER be
@@ -751,12 +766,235 @@ function scheduleOverlayDisplayReapply() {
     } catch (_e) {
       // A display race must never take down the shell; the next event retries.
     }
+    try {
+      applyToggleDisplay(); // S134: re-clamp the ON/OFF icon onto the new geometry.
+    } catch (_e) {
+      // same: the next display event retries.
+    }
   }, OVERLAY_DISPLAY_SETTLE_MS);
 }
 
 function watchDisplayChanges() {
   for (const evt of ["display-metrics-changed", "display-added", "display-removed"]) {
     screen.on(evt, scheduleOverlayDisplayReapply);
+  }
+}
+
+// --- S134: overlay ON/OFF toggle icon -------------------------------------------
+// Operator 2026-10-25: "the ingame overlay [should] have a toggle icon [movable]
+// to enable or disable the visual overlay." The icon is its OWN tiny window,
+// separate from the fullscreen overlay window, because it has to stay on screen
+// while the content is OFF (OFF hides the overlay window outright). The window
+// is exactly the icon, so everywhere else stays click-through to the game by
+// construction, and focusable:false (WS_EX_NOACTIVATE on Windows; it also keeps
+// the window off the taskbar) means a click never activates it - League keeps
+// foreground focus. Every decision lives in ./overlay_toggle (pure); this block
+// only applies them.
+
+// The surface the poll currently resolves (ignores the content toggle - the
+// toggle only changes which windows show, never the surface itself).
+function currentSurface() {
+  return ov.resolveSurface(lastMode, surfaceHidden, lastInGame);
+}
+
+// Where the icon goes right now: the saved per-display spot, re-resolved
+// against the live display set and clamped on-screen (a resolution change or
+// an unplugged monitor can never strand it off-screen).
+function resolveToggleBoundsNow() {
+  let displays = [];
+  let primaryId = null;
+  try {
+    displays = screen.getAllDisplays();
+    primaryId = screen.getPrimaryDisplay().id;
+  } catch (_e) {
+    // screen API hiccup -> the pure resolver falls back to a sane primary box.
+  }
+  const r = tog.resolveToggleBounds(
+    tog.toggleStateFrom(store.load(statePath(), {})).pos,
+    displays,
+    primaryId
+  );
+  return { x: r.x, y: r.y, width: r.width, height: r.height };
+}
+
+function pushToggleState() {
+  if (toggleWindow && !toggleWindow.isDestroyed()) {
+    toggleWindow.webContents.send("rc-shell:overlay-toggle:state", { visible: overlayContentOn });
+  }
+}
+
+// Show the icon (inactive - never a focus steal) and lift it above the overlay
+// window: both sit at the screen-saver level and Windows orders same-band
+// topmost windows by show order, so a later overlay show would cover it.
+// First show is owned by the icon's ready-to-show (toggleReady), like the HUD.
+function raiseToggle() {
+  if (
+    toggleWindow &&
+    !toggleWindow.isDestroyed() &&
+    toggleReady &&
+    lastSurface === ov.SURFACES.OVERLAY
+  ) {
+    toggleWindow.showInactive();
+    toggleWindow.moveTop();
+  }
+}
+
+function createToggleWindow() {
+  if (toggleWindow && !toggleWindow.isDestroyed()) {
+    return toggleWindow;
+  }
+  const b = resolveToggleBoundsNow();
+  toggleWindow = new BrowserWindow({
+    width: b.width,
+    height: b.height,
+    x: b.x,
+    y: b.y,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    focusable: false, // never activates: a click on the icon leaves League focused.
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    hasShadow: false,
+    show: false,
+    backgroundColor: "#00000000",
+    title: "Amberstone Overlay Toggle",
+    webPreferences: {
+      preload: path.join(__dirname, "toggle_preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      backgroundThrottling: false, // same in-game liveness reason as the overlay.
+    },
+  });
+  // Same z-band as the overlay so it sits above a Borderless game.
+  toggleWindow.setAlwaysOnTop(true, "screen-saver");
+  // setBounds is not work-area-clamped the way the constructor is (item 567), so
+  // a spot parked over the taskbar strip (which the game covers) is honored.
+  toggleWindow.setBounds(b);
+  toggleWindow.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  toggleWindow.webContents.on("will-navigate", (e) => e.preventDefault());
+  toggleWindow.loadFile(path.join(__dirname, "overlay_toggle.html"));
+  toggleWindow.once("ready-to-show", () => {
+    toggleReady = true;
+    raiseToggle();
+  });
+  toggleWindow.webContents.on("did-finish-load", pushToggleState);
+  attachCrashGuard(toggleWindow, "toggle");
+  toggleWindow.on("closed", () => {
+    toggleWindow = null;
+    toggleReady = false;
+    toggleDrag.cancel();
+  });
+  return toggleWindow;
+}
+
+// Re-place the icon from its saved spot (display change, or a drop onto a
+// display with a different HUD scale). Never mid-drag - the press owns it then.
+function applyToggleDisplay() {
+  if (!toggleWindow || toggleWindow.isDestroyed() || toggleDrag.pressed()) {
+    return;
+  }
+  toggleWindow.setBounds(resolveToggleBoundsNow());
+}
+
+// Persist the icon's spot as per-display fractions (see overlay_toggle).
+function persistTogglePosition() {
+  if (!toggleWindow || toggleWindow.isDestroyed()) {
+    return;
+  }
+  let b;
+  let display;
+  try {
+    b = toggleWindow.getBounds();
+    display = screen.getDisplayMatching(b);
+  } catch (_e) {
+    return;
+  }
+  store.save(
+    statePath(),
+    tog.mergeToggleStatePatch(store.load(statePath(), {}), {
+      pos: tog.posFromWindow({ x: b.x, y: b.y }, b.width, display),
+    })
+  );
+  applyToggleDisplay();
+}
+
+// End the current icon press; a moved press persists the new spot.
+function endToggleDrag(kind) {
+  const r = kind === "release" ? toggleDrag.release() : toggleDrag.cancel();
+  if (r === "drag") {
+    persistTogglePosition();
+  }
+  return r;
+}
+
+// Turn the overlay content ON or OFF: persist the choice (a one-shot act, no
+// debounce), re-apply the surface (lastSurface = null defeats applySurface's
+// no-op guard) and tell the icon page. Hiding also drops the HUD back to
+// PASSIVE so it can never come back interactive and eat a click meant for the
+// game.
+function setOverlayContent(on) {
+  overlayContentOn = on !== false;
+  store.save(
+    statePath(),
+    tog.mergeToggleStatePatch(store.load(statePath(), {}), { visible: overlayContentOn })
+  );
+  if (!overlayContentOn) {
+    overlayZoneHover = false;
+    overlayClickThrough = true;
+    applyClickThrough();
+    scheduleActiveRevert(); // PASSIVE cancels any pending revert.
+  }
+  lastSurface = null;
+  refreshSurface(lastMode);
+  pushToggleState();
+}
+
+function toggleOverlayContent() {
+  setOverlayContent(!overlayContentOn);
+}
+
+// One validated message from the icon page. main.js reads the REAL cursor
+// screen point (DIP, right across monitors and DPI) rather than trusting page
+// coordinates, and the pure drag decides tap vs drag.
+function handleToggleAction(action) {
+  if (!toggleWindow || toggleWindow.isDestroyed()) {
+    return;
+  }
+  let cursor = null;
+  try {
+    cursor = screen.getCursorScreenPoint();
+  } catch (_e) {
+    cursor = null;
+  }
+  if (action === "press") {
+    const b = toggleWindow.getBounds();
+    toggleDrag.press(cursor, { x: b.x, y: b.y });
+  } else if (action === "move") {
+    const next = toggleDrag.move(cursor);
+    if (next) {
+      const size = toggleWindow.getBounds().width;
+      let bounds = null;
+      try {
+        bounds = screen.getDisplayNearestPoint(cursor).bounds;
+      } catch (_e) {
+        bounds = null;
+      }
+      const c = tog.clampToggleToBounds(next, size, bounds);
+      toggleWindow.setBounds({ x: c.x, y: c.y, width: size, height: size });
+    }
+  } else if (action === "release" || action === "cancel") {
+    if (endToggleDrag(action) === "tap" && tog.acceptsToggleInput(currentSurface())) {
+      toggleOverlayContent();
+    }
+  } else if (action === "activate") {
+    if (tog.acceptsToggleInput(currentSurface())) {
+      toggleOverlayContent();
+    }
   }
 }
 
@@ -981,6 +1219,21 @@ function registerIpc() {
   ipcMain.handle("rc-shell:win:get-aot", () => {
     return mainWindow && !mainWindow.isDestroyed() ? mainWindow.isAlwaysOnTop() : false;
   });
+  // S134 overlay ON/OFF icon (toggle_preload.js). One-way pointer protocol,
+  // allow-listed by tog.normToggleAction and accepted ONLY from the icon
+  // window's own page - the remote overlay / companion pages cannot drive it.
+  ipcMain.on("rc-shell:overlay-toggle", (event, raw) => {
+    if (!toggleWindow || toggleWindow.isDestroyed() || event.sender !== toggleWindow.webContents) {
+      return;
+    }
+    const action = tog.normToggleAction(raw);
+    if (action) {
+      handleToggleAction(action);
+    }
+  });
+  ipcMain.handle("rc-shell:overlay-toggle:get", () => {
+    return { visible: overlayContentOn };
+  });
 }
 
 // --- RC2 Stage 4.3: single-monitor separated-window arrangement ----------------
@@ -1065,9 +1318,16 @@ function applySurface(surface) {
     return;
   }
   lastSurface = surface;
-  const actions = ov.windowActionsWithPolicy(surface, {
-    keepCompanion: overlaySettings.keepCompanion,
-  });
+  // S134: the overlay ON/OFF toggle layers over the window policy - the HUD
+  // shows only when the surface wants it AND the content is ON; the icon
+  // follows the in-game surface in both content states.
+  const actions = tog.applyContentToggle(
+    ov.windowActionsWithPolicy(surface, {
+      keepCompanion: overlaySettings.keepCompanion,
+    }),
+    surface,
+    overlayContentOn
+  );
   if (mainWindow && !mainWindow.isDestroyed()) {
     if (actions.companion === "show") {
       mainWindow.showInactive();
@@ -1090,6 +1350,14 @@ function applySurface(surface) {
     }
   } else if (overlayWindow && !overlayWindow.isDestroyed()) {
     overlayWindow.hide();
+  }
+  // After the overlay, so a just-shown HUD never ends up above the icon.
+  if (actions.toggle === "show") {
+    createToggleWindow();
+    raiseToggle(); // no-op until its first paint; ready-to-show then shows it.
+  } else if (toggleWindow && !toggleWindow.isDestroyed()) {
+    endToggleDrag("cancel");
+    toggleWindow.hide();
   }
   // RC2 4.3: with both windows up on one monitor, separate them side-by-side.
   if (actions.companion === "show" && actions.overlay === "show") {
@@ -1271,6 +1539,38 @@ function startPanelCycleWatch() {
   }, 200);
 }
 
+// Win32 listener -> overlay content ON/OFF signal (S134, the keyboard twin of
+// the toggle icon). tools/hotkey_listener.py owns Ctrl+Shift+O and stamps an
+// epoch here on each press; same poll-on-advance contract as the two watches
+// above. Gated to the in-game surface (tog.acceptsToggleInput): the listener
+// observes the chord system-wide, and out of a game Ctrl+Shift+O belongs to
+// whatever app has focus (VS Code / Chrome bind it) - acting on it there would
+// silently flip the persisted choice and start the next match with the HUD off.
+const VISIBLE_TOGGLE_SIGNAL = path.join(
+  __dirname, "..", "..", "ops", "runtime", "overlay_visible_toggle.txt"
+);
+let _lastVisibleToggleSeen = 0;
+function _readVisibleToggleSignal() {
+  try {
+    const v = parseFloat(fs.readFileSync(VISIBLE_TOGGLE_SIGNAL, "utf8").trim());
+    return Number.isFinite(v) ? v : 0;
+  } catch (_e) {
+    return 0; // absent / unreadable -> treat as no signal
+  }
+}
+function startVisibleToggleWatch() {
+  _lastVisibleToggleSeen = _readVisibleToggleSignal(); // ignore a stale value
+  setInterval(() => {
+    const v = _readVisibleToggleSignal();
+    if (v > _lastVisibleToggleSeen) {
+      _lastVisibleToggleSeen = v;
+      if (tog.acceptsToggleInput(currentSurface())) {
+        toggleOverlayContent();
+      }
+    }
+  }, 200);
+}
+
 // Global hotkeys (Electron globalShortcut). Toggle hides the active surface;
 // Cycle rotates the overlay panel set; Reset restores the default layout. The
 // ACTIVE toggle (Ctrl+Shift+A) is intentionally NOT registered here: Electron
@@ -1357,10 +1657,13 @@ if (!gotLock) {
     applySurface(surface);
     if (ov.relaunchFocusTarget(surface) === "overlay") {
       // In-game: raise the HUD (only once painted, so we never flash it pre-layout).
-      if (overlayWindow && !overlayWindow.isDestroyed() && overlayReady) {
+      // S134: an operator-chosen OFF stays OFF across a relaunch tap - the ON/OFF
+      // icon is raised instead, and it is the one-tap way back.
+      if (overlayContentOn && overlayWindow && !overlayWindow.isDestroyed() && overlayReady) {
         overlayWindow.showInactive();
         overlayWindow.moveTop();
       }
+      raiseToggle();
     } else if (mainWindow && !mainWindow.isDestroyed()) {
       if (mainWindow.isMinimized()) {
         mainWindow.restore();
@@ -1382,6 +1685,7 @@ if (!gotLock) {
     watchDisplayChanges(); // RM-145: overlay must track a display-mode change.
     startActiveToggleWatch();
     startPanelCycleWatch();
+    startVisibleToggleWatch(); // S134: Ctrl+Shift+O overlay content ON/OFF.
     startPoll();
     app.on("activate", () => {
       // macOS re-open behavior; harmless on Windows.

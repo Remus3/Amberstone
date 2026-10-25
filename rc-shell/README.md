@@ -117,6 +117,11 @@ polled from `RC_ORIGIN/api/state`:
   always-on-top, click-through by default), registers global hotkeys
   (`Alt+Shift+O` show/hide, `Alt+Shift+A` toggle click-through), and runs the
   poll loop. Hotkeys use RegisterHotKey under the hood (anti-cheat-safe).
+- `src/overlay_toggle.js` + `src/overlay_toggle.html` - the in-game overlay
+  ON/OFF icon: a tiny movable `focusable:false` always-on-top window; a tap
+  hides / shows the overlay content, the icon stays up. Position (per display)
+  and the ON/OFF choice persist in the state file; `Ctrl+Shift+O` (via
+  `tools/hotkey_listener.py`) is the in-game keyboard twin.
 
 Vanguard-safe: the overlay is a DWM compositor window only - NO DXGI / frame
 capture, NO game-memory reads, NO input injection. The game must run Borderless
