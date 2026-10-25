@@ -388,7 +388,9 @@ else:
 # about. The remaining five are listed for the same reason: a shadow writer
 # that has not leaked YET differs from one that has only in which test got
 # written first. Pinned by `tests/test_suite_does_not_write_live_tree.py`,
-# which fails if `core/` grows a `SHADOW_PATH` this tuple does not carry.
+# which fails if the tree grows a `SHADOW_PATH` this tuple does not carry.
+# `tools.anvil_shadow_probe` (RM-873) only READS the corpus core.anvil_shadow
+# writes, but its default is the same live file, so it is redirected too.
 _SHADOW_MODULES = (
     "core.anvil_shadow",
     "core.aram_coach_shadow",
@@ -403,6 +405,7 @@ _SHADOW_MODULES = (
     "core.macro_response_shadow",
     "core.objective_playbook_shadow",
     "core.replay_narrative_shadow",
+    "tools.anvil_shadow_probe",
 )
 
 
@@ -669,6 +672,11 @@ _PROD_PATH_GLOBALS = (
     # s134 N8: the collector re-rates a TFT game when its store record lands,
     # under this root (data/ratings/last_tft.json + data/match_history.db).
     ("lcu.lcu_postgame_collector", "_RATING_ROOT", "postgame_rating_root", True),
+    # S135 TFT-09: the :8888 TFT routes resolve the rounds store and the
+    # export dir at call time; None means the live data/tft/ defaults
+    # (export_match WRITES <exports>/<name>.json, the store is a live read).
+    ("dashboard.routes_tft", "EXPORTS_DIR", "tft_exports", True),
+    ("dashboard.routes_tft", "ROUNDS_DB_PATH", "tft_rounds/tft_rounds.db", False),
     ("app._game_lifecycle", "SCRIPT_DIR", "app_root", True),
     ("coaches._base_coach", "_APP_DIR", "base_coach_root", True),
     # ENV-APIKEY (s112): a READ, not a write leak. The one shared Anthropic
