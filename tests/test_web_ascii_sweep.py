@@ -695,7 +695,19 @@ _WEB = _REPO_ROOT / "web"
 # HEAD blobs reproduces the superseded 94b87cba... value EXACTLY. Those three
 # paths are the whole change. No glyph change. Parallel S134 slices touching
 # web/ race on this pin: the merger recomputes it over the merged tree.
-_LIVE_HALF_DIGEST = "55397e313853b960a6d3c3168e500790d74d75d18a1893f18139cddf0ec0a530"
+# superseded by the S134 TFT board / lobby re-capture below: "55397e313853b960a6d3c3168e500790d74d75d18a1893f18139cddf0ec0a530"
+#
+# RE-CAPTURED 2026-10-25 at the S134 TFT board / lobby slice (the Active Match
+# TFT fallback renders the local board in the BUILD pane, head BOARD, and the
+# 8-player lobby in the MAP pane inside fixed-height wrappers, with the round
+# file's "as of" clock; the UI audit's contrast MUST-FIX moves every TFT
+# secondary line to --text-dim). Ordinary case, no tokeniser change.
+# ATTRIBUTED BY SUBSTITUTION against e9753d41c: swapping exactly
+# web/js/panels/active_match.js and web/css/panels/active_match.css back to
+# their e9753d41c blobs reproduces the superseded 55397e31... value EXACTLY.
+# Those two paths are the whole change; web/js/panels/active_match_tft.test.mjs
+# is not a swept language. No glyph change.
+_LIVE_HALF_DIGEST = "a811aac7c4da36d26815e4100f58c27783ff4fad9efe9d28799b271bae722d4e"
 
 
 def _web_sources() -> list[Path]:
