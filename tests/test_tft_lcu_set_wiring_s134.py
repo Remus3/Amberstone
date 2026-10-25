@@ -220,6 +220,28 @@ def test_a_direct_request_wins_over_the_relay(monkeypatch):
     assert seen == []
 
 
+def test_a_normal_queue_clears_a_set_left_by_a_revival_game(monkeypatch):
+    """Verifier follow-up: a Set 17 noted in a 6110 game must not ride into
+    the next (normal-queue) game for up to LIVE_TTL_S."""
+    _relay(monkeypatch, SNAP_6110)
+    assert _worker(None)._maybe_note_lcu_set() == 17
+    _relay(monkeypatch, SNAP_1090)
+    assert _worker(None)._maybe_note_lcu_set() is None
+    assert tft_set.noted_live_set() is None
+
+
+def test_no_tft_queue_leaves_the_noted_set_alone(monkeypatch):
+    tft_set.note_live_set(17)
+    _relay(monkeypatch, None)
+    assert _worker(None)._maybe_note_lcu_set() is None
+    assert tft_set.noted_live_set() == 17
+
+
+def test_worker_without_init_state_never_raises():
+    w = object.__new__(tft_worker.TftWorker)
+    assert w._maybe_note_lcu_set() is None
+
+
 def test_relay_fallback_is_throttled_too(monkeypatch):
     seen = _relay(monkeypatch, SNAP_6110)
     now = [50.0]

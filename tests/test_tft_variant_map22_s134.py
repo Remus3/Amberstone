@@ -51,6 +51,11 @@ def test_double_up_needs_its_own_signal(gd):
     assert detect(gd) == "double_up"
 
 
+@pytest.mark.parametrize("qid", [[1160], {"id": 1160}, True, None, 1160.5])
+def test_odd_queue_ids_never_raise(qid):
+    assert detect({"gameMode": "TFT", "mapNumber": 22, "queueId": qid}) == "standard"
+
+
 def test_hyper_roll_still_detected():
     assert detect({"gameMode": "TFT", "mapNumber": 22, "mapTerrain": "Turbo"}) == "hyper_roll"
 

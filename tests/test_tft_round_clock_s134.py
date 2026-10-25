@@ -392,6 +392,31 @@ def test_reader_without_a_per_round_file_uses_the_table():
     assert rdr._parse(raw)["stage_round"] == "3-6"
 
 
+def test_all_zero_healths_never_pin_pve():
+    """Verifier follow-up: a file whose healths all read 0 (missing) must not
+    pin every round as PvE."""
+    sched, skip = _sched(), _skip()
+    clk = tsr.RoundClock()
+    zeros = (0,) * 8
+    clk.note_start("g", _row("3-1"), TABLE, skip, hp=zeros, pve=sched.pve)
+    clk.note_start("g", _row("3-2"), TABLE, skip, hp=zeros, pve=sched.pve)
+    assert clk.round_at(_row("3-2") + 1, TABLE, skip) == (3, 2)
+
+
+def test_clock_is_set18_only(monkeypatch):
+    """Verifier follow-up: the per-round cadence was measured on Set 18; the
+    Set 17 table lacks rows (1-4, x-7) and its schedule names no plain
+    carousel, so a Set 17 game keeps the table."""
+    monkeypatch.setattr(tft_set, "resolve_set", lambda *a, **k: 17)
+    rdr = _reader()
+    legacy = tsr._TIME_TO_ROUND
+    t = legacy[10][0] + 1
+    for start in (legacy[2][0], legacy[5][0], legacy[8][0]):
+        rdr._parse(_standalone_raw(start + 1.0, start, (90, 80)))
+    st = rdr._parse(_standalone_raw(t, legacy[8][0], (90, 80)))
+    assert st["stage_round"] == _lab(tsr._estimate_round(t, 17))
+
+
 def test_ocr_still_overrides_the_clock():
     rdr = _reader()
     rdr._ocr_cache = {"stage_round": "3-4"}

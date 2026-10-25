@@ -159,6 +159,9 @@ class RoundClock:
         if not table:
             return
         hp = tuple(hp) if hp else None
+        if hp and not any(isinstance(h, (int, float)) and not isinstance(h, bool)
+                          and h > 0 for h in hp):
+            hp = None  # all missing / zero: not a health reading at all
         if (game != self._game or table is not self._table
                 or self._t is None or t < self._t - 1.0):
             self.reset(game, table)
@@ -298,7 +301,7 @@ class TftStateReader:
         # mode. Double Up is its own queue (DOUBLE_UP_QUEUES).
         qid = gd.get("queueId")
         if isinstance(qid, str) and qid.strip().isdigit(): qid = int(qid.strip())
-        if qid in DOUBLE_UP_QUEUES and not isinstance(qid, bool): return "double_up"
+        if isinstance(qid, int) and not isinstance(qid, bool) and qid in DOUBLE_UP_QUEUES: return "double_up"
         if "turbo" in terrain or "turbo" in mode: return "hyper_roll"
         if "double" in terrain or "duo" in terrain or "pairs" in mode or "double" in map_name or "doubleup" in mode: return "double_up"
         if "hyperroll" in terrain or "hyperroll" in mode: return "hyper_roll"
@@ -331,7 +334,10 @@ class TftStateReader:
         clock = getattr(self, "_round_clock", None)
         if clock is None: clock = self._round_clock = RoundClock()
         obs = _observed_round_start(raw); skip = _no_planning_rounds(sched)
-        if obs is not None:
+        # The per-round cadence was measured on Set 18 only; the Set 17 table
+        # lacks rows (1-4, x-7) and names no plain carousel, so counting
+        # starts against it would drift: other sets keep the table.
+        if obs is not None and tbl is _TIME_TO_ROUND_SET18:
             clock.note_start(obs[0], obs[1], tbl, skip, hp=obs[2], pve=sched.pve)
         self._last_level=lv; stage,rnd=clock.round_at(gt, tbl, skip); _log_round_calibration(gt, stage, rnd)
         est_stage = stage
