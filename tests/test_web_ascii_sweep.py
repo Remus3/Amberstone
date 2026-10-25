@@ -633,7 +633,16 @@ _WEB = _REPO_ROOT / "web"
 # web/js/panels/champ_select.js back to its HEAD blob reproduces the
 # superseded 3a3a40b4... value EXACTLY. That one path is the whole change.
 # No glyph change.
-_LIVE_HALF_DIGEST = "26d42f61e1580575e4d2546c1a52af8111d94d2177406eae3c43b28736aa7dfc"
+# superseded by the RM-860 re-capture below: "26d42f61e1580575e4d2546c1a52af8111d94d2177406eae3c43b28736aa7dfc"
+#
+# RE-CAPTURED 2026-10-25 at RM-860 (the ARAM Mayhem augment reco; its UI
+# audit found real CommunityDragon rarity tokens kGold / kSilver / kPrismatic
+# never matching the .ar-rar tier classes). Ordinary case, no tokeniser
+# change. ATTRIBUTED BY SUBSTITUTION against the RM-860 base: swapping
+# exactly web/js/panels/augment_reco.js back to its HEAD blob reproduces the
+# superseded 26d42f61... value EXACTLY. That one path is the whole change.
+# No glyph change.
+_LIVE_HALF_DIGEST = "1ec49f88fe51694d3f59f4516f384d3b2bd66347f7696601537786adf0b12c3e"
 
 
 def _web_sources() -> list[Path]:

@@ -454,6 +454,79 @@ Why: <one sentence mechanical reason>
 Gameplan: <how this changes your fight window>
 """
 
+# RM-860: the augment panel (web/js/panels/augment_reco.js renderAugmentReco)
+# renders only `aug_reco*`, the shape coaches/arena_coach.py
+# _augment_recommendation stamps - and KIWI routes to THIS coach, so the arena
+# coach never runs in a Mayhem game. These are the keys the ARAM coach now
+# stamps (shape parity is pinned against the arena helper by
+# tests/test_aram_mayhem_augment_reco_rm860.py).
+_AUG_RECO_KEYS = (
+    "aug_reco", "aug_reco_top", "aug_reco_top_score", "aug_reco_conf",
+    "aug_reco_mode", "aug_reco_stage", "aug_reco_n_matches", "aug_reco_external",
+)
+# The Haiku fallback's keys. No web file reads them; they are kept only for
+# the fallback path and dropped when the deterministic reco answers.
+_HAIKU_AUG_KEYS = ("aug_take", "aug_why", "aug_plan")
+# Mayhem augment stages the external prior carries (core/augment_external_source
+# AugmentPriorTable.stage_win_rate, "per-Mayhem-round (1-5)").
+_MAYHEM_STAGE_MAX = 5
+
+
+def _mayhem_augment_recommendation(choices, picked_names, stage) -> dict:
+    """Deterministic Mayhem augment ranking as the panel's `aug_reco*` fields.
+
+    `choices` are the OCR names on the augment cards, `picked_names` the
+    augments already shown in the HUD this game, `stage` the 1-based pick
+    index or None. Names resolve through the augment meta table; unresolved
+    names drop out. Returns {} when nothing offered resolves or the
+    recommender ranks nothing. Never raises.
+    """
+    try:
+        from core import augment_external_source as _aes
+        from core import augment_recommender as _arec
+        meta = _aes.get_augment_meta()
+        offered = [
+            aid for c in (choices if isinstance(choices, (list, tuple)) else [])
+            if (aid := meta.resolve_id(str(c)))
+        ]
+        if not offered:
+            return {}
+        picked = [
+            aid for a in (picked_names if isinstance(picked_names, (list, tuple)) else [])
+            if (aid := meta.resolve_id(str(a)))
+        ]
+        res = _arec.recommend(offered, picked, mode="mayhem", stage=stage)
+        if not res.ranked:
+            return {}
+        top = res.top
+        return {
+            "aug_reco": [
+                {
+                    "id":     s.augment_id,
+                    "name":   s.name,
+                    "rarity": s.rarity,
+                    "score":  round(s.score, 4),
+                    "conf":   round(s.confidence, 3),
+                    "n_own":  s.n_own,
+                    "ext_wr": None if s.ext_wr is None else round(s.ext_wr, 3),
+                    "own_wr": round(s.own_wr, 3),
+                    "syn":    round(s.synergy, 4),
+                }
+                for s in res.ranked
+            ],
+            "aug_reco_top":       top.name,
+            "aug_reco_top_score": round(top.score, 4),
+            "aug_reco_conf":      round(top.confidence, 3),
+            "aug_reco_mode":      res.mode,
+            "aug_reco_stage":     res.stage,
+            "aug_reco_n_matches": res.n_matches,
+            "aug_reco_external":  res.used_external,
+        }
+    except Exception as exc:  # noqa: BLE001 - the reco must never break a tick
+        logger.debug("ARAM Mayhem augment recommender: %s", exc)
+        return {}
+
+
 _VISION_PROMPT = """\
 Analyze this ARAM (Howling Abyss) League of Legends screenshot.
 Return ONLY valid JSON with no markdown:
@@ -637,6 +710,42 @@ class Coach(BaseCoach):
         self._augment_resolved   = False
         self._augment_fast_scans = 0
         self._fast_mode          = False
+        # RM-860 stage tracking for the Mayhem augment reco.
+        self._aug_panel_open     = False
+        self._aug_stage          = 0
+        self._aug_stage_anchored = False
+
+    def _track_augment_panel(self, is_open: bool) -> None:
+        """RM-860: count augment panels per game so the reco gets its stage.
+
+        A panel counts once, on its closed -> open edge, so rerolls and repeat
+        scans of one panel stay one stage. The count is trusted only when the
+        first panel this coach saw was the game-start one (inside
+        _AUGMENT_WINDOW_S): a coach that started mid-game cannot know how many
+        picks it missed, so its stage stays None and the recommender uses the
+        all-stage prior instead of a wrong stage.
+        """
+        was_open = getattr(self, "_aug_panel_open", False)
+        self._aug_panel_open = bool(is_open)
+        if not is_open or was_open:
+            return
+        self._aug_stage = getattr(self, "_aug_stage", 0) + 1
+        if self._aug_stage == 1:
+            try:
+                gs = float((self._last_state or {}).get("game_seconds"))
+            except (TypeError, ValueError):
+                gs = None
+            self._aug_stage_anchored = (
+                gs is not None and gs < self._AUGMENT_WINDOW_S
+            )
+
+    def _augment_stage(self) -> "int | None":
+        """The current 1-based Mayhem pick index, or None when unknown."""
+        stage = getattr(self, "_aug_stage", 0)
+        if getattr(self, "_aug_stage_anchored", False) and \
+                1 <= stage <= _MAYHEM_STAGE_MAX:
+            return stage
+        return None
 
     def _reset_extra(self) -> None:
         # Fires per new game (coaches/_base_coach.py:361). The interval is reset
@@ -777,6 +886,19 @@ class Coach(BaseCoach):
             if not state:
                 return
             self._vision_state = state
+            if state.get("augment_select") and state.get("augment_choices"):
+                # Latch BEFORE the reco call: the fast poll's contract is "land
+                # a scan inside the window", and a landed scan fulfils it.
+                # _handle_augment_select re-raises on API failure, so gating the
+                # cadence latch on its success would couple vision spend to an
+                # unrelated Haiku outcome.
+                self._augment_resolved = True
+                self._track_augment_panel(True)
+                # RM-860: the handler writes the artifact itself, so it runs
+                # BEFORE the load below. It used to run after it, and the
+                # stale `cur` written back at the end of this tick clobbered
+                # every field the handler had just stamped.
+                self._handle_augment_select(state)
             cur = load_json(self._out)
             for k, v in [
                 ("my_tower_hp",    state.get("my_tower_hp")),
@@ -788,14 +910,14 @@ class Coach(BaseCoach):
                     cur[k] = v
             if state.get("augments"):
                 cur["augments"] = ", ".join(state["augments"])
-            if state.get("augment_select") and state.get("augment_choices"):
-                # Latch BEFORE the reco call: the fast poll's contract is "land
-                # a scan inside the window", and a landed scan fulfils it.
-                # _handle_augment_select re-raises on API failure, so gating the
-                # cadence latch on its success would couple vision spend to an
-                # unrelated Haiku outcome.
-                self._augment_resolved = True
-                self._handle_augment_select(state)
+            if state.get("augment_select") is False:
+                # RM-860: the pick is gone - the panel drops PICK NOW and keeps
+                # the standing reco (augment_reco.js TOP PICK). Only an
+                # explicit False clears: a partial read without the key (a
+                # failed Sonnet escalation) says nothing about the panel.
+                self._track_augment_panel(False)
+                if cur.get("augment_select"):
+                    cur["augment_select"] = False
             # (2026-04-25) Always-on champion + self-spell write - pulls
             # from self._last_state (live-client snapshot, refreshed every
             # 1.5s by _base_coach._poll_loop), so the dashboard's header
@@ -1275,10 +1397,42 @@ class Coach(BaseCoach):
 
     @safe_coach_output("ARAM")
     def _handle_augment_select(self, vs: dict) -> None:
+        """Augment-select surface: the deterministic Mayhem reco, Haiku fallback.
+
+        RM-860 decision (Haiku-to-ZERO): the Haiku `aram_aug_select` call is
+        FALLBACK-ONLY. When any offered card resolves, the deterministic
+        recommender (core.augment_recommender, mode "mayhem") answers with the
+        `aug_reco*` fields the panel renders and no Haiku call is made. Haiku
+        fires only when the reco is empty (no card name resolves, or plain
+        ARAM). Its `aug_take` is still unrendered, exactly as before this fix;
+        retiring or rendering that residual call is a follow-up.
+        """
+        gs = self._last_state or {}
+        choices = vs.get("augment_choices", [])
+        reco: dict = {}
+        if is_mayhem(gs):
+            reco = _mayhem_augment_recommendation(
+                choices, vs.get("augments"), self._augment_stage())
+        cur = load_json(self._out)
+        if reco:
+            for k in _HAIKU_AUG_KEYS:
+                cur.pop(k, None)
+            cur.update({
+                "augment_select":  True,
+                "augment_choices": choices,
+                **reco,
+            })
+            safe_write(self._out, cur)
+            return
+        # No ranking for this offer: drop the previous panel's ranking so the
+        # panel hides instead of showing another pick's rows for these cards.
+        stale = [k for k in _AUG_RECO_KEYS if k in cur]
+        if stale:
+            for k in stale:
+                cur.pop(k, None)
+            safe_write(self._out, cur)
         if not self._client:
             return
-        gs = self._last_state
-        choices = vs.get("augment_choices", [])
         # Canonical Mayhem detection - the live value is "KIWI", which the
         # old '"MAYHEM" in gm' substring check never matched (same bug
         # fixed in _run_coach 2026-05-03; this path was missed).
