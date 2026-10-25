@@ -9,7 +9,7 @@ import logging
 import urllib.request
 import threading
 import time
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, NamedTuple, Optional
 
 from core.game_host import GAME_HOST
 
@@ -161,9 +161,7 @@ class TftStateReader:
         sc=me.get("scores",{}) or {};k=sc.get("kills",0);d=sc.get("deaths",0)
         alive=sum(1 for p in others if not p.get("isDead",False))
         dead=sum(1 for p in others if p.get("isDead",False))
-        from tft.tft_pbe_data import ROUND_EVENTS, PVE_ROUNDS, GOD_ROUNDS, TEMPO_MILESTONES
-        rk=(stage,rnd);re_=ROUND_EVENTS.get(rk,"pvp");sr=f"{stage}-{rnd}"
-        is_god = rk in GOD_ROUNDS
+        sr=f"{stage}-{rnd}"  # round labels: round_schedule() below (RM-855)
         variant=TftStateReader.detect_variant(gd or {})
         # -- OCR override: cross-validated against time-table ----------------
         ocr = self._ocr_data()
@@ -171,7 +169,7 @@ class TftStateReader:
             try:
                 sp = ocr["stage_round"].split("-")
                 os, ornd = int(sp[0]), int(sp[1])
-                # Hard bounds: Set 17 max stage 7, max round 7
+                # Sanity bounds, not a set schedule: stage 1-7, round <= 4 in stage 1, <= 7 after
                 max_rnd = 4 if os == 1 else 7
                 if 1 <= os <= 7 and 1 <= ornd <= max_rnd:
                     # Cross-validate: OCR stage must be within 2 of time-table
@@ -184,9 +182,6 @@ class TftStateReader:
                     if (gt < 30 or stage_delta <= 2) and not going_backward:
                         # Accept OCR reading
                         stage, rnd, sr = os, ornd, ocr["stage_round"]
-                        rk = (stage, rnd)
-                        re_ = ROUND_EVENTS.get(rk, "pvp")
-                        is_god = rk in GOD_ROUNDS
                         # Update confirmed tracker
                         if ocr_idx >= prev_idx:
                             self._confirmed_stage = os
@@ -207,6 +202,7 @@ class TftStateReader:
         # Store raw OCR hp in state for fallback
         ocr_hp = ocr.get("hp")
         # -----------------------------------------------------------------
+        rf = round_schedule().fields(stage, rnd)  # RM-855: the resolved set's schedule
         return {"game_mode":gd.get("gameMode","TFT"),"game_time_s":gt,"level":lv,"gold":gold,
             "health":0 if me.get("isDead") else (
                 int(float(me.get("health") or me.get("tftHP") or 0))
@@ -215,10 +211,85 @@ class TftStateReader:
             ),"is_dead":me.get("isDead",False),
             "interest":0,"streak":k-d,"kills":k,"deaths":d,
             "stage":stage,"round":rnd,"stage_round":sr,
-            "round_event":re_,"is_pve":rk in PVE_ROUNDS,"is_carousel":False,"is_god_round":is_god,
-            "tempo_note":TEMPO_MILESTONES.get(sr,""),"items":items,"items_str":", ".join(items) or "none",
+            "round_event":rf["round_event"],"is_pve":rf["is_pve"],"is_carousel":False,
+            "is_god_round":rf["is_god_round"],"tempo_note":rf["tempo_note"],
+            "round_schedule":rf["round_schedule"],"items":items,"items_str":", ".join(items) or "none",
             "alive_others":alive,"dead_others":dead,"total_players":1+len(others),
             "board":[],"bench":[],"shop":[],"traits":{},"augments":[],
             "board_size":0,"bench_count":0,"board_str":"unavailable","bench_str":"unavailable",
             "shop_str":"unavailable","traits_str":"unavailable","augments_str":"unavailable",
             "xp_current":0,"xp_needed":0,"xp_remaining":0,"variant":variant}
+
+
+# -- round schedule per resolved set (RM-855) ----------------------------------
+# Before RM-855 _parse read the Set 17 Realm of the Gods tables in
+# tft/tft_pbe_data.py for every game, so once RM-840 made Set 18 the default a
+# Set 18 game carried Set 17 god rounds, PvE rounds and tempo notes (a tempo
+# note reaches the coach prompt as "Milestone: ...").
+#
+# Two schedules, chosen through tft/tft_set.py resolve_set:
+#   set17_realm_of_gods  the tft_pbe_data tables, only when the resolved set
+#                        is the set those tables declare (CONSTANTS_SET) AND
+#                        its own meta records Realm of the Gods
+#                        (tft/tft_prompt.py set_has_gods, the gate the coaches
+#                        use for the god-round prompt and parse).
+#   neutral_unverified   every other set: Set 18, an unknown or un-ingested
+#                        set, a set whose files cannot be read. No event, PvE,
+#                        god or tempo label; round_event is the schema default
+#                        "pvp" (core/game_snapshot.py TftSnapshot), which means
+#                        "no event known", not a claim that the round is PvP.
+#
+# Set 18 has no grounded schedule: its CommunityDragon extract
+# (data/meta/tft_set18_cdragon.json) names carousel rounds and a Stage 3-7 in
+# augment text but no round index for a carousel, PvE or augment round, and
+# its meta is a skeleton. Another set's timings are never borrowed for it.
+# LIVE-GAME-GATED: docs/LIVE_GAME_GATED_SYNC.md LT-01.
+SCHEDULE_GODS = "set17_realm_of_gods"
+SCHEDULE_NEUTRAL = "neutral_unverified"
+
+
+class RoundSchedule(NamedTuple):
+    set_number: Optional[int]
+    label: str
+    events: dict        # (stage, round) -> event name
+    pve: frozenset      # {(stage, round)}
+    gods: frozenset     # {(stage, round)}
+    tempo: dict         # "stage-round" -> note
+
+    def fields(self, stage: int, rnd: int) -> dict:
+        rk = (stage, rnd)
+        return {"round_event": self.events.get(rk, "pvp"),
+                "is_pve": rk in self.pve,
+                "is_god_round": rk in self.gods,
+                "tempo_note": self.tempo.get(f"{stage}-{rnd}", ""),
+                "round_schedule": self.label}
+
+
+_last_schedule: Optional[tuple] = None  # (set, label) last logged
+
+
+def round_schedule(set_number=None, *, root=None) -> RoundSchedule:
+    """The round schedule for the resolved set (live set > RC_TFT_SET > newest).
+
+    Never raises: a resolver or data failure yields the neutral schedule.
+    """
+    global _last_schedule
+    n = None
+    sched = None
+    try:
+        from tft import tft_set
+        n = set_number if set_number is not None else tft_set.resolve_set(root=root)
+        from tft import tft_pbe_data as d
+        from tft import tft_prompt
+        if n == d.CONSTANTS_SET and tft_prompt.set_has_gods(n, root=root):
+            sched = RoundSchedule(n, SCHEDULE_GODS, dict(d.ROUND_EVENTS),
+                                  frozenset(d.PVE_ROUNDS), frozenset(d.GOD_ROUNDS),
+                                  dict(d.TEMPO_MILESTONES))
+    except Exception as e:  # noqa: BLE001
+        logger.debug("TFT round schedule: set data unreadable, neutral: %s", e)
+    if sched is None:
+        sched = RoundSchedule(n, SCHEDULE_NEUTRAL, {}, frozenset(), frozenset(), {})
+    if (sched.set_number, sched.label) != _last_schedule:
+        _last_schedule = (sched.set_number, sched.label)
+        logger.info("TFT round schedule: set %s -> %s", sched.set_number, sched.label)
+    return sched
