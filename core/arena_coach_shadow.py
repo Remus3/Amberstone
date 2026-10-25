@@ -24,10 +24,30 @@ roster (core.focus_board_live, in-process, cached + throttled, engine loaded
 off this thread) beside the rule's pick read back from
 ``deterministic.target_priority``, plus where the board ranks the rule's pick.
 The ``deterministic`` column is untouched, so the rule stays authoritative and
-the served coach never changes. Computed only after the dedup check (one
-lookup per written row, never per tick). Any adapter failure becomes a
+the served coach never changes. Built only after the dedup check (one
+column per written row; dedup ticks only prefetch or re-check, RM-854 below).
+Any adapter failure becomes a
 ``status`` + note in the column, never a dropped row. ``RC_FOCUS_BOARD_SHADOW=0``
 omits the column (the row keeps its pre-RM-844 shape).
+
+READY BOARDS RECORDED ONCE (RM-854)
+    The board is read with ``board_for_lc(..., background=True)``: a cached
+    board or ``pending`` at once, the compute on the adapter's daemon worker,
+    never on this (state-builder) thread. The dedup runs before the column, so
+    a row written while the board was not ready yet (``warming`` /
+    ``throttled`` / ``pending``, ``focus_board_live.TRANSIENT_STATUSES``)
+    used to keep that status for good. Now the status written per target is
+    remembered; on a dedup tick whose last row was transient the board is read
+    again, and the first settled answer (``ok``, or a settled no-board) is
+    written ONCE as a full row marked ``"focus_board_relog": true`` (same tick
+    key; the next tick dedups as before, so it is never duplicated). Every
+    other dedup tick only ``prefetch``es the latest roster, so the next row's
+    board is usually ready on its first write and a re-log stays rare.
+    Alternative rejected: folding a coarse board status into the dedup sig -
+    it writes a new row on EVERY status change (ready -> throttled -> ready
+    on a roster change), duplicating the deterministic-vs-Haiku sample with
+    no new information. The marker lets the agreement report drop the
+    re-logged row from its sample.
 """
 
 from __future__ import annotations
@@ -48,6 +68,14 @@ SHADOW_PATH: Path = _APP_DIR / "data" / "arena_coach_shadow.jsonl"
 # live default each dedup independently. The dashboard polls /api/state every
 # ~500ms; without this the same coarse state would be logged ~2x/sec.
 _LAST_SIG: dict[str, str] = {}
+
+# RM-854: the focus_board status of the row last written per target ("" when
+# the column was omitted), so a not-yet-ready row is re-logged once.
+_LAST_FB_STATUS: dict[str, str] = {}
+
+# Mirrors core.focus_board_live.TRANSIENT_STATUSES (kept literal so this module
+# never imports the adapter on its own import path; a test pins the two equal).
+_TRANSIENT_FB = frozenset({"warming", "throttled", "pending"})
 
 # The live Arena artifact fields captured per side, in artifact order
 # (coaches/arena_coach.py:781-788). Used to normalize BOTH blocks so a partial
@@ -128,7 +156,8 @@ def _focus_board_column(det: dict, lc: dict, mode_key: str) -> dict | None:
         try:
             if not focus_board_live.enabled():
                 return None
-            fb = focus_board_live.board_for_lc(lc, mode_key)
+            # RM-854: a cached board or ``pending``, never a compute here.
+            fb = focus_board_live.board_for_lc(lc, mode_key, background=True)
         except Exception as exc:  # noqa: BLE001
             log.debug("arena_coach_shadow: focus board failed", exc_info=True)
             fb = {"status": focus_board_live.STATUS_ERROR, "notes": [
@@ -158,6 +187,37 @@ def _focus_board_column(det: dict, lc: dict, mode_key: str) -> dict | None:
     for key, val in fb.items():
         column.setdefault(key, val)
     return column
+
+
+def _safe_focus_board_column(det: dict, lc: dict, mode_key: str) -> dict | None:
+    """``_focus_board_column`` with its own guard: a failure is a status in
+    the column, never a dropped row."""
+    try:
+        return _focus_board_column(det, lc, mode_key)
+    except Exception as exc:  # noqa: BLE001
+        log.debug("arena_coach_shadow: focus board column failed", exc_info=True)
+        return {"rule_pick": "", "board_pick": "", "agree": None,
+                "rule_pick_board_rank": None, "status": "error",
+                "notes": [f"focus board column failed ({type(exc).__name__})"]}
+
+
+def _fb_status(fb_col: dict | None) -> str:
+    """The column's status ("" when the column is omitted)."""
+    if not isinstance(fb_col, dict):
+        return ""
+    status = fb_col.get("status")
+    return status if isinstance(status, str) else ""
+
+
+def _prefetch_board(lc: dict, mode_key: str) -> None:
+    """RM-854: feed the adapter's worker the latest roster on a dedup tick.
+    Non-blocking, never raises."""
+    try:
+        from core import focus_board_live  # lazy: keeps DS off this import path
+        focus_board_live.prefetch(lc, mode_key)
+    except Exception:  # noqa: BLE001
+        log.debug("arena_coach_shadow: focus board prefetch failed",
+                  exc_info=True)
 
 
 def log_arena_coach(
@@ -217,8 +277,23 @@ def log_arena_coach(
         # in the sig because Arena repeats action labels across rounds and
         # each round's side-by-side is a distinct validation sample.
         sig = str((mode_key, champ, str(round_label or ""), det["action"]))
-        if _LAST_SIG.get(str(target)) == sig:
-            return None
+        tkey = str(target)
+        relog = False
+        if _LAST_SIG.get(tkey) == sig:
+            if _LAST_FB_STATUS.get(tkey, "") not in _TRANSIENT_FB:
+                _prefetch_board(lc, mode_key)
+                return None
+            # RM-854: this state's row went out before its board was ready.
+            # Write it again ONCE, on the first settled answer.
+            fb_col = _safe_focus_board_column(det, lc, mode_key)
+            status = _fb_status(fb_col)
+            if not status or status in _TRANSIENT_FB:
+                return None
+            relog = True
+        else:
+            # RM-844 shadow column, AFTER the dedup check so the board is read
+            # once per written row (RM-854: a cached read, never a compute).
+            fb_col = _safe_focus_board_column(det, lc, mode_key)
 
         ts = now_iso if now_iso is not None else datetime.now(timezone.utc).isoformat()
 
@@ -231,24 +306,16 @@ def log_arena_coach(
             "deterministic": det,
             "live_haiku": live,
         }
-        # RM-844 shadow column, AFTER the dedup check so the board is looked
-        # up once per written row. Its own guard: a failure here is a status
-        # in the column, never a dropped row.
-        try:
-            fb_col = _focus_board_column(det, lc, mode_key)
-        except Exception as exc:  # noqa: BLE001
-            log.debug("arena_coach_shadow: focus board column failed",
-                      exc_info=True)
-            fb_col = {"rule_pick": "", "board_pick": "", "agree": None,
-                      "rule_pick_board_rank": None, "status": "error",
-                      "notes": [f"focus board column failed ({type(exc).__name__})"]}
         if fb_col is not None:
             record["focus_board"] = fb_col
+        if relog:
+            record["focus_board_relog"] = True
 
         target.parent.mkdir(parents=True, exist_ok=True)
         with target.open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(record) + "\n")
-        _LAST_SIG[str(target)] = sig
+        _LAST_SIG[tkey] = sig
+        _LAST_FB_STATUS[tkey] = _fb_status(fb_col)
 
         return record
 
