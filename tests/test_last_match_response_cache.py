@@ -13,9 +13,11 @@ dangerous half-implementation: the body varies with the request's
 match's Post Game Review under another match's selection - a product
 defect strictly worse than 320ms.
 
-Cache-key inputs are exactly (baseline, match_ts): _serve_last_match
+Cache-key inputs are (baseline, match_ts): _serve_last_match
 touches nothing on the handler but `h.path` and `h._send`, and the body
 is _build_last_match(baseline, match_ts) - a two-parameter signature.
+RM-616 adds the TFT store marker on the live path only (pinned by
+tests/test_last_match_tft_branch_rm616.py); it is constant within a test.
 Everything else the body depends on is match_history.db state, which is
 bounded by the TTL and invalidated explicitly whenever an ingest stamps
 a row (_try_ingest_once verdict "ok", reached from both the POST handler

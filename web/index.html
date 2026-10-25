@@ -1796,6 +1796,10 @@
         <h2>POST GAME REVIEW</h2>
         <span class="view-section-sub" id="lm-meta">loading...</span>
       </div>
+      <!-- RM-616 / s134 QA D4: TFT Post Game Review mount. Filled by
+           last_match.js _renderTftLastMatch when /api/last-match answers
+           kind "tft"; #lm-body below is hidden while it shows. -->
+      <div class="view-section-body lm-tft" id="lm-tft" hidden></div>
       <div class="view-section-body lm-body" id="lm-body">
 
         <!-- Task 7 (spec 7.2): PGR player-snapshot adapter mount. Assembled

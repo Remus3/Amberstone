@@ -662,6 +662,10 @@ _PROD_PATH_GLOBALS = (
     ("lcu.lcu_postgame_collector", "_DB_PATH", "postgame_stats/postgame_stats.db", False),
     ("tft.placement_aggregator", "_RATINGS_DIR", "placement_ratings", True),
     ("tft.placement_aggregator", "_HEATMAP_FILE", "placement_heatmap.json", False),
+    # RM-616: the append-only TFT post-game store (data/tft_matches/), written
+    # by tft.tft_placement.persist() from the postgame collector and read by
+    # the Post Game Review builder - both reach it through this default.
+    ("tft.tft_placement", "_STORE_DIR", "tft_matches", True),
     ("app._game_lifecycle", "SCRIPT_DIR", "app_root", True),
     ("coaches._base_coach", "_APP_DIR", "base_coach_root", True),
     # ENV-APIKEY (s112): a READ, not a write leak. The one shared Anthropic

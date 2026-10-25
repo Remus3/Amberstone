@@ -60,7 +60,9 @@ _INGEST_RETRY_THREAD_STARTED = False
 # GET /api/last-match response cache, keyed (clamped baseline, match_ts) -
 # the full set of request inputs the body varies with (_serve_last_match reads
 # nothing else off the handler, and _build_last_match takes exactly those two
-# args). The baseline is normalized through _clamp_baseline first so the many
+# args) - plus, on the live path only, the RM-616 TFT store marker
+# (_tft_store_marker), so a TFT game stored after a fetch is not hidden for
+# the TTL. The baseline is normalized through _clamp_baseline first so the many
 # raw values that clamp to the same window share one entry.
 # Rebuilding cost 320ms measured 2026-08-06 against 8-27ms for every other
 # dashboard route, and the frontend refires this on PGR activation, historical
@@ -103,6 +105,17 @@ def _cache_put(key: tuple, now: float, body: bytes) -> None:
 def _cache_clear() -> None:
     with _CACHE_LOCK:
         _CACHE.clear()
+
+
+def _tft_store_marker():
+    """Cache-key component that changes when a TFT record lands. Fail-soft:
+    an unreadable store keys as None (the TTL still bounds staleness)."""
+    try:
+        from tft import tft_placement
+        return tft_placement.store_marker()
+    except Exception as exc:  # noqa: BLE001
+        log.debug("api/last-match: TFT store marker unavailable: %s", exc)
+        return None
 
 
 def _row_match_by_game_id(conn: sqlite3.Connection, game_id: int):
@@ -318,7 +331,11 @@ def _serve_last_match(h) -> None:
         # out-of-range integer the frontend or a hand-edited URL can send.
         baseline = _clamp_baseline((qs.get("baseline") or ["20"])[0])
         match_ts = (qs.get("match_ts") or [None])[0]
-        key = (baseline, match_ts)
+        # RM-616 / s134 QA D4: the live path can serve a TFT game from the
+        # store, which lands seconds after the game-end fetch. Keying on the
+        # store marker lets the main.js 10 s post-game retry see it instead
+        # of a cached stale match. The historical path never reads the store.
+        key = (baseline, match_ts, _tft_store_marker() if match_ts is None else None)
         now = time.time()
         body = _cache_get(key, now)
         if body is None:

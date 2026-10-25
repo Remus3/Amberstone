@@ -1,0 +1,2130 @@
+{
+ "eventPVEData": {
+  "affixes": [],
+  "bossName": "",
+  "buddyIcon": "",
+  "buddyName": ""
+ },
+ "gameId": 1000000001,
+ "gameLength": 2097,
+ "isRanked": false,
+ "localPlayer": {
+  "augments": [],
+  "boardPieces": [
+   {
+    "championId": "DA_Draven18",
+    "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Draven/TFT18_Draven_Square.TFT_Set18.png",
+    "items": [
+     {
+      "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_ThiefsGloves.png",
+      "id": 0,
+      "name": "Thief's Gloves",
+      "nameId": "DA_ThiefsGloves"
+     },
+     {
+      "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_SteraksGage.png",
+      "id": 0,
+      "name": "Sterak's Gage",
+      "nameId": "DA_SteraksGage"
+     },
+     {
+      "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_KrakenSlayer.png",
+      "id": 0,
+      "name": "Kraken's Fury",
+      "nameId": "DA_KrakensFury"
+     }
+    ],
+    "level": 2,
+    "name": "Draven",
+    "price": 5,
+    "traits": [
+     {
+      "id": "DA_DravenUniqueTrait18",
+      "name": "Bounty Seeker"
+     }
+    ]
+   },
+   {
+    "championId": "DA_Taric18",
+    "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Taric/TFT18_Taric_Square.TFT_Set18.png",
+    "items": [],
+    "level": 2,
+    "name": "Taric",
+    "price": 5,
+    "traits": [
+     {
+      "id": "DA_Emerald18",
+      "name": "Emerald Aspect"
+     },
+     {
+      "id": "DA_18_Vanguard",
+      "name": "Vanguard"
+     }
+    ]
+   },
+   {
+    "championId": "DA_18_Aphelios",
+    "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Aphelios/TFT18_Aphelios_Square.TFT_Set18.png",
+    "items": [
+     {
+      "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_Leviathan.png",
+      "id": 0,
+      "name": "Nashor's Tooth",
+      "nameId": "DA_NashorsTooth"
+     },
+     {
+      "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_GuinsoosRageblade.png",
+      "id": 0,
+      "name": "Guinsoo's Rageblade",
+      "nameId": "DA_GuinsoosRageblade"
+     },
+     {
+      "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_InfinityEdge.png",
+      "id": 0,
+      "name": "Infinity Edge",
+      "nameId": "DA_InfinityEdge"
+     }
+    ],
+    "level": 2,
+    "name": "Aphelios",
+    "price": 4,
+    "traits": [
+     {
+      "id": "DA_18_Lunar",
+      "name": "Lunar"
+     },
+     {
+      "id": "DA_18_Rapidfire",
+      "name": "Rapidfire"
+     }
+    ]
+   },
+   {
+    "championId": "DA_18_Diana",
+    "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Diana/TFT18_Diana_Square.TFT_Set18.png",
+    "items": [],
+    "level": 2,
+    "name": "Diana",
+    "price": 3,
+    "traits": [
+     {
+      "id": "DA_18_Lunar",
+      "name": "Lunar"
+     },
+     {
+      "id": "DA_18_Slayer",
+      "name": "Ravager"
+     },
+     {
+      "id": "DA_18_Vanguard",
+      "name": "Vanguard"
+     }
+    ]
+   },
+   {
+    "championId": "DA_Fiddlesticks18",
+    "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Fiddlesticks/TFT18_Fiddlesticks_Square.TFT_Set18.png",
+    "items": [],
+    "level": 2,
+    "name": "Fiddlesticks",
+    "price": 3,
+    "traits": [
+     {
+      "id": "DA_FloraFatalis18",
+      "name": "Flora Fatalis"
+     },
+     {
+      "id": "DA_18_Defender",
+      "name": "Defender"
+     },
+     {
+      "id": "DA_18_Spellweaver",
+      "name": "Spellweaver"
+     }
+    ]
+   },
+   {
+    "championId": "DA_18_Sejuani",
+    "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Sejuani/TFT18_Sejuani_Square.TFT_Set18.png",
+    "items": [
+     {
+      "icon": "/lol-game-data/assets/ASSETS/Maps/Particles/TFT/Item_Icons/Traits/Spatula/Set18/TFT18_Emblem_Primal.TFT_Set18.png",
+      "id": 0,
+      "name": "Primal Emblem",
+      "nameId": "DA_18_EmblemPrimal"
+     },
+     {
+      "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_DragonsClaw.png",
+      "id": 0,
+      "name": "Dragon's Claw",
+      "nameId": "DA_DragonsClaw"
+     },
+     {
+      "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_SpiritVisageRR.png",
+      "id": 0,
+      "name": "Spirit Visage",
+      "nameId": "DA_SpiritVisage"
+     }
+    ],
+    "level": 2,
+    "name": "Sejuani",
+    "price": 2,
+    "traits": [
+     {
+      "id": "DA_18_Solar",
+      "name": "Solar"
+     },
+     {
+      "id": "DA_Juggernaut18",
+      "name": "Juggernaut"
+     }
+    ]
+   },
+   {
+    "championId": "DA_18_Yunara",
+    "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Yunara/TFT18_Yunara_Square.TFT_Set18.png",
+    "items": [
+     {
+      "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_GuinsoosRageblade.png",
+      "id": 0,
+      "name": "Guinsoo's Rageblade",
+      "nameId": "DA_GuinsoosRageblade"
+     },
+     {
+      "icon": "/lol-game-data/assets/ASSETS/Maps/Particles/TFT/Item_Icons/Traits/Spatula/Set18/TFT18_Emblem_Spellweaver.TFT_Set18.png",
+      "id": 0,
+      "name": "Spellweaver Emblem",
+      "nameId": "DA_18_EmblemSpellweaver"
+     },
+     {
+      "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_ArchangelsStaff.png",
+      "id": 0,
+      "name": "Archangel's Staff",
+      "nameId": "DA_ArchangelsStaff"
+     }
+    ],
+    "level": 2,
+    "name": "Yunara",
+    "price": 2,
+    "traits": [
+     {
+      "id": "DA_18_Blossom",
+      "name": "Blossom"
+     },
+     {
+      "id": "DA_18_Executioner",
+      "name": "Executioner"
+     }
+    ]
+   },
+   {
+    "championId": "DA_Karma18",
+    "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Karma/TFT18_Karma_Square.TFT_Set18.png",
+    "items": [
+     {
+      "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_VoidStaff.png",
+      "id": 0,
+      "name": "Void Staff",
+      "nameId": "DA_VoidStaff"
+     }
+    ],
+    "level": 2,
+    "name": "Karma",
+    "price": 1,
+    "traits": [
+     {
+      "id": "DA_18_Blossom",
+      "name": "Blossom"
+     },
+     {
+      "id": "DA_18_Spellweaver",
+      "name": "Spellweaver"
+     }
+    ]
+   },
+   {
+    "championId": "DA_18_Yorick",
+    "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Yorick/TFT18_Yorick_Square.TFT_Set18.png",
+    "items": [
+     {
+      "icon": "/lol-game-data/assets/ASSETS/Maps/Particles/TFT/Item_Icons/Traits/Spatula/Set18/TFT18_Emblem_FloraFatalis.TFT_Set18.png",
+      "id": 0,
+      "name": "Flora Fatalis Emblem",
+      "nameId": "DA_18_EmblemFloraFatalis"
+     },
+     {
+      "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_SpectralGauntlet.png",
+      "id": 0,
+      "name": "Evenshroud",
+      "nameId": "DA_Evenshroud"
+     },
+     {
+      "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_NightHarvester.png",
+      "id": 0,
+      "name": "Steadfast Heart",
+      "nameId": "DA_SteadfastHeart"
+     }
+    ],
+    "level": 2,
+    "name": "Yorick",
+    "price": 1,
+    "traits": [
+     {
+      "id": "DA_18_Blossom",
+      "name": "Blossom"
+     },
+     {
+      "id": "DA_Juggernaut18",
+      "name": "Juggernaut"
+     },
+     {
+      "id": "DA_18_Summoner",
+      "name": "Summoner"
+     }
+    ]
+   }
+  ],
+  "companion": {
+   "colorName": "",
+   "icon": "",
+   "speciesName": ""
+  },
+  "customAugmentContainer": {
+   "description": "No encounter.",
+   "displayName": "",
+   "iconPath": "/lol-game-data/assets/",
+   "nameId": "TFT_Portals_Default_NoPortal"
+  },
+  "ffaStanding": 1,
+  "health": 100,
+  "iconId": 0,
+  "isInteractable": true,
+  "isLocalPlayer": true,
+  "partnerGroupId": 0,
+  "playbook": {
+   "iconSmall": "",
+   "itemId": 0,
+   "name": ""
+  },
+  "puuid": "00000000-0000-0000-0000-000000000000",
+  "rank": 1,
+  "riotIdGameName": "player0",
+  "riotIdTagLine": "TAG",
+  "setCoreName": "",
+  "summonerId": 0,
+  "summonerName": "player0"
+ },
+ "playerSkillTreeEoG": {
+  "delta": 0,
+  "eventSkillToScore": []
+ },
+ "players": [
+  {
+   "augments": [],
+   "boardPieces": [
+    {
+     "championId": "DA_Draven18",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Draven/TFT18_Draven_Square.TFT_Set18.png",
+     "items": [
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_ThiefsGloves.png",
+       "id": 0,
+       "name": "Thief's Gloves",
+       "nameId": "DA_ThiefsGloves"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_SteraksGage.png",
+       "id": 0,
+       "name": "Sterak's Gage",
+       "nameId": "DA_SteraksGage"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_KrakenSlayer.png",
+       "id": 0,
+       "name": "Kraken's Fury",
+       "nameId": "DA_KrakensFury"
+      }
+     ],
+     "level": 2,
+     "name": "Draven",
+     "price": 5,
+     "traits": [
+      {
+       "id": "DA_DravenUniqueTrait18",
+       "name": "Bounty Seeker"
+      }
+     ]
+    },
+    {
+     "championId": "DA_Taric18",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Taric/TFT18_Taric_Square.TFT_Set18.png",
+     "items": [],
+     "level": 2,
+     "name": "Taric",
+     "price": 5,
+     "traits": [
+      {
+       "id": "DA_Emerald18",
+       "name": "Emerald Aspect"
+      },
+      {
+       "id": "DA_18_Vanguard",
+       "name": "Vanguard"
+      }
+     ]
+    },
+    {
+     "championId": "DA_18_Aphelios",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Aphelios/TFT18_Aphelios_Square.TFT_Set18.png",
+     "items": [
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_Leviathan.png",
+       "id": 0,
+       "name": "Nashor's Tooth",
+       "nameId": "DA_NashorsTooth"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_GuinsoosRageblade.png",
+       "id": 0,
+       "name": "Guinsoo's Rageblade",
+       "nameId": "DA_GuinsoosRageblade"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_InfinityEdge.png",
+       "id": 0,
+       "name": "Infinity Edge",
+       "nameId": "DA_InfinityEdge"
+      }
+     ],
+     "level": 2,
+     "name": "Aphelios",
+     "price": 4,
+     "traits": [
+      {
+       "id": "DA_18_Lunar",
+       "name": "Lunar"
+      },
+      {
+       "id": "DA_18_Rapidfire",
+       "name": "Rapidfire"
+      }
+     ]
+    },
+    {
+     "championId": "DA_18_Diana",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Diana/TFT18_Diana_Square.TFT_Set18.png",
+     "items": [],
+     "level": 2,
+     "name": "Diana",
+     "price": 3,
+     "traits": [
+      {
+       "id": "DA_18_Lunar",
+       "name": "Lunar"
+      },
+      {
+       "id": "DA_18_Slayer",
+       "name": "Ravager"
+      },
+      {
+       "id": "DA_18_Vanguard",
+       "name": "Vanguard"
+      }
+     ]
+    },
+    {
+     "championId": "DA_Fiddlesticks18",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Fiddlesticks/TFT18_Fiddlesticks_Square.TFT_Set18.png",
+     "items": [],
+     "level": 2,
+     "name": "Fiddlesticks",
+     "price": 3,
+     "traits": [
+      {
+       "id": "DA_FloraFatalis18",
+       "name": "Flora Fatalis"
+      },
+      {
+       "id": "DA_18_Defender",
+       "name": "Defender"
+      },
+      {
+       "id": "DA_18_Spellweaver",
+       "name": "Spellweaver"
+      }
+     ]
+    },
+    {
+     "championId": "DA_18_Sejuani",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Sejuani/TFT18_Sejuani_Square.TFT_Set18.png",
+     "items": [
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/Particles/TFT/Item_Icons/Traits/Spatula/Set18/TFT18_Emblem_Primal.TFT_Set18.png",
+       "id": 0,
+       "name": "Primal Emblem",
+       "nameId": "DA_18_EmblemPrimal"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_DragonsClaw.png",
+       "id": 0,
+       "name": "Dragon's Claw",
+       "nameId": "DA_DragonsClaw"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_SpiritVisageRR.png",
+       "id": 0,
+       "name": "Spirit Visage",
+       "nameId": "DA_SpiritVisage"
+      }
+     ],
+     "level": 2,
+     "name": "Sejuani",
+     "price": 2,
+     "traits": [
+      {
+       "id": "DA_18_Solar",
+       "name": "Solar"
+      },
+      {
+       "id": "DA_Juggernaut18",
+       "name": "Juggernaut"
+      }
+     ]
+    },
+    {
+     "championId": "DA_18_Yunara",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Yunara/TFT18_Yunara_Square.TFT_Set18.png",
+     "items": [
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_GuinsoosRageblade.png",
+       "id": 0,
+       "name": "Guinsoo's Rageblade",
+       "nameId": "DA_GuinsoosRageblade"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/Particles/TFT/Item_Icons/Traits/Spatula/Set18/TFT18_Emblem_Spellweaver.TFT_Set18.png",
+       "id": 0,
+       "name": "Spellweaver Emblem",
+       "nameId": "DA_18_EmblemSpellweaver"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_ArchangelsStaff.png",
+       "id": 0,
+       "name": "Archangel's Staff",
+       "nameId": "DA_ArchangelsStaff"
+      }
+     ],
+     "level": 2,
+     "name": "Yunara",
+     "price": 2,
+     "traits": [
+      {
+       "id": "DA_18_Blossom",
+       "name": "Blossom"
+      },
+      {
+       "id": "DA_18_Executioner",
+       "name": "Executioner"
+      }
+     ]
+    },
+    {
+     "championId": "DA_Karma18",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Karma/TFT18_Karma_Square.TFT_Set18.png",
+     "items": [
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_VoidStaff.png",
+       "id": 0,
+       "name": "Void Staff",
+       "nameId": "DA_VoidStaff"
+      }
+     ],
+     "level": 2,
+     "name": "Karma",
+     "price": 1,
+     "traits": [
+      {
+       "id": "DA_18_Blossom",
+       "name": "Blossom"
+      },
+      {
+       "id": "DA_18_Spellweaver",
+       "name": "Spellweaver"
+      }
+     ]
+    },
+    {
+     "championId": "DA_18_Yorick",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Yorick/TFT18_Yorick_Square.TFT_Set18.png",
+     "items": [
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/Particles/TFT/Item_Icons/Traits/Spatula/Set18/TFT18_Emblem_FloraFatalis.TFT_Set18.png",
+       "id": 0,
+       "name": "Flora Fatalis Emblem",
+       "nameId": "DA_18_EmblemFloraFatalis"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_SpectralGauntlet.png",
+       "id": 0,
+       "name": "Evenshroud",
+       "nameId": "DA_Evenshroud"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_NightHarvester.png",
+       "id": 0,
+       "name": "Steadfast Heart",
+       "nameId": "DA_SteadfastHeart"
+      }
+     ],
+     "level": 2,
+     "name": "Yorick",
+     "price": 1,
+     "traits": [
+      {
+       "id": "DA_18_Blossom",
+       "name": "Blossom"
+      },
+      {
+       "id": "DA_Juggernaut18",
+       "name": "Juggernaut"
+      },
+      {
+       "id": "DA_18_Summoner",
+       "name": "Summoner"
+      }
+     ]
+    }
+   ],
+   "companion": {
+    "colorName": "",
+    "icon": "",
+    "speciesName": ""
+   },
+   "customAugmentContainer": {
+    "description": "No encounter.",
+    "displayName": "",
+    "iconPath": "/lol-game-data/assets/",
+    "nameId": "TFT_Portals_Default_NoPortal"
+   },
+   "ffaStanding": 1,
+   "health": 100,
+   "iconId": 0,
+   "isInteractable": true,
+   "isLocalPlayer": true,
+   "partnerGroupId": 0,
+   "playbook": {
+    "iconSmall": "",
+    "itemId": 0,
+    "name": ""
+   },
+   "puuid": "00000000-0000-0000-0000-000000000000",
+   "rank": 1,
+   "riotIdGameName": "player0",
+   "riotIdTagLine": "TAG",
+   "setCoreName": "TFTSet18",
+   "summonerId": 0,
+   "summonerName": "player0"
+  },
+  {
+   "augments": [],
+   "boardPieces": [
+    {
+     "championId": "DA_18_Tristana",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Tristana/TFT18_Tristana_Square.TFT_Set18.png",
+     "items": [
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_LastWhisper.png",
+       "id": 0,
+       "name": "Last Whisper",
+       "nameId": "DA_LastWhisper"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_NeedlesslyLargeRod.png",
+       "id": 0,
+       "name": "Needlessly Large Rod",
+       "nameId": "DA_Component_NeedlesslyLargeRod"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_DragonsClaw.png",
+       "id": 0,
+       "name": "Dragon's Claw",
+       "nameId": "DA_DragonsClaw"
+      }
+     ],
+     "level": 2,
+     "name": "Tristana",
+     "price": 3,
+     "traits": [
+      {
+       "id": "DA_18_Fae",
+       "name": "Fae"
+      },
+      {
+       "id": "DA_18_Sprykin",
+       "name": "Sprykin"
+      },
+      {
+       "id": "DA_18_Hunter",
+       "name": "Hunter"
+      }
+     ]
+    },
+    {
+     "championId": "DA_Vi18",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Vi/TFT18_VI_Square.TFT_Set18.png",
+     "items": [
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_TearOfTheGoddess.png",
+       "id": 0,
+       "name": "Tear Of The Goddess",
+       "nameId": "DA_Component_TearOfTheGoddess"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_MadredsBloodrazor.png",
+       "id": 0,
+       "name": "Giant Slayer",
+       "nameId": "DA_GiantSlayer"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_VoidStaff.png",
+       "id": 0,
+       "name": "Void Staff",
+       "nameId": "DA_VoidStaff"
+      }
+     ],
+     "level": 2,
+     "name": "Vi",
+     "price": 3,
+     "traits": [
+      {
+       "id": "DA_Primal18",
+       "name": "Primal"
+      },
+      {
+       "id": "DA_Juggernaut18",
+       "name": "Juggernaut"
+      }
+     ]
+    },
+    {
+     "championId": "DA_18_Sejuani",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Sejuani/TFT18_Sejuani_Square.TFT_Set18.png",
+     "items": [
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/Particles/TFT/Item_Icons/Traits/Spatula/Set18/TFT18_Emblem_Vanguard.TFT_Set18.png",
+       "id": 0,
+       "name": "Vanguard Emblem",
+       "nameId": "DA_18_EmblemVanguard"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_RedBuff.png",
+       "id": 0,
+       "name": "Sunfire Cape",
+       "nameId": "DA_SunfireCape"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_JeweledGauntlet.png",
+       "id": 0,
+       "name": "Jeweled Gauntlet",
+       "nameId": "DA_JeweledGauntlet"
+      }
+     ],
+     "level": 2,
+     "name": "Sejuani",
+     "price": 2,
+     "traits": [
+      {
+       "id": "DA_18_Solar",
+       "name": "Solar"
+      },
+      {
+       "id": "DA_Juggernaut18",
+       "name": "Juggernaut"
+      }
+     ]
+    },
+    {
+     "championId": "DA_18_Shen",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Shen/TFT18_Shen_Square.TFT_Set18.png",
+     "items": [
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/Particles/TFT/Item_Icons/Traits/Spatula/Set18/TFT18_Emblem_Spellweaver.TFT_Set18.png",
+       "id": 0,
+       "name": "Spellweaver Emblem",
+       "nameId": "DA_18_EmblemSpellweaver"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_SpiritVisageRR.png",
+       "id": 0,
+       "name": "Spirit Visage",
+       "nameId": "DA_SpiritVisage"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_GargoyleStoneplate.png",
+       "id": 0,
+       "name": "Gargoyle Stoneplate",
+       "nameId": "DA_GargoyleStoneplate"
+      }
+     ],
+     "level": 2,
+     "name": "Shen",
+     "price": 2,
+     "traits": [
+      {
+       "id": "DA_18_Inferno",
+       "name": "Inferno"
+      },
+      {
+       "id": "DA_18_Defender",
+       "name": "Defender"
+      }
+     ]
+    },
+    {
+     "championId": "DA_18_Leona",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Leona/TFT18_Leona_Square.TFT_Set18.png",
+     "items": [],
+     "level": 2,
+     "name": "Leona",
+     "price": 1,
+     "traits": [
+      {
+       "id": "DA_18_Solar",
+       "name": "Solar"
+      },
+      {
+       "id": "DA_18_Defender",
+       "name": "Defender"
+      }
+     ]
+    },
+    {
+     "championId": "DA_18_Maokai",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Maokai/TFT18_Maokai_Square.TFT_Set18.png",
+     "items": [
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_Bloodthirster.png",
+       "id": 0,
+       "name": "Bloodthirster",
+       "nameId": "DA_Bloodthirster"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_RedBuff.png",
+       "id": 0,
+       "name": "Sunfire Cape",
+       "nameId": "DA_SunfireCape"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/Particles/TFT/Item_Icons/Traits/Spatula/Set18/TFT18_Emblem_Coven.TFT_Set18.png",
+       "id": 0,
+       "name": "Coven Emblem",
+       "nameId": "DA_18_EmblemCoven"
+      }
+     ],
+     "level": 1,
+     "name": "Maokai",
+     "price": 5,
+     "traits": [
+      {
+       "id": "DA_18_Maokai_UniqueTrait",
+       "name": "Old Growth"
+      },
+      {
+       "id": "DA_Juggernaut18",
+       "name": "Juggernaut"
+      }
+     ]
+    }
+   ],
+   "companion": {
+    "colorName": "",
+    "icon": "",
+    "speciesName": ""
+   },
+   "customAugmentContainer": {
+    "description": "No encounter.",
+    "displayName": "",
+    "iconPath": "/lol-game-data/assets/",
+    "nameId": "TFT_Portals_Default_NoPortal"
+   },
+   "ffaStanding": 2,
+   "health": 247,
+   "iconId": 0,
+   "isInteractable": false,
+   "isLocalPlayer": false,
+   "partnerGroupId": 0,
+   "playbook": {
+    "iconSmall": "",
+    "itemId": 0,
+    "name": ""
+   },
+   "puuid": "00000000-0000-0000-0000-000000000001",
+   "rank": 2,
+   "riotIdGameName": "player1",
+   "riotIdTagLine": "TAG",
+   "setCoreName": "TFTSet18",
+   "summonerId": 0,
+   "summonerName": "player1"
+  },
+  {
+   "augments": [],
+   "boardPieces": [
+    {
+     "championId": "DA_18_Xayah",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Xayah/TFT18_Xayah_Square.TFT_Set18.png",
+     "items": [
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/Particles/TFT/Item_Icons/Traits/Spatula/Set18/TFT18_Emblem_Blossom.TFT_Set18.png",
+       "id": 0,
+       "name": "Blossom Emblem",
+       "nameId": "DA_18_EmblemBlossom"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_KrakenSlayer.png",
+       "id": 0,
+       "name": "Kraken's Fury",
+       "nameId": "DA_KrakensFury"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_Deathblade.png",
+       "id": 0,
+       "name": "Deathblade",
+       "nameId": "DA_Deathblade"
+      }
+     ],
+     "level": 3,
+     "name": "Xayah",
+     "price": 1,
+     "traits": [
+      {
+       "id": "DA_18_Elderwood",
+       "name": "Elderwood"
+      },
+      {
+       "id": "DA_18_Fae",
+       "name": "Fae"
+      },
+      {
+       "id": "DA_18_Rapidfire",
+       "name": "Rapidfire"
+      }
+     ]
+    },
+    {
+     "championId": "DA_18_Tristana",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Tristana/TFT18_Tristana_Square.TFT_Set18.png",
+     "items": [],
+     "level": 2,
+     "name": "Tristana",
+     "price": 3,
+     "traits": [
+      {
+       "id": "DA_18_Fae",
+       "name": "Fae"
+      },
+      {
+       "id": "DA_18_Sprykin",
+       "name": "Sprykin"
+      },
+      {
+       "id": "DA_18_Hunter",
+       "name": "Hunter"
+      }
+     ]
+    },
+    {
+     "championId": "DA_18_Shen",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Shen/TFT18_Shen_Square.TFT_Set18.png",
+     "items": [],
+     "level": 2,
+     "name": "Shen",
+     "price": 2,
+     "traits": [
+      {
+       "id": "DA_18_Inferno",
+       "name": "Inferno"
+      },
+      {
+       "id": "DA_18_Defender",
+       "name": "Defender"
+      }
+     ]
+    },
+    {
+     "championId": "DA_18_Rakan",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Rakan/TFT18_Rakan_Square.TFT_Set18.png",
+     "items": [
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_SpiritVisageRR.png",
+       "id": 0,
+       "name": "Spirit Visage",
+       "nameId": "DA_SpiritVisage"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_FrozenHeart.png",
+       "id": 0,
+       "name": "Protector's Vow",
+       "nameId": "DA_ProtectorsVow"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/Particles/TFT/Item_Icons/Traits/Spatula/Set18/TFT18_Emblem_Defender.TFT_Set18.png",
+       "id": 0,
+       "name": "Defender Emblem",
+       "nameId": "DA_18_EmblemDefender"
+      }
+     ],
+     "level": 2,
+     "name": "Rakan",
+     "price": 1,
+     "traits": [
+      {
+       "id": "DA_18_Fae",
+       "name": "Fae"
+      },
+      {
+       "id": "DA_Juggernaut18",
+       "name": "Juggernaut"
+      },
+      {
+       "id": "DA_18_Vanguard",
+       "name": "Vanguard"
+      }
+     ]
+    },
+    {
+     "championId": "DA_18_Varus",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Varus/TFT18_Varus_Square.TFT_Set18.png",
+     "items": [],
+     "level": 2,
+     "name": "Varus",
+     "price": 1,
+     "traits": [
+      {
+       "id": "DA_18_Inferno",
+       "name": "Inferno"
+      },
+      {
+       "id": "DA_18_Rapidfire",
+       "name": "Rapidfire"
+      }
+     ]
+    },
+    {
+     "championId": "DA_Nidalee18_AP",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Nidalee/TFT18_Nidalee_Square.TFT_Set18.png",
+     "items": [],
+     "level": 1,
+     "name": "Nidalee",
+     "price": 4,
+     "traits": [
+      {
+       "id": "DA_Primal18",
+       "name": "Primal"
+      },
+      {
+       "id": "DA_18_Adaptor",
+       "name": "Adaptor"
+      }
+     ]
+    }
+   ],
+   "companion": {
+    "colorName": "",
+    "icon": "",
+    "speciesName": ""
+   },
+   "customAugmentContainer": {
+    "description": "No encounter.",
+    "displayName": "",
+    "iconPath": "/lol-game-data/assets/",
+    "nameId": "TFT_Portals_Default_NoPortal"
+   },
+   "ffaStanding": 3,
+   "health": 247,
+   "iconId": 0,
+   "isInteractable": false,
+   "isLocalPlayer": false,
+   "partnerGroupId": 0,
+   "playbook": {
+    "iconSmall": "",
+    "itemId": 0,
+    "name": ""
+   },
+   "puuid": "00000000-0000-0000-0000-000000000002",
+   "rank": 3,
+   "riotIdGameName": "player2",
+   "riotIdTagLine": "TAG",
+   "setCoreName": "TFTSet18",
+   "summonerId": 0,
+   "summonerName": "player2"
+  },
+  {
+   "augments": [],
+   "boardPieces": [
+    {
+     "championId": "DA_18_Diana",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Diana/TFT18_Diana_Square.TFT_Set18.png",
+     "items": [
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/Particles/TFT/Item_Icons/Traits/Spatula/Set18/TFT18_Emblem_Blossom.TFT_Set18.png",
+       "id": 0,
+       "name": "Blossom Emblem",
+       "nameId": "DA_18_EmblemBlossom"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/Particles/TFT/Item_Icons/Traits/Spatula/Set18/TFT18_Emblem_Brawler.TFT_Set18.png",
+       "id": 0,
+       "name": "Brawler Emblem",
+       "nameId": "DA_18_EmblemBrawler"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_IonicSpark.png",
+       "id": 0,
+       "name": "Ionic Spark",
+       "nameId": "DA_IonicSpark"
+      }
+     ],
+     "level": 2,
+     "name": "Diana",
+     "price": 3,
+     "traits": [
+      {
+       "id": "DA_18_Lunar",
+       "name": "Lunar"
+      },
+      {
+       "id": "DA_18_Slayer",
+       "name": "Ravager"
+      },
+      {
+       "id": "DA_18_Vanguard",
+       "name": "Vanguard"
+      }
+     ]
+    },
+    {
+     "championId": "DA_18_Kayle",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Kayle/TFT18_Kayle_Square.TFT_Set18.png",
+     "items": [
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_RecurveBow.png",
+       "id": 0,
+       "name": "Recurve Bow",
+       "nameId": "DA_Component_RecurveBow"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_Quicksilver.png",
+       "id": 0,
+       "name": "Quicksilver",
+       "nameId": "DA_Quicksilver"
+      }
+     ],
+     "level": 2,
+     "name": "Kayle",
+     "price": 2,
+     "traits": [
+      {
+       "id": "DA_18_Solar",
+       "name": "Solar"
+      },
+      {
+       "id": "DA_18_Rapidfire",
+       "name": "Rapidfire"
+      }
+     ]
+    },
+    {
+     "championId": "DA_18_Rakan",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Rakan/TFT18_Rakan_Square.TFT_Set18.png",
+     "items": [
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_Morellonomicon.png",
+       "id": 0,
+       "name": "Morellonomicon",
+       "nameId": "DA_Morellonomicon"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_InfinityEdge.png",
+       "id": 0,
+       "name": "Infinity Edge",
+       "nameId": "DA_InfinityEdge"
+      }
+     ],
+     "level": 2,
+     "name": "Rakan",
+     "price": 1,
+     "traits": [
+      {
+       "id": "DA_18_Fae",
+       "name": "Fae"
+      },
+      {
+       "id": "DA_Juggernaut18",
+       "name": "Juggernaut"
+      },
+      {
+       "id": "DA_18_Vanguard",
+       "name": "Vanguard"
+      }
+     ]
+    },
+    {
+     "championId": "DA_18_Varus",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Varus/TFT18_Varus_Square.TFT_Set18.png",
+     "items": [
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_RapidFireCannon.png",
+       "id": 0,
+       "name": "Red Buff",
+       "nameId": "DA_RedBuff"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_DragonsClaw.png",
+       "id": 0,
+       "name": "Dragon's Claw",
+       "nameId": "DA_DragonsClaw"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_WarmogsArmor.png",
+       "id": 0,
+       "name": "Warmog's Armor",
+       "nameId": "DA_WarmogsArmor"
+      }
+     ],
+     "level": 2,
+     "name": "Varus",
+     "price": 1,
+     "traits": [
+      {
+       "id": "DA_18_Inferno",
+       "name": "Inferno"
+      },
+      {
+       "id": "DA_18_Rapidfire",
+       "name": "Rapidfire"
+      }
+     ]
+    },
+    {
+     "championId": "DA_18_Xayah",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Xayah/TFT18_Xayah_Square.TFT_Set18.png",
+     "items": [
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_GuinsoosRageblade.png",
+       "id": 0,
+       "name": "Guinsoo's Rageblade",
+       "nameId": "DA_GuinsoosRageblade"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_TitansResolve.png",
+       "id": 0,
+       "name": "Titan's Resolve",
+       "nameId": "DA_TitansResolve"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/Particles/TFT/Item_Icons/Traits/Spatula/Set18/TFT18_Emblem_Invoker.TFT_Set18.png",
+       "id": 0,
+       "name": "Invoker Emblem",
+       "nameId": "DA_18_EmblemInvoker"
+      }
+     ],
+     "level": 2,
+     "name": "Xayah",
+     "price": 1,
+     "traits": [
+      {
+       "id": "DA_18_Elderwood",
+       "name": "Elderwood"
+      },
+      {
+       "id": "DA_18_Fae",
+       "name": "Fae"
+      },
+      {
+       "id": "DA_18_Rapidfire",
+       "name": "Rapidfire"
+      }
+     ]
+    },
+    {
+     "championId": "DA_Vi18",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Vi/TFT18_VI_Square.TFT_Set18.png",
+     "items": [
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_PowerGauntlet.png",
+       "id": 0,
+       "name": "Striker's Flail",
+       "nameId": "DA_StrikersFlail"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_ChainVest.png",
+       "id": 0,
+       "name": "Chain Vest",
+       "nameId": "DA_Component_ChainVest"
+      }
+     ],
+     "level": 1,
+     "name": "Vi",
+     "price": 3,
+     "traits": [
+      {
+       "id": "DA_Primal18",
+       "name": "Primal"
+      },
+      {
+       "id": "DA_Juggernaut18",
+       "name": "Juggernaut"
+      }
+     ]
+    }
+   ],
+   "companion": {
+    "colorName": "",
+    "icon": "",
+    "speciesName": ""
+   },
+   "customAugmentContainer": {
+    "description": "No encounter.",
+    "displayName": "",
+    "iconPath": "/lol-game-data/assets/",
+    "nameId": "TFT_Portals_Default_NoPortal"
+   },
+   "ffaStanding": 4,
+   "health": 238,
+   "iconId": 0,
+   "isInteractable": false,
+   "isLocalPlayer": false,
+   "partnerGroupId": 0,
+   "playbook": {
+    "iconSmall": "",
+    "itemId": 0,
+    "name": ""
+   },
+   "puuid": "00000000-0000-0000-0000-000000000003",
+   "rank": 4,
+   "riotIdGameName": "player3",
+   "riotIdTagLine": "TAG",
+   "setCoreName": "TFTSet18",
+   "summonerId": 0,
+   "summonerName": "player3"
+  },
+  {
+   "augments": [],
+   "boardPieces": [
+    {
+     "championId": "DA_18_RekSai",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_RekSai/TFT18_Reksai_Square.TFT_Set18.png",
+     "items": [
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/Particles/TFT/Item_Icons/Traits/Spatula/Set18/TFT18_Emblem_Sprykin.TFT_Set18.png",
+       "id": 0,
+       "name": "Sprykin Emblem",
+       "nameId": "DA_18_EmblemSprykin"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/Particles/TFT/Item_Icons/Traits/Spatula/Set18/TFT18_Emblem_Spellweaver.TFT_Set18.png",
+       "id": 0,
+       "name": "Spellweaver Emblem",
+       "nameId": "DA_18_EmblemSpellweaver"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_FrozenHeart.png",
+       "id": 0,
+       "name": "Protector's Vow",
+       "nameId": "DA_ProtectorsVow"
+      }
+     ],
+     "level": 3,
+     "name": "Rek'Sai",
+     "price": 1,
+     "traits": [
+      {
+       "id": "DA_18_Blackthorn",
+       "name": "Blackthorn"
+      },
+      {
+       "id": "DA_18_Brawler",
+       "name": "Brawler"
+      }
+     ]
+    },
+    {
+     "championId": "DA_18_Rammus",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Rammus/TFT18_Rammus_Square.TFT_Set18.png",
+     "items": [],
+     "level": 2,
+     "name": "Rammus",
+     "price": 3,
+     "traits": [
+      {
+       "id": "DA_18_Sprykin",
+       "name": "Sprykin"
+      },
+      {
+       "id": "DA_18_Defender",
+       "name": "Defender"
+      }
+     ]
+    },
+    {
+     "championId": "DA_18_Alistar",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Alistar/TFT18_Alistar_Square.TFT_Set18.png",
+     "items": [],
+     "level": 2,
+     "name": "Alistar",
+     "price": 2,
+     "traits": [
+      {
+       "id": "DA_18_Elderwood",
+       "name": "Elderwood"
+      },
+      {
+       "id": "DA_18_Brawler",
+       "name": "Brawler"
+      }
+     ]
+    },
+    {
+     "championId": "DA_Karma18",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Karma/TFT18_Karma_Square.TFT_Set18.png",
+     "items": [],
+     "level": 2,
+     "name": "Karma",
+     "price": 1,
+     "traits": [
+      {
+       "id": "DA_18_Blossom",
+       "name": "Blossom"
+      },
+      {
+       "id": "DA_18_Spellweaver",
+       "name": "Spellweaver"
+      }
+     ]
+    },
+    {
+     "championId": "DA_18_Kobuko",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Kobuko/TFT18_Kobuko_Square.TFT_Set18.png",
+     "items": [],
+     "level": 2,
+     "name": "Kobuko",
+     "price": 1,
+     "traits": [
+      {
+       "id": "DA_18_Sprykin",
+       "name": "Sprykin"
+      },
+      {
+       "id": "DA_18_Brawler",
+       "name": "Brawler"
+      }
+     ]
+    },
+    {
+     "championId": "DA_18_Veigar",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Veigar/TFT18_Veigar_Square.TFT_Set18.png",
+     "items": [
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/Particles/TFT/Item_Icons/Traits/Spatula/Set18/TFT18_Emblem_Rapidfire.TFT_Set18.png",
+       "id": 0,
+       "name": "Rapidfire Emblem",
+       "nameId": "DA_18_EmblemRapidfire"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_KrakenSlayer.png",
+       "id": 0,
+       "name": "Kraken's Fury",
+       "nameId": "DA_KrakensFury"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_Crownguard.png",
+       "id": 0,
+       "name": "Crownguard",
+       "nameId": "DA_Crownguard"
+      }
+     ],
+     "level": 2,
+     "name": "Veigar",
+     "price": 1,
+     "traits": [
+      {
+       "id": "DA_18_Blackthorn",
+       "name": "Blackthorn"
+      },
+      {
+       "id": "DA_18_Sprykin",
+       "name": "Sprykin"
+      },
+      {
+       "id": "DA_18_Spellweaver",
+       "name": "Spellweaver"
+      }
+     ]
+    }
+   ],
+   "companion": {
+    "colorName": "",
+    "icon": "",
+    "speciesName": ""
+   },
+   "customAugmentContainer": {
+    "description": "No encounter.",
+    "displayName": "",
+    "iconPath": "/lol-game-data/assets/",
+    "nameId": "TFT_Portals_Default_NoPortal"
+   },
+   "ffaStanding": 5,
+   "health": 239,
+   "iconId": 0,
+   "isInteractable": false,
+   "isLocalPlayer": false,
+   "partnerGroupId": 0,
+   "playbook": {
+    "iconSmall": "",
+    "itemId": 0,
+    "name": ""
+   },
+   "puuid": "00000000-0000-0000-0000-000000000004",
+   "rank": 5,
+   "riotIdGameName": "player4",
+   "riotIdTagLine": "TAG",
+   "setCoreName": "TFTSet18",
+   "summonerId": 0,
+   "summonerName": "player4"
+  },
+  {
+   "augments": [],
+   "boardPieces": [
+    {
+     "championId": "DA_Murkwolf18",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Murkwolf/TFT18_MurkWolf_Square.TFT_Set18.png",
+     "items": [
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_GuardianAngel.png",
+       "id": 0,
+       "name": "Edge of Night",
+       "nameId": "DA_EdgeOfNight"
+      }
+     ],
+     "level": 2,
+     "name": "Murkwolf",
+     "price": 2,
+     "traits": [
+      {
+       "id": "DA_Riftbeast18",
+       "name": "Riftbeast"
+      },
+      {
+       "id": "DA_18_Slayer",
+       "name": "Ravager"
+      }
+     ]
+    },
+    {
+     "championId": "DA_Cinderling18",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Cinderling/TFT18_Cinderling_Square.TFT_Set18.png",
+     "items": [
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/Particles/TFT/Item_Icons/Traits/Spatula/Set18/TFT18_Emblem_Inferno.TFT_Set18.png",
+       "id": 0,
+       "name": "Inferno Emblem",
+       "nameId": "DA_18_EmblemInferno"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_UnstableConcoction.png",
+       "id": 0,
+       "name": "Hand Of Justice",
+       "nameId": "DA_HandOfJustice"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_InfinityEdge.png",
+       "id": 0,
+       "name": "Infinity Edge",
+       "nameId": "DA_InfinityEdge"
+      }
+     ],
+     "level": 2,
+     "name": "Cinderling",
+     "price": 1,
+     "traits": [
+      {
+       "id": "DA_Riftbeast18",
+       "name": "Riftbeast"
+      },
+      {
+       "id": "DA_18_Hunter",
+       "name": "Hunter"
+      }
+     ]
+    },
+    {
+     "championId": "DA_18_Sentry",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Sentry/TFT18_Sentry_Square.TFT_Set18.png",
+     "items": [
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_VoidStaff.png",
+       "id": 0,
+       "name": "Void Staff",
+       "nameId": "DA_VoidStaff"
+      }
+     ],
+     "level": 2,
+     "name": "Pebbles",
+     "price": 1,
+     "traits": [
+      {
+       "id": "DA_Riftbeast18",
+       "name": "Riftbeast"
+      },
+      {
+       "id": "DA_18_Invoker",
+       "name": "Invoker"
+      }
+     ]
+    },
+    {
+     "championId": "DA_18_Rakan",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Rakan/TFT18_Rakan_Square.TFT_Set18.png",
+     "items": [
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_IonicSpark.png",
+       "id": 0,
+       "name": "Ionic Spark",
+       "nameId": "DA_IonicSpark"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_WarmogsArmor.png",
+       "id": 0,
+       "name": "Warmog's Armor",
+       "nameId": "DA_WarmogsArmor"
+      }
+     ],
+     "level": 2,
+     "name": "Rakan",
+     "price": 1,
+     "traits": [
+      {
+       "id": "DA_18_Fae",
+       "name": "Fae"
+      },
+      {
+       "id": "DA_Juggernaut18",
+       "name": "Juggernaut"
+      },
+      {
+       "id": "DA_18_Vanguard",
+       "name": "Vanguard"
+      }
+     ]
+    },
+    {
+     "championId": "DA_Krug18",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Krug/TFT18_Krug_Square.TFT_Set18.png",
+     "items": [
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_FrozenHeart.png",
+       "id": 0,
+       "name": "Protector's Vow",
+       "nameId": "DA_ProtectorsVow"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/Particles/TFT/Item_Icons/Traits/Spatula/Set18/TFT18_Emblem_Coven.TFT_Set18.png",
+       "id": 0,
+       "name": "Coven Emblem",
+       "nameId": "DA_18_EmblemCoven"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_FrozenHeart.png",
+       "id": 0,
+       "name": "Protector's Vow",
+       "nameId": "DA_ProtectorsVow"
+      }
+     ],
+     "level": 1,
+     "name": "Krug",
+     "price": 3,
+     "traits": [
+      {
+       "id": "DA_Riftbeast18",
+       "name": "Riftbeast"
+      },
+      {
+       "id": "DA_18_Brawler",
+       "name": "Brawler"
+      }
+     ]
+    },
+    {
+     "championId": "DA_CrimsonRaptor18",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Raptor/HUD/TFT18_Raptor_Square.TFT_Set18.png",
+     "items": [
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_Deathblade.png",
+       "id": 0,
+       "name": "Deathblade",
+       "nameId": "DA_Deathblade"
+      }
+     ],
+     "level": 1,
+     "name": "Mama Beak",
+     "price": 3,
+     "traits": [
+      {
+       "id": "DA_Riftbeast18",
+       "name": "Riftbeast"
+      },
+      {
+       "id": "DA_18_Summoner",
+       "name": "Summoner"
+      },
+      {
+       "id": "DA_18_Rapidfire",
+       "name": "Rapidfire"
+      }
+     ]
+    }
+   ],
+   "companion": {
+    "colorName": "",
+    "icon": "",
+    "speciesName": ""
+   },
+   "customAugmentContainer": {
+    "description": "No encounter.",
+    "displayName": "",
+    "iconPath": "/lol-game-data/assets/",
+    "nameId": "TFT_Portals_Default_NoPortal"
+   },
+   "ffaStanding": 6,
+   "health": 253,
+   "iconId": 0,
+   "isInteractable": false,
+   "isLocalPlayer": false,
+   "partnerGroupId": 0,
+   "playbook": {
+    "iconSmall": "",
+    "itemId": 0,
+    "name": ""
+   },
+   "puuid": "00000000-0000-0000-0000-000000000005",
+   "rank": 6,
+   "riotIdGameName": "player5",
+   "riotIdTagLine": "TAG",
+   "setCoreName": "TFTSet18",
+   "summonerId": 0,
+   "summonerName": "player5"
+  },
+  {
+   "augments": [],
+   "boardPieces": [
+    {
+     "championId": "DA_18_Ornn",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Ornn/TFT18_Ornn_Square.TFT_Set18.png",
+     "items": [
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/Particles/TFT/Item_Icons/Traits/Spatula/Set18/TFT18_Emblem_Blossom.TFT_Set18.png",
+       "id": 0,
+       "name": "Blossom Emblem",
+       "nameId": "DA_18_EmblemBlossom"
+      }
+     ],
+     "level": 2,
+     "name": "Ornn",
+     "price": 1,
+     "traits": [
+      {
+       "id": "DA_18_Elderwood",
+       "name": "Elderwood"
+      },
+      {
+       "id": "DA_18_Defender",
+       "name": "Defender"
+      }
+     ]
+    },
+    {
+     "championId": "DA_18_Yorick",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Yorick/TFT18_Yorick_Square.TFT_Set18.png",
+     "items": [
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/Particles/TFT/Item_Icons/Traits/Spatula/Set18/TFT18_Emblem_Elderwood.TFT_Set18.png",
+       "id": 0,
+       "name": "Elderwood Emblem",
+       "nameId": "DA_18_EmblemElderwood"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_BFSword.png",
+       "id": 0,
+       "name": "B.F. Sword",
+       "nameId": "DA_Component_BFSword"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_GargoyleStoneplate.png",
+       "id": 0,
+       "name": "Gargoyle Stoneplate",
+       "nameId": "DA_GargoyleStoneplate"
+      }
+     ],
+     "level": 2,
+     "name": "Yorick",
+     "price": 1,
+     "traits": [
+      {
+       "id": "DA_18_Blossom",
+       "name": "Blossom"
+      },
+      {
+       "id": "DA_Juggernaut18",
+       "name": "Juggernaut"
+      },
+      {
+       "id": "DA_18_Summoner",
+       "name": "Summoner"
+      }
+     ]
+    },
+    {
+     "championId": "DA_18_Malphite",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Malphite/TFT18_Malphite_Square.TFT_Set18.png",
+     "items": [],
+     "level": 1,
+     "name": "Malphite",
+     "price": 4,
+     "traits": [
+      {
+       "id": "DA_18_Blackthorn",
+       "name": "Blackthorn"
+      },
+      {
+       "id": "DA_18_Battlemage",
+       "name": "Monolith"
+      }
+     ]
+    },
+    {
+     "championId": "DA_18_Tristana",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Tristana/TFT18_Tristana_Square.TFT_Set18.png",
+     "items": [
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_PowerGauntlet.png",
+       "id": 0,
+       "name": "Striker's Flail",
+       "nameId": "DA_StrikersFlail"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_LastWhisper.png",
+       "id": 0,
+       "name": "Last Whisper",
+       "nameId": "DA_LastWhisper"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_NeedlesslyLargeRod.png",
+       "id": 0,
+       "name": "Needlessly Large Rod",
+       "nameId": "DA_Component_NeedlesslyLargeRod"
+      }
+     ],
+     "level": 1,
+     "name": "Tristana",
+     "price": 3,
+     "traits": [
+      {
+       "id": "DA_18_Fae",
+       "name": "Fae"
+      },
+      {
+       "id": "DA_18_Sprykin",
+       "name": "Sprykin"
+      },
+      {
+       "id": "DA_18_Hunter",
+       "name": "Hunter"
+      }
+     ]
+    },
+    {
+     "championId": "DA_Vi18",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Vi/TFT18_VI_Square.TFT_Set18.png",
+     "items": [
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_JeweledGauntlet.png",
+       "id": 0,
+       "name": "Jeweled Gauntlet",
+       "nameId": "DA_JeweledGauntlet"
+      }
+     ],
+     "level": 1,
+     "name": "Vi",
+     "price": 3,
+     "traits": [
+      {
+       "id": "DA_Primal18",
+       "name": "Primal"
+      },
+      {
+       "id": "DA_Juggernaut18",
+       "name": "Juggernaut"
+      }
+     ]
+    },
+    {
+     "championId": "DA_18_Xayah",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Xayah/TFT18_Xayah_Square.TFT_Set18.png",
+     "items": [
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/Particles/TFT/Item_Icons/Traits/Spatula/Set18/TFT18_Emblem_FloraFatalis.TFT_Set18.png",
+       "id": 0,
+       "name": "Flora Fatalis Emblem",
+       "nameId": "DA_18_EmblemFloraFatalis"
+      }
+     ],
+     "level": 1,
+     "name": "Xayah",
+     "price": 1,
+     "traits": [
+      {
+       "id": "DA_18_Elderwood",
+       "name": "Elderwood"
+      },
+      {
+       "id": "DA_18_Fae",
+       "name": "Fae"
+      },
+      {
+       "id": "DA_18_Rapidfire",
+       "name": "Rapidfire"
+      }
+     ]
+    }
+   ],
+   "companion": {
+    "colorName": "",
+    "icon": "",
+    "speciesName": ""
+   },
+   "customAugmentContainer": {
+    "description": "No encounter.",
+    "displayName": "",
+    "iconPath": "/lol-game-data/assets/",
+    "nameId": "TFT_Portals_Default_NoPortal"
+   },
+   "ffaStanding": 7,
+   "health": 0,
+   "iconId": 0,
+   "isInteractable": false,
+   "isLocalPlayer": false,
+   "partnerGroupId": 0,
+   "playbook": {
+    "iconSmall": "",
+    "itemId": 0,
+    "name": ""
+   },
+   "puuid": "00000000-0000-0000-0000-000000000006",
+   "rank": 7,
+   "riotIdGameName": "player6",
+   "riotIdTagLine": "TAG",
+   "setCoreName": "TFTSet18",
+   "summonerId": 0,
+   "summonerName": "player6"
+  },
+  {
+   "augments": [],
+   "boardPieces": [
+    {
+     "championId": "DA_Gromp18_AP",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Gromp/TFT18_Gromp_Square.TFT_Set18.png",
+     "items": [
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_NeedlesslyLargeRod.png",
+       "id": 0,
+       "name": "Needlessly Large Rod",
+       "nameId": "DA_Component_NeedlesslyLargeRod"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_Quicksilver.png",
+       "id": 0,
+       "name": "Quicksilver",
+       "nameId": "DA_Quicksilver"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/Particles/TFT/Item_Icons/Traits/Spatula/Set18/TFT18_Emblem_Defender.TFT_Set18.png",
+       "id": 0,
+       "name": "Defender Emblem",
+       "nameId": "DA_18_EmblemDefender"
+      }
+     ],
+     "level": 2,
+     "name": "Gromp",
+     "price": 2,
+     "traits": [
+      {
+       "id": "DA_Riftbeast18",
+       "name": "Riftbeast"
+      },
+      {
+       "id": "DA_18_Adaptor",
+       "name": "Adaptor"
+      }
+     ]
+    },
+    {
+     "championId": "DA_18_Sentry",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Sentry/TFT18_Sentry_Square.TFT_Set18.png",
+     "items": [
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/Particles/TFT/Item_Icons/Traits/Spatula/Set18/TFT18_Emblem_Executioner.TFT_Set18.png",
+       "id": 0,
+       "name": "Executioner Emblem",
+       "nameId": "DA_18_EmblemExecutioner"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_PowerGauntlet.png",
+       "id": 0,
+       "name": "Striker's Flail",
+       "nameId": "DA_StrikersFlail"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_RecurveBow.png",
+       "id": 0,
+       "name": "Recurve Bow",
+       "nameId": "DA_Component_RecurveBow"
+      }
+     ],
+     "level": 2,
+     "name": "Pebbles",
+     "price": 1,
+     "traits": [
+      {
+       "id": "DA_Riftbeast18",
+       "name": "Riftbeast"
+      },
+      {
+       "id": "DA_18_Invoker",
+       "name": "Invoker"
+      }
+     ]
+    },
+    {
+     "championId": "DA_Sentinel18",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Sentinel/TFT18_Sentinel_Square.TFT_Set18.png",
+     "items": [],
+     "level": 1,
+     "name": "Sentinel",
+     "price": 4,
+     "traits": [
+      {
+       "id": "DA_Riftbeast18",
+       "name": "Riftbeast"
+      },
+      {
+       "id": "DA_18_Vanguard",
+       "name": "Vanguard"
+      },
+      {
+       "id": "DA_18_Invoker",
+       "name": "Invoker"
+      }
+     ]
+    },
+    {
+     "championId": "DA_Vi18",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Vi/TFT18_VI_Square.TFT_Set18.png",
+     "items": [
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_TearOfTheGoddess.png",
+       "id": 0,
+       "name": "Tear Of The Goddess",
+       "nameId": "DA_Component_TearOfTheGoddess"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/Particles/TFT/Item_Icons/Traits/Spatula/Set18/TFT18_Emblem_Lunar.TFT_Set18.png",
+       "id": 0,
+       "name": "Lunar Emblem",
+       "nameId": "DA_18_EmblemLunar"
+      },
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_GuardianAngel.png",
+       "id": 0,
+       "name": "Edge of Night",
+       "nameId": "DA_EdgeOfNight"
+      }
+     ],
+     "level": 1,
+     "name": "Vi",
+     "price": 3,
+     "traits": [
+      {
+       "id": "DA_Primal18",
+       "name": "Primal"
+      },
+      {
+       "id": "DA_Juggernaut18",
+       "name": "Juggernaut"
+      }
+     ]
+    },
+    {
+     "championId": "DA_18_Rakan",
+     "icon": "/lol-game-data/assets/ASSETS/Characters/TFT18_Rakan/TFT18_Rakan_Square.TFT_Set18.png",
+     "items": [
+      {
+       "icon": "/lol-game-data/assets/ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_NeedlesslyLargeRod.png",
+       "id": 0,
+       "name": "Needlessly Large Rod",
+       "nameId": "DA_Component_NeedlesslyLargeRod"
+      }
+     ],
+     "level": 1,
+     "name": "Rakan",
+     "price": 1,
+     "traits": [
+      {
+       "id": "DA_18_Fae",
+       "name": "Fae"
+      },
+      {
+       "id": "DA_Juggernaut18",
+       "name": "Juggernaut"
+      },
+      {
+       "id": "DA_18_Vanguard",
+       "name": "Vanguard"
+      }
+     ]
+    }
+   ],
+   "companion": {
+    "colorName": "",
+    "icon": "",
+    "speciesName": ""
+   },
+   "customAugmentContainer": {
+    "description": "No encounter.",
+    "displayName": "",
+    "iconPath": "/lol-game-data/assets/",
+    "nameId": "TFT_Portals_Default_NoPortal"
+   },
+   "ffaStanding": 8,
+   "health": 252,
+   "iconId": 0,
+   "isInteractable": false,
+   "isLocalPlayer": false,
+   "partnerGroupId": 0,
+   "playbook": {
+    "iconSmall": "",
+    "itemId": 0,
+    "name": ""
+   },
+   "puuid": "00000000-0000-0000-0000-000000000007",
+   "rank": 8,
+   "riotIdGameName": "player7",
+   "riotIdTagLine": "TAG",
+   "setCoreName": "TFTSet18",
+   "summonerId": 0,
+   "summonerName": "player7"
+  }
+ ],
+ "queueId": 1090,
+ "queueType": "NORMAL_TFT",
+ "_fixture_note": "Sanitised copy of GET /lol-end-of-game/v1/tft-eog-stats, TFT Set 18 normal (queue 1090), captured 2026-10-25 by the s134 recorder. gameId, puuid, summonerId, riotId, summonerName, iconId and companion replaced with placeholders; boards, items, traits, ranks, health and all other values are verbatim."
+}

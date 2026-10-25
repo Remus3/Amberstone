@@ -417,6 +417,13 @@ function _liveFetch(_b) {
 
 function renderLastMatch(data) {
   _lastData = data;
+  // RM-616 / s134 QA D4: the newest game was TFT - render its own card and
+  // hide the LoL body, instead of a stale other-mode match.
+  if (data && data.found && data.kind === "tft") {
+    _renderTftLastMatch(data);
+    return;
+  }
+  _showTftMount(false);
   if (!data || !data.found) {
     _setEmptyState(data && data.error);
     return;
@@ -1509,7 +1516,117 @@ function _setReviewButton(m) {
   btn.disabled = !m.id;
 }
 
+/* -- RM-616: TFT Post Game Review ------------------------------------- */
+
+// Toggle the TFT card (#lm-tft) against the LoL body (#lm-body).
+function _showTftMount(on) {
+  const tft = document.getElementById("lm-tft");
+  const body = document.getElementById("lm-body");
+  if (tft) {
+    tft.hidden = !on;
+    if (!on) tft.innerHTML = "";
+  }
+  if (body) body.hidden = !!on;
+}
+
+function _ordinal(n) {
+  const v = Number(n) || 0;
+  const t = v % 100;
+  if (t >= 11 && t <= 13) return `${v}th`;
+  return `${v}${({ 1: "st", 2: "nd", 3: "rd" })[v % 10] || "th"}`;
+}
+
+function _tftNum(v) {
+  return (v === null || v === undefined || v === "") ? "-" : String(v);
+}
+
+// Payload: /api/last-match kind "tft" (dashboard/builders_last_match.py
+// _build_tft_last_match). Augments and the HP curve are not recorded by the
+// client (measured s134), so they say so instead of rendering empty.
+function _renderTftLastMatch(data) {
+  _showTftMount(true);
+  const m = data.match || {};
+  const meta = document.getElementById("lm-meta");
+  if (meta) meta.textContent = `TFT - ${_fmtAgo(m.timestamp)}`;
+  const host = document.getElementById("lm-tft");
+  if (!host) return;
+  const lobby = Number(m.lobby_size) || 8;
+  const place = Number(m.placement) || 0;
+  const top = place >= 1 && place <= Math.floor(lobby / 2);
+  const placeTxt = place ? `${_ordinal(place)} of ${lobby}` : "Placement unknown";
+  const setTxt = m.set_number ? `Set ${m.set_number}` : (m.set_core_name || "");
+  const facts = [
+    ["Final HP", _tftNum(m.hp_final)],
+    ["Level", _tftNum(m.level)],
+    ["Gold left", _tftNum(m.gold_left)],
+    ["Rounds", _tftNum(m.last_round)],
+    ["Duration", _fmtDuration(m.duration_s)],
+  ];
+  const factsHtml = facts.map(([k, v]) => `
+      <div class="lm-tft-fact">
+        <span class="lm-tft-fact-label">${_escHtml(k)}</span>
+        <span class="lm-tft-fact-value">${_escHtml(v)}</span>
+      </div>`).join("");
+  const board = Array.isArray(m.board) ? m.board : [];
+  const boardHtml = board.length ? board.map((u) => {
+    const items = (Array.isArray(u.items) ? u.items : [])
+      .map((it) => it.name || it.name_id || "").filter(Boolean).join(", ");
+    const bits = [u.star ? `${u.star}-star` : "", u.cost ? `${u.cost} cost` : ""]
+      .filter(Boolean).join(" - ");
+    return `
+      <li class="lm-tft-unit">
+        <span class="lm-tft-unit-name">${_escHtml(u.name || u.character_id || "?")}</span>
+        <span class="lm-tft-unit-meta">${_escHtml(bits || "-")}</span>
+        <span class="lm-tft-unit-items">${_escHtml(items || "no items")}</span>
+      </li>`;
+  }).join("") : `<li class="lm-tft-note">no board recorded</li>`;
+  const traits = Array.isArray(m.traits) ? m.traits : [];
+  const tiersKnown = traits.some((t) => t.active === true || t.active === false);
+  const traitsHtml = traits.length ? traits.map((t) => {
+    const act = t.active === true ? "1" : (t.active === false ? "0" : "");
+    return `<li class="lm-tft-trait" data-active="${act}">${_escHtml(t.name || t.id || "?")} ${_escHtml(_tftNum(t.units))}</li>`;
+  }).join("") : `<li class="lm-tft-note">no traits recorded</li>`;
+  const augs = Array.isArray(m.augments) ? m.augments : [];
+  const augHtml = (m.augments_recorded && augs.length)
+    ? `<ul class="lm-tft-traits">${augs.map((a) => `<li class="lm-tft-trait">${_escHtml(a)}</li>`).join("")}</ul>`
+    : `<p class="lm-tft-note">Not recorded by the client for this game.</p>`;
+  const lobbyRows = (Array.isArray(m.lobby) ? m.lobby : []).map((p) => {
+    const units = (Array.isArray(p.units) ? p.units : []).map((u) => u.name).filter(Boolean).join(", ");
+    const who = p.is_local ? " (you)" : "";
+    const lvl = (p.level === null || p.level === undefined) ? "" : ` - L${p.level}`;
+    const pl = p.placement ? _ordinal(p.placement) : "?";
+    return `<li data-local="${p.is_local ? "1" : "0"}">${_escHtml(`${pl}${who}${lvl} - ${units || "no board"}`)}</li>`;
+  }).join("");
+  host.innerHTML = `
+    <div class="lm-tft-hero" data-top="${top ? "1" : "0"}">
+      <span class="lm-tft-place">${_escHtml(placeTxt)}</span>
+      <span class="lm-tft-sub">${_escHtml(["TFT", setTxt].filter(Boolean).join(" - "))}</span>
+    </div>
+    <div class="lm-tft-facts">${factsHtml}</div>
+    <section class="lm-tft-section">
+      <h3>Final board</h3>
+      <ul class="lm-tft-board">${boardHtml}</ul>
+    </section>
+    <section class="lm-tft-section">
+      <h3>${tiersKnown ? "Traits" : "Traits (unit counts)"}</h3>
+      <ul class="lm-tft-traits">${traitsHtml}</ul>
+    </section>
+    <section class="lm-tft-section">
+      <h3>Augments</h3>
+      ${augHtml}
+    </section>
+    <section class="lm-tft-section">
+      <h3>HP curve</h3>
+      <p class="lm-tft-note">Not recorded yet - per-round history is not captured.</p>
+    </section>
+    <section class="lm-tft-section">
+      <h3>Lobby</h3>
+      <ul class="lm-tft-lobby">${lobbyRows || '<li class="lm-tft-note">no lobby recorded</li>'}</ul>
+    </section>`;
+}
+
 function _setEmptyState(errMsg) {
+  _showTftMount(false);
   const heroBox = document.querySelector(".lm-hero");
   if (heroBox) heroBox.dataset.grade = "";
   const meta = document.getElementById("lm-meta");
