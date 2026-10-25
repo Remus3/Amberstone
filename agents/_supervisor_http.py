@@ -10,6 +10,7 @@ from __future__ import annotations
 import http.server
 import json
 import os
+import re
 import socketserver
 import threading
 import time
@@ -41,6 +42,41 @@ from agents._supervisor_ephemeral import spawn_ephemeral_llm
 
 if TYPE_CHECKING:  # runtime-free fwd-ref: Supervisor lives in the facade
     from agents.supervisor import Supervisor
+
+
+# RM-853: a task's ``last_error`` reaches the /api/task/<id> reply (and the
+# :8888 proxy forwards that 2xx body as is). The dispatcher stores this fixed
+# line for any dispatch exception and logs the cause, scrubbed. The reply
+# maps ``last_error`` through ``public_last_error`` as well, because rows a
+# pre-fix supervisor persisted are replayed from task_queue.jsonl on every
+# restart, and an agent0 rejection's message embeds the filer's own
+# ``remote_path``. A reason passes only when it is one the server authored.
+TASK_FAILED_ERROR = "task failed - see supervisor log"
+_PUBLIC_TASK_ERRORS = frozenset({
+    TASK_FAILED_ERROR,
+    "user denied",                    # Scheduler.deny default
+    "timeout-no-terminal-event",      # scheduler _RECONCILE_TIMEOUT_REASON
+    "stale-gate-limbo-no-approval",   # scheduler _GATE_LIMBO_REASON
+    "supervisor-restart",             # supervisor boot reconciler
+    "supervisor-restart-gate-limbo",  # supervisor boot gate-limbo reaper
+})
+# scheduler.py stores an agent0 rejection as agent0:<code>:<label>:<message>.
+_AGENT0_CODE = re.compile(r"agent0:([0-9]{1,3}):([a-z_]{1,64}):", re.ASCII)
+
+
+def public_last_error(raw: object) -> str | None:
+    """The wire form of a task's ``last_error``: None stays None, a
+    server-authored reason passes, an agent0 rejection becomes its stable
+    ``agent0:<code>:<label>`` code, anything else is the fixed line."""
+    if raw is None or raw == "":
+        return None
+    if isinstance(raw, str):
+        if raw in _PUBLIC_TASK_ERRORS:
+            return raw
+        m = _AGENT0_CODE.match(raw)
+        if m:
+            return f"agent0:{m.group(1)}:{m.group(2)}"
+    return TASK_FAILED_ERROR
 
 
 class _BadJsonBody(ValueError):
@@ -607,7 +643,8 @@ class _QuietHandler(HostAllowlistMixin, HeadDeadlineMixin,
             "categories": list(task.categories) if task else None,
             "payload_preview": payload_preview,
             "result_preview": result_preview,
-            "last_error": task.last_error if task else None,
+            # RM-853: never the stored text verbatim (see public_last_error).
+            "last_error": public_last_error(task.last_error) if task else None,
             "events": events,
         })
 
