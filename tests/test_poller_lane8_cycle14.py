@@ -155,6 +155,26 @@ def _lockfile(tmp_path: Path, body: str) -> Path:
     return lf
 
 
+def _no_live_client(monkeypatch):
+    """Cut `_ensure_lcu`'s wmic fallback off from a real League client.
+
+    A rejected lockfile falls through to `wmic ... LeagueClientUx.exe`, so with
+    the client open on this machine the fallback connects to the LIVE client
+    and the rejection tests read its port / auth instead of the rejection
+    (measured s133: the empty-password test failed on a live auth). Only the
+    poller module's own `subprocess` name is swapped, never the stdlib module,
+    so no other thread sees the fake (RM-801).
+    """
+    import types
+
+    import game_reader.poller as poller
+
+    def _refuse(*_a, **_k):
+        raise FileNotFoundError("wmic disabled in tests")
+
+    monkeypatch.setattr(poller, "subprocess", types.SimpleNamespace(run=_refuse))
+
+
 def test_lockfile_with_valid_port_is_accepted(monkeypatch, tmp_path):
     """Characterization: a well-formed lockfile still connects."""
     r = _build_reader(monkeypatch)
@@ -172,6 +192,7 @@ def test_lockfile_with_non_numeric_port_is_rejected(monkeypatch, tmp_path):
     so accepting garbage here breaks champ select until the process restarts.
     """
     r = _build_reader(monkeypatch)
+    _no_live_client(monkeypatch)
     lf = _lockfile(tmp_path, "LeagueClient:1234:NOTAPORT:secretpw:https")
     monkeypatch.setattr(type(r), "_LCU_LOCKFILE_PATHS", [lf])
     r._ensure_lcu()
@@ -181,6 +202,7 @@ def test_lockfile_with_non_numeric_port_is_rejected(monkeypatch, tmp_path):
 def test_lockfile_with_out_of_range_port_is_rejected(monkeypatch, tmp_path):
     """A digit string outside the valid TCP range is still not a port."""
     r = _build_reader(monkeypatch)
+    _no_live_client(monkeypatch)
     lf = _lockfile(tmp_path, "LeagueClient:1234:99999:secretpw:https")
     monkeypatch.setattr(type(r), "_LCU_LOCKFILE_PATHS", [lf])
     r._ensure_lcu()
@@ -190,6 +212,7 @@ def test_lockfile_with_out_of_range_port_is_rejected(monkeypatch, tmp_path):
 def test_lockfile_with_empty_password_is_rejected(monkeypatch, tmp_path):
     """An empty auth field yields a Basic header that cannot authenticate."""
     r = _build_reader(monkeypatch)
+    _no_live_client(monkeypatch)
     lf = _lockfile(tmp_path, "LeagueClient:1234:54321::https")
     monkeypatch.setattr(type(r), "_LCU_LOCKFILE_PATHS", [lf])
     r._ensure_lcu()
