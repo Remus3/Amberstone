@@ -307,6 +307,7 @@ PREP_ODDS = (Prep(scale=8, blur=2.0, height=40, trim=True), Prep(trim=True),
 PREP_SCORE = (Prep(k=0.3, height=96, psm=13), Prep(k=0.3, height=64, psm=13),
               Prep(k=0.3, height=40))
 PREP_OWN_HP = (PREP_DEFAULT, Prep(k=0.3, height=64, psm=13))
+PREP_STAGE_CHECK = Prep(k=0.3, height=40)
 PREP_TRAIT_COUNT = Prep(k=0.3, height=40, psm=13)
 TRAIT_ONE_ADAPTIVE = (10, 20)
 # Trait names sit on a translucent plate whose backdrop (sky, arena floor) is
@@ -460,14 +461,16 @@ def _thin(box) -> bool:
     return (box[2] - box[0]) / max(1, box[3] - box[1]) < 0.45
 
 
-def reconcile_digits(text: str, glyphs: list) -> str | None:
+def reconcile_digits(text: str, glyphs: list, strict: bool = True) -> str | None:
     """Check a digit read against the glyph count of the crop.
 
     Tesseract drops a thin ``1`` in this small HUD font ("61" read as "6"). When
     the read is short by exactly the number of thin, 1-shaped glyphs, the 1s are
-    put back at their positions; any other count mismatch is refused (None)
-    rather than returned as a wrong number. No glyph count (no ink) passes the
-    read through unchanged."""
+    put back at their positions; a read with FEWER digits than glyphs is refused
+    (None) rather than returned as a wrong number. ``strict`` also refuses MORE
+    digits than glyphs; the lenient form accepts that case, because two glyphs
+    that touch at 1280x720 binarise into one blob while the read is right. No
+    glyph count (no ink) passes the read through unchanged."""
     s = re.sub(r"[^0-9-]", "", text or "")
     sign = "-" if s.startswith("-") else ""
     digits = s.lstrip("-")
@@ -476,7 +479,7 @@ def reconcile_digits(text: str, glyphs: list) -> str | None:
     if not digits:
         return None
     n = len(glyphs)
-    if len(digits) == n:
+    if len(digits) == n or (not strict and len(digits) > n):
         return sign + digits
     ones = [i for i, g in enumerate(glyphs) if _thin(g)]
     if ones and len(digits) == n - len(ones):
@@ -709,11 +712,18 @@ class _Ctx:
                                 psm=prep.psm) or ""
 
 
+def _checked_digits(ctx: _Ctx, crop, field_name: str) -> str | None:
+    """One digit read, refused when it has fewer digits than the crop has glyphs."""
+    glyphs = glyph_boxes(binarize(crop, scale=ctx.s()))
+    return reconcile_digits(ctx.ocr(crop, field_name, DIGITS), glyphs, strict=False)
+
+
 def _read_int(ctx: _Ctx, name: str, box_name: str, lo: int, hi: int) -> FieldValue:
     crop = ctx.crop(ctx.prof.box(box_name, ctx.size))
     if not has_text_signal(crop):
         return absent("no_text")
-    v = parse_int(ctx.ocr(crop, name, DIGITS), lo, hi)
+    text = _checked_digits(ctx, crop, name)
+    v = None if text is None else parse_int(text, lo, hi)
     if v is None:
         return absent("unparsed")
     return _ocr_value(v, FIELD_CONF[name] * ctx.factor)
@@ -746,6 +756,12 @@ def read_stage(ctx: _Ctx) -> FieldValue:
     sr = parse_stage(ctx.ocr(crop, "stage", DIGITS + "-"))
     if sr is None:
         return absent("unparsed")
+    # cross-check with a second recipe: a different valid label refuses the read
+    # (measured: 3-2 read as 5-2 under the dimmed augment-choice overlay); a
+    # second recipe that reads nothing does not veto
+    check = parse_stage(ctx.ocr(crop, "stage", DIGITS + "-", PREP_STAGE_CHECK))
+    if check is not None and check != sr:
+        return absent("recipes_disagree")
     return _ocr_value(sr, FIELD_CONF["stage"] * ctx.factor)
 
 
@@ -790,7 +806,8 @@ def read_streak(ctx: _Ctx) -> FieldValue:
     crop = ctx.crop(ctx.prof.box("streak", ctx.size))
     if not has_text_signal(crop):
         return absent("no_text")
-    n = parse_int(ctx.ocr(crop, "streak", DIGITS), 0, 99)
+    text = _checked_digits(ctx, crop, "streak")
+    n = None if text is None else parse_int(text, 0, 99)
     if n is None:
         return absent("unparsed")
     sign = streak_sign(ctx.crop(ctx.prof.box("streak_icon", ctx.size)))
@@ -878,7 +895,7 @@ def read_shop_card(ctx: _Ctx, slot: int, boxes: dict) -> dict:
     from PIL import ImageStat
 
     offer = {"slot": slot, "kind": "empty", "champion_api": None, "name": None,
-             "name_text": "", "cost": None, "cost_ocr": None, "conf": 0.0}
+             "name_text": "", "cost": None, "cost_ocr": None, "conf": 0.0, "src": SRC_OCR}
     name_crop = ctx.crop(boxes["name"])
     art_mean = ImageStat.Stat(ctx.crop(boxes["art"]).convert("L")).mean[0]
     if not has_text_signal(name_crop, "gray", 150) and art_mean < 45:
@@ -906,11 +923,9 @@ def read_shop_card(ctx: _Ctx, slot: int, boxes: dict) -> dict:
         offer.update(kind="special", name=card[0], cost=cost,
                      conf=round(FIELD_CONF["shop"] * ctx.factor * 0.8 * card[1], 3))
         return offer
-    if len(_norm(text)) >= 3:
-        offer.update(kind="special", name=text.strip(), cost=cost,
-                     conf=round(FIELD_CONF["shop"] * ctx.factor * 0.4, 3))
-        return offer
-    offer.update(kind="unknown", conf=0.0)
+    # text that matches neither vocabulary is not reported as a name: the slot
+    # stays "unknown" (name None, src absent); the raw read is kept in name_text
+    offer.update(kind="unknown", conf=0.0, src=SRC_ABSENT)
     return offer
 
 
@@ -924,7 +939,8 @@ def finish_shop(offers: list) -> FieldValue:
     kinds = [o["kind"] for o in offers]
     if "champion" not in kinds and any(k != "empty" for k in kinds):
         return absent("no_roster_match")
-    conf = min(o["conf"] for o in offers)
+    known = [o for o in offers if o["kind"] != "unknown"]
+    conf = min(o["conf"] for o in known) * len(known) / len(offers)
     return _ocr_value(offers, conf)
 
 
@@ -1002,7 +1018,8 @@ def read_scoreboard(ctx: _Ctx, boxes: list) -> FieldValue:
                 final[i], confs[i] = v, base * 0.85
                 break
     rows = [{"row": i + 1, "hp": v, "alive": None if v is None else v > 0,
-             "conf": round(confs[i], 3)} for i, v in enumerate(final)]
+             "conf": round(confs[i], 3), "src": SRC_ABSENT if v is None else SRC_OCR}
+            for i, v in enumerate(final)]
     read = [r for r in rows if r["hp"] is not None]
     if not read:
         return absent("unparsed")
@@ -1046,7 +1063,7 @@ def read_trait_row(ctx: _Ctx, row: int, boxes: dict) -> dict | None:
     if count is None:
         conf *= 0.5
     return {"row": row, "trait": name, "trait_api": ctx.vocab.traits[name],
-            "count": count, "active": active, "conf": round(conf, 3)}
+            "count": count, "active": active, "conf": round(conf, 3), "src": SRC_OCR}
 
 
 def finish_traits(rows: list) -> FieldValue:
@@ -1244,15 +1261,10 @@ def to_label_fields(fr: FrameRead) -> dict:
         out[key] = _env(f[key])
     out["hp_local"] = _env(f["own_hp"])
     shop = f["shop"]
-    if shop.present:
-        slots = []
-        for o in shop.value:
-            if o["kind"] == "empty":
-                slots.append(None)
-            elif o["kind"] in ("champion", "special"):
-                slots.append({"name": o["name"], "cost": o["cost"], "kind": o["kind"]})
-            else:
-                slots.append({"name": o["name_text"] or "?", "cost": o["cost_ocr"]})
+    # the label schema has no "unreadable slot": a shop with one is left out
+    if shop.present and all(o["kind"] != "unknown" for o in shop.value):
+        slots = [None if o["kind"] == "empty" else
+                 {"name": o["name"], "cost": o["cost"], "kind": o["kind"]} for o in shop.value]
         out["shop"] = _env(shop, slots)
     else:
         out["shop"] = None

@@ -91,9 +91,10 @@ def synthetic_frame(prof, size=SIZE, panels=("stage_bar", "hud_bar", "shop", "ow
                     active=(True, True, False), streak_rgb=(230, 120, 30)):
     img = Image.new("RGB", size, (0, 0, 0))
     d = ImageDraw.Draw(img)
-    for name in ("stage", "timer", "level", "xp", "gold", "streak"):
-        _blocks(d, prof.box(name, size), 2)
-    _blocks(d, prof.box("own_hp", size), 3)          # "100": three glyphs
+    # glyph counts match the canned answers below (digit reads are glyph-checked)
+    for name, n in (("stage", 3), ("timer", 1), ("level", 1), ("xp", 4), ("gold", 2),
+                    ("streak", 2), ("own_hp", 3)):
+        _blocks(d, prof.box(name, size), n)
     for slot in prof.group("odds", size):
         _blocks(d, slot["text"], 2)
     for slot in prof.group("shop", size):
@@ -449,6 +450,50 @@ def test_worker_threads_are_capped_at_two(prof, vocab):
     of.read_frame(synthetic_frame(prof), profile=prof, engine=SlowEngine(ANSWERS),
                   vocab=vocab, workers=8)
     assert of.MAX_WORKERS == 2 and 1 <= live["peak"] <= 2
+
+
+def test_stage_recipes_that_disagree_read_absent(prof, vocab):
+    answers = dict(ANSWERS, stage=["3-2", "5-2"])     # measured: 3-2 read as 5-2
+    fr = of.read_frame(synthetic_frame(prof), profile=prof, engine=FakeEngine(answers),
+                       vocab=vocab, fields=["stage"], workers=1)
+    assert fr.fields["label"].src == "absent"
+    assert fr.fields["label"].reason == "recipes_disagree"
+    answers = dict(ANSWERS, stage=["3-2", ""])          # a silent check does not veto
+    fr = of.read_frame(synthetic_frame(prof), profile=prof, engine=FakeEngine(answers),
+                       vocab=vocab, fields=["stage"], workers=1)
+    assert fr.fields["label"].value == "3-2"
+
+
+def test_digit_reads_shorter_than_the_glyphs_are_refused(prof, vocab):
+    # two gold glyphs on screen, one digit read ("50" -> "5"): refused, not 5
+    fr = of.read_frame(synthetic_frame(prof), profile=prof, vocab=vocab, fields=["gold"],
+                       engine=FakeEngine(dict(ANSWERS, gold=["5"])), workers=1)
+    assert fr.fields["gold"].src == "absent"
+    # more digits than separable blobs (touching glyphs) is accepted
+    fr = of.read_frame(synthetic_frame(prof), profile=prof, vocab=vocab, fields=["gold"],
+                       engine=FakeEngine(dict(ANSWERS, gold=["150"])), workers=1)
+    assert fr.fields["gold"].value == 150
+    assert of.reconcile_digits("150", [(0, 0, 8, 12), (10, 0, 18, 12)]) is None   # strict
+
+
+def test_unmatched_shop_text_is_never_a_name(prof, vocab):
+    answers = dict(ANSWERS, shop_name=["Rammus", "qwxz", "Scuttlecrab", "Fiddlesticks",
+                                       "Smurfing"])
+    fr = of.read_frame(synthetic_frame(prof), profile=prof, engine=FakeEngine(answers),
+                       vocab=vocab, fields=["shop"], workers=1)
+    offers = fr.fields["shop"].value
+    assert offers[1]["kind"] == "unknown" and offers[1]["name"] is None
+    assert offers[1]["src"] == "absent" and offers[1]["name_text"] == "qwxz"
+    assert offers[0]["src"] == "ocr" and 0 < fr.fields["shop"].conf < of.FIELD_CONF["shop"]
+    assert of.to_label_fields(fr)["shop"] is None      # no unreadable-slot form there
+
+
+def test_list_rows_carry_conf_and_src(prof, vocab):
+    fr = of.read_frame(synthetic_frame(prof), profile=prof, engine=FakeEngine(ANSWERS),
+                       vocab=vocab, workers=1)
+    for key in ("shop", "scoreboard", "traits"):
+        for row in fr.fields[key].value:
+            assert row["src"] in ("ocr", "absent") and 0.0 <= row["conf"] <= 1.0, key
 
 
 def test_a_raising_field_is_absent_and_never_raises(prof, vocab):
