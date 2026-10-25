@@ -2964,6 +2964,17 @@ def rank_for_primary_archetype(
     # to one of those two archetypes, so it is forwarded to both branches and
     # nowhere else. /rank, /rank-tank and /rank-bruiser do not parse it.
     apply_ability_base_overrides: bool = False,  # mage + assassin (A-03 / RM-81)
+    # RM-875 (DEFAULT-OFF): the RM-172 ARENA / Swiftplay growth-ADDEND lane.
+    # EVERY branch below forwards it, because every per-scorer client function
+    # they call takes it and puts it on the wire only when True (rank_for,
+    # rank_tank_for, rank_bruiser_for, rank_mage_for, rank_assassin_for,
+    # rank_enchanter_for, rank_onhit_for), and every route those POST to
+    # parses it (server.py ``_opt_bool(body, "apply_mode_modifiers", False)``
+    # in _route_rank, _route_rank_tank, _route_rank_bruiser, _route_rank_mage,
+    # _route_rank_assassin, _route_rank_enchanter and _route_rank_onhit).
+    # False = no body key, byte-identical request. ``mode`` is the transport:
+    # SR / ARAM are inert.
+    apply_mode_modifiers: bool = False,          # all seven branches (RM-875)
 ) -> Optional[dict]:
     """Phase 3 + 4c + 5 + 6 (s176/s179/s180/s181, 2026-05-12+) - route to the right scorer per archetype.
 
@@ -3013,6 +3024,15 @@ def rank_for_primary_archetype(
     plumb the dispatcher could not express either, so both registries
     (``kit_conversion.py`` / ``_crit_conversion_overrides.py``) were inert on
     every shipped path. See ``rank_for`` for the per-key emit gates.
+
+    ``apply_mode_modifiers`` (RM-875, DEFAULT-OFF) is forwarded to ALL seven
+    branches: unlike the seams above it is not archetype-selective, since every
+    branch's client function and route carries it (RM-172 Gate A/B/C). Of the
+    lanes it arms only the ARENA / Swiftplay growth-ADDEND lane reorders a
+    ranking (see the note in ``rank_for``); SR is inert. False omits the body
+    key, so a
+    flagless dispatch is byte-identical. The live default-ON flip is gated row
+    G5-05 in docs/LIVE_GAME_GATED_SYNC.md.
     """
     arch = (archetype or "").strip().lower()
     # Kit-dependent-scorer fallback (see _kitless_all_zero): default False.
@@ -3045,6 +3065,7 @@ def rank_for_primary_archetype(
             prefer_survivability_by_win=prefer_survivability_by_win,
             cost_ceiling=cost_ceiling,
             score_by=score_by,
+            apply_mode_modifiers=apply_mode_modifiers,
         )
         if rows is None:
             return None
@@ -3091,6 +3112,7 @@ def rank_for_primary_archetype(
             prefer_survivability_by_win=prefer_survivability_by_win,
             cost_ceiling=cost_ceiling,
             kit_conversion_strength=kit_conversion_strength,
+            apply_mode_modifiers=apply_mode_modifiers,
             **_bruiser_hp_kwargs,
         )
         if rows is None:
@@ -3139,6 +3161,7 @@ def rank_for_primary_archetype(
             timeout=timeout,
             apply_passive_aura_damage=apply_passive_aura_damage,
             apply_ability_base_overrides=apply_ability_base_overrides,
+            apply_mode_modifiers=apply_mode_modifiers,
         )
         if rows is None:
             return None
@@ -3188,6 +3211,7 @@ def rank_for_primary_archetype(
             assume_magic_burst=assume_magic_burst,
             kit_conversion_strength=kit_conversion_strength,
             apply_ability_base_overrides=apply_ability_base_overrides,
+            apply_mode_modifiers=apply_mode_modifiers,
         )
         if rows is None:
             return None
@@ -3228,6 +3252,7 @@ def rank_for_primary_archetype(
             prefer_survivability_by_win=prefer_survivability_by_win,
             assume_missing_hp_heal_amp=assume_missing_hp_heal_amp,
             caster_missing_hp_pct=caster_missing_hp_pct,
+            apply_mode_modifiers=apply_mode_modifiers,
         )
         if rows is None:
             return None
@@ -3268,6 +3293,7 @@ def rank_for_primary_archetype(
             timeout=timeout,
             apply_passive_damage=True,
             ap_ad_coherence=_onhit_coherence_for(champion),
+            apply_mode_modifiers=apply_mode_modifiers,
         )
         if rows is None:
             return None
@@ -3375,6 +3401,7 @@ def rank_for_primary_archetype(
         apply_ad_axis_dual_scaling_split=apply_ad_axis_dual_scaling_split,
         apply_passive_damage=apply_passive_damage,
         apply_extra_shot_procs=apply_extra_shot_procs,
+        apply_mode_modifiers=apply_mode_modifiers,
         **_carry_hp_kwargs,
     )
     if rows is None:

@@ -73,6 +73,16 @@ _STATE_DEBOUNCE = os.getenv("RC_ARENA_STATE_DEBOUNCE", "0") == "1"
 # that the coach text never feels frozen mid-game.
 _STATE_DEBOUNCE_MAX_STALE_S = 45.0
 
+# -- RM-875: Arena mode-modifier (growth-ADDEND) seam ---------------------------
+# DEFAULT-OFF. When ON (RC_ARENA_MODE_MODIFIERS=1, read ONCE at import, same
+# pattern as RC_ARENA_STATE_DEBOUNCE above), the per-tick DS dispatch sends
+# apply_mode_modifiers=True, arming the RM-172 ARENA ``ar`` growth addends
+# (45 champions, e.g. Quinn / Vayne) in the engine's champion stat line. OFF
+# (default) the DS request is byte-identical to the pre-RM-875 call. The flip is
+# gated row G5-05 in docs/LIVE_GAME_GATED_SYNC.md (CHECK A stat half, CHECK B
+# coach half); do not flip it blind. Calibration rows record the flag state.
+_ARENA_MODE_MODIFIERS = os.getenv("RC_ARENA_MODE_MODIFIERS", "0") == "1"
+
 
 def _coach_state_signature(state: dict, vision_state: dict) -> tuple:
     """COARSE signature of only the coaching-relevant Arena snapshot fields.
@@ -707,6 +717,8 @@ class Coach(BaseCoach):
                     # R5 self-HP: absent -> dispatch guard yields 0.0 (OFF).
                     caster_hp=state.get("hp"),
                     caster_hp_max=state.get("hp_max"),
+                    # RM-875: DEFAULT-OFF; False sends no body key.
+                    apply_mode_modifiers=_ARENA_MODE_MODIFIERS,
                 )
                 if _ds_dispatch is not None:
                     _ds_picks_str = _ds_dispatch.picks_str
@@ -715,7 +727,11 @@ class Coach(BaseCoach):
                 logger.debug("Arena daemon_slayer pre-call: %s", _ds_exc)
             if _ds_dispatch is not None and _ds_dispatch.rows:
                 try:
-                    from core.ds_calibration import log_ds_run as _ds_log
+                    from core.ds_calibration import (
+                        current_engine_version as _ds_engine_version,
+                        enemy_stats_summary as _ds_enemy_summary,
+                        log_ds_run as _ds_log,
+                    )
                     # D-01b: Arena never surfaces a Live Client game_id, so mint
                     # the shared per-match key (same seam the metric streamer
                     # uses) or these rows stay permanently unjoinable.
@@ -728,7 +744,12 @@ class Coach(BaseCoach):
                             ds_picks=[{"item_id": _r["id"], "item_name": _r["name"],
                                        "delta_dps": _r["delta_dps"], "gold": _r["gold"],
                                        "scorer": _r["scorer"]}
-                                      for _r in _ds_dispatch.display_rows])
+                                      for _r in _ds_dispatch.display_rows],
+                            # RM-875 item 5: the re-run inputs (G5-05 CHECK B).
+                            enemy_stats=_ds_enemy_summary(_es),
+                            augments=list(state.get("augments") or []),
+                            engine_version=_ds_engine_version(),
+                            apply_mode_modifiers=_ARENA_MODE_MODIFIERS)
                 except Exception:  # noqa: BLE001
                     pass
 
