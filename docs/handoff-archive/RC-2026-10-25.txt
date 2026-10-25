@@ -293,3 +293,60 @@ Acceptance: P0-F, the six interrupted builders (or their redo) and the seven lan
 verifier-gated, with ONE gated Tier-2 run on the merged tree; origin/main MERGED and pushed via
 fleet_gitlock, bot_merge_check read back; GH1 ruled; a TFT game shows non-empty stage / level / gold
 and coaching; the operator asks re-batched in one line.
+# archived from RC-NEXT-SESSION.txt at 2026-10-25T22:54:12Z
+====================
+CLOSED - SESSION 135 PUSH RECORD, s135 DO-NOT-RE-LITIGATE LINE, PROCEDURE LINES AND STATUS (s136 /done trim; records and standing rules, not open items; the s137 hand-off keeps a pointer here) - verbatim from 7a40a5cb4:RC-NEXT-SESSION.txt lines 27-41, 319-324, 333-350, 355-368
+====================
+====================
+PUSHED (s135 /done, LEDGER 1903-1905)
+====================
+- Halted first (LEDGER 1903): the credential scan flagged the fake tok- fixture line added by
+  unpushed 03bdc92f3. ASKS 37 ADJUDICATED (FLEET item 1, LEDGER 1904): the scanner's own line pragma
+  added IN that commit by a range filter-repo (52 commits; 03bdc92f3 -> 4ed279e8a, 7cb2b412d ->
+  7814951c6, 66a468dc8 -> b083af9d3 GH1 merge; GH1 commits kept their SHAs). Reverses if: a ruling
+  that a local edit of unpushed commits needs the operator (restore archive/s135-pre-credpragma-main).
+- Pushed per ops/runtime/gh1/PLAN.txt: `df946b00d...3ad31ec6d main -> main (forced update)` with a
+  lease on df946b00d, all pre-push hooks ran (credential 0 findings, identity, sweep "ARMED WITH A
+  MEASURED ESCAPE RATE ABOVE ZERO", LFS); protection toggled and restored, read back equal to
+  ops/runtime/gh1/protection-before.json (allow_force_pushes false, enforce_admins true). Read back:
+  ls-remote main == local; Pages riot.txt 200 / 37 B / sha256 a2c52fbb...; bot_merge_check clean
+  (range and default); contributors = the operator's login only; s135-gh1 worktree + branch removed.
+  The hand-off commit after it is a plain fast-forward push. NEVER delete riot.txt from origin.
+- s135 (LEDGER 1883-1905; WAKEUP_NOTES 2026-10-25c): every landing (P0-F, 7 lanes, TFT-04 / -09 /
+  -08 / -02, N9, N8, N13), the C1 fixes and the green gated run on 7cb2b412d (now 7814951c6), the id
+  scrub and the cred-pragma rewrite (maps in docs/_archive/2026-10/), the N8 / TFT-08 live backfills
+  (re-dry plans 0), RM-902 closed, the GH1 rebuild + merge + push, adjudications ASKS 37 pragma / N9
+  baf8644b9 LAND / TFT-09 recommend withheld while live / N8's comp-name rule kept (the queue lane's rule made "Dark Star Vertical") / TFT-04's live OCR path
+  kept. Reverses if: a live re-check of one of those acceptances fails.
+====================
+PROCEDURE (docs/OPERATIONS.md "Session procedure"; the s133 lines VERBATIM in
+docs/handoff-archive/RC-2026-10-25.txt block 3 - read them before landing or pushing)
+====================
+- RACE GUARDS, a UNIQUE -F file per commit, never --amend, never `git push --tags`; owner-id probe.
+- fleet_gitlock refuses cherry-pick: `git cherry-pick --no-commit <sha>` then `fleet_gitlock.py run
+  -- git commit -C <sha>`.
+- The pre-push gates (identity, sibling sweep, credential scan) read EVERY commit in the range, the
+  credential scan per commit's added lines with no baseline: dry-run all three (stdin = the ref line,
+  args = origin <url>) plus the scrubbed-id check BEFORE any push; a fake-fixture hit in an old
+  unpushed commit gets the line pragma IN that commit (LEDGER 1904 method), never a bypass.
+- Builders' LEDGER numbers and RM ids are PROVISIONAL: the merger renumbers at landing.
+- Land TFT code only between games (M1c polled the LCU phase every 60 s): a .py merge restarts RC.
+- Gated Tier-2: -n 6 + FLEET_SUITE_COMMIT_MARGIN_MB=18432 (s135 datum), output to a file, summary +
+  exit code in the launch call.
+- Board: read the server version, `fleet_board.py pushed --version <it>`, render ONCE, then push;
+  NON-final at /done (kit v20 --final marks carried rows done).
+- Hand-off cap: kit v18 `fleet_done.py mark` FAILS over 30720 B. Tighten, or archive verbatim.
+Status (s135 wrap): PUSHED df946b00d...3ad31ec6d (forced, leased); this hand-off commit follows as a
+fast-forward push. Commits (post-rewrite SHAs): 2e23ce8d1 (LEDGER 1898-1902, BACKLOG, ROADMAP,
+WAKEUP + prune), b083af9d3 (GH1 merge), cd450e687 + e9c133973 (hand-off, LEDGER 1903, archive
+blocks 4-5), 3ad31ec6d (LEDGER 1904, cred-pragma map), this one (LEDGER 1905). Gate: ruff passed;
+hygiene trio 14 passed; drift_guard 0 (after re-mirroring ship-batch / test-first-autopilot into the
+gitignored .claude/commands); md guards (108 modules) 2686 passed, 4 skipped, exit 0; tracker /
+roadmap / checklist guards 138 passed. CI on 3ad31ec6d: push ci 40230806851 (mode=full; cancelled
+by this hand-off's push, same concurrency group), docs-guards 40230806841, codeql 40230806909,
+pages 40230803053 success. Full suite (2c): dispatched run 40230847617 on 3ad31ec6d (pending at the
+/done; it covers the final tip - docs and hand-off only differ). DS 1.290.0 /
+16.21.1 / 173 (pid 26232); RC pid 7084 alive, last_reload_ok, fatal 0; restart_trigger empty; LCU
+Lobby, no game; session file 3.3 MB; no intent / steers; inbox empty; 0 PRs. Memory: 3 new.
+Board: pushed at /done NON-final (datasets/board v27, blob d51b0f61; --final marks carried rows done).
+Progress files: ops/loop/control/progress/s135-*.json (s135-done = this ritual).

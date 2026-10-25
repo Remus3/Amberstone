@@ -1,5 +1,14 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-10-25f - size-budget relocation (session 136 /done), 4 lines
+
+`ROADMAP.md` stood at 73918 of 81920 bytes on `7a40a5cb4`, a `tools/drift_guard.py` breach (90 percent; its warn line is 73728). The four SHIPPED / CLOSED lines below move here VERBATIM as they stood at `7a40a5cb4`, in their ROADMAP order (the third is an indented sub-line of the still-open RM-740 row). The `## 2026-10-23`.. pointer line in `ROADMAP.md` now names this block.
+
+- **[x] RM-686 CLOSED for RC s133 c6 (MAIN PROXY-1 2026-10-11: the launcher waits, task Running 267009; the one-kill read-back is MAIN's / the operator's).** Body in `BACKLOG.md` "Session 103 filings".
+- **[x] RM-699 CLOSED 2026-10-25 s134 M1c (LEDGER 1873): restarts only for loaded modules, skips `tests/`, defers while a game is live, logs triggers.** Body in `BACKLOG.md`.
+  - [x] (low) stop-gate gaps CLOSED s117 (merge `bd8139e68`, LEDGER 1726; body: BACKLOG (f) row): (1) a bare trailing `--` and (2) a later merge that staged nothing now deny credit; (3) every `git reset` form stays denied (decided, not narrowed).
+- **[x] RM-615 SHIPPED (LEDGER 1880, stage gate) + RM-616 SHIPPED (LEDGER 1876 / 1877, `data/tft_matches` store; TFT-08 builds on it), s134 M1c.** Bodies in `BACKLOG.md` (X-15 / X-16).
+
 ## 2026-10-25e - closed rows relocated (session 135 merger, s135 landing), 4 rows
 
 The s135 landing of the s134 lanes closed these four rows: RM-838 ((d) by the ds lane, LEDGER 1884), RM-856, RM-864 and RM-873 (the repo lane, LEDGER 1890); the `BACKLOG.md` bodies carry the SHIPPED heads. The lines below move here VERBATIM as they stood in `ROADMAP.md` at `dc5eca8aa`, in their ROADMAP order; one open index line for the newly mapped ids (RM-888..RM-894, RM-896, RM-899..RM-902) takes their place.

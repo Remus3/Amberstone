@@ -6,6 +6,19 @@
 
 ---
 
+# 2026-10-25d - session 136: C1 red fixed, two live TFT games QA'd, nine TFT / overlay fixes, HUD reader spec; push hold ON (nothing pushed)
+
+- **Operator steers:** push hold stays ON (commit locally only); "dont have the panels fade as much when the data is out of date"; ruling "I want to do what they are doing; not utilize their software as a dependency" (no Overwolf data dependency); board push not needed this session; NEXT = packaged, live-updatable app (below).
+- **C1:** dispatch 40230847617 red = 2 tests in `tests/test_no_process_wide_stdlib_fakes_rm801.py` on CI Python 3.12 (`_thread.start_new_thread` vs 3.13+ `start_joinable_thread` in `tests/_module_view.py`); fixed `c7e2c0b0c`, UNPUSHED - CI cannot confirm it until a push.
+- **Live games (QA_REPORT.md + LIVE_NOTES_s136*.md in `ops/runtime/tft_qa/20261025-153652` and `-162857`; both rated A, 3rd):** N13 PASS, D1 PASS, HP line PASS, N9 PASS (Ctrl+Shift+O toggle + Ctrl+Shift+A drag / layout save seen), RM-899 PASS (13.1 s recovery; a 7 s blank coaching stub after restart stays open); FAILs fixed: coaching sense (T9), 2-star units doubled (T14), stage led 2-3 rounds (T15).
+- **Shipped on LOCAL main (LEDGER 1907-1910; every slice verifier-gated):** T4 RM-904 `f53a35853`; T5 `51a6287d9`; T9 `b89b10298` + `3df4a75a7` + `9d3acac79`; T10 `a4f2003fb`; T11 `15e39d167`; T12 `dea6cc98b` + `93951754b`; T14 `e9424c8a8`; T15 `847b99f75`; docs T6 `99c9db198`, T16 HUD spec `1915b00e5` (TFT_PROGRAM sec 10, TFT-HUD-00..12); RM-846 ruled B `7a40a5cb4` (LEDGER 1906).
+- **Housekeeping:** T1 QA_REPORT for 20261025-131926; T2 removed 9 s135 worktrees (kept agent-ad9cd227: 1484-file icon cache); /done removed this session's 9 merged worktrees (branches kept; renders in `ops/runtime/branch_bundles/s136-wt-preserved/`).
+- **Parked:** T13 (id-0 game-end rating vs the store rating) refuted twice, branch `worktree-agent-a2969c932e74f20d7`, needs a redesign.
+- **Do NOT redo:** everything above; the ONLOGON tasks were left unchanged on purpose (the packaged launcher replaces them).
+- **Next:** full QA of the ow-electron port + a packaged, live-updatable app (services start on app launch, never at boot); then TFT-HUD-01.
+
+---
+
 # 2026-10-25c - session 135: s134 work LANDED on main (C1 gated suite green), id scrub, live backfills, GH1 merged; push halted by the credential scan, ASKS 37 adjudicated, then PUSHED
 
 - **Operator rulings (chat):** push and commit at this /done, then the push hold is back ON at session 136 start; frozen-file grant re-confirmed for s135 ONLY (ASKS 35, session-scoped); GH1 range-limited rewrite approved (ASKS 34); id scrub ordered ("rewrite the id's no need to ask").
@@ -31,18 +44,3 @@
 - **Blocked:** GH1 rewrite of the 3 origin web-UI riot.txt commits halted at the scope gate (kit plan = 20 commits / 1401 SHAs, approved 3); the Riot key 403s on TFT-Match-V1 / TFT-League-V1 (operator act).
 - **Do NOT redo:** everything above; the next push MERGES origin/main (never rebase / reset local main) and never deletes `riot.txt`.
 - **Next:** land P0-F + the lane commits, resume the interrupted builders, then push (merge origin/main first, `fleet_gitlock`, `tools/bot_merge_check.py`).
-
----
-
-# 2026-10-25 - session 133: upstream + DS 1.290.0 + TFT Set 18 ingest, A1-A27 shipped, three headless lanes
-
-- **Operator steers:** check upstream / scheduled tasks / lolmath / engines / TFT; expand DS; then headless research + queue + gated lanes (account 2) while away, every hook and spawn window-silent; interrupt 2026-10-25 "finish up current; i want to work on tft specifically today".
-- **U1-U5:** git == origin, upstream drift clean; feed-watch rename blindness RM-839 `53cd0f889`; 26 RC-* tasks healthy (no change); lolmath 26.21 via the new `--lolmath-only` (adjudicated over `--force`, which the Meraki Settled line bars); RM-808 (a)-(d); ENGINE 1.290.0 + build tables `136019129`; CLAUDE.md Meraki Settled amended `48b012f22`; TFT set resolver + CommunityDragon Set 18 ingest RM-840 `e490a1eeb`. DS :8860 1.290.0 / 16.21.1 / 173.
-- **D1-D2:** DS facet research; focus board RM-841, live-wired shadow-only RM-844 / RM-854.
-- **F1:** the window flashes were pythonw `-m ruff` in the PostToolUse lint hook and `precommit_gate`; `54d61bfa1` runs `-m` through python.exe + CREATE_NO_WINDOW; FIX note to MAIN 1/1.
-- **A1-A27 (mergers B-J, each verifier-gated; LEDGER 1801-1859):** RM-846 (third-party Set 16 / 17 meta removed), RM-845 (set-aware TFT prompt), RM-855 / RM-858 / RM-862 (TFT schedule per set), RM-868 (Arena 0.7% = relay plumbing), RM-869, RM-870, RM-860 / RM-877, RM-852 / RM-859 / RM-867 / RM-872 (shadow test-leak family), RM-853 / RM-863, RM-850, RM-483, RM-718a, RM-874, RM-875, RM-878, RM-857, RM-866, RM-851b, RM-880a, RM-882; RM-865 closed mis-filed. Gated dual suites: batch H 43452 and batch I 43535 passed.
-- **Lanes (kit route, account 2):** queue shipped RM-837, RM-838 non-DS, RM-836, RM-830, RM-825, RM-813, RM-815 partial, RM-816 partial; research re-probed long-open rows in 7 cycles; gated drained nothing (no game in any window) and shipped RM-879. All three drivers stopped on S133_LANES_STOP (last at 06:09).
-- **Known red:** batch I push ci `40184315636` failed on `tests/test_progress_reaper_rm816.py` [rename-move] x2, Linux only; the verified fix is UNCOMMITTED in `.claude/worktrees/rc-lane-queue` (copy `ops/runtime/s133_q009_rm816_linux_fix.patch`). Batch J push ci `40187787557` green (its slice did not run that file).
-- **/done (LEDGER 1860):** ROADMAP size pass 80814 -> 73166 B (`docs/ROADMAP_HISTORY.md` `## 2026-10-25d`); memory 3 new + 2 updated; full suite dispatched `40189033501`.
-- **Do NOT redo:** everything above; C1 RM-837 was shipped by the queue lane (`7a832062c`).
-- **Next:** a scoped TFT session (LT-01..LT-03, Set 18 meta skeleton, roll odds), after landing the RM-816 Linux test fix.
