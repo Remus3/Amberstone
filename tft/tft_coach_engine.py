@@ -257,6 +257,8 @@ def _build_prompt(state: dict) -> str:
     except Exception:  # noqa: BLE001
         pass
     hp_display = _live_hp if _live_hp else state.get("health", "?")
+    if hp_display is None:
+        hp_display = "unknown"  # S135: never "HP: None" (or a guessed 0)
     gold_display = _live_gold if _live_gold else "unknown"
 
     # Resolve partner HP for Double Up
@@ -276,18 +278,38 @@ def _build_prompt(state: dict) -> str:
         f"Streak: {streak_str}  Rounds won/lost: {kills}/{deaths}",
     ]
 
+    # S135 verifier 4b: the standalone source serves None while the lobby's
+    # start-of-game placeholders make the count unknowable; say so rather
+    # than a number ("Players alive: 1 (8 eliminated)" read as GAME OVER).
+    def _is_count(v) -> bool:
+        return isinstance(v, int) and not isinstance(v, bool)
+    _counts_known = _is_count(alive) and _is_count(dead)
+    if _counts_known:
+        # Round 2: the local player adds 1 alive only when KNOWN alive
+        # (is_dead False); an eliminated local adds 1 eliminated instead. The
+        # standalone source's lobby-wide players_alive (the one rule) wins.
+        _local_dead = state.get("is_dead") is True
+        _lobby_alive = state.get("players_alive")
+        alive_total = (_lobby_alive if _is_count(_lobby_alive)
+                       else alive + (1 if state.get("is_dead") is False else 0))
+        dead_total = dead + (1 if _local_dead else 0)
     if variant == "double_up":
         partner_hp_str = str(int(_partner_hp)) if _partner_hp is not None else "?"
-        player_count = alive + 1
-        team_count = (player_count + 1) // 2
-        lines.append(f"Players alive: {player_count} ({team_count} teams) | Your HP: {hp_display} | Partner HP: {partner_hp_str}")
+        if _counts_known:
+            player_count = alive_total
+            team_count = (player_count + 1) // 2
+            lines.append(f"Players alive: {player_count} ({team_count} teams) | Your HP: {hp_display} | Partner HP: {partner_hp_str}")
+        else:
+            lines.append(f"Players alive: unknown (lobby HP not readable yet) | Your HP: {hp_display} | Partner HP: {partner_hp_str}")
         if _partner_hp is not None:
             if int(_partner_hp) < 25:
                 lines.append(f"[!]  PARTNER HP CRITICAL ({_partner_hp})  -  donate tank unit immediately")
             elif int(_partner_hp) < 35:
                 lines.append(f"Partner HP low ({_partner_hp})  -  consider donating frontline unit")
+    elif _counts_known:
+        lines.append(f"Players alive: {alive_total} ({dead_total} eliminated)")
     else:
-        lines.append(f"Players alive: {alive+1} ({dead} eliminated)")
+        lines.append("Players alive: unknown (lobby HP not readable yet)")
 
     lines += [
         f"Board size: {level} units | Grid: Row 4=FRONTLINE(enemy side), Row 1=BACKLINE(bench side), Col 1=left Col 7=right",

@@ -981,7 +981,11 @@ PKG_ALLOWED = frozenset({"core.polled_json", "tft.tft_placement", "tft.tft_set"}
 # stdlib-only core helpers, so "stdlib only, no LLM / coach / DS" holds one
 # import hop out of the package.
 HOP_MODULES = ("tft/tft_placement.py", "tft/tft_set.py")
-HOP_ALLOWED = frozenset({"core.polled_json", "core.queue_modes"})
+HOP_ALLOWED = frozenset({"core.polled_json", "core.queue_modes", "tft.local_player"})
+# tft.local_player (S135 N13: the ONE local-player selector, which
+# tft_placement.parse_gameclient_eog now calls) is a leaf: stdlib only, checked
+# below with nothing allowed, so the hop stays stdlib plus the core helpers.
+LEAF_MODULES = ("tft/local_player.py",)
 
 
 def _imported_modules(src: str) -> list:
@@ -1011,6 +1015,11 @@ def test_package_is_stdlib_only_llm_free_ascii_lf():
     for rel in HOP_MODULES:
         p = ROOT / rel
         assert _disallowed(p.read_text(encoding="utf-8"), HOP_ALLOWED) == [], p
+    for rel in LEAF_MODULES:
+        p = ROOT / rel
+        assert _disallowed(p.read_text(encoding="utf-8"), frozenset()) == [], p
+        assert _disallowed(p.read_text(encoding="utf-8") + "import tft.tft_set\n",
+                           frozenset()) == ["tft.tft_set"], p
     for p in [*files, Path(__file__)]:
         raw = p.read_bytes()
         assert raw.isascii() and b"\r" not in raw, p

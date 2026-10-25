@@ -19,6 +19,8 @@ if TYPE_CHECKING:
     from core.game_snapshot import TftSnapshot
 
 logger = logging.getLogger("rc.tft.reader")
+# lobby counts a standalone-client state may carry as None (unknown, S135 4b)
+_NULLABLE_COUNTS = ("alive_others", "dead_others", "total_players")
 TFT_API = f"https://{GAME_HOST}:2999/liveclientdata/allgamedata"
 _TIME_TO_ROUND = [
     # Set 17 Space Gods Double Up - calibrated from 3 confirmed live data points:
@@ -271,6 +273,13 @@ class TftStateReader:
             return None
         try:
             from core.game_snapshot import TftSnapshot
+            # S135 (verifier 4b): the lobby counts are None while unknowable;
+            # the frozen factory int()s them, so drop a None and let its own
+            # defaults stand rather than lose the whole envelope update.
+            if isinstance(state_dict, dict) and any(
+                    state_dict.get(k, 0) is None for k in _NULLABLE_COUNTS):
+                state_dict = {k: v for k, v in state_dict.items()
+                              if not (k in _NULLABLE_COUNTS and v is None)}
             return TftSnapshot.from_state_dict(state_dict)
         except Exception:  # noqa: BLE001
             return None
@@ -478,6 +487,22 @@ def _apply_standalone(out: dict, raw) -> None:
                 f"{u.get('name')}*{u.get('star', 1)}" for u in board)
         if local.get("standing"):
             out["standing"] = local.get("standing")
+        # S135 N13 + verifier 4b: the lobby counts come from the ONE alive
+        # rule (tft/local_player.lobby_counts, computed by tft_standalone):
+        # the local player is counted once even when its entry is unknown,
+        # and alive / dead are None (unknown - the prompt says so) while the
+        # start-of-game placeholders stand, never "1 alive (8 eliminated)".
+        if st.get("eog") and st.get("players_total"):
+            out["total_players"] = st["players_total"]
+            out["players_alive"] = st.get("players_alive")  # lobby-wide
+            out["alive_others"] = st.get("alive_others")
+            out["dead_others"] = st.get("dead_others")
+        else:
+            # verifier round 2: no per-round file yet (or another game's) -
+            # the source sent no player rows, so _parse's own count ("1
+            # alive, 0 eliminated") counts nobody. Unknown, not a number.
+            out["total_players"] = out["players_alive"] = None
+            out["alive_others"] = out["dead_others"] = None
     except Exception as e:  # noqa: BLE001
         logger.debug("standalone TFT overlay: %s", e)
 
