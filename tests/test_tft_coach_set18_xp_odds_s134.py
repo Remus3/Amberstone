@@ -17,8 +17,13 @@ frame at a level:
   L8 68 (game_0041_el1164 0/68 .. game_0064_el1689 62/68; 5-2 game_0061_el1619 60/68)
   L9 68 (game_0065_el1709 2/68 .. game_0080_el2034 10/68)
 
-L1-L3 were never on screen (the recorder joined at 2-2, already L4) and L10
-was never reached, so the Set 18 table carries L4-L9 only.
+A second live Set 18 game, ops/runtime/tft_qa/20261025-081234 (QA_REPORT.md
+section 4), ran under the 1-1 Ashe opener ("Ashe modifies each level to cost
+2 XP less"), so its denominators are base - 2: L2 2 (game_0001/0002), L3 4
+(game_0003/0004), L4 8, L5 18, L6 34, L7 54, L8 66 (game_0046..0059), L9 66
+(game_0060..0068); L10 showed no x/y (the cap, game_0071..0080). So base
+L3 = 6 and L4-L9 agree with game 1. L2's base is ambiguous (4 if the opener
+applies at L2, 2 if it does not) and L1 was never seen: no row for either.
 
 Cross-check, facts only, nothing vendored: Riot's TFT B-patch 18.2 notes as
 reported by gamewave.fr (2026-09-15): "XP du Niveau 8 au 9 : 64 => 68",
@@ -63,8 +68,11 @@ from tft import tft_set
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ENGINE = REPO_ROOT / "tft" / "tft_coach_engine.py"
 
-# level -> XP needed at that level to reach the next (HUD denominator).
-HUD_XP_SET18 = {4: 10, 5: 20, 6: 36, 7: 56, 8: 68, 9: 68}
+# level -> XP needed at that level to reach the next (HUD denominator; L3 is
+# game 2's 4 plus the opener's 2).
+HUD_XP_SET18 = {3: 6, 4: 10, 5: 20, 6: 36, 7: 56, 8: 68, 9: 68}
+# Game 2's raw denominators under the Ashe -2 opener.
+GAME2_ASHE_XP = {3: 4, 4: 8, 5: 18, 6: 34, 7: 54, 8: 66, 9: 66}
 # The pre-existing table, byte for byte (Set 14 transcription).
 LEGACY_XP = {2: 2, 3: 6, 4: 10, 5: 20, 6: 36, 7: 56, 8: 80, 9: 100, 10: 120}
 
@@ -100,7 +108,11 @@ def test_set18_xp_table_is_the_measured_hud_denominators():
         assert tft_data.xp_to_next_level(level, 18) == xp, level
 
 
-@pytest.mark.parametrize("level", [1, 2, 3, 10, 11, 0, -1])
+def test_both_games_agree_once_the_opener_is_added_back():
+    assert {lv: xp + 2 for lv, xp in GAME2_ASHE_XP.items()} == HUD_XP_SET18
+
+
+@pytest.mark.parametrize("level", [1, 2, 10, 11, 0, -1])
 def test_set18_levels_never_seen_in_client_have_no_value(level):
     """No other set's row is borrowed for an unmeasured Set 18 level."""
     assert tft_data.xp_to_next_level(level, 18) is None
@@ -162,7 +174,7 @@ def test_buys_cover_the_requirement(monkeypatch):
     assert "XP to Lv5: 10XP = 3 buys (12g at 4g each)" in msg
 
 
-@pytest.mark.parametrize("level", [1, 2, 3, 10])
+@pytest.mark.parametrize("level", [1, 2, 10])
 def test_unmeasured_set18_level_adds_no_xp_line(level, monkeypatch):
     msg = _prompt(level, monkeypatch, pin=18)
     assert "XP to Lv" not in msg

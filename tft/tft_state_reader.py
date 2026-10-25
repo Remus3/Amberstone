@@ -1,7 +1,8 @@
 """
 tft/tft_state_reader.py - Riot Live Client API reader for TFT.
-Variant detection via mapNumber (22=Double Up). Stage/round from OCR (free)
-with time-table fallback.
+Variant detection via mapNumber (22=Double Up). Stage/round from OCR (free),
+else the round clock (observed round starts from the standalone per-round
+file, S134), with the time table as the last fallback.
 """
 import json
 import ssl
@@ -30,29 +31,34 @@ _TIME_TO_ROUND = [
     (1419, 6, 1), (1470, 6, 2), (1521, 6, 3), (1572, 6, 4), (1623, 6, 5), (1674, 6, 6),
     (1725, 7, 1), (1776, 7, 2), (1827, 7, 3), (1878, 7, 4),
 ]
-# Set 18 (LT-01, session 134), measured off the HUD stage label of a live Set 18
-# normal game: ops/runtime/tft_qa/20261025-070350 (QA_REPORT.md section 2).
-# Clock zero = game start from the LCU EOG gameLength (2097 s). The Set 17
-# table above matched 0 of its 28 observed rounds (about 65 s per round, not
-# 51). Stage 1 has 4 rounds and stages 2+ have 7 (CommunityDragon
-# StageRoundData agrees). Guard: tests/test_tft_set18_schedule_lt01.py.
+# Set 18, the FALLBACK gameTime -> round table (re-fit S134 on two live Set 18
+# normal games: ops/runtime/tft_qa/20261025-070350, QA_REPORT.md section 2,
+# and 20261025-081234, section 3). Each game's round start = midpoint of the
+# previous round's last frame and this round's first frame on the HUD stage
+# label (frames 20-45 s apart); clock zero from the LCU EOG gameLength. The
+# games ran at different paces (2-3..6-1: about 65 and 60.5 s per round; 6-1
+# began at 2029 and 1849 s), so no fixed table tracks both: a row here is the
+# MEAN of the two games' starts, which keeps the table within 2 rounds of
+# every frame of either game (the game-1-only table was 3 rounds behind
+# game 2 by 6-1). It is used only when no round start was OBSERVED (see
+# RoundClock below). Stage 1 has 4 rounds and stages 2+ have 7
+# (CommunityDragon StageRoundData agrees). Guards:
+# tests/test_tft_round_clock_s134.py, tests/test_tft_set18_schedule_lt01.py.
 _TIME_TO_ROUND_SET18 = [
-    # EXTRAPOLATED, not observed (recorder gap before 2-2): stage 1 from the
-    # game-data phase durations, 2-1 / 2-2 back from the measured 2-3 start.
-    (0,    1, 1), (25,   1, 2), (65,   1, 3), (115,  1, 4),
-    (175,  2, 1), (268,  2, 2),
-    # MEASURED: each start = midpoint of the previous round's last frame and
-    # this round's first frame (frames 20-45 s apart).
-    (332,  2, 3), (396,  2, 4), (422,  2, 5), (496,  2, 6), (586,  2, 7),
-    (612,  3, 1), (704,  3, 2), (786,  3, 3), (856,  3, 4), (899,  3, 5), (962,  3, 6), (1044, 3, 7),
-    (1089, 4, 1), (1176, 4, 2), (1272, 4, 3), (1354, 4, 4), (1376, 4, 5), (1459, 4, 6), (1544, 4, 7),
-    (1586, 5, 1), (1646, 5, 2), (1726, 5, 3), (1814, 5, 4), (1834, 5, 5), (1922, 5, 6), (1989, 5, 7),
-    (2029, 6, 1),
-    # EXTRAPOLATED (the game ended in 6-1; 6-1 was still in planning, timer
-    # 18, at 2084 s): 6-2 after that planning plus one combat, then 65 s per
-    # round, the measured 2-3..6-1 mean.
-    (2140, 6, 2), (2205, 6, 3), (2270, 6, 4), (2335, 6, 5), (2400, 6, 6), (2465, 6, 7),
-    (2530, 7, 1), (2595, 7, 2), (2660, 7, 3), (2725, 7, 4), (2790, 7, 5), (2855, 7, 6), (2920, 7, 7),
+    # 1-1 / 1-2 / 1-3: game-data phase durations (game 2 saw 1-3 by 74 s);
+    # 1-4, 2-1, 2-2: game 2 only (game 1's recorder joined at 2-2).
+    (0,    1, 1), (25,   1, 2), (65,   1, 3), (104,  1, 4),
+    (151,  2, 1), (216,  2, 2),
+    # MEASURED in both games: the mean start.
+    (308,  2, 3), (371,  2, 4), (406,  2, 5), (474,  2, 6), (550,  2, 7),
+    (584,  3, 1), (672,  3, 2), (758,  3, 3), (822,  3, 4), (865,  3, 5), (928,  3, 6), (1002, 3, 7),
+    (1048, 4, 1), (1124, 4, 2), (1213, 4, 3), (1282, 4, 4), (1322, 4, 5), (1388, 4, 6), (1465, 4, 7),
+    (1510, 5, 1), (1574, 5, 2), (1648, 5, 3), (1722, 5, 4), (1755, 5, 5), (1833, 5, 6), (1898, 5, 7),
+    (1939, 6, 1),
+    # EXTRAPOLATED (both games ended in 6-1): 6-1 lasts like the measured x-1
+    # rounds (about 76 s), then 63 s per round, the two games' mean pace.
+    (2015, 6, 2), (2078, 6, 3), (2141, 6, 4), (2204, 6, 5), (2267, 6, 6), (2330, 6, 7),
+    (2393, 7, 1), (2456, 7, 2), (2519, 7, 3), (2582, 7, 4), (2645, 7, 5), (2708, 7, 6), (2771, 7, 7),
 ]
 
 
@@ -69,6 +75,109 @@ def _estimate_round(t, set_number=None):
         else: break
     return s, r
 
+
+# -- round clock: an OBSERVED round start first, the time table last (S134) ---
+# The standalone client rewrites its per-round stats file (tft/tft_standalone.py
+# read_eog; statsBlock.gameLengthSeconds) at each planning phase, so every new
+# gameLengthSeconds is the game-clock start of a round. Measured 2026-10-25 by
+# watching the file passively through a third live Set 18 game: starts 582,
+# 647, 741, 821, 932, 1010, 1073, 1138, 1239, 1311, 1420 s - one rewrite per
+# round with a planning phase and NONE for a carousel (821 -> 932 and
+# 1311 -> 1420 each span an x-3 plus the x-4 carousel). The first start
+# seen in a game is placed by the time table (nearest table start); each later
+# one is the next round that has a planning phase. So the round follows the
+# game's own pace, which differed by ~5 s per round between the QA games.
+# The file also carries every player's health: when NO player's health moved
+# between two starts, the round that began at the first was PvE (a PvP round
+# always has a loser), which pins it to the nearest PvE round of the schedule
+# - an observed stage anchor that also corrects a late first placement (in the
+# watched game 582 -> 647 kept all 8 healths: 2-7, while the table said 3-1).
+# A gap longer than _MISSED_GAP_S means rewrites were missed (RC was down): the
+# table's progression over that gap counts the rounds, never less than one.
+_MISSED_GAP_S = 180.0
+
+
+def _row_index(table, t) -> int:
+    """Index of the table row in force at game time t (0 before any row)."""
+    i = 0
+    for k, (ms, _, _) in enumerate(table):
+        if t >= ms: i = k
+        else: break
+    return i
+
+
+def _no_planning_rounds(schedule) -> frozenset:
+    """Rounds of a schedule that have no planning phase (a carousel), so the
+    per-round file is not rewritten at their start."""
+    return frozenset(rk for rk, ev in schedule.events.items() if ev == "carousel")
+
+
+class RoundClock:
+    """The current (stage, round) from observed round starts; the time table
+    only before the first one (or for a game with no per-round file)."""
+
+    def __init__(self) -> None:
+        self.reset()
+
+    def reset(self, game=None, table=None) -> None:
+        self._game, self._table, self._t, self._i = game, table, None, None
+        self._hp = None
+
+    def _skip(self, i: int, skip) -> int:
+        while i < len(self._table) - 1 and tuple(self._table[i][1:]) in skip:
+            i += 1
+        return i
+
+    def note_start(self, game, t: float, table, skip=frozenset(), hp=None,
+                   pve=frozenset()) -> None:
+        """Record an observed round start ``t`` (game-clock s) of ``game``.
+
+        ``skip``: rounds with no planning phase (no rewrite). ``hp``: every
+        player's health at this start, in file order. ``pve``: the
+        schedule's PvE rounds.
+        """
+        if not table:
+            return
+        hp = tuple(hp) if hp else None
+        if (game != self._game or table is not self._table
+                or self._t is None or t < self._t - 1.0):
+            self.reset(game, table)
+            rows = [k for k, row in enumerate(table) if tuple(row[1:]) not in skip]
+            self._i = min(rows or [0], key=lambda k: abs(table[k][0] - t))
+            self._t, self._hp = t, hp
+            return
+        if t - self._t < 1.0:
+            return  # the same rewrite read again
+        if hp and self._hp and hp == self._hp and t - self._t <= _MISSED_GAP_S:
+            rows = [k for k, row in enumerate(table) if tuple(row[1:]) in pve]
+            if rows:  # nobody lost health: the round just played was PvE
+                self._i = min(rows, key=lambda k: abs(k - self._i))
+        step = 1
+        if t - self._t > _MISSED_GAP_S:
+            step = max(1, _row_index(table, t) - _row_index(table, self._t))
+        self._i = self._skip(min(self._i + step, len(table) - 1), skip)
+        self._t, self._hp = t, hp
+
+    def round_at(self, t: float, table, skip=frozenset()) -> tuple:
+        """(stage, round) at game time ``t``. A round with no planning phase
+        (``skip``, a carousel) gets no rewrite of its own, so once the round
+        that began at the last observed start has run its table length, the
+        clock moves into the carousel that follows it."""
+        if self._i is None or table is not self._table or t < self._t - 1.0:
+            _, s, r = table[_row_index(table, t)] if table else (0, 1, 1)
+            return s, r
+        i = self._i
+        if t - self._t > _MISSED_GAP_S:
+            # no start seen for too long (the file went stale): carry the
+            # last observed round forward by the table's progression
+            i = min(len(table) - 1,
+                    i + max(0, _row_index(table, t) - _row_index(table, self._t)))
+        elif (i + 1 < len(table) and tuple(table[i + 1][1:]) in skip
+                and t - self._t >= table[i + 1][0] - table[i][0]):
+            i += 1
+        _, s, r = table[i]
+        return s, r
+
 _last_logged_sr = None  # for calibration logging
 def _log_round_calibration(t, stage, rnd):
     global _last_logged_sr
@@ -83,6 +192,7 @@ class TftStateReader:
         self._ssl=ssl.create_default_context();self._ssl.check_hostname=False;self._ssl.verify_mode=ssl.CERT_NONE
         self._my_name="";self._last_level=1;self._last_gold=0
         self._confirmed_stage=1;self._confirmed_round=1  # forward-only OCR guard
+        self._round_clock = RoundClock()  # S134: observed round starts
         # OCR subsystem - runs in background, provides free stage/round/level/gold/hp
         self._ocr = None
         self._ocr_cache: dict = {}
@@ -191,7 +301,16 @@ class TftStateReader:
             from tft import tft_set
             set_n = tft_set.resolve_set()
         except Exception: set_n = None  # noqa: BLE001
-        self._last_level=lv; stage,rnd=_estimate_round(gt, set_n); _log_round_calibration(gt, stage, rnd)
+        # S134: an observed round start (standalone per-round file) places the
+        # round; the set's time table is the fallback. OCR still overrides.
+        sched = round_schedule(set_n); tbl = _time_table(set_n)
+        clock = getattr(self, "_round_clock", None)
+        if clock is None: clock = self._round_clock = RoundClock()
+        obs = _observed_round_start(raw); skip = _no_planning_rounds(sched)
+        if obs is not None:
+            clock.note_start(obs[0], obs[1], tbl, skip, hp=obs[2], pve=sched.pve)
+        self._last_level=lv; stage,rnd=clock.round_at(gt, tbl, skip); _log_round_calibration(gt, stage, rnd)
+        est_stage = stage
         me={};others=[]
         for p in (all_p if isinstance(all_p,list) else []):
             if not isinstance(p,dict): continue
@@ -218,8 +337,9 @@ class TftStateReader:
                 # Sanity bounds, not a set schedule: stage 1-7, round <= 4 in stage 1, <= 7 after
                 max_rnd = 4 if os == 1 else 7
                 if 1 <= os <= 7 and 1 <= ornd <= max_rnd:
-                    # Cross-validate: OCR stage must be within 2 of time-table
-                    tbl_stage, tbl_rnd = _estimate_round(gt, set_n)
+                    # Cross-validate: OCR stage must be within 2 of the
+                    # round clock's estimate (observed start, else table)
+                    tbl_stage = est_stage
                     stage_delta = abs(os - tbl_stage)
                     # Forward-only: OCR must not go backward more than 1 stage
                     ocr_idx  = os * 10 + ornd
@@ -248,7 +368,7 @@ class TftStateReader:
         # Store raw OCR hp in state for fallback
         ocr_hp = ocr.get("hp")
         # -----------------------------------------------------------------
-        rf = round_schedule(set_n).fields(stage, rnd)  # RM-855: the resolved set's schedule
+        rf = sched.fields(stage, rnd)  # RM-855: the resolved set's schedule
         out = {"game_mode":gd.get("gameMode","TFT"),"game_time_s":gt,"level":lv,"gold":gold,
             "health":0 if me.get("isDead") else (
                 int(float(me.get("health") or me.get("tftHP") or 0))
@@ -279,6 +399,29 @@ def _standalone_raw():
     except Exception as e:  # noqa: BLE001
         logger.debug("standalone TFT source: %s", e)
         return None
+
+
+def _observed_round_start(raw):
+    """(game id, round start s, every player's health) from the standalone
+    per-round file carried in a synthesized raw dict, or None (a :2999 read,
+    no fresh file). Fail-soft."""
+    if not isinstance(raw, dict):
+        return None
+    try:
+        from tft import tft_standalone
+        if raw.get("rc_source") != tft_standalone.SOURCE_TAG:
+            return None
+    except Exception:  # noqa: BLE001
+        return None
+    st = raw.get("rc_standalone")
+    if not isinstance(st, dict) or not st.get("eog"):
+        return None
+    t = st.get("game_length_s")
+    if isinstance(t, bool) or not isinstance(t, (int, float)) or t < 0:
+        return None
+    players = raw.get("allPlayers") if isinstance(raw.get("allPlayers"), list) else []
+    hp = tuple(p.get("health") for p in players if isinstance(p, dict))
+    return str(st.get("game_id") or ""), float(t), hp
 
 
 def _apply_standalone(out: dict, raw) -> None:

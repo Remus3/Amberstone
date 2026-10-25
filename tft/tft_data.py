@@ -116,14 +116,18 @@ XP_TO_LEVEL = {
    10: 120,
 }
 
-# Set 18 (session 134), read off the HUD level box in every game frame of
-# ops/runtime/tft_qa/20261025-070350 (QA_REPORT.md section 5; build
-# rls-18.5). Cross-check, facts only: Riot's B-patch 18.2 notes (as reported
-# by gamewave.fr, 2026-09-15) set L8 -> 9 and L9 -> 10 to 68 and keep the
-# L7 -> 8 cut to 56. L1-L3 (before capture) and L10 (never reached) were not
-# seen, so they have no row: no other set's value is borrowed for them.
+# Set 18 (session 134), read off the HUD level box in every game frame of two
+# live games: ops/runtime/tft_qa/20261025-070350 (L4-L9 read directly) and
+# 20261025-081234 (L2-L9 under the 1-1 Ashe opener "each level costs 2 XP
+# less": 2/4/8/18/34/54/66/66, so base L3 = 6 and L4-L9 agree with game 1;
+# L10 showed no x/y, it is the cap). Cross-check, facts only: Riot's B-patch
+# 18.2 notes (as reported by gamewave.fr, 2026-09-15) set L8 -> 9 and
+# L9 -> 10 to 68 and keep the L7 -> 8 cut to 56. L1 was never seen and L2's
+# base is ambiguous (2 under the opener: 4 if it applies at L2, 2 if not),
+# so neither has a row; no other set's value is borrowed. An opener or
+# augment that changes the cost is not modelled here.
 # Guard: tests/test_tft_coach_set18_xp_odds_s134.py.
-XP_TO_NEXT_SET18 = {4: 10, 5: 20, 6: 36, 7: 56, 8: 68, 9: 68}
+XP_TO_NEXT_SET18 = {3: 6, 4: 10, 5: 20, 6: 36, 7: 56, 8: 68, 9: 68}
 
 # XP tables by set key. Set 17 has no table of its own; it keeps the table it
 # was always served (as its roll odds keep the Set 14 copy).
