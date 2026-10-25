@@ -369,7 +369,7 @@ roadmap / checklist guards 138 passed. Full suite (2c): no push, no dispatch (it
 C1 run 2 on 7cb2b412d (45565 passed, exit 0) covers main but docs + riot.txt. CI: none. DS 1.290.0 /
 16.21.1 / 173 (pid 26232); RC pid 7084 alive, last_reload_ok, fatal 0; restart_trigger empty; LCU
 Lobby, no game; session file 3.3 MB; no intent / steers; inbox empty; 0 PRs. Memory: 3 new.
-Board: pending at the hand-off write (pushed NON-final after it; this line is updated then).
+Board: pushed at /done NON-final (datasets/board v26, blob 0e29a50a; --final marks carried rows done).
 Progress files: ops/loop/control/progress/s135-*.json (s135-done = this ritual).
 
 Context: docs/TFT_PROGRAM.md (slices, ADR-018); tft/engine (Augur); tft/rounds (TFT-01 store);
