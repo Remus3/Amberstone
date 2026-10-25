@@ -92,7 +92,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `coaches/aram_coach.py` | ARAM + Mayhem mode coach - DS-before-Haiku |
 | `coaches/arena_coach.py` | Arena mode coach - DS-before-Haiku |
 | `coaches/brawl_coach.py` | Brawl mode coach - DS-before-Haiku |
-| `coaches/tft_coach.py` | TFT Set 17 mode coach |
+| `coaches/tft_coach.py` | TFT mode coach (set resolved by tft/tft_set.py) |
 | `core/build_order.py` | contextual DS-backed build-ORDER planner |
 | `core/build_planner/relax.py` | constraint-relaxing recommender - auto-relax ladder reports dropped soft constraints |
 | `core/build_planner_legality.py` | DS item-legality adapter - builds the relax recommender HARD predicate |
@@ -356,7 +356,7 @@ _Inline `# arch: phase <id> [(YYYY-MM-DD)] - <note>` markers across the tree, su
 | 1 step 3 | - | `game_reader/snapshot_normalizer.py:1514` | snapshot factory helpers (to_rift_snapshot, to_aram_snapshot) |
 | 1 step 3 | - | `tft/tft_state_reader.py:95` | snapshot factory helper (only path that may produce TftSnapshot) |
 | 3 | - | `agents/agent2_backend/migration_rewind.py:60` | rewind timeline_events -> match_events migration (coach-decision moments per S9) |
-| 3 step 1.1 | - | `tft/tft_coach_engine.py:847` | write TFT coaching timestamp only after payload write succeeds |
+| 3 step 1.1 | - | `tft/tft_coach_engine.py:849` | write TFT coaching timestamp only after payload write succeeds |
 | 7 P2 | - | `tft/tft_live_analysis.py:435` | C - clear stale choices on augment-select force scan |
 
 <!-- phasejournal:end -->

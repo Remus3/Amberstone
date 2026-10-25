@@ -1,13 +1,22 @@
 """
 coaches/tft_pbe_coach.py
 
-TFT Set 17: Space Gods PBE coaching - Double Up focus.
-Duplicate of tft_coach.py with Set 17-specific engine and data.
+TFT PBE coaching - Double Up focus. Pre-T2 self-polling twin of tft_coach.py,
+reached only through coaches/__init__.py load_coach() when
+config/coach_settings.json sets "tft_pbe" (load_coach has no production
+caller today: app/_game_lifecycle.py builds coaches.tft_coach through
+core/coach_registry.py).
+
+RM-845: no set is hard-wired here any more. The set comes from
+tft/tft_set.py (live set id > RC_TFT_SET > newest ingested set) and the
+engine's system prompt from tft/tft_prompt.py, shared with the live engine;
+the Realm of the Gods round schedule is injected only when the resolved set's
+meta records that mechanic.
 
 Architecture:
   TftStateReader      - polls Riot Live Client API (same as live)
-  TftPbeCoachEngine   - Set 17 text coaching (gods, new traits, Double Up)
-  TftLiveAnalysis     - vision-based coaching (reused, Set 17 champ list)
+  TftPbeCoachEngine   - text coaching, Double Up (tft/tft_pbe_engine.py)
+  TftLiveAnalysis     - vision-based coaching (reused; every ingested roster)
   TftOverlay          - 3 tkinter windows (reused)
 """
 
@@ -48,8 +57,8 @@ def _read_api_key(app_dir: Path | None = None) -> str:
 
 class Coach:
     """
-    TFT PBE coach for Set 17: Space Gods Double Up.
-    Uses PBE-specific engine with Set 17 system prompt.
+    TFT PBE coach, Double Up. Uses the PBE engine, whose system prompt is
+    the resolved set's shared build (tft/tft_prompt.py, RM-845).
     """
 
     GAME_MODES = ("TFT",)
@@ -87,7 +96,7 @@ class Coach:
         )
         self._poll_thread.start()
         self._live.start()
-        logger.info("TFT PBE Coach started (Set 17 Double Up, vision enabled)")
+        logger.info("TFT PBE Coach started (Double Up, vision enabled)")
 
     def submit_state(self, state: dict) -> None:
         pass  # TFT self-polls
@@ -146,14 +155,23 @@ class Coach:
 
     @staticmethod
     def _inject_pbe_events(state: dict):
-        """Override round events with Set 17 god schedule."""
+        """Override round events with the Realm of the Gods schedule.
+
+        RM-845: the schedule in tft/tft_pbe_data.py is Set 17's, so it is
+        injected only when the resolved set's meta records Realm of the Gods
+        (tft/tft_prompt.py set_has_gods); any other set keeps the state
+        reader's own round fields.
+        """
+        from tft import tft_prompt
+        if not tft_prompt.set_has_gods():
+            return
         from tft.tft_pbe_data import ROUND_EVENTS, PVE_ROUNDS, GOD_ROUNDS, BOON_ROUND, TEMPO_MILESTONES
         round_key = (state.get("stage", 1), state.get("round", 1))
         stage_round_str = state.get("stage_round", f"{round_key[0]}-{round_key[1]}")
 
         state["round_event"] = ROUND_EVENTS.get(round_key, "pvp")
         state["is_pve"]      = round_key in PVE_ROUNDS
-        state["is_carousel"] = False  # No carousel in Set 17
+        state["is_carousel"] = False  # Realm of the Gods replaces the carousel
         state["is_god_round"] = round_key in GOD_ROUNDS
         state["is_boon_round"] = round_key == BOON_ROUND
         state["tempo_note"]  = TEMPO_MILESTONES.get(stage_round_str, "")
