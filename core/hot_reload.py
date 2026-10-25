@@ -501,6 +501,8 @@ class HotReloadWatcher:
       "triggered"      restart_trigger.txt written (pending set fired)
       "compile_failed" a pending file does not compile; no trigger, pending
                        cleared (the fixing edit triggers on its own)
+      "trigger_failed" restart_trigger.txt could not be written; pending
+                       kept, retried next tick
 
     Injection seams (tests): ``loaded`` returns the repo-relative files RC
     has loaded (default: _loaded_repo_files over sys.modules), ``game``
@@ -640,9 +642,13 @@ class HotReloadWatcher:
         try:
             atomic_write_text(self.trigger, "auto-hot-reload")
         except OSError as exc:
-            _log.warning("hot-reload: could not write %s: %s",
-                         self.trigger.name, type(exc).__name__)
-        held = (f" (deferred since {self.deferred_since}, game over)"
+            # No restart was requested: say so, keep the pending set and
+            # retry on the next tick instead of logging a false "triggered".
+            _log.warning("hot-reload: could not write %s (%s); %d file(s) "
+                         "stay pending: %s", self.trigger.name,
+                         type(exc).__name__, len(files), _fmt_paths(files))
+            return "trigger_failed"
+        held =(f" (deferred since {self.deferred_since}, game over)"
                 if self.deferred_since else "")
         _log.info("hot-reload: restart triggered by %d file(s)%s: %s",
                   len(files), held, _fmt_paths(files))
