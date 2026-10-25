@@ -21,7 +21,9 @@ Ground truth (any mix):
   its ``_rc_captured_at`` key, else the file mtime) within ``--max-age`` s.
 - ``--lcu-eog``: the LCU ``/lol-end-of-game/v1/tft-eog-stats`` document (oracle
   B): final boards + placement, graded against the prediction record ``final``
-  (else the last graded frame that carries ``players``).
+  (else the last graded frame that carries ``players``). The RM-616 record of
+  the game (``data/tft_matches/<gameId>.eog.json``, TFT-08) is accepted too:
+  the LCU document 404s once the client is back in Lobby, the record stays.
 
 Players are keyed ``P1`` (local) .. ``P8``; the other keys follow the source
 document's player order. Identity fields (PUUID, Riot id, summoner name,
@@ -722,10 +724,74 @@ def eog_file_players(doc, set_number: int = 18) -> dict:
     return out
 
 
+_LCU_EOG_ROUTE = "/lol-end-of-game/v1/tft-eog-stats"   # tft/tft_placement.py EOG_PATH
+
+
+def is_rm616_record(doc) -> bool:
+    """True for an RM-616 placement-store record (tft/tft_placement.py: one
+    source record, data/tft_matches/<gameId>.<eog|history>.json, or the
+    merged view of tft_placement.load()) rather than the raw LCU document."""
+    if not isinstance(doc, dict) or doc.get("schema") != 1:
+        return False
+    plist = doc.get("players")
+    return isinstance(plist, list) and any(
+        isinstance(p, dict) and "board" in p and "is_local" in p for p in plist)
+
+
+def rm616_ground_truth(doc, set_number: int = 18) -> dict:
+    """RM-616 record -> the lcu_eog_ground_truth shape (TFT-08 hand-off).
+
+    The durable copy of the post-game boards: the LCU EoG document 404s once
+    the client is back in Lobby (docs/TFT_PROGRAM.md section 8 item 13), the
+    RM-616 record stays. P1 = the local player, the rest in the record's
+    (placement) order. Unit / item names: the record's own EOG display names
+    for an LCU tft-eog-stats record (the raw adapter's rule); the set data
+    first for a history or game-client record, whose names RM-616 derived from
+    the api id. The record holds no identity, so none can reach a report."""
+    if not is_rm616_record(doc):
+        return {}
+    ordered = _local_first(doc["players"], "is_local")
+    if not ordered:
+        return {}
+    eog_names = doc.get("source_route") == _LCU_EOG_ROUTE
+    local = ordered[0]
+    players = {}
+    for n, p in enumerate(ordered, start=1):
+        board = []
+        for u in p.get("board") or []:
+            if not isinstance(u, dict):
+                continue
+            api, own = u.get("character_id"), u.get("name")
+            unit = (own or unit_name(api, set_number)) if eog_names else (unit_name(api, set_number) or own)
+            if not isinstance(unit, str) or not unit.strip():
+                continue
+            items = []
+            for it in u.get("items") or []:
+                if isinstance(it, dict):
+                    nid, nm = it.get("name_id"), it.get("name")
+                    label = (nm or item_name(nid, set_number)) if eog_names else (item_name(nid, set_number) or nm)
+                    if label:
+                        items.append(label)
+            board.append({"unit": unit, "star": _int_or_none(u.get("star")), "items": items})
+        entry = {"board": board}
+        if p is local:
+            entry["hp"] = _int_or_none(doc.get("local_hp"))
+        players[f"P{n}"] = entry
+    out = {"players": players}
+    place = _int_or_none(local.get("placement")) or _int_or_none(doc.get("local_placement"))
+    if place:
+        out["placement"] = place
+    return out
+
+
 def lcu_eog_ground_truth(doc, set_number: int = 18) -> dict:
     """LCU tft-eog-stats -> {"players": {...}, "placement"}. Reads players[]
     (localPlayer carries an empty setCoreName, QA 2026-10-25); health is HP for
-    the local player only, so non-local players carry boards but no hp."""
+    the local player only, so non-local players carry boards but no hp. An
+    RM-616 record of the same game (data/tft_matches/, the durable copy) is
+    read through rm616_ground_truth."""
+    if is_rm616_record(doc):
+        return rm616_ground_truth(doc, set_number)
     plist = doc.get("players") if isinstance(doc, dict) else None
     if not isinstance(plist, list):
         return {}
@@ -927,7 +993,8 @@ def _parser() -> argparse.ArgumentParser:
     src.add_argument("--extractor", help="package.module:function run on each frame")
     src.add_argument("--predictions", help="predictions JSON instead of running an extractor")
     ap.add_argument("--eog", help="TFTEoGStats.json snapshot file or directory (oracle A)")
-    ap.add_argument("--lcu-eog", help="LCU tft-eog-stats JSON (oracle B, final boards)")
+    ap.add_argument("--lcu-eog", help="LCU tft-eog-stats JSON or its RM-616 record "
+                                      "data/tft_matches/<gameId>.eog.json (oracle B, final boards)")
     ap.add_argument("--max-age", type=float, default=75.0,
                     help="max seconds between a snapshot and a frame graded against it")
     ap.add_argument("--set", type=int, default=18, dest="set_number")

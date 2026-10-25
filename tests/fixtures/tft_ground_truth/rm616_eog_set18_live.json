@@ -1,0 +1,1807 @@
+{
+ "augments_recorded": false,
+ "captured_at": "2026-01-01 00:00:00",
+ "captured_at_unix": 1767225600.0,
+ "ended_at": null,
+ "ended_at_unix": null,
+ "game_id": 1000000002,
+ "game_length_s": 2081,
+ "game_type": "",
+ "is_ranked": false,
+ "lobby_size": 8,
+ "local_hp": 96,
+ "local_placement": 1,
+ "players": [
+  {
+   "augments": [],
+   "board": [
+    {
+     "character_id": "DA_18_Alune",
+     "cost": 5,
+     "items": [
+      {
+       "name": "Rabadon's Deathcap",
+       "name_id": "DA_RabadonsDeathcap"
+      },
+      {
+       "name": "Archangel's Staff",
+       "name_id": "DA_ArchangelsStaff"
+      }
+     ],
+     "name": "Alune",
+     "star": 2,
+     "traits": [
+      {
+       "id": "DA_AluneUniqueTrait18",
+       "name": "Attuned"
+      },
+      {
+       "id": "DA_18_Lunar",
+       "name": "Lunar"
+      },
+      {
+       "id": "DA_18_Spellweaver",
+       "name": "Spellweaver"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_18_Ashe",
+     "cost": 5,
+     "items": [
+      {
+       "name": "Hand Of Justice",
+       "name_id": "DA_HandOfJustice"
+      },
+      {
+       "name": "Infinity Edge",
+       "name_id": "DA_InfinityEdge"
+      }
+     ],
+     "name": "Ashe",
+     "star": 2,
+     "traits": [
+      {
+       "id": "DA_18_Blossom",
+       "name": "Blossom"
+      },
+      {
+       "id": "DA_18_Hunter",
+       "name": "Hunter"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_18_Aphelios",
+     "cost": 4,
+     "items": [
+      {
+       "name": "Infinity Edge",
+       "name_id": "DA_InfinityEdge"
+      },
+      {
+       "name": "Archangel's Staff",
+       "name_id": "DA_ArchangelsStaff"
+      },
+      {
+       "name": "Radiant Giant Slayer",
+       "name_id": "DA_GiantSlayer_Radiant"
+      }
+     ],
+     "name": "Aphelios",
+     "star": 2,
+     "traits": [
+      {
+       "id": "DA_18_Lunar",
+       "name": "Lunar"
+      },
+      {
+       "id": "DA_18_Rapidfire",
+       "name": "Rapidfire"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_18_Diana",
+     "cost": 3,
+     "items": [
+      {
+       "name": "Spirit Visage",
+       "name_id": "DA_SpiritVisage"
+      },
+      {
+       "name": "Titan's Resolve",
+       "name_id": "DA_TitansResolve"
+      },
+      {
+       "name": "Crownguard",
+       "name_id": "DA_Crownguard"
+      }
+     ],
+     "name": "Diana",
+     "star": 2,
+     "traits": [
+      {
+       "id": "DA_18_Lunar",
+       "name": "Lunar"
+      },
+      {
+       "id": "DA_18_Slayer",
+       "name": "Ravager"
+      },
+      {
+       "id": "DA_18_Vanguard",
+       "name": "Vanguard"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_Fiddlesticks18",
+     "cost": 3,
+     "items": [],
+     "name": "Fiddlesticks",
+     "star": 2,
+     "traits": [
+      {
+       "id": "DA_FloraFatalis18",
+       "name": "Flora Fatalis"
+      },
+      {
+       "id": "DA_18_Defender",
+       "name": "Defender"
+      },
+      {
+       "id": "DA_18_Spellweaver",
+       "name": "Spellweaver"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_18_Yunara",
+     "cost": 2,
+     "items": [],
+     "name": "Yunara",
+     "star": 2,
+     "traits": [
+      {
+       "id": "DA_18_Blossom",
+       "name": "Blossom"
+      },
+      {
+       "id": "DA_18_Executioner",
+       "name": "Executioner"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_Draven18",
+     "cost": 5,
+     "items": [],
+     "name": "Draven",
+     "star": 1,
+     "traits": [
+      {
+       "id": "DA_DravenUniqueTrait18",
+       "name": "Bounty Seeker"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_Taric18",
+     "cost": 5,
+     "items": [],
+     "name": "Taric",
+     "star": 1,
+     "traits": [
+      {
+       "id": "DA_Emerald18",
+       "name": "Emerald Aspect"
+      },
+      {
+       "id": "DA_18_Vanguard",
+       "name": "Vanguard"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_18_Sett",
+     "cost": 4,
+     "items": [],
+     "name": "Sett",
+     "star": 1,
+     "traits": [
+      {
+       "id": "DA_18_Blossom",
+       "name": "Blossom"
+      },
+      {
+       "id": "DA_18_Brawler",
+       "name": "Brawler"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_18_Soraka",
+     "cost": 4,
+     "items": [
+      {
+       "name": "Archangel's Staff",
+       "name_id": "DA_ArchangelsStaff"
+      },
+      {
+       "name": "Blue Buff",
+       "name_id": "DA_BlueBuff"
+      },
+      {
+       "name": "Archangel's Staff",
+       "name_id": "DA_ArchangelsStaff"
+      }
+     ],
+     "name": "Soraka",
+     "star": 1,
+     "traits": [
+      {
+       "id": "DA_FloraFatalis18",
+       "name": "Flora Fatalis"
+      },
+      {
+       "id": "DA_18_Executioner",
+       "name": "Executioner"
+      }
+     ]
+    }
+   ],
+   "is_local": true,
+   "partner_group_id": 0,
+   "placement": 1,
+   "traits": [
+    {
+     "id": "DA_18_Blossom",
+     "name": "Blossom",
+     "units": 3
+    },
+    {
+     "id": "DA_18_Lunar",
+     "name": "Lunar",
+     "units": 3
+    },
+    {
+     "id": "DA_18_Executioner",
+     "name": "Executioner",
+     "units": 2
+    },
+    {
+     "id": "DA_FloraFatalis18",
+     "name": "Flora Fatalis",
+     "units": 2
+    },
+    {
+     "id": "DA_18_Spellweaver",
+     "name": "Spellweaver",
+     "units": 2
+    },
+    {
+     "id": "DA_18_Vanguard",
+     "name": "Vanguard",
+     "units": 2
+    },
+    {
+     "id": "DA_AluneUniqueTrait18",
+     "name": "Attuned",
+     "units": 1
+    },
+    {
+     "id": "DA_DravenUniqueTrait18",
+     "name": "Bounty Seeker",
+     "units": 1
+    },
+    {
+     "id": "DA_18_Brawler",
+     "name": "Brawler",
+     "units": 1
+    },
+    {
+     "id": "DA_18_Defender",
+     "name": "Defender",
+     "units": 1
+    },
+    {
+     "id": "DA_Emerald18",
+     "name": "Emerald Aspect",
+     "units": 1
+    },
+    {
+     "id": "DA_18_Hunter",
+     "name": "Hunter",
+     "units": 1
+    },
+    {
+     "id": "DA_18_Rapidfire",
+     "name": "Rapidfire",
+     "units": 1
+    },
+    {
+     "id": "DA_18_Slayer",
+     "name": "Ravager",
+     "units": 1
+    }
+   ]
+  },
+  {
+   "augments": [],
+   "board": [
+    {
+     "character_id": "DA_18_Lillia",
+     "cost": 4,
+     "items": [
+      {
+       "name": "Giant Slayer",
+       "name_id": "DA_GiantSlayer"
+      }
+     ],
+     "name": "Lillia",
+     "star": 2,
+     "traits": [
+      {
+       "id": "DA_18_Fae",
+       "name": "Fae"
+      },
+      {
+       "id": "DA_18_Defender",
+       "name": "Defender"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_18_Hecarim",
+     "cost": 3,
+     "items": [
+      {
+       "name": "Tear Of The Goddess",
+       "name_id": "DA_Component_TearOfTheGoddess"
+      }
+     ],
+     "name": "Hecarim",
+     "star": 2,
+     "traits": [
+      {
+       "id": "DA_18_Elderwood",
+       "name": "Elderwood"
+      },
+      {
+       "id": "DA_18_Vanguard",
+       "name": "Vanguard"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_18_Alistar",
+     "cost": 2,
+     "items": [
+      {
+       "name": "Tear Of The Goddess",
+       "name_id": "DA_Component_TearOfTheGoddess"
+      }
+     ],
+     "name": "Alistar",
+     "star": 2,
+     "traits": [
+      {
+       "id": "DA_18_Elderwood",
+       "name": "Elderwood"
+      },
+      {
+       "id": "DA_18_Brawler",
+       "name": "Brawler"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_18_LeBlanc",
+     "cost": 2,
+     "items": [
+      {
+       "name": "Hextech Gunblade",
+       "name_id": "DA_HextechGunblade"
+      },
+      {
+       "name": "Jeweled Gauntlet",
+       "name_id": "DA_JeweledGauntlet"
+      },
+      {
+       "name": "Tear Of The Goddess",
+       "name_id": "DA_Component_TearOfTheGoddess"
+      }
+     ],
+     "name": "LeBlanc",
+     "star": 2,
+     "traits": [
+      {
+       "id": "DA_18_Elderwood",
+       "name": "Elderwood"
+      },
+      {
+       "id": "DA_18_Spellweaver",
+       "name": "Spellweaver"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_18_Ornn",
+     "cost": 1,
+     "items": [
+      {
+       "name": "Gargoyle Stoneplate",
+       "name_id": "DA_GargoyleStoneplate"
+      },
+      {
+       "name": "Adaptive Helm",
+       "name_id": "DA_AdaptiveHelm"
+      }
+     ],
+     "name": "Ornn",
+     "star": 2,
+     "traits": [
+      {
+       "id": "DA_18_Elderwood",
+       "name": "Elderwood"
+      },
+      {
+       "id": "DA_18_Defender",
+       "name": "Defender"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_18_Xayah",
+     "cost": 1,
+     "items": [
+      {
+       "name": "Giant Slayer",
+       "name_id": "DA_GiantSlayer"
+      }
+     ],
+     "name": "Xayah",
+     "star": 2,
+     "traits": [
+      {
+       "id": "DA_18_Elderwood",
+       "name": "Elderwood"
+      },
+      {
+       "id": "DA_18_Fae",
+       "name": "Fae"
+      },
+      {
+       "id": "DA_18_Rapidfire",
+       "name": "Rapidfire"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_18_Kennen",
+     "cost": 5,
+     "items": [
+      {
+       "name": "Thief's Gloves",
+       "name_id": "DA_ThiefsGloves"
+      },
+      {
+       "name": "Crownguard",
+       "name_id": "DA_Crownguard"
+      },
+      {
+       "name": "Rabadon's Deathcap",
+       "name_id": "DA_RabadonsDeathcap"
+      }
+     ],
+     "name": "Kennen",
+     "star": 1,
+     "traits": [
+      {
+       "id": "DA_18_Inferno",
+       "name": "Inferno"
+      },
+      {
+       "id": "DA_18_Executioner",
+       "name": "Executioner"
+      }
+     ]
+    }
+   ],
+   "is_local": false,
+   "partner_group_id": 0,
+   "placement": 2,
+   "traits": [
+    {
+     "id": "DA_18_Elderwood",
+     "name": "Elderwood",
+     "units": 5
+    },
+    {
+     "id": "DA_18_Defender",
+     "name": "Defender",
+     "units": 2
+    },
+    {
+     "id": "DA_18_Fae",
+     "name": "Fae",
+     "units": 2
+    },
+    {
+     "id": "DA_18_Brawler",
+     "name": "Brawler",
+     "units": 1
+    },
+    {
+     "id": "DA_18_Executioner",
+     "name": "Executioner",
+     "units": 1
+    },
+    {
+     "id": "DA_18_Inferno",
+     "name": "Inferno",
+     "units": 1
+    },
+    {
+     "id": "DA_18_Rapidfire",
+     "name": "Rapidfire",
+     "units": 1
+    },
+    {
+     "id": "DA_18_Spellweaver",
+     "name": "Spellweaver",
+     "units": 1
+    },
+    {
+     "id": "DA_18_Vanguard",
+     "name": "Vanguard",
+     "units": 1
+    }
+   ]
+  },
+  {
+   "augments": [],
+   "board": [
+    {
+     "character_id": "DA_18_Azir",
+     "cost": 3,
+     "items": [
+      {
+       "name": "Last Whisper",
+       "name_id": "DA_LastWhisper"
+      },
+      {
+       "name": "Red Buff",
+       "name_id": "DA_RedBuff"
+      },
+      {
+       "name": "Giant Slayer",
+       "name_id": "DA_GiantSlayer"
+      }
+     ],
+     "name": "Azir",
+     "star": 2,
+     "traits": [
+      {
+       "id": "DA_18_Blackthorn",
+       "name": "Blackthorn"
+      },
+      {
+       "id": "DA_18_Executioner",
+       "name": "Executioner"
+      },
+      {
+       "id": "DA_18_Summoner",
+       "name": "Summoner"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_18_Azir",
+     "cost": 3,
+     "items": [
+      {
+       "name": "Tear Of The Goddess",
+       "name_id": "DA_Component_TearOfTheGoddess"
+      },
+      {
+       "name": "Bloodthirster",
+       "name_id": "DA_Bloodthirster"
+      },
+      {
+       "name": "Spear of Shojin",
+       "name_id": "DA_SpearOfShojin"
+      }
+     ],
+     "name": "Azir",
+     "star": 2,
+     "traits": [
+      {
+       "id": "DA_18_Blackthorn",
+       "name": "Blackthorn"
+      },
+      {
+       "id": "DA_18_Executioner",
+       "name": "Executioner"
+      },
+      {
+       "id": "DA_18_Summoner",
+       "name": "Summoner"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_Vi18",
+     "cost": 3,
+     "items": [
+      {
+       "name": "Radiant Thief's Gloves",
+       "name_id": "DA_ThiefsGlovesRadiant"
+      },
+      {
+       "name": "Radiant Kraken's Fury",
+       "name_id": "DA_KrakensFury_Radiant"
+      },
+      {
+       "name": "Radiant Spirit Visage",
+       "name_id": "DA_SpiritVisage_Radiant"
+      }
+     ],
+     "name": "Vi",
+     "star": 2,
+     "traits": [
+      {
+       "id": "DA_Primal18",
+       "name": "Primal"
+      },
+      {
+       "id": "DA_Juggernaut18",
+       "name": "Juggernaut"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_18_Ornn",
+     "cost": 1,
+     "items": [],
+     "name": "Ornn",
+     "star": 2,
+     "traits": [
+      {
+       "id": "DA_18_Elderwood",
+       "name": "Elderwood"
+      },
+      {
+       "id": "DA_18_Defender",
+       "name": "Defender"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_18_Xayah",
+     "cost": 1,
+     "items": [],
+     "name": "Xayah",
+     "star": 2,
+     "traits": [
+      {
+       "id": "DA_18_Elderwood",
+       "name": "Elderwood"
+      },
+      {
+       "id": "DA_18_Fae",
+       "name": "Fae"
+      },
+      {
+       "id": "DA_18_Rapidfire",
+       "name": "Rapidfire"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_18_Yorick",
+     "cost": 1,
+     "items": [
+      {
+       "name": "Evenshroud",
+       "name_id": "DA_Evenshroud"
+      }
+     ],
+     "name": "Yorick",
+     "star": 2,
+     "traits": [
+      {
+       "id": "DA_18_Blossom",
+       "name": "Blossom"
+      },
+      {
+       "id": "DA_Juggernaut18",
+       "name": "Juggernaut"
+      },
+      {
+       "id": "DA_18_Summoner",
+       "name": "Summoner"
+      }
+     ]
+    }
+   ],
+   "is_local": false,
+   "partner_group_id": 0,
+   "placement": 3,
+   "traits": [
+    {
+     "id": "DA_18_Elderwood",
+     "name": "Elderwood",
+     "units": 2
+    },
+    {
+     "id": "DA_Juggernaut18",
+     "name": "Juggernaut",
+     "units": 2
+    },
+    {
+     "id": "DA_18_Summoner",
+     "name": "Summoner",
+     "units": 2
+    },
+    {
+     "id": "DA_18_Blackthorn",
+     "name": "Blackthorn",
+     "units": 1
+    },
+    {
+     "id": "DA_18_Blossom",
+     "name": "Blossom",
+     "units": 1
+    },
+    {
+     "id": "DA_18_Defender",
+     "name": "Defender",
+     "units": 1
+    },
+    {
+     "id": "DA_18_Executioner",
+     "name": "Executioner",
+     "units": 1
+    },
+    {
+     "id": "DA_18_Fae",
+     "name": "Fae",
+     "units": 1
+    },
+    {
+     "id": "DA_Primal18",
+     "name": "Primal",
+     "units": 1
+    },
+    {
+     "id": "DA_18_Rapidfire",
+     "name": "Rapidfire",
+     "units": 1
+    }
+   ]
+  },
+  {
+   "augments": [],
+   "board": [
+    {
+     "character_id": "DA_18_Azir",
+     "cost": 3,
+     "items": [
+      {
+       "name": "Archangel's Staff",
+       "name_id": "DA_ArchangelsStaff"
+      },
+      {
+       "name": "Spatula",
+       "name_id": "DA_Component_Spatula"
+      },
+      {
+       "name": "Archangel's Staff",
+       "name_id": "DA_ArchangelsStaff"
+      }
+     ],
+     "name": "Azir",
+     "star": 2,
+     "traits": [
+      {
+       "id": "DA_18_Blackthorn",
+       "name": "Blackthorn"
+      },
+      {
+       "id": "DA_18_Executioner",
+       "name": "Executioner"
+      },
+      {
+       "id": "DA_18_Summoner",
+       "name": "Summoner"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_18_Yunara",
+     "cost": 2,
+     "items": [
+      {
+       "name": "Hand Of Justice",
+       "name_id": "DA_HandOfJustice"
+      },
+      {
+       "name": "Striker's Flail",
+       "name_id": "DA_StrikersFlail"
+      },
+      {
+       "name": "Sparring Gloves",
+       "name_id": "DA_Component_SparringGloves"
+      }
+     ],
+     "name": "Yunara",
+     "star": 2,
+     "traits": [
+      {
+       "id": "DA_18_Blossom",
+       "name": "Blossom"
+      },
+      {
+       "id": "DA_18_Executioner",
+       "name": "Executioner"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_Karma18",
+     "cost": 1,
+     "items": [
+      {
+       "name": "Morellonomicon",
+       "name_id": "DA_Morellonomicon"
+      },
+      {
+       "name": "Negatron Cloak",
+       "name_id": "DA_Component_NegatronCloak"
+      },
+      {
+       "name": "Blue Buff",
+       "name_id": "DA_BlueBuff"
+      }
+     ],
+     "name": "Karma",
+     "star": 2,
+     "traits": [
+      {
+       "id": "DA_18_Blossom",
+       "name": "Blossom"
+      },
+      {
+       "id": "DA_18_Spellweaver",
+       "name": "Spellweaver"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_18_Yorick",
+     "cost": 1,
+     "items": [
+      {
+       "name": "Warmog's Armor",
+       "name_id": "DA_WarmogsArmor"
+      }
+     ],
+     "name": "Yorick",
+     "star": 2,
+     "traits": [
+      {
+       "id": "DA_18_Blossom",
+       "name": "Blossom"
+      },
+      {
+       "id": "DA_Juggernaut18",
+       "name": "Juggernaut"
+      },
+      {
+       "id": "DA_18_Summoner",
+       "name": "Summoner"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_Taric18",
+     "cost": 5,
+     "items": [
+      {
+       "name": "Ionic Spark",
+       "name_id": "DA_IonicSpark"
+      },
+      {
+       "name": "Quicksilver",
+       "name_id": "DA_Quicksilver"
+      }
+     ],
+     "name": "Taric",
+     "star": 1,
+     "traits": [
+      {
+       "id": "DA_Emerald18",
+       "name": "Emerald Aspect"
+      },
+      {
+       "id": "DA_18_Vanguard",
+       "name": "Vanguard"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_Krug18",
+     "cost": 3,
+     "items": [
+      {
+       "name": "Chain Vest",
+       "name_id": "DA_Component_ChainVest"
+      },
+      {
+       "name": "Red Buff",
+       "name_id": "DA_RedBuff"
+      }
+     ],
+     "name": "Krug",
+     "star": 1,
+     "traits": [
+      {
+       "id": "DA_Riftbeast18",
+       "name": "Riftbeast"
+      },
+      {
+       "id": "DA_18_Brawler",
+       "name": "Brawler"
+      }
+     ]
+    }
+   ],
+   "is_local": false,
+   "partner_group_id": 0,
+   "placement": 4,
+   "traits": [
+    {
+     "id": "DA_18_Blossom",
+     "name": "Blossom",
+     "units": 3
+    },
+    {
+     "id": "DA_18_Executioner",
+     "name": "Executioner",
+     "units": 2
+    },
+    {
+     "id": "DA_18_Summoner",
+     "name": "Summoner",
+     "units": 2
+    },
+    {
+     "id": "DA_18_Blackthorn",
+     "name": "Blackthorn",
+     "units": 1
+    },
+    {
+     "id": "DA_18_Brawler",
+     "name": "Brawler",
+     "units": 1
+    },
+    {
+     "id": "DA_Emerald18",
+     "name": "Emerald Aspect",
+     "units": 1
+    },
+    {
+     "id": "DA_Juggernaut18",
+     "name": "Juggernaut",
+     "units": 1
+    },
+    {
+     "id": "DA_Riftbeast18",
+     "name": "Riftbeast",
+     "units": 1
+    },
+    {
+     "id": "DA_18_Spellweaver",
+     "name": "Spellweaver",
+     "units": 1
+    },
+    {
+     "id": "DA_18_Vanguard",
+     "name": "Vanguard",
+     "units": 1
+    }
+   ]
+  },
+  {
+   "augments": [],
+   "board": [
+    {
+     "character_id": "DA_18_Elise",
+     "cost": 2,
+     "items": [
+      {
+       "name": "Protector's Vow",
+       "name_id": "DA_ProtectorsVow"
+      },
+      {
+       "name": "Adaptive Helm",
+       "name_id": "DA_AdaptiveHelm"
+      },
+      {
+       "name": "Blue Buff",
+       "name_id": "DA_BlueBuff"
+      }
+     ],
+     "name": "Elise",
+     "star": 2,
+     "traits": [
+      {
+       "id": "DA_18_Coven",
+       "name": "Coven"
+      },
+      {
+       "id": "DA_18_Vanguard",
+       "name": "Vanguard"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_18_Shen",
+     "cost": 2,
+     "items": [],
+     "name": "Shen",
+     "star": 2,
+     "traits": [
+      {
+       "id": "DA_18_Inferno",
+       "name": "Inferno"
+      },
+      {
+       "id": "DA_18_Defender",
+       "name": "Defender"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_Brambleback18",
+     "cost": 4,
+     "items": [],
+     "name": "Brambleback",
+     "star": 1,
+     "traits": [
+      {
+       "id": "DA_Riftbeast18",
+       "name": "Riftbeast"
+      },
+      {
+       "id": "DA_18_Slayer",
+       "name": "Ravager"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_Sentinel18",
+     "cost": 4,
+     "items": [],
+     "name": "Sentinel",
+     "star": 1,
+     "traits": [
+      {
+       "id": "DA_Riftbeast18",
+       "name": "Riftbeast"
+      },
+      {
+       "id": "DA_18_Vanguard",
+       "name": "Vanguard"
+      },
+      {
+       "id": "DA_18_Invoker",
+       "name": "Invoker"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_Vi18",
+     "cost": 3,
+     "items": [],
+     "name": "Vi",
+     "star": 1,
+     "traits": [
+      {
+       "id": "DA_Primal18",
+       "name": "Primal"
+      },
+      {
+       "id": "DA_Juggernaut18",
+       "name": "Juggernaut"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_18_Caitlyn",
+     "cost": 2,
+     "items": [
+      {
+       "name": "Archangel's Staff",
+       "name_id": "DA_ArchangelsStaff"
+      },
+      {
+       "name": "Giant Slayer",
+       "name_id": "DA_GiantSlayer"
+      },
+      {
+       "name": "Quicksilver",
+       "name_id": "DA_Quicksilver"
+      }
+     ],
+     "name": "Caitlyn",
+     "star": 1,
+     "traits": [
+      {
+       "id": "DA_18_Coven",
+       "name": "Coven"
+      },
+      {
+       "id": "DA_18_Hunter",
+       "name": "Hunter"
+      }
+     ]
+    }
+   ],
+   "is_local": false,
+   "partner_group_id": 0,
+   "placement": 5,
+   "traits": [
+    {
+     "id": "DA_18_Coven",
+     "name": "Coven",
+     "units": 2
+    },
+    {
+     "id": "DA_Riftbeast18",
+     "name": "Riftbeast",
+     "units": 2
+    },
+    {
+     "id": "DA_18_Vanguard",
+     "name": "Vanguard",
+     "units": 2
+    },
+    {
+     "id": "DA_18_Defender",
+     "name": "Defender",
+     "units": 1
+    },
+    {
+     "id": "DA_18_Hunter",
+     "name": "Hunter",
+     "units": 1
+    },
+    {
+     "id": "DA_18_Inferno",
+     "name": "Inferno",
+     "units": 1
+    },
+    {
+     "id": "DA_18_Invoker",
+     "name": "Invoker",
+     "units": 1
+    },
+    {
+     "id": "DA_Juggernaut18",
+     "name": "Juggernaut",
+     "units": 1
+    },
+    {
+     "id": "DA_Primal18",
+     "name": "Primal",
+     "units": 1
+    },
+    {
+     "id": "DA_18_Slayer",
+     "name": "Ravager",
+     "units": 1
+    }
+   ]
+  },
+  {
+   "augments": [],
+   "board": [
+    {
+     "character_id": "DA_18_Shen",
+     "cost": 2,
+     "items": [],
+     "name": "Shen",
+     "star": 3,
+     "traits": [
+      {
+       "id": "DA_18_Inferno",
+       "name": "Inferno"
+      },
+      {
+       "id": "DA_18_Defender",
+       "name": "Defender"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_CrimsonRaptor18",
+     "cost": 3,
+     "items": [],
+     "name": "Mama Beak",
+     "star": 2,
+     "traits": [
+      {
+       "id": "DA_Riftbeast18",
+       "name": "Riftbeast"
+      },
+      {
+       "id": "DA_18_Summoner",
+       "name": "Summoner"
+      },
+      {
+       "id": "DA_18_Rapidfire",
+       "name": "Rapidfire"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_Vi18",
+     "cost": 3,
+     "items": [],
+     "name": "Vi",
+     "star": 2,
+     "traits": [
+      {
+       "id": "DA_Primal18",
+       "name": "Primal"
+      },
+      {
+       "id": "DA_Juggernaut18",
+       "name": "Juggernaut"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_Scuttlecrab18",
+     "cost": 2,
+     "items": [],
+     "name": "Scuttlecrab",
+     "star": 2,
+     "traits": [
+      {
+       "id": "DA_Riftbeast18",
+       "name": "Riftbeast"
+      },
+      {
+       "id": "DA_Juggernaut18",
+       "name": "Juggernaut"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_Cinderling18",
+     "cost": 1,
+     "items": [
+      {
+       "name": "Bloodthirster",
+       "name_id": "DA_Bloodthirster"
+      },
+      {
+       "name": "Infinity Edge",
+       "name_id": "DA_InfinityEdge"
+      },
+      {
+       "name": "Deathblade",
+       "name_id": "DA_Deathblade"
+      }
+     ],
+     "name": "Cinderling",
+     "star": 2,
+     "traits": [
+      {
+       "id": "DA_Riftbeast18",
+       "name": "Riftbeast"
+      },
+      {
+       "id": "DA_18_Hunter",
+       "name": "Hunter"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_18_Yorick",
+     "cost": 1,
+     "items": [
+      {
+       "name": "Adaptive Helm",
+       "name_id": "DA_AdaptiveHelm"
+      },
+      {
+       "name": "Sunfire Cape",
+       "name_id": "DA_SunfireCape"
+      },
+      {
+       "name": "Dragon's Claw",
+       "name_id": "DA_DragonsClaw"
+      }
+     ],
+     "name": "Yorick",
+     "star": 2,
+     "traits": [
+      {
+       "id": "DA_18_Blossom",
+       "name": "Blossom"
+      },
+      {
+       "id": "DA_Juggernaut18",
+       "name": "Juggernaut"
+      },
+      {
+       "id": "DA_18_Summoner",
+       "name": "Summoner"
+      }
+     ]
+    }
+   ],
+   "is_local": false,
+   "partner_group_id": 0,
+   "placement": 6,
+   "traits": [
+    {
+     "id": "DA_Juggernaut18",
+     "name": "Juggernaut",
+     "units": 3
+    },
+    {
+     "id": "DA_Riftbeast18",
+     "name": "Riftbeast",
+     "units": 3
+    },
+    {
+     "id": "DA_18_Summoner",
+     "name": "Summoner",
+     "units": 2
+    },
+    {
+     "id": "DA_18_Blossom",
+     "name": "Blossom",
+     "units": 1
+    },
+    {
+     "id": "DA_18_Defender",
+     "name": "Defender",
+     "units": 1
+    },
+    {
+     "id": "DA_18_Hunter",
+     "name": "Hunter",
+     "units": 1
+    },
+    {
+     "id": "DA_18_Inferno",
+     "name": "Inferno",
+     "units": 1
+    },
+    {
+     "id": "DA_Primal18",
+     "name": "Primal",
+     "units": 1
+    },
+    {
+     "id": "DA_18_Rapidfire",
+     "name": "Rapidfire",
+     "units": 1
+    }
+   ]
+  },
+  {
+   "augments": [],
+   "board": [
+    {
+     "character_id": "DA_18_Diana",
+     "cost": 3,
+     "items": [
+      {
+       "name": "Jeweled Gauntlet",
+       "name_id": "DA_JeweledGauntlet"
+      },
+      {
+       "name": "Tear Of The Goddess",
+       "name_id": "DA_Component_TearOfTheGoddess"
+      },
+      {
+       "name": "Deathblade",
+       "name_id": "DA_Deathblade"
+      }
+     ],
+     "name": "Diana",
+     "star": 2,
+     "traits": [
+      {
+       "id": "DA_18_Lunar",
+       "name": "Lunar"
+      },
+      {
+       "id": "DA_18_Slayer",
+       "name": "Ravager"
+      },
+      {
+       "id": "DA_18_Vanguard",
+       "name": "Vanguard"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_18_Hecarim",
+     "cost": 3,
+     "items": [
+      {
+       "name": "Flora Fatalis Emblem",
+       "name_id": "DA_18_EmblemFloraFatalis"
+      },
+      {
+       "name": "Protector's Vow",
+       "name_id": "DA_ProtectorsVow"
+      },
+      {
+       "name": "Spirit Visage",
+       "name_id": "DA_SpiritVisage"
+      }
+     ],
+     "name": "Hecarim",
+     "star": 2,
+     "traits": [
+      {
+       "id": "DA_18_Elderwood",
+       "name": "Elderwood"
+      },
+      {
+       "id": "DA_18_Vanguard",
+       "name": "Vanguard"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_18_Akali_AD",
+     "cost": 1,
+     "items": [
+      {
+       "name": "Hand Of Justice",
+       "name_id": "DA_HandOfJustice"
+      },
+      {
+       "name": "Recurve Bow",
+       "name_id": "DA_Component_RecurveBow"
+      }
+     ],
+     "name": "Akali",
+     "star": 2,
+     "traits": [
+      {
+       "id": "DA_18_Inferno",
+       "name": "Inferno"
+      },
+      {
+       "id": "DA_18_Adaptor",
+       "name": "Adaptor"
+      },
+      {
+       "id": "DA_18_Slayer",
+       "name": "Ravager"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_18_Ornn",
+     "cost": 1,
+     "items": [
+      {
+       "name": "Recurve Bow",
+       "name_id": "DA_Component_RecurveBow"
+      }
+     ],
+     "name": "Ornn",
+     "star": 2,
+     "traits": [
+      {
+       "id": "DA_18_Elderwood",
+       "name": "Elderwood"
+      },
+      {
+       "id": "DA_18_Defender",
+       "name": "Defender"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_18_Xayah",
+     "cost": 1,
+     "items": [],
+     "name": "Xayah",
+     "star": 2,
+     "traits": [
+      {
+       "id": "DA_18_Elderwood",
+       "name": "Elderwood"
+      },
+      {
+       "id": "DA_18_Fae",
+       "name": "Fae"
+      },
+      {
+       "id": "DA_18_Rapidfire",
+       "name": "Rapidfire"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_Lux18_Base",
+     "cost": 5,
+     "items": [],
+     "name": "Lux",
+     "star": 1,
+     "traits": [
+      {
+       "id": "DA_18_LuxUniqueTrait",
+       "name": "Avatar"
+      }
+     ]
+    }
+   ],
+   "is_local": false,
+   "partner_group_id": 0,
+   "placement": 7,
+   "traits": [
+    {
+     "id": "DA_18_Elderwood",
+     "name": "Elderwood",
+     "units": 3
+    },
+    {
+     "id": "DA_18_Slayer",
+     "name": "Ravager",
+     "units": 2
+    },
+    {
+     "id": "DA_18_Vanguard",
+     "name": "Vanguard",
+     "units": 2
+    },
+    {
+     "id": "DA_18_Adaptor",
+     "name": "Adaptor",
+     "units": 1
+    },
+    {
+     "id": "DA_18_LuxUniqueTrait",
+     "name": "Avatar",
+     "units": 1
+    },
+    {
+     "id": "DA_18_Defender",
+     "name": "Defender",
+     "units": 1
+    },
+    {
+     "id": "DA_18_Fae",
+     "name": "Fae",
+     "units": 1
+    },
+    {
+     "id": null,
+     "name": "Flora Fatalis",
+     "units": 1
+    },
+    {
+     "id": "DA_18_Inferno",
+     "name": "Inferno",
+     "units": 1
+    },
+    {
+     "id": "DA_18_Lunar",
+     "name": "Lunar",
+     "units": 1
+    },
+    {
+     "id": "DA_18_Rapidfire",
+     "name": "Rapidfire",
+     "units": 1
+    }
+   ]
+  },
+  {
+   "augments": [],
+   "board": [
+    {
+     "character_id": "DA_Krug18",
+     "cost": 3,
+     "items": [],
+     "name": "Krug",
+     "star": 2,
+     "traits": [
+      {
+       "id": "DA_Riftbeast18",
+       "name": "Riftbeast"
+      },
+      {
+       "id": "DA_18_Brawler",
+       "name": "Brawler"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_Murkwolf18",
+     "cost": 2,
+     "items": [
+      {
+       "name": "Chain Vest",
+       "name_id": "DA_Component_ChainVest"
+      }
+     ],
+     "name": "Murkwolf",
+     "star": 2,
+     "traits": [
+      {
+       "id": "DA_Riftbeast18",
+       "name": "Riftbeast"
+      },
+      {
+       "id": "DA_18_Slayer",
+       "name": "Ravager"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_18_Sentry",
+     "cost": 1,
+     "items": [
+      {
+       "name": "Last Whisper",
+       "name_id": "DA_LastWhisper"
+      },
+      {
+       "name": "Negatron Cloak",
+       "name_id": "DA_Component_NegatronCloak"
+      }
+     ],
+     "name": "Pebbles",
+     "star": 2,
+     "traits": [
+      {
+       "id": "DA_Riftbeast18",
+       "name": "Riftbeast"
+      },
+      {
+       "id": "DA_18_Invoker",
+       "name": "Invoker"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_18_Rakan",
+     "cost": 1,
+     "items": [
+      {
+       "name": "Gargoyle Stoneplate",
+       "name_id": "DA_GargoyleStoneplate"
+      },
+      {
+       "name": "Evenshroud",
+       "name_id": "DA_Evenshroud"
+      },
+      {
+       "name": "Striker's Flail",
+       "name_id": "DA_StrikersFlail"
+      }
+     ],
+     "name": "Rakan",
+     "star": 2,
+     "traits": [
+      {
+       "id": "DA_18_Fae",
+       "name": "Fae"
+      },
+      {
+       "id": "DA_Juggernaut18",
+       "name": "Juggernaut"
+      },
+      {
+       "id": "DA_18_Vanguard",
+       "name": "Vanguard"
+      }
+     ]
+    },
+    {
+     "character_id": "DA_CrimsonRaptor18",
+     "cost": 3,
+     "items": [
+      {
+       "name": "Sterak's Gage",
+       "name_id": "DA_SteraksGage"
+      },
+      {
+       "name": "Edge of Night",
+       "name_id": "DA_EdgeOfNight"
+      }
+     ],
+     "name": "Mama Beak",
+     "star": 1,
+     "traits": [
+      {
+       "id": "DA_Riftbeast18",
+       "name": "Riftbeast"
+      },
+      {
+       "id": "DA_18_Summoner",
+       "name": "Summoner"
+      },
+      {
+       "id": "DA_18_Rapidfire",
+       "name": "Rapidfire"
+      }
+     ]
+    }
+   ],
+   "is_local": false,
+   "partner_group_id": 0,
+   "placement": 8,
+   "traits": [
+    {
+     "id": "DA_Riftbeast18",
+     "name": "Riftbeast",
+     "units": 4
+    },
+    {
+     "id": "DA_18_Brawler",
+     "name": "Brawler",
+     "units": 1
+    },
+    {
+     "id": "DA_18_Fae",
+     "name": "Fae",
+     "units": 1
+    },
+    {
+     "id": "DA_18_Invoker",
+     "name": "Invoker",
+     "units": 1
+    },
+    {
+     "id": "DA_Juggernaut18",
+     "name": "Juggernaut",
+     "units": 1
+    },
+    {
+     "id": "DA_18_Rapidfire",
+     "name": "Rapidfire",
+     "units": 1
+    },
+    {
+     "id": "DA_18_Slayer",
+     "name": "Ravager",
+     "units": 1
+    },
+    {
+     "id": "DA_18_Summoner",
+     "name": "Summoner",
+     "units": 1
+    },
+    {
+     "id": "DA_18_Vanguard",
+     "name": "Vanguard",
+     "units": 1
+    }
+   ]
+  }
+ ],
+ "queue_id": 1090,
+ "queue_type": "NORMAL_TFT",
+ "schema": 1,
+ "set_core_name": "TFTSet18",
+ "set_number": null,
+ "source": "eog",
+ "source_route": "/lol-end-of-game/v1/tft-eog-stats"
+}
