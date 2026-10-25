@@ -360,6 +360,23 @@ def resolve_mode_key(health: dict, lcu_snapshot: dict | None) -> tuple[str, bool
     return (health.get("mode", "client"), False)
 
 
+_TFT_CONTEXT_INACTIVE = {"active": False, "phase": None, "queue_id": None, "source": None}
+
+
+def build_tft_context(mode_key: str, preflip_active: bool, lcu_snapshot: dict | None,
+                      lc: dict | None) -> dict:
+    """TFT-09: the /api/state ``tft_context`` block (docs/TFT_PROGRAM.md
+    section 4.1), computed by ``dashboard.routes_tft.tft_context`` from values
+    build_state already holds. Fail-soft: any failure serves the inactive
+    context and logs the raw error (never surfaced in the payload)."""
+    try:
+        from dashboard import routes_tft
+        return routes_tft.tft_context(mode_key, preflip_active, lcu_snapshot, lc)
+    except Exception as exc:  # noqa: BLE001 - /api/state must never fail on it
+        log.warning("tft_context unavailable: %s", exc)
+        return dict(_TFT_CONTEXT_INACTIVE)
+
+
 def apply_preflip_mirror(health: dict, mode_key: str, preflip_active: bool) -> dict:
     """Return a copy of ``health`` with the per-mode flag set when the
     s150 LCU pre-flip is the source of ``mode_key``.
@@ -1027,10 +1044,16 @@ def build_state() -> dict:
     det = suppress_live_envelope(det, _gate_health, preflip_active)
     _mark("b4_suppress")
 
+    tft_context = build_tft_context(mode_key, preflip_active, lcu_snapshot, lc)
+    _mark("tft_context")
+
     _warn_slow_stages(_stages)
 
     return {
         "mode_key": mode_key,
+        # TFT-09 (docs/TFT_PROGRAM.md section 4.1): the ONE server-side TFT
+        # context authority the TFT panes read (no second queue table in JS).
+        "tft_context": tft_context,
         "coach_source": coach_file,
         "health": {
             "alive":          health.get("alive"),

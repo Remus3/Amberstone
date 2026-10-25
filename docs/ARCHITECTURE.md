@@ -146,6 +146,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `dashboard/routes_spike_curve.py` | power-curve sparkline backend |
 | `dashboard/routes_spike_markers.py` | live power-spike markers backend |
 | `dashboard/routes_team_context.py` | GET /api/team-context + POST /api/team-context/refresh |
+| `dashboard/routes_tft.py` | TFT view API (live round, matches, match digest, icons, scouting, engine) + /api/state tft_context |
 | `dashboard/routes_vision_calibrator.py` | GET/POST vision-region calibrator (frame proxy + regions read/write + page) |
 | `dashboard/routes_ward_heat.py` | ward-coverage heat strip backend |
 | `web_dashboard.py` | :8888 HTTPS dashboard server entry |
