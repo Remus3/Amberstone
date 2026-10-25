@@ -8,13 +8,23 @@ with the phase string ("PreEndOfGame" after the TFT match, "Lobby" now). So
 saw EndOfGame and every capture fell through to the match-history fallback,
 and `LcuPregame.get_gameflow_phase` (lcu/lcu_pregame.py) could only fail.
 
-TFT, MEASURED: the LoL EOG routes (eog-stats-block, gameclient-eog-stats-block,
-champion-mastery-updates) 404 for TFT. The TFT document is
-`/lol-end-of-game/v1/tft-eog-stats`, served in PreEndOfGame / EndOfGame only
-(404 in Lobby, LCU_TFT_INVENTORY.md section 2); the TFT match-history route
-answers in any phase. The standalone TFT client gives RC no Live Client feed
-(QA D1), so the lifecycle game-end trigger may never fire for a TFT game:
-the collector's idle tick watches the LCU itself.
+TFT, MEASURED: eog-stats-block and champion-mastery-updates 404 for TFT. The
+TFT document is `/lol-end-of-game/v1/tft-eog-stats`, served in PreEndOfGame /
+EndOfGame only (404 in Lobby, LCU_TFT_INVENTORY.md section 2); the TFT
+match-history route answers in any phase. The standalone TFT client gives RC
+no Live Client feed (QA D1), so the lifecycle game-end trigger may never fire
+for a TFT game: the collector's idle tick watches the LCU itself.
+
+N4 (match-2 QA, ops/runtime/tft_qa/20261025-081234/QA_REPORT.md):
+`/lol-end-of-game/v1/gameclient-eog-stats-block` DOES serve TFT post-game (the
+listener saw it Created at game end with statsBlock.players n=8; a live GET in
+PreEndOfGame answered 200 with the game's id) - the collector asked for the
+misspelled `game-client-eog-stats-block`, which 404s "Invalid URI format". Its
+shape is the per-round TFTEoGStats.json document (docs/TFT_PROGRAM.md section
+0 item 2: statsBlock.players[] with isInteractable = local, ffaStanding,
+health, boardPieces {championName, starLevel, itemNames, price}). With the
+spelling fixed, a TFT block reached through the LoL path must go to the TFT
+store, never be saved as a Summoner's Rift match.
 
 Every LCU call here is stubbed; the stubs record the paths requested, and the
 tests assert GET routes only by those paths (the collector has no non-GET
@@ -359,6 +369,100 @@ def test_idle_tick_never_raises(pgc):
         raise RuntimeError("lcu exploded")
     c._lcu_get = boom
     c._idle_tick_guarded()            # must not raise
+
+
+# -- N4: the gameclient EOG block ----------------------------------------------
+
+def gameclient_block(game_id=GID):
+    """SYNTHETIC, keyed exactly as measured: the listener's shape of the
+    gameclient-eog-stats-block Create event at the match-2 end (top level
+    gameId / gameMode / isRanked / queueId / queueType / statsBlock;
+    statsBlock customAugmentContainer / gameLengthSeconds / players /
+    setCoreName; player keys incl. PUUID, playerId, riotIdGameName,
+    riotIdTagLine, summonerName, summonerIconID, companion*), with the
+    boardPieces keys from docs/TFT_PROGRAM.md section 0 item 2."""
+    def player(standing, local, pieces):
+        return {"PUUID": LOCAL_PUUID if local else "00000000-0000-0000-0000-000000000000",
+                "augments": [], "boardPieces": pieces,
+                "companionContentId": "c", "companionName": "pet", "companionSkinId": 1,
+                "eventPVEData": [], "eventSkillDeltas": [], "ffaStanding": standing,
+                "health": 96 if local else 0, "isInteractable": local,
+                "partnerGroupId": 0, "playbookItemId": 0, "playerId": 12345 + standing,
+                "riotIdGameName": f"player{standing - 1}", "riotIdTagLine": "TAG",
+                "summonerIconID": 7, "summonerName": f"player{standing - 1}"}
+    me = [{"championName": "DA_Draven18", "starLevel": 2, "price": 5,
+           "itemNames": ["DA_ThiefsGloves", "DA_18_EmblemFloraFatalis"]},
+          {"championName": "DA_18_Yorick", "starLevel": 2, "price": 1, "itemNames": []}]
+    other = [{"championName": "DA_18_Rakan", "starLevel": 1, "price": 2, "itemNames": []}]
+    return {"gameId": game_id, "gameMode": "TFT", "isRanked": False, "queueId": 1090,
+            "queueType": "NORMAL_TFT",
+            "statsBlock": {"customAugmentContainer": "", "gameLengthSeconds": 2050,
+                           "setCoreName": "TFTSet18",
+                           "players": [player(2, False, other), player(1, True, me)]}}
+
+
+def test_eog_block_route_is_spelled_as_the_live_client_serves_it(pgc):
+    c = _collector(pgc, {})
+    assert c._fetch_eog_stats_block() is None
+    assert "/lol-end-of-game/v1/gameclient-eog-stats-block" in c._lcu_get.calls
+    assert not any("game-client-eog" in p for p in c._lcu_get.calls)
+
+
+def test_no_python_file_requests_the_misspelled_eog_route():
+    hits = []
+    for path in _repo_walk.repo_files(patterns=("*.py",)):
+        rel = _repo_walk.relative_posix(path)
+        if rel.startswith("tests/"):
+            continue
+        try:
+            vals = list(_route_literals(path.read_text(encoding="utf-8")))
+        except (OSError, SyntaxError, UnicodeDecodeError, ValueError):
+            continue
+        if any("game-client-eog-stats-block" in v for v in vals):
+            hits.append(rel)
+    assert hits == []
+
+
+def test_a_tft_block_on_the_lol_path_goes_to_the_tft_store_not_sr(pgc, tmp_path):
+    """The standalone client gives no game state, so the trigger hint can be
+    CLASSIC for a TFT game. The fixed route then answers with TFT data."""
+    import sqlite3
+    block = gameclient_block()
+    c = _collector(pgc, {"/lol-end-of-game/v1/gameclient-eog-stats-block": block,
+                         "/lol-gameflow/v1/session": SESSION_TFT})
+    pins = []
+    c._publish_game_end_pin = lambda *a, **k: pins.append(a)
+    assert c._capture_from_eog("CLASSIC") is True
+    assert pins == [], "a TFT game must not pin the LoL rewind writer"
+    conn = sqlite3.connect(str(tmp_path / "pg.db"))
+    try:
+        n = conn.execute("SELECT COUNT(*) FROM sr_matches").fetchone()[0]
+    finally:
+        conn.close()
+    assert n == 0, "a TFT game was saved as a Summoner's Rift match"
+    rec = tp.load(GID)
+    assert rec["local_placement"] == 1 and rec["local_hp"] == 96
+
+
+def test_tft_capture_falls_back_to_the_gameclient_block(pgc, tmp_path):
+    import sqlite3
+
+    from core import raw_documents as rd
+    c = _collector(pgc, {"/lol-end-of-game/v1/gameclient-eog-stats-block": gameclient_block(),
+                         "/lol-gameflow/v1/session": SESSION_TFT})
+    assert c._capture_tft_eog() is True
+    calls = c._lcu_get.calls
+    assert calls.index(tp.EOG_PATH) < calls.index(
+        "/lol-end-of-game/v1/gameclient-eog-stats-block")
+    rec = tp.load(GID)
+    assert rec["players"][0]["board"][0]["name"] == "Draven"
+    assert rec["source_route"] == tp.GAMECLIENT_EOG_PATH
+    conn = sqlite3.connect(str(tmp_path / "pg.db"))
+    try:
+        kept = rd.load(conn, str(GID), "eog")
+    finally:
+        conn.close()
+    _assert_no_identity(kept)
 
 
 def test_run_loop_idle_wait_is_short():

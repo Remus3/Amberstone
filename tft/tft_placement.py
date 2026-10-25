@@ -10,6 +10,10 @@ normal game (queue 1090):
                 EndOfGame; once it is back in Lobby it answers 404 "Game Client
                 stats not found". Carries the local player's HP and the display
                 names of units / items / traits.
+  GAMECLIENT_EOG_PATH  /lol-end-of-game/v1/gameclient-eog-stats-block
+                The game client's own EOG block (match-2 QA N4): also TFT,
+                post-game only, the TFTEoGStats.json document shape. The
+                fallback when tft-eog-stats has nothing.
   HISTORY_PATH  /lol-match-history/v1/products/tft/{puuid}/matches
                 The DURABLE path. 200 in any phase, richer: per-player level,
                 gold left, last round, elimination time and trait tiers. Used as
@@ -66,7 +70,13 @@ SOURCE_HISTORY = "history"
 _SOURCES = (SOURCE_EOG, SOURCE_HISTORY)
 
 EOG_PATH = "/lol-end-of-game/v1/tft-eog-stats"
+# N4 (match-2 QA): the game client's own EOG block also serves TFT post-game.
+# Same document as the standalone client's per-round TFTEoGStats.json
+# (statsBlock.players[], isInteractable = local, boardPieces championName /
+# starLevel / itemNames / price; docs/TFT_PROGRAM.md section 0 item 2).
+GAMECLIENT_EOG_PATH = "/lol-end-of-game/v1/gameclient-eog-stats-block"
 HISTORY_PATH = "/lol-match-history/v1/products/tft/{puuid}/matches?begin=0&count={count}"
+_HISTORY_ROUTE = "/lol-match-history/v1/products/tft/{puuid}/matches"
 
 _ROOT = Path(__file__).parent.parent
 DEFAULT_STORE_REL = "data/tft_matches"
@@ -123,7 +133,13 @@ def display_from_id(raw: str) -> str:
     s = re.sub(r"^\d+_", "", s)
     s = re.sub(r"^(Item_|Augment_)", "", s)
     m = re.match(r"[A-Za-z]+", s)
-    return _split_camel(m.group(0)) if m else s
+    if not m:
+        return s
+    word = m.group(0)
+    # DA_18_EmblemFloraFatalis -> "Flora Fatalis Emblem" (the EOG display form)
+    if word.startswith("Emblem") and len(word) > 6:
+        return _split_camel(word[6:]) + " Emblem"
+    return _split_camel(word)
 
 
 # Keys that identify a person in either LCU document (and the history route's
@@ -132,6 +148,9 @@ IDENTITY_KEYS = frozenset({
     "puuid", "summonerId", "summonerName", "riotIdGameName", "riotIdTagLine",
     "riotIdTagline", "iconId", "companion", "active_puuid", "accountId",
     "playerId",
+    # gameclient-eog-stats-block player keys (listener shape, match-2 QA)
+    "PUUID", "summonerIconID", "companionContentId", "companionName",
+    "companionSkinId",
 })
 
 
@@ -164,16 +183,27 @@ def session_game_id(session) -> Optional[int]:
 
 
 def session_is_tft(session) -> bool:
-    """True when the session's queue or map game mode is TFT."""
+    """True when the session's queue or map game mode is TFT, or (no mode
+    string) its queue id maps to TFT through core.queue_modes - the same
+    queue table tft/tft_standalone.lcu_tft_verdict uses in game."""
     if not isinstance(session, dict):
         return False
     modes = []
+    queue = {}
     gd = session.get("gameData")
     if isinstance(gd, dict) and isinstance(gd.get("queue"), dict):
-        modes.append(gd["queue"].get("gameMode"))
+        queue = gd["queue"]
+        modes.append(queue.get("gameMode"))
     if isinstance(session.get("map"), dict):
         modes.append(session["map"].get("gameMode"))
-    return any(isinstance(m, str) and m.upper() == "TFT" for m in modes)
+    modes = [m for m in modes if isinstance(m, str) and m]
+    if modes:
+        return any(m.upper() == "TFT" for m in modes)
+    try:
+        from core.queue_modes import mode_key_from_queue_id
+        return mode_key_from_queue_id(queue.get("id")) == "tft"
+    except Exception:  # noqa: BLE001
+        return False
 
 
 def history_path(puuid: str, count: int = 5) -> str:
@@ -249,10 +279,23 @@ def _augments(raw) -> list:
     return out
 
 
-def _header(source: str, game_id: int, now: Optional[float]) -> dict:
+def _header(source: str, game_id: int, now: Optional[float], route: str) -> dict:
     ts = time.time() if now is None else float(now)
-    return {"schema": SCHEMA_VERSION, "source": source, "game_id": game_id,
-            "captured_at": _stamp(ts), "captured_at_unix": ts}
+    return {"schema": SCHEMA_VERSION, "source": source, "source_route": route,
+            "game_id": game_id, "captured_at": _stamp(ts), "captured_at_unix": ts}
+
+
+def is_tft_doc(doc) -> bool:
+    """True when an end-of-game document is a TFT one (gameMode or
+    queueType says so) - the guard that keeps a TFT block reached through the
+    LoL route list out of the Summoner's Rift tables."""
+    if not isinstance(doc, dict):
+        return False
+    for k in ("gameMode", "queueType"):
+        v = doc.get(k)
+        if isinstance(v, str) and "TFT" in v.upper():
+            return True
+    return False
 
 
 def parse_eog(doc, *, now: Optional[float] = None) -> Optional[dict]:
@@ -288,7 +331,7 @@ def parse_eog(doc, *, now: Optional[float] = None) -> Optional[dict]:
     local_placement = (_placement(src.get("ffaStanding")) or _placement(src.get("rank"))
                        if src else None)
     hp = _int(src.get("health")) if src else None
-    rec = _header(SOURCE_EOG, gid, now)
+    rec = _header(SOURCE_EOG, gid, now, EOG_PATH)
     rec.update({
         "ended_at": None, "ended_at_unix": None,
         "game_length_s": _int(doc.get("gameLength")),
@@ -299,6 +342,73 @@ def parse_eog(doc, *, now: Optional[float] = None) -> Optional[dict]:
         "set_number": None,
         "game_type": "",
         "local_placement": local_placement,
+        "local_hp": hp if hp is not None and 0 <= hp <= 100 else None,
+        "lobby_size": len(players),
+        "augments_recorded": any(p["augments"] for p in players),
+        "players": players,
+    })
+    return rec
+
+
+# -- gameclient EOG block parse (N4) --------------------------------------------
+
+def _gameclient_unit(raw) -> Optional[dict]:
+    if not isinstance(raw, dict):
+        return None
+    cid = _str(raw.get("championName"))
+    if not cid:
+        return None
+    return {"character_id": cid,
+            "name": display_from_id(cid),
+            "star": _int(raw.get("starLevel")),
+            "cost": _int(raw.get("price")),
+            "items": [{"name_id": _str(n), "name": display_from_id(n)}
+                      for n in _list(raw.get("itemNames")) if _str(n)],
+            "traits": []}
+
+
+def parse_gameclient_eog(doc, *, now: Optional[float] = None) -> Optional[dict]:
+    """Sanitised record from a gameclient-eog-stats-block TFT document, or
+    None. Units carry no traits here, so per-player traits stay [] (the
+    history record supplies the tiers on merge) rather than partial counts."""
+    if not isinstance(doc, dict):
+        return None
+    gid = _int(doc.get("gameId"))
+    sb = doc.get("statsBlock")
+    raw_players = sb.get("players") if isinstance(sb, dict) else None
+    if not gid or gid <= 0 or not isinstance(raw_players, list) or not raw_players:
+        return None
+    players, local_raw = [], None
+    for p in raw_players:
+        if not isinstance(p, dict):
+            continue
+        local = p.get("isInteractable") is True
+        if local and local_raw is None:
+            local_raw = p
+        players.append({
+            "placement": _placement(p.get("ffaStanding")),
+            "is_local": local,
+            "partner_group_id": _int(p.get("partnerGroupId")) or 0,
+            "board": [u for u in (_gameclient_unit(x)
+                                  for x in _list(p.get("boardPieces"))) if u],
+            "traits": [],
+            "augments": _augments(p.get("augments")),
+        })
+    if not players:
+        return None
+    players.sort(key=lambda p: (p["placement"] is None, p["placement"] or 0))
+    hp = _int(local_raw.get("health")) if local_raw else None
+    rec = _header(SOURCE_EOG, gid, now, GAMECLIENT_EOG_PATH)
+    rec.update({
+        "ended_at": None, "ended_at_unix": None,
+        "game_length_s": _int(sb.get("gameLengthSeconds")),
+        "queue_id": _int(doc.get("queueId")),
+        "queue_type": _str(doc.get("queueType")),
+        "is_ranked": doc.get("isRanked") if isinstance(doc.get("isRanked"), bool) else None,
+        "set_core_name": _str(sb.get("setCoreName")),
+        "set_number": None,
+        "game_type": "",
+        "local_placement": _placement(local_raw.get("ffaStanding")) if local_raw else None,
         "local_hp": hp if hp is not None and 0 <= hp <= 100 else None,
         "lobby_size": len(players),
         "augments_recorded": any(p["augments"] for p in players),
@@ -377,7 +487,7 @@ def parse_history_game(game, local_puuid: str, *,
     if dt and dt > 10**11:
         ended = dt / 1000.0
     length = j.get("game_length")
-    rec = _header(SOURCE_HISTORY, gid, now)
+    rec = _header(SOURCE_HISTORY, gid, now, _HISTORY_ROUTE)
     rec.update({
         "ended_at": _stamp(ended) if ended else None,
         "ended_at_unix": ended,

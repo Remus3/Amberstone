@@ -885,6 +885,11 @@ class PostgameCollector:
         eog = self._fetch_eog_stats_block()
         if not eog:
             return False
+        if _tft_placement.is_tft_doc(eog):
+            # N4: the hint can say CLASSIC for a standalone-client TFT game (no
+            # Live Client state). A TFT block is never saved as an SR match
+            # and never pins the LoL rewind writer.
+            return self._capture_tft_eog(doc_hint=eog)
         self._publish_game_end_pin(eog, mode_hint=game_mode)
         self._attach_moment_marks(eog)
         _save_eog(eog, game_mode, _ITEM_MAP, _RUNE_MAP)
@@ -912,12 +917,19 @@ class PostgameCollector:
             self.__dict__["_tft"] = st
         return st
 
-    def _capture_tft_eog(self, session=None, require_session: bool = False) -> bool:
-        """Fast path: read /lol-end-of-game/v1/tft-eog-stats, check it belongs
-        to the gameflow session's game, store the sanitised record. True when
-        the game's EOG record is (now) stored."""
+    def _capture_tft_eog(self, session=None, require_session: bool = False,
+                         doc_hint=None) -> bool:
+        """Fast path: read /lol-end-of-game/v1/tft-eog-stats (else the game
+        client's gameclient-eog-stats-block, N4 - `doc_hint` when the caller
+        already holds it), check it belongs to the gameflow session's game,
+        store the sanitised record. True when the game's EOG record is (now)
+        stored."""
         doc = self._lcu_get(_tft_placement.EOG_PATH)
         rec = _tft_placement.parse_eog(doc)
+        if rec is None:
+            doc = (doc_hint if doc_hint is not None
+                   else self._lcu_get(_tft_placement.GAMECLIENT_EOG_PATH))
+            rec = _tft_placement.parse_gameclient_eog(doc)
         if rec is None:
             _log.debug("postgame: TFT EOG document unavailable")
             return False
@@ -1377,9 +1389,13 @@ class PostgameCollector:
 
     def _fetch_eog_stats_block(self) -> Optional[dict]:
         """Try the several EOG endpoint variants Riot has used across versions."""
+        # N4 (match-2 QA): the second route was spelled
+        # "game-client-eog-stats-block", which 404s "Invalid URI format"; the
+        # live client serves gameclient-eog-stats-block (it carries TFT too -
+        # _capture_from_eog routes a TFT block to the TFT store).
         endpoints = [
             "/lol-end-of-game/v1/eog-stats-block",
-            "/lol-end-of-game/v1/game-client-eog-stats-block",
+            _tft_placement.GAMECLIENT_EOG_PATH,
             "/lol-end-of-game/v1/champion-mastery-updates",
         ]
         for ep in endpoints:

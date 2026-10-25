@@ -335,6 +335,9 @@ def test_session_helpers():
     assert tp.session_is_tft({"gameData": {"queue": {"gameMode": "CLASSIC"}},
                               "map": {"gameMode": "CLASSIC"}}) is False
     assert tp.session_is_tft({"map": {"gameMode": "TFT"}}) is True
+    # No mode string: the shared queue table decides (core/queue_modes.py 1090).
+    assert tp.session_is_tft({"gameData": {"queue": {"id": 1090}}}) is True
+    assert tp.session_is_tft({"gameData": {"queue": {"id": 420}}}) is False
     for junk in (None, [], {}, {"gameData": "x"}, {"gameData": {"gameId": "a"}}):
         assert tp.session_game_id(junk) is None
         assert tp.session_is_tft(junk) is False
@@ -410,7 +413,71 @@ def test_scrub_raw_drops_every_identity_and_keeps_the_boards():
     assert raw["players"][0]["puuid"], "the input is not mutated"
 
 
+# -- N4: the gameclient EOG block (same document as TFTEoGStats.json) ----------
+
+def _block():
+    from tests.test_postgame_tft_capture_rm616 import gameclient_block
+    return gameclient_block()
+
+
+def test_gameclient_block_parses_with_the_interactable_player_as_local():
+    rec = tp.parse_gameclient_eog(_block(), now=7.0)
+    assert rec["source"] == tp.SOURCE_EOG
+    assert rec["source_route"] == tp.GAMECLIENT_EOG_PATH
+    assert rec["game_id"] == 1000000001
+    assert rec["game_length_s"] == 2050
+    assert rec["set_core_name"] == "TFTSet18" and rec["queue_id"] == 1090
+    assert rec["local_placement"] == 1 and rec["local_hp"] == 96
+    assert [p["placement"] for p in rec["players"]] == [1, 2]
+    assert [p["is_local"] for p in rec["players"]] == [True, False]
+    draven = rec["players"][0]["board"][0]
+    assert (draven["character_id"], draven["name"], draven["star"], draven["cost"]) == (
+        "DA_Draven18", "Draven", 2, 5)
+    assert [i["name_id"] for i in draven["items"]] == [
+        "DA_ThiefsGloves", "DA_18_EmblemFloraFatalis"]
+    assert draven["items"][1]["name"] == "Flora Fatalis Emblem"
+    # Units carry no traits in this document: no partial counts are invented.
+    assert rec["players"][0]["traits"] == []
+    assert "health" not in rec["players"][1]
+    _assert_anonymous(rec)
+
+
+def test_gameclient_block_without_a_local_flag_has_no_local_player():
+    b = _block()
+    for p in b["statsBlock"]["players"]:
+        p["isInteractable"] = False
+    rec = tp.parse_gameclient_eog(b)
+    assert rec["local_placement"] is None and rec["local_hp"] is None
+
+
+@pytest.mark.parametrize("bad", [None, {}, {"gameId": 5, "statsBlock": 5},
+                                 {"gameId": 5, "gameMode": "TFT",
+                                  "statsBlock": {"players": []}},
+                                 {"gameId": 0, "statsBlock": {"players": [{}]}}])
+def test_gameclient_block_rejects_junk(bad):
+    assert tp.parse_gameclient_eog(bad) is None
+
+
+def test_is_tft_doc():
+    assert tp.is_tft_doc(_block()) is True
+    assert tp.is_tft_doc(_eog()) is True                    # queueType NORMAL_TFT
+    assert tp.is_tft_doc({"gameId": 1, "gameMode": "CLASSIC", "teams": []}) is False
+    assert tp.is_tft_doc(None) is False
+
+
+def test_scrub_raw_covers_the_gameclient_identity_keys():
+    out = tp.scrub_raw(_block())
+    assert not set(_walk_keys(out)) & set(tp.IDENTITY_KEYS)
+    for k in ("PUUID", "summonerIconID", "companionContentId", "companionName",
+              "companionSkinId", "playerId"):
+        assert k in tp.IDENTITY_KEYS
+    blob = json.dumps(out)
+    assert LOCAL_PUUID not in blob and "player0" not in blob
+    assert "DA_Draven18" in blob
+
+
 def test_display_from_id():
+    assert tp.display_from_id("DA_18_EmblemFloraFatalis") == "Flora Fatalis Emblem"
     assert tp.display_from_id("DA_18_Yorick") == "Yorick"
     assert tp.display_from_id("DA_Gromp18_AP") == "Gromp"
     assert tp.display_from_id("DA_FloraFatalis18") == "Flora Fatalis"
