@@ -18,7 +18,7 @@ BLOCKED  G5-06 waits on RC running with RC_ARENA_STATE_DEBOUNCE=1 (operator / me
 - `/api/state`: `mode_key='client'`, `liveclient` empty, LCU phase `None` at 01:43, 01:47, 01:48 and before the commit.
 - health.json pid 18164 alive, last_reload_ok True.
 
-## Prep shipped (Tier-0 docs, `e957bcae7`)
+## Prep shipped (Tier-0 docs, `0005c494f`, rebased from `e957bcae7`)
 
 1. **G5-06** (`RC_ARENA_STATE_DEBOUNCE` DEFAULT-ON). The replay alternative has no input. There is no Arena
    coach replay tool, none of the 15 retained day logs has an Arena coach line, and
@@ -34,8 +34,10 @@ BLOCKED  G5-06 waits on RC running with RC_ARENA_STATE_DEBOUNCE=1 (operator / me
    in-game value, so the deciding headless read is CommunityDragon 16.21 game data (RM-871 step 1,
    mandatory). Filed as a "Not actually live-gated" CANDIDATE, plus a one-glance tooltip cross-check.
 3. The "Not actually live-gated" debounce entry is marked NOT TRUE AT HEAD for both flags.
-4. RM-871 filed in BACKLOG + ROADMAP: seed 444644 in `_item_general_dr.py` once CommunityDragon confirms.
-   RM-870 is allocated by the main session and not yet pushed. LEDGER 1831. Next free id RM-872.
+4. RM-871 filed in BACKLOG: seed 444644 in `_item_general_dr.py` once CommunityDragon confirms. ROADMAP
+   indexes it in the gated lane's RM-867 line, because ROADMAP sat 16 bytes under its 81920-byte budget
+   (`tests/test_doc_size_budget.py` went red on a separate line). LEDGER 1834 (renumbered from 1831 at the
+   rebase over the batch E merger's 1831-1833). Next free id RM-872.
 
 ## Gates
 
@@ -44,13 +46,17 @@ BLOCKED  G5-06 waits on RC running with RC_ARENA_STATE_DEBOUNCE=1 (operator / me
   the FAIL clause waited on gates that log nothing, and the CANDIDATE wording presented a source rule as
   the in-game value. Every correction was adopted and its new cites spot-checked before the commit.
 - Doc guards: the 38 test files citing the touched docs plus `test_rm_id_registry_drift.py` and
-  `test_roadmap_rm_ids_unique.py`: "746 passed, 295 subtests passed", EXIT=0.
+  `test_roadmap_rm_ids_unique.py`: "746 passed, 295 subtests passed", EXIT=0 before the rebase. The first
+  run after the rebase gave "1 failed, 745 passed" (`test_roadmap_md_under_budget`, 82157 > 81920). After
+  the ROADMAP fold: "746 passed, 295 subtests passed", EXIT=0.
 - Added lines: 0 non-ASCII, 0 CR, no machine path / host / address / email.
 
 ## Merger follow-ups
 
-- The main session's unpushed RM-870 work also moves the `docs/DS_SWEEP_TRACKER.md` next-free pin and uses
-  LEDGER numbers from 1829 up. On its rebase, keep both entries and renumber if it also took RM-871 or LEDGER 1831.
+- RM-870 landed on origin during this cycle (`3ee954531`, LEDGER 1831-1833). The lane rebased over it,
+  so RM-871 and LEDGER 1834 are free on origin at push time.
+- ROADMAP has 9 bytes of headroom (81911 of 81920). The next filing from any lane needs a size-budget
+  relocation to `docs/ROADMAP_HISTORY.md` (a merger act).
 - A stray scratch write happened this cycle and was undone: a pytest output file landed briefly in the
   main checkout at `ops/loop/reports/_unused` (a relative-path mistake). It was the lane's own file,
   created at 02:01, and was removed within the same minute. Nothing else in the main checkout was touched.
