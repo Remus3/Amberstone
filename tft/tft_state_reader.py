@@ -1,6 +1,7 @@
 """
 tft/tft_state_reader.py - Riot Live Client API reader for TFT.
-Variant detection via mapNumber (22=Double Up). Stage/round from OCR (free),
+Variant detection via queue id / mode strings (map 22 is every TFT game, not
+Double Up - S134). Stage/round from OCR (free),
 else the round clock (observed round starts from the standalone per-round
 file, S134), with the time table as the last fallback.
 """
@@ -66,6 +67,25 @@ def _time_table(set_number=None):
     """The gameTime -> round table for a set: Set 18's measured table, else the
     legacy Set 17 calibration (the only table for any other set)."""
     return _TIME_TO_ROUND_SET18 if set_number == 18 else _TIME_TO_ROUND
+
+
+def time_table(set_number=None):
+    """The set-aware gameTime -> round table for other modules (S134): the
+    resolved set's (tft/tft_set.py resolve_set) when set_number is None.
+    _TIME_TO_ROUND keeps its name and meaning (the Set 17 calibration) for
+    readers that import it directly (core/tft_stage_gate.py, RM-615)."""
+    if set_number is None:
+        try:
+            from tft import tft_set
+            set_number = tft_set.resolve_set()
+        except Exception:  # noqa: BLE001
+            set_number = None
+    return _time_table(set_number)
+
+
+# TFT queues that are Double Up (lol-game-queues, measured 2026-10-25:
+# 1160 "Double Up", assetMutator TFT_PAIRS). Not map 22: that is every TFT game.
+DOUBLE_UP_QUEUES = frozenset({1160})
 
 
 def _estimate_round(t, set_number=None):
@@ -272,9 +292,13 @@ class TftStateReader:
         if not TftStateReader._variant_logged:
             logger.info("TFT variant: terrain=%s mode=%s map=%s num=%s",terrain,mode,map_name,map_num)
             TftStateReader._variant_logged=True
-        # mapNumber 22 = Double Up (PBE and live)
-        if map_num == 22 or "map22" in map_name:
-            return "double_up"
+        # S134: map 22 is the STANDARD TFT map (both QA games: queue 1090
+        # NORMAL_TFT on map 22), so it says nothing about Double Up; the old
+        # "mapNumber 22 = Double Up" rule put every normal game in Double Up
+        # mode. Double Up is its own queue (DOUBLE_UP_QUEUES).
+        qid = gd.get("queueId")
+        if isinstance(qid, str) and qid.strip().isdigit(): qid = int(qid.strip())
+        if qid in DOUBLE_UP_QUEUES and not isinstance(qid, bool): return "double_up"
         if "turbo" in terrain or "turbo" in mode: return "hyper_roll"
         if "double" in terrain or "duo" in terrain or "pairs" in mode or "double" in map_name or "doubleup" in mode: return "double_up"
         if "hyperroll" in terrain or "hyperroll" in mode: return "hyper_roll"
