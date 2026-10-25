@@ -32,8 +32,16 @@ import pytest
 
 from core import tls_policy
 from tests import _repo_walk
+from tests._module_view import bind_module_view
 
 _REPO = Path(__file__).resolve().parents[1]
+
+
+class _NoCertChainContext(ssl.SSLContext):
+    """A real SSLContext whose cert load succeeds with no file on disk."""
+
+    def load_cert_chain(self, *a, **k):
+        return None
 
 # The seven RM-752 sites (BACKLOG "Session 120 filings"), by file and the
 # factory each must call (count = number of contexts the file builds).
@@ -100,8 +108,11 @@ def floor_13(monkeypatch):
     (TLSv1_2) is distinguishable from a site that follows the constant, and
     let load_cert_chain succeed without a certificate on disk."""
     monkeypatch.setattr(tls_policy, "TLS_MIN_VERSION", ssl.TLSVersion.TLSv1_3)
-    monkeypatch.setattr(ssl.SSLContext, "load_cert_chain",
-                        lambda self, *a, **k: None)
+    # The contexts tls_policy builds skip the cert load: its OWN `ssl` name
+    # hands out a subclass, never the shared ssl.SSLContext every other
+    # thread's context inherits load_cert_chain from (RM-880).
+    bind_module_view(monkeypatch, tls_policy, "ssl",
+                     SSLContext=_NoCertChainContext)
     return ssl.TLSVersion.TLSv1_3
 
 

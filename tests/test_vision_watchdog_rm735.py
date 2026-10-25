@@ -32,7 +32,7 @@ from unittest import mock
 
 import pytest
 
-from tests._module_view import bind_subprocess
+from tests._module_view import bind_subprocess, bind_which
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -386,8 +386,9 @@ class RealSideEffects(unittest.TestCase):
     def test_capture_is_skipped_without_py_spy(self) -> None:
         vw = _wd()
         run = mock.MagicMock()
-        with mock.patch.object(vw.shutil, "which", return_value=None), \
-                pytest.MonkeyPatch.context() as mp:
+        with pytest.MonkeyPatch.context() as mp:
+            # vw's OWN shutil only (RM-880), never the shared module's `which`.
+            bind_which(mp, vw, lambda *_a, **_k: None)
             bind_subprocess(mp, vw, run=run)
             self.assertIsNone(vw.capture_stack(1234, REPO))
         run.assert_not_called()

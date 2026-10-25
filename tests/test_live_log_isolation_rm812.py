@@ -257,13 +257,14 @@ def test_an_ephemeral_spawn_writes_its_logs_under_the_suite_root(monkeypatch):
     from agents import _supervisor_ephemeral as eph
     from agents.supervisor import spawn_ephemeral_llm
     from ops.loop import fleet_route
-    from tests._module_view import bind_subprocess
+    from tests._module_view import bind_subprocess, bind_which
 
     def _fake_run(cmd, **kw):
         return subprocess.CompletedProcess(args=cmd, returncode=0, stdout="{}", stderr="")
 
     task_id = f"t-rm812-{uuid.uuid4().hex[:8]}"
-    monkeypatch.setattr(eph.shutil, "which", lambda name: "/fake/claude")
+    # eph's OWN shutil only (RM-880), never the shared module's `which`.
+    bind_which(monkeypatch, eph, lambda name: "/fake/claude")
     for mod in (eph, sys.modules["agents.supervisor"], fleet_route, fleet_route.kit()):
         bind_subprocess(monkeypatch, mod, run=_fake_run)
     # Agent 7 has a real charter and writes no failure stub (as in

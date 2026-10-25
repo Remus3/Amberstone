@@ -27,7 +27,7 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from tests._module_view import bind_subprocess  # noqa: E402
+from tests._module_view import bind_module_view, bind_subprocess  # noqa: E402
 from tools import inbox_responder_procs as procs  # noqa: E402
 
 MODULE_REL = "tools/inbox_responder_procs.py"
@@ -259,7 +259,8 @@ def test_kill_budget_defaults_to_the_per_cycle_allowance():
 
 
 def test_kill_tree_on_nt_runs_taskkill_with_the_flag_and_a_timeout(monkeypatch):
-    monkeypatch.setattr(procs.os, "name", "nt")
+    # procs' OWN `os` only (RM-880), never the shared module's `os.name`.
+    bind_module_view(monkeypatch, procs, "os", name="nt")
     seen = {}
 
     def fake_run(argv, **kwargs):
@@ -276,7 +277,7 @@ def test_kill_tree_on_nt_runs_taskkill_with_the_flag_and_a_timeout(monkeypatch):
 
 
 def test_kill_tree_swallows_a_taskkill_failure(monkeypatch):
-    monkeypatch.setattr(procs.os, "name", "nt")
+    bind_module_view(monkeypatch, procs, "os", name="nt")
 
     def blow_up(argv, **kwargs):
         raise OSError("taskkill is missing")
@@ -286,9 +287,11 @@ def test_kill_tree_swallows_a_taskkill_failure(monkeypatch):
 
 
 def test_kill_tree_off_nt_signals_the_process_group(monkeypatch):
-    monkeypatch.setattr(procs.os, "name", "posix")
     seen = []
-    monkeypatch.setattr(procs.os, "killpg", lambda pid, sig: seen.append((pid, sig)), raising=False)
+    # procs' OWN `os` only (RM-880): a view with `name` and `killpg` (absent
+    # on nt) set, never the shared module every other thread reads.
+    bind_module_view(monkeypatch, procs, "os", name="posix",
+                     killpg=lambda pid, sig: seen.append((pid, sig)))
 
     procs.kill_tree(555)
 

@@ -30,9 +30,23 @@ test onto these helpers:
   thread and every thread started after it get the fake - including a thread
   a leftover server starts later (a per-request handler thread), which is the
   one gap a module view does not have; prefer a view wherever one exists.
+
+RM-880 widened the guard to `os.name` / `os.kill` / `os.killpg`,
+`os.path.exists|isfile|isdir`, `shutil.which` and two class attributes:
+
+- `bind_module_view(monkeypatch, mod, "os", name="posix", killpg=fake)` for
+  MOD's own `os`; `bind_which(monkeypatch, mod, fake)` for its `shutil.which`;
+  `bind_os_path(monkeypatch, mod, exists=fake)` for its `os.path` (a view of
+  `os` whose `path` is a view of `ntpath` / `posixpath`).
+- A class attribute (`socketserver.BaseServer.serve_forever`,
+  `ssl.SSLContext.load_cert_chain`) is faked on the class the code under test
+  builds - its own subclass, or a subclass handed in through a view of its
+  module - never on the shared base every other instance inherits from.
 """
 from __future__ import annotations
 
+import os
+import shutil
 import socket
 import subprocess
 import sys
@@ -98,8 +112,12 @@ def _root(obj):
     return obj._real if isinstance(obj, ModuleView) else obj
 
 
-def bind_module_view(monkeypatch, module, name: str, **overrides) -> ModuleView:
-    """Rebind MODULE.<NAME> (a module it imported) to a view with OVERRIDES."""
+def bind_module_view(monkeypatch, module, name: str, /,
+                     **overrides) -> ModuleView:
+    """Rebind MODULE.<NAME> (a module it imported) to a view with OVERRIDES.
+
+    The leading parameters are positional-only, so an override may itself be
+    called `name` (`bind_module_view(mp, mod, "os", name="nt")`, RM-880)."""
     real = getattr(module, name)
     assert isinstance(real, types.ModuleType), f"{module.__name__}.{name} is not a module"
     view = ModuleView(real, **overrides)
@@ -160,6 +178,27 @@ def bind_subprocess(monkeypatch, module, **overrides) -> int:
 def bind_urlopen(monkeypatch, module, fake) -> int:
     """MODULE's own `urllib.request.urlopen` only; see bind_stdlib."""
     return bind_stdlib(monkeypatch, module, urllib.request, urlopen=fake)
+
+
+def bind_which(monkeypatch, module, fake) -> int:
+    """MODULE's own `shutil.which` only (RM-880); see bind_stdlib."""
+    return bind_stdlib(monkeypatch, module, shutil, which=fake)
+
+
+def bind_os_path(monkeypatch, module, **overrides) -> ModuleView:
+    """MODULE's own `os.path.<name>` only (RM-880).
+
+    `os.path` is `ntpath` / `posixpath`, a module of its own, so bind_stdlib
+    cannot reach it through `os`: MODULE's `os` becomes a view whose `path` is
+    a view of the real (or already-viewed) `os.path` with OVERRIDES.
+    """
+    assert overrides, "nothing to fake"
+    current = getattr(module, "os", None)
+    assert isinstance(current, types.ModuleType) and _root(current) is os, (
+        f"{getattr(module, '__name__', module)!r} does not resolve the os "
+        "module as `os`")
+    return bind_module_view(monkeypatch, module, "os",
+                            path=ModuleView(current.path, **overrides))
 
 
 def this_thread_only(fake, real):

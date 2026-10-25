@@ -56,7 +56,7 @@ from agents import _supervisor_ephemeral as eph
 from agents import supervisor as sup_mod
 from agents.supervisor import Supervisor
 from tests._asyncio_isolation import run_coro as _run_coro
-from tests._module_view import bind_subprocess
+from tests._module_view import bind_subprocess, bind_which
 from tests._replace_faults import scoped_fs_fault
 
 
@@ -272,10 +272,12 @@ def test_ephemeral_failure_message_redacts_stderr(tmp_path: Path) -> None:
     #     another thread of the worker also calls.
     from ops.loop import fleet_route
     run = mock.MagicMock(return_value=_FakeProc())
+    fake_claude = str(tmp_path / "claude")
     with mock.patch.object(eph, "LOG_ROOT", tmp_path), \
-            mock.patch.object(eph.shutil, "which", return_value=str(tmp_path / "claude")), \
             mock.patch.object(eph, "AGENT_CHARTERS", {}), \
             pytest.MonkeyPatch.context() as mp:
+        # eph's OWN shutil only (RM-880), never the shared module's `which`.
+        bind_which(mp, eph, lambda *_a, **_k: fake_claude)
         for mod in (eph, sup_mod, fleet_route, fleet_route.kit()):
             bind_subprocess(mp, mod, run=run)
         with pytest.raises(eph.EphemeralSpawnFailed) as ei:

@@ -34,13 +34,24 @@ the module's own dict (`setitem(subprocess.__dict__, ...)`, `vars(...)`,
 `patch.dict`), `patch.multiple('subprocess', ...)` on a string target, a
 keyword-only `patch.object(target=..., attribute=...)`, and `delattr` /
 `del` (siblings swept: `delitem`, `setdefault` / `update`, `import sys as
-_s`, `from sys import modules`). The attribute set itself (`os.name`,
-`shutil.which`, class methods) is NOT widened here, nor is the alias pass
-scope-aware; both are RM-880.
+_s`, `from sys import modules`).
+
+RM-880 (a) widened the attribute set to the 25 process-wide sites in 14 files
+the RM-815 census found: `os.name` / `os.kill` / `os.killpg`, `os.path.exists`
+/ `isfile` / `isdir` (`path` counts only under an `os`: `x.path` is a request's
+or a fixture's path far more often than os.path), `shutil.which`,
+`socketserver.BaseServer.serve_forever` and `ssl.SSLContext.load_cert_chain`
+(class attributes: one patch reaches every instance). A non-literal name
+bound by `@pytest.mark.parametrize("NAME", [...])` resolves like a constant
+for-loop, scoped to the decorated function. The RM-411 fault helper is ruled
+scoped by design (ALLOWLIST below). Still RM-880: the `this_thread_only`
+late-thread gap (b), the scope-aware alias pass (c), the tripwires (d).
 """
 from __future__ import annotations
 
 import ast
+import os
+import shutil
 import subprocess
 import threading
 import types
@@ -50,7 +61,14 @@ from pathlib import Path
 
 import pytest
 
-from tests._module_view import bind_subprocess, bind_urlopen, this_thread_only
+from tests._module_view import (
+    bind_module_view,
+    bind_os_path,
+    bind_subprocess,
+    bind_urlopen,
+    bind_which,
+    this_thread_only,
+)
 from tests._repo_walk import iter_repo_files, self_check
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -66,19 +84,65 @@ SHARED_ATTRS: dict[str, frozenset[str]] = {
     # `urllib.request` ends in `request`; only urllib.request owns `urlopen`.
     "request": frozenset({"urlopen"}),
     "socket": frozenset({"socket", "create_connection", "getaddrinfo"}),
+    # RM-880: the shared attributes the RM-815 census found faked process-wide.
+    "os": frozenset({"name", "kill", "killpg"}),
+    # `os.path` ends in `path`; read as os.path only under an `os` (_QUALIFIED).
+    "path": frozenset({"exists", "isfile", "isdir"}),
+    "shutil": frozenset({"which"}),
+    # Class attributes: patching one rebinds it for every instance.
+    "BaseServer": frozenset({"serve_forever"}),      # socketserver.BaseServer
+    "SSLContext": frozenset({"load_cert_chain"}),    # ssl.SSLContext
 }
+
+# A terminal that is the shared object only when its parent resolves to the
+# named terminal (`os.path`, `mod.os.path`, an `os.path` import alias), never
+# a bare `x.path` (`self.path`, a request's path, a fixture's path).
+_QUALIFIED = {"path": "os"}
 
 # Import-alias resolution: the module a bare test-file name stands for.
 _MODULE_TERMINAL = {
     "subprocess": "subprocess",
     "urllib.request": "request",
     "socket": "socket",
+    "os": "os",
+    "os.path": "path",
+    "shutil": "shutil",
 }
 
+# `from <module> import <name> [as <alias>]` forms that bind a terminal.
+_FROM_TERMINAL = {
+    ("urllib", "request"): "request",
+    ("os", "path"): "path",
+    ("socketserver", "BaseServer"): "BaseServer",
+    ("ssl", "SSLContext"): "SSLContext",
+}
+
+# RM-880 ruling on the RM-411 fault helper `tests/_replace_faults.py`
+# `scoped_fs_fault` (install, then restore in a finally): SCOPED BY DESIGN,
+# kept. It is flagged only because its attribute name is a parameter. That
+# name is checked against `_SCOPED_NAMES` (replace / rename / open, else
+# ValueError), none of which is in SHARED_ATTRS["os"]
+# (`test_the_rm411_ruling_still_holds` pins both facts). The shim is
+# PATH-scoped: a call from any thread whose dst / path is outside the test's
+# root is delegated to the real function, which the helper proves on entry
+# with a control call outside the root. A module view cannot stand in for it:
+# the writers under test reach os.replace through many modules
+# (core.polled_json and every writer), which is why RM-411 injects the fault
+# at the os boundary. The restore line puts back the real function; it fakes
+# nothing. Its two RM-411 self-tests (`tests/test_scoped_fs_fault_rm411.py`
+# restore lines) resolve through their parametrize lists and are not hits.
+_RM411_RULING = ("RM-411 scoped_fs_fault: a path-scoped shim on os.replace / "
+                 "os.rename / os.open only (disjoint from the os set), "
+                 "delegating every out-of-root call; scoped by design (RM-880)")
+
 # Sites that must stay process-wide with a PLAIN fake, as
-# {(relpath, lineno): why}. Empty: every RM-801 site is scoped through a
-# module view, or through this_thread_only where no module-global name exists.
-ALLOWLIST: dict[tuple[str, int], str] = {}
+# {(relpath, lineno): why}. Every other RM-801 / RM-880 site is scoped through
+# a module view, or through this_thread_only where no module-global name
+# exists.
+ALLOWLIST: dict[tuple[str, int], str] = {
+    ("tests/_replace_faults.py", 229): _RM411_RULING,   # install the shim
+    ("tests/_replace_faults.py", 234): _RM411_RULING,   # restore the real
+}
 
 
 def _aliases(tree: ast.AST) -> dict[str, str]:
@@ -93,10 +157,11 @@ def _aliases(tree: ast.AST) -> dict[str, str]:
                     head = a.name.split(".")[0]
                     if head in _MODULE_TERMINAL:
                         out[head] = _MODULE_TERMINAL[head]
-        elif isinstance(node, ast.ImportFrom) and node.module == "urllib":
+        elif isinstance(node, ast.ImportFrom):
             for a in node.names:
-                if a.name == "request":
-                    out[a.asname or a.name] = "request"
+                term = _FROM_TERMINAL.get((node.module, a.name))
+                if term:
+                    out[a.asname or a.name] = term
     return out
 
 
@@ -193,10 +258,17 @@ def _terminal(expr: ast.AST, aliases: dict[str, str],
     if isinstance(expr, ast.Name):
         if expr.id in aliases:
             return aliases[expr.id]
-        return expr.id if expr.id in SHARED_ATTRS else None
+        return (expr.id if expr.id in SHARED_ATTRS and expr.id not in _QUALIFIED
+                else None)
     if isinstance(expr, ast.Attribute):
         if expr.attr in SHARED_ATTRS:
-            return expr.attr
+            parent = _QUALIFIED.get(expr.attr)
+            if parent is None:
+                return expr.attr
+            # RM-880: `x.path` is os.path only under an `os`.
+            if _terminal(expr.value, aliases, attr_aliases) == parent:
+                return expr.attr
+            return None
         return attr_aliases.get(expr.attr)
     return None
 
@@ -247,7 +319,16 @@ def _dotted_hit(target: str, attr_aliases: dict[str, str]) -> bool:
     if len(parts) < 2:
         return False
     term = parts[-2] if parts[-2] in SHARED_ATTRS else attr_aliases.get(parts[-2])
-    return term is not None and parts[-1] in SHARED_ATTRS[term]
+    if term is None or parts[-1] not in SHARED_ATTRS[term]:
+        return False
+    parent = _QUALIFIED.get(parts[-2])
+    if parent is None:
+        return True
+    # `"tools.x.os.path.exists"`, never `"tools.x.path.exists"` (RM-880).
+    if len(parts) < 3:
+        return False
+    above = parts[-3] if parts[-3] in SHARED_ATTRS else attr_aliases.get(parts[-3])
+    return above == parent
 
 
 def _loop_constants(tree: ast.AST) -> dict[str, set[str]]:
@@ -260,6 +341,36 @@ def _loop_constants(tree: ast.AST) -> dict[str, set[str]]:
             vals = [_str(e) for e in node.iter.elts]
             if all(v is not None for v in vals):
                 out.setdefault(node.target.id, set()).update(vals)
+    return out
+
+
+def _param_constants(tree: ast.AST) -> dict[int, dict[str, set[str]]]:
+    """id(node) -> {NAME: {"a", "b"}} for every node inside a function
+    decorated `@pytest.mark.parametrize("NAME", ["a", "b"])` (RM-880): a
+    parametrized name is a constant for-loop scoped to its function. Only a
+    single name over all-literal values; anything else stays unknown."""
+    out: dict[int, dict[str, set[str]]] = {}
+    for fn in ast.walk(tree):
+        if not isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        consts: dict[str, set[str]] = {}
+        for dec in fn.decorator_list:
+            if not (isinstance(dec, ast.Call)
+                    and isinstance(dec.func, ast.Attribute)
+                    and dec.func.attr == "parametrize"):
+                continue
+            kw = {k.arg: k.value for k in dec.keywords if k.arg}
+            argname = _str(_arg(dec.args, kw, 0, "argnames"))
+            values = _arg(dec.args, kw, 1, "argvalues")
+            if (argname is None or "," in argname
+                    or not isinstance(values, (ast.List, ast.Tuple, ast.Set))):
+                continue
+            vals = [_str(e) for e in values.elts]
+            if vals and all(v is not None for v in vals):
+                consts.setdefault(argname.strip(), set()).update(vals)
+        if consts:
+            for sub in ast.walk(fn):
+                out.setdefault(id(sub), {}).update(consts)
     return out
 
 
@@ -302,6 +413,7 @@ def scan_source(src: str,
     tree = _normalise_sys(ast.parse(src))
     aliases = _variable_aliases(tree, _aliases(tree), attr_aliases)
     loops = _loop_constants(tree)
+    params = _param_constants(tree)
     hits: list[tuple[int, str]] = []
 
     def names_of(node: ast.AST | None) -> set[str] | None:
@@ -309,9 +421,11 @@ def scan_source(src: str,
         s = _str(node)
         if s is not None:
             return {s}
-        if isinstance(node, ast.Name) and node.id in loops:
-            return loops[node.id]
-        return None
+        if not isinstance(node, ast.Name):
+            return None
+        found = loops.get(node.id, set()) | params.get(id(node), {}).get(
+            node.id, set())
+        return found or None
 
     def obj_attr(obj: ast.AST, names: set[str] | None, line: int,
                  value: ast.AST | None) -> None:
@@ -459,8 +573,11 @@ def test_no_test_fakes_a_shared_stdlib_attribute_process_wide():
         f"{len(offenders)} process-wide stdlib fake(s); scope each to the "
         "module under test with tests/_module_view.py bind_subprocess("
         "monkeypatch, mod, run=fake) / bind_urlopen(monkeypatch, mod, fake) / "
-        "bind_stdlib(...), or this_thread_only(fake, real) where no "
-        "module-local name exists (RM-801):\n"
+        "bind_which(monkeypatch, mod, fake) / bind_os_path(monkeypatch, mod, "
+        "exists=fake) / bind_module_view(monkeypatch, mod, 'os', name='nt') / "
+        "bind_stdlib(...), a class attribute on the code under test's own "
+        "subclass, or this_thread_only(fake, real) where no module-local "
+        "name exists (RM-801, RM-880):\n"
         + "\n".join(f"  {r}:{n}: {w}" for r, n, w in offenders))
 
 
@@ -687,6 +804,116 @@ def test_an_alias_variable_rebound_twice_keeps_its_first_module():
     assert scan_source(src) == [(3, "a.run")]
 
 
+# RM-880 (a): the widened attribute set, one entry per attribute family, each
+# in the shapes its census sites used (and the RM-801 / RM-815 shapes).
+_FLAGGED_RM880 = {
+    "os.name / kill / killpg": [
+        "monkeypatch.setattr(procs.os, 'name', 'nt')",
+        "monkeypatch.setattr(os, 'name', 'posix')",
+        "os.name = 'nt'",
+        "mock.patch('tools.x.os.name', 'nt')",
+        "import os as _o\n_o.killpg = f",
+        "monkeypatch.setattr(procs.os, 'killpg', f, raising=False)",
+        "mock.patch.object(os, 'kill', f)",
+        "monkeypatch.setattr('os.kill', f)",
+        "monkeypatch.setitem(sys.modules, 'os', fake_mod)",
+    ],
+    "os.path.exists / isfile / isdir": [
+        "monkeypatch.setattr(pr.os.path, 'exists', f)",
+        "monkeypatch.setattr(os.path, 'isfile', f)",
+        "import os.path as osp\nosp.isdir = f",
+        "from os import path\nmonkeypatch.setattr(path, 'exists', f)",
+        "from os import path as p\np.isfile = f",
+        "mock.patch('os.path.exists', return_value=True)",
+        "mock.patch('tools.x.os.path.isdir', f)",
+        "p = mod.os.path\nmonkeypatch.setattr(p, 'exists', f)",
+    ],
+    "shutil.which": [
+        "monkeypatch.setattr(bec.shutil, 'which', f)",
+        "mock.patch('agents.supervisor.shutil.which', return_value='/x')",
+        "mock.patch.object(eph.shutil, 'which', return_value=None)",
+        "shutil.which = f",
+        "import shutil as _sh\n_sh.which = f",
+    ],
+    "socketserver.BaseServer.serve_forever": [
+        "mock.patch.object(socketserver.BaseServer, 'serve_forever', f)",
+        "from socketserver import BaseServer\nBaseServer.serve_forever = f",
+        "mock.patch('socketserver.BaseServer.serve_forever', f)",
+    ],
+    "ssl.SSLContext.load_cert_chain": [
+        "monkeypatch.setattr(ssl.SSLContext, 'load_cert_chain', f)",
+        "from ssl import SSLContext as C\nmonkeypatch.setattr(C, 'load_cert_chain', f)",
+        "mock.patch('ssl.SSLContext.load_cert_chain')",
+    ],
+    "a parametrized name over a shared attribute": [
+        "@pytest.mark.parametrize('attr', ['name', 'sep'])\n"
+        "def test_x(attr):\n    setattr(os, attr, f)\n",
+        # the list binds only inside its own function
+        "@pytest.mark.parametrize('name', ['replace'])\n"
+        "def test_a(name):\n    pass\n"
+        "def helper(name):\n    setattr(os, name, f)\n",
+    ],
+}
+
+_CLEAN_RM880 = [
+    "bind_module_view(monkeypatch, procs, 'os', name='nt')",
+    "monkeypatch.setattr(procs, 'os', view)",
+    "bind_which(monkeypatch, bec, f)",
+    "bind_os_path(monkeypatch, pr, exists=f)",
+    "monkeypatch.setattr(mod._MatchDBHTTPServer, 'serve_forever', f)",
+    "bind_module_view(monkeypatch, tls_policy, 'ssl', SSLContext=Sub)",
+    "monkeypatch.setattr(mod, 'which', f)",
+    # `path` is os.path only under an `os`
+    "monkeypatch.setattr(self.path, 'exists', f)",
+    "monkeypatch.setattr(fake.path, 'isfile', f)",
+    "path.exists = f",
+    "mock.patch('tools.x.path.exists', f)",
+    # reads and calls are not patches
+    "x = os.name",
+    "os.kill(pid, 9)",
+    "shutil.which('git')",
+    "monkeypatch.setattr(shutil, 'which', this_thread_only(f, shutil.which))",
+    # a parametrize list disjoint from the os set (the RM-411 self-test shape)
+    "@pytest.mark.parametrize('name', ['replace', 'rename'])\n"
+    "def test_x(name):\n    setattr(os, name, real)\n",
+    "@pytest.mark.parametrize(argnames='name', argvalues=('open',))\n"
+    "def test_y(name):\n    setattr(os, name, real)\n",
+]
+
+
+@pytest.mark.parametrize("family", sorted(_FLAGGED_RM880))
+def test_the_detector_flags_each_rm880_attribute(family):
+    missed = [s for s in _FLAGGED_RM880[family] if not scan_source(s)]
+    assert not missed, missed
+
+
+def test_the_detector_passes_the_rm880_clean_forms():
+    wrong = [(s, scan_source(s)) for s in _CLEAN_RM880 if scan_source(s)]
+    assert not wrong, wrong
+
+
+def test_the_rm880_attribute_set_is_pinned():
+    # Narrowing any family back would re-open a census site unseen.
+    assert SHARED_ATTRS["os"] >= {"name", "kill", "killpg"}
+    assert SHARED_ATTRS["path"] >= {"exists", "isfile", "isdir"}
+    assert SHARED_ATTRS["shutil"] >= {"which"}
+    assert SHARED_ATTRS["BaseServer"] >= {"serve_forever"}
+    assert SHARED_ATTRS["SSLContext"] >= {"load_cert_chain"}
+
+
+def test_the_rm411_ruling_still_holds():
+    """The ALLOWLIST ruling rests on two facts; a change to either voids it."""
+    from tests import _replace_faults as rf
+    assert set(rf._SCOPED_NAMES).isdisjoint(SHARED_ATTRS["os"]), (
+        "scoped_fs_fault now reaches a name in the os set: re-rule it")
+    lines = (REPO_ROOT / "tests" / "_replace_faults.py").read_text(
+        encoding="utf-8").splitlines()
+    for (rel, n), why in ALLOWLIST.items():
+        assert rel == "tests/_replace_faults.py" and why == _RM411_RULING
+        assert lines[n - 1].strip().startswith("setattr(os, name, "), (
+            rel, n, lines[n - 1])
+
+
 # ------------------------------------------- the scoping helpers themselves
 
 
@@ -790,3 +1017,36 @@ def test_this_thread_only_spares_threads_alive_at_install():
     t2.start()
     t2.join(5)
     assert late == ["fake"]
+
+
+def test_bind_which_reaches_only_the_module(monkeypatch):
+    real = shutil.which
+    mod = _module("rm880_fake_which", "import shutil as _sh\n"
+                  "def go():\n    return _sh.which('claude')\n")
+    assert bind_which(monkeypatch, mod, lambda *_a, **_k: "/fake/claude") == 1
+    assert mod.go() == "/fake/claude"
+    assert shutil.which is real
+    assert mod._sh.rmtree is not None and mod._sh.Error is shutil.Error
+
+
+def test_bind_os_path_reaches_only_the_module_and_layers(monkeypatch):
+    real_exists, real_isdir = os.path.exists, os.path.isdir
+    mod = _module("rm880_fake_os_path", "import os\n"
+                  "def go(p):\n    return os.path.exists(p), os.path.isdir(p)\n")
+    bind_os_path(monkeypatch, mod, exists=lambda p: "yes")
+    bind_os_path(monkeypatch, mod, isdir=lambda p: "dir")
+    assert mod.go("nowhere-rm880") == ("yes", "dir")
+    assert mod.os.sep == os.sep and mod.os.path.join("a", "b") == os.path.join("a", "b")
+    assert os.path.exists is real_exists and os.path.isdir is real_isdir
+    monkeypatch.undo()
+    assert mod.os is os
+
+
+def test_bind_module_view_on_os_leaves_the_shared_module(monkeypatch):
+    real_name = os.name
+    mod = _module("rm880_fake_os", "import os\n"
+                  "def go():\n    return os.name, os.killpg(1, 9)\n")
+    bind_module_view(monkeypatch, mod, "os", name="rm880",
+                     killpg=lambda pid, sig: (pid, sig))
+    assert mod.go() == ("rm880", (1, 9))
+    assert os.name == real_name and getattr(os, "killpg", None) is not mod.os.killpg

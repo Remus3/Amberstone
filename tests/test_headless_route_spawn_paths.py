@@ -24,7 +24,7 @@ from unittest import mock
 import pytest
 
 from ops.loop import headless_env as he
-from tests._module_view import bind_subprocess
+from tests._module_view import bind_subprocess, bind_which
 
 ROOT = Path(__file__).resolve().parent.parent
 FAKE_URL = "http://127.0.0.1:65534"
@@ -56,6 +56,20 @@ def _faked(**fakes):
     """FAKES (run= / Popen=) for the spawn chain only, for the with-block."""
     with pytest.MonkeyPatch.context() as mp:
         _bind_chain(mp, **fakes)
+        yield
+
+
+@contextlib.contextmanager
+def _claude_on_path():
+    """`claude` resolves to /fake/claude for the supervisor ephemeral path's
+    OWN `shutil` names only (RM-880): agents/_supervisor_ephemeral.py calls
+    shutil.which(CLAUDE_CLI); its facade agents.supervisor keeps `import
+    shutil`. The shared shutil module another thread calls stays real."""
+    import agents._supervisor_ephemeral as sup_eph  # noqa: PLC0415
+    import agents.supervisor as sup  # noqa: PLC0415
+    with pytest.MonkeyPatch.context() as mp:
+        for mod in (sup_eph, sup):
+            bind_which(mp, mod, lambda *_a, **_k: "/fake/claude")
         yield
 
 
@@ -207,7 +221,7 @@ def test_ci_watchdog_claude_fix_env_carries_route(routed, tmp_path, monkeypatch)
 
 def test_ephemeral_refuses_without_route(refused):
     from agents.supervisor import EphemeralSpawnFailed, spawn_ephemeral_llm
-    with mock.patch("agents.supervisor.shutil.which", return_value="/fake/claude"), \
+    with _claude_on_path(), \
          _faked(run=_trip()):
         with pytest.raises(EphemeralSpawnFailed) as ei:
             spawn_ephemeral_llm("6", "t-route-refused", "demo", {})
@@ -218,7 +232,7 @@ def test_ephemeral_child_env_carries_route(routed):
     from agents.supervisor import spawn_ephemeral_llm
     proc = CompletedProcess(args=["claude"], returncode=0, stdout='{"result":"x"}', stderr="")
     run = mock.MagicMock(return_value=proc)
-    with mock.patch("agents.supervisor.shutil.which", return_value="/fake/claude"), \
+    with _claude_on_path(), \
          _faked(run=run):
         spawn_ephemeral_llm("6", "t-route-ok", "demo", {})
     assert run.call_args.kwargs["env"]["ANTHROPIC_BASE_URL"] == FAKE_URL
@@ -320,7 +334,7 @@ def test_kit_call_ci_watchdog(kit_calls, tmp_path, monkeypatch):
 def test_kit_call_supervisor_ephemeral(kit_calls):
     from agents.supervisor import spawn_ephemeral_llm
     run = mock.MagicMock(return_value=_done('{"result":"x"}'))
-    with mock.patch("agents.supervisor.shutil.which", return_value="/fake/claude"), \
+    with _claude_on_path(), \
          _faked(run=run):
         spawn_ephemeral_llm("6", "t-kit-call", "demo", {})
     (c,) = kit_calls
@@ -432,7 +446,7 @@ def test_ci_watchdog_timeout_kills_tree_via_kit(kit_hang, tmp_path, monkeypatch)
 
 def test_supervisor_ephemeral_timeout_kills_tree_via_kit(kit_hang):
     from agents.supervisor import EphemeralSpawnFailed, spawn_ephemeral_llm
-    with mock.patch("agents.supervisor.shutil.which", return_value="/fake/claude"):
+    with _claude_on_path():
         with pytest.raises(EphemeralSpawnFailed) as ei:
             spawn_ephemeral_llm("6", "t-kit-hang", "demo", {})
     assert "timed out" in str(ei.value)
@@ -475,7 +489,7 @@ def test_executor_timeout_kills_tree_via_kit(kit_hang, tmp_path, monkeypatch):
 def test_kit_call_supervisor_non_opus_agent_does_not_write_code(kit_calls):
     from agents.supervisor import spawn_ephemeral_llm
     run = mock.MagicMock(return_value=_done('{"result":"x"}'))
-    with mock.patch("agents.supervisor.shutil.which", return_value="/fake/claude"), \
+    with _claude_on_path(), \
          _faked(run=run):
         spawn_ephemeral_llm("7", "t-kit-call-7", "demo", {})
     assert run.called, "the kit's launch reached the chain's fake"

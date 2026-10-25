@@ -333,7 +333,7 @@ def test_sdk_timeout_kills_the_tree_and_fails_the_cycle(tmp_path: Path):
 
 from tests import _kit_platform  # noqa: E402
 from tests._kit_platform import assert_kit_killed  # noqa: E402
-from tests._module_view import bind_subprocess  # noqa: E402
+from tests._module_view import bind_module_view, bind_subprocess  # noqa: E402
 
 kit_platform = _kit_platform.kit_platform  # fixture, registered by module attribute
 
@@ -648,8 +648,10 @@ def test_the_posix_branch_asks_the_filesystem(
         seen.append((p, mode))
         return True
 
-    monkeypatch.setattr(executor.os, "name", "posix")
-    monkeypatch.setattr(executor.os, "access", _fake_access)
+    # executor's OWN `os` only (RM-880): `name` and `access` on a view, never
+    # on the shared module every other thread of the worker reads.
+    bind_module_view(monkeypatch, executor, "os", name="posix",
+                     access=_fake_access)
     assert executor._is_on_disk_executable(plain) is True
     assert seen == [(plain, os.X_OK)]
 

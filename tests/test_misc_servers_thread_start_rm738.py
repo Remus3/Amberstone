@@ -148,7 +148,10 @@ def _matchdb(tmp_path, monkeypatch):
         captured.append(self)
         return real(self, *a, **kw)
 
-    with mock.patch.object(socketserver.BaseServer, "serve_forever", recording):
+    # On the class this server builds (its own subclass), never the shared
+    # socketserver.BaseServer every other server of the worker inherits
+    # serve_forever from (RM-880).
+    with mock.patch.object(mod._MatchDBHTTPServer, "serve_forever", recording):
         threading.Thread(target=mod.serve_forever, args=("127.0.0.1", port),
                          daemon=True, name="rm738-matchdb").start()
         deadline = time.monotonic() + 5
