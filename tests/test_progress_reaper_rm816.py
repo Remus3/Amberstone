@@ -121,8 +121,11 @@ def _use_move(monkeypatch, link_move: bool) -> None:
     only where the module itself picks it; on POSIX os.rename REPLACES, the
     module uses the link move, and a forced rename move is a path production
     never takes (RM-885: CI on Linux reddened on exactly that). The link move
-    runs everywhere (NTFS has hard links too). Read before the monkeypatch."""
-    if not link_move and pw._LINK_MOVE:
+    runs everywhere (NTFS has hard links too). The gate reads the PLATFORM
+    (os.name, the very expression pw._LINK_MOVE is built from), never the
+    module attribute under test: a skip keyed on a tracked module's value is
+    an always-passing guard (tests/test_skip_condition_hygiene.py)."""
+    if not link_move and os.name != "nt":
         pytest.skip("rename-move is the production move only where os.rename "
                     "refuses an existing target (Windows)")
     monkeypatch.setattr(pw, "_LINK_MOVE", link_move)
