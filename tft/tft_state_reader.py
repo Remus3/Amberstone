@@ -116,6 +116,15 @@ def _estimate_round(t, set_number=None):
 # watched game 582 -> 647 kept all 8 healths: 2-7, while the table said 3-1).
 # A gap longer than _MISSED_GAP_S means rewrites were missed (RC was down): the
 # table's progression over that gap counts the rounds, never less than one.
+# S136 T15: the game clock counts the LOADING screen (process start; the
+# file's gameLengthSeconds agrees to 3 s) and loads vary (HUD 1-1 first seen
+# at 46 s and 106 s in the two s136 games), so the table, whose zero is round
+# 1-1, ran ahead by the load. Two observed anchors replace it in stage 1: the
+# game's first write still carries the start-of-game placeholders and is
+# placed on 1-1 (never the nearest row), and before any write a standalone
+# game reads 1-1 until _MISSED_GAP_S of clock (then the table, as before).
+# Measured in both games: writes land at COMBAT start, so between a round's
+# HUD label change and its write the clock is one round behind, never ahead.
 _MISSED_GAP_S = 180.0
 
 
@@ -150,13 +159,18 @@ class RoundClock:
             i += 1
         return i
 
+    def has_start(self, game) -> bool:
+        """True once a round start of ``game`` has been observed."""
+        return self._i is not None and self._game == game
+
     def note_start(self, game, t: float, table, skip=frozenset(), hp=None,
-                   pve=frozenset()) -> None:
+                   pve=frozenset(), opening=False) -> None:
         """Record an observed round start ``t`` (game-clock s) of ``game``.
 
         ``skip``: rounds with no planning phase (no rewrite). ``hp``: every
         player's health at this start, in file order. ``pve``: the
-        schedule's PvE rounds.
+        schedule's PvE rounds. ``opening``: the write still carries the
+        start-of-game placeholders (tft_standalone ``_round_state``).
         """
         if not table:
             return
@@ -164,6 +178,18 @@ class RoundClock:
         if hp and not any(isinstance(h, (int, float)) and not isinstance(h, bool)
                           and h > 0 for h in hp):
             hp = None  # all missing / zero: not a health reading at all
+        first = next((k for k, row in enumerate(table) if tuple(row[1:]) == (1, 1)), 0)
+        if opening and (game != self._game or table is not self._table
+                        or self._i is None or self._i == first):
+            # S136 T15: a write with no round resolved yet IS round 1-1 (both
+            # s136 games). Never the nearest table row: the game clock counts
+            # the loading screen, so the 98 s first write of s136 game 2 sat
+            # on the 1-4 row and the clock ran 2-3 rounds ahead. Only while
+            # the clock is unplaced or still at 1-1 - a placeholder file
+            # later on is junk, never a rewind.
+            self.reset(game, table)
+            self._i, self._t = first, t
+            return
         if (game != self._game or table is not self._table
                 or self._t is None or t < self._t - 1.0):
             self.reset(game, table)
@@ -347,12 +373,26 @@ class TftStateReader:
         clock = getattr(self, "_round_clock", None)
         if clock is None: clock = self._round_clock = RoundClock()
         obs = _observed_round_start(raw); skip = _no_planning_rounds(sched)
+        sa = _standalone_state(raw)
         # The per-round cadence was measured on Set 18 only; the Set 17 table
         # lacks rows (1-4, x-7) and names no plain carousel, so counting
         # starts against it would drift: other sets keep the table.
         if obs is not None and tbl is _TIME_TO_ROUND_SET18:
-            clock.note_start(obs[0], obs[1], tbl, skip, hp=obs[2], pve=sched.pve)
-        self._last_level=lv; stage,rnd=clock.round_at(gt, tbl, skip); _log_round_calibration(gt, stage, rnd)
+            clock.note_start(obs[0], obs[1], tbl, skip, hp=obs[2], pve=sched.pve,
+                             opening=bool(sa) and sa.get("opening") is True)
+        self._last_level=lv
+        if (sa is not None and tbl is _TIME_TO_ROUND_SET18 and gt <= _MISSED_GAP_S
+                and not clock.has_start(str(sa.get("game_id") or ""))):
+            # S136 T15: the standalone game clock starts with the TFT process,
+            # at the LOADING screen (s136 game 2: HUD 1-1 first at 106 s), and
+            # the table's zero is round 1-1, so before this game's first
+            # per-round write (written during 1-1) the table ran ahead by the
+            # load time. No write within _MISSED_GAP_S = writes missed: the
+            # table answers as before.
+            stage, rnd = 1, 1
+        else:
+            stage, rnd = clock.round_at(gt, tbl, skip)
+        _log_round_calibration(gt, stage, rnd)
         est_stage = stage
         me={};others=[]
         for p in (all_p if isinstance(all_p,list) else []):
@@ -447,10 +487,9 @@ def _standalone_raw():
         return None
 
 
-def _observed_round_start(raw):
-    """(game id, round start s, every player's health) from the standalone
-    per-round file carried in a synthesized raw dict, or None (a :2999 read,
-    no fresh file). Fail-soft."""
+def _standalone_state(raw):
+    """The ``rc_standalone`` dict of a raw dict the standalone module
+    synthesized, else None (a :2999 read). Fail-soft."""
     if not isinstance(raw, dict):
         return None
     try:
@@ -460,7 +499,15 @@ def _observed_round_start(raw):
     except Exception:  # noqa: BLE001
         return None
     st = raw.get("rc_standalone")
-    if not isinstance(st, dict) or not st.get("eog"):
+    return st if isinstance(st, dict) else None
+
+
+def _observed_round_start(raw):
+    """(game id, round start s, every player's health) from the standalone
+    per-round file carried in a synthesized raw dict, or None (a :2999 read,
+    no fresh file). Fail-soft."""
+    st = _standalone_state(raw)
+    if st is None or not st.get("eog"):
         return None
     t = st.get("game_length_s")
     if isinstance(t, bool) or not isinstance(t, (int, float)) or t < 0:

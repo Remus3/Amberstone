@@ -464,7 +464,7 @@ def _round_state(lcu, eog, now: float) -> dict:
            "players_total": None, "game_length_s": None, "eog_age_s": None,
            "game_id": game_id, "queue_id": None, "set": None, "lobby": [],
            "local_index": None, "local_basis": "",
-           "alive_others": None, "dead_others": None}
+           "alive_others": None, "dead_others": None, "opening": False}
     if game_id:
         # Callers reach here only for a live standalone match: remember its
         # LCU id for the post-game readers (current_game_id).
@@ -501,6 +501,13 @@ def _round_state(lcu, eog, now: float) -> dict:
         # LAST combat's (HP lags 10-20 s, placement up to 40 s). The file has
         # no round id; its own game clock is the honest "as of".
         "as_of_game_s": game_len if game_len > 0 else None,
+        # S136 T15: every entry still the start-of-game placeholder (no
+        # player's status knowable by the ONE rule) = no round has resolved:
+        # measured in both s136 games, the game's FIRST write lands during
+        # round 1-1 like this and the second already has real health. The
+        # round clock anchors 1-1 on it (tft_state_reader RoundClock).
+        "opening": bool(players) and all(
+            _lp.player_status(p) is None for p in players),
     })
     # players_alive / alive_others / dead_others: ONE rule
     # (tft/local_player.lobby_counts), None (unknown, not 0) while the
