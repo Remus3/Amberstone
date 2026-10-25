@@ -85,16 +85,27 @@ scans fall 46-70 percent and false new games from 16-113 to 0. The cost: the
 longest wrong run grows (7-24 polls against 4-9) because a burst of
 misreads can win a window. A stream misread HALF the time has no majority:
 the gate then holds the round it has instead of flipping per frame.
-RECORDED TRADE-OFF (window size chosen on the seeded model, not forced):
-a real round change read on a 2-of-3 majority can lag up to 7 polls
-(10.5 s) when the window still holds the old round. WINDOW_READS = 5 with
-SWITCH_MIN_READS = 3 also holds the 3-read misread burst case and cuts that
-lag to 5-6 polls, but on the same model it acts on the wrong round more
-often for +1 misreads (standard, 10 percent: 3798 -> 5010 wrong polls) and
-lengthens the longest run at 20 percent (24 -> 33); 7 / 4 was kept. The lag
-is pinned by a test so it cannot silently grow.
-RESIDUAL: two consecutive clock values AHEAD of the real clock still read
-as a restart (CLOCK_RESET_READS is symmetric); one is absorbed.
+RECORDED TRADE-OFF (a judgment on the seeded model, not forced): a real
+round change read on a 2-of-3 majority can lag up to 7 polls (10.5 s) when
+the window still holds the old round; the lag is pinned by a test so it
+cannot silently grow. WINDOW_READS = 5 with SWITCH_MIN_READS = 3 also holds
+the 3-read misread burst case and cuts that lag to 5-6 polls. Against 7 / 4
+on the same model it is BETTER for -1 misreads (10 percent: 1662 -> 1220
+wrong polls; 20 percent: 3711 -> 3036) and shortens the longest run for -1,
+mixed and +-2 misreads at 20 percent (24 -> 21-23), and WORSE for +1
+misreads (10 percent: 3798 -> 5010 wrong polls; longest run at 20 percent
+24 -> 33). 7 / 4 was kept because a +1 misread is the one that runs the
+gate AHEAD onto a round that has not started (a carousel / augment round's
+cadence); a lagging gate only delays a scan.
+RESIDUALS (measured, unchanged since 28fcd70b6):
+- two consecutive clock values AHEAD of the real clock read as a restart
+  (CLOCK_RESET_READS is symmetric; one is absorbed): the augments are
+  cleared and the true current round then counts as stale, so no round is
+  acted on until the next round is read (7-27 polls in the verifier's runs);
+- on queues with no rate (Hyper Roll, unknown), a previous-game value the
+  gate never saw, or a stage-1 round the previous game ended on, can be
+  taken as the new game's first read after a restart and held about 9
+  polls (standard / double_up screen it by the clock).
 """
 from __future__ import annotations
 
