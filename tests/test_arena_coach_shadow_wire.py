@@ -160,6 +160,61 @@ def test_frontline_path_target_priority_failsoft(tmp_path):
         assert "Lux" in tp
 
 
+def _blank_artifact():
+    """The live coach's own placeholder artifact - action "", round 0,
+    hp_pct 100 (coaches/arena_coach.py Coach._blank_artifact_data). It
+    takes no state from self, so a bare object() stands in for it."""
+    from coaches.arena_coach import Coach
+    return Coach._blank_artifact_data(object())
+
+
+def test_blank_haiku_artifact_is_skipped(tmp_path):
+    # RM-868: while the artifact is still the placeholder there is no Haiku
+    # verdict, and its placeholder hp_pct 100 made the deterministic side
+    # emit PLAY AGGRO from a fake signal (42 such rows in the live log).
+    target = tmp_path / "arena_coach_shadow.jsonl"
+    blank = _blank_artifact()
+    assert blank["action"] == "" and blank["round"] == 0
+    assert blank["hp_pct"] == 100
+    live = tmp_path / "arena_coaching_data.json"
+    live.write_text(json.dumps(blank), encoding="utf-8")
+    coach = dict(blank, champion="Jinx")
+
+    shadow_log_arena_coach(coach, _lc(), "arena", path=target, live_path=live)
+    # the same blank artifact with an empty-string round (6 live rows)
+    shadow_log_arena_coach(dict(coach, round=""), _lc(), "arena",
+                           path=target, live_path=live)
+
+    assert not target.exists()
+
+
+def test_round_zero_with_a_real_haiku_action_still_logs(tmp_path):
+    # Blank means BOTH: no Haiku action AND the placeholder round. A real
+    # Haiku verdict on a round-0 tick is a sample.
+    target = tmp_path / "arena_coach_shadow.jsonl"
+    live = _seed_live(tmp_path)
+    coach = dict(_coach(), round=0)
+
+    shadow_log_arena_coach(coach, _lc(), "arena", path=target, live_path=live)
+
+    [row] = [json.loads(x) for x in _read_lines(target)]
+    assert row["live_haiku"]["action"] == "LIVE HAIKU ACTION"
+
+
+def test_missing_live_artifact_on_a_real_round_still_logs(tmp_path):
+    # A real round with no readable Haiku file is NOT the placeholder: the
+    # row is written (the report counts it unclassified), as RM-854's
+    # focus-board tests rely on.
+    target = tmp_path / "arena_coach_shadow.jsonl"
+
+    shadow_log_arena_coach(_coach(), _lc(), "arena", path=target,
+                           live_path=tmp_path / "missing.json")
+
+    [row] = [json.loads(x) for x in _read_lines(target)]
+    assert row["live_haiku"]["action"] == ""
+    assert row["deterministic"]["action"] == "PLAY AGGRO"
+
+
 def test_dedup_same_state_once_new_round_relogs(tmp_path):
     target = tmp_path / "arena_coach_shadow.jsonl"
     live = _seed_live(tmp_path)

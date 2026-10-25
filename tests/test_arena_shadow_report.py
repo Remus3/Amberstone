@@ -168,13 +168,15 @@ def test_below_min_sample_awaiting(tmp_path):
 
 def test_at_min_sample_ready(tmp_path):
     p = tmp_path / "at.jsonl"
-    # 20 live-fight rounds, all agreeing -> gate met at min_sample=20.
+    # 20 live-fight rounds, all agreeing -> sample AND 70% gate met at
+    # min_sample=20. RM-868: the met state is "ready" (was "sample_met",
+    # which a 1% rate also printed); below the gate it is "not_ready".
     _write(p, [_row(champ=f"C{i}", det_action="FIGHT", haiku_action="FIGHT")
                for i in range(20)])
     report = rep.build_report(p, min_sample=20)
     fr = report["flip_readiness"]
     assert fr["ready"] is True
-    assert fr["state"] == "sample_met"
+    assert fr["state"] == "ready"
     assert fr["comparable"] == 20
     assert fr["agreement_pct"] == 100
 

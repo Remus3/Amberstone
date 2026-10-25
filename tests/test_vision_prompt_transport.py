@@ -72,5 +72,63 @@ class RelayOptOutTests(unittest.TestCase):
                         "default must stay relay-first for the mode coaches")
 
 
+class ArenaReaderTransportTests(unittest.TestCase):
+    """RM-868: the Arena reader's PROMPT carries `camp_phase` (and
+    `anvil_choices`), which the relay's fixed TFT schema never emits
+    (`vision_server/_inference.py` `_VISION_PROMPT`). On the relay, the
+    artifact's `camp_phase` was therefore always False, so the deterministic
+    Arena rule's camp branch (`core/arena_action_rule.py` `decide_action`
+    rule 1) never fired in a live game. Grounded: `ArenaVisionReader.PROMPT`,
+    `ArenaVisionReader.__init__` builds `self._reader` via
+    `GameVisionReader.__new__` (coaches/arena_coach.py), and `_extract`
+    gates the relay on `self.USE_RELAY` (modes/shared_vision.py)."""
+
+    def _reader(self):
+        from coaches.arena_coach import ArenaVisionReader
+        # __init__ does `import anthropic` and builds a client; a stub module
+        # keeps the test offline and key-free.
+        with mock.patch.dict("sys.modules", {"anthropic": mock.MagicMock()}):
+            return ArenaVisionReader("test-key")
+
+    def test_arena_reader_opts_out_of_the_relay(self):
+        from coaches.arena_coach import ArenaVisionReader
+        self.assertFalse(ArenaVisionReader.USE_RELAY)
+        self.assertFalse(self._reader()._reader.USE_RELAY)
+        self.assertTrue(GameVisionReader.USE_RELAY,
+                        "the class default must stay relay-first")
+
+    def test_arena_reader_sends_its_own_prompt_with_camp_phase(self):
+        from coaches.arena_coach import ArenaVisionReader
+        self.assertIn('"camp_phase"', ArenaVisionReader.PROMPT)
+        proxy = mock.MagicMock()
+        # The relay's TFT-shaped answer: would win if it were consulted.
+        proxy.extract_vision.return_value = {"traits_active": [], "gold": 9}
+        arena = self._reader()
+        inner = arena._reader
+        inner._client = mock.MagicMock()
+        resp = mock.MagicMock()
+        resp.content = [mock.MagicMock(
+            text='{"camp_phase": true, "anvil_choices": [], "round_number": 4}')]
+        resp.usage = None
+        inner._client.messages.create.return_value = resp
+        with mock.patch.dict("sys.modules",
+                             {"core.moon_proxy": mock.MagicMock(moon_proxy=proxy)}):
+            out = inner._extract("/9j/abc")
+        proxy.extract_vision.assert_not_called()
+        self.assertIs(out.get("camp_phase"), True)
+        sent = inner._client.messages.create.call_args.kwargs["messages"][0]["content"]
+        self.assertEqual(sent[1]["text"], ArenaVisionReader.PROMPT)
+        self.assertIn("camp_phase", sent[1]["text"])
+
+    def test_going_direct_keeps_the_relay_answered_shadow_fields(self):
+        """The relay's TFT answer carried `gold` / `level`, which are Arena
+        OCR SHADOW_FIELDS; the direct PROMPT must still ask for them or the
+        Sonnet side of those OCR-vs-Sonnet rows goes blank."""
+        from coaches.arena_coach import ArenaVisionReader
+        for field in ("gold", "level"):
+            self.assertIn(field, ArenaVisionReader.SHADOW_FIELDS)
+            self.assertIn(f'"{field}"', ArenaVisionReader.PROMPT)
+
+
 if __name__ == "__main__":
     unittest.main()

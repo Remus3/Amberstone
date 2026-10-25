@@ -1374,6 +1374,30 @@ def shadow_log_aram_coach(coach: dict, lc: dict | None, mode_key: str,
         return
 
 
+# The round values the Arena placeholder artifact carries: 0 from
+# Coach._blank_artifact_data, "" on 6 live rows, None when the key is absent.
+_ARENA_PLACEHOLDER_ROUNDS = (0, "", None)
+
+
+def _arena_artifact_is_blank(coach, live_block) -> bool:
+    """True when the Arena Haiku artifact is still the placeholder: NO Haiku
+    action (the live block's, else the coach dict's) AND a placeholder round.
+    Both are required, so a real Haiku verdict on a round-0 tick and a real
+    round with an unreadable artifact both still log (RM-868)."""
+    action = None
+    if isinstance(live_block, dict) and "action" in live_block:
+        action = live_block.get("action")
+    elif isinstance(coach, dict):
+        action = coach.get("action")
+    if isinstance(action, str) and action.strip():
+        return False
+    rnd = coach.get("round") if isinstance(coach, dict) else None
+    if isinstance(rnd, str):
+        rnd = rnd.strip()
+    return any(rnd == p and type(rnd) is type(p)
+               for p in _ARENA_PLACEHOLDER_ROUNDS)
+
+
 def shadow_log_arena_coach(coach: dict, lc: dict | None, mode_key: str,
                            *, path=None, live_path=None) -> None:
     """Fail-soft Stage 2 Arena deterministic-vs-Haiku shadow-log.
@@ -1410,6 +1434,17 @@ def shadow_log_arena_coach(coach: dict, lc: dict | None, mode_key: str,
         gs = _build_game_state(coach, lc, mode_key)
         champ = gs.get("my_champion")
         if not champ:
+            return
+
+        # RM-868: while the Haiku artifact is still the coach's placeholder
+        # (coaches/arena_coach.py Coach._blank_artifact_data: action "",
+        # round 0, hp_pct 100) there is no Haiku verdict to compare, and the
+        # placeholder hp_pct 100 would make the deterministic side emit
+        # PLAY AGGRO from a fake signal (42 such rows in the live log, round
+        # 0 or ""). Skip the row. A real round with no readable artifact is
+        # NOT the placeholder and still logs.
+        live_block = _live_arena_block(live_path)
+        if _arena_artifact_is_blank(coach, live_block):
             return
 
         # hp_pct: prefer a direct coach hp_pct, else derive from the 0..1
@@ -1507,8 +1542,6 @@ def shadow_log_arena_coach(coach: dict, lc: dict | None, mode_key: str,
             frontline_names=frontline_names,
             build_remaining=build_remaining,
         )
-
-        live_block = _live_arena_block(live_path)
 
         from core.arena_coach_shadow import log_arena_coach  # lazy
         log_arena_coach(
