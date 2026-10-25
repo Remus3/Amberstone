@@ -420,7 +420,10 @@ def test_tft_state_reader_uses_standalone_when_2999_is_down(eog_file, monkeypatc
 
     def down(*a, **k):
         raise OSError("connection refused :2999")
-    monkeypatch.setattr(tsr.urllib.request, "urlopen", down)
+    # RM-801: scope the fake to tft_state_reader's own urllib view, never the
+    # process-wide urllib.request.urlopen another thread could be calling.
+    from tests._module_view import bind_urlopen
+    bind_urlopen(monkeypatch, tsr, down)
     raw = _synth()  # built BEFORE the patch (the patch replaces synth itself)
     monkeypatch.setattr(ts, "synth_allgamedata", lambda **kw: raw)
     state = r.read()

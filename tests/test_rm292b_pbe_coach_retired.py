@@ -73,8 +73,9 @@ _SCAN_EXEMPT = {
 
 def _tracked() -> frozenset[str]:
     tracked = _repo_walk.tracked_relpaths(str(_ROOT))
-    if tracked is None:
-        pytest.skip("git index unreadable - cannot measure the tracked set")
+    # Fail closed, never skip: an unreadable index must not turn this guard
+    # into an always-passing one (tests/test_skip_condition_hygiene.py).
+    assert tracked is not None, "git index unreadable - cannot measure the tracked set"
     return tracked
 
 
