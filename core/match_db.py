@@ -225,6 +225,33 @@ class MatchDB:
         now readable. Widening the return is additive: no caller in the tree
         reads it (performance_tracker.py:415 and :477 discard it).
         """
+        sql, vals = self._insert_sql(data)
+        try:
+            c = self._conn()
+            c.execute(sql, vals)
+            c.commit()
+            _log.info("Match saved: mode=%s grade=%s", vals["mode"], vals["grade"])
+            self._note_match_boundary()
+            return True
+        except Exception as exc:  # noqa: BLE001
+            _log.error("Match save failed: %s", exc)
+            return False
+
+    @staticmethod
+    def _note_match_boundary() -> None:
+        # Per-match Anthropic spend boundary: a saved match closes the
+        # current cost segment so the Settings spend-gate panel can show
+        # cost averaged over the last N full matches. Best-effort - never
+        # let a telemetry hiccup break the match-save path.
+        try:
+            from core.cost_tracker import get_tracker as _gt
+            _gt().note_match_boundary()
+        except Exception as _exc:  # noqa: BLE001
+            _log.debug("cost note_match_boundary: %s", _exc)
+
+    @staticmethod
+    def _insert_sql(data: dict) -> tuple[str, dict]:
+        """(INSERT statement, bound values) for one save_match row."""
         cols = [
             "timestamp", "mode", "champion", "grade", "game_time_s",
             "kills", "deaths", "assists", "cs", "cs_per_min",
@@ -269,25 +296,7 @@ class MatchDB:
 
         placeholders = ", ".join(f":{c}" for c in cols)
         col_names = ", ".join(cols)
-        try:
-            c = self._conn()
-            c.execute(
-                f"INSERT INTO matches ({col_names}) VALUES ({placeholders})", vals)
-            c.commit()
-            _log.info("Match saved: mode=%s grade=%s", vals["mode"], vals["grade"])
-            # Per-match Anthropic spend boundary: a saved match closes the
-            # current cost segment so the Settings spend-gate panel can show
-            # cost averaged over the last N full matches. Best-effort - never
-            # let a telemetry hiccup break the match-save path.
-            try:
-                from core.cost_tracker import get_tracker as _gt
-                _gt().note_match_boundary()
-            except Exception as _exc:  # noqa: BLE001
-                _log.debug("cost note_match_boundary: %s", _exc)
-            return True
-        except Exception as exc:  # noqa: BLE001
-            _log.error("Match save failed: %s", exc)
-            return False
+        return f"INSERT INTO matches ({col_names}) VALUES ({placeholders})", vals
 
     def upsert_by_game_id(self, data: dict) -> str:
         """One row per (mode, game_id): update the newest row of that game in
@@ -299,21 +308,16 @@ class MatchDB:
         the first row, not add a second one. The row's id and timestamp are
         kept on update - the timestamp is when the game ended. A game_id of 0
         is "unknown" (the column default) and is refused, never matched.
-        Never raises."""
+
+        The lookup and the write run in ONE `BEGIN IMMEDIATE` transaction:
+        two writers rating the same game at once (the game-end trigger, the
+        collector, the N8 backfill) serialise on the write lock, and the
+        second sees the first's row - never two rows for one game. Never
+        raises."""
         mode = data.get("mode") or ""
         gid = coerce_numeric("game_id", data.get("game_id"))
         if not mode or gid <= 0:
             return "failed"
-        try:
-            c = self._conn()
-            row = c.execute(
-                "SELECT id FROM matches WHERE mode = ? AND game_id = ? "
-                "ORDER BY id DESC LIMIT 1", (mode, gid)).fetchone()
-        except Exception as exc:  # noqa: BLE001
-            _log.error("Match upsert lookup failed: %s", exc)
-            return "failed"
-        if row is None:
-            return "inserted" if self.save_match(data) else "failed"
         cols = [k for k in data if k in _UPDATABLE_COLS]
         vals = {}
         for k in cols:
@@ -321,19 +325,42 @@ class MatchDB:
             if k in _JSON_COLS and isinstance(v, (list, dict)):
                 v = json.dumps(v)
             vals[k] = coerce_numeric(k, v) if k in NUMERIC_COLS else v
-        if not vals:
-            return "updated"
-        vals["_id"] = row["id"]
-        sets = ", ".join(f"{k} = :{k}" for k in cols)
+        c = None
         try:
-            c.execute(f"UPDATE matches SET {sets} WHERE id = :_id", vals)
+            c = self._conn()
+            if c.in_transaction:
+                c.commit()
+            c.execute("BEGIN IMMEDIATE")
+            row = c.execute(
+                "SELECT id FROM matches WHERE mode = ? AND game_id = ? "
+                "ORDER BY id DESC LIMIT 1", (mode, gid)).fetchone()
+            if row is None:
+                sql, ivals = self._insert_sql(data)
+                c.execute(sql, ivals)
+                outcome = "inserted"
+            else:
+                if vals:
+                    sets = ", ".join(f"{k} = :{k}" for k in cols)
+                    c.execute(f"UPDATE matches SET {sets} WHERE id = :_id",
+                              dict(vals, _id=row["id"]))
+                outcome = "updated"
             c.commit()
+        except Exception as exc:  # noqa: BLE001
+            _log.error("Match upsert failed (mode=%s game_id=%s): %s", mode, gid, exc)
+            try:
+                if c is not None and c.in_transaction:
+                    c.rollback()
+            except Exception as rb:  # noqa: BLE001
+                _log.error("Match upsert rollback failed: %s", rb)
+            return "failed"
+        if outcome == "inserted":
+            _log.info("Match saved: mode=%s game_id=%s grade=%s",
+                      mode, gid, data.get("grade", ""))
+            self._note_match_boundary()
+        else:
             _log.info("Match updated: id=%s mode=%s game_id=%s grade=%s",
                       row["id"], mode, gid, vals.get("grade", ""))
-            return "updated"
-        except Exception as exc:  # noqa: BLE001
-            _log.error("Match update failed: %s", exc)
-            return "failed"
+        return outcome
 
     def get_recent(self, mode: str = "", limit: int = 20) -> list:
         """Get recent matches, optionally filtered by mode.

@@ -464,6 +464,43 @@ def test_match_db_upsert_by_game_id_inserts_then_updates(tmp_path):
     assert db.upsert_by_game_id({"mode": "TFT", "game_id": 0}) == "failed"
 
 
+def test_match_db_upsert_is_atomic_against_a_concurrent_insert(tmp_path):
+    """The game-end rating and the collector's re-rate can upsert the same
+    game at once. The lookup and the insert happen inside one BEGIN
+    IMMEDIATE: an upsert that starts while another writer holds the lock
+    sees that writer's row once it commits, and updates it - one row, never
+    two (the lookup used to run outside the write lock)."""
+    import threading
+    from core.match_db import MatchDB
+    db = MatchDB(tmp_path / "m.db")
+    holder = sqlite3.connect(str(tmp_path / "m.db"), isolation_level=None)
+    holder.execute("BEGIN IMMEDIATE")
+    out = {}
+    t = threading.Thread(target=lambda: out.setdefault("r", db.upsert_by_game_id(
+        {"mode": "TFT", "game_id": 7, "grade": "S", "tft_placement": 1})))
+    t.start()
+    time.sleep(0.6)
+    holder.execute("INSERT INTO matches (mode, game_id, grade, tft_placement, timestamp) "
+                   "VALUES ('TFT', 7, 'F', 8, '2026-10-25 09:28:52')")
+    holder.execute("COMMIT")
+    holder.close()
+    t.join(10)
+    assert out.get("r") == "updated"
+    rows = db.get_recent("TFT", 10)
+    assert [(r["grade"], r["tft_placement"]) for r in rows] == [("S", 1)]
+
+
+def test_a_rating_db_write_that_fails_is_logged_not_silent(root, monkeypatch, caplog):
+    import logging
+    from core.match_db import MatchDB
+    _store_eog()
+    monkeypatch.setattr(MatchDB, "upsert_by_game_id", lambda self, data: "failed")
+    with caplog.at_level(logging.WARNING):
+        assert pt.rate_tft_game(str(root), GID)[0] == "S"
+    errs = [r for r in caplog.records if r.levelno >= logging.ERROR]
+    assert errs and str(GID) in errs[0].getMessage()
+
+
 def test_get_db_follows_the_script_root(tmp_path, monkeypatch):
     """The pollution vector behind the junk rows: _get_db cached the FIRST
     root it saw, so every later save in the process - whatever root it was
