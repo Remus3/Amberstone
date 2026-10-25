@@ -46,6 +46,21 @@ def _set_has_gods() -> bool:
         return False
 
 
+def _round_labels(stage, rnd) -> dict:
+    """RM-858: the round fields of the resolved set's schedule
+    (tft/tft_state_reader.py round_schedule, RM-855) plus "gods_schedule",
+    True only on the Set 17 Realm of the Gods schedule. {} when the schedule
+    cannot be built, which labels every round PVP (never raises)."""
+    try:
+        from tft import tft_state_reader
+        sched = tft_state_reader.round_schedule()
+        out = sched.fields(stage, rnd)
+        out["gods_schedule"] = sched.label == tft_state_reader.SCHEDULE_GODS
+        return out
+    except Exception:  # noqa: BLE001
+        return {}
+
+
 FIELD_MAP = {
     "action":    "action",
     "board":     "board",
@@ -80,17 +95,19 @@ def _build_prompt(state: dict) -> str:
     streak_str = (f"WIN+{streak}" if streak > 0
                   else f"LOSS{streak}" if streak < 0 else "NEUTRAL")
 
-    # Determine round type. RM-845: the god schedule in tft/tft_pbe_data.py
-    # is Set 17's; it labels rounds only when the resolved set's meta records
-    # Realm of the Gods, never for a set whose data shows no such mechanic.
-    from tft.tft_pbe_data import GOD_ROUNDS, PVE_ROUNDS, BOON_ROUND
-    gods = _set_has_gods()
-    round_key = (stage, rnd)
-    if gods and round_key in GOD_ROUNDS:
+    # Determine round type. RM-858: the labels come from the resolved set's
+    # round schedule (RM-855 round_schedule): the Set 17 Realm of the Gods
+    # tables in tft/tft_pbe_data.py only for Set 17 with that mechanic, and no
+    # god, boon or PvE label for any other set (Set 18, an unknown set). The
+    # PvE branch used to apply the Set 17 PvE table to every set.
+    from tft.tft_pbe_data import BOON_ROUND
+    gods = _set_has_gods()  # the reminder line below, not a round label
+    rf = _round_labels(stage, rnd)
+    if rf.get("is_god_round"):
         round_type = "REALM OF THE GODS"
-    elif gods and round_key == BOON_ROUND:
+    elif rf.get("gods_schedule") and (stage, rnd) == BOON_ROUND:
         round_type = "GOD BOON"
-    elif round_key in PVE_ROUNDS:
+    elif rf.get("is_pve"):
         round_type = "PVE"
     else:
         round_type = "PVP"
