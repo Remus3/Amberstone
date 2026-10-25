@@ -301,31 +301,80 @@ def _templates(src: str):
     return out
 
 
-_SAFE_EXPR = (
-    re.compile(r"^_escHtml\("),                          # escaped value
-    re.compile(r"^\w+(Html|Rows)$"),                      # composed, itself checked
-    re.compile(r"^\w+(Html|Rows) \|\| '[^'<>]*(<[^'$]*)?'$"),   # composed or literal
+def _whole_call(expr: str, name: str) -> bool:
+    """True when `expr` is exactly one call `name(...)` - the opening paren's
+    match is the last character, so `_escHtml(a) + u.name` is refused."""
+    if not expr.startswith(name + "(") or not expr.endswith(")"):
+        return False
+    depth, i = 0, len(name)
+    while i < len(expr):
+        ch = expr[i]
+        if ch in "'\"`":
+            q = ch
+            i += 1
+            while i < len(expr) and expr[i] != q:
+                i += 2 if expr[i] == "\\" else 1
+        elif ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                return i == len(expr) - 1
+        i += 1
+    return False
+
+
+_CONST_EXPR = (
     re.compile(r"^[\w.]+ \? \"[^\"]*\" : \"[^\"]*\"$"),   # literal ternary
     re.compile(r"^act$"),                                 # "1" / "0" / "" only
-    re.compile(r"^\w+\.map\("),                           # its own templates checked
 )
+
+
+def _composed_vars_ok(seg: str, name: str) -> bool:
+    """A composed fragment (`fooHtml` / `fooRows`) is trusted only when its
+    assignment builds markup from templates (each of which is scanned)."""
+    # The statement runs to the next statement at the function's own indent.
+    m = re.search(r"\n  const " + re.escape(name) + r" = (.*?)(?=\n  \S)", seg + "\n  ;",
+                  re.S)
+    return bool(m) and "`" in m.group(1)
+
+
+def _expr_ok(seg: str, expr: str) -> bool:
+    if _whole_call(expr, "_escHtml") or any(p.match(expr) for p in _CONST_EXPR):
+        return True
+    m = re.match(r"^(\w+(?:Html|Rows))(?: \|\| '[^'$]*')?$", expr)
+    if m:
+        return _composed_vars_ok(seg, m.group(1))
+    # x.map((v) => `<markup ${...}>`).join("") - the inner template is scanned.
+    return bool(re.match(r"^\w+\.map\(\(\w+\) => `", expr)) and expr.endswith('.join("")')
+
+
+def _unsafe(seg: str) -> list:
+    html = [(lit, ex) for lit, ex in _templates(seg) if "<" in lit]
+    return [e for _lit, exprs in html for e in exprs if not _expr_ok(seg, e)]
 
 
 def test_frontend_tft_markup_escapes_every_interpolated_value():
     """Every ${...} inside an HTML-bearing template of _renderTftLastMatch is
-    escaped, a composed HTML fragment (itself checked here), or a constant."""
+    escaped (one whole _escHtml call), a composed fragment built from scanned
+    templates, a map over a scanned template, or a constant; and no markup is
+    built by plain string concatenation."""
     js = _js()
     j = js.find("function _renderTftLastMatch(data)")
     seg = js[j:js.find("\n}\n", j)]
-    html_templates = [(lit, ex) for lit, ex in _templates(seg) if "<" in lit]
-    assert len(html_templates) >= 6, "scanner found too few markup templates"
-    bad = [e for _lit, exprs in html_templates for e in exprs
-           if not any(p.match(e) for p in _SAFE_EXPR)]
-    assert bad == [], bad
-    # The positive control: an unescaped value is caught.
-    probe = _templates("x = `<li>${u.name}</li>`;")
-    assert [e for _l, ex in probe for e in ex
-            if not any(p.match(e) for p in _SAFE_EXPR)] == ["u.name"]
+    assert len([t for t in _templates(seg) if "<" in t[0]]) >= 6
+    assert _unsafe(seg) == []
+    assert not re.search(r"""["']<[^"']*["']\s*\+|\+\s*["']<""", seg), \
+        "markup built by string concatenation"
+    # Positive controls - each bypass the s134 verifier constructed is caught.
+    for probe in ("x = `<li>${u.name}</li>`;",
+                  "x = `<li>${_escHtml(a) + u.name}</li>`;",
+                  "x = `<ul>${augs.map((a) => a.name)}</ul>`;",
+                  "\n  const nameHtml = u.name;\n  x = `<li>${nameHtml}</li>`;"):
+        assert _unsafe(probe), probe
+    # ...and the composed-fragment rule does accept a template-built one.
+    assert _unsafe("\n  const okHtml = `<b>${_escHtml(v)}</b>`;\n"
+                   "  x = `<li>${okHtml}</li>`;") == []
 
 
 def test_frontend_tft_mount_lives_in_the_pgr_section():
