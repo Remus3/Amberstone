@@ -256,6 +256,83 @@ class RobustnessTests(_Base):
         self.assertEqual(doc["kill_order"], list(board.kill_order))
 
 
+class InputBoundaryTests(_Base):
+    """The public boundary normalises hostile input instead of raising.
+
+    Regression for the verifier's refutation of "never raises": an infinite
+    level raised OverflowError out of ``int()``, and a non-iterable
+    ``enemies`` / ``allies`` raised TypeError outside any guard.
+    """
+
+    def test_infinite_level_is_a_note_not_an_exception(self) -> None:
+        board = self._board(_JINX, [("Zed", float("inf"), ()), _COMP[0]])
+        self.assertEqual([r.champion_id for r in board.rows], ["Malphite"])
+        self.assertTrue(
+            any("Zed" in n and "not finite" in n for n in board.notes), board.notes,
+        )
+        me_inf = self._board(("Jinx", float("-inf"), ()), _COMP)
+        self.assertEqual(me_inf.rows, ())
+        self.assertTrue(any("not finite" in n for n in me_inf.notes), me_inf.notes)
+
+    def test_nan_level_is_a_note_not_an_exception(self) -> None:
+        board = self._board(_JINX, [("Zed", float("nan"), ()), _COMP[0]])
+        self.assertEqual([r.champion_id for r in board.rows], ["Malphite"])
+        self.assertTrue(
+            any("Zed" in n and "not finite" in n for n in board.notes), board.notes,
+        )
+
+    def test_overflowing_and_non_numeric_levels_are_notes(self) -> None:
+        board = self._board(
+            _JINX,
+            [("Zed", 10 ** 400, ()), ("Lux", "eleven", ()), ("Leona", True, ()),
+             _COMP[0]],
+        )
+        self.assertEqual([r.champion_id for r in board.rows], ["Malphite"])
+        for cid in ("Zed", "Lux", "Leona"):
+            with self.subTest(champion=cid):
+                self.assertTrue(
+                    any(cid in n and "level" in n for n in board.notes), board.notes,
+                )
+
+    def test_negative_level_is_clamped_with_note(self) -> None:
+        neg = self._board(_JINX, [("Zed", -3, ())])
+        one = self._board(_JINX, [("Zed", 1, ())])
+        row = self._row(neg, "Zed")
+        self.assertEqual(row.level, 1)
+        self.assertAlmostEqual(row.my_ttk_s, self._row(one, "Zed").my_ttk_s, places=9)
+        self.assertTrue(
+            any("Zed" in n and "clamped to 1" in n for n in neg.notes), neg.notes,
+        )
+        high = self._row(self._board(_JINX, [("Zed", 99, ())]), "Zed")
+        self.assertEqual(high.level, 18)
+
+    def test_non_iterable_enemies_is_a_note_and_an_empty_board(self) -> None:
+        board = self._board(_JINX, 5)
+        self.assertEqual(board.rows, ())
+        self.assertEqual(board.kill_order, ())
+        self.assertEqual(board.danger_order, ())
+        self.assertEqual(board.me, "Jinx")
+        self.assertTrue(any("enemies" in n for n in board.notes), board.notes)
+
+    def test_non_iterable_allies_is_a_note_and_no_allies(self) -> None:
+        board = self._board(_JINX, _COMP[:1], allies=5)
+        self.assertEqual(board.allies, ())
+        row = self._row(board, "Malphite")
+        self.assertAlmostEqual(row.team_ttk_s, row.my_ttk_s, places=9)
+        self.assertTrue(any("allies" in n for n in board.notes), board.notes)
+
+    def test_none_enemies_is_a_note_and_an_empty_board(self) -> None:
+        board = self._board(_JINX, None)
+        self.assertEqual(board.rows, ())
+        self.assertEqual(board.kill_order, ())
+        self.assertTrue(any("enemies" in n for n in board.notes), board.notes)
+
+    def test_string_enemies_is_not_iterated_char_by_char(self) -> None:
+        board = self._board(_JINX, "Zed")
+        self.assertEqual(board.rows, ())
+        self.assertTrue(any("enemies" in n for n in board.notes), board.notes)
+
+
 class ModeReachesBothSidesTests(_Base):
     def test_aram_mode_moves_both_directions(self) -> None:
         # Jinx aramDamageDealt 0.9 / aramDamageTaken 1.05; Lux 0.9 / 1.1.

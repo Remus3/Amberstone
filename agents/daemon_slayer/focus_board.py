@@ -67,10 +67,22 @@ LIMITS (stated in every board's ``notes``):
   outcomes) applies: any consumer stays shadow until agreement data says
   otherwise.
 
-Never raises: an unknown champion, a malformed fighter tuple or a build the
-engine cannot resolve becomes a fixed-text note and that fighter is skipped;
-an unknown item id is dropped from the build with a note. Notes never carry
-exception text (RM-835), only the exception class name.
+Never raises, in two layers:
+
+* INPUT is validated and normalised at the public boundary, explicitly. A
+  non-iterable (or string) ``enemies`` / ``allies`` becomes a note plus an
+  empty list; ``None`` is an empty list. A malformed fighter tuple, an
+  unknown champion id or a level that is not a usable finite number becomes
+  a note and that fighter is skipped; an out-of-range level is clamped to
+  1-18 with a note (``stats.clamp_level`` RAISES on out-of-range, it does
+  not clamp, so the clamp is done here). An unknown item id is dropped from
+  the build with a note.
+* ENGINE calls (``_defence`` for me, ``_score_row`` per enemy) sit behind
+  the DS fail-soft idiom - ``except Exception`` with a FIXED note and the
+  cause logged repr()-escaped, exactly as ``combo.compute_combo`` and
+  ``mana_sim.compute_mana_bounded_combo`` wrap the same burst walker. Notes
+  never carry exception text (RM-835), only the exception class name; the
+  log keeps the cause, so an engine bug is reported, not hidden.
 
 DEFERRED (owned by the merger / later rows): the ``/focus-board`` route in
 ``server.py`` + ENGINE bump + ``docs/DAEMON_SLAYER.md`` / ``docs/API.md``
@@ -82,6 +94,7 @@ Arena 2v2 partner variant (pass the partner as the one ally today).
 
 from __future__ import annotations
 
+import logging
 import math
 from dataclasses import dataclass, field
 from typing import Any, Iterable, Optional, Sequence
@@ -92,7 +105,9 @@ from .data_loader import DataSnapshot, canonical_mode
 from .dps import compute_dps
 from .ehp import _aram_damage_taken
 from .matchup import _defensive_stats
-from .stats import clamp_level
+from .stats import LEVEL_MAX, LEVEL_MIN
+
+_LOG = logging.getLogger(__name__)
 
 # A fighter as callers pass it: (champion_id, level, item_ids).
 Fighter = tuple[str, int, Sequence[str | int]]
@@ -229,14 +244,65 @@ def _num(value: float) -> Optional[float]:
     return float(value) if math.isfinite(value) else None
 
 
+def _as_fighters(value: Any, label: str) -> tuple[list[Any], list[str]]:
+    """Normalise the ``enemies`` / ``allies`` argument to a plain list.
+
+    ``None`` -> empty. A string / bytes is NOT iterated character by
+    character, and a non-iterable (an int, say) is not iterated at all: both
+    become a note plus an empty list. Materialised once here so a generator
+    is consumed at the boundary, not halfway through scoring.
+    """
+    if value is None:
+        return [], []
+    if isinstance(value, (str, bytes)):
+        return [], [f"{label}: expected a list of fighters, got a string - ignored"]
+    try:
+        return list(value), []
+    except TypeError:
+        return [], [
+            f"{label}: expected a list of fighters, got "
+            f"{type(value).__name__} - ignored"
+        ]
+
+
+def _parse_level(level: Any, label: str) -> tuple[Optional[int], list[str]]:
+    """Coerce a caller level to an int in [LEVEL_MIN, LEVEL_MAX].
+
+    ``float()`` is the one coercion, so the error family is exactly what it
+    can raise: TypeError (None, a list), ValueError (a non-numeric string)
+    and OverflowError (an int too large for a float, e.g. ``10 ** 400``).
+    A bool is rejected (``True`` is an int, never a level). NaN / +-inf ->
+    skipped. A finite value outside the range is clamped with a note.
+    """
+    if isinstance(level, bool):
+        return None, [f"{label}: level is not a number - skipped"]
+    try:
+        as_float = float(level)
+    except (TypeError, ValueError, OverflowError):
+        return None, [f"{label}: level is not a usable number - skipped"]
+    if not math.isfinite(as_float):
+        return None, [f"{label}: level is not finite - skipped"]
+    notes: list[str] = []
+    lvl = int(as_float)  # finite float -> int never raises
+    if lvl != as_float:
+        notes.append(f"{label}: level {as_float:g} truncated to {lvl}")
+    clamped = max(LEVEL_MIN, min(LEVEL_MAX, lvl))
+    if clamped != lvl:
+        notes.append(
+            f"{label}: level {lvl} outside {LEVEL_MIN}-{LEVEL_MAX}, clamped to {clamped}"
+        )
+    return clamped, notes
+
+
 def _parse_fighter(
     snapshot: DataSnapshot, fighter: Any, role: str,
 ) -> tuple[Optional[_Fighter], list[str]]:
     """Validate one ``(champion_id, level, item_ids)`` tuple.
 
     Returns ``(None, notes)`` for a malformed tuple, an unknown champion id or
-    a non-integer level. Unknown item ids are dropped (live inventories carry
-    wards and consumables the snapshot may not price) and named in a note.
+    an unusable level (see ``_parse_level``). Unknown item ids are dropped
+    (live inventories carry wards and consumables the snapshot may not price)
+    and named in a note.
     """
     try:
         champion_id, level, item_ids = fighter
@@ -248,10 +314,9 @@ def _parse_fighter(
     if not isinstance(champion_id, str) or champion_id not in snapshot.champions:
         shown = champion_id if isinstance(champion_id, str) else type(champion_id).__name__
         return None, [f"{role}: unknown champion id {shown!r} - skipped"]
-    try:
-        lvl = clamp_level(int(level))
-    except (TypeError, ValueError):
-        return None, [f"{role} {champion_id}: level is not an integer - skipped"]
+    lvl, notes = _parse_level(level, f"{role} {champion_id}")
+    if lvl is None:
+        return None, notes
 
     if item_ids is None:
         raw: Iterable[Any] = ()
@@ -266,9 +331,10 @@ def _parse_fighter(
             key = str(iid)
             (kept if key in snapshot.items else dropped).append(key)
     except TypeError:
-        return None, [f"{role} {champion_id}: item_ids is not a sequence - skipped"]
+        return None, notes + [
+            f"{role} {champion_id}: item_ids is not a sequence - skipped"
+        ]
 
-    notes: list[str] = []
     if dropped:
         notes.append(
             f"{role} {champion_id}: dropped unknown item id(s) {', '.join(dropped)}"
@@ -419,7 +485,8 @@ def compute_focus_board(
     Each fighter is ``(champion_id, level, item_ids)`` with a snapshot
     champion id (``"Jinx"``, ``"MonkeyKing"``). See the module docstring for
     the composition, the effective-HP definition and the mode rule. Never
-    raises; every skipped fighter is named in ``notes``.
+    raises: input is normalised here (module docstring, "Never raises") and
+    every skipped fighter is named in ``notes``.
     """
     notes: list[str] = [_FULL_HP_NOTE, _DPS_NOTE, _ORDERING_NOTE]
     if isinstance(mode, str) and mode.strip():
@@ -427,7 +494,22 @@ def compute_focus_board(
     else:
         mode_s = "SR"
         notes.append("mode missing or not a string - scored as SR")
-    flag = bool(apply_mode_modifiers)
+    # bool, or the 0 / 1 ints a form encoder may send; anything else is OFF
+    # with a note (DEFAULT-OFF is the safe reading of an unreadable flag).
+    if isinstance(apply_mode_modifiers, bool):
+        flag = apply_mode_modifiers
+    elif isinstance(apply_mode_modifiers, int) and apply_mode_modifiers in (0, 1):
+        flag = bool(apply_mode_modifiers)
+    else:
+        flag = False
+        if apply_mode_modifiers is not None:
+            notes.append("apply_mode_modifiers is not a bool - treated as False")
+    enemy_list, enemy_notes = _as_fighters(enemies, "enemies")
+    ally_list, ally_notes = _as_fighters(allies, "allies")
+    notes.extend(enemy_notes)
+    notes.extend(ally_notes)
+    if not enemy_list:
+        notes.append("enemies: none supplied - empty board")
 
     def _empty(reason_notes: list[str]) -> FocusBoard:
         return FocusBoard(
@@ -442,21 +524,26 @@ def compute_focus_board(
         return _empty(["no board: my own champion could not be resolved"])
     try:
         my_def = _defence(snapshot, me_f, mode_s, flag)
-    except Exception as exc:  # noqa: BLE001 - never-raises contract
+    except Exception as exc:  # noqa: BLE001 - fail-soft: surface a note, never raise
+        # DS fail-soft idiom (combo.compute_combo, mana_sim): a FIXED note
+        # (RM-835 - no exception text in a reply), the cause to the log
+        # repr()-escaped, so an engine bug is reported rather than hidden.
+        _LOG.warning("compute_focus_board me %s: defence failed: %s: %r",
+                     me_f.champion_id, type(exc).__name__, str(exc))
         return _empty([
             f"me {me_f.champion_id}: engine could not resolve this build "
-            f"({type(exc).__name__}) - no board"
+            f"({type(exc).__name__}) - no board, see logs"
         ])
 
     ally_fs: list[_Fighter] = []
-    for i, ally in enumerate(allies or ()):
+    for i, ally in enumerate(ally_list):
         a_f, a_notes = _parse_fighter(snapshot, ally, f"ally {i}")
         notes.extend(a_notes)
         if a_f is not None:
             ally_fs.append(a_f)
 
     rows: list[FocusRow] = []
-    for slot, enemy in enumerate(enemies or ()):
+    for slot, enemy in enumerate(enemy_list):
         e_f, e_notes = _parse_fighter(snapshot, enemy, f"enemy {slot}")
         notes.extend(e_notes)
         if e_f is None:
@@ -465,10 +552,13 @@ def compute_focus_board(
             rows.append(_score_row(
                 snapshot, slot, me_f, my_def, e_f, ally_fs, mode_s, flag,
             ))
-        except Exception as exc:  # noqa: BLE001 - never-raises contract
+        except Exception as exc:  # noqa: BLE001 - fail-soft: surface a note, never raise
+            # Same idiom as the defence guard above.
+            _LOG.warning("compute_focus_board enemy %d %s: row failed: %s: %r",
+                         slot, e_f.champion_id, type(exc).__name__, str(exc))
             notes.append(
                 f"enemy {slot} {e_f.champion_id}: engine could not score this row "
-                f"({type(exc).__name__}) - skipped"
+                f"({type(exc).__name__}) - skipped, see logs"
             )
 
     kill_order = tuple(
