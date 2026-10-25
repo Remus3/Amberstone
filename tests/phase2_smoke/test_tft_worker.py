@@ -15,11 +15,9 @@ from core.tft_worker import TftWorker, TftWorkerResult
 
 
 class FakeLiveAnalysis:
-    """Stub TftLiveAnalysis - records set_ai_bar calls, no Tk."""
+    """Stub TftLiveAnalysis - no Tk."""
     def __init__(self):
-        self._ai_bar = None
         self.started = False
-    def set_ai_bar(self, bar): self._ai_bar = bar
     def start(self): self.started = True
     def shutdown(self): pass
     def notify_coach_state(self, s): pass
@@ -46,14 +44,6 @@ class FakeReader:
             s = self._states[self._idx]; self._idx += 1; return s
         return None
     def shutdown(self): pass
-
-
-class FakeAiBarProxy:
-    """Minimal proxy stub - no Tk widgets."""
-    def set_scanning(self, pct=0): pass
-    def set_done(self): pass
-    def notify_scan_scheduled(self, t): pass
-    def set_interval(self, s): pass
 
 
 class TestTftWorkerContract(unittest.TestCase):
@@ -97,39 +87,8 @@ class TestTftWorkerContract(unittest.TestCase):
         self.assertIsNone(w._engine)
         self.assertIsNone(w._reader)
 
-    def test_wire_ai_bar_before_live_init(self):
-        """Pending proxy stored before _live exists is applied after init."""
-        rq = queue.Queue(maxsize=4)
-        w = TftWorker(result_queue=rq)
-        proxy = FakeAiBarProxy()
-        w.wire_ai_bar(proxy)
-        self.assertIs(w._ai_bar, proxy)
-        self.assertIsNone(w._live)  # not yet init'd
-
-        # Simulate _init_components applying pending bar
-        live = FakeLiveAnalysis()
-        w._live = live
-        if w._ai_bar is not None:
-            w._live.set_ai_bar(w._ai_bar)
-        live.start()
-        self.assertIs(live._ai_bar, proxy)
-
-    def test_wire_ai_bar_after_live_init(self):
-        """Proxy applied immediately when _live already exists."""
-        rq = queue.Queue(maxsize=4)
-        w = TftWorker(result_queue=rq)
-        live = FakeLiveAnalysis(); live.start()
-        w._live = live
-        proxy = FakeAiBarProxy()
-        w.wire_ai_bar(proxy)
-        self.assertIs(w._ai_bar, proxy)
-        self.assertIs(live._ai_bar, proxy)
-
-    def test_teardown_clears_ai_bar(self):
-        w, _ = self._make_worker()
-        w._ai_bar = FakeAiBarProxy()
-        w._teardown_components()
-        self.assertIsNone(w._ai_bar)
+    # The three wire_ai_bar / _ai_bar tests went with the dead API in the
+    # lane 8 s134 audit (tests/test_tft_worker_true_audit_s134.py W6).
 
     def test_no_tk_import_in_worker(self):
         _root = Path(__file__).parent.parent.parent
