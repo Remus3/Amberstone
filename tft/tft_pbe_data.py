@@ -14,9 +14,10 @@ that no ingested game data backs. Set game data lives in data/meta
 built from it (tft/tft_prompt.py).
 
 Readers: tft/tft_roll_odds.py load_constants (constants), and the round
-schedule in tft/tft_state_reader.py, tft/tft_pbe_engine.py and
-coaches/tft_pbe_coach.py - the last two only when the resolved set's meta
-records Realm of the Gods (tft/tft_prompt.py set_has_gods).
+schedule in tft/tft_state_reader.py. The PBE engine and PBE coach that also
+read the schedule (only when the resolved set's meta records Realm of the
+Gods, tft/tft_prompt.py set_has_gods) were deleted by RM-292 (b),
+2026-10-25.
 """
 
 # -- Set declaration ----------------------------------------------------------

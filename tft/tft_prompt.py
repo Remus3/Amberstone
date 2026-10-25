@@ -6,11 +6,12 @@ Before RM-845 both engines carried a hand-written Set 17 "Space Gods" system
 prompt: tft/tft_coach_engine.py TFT_SYSTEM_PROMPT (3471 chars - Realm of Gods
 round structure, nine gods with S/A/B boon tiers) and tft/tft_pbe_engine.py
 TFT_PBE_SYSTEM_PROMPT (9821 chars - patch 17.3 notes, a "META S-TIER COMPS"
-list). RM-840 made the data set-agnostic (tft/tft_set.py) and Set 18 became
+list; that engine was deleted by RM-292 (b), 2026-10-25). RM-840 made the data set-agnostic (tft/tft_set.py) and Set 18 became
 the default, so a Set 18 game was coached on Set 17 mechanics and on tier
 claims no data backed.
 
-One prompt, three parts, for BOTH engines:
+One prompt, three parts, for the TFT engine (tft/tft_coach_engine.py, the
+only one since RM-292 (b) deleted its PBE twin):
   shared rules  set-independent coaching rules and the 9-field output format.
   SET block     ONLY what the resolved set's ingested files hold:
                 data/meta/tft_set<N>_cdragon.json (CommunityDragon: trait
@@ -32,7 +33,7 @@ The 6th output field (payload key god_pick) is labelled from the data too:
 "God pick" when the set's meta records the carousel replaced by Realm of the
 Gods (Set 17: _patch_notes_17.1 carousel / realm_of_gods), "Carousel" when
 the set's CommunityDragon augment text names carousel rounds (Set 18), else
-"Pick". The parsers in both engines map all three labels onto their pick key.
+"Pick". The engine's parser maps all three labels onto its pick key.
 
 Cost: the prompt is the cached system block of every coach call. It sits
 below the prompt-cache floor before and after RM-845 (docs/COST_TRACE.md), so

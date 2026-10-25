@@ -64,7 +64,7 @@ def _safe_err(exc: object) -> str:
     """Format an upstream exception for a log line with secrets removed.
 
     The key reaches this module from API-Key-Claude.txt
-    (coaches/tft_pbe_coach.py _read_api_key -> core/tft_worker.py) and is
+    (app/_game_lifecycle.py _try_read_api_key -> core/tft_worker.py) and is
     handed to the SDK, so any upstream that echoes a credential into its
     error text would land it in logs/YYYY-MM-DD.log verbatim. No upstream is
     known to do that today; this is the defence-in-depth half, and it costs

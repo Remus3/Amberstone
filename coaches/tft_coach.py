@@ -39,9 +39,8 @@ if TYPE_CHECKING:
 # `_read_api_key` was removed in the lane 8 cycle 34 audit. It read
 # API-Key-Claude.txt into a local and had ZERO callers - no direct call, no
 # getattr, no string dispatch, no __all__ and no star import (checked in both
-# directions). NOTE the name still exists as a PRIVATE DUPLICATE in the twin,
-# coaches/tft_pbe_coach.py:38, called at :71; that copy is untouched here and
-# is itself unreachable (RM-292b), so this is not a repo-wide removal. The live TFT key path is a different
+# directions). The private duplicate that lived in the twin PBE coach was
+# deleted with it by RM-292 (b) (2026-10-25). The live TFT key path is a different
 # symbol entirely: app/_game_lifecycle.py:315 `_try_read_api_key`, which
 # reaches the worker without passing through this facade. A dead function
 # that loads a secret is a latent secret path with no offsetting benefit,

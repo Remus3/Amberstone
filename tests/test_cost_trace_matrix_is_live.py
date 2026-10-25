@@ -117,7 +117,10 @@ _LIVE_TIERS = {"HAIKU", "SONNET", "OPUS"}
 # So: the count is exact, and separately EVERY table row in the matrix section
 # must yield a parseable site. There is now no way to shrink the checked set
 # without failing. The doc carries a matching DO-NOT-STRIP note.
-_EXPECTED_ROWS = 21
+# 21 -> 20 on 2026-10-25: RM-292 (b) deleted tft/tft_pbe_engine.py and its
+# `tft_pbe` row went with it - deleted, not struck, because that purpose key
+# never reached a data/spend/*.json ledger (the engine had no caller).
+_EXPECTED_ROWS = 20
 
 # Rows deliberately kept in the table after the call site was retired, so the
 # matching `by_purpose` key in old `data/spend/*.json` ledgers stays
