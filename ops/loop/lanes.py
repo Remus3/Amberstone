@@ -65,12 +65,17 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import logging
 import os
 import sys
 import time
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
+
+# RM-836: the module had no logger, so a lane-lock write fault was recorded
+# nowhere. The cause goes here, scrubbed (RM-321); results carry fixed lines.
+log = logging.getLogger("rc.loop.lanes")
 
 
 def _main_tree_root(start: Path | None = None) -> Path:
@@ -130,30 +135,39 @@ def _bind(modname: str, filename: str):
 
 slots = _bind("rc_loop_slots", "slots.py")
 
+def _bind_core(stem: str):
+    """core/<stem>.py - plain import first so a repo-root process shares one
+    module object; absolute-path bind as the fallback for the script /
+    launcher context where the repo root is not on sys.path."""
+    try:
+        return importlib.import_module(f"core.{stem}")
+    except ModuleNotFoundError:
+        pass
+    name = f"rc_core_{stem}"
+    if name in sys.modules:
+        return sys.modules[name]
+    try:
+        spec = importlib.util.spec_from_file_location(
+            name, Path(__file__).resolve().parents[2] / "core" / f"{stem}.py")
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules[name] = mod
+        spec.loader.exec_module(mod)
+    except OSError as exc:
+        sys.modules.pop(name, None)
+        raise ModuleNotFoundError(
+            f"core/{stem}.py could not be loaded by absolute path") from exc
+    return mod
+
+
 # core/polled_json.py holds the repo's atomic-write contract - LANE 8 CYCLE 48,
-# RM-250 sibling sweep. Plain import first so a repo-root process shares one
-# module object; absolute-path bind as the fallback for the script / launcher
-# context where the repo root is not on sys.path.
-try:
-    from core.polled_json import atomic_write_bytes as _atomic_write_bytes
-except ModuleNotFoundError:
-    _pj_name = "rc_core_polled_json"
-    if _pj_name in sys.modules:
-        _atomic_write_bytes = sys.modules[_pj_name].atomic_write_bytes
-    else:
-        try:
-            _pj_spec = importlib.util.spec_from_file_location(
-                _pj_name,
-                Path(__file__).resolve().parents[2] / "core" / "polled_json.py")
-            _pj = importlib.util.module_from_spec(_pj_spec)
-            sys.modules[_pj_name] = _pj
-            _pj_spec.loader.exec_module(_pj)
-        except OSError as _exc:
-            sys.modules.pop(_pj_name, None)
-            raise ModuleNotFoundError(
-                "core/polled_json.py could not be loaded by absolute path"
-            ) from _exc
-        _atomic_write_bytes = _pj.atomic_write_bytes
+# RM-250 sibling sweep. core/log_scrub.py is the RM-321 log scrub (RM-836).
+_atomic_write_bytes = _bind_core("polled_json").atomic_write_bytes
+_scrub_log = _bind_core("log_scrub").scrub_log
+
+# RM-836: the fixed `detail` of a `lane_lock_unwritable` refusal. The cause
+# (an OSError naming its file) is logged, never returned.
+LOCK_UNWRITABLE_DETAIL = ("the lane lock could not be written - the claim was "
+                          "released, see logs")
 
 
 
@@ -324,6 +338,11 @@ def try_acquire_lane(lane, *, run_id, worktree, root=None) -> dict:
     "pid", "holders"}` when the same lane NAME is running, or every index is
     held by a live lane. A refusal writes no lane lock. A dead holder is
     reclaimed instead of respected.
+
+    Returns `{"ok": False, "refused": "lane_lock_unwritable", "holder": None,
+    "pid": None, "holders": [], "detail": LOCK_UNWRITABLE_DETAIL}` when the
+    claimed lock cannot be rewritten; the claim is released and the cause is
+    logged scrubbed with its type (RM-836), so no holder is implied.
     """
     if lane not in LANES:
         raise ValueError(
@@ -359,8 +378,10 @@ def try_acquire_lane(lane, *, run_id, worktree, root=None) -> dict:
         _atomic_write_bytes(Path(token), json.dumps(rec).encode("utf-8"))
     except OSError as exc:
         fleet_lanes.release_lane(claim)
+        log.warning("lane %s: lane lock rewrite failed, claim released: %s: %s",
+                    lane, type(exc).__name__, _scrub_log(str(exc)))
         return {"ok": False, "refused": "lane_lock_unwritable", "holder": None,
-                "pid": None, "holders": [], "detail": str(exc)[:200]}
+                "pid": None, "holders": [], "detail": LOCK_UNWRITABLE_DETAIL}
     _OWNED[_key(token)] = claim
     return {"ok": True, "lane": lane, "run_id": str(run_id),
             "worktree": str(wt), "token": str(token), "index": claim["index"]}
