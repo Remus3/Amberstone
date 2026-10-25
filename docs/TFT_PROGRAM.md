@@ -689,3 +689,9 @@ slice each.
   provisional name Augur). Slices TFT-01..TFT-20 filed in section 7. The LCU TFT
   inventory landed during the write and fills the section 1.4 LCU column; the operator's
   session-134 frozen-file grant is recorded for TFT-14's planner-route fix.
+- 2026-10-25 (session 135): TFT-02 landed (LEDGER 1895; redo of the interrupted s134
+  builder): `tft/sources/eog_file.py` and `tft/sources/tft_log.py` write the per-round EoG
+  file and TFT.log into the TFT-01 store (all-8 HP / standing / boards, phase / VO events,
+  identity-free, bounded allowlist tail, restart-idempotent by event key); the local player
+  comes only from an injected id, never `isInteractable`. Nothing calls `tft/sources` yet;
+  TFT-07 wires it.
