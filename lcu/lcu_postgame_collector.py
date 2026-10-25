@@ -529,6 +529,15 @@ def _dict_players(team: dict) -> list:
     return [p for p in raw if isinstance(p, dict)]
 
 
+def _lol_eog_has_players(eog) -> bool:
+    """True when a LoL EOG block carries a non-empty teams / players /
+    allPlayers list - the shapes _save_eog normalises."""
+    if not isinstance(eog, dict):
+        return False
+    return any(isinstance(eog.get(k), list) and eog.get(k)
+               for k in ("teams", "players", "allPlayers"))
+
+
 def _save_eog(eog: dict, game_mode: str, item_map: dict, rune_map: dict) -> None:
     """Parse and save a full EOG stats block to the appropriate mode tables."""
     mode      = _norm_mode(game_mode)
@@ -1400,9 +1409,18 @@ class PostgameCollector:
         ]
         for ep in endpoints:
             data = self._lcu_get(ep)
-            if isinstance(data, dict) and data.get("gameId"):
-                _log.info("postgame: got EOG stats from %s", ep)
-                return data
+            if not (isinstance(data, dict) and data.get("gameId")):
+                continue
+            # Only a document something can use: a TFT block (routed to the
+            # TFT store) or a LoL block with the teams / players list
+            # _save_eog reads. A LoL game-client block (statsBlock shape,
+            # reachable since the N4 spelling fix) would save nothing yet
+            # count as captured and claim the game's raw EOG slot - skip it.
+            if not (_tft_placement.is_tft_doc(data) or _lol_eog_has_players(data)):
+                _log.debug("postgame: %s answered without teams/players - skipped", ep)
+                continue
+            _log.info("postgame: got EOG stats from %s", ep)
+            return data
         return None
 
 
