@@ -110,11 +110,17 @@ class SchemaDefaults(unittest.TestCase):
 
     def test_field_is_last_appended(self) -> None:
         # Mid-class insert breaks positional construction (repo convention).
-        # R113 END-appended after R111's missing_hp_ad_amp_max_pct, so the
-        # new field is now the very last one.
+        # R113 END-appended after R111's missing_hp_ad_amp_max_pct. RM-808 (a)
+        # appended the takedown ranged-multiplier pair after it, so the pin is
+        # relative (the newest seam's own test owns the last-two assertion).
         names = [f.name for f in dataclasses.fields(ItemEffect)]
-        self.assertEqual(names[-1], "physical_burst_total_ad_ratio")
-        self.assertEqual(names[-2], "missing_hp_ad_amp_max_pct")
+        i = names.index("physical_burst_total_ad_ratio")
+        self.assertEqual(names[i - 1], "missing_hp_ad_amp_max_pct")
+        self.assertEqual(
+            names[i + 1:i + 3],
+            ["takedown_bonus_ad_ranged_base_mult",
+             "takedown_bonus_ad_ranged_per_stack_mult"],
+        )
         # The R74 base-AD pair stays intact earlier in the tail.
         self.assertIn("physical_burst_base_ad_ratio", names)
         self.assertLess(

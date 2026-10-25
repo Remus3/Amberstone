@@ -24,10 +24,11 @@ is one the engine does NOT model numerically, so no modeled number moves:
   * 2520 Bastionbreaker - Sabotage duration 90 -> 25000 s (utility-only, not
     modeled; looks like an upstream placeholder, Meraki still reads 90).
   * 6697 / 226697 Hubris - every Eminence number is GONE from the 16.21.1
-    prose, so DDragon cannot be the source. The engine keeps the Meraki
-    15 (+2 per stack) on both rows (the passive-formula source). DDragon
-    16.20.1's SR text read 12 + 3 per champion killed: that disagreement is a
-    pre-existing one this module records, not resolves.
+    prose, so DDragon cannot be the source. RM-804 kept the Meraki
+    15 (+2 per stack) on both rows; RM-808 (a) then settled the SR row on the
+    CommunityDragon 16.21 game data (15 + 3 melee, x0.667 ranged), which also
+    explains DDragon 16.20.1's 12 + 3 (the 16.20 bin read the same). The
+    Arena row still equals Meraki's 15 (+2).
 
 What this module pins:
 
@@ -279,6 +280,10 @@ class ModeledHalfSourceTests(unittest.TestCase):
                 )
 
     def test_hubris_eminence_follows_meraki(self) -> None:
+        # RM-808 (a) settled the SR row on the CommunityDragon 16.21 game data
+        # (15 + 3 melee, ranged split; test_hubris_eminence_cdragon_rm808a.py),
+        # where Meraki 25.15 is stale. The Arena and ARAM rows' MELEE values
+        # still equal Meraki's 15 (+2), which is what this pin keeps.
         eminence = [
             p for p in self.meraki["6697"]["passives"] if p.get("name") == "Eminence"
         ]
@@ -288,7 +293,7 @@ class ModeledHalfSourceTests(unittest.TestCase):
         )
         self.assertIsNotNone(found, eminence[0]["effects"])
         base, per_stack = float(found.group(1)), float(found.group(2))
-        for iid in _HUBRIS_IDS:
+        for iid in ("226697", "126697"):
             with self.subTest(item_id=iid):
                 eff = ITEM_EFFECTS[iid]
                 self.assertEqual(

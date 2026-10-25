@@ -104,7 +104,8 @@ PHASES: tuple[str, ...] = ("early", "mid", "late")
 # DSV2 (1.125.0): takedown / kill-state OFFENSE seam assumption. When
 # ``compute_dps`` / ``compute_burst_damage`` is called with
 # ``assume_takedown=True`` the wielder is assumed to hold this many Hubris
-# Eminence stacks worth of bonus AD (15 + 2*stacks). One stack -> 17 bonus AD,
+# Eminence stacks worth of bonus AD (SR melee 15 + 3*stacks, ranged x0.667 -
+# RM-808 (a), CommunityDragon 16.21 game data). One stack -> 18 bonus AD melee,
 # the value the moment after a single takedown (Eminence grants the first stack
 # on the takedown that triggers it). Operator-tunable, mirroring ehp.py's
 # ``_TAKEDOWN_RATE_PER_FIGHT`` doctrine; bumping it models a snowballing carry
@@ -832,7 +833,8 @@ def compute_dps(
 
     ``assume_takedown`` (DSV2, 2026-06-15): the takedown / kill-state OFFENSE
     seam. Default False -> byte-identical. When True, Hubris Eminence's bonus
-    AD (15 + 2 * ``_ASSUMED_TAKEDOWN_STACKS``) is folded into the wielder's
+    AD (SR melee 15 + 3 * ``_ASSUMED_TAKEDOWN_STACKS``, ranged x0.667 -
+    RM-808 (a)) is folded into the wielder's
     bonus AD, raising AA + bonus-AD-scaling-proc DPS. The Collector execute is
     deliberately NOT valued here (a one-shot finisher is not sustained DPS - it
     is credited by ``compute_burst_damage`` instead).
@@ -1057,7 +1059,7 @@ def compute_dps(
     bonus_ad = max(0.0, total_ad - base_ad)
     # DSV2 (1.125.0): takedown / kill-state OFFENSE seam. assume_takedown=False
     # (the default) -> takedown_bonus_ad stays 0.0 and every line below is
-    # byte-identical. When True, Hubris Eminence's bonus AD (15 + 2*stacks at
+    # byte-identical. When True, Hubris Eminence's bonus AD (base + per_stack at
     # _ASSUMED_TAKEDOWN_STACKS) folds into the wielder's bonus AD so it raises
     # both the AA rotation (via stats_for_rotation["ad"]) and bonus_ad-scaling
     # procs (via CallContext.bonus_ad). The Collector execute is NOT credited
@@ -1066,8 +1068,16 @@ def compute_dps(
     # is set (total_takedown_bonus_ad returns 0.0).
     takedown_bonus_ad = 0.0
     if assume_takedown:
+        # RM-808 (a): Eminence carries a melee / ranged split in the game data;
+        # the caster arm uses the same base-attackrange rule as
+        # CallContext.is_melee below.
         takedown_bonus_ad = total_takedown_bonus_ad(
-            item_effects, _ASSUMED_TAKEDOWN_STACKS
+            item_effects,
+            _ASSUMED_TAKEDOWN_STACKS,
+            caster_is_ranged=(
+                float((champ.get("stats") or {}).get("attackrange", 0) or 0)
+                >= MELEE_RANGE_CEILING
+            ),
         )
         bonus_ad += takedown_bonus_ad
     # R111 (1.209.0): Overlord's Bloodmail "Retribution" caster-missing-HP AD

@@ -569,17 +569,31 @@ def total_conditional_as(effects: Iterable[ItemEffect]) -> float:
 def total_takedown_bonus_ad(
     effects: Iterable[ItemEffect],
     assumed_stacks: float,
+    caster_is_ranged: bool = False,
 ) -> float:
     """Sum on-takedown bonus AD across the build (DSV2, kill-state seam).
 
     Hubris Eminence grants ``base + per_stack * stacks`` bonus AD on a
-    champion takedown (Meraki 16.12.1: "15 (+2 per stack)"). ``assumed_stacks``
-    is the consumer's kill-state assumption (``dps._ASSUMED_TAKEDOWN_STACKS``
-    = 1 -> 15 + 2*1 = 17 AD). Returns 0.0 when no item carries the field, so a
-    build without Hubris contributes nothing even with the seam ON. Additive
-    across items per the engine's stat-stacking convention (no current pair of
-    takedown-AD items, but sums commute if one lands later).
+    champion takedown. ``assumed_stacks`` is the consumer's kill-state
+    assumption (``dps._ASSUMED_TAKEDOWN_STACKS`` = 1). RM-808 (a): the values
+    come from the game's item data (CommunityDragon 16.21 items bin), which
+    states a MELEE value per term plus a RANGED multiplier - SR 6697 melee
+    15 + 3 per stack (18 AD at one stack), ranged x0.667 on both terms
+    (12.006). ``caster_is_ranged`` picks the arm (default False = melee, the
+    pre-RM-808 behavior for every caller that does not pass it). Returns 0.0
+    when no item carries the field, so a build without Hubris contributes
+    nothing even with the seam ON. Additive across items per the engine's
+    stat-stacking convention (no current pair of takedown-AD items, but sums
+    commute if one lands later).
     """
+    if caster_is_ranged:
+        return sum(
+            e.takedown_bonus_ad_base * e.takedown_bonus_ad_ranged_base_mult
+            + e.takedown_bonus_ad_per_stack
+            * e.takedown_bonus_ad_ranged_per_stack_mult
+            * assumed_stacks
+            for e in effects
+        )
     return sum(
         e.takedown_bonus_ad_base + e.takedown_bonus_ad_per_stack * assumed_stacks
         for e in effects

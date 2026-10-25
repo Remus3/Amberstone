@@ -573,7 +573,8 @@ def compute_burst_damage(
 
     ``assume_takedown`` (DSV2, 2026-06-15): the takedown / kill-state OFFENSE
     seam. Default False -> byte-identical. When True: (1) Hubris Eminence bonus
-    AD (15 + 2 * ``_ASSUMED_TAKEDOWN_STACKS``) raises both the AA per-hit and the
+    AD (SR melee 15 + 3 * ``_ASSUMED_TAKEDOWN_STACKS``, ranged x0.667 -
+    RM-808 (a)) raises both the AA per-hit and the
     AD-ratio ability damage; (2) the Collector execute is credited as a
     kill-state finisher of 5% target max HP TRUE damage (``execute_finisher_damage``,
     folded into ``total_burst_damage``) when a ``target_max_hp`` is supplied;
@@ -795,8 +796,14 @@ def compute_burst_damage(
     # the post-takedown power; the AA per-hit already picked it up via aa_probe.
     takedown_bonus_ad = 0.0
     if assume_takedown:
+        # RM-808 (a): Eminence carries a melee / ranged split in the game data;
+        # the caster arm is the canonical base-attackrange rule.
         takedown_bonus_ad = total_takedown_bonus_ad(
-            item_effects, _ASSUMED_TAKEDOWN_STACKS
+            item_effects,
+            _ASSUMED_TAKEDOWN_STACKS,
+            caster_is_ranged=attackrange_is_ranged(
+                (snapshot.champion(champion_id).get("stats") or {}).get("attackrange")
+            ),
         )
         if takedown_bonus_ad:
             ctx = replace(ctx, bonus_ad=ctx.bonus_ad + takedown_bonus_ad)
