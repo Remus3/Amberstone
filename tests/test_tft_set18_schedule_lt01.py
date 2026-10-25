@@ -19,6 +19,11 @@ counted back from PreEndOfGame); every time below is seconds after it.
 - Pace: 2-3 to 6-1 is 26 rounds in about 1697 s (about 65 s per round). The
   Set 17 Double Up table (`_TIME_TO_ROUND`, about 51 s per round) matched 0 of
   the 28 observed rounds.
+- S134 follow-up: a second QA game (20261025-081234) ran at about 60.5 s per
+  round, so `_TIME_TO_ROUND_SET18` is now the MEAN of both games' starts and
+  only a fallback behind the observed-round clock (RoundClock). This file
+  keeps the game-1 view of it; tests/test_tft_round_clock_s134.py holds both
+  games and the clock.
 
 The LCU inventory (ops/runtime/tft_qa/LCU_TFT_INVENTORY.md section 3.10)
 measured the running-set rule: tftsets.json `mDefaultSet` ("TFTSet18") paired
@@ -191,32 +196,35 @@ def test_unknown_set_keeps_the_neutral_schedule():
 
 # -- timing -------------------------------------------------------------------
 
-def test_set18_table_maps_every_observed_frame_to_its_round():
+def _seq_index(stage, rnd):
+    return [(s, r) for _, s, r in tsr._TIME_TO_ROUND_SET18].index((stage, rnd))
+
+
+def test_set18_fallback_table_stays_within_two_rounds_of_game1():
+    """S134 re-fit: the table is the two-game mean, so on game 1 alone (the
+    slower game) it may run ahead, never by more than two rounds."""
     for s, r, first, last in OBSERVED:
         for t in (first, last):
-            assert tsr._estimate_round(t, 18) == (s, r), (s, r, t)
+            got = tsr._estimate_round(t, 18)
+            assert abs(_seq_index(*got) - _seq_index(s, r)) <= 2, (s, r, t, got)
 
 
-def test_set18_round_starts_lie_in_their_observation_gap():
-    """Timing tolerance: a measured round's start lies between the last frame
-    of the previous round and the first frame of its own (frames are 20-45 s
-    apart), so the table is never off by more than one sampling gap."""
+def test_set18_round_starts_never_lag_game1():
+    """Game 2 ran faster than game 1 at every measured round, so the mean
+    start of an observed round is never after game 1 first showed it."""
     table = tsr._TIME_TO_ROUND_SET18
-    for (s0, r0, _, last0), (s1, r1, first1, _) in zip(OBSERVED, OBSERVED[1:]):
-        start = _start(table, s1, r1)
-        assert last0 < start <= first1, (s1, r1, last0, start, first1)
-        assert first1 - start <= 25, (s1, r1)
+    for s, r, first, _ in OBSERVED[1:]:
+        assert _start(table, s, r) <= first, (s, r)
 
 
-def test_set18_measured_pace_is_about_65_seconds_per_round():
+def test_set18_measured_pace_is_between_60_and_68_seconds_per_round():
     table = tsr._TIME_TO_ROUND_SET18
     span = _start(table, 6, 1) - _start(table, 2, 3)
     assert 60 <= span / 26 <= 68
     starts = [ms for ms, _, _ in table]
     assert starts == sorted(starts) and len(set(starts)) == len(starts)
     assert table[0] == (0, 1, 1)
-    # 6-1 was still in planning (timer 18) at 2084 s: 6-2 cannot start before.
-    assert _start(table, 6, 2) > 2084 + 18
+    assert _start(table, 6, 2) > _start(table, 6, 1) + 60
 
 
 def test_set17_table_does_not_track_set18():
@@ -236,10 +244,12 @@ def test_time_table_is_routed_by_set():
 # -- the reader, end to end ---------------------------------------------------
 
 def test_reader_parses_a_set18_game_with_the_set18_table_and_labels(two_sets):
+    """No per-round file in these raw dicts, so the reader uses the Set 18
+    fallback table: one second into each observed round's table start."""
     assert tft_set.resolve_set() == 18
     rdr = _reader()
-    for s, r, first, _ in OBSERVED:
-        st = rdr._parse(_raw(first))
+    for s, r, _, _ in OBSERVED:
+        st = rdr._parse(_raw(_start(tsr._TIME_TO_ROUND_SET18, s, r) + 1))
         assert st["stage_round"] == f"{s}-{r}", (s, r)
         assert st["round_schedule"] == SET18
         assert st["is_carousel"] is ((s, r) in HUD_CAROUSEL), (s, r)
