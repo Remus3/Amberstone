@@ -288,11 +288,15 @@ def check_file_claims(file_claims):
 
 def check_git():
     def _git(*args):
-        r = subprocess.run(["git", *args], cwd=str(ROOT),
-                           capture_output=True, text=True)
-        return r.stdout.strip()
-    status = _git("status", "-s")
-    head = _git("log", "--oneline", "-1")
+        # RM-861: quotepath off and a UTF-8 decode, so a non-ASCII name reads
+        # as itself (a locale decode faulted on 0x81 and left stdout None).
+        r = subprocess.run(["git", "-c", "core.quotepath=false", *args],
+                           cwd=str(ROOT), capture_output=True, text=True,
+                           encoding="utf-8", errors="replace")
+        return r.stdout or ""
+    # rstrip only: a leading space is the status column of an unstaged edit.
+    status = _git("status", "-s").rstrip("\n")
+    head = _git("log", "--oneline", "-1").strip()
     return {"clean": status == "", "dirty_files": status.splitlines(),
             "head": head}
 
