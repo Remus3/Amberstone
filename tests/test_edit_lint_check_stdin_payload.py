@@ -233,6 +233,25 @@ def test_ruff_argv_is_report_only_and_cacheless(tmp_path, monkeypatch, capsys):
     assert "creationflags" in kwargs, "console children keep CREATE_NO_WINDOW"
 
 
+def test_ruff_runs_under_the_console_twin_when_hosted_by_pythonw(
+        tmp_path, monkeypatch, capsys):
+    # s133 2026-10-24: the hook is hosted by pythonw.exe, and `pythonw -m ruff`
+    # flashed a visible ruff.exe console on every edit (CREATE_NO_WINDOW is a
+    # no-op for a GUI child). The ruff arm must use the python.exe twin.
+    bindir = tmp_path / "py"
+    bindir.mkdir()
+    (bindir / "pythonw.exe").write_bytes(b"")
+    (bindir / "python.exe").write_bytes(b"")
+    monkeypatch.setattr(edit_lint_check.sys, "executable", str(bindir / "pythonw.exe"))
+    target = tmp_path / "m.py"
+    target.write_text("import os\n", encoding="utf-8")
+    calls = _capture_ruff(monkeypatch)
+    _run(monkeypatch, capsys, _payload("Write", {"file_path": str(target),
+                                                 "content": "import os\n"}, tmp_path))
+    assert calls, "a .py edit must reach the ruff arm"
+    assert calls[0][0][0] == str(bindir / "python.exe"), calls[0][0]
+
+
 @requires_ruff
 @pytest.mark.parametrize("channel", ["stdin", "env"])
 def test_ruff_reports_and_never_deletes_a_just_added_import(
