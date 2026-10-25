@@ -1331,6 +1331,47 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.290.0 (2026-10-24) - RM-808 (a)-(d) item passives off Meraki 25.15, lolmath
+26.21 refresh at 16.21.1, RM-841 focus board.
+- engine (RM-808a): Hubris (6697 / 126697 / 226697) Eminence follows the
+  CommunityDragon 16.21 game data, not Meraki 25.15: SR 15 + 3 per stack with
+  a 0.667 ranged multiplier on both halves, ARAM 15 + 2 with 0.667 / 0.5,
+  Arena 15 + 2 with no split. Two END-appended ``ItemEffect`` fields
+  (``takedown_bonus_ad_ranged_base_mult`` / ``_per_stack_mult``, default 1.0)
+  and a ``caster_is_ranged`` argument on ``total_takedown_bonus_ad`` (default
+  melee); ``compute_dps`` / ``compute_burst_damage`` pass the caster's base
+  attack-range class. Still behind the default-OFF ``assume_takedown`` seam.
+- engine (RM-808b): Dawncore (6621 / 226621 / 326621) First Light AP half is
+  modeled: 15 AP per 100% base mana regen through ``bonus_ap_stacked`` at the
+  R197 floor step over the item's own printed regen (SR +15, Arena +30, ARAM
+  +15); the rows leave ``defensive_only``. Other items' regen is not counted
+  on the AP axis (conservative floor).
+- guards (RM-808c / d, no number moves): ``ops/audit/item_prose_drift_check.py``
+  compares every engine row's passive-prose numbers between the two newest
+  DDragon snapshots (16.21.1 reviewed set = the 10 RM-804 rows; live IN SYNC);
+  Meraki 25.15 staleness recorded per item (Mirage Blade 447100, Turbo
+  Chemtank 443079, plus the Hubris / Dawncore cross-references).
+- data (lolmath 26.21, ``--lolmath-only`` at 16.21.1, no DDragon / Meraki /
+  CDragon fetch): damage_distribution moved for 173/173 champions (max 0.089
+  Varus), skill orders for 16, the Varus scenario renamed ('AD Caster Varus'
+  -> 'Poke Varus', both variants' settings); cooldowns / roles / ratings
+  unchanged. aram_modifiers: the new table passes the RM-805 gate (41/173
+  neutral) and equals the carried 16.20.1 block row for row, so the RM-766
+  carry ended (``aram_modifiers_carry`` dropped). Upstream block hashes
+  recorded in the manifest (``tools/ds_feed_watch.py --record``); the 14
+  upstream changelog entries 2026-09-22 .. 2026-10-23 read and acknowledged.
+- new module (RM-841): ``focus_board.compute_focus_board`` - per-enemy
+  time-to-kill both ways, kill order and danger list over the existing
+  scorers; accepts ``apply_mode_modifiers`` (Gate A), no HTTP route yet.
+- build tables regenerated after the bump, in-process (static transport, the
+  DS client on a dead port): Lane B ``build_orders_{sr,aram,arena}`` 173
+  champions / 519 non-empty cells each - SR and ARAM moved Twitch only (Hubris
+  -> Mortal Reminder), Arena moved 11 enchanters (Dawncore first). HZ orders
+  moved Caitlyn / Twitch / Varus in SR and ARAM and the same 11 enchanters in
+  Arena; HZ variants moved Caitlyn / Draven / Jinx / Twitch in SR and ARAM and
+  the 11 enchanters in Arena. ``pickban_targets`` regenerated: byte-identical
+  (the itemless matchup engine reads neither input).
+
 1.289.0 (2026-10-22) - DS patch 16.20.1 -> 16.21.1 (RM-766).
 - data: snapshot ``data/daemon_slayer/16.21.1/`` (19 files, parity with
   16.20.1). DDragon base stats: Azir mpperlevel 40 -> 50, Jinx hp 630 -> 610,

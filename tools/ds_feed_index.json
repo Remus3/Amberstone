@@ -820,17 +820,17 @@
         "stamp_field": "patch"
       },
       "build_orders_aram.json": {
-        "body_md5": "f4227e5f",
+        "body_md5": "cef0405e",
         "declared_patch": "16.21.1",
         "stamp_field": "version"
       },
       "build_orders_arena.json": {
-        "body_md5": "19c96bb7",
+        "body_md5": "52ffd9f9",
         "declared_patch": "16.21.1",
         "stamp_field": "version"
       },
       "build_orders_sr.json": {
-        "body_md5": "0f69ecde",
+        "body_md5": "65d43628",
         "declared_patch": "16.21.1",
         "stamp_field": "version"
       },
@@ -880,7 +880,7 @@
         "stamp_field": "patch"
       },
       "manifest.json": {
-        "body_md5": "ca50d29d",
+        "body_md5": "6a004488",
         "declared_patch": "16.21.1",
         "stamp_field": "ddragon_version"
       },

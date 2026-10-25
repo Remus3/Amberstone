@@ -29,7 +29,27 @@
       "lane_positions": "https://lolmath.net/_next/static/chunks/16u2rp8dv61kr.js"
     },
     "meraki_perlevel": "https://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/champions/<champion>.json",
-    "meraki_items": "https://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/items.json"
+    "meraki_items": "https://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/items.json",
+    "data_block_body_md5": {
+      "aram_modifiers": {
+        "url": "https://lolmath.net/_next/static/chunks/15rnns74084ah.js",
+        "status": 200,
+        "body_md5": "7c960dea",
+        "fetched_at": "2026-10-25T01:55:02Z"
+      },
+      "damage_distribution": {
+        "url": "https://lolmath.net/_next/static/chunks/16u2rp8dv61kr.js",
+        "status": 200,
+        "body_md5": "2024b0c4",
+        "fetched_at": "2026-10-25T01:55:02Z"
+      },
+      "skill_orders": {
+        "url": "https://lolmath.net/_next/static/chunks/08vh-uxoj071y.js",
+        "status": 200,
+        "body_md5": "123ae576",
+        "fetched_at": "2026-10-25T01:55:02Z"
+      }
+    }
   },
   "lolmath_counts": {
     "cooldowns": 173,
