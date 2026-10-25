@@ -1,0 +1,64 @@
+{
+  "_doc": "TFT HUD region profile (docs/TFT_PROGRAM.md section 3.2 stage 2, slice TFT-04). Boxes are [left, top, right, bottom] in 2560x1440 native pixels and scale to any 16:9 frame (tft/cv/profile.py). Rectangles and probe colours only, no art. Calibrated on corpus 20261025-070350 (1280x720 relay frames of a 2560x1440 client, Set 18, rls-18.5): boxes from frame measurements, layout probes from the EVEN frames only so the ODD frames stay a held-out check. Groups repeat 'first' count times, shifted by 'step' [dx, dy], or list explicit 'slots'. The odds slots start and end INSIDE the cost-tier icons, whose x shifts a few pixels with the percent widths, so the icon fragments touch the crop edge and are cleared before OCR. The local HP box narrows with its digit count, so own_hp is gated by a COVER probe (the unit inspect panel's green health bar), not by the box frame.",
+  "profile": "2560x1440@ui1",
+  "base": [2560, 1440],
+  "ui_scale": 1.0,
+  "fields": {
+    "stage": {"box": [1016, 8, 1096, 44], "panel": "stage_bar"},
+    "timer": {"box": [1510, 8, 1552, 44], "panel": "stage_bar"},
+    "level": {"box": [384, 1174, 452, 1212], "panel": "hud_bar"},
+    "xp": {"box": [480, 1178, 568, 1210], "panel": "hud_bar"},
+    "gold": {"box": [1220, 1176, 1300, 1214], "panel": "hud_bar"},
+    "streak": {"box": [1378, 1170, 1436, 1208], "panel": "hud_bar"},
+    "streak_icon": {"box": [1336, 1170, 1376, 1208], "panel": "hud_bar"},
+    "odds": {"group": {"slots": [{"text": [606, 1178, 686, 1210]}, {"text": [686, 1178, 770, 1210]}, {"text": [770, 1178, 854, 1210]}, {"text": [854, 1178, 932, 1210]}, {"text": [932, 1178, 1010, 1210]}]}, "panel": "hud_bar"},
+    "shop": {"group": {"first": {"name": [602, 1392, 800, 1426], "cost": [822, 1392, 850, 1426], "art": [620, 1250, 830, 1380]}, "step": [269.5, 0], "count": 5}, "panel": "shop"},
+    "own_hp": {"box": [2366, 254, 2434, 290], "panel": "own_hp"},
+    "scoreboard": {"group": {"first": {"hp": [2432, 377, 2472, 397]}, "step": [0, 106.67], "count": 7}, "panel": "scoreboard"},
+    "traits": {"group": {"first": {"count": [148, 361, 178, 389], "name": [178, 350, 336, 378], "icon": [88, 352, 136, 396]}, "step": [0, 71.68], "count": 9}, "panel": "traits"}
+  },
+  "panels": {
+    "stage_bar": {
+      "probes": [
+        {"box": [1008, 4, 1024, 16], "rgb": [21, 33, 33], "tol": 22},
+        {"box": [1088, 4, 1104, 16], "rgb": [22, 32, 34], "tol": 22},
+        {"box": [1456, 4, 1472, 16], "rgb": [22, 32, 34], "tol": 22}
+      ],
+      "min_match": 2
+    },
+    "hud_bar": {
+      "probes": [
+        {"box": [320, 1208, 344, 1214], "rgb": [11, 17, 15], "tol": 18},
+        {"box": [344, 1208, 368, 1214], "rgb": [10, 19, 17], "tol": 18},
+        {"box": [368, 1208, 392, 1214], "rgb": [8, 19, 20], "tol": 18},
+        {"box": [556, 1180, 576, 1204], "rgb": [33, 40, 31], "tol": 18}
+      ],
+      "min_match": 3
+    },
+    "shop": {
+      "probes": [
+        {"box": [400, 1348, 416, 1360], "rgb": [42, 42, 34], "tol": 20},
+        {"box": [416, 1348, 432, 1360], "rgb": [41, 41, 32], "tol": 20},
+        {"box": [336, 1380, 352, 1392], "rgb": [42, 41, 27], "tol": 20},
+        {"box": [560, 1396, 576, 1408], "rgb": [45, 45, 33], "tol": 20}
+      ],
+      "min_match": 3
+    },
+    "own_hp": {
+      "cover": [
+        {"box": [2300, 516, 2336, 532], "rgb": [4, 167, 68], "tol": 45}
+      ],
+      "cover_min": 1
+    },
+    "scoreboard": {
+      "cover": [
+        {"box": [2508, 1020, 2528, 1036], "rgb": [17, 31, 32], "tol": 20, "max_std": 24},
+        {"box": [2492, 588, 2512, 604], "rgb": [19, 32, 31], "tol": 20, "max_std": 24},
+        {"box": [2508, 804, 2528, 820], "rgb": [17, 26, 25], "tol": 20, "max_std": 24},
+        {"box": [2492, 804, 2512, 820], "rgb": [17, 25, 25], "tol": 20, "max_std": 24}
+      ],
+      "cover_min": 2
+    },
+    "traits": {}
+  }
+}

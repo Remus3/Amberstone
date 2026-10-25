@@ -42,12 +42,6 @@ class _FakeTess:
         return self.text
 
 
-def _reader(monkeypatch, tess, frame):
-    monkeypatch.setattr(m, "_init_tesseract", lambda: tess)
-    monkeypatch.setattr(m, "_capture_full_frame", lambda: frame)
-    return m.TftOcrReader()
-
-
 # -- F1: regions must land inside the frame the relay actually serves -------
 
 @pytest.mark.parametrize("size", [(1280, 720), (1920, 1080), (2560, 1440)])
@@ -92,30 +86,40 @@ def test_level_takes_the_last_number_not_the_first() -> None:
     assert m._ocr_level(Image.new("RGB", (65, 21)), _FakeTess("Lvl.42")) is None
 
 
-# -- F3: unvalidated fields (hp, gold) are never published -----------------
+# -- F3: the legacy boxes carry no gold / hp locator -----------------------
+# Pre-fix: _ocr_hp fell back to "the first valid number in the panel" - the
+# TOP-ranked player's HP, not yours - and the gold box read 52 as 520. Since
+# TFT-04 (merged s135) the live read() goes through tft.cv.ocr_fields and its
+# own validated regions (tests/test_tft_cv_ocr_fields.py pins that mapping);
+# these pins keep the legacy helpers honest.
 
-def test_read_never_publishes_hp_or_gold(monkeypatch) -> None:
-    # Pre-fix: _ocr_hp fell back to "the first valid number in the panel" -
-    # the TOP-ranked player's HP, not yours - and gold read 52 as 520.
-    # "42" parses as stage 4-2 (so the pre-fix HP gate opens), as gold 42 and
-    # as hp 42; level 42 is out of range.
-    r = _reader(monkeypatch, _FakeTess("42"), Image.new("RGB", (1280, 720)))
-    out = r.read(force=True)
-    assert out == {"stage_round": "4-2"}
+def test_legacy_regions_hold_no_gold_or_hp_box() -> None:
+    assert set(m._REGIONS) == {"stage_round", "level"}
+    assert not hasattr(m, "_ocr_hp")
 
 
-def test_read_publishes_stage_and_level(monkeypatch) -> None:
+def test_legacy_helpers_read_stage_and_level_on_a_scaled_frame() -> None:
     class _ByField(_FakeTess):
         def image_to_string(self, image, config="", **kwargs):  # noqa: ANN001
             self.calls.append(config)
             return "3-6" if "-" in config.split("whitelist=")[-1] else "Lvl.7"
-    r = _reader(monkeypatch, _ByField(), Image.new("RGB", (2560, 1440)))
-    assert r.read(force=True) == {"stage_round": "3-6", "level": 7}
+    tess = _ByField()
+    frame = Image.new("RGB", (2560, 1440))
+    stage = m._grab_region(m._REGIONS["stage_round"], frame)
+    level = m._grab_region(m._REGIONS["level"], frame)
+    assert stage is not None and level is not None
+    assert m._ocr_stage_round(stage, tess) == "3-6"
+    assert m._ocr_level(level, tess) == 7
 
 
-def test_read_on_a_stitched_frame_returns_nothing(monkeypatch) -> None:
-    r = _reader(monkeypatch, _FakeTess("3-6"), Image.new("RGB", (3840, 1080)))
-    assert r.read(force=True) == {}
+def test_live_read_on_a_stitched_frame_returns_nothing() -> None:
+    # A stitched two-monitor grab has no region profile: every field reads
+    # absent, and the engine is never asked (a bare object() would raise).
+    from tft.cv.profile import load_profile
+    prof = load_profile()
+    assert prof is not None
+    reader = m.TftOcrReader(engine=object(), profile=prof)
+    assert reader.read_frame_fields(Image.new("RGB", (3840, 1080))) == {}
 
 
 # -- F4: a missing tesseract binary means unavailable, not silently inert ---
