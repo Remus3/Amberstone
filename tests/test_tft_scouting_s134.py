@@ -34,6 +34,7 @@ def _load(name):
 
 
 EOG = _load("lcu_eog_tft_stats.json")
+ROUND = _load("standalone_round_file.json")   # per-round TFTEoGStats.json, in game
 HIST = _load("lcu_tft_history_page.json")
 RANKED = _load("lcu_ranked_stats.json")
 TEMPLATE_GAME = HIST["games"][0]
@@ -133,6 +134,26 @@ def test_eog_recorded_identities_are_riot_ids_with_zeroed_puuids():
     assert [i.riot_id for i in ids] == [f"TestPlayer{n}#TST{n}" for n in range(2, 9)]
     assert all(i.lcu_puuid == "" for i in ids), "zeroed puuid must not become an identity"
     assert [i.slot for i in ids] == list(range(7))
+
+
+def test_round_file_recorded_identities_exclude_local_and_zeroed_puuids():
+    """The measured in-game source: all 8 riot ids, isInteractable = local."""
+    ids = TS.identities_from_round_file(ROUND)
+    assert [i.riot_id for i in ids] == [f"TestPlayer{n}#TST{n}" for n in range(2, 9)]
+    assert all(i.lcu_puuid == "" for i in ids)
+    by_puuid = TS.identities_from_round_file(
+        {"statsBlock": {"players": [{**p, "isInteractable": False}
+                                    for p in ROUND["statsBlock"]["players"]]}}, SELF_LCU)
+    assert len(by_puuid) == 7 and "TestPlayer1#TST1" not in [i.riot_id for i in by_puuid]
+    assert TS.round_file_game_id(ROUND) == "5000000001"
+    assert TS.identities_from_round_file({"statsBlock": None}) == []
+
+
+def test_riot_id_strings_seam_for_a_later_ocr_source():
+    ids = TS.identities_from_riot_ids(["Alpha#T1", "NoTag", "Me#X", 7, "Alpha#T1", "Beta#T2"],
+                                      self_riot_id="me#x")
+    assert [i.riot_id for i in ids] == ["Alpha#T1", "Beta#T2"]
+    assert [i.slot for i in ids] == [0, 1]
 
 
 def test_session_identities_exclude_self_dedupe_and_cap():
@@ -676,6 +697,31 @@ def test_watcher_rereads_self_each_game_after_an_account_switch():
     assert w.tick() == "started"
     second = [i.lcu_puuid for i in sp.starts[1][0]]
     assert acct_b not in second and acct_a in second
+
+
+def test_watcher_uses_round_file_when_session_lists_only_self():
+    """MEASURED match 2: the in-game session lists only the local player; the
+    per-round file for THIS game id carries the 7 opponents."""
+    lcu = _watch_lcu(["InProgress"], [ingame_session([entry(SELF_LCU, 900001)])])
+    rf = [None]
+    sp = SpyScouter()
+    w = TS.ScoutingWatcher(sp, lcu, round_file=lambda: copy.deepcopy(rf[0]))
+    assert w.tick() == "no_opponents", "before the first planning phase"
+    rf[0] = ROUND
+    assert w.tick() == "started"
+    ids, kw = sp.starts[0]
+    assert kw["identity_source"] == "tft_round_file" and len(ids) == 7
+    assert w.tick() == "idle"
+    assert [s for s, _ in sp.statuses] == ["no_opponents"]
+
+
+def test_watcher_ignores_a_previous_games_round_file():
+    old = copy.deepcopy(ROUND)
+    old["gameId"] = 4999999999
+    lcu = _watch_lcu(["InProgress"], [ingame_session([entry(SELF_LCU, 900001)])])
+    sp = SpyScouter()
+    w = TS.ScoutingWatcher(sp, lcu, round_file=lambda: copy.deepcopy(old))
+    assert w.tick() == "no_opponents" and sp.starts == []
 
 
 def test_watcher_ignores_non_tft_games():

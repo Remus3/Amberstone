@@ -8,17 +8,25 @@ match's comp, the current top-4 / bottom-4 streak and a one-line "threat"
 summary - and publish them atomically to ``data/tft_scouting.json`` for the
 dashboard view. LLM-free and deterministic.
 
-IDENTITY SOURCES, BY PHASE (measured 2026-10-25, GET only):
+IDENTITY SOURCES, BY PHASE (measured 2026-10-25, GET / read only). The digest
+takes ``Identity`` values from ANY of them (``identities_from_*``), so a later
+source - the in-game scoreboard names via vision / OCR - plugs in through
+``identities_from_riot_ids``:
   Lobby / Matchmaking / ReadyCheck - NONE for opponents. ``/lol-lobby/v2/lobby``
     and ``/lol-gameflow/v1/session`` ``gameData.teamOne`` list the PARTY only.
-  GameStart / InProgress - ``/lol-gameflow/v1/session`` ``gameData.teamOne`` /
-    ``teamTwo`` (schema: puuid, summonerId, summonerName ...). UNVERIFIED
-    whether a TFT game lists all 8 there, so the watcher tries it at game start
-    and degrades to an honest "no_opponents" state when it does not.
+  InProgress - the standalone client's per-round file
+    ``%LOCALAPPDATA%/TFT/Saved/Logs/TFTEoGStats.json`` (read through
+    ``tft.tft_standalone.read_eog``) ``statsBlock.players[]``: riot id
+    (riotIdGameName / riotIdTagLine) for ALL 8, ``isInteractable`` marks the
+    local player, non-local ``PUUID`` and ``playerId`` ZEROED. First written
+    at the first planning phase, so that is the earliest moment opponents are
+    knowable. THIS is the in-game trigger. ``/lol-gameflow/v1/session``
+    ``teamOne`` was measured in a live TFT game (match 2) to list ONLY the
+    local player; it stays a second try for a client that does list them.
   PreEndOfGame / EndOfGame - ``/lol-end-of-game/v1/tft-eog-stats`` ``players[]``
     carries riot ids for all 8, with puuid + summonerId ZEROED for every
-    non-local player. Used as the fallback for a game whose session never
-    listed opponents.
+    non-local player. The fallback for a game whose in-game sources never
+    listed opponents (an after-the-fact digest).
   Any phase - ``/lol-match-history/v1/products/tft/{puuid}/matches`` (the queried
     player's own row carries their real puuid + riot id; other rows are zeroed).
 
@@ -38,15 +46,14 @@ DATA SOURCES, IN ORDER (``Scouter.sources``):
     for ``RIOT_OFF_TTL_S``.
   lcu - ``/lol-ranked/v1/ranked-stats/{puuid}`` (queueMap.RANKED_TFT) and the
     LCU TFT match history. Client-side data, no Web API key, GET only.
-  The Riot path needs a riot id. Game-start session entries are expected to
-  carry only an LCU puuid (summonerName is "" on current clients), so those
-  opponents are served by the LCU path; the Riot path serves riot-id
-  identities (the EOG fallback, or a session that does carry names).
+  The Riot path needs a riot id (every source above but a puuid-only session
+  entry carries one); the LCU path resolves a riot id to an LCU puuid first.
 
 ADR-006 ENVELOPE. The Web API key must not drive real-time in-game advisory.
-This is a STATIC history digest captured ONCE per game at game start (the TFT
-analogue of the loading screen - TFT has no champ select) and never refreshed
-mid-game; it carries no live game state. Kill switch: ``RC_TFT_SCOUTING=0``.
+This is a STATIC history digest captured ONCE per game, as soon as the
+opponents are knowable (the TFT analogue of the loading screen - TFT has no
+champ select), and never refreshed mid-game; it reads no live board, HP or
+round state. Kill switch: ``RC_TFT_SCOUTING=0``.
 
 Fail-soft: every network failure degrades one opponent's card to a friendly
 message; the raw outcome goes to the log (logs/), never into the artifact.
@@ -189,8 +196,13 @@ def _identity_from_entry(entry: Any) -> Optional[Identity]:
                 gn, tl = gn.strip(), tl.strip()
                 break
     tl = tl.lstrip("#")
-    ident = Identity(game_name=gn, tag_line=tl, lcu_puuid=real_puuid(entry.get("puuid")))
+    puuid = real_puuid(entry.get("puuid") or entry.get("PUUID"))
+    ident = Identity(game_name=gn, tag_line=tl, lcu_puuid=puuid)
     return ident if ident.key else None
+
+
+def _entry_puuid(e: dict) -> str:
+    return real_puuid(e.get("puuid") or e.get("PUUID"))
 
 
 def _collect(entries, is_self: Callable[[dict], bool]) -> list:
@@ -258,9 +270,40 @@ def identities_from_eog(eog: Any, self_puuid: str = "") -> list:
     me_p = real_puuid(self_puuid)
 
     def is_self(e: dict) -> bool:
-        return e.get("isLocalPlayer") is True or bool(me_p and real_puuid(e.get("puuid")) == me_p)
+        return e.get("isLocalPlayer") is True or bool(me_p and _entry_puuid(e) == me_p)
 
     return _collect(players, is_self)
+
+
+def round_file_game_id(round_file: Any) -> str:
+    gid = round_file.get("gameId") if isinstance(round_file, dict) else None
+    s = str(gid or "").strip()
+    return "" if s in ("", "0") else s
+
+
+def identities_from_round_file(round_file: Any, self_puuid: str = "") -> list:
+    """Opponents from the standalone client's per-round ``TFTEoGStats.json``
+    (``statsBlock.players[]``; ``isInteractable`` marks the local player -
+    measured 2026-10-25 - and non-local PUUIDs are zeroed)."""
+    if not isinstance(round_file, dict):
+        return []
+    sb = round_file.get("statsBlock") if isinstance(round_file.get("statsBlock"), dict) else {}
+    players = sb.get("players") if isinstance(sb.get("players"), list) else []
+    me_p = real_puuid(self_puuid)
+
+    def is_self(e: dict) -> bool:
+        return e.get("isInteractable") is True or bool(me_p and _entry_puuid(e) == me_p)
+
+    return _collect(players, is_self)
+
+
+def identities_from_riot_ids(riot_ids: Any, self_riot_id: str = "") -> list:
+    """Opponents from bare ``Name#TAG`` strings - the seam for a later source
+    (the in-game scoreboard read by vision / OCR). Entries without a ``#`` tag
+    cannot be looked up and are dropped."""
+    me = str(self_riot_id or "").strip().lower()
+    entries = [{"riotId": str(r).strip()} for r in (riot_ids or []) if isinstance(r, str)]
+    return _collect(entries, lambda e: bool(me) and e["riotId"].lower() == me)
 
 
 # -- match + rank normalisation ------------------------------------------------
@@ -904,18 +947,37 @@ class Scouter:
 
 # -- the game-start watcher ---------------------------------------------------------
 
-_IN_GAME = ("GameStart", "InProgress")
+_IN_GAME = ("GameStart", "InProgress", "Reconnect")
 _POST_GAME = ("PreEndOfGame", "EndOfGame", "WaitingForStats")
+
+
+def _default_round_file() -> Any:
+    """Seam: the standalone client's per-round file, FRESH only (None when
+    missing / stale / not TFT) - tft/tft_standalone.py owns the path and the
+    freshness rule."""
+    try:
+        from tft.tft_standalone import read_eog
+        return read_eog()
+    except Exception:  # noqa: BLE001
+        return None
 
 
 class ScoutingWatcher:
     """Polls the LCU gameflow phase (GET only) and fires ONE scouting run per
-    TFT game: at game start from the gameflow session, or - when the session
-    never listed opponents - once post-game from the EOG stats."""
+    TFT game, as soon as the opponents are knowable:
+      1. in game, the per-round ``TFTEoGStats.json`` (riot ids for all 8; first
+         written at the first planning phase) for THIS game id;
+      2. in game, the gameflow session teamOne (measured to list only the local
+         player in a TFT game; kept for a client that lists them);
+      3. post game, the EOG stats block - only for a game neither in-game
+         source covered (an after-the-fact digest).
+    Until one of them answers, the artifact says "no_opponents"."""
 
-    def __init__(self, scouter: Scouter, lcu_get: LcuGet, *, interval_s: float = 4.0) -> None:
+    def __init__(self, scouter: Scouter, lcu_get: LcuGet, *, interval_s: float = 4.0,
+                 round_file: Optional[Callable[[], Any]] = None) -> None:
         self._scouter = scouter
         self._get = lcu_get
+        self._round_file = round_file or _default_round_file
         self.interval_s = float(interval_s)
         self._done: set = set()
         self._no_opp: set = set()
@@ -957,18 +1019,24 @@ class ScoutingWatcher:
                 # Without our own puuid the local player would be scouted as an
                 # opponent (and push a real one past the 7-cap). Retry next tick.
                 return "no_self"
-            ids = identities_from_session(session, self._self_puuid, self._self_sid)
+            ids, source = [], ""
+            rf = self._round_file()
+            # The file is rewritten per round and survives the game: only a
+            # file stamped with THIS game's id is this game's lobby.
+            if isinstance(rf, dict) and round_file_game_id(rf) in ("", gid):
+                ids, source = identities_from_round_file(rf, self._self_puuid), "tft_round_file"
+            if not ids:
+                ids = identities_from_session(session, self._self_puuid, self._self_sid)
+                source = "lcu_gameflow_session"
             if ids:
                 self._done.add(gid)
                 self._no_opp.discard(gid)
-                self._scouter.start(ids, game_id=gid, phase=phase,
-                                    identity_source="lcu_gameflow_session")
+                self._scouter.start(ids, game_id=gid, phase=phase, identity_source=source)
                 return "started"
             if gid not in self._no_opp:
                 self._no_opp.add(gid)
-                self._scouter.write_status("no_opponents", game_id=gid, phase=phase,
-                                           identity_source="lcu_gameflow_session")
-                log.info("tft_scouting: game %s session lists no opponents", gid)
+                self._scouter.write_status("no_opponents", game_id=gid, phase=phase)
+                log.info("tft_scouting: game %s lists no opponents yet", gid)
             return "no_opponents"
         if phase in _POST_GAME and self._no_opp:
             eog = self._get("/lol-end-of-game/v1/tft-eog-stats")
