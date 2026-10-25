@@ -1158,8 +1158,12 @@ def compute_ability_dps(
             abil_snap = load_default()
         except AbilitiesNotFound as e:
             # Surface a structured 0-result with a single note rather than
-            # crashing - the server can return a body explaining the missing
-            # snapshot.
+            # crashing. RM-838 (d): the note is a FIXED line - the exception
+            # text names the snapshot's absolute path and rides the :8860
+            # /ability-dps reply. The cause goes to the log, repr()-escaped.
+            _LOG.warning("compute_ability_dps %r: abilities snapshot "
+                         "missing: %s: %r", champion_id, type(e).__name__,
+                         str(e))
             return _empty_result(
                 snapshot, champion_id, level, item_ids, mode,
                 target_armor, target_mr, target_max_hp, target_bonus_hp,
@@ -1169,7 +1173,7 @@ def compute_ability_dps(
                 form_index_resolved=form_index_overrides,
                 block_index_source=block_index_source,
                 block_index_resolved=block_index_overrides,
-                note=f"abilities snapshot missing: {e}",
+                note="abilities snapshot missing - see logs",
             )
 
     # Resolve build stats. Reuses the same engine pipeline as compute_dps.

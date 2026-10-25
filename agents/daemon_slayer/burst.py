@@ -664,7 +664,7 @@ def compute_burst_damage(
             # the snapshot's absolute path, and these notes ride the :8860
             # /burst reply and the combo walk behind :8888 /api/ds-combo. The
             # cause goes to the log, repr()-escaped.
-            _LOG.warning("compute_burst_damage %s: abilities snapshot "
+            _LOG.warning("compute_burst_damage %r: abilities snapshot "
                          "missing: %s: %r", champion_id, type(e).__name__,
                          str(e))
             return _empty_burst(

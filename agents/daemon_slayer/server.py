@@ -269,6 +269,22 @@ class _ApiError(Exception):
         self.detail = detail
 
 
+# RM-838 (d): an engine KeyError / ValueError answers with a FIXED line per
+# status. The exception text can echo a client-typed id (control characters
+# included) or name engine internals, so it goes to the log, never the body.
+_ENGINE_REJECT_MSG = {
+    404: "unknown champion, item or augment - see daemon_slayer logs",
+    422: "request rejected by the engine - see daemon_slayer logs",
+}
+
+
+def _engine_reject(status: int, exc: BaseException) -> _ApiError:
+    """Log ``exc`` once, scrubbed, and return the fixed-line ``_ApiError``."""
+    _log.warning("engine rejected request (%d): %s: %s", status,
+                 type(exc).__name__, _scrub_log(str(exc)))
+    return _ApiError(status, _ENGINE_REJECT_MSG[status])
+
+
 def _coerce_str_list(value: Any, field_name: str) -> list[str]:
     """Accept ``list[str|int]`` (from JSON) or comma-separated string (from
     a query param). Returns canonicalised list of stripped non-empty strings."""
@@ -487,9 +503,9 @@ def _route_stats(body: dict) -> dict:
                                   apply_mode_modifiers=apply_mode_modifiers,
                                   augment_stacks=augment_stacks)
     except KeyError as e:
-        raise _ApiError(404, str(e))
+        raise _engine_reject(404, e)
     except ValueError as e:
-        raise _ApiError(422, str(e))
+        raise _engine_reject(422, e)
     return resolved.to_dict()
 
 
@@ -575,9 +591,9 @@ def _route_dps(body: dict) -> dict:
                              apply_crit_chance_overrides=apply_crit_chance_overrides,
                              apply_rune_offense_grants=apply_rune_offense_grants)
     except KeyError as e:
-        raise _ApiError(404, str(e))
+        raise _engine_reject(404, e)
     except ValueError as e:
-        raise _ApiError(422, str(e))
+        raise _engine_reject(422, e)
     return result.to_dict()
 
 
@@ -700,9 +716,9 @@ def _route_rank(body: dict) -> dict:
             apply_extra_shot_procs=apply_extra_shot_procs,
         )
     except KeyError as e:
-        raise _ApiError(404, str(e))
+        raise _engine_reject(404, e)
     except ValueError as e:
-        raise _ApiError(422, str(e))
+        raise _engine_reject(422, e)
     return result.to_dict()
 
 
@@ -996,9 +1012,9 @@ def _route_ehp(body: dict) -> dict:
             external_revive_multiplier=external_revive_multiplier,
         )
     except KeyError as e:
-        raise _ApiError(404, str(e))
+        raise _engine_reject(404, e)
     except ValueError as e:
-        raise _ApiError(422, str(e))
+        raise _engine_reject(422, e)
     return result.to_dict()
 
 
@@ -1300,9 +1316,9 @@ def _route_rank_tank(body: dict) -> dict:
             **assumed_share_kwargs,
         )
     except KeyError as e:
-        raise _ApiError(404, str(e))
+        raise _engine_reject(404, e)
     except ValueError as e:
-        raise _ApiError(422, str(e))
+        raise _engine_reject(422, e)
     return result.to_dict()
 
 
@@ -1452,9 +1468,9 @@ def _route_hybrid(body: dict) -> dict:
             alpha=alpha, beta=beta,
         )
     except KeyError as e:
-        raise _ApiError(404, str(e))
+        raise _engine_reject(404, e)
     except ValueError as e:
-        raise _ApiError(422, str(e))
+        raise _engine_reject(422, e)
     return result.to_dict()
 
 
@@ -1648,9 +1664,9 @@ def _route_rank_bruiser(body: dict) -> dict:
             assume_ms_utility=assume_ms_utility,
         )
     except KeyError as e:
-        raise _ApiError(404, str(e))
+        raise _engine_reject(404, e)
     except ValueError as e:
-        raise _ApiError(422, str(e))
+        raise _engine_reject(422, e)
     return result.to_dict()
 
 
@@ -1851,9 +1867,9 @@ def _route_ability_dps(body: dict) -> dict:
             abilities_snapshot=_ABIL_CACHE.get(apply_ability_base_overrides),
         )
     except KeyError as e:
-        raise _ApiError(404, str(e))
+        raise _engine_reject(404, e)
     except ValueError as e:
-        raise _ApiError(422, str(e))
+        raise _engine_reject(422, e)
     return result.to_dict()
 
 
@@ -1943,9 +1959,9 @@ def _route_rank_mage(body: dict) -> dict:
             abilities_snapshot=_ABIL_CACHE.get(apply_ability_base_overrides),
         )
     except KeyError as e:
-        raise _ApiError(404, str(e))
+        raise _engine_reject(404, e)
     except ValueError as e:
-        raise _ApiError(422, str(e))
+        raise _engine_reject(422, e)
     return result.to_dict()
 
 
@@ -2010,9 +2026,9 @@ def _route_rank_onhit(body: dict) -> dict:
             apply_mode_modifiers=apply_mode_modifiers,
         )
     except KeyError as e:
-        raise _ApiError(404, str(e))
+        raise _engine_reject(404, e)
     except ValueError as e:
-        raise _ApiError(422, str(e))
+        raise _engine_reject(422, e)
     return result.to_dict()
 
 
@@ -2118,9 +2134,9 @@ def _route_burst(body: dict) -> dict:
             abilities_snapshot=_ABIL_CACHE.get(apply_ability_base_overrides),
         )
     except KeyError as e:
-        raise _ApiError(404, str(e))
+        raise _engine_reject(404, e)
     except ValueError as e:
-        raise _ApiError(422, str(e))
+        raise _engine_reject(422, e)
     return result.to_dict()
 
 
@@ -2168,9 +2184,9 @@ def _route_fight_report(body: dict) -> dict:
             apply_mode_modifiers=apply_mode_modifiers,
         )
     except KeyError as e:
-        raise _ApiError(404, str(e))
+        raise _engine_reject(404, e)
     except ValueError as e:
-        raise _ApiError(422, str(e))
+        raise _engine_reject(422, e)
     return result.to_dict()
 
 
@@ -2210,9 +2226,9 @@ def _route_matchup(body: dict) -> dict:
             apply_mode_modifiers=apply_mode_modifiers,
         )
     except KeyError as e:
-        raise _ApiError(404, str(e))
+        raise _engine_reject(404, e)
     except ValueError as e:
-        raise _ApiError(422, str(e))
+        raise _engine_reject(422, e)
     return result.to_dict()
 
 
@@ -2232,9 +2248,9 @@ def _route_cc_output(body: dict) -> dict:
     try:
         result = compute_cc_output(champion, mode=mode)
     except KeyError as e:
-        raise _ApiError(404, str(e))
+        raise _engine_reject(404, e)
     except ValueError as e:
-        raise _ApiError(422, str(e))
+        raise _engine_reject(422, e)
     return result.to_dict()
 
 
@@ -2255,9 +2271,9 @@ def _route_mobility(body: dict) -> dict:
     try:
         result = compute_mobility(champion, mode=mode)
     except KeyError as e:
-        raise _ApiError(404, str(e))
+        raise _engine_reject(404, e)
     except ValueError as e:
-        raise _ApiError(422, str(e))
+        raise _engine_reject(422, e)
     return result.to_dict()
 
 
@@ -2297,9 +2313,9 @@ def _route_sustain(body: dict) -> dict:
             assume_scaling_hsp_grants=assume_scaling_hsp_grants,
         )
     except KeyError as e:
-        raise _ApiError(404, str(e))
+        raise _engine_reject(404, e)
     except ValueError as e:
-        raise _ApiError(422, str(e))
+        raise _engine_reject(422, e)
     return result.to_dict()
 
 
@@ -2320,9 +2336,9 @@ def _route_scaling(body: dict) -> dict:
     try:
         result = compute_scaling(champion, mode=mode)
     except KeyError as e:
-        raise _ApiError(404, str(e))
+        raise _engine_reject(404, e)
     except ValueError as e:
-        raise _ApiError(422, str(e))
+        raise _engine_reject(422, e)
     return result.to_dict()
 
 
@@ -2343,9 +2359,9 @@ def _route_waveclear(body: dict) -> dict:
     try:
         result = compute_waveclear(champion, mode=mode)
     except KeyError as e:
-        raise _ApiError(404, str(e))
+        raise _engine_reject(404, e)
     except ValueError as e:
-        raise _ApiError(422, str(e))
+        raise _engine_reject(422, e)
     return result.to_dict()
 
 
@@ -2367,9 +2383,9 @@ def _route_threatrange(body: dict) -> dict:
     try:
         result = compute_threatrange(champion, mode=mode)
     except KeyError as e:
-        raise _ApiError(404, str(e))
+        raise _engine_reject(404, e)
     except ValueError as e:
-        raise _ApiError(422, str(e))
+        raise _engine_reject(422, e)
     return result.to_dict()
 
 
@@ -2393,9 +2409,9 @@ def _route_zonecontrol(body: dict) -> dict:
     try:
         result = compute_zonecontrol(champion, mode=mode)
     except KeyError as e:
-        raise _ApiError(404, str(e))
+        raise _engine_reject(404, e)
     except ValueError as e:
-        raise _ApiError(422, str(e))
+        raise _engine_reject(422, e)
     return result.to_dict()
 
 
@@ -2419,9 +2435,9 @@ def _route_objdamage(body: dict) -> dict:
     try:
         result = compute_objdamage(champion, mode=mode)
     except KeyError as e:
-        raise _ApiError(404, str(e))
+        raise _engine_reject(404, e)
     except ValueError as e:
-        raise _ApiError(422, str(e))
+        raise _engine_reject(422, e)
     return result.to_dict()
 
 
@@ -2446,9 +2462,9 @@ def _route_allyamp(body: dict) -> dict:
     try:
         result = compute_allyamp(champion, mode=mode)
     except KeyError as e:
-        raise _ApiError(404, str(e))
+        raise _engine_reject(404, e)
     except ValueError as e:
-        raise _ApiError(422, str(e))
+        raise _engine_reject(422, e)
     return result.to_dict()
 
 
@@ -2499,9 +2515,9 @@ def _route_antitank(body: dict) -> dict:
             # R17/R39 level-ramp seam (B12); level=None -> static.
             result = compute_antitank(champion, mode=mode, level=level)
     except KeyError as e:
-        raise _ApiError(404, str(e))
+        raise _engine_reject(404, e)
     except ValueError as e:
-        raise _ApiError(422, str(e))
+        raise _engine_reject(422, e)
     return result.to_dict()
 
 
@@ -2606,9 +2622,9 @@ def _route_ally_protected_ehp(body: dict) -> dict:
             apply_mode_modifiers=apply_mode_modifiers,
         )
     except KeyError as e:
-        raise _ApiError(404, str(e))
+        raise _engine_reject(404, e)
     except ValueError as e:
-        raise _ApiError(422, str(e))
+        raise _engine_reject(422, e)
     return result.to_dict()
 
 
@@ -2633,9 +2649,9 @@ def _route_extendedduel(body: dict) -> dict:
     try:
         result = compute_extendedduel(champion, mode=mode)
     except KeyError as e:
-        raise _ApiError(404, str(e))
+        raise _engine_reject(404, e)
     except ValueError as e:
-        raise _ApiError(422, str(e))
+        raise _engine_reject(422, e)
     return result.to_dict()
 
 
@@ -2755,9 +2771,9 @@ def _route_rank_assassin(body: dict) -> dict:
             abilities_snapshot=_ABIL_CACHE.get(apply_ability_base_overrides),
         )
     except KeyError as e:
-        raise _ApiError(404, str(e))
+        raise _engine_reject(404, e)
     except ValueError as e:
-        raise _ApiError(422, str(e))
+        raise _engine_reject(422, e)
     return result.to_dict()
 
 
@@ -2820,9 +2836,9 @@ def _route_hps(body: dict) -> dict:
             apply_mode_modifiers=apply_mode_modifiers,
         )
     except KeyError as e:
-        raise _ApiError(404, str(e))
+        raise _engine_reject(404, e)
     except ValueError as e:
-        raise _ApiError(422, str(e))
+        raise _engine_reject(422, e)
     return result.to_dict()
 
 
@@ -2886,9 +2902,9 @@ def _route_rank_enchanter(body: dict) -> dict:
             apply_mode_modifiers=apply_mode_modifiers,
         )
     except KeyError as e:
-        raise _ApiError(404, str(e))
+        raise _engine_reject(404, e)
     except ValueError as e:
-        raise _ApiError(422, str(e))
+        raise _engine_reject(422, e)
     return result.to_dict()
 
 
@@ -2932,9 +2948,9 @@ def _route_beam(body: dict) -> dict:
             apply_mode_modifiers=apply_mode_modifiers,
         )
     except KeyError as e:
-        raise _ApiError(404, str(e))
+        raise _engine_reject(404, e)
     except ValueError as e:
-        raise _ApiError(422, str(e))
+        raise _engine_reject(422, e)
     return result.to_dict()
 
 
