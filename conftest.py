@@ -14,7 +14,9 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from tests._subtest_channel_guard import install as _install_subtest_guard
 # MAIN FIX TEMP-1: refuse an ad-hoc --basetemp inside a session scratchpad.
-from tests._basetemp_guard import pytest_configure  # noqa: F401
+# RM-878: claim a per-run temp root (configure) and release it (unconfigure),
+# so a concurrent run's sweep of the shared pytest-of-<user> root cannot reach it.
+from tests._basetemp_guard import pytest_configure, pytest_unconfigure  # noqa: F401
 # ENV-APIKEY: the shared Anthropic key lookup must never reach the real
 # <repo>/API-Key-Claude.txt, including at COLLECTION (vision_server resolves
 # the key at import). Installed here, before either suite is collected.
