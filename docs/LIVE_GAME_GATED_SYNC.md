@@ -1954,7 +1954,14 @@ RM-840 made the TFT lane set-agnostic (`tft/tft_set.py` resolver, CommunityDrago
 client can close; no gate above covers a TFT game, so each needs one (Set 18 ranked or normal; Set 17
 stays playable beside it, so record which set the game ran).
 
-- **LT-01** (RM-840, running-set detection) During a real TFT game, capture whether `:2999`
+- **LT-01 CLOSED 2026-10-25** (`a64f90c67`, LEDGER 1871: closed from QA game 20261025-070350 - a
+  measured Set 18 schedule (`set18_measured`: carousel x-4, PvE x-7, augments 2-1 / 3-2 / 4-2) and
+  gameTime table `_TIME_TO_ROUND_SET18` in `tft/tft_state_reader.py` (the Set 17 table matched 0 of
+  28 measured round starts), routed by set and queue; the running set = LCU `tftsets.json`
+  `mDefaultSet` paired with the gameflow queue id (`tft/tft_set.py` `set_from_lcu`, `QUEUE_SETS`
+  {6110: 17}); post-game `players[].setCoreName` also names it. `set_from_lcu` has NO LCU caller yet,
+  so the `RC_TFT_SET` pin and the newest-ingested default still decide a live game's set)
+  (RM-840, running-set detection) During a real TFT game, capture whether `:2999`
   `/liveclientdata/allgamedata` `gameData` or any LCU endpoint names the running set. The
   `tft/tft_set.py` `LIVE_SET_KEYS` are CANDIDATE key names only; the one measured spelling in the tree
   is the LCU team planner's `"setId": "TFTSet17"`. Close with the key, its value for a Set 18 game, and
@@ -1966,17 +1973,30 @@ stays playable beside it, so record which set the game ran).
   Realm of the Gods schedule). Record which rounds are carousel, PvE and augment rounds, and whether
   the Set 17 calibrated `_TIME_TO_ROUND` table tracks Set 18 stage timing, so a grounded Set 18
   schedule can replace the neutral one.
-- **LT-02** (RM-840, Set 18 roll odds + pool sizes) Read the in-client shop odds per level and the
+- **LT-02 CLOSED 2026-10-25 for L4-L9** (`a64f90c67`, LEDGER 1871: Set 18 shop odds L4-L9 pinned
+  from the live HUD odds bar in `tft/tft_data.py` `TIER_ODDS` (`CONSTANTS_SET` 18,
+  `TIER_ODDS_VERIFIED_LEVELS` {4..9}, test `tests/test_tft_set18_odds_lt02.py`); the L7 frame
+  overrides the game data (client 16/30/43/10/1, game data 19/30/40/10/1). The unread half is
+  LT-02r below) (RM-840, Set 18 roll odds + pool sizes) Read the in-client shop odds per level and the
   champion pool sizes per cost for Set 18 and compare them with the constants modules
   (`tft/tft_data.py`, `tft/tft_pbe_data.py`; `CONSTANTS_SET_VERIFIED` stays False in both and
   `tft/tft_roll_odds.py` reports both STALE against the Set 18 lane until this closes). Close by pinning the measured table with a test, or recording
   that Set 18 kept the Set 17 values.
+- **LT-02r** (filed s134 M1b, the residual of LT-02) Two halves the session 134 QA game did not read:
+  (1) Set 18 champion pool sizes per cost - `tft/tft_data.py` `POOL_SIZES` is still a Set 14
+  carry-over (`POOL_SIZES_FROM_SET` 14, unpinned) and the HUD does not show pool sizes; (2) the shop
+  odds at L1-L3 and L10-L11, which come from the CommunityDragon map22 drop rates, not the client.
+  `CONSTANTS_SET_VERIFIED` stays False until both are read. Close by pinning each measured value with
+  a test, or recording which surface (client or game data) is authoritative for the level.
 - **LT-03 CLOSED 2026-10-25** (`2f254da18`, LEDGER 1864: 65 Set 18 codes read with GETs only in a
   live Set 18 lobby; `scripts/discover_champion_codes.py` is passive by default) (RM-840, Set 18
   team-planner codes) With the LCU agent running in a Set 18 lobby, capture
   the team-planner champion codes (`scripts/discover_champion_codes.py` shape) so a
   `data/meta/tft_set18_champion_codes.json` can be written; Set 17 is the only set with a codes file.
-- **LT-04** (filed s134 from LT-03, Set 17 Morgana planner code) `data/meta/tft_set17_champion_codes.json`
+- **LT-04 CLOSED 2026-10-25** (`a64f90c67`, LEDGER 1871: Morgana `0` -> `88` in
+  `data/meta/tft_set17_champion_codes.json`; the live client game data and the CommunityDragon
+  teamplanner copy agree; case in `tests/test_tft_set18_champion_codes_lt03.py`)
+  (filed s134 from LT-03, Set 17 Morgana planner code) `data/meta/tft_set17_champion_codes.json`
   (legacy mutating probe) gives Morgana `0`; the game data LT-03 read
   (`/lol-game-data/assets/v1/tftchampions-teamplanner.json`) gives `88`, and the other 63 Set 17 units
   agree. In a Set 17 lobby, read the planner code with the passive GET path
