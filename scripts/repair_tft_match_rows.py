@@ -25,29 +25,42 @@ had game_id 0, and they fall into SIGNATURE classes:
     is a superseded write of that game and is quarantined;
   * a later game-id-less row no QA game explains: KEPT and reported.
 
-Junk, duplicates and superseded rows are QUARANTINED, never deleted: moved, ids intact, into
-the table matches_quarantine in the same file, with a reason. A QA game the
-store never captured gets its EOG record from the QA recorder's own GET of
-the same route (<qa dir>/eog_raw.json, parsed and scrubbed by
-tft_placement.parse_eog; append-only persist). data/ratings/last_tft.json
-ends on the newest game (performance_tracker.rate_tft_game's rule).
+Junk, duplicates and superseded rows are QUARANTINED, never deleted: moved,
+ids intact, into the table matches_quarantine in the same file, with a
+reason. A QA game the store never captured gets its EOG record from the QA
+recorder's own GET of the same route (<qa dir>/eog_raw.json, parsed and
+scrubbed by tft_placement.parse_eog; append-only persist).
+data/ratings/last_tft.json ends on the newest game (rate_tft_game's rule).
 
 Input: the QA recorder's matches.jsonl (one JSON line per match with
 game_id, dir, placement, start_iso, end_iso). Nothing identifying is read
 into the store (parse_eog keeps no riot id / puuid).
 
 Safety:
-  * --dry-run is the default and opens the database READ-ONLY (no WAL
-    checkpoint): not one byte of the root changes. It prints the full plan.
+  * Every read of the database before the write (the dry run, the plan, the
+    digests, the read-back) runs on a byte COPY of match_history.db and its
+    -wal in a temporary directory, taken while their size and mtime hold
+    still: the root is only ever READ (no open of the live file, so no -shm
+    or -wal byte changes either). --dry-run is the default.
   * --apply refuses while a TFT game runs (TFTClient-Win64-Shipping.exe, or
-    health.json has_game / tft_mode), unless --expect-quarantine equals the
-    measured quarantine count, on unusable store inputs, and when a QA game
-    would have no store record to rate from.
-  * --apply takes a BACKUP before its first write:
-    <root>/ops/runtime/backups/tft-n8-<stamp>/ (gitignored) holds a
-    consistent copy of match_history.db (sqlite backup API, WAL content
-    included), last_tft.json, placement_heatmap.json and a manifest of
-    sha256s; the copy is re-read and row-counted before anything is written.
+    health.json has_game / tft_mode); while RC itself runs (health.json pid
+    alive) unless --allow-rc-running - stop RC and pause the RC-Supervisor
+    task first; unless --expect-quarantine equals the measured count; on
+    unusable store inputs; and when a QA game has no store record.
+  * --apply re-plans INSIDE its `BEGIN IMMEDIATE` write transaction on the
+    live file and refuses (rollback, nothing written) when the plan changed
+    since it was printed - a concurrent writer (the fixed collector rating a
+    game) can never leave two rows for one game. The re-rates after the
+    commit go through MatchDB.upsert_by_game_id, itself one BEGIN IMMEDIATE.
+  * --apply takes its BACKUP inside that transaction, before its first
+    write: <root>/ops/runtime/backups/tft-n8-<stamp>/ (gitignored) holds a
+    consistent copy of match_history.db (sqlite backup API), last_tft.json,
+    placement_heatmap.json and a manifest of sha256s; the copy is re-read
+    and row-counted before anything is written.
+  * --apply logs every step and error to <root>/logs/repair_tft_match_rows.log
+    and ends with a READ-BACK: one row per QA game holding the planned grade
+    and placement, nothing left to quarantine, last_tft.json on the planned
+    game. A failed read-back exits non-zero.
   * Idempotent: a repaired root plans nothing, and an --apply that plans
     nothing writes nothing (no backup either).
 
@@ -59,8 +72,10 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
 import json
+import logging
 import shutil
 import sqlite3
 import sys
@@ -74,6 +89,8 @@ import performance_tracker as pt  # noqa: E402
 from core.match_db import NUMERIC_COLS, coerce_numeric  # noqa: E402
 from core.polled_json import atomic_write_json  # noqa: E402
 from tft import tft_placement as tp  # noqa: E402
+
+_log = logging.getLogger("rc.scripts.repair_tft_match_rows")
 
 QUARANTINE_TABLE = "matches_quarantine"
 CLASS_STALE_8TH = "stale_planner_8th"
@@ -91,6 +108,7 @@ REASON_DUP = "s134-N8 duplicate: the same game written twice, kept id {keep}"
 REASON_SUPERSEDED = "s134-N8 superseded: a second game-end row of game {gid}"
 TFT_GAME_IMAGE = "tftclient-win64-shipping.exe"
 BACKUP_DIR = Path("ops") / "runtime" / "backups"
+LOG_NAME = "repair_tft_match_rows.log"
 # A game-end row is written within seconds of the game's end; a QA match's
 # recorder end can trail the client end by a few seconds either way.
 _END_WINDOW = timedelta(minutes=15)
@@ -103,6 +121,10 @@ _SKIP_COMPARE = frozenset({"mode", "timestamp", "game_id"})
 _JSON_COLS = frozenset({"tft_traits", "tft_units", "tft_augments", "tft_items", "notes"})
 _LAST_KEYS = ("tft_game_id", "rating", "label", "tft_placement", "tft_level", "tft_stage",
               "tft_comp", "tft_placement_source")
+_SNAPSHOT_TRIES = 5
+# Called (no arguments) right before --apply takes the write lock. Tests
+# interleave a concurrent writer here; production leaves it None.
+_BEFORE_WRITE_LOCK = None
 
 
 # -- inputs ----------------------------------------------------------------------
@@ -140,16 +162,40 @@ def live_game_reason(root: Path) -> str:
                 return f"{TFT_GAME_IMAGE} is running (pid {p.pid})"
     except Exception as exc:  # noqa: BLE001
         return f"process table unreadable: {exc}"
-    try:
-        h = json.loads((root / "ops" / "runtime" / "health.json").read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        h = {}
-    if isinstance(h, dict) and (h.get("has_game") or h.get("tft_mode")):
+    h = _health(root)
+    if h.get("has_game") or h.get("tft_mode"):
         return "health.json reports a game in progress"
     return ""
 
 
-# -- digests and backup ------------------------------------------------------------
+def _health(root: Path) -> dict:
+    try:
+        h = json.loads((root / "ops" / "runtime" / "health.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return h if isinstance(h, dict) else {}
+
+
+def rc_running_reason(root: Path) -> str:
+    """Why RC counts as running (health.json names a live python process),
+    or "". A pid that no longer exists, or now belongs to another program,
+    is not RC."""
+    pid = _health(root).get("pid")
+    if not isinstance(pid, int) or isinstance(pid, bool) or pid <= 0:
+        return ""
+    try:
+        import psutil
+        if not psutil.pid_exists(pid):
+            return ""
+        name = psutil.Process(pid).name().lower()
+    except Exception as exc:  # noqa: BLE001 - unknown is not "stopped"
+        return f"RC pid {pid} from health.json could not be checked ({exc})"
+    if "python" not in name:
+        return ""
+    return f"RC is running (pid {pid}, ops/runtime/health.json)"
+
+
+# -- read-only snapshots, digests and backup -----------------------------------------
 
 def _sha(path: Path) -> str:
     if not path.exists():
@@ -157,27 +203,52 @@ def _sha(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def _ro(db_path: Path) -> sqlite3.Connection:
-    """A READ-ONLY connection: it never checkpoints the WAL or writes the
-    database or its -wal (a path with spaces is fine: as_uri() quotes it).
-    With no -wal on disk every row is in the main file and no connection is
-    open in WAL mode, so `immutable` reads it without creating the empty
-    -wal / -shm sidecars `mode=ro` would leave behind."""
-    p = Path(db_path).resolve()
-    if not p.exists():
-        raise SystemExit(f"no database at {p}")
-    query = "?mode=ro" if Path(str(p) + "-wal").exists() else "?immutable=1"
-    c = sqlite3.connect(p.as_uri() + query, uri=True)
-    c.row_factory = sqlite3.Row
-    return c
+def _stat(p: Path):
+    try:
+        s = p.stat()
+    except OSError:
+        return None
+    return (s.st_size, s.st_mtime_ns)
+
+
+@contextlib.contextmanager
+def snapshot(db_path: Path):
+    """A connection on a byte copy of db_path and its -wal (no -shm: the copy
+    rebuilds its WAL index from the -wal on open) in a temporary directory.
+    The live files are only READ, and the copy is retaken while either one's
+    size or mtime moved under it, so the pair is consistent."""
+    db_path = Path(db_path)
+    if not db_path.exists():
+        raise SystemExit(f"no database at {db_path}")
+    wal = Path(str(db_path) + "-wal")
+    with tempfile.TemporaryDirectory(prefix="tft-n8-snap-") as td:
+        copy = Path(td) / "match_history.db"
+        for _ in range(_SNAPSHOT_TRIES):
+            before = (_stat(db_path), _stat(wal))
+            for p in (copy, Path(str(copy) + "-wal"), Path(str(copy) + "-shm")):
+                p.unlink(missing_ok=True)
+            shutil.copyfile(db_path, copy)
+            if before[1] is not None:
+                shutil.copyfile(wal, Path(str(copy) + "-wal"))
+            if (_stat(db_path), _stat(wal)) == before:
+                break
+        else:
+            raise SystemExit(f"{db_path.name} kept changing while it was copied; "
+                             "stop the writer and re-run")
+        c = sqlite3.connect(str(copy))
+        c.row_factory = sqlite3.Row
+        try:
+            yield c
+        finally:
+            c.close()
 
 
 def digest(db_path: Path) -> dict:
     """File digests (db, -wal) plus a logical digest of the rows, so a change
-    can be attributed: per-mode counts and a hash over every TFT row."""
+    can be attributed: per-mode counts and a hash over every TFT row. Reads a
+    snapshot (never opens the live file)."""
     out = {"files": {s or "db": _sha(Path(str(db_path) + s)) for s in ("", "-wal")}}
-    c = _ro(db_path)
-    try:
+    with snapshot(db_path) as c:
         out["by_mode"] = {r[0]: r[1] for r in c.execute(
             "SELECT mode, COUNT(*) FROM matches GROUP BY mode ORDER BY mode")}
         h = hashlib.sha256()
@@ -192,28 +263,30 @@ def digest(db_path: Path) -> dict:
         if QUARANTINE_TABLE in out["tables"]:
             out["quarantined"] = c.execute(
                 f"SELECT COUNT(*) FROM {QUARANTINE_TABLE}").fetchone()[0]
-    finally:
-        c.close()
     return out
 
 
 def backup(root: Path, stamp: str) -> Path:
     """Copy everything --apply may change into a new gitignored directory and
     re-read the copy; raises SystemExit (before any write) when it does not
-    match. Returns the directory."""
+    match. Called while the apply HOLDS the write lock with nothing written
+    yet: this second connection only reads (a reader is never blocked by the
+    lock, and the backup API cannot read through the lock-holding connection
+    itself), and no other writer can commit until the apply does - so the
+    copy is exactly the state the writes start from."""
     data = root / "data"
-    db_path = data / "match_history.db"
     dest = root / BACKUP_DIR / f"tft-n8-{stamp}"
     dest.mkdir(parents=True, exist_ok=False)
-    src = _ro(db_path)
+    src = sqlite3.connect(str(data / "match_history.db"))
     dst = sqlite3.connect(str(dest / "match_history.db"))
     try:
+        src.execute("PRAGMA busy_timeout = 5000")
         src.backup(dst)
         n_src = src.execute("SELECT COUNT(*) FROM matches").fetchone()[0]
     finally:
         dst.close()
         src.close()
-    chk = _ro(dest / "match_history.db")
+    chk = sqlite3.connect(str(dest / "match_history.db"))
     try:
         n_bak = chk.execute("SELECT COUNT(*) FROM matches").fetchone()[0]
     finally:
@@ -312,6 +385,23 @@ def duplicate_rows(conn, cutoff: datetime, exclude) -> dict[int, int]:
     return out
 
 
+def db_plan(conn, qa: list[dict], cutoff: datetime) -> dict:
+    """The row-level plan on one connection: stamps, superseded, junk,
+    duplicates, and the moves {id: reason} they quarantine. Run on the
+    snapshot for the printed plan, and again on the live file inside the
+    apply's write transaction."""
+    stamps, superseded = game_end_rows(conn, qa)
+    claimed = set(stamps) | set(superseded)
+    junk = junk_rows(conn, cutoff, claimed)
+    junk_ids = {i for ids in junk.values() for i in ids}
+    dups = duplicate_rows(conn, cutoff, junk_ids | claimed)
+    moves = {i: REASON_JUNK.format(cls=cls) for cls, ids in junk.items() for i in ids}
+    moves.update({i: REASON_DUP.format(keep=k) for i, k in dups.items()})
+    moves.update({i: REASON_SUPERSEDED.format(gid=g) for i, g in superseded.items()})
+    return {"stamps": stamps, "superseded": superseded, "junk": junk, "junk_ids": junk_ids,
+            "dups": dups, "moves": moves, "claimed": claimed}
+
+
 def store_actions(qa: list[dict], store: Path) -> list[dict]:
     """The EOG records to add for QA games the store does not hold."""
     acts = []
@@ -372,9 +462,9 @@ def rating_plan(conn, root: Path, qa: list[dict], store: Path, acts: list[dict],
                 tp.persist(a["record"], store_dir=tstore)
         for m in qa:
             gid = m["game_id"]
-            plan = pt.plan_tft_rating(root, gid, store_dir=tstore)
-            plans[gid] = plan
-            if plan is None:
+            plan_ = pt.plan_tft_rating(root, gid, store_dir=tstore)
+            plans[gid] = plan_
+            if plan_ is None:
                 actions[gid] = "no_record"
                 continue
             if gid in stamped:
@@ -385,21 +475,81 @@ def rating_plan(conn, root: Path, qa: list[dict], store: Path, acts: list[dict],
             if row is None:
                 actions[gid] = "insert"
             else:
-                actions[gid] = "ok" if _row_matches(row, plan["row"]) else "update"
+                actions[gid] = "ok" if _row_matches(row, plan_["row"]) else "update"
     last_gid = None
     newest = [m["game_id"] for m in qa if plans.get(m["game_id"])]
     if newest:
         p = plans[newest[-1]]
         if p["newest"]:
-            try:
-                cur = json.loads((root / "data" / "ratings" / "last_tft.json")
-                                 .read_text(encoding="utf-8"))
-            except (OSError, ValueError):
-                cur = {}
-            cur = cur if isinstance(cur, dict) else {}
+            cur = _last_tft(root)
             if any(cur.get(k) != p["data"].get(k) for k in _LAST_KEYS):
                 last_gid = p["game_id"]
     return actions, last_gid, plans
+
+
+def _last_tft(root: Path) -> dict:
+    try:
+        cur = json.loads((root / "data" / "ratings" / "last_tft.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return cur if isinstance(cur, dict) else {}
+
+
+def plan(root: Path, qa: list[dict]) -> dict:
+    """Everything --apply would do, from a snapshot (read-only)."""
+    store = root / "data" / "tft_matches"
+    cutoff = min((m["start"] or m["end"]) for m in qa)
+    acts = store_actions(qa, store)
+    with snapshot(root / "data" / "match_history.db") as c:
+        d = db_plan(c, qa, cutoff)
+        actions, last_gid, plans = rating_plan(c, root, qa, store, acts, d["stamps"])
+        tft_rows = c.execute("SELECT COUNT(*) FROM matches WHERE mode='TFT'").fetchone()[0]
+        unmatched = [dict(r) for r in c.execute(
+            "SELECT id, timestamp, grade, tft_placement, tft_comp FROM matches "
+            "WHERE mode = 'TFT' AND game_id = 0 AND timestamp >= ? ORDER BY id",
+            (_ts(cutoff),)) if r["id"] not in d["claimed"]]
+    n_q = len(d["moves"])
+    return {
+        "cutoff": _ts(cutoff),
+        "qa_games": [m["game_id"] for m in qa],
+        "tft_rows": tft_rows,
+        "junk_rows": len(d["junk_ids"]),
+        "junk_by_class": {k: len(v) for k, v in d["junk"].items()},
+        "junk_id_range": [min(d["junk_ids"]), max(d["junk_ids"])] if d["junk_ids"] else [],
+        "dup_rows": len(d["dups"]),
+        "dup_pairs": d["dups"],
+        "superseded_rows": d["superseded"],
+        "quarantine_rows": n_q,
+        "stamp_rows": d["stamps"],
+        "unmatched_rows": unmatched,
+        "kept_tft_rows": tft_rows - n_q - len(d["stamps"]),
+        "store_add": [a["game_id"] for a in acts if "record" in a],
+        "store_errors": [a for a in acts if "error" in a],
+        "rating_plan": actions,
+        "last_tft_plan": last_gid,
+        "_moves": d["moves"],
+        "_acts": acts,
+        "_plans": plans,
+        "_cutoff": cutoff,
+    }
+
+
+def _summary(p: dict) -> dict:
+    ra = p["rating_plan"]
+    return {
+        "tft_rows": p["tft_rows"],
+        "fix_in_place": len(p["stamp_rows"]),
+        "insert": sum(1 for v in ra.values() if v == "insert"),
+        "rerate_existing": sum(1 for g, v in ra.items() if v == "update"
+                               and g not in p["stamp_rows"].values()),
+        "quarantine": {"junk": p["junk_by_class"], "duplicates": p["dup_rows"],
+                       "superseded_game_end": len(p["superseded_rows"]),
+                       "total": p["quarantine_rows"]},
+        "keep": p["kept_tft_rows"],
+        "unmatched_kept": len(p["unmatched_rows"]),
+        "store_add": p["store_add"],
+        "last_tft_rewrite_to": p["last_tft_plan"],
+    }
 
 
 # -- apply ------------------------------------------------------------------------
@@ -444,8 +594,7 @@ def _heatmap_under(root: Path):
 
 
 def read_back(root: Path, qa: list[dict]) -> dict:
-    c = _ro(root / "data" / "match_history.db")
-    try:
+    with snapshot(root / "data" / "match_history.db") as c:
         games = {}
         for m in qa:
             games[m["game_id"]] = [
@@ -455,85 +604,102 @@ def read_back(root: Path, qa: list[dict]) -> dict:
                                    (m["game_id"],))]
         tft_total = c.execute("SELECT COUNT(*) FROM matches WHERE mode='TFT'").fetchone()[0]
         zero = c.execute("SELECT COUNT(*) FROM matches WHERE mode='TFT' AND game_id=0").fetchone()[0]
-    finally:
-        c.close()
-    try:
-        last = json.loads((root / "data" / "ratings" / "last_tft.json").read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        last = {}
+    last = _last_tft(root)
     return {"games": games, "tft_rows": tft_total, "tft_rows_game_id_0": zero,
             "last_tft": {k: last.get(k) for k in _LAST_KEYS + ("timestamp",)}}
 
 
-def plan(root: Path, qa: list[dict]) -> dict:
-    """Everything --apply would do, read-only."""
+def verify(root: Path, qa: list[dict], p: dict, plans: dict, rb: dict) -> list[str]:
+    """What the read-back says is still wrong ([] = repaired)."""
+    bad = []
+    for m in qa:
+        gid = m["game_id"]
+        rows = rb["games"].get(gid) or []
+        want = plans.get(gid)
+        if len(rows) != 1:
+            bad.append(f"game {gid}: {len(rows)} rows, want 1")
+        elif want and (rows[0]["grade"], rows[0]["tft_placement"]) != (
+                want["grade"], want["row"]["tft_placement"]):
+            bad.append(f"game {gid}: row {rows[0]['grade']} / {rows[0]['tft_placement']}, "
+                       f"want {want['grade']} / {want['row']['tft_placement']}")
+    if p["last_tft_plan"] and rb["last_tft"].get("tft_game_id") != p["last_tft_plan"]:
+        bad.append(f"last_tft.json names game {rb['last_tft'].get('tft_game_id')}, "
+                   f"want {p['last_tft_plan']}")
+    with snapshot(root / "data" / "match_history.db") as c:
+        left = db_plan(c, qa, p["_cutoff"])
+    if left["moves"] or left["stamps"]:
+        bad.append(f"still to repair: {len(left['moves'])} to quarantine, "
+                   f"{len(left['stamps'])} to stamp")
+    return bad
+
+
+@contextlib.contextmanager
+def _logfile(root: Path):
+    """Every log record of the apply (this script, performance_tracker,
+    MatchDB) also goes to <root>/logs/repair_tft_match_rows.log."""
+    (root / "logs").mkdir(parents=True, exist_ok=True)
+    h = logging.FileHandler(root / "logs" / LOG_NAME, encoding="utf-8")
+    h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+    h.setLevel(logging.INFO)
+    lg = logging.getLogger()
+    old = lg.level
+    lg.addHandler(h)
+    if lg.level > logging.INFO or lg.level == logging.NOTSET:
+        lg.setLevel(logging.INFO)
+    try:
+        yield
+    finally:
+        lg.removeHandler(h)
+        lg.setLevel(old)
+        h.close()
+
+
+def _fail(msg: str):
+    _log.error(msg)
+    raise SystemExit(msg)
+
+
+def _write(root: Path, qa: list[dict], p: dict, moves: dict, report: dict) -> None:
+    """The write transaction: re-plan on the live file under the write lock,
+    refuse on any change, back up, quarantine, stamp, commit."""
     db_path = root / "data" / "match_history.db"
-    store = root / "data" / "tft_matches"
-    cutoff = min((m["start"] or m["end"]) for m in qa)
-    acts = store_actions(qa, store)
-    c = _ro(db_path)
+    if _BEFORE_WRITE_LOCK is not None:
+        _BEFORE_WRITE_LOCK()
+    c = sqlite3.connect(str(db_path))
+    c.row_factory = sqlite3.Row
     try:
         c.execute("PRAGMA busy_timeout = 5000")
-        stamps, superseded = game_end_rows(c, qa)
-        claimed = set(stamps) | set(superseded)
-        junk = junk_rows(c, cutoff, claimed)
-        junk_ids = {i for ids in junk.values() for i in ids}
-        dups = duplicate_rows(c, cutoff, junk_ids | claimed)
-        actions, last_gid, _plans = rating_plan(c, root, qa, store, acts, stamps)
-        tft_rows = c.execute("SELECT COUNT(*) FROM matches WHERE mode='TFT'").fetchone()[0]
-        unmatched = [dict(r) for r in c.execute(
-            "SELECT id, timestamp, grade, tft_placement, tft_comp FROM matches "
-            "WHERE mode = 'TFT' AND game_id = 0 AND timestamp >= ? ORDER BY id",
-            (_ts(cutoff),)) if r["id"] not in claimed]
+        c.execute("BEGIN IMMEDIATE")
+        try:
+            live = db_plan(c, qa, p["_cutoff"])
+            if live["moves"] != moves or live["stamps"] != p["stamp_rows"]:
+                c.rollback()
+                _fail("refused: the database changed since the plan (now "
+                      f"{len(live['moves'])} to quarantine, {len(live['stamps'])} to stamp; "
+                      f"planned {len(moves)} / {len(p['stamp_rows'])}) - a writer is active; "
+                      "nothing was written, re-run the dry run")
+            report["backup"] = str(backup(root, datetime.now().strftime("%Y%m%d-%H%M%S")))
+            _log.info("backup: %s", report["backup"])
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            report["quarantined"] = quarantine(c, moves, now)
+            for rid, gid in p["stamp_rows"].items():
+                n = c.execute("UPDATE matches SET game_id = ? WHERE id = ? AND game_id = 0",
+                              (gid, rid)).rowcount
+                if n != 1:
+                    raise RuntimeError(f"stamp of row {rid} matched {n} rows")
+            c.commit()
+            _log.info("committed: %d quarantined, %d stamped", report["quarantined"],
+                      len(p["stamp_rows"]))
+        except BaseException:
+            if c.in_transaction:
+                c.rollback()
+            raise
     finally:
         c.close()
-    moves = {i: REASON_JUNK.format(cls=cls) for cls, ids in junk.items() for i in ids}
-    moves.update({i: REASON_DUP.format(keep=k) for i, k in dups.items()})
-    moves.update({i: REASON_SUPERSEDED.format(gid=g) for i, g in superseded.items()})
-    n_q = len(moves)
-    return {
-        "cutoff": _ts(cutoff),
-        "qa_games": [m["game_id"] for m in qa],
-        "tft_rows": tft_rows,
-        "junk_rows": len(junk_ids),
-        "junk_by_class": {k: len(v) for k, v in junk.items()},
-        "junk_id_range": [min(junk_ids), max(junk_ids)] if junk_ids else [],
-        "dup_rows": len(dups),
-        "dup_pairs": dups,
-        "superseded_rows": superseded,
-        "quarantine_rows": n_q,
-        "stamp_rows": stamps,
-        "unmatched_rows": unmatched,
-        "kept_tft_rows": tft_rows - n_q - len(stamps),
-        "store_add": [a["game_id"] for a in acts if "record" in a],
-        "store_errors": [a for a in acts if "error" in a],
-        "rating_plan": actions,
-        "last_tft_plan": last_gid,
-        "_moves": moves,
-        "_acts": acts,
-    }
-
-
-def _summary(p: dict) -> dict:
-    ra = p["rating_plan"]
-    return {
-        "tft_rows": p["tft_rows"],
-        "fix_in_place": len(p["stamp_rows"]),
-        "insert": sum(1 for v in ra.values() if v == "insert"),
-        "rerate_existing": sum(1 for g, v in ra.items() if v == "update"
-                               and g not in p["stamp_rows"].values()),
-        "quarantine": {"junk": p["junk_by_class"], "duplicates": p["dup_rows"],
-                       "superseded_game_end": len(p["superseded_rows"]),
-                       "total": p["quarantine_rows"]},
-        "keep": p["kept_tft_rows"],
-        "unmatched_kept": len(p["unmatched_rows"]),
-        "store_add": p["store_add"],
-        "last_tft_rewrite_to": p["last_tft_plan"],
-    }
 
 
 def run(root: Path, qa_path: Path, *, apply: bool = False, expect_quarantine=None,
-        skip_live_check: bool = False, out=print) -> dict:
+        skip_live_check: bool = False, allow_rc_running: bool = False, out=print) -> dict:
     root = Path(root)
     db_path = root / "data" / "match_history.db"
     store = root / "data" / "tft_matches"
@@ -542,14 +708,15 @@ def run(root: Path, qa_path: Path, *, apply: bool = False, expect_quarantine=Non
         raise SystemExit("no QA matches with a game id")
     report = {"before": digest(db_path)}
     p = plan(root, qa)
-    moves, acts = p.pop("_moves"), p.pop("_acts")
-    report.update(p)
+    moves, acts, plans = p.pop("_moves"), p.pop("_acts"), p.pop("_plans")
+    report.update({k: v for k, v in p.items() if k != "_cutoff"})
     nothing = (not moves and not p["stamp_rows"] and not p["store_add"]
                and p["last_tft_plan"] is None
                and all(v == "ok" for v in p["rating_plan"].values()))
     report["nothing_to_do"] = nothing
     out(json.dumps({"summary": _summary(p)}, default=str))
-    out(json.dumps({k: v for k, v in p.items() if k not in ("dup_pairs",)}, default=str))
+    out(json.dumps({k: v for k, v in report.items()
+                    if k not in ("dup_pairs", "before", "nothing_to_do")}, default=str))
     if not apply:
         out("DRY RUN - nothing written. Apply with: --apply --expect-quarantine "
             f"{p['quarantine_rows']}")
@@ -568,41 +735,48 @@ def run(root: Path, qa_path: Path, *, apply: bool = False, expect_quarantine=Non
         why = live_game_reason(root)
         if why:
             raise SystemExit(f"refused: {why}")
-    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    report["backup"] = str(backup(root, stamp))
-    out(f"backup: {report['backup']}")
-    for a in acts:
-        if "record" in a and tp.persist(a["record"], store_dir=store):
-            out(f"store: game {a['game_id']} eog record added")
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    c = sqlite3.connect(str(db_path))
-    try:
-        c.execute("PRAGMA busy_timeout = 5000")
-        c.execute("BEGIN IMMEDIATE")
-        moved = quarantine(c, moves, now)
-        for rid, gid in p["stamp_rows"].items():
-            c.execute("UPDATE matches SET game_id = ? WHERE id = ? AND game_id = 0", (gid, rid))
-        c.commit()
-    except Exception:
-        c.rollback()
-        raise
-    finally:
-        c.close()
-    report["quarantined"] = moved
-    import tft.placement_aggregator as pa
-    real_update = pa.update_heatmap
-    pa.update_heatmap = _heatmap_under(root)
-    try:
-        report["rated"] = {
-            m["game_id"]: pt.rate_tft_game(root, m["game_id"], store_dir=store)[0]
-            for m in qa
-            if p["rating_plan"].get(m["game_id"]) != "ok" or m["game_id"] == p["last_tft_plan"]}
-    finally:
-        pa.update_heatmap = real_update
-    report["after"] = digest(db_path)
-    report["read_back"] = read_back(root, qa)
-    out(json.dumps({k: report[k] for k in ("quarantined", "rated", "after", "read_back")},
-                   default=str, indent=1))
+        if not allow_rc_running:
+            why = rc_running_reason(root)
+            if why:
+                raise SystemExit(
+                    f"refused: {why} - stop RC and pause the RC-Supervisor scheduled task "
+                    "first (the supervisor restarts RC within about 5 s), then re-run; or "
+                    "pass --allow-rc-running to apply beside a running RC.")
+    with _logfile(root):
+        _log.info("apply: root %s, %d to quarantine, %d to stamp, games %s", root,
+                  len(moves), len(p["stamp_rows"]), p["qa_games"])
+        _write(root, qa, p, moves, report)
+        out(f"backup: {report['backup']}")
+        for a in acts:
+            if "record" in a and tp.persist(a["record"], store_dir=store):
+                _log.info("store: game %s eog record added", a["game_id"])
+                out(f"store: game {a['game_id']} eog record added")
+        import tft.placement_aggregator as pa
+        real_update = pa.update_heatmap
+        pa.update_heatmap = _heatmap_under(root)
+        rated = {}
+        try:
+            for m in qa:
+                gid = m["game_id"]
+                if p["rating_plan"].get(gid) == "ok" and gid != p["last_tft_plan"]:
+                    continue
+                try:
+                    rated[gid] = pt.rate_tft_game(root, gid, store_dir=store)[0]
+                except Exception as exc:  # noqa: BLE001 - recorded, then the read-back fails
+                    _log.error("rating of game %s failed: %s", gid, exc)
+                    rated[gid] = ""
+        finally:
+            pa.update_heatmap = real_update
+        report["rated"] = rated
+        report["after"] = digest(db_path)
+        report["read_back"] = read_back(root, qa)
+        out(json.dumps({k: report[k] for k in ("quarantined", "rated", "after", "read_back")},
+                       default=str, indent=1))
+        bad = verify(root, qa, p, plans, report["read_back"])
+        if bad:
+            _fail(f"read-back FAILED after the apply (backup {report['backup']}): "
+                  + "; ".join(bad))
+        _log.info("read-back OK: %s", report["read_back"]["last_tft"])
     return report
 
 
@@ -618,11 +792,13 @@ def main(argv=None) -> int:
     mode.add_argument("--apply", action="store_true")
     ap.add_argument("--expect-quarantine", type=int, default=None,
                     help="the quarantine count the dry run printed")
+    ap.add_argument("--allow-rc-running", action="store_true",
+                    help="apply although health.json names a live RC process")
     ap.add_argument("--skip-live-check", action="store_true",
                     help="tests / a copied root only")
     a = ap.parse_args(argv)
     rep = run(a.root, a.qa_matches, apply=a.apply, expect_quarantine=a.expect_quarantine,
-              skip_live_check=a.skip_live_check)
+              skip_live_check=a.skip_live_check, allow_rc_running=a.allow_rc_running)
     print(json.dumps({"before": rep["before"]}, default=str))
     return 0
 
