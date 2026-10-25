@@ -1,5 +1,21 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-10-25b - size-budget relocation (session 133 batch F merger), 6 rows
+
+`ROADMAP.md` stood at 81082 of 81920 bytes after the RM-872 landing
+(`f103226d0`), and the batch F rows (RM-862 / RM-863 / RM-867 shipped, RM-865
+closed, RM-873 / RM-874 filed) did not fit. The six SHIPPED rows below move
+here VERBATIM as they stood at `f103226d0`, in their ROADMAP order; one stub in
+`ROADMAP.md` names them. Every id they name keeps its own row there: RM-862
+and RM-863 (shipped), RM-865 (closed).
+
+- **[x] RM-483 SHIPPED s133 batch E (`bcb130cbc`, LEDGER 1828; Tier-1, low; gated: none): `ReplanLoop.tick` now passes `forced_item_ids` = the override store's kept ids minus owned (None when nothing is left), so a kept item outside the beam's plan enters `plan_tail`; `plan_build`'s forced-item semantics unchanged.** Body in `BACKLOG.md` "Session 133 lane filings".
+- **[x] RM-854 SHIPPED s133 batch D (`ec2efcc89` + `626396a80`, LEDGER 1824; filed s133 by the batch B merger; Tier-1 shadow-only, low; gated: none for the fix): RM-844 shadow follow-ups - a warming / throttled row is re-logged once with the settled board (`focus_board_relog`), the board compute moved to one background worker (latest wins; hook about 505 ms -> under 8 ms with a 500 ms fake compute), the ARAM `fight_rule` column decided NOT BUILT (no CC axis on the board), and the Arena shadow report skips re-log rows.** Follow-up RM-865. Body in `BACKLOG.md` "Session 133 batch B filings".
+- **[x] RM-855 SHIPPED s133 batch C (`5453bd648`, LEDGER 1818; filed s133 by the batch B merger; Tier-1 TFT, low; gated: LT-01 for the live read-back): `tft/tft_state_reader.py` `round_schedule()` picks the round schedule through `tft/tft_set.py` - the Set 17 Realm of the Gods tables only for Set 17 with gods, a neutral unverified schedule for every other set - and the state carries `round_schedule`.** Sibling readers are RM-858. Body in `BACKLOG.md` "Session 133 batch B filings".
+- **[x] RM-858 SHIPPED s133 batch D (`eb4588779`, LEDGER 1822; filed s133 by the batch C merger; Tier-1 TFT, low; gated: LT-01 for the live read-back): `tft/tft_pbe_engine.py` and `tft/tft_live_analysis.py` take their PvE / god / boon round labels and the god-round scan from the RM-855 `round_schedule()`, so a neutral-schedule set gets none; `_AUGMENT_ROUNDS` kept for every set (scan cadence only).** Third reader `coaches/tft_pbe_coach.py` is RM-862. Body in `BACKLOG.md` "Session 133 batch C filings".
+- **[x] RM-869 SHIPPED s133 batch E (`bfa4bbfbe`, LEDGER 1833; filed s133 from the RM-868 sibling sweep; Tier-1 coach, low-med; gated: an ARAM / Nexus Blitz / URF live read-back): the ARAM and Brawl vision readers set `USE_RELAY = False` (the RM-144 / RM-868 pattern), so their own PROMPT fields reach Sonnet instead of the relay's fixed TFT schema; the ARAM prompt also asks `gold` / `level` so no OCR shadow field goes blank.** Body in `BACKLOG.md` "Session 133 RM-868 filings".
+- **[x] RM-868 SHIPPED s133 batch E (`d47e9906b` + `4d07738aa`, LEDGER 1827; Tier-1 shadow-only; gated: G7-17 live verify): the Arena shadow 3/438 (0.7%) was plumbing - `ArenaVisionReader` rode the promptless relay so `camp_phase` never arrived (now `USE_RELAY = False`, the RM-144 pattern); the report scores a shared class map behind a 0.70 FLIP_GATE (`--since` for the post-fix cohort, dead ticks only on an unambiguous player-dead statement); placeholder-artifact rows are skipped.** Pre-fix rows re-read 10/426 class, `not_ready`. RM-869 OPEN: the ARAM and Brawl readers share the relay root cause. Bodies in `BACKLOG.md` "Session 133 RM-868 filings".
+
 ## 2026-10-25 - size-budget relocation (session 133 agent s133-a18), 3 rows
 
 `ROADMAP.md` stood at 81911 of 81920 bytes on `6c7269ed8`, so the RM-872 row
