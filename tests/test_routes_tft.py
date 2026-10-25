@@ -364,6 +364,34 @@ def test_export_refusals_are_clean(env):
     assert not (env / "escape.json").exists()
 
 
+def test_a_scrub_refusal_is_a_fixed_422_derived_from_no_exception(env, monkeypatch, caplog):
+    """RM-835 rule: no :8888 reply is derived from an except-bound exception.
+    A scrub refusal replies a FIXED 422 (two different violation lists give
+    the same reply), names no violation path, writes nothing, and the detail
+    (type name + the store's own value-free violation text) goes to the log."""
+    _store(env)
+
+    def refuse(violations):
+        def _export(self, *_a, **_kw):
+            raise st.ScrubError(violations)
+        return _export
+
+    replies = []
+    for n, marker in ((1, "$.RM835SCRUBA.players[0]: identity key"),
+                      (3, "$.RM835SCRUBB[1]: a raw 12-hex player key")):
+        monkeypatch.setattr(RoundStore, "export_fixture",
+                            refuse([f"{marker} {i}" for i in range(n)]))
+        with caplog.at_level("WARNING", logger="rc.web_dashboard"):
+            h = _post("/api/tft/match/m-done-1/export", {})
+        assert h.status == 422, h.body
+        assert "RM835SCRUB" not in h.body.decode("ascii")
+        replies.append(h.json())
+    assert replies[0] == replies[1] == {"ok": False, "error": "scrub_failed"}
+    assert not (env / "exports" / "tft-m-done-1.json").exists()
+    logged = [r.getMessage() for r in caplog.records if "scrub guard" in r.getMessage()]
+    assert any("ScrubError" in m and "RM835SCRUBA" in m for m in logged), logged
+
+
 def test_an_unscrubbed_fixture_is_never_served(env):
     fdir = env / "fixtures"
     fdir.mkdir()
