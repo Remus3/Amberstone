@@ -125,10 +125,25 @@ _MODE_CATEGORY = {"CLASSIC":"SR","RANKED_SOLO":"SR","RANKED_FLEX":"SR","PRACTICE
 _EXCLUDED_MODES = {"PRACTICETOOL","TUTORIAL","TUTORIAL_MODULE_1","TUTORIAL_MODULE_2","TUTORIAL_MODULE_3"}
 _match_db = None
 def _get_db(sd):
+    # RM-888: keyed by the resolved path. The cache used to bind the FIRST
+    # caller's root for the whole process, so a later root's rows landed in
+    # the earlier root's match_history.db (in a test process: the live one).
+    # The key is the cached instance's OWN path, so a caller that swaps
+    # `_match_db` directly can never leave a stale key behind.
     global _match_db
-    if _match_db is None:
+    try:
+        path = (Path(sd) / "data" / "match_history.db").resolve()
+    except (OSError, TypeError, ValueError, RuntimeError) as e:
+        _log.warning("MatchDB path for %r unusable: %s", sd, e)
+        return None
+    if _match_db is None or getattr(_match_db, "_path", None) != path:
+        old = _match_db
+        _match_db = None
+        if old is not None:
+            try: old.close()
+            except Exception as e: _log.debug("MatchDB close failed: %s", e)  # noqa: BLE001
         try:
-            from core.match_db import MatchDB; _match_db = MatchDB(Path(sd) / "data" / "match_history.db")
+            from core.match_db import MatchDB; _match_db = MatchDB(path)
         except Exception as e: _log.warning("MatchDB init failed: %s", e)  # noqa: BLE001
     return _match_db
 

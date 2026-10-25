@@ -758,6 +758,27 @@ def redirect_performance_tracker_ratings_to_tmp(monkeypatch, _live_state_base):
 
     monkeypatch.setattr(_pt, "_ratings_dir", _hermetic_ratings_dir)
 
+    # RM-888: the same leak through the DB. `_get_db(sd)` opens
+    # `<sd>/data/match_history.db`, and `tools/live_write_tracer.py` wraps
+    # file I/O only, so a SQLite write into the live history was invisible.
+    # Same real-root test, same substitution.
+    original_db = getattr(_pt, "_get_db", None)
+    if original_db is None:
+        return
+
+    def _hermetic_get_db(script_dir, _orig=original_db):
+        try:
+            is_prod_root = Path(script_dir).resolve() == _REPO_ROOT
+        except (OSError, TypeError, ValueError):
+            is_prod_root = False
+        if not is_prod_root:
+            return _orig(script_dir)
+        target = _live_state_base / "perf_tracker_root"
+        target.mkdir(parents=True, exist_ok=True)
+        return _orig(target)
+
+    monkeypatch.setattr(_pt, "_get_db", _hermetic_get_db)
+
 
 # RM-406. Tools that a test loads by FILE PATH rather than by import name,
 # and that write a live log with plain file I/O instead of the logging
