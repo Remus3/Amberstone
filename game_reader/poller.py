@@ -161,6 +161,12 @@ class _PollerMixin:
         # that. Now read Legion-local in-process.) Reset the error
         # counter too: the relay's successful 404 isn't a failure to surface.
         if getattr(self, "_relay_says_no_game", False):
+            # S134 P0: the standalone Unreal TFT client serves no :2999 at
+            # all, so "no Live Client game" is not "no game". Try the
+            # standalone source before declaring the client idle.
+            standalone = self._try_standalone_tft()
+            if standalone is not None:
+                return standalone
             self.is_in_game = False
             self._read_error_count = 0
             return None
@@ -187,6 +193,9 @@ class _PollerMixin:
                     raw = self._read_game_fallback()
 
             if not isinstance(raw, dict):
+                standalone = self._try_standalone_tft()
+                if standalone is not None:
+                    return standalone
                 self.is_in_game = False
                 return None
 
@@ -196,10 +205,36 @@ class _PollerMixin:
             return self._process_game(raw)
 
         except Exception as exc:  # noqa: BLE001
+            standalone = self._try_standalone_tft()
+            if standalone is not None:
+                return standalone
             self.is_in_game = False
             import traceback as _tb
             self._warn_once(f"{exc} | {_tb.format_exc().splitlines()[-2].strip()}")
             return None
+
+    def _try_standalone_tft(self):
+        """S134 P0: a live match on the standalone Unreal TFT client.
+
+        That client exposes no Live Client API (:2999 has no listener), so
+        ``tft.tft_standalone`` synthesizes an allgamedata-shaped dict from the
+        running game process + LCU gameflow phase + the client's per-round
+        stats file. It goes through the SAME ``_process_game`` TFT early exit
+        as a :2999 read, so mode routing (MODE_TFT) and the TFT worker start
+        exactly as before. Fail-soft: any error reads as no standalone game.
+        """
+        try:
+            from tft import tft_standalone as _tft_standalone
+            raw = _tft_standalone.synth_allgamedata()
+        except Exception as exc:  # noqa: BLE001
+            _log.debug("standalone TFT probe failed: %s", exc)
+            return None
+        if not isinstance(raw, dict):
+            return None
+        self.raw = raw
+        self.is_in_game = True
+        self._read_error_count = 0
+        return self._process_game(raw)
 
     def _warn_once(self, msg: str):
         """Rate-limited warning. Direct-API timeouts are EXPECTED post-2026-04-19

@@ -1174,6 +1174,34 @@ def _no_live_tft_ocr():
 
 
 @pytest.fixture(scope="session", autouse=True)
+def _no_live_standalone_tft():
+    """No test may see the operator's REAL standalone TFT client (S134 P0).
+
+    ``tft.tft_standalone`` scans the live process table for
+    ``TFTClient-Win64-Shipping.exe``, and ``game_reader.poller.read_game`` /
+    ``TftStateReader._fetch`` fall back to it whenever :2999 is down - which is
+    every test. Unpatched, a suite run while the operator plays TFT would turn
+    "relay 404 -> no game" tests into live TFT reads (plus real HTTP to the
+    :8889 LCU relay). Session-scoped for the same reason as
+    ``_no_live_tft_ocr`` above; tests that need a running client inject
+    ``running=`` / ``names=`` or monkeypatch ``standalone_client_running``.
+    """
+    try:
+        from tft import tft_standalone
+    except Exception:  # noqa: BLE001 - no TFT stack present is not a failure
+        yield
+        return
+    patcher = mock.patch.object(tft_standalone, "_process_names", lambda: [])
+    patcher.start()
+    tft_standalone._reset_caches_for_tests()
+    try:
+        yield
+    finally:
+        patcher.stop()
+        tft_standalone._reset_caches_for_tests()
+
+
+@pytest.fixture(scope="session", autouse=True)
 def assert_prod_artifacts_unchanged():
     before = _prod_artifact_sizes()
     spend_before = _spend_ledger_snapshot()

@@ -49,6 +49,7 @@ try:
     from dashboard._liveclient import lcu_summary as _lcu_summary
     from dashboard._state_builder import (
         apply_preflip_mirror as _apply_preflip_mirror,
+        apply_standalone_tft_mirror as _apply_standalone_tft_mirror,
         resolve_mode_key as _resolve_mode_key,
     )
     _PREFLIP_AVAILABLE = True
@@ -158,6 +159,9 @@ class FileIngest:
             try:
                 loop = asyncio.get_running_loop()
                 lcu_snapshot = await loop.run_in_executor(None, _lcu_summary)
+                # S134 P0: same standalone-TFT mirror as /api/state, so the
+                # WS health envelope agrees with onState during the match.
+                data = _apply_standalone_tft_mirror(data, lcu_snapshot)
                 mode_key, preflip_active = _resolve_mode_key(data, lcu_snapshot)
                 if preflip_active:
                     data = _apply_preflip_mirror(data, mode_key, preflip_active)

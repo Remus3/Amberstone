@@ -213,6 +213,46 @@ _PREFLIP_FLAG_MAP = {
 }
 
 
+def standalone_tft_live(lcu_snapshot: dict | None) -> bool:
+    """True while a match runs on the standalone Unreal TFT client (S134 P0).
+
+    Cheap gate first: only an in-game LCU phase pays for the (cached) process
+    scan, so idle / lobby / SR ticks never walk the process table. Fail-soft.
+    """
+    if not isinstance(lcu_snapshot, dict):
+        return False
+    try:
+        from tft import tft_standalone
+        if str(lcu_snapshot.get("phase") or "") not in tft_standalone.IN_GAME_PHASES:
+            return False
+        return bool(tft_standalone.standalone_client_running())
+    except Exception:  # noqa: BLE001
+        return False
+
+
+_LIVE_HEALTH_FLAGS = ("has_game", "aram_mode", "arena_mode", "tft_mode",
+                      "brawl_mode")
+
+
+def apply_standalone_tft_mirror(health: dict, lcu_snapshot: dict | None) -> dict:
+    """Return ``health`` with ``tft_mode`` set while a standalone-client TFT
+    match is live and no other live flag is up (S134 P0).
+
+    The RC app raises ``tft_mode`` itself once its poller picks the match up
+    through ``game_reader`` -> ``tft.tft_standalone``; this mirror covers the
+    gap (and an app that has not been restarted onto the fix) so the served
+    envelope, the dashboard's ``onHealth`` resolver and the B4 live gate
+    (``core.live_game_gate.is_live_game``) all agree it is a live TFT game.
+    """
+    if not isinstance(health, dict):
+        return health
+    if any(health.get(f) for f in _LIVE_HEALTH_FLAGS):
+        return health
+    if not standalone_tft_live(lcu_snapshot):
+        return health
+    return {**health, "tft_mode": True}
+
+
 def resolve_mode_key(health: dict, lcu_snapshot: dict | None) -> tuple[str, bool]:
     """Return (mode_key, preflip_active).
 
@@ -228,6 +268,12 @@ def resolve_mode_key(health: dict, lcu_snapshot: dict | None) -> tuple[str, bool
     if health.get("arena_mode"): return ("arena", False)
     if health.get("tft_mode"):   return ("tft",   False)
     if health.get("has_game"):   return ("sr",    False)
+    # S134 P0: a live match on the standalone Unreal TFT client. It serves no
+    # :2999, so no LiveClient flag can ever go up for it; the LCU gameflow
+    # phase + the running game binary are the in-game truth. NOT a pre-flip:
+    # the game is running, so the B4 live suppression must apply.
+    if standalone_tft_live(lcu_snapshot):
+        return ("tft", False)
     pre = _preflip_mode_from_lcu(lcu_snapshot)
     if pre:
         return (pre, True)
@@ -540,6 +586,8 @@ def build_state() -> dict:
     # member's top champion (Riot Champion-Mastery-V4). Non-blocking - serves
     # cached data, refreshes in the background (see dashboard._party_mains).
     lcu_snapshot = enrich_party_mains(lcu_snapshot)
+    # S134 P0: standalone-client TFT match -> tft_mode on the served health.
+    health = apply_standalone_tft_mirror(health, lcu_snapshot)
     mode_key, preflip_active = resolve_mode_key(health, lcu_snapshot)
     health = apply_preflip_mirror(health, mode_key, preflip_active)
 
@@ -577,6 +625,26 @@ def build_state() -> dict:
         for k, v in _latch_compute(lc).items():
             if coach.get(k) in (None, "", 0):
                 coach[k] = v
+
+    # S134 P0: the standalone Unreal TFT client serves no :2999, so ``lc`` is
+    # empty for the whole match. Serve an honest TFT summary instead (source
+    # tft_standalone, live_api False, no champion field) so consumers keyed on
+    # "a live game is present" (the rc-shell overlay surface gate) see one,
+    # and stamp which live source is in play on the coach envelope. Placed
+    # AFTER the coach merge on purpose: these provenance keys must not be
+    # copied into the coach fields.
+    if mode_key == "tft":
+        try:
+            from tft import tft_standalone
+            if not lc and standalone_tft_live(lcu_snapshot):
+                lc = tft_standalone.standalone_liveclient_summary(
+                    lcu_snapshot, running=True)
+            if isinstance(coach, dict):
+                coach["tft_live"] = tft_standalone.tft_live_status(
+                    lcu_snapshot,
+                    live_api=bool(lc) and lc.get("source") != tft_standalone.SOURCE_TAG)
+        except Exception:  # noqa: BLE001
+            pass
 
     # Phase 8 step 1: derive sr_draft flag from queue_id and stamp it
     # alongside the existing is_aram sibling. Phase 8's UI gates the

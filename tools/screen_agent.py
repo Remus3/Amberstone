@@ -152,9 +152,11 @@ SKIP_COUNTS = {"locked": 0, "not_foreground": 0, "blank": 0}
 # Foreground images whose frame is game content: League, plus the RC overlay
 # (focusable while ACTIVE; its transparent frame over League is still the
 # game). Packaged = "amberstone shell.exe"; live launches run electron.exe.
-# Mirrors vision_server/_frame.py _GAME_CONTENT_IMAGES (test-pinned).
+# Mirrors vision_server/_frame.py _GAME_CONTENT_IMAGES (test-pinned), incl.
+# the standalone Unreal TFT client's game binary (S134 P0).
 GAME_CONTENT_IMAGES = frozenset({
-    "league of legends.exe", "amberstone shell.exe", "electron.exe"})
+    "league of legends.exe", "tftclient-win64-shipping.exe",
+    "amberstone shell.exe", "electron.exe"})
 _fg_last_seen = 0.0
 
 # Stall-warn threshold (seconds). A single cycle slower than this gets
