@@ -119,3 +119,45 @@ def test_no_target_key_without_a_meta_entry(rig, monkeypatch, tmp_path):
     # N8: a selection the resolved set's meta does not define never names
     # the game.
     assert saved["tft_comp"] != "Not In Meta"
+
+
+# -- the comp-NAME rule (performance_tracker._planner_comp), both directions --
+# s135 C1 verifier: a "never name" and an "always name the selection" mutant
+# of _planner_comp both passed every rating test, because every case above
+# either observes a board (the board names the comp first) or holds no meta.
+# These pin the rule on a BOARDLESS game (an OCR miss), the only path that
+# consults the planner, through the consumer artifacts (rating file + row).
+
+_NO_BOARD = {"board_units": [], "traits_active": [], "augments": []}
+
+
+def test_boardless_game_takes_the_name_the_meta_defines(rig):
+    saved, row = rig(_live(**_NO_BOARD))
+    for blob in (saved, row):
+        assert blob["tft_comp"] == "Test Comp"
+        assert blob["champion"] == "Test Comp"
+        # a label only: the measured columns stay empty (RM-889)
+        assert blob["tft_units"] == [] and blob["tft_traits"] == []
+
+
+def test_boardless_game_never_takes_a_name_the_meta_lacks(rig, tmp_path):
+    (tmp_path / "data" / "comp_state.json").write_text(
+        json.dumps({"selected": "Not In Meta"}), encoding="utf-8")
+    saved, row = rig(_live(**_NO_BOARD))
+    for blob in (saved, row):
+        assert blob["tft_comp"] == ""
+        assert "Not In Meta" not in json.dumps(blob)
+    assert saved["champion"] == "TFT #3"
+
+
+@pytest.mark.parametrize("board", [
+    {"traits_active": []},                       # units observed, no traits
+    {"board_units": []},                         # traits observed, no units
+])
+def test_any_observed_board_names_the_game_over_the_planner(rig, board):
+    live = _live(augments=[], **board)
+    saved, row = rig(live)
+    want = pt._identify_comp(live["traits_active"], live["board_units"])
+    assert want and want != "Test Comp"
+    for blob in (saved, row):
+        assert blob["tft_comp"] == want
