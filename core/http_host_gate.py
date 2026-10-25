@@ -171,11 +171,15 @@ def is_allowed_host(hostname) -> bool:
     if not hostname or not isinstance(hostname, str):
         return False
     try:
-        ipaddress.ip_address(hostname)
-        return True
+        addr = ipaddress.ip_address(hostname)
     except ValueError:
-        pass
-    return hostname in allowed_host_names()
+        return hostname in allowed_host_names()
+    # RM-825 (e): an IPv6 zone id (`[fe80::1%25x]`, `fe80::1%eth0`) parses
+    # as an address and passed here as an IP literal. Refused (421): no
+    # browser sends a zone id in a Host (RFC 6874 was never implemented by
+    # one), so no real client is lost, and the IP-literal rule above (the
+    # RM-819 (c) decision) is about a LAN viewer's plain address.
+    return getattr(addr, "scope_id", None) is None
 
 
 # RM-773 (2026-10-23): the stdlib reads the header block with

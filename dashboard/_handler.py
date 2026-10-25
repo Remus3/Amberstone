@@ -74,6 +74,8 @@ from core.http_host_gate import (  # noqa: F401 - re-exports
     is_allowed_host,
     request_target_ok,
 )
+from core.log_scrub import CONTROL_CHAR_TABLE as _core_control_char_table
+from core.log_scrub import SCRUB_RANGES as _core_scrub_ranges
 from core.log_scrub import scrub_log as _core_scrub_log
 from dashboard import _dispatch
 from dashboard._errors import forward_upstream_error
@@ -90,9 +92,12 @@ log = logging.getLogger("rc.web_dashboard")
 #
 # Borrowed from the stdlib rather than re-rolled so it tracks any future
 # widening of the table; the fallback covers a Python that drops the private
-# attribute, and is asserted equivalent by tests.
-_CONTROL_CHAR_TABLE = getattr(BaseHTTPRequestHandler, "_control_char_table", None)
-_SCRUB_RANGES = tuple(range(0x00, 0x20)) + tuple(range(0x7F, 0xA0))
+# attribute, and is asserted equivalent by tests. RM-825: both are core's
+# objects, never a copy - this module used to pass the bare stdlib table
+# through, which bypassed core's widening (U+2028 / U+2029, the bidi
+# controls).
+_CONTROL_CHAR_TABLE = _core_control_char_table
+_SCRUB_RANGES = _core_scrub_ranges
 
 
 # D9 control-endpoint class: POSTs gated behind X-RC-Token == RC_DASH_TOKEN
