@@ -629,16 +629,19 @@ class _StartApp(_LifecycleApp):
         self._tft_mode = (mode == MODE_TFT)
 
 
-def _tft_game_start(monkeypatch, tmp_path):
-    """Run on_game_start(MODE_TFT) with a recording TftWorker; its kwargs."""
+def _tft_game_start(monkeypatch, tmp_path, base=object):
+    """Run on_game_start(MODE_TFT) with a recording TftWorker; its kwargs.
+    base = a real worker class to build too (its start() never runs)."""
     from app import _game_lifecycle as gl
     from core import feature_policy
     from core.game_snapshot import MODE_TFT
     made: list[dict] = []
 
-    class _RecWorker:
+    class _RecWorker(base):
         def __init__(self, **kw):
-            made.append(kw)
+            if base is not object:
+                super().__init__(**kw)
+            made.append(dict(kw, _worker=self))
 
         def start(self):
             pass
@@ -682,6 +685,31 @@ def test_tft_game_start_guarded_without_make_lcu_request(monkeypatch,
     kw = _tft_game_start(monkeypatch, tmp_path)
     assert "lcu_request" not in kw
     assert kw["result_queue"] is not None
+
+
+def test_tft_game_start_real_worker_gets_the_real_lcu_reader(monkeypatch,
+                                                             tmp_path):
+    # S134 M1d: S18-COACH landed core.tft_worker.make_lcu_request, so the
+    # guarded call in app/_game_lifecycle.py resolves with NOTHING patched on
+    # core.tft_worker, and the REAL TftWorker keeps the reader. The reader is
+    # lazy: building it and the worker never constructs an LcuClient.
+    import core.tft_worker as tw
+    import lcu.lcu_client as lc
+    from app import _game_lifecycle as gl
+    assert callable(getattr(tw, "make_lcu_request", None))
+    assert callable(gl._tft_lcu_kwargs().get("lcu_request"))
+    clients: list = []
+
+    class _NoClient:
+        def __init__(self, *a, **k):
+            clients.append(self)
+    monkeypatch.setattr(lc, "LcuClient", _NoClient)
+    kw = _tft_game_start(monkeypatch, tmp_path, base=tw.TftWorker)
+    req = kw["lcu_request"]
+    assert req.__qualname__ == "make_lcu_request.<locals>._request"
+    assert kw["_worker"]._lcu_request is req
+    assert isinstance(kw["_worker"], tw.TftWorker)
+    assert clients == []
 
 
 def test_tft_game_ended_never_raises_on_odd_state():
