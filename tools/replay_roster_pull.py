@@ -158,6 +158,9 @@ def _open_log_sink(sink: Path):
     disk; the run appends to the oversize file and says so in it.
     """
     sink.parent.mkdir(parents=True, exist_ok=True)
+    # Open time is this one-shot writer's handler open: recover anything a run
+    # that died mid-rotation left behind, even when no rotation is due.
+    log_rotation.recover_orphans(sink, _LOG_SINK_BACKUPS)
     try:
         oversize = sink.stat().st_size >= _LOG_SINK_MAX_BYTES
     except OSError:
