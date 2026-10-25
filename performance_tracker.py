@@ -605,19 +605,30 @@ def _tft_rating_record(script_dir, final, tft_live, tft_coaching, variant):
     return grade, notes, data, row
 
 
-def _tft_db_write(script_dir, row) -> None:
+def _tft_db_write(script_dir, row) -> bool:
+    """Write one TFT rating row; True when it landed. A write that does not
+    land is logged at ERROR with the game id (logs/), never swallowed: the
+    callers run it after the rating file is written and keep going."""
+    gid = row.get("game_id") or 0
     db = _get_db(script_dir)
     if not db:
-        return
+        _log.error("TFT DB save failed (game %s): no match database under %s", gid, script_dir)
+        return False
     try:
         # One row per game: a known game id updates the row an earlier rating
         # of the same game wrote (game end, then the store record landing).
-        if row.get("game_id"):
-            db.upsert_by_game_id(row)
+        if gid:
+            outcome = db.upsert_by_game_id(row)
+            ok = outcome in ("inserted", "updated")
         else:
-            db.save_match(row)
+            outcome = db.save_match(row)
+            ok = outcome is not False
     except Exception as e:  # noqa: BLE001
-        _log.warning("TFT DB save failed: %s", e)
+        _log.error("TFT DB save failed (game %s): %s", gid, e)
+        return False
+    if not ok:
+        _log.error("TFT DB save failed (game %s): the write returned %r", gid, outcome)
+    return ok
 
 
 def _tft_heatmap() -> None:
@@ -757,8 +768,8 @@ def rate_tft_game(script_dir, game_id, store_dir=None):
     if plan["newest"]:
         try:
             _atomic_write_json(_mode_file(script_dir, "TFT"), plan["data"])
-        except Exception as _e:  # noqa: BLE001
-            _log.warning("TFT rating save failed (game %s): %s", gid, _e)
+        except Exception as _e:  # noqa: BLE001 - logged at ERROR, the db row still lands
+            _log.error("TFT rating save failed (game %s): %s", gid, _e)
     else:
         _log.info("TFT rating for game %s: last_tft.json holds a newer game - kept", gid)
     _tft_db_write(script_dir, plan["row"])
