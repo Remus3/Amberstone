@@ -108,6 +108,17 @@ def _tft_game_ended(app) -> bool:
         return False
 
 
+def _tft_lcu_kwargs() -> dict:
+    """S134: hand the TftWorker an LCU reader so tft_set.set_from_lcu can read
+    mDefaultSet (set detection by set + queue). Guarded: a core.tft_worker
+    without make_lcu_request (pre-S18) gets no kwarg. Never raises."""
+    try:
+        from core.tft_worker import make_lcu_request
+        return {"lcu_request": make_lcu_request()}
+    except Exception:  # noqa: BLE001
+        return {}
+
+
 class GameLifecycleManager:
     """
     Owns game start/end transitions, worker management, and state processing.
@@ -160,6 +171,7 @@ class GameLifecycleManager:
                             data_dir=SCRIPT_DIR / "data",
                             api_key=_api,
                             debug=dbg,
+                            **_tft_lcu_kwargs(),
                         )
                         app._tft_coach = getattr(mod, cn)(SCRIPT_DIR / "data" / dn, debug=dbg)
                         app._tft_coach.set_worker(app._tft_worker)
