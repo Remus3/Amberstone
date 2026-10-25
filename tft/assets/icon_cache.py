@@ -89,10 +89,10 @@ CATEGORIES = ("champion", "item", "trait", "augment")
 EXTRACT_KEYS = {"champion": "units", "item": "items", "trait": "traits",
                 "augment": "augments"}
 
-# The running set is tftsets.json mDefaultSet unless the queue says otherwise.
-# LCU TFT inventory 2026-10-25: queue 6110 is the "Set 17 (Normal)" revival
-# (isSkillTreeQueue) while mDefaultSet reads TFTSet18.
-QUEUE_SET = {6110: 17}
+# The running set is tftsets.json mDefaultSet unless the queue says otherwise
+# (queue 6110 = the "Set 17 (Normal)" revival while mDefaultSet reads
+# TFTSet18). ONE table, owned by tft/tft_set.py (LT-01); this is an alias.
+QUEUE_SET = tft_set.QUEUE_SETS
 
 DOC_SETS = "tftsets.json"
 DOC_CHAMPIONS = "tftchampions.json"
@@ -163,18 +163,17 @@ def category_dir(set_number, category, root=None) -> Path:
 # -- pure helpers -----------------------------------------------------------------
 
 def running_set(tftsets, queue_id=None) -> int | None:
-    """tftsets.json mDefaultSet, overridden by a queue that runs another set."""
-    if isinstance(queue_id, int) and not isinstance(queue_id, bool) and queue_id in QUEUE_SET:
-        return QUEUE_SET[queue_id]
+    """tftsets.json mDefaultSet, overridden by a queue that runs another set.
+    The pairing rule is tft/tft_set.py `set_from_lcu` (LT-01); this only digs
+    the default set's name out of the tftsets.json document."""
     mode = tftsets.get("LCTFTModeData") if isinstance(tftsets, dict) else None
     default = mode.get("mDefaultSet") if isinstance(mode, dict) else None
-    if not isinstance(default, dict):
-        return None
-    for key in ("SetCoreName", "SetName"):
-        n = tft_set.parse_set_id(default.get(key))
-        if n is not None:
-            return n
-    return None
+    name = None
+    if isinstance(default, dict):
+        name = default.get("SetCoreName")
+        if tft_set.parse_set_id(name) is None:
+            name = default.get("SetName")
+    return tft_set.set_from_lcu(name, queue_id)
 
 
 def detect_set(sources, queue_id=None) -> int | None:
@@ -193,9 +192,7 @@ def detect_set(sources, queue_id=None) -> int | None:
         n = running_set(doc, q)
         if n is not None:
             return n
-    if isinstance(queue_id, int) and queue_id in QUEUE_SET:
-        return QUEUE_SET[queue_id]
-    return None
+    return tft_set.set_from_lcu(None, queue_id)
 
 
 def valid_asset_path(path) -> bool:
