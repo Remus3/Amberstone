@@ -269,6 +269,17 @@ def test_malformed_records_never_stop_the_catalogue(sd):
     assert json.dumps(again, sort_keys=True) == json.dumps(cat, sort_keys=True)
 
 
+def test_duplicate_match_ids_resolve_by_content_not_list_order(sd):
+    first = {"match_id": "dup", "set_id": SYNTH_SET_ID, "placement": 1, "final_board": board_a(0)}
+    second = {"match_id": "dup", "set_id": SYNTH_SET_ID, "placement": 7, "final_board": board_a(0)}
+    flipped = dict(second, final_board=list(reversed(board_a(0))))
+    a = comps.build_catalogue([first, second], sd)
+    b = comps.build_catalogue([flipped, first], sd)
+    assert a["games"] == 1
+    assert a["comps"][0]["avg_placement"] == b["comps"][0]["avg_placement"]
+    assert comps.canonical({"x": [1, 2], "y": {"b": 1, 2: "a"}}) == comps.canonical({"y": {"b": 1, "2": "a"}, "x": [2, 1]})
+
+
 def test_assign_comp_skips_malformed_catalogue_rows(sd):
     cat = comps.build_catalogue(synth_history(), sd)
     broken = dict(cat, comps=[{"label": "no id"}, "junk", {"comp_id": 5}] + cat["comps"])

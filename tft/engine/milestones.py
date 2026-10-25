@@ -370,7 +370,7 @@ def milestones_by_comp(records: Any, catalogue: Mapping, setdata: SetData, *, to
     mined: dict = defaultdict(list)
     for mid, rec in ordered_records(records):
         comp_id = assignments.get(mid)
-        if comp_id is None:
+        if not isinstance(comp_id, str) or comp_id not in comps:
             continue
         place = placement_of(rec)
         if top4_only and (place is None or place > TOP4_MAX_PLACEMENT):
