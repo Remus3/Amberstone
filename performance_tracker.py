@@ -342,6 +342,35 @@ def calculate_tft_rating(placement,stage=0,level=0,game_mins=0.0,traits=None,uni
     if 0<stage<=4:n.append(f"Eliminated Stage {stage} - stabilize earlier")
     return gm,n[:4]
 
+def _tft_game_id() -> int:
+    """RM-889 (4): the finished TFT game's Riot gameId, or 0 = unknown (the
+    matches.game_id schema DEFAULT, the same "no id" value save_rating writes).
+
+    The TFT row used to carry no game_id at all, so every TFT row held 0 and
+    none could be joined to the RM-616 store (data/tft_matches/<gameId>.*).
+    Neither TFT data file the frozen caller hands over carries an id; the
+    standalone client's per-round TFTEoGStats.json does, and read_eog returns
+    it only while FRESH (EOG_MAX_AGE_S) and a TFT game, so a file older than
+    that window reads as unknown (a game lasts far longer, so a fresh file is
+    this game's). Never raises, and never returns a value the INTEGER column
+    rejects: the id is metadata, never worth the row."""
+    try:
+        from tft import tft_standalone as _tsa
+        eog = _tsa.read_eog()
+        # ASCII digits only: int() alone takes True, 1.5, "-5", "1_000" and
+        # full-width digits, none of which is a game id.
+        s = str(eog.get("gameId") if isinstance(eog, dict) else "").strip()
+        gid = int(s) if s.isascii() and s.isdigit() else 0
+    # Broad on purpose: ImportError is the known type, and a reader fault
+    # (e.g. RecursionError from a hostile JSON nest) must still cost only the
+    # id, never the row.
+    except Exception as e:  # noqa: BLE001
+        _log.debug("TFT game id unavailable: %s", e)
+        return 0
+    # SQLite INTEGER is signed 64-bit: a larger id raised OverflowError inside
+    # save_match and lost the whole row (S134 verifier).
+    return gid if 0 < gid < 2**63 else 0
+
 def save_tft_rating(script_dir,tft_live,tft_coaching=None,report=None):
     _report_set(report, False, False)
     if not tft_live: return ("", [])
@@ -440,7 +469,7 @@ def save_tft_rating(script_dir,tft_live,tft_coaching=None,report=None):
     _report_set(report, True, _written)
     db=_get_db(script_dir)
     if db:
-        try:db.save_match({"mode":"TFT","champion":comp,"grade":grade,"game_time_s":gs,"tft_placement":placement,"tft_stage":sn,"tft_level":lv,"tft_comp":comp,"tft_traits":traits,"tft_units":units,"tft_augments":augments,"tft_items":"","notes":notes,"label":lmap.get(placement,"")})
+        try:db.save_match({"mode":"TFT","champion":comp,"grade":grade,"game_time_s":gs,"tft_placement":placement,"tft_stage":sn,"tft_level":lv,"tft_comp":comp,"tft_traits":traits,"tft_units":units,"tft_augments":augments,"tft_items":"","notes":notes,"label":lmap.get(placement,""),"game_id":_tft_game_id()})
         except Exception as e:_log.warning("TFT DB save failed: %s",e)  # noqa: BLE001
     try:
         from tft.placement_aggregator import update_heatmap as _uh
