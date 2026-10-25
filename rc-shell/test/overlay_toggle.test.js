@@ -550,6 +550,50 @@ test("the toggle IPC goes through the allow-list and only from the toggle page",
   assert.match(MAIN_SRC, /event\.sender !== toggleWindow\.webContents/);
 });
 
+test("the icon is applied AFTER the overlay so a fresh HUD show never covers it", () => {
+  const fn = fnBody("applySurface");
+  const overlayShow = fn.indexOf("overlayWindow.showInactive()");
+  const toggleBranch = fn.indexOf('actions.toggle === "show"');
+  assert.ok(overlayShow > 0 && toggleBranch > overlayShow, "toggle branch must follow the overlay show");
+  assert.match(fn.slice(toggleBranch), /raiseToggle\(\)/);
+  assert.match(fnBody("raiseToggle"), /toggleWindow\.moveTop\(\)/);
+});
+
+test("an overlay that takes focus (ACTIVE click) re-lifts the icon above it", () => {
+  assert.match(fnBody("createOverlayWindow"), /overlayWindow\.on\("focus", raiseToggle\)/);
+});
+
+test("turning the content ON or OFF always lands the HUD PASSIVE", () => {
+  const fn = fnBody("setOverlayContent");
+  // Unconditional (not inside an OFF-only branch): an ACTIVE flip pressed while
+  // OFF must not survive into the next ON.
+  assert.ok(!/if \(!overlayContentOn\)/.test(fn), "the PASSIVE reset must not be OFF-only");
+  assert.match(fn, /overlayClickThrough = true;/);
+  assert.match(fn, /overlayZoneHover = false;/);
+  assert.match(fn, /applyClickThrough\(\);/);
+  assert.match(fn, /lastSurface = null;/);
+});
+
+test("a relaunch tap keeps an operator OFF and raises the icon instead", () => {
+  const i = MAIN_SRC.indexOf('app.on("second-instance"');
+  assert.ok(i > 0, "precondition: second-instance handler");
+  const handler = MAIN_SRC.slice(i, MAIN_SRC.indexOf("app.whenReady()", i));
+  assert.match(handler, /if \(overlayContentOn && overlayWindow/);
+  assert.match(handler, /raiseToggle\(\);/);
+});
+
+test("the state read channel follows the same sender rule as the action channel", () => {
+  const i = MAIN_SRC.indexOf('ipcMain.handle("rc-shell:overlay-toggle:get"');
+  assert.ok(i > 0);
+  assert.match(MAIN_SRC.slice(i, i + 400), /event\.sender !== toggleWindow\.webContents/);
+});
+
+test("a crash-looping icon fails safe to overlay content ON", () => {
+  assert.match(fnBody("attachCrashGuard"), /onGiveUp\(\)/);
+  const fn = fnBody("createToggleWindow");
+  assert.match(fn, /attachCrashGuard\(toggleWindow, "toggle", \(\) => \{[\s\S]*?setOverlayContent\(true\)/);
+});
+
 test("a display change re-clamps the toggle icon", () => {
   const fn = fnBody("scheduleOverlayDisplayReapply");
   assert.match(fn, /applyToggleDisplay\(\)/);
