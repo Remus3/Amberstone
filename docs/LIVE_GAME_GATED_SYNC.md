@@ -1248,7 +1248,9 @@ checkout. The three glance rows an ordinary Arena game reaches:
 Not readied this cycle: G5-05 / G5-06 / G5-08 (each needs a DS flag or a replay design first).
 (Cycle 6, 2026-10-25: G5-06 and G5-08 are now readied in their own rows below - G5-06 has a CHECK and
 a precondition, G5-08 a one-glance tooltip CHECK plus a "Not actually live-gated" CANDIDATE. G5-05 is
-still not readied.)
+still not readied.) (Cycle 7, 2026-10-25: G5-05 is split and readied in its row - CHECK A, the stat
+half, is drainable in any Arena game with an `ar` champion such as Vayne; CHECK B, the coach half,
+waits on the RM-875 wiring.)
 
 - **G5-01** (was D6) **THE ONE OPEN LIVE BUG.** Arena augment-select shadow
   (`data/augment_shadow.jsonl`) + item-anvil shadow (`data/anvil_shadow.jsonl`) seeding + WIRING-GAP
@@ -1300,6 +1302,50 @@ still not readied.)
 - **G5-05** (was D4) `apply_mode_modifiers` Arena re-rank validate - Arena ar/swift growth-addends are
   the only schedulable mode where this seam re-ranks (URF/OFA/USB/NB rotate). NOT attempted
   2026-07-04. DS restart.
+  **SPLIT + READIED (lane 9 PREP s133 cycle 7, 2026-10-25, source read at `6c7269ed8`; NOT a tick).**
+  The row asks two things. (A) Does Arena really apply the wiki `ar` growth addends the seam adds?
+  That is drainable in ANY Arena game now. (B) Does the live coach re-rank with them? That is BLOCKED ON
+  WIRING: no live RC path ever sends the flag. The Arena coach's DS call is `coaches/arena_coach.py:699`
+  `dispatch_for_coach(mode_engine="ARENA", ...)` -> `coach_integration/archetype_dispatch.py:360`
+  `rank_for_primary_archetype(**kwargs)`, and `inspect.signature` says NEITHER has an
+  `apply_mode_modifiers` parameter (14 per-scorer `core/daemon_slayer_client.py` functions do, e.g.
+  `rank_for`); `core/focus_board_live.py:439` hard-codes `False`. "DS restart" is STALE: the seam is a
+  per-request body key (`agents/daemon_slayer/server.py` `_opt_bool(body, "apply_mode_modifiers",
+  False)`, e.g. `:482`) gating `engine.py:379-383`, not a DS-side flag; DS `:8860` 1.290.0 serves it.
+  COMPUTE HALF (headless, in-process at `6c7269ed8`, NOT evidence): 45 of 171 `wiki_stats` entries carry
+  an `ar` block (axes `hp_base` / `hp_lvl` / `arm_base` / `arm_lvl` / `dam_lvl` / `as_lvl`,
+  `engine.py:101-108`); `rank.rank_items` level 9, no items, `ARENA`, armor 80 / MR 60 / 2500 HP, flag
+  ON vs OFF moves the full order for 42 of 45 and the top 5 for 6 (Akshan, Kindred, KogMaw,
+  MissFortune, Quinn, Tryndamere). `build_champion` level 9, no items, OFF -> ON: Vayne (`hp_lvl` -10,
+  `dam_lvl` -0.4, `as_lvl` -0.3) HP 1240.52 -> 1173.12, AD 75.839 -> 73.143; Quinn HP 1286.18 ->
+  1387.28, AD 77.198 -> 83.938; Tryndamere AD 92.96 -> 86.22. Tristana, Caitlyn, Ezreal, Jhin: no
+  `ar` block (CHECK A cannot use them).
+  **CHECK A - stat half (any Arena game with an `ar` champion, e.g. Vayne; predicate stated first):**
+  at level >= 6, read the relay `curl -s -H "X-RC-Token: $TOK" http://127.0.0.1:8889/latest-liveclient`
+  -> `activePlayer.level`, `activePlayer.championStats.maxHealth` / `attackDamage`, and the own row's
+  `allPlayers[].items[].itemID`, plus the HUD augments. Record the snapshot with its `gameData.gameTime`.
+  After the game, run `build_champion(snap, champ, level, item_ids=<owned>, mode="ARENA",
+  augments=<picked>)` with `apply_mode_modifiers` False and True. Let gap = |ON - OFF| on each HP / AD
+  axis the champion's `ar` block moves (HP for `hp_base` / `hp_lvl`, AD for `dam_lvl`; armor and attack
+  speed are not read). NO RESULT conditions are checked FIRST: a gap under 10 HP or 1.5 AD drops that
+  axis, and the whole sample is NO RESULT if no axis is left, if an owned item or augment grants a stat
+  on that axis that DS does not model, if the player bought or was granted any Stat Anvil this game
+  (Arena-only, e.g. `GainStatAnvil` / `CraftingPrisStatAnvil`; its stat is not in `items[]`), if an
+  owned item id is unknown to the snapshot (`build_champion` raises `KeyError`), or if a timed buff or
+  stack is up (sample out of combat, full HP, no buff icons). Then, over the axes left: PASS iff on
+  every one |live - ON| <= gap / 4 and |live - OFF| > gap / 2. FAIL iff on any one |live - OFF| <=
+  gap / 4 (Arena does not apply the addend). Any other outcome is NO RESULT (record the four numbers).
+  A PASS on (A) closes
+  only the stat half; the coach half stays open.
+  **CHECK B - coach half (only after RM-875 ships and RC runs with its DEFAULT-OFF flag ON):** a
+  wiring sub-check, not validation of the numbers. PASS iff a `data/ds_calibration.jsonl` row (main
+  checkout) with `mode` `ARENA`, the live champion and a `ts` after this game's start has a `ds_picks`
+  `item_id` order equal to the flag-ON `dispatch_for_coach` re-run for that row's `level` and
+  `owned_items`, and that order differs from the flag-OFF one. FAIL = the order equals the OFF one. NO
+  RESULT = no ARENA row was written (the writer runs only when the dispatch returns rows,
+  `arena_coach.py:716`), ON and OFF agree, or the row matches NEITHER (the row records no enemy stats
+  or augments, so the re-run is approximate until RM-875 item 5 lands). The newest row in that file
+  is 2026-08-02 (an ARAM game); record the baseline line count before queueing.
 - **G5-06** (was D5) `RC_ARENA_STATE_DEBOUNCE` default-ON flip validation. **TRY THE REPLAY
   ALTERNATIVE FIRST to dodge the Arena game entirely.** NOT attempted 2026-07-04.
   **PREP 2026-10-25 (lane 9 s133 cycle 6, source read at `6af9f081f`; NOT a tick).**
