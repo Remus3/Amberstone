@@ -27,6 +27,7 @@ adding a row here in the same commit.
 | [015](ADR-015-shared-repo-enumeration.md) | Repo-root enumeration in tests goes through `tests/_repo_walk`, git index primary and directory skips as backstop | Accepted (records a 2026-09-07 decision that had no record; RM-394 shipped separately, RM-395 open for the two holdouts) |
 | [016](ADR-016-local-match-recording.md) | Local match recording drives the operator's own OBS over obs-websocket, opt-in, ownership-scoped, disk-guarded, retention dry-run by default; video is ADDITIVE to the Match-V5 timeline | Accepted (amends ADR-009's video-capture deferral on operator approval 2026-10-04; RM-637..RM-641) |
 | [017](ADR-017-worktree-relative-hook-tools.md) | Git hooks run the committing checkout's OWN gate tools (worktree-relative); the exposure is documented, not closed | Accepted (closes RM-432 by decision) |
+| [018](ADR-018-tft-engine-separate-from-daemon-slayer.md) | The TFT comp/item engine is a separate in-process package (`tft/engine/`, provisional name Augur in ONE constant), not part of Daemon Slayer | Accepted (program spec `docs/TFT_PROGRAM.md`) |
 
 ## Reading order for a new session
 
@@ -36,6 +37,8 @@ Topology and where things run: **011** (one-PC), **003** (vision server, now a s
 retired - read before touching Lane A precompute or re-running its flip gate),
 **014** (the shipped ARAM laning tables are known-wrong on economy - read before
 trusting or regenerating any `laning_scenarios_*.json`).
+TFT: **018** (the TFT engine is separate from DS - read before putting any TFT
+logic in `agents/daemon_slayer/`).
 Data policy: **006** (Riot key), **009** (replay cleanroom). Frontend: **008**
 (asset hash). Test guards: **015** (repo-root enumeration - read before writing
 or converting any guard that sweeps the whole tree). Retired: **004** -> **012**
