@@ -289,6 +289,37 @@ Expected unblock (unmeasured: nobody has yet seen a GDI grab of the TFT client p
 (pinned by `tests/test_vision_capture_fail_closed_y03.py`), then restart the SEPARATE `:8889` vision
 process between games (an RC restart does not reload it); or point the OBS capture source at the TFT
 client.
+**UPDATE 2026-10-25 08:56 local (lane 9 cycle 11): both blocks above are LIFTED live (the first
+only in part: `:2999` rows stay blocked).** Main
+`852b85e4b` (S134 P0: standalone TFT client routed to `MODE_TFT`, `tftclient-win64-shipping.exe` in
+`_GAME_CONTENT_IMAGES` and its `tools/screen_agent.py` mirror, a `tft_standalone` live source) is
+running: RC pid 20228 (`ops/runtime/health.json` started 13:45:24 UTC), the `:8889` process up since
+about 08:46:44 local (`/stats` `uptime_s` 669 at 08:57:52). Measured in game 1000000912 (recorder
+match 20261025-085349, start 08:53:49 local): `/api/state` at 08:56:13 had `mode_key` `tft`,
+`liveclient.source` `tft_standalone`, `liveclient.game_time` `2:23`, `lcu.phase` `InProgress`;
+`health.json` `has_game` true; `:2999` still refused (curl `000`). So "in game" for TFT is again
+readable from `/api/state` (`mode_key` `tft` plus a non-empty `liveclient`), but `liveclient` is RC's
+own standalone summary (keys `board_size`, `board_str`, `game_id`, `game_mode`, `game_time`,
+`game_time_s`, `hp`, `live_api`, `players_alive`, `source`, `standing`), NOT the `:2999` schema: a
+row whose probe names a `:2999` field path (`activePlayer`, `allPlayers`, `events`) stays blocked.
+Frames: `/latest-frame/meta` `ts` 1792936573.46 was 0.11 s old at the 08:56:13 GET, `source`
+`self_grab`, 1280x720 jpeg; `/stats` `capture_skip` `blank` 0, `not_foreground` 7 (last_ts
+1792936478.4 = 08:54:38 local, about 49 s into the match); recorder `frames.jsonl` of that match: all 12 `vision` rows
+`self_grab`, `frame_age_s` 0.1 .. 4.8, none carrying a `why`. The "expected unblock" is therefore
+MEASURED: a GDI grab of the TFT client passes the blank check (the 08:56:13 `/latest-frame` decodes
+with Pillow 13.0.0 to JPEG RGB 1280x720, luma range 1 .. 253). A TFT
+row needing a fresh `:8889` frame is now drainable on demand while a game is up. Reverses if: a TFT
+match's `vision` frame rows carry `vision_stale_*` / `vision_status_404` again.
+**New block, same game (lane 9 cycle 11, filed as RM-902): every TFT Haiku call fails.**
+`logs/2026-10-25.log` 08:53:55 .. 08:56:46 local: 18 lines `Error code: 400 ... invalid_request_error
+... This API key is not scoped to a workspace, so this request must include the
+anthropic-workspace-id header` (13 `rc.tft.coach` `tft_coach_engine.py:744`, 5 `rc.tft.vision`
+`tft_vision_reader.py:252`), zero in the 2026-10-20 .. -24 logs, and no TFT row in
+`data/spend/2026-10-25.json` (only `agent7_warm`, 35 calls, written 03:04). `/api/state` stayed
+degraded, not raw (no error text; `coach.action` None at 08:57:24). So a TFT row whose predicate is a
+Haiku coach line or a Haiku vision read (and RM-681's per-path 1.x read-back for the TFT coach path)
+is BLOCKED on the RC process's API key, not drainable, until a TFT game shows a non-error
+`rc.tft.coach` reply. Reverses if: a TFT game's log shows `rc.tft.coach` calls with no 400.
 
 ---
 
