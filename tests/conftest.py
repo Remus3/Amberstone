@@ -1203,12 +1203,14 @@ def _no_live_standalone_tft():
     for p in patchers:
         p.start()
     tft_standalone._reset_caches_for_tests()
-    try:
-        yield
-    finally:
-        for p in reversed(patchers):
-            p.stop()
-        tft_standalone._reset_caches_for_tests()
+    # The patches are deliberately NOT stopped at session end. Some tests
+    # leave TftWorker daemon threads running (measured by the S134 verifier:
+    # tests/snapshot_regressions/test_app_authority.py), and those threads
+    # poll TftStateReader -> the standalone fallback AFTER the session ends;
+    # with the patches stopped they made real GETs to :8889/latest-lcu. The
+    # pytest process exits right after, so leaving the stubs in force costs
+    # nothing and means no leaked thread can ever reach a live input.
+    yield
 
 
 @pytest.fixture(scope="session", autouse=True)
