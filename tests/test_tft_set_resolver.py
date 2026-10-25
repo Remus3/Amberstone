@@ -170,9 +170,10 @@ def test_env_pin_beats_default_but_live_beats_env(two_sets, monkeypatch):
 
 
 def test_live_set_noted_from_game_data(two_sets):
-    # Candidate key names are UNMEASURED (live-game-gated); the only measured
-    # set-id spelling in the tree is the LCU team-planner "setId": "TFTSet17"
-    # (scripts/discover_champion_codes.py:52).
+    # Candidate key names are UNMEASURED (live-game-gated); the measured
+    # set-id spellings in the tree are the LCU team-planner previous-context
+    # "setId": "TFTSet17" / "TFTSet18" (scripts/discover_champion_codes.py
+    # PLANNER_CONTEXT; tft/tft_set.py docstring, session 134).
     assert tft_set.note_live_set_from_game_data({"gameMode": "TFT"}) is None
     assert tft_set.resolve_set(root=two_sets) == 18
     assert tft_set.note_live_set_from_game_data(

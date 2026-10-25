@@ -15,10 +15,15 @@ Resolution order (resolve_set):
 A candidate is honoured only when that set is ingested: RC cannot serve data
 it does not have, so a live set id for an unknown set falls through.
 
-LIVE-GAME-GATED (unverified): nobody has measured whether :2999 or the LCU
-exposes the running set during a TFT game. LIVE_SET_KEYS are CANDIDATE key
-names only; the one measured set-id spelling in the tree is the LCU team
-planner's "setId": "TFTSet17" (scripts/discover_champion_codes.py:52).
+LIVE-GAME-GATED (unverified): no measured key names the RUNNING set.
+LIVE_SET_KEYS are CANDIDATE key names only. Measured 2026-10-25 (session
+134, a live Set 18 TFT game): the game ran as a standalone client and
+NOTHING listened on :2999 (connection refused), so no :2999 key exists to
+read; the LCU gameflow session carries no set key (only map assets named
+"TFT_Set18_..."). The measured set-id spellings in the tree are the LCU team
+planner's previous-context "setId": "TFTSet17" (Set 17 era) and "TFTSet18"
+(Set 18 lobby) - the planner's view, not the game's (scripts/
+discover_champion_codes.py PLANNER_CONTEXT).
 
 A set's meta file is that set's own: a missing tft_set<N>_meta.json is
 never replaced by another set's file (the old sites fell back to Set 17,
