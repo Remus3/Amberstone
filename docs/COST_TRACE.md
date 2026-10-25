@@ -31,8 +31,8 @@ records there. moon_proxy only does the 2s vision dedupe accounting.
 | coaches/champ_select_coach.py:116 | HAIKU | YES (record_anthropic_response) | EVENT (champ select) | champ_select_coach |
 | coaches/replay_coach.py:192 | HAIKU | YES (record_anthropic_response) | ON-DEMAND (replay) | replay_coach |
 | ~~dashboard/_champ_select.py:92~~ | RETIRED 2026-06-06 | n/a | n/a | ~~champ_select_brief~~ |
-| tft/tft_coach_engine.py:692 | HAIKU | YES (record_anthropic_response, cache_control ephemeral) | POLLING (45s debounce) | tft_coach |
-| tft/tft_pbe_engine.py:421 | HAIKU | YES (record_anthropic_response) | POLLING (game tick) | tft_pbe |
+| tft/tft_coach_engine.py:769 | HAIKU | YES (record_anthropic_response, cache_control ephemeral) | POLLING (45s debounce) | tft_coach |
+| tft/tft_pbe_engine.py:357 | HAIKU | YES (record_anthropic_response, cache_control ephemeral) | POLLING (game tick) | tft_pbe |
 | tft/tft_live_analysis.py:292 | HAIKU | YES (record_anthropic_response) | POLLING (vision cycle) | tft_live_analysis |
 | tft/tft_live_analysis.py:316 | HAIKU | YES (record_anthropic_response) | POLLING (aug select) | tft_live_aug_select |
 | tft/tft_vision_reader.py:186 | SONNET | YES (record_anthropic_response) | POLLING (vision local fallback) | tft_vision |
@@ -175,6 +175,10 @@ is fidelity-gated on a live game. Guard: `tests/test_prompt_cache_floor_item286.
 (fails loudly if a template later grows past the floor = re-derive + implement).
 
 The `cache_control` pattern is correct ONLY where the static system prompt
-clears 2048 tok: `tft_pbe` (`TFT_PBE_SYSTEM_PROMPT` ~2649c real ~2450 tok) is the
-one live beneficiary; `tft_coach`'s `TFT_SYSTEM_PROMPT` (944 tok) carries a marker
-that is itself sub-floor/inert (forward-marker, left as-is).
+clears 2048 tok. Since RM-845 (2026-10-24) neither TFT engine has a
+hand-written prompt constant: `TFT_SYSTEM_PROMPT` (`tft_coach`) and
+`TFT_PBE_SYSTEM_PROMPT` (`tft_pbe`) are retired, and both engines take their
+system block from `tft/tft_prompt.py` `build_system_prompt()` (capped at
+`MAX_PROMPT_CHARS` 4000 chars; measured 3432 for Set 18, 3364 for Set 17), so
+both markers are sub-floor/inert (forward-markers, left as-is). Before RM-845,
+`tft_pbe` was the one live beneficiary.
