@@ -1538,6 +1538,15 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         `pid=${p.pid} alive=${p.alive} mode=client(deferred→${state.lastStateMode}) reload_ok=${p.last_reload_ok}`);
       return;
     }
+    // RM-897: a TFT ui_mock audit page has no game behind it, so every
+    // health envelope (the 2 s HTTP fallback poll, the WS mirror) reports
+    // "client" and would undo the fixture's setMode("tft") stamp within
+    // seconds, painting the BUILD widget again. Hold the fixture's mode.
+    if (tag === "client" && _amIsMock() && _amMockData && _amMockData.mode === "tft") {
+      logLine("health",
+        `pid=${p.pid} alive=${p.alive} mode=client(held tft: ui_mock) reload_ok=${p.last_reload_ok}`);
+      return;
+    }
     setMode(tag);
     logLine("health", `pid=${p.pid} alive=${p.alive} mode=${tag} reload_ok=${p.last_reload_ok}`);
   }
@@ -4125,6 +4134,14 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       .then((r) => (r && r.ok ? r.json() : null))
       .then((data) => {
         _amMockData = data || null;
+        // RM-897: a live TFT game stamps body[data-mode]="tft" through
+        // setMode() from the state envelope; the mock path carries no
+        // envelope, so the TFT-scoped rules (overlay BUILD hide, header
+        // SR-pill collapse) never applied on the audit path. Stamp the
+        // fixture's mode for TFT only - widening it to the League fixtures
+        // changes every existing ui_mock audit and is filed separately.
+        // onHealth holds this stamp against the no-game "client" downgrade.
+        if (_amMockData && _amMockData.mode === "tft") setMode("tft");
         // Re-fire active-match render on landing so the placeholder
         // render that fired before fetch resolved gets replaced.
         if (_VIEW && _VIEW.current === "active-match" && _amMockData) {
