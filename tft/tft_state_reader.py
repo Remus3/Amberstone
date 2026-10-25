@@ -138,8 +138,18 @@ class TftStateReader:
         if "hyperroll" in terrain or "hyperroll" in mode: return "hyper_roll"
         return "standard"
     def _fetch(self):
-        req=urllib.request.Request(TFT_API)
-        with urllib.request.urlopen(req,context=self._ssl,timeout=3) as r: return json.loads(r.read().decode("utf-8"))
+        try:
+            req=urllib.request.Request(TFT_API)
+            with urllib.request.urlopen(req,context=self._ssl,timeout=3) as r: return json.loads(r.read().decode("utf-8"))
+        except Exception:  # noqa: BLE001
+            # S134 P0: the standalone Unreal TFT client has no :2999 listener;
+            # fall back to the synthesized standalone source (process + LCU
+            # phase + per-round stats file). None there re-raises the :2999
+            # error so read() keeps its "no game" contract.
+            raw = _standalone_raw()
+            if raw is not None:
+                return raw
+            raise
     def _parse(self,raw,gd=None):
         ap=raw.get("activePlayer",{});gd=raw.get("gameData",{});all_p=raw.get("allPlayers",[])
         gt=float(gd.get("gameTime",0));lv=int(ap.get("level",self._last_level));gold=0
@@ -203,7 +213,7 @@ class TftStateReader:
         ocr_hp = ocr.get("hp")
         # -----------------------------------------------------------------
         rf = round_schedule().fields(stage, rnd)  # RM-855: the resolved set's schedule
-        return {"game_mode":gd.get("gameMode","TFT"),"game_time_s":gt,"level":lv,"gold":gold,
+        out = {"game_mode":gd.get("gameMode","TFT"),"game_time_s":gt,"level":lv,"gold":gold,
             "health":0 if me.get("isDead") else (
                 int(float(me.get("health") or me.get("tftHP") or 0))
                 if (me.get("health") or me.get("tftHP")) and 0 < float(me.get("health") or me.get("tftHP") or 0) <= 100
@@ -218,7 +228,49 @@ class TftStateReader:
             "board":[],"bench":[],"shop":[],"traits":{},"augments":[],
             "board_size":0,"bench_count":0,"board_str":"unavailable","bench_str":"unavailable",
             "shop_str":"unavailable","traits_str":"unavailable","augments_str":"unavailable",
-            "xp_current":0,"xp_needed":0,"xp_remaining":0,"variant":variant}
+            "xp_current":0,"xp_needed":0,"xp_remaining":0,"variant":variant,
+            "data_source":"live_client"}
+        _apply_standalone(out, raw)  # S134 P0: standalone-client board/standing
+        return out
+
+
+# -- standalone Unreal TFT client (S134 P0) -------------------------------------
+def _standalone_raw():
+    """The synthesized standalone-client allgamedata dict, or None. Fail-soft."""
+    try:
+        from tft import tft_standalone
+        return tft_standalone.synth_allgamedata()
+    except Exception as e:  # noqa: BLE001
+        logger.debug("standalone TFT source: %s", e)
+        return None
+
+
+def _apply_standalone(out: dict, raw) -> None:
+    """Overlay the per-round board / standing from the standalone source.
+
+    Only for a raw dict the standalone module produced; a :2999 read is left
+    byte-identical except for its ``data_source`` provenance tag. HP already
+    arrives through allPlayers (the local player's ``health``).
+    """
+    if not isinstance(raw, dict):
+        return
+    try:
+        from tft import tft_standalone
+        if raw.get("rc_source") != tft_standalone.SOURCE_TAG:
+            return
+        out["data_source"] = tft_standalone.SOURCE_TAG
+        st = raw.get("rc_standalone") if isinstance(raw.get("rc_standalone"), dict) else {}
+        local = st.get("local") if isinstance(st.get("local"), dict) else {}
+        board = [u for u in (local.get("board") or []) if isinstance(u, dict)]
+        if board:
+            out["board"] = board
+            out["board_size"] = len(board)
+            out["board_str"] = ", ".join(
+                f"{u.get('name')}*{u.get('star', 1)}" for u in board)
+        if local.get("standing"):
+            out["standing"] = local.get("standing")
+    except Exception as e:  # noqa: BLE001
+        logger.debug("standalone TFT overlay: %s", e)
 
 
 # -- round schedule per resolved set (RM-855) ----------------------------------

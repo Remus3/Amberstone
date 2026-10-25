@@ -95,9 +95,15 @@ def _input_desktop_locked() -> bool:
 # "electron.exe" is included because the live overlay is launched from
 # node_modules electron.exe (Desktop shortcut + rc-shell/launch_overlay.bat),
 # and a stray dev Electron app is a far smaller risk than a dark vision feed.
+# S134 P0 (measured live 2026-10-25): TFT now runs on its own Unreal client;
+# the window that holds the game (class UnrealWindow, title "TFT", borderless
+# fullscreen, display affinity 0 so a GDI BitBlt reads real pixels) belongs to
+# "tftclient-win64-shipping.exe". Without it every TFT frame was refused as
+# not_foreground and :8889/latest-frame served 404 for the whole match.
 # tools/screen_agent.py mirrors this set (test-pinned).
 _GAME_CONTENT_IMAGES = frozenset({
-    "league of legends.exe", "amberstone shell.exe", "electron.exe"})
+    "league of legends.exe", "tftclient-win64-shipping.exe",
+    "amberstone shell.exe", "electron.exe"})
 
 
 def _foreground_image() -> str:
