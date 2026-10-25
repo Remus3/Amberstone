@@ -27,9 +27,12 @@ test onto these helpers:
   any-module tripwire): it keeps the process-wide rebinding but hands every
   thread that was ALREADY alive when it was installed the real function, so a
   leftover server or poller of another test keeps its own I/O. The installing
-  thread and every thread started after it get the fake - including a thread
-  a leftover server starts later (a per-request handler thread), which is the
-  one gap a module view does not have; prefer a view wherever one exists.
+  thread and every thread started after it get the fake, except a thread
+  whose nearest already-alive ancestor another test FILE started: a leftover
+  server's per-request handler thread gets the real one too, by the creator
+  lineage a passive audit hook records (RM-880 b). This file's own server
+  fixture still hands the fake to its handler threads. Prefer a view wherever
+  one exists: a raw `_thread` start has no recorded creator.
 
 RM-880 widened the guard to `os.name` / `os.kill` / `os.killpg`,
 `os.path.exists|isfile|isdir`, `shutil.which` and two class attributes:
@@ -53,6 +56,7 @@ import sys
 import threading
 import types
 import urllib.request
+import weakref
 
 _MISSING = object()
 
@@ -201,16 +205,86 @@ def bind_os_path(monkeypatch, module, **overrides) -> ModuleView:
                             path=ModuleView(current.path, **overrides))
 
 
+# Thread -> (the thread that started it, the test FILE running when it was
+# started), recorded by a passive audit hook (RM-880 b). Audit hooks cannot be
+# removed, so it is installed once, at import (collection, before any test
+# starts a thread); it only reads, so a test that patches
+# `threading.Thread.start` neither hides a start from it nor is changed by it.
+_LINEAGE: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
+_LINEAGE_LOCK = threading.Lock()
+_LINEAGE_HOOKED = False
+_UNRECORDED = (None, _MISSING)
+
+
+def _current_test_file():
+    """The test file pytest is running now (`PYTEST_CURRENT_TEST` is
+    `<file>::<name> (<phase>)`), or None outside a test."""
+    nodeid = os.environ.get("PYTEST_CURRENT_TEST")
+    return nodeid.split("::", 1)[0] if nodeid else None
+
+
+def _record_lineage(event: str, args: tuple) -> None:
+    if event != "_thread.start_joinable_thread":
+        return
+    try:
+        started = getattr(args[0], "__self__", None)  # Thread._bootstrap
+        if isinstance(started, threading.Thread):
+            entry = (threading.current_thread(), _current_test_file())
+            with _LINEAGE_LOCK:
+                _LINEAGE[started] = entry
+    except Exception:  # noqa: BLE001 - a raising audit hook aborts the start
+        pass
+
+
+def _ensure_lineage_hook() -> None:
+    global _LINEAGE_HOOKED
+    with _LINEAGE_LOCK:
+        if not _LINEAGE_HOOKED:
+            sys.addaudithook(_record_lineage)
+            _LINEAGE_HOOKED = True
+
+
+def _lineage_of(thread):
+    with _LINEAGE_LOCK:
+        return _LINEAGE.get(thread, _UNRECORDED)
+
+
+_ensure_lineage_hook()
+
+
 def this_thread_only(fake, real):
     """FAKE for the installing thread and every thread started after it; REAL
     for each thread already alive at install time (another test's leftover
-    server or poller). For a process-wide patch where no module-local name
-    exists; prefer bind_subprocess / bind_urlopen wherever one does."""
-    foreign = frozenset(t for t in threading.enumerate()
-                        if t is not threading.current_thread())
+    server or poller). A thread started after install inherits from the
+    nearest ancestor that was alive at install (RM-880 b): one this test FILE
+    started (its own server fixture) passes FAKE on to a per-request handler
+    thread as before, one another file or nobody recorded started (a leftover
+    server of an earlier file) passes REAL. A thread with no recorded creator
+    (a raw `_thread` start) keeps the pre-RM-880 answer, FAKE. For a
+    process-wide patch where no module-local name exists; prefer
+    bind_subprocess / bind_urlopen wherever one does."""
+    _ensure_lineage_hook()
+    installer = threading.current_thread()
+    owner_file = _current_test_file()
+    foreign = frozenset(t for t in threading.enumerate() if t is not installer)
+
+    def _wants_real(thread) -> bool:
+        if thread in foreign:
+            return True
+        seen = set()
+        while thread is not installer and thread not in seen:
+            seen.add(thread)
+            creator, _ = _lineage_of(thread)
+            if creator is None:
+                return False
+            if creator in foreign:
+                # Unrecorded (started before the hook) is _MISSING: foreign.
+                return _lineage_of(creator)[1] != owner_file
+            thread = creator
+        return False
 
     def scoped(*args, **kwargs):
-        target = real if threading.current_thread() in foreign else fake
+        target = real if _wants_real(threading.current_thread()) else fake
         return target(*args, **kwargs)
 
     scoped.fake = fake
