@@ -733,7 +733,22 @@ _WEB = _REPO_ROOT / "web"
 # web/js/panels/next.js, web/js/lib/live_directive_gate.js and web/js/main.js
 # back to their s135-land blobs before this landing (b134282e3)
 # reproduces the superseded a811aac7... value EXACTLY. No glyph change.
-_LIVE_HALF_DIGEST = "f467715b6bebba93fb76178cd43bdc4f628ff94de341d5228cd5a4a30bae319a"
+# superseded by the session 135 merger re-capture below (S134 lane uiux cycle 5, RM-898): "f467715b6bebba93fb76178cd43bdc4f628ff94de341d5228cd5a4a30bae319a"
+#
+# RE-CAPTURED 2026-10-25 at S134 lane uiux cycle 5 (RM-898: the SSE,
+# HTTP-fallback and E6 /api/state handlers in main.js stamp state.latest.lcu
+# before they render, so the B4 gate sees the current LCU phase on the first
+# live tick). Ordinary case, no tokeniser change. ATTRIBUTED BY SUBSTITUTION:
+# swapping exactly web/js/main.js back to its lane HEAD blob reproduces the
+# superseded 194bd1df... value EXACTLY. That one path is the whole change. No
+# glyph change.
+# MERGED 2026-10-25 by the session 135 merger onto s135-land (the TFT
+# board / lobby slice and the earlier lanes already landed); recomputed over
+# the merged tree. ATTRIBUTED BY SUBSTITUTION: swapping exactly
+# web/js/main.js back to its s135-land blob before this landing
+# (a2f6ddcc6)
+# reproduces the superseded f467715b... value EXACTLY. No glyph change.
+_LIVE_HALF_DIGEST = "1cf1a44e7b1d4648fd358c57c5a3f67cccc27a40eb7fcea44280356021c3d2ec"
 
 
 def _web_sources() -> list[Path]:

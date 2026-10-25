@@ -21,9 +21,10 @@ active_match_tft.test.mjs pins the pure model; this file pins what the real
 page renders from the real rows, end to end through main.js.
 
 Drive path: the mock server's /api/state carries lcu.phase InProgress, so the
-view router auto-derives #active-match. The first state render runs before
-handleLcuEnvelope caches state.latest.lcu, so the live branch lands on the
-NEXT state tick; every wait below is on that tick, never a fixed sleep.
+view router auto-derives #active-match. Both state handlers in main.js stamp
+state.latest.lcu BEFORE onState (RM-898), so the live branch lands on the
+FIRST state tick; the two first-tick tests at the end pin that. Every wait
+below is on a state tick or a rendered value, never a fixed sleep.
 """
 import copy
 import json
@@ -63,11 +64,13 @@ def _load(name: str) -> dict:
     return json.loads((FIXTURES / f"{name}.json").read_text(encoding="utf-8"))
 
 
-def _open(mock_server, pw_browser, data: dict):
+def _open(mock_server, pw_browser, data: dict, init_scripts: tuple = ()):
     mock_server._store["data"] = data
     ctx = pw_browser.new_context(viewport={"width": 1920, "height": 920})
     page = ctx.new_page()
     page.add_init_script(_WS_STUB)
+    for script in init_scripts:
+        page.add_init_script(script)
     errors: list[str] = []
     page.on("pageerror", lambda err: errors.append(str(err)))
     page.goto(mock_server.url + "/", wait_until="domcontentloaded", timeout=15_000)
@@ -303,6 +306,129 @@ def test_lcu_phase_blink_holds_then_sr_game_rebuilds_league_panes(
                        "TFT LIVE DATA"):
             assert needle not in view, f"TFT text {needle!r} left in SR game"
         assert _text(page, "am-build-body").strip(), "SR build pane left blank"
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors: {errors[:3]}"
+
+
+# RM-898: every value #nx-next ever holds, from the first DOM paint on.
+_NX_WRITE_LOG = """
+window.__nxLog = [];
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('nx-next');
+  if (!el) return;
+  window.__nxLog.push(el.textContent);
+  new MutationObserver(() => window.__nxLog.push(el.textContent))
+    .observe(el, {childList: true, characterData: true, subtree: true});
+});
+"""
+
+# RM-898: make the HTTP fallback (pollIfStale) the ONLY state.latest.lcu
+# writer, then log what #nx-next holds right after each fallback tick renders.
+#   - No EventSource: setupStateStream returns, so no SSE tick.
+#   - pollLcu (the independent LCU poller) gets "{}" back, so it never calls
+#     handleLcuEnvelope and cannot refresh the cache between fallback ticks;
+#     without this the defect reproduces only when pollLcu happens to lose
+#     the race. The caller is told apart by its function name on the stack.
+#   - A pollIfStale /api/state response logs {phase, head} in a setTimeout 0
+#     queued when its json() resolves, which runs after the handler's
+#     synchronous render (onState + handleLcuEnvelope) completes.
+_FALLBACK_ONLY_TICK_LOG = """
+(() => {
+  window.EventSource = undefined;
+  window.__ticks = [];
+  const orig = window.fetch.bind(window);
+  window.fetch = function (input, init) {
+    const url = typeof input === 'string' ? input : ((input && input.url) || '');
+    if (!url.split('?')[0].endsWith('/api/state')) return orig(input, init);
+    const stack = new Error().stack || '';
+    if (stack.indexOf('pollLcu') !== -1) {
+      return Promise.resolve(new Response('{}', {
+        status: 200, headers: {'Content-Type': 'application/json'}}));
+    }
+    if (stack.indexOf('pollIfStale') === -1) return orig(input, init);
+    return orig(input, init).then((resp) => {
+      const json = resp.json.bind(resp);
+      resp.json = () => json().then((d) => {
+        setTimeout(() => {
+          const el = document.getElementById('nx-next');
+          window.__ticks.push({
+            phase: (d && d.lcu && d.lcu.phase) || '',
+            head: el ? el.textContent : null,
+          });
+        }, 0);
+        return d;
+      });
+      return resp;
+    });
+  };
+})();
+"""
+
+
+def test_first_sse_tick_of_a_live_page_paints_no_sr_imperative(
+    mock_server, pw_browser
+):
+    """RM-898, SSE site. The page loads straight into the live client row
+    (lcu.phase InProgress, no :2999 feed). The first render is the SSE event;
+    before the fix onState ran before handleLcuEnvelope cached state.latest.lcu,
+    so the B4 mirror in next.js saw no live game and #nx-next held "Drake
+    spawns 5:00 - set up vision" until the next tick. A MutationObserver
+    records every value #nx-next ever holds; none may be an SR imperative."""
+    ctx, page, errors = _open(
+        mock_server, pw_browser, _load("tft_live_s134_client"),
+        init_scripts=(_NX_WRITE_LOG,),
+    )
+    try:
+        _wait_fallback(page, "game")
+        _wait_state_ticks(page, 1)
+        log = page.evaluate("window.__nxLog")
+        assert log and log[0] == "-", f"observer not installed: {log[:3]}"
+        for value in log:
+            for needle in _SR_IMPERATIVES:
+                assert needle not in value, (
+                    f"#nx-next held {value!r} on a live page: {log}"
+                )
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors: {errors[:3]}"
+
+
+def test_first_fallback_tick_after_champ_select_paints_no_sr_imperative(
+    mock_server, pw_browser
+):
+    """RM-898, HTTP-fallback site. ChampSelect is pre-game, so the coach
+    headline paints there (the positive control below the flip). On the
+    FIRST fallback tick that serves lcu.phase InProgress the B4 mirror must
+    already see the live game: before the fix state.latest.lcu still held
+    the ChampSelect snapshot when onState ran, and #nx-next kept "Drake
+    spawns 5:00 - set up vision" for one more tick."""
+    pre = _load("tft_live_s134_client")
+    pre["lcu"]["phase"] = "ChampSelect"
+    ctx, page, errors = _open(
+        mock_server, pw_browser, pre, init_scripts=(_FALLBACK_ONLY_TICK_LOG,),
+    )
+    try:
+        page.wait_for_function(
+            "() => (window.__ticks || []).some(t => t.phase === 'ChampSelect'"
+            " && t.head.includes('Drake spawns'))",
+            timeout=_LIVE_TICK_MS,
+        )
+        mock_server._store["data"] = _load("tft_live_s134_client")
+        page.wait_for_function(
+            "() => (window.__ticks || []).filter("
+            "t => t.phase === 'InProgress').length >= 2",
+            timeout=_LIVE_TICK_MS,
+        )
+        live = [t for t in page.evaluate("window.__ticks")
+                if t["phase"] == "InProgress"]
+        for needle in _SR_IMPERATIVES:
+            assert needle not in live[0]["head"], (
+                f"first InProgress tick held {live[0]['head']!r}"
+            )
+        assert [t["head"] for t in live[:2]] == ["-", "-"]
     finally:
         page.close()
         ctx.close()
