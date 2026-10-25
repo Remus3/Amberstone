@@ -1144,7 +1144,9 @@ Return ONLY valid JSON:
   "anvil_choices": [],
   "augment_hud_slots": [],
   "camp_phase": false,
-  "round_number": 1
+  "round_number": 1,
+  "gold": null,
+  "level": null
 }
 Rules:
 - augment_select: true if large augment card selection panel visible
@@ -1155,8 +1157,27 @@ Rules:
   abilities/items). Empty list if none visible. Only include augments
   you can confidently identify by icon.
 - camp_phase: true if in the between-round camp phase (not in combat arena)
+- gold / level: the player's gold and champion level from the HUD, integers,
+  null if not readable
 - Return ONLY the JSON
 """
+
+    # RM-868 (the RM-144 pattern, dashboard/_screen_read.py ScreenReadVision):
+    # this PROMPT is load-bearing - camp_phase, anvil_choices,
+    # augment_hud_slots and round_number are NOT in the relay's fixed TFT
+    # extraction schema (vision_server/_inference.py _VISION_PROMPT), and the
+    # relay transport carries no prompt. On the relay, camp_phase was never
+    # present, so the artifact's camp_phase stayed False and the deterministic
+    # Arena rule's camp branch (core/arena_action_rule.py decide_action rule 1)
+    # never fired live (det BUY ITEMS 1 of 480 live-fight shadow rows). Go
+    # direct so PROMPT reaches the model. Rejected alternative: adding these
+    # keys to the shared relay prompt changes every mode's schema. Cost: the
+    # direct path skips the relay's image-key dedupe; the daily cost gate in
+    # GameVisionReader._extract still applies. PROMPT also asks for gold /
+    # level because the relay's TFT answer carried them and they are OCR
+    # SHADOW_FIELDS: going direct without them would blank the Sonnet side of
+    # those two OCR-vs-Sonnet rows.
+    USE_RELAY = False
 
     TIERED_FIELDS = [
         "timer",               # OCR canary (validates in-game frame)
@@ -1168,7 +1189,10 @@ Rules:
         # `is_augment_select`. modes/shared_vision._postprocess aliases it into
         # the consumed `augment_select` at :606, so it IS a requested field for
         # this mode - declaring it here stops RC_VISION_MERGE_STRICT filtering
-        # it out before the alias runs. Arena has augments.
+        # it out before the alias runs. Arena has augments. RM-868: this reader
+        # now goes direct (USE_RELAY = False above) and PROMPT asks for
+        # `augment_select` itself; the entry stays so a relay-shaped answer
+        # still aliases.
         "is_augment_select",
         # Lane E CV OCR shadow-only numerics (logged, not consumed)
         "ally_1_hp", "ally_2_hp", "ally_3_hp", "ally_4_hp",
@@ -1207,6 +1231,7 @@ Rules:
         r.TIERED_FIELDS = self.TIERED_FIELDS
         r.TIERED_VALIDATORS = self.TIERED_VALIDATORS
         r.SHADOW_FIELDS = self.SHADOW_FIELDS
+        r.USE_RELAY = self.USE_RELAY  # RM-868: direct, so PROMPT is sent
         self._reader = r
 
     def read(self) -> "dict | None":
