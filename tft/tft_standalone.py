@@ -69,54 +69,65 @@ def _reset_caches_for_tests() -> None:
 
 # -- process detection ---------------------------------------------------------
 
-def _process_names() -> list:
-    """Seam: lower-cased image names of running processes (psutil)."""
+def _process_snapshot() -> dict:
+    """Seam: ONE process-table walk -> {lower-cased image name: create time}.
+
+    The only place this module touches the live process table (tests/conftest
+    patches it to {} so no test can see the operator's real client).
+    """
     import psutil
-    out = []
-    for p in psutil.process_iter(["name"]):
+    out: dict = {}
+    for p in psutil.process_iter(["name", "create_time"]):
         try:
-            n = p.info.get("name") or ""
+            n = (p.info.get("name") or "").lower()
+            ct = p.info.get("create_time")
         except Exception:  # noqa: BLE001
             continue
-        out.append(n.lower())
+        if n:
+            out[n] = float(ct) if ct else None
     return out
 
 
-def _game_create_time() -> float | None:
-    """Seam: epoch create time of the TFT game process, or None."""
+def _refresh_proc_cache() -> None:
+    """Walk the process table at most once per ``_PROC_CACHE_TTL_S``."""
+    now = time.monotonic()
+    with _cache_lock:
+        if now - _proc_cache["ts"] < _PROC_CACHE_TTL_S:
+            return
     try:
-        import psutil
-        for p in psutil.process_iter(["name", "create_time"]):
-            if (p.info.get("name") or "").lower() == GAME_IMAGE:
-                return float(p.info.get("create_time") or 0.0) or None
-    except Exception:  # noqa: BLE001
-        return None
-    return None
+        snap = _process_snapshot()
+        running = GAME_IMAGE in snap
+        create_time = snap.get(GAME_IMAGE) if running else None
+    except Exception as exc:  # noqa: BLE001
+        _log.debug("standalone TFT process probe failed: %s", exc)
+        running, create_time = False, None
+    with _cache_lock:
+        _proc_cache.update({"ts": now, "running": running,
+                            "create_time": create_time})
+
+
+def _game_create_time() -> float | None:
+    """Epoch create time of the TFT game process (from the cached walk)."""
+    _refresh_proc_cache()
+    with _cache_lock:
+        return _proc_cache["create_time"]
 
 
 def standalone_client_running(names=None) -> bool:
     """True when the standalone TFT game binary is running.
 
     Keys on the Unreal shipping binary only: the launcher alone owns no game
-    window. ``names`` injects a process list (tests); otherwise the result is
-    cached for ``_PROC_CACHE_TTL_S`` so the 2 Hz dashboard build does not walk
-    the process table every tick.
+    window. ``names`` injects a process list (tests); otherwise one cached
+    process walk serves ``_PROC_CACHE_TTL_S`` so the 2 Hz dashboard build does
+    not walk the process table every tick. Callers gate on an in-game LCU
+    phase (or a fresh per-round file) BEFORE asking, so idle and lobby ticks
+    never walk it at all.
     """
     if names is not None:
         return any((n or "").lower() == GAME_IMAGE for n in names)
-    now = time.monotonic()
+    _refresh_proc_cache()
     with _cache_lock:
-        if now - _proc_cache["ts"] < _PROC_CACHE_TTL_S:
-            return bool(_proc_cache["running"])
-    try:
-        running = GAME_IMAGE in set(_process_names())
-    except Exception as exc:  # noqa: BLE001
-        _log.debug("standalone TFT process probe failed: %s", exc)
-        running = False
-    with _cache_lock:
-        _proc_cache["ts"] = now
-        _proc_cache["running"] = running
-    return running
+        return bool(_proc_cache["running"])
 
 
 # -- EoG per-round file ----------------------------------------------------------
@@ -214,23 +225,56 @@ def relay_lcu_snapshot():
 _UNSET = object()
 
 
+def lcu_tft_verdict(lcu):
+    """What the LCU snapshot says about a live TFT match: True / False, or
+    None when it cannot say (no snapshot / no phase).
+
+    - A known phase outside ``IN_GAME_PHASES`` is False (lobby, champ select,
+      end of game) so a client left open post-game never reads as live.
+    - In game, the queue decides when the snapshot carries it:
+      ``lcu/snapshot_shape.py`` stamps ``game_queue_mode`` / ``game_queue_id``
+      from the gameflow session it already reads at GameStart / InProgress,
+      so an SR / ARAM game can never read as TFT even if the TFT binary
+      lingers. An older LCU agent omits both keys; the phase then stands.
+    """
+    if not isinstance(lcu, dict) or lcu.get("phase") is None:
+        return None
+    if str(lcu.get("phase") or "") not in IN_GAME_PHASES:
+        return False
+    qmode = str(lcu.get("game_queue_mode") or "")
+    if qmode:
+        return "TFT" in qmode.upper()
+    qid = lcu.get("game_queue_id")
+    if qid:
+        try:
+            from core.queue_modes import mode_key_from_queue_id
+            mk = mode_key_from_queue_id(qid)
+        except Exception:  # noqa: BLE001
+            mk = None
+        if mk is not None:
+            return mk == "tft"
+    return True
+
+
 def standalone_in_game(lcu, running=None, eog=_UNSET) -> bool:
     """True when the standalone TFT client is running AND a match is live.
 
-    ``lcu`` is an LCU snapshot dict (``phase`` key) or None when the LCU is
-    unavailable. A known phase outside ``IN_GAME_PHASES`` always wins (lobby,
-    end of game) so a client left open post-game never reads as live. With
-    no LCU at all, a FRESH per-round file is the confirmation.
+    ``lcu`` is an LCU snapshot dict or None when the LCU is unavailable; see
+    ``lcu_tft_verdict``. With no LCU at all, a FRESH per-round file is the
+    confirmation. Cheapest checks first: the process walk runs only after the
+    LCU (or the file) already says a TFT match is live.
     """
+    verdict = lcu_tft_verdict(lcu)
+    if verdict is False:
+        return False
+    if verdict is None:
+        if eog is _UNSET:
+            eog = read_eog()
+        if eog is None:
+            return False
     if running is None:
         running = standalone_client_running()
-    if not running:
-        return False
-    if isinstance(lcu, dict) and lcu.get("phase") is not None:
-        return str(lcu.get("phase") or "") in IN_GAME_PHASES
-    if eog is _UNSET:
-        eog = read_eog()
-    return eog is not None
+    return bool(running)
 
 
 def _round_state(lcu, eog, now: float) -> dict:
@@ -276,18 +320,19 @@ def synth_allgamedata(*, lcu=_UNSET, running=None, eog=_UNSET,
     keys carry the honest provenance (``live_api`` False).
     """
     now = time.time() if now is None else now
-    # Cheapest gate first: the SR/ARAM poller reaches this on every no-game
-    # tick, so no relay round-trip or file read happens unless the TFT game
-    # binary is actually running (process scan cached _PROC_CACHE_TTL_S).
-    if running is None:
-        running = standalone_client_running()
-    if not running:
+    # Cheapest gates first: the SR/ARAM poller reaches this on every no-game
+    # tick. An explicit running=False ends it; otherwise the loopback LCU
+    # relay read (or, with no LCU, a stat of the per-round file) must say
+    # "TFT match live" before the process table is walked at all.
+    if running is False:
         return None
     if lcu is _UNSET:
         lcu = relay_lcu_snapshot()
+    if lcu_tft_verdict(lcu) is False:
+        return None
     if eog is _UNSET:
         eog = read_eog(now=now)
-    if not standalone_in_game(lcu, running=True, eog=eog):
+    if not standalone_in_game(lcu, running=running, eog=eog):
         return None
     rs = _round_state(lcu, eog, now)
     if rs["eog"] and rs["game_length_s"] is not None:
@@ -364,13 +409,13 @@ def tft_live_status(lcu, running=None, live_api: bool = False,
     if live_api:
         return {"source": "live_client", "live_api": True, "eog": False,
                 "line": "TFT: Live Client API connected."}
-    if running is None:
-        running = standalone_client_running()
-    if eog is _UNSET:
-        eog = read_eog()
+    # standalone_in_game checks the LCU phase / queue BEFORE any process walk,
+    # so a TFT lobby (mode_key pre-flipped to tft) never scans.
     if not standalone_in_game(lcu, running=running, eog=eog):
         return {"source": "none", "live_api": False, "eog": False,
                 "line": "TFT: no live data source."}
+    if eog is _UNSET:
+        eog = read_eog()
     has_eog = _round_state(lcu, eog, time.time())["eog"]
     line = ("TFT standalone client: no Live Client API - vision only, "
             "board/HP from the per-round stats file."
