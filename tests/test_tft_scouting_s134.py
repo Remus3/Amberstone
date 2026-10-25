@@ -715,9 +715,11 @@ def test_watcher_uses_round_file_when_session_lists_only_self():
     assert [s for s, _ in sp.statuses] == ["no_opponents"]
 
 
-def test_watcher_ignores_a_previous_games_round_file():
+@pytest.mark.parametrize("game_id", [4999999999, None, 0])
+def test_watcher_ignores_a_previous_or_unstamped_round_file(game_id):
+    """Verifier s134 (low): an unstamped file could be the previous game's."""
     old = copy.deepcopy(ROUND)
-    old["gameId"] = 4999999999
+    old["gameId"] = game_id
     lcu = _watch_lcu(["InProgress"], [ingame_session([entry(SELF_LCU, 900001)])])
     sp = SpyScouter()
     w = TS.ScoutingWatcher(sp, lcu, round_file=lambda: copy.deepcopy(old))
