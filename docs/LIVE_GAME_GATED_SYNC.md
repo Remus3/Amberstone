@@ -254,6 +254,15 @@ in-game pass is copy-paste, not a mid-game re-derivation. Two verdicts it hands 
 or `adapt_fields_in_state` means that value has no live serving surface, so it is the SUBSTITUTION trap -
 do NOT tick it from the compute half. `--json` for machine output. READ-ONLY; it never ticks a row.
 
+**TFT GAME (lane 9, s134).** `/api/state` alone does not say a TFT game is up: RC can read `mode_key`
+`client` with an empty `liveclient` while `lcu.phase` is `InProgress` (measured 2026-10-25, game
+1000000911, queue 1090). When the interactive TFT QA recorder is running, run
+`python tools/gated_tft_qa_summary.py <repo>/ops/runtime/tft_qa/<match_dir>` (`--json` for machine
+output). It prints the RC pid timeline (each pid change mid-match is a restart), the mode timeline,
+how many InProgress samples RC did NOT read as tft and the callout tags it served then, plus event and
+frame counts. READ-ONLY on the recorder files; a summary is the INPUT to the evidence contract, never
+the evidence itself.
+
 ---
 
 ## GATE 1 - ANY LOBBY / CHAMP-SELECT (no game ever starts)
