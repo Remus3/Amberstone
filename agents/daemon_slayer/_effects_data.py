@@ -2576,7 +2576,10 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # RM-804: the old note described a different mechanic ("bonus MS and an
         # untargetable dash illusion"); Blur is an on-hit dash / blink
         # cooldown cut (DDragon 16.21.1 15% / 5% ult, 16.20.1 20%; Meraki
-        # 25.15 12% / 4%). Cooldown refunds are not modeled.
+        # 25.15 12% / 4%). Cooldown refunds are not modeled. RM-808 (d):
+        # Meraki recorded STALE - the game data agrees with DDragon
+        # (CommunityDragon 16.21 DashCDPerHit 0.15, UltDashCDPerHit 0.05);
+        # pinned in test_meraki_staleness_record_rm808d.py.
         note=(
             "Mirage Blade: Blur - on-hit cuts the remaining dash and blink ability cooldowns "
             "by 15% (5% for ultimates) (DDragon 16.21.1, was 20%); cooldown utility, "
@@ -2998,6 +3001,9 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         defensive_only=True,
         # RM-804: DDragon 16.21.1 moved the canister heal 4% -> 20% max HP
         # (Meraki 25.15 still describes the pre-rework Supercharged active).
+        # RM-808 (d): Meraki recorded STALE (pre-rework entry) - the game data
+        # agrees with DDragon (CommunityDragon 16.21 PickupCooldownRefund 15,
+        # PickupHealthGain 0.20); pinned in test_meraki_staleness_record_rm808d.py.
         note=(
             "Turbo Chemtank: CC-immunity canister mechanic - ignore next immobilize, "
             "drop a canister; picking it up cuts the cooldown by 15 s and restores 20% "
