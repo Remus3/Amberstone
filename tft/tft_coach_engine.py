@@ -19,6 +19,7 @@ import anthropic
 from core import anthropic_key
 from core.coaching_payload import tft_advice_payload, tft_blank_payload
 from core.polled_json import atomic_write_json
+from tft.tft_standalone import SOURCE_TAG as _STANDALONE_TAG
 
 logger = logging.getLogger("rc.tft.coach")
 
@@ -117,9 +118,22 @@ def _prompt_gold(state: dict, live: dict):
     return _bounded_int(live.get("gold"), 999) or None
 
 
+def _stale_standalone(state: dict) -> bool:
+    """True for a standalone-source state whose per-round file is NOT
+    positively this game's (tft/tft_standalone.py eog_matches_game: game id
+    equal to the current LCU game id, written after the game started). Its
+    board and HP may be a PREVIOUS game's (s136 T9 verifier: "Krug*3 ...,
+    HP: 37" from a 120 s old file), so they are withheld, never shown."""
+    return (state.get("data_source") == _STANDALONE_TAG
+            and state.get("eog_match") is not True)
+
+
 def _authoritative_board(state: dict) -> list:
     """The per-round EoG board the reader carries (tft/tft_state_reader.py
-    _apply_standalone: [{"name", "star", "items"}]); [] without one."""
+    _apply_standalone: [{"name", "star", "items"}]); [] without one, or when
+    the file is not positively this game's."""
+    if _stale_standalone(state):
+        return []
     board = state.get("board")
     if not isinstance(board, list):
         return []
@@ -359,16 +373,21 @@ def _build_prompt(state: dict) -> str:
         _live_augments = []
     _live_gold = _prompt_gold(state, _ld)
     # The reader's health (Live Client / EoG, its OCR fallback); a vision HP
-    # is never shown as player HP (QA: vision 35, every player at 100).
-    _hp = _bounded_int(state.get("health"), 100)
+    # is never shown as player HP (QA: vision 35, every player at 100), nor
+    # a per-round file's HP that is not positively this game's.
+    _hp = None if _stale_standalone(state) else _bounded_int(state.get("health"), 100)
     hp_display = _hp if _hp is not None else "unknown"  # S135: never "HP: None"
     gold_display = _live_gold if _live_gold is not None else "unknown"
+    # The reader's level is its default 1 until the Live Client or OCR reads
+    # one (``level_known`` False): "unknown", and no XP / odds built on it.
+    _level_known = state.get("level_known") is not False
+    level_display = level if _level_known else "unknown"
 
     # Resolve partner HP for Double Up
     _partner_hp = _ld.get("partner_hp", state.get("partner_hp", None))
 
     lines = [
-        f"=== Stage {stage}-{rnd} | Level {level} | Round type: {round_type} ===",
+        f"=== Stage {stage}-{rnd} | Level {level_display} | Round type: {round_type} ===",
         f"Game time: {int(state.get('game_time_s', 0)//60)}:{int(state.get('game_time_s', 0)%60):02d}",
         f"HP: {hp_display}  Gold: {gold_display}",
         f"Streak: {streak_str}  Rounds won/lost: {kills}/{deaths}",
@@ -408,7 +427,7 @@ def _build_prompt(state: dict) -> str:
         lines.append("Players alive: unknown (lobby HP not readable yet)")
 
     lines += [
-        f"Board size: {level} units | Grid: Row 4=FRONTLINE(enemy side), Row 1=BACKLINE(bench side), Col 1=left Col 7=right",
+        f"Board size: {level_display} units | Grid: Row 4=FRONTLINE(enemy side), Row 1=BACKLINE(bench side), Col 1=left Col 7=right",
         f"Max feasible level this stage: {max_level_for_stage}",
     ]
 
@@ -437,7 +456,8 @@ def _build_prompt(state: dict) -> str:
     # level (the HUD "x/68" denominator); reading level + 1 was one level off
     # (S134). Buys round UP: 10 XP is 3 buys, not 2.
     from tft.tft_data import XP_BUY_COST, xp_to_next_level
-    xp_needed = xp_to_next_level(level, _set_n) if _set_n is not None else None
+    xp_needed = (xp_to_next_level(level, _set_n)
+                 if _set_n is not None and _level_known else None)
     if xp_needed and level < 10:
         buys = -(-xp_needed // XP_BUY_COST)
         lines.append(f"XP to Lv{level + 1}: {xp_needed}XP = {buys} buys ({buys * XP_BUY_COST}g at {XP_BUY_COST}g each)")
@@ -559,7 +579,7 @@ def _build_prompt(state: dict) -> str:
 
     # Roll odds of the resolved set; none for a set RC has no table for.
     from tft.tft_data import tier_odds_for_set
-    odds = tier_odds_for_set(_set_n) if _set_n is not None else None
+    odds = tier_odds_for_set(_set_n) if _set_n is not None and _level_known else None
     next_lvl = level + 1
     if odds and next_lvl <= 10:
         odds_now  = odds.get(level, {})
@@ -811,10 +831,11 @@ class TftCoachEngine:
 
     def _resolve_hp(self, state: dict, default: int = 100) -> int:
         """The state reader's HP wins (Live Client / standalone EoG health,
-        its OCR fallback), then vision, then the default. S136 T9: vision won
+        its OCR fallback; never a per-round file that is not positively this
+        game's), then vision, then the default. S136 T9: vision won
         first, so a vision read of 35 with every player at 100 (QA run
         20261025-153652) reached the payload and the urgency gate."""
-        api = self._coerce_hp(state.get("health"))
+        api = None if _stale_standalone(state) else self._coerce_hp(state.get("health"))
         if api is not None:
             return api
         vision = self._vision_hp()

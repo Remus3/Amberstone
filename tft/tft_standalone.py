@@ -383,10 +383,31 @@ def _note_local(game_id: str, idx, basis: str) -> None:
                   game_id or "?", idx, basis)
 
 
+def eog_matches_game(eog, current_game_id, game_start=None) -> bool:
+    """True only on a POSITIVE match of the per-round file to the CURRENT
+    game: its game id equals the current (LCU) game id - a missing id on
+    either side is no match - and, when the current game's start is known,
+    the file was written after it. S136 T9 verifier: the file was accepted
+    whenever the LCU carried no game id (or there was no LCU), so a previous
+    game's board and HP, up to EOG_MAX_AGE_S old, reached the live coach
+    prompt. Consumers that must not show a stale value gate on this."""
+    gid = str(current_game_id or "")
+    if not gid or not isinstance(eog, dict) or str(eog.get("gameId") or "") != gid:
+        return False
+    mtime = eog.get("_mtime")
+    if (game_start is not None and isinstance(mtime, (int, float))
+            and not isinstance(mtime, bool) and mtime < game_start):
+        return False
+    return True
+
+
 def _round_state(lcu, eog, now: float) -> dict:
-    """The local player's round state from a fresh, same-game EoG file."""
+    """The local player's round state from a fresh, same-game EoG file.
+
+    ``eog_match`` says whether the file is POSITIVELY this game's
+    (``eog_matches_game``); the fields are served either way, as before."""
     game_id = str((lcu or {}).get("game_id") or "") if isinstance(lcu, dict) else ""
-    out = {"eog": False, "local": {}, "players_alive": None,
+    out = {"eog": False, "eog_match": False, "local": {}, "players_alive": None,
            "players_total": None, "game_length_s": None, "eog_age_s": None,
            "game_id": game_id, "queue_id": None, "set": None, "lobby": [],
            "local_index": None, "local_basis": "",
@@ -408,6 +429,8 @@ def _round_state(lcu, eog, now: float) -> dict:
         "local_index": idx,
         "local_basis": basis,
         "eog": True,
+        "eog_match": eog_matches_game(
+            eog, game_id, _game_create_time() if game_id else None),
         "game_id": game_id or eog_gid,
         "queue_id": eog.get("queueId"),
         "set": sb.get("setCoreName"),

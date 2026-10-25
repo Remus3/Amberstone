@@ -224,3 +224,124 @@ def test_payload_hp_prefers_the_reader_over_vision(tmp_path, monkeypatch):
     assert engine._resolve_hp({"health": None}) == 35
     monkeypatch.setattr(engine, "_vision_hp", lambda loader=None: None)
     assert engine._resolve_hp({}) == 100
+
+
+# -- verifier round 1: a previous game's per-round file ------------------------
+# The per-round file was matched to the current game only by the LCU game id
+# (tft/tft_standalone.py _round_state) plus the 300 s file-age limit, never
+# against the current game's start: with no current game id (LCU snapshot
+# without one, or no LCU at all) a 120 s old file from the PREVIOUS game put
+# "Board units: Krug*3 [Sparring Gloves], Warwick*2" and "HP: 37" into the
+# live prompt (verifier probe s136-verify-T9 leak_probe2). Rule: the file's
+# board / HP enter a prompt ONLY on a POSITIVE match - its game id equals the
+# current LCU game id, and it was written after the current game started
+# where that start is known; otherwise they are "unknown", never stale.
+
+_PREV_PIECES = [
+    {"championName": "DA_18_Krug", "itemNames": ["DA_SparringGloves"], "starLevel": 3},
+    {"championName": "DA_18_Warwick", "itemNames": [], "starLevel": 2},
+]
+
+
+def _prev_game_doc(now: float, *, only_local_interactable=False) -> dict:
+    doc = _doc(game_len=1900, pieces=_PREV_PIECES, hp=37)
+    doc["_mtime"] = now - 120
+    if only_local_interactable:
+        for i, p in enumerate(doc["statsBlock"]["players"]):
+            p["isInteractable"] = i == LOCAL_IDX
+    return doc
+
+
+def _stale_state(lcu, doc, now):
+    raw = ts.synth_allgamedata(lcu=lcu, running=True, eog=doc, now=now)
+    assert raw is not None
+    return _reader()._parse(raw)
+
+
+_LEAK_SHAPES = {
+    # LCU in game with the summoner id but no game id (session GET failed)
+    "lcu_without_game_id": (
+        {"phase": "InProgress", "game_queue_mode": "TFT", "summoner_id": LOCAL_SID},
+        False),
+    # no LCU at all (relay stale) + a lobby with ONE interactable entry
+    "no_lcu_single_interactable": (None, True),
+}
+
+
+@pytest.mark.parametrize("shape", sorted(_LEAK_SHAPES))
+def test_previous_game_file_board_and_hp_never_reach_the_prompt(shape, _pin):
+    _pin["doc"] = {}  # the verifier probe's setup: no vision file
+    lcu, single = _LEAK_SHAPES[shape]
+    now = time.time()
+    state = _stale_state(lcu, _prev_game_doc(now, only_local_interactable=single), now)
+    assert state["eog_match"] is False
+    prompt = eng._build_prompt(state)
+    for ghost in ("Krug", "Warwick", "Sparring Gloves"):
+        assert ghost not in prompt, (shape, ghost)
+    hp_line = _line(prompt, "HP:")
+    assert hp_line.startswith("HP: unknown"), hp_line
+    assert "37" not in hp_line
+
+
+@pytest.mark.parametrize("shape", sorted(_LEAK_SHAPES))
+def test_previous_game_file_hp_never_reaches_the_payload(shape, tmp_path, monkeypatch):
+    from unittest.mock import patch
+    lcu, single = _LEAK_SHAPES[shape]
+    now = time.time()
+    state = _stale_state(lcu, _prev_game_doc(now, only_local_interactable=single), now)
+    with patch("core.anthropic_key.read_anthropic_key", return_value=""):
+        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": ""}, clear=False):
+            engine = eng.TftCoachEngine(tmp_path / "tft_coaching_data.json")
+    monkeypatch.setattr(engine, "_vision_hp", lambda loader=None: None)
+    assert engine._resolve_hp(state) == 100  # the default, never the stale 37
+
+
+def test_file_written_before_the_current_game_started_is_not_a_match(monkeypatch, _pin):
+    _pin["doc"] = {}
+    now = time.time()
+    lcu = {"phase": "InProgress", "game_id": str(GID), "game_queue_mode": "TFT",
+           "summoner_id": LOCAL_SID}
+    # same game id (a reconnect), but this process started AFTER the write
+    monkeypatch.setattr(ts, "_game_create_time", lambda: now - 60)
+    state = _stale_state(lcu, _prev_game_doc(now), now)
+    assert state["eog_match"] is False
+    prompt = eng._build_prompt(state)
+    assert "Krug" not in prompt and "HP: 37" not in prompt
+    # written after the start: a positive match, the board is served
+    monkeypatch.setattr(ts, "_game_create_time", lambda: now - 600)
+    state = _stale_state(lcu, _prev_game_doc(now), now)
+    assert state["eog_match"] is True
+    prompt = eng._build_prompt(state)
+    assert _line(prompt, "Board units:") == (
+        "Board units: Krug*3 [Sparring Gloves], Warwick*2")
+    assert "HP: 37" in _line(prompt, "HP:")
+
+
+def test_positive_match_needs_both_game_ids():
+    doc = _doc()
+    assert ts.eog_matches_game(doc, str(GID)) is True
+    assert ts.eog_matches_game(doc, "") is False
+    assert ts.eog_matches_game(doc, None) is False
+    assert ts.eog_matches_game(doc, "999") is False
+    no_id = dict(doc)
+    no_id.pop("gameId", None)
+    assert ts.eog_matches_game(no_id, str(GID)) is False
+    doc["_mtime"] = 100.0
+    assert ts.eog_matches_game(doc, str(GID), game_start=200.0) is False
+    assert ts.eog_matches_game(doc, str(GID), game_start=50.0) is True
+    assert ts.eog_matches_game(doc, str(GID), game_start=None) is True
+
+
+# -- level placeholder ---------------------------------------------------------
+
+def test_placeholder_level_renders_unknown():
+    state = _d1_state(ocr={})  # OCR read nothing: level is the reader's default 1
+    assert state["level"] == 1 and state["level_known"] is False
+    prompt = eng._build_prompt(state)
+    assert _line(prompt, "=== Stage").count("Level unknown") == 1
+    assert "Level 1" not in prompt
+    # no XP / roll-odds lines built on a level nobody read
+    assert not _line(prompt, "XP to Lv") and not _line(prompt, "Roll odds")
+    read = _d1_state(ocr={"level": 3, "gold": 10, "stage_round": "2-2"})
+    assert read["level_known"] is True
+    assert "| Level 3 |" in _line(eng._build_prompt(read), "=== Stage")
