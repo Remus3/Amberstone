@@ -55,6 +55,9 @@ ITEMS = ("TFT_Item_BFSword", "TFT_Item_ChainVest", "TFT_Item_NeedlesslyLargeRod"
          "TFT_Item_InfinityEdge", "TFT_Item_GuinsoosRageblade")
 
 SALT = b"tft01-synthetic-salt-0123456789ab"
+# a synthetic random base64url token the shape of an encrypted summoner id (47 chars)
+ENCRYPTED_47 = "".join(random.Random(47).choice(
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_") for _ in range(47))
 NAMES = tuple(f"SyntheticPlayer{i}#SYN{i}" for i in range(1, 9))
 GAME_ID = 5550001234
 T0 = 1_761_000_000.0
@@ -729,12 +732,19 @@ def test_an_identity_used_as_a_key_is_refused_and_scrubbed(store, db_path, tmp_p
     k = _keys()
     for i, key in enumerate(k):
         assert store.upsert_player(mid, key, slot=i + 1, is_local=(i == 0))
-    assert store.put_event(mid, "disagreement", {k[1]: {"hp": 40}, "note": f"opp={k[2]}"},
+    assert store.put_event(mid, "disagreement", {k[1]: {"hp": 40}, "note": f"opp={k[2]}",
+                                                 "createdAt": T0 + 70.0, "time": 12.5},
                            src="derived", round_seq=1)
+    assert store.put_traits(mid, 1, "planning_start", k[0],  # a real trait is not an identity
+                            [{"trait_api": "DA_18_Summoner", "count": 2, "conf": 0.9,
+                              "src": "derived"}])
     assert store.flush()
     fx = json.loads(store.export_fixture(mid, tmp_path / "fx", name="keys").read_text("ascii"))
+    # whole or embedded, a key becomes Pn; a payload's own epoch becomes match-relative,
+    # seconds-into-game stay as they are
     assert [e["payload"] for e in fx["rounds"][0]["events"]] == \
-        [{"P2": {"hp": 40}, "note": "opp=P3"}]  # whole or embedded, a key becomes Pn
+        [{"P2": {"hp": 40}, "note": "opp=P3", "createdAt": 70.0, "time": 12.5}]
+    assert [t["trait_api"] for t in fx["rounds"][0]["traits"]] == ["DA_18_Summoner"]
     # and a raw row smuggling an identity key past the writer is refused on export
     _exec(db_path, "INSERT INTO obs(match_id, round_seq, field, value_json, conf, src) "
                    "VALUES (?, 1, 'scoreboard', ?, 0.9, 'ocr')", (mid, json.dumps({uuid: 5})))
@@ -858,20 +868,33 @@ def test_scrub_guard_catches_every_identity_shape():
         {"summonerName": "x"}, {"summonerId": 1}, {"gameName": "x"}, {"playerId": 3},
         {"accountId": 1}, {"displayName": "x"}, {"name": "x"},
         {"v": "123e4567-e89b-12d3-a456-426614174000"},
-        {"v": "SomeBody#EUW1"}, {"v": "the summoner said hi"},
-        {"v": "A" * 39 + "b" * 39},
+        {"v": "SomeBody#EUW1"}, {"v": "summonerId=42"}, {"v": "riot id: x"},
+        {"v": "A" * 39 + "b" * 39}, {"v": ENCRYPTED_47},
+        {"v": "123e4567e89b12d3a456426614174000"},  # a UUID without dashes
+        {"v": "NA1_1000000911"},  # a Riot match id finds all 8 players
+        # any key holding a name / nick, and game / match id keys of a payload
+        {"opponentName": "Bob"}, {"enemy_name": "Bob"}, {"names": ["Bob"]},
+        {"nickname": "Bob"}, {"gameId": 1}, {"matchId": "x"},
+        {"t": T0}, {"t": T0 * 1000.0},  # an absolute epoch, seconds or ms
         {"player_key": "0123456789ab"}, {"opponent_key": "SomeBody"},
         [{"deep": [{"puuid": "x"}]}],
         # Riot game names may hold spaces / non-ASCII, and the hash may be fullwidth
         {"v": "Big Al#NA1"}, {"v": "Mr X#EUW"}, {"v": "SomeBody #EUW1"},
-        {"v": "SomeBody" + chr(0xFF03) + "EUW1"},
+        {"v": "SomeBody" + chr(0xFF03) + "EUW1"}, {"v": "Mr X" + chr(0xFE5F) + "EUW"},
         {"v": "opp=0123456789ab"},  # a store key inside a longer string
     ]
     for doc in bad:
         assert st.scrub_violations(doc), doc
+    # and no false positive on real game data: the longest measured TFT api names
+    # (data/meta/tft_set18_cdragon.json), the Set 18 Summoner trait, schema keys
     ok = {"player_key": "P3", "opponent_key": None, "name_text": "Yorick",
           "champion_api": "DA_18_Yorick", "sha256": "0" * 64,
-          "set_core_name": "TFTSet18", "label": "3-2"}
+          "set_core_name": "TFTSet18", "label": "3-2", "trait_api": "DA_18_Summoner",
+          "traits": {"DA_18_Summoner": 3}, "eliminated_at": 1740.0, "ts": 61.5,
+          "augments": ["TFT_Augment_MirroredMonetization_TotalGoldTooltip",
+                       "TFT_Augment_NoScoutNoPivot_TrackerTRAKEY_Holder",
+                       "TFT_Augment_BronzeForLife_CurrentDamageAmp",
+                       "TFT14_CypherArmoryItem_SpecificRadiantItems"]}
     assert st.scrub_violations(ok) == []
 
 
