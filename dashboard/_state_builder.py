@@ -254,6 +254,74 @@ def apply_standalone_tft_mirror(health: dict, lcu_snapshot: dict | None) -> dict
     return {**health, "tft_mode": True}
 
 
+class _SkipDeterministic(Exception):
+    """Internal: skip the deterministic fan-out for an unidentified live game."""
+
+
+_IN_GAME_PHASES = ("GameStart", "InProgress", "Reconnect")
+
+
+def unidentified_live_game(mode_key: str, lcu_snapshot: dict | None, lc) -> bool:
+    """True when the LCU says a game is running but RC resolved no game mode
+    and has no live feed (S134 P0, T1 defect B4). Idle client and lobby / champ
+    select are NOT this: their phase is not an in-game phase."""
+    if mode_key != "client" or lc:
+        return False
+    if not isinstance(lcu_snapshot, dict):
+        return False
+    return str(lcu_snapshot.get("phase") or "") in _IN_GAME_PHASES
+
+
+def _coach_file_mtime(rel: str) -> float | None:
+    """Seam: mtime of a coach file under APP_DIR, None when unreadable."""
+    try:
+        return (Path(APP_DIR) / rel).stat().st_mtime
+    except (OSError, TypeError, ValueError):
+        return None
+
+
+# Slack before the TFT match start within which a coach-file write still
+# counts as belonging to this match (loading screen, clock skew).
+_TFT_COACH_STALE_SLACK_S = 180.0
+
+# standalone summary key -> coach key(s) the TFT front end reads (T1 B2:
+# coach.hp or coach.health, game time, standing / board / players alive).
+_TFT_STANDALONE_COACH_FILL = (
+    ("hp", "health"), ("hp", "hp"), ("game_time_s", "game_time_s"),
+    ("game_time", "game_time"), ("standing", "standing"),
+    ("board_size", "board_size"), ("board_str", "board_str"),
+    ("players_alive", "players_alive"),
+)
+
+
+def tft_coach_for_standalone(coach: dict, coach_file: str, lc: dict) -> dict:
+    """The TFT coach envelope for a standalone-client match (S134 P0).
+
+    T1 defect B5: a coach file last written BEFORE this match started is an
+    earlier game's payload; serving it reads as live coaching, so it is
+    replaced by an empty TFT envelope (``coach_stale`` True). Then the live
+    standalone values fill blank coach keys only - a fresh TFT-engine write
+    always wins. Returns a new dict; the caller's is not mutated.
+    """
+    out = dict(coach) if isinstance(coach, dict) else {}
+    try:
+        gt = float(lc.get("game_time_s") or 0.0)
+    except (TypeError, ValueError):
+        gt = 0.0
+    mtime = _coach_file_mtime(coach_file)
+    if mtime is not None and gt > 0:
+        match_start = time.time() - gt - _TFT_COACH_STALE_SLACK_S
+        if mtime < match_start:
+            out = {"mode": "tft", "coach_stale": True}
+    for src, dst in _TFT_STANDALONE_COACH_FILL:
+        v = lc.get(src)
+        if v in (None, "", 0):
+            continue
+        if out.get(dst) in (None, "", 0):
+            out[dst] = v
+    return out
+
+
 def resolve_mode_key(health: dict, lcu_snapshot: dict | None) -> tuple[str, bool]:
     """Return (mode_key, preflip_active).
 
@@ -637,15 +705,26 @@ def build_state() -> dict:
     if mode_key == "tft":
         try:
             from tft import tft_standalone
+            standalone_lc = False
             if not lc and standalone_tft_live(lcu_snapshot):
                 lc = tft_standalone.standalone_liveclient_summary(
                     lcu_snapshot, running=True)
+                standalone_lc = bool(lc)
             if isinstance(coach, dict):
+                if standalone_lc:
+                    coach = tft_coach_for_standalone(coach, coach_file, lc)
                 coach["tft_live"] = tft_standalone.tft_live_status(
                     lcu_snapshot,
                     live_api=bool(lc) and lc.get("source") != tft_standalone.SOURCE_TAG)
         except Exception:  # noqa: BLE001
             pass
+
+    # S134 P0 (T1 defect B4): a game is running (LCU in-game phase) that RC
+    # cannot identify - no live feed, no mode flag. "client" maps to the SR
+    # tables in the deterministic coach, which then fabricated Rift timers at
+    # game_time 0 ("Drake spawns 5:00") inside a TFT match. Serve no
+    # deterministic directives and treat the envelope as live for B4.
+    unidentified_live = unidentified_live_game(mode_key, lcu_snapshot, lc)
 
     # Phase 8 step 1: derive sr_draft flag from queue_id and stamp it
     # alongside the existing is_aram sibling. Phase 8's UI gates the
@@ -867,6 +946,8 @@ def build_state() -> dict:
     # keys are additive (frontend slice renders them in a later wave).
     det = {"choices": [], "callouts": [], "lead_projection": {}}
     try:
+        if unidentified_live:
+            raise _SkipDeterministic
         from dashboard._deterministic_coaching import (
             compute_deterministic, resolve_choices, resolve_coach_fields,
             shadow_log_det,
@@ -930,8 +1011,9 @@ def build_state() -> dict:
     # (that is the retained in-game behaviour section 6c asks for); only the
     # SERVED envelope goes quiet. Guarded by
     # tests/test_b4_live_directive_suppression.py.
-    coach = suppress_live_directives(coach, health, preflip_active)
-    det = suppress_live_envelope(det, health, preflip_active)
+    _gate_health = {**(health or {}), "has_game": True} if unidentified_live else health
+    coach = suppress_live_directives(coach, _gate_health, preflip_active)
+    det = suppress_live_envelope(det, _gate_health, preflip_active)
     _mark("b4_suppress")
 
     _warn_slow_stages(_stages)
