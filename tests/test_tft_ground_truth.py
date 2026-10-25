@@ -537,6 +537,52 @@ def test_backfill_dry_run_writes_nothing_and_predicts_the_real_run(tmp_path, rm6
     assert again["store"] == real["store"]
 
 
+def _folder_digest(d):
+    """{name: (size, sha256)} of every file in one folder (db, -wal, -shm, salt)."""
+    import hashlib
+    return {p.name: (p.stat().st_size, hashlib.sha256(p.read_bytes()).hexdigest())
+            for p in sorted(d.iterdir()) if p.is_file()}
+
+
+def test_backfill_dry_run_leaves_the_source_db_folder_byte_identical(tmp_path, rm616_dir):
+    """A dry run against an EXISTING store never touches the store's folder:
+    no -wal / -shm created beside a closed db (a mode=ro open does that), and
+    nothing changed while a writer holds the db open in WAL mode with
+    uncheckpointed frames - which the dry run must still see."""
+    import sqlite3
+
+    _put_live(rm616_dir)
+    folder = tmp_path / "tft"
+    db, salt = folder / "tft_rounds.db", folder / ".salt"
+    gt.backfill(db_path=db, store_dir=rm616_dir, salt_path=salt)
+    # the real run checkpoints on close: the db file ALONE carries every row
+    assert sorted(_folder_digest(folder)) == [".salt", "tft_rounds.db"]
+    alone = tmp_path / "alone.db"
+    shutil.copyfile(db, alone)
+    conn = sqlite3.connect(str(alone))
+    try:
+        assert conn.execute("SELECT COUNT(*) FROM gt_board").fetchone()[0] == 52
+    finally:
+        conn.close()
+    before = _folder_digest(folder)
+    dry = gt.backfill(db_path=db, store_dir=rm616_dir, salt_path=salt, dry_run=True)
+    assert _folder_digest(folder) == before
+    assert dry["sync"]["unchanged"] == 1
+    # WAL mode, writer open, rows only in the -wal
+    _put_pair(rm616_dir)
+    live = RoundStore.open(db)
+    try:
+        assert gt.sync(live, store_dir=rm616_dir, salt=salt.read_bytes())["added"] == 1
+        assert live.flush()
+        assert (folder / "tft_rounds.db-wal").stat().st_size > 0
+        before = _folder_digest(folder)
+        dry = gt.backfill(db_path=db, store_dir=rm616_dir, salt_path=salt, dry_run=True)
+        assert _folder_digest(folder) == before
+        assert dry["sync"]["unchanged"] == 2 and dry["sync"]["added"] == 0   # WAL rows reached the copy
+    finally:
+        live.close()
+
+
 def test_backfill_cli_dry_run_json(tmp_path, rm616_dir, capsys):
     _put_live(rm616_dir)
     db = tmp_path / "tft" / "tft_rounds.db"

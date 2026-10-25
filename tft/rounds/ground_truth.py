@@ -45,9 +45,10 @@ eog_raw.json in it and one level below) and fills a MISSING RM-616 EOG record
 through RM-616's own parse_eog + append-only persist (captured_at = the raw
 file's mtime, the post-game instant the recorder wrote it); an existing
 record is never touched. `--dry-run` runs the identical code path against
-throwaway copies of both stores (RM-616 files, an online-backup copy of the
-db) in a temp dir and reports what the real run would write: the live files
-are only read, and no db, salt or directory is created. Both are idempotent:
+throwaway copies of both stores (RM-616 files; a byte copy of the db and its
+-wal, never opened by SQLite in place) in a temp dir and reports what the
+real run would write: the live files are only read, the db's folder stays
+byte-identical, and no db, salt or directory is created. Both are idempotent:
 a second run reports unchanged / present and writes nothing.
 
 CLI (local backfill; reads the gitignored stores, prints counts, no network):
@@ -66,7 +67,6 @@ import logging
 import re
 import secrets
 import shutil
-import sqlite3
 import sys
 import tempfile
 from pathlib import Path
@@ -420,16 +420,16 @@ def _read_salt(path: Path) -> Optional[bytes]:
 
 
 def _copy_db(src: Path, dst: Path) -> None:
-    """Online-backup copy of a live (WAL) store, opened read-only."""
-    source = sqlite3.connect(src.resolve().as_uri() + "?mode=ro", uri=True)
-    try:
-        target = sqlite3.connect(str(dst))
-        try:
-            source.backup(target)
-        finally:
-            target.close()
-    finally:
-        source.close()
+    """Byte copy of a store (the db file, then its -wal when present) for a
+    dry run. The source is never OPENED by SQLite: even a mode=ro open of a
+    WAL db creates -shm / -wal files beside it and leaves them. The -shm
+    wal-index is not copied - SQLite rebuilds it from the copied -wal, so
+    uncheckpointed rows reach the copy. A writer mid-transaction can make the
+    snapshot (the prediction) stale; it can never change the source."""
+    shutil.copyfile(src, dst)
+    wal = src.with_name(src.name + "-wal")
+    if wal.is_file():
+        shutil.copyfile(wal, dst.with_name(dst.name + "-wal"))
 
 
 def _run(db_path: Path, store_dir, eog_raw, salt: bytes) -> dict:
