@@ -33,6 +33,34 @@ This read-time exclusion stays as the backstop: counted as ``enemy_less_excluded
 and left out of every gate summary (dead state, action, choices, field presence,
 flip hint). A row without the ``enemy_comp`` key fails closed the same way.
 
+R78 TAIL FIELDS (RM-882): every row since R78 (``8f013ee4``) carries
+``item_extra`` and ``objective`` on both sides, and gated row G3-14 is the flip
+of exactly those two. Field presence covers them, and ``tail_agreement``
+scores each over the rows where BOTH sides are populated. Three states keep a
+field OUT of the tail gate math, each with ``agreement_rate`` None (never 0 %
+and never a rate that reads as readiness):
+
+* "no live baseline" - the live side is empty on every comparable (non-dead,
+  gated) row. The live ARAM prompt has no Objective output field
+  (``coaches/aram_coach.py`` ``_SYSTEM`` OUTPUT FORMAT; ``parse_fields`` never
+  asks for "objective"), so live ``objective`` is always "".
+* "no comparable rows" - the live side spoke, never beside a deterministic
+  value.
+* "degenerate" - one side shows a single distinct value across the comparable
+  rows, so every match is that constant and the ratio measures how often the
+  OTHER side happens to say it, not agreement. The deterministic
+  ``item_extra`` is the literal "omit" by design
+  (``core/aram_deterministic_coach.py`` ``_safe_item_extra``), so it lands here.
+
+NORMALISATION: case and surrounding whitespace are folded (the live value is
+free text parsed out of a Haiku reply, the deterministic one a code literal;
+"Omit" and "omit" show the player the same chip). No synonym table: "omitted"
+is NOT "omit". The prompt asks for the literal "omit" (``_SYSTEM`` Item extra
+line) and the deterministic side emits exactly that literal; a synonym map is
+open-ended and can only raise agreement, and a flip gate must err low. The
+gate itself uses the EXACT rate (the lower bound); the folded rate is printed
+beside it. The action gate is unchanged.
+
 This is a READ-ONLY report (no engine, no network, no write). Fail-soft: a
 missing / empty / malformed log yields a zeroed section, never an exception.
 It does NOT flip anything - the operator decides; this only flags readiness.
@@ -53,11 +81,18 @@ from typing import Optional
 
 _ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_PATH = _ROOT / "data" / "aram_coach_shadow.jsonl"
+# The R78 tail fields (RM-882): scored as free text by summarize_tail.
+_TAIL_FIELDS = ("item_extra", "objective")
 _FIELDS = (
     "action", "fight_rule", "risk", "reset_item", "item_build",
     "item_build_reasons", "choices",
-)
+) + _TAIL_FIELDS
 FLIP_GATE = 0.70
+NO_LIVE_BASELINE = "no live baseline"
+NO_COMPARABLE_ROWS = "no comparable rows"
+DEGENERATE = "degenerate"
+MEASURED = "measured"
+_SIDE_LABEL = {"deterministic": "deterministic", "live_haiku": "Haiku"}
 
 
 def load_jsonl(path: Path) -> list[dict]:
@@ -340,7 +375,8 @@ def summarize_choices(records: list[dict]) -> dict:
 def summarize_field_presence(records: list[dict]) -> dict:
     """Per-field both/det_only/live_only/neither counts over non-dead rows.
 
-    For each of the 7 fields, tally how often it is present on both sides, only
+    For each field (the 7 original ones plus the R78 tail item_extra /
+    objective, RM-882), tally how often it is present on both sides, only
     one side, or neither - a coverage read that shows which fields the
     deterministic coach still leaves empty relative to Haiku."""
     out: dict[str, dict] = {
@@ -365,8 +401,169 @@ def summarize_field_presence(records: list[dict]) -> dict:
     return out
 
 
+def _norm_text(value) -> str:
+    """A tail field value for comparison: trimmed + case-folded text, or a
+    canonical JSON dump for a (malformed) non-string value.
+
+    Deliberately NO synonym folding: "omitted" stays distinct from "omit"
+    (the prompt's requested literal; see the module docstring)."""
+    if isinstance(value, str):
+        return value.strip().casefold()
+    return json.dumps(value, sort_keys=True, default=str)
+
+
+def _display(value) -> str:
+    """A raw value as it is shown inside a degenerate note."""
+    return value.strip() if isinstance(value, str) else _norm_text(value)
+
+
+def summarize_tail(records: list[dict]) -> dict:
+    """Agreement on the R78 tail fields (item_extra / objective), RM-882.
+
+    Over non-dead rows only. A row is comparable when BOTH sides populate the
+    field; ``agree`` compares trimmed, case-folded text and ``agree_exact`` the
+    raw values; ``det_distinct`` / ``live_distinct`` count each side's
+    distinct folded values over the comparable rows. ``baseline`` is, first
+    match wins:
+
+    * "no live baseline" - the live side is empty on every non-dead row, so
+      there is nothing to agree WITH (live ``objective``: the ARAM prompt never
+      asks for one);
+    * "no comparable rows" - the live side spoke, but never beside a populated
+      deterministic value;
+    * "degenerate" - one side holds a single distinct value over the
+      comparable rows (``degenerate`` names the side and the constant), so
+      every match is that constant and no ratio is agreement;
+    * "measured" - ``agreement_rate`` (folded) and ``agreement_rate_exact``.
+
+    Both rates are None unless measured - never 0.0. ``gate`` applies
+    FLIP_GATE to the EXACT rate of the measured fields only (the lower bound,
+    so folding can never carry a field over the bar); every other field is
+    listed as excluded and never counts as a miss or a pass. ``met`` is None
+    when no tail field is measured."""
+    out: dict = {}
+    for field in _TAIL_FIELDS:
+        non_dead_total = det_instrumented = det_present = live_present = 0
+        both = det_only = live_only = neither = 0
+        agree = agree_exact = 0
+        det_vals: Counter = Counter()
+        live_vals: Counter = Counter()
+        det_raw: dict[str, Counter] = {}
+        live_raw: dict[str, Counter] = {}
+        for rec in records:
+            if _is_dead_state(rec):
+                continue
+            non_dead_total += 1
+            # Pre-R78 rows carry no tail key at all (the choices lesson).
+            if field in _side(rec, "deterministic"):
+                det_instrumented += 1
+            dv = _field_value(rec, "deterministic", field)
+            lv = _field_value(rec, "live_haiku", field)
+            dp = _is_present(dv)
+            lp = _is_present(lv)
+            det_present += int(dp)
+            live_present += int(lp)
+            if dp and lp:
+                both += 1
+                dn = _norm_text(dv)
+                ln = _norm_text(lv)
+                det_vals[dn] += 1
+                live_vals[ln] += 1
+                det_raw.setdefault(dn, Counter())[_display(dv)] += 1
+                live_raw.setdefault(ln, Counter())[_display(lv)] += 1
+                if dv == lv:
+                    agree_exact += 1
+                if dn == ln:
+                    agree += 1
+            elif dp:
+                det_only += 1
+            elif lp:
+                live_only += 1
+            else:
+                neither += 1
+        degenerate = None
+        if live_present == 0:
+            baseline = NO_LIVE_BASELINE
+        elif both == 0:
+            baseline = NO_COMPARABLE_ROWS
+        elif len(det_vals) == 1 or len(live_vals) == 1:
+            baseline = DEGENERATE
+            side, raw = (("deterministic", det_raw) if len(det_vals) == 1
+                         else ("live_haiku", live_raw))
+            (only,) = raw.values()
+            constant = only.most_common(1)[0][0]
+            degenerate = f'{_SIDE_LABEL[side]} side constant "{constant}"'
+        else:
+            baseline = MEASURED
+        measured = baseline == MEASURED
+        rate = round(agree / both, 4) if measured else None
+        rate_exact = round(agree_exact / both, 4) if measured else None
+        out[field] = {
+            "baseline": baseline,
+            "degenerate": degenerate,
+            "non_dead_total": non_dead_total,
+            "det_instrumented": det_instrumented,
+            "det_present": det_present,
+            "live_present": live_present,
+            "both": both,
+            "det_only": det_only,
+            "live_only": live_only,
+            "neither": neither,
+            "comparable": both,
+            "det_distinct": len(det_vals),
+            "live_distinct": len(live_vals),
+            "agree": agree,
+            "agree_exact": agree_exact,
+            "agreement_rate": rate,
+            "agreement_rate_exact": rate_exact,
+            "gate_met": (rate_exact >= FLIP_GATE) if measured else None,
+        }
+
+    def _with(baseline: str) -> list[str]:
+        return [f for f in _TAIL_FIELDS if out[f]["baseline"] == baseline]
+
+    measured_fields = _with(MEASURED)
+    out["gate"] = {
+        "bar": FLIP_GATE,
+        "basis": "exact",
+        "measured": measured_fields,
+        "excluded_no_live_baseline": _with(NO_LIVE_BASELINE),
+        "excluded_no_comparable_rows": _with(NO_COMPARABLE_ROWS),
+        "excluded_degenerate": _with(DEGENERATE),
+        "met": (all(out[f]["gate_met"] for f in measured_fields)
+                if measured_fields else None),
+    }
+    return out
+
+
+def _tail_hint(tail: dict) -> str:
+    """The R78 tail clause appended to the flip hint (RM-882). Worded so it
+    never contains the action gate's "gate MET" / "below 70% gate" text, and
+    so an excluded field never carries a percentage."""
+    parts = []
+    for field in _TAIL_FIELDS:
+        slot = tail.get(field) or {}
+        baseline = slot.get("baseline")
+        if baseline == MEASURED:
+            exact = slot.get("agreement_rate_exact") or 0.0
+            folded = slot.get("agreement_rate") or 0.0
+            bar = "meets 70% bar" if exact >= FLIP_GATE else "below 70% bar"
+            parts.append(f"{field} agreement {round(100 * exact)}% exact "
+                         f"({round(100 * folded)}% case-folded) over "
+                         f"{slot.get('comparable', 0)} comparable rows ({bar})")
+        elif baseline == DEGENERATE:
+            parts.append(f"{field} degenerate: {slot.get('degenerate')} - not "
+                         "agreement, excluded from gate math")
+        elif baseline == NO_COMPARABLE_ROWS:
+            parts.append(f"{field} no comparable rows - excluded from gate math")
+        else:
+            parts.append(f"{field} no live baseline (live side empty on every "
+                         "comparable row) - excluded from gate math")
+    return "; R78 tail: " + "; ".join(parts)
+
+
 def _flip_hint(action: dict, choices: dict, total: int,
-               enemy_less: int = 0) -> str:
+               enemy_less: int = 0, tail: Optional[dict] = None) -> str:
     """A coarse human read of flip-readiness. NOT a flip authorization - the
     operator decides; this only flags the obvious not-ready states. ``total``
     is the GATED row count (enemy-less rows already removed)."""
@@ -387,7 +584,8 @@ def _flip_hint(action: dict, choices: dict, total: int,
     return (f"action agreement {pct}% over {comparable} comparable ticks "
             f"({gate}); deterministic choices coverage {cc}% over instrumented "
             "rows - NOT a flip authorization (operator gate; live "
-            "Haiku-retirement stays live-gated)")
+            "Haiku-retirement stays live-gated)"
+            + (_tail_hint(tail) if tail else ""))
 
 
 def build_report(path) -> dict:
@@ -401,6 +599,7 @@ def build_report(path) -> dict:
     enemy_less = len(all_records) - len(records)
     action = summarize_action(records)
     choices = summarize_choices(records)
+    tail = summarize_tail(records)
     return {
         "schema": "aram_shadow_report/v1",
         "total": len(all_records),
@@ -411,7 +610,9 @@ def build_report(path) -> dict:
         "action": action,
         "choices": choices,
         "field_presence": summarize_field_presence(records),
-        "flip_ready_hint": _flip_hint(action, choices, len(records), enemy_less),
+        "tail_agreement": tail,
+        "flip_ready_hint": _flip_hint(action, choices, len(records), enemy_less,
+                                      tail),
     }
 
 
@@ -448,7 +649,50 @@ def _print_human(report: dict) -> None:
     for c in mism[:6]:
         print(f"    MISMATCH det={c['deterministic']} -> "
               f"native={c['native']} x{c['n']}")
+    _print_tail(report.get("tail_agreement") or {})
     print(f"hint: {report.get('flip_ready_hint')}")
+
+
+def _print_tail(tail: dict) -> None:
+    """The R78 tail block (RM-882): a field with no live baseline prints the
+    words "no live baseline", never a 0/0 ratio."""
+    print("[tail_agreement]")
+    for field in _TAIL_FIELDS:
+        slot = tail.get(field) or {}
+        baseline = slot.get("baseline", NO_LIVE_BASELINE)
+        dp = slot.get("det_present", 0)
+        lp = slot.get("live_present", 0)
+        comparable = slot.get("comparable", 0)
+        if baseline == MEASURED:
+            print(f"    {field}: agree {slot.get('agree_exact', 0)}/{comparable} "
+                  f"({slot.get('agreement_rate_exact')}) exact, "
+                  f"{slot.get('agree', 0)}/{comparable} "
+                  f"({slot.get('agreement_rate')}) case-folded, "
+                  f"live_present {lp}, det_present {dp} - measured")
+        elif baseline == DEGENERATE:
+            print(f"    {field}: degenerate: {slot.get('degenerate')} over "
+                  f"{comparable} comparable rows (det {slot.get('det_distinct', 0)}"
+                  f" / live {slot.get('live_distinct', 0)} distinct; every match "
+                  f"- {slot.get('agree_exact', 0)} exact, {slot.get('agree', 0)} "
+                  "case-folded - is that constant) - excluded from gate math")
+        elif baseline == NO_COMPARABLE_ROWS:
+            print(f"    {field}: no comparable rows (live_present {lp}, "
+                  f"det_present {dp}) - excluded from gate math")
+        else:
+            print(f"    {field}: no live baseline (live side empty on all "
+                  f"{slot.get('non_dead_total', 0)} non-dead rows; "
+                  f"det_present {dp}) - excluded from gate math")
+    gate = tail.get("gate") or {}
+    measured = gate.get("measured") or []
+    excluded = [f"{f} ({why})" for key, why in (
+        ("excluded_no_live_baseline", NO_LIVE_BASELINE),
+        ("excluded_no_comparable_rows", NO_COMPARABLE_ROWS),
+        ("excluded_degenerate", DEGENERATE),
+    ) for f in (gate.get(key) or [])]
+    met = gate.get("met")
+    print(f"    tail gate (70% bar, exact rate): measured "
+          f"{', '.join(measured) or 'none'}; excluded "
+          f"{', '.join(excluded) or 'none'}; met {'n/a' if met is None else met}")
 
 
 def main(argv: Optional[list[str]] = None) -> int:
