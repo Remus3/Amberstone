@@ -19,11 +19,16 @@ The gate judges one read at a time and names the round to act on:
                  fresh clock, a stage-6 misread at minute 8), is rejected
                  and never counts toward anything.
   new game       the game clock restarting (:2999 gameTime starts at 0 each
-                 game) on CLOCK_RESET_READS consecutive reads resets the
-                 gate: the bypass, a genuine new game never waits on the
-                 gate. One glitched clock value is not a new game. With no
-                 clock the pre-RM-615 rule (stage > 2 -> stage <= 2) still
-                 decides, so nothing regresses.
+                 game) on CLOCK_RESET_READS consecutive reads, below the
+                 CONFIRMED clock high-water mark (a read's clock counts once
+                 the next read does not fall below it), resets the gate: the
+                 bypass, a genuine new game never waits on the gate. One
+                 glitched clock value, behind or ahead, is not a new game.
+                 After a restart the round held before it is stale (the
+                 reader's OCR cache outlives the game) and is ignored until
+                 another round is read. With no clock the pre-RM-615 rule
+                 (stage > 2 -> stage <= 2) still decides, so nothing
+                 regresses.
   fast path      while the last WINDOW_READS reads all agreed with the
                  accepted round, a forward read within the pace allowance
                  (FORWARD_SLACK_ROUNDS plus the measured pace since the
@@ -80,6 +85,12 @@ scans fall 46-70 percent and false new games from 16-113 to 0. The cost: the
 longest wrong run grows (7-24 polls against 4-9) because a burst of
 misreads can win a window. A stream misread HALF the time has no majority:
 the gate then holds the round it has instead of flipping per frame.
+RECORDED TRADE-OFF: a real round change read on a 2-of-3 majority can lag
+up to about 7 polls (10.5 s) when the window still holds the old round,
+because the same window must NOT move on a 3-read misread burst inside a
+2-of-3 stream of the old round; no window and margin satisfy both (W +
+margin > 6 for the burst, <= 6 for a 5-poll lag), and the burst case is the
+one that cost real work before RM-615 (both pinned in the tests).
 """
 from __future__ import annotations
 
@@ -115,6 +126,9 @@ SWITCH_MIN_READS = 4
 SWITCH_MARGIN = 2
 FAST_PATH_MAX_DISSENT = 1
 PACE_SAFETY = 0.5
+# A pace floor under this is not a TFT round (and would overflow the
+# allowance arithmetic): no rate instead.
+MIN_PACE_S = 1.0
 # The game clock must fall by more than this, on this many consecutive
 # reads, to count as a restart.
 CLOCK_RESET_SLACK_S = 5.0
@@ -233,7 +247,7 @@ def pace_floor_from_table(table: object) -> Optional[float]:
             pace = dt / steps
             best = pace if best is None else min(best, pace)
         prev = (float(t), o)
-    if best is None:
+    if best is None or PACE_SAFETY * best < MIN_PACE_S:
         return None
     return PACE_SAFETY * best
 
@@ -283,7 +297,8 @@ class StageGate:
     def set_pace(self, min_round_s: object) -> None:
         """The measured pace floor (seconds per round) for rated queues, from
         pace_floor_from_table() over the reader's table; None = no rate."""
-        self._pace = _clock(min_round_s)   # a positive finite number, else None
+        p = _clock(min_round_s)            # a positive finite number, else None
+        self._pace = p if p is not None and p >= MIN_PACE_S else None
 
     @property
     def rate(self) -> Optional[float]:
@@ -294,8 +309,15 @@ class StageGate:
         self._anchor: Optional[_Anchor] = None
         self._prev: Optional[_Anchor] = None   # the anchor before the last change
         self._window: deque = deque(maxlen=WINDOW_READS)   # ordinals of counted reads
-        self._last_t: Optional[float] = None
+        # Clock high-water mark, CONFIRMED: a read's clock counts only once
+        # the next read does not fall below it, so one clock value ahead of
+        # the real one cannot make the real clock look like a restart.
+        self._t_conf: Optional[float] = None
+        self._t_prev: Optional[float] = None
         self._reset_n = 0
+        # The round held before a clock restart: the reader's OCR cache can
+        # still show it in the new game, so it is not news there.
+        self._stale: Optional[int] = None
 
     @property
     def timing(self) -> QueueTiming:
@@ -318,6 +340,7 @@ class StageGate:
         s, r = stage_round_of(o)
         p = self._prev
         self._prev = self._anchor
+        self._stale = None
         if kind == REVERT and p is not None:
             self._anchor = p     # back to the round before: keep its clock
         else:
@@ -343,25 +366,33 @@ class StageGate:
         t = _clock(game_time_s)
         o = ordinal(stage, rnd)
 
-        # A restarted game clock, held for CLOCK_RESET_READS reads: new game.
-        if t is not None and self._last_t is not None and t + CLOCK_RESET_SLACK_S < self._last_t:
-            self._reset_n += 1
-            if self._reset_n < CLOCK_RESET_READS:
-                return self._verdict(REJECT, "clock_reset_pending")
-            self.reset()
-            self._last_t = t
-            if o is not None and self._first_ok(o, t):
-                self._window.append(o)
-                self._move(o, t, NEW_GAME, "clock_reset")
-                self._prev = None
-                return self._verdict(NEW_GAME, "clock_reset")
-            return self._verdict(NEW_GAME, "clock_reset")
-        self._reset_n = 0
+        # A restarted game clock, held for CLOCK_RESET_READS reads, below the
+        # confirmed high-water mark: new game.
         if t is not None:
-            self._last_t = t if self._last_t is None else max(self._last_t, t)
+            p = self._t_prev
+            if p is not None and t >= p - CLOCK_RESET_SLACK_S:
+                self._t_conf = p if self._t_conf is None else max(self._t_conf, p)
+            self._t_prev = t
+            if self._t_conf is not None and t + CLOCK_RESET_SLACK_S < self._t_conf:
+                self._reset_n += 1
+                if self._reset_n < CLOCK_RESET_READS:
+                    return self._verdict(REJECT, "clock_reset_pending")
+                old = self._anchor
+                self.reset()
+                self._t_prev = t
+                if old is not None and old.stage > 1:
+                    self._stale = old.ordinal
+                if o is not None and o != self._stale and self._first_ok(o, t):
+                    self._window.append(o)
+                    self._move(o, t, NEW_GAME, "clock_reset")
+                    self._prev = None
+                return self._verdict(NEW_GAME, "clock_reset")
+            self._reset_n = 0
 
         if o is None:
             return self._verdict(REJECT, "out_of_range")
+        if self._stale is not None and o == self._stale:
+            return self._verdict(REJECT, "stale_after_reset")
         if not self._first_ok(o, t):
             return self._verdict(REJECT, "implausible_at_clock")
         a = self._anchor
