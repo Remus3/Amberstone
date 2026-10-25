@@ -36,7 +36,7 @@ keyword-only `patch.object(target=..., attribute=...)`, and `delattr` /
 `del` (siblings swept: `delitem`, `setdefault` / `update`, `import sys as
 _s`, `from sys import modules`). The attribute set itself (`os.name`,
 `shutil.which`, class methods) is NOT widened here, nor is the alias pass
-scope-aware; both are RM-877.
+scope-aware; both are RM-880.
 """
 from __future__ import annotations
 
