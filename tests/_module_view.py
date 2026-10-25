@@ -214,6 +214,13 @@ _LINEAGE: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
 _LINEAGE_LOCK = threading.Lock()
 _LINEAGE_HOOKED = False
 _UNRECORDED = (None, _MISSING)
+# The audit event Thread.start raises: `_thread.start_joinable_thread` from
+# Python 3.13, `_thread.start_new_thread` before it (CI runs 3.12; hearing only
+# the 3.13 name recorded nothing there, CI run 40230847617). Both carry the
+# Thread's bound `_bootstrap` as args[0]; a raw `_thread.start_new_thread` of
+# anything else is not a Thread start and records nothing.
+_THREAD_START_EVENTS = frozenset({"_thread.start_joinable_thread",
+                                  "_thread.start_new_thread"})
 
 
 def _current_test_file():
@@ -224,11 +231,12 @@ def _current_test_file():
 
 
 def _record_lineage(event: str, args: tuple) -> None:
-    if event != "_thread.start_joinable_thread":
+    if event not in _THREAD_START_EVENTS:
         return
     try:
         started = getattr(args[0], "__self__", None)  # Thread._bootstrap
-        if isinstance(started, threading.Thread):
+        if (isinstance(started, threading.Thread)
+                and getattr(args[0], "__name__", None) == "_bootstrap"):
             entry = (threading.current_thread(), _current_test_file())
             with _LINEAGE_LOCK:
                 _LINEAGE[started] = entry
