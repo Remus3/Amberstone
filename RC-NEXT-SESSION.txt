@@ -1,9 +1,10 @@
 NEXT SESSION
 ------------
-SESSION: 132
-Session 132 = the carried OPEN - WORK ITEMS below. s131: RM-824 SHIPPED (ca5b44e41), the RC board
-recreated in this account (6eb820a87), the suite guard ignores the two board files (3f3712009),
-RM-835..RM-837 filed (129e28287); LEDGER 1791-1794. s130: read-backs only. s129: LEDGER 1780-1790.
+SESSION: 133
+Session 133 = the carried OPEN - WORK ITEMS below. s132: RM-835 SHIPPED (fbcdc9952 + 965b7bb92, 18
+sites), RM-838 filed (97e501500), subagent CLI pin 2.1.310 (0ffd9320b); LEDGER 1795-1797. s131:
+RM-824 SHIPPED (ca5b44e41), the RC board recreated (6eb820a87); LEDGER 1791-1794. s129: LEDGER
+1780-1790.
 HISTORY REWRITTEN TWICE 2026-10-09 (LEDGER 1699 B, 1701 rw2): old SHAs via .git/filter-repo/commit-map
 (rw2), then filter-repo-20261009 (B), then filter-repo-20260621 (June); copies beside the sidecar
 Backup bundles. Other clones re-clone (ASKS 5); a fresh clone runs scripts/install_hooks.py and sets
@@ -17,21 +18,25 @@ trees (the RM-695 orphan shape) BEFORE heavy work (suites, many agents).
 SCRATCH (s127 lesson): the session scratchpad is shared by every sub-agent - every sub-agent prompt
 names a UNIQUE scratch subfolder and helper / progress file name.
 
-Next action: Fix RM-835: 17 :8888 dashboard routes leak str(exc) in reply bodies (the RM-824 class)
+Next action: Fix RM-837: the RM-824 AST reply guard misses assign-then-reply shapes (security class)
 FIRST at session start: the CPU / memory glance; git log @{u}.. (expect empty); python
-ops/loop/inbox_tick.py --pending (0 rows at the s131 wrap); gh pr list (0 open); read back the /done
-dispatch 40143505098 (full suite on 129e28287), codeql 40143467973, and the s131 wrap push's ci /
-docs-guards / codeql (a red is the first fix, forward on main). Then, in order (security first;
+ops/loop/inbox_tick.py --pending (0 rows at the s132 wrap); gh pr list (0 open); read back the /done
+dispatch 40148027784 (full suite on 0ffd9320b; it also covers the RM-835 slice that the CANCELLED
+97e501500 push ci 40147568746 never ran), codeql 40147853972 (0ffd9320b), and the s132 wrap push's
+ci / docs-guards / codeql (a red is the first fix, forward on main). Then, in order (security first;
 bodies below):
-- Fix RM-835: :8888 catch-all 500s, routes_ds_statcheck detail, routes_sr_draft notes, 2 docstrings
-- Fix RM-837: RM-824 AST guard misses assign-then-reply shapes (RM-835 extends that sweep)
+- Fix RM-837: RM-824 AST guard misses assign-then-reply shapes (the 965b7bb92 combo-notes path was a
+  live one; tests/test_rm835_dashboard_reply_scrub.py's guard skips the shape on purpose)
+- Fix RM-838: reply leaks outside the RM-835 set (vision _http.py:285, proxy passthroughs
+  routes_loadout.py:781 / _handler.py:460, agents/supervisor.py:1001, the DS :8860-only sites)
 - Fix RM-836: lanes.py lane-lock write fault reads "lane held by None (pid None)", cause unlogged
 - Fix RM-830: quoted-path sweep incl. ci_impact_selector.py:303 MEDIUM and RM-818 N3
 - Fix RM-825: usage-mcp replies, ids above 2^53, scrub ranges, line caps, IPv6 zone-id Host
 - Measure RM-819 d: the rm740_cg / rm152 flaky tests on a quiet box
 - Fix RM-807: DS extractor silent-accept siblings
 - Work RM-808: Tier-2 RM-804 follow-ups - SR Hubris, Dawncore AP, prose checker, Meraki staleness
-- Fix RM-809: Tier-0 CLAUDE.md Share mirror
+- Fix RM-809: Tier-0 CLAUDE.md Tier-2 / DS batch workflow cite a Share mirror removed in 7c0ff1624 -
+  rule-line fix (s132 marked the 3 Share memories SUPERSEDED; /done does not edit CLAUDE.md)
 - Fix RM-813: narrowed sweep slot spellings and UNC device form
 - Fix RM-815: RM-801 guard residuals
 - Fix RM-816: reaper os.replace window; the live APPLY waits on ASKS 30
@@ -42,24 +47,25 @@ bodies below):
 - Fix RM-826: batch-file hygiene siblings of RM-810 and the six scanner holes
 - Fix RM-828: RM-812 residuals
 - Fix RM-829: stop-gate _HEREDOC / EV_SUMMARY_LINE quadratics and test nits
-- Watch RM-833: gated-suite skip count 101 -> 106 (s130 datum in WATCH)
+- Watch RM-833: gated-suite skip count 101 -> 106 (s130 / s131 data in WATCH)
 - Fix RM-834: port-handoff residuals
 - Send one batched note to MAIN: RM-831, RM-778 / RM-798 status, route single ruling, the s130 board
   finding, and (INFORMATION) RC's board recreated at a new URL (6eb820a87); under the 12/day cap.
-  Not sent by the s131 /done executor: not a REPLY, so outside the pre-authorised carve-out (halt).
-- Re-batch the open operator asks in ONE chat line (not done s129 / s130 / s131)
+  Not sent by the s131 / s132 /done executors: not a REPLY, so outside the pre-authorised carve-out
+  (halt).
+- Re-batch the open operator asks in ONE chat line (not done s129 / s130 / s131 / s132)
 - At the next live game read back S6: vision decodes a live frame under Pillow 13 (cef8bfd22)
 
 ====================
 OPEN - WORK ITEMS (by topic)
 ====================
-Bodies, file:line + acceptance for the checklist rows above: BACKLOG "Session 131 filings"
-(RM-835..RM-837; LEDGER 1794), "Session 129 filings" (RM-824..RM-834; LEDGER 1790) and "Session 128
-filings" (RM-807..RM-823; LEDGER 1779). Detail the checklist lines drop: 825 scrub ranges = U+2028 /
-U+2029 / bidi; 808 (a) SR Hubris may re-open the Meraki Settled line; 819 (d) = test_rm740_cg /
-test_body_read_timeout_rm152; 823 reported to MAIN 28c1ed5c0. Not in the checklist: 827 frozen key
-readers without utf-8-sig (operator-gated, ASKS 24); 831 kit fleet_done.py git decode (MAIN note);
-822 PARTIAL (below).
+Bodies, file:line + acceptance for the checklist rows above: BACKLOG "Session 132 filings" (RM-838;
+LEDGER 1795), "Session 131 filings" (RM-836, RM-837; LEDGER 1794), "Session 129 filings"
+(RM-824..RM-834; LEDGER 1790) and "Session 128 filings" (RM-807..RM-823; LEDGER 1779). Detail the
+checklist lines drop: 825 scrub ranges = U+2028 / U+2029 / bidi; 808 (a) SR Hubris may re-open the
+Meraki Settled line; 819 (d) = test_rm740_cg / test_body_read_timeout_rm152; 823 reported to MAIN
+28c1ed5c0. Not in the checklist: 827 frozen key readers without utf-8-sig (operator-gated, ASKS 24);
+831 kit fleet_done.py git decode (MAIN note); 822 PARTIAL (below).
 Still open from the s126 filings (BACKLOG "Session 126 filings" / "Session 126 /done filings"):
 - RM-778 kit defect for MAIN: fleet_claims.bare_whole_suite matches the gate name case-sensitively.
 - RM-787 RM-600 siblings: lib/game_data/sources.py:195 (Kled hp / range),
@@ -109,15 +115,14 @@ Channel and MAIN:
 - s130 board finding (for the MAIN note, with RM-823): fleet_board.build(final=True) moves EVERY
   listed and every vanished open row to done, so a /done --final push shows carried tasks as done
   (s130's local render put carried C4-C25 under done; that push failed).
-- s131 inbox: SS 1243 (INFORMATION / TERMINAL to MAIN: seeded boards not_found) and SS 1525 (FIX to
-  MAIN: kit test-guard IGNORE misses the board files; RC workaround 3f3712009, row closed --done)
-  triaged, no replies. Drop the EXTRA_IGNORE entries when a kit version lists both paths.
+- s131 inbox SS 1243 / 1525 (both to MAIN) triaged, no replies; RC workaround 3f3712009: drop its
+  EXTRA_IGNORE entries when a kit version lists both board paths.
 - B3 read-back of MAIN 2237: next pane shows the acct2 status line and no [Legion] line.
 - mission_control.py holds the old worktree base until restart; the old lane folder and its
   system-drive junction are MAIN's to release.
-Worktrees, branches, refs (measured at the s129 wrap: 13 worktrees = main + drain-wave2-tail-backlog +
-11 out-of-root lift; 16 local branches; 34 refs; the 7 s129 agent worktrees + branches removed; s131's
-RM-824 worktree + branch removed):
+Worktrees, branches, refs (re-measured at the s132 /done: 13 worktrees = main +
+drain-wave2-tail-backlog + 11 out-of-root lift; 16 local branches; 35 refs (34 at s129); s131's RM-824
+and s132's RM-835 builder worktrees + branches removed):
 - RM-822 PARTIAL (LEDGER 1786): KEEP drain/wave2-tail-backlog (RM-229), worktree-agent-a0a31cf1b05f41e28
   (RM-519), worktree-wf_0815ac54-8f2-4 (RM-239 / RM-242 / RM-297b); WATCH m2-prebuild-56e5572e4 (the
   only ref holding the a25593521 commits that 348d5e3b7 / beff33b88 cite - tag 3a484e425 before
@@ -136,13 +141,14 @@ Rows and decisions:
   (gate range across a rewrite), RM-698, RM-699 (hot_reload watches tests/), RM-702 (MAIN-ordered
   only), RM-704..RM-731 except RM-728 (shipped), RM-734, RM-737, RM-740 (e) fu3, RM-754, RM-755,
   RM-778, RM-787, RM-792, RM-797, RM-798, RM-800 (BLOCKED-BOUNDARY), RM-807..RM-809, RM-813,
-  RM-815..RM-817, RM-819 (PARTIAL), RM-820..RM-823, RM-825..RM-831, RM-833..RM-837, RM-279, RM-280,
-  RM-368, RM-381, RM-292b-d, RM-251(b), RM-370, RM-229, RM-290, RM-27, RM-248, RM-189, RM-167,
-  RM-204, RM-12/RM-14 flips, RM-15(b), RM-16, RM-423, RM-239/RM-242 (operator fence), RM-297b
-  (non-author adjudicator + CI), RM-519. Next free RM id RM-838; next free LEDGER id 1795.
+  RM-815..RM-817, RM-819 (PARTIAL), RM-820..RM-823, RM-825..RM-831, RM-833, RM-834, RM-836..RM-838,
+  RM-279, RM-280, RM-368, RM-381, RM-292b-d, RM-251(b), RM-370, RM-229, RM-290, RM-27, RM-248,
+  RM-189, RM-167, RM-204, RM-12/RM-14 flips, RM-15(b), RM-16, RM-423, RM-239/RM-242 (operator
+  fence), RM-297b (non-author adjudicator + CI), RM-519. Next free RM id RM-839; next free LEDGER id
+  1798.
 - ROADMAP top open: RM-488, RM-482, RM-483, RM-485, RM-513, RM-596, RM-597, then the RM-681.. rows;
-  EXTERNAL-LIFT Band 2 / 4 stay in BACKLOG. ROADMAP.md 70561 B after s131 (drift_guard 90 percent line
-  73728 of 81920; ~3 KB headroom); before an edit that would cross it, move closed rows to
+  EXTERNAL-LIFT Band 2 / 4 stay in BACKLOG. ROADMAP.md 71682 B at s132 (drift_guard 90 percent line
+  73728 of 81920; ~2 KB headroom); before an edit that would cross it, move closed rows to
   docs/ROADMAP_HISTORY.md (ids named literally; Edit with an EMPTY new_string also eats the line's
   newline).
 - Desktop EXTERNAL-LIFT-DIRECTIVE.md / -2.md (-2 ingested: RM-526..RM-594). Operator APPROVED Y-44
@@ -175,16 +181,17 @@ BLOCKED-BOUNDARY (halt: out-of-tree, joint, or MAIN's act):
 - Joint re-pins, never solo: CHANNEL_PIN (docs/CHANNEL.md still lists LL / lacks EW - five-way),
   RM-502, RM-429, RM-430; any further SHARED_SHA256 re-pin.
 - SessionStart anomaly "slot bucket 0.lock DEAD_PID (pid 6668)" (machine-wide, outside the repo):
-  re-check (not done s116-s131).
-- SessionStart anomaly (s131): task RC-ClaudeQuotaWatch FAILURE 0x800710E0 (Win32 4320, request
-  refused) = an ExecutionTimeLimit kill; not investigated (read its XML / last run first).
+  re-check (not done s116-s132).
+- SessionStart anomaly (s131, RE-SEEN at s132 start): task RC-ClaudeQuotaWatch FAILURE 0x800710E0
+  (Win32 4320, request refused) = an ExecutionTimeLimit kill; not investigated, no RM id yet (read its
+  XML / last run first).
 - One sibling-to-sibling note stuck in a stale folder: moving it is out-of-tree.
 
 ====================
 OPEN - OPERATOR ASKS (batched, re-ask in ONE line)
 ====================
-1-7, 9-12 unanswered in sessions 111-131; 15, 17, 18, 20-26, 28-30 open; 19 WITHDRAWN s126; 27
-RESOLVED s127. Last re-batched in chat in s127 (the s129, s130 and s131 re-batches were not done).
+1-7, 9-12 unanswered in sessions 111-132; 15, 17, 18, 20-26, 28-30 open; 19 WITHDRAWN s126; 27
+RESOLVED s127. Last re-batched in chat in s127 (the s129-s132 re-batches were not done).
 GitHub security read-back 2026-10-22 (gh api): Dependabot alerts, secret scanning, push protection ON;
 CodeQL ADVANCED setup (.github/workflows/codeql.yml), DEFAULT query suite; Dependabot security updates
 read DISABLED (automated-security-fixes enabled=false) though the operator reports them on.
@@ -240,13 +247,16 @@ OPEN - WATCH AND DATA (act only when seen)
 - RM-699 (hot_reload): edits under tests/, tools/ and dashboard/ restart RC. Storms: s108 8; s113 27
   (2026-10-14 07:58-08:47 local, unattributed); s116 8. Pids s117-s126: git show
   9aac2d261:RC-NEXT-SESSION.txt (causes of 22136 and 10108 not investigated); s127 24404 -> 5192;
-  s128 wrap RC 18476, :8890 2108; s129 wrap RC 7700; s130 /done RC 36540; s131 /done RC 10988
-  (restart causes not checked); fatal_count 0.
+  s128 wrap RC 18476, :8890 2108; s129 wrap RC 7700; s130 /done RC 36540; s131 /done RC 10988;
+  s132: 3100 after the RM-835 deploy restart, 7736 at the /done probe (restart causes not checked);
+  fatal_count 0.
 - RM-833 (s129): the gated dual suite's skip count rose 101 -> 106; candidates in its BACKLOG row.
   s130 datum: dispatch 40034861146 skipped 448 vs 340 in dispatch 39976892990 (+108; passes 41764 ->
-  42176); cause not investigated. Compare dispatch 40143505098's counts when read back.
+  42176); cause not investigated. s131 datum: dispatch 40143505098 42204 passed / 443 skipped (-5),
+  2156.97 s. s132: the local gated run on 965b7bb92 skipped 106 (unchanged).
 - Advisory mypy step (continue-on-error, .github/workflows/ci.yml:774-776): 417 errors / 84 files in
-  dispatch 40034861146 vs 400 / 82 in 39976892990 (push ci 40035677558 also 417). Not a gate.
+  dispatches 40034861146 and 40143505098 vs 400 / 82 in 39976892990 (push ci 40035677558 also 417).
+  Not a gate.
 - Timing flake (not RM-740): tests/test_dashboard_server_thread_start_rm738.py
   ::StillOneThreadPerRequest::test_long_lived_requests_do_not_starve_a_short_one (1.0 s bound) failed
   2 of 4 runs at 100 percent CPU (s113); if it reds, widen the bound or measure on a quiet box.
@@ -267,7 +277,8 @@ OPEN - WATCH AND DATA (act only when seen)
 - The s128 S-E builder's six manual sweep checks appended 6 records to the live
   ops/runtime/sibling_sweep_runs.jsonl (append-only, left in place).
 - s129: the stop-claim gate flagged push / merge claims in main-session chat because sub-agents did
-  the pushes (read-backs in LEDGER 1788) - the RM-687 credit-only shape, not a defect so far.
+  the pushes (read-backs in LEDGER 1788) - the RM-687 credit-only shape, not a defect so far. s132: it
+  also flagged "Board pushed" (a board update, no git push): say "board updated" (memory).
 - s129: non-RC orphans (9232 server.ew, 19916 lw_monitor, 17584 node console server) left alone; an
   orphan bash tree (pid 8320, a verifier shell hung on the WindowsApps python3 stub) was killed: a
   verifier helper names the canonical interpreter, never `python3`.
@@ -275,23 +286,18 @@ OPEN - WATCH AND DATA (act only when seen)
 ====================
 DO NOT RE-LITIGATE (each with Reverses if:)
 ====================
-- s131 (LEDGER 1791-1794; shas in the ROADMAP "SESSION 131 SHIPPED" row): RM-824 ca5b44e41 (verifier
-  CONFIRM 91 passed, old module 13 failed; /done slice 108 passed); 3f3712009; 6eb820a87; RM-835..837
-  filed 129e28287. Read back at /done, all success: nightly 40094097286 (c107a1725); e9261314d ci
-  40095533777, docs-guards 40095533844, codeql 40095533885; 129e28287 ci 40143468046, docs-guards
-  40143468086. Reverses if: a live re-check of one of those acceptances fails.
+- s132 (LEDGER 1795-1797): RM-835 fbcdc9952 + 965b7bb92 (18 sites; verifier pass 2 CONFIRM 125
+  passed; merged-tree gated dual suite red only on the pre-existing CLI pin); CLI pin 2.1.310
+  0ffd9320b (6 passed); RM-838 filed 97e501500. Read back at /done, all success: 0ffd9320b push ci
+  40147854006; 97e501500 docs-guards 40147568719, codeql 40147568707; s131's dispatch 40143505098,
+  codeql 40143467973, f1ff24958 ci 40144084337 / docs-guards 40144084347 / codeql 40144084320.
+  Reverses if: a live re-check of one of those acceptances fails.
+- Share memories SUPERSEDED (s132, LEDGER 1797): 7c0ff1624 removed Share/ + ds_share_sync, so 3
+  memories carry a SUPERSEDED line and stay indexed. Reverses if: git ls-files Share is non-empty.
 - RC board recreated (DECISION in the 6eb820a87 body; LEDGER 1793): Dashboard artifact
   12ChcPAR8o3RuVb9qStHK8 (its data/users/me doc appears only once a reader opens the page - not a
   failure). Reverses if: the seeded 7ofQL8BtTQfzjLPbfyi6aJ is reachable again from this account, or
   MAIN ships a different RC board URL.
-- RM-793 / RM-822 branch deletions (adjudicated s128 / s129; LEDGER 1778, 1786): every deleted branch's
-  commits stay reachable via the local archive/* tags or the verified bundles (Refs, above). Reverses
-  if: an open row cites a deleted branch name or a bundled sha as work still to land (restore that
-  branch from the bundle), or `m2-prebuild-56e5572e4` is deleted (tag 3a484e425 first).
-- Stale worktree lock (adjudicated s128; applied again s129 to agent-a0b430aa23a79c22c, pid 5684): a
-  lock naming the live interactive claude.exe (it survives /clear) whose agent finished and whose
-  branch is merged is stale; `git worktree unlock` is not a force. Reverses if: the pid is a
-  still-running agent's own process, or the worktree holds content not on main.
 - OLDER RECORDS moved VERBATIM, each with its Reverses if:, to docs/handoff-archive/RC-2026-10-23.txt
   (s128 trim: s126 / s125 / s124 records, C1 s122 tag bundle KEPT, Dependabot s121, RM-743, RM-740 (e)
   known cost, the s108 probe trade-off, RestartOnFailure inert, RM-512; s129 trim: the s127 record,
@@ -301,7 +307,9 @@ DO NOT RE-LITIGATE (each with Reverses if:)
   RC-2026-10-24.txt (s130 trim: the s128 record, the RM-796 option A decision list, RM-789 slot ARMED
   NARROWED, MAIN 1254 #6 / RM-781; s131 trim: the s130 read-backs, the s129 record, RM-811 ScrubFilter
   / RM-819 (c), RM-804 NO ENGINE bump, RM-766 ARAM carry, RM-736 REJECTED, the done.md 2c dispatch
-  ruling, the s125 DEPENDABOT path-B rule). Read them before re-opening any.
+  ruling, the s125 DEPENDABOT path-B rule; s132 trim: the s131 record, the RM-793 / RM-822 branch
+  deletions, the stale worktree lock, the lane-widget STALE literal, the m2-prebuild-56e5572e4 KEEP).
+  Read them before re-opening any.
 - S4 ruling: fail-open only on the Claude PreToolUse channel; git pre-commit / commit-msg /
   --scan-files fail CLOSED. Reverses if: MAIN or the operator rules in writing that the git-hook gate
   may fail open.
@@ -309,10 +317,6 @@ DO NOT RE-LITIGATE (each with Reverses if:)
   1459). Reverses if: the RC_MOON_SYNC_REPOS CI secret is set (a remote act, RM-488) and a CI run is
   read back loading a non-empty sibling list; the "ARMED WITH A MEASURED ESCAPE RATE ABOVE ZERO"
   phrasing stays either way.
-- Lane widget: a stale checklist renders "- checklist STALE". Reverses if: MAIN wants the literal.
-- Local branch m2-prebuild-56e5572e4 KEPT (git cherry: 4 equivalent, 2 unique; LEDGER 1701, 1707).
-  Reverses if: `git cherry` shows 0 patch-unique commits (then `git branch -d` and it may go), or the
-  2 unique commits are mapped to main commits that shipped them (RM-703 / RM-793 method).
 
 ====================
 PROCEDURE (full list: docs/OPERATIONS.md "Session procedure (moved from the hand-off, s122)")
@@ -340,33 +344,38 @@ PROCEDURE (full list: docs/OPERATIONS.md "Session procedure (moved from the hand
 ====================
 STATUS, CONTEXT, ACCEPTANCE
 ====================
-Status (s131 wrap): session commits 3f3712009, 6eb820a87, ca5b44e41, 129e28287 pushed by /done:
-e9261314d..129e28287 main -> main (pre-push sweep clean, credential scan 0); bot_merge_check clean
-(4 scanned since e9261314d0). The wrap commit (LEDGER 1791-1794, BACKLOG / ROADMAP flips,
+Status (s132 wrap): session commits fbcdc9952, 965b7bb92, 97e501500 pushed f1ff24958..97e501500 and
+0ffd9320b pushed 97e501500..0ffd9320b by sub-agents (pre-push scans clean; bot_merge_check exit 0
+after each); HEAD == origin/main == 0ffd9320b at the /done start. The wrap commit (LEDGER 1795-1797,
 WAKEUP_NOTES entry + prune, handoff-archive trim, this file) and its push follow this write; that
-push's ci / docs-guards / codeql are the next session's read-back. s130: git show
-e9261314d:RC-NEXT-SESSION.txt. CI on 129e28287: ci 40143468046 success (check + sibling-sweep-tree),
-docs-guards 40143468086 success, codeql 40143467973 in progress at the wrap.
-Full suite (2c): not covered (every candidate differs from HEAD outside *.md; push selector
-mode=slice) - dispatched ONE run 40143505098 on 129e28287 (headSha == HEAD), in progress at the wrap.
-Gate (at 129e28287): ruff all passed; py_compile OK; hygiene trio 14 passed; test_rm824 +
-loop_control_idempotency + fleet_kit_v19 + fleet_kit_v14 108 passed, EXIT=0; drift_guard 0 breaches.
-DS :8860 1.289.0 / 16.21.1 / 173 / 699. RC pid 10988 alive, last_reload_ok true, fatal_count 0;
-restart_trigger empty; no game (mode_key client); session file 1.4 MB; no intent; no steers; no new
-memory files this session; inbox_tick --pending 0 rows; 0 open PRs.
-Board push: session-start push read back (datasets/board v2); the /done --final push follows this
-write (a failure would be recorded on the line below).
-In flight: none (main session: none; this executor: its CI watch finished).
+push's ci / docs-guards / codeql are the next session's read-back. s131: git show
+f1ff24958:RC-NEXT-SESSION.txt. CI: 0ffd9320b push ci 40147854006 success (check + sibling-sweep-tree),
+codeql 40147853972 in progress at the wrap; 97e501500 push ci 40147568746 CANCELLED (superseded by
+the 0ffd9320b push), its docs-guards 40147568719 + codeql 40147568707 success.
+Full suite (2c): not covered (every nightly / dispatch head and the graded local run 965b7bb92 differ
+from HEAD outside *.md; 965b7bb92 by tests/test_subagent_prompt_flag.py) - dispatched ONE run
+40148027784 on 0ffd9320b (headSha == HEAD), in progress at the wrap.
+Gate (at 0ffd9320b): ruff all passed; py_compile OK on the session's .py files; hygiene trio 14
+passed; test_rm835 + test_subagent_prompt_flag + test_routes_ds_combo 157 passed, EXIT=0; drift_guard
+0 breaches (re-run after the memory edits: 0).
+DS :8860 1.289.0 / 16.21.1 / 173. RC pid 7736 alive, last_reload_ok true, fatal_count 0;
+restart_trigger empty; no game (mode_key client); session file 1.1 MB; no intent; no steers; chat
+steers none (operator typed only "Continue"); memory: 3 SUPERSEDED + 1 new (LEDGER 1797);
+inbox_tick --pending 0 rows; 0 open PRs.
+Board: updated at session start (datasets/board v4) and after the C2 reprint (v5); the /done --final
+update follows this write (a failure would be recorded on the line below).
+In flight: none (main session: none, no monitors armed; this executor: its CI watch finished).
 
-Context: BACKLOG "Session 131 / 129 / 128 filings"; ROADMAP NOW rows RM-835..RM-837 and "SESSION 131
-SHIPPED"; dashboard/_errors.py send_error and dashboard/routes_loop_control.py _fault() (the RM-824
-pattern) + tests/test_rm824_loop_control_reply_scrub.py; core/log_scrub.py; core/http_host_gate.py;
+Context: BACKLOG "Session 132 / 131 / 129 / 128 filings"; ROADMAP NOW rows RM-836..RM-838; the
+RM-835 pattern: dashboard/_errors.py send_error(fields=, log_traceback=) +
+tests/test_rm835_dashboard_reply_scrub.py (its reply guard skips assign-then-reply = RM-837) and
+tests/test_rm824_loop_control_reply_scrub.py; core/log_scrub.py; core/http_host_gate.py;
 core/port_handoff.py; docs/handoff-archive/RC-2026-10-23.txt + RC-2026-10-24.txt;
 ops/runtime/inbox_responder_agreement.json (expires 2026-11-01).
 
-Acceptance: dispatch 40143505098, codeql 40143467973 and the s131 wrap push CI read back green (or a
-red fixed forward); RM-835 per its BACKLOG acceptance (failing test per module first, verifier
-CONFIRM), RM-837 and RM-836 likewise; the owed MAIN note delivered (N/M reached, hashes re-checked);
-S6 read back in a live game; operator asks answered or re-batched.
+Acceptance: dispatch 40148027784, codeql 40147853972 and the s132 wrap push CI read back green (or a
+red fixed forward); RM-837, RM-838 and RM-836 per their BACKLOG acceptance (failing test first,
+verifier CONFIRM); the owed MAIN note delivered (N/M reached, hashes re-checked); S6 read back in a
+live game; operator asks answered or re-batched.
 
 Start with: read this file first, then CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.

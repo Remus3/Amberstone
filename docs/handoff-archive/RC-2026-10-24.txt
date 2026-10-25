@@ -46,3 +46,24 @@ CLOSED - DO NOT RE-LITIGATE, OLDER RECORDS (s129-s130 records and rulings, plus 
   bdaff4426, ec06bbb21; tools/bot_merge_check.py). Reverses if: MAIN re-orders path A, or
   bot_merge_check exits 1 on a new default-branch commit (fix only via fleet_rewrite.py under MAIN
   2312's scope, at the halt boundary).
+# archived from RC-NEXT-SESSION.txt at 2026-10-25T00:50:13Z
+====================
+CLOSED - DO NOT RE-LITIGATE, OLDER RECORDS (the s131 record, the RM-793 / RM-822 branch-deletion ruling, the stale worktree lock ruling, the lane-widget STALE literal and the m2-prebuild-56e5572e4 KEEP; each keeps its Reverses if:) - verbatim from f1ff24958:RC-NEXT-SESSION.txt
+====================
+- s131 (LEDGER 1791-1794; shas in the ROADMAP "SESSION 131 SHIPPED" row): RM-824 ca5b44e41 (verifier
+  CONFIRM 91 passed, old module 13 failed; /done slice 108 passed); 3f3712009; 6eb820a87; RM-835..837
+  filed 129e28287. Read back at /done, all success: nightly 40094097286 (c107a1725); e9261314d ci
+  40095533777, docs-guards 40095533844, codeql 40095533885; 129e28287 ci 40143468046, docs-guards
+  40143468086. Reverses if: a live re-check of one of those acceptances fails.
+- RM-793 / RM-822 branch deletions (adjudicated s128 / s129; LEDGER 1778, 1786): every deleted branch's
+  commits stay reachable via the local archive/* tags or the verified bundles (Refs, above). Reverses
+  if: an open row cites a deleted branch name or a bundled sha as work still to land (restore that
+  branch from the bundle), or `m2-prebuild-56e5572e4` is deleted (tag 3a484e425 first).
+- Stale worktree lock (adjudicated s128; applied again s129 to agent-a0b430aa23a79c22c, pid 5684): a
+  lock naming the live interactive claude.exe (it survives /clear) whose agent finished and whose
+  branch is merged is stale; `git worktree unlock` is not a force. Reverses if: the pid is a
+  still-running agent's own process, or the worktree holds content not on main.
+- Lane widget: a stale checklist renders "- checklist STALE". Reverses if: MAIN wants the literal.
+- Local branch m2-prebuild-56e5572e4 KEPT (git cherry: 4 equivalent, 2 unique; LEDGER 1701, 1707).
+  Reverses if: `git cherry` shows 0 patch-unique commits (then `git branch -d` and it may go), or the
+  2 unique commits are mapped to main commits that shipped them (RM-703 / RM-793 method).
