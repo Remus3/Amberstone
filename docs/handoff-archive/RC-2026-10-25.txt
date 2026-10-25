@@ -1,0 +1,37 @@
+# archived from RC-NEXT-SESSION.txt at 2026-10-25T11:45:00Z
+====================
+CLOSED - SESSION 132 HEADER, RECORDS AND STATUS (s133 /done trim; the full prior file is git show 97a8cf321:RC-NEXT-SESSION.txt) - verbatim from 97a8cf321:RC-NEXT-SESSION.txt
+====================
+Session 133 = the carried OPEN - WORK ITEMS below. s132: RM-835 SHIPPED (fbcdc9952 + 965b7bb92, 18
+sites), RM-838 filed (97e501500), subagent CLI pin 2.1.310 (0ffd9320b); LEDGER 1795-1797. s131:
+RM-824 SHIPPED (ca5b44e41), the RC board recreated (6eb820a87); LEDGER 1791-1794. s129: LEDGER
+1780-1790.
+- s132 (LEDGER 1795-1797): RM-835 fbcdc9952 + 965b7bb92 (18 sites; verifier pass 2 CONFIRM 125
+  passed; merged-tree gated dual suite red only on the pre-existing CLI pin); CLI pin 2.1.310
+  0ffd9320b (6 passed); RM-838 filed 97e501500. Read back at /done, all success: 0ffd9320b push ci
+  40147854006; 97e501500 docs-guards 40147568719, codeql 40147568707; s131's dispatch 40143505098,
+  codeql 40143467973, f1ff24958 ci 40144084337 / docs-guards 40144084347 / codeql 40144084320.
+  Reverses if: a live re-check of one of those acceptances fails.
+- Share memories SUPERSEDED (s132, LEDGER 1797): 7c0ff1624 removed Share/ + ds_share_sync, so 3
+  memories carry a SUPERSEDED line and stay indexed. Reverses if: git ls-files Share is non-empty.
+Status (s132 wrap): session commits fbcdc9952, 965b7bb92, 97e501500 pushed f1ff24958..97e501500 and
+0ffd9320b pushed 97e501500..0ffd9320b by sub-agents (pre-push scans clean; bot_merge_check exit 0
+after each); HEAD == origin/main == 0ffd9320b at the /done start. The wrap commit (LEDGER 1795-1797,
+WAKEUP_NOTES entry + prune, handoff-archive trim, this file) and its push follow this write; that
+push's ci / docs-guards / codeql are the next session's read-back. s131: git show
+f1ff24958:RC-NEXT-SESSION.txt. CI: 0ffd9320b push ci 40147854006 success (check + sibling-sweep-tree),
+codeql 40147853972 in progress at the wrap; 97e501500 push ci 40147568746 CANCELLED (superseded by
+the 0ffd9320b push), its docs-guards 40147568719 + codeql 40147568707 success.
+Full suite (2c): not covered (every nightly / dispatch head and the graded local run 965b7bb92 differ
+from HEAD outside *.md; 965b7bb92 by tests/test_subagent_prompt_flag.py) - dispatched ONE run
+40148027784 on 0ffd9320b (headSha == HEAD), in progress at the wrap.
+Gate (at 0ffd9320b): ruff all passed; py_compile OK on the session's .py files; hygiene trio 14
+passed; test_rm835 + test_subagent_prompt_flag + test_routes_ds_combo 157 passed, EXIT=0; drift_guard
+0 breaches (re-run after the memory edits: 0).
+DS :8860 1.289.0 / 16.21.1 / 173. RC pid 7736 alive, last_reload_ok true, fatal_count 0;
+restart_trigger empty; no game (mode_key client); session file 1.1 MB; no intent; no steers; chat
+steers none (operator typed only "Continue"); memory: 3 SUPERSEDED + 1 new (LEDGER 1797);
+inbox_tick --pending 0 rows; 0 open PRs.
+Board: updated at session start (datasets/board v4) and after the C2 reprint (v5); the /done --final
+update follows this write (a failure would be recorded on the line below).
+In flight: none (main session: none, no monitors armed; this executor: its CI watch finished).
