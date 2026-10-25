@@ -39,7 +39,8 @@ Cost: the prompt is the cached system block of every coach call. It sits
 below the prompt-cache floor before and after RM-845 (docs/COST_TRACE.md), so
 the budget is the pre-RM-845 live size, not the cache: MAX_PROMPT_CHARS, held
 by construction (data lines share what the fixed text leaves). The text is
-byte-stable per set and data-file version, cached on the files' mtimes.
+byte-stable per set and data-file version, cached on the files' mtimes and
+sizes.
 
 No LLM call happens here: string assembly from files on disk only
 (Haiku-to-zero north star - RM-845 adds no live call).
@@ -206,8 +207,12 @@ def _traits(cd: dict, meta: dict) -> tuple:
             name = _clean_name(row.get("name"))
             if not name or name in out:
                 continue
+            # A scalar here once raised out of set_profile and erased the
+            # whole set block; any other shape keeps the row, without
+            # breakpoints.
+            raw = row.get("breakpoints")
             bps: list = []
-            for b in row.get("breakpoints") or []:
+            for b in raw if isinstance(raw, (list, tuple)) else []:
                 b = _int(b)
                 if b is not None and b not in bps:
                     bps.append(b)
@@ -294,14 +299,18 @@ def _meta_state(meta: dict) -> str:
     return "verified"
 
 
-def _mtime(path):
+def _stamp(path):
+    """(mtime_ns, size) of a data file, None when absent. Size too: a rewrite
+    that keeps the mtime (a copy2-style restore) must still miss the cache."""
     try:
-        return os.stat(path).st_mtime_ns
+        st = os.stat(path)
     except OSError:
         return None
+    return st.st_mtime_ns, st.st_size
 
 
 _CACHE: dict = {}
+_WARNED: list = [None]  # the data-version key last warned about
 
 
 def _resolve(set_number, pbe, root):
@@ -310,17 +319,49 @@ def _resolve(set_number, pbe, root):
     return n, flag
 
 
+def _no_data(n, meta_file: str, meta_state: str = "absent") -> SetProfile:
+    return SetProfile(n, "", "none", "", (), (), (), False, False,
+                      meta_file, meta_state, 0, "", "")
+
+
 def set_profile(set_number=None, *, pbe=None, root=None) -> SetProfile:
-    """The resolved set's profile, rebuilt when either data file changes."""
+    """The resolved set's profile, rebuilt when either data file changes.
+
+    Malformed data degrades to the RESOLVED set's no-data profile, logged once
+    per data version and cached like a healthy one, so a bad file is neither
+    re-read nor re-logged on every coach call. One exception, on purpose: an
+    existing file that loads as {} (unreadable this instant, or not a JSON
+    object) is never cached, so it is re-read until it parses - still logged
+    at most once per data version.
+    """
     n, flag = _resolve(set_number, pbe, root)
     cdp = tft_set.cdragon_path(n, root=root)
     mp = tft_set.meta_path(n, pbe=flag, root=root)
-    key = (n, str(cdp), _mtime(cdp), str(mp), _mtime(mp))
+    cd_stamp, mp_stamp = _stamp(cdp), _stamp(mp)
+    key = (n, str(cdp), cd_stamp, str(mp), mp_stamp)
     hit = _CACHE.get(key)
     if hit is not None:
         return hit
     cd = tft_set.load_json_file(cdp)
     meta = tft_set.load_json_file(mp)
+    try:
+        prof = _build_profile(n, cdp, mp, cd, meta)
+    except Exception as exc:  # noqa: BLE001 - any data defect degrades, never stops coaching
+        if _WARNED[0] != key:
+            _WARNED[0] = key
+            logger.warning("TFT prompt: set %s data unusable, using no-data block: %r", n, exc)
+        prof = _no_data(n, mp.name, "unverified" if meta else "absent")
+    # load_json_file returns {} for ANY OSError or bad JSON, so an existing
+    # file that loaded empty may only have been unreadable this instant (a
+    # sharing violation mid-replace): serve it, never pin it until a change.
+    if (cd_stamp is not None and not cd) or (mp_stamp is not None and not meta):
+        return prof
+    _CACHE.clear()  # one live entry: the set or a file changed
+    _CACHE[key] = prof
+    return prof
+
+
+def _build_profile(n, cdp, mp, cd: dict, meta: dict) -> SetProfile:
     if cd:
         source = "cdragon"
         ver, fetched = _short_version(cd.get("_content_version")), _clean_text(cd.get("_fetched"), 20)
@@ -336,7 +377,7 @@ def set_profile(set_number=None, *, pbe=None, root=None) -> SetProfile:
     else:
         source, label = "none", ""
     comps = meta.get("comps")
-    prof = SetProfile(
+    return SetProfile(
         set_number=n,
         set_name=_clean_name(meta.get("_set_name")),
         source=source,
@@ -352,9 +393,6 @@ def set_profile(set_number=None, *, pbe=None, root=None) -> SetProfile:
         meta_patch=_clean_text(meta.get("_patch"), 12),
         meta_updated=_clean_text(meta.get("_updated"), 20),
     )
-    _CACHE.clear()  # one live entry: the set or a file changed
-    _CACHE[key] = prof
-    return prof
 
 
 # -- assembly -----------------------------------------------------------------
@@ -465,14 +503,15 @@ def build_system_prompt(set_number=None, *, pbe=None, root=None) -> str:
 
     Never raises: a profile failure degrades to the shared rules plus a
     no-data SET block, so a malformed data file cannot stop coaching.
+    set_profile degrades malformed data itself, for the resolved set; this
+    catch is only reached when the set cannot even be resolved.
     """
     try:
         prof = set_profile(set_number, pbe=pbe, root=root)
     except Exception as exc:  # noqa: BLE001
-        logger.warning("TFT prompt: set data unreadable, using no-data block: %s", exc)
+        logger.warning("TFT prompt: set unresolvable, using no-data block: %r", exc)
         n = set_number if isinstance(set_number, int) else tft_set.FALLBACK_SET
-        prof = SetProfile(n, "", "none", "", (), (), (), False, False,
-                          f"tft_set{n}_meta.json", "absent", 0, "", "")
+        prof = _no_data(n, f"tft_set{n}_meta.json")
     text = _assemble(prof)
     if len(text) > MAX_PROMPT_CHARS:  # cannot happen by construction; loud if it does
         logger.warning("TFT prompt %d chars over the %d budget - set block dropped",
