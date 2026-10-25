@@ -9,6 +9,7 @@ The system prompt is built per resolved set by tft/tft_prompt.py (RM-845).
 
 import json
 import logging
+import re
 import threading
 import time
 from pathlib import Path
@@ -69,6 +70,103 @@ def _meta_verified() -> bool:
         return tft_prompt.meta_verified()
     except Exception:  # noqa: BLE001
         return False
+
+
+# S136 T9: which source each prompt fact comes from. Live QA (s136, match run
+# 20261025-153652, stage 2-2) had the coach name units the player did not have
+# ("Krug A1 ... Warwick B3") and plan "hit 50g by 2-4" at 10 gold: the prompt
+# read gold, HP, the board and the traits ONLY from the vision file, whose
+# writer (tft/tft_live_analysis.py _write) emits no "gold" key, while the
+# state dict the worker submits (tft/tft_state_reader.py _parse) held the OCR
+# gold, the standalone EoG health and the EoG board - the source the D1 payload
+# and /api/state show. The state dict is now the authority; the vision file
+# is a fallback only, and its board units must be on the resolved set's roster.
+_LIVE_DATA_FILE = Path(__file__).parent.parent / "data" / "tft_live_data.json"
+
+
+def _live_data() -> dict:
+    """The vision file, {} when absent / unreadable / not an object."""
+    try:
+        data = json.loads(_LIVE_DATA_FILE.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _bounded_int(value, hi: int):
+    """``value`` as an int in 0..hi, else None (bool, None, text, NaN)."""
+    if isinstance(value, bool) or value is None:
+        return None
+    try:
+        f = float(value)
+    except (TypeError, ValueError):
+        return None
+    if f != f or not (0 <= f <= hi):
+        return None
+    return int(f)
+
+
+def _prompt_gold(state: dict, live: dict):
+    """The reader's gold unless it says it has no read yet (``gold_known``
+    False: OCR silent, the 0 is its default); then the vision gold; None =
+    unknown, never a guessed 0."""
+    if state.get("gold_known") is not False:
+        gold = _bounded_int(state.get("gold"), 999)
+        if gold is not None:
+            return gold
+    return _bounded_int(live.get("gold"), 999) or None
+
+
+def _authoritative_board(state: dict) -> list:
+    """The per-round EoG board the reader carries (tft/tft_state_reader.py
+    _apply_standalone: [{"name", "star", "items"}]); [] without one."""
+    board = state.get("board")
+    if not isinstance(board, list):
+        return []
+    return [u for u in board
+            if isinstance(u, dict) and isinstance(u.get("name"), str) and u["name"].strip()]
+
+
+def _fmt_board(units: list) -> str:
+    parts = []
+    for u in units:
+        text = f"{u['name']}*{u.get('star', 1)}"
+        items = [i for i in (u.get("items") or []) if isinstance(i, str) and i]
+        if items:
+            text += f" [{', '.join(items)}]"
+        parts.append(text)
+    return ", ".join(parts)
+
+
+_VISION_PLACEHOLDERS = frozenset({"", "empty", "unknown", "spectating"})
+_STAR_SUFFIX_RE = re.compile(r"\s*[1-3]\s*-?\s*(?:star|\*)\s*$", re.IGNORECASE)
+
+
+def _vision_board(live: dict, set_n) -> list:
+    """Vision board units on the resolved set's roster; placeholders and any
+    name off the roster (or every name, with no roster) are dropped."""
+    units = live.get("board_units")
+    if not isinstance(units, list):
+        return []
+    roster: set = set()
+    if set_n is not None:
+        try:
+            from tft import tft_set
+            roster = {n.lower() for n in tft_set.roster(set_n)}
+        except Exception:  # noqa: BLE001
+            roster = set()
+    kept = []
+    for u in units:
+        text = u.strip() if isinstance(u, str) else ""
+        if text.lower() in _VISION_PLACEHOLDERS:
+            continue
+        base = _STAR_SUFFIX_RE.sub("", text.split("(")[0].strip()).strip().lower()
+        if base in roster:
+            kept.append(text)
+        else:
+            logger.debug("TFT prompt: vision board unit %r is not on the set %s "
+                         "roster - dropped", text, set_n)
+    return kept
 
 
 FIELD_MAP = {
@@ -243,33 +341,31 @@ def _build_prompt(state: dict) -> str:
     round_type = "CAROUSEL" if is_car else ("PVE" if event == "pve" else "PVP")
     max_level_for_stage = {1: 3, 2: 5, 3: 6, 4: 8, 5: 9, 6: 9, 7: 9}.get(stage, 9)
 
-    _live_hp = None; _live_gold = None; _live_traits = ""; _live_board = ""
-    _live_augments = []
-    try:
-        import json as _j
-        from pathlib import Path as _P
-        _ld = _j.loads((_P(__file__).parent.parent / "data" / "tft_live_data.json").read_text(encoding="utf-8"))
-        _live_hp = _ld.get("hp")
-        _live_gold = _ld.get("gold") if _ld.get("gold") else None
-        _live_traits = ", ".join(_ld.get("traits_active") or [])
-        _live_board = ", ".join(u for u in (_ld.get("board_units") or []) if u and u != "empty")
-        _live_augments = _ld.get("augments") or []
-    except Exception:  # noqa: BLE001
-        pass
-    hp_display = _live_hp if _live_hp else state.get("health", "?")
-    if hp_display is None:
-        hp_display = "unknown"  # S135: never "HP: None" (or a guessed 0)
-    gold_display = _live_gold if _live_gold else "unknown"
+    # S136 T9: the state dict is the authority (see _LIVE_DATA_FILE); the
+    # vision file fills only what the reader lacks.
+    _ld = _live_data()
+    _auth_board = _authoritative_board(state)
+    if _auth_board:
+        # The EoG board supersedes the vision board panel read, and the
+        # traits / comp derived from that same read (QA 2-1: eight traits
+        # listed, none active).
+        _live_board = _fmt_board(_auth_board)
+        _live_traits = ""
+    else:
+        _live_board = ", ".join(_vision_board(_ld, _set_n))
+        _live_traits = ", ".join(str(t) for t in (_ld.get("traits_active") or []) if t)
+    _live_augments = _ld.get("augments") or []
+    if not isinstance(_live_augments, list):
+        _live_augments = []
+    _live_gold = _prompt_gold(state, _ld)
+    # The reader's health (Live Client / EoG, its OCR fallback); a vision HP
+    # is never shown as player HP (QA: vision 35, every player at 100).
+    _hp = _bounded_int(state.get("health"), 100)
+    hp_display = _hp if _hp is not None else "unknown"  # S135: never "HP: None"
+    gold_display = _live_gold if _live_gold is not None else "unknown"
 
     # Resolve partner HP for Double Up
-    _partner_hp = state.get("partner_hp", None)
-    try:
-        from pathlib import Path as _PP
-        import json as _pj
-        _pd = _pj.loads((_PP(__file__).parent.parent / "data" / "tft_live_data.json").read_text(encoding="utf-8"))
-        _partner_hp = _pd.get("partner_hp", _partner_hp)
-    except Exception:  # noqa: BLE001
-        pass
+    _partner_hp = _ld.get("partner_hp", state.get("partner_hp", None))
 
     lines = [
         f"=== Stage {stage}-{rnd} | Level {level} | Round type: {round_type} ===",
@@ -346,24 +442,17 @@ def _build_prompt(state: dict) -> str:
         buys = -(-xp_needed // XP_BUY_COST)
         lines.append(f"XP to Lv{level + 1}: {xp_needed}XP = {buys} buys ({buys * XP_BUY_COST}g at {XP_BUY_COST}g each)")
 
-    # Interest context from vision
-    if _live_gold and isinstance(_live_gold, (int, float)) and _live_gold > 0:
+    # Interest context from the resolved gold (reader first, vision fallback)
+    if _live_gold and _live_gold > 0:
         _interest = min(5, int(_live_gold) // 10)
         lines.append(f"Current gold: {int(_live_gold)}g | Interest: +{_interest}g/round | {'AT CAP' if _interest >= 5 else f'Next bracket: {(_interest+1)*10}g'}")
 
     if is_car:
         lines.append(f"CAROUSEL ROUND: Do NOT suggest rolling or leveling  -  only {_pick_noun} pick advice.")
-        try:
-            import json as _json
-            from pathlib import Path as _Path
-            _live = _json.loads((_Path(__file__).parent.parent / "data" / "tft_live_data.json").read_text(encoding="utf-8"))
-            _comp = _live.get("comp", "") or ""
-            _traits = ", ".join(_live.get("traits_active") or [])
-            if _comp or _traits:
-                lines.append(f"Current comp: {_comp}  Active traits: {_traits}")
-                lines.append(f"{_pick_noun.capitalize()} advice: recommend completed items for this carry, or emblems for active traits.")
-        except Exception:  # noqa: BLE001
-            pass
+        _comp = "" if _auth_board else str(_ld.get("comp", "") or "")
+        if _comp or _live_traits:
+            lines.append(f"Current comp: {_comp}  Active traits: {_live_traits}")
+            lines.append(f"{_pick_noun.capitalize()} advice: recommend completed items for this carry, or emblems for active traits.")
 
     if event == "pve":
         lines.append("PVE ROUND: No opponent to position against  -  focus on econ/leveling decisions.")
@@ -391,9 +480,16 @@ def _build_prompt(state: dict) -> str:
         if coord_signals:
             lines.append("Donation signals: " + " | ".join(f"{k}: {v}" for k, v in list(coord_signals.items())[:3]))
 
+    # S136 T9: items_str is the Live Client's me.items; the standalone source
+    # has none, so its "none" is a default, not a read (QA 2-1: "items: none
+    # yet" while Xayah held Sparring Gloves). The EoG board carries the
+    # equipped items, so with it "none" is never claimed.
+    _items_line = items_str
+    if _auth_board and items_str in ("", "none"):
+        _items_line = "unknown (equipped items are listed on Board units)"
     lines += [
         "",
-        f"Your items/augments: {items_str}",
+        f"Your items/augments: {_items_line}",
     ]
 
     #  -  -  Selected comp context (from overlay comp selector)  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
@@ -482,7 +578,6 @@ def _build_prompt(state: dict) -> str:
 def _parse_response(text: str, *, gods: bool | None = None) -> dict:
     """Model reply -> payload fields. ``gods`` None = the resolved set's
     (RM-845): only a Realm of the Gods set rewrites "carousel" to "God boon"."""
-    import re
     if gods is None:
         gods = _set_has_gods()
     fields      = {}
@@ -707,11 +802,7 @@ class TftCoachEngine:
     def _vision_hp(self, loader=None):
         """Read hp from data/tft_live_data.json, or None if unusable."""
         try:
-            if loader is not None:
-                data = loader()
-            else:
-                path = Path(__file__).parent.parent / "data" / "tft_live_data.json"
-                data = json.loads(path.read_text(encoding="utf-8"))
+            data = loader() if loader is not None else _live_data()
             if not isinstance(data, dict):
                 return None
             return self._coerce_hp(data.get("hp"))
@@ -719,13 +810,16 @@ class TftCoachEngine:
             return None
 
     def _resolve_hp(self, state: dict, default: int = 100) -> int:
-        """Vision HP wins, then API state, then the default."""
-        vision = self._vision_hp()
-        if vision is not None:
-            return vision
+        """The state reader's HP wins (Live Client / standalone EoG health,
+        its OCR fallback), then vision, then the default. S136 T9: vision won
+        first, so a vision read of 35 with every player at 100 (QA run
+        20261025-153652) reached the payload and the urgency gate."""
         api = self._coerce_hp(state.get("health"))
         if api is not None:
             return api
+        vision = self._vision_hp()
+        if vision is not None:
+            return vision
         return default
 
     def submit(self, state: dict) -> None:
@@ -851,7 +945,7 @@ class TftCoachEngine:
                 return
         self._last_fields = dict(fields)
 
-        # Resolve authoritative HP: prefer vision HP, fallback to API state, fallback to 100
+        # Resolve HP: the reader's health, fallback vision, fallback 100 (S136 T9)
         _out_hp = self._resolve_hp(state)
 
         output = {
