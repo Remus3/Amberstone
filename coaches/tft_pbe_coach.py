@@ -11,7 +11,8 @@ RM-845: no set is hard-wired here any more. The set comes from
 tft/tft_set.py (live set id > RC_TFT_SET > newest ingested set) and the
 engine's system prompt from tft/tft_prompt.py, shared with the live engine;
 the Realm of the Gods round schedule is injected only when the resolved set's
-meta records that mechanic.
+round schedule is the Set 17 one (RM-862, tft/tft_state_reader.py
+round_schedule).
 
 Architecture:
   TftStateReader      - polls Riot Live Client API (same as live)
@@ -157,24 +158,34 @@ class Coach:
     def _inject_pbe_events(state: dict):
         """Override round events with the Realm of the Gods schedule.
 
-        RM-845: the schedule in tft/tft_pbe_data.py is Set 17's, so it is
-        injected only when the resolved set's meta records Realm of the Gods
-        (tft/tft_prompt.py set_has_gods); any other set keeps the state
-        reader's own round fields.
+        RM-862: the schedule comes from the resolved set's round schedule
+        (tft/tft_state_reader.py round_schedule, RM-855; the RM-858 pattern),
+        so the Set 17 tables in tft/tft_pbe_data.py are injected only for
+        Set 17 with that mechanic. Before RM-862 the gate was set_has_gods()
+        (RM-845), which let any set whose meta records Realm of the Gods (a
+        Set 18 or a later ingested set) take the Set 17 rounds. Every other
+        set keeps the state reader's own round fields, which already come
+        from round_schedule (the neutral schedule); so does a schedule
+        failure.
         """
-        from tft import tft_prompt
-        if not tft_prompt.set_has_gods():
+        try:
+            from tft import tft_state_reader
+            sched = tft_state_reader.round_schedule()
+            if sched.label != tft_state_reader.SCHEDULE_GODS:
+                return
+        except Exception:  # noqa: BLE001
             return
-        from tft.tft_pbe_data import ROUND_EVENTS, PVE_ROUNDS, GOD_ROUNDS, BOON_ROUND, TEMPO_MILESTONES
+        from tft.tft_pbe_data import BOON_ROUND  # not in RoundSchedule; gods schedule only
         round_key = (state.get("stage", 1), state.get("round", 1))
         stage_round_str = state.get("stage_round", f"{round_key[0]}-{round_key[1]}")
+        rf = sched.fields(*round_key)
 
-        state["round_event"] = ROUND_EVENTS.get(round_key, "pvp")
-        state["is_pve"]      = round_key in PVE_ROUNDS
+        state["round_event"] = rf["round_event"]
+        state["is_pve"]      = rf["is_pve"]
         state["is_carousel"] = False  # Realm of the Gods replaces the carousel
-        state["is_god_round"] = round_key in GOD_ROUNDS
+        state["is_god_round"] = rf["is_god_round"]
         state["is_boon_round"] = round_key == BOON_ROUND
-        state["tempo_note"]  = TEMPO_MILESTONES.get(stage_round_str, "")
+        state["tempo_note"]  = sched.tempo.get(stage_round_str, "")  # keyed on the state's own string
 
     # -- Helpers ---------------------------------------------------------------
 
