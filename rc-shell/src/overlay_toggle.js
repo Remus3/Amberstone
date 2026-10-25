@@ -330,6 +330,16 @@ function applyContentToggle(actions, surface, contentOn) {
   };
 }
 
+// May the icon window be shown (showInactive + moveTop) right now? Only once it
+// has painted (ready), only on the in-game surface, and NEVER after the crash
+// guard gave up on it: a given-up surface stays dark (crash_guard.js), and the
+// re-raise paths (surface re-apply, overlay focus, relaunch) must not resurrect
+// a dead, non-click-through window over the live game. Strict-true / strict
+// surface so a truthy non-boolean never leaks a show.
+function toggleShowable(ready, surface, gaveUp) {
+  return ready === true && gaveUp !== true && surface === ov.SURFACES.OVERLAY;
+}
+
 // Toggle input (an icon tap or the Ctrl+Shift+O signal) only counts while the
 // in-game surface is up. Out of a game the chord is just as likely meant for
 // another app (VS Code / Chrome bind Ctrl+Shift+O), and acting on it would
@@ -362,6 +372,7 @@ module.exports = {
   posFromWindow,
   makeToggleDrag,
   applyContentToggle,
+  toggleShowable,
   acceptsToggleInput,
   normToggleAction,
 };
