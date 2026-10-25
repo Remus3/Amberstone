@@ -630,6 +630,18 @@ Return ONLY JSON.
         "poke_phase":     lambda v: isinstance(v, bool),
     }
 
+    # RM-869 (the RM-144 pattern, dashboard/_screen_read.py ScreenReadVision):
+    # both PROMPTs are load-bearing and NONE of their keys is in the relay's
+    # fixed TFT schema (vision_server/_inference.py _VISION_PROMPT); the relay
+    # transport carries no prompt, so current_event / event_timer /
+    # event_location / nexus_hp_* / turret_count_* (Nexus Blitz) and
+    # heal_enemies / poke_phase / deaths_visible (URF) could never arrive, and
+    # _run_vision's event + nexus writes never fired. The wrapped reader goes
+    # direct so PROMPT reaches the model. No OCR SHADOW_FIELDS here, so going
+    # direct blanks nothing the relay used to answer. Frame capture (:8889
+    # with X-RC-Token) is untouched - only the extraction transport changes.
+    USE_RELAY = False
+
     def __init__(self, api_key: str, mode: str):
         import anthropic
         from modes.shared_vision import SONNET_MODEL, GameVisionReader
@@ -637,6 +649,7 @@ Return ONLY JSON.
         r._client = anthropic.Anthropic(api_key=api_key, base_url="https://api.anthropic.com")
         r._model  = SONNET_MODEL
         r._last   = {}
+        r.USE_RELAY = self.USE_RELAY
         if "ULTBOOK" in mode.upper() or "URF" in mode.upper():
             r.PROMPT = self._URF_PROMPT
             r.TIERED_FIELDS = self._URF_TIERED_FIELDS
