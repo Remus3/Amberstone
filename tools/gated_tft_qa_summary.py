@@ -13,7 +13,8 @@ never ticks a row - a summary is the INPUT to the four-part evidence contract
 in ``docs/LIVE_GAME_GATED_SYNC.md``, never the evidence itself.
 
 WHAT IT REPORTS:
-  - game id + queue (from the recorder's ``game_id`` event), start time and
+  - game id + queue (the recorder's ``game_id`` event, else MATCH_START.json
+    ``game_id`` / ``session_queue`` or the ``match_start`` event), start time and
     whether the recorder joined late.
   - the RC pid timeline from ``state.health.pid``: every pid change mid-match
     is an RC restart, which is exactly when a joined-late mode detect can miss.
@@ -132,11 +133,23 @@ def summarize(match_dir: Path) -> dict:
 
     events: Counter = Counter()
     game: dict = {}
+    start_event_game_id = None
     for rec in _read_jsonl(match_dir / "events.jsonl", bad):
         ev = rec.get("ev")
         events[str(ev)] += 1
         if ev == "game_id" and not game:
             game = {"game_id": rec.get("game_id"), "queue": _dict(rec.get("queue"))}
+        elif ev == "match_start" and start_event_game_id is None:
+            start_event_game_id = rec.get("game_id")
+
+    # The s134-2 recorder writes no ev=game_id event: the game id rides the
+    # match_start event and MATCH_START.json, the queue rides MATCH_START.json
+    # ``session_queue`` (its ``queue`` key is an all-None dict there).
+    fallback_id = start.get("game_id") or start_event_game_id
+    if not game.get("game_id") and fallback_id:
+        game["game_id"] = fallback_id
+    if not game.get("queue") and _dict(start.get("session_queue")):
+        game["queue"] = _dict(start.get("session_queue"))
 
     frames: Counter = Counter()
     for rec in _read_jsonl(match_dir / "frames.jsonl", bad):
