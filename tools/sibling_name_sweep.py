@@ -919,6 +919,26 @@ def _variant_fragments(name: str) -> dict:
 _LEFT_EDGE = r"(?<![A-Za-z0-9])"
 _RIGHT_EDGE = r"(?![A-Za-z0-9])"
 
+# RM-813. The DRIVE arm is the one a NARROWED slot keeps, so every spelling of
+# a drive root has to reach it, not only the drive-letter one: the WSL mount
+# `/mnt/<x>/`, the POSIX-shell drive `/<x>/`, and the WSL UNC path
+# `<lead>wsl$<sep><distro><sep>mnt<sep><x><sep>` (either host, the Win32 `?`
+# long-path or `.` device step). A non-narrowed slot already halted on those
+# through its bare arm. The head is only ever WIDENED by an alternative, so
+# every earlier drive match is still a match (monotone by construction); the
+# name, its right edge and the one-letter drive are unchanged. The lead is the
+# same string as `tools/credential_patterns.py` `_WSL_UNC_LEAD`, pinned equal
+# by tests/test_rm813_push_gate_mount_spellings.py.
+_WSL_UNC_LEAD = (
+    r"[\\/]{2,4}(?:[?.][\\/]{1,2}unc[\\/]{1,2})?wsl(?:\$|\.localhost)"
+    r"[\\/]{1,2}[^\\/\s]{1,64}"
+)
+_DRIVE_HEAD = (
+    r"(?<![A-Za-z0-9_])(?:[A-Za-z]:[\\/]{1,2}|/mnt/[A-Za-z]/|/[A-Za-z]/|"
+    + _WSL_UNC_LEAD
+    + r"[\\/]{1,2}mnt[\\/]{1,2}[A-Za-z][\\/]{1,2})"
+)
+
 
 def build_needles(cfg: SweepConfig) -> list:
     narrowed_keys = {_narrow_key(n) for n in (cfg.narrowed_names or ())}
@@ -932,15 +952,13 @@ def build_needles(cfg: SweepConfig) -> list:
         tight = "".join(re.escape(t) for t in re.split(r"\s+", name.strip()) if t)
         shapes: list = []
         for family, frag in variants.items():
-            # S1 + S2: drive letter, one or two separators, either slash.
+            # S1 + S2: drive letter, one or two separators, either slash, and
+            # (RM-813) the mount spellings of the same drive root.
             shapes.append(
                 CompiledShape(
                     f"{SHAPE_DRIVE}/{family}",
                     VIEW_SPACE,
-                    re.compile(
-                        r"(?<![A-Za-z0-9_])[A-Za-z]:[\\/]{1,2}" + frag + _RIGHT_EDGE,
-                        re.I,
-                    ),
+                    re.compile(_DRIVE_HEAD + frag + _RIGHT_EDGE, re.I),
                 )
             )
             # S7: github.com/<owner>/<spelling>
@@ -986,7 +1004,7 @@ def build_needles(cfg: SweepConfig) -> list:
             CompiledShape(
                 f"{SHAPE_DRIVE}/CONCAT",
                 VIEW_TIGHT,
-                re.compile(r"(?<![A-Za-z0-9_])[A-Za-z]:[\\/]{1,2}" + tight, re.I),
+                re.compile(_DRIVE_HEAD + tight, re.I),
             )
         )
         needles.append(

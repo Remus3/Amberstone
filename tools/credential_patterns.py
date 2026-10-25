@@ -443,8 +443,12 @@ _HOST_RIGHT = r"(?![A-Za-z0-9_\-])"
 # this lead a drive path spelled through a distro passed every path arm. It is
 # only ever ADDED as a further alternative or an optional prefix, so no shape
 # the earlier arms matched can be lost (monotone by construction).
+# RM-813: the step takes the Win32 DEVICE `.` as well as the long-path `?`
+# (`<lead>.<sep>UNC<sep>wsl$...`); with single separators it was not read as a
+# lead at all. `tools/sibling_name_sweep.py` carries the same string, pinned
+# equal by tests/test_rm813_push_gate_mount_spellings.py.
 _WSL_UNC_LEAD = (
-    r"[\\/]{2,4}(?:\?[\\/]{1,2}unc[\\/]{1,2})?wsl(?:\$|\.localhost)"
+    r"[\\/]{2,4}(?:[?.][\\/]{1,2}unc[\\/]{1,2})?wsl(?:\$|\.localhost)"
     r"[\\/]{1,2}[^\\/\s]{1,64}"
 )
 
