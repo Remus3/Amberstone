@@ -71,6 +71,7 @@ USAGE
     python tools/arena_shadow_report.py            # human summary, default path
     python tools/arena_shadow_report.py --json     # machine-readable JSON
     python tools/arena_shadow_report.py --path X --min-sample N
+    python tools/arena_shadow_report.py --since 2026-10-26   # post-fix cohort
 """
 from __future__ import annotations
 
@@ -533,12 +534,34 @@ def _flip_readiness(coverage: dict, agreement: dict, min_sample: int) -> dict:
     }
 
 
-def build_report(path: Path, min_sample: int = MIN_SAMPLE) -> dict:
-    """Assemble the full Arena shadow report dict from the log path."""
-    records = load_jsonl(path)
+def _since_filter(records: list[dict], since: Optional[str]) -> tuple:
+    """Keep the rows whose ``ts`` is at / after ``since`` (RM-868 cohort).
+
+    The writer stamps ``ts`` as UTC ``isoformat()`` (core/arena_coach_shadow.py
+    log_arena_coach), so a plain string compare orders it, and a date prefix
+    such as "2026-10-26" works. A row with no str ``ts`` is excluded once a
+    cohort is asked for. Returns (kept, n_before)."""
+    if not since:
+        return records, 0
+    kept = [r for r in records
+            if isinstance(r.get("ts"), str) and r["ts"] >= since]
+    return kept, len(records) - len(kept)
+
+
+def build_report(path: Path, min_sample: int = MIN_SAMPLE,
+                 since: Optional[str] = None) -> dict:
+    """Assemble the full Arena shadow report dict from the log path.
+
+    ``since`` scores only the rows at / after that ISO timestamp, so a cohort
+    recorded after a fix is never mixed with the rows before it (the 617 live
+    rows predate the RM-868 camp_phase fix); ``coverage["before_since"]``
+    counts what was left out."""
+    records, before = _since_filter(load_jsonl(path), since)
     coverage = _coverage_block(records)
+    if since:
+        coverage["before_since"] = before
     agreement = summarize_agreement(records)
-    return {
+    report = {
         "schema": "arena_shadow_report/v1",
         "path": str(path),
         "min_sample": min_sample,
@@ -547,6 +570,9 @@ def build_report(path: Path, min_sample: int = MIN_SAMPLE) -> dict:
         "agreement": agreement,
         "flip_readiness": _flip_readiness(coverage, agreement, min_sample),
     }
+    if since:
+        report["since"] = since
+    return report
 
 
 def _print_human(report: dict) -> None:
@@ -556,6 +582,9 @@ def _print_human(report: dict) -> None:
     print(f"[arena shadow] {cov.get('total', 0)} rows, "
           f"{cov.get('distinct_champs', 0)} champs, "
           f"{cov.get('distinct_rounds', 0)} rounds")
+    if report.get("since"):
+        print(f"    cohort: ts >= {report['since']} "
+              f"({cov.get('before_since', 0)} earlier row(s) left out)")
     print(f"    ticks: {cov.get('live_fight', 0)} live-fight, "
           f"{cov.get('dead_state', 0)} dead-state (excluded from agreement)")
     if cov.get("focus_board_relogs"):
@@ -593,8 +622,12 @@ def main(argv: Optional[list[str]] = None) -> int:
     ap.add_argument("--json", action="store_true", help="emit JSON not a summary")
     ap.add_argument("--min-sample", type=int, default=MIN_SAMPLE,
                     help=f"live-fight comparable rounds gate (default {MIN_SAMPLE})")
+    ap.add_argument("--since", default=None,
+                    help="score only rows with ts >= this ISO timestamp or "
+                         "date (a post-fix cohort, never mixed with older rows)")
     args = ap.parse_args(argv)
-    report = build_report(Path(args.path), min_sample=args.min_sample)
+    report = build_report(Path(args.path), min_sample=args.min_sample,
+                          since=args.since)
     if args.json:
         print(json.dumps(report, indent=2, sort_keys=True))
     else:
