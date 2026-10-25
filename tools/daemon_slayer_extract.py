@@ -28,8 +28,10 @@ The damage-split and skill-order blocks get the same gate (RM-807): a block
 that is >= 95 percent degenerate (all-zero split rows, empty skill orders, or
 an empty block) exits 5 with nothing written, past it only with
 ``--allow-degenerate-lolmath REASON``; a degenerate row below the floor is
-named in a WARNING. A Meraki items payload under 160 or an Arena augments
-payload under 110 (RM-807 (d); every snapshot measured 320 / 220-227) exits 6
+named in a WARNING. A role, damage-split or skill-order block that covers
+under 95 percent of the cooldown roster fails the same way (RM-887). A
+Meraki items payload under 160 or an Arena augments payload under 110
+(RM-807 (d); every snapshot measured 320 / 220-227) exits 6
 with nothing written, past it only with ``--allow-short-upstream REASON``.
 
 ``--lolmath-only`` re-runs ONLY the lolmath extract against an EXISTING
@@ -1031,7 +1033,13 @@ def check_aram_neutrality(aram_modifiers: dict[str, Any],
 # logged and recorded in the manifest (``lolmath_degenerate_override``).
 # RM-807 (c) puts the scenario chunk's cooldown and role tables under the same
 # floor: every committed snapshot has a clean row of each for every champion.
+# RM-887: a clean block can still be SHORT - 20 rows for a 173-champion
+# roster passed, and the other 153 champions got None in champions.json. The
+# cooldown table is the roster (as for check_lolmath_coverage); every committed
+# snapshot covers it fully in the role, damage-split and skill-order blocks, so
+# a block under this fraction of it fails under the same exit and override.
 LOLMATH_BLOCK_FAIL_FRACTION = 0.95
+LOLMATH_COVERAGE_FLOOR = 0.95
 EXIT_LOLMATH_DEGENERATE = 5
 _DAMAGE_SPLIT_FIELDS = ("physical", "magical", "trued")
 _SKILL_SLOTS = frozenset({"Q", "W", "E", "R"})
@@ -1107,10 +1115,17 @@ def check_lolmath_blocks(damage_distribution: dict[str, Any],
     raises ``DegenerateLolmathBlockError`` naming every such block, unless
     ``override_reason`` is a non-blank string: then it logs a WARNING and adds
     ``override_reason``. Degenerate rows below the floor are named in a WARNING.
+
+    With a non-empty ``cooldowns`` roster, each other block also records
+    ``missing_rows`` and ``coverage`` (roster ids it has a row for; ids outside
+    the roster do not count) and fails the same way under
+    ``LOLMATH_COVERAGE_FLOOR`` (RM-887); missing ids below that floor are
+    named in a WARNING.
     """
     out: dict[str, Any] = {"threshold": LOLMATH_BLOCK_FAIL_FRACTION}
     failing: list[str] = []
     blocks: list[tuple[str, dict[str, Any], Any]] = []
+    roster = set(cooldowns) if cooldowns else set()
     if cooldowns is not None:
         blocks.append(("cooldowns", cooldowns, _cooldown_row_is_degenerate))
     if roles is not None:
@@ -1132,6 +1147,18 @@ def check_lolmath_blocks(damage_distribution: dict[str, Any],
         elif bad:
             log.warning("lolmath %s: %d/%d degenerate row(s): %s",
                         name, len(bad), rows, bad)
+        if name == "cooldowns" or not roster or not rows:
+            continue
+        missing = sorted(roster - set(table))
+        coverage = (len(roster) - len(missing)) / len(roster)
+        out[name]["missing_rows"] = len(missing)
+        out[name]["coverage"] = round(coverage, 4)
+        if coverage < LOLMATH_COVERAGE_FLOOR:
+            failing.append(f"{name} covers {len(roster) - len(missing)}/{len(roster)} "
+                           f"of the cooldown roster ({coverage:.1%})")
+        elif missing:
+            log.warning("lolmath %s: %d/%d cooldown-roster champion(s) have no row: %s",
+                        name, len(missing), len(roster), missing)
     reason = (override_reason or "").strip()
     if not failing:
         if reason:
@@ -1140,15 +1167,17 @@ def check_lolmath_blocks(damage_distribution: dict[str, Any],
     detail = "; ".join(failing)
     if not reason:
         raise DegenerateLolmathBlockError(
-            f"RM-807: lolmath {detail}, at or above the "
-            f"{LOLMATH_BLOCK_FAIL_FRACTION:.0%} floor - an upstream reset or "
+            f"RM-807: lolmath {detail}, past the "
+            f"{LOLMATH_BLOCK_FAIL_FRACTION:.0%} degenerate / "
+            f"{LOLMATH_COVERAGE_FLOOR:.0%} coverage floor - an upstream reset or "
             "parser drift, not a balance patch; nothing was written. Adjudicate "
             "it, then re-run with --allow-degenerate-lolmath REASON to accept it "
             "as an explicit, recorded act."
         )
     log.warning(
-        "RM-807 override: accepting lolmath %s (floor %.0f%%) - reason: %s",
-        detail, LOLMATH_BLOCK_FAIL_FRACTION * 100, reason,
+        "RM-807 override: accepting lolmath %s (degenerate floor %.0f%%, "
+        "coverage floor %.0f%%) - reason: %s",
+        detail, LOLMATH_BLOCK_FAIL_FRACTION * 100, LOLMATH_COVERAGE_FLOOR * 100, reason,
     )
     out["override_reason"] = reason
     return out
@@ -1878,7 +1907,9 @@ def main() -> int:
     ap.add_argument("--allow-degenerate-lolmath", default=None, metavar="REASON",
                     help="RM-807: accept a lolmath cooldown, role, damage-split or "
                          "skill-order block that is >= 95%% degenerate (no positive "
-                         "cooldown / no class / all-zero splits / empty orders; "
+                         "cooldown / no class / all-zero splits / empty orders) or, "
+                         "for a role, damage-split or skill-order block, covers under "
+                         "95%% of the cooldown roster ("
                          f"the extract otherwise exits {EXIT_LOLMATH_DEGENERATE} and "
                          "writes nothing); REASON is logged and recorded in the manifest")
     ap.add_argument("--allow-short-upstream", default=None, metavar="REASON",
