@@ -180,6 +180,10 @@ def test_rest_of_environment_passes_through(monkeypatch: pytest.MonkeyPatch) -> 
     # KIT-15 adds a key to every child; drop any parent copy so the exact
     # added-key list below holds whatever the runner's own env carries.
     monkeypatch.delenv("CLAUDE_CODE_DISABLE_BACKGROUND_TASKS", raising=False)
+    # Likewise KIT-10's FLEET_SUBAGENT_FIRST: a kit-spawned headless parent
+    # already carries it (=off), which made it inheritable, not added, and
+    # failed the exact list below (RM-851b). Pin it here, never read it.
+    monkeypatch.delenv("FLEET_SUBAGENT_FIRST", raising=False)
     rec = _Recorder()
     _run(rec, "t-authenv-passthru")
     env = rec.kwargs["env"]
