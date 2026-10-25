@@ -15,7 +15,7 @@ FROZEN: the s134 grant "global frozen edit allowed" was SESSION-scoped - re-conf
 Next action: LAND the s134 branches below onto local main (verifier first; the merger runs the ONE
 gated Tier-2 suite on the merged tree), then PUSH.
 PUSH (s134 operator: "keep updates push commits locally for now" - confirm the hold is lifted first):
-- Local main is 76 ahead / 3 behind origin/main after the s134 wrap commit (git rev-list
+- Local main is 78 ahead / 3 behind origin/main after the 3 s134 wrap commits (git rev-list
   --left-right --count origin/main...main). origin/main carries 3 operator web-UI commits ca3824813,
   1db3e2d56, df946b00d (riot.txt uploads) on 4023fa2a3.
 - MERGE origin/main into local main (NEVER rebase, never reset local main), push through
@@ -341,7 +341,7 @@ docs/handoff-archive/RC-2026-10-25.txt block 3 - read them before landing or pus
 - RACE GUARDS, a UNIQUE -F file per commit, never --amend, never `git push --tags`; owner-id probe.
 - fleet_gitlock refuses cherry-pick: `git cherry-pick --no-commit <sha>` then `fleet_gitlock.py run
   -- git commit -C <sha>`.
-- The pre-push sweep scans EVERY commit in the range (messages too): dry-run it over the ~76-commit
+- The pre-push sweep scans EVERY commit in the range (messages too): dry-run it over the ~78-commit
   s134 range plus the lane landings before the push; rebuild, never bypass.
 - Builders' LEDGER numbers and RM ids are PROVISIONAL: the merger renumbers at landing.
 - Land TFT code only between games (M1c polled the LCU phase every 60 s): a .py merge restarts RC.
@@ -351,8 +351,8 @@ docs/handoff-archive/RC-2026-10-25.txt block 3 - read them before landing or pus
 ====================
 STATUS, CONTEXT, ACCEPTANCE
 ====================
-Status (s134 wrap): NO PUSH (operator hold). Local main = 04a39e5a0 + the wrap commit (LEDGER 1882,
-WAKEUP 2026-10-25b + prune, 2 archive blocks, this file), 76 ahead / 3 behind origin/main df946b00d;
+Status (s134 wrap): NO PUSH (operator hold). Local main = 04a39e5a0 + 3 wrap commits (LEDGER 1882,
+WAKEUP 2026-10-25b + prune, 2 archive blocks, this file), 78 ahead / 3 behind origin/main df946b00d;
 bot_merge_check exit 1 (GH1). CI: no s134 push; df946b00d ci 40204565254 / codeql / pages success; F1
 read dispatch 40189033501 (2 RM-816 cases -> RM-885). Full suite (2c): no dispatch; M1d's gated run
 on 04a39e5a0: 1 failed (matchdb socket abort; 76 passed alone) / 44755 passed / 101 skipped, EXIT 1.
