@@ -191,21 +191,50 @@ def test_a_writer_back_before_the_capture_is_put_back(tmp_path, d, monkeypatch):
     """The capture took the writer's new bytes: the private compare sees the
     change and the row goes back under its own name, untouched."""
     p = _plant(d, "before")
-    real_move = pw._move
+    real_capture = pw._capture
 
     def writer_then_capture(src, dst):
-        if Path(src) == p:
-            _kit_like_write(p, _writer_doc("before", pct=66))
-        return real_move(src, dst)
+        _kit_like_write(p, _writer_doc("before", pct=66))
+        return real_capture(src, dst)
 
-    monkeypatch.setattr(pw, "_move", writer_then_capture)
+    monkeypatch.setattr(pw, "_capture", writer_then_capture)
     rep = _reap(tmp_path, d)
     assert rep["marked"] == []
     assert _doc(p)["pct"] == 66 and _doc(p)["status"] == "running"
     assert _leftovers(d) == []
 
 
-def test_the_commit_move_never_replaces_an_existing_target(tmp_path):
+@pytest.mark.parametrize("link_move", [False, True], ids=["rename-move", "posix-link-move"])
+def test_the_public_name_is_never_moved_by_link_and_unlink(tmp_path, d, monkeypatch, link_move):
+    """The verifier's POSIX find: a capture by link + unlink unlinks BY NAME,
+    so a writer's replace landing between the two is destroyed. The public
+    name must leave only by one atomic rename (_capture); the create-only
+    _move is for the reaper's private names (tmp, aside)."""
+    monkeypatch.setattr(pw, "_LINK_MOVE", link_move)
+    p = _plant(d, "pub")
+    real_move, real_capture = pw._move, pw._capture
+    moved, captured = [], []
+
+    def spy_move(src, dst):
+        moved.append(Path(src))
+        return real_move(src, dst)
+
+    def spy_capture(src, dst):
+        captured.append(Path(src))
+        return real_capture(src, dst)
+
+    monkeypatch.setattr(pw, "_move", spy_move)
+    monkeypatch.setattr(pw, "_capture", spy_capture)
+    rep = _reap(tmp_path, d)
+    assert rep["marked"] == ["pub"]
+    assert captured == [p]
+    assert moved and p not in moved
+    assert _leftovers(d) == []
+
+
+@pytest.mark.parametrize("link_move", [False, True], ids=["rename-move", "posix-link-move"])
+def test_the_commit_move_never_replaces_an_existing_target(tmp_path, monkeypatch, link_move):
+    monkeypatch.setattr(pw, "_LINK_MOVE", link_move)
     src, dst = tmp_path / "a.tmp", tmp_path / "b.json"
     src.write_bytes(b"new")
     dst.write_bytes(b"writer")
@@ -265,12 +294,15 @@ def test_a_plan_only_pass_never_moves_an_aside(tmp_path, d):
 TRIALS = 300
 
 
-def test_a_free_race_loses_zero_writer_writes(tmp_path, monkeypatch):
+@pytest.mark.parametrize("link_move", [False, True], ids=["rename-move", "posix-link-move"])
+def test_a_free_race_loses_zero_writer_writes(tmp_path, monkeypatch, link_move):
     """Measured, not argued: the writer is released at the reaper's owner
     probe (after its classifying read) and lands at a random point across the
     whole mark path. Every write is newer than what the reaper read, so the
     only correct end state is the writer's row. Base code: a non-zero count
-    (s128: 5-6 of 400). Fixed code: 0 of TRIALS."""
+    (s128: 5-6 of 400; this test: 53 of 300). Fixed code: 0 of TRIALS, on
+    the native move and on the POSIX link move (run on this filesystem)."""
+    monkeypatch.setattr(pw, "_LINK_MOVE", link_move)
     rng = random.Random(816)
     losses = []
     for i in range(TRIALS):

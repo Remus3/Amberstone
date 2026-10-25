@@ -574,16 +574,33 @@ def _unchanged(p: Path, raw: bytes, sig) -> bool:
     return same and _sig(p) == sig
 
 
+# RM-816: a POSIX rename replaces an existing target, so there the
+# create-only move is a hard link plus an unlink. A test flips this to run
+# the POSIX path on NTFS (which has hard links too).
+_LINK_MOVE = os.name != "nt"
+
+
 def _move(src: Path, dst: Path) -> None:
-    """Create-only rename (RM-816): FileExistsError when dst exists, never a
-    replace. Windows os.rename already refuses an existing target; a POSIX
-    rename replaces, so there it is a hard link (refused on an existing name)
-    then an unlink of the source name. A module seam for the race tests."""
-    if os.name == "nt":
-        os.rename(src, dst)
-    else:
+    """Create-only move FROM A PRIVATE NAME (the reaper's tmp or aside):
+    FileExistsError when dst exists, never a replace. Windows os.rename
+    already refuses an existing target; on POSIX it is os.link (refused on an
+    existing name) then an unlink of src - safe only because no writer uses
+    src. A module seam for the race tests."""
+    if _LINK_MOVE:
         os.link(src, dst)
         os.unlink(src)
+    else:
+        os.rename(src, dst)
+
+
+def _capture(p: Path, aside: Path) -> None:
+    """Move the PUBLIC name aside: ONE os.rename on every platform, atomic.
+    Never _move: on POSIX that is link + unlink BY NAME, and a writer's
+    replace landing between the two would be unlinked (the RM-816 verifier
+    find). This rename can only replace the reaper's own pid-scoped aside
+    name (POSIX), never a writer's file; Windows refuses even that. A
+    module seam for the race tests."""
+    os.rename(p, aside)
 
 
 def _drop(p: Path) -> None:
@@ -606,8 +623,8 @@ def _put_back(aside: Path, p: Path) -> None:
 def _swap_if_unchanged(p: Path, data: bytes, raw: bytes, sig) -> bool:
     """RM-816: replace p with data only if p still holds what the reaper
     classified, with no window in which a writer's write can be lost.
-    1. capture: move p aside (atomic). A writer write after this creates p
-       again, and nothing the reaper does next can overwrite it.
+    1. capture: rename p aside (_capture, atomic). A writer write after this
+       creates p again, and nothing the reaper does next can overwrite it.
     2. compare the ASIDE (a private name: no writer races it). A change means
        a writer landed before the capture: put it back, return False.
     3. commit create-only. A writer that came back after the capture owns p,
@@ -616,13 +633,13 @@ def _swap_if_unchanged(p: Path, data: bytes, raw: bytes, sig) -> bool:
     capture when a polling reader share-locks the file (PermissionError)."""
     tmp = p.with_name(f"{p.name}.{os.getpid()}.tmp")
     aside = p.with_name(f"{p.name}.{os.getpid()}.reap")
-    tmp.write_bytes(data)
     try:
+        tmp.write_bytes(data)
         for attempt in range(6):
             if not _unchanged(p, raw, sig):
                 return False
             try:
-                _move(p, aside)
+                _capture(p, aside)
                 break
             except (FileNotFoundError, FileExistsError):
                 return False

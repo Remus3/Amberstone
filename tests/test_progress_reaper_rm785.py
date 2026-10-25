@@ -140,20 +140,20 @@ def test_a_writer_back_after_the_cas_read_but_before_the_replace_wins(tmp_path, 
 def test_a_writer_back_during_a_replace_retry_wins(tmp_path, d, monkeypatch):
     """A polling reader share-locks the target (PermissionError) and the
     reaper retries; a writer that lands during the back-off must win.
-    RM-816: the retried step is now the capture move (pw._move), not a
+    RM-816: the retried step is now the capture rename (pw._capture), not a
     replace onto the row."""
     p = _plant(d, "retry", age_s=1500, eta_s=600, extra={"owner": OWNER})
     calls = []
-    real_move = pw._move
+    real_capture = pw._capture
 
     def capture_locked_once(src, dst):
         calls.append(Path(src).name)
         if len(calls) == 1:
             _writer_returns(p)
             raise PermissionError(13, "share-locked by a polling reader")
-        real_move(src, dst)
+        real_capture(src, dst)
 
-    monkeypatch.setattr(pw, "_move", capture_locked_once)
+    monkeypatch.setattr(pw, "_capture", capture_locked_once)
     rep = _reap(tmp_path, d, alive=Alive(False))
     assert rep["marked"] == []
     assert any("changed" in h["why"] for h in rep["held"])
