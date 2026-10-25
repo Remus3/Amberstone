@@ -178,13 +178,16 @@ body:not([data-shell="overlay"]) #view-active-match
   padding: 8px 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  /* Pane surface, not --surface-2: the faint label measures 4.9-5.1:1 on the
-   * pane background in every theme but only 4.3-4.4:1 on the raised one. */
+  /* Pane surface, not --surface-2 (the raised surface lowers every contrast). */
   background: transparent;
   min-width: 0;
 }
+/* S134 audit M1: --text-faint measured 4.31:1 (arcane, the default), 4.39
+ * (ember), 4.46 (hextech), 4.48 (moonlit) on the pane background - under the
+ * 4.5:1 floor for 16px text. Every TFT label / secondary line therefore uses
+ * --text-dim (6.37-8.18:1); the value and the unit names stay --text. */
 #view-active-match .am-tft-stat-label {
-  color: var(--text-faint);
+  color: var(--text-dim);
   font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -200,7 +203,159 @@ body:not([data-shell="overlay"]) #view-active-match
   text-overflow: ellipsis;
 }
 #view-active-match .am-tft-stat.is-empty .am-tft-stat-value {
-  color: var(--text-faint);
+  color: var(--text-dim);
+}
+
+/* S134: TFT board (BUILD pane, head renamed BOARD) + lobby (MAP pane), from
+ * the standalone client's per-round stats file (coach.tft_board /
+ * coach.tft_players). Display-only lists - nothing here is clickable, so
+ * there is no hit target to size (an over-full board wrapper becomes a
+ * keyboard scroll region; it gets a name and a focus ring below). The unit
+ * name and the "You" row are the brightest text (--text); items, opponents
+ * and the eyebrows step down to --text-dim, never --text-faint (audit M1). */
+#view-active-match .am-tft-sec {
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.12em;
+  margin: 0 0 6px;
+}
+/* Fixed heights, derived from the type tokens below, so the empty state and
+ * the filled lists occupy the SAME box: the pane grid sizes its rows from
+ * content, and a board landing at round 1 used to grow every pane ~31px
+ * (measured, 1920x920 fixture). Board: eyebrow + two chip rows (a level-10
+ * board); more units scroll inside. Lobby: eyebrow + eight rows. */
+#view-active-match .am-tft-board-wrap {
+  height: calc(var(--fs-xs) * 1.2 + 6px
+               + 2 * (var(--fs-sm) * 1.25 + var(--fs-xs) * 1.25 + 8px) + 6px);
+  overflow-y: auto;
+}
+#view-active-match .am-tft-lobby-wrap {
+  height: calc(var(--fs-xs) * 1.2 + 6px + 8 * (var(--fs-sm) * 1.3 + 4px) + 28px);
+  overflow-y: auto;
+}
+#view-active-match .am-tft-board-wrap:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+#view-active-match .am-tft-board-wrap .am-empty,
+#view-active-match .am-tft-lobby-wrap .am-empty {
+  color: var(--text-dim);
+  text-align: left;
+  padding: 0;
+}
+#view-active-match .am-tft-board {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  /* Five columns: a level-10 board (10 units) is two rows inside the
+   * ~145px BUILD body at the 1920x920 baseline; a summon-heavy board scrolls
+   * inside the pane (am-pane-body overflow-y), never reflowing the page. */
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+#view-active-match .am-tft-unit {
+  min-width: 0;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+#view-active-match .am-tft-unit-top {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+#view-active-match .am-tft-unit-name {
+  color: var(--text);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  line-height: 1.25;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Star level: 1-star in the dim step; an upgraded unit in amber
+ * (--signal-warn, global token) - audit S2: the theme --gold is the same hue as
+ * --text-dim in arcane and measured dimmer, so a 2-star read weaker. */
+#view-active-match .am-tft-unit-star {
+  flex: none;
+  color: var(--signal-warn);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: 0.05em;
+}
+#view-active-match .am-tft-unit-star[data-star="1"] {
+  color: var(--text-dim);
+}
+#view-active-match .am-tft-unit-items {
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#view-active-match .am-tft-unit-items.is-empty {
+  font-style: italic;
+}
+#view-active-match .am-tft-lobby {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+#view-active-match .am-tft-lob-row {
+  display: grid;
+  /* The bar column is capped so each HP number sits beside its bar, not
+   * ~800px right of its label (audit nice-to-have). */
+  grid-template-columns: 3.2em 6em minmax(8em, 28em) 3em;
+  justify-content: start;
+  align-items: center;
+  gap: 10px;
+  /* A straight left rule marks the local row; every row reserves it so the
+   * columns align. Square corners: a rounded inset shadow read as "(2nd"
+   * (audit S1). */
+  padding: 2px 8px 2px 5px;
+  border-left: 3px solid transparent;
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+  line-height: 1.3;
+}
+#view-active-match .am-tft-lob-row.is-you {
+  color: var(--text);
+  font-weight: 700;
+  border-left-color: var(--accent);
+}
+#view-active-match .am-tft-lob-row.is-out .am-tft-lob-hp {
+  font-style: italic;
+}
+#view-active-match .am-tft-lob-place,
+#view-active-match .am-tft-lob-hp {
+  font-variant-numeric: tabular-nums;
+}
+#view-active-match .am-tft-lob-hp {
+  text-align: right;
+}
+#view-active-match .am-tft-lob-bar {
+  display: block;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--border-soft);
+  overflow: hidden;
+}
+#view-active-match .am-tft-lob-fill {
+  display: block;
+  height: 100%;
+  background: var(--signal-good);
+}
+#view-active-match .am-tft-lob-fill.is-low {
+  background: var(--signal-bad);
 }
 
 /* MAP pane will host an <img> (static mode map) + an absolutely-

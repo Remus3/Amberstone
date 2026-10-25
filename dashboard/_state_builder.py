@@ -291,7 +291,15 @@ _TFT_STANDALONE_COACH_FILL = (
     ("game_time", "game_time"), ("standing", "standing"),
     ("board_size", "board_size"), ("board_str", "board_str"),
     ("players_alive", "players_alive"),
+    # structured rows for the TFT panel (web/js/panels/active_match.js): the
+    # local board (unit, star, items) and every player's placement + HP.
+    # Own keys - coach.board is the TFT engine's advice TEXT.
+    ("board", "tft_board"), ("players", "tft_players"),
 )
+
+
+def _blank(v) -> bool:
+    return v in (None, "", 0) or (isinstance(v, (list, dict)) and not v)
 
 
 def tft_coach_for_standalone(coach: dict, coach_file: str, lc: dict) -> dict:
@@ -315,9 +323,9 @@ def tft_coach_for_standalone(coach: dict, coach_file: str, lc: dict) -> dict:
             out = {"mode": "tft", "coach_stale": True}
     for src, dst in _TFT_STANDALONE_COACH_FILL:
         v = lc.get(src)
-        if v in (None, "", 0):
+        if _blank(v):
             continue
-        if out.get(dst) in (None, "", 0):
+        if _blank(out.get(dst)):
             out[dst] = v
     return out
 

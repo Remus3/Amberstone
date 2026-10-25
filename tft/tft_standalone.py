@@ -172,6 +172,21 @@ def clean_unit_name(raw) -> str:
     return s or raw
 
 
+_ITEM_PREFIX = re.compile(r"^(?:DA_|TFT\d*_Item_|TFT\d*_)(?:\d+_)?")
+_CAMEL_GAP = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
+
+
+def clean_item_name(raw) -> str:
+    """``DA_18_EmblemFloraFatalis`` -> ``Emblem Flora Fatalis``;
+    ``DA_SteadfastHeart`` -> ``Steadfast Heart``. ASCII, at most 40 chars."""
+    if not isinstance(raw, str) or not raw:
+        return ""
+    s = _ITEM_PREFIX.sub("", raw).replace("_", " ")
+    s = " ".join(_CAMEL_GAP.sub(" ", s).split())
+    s = s.encode("ascii", "ignore").decode("ascii")
+    return s[:40]
+
+
 def _int(v, default=0) -> int:
     try:
         f = float(v)
@@ -189,11 +204,29 @@ def _board(pieces) -> list:
         if not name:
             continue
         raw_items = pc.get("itemNames")
-        items = ([i for i in raw_items if isinstance(i, str)]
+        items = ([n for n in (clean_item_name(i) for i in raw_items) if n]
                  if isinstance(raw_items, list) else [])
         out.append({"name": name, "star": _int(pc.get("starLevel"), 1),
                     "items": items})
     return out
+
+
+def _lobby(players: list) -> list:
+    """All players' public round state - placement, HP, board size, and which
+    one is the local player - sorted by placement. No identity fields: the
+    per-round file names every player, RC carries none of it."""
+    rows = []
+    for p in players:
+        pieces = p.get("boardPieces")
+        rows.append({
+            "standing": _int(p.get("ffaStanding")),
+            "health": max(0, _int(p.get("health"))),
+            "you": p.get("isInteractable") is True,
+            "board_size": len(pieces) if isinstance(pieces, list) else 0,
+        })
+    rows.sort(key=lambda r: (r["standing"] if r["standing"] > 0 else 99,
+                             -r["health"]))
+    return rows
 
 
 def _players(eog: dict) -> list:
@@ -297,7 +330,7 @@ def _round_state(lcu, eog, now: float) -> dict:
     game_id = str((lcu or {}).get("game_id") or "") if isinstance(lcu, dict) else ""
     out = {"eog": False, "local": {}, "players_alive": None,
            "players_total": None, "game_length_s": None, "eog_age_s": None,
-           "game_id": game_id, "queue_id": None, "set": None}
+           "game_id": game_id, "queue_id": None, "set": None, "lobby": []}
     if not isinstance(eog, dict):
         return out
     eog_gid = str(eog.get("gameId") or "")
@@ -315,6 +348,7 @@ def _round_state(lcu, eog, now: float) -> dict:
         "players_alive": sum(1 for p in players if _int(p.get("health")) > 0),
         "game_length_s": _int(sb.get("gameLengthSeconds")),
         "eog_age_s": max(0.0, now - float(eog.get("_mtime") or now)),
+        "lobby": _lobby(players),
     })
     if local is not None:
         out["local"] = {
@@ -426,8 +460,13 @@ def _summary_from_raw(raw: dict) -> dict:
         if board:
             out["board_str"] = ", ".join(
                 f"{u.get('name')}*{u.get('star', 1)}" for u in board)
+            # the local board as structured rows for the TFT panel
+            out["board"] = [dict(u) for u in board]
     if st.get("players_alive") is not None:
         out["players_alive"] = st["players_alive"]
+    if st.get("lobby"):
+        # every player's placement + HP (opponents anonymous), by placement
+        out["players"] = [dict(r) for r in st["lobby"]]
     return out
 
 

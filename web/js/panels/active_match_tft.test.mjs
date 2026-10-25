@@ -19,7 +19,7 @@
 import test from "node:test";
 import assert from "node:assert";
 
-import { amLiveFallbackModel, amStickyPhase } from "./active_match.js";
+import { amLiveFallbackModel, amOrdinal, amStickyPhase } from "./active_match.js";
 
 const TFT_COACH_LIVE = {
   mode: "tft", action: "", board: "", econ: "", rolldown: "", items: "",
@@ -152,6 +152,104 @@ test("garbage payload is safe", () => {
     assert.ok(m);
     assert.strictEqual(m.hasData, false);
   }
+});
+
+// --- S134 follow-up: board + lobby from the standalone client's per-round
+// file (coach.tft_board / coach.tft_players, shape served by
+// dashboard/_state_builder.py tft_coach_for_standalone; values taken from the
+// sanitised real round tests/fixtures/tft_eog_round_s134.json).
+const ROUND_PAYLOAD = {
+  ...TFT_COACH_LIVE,
+  health: 84, standing: 2,
+  tft_board: [
+    { name: "Yorick", star: 1, items: [] },
+    { name: "Xayah", star: 2, items: ["Infinity Edge"] },
+    { name: "Karma", star: 1, items: [] },
+    { name: "Sejuani", star: 2, items: ["Warmogs Armor", "Sunfire Cape"] },
+    { name: "Rakan", star: 1, items: [] },
+    { name: "Diana", star: 1, items: ["Bramble Vest"] },
+  ],
+  tft_players: [
+    { standing: 1, health: 92, you: false, board_size: 6 },
+    { standing: 2, health: 84, you: true, board_size: 6 },
+    { standing: 3, health: 80, you: false, board_size: 5 },
+    { standing: 4, health: 71, you: false, board_size: 6 },
+    { standing: 5, health: 66, you: false, board_size: 5 },
+    { standing: 6, health: 52, you: false, board_size: 5 },
+    { standing: 7, health: 20, you: false, board_size: 4 },
+    { standing: 8, health: 0, you: false, board_size: 0 },
+  ],
+};
+
+test("board + lobby reach the model; placement joins the sub line", () => {
+  const m = amLiveFallbackModel("tft", "InProgress", ROUND_PAYLOAD);
+  assert.strictEqual(m.hasData, true);
+  assert.strictEqual(m.board.length, 6);
+  assert.deepStrictEqual(m.board[1], { name: "Xayah", star: 2, items: ["Infinity Edge"] });
+  assert.strictEqual(m.players.length, 8);
+  assert.deepStrictEqual(m.players[1], { place: 2, hp: 84, you: true });
+  assert.deepStrictEqual(m.players[7], { place: 8, hp: 0, you: false });
+  assert.strictEqual(m.place, 2);
+  assert.strictEqual(m.sub, "TFT - 2nd of 8 - phase InProgress");
+  // HP cell stays data-driven from coach.health; STAGE / LEVEL / GOLD stay "-"
+  assert.deepStrictEqual(m.rows, [["STAGE", "-"], ["LEVEL", "-"], ["HP", "84"], ["GOLD", "-"]]);
+});
+
+test("placement falls back to the lobby's own row when standing is absent", () => {
+  const { standing, ...p } = ROUND_PAYLOAD;
+  assert.strictEqual(standing, 2);
+  assert.strictEqual(amLiveFallbackModel("tft", "InProgress", p).place, 2);
+});
+
+test("board / lobby absent -> empty lists + the empty-state text, same panes", () => {
+  const m = amLiveFallbackModel("tft", "InProgress", TFT_COACH_LIVE);
+  assert.deepStrictEqual(m.board, []);
+  assert.deepStrictEqual(m.players, []);
+  assert.strictEqual(m.place, null);
+  assert.match(m.build, /units appear/i);
+  assert.match(m.map, /lobby/i);
+  assert.doesNotMatch(allText(m), SR_WORDS);
+});
+
+test("untrusted board / lobby rows are sanitised and bounded", () => {
+  const m = amLiveFallbackModel("tft", "InProgress", {
+    tft_board: [
+      // a non-ASCII byte (e-acute, built at runtime so this file stays ASCII)
+      { name: "<img src=x>Ahri" + String.fromCharCode(0xe9), star: 9, items: ["A", 5, null, "B", "C", "D"] },
+      { name: "", star: 2 }, "x", null, [],
+      ...Array.from({ length: 20 }, (_, i) => ({ name: `U${i}`, star: 1, items: [] })),
+    ],
+    tft_players: [
+      { standing: 1, health: 150, you: false },
+      { standing: 99, health: 40, you: "yes" },
+      { standing: 2, health: "x" },
+      ...Array.from({ length: 12 }, () => ({ standing: 3, health: 50, you: false })),
+    ],
+  });
+  assert.strictEqual(m.board[0].name, "<img src=x>Ahri");  // printable ASCII kept, rendered via textContent
+  assert.strictEqual(m.board[0].star, 1);                   // out of range -> 1
+  assert.deepStrictEqual(m.board[0].items, ["A", "B", "C"]); // strings only, max 3
+  assert.ok(m.board.length <= 12);
+  assert.ok(m.players.length <= 8);
+  assert.deepStrictEqual(m.players[0], { place: null, hp: 40, you: false });
+  for (const r of m.players) assert.ok(r.hp >= 0 && r.hp <= 100);
+});
+
+test("amOrdinal", () => {
+  assert.deepStrictEqual([1, 2, 3, 4, 8].map(amOrdinal), ["1st", "2nd", "3rd", "4th", "8th"]);
+  for (const bad of [0, 9, null, "2", NaN]) assert.strictEqual(amOrdinal(bad), "-");
+});
+
+test("unresolved-mode model carries the same list fields (empty)", () => {
+  const m = amLiveFallbackModel("client", "InProgress", ROUND_PAYLOAD);
+  assert.deepStrictEqual([m.board, m.players, m.place], [[], [], null]);
+});
+
+test("board / lobby model strings are 7-bit ASCII", () => {
+  const m = amLiveFallbackModel("tft", "InProgress", ROUND_PAYLOAD);
+  const txt = [m.sub, m.build, m.map,
+    ...m.board.flatMap((u) => [u.name, ...u.items])].join(" | ");
+  assert.ok(/^[\x20-\x7e]*$/.test(txt), txt);
 });
 
 // The LCU agent can drop /api/state.lcu.phase for several seconds mid-game
