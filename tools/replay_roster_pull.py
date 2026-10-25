@@ -152,10 +152,21 @@ _LOG_SINK_BACKUPS = log_rotation.DEFAULT_BACKUP_COUNT
 
 
 def _open_log_sink(sink: Path):
-    """Open the --log-file for append, rotating it first when oversize."""
+    """Open the --log-file for append, rotating it first when oversize.
+
+    A refused rotation (another process holds the file) changes nothing on
+    disk; the run appends to the oversize file and says so in it.
+    """
     sink.parent.mkdir(parents=True, exist_ok=True)
-    log_rotation.rotate_if_oversize(sink, _LOG_SINK_MAX_BYTES, _LOG_SINK_BACKUPS)
-    return sink.open("a", encoding="utf-8", buffering=1)
+    try:
+        oversize = sink.stat().st_size >= _LOG_SINK_MAX_BYTES
+    except OSError:
+        oversize = False
+    err = log_rotation.try_rotate(sink, _LOG_SINK_BACKUPS) if oversize else None
+    stream = sink.open("a", encoding="utf-8", buffering=1)
+    if err is not None:
+        stream.write(log_rotation.refusal_note(sink, err))
+    return stream
 
 
 def main(argv=None) -> int:

@@ -74,6 +74,12 @@ SANCTIONED = {
     ("ops/rc_transactional_deploy.py", "_replace_with_retry"):
         "deploy transaction runs while the app tree is being swapped, so it "
         "must not import from the tree it is replacing",
+    ("core/log_rotation.py", "try_rotate"):
+        "log ROTATION, not an atomic write: it moves existing log generations "
+        "aside (no scratch payload becomes a destination). A held file must "
+        "fail fast and roll every rename back so the writer keeps appending; "
+        "a WinError 5 retry here would stall the logging call that triggered "
+        "the rollover (RM-718 a)",
 }
 
 _PER_WRITER_HINTS = ("getpid", "token", "uuid", "pid")

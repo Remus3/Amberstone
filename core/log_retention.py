@@ -91,6 +91,12 @@ _STOP_JOIN_TIMEOUT_S = 3.0
 # last (RM-718 a).
 _DAILY_LOG_RE = re.compile(r"^\d{4}-\d{2}-\d{2}\.log(?:\.\d+)?$")
 
+# Compressed history kept on purpose lives in `logs/_archive/` (gitignored by
+# the repo-wide `_archive/` rule). The sweep is non-recursive, so nothing there
+# is ever deleted or counted toward the cap (RM-718 a; pinned by
+# tests/test_log_retention.py::test_archive_subdir_is_never_swept_or_counted).
+ARCHIVE_DIRNAME = "_archive"
+
 _thread: Optional[threading.Thread] = None
 _task: Optional[Any] = None  # asyncio.Task / Future
 _stop = threading.Event()
@@ -146,7 +152,8 @@ def _candidates(log_dir: Path) -> list[Path]:
     """All `*.log*` files (matches `log_setup._prune_old_logs` glob).
 
     Not recursive by design: logs/agents, logs/scrapers and logs/ws carry
-    their own retention and are not this module's to delete.
+    their own retention and are not this module's to delete, and
+    logs/_archive (ARCHIVE_DIRNAME) holds history kept on purpose.
     """
     try:
         return [p for p in log_dir.glob("*.log*") if p.is_file()]
@@ -230,8 +237,9 @@ def prune(
     total = pinned_bytes + sum(sz for _, _, sz in survivors)
     if total > cap_bytes:
         # Non-daily files first, then RC's dated daily logs; oldest first
-        # within each tier (RM-718 a).
-        survivors.sort(key=lambda t: (_is_daily_log(t[0]), t[1]))
+        # within each tier, ties broken by name so the choice never depends
+        # on directory-listing order (RM-718 a).
+        survivors.sort(key=lambda t: (_is_daily_log(t[0]), t[1], t[0].name))
         for f, _mt, sz in survivors:
             if total <= cap_bytes:
                 break

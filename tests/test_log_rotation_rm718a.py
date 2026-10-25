@@ -90,6 +90,68 @@ def test_a_refused_rename_keeps_the_base_file_and_does_not_raise(tmp_path):
     assert log.read_bytes() == b"x" * 100
 
 
+_WIN_ONLY = pytest.mark.skipif(
+    sys.platform != "win32",
+    reason="only Windows refuses to rename a file another handle holds open")
+
+
+@_WIN_ONLY
+def test_a_refused_rotation_leaves_every_backup_intact(tmp_path):
+    """Verifier repro (2): the old order shifted `.1 -> .2` (dropping the old
+    `.2`) BEFORE the base rename that a holder refuses, so one refused attempt
+    destroyed a generation. A refused rotation must change nothing."""
+    log = _fill(tmp_path / "w.log", 100, b"c")
+    _fill(tmp_path / "w.log.1", 10, b"b")
+    _fill(tmp_path / "w.log.2", 10, b"a")
+
+    with open(log, "ab"):  # a second handle holds the base file open
+        rotated = log_rotation.rotate(log, backup_count=2)
+
+    assert rotated is False
+    assert log.read_bytes() == b"c" * 100
+    assert (tmp_path / "w.log.1").read_bytes() == b"b" * 10
+    assert (tmp_path / "w.log.2").read_bytes() == b"a" * 10
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["w.log", "w.log.1", "w.log.2"]
+
+
+def test_a_rotation_refused_mid_shift_is_rolled_back(tmp_path):
+    """A backup that refuses its shift (a reader holding `.1`) must not cost
+    the oldest generation either: every applied rename is undone."""
+    log = _fill(tmp_path / "w.log", 100, b"c")
+    _fill(tmp_path / "w.log.1", 10, b"b")
+    _fill(tmp_path / "w.log.2", 10, b"a")
+
+    def _deny_shift_of_backup_1(real, src, dst, *a, **kw):
+        if Path(src).name == "w.log.1":
+            raise PermissionError("held open by a reader")
+        return real(src, dst, *a, **kw)
+
+    with scoped_fs_fault("replace", tmp_path, _deny_shift_of_backup_1):
+        rotated = log_rotation.rotate(log, backup_count=2)
+
+    assert rotated is False
+    assert log.read_bytes() == b"c" * 100
+    assert (tmp_path / "w.log.1").read_bytes() == b"b" * 10
+    assert (tmp_path / "w.log.2").read_bytes() == b"a" * 10
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["w.log", "w.log.1", "w.log.2"]
+
+
+def test_rotation_never_logs(tmp_path, caplog):
+    """A refusal must not be reported through logging: when the handler that
+    is rotating sits on the root logger, that record re-enters it."""
+    log = _fill(tmp_path / "w.log", 100)
+
+    def _deny(real, src, dst, *a, **kw):
+        raise PermissionError("held open by another process")
+
+    with caplog.at_level(logging.DEBUG), \
+            scoped_fs_fault("replace", tmp_path, _deny, expect_fire=False), \
+            scoped_fs_fault("rename", tmp_path, _deny, expect_fire=False):
+        log_rotation.rotate(log, backup_count=2)
+
+    assert [r for r in caplog.records if r.name.startswith("rc.log_rotation")] == []
+
+
 @pytest.mark.parametrize("bad", [0, -1])
 def test_nonpositive_max_bytes_is_rejected(tmp_path, bad):
     log = _fill(tmp_path / "w.log", 10)
@@ -159,6 +221,67 @@ def test_handler_keeps_records_when_the_rollover_is_refused(tmp_path):
     assert not (tmp_path / "agent.log.1").exists()
 
 
+@_WIN_ONLY
+def test_root_logger_handler_with_a_held_file_does_not_recurse(tmp_path, capsys):
+    """Verifier repro (1), the lcu_agent wiring: basicConfig puts the handler on
+    the ROOT logger. The old rotate() logged its refusal before the retry
+    deadline was set; that record propagated to root, re-entered this handler,
+    retried the refused rollover, and recursed - measured 121 refusal lines,
+    3 RecursionErrors and dropped records, recurring once a minute.
+
+    Real wiring, real refusal: a second handle holds the file open, so the
+    rename fails the way it does when another process holds the log."""
+    path = tmp_path / "agent.log"
+    path.write_text("x" * 300 + "\n", encoding="utf-8")  # already over cap
+    handler = log_rotation.rotating_file_handler(path, max_bytes=200, backup_count=2)
+    handler.setFormatter(logging.Formatter("%(name)s %(message)s"))
+    handler.setLevel(logging.DEBUG)
+    root = logging.getLogger()
+    lg = logging.getLogger("lcu_agent")
+    holder = open(path, "a", encoding="utf-8")
+    root.addHandler(handler)
+    try:
+        for i in range(5):
+            lg.warning("REC %03d", i)
+    finally:
+        root.removeHandler(handler)
+        handler.close()
+        holder.close()
+
+    err = capsys.readouterr().err
+    text = path.read_text(encoding="utf-8")
+    assert "RecursionError" not in err and "Logging error" not in err, err[-2000:]
+    assert [i for i in range(5) if f"REC {i:03d}" not in text] == []
+    assert text.count("log rotation refused") == 1, text.count("log rotation refused")
+    assert handler.refused_rollovers == 1
+    assert not list(tmp_path.glob("agent.log.*"))
+
+
+def test_a_refused_streak_is_noted_once_and_reset_by_a_success(tmp_path, monkeypatch):
+    """The refusal note goes straight into the file (pythonw has no stderr),
+    once per streak of refusals, never once per retry."""
+    path = tmp_path / "agent.log"
+    handler = log_rotation.rotating_file_handler(path, max_bytes=200, backup_count=2)
+    monkeypatch.setattr(log_rotation, "_RETRY_AFTER_S", 0.0)
+
+    def _deny(real, src, dst, *a, **kw):
+        raise PermissionError("held open by another process")
+
+    try:
+        with scoped_fs_fault("replace", tmp_path, _deny):
+            _emit_lines(handler, 30)
+        refused = handler.refused_rollovers
+        notes_while_refused = path.read_text(encoding="utf-8").count("log rotation refused")
+        _emit_lines(handler, 30)
+    finally:
+        handler.close()
+
+    assert refused >= 2, "the retry never re-attempted"
+    assert notes_while_refused == 1
+    assert handler.refused_rollovers == 0, "a successful rollover must end the streak"
+    assert (tmp_path / "agent.log.1").exists()
+
+
 def test_rotating_file_handler_validates_its_bounds(tmp_path):
     with pytest.raises(ValueError):
         log_rotation.rotating_file_handler(tmp_path / "a.log", max_bytes=0)
@@ -182,6 +305,30 @@ def test_replay_roster_sink_rotates_an_oversize_log_before_opening(tmp_path, mon
 
     assert sink.read_text(encoding="utf-8") == "fresh run\n"
     assert (tmp_path / "replay_roster.log.1").read_bytes() == b"o" * 150
+
+
+def test_replay_roster_sink_notes_a_refused_rotation_and_keeps_the_log(tmp_path, monkeypatch):
+    from tools import replay_roster_pull as rpp
+
+    monkeypatch.setattr(rpp, "_LOG_SINK_MAX_BYTES", 100)
+    sink = _fill(tmp_path / "replay_roster.log", 150, b"o")
+    _fill(tmp_path / "replay_roster.log.1", 10, b"p")
+
+    def _deny(real, src, dst, *a, **kw):
+        raise PermissionError("held open by another process")
+
+    with scoped_fs_fault("replace", tmp_path, _deny):
+        stream = rpp._open_log_sink(sink)
+    try:
+        stream.write("run\n")
+    finally:
+        stream.close()
+
+    text = sink.read_text(encoding="utf-8")
+    assert text.startswith("o" * 150)
+    assert "log rotation refused" in text and text.endswith("run\n")
+    assert (tmp_path / "replay_roster.log.1").read_bytes() == b"p" * 10
+    assert not (tmp_path / "replay_roster.log.2").exists()
 
 
 def test_replay_roster_sink_appends_under_the_cap(tmp_path):

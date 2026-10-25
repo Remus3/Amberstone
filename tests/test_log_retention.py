@@ -279,6 +279,44 @@ def test_cap_stays_hard_daily_logs_go_oldest_first_once_nothing_else_is_deletabl
     assert deleted == 2 and freed == 400_000
 
 
+def test_size_pass_breaks_mtime_ties_by_name(tmp_path, monkeypatch):
+    """Equal mtimes used to fall back to directory-listing order, so which file
+    the cap took was up to the filesystem. Ties now break on the name. The
+    listing is reversed here so a sort that ignores the name picks the wrong
+    file."""
+    t = time.time() - 2 * 86400
+    first = _write(tmp_path / "a-tool.log", 600_000, age_days=0)
+    second = _write(tmp_path / "b-tool.log", 600_000, age_days=0)
+    for p in (first, second):
+        os.utime(p, (t, t))
+    real = log_retention._candidates
+    monkeypatch.setattr(log_retention, "_candidates",
+                        lambda d: sorted(real(d), key=lambda p: p.name, reverse=True))
+
+    deleted, _ = log_retention.prune(tmp_path, max_age_days=14, max_total_mb=1)
+
+    assert deleted == 1
+    assert not first.exists()
+    assert second.exists()
+
+
+def test_archive_subdir_is_never_swept_or_counted(tmp_path):
+    """`logs/_archive/` holds compressed history kept on purpose (RM-718 a: the
+    only copy of 59 MB of replay-roster history). The sweep is non-recursive,
+    so an archive there is outside both passes and outside the cap total -
+    even when it is old, large, and named like a log."""
+    archive = tmp_path / log_retention.ARCHIVE_DIRNAME
+    archive.mkdir()
+    kept = _write(archive / "replay_roster.2026-07-26_2026-10-24.log.gz",
+                  2_000_000, age_days=90)
+    young = _write(tmp_path / "2026-10-24.log", 500_000, age_days=0.1)
+
+    deleted, _ = log_retention.prune(tmp_path, max_age_days=14, max_total_mb=1)
+
+    assert deleted == 0, "the archive must not count toward the cap either"
+    assert kept.exists() and young.exists()
+
+
 @pytest.mark.parametrize("name,daily", [
     ("2026-10-24.log", True),
     ("2026-10-24.log.3", True),
