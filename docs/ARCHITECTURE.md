@@ -247,6 +247,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | File | Role |
 |---|---|
 | `tools/_perseus_rpc.py` | bounded JSON-RPC reply reader shared by the two Perseus vault clients |
+| `tools/anvil_shadow_probe.py` | G5-01 anvil-shadow probe - one verdict line, never a traceback |
 | `tools/aram_shadow_report.py` | ARAM deterministic-vs-Haiku shadow agreement report (flip-readiness gate) |
 | `tools/arena_shadow_report.py` | Arena shadow-validation report over the deterministic-vs-Haiku log |
 | `tools/build_order_coverage.py` | Lane B precomputed build-order COVERAGE measurement |
