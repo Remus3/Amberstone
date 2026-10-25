@@ -149,8 +149,10 @@ subtracted from it. Check this line's history before adjusting the tally for any
 2026-07-20.
 Per gate: G1 6 / G2 41 / G3 12 / G4 28 / G5 10 / G6 3 / G7 18. Of these, 9 carry a PARKED/HOLD
 tag (3 inline at G5-10 / G7-16 / G7-19, 6 in the PARKED section) and 1 (G3-15) is a cross-reference
-that adds no new work. G3-03 is BLOCKED ON WIRING since 2026-10-24 (RM-850): still counted OPEN, but
-no game drains it until RM-850 lands. G1-03 was re-tagged the same day (draft lobby only); no count moved.
+that adds no new work. G3-03 was BLOCKED ON WIRING on 2026-10-24 until RM-850 shipped the same day
+(`14f804fc2`, LEDGER 1816); it is drainable again. G3-13 is BLOCKED ON WIRING since 2026-10-24
+(RM-860): still counted OPEN, but no game drains its on-screen half until RM-860 lands. G1-03 was
+re-tagged the same day (draft lobby only); no count moved.
 The 2026-08-12 `hz_choice_shadow` game_id row was filed as a SECOND "G3-14"; it is G3-16 since
 2026-10-24 and, like G6-04, was never in the 111 (its commit `0dc5dbd0d` did not touch this line).
 
@@ -705,7 +707,7 @@ survivability flips below cannot roll otherwise.
   ARAM champ-select and confirm the swap registers visibly faster.
 - **G3-02** (was A10) KEYSTONE residual: operator visual reassurance of the rendered bench (data path
   proven; no capture pursued). SOURCE: ROADMAP.md:100.
-- **G3-03** `[BLOCKED ON WIRING - RE-TAGGED 2026-10-24, was CS-SCENARIO]` (was C2) Comp-verdict VARIANT
+- **G3-03** `[CS-SCENARIO - UNBLOCKED 2026-10-24 by RM-850; was BLOCKED ON WIRING the same day]` (was C2) Comp-verdict VARIANT
   branch still unobserved (SWAP + STAY validated at LGS2; never surfaced in-game 2026-07-04). Soundness
   discharged headless (OQ22). **WHY IT NEVER ROLLED (lane 9 PREP s133, source read at `373c693bb`,
   adversarial pass CONFIRMED; NOT a tick): it CANNOT roll live.** `core/aram_comp_verdict.py` returns
@@ -715,9 +717,14 @@ survivability flips below cannot roll otherwise.
   verbatim, and `:205-206` documents `variants` / `current_variant` as accepted fields); the
   `/api/champ-select-coach` POST (`champ_select.js:167-177`) sends none either and its `advise_pick` is
   shadow-log only; `coaches/aram_team_analyzer.analyze()` has no importer. The panel already builds the
-  variants (`champ_select.js:865` `_csvBuildVariantsFor`) and never posts them. Riding more ARAM lobbies
+  variants (`champ_select.js:865` `_csvBuildVariantsFor`) and never posts them. ~~Riding more ARAM lobbies
   drains nothing until **RM-850** (send the variants) lands; do NOT count this row in a gate session
-  before then. **CHECK (after RM-850, any ARAM / Mayhem champ-select with an all-AD / all-AP or no-sustain
+  before then.~~ **UNBLOCKED (lane 9 PREP s133 cycle 4, read at `af8c28fc8`; NOT a tick):** RM-850
+  SHIPPED (`14f804fc2`, LEDGER 1816) - `_csvFetchCompVerdict` now POSTs `variants` (via
+  `_csvCompVerdictVariants`, `champ_select.js:1654`) and `current_variant` (`:1726`); the main checkout
+  holds the commit, and the LIVE-SERVED asset carries it (`GET https://127.0.0.1:8888/js/panels/champ_select.js`
+  has 3 `_csvCompVerdictVariants` hits, 2026-10-24T23:48:45-05:00; asset-only, ADR-008, no restart). Ride
+  it in the next ARAM / Mayhem champ select. **CHECK (any ARAM / Mayhem champ-select with an all-AD / all-AP or no-sustain
   ally comp):** PASS iff the rendered `.csv-bench-verdict--variant` banner shows `VARIANT -> <key>` with a
   `<key>` from that champion's posted variants; a POST of our own payload is the COMPUTE half only.
 
@@ -903,7 +910,28 @@ survivability flips below cannot roll otherwise.
   error, budget-gate or kill-switch log line in its window; with one, the sample is INCONCLUSIVE.
   The coherence half stays an operator eyeball. (Adversarial pass 2026-10-24 corrected a first draft
   that bounded the lag on the 45 s ceiling.)
-- **G3-13** (was C15+C16) Augment OCR rank-vs-pick + live on-screen render validation. The alias fix
+- **G3-13** `[BLOCKED ON WIRING - RE-TAGGED 2026-10-24]` (was C15+C16) Augment OCR rank-vs-pick + live
+  on-screen render validation. **WHY THE ON-SCREEN HALF CANNOT PASS AT HEAD (lane 9 PREP s133 cycle 4,
+  source read at `af8c28fc8`, independent adversarial pass CONFIRMED 9 / 9 claims; NOT a tick): the
+  Mayhem augment reco has NO render surface.** KIWI maps to ARAM (`core/game_snapshot.py:118`) and one
+  coach runs per mode (`core/coach_registry.py:8`, `_aram_mode` -> `coaches.aram_coach`), so
+  `coaches/arena_coach.py` never runs in a Mayhem game; `/api/state` `coach` is read from
+  `data/aram_coaching_data.json` (`dashboard/_state_builder.py:58`, `:546-547`).
+  `coaches/aram_coach.py` `_handle_augment_select` writes only `augment_select` / `aug_take` /
+  `aug_why` / `aug_plan` / `augment_choices` (`:1309-1315`) - no tracked `.js` / `.mjs` / `.html`
+  (web, rc-shell, lane-widget, atlas) reads any of those five; the one augment panel,
+  `web/js/panels/augment_reco.js` `renderAugmentReco`, hides unless `p.aug_reco` is a non-empty array
+  (`:80-81`), and `aug_reco` is stamped only by `coaches/arena_coach.py:355-375`. The header augments
+  pill is gone (`web/index.html:602-603`). So the cadence fix below can land a correct scan and a paid
+  Haiku pick that nothing renders. Also measured: `augment_select` is set True at `:1310` and never
+  set False within a game (a renderer keyed on it would stick on "PICK NOW"); the `_augment_resolved`
+  latch stops only the fast poll (`:661-670`), the 25 s scans still reach `:791` for later picks.
+  Riding more Mayhem games drains nothing on screen until **RM-860** (give the Mayhem reco a render
+  surface) lands. **CHECK (after RM-860, ARAM Mayhem q2400, the game-start augment panel):** sample
+  `GET https://127.0.0.1:8888/api/state` every 3-6 s from load screen to 0:45; PASS iff, while the
+  in-game panel is open, the RM-860 surface renders a pick whose name is one of `coach.augment_choices`
+  for that same sample and the vision frame (`:8889/latest-frame/meta` `ts` within 10 s of the sample)
+  shows those cards; the `coach` keys alone are the COMPUTE half only. The alias fix
   SHIPPED (`8fbff14e`, LEDGER 867). **The cadence defect behind it is now FIXED IN CODE (`66e6835e`,
   2026-07-29) and the RM-25 hold-an-augment-25s workaround is NO LONGER NEEDED** - a bounded fast
   vision poll runs during the Mayhem augment window (6.0s interval, capped at 6 extra scans, latched
@@ -931,8 +959,13 @@ survivability flips below cannot roll otherwise.
   (`augment_choices` / `augment_select` / `is_augment_select`) and not `data/aram_coaching_data.json`
   (whose `mayhem` key is a bare `true` boolean, not an augment payload). Separately, `/api/state`
   `screen_read` was **6.1 HOURS STALE** (frozen on an out-of-game read) while vision itself was live via
-  `moon_proxy` every ~26s - so a frozen `screen_read` is a CANDIDATE blocker for the on-screen half and
-  should be checked before blaming the `66e6835e` cadence fix. Do NOT close this row on the data half
+  `moon_proxy` every ~26s - ~~so a frozen `screen_read` is a CANDIDATE blocker for the on-screen half and
+  should be checked before blaming the `66e6835e` cadence fix.~~ **STRUCK 2026-10-24 (lane 9 PREP s133
+  cycle 4, adversarial pass CONFIRMED):** `screen_read` is not on this path - it is
+  `data/screen_read.json` (`dashboard/_screen_read.py:37`, read at `dashboard/_state_builder.py:637`),
+  nothing under `coaches/` references it, and the ARAM augment scan is the coach's own
+  `GameVisionReader.read_tiered` (`coaches/aram_coach.py:776`, frame from `:8889/latest-frame`). A fresh
+  `:8889` frame is still a real dependency; the real blocker is the missing render surface above (RM-860). Do NOT close this row on the data half
   alone; the operator eyeball on the ~10-15s panel is still the acceptance.
 - **G3-14** (was C17) R78 ARAM deterministic tail item_extra + objective Haiku->deterministic flip
   (`8f013ee4`): SHIPPED SHADOW-only. Needs ARAM shadow accrual + operator OK before flipping the ARAM
