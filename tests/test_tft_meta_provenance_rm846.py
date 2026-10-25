@@ -108,6 +108,11 @@ EXEMPT = {
         "flat champion name -> team-planner code map read from the local "
         "League client (scripts/discover_champion_codes.py); no prose, no "
         "provenance slot, values must stay plain ints"),
+    "tft_set18_champion_codes.json": (
+        "flat champion name -> team-planner code map read from the local "
+        "League client's game data (scripts/discover_champion_codes.py, "
+        "passive GET); no prose, no provenance slot, values must stay plain "
+        "ints"),
 }
 
 # Sections that hold coaching opinion (comps, tier list, augment ratings,
