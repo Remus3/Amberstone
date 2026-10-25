@@ -1246,6 +1246,9 @@ checkout. The three glance rows an ordinary Arena game reaches:
 - **G5-03 boots mirror.** Pixel-only: needs a boot anvil to roll (none in 8 rounds 2026-07-04). The
   G5-01 probe above prints `offered`, which names a boot anvil if one rolls; then capture the frame.
 Not readied this cycle: G5-05 / G5-06 / G5-08 (each needs a DS flag or a replay design first).
+(Cycle 6, 2026-10-25: G5-06 and G5-08 are now readied in their own rows below - G5-06 has a CHECK and
+a precondition, G5-08 a one-glance tooltip CHECK plus a "Not actually live-gated" CANDIDATE. G5-05 is
+still not readied.)
 
 - **G5-01** (was D6) **THE ONE OPEN LIVE BUG.** Arena augment-select shadow
   (`data/augment_shadow.jsonl`) + item-anvil shadow (`data/anvil_shadow.jsonl`) seeding + WIRING-GAP
@@ -1299,10 +1302,77 @@ Not readied this cycle: G5-05 / G5-06 / G5-08 (each needs a DS flag or a replay 
   2026-07-04. DS restart.
 - **G5-06** (was D5) `RC_ARENA_STATE_DEBOUNCE` default-ON flip validation. **TRY THE REPLAY
   ALTERNATIVE FIRST to dodge the Arena game entirely.** NOT attempted 2026-07-04.
+  **PREP 2026-10-25 (lane 9 s133 cycle 6, source read at `6af9f081f`; NOT a tick).**
+  (1) THE REPLAY ALTERNATIVE HAS NO INPUT. RC has no Arena coach replay tool
+  (`tools/aram_raw_replay.py` is ARAM-only; `tools/replay_build_order_validate.py --mode arena` covers
+  build-order tables only). None of the 15 retained day logs (`logs/2026-10-11.log` onward) has an
+  `arena_coach` or `Arena coaching` line. `data/arena_coach_shadow.jsonl` (617 rows,
+  2026-07-05..07-21) holds only `champ` / `round` / `enemy_comp` / `deterministic` / `live_haiku`. The
+  signature (`coaches/arena_coach.py:77` `_coach_state_signature`) needs hp, gold, level, kda, items,
+  augments, teams, camp and anvil, so the shadow file cannot replay it. Only a fresh Arena game
+  produces input.
+  (2) PRECONDITION, NOT A LANE ACT: the default is OFF. `:68` reads
+  `os.getenv("RC_ARENA_STATE_DEBOUNCE", "0") == "1"` ONCE at import. The variable is unset at User and
+  Machine scope, and no `ops/` / `scripts/` launcher sets it. So no game drains this row until RC is
+  restarted with the flag ON (an operator / merger act). `config/feature_flags.json`
+  `arena.live_coaching = allow`, so the `_run_coach` gate at `:631` (and the `_run_vision` gate at
+  `:604`) passes.
+  CHECK, predicate stated before any look. PROOF THE FLAG IS ON: at least one `Arena state-debounce:
+  signature unchanged` line (`:795`, `logger.debug`; the file handler is always DEBUG,
+  `core/log_setup.py:161`) in `logs/<date>.log` during the game. Zero such lines = INCONCLUSIVE, never
+  a pass. PASS iff, in one Arena game with that proof, sampled every 20-30 s while the player is
+  alive: `data/arena_coaching_data.json` `game_time_s` (written at `:854`; a skip returns at `:799`,
+  before the `:893` `safe_write`) never trails `/api/state` -> `liveclient.game_time_s` by more than
+  150 s.
+  **The ARAM 90 s bound (G3-12) does NOT carry over.** The Arena signature has NO game-time band, so
+  on a stable board the 45 s ceiling (`:74`) IS the binding term. `_run_coach` is dispatched every 22
+  s on a stable board (`:432`; `coaches/_base_coach.py:566`, `_last_coach` is set at dispatch `:579`,
+  even for a run that then skips). The ceiling is measured from a stamp taken AFTER the call
+  (`:899-902`). The Sonnet vision read (`:610`) runs on the separate `_vision_loop`
+  (`coaches/_base_coach.py:476-528`, every 20 s), off the coach write path. Haiku has a 20 s
+  per-attempt timeout (`:810`), plus the SDK's 2 default retries, which log nothing at RC's log
+  levels. Worst case with single-attempt calls: three stable dispatches (66-71 s with poll
+  quantization) plus one call of up to 20 s, about 91 s. A call slower than about 21 s (a retry)
+  pushes the re-call to the fourth dispatch (88-95 s), so the 90 s G3-12 bound sits on the edge here.
+  150 s covers one retried call, and a frozen coach still crosses it. The OFF baseline is one dispatch
+  plus one call, at most about 45 s.
+  FAIL only if a lag over 150 s while alive has, in its window, no `Arena coach error` line
+  (`core/safe_coach_output.py:35`, decorator at `:627`), no `Arena: no fields parsed` line (`:821`,
+  returns before the write), no `data/coach_tick_trace.jsonl` `mode=arena` `phase=coach` record over
+  20000 `dur_ms` (`coaches/_base_coach.py:669`; the coaching call is always traced), the daily budget
+  not exhausted, and `arena` not kill-switched. The budget and kill-switch gates
+  (`coaches/_base_coach.py:535` / `:547`) return SILENTLY, so read the cost and coach settings, not
+  the log. Otherwise the sample is INCONCLUSIVE. A vision-read failure does not touch the write path
+  and excuses nothing. The coherence half (does the reused text still fit the board?) stays an
+  operator eyeball, as in G3-12.
 - **G5-07** Arena deterministic A/B choices lever (`dc6b3d80`) - shipped SHADOW-only; served coach
   output unchanged. The live serve flip is gated on shadow accrual (G7-17).
 - **G5-08** (was the B47b Arena tail) Celestial Opposition Arena mirror **444644 magnitude confirm**
   (Meraki 50% vs DDragon 90%) - the id is EXCLUDED from the R108 credit pending this live-Arena read.
+  **PREP 2026-10-25 (lane 9 s133 cycle 6, data read at DS 16.21.1; NOT a tick).**
+  (1) NAME CORRECTION: 444644 is **Crown of the Shattered Queen**, not Celestial Opposition. DDragon
+  `data/daemon_slayer/16.21.1/items.json`, Meraki and
+  `agents/daemon_slayer/_effects_data.py:3292-3297` all name it Crown. Celestial Opposition is 3869
+  (maps 11 / 453) and has no Arena mirror at 16.21.1. The parent row is G2-24, which covers both
+  items, so the label was carried across from there.
+  (2) FEEDS AT 16.21.1. DDragon 444644 (maps.30 only, 2750 g): "reducing incoming champion damage by
+  90%", "persists for 1.25 seconds". Meraki 444644 (the only Crown row Meraki has): "50%, lingering
+  for 3 seconds". Meraki's manifest is `content_patch` 25.15. The SR row 664644 reads 40% / 3 s. The
+  exclusion is `agents/daemon_slayer/_item_general_dr.py:139` `_GENERAL_DR_UNSOURCED_MIRRORS`, and
+  `agents/daemon_slayer/tests/test_r144_mirror_slice_b.py:255` re-derives the 90 / 50 split every run.
+  (3) The R144 reason ("unresolvable headless") predates the 2026-10-24 Settled amendment (RM-808):
+  item passive formulas follow live DDragon prose first, CommunityDragon second, Meraki last. Under
+  that rule DS seeds DDragon's 90% / 1.25 s. That is a SOURCE choice, not a measurement of the Arena
+  value, and DDragon's 444644 prose also renders a malformed "(0s)" cooldown. Meraki's 50% / 3 s is
+  the frozen 25.15 text. The headless answer to the row's question is CommunityDragon 16.21 game data
+  for 444644 (RM-871 step 1, mandatory). So the row is a "Not actually live-gated" CANDIDATE (filed in
+  that section; a human moves it, and only if that data states 90%).
+  CHECK, if an Arena game comes first (one glance, predicate stated before looking): open the shop,
+  hover Crown of the Shattered Queen, and capture the frame (its `ts` checked against `game_time_s`).
+  The read is DDRAGON-90 iff the tooltip says 90% and 1.25 seconds, and MERAKI-50 iff it says 50% and
+  3 seconds. Anything else is recorded as read and decides nothing. An untimed or stale frame is no
+  result. This check reads the client's STATED magnitude only, which is the same string DDragon
+  renders, so it is not independent of DDragon. The uptime residual stays with G2-24.
 - **G5-09** DS ranged-only Runaan's melee-gate made augment-aware for "Draw Your Sword" (augment id
   134, ranged->melee; `38b5e1eb`, LEDGER 856) - **PARTIAL 2026-07-18.** SETTLED HEADLESS: the gate is
   exact and does not over-filter. On **all 8** corpus champions that actually took augment 134
@@ -1803,6 +1873,17 @@ by fixture, harness, dev-preview, replay corpus, unit test, or synthetic livecli
   BACKLOG says "validate against a live/REPLAYED game", so the replay corpus satisfies it headless
   (G3-12 / G5-06 are the fallback only if the logs prove insufficient - OQ22 found the
   fired-calls-only replay PARTIAL).
+  **NOT TRUE AT HEAD (lane 9 s133, re-measured 2026-10-24 for ARAM in cycle 3 and 2026-10-25 for
+  Arena in cycle 6):** today there is no replay input for either flag. No retained day log has an
+  `ARAM Haiku raw` line or any Arena coach line, and `data/arena_coach_shadow.jsonl` lacks the
+  signature fields. So the live G3-12 / G5-06 CHECKs are the path until a fresh game logs input. This
+  entry stays because a future corpus could satisfy it.
+- **CANDIDATE (lane 9 s133 cycle 6, 2026-10-25; a human moves it, the lane does not):** G5-08 Crown of
+  the Shattered Queen 444644 Arena magnitude. The 2026-10-24 Settled amendment (RM-808: DDragon prose
+  first, CommunityDragon second, Meraki last) decides which source DS seeds from (DDragon 90%), not the
+  in-game value this row asks for. The headless answer is CommunityDragon 16.21 game data for 444644
+  (RM-871 step 1, mandatory), and the row moves only if that data states 90%. The tooltip CHECK in the
+  G5-08 row reads the same client string as DDragon, so it is a cross-check, not proof.
 - I3 loop stall-recovery + all pure-function loop-controller patches - Tier-1 unit tests.
 - item-WPA / GPI radar / build-insights / perf-curve / WPA-lane views - static Legion-local dashboard
   views over the local corpus; a rendered-pixel eyeball is anytime, NOT game-gated.
