@@ -239,6 +239,13 @@ def dispatch_for_coach(
     # convention. Resolved here, NOT in the client - the client signature and
     # its True default are untouched.
     apply_squishy_burst_target: Optional[bool] = None,
+    # RM-875 (DEFAULT-OFF): the RM-172 ARENA / Swiftplay growth-ADDEND lane.
+    # Rides the shared ``seams`` dict, so the flat ranking AND the ordered-build
+    # planner both get it. rank_for_primary_archetype forwards it to every
+    # archetype branch; False never reaches it (no body key, byte-identical).
+    # The only live caller that can set it is coaches/arena_coach.py behind
+    # RC_ARENA_MODE_MODIFIERS; the default-ON flip is gated row G5-05.
+    apply_mode_modifiers: bool = False,
 ) -> Optional[CoachDispatchResult]:
     """Resolve archetype for ``champion`` + call the right DS scorer.
 
@@ -323,6 +330,8 @@ def dispatch_for_coach(
         # None leaves the kwarg absent -> the engine's own True default.
         if apply_squishy_burst_target is not None:
             seams["apply_squishy_burst_target"] = bool(apply_squishy_burst_target)
+        if apply_mode_modifiers:
+            seams["apply_mode_modifiers"] = True
 
         # R5 self-HP -> caster_missing_hp_pct. Shared guard: absent HP or
         # hp_max <= 0 yields 0.0 ("no signal", OFF) and is NOT forwarded.

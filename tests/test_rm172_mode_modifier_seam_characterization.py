@@ -7,7 +7,9 @@ ENGINE 1.275.0 / patch 16.15.1.
 STATUS: the seam is now WIRED UNIFORMLY (LEDGER 1217, executed 2026-08-06). It
 stays DEFAULT-OFF everywhere - the acceptance was that the axis became ASKABLE,
 not that it became active. The three gates moved A 13 -> 25, B 8 -> 19 of 34,
-C 6 -> 14. What this file pinned BEFORE that change was the partial state; those
+C 6 -> 14 (RM-875, 2026-10-25: C 14 -> 15, the archetype dispatcher
+``rank_for_primary_archetype``, so the live coach path can ask for the axis;
+still DEFAULT-OFF). What this file pinned BEFORE that change was the partial state; those
 assertions are inverted below rather than deleted, and the weak
 "SOME routes are blind" check has been REPLACED by a strictly stronger
 machine-checked invariant (``parses IFF transitively reaches build_champion``)
@@ -168,6 +170,16 @@ EXPECTED_GATE_C = {
     "rank_enchanter_for",
     "rank_mage_for",
     "rank_onhit_for",
+    # RM-875 (1). Not a transport of its own: the archetype DISPATCHER, which
+    # posts nothing itself and forwards the flag to all seven per-scorer
+    # transports above that its branches call (rank_for, rank_tank_for,
+    # rank_bruiser_for, rank_mage_for, rank_assassin_for, rank_enchanter_for,
+    # rank_onhit_for). Before RM-875 the live coach path
+    # (coach_integration.archetype_dispatch.dispatch_for_coach) could not ask
+    # for the axis at all. Pinned end to end, including the route parse and a
+    # changed /rank response, in
+    # tests/test_rm875_apply_mode_modifiers_archetype_dispatch.py.
+    "rank_for_primary_archetype",
 }
 
 # Routes with NO client function at all. Gate C is VACUOUS for these, not
