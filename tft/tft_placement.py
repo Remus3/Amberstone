@@ -126,6 +126,34 @@ def display_from_id(raw: str) -> str:
     return _split_camel(m.group(0)) if m else s
 
 
+# Keys that identify a person in either LCU document (and the history route's
+# match / session ids). scrub_raw() drops every one of them, at any depth.
+IDENTITY_KEYS = frozenset({
+    "puuid", "summonerId", "summonerName", "riotIdGameName", "riotIdTagLine",
+    "riotIdTagline", "iconId", "companion", "active_puuid", "accountId",
+    "playerId",
+})
+
+
+def scrub_raw(doc):
+    """Deep copy of a raw LCU document with every IDENTITY_KEYS entry removed
+    and the history route's metadata.participants (a puuid list) dropped.
+    The raw-document retention (RM-611) keeps THIS copy for TFT, so the
+    local database never holds a riot id or puuid either."""
+    if isinstance(doc, dict):
+        out = {}
+        for k, v in doc.items():
+            if k in IDENTITY_KEYS:
+                continue
+            if k == "metadata" and isinstance(v, dict):
+                v = {mk: mv for mk, mv in v.items() if mk != "participants"}
+            out[k] = scrub_raw(v)
+        return out
+    if isinstance(doc, list):
+        return [scrub_raw(v) for v in doc]
+    return doc
+
+
 # -- session -----------------------------------------------------------------------
 
 def session_game_id(session) -> Optional[int]:

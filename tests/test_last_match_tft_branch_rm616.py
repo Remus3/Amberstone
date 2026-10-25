@@ -25,6 +25,7 @@ ASCII-only authored content (CLAUDE.md hard rule).
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 from pathlib import Path
 
@@ -242,11 +243,89 @@ def test_frontend_has_a_tft_branch_before_the_lol_renderers():
     assert tft != -1 and hero != -1 and tft < hero
     assert "_renderTftLastMatch(data)" in body
     assert "function _renderTftLastMatch(data)" in js
-    # Every interpolated value goes through _escHtml.
     j = js.find("function _renderTftLastMatch(data)")
     seg = js[j:js.find("\n}\n", j)]
-    assert "${_escHtml(" in seg
     assert "innerHTML" in seg
+
+
+def _templates(src: str):
+    """Every backtick template in `src` (nested ones included) as
+    (literal_text, [interpolation expressions]). A small scanner that skips
+    quoted strings and matches ${ } braces - enough for this one function."""
+    out = []
+
+    def skip_quote(s, i):
+        q = s[i]
+        i += 1
+        while i < len(s) and s[i] != q:
+            i += 2 if s[i] == "\\" else 1
+        return i + 1
+
+    def template(s, i):              # s[i] == "`"
+        i += 1
+        lit, exprs = [], []
+        while i < len(s) and s[i] != "`":
+            if s[i] == "\\":
+                lit.append(s[i:i + 2])
+                i += 2
+            elif s.startswith("${", i):
+                i += 2
+                start, depth = i, 1
+                while depth:
+                    ch = s[i]
+                    if ch in "'\"":
+                        i = skip_quote(s, i)
+                        continue
+                    if ch == "`":
+                        i = template(s, i)
+                        continue
+                    depth += {"{": 1, "}": -1}.get(ch, 0)
+                    i += 1
+                exprs.append(s[start:i - 1].strip())
+            else:
+                lit.append(s[i])
+                i += 1
+        out.append(("".join(lit), exprs))
+        return i + 1
+
+    i = 0
+    while i < len(src):
+        if src[i] in "'\"":
+            i = skip_quote(src, i)
+        elif src[i] == "`":
+            i = template(src, i)
+        elif src.startswith("//", i):
+            i = src.find("\n", i) + 1 or len(src)
+        else:
+            i += 1
+    return out
+
+
+_SAFE_EXPR = (
+    re.compile(r"^_escHtml\("),                          # escaped value
+    re.compile(r"^\w+(Html|Rows)$"),                      # composed, itself checked
+    re.compile(r"^\w+(Html|Rows) \|\| '[^'<>]*(<[^'$]*)?'$"),   # composed or literal
+    re.compile(r"^[\w.]+ \? \"[^\"]*\" : \"[^\"]*\"$"),   # literal ternary
+    re.compile(r"^act$"),                                 # "1" / "0" / "" only
+    re.compile(r"^\w+\.map\("),                           # its own templates checked
+)
+
+
+def test_frontend_tft_markup_escapes_every_interpolated_value():
+    """Every ${...} inside an HTML-bearing template of _renderTftLastMatch is
+    escaped, a composed HTML fragment (itself checked here), or a constant."""
+    js = _js()
+    j = js.find("function _renderTftLastMatch(data)")
+    seg = js[j:js.find("\n}\n", j)]
+    html_templates = [(lit, ex) for lit, ex in _templates(seg) if "<" in lit]
+    assert len(html_templates) >= 6, "scanner found too few markup templates"
+    bad = [e for _lit, exprs in html_templates for e in exprs
+           if not any(p.match(e) for p in _SAFE_EXPR)]
+    assert bad == [], bad
+    # The positive control: an unescaped value is caught.
+    probe = _templates("x = `<li>${u.name}</li>`;")
+    assert [e for _l, ex in probe for e in ex
+            if not any(p.match(e) for p in _SAFE_EXPR)] == ["u.name"]
 
 
 def test_frontend_tft_mount_lives_in_the_pgr_section():
