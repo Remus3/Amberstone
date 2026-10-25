@@ -243,18 +243,117 @@ def test_implausible_first_read_is_held():
 # -- confirmation (no lock-in on a wrong anchor) -----------------------------
 
 def test_repeated_backward_read_re_anchors_after_confirm_reads():
-    """An anchor accepted one round early (a misread inside the forward
-    slack) cannot lock the gate: CONFIRM_READS consecutive identical
-    backward reads re-anchor it, and the re-anchor is NOT a new game."""
+    """An anchor accepted one round early and read twice (so no longer
+    revertible) cannot lock the gate: CONFIRM_READS consecutive identical
+    backward reads re-anchor it, the re-anchor is NOT a new game, and the
+    abandoned round becomes suspect."""
     gate = _gate()
     gate.observe(3, 2, 500.0)
     gate.observe(3, 3, 501.5)               # early misread, within the slack
-    t = 503.0
+    for i in range(g.CONFIRM_READS - 1):    # read CONFIRM_READS times in a row:
+        assert gate.observe(3, 3, 502.0 + i).kind == g.SAME   # corroborated
+    t = 505.0
     for _ in range(g.CONFIRM_READS - 1):
         assert gate.observe(3, 2, t).kind == g.REJECT
         t += 1.5
     v = gate.observe(3, 2, t)
     assert (v.kind, v.reason, v.stage, v.rnd) == (g.ACCEPT, "confirmed_backward", 3, 2)
+    v = gate.observe(3, 3, t + 1.5)
+    assert (v.kind, v.reason) == (g.REJECT, "forward_suspect")
+
+
+def test_uncorroborated_advance_reverts_when_the_round_before_returns():
+    gate = _gate()
+    gate.observe(3, 2, 500.0)
+    assert gate.observe(3, 3, 501.5).kind == g.ACCEPT
+    v = gate.observe(3, 2, 503.0)
+    assert (v.kind, v.reason, v.stage, v.rnd) == (g.REVERT, "revert", 3, 2)
+    assert gate.accepted == (3, 2)
+    # the misread round is suspect now: taken only after CONFIRM_READS reads
+    t = 504.5
+    for _ in range(g.CONFIRM_READS - 1):
+        v = gate.observe(3, 3, t)
+        assert (v.kind, v.reason) == (g.REJECT, "forward_suspect")
+        t += 1.5
+    v = gate.observe(3, 3, t)
+    assert (v.kind, v.reason, v.stage, v.rnd) == (g.ACCEPT, "confirmed_forward_suspect", 3, 3)
+    # the game reached the suspect round: the next advance is immediate again
+    assert gate.observe(3, 4, t + 45.0).kind == g.ACCEPT
+
+
+def test_revert_restores_the_anchor_clock():
+    """The reverted-to anchor keeps the time it was first accepted at, so the
+    forward allowance after a revert is not shortened."""
+    gate = _gate()
+    gate.observe(3, 2, 500.0)
+    gate.observe(3, 3, 540.0)
+    assert gate.observe(3, 2, 541.5).kind == g.REVERT   # back to 3-2 (accepted at 500)
+    rate = g.QUEUE_TIMINGS["standard"].min_round_s
+    # 3 steps are allowed from 3-2 at 500 by t = 500 + 3 x rate; a re-stamped
+    # anchor (541.5) would allow only 1 there
+    t = 500.0 + rate * 3
+    assert t - 541.5 < rate
+    assert gate.observe(3, 5, t).kind == g.ACCEPT
+
+
+def _ocr_flicker(gate, t0, true_at, misread, misread_from, span):
+    """Poll every 1.5 s (core/tft_worker.py:44) an OCR cache refreshed every
+    2 s (tft/tft_state_reader.py:84) whose refreshes alternate between the
+    true round and `misread` once `misread_from` s have passed. Returns
+    (polls, polls whose gated round was the misread while the read was not)."""
+    out = []
+    pt = t0 + 1.5
+    while pt < t0 + span:
+        k = int((pt - t0) // 2.0)
+        true = true_at(pt - t0)
+        cur = misread if (pt - t0 >= misread_from and k % 2 == 1) else true
+        v = gate.observe(*cur, pt)
+        out.append((cur, (v.stage, v.rnd)))
+        pt += 1.5
+    wrong = [x for x in out if x[1] == misread and x[0] != misread]
+    return out, wrong
+
+
+def test_flicker_to_the_next_round_does_not_hold_the_gate_ahead():
+    """Verifier reproducer LOCK1: anchor 3-3, OCR alternating 3-3 / 3-4. The
+    first cut acted on 3-4 for 38 of 39 polls."""
+    gate = _gate()
+    gate.observe(3, 3, 600.0)
+    out, wrong = _ocr_flicker(gate, 600.0, lambda dt: (3, 3), (3, 4), 0.0, 60.0)
+    acted = [x[1] for x in out]
+    assert acted.count((3, 4)) <= 1, acted
+    assert len(wrong) <= 1
+    # and it does not flip every poll either
+    flips = sum(1 for a, b in zip(acted, acted[1:]) if a != b)
+    assert flips <= 2, acted
+
+
+def test_flicker_after_a_long_held_round_tracks_the_true_round():
+    """Verifier reproducer LOCK2: anchor 4-1 held 40 s, then an alternating
+    4-4 misread while the true round moves 4-1 -> 4-2 -> 4-3. The first cut
+    stayed on 4-4 for 29 polls."""
+    def true_at(dt):
+        return (4, 1) if dt < 45 else ((4, 2) if dt < 90 else (4, 3))
+    gate = _gate()
+    gate.observe(4, 1, 760.0)
+    out, wrong = _ocr_flicker(gate, 760.0, true_at, (4, 4), 40.0, 130.0)
+    assert len(wrong) <= 1, wrong
+    assert out[-1][1] == (4, 3)
+
+
+def test_odd_values_never_raise():
+    """Verifier reproducers: an int clock past the float range raised
+    OverflowError; a superscript digit passed str.isdigit and raised in
+    int()."""
+    gate = _gate()
+    gate.observe(3, 2, 500.0)
+    assert gate.observe(3, 2, 10 ** 400).kind == g.SAME
+    assert gate.observe(chr(0xB2), 1, 501.0).kind == g.REJECT
+    assert gate.observe(3, chr(0xB2), 501.0).kind == g.REJECT
+    assert gate.observe(10 ** 400, 2, 501.0).kind == g.REJECT
+    assert gate.observe("9" * 5000, 2, 501.0).kind == g.REJECT
+    assert g.parse_stage_round(chr(0xB2) + "-1") is None
+    assert gate.accepted == (3, 2)
 
 
 def test_confirmation_needs_consecutive_identical_reads():

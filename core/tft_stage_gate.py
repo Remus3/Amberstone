@@ -29,11 +29,21 @@ the game clock:
                  read. This is the bypass: a genuine new game never waits on
                  the gate. With no clock, the pre-RM-615 rule (stage > 2 ->
                  stage <= 2) still stands, so nothing regresses.
+  revert         an immediate advance is provisional until CONFIRM_READS
+                 consecutive reads of the new round arrive; if a round from
+                 the one before it up to it is read first, the advance was a
+                 misread (OCR flickering between the true round and a later
+                 one): the gate goes back at once and the misread round
+                 becomes SUSPECT - advancing onto it again needs
+                 confirmation. So a flicker cannot hold the gate ahead of
+                 the true round, and cannot make it flip every poll.
   confirmation   CONFIRM_READS consecutive identical held reads re-anchor
                  the gate when the ANCHOR may be the error (a backward or
                  forward-jump read after an anchor taken a round early or
-                 confirmed onto a repeated misread, or an unrated jump), so
-                 a wrong anchor cannot lock the gate in. An "at clock" or
+                 confirmed onto a repeated misread, an unrated jump, a
+                 suspect round), so a wrong anchor cannot lock the gate in;
+                 the round a confirmed backward re-anchor abandons becomes
+                 suspect. An "at clock" or
                  out-of-range read is never confirmed by repetition: a stale
                  OCR cache repeats the same impossible value.
 
@@ -76,6 +86,7 @@ ACCEPT = "accept"      # first read, a plausible advance, or a confirmed re-anch
 SAME = "same"          # the accepted round again
 NEW_GAME = "new_game"  # a genuine new game: the gate reset
 REJECT = "reject"      # implausible: the accepted round holds
+REVERT = "revert"      # the last immediate advance was a misread: the round before is back
 
 # -- tuning ------------------------------------------------------------------
 # One round at once on a measured queue; the clock admits more.
@@ -140,8 +151,11 @@ def _as_int(v: object) -> Optional[int]:
         return v
     if isinstance(v, float) and math.isfinite(v) and v.is_integer():
         return int(v)
-    if isinstance(v, str) and v.strip().isdigit():
-        return int(v.strip())
+    if isinstance(v, str):
+        v = v.strip()
+        # isascii: str.isdigit() accepts superscripts that int() rejects
+        if v.isascii() and v.isdigit() and len(v) <= 4:
+            return int(v)
     return None
 
 
@@ -175,7 +189,10 @@ def _clock(t: object) -> Optional[float]:
     game restarted"."""
     if isinstance(t, bool) or not isinstance(t, (int, float)):
         return None
-    t = float(t)
+    try:
+        t = float(t)
+    except OverflowError:   # an int past the float range
+        return None
     if not math.isfinite(t) or t <= 0:
         return None
     return t
@@ -204,7 +221,7 @@ class _Anchor(NamedTuple):
 # read, and a forward read the clock allows from 1-1 but the anchor's pace
 # does not. A read the clock rules out from 1-1 ("implausible_at_clock") and
 # an out-of-range read are never overturned: a stale OCR cache repeats them.
-_CONFIRMABLE = frozenset({"backward", "forward_jump", "forward_unrated"})
+_CONFIRMABLE = frozenset({"backward", "forward_jump", "forward_unrated", "forward_suspect"})
 
 
 class StageGate:
@@ -219,6 +236,16 @@ class StageGate:
         self._last_t: Optional[float] = None
         self._pending: Optional[Tuple[int, int]] = None
         self._pending_n = 0
+        # The anchor before the last IMMEDIATE advance, until CONFIRM_READS
+        # consecutive reads of the new round corroborate it (None = nothing
+        # to revert to). Two polls can read the same OCR refresh (1.5 s poll,
+        # 2 s OCR cycle), so one repeat is not corroboration; three
+        # consecutive reads span at least two refreshes.
+        self._prev: Optional[_Anchor] = None
+        self._prev_n = 0
+        # A round shown to be a misread (reverted, or abandoned by a confirmed
+        # backward re-anchor): advancing onto it again needs confirmation.
+        self._suspect: Optional[_Anchor] = None
 
     @property
     def timing(self) -> QueueTiming:
@@ -237,9 +264,15 @@ class StageGate:
         a = self._anchor
         return Verdict(kind, reason, a.stage if a else None, a.rnd if a else None)
 
-    def _take(self, s: int, r: int, o: int, t: Optional[float], kind: str, reason: str) -> Verdict:
+    def _take(self, s: int, r: int, o: int, t: Optional[float], kind: str, reason: str,
+              provisional: bool = False) -> Verdict:
+        old = self._anchor
         self._anchor = _Anchor(s, r, o, t)
         self._pending, self._pending_n = None, 0
+        self._prev = old if provisional else None
+        self._prev_n = 1 if provisional else 0
+        if self._suspect is not None and o >= self._suspect.ordinal:
+            self._suspect = None   # the game has reached it: no longer a misread
         return self._verdict(kind, reason)
 
     def _hold(self, s: int, r: int, o: int, t: Optional[float], reason: str) -> Verdict:
@@ -251,7 +284,11 @@ class StageGate:
         else:
             self._pending, self._pending_n = (s, r), 1
         if self._pending_n >= CONFIRM_READS:
-            return self._take(s, r, o, t, ACCEPT, "confirmed_" + reason)
+            old = self._anchor
+            v = self._take(s, r, o, t, ACCEPT, "confirmed_" + reason)
+            if reason == "backward" and old is not None:
+                self._suspect = old   # the abandoned anchor was the misread
+            return v
         return self._verdict(REJECT, reason)
 
     def _first_ok(self, o: int, t: Optional[float]) -> bool:
@@ -286,8 +323,28 @@ class StageGate:
             return self._hold(s, r, o, t, "implausible_at_clock")
         if o == a.ordinal:
             self._pending, self._pending_n = None, 0
+            if self._prev is not None:
+                self._prev_n += 1
+                if self._prev_n >= CONFIRM_READS:
+                    self._prev, self._prev_n = None, 0   # corroborated
             return self._verdict(SAME, "same")
+        self._prev_n = 0   # another round read: corroboration must restart
         if o < a.ordinal:
+            p = self._prev
+            if p is not None and o >= p.ordinal:
+                # A round at or after the one before an uncorroborated advance
+                # is read: the advance was the misread (an OCR value
+                # flickering between the true round and a later one). Go back
+                # at once, to the round before it or to the read when the
+                # game has moved on meanwhile, and make the misread round
+                # need confirmation from now on.
+                self._suspect = a
+                self._pending, self._pending_n = None, 0
+                if o == p.ordinal:
+                    self._anchor, self._prev = p, None
+                else:
+                    self._anchor, self._prev, self._prev_n = _Anchor(s, r, o, t), p, 1
+                return self._verdict(REVERT, "revert")
             if t is None and a.stage > 2 and s <= 2:
                 # No clock to tell a glitch from a new game: the pre-RM-615
                 # tft_live_analysis rule decides, so nothing regresses.
@@ -298,12 +355,14 @@ class StageGate:
             # Not reachable from 1-1 at this game time at the measured pace,
             # whatever the anchor says: never confirmed by repetition.
             return self._hold(s, r, o, t, "implausible_at_clock")
+        if self._suspect is not None and o == self._suspect.ordinal:
+            return self._hold(s, r, o, t, "forward_suspect")
         steps = o - a.ordinal
         rate = self._timing.min_round_s
         if rate is not None and t is not None and a.t is not None:
             if steps <= FORWARD_SLACK_ROUNDS + int(max(0.0, t - a.t) // rate):
-                return self._take(s, r, o, t, ACCEPT, "advance")
+                return self._take(s, r, o, t, ACCEPT, "advance", provisional=True)
             return self._hold(s, r, o, t, "forward_jump")
         if steps <= UNRATED_SLACK_ROUNDS:
-            return self._take(s, r, o, t, ACCEPT, "advance")
+            return self._take(s, r, o, t, ACCEPT, "advance", provisional=True)
         return self._hold(s, r, o, t, "forward_unrated")
