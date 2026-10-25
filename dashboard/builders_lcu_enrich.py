@@ -422,6 +422,13 @@ def _attach_match_timeline(enriched: dict, lcu_detail: dict) -> None:
         game_id = lcu_detail.get("gameId")
         if not platform or not game_id:
             return
+        # S134 N3: Match-V5 serves League only - a TFT game would cost one
+        # wasted call and a misleading 403 "revoked key" warning.
+        from core.queue_modes import is_tft_context
+        if is_tft_context(queue_id=lcu_detail.get("queueId"),
+                          game_mode=lcu_detail.get("gameMode"),
+                          map_id=lcu_detail.get("mapId")):
+            return
         match_id = f"{platform}_{game_id}"
         region = _MV5_REGION_BY_PLATFORM.get(platform, "americas")
         from core import riot_api  # lazy - avoids import cost on cold paths

@@ -1,6 +1,6 @@
 {
   "source": "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/queues.json",
-  "fetched_at": "2026-10-22T21:52:00Z",
+  "fetched_at": "2026-10-25T14:15:30Z",
   "fingerprint": "27fc1d4c3a99770c",
   "entry_count": 410,
   "group_counts": {
@@ -147,6 +147,24 @@
       "mode_key": "tft",
       "group": "kTeamfightTactics",
       "name": "Teamfight Tactics (Hyper Roll)",
+      "present": true
+    },
+    "1160": {
+      "mode_key": "tft",
+      "group": "kTeamfightTactics",
+      "name": "Teamfight Tactics (Double Up)",
+      "present": true
+    },
+    "1220": {
+      "mode_key": "tft",
+      "group": "kTeamfightTactics",
+      "name": "Tocker's Trials",
+      "present": true
+    },
+    "1230": {
+      "mode_key": "tft",
+      "group": "kTeamfightTactics",
+      "name": "Choncc or Treat",
       "present": true
     },
     "1400": {
@@ -297,6 +315,12 @@
       "mode_key": "jade",
       "group": "kJade",
       "name": "Jade",
+      "present": true
+    },
+    "6110": {
+      "mode_key": "tft",
+      "group": "kTeamfightTactics",
+      "name": "Set 17 (Normal)",
       "present": true
     }
   },

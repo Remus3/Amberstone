@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from core.polled_json import atomic_write_json, read_json_dict
+from core.queue_modes import is_tft_context
 
 _log = logging.getLogger("rc.lcu.runes")
 
@@ -639,6 +640,9 @@ class RuneWriter:
     _fail_key: Optional[tuple[str, str]] = None
     _fail_count = 0
     _next_attempt_at = 0.0
+    # S134 N2: latched True for the rest of a champ-select session once it is
+    # known to be TFT; cleared only when champ select ends.
+    _no_loadout_session = False
 
     def _reset_fail_state(self) -> None:
         self._fail_key = None
@@ -731,6 +735,7 @@ class RuneWriter:
                 self._last_applied_mode = ""
                 self._reset_spell_state()
                 self._reset_fail_state()
+                self._no_loadout_session = False
             return
 
         # INFO on the enter transition so the game-1-only silence bug
@@ -746,6 +751,13 @@ class RuneWriter:
 
         # Get game mode from lobby
         mode = self._detect_game_mode()
+
+        # S134 N2: a TFT champ select gets NO League rune page and NO spell
+        # PATCH. Measured 2026-10-25 in both TFT matches: this writer had no
+        # queue gate, so it wrote "RC: Kai'Sa SR" + spells as mode=TFT, then
+        # again as mode=CLASSIC once the lobby read failed (the fallback).
+        if self._league_loadout_blocked(session, mode):
+            return
 
         # CS2 (2026-06-08): self-correct summoner spells on EVERY poll, before
         # the champion-detected early-return below. The client randomises the
@@ -801,6 +813,29 @@ class RuneWriter:
             _log.debug("RuneWriter: rune write failed for %s/%s (attempt %d, "
                        "%s); next try in %.0fs", champion_name, mode,
                        self._fail_count, why, delay)
+
+    def _league_loadout_blocked(self, session: dict, mode: str) -> bool:
+        """True when this champ select must get no rune or spell write (TFT).
+
+        The session's own ``queueId`` (top level in the recorded TFT session,
+        ``gameData.queue.id`` on older shapes) is checked as well as the lobby
+        mode, because the lobby read can fail and fall back to "CLASSIC" - the
+        exact path of the measured second write. Once TFT is seen the verdict
+        is latched until champ select ends.
+        """
+        if self._no_loadout_session:
+            return True
+        qid = session.get("queueId")
+        if not qid:
+            gd = session.get("gameData")
+            q = gd.get("queue") if isinstance(gd, dict) else None
+            qid = q.get("id") if isinstance(q, dict) else None
+        if not is_tft_context(queue_id=qid, game_mode=mode):
+            return False
+        self._no_loadout_session = True
+        _log.info("RuneWriter: TFT champ select (queue=%s mode=%s) - no rune "
+                  "or summoner-spell writes", qid, mode)
+        return True
 
     def _reset_spell_state(self) -> None:
         """Clear per-lock spell-push state (champ-select exit / champ change)."""

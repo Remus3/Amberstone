@@ -456,6 +456,12 @@ def save_rating(script_dir,champion,game_state,ally_kills_total,report=None):
     gpm=round(_num(game_state.get("gold",0))/game_mins);raw_mode=game_state.get("game_mode","CLASSIC")
     category=mode_category(raw_mode)
     if not category: return ("", [])
+    # S134 N3: this is the LEAGUE rating (CS / KDA / KP). A TFT game used to
+    # fall through to calculate_rating and overwrite last_tft.json with an SR
+    # grade; TFT is rated only by save_tft_rating.
+    if category=="TFT":
+        _log.info("save_rating: TFT game - League rating skipped (save_tft_rating owns TFT)")
+        return ("", [])
     stats={"cs_per_min":_num(game_state.get("cs_per_min",0)),"deaths":_num(game_state.get("deaths",0)),"kills":_num(game_state.get("kills",0)),"assists":_num(game_state.get("assists",0)),"game_mins":game_mins,"ally_kills_total":_num(ally_kills_total,1),"gold_per_min":gpm}
     if category=="ARAM":grade,notes=calculate_aram_rating(stats)
     elif category=="ARENA":grade,notes=calculate_arena_rating(stats)

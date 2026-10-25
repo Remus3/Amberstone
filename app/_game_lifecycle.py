@@ -85,6 +85,29 @@ def _log_rating_outcome(label: str, grade, report: dict) -> None:
         _log.info("%s rating skipped: match not rated", label)
 
 
+def _tft_game_ended(app) -> bool:
+    """S134 N3: was the game that just ended TFT?
+
+    ``app._tft_mode`` is the envelope flag, and it is lost when the envelope
+    flips mid-match (QA N1, 2026-10-25). The last game state carries its own
+    answer: TftStateReader stamps ``game_mode`` "TFT", and the standalone
+    Unreal client's state is tagged ``data_source`` = tft_standalone's
+    SOURCE_TAG. Any one of them is enough. Never raises.
+    """
+    if getattr(app, "_tft_mode", False):
+        return True
+    gs = getattr(app, "_game_state", None)
+    if not isinstance(gs, dict):
+        return False
+    try:
+        from core.queue_modes import is_tft_game_mode
+        from tft.tft_standalone import SOURCE_TAG
+        return (is_tft_game_mode(gs.get("game_mode"))
+                or SOURCE_TAG in (gs.get("data_source"), gs.get("rc_source")))
+    except Exception:  # noqa: BLE001
+        return False
+
+
 class GameLifecycleManager:
     """
     Owns game start/end transitions, worker management, and state processing.
@@ -158,6 +181,7 @@ class GameLifecycleManager:
     def on_game_end(self) -> None:
         app = self.app
         _log.info("Game ended")
+        _tft_end = _tft_game_ended(app)
         # POSTGAME: Trigger end-of-game data collection (isolated, never used for coaching)
         if HAS_POSTGAME:
             try:
@@ -178,9 +202,13 @@ class GameLifecycleManager:
         # rewind_history.db so the operator's "what did I just play"
         # surface is fresh without waiting for the Sunday cron. Frozen-
         # file 1-line wire under headless-upgrade grant.
+        # S134 N3: Match-V5 is League-only, so a TFT end schedules nothing.
         try:
-            from lib.rewind_live_writer import schedule_live_insert
-            schedule_live_insert(app)
+            if _tft_end:
+                _log.info("TFT game end: League rewind live-writer skipped")
+            else:
+                from lib.rewind_live_writer import schedule_live_insert
+                schedule_live_insert(app)
         except Exception as _rlw_exc:
             # Once per game end. This path has NO success log at all, so at
             # debug a permanently failing import/schedule was invisible - the
@@ -188,11 +216,11 @@ class GameLifecycleManager:
             # so. schedule_live_insert() already handles its own RuntimeError.
             _log.warning("rewind live-writer trigger error: %s", _rlw_exc,
                          exc_info=True)
-        _sp = app._tft_mode or app._arena_mode or app._brawl_mode or app._aram_mode
+        _sp = _tft_end or app._arena_mode or app._brawl_mode or app._aram_mode
         if _sp:
             if HAS_TRACKER:
                 try:
-                    if app._tft_mode:
+                    if _tft_end:
                         lp = SCRIPT_DIR / "data" / "tft_live_data.json"
                         cp = SCRIPT_DIR / "data" / "tft_coaching_data.json"
                         tl = json.loads(lp.read_text(encoding="utf-8")) if lp.exists() else {}

@@ -539,10 +539,16 @@ def _serve_refresh_post(h, body) -> None:
     # thread iff `core.riot_api.is_configured()`; tests swap in a no-op.
     # Failure here MUST NOT break the route - the skeleton is already
     # stored, the dashboard renders just fine without enrichment.
-    try:
-        _FANOUT_DISPATCHER(allies, enemies, queue_id)
-    except Exception as exc:    # noqa: BLE001
-        log.warning("team-context fan-out dispatch failed: %s", exc)
+    # S134 N2: the fan-out is League-V4 + Match-V5 (League-only routes);
+    # for TFT queue 1090 both answered 400 on 2026-10-25. Skip it for TFT.
+    from core.queue_modes import is_tft_queue
+    if is_tft_queue(queue_id):
+        log.info("team-context fan-out skipped: TFT queue=%d", queue_id)
+    else:
+        try:
+            _FANOUT_DISPATCHER(allies, enemies, queue_id)
+        except Exception as exc:    # noqa: BLE001
+            log.warning("team-context fan-out dispatch failed: %s", exc)
 
     h._send(200, json.dumps({"ok": True,
                              "stored": {"allies": len(allies),
