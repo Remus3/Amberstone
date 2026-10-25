@@ -75,11 +75,18 @@ SANCTIONED = {
         "deploy transaction runs while the app tree is being swapped, so it "
         "must not import from the tree it is replacing",
     ("core/log_rotation.py", "try_rotate"):
-        "log ROTATION, not an atomic write: it moves existing log generations "
-        "aside (no scratch payload becomes a destination). A held file must "
-        "fail fast and roll every rename back so the writer keeps appending; "
-        "a WinError 5 retry here would stall the logging call that triggered "
-        "the rollover (RM-718 a)",
+        "log ROTATION, not an atomic write (RM-718 a), checked against the "
+        "three requirements above. Per-writer scratch: yes - "
+        "<name>.rotating/.dropping.<pid>.<token>, and orphans from a crash are "
+        "recovered, never overwritten. WinError 5 retry: deliberately none in "
+        "the call - a refusal means another process holds the log for its "
+        "lifetime, so an in-call retry only stalls the logging call that "
+        "triggered the rollover; the bounded retry is one level up (the "
+        "handler re-attempts after _RETRY_AFTER_S, the one-shot writer on its "
+        "next run) and a refusal rolls every rename back. fsync: nothing to "
+        "flush - it only renames existing files, it writes no payload. It "
+        "may not use core.polled_json because those helpers write a payload "
+        "to a destination; there is no payload here",
 }
 
 _PER_WRITER_HINTS = ("getpid", "token", "uuid", "pid")

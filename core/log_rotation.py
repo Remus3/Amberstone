@@ -25,6 +25,22 @@ raises into the writer. A refused rotation changes NOTHING on disk: the base
 file is staged aside first (the step a holder refuses), and a later refusal
 rolls every applied rename back, so no backup generation is lost to it.
 
+CRASH SAFETY. Scratch names are per writer (`<name>.rotating.<pid>.<token>`,
+`<name>.dropping.<pid>.<token>`), so a rotation never renames onto a file a
+dead writer left behind - the shared names they replaced did exactly that
+(verifier probe D, 2026-10-24: a crash between renames, then one rotation,
+left only the newest generation). Every rotation and every handler open first
+runs recover_orphans(), which puts an orphan back in the chain or under a
+unique `recovered-*` name; it never overwrites and never deletes.
+
+WHY NO WinError 5 RETRY AND NO fsync (core/polled_json's doctrine for atomic
+writes). A refused rename here means another process holds the log open for
+its own lifetime, not a reader's millisecond poll, so an in-call retry only
+stalls the logging call that triggered the rollover. The retry lives one level
+up instead: the handler re-attempts after `_RETRY_AFTER_S`, the one-shot
+writer on its next run. Nothing is written here - rotation only renames
+existing files - so there is no payload to fsync.
+
 NEVER LOG FROM HERE. tools/lcu_agent.py puts the handler on the ROOT logger
 (basicConfig), so a record emitted by this module during a rollover re-enters
 the same handler mid-rollover. Verifier repro 2026-10-24: a refusal warning
@@ -34,8 +50,10 @@ file instead, once per streak, and counted on the handler.
 """
 from __future__ import annotations
 
+import glob
 import logging
 import os
+import secrets
 import time
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -79,6 +97,88 @@ def refusal_note(path: PathLike, err: BaseException) -> str:
             f"({type(err).__name__}: {err}) - appending to the oversize file\n")
 
 
+def _token() -> str:
+    return secrets.token_hex(4)
+
+
+def _scratch(path: Path, kind: str) -> Path:
+    """Per-writer scratch name: `<name>.<kind>.<pid>.<token>`. Two writers - or
+    two rotations of one writer - can never share one, so a scratch file left
+    by a crash is never the target of a later rotation's rename."""
+    return path.with_name(f"{path.name}.{kind}.{os.getpid()}.{_token()}")
+
+
+_RECOVERED_LABEL = {"rotating": "recovered-staged", "dropping": "recovered-dropped"}
+
+
+def _recovered_name(path: Path, kind: str) -> Path:
+    """Unique preserved name for an orphaned scratch file. Outside the
+    numbered `.1` .. `.N` set, so no rotation ever renames onto it; it still
+    matches `logs/*.log*`, so core/log_retention ages it out like any log."""
+    return path.with_name(
+        f"{path.name}.{_RECOVERED_LABEL[kind]}.{os.getpid()}.{_token()}")
+
+
+def _move_no_clobber(src: Path, dst: Path) -> bool:
+    """Rename `src` to `dst` only if `dst` does not exist. Never overwrites."""
+    if dst.exists():
+        return False
+    try:
+        os.rename(src, dst)  # refuses an existing dst on Windows
+    except OSError:
+        return False
+    return True
+
+
+def _orphans(path: Path) -> list[tuple[str, Path]]:
+    """Scratch files a crashed rotation left behind: (kind, path), newest
+    first. Matches the per-writer names and the legacy bare `.rotating` /
+    `.dropping`. One non-recursive, pattern-scoped listing of the log's dir."""
+    found = []
+    for kind in ("rotating", "dropping"):
+        pattern = glob.escape(path.name) + f".{kind}*"
+        try:
+            for p in path.parent.glob(pattern):
+                if p.is_file():
+                    found.append((kind, p))
+        except OSError:
+            continue
+
+    def _key(item):
+        try:
+            return (item[1].stat().st_mtime, item[1].name)
+        except OSError:
+            return (0.0, item[1].name)
+
+    return sorted(found, key=_key, reverse=True)
+
+
+def recover_orphans(path: PathLike, backup_count: int = DEFAULT_BACKUP_COUNT) -> int:
+    """Recover scratch files left by a rotation that died mid-way. Never
+    overwrites and never deletes; returns how many were recovered.
+
+    A staged base (`.rotating`) is the newest backup generation: it goes back
+    into the chain as `.1` when that slot is free (the crash came after the
+    shift), which completes the interrupted rotation. Otherwise - and for a
+    `.dropping` file, which was about to be dropped - it moves to a unique
+    `recovered-*` name. If even that is impossible the orphan stays under its
+    own unique name, which no later rotation reuses.
+
+    Caveat: a concurrent writer's IN-FLIGHT scratch looks the same. Moving it
+    costs that writer its rotation (it fails and rolls back) but never data.
+    """
+    path = Path(path)
+    recovered = 0
+    for kind, orphan in _orphans(path):
+        if kind == "rotating" and backup_count >= 1 \
+                and _move_no_clobber(orphan, _backup(path, 1)):
+            recovered += 1
+            continue
+        if _move_no_clobber(orphan, _recovered_name(path, kind)):
+            recovered += 1
+    return recovered
+
+
 def try_rotate(path: PathLike, backup_count: int = DEFAULT_BACKUP_COUNT) -> Optional[OSError]:
     """Shift `path` -> `path.1` -> ... -> `path.<backup_count>`, all or nothing.
 
@@ -86,23 +186,28 @@ def try_rotate(path: PathLike, backup_count: int = DEFAULT_BACKUP_COUNT) -> Opti
     or the OSError that stopped it - in which case every file is where it was.
     A missing `path` returns FileNotFoundError. Never logs (module docstring).
 
-    Order: 1) stage the base file aside - the rename a holder refuses, tried
-    before anything else is touched; 2) move the oldest backup to a drop name
-    instead of overwriting it; 3) shift the rest up; 4) staged -> `.1`. A
-    refusal after step 1 undoes every applied rename in reverse.
+    Order: 0) recover any scratch a crashed rotation left behind; 1) stage the
+    base file aside under a per-writer name - the rename a holder refuses,
+    tried before anything else is touched; 2) move the oldest backup to a
+    per-writer drop name instead of overwriting it; 3) shift the rest up;
+    4) staged -> `.1`. A refusal after step 1 undoes every applied rename in
+    reverse. When step 0 recovered anything, the drop in step 2 is preserved
+    under a recovered name instead of deleted: right after a crash the chain
+    holds more generations than the bound, and none of them is lost to it.
     """
     _validate_backups(backup_count)
     path = Path(path)
+    recovered = recover_orphans(path, backup_count)
     if not path.is_file():
         return FileNotFoundError(2, "no such log file", str(path))
-    staged = path.with_name(path.name + ".rotating")
+    staged = _scratch(path, "rotating")
     try:
         os.replace(path, staged)
     except OSError as exc:
         return exc
     applied: list[tuple[Path, Path]] = [(path, staged)]
     oldest = _backup(path, backup_count)
-    dropped = path.with_name(path.name + ".dropping")
+    dropped = _scratch(path, "dropping")
     try:
         if oldest.is_file():
             os.replace(oldest, dropped)
@@ -124,10 +229,13 @@ def try_rotate(path: PathLike, backup_count: int = DEFAULT_BACKUP_COUNT) -> Opti
                 pass
         return exc
     if dropped.exists():
-        try:
-            dropped.unlink()
-        except OSError:
-            pass  # matches logs/*.log*, so core/log_retention sweeps it later
+        if recovered:
+            _move_no_clobber(dropped, _recovered_name(path, "dropping"))
+        else:
+            try:
+                dropped.unlink()  # the bounded drop of the oldest generation
+            except OSError:
+                pass  # matches logs/*.log*, so core/log_retention sweeps it later
     return None
 
 
@@ -173,6 +281,8 @@ class SafeRotatingFileHandler(RotatingFileHandler):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
+        # Handler open: recover what a writer that died mid-rotation left.
+        recover_orphans(Path(self.baseFilename), max(1, self.backupCount))
         self._retry_at = 0.0
         self._in_rollover = False
         self.refused_rollovers = 0

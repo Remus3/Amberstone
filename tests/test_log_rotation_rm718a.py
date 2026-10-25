@@ -136,6 +136,107 @@ def test_a_rotation_refused_mid_shift_is_rolled_back(tmp_path):
     assert sorted(p.name for p in tmp_path.iterdir()) == ["w.log", "w.log.1", "w.log.2"]
 
 
+# -- crash mid-rotation: orphaned scratch files are recovered, never overwritten
+
+def _contents(d: Path) -> dict:
+    return {p.name: p.read_bytes() for p in sorted(d.iterdir())}
+
+
+@pytest.mark.parametrize("tag", ["", ".4242.deadbeef"])
+def test_crash_after_staging_loses_nothing(tmp_path, tag):
+    """Verifier probe C: the process died right after staging the base aside,
+    the writer restarted and wrote a new base, then the next rotation ran. The
+    old shared `.rotating` name was overwritten by that rotation and BASE was
+    lost. Both the legacy bare name and the per-writer form must survive."""
+    log = tmp_path / "a.log"
+    log.write_bytes(b"NEWBASE")
+    (tmp_path / "a.log.1").write_bytes(b"ONE")
+    (tmp_path / "a.log.2").write_bytes(b"TWO")
+    (tmp_path / f"a.log.rotating{tag}").write_bytes(b"BASE")
+
+    assert log_rotation.rotate(log, backup_count=2) is True
+
+    after = _contents(tmp_path)
+    assert sorted(after.values()) == [b"BASE", b"NEWBASE", b"ONE", b"TWO"], after
+    assert after["a.log.1"] == b"NEWBASE" and after["a.log.2"] == b"ONE"
+    assert not [n for n in after if ".rotating" in n or ".dropping" in n], after
+
+
+def test_crash_mid_shift_loses_nothing(tmp_path):
+    """Verifier probe D: died after staging, after moving the oldest to the drop
+    name, and after shifting `.1 -> .2`. The old code then lost BASE and the
+    old `.1` (ONE), leaving only NEWBASE. Every generation must survive."""
+    log = tmp_path / "a.log"
+    log.write_bytes(b"NEWBASE")
+    (tmp_path / "a.log.2").write_bytes(b"ONE")
+    (tmp_path / "a.log.dropping.4242.deadbeef").write_bytes(b"TWO")
+    (tmp_path / "a.log.rotating.4242.deadbeef").write_bytes(b"BASE")
+
+    assert log_rotation.rotate(log, backup_count=2) is True
+
+    after = _contents(tmp_path)
+    assert sorted(after.values()) == [b"BASE", b"NEWBASE", b"ONE", b"TWO"], after
+    # The interrupted rotation is completed (BASE back in the chain), then the
+    # new one runs on top of it.
+    assert after["a.log.1"] == b"NEWBASE" and after["a.log.2"] == b"BASE"
+    assert not [n for n in after if ".rotating" in n or ".dropping" in n], after
+
+
+def test_handler_open_recovers_an_orphan(tmp_path):
+    log = tmp_path / "agent.log"
+    log.write_bytes(b"NEWBASE\n")
+    (tmp_path / "agent.log.rotating.4242.deadbeef").write_bytes(b"BASE\n")
+
+    handler = log_rotation.rotating_file_handler(log, max_bytes=10_000, backup_count=2)
+    handler.close()
+
+    after = _contents(tmp_path)
+    assert after.get("agent.log.1") == b"BASE\n", after
+    assert after["agent.log"] == b"NEWBASE\n"
+
+
+def test_recovery_never_overwrites_an_existing_file(tmp_path, monkeypatch):
+    """When the preserved name is somehow taken, the orphan stays where it is
+    (under its own unique name, which no rotation reuses)."""
+    log = tmp_path / "a.log"
+    log.write_bytes(b"NEWBASE")
+    (tmp_path / "a.log.1").write_bytes(b"ONE")
+    orphan = tmp_path / "a.log.rotating.4242.deadbeef"
+    orphan.write_bytes(b"BASE")
+    monkeypatch.setattr(log_rotation, "_token", lambda: "fixed")
+    taken = tmp_path / log_rotation._recovered_name(log, "rotating").name
+    taken.write_bytes(b"SQUATTER")
+
+    log_rotation.recover_orphans(log)
+
+    assert orphan.read_bytes() == b"BASE"
+    assert taken.read_bytes() == b"SQUATTER"
+
+
+def test_scratch_names_are_per_writer(tmp_path):
+    """Two writers must never share a scratch name: each carries the pid and a
+    fresh random token, unlike the old shared `.rotating` / `.dropping`."""
+    seen: list = []
+
+    def _spy(real, src, dst, *a, **kw):
+        seen.append(Path(dst).name)
+        return real(src, dst, *a, **kw)
+
+    log = tmp_path / "w.log"
+    with scoped_fs_fault("replace", tmp_path, _spy):
+        for _ in range(2):
+            _fill(log, 100)
+            _fill(tmp_path / "w.log.1", 10)
+            _fill(tmp_path / "w.log.2", 10)
+            assert log_rotation.rotate(log, backup_count=2) is True
+
+    staged = [n for n in seen if ".rotating." in n]
+    dropped = [n for n in seen if ".dropping." in n]
+    assert len(staged) == 2 and len(dropped) == 2, seen
+    assert staged[0] != staged[1] and dropped[0] != dropped[1]
+    assert all(f".{os.getpid()}." in n for n in staged + dropped), seen
+
+
 def test_rotation_never_logs(tmp_path, caplog):
     """A refusal must not be reported through logging: when the handler that
     is rotating sits on the root logger, that record re-enters it."""
@@ -329,6 +430,20 @@ def test_replay_roster_sink_notes_a_refused_rotation_and_keeps_the_log(tmp_path,
     assert "log rotation refused" in text and text.endswith("run\n")
     assert (tmp_path / "replay_roster.log.1").read_bytes() == b"p" * 10
     assert not (tmp_path / "replay_roster.log.2").exists()
+
+
+def test_replay_roster_sink_recovers_an_orphan_even_under_the_cap(tmp_path):
+    from tools import replay_roster_pull as rpp
+
+    sink = tmp_path / "replay_roster.log"
+    sink.write_text("new run\n", encoding="utf-8")
+    (tmp_path / "replay_roster.log.rotating.4242.deadbeef").write_text(
+        "crashed run\n", encoding="utf-8")
+
+    rpp._open_log_sink(sink).close()
+
+    assert (tmp_path / "replay_roster.log.1").read_text(encoding="utf-8") == "crashed run\n"
+    assert not list(tmp_path.glob("replay_roster.log.rotating*"))
 
 
 def test_replay_roster_sink_appends_under_the_cap(tmp_path):
