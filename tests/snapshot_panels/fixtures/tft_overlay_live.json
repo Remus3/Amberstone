@@ -1,0 +1,60 @@
+{
+  "_fixture": "Real live payload: stage / level / gold absent (OCR not landed). Source: QA match 20261025-085349 states.jsonl sample 40 (gt 850.4), sanitised: identity keys dropped.",
+  "mode_key": "tft",
+  "health": {
+    "alive": true,
+    "mode": "game",
+    "has_game": true,
+    "aram_mode": false,
+    "arena_mode": false,
+    "brawl_mode": null,
+    "tft_mode": true
+  },
+  "coach": {
+    "mode": "tft",
+    "action": null,
+    "board": "",
+    "econ": "",
+    "rolldown": "",
+    "items": "",
+    "god_pick": "",
+    "placement": "",
+    "upgrade": "",
+    "risk": null,
+    "health": 96,
+    "hp": 96,
+    "game_time_s": 850.4,
+    "game_time": "14:10",
+    "standing": 2,
+    "board_size": 7,
+    "board_str": "Yorick*1, Xayah*2, Karma*1, Yunara*2, Diana*1, Ahri*1, Elise*1",
+    "players_alive": 8,
+    "tft_live": {
+      "source": "tft_standalone",
+      "live_api": false,
+      "eog": true,
+      "line": "TFT standalone client: no Live Client API - vision only, board/HP from the per-round stats file."
+    },
+    "choices": [],
+    "immediate": null,
+    "fight_rule": null
+  },
+  "liveclient": {
+    "game_mode": "TFT",
+    "source": "tft_standalone",
+    "live_api": false,
+    "game_time_s": 850.4,
+    "game_time": "14:10",
+    "game_id": "0",
+    "hp": 96,
+    "standing": 2,
+    "board_size": 7,
+    "board_str": "Yorick*1, Xayah*2, Karma*1, Yunara*2, Diana*1, Ahri*1, Elise*1",
+    "players_alive": 8
+  },
+  "lcu": {
+    "phase": "InProgress",
+    "game_queue_id": 1090,
+    "game_queue_mode": "TFT"
+  }
+}

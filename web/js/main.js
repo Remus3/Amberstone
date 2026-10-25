@@ -78,6 +78,9 @@ import { showPlayerGpi } from './panels/player_gpi.js';
 // RC2 4.2: overlay auto-hide (idle recede). Inert unless ?overlay=1.
 import { initOverlayIdle } from './lib/overlay_idle.js';
 import { initOverlayLayout } from './lib/overlay_layout.js';
+// S134 N9: the TFT overlay panels (vitals / board / lobby HP). Self-gates on the
+// overlay shell and on /api/state.mode_key == "tft"; fed the full state below.
+import { renderTftOverlay } from './lib/overlay_tft.js';
 // RC2 E1: per-panel visibility gate (separate in-game / out-of-game toggles).
 import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibility.js';
 
@@ -6931,6 +6934,9 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
           state.latest.zoi = st.zoi || null;  // ZOI w-mmrect fill (item 567 slice 3)
           onState({ type: "state", source: "state-http",
                     mode: fileMode, payload: coachPayload });
+          // S134 N9: TFT overlay panels read the FULL state (liveclient +
+          // coach + mode_key); no-op off the overlay shell, never throws.
+          renderTftOverlay(st);
           // 2026-04-25: cold-start champ-select prep - surface adaptation
           // history during champ-select via the LCU snapshot.
           handleLcuEnvelope(st.lcu);
@@ -6986,6 +6992,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
           state.latest.zoi = st.zoi || null;  // ZOI w-mmrect fill (item 567 slice 3)
           onState({ type: "state", source: "state-sse",
                     mode: fileMode, payload: coachPayload });
+          renderTftOverlay(st);  // S134 N9: see the HTTP-fallback site above.
           if (st.lcu) handleLcuEnvelope(st.lcu);
           renderTeamContext(st);
           renderScreenRead(st);

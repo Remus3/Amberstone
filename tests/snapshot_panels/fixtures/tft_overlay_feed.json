@@ -1,0 +1,84 @@
+{
+  "_fixture": "Real payload plus fields RC does not serve on main yet, values read off the same moment's frame (vision_0080, round 5-2): the OCR fields stage_round, level 9, gold 41; and the S134 P0-F board-panel rows in their served shape (tft/tft_standalone.py _lobby / _board): liveclient.players (all 8 players' HP, no names, the local row marked you, one eliminated at health 0; opponents' standings ordered by HP, board_size known only for the local row) and liveclient.board (the local board, items not read). Source: QA match 20261025-085349 states.jsonl sample 80 (gt 1704.9), sanitised: identity keys dropped.",
+  "mode_key": "tft",
+  "health": {
+    "alive": true,
+    "mode": "game",
+    "has_game": true,
+    "aram_mode": false,
+    "arena_mode": false,
+    "brawl_mode": null,
+    "tft_mode": true
+  },
+  "coach": {
+    "mode": "tft",
+    "action": null,
+    "board": "",
+    "econ": "",
+    "rolldown": "",
+    "items": "",
+    "god_pick": "",
+    "placement": "",
+    "upgrade": "",
+    "risk": null,
+    "health": 96,
+    "hp": 96,
+    "game_time_s": 1704.9,
+    "game_time": "28:24",
+    "standing": 1,
+    "board_size": 9,
+    "board_str": "Yunara*2, Diana*2, Ahri*1, Fiddlesticks*2, Soraka*1, Aphelios*2, Alune*1, Taric*1, Yorick*1",
+    "players_alive": 7,
+    "tft_live": {
+      "source": "tft_standalone",
+      "live_api": false,
+      "eog": true,
+      "line": "TFT standalone client: no Live Client API - vision only, board/HP from the per-round stats file."
+    },
+    "choices": [],
+    "immediate": null,
+    "fight_rule": null,
+    "stage_round": "5-2",
+    "level": 9,
+    "gold": 41
+  },
+  "liveclient": {
+    "game_mode": "TFT",
+    "source": "tft_standalone",
+    "live_api": false,
+    "game_time_s": 1704.9,
+    "game_time": "28:24",
+    "game_id": "0",
+    "hp": 96,
+    "standing": 1,
+    "board_size": 9,
+    "board_str": "Yunara*2, Diana*2, Ahri*1, Fiddlesticks*2, Soraka*1, Aphelios*2, Alune*1, Taric*1, Yorick*1",
+    "players_alive": 7,
+    "board": [
+      {"name": "Yunara", "star": 2, "items": []},
+      {"name": "Diana", "star": 2, "items": []},
+      {"name": "Ahri", "star": 1, "items": []},
+      {"name": "Fiddlesticks", "star": 2, "items": []},
+      {"name": "Soraka", "star": 1, "items": []},
+      {"name": "Aphelios", "star": 2, "items": []},
+      {"name": "Alune", "star": 1, "items": []},
+      {"name": "Taric", "star": 1, "items": []},
+      {"name": "Yorick", "star": 1, "items": []}
+    ],
+    "players": [
+      {"standing": 1, "health": 96, "you": true, "board_size": 9},
+      {"standing": 2, "health": 38, "you": false},
+      {"standing": 3, "health": 36, "you": false},
+      {"standing": 4, "health": 26, "you": false},
+      {"standing": 5, "health": 21, "you": false},
+      {"standing": 6, "health": 19, "you": false},
+      {"standing": 7, "health": 3, "you": false},
+      {"standing": 8, "health": 0, "you": false}
+    ]
+  },
+  "lcu": {
+    "phase": "InProgress",
+    "game_queue_id": 1090,
+    "game_queue_mode": "TFT"
+  }
+}

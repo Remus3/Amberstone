@@ -764,7 +764,27 @@ _WEB = _REPO_ROOT / "web"
 # web/js/main.js back to its s135-land blob before this landing
 # (ede09196e)
 # reproduces the superseded 1cf1a44e... value EXACTLY. No glyph change.
-_LIVE_HALF_DIGEST = "85fd1169eb04109bb40039e9ee42d7797855489c22d5d450cc05b40a115c2185"
+# superseded by the session 135 merger re-capture below (S135 N9): "85fd1169eb04109bb40039e9ee42d7797855489c22d5d450cc05b40a115c2185"
+#
+# RE-CAPTURED 2026-10-25 at S135 N9 (the TFT in-game overlay panels: the new
+# web/js/lib/overlay_tft.js vitals / board / lobby-HP widgets, the TFT widget
+# set + game-family scoping + "TFT PANELS" menu + set-passive "Done" in
+# web/js/lib/overlay_layout.js, and the renderTftOverlay calls in
+# web/js/main.js). Ordinary case, no tokeniser change. ATTRIBUTED BY
+# SUBSTITUTION against 3d190082a: swapping exactly web/js/main.js and
+# web/js/lib/overlay_layout.js back to their HEAD blobs and dropping the new
+# web/js/lib/overlay_tft.js reproduces the superseded 55397e31... value
+# EXACTLY. Those three paths are the whole change. No glyph change. The S134
+# P0-F board-panel branch also re-captures this pin: the merger recomputes it
+# over the merged tree.
+# MERGED 2026-10-25 by the session 135 merger onto s135-land (the TFT
+# board / lobby slice and the earlier lanes already landed); recomputed over
+# the merged tree. ATTRIBUTED BY SUBSTITUTION: swapping exactly
+# web/js/main.js and web/js/lib/overlay_layout.js back to their s135-land
+# blobs before this landing (23d9c20d8) and dropping the new
+# web/js/lib/overlay_tft.js
+# reproduces the superseded 85fd1169... value EXACTLY. No glyph change.
+_LIVE_HALF_DIGEST = "7e8a22671512b6446773302535f0a402405e9834a8652459c3ac579d7d7a22e1"
 
 
 def _web_sources() -> list[Path]:

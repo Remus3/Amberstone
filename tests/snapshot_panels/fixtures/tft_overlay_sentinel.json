@@ -1,0 +1,56 @@
+{
+  "_fixture": "Real game-start payload: per-round file placeholders hp/standing -1, players 0, board 0 (QA N10). Source: QA match 20261025-085349 states.jsonl sample 1 (gt 25.1), sanitised: identity keys dropped.",
+  "mode_key": "tft",
+  "health": {
+    "alive": true,
+    "mode": "game",
+    "has_game": true,
+    "aram_mode": false,
+    "arena_mode": false,
+    "brawl_mode": null,
+    "tft_mode": true
+  },
+  "coach": {
+    "mode": "tft",
+    "action": null,
+    "board": "",
+    "econ": "",
+    "rolldown": "",
+    "items": "",
+    "god_pick": "",
+    "placement": "",
+    "upgrade": "",
+    "risk": null,
+    "health": -1,
+    "hp": -1,
+    "game_time_s": 25.1,
+    "game_time": "0:25",
+    "standing": -1,
+    "tft_live": {
+      "source": "tft_standalone",
+      "live_api": false,
+      "eog": true,
+      "line": "TFT standalone client: no Live Client API - vision only, board/HP from the per-round stats file."
+    },
+    "choices": [],
+    "immediate": null,
+    "fight_rule": null
+  },
+  "liveclient": {
+    "game_mode": "TFT",
+    "source": "tft_standalone",
+    "live_api": false,
+    "game_time_s": 25.1,
+    "game_time": "0:25",
+    "game_id": "0",
+    "hp": -1,
+    "standing": -1,
+    "board_size": 0,
+    "players_alive": 0
+  },
+  "lcu": {
+    "phase": "InProgress",
+    "game_queue_id": 1090,
+    "game_queue_mode": "TFT"
+  }
+}
