@@ -1085,6 +1085,7 @@ def _all_absent(reason: str) -> dict:
 
 _OUTPUT_KEYS = ("label", "stage", "round", "timer", "gold", "level", "xp_cur", "xp_max",
                 "streak", "odds", "shop", "own_hp", "scoreboard", "traits")
+_FAILED = object()   # sentinel: a field task raised
 
 
 def read_frame(img, *, profile: Profile | None = None, engine: OcrEngine | None = None,
@@ -1141,16 +1142,26 @@ def read_frame(img, *, profile: Profile | None = None, engine: OcrEngine | None 
         for i, slot in enumerate(prof.group("traits", size)):
             add("traits", i, lambda i=i, b=slot: read_trait_row(ctx, i, b))
 
+    def safe(key: str, fn: Callable[[], Any]):
+        # fail-soft: one bad crop makes its field absent, never raises into the
+        # caller's poll loop (the TftStateReader OCR thread, the TFT-07 worker)
+        try:
+            return fn()
+        except Exception as exc:  # noqa: BLE001
+            _log.debug("TFT OCR field %s failed: %s", key, exc)
+            return _FAILED
+
     results: dict = {}
     n = max(1, min(int(workers), MAX_WORKERS))
     if n == 1 or len(tasks) <= 1:
         for key, idx, fn in tasks:
-            results[(key, idx)] = fn()
+            results[(key, idx)] = safe(key, fn)
     else:
         with ThreadPoolExecutor(max_workers=n, thread_name_prefix="tft-ocr") as ex:
-            futs = {(key, idx): ex.submit(fn) for key, idx, fn in tasks}
+            futs = {(key, idx): ex.submit(safe, key, fn) for key, idx, fn in tasks}
             for k, fut in futs.items():
                 results[k] = fut.result()
+    failed = {key for (key, _idx), res in results.items() if res is _FAILED}
 
     out: dict = {}
 
@@ -1159,6 +1170,8 @@ def read_frame(img, *, profile: Profile | None = None, engine: OcrEngine | None 
             return absent("not_requested")
         if hidden(fname):
             return absent("panel_hidden")
+        if fname in failed:
+            return absent("error")
         return None
 
     g = gate("stage")
