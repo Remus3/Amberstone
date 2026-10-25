@@ -519,3 +519,88 @@ def test_build_state_standalone_tft_serves_no_rift_text(eog_file, monkeypatch):
     assert lc["hp"] == 74
     assert state["coach"]["tft_live"]["source"] == ts.SOURCE_TAG
     assert "vision" in state["coach"]["tft_live"]["line"].lower()
+    # T1 B2: the live standalone values reach the coach keys the front end reads
+    assert state["coach"]["health"] == 74
+    assert "Yorick*2" in state["coach"]["board_str"]
+
+
+def _build(monkeypatch, *, lcu, coach, running=True, coach_mtime=None, lc=None):
+    from unittest import mock
+
+    from dashboard import _state_builder as sb
+    monkeypatch.setattr(ts, "standalone_client_running", lambda **kw: running)
+    monkeypatch.setattr(sb, "_coach_file_mtime", lambda rel: coach_mtime)
+    health = {"alive": True, "mode": "client", "has_game": False,
+              "aram_mode": False, "arena_mode": False, "tft_mode": False}
+
+    def _read_json(p):
+        if "health" in str(p):
+            return dict(health)
+        return dict(coach) if "coaching_data" in str(p) else {}
+
+    with mock.patch.object(sb, "read_json", side_effect=_read_json), \
+            mock.patch.object(sb, "lcu_summary", return_value=lcu), \
+            mock.patch.object(sb, "liveclient_summary", return_value=lc or {}), \
+            mock.patch.object(sb, "get_team_context", return_value=None), \
+            mock.patch.object(sb, "validate_coaching_payload",
+                              lambda *_a, **_kw: None):
+        return sb.build_state()
+
+
+def test_stale_tft_coach_file_is_not_served_as_live(eog_file, monkeypatch):
+    """T1 B5: a tft_coaching_data.json from an earlier game (here: written a
+    day before this match) must not reach the live envelope."""
+    stale = {"mode": "tft", "board": "OLD GAME BOARD", "econ": "old econ",
+             "stage_round": "5-1", "health": 12}
+    state = _build(monkeypatch, coach=stale, coach_mtime=time.time() - 86400,
+                   lcu={"phase": "InProgress", "game_id": "1000000911"})
+    coach = state["coach"]
+    assert coach.get("coach_stale") is True
+    assert "OLD GAME BOARD" not in json.dumps(state)
+    assert coach["health"] == 74  # live value, not the stale 12
+
+
+def test_fresh_tft_coach_file_wins_over_standalone_fill(eog_file, monkeypatch):
+    fresh = {"mode": "tft", "stage_round": "3-2", "health": 61, "level": 6}
+    state = _build(monkeypatch, coach=fresh, coach_mtime=time.time(),
+                   lcu={"phase": "InProgress", "game_id": "1000000911"})
+    coach = state["coach"]
+    assert coach.get("coach_stale") is not True
+    assert coach["stage_round"] == "3-2" and coach["level"] == 6
+    assert coach["health"] == 61  # engine value wins over the file fill
+
+
+def test_unidentified_live_game_serves_no_rift_directives(monkeypatch):
+    """T1 B4: LCU InProgress, no feed, no mode (e.g. the TFT binary is not
+    detectable) - pre-fix this served "Drake spawns 5:00" at game_time 0."""
+    coach = {"mode": "client", "action": "", "immediate": "",
+             "fight_rule": "", "risk": "", "choices": []}
+    state = _build(monkeypatch, coach=coach, running=False,
+                   lcu={"phase": "InProgress", "game_id": "1"})
+    assert state["mode_key"] == "client"
+    assert state["callouts"] == [] and state["lead_projection"] == {}
+    blob = json.dumps(state)
+    assert "Drake" not in blob and "Herald" not in blob
+    assert not state["coach"].get("action")
+
+
+def test_idle_client_still_serves_pregame_callouts(monkeypatch):
+    """Negative control: no in-game phase -> the unidentified-game gate does
+    not fire (lobby / idle keep their existing pre-game behaviour)."""
+    from dashboard import _state_builder as sb
+    assert sb.unidentified_live_game("client", {"phase": "Lobby"}, {}) is False
+    assert sb.unidentified_live_game("client", {}, {}) is False
+    assert sb.unidentified_live_game("client", {"phase": "InProgress"},
+                                     {"champion": "Ahri"}) is False
+    assert sb.unidentified_live_game("sr", {"phase": "InProgress"}, {}) is False
+    assert sb.unidentified_live_game("client", {"phase": "InProgress"}, {}) is True
+
+
+def test_mode_survives_rc_restart_without_champ_select_retention(eog_file, monkeypatch):
+    """T1 B1: after an RC restart mid-match the retained champ_select is gone;
+    mode_key must still be tft from the LCU phase / queue + the binary."""
+    state = _build(monkeypatch, coach={"mode": "tft"}, coach_mtime=time.time(),
+                   lcu={"phase": "InProgress", "game_id": "1000000911",
+                        "game_queue_id": 1090, "game_queue_mode": "TFT"})
+    assert state["mode_key"] == "tft"
+    assert state["health"]["tft_mode"] is True

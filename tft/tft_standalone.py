@@ -395,9 +395,13 @@ def _summary_from_raw(raw: dict) -> dict:
            "game_id": st.get("game_id") or ""}
     local = st.get("local") or {}
     if local:
+        board = local.get("board") or []
         out["hp"] = local.get("health")
         out["standing"] = local.get("standing")
-        out["board_size"] = len(local.get("board") or [])
+        out["board_size"] = len(board)
+        if board:
+            out["board_str"] = ", ".join(
+                f"{u.get('name')}*{u.get('star', 1)}" for u in board)
     if st.get("players_alive") is not None:
         out["players_alive"] = st["players_alive"]
     return out
