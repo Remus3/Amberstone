@@ -487,6 +487,46 @@ def test_riot_path_skipped_past_the_run_deadline(riot_env, monkeypatch):
     assert spy.urls == [] and card["source"] == "lcu"
 
 
+def _deadline_mid_run(trigger):
+    """Riot handler that jumps the fake clock past the run deadline on the
+    first request whose URL contains ``trigger``."""
+    now = [1_800_000_000.0]
+
+    def handler(url, n):
+        if trigger in url and now[0] < 1_900_000_000.0:
+            now[0] = 1_900_000_000.0
+        return _riot_ok(url, n)
+    return now, handler
+
+
+def test_deadline_truncated_sample_is_shown_but_never_cached(riot_env, monkeypatch):
+    """Verifier s134 re-check (low): a run that ran out of time must not cache
+    a thin card as 'ready' for 15 minutes."""
+    now, handler = _deadline_mid_run("/tft/match/v1/matches/NA1_")
+    monkeypatch.setattr(RA, "_http_get", RiotSpy(handler))
+    cache = TS.DigestCache(riot_env / "c.json", clock=lambda: now[0])
+    sc = TS.Scouter(lcu_get=None, riot=RA, artifact_path=riot_env / "a.json", cache=cache,
+                    sources=("riot_api",), sleep=lambda s: None, clock=lambda: now[0],
+                    deadline_s=60.0)
+    ident = TS.Identity("Alpha", "TST")
+    card = sc.scout([ident])["opponents"][0]
+    assert card["status"] == "ready" and card["partial"] is True
+    assert card["sample"]["n"] == 1
+    assert cache.get(ident) is None
+
+
+def test_deadline_before_any_match_is_reported_as_deadline(riot_env, monkeypatch):
+    now, handler = _deadline_mid_run("/ids?")
+    monkeypatch.setattr(RA, "_http_get", RiotSpy(handler))
+    sc = TS.Scouter(lcu_get=None, riot=RA, artifact_path=riot_env / "a.json",
+                    cache=TS.DigestCache(riot_env / "c.json", clock=lambda: now[0]),
+                    sources=("riot_api",), sleep=lambda s: None, clock=lambda: now[0],
+                    deadline_s=60.0)
+    card = sc.scout([TS.Identity("Alpha", "TST")])["opponents"][0]
+    assert card["status"] == "unavailable" and card["reason"] == "deadline"
+    assert card["message"] == TS._MESSAGES["deadline"]
+
+
 def test_digest_cache_survives_a_damaged_row(tmp_path):
     p = tmp_path / "cache.json"
     p.write_text(json.dumps({"junk": {"at": "not-a-time", "digest": {}}}), encoding="ascii")
