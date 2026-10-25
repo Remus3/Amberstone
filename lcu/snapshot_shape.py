@@ -567,6 +567,12 @@ def shape_snapshot(request: Callable[..., tuple], config,
             # select queue_id local is not in scope during InProgress).
             _gq = gdata.get("queue", {})
             _gq_id = _gq.get("id", 0) if isinstance(_gq, dict) else 0
+            # S134 P0: the in-game queue, so a consumer can tell a TFT match
+            # on the standalone client (no :2999) from an SR / ARAM game
+            # without another LCU call (tft/tft_standalone.lcu_tft_verdict).
+            if isinstance(_gq, dict):
+                state["game_queue_id"] = _gq_id
+                state["game_queue_mode"] = str(_gq.get("gameMode") or "")
             if _gq_id in (1700, 1710, 1750):
                 aug, _aug_err = request(
                     "GET", "/lol-cherry-game-intra-event/v1/augments")

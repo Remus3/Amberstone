@@ -223,7 +223,8 @@ def standalone_tft_live(lcu_snapshot: dict | None) -> bool:
         return False
     try:
         from tft import tft_standalone
-        if str(lcu_snapshot.get("phase") or "") not in tft_standalone.IN_GAME_PHASES:
+        # phase in game AND (when the agent stamps it) a TFT queue
+        if tft_standalone.lcu_tft_verdict(lcu_snapshot) is not True:
             return False
         return bool(tft_standalone.standalone_client_running())
     except Exception:  # noqa: BLE001

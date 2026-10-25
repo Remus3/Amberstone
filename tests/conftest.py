@@ -1191,7 +1191,9 @@ def _no_live_standalone_tft():
     except Exception:  # noqa: BLE001 - no TFT stack present is not a failure
         yield
         return
-    patcher = mock.patch.object(tft_standalone, "_process_names", lambda: [])
+    # _process_snapshot is the module's ONLY process-table walk (running +
+    # create time both come from it), so patching it closes every path.
+    patcher = mock.patch.object(tft_standalone, "_process_snapshot", lambda: {})
     patcher.start()
     tft_standalone._reset_caches_for_tests()
     try:

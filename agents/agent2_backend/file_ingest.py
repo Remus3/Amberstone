@@ -161,7 +161,10 @@ class FileIngest:
                 lcu_snapshot = await loop.run_in_executor(None, _lcu_summary)
                 # S134 P0: same standalone-TFT mirror as /api/state, so the
                 # WS health envelope agrees with onState during the match.
-                data = _apply_standalone_tft_mirror(data, lcu_snapshot)
+                # Executor, not the loop: in game it may walk the process
+                # table (cached, tens of ms).
+                data = await loop.run_in_executor(
+                    None, _apply_standalone_tft_mirror, data, lcu_snapshot)
                 mode_key, preflip_active = _resolve_mode_key(data, lcu_snapshot)
                 if preflip_active:
                     data = _apply_preflip_mirror(data, mode_key, preflip_active)

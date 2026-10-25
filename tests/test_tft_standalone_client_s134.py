@@ -97,15 +97,105 @@ def test_running_false_for_launcher_only_without_game_binary():
 def test_suite_never_sees_the_real_tft_client():
     """tests/conftest.py ``_no_live_standalone_tft`` is in force: even while
     the operator plays TFT on this host, the suite reads no client."""
-    assert ts._process_names() == []
+    assert ts._process_snapshot() == {}
     assert ts.standalone_client_running() is False
+    assert ts._game_create_time() is None
 
 
 def test_running_probe_failure_reads_not_running(monkeypatch):
     def boom():
         raise OSError("no process list")
-    monkeypatch.setattr(ts, "_process_names", boom)
+    monkeypatch.setattr(ts, "_process_snapshot", boom)
     assert ts.standalone_client_running() is False
+
+
+def test_one_cached_walk_serves_running_and_create_time(monkeypatch):
+    calls = []
+
+    def snap():
+        calls.append(1)
+        return {"tftclient-win64-shipping.exe": 1000.0, "explorer.exe": 5.0}
+    monkeypatch.setattr(ts, "_process_snapshot", snap)
+    assert ts.standalone_client_running() is True
+    assert ts._game_create_time() == 1000.0
+    assert ts.standalone_client_running() is True
+    assert len(calls) == 1  # cached: no second walk inside the TTL
+
+
+# -- queue / phase verdict ---------------------------------------------------------
+
+@pytest.mark.parametrize("lcu,verdict", [
+    (None, None),
+    ({}, None),
+    ({"phase": "Lobby"}, False),
+    ({"phase": "InProgress"}, True),  # older LCU agent: phase alone
+    ({"phase": "InProgress", "game_queue_mode": "TFT",
+      "game_queue_id": 1090}, True),
+    ({"phase": "GameStart", "game_queue_mode": "ARAM",
+      "game_queue_id": 450}, False),
+    ({"phase": "InProgress", "game_queue_mode": "CLASSIC",
+      "game_queue_id": 420}, False),
+    ({"phase": "InProgress", "game_queue_id": 1100}, True),
+    ({"phase": "InProgress", "game_queue_id": 450}, False),
+    ({"phase": "InProgress", "game_queue_id": 999999}, True),  # unmapped id
+])
+def test_lcu_tft_verdict(lcu, verdict):
+    assert ts.lcu_tft_verdict(lcu) is verdict
+
+
+def test_aram_loading_with_lingering_tft_binary_is_not_tft(eog_file, monkeypatch):
+    """Verifier risk 3: the TFT binary still running while an ARAM game loads
+    (phase GameStart, :2999 not up yet) must not route to TFT."""
+    from dashboard import _state_builder as sb
+    monkeypatch.setattr(ts, "standalone_client_running", lambda **kw: True)
+    lcu = {"phase": "GameStart", "game_queue_mode": "ARAM",
+           "game_queue_id": 450}
+    assert ts.synth_allgamedata(lcu=lcu) is None
+    assert sb.resolve_mode_key(dict(_HEALTH_CLIENT), lcu)[0] != "tft"
+
+
+def _no_scan(monkeypatch):
+    def boom(**kw):
+        raise AssertionError("process walk on a no-TFT tick")
+    monkeypatch.setattr(ts, "standalone_client_running", boom)
+
+
+def test_lobby_status_and_synth_never_scan(eog_file, monkeypatch):
+    """Verifier finding 1: a TFT lobby pre-flips mode_key to tft, and the
+    tft_live status / synth must decide from the LCU phase alone."""
+    _no_scan(monkeypatch)
+    st = ts.tft_live_status({"phase": "Lobby"})
+    assert st["source"] == "none"
+    assert ts.synth_allgamedata(lcu={"phase": "Lobby"}) is None
+    assert ts.standalone_liveclient_summary({"phase": "Lobby"}) == {}
+
+
+def test_no_lcu_and_no_fresh_file_never_scans(tmp_path, monkeypatch):
+    monkeypatch.setattr(ts, "eog_stats_path", lambda: tmp_path / "none.json")
+    _no_scan(monkeypatch)
+    assert ts.synth_allgamedata(lcu=None) is None
+
+
+def test_snapshot_shape_stamps_the_in_game_queue(monkeypatch):
+    from lcu import snapshot_shape
+    # the draft recorder may persist a pending draft under the game id
+    monkeypatch.setattr(snapshot_shape._draft_log, "note_game_id",
+                        lambda gid: None)
+    monkeypatch.setattr(snapshot_shape, "_maybe_refresh_mastery",
+                        lambda request: None)
+
+    def request(method, path):
+        assert method == "GET"
+        if path == "/lol-gameflow/v1/gameflow-phase":
+            return "InProgress", None
+        if path == "/lol-gameflow/v1/session":
+            return {"gameData": {"gameId": 1000000911,
+                                 "queue": {"id": 1090, "gameMode": "TFT"}}}, None
+        return None, None
+    state = snapshot_shape.shape_snapshot(request, {}, enrich=False)
+    assert state["game_queue_id"] == 1090
+    assert state["game_queue_mode"] == "TFT"
+    assert ts.lcu_tft_verdict(state) is True
 
 
 # -- name cleanup ------------------------------------------------------------
