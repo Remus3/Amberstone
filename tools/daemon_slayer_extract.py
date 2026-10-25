@@ -24,6 +24,11 @@ Usage:
 A lolmath ARAM modifier table that comes back >= 95 percent neutral stops the
 extract with exit code 3 and nothing written (RM-805); ``--allow-neutral-aram
 REASON`` accepts it after an adjudication, logged and recorded in the manifest.
+The damage-split and skill-order blocks get the same gate (RM-807): a block
+that is >= 95 percent degenerate (all-zero split rows, empty skill orders, or
+an empty block) exits 5 with nothing written, past it only with
+``--allow-degenerate-lolmath REASON``; a degenerate row below the floor is
+named in a WARNING.
 
 ``--lolmath-only`` re-runs ONLY the lolmath extract against an EXISTING
 snapshot (it needs ``<patch>/manifest.json``; ``--patch`` defaults to
@@ -57,6 +62,7 @@ import argparse
 import copy
 import json
 import logging
+import math
 import re
 import sys
 import time
@@ -1012,6 +1018,110 @@ def check_aram_neutrality(aram_modifiers: dict[str, Any],
     return out
 
 
+# RM-807 (a) + (b): the damage-split and skill-order blocks have RM-805's
+# silent-default shape. An all-zero split reads downstream as "no damage axis"
+# and an empty skill order as "no order", and both were written into
+# champions.json like real data. Every committed snapshot 16.10.1 .. 16.21.1
+# carries 0 degenerate rows in either block, so a block at or above this
+# fraction (an empty block included) stops the extract before anything is
+# written; the only way past it is ``--allow-degenerate-lolmath REASON``,
+# logged and recorded in the manifest (``lolmath_degenerate_override``).
+LOLMATH_BLOCK_FAIL_FRACTION = 0.95
+EXIT_LOLMATH_DEGENERATE = 5
+_DAMAGE_SPLIT_FIELDS = ("physical", "magical", "trued")
+_SKILL_SLOTS = frozenset({"Q", "W", "E", "R"})
+
+
+class DegenerateLolmathBlockError(RuntimeError):
+    """A lolmath damage-split or skill-order block came back degenerate (RM-807)."""
+
+
+def _damage_row_is_degenerate(row: Any) -> bool:
+    """True unless one of the three split fields is a positive finite share."""
+    if not isinstance(row, dict):
+        return True
+    for key in _DAMAGE_SPLIT_FIELDS:
+        val = row.get(key)
+        if isinstance(val, bool) or not isinstance(val, (int, float)):
+            continue
+        if math.isfinite(val) and val > 0:
+            return False
+    return True
+
+
+def _skill_order_is_degenerate(row: Any) -> bool:
+    """True unless the order is a list naming at least one Q / W / E / R slot.
+
+    Real orders carry a ``None`` at some levels, so a gap is not degenerate.
+    """
+    if not isinstance(row, list):
+        return True
+    return not any(isinstance(s, str) and s in _SKILL_SLOTS for s in row)
+
+
+def check_lolmath_blocks(damage_distribution: dict[str, Any],
+                         skill_orders: dict[str, Any],
+                         override_reason: str | None = None) -> dict[str, Any]:
+    """Fail loudly when a damage-split or skill-order block is degenerate (RM-807).
+
+    Returns ``{damage_distribution: {rows, degenerate_rows,
+    degenerate_fraction}, skill_orders: {...}, threshold}``. A block at or
+    above ``LOLMATH_BLOCK_FAIL_FRACTION`` (an empty one included) raises
+    ``DegenerateLolmathBlockError`` naming every such block, unless
+    ``override_reason`` is a non-blank string: then it logs a WARNING and adds
+    ``override_reason``. Degenerate rows below the floor are named in a WARNING.
+    """
+    out: dict[str, Any] = {"threshold": LOLMATH_BLOCK_FAIL_FRACTION}
+    failing: list[str] = []
+    for name, table, is_degenerate in (
+            ("damage_distribution", damage_distribution, _damage_row_is_degenerate),
+            ("skill_orders", skill_orders, _skill_order_is_degenerate)):
+        rows = len(table)
+        bad = sorted(cid for cid, row in table.items() if is_degenerate(row))
+        fraction = len(bad) / rows if rows else 1.0
+        out[name] = {
+            "rows": rows,
+            "degenerate_rows": len(bad),
+            "degenerate_fraction": round(fraction, 4),
+        }
+        if fraction >= LOLMATH_BLOCK_FAIL_FRACTION:
+            shape = f"{len(bad)}/{rows} degenerate ({fraction:.1%})" if rows else "empty (0 rows)"
+            failing.append(f"{name} {shape}")
+        elif bad:
+            log.warning("lolmath %s: %d/%d degenerate row(s): %s",
+                        name, len(bad), rows, bad)
+    reason = (override_reason or "").strip()
+    if not failing:
+        if reason:
+            log.info("--allow-degenerate-lolmath not needed: no block at the floor")
+        return out
+    detail = "; ".join(failing)
+    if not reason:
+        raise DegenerateLolmathBlockError(
+            f"RM-807: lolmath {detail}, at or above the "
+            f"{LOLMATH_BLOCK_FAIL_FRACTION:.0%} floor - an upstream reset or "
+            "parser drift, not a balance patch; nothing was written. Adjudicate "
+            "it, then re-run with --allow-degenerate-lolmath REASON to accept it "
+            "as an explicit, recorded act."
+        )
+    log.warning(
+        "RM-807 override: accepting lolmath %s (floor %.0f%%) - reason: %s",
+        detail, LOLMATH_BLOCK_FAIL_FRACTION * 100, reason,
+    )
+    out["override_reason"] = reason
+    return out
+
+
+def _degenerate_override_record(block_check: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "flag": "--allow-degenerate-lolmath",
+        "reason": block_check["override_reason"],
+        "threshold": block_check["threshold"],
+        "blocks": {name: dict(block_check[name])
+                   for name in ("damage_distribution", "skill_orders")},
+    }
+
+
 _DATA_BLOCKS = (
     ("aram_modifiers", ARAM_MODIFIERS_ANCHOR),
     ("damage_distribution", DAMAGE_DISTRIBUTION_ANCHOR),
@@ -1496,7 +1606,8 @@ def build_manifest(lolmath: LolmathExtract, dd: DDragonSnapshot,
                    perlevel_overlay: dict[str, dict[str, float]] | None = None,
                    arena_augments: dict | None = None,
                    meraki_items: dict | None = None,
-                   aram_neutral_override: dict | None = None) -> dict:
+                   aram_neutral_override: dict | None = None,
+                   lolmath_degenerate_override: dict | None = None) -> dict:
     overlay = perlevel_overlay or {}
     augs = arena_augments or {}
     mer_items = meraki_items or {}
@@ -1548,6 +1659,9 @@ def build_manifest(lolmath: LolmathExtract, dd: DDragonSnapshot,
         # RM-805: the gate was passed by the explicit flag; record who/why.
         manifest["aram_modifiers_neutral_override"] = _neutral_override_record(
             aram_neutral_override)
+    if lolmath_degenerate_override:
+        manifest["lolmath_degenerate_override"] = _degenerate_override_record(
+            lolmath_degenerate_override)
     return manifest
 
 
@@ -1589,7 +1703,8 @@ def _neutral_override_record(aram_check: dict[str, Any]) -> dict[str, Any]:
 
 def refresh_manifest_lolmath(manifest: dict[str, Any], lolmath: LolmathExtract,
                              aram_check: dict[str, Any], *,
-                             keep_carry: bool) -> dict[str, Any]:
+                             keep_carry: bool,
+                             block_check: dict[str, Any] | None = None) -> dict[str, Any]:
     """Return a copy of an existing manifest with only its lolmath parts renewed.
 
     ``--lolmath-only``: the lolmath keys of ``sources`` are replaced in place
@@ -1598,7 +1713,8 @@ def refresh_manifest_lolmath(manifest: dict[str, Any], lolmath: LolmathExtract,
     blocks and ``outputs`` keep describing the full extract that fetched
     them. The RM-805 records follow the gate: an override is recorded (a stale
     one dropped when the gate passes cleanly), and ``aram_modifiers_carry``
-    is dropped unless ``keep_carry``.
+    is dropped unless ``keep_carry``. The RM-807 ``block_check`` record
+    follows its gate the same way.
     """
     out = copy.deepcopy(manifest)
     sources = out.get("sources")
@@ -1617,6 +1733,10 @@ def refresh_manifest_lolmath(manifest: dict[str, Any], lolmath: LolmathExtract,
         out["aram_modifiers_neutral_override"] = _neutral_override_record(aram_check)
     else:
         out.pop("aram_modifiers_neutral_override", None)
+    if block_check and "override_reason" in block_check:
+        out["lolmath_degenerate_override"] = _degenerate_override_record(block_check)
+    else:
+        out.pop("lolmath_degenerate_override", None)
     if not keep_carry:
         out.pop("aram_modifiers_carry", None)
     return out
@@ -1640,6 +1760,11 @@ def main() -> int:
                          f"(the extract otherwise exits {EXIT_ARAM_NEUTRAL} and writes "
                          "nothing); REASON names the adjudication and is logged and "
                          "recorded in the manifest")
+    ap.add_argument("--allow-degenerate-lolmath", default=None, metavar="REASON",
+                    help="RM-807: accept a lolmath damage-split or skill-order block "
+                         "that is >= 95%% degenerate (all-zero splits / empty orders; "
+                         f"the extract otherwise exits {EXIT_LOLMATH_DEGENERATE} and "
+                         "writes nothing); REASON is logged and recorded in the manifest")
     ap.add_argument("--lolmath-only", action="store_true",
                     help="refresh ONLY the lolmath data of an existing snapshot "
                          "(needs <patch>/manifest.json; --patch defaults to "
@@ -1670,12 +1795,15 @@ def main() -> int:
             return 0
         log.info("patch dir %s exists but no manifest - re-extracting", patch_dir)
 
-    # RM-805: the gate runs before the remaining fetches and before any write.
+    # RM-805 / RM-807: the gates run before the remaining fetches and any write.
     try:
-        lolmath, aram_check = _extract_lolmath(args)
+        lolmath, aram_check, block_check = _extract_lolmath(args)
     except NeutralAramTableError as exc:
         log.error("%s", exc)
         return EXIT_ARAM_NEUTRAL
+    except DegenerateLolmathBlockError as exc:
+        log.error("%s", exc)
+        return EXIT_LOLMATH_DEGENERATE
 
     perlevel_overlay = fetch_meraki_perlevel_overlay(set(dd.champions.keys()))
     arena_augments = fetch_arena_augments()
@@ -1687,6 +1815,7 @@ def main() -> int:
     manifest = build_manifest(
         lolmath, dd, patch_dir, perlevel_overlay, arena_augments, meraki_items,
         aram_neutral_override=aram_check if "override_reason" in aram_check else None,
+        lolmath_degenerate_override=block_check if "override_reason" in block_check else None,
     )
 
     _atomic_write_json(patch_dir / "champions.json", champions_payload)
@@ -1702,12 +1831,14 @@ def main() -> int:
     return 0
 
 
-def _extract_lolmath(args: argparse.Namespace) -> tuple[LolmathExtract, dict[str, Any]]:
-    """Fetch and parse every lolmath dataset, then run the RM-805 gate.
+def _extract_lolmath(
+        args: argparse.Namespace) -> tuple[LolmathExtract, dict[str, Any], dict[str, Any]]:
+    """Fetch and parse every lolmath dataset, then run the RM-805 and RM-807 gates.
 
     Shared by the full extract and ``--lolmath-only``. Returns the extract and
-    the gate measurement; raises ``NeutralAramTableError`` (nothing written)
-    on a neutral table without an override.
+    both gate measurements; raises ``NeutralAramTableError`` or
+    ``DegenerateLolmathBlockError`` (nothing written) on a failing block
+    without its override.
     """
     scen_url, data_url = discover_chunks(args.chunk_url, args.data_chunk_url)
     fetch_chunk(scen_url)
@@ -1724,7 +1855,11 @@ def _extract_lolmath(args: argparse.Namespace) -> tuple[LolmathExtract, dict[str
     aram_check = check_aram_neutrality(
         lolmath.aram_modifiers, override_reason=args.allow_neutral_aram,
     )
-    return lolmath, aram_check
+    block_check = check_lolmath_blocks(
+        lolmath.damage_distribution, lolmath.skill_orders,
+        override_reason=args.allow_degenerate_lolmath,
+    )
+    return lolmath, aram_check, block_check
 
 
 EXIT_LOLMATH_ONLY_NO_SNAPSHOT = 4
@@ -1758,10 +1893,13 @@ def _main_lolmath_only(args: argparse.Namespace) -> int:
     champ_data = champions_doc["data"]
 
     try:
-        lolmath, aram_check = _extract_lolmath(args)
+        lolmath, aram_check, block_check = _extract_lolmath(args)
     except NeutralAramTableError as exc:
         log.error("%s", exc)
         return EXIT_ARAM_NEUTRAL
+    except DegenerateLolmathBlockError as exc:
+        log.error("%s", exc)
+        return EXIT_LOLMATH_DEGENERATE
 
     # An adjudicated carry survives only an explicit override: then the carried
     # rows stay too, so the manifest never claims a carry champions.json lacks.
@@ -1779,7 +1917,8 @@ def _main_lolmath_only(args: argparse.Namespace) -> int:
     dd = DDragonSnapshot(version=champions_doc["version"], champions=champ_data, items={})
     scenarios_payload = build_scenarios_payload(lolmath, dd)
     new_manifest = refresh_manifest_lolmath(manifest, lolmath, aram_check,
-                                            keep_carry=keep_carry)
+                                            keep_carry=keep_carry,
+                                            block_check=block_check)
 
     _atomic_write_json(champions_path, champions_doc)
     _atomic_write_json(patch_dir / "scenarios.json", scenarios_payload)

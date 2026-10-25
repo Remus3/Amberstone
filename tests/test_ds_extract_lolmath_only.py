@@ -327,6 +327,30 @@ def test_lolmath_only_neutral_table_exits_3_and_changes_nothing(monkeypatch, tmp
     assert not list(patch_dir.glob("*.tmp"))
 
 
+def test_lolmath_only_degenerate_damage_block_exits_5_and_changes_nothing(
+        monkeypatch, tmp_path):
+    # RM-807: the damage-split / skill-order gate applies to the refresh too.
+    data_root, patch_dir, _ = _wire(
+        monkeypatch, tmp_path, FRESH_TABLE, ["--lolmath-only", "--patch", PATCH])
+    monkeypatch.setattr(dse, "extract_data_blocks", lambda bodies, preferred: {
+        "aram_modifiers": FRESH_TABLE,
+        "damage_distribution": {
+            "Aatrox": {"physical": 0, "magical": 0, "trued": 0},
+            "Ahri": {"physical": 0, "magical": 0, "trued": 0},
+        },
+        "skill_orders": {"Aatrox": ["Q", "W", "E"], "Ahri": ["Q", "E", "W"]},
+        "data_chunk_url": NEW_DATA,
+        "data_chunk_bytes": 222,
+        "block_sources": {},
+    })
+    before = _digests(patch_dir, data_root)
+
+    assert dse.main() == dse.EXIT_LOLMATH_DEGENERATE == 5
+
+    assert _digests(patch_dir, data_root) == before
+    assert not list(patch_dir.glob("*.tmp"))
+
+
 def test_lolmath_only_with_force_is_refused(monkeypatch, tmp_path):
     data_root, patch_dir, calls = _wire(
         monkeypatch, tmp_path, FRESH_TABLE, ["--lolmath-only", "--force", "--patch", PATCH])
