@@ -717,6 +717,27 @@ class TestWatcherDefersDuringGame:
         # Pending is cleared: the next fix edit triggers on its own.
         assert w.tick() == "idle"
 
+    def test_unwritable_trigger_is_not_logged_as_triggered(
+        self, tmp_path, caplog, monkeypatch,
+    ):
+        root = _tree(tmp_path)
+        w = _watcher(root)
+        _touch(root, "core/live.py")
+
+        def _deny(path, text):
+            raise PermissionError("locked")
+        monkeypatch.setattr(hr, "atomic_write_text", _deny)
+        with caplog.at_level(logging.INFO, logger=_LOG):
+            assert w.tick() == "trigger_failed"
+        assert _records(caplog, "triggered") == []
+        assert any("core/live.py" in m
+                   for m in _records(caplog, "could not write"))
+        assert list(w.pending) == ["core/live.py"]
+        # The write works again: the kept pending set fires on the next tick.
+        monkeypatch.undo()
+        assert w.tick() == "triggered"
+        assert (root / "restart_trigger.txt").read_text() == "auto-hot-reload"
+
 
 class TestGameActivity:
 
