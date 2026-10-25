@@ -33,6 +33,16 @@ based - no NLP:
     deterministic round_strategy signals the player is down ("hp 0%" / "you are
     dead" / "respawn").
 
+FOCUS-BOARD RE-LOGS (RM-854) - core.arena_coach_shadow writes a row a second
+time, ONCE, marked "focus_board_relog": true, when its focus_board column was
+not ready at the first write. That row repeats the same tick key and the same
+deterministic-vs-Haiku pair; its only new data is the focus_board column,
+which this report never scores. So a re-log is NOT a sample: it is skipped by
+every coverage / agreement / gate count (``_coverage_block`` and
+``summarize_agreement`` each skip it, so the MIN_SAMPLE gate never sees it)
+and tallied only as ``coverage["focus_board_relogs"]``. Only a literal true
+marker is skipped.
+
 This is a READ-ONLY report (no engine, no network, no write). Fail-soft: a
 missing / empty / malformed log yields an awaiting-accrual state and exit 0,
 never an exception.
@@ -89,6 +99,20 @@ def load_jsonl(path: Path) -> list[dict]:
         if isinstance(rec, dict):
             out.append(rec)
     return out
+
+
+# RM-854: the marker core.arena_coach_shadow puts on a focus-board re-log.
+RELOG_KEY = "focus_board_relog"
+
+
+def is_focus_board_relog(rec) -> bool:
+    """True for a focus-board re-log row (a column update, never a sample)."""
+    return isinstance(rec, dict) and rec.get(RELOG_KEY) is True
+
+
+def _samples(records: list[dict]) -> list[dict]:
+    """The rows that are agreement samples: every row but a re-log."""
+    return [rec for rec in records if not is_focus_board_relog(rec)]
 
 
 def _norm_action(text) -> str:
@@ -174,7 +198,11 @@ def record_agreement(rec: dict) -> Optional[dict]:
 
 def _coverage_block(records: list[dict]) -> dict:
     """Total rows, distinct champs, distinct rounds, live-fight vs dead-state
-    counts. dead_state + live_fight partition every row exactly once."""
+    counts. dead_state + live_fight partition every SAMPLE row exactly once;
+    focus-board re-logs (RM-854) are outside the sample and only counted."""
+    samples = _samples(records)
+    relogs = len(records) - len(samples)
+    records = samples
     total = len(records)
     champs = set()
     rounds = set()
@@ -197,6 +225,7 @@ def _coverage_block(records: list[dict]) -> dict:
         "distinct_rounds": len(rounds),
         "live_fight": live_fight,
         "dead_state": dead,
+        "focus_board_relogs": relogs,
     }
 
 
@@ -206,7 +235,9 @@ def summarize_agreement(records: list[dict]) -> dict:
     Dead-state ticks are counted (dead_state) but NEVER scored. A live-fight
     record where either side has no action label is comparable=excluded but
     still counted as unclassified. The honest combat agreement_rate is
-    agree / comparable over live-fight rounds only."""
+    agree / comparable over live-fight rounds only. Focus-board re-logs
+    (RM-854) repeat a sample already counted and are skipped."""
+    records = _samples(records)
     dead_state = 0
     comparable = 0
     agree = 0
@@ -312,6 +343,9 @@ def _print_human(report: dict) -> None:
           f"{cov.get('distinct_rounds', 0)} rounds")
     print(f"    ticks: {cov.get('live_fight', 0)} live-fight, "
           f"{cov.get('dead_state', 0)} dead-state (excluded from agreement)")
+    if cov.get("focus_board_relogs"):
+        print(f"    {cov['focus_board_relogs']} focus-board re-log row(s) "
+              "skipped (a column update, not a sample)")
     print(f"    agreement: {agr.get('agree', 0)}/{agr.get('comparable', 0)} "
           f"({agr.get('agreement_rate', 0.0)}) live-fight comparable, "
           f"{agr.get('unclassified', 0)} unclassified")
