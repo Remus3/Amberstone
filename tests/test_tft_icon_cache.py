@@ -630,6 +630,9 @@ def test_real_sources_issue_get_requests_only(recorder):
     cd_reqs = [r for r in seen if r.full_url.startswith("https://raw.communitydragon.org/")]
     assert len(lcu_reqs) + len(cd_reqs) == len(seen)
     assert all(r.get_header("Authorization") for r in lcu_reqs)
+    # Unredirected only: urllib never copies it onto a redirect to another host.
+    assert all("Authorization" in r.unredirected_hdrs and "Authorization" not in r.headers
+               for r in lcu_reqs)
     # The LCU password must never travel to the internet.
     assert cd_reqs and not any(r.get_header("Authorization") for r in cd_reqs)
     assert all("s3cret" not in json.dumps(r.header_items()) for r in cd_reqs)
