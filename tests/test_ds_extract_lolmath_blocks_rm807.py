@@ -213,6 +213,12 @@ ROSTER_CD = {f"Champ{i:03d}": {"Q": [4.0]} for i in range(173)}
 ROSTER_ROLES = {f"Champ{i:03d}": ["FIGHTER"] for i in range(173)}
 
 
+# The DDragon roster the cooldown table is measured against (RM-914)
+# names the same 173 ids.
+DDRAGON_ROSTER = {f"Champ{i:03d}": {"key": str(i + 1), "name": f"Champ{i:03d}", "stats": {}}
+                  for i in range(173)}
+
+
 def _lolmath():
     return dse.LolmathExtract(
         cooldowns=ROSTER_CD, roles=ROSTER_ROLES,
@@ -229,7 +235,7 @@ def _wire_main(monkeypatch, tmp_path, damage, skills, argv, *, network_ok):
     monkeypatch.setattr(dse, "DATA_ROOT", data_root)
     monkeypatch.setattr(dse, "fetch_ddragon", lambda: dse.DDragonSnapshot(
         version="99.1.1",
-        champions={"Aatrox": {"key": "266", "name": "Aatrox", "stats": {}}},
+        champions=DDRAGON_ROSTER,
         items={},
     ))
     monkeypatch.setattr(dse, "discover_chunks",

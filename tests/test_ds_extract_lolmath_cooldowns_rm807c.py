@@ -187,6 +187,12 @@ def test_every_committed_snapshot_has_full_clean_cooldown_and_role_rows():
 
 # --- main(): the gate fires before any later fetch or write --------------------
 
+# The DDragon roster the cooldown table is measured against (RM-914)
+# names the same 173 ids.
+DDRAGON_ROSTER = {f"Champ{i:03d}": {"key": str(i + 1), "name": f"Champ{i:03d}", "stats": {}}
+                  for i in range(173)}
+
+
 def _lolmath(cooldowns, roles):
     return dse.LolmathExtract(
         cooldowns=cooldowns, roles=roles,
@@ -203,7 +209,7 @@ def _wire_main(monkeypatch, tmp_path, cooldowns, roles, argv, *, network_ok):
     monkeypatch.setattr(dse, "DATA_ROOT", data_root)
     monkeypatch.setattr(dse, "fetch_ddragon", lambda: dse.DDragonSnapshot(
         version="99.1.1",
-        champions={"Aatrox": {"key": "266", "name": "Aatrox", "stats": {}}},
+        champions=DDRAGON_ROSTER,
         items={},
     ))
     monkeypatch.setattr(dse, "discover_chunks",

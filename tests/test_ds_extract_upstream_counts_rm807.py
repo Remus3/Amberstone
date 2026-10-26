@@ -143,6 +143,12 @@ CLEAN_SKILLS = {f"Champ{i:03d}": ["Q", "E", "W", "Q", "R"] for i in range(173)}
 CLEAN_ARAM = {f"Champ{i:03d}": {"aramDamageDealt": 1.05} for i in range(173)}
 
 
+# The DDragon roster the cooldown table is measured against (RM-914)
+# names the same 173 ids.
+DDRAGON_ROSTER = {f"Champ{i:03d}": {"key": str(i + 1), "name": f"Champ{i:03d}", "stats": {}}
+                  for i in range(173)}
+
+
 def _lolmath():
     return dse.LolmathExtract(
         # The same 173 ids as the blocks: the cooldown table is the roster
@@ -162,7 +168,7 @@ def _wire_main(monkeypatch, tmp_path, augments, meraki, argv):
     monkeypatch.setattr(dse, "DATA_ROOT", data_root)
     monkeypatch.setattr(dse, "fetch_ddragon", lambda: dse.DDragonSnapshot(
         version="99.1.1",
-        champions={"Aatrox": {"key": "266", "name": "Aatrox", "stats": {}}},
+        champions=DDRAGON_ROSTER,
         items={},
     ))
     monkeypatch.setattr(dse, "discover_chunks",
@@ -212,7 +218,7 @@ def test_main_override_writes_and_records_the_override(monkeypatch, tmp_path):
     data_root, overlay_calls = _wire_main(monkeypatch, tmp_path, _augments(0), _meraki(320),
                                           ["--allow-short-upstream", reason])
     assert dse.main() == 0
-    assert overlay_calls == [1]
+    assert overlay_calls == [len(DDRAGON_ROSTER)]
     manifest = json.loads((data_root / "99.1.1" / "manifest.json").read_text(encoding="utf-8"))
     rec = manifest["upstream_short_override"]
     assert rec["flag"] == "--allow-short-upstream"

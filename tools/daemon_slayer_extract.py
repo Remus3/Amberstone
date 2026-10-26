@@ -74,7 +74,7 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 import json5  # third-party; pure-Python JSON5 parser
 
@@ -1040,6 +1040,9 @@ def check_aram_neutrality(aram_modifiers: dict[str, Any],
 # cooldown table is the roster (as for check_lolmath_coverage); every committed
 # snapshot covers it fully in the role, damage-split and skill-order blocks, so
 # a block under this fraction of it fails under the same exit and override.
+# RM-914: the cooldown table is itself measured against the canonical
+# DDragon champion set, so tables that shrink together still fail; every
+# committed snapshot carries a cooldown row for every canonical champion.
 LOLMATH_BLOCK_FAIL_FRACTION = 0.95
 LOLMATH_COVERAGE_FLOOR = 0.95
 EXIT_LOLMATH_DEGENERATE = 5
@@ -1106,7 +1109,8 @@ def check_lolmath_blocks(damage_distribution: dict[str, Any],
                          override_reason: str | None = None,
                          *,
                          cooldowns: dict[str, Any] | None = None,
-                         roles: dict[str, Any] | None = None) -> dict[str, Any]:
+                         roles: dict[str, Any] | None = None,
+                         ddragon_ids: Iterable[str] | None = None) -> dict[str, Any]:
     """Fail loudly when a lolmath block is degenerate (RM-807).
 
     Returns ``{damage_distribution: {rows, degenerate_rows,
@@ -1123,11 +1127,17 @@ def check_lolmath_blocks(damage_distribution: dict[str, Any],
     the roster do not count) and fails the same way under
     ``LOLMATH_COVERAGE_FLOOR`` (RM-887); missing ids below that floor are
     named in a WARNING.
+
+    With non-empty ``ddragon_ids`` (the canonical DDragon champion ids), a
+    non-empty ``cooldowns`` table is measured against them the same way
+    (RM-914): tables that all shrink together agree with each other, so
+    only an outside roster can see it.
     """
     out: dict[str, Any] = {"threshold": LOLMATH_BLOCK_FAIL_FRACTION}
     failing: list[str] = []
     blocks: list[tuple[str, dict[str, Any], Any]] = []
     roster = set(cooldowns) if cooldowns else set()
+    dd_roster = set(ddragon_ids) if ddragon_ids else set()
     if cooldowns is not None:
         blocks.append(("cooldowns", cooldowns, _cooldown_row_is_degenerate))
     if roles is not None:
@@ -1149,18 +1159,19 @@ def check_lolmath_blocks(damage_distribution: dict[str, Any],
         elif bad:
             log.warning("lolmath %s: %d/%d degenerate row(s): %s",
                         name, len(bad), rows, bad)
-        if name == "cooldowns" or not roster or not rows:
+        against, label = (dd_roster, "DDragon") if name == "cooldowns" else (roster, "cooldown")
+        if not against or not rows:
             continue
-        missing = sorted(roster - set(table))
-        coverage = (len(roster) - len(missing)) / len(roster)
+        missing = sorted(against - set(table))
+        coverage = (len(against) - len(missing)) / len(against)
         out[name]["missing_rows"] = len(missing)
         out[name]["coverage"] = round(coverage, 4)
         if coverage < LOLMATH_COVERAGE_FLOOR:
-            failing.append(f"{name} covers {len(roster) - len(missing)}/{len(roster)} "
-                           f"of the cooldown roster ({coverage:.1%})")
+            failing.append(f"{name} covers {len(against) - len(missing)}/{len(against)} "
+                           f"of the {label} roster ({coverage:.1%})")
         elif missing:
-            log.warning("lolmath %s: %d/%d cooldown-roster champion(s) have no row: %s",
-                        name, len(missing), len(roster), missing)
+            log.warning("lolmath %s: %d/%d %s-roster champion(s) have no row: %s",
+                        name, len(missing), len(against), label, missing)
     reason = (override_reason or "").strip()
     if not failing:
         if reason:
@@ -1951,7 +1962,7 @@ def main() -> int:
 
     # RM-805 / RM-807: the gates run before the remaining fetches and any write.
     try:
-        lolmath, aram_check, block_check = _extract_lolmath(args)
+        lolmath, aram_check, block_check = _extract_lolmath(args, dd.champions)
     except NeutralAramTableError as exc:
         log.error("%s", exc)
         return EXIT_ARAM_NEUTRAL
@@ -1996,10 +2007,13 @@ def main() -> int:
 
 
 def _extract_lolmath(
-        args: argparse.Namespace) -> tuple[LolmathExtract, dict[str, Any], dict[str, Any]]:
+        args: argparse.Namespace,
+        champions: dict[str, Any]) -> tuple[LolmathExtract, dict[str, Any], dict[str, Any]]:
     """Fetch and parse every lolmath dataset, then run the RM-805 and RM-807 gates.
 
-    Shared by the full extract and ``--lolmath-only``. Returns the extract and
+    Shared by the full extract and ``--lolmath-only``; ``champions`` is the
+    DDragon champion map the cooldown table is measured against (RM-914),
+    throwback rows excluded here. Returns the extract and
     both gate measurements; raises ``NeutralAramTableError`` or
     ``DegenerateLolmathBlockError`` (nothing written) on a failing block
     without its override.
@@ -2023,6 +2037,7 @@ def _extract_lolmath(
         lolmath.damage_distribution, lolmath.skill_orders,
         override_reason=args.allow_degenerate_lolmath,
         cooldowns=lolmath.cooldowns, roles=lolmath.roles,
+        ddragon_ids=canonical_champions(champions),
     )
     return lolmath, aram_check, block_check
 
@@ -2058,7 +2073,7 @@ def _main_lolmath_only(args: argparse.Namespace) -> int:
     champ_data = champions_doc["data"]
 
     try:
-        lolmath, aram_check, block_check = _extract_lolmath(args)
+        lolmath, aram_check, block_check = _extract_lolmath(args, champ_data)
     except NeutralAramTableError as exc:
         log.error("%s", exc)
         return EXIT_ARAM_NEUTRAL
