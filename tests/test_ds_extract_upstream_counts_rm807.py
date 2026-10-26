@@ -155,7 +155,8 @@ def _lolmath():
         # they are measured against (RM-887).
         cooldowns={cid: {"Q": [4.0]} for cid in CLEAN_DAMAGE},
         roles={cid: ["FIGHTER"] for cid in CLEAN_DAMAGE},
-        ratings={}, lane_positions=["top"], scenarios={"aatrox": [{}]},
+        ratings={cid: {"ratings": {"healing": 2, "shielding": 0}} for cid in CLEAN_DAMAGE},
+        lane_positions=["top"], scenarios={"aatrox": [{}]},
         chunk_url="u/scen.js", chunk_bytes=1,
         aram_modifiers={}, damage_distribution={}, skill_orders={},
         data_chunk_url="", data_chunk_bytes=0,

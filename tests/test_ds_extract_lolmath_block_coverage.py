@@ -184,7 +184,8 @@ def _wire_main(monkeypatch, tmp_path, t, argv, *, network_ok):
     monkeypatch.setattr(dse, "fetch_chunk", lambda url: "")
     monkeypatch.setattr(dse, "extract_from_bodies", lambda bodies, preferred: dse.LolmathExtract(
         cooldowns=t["cooldowns"], roles=t["roles"],
-        ratings={}, lane_positions=["top"], scenarios={"champ000": [{}]},
+        ratings={cid: {"ratings": {"healing": 2, "shielding": 0}} for cid in t["cooldowns"]},
+        lane_positions=["top"], scenarios={"champ000": [{}]},
         chunk_url="u/scen.js", chunk_bytes=1,
         aram_modifiers={}, damage_distribution={}, skill_orders={},
         data_chunk_url="", data_chunk_bytes=0,

@@ -183,7 +183,8 @@ def test_an_unneeded_override_is_not_recorded():
 def _lolmath():
     return dse.LolmathExtract(
         cooldowns={"Aatrox": {"Q": [4.0]}}, roles={"Aatrox": ["FIGHTER"]},
-        ratings={}, lane_positions=["top"], scenarios={"aatrox": [{}]},
+        ratings={"Aatrox": {"ratings": {"healing": 2, "shielding": 0}}},
+        lane_positions=["top"], scenarios={"aatrox": [{}]},
         chunk_url="u/scen.js", chunk_bytes=1,
         aram_modifiers={}, damage_distribution={}, skill_orders={},
         data_chunk_url="", data_chunk_bytes=0,

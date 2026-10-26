@@ -196,7 +196,8 @@ DDRAGON_ROSTER = {f"Champ{i:03d}": {"key": str(i + 1), "name": f"Champ{i:03d}", 
 def _lolmath(cooldowns, roles):
     return dse.LolmathExtract(
         cooldowns=cooldowns, roles=roles,
-        ratings={}, lane_positions=["top"], scenarios={"aatrox": [{}]},
+        ratings={cid: {"ratings": {"healing": 2, "shielding": 0}} for cid in DDRAGON_ROSTER},
+        lane_positions=["top"], scenarios={"aatrox": [{}]},
         chunk_url="u/scen.js", chunk_bytes=1,
         aram_modifiers={}, damage_distribution={}, skill_orders={},
         data_chunk_url="", data_chunk_bytes=0,

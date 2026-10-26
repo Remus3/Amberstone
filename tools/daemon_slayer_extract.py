@@ -1043,11 +1043,16 @@ def check_aram_neutrality(aram_modifiers: dict[str, Any],
 # RM-914: the cooldown table is itself measured against the canonical
 # DDragon champion set, so tables that shrink together still fail; every
 # committed snapshot carries a cooldown row for every canonical champion.
+# RM-915: the ratings table joins the gate. champ_kit_data reads its score
+# to tell an enchanter support from any other, and every committed snapshot
+# rates every champion; 0 / 0 is a real score (42 of 173 at 16.21.1), so only
+# a table scoring 0 / 0 at this fraction fails as a reset.
 LOLMATH_BLOCK_FAIL_FRACTION = 0.95
 LOLMATH_COVERAGE_FLOOR = 0.95
 EXIT_LOLMATH_DEGENERATE = 5
 _DAMAGE_SPLIT_FIELDS = ("physical", "magical", "trued")
 _SKILL_SLOTS = frozenset({"Q", "W", "E", "R"})
+_RATING_FIELDS = ("healing", "shielding")
 
 
 class DegenerateLolmathBlockError(RuntimeError):
@@ -1104,13 +1109,38 @@ def _roles_row_is_degenerate(row: Any) -> bool:
     return not any(isinstance(r, str) and r.strip() for r in row)
 
 
+def _rating_scores(row: Any) -> list[float]:
+    """The finite, non-negative healing / shielding scores of a ratings row."""
+    rec = row.get("ratings") if isinstance(row, dict) else None
+    if not isinstance(rec, dict):
+        return []
+    out = []
+    for key in _RATING_FIELDS:
+        val = rec.get(key)
+        if isinstance(val, bool) or not isinstance(val, (int, float)):
+            continue
+        if math.isfinite(val) and val >= 0:
+            out.append(float(val))
+    return out
+
+
+def _rating_row_is_degenerate(row: Any) -> bool:
+    """True unless ``row["ratings"]`` holds a healing or shielding score.
+
+    Zero is a real score, so a 0 / 0 row is not degenerate; a whole table of
+    them is gated by ``check_lolmath_blocks`` instead.
+    """
+    return not _rating_scores(row)
+
+
 def check_lolmath_blocks(damage_distribution: dict[str, Any],
                          skill_orders: dict[str, Any],
                          override_reason: str | None = None,
                          *,
                          cooldowns: dict[str, Any] | None = None,
                          roles: dict[str, Any] | None = None,
-                         ddragon_ids: Iterable[str] | None = None) -> dict[str, Any]:
+                         ddragon_ids: Iterable[str] | None = None,
+                         ratings: dict[str, Any] | None = None) -> dict[str, Any]:
     """Fail loudly when a lolmath block is degenerate (RM-807).
 
     Returns ``{damage_distribution: {rows, degenerate_rows,
@@ -1132,6 +1162,10 @@ def check_lolmath_blocks(damage_distribution: dict[str, Any],
     non-empty ``cooldowns`` table is measured against them the same way
     (RM-914): tables that all shrink together agree with each other, so
     only an outside roster can see it.
+
+    A passed ``ratings`` table (RM-915) is gated like the role table and
+    also records ``zero_rows`` (well-formed rows scoring 0 / 0); a table whose
+    zero rows reach ``LOLMATH_BLOCK_FAIL_FRACTION`` fails the same way.
     """
     out: dict[str, Any] = {"threshold": LOLMATH_BLOCK_FAIL_FRACTION}
     failing: list[str] = []
@@ -1142,6 +1176,8 @@ def check_lolmath_blocks(damage_distribution: dict[str, Any],
         blocks.append(("cooldowns", cooldowns, _cooldown_row_is_degenerate))
     if roles is not None:
         blocks.append(("roles", roles, _roles_row_is_degenerate))
+    if ratings is not None:
+        blocks.append(("ratings", ratings, _rating_row_is_degenerate))
     blocks += [("damage_distribution", damage_distribution, _damage_row_is_degenerate),
                ("skill_orders", skill_orders, _skill_order_is_degenerate)]
     for name, table, is_degenerate in blocks:
@@ -1159,6 +1195,13 @@ def check_lolmath_blocks(damage_distribution: dict[str, Any],
         elif bad:
             log.warning("lolmath %s: %d/%d degenerate row(s): %s",
                         name, len(bad), rows, bad)
+        if name == "ratings":
+            zero = sum(1 for row in table.values()
+                       if (scores := _rating_scores(row)) and not any(scores))
+            out[name]["zero_rows"] = zero
+            if rows and zero / rows >= LOLMATH_BLOCK_FAIL_FRACTION:
+                failing.append(f"ratings {zero}/{rows} score 0 healing and 0 shielding "
+                               f"({zero / rows:.1%})")
         against, label = (dd_roster, "DDragon") if name == "cooldowns" else (roster, "cooldown")
         if not against or not rows:
             continue
@@ -1202,7 +1245,7 @@ def _degenerate_override_record(block_check: dict[str, Any]) -> dict[str, Any]:
         "reason": block_check["override_reason"],
         "threshold": block_check["threshold"],
         "blocks": {name: dict(block_check[name])
-                   for name in ("cooldowns", "roles", "damage_distribution",
+                   for name in ("cooldowns", "roles", "ratings", "damage_distribution",
                                 "skill_orders")
                    if name in block_check},
     }
@@ -1918,10 +1961,11 @@ def main() -> int:
                          "nothing); REASON names the adjudication and is logged and "
                          "recorded in the manifest")
     ap.add_argument("--allow-degenerate-lolmath", default=None, metavar="REASON",
-                    help="RM-807: accept a lolmath cooldown, role, damage-split or "
-                         "skill-order block that is >= 95%% degenerate (no positive "
-                         "cooldown / no class / all-zero splits / empty orders) or, "
-                         "for a role, damage-split or skill-order block, covers under "
+                    help="RM-807: accept a lolmath cooldown, role, ratings, damage-split "
+                         "or skill-order block that is >= 95%% degenerate (no positive "
+                         "cooldown / no class / no score / all-zero splits / empty "
+                         "orders), a ratings block >= 95%% scoring 0 / 0, or, for a "
+                         "role, ratings, damage-split or skill-order block, covers under "
                          "95%% of the cooldown roster ("
                          f"the extract otherwise exits {EXIT_LOLMATH_DEGENERATE} and "
                          "writes nothing); REASON is logged and recorded in the manifest")
@@ -2037,7 +2081,7 @@ def _extract_lolmath(
         lolmath.damage_distribution, lolmath.skill_orders,
         override_reason=args.allow_degenerate_lolmath,
         cooldowns=lolmath.cooldowns, roles=lolmath.roles,
-        ddragon_ids=canonical_champions(champions),
+        ddragon_ids=canonical_champions(champions), ratings=lolmath.ratings,
     )
     return lolmath, aram_check, block_check
 
