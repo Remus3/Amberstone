@@ -7,8 +7,9 @@
 setlocal
 cd /d "%~dp0.."
 
-:: Get timestamp
-for /f "tokens=*" %%T in ('powershell -NoProfile -Command "Get-Date -Format yyyy-MM-dd_HH-mm-ss"') do set TS=%%T
+:: Get timestamp. PowerShell by its path (RM-826); the -Command text stays
+:: unquoted, because cmd /c strips the outer pair of a line holding four quotes.
+for /f "tokens=*" %%T in ('"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -Command Get-Date -Format yyyy-MM-dd_HH-mm-ss') do set TS=%%T
 
 echo [snapshot] Staging all changes...
 git add -A

@@ -14,8 +14,8 @@ del /q "%RC_ROOT%\*.pyc" 2>nul
 del /q "%RC_ROOT%\apply_patches.py" 2>nul
 
 echo Killing old processes...
-taskkill /f /im pythonw.exe 2>nul
-timeout /t 2 /nobreak >nul
+"%SystemRoot%\System32\taskkill.exe" /f /im pythonw.exe 2>nul
+"%SystemRoot%\System32\timeout.exe" /t 2 /nobreak >nul
 
 echo Starting Amberstone...
 if exist "%EMBED_PYW%" (
@@ -24,4 +24,4 @@ if exist "%EMBED_PYW%" (
     start "" pythonw.exe "%RC_ROOT%\main.py"
 )
 echo Done!
-timeout /t 3
+"%SystemRoot%\System32\timeout.exe" /t 3

@@ -13,7 +13,7 @@ echo.
 :: ── Ruff lint ─────────────────────────────────────────────────────────────
 :: Try ruff from PATH first, fall back to known install locations
 set RUFF=
-where ruff >nul 2>&1 && set RUFF=ruff
+"%SystemRoot%\System32\where.exe" ruff >nul 2>&1 && set RUFF=ruff
 if "%RUFF%"=="" if exist ".venv\Scripts\ruff.exe" set RUFF=.venv\Scripts\ruff.exe
 if "%RUFF%"=="" (
     echo [preflight] WARN: ruff not found - install with: pip install ruff

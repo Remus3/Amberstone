@@ -13,4 +13,4 @@ echo.
 echo [Ops] Starting self-healing watchdog...
 echo [Ops] This replaces the old watchdog.ps1
 echo [Ops] Press Ctrl+C to stop.
-powershell -ExecutionPolicy Bypass -File "%RC_ROOT%\ops\run_self_healing_watchdog.ps1"
+"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -ExecutionPolicy Bypass -File "%RC_ROOT%\ops\run_self_healing_watchdog.ps1"

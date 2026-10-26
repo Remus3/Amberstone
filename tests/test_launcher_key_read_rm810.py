@@ -463,11 +463,16 @@ def test_no_launcher_line_expands_path_on_the_common_path():
 # External Windows tools a launcher might call. Each must be named by its
 # absolute System32 path: a bare name is looked up in the caller's folder
 # first, where a planted taskkill.bat / timeout.bat would run (third
-# verifier; same root cause as N1).
-_SYSTEM_TOOLS = {"wmic": "%SystemRoot%\\System32\\wbem\\wmic.exe"} | {
+# verifier; same root cause as N1). RM-826 reads this map for every tracked
+# batch file (tests/test_batch_system_tools_rm826.py, which also checks each
+# path exists): powershell lives under WindowsPowerShell\v1.0, not System32.
+_SYSTEM_TOOLS = {
+    "wmic": "%SystemRoot%\\System32\\wbem\\wmic.exe",
+    "powershell": "%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+} | {
     tool: f"%SystemRoot%\\System32\\{tool}.exe"
     for tool in ("taskkill", "timeout", "tasklist", "where", "findstr", "reg", "schtasks",
-                 "choice", "ping", "sc", "net", "powershell", "wscript", "cscript")}
+                 "choice", "ping", "sc", "net", "wscript", "cscript", "cmd")}
 
 
 # The command token of each command on a line: at its start, or after & | (

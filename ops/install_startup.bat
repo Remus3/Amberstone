@@ -24,7 +24,7 @@ echo Set oShell = CreateObject("WScript.Shell") > "%VBS%"
 echo oShell.Run "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File ""%WATCHER%"" -ConfigPath ""%CONFIG%""", 0, False >> "%VBS%"
 
 :: Create shortcut in Windows Startup folder pointing to the VBS launcher
-powershell -Command ^
+"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -Command ^
   "$ws = New-Object -ComObject WScript.Shell; ^
    $s = $ws.CreateShortcut('%STARTUP%\RiotCommanderWatcher.lnk'); ^
    $s.TargetPath = 'wscript.exe'; ^
