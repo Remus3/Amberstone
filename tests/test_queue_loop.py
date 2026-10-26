@@ -1493,6 +1493,47 @@ def test_S134P05_one_normaliser_reads_every_run_status():
     assert qloop._ci_status({}) == ""
 
 
+# RM-933: `_pick_ci_run` and `_trigger_ci_run` compared the run's `event`
+# raw, so a casing the status and conclusion readers tolerate either watched
+# the cancellable push run or missed the dispatch the trigger had created.
+def test_S134P06_a_mixed_case_dispatch_row_is_still_preferred_over_a_push():
+    calls, gh = _fake_gh(
+        list=[(0, [_row(130, "abc", event="push"),
+                   _row(131, "abc", event=" Workflow_Dispatch ")])],
+        jobs=[(0, _jobs("success"))])
+    out = qloop.wait_for_ci("abc", budget_s=600, poll_s=60, gh=gh,
+                            sleep=lambda s: None, monotonic=_mono())
+    assert out["run_id"] == 131, "the push run must not be the one watched"
+    assert not [c for c in calls if _gh_key(c) == "dispatch"]
+
+
+def test_S134P06_a_mixed_case_push_row_beats_another_event():
+    rows = [_row(132, "abc", event="schedule"), _row(133, "abc", event="PUSH")]
+    assert qloop._pick_ci_run(rows, "abc")["databaseId"] == 133
+
+
+def test_S134P06_a_triggered_mixed_case_dispatch_on_a_descendant_is_picked():
+    """No exact headSha match, so only the event names the run the trigger
+    created; read raw, "WORKFLOW_DISPATCH" was never seen and the wait graded
+    `unavailable` after every try."""
+    calls, gh = _fake_gh(
+        list=[(0, [_row(11, "other", event="push")]),
+              (0, [_row(134, "def-later", event="WORKFLOW_DISPATCH")])],
+        dispatch=[(0, "")],
+        jobs=[(0, _jobs("success"))])
+    out = qloop.wait_for_ci("abc", budget_s=600, poll_s=60, gh=gh,
+                            sleep=lambda s: None, monotonic=_mono())
+    assert out["step"] == "success"
+    assert out["run_id"] == 134
+    assert out["sha"] == "def-later"
+
+
+def test_S134P06_one_normaliser_reads_every_run_event():
+    assert qloop._ci_event({"event": " Workflow_Dispatch "}) == "workflow_dispatch"
+    assert qloop._ci_event({"event": None}) == ""
+    assert qloop._ci_event({}) == ""
+
+
 def test_the_result_carries_exactly_the_documented_fields():
     calls, gh = _fake_gh(list=[(0, [_row(104, "abc")])],
                          jobs=[(0, _jobs("success"))])

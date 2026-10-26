@@ -666,7 +666,7 @@ def _pick_ci_run(rows, sha):
     matches = [row for row in rows if str(row.get("headSha") or "") == str(sha)]
     for event in ("workflow_dispatch", "push"):
         for row in matches:
-            if str(row.get("event") or "") == event:
+            if _ci_event(row) == event:
                 return row
     return matches[0] if matches else None
 
@@ -703,7 +703,7 @@ def _trigger_ci_run(gh, sha, seen, *, sleep):
         exact = [row for row in fresh
                  if str(row.get("headSha") or "") == str(sha)]
         dispatched = [row for row in fresh
-                      if str(row.get("event") or "") == "workflow_dispatch"]
+                      if _ci_event(row) == "workflow_dispatch"]
         picked = (exact or dispatched or [None])[0]
         if picked is not None:
             seen.add(picked.get("databaseId"))
@@ -735,6 +735,17 @@ def _ci_status(row):
     a finished run until the budget graded it `timeout`.
     """
     return str(row.get("status") or "").strip().lower()
+
+
+def _ci_event(row):
+    """A run's `event`, stripped and lower-cased.
+
+    The event twin of `_ci_status` (RM-933): `_pick_ci_run` and
+    `_trigger_ci_run` compared the raw value, so a casing they did not expect
+    watched the cancellable push run instead of the dispatch, or missed the
+    dispatch the trigger had just created and graded the wait `unavailable`.
+    """
+    return str(row.get("event") or "").strip().lower()
 
 
 def _early_failure_verdict(steps, run_id):
