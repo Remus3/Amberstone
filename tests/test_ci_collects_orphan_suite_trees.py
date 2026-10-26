@@ -134,6 +134,7 @@ _DISCOVERY_ANCHORS = ("tests", "agents/daemon_slayer/tests", "tools/tests")
 # Shell variable assignments that may precede the command word, e.g.
 # `RC_REQUIRE_HOOK_GATE=1 pytest ...` at ci.yml:421.
 _ENV_ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
+_PYTHON = re.compile(r"^python3?$")
 
 
 def _logical_lines(text: str) -> list[str]:
@@ -175,22 +176,29 @@ def _pytest_targets(text: str) -> list[str]:
     Takes TEXT rather than a path so the fixture arms can prove this function
     reads its input instead of returning a constant.
 
-    The command word must be exactly `pytest` after any leading env
-    assignments, which is what keeps `pip install pytest pytest-asyncio ...`
-    (ci.yml:113 and :287) out of the result. An argument counts as a target only
-    when it looks like a path, which is what keeps the values of separated
-    options - `-n auto`, `--dist loadfile` - out of it.
+    The command word must be exactly `pytest` or `python[3] -m pytest` after
+    an optional YAML `- run:` prefix and any leading env assignments, which is
+    what keeps `pip install pytest pytest-asyncio ...` (ci.yml:113 and :287)
+    out of the result (RM-817 added the interpreter and `run:` spellings). An
+    argument counts as a target only when it looks like a path, which is what
+    keeps the values of separated options - `-n auto`, `--dist loadfile` - out
+    of it; a quoted, `@file` or `$VAR` argument is not a literal path either.
     """
     found: set[str] = set()
     for line in _logical_lines(text):
         tokens = line.split()
         head = 0
+        while head < len(tokens) and tokens[head] in ("-", "run:"):
+            head += 1
         while head < len(tokens) and _ENV_ASSIGNMENT.match(tokens[head]):
             head += 1
+        if head < len(tokens) and _PYTHON.match(tokens[head]) and (
+                tokens[head + 1:head + 3] == ["-m", "pytest"]):
+            head += 2
         if head >= len(tokens) or tokens[head] != "pytest":
             continue
         for token in tokens[head + 1:]:
-            if token.startswith("-"):
+            if token.startswith(("-", '"', "'", "@", "$")):
                 continue
             if "/" in token or token.endswith(".py"):
                 found.add(token.replace("\\", "/").rstrip("/"))
@@ -345,6 +353,30 @@ def test_a_named_file_target_does_not_cover_its_tree():
     )
     assert targets == ["tests/test_smart_quote_hygiene.py"]
     assert not _is_covered(targets, "tests")
+
+
+@pytest.mark.parametrize("line", [
+    "          python -m pytest tools/tests -q\n",
+    "          python3 -m pytest tools/tests -q\n",
+    "      - run: python -m pytest tools/tests -q\n",
+    "      - run: pytest tools/tests -q\n",
+    "          RC_X=1 python -m pytest tools/tests -q\n",
+])
+def test_interpreter_and_inline_run_spellings_are_read(line):
+    """RM-817 sibling: the command word was `pytest` only, so a tree run as
+    `python -m pytest <tree>` (or on a `- run:` line) read as uncovered, and an
+    EXCEPTED root wired that way slipped the stale-exception arm."""
+    assert _pytest_targets(line) == ["tools/tests"], line
+
+
+def test_interpreter_spelling_near_misses_are_not_targets():
+    for line in (
+        "          python -c \"import pytest; print('tools/tests')\"\n",
+        "          python -m pip install pytest tools/tests\n",
+        "          python tools/tests/run.py\n",
+        "          python -m pytest \"@$RUNNER_TEMP/impact_tests.txt\" -q\n",
+    ):
+        assert _pytest_targets(line) == [], line
 
 
 # ---------------------------------------------------------------------------

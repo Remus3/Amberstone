@@ -88,7 +88,7 @@ The user wants to end the session cleanly so the next one starts with a fresh co
 > - **Hooks** (`.githooks/`, `scripts/install_hooks.py`): the "git hook gate" step's test files with `RC_REQUIRE_HOOK_GATE=1`.
 > - **Trees outside the dual suite:** `tools/tests` and `oss/win32_atomic_io/tests`, each in its own process, when their code or anything they import changes (the DS extractors included).
 > - **Whole tree:** `ruff check .`, the py_compile sweep, and the hashed-install check against `requirements.in` after a dependency change.
-> This list is derived from the `check` job: `tests/test_done_md_push_ci_shape.py` fails when ci.yml gains a step of these kinds that this table does not name. Read the job itself when in doubt.
+> This list is checked against the `check` job (RM-817): `tests/test_done_md_push_ci_shape.py` reads the job's non-comment lines (backslash continuations joined, `&&` / `||` / `;` / `|` chains split) and derives every `python` / `python3` script or `-m` module run with `--check` anywhere in its arguments, every `RC_REQUIRE_*=1` flag, and every literal path argument (a token holding `/` or ending `.py`) of a pytest command (bare, or run as a `python` / `python3` module) outside `tests` and `agents/daemon_slayer/tests`; it fails when this table does not name one. It does NOT derive other shapes: a check flag spelled other than `--check`, an interpreter option before the script (`python -u tools/x.py --check`), a versioned interpreter (`python3.12`), a command behind a wrapper (`timeout 60 pytest ...`), a `python -c` wrapper, a path passed through a variable, a quote or an `@file`, or the whole-tree steps in the last bullet. Read the job itself when in doubt.
 
 ### 0. Local check gate - commit only when green
 
