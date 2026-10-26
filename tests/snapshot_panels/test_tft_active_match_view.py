@@ -508,3 +508,33 @@ def test_first_fallback_tick_after_champ_select_paints_no_sr_imperative(
         page.close()
         ctx.close()
     assert not errors, f"JS errors: {errors[:3]}"
+
+
+def test_eliminated_player_strip_reads_out(mock_server, pw_browser):
+    """RM-942: the real elimination moment (tft_qa run 20261025-104400,
+    states.jsonl row 72: coach hp -9 at standing 8, stage 5-2) paints HP "OUT"
+    in the fixed strip, undimmed, beside the placement - never the no-data "-"
+    and never the coach's stale health (10)."""
+    data = copy.deepcopy(_load("tft_live_s134"))
+    data["coach"].update({"hp": -9, "health": 10, "standing": 8, "stage_round": "5-2"})
+    ctx, page, errors = _open(mock_server, pw_browser, data)
+    try:
+        _wait_fallback(page, "tft")
+        page.wait_for_function(
+            "() => [...document.querySelectorAll('#am-call-body .am-tft-stat-value')]"
+            ".some(v => v.textContent === 'OUT')",
+            timeout=_LIVE_TICK_MS,
+        )
+        assert _stat_cells(page) == [
+            ["STAGE", "5-2", False], ["LEVEL", "-", True],
+            ["HP", "OUT", False], ["GOLD", "-", True],
+        ]
+        assert _text(page, "am-sub") == "TFT - stage 5-2 - 8th of 8 - phase InProgress"
+        clipped = page.evaluate(
+            "() => [...document.querySelectorAll('#am-call-body .am-tft-stat-value')]"
+            ".filter(e => e.scrollWidth > e.clientWidth + 1).map(e => e.textContent)")
+        assert clipped == [], f"clipped text: {clipped}"
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors: {errors[:3]}"

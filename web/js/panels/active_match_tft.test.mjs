@@ -127,6 +127,24 @@ test("partial data keeps all four rows (no reflow) with the '-' sentinel", () =>
   assert.deepStrictEqual(m.rows, [["STAGE", "-"], ["LEVEL", "5"], ["HP", "-"], ["GOLD", "-"]]);
 });
 
+// RM-942: an ELIMINATED local player (tft_qa run 20261025-104400, rows
+// 72-99: coach hp -9 at standing 8, stage 5-2). A read hp <= 0 at a valid
+// placement is "OUT", not the no-data "-"; with no placement it stays "-"
+// (the producer's zero default, test above).
+test("an eliminated local player (hp <= 0 at a valid place) reads OUT", () => {
+  const m = amLiveFallbackModel("tft", "InProgress",
+    { stage_round: "5-2", hp: -9, health: 10, standing: 8 });
+  assert.deepStrictEqual(m.rows, [["STAGE", "5-2"], ["LEVEL", "-"], ["HP", "OUT"], ["GOLD", "-"]]);
+  assert.strictEqual(m.place, 8);
+  assert.strictEqual(m.hasData, true);
+  const zero = amLiveFallbackModel("tft", "InProgress", { health: 0, standing: 5 });
+  assert.strictEqual(zero.rows[2][1], "OUT");
+  const noPlace = amLiveFallbackModel("tft", "InProgress", { hp: -9, standing: -1 });
+  assert.strictEqual(noPlace.rows[2][1], "-", "no valid place: not provably out");
+  const alive = amLiveFallbackModel("tft", "InProgress", { hp: 4, standing: 8 });
+  assert.strictEqual(alive.rows[2][1], "4");
+});
+
 test("implausible / garbage values fall back to '-'", () => {
   const m = amLiveFallbackModel("tft", "InProgress",
     { stage_round: "<b>9-9</b>", level: 6, hp: "x", gold: -4 });

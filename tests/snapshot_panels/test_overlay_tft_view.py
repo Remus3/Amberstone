@@ -198,6 +198,55 @@ def test_tft_overlay_does_not_reflow_when_data_lands(mock_server, pw_browser):
     assert len({json.dumps(v) for v in sizes.values()}) == 1, sizes
 
 
+def _eliminated(st):
+    """``st`` at the real elimination moment of tft_qa run 20261025-104400
+    (states.jsonl row 72, stage 5-2): the per-round file and its coach copy read
+    hp -9 at standing 8 with 6 alive, while the coach's own health is a stale
+    10 (tft_coach_engine _resolve_hp drops hp <= 0 and falls back to vision)."""
+    return {
+        **st,
+        "liveclient": {**st["liveclient"], "hp": -9, "standing": 8, "players_alive": 6},
+        "coach": {**st["coach"], "hp": -9, "health": 10, "standing": 8},
+    }
+
+
+def test_tft_overlay_eliminated_player_reads_out(mock_server, pw_browser):
+    """RM-942 (STRUCTURE / TYPOGRAPHY / ASCII / HIERARCHY / NO-REFLOW): an
+    eliminated local player's HP cell paints "OUT" - not the stale coach health
+    ("HP 10", later "HP 100") beside "#8" - undimmed, no crit band, in the same
+    boxes as the live payload, and still the largest value on the widget."""
+    sizes = {}
+    for name, st in (("live", _fixture("tft_overlay_live")),
+                     ("eliminated", _eliminated(_fixture("tft_overlay_live")))):
+        ctx, page, errors = _open(pw_browser, mock_server, st)
+        try:
+            _wait_tft(page)
+            sizes[name] = page.evaluate(
+                "() => ['ovt-hud','ovt-board'].map(i => {"
+                " const r = document.getElementById(i).getBoundingClientRect();"
+                " return [Math.round(r.width), Math.round(r.height)]; })")
+            if name != "eliminated":
+                continue
+            assert [_val(page, k) for k in ("hp", "place", "alive")] == ["OUT", "#8", "6"]
+            cell = page.eval_on_selector(
+                '#ovt-hud .ovt-cell[data-k="hp"]',
+                "e => [e.classList.contains('is-empty'), e.dataset.band || '']")
+            assert cell == [False, ""], cell
+            assert _fs(page, '#ovt-hud .ovt-cell[data-k="hp"] .ovt-val') > _fs(
+                page, '#ovt-hud .ovt-cell[data-k="stage"] .ovt-val')
+            clipped = page.evaluate(
+                "() => [...document.querySelectorAll('#ovt-hud .ovt-val')]"
+                ".filter(e => e.scrollWidth > e.clientWidth + 1).map(e => e.textContent)")
+            assert clipped == [], f"clipped text: {clipped}"
+            painted = page.evaluate("() => document.getElementById('ovt-hud').textContent")
+            assert all(ord(c) < 128 for c in painted), painted
+        finally:
+            page.close()
+            ctx.close()
+        assert not errors, f"JS errors [{name}]: {errors[:3]}"
+    assert sizes["live"] == sizes["eliminated"], sizes
+
+
 def _with_engine_unknown_coach(st, tmp_path):
     """``st`` with the coach envelope /api/state serves when the TFT engine
     wrote HP / level / gold UNKNOWN (s136 T11): the engine's own write

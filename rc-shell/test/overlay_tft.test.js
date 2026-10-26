@@ -429,6 +429,33 @@ test("model: a later valid source wins over an earlier sentinel / garbage", () =
   assert.strictEqual(vit(m).hp, "64");
 });
 
+// RM-942: an ELIMINATED local player. Real record (tft_qa run 20261025-104400,
+// states.jsonl rows 72-99): the per-round file reads hp -9 at standing 8 while
+// the coach envelope's health is a stale 10, later 100 (tft_coach_engine
+// _resolve_hp drops hp <= 0 and falls back to vision). firstIn fell through the
+// -9 and painted "HP 10" / "HP 100" beside "#8". A READ hp <= 0 at a valid
+// placement is the elimination: "OUT", no band, no fall-through. The
+// game-start placeholder (hp -1, standing -1) still falls through (test above).
+test("model: an eliminated local player (read hp <= 0 at a valid place) reads OUT, never a stale health", () => {
+  const st = fixture("tft_overlay_live");
+  st.liveclient = { ...st.liveclient, hp: -9, standing: 8, players_alive: 6 };
+  st.coach = { ...st.coach, hp: -9, health: 10, standing: 8 };
+  const m = tft.tftOverlayModel(st);
+  const v = vit(m);
+  assert.deepStrictEqual([v.hp, v.place, v.alive], ["OUT", "#8", "6"]);
+  assert.strictEqual(m.vitals[0].band, "", "eliminated is not the HP-crit pop-out");
+  st.coach.health = 100;
+  assert.strictEqual(vit(tft.tftOverlayModel(st)).hp, "OUT", "the stale vision 100 never wins");
+  const zero = tft.tftOverlayModel({ mode_key: "tft", liveclient: { hp: 0, standing: 3 }, coach: { health: 40 } });
+  assert.strictEqual(vit(zero).hp, "OUT", "health 0 at a place is out, as in the lobby panel");
+  const coachOnly = tft.tftOverlayModel({ mode_key: "tft", coach: { hp: -9, health: 10, standing: 8 } });
+  assert.strictEqual(vit(coachOnly).hp, "OUT", "the coach copy of the per-round read counts too");
+  const noPlace = tft.tftOverlayModel({ mode_key: "tft", liveclient: { hp: -9 }, coach: { health: 64 } });
+  assert.strictEqual(vit(noPlace).hp, "64", "no valid place: not provably out, the fall-through holds");
+  const live = tft.tftOverlayModel({ mode_key: "tft", liveclient: { hp: 4, standing: 8 }, coach: { health: 10 } });
+  assert.strictEqual(vit(live).hp, "4", "alive at 8th keeps its HP");
+});
+
 // S136 T11: the coach payload carries null for an UNKNOWN health / level / gold
 // (tft/tft_coach_engine.py _write_fields; it used to write the placeholders
 // health 100, level 1, gold 0). null is the no-data "-" (plain ASCII hyphen);

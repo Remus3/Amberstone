@@ -1146,12 +1146,17 @@ export function amLiveFallbackModel(mode, phase, payload) {
   }
   const stage = _amTftStage(p);
   const level = _amIntIn(p.level, 1, 10);
-  const hp = _amIntIn(typeof p.hp === "number" ? p.hp : p.health, 1, 100);
+  const hpRaw = typeof p.hp === "number" ? p.hp : p.health;
+  const hp = _amIntIn(hpRaw, 1, 100);
   const gold = _amIntIn(p.gold, 0, 999);
   const board = _amTftBoard(p);
   const players = _amTftLobby(p);
   const youRow = players.find((r) => r.you);
   const place = _amIntIn(p.standing, 1, 8) || (youRow ? youRow.place : null);
+  // RM-942: a read hp <= 0 at a valid placement is the elimination (real
+  // run: hp -9 at standing 8), "OUT" - not the no-data "-". Without a placement
+  // it stays the producer's zero / -1 default.
+  const out = place !== null && typeof hpRaw === "number" && Number.isFinite(hpRaw) && hpRaw <= 0;
   const asOf = _amTftAsOf(p);
   const hasData = !!(stage || level || hp || board.length || players.length || place);
   const dash = (v) => (v === null ? "-" : String(v));
@@ -1168,7 +1173,7 @@ export function amLiveFallbackModel(mode, phase, payload) {
                // honest provenance: the round file lags planning-phase changes
                : asOf ? `Board, HP and placement as of ${asOf} (last combat start)`
                : "Live"],
-    rows: [["STAGE", dash(stage)], ["LEVEL", dash(level)], ["HP", dash(hp)], ["GOLD", dash(gold)]],
+    rows: [["STAGE", dash(stage)], ["LEVEL", dash(level)], ["HP", out ? "OUT" : dash(hp)], ["GOLD", dash(gold)]],
     build: "Units appear after the TFT client writes its first round.",
     map: "Lobby placements and HP appear after the first round.",
     board,

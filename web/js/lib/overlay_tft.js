@@ -214,8 +214,15 @@ export function tftOverlayModel(st) {
   const c = _obj(s.coach);
   const active = isTftState(s);
 
-  const hp = firstIn([lc.hp, c.hp, c.health], 1, 100);
   const place = firstIn([lc.standing, c.standing], 1, 8);
+  // RM-942: a READ hp <= 0 from the per-round file (or its coach copy) at a
+  // valid placement is the elimination - "OUT", and no fall-through: the coach's
+  // own health is then a stale vision read (real run: hp -9 at #8 painted
+  // "HP 10", later "HP 100"). Without a placement it is the game-start
+  // placeholder (QA N10: hp / standing -1) and falls through as before.
+  const read = [lc.hp, c.hp].find((v) => typeof v === "number" && Number.isFinite(v));
+  const out = place !== null && read !== undefined && read <= 0;
+  const hp = out ? null : firstIn([lc.hp, c.hp, c.health], 1, 100);
   const alive = firstIn([lc.players_alive, c.players_alive], 1, 8);
   const stage = stageOf(lc.stage_round ? lc : c);
   const level = firstIn([c.level, lc.level], 1, 10);
@@ -234,7 +241,7 @@ export function tftOverlayModel(st) {
   else if (hp !== null && hp <= HP_LOW) band = "low";
 
   const vitals = [
-    { key: "hp", label: "HP", text: d(hp), major: true, band },
+    { key: "hp", label: "HP", text: out ? "OUT" : d(hp), major: true, band },
     { key: "place", label: "PLACE", text: place === null ? DASH : `#${place}`, major: true, band: "" },
     { key: "alive", label: "ALIVE", text: d(alive), major: true, band: "" },
     { key: "stage", label: "STAGE", text: d(stage), major: false, band: "" },
