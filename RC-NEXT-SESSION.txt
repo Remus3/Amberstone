@@ -1,11 +1,11 @@
 NEXT SESSION
 ------------
-SESSION: 139
+SESSION: 140
 PUSH: the s135-s137 operator hold was superseded by MAIN's 1935 FIX order ("push at /done";
-MAIN speaks for the operator). s138 pushed fb2ff520e..b49a4572b and, at its /done, through this
-hand-off commit (push tier: once at /done + at most one mid-session push per hour, CLAUDE.md).
-NEVER delete riot.txt from origin. s138 (LEDGER 1913-1914; WAKEUP 2026-10-25f), s137 (LEDGER 1911-1912), s136 (LEDGER
-1906-1910) and s135 (LEDGER 1883-1905) are on main; the s135 push record, fence, procedure lines and
+MAIN speaks for the operator). s139 pushed through its /done hand-off commit (push tier: once at
+/done + at most one mid-session push per hour, CLAUDE.md).
+NEVER delete riot.txt from origin. s139 (LEDGER 1915), s138 (1913-1914), s137 (1911-1912), s136
+(1906-1910) and s135 (1883-1905) are on main; the s135 push record, fence, procedure lines and
 status moved VERBATIM to docs/handoff-archive/RC-2026-10-25.txt block 6.
 HISTORY REWRITES (2026-10-09 x2, s135 x2): SHA maps - archive RC-2026-10-25.txt block 7.
 NEVER PUSH (real game ids or the bare fixture line inside): lane/*, s135-land and the old s134 / s135
@@ -33,10 +33,12 @@ FIRST: CPU / memory glance; inbox_tick.py --pending; gh pr list (0 at the s137 /
 origin/main still an ancestor of main.
 
 ====================
-SESSION 138 NEW ITEMS (headless MAIN work run; bodies: LEDGER 1913-1914)
+SESSION 139 (headless MAIN follow-up; LEDGER 1915) + 138 ITEMS (LEDGER 1913-1914)
 ====================
-- FIRST: read back the /done push's ci run; dispatch 40267773006's two reds (mine) must be fixed.
-  No new dispatch unless red (RM-157).
+- FIRST: read back full-suite dispatch 40273347517 (35007e479; s139 2c: no full run covered the
+  tree since the red s138 dispatch). Red = fix forward; never a 2nd dispatch (RM-157).
+- 3 Dependabot PRs open (#22 rc-shell electron -> 45.0.0, #23 actions, #24 pip): recipe B only
+  (CLAUDE.md BOT-PR rule) or widen the dependabot.yml ignore; then tools/bot_merge_check.py.
 - RM-907 OPEN: the gated whole suite was REFUSED s138 (exit 3, commit 8.9 GB short; a game held
   11 GB). On a quiet box: run it, file the --durations top 5 in ROADMAP, read back hold p90 +
   peak_commit_mb (7 d) vs 24.5 GB / p90 483 s, send MAIN the before/after (2045 asks for it).
@@ -224,7 +226,7 @@ Rows and decisions:
   RM-890..RM-894, RM-896, RM-899..RM-901, RM-906, RM-907, LT-02r, TFT-HUD-00..12, PKG, RM-279, RM-280,
   RM-368, RM-381, RM-292c, RM-251(b), RM-370, RM-229, RM-290, RM-27, RM-248, RM-189, RM-167, RM-204,
   RM-12/RM-14 flips, RM-15(b), RM-16, RM-423, RM-239/RM-242 (operator fence), RM-297b, RM-517,
-  RM-596, RM-597. Next free RM-909 (pin docs/DS_SWEEP_TRACKER.md); next free LEDGER 1915.
+  RM-596, RM-597. Next free RM-909 (pin docs/DS_SWEEP_TRACKER.md); next free LEDGER 1916.
 - ROADMAP top open: PKG (s136 NEXT), RM-488 (operator), RM-596, RM-597, then the RM-681.. rows;
   EXTERNAL-LIFT Band 2 / 4 stay in BACKLOG. ROADMAP.md 73678 B after s138 (drift_guard 90 percent
   line 73728; ~50 B headroom): before crossing it, move closed rows to docs/ROADMAP_HISTORY.md (ids
@@ -373,17 +375,14 @@ board NON-final, the 30720 B hand-off cap).
 ====================
 STATUS, CONTEXT, ACCEPTANCE
 ====================
-Status (s137 wrap): NOTHING PUSHED (hold not lifted). Local: 3fff974a6 + a595e4db7 + this /done
-commit (LEDGER 1911-1912, WAKEUP + prune, ROADMAP / BACKLOG RM-703 + RM-905, this file). Gate: ruff
-all passed; hygiene trio 14 passed; drift_guard 0; md / hand-off guards (112 files, gated) 3114 passed, 4 skipped,
-exit 0; bot_merge_check clean (0 since 7f3d9e1248). CI:
-none on s136 / s137 commits; dispatch 40230847617 (3ad31ec6d) RED = C1; scheduled runs on main
-7f3d9e124 green (40254909385). Full suite (2c): not dispatched (a dispatch builds origin's main,
-which lacks s136 / s137; the first push after the hold needs one). DS :8860 ok (1.290.0, 16.21.1);
-RC pid 23224 alive, last_reload_ok, fatal 0; restart_trigger empty; LCU PreEndOfGame (no game);
-session file 1.3 MB; no intent / steers; 0 PRs; no new memory.
-Board push failed: config url not reachable from this account (--final asset upload not_found at
-the s137 /done, run before this file was written); see SESSION 137 BOARD.
+Status (s139 wrap): F1 35007e479 pushed b0c755499..35007e479 (with 2e24aa66f); /done commit
+(LEDGER 1915, WAKEUP + prune, this file) pushed 35007e479..(this commit). Gate: ruff all passed; hygiene trio
+14 passed; drift_guard 1 breach (CLAUDE.md 92 percent, carried above). CI: docs-guards 40272825498
+green (35007e479); ci 40271967354 green (b0c755499). Full suite (2c): dispatched run 40273347517 (35007e479).
+bot_merge_check clean. Reap: 0 removed, 7 kept, 1 listed (drain-wave2-tail-backlog, 4 commits not
+on main). DS :8860 ok (1.290.0, 16.21.1); RC pid 23224 alive, last_reload_ok; restart_trigger
+empty; no game (mode client); session file < 1 MB; no intent / steers; 3 PRs; no new memory.
+Board: headless, not rendered.
 
 Context: rc-shell/ (electron shell), docs/OVERLAY_COMPLIANCE_PLAN.md, ROADMAP RM-189 + PKG;
 docs/TFT_PROGRAM.md (slices, ADR-018, sec 10 HUD spec); tft/engine (Augur); tft/rounds (TFT-01
@@ -392,7 +391,7 @@ store); tft/local_player.py (N13); data/tft_matches (RM-616); ops/runtime/tft_qa
 
 Acceptance: a QA'd packaged build of the ow-electron shell that starts every local service on
 launch, takes local / GitHub updates with minimal or no restart and never starts at boot; the
-operator lifts the push hold and the first CI on 3.12 is green (C1) with one full-suite dispatch;
+s139 full-suite dispatch reads green;
 the operator asks re-batched in one line.
 
 Start with: read this file first, then CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.

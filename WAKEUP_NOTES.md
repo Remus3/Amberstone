@@ -6,6 +6,15 @@
 
 ---
 
+# 2026-10-26 - session 139 (headless MAIN follow-up run): docs-guards red on b0c755499 fixed (RM next-free pin moved); PUSHED
+
+- **F1 (LEDGER 1915):** `35007e479` moves the pinned next-free RM id past RM-907 / RM-908 in `docs/DS_SWEEP_TRACKER.md`; guard + docs-guard files green.
+- **F2:** pushed b0c755499..35007e479; docs-guards 40272825498 green; ci 40271967354 on b0c755499 green. No note to MAIN (CI green).
+- **Do NOT redo:** the pin bump. R1 slip recorded (Bash byte-replace, commit backs it).
+- **Next:** unchanged - RM-907 gated suite on a quiet box; then the PKG next action.
+
+---
+
 # 2026-10-25f - session 138 (headless MAIN work run): MAIN FIX 1935 (CodeQL 65/66, electron 44.9.1, CI waste cuts, push tier) + MAIN ORDER 2045 (BLAS cap, --durations); PUSHED
 
 - **Kit v23:** already adopted (manifest sha f5d82861 matches); verify only.
@@ -23,18 +32,3 @@
 - **W1 + R1 (LEDGER 1912):** removed agent-ad9cd227 (icon cache moved to main's gitignored `data/tft/icon_cache`), the T13 worktree (branch kept), the empty agent-a3a84bc63e49cf58c dir, and the 11 lift worktrees + branches (bundle `ops/runtime/branch_bundles/s137-lift-worktrees.bundle`, verify exit 0); verifier V1 CONFIRM 8 of 8. `git worktree list` = 9 (main, drain, 7 lanes).
 - **Do NOT redo:** the worktree removals (restore from the bundles if needed), the RM-905 fix.
 - **Next:** unchanged from s136 - full QA of the ow-electron port + a packaged, live-updatable app; then TFT-HUD-01. Operator ask 38: the now-empty out-of-root lift-worktree parent folder.
-
----
-
-# 2026-10-25d - session 136: C1 red fixed, two live TFT games QA'd, nine TFT / overlay fixes, HUD reader spec; push hold ON (nothing pushed)
-
-- **Operator steers:** push hold stays ON (commit locally only); "dont have the panels fade as much when the data is out of date"; ruling "I want to do what they are doing; not utilize their software as a dependency" (no Overwolf data dependency); board push not needed this session; NEXT = packaged, live-updatable app (below).
-- **C1:** dispatch 40230847617 red = 2 tests in `tests/test_no_process_wide_stdlib_fakes_rm801.py` on CI Python 3.12 (`_thread.start_new_thread` vs 3.13+ `start_joinable_thread` in `tests/_module_view.py`); fixed `c7e2c0b0c`, UNPUSHED - CI cannot confirm it until a push.
-- **Live games (QA_REPORT.md + LIVE_NOTES_s136*.md in `ops/runtime/tft_qa/20261025-153652` and `-162857`; both rated A, 3rd):** N13 PASS, D1 PASS, HP line PASS, N9 PASS (Ctrl+Shift+O toggle + Ctrl+Shift+A drag / layout save seen), RM-899 PASS (13.1 s recovery; a 7 s blank coaching stub after restart stays open); FAILs fixed: coaching sense (T9), 2-star units doubled (T14), stage led 2-3 rounds (T15).
-- **Shipped on LOCAL main (LEDGER 1907-1910; every slice verifier-gated):** T4 RM-904 `f53a35853`; T5 `51a6287d9`; T9 `b89b10298` + `3df4a75a7` + `9d3acac79`; T10 `a4f2003fb`; T11 `15e39d167`; T12 `dea6cc98b` + `93951754b`; T14 `e9424c8a8`; T15 `847b99f75`; docs T6 `99c9db198`, T16 HUD spec `1915b00e5` (TFT_PROGRAM sec 10, TFT-HUD-00..12); RM-846 ruled B `7a40a5cb4` (LEDGER 1906).
-- **Housekeeping:** T1 QA_REPORT for 20261025-131926; T2 removed 9 s135 worktrees (kept agent-ad9cd227: 1484-file icon cache); /done removed this session's 9 merged worktrees (branches kept; renders in `ops/runtime/branch_bundles/s136-wt-preserved/`).
-- **Parked:** T13 (id-0 game-end rating vs the store rating) refuted twice, branch `worktree-agent-a2969c932e74f20d7`, needs a redesign.
-- **Do NOT redo:** everything above; the ONLOGON tasks were left unchanged on purpose (the packaged launcher replaces them).
-- **Next:** full QA of the ow-electron port + a packaged, live-updatable app (services start on app launch, never at boot); then TFT-HUD-01.
-
----
