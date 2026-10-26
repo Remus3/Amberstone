@@ -70,8 +70,14 @@ def _bind_host() -> str:
     Overridable for the same reason ``core/game_host.py`` is: the host is
     config, not code. A blank value is treated as unset, so a scheduled task
     that exports an empty variable cannot silently re-open the wildcard.
+
+    No wildcard literal on purpose (CodeQL alert 66, MAIN ORDER 2026-10-26
+    0315): the old ``(... or "").strip()`` spelling put an empty-string
+    literal on a data path into ``socket.bind`` via ``core.port_handoff``.
     """
-    return (os.environ.get("RC_VISION_BIND") or "").strip() or "127.0.0.1"
+    raw = os.environ.get("RC_VISION_BIND")
+    host = raw.strip() if raw else None
+    return host or "127.0.0.1"
 
 
 # Session 129: how long main() waits for a predecessor that still holds :8889
