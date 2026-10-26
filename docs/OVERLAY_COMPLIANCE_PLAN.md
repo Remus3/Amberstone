@@ -5,13 +5,15 @@ Status: PLAN ONLY. Nothing here is executed. Sources are the Overlay Platform M 
 the app-proposal form itself, read 2026-08-11. Repo claims below carry file
 citations and were greped this session.
 
+Packaged-app track (operator 2026-10-25: stock Electron, no Overlay Platform M dependency): see `docs/PACKAGING_PLAN.md`; the ow-electron verdict below applies only if this RM-189 submission is ever pursued.
+
 ## 0. Framework verdict: ow-electron (not Overlay Platform M Native)
 
 Decision is forced by RC's shape, not preference:
 
 | Need | Native (CEF wrapper) | ow-electron |
 |---|---|---|
-| Existing Electron shell (`rc-shell/package.json` v0.4.0, electron 33, electron-builder 26) | rewrite from zero | reuse |
+| Existing Electron shell (`rc-shell/package.json` v0.4.0, electron 44.9.1 since RM-908, electron-builder 26) | rewrite from zero | reuse |
 | Native node modules / local sidecar process (DS `:8860`, supervisor, vision server) | no story | supported ("full support for native node.js modules") |
 | Existing web UI served from an origin (`web/js/main.js` + panels) | port to OW window model | loads as-is |
 | Overlay Platform M ads + Tebex subs + GEP + in-game overlay | yes | yes |
