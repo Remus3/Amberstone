@@ -1,0 +1,68 @@
+{
+  "_doc": "PKG-1 service host manifest (docs/PACKAGING_PLAN.md section 3.1), read by ops/launcher/service_host.py. Services start in list order when the APP launches and stop when it quits - never at boot. argv is interpreter-relative: the host prepends the windowless interpreter, resolves a leading .py path against the backend root, runs every service with cwd = the backend root, CREATE_NO_WINDOW and inside ONE Windows job object. Placeholders: {root}, {supervisor_config} (the per-install supervisor config the host generates under ops/runtime/launcher/). restart: always | on-failure | never. role supervisor = the one service a graceful stop asks to shut down through ops/runtime/supervisor_requests/.",
+  "schema": 1,
+  "dashboard_port": 8888,
+  "tick_s": 0.25,
+  "stop_grace_s": 15,
+  "env": {},
+  "_profiles_doc": "Per-profile settings, merged over env for every service of that profile (the dashboard is main.py under the supervisor and inherits them). A null value REMOVES an inherited variable. RC_DASH_BIND is read by dashboard/server.py (PKG-5): an IP literal, unset keeps the wildcard bind. packaged = a default install, loopback only (PACKAGING_PLAN M5 / 3.6). dev = the operator's linked checkout: RC_DASH_BIND stays UNSET so :8888 keeps the wildcard bind the documented tailnet view needs (PACKAGING_PLAN V3). No host name or tailnet address belongs in this tracked file.",
+  "profiles": {
+    "packaged": {
+      "env": {"RC_DASH_BIND": "127.0.0.1"}
+    },
+    "dev": {
+      "env": {"RC_DASH_BIND": null}
+    }
+  },
+  "_backoff_doc": "Restart-on-exit: delay = initial_s * factor^(n-1) capped at max_s, n = consecutive exits (reset by a run of at least stable_s); more than max_restarts exits inside window_s and the service reads failed until the app restarts.",
+  "backoff": {
+    "initial_s": 1,
+    "factor": 2,
+    "max_s": 60,
+    "max_restarts": 5,
+    "window_s": 300,
+    "stable_s": 60
+  },
+  "services": [
+    {
+      "name": "supervisor",
+      "role": "supervisor",
+      "argv": ["ops/rc_supervisor.py", "--config", "{supervisor_config}"],
+      "port": 8888,
+      "restart": "on-failure",
+      "profiles": ["packaged", "dev"]
+    },
+    {
+      "name": "lcu_agent",
+      "role": "agent",
+      "argv": ["tools/lcu_agent.py"],
+      "port": null,
+      "restart": "always",
+      "profiles": ["packaged", "dev"]
+    },
+    {
+      "name": "liveclient_relay",
+      "role": "agent",
+      "argv": ["tools/liveclient_relay.py"],
+      "port": null,
+      "restart": "always",
+      "profiles": ["packaged", "dev"]
+    },
+    {
+      "name": "hotkey_listener",
+      "role": "agent",
+      "argv": ["tools/hotkey_listener.py"],
+      "port": null,
+      "restart": "always",
+      "profiles": ["packaged", "dev"]
+    },
+    {
+      "name": "phase3_supervisor",
+      "role": "agent",
+      "argv": ["-m", "agents.supervisor"],
+      "port": 8890,
+      "restart": "always",
+      "profiles": ["dev"]
+    }
+  ]
+}
