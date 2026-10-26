@@ -129,7 +129,11 @@ class FakePopen:
         if self._clock is not None:
             self.spawn_times.setdefault(script, []).append(self._clock())
         self._events.append(("spawn", script, proc.pid))
+        if self.on_spawn is not None:
+            self.on_spawn(script)
         return proc
+
+    on_spawn = None
 
     def by_script(self, script):
         return [p for p in self.procs if self.script_of(p.argv) == script]
@@ -145,8 +149,12 @@ class FakeJob:
         self.events = events
         self.snapshot = snapshot
         self.seen_at_terminate = None
+        self.refuse = set()          # scripts whose job assignment fails
 
     def adopt(self, proc):
+        if FakePopen.script_of(proc.argv) in self.refuse:
+            self.events.append(("refused", proc.pid))
+            raise sh.JobAssignError("fake AssignProcessToJobObject failure")
         self.adopted.append(proc.pid)
         self.events.append(("adopt", proc.pid))
         return True
@@ -1073,6 +1081,204 @@ def test_shutdown_request_is_one_json_file_the_supervisor_globs(tmp_path):
 
 
 # ------------------------------------------------ lock + CLI
+
+
+# ------------------------------------- verifier fix round (s141)
+
+
+def _plant_requests(root: Path) -> Path:
+    d = _requests_dir(root)
+    d.mkdir(parents=True)
+    # left by a host killed between writing its request and deleting it
+    (d / "launcher-shutdown-1792957357452-4242.json").write_text(
+        json.dumps({"type": "shutdown"}), encoding="utf-8")
+    # someone else's request: never the host's to delete
+    (d / "operator-restart.json").write_text(json.dumps({"type": "restart"}),
+                                             encoding="utf-8")
+    return d
+
+
+def test_fix1_owned_start_clears_a_stale_launcher_shutdown_first(tmp_path):
+    root = make_root(tmp_path)
+    d = _plant_requests(root)
+    fp = FakePopen()
+    seen = []
+    fp.on_spawn = lambda script: seen.append(sorted(p.name for p in d.glob("*.json")))
+    host = make_host(root, make_config(), popen=fp, job=FakeJob([]))
+    host.start()
+    assert seen and seen[0] == ["operator-restart.json"], \
+        "the stale request is gone BEFORE the supervisor spawns"
+    assert sorted(p.name for p in d.iterdir()) == ["operator-restart.json"]
+
+
+@pytest.mark.parametrize("mode", ["attach", "blocked"])
+def test_fix1_attach_and_blocked_never_touch_requests(tmp_path, mode):
+    root = make_root(tmp_path)
+    d = _plant_requests(root)
+    before = sorted(p.name for p in d.iterdir())
+    probe = lambda: sh.Probe(mode, "unit", None, 99)  # noqa: E731
+    host = make_host(root, make_config(), popen=FakePopen(), probe=probe)
+    host.start()
+    host.tick()
+    host.stop("quit")
+    assert sorted(p.name for p in d.iterdir()) == before, \
+        "a live supervisor's pending request is not the host's to delete"
+
+
+def test_fix1_clear_matches_only_launcher_shutdown_json(tmp_path):
+    d = _plant_requests(tmp_path)
+    (d / "launcher-shutdown-5-6.json.77.abcd1234.tmp").write_text("{", encoding="utf-8")
+    removed = sh.clear_stale_shutdown_requests(tmp_path / "ops" / "runtime")
+    assert [p.name for p in removed] == ["launcher-shutdown-1792957357452-4242.json"]
+    assert sorted(p.name for p in d.iterdir()) == [
+        "launcher-shutdown-5-6.json.77.abcd1234.tmp", "operator-restart.json"]
+    assert sh.clear_stale_shutdown_requests(tmp_path / "nowhere") == []
+
+
+def test_fix2_failed_job_assignment_kills_the_suspended_child(tmp_path):
+    root = make_root(tmp_path)
+    events = []
+    job = FakeJob(events)
+    job.refuse.add("a.py")
+    clock = FakeClock()
+    fp = FakePopen(clock=clock, events=events)
+    host = make_host(root, make_config(), popen=fp, job=job, clock=clock)
+    host.start()
+    (a_proc,) = fp.by_script("a.py")
+    assert a_proc.killed and a_proc.returncode is not None, "never resumed, killed"
+    a = svc_status(read_status(root), "agent_a")
+    assert a["state"] == "failed"
+    assert "job" in a["last_error"] and "AssignProcessToJobObject" in a["last_error"]
+    assert a["pid"] is None and a["in_job"] is False
+    for _ in range(100):
+        clock.sleep(1)
+        host.tick()
+    assert len(fp.by_script("a.py")) == 1, "a refused assignment is not retried"
+    assert svc_status(read_status(root), "agent_b")["state"] == "running"
+    assert svc_status(read_status(root), "agent_b")["in_job"] is True
+
+
+def test_fix2_a_job_that_returns_false_is_treated_as_refused(tmp_path):
+    root = make_root(tmp_path)
+
+    class SaysNo(FakeJob):
+        def adopt(self, proc):
+            return False
+
+    fp = FakePopen()
+    host = make_host(root, make_config(), popen=fp, job=SaysNo([]))
+    host.start()
+    assert all(p.killed for p in fp.procs)
+    assert all(s["state"] == "failed" for s in read_status(root)["services"])
+
+
+@WINDOWS_ONLY
+def test_fix2_real_assign_failure_never_resumes_the_child(tmp_path):
+    from ctypes import wintypes
+    root = make_root(tmp_path)
+    marker = root / "child_ran.txt"
+    (root / "probe_child.py").write_text(
+        "from pathlib import Path\nPath('child_ran.txt').write_text('ran')\n",
+        encoding="utf-8")
+    cfg = make_config(services=[{"name": "agent_a", "argv": ["probe_child.py"]}])
+    job = sh.WinJob.create()
+    assert job is not None
+    real_handle = job.handle
+    job.handle = wintypes.HANDLE(0x7FFFFFF8).value   # not a job: assign fails
+    try:
+        host = sh.ServiceHost(
+            root, cfg, popen=subprocess.Popen, job_factory=lambda: job,
+            parent_alive=lambda: True, probe=_owned_probe, health=lambda: None,
+            python_exe=sys.executable)
+        host.start()
+        a = svc_status(read_status(root), "agent_a")
+        assert a["state"] == "failed", a
+        assert "job" in a["last_error"], a
+        time.sleep(1.0)
+        assert not marker.exists(), "the suspended child must never run"
+        job.handle = None                  # never hand the bogus value to Close
+        host.stop("quit")
+    finally:
+        job.handle = None
+        sh._kernel32().CloseHandle(real_handle)
+
+
+def test_fix3_status_says_no_job_once_it_is_closed(tmp_path):
+    root = make_root(tmp_path)
+    job = FakeJob([])
+    host = make_host(root, make_config(), popen=FakePopen(), job=job)
+    host.start()
+    assert read_status(root)["job"] is True
+    host.stop("quit")
+    doc = read_status(root)
+    assert job.closed == 1
+    assert doc["job"] is False
+    assert not any(s["in_job"] for s in doc["services"])
+
+
+class _FakeK32:
+    def __init__(self):
+        self.closed = []
+
+    def OpenProcess(self, access, inherit, pid):  # noqa: N802
+        return 1234
+
+    def WaitForSingleObject(self, handle, ms):  # noqa: N802
+        return 0x102
+
+    def CloseHandle(self, handle):  # noqa: N802
+        self.closed.append(handle)
+        return 1
+
+
+def test_fix4_parent_watch_closes_its_handle_once():
+    k32 = _FakeK32()
+    watch = sh.ParentWatch(4242, kernel32=k32)
+    assert watch.alive() is True
+    watch.close()
+    watch.close()
+    assert k32.closed == [1234]
+
+
+def test_fix4_main_closes_the_parent_watch_in_a_finally():
+    tree = ast.parse(HOST_PY.read_text(encoding="utf-8"))
+    main = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "main")
+    closes = [
+        call for t in ast.walk(main) if isinstance(t, ast.Try)
+        for stmt in t.finalbody for call in ast.walk(stmt)
+        if isinstance(call, ast.Call) and isinstance(call.func, ast.Attribute)
+        and call.func.attr == "close" and isinstance(call.func.value, ast.Name)
+        and call.func.value.id == "parent"
+    ]
+    assert closes, "main() must close the parent watch in a finally block"
+
+
+@WINDOWS_ONLY
+def test_fix4_real_parent_watch_releases_the_process_handle():
+    import ctypes
+    from ctypes import wintypes
+    k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    k32.GetCurrentProcess.restype = wintypes.HANDLE
+    k32.GetProcessHandleCount.argtypes = (wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD))
+
+    def count():
+        n = wintypes.DWORD()
+        assert k32.GetProcessHandleCount(k32.GetCurrentProcess(), ctypes.byref(n))
+        return n.value
+
+    sleeper = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"],
+                               stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                               stderr=subprocess.DEVNULL, creationflags=NO_WINDOW)
+    try:
+        watches = [sh.ParentWatch(sleeper.pid) for _ in range(50)]
+        assert all(w.alive() for w in watches)
+        opened = count()
+        for w in watches:
+            w.close()
+        assert opened - count() >= 45, "each watch released its handle"
+    finally:
+        sleeper.kill()
+        sleeper.wait(10)
 
 
 def test_host_lock_is_single_instance(tmp_path):

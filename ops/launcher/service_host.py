@@ -131,6 +131,7 @@ LOG_MAX_BYTES = 1 << 20
 _NAME_RE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 _PLACEHOLDER_RE = re.compile(r"\{([^{}]*)\}")
 _ENV_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+SHUTDOWN_REQUEST_PREFIX = "launcher-shutdown-"
 
 
 def utc_now() -> str:
@@ -450,12 +451,34 @@ def generate_supervisor_config(root: Path, python_exe: str,
     return out
 
 
+def clear_stale_shutdown_requests(runtime_dir: Path) -> List[Path]:
+    """Delete every `launcher-shutdown-*.json` this host family left behind.
+
+    A host killed between writing its request and deleting it (a hard kill,
+    a logoff) leaves one; the next supervisor would read it and exit 0, which
+    the on-failure policy reads as a deliberate stop - RC would never come
+    up. Called ONLY in owned mode, after the probe found no live supervisor
+    and before anything spawns. Other request files (restart, rollback, an
+    operator's shutdown) are never touched."""
+    d = Path(runtime_dir) / "supervisor_requests"
+    removed: List[Path] = []
+    if not d.is_dir():
+        return removed
+    for path in sorted(d.glob(f"{SHUTDOWN_REQUEST_PREFIX}*.json")):
+        try:
+            path.unlink()
+            removed.append(path)
+        except OSError:
+            pass
+    return removed
+
+
 def write_shutdown_request(runtime_dir: Path, reason: str) -> Path:
     """Drop a `shutdown` request where the frozen supervisor polls for one
     (ops/rc_supervisor.py:716 supervisor_requests/, handled at :1309: it
     stops main.py by owned pid, releases its lock and exits 0)."""
     d = Path(runtime_dir) / "supervisor_requests"
-    path = d / f"launcher-shutdown-{int(time.time() * 1000)}-{os.getpid()}.json"
+    path = d / f"{SHUTDOWN_REQUEST_PREFIX}{int(time.time() * 1000)}-{os.getpid()}.json"
     atomic_write_json(path, {"type": "shutdown", "reason": reason,
                              "requested_by": "ops/launcher/service_host.py",
                              "requested_at": utc_now()})
@@ -562,6 +585,11 @@ def _lock_pid(lock_path: Path) -> Optional[int]:
         return None
 
 
+class JobAssignError(OSError):
+    """A child could not be put in the job. It was never resumed: the caller
+    terminates it and reports the service failed."""
+
+
 class WinJob:
     """ONE Windows job object holding every service and its descendants.
 
@@ -622,19 +650,25 @@ class WinJob:
 
     def adopt(self, proc) -> bool:
         """Assign the SUSPENDED child (by its Popen handle, never a pid) to
-        the job, then resume it. True = it is in the job. A failed resume
-        raises OSError so the caller kills the child: one left suspended
-        would read as running forever."""
+        the job, then resume it. Returns True: it is in the job and running.
+
+        A failed assignment raises JobAssignError WITHOUT resuming: the child
+        has run no instruction yet, so the caller terminates it and nothing
+        ever runs outside the job. A failed resume raises OSError so the
+        caller kills the child: one left suspended would read as running
+        forever."""
         import ctypes
         ph = getattr(proc, "_handle", None)
         if ph is None or not self.handle:
-            return False
-        inside = bool(_kernel32().AssignProcessToJobObject(self.handle, int(ph)))
+            raise JobAssignError("no process or job handle to assign")
+        if not _kernel32().AssignProcessToJobObject(self.handle, int(ph)):
+            raise JobAssignError(
+                f"AssignProcessToJobObject failed (winerror {ctypes.get_last_error()})")
         nt = ctypes.WinDLL("ntdll")
         nt.NtResumeProcess.argtypes = (ctypes.c_void_p,)
         if nt.NtResumeProcess(ctypes.c_void_p(int(ph))) != 0:
             raise OSError("NtResumeProcess failed")
-        return inside
+        return True
 
     def terminate(self) -> None:
         if self.handle:
@@ -650,29 +684,42 @@ class ParentWatch:
     """Is the launching shell still alive? Holds a handle on Windows, so a
     recycled pid can never read as the parent."""
 
-    def __init__(self, pid: int) -> None:
+    def __init__(self, pid: int, *, kernel32: Any = None) -> None:
         self.pid = int(pid)
         self._handle = None
         self._dead = False
-        if sys.platform == "win32":
-            import ctypes
-            h = _kernel32().OpenProcess(_SYNCHRONIZE, False, self.pid)
+        self._k32 = kernel32 if kernel32 is not None else \
+            (_kernel32() if sys.platform == "win32" else None)
+        if self._k32 is not None:
+            h = self._k32.OpenProcess(_SYNCHRONIZE, False, self.pid)
             if h:
                 self._handle = h
-            elif ctypes.get_last_error() != _ERROR_ACCESS_DENIED:
-                self._dead = True
+            else:
+                import ctypes
+                if ctypes.get_last_error() != _ERROR_ACCESS_DENIED:
+                    self._dead = True
 
     def alive(self) -> bool:
         if self._dead:
             return False
         if self._handle is not None:
-            if _kernel32().WaitForSingleObject(self._handle, 0) == _WAIT_TIMEOUT:
+            if self._k32.WaitForSingleObject(self._handle, 0) == _WAIT_TIMEOUT:
                 return True
             self._dead = True
             return False
         if not pid_alive(self.pid):
             self._dead = True
         return not self._dead
+
+    def close(self) -> None:
+        """Release the parent handle (idempotent). main() calls it in a
+        finally, so the handle never outlives the host loop."""
+        handle, self._handle = self._handle, None
+        if handle is not None and self._k32 is not None:
+            try:
+                self._k32.CloseHandle(handle)
+            except OSError:
+                pass
 
 
 class HostLock:
@@ -918,6 +965,10 @@ class ServiceHost:
             self._log(f"{probe.mode} mode, starting nothing: {probe.reason}")
             self._write_status(force=True)
             return
+        # Owned = the probe found no live supervisor, so a launcher shutdown
+        # request still on disk is stale and would stop our supervisor at once.
+        for stale in clear_stale_shutdown_requests(self.runtime_dir):
+            self._log(f"removed a stale shutdown request: {stale.name}")
         self.job = self._job_factory()
         if self.job is None:
             self._log("no job object: children are stopped by owned handle only")
@@ -1025,14 +1076,27 @@ class ServiceHost:
         if job is not None:
             try:
                 in_job = bool(job.adopt(proc))
+                if not in_job:
+                    raise JobAssignError("the job refused the child")
+            except JobAssignError as exc:
+                # Never resumed: terminate the still-suspended child, so no
+                # service ever runs outside the job. Not retried - a refused
+                # assignment does not heal by itself.
+                self._log(f"{rt.spec.name}: job assignment failed, terminating "
+                          f"suspended pid {proc.pid}: {exc}")
+                self._kill(proc)
+                rt.proc = None
+                rt.pid = None
+                rt.in_job = False
+                rt.state = "failed"
+                rt.last_error = f"job assignment failed, service not started: {exc}"
+                return
             except OSError as exc:
                 self._log(f"{rt.spec.name}: job adopt failed, killing it: {exc}")
                 self._kill(proc)
                 self._on_exit(rt, now, f"spawn failed: job adopt: {exc}",
                               clean=False, runtime=0.0)
                 return
-            if not in_job:
-                self._log(f"{rt.spec.name}: pid {proc.pid} is NOT in the job")
         rt.proc = proc
         rt.pid = proc.pid
         rt.in_job = in_job
@@ -1112,7 +1176,10 @@ class ServiceHost:
                 self.job.close()
             except OSError:
                 pass
+            # The handle is closed: the status must not claim a live job.
+            self.job = None
         for rt in self._services:
+            rt.in_job = False
             if rt.proc is not None:
                 self._kill(rt.proc)
         if request is not None:
@@ -1262,6 +1329,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         log.write("another service host holds ops/runtime/service_host.pid")
         print("service_host: another service host is running", file=sys.stderr)
         return 3
+    parent: Optional[ParentWatch] = None
     try:
         parent = ParentWatch(args.parent_pid) if args.parent_pid else None
         host = ServiceHost(
@@ -1285,6 +1353,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         log.write(f"service host down: {host.reason}")
         return 0
     finally:
+        if parent is not None:
+            parent.close()
         lock.release()
 
 
