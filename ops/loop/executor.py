@@ -943,7 +943,8 @@ def _git_out(repo_root, *args) -> str:
     """
     try:
         r = subprocess.run(["git", "-C", str(repo_root), *args],
-                           capture_output=True, text=True, timeout=30,
+                           capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", timeout=30,
                            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     except (OSError, subprocess.SubprocessError):
         return ""
@@ -1009,8 +1010,9 @@ def _repo_path(repo_root, token) -> str:
         return ""
     if "/" in token or "\\" in token:
         return ""
-    for line in _git_out(repo_root, "ls-files", "--", token, f"*/{token}").splitlines():
-        line = line.strip()
+    # -z + UTF-8 (RM-861): a C-quoted name under a non-ASCII directory kept its
+    # trailing quote and never matched; splitlines() also split on U+2028.
+    for line in _git_out(repo_root, "ls-files", "-z", "--", token, f"*/{token}").split("\0"):
         if line and line.rsplit("/", 1)[-1].lower() == token.lower():
             return line
     return ""
@@ -1482,16 +1484,19 @@ def _hook_index_modes(root, hooks) -> dict:
     `.git/hooks` install). Nothing in the index means nothing to judge - the
     caller must not read that as a breach.
     """
+    # -z + UTF-8 (RM-861): a C-quoted path keyed its mode as `pre-commit"`, the
+    # gate read the hook as untracked and skipped the mode check (fail-open).
     try:
-        r = subprocess.run(["git", "-C", str(root), "ls-files", "-s", "--", str(hooks)],
-                           capture_output=True, text=True, timeout=30,
+        r = subprocess.run(["git", "-C", str(root), "ls-files", "-s", "-z", "--", str(hooks)],
+                           capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", timeout=30,
                            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     except (OSError, subprocess.SubprocessError):
         return {}
     if r.returncode != 0:
         return {}
     modes = {}
-    for line in (r.stdout or "").splitlines():
+    for line in (r.stdout or "").split("\0"):
         meta, _, path = line.partition("\t")
         parts = meta.split()
         if path and parts:
@@ -1553,7 +1558,8 @@ def gate_inactive_reason(repo_root) -> str | None:
         return None  # not this repo's convention - do not invent a blocker
     try:
         r = subprocess.run(["git", "-C", str(root), "config", "--get", "core.hooksPath"],
-                           capture_output=True, text=True, timeout=30,
+                           capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", timeout=30,
                            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     except (OSError, subprocess.SubprocessError) as e:
         return f"could not verify the commit gate: {e}"
