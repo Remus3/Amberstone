@@ -74,6 +74,7 @@ MAX_FLEX = 8
 MAX_ITEM_SETS = 3
 MAX_AUGMENTS = 5
 MAX_STAR = 4
+ITEMS_JSON_MAX_CHARS = 65536  # a unit carries at most a handful of item names
 
 
 # ------------------------------------------------------------------ helpers
@@ -117,16 +118,32 @@ def as_int(value) -> Optional[int]:
         s = value.strip()
         body = s[1:] if s.startswith("-") else s
         if body and body.isascii() and body.isdigit():
-            return int(s)
+            try:
+                return int(s)
+            except ValueError:  # past the interpreter's int-string digit limit
+                return None
     return None
 
 
 def _conf_ok(conf, min_conf: float) -> bool:
     try:
         c = float(conf)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return False
     return math.isfinite(c) and c >= min_conf
+
+
+def _seq(value) -> tuple:
+    """A list / tuple field as a tuple; any other value (a scalar, a string, a dict) is no list."""
+    return tuple(value) if isinstance(value, (list, tuple)) else ()
+
+
+def _set_id(value) -> Optional[int]:
+    """tft_set.parse_set_id, but a value it cannot convert is no set id (never raises)."""
+    try:
+        return tft_set.parse_set_id(value)
+    except ValueError:  # e.g. a non-ASCII digit, or past the int-string digit limit
+        return None
 
 
 def jaccard(a: Iterable, b: Iterable) -> float:
@@ -143,17 +160,30 @@ def copies(star: int) -> int:
 
 
 def placement_of(record: Mapping) -> Optional[int]:
-    p = as_int(envelope_value(record, "placement"))
+    value = envelope_value(record, "placement")
+    if isinstance(value, float) and not value.is_integer():
+        return None  # 4.9 is no placement, not a 4th
+    p = as_int(value)
     return p if p is not None and 1 <= p <= 8 else None
 
 
 def _plain(obj):
-    """Mapping keys as strings and lists in sorted order, recursively: one text per content."""
+    """Mapping keys as strings and lists / sets in sorted order, recursively: one text per content."""
     if isinstance(obj, Mapping):
-        return {str(k): _plain(v) for k, v in obj.items()}
-    if isinstance(obj, (list, tuple)):
+        return {_key_text(k): _plain(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple, set, frozenset)):
         return sorted((_plain(v) for v in obj), key=lambda v: json.dumps(v, sort_keys=True, default=str))
+    if isinstance(obj, int) and not isinstance(obj, bool):
+        try:
+            str(obj)
+        except ValueError:  # too long for decimal text; hex has no digit limit
+            return f"int:{obj:#x}"
     return obj
+
+
+def _key_text(key) -> str:
+    plain = _plain(key) if isinstance(key, int) else key
+    return plain if isinstance(plain, str) else str(key)
 
 
 def canonical(obj) -> str:
@@ -190,32 +220,32 @@ class SetData:
     @classmethod
     def from_cdragon(cls, doc: Any, set_id: Optional[int] = None) -> "SetData":
         doc = doc if isinstance(doc, Mapping) else {}
-        sid = set_id if set_id is not None else tft_set.parse_set_id(doc.get("_set"))
+        sid = set_id if set_id is not None else _set_id(doc.get("_set"))
         units: dict = {}
-        for row in doc.get("units") or []:
+        for row in _seq(doc.get("units")):
             if not isinstance(row, Mapping):
                 continue
             api = row.get("apiName")
             if not isinstance(api, str) or not api.strip():
                 continue
             name = row.get("name") if isinstance(row.get("name"), str) and row.get("name") else api
-            traits = tuple(t for t in (row.get("traits") or []) if isinstance(t, str) and t)
+            traits = tuple(t for t in _seq(row.get("traits")) if isinstance(t, str) and t)
             units[api] = UnitInfo(api=api, name=name, cost=as_int(row.get("cost")), traits=traits)
         breakpoints: dict = {}
-        for row in doc.get("traits") or []:
+        for row in _seq(doc.get("traits")):
             if not isinstance(row, Mapping) or not isinstance(row.get("name"), str):
                 continue
-            bps = sorted(b for b in (as_int(x) for x in (row.get("breakpoints") or [])) if b is not None and b > 0)
+            bps = sorted(b for b in (as_int(x) for x in _seq(row.get("breakpoints"))) if b is not None and b > 0)
             breakpoints[row["name"]] = tuple(bps)
         recipes: dict = {}
         components: set = set()
         item_names: dict = {}
-        for row in doc.get("items") or []:
+        for row in _seq(doc.get("items")):
             if not isinstance(row, Mapping) or not isinstance(row.get("apiName"), str):
                 continue
             api = row["apiName"]
             item_names[api] = row.get("name") if isinstance(row.get("name"), str) and row.get("name") else api
-            comp = [c for c in (row.get("composition") or []) if isinstance(c, str) and c]
+            comp = [c for c in _seq(row.get("composition")) if isinstance(c, str) and c]
             if len(comp) >= 2:
                 recipes[api] = tuple(sorted(comp))
                 components.update(comp)
@@ -226,9 +256,10 @@ class SetData:
                 if trait in breakpoints:
                     emblems[api] = trait
         augments = {}
-        for row in doc.get("augments") or []:
+        for row in _seq(doc.get("augments")):
             if isinstance(row, Mapping) and isinstance(row.get("apiName"), str):
-                augments[row["apiName"]] = row.get("name") if isinstance(row.get("name"), str) else row["apiName"]
+                name = row.get("name")
+                augments[row["apiName"]] = name if isinstance(name, str) and name else row["apiName"]
         names: dict = defaultdict(list)
         for api, info in units.items():
             names[info.name.lower()].append(api)
@@ -322,10 +353,10 @@ def _raw_items(raw: Mapping) -> list:
         if isinstance(value, list):
             return value
     value = raw.get("items_json")
-    if isinstance(value, str) and value.strip():
+    if isinstance(value, str) and value.strip() and len(value) <= ITEMS_JSON_MAX_CHARS:
         try:
             parsed = json.loads(value)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, RecursionError):  # RecursionError: nesting too deep
             return []
         return parsed if isinstance(parsed, list) else []
     return []
@@ -353,7 +384,7 @@ def normalize_unit(raw: Any, setdata: SetData) -> Optional[Unit]:
     star = min(MAX_STAR, max(1, star))
     items = tuple(sorted(i for i in (_item_api(e, setdata) for e in _raw_items(raw)) if i))
     cost = next((as_int(raw[k]) for k in _COST_KEYS if as_int(raw.get(k)) is not None), None)
-    if cost is None:
+    if cost is None or cost < 0:  # a negative price is junk: the set data's cost wins
         cost = setdata.unit_cost(api)
     return Unit(api=api, star=star, items=items, cost=cost)
 
@@ -449,14 +480,29 @@ def _similarity(a: _Board, b: _Board) -> float:
 
 def record_id(record: Mapping) -> str:
     mid = record.get("match_id")
-    if isinstance(mid, (str, int)) and str(mid).strip():
-        return str(mid)
+    if isinstance(mid, (str, int)) and not isinstance(mid, bool):
+        try:
+            text = str(mid)
+        except ValueError:  # an int too long for decimal text is no match id
+            text = ""
+        if text.strip():
+            return text
     return "anon-" + hashlib.sha1(canonical(record).encode("utf-8")).hexdigest()[:10]
+
+
+def _record_rows(records: Any) -> list:
+    """The Mapping rows of an iterable of records; a scalar, string or single Mapping is none."""
+    if records is None or isinstance(records, (str, bytes, Mapping)):
+        return []
+    try:
+        return [r for r in records if isinstance(r, Mapping)]
+    except TypeError:  # not iterable
+        return []
 
 
 def ordered_records(records: Any) -> list:
     """Records sorted by match id (then content), one per match id."""
-    rows = [r for r in (records or []) if isinstance(r, Mapping)]
+    rows = _record_rows(records)
     keyed = sorted(((record_id(r), canonical(r), r) for r in rows), key=lambda t: (t[0], t[1]))
     out, seen = [], set()
     for mid, _c, rec in keyed:
@@ -468,7 +514,7 @@ def ordered_records(records: Any) -> list:
 
 
 def _exclusion(record: Mapping, setdata: SetData, excluded: frozenset) -> Optional[str]:
-    if setdata.set_id is not None and tft_set.parse_set_id(record.get("set_id")) != setdata.set_id:
+    if setdata.set_id is not None and _set_id(record.get("set_id")) != setdata.set_id:
         return "other_set"
     queue_kind = record.get("queue_kind")
     if isinstance(queue_kind, str) and queue_kind in excluded:
@@ -673,11 +719,11 @@ def assign_comp(board: Any, catalogue: Mapping, setdata: SetData) -> Optional[di
     unit_set = {x.api for x in units}
     sig = trait_signature(units, setdata)
     best, best_key = None, None
-    for comp in catalogue.get("comps") or []:
+    for comp in _seq(catalogue.get("comps")):
         if not isinstance(comp, Mapping) or not isinstance(comp.get("comp_id"), str):
             continue
         pool = set(comp_units(comp, "core")) | set(comp_units(comp, "flex"))
-        signature = [t for t in comp.get("signature") or [] if isinstance(t, str)]
+        signature = [t for t in _seq(comp.get("signature")) if isinstance(t, str)]
         s = UNIT_WEIGHT * jaccard(unit_set, pool) + (1.0 - UNIT_WEIGHT) * jaccard(sig, signature)
         key = (-s, comp["comp_id"])
         if best_key is None or key < best_key:
