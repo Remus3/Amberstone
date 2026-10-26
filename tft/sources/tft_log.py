@@ -40,8 +40,20 @@ re-reads the current TFT.log from 0, bounded per poll), and the store's event
 insert is a plain INSERT, so LogIngest skips every event the store already
 holds under its stable key (kind, stamp to the millisecond, canonical
 payload). The keys of a match are loaded once per process from the store's
-read API the first time an event lands in it. A rotated / new log carries new
-stamps, so its events are new keys and land; no state file is written.
+read API the first time an event lands in it, after the store's queued writes
+are flushed (bounded). A load that returns nothing (a failed read and a match
+row that is not in the store look alike) is NOT cached as "no keys": the
+events wait and the load is retried on the next poll, because writing them
+blind is exactly the restart duplicate this design exists to prevent. A
+rotated / new log carries new stamps, so its events are new keys and land; no
+state file is written.
+
+FAIL-SOFT, PER EVENT: a `locate` that raises or returns a malformed value
+holds that one event (it ages out like any unplaced event) and never stops
+the others. A stamp more than MAX_FUTURE_S ahead of the clock is dropped on
+read, so it can neither sit in the buffer nor age every waiting event out.
+A failure streak of either poll logs one WARNING (type name only, never a
+path), then DEBUG until a good poll ends the streak.
 """
 from __future__ import annotations
 
@@ -72,6 +84,8 @@ HEADER_BYTES = 64  # rotation fingerprint: "Log file open, <local time>" + the n
 BUFFER_MAX = 512
 SETTLE_S = 5.0
 PENDING_MAX_AGE_S = 900.0
+MAX_FUTURE_S = 3600.0  # a stamp further ahead of the clock than this is dropped
+KEY_LOAD_FLUSH_S = 1.0  # bound on waiting for queued store writes before a key load
 _BOM = b"\xef\xbb\xbf"
 
 
@@ -161,6 +175,14 @@ ALLOWLIST = tuple((name, kind) for name, kind, _rx, _build in _RULES)
 _HINTS = ("ETFTPhaseType::", "Audio.Event.VO.", "TeamPlanner data saved", "SwitchToMusic")
 
 
+def _log_failure(owner, what: str, exc: BaseException) -> None:
+    """One WARNING per failure streak (owner._failing), DEBUG after it; the
+    record names the exception type only (a message can carry a path)."""
+    level = logging.DEBUG if owner._failing else logging.WARNING
+    owner._failing = True
+    _log.log(level, "tft log: %s failed (%s)", what, type(exc).__name__)
+
+
 def _epoch(m) -> Optional[float]:
     try:
         parts = tuple(int(m[k]) for k in ("y", "mo", "d", "h", "mi", "s"))
@@ -205,6 +227,8 @@ class TftLogTail:
         self._header = None
         self._carry = b""
         self._skipping = False  # inside an overlong line: drop up to its newline
+        self._at_start = True  # the next bytes begin the file: a BOM may lead them
+        self._failing = False  # inside a failure streak (see _log_failure)
         self.stats = {"polls": 0, "bytes": 0, "last_read": 0, "max_read": 0, "lines": 0,
                       "events": 0, "dropped_long": 0, "rotations": 0, "errors": 0}
 
@@ -218,16 +242,19 @@ class TftLogTail:
         self.stats["polls"] += 1
         self.stats["last_read"] = 0
         try:
-            return self._poll()
-        except OSError:
+            events = self._poll()
+        except OSError:  # no log yet / locked / a directory: quiet by design
             return []
         except Exception as exc:  # noqa: BLE001 - fail-soft: never into the poll loop
             self.stats["errors"] += 1
-            _log.debug("tft log: poll failed (%s)", type(exc).__name__)
+            _log_failure(self, "poll", exc)
             return []
+        self._failing = False
+        return events
 
     def _reset(self, header: bytes) -> None:
         self.offset, self._carry, self._skipping, self._header = 0, b"", False, header
+        self._at_start = True
 
     def _poll(self) -> list:
         with _open_shared(self.path) as fh:
@@ -237,6 +264,7 @@ class TftLogTail:
                 self._header = head
                 if self._start == "end" and size:
                     self.offset = size
+                    self._at_start = False
                     fh.seek(size - 1)
                     self._skipping = fh.read(1) != b"\n"
             else:
@@ -249,18 +277,22 @@ class TftLogTail:
             if size <= self.offset:
                 return []
             fh.seek(self.offset)
-            from_zero = self.offset == 0
             data = fh.read(min(self.max_bytes_per_poll, size - self.offset))
         self.offset += len(data)
         self.stats["bytes"] += len(data)
         self.stats["last_read"] = len(data)
         self.stats["max_read"] = max(self.stats["max_read"], len(data))
-        if from_zero and data.startswith(_BOM):
-            data = data[len(_BOM):]
         return self._lines(data)
 
     def _lines(self, data: bytes) -> list:
-        parts = (self._carry + data).split(b"\n")
+        buf = self._carry + data
+        # the BOM is judged on the file's first bytes, not the first read: a
+        # small byte cap can split it, and its prefix then waits in the carry
+        if self._at_start and (len(buf) >= len(_BOM) or not _BOM.startswith(buf)):
+            self._at_start = False
+            if buf.startswith(_BOM):
+                buf = buf[len(_BOM):]
+        parts = buf.split(b"\n")
         tail = parts.pop()
         events = []
         for raw in parts:
@@ -288,6 +320,16 @@ class TftLogTail:
 # ---------------------------------------------------------------- into the round store
 
 
+def _seconds(value, name: str) -> float:
+    """A finite, non-negative duration in seconds (int or float, not bool)."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"{name} must be a number of seconds")
+    value = float(value)
+    if not (0.0 <= value < float("inf")):  # also rejects NaN
+        raise ValueError(f"{name} must be finite and >= 0")
+    return value
+
+
 def event_key(kind, ts, payload) -> tuple:
     """The stable identity of one log event: the same line read twice (after a
     restart, or a re-read) maps to the same key."""
@@ -306,32 +348,42 @@ class LogIngest:
         self.tail = tail
         self.locate = locate
         self.clock = clock
-        self.settle_s = settle_s
+        self.settle_s = _seconds(settle_s, "settle_s")
         self.buffer_max = max(1, int(buffer_max))
-        self.max_pending_age_s = max_pending_age_s
+        self.max_pending_age_s = _seconds(max_pending_age_s, "max_pending_age_s")
         self._pending = collections.deque()
         self._newest = None
         self._seen_mid = None
         self._seen = set()  # event_key()s already in the store for _seen_mid
+        self._failing = False  # inside a failure streak (see _log_failure)
         self.stats = {"read": 0, "written": 0, "pending": 0, "dropped_buffer": 0,
-                      "dropped_stale": 0, "duplicates": 0, "write_dropped": 0, "errors": 0}
+                      "dropped_stale": 0, "dropped_future": 0, "duplicates": 0,
+                      "write_dropped": 0, "locate_errors": 0, "key_load_failed": 0, "errors": 0}
 
     def poll(self) -> int:
         """Read new events and write every placeable one; returns how many
         were written (enqueued). Never raises."""
         try:
-            return self._poll()
+            written = self._poll()
         except Exception as exc:  # noqa: BLE001 - fail-soft
             self.stats["errors"] += 1
-            _log.debug("tft log: ingest failed (%s)", type(exc).__name__)
+            _log_failure(self, "ingest", exc)
             return 0
+        self._failing = False
+        return written
 
-    def _seen_for(self, match_id) -> set:
+    def _seen_for(self, match_id) -> Optional[set]:
         """The tft_log event keys the store holds for this match (one read per
-        match per process; only the current match is kept in memory)."""
+        match per process; only the current match is kept in memory), or None
+        when the store returned nothing - not cached, retried next poll."""
         if match_id != self._seen_mid:
+            flush = getattr(self.store, "flush", None)
+            if flush is not None and not flush(timeout=KEY_LOAD_FLUSH_S):
+                return None  # queued writes not applied yet: a read now could miss them
+            doc = self.store.get_match(match_id)
+            if not isinstance(doc, dict):
+                return None
             keys = set()
-            doc = self.store.get_match(match_id) or {}
             rows = list(doc.get("events") or [])
             for r in doc.get("rounds") or []:
                 rows.extend(r.get("events") or [])
@@ -341,30 +393,61 @@ class LogIngest:
             self._seen_mid, self._seen = match_id, keys
         return self._seen
 
+    def _where(self, ts):
+        """locate(ts) checked per event: (match_id, round_seq) or None. A
+        raise or a malformed value is counted and read as "no match yet"."""
+        try:
+            where = self.locate(ts)
+        except Exception as exc:  # noqa: BLE001 - one bad event must not stall the rest
+            self.stats["locate_errors"] += 1
+            _log.debug("tft log: locate failed (%s)", type(exc).__name__)
+            return None
+        if where is None:
+            return None
+        if not isinstance(where, tuple) or len(where) != 2:
+            self.stats["locate_errors"] += 1
+            _log.debug("tft log: locate returned a %s", type(where).__name__)
+            return None
+        return where
+
+    def _hold(self, ev, keep) -> None:
+        """Keep an unplaced event, or age it out once the log has moved on."""
+        if self._newest - ev.ts > self.max_pending_age_s:
+            self.stats["dropped_stale"] += 1
+        else:
+            keep.append(ev)
+
     def _poll(self) -> int:
+        now = self.clock()
         for ev in self.tail.poll():
             self.stats["read"] += 1
+            if ev.ts > now + MAX_FUTURE_S:
+                self.stats["dropped_future"] += 1
+                continue
             self._pending.append(ev)
             if self._newest is None or ev.ts > self._newest:
                 self._newest = ev.ts
         while len(self._pending) > self.buffer_max:
             self._pending.popleft()
             self.stats["dropped_buffer"] += 1
-        now = self.clock()
-        keep, written = collections.deque(), 0
+        keep, written, unknown = collections.deque(), 0, set()
         for ev in self._pending:
             if now < ev.ts + self.settle_s:
                 keep.append(ev)
                 continue
-            where = self.locate(ev.ts)
+            where = self._where(ev.ts)
             if where is None:
-                if self._newest - ev.ts > self.max_pending_age_s:
-                    self.stats["dropped_stale"] += 1
-                else:
-                    keep.append(ev)
+                self._hold(ev, keep)
                 continue
             mid, seq = where
-            seen, key = self._seen_for(mid), event_key(ev.kind, ev.ts, ev.payload)
+            seen = None if mid in unknown else self._seen_for(mid)
+            if seen is None:  # the match's keys could not be read: never write blind
+                if mid not in unknown:
+                    unknown.add(mid)
+                    self.stats["key_load_failed"] += 1
+                self._hold(ev, keep)
+                continue
+            key = event_key(ev.kind, ev.ts, ev.payload)
             if key in seen:
                 self.stats["duplicates"] += 1
                 continue

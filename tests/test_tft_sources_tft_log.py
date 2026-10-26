@@ -465,3 +465,177 @@ def test_an_in_process_reread_writes_nothing_twice(tmp_path, monkeypatch, store,
     # the same bytes again under a new header (a false rotation) re-read from 0
     _write(log_path, b"Log file open, 10/25/26 07:00:01\n" + _excerpt_bytes())
     assert li.poll() == 0 and li.stats["duplicates"] == len(EXPECTED)
+
+
+# ---------------------------------------------------------------- s134 true-audit (cycle 10)
+# One regression test per finding of the lane-8 audit of tft/sources/tft_log.py.
+
+
+@pytest.mark.parametrize("cap", [1, 2])
+def test_a_bom_split_across_tiny_reads_is_still_skipped(log_path, cap):
+    # F6: the BOM was stripped only from the first READ, so a byte cap under
+    # three bytes glued its tail onto the first line and lost that event
+    line = (STAMP + PHASE_BODY.format("Planning") + "\r\n").encode("ascii")
+    _write(log_path, b"\xef\xbb\xbf" + line)
+    tail = tl.TftLogTail(log_path, max_bytes_per_poll=cap)
+    assert [e.payload["phase"] for e in _drain(tail)] == ["Planning"]
+
+
+def test_a_bom_is_skipped_again_after_a_rotation(log_path):
+    line = (STAMP + PHASE_BODY.format("Planning") + "\r\n").encode("ascii")
+    _write(log_path, b"\xef\xbb\xbf" + b"Log file open, 10/25/26 07:00:00\r\n")
+    tail = tl.TftLogTail(log_path, max_bytes_per_poll=2)
+    assert _drain(tail) == []
+    _write(log_path, b"\xef\xbb\xbf" + line)  # a new, different-header file
+    assert [e.payload["phase"] for e in _drain(tail)] == ["Planning"]
+    assert tail.stats["rotations"] == 1
+
+
+def test_a_failed_key_load_holds_events_instead_of_writing_duplicates(
+        tmp_path, monkeypatch, log_path):
+    # F1: get_match() returns None on a read failure too; the dedupe keys of
+    # the match were then cached as EMPTY and a restart re-wrote every event
+    db = tmp_path / "tft" / "tft_rounds.db"
+    rw = _eog_rewrites()
+    _write(log_path, _excerpt_bytes())
+    _rc_process(tmp_path, monkeypatch, db, log_path, rw)
+    assert _log_event_count(db) == len(EXPECTED)
+    st = RoundStore.open(db)
+    try:
+        ing = _eog_ingest(tmp_path, monkeypatch, st, rw[-1:])
+        real, calls = st.get_match, []
+
+        def flaky(match_id, **kw):
+            calls.append(match_id)
+            return None if len(calls) == 1 else real(match_id, **kw)
+
+        monkeypatch.setattr(st, "get_match", flaky)
+        li = tl.LogIngest(st, tl.TftLogTail(log_path), ing.locate, clock=Clock(T0 + 3600))
+        assert li.poll() == 0  # the keys are unknown: nothing is written blind
+        assert li.stats["pending"] == len(EXPECTED) and li.stats["key_load_failed"] == 1
+        assert li.poll() == 0
+        assert li.stats["duplicates"] == len(EXPECTED) and li.stats["pending"] == 0
+        assert st.flush()
+    finally:
+        st.close()
+    assert _log_event_count(db) == len(EXPECTED)
+
+
+def test_a_new_match_is_keyed_after_its_queued_writes_land(tmp_path, monkeypatch, store, log_path):
+    # the key load waits for the store's queued writes, so a match whose row is
+    # still in the writer queue is read as present (and empty), not as missing
+    ing = _eog_ingest(tmp_path, monkeypatch, store, _eog_rewrites())
+    _write(log_path, _excerpt_bytes())
+    flushed = []
+    real_flush = store.flush
+    monkeypatch.setattr(store, "flush", lambda timeout=10.0: flushed.append(timeout) or real_flush(timeout))
+    li = tl.LogIngest(store, tl.TftLogTail(log_path), ing.locate, clock=Clock(T0 + 3600))
+    assert li.poll() == len(EXPECTED)
+    assert len(flushed) == 1 and flushed[0] <= tl.KEY_LOAD_FLUSH_S
+
+
+@pytest.mark.parametrize("bad", ["raise", "garbage", ("only-one",)])
+def test_one_failing_locate_never_stalls_the_other_events(
+        tmp_path, monkeypatch, store, log_path, bad):
+    # F2: a locate() that raised (or returned a malformed value) for ONE event
+    # aborted the whole pass every poll, so nothing behind it was ever placed
+    ing = _eog_ingest(tmp_path, monkeypatch, store, _eog_rewrites())
+    _write(log_path, _excerpt_bytes())
+    bad_ts = T0 + 60.0
+
+    def locate(ts):
+        if ts == bad_ts:
+            if bad == "raise":
+                raise RuntimeError("locate blew up")
+            return bad
+        return ing.locate(ts)
+
+    li = tl.LogIngest(store, tl.TftLogTail(log_path), locate, clock=Clock(T0 + 3600))
+    assert li.poll() == len(EXPECTED) - 1
+    assert li.stats["locate_errors"] == 1 and li.stats["pending"] == 1
+    assert li.stats["errors"] == 0
+
+
+def test_a_future_stamp_neither_poisons_aging_nor_hogs_the_buffer(store, log_path):
+    # F3: one line stamped years ahead became the "newest" stamp, so every
+    # event still waiting for its match was aged out as stale at once
+    future = ("[2030.01.01-00.00.00:000][1]" + PHASE_BODY.format("Planning") + "\n").encode("ascii")
+    _write(log_path, _excerpt_bytes() + future)
+    li = tl.LogIngest(store, tl.TftLogTail(log_path), lambda ts: None, clock=Clock(T0 + 3600))
+    assert li.poll() == 0
+    assert li.stats["dropped_future"] == 1
+    assert li.stats["dropped_stale"] == 0 and li.stats["pending"] == len(EXPECTED)
+
+
+def test_a_stamp_just_ahead_of_the_clock_is_kept(store, log_path):
+    near = ("[2026.10.25-12.05.00:000][1]" + PHASE_BODY.format("Planning") + "\n").encode("ascii")
+    _write(log_path, near)  # T0 + 300, clock T0 + 200: inside the skew allowance
+    li = tl.LogIngest(store, tl.TftLogTail(log_path), lambda ts: None, clock=Clock(T0 + 200))
+    li.poll()
+    assert li.stats["dropped_future"] == 0 and li.stats["pending"] == 1
+
+
+@pytest.mark.parametrize("knob", ["settle_s", "max_pending_age_s"])
+@pytest.mark.parametrize("value", [None, float("nan"), float("inf"), -1.0, "5", True])
+def test_ingest_timing_knobs_are_validated_at_construction(store, log_path, knob, value):
+    # F4: a None knob made every poll raise (swallowed at debug), a NaN one
+    # silently disabled the settle or the aging
+    with pytest.raises(ValueError):
+        tl.LogIngest(store, tl.TftLogTail(log_path), lambda ts: None, **{knob: value})
+
+
+def test_ingest_timing_knobs_accept_ints_and_zero(store, log_path):
+    li = tl.LogIngest(store, tl.TftLogTail(log_path), lambda ts: None, settle_s=0,
+                      max_pending_age_s=60)
+    assert li.settle_s == 0.0 and li.max_pending_age_s == 60.0
+
+
+class _BoomTail:
+    def __init__(self):
+        self.fail = True
+
+    def poll(self):
+        if self.fail:
+            raise RuntimeError("tail broke")
+        return []
+
+
+def _warnings(caplog):
+    return [r for r in caplog.records if r.name == tl.__name__ and r.levelno >= 30]
+
+
+def test_a_persistent_ingest_failure_warns_once_per_streak(store, caplog):
+    # F5: every failure was logged at DEBUG only, so a broken ingest was silent
+    caplog.set_level("DEBUG", logger=tl.__name__)
+    tail = _BoomTail()
+    li = tl.LogIngest(store, tail, lambda ts: None)
+    for _ in range(3):
+        assert li.poll() == 0
+    assert li.stats["errors"] == 3 and len(_warnings(caplog)) == 1
+    tail.fail = False
+    assert li.poll() == 0  # a good pass ends the streak
+    tail.fail = True
+    li.poll()
+    assert len(_warnings(caplog)) == 2
+
+
+def test_a_persistent_tail_failure_warns_once_and_names_no_path(log_path, monkeypatch, caplog):
+    caplog.set_level("DEBUG", logger=tl.__name__)
+    _write(log_path, _excerpt_bytes())
+    real = tl._open_shared
+
+    def boom(path):
+        raise RuntimeError(f"cannot read {path}")
+
+    monkeypatch.setattr(tl, "_open_shared", boom)
+    tail = tl.TftLogTail(log_path)
+    for _ in range(3):
+        assert tail.poll() == []
+    warns = _warnings(caplog)
+    assert tail.stats["errors"] == 3 and len(warns) == 1
+    assert str(log_path.parent) not in warns[0].getMessage()
+    monkeypatch.setattr(tl, "_open_shared", real)
+    assert len(tail.poll()) == len(EXPECTED)  # a good poll ends the streak
+    monkeypatch.setattr(tl, "_open_shared", boom)
+    tail.poll()
+    assert len(_warnings(caplog)) == 2
