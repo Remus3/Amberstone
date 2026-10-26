@@ -438,7 +438,45 @@ that finds it needs one stops and asks (operator approval required).
   is generated into the build output, not tracked. Tier-1.
 
 Wave A (parallel, disjoint): PKG-1, PKG-3, PKG-4, PKG-5, PKG-8, then PKG-2
-on top of PKG-1. Wave B: PKG-6 and PKG-7.
+on top of PKG-1. Wave B: PKG-6 and PKG-7. The eight slices are NOT disjoint
+as a set: PKG-6 shares `rc-shell/package.json` with PKG-3 and rebases onto
+it (V1 below).
+
+### Verifier findings (s141)
+
+Read-only verifier pass over this spec before the wave A / B builders. Each
+item binds the named slice.
+
+- V1 Slice overlap. `rc-shell/package.json` is in both PKG-3 and PKG-6
+  (both add test files to its enumerated `test` script). They sit in
+  different waves, so wave A is disjoint, but PKG-6 must rebase onto
+  PKG-3's `package.json`, never start from today's.
+- V2 Nav guard gaps (PKG-6). Only `will-navigate`
+  (`rc-shell/src/main.js:502`) and `setWindowOpenHandler`
+  (`rc-shell/src/main.js:498`) are wired today. PKG-6 adds `will-redirect`
+  and `will-frame-navigate` handlers applying the same `nav_guard.js`
+  decision. Theoretical while the dashboard sends no 3xx, but the guard
+  must not depend on that.
+- V3 M5 design conflict (PKG-5, with PKG-6 and the section-5 cutover).
+  - A loopback-only packaged bind cuts off the documented
+    `https://rc-host:8888` tailnet view once the launcher replaces the
+    scheduled tasks on Legion, unless Legion's profile keeps a
+    tailnet-reachable bind (the section 3.6 opt-in, set before cutover).
+  - A per-install `RC_DASH_TOKEN` 401s every plain-browser control POST
+    that sends no `X-RC-Token`; the shell's own-origin header injection
+    covers shell windows only. Gated callers with no token header (grep
+    2026-10-26): `web/js/main.js:174`, `web/js/panels/champ_select.js:61`
+    and `web/js/panels/champ_select.js:214` (all `/api/lcu-cmd`),
+    `web/js/panels/champ_select.js:3402` and
+    `web/js/panels/item_build.js:435` (both `/api/loadout/apply`), plus
+    every gated POST in the still-served `web/legacy_index.html` (its
+    `postJSON` at `web/legacy_index.html:2736` sends none). The other
+    gated callers already send `localStorage.rc_dash_token`.
+  - The recording `<video>` (`web/index.html:1698`, served by
+    `dashboard/routes_recordings.py` behind the same gate) cannot send a
+    header (BACKLOG RM-679(a): short-lived signed URL vs cookie).
+  - PKG-5 must name and handle each of these callers before a token is
+    ever set.
 
 ## 5. ONLOGON-to-launcher cutover (OPERATOR-GATED)
 
