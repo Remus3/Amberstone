@@ -1,5 +1,11 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-10-25g - size-budget relocation (session 138 /done), 1 line
+
+`ROADMAP.md` stood at 73488 of 81920 bytes on `b49a4572b`, 240 bytes under the `tools/drift_guard.py` warn line (73728), before the RM-907 / RM-908 rows. The closed line below moves here VERBATIM.
+
+- **[x] RM-703 DONE s137 (LEDGER 1912): the 11 `lift1/*` + `lift2/*` out-of-root worktrees removed (operator-approved), tips in a gitignored bundle, branches deleted.**
+
 ## 2026-10-25f - size-budget relocation (session 136 /done), 4 lines
 
 `ROADMAP.md` stood at 73918 of 81920 bytes on `7a40a5cb4`, a `tools/drift_guard.py` breach (90 percent; its warn line is 73728). The four SHIPPED / CLOSED lines below move here VERBATIM as they stood at `7a40a5cb4`, in their ROADMAP order (the third is an indented sub-line of the still-open RM-740 row). The `## 2026-10-23`.. pointer line in `ROADMAP.md` now names this block.

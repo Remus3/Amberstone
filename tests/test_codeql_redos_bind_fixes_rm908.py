@@ -1,4 +1,4 @@
-"""MAIN FIX 2026-10-25 1935 section 1 (RM-906): CodeQL alerts 65 and 66.
+"""MAIN FIX 2026-10-25 1935 section 1 (RM-908; the push commit 131941469 mis-cited it as RM-906, which is the ASKS 36 ids row): CodeQL alerts 65 and 66.
 
 65 py/redos: ``_OBJ_FACTORY_RE`` let the param group be ``(name,?)+``, so one
 long identifier split many ways and a non-matching tail backtracked
