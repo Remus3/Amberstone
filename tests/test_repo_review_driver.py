@@ -20,7 +20,7 @@ import pytest
 
 from ops.loop import fleet_route
 from ops.loop import headless_env as he
-from tests._module_view import bind_subprocess
+from tests._module_view import bind_subprocess, no_process_start
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "ops" / "loop" / "repo_review.py"
@@ -261,7 +261,9 @@ def test_spawn_refuses_without_route_and_starts_nothing(rr, monkeypatch, tmp_pat
     # kit's own Popen launch - never the shared subprocess module (RM-801).
     for mod in (rr, fleet_route, fleet_route.kit()):
         bind_subprocess(monkeypatch, mod, run=trip, Popen=trip)
-    with pytest.raises(rr.Halt):
+    # Those fakes see only the listed modules; no_process_start() hears a real
+    # start from any module on this thread or one it starts (RM-880 d).
+    with no_process_start(), pytest.raises(rr.Halt):
         rr._spawn("PROMPT", "B01", timeout=5)
     assert trip.call_count == 0, "a refused route starts nothing"
 

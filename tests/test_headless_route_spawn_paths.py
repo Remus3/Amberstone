@@ -10,6 +10,10 @@ process.
 RM-801: every process fake is bound into the spawn chain's OWN `subprocess`
 names (`_chain()`, tests/_module_view.py bind_subprocess), never onto the
 shared subprocess module that every other thread of the xdist worker calls.
+RM-880 (d): those fakes see only the listed chain, so the `refused` fixture
+also arms `no_process_start()` (an audit-event tripwire for this test's own
+threads): a refused path that grows a module outside `_chain()` and starts a
+real process still fails here.
 """
 from __future__ import annotations
 
@@ -24,7 +28,12 @@ from unittest import mock
 import pytest
 
 from ops.loop import headless_env as he
-from tests._module_view import bind_subprocess, bind_which
+from tests._module_view import (
+    ProcessStartTripped,
+    bind_subprocess,
+    bind_which,
+    no_process_start,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 FAKE_URL = "http://127.0.0.1:65534"
@@ -78,7 +87,15 @@ def _trip():
 
 
 @pytest.fixture
-def refused(monkeypatch, tmp_path):
+def no_spawn():
+    """RM-880 (d): no real process starts from this test's threads, through
+    any module, chain or not; the recorded starts, empty on a clean exit."""
+    with no_process_start() as hits:
+        yield hits
+
+
+@pytest.fixture
+def refused(no_spawn, monkeypatch, tmp_path):
     monkeypatch.setattr(he, "_read_user_var", lambda name: None)  # var deleted
     monkeypatch.setattr(he, "_probe", lambda h, p, t: pytest.fail("probe on an unset var"))
     monkeypatch.setattr(he, "REFUSAL_LOG", tmp_path / "refusals.log")
@@ -86,6 +103,26 @@ def refused(monkeypatch, tmp_path):
     monkeypatch.setenv(he.ENV_VAR, FAKE_URL)
     monkeypatch.delenv("ANTHROPIC_BASE_URL", raising=False)
     return tmp_path / "refusals.log"
+
+
+def test_refused_trips_a_start_outside_the_chain(refused, tmp_path, request):
+    """The chain fakes are blind to a module `_chain()` does not list; the
+    `refused` fixture's tripwire is not (RM-880 d). Only `refused` may arm it
+    here: `no_spawn` is fetched after the start, never requested up front."""
+    src = tmp_path / "rc_spawn_outside_the_chain.py"
+    src.write_bytes(b"import subprocess\nimport sys\n\n\ndef spawn():\n"
+                    b"    return subprocess.run([sys.executable, '-c', 'pass'], creationflags="
+                    b"getattr(subprocess, 'CREATE_NO_WINDOW', 0))\n")
+    spec = importlib.util.spec_from_file_location("rc_spawn_outside_the_chain", src)
+    outside = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(outside)
+    assert outside not in _chain()
+    with _faked(run=_trip(), Popen=_trip()):
+        with pytest.raises(ProcessStartTripped):
+            outside.spawn()
+    no_spawn = request.getfixturevalue("no_spawn")
+    assert [h[0] for h in no_spawn] == ["subprocess.Popen"]
+    no_spawn.clear()  # recorded and asserted: the fixture may now exit clean
 
 
 @pytest.fixture

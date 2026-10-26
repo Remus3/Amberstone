@@ -45,9 +45,16 @@ RM-880 widened the guard to `os.name` / `os.kill` / `os.killpg`,
   `ssl.SSLContext.load_cert_chain`) is faked on the class the code under test
   builds - its own subclass, or a subclass handed in through a view of its
   module - never on the shared base every other instance inherits from.
+
+RM-880 (d): `no_process_start()` is the "starts nothing" tripwire that needs
+no module list. It hears the process-start audit events for the arming thread
+and the threads it starts, so a spawn path that grows a module its test's
+bound fakes do not list still fails; a thread already alive at entry is left
+alone.
 """
 from __future__ import annotations
 
+import contextlib
 import os
 import shutil
 import socket
@@ -298,3 +305,90 @@ def this_thread_only(fake, real):
     scoped.fake = fake
     scoped.real = real
     return scoped
+
+
+# RM-880 (d): a "starts nothing" tripwire that needs no module list. A fake
+# bound into a spawn chain's own names (bind_subprocess) is blind to a module
+# the chain does not list, so a refused-route test stayed green over a real
+# start through a new helper, `os.system` or `os.startfile`. The interpreter
+# raises one of these audit events on every process start, whatever module
+# asks; `_winapi.CreateProcess` and `os.fork` also catch a start below
+# `subprocess`.
+_PROCESS_START_EVENTS = frozenset({
+    "subprocess.Popen", "_winapi.CreateProcess", "os.system", "os.exec",
+    "os.spawn", "os.posix_spawn", "os.startfile", "os.fork", "os.forkpty",
+})
+_ARMED: list = []  # [installer thread, threads alive at install, hits]
+_TRIP_LOCK = threading.Lock()
+_TRIP_HOOKED = False
+
+
+class ProcessStartTripped(AssertionError):
+    """A real process start reached an armed no_process_start() thread."""
+
+
+def _armed_for(entry, thread) -> bool:
+    installer, foreign, _hits = entry
+    seen = set()
+    while thread is not installer:
+        if thread in foreign or thread in seen:
+            return False
+        seen.add(thread)
+        thread = _lineage_of(thread)[0]
+        if thread is None:  # unrecorded creator (raw `_thread`): spared
+            return False
+    return True
+
+
+def _trip_process_start(event: str, args: tuple) -> None:
+    if event not in _PROCESS_START_EVENTS or not _ARMED:
+        return
+    try:
+        current = threading.current_thread()
+        with _TRIP_LOCK:
+            tripped = [e for e in _ARMED if _armed_for(e, current)]
+            for entry in tripped:
+                entry[2].append((event, repr(args)[:200]))
+    except Exception:  # noqa: BLE001 - only a confirmed trip may abort a start
+        return
+    if tripped:
+        raise ProcessStartTripped(f"real process start under no_process_start(): "
+                                  f"{event} {repr(args)[:200]}")
+
+
+def _ensure_trip_hook() -> None:
+    global _TRIP_HOOKED
+    with _TRIP_LOCK:
+        if not _TRIP_HOOKED:
+            sys.addaudithook(_trip_process_start)
+            _TRIP_HOOKED = True
+
+
+@contextlib.contextmanager
+def no_process_start():
+    """Refuse every real process start from this thread and the threads it
+    starts (by the creator lineage above) while the block runs; each thread
+    already alive at entry - another test's leftover server or poller - and
+    its descendants keep real starts. A start raises ProcessStartTripped
+    before the process exists, and is recorded in the yielded list, so a
+    start whose code under test swallows the raise still fails when the block
+    ends. A test that provokes a trip on purpose clears the list. Audit hooks
+    cannot be removed: the hook is installed once and is passive while
+    nothing is armed."""
+    _ensure_lineage_hook()
+    _ensure_trip_hook()
+    installer = threading.current_thread()
+    hits: list = []
+    entry = [installer,
+             frozenset(t for t in threading.enumerate() if t is not installer),
+             hits]
+    with _TRIP_LOCK:
+        _ARMED.append(entry)
+    try:
+        yield hits
+    finally:
+        with _TRIP_LOCK:
+            _ARMED.remove(entry)
+    if hits:
+        raise ProcessStartTripped(f"{len(hits)} real process start(s) under "
+                                  f"no_process_start(): {hits}")

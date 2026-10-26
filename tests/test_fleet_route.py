@@ -24,7 +24,7 @@ from ops.loop import fleet_route
 from ops.loop import headless_env as he
 from tests import _kit_platform
 from tests._kit_platform import assert_kit_killed
-from tests._module_view import bind_subprocess
+from tests._module_view import bind_subprocess, no_process_start
 
 kit_platform = _kit_platform.kit_platform  # fixture, registered by module attribute
 
@@ -103,7 +103,7 @@ def test_writes_code_picks_opus_and_cwd_overrides_the_kit_root(rec, tmp_path):
 def test_rc_gate_refusal_starts_nothing(rec, tmp_path, monkeypatch):
     monkeypatch.setattr(he, "_read_user_var", lambda name: None)
     monkeypatch.setattr(he, "REFUSAL_LOG", tmp_path / "r.log")
-    with pytest.raises(fleet_route.RouteRefused) as ei:
+    with no_process_start(), pytest.raises(fleet_route.RouteRefused) as ei:
         fleet_route.spawn("T", caller="t-unset", root=tmp_path)
     assert ei.value.reason == "unset"
     assert rec.calls == []
@@ -116,7 +116,7 @@ def test_kit_refusal_starts_nothing_and_is_logged(rec, tmp_path, monkeypatch):
     # of the two wins, and the refusal is logged by RC's gate log.
     monkeypatch.setattr(he, "_read_user_var", lambda name: "https://127.0.0.1:65530")
     monkeypatch.setattr(he, "REFUSAL_LOG", tmp_path / "r.log")
-    with pytest.raises(fleet_route.RouteRefused) as ei:
+    with no_process_start(), pytest.raises(fleet_route.RouteRefused) as ei:
         fleet_route.spawn("T", caller="t-kit", root=tmp_path)
     assert ei.value.reason == "kit" and "plain http" in str(ei.value)
     assert rec.calls == []
@@ -147,7 +147,7 @@ def test_budget_exhausted_refuses(rec, tmp_path):
     path.parent.mkdir(parents=True)
     import time
     path.write_text(json.dumps({"starts": [time.time()] * k.RUNS_CAP}), encoding="ascii")
-    with pytest.raises(fleet_route.RouteRefused) as ei:
+    with no_process_start(), pytest.raises(fleet_route.RouteRefused) as ei:
         fleet_route.spawn("T", caller="t", root=tmp_path)
     assert "budget exhausted" in str(ei.value)
     assert rec.calls == []
@@ -322,7 +322,7 @@ def test_timeout_kills_the_process_tree_through_the_kit(kit_launch, kit_platform
 def test_rc_gate_refusal_reaches_no_popen(kit_launch, tmp_path, monkeypatch):
     monkeypatch.setattr(he, "_read_user_var", lambda name: None)
     monkeypatch.setattr(he, "REFUSAL_LOG", tmp_path / "r.log")
-    with pytest.raises(fleet_route.RouteRefused):
+    with no_process_start(), pytest.raises(fleet_route.RouteRefused):
         fleet_route.spawn("T", caller="t-unset", stdin="BODY", root=tmp_path)
     assert _FakePopen.instances == [] and kit_launch == []
     assert not (tmp_path / "ops/loop/control/headless_budget.json").exists()
@@ -333,7 +333,7 @@ def test_kit_without_a_launcher_refuses_before_counting(kit_launch, tmp_path, mo
     # v10 names the launch publicly (`launch`); `_run` is the older private name
     monkeypatch.delattr(k, "launch")
     monkeypatch.delattr(k, "_run")
-    with pytest.raises(fleet_route.RouteRefused) as ei:
+    with no_process_start(), pytest.raises(fleet_route.RouteRefused) as ei:
         fleet_route.spawn("T", caller="t", root=tmp_path)
     assert ei.value.reason == "kit"
     assert _FakePopen.instances == []

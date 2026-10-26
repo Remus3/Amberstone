@@ -42,7 +42,7 @@ from ops.loop import fleet_route  # noqa: E402
 from ops.loop import headless_env as he  # noqa: E402
 from tests import _kit_platform  # noqa: E402
 from tests._kit_platform import assert_kit_killed  # noqa: E402
-from tests._module_view import bind_subprocess  # noqa: E402
+from tests._module_view import bind_subprocess, no_process_start  # noqa: E402
 
 kit_platform = _kit_platform.kit_platform  # fixture, registered by module attribute
 
@@ -122,7 +122,7 @@ def test_effort_omitted_is_the_kits_own_pick(rec, tmp_path, monkeypatch):
 
 
 def test_bad_effort_is_refused_by_the_kit_before_any_start(rec, tmp_path):
-    with pytest.raises(fleet_route.RouteRefused) as ei:
+    with no_process_start(), pytest.raises(fleet_route.RouteRefused) as ei:
         fleet_route.spawn("T", caller="t", effort="turbo", root=tmp_path)
     assert ei.value.reason == "kit" and "effort" in str(ei.value)
     assert rec.claude_calls() == []
@@ -400,14 +400,16 @@ def test_executor_resumes_through_the_kit(rec, no_git, tmp_path):
 def test_executor_refused_route_starts_nothing(rec, no_git, tmp_path, monkeypatch):
     monkeypatch.setattr(he, "_read_user_var", lambda name: None)
     monkeypatch.setattr(he, "REFUSAL_LOG", tmp_path / "r.log")
-    out = _sdk(tmp_path).run(1, "b", "fixed")
+    with no_process_start():
+        out = _sdk(tmp_path).run(1, "b", "fixed")
     assert out.error == "headless route refused: unset"
     assert rec.claude_calls() == []
     assert '"caller": "loop_executor"' in (tmp_path / "r.log").read_text(encoding="utf-8")
 
 
 def test_executor_bad_effort_is_a_refused_cycle_not_a_crash(rec, no_git, tmp_path):
-    out = _sdk(tmp_path, executor_effort="turbo").run(1, "b", "fixed")
+    with no_process_start():
+        out = _sdk(tmp_path, executor_effort="turbo").run(1, "b", "fixed")
     assert out.error.startswith("headless route refused: kit")
     assert rec.claude_calls() == []
 
