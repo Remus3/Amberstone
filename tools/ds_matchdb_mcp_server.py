@@ -953,7 +953,7 @@ def serve_forever(host: str = HOST, port: int = PORT) -> int:
     try:
         _require_loopback(host)
     except ValueError as e:
-        log.error("%s - not started", e)
+        log.error("%s - not started", scrub_log(str(e)))
         return 1
     # Port hand-off preflight (session 129). This was a one-shot connect
     # probe: "something answers now" meant exit 0, so a start racing a

@@ -6,6 +6,16 @@
 
 ---
 
+# 2026-10-25f - session 138 (headless MAIN work run): MAIN FIX 1935 (CodeQL 65/66, electron 44.9.1, CI waste cuts, push tier) + MAIN ORDER 2045 (BLAS cap, --durations); PUSHED
+
+- **Kit v23:** already adopted (manifest sha f5d82861 matches); verify only.
+- **1935 (RM-908, LEDGER 1913):** `131941469`; alerts 65 fixed, 66 dismissed false positive (guard cited), 82 fixed; Pages source = workflow; pushed fb2ff520e..b49a4572b; ONE dispatch 40267773006.
+- **2045 (RM-907, LEDGER 1914):** `2e78bc1ce` OPENBLAS/OMP/MKL threads = 1 in the rootdir conftest (numpy commit 496 -> 14 MB per process), `--durations=30`; the gated suite was REFUSED by commit admission (8.9 GB short, game running) - after-numbers owed.
+- **Do NOT redo:** the fixes above; RM-906 is NOT this work (ids row).
+- **Next:** gated suite on a quiet box (durations top-5 + peak read-back); then the PKG next action.
+
+---
+
 # 2026-10-25e - session 137: worktree triage (in-tree + the 11 out-of-root lift worktrees, operator-approved), MAIN FIX 1930 (two scheduled tasks read back 0); push hold ON (nothing pushed)
 
 - **Operator steers:** "look at the worktree's and do what is needed"; ASKS 25 APPROVED in chat ("Remove all 11 (Recommended)"); the push hold was NOT lifted.
@@ -28,17 +38,3 @@
 - **Next:** full QA of the ow-electron port + a packaged, live-updatable app (services start on app launch, never at boot); then TFT-HUD-01.
 
 ---
-
-# 2026-10-25c - session 135: s134 work LANDED on main (C1 gated suite green), id scrub, live backfills, GH1 merged; push halted by the credential scan, ASKS 37 adjudicated, then PUSHED
-
-- **Operator rulings (chat):** push and commit at this /done, then the push hold is back ON at session 136 start; frozen-file grant re-confirmed for s135 ONLY (ASKS 35, session-scoped); GH1 range-limited rewrite approved (ASKS 34); id scrub ordered ("rewrite the id's no need to ask").
-- **Landed (LEDGER 1883-1897):** P0-F, the 7 s134 lanes (RM-887..RM-903 mapped), TFT-04 (N7), TFT-09, N9 overlay (`baf8644b9` adjudicated LAND), TFT-08, TFT-02, N8, N13 (`tft/local_player.py`, tree-wide isInteractable guard) - each verifier-gated.
-- **C1 (LEDGER 1898):** verifier fixes 1-5, gated run 1 (-n 8) 5 failed -> fixes 6-8, run 2 on `7cb2b412d` (-n 6 + `FLEET_SUITE_COMMIT_MARGIN_MB=18432`) 45565 passed, exit 0. -n 8 nearly exhausts commit (44.8 / 48.4 GB) - use -n 6 until RM-737 / RM-755 is measured.
-- **ID scrub (LEDGER 1899):** 3 real game ids -> 1000000911..913 in the 155 unpushed commits; map `docs/_archive/2026-10/s135-id-scrub-commit-map.txt`; lane / builder branches, archive tags, stash and bundles still hold them - NEVER push those. Older pushed ids: RM-906 (operator ask).
-- **Live (LEDGER 1900):** lane markers, DS restart + 404 probe, N8 backfill (8169 quarantined, RM-888 (c)) and TFT-08 backfill applied with RC stopped; RC pid 7084 healthy.
-- **Q1 (LEDGER 1902):** QA 1st place; live coach 132 calls / 0 errors (RM-902 closed); N13 found (RC followed the 8th-place opponent); RM-905 filed (RC-ReplayRosterPull).
-- **WT (LEDGER 1901):** 22 worktrees removed (bundled); 10 locked by the session process stay - remove next session.
-- **PUSH HALTED (LEDGER 1903):** GH1 merged into local main (`66a468dc8`); the pre-push dry run's credential scan flags the fake `TOKEN` fixture in `tests/test_gated_frame_readback.py` added by unpushed `03bdc92f3` (per-commit added lines, no baseline), so no forward commit clears it.
-- **ASKS 37 + PUSH (LEDGER 1904-1905):** a distinct adjudicator ruled the scanner's own line pragma inside `03bdc92f3` via the id-scrub filter-repo method (52 commits rewritten, map `docs/_archive/2026-10/s135-cred-pragma-commit-map.txt`; backup tag `archive/s135-pre-credpragma-main` + bundle, never push). Pushed `df946b00d...3ad31ec6d` with a lease, protection toggled and restored (read back), riot.txt live 200 / 37 B / a2c52fbb; CI push 40230806851 (cancelled by the hand-off push), dispatch 40230847617.
-- **Do NOT redo:** the landings, the scrub, the backfills (re-dry plans 0), the GH1 rebuild, the pragma rewrite, the push.
-- **Next:** push hold ON; read dispatch 40230847617; next TFT game: confirm N13 (RC follows YOU) + stage / level / gold non-empty; QA match 20261025-131926; N9 PASSIVE-mode boxes + overlay toggle live check; remove the 10 locked worktrees.
