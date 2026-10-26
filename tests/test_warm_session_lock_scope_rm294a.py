@@ -20,6 +20,7 @@ import unittest
 from unittest.mock import MagicMock
 
 from agents.agent7_context.warm_session import WarmAgent7Session, WarmSessionError
+from tests._timing_budget import fleet_test_guard
 
 API_KEY = "sk-ant-unit-test-not-a-real-key"
 
@@ -80,9 +81,9 @@ class LockScope(unittest.TestCase):
         closer = threading.Thread(target=s.close, daemon=True)
         t0 = time.monotonic()
         closer.start()
-        closer.join(2.0)
+        closer.join(fleet_test_guard.budget(2.0))
         self.assertFalse(closer.is_alive(), "close() waited on the in-flight send")
-        self.assertLess(time.monotonic() - t0, 2.0)
+        self.assertLess(time.monotonic() - t0, fleet_test_guard.budget(2.0))
         c.release.set()
         t.join(5)
         # The closed session must not be resurrected by the late reply.

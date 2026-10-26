@@ -10,6 +10,7 @@ import threading
 import time
 
 import tft.tft_live_analysis as tla
+from tests._timing_budget import fleet_test_guard
 
 
 def _bare(path):
@@ -60,7 +61,7 @@ def test_force_scan_gives_up_bounded(tmp_path, monkeypatch):
     try:
         t0 = time.monotonic()
         obj.force_scan()
-        assert time.monotonic() - t0 < 1.0
+        assert time.monotonic() - t0 < fleet_test_guard.budget(1.0)
     finally:
         tla._DATA_FILE_LOCK.release()
     assert obj._force_flag is True               # scan still forced

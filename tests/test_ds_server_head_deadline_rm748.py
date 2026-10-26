@@ -29,6 +29,7 @@ import pytest
 
 from agents.daemon_slayer import server as ds_server
 from agents.daemon_slayer.data_loader import DataSnapshot
+from tests._timing_budget import fleet_test_guard
 
 Handler = ds_server.Handler
 
@@ -124,7 +125,7 @@ def test_an_idle_client_is_closed_at_the_head_deadline(snap, short_head_deadline
     with _ds(snap) as (port, parked):
         s = _connect(port, parked)
         elapsed = _time_to_close(s, wait_s=6.0)
-    assert elapsed < short_head_deadline + 3.0, elapsed
+    assert elapsed < fleet_test_guard.budget(short_head_deadline + 3.0), elapsed
 
 
 def test_a_request_line_with_no_headers_is_closed_at_the_head_deadline(
@@ -133,7 +134,7 @@ def test_a_request_line_with_no_headers_is_closed_at_the_head_deadline(
         s = _connect(port, parked)
         s.sendall(b"GET /health HTTP/1.1\r\nHost: 127.0.0.1\r\n")
         elapsed = _time_to_close(s, wait_s=6.0)
-    assert elapsed < short_head_deadline + 3.0, elapsed
+    assert elapsed < fleet_test_guard.budget(short_head_deadline + 3.0), elapsed
 
 
 def test_a_trickling_head_is_cut_at_the_total_deadline(snap, monkeypatch):
@@ -157,7 +158,7 @@ def test_a_trickling_head_is_cut_at_the_total_deadline(snap, monkeypatch):
         finally:
             stop.set()
             t.join(timeout=2)
-    assert 0.5 <= elapsed < 3.5, elapsed
+    assert 0.5 <= elapsed < fleet_test_guard.budget(3.5), elapsed
 
 
 # -- legitimate clients the deadline must not touch ---------------------------

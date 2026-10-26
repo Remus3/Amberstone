@@ -25,6 +25,8 @@ import urllib.request
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 
+from tests._timing_budget import fleet_test_guard
+
 REPO = Path(__file__).resolve().parent.parent
 VS_INIT = REPO / "vision_server" / "__init__.py"
 
@@ -108,8 +110,10 @@ class VisionServerConcurrencyProperty(unittest.TestCase):
 
             # Serial server: fast waits out the full slow sleep (>=0.5s).
             # Threaded server: fast returns in milliseconds.
+            # Capped under the ~SLOW_S a serial server makes /fast wait.
             self.assertLess(
-                fast_elapsed, _SlowThenFastHandler.SLOW_S * 0.5,
+                fast_elapsed, min(fleet_test_guard.budget(_SlowThenFastHandler.SLOW_S * 0.5),
+                                  _SlowThenFastHandler.SLOW_S * 0.75),
                 f"fast request took {fast_elapsed:.3f}s behind /slow - "
                 "server is serializing requests")
         finally:

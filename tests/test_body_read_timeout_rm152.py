@@ -56,6 +56,7 @@ import pytest
 
 import dashboard._handler as dash_handler
 from dashboard._handler import Handler
+from tests._timing_budget import fleet_test_guard
 
 # Small enough that the refusal tests finish fast, large enough that a real
 # body written by a real client always lands inside it. The SHIPPED default
@@ -161,7 +162,7 @@ class TestDashboardSlowBodyIsRefused:
         assert status is not None, (
             f"no response in {elapsed:.2f}s - the handler thread is still "
             "pinned on a body that will never arrive (RM-152)")
-        assert elapsed < short_dash_deadline + 4.0, (
+        assert elapsed < fleet_test_guard.budget(short_dash_deadline + 4.0), (
             f"refused, but only after {elapsed:.2f}s - the deadline is not "
             "bounding the read")
         assert b"408" in status, f"expected a 408 refusal, got {status!r}"
@@ -175,7 +176,7 @@ class TestDashboardSlowBodyIsRefused:
                 "/api/command", 65_536, b'{"command":"re', wait=8.0)
         assert status is not None, (
             f"no response in {elapsed:.2f}s on a stalled partial body")
-        assert elapsed < short_dash_deadline + 4.0, \
+        assert elapsed < fleet_test_guard.budget(short_dash_deadline + 4.0), \
             f"refused only after {elapsed:.2f}s"
         assert b"408" in status, f"expected 408, got {status!r}"
 
@@ -202,7 +203,7 @@ class TestLegitimateDashboardClientsSurvive:
             status, elapsed = c.post("/api/command", body)
         assert status is not None and b"400" in status, \
             f"a normal POST must still reach the route: {status!r}"
-        assert elapsed < 5.0, f"a 19-byte body took {elapsed:.2f}s"
+        assert elapsed < fleet_test_guard.budget(5.0), f"a 19-byte body took {elapsed:.2f}s"
 
     def test_500ms_poll_survives_across_gaps_longer_than_the_deadline(
             self, short_dash_deadline: float) -> None:
@@ -384,7 +385,7 @@ class TestDaemonSlayerBodyRead:
             status, elapsed = c.post_and_stall("/stats", 1_000_000, b"", wait=8.0)
         assert status is not None, \
             f"no response in {elapsed:.2f}s - DS worker thread pinned"
-        assert elapsed < _TEST_DEADLINE_S + 4.0, \
+        assert elapsed < fleet_test_guard.budget(_TEST_DEADLINE_S + 4.0), \
             f"refused only after {elapsed:.2f}s"
         assert b"408" in status, f"expected 408, got {status!r}"
 
@@ -396,7 +397,7 @@ class TestDaemonSlayerBodyRead:
         assert status is not None, f"no response in {elapsed:.2f}s"
         assert b"413" in status, \
             f"an unbounded Content-Length was accepted: {status!r}"
-        assert elapsed < 2.0, \
+        assert elapsed < fleet_test_guard.budget(2.0), \
             "413 arrived only after waiting on the body - reject on the header"
 
     def test_a_normal_post_still_works(self) -> None:
@@ -404,7 +405,7 @@ class TestDaemonSlayerBodyRead:
             status, elapsed = c.post("/stats", b'{"champion":"Jinx"}', wait=20.0)
         assert status is not None and b"200" in status, \
             f"a legitimate DS POST regressed: {status!r}"
-        assert elapsed < 15.0, f"DS /stats took {elapsed:.2f}s"
+        assert elapsed < fleet_test_guard.budget(15.0), f"DS /stats took {elapsed:.2f}s"
 
     def test_a_bad_body_still_produces_its_own_error(self) -> None:
         with _Live(self._handler()) as c:

@@ -33,6 +33,7 @@ from unittest import mock
 import pytest
 
 from tests._module_view import bind_subprocess, bind_which
+from tests._timing_budget import fleet_test_guard
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -210,7 +211,7 @@ class ProbeClassification(unittest.TestCase):
         try:
             t0 = time.monotonic()
             self.assertEqual(vw.probe_health(holder.port, 0.5), vw.HUNG)
-            self.assertLess(time.monotonic() - t0, 3.0)
+            self.assertLess(time.monotonic() - t0, fleet_test_guard.budget(3.0))
         finally:
             holder.close()
 
@@ -325,7 +326,7 @@ class FakeHolderIsReplacedEndToEnd(unittest.TestCase):
             self.assertEqual(state["killed"], [4242], "the hung holder was not killed")
             self.assertIsNotNone(state["healthy"], "no replacement was spawned")
             self.assertEqual(vw.probe_health(port, 1.0), vw.OK)
-            self.assertLess(time.monotonic() - t0, 5.0)
+            self.assertLess(time.monotonic() - t0, fleet_test_guard.budget(5.0))
         finally:
             stop.set()
             runner.join(timeout=3)

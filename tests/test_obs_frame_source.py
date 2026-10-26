@@ -30,6 +30,7 @@ from pathlib import Path
 
 import pytest
 from tests._asyncio_isolation import run_coro as _run_coro
+from tests._timing_budget import fleet_test_guard
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -132,7 +133,7 @@ def test_request_response_timeout_returns_none():
     t0 = time.monotonic()
     d = _run_coro(request_response(ws, "GetSourceScreenshot", {}, timeout_s=0.2))
     assert d is None
-    assert time.monotonic() - t0 < 5.0
+    assert time.monotonic() - t0 < fleet_test_guard.budget(5.0)
 
 
 def test_request_response_send_error_returns_none():

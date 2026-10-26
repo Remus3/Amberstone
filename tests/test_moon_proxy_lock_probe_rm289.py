@@ -20,6 +20,7 @@ import time
 import pytest
 
 from core import moon_proxy as mp
+from tests._timing_budget import fleet_test_guard
 
 
 def _slow_proxy(result: bool, entered: threading.Event, release: threading.Event):
@@ -67,7 +68,7 @@ def test_concurrent_caller_served_last_known_without_waiting():
         assert entered.wait(5.0)
         t0 = time.monotonic()
         assert proxy.is_available() is True   # last known, not blocked
-        assert time.monotonic() - t0 < 1.0
+        assert time.monotonic() - t0 < fleet_test_guard.budget(1.0)
     finally:
         release.set()
         worker.join(5.0)

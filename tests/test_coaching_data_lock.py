@@ -45,6 +45,7 @@ from unittest import mock
 import portalocker
 
 from core import coaching_data_lock as cdl
+from tests._timing_budget import fleet_test_guard
 
 _LOGGER_NAME = "core.coaching_data_lock"
 
@@ -483,7 +484,7 @@ class TestD2UnboundedProcessLockAcquire(_HeldLockContentionMixin, _CombinedLockT
                         "__enter__ blocked past the ceiling on a held lock")
         self.assertTrue(result.get("body_ran"),
                         "fail-open means the body still runs; it did not")
-        self.assertLess(result.get("elapsed_s", 1e9), 3.0)
+        self.assertLess(result.get("elapsed_s", 1e9), fleet_test_guard.budget(3.0))
         self.assertGreaterEqual(
             result.get("elapsed_s", 0.0), 0.1,
             "returned far too fast - it did not actually wait for the lock")

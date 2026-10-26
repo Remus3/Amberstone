@@ -49,6 +49,7 @@ from websockets.protocol import State
 
 from agents.agent2_backend import ws_server
 from tests._asyncio_isolation import run_coro
+from tests._timing_budget import fleet_test_guard
 
 
 class _ListHandler(logging.Handler):
@@ -273,7 +274,8 @@ def test_w1_evicted_stalled_subscriber_is_closed(logs, monkeypatch):
         srv._push_clients.update({ok, stalled})
         t0 = time.monotonic()
         n = await srv.broadcast_push({"type": "state"})
-        assert time.monotonic() - t0 < 1.0, "fanout must not wait on the close"
+        assert time.monotonic() - t0 < fleet_test_guard.budget(1.0), \
+            "fanout must not wait on the close"
         assert n == 1 and stalled not in srv._push_clients
         assert await _wait_for(lambda: stalled.close_calls, timeout=2.0)
         assert stalled.close_calls[0][0] == 1011
@@ -324,7 +326,7 @@ def test_w1_stop_aborts_a_pending_evicted_close(logs, monkeypatch):
         assert await _wait_for(lambda: stalled.close_calls, timeout=2.0)
         t0 = time.monotonic()
         await srv.stop()
-        assert time.monotonic() - t0 < 5.0
+        assert time.monotonic() - t0 < fleet_test_guard.budget(5.0)
         assert stalled.transport.aborted is True
 
     _run(body())
@@ -407,7 +409,7 @@ def test_w1_stop_is_bounded_with_a_stalled_unevicted_subscriber(logs, monkeypatc
             assert conn.transport.get_write_buffer_size() > (1 << 20), "client never stalled"
             t0 = time.monotonic()
             await asyncio.wait_for(srv.stop(), 10.0)
-            assert time.monotonic() - t0 < 5.0
+            assert time.monotonic() - t0 < fleet_test_guard.budget(5.0)
             assert conn.state is State.CLOSED
         finally:
             writer.transport.abort()

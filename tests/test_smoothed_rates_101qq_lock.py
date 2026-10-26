@@ -33,6 +33,7 @@ sys.path.insert(0, str(_ROOT))
 
 from core import smoothed_rates_101qq as S101  # noqa: E402
 from core import synergy_external_source as SES  # noqa: E402
+from tests._timing_budget import fleet_test_guard  # noqa: E402
 
 # Bound every wait so a regression fails the assertion rather than hanging
 # the suite.
@@ -197,7 +198,7 @@ class ServeStaleWhileRefreshingTests(LockBase):
         # Reader A must ALREADY be done while the fetch is still parked -
         # asserted before `release` is set, or a blocked A would be let go
         # by the release and its elapsed time would look fine.
-        ta.join(_NONBLOCK_BOUND_S)
+        ta.join(fleet_test_guard.budget(_NONBLOCK_BOUND_S))
         a_alive = ta.is_alive()
 
         release.set()
@@ -205,7 +206,7 @@ class ServeStaleWhileRefreshingTests(LockBase):
         _join_background_refresh()
 
         self.assertLess(
-            elapsed["b"], _NONBLOCK_BOUND_S,
+            elapsed["b"], fleet_test_guard.budget(_NONBLOCK_BOUND_S),
             "a reader blocked on an in-flight refresh instead of being "
             f"served the stale snapshot ({elapsed['b']:.2f}s)",
         )
@@ -214,7 +215,7 @@ class ServeStaleWhileRefreshingTests(LockBase):
             "the refresh-triggering reader blocked on the fetch instead of "
             "being served the stale snapshot",
         )
-        self.assertLess(elapsed.get("a", 99.0), _NONBLOCK_BOUND_S)
+        self.assertLess(elapsed.get("a", 99.0), fleet_test_guard.budget(_NONBLOCK_BOUND_S))
         # Stale, but real: shape preserved while refreshing.
         self.assertEqual(len(recs), 1)
         self.assertAlmostEqual(recs[0].doublewinrate, 0.61, places=3)

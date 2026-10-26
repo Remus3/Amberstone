@@ -114,10 +114,10 @@ class TotalTimeBudgetTests(_SeamBase):
         self.assertIsNone(S.fetch_rows("bottom", "support"))
         elapsed = self._t[0] - start
         self.assertLessEqual(
-            elapsed, S._TOTAL_BUDGET_S + 1e-9,
+            elapsed, S._TOTAL_BUDGET_S + 1e-9,  # timing-budget: exempt (virtual clock self._t)
             "fetch_rows overran its total wall-clock budget")
         self.assertLess(
-            elapsed, S._DATE_LOOKBACK_DAYS * S._TIMEOUT_S,
+            elapsed, S._DATE_LOOKBACK_DAYS * S._TIMEOUT_S,  # timing-budget: exempt (virtual clock self._t)
             "elapsed must be well under the un-deadlined worst case")
 
     def test_no_attempt_is_started_or_sized_past_the_deadline(self) -> None:

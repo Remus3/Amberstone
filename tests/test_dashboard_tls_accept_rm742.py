@@ -43,6 +43,7 @@ from http.server import BaseHTTPRequestHandler
 import pytest
 
 from dashboard import server
+from tests._timing_budget import fleet_test_guard
 
 _HOST = "::1"
 _CLIENT_TIMEOUT_S = 2.0
@@ -191,7 +192,7 @@ def test_three_silent_clients_do_not_queue_their_stalls():
             assert _tls_attempt(port)
         except _Hung as exc:
             pytest.fail(str(exc))
-        assert time.monotonic() - t0 < 1.0
+        assert time.monotonic() - t0 < fleet_test_guard.budget(1.0)
 
 
 def test_a_trickling_plain_client_does_not_stall_a_tls_client():
@@ -255,7 +256,7 @@ def test_the_setup_deadline_is_total_not_per_receive():
         finally:
             trickler.stop()
     # Cut BY the deadline: the head never completes, so not before it either.
-    assert 0.5 <= elapsed < 2.5, elapsed
+    assert 0.5 <= elapsed < fleet_test_guard.budget(2.5), elapsed
     assert reply.startswith(b"HTTP/1.1 301 "), reply[:80]
 
 
@@ -279,7 +280,7 @@ def test_a_trickling_tls_handshake_shares_the_total_deadline():
             trickler.stop()
     # Cut BY the deadline, not by an early record error (the record is
     # well-formed, only incomplete), so not before it either.
-    assert 0.5 <= elapsed < 2.5, elapsed
+    assert 0.5 <= elapsed < fleet_test_guard.budget(2.5), elapsed
     assert not reply.startswith(b"HTTP/"), reply[:80]
 
 

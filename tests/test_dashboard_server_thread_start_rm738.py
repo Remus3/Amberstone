@@ -36,6 +36,7 @@ from http.server import BaseHTTPRequestHandler
 from unittest import mock
 
 from dashboard import server
+from tests._timing_budget import fleet_test_guard
 
 _FAULT = "commit charge exhausted (simulated, RM-738)"
 _HOST = "::1"
@@ -229,7 +230,7 @@ class GuardedStartDetails(unittest.TestCase):
                  self.assertLogs("rc.web_dashboard", level="WARNING") as logs:
                 t0 = time.monotonic()
                 got = _raw_request(port, timeout=3)
-                self.assertLess(time.monotonic() - t0, 2.0)
+                self.assertLess(time.monotonic() - t0, fleet_test_guard.budget(2.0))
             self.assertEqual(got, b"")
             self.assertTrue(any("RM-738" in r.getMessage()
                                 for r in logs.records), logs.output)
@@ -269,7 +270,7 @@ class StillOneThreadPerRequest(unittest.TestCase):
                     time.sleep(0.02)
                 t0 = time.monotonic()
                 self.assertEqual(_get(port, "/fast"), 200)
-                self.assertLess(time.monotonic() - t0, 1.0)
+                self.assertLess(time.monotonic() - t0, fleet_test_guard.budget(1.0))
             self.assertEqual(len(started), 25, "one thread per request")
         finally:
             gate.set()

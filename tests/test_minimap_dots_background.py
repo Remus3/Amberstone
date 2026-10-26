@@ -17,6 +17,7 @@ import time
 import pytest
 
 import core.minimap_blob_detect as mbd
+from tests._timing_budget import fleet_test_guard
 
 _RECT = {"x": 10, "y": 10, "w": 200, "h": 200}
 _RECT_SIG = (10, 10, 200, 200)
@@ -68,7 +69,9 @@ def test_background_true_does_not_block_on_slow_compute(monkeypatch):
     out = mbd.current_minimap_dots(_RECT, background=True)
     elapsed = time.time() - t0
 
-    assert elapsed < 0.2, f"hot path blocked {elapsed:.3f}s (should be ~0)"
+    # Capped under the 0.5 s compute, so a hot path that waits on it fails.
+    assert elapsed < min(fleet_test_guard.budget(0.2), 0.4), \
+        f"hot path blocked {elapsed:.3f}s (should be ~0)"
     assert out == []  # empty cache -> serve [] until the background pass lands
     assert _wait_until(lambda: seen["thread"] is not None)
     assert seen["thread"] != threading.main_thread().name

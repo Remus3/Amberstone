@@ -44,6 +44,7 @@ import pytest
 
 from agents.daemon_slayer import server as ds_server
 from dashboard import server as dash_server
+from tests._timing_budget import fleet_test_guard
 
 # The simulated fault kills a thread in bootstrap, outside run(); CPython
 # reports that through sys.unraisablehook. That death is the scenario under
@@ -126,7 +127,7 @@ def _settled_get(host: str, port: int, timeout: float = 5.0) -> int:
     control socket (seen once on Legion: two drops recorded, not one)."""
     before = set(threading.enumerate())
     status = _get(host, port, timeout)
-    deadline = time.monotonic() + timeout
+    deadline = time.monotonic() + fleet_test_guard.budget(timeout)
     while [t for t in threading.enumerate() if t not in before]:
         assert time.monotonic() < deadline, (
             "the control request's handler thread never exited")

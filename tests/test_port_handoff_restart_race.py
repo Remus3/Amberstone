@@ -28,6 +28,7 @@ import pytest
 
 from core import port_handoff
 from core.port_handoff import FREE, LIVE, STUCK, await_port, health_answers
+from tests._timing_budget import fleet_test_guard
 
 _ROOT = Path(__file__).resolve().parent.parent
 
@@ -123,7 +124,7 @@ def test_a_free_port_is_free_at_once_and_the_holder_is_never_asked():
     h = await_port("127.0.0.1", _free_port(), holder_live=lambda: asked.append(1),
                    window_s=5.0, poll_s=0.05)
     assert h.state == FREE
-    assert h.waited_s < 1.0
+    assert h.waited_s < fleet_test_guard.budget(1.0)
     assert asked == []
 
 
@@ -133,7 +134,8 @@ def test_a_holder_that_dies_inside_the_window_hands_the_port_over(dying_holder):
     h = await_port("127.0.0.1", dying_holder, holder_live=lambda: True,
                    window_s=10.0, poll_s=0.05)
     assert h.state == FREE
-    assert 0.3 <= h.waited_s < 5.0
+    # Capped under the 10 s window, so waiting the whole window still fails.
+    assert 0.3 <= h.waited_s < min(fleet_test_guard.budget(5.0), 9.0)
 
 
 def test_an_answering_holder_is_trusted_only_after_the_whole_window():

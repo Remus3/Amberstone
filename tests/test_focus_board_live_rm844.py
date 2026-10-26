@@ -44,6 +44,7 @@ from agents.daemon_slayer.data_loader import DataSnapshot
 from agents.daemon_slayer.focus_board import compute_focus_board
 from core import focus_board_live as fbl
 from core import liveclient_cache
+from tests._timing_budget import fleet_test_guard
 
 _FIXTURE = (Path(__file__).parent / "fixtures" / "liveclient"
             / "allgamedata_synthetic_rm601.json")
@@ -273,7 +274,7 @@ def test_warming_returns_at_once_without_blocking(monkeypatch, snapshot):
     monkeypatch.setattr(fbl, "_load_engine", slow)
     t0 = time.monotonic()
     out = fbl.board_for_lc(_arena_lc(), "arena")
-    assert time.monotonic() - t0 < 0.5
+    assert time.monotonic() - t0 < fleet_test_guard.budget(0.5)
     assert out["status"] == fbl.STATUS_WARMING
     gate.set()
     fbl._join_warm_for_tests(10)

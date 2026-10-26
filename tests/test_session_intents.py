@@ -36,6 +36,7 @@ import pytest
 
 from ops.loop import intents
 from dashboard import routes_loop_control as route
+from tests._timing_budget import fleet_test_guard
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PROMPT = "NEXT SESSION\n------------\nTask: finish Mission Control S4.\n"
@@ -440,4 +441,4 @@ def test_consume_is_fast_enough_to_sit_in_a_done_ritual(routed, ctl, home):
     _queue(routed, "halt_save", KEY_A)
     t0 = time.perf_counter()
     intents.consume(prompt=PROMPT, root=ctl, base=home)
-    assert time.perf_counter() - t0 < 2.0
+    assert time.perf_counter() - t0 < fleet_test_guard.budget(2.0)

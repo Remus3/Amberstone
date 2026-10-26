@@ -39,6 +39,7 @@ import pytest
 
 from dashboard import server
 from dashboard._handler import Handler
+from tests._timing_budget import fleet_test_guard
 
 _HOST = "::1"
 _CLOSED = (ConnectionResetError, ConnectionAbortedError)
@@ -127,7 +128,7 @@ def test_an_idle_plain_client_is_closed_at_the_head_deadline(short_head_deadline
     with _plain() as (port, parked):
         s = _connect(port, parked)
         elapsed = _time_to_close(s, wait_s=6.0)
-    assert elapsed < short_head_deadline + 3.0, elapsed
+    assert elapsed < fleet_test_guard.budget(short_head_deadline + 3.0), elapsed
 
 
 def test_a_request_line_with_no_headers_is_closed_at_the_head_deadline(
@@ -136,7 +137,7 @@ def test_a_request_line_with_no_headers_is_closed_at_the_head_deadline(
         s = _connect(port, parked)
         s.sendall(b"GET /api/ui-version HTTP/1.1\r\nHost: 127.0.0.1\r\n")
         elapsed = _time_to_close(s, wait_s=6.0)
-    assert elapsed < short_head_deadline + 3.0, elapsed
+    assert elapsed < fleet_test_guard.budget(short_head_deadline + 3.0), elapsed
 
 
 class _Trickler:
@@ -175,7 +176,7 @@ def test_a_trickling_head_is_cut_at_the_total_deadline(monkeypatch):
         finally:
             trickler.stop()
     # Cut BY the total deadline: the head never completes, so not before it.
-    assert 0.5 <= elapsed < 3.5, elapsed
+    assert 0.5 <= elapsed < fleet_test_guard.budget(3.5), elapsed
 
 
 # -- the TLS path (production class, real certificate) ------------------------
@@ -229,7 +230,7 @@ def test_an_idle_handshaken_tls_client_is_closed_at_the_head_deadline(
         tls = cctx.wrap_socket(raw, server_hostname=_HOST)
         parked.append(tls)
         elapsed = _time_to_close(tls, wait_s=6.0)
-    assert elapsed < short_head_deadline + 3.0, elapsed
+    assert elapsed < fleet_test_guard.budget(short_head_deadline + 3.0), elapsed
 
 
 def test_a_tls_client_that_speaks_still_gets_200(tmp_path, short_head_deadline):

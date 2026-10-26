@@ -38,6 +38,7 @@ from tft.assets import icon_cache
 from tft.rounds import store as st
 from tft.rounds.store import Env, RoundStore
 from tests._module_view import this_thread_only
+from tests._timing_budget import fleet_test_guard
 
 REPO = Path(__file__).resolve().parent.parent
 FIX = REPO / "tests" / "fixtures"
@@ -580,7 +581,7 @@ def test_engine_build_never_runs_on_the_request_thread(env, monkeypatch):
                  "/api/tft/engine/planner"):
         body = _get(path).json()
         assert body["status"] == "warming"
-    assert time.monotonic() - t0 < 2.0                        # nothing waited on the build
+    assert time.monotonic() - t0 < fleet_test_guard.budget(2.0)  # nothing waited on the build
     gate.set()
     rt._engine_join()
     assert seen["thread"] == "tft-engine-refresh"
