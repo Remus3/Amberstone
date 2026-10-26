@@ -41,6 +41,16 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-25f - session 138 (headless MAIN work run): MAIN FIX 1935 (CodeQL 65/66, electron 44.9.1, CI waste cuts, push tier) + MAIN ORDER 2045 (BLAS cap, --durations); PUSHED
+
+- **Kit v23:** already adopted (manifest sha f5d82861 matches); verify only.
+- **1935 (RM-908, LEDGER 1913):** `131941469`; alerts 65 fixed, 66 dismissed false positive (guard cited), 82 fixed; Pages source = workflow; pushed fb2ff520e..b49a4572b; ONE dispatch 40267773006.
+- **2045 (RM-907, LEDGER 1914):** `2e78bc1ce` OPENBLAS/OMP/MKL threads = 1 in the rootdir conftest (numpy commit 496 -> 14 MB per process), `--durations=30`; the gated suite was REFUSED by commit admission (8.9 GB short, game running) - after-numbers owed.
+- **Do NOT redo:** the fixes above; RM-906 is NOT this work (ids row).
+- **Next:** gated suite on a quiet box (durations top-5 + peak read-back); then the PKG next action.
+
+---
+
 # 2026-10-25e - session 137: worktree triage (in-tree + the 11 out-of-root lift worktrees, operator-approved), MAIN FIX 1930 (two scheduled tasks read back 0); push hold ON (nothing pushed)
 
 - **Operator steers:** "look at the worktree's and do what is needed"; ASKS 25 APPROVED in chat ("Remove all 11 (Recommended)"); the push hold was NOT lifted.

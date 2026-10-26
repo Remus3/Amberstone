@@ -535,6 +535,42 @@ item binds the named slice.
 - LAN-refusal live check from a second device (a control POST from a LAN
   peer gets 403, PKG-5).
 
+### Residuals (s141 /done)
+
+Found by the wave A builders and verifiers outside every landed slice's
+file set; not in the PKG-6 checklist above. Each binds the slice named, or
+a new slice. Ledger: `docs/LEDGER.md` 1924.
+
+- WA1 Boot scan (PKG-4, `tools/build_portable.py` BOOT_SIGNATURES): no
+  `sc create` or `New-Service` pattern, and a UTF-16 text file is skipped
+  silently.
+- WA2 Bundle content (PKG-4): `tools/headless_run.ps1`,
+  `tools/rc_headless_launcher.ps1` and `tools/weekly_hygiene_run.ps1`
+  still ship; `ops/audit/lolmath_ds_sweep/.gitignore` holds a literal
+  backslash-n (it ignores nothing) and now ships; the tracked
+  `data/external/101qq_hero_rank_double_tier200_capture_20260525.json` is
+  also ignored - keep it out of update payloads.
+- WA3 Service host (PKG-1): the HostLog rotation race before the host lock
+  (the row named in `eb90635d5`) is still open.
+- WA4 First run (PKG-1b): the `ops/launcher/first_run.py` docstring line
+  references into `ops/rc_transactional_deploy.py` are stale (`ensure_key`
+  moved).
+- WA5 Updater (PKG-2): the game check runs when the request is written,
+  not when a restart-level update applies; runtime-modified tracked files
+  (for example `data/vision_regions.json`) are overwritten, with a backup;
+  a request lost after the supervisor's 120 s worker kill may half-update;
+  deleting the replay ledger re-enables replay inside the signed window; a
+  partial-rollback result carries no "incomplete" flag.
+- WA6 Until the cutover, the frozen `ops/rc_supervisor.py` relaunches the
+  Phase 3 supervisor and DS with `schtasks /Run`, outside the launcher's
+  job.
+- WA7 Token callers beyond V3 (PKG-6): the auto-accept toggle in
+  `web/js/main.js`, the ingest call in `web/vision_calibrator.html` and
+  `web/js/panels/coach_choices.js` send no `X-RC-Token`.
+- WA8 `tools/liveclient_relay.py` sets its context `minimum_version` to
+  `ssl.TLSVersion.TLSv1` (a DeprecationWarning; the RM-752 TLSv1_2 live
+  probe decides the floor).
+
 ## 5. ONLOGON-to-launcher cutover (OPERATOR-GATED)
 
 Scheduled-task writes are operator territory; no lane, loop or slice runs

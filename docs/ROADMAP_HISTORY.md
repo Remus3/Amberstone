@@ -1,5 +1,11 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-10-26b - shipped row relocated (session 141 /done), 1 row
+
+`ROADMAP.md` stood at 73352 of 81920 bytes on `6e28127f3` (the `tools/drift_guard.py` warn line is 73728). RM-909 SHIPPED in session 141 as `4305752b7` (LEDGER 1923: `tests/snapshot_regressions/test_app_authority.py` stubbed the app delegate while the frozen lifecycle calls its own `on_game_start`, so 6 TFT-entry tests leaked live `TftWorker` + `LcuClient` pollers; suite guard `tests/_lcu_poller_guard.py`). Its row below moves here VERBATIM as it stood at `6e28127f3`; the `## 2026-10-23`.. pointer line in `ROADMAP.md` names this block.
+
+- **[ ] RM-909 (Tier-1 measure, filed s140 merger, LEDGER 1919): which earlier test leaks a live `LcuClient` into the xdist worker; its `lcu_client.py:136` repeat on the real clock reddened the kit v24 gated suite, and `tests/_lcu_notice_isolation.py` (`008b386b9`) shields only the two lockfile-notice tests.** Acceptance: name the leaking test (or fixture) by a forced repro, stop the leak at its source, and keep the isolation helper.
+
 ## 2026-10-26 - size-budget relocation (session 140 /done), 2 lines
 
 `ROADMAP.md` stood at 74186 of 81920 bytes on `993cde41b`, a `tools/drift_guard.py` breach (91 percent; its warn line is 73728). The SHIPPED RM-908 row and the `## 2026-10-20` stub line below move here VERBATIM as they stood at `993cde41b`, in their ROADMAP order. The `## 2026-10-23`.. pointer line in `ROADMAP.md` now names this block and the `## 2026-10-25g` block.
