@@ -76,34 +76,57 @@ def _size(path: Path):
 
 class Timeline:
     """One ordered event list for icacls calls (through the REAL
-    restrict_to_current_user with a fake run) and secret writes (a wrapper
-    around first_run._write_secret). Each icacls event records the size of
+    restrict_to_current_user with a fake run), scratch-folder verifies, file
+    opens (first_run._open_new) and secret writes (first_run._write_secret,
+    which takes the creating handle). Each icacls event records the size of
     its target at that moment, so "restricted before any secret byte" is
-    checked directly."""
+    checked directly. `verify` answers `verified` (the fake icacls changes
+    no real ACL, so the real verifier would - correctly - refuse)."""
 
     SID = "S-1-5-21-1000-2000-3000-1001"
 
-    def __init__(self, monkeypatch, rc=0):
+    def __init__(self, monkeypatch, rc=0, verified=True):
         self.events = []
         self.rc = rc
-        real_write = fr._write_secret
+        self.verified = verified
+        self.fds = {}
+        real_open, real_write = fr._open_new, fr._write_secret
 
-        def write(path, data):
-            self.events.append(("write", Path(path)))
-            real_write(path, data)
+        def open_new(path):
+            fd = real_open(path)
+            self.fds[fd] = Path(path)
+            self.events.append(("open", Path(path)))
+            return fd
 
+        def write(fd, data):
+            self.events.append(("write", self.fds[fd]))
+            real_write(fd, data)
+
+        monkeypatch.setattr(fr, "_open_new", open_new)
         monkeypatch.setattr(fr, "_write_secret", write)
 
     def run(self, argv, **kw):
         target = Path(argv[1])
-        self.events.append(("icacls", target, _size(target)))
+        self.events.append(("icacls", target, _size(target), argv[2]))
         return subprocess.CompletedProcess(argv, self.rc(target) if callable(self.rc) else self.rc)
 
     def restrict(self, path):
         return fr.restrict_to_current_user(path, run=self.run, windows=True, sid=self.SID)
 
+    def verify(self, path):
+        self.events.append(("verify", Path(path)))
+        return self.verified
+
     def for_name(self, prefix):
         return [e for e in self.events if e[1].name.startswith(prefix)]
+
+    def kwargs(self):
+        return {"restrict": self.restrict, "verify": self.verify}
+
+
+def run_dirs(root: Path) -> list:
+    base = root / "ops" / "runtime" / "first_run"
+    return sorted(base.iterdir()) if base.is_dir() else []
 
 
 def make_root(tmp_path: Path, *, deploy_module: bool = False) -> Path:
@@ -137,6 +160,7 @@ def by_name(report) -> dict:
 def provision(root, **kw):
     kw.setdefault("environ", {})
     kw.setdefault("restrict", Recorder())
+    kw.setdefault("verify", lambda p: True)   # a Recorder changes no real ACL
     return fr.provision(root, **kw)
 
 
@@ -278,12 +302,12 @@ def test_deploy_key_is_the_workers_key_in_the_workers_format(tmp_path):
 def test_deploy_key_is_restricted_before_a_key_byte_exists(tmp_path, monkeypatch):
     root = make_root(tmp_path)
     tl = Timeline(monkeypatch)
-    report = provision(root, restrict=tl.restrict)
+    report = provision(root, **tl.kwargs())
     assert by_name(report)["deploy_key"].state == "created"
     events = tl.for_name("deploy_request.key")
-    assert [e[0] for e in events] == ["icacls", "write"], events
-    assert events[0][2] == 0, "the scratch was empty when its ACL was set"
-    assert events[1][1] == events[0][1], "the secret went into the restricted scratch"
+    assert [e[0] for e in events] == ["open", "icacls", "write"], events
+    assert events[1][2] == 0, "the scratch was empty when its ACL was set"
+    assert events[2][1] == events[0][1], "the secret went into the restricted scratch"
 
 
 def test_provisioning_spawns_no_deploy_worker(tmp_path, monkeypatch):
@@ -353,35 +377,103 @@ def test_the_acl_is_set_on_the_scratch_file_before_it_is_published(tmp_path):
     assert scratch != target and scratch.name.endswith(".tmp")
     assert existed is False, "restricted before the secret has its real name"
     assert size == 0, "restricted before a secret byte is in it"
-    assert scratch.parent == root / "ops" / "runtime" / "first_run", \
-        "a killed write leaves its scratch under the ignored ops/runtime/, never in config/"
+    base = root / "ops" / "runtime" / "first_run"
+    assert scratch.parent.parent == base and scratch.parent.name.startswith("run-"), \
+        "a fresh per-run folder under the ignored ops/runtime/, never config/"
     assert leftover_tmp(root) == []
+    assert run_dirs(root) == [], "the per-run folder is removed after publishing"
 
 
-def test_icacls_runs_before_any_secret_byte_is_written(tmp_path, monkeypatch):
+def test_a_fresh_private_folder_is_made_restricted_and_verified_before_any_file(
+        tmp_path, monkeypatch):
     root = make_root(tmp_path)
     tl = Timeline(monkeypatch)
-    report = provision(root, restrict=tl.restrict)
+    report = provision(root, **tl.kwargs())
     assert {r.state for r in report.results} == {"created"}
-    scratch_dir = root / "ops" / "runtime" / "first_run"
-    first = tl.events[0]
-    assert first[:2] == ("icacls", scratch_dir) and first[2] == "dir", \
-        "the scratch FOLDER is restricted before anything is created in it"
+    base = root / "ops" / "runtime" / "first_run"
+    folder = tl.events[0][1]
+    assert folder.parent == base and folder.name.startswith("run-")
+    assert [e[0] for e in tl.events[:3]] == ["icacls", "icacls", "verify"], tl.events[:4]
+    assert [e[3] for e in tl.events[:2]] == ["/inheritance:r", "/setowner"]
+    assert all(e[1] == folder for e in tl.events[:3]) and tl.events[0][2] == "dir"
     for prefix in ("vision_token.txt", "dash_token.txt", "deploy_request.key"):
         events = tl.for_name(prefix)
-        assert [e[0] for e in events] == ["icacls", "write"], (prefix, events)
-        assert events[0][2] == 0, (prefix, "restricted while still empty")
-        assert events[0][1].parent == scratch_dir and events[1][1] == events[0][1]
-    for event in tl.events:
-        if event[0] == "icacls" and event[2] != "dir":
-            assert event[2] == 0, event
+        assert [e[0] for e in events] == ["open", "icacls", "write"], (prefix, events)
+        assert events[1][2] == 0, (prefix, "restricted while still empty")
+        assert events[0][1].parent == folder and events[2][1] == events[0][1]
+    assert sum(1 for e in tl.events if e[0] == "verify") == 1, "one folder per run"
+    assert run_dirs(root) == [], "removed after publishing"
+
+
+def test_every_run_gets_a_new_folder(tmp_path, monkeypatch):
+    root = make_root(tmp_path)
+    tl = Timeline(monkeypatch)
+    provision(root, **tl.kwargs())
+    vision_path(root).unlink()
+    provision(root, **tl.kwargs())
+    folders = [e[1] for e in tl.events if e[0] == "verify"]
+    assert len(folders) == 2 and folders[0] != folders[1]
+    assert run_dirs(root) == []
+
+
+def test_a_stale_scratch_folder_is_never_reused(tmp_path, monkeypatch):
+    root = make_root(tmp_path)
+    base = root / "ops" / "runtime" / "first_run"
+    base.mkdir(parents=True)
+    (base / "left-over.tmp").write_bytes(b"")   # e.g. an older layout, unrestricted
+    tl = Timeline(monkeypatch)
+    provision(root, **tl.kwargs())
+    folder = next(e[1] for e in tl.events if e[0] == "verify")
+    assert folder != base and folder.parent == base
+    assert all(e[1] != base for e in tl.events), "the shared base is never the scratch"
+
+
+@pytest.mark.parametrize("failure", ["restrict", "verify", "mkdir"])
+def test_an_unprivate_scratch_folder_writes_nothing_at_all(tmp_path, monkeypatch, failure):
+    root = make_root(tmp_path)
+    tl = Timeline(monkeypatch, rc=(lambda p: 5 if p.name.startswith("run-") else 0),
+                  verified=(failure != "verify"))
+    if failure != "restrict":
+        tl.rc = 0
+    if failure == "mkdir":
+        def no_mkdir(*a, **k):
+            raise PermissionError(errno.EACCES, "denied")
+        monkeypatch.setattr(fr.os, "mkdir", no_mkdir)
+    report = provision(root, **tl.kwargs())
+    for res in report.results:
+        assert res.state == "error" and res.acl is False, res
+        assert "not written" in res.detail
+        assert not res.path.exists()
+    assert [e for e in tl.events if e[0] in ("open", "write")] == [], "no file, no byte"
+    assert run_dirs(root) == [], "the refused folder is removed"
+    lines = report.lines(root)
+    for name in ("vision_token", "dash_token", "deploy_key"):
+        assert any(line.startswith(f"first run: {name} error") for line in lines), lines
+
+
+def test_the_secret_is_written_through_the_creating_handle(tmp_path, monkeypatch):
+    root = make_root(tmp_path)
+    opened = []
+    real_open = os.open
+
+    def counting_open(path, flags, *a, **k):
+        opened.append((Path(path).name, flags))
+        return real_open(path, flags, *a, **k)
+
+    monkeypatch.setattr(fr.os, "open", counting_open)
+    report = provision(root)
+    assert {r.state for r in report.results} == {"created"}
+    for prefix in ("vision_token.txt", "dash_token.txt", "deploy_request.key"):
+        mine = [flags for name, flags in opened if name.startswith(prefix)]
+        assert len(mine) == 1, (prefix, "opened once, never reopened by name")
+        assert mine[0] & os.O_CREAT and mine[0] & os.O_EXCL
 
 
 @pytest.mark.parametrize("which", ["vision_token.txt", "dash_token.txt", "deploy_request.key"])
 def test_a_failed_acl_fails_closed_for_that_secret_only(tmp_path, monkeypatch, which):
     root = make_root(tmp_path)
     tl = Timeline(monkeypatch, rc=lambda p: 5 if p.name.startswith(which) else 0)
-    report = provision(root, restrict=tl.restrict)
+    report = provision(root, **tl.kwargs())
     name = {"vision_token.txt": "vision_token", "dash_token.txt": "dash_token",
             "deploy_request.key": "deploy_key"}[which]
     res = by_name(report)[name]
@@ -420,24 +512,28 @@ def test_a_concurrent_writer_wins_and_is_kept(tmp_path):
     assert leftover_tmp(root) == []
 
 
-def test_no_hard_links_exclusive_create_restricts_before_writing(tmp_path, monkeypatch):
+@pytest.mark.parametrize("exc", [OSError(errno.EXDEV, "cross-volume"),
+                                 OSError(errno.EPERM, "FAT refuses hard links")])
+def test_no_hard_links_fails_closed_and_creates_nothing_in_place(tmp_path, monkeypatch, exc):
     root = make_root(tmp_path)
 
     def no_link(src, dst):
-        raise OSError(errno.EXDEV, "hard links not supported here")
+        raise exc
 
     monkeypatch.setattr(fr.os, "link", no_link)
+    replaced = []
+    monkeypatch.setattr(fr.os, "replace", lambda *a: replaced.append(a))
     tl = Timeline(monkeypatch)
-    report = provision(root, restrict=tl.restrict)
-    assert {r.state for r in report.results} == {"created"}
-    assert re.fullmatch(r"[0-9a-f]{32}", first_line(vision_path(root)))
-    final = [e for e in tl.events if e[1] == vision_path(root)]
-    assert [e[0] for e in final] == ["icacls", "write"], final
-    assert final[0][2] == 0, "the final file was empty when its ACL was set"
-    assert leftover_tmp(root) == []
+    report = provision(root, **tl.kwargs())
+    for res in report.results:
+        assert res.state == "error" and "hard link" in res.detail, res
+        assert not res.path.exists(), "never created in place under an inherited ACL"
+    assert not any(e[1].parent != tl.events[0][1] for e in tl.events if e[0] == "open"), \
+        "files are only ever opened inside the private folder"
+    assert replaced == [] and leftover_tmp(root) == [] and run_dirs(root) == []
 
 
-def test_no_hard_links_never_clobbers_a_file_created_in_between(tmp_path, monkeypatch):
+def test_no_hard_links_never_touches_a_file_created_in_between(tmp_path, monkeypatch):
     root = make_root(tmp_path)
     target = vision_path(root)
     winner = secrets.token_hex(16)
@@ -448,12 +544,9 @@ def test_no_hard_links_never_clobbers_a_file_created_in_between(tmp_path, monkey
         raise OSError(errno.EXDEV, "hard links not supported here")
 
     monkeypatch.setattr(fr.os, "link", no_link_and_a_racer)
-    replaced = []
-    monkeypatch.setattr(fr.os, "replace", lambda *a: replaced.append(a))
     report = provision(root)
-    assert by_name(report)["vision_token"].state == "present", "already provisioned"
+    assert by_name(report)["vision_token"].state == "error"
     assert first_line(target) == winner, "the racer's secret is kept"
-    assert replaced == [], "os.replace is never a publish path"
     assert leftover_tmp(root) == []
 
 
@@ -541,6 +634,106 @@ def test_restrict_on_a_folder_grants_an_inheritable_ace(tmp_path):
     sid = "S-1-5-21-1000-2000-3000-1001"
     assert fr.restrict_to_current_user(tmp_path, run=run, windows=True, sid=sid) is True
     assert calls[0][2:] == ["/inheritance:r", "/grant:r", f"*{sid}:(OI)(CI)(F)"]
+    assert calls[1][2:] == ["/setowner", f"*{sid}"], "the folder's owner is this user"
+
+
+def test_a_failed_setowner_fails_the_folder_restriction(tmp_path):
+    def run(argv, **kw):
+        return subprocess.CompletedProcess(argv, 5 if "/setowner" in argv else 0)
+
+    sid = "S-1-5-21-1000-2000-3000-1001"
+    assert fr.restrict_to_current_user(tmp_path, run=run, windows=True, sid=sid) is False
+
+
+_ME = "S-1-5-21-1000-2000-3000-1001"
+
+
+@pytest.mark.parametrize("ace_type, ace_flags, ace_sid, ok", [
+    (0, 0x00, _ME, True),                     # explicit allow, this user
+    (0, 0x03, _ME, True),                     # (OI)(CI) on a folder is still explicit
+    (0, 0x10, _ME, False),                    # INHERITED_ACE
+    (0, 0x13, _ME, False),
+    (1, 0x00, _ME, False),                    # a deny ACE
+    (0, 0x00, "S-1-5-18", False),             # SYSTEM
+    (0, 0x00, "S-1-5-32-544", False),         # Administrators
+    (0, 0x00, None, False),                   # unreadable SID
+])
+def test_ace_rule_is_explicit_allow_for_this_user_only(ace_type, ace_flags, ace_sid, ok):
+    assert fr._ace_is_private(ace_type, ace_flags, ace_sid, _ME) is ok
+    assert fr._is_private_descriptor(_ME, True, [(ace_type, ace_flags, ace_sid)], _ME) is ok
+
+
+_GOOD_ACE = (0, 0x03, _ME)
+
+
+@pytest.mark.parametrize("owner, protected, aces, ok", [
+    (_ME, True, [_GOOD_ACE], True),
+    (_ME, True, [_GOOD_ACE, _GOOD_ACE], True),
+    ("S-1-5-32-544", True, [_GOOD_ACE], False),      # owner = Administrators
+    (None, True, [_GOOD_ACE], False),                # owner unreadable
+    (_ME, False, [_GOOD_ACE], False),                # DACL not protected
+    (_ME, True, [], False),                          # an empty DACL proves nothing
+    (_ME, True, [_GOOD_ACE, (0, 0, "S-1-5-18")], False),
+])
+def test_descriptor_rule(owner, protected, aces, ok):
+    assert fr._is_private_descriptor(owner, protected, aces, _ME) is ok
+
+
+@WINDOWS_ONLY
+def test_real_verify_refuses_an_unprotected_inherited_user_only_acl(tmp_path):
+    parent = tmp_path / "private"
+    parent.mkdir()
+    assert fr.restrict_to_current_user(parent) is True
+    child = parent / "child"
+    child.mkdir()          # inherits the single user ACE, DACL not protected
+    sid = fr.current_user_sid()
+    subprocess.run(["icacls", str(child), "/setowner", f"*{sid}"], capture_output=True,
+                   creationflags=NO_WINDOW, timeout=30, check=True)
+    assert fr.verify_private(child) is False
+
+
+@WINDOWS_ONLY
+def test_real_verify_refuses_inherited_and_accepts_a_private_folder(tmp_path):
+    folder = tmp_path / "plain"
+    folder.mkdir()
+    assert fr.verify_private(folder) is False, "inherited ACEs"
+    assert fr.restrict_to_current_user(folder) is True
+    assert fr.verify_private(folder) is True
+
+
+@WINDOWS_ONLY
+@pytest.mark.skipif(sys.version_info < (3, 13), reason="mkdir mode 0o700 ACL is 3.13+")
+def test_real_verify_refuses_extra_explicit_principals(tmp_path):
+    # Python 3.13+ mkdir(mode=0o700) writes EXPLICIT ACEs for SYSTEM and
+    # Administrators too; /inheritance:r + /grant:r keeps them, so only the
+    # read-back verify catches it - which is why the provisioner verifies.
+    folder = tmp_path / "explicit"
+    os.mkdir(folder, 0o700)
+    assert fr.restrict_to_current_user(folder) is True
+    assert fr.verify_private(folder) is False
+
+
+@WINDOWS_ONLY
+def test_real_provisioning_publishes_single_ace_files_and_cleans_up(tmp_path):
+    root = make_root(tmp_path)
+    report = fr.provision(root, environ={})          # real restrict + real verify
+    assert {r.state for r in report.results} == {"created"}, report.results
+    for path in (vision_path(root), dash_path(root), key_path(root)):
+        out = subprocess.run(["icacls", str(path)], capture_output=True, text=True,
+                             creationflags=NO_WINDOW, timeout=30).stdout
+        aces = [line for line in out.splitlines() if ":(" in line]
+        assert len(aces) == 1 and "(I)" not in out, out
+    assert run_dirs(root) == [] and leftover_tmp(root) == []
+
+
+@POSIX_ONLY
+def test_posix_verify_wants_owner_only_mode(tmp_path):
+    folder = tmp_path / "scratch"
+    folder.mkdir(mode=0o755)
+    os.chmod(folder, 0o755)
+    assert fr.verify_private(folder) is False
+    os.chmod(folder, 0o700)
+    assert fr.verify_private(folder) is True
 
 
 def test_restrict_reports_failure_without_raising(tmp_path):
@@ -778,10 +971,10 @@ def test_attach_and_blocked_modes_never_provision(tmp_path, mode):
 def test_the_gate_decides_whether_services_see_rc_dash_token(tmp_path, monkeypatch, gate):
     monkeypatch.delenv("RC_DASH_TOKEN", raising=False)
     monkeypatch.delenv("RC_VISION_TOKEN", raising=False)   # conftest's test default
-    monkeypatch.setattr(fr, "restrict_to_current_user", lambda p, **k: True)
     root = make_root(tmp_path)
     events = []
-    host, popen = _host(root, _config(gate), events=events)   # the DEFAULT provisioner
+    # The DEFAULT provisioner: real restrict + real verify (icacls / chmod).
+    host, popen = _host(root, _config(gate), events=events)
     host.start()
     token = first_line(dash_path(root))
     assert len(popen.calls) == 2
@@ -796,7 +989,6 @@ def test_the_gate_decides_whether_services_see_rc_dash_token(tmp_path, monkeypat
 
 def test_default_provisioning_logs_names_never_values(tmp_path, monkeypatch):
     monkeypatch.delenv("RC_VISION_TOKEN", raising=False)   # conftest's test default
-    monkeypatch.setattr(fr, "restrict_to_current_user", lambda p, **k: True)
     root = make_root(tmp_path, deploy_module=True)
     logs, events = [], []
     host, popen = _host(root, _config(True), events=events, logs=logs)
