@@ -52,6 +52,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import time
 import urllib.request
 from pathlib import Path
@@ -331,9 +332,67 @@ def _serve_reference_states_get(h) -> None:
         _send_json(h, 500, {"ok": False, "error": "internal error - see logs"})
 
 
+# PKG-5 fix round (2026-10-26): what the ingest path may name. The path came
+# straight from the request body into PIL Image.open, so a UNC path
+# (\\host\share\x.png, //host/share/x.png) made this machine open an
+# outbound SMB connection (NTLM credentials included) and any readable file
+# on the box could be probed. Now: a local file inside the reference folder,
+# nothing else. A relative path is taken relative to that folder.
+_INGEST_DIR_LABEL = "data/vision_calib_reference"
+_INGEST_REFUSED = ("path must name a local image file inside "
+                   f"{_INGEST_DIR_LABEL} (no network, device or "
+                   "out-of-folder path)")
+
+
+def _ingest_source(raw: str):
+    """The screenshot path an ingest may open, as a resolved str, or None.
+
+    Lexical checks run first and touch no file system, so a network or
+    mapped-drive name is refused before anything tries to open it: no NUL,
+    no scheme (``file://``), no UNC / device prefix (``\\\\``, ``//``,
+    ``\\\\?\\``, ``\\\\.\\`` in either slash), and the joined, normalised
+    path must sit strictly inside ``vp.REFERENCE_DIR``. Only then is it
+    resolved (links followed) and re-checked, so a link inside the folder
+    that points out of it (or at a share) is refused too. Backslashes are
+    read as separators on every OS, so the answer does not depend on where
+    the test runs.
+    """
+    if not isinstance(raw, str):
+        return None
+    text = raw.strip().replace("\\", "/")
+    if not text or "\x00" in text or "://" in text \
+            or text.lower().startswith("file:") or text.startswith("//"):
+        return None
+    base_raw = os.path.abspath(str(vp.REFERENCE_DIR))
+    joined_raw = os.path.abspath(os.path.join(base_raw, text))
+    base = os.path.normcase(base_raw)
+    joined = os.path.normcase(joined_raw)
+    if joined.startswith(("\\\\", "//")) or not _strictly_inside(joined, base):
+        return None
+    try:
+        real_base = os.path.normcase(os.path.realpath(base_raw))
+        real_raw = os.path.realpath(joined_raw)
+    except (OSError, ValueError):
+        return None
+    real = os.path.normcase(real_raw)
+    if real.startswith(("\\\\", "//")) or not _strictly_inside(real, real_base):
+        return None
+    return real_raw
+
+
+def _strictly_inside(path: str, base: str) -> bool:
+    """True when ``path`` is below ``base`` (both normalised, same case
+    folding), never ``base`` itself or a sibling sharing its prefix."""
+    try:
+        return path != base and os.path.commonpath([path, base]) == base
+    except ValueError:  # different drives
+        return False
+
+
 def _serve_reference_post(h, body) -> None:
     """Ingest an operator-provided screenshot as a named reference state.
     body ``{state, path}`` -> vp.ingest_reference_from_path -> 200 ok / 400 error.
+    ``path`` must resolve inside data/vision_calib_reference (``_ingest_source``).
     Never leaks a raw exception (CLAUDE.md error rule)."""
     try:
         state = body.get("state") if isinstance(body, dict) else None
@@ -343,7 +402,13 @@ def _serve_reference_post(h, body) -> None:
             _send_json(h, 400, {"ok": False,
                                 "error": "body must be {\"state\": str, \"path\": str}"})
             return
-        res = vp.ingest_reference_from_path(path, state)
+        source = _ingest_source(path)
+        if source is None:
+            log.warning("vision-reference POST: refused a path outside %s",
+                        _INGEST_DIR_LABEL)
+            _send_json(h, 400, {"ok": False, "error": _INGEST_REFUSED})
+            return
+        res = vp.ingest_reference_from_path(source, state)
         _send_json(h, 200 if res.get("ok") else 400, res)
     except Exception as exc:  # noqa: BLE001
         log.warning("vision-reference POST: %s", exc)

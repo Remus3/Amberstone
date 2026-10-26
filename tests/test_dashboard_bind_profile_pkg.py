@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import http.client
 import io
+import json
 import socket
 import ssl
 import threading
@@ -478,3 +479,155 @@ def test_a_real_socket_peer_outside_the_policy_is_refused(monkeypatch,
     assert status == 403
     assert dispatched == []
     assert seen == [("127.0.0.1", "127.0.0.1")]
+
+
+# -- 6. fix round: three more client-driving writers, and the ingest path ------
+#
+# /api/lcu/auto-accept persists the ready-check flag the frozen
+# lcu/lcu_client.py auto-accept tick reads before it accepts a queue pop;
+# /api/vision-reference hands a caller-supplied path to Image.open
+# (core/vision_profiles.py ingest_reference_from_path), so a UNC path made
+# this machine open an outbound SMB connection; /api/coach-choice appends to
+# the same data/decisions_log.jsonl the RM-240 decision writers gate.
+
+_FIX_ROUND = ("/api/lcu/auto-accept", "/api/vision-reference",
+              "/api/coach-choice")
+
+
+@pytest.mark.parametrize("path", _FIX_ROUND)
+def test_fix_round_writers_are_control_endpoints(path):
+    assert _handler.is_control_endpoint(path)
+
+
+@pytest.mark.parametrize("path", _FIX_ROUND)
+def test_fix_round_writers_refuse_a_lan_peer(path, dispatched):
+    sent = _post(path)
+    assert sent == [(403, b'{"error":"control_peer_refused"}')]
+    assert dispatched == []
+
+
+@pytest.mark.parametrize("path", _FIX_ROUND)
+def test_fix_round_writers_still_serve_loopback(path, dispatched):
+    assert _post(path, peer="127.0.0.1", local="127.0.0.1")[-1][0] == 200
+
+
+def test_control_nets_ipv6_wildcard_admits_no_ipv4_peer():
+    env = {"RC_DASH_CONTROL_NETS": "::/0"}
+    assert server.control_peer_allowed("2001:db8::10", None, env) is True
+    assert server.control_peer_allowed("192.0.2.10", None, env) is False
+    assert server.control_peer_allowed("::ffff:192.0.2.10", None, env) is False
+
+
+def test_control_nets_ipv4_wildcard_admits_every_ipv4_peer():
+    env = {"RC_DASH_CONTROL_NETS": "0.0.0.0/0"}
+    assert server.control_peer_allowed("198.51.100.10", None, env) is True
+    assert server.control_peer_allowed("2001:db8::10", None, env) is False
+
+
+def test_the_policy_docstring_names_its_limits():
+    doc = server.control_peer_allowed.__doc__ or ""
+    for needle in ("0.0.0.0/0", "::/0", "range-only", "reverse proxy"):
+        assert needle in doc, needle
+
+
+class _Reply:
+    """The two things a route touches on a handler: path and _send."""
+
+    def __init__(self):
+        self.path = "/api/vision-reference"
+        self.sent = None
+
+    def _send(self, code, body, ctype=None):
+        self.sent = (code, json.loads(body.decode("utf-8")))
+
+
+@pytest.fixture
+def ingest(tmp_path, monkeypatch):
+    """REFERENCE_DIR -> tmp_path/ref; ingest records the path it was given."""
+    from dashboard import routes_vision_calibrator as vc
+    ref = tmp_path / "ref"
+    ref.mkdir()
+    monkeypatch.setattr(vc.vp, "REFERENCE_DIR", ref)
+    calls = []
+
+    def fake(path, state, config_key=None):
+        calls.append(path)
+        return {"ok": True, "state": state, "width": 1, "height": 1}
+
+    monkeypatch.setattr(vc.vp, "ingest_reference_from_path", fake)
+
+    def post(path):
+        h = _Reply()
+        vc._serve_reference_post(h, {"state": "self_dead", "path": path})
+        return h.sent
+
+    return post, calls, ref
+
+
+@pytest.mark.parametrize("path", [
+    "\\\\host\\share\\x.png",
+    "//host/share/x.png",
+    "\\\\?\\C:\\x.png",
+    "\\\\.\\pipe\\x",
+    "\\/host/share/x.png",
+    "file://host/share/x.png",
+    "..\\..\\x.png",
+    "../../x.png",
+    "sub\\..\\..\\x.png",
+    "x.png\x00.jpg",
+])
+def test_vision_reference_refuses_network_and_traversal_paths(path, ingest):
+    post, calls, ref = ingest
+    code, payload = post(path)
+    assert code == 400
+    assert payload["ok"] is False
+    assert calls == []
+
+
+def test_vision_reference_refuses_an_absolute_path_outside_the_dir(ingest,
+                                                                   tmp_path):
+    post, calls, ref = ingest
+    outside = tmp_path / "elsewhere" / "x.png"
+    code, payload = post(str(outside))
+    assert code == 400 and calls == []
+    # The refusal names the expected folder relative to the repo, never a
+    # machine path.
+    assert str(tmp_path) not in payload["error"]
+    assert "vision_calib_reference" in payload["error"]
+
+
+def test_vision_reference_refuses_the_dir_itself(ingest):
+    post, calls, ref = ingest
+    assert post(str(ref))[0] == 400
+    assert calls == []
+
+
+@pytest.mark.parametrize("rel", ["x.png", "sub/x.png", "sub\\x.png"])
+def test_vision_reference_accepts_a_path_inside_the_dir(rel, ingest):
+    post, calls, ref = ingest
+    code, payload = post(rel)
+    assert code == 200 and payload["ok"] is True
+    want = (ref / rel.replace("\\", "/")).resolve()
+    assert calls == [str(want)]
+
+
+def test_vision_reference_accepts_an_absolute_path_inside_the_dir(ingest):
+    post, calls, ref = ingest
+    inside = ref / "shot.png"
+    code, _ = post(str(inside))
+    assert code == 200
+    assert calls == [str(inside.resolve())]
+
+
+def test_vision_reference_refuses_a_link_that_escapes_the_dir(ingest,
+                                                              tmp_path):
+    post, calls, ref = ingest
+    target = tmp_path / "outside"
+    target.mkdir()
+    link = ref / "escape"
+    try:
+        link.symlink_to(target, target_is_directory=True)
+    except (OSError, NotImplementedError):
+        pytest.skip("symlinks need a privilege this session lacks")
+    assert post("escape/x.png")[0] == 400
+    assert calls == []

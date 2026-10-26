@@ -121,9 +121,22 @@ _SCRUB_RANGES = _core_scrub_ranges
 # RM-251(a): "/api/loop-control" was dropped from this set - S10 Task 9
 # de-registered it from the :8888 dispatch table (Mission Control serves it),
 # so on this surface it 404s and the literal was dead.
+#
+# PKG-5 fix round (2026-10-26), three more writers a LAN peer must not reach:
+# /api/lcu/auto-accept persists the ready-check flag that the frozen
+# lcu/lcu_client.py auto-accept tick reads before it accepts a queue pop (it
+# drives the client exactly like a queue writer); /api/vision-reference
+# opens a caller-named file (the route now also confines it to
+# data/vision_calib_reference, dashboard/routes_vision_calibrator.py); and
+# /api/coach-choice appends to the same data/decisions_log.jsonl the RM-240
+# decision writers below are gated for. Their browser callers
+# (web/js/main.js auto-accept fetch, web/vision_calibrator.html ingest(),
+# web/js/panels/coach_choices.js _postSelection) send no X-RC-Token: fine
+# under the peer gate, a 401 once a token is set (PACKAGING_PLAN V3).
 _CONTROL_ENDPOINTS = frozenset({
     "/api/command", "/api/input", "/api/analyze",
     "/api/lcu-cmd", "/api/loadout/apply", "/api/sr-draft/apply",
+    "/api/lcu/auto-accept", "/api/vision-reference", "/api/coach-choice",
 })
 
 
