@@ -64,6 +64,7 @@ import hashlib
 import hmac
 import json
 import logging
+import math
 import re
 import secrets
 import shutil
@@ -102,6 +103,13 @@ IMPORT_RESULTS = ("imported", "present", "unusable")
 _FILE_RE = re.compile(r"^([1-9][0-9]{0,18})\.(eog|history)\.json$")
 _TEXT_MAX = 64
 _UNSET = object()
+# SQLite INTEGER is signed 64-bit; the store refuses an int past it, and that
+# refusal drops the WHOLE write the value rides in (s134 true-audit F6 / F9).
+_I64_MAX = 2 ** 63 - 1
+# What a bad record can raise on its way through tp.merge and the row shaping:
+# the game is skipped, never the run (s134 true-audit F4 / F5).
+_SKIP_ERRORS = (OSError, ValueError, TypeError, KeyError, AttributeError,
+                ArithmeticError, RecursionError)
 
 
 # ---------------------------------------------------------------- RM-616 reads
@@ -113,7 +121,10 @@ def _rm616_dir(store_dir) -> Path:
 
 
 def _int(v) -> Optional[int]:
-    return v if isinstance(v, int) and not isinstance(v, bool) else None
+    """An int the store can bind (64-bit signed range); bool and junk -> None."""
+    if isinstance(v, int) and not isinstance(v, bool) and -_I64_MAX - 1 <= v <= _I64_MAX:
+        return v
+    return None
 
 
 def game_ids(store_dir=None) -> list:
@@ -122,7 +133,9 @@ def game_ids(store_dir=None) -> list:
         names = [e.name for e in _rm616_dir(store_dir).iterdir() if e.is_file()]
     except OSError:
         return []
-    return sorted({int(m.group(1)) for m in map(_FILE_RE.match, names) if m})
+    ids = {_int(int(m.group(1))) for m in map(_FILE_RE.match, names) if m}
+    ids.discard(None)                    # 19 digits can pass the 64-bit range (F9)
+    return sorted(ids)
 
 
 def source_records(game_id, store_dir=None) -> dict:
@@ -138,7 +151,7 @@ def source_records(game_id, store_dir=None) -> dict:
             doc = json.loads(path.read_text(encoding="utf-8"))
         except FileNotFoundError:
             continue
-        except (OSError, ValueError) as exc:
+        except (OSError, ValueError, RecursionError) as exc:   # RecursionError: deep nesting (F5)
             _log.warning("tft ground truth: unreadable RM-616 %s record (%s)", src, type(exc).__name__)
             continue
         if (isinstance(doc, dict) and doc.get("schema") == tp.SCHEMA_VERSION
@@ -154,6 +167,10 @@ def _text(v) -> Optional[str]:
     """A game-data string the store will take (1-64 chars, no identity shape)."""
     if not isinstance(v, str) or not 0 < len(v) <= _TEXT_MAX:
         return None
+    try:            # a lone surrogate (a JSON \ud800 escape) cannot be bound (F6)
+        v.encode("utf-8")
+    except UnicodeEncodeError:
+        return None
     return v if not identity_violations(v) else None
 
 
@@ -165,9 +182,15 @@ def _bounded(v, lo, hi=None) -> Optional[int]:
 
 
 def _num(v) -> Optional[float]:
+    """A finite number the store will take, as a float; NaN, inf, an int past
+    the float range, bool and junk -> None (F6)."""
     if isinstance(v, bool) or not isinstance(v, (int, float)):
         return None
-    return float(v)
+    try:
+        f = float(v)
+    except OverflowError:
+        return None
+    return f if math.isfinite(f) else None
 
 
 def _board_rows(key: str, board) -> list:
@@ -178,7 +201,9 @@ def _board_rows(key: str, board) -> list:
         api = _text(u.get("character_id"))
         if api is None:
             continue
-        items = [i for i in (_text(it.get("name_id")) for it in (u.get("items") or [])
+        raw_items = u.get("items")                    # not a list: no items, unit kept (F7)
+        items = [i for i in (_text(it.get("name_id")) for it in
+                             (raw_items if isinstance(raw_items, list) else [])
                              if isinstance(it, dict)) if i]
         rows.append({"player_key": key, "champion_api": api, "star": _bounded(u.get("star"), 1, 4),
                      "items": items, "cost": _bounded(u.get("cost"), 0, 10)})
@@ -215,6 +240,21 @@ def _find_match(store: RoundStore, game_id: int) -> Optional[dict]:
     return next((m for m in store.list_matches() if m.get("game_id") == game_id), None)
 
 
+def _is_local(v) -> bool:
+    """A store is_local value that says local: True or the int 1 (0/1 column)."""
+    return v is True or _int(v) == 1
+
+
+def _one_local_key(players) -> tuple:
+    """(the ONE local player's key or None, every local key) over store player
+    rows: two distinct local keys are ambiguous - None, never the first
+    (RM-938; the accuracy / milestones exactly-one-local rule)."""
+    keys = {p.get("player_key") for p in players
+            if isinstance(p, dict) and _is_local(p.get("is_local"))}
+    keys.discard(None)
+    return (next(iter(keys)) if len(keys) == 1 else None), keys
+
+
 # ---------------------------------------------------------------- the bridge
 
 def ingest_game(store: RoundStore, game_id, *, store_dir=None, salt: bytes,
@@ -223,7 +263,11 @@ def ingest_game(store: RoundStore, game_id, *, store_dir=None, salt: bytes,
     are enqueued (call store.flush() to wait for them); never raises on bad
     data. `existing` = the store's match row for this game id (sync passes
     it; by default it is looked up)."""
-    return _ingest(store, game_id, store_dir=store_dir, salt=salt, existing=existing)[0]
+    try:
+        return _ingest(store, game_id, store_dir=store_dir, salt=salt, existing=existing)[0]
+    except _SKIP_ERRORS as exc:                       # F4: tp.merge on a junk record
+        _log.warning("tft ground truth: game skipped (%s)", type(exc).__name__)
+        return "skipped"
 
 
 def _ingest(store: RoundStore, game_id, *, store_dir, salt: bytes, existing: Any) -> tuple:
@@ -250,12 +294,15 @@ def _ingest(store: RoundStore, game_id, *, store_dir, salt: bytes, existing: Any
     owned = mid == owned_mid
     ended = _num(merged.get("ended_at_effective_unix"))
     length = _int(merged.get("game_length_s"))
-    local = next((p for p in by_place.values() if p.get("is_local") is True), None)
+    # The ONE local entry: two flagged entries are ambiguous, so neither is
+    # written as local and no placement is guessed from either (F2).
+    flagged = [p for p in by_place.values() if p.get("is_local") is True]
+    local = flagged[0] if len(flagged) == 1 else None
     local_place = _bounded(local.get("placement"), 1, 8) if local else None
 
     if owned:
         set_core = _text(merged.get("set_core_name"))
-        set_id = _int(merged.get("set_number")) or tft_set.parse_set_id(set_core)
+        set_id = _bounded(merged.get("set_number"), 1) or tft_set.parse_set_id(set_core)
         store.begin_match({
             "match_id": mid, "game_id": gid, "set_id": set_id, "set_core_name": set_core,
             "queue_id": _bounded(merged.get("queue_id"), 0),
@@ -266,15 +313,18 @@ def _ingest(store: RoundStore, game_id, *, store_dir, salt: bytes, existing: Any
     if existing:
         doc = store.get_match(mid, rounds=False) or {}
         known = [p for p in doc.get("players") or [] if isinstance(p, dict)]
-    known_local = next((p["player_key"] for p in known if p.get("is_local")), None)
+    # The store's ONE local key (F3). With two already there, the RM-616 local
+    # joins neither and is not added as a third local row.
+    known_local, known_locals = _one_local_key(known)
+    local_free = len(known_locals) <= 1
     by_standing = {p["final_standing"]: p for p in known if _int(p.get("final_standing"))}
     keys: dict = {}
     used: set = set()
     for place, p in by_place.items():
         key = None
-        if p.get("is_local") is True and known_local:
+        if p is local and known_local:
             key = known_local
-        elif place in by_standing and by_standing[place]["player_key"] != known_local:
+        elif place in by_standing and by_standing[place]["player_key"] not in known_locals:
             key = by_standing[place]["player_key"]
         if key is None or key in used:
             key = _gt_key(gid, place, salt)
@@ -288,7 +338,7 @@ def _ingest(store: RoundStore, game_id, *, store_dir, salt: bytes, existing: Any
         standing = Env(place, PLACEMENT_CONF, PLACEMENT_SRC)
         row = known_rows.get(key)
         if row is None:
-            fields = {"is_local": p.get("is_local") is True, "final_standing": standing}
+            fields = {"is_local": p is local and local_free, "final_standing": standing}
             if owned:
                 fields["slot"] = slot
             store.upsert_player(mid, key, **fields)
@@ -341,7 +391,7 @@ def sync(store: RoundStore, *, store_dir=None, salt: Optional[bytes] = None) -> 
         try:
             result, mid = _ingest(store, gid, store_dir=store_dir, salt=salt,
                                   existing=by_gid.get(gid))
-        except (OSError, ValueError, TypeError, KeyError, AttributeError) as exc:
+        except _SKIP_ERRORS as exc:
             _log.warning("tft ground truth: game skipped (%s)", type(exc).__name__)
             result, mid = "skipped", None
         counts[result] += 1
@@ -392,7 +442,7 @@ def import_eog_raw(paths: Iterable, *, store_dir=None) -> dict:
         try:
             doc = json.loads(f.read_text(encoding="utf-8"))
             rec = tp.parse_eog(doc, now=f.stat().st_mtime) if tp.is_tft_doc(doc) else None
-        except (OSError, ValueError) as exc:
+        except (OSError, ValueError, RecursionError) as exc:      # deep nesting (F8)
             _log.warning("tft ground truth: unreadable raw EoG (%s)", type(exc).__name__)
             rec = None
         if not rec:
@@ -478,13 +528,14 @@ def backfill(*, db_path=None, store_dir=None, eog_raw: Iterable = (), salt_path=
 def final_boards(store: RoundStore, set_id=None) -> dict:
     """{match_id: [unit rows]} - each match's LOCAL final board, from the most
     trusted ground-truth source present (GT_SOURCE_ORDER). Unit rows carry
-    champion_api, star, items (api names), cost and source."""
+    champion_api, star, items (api names), cost and source. A match with no
+    local player row, or two, is left out (never the first of two)."""
     out = {}
     for m in store.list_matches(set_id=set_id):
         doc = store.get_match(m["match_id"], rounds=False)
         if not doc:
             continue
-        local = next((p["player_key"] for p in doc["players"] if p.get("is_local")), None)
+        local = _one_local_key(doc.get("players") or [])[0]   # never the FIRST of two (F1)
         if local is None:
             continue
         rows = [r for r in doc["gt_board"] if r.get("player_key") == local]
