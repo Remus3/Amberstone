@@ -810,7 +810,20 @@ _WEB = _REPO_ROOT / "web"
 # memory) reproduces the superseded 2b50f9cd... value EXACTLY. Those three
 # paths are the whole change. No glyph change - every added byte is ASCII.
 # If another slice re-captures in parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "fe43f2842c416d9fc7a7488a47ad4555218269fe8b2697d35f1bfa9163e20771"
+# superseded by the RM-941 re-capture below: "fe43f2842c416d9fc7a7488a47ad4555218269fe8b2697d35f1bfa9163e20771"
+#
+# RE-CAPTURED 2026-10-25 at RM-941 (s134 uiux cycle 7: the TFT ui_mock
+# overlay feeds renderTftOverlay a fixture-derived state - the new
+# _amMockTftState helper, its call on the mock landing, and the two
+# renderTftOverlay call sites in web/js/main.js). Ordinary case, no tokeniser
+# change. ATTRIBUTED BY SUBSTITUTION against 3fff974a6: swapping exactly
+# web/js/main.js back to its HEAD blob (in memory) reproduces the superseded
+# 2b50f9cd... value EXACTLY. That one path is the whole change. No glyph
+# change. If another slice re-captures in parallel, the merger recomputes.
+# MERGED 2026-10-27 by the session 144 merger onto main (lane commit 8bef64ad2): main had moved
+# this pin since the lane base, so the superseded value above is main's and
+# the value below is recomputed over the merged tree.
+_LIVE_HALF_DIGEST = "334dfd868a3b774bb10659641615da7094cf193e0b3dba863308ee680a6b59f0"
 
 
 def _web_sources() -> list[Path]:

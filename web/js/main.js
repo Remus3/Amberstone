@@ -4111,6 +4111,19 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   function _amIsMock() {
     return !!(document.body && document.body.dataset.uiMock === "1");
   }
+  // RM-941: the TFT overlay panels (lib/overlay_tft.js) stamp
+  // body[data-ovx-game] from /api/state.mode_key, and the audit page's
+  // /api/state is empty, so it stamped "lol" and the TFT ui_mock overlay
+  // painted the League field (w-ovds, w-call) no live TFT overlay shows.
+  // While a TFT fixture is up, this is the state renderTftOverlay reads.
+  function _amMockTftState() {
+    if (!_amIsMock() || !_amMockData || _amMockData.mode !== "tft") return null;
+    return {
+      mode_key: "tft",
+      coach: _amMockData.coach || {},
+      liveclient: _amMockData.liveclient || {},
+    };
+  }
   function _amMockUrl() {
     let url = null;
     try {
@@ -4144,7 +4157,10 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         // fixture's mode for TFT only - widening it to the League fixtures
         // changes every existing ui_mock audit and is filed separately.
         // onHealth holds this stamp against the no-game "client" downgrade.
-        if (_amMockData && _amMockData.mode === "tft") setMode("tft");
+        if (_amMockData && _amMockData.mode === "tft") {
+          setMode("tft");
+          renderTftOverlay(_amMockTftState());  // RM-941; no-op off the overlay shell
+        }
         // Re-fire active-match render on landing so the placeholder
         // render that fired before fetch resolved gets replaced.
         if (_VIEW && _VIEW.current === "active-match" && _amMockData) {
@@ -6937,7 +6953,9 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
                     mode: fileMode, payload: coachPayload });
           // S134 N9: TFT overlay panels read the FULL state (liveclient +
           // coach + mode_key); no-op off the overlay shell, never throws.
-          renderTftOverlay(st);
+          // RM-941: a TFT ui_mock page paints its fixture, not the empty
+          // no-game state (which would hand the field back to League).
+          renderTftOverlay(_amMockTftState() || st);
           // 2026-04-25: cold-start champ-select prep - surface adaptation
           // history during champ-select via the LCU snapshot.
           handleLcuEnvelope(st.lcu);
@@ -6993,7 +7011,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
           state.latest.zoi = st.zoi || null;  // ZOI w-mmrect fill (item 567 slice 3)
           onState({ type: "state", source: "state-sse",
                     mode: fileMode, payload: coachPayload });
-          renderTftOverlay(st);  // S134 N9: see the HTTP-fallback site above.
+          renderTftOverlay(_amMockTftState() || st);  // S134 N9 + RM-941: see the HTTP-fallback site.
           if (st.lcu) handleLcuEnvelope(st.lcu);
           renderTeamContext(st);
           renderScreenRead(st);
