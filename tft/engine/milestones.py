@@ -78,6 +78,29 @@ SKIP_PHASES = frozenset({"carousel"})
 BOARD_ZONES = frozenset({"board", "bench"})
 GT_SOURCE_ORDER = ("lcu_eog", "lcu_mh", "match_v1", "eog_file_final")
 _STORE_ERRORS = (OSError, ValueError, TypeError, KeyError, AttributeError, LookupError, sqlite3.Error)
+# The largest count the store can hold (SQLite INTEGER is int64); a bigger
+# value is junk, and past float range it would raise inside statistics.
+INT64_MAX = 2 ** 63 - 1
+
+
+def _finite(value: Any) -> bool:
+    """A real number statistics can take: no bool, no NaN / inf, no int beyond int64."""
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, int):
+        return -INT64_MAX - 1 <= value <= INT64_MAX
+    return isinstance(value, float) and math.isfinite(value)
+
+
+def _count(value: Any) -> Optional[int]:
+    """A non-negative int64 field value (gold, HP), else None."""
+    n = as_int(value)
+    return n if n is not None and 0 <= n <= INT64_MAX else None
+
+
+def _seq(value: Any) -> list:
+    """A list-valued field as a list; anything else (a number, a string, a dict) is empty."""
+    return list(value) if isinstance(value, (list, tuple)) else []
 
 
 # ------------------------------------------------------------------ labels
@@ -265,12 +288,12 @@ def mine_match(record: Mapping, setdata: SetData) -> dict:
     by_label = {format_label(key): row for _seq, key, row in timeline}
     gold_at = {}
     for label in GOLD_CHECKPOINTS:
-        g = as_int(envelope_value(by_label.get(label), "gold_start"))
-        if g is not None and g >= 0:
+        g = _count(envelope_value(by_label.get(label), "gold_start"))
+        if g is not None:
             gold_at[label] = g
     hp_at = {}
     for label in HP_CHECKPOINTS:
-        hp = as_int(envelope_value(by_label.get(label), "hp_start"))
+        hp = _count(envelope_value(by_label.get(label), "hp_start"))
         if hp is not None:
             hp_at[label] = hp
     unit_rounds = _unit_rounds(record, timeline, setdata)
@@ -312,7 +335,7 @@ def label_stats(labels: Iterable) -> dict:
 
 
 def number_stats(values: Iterable) -> dict:
-    vals = sorted(v for v in values if isinstance(v, (int, float)) and not isinstance(v, bool))
+    vals = sorted(v for v in values if _finite(v))
     if not vals:
         return {"median": None, "q1": None, "q3": None, "iqr": None, "n": 0}
     n = len(vals)
@@ -322,28 +345,32 @@ def number_stats(values: Iterable) -> dict:
 
 def aggregate(mined: Iterable, *, key_units: Optional[Iterable] = None) -> dict:
     """Medians / quartiles over mined matches (the caller picks which: top-4 by default)."""
-    rows = list(mined)
+    rows = [m for m in (mined or []) if isinstance(m, Mapping)]
     with_rounds = [m for m in rows if m.get("rounds")]
     with_units = [m for m in rows if m.get("has_unit_obs")]
     curve: dict = defaultdict(list)
     for m in with_rounds:
-        for label, lvl in m["level_at"].items():
-            curve[label].append(lvl)
+        for label, lvl in _section(m, "level_at").items():
+            if parse_label(label) is not None and _finite(lvl):
+                curve[label].append(lvl)
     level_curve = {}
-    for label in sorted(curve, key=lambda x: parse_label(x) or (0, 0)):
+    for label in sorted(curve, key=parse_label):
         vals = sorted(curve[label])
         level_curve[label] = {"median": vals[(len(vals) - 1) // 2], "n": len(vals)}
-    first_roll = label_stats(m["first_rolldown"] for m in with_rounds)
+    first_roll = label_stats(m.get("first_rolldown") for m in with_rounds)
     first_roll["share"] = round(first_roll["n"] / len(with_rounds), 3) if with_rounds else None
-    roll_gold = [m["rolldowns"][0]["gold_end"] for m in with_rounds if m["rolldowns"]]
-    keys = sorted(set(key_units)) if key_units is not None else sorted(
-        {api for m in with_units for api in m["star_ups"]})
+    roll_gold = [_seq(m.get("rolldowns"))[0].get("gold_end") for m in with_rounds
+                 if _seq(m.get("rolldowns")) and isinstance(_seq(m.get("rolldowns"))[0], Mapping)]
+    keys = sorted({k for k in key_units if isinstance(k, str)}) if key_units is not None else sorted(
+        {api for m in with_units for api in _section(m, "star_ups") if isinstance(api, str)})
     star_ups = {}
     for api in keys:
-        star_ups[api] = {str(t): label_stats(m["star_ups"].get(api, {}).get(str(t)) for m in with_units)
+        star_ups[api] = {str(t): label_stats(_section(_section(m, "star_ups"), api).get(str(t))
+                                             for m in with_units)
                          for t in STAR_TARGETS}
-    opener_count = Counter(api for m in with_units for api in m["opener"])
-    opener_games = sum(1 for m in with_units if m["opener"])
+    openers = [{a for a in _seq(m.get("opener")) if isinstance(a, str)} for m in with_units]
+    opener_count = Counter(api for apis in openers for api in apis)
+    opener_games = sum(1 for apis in openers if apis)
     opener = [{"api": a, "share": round(c / opener_games, 3)}
               for a, c in sorted(opener_count.items(), key=lambda kv: (-kv[1], kv[0]))
               if opener_games and c / opener_games >= OPENER_SHARE]
@@ -351,15 +378,18 @@ def aggregate(mined: Iterable, *, key_units: Optional[Iterable] = None) -> dict:
         "games": len(rows),
         "games_with_rounds": len(with_rounds),
         "games_with_units": len(with_units),
-        "level_reached": {str(lv): label_stats(m["level_reached"].get(str(lv)) for m in with_rounds)
+        "level_reached": {str(lv): label_stats(_section(m, "level_reached").get(str(lv)) for m in with_rounds)
                           for lv in LEVELS},
         "level_curve": level_curve,
         "first_rolldown": first_roll,
         "rolldown_gold_end": number_stats(roll_gold),
-        "rolldowns_per_game": number_stats(len(m["rolldowns"]) for m in with_rounds),
-        "first_slam": label_stats((m["first_slam"] or {}).get("label") for m in with_units),
-        "gold_at": {label: number_stats(m["gold_at"].get(label) for m in with_rounds) for label in GOLD_CHECKPOINTS},
-        "hp_at": {label: number_stats(m["hp_at"].get(label) for m in with_rounds) for label in HP_CHECKPOINTS},
+        "rolldowns_per_game": number_stats(len(m["rolldowns"]) for m in with_rounds
+                                           if isinstance(m.get("rolldowns"), (list, tuple))),
+        "first_slam": label_stats(_section(m, "first_slam").get("label") for m in with_units),
+        "gold_at": {label: number_stats(_section(m, "gold_at").get(label) for m in with_rounds)
+                    for label in GOLD_CHECKPOINTS},
+        "hp_at": {label: number_stats(_section(m, "hp_at").get(label) for m in with_rounds)
+                  for label in HP_CHECKPOINTS},
         "star_ups": star_ups,
         "opener": opener,
     }
@@ -406,7 +436,7 @@ def _section(obj: Any, name: str) -> dict:
 
 
 def _is_num(value) -> bool:
-    return isinstance(value, (int, float)) and not isinstance(value, bool)
+    return _finite(value)
 
 
 def compare_to_average(mined: Mapping, agg: Mapping) -> list:
@@ -449,7 +479,7 @@ def _listed(fn, arg) -> list:
 
 def _board_rows(board: Any) -> list:
     out = []
-    for row in board or []:
+    for row in _seq(board):
         if not isinstance(row, Mapping):
             continue
         api = next((row[k] for k in ("champion_api", "championName", "championId", "api")
@@ -457,13 +487,14 @@ def _board_rows(board: Any) -> list:
         if not api:
             continue
         items = row.get("items")
-        entry = {"champion_api": api, "star": as_int(row.get("star", row.get("starLevel"))) or 1}
+        star = next((as_int(row[k]) for k in ("star", "starLevel") if as_int(row.get(k)) is not None), None)
+        entry = {"champion_api": api, "star": max(1, star or 1)}
         if isinstance(items, list):
             entry["items"] = list(items)
         elif isinstance(row.get("items_json"), str):
             entry["items_json"] = row["items_json"]
         else:
-            entry["items"] = list(row.get("itemNames") or [])
+            entry["items"] = _seq(row.get("itemNames"))
         if as_int(row.get("cost")) is not None:
             entry["cost"] = as_int(row["cost"])
         out.append(entry)
@@ -474,17 +505,37 @@ def _final_boards_map(final_boards: Any) -> dict:
     if isinstance(final_boards, Mapping):
         return {str(k): v for k, v in final_boards.items()}
     out = {}
-    for row in final_boards or []:
+    for row in _seq(final_boards):
         if isinstance(row, Mapping) and row.get("match_id") is not None:
             board = row.get("board", row.get("units", row.get("final_board")))
             out.setdefault(str(row["match_id"]), board)
     return out
 
 
-def _local_gt_board(detail: Mapping, local_key: Optional[str]) -> list:
-    rows = [r for r in (detail.get("gt_board") or []) if isinstance(r, Mapping)]
+def _local_key(detail: Mapping) -> Optional[str]:
+    """The one local player's key: is_local must be exactly 1 / True (a string
+    "0" is not local), and two different local keys are ambiguous - None."""
+    players = _rows(detail.get("player")) or _rows(detail.get("players"))
+    keys = {p.get("player_key") for p in players
+            if isinstance(p.get("is_local"), int) and p.get("is_local") == 1}
+    keys.discard(None)
+    if len(keys) != 1:
+        return None
+    (key,) = keys
+    return key if isinstance(key, str) and key else None
+
+
+def _owned(rows: list, local_key: Optional[str]) -> list:
+    """The local player's rows. With no local player known, a row keyed to SOME
+    player is never attributed to the operator (the real store keys every
+    unit_obs / gt_board row); only a store that keys no row keeps its rows."""
     if local_key is not None:
-        rows = [r for r in rows if r.get("player_key") == local_key]
+        return [r for r in rows if r.get("player_key") == local_key]
+    return [r for r in rows if r.get("player_key") is None]
+
+
+def _local_gt_board(detail: Mapping, local_key: Optional[str]) -> list:
+    rows = _owned(_rows(detail.get("gt_board")), local_key)
     for source in GT_SOURCE_ORDER:
         picked = [r for r in rows if r.get("source") == source]
         if picked:
@@ -509,16 +560,21 @@ def _detail(getter, mid: str) -> Any:
 
 def records_from_store(store: Any, *, set_id: Any = None, final_boards: Any = None,
                        top4_only: bool = False) -> list:
-    """Match records from the TFT-01 read API; fail-soft (a store error yields fewer records).
+    """Match records from the TFT-01 read API; fail-soft (a store error yields
+    fewer records, a wrongly shaped field reads as empty and never loses the
+    match or its siblings).
 
     The real store (tft/rounds/store.py) nests unit_obs and shop_refresh rows
     inside each round bundle; flat top-level lists (unit_obs / units,
-    shop_refresh / shop_refreshes) are read when a store provides them."""
+    shop_refresh / shop_refreshes) are read when a store provides them. Unit
+    and gt_board rows are the local player's only (_owned): no single local
+    player = no player-keyed row is attributed, the rule dashboard/routes_tft.py
+    _store_record and _gt_local_board apply to the live engine build."""
     lister = getattr(store, "list_matches", None)
     matches = _call(lister, set_id=set_id, top4_only=top4_only) if callable(lister) else None
     boards = _final_boards_map(final_boards)
     out = []
-    for m in matches or []:
+    for m in _seq(matches):
         if not isinstance(m, Mapping) or m.get("match_id") is None:
             continue
         mid = str(m["match_id"])
@@ -533,17 +589,13 @@ def records_from_store(store: Any, *, set_id: Any = None, final_boards: Any = No
         detail = detail if isinstance(detail, Mapping) else {}
         rounds = _call(_listed, rounds_fn, mid) if callable(rounds_fn) else None
         if rounds is None:
-            rounds = list(detail.get("rounds") or [])
-        players = [p for p in (detail.get("player") or detail.get("players") or []) if isinstance(p, Mapping)]
-        local_key = next((p.get("player_key") for p in players if p.get("is_local")), None)
-        units = [r for r in (detail.get("unit_obs") or detail.get("units") or []) if isinstance(r, Mapping)]
-        if not units:
-            units = _bundled(rounds, "units")
-        if local_key is not None:
-            units = [r for r in units if r.get("player_key") == local_key]
-        shop = list(detail.get("shop_refresh") or detail.get("shop_refreshes") or []) or _bundled(rounds, "shop")
+            rounds = _seq(detail.get("rounds"))
+        local_key = _local_key(detail)
+        units = _rows(detail.get("unit_obs")) or _rows(detail.get("units")) or _bundled(rounds, "units")
+        units = _owned(units, local_key)
+        shop = _rows(detail.get("shop_refresh")) or _rows(detail.get("shop_refreshes")) or _bundled(rounds, "shop")
         board = boards.get(mid)
-        if board is None:
+        if not isinstance(board, (list, tuple)):
             board = _local_gt_board(detail, local_key)
         rec = {k: m.get(k) for k in ("match_id", "set_id", "queue_kind", "placement", "placement_conf",
                                      "placement_src") if k in m}

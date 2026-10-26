@@ -673,8 +673,10 @@ def _engine_set(qs: Optional[dict] = None) -> int:
 
 def _gt_local_board(doc: dict, local_key: Optional[str]) -> list:
     from tft.engine.milestones import GT_SOURCE_ORDER
+    # No local player row = no board can be attributed to the operator (the
+    # unit rule in _store_record); every gt_board row is player-keyed.
     rows = [r for r in doc.get("gt_board") or [] if isinstance(r, dict)
-            and (local_key is None or r.get("player_key") == local_key)]
+            and local_key is not None and r.get("player_key") == local_key]
     for source in GT_SOURCE_ORDER:
         picked = [r for r in rows if r.get("source") == source]
         if picked:
