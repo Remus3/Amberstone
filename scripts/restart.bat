@@ -30,10 +30,8 @@ set "RC_KEY_PY="
 set "RC_KEY_EMBED="
 set "RC_KEY_MOD="
 set "RC_KEY_EC="
-:: Apply any pending patches
-if exist "apply_patches.py" (
-    echo [Amberstone] Applying patches...
-    python apply_patches.py
-)
+:: RM-826 (f): no apply_patches.py step. It ran a bare "python" from the repo
+:: root, where a planted python.bat would run first, and no such script
+:: exists (scripts\restart_clean.bat deletes one on sight).
 start "" pythonw.exe main.py
 echo [Amberstone] Relaunched.
