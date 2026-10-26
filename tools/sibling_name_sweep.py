@@ -34,7 +34,9 @@ TWO ARMS, AND WHY THERE ARE TWO
 1. The NEEDLE arm matches loaded names. It is the precise arm, and it is inert
    without the per-host config - which a fresh clone and CI both lack.
 2. The STRUCTURAL arm is config-free: it extracts drive-rooted first path
-   segments and subtracts an allowlist. It therefore still catches "a Windows
+   segments (drive-letter, WSL mount and WSL UNC spellings since RM-876; the
+   bare `/<x>/` spelling is a measured, declared residual) and subtracts an
+   allowlist. It therefore still catches "a Windows
    path to a project nobody recognises" in a fresh clone. It runs in DEGRADED
    mode too, which is the whole reason DEGRADED is not silent. When ARMED it is
    handed the loaded slot names, and a segment starting with one is never
@@ -325,13 +327,8 @@ _C_ESCAPE = re.compile(r"^[ntrfvb0](?=[A-Z ]|$)")
 # generous - the longest legitimate one measured here is two.
 _MAX_SEGMENT_WORDS = 3
 
-# The lookbehind is LOAD-BEARING, not decoration. Without it the literal text
-# `cooldown:\nUse Recall` parses as drive `n:` with first segment `nUse Recall`,
-# and the structural arm fires on every coach string in the tree.
-STRUCTURAL_RE = re.compile(
-    r"(?<![A-Za-z0-9_])([A-Za-z]):[\\/]{1,2}([A-Za-z0-9 ()+._\-]{1,80})"
-)
-_SEP_RE = re.compile(r"[A-Za-z]:([\\/]{1,2})")
+# `STRUCTURAL_RE` itself is built below `_DRIVE_HEAD` (RM-876): both arms read
+# one head, so it has to be defined after it.
 
 
 # ---------------------------------------------------------------------------
@@ -936,11 +933,48 @@ _WSL_UNC_LEAD = (
     r"[\\/]{2,4}(?:[?.][\\/]{1,2}unc[\\/]{1,2})?wsl(?:\$|\.localhost)"
     r"[\\/]{1,2}[^\\/\s]{1,64}"
 )
-_DRIVE_HEAD = (
-    r"(?<![A-Za-z0-9_])(?:[A-Za-z]:[\\/]{1,2}|/mnt/[A-Za-z]/|/[A-Za-z]/|"
-    + _WSL_UNC_LEAD
-    + r"[\\/]{1,2}mnt[\\/]{1,2}[A-Za-z][\\/]{1,2})"
+_POSIX_DRIVE = r"/[A-Za-z]/"
+_DRIVE_HEAD_PARTS = (
+    r"[A-Za-z]:[\\/]{1,2}",
+    r"/mnt/[A-Za-z]/",
+    _POSIX_DRIVE,
+    _WSL_UNC_LEAD + r"[\\/]{1,2}mnt[\\/]{1,2}[A-Za-z][\\/]{1,2}",
 )
+_DRIVE_HEAD = r"(?<![A-Za-z0-9_])(?:" + "|".join(_DRIVE_HEAD_PARTS) + ")"
+
+# The config-free STRUCTURAL arm's regex: a drive head plus a first path
+# segment. RM-876 gave it the needle DRIVE head's alternatives (it read only
+# `<letter>:<sep>`), so an undeclared project on a WSL mount or WSL UNC spelling
+# is a finding too - ALL BUT the POSIX-shell drive `/<x>/`. With no name to
+# anchor it, that head is noise: the real-tree differential gained 21 findings
+# from it and 0 from the others, all 21 false (base64 runs in an inlined image,
+# URL paths such as `/u/<handle>` and `/x/<file>.png`, test paths such as
+# `/m/.git`). An undeclared project cited only as `/<x>/<name>` therefore stays
+# a DECLARED RESIDUAL of this arm; a loaded slot still halts on it through the
+# needle DRIVE arm. Pinned by tests/test_rm876_structural_mount_spellings.py.
+# ONE REGEX PER HEAD, scanned in turn, not one alternation: in a single
+# alternation a mount head can swallow the drive letter of a path right after
+# it (`/mnt/<x>/Q` eats the `Q` of `Q:<sep><name>`), which LOST drive-letter
+# findings in the synthetic differential. Separate passes keep the drive-letter
+# pass byte-for-byte the arm's original regex, so every earlier finding is still
+# a finding (monotone by construction). `STRUCTURAL_RE` is that first pass.
+# The mount and UNC passes take `re.I` as in the needle arm (the UNC step is
+# spelled `UNC`), with `re.A` so `[A-Za-z]` stays ASCII. The drive pass takes NO
+# flag: under `re.I` alone Python's `[A-Za-z]` also matches four non-ASCII
+# letters (U+0130, U+0131, U+017F, U+212A), which moved its lookbehind and
+# segment edges and LOST old findings (verifier, s134 repo lane cycle 13).
+# The head's lookbehind is LOAD-BEARING, not decoration. Without it the literal
+# text `cooldown:\nUse Recall` parses as drive `n:` with first segment
+# `nUse Recall`, and the structural arm fires on every coach string in the tree.
+_STRUCTURAL_HEAD_PARTS = tuple(p for p in _DRIVE_HEAD_PARTS if p != _POSIX_DRIVE)
+_STRUCTURAL_RES = tuple(
+    re.compile(
+        r"(?<![A-Za-z0-9_])(?:" + part + r")(?P<seg>[A-Za-z0-9 ()+._\-]{1,80})",
+        0 if index == 0 else re.I | re.A,
+    )
+    for index, part in enumerate(_STRUCTURAL_HEAD_PARTS)
+)
+STRUCTURAL_RE = _STRUCTURAL_RES[0]
 
 
 def build_needles(cfg: SweepConfig) -> list:
@@ -1492,15 +1526,19 @@ def structural_findings(
     out: list = []
     seen: set = set()
     slot_head = _slot_head_re(slot_names) if slot_names else None
-    for m in STRUCTURAL_RE.finditer(text or ""):
-        segment = _trim(m.group(2))
+    matches = (m for rx in _STRUCTURAL_RES for m in rx.finditer(text or ""))
+    for m in matches:
+        segment = _trim(m.group("seg"))
         if not segment:
             continue
-        is_slot = slot_head is not None and slot_head.match(text, m.start(2)) is not None
+        is_slot = slot_head is not None and slot_head.match(text, m.start("seg")) is not None
         # The `\n`-in-a-string class, rejected by name rather than by widening.
         # Only a SINGLE backslash can be a C-style escape, so the doubled form
-        # (a genuine escaped Windows path) is deliberately left alone.
-        sep = _SEP_RE.match(m.group(0)).group(1)
+        # (a genuine escaped Windows path) is deliberately left alone. Read off
+        # the head's WHOLE trailing separator run (a mixed `/\` is not a single
+        # backslash), so a UNC head is judged exactly like a drive one.
+        head = text[m.start():m.start("seg")]
+        sep = head[len(head.rstrip("\\/")):]
         if not is_slot and sep == "\\" and _C_ESCAPE.match(segment):
             continue
         words = segment.split()
