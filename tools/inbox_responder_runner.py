@@ -2601,20 +2601,24 @@ def _export_ignored_paths(config: RunnerConfig, export_dir, repo_root, proc_runn
     single pathname; over a 4700-file export that is minutes of process churn.
     `--stdin` answers the same question in one call: exit 0 and the ignored
     paths on stdout, exit 1 when nothing matched.
+
+    RM-861: `-z` makes both directions NUL-separated, so an ignored path comes
+    back as itself (not C-quoted under core.quotePath) and a path carrying a
+    newline or opening with `"` is checked whole, as `-q -- <path>` checks it.
     """
     export_dir = Path(export_dir)
     rels = sorted(str(p.relative_to(export_dir)).replace("\\", "/")
                   for p in export_dir.rglob("*") if p.is_file())
     if not rels:
         return ["<the export directory holds no files>"]
-    res = proc_runner([str(config.git_exe), "check-ignore", "--stdin"], cwd=repo_root,
-                      stdin_bytes=("\n".join(rels) + "\n").encode("utf-8", "surrogatepass"),
+    res = proc_runner([str(config.git_exe), "check-ignore", "-z", "--stdin"], cwd=repo_root,
+                      stdin_bytes="".join(r + "\0" for r in rels).encode("utf-8", "surrogatepass"),
                       timeout_s=DRY_REPORT_PROC_TIMEOUT_S)
     if res.exit_code == 1:
         return []
     if res.exit_code != 0:
         return [f"<check-ignore exited {res.exit_code}>"]
-    return [line for line in res.stdout.decode("utf-8", "replace").splitlines() if line.strip()]
+    return [p for p in res.stdout.decode("utf-8", "replace").split("\0") if p]
 
 
 def _jsonl(path) -> list:
