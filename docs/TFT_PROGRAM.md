@@ -735,8 +735,8 @@ gitignored `hud_labels_s136_t16.csv`.
 - **History of the earlier closing call.** The July "Overlay Platform M / GEP = CLOSED"
   call was made by the headless loop director: refill cycle 18, R120, 2026-07-14, commit
   `5cdaed8cc` (`docs/_archive/COMPETITOR_LIFT_2026-07-14.md:3`, `:36-38`;
-  `docs/LEDGER.md:3119`). It was repeated at R125 (`docs/LEDGER.md:3109`), at R220
-  (`docs/LEDGER.md:2695`) and in the 07-30 TFT lift F17
+  LEDGER entry 894). It was repeated at R125 (LEDGER entry 899), at R220
+  (LEDGER entry 1099) and in the 07-30 TFT lift F17
   (`docs/_archive/2026-07/COMPETITOR_LIFT_2026-07-30.md:525-563`). No operator sign-off
   was recorded.
 - **Correction.** The cited reason, "RC is Live Client :2999-only per ADR-006"
@@ -819,18 +819,19 @@ The chain from a HUD change to `/api/state` today:
 1. **Grab on demand.** A frame is grabbed only when the cached one is older than 1.0 s
    (`vision_server/_frame.py:69`, `:482`). It is then downscaled to 1280 wide (`:71`),
    JPEG-encoded at quality 85 (`:72`), sent as base64 over `:8889`, and decoded.
-2. **OCR thread.** The thread sleeps 2.0 s between reads (`tft/tft_state_reader.py:241-251`).
+2. **OCR thread.** The thread sleeps 2.0 s between reads (`TftStateReader._ocr_loop`,
+   `tft/tft_state_reader.py:277`).
    Each Tesseract call costs about 137 ms.
 3. **Worker poll.** `core/tft_worker.py:44` polls every 1.5 s.
 4. **The bottleneck.** The HUD scalars reach `/api/state` ONLY through the coach file
-   (`dashboard/_state_builder.py:691-692`). That file is written only after a Haiku coach
+   (`dashboard/_state_builder.py:700-701`). That file is written only after a Haiku coach
    call:
    - a new round fires one call;
    - otherwise there is a 45 s debounce (`tft/tft_coach_engine.py:772`, `:892-897`);
    - the write is SKIPPED when the advice text did not change (`:995-1001`).
    So gold, level and stage wait for an LLM round trip, and most gold changes never land.
    `coach.health` is a snapshot from the last write. `coach.hp` is refilled from the EoG
-   file, and the fill only replaces blanks (`dashboard/_state_builder.py:289`, `:327`), so
+   file, and the fill only replaces blanks (`dashboard/_state_builder.py:298`, `:336`), so
    a stale `health` survives next to a fresh `hp`.
 5. **State cadence.** `/api/state` is rebuilt every 0.5 s (`RC_STATE_CADENCE_SEC`,
    `dashboard/routes_state.py:207`).
