@@ -163,10 +163,15 @@ def _lolmath():
     )
 
 
-def _wire_main(monkeypatch, tmp_path, augments, meraki, argv):
+def _wire_main(monkeypatch, tmp_path, augments, meraki, argv, ddragon_floors=False):
     data_root = tmp_path / "data" / "daemon_slayer"
     monkeypatch.setattr(dse, "ROOT", tmp_path)
     monkeypatch.setattr(dse, "DATA_ROOT", data_root)
+    if not ddragon_floors:
+        # The synthetic item map is empty, under the RM-910 floor, which
+        # tests/test_ds_extract_ddragon_counts.py covers on its own.
+        monkeypatch.setattr(dse, "DDRAGON_CHAMPIONS_MIN", 0)
+        monkeypatch.setattr(dse, "DDRAGON_ITEMS_MIN", 0)
     monkeypatch.setattr(dse, "fetch_ddragon", lambda: dse.DDragonSnapshot(
         version="99.1.1",
         champions=DDRAGON_ROSTER,
@@ -235,3 +240,31 @@ def test_main_clean_upstream_records_no_override(monkeypatch, tmp_path):
     assert "upstream_short_override" not in manifest
     assert manifest["arena_augments"]["count"] == 225
     assert manifest["meraki_items"]["count"] == 320
+
+
+def test_main_one_override_records_a_short_ddragon_beside_the_bulk_counts(
+        monkeypatch, tmp_path):
+    # RM-910: the DDragon gate shares --allow-short-upstream, and the one
+    # manifest record names every measured source, the short one included.
+    reason = "RM-999 adjudication: DDragon item.json reshaped"
+    data_root, _ = _wire_main(monkeypatch, tmp_path, _augments(225), _meraki(320),
+                              ["--allow-short-upstream", reason], ddragon_floors=True)
+    assert dse.main() == 0
+    manifest = json.loads((data_root / "99.1.1" / "manifest.json").read_text(encoding="utf-8"))
+    rec = manifest["upstream_short_override"]
+    assert rec["flag"] == "--allow-short-upstream"
+    assert rec["reason"] == reason
+    assert rec["ddragon_items"] == {"count": 0, "floor": dse.DDRAGON_ITEMS_MIN}
+    assert rec["ddragon_champions"] == {"count": len(DDRAGON_ROSTER),
+                                        "floor": dse.DDRAGON_CHAMPIONS_MIN}
+    assert rec["arena_augments"] == {"count": 225, "floor": dse.ARENA_AUGMENTS_MIN}
+    assert rec["meraki_items"] == {"count": 320, "floor": dse.MERAKI_ITEMS_MIN}
+
+
+def test_main_short_ddragon_without_the_override_exits_before_the_bulk_fetches(
+        monkeypatch, tmp_path):
+    data_root, overlay_calls = _wire_main(monkeypatch, tmp_path, _augments(225),
+                                          _meraki(320), [], ddragon_floors=True)
+    assert dse.main() == dse.EXIT_UPSTREAM_SHORT
+    assert overlay_calls == []
+    assert not data_root.exists() or not any(data_root.rglob("*"))

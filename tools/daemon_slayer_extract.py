@@ -33,6 +33,9 @@ under 95 percent of the cooldown roster fails the same way (RM-887). A
 Meraki items payload under 160 or an Arena augments payload under 110
 (RM-807 (d); every snapshot measured 320 / 220-227) exits 6
 with nothing written, past it only with ``--allow-short-upstream REASON``.
+A DDragon champion map under 86 or item map under 349 (RM-910; every
+snapshot measured 172-173 / 699-706) exits 6 the same way, right after the
+DDragon fetch.
 
 ``--lolmath-only`` re-runs ONLY the lolmath extract against an EXISTING
 snapshot (it needs ``<patch>/manifest.json``; ``--patch`` defaults to
@@ -1580,7 +1583,8 @@ def check_upstream_counts(arena_augments: dict | None, meraki_items: dict | None
     reason = (override_reason or "").strip()
     if not failing:
         if reason:
-            log.info("--allow-short-upstream not needed: every upstream at its floor")
+            log.info("--allow-short-upstream not needed for Meraki items / Arena "
+                     "augments: both at their floor")
         return out
     detail = "; ".join(failing)
     if not reason:
@@ -1598,8 +1602,56 @@ def _short_upstream_override_record(upstream_check: dict[str, Any]) -> dict[str,
     return {
         "flag": "--allow-short-upstream",
         "reason": upstream_check["override_reason"],
-        **{name: dict(upstream_check[name]) for name in ("arena_augments", "meraki_items")},
+        **{name: dict(rec) for name, rec in upstream_check.items()
+           if name != "override_reason"},
     }
+
+
+# RM-910: fetch_ddragon reads both maps with ``.get("data", {})``, so an
+# empty or reshaped DDragon payload became an empty champions.json /
+# items.json, and an empty champion map also skips the RM-914 roster gate
+# by design. Every committed snapshot 16.10.1 .. 16.21.1 records 172-173
+# champions and 699-706 items after the throwback partition, so the floors
+# sit at half the measured minimum, as RM-807 (d) does. The counts follow the
+# same partition as the manifest: a payload of only throwback rows ships
+# nothing and must not pass on its raw size.
+DDRAGON_CHAMPIONS_MIN = 86
+DDRAGON_ITEMS_MIN = 349
+
+
+def check_ddragon_counts(dd: DDragonSnapshot,
+                         override_reason: str | None = None) -> dict[str, Any]:
+    """Fail loudly when the DDragon champion or item map is short (RM-910).
+
+    Returns ``{ddragon_champions: {count, floor}, ddragon_items: {count,
+    floor}}``. A map under its floor raises ``ShortUpstreamError`` naming every
+    such map, unless ``override_reason`` is a non-blank string (the
+    ``--allow-short-upstream`` flag the Meraki / Arena gate shares): then it
+    logs a WARNING and adds ``override_reason``.
+    """
+    champs = dd.champions if isinstance(dd.champions, dict) else {}
+    items = dd.items if isinstance(dd.items, dict) else {}
+    counts = (
+        ("ddragon_champions", len(canonical_champions(champs)), DDRAGON_CHAMPIONS_MIN),
+        ("ddragon_items", len(canonical_items(items)), DDRAGON_ITEMS_MIN),
+    )
+    out: dict[str, Any] = {name: {"count": n, "floor": floor}
+                           for name, n, floor in counts}
+    failing = [f"{name} {n} (floor {floor})" for name, n, floor in counts if n < floor]
+    reason = (override_reason or "").strip()
+    if not failing:
+        return out
+    detail = "; ".join(failing)
+    if not reason:
+        raise ShortUpstreamError(
+            f"RM-910: DDragon {dd.version} {detail} - an upstream reset or "
+            "shape drift, not a patch; nothing was written. Adjudicate it, then "
+            "re-run with --allow-short-upstream REASON to accept it as an "
+            "explicit, recorded act."
+        )
+    log.warning("RM-910 override: accepting DDragon %s - reason: %s", detail, reason)
+    out["override_reason"] = reason
+    return out
 
 
 # --- Patch stamping (RM-81 residual) -----------------------------------------
@@ -1970,8 +2022,10 @@ def main() -> int:
                          f"the extract otherwise exits {EXIT_LOLMATH_DEGENERATE} and "
                          "writes nothing); REASON is logged and recorded in the manifest")
     ap.add_argument("--allow-short-upstream", default=None, metavar="REASON",
-                    help=f"RM-807: accept a Meraki items payload under {MERAKI_ITEMS_MIN} "
-                         f"or an Arena augments payload under {ARENA_AUGMENTS_MIN} "
+                    help=f"RM-807: accept a Meraki items payload under {MERAKI_ITEMS_MIN}, "
+                         f"an Arena augments payload under {ARENA_AUGMENTS_MIN}, "
+                         f"or a DDragon champion map under {DDRAGON_CHAMPIONS_MIN} or "
+                         f"item map under {DDRAGON_ITEMS_MIN} "
                          f"(the extract otherwise exits {EXIT_UPSTREAM_SHORT} and writes "
                          "nothing); REASON is logged and recorded in the manifest")
     ap.add_argument("--lolmath-only", action="store_true",
@@ -2004,6 +2058,14 @@ def main() -> int:
             return 0
         log.info("patch dir %s exists but no manifest - re-extracting", patch_dir)
 
+    # RM-910: a short DDragon map is gated before every other fetch, so the
+    # lolmath roster gate never measures against an empty map unadjudicated.
+    try:
+        ddragon_check = check_ddragon_counts(dd, args.allow_short_upstream)
+    except ShortUpstreamError as exc:
+        log.error("%s", exc)
+        return EXIT_UPSTREAM_SHORT
+
     # RM-805 / RM-807: the gates run before the remaining fetches and any write.
     try:
         lolmath, aram_check, block_check = _extract_lolmath(args, dd.champions)
@@ -2024,6 +2086,11 @@ def main() -> int:
     except ShortUpstreamError as exc:
         log.error("%s", exc)
         return EXIT_UPSTREAM_SHORT
+    # One --allow-short-upstream record covers every source it was passed for;
+    # a source at its floor still shows its measured count beside the others.
+    if "override_reason" in ddragon_check or "override_reason" in upstream_check:
+        upstream_check = {**ddragon_check, **upstream_check,
+                          "override_reason": args.allow_short_upstream.strip()}
     perlevel_overlay = fetch_meraki_perlevel_overlay(set(dd.champions.keys()))
 
     champions_payload = build_champions_payload(lolmath, dd, perlevel_overlay)

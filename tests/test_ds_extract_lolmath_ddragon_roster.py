@@ -184,6 +184,10 @@ def _wire_main(monkeypatch, tmp_path, t, ddragon, argv, *, network_ok):
     data_root = tmp_path / "data" / "daemon_slayer"
     monkeypatch.setattr(dse, "ROOT", tmp_path)
     monkeypatch.setattr(dse, "DATA_ROOT", data_root)
+    # The synthetic DDragon map sits under the RM-910 floors, which
+    # tests/test_ds_extract_ddragon_counts.py covers on its own.
+    monkeypatch.setattr(dse, "DDRAGON_CHAMPIONS_MIN", 0)
+    monkeypatch.setattr(dse, "DDRAGON_ITEMS_MIN", 0)
     monkeypatch.setattr(dse, "fetch_ddragon", lambda: dse.DDragonSnapshot(
         version=PATCH, champions=ddragon, items={}))
     monkeypatch.setattr(dse, "discover_chunks",
