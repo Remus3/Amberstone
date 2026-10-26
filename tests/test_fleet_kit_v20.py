@@ -26,7 +26,9 @@ KIT = ROOT / "ops" / "fleet_kit"
 # (manifest 9e4f9980...b09b000): outbound cap 6 -> 12, FLEET-COMMON 14 c.
 # Kit v23 (MAIN 2026-10-25 1926 ORDER, cumulative v21 + v22) supersedes
 # v20.1 (manifest 8017eae2...e77d4602); the v20 behaviour below still holds.
-V20_MANIFEST_SHA256 = "f5d82861cce3f5c2d565495dbd3a8cceff3b9d895117a2f6f9d4c83f11ba527c"
+# Kit v24 (MAIN 2026-10-26 0315 ORDER) supersedes v23 (manifest
+# f5d82861...11ba527c); same 23-file set.
+V20_MANIFEST_SHA256 = "a41ff08e4c2ace7f48119f9ffec051ce18458184c2417d6806be39f3c8804a7d"
 
 
 def _load(name):
@@ -44,9 +46,9 @@ def test_the_vendored_kit_is_the_v20_order_bytes():
     raw = (KIT / "MANIFEST.json").read_bytes()
     assert hashlib.sha256(raw).hexdigest() == V20_MANIFEST_SHA256
     man = json.loads(raw.decode("ascii"))
-    assert man["version"] == 23
+    assert man["version"] == 24
     assert len(man["files"]) == 23
-    assert _load("fleet_headless").KIT_VERSION == 23
+    assert _load("fleet_headless").KIT_VERSION == 24
     assert _load("fleet_headless").KIT_PATCH == 0
 
 

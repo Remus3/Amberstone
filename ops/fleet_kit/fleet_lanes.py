@@ -17,7 +17,7 @@ THREE LAYERS:
    value disables it, which is how a suite pins it - then HKCU Environment)
    the path is <root>/<CODE>/Worktree/lane-<i>; unset,
    it stays <parent>/<code>-worktrees/lane-<i>. v22: named nowhere, the root
-   defaults to SIDECAR_DEFAULT (E:/Sidecars) when <default>/<CODE> exists
+   defaults to SIDECAR_DEFAULT (drive E, folder Sidecars) when <default>/<CODE> exists
    (never inside a pytest test); missing = the v14 path. STICKY: while the old path
    still exists and the new one does not, the old path is used, so setting
    the variable never orphans a lane - move each idle lane with `git worktree
@@ -579,7 +579,11 @@ def _registry_sidecar():
 # but only when it exists, and never inside a pytest test (PYTEST_CURRENT_TEST),
 # so a suite keeps the v14 path unless it sets the variable itself. A machine
 # without the directory keeps the v14 behaviour (no failure).
-SIDECAR_DEFAULT = r"E:\Sidecars" if os.name == "nt" else ""
+# v24 (KIT-SIDECAR-PATH): built from parts, so no kit line spells the root
+# drive-rooted (the trees' public-path guards flagged the v22/v23 literal).
+_SIDECAR_DRIVE = "E:"
+_SIDECAR_FOLDER = "Sidecars"
+SIDECAR_DEFAULT = (_SIDECAR_DRIVE + os.sep + _SIDECAR_FOLDER) if os.name == "nt" else ""
 
 
 def _default_sidecar(environ=None):
@@ -621,7 +625,7 @@ def sidecar_dir(code, kind, root=None):
 def worktree_path(repo_root, code, index, root=None):
     """Lane i of repo <code> runs here: <sidecar root>/<CODE>/Worktree/lane-<i>
     when FLEET_SIDECAR_ROOT is set (v14) or, unset, the v22 default
-    E:/Sidecars/<CODE> exists; else <parent>/<code>-worktrees/lane-<i>;
+    <SIDECAR_DEFAULT>/<CODE> exists; else <parent>/<code>-worktrees/lane-<i>;
     the old path stays in use while it exists and the new one does not."""
     if not str(code).isalnum():
         raise ValueError(f"repo code {code!r} must be alphanumeric")

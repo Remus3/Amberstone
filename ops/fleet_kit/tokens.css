@@ -24,6 +24,7 @@
   --fk-chart-6: #008300;
   --fk-chart-7: #6250d6;
   --fk-chart-8: #e34948;
+  --fk-chart-9: #0497ae;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -50,6 +51,7 @@
     --fk-chart-6: #008300;
     --fk-chart-7: #9085e9;
     --fk-chart-8: #e66767;
+    --fk-chart-9: #14a1b7;
   }
 }
 
@@ -76,6 +78,7 @@
   --fk-chart-6: #008300;
   --fk-chart-7: #9085e9;
   --fk-chart-8: #e66767;
+  --fk-chart-9: #14a1b7;
 }
 
 .fk-status-ok { color: var(--fk-status-ok); }

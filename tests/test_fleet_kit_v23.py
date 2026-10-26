@@ -28,8 +28,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 KIT = ROOT / "ops" / "fleet_kit"
-V23_MANIFEST_SHA256 = "f5d82861cce3f5c2d565495dbd3a8cceff3b9d895117a2f6f9d4c83f11ba527c"
-V23_COMMON_BLOCK_SHA256 = "5e8fa06f61033cca76c5a2868067f92974d3ab6f555963f74dbff0d9bfbbc663"
+# Kit v24 (MAIN 2026-10-26 0315 ORDER) superseded the v23 bytes (manifest
+# f5d82861...11ba527c, block 5e8fa06f...bbc663); step 1 now pins the v24
+# bytes and tests/test_fleet_kit_v24.py pins what v24 adds.
+V23_MANIFEST_SHA256 = "a41ff08e4c2ace7f48119f9ffec051ce18458184c2417d6806be39f3c8804a7d"
+V23_COMMON_BLOCK_SHA256 = "886c5f8b1a86928f91412d2800e9dfef3dd8e5b9158d14a06e65d06c22964800"
 BOARD_FILES = ("ops/loop/control/board/status.json", "ops/loop/control/board/state.json",
                "ops/loop/control/board/board.html")
 # Every RC surface that once told a session to push the board.
@@ -59,10 +62,10 @@ def test_the_vendored_kit_is_the_v23_order_bytes():
     raw = (KIT / "MANIFEST.json").read_bytes()
     assert hashlib.sha256(raw).hexdigest() == V23_MANIFEST_SHA256
     man = json.loads(raw.decode("ascii"))
-    assert man["version"] == 23 and len(man["files"]) == 23
+    assert man["version"] == 24 and len(man["files"]) == 23
     assert man["common_block_sha256"] == V23_COMMON_BLOCK_SHA256
     fh = _load("fleet_headless")
-    assert (fh.KIT_VERSION, fh.KIT_PATCH) == (23, 0)
+    assert (fh.KIT_VERSION, fh.KIT_PATCH) == (24, 0)
     for name, want in man["files"].items():
         assert hashlib.sha256((KIT / name).read_bytes()).hexdigest() == want, name
 
