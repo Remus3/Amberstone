@@ -201,8 +201,10 @@ def _wire_main(monkeypatch, tmp_path, t, ddragon, argv, *, network_ok):
         aram_modifiers={}, damage_distribution={}, skill_orders={},
         data_chunk_url="", data_chunk_bytes=0,
     ))
+    # The ARAM table covers the DDragon roster, so the RM-913 gate stays
+    # out of the way and only the RM-807 gate decides.
     monkeypatch.setattr(dse, "extract_data_blocks", lambda bodies, preferred: {
-        "aram_modifiers": {cid: {"aramDamageDealt": 1.05} for cid in t["cooldowns"]},
+        "aram_modifiers": {cid: {"aramDamageDealt": 1.05} for cid in ddragon},
         "damage_distribution": t["damage_distribution"],
         "skill_orders": t["skill_orders"],
         "data_chunk_url": "u/aram.js",
@@ -296,7 +298,7 @@ def _wire_lolmath_only(monkeypatch, tmp_path, t, snapshot_rows, argv):
         data_chunk_url="", data_chunk_bytes=0,
     ))
     monkeypatch.setattr(dse, "extract_data_blocks", lambda bodies, preferred: {
-        "aram_modifiers": {cid: {"aramDamageDealt": 1.05} for cid in t["cooldowns"]},
+        "aram_modifiers": {cid: {"aramDamageDealt": 1.05} for cid in champs},
         "damage_distribution": t["damage_distribution"],
         "skill_orders": t["skill_orders"],
         "data_chunk_url": "u/aram.js",

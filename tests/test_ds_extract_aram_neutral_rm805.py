@@ -269,7 +269,10 @@ def test_main_override_writes_and_records_the_override(monkeypatch, tmp_path, ca
 
 
 def test_main_normal_table_records_no_override(monkeypatch, tmp_path):
-    data_root = _wire_main(monkeypatch, tmp_path, _table(173, 41), [], network_ok=True)
+    # The synthetic DDragon roster is Aatrox alone, so the table carries an
+    # Aatrox row to meet the RM-913 coverage floor.
+    aram = {**_table(173, 41), "Aatrox": {**NEUTRAL, "aramDamageDealt": 1.05}}
+    data_root = _wire_main(monkeypatch, tmp_path, aram, [], network_ok=True)
     assert dse.main() == 0
     manifest = json.loads((data_root / "99.1.1" / "manifest.json").read_text(encoding="utf-8"))
     assert "aram_modifiers_neutral_override" not in manifest

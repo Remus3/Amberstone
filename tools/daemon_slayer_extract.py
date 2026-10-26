@@ -24,7 +24,8 @@ Usage:
 A lolmath ARAM modifier table that comes back >= 95 percent neutral stops the
 extract with exit code 3 and nothing written (RM-805); ``--allow-neutral-aram
 REASON`` accepts it after an adjudication, logged and recorded in the manifest.
-The damage-split and skill-order blocks get the same gate (RM-807): a block
+A table that covers under 95 percent of the canonical DDragon roster fails the
+same way (RM-913). The damage-split and skill-order blocks get the same gate (RM-807): a block
 that is >= 95 percent degenerate (all-zero split rows, empty skill orders, or
 an empty block) exits 5 with nothing written, past it only with
 ``--allow-degenerate-lolmath REASON``; a degenerate row below the floor is
@@ -952,6 +953,13 @@ def check_lolmath_coverage(lolmath: LolmathExtract) -> list[str]:
 # the manifest (``aram_modifiers_neutral_override``).
 ARAM_NEUTRAL_FAIL_FRACTION = 0.95
 EXIT_ARAM_NEUTRAL = 3
+# RM-913: a clean table can still be SHORT - 20 non-neutral rows for a
+# 173-champion roster passed the neutral floor and left the other 153 with no
+# modifiers. Every committed snapshot 16.10.1 .. 16.21.1 carries a row for every
+# canonical DDragon champion, so a table under this fraction of that roster
+# fails under the same exit and ``--allow-neutral-aram`` override (not RM-807's,
+# so an adjudicated empty-table carry is never refused twice).
+ARAM_COVERAGE_FLOOR = 0.95
 # Same field semantics as core/aram_balance_context.py (_GRID_MULT_FIELDS /
 # _GRID_FLAT_FIELDS): the multipliers are neutral at 1.0, ability haste is an
 # additive flat value, neutral at 0. A missing or non-numeric field carries no
@@ -985,7 +993,9 @@ def _aram_row_is_neutral(row: Any) -> bool:
 
 
 def check_aram_neutrality(aram_modifiers: dict[str, Any],
-                          override_reason: str | None = None) -> dict[str, Any]:
+                          override_reason: str | None = None,
+                          *,
+                          roster: Iterable[str] | None = None) -> dict[str, Any]:
     """Fail loudly when the ARAM table is >= 95 percent neutral (RM-805).
 
     Returns the measurement ``{rows, neutral_rows, neutral_fraction,
@@ -993,6 +1003,12 @@ def check_aram_neutrality(aram_modifiers: dict[str, Any],
     included) it raises ``NeutralAramTableError`` naming the counts, unless
     ``override_reason`` is a non-blank string: then it logs a WARNING and adds
     ``override_reason`` to the measurement so the caller records it.
+
+    With a non-empty ``roster`` (the canonical DDragon champion ids) and a
+    non-empty table, it also records ``missing_rows`` and ``coverage`` (ids
+    outside the roster do not count) and fails the same way under
+    ``ARAM_COVERAGE_FLOOR`` (RM-913); missing ids above that floor are named
+    in a WARNING. An empty table is left to the empty-table failure.
     """
     rows = len(aram_modifiers)
     neutral_rows = sum(1 for row in aram_modifiers.values() if _aram_row_is_neutral(row))
@@ -1003,26 +1019,44 @@ def check_aram_neutrality(aram_modifiers: dict[str, Any],
         "neutral_fraction": round(fraction, 4),
         "threshold": ARAM_NEUTRAL_FAIL_FRACTION,
     }
+    failing: list[str] = []
+    if fraction >= ARAM_NEUTRAL_FAIL_FRACTION:
+        failing.append(f"is {neutral_rows}/{rows} neutral ({fraction:.1%})" if rows
+                       else "is empty (0 rows)")
+    dd_roster = set(roster) if roster else set()
+    if dd_roster and rows:
+        missing = sorted(dd_roster - set(aram_modifiers))
+        covered = len(dd_roster) - len(missing)
+        coverage = covered / len(dd_roster)
+        out["missing_rows"] = len(missing)
+        out["coverage"] = round(coverage, 4)
+        if coverage < ARAM_COVERAGE_FLOOR:
+            failing.append(f"covers {covered}/{len(dd_roster)} of the DDragon roster "
+                           f"({coverage:.1%})")
+        elif missing:
+            log.warning("lolmath ARAM table: %d/%d DDragon-roster champion(s) have no row: %s",
+                        len(missing), len(dd_roster), missing)
     reason = (override_reason or "").strip()
-    if fraction < ARAM_NEUTRAL_FAIL_FRACTION:
+    if not failing:
         if reason:
             log.info("--allow-neutral-aram not needed: ARAM table %d/%d neutral",
                      neutral_rows, rows)
         return out
-    shape = f"{neutral_rows}/{rows} neutral ({fraction:.1%})" if rows else "empty (0 rows)"
+    shape = "; ".join(failing)
     if not reason:
         raise NeutralAramTableError(
-            f"RM-805: the lolmath ARAM modifier table is {shape}, at or above "
-            f"the {ARAM_NEUTRAL_FAIL_FRACTION:.0%} floor - an upstream reset or "
+            f"RM-805 / RM-913: the lolmath ARAM modifier table {shape}, past "
+            f"the {ARAM_NEUTRAL_FAIL_FRACTION:.0%} neutral / "
+            f"{ARAM_COVERAGE_FLOOR:.0%} coverage floor - an upstream reset or "
             "parser drift, not a balance patch; nothing was written. Adjudicate "
             "it, then re-run with --allow-neutral-aram REASON to accept it as an "
             "explicit, recorded act (a carry-forward is recorded in the manifest "
             "as aram_modifiers_carry)."
         )
     log.warning(
-        "RM-805 override: accepting a lolmath ARAM modifier table that is %s "
-        "(floor %.0f%%) - reason: %s",
-        shape, ARAM_NEUTRAL_FAIL_FRACTION * 100, reason,
+        "RM-805 override: accepting a lolmath ARAM modifier table that %s "
+        "(neutral floor %.0f%%, coverage floor %.0f%%) - reason: %s",
+        shape, ARAM_NEUTRAL_FAIL_FRACTION * 100, ARAM_COVERAGE_FLOOR * 100, reason,
     )
     out["override_reason"] = reason
     return out
@@ -1943,7 +1977,7 @@ def _lolmath_counts(lolmath: LolmathExtract) -> dict[str, int]:
 
 
 def _neutral_override_record(aram_check: dict[str, Any]) -> dict[str, Any]:
-    return {
+    rec = {
         "flag": "--allow-neutral-aram",
         "reason": aram_check["override_reason"],
         "rows": aram_check["rows"],
@@ -1951,6 +1985,10 @@ def _neutral_override_record(aram_check: dict[str, Any]) -> dict[str, Any]:
         "neutral_fraction": aram_check["neutral_fraction"],
         "threshold": aram_check["threshold"],
     }
+    for key in ("missing_rows", "coverage"):
+        if key in aram_check:
+            rec[key] = aram_check[key]
+    return rec
 
 
 def refresh_manifest_lolmath(manifest: dict[str, Any], lolmath: LolmathExtract,
@@ -2009,6 +2047,7 @@ def main() -> int:
     ap.add_argument("--allow-neutral-aram", default=None, metavar="REASON",
                     # argparse %-expands help text, so the literal percent is doubled.
                     help="RM-805: accept a lolmath ARAM table that is >= 95%% neutral "
+                         "or covers under 95%% of the DDragon roster "
                          f"(the extract otherwise exits {EXIT_ARAM_NEUTRAL} and writes "
                          "nothing); REASON names the adjudication and is logged and "
                          "recorded in the manifest")
@@ -2141,14 +2180,16 @@ def _extract_lolmath(
     lolmath.data_chunk_url = data_extract["data_chunk_url"]
     lolmath.data_chunk_bytes = data_extract["data_chunk_bytes"]
     lolmath.data_block_sources = data_extract["block_sources"]
+    ddragon_ids = canonical_champions(champions)
     aram_check = check_aram_neutrality(
         lolmath.aram_modifiers, override_reason=args.allow_neutral_aram,
+        roster=ddragon_ids,
     )
     block_check = check_lolmath_blocks(
         lolmath.damage_distribution, lolmath.skill_orders,
         override_reason=args.allow_degenerate_lolmath,
         cooldowns=lolmath.cooldowns, roles=lolmath.roles,
-        ddragon_ids=canonical_champions(champions), ratings=lolmath.ratings,
+        ddragon_ids=ddragon_ids, ratings=lolmath.ratings,
     )
     return lolmath, aram_check, block_check
 
