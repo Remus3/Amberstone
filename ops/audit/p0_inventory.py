@@ -45,12 +45,15 @@ def main() -> int:
         total_count += 1
         total_bytes += size
 
+    # -z: names come back raw (no core.quotePath C-quoting of non-ASCII) and
+    # NUL-separated (no splitlines() split on U+2028 and friends) - RM-861.
     tracked = set(
         subprocess.run(
-            ["git", "-C", str(ROOT), "ls-files"],
+            ["git", "-C", str(ROOT), "ls-files", "-z"],
             capture_output=True, text=True, encoding="utf-8", errors="replace",
-        ).stdout.splitlines()
+        ).stdout.split("\0")
     )
+    tracked.discard("")
     tracked_bytes = 0
     tracked_count = 0
     untracked_bytes = 0
