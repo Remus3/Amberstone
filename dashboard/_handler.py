@@ -79,6 +79,7 @@ from core.log_scrub import SCRUB_RANGES as _core_scrub_ranges
 from core.log_scrub import scrub_log as _core_scrub_log
 from dashboard import _dispatch
 from dashboard._errors import forward_upstream_error
+from dashboard.server import control_peer_allowed
 
 log = logging.getLogger("rc.web_dashboard")
 
@@ -101,8 +102,12 @@ _SCRUB_RANGES = _core_scrub_ranges
 
 
 # D9 control-endpoint class: POSTs gated behind X-RC-Token == RC_DASH_TOKEN
-# (when that env var is set; it is set NOWHERE in this deployment today, so
-# the gate is inert and membership is a recorded DECISION, not a live fix).
+# when that env var is set. It is set NOWHERE in this deployment today, so
+# PKG-5 (M5, 2026-10-26) added the layer that does run: with no token, a
+# control POST is served only to a loopback, same-machine or tailnet peer
+# (dashboard/server.py control_peer_allowed; RC_DASH_CONTROL_NETS readmits a
+# named LAN range) and every other peer gets 403. Reads and non-control
+# POSTs stay open to LAN viewers (the RM-240 posture below).
 #
 # RM-296c (2026-10-03), decided deliberately rather than by omission: every
 # POST that WRITES TO THE LCU COMMAND QUEUE is a control endpoint, because it
@@ -361,6 +366,33 @@ class Handler(HostAllowlistMixin, HeadDeadlineMixin, BaseHTTPRequestHandler):
             return self.address_string()
         except (AttributeError, IndexError, TypeError):
             return "?"
+
+    def _control_peer_ok(self) -> bool:
+        """PKG-5 (M5): may this connection's peer drive a control endpoint?
+
+        The peer and the address it arrived on go to
+        ``control_peer_allowed`` (dashboard/server.py). A handler with NO
+        connection is an in-process double, never a served request -
+        socketserver sets ``client_address`` and the socket before
+        ``handle()`` - so, as in ``_read_body_deadlined``, there is no
+        network peer to defend against and it passes. A connection whose
+        peer address cannot be read is refused.
+        """
+        sock = getattr(self, "connection", None)
+        if sock is None:
+            return True
+        try:
+            peer = self.client_address[0]
+        except (AttributeError, IndexError, TypeError):
+            return False
+        try:
+            local = sock.getsockname()[0]
+        except Exception:  # noqa: BLE001 - unknown arrival address: no tailnet
+            local = None
+        try:
+            return bool(control_peer_allowed(peer, local))
+        except Exception:  # noqa: BLE001 - fail closed, never a traceback
+            return False
 
     def log_message(self, fmt: str, *a: object) -> None:
         msg = "HTTP " + (fmt % a if a else fmt)
@@ -675,6 +707,14 @@ class Handler(HostAllowlistMixin, HeadDeadlineMixin, BaseHTTPRequestHandler):
                                 self._peer(), path_base)
                     self._send(401, b'{"error":"unauthorized"}', "application/json")
                     return
+            elif not self._control_peer_ok():
+                # PKG-5 (M5): no token configured, so the PEER decides. A
+                # LAN host may load the page but never drive the client.
+                log.warning("control endpoint peer reject: peer=%s path=%s",
+                            self._peer(), _scrub_log(path_base))
+                self._send(403, b'{"error":"control_peer_refused"}',
+                           "application/json")
+                return
 
         # Slice 2C-7d (2026-05-01): every POST route lives in
         # dashboard/routes_*. Dispatcher handled or it's a 404.

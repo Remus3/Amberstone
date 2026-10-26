@@ -17,9 +17,11 @@ the dashboard package consumes it anymore.
 """
 from __future__ import annotations
 
+import functools
 import html
 import ipaddress
 import logging
+import os
 import re
 import socket
 import threading
@@ -36,22 +38,151 @@ PORT = 8888
 # that carries live data - failing with no listener, so the hostname "loaded the
 # page but showed no live data" (page survived via IPv4 fallback) while typed
 # IPv4 URLs worked fully. "::" + IPV6_V6ONLY=0 answers both families. (2026-06-02)
+# HOST is the DEFAULT bind; the live one is bind_host() (PKG-5, below).
 HOST = "::"
+
+# PKG-5 (docs/PACKAGING_PLAN.md, security MUST-FIX M5): the bind host is an
+# IP literal from RC_DASH_BIND; unset keeps HOST (Legion unchanged - the
+# tailnet view and LAN page viewers depend on the wildcard). The packaged
+# launcher sets LOOPBACK_BIND (127.0.0.1: the shell's default origin, and
+# Chromium treats it as a secure context without a cert).
+BIND_ENV = "RC_DASH_BIND"
+LOOPBACK_BIND = "127.0.0.1"
+
+
+def bind_host(environ=None) -> str:
+    """The host :8888 binds: ``RC_DASH_BIND`` when set, else ``HOST``.
+
+    Only an IP literal is accepted - no name resolution at bind time, and no
+    host name has to be written anywhere. Anything else FAILS CLOSED to
+    ``LOOPBACK_BIND`` (logged): a typo must narrow exposure, never widen it.
+    """
+    env = os.environ if environ is None else environ
+    value = (env.get(BIND_ENV) or "").strip()
+    if not value:
+        return HOST
+    try:
+        ipaddress.ip_address(value)
+    except ValueError:
+        _log.warning("%s=%r is not an IP literal - binding %s instead (PKG-5)",
+                     BIND_ENV, value[:64], LOOPBACK_BIND)
+        return LOOPBACK_BIND
+    return value
+
+
+def _family_for(host: str) -> int:
+    """AF_INET for an IPv4 literal; AF_INET6 (the dual-stack default) for
+    every other value, so ``"::"`` / ``"::1"`` / ``""`` bind as before."""
+    try:
+        if ipaddress.ip_address(host).version == 4:
+            return socket.AF_INET
+    except ValueError:
+        pass
+    return socket.AF_INET6
+
+
+# PKG-5 (M5): who may drive the control endpoints (dashboard/_handler.py
+# ``is_control_endpoint``: /api/lcu-cmd, /api/loadout/apply,
+# /api/sr-draft/apply, /api/command, /api/input, /api/analyze, every POST
+# under /api/decisions/) when no RC_DASH_TOKEN is configured. Tailscale
+# numbers its nodes from the CGNAT block and its own ULA /48.
+CONTROL_NETS_ENV = "RC_DASH_CONTROL_NETS"
+TAILNET_NETS = (
+    ipaddress.ip_network("100.64.0.0/10"),
+    ipaddress.ip_network("fd7a:115c:a1e0::/48"),
+)
+
+
+def _peer_ip(value):
+    """An address string as an ``ipaddress`` object, or None.
+
+    The %-zone is dropped (a link-local peer and the address it reached
+    share it) and a v4-mapped IPv6 address - what the dual-stack listener
+    reports for every IPv4 client - is unwrapped to its IPv4 form.
+    """
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        ip = ipaddress.ip_address(value.split("%", 1)[0])
+    except ValueError:
+        return None
+    mapped = getattr(ip, "ipv4_mapped", None)
+    return mapped if mapped is not None else ip
+
+
+@functools.lru_cache(maxsize=8)
+def _extra_control_nets(raw: str) -> tuple:
+    nets = []
+    for part in raw.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        try:
+            nets.append(ipaddress.ip_network(part, strict=False))
+        except ValueError:
+            _log.warning("%s: ignoring %r (not a CIDR) (PKG-5)",
+                         CONTROL_NETS_ENV, part[:64])
+    return tuple(nets)
+
+
+def control_peer_allowed(peer, local=None, environ=None) -> bool:
+    """True when ``peer`` may POST a control endpoint with no token set.
+
+    ``peer`` is the client address, ``local`` the address the connection
+    arrived on (``getsockname()``; None when unknown). Admitted:
+
+    * loopback;
+    * this machine itself: peer == local (a browser on this box opening
+      its own LAN or tailnet address);
+    * the tailnet: peer AND local inside ``TAILNET_NETS``, so a LAN host
+      that happens to number from 100.64.0.0/10 is not admitted by
+      arriving on the LAN address; an unknown ``local`` admits no tailnet
+      peer;
+    * any CIDR in ``RC_DASH_CONTROL_NETS`` (comma-separated; the explicit
+      opt-in to readmit a LAN range).
+
+    Everything else - the LAN, link-local, an unparseable peer - is False.
+    """
+    ip = _peer_ip(peer)
+    if ip is None:
+        return False
+    if ip.is_loopback:
+        return True
+    here = _peer_ip(local)
+    if here is not None and ip == here:
+        return True
+    if here is not None and any(ip in net for net in TAILNET_NETS) \
+            and any(here in net for net in TAILNET_NETS):
+        return True
+    env = os.environ if environ is None else environ
+    raw = (env.get(CONTROL_NETS_ENV) or "").strip()
+    return bool(raw) and any(ip in net for net in _extra_control_nets(raw))
 
 
 class _DualStackMixin:
     """Bind AF_INET6 with IPV6_V6ONLY disabled so a single listener accepts both
     IPv6 and IPv4 (v4-mapped) connections. Must set the sockopt before bind, so
-    we hook server_bind (the socket already exists, unbound, at this point)."""
+    we hook server_bind (the socket already exists, unbound, at this point).
+
+    PKG-5: an IPv4-literal host (the packaged ``LOOPBACK_BIND``) gets an
+    AF_INET socket instead - an AF_INET6 socket cannot bind 127.0.0.1. Set
+    per INSTANCE before the socket exists; the class default stays AF_INET6.
+    """
 
     address_family = socket.AF_INET6
 
+    def __init__(self, server_address, *args, **kwargs) -> None:
+        self.address_family = _family_for(server_address[0])
+        super().__init__(server_address, *args, **kwargs)
+
     def server_bind(self) -> None:
-        try:
-            self.socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
-        except (AttributeError, OSError):
-            # Platform without dual-stack support: fall back to v6-only bind.
-            pass
+        if self.address_family == socket.AF_INET6:
+            try:
+                self.socket.setsockopt(socket.IPPROTO_IPV6,
+                                       socket.IPV6_V6ONLY, 0)
+            except (AttributeError, OSError):
+                # Platform without dual-stack support: fall back to v6-only bind.
+                pass
         super().server_bind()
 
 
@@ -420,11 +551,38 @@ def _tls_context(cert_path: Path, key_path: Path):
     return ctx
 
 
+def _build_server(app_dir: Path, handler_class, *, host: str | None = None,
+                  port: int = PORT):
+    """The :8888 listener, bound to ``host`` (default ``bind_host()``, PKG-5).
+
+    If ops/tls/rc.pem + rc-key.pem exist (mkcert-issued), a
+    _DualProtocolHTTPServer (HTTP requests get a 301 to HTTPS on the same
+    port); otherwise, or when TLS setup fails, plain HTTP. Returns
+    ``(server, scheme)``, or ``(None, scheme)`` when the port cannot be
+    bound. Split out of start_dashboard so a test can bind it on an
+    ephemeral port without the start-up side effects.
+    """
+    host = bind_host() if host is None else host
+    cert_path = Path(app_dir) / "ops" / "tls" / "rc.pem"
+    key_path = Path(app_dir) / "ops" / "tls" / "rc-key.pem"
+    if cert_path.exists() and key_path.exists():
+        try:
+            ctx = _tls_context(cert_path, key_path)
+            return (_DualProtocolHTTPServer((host, port), handler_class,
+                                            ssl_ctx=ctx), "https")
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("TLS setup failed, falling back to HTTP: %s", exc)
+    try:
+        return _DualStackHTTPServer((host, port), handler_class), "http"
+    except OSError as exc:
+        _log.warning("Dashboard port %d on %s unavailable: %s", port, host, exc)
+        return None, "http"
+
+
 def start_dashboard(app_dir: Path) -> None:
     """Launch the dashboard HTTP(S) server in a daemon thread. Idempotent-ish.
-    If ops/tls/rc.pem + rc-key.pem exist (mkcert-issued), serves TLS via
-    _DualProtocolHTTPServer (HTTP requests get a 301 to HTTPS on the same
-    port); otherwise falls back to plain HTTP."""
+    The listener (TLS when the mkcert pair exists, else plain HTTP) and its
+    bind host come from _build_server."""
     import web_dashboard
     from dashboard._handler import Handler
     app_dir = Path(app_dir)
@@ -433,35 +591,20 @@ def start_dashboard(app_dir: Path) -> None:
     # in-package consumer reads it as of Tier 2 #6 (champ-select brief
     # extraction switched to dashboard._context.APP_DIR).
     web_dashboard._APP_DIR = app_dir
-    handler_class = Handler
 
-    cert_path = app_dir / "ops" / "tls" / "rc.pem"
-    key_path  = app_dir / "ops" / "tls" / "rc-key.pem"
-    scheme = "http"
-    srv = None
-    if cert_path.exists() and key_path.exists():
-        try:
-            ctx = _tls_context(cert_path, key_path)
-            srv = _DualProtocolHTTPServer((HOST, PORT), handler_class, ssl_ctx=ctx)
-            scheme = "https"
-        except Exception as exc:  # noqa: BLE001
-            _log.warning("TLS setup failed, falling back to HTTP: %s", exc)
-            srv = None
+    host = bind_host()
+    srv, scheme = _build_server(app_dir, Handler, host=host)
     if srv is None:
-        try:
-            srv = _DualStackHTTPServer((HOST, PORT), handler_class)
-        except OSError as exc:
-            _log.warning("Dashboard port %d unavailable: %s", PORT, exc)
-            return
+        return
 
     t = threading.Thread(target=srv.serve_forever, daemon=True, name="WebDashboard")
     t.start()
     if scheme == "https":
         _log.info("Web dashboard on https://%s:%d/  (HTTP requests on the "
                   "same port 301-redirect)",
-                  HOST, PORT)
+                  host, PORT)
     else:
-        _log.info("Web dashboard on http://%s:%d/  (no TLS cert)", HOST, PORT)
+        _log.info("Web dashboard on http://%s:%d/  (no TLS cert)", host, PORT)
 
     # Vision server: keep a LIVE moon_vision_server.py on :8889 (RM-735).
     # Was a one-shot connect_ex here, which checked port ownership once at
