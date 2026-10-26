@@ -71,6 +71,7 @@ const ctz = require("./clickthrough_zones");
 const upd = require("./update_channel");
 const cg = require("./crash_guard");
 const tog = require("./overlay_toggle");
+const nav = require("./nav_guard");
 
 // In-game overlay liveness (CRITICAL). A fullscreen League window fully OCCLUDES
 // this always-on-top transparent overlay. On Windows, Chromium's native window-
@@ -470,6 +471,49 @@ function attachCrashGuard(win, key, onGiveUp) {
   });
 }
 
+// --- PKG Q/A: external-link + navigation policy (./nav_guard, pure) ----------
+// shell.openExternal launches whatever handler Windows registered for a
+// scheme, so only http(s) ever reaches it; anything else is logged + dropped.
+function openExternalSafe(url) {
+  if (!nav.isSafeExternalUrl(url)) {
+    console.log("[rc-shell] blocked external open: scheme is not http/https");
+    return;
+  }
+  try {
+    Promise.resolve(shell.openExternal(url)).catch(() => {});
+  } catch (_e) {
+    // best-effort
+  }
+}
+
+// Companion + overlay carry the rcShell preload bridge, so they must stay on
+// the RC origin: window.open / target=_blank never opens an Electron window,
+// and a cross-origin in-window navigation is cancelled (an http(s) target goes
+// to the default browser instead). Same-origin route / hash changes are
+// untouched. loadURL (the shell's own reloads) does not emit will-navigate.
+function guardNavigation(win) {
+  if (!win || win.isDestroyed()) {
+    return;
+  }
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    openExternalSafe(url);
+    return { action: "deny" };
+  });
+  win.webContents.on("will-navigate", (event, legacyUrl) => {
+    // Electron 25+ carries the target on event.url; the positional arg is the
+    // deprecated spelling of the same value.
+    const target = event && typeof event.url === "string" ? event.url : legacyUrl;
+    const d = nav.navigationDecision(target, resolvedOrigin);
+    if (d.allow) {
+      return;
+    }
+    event.preventDefault();
+    if (d.openExternal) {
+      openExternalSafe(target);
+    }
+  });
+}
+
 function createWindow() {
   const saved = store.load(statePath(), {});
   const cfg = cfgmod.resolveConfig(saved, process.env);
@@ -535,15 +579,9 @@ function createWindow() {
 
   // Open target=_blank / external links in the default browser, never a new
   // Electron window (keeps the shell single-window + avoids loading arbitrary
-  // origins inside the trusted shell).
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    try {
-      shell.openExternal(url);
-    } catch (_e) {
-      // best-effort
-    }
-    return { action: "deny" };
-  });
+  // origins inside the trusted shell), and keep in-window navigation on the
+  // RC origin so the preload bridge never reaches a foreign page.
+  guardNavigation(mainWindow);
 
   mainWindow.loadURL(cfg.origin);
 
@@ -664,14 +702,7 @@ function createOverlayWindow() {
     { forward: true }
   );
   overlayWindow.setOpacity(overlaySettings.overlayOpacity);
-  overlayWindow.webContents.setWindowOpenHandler(({ url }) => {
-    try {
-      shell.openExternal(url);
-    } catch (_e) {
-      // best-effort
-    }
-    return { action: "deny" };
-  });
+  guardNavigation(overlayWindow); // same link + navigation policy as the companion.
   overlayWindow.loadURL(ov.overlayUrl(resolvedOrigin, panelSet, overlayScale));
   // First-paint show gate (flash fix). show:false + loadURL means the window is
   // not yet painted; showing it in the create tick (as applySurface used to) pops
