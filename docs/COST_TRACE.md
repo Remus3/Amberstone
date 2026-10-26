@@ -34,7 +34,7 @@ records there. moon_proxy only does the 2s vision dedupe accounting.
 | tft/tft_coach_engine.py:769 | HAIKU | YES (record_anthropic_response, cache_control ephemeral) | POLLING (45s debounce) | tft_coach |
 | tft/tft_live_analysis.py:292 | HAIKU | YES (record_anthropic_response) | POLLING (vision cycle) | tft_live_analysis |
 | tft/tft_live_analysis.py:316 | HAIKU | YES (record_anthropic_response) | POLLING (aug select) | tft_live_aug_select |
-| tft/tft_vision_reader.py:186 | SONNET | YES (record_anthropic_response) | POLLING (vision local fallback) | tft_vision |
+| tft/tft_vision_reader.py:186 | HAIKU | YES (record_anthropic_response) | POLLING (vision local fallback) | tft_vision |
 | agents/agent7_context/warm_session.py:154 | HAIKU | YES (record_anthropic_response) | WARM (persistent session) | agent7_warm |
 
 **CORRECTION 2026-08-06 - the `champ_select_brief` row above is RETIRED, not
