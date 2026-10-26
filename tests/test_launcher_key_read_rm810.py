@@ -56,9 +56,9 @@ Pinned here:
           harmless there, as the line holds no "(";
         - a trailing ^ continuation makes the next line's ")" literal, so
           the block the scan closes is still open in cmd. Tracked lines
-          ending in ^ (ops/install_startup.bat:27-34,
-          ops/run_deploy_test.bat:8, 12-13) sit outside any block, with no
-          ")" after them;
+          ending in ^ (ops/run_deploy_test.bat:8, 12-13) sit outside any
+          block, with no ")" after them (ops/install_startup.bat's went
+          with RM-826 (b), tests/test_install_startup_shortcut_rm826.py);
         - %errorlevel% read later on the same line, outside any block
           (`cmd /c exit 3 & echo %errorlevel%`);
         - a ^^& separator (a literal caret, then a real &) is not a

@@ -23,16 +23,12 @@ set VBS=%SCRIPT_DIR%rc_watcher_launch.vbs
 echo Set oShell = CreateObject("WScript.Shell") > "%VBS%"
 echo oShell.Run "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File ""%WATCHER%"" -ConfigPath ""%CONFIG%""", 0, False >> "%VBS%"
 
-:: Create shortcut in Windows Startup folder pointing to the VBS launcher
-"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -Command ^
-  "$ws = New-Object -ComObject WScript.Shell; ^
-   $s = $ws.CreateShortcut('%STARTUP%\RiotCommanderWatcher.lnk'); ^
-   $s.TargetPath = 'wscript.exe'; ^
-   $s.Arguments = '/nologo \"%SCRIPT_DIR%rc_watcher_launch.vbs\"'; ^
-   $s.WorkingDirectory = '%SCRIPT_DIR%'; ^
-   $s.Description = 'Riot Commander League Watcher'; ^
-   $s.WindowStyle = 7; ^
-   $s.Save()"
+:: Create shortcut in Windows Startup folder pointing to the VBS launcher.
+:: One line on purpose: a caret inside the double-quoted -Command string is
+:: a literal, so a command split over lines ended at its first line (RM-826).
+:: The paths reach PowerShell as environment variables, never pasted into
+:: its source, so a quote or an apostrophe in a path cannot break it.
+"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -Command "$q = [char]34; $d = $env:SCRIPT_DIR; $s = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $env:STARTUP 'RiotCommanderWatcher.lnk')); $s.TargetPath = 'wscript.exe'; $s.Arguments = '/nologo ' + $q + $d + 'rc_watcher_launch.vbs' + $q; $s.WorkingDirectory = $d; $s.Description = 'Riot Commander League Watcher'; $s.WindowStyle = 7; $s.Save()"
 
 echo.
 if exist "%STARTUP%\RiotCommanderWatcher.lnk" (
