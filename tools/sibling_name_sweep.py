@@ -268,6 +268,9 @@ _ALLOW_SEGMENTS = frozenset(
         "RC-CIWatchdog",
         "RC-Recordings",
         "Peer-Bridge",
+        # Kit v24 (KIT-SIDECAR-PATH) builds fleet_lanes.SIDECAR_DEFAULT from
+        # parts, so no kit line spells the sidecar root drive-rooted any more;
+        # the v23 "Sidecars" row was dropped (tests/test_fleet_kit_v24.py).
         # OS roots
         "Users",
         "Program Files",
