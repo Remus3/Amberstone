@@ -41,6 +41,21 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-25d - session 136: C1 red fixed, two live TFT games QA'd, nine TFT / overlay fixes, HUD reader spec; push hold ON (nothing pushed)
+
+- **Operator steers:** push hold stays ON (commit locally only); "dont have the panels fade as much when the data is out of date"; ruling "I want to do what they are doing; not utilize their software as a dependency" (no Overwolf data dependency); board push not needed this session; NEXT = packaged, live-updatable app (below).
+- **C1:** dispatch 40230847617 red = 2 tests in `tests/test_no_process_wide_stdlib_fakes_rm801.py` on CI Python 3.12 (`_thread.start_new_thread` vs 3.13+ `start_joinable_thread` in `tests/_module_view.py`); fixed `c7e2c0b0c`, UNPUSHED - CI cannot confirm it until a push.
+- **Live games (QA_REPORT.md + LIVE_NOTES_s136*.md in `ops/runtime/tft_qa/20261025-153652` and `-162857`; both rated A, 3rd):** N13 PASS, D1 PASS, HP line PASS, N9 PASS (Ctrl+Shift+O toggle + Ctrl+Shift+A drag / layout save seen), RM-899 PASS (13.1 s recovery; a 7 s blank coaching stub after restart stays open); FAILs fixed: coaching sense (T9), 2-star units doubled (T14), stage led 2-3 rounds (T15).
+- **Shipped on LOCAL main (LEDGER 1907-1910; every slice verifier-gated):** T4 RM-904 `f53a35853`; T5 `51a6287d9`; T9 `b89b10298` + `3df4a75a7` + `9d3acac79`; T10 `a4f2003fb`; T11 `15e39d167`; T12 `dea6cc98b` + `93951754b`; T14 `e9424c8a8`; T15 `847b99f75`; docs T6 `99c9db198`, T16 HUD spec `1915b00e5` (TFT_PROGRAM sec 10, TFT-HUD-00..12); RM-846 ruled B `7a40a5cb4` (LEDGER 1906).
+- **Housekeeping:** T1 QA_REPORT for 20261025-131926; T2 removed 9 s135 worktrees (kept agent-ad9cd227: 1484-file icon cache); /done removed this session's 9 merged worktrees (branches kept; renders in `ops/runtime/branch_bundles/s136-wt-preserved/`).
+- **Parked:** T13 (id-0 game-end rating vs the store rating) refuted twice, branch `worktree-agent-a2969c932e74f20d7`, needs a redesign.
+- **Do NOT redo:** everything above; the ONLOGON tasks were left unchanged on purpose (the packaged launcher replaces them).
+- **Next:** full QA of the ow-electron port + a packaged, live-updatable app (services start on app launch, never at boot); then TFT-HUD-01.
+
+---
+
+---
+
 # 2026-10-25b - session 134: scoped TFT session - standalone TFT client, Augur engine, RM-615 / RM-616 / RM-699, three 1st-place QA reports
 
 - **Operator steers:** TFT only today; plays without interacting, wants terse output and a TFT QA after each match; "keep updates push commits locally for now" (NO push this session); "global frozen edit allowed" (session-scoped, re-confirm next session); engine name "Augur" provisional ("Hexwright" rejected; alternatives Rollwise, Tempo).
