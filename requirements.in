@@ -21,7 +21,7 @@
 # their headers, or ci.yml's "hashed CI install sets agree" step goes red.
 
 anthropic==1.11.0
-certifi==2026.10.19
+certifi==2026.10.23
 json5==0.15.0
 opencv-python==5.0.0.93
 Pillow==13.0.0
