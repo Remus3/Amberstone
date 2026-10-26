@@ -1,14 +1,14 @@
 """Append-only DS pick calibration log.
 
-Called from coaches after rank_for() runs so each coaching cycle produces one
-entry in data/ds_calibration.jsonl. At calibration time (Stage 5) the log is
-joined against rewind_history.db on (champion, mode, approximate timestamp) to
-compare DS-recommended items vs. actually purchased items vs. win/loss outcome.
-
-One entry per coaching tick (~30s cadence). The calibration analysis script
-uses the last entry per game (largest owned_items list) for the final-build
-comparison. Non-fatal: any write failure is silently swallowed so calibration
-logging never breaks coach operation.
+Called from coaches after their DS dispatch returns rows, so each such coaching
+tick (~30s cadence) produces one entry in data/ds_calibration.jsonl. The
+consumer, core/ds_calibration_agreement.py (run by
+tools/ds_calibration_report.py), joins the log against rewind_history.db
+EXACTLY on the Riot game id (``game_id``, else a ``live_<gameId>``
+``match_key``) to compare DS-recommended items vs. actually purchased items vs.
+win/loss outcome; it takes the earliest tick that recommended each unowned
+item, per (game, item, scorer). Non-fatal: any write failure is silently
+swallowed so calibration logging never breaks coach operation.
 """
 from __future__ import annotations
 

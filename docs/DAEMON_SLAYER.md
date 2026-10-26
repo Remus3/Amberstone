@@ -116,7 +116,9 @@ and `docs/specs/RM-141_JADE_MODE.md:24` carry the same wrong label.
 
 ## Calibration pipeline
 
-`core/ds_calibration.py` appends picks per game tick to `data/ds_calibration.jsonl`. After 50+ games, run calibration analysis: join log vs `rewind_history.db` on (champion, mode, ~ts). Status: accumulating.
+`core/ds_calibration.py` `log_ds_run` appends one line to `data/ds_calibration.jsonl` (gitignored) for each coaching tick whose DS dispatch returned rows. Its callers are `coach_integration/_coach.py` (SR), `coaches/aram_coach.py`, `coaches/arena_coach.py` and `coaches/brawl_coach.py`. A line always carries `ts`, `champion`, `mode`, `level`, `owned_items`, `ds_picks`, `game_id` and `match_key`; the RM-875 re-run inputs are added only when a caller passes them.
+
+`python tools/ds_calibration_report.py` runs `core/ds_calibration_agreement.py` over the log and writes `data/ds_calibration_agreement.json`. The join with `rewind_history.db` is exact on the Riot game id: a line's `game_id`, else a `match_key` of the form `live_<gameId>`, against the numeric suffix of `matches.match_id`. It is not a (champion, mode, ~ts) match. The synthetic `sess_<mode>_<champ>_<seq>` keys minted when the game state carries no game id never join and are counted in `records_without_game_id`. One observation is one (game, item, scorer), taken at the earliest tick that recommended the item while it was unowned; a (mode, scorer) cell is reported only at `MIN_BUCKET_N` = 20 observations or more. There is no games threshold, and how much has accrued is a property of the local log: run the report to measure it. The result is descriptive only and never feeds `agents/daemon_slayer` rank.
 
 ## Arena-specific: Arcane Sweeper
 
