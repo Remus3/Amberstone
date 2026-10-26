@@ -93,3 +93,86 @@ bot_merge_check clean. Reap: 0 removed, 7 kept, 1 listed (drain-wave2-tail-backl
 on main). DS :8860 ok (1.290.0, 16.21.1); RC pid 23224 alive, last_reload_ok; restart_trigger
 empty; no game (mode client); session file < 1 MB; no intent / steers; 3 PRs; no new memory.
 Board: headless, not rendered.
+# archived from RC-NEXT-SESSION.txt at 2026-10-26T16:20:00Z
+====================
+CLOSED - S140 RECORDS, OLD NEXT-ACTION TEXT, DO-NOT-RE-LITIGATE AND STATUS (s141 /done trim; moved VERBATIM; the full prior file is git show 2d3e1c85b:RC-NEXT-SESSION.txt)
+====================
+From the header (the s142 hand-off rewrites both next actions; PKG phase 1 + wave A + PKG-1b landed
+s141, LEDGER 1924; C7 is carried there as Next action 2):
+Next action 1 (s140 C7, NOT DONE; MAIN ORDER 0315 item 1; waits on the operator's in-chat yes, RC's
+attended gate for an out-of-tree act asked only by a note = ASKS 39): on yes, `gh api -X PATCH
+repos/<owner>/<repo>/code-scanning/alerts/66 -f state=open` (s140 read back "dismissed false
+positive"). The fix a0e066978 was PUSHED before the reopen (its CodeQL run 40310881621 ran first),
+so a LATER CodeQL run is needed (next push or a codeql workflow_dispatch); then read back "fixed"
+and send MAIN the read-back in the next RC note (the 0543 ANSWER says it follows).
+Next action 2 (operator, 2026-10-25, verbatim intent; NOT reached s137-s140): "full Q/A on the
+ow-electron port and having the repo be a proper packaged output; not needing others to use claude
+to try and figure out how to get it to connect everything etc." Plus: "I also would like it to be
+live-updatable ; so that essentially I would be running the packaged output, and for updates/changes
+to local/github restarting of the app etc is minimal/not needed. *do not have the app start at boot*
+local services start on app launch." No lane works it (lane 7's prompt excludes rc-shell/**).
+Context: docs/OVERLAY_COMPLIANCE_PLAN.md (PLAN ONLY; its "Electron 33" is stale - rc-shell
+electron 44.9.1 since RM-908); ROADMAP PKG row + RM-189 gates (Riot dev-portal registration, public
+site + ToS + Privacy Policy, B4-f live-advice ruling). Operator ruling 2026-10-25 "I want to do what
+they are doing; not utilize their software as a dependency" = no Overwolf data dependency, build
+in-house (TFT_PROGRAM sec 10). The ONLOGON tasks (RC-Supervisor, RC-LCUAgent / RC-LiveClientRelay /
+RC-HotkeyListener) stay until the packaged launcher replaces them. Memory:
+project_packaged_app_requirements.md.
+FIRST: CPU / memory glance; inbox_tick.py --pending; gh pr list; git fetch + origin/main still an
+ancestor of main; gh run view 40310881435 (s140 push ci, if the hand-off says pending).
+From "SESSION 140 ITEMS (LEDGER 1916-1920; WAKEUP_NOTES 2026-10-26b)" (the still-open lines are
+re-carried tighter in the s142 hand-off; RM-909 SHIPPED s141 LEDGER 1923; the OutboundCap
+undercount fixed s141 LEDGER 1925; the K worktree removed s141, its branch kept):
+- Operator order s140 (chat): "continue headlessly all lanes". All seven rotation lanes (4 uiux, 5
+  research, 6 ds, 7 repo, 8 true-audit, 9 gated, 10 queue) run under ONE rotator (pid 24260, alive
+  at /done); launches held by the 24 h run budget (96/120 used, 24 reserve). Lane "upgrade" is not
+  in the rotation and stays unlaunched: its prompt pushes to origin (halt boundary).
+- RM-909 OPEN (ROADMAP row): which earlier test leaks a live LcuClient into the xdist worker.
+- OutboundCap undercounts: the 0003 and 0449 RC ANSWERs (2026-10-26) are not in the outbound-note
+  ledger (1 of 12 shown); record them or tell MAIN.
+- For MAIN (observation, no RC act owed; fold into the batched note): the kit rollout
+  (tools/kit_rollout.py, claude -p, bypassPermissions) edits and commits the MAIN checkout, not a
+  worktree, and committed 6efee7343 over a red suite (1 failed, the C9 flake). Memory:
+  feedback_kit_rollout_commits_in_main_checkout.md.
+- Memory was tight s140: Claude Code stopped a poll loop at 04:45 (low memory); free commit fell to
+  ~2.5 GB while two trees' suites overlapped.
+- The stop-claim gate flagged "45803 passed" as unbacked: it is the rollout's log
+  ops/runtime/kit_v24_suite.log, not an s140 run; s140's graded run is C10 (Status).
+- Worktree agent-a35c8a72b0640e054 holds RC's K 32381e158 (superseded byte-for-byte by 6efee7343 +
+  d6a646e11); reap lists it. Remove via the squash-merged recipe (memory); nothing is lost.
+- The vision process (:8889) runs the pre-a0e066978 _bind_host until its next respawn (unchanged).
+- drain/wave2-tail-backlog: worktree removed s140 without force (14 ignored entries to the Recycle
+  Bin); branch and 708665323 kept (RM-229 / RM-822 KEEP).
+From "SESSION 138-139 ITEMS" (cleared s141 by a585c475b, CLAUDE.md 53445 B, LEDGER 1922):
+- CLAUDE.md 95 percent of budget (58273 of 61440 B at s140 /done; 92 s139, 91.5 s138; warn line
+  55296): drift_guard breach - relocate rules (a rule-line fix; /done does not edit CLAUDE.md).
+From "CARRIED FROM s133" (the RM-809 part SHIPPED s141 a585c475b; RM-817 and RM-819 d stay carried):
+- Fix RM-817 push-CI shape guard gaps; measure RM-819 d (test_rm740_cg / test_body_read_timeout_rm152
+  on a quiet box); fix RM-809 (CLAUDE.md Tier-2 / DS batch lines cite the Share mirror removed in
+  7c0ff1624; a rule-line fix, /done does not edit CLAUDE.md).
+From "DO NOT RE-LITIGATE" (each with its Reverses if:):
+- s140 C6 kit v24 (LEDGER 1918): MAIN's rollout committed first (6efee7343), RC hardened on top
+  (d6a646e11). Alternatives: land RC's K 32381e158 first, or discard K. Why: never race another live
+  agent's uncommitted edits, and the 24 kit files were byte-identical. Reverses if: MAIN asks RC to
+  drop the hardening.
+- s140 C9 (LEDGER 1919): the test_lcu_lockfile_notice_dedupe red was test isolation (a foreign
+  LcuClient's :136 repeat reached the process-wide rc.lcu dedupe filter), not a production race;
+  fixed tests-only 008b386b9. Reverses if: the RM-909 repro shows the repeat comes from production
+  code on a real clock.
+From "STATUS, CONTEXT, ACCEPTANCE":
+Status (s140 /done): commits 863027b54..bb559e747 (LEDGER 1916-1920; /done ROADMAP relocation
+bb559e747), then this hand-off commit. PUSHED 1cf593a58..bb559e747 main -> main (pre-push dry runs
+clean: identity, sweep "ARMED", credential 0; no game-id-shaped numbers); bot_merge_check clean (11);
+contributors = the operator only. Gate: ruff clean, hygiene 14 passed, ROADMAP guards 471 passed;
+drift_guard 1 breach (CLAUDE.md 95 percent, carried). Full suite (2c): covered by local C10 on
+dc3daa52c (HEAD differs only in .md): "45813 passed, 101 skipped, 2 warnings, 19047 subtests passed
+in 704.82s", EXIT=0 (scratchpad c10-suite/suite.log); no dispatch. s139 dispatch 40273347517
+(35007e479) green; nightly 40291920817 (1cf593a58) green. CI on bb559e747: ci 40310881435 green (check +
+sibling-sweep-tree), docs-guards 40310881743 green, codeql 40310881621 pending. Reap: 3
+removed, 7 lanes kept, 1 listed (K). RC: pid 36036 alive, last_reload_ok true; no game. Session file
+1.6 MB. Inbox 0 pending; no steer, no intent. perseus_sync 2254/2254. Board: rendered
+NON-final after this commit (s130 finding). Hand-off ~29.3 KB of the 30 KB cap: trim before adding.
+Acceptance: alert 66 reads "fixed" after the reopen and a later CodeQL run, read-back sent to MAIN;
+a QA'd packaged build of the ow-electron shell that starts every local service on launch, takes
+local / GitHub updates with minimal or no restart and never starts at boot; the operator asks
+re-batched in one line.
