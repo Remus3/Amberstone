@@ -81,10 +81,14 @@ updates:
       - dependency-name: "pydantic"
         versions: [">2.13.5,<=2.14.1"]
 
-  # npm: every tracked package.json that declares dependencies. NONE carries a
-  # tracked lockfile - package-lock.json is gitignored repo-wide - so
-  # Dependabot updates the package.json ranges only. lane-widget/package.json
-  # declares no dependencies at all and is deliberately not listed.
+  # npm: every tracked package.json that declares dependencies.
+  # package-lock.json is gitignored repo-wide EXCEPT rc-shell/package-lock.json,
+  # which is tracked since PKG-8 (.gitignore negation), so an rc-shell bump
+  # must regenerate that lock when it lands (path B:
+  # npm install --package-lock-only --ignore-scripts in rc-shell). The
+  # ops/audit/lolmath_ds_sweep lock stays ignored, so Dependabot updates its
+  # package.json ranges only. lane-widget/package.json declares no
+  # dependencies at all and is deliberately not listed.
   - package-ecosystem: npm
     directories:
       - "/rc-shell"
