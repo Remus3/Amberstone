@@ -19,7 +19,9 @@
 //   moves a later slot.
 // Lines 2-5, workflow rows from ops/loop/control/progress/*.json (item 12):
 //   [>] task-name     [####------]  45% ~3m   step text
-//   v20: a file with "started" reads `45% ~3m of 6.5m [2:25PM]` (etaClock).
+//   v21: a running file with "started" reads
+//   `started 1:55PM - 45% ~3m of 6.5m Remain [2:25PM]` (runClock, KIT-ETA-REMAIN);
+//   one without reads `45% ~3m Remain`.
 //   Order (v16): running rows first, then stale, needs, blocked, halted,
 //   done/failed, abandoned; first-seen (file creation) order inside a group.
 //   [+]/[x] rows stay 10 min after their last write; running silent > 2x ETA
@@ -222,9 +224,16 @@ function fmtHalfMin(sec) {
   return (n % 2 ? Math.floor(n / 2) + '.5' : String(n / 2)) + 'm';
 }
 
-function fmtClock(ms) {
-  const t = new Date(Math.ceil(ms / 1000 - 1e-6) * 1000);
-  if (t.getSeconds()) t.setSeconds(60, 0);
+function fmtClock(ms, down) {
+  // v21: down=true rounds DOWN (the start time); default UP (the finish).
+  let t;
+  if (down) {
+    t = new Date(Math.floor(ms / 1000 + 1e-6) * 1000);
+    t.setSeconds(0, 0);
+  } else {
+    t = new Date(Math.ceil(ms / 1000 - 1e-6) * 1000);
+    if (t.getSeconds()) t.setSeconds(60, 0);
+  }
   const h = t.getHours();
   const mm = String(t.getMinutes()).padStart(2, '0');
   return (h % 12 || 12) + ':' + mm + (h < 12 ? 'AM' : 'PM');
@@ -255,7 +264,25 @@ function etaClock(pct, etaS, startedMs, nowMs, updatedMs) {
   }
   const rem = Math.max(0, finish - nowMs);
   return pct + '% ~' + fmtHalfMin(rem / 1000) + ' of ' + fmtHalfMin(total / 1000) +
-    ' [' + fmtClock(finish) + ']';
+    ' Remain [' + fmtClock(finish) + ']';
+}
+
+// v21 (KIT-ETA-REMAIN, operator order 2026-10-19): the one running-row form,
+// `started 1:55PM - 38% ~20m of 32m Remain [2:27PM]`; with no start
+// `38% ~3m Remain`. Mirrors fleet_checklist.run_clock.
+function startedClock(startedMs) {
+  return typeof startedMs === 'number' && startedMs > 0 ? 'started ' + fmtClock(startedMs, true) : '';
+}
+
+function runClock(pct, etaS, startedMs, nowMs, updatedMs) {
+  if (typeof startedMs === 'number' && startedMs > 0) {
+    const clk = etaClock(pct, etaS, startedMs, nowMs, updatedMs);
+    return clk ? startedClock(startedMs) + ' - ' + clk : '';
+  }
+  const rem = fmtEta(etaS);
+  if (!rem) return '';
+  const p = typeof pct === 'number' && isFinite(pct) ? Math.max(0, Math.min(100, Math.trunc(pct))) + '% ' : '';
+  return p + rem + ' Remain';
 }
 
 function ownerDead(owner, alive) {
@@ -316,12 +343,15 @@ function rowLine(r, columns, plain, nowMs) {
   const pct = typeof r.pct === 'number' ? Math.max(0, Math.min(100, Math.round(r.pct))) : null;
   const fill = pct == null ? 0 : Math.round(pct / 10);
   const bar = '[' + '#'.repeat(fill) + '-'.repeat(10 - fill) + ']';
-  // v20: `~rem of total [clock]` once the file carries "started".
-  const clk = r.state === 'running' && r.startedMs
-    ? etaClock(pct == null ? 0 : pct, r.eta, r.startedMs, nowMs || Date.now(), r.updatedMs) : '';
-  const tail = clk ? clk.slice(clk.indexOf(' ') + 1) + ' ' : pad(fmtEta(r.eta), 5) + ' ';
-  const head = ' ' + pad(ascii(r.task), 13) + ' ' + bar + ' ' + rpad(pct == null ? '--' : pct + '%', 4) +
-    ' ' + tail;
+  // v21: a running row reads the runClock form in place of the pct column -
+  // `started 1:55PM - 38% ~20m of 32m Remain [2:27PM]`, or `45% ~3m Remain`.
+  const run = r.state === 'running';
+  const clk = run && r.startedMs
+    ? runClock(pct == null ? 0 : pct, r.eta, r.startedMs, nowMs || Date.now(), r.updatedMs) : '';
+  const eta = fmtEta(r.eta);
+  const head = ' ' + pad(ascii(r.task), 13) + ' ' + bar + ' ' +
+    (clk ? clk + ' ' : rpad(pct == null ? '--' : pct + '%', 4) + ' ' +
+      (run && eta ? eta + ' Remain' : pad(eta, 5)) + ' ');
   const room = Math.max(0, columns - 3 - head.length);
   const step = ascii(r.step).replace(/\s+/g, ' ').trim().slice(0, room);
   return sgr(plain ? '' : ROW_SGR[r.state], ROW_GLYPH[r.state]) + (head + step).replace(/\s+$/, '');
@@ -459,7 +489,7 @@ function readStdin() {
 }
 
 module.exports = { render, progressRows, rowLine, rowLines, markerVerdict, gitInfo, headOf,
-  mainHead, codeOf, laneOf, pctSlot, fitSlots, fmtEta, etaClock, fmtHalfMin, fmtClock, SLOTS, ascii, ownerDead,
+  mainHead, codeOf, laneOf, pctSlot, fitSlots, fmtEta, etaClock, startedClock, runClock, fmtHalfMin, fmtClock, SLOTS, ascii, ownerDead,
   ABANDON_S, DROP_S };
 
 if (require.main === module) {

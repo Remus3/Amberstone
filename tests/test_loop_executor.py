@@ -440,7 +440,11 @@ def test_the_sdk_spawn_carries_the_console_flash_flag(tmp_path: Path,
     _bind_launch_chain(monkeypatch, Popen=_popen)
     rec = _sdk(tmp_path).run(1, "b", "fixed")
     assert rec.error is None
-    assert seen["creationflags"] == getattr(subprocess, "CREATE_NO_WINDOW", 0), (
+    # Kit v21 (CS-1231): on Windows the child may also start SUSPENDED inside
+    # the run's job object (0x4, resumed once adopted); nothing else rides.
+    no_window = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    flags = seen["creationflags"]
+    assert flags & no_window == no_window and flags & ~(no_window | 0x4) == 0, (
         "the console-flash flag must reach every spawn on every platform")
     assert ("start_new_session" in seen) is (sys.platform != "win32")
 

@@ -71,13 +71,15 @@ def kit_platform(request, monkeypatch):
         # Windows' signal module has no SIGKILL; the kit names it on POSIX.
         monkeypatch.setattr(signal, "SIGKILL", _SIGKILL, raising=False)
 
-    def pinned(proc):
+    def pinned(proc, job=None):
+        # kit v21 (CS-1231): _run passes its Windows job object (None for a
+        # stand-in Popen); forward it untouched.
         saved_sys, saved_os = k.sys, k.os
         k.sys = _PlatformSys(plat)
         if plat != "win32":
             k.os = _PosixGroupOs()
         try:
-            return real(proc, grace=0)
+            return real(proc, grace=0, job=job)
         finally:
             k.sys, k.os = saved_sys, saved_os
 

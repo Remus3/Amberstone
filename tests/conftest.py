@@ -163,8 +163,8 @@ _VISION_TOKEN_DEFAULT_APPLIED = _apply_vision_token_test_default(os.environ, _VI
 # FLEET-KIT v12 RACE GUARDS (FLEET-COMMON item 16 d; MAIN 2026-10-08 2031 ORDER
 # step 6): the kit's test guard. Its SESSION fixture fails a run that changed live
 # tree state (ops/loop/control, moon_sync_inbox, moon_sync_outbox; the kit's
-# ledger / progress / claims / locks / lanes ignores plus the live inbox tick's,
-# board push's and lane drivers' (RM-874) own files, passed as extra_ignore since
+# ledger / progress / claims / locks / lanes / board ignores plus the live inbox
+# tick's and lane drivers' (RM-874) own files, passed as extra_ignore since
 # kit v14; new inbox files allowed). Its FUNCTION fixture points every env var
 # in tests/_fleet_guard_config.ENV_ROOTS at tmp_path/<sub>. Loaded by file path
 # so ops/fleet_kit never goes on sys.path. Pinned by

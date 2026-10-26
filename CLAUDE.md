@@ -107,13 +107,17 @@ edit. Tree-specific rules go BELOW this block, never inside it.
        `Session <n> checklist` (n = this tree's session counter, kept in its
        hand-off file; a headless fire uses its run count), then one line per
        task in execution order: `<box> <ID>: <imperative task, one line>`, plus
-       `(<state>, <pct>% ~<rem>m of <total>m [<h:mmAM/PM>])` only while it is
-       running (e.g. `builder running, 25% ~22.5m of 30m [2:25PM]`). Why: the
-       operator forgets when an estimate was given. rem and total round UP
-       to 0.5 min; total is re-estimated as elapsed / pct on each update; the
+       `(<state>, started <h:mmAM/PM> - <pct>% ~<rem>m of <total>m Remain
+       [<h:mmAM/PM>])` only while it is running (e.g. `builder running,
+       started 1:55PM - 25% ~22.5m of 30m Remain [2:25PM]`). Why: the
+       operator forgets when a task started and when an estimate was given.
+       The start rounds DOWN to the minute; rem and total round UP to 0.5
+       min; total is re-estimated as elapsed / pct on each update; the
        bracket is the local finish time, recomputed on every start or update.
-       The start time is the item-12 "started" field (optional: a file
-       without it keeps `~ETA`). The status line and the agent panel show the
+       The start time is the item-12 "started" field (optional: a row
+       without it reads `<pct>% ~<rem> Remain`). Rendered by fleet_checklist
+       (render / Checklist), never hand-typed ETA prose; the item-13 b
+       reprint, status answers, the status line and the agent panel show the
        same. <box> is U+2610. The last line is `<box> /done`. At most ONE
        trailing sentence, and only for an ordering constraint ("X waits until
        Y lands because ..."). NO summary, review, what-went-wrong or history.
@@ -166,8 +170,12 @@ edit. Tree-specific rules go BELOW this block, never inside it.
        bare commit, push or whole suite; SubagentStop releases the claims.
     c. Every whole test suite runs through
        `fleet_suite_gate.py run --owner <id> -- <cmd>` (machine-wide slots,
-       default 2, FIFO queue; fails closed on timeout; refuses while another
-       live agent holds uncommitted edits in the tree).
+       default 2, FIFO queue; the count re-read live; one suite per tree at
+       a time; memory and CPU admission; `--exclusive` for a suite that
+       needs the whole box; fails closed on timeout; refuses while another
+       live agent holds uncommitted edits in the tree). Every "waiting on
+       the suite gate" report names the trees holding the gate and the ones
+       next up, read from `fleet_suite_gate.py status`.
     d. Each tree's tests/conftest.py installs `fleet_test_guard.py`: a suite
        that changes live state (control files, inbox, outbox) fails, and
        declared runtime roots point at tmp_path.
@@ -178,13 +186,14 @@ edit. Tree-specific rules go BELOW this block, never inside it.
     strips, pre-push refuses; operator identity only from local git config
     `fleet.operatorIdent`), fleet_gitlock and the account attribution keys.
     A history rewrite runs only on MAIN's ORDER, via `fleet_rewrite.py`.
-18. STATUS BOARD (kit v19; operator order 2026-10-18). Each tree's claude.ai
-    board URL lives in `ops/status_board.json` {"url"}. An interactive
-    session pushes its board ONLY at session start, after every item-13 b
-    reprint and at /done (`--final`): `fleet_board.py calls --session <n>`
-    (checklist on stdin) renders status.json and prints the exact two tool
-    calls - one Artifact asset upload of that file, one ArtifactData update
-    of datasets/board pinned with if_version. Headless runs never push.
+18. STATUS BOARD (kit v23; operator order 2026-10-25). LOCAL ONLY: no
+    claude.ai artifact, no Artifact or ArtifactData call, no board URL.
+    Why: operator views it locally; the artifact push wasted tokens. An
+    interactive session renders its board ONLY at session start, after
+    every item-13 b reprint and at /done (`--final`):
+    `fleet_board.py render --session <n>` (checklist on stdin) writes
+    status.json and board.html to ops/loop/control/board/ in the MAIN
+    checkout; open board.html in a browser. Headless runs never render.
 <!-- FLEET-COMMON END -->
 
 # RC rules (tree-specific)
@@ -205,9 +214,11 @@ RC channel code: `RC`. Kit conformance: `tests/test_fleet_kit_conformance.py`.
 
 **KIT v15 (MAIN 2026-10-09 2055; no new file, hook or settings).** The suite gate appends one `durations.jsonl` line per run in its own machine state dir and gives a known short suite (median hold <= 120 s over its last runs) one extra lane slot; the kit's `child_env` sets `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1`, so a headless child runs foreground only and NO headless child prompt (`tools/headless-*.md`, `ops/loop/*prompt*.md`, `ops/loop/prompts/`, the responder prompt) may ask for background work; no file named `fleet_suite_gate.py` may exist in the tree outside `ops/fleet_kit/` (MAIN drift g). Guard `tests/test_fleet_kit_v15.py`.
 
-**KIT v19 (MAIN 2026-10-18 1235, FLEET-COMMON item 18; no new hook or settings).** The board config is tracked `ops/status_board.json` {"code", "dataset_version", "url"}; render state `ops/loop/control/board/` is gitignored. An interactive session pushes the board only at session start, after each item-13 b reprint (the `tools/session_checklist.py` DIRECTIVE says so) and at /done (`tools/done.md` section 9, `fleet_board.py calls --final`, after the hand-off read-back and before the done marker); a failed push is a hand-off line, never a ritual failure; headless runs never push. Stop sentinels: RC declares NONE (no `ops/stop_sentinels.json`): `ops/loop/control/STOP` and `ops/runtime/INBOX_RESPONDER_STOP` stay caller-scoped (`ops/loop/fleet_route.py` docstring), and declaring them would refuse every kit spawn. The kit pre-push scans a NEW ref against `git ls-remote`; `.githooks/pre-push` keeps identity FIRST. Guard `tests/test_fleet_kit_v19.py`.
+**KIT v19 (MAIN 2026-10-18 1235, FLEET-COMMON item 18; no new hook or settings).** Board state `ops/loop/control/board/` is gitignored; its claude.ai push is RETIRED by kit v23 (below). Stop sentinels: RC declares NONE (no `ops/stop_sentinels.json`): `ops/loop/control/STOP` and `ops/runtime/INBOX_RESPONDER_STOP` stay caller-scoped (`ops/loop/fleet_route.py` docstring), and declaring them would refuse every kit spawn. The kit pre-push scans a NEW ref against `git ls-remote`; `.githooks/pre-push` keeps identity FIRST. Guard `tests/test_fleet_kit_v19.py`.
 
 **KIT v20 (MAIN 2026-10-18 1812, FLEET-COMMON items 10 and 13 a; no new hook or settings).** Every kit `spawn()` refuses without a valid machine route `~/.fleet/headless_route.json` (MAIN's rollout writes it; read back `split` via `fleet_headless.py route show` at adoption); RC never writes or edits that file, and arms no account fallback. v20 `write_progress` always adds a top-level ISO "started"; a test on a progress document asserts a key SUBSET, never an exact set. Checklist rows may carry `pct` / epoch `started` for the ETA clock; RC printers pass neither yet, so they keep `~ETA` (allowed). v20.1 (MAIN 2026-10-19 0001; `KIT_PATCH = 1`, manifest version stays 20): `fleet_inbox.OUTBOUND_CAP` 6 -> 12 per tree per local day (item 14 c). Guard `tests/test_fleet_kit_v20.py`.
+
+**KIT v23 (MAIN 2026-10-25 1926, cumulative v21 + v22 + v23; no new hook or settings).** STATUS BOARD LOCAL ONLY (operator order 2026-10-25): no session pushes a board to claude.ai - no Artifact / ArtifactData call, no board URL, no `pushed` / `account` verb of fleet_board. An interactive session renders it locally at session start and after each item-13 b reprint (`tools/session_checklist.py` DIRECTIVE: `fleet_board.py render --session <n>`) and at /done (`tools/done.md` section 9: `fleet_board.py render --final --session <n>`, after the hand-off read-back, before the done marker); it writes status.json, state.json and board.html to `ops/loop/control/board/`; a failed render is a hand-off line; headless runs never render. `ops/status_board.json` stays tracked but only its "code" is read; the claude.ai board artifacts are the operator's to delete. The kit IGNORE now covers the three board files, so they left `tests/_fleet_guard_config.EXTRA_IGNORE`. /done section 1 first runs `python ops/fleet_kit/fleet_done.py reap --apply` (v22 KIT-V22-REAP: removes only a worktree that can lose nothing, never --force / -D; lane worktrees are always kept; the summary line goes in the hand-off). v21: the kit `_run` holds no pipes (stdin body via a temp file) and passes its job object to `_kill_tree(proc, grace, job=)`, so a test stand-in forwards `job=` (`tests/_kit_platform.py`). Sidecar (v22): no lane is moved. Guard `tests/test_fleet_kit_v23.py`.
 
 **PYTEST BASETEMP (MAIN FIX TEMP-1, 2026-10-09).** Never pass `--basetemp` inside a session scratchpad (one per run reached 8.5k entries; explicit basetemps are never reaped and Temp file count is boot time). Use the default tmp_path (`pytest.ini`: retention `failed`, count `1`). If a run truly needs one, use the ONE fixed `<scratchpad>/pytest-basetemp` (pytest clears it each run). Every session, lane and loop prompt follows this; the rootdir `conftest.py` re-exports `tests/_basetemp_guard.py` `pytest_configure`, which refuses any other scratchpad basetemp with a usage error. Guard `tests/test_pytest_basetemp_scratchpad_temp1.py`.
 

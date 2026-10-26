@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 the operator - the kit's owner and sole copyright holder. See NOTICE.
-"""Fleet kit v20 - RACE GUARDS: the machine-wide whole-suite gate (FLEET-COMMON 16).
+"""Fleet kit v21 - RACE GUARDS: the machine-wide whole-suite gate (FLEET-COMMON 16).
 
 Vendored byte-for-byte at ops/fleet_kit/ and pinned by MANIFEST.json. Do NOT
 edit a vendored copy: report the defect to MAIN.
@@ -11,7 +11,7 @@ the number graded was the sibling load, not the code.
 
     python fleet_suite_gate.py run --owner <session_id>.<agent_id> [--slots N]
                                    [--timeout S] -- <suite cmd>
-    python fleet_suite_gate.py status
+    python fleet_suite_gate.py status [--brief | --json]
 
 `run`:
   1. refuses (exit 3) while the tree holds uncommitted edits to a path claimed
@@ -110,6 +110,48 @@ lane-eligible LW and MAIN runs waited 827-1477 s behind an RC -n 8 suite at
      stray t-*.json.tmp files older than TMP_STALE_S (1 h);
  11. the durations line gains commit_wait_s (seconds spent short of commit)
      when it is above 0, so slot waits and commit waits can be told apart.
+
+v21 KIT-GATE-WHO (operator order 2026-10-19):
+ 12. slot, lane and queue-ticket records also carry "tree" (the main
+     checkout's folder name, as in the durations line), "cmd" (the 16-hex
+     command hash) and "label" (cmd_label: the first words, a path word cut
+     to its last part - never a folder). `status` lists each holder (slot,
+     tree, label, held for) and the queue in FIFO order (position, tree,
+     label, waiting for, short / tree-busy / exclusive marks); `status
+     --brief` prints `held by A, B; next C, D` and the 30 s wait line ends
+     with the same, so every "waiting on the suite gate" report names the
+     holders and the next up (FLEET-COMMON 16c). `status --json` is the
+     same snapshot for a panel (gate_state; it removes nothing).
+
+v21 GATE-SLOTS-2 (operator order 2026-10-19; ruling MAIN
+docs/rulings/2026-10-19-gate-slots-2.md):
+ 13. LIVE SLOT COUNT: without --slots, a waiter re-reads N on every poll from
+     <dir>/slots.json {"slots": N} (`fleet_suite_gate.py slots N | clear`),
+     else env FLEET_SUITE_SLOTS, else DEFAULT_SLOTS; its ticket's "n" follows.
+ 14. PER-TREE EXCLUSION: no slot (regular or lane) while a live holder is the
+     same tree; such a ticket is marked tree_busy and is passable, like a
+     short-of-commit one (it waits on its own tree, not on the queue).
+ 15. MEMORY ADMISSION: the slot record carries need_mb (the run's expected
+     peak commit); a waiter's need adds every holder's
+     max(0, need_mb - its process tree's private commit now).
+ 16. CPU CAP: with any suite running, no new one starts while machine CPU
+     busy (GetSystemTimes over >= 1 s) is >= CPU_CAP_PCT (70; env
+     FLEET_SUITE_CPU_CAP_PCT, 0 = off); an empty gate never waits on CPU.
+     Only the CLI run measures CPU; the durations line gains cpu_pct.
+ 17. EXCLUSIVE: `run --exclusive` waits for an empty gate and no older waiter,
+     holds slot 0 alone (no regular slot or lane for anyone else), and a
+     newer waiter never passes an exclusive ticket; the line gains
+     "exclusive": true. LANE_MIN_RUNS 3 -> 1.
+v21 KIT-COMMIT-SCALE (CS FIX 2026-10-22, folded into unqueued v21):
+ 18. the commit default and margin scale with the machine: COMMIT_DEFAULT_MB
+     is capped at CommitLimit / COMMIT_DEFAULT_DIV (5) and COMMIT_MARGIN_MB
+     at CommitLimit / COMMIT_MARGIN_DIV (10). At CommitLimit >= 40960 MB
+     both caps are above the absolute values, so nothing changes there; on a
+     smaller box (an 8 GB machine, CommitLimit under 12288 MB) a run with no
+     history no longer needs more free commit than the box can ever have, so
+     a lone run is not refused after WAIT_S. An explicit
+     FLEET_SUITE_COMMIT_MARGIN_MB stays absolute. Where CommitLimit cannot be
+     read the absolute values apply (and admission is a no-op anyway).
 Pure stdlib plus the sibling kit files fleet_claims.py and fleet_gitlock.py.
 """
 
@@ -136,10 +178,12 @@ LANE_OVERRUN_S = 200.0  # v18 KIT-15-REPICK (was 240)
 ENV_COMMIT_MARGIN = "FLEET_SUITE_COMMIT_MARGIN_MB"
 COMMIT_MARGIN_MB = 4096
 COMMIT_DEFAULT_MB = 8192
+COMMIT_DEFAULT_DIV = 5  # v21 KIT-COMMIT-SCALE: default <= CommitLimit / 5
+COMMIT_MARGIN_DIV = 10  # v21 KIT-COMMIT-SCALE: margin <= CommitLimit / 10
 COMMIT_WINDOW = 5
 COMMIT_MIN_RUNS = 3
 SAMPLE_S = 2.0
-LANE_MIN_RUNS = 3
+LANE_MIN_RUNS = 1  # v21 GATE-SLOTS-2 (was 3: 83 of 88 short runs that waited > 300 s lacked 3)
 LANE_WINDOW = 5
 DURATIONS_TAIL_BYTES = 1 << 20
 WAIT_S = 3600.0
@@ -147,6 +191,10 @@ ENV_BYPASS_MAX = "FLEET_SUITE_BYPASS_MAX_S"
 BYPASS_MAX_S = 900.0  # KIT-GATE-HOL: a short ticket is passable this long
 TMP_STALE_S = 3600.0
 PROGRESS_EVERY_S = 30.0
+SLOTS_FILE = "slots.json"  # v21 GATE-SLOTS-2: the live slot count, re-read every poll
+ENV_CPU_CAP = "FLEET_SUITE_CPU_CAP_PCT"
+CPU_CAP_PCT = 70.0  # v21: no new suite while another runs and the box is this busy
+CPU_WINDOW_S = 1.0
 POLL_S = 1.0
 _NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0) if sys.platform == "win32" else 0
 
@@ -187,6 +235,33 @@ def slots(n=None, env=None):
     except ValueError:
         v = DEFAULT_SLOTS
     return max(1, min(MAX_SLOTS, v))
+
+
+def live_slots(d, env=None):
+    """v21 GATE-SLOTS-2: the slot count a waiter re-reads on every poll -
+    <dir>/slots.json {"slots": N} when present and valid (written by
+    `fleet_suite_gate.py slots N`), else env FLEET_SUITE_SLOTS, else
+    DEFAULT_SLOTS; clamped to 1..MAX_SLOTS."""
+    doc = _rec(Path(d) / SLOTS_FILE)
+    v = doc.get("slots") if doc else None
+    if isinstance(v, int) and not isinstance(v, bool):
+        return max(1, min(MAX_SLOTS, v))
+    return slots(None, env)
+
+
+def set_live_slots(d, n):
+    """Write (n int) or remove (n None) <dir>/slots.json; returns the path."""
+    p = Path(d) / SLOTS_FILE
+    if n is None:
+        with contextlib.suppress(OSError):
+            p.unlink()
+        return p
+    v = max(1, min(MAX_SLOTS, int(n)))
+    Path(d).mkdir(parents=True, exist_ok=True)
+    tmp = p.with_name(p.name + ".tmp")
+    tmp.write_bytes(json.dumps({"slots": v}, sort_keys=True).encode("ascii"))
+    os.replace(str(tmp), str(p))
+    return p
 
 
 def _slot(d, k):
@@ -236,8 +311,20 @@ def held(d, alive=None, started=None, upto=None):
     return out
 
 
-def try_slot(d, n, pid=None, alive=None, started=None, clock=time.time):
-    """(k, raw) for a slot taken now, or None."""
+def _who(who):
+    """v21 KIT-GATE-WHO: the {tree, cmd, label} fields a record carries."""
+    out = {}
+    for key in ("tree", "cmd", "label"):
+        v = (who or {}).get(key)
+        if isinstance(v, str) and v:
+            out[key] = v
+    return out
+
+
+def try_slot(d, n, pid=None, alive=None, started=None, clock=time.time, who=None,
+             extra=None):
+    """(k, raw) for a slot taken now, or None. v21: who = {tree, cmd, label}
+    (KIT-GATE-WHO) is stored in the slot record."""
     d = Path(d)
     d.mkdir(parents=True, exist_ok=True)
     pid = os.getpid() if pid is None else pid
@@ -246,8 +333,8 @@ def try_slot(d, n, pid=None, alive=None, started=None, clock=time.time):
         return None
     for k in range(n):
         p = _slot(d, k)
-        raw = json.dumps({"pid": pid, "pid_started": started(pid), "start": clock(),
-                          "n": int(n)}, sort_keys=True).encode("ascii")
+        raw = json.dumps(dict(extra or {}, **_who(who), pid=pid, pid_started=started(pid),
+                              start=clock(), n=int(n)), sort_keys=True).encode("ascii")
         try:
             fd = os.open(str(p), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
         except OSError:
@@ -269,7 +356,8 @@ def lane_index(n):
     return int(n) if int(n) < MAX_SLOTS else None
 
 
-def try_lane(d, n, pid=None, alive=None, started=None, clock=time.time, ticket=None):
+def try_lane(d, n, pid=None, alive=None, started=None, clock=time.time, ticket=None, who=None,
+             extra=None):
     """(k, raw) for the lane slot taken now, or None (KIT-15). v20 (LW 1120):
     refused while slot k is a REGULAR slot for any other live ticket (its N
     is above k), so a narrower runner's lane never takes a wider waiter's slot."""
@@ -288,8 +376,8 @@ def try_lane(d, n, pid=None, alive=None, started=None, clock=time.time, ticket=N
             return None
         with contextlib.suppress(OSError):
             p.unlink()
-    raw = json.dumps({"pid": pid, "pid_started": started(pid), "start": clock(),
-                      "lane": True, "n": int(n)}, sort_keys=True).encode("ascii")
+    raw = json.dumps(dict(extra or {}, **_who(who), pid=pid, pid_started=started(pid),
+                          start=clock(), lane=True, n=int(n)), sort_keys=True).encode("ascii")
     try:
         fd = os.open(str(p), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
     except OSError:
@@ -318,15 +406,16 @@ def _say(msg):
 
 # ---------------------------------------------------------------- FIFO queue (v13)
 
-def take_ticket(d, pid=None, started=None, ns=None, n=None):
+def take_ticket(d, pid=None, started=None, ns=None, n=None, who=None):
     """Create this waiter's queue ticket; returns its path. v20 (LW 1120): the
-    ticket carries the waiter's slot count "n" (default DEFAULT_SLOTS)."""
+    ticket carries the waiter's slot count "n" (default DEFAULT_SLOTS). v21
+    (KIT-GATE-WHO): and who = {tree, cmd, label}."""
     q = Path(d) / QUEUE
     q.mkdir(parents=True, exist_ok=True)
     pid = os.getpid() if pid is None else pid
     started = started or gitlock.proc_started
-    raw = json.dumps({"pid": pid, "pid_started": started(pid),
-                      "n": int(n) if n is not None else DEFAULT_SLOTS}, sort_keys=True)
+    raw = json.dumps(dict(_who(who), pid=pid, pid_started=started(pid),
+                          n=int(n) if n is not None else DEFAULT_SLOTS), sort_keys=True)
     while True:
         stamp = time.time_ns() if ns is None else ns
         p = q / f"t-{stamp:020d}-{pid}.json"
@@ -374,6 +463,30 @@ def ticket_short(ticket):
     """True when the ticket carries the KIT-GATE-HOL short-of-commit mark."""
     doc = _rec(Path(ticket))
     return bool(doc and doc.get("short") is True)
+
+
+def set_ticket(ticket, **fields):
+    """v21: set (value) or clear (None) ticket fields by atomic replace; a
+    no-op when nothing changes; a failed write is retried next poll."""
+    ticket = Path(ticket)
+    doc = _rec(ticket)
+    if doc is None:
+        return
+    new = dict(doc)
+    for k, v in fields.items():
+        if v is None or v is False:
+            new.pop(k, None)
+        else:
+            new[k] = v
+    if new == doc:
+        return
+    tmp = ticket.with_name(ticket.name + ".tmp")
+    try:
+        tmp.write_bytes(json.dumps(new, sort_keys=True).encode("ascii"))
+        os.replace(str(tmp), str(ticket))
+    except OSError:
+        with contextlib.suppress(OSError):
+            tmp.unlink()
 
 
 def mark_ticket(ticket, short):
@@ -443,6 +556,9 @@ def tickets_ahead(d, ticket, alive=None, started=None, clock=time.time):
         if name >= Path(ticket).name:
             break
         if slot_live(q / name, alive, started):
+            doc = _rec(q / name) or {}
+            if doc.get("tree_busy") is True:
+                continue  # v21: waits on its own tree's running suite; passable
             if not ticket_short(q / name):
                 ahead.append(q / name)
             else:
@@ -460,21 +576,56 @@ def queue_ahead(d, ticket, alive=None, started=None, clock=time.time):
     return len(tickets_ahead(d, ticket, alive, started, clock))
 
 
+def holder_records(d, alive=None, started=None):
+    """v21: [(k, record)] of the live slots, lane included (read only)."""
+    out = []
+    for k in range(MAX_SLOTS):
+        p = _slot(d, k)
+        if p.exists() and slot_live(p, alive, started):
+            out.append((k, _rec(p) or {}))
+    return out
+
+
 def acquire(d, n, timeout=WAIT_S, clock=time.time, sleep=time.sleep, alive=None,
-            started=None, pid=None, lane=False, commit=None, stats=None, **kw):
+            started=None, pid=None, lane=False, commit=None, stats=None, who=None,
+            exclusive=False, cpu=None, cpu_cap=None, need_mb=None, **kw):
     """FIFO: wait for a slot only while no older live waiter could take it.
     lane=True (KIT-15, a known short suite) may also take the lane slot when
     no regular slot is free to it; the lane is not FIFO-ordered.
     v18 (RM737-GATE): commit() -> shortfall in MB (<= 0 or None = enough
     free commit); while short, NO slot is taken (regular or lane) and the
     ticket is kept. KIT-GATE-HOL: while short the ticket is marked, so a later
-    waiter that fits may pass it; stats (a dict) gets commit_wait_s."""
+    waiter that fits may pass it; stats (a dict) gets commit_wait_s.
+    v21 KIT-GATE-WHO: who = {tree, cmd, label} goes into the ticket and the
+    slot record, and the 30 s wait line names the holders and the next up.
+    v21 GATE-SLOTS-2: n may be a callable, re-read on every poll (live slot
+    count); no slot while a live holder is exclusive, or is the same tree
+    (who["tree"]; the ticket is then marked tree_busy and is passable), or -
+    with any holder running - while cpu() (busy percent) >= cpu_cap;
+    exclusive=True waits for an empty gate and no older waiter, then holds
+    slot 0 alone, and a newer waiter never passes an exclusive ticket.
+    need_mb (this run's expected peak commit) goes into the slot record so
+    a later waiter reserves what this run has not committed yet."""
+    n_of = n if callable(n) else (lambda: n)
+    n = n_of()
     begin = said = clock()
-    ticket = take_ticket(d, pid, started, n=n)
+    ticket = take_ticket(d, pid, started, n=n, who=who)
+    extra = {}
+    if exclusive:
+        extra["exclusive"] = True
+        set_ticket(ticket, exclusive=True)
+    if isinstance(need_mb, (int, float)):
+        extra["need_mb"] = round(float(need_mb), 1)
+    tree = (who or {}).get("tree")
     short = 0
+    why = ""
     was_short, last, cwait = False, begin, 0.0
     try:
         while True:
+            n_now = n_of()
+            if n_now != n:
+                n = n_now
+                set_ticket(ticket, n=n)
             short = (commit() or 0) if commit else 0
             t = clock()
             if was_short:
@@ -483,37 +634,68 @@ def acquire(d, n, timeout=WAIT_S, clock=time.time, sleep=time.sleep, alive=None,
             if stats is not None:
                 stats["commit_wait_s"] = cwait
             mark_ticket(ticket, short > 0)
+            why = ""
             if short <= 0:
-                # v20 (LW 1120): with mixed slot counts the waiter plays by the
-                # SMALLEST N among itself and the older waiters it must not
-                # pass, so a wider newcomer never takes a narrower waiter's slot.
+                hold = holder_records(d, alive, started)
+                busy = bool(tree) and any(r.get("tree") == tree for _k, r in hold)
+                set_ticket(ticket, tree_busy=busy or None)
+                if any(r.get("exclusive") for _k, r in hold):
+                    why = "an exclusive run"
+                elif busy:
+                    why = f"the {tree} suite already running (one per tree)"
+                elif hold and cpu is not None and cpu_cap:
+                    pct = cpu()
+                    if stats is not None and pct is not None:
+                        stats["cpu_pct"] = pct  # the last admission reading
+                    if pct is not None and pct >= cpu_cap:
+                        why = f"CPU ({int(pct)}% busy, cap {int(cpu_cap)}%)"
+            if short <= 0 and not why:
                 ahead = tickets_ahead(d, ticket, alive, started, clock)
-                m = min([n] + [ticket_n(t) for t in ahead])
-                free = m - len(held(d, alive, started, upto=m))
-                if free > 0 and len(ahead) < free:
-                    got = try_slot(d, m, pid=pid, alive=alive, started=started, clock=clock,
-                                   **kw)
-                    if got:
-                        return got
-                if lane:
-                    got = try_lane(d, n, pid=pid, alive=alive, started=started, clock=clock,
-                                   ticket=ticket)
-                    if got:
-                        return got
+                if exclusive:
+                    if not ahead and not hold:
+                        got = try_slot(d, n, pid=pid, alive=alive, started=started,
+                                       clock=clock, who=who, extra=extra, **kw)
+                        if got:
+                            if len(held(d, alive, started)) == 1:
+                                return got
+                            release(d, *got)  # a lane taker raced in: wait again
+                    why = "an empty gate (exclusive)"
+                elif any(_rec(a) and _rec(a).get("exclusive") for a in ahead):
+                    why = "an exclusive run ahead"
+                else:
+                    # v20 (LW 1120): with mixed slot counts the waiter plays by
+                    # the SMALLEST N among itself and the older waiters it must
+                    # not pass, so a wider newcomer never takes a narrower one's slot.
+                    m = min([n] + [ticket_n(t) for t in ahead])
+                    free = m - len(held(d, alive, started, upto=m))
+                    if free > 0 and len(ahead) < free:
+                        got = try_slot(d, m, pid=pid, alive=alive, started=started,
+                                       clock=clock, who=who, extra=extra, **kw)
+                        if got:
+                            return got
+                    if lane:
+                        got = try_lane(d, n, pid=pid, alive=alive, started=started,
+                                       clock=clock, ticket=ticket, who=who, extra=extra)
+                        if got:
+                            return got
             now = clock()
             if now - begin >= timeout:
                 if short > 0:
                     raise GateRefused(f"SUITE-GATE: free commit still {int(short)} MB short "
                                       f"after {int(timeout)}s; not running the suite")
+                if why:
+                    raise GateRefused(f"SUITE-GATE: still waiting for {why} after "
+                                      f"{int(timeout)}s; not running the suite")
                 raise GateRefused(f"SUITE-GATE: no suite slot free after {int(timeout)}s "
                                   f"({n} of {n} held); not running the suite")
             if now - said >= PROGRESS_EVERY_S:
                 said = now
                 what = (f"free commit ({int(short)} MB short)" if short > 0
-                        else "a suite slot")
+                        else why or "a suite slot")
                 _say(f"suite gate: waiting for {what} ({n} slot(s), "
                      f"{queue_ahead(d, ticket, alive, started, clock)} waiter(s) ahead, "
-                     f"{int(now - begin)}s of {int(timeout)}s)")
+                     f"{int(now - begin)}s of {int(timeout)}s; "
+                     f"{who_line(gate_state(d, n, alive, started, clock, me=ticket))})")
             sleep(POLL_S)
     finally:
         drop_ticket(ticket)
@@ -521,11 +703,128 @@ def acquire(d, n, timeout=WAIT_S, clock=time.time, sleep=time.sleep, alive=None,
             Path(str(ticket) + ".tmp").unlink()
 
 
+# ---------------------------------------------------------------- who (v21 KIT-GATE-WHO)
+
+LABEL_WORDS = 4
+LABEL_MAX = 40
+
+
+def cmd_label(cmd, words=LABEL_WORDS):
+    """A short ASCII label for a suite command: its first words, a path word
+    cut to its last part (no folders), .exe dropped. Never a full path."""
+    out = []
+    for w in list(cmd)[:words]:
+        w = str(w).rstrip("/\\")
+        if "/" in w or "\\" in w:
+            w = re.split(r"[/\\]", w)[-1]
+        w = re.sub(r"(?i)\.exe$", "", w)
+        w = "".join(c for c in w if 32 < ord(c) < 127)
+        if w:
+            out.append(w)
+    return " ".join(out)[:LABEL_MAX]
+
+
+def _dur(sec):
+    s = max(0, int(sec))
+    return f"{s // 60}m{s % 60:02d}s"
+
+
+def gate_state(d, n, alive=None, started=None, clock=time.time, me=None):
+    """Read-only snapshot (nothing is removed): {"n", "lane", "holders":
+    [{slot, lane, tree, cmd, label, held_s, exclusive}], "queue": [{pos,
+    tree, cmd, label, waiting_s, short, tree_busy, exclusive, me}]} - holders
+    by slot, the queue in FIFO (name) order, dead or reused records skipped."""
+    d = Path(d)
+    now = clock()
+    holders = []
+    for k in range(MAX_SLOTS):
+        p = _slot(d, k)
+        if not p.exists() or not slot_live(p, alive, started):
+            continue
+        doc = _rec(p) or {}
+        st = doc.get("start")
+        holders.append({"slot": k, "lane": bool(doc.get("lane")),
+                        "tree": doc.get("tree") or "?", "cmd": doc.get("cmd") or "",
+                        "label": doc.get("label") or "",
+                        "held_s": (now - st) if isinstance(st, (int, float)) else None,
+                        "exclusive": bool(doc.get("exclusive"))})
+    q = d / QUEUE
+    try:
+        names = sorted(x.name for x in q.glob("t-*.json"))
+    except OSError:
+        names = []
+    queue = []
+    mine = Path(me).name if me is not None else None
+    for name in names:
+        if not slot_live(q / name, alive, started):
+            continue
+        doc = _rec(q / name) or {}
+        age = ticket_age_s(name, now)
+        queue.append({"pos": len(queue) + 1, "tree": doc.get("tree") or "?",
+                      "cmd": doc.get("cmd") or "", "label": doc.get("label") or "",
+                      "waiting_s": age, "short": bool(doc.get("short")),
+                      "tree_busy": bool(doc.get("tree_busy")),
+                      "exclusive": bool(doc.get("exclusive")), "me": name == mine})
+    return {"n": int(n), "lane": lane_index(n), "holders": holders, "queue": queue}
+
+
+def who_line(state, nxt=2):
+    """`held by RC, LW; next SS, EW` (or `gate free`) - what every "waiting on
+    the suite gate" report names (FLEET-COMMON 16c, v21)."""
+    hold = ", ".join(h["tree"] for h in state["holders"])
+    others = [w["tree"] for w in state["queue"] if not w.get("me")][:nxt]
+    parts = ["held by " + hold if hold else "gate free"]
+    if others:
+        parts.append("next " + ", ".join(others))
+    return "; ".join(parts)
+
+
+def status_lines(state):
+    """The `status` table: the summary line, one row per holder (slot, tree,
+    cmd label, held for), then the queue in FIFO order (position, tree, cmd
+    label, waiting for, marks)."""
+    n, lane = state["n"], state["lane"]
+    regular = [h for h in state["holders"] if h["slot"] < n]
+    lane_txt = "" if lane is None else (
+        ", lane " + ("held" if any(h["slot"] == lane for h in state["holders"]) else "free"))
+    out = [f"{len(regular)} of {n} slot(s) held{lane_txt}"]
+    for h in state["holders"]:
+        kind = "lane" if h["lane"] else f"slot {h['slot']}"
+        held_for = "?" if h["held_s"] is None else _dur(h["held_s"])
+        marks = " exclusive" if h["exclusive"] else ""
+        out.append(f"  {kind:<7} {h['tree']:<18} {h['label'] or h['cmd'] or '?':<28} "
+                   f"held {held_for}{marks}")
+    for w in state["queue"]:
+        marks = "".join(f" {m.replace('_', '-')}" for m in ("short", "tree_busy", "exclusive")
+                        if w.get(m))
+        wait = "?" if w["waiting_s"] is None else _dur(w["waiting_s"])
+        out.append(f"  {w['pos']:>2}.     {w['tree']:<18} {w['label'] or w['cmd'] or '?':<28} "
+                   f"waiting {wait}{marks}")
+    return out
+
+
 # ---------------------------------------------------------------- commit (v18 RM737-GATE)
 
 def free_commit_mb():
     """CommitLimit - CommitTotal in MB (GetPerformanceInfo), or None where it
     cannot be read (POSIX, an API error): admission is then a no-op."""
+    pi = _perf_info()
+    if pi is None:
+        return None
+    return (pi.CommitLimit - pi.CommitTotal) * pi.PageSize / float(1 << 20)
+
+
+def commit_limit_mb():
+    """v21 KIT-COMMIT-SCALE: the machine's CommitLimit in MB, or None where it
+    cannot be read (the absolute default and margin then apply)."""
+    pi = _perf_info()
+    if pi is None:
+        return None
+    return pi.CommitLimit * pi.PageSize / float(1 << 20)
+
+
+def _perf_info():
+    """GetPerformanceInfo as a ctypes struct, or None (POSIX, an API error)."""
     if sys.platform != "win32":
         return None
     try:
@@ -545,7 +844,7 @@ def free_commit_mb():
         k32 = ctypes.WinDLL("kernel32", use_last_error=True)
         if not k32.K32GetPerformanceInfo(ctypes.byref(pi), pi.cb):
             return None
-        return (pi.CommitLimit - pi.CommitTotal) * pi.PageSize / float(1 << 20)
+        return pi
     except (OSError, AttributeError, ValueError):
         return None
 
@@ -621,37 +920,132 @@ def tree_private_mb(root):
         return None
 
 
-def commit_margin_mb(env=None):
+def _scaled(absolute, limit, div):
+    """v21 KIT-COMMIT-SCALE: absolute, capped at limit / div when the
+    machine's CommitLimit (MB) is known and positive."""
+    if isinstance(limit, (int, float)) and limit > 0:
+        return min(float(absolute), float(limit) / div)
+    return absolute
+
+
+def commit_margin_mb(env=None, limit=None):
+    """FLEET_SUITE_COMMIT_MARGIN_MB (absolute), else COMMIT_MARGIN_MB capped
+    at limit / COMMIT_MARGIN_DIV (v21 KIT-COMMIT-SCALE)."""
     env = os.environ if env is None else env
     try:
         v = int(str(env.get(ENV_COMMIT_MARGIN, "")).strip())
         return max(0, v)
     except ValueError:
-        return COMMIT_MARGIN_MB
+        return _scaled(COMMIT_MARGIN_MB, limit, COMMIT_MARGIN_DIV)
 
 
-def required_commit_mb(d, tree, chash, window=COMMIT_WINDOW, min_runs=COMMIT_MIN_RUNS):
+def required_commit_mb(d, tree, chash, window=COMMIT_WINDOW, min_runs=COMMIT_MIN_RUNS,
+                       limit=None):
     """Median peak_commit_mb of the (tree, cmd)'s last `window` sampled runs
-    (at least min_runs), else COMMIT_DEFAULT_MB."""
+    (at least min_runs), else COMMIT_DEFAULT_MB capped at limit /
+    COMMIT_DEFAULT_DIV (v21 KIT-COMMIT-SCALE)."""
     peaks = [float(r["peak_commit_mb"]) for r in read_durations(d)
              if r.get("tree") == tree and r.get("cmd") == chash
              and isinstance(r.get("peak_commit_mb"), (int, float))][-window:]
     if len(peaks) < min_runs:
-        return float(COMMIT_DEFAULT_MB)
+        return float(_scaled(COMMIT_DEFAULT_MB, limit, COMMIT_DEFAULT_DIV))
     peaks.sort()
     m = len(peaks) // 2
     return peaks[m] if len(peaks) % 2 else (peaks[m - 1] + peaks[m]) / 2.0
 
 
-def commit_check(need_mb, free=free_commit_mb):
+def commit_check(need_mb, free=free_commit_mb, reserved=None):
     """A callable for acquire(): shortfall in MB, 0 when free commit covers
-    need_mb or cannot be read."""
+    need_mb or cannot be read. v21 GATE-SLOTS-2: reserved() (MB) is added -
+    what the running holders are still expected to commit."""
     def short():
         f = free()
         if f is None:
             return 0
-        return max(0.0, need_mb - f)
+        r = 0.0
+        if reserved is not None:
+            try:
+                r = float(reserved() or 0)
+            except Exception:  # noqa: BLE001 - a probe never fails admission
+                r = 0.0
+        return max(0.0, need_mb + r - f)
     return short
+
+
+def reserved_mb(d, alive=None, started=None, probe=None):
+    """v21 GATE-SLOTS-2: sum over live holders that recorded need_mb of
+    max(0, need_mb - their process tree's private commit now). A holder
+    whose commit cannot be read reserves nothing (as admission is a no-op
+    where commit cannot be read)."""
+    probe = probe or tree_private_mb
+    total = 0.0
+    for _k, r in holder_records(d, alive, started):
+        need, pid = r.get("need_mb"), r.get("pid")
+        if not isinstance(need, (int, float)) or not isinstance(pid, int):
+            continue
+        cur = probe(pid)
+        if cur is not None:
+            total += max(0.0, float(need) - float(cur))
+    return total
+
+
+def cpu_cap_pct(env=None):
+    """FLEET_SUITE_CPU_CAP_PCT, else CPU_CAP_PCT; 0 or >= 100 = no cap (None)."""
+    env = os.environ if env is None else env
+    try:
+        v = float(str(env.get(ENV_CPU_CAP, "")).strip())
+    except ValueError:
+        v = CPU_CAP_PCT
+    return None if v <= 0 or v >= 100 else v
+
+
+def _system_times():
+    """(idle, total) 100-ns ticks from GetSystemTimes, or None (Windows only)."""
+    if sys.platform != "win32":
+        return None
+    try:
+        import ctypes
+        from ctypes import wintypes
+        i, k, u = wintypes.FILETIME(), wintypes.FILETIME(), wintypes.FILETIME()
+        if not ctypes.WinDLL("kernel32").GetSystemTimes(ctypes.byref(i), ctypes.byref(k),
+                                                         ctypes.byref(u)):
+            return None
+        f = lambda t: (t.dwHighDateTime << 32) | t.dwLowDateTime  # noqa: E731
+        return f(i), f(k) + f(u)  # kernel time includes idle
+    except (OSError, AttributeError, ValueError):
+        return None
+
+
+class CpuMeter:
+    """busy() -> machine CPU busy percent over the last >= CPU_WINDOW_S, or
+    None where it cannot be read. The first call samples twice, CPU_WINDOW_S
+    apart; later calls reuse the last value until the window has passed."""
+
+    def __init__(self, times=_system_times, clock=time.monotonic, sleep=time.sleep,
+                 window=CPU_WINDOW_S):
+        self.times, self.clock, self.sleep, self.window = times, clock, sleep, window
+        self._prev, self._at, self.last = None, None, None
+
+    def __call__(self):
+        return self.busy()
+
+    def busy(self):
+        if self._prev is None:
+            self._prev, self._at = self.times(), self.clock()
+            if self._prev is None:
+                return None
+            self.sleep(self.window)
+        if self.clock() - self._at < self.window and self.last is not None:
+            return self.last
+        cur = self.times()
+        if cur is None or self._prev is None:
+            return None
+        di, dt_ = cur[0] - self._prev[0], cur[1] - self._prev[1]
+        self._prev, self._at = cur, self.clock()
+        if dt_ <= 0:
+            return self.last
+        self.last = max(0.0, min(100.0, 100.0 * (1.0 - di / float(dt_))))
+        return self.last
 
 
 class PeakSampler:
@@ -744,13 +1138,18 @@ def check_straddle(cwd, owner, dirty=dirty_paths, now=None):
 
 def parse(argv):
     if "--" not in argv or argv.index("--") == len(argv) - 1:
-        raise GateRefused("SUITE-GATE: usage: run [--owner O] [--slots N] [--timeout S] -- <cmd>")
+        raise GateRefused("SUITE-GATE: usage: run [--owner O] [--slots N] [--timeout S] "
+                          "[--exclusive] -- <cmd>")
     k = argv.index("--")
     opts, cmd = argv[:k], argv[k + 1:]
     owner, n, timeout = os.environ.get(claims.ENV_OWNER) or None, None, WAIT_S
+    exclusive = False
     i = 0
     while i < len(opts):
         o = opts[i]
+        if o == "--exclusive":
+            exclusive, i = True, i + 1
+            continue
         if o == "--owner" and i + 1 < len(opts):
             owner, i = opts[i + 1], i + 2
         elif o.startswith("--owner="):
@@ -761,7 +1160,7 @@ def parse(argv):
             timeout, i = float(opts[i + 1]), i + 2
         else:
             raise GateRefused("SUITE-GATE: unknown option {}".format(o))
-    return owner, slots(n), timeout, cmd
+    return owner, (slots(n) if n is not None else None), timeout, cmd, exclusive
 
 
 def path_which(name, environ=None, cwd=None):
@@ -1003,21 +1402,45 @@ def record(d, line):
         pass
 
 
+def _was_lane(raw, k, n):
+    """True when the slot taken was the lane: its record says so (v21: the
+    slot count may change while it runs), else k is the lane index."""
+    try:
+        doc = json.loads(raw)
+    except (TypeError, ValueError):
+        doc = None
+    if isinstance(doc, dict):
+        return bool(doc.get("lane"))
+    return k == lane_index(n)
+
+
 def run(argv, cwd=None, runner=None, dirty=dirty_paths, d=None, **kw):
     cwd = Path(cwd or os.getcwd())
-    owner, n, timeout, cmd = parse(argv)
+    owner, n_fixed, timeout, cmd, exclusive = parse(argv)
     check_path_free(cmd, cwd)
     resolve_exe(cmd, cwd)  # v16: a bare word not on PATH refuses before the queue
     check_straddle(cwd, owner, dirty)
     d = Path(d) if d else gate_dir()
     clock = kw.get("clock", time.time)
     tree, chash = tree_name(cwd), cmd_hash(cmd)
-    lane = lane_index(n) is not None and lane_eligible(d, tree, chash)
-    need = required_commit_mb(d, tree, chash) + commit_margin_mb()
-    kw.setdefault("commit", commit_check(need, kw.pop("free_commit", free_commit_mb)))
+    # v21 GATE-SLOTS-2: --slots pins N; otherwise it is re-read live every poll.
+    n_of = (lambda: n_fixed) if n_fixed is not None else (lambda: live_slots(d))
+    n = n_of()
+    lane = (not exclusive and lane_index(n) is not None and lane_eligible(d, tree, chash))
+    limit = kw.pop("commit_limit", commit_limit_mb)()
+    own = required_commit_mb(d, tree, chash, limit=limit)
+    need = own + commit_margin_mb(limit=limit)
+    probe = kw.pop("probe", None)
+    kw.setdefault("commit", commit_check(
+        need, kw.pop("free_commit", free_commit_mb),
+        reserved=lambda: reserved_mb(d, kw.get("alive"), kw.get("started"), probe)))
+    kw.setdefault("cpu_cap", cpu_cap_pct())
     asked = clock()
     stats = {}
-    k, raw = acquire(d, n, timeout, lane=lane, stats=stats, **kw)
+    kw.setdefault("who", {"tree": tree, "cmd": chash, "label": cmd_label(cmd)})
+    k, raw = acquire(d, n_of, timeout, lane=lane, stats=stats, exclusive=exclusive,
+                     need_mb=own, **kw)
+    n = n_of()
     got = clock()
     rc = None
     peak = {"mb": None}
@@ -1044,8 +1467,12 @@ def run(argv, cwd=None, runner=None, dirty=dirty_paths, d=None, **kw):
         release(d, k, raw)
         hold = clock() - got
         line = {"ts": round(got, 3), "tree": tree, "cmd": chash, "slot": k,
-                "lane": k == lane_index(n), "wait_s": round(got - asked, 3),
+                "lane": _was_lane(raw, k, n), "wait_s": round(got - asked, 3),
                 "hold_s": round(hold, 3), "exit": rc}
+        if exclusive:
+            line["exclusive"] = True
+        if isinstance(stats.get("cpu_pct"), (int, float)):
+            line["cpu_pct"] = round(stats["cpu_pct"], 1)
         if stats.get("commit_wait_s", 0) > 0:
             line["commit_wait_s"] = round(stats["commit_wait_s"], 3)
         if peak["mb"] is not None:
@@ -1061,14 +1488,24 @@ def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     try:
         if argv[:1] == ["run"]:
-            return run(argv[1:])
-        if argv[:1] == ["status"]:
+            return run(argv[1:], cpu=CpuMeter())
+        if argv[:1] == ["slots"]:
             d = gate_dir()
-            n = slots()
-            lane = lane_index(n)
-            lane_txt = "" if lane is None else (
-                ", lane " + ("held" if lane in held(d) else "free"))
-            print(f"{len(held(d, upto=n))} of {n} slot(s) held{lane_txt}")
+            if argv[1:2] == ["clear"]:
+                set_live_slots(d, None)
+            elif argv[1:2]:
+                set_live_slots(d, int(argv[1]))
+            print(f"{live_slots(d)} slot(s) (live; {SLOTS_FILE} "
+                  f"{'set' if (d / SLOTS_FILE).exists() else 'absent'})")
+            return 0
+        if argv[:1] == ["status"]:
+            state = gate_state(gate_dir(), live_slots(gate_dir()))
+            if "--json" in argv[1:]:
+                print(json.dumps(state, sort_keys=True))
+            elif "--brief" in argv[1:]:
+                print(who_line(state))
+            else:
+                print("\n".join(status_lines(state)))
             return 0
     except GateRefused as exc:
         _say(str(exc))

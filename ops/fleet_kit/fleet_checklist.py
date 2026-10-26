@@ -37,6 +37,13 @@ total round UP to 0.5 min; total is re-estimated from elapsed / pct on each
 update (eta_s only while pct is 0); the bracket is the local finish time,
 recomputed on every start / update. The Checklist stamps "started" the first
 time a row gets a state; a row without one keeps the old `~ETA` form.
+
+v21 (KIT-ETA-REMAIN, operator order 2026-10-19): every running row shows the
+time it STARTED and the clock carries the word Remain - one form everywhere:
+`started <h:mmAM/PM> - <pct>% ~<rem> of <total> Remain [<finish h:mmAM/PM>]`.
+The start is rounded DOWN to the minute, the finish UP. A running row with no
+start reads `<pct>% ~<rem> Remain` (no start, no clock). A session prints its
+chat checklist through render() / Checklist, never hand-typed ETA prose.
 """
 
 import contextlib
@@ -83,12 +90,22 @@ def fmt_half_min(sec):
     return f"{n // 2}.5m" if n % 2 else f"{n // 2}m"
 
 
-def fmt_clock(epoch):
-    """Local wall-clock h:mmAM/PM, rounded UP to the minute."""
-    t = _dt.datetime.fromtimestamp(math.ceil(float(epoch) - 1e-6))
-    if t.second:
-        t += _dt.timedelta(seconds=60 - t.second)
+def fmt_clock(epoch, down=False):
+    """Local wall-clock h:mmAM/PM, rounded UP to the minute (DOWN with
+    down=True, v21: the start time)."""
+    if down:
+        t = _dt.datetime.fromtimestamp(math.floor(float(epoch) + 1e-6)).replace(second=0)
+    else:
+        t = _dt.datetime.fromtimestamp(math.ceil(float(epoch) - 1e-6))
+        if t.second:
+            t += _dt.timedelta(seconds=60 - t.second)
     return f"{t.hour % 12 or 12}:{t.minute:02d}{'AM' if t.hour < 12 else 'PM'}"
+
+
+def started_clock(started):
+    """v21: `started h:mmAM/PM` (rounded down), or "" when unreadable."""
+    start = to_epoch(started)
+    return "" if start is None else f"started {fmt_clock(start, down=True)}"
 
 
 def to_epoch(value):
@@ -104,7 +121,8 @@ def to_epoch(value):
 
 
 def eta_clock(pct, eta_s, started, now, updated=None):
-    """`<pct>% ~<rem>m of <total>m [h:mmAM/PM]`, or "" without enough input.
+    """`<pct>% ~<rem>m of <total>m Remain [h:mmAM/PM]` (v21 adds Remain), or
+    "" without enough input.
     pct > 0 with a start: total = elapsed (to `updated`, else now) / pct and
     the finish is started + total. Otherwise the finish is updated + eta_s.
     rem counts down from now to that fixed finish."""
@@ -123,7 +141,20 @@ def eta_clock(pct, eta_s, started, now, updated=None):
     else:
         return ""
     rem = max(0.0, finish - float(now))
-    return f"{pct}% ~{fmt_half_min(rem)} of {fmt_half_min(total)} [{fmt_clock(finish)}]"
+    return f"{pct}% ~{fmt_half_min(rem)} of {fmt_half_min(total)} Remain [{fmt_clock(finish)}]"
+
+
+def run_clock(pct, eta_s, started, now, updated=None):
+    """v21 (KIT-ETA-REMAIN) the one running-row form:
+    `started h:mmAM/PM - <pct>% ~<rem> of <total> Remain [h:mmAM/PM]`; with no
+    start `<pct>% ~<rem> Remain` (no clock); "" without enough input."""
+    if to_epoch(started) is not None:
+        clk = eta_clock(pct, eta_s, started, now, updated)
+        return f"{started_clock(started)} - {clk}" if clk else ""
+    rem = fmt_eta(eta_s)
+    if not rem:
+        return ""
+    return (f"{max(0, min(100, int(pct)))}% " if pct is not None else "") + rem + " Remain"
 
 
 def item(id, task, state=None, eta_s=None, pct=None, started=None):  # noqa: A002
@@ -152,18 +183,16 @@ def item(id, task, state=None, eta_s=None, pct=None, started=None):  # noqa: A00
 
 
 def line(row, added=False, now=None):
-    """`<box> <ID>: <task> (<state>, <pct>% ~<rem>m of <total>m [h:mmAM/PM])`
-    for a running row with a start time (v20), else `(<state>, ~ETA)`; the
+    """`<box> <ID>: <task> (<state>, started h:mmAM/PM - <pct>% ~<rem>m of
+    <total>m Remain [h:mmAM/PM])` for a running row with a start time (v21),
+    else `(<state>, <pct>% ~ETA Remain)`; the
     parenthesis only while a task has a state other than pending; `+` before
     the ID marks an added task."""
     state = row.get("state")
     tail = ""
     if state and state != PENDING:
-        eta = ""
-        if to_epoch(row.get("started")) is not None:
-            eta = eta_clock(row.get("pct"), row.get("eta_s"), row.get("started"),
-                            time.time() if now is None else now)
-        eta = eta or fmt_eta(row.get("eta_s"))
+        eta = run_clock(row.get("pct"), row.get("eta_s"), row.get("started"),
+                        time.time() if now is None else now)
         tail = f" ({state}, {eta})" if eta else f" ({state})"
     return f"{BOX} {'+' if added else ''}{row['id']}: {row['task']}{tail}"
 

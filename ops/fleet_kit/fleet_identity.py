@@ -10,6 +10,12 @@ v19 (CS FIX 2026-10-18-1213 item 2): pre-push scans a NEW remote ref against
 what `git ls-remote <remote>` really advertises (shas present locally), not
 the local remote-tracking refs; ls-remote failing refuses the push.
 
+v22 (CS FIX 2026-10-23-2023, CS-1345): an UPDATE of an existing ref also
+excludes the remote's advertised shas (`<lsha> ^<rsha> ^a ^b ...`), so a PR
+branch that merged already-published upstream commits is not refused for
+their authors. ls-remote failing on an update-only push falls back to the v19
+`rsha..lsha` range (stricter, never looser); a new ref still refuses.
+
 Why: GitHub lists a contributor for every identity in default-branch history,
 including co-author trailers. Claude and bot identities entered through
 harness trailers, Claude-authored commits, Dependabot merges and workflow
@@ -269,6 +275,12 @@ def push_ranges(stdin_text, remote, advertised=None):
                 ranges.append([lsha] + ["^" + s for s in advertised])
             else:
                 ranges.append([lsha, "--not", "--remotes=" + remote] if remote else [lsha])
+        elif advertised is not None:
+            # v22 (CS FIX 2026-10-23-2023, CS-1345): an existing-branch update
+            # excludes every commit the remote already has, as a new ref does,
+            # so already-published foreign commits merged into a PR branch are
+            # not scanned. Without the advertisement: the v19 rsha..lsha range.
+            ranges.append([lsha, "^" + rsha] + ["^" + s for s in advertised])
         else:
             ranges.append([rsha + ".." + lsha])
     return ranges
@@ -376,6 +388,16 @@ def remote_advertised(cwd, remote, reader=None):
                    if len(ln.split()) == 2 and ln.split()[1] in ("commit", "tag")})
 
 
+def _has_pushed_ref(stdin_text):
+    """v22: any non-delete ref (new or update) - the advertisement is read for
+    both; only a NEW ref refuses when it cannot be read."""
+    for ln in (stdin_text or "").splitlines():
+        parts = ln.split()
+        if len(parts) == 4 and not ZERO.match(parts[1]):
+            return True
+    return False
+
+
 def _has_new_ref(stdin_text):
     for ln in (stdin_text or "").splitlines():
         parts = ln.split()
@@ -391,9 +413,9 @@ def pre_push(remote, stdin_text, cwd=None, idents=None, runner=None, advertised_
         _no_operator(cwd, "pre-push")
         return 1
     advertised = None
-    if remote and _has_new_ref(stdin_text):
+    if remote and _has_pushed_ref(stdin_text):
         advertised = remote_advertised(cwd, remote, advertised_reader)
-        if advertised is None:
+        if advertised is None and _has_new_ref(stdin_text):
             _say("IDENTITY: push refused - could not read the remote's advertised refs "
                  "(git ls-remote); a new ref is never scanned against local tracking refs")
             return 1

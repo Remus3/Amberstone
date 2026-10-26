@@ -33,8 +33,10 @@ KIT = ROOT / "ops" / "fleet_kit"
 
 # The ORDER's section-1 hashes (verified against MAIN's committed outbox copy
 # at adoption, LEDGER).
-V15_MANIFEST_SHA256 = "8017eae27ba218ea51ab77885ab0a46cc3eceb39b9e9d5f4ee277f88e77d4602"
-COMMON_BLOCK_SHA256 = "940d8a7c5981c6889692d54b3e3a3f4a12a8edcc6ba730ed0a7d7fc2666cc202"
+# Kit v23 (MAIN 2026-10-25 1926 ORDER, cumulative v21 + v22) superseded
+# v20.1 (manifest 8017eae2...e77d4602, block 940d8a7c...666cc202).
+V15_MANIFEST_SHA256 = "f5d82861cce3f5c2d565495dbd3a8cceff3b9d895117a2f6f9d4c83f11ba527c"
+COMMON_BLOCK_SHA256 = "5e8fa06f61033cca76c5a2868067f92974d3ab6f555963f74dbff0d9bfbbc663"
 BG_OFF = "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS"
 FAKE_URL = "http://127.0.0.1:9"
 
@@ -72,8 +74,8 @@ def test_the_vendored_manifest_is_the_v15_order_bytes():
     raw = (KIT / "MANIFEST.json").read_bytes()
     assert hashlib.sha256(raw).hexdigest() == V15_MANIFEST_SHA256
     man = json.loads(raw.decode("ascii"))
-    assert man["version"] == 20
-    assert _load("fleet_headless").KIT_VERSION == 20
+    assert man["version"] == 23
+    assert _load("fleet_headless").KIT_VERSION == 23
     for name, want in man["files"].items():
         assert hashlib.sha256((KIT / name).read_bytes()).hexdigest() == want, name
 
@@ -82,7 +84,8 @@ def test_the_suite_gate_records_durations_and_offers_the_short_lane(tmp_path):
     gate = _load("fleet_suite_gate")
     assert gate.DURATIONS == "durations.jsonl"
     assert (gate.LANE_MAX_S, gate.LANE_OVERRUN_S) == (130.0, 200.0)
-    assert (gate.LANE_MIN_RUNS, gate.LANE_WINDOW) == (3, 5)
+    # v21 GATE-SLOTS-2: LANE_MIN_RUNS 3 -> 1.
+    assert (gate.LANE_MIN_RUNS, gate.LANE_WINDOW) == (1, 5)
     # The lane is inside MAX_SLOTS: RC's default 2 regular slots leave room.
     assert gate.lane_index(gate.DEFAULT_SLOTS) == gate.DEFAULT_SLOTS
     assert gate.lane_index(gate.MAX_SLOTS) is None
