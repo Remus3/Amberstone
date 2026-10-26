@@ -1,578 +1,679 @@
-"""
-tools/build_portable.py
-Riot Commander -- Portable staging bundle builder.
-Phase 4 Step 3 / Phase 5 Step 1.
+"""tools/build_portable.py - the Amberstone portable bundle builder (PKG-4).
 
-Builds a staged portable bundle according to the strategy documented in
-tools/PYTHON_BUNDLING_STRATEGY.md and tools/DISTRIBUTION_LAYOUT.md.
+docs/PACKAGING_PLAN.md MUST-FIX M6 measured the previous builder producing a
+bundle that could not start: a hand-kept inclusion list that named files no
+longer in the tree and omitted web_dashboard.py, app/, dashboard/, web/ and
+agents/. This rewrite never keeps an inclusion list:
 
-Current strategy: Option B (embedded Python 3.11 runtime) when python-embed/
-is present at the project root. Falls back to Option A (prerequisite Python)
-if python-embed/ is absent. Strategy is detected at build time and recorded
-in BUILD_MANIFEST.json and PREREQUISITES.md.
+* INCLUSION = the git INDEX (`git ls-files`) minus an explicit, reasoned
+  exclusion list (dev-only trees, operator-only and boot-start scripts,
+  secrets and per-host state). Gitignored files are never in the index, so
+  keys, certs, logs and data caches cannot ride along; the secret rules apply
+  even to a force-added file. A failed or empty `git ls-files` refuses the
+  build (no disk-walk fallback).
+* IMPORT CLOSURE: every repo module reachable by static import (plus literal
+  importlib.import_module / __import__ calls) from the processes the backend
+  runs (CLOSURE_ENTRIES) must be inside the bundle, or the build fails.
+* NO LFS POINTER: a tracked LFS file whose working copy is still the pointer
+  refuses the build (plan S14: the laning coach would fail soft to live
+  Haiku); `--skip-lfs-pointers` omits them instead and records which.
+* RUNTIME: python-embed/ is built from the pinned python.org zip and the
+  hashed lock by tools/build_python_embed.py (plan section 3.5), with the
+  opencv ffmpeg DLL strip and the certifi inclusion as explicit, recorded
+  steps (M10). `--python-embed DIR` reuses a prebuilt runtime only after it
+  verifies against this tree's lock; `--no-embed` stages the backend alone.
+* VERIFY: the finished folder is re-checked (no key file, no ops/runtime/,
+  nothing an exclusion rule names, no LFS pointer) before the build reports
+  success. tools/package_portable.py runs the same check before zipping.
 
-The staged output is a self-contained folder ready for packaging.
+The staged folder is the bundle root. BUILD_MANIFEST.json there records the
+version, source commit, per-file sha256, exclusion counts, the closure, the
+runtime stamp and the licence steps - with repo-relative paths only, so a
+shipped manifest never carries the build machine's folder layout.
 
-Usage (from project root):
-    python tools/build_portable.py
+Usage (from the repo root):
+    python tools/build_portable.py                    (embedded runtime, 3.14 host)
     python tools/build_portable.py --output dist/portable_staging
-    python tools/build_portable.py --dry-run
+    python tools/build_portable.py --python-embed dist/python-embed
+    python tools/build_portable.py --no-embed --skip-lfs-pointers --dry-run
 
-Or via wrapper:
-    tools\\build_portable.cmd
-
-Output:
-    dist/portable_staging/    (default; override with --output)
-
-Exit codes:
-    0   Staged output produced successfully
-    1   Build failed (missing required source, copy error, etc.)
-    2   Dry-run mode: would succeed (no output written)
+Exit codes: 0 built, 1 refused or failed, 2 dry-run would succeed.
 """
+from __future__ import annotations
+
 import argparse
+import ast
 import datetime
+import hashlib
 import json
+import re
 import shutil
+import subprocess
 import sys
-from pathlib import Path
+from dataclasses import dataclass, field
+from pathlib import Path, PurePosixPath
+from typing import Callable, Iterable, Optional
 
-_PROJECT_ROOT = Path(__file__).parent.parent
-_DEFAULT_OUTPUT = _PROJECT_ROOT / "dist" / "portable_staging"
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
 
-# -- Inclusion rules -----------------------------------------------------------
-#
-# Strategy: portable staging bundle (current baseline: Option B when python-embed/ present, Option A fallback otherwise)
-#   - All Python source packages
-#   - All launch/setup scripts
-#   - All config files (no secrets)
-#   - All frozen ops files
-#   - Operator tooling docs and launch docs
-#   - Runtime directory placeholders (empty, with .gitkeep)
-#
-# Excluded:
-#   - API-Key-Claude.txt  (secret -- user must supply)
-#   - audit/              (proof bundles: dev-only, not deployed)
-#   - logs/               (transient runtime logs)
-#   - __pycache__/        (bytecode cache: recreated at runtime)
-#   - *.pyc / *.pyo       (bytecode: recreated at runtime)
-#   - .git/               (source control: not for distribution)
-#   - dist/               (the output itself: prevent self-copy)
-#   - *.tmp               (transient temp files)
-#   - data/*.json         (runtime coaching artifacts: generated at runtime)
-#   - ops/runtime/        (supervisor/heartbeat artifacts: ACTIVELY EXCLUDED -- placeholder only)
+from tools import build_python_embed as embed_mod  # noqa: E402
 
-# Top-level Python source files to include
-_ROOT_PY_FILES = [
-    "main.py",
-    "overlay.py",
-    "item_advisor.py",
-    "performance_tracker.py",
-    "composition_advisor.py",
-    "champion_profiles.py",
-    "role_profiles.py",
-    "coaching_timestamps.py",
+BUNDLE_NAME = "Amberstone"
+BUILD_TOOL = "tools/build_portable.py"
+MANIFEST_NAME = "BUILD_MANIFEST.json"
+README_NAME = "PREREQUISITES.md"
+EMBED_DIR_NAME = "python-embed"
+DEFAULT_OUTPUT = _PROJECT_ROOT / "dist" / "portable_staging"
+
+# Every process the backend runs: the plan's PKG-4 six, plus the DS launcher
+# (core/daemon_slayer_client.py _spawn_child) and the supervisor that owns
+# main.py, both spawned by path, so their closures must ship too.
+CLOSURE_ENTRIES = (
     # arch: phase 2.4 (2026-05-09) - vision server entrypoint shim (real code in vision_server/)
-    # Listed here because dashboard/server.py spawns this file by path
-    # (sole launcher; the RC-VisionServer schtask was removed 2026-06-11).
     "moon_vision_server.py",
-]
+    "main.py",
+    "web_dashboard.py",
+    "tools/lcu_agent.py",
+    "tools/liveclient_relay.py",
+    "tools/hotkey_listener.py",
+    "tools/start_daemon_slayer.py",
+    "ops/rc_supervisor.py",
+)
 
-# Launcher / setup scripts. start.bat and install.bat are the only root entry
-# points; the other launchers live in scripts/ (moved 2026-10-09, MAIN 2246
-# sec 3) and resolve the root as their parent folder, so they keep their
-# relative place in the bundle.
-_ROOT_BAT_FILES = [
-    "start.bat",
-    "scripts/restart_clean.bat",
-    "install.bat",
+LFS_POINTER_PREFIX = b"version https://git-lfs.github.com/spec/v1"
+_LFS_POINTER_MAX = 1024
+
+# --------------------------------------------------------------------------- #
+# Exclusion rules. Order matters only for which reason is reported.
+# --------------------------------------------------------------------------- #
+R_SECRET = "secret or per-install credential"
+R_HOST = "per-host config (gitignored by design)"
+R_RUNTIME = "runtime state, logs or build output"
+R_DEV = "dev-only"
+R_TEST = "dev-only: test code"
+R_SCRATCH = "dev-only: scratch or archive"
+R_BOOT = "boot-start or scheduled-task installer (plan intent 3, S8)"
+R_KILL = "operator-only: kills by image name (plan S7)"
+
+_SECRET_NAME_RES = (
+    re.compile(r"^api-key-.*\.txt$"),
+    re.compile(r"^\.env(\..*)?$"),
+    re.compile(r"token\.txt$"),
+)
+_SECRET_NAME_OK = {".env.example"}
+_SECRET_SUFFIXES = (".pem", ".key", ".pfx", ".p12", ".crt", ".cer")
+
+_HOST_CONFIG = frozenset({
+    "ops/local_hosts.json",
+    "ops/moon_sync_repos.json",
+    "ops/local_paths.json",
+    "ops/lane_worktrees.json",
+    "config/coach_settings.json",
+    "config/rank_tier_source.json",
+    "config/operator_identity.json",
+    "config/push_notify.json",
+    "config/external_sources.json",
+})
+
+_RUNTIME_PREFIXES = ("ops/runtime/", "ops/tls/", "logs/", "dist/", "build/")
+_RUNTIME_SUFFIXES = (".log", ".pyc", ".pyo", ".tmp")
+
+_DEV_PREFIXES = (
+    ("tests/", R_TEST),
+    ("docs/", R_DEV + ": documentation"),
+    ("ops/loop/", R_DEV + ": headless loop"),
+    ("ops/fleet_kit/", R_DEV + ": fleet kit"),
+    ("ops/audit/", R_DEV + ": audit artifacts"),
+    ("ops/migrate/", R_DEV + ": one-off migration scripts"),
+    (".github/", R_DEV + ": CI"),
+    (".githooks/", R_DEV + ": git hooks (a packaged install has no git)"),
+    (".claude/", R_DEV + ": agent settings"),
+    ("lane-widget/", R_DEV + ": Mission Control lane widget"),
+    ("mc/", R_DEV + ": Mission Control control plane"),
+    ("oss/", R_DEV + ": standalone OSS package, not imported at runtime"),
+)
+
+_DEV_FILES = frozenset({
+    "CLAUDE.md", "WAKEUP_NOTES.md", "ROADMAP.md", "BACKLOG.md",
+    "RC-NEXT-SESSION.txt", "atlas.html", "mission_control.py",
+    "conftest.py", "pytest.ini", "mypy.ini", "ruff.toml", "requirements.in",
+    ".gitignore", ".gitattributes", ".nojekyll", "ops/status_board.json",
+    "ops/claude_settings.example.json", "ops/lane_worktrees.example.json",
+    "ops/moon_sync_repos.example.json", "scripts/start_claude.ps1",
+    "scripts/bootstrap_dev.ps1", "scripts/bootstrap_dev.cmd",
+    "scripts/install_hooks.py",
+})
+
+_BOOT_FILES = frozenset({
+    "ops/install_startup.bat",
+    "ops/autostart_on_login.bat",
+    "ops/rc_league_watcher.ps1",
+    "ops/rc_watcher_launch.vbs",
+    "ops/phase3_install.ps1",
+    "ops/phase3_install_periodic_audit.ps1",
+})
+_BOOT_RES = (
+    re.compile(r"^ops/RC-[^/]*\.xml$"),
+    re.compile(r"^ops/install_RC_[^/]*\.ps1$"),
+)
+
+_KILL_FILES = frozenset({
+    "ops/launch_new_system.bat",
     "scripts/restart.bat",
     "scripts/kill.bat",
-    "scripts/start_debug.bat",
-    "run_watchdog.bat",
-    "requirements.txt",
-]
+    "scripts/restart_clean.bat",
+})
 
-# Source packages to copy entirely (excluding __pycache__)
-_SOURCE_PACKAGES = [
-    "core",
-    "coaches",
-    "coach_integration",
-    "game_reader",
-    "vision_server",
-    "tft",
-    "ui",
-    "lcu",
-    "modes",
-    "ops",     # includes frozen Phase 0 files
-]
-
-# Embedded Python runtime directory (Option B)
-# Included when present; contains python.exe, pythonw.exe, Lib/site-packages/
-_EMBED_PYTHON_DIR = "python-embed"
-
-# Config files to include (no secrets)
-_CONFIG_INCLUDES = [
-    "config/feature_flags.json",
-    "config/coach_settings.json",
-    "config/FEATURE_POLICY.md",
-    "config/CONFIG_AUTHORITY.md",
-    "config/self_monitor_profile.json",
-    "config/rc_config.json",    # also at ops/ -- include both if present
-]
-
-# Operator docs to include
-_DOC_FILES = [
-    "tools/LAUNCH_STRATEGY.md",
-    "tools/DEV_WORKFLOW.md",
-    "tools/DISTRIBUTION_LAYOUT.md",
-    "tools/PYTHON_BUNDLING_STRATEGY.md",
-    "tools/bootstrap_env_check.py",
-    "tools/bootstrap_env_check.cmd",
-    "tools/dev_cli.py",
-    "tools/dev_cli.cmd",
-]
-
-# Runtime directories to create as empty placeholders
-_RUNTIME_DIRS = [
-    "data",
-    "logs",
-    "audit",
-    "ops/runtime",
-]
-
-# Explicit exclusion: these must never appear in staged output
-_NEVER_INCLUDE = {
-    "API-Key-Claude.txt",   # secret
-    ".git",
-    "__pycache__",
-    "dist",
-    "build",
-    ".mypy_cache",
-    ".ruff_cache",
-    ".pytest_cache",
-}
+_TEST_SEGMENTS = frozenset({"tests", "test"})
+_SCRATCH_SEGMENTS = frozenset({"scratch", "_scratch", ".scratch", "tmp", "_tmp",
+                               "_archive", "__pycache__"})
+_SCRATCH_SUFFIXES = (".bak", ".orig", ".rej")
 
 
-# -- Helpers -------------------------------------------------------------------
+def exclusion_reason(rel: str) -> Optional[str]:
+    """Why `rel` (a repo-relative forward-slash path) never ships, else None."""
+    rel = rel.replace("\\", "/").lstrip("/")
+    parts = rel.split("/")
+    name = parts[-1]
+    low = name.lower()
+    if low not in _SECRET_NAME_OK and (
+            any(r.search(low) for r in _SECRET_NAME_RES) or low.endswith(_SECRET_SUFFIXES)):
+        return R_SECRET
+    if rel in _HOST_CONFIG:
+        return R_HOST
+    if rel.startswith(_RUNTIME_PREFIXES) or low.endswith(_RUNTIME_SUFFIXES):
+        return R_RUNTIME
+    for prefix, reason in _DEV_PREFIXES:
+        if rel.startswith(prefix):
+            return reason
+    if any(seg in _TEST_SEGMENTS for seg in parts[:-1]) or (
+            low.startswith("test_") and low.endswith(".py")) or low == "conftest.py":
+        return R_TEST
+    if any(seg in _SCRATCH_SEGMENTS for seg in parts[:-1]) or low.endswith(_SCRATCH_SUFFIXES):
+        return R_SCRATCH
+    if rel in _DEV_FILES:
+        return R_DEV
+    if rel in _BOOT_FILES or any(r.match(rel) for r in _BOOT_RES):
+        return R_BOOT
+    if rel in _KILL_FILES:
+        return R_KILL
+    return None
 
-def _info(msg: str) -> None:
-    print(f"  INFO    {msg}")
 
-def _ok(msg: str) -> None:
-    print(f"  OK      {msg}")
+# --------------------------------------------------------------------------- #
+# Git index
+# --------------------------------------------------------------------------- #
+class BundleError(RuntimeError):
+    """A refused bundle build."""
 
-def _warn(msg: str) -> None:
-    print(f"  WARN    {msg}")
+
+def _default_git_runner(cmd: list, cwd: Path) -> tuple:
+    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) if sys.platform == "win32" else 0
+    try:
+        proc = subprocess.run(cmd, cwd=str(cwd), capture_output=True, timeout=120,
+                              creationflags=flags)
+    except (OSError, subprocess.SubprocessError):
+        return 127, b""
+    return proc.returncode, proc.stdout
+
+
+def git_index_files(root: Path, *, git_runner: Optional[Callable] = None) -> list:
+    """Every path in the git index of `root`; raises BundleError on any failure."""
+    rc, out = (git_runner or _default_git_runner)(["git", "ls-files", "-z"], Path(root))
+    if rc != 0:
+        raise BundleError(f"git ls-files failed (exit {rc}); refusing to guess the file set")
+    files = sorted({p for p in out.decode("utf-8", errors="strict").split("\0") if p})
+    if not files:
+        raise BundleError("git ls-files returned an empty index; refusing to build")
+    return files
+
+
+def _git_text(root: Path, args: list, git_runner: Optional[Callable]) -> Optional[str]:
+    rc, out = (git_runner or _default_git_runner)(["git", *args], Path(root))
+    if rc != 0:
+        return None
+    return out.decode("utf-8", errors="replace").strip()
+
+
+# --------------------------------------------------------------------------- #
+# Plan
+# --------------------------------------------------------------------------- #
+def is_lfs_pointer(path: Path) -> bool:
+    try:
+        if path.stat().st_size > _LFS_POINTER_MAX:
+            return False
+        with open(path, "rb") as fh:
+            return fh.read(len(LFS_POINTER_PREFIX)) == LFS_POINTER_PREFIX
+    except OSError:
+        return False
+
+
+@dataclass
+class BundlePlan:
+    include: list = field(default_factory=list)
+    excluded: dict = field(default_factory=dict)
+    lfs_pointers: list = field(default_factory=list)
+    missing_on_disk: list = field(default_factory=list)
+
+
+def plan_bundle(root: Path, index_files: Iterable[str]) -> BundlePlan:
+    root = Path(root)
+    plan = BundlePlan()
+    for rel in sorted(set(index_files)):
+        reason = exclusion_reason(rel)
+        if reason:
+            plan.excluded.setdefault(reason, []).append(rel)
+            continue
+        path = root / rel
+        if not path.is_file():
+            plan.missing_on_disk.append(rel)
+        elif is_lfs_pointer(path):
+            plan.lfs_pointers.append(rel)
+        else:
+            plan.include.append(rel)
+    return plan
+
+
+# --------------------------------------------------------------------------- #
+# Import closure
+# --------------------------------------------------------------------------- #
+@dataclass
+class Closure:
+    files: set = field(default_factory=set)
+    script_dir_imports: list = field(default_factory=list)
+    unparsable: list = field(default_factory=list)
+    missing_entries: list = field(default_factory=list)
+
+
+_DYNAMIC_IMPORTERS = {"import_module", "__import__"}
+
+
+def _resolve(dotted: str, bases: tuple, universe: frozenset) -> Optional[tuple]:
+    parts = [p for p in dotted.split(".") if p]
+    if not parts:
+        return None
+    for base in bases:
+        prefix = f"{base}/" if base else ""
+        stem = prefix + "/".join(parts)
+        for cand in (stem + ".py", stem + "/__init__.py"):
+            if cand in universe:
+                found = [cand]
+                for i in range(1, len(parts)):
+                    init = prefix + "/".join(parts[:i]) + "/__init__.py"
+                    if init in universe:
+                        found.append(init)
+                return base, found
+    return None
+
+
+def _package_of(rel: str) -> list:
+    pp = PurePosixPath(rel)
+    return list(pp.parent.parts) if pp.parent.parts != (".",) else []
+
+
+def _imports_of(tree: ast.AST, rel: str) -> list:
+    """(dotted name, is_relative) for every import the module could execute."""
+    names = []
+    pkg = _package_of(rel)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            names.extend((a.name, False) for a in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            if node.level:
+                up = node.level - 1
+                if up > len(pkg):
+                    continue
+                base = pkg[:len(pkg) - up] if up else list(pkg)
+                mod = ".".join(base + ([node.module] if node.module else []))
+                rel_flag = True
+            else:
+                mod = node.module or ""
+                rel_flag = False
+            if mod:
+                names.append((mod, rel_flag))
+            for a in node.names:
+                if a.name != "*":
+                    names.append((f"{mod}.{a.name}" if mod else a.name, rel_flag))
+        elif isinstance(node, ast.Call) and node.args:
+            f = node.func
+            fname = f.attr if isinstance(f, ast.Attribute) else (
+                f.id if isinstance(f, ast.Name) else "")
+            arg = node.args[0]
+            if fname in _DYNAMIC_IMPORTERS and isinstance(arg, ast.Constant) and \
+                    isinstance(arg.value, str) and not arg.value.startswith("."):
+                names.append((arg.value, False))
+    return names
+
+
+def import_closure(root: Path, entries: Iterable[str], universe: frozenset) -> Closure:
+    """Repo files reachable by import from `entries`, resolved in `universe`.
+
+    A script entry also searches its own folder (sys.path[0] for a script);
+    a module found only there is listed in `script_dir_imports`, because the
+    embedded runtime's ._pth puts no script folder on sys.path.
+    """
+    root = Path(root)
+    out = Closure()
+    for entry in entries:
+        if entry not in universe:
+            out.missing_entries.append(entry)
+            continue
+        entry_dir = str(PurePosixPath(entry).parent)
+        bases = ("",) if entry_dir in ("", ".") else ("", entry_dir)
+        queue = [entry]
+        seen = set()
+        while queue:
+            rel = queue.pop()
+            if rel in seen:
+                continue
+            seen.add(rel)
+            out.files.add(rel)
+            try:
+                tree = ast.parse((root / rel).read_bytes(), filename=rel)
+            except (OSError, SyntaxError, ValueError):
+                out.unparsable.append(rel)
+                continue
+            for dotted, is_rel in _imports_of(tree, rel):
+                hit = _resolve(dotted, ("",) if is_rel else bases, universe)
+                if hit is None:
+                    continue
+                base, found = hit
+                if base:
+                    out.script_dir_imports.append(f"{rel}: {dotted} -> {found[0]}")
+                queue.extend(f for f in found if f not in seen)
+    out.script_dir_imports = sorted(set(out.script_dir_imports))
+    out.unparsable = sorted(set(out.unparsable))
+    return out
+
+
+# --------------------------------------------------------------------------- #
+# Verify a finished bundle folder
+# --------------------------------------------------------------------------- #
+def verify_bundle(bundle_dir: Path) -> list:
+    """Problems in a staged bundle (empty list = clean)."""
+    bundle_dir = Path(bundle_dir)
+    problems = []
+    secret = bundle_dir / "API-Key-Claude.txt"
+    if secret.exists():
+        problems.append("API-Key-Claude.txt: " + R_SECRET)
+    if (bundle_dir / "ops" / "runtime").exists():
+        problems.append("ops/runtime/: " + R_RUNTIME)
+    for path in sorted(bundle_dir.rglob("*")):
+        if not path.is_file():
+            continue
+        rel = path.relative_to(bundle_dir).as_posix()
+        if rel == "API-Key-Claude.txt":
+            continue
+        if rel.startswith(EMBED_DIR_NAME + "/"):
+            # The runtime is third-party content checked by its own stamp
+            # (certifi's cacert.pem is not a secret); only key files matter.
+            if any(r.search(path.name.lower()) for r in _SECRET_NAME_RES[:1]):
+                problems.append(f"{rel}: {R_SECRET}")
+            continue
+        reason = exclusion_reason(rel)
+        if reason:
+            problems.append(f"{rel}: {reason}")
+        elif is_lfs_pointer(path):
+            problems.append(f"{rel}: git-lfs pointer, not the real file")
+    return problems
+
+
+# --------------------------------------------------------------------------- #
+# Build
+# --------------------------------------------------------------------------- #
+def _sha256(path: Path) -> str:
+    return embed_mod.sha256_file(path)
+
 
 def _err(msg: str) -> None:
     print(f"  ERROR   {msg}", file=sys.stderr)
 
 
-def _copy_file(src: Path, dst: Path, dry: bool) -> bool:
-    """Copy src to dst, creating parent dirs. Returns True on success."""
-    if not src.exists():
-        return False
-    if not dry:
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(str(src), str(dst))
-    return True
+def _info(msg: str) -> None:
+    print(f"  INFO    {msg}")
 
 
-def _copy_package(src_dir: Path, dst_dir: Path, dry: bool) -> int:
-    """
-    Recursively copy a source package directory, skipping excluded paths.
-    Returns number of files copied.
-    """
-    count = 0
-    if not src_dir.exists():
-        _warn(f"package not found, skipping: {src_dir.name}/")
-        return 0
-    for src_file in src_dir.rglob("*"):
-        # Skip excluded directories/files
-        parts = src_file.parts
-        if any(excl in parts for excl in _NEVER_INCLUDE):
-            continue
-        if src_file.suffix in (".pyc", ".pyo", ".tmp"):
-            continue
-        if not src_file.is_file():
-            continue
-        # Explicitly skip ops/runtime contents -- these are live runtime artifacts,
-        # not source files.  The placeholder is created separately by _write_gitkeep.
-        try:
-            rel = src_file.relative_to(_PROJECT_ROOT)
-            rel_parts = rel.parts
-            if len(rel_parts) >= 2 and rel_parts[0] == "ops" and rel_parts[1] == "runtime":
-                continue
-        except ValueError:
-            pass
-        rel = src_file.relative_to(_PROJECT_ROOT)
-        dst_file = dst_dir / rel
-        if not dry:
-            dst_file.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(str(src_file), str(dst_file))
-        count += 1
-    return count
+def _check_output_dir(root: Path, out: Path) -> Optional[str]:
+    r, o = root.resolve(), out.resolve()
+    if o == r:
+        return "output dir cannot be the repo root"
+    if o in r.parents:
+        return "output dir cannot contain the repo root"
+    if r in o.parents and exclusion_reason(o.relative_to(r).as_posix() + "/x") is None:
+        return "output dir inside the repo must be under an excluded tree (e.g. dist/)"
+    if o.exists():
+        if not o.is_dir():
+            return "output path exists and is not a folder"
+        if any(o.iterdir()):
+            try:
+                man = json.loads((o / MANIFEST_NAME).read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                man = {}
+            if man.get("build_tool") != BUILD_TOOL:
+                return ("output dir is not empty and holds no previous bundle "
+                        "build; refusing to delete it")
+    return None
 
 
-def _write_gitkeep(path: Path, dry: bool) -> None:
-    """Create an empty .gitkeep in a runtime placeholder directory."""
-    if not dry:
-        path.mkdir(parents=True, exist_ok=True)
-        gk = path / ".gitkeep"
-        if not gk.exists():
-            gk.write_text(
-                "# This directory is created by the build step as a placeholder.\n"
-                "# It will be populated at runtime.\n",
-                encoding="utf-8",
-            )
+def _readme(version: str, python_line: str) -> str:
+    return f"""# {BUNDLE_NAME} - portable bundle
+
+Built by {BUILD_TOOL} (PKG-4). Version: {version}.
+Python: {python_line}
+
+## First run
+
+1. Optional: put an Anthropic API key in API-Key-Claude.txt next to start.bat.
+   Coaching panels need it; DS math and the deterministic coach do not.
+   (start.bat still refuses to start without one - PACKAGING_PLAN S11.)
+2. Run start.bat. Nothing is registered to start at boot or at logon.
+
+## Not included, on purpose
+
+- API keys (API-Key-Claude.txt, API-Key-Riot.txt), per-host config
+  (ops/local_hosts.json), TLS certificates, logs and runtime state.
+  ops/runtime/ and logs/ are created on first start.
+- Developer tooling: tests, docs, the headless loop, the fleet kit, CI
+  config, git hooks.
+- Boot-start installers and scripts that kill python by image name.
+
+## Licences
+
+LICENSE (Apache-2.0) covers the source; NOTICE names the third-party data
+under data/ that it does NOT cover. python-embed/LICENSE.txt and
+python-embed/{embed_mod.STAMP_NAME} record the runtime's licences, including
+the opencv ffmpeg DLL and certifi decisions.
+"""
 
 
-# -- Build ---------------------------------------------------------------------
-
-def build(output_dir: Path, dry: bool = False) -> int:
-    """
-    Produce the staged portable bundle. Returns 0 on success, 1 on failure.
-    """
-    # Detect strategy before printing banner (truthful output)
-    _embed_src_check = _PROJECT_ROOT / _EMBED_PYTHON_DIR
-    _pre_strategy = (
-        "Option B -- embedded Python runtime"
-        if _embed_src_check.exists()
-        else "Option A -- prerequisite Python on PATH (no embedded runtime)"
-    )
-    print("=" * 64)
-    print("Riot Commander -- build_portable.py")
-    print(f"Strategy : {_pre_strategy}")
-    print(f"Output   : {output_dir}")
-    print(f"Dry-run  : {dry}")
-    print("=" * 64)
-
-    # Validate source root
-    if not (_PROJECT_ROOT / "main.py").exists():
-        _err(f"Project root not found or missing main.py: {_PROJECT_ROOT}")
+def build(root: Path = _PROJECT_ROOT, output_dir: Path = DEFAULT_OUTPUT, *,
+          embed: str = "build", embed_dir: Optional[Path] = None,
+          embed_pin: Optional[embed_mod.EmbedPin] = None,
+          embed_options: Optional[embed_mod.EmbedOptions] = None,
+          embed_cache: Optional[Path] = None, embed_zip: Optional[Path] = None,
+          opener: Optional[Callable] = None, pip_runner: Optional[Callable] = None,
+          host_version=None, skip_lfs_pointers: bool = False,
+          version: Optional[str] = None, dry_run: bool = False,
+          git_runner: Optional[Callable] = None) -> int:
+    """Stage the bundle. Returns 0 built, 1 refused / failed, 2 dry-run ok."""
+    root, out = Path(root), Path(output_dir)
+    if embed not in ("build", "dir", "none"):
+        _err(f"unknown embed mode {embed!r}")
         return 1
+    pin = embed_pin or embed_mod.PINS[embed_mod.DEFAULT_VERSION]
+    options = embed_options or embed_mod.EmbedOptions()
+    version = version or datetime.date.today().strftime("%Y%m%d")
+    print(f"{BUNDLE_NAME} bundle builder: version {version}, runtime mode {embed}")
 
-    # Safety: refuse to stage into the project root itself
+    problem = _check_output_dir(root, out)
+    if problem:
+        _err(problem)
+        return 1
     try:
-        output_dir.resolve().relative_to(_PROJECT_ROOT.resolve())
-        # output_dir is inside project root -- that's fine (dist/ is excluded)
-    except ValueError:
-        pass  # output_dir is outside project root -- also fine
-
-    if output_dir.resolve() == _PROJECT_ROOT.resolve():
-        _err("Output dir cannot be the project root")
+        index = git_index_files(root, git_runner=git_runner)
+    except BundleError as exc:
+        _err(str(exc))
         return 1
+    plan = plan_bundle(root, index)
+    if plan.missing_on_disk:
+        _err(f"tracked but missing on disk: {plan.missing_on_disk[:20]}")
+        return 1
+    if plan.lfs_pointers and not skip_lfs_pointers:
+        _err("git-lfs pointers instead of real files (run `git lfs pull`, or pass "
+             f"--skip-lfs-pointers to omit them): {plan.lfs_pointers}")
+        return 1
+    closure = import_closure(root, CLOSURE_ENTRIES, frozenset(index))
+    if closure.missing_entries:
+        _err(f"closure entry points not in the index: {closure.missing_entries}")
+        return 1
+    included = set(plan.include)
+    violations = sorted(closure.files - included)
+    if violations:
+        _err("the import closure needs files the exclusion rules drop: "
+             + ", ".join(f"{v} ({exclusion_reason(v) or 'lfs pointer'})" for v in violations))
+        return 1
+    _info(f"{len(plan.include)} files from the index, "
+          f"{sum(len(v) for v in plan.excluded.values())} excluded, "
+          f"closure {len(closure.files)} modules")
 
-    # Wipe and recreate output dir
-    if not dry:
-        if output_dir.exists():
-            shutil.rmtree(str(output_dir))
-        output_dir.mkdir(parents=True, exist_ok=True)
+    lock = root / "requirements.txt"
+    if embed == "dir":
+        if embed_dir is None:
+            _err("--python-embed needs a folder")
+            return 1
+        bad = embed_mod.verify_embed_dir(Path(embed_dir), requirements=lock, pin=pin,
+                                         options=options)
+        if bad:
+            _err("prebuilt python-embed refused: " + "; ".join(bad))
+            return 1
+    elif embed == "build":
+        try:
+            embed_mod.check_host_python(pin, host_version)
+        except embed_mod.EmbedError as exc:
+            _err(str(exc))
+            return 1
 
-    included_files: list[str] = []
-    errors: list[str] = []
-
-    # -- Root .py files --------------------------------------------------------
-    strategy_label = "Option A -- prerequisite Python on PATH (no embedded runtime)"  # updated below
-    print("\n[Root Python files]")
-    for name in _ROOT_PY_FILES:
-        src = _PROJECT_ROOT / name
-        if src.exists():
-            ok = _copy_file(src, output_dir / name, dry)
-            if ok:
-                _ok(name)
-                included_files.append(name)
-            else:
-                _warn(f"copy failed: {name}")
-        else:
-            _info(f"optional, not found: {name}")
-
-    # -- Root launcher / setup files -------------------------------------------
-    print("\n[Launchers and setup]")
-    for name in _ROOT_BAT_FILES:
-        src = _PROJECT_ROOT / name
-        if src.exists():
-            ok = _copy_file(src, output_dir / name, dry)
-            if ok:
-                _ok(name)
-                included_files.append(name)
-        else:
-            _info(f"optional, not found: {name}")
-
-    # -- Source packages -------------------------------------------------------
-    # -- Embedded Python runtime (Option B) ---------------------------------
-    print("\n[Embedded Python runtime (Option B)]")
-    embed_src = _PROJECT_ROOT / _EMBED_PYTHON_DIR
-    if embed_src.exists():
-        n = _copy_package(embed_src, output_dir, dry)
-        _ok(f"{_EMBED_PYTHON_DIR}/  ({n} files)  -- Option B embedded runtime")
-        included_files.append(f"{_EMBED_PYTHON_DIR}/")
-        strategy_label = "Option B -- embedded Python runtime"
-    else:
-        _warn(f"{_EMBED_PYTHON_DIR}/ not found -- staging as Option A (PATH Python required)")
-        strategy_label = "Option A -- prerequisite Python on PATH (no embedded runtime)"
-
-    # -- Source packages ---------------------------------------------------
-    print("\n[Source packages]")
-    for pkg in _SOURCE_PACKAGES:
-        src_dir = _PROJECT_ROOT / pkg
-        n = _copy_package(src_dir, output_dir, dry)
-        if n > 0:
-            _ok(f"{pkg}/  ({n} files)")
-            included_files.append(f"{pkg}/")
-        elif src_dir.exists():
-            _warn(f"{pkg}/  (0 files copied -- check exclusion rules)")
-        else:
-            _info(f"{pkg}/  (not found, skipping)")
-
-    # -- Config files ----------------------------------------------------------
-    print("\n[Config files]")
-    for rel in _CONFIG_INCLUDES:
-        src = _PROJECT_ROOT / rel
-        if src.exists():
-            ok = _copy_file(src, output_dir / rel, dry)
-            if ok:
-                _ok(rel)
-                included_files.append(rel)
-        else:
-            _info(f"optional, not found: {rel}")
-
-    # ops/rc_config.json lives in ops/ which is already covered by _SOURCE_PACKAGES
-    # but also sometimes at config/ -- handled above.
-
-    # -- Operator docs and tooling ---------------------------------------------
-    print("\n[Operator docs and tooling]")
-    for rel in _DOC_FILES:
-        src = _PROJECT_ROOT / rel
-        if src.exists():
-            ok = _copy_file(src, output_dir / rel, dry)
-            if ok:
-                _ok(rel)
-                included_files.append(rel)
-        else:
-            _info(f"optional, not found: {rel}")
-
-    # -- Secret exclusion verification -----------------------------------------
-    print("\n[Exclusion verification]")
-    secret = output_dir / "API-Key-Claude.txt"
-    audit_dir = output_dir / "audit"
-    git_dir = output_dir / ".git"
-    for path, label in [(secret, "API-Key-Claude.txt"), (audit_dir, "audit/"), (git_dir, ".git/")]:
-        if not dry and path.exists():
-            _err(f"EXCLUDED item found in output -- removing: {label}")
-            if path.is_dir():
-                shutil.rmtree(str(path))
-            else:
-                path.unlink()
-            errors.append(f"had to remove excluded item: {label}")
-        else:
-            _ok(f"{label} correctly excluded")
-
-    # -- Runtime directory placeholders ----------------------------------------
-    # Run AFTER exclusion verification so placeholders are never wiped.
-    print("\n[Runtime directory placeholders]")
-    for rel in _RUNTIME_DIRS:
-        p = output_dir / rel
-        _write_gitkeep(p, dry)
-        _ok(f"{rel}/  (placeholder)")
-        included_files.append(f"{rel}/")
-
-    # -- Prerequisite note file ------------------------------------------------
-    print("\n[PREREQUISITES.md]")
-    prereq_content_b = """\
-# PREREQUISITES.md
-# Riot Commander -- Portable Bundle Prerequisites
-# Strategy: Option B (embedded Python runtime)
-# Generated by: tools/build_portable.py
-
-## Python Runtime
-
-  This bundle includes an embedded Python 3.11 runtime (python-embed/).
-  You do NOT need to install Python separately for normal application launch.
-
-## Required Before First Launch
-
-  1. Run install.bat (first time only)
-     - Verifies packages in embedded runtime
-     - Creates runtime directories (data/, logs/, config/)
-     - Validates API key format
-
-  2. Edit API-Key-Claude.txt with your Anthropic API key
-     - The key must start with sk-ant-
-     - Get your key at: https://console.anthropic.com/keys
-
-## After Setup Is Complete
-
-  Launch:       start.bat  (uses embedded python-embed\\pythonw.exe)
-  Clean start:  scripts\\restart_clean.bat
-  Diagnostics:  python-embed\\python.exe tools\\bootstrap_env_check.py
-  Operator CLI: python-embed\\python.exe tools\\dev_cli.py status
-
-## What Is NOT Included in This Bundle
-
-  - API-Key-Claude.txt (supply your own key)
-  - Python packages are PRE-INSTALLED in python-embed/ Lib/site-packages/
-  - Runtime coaching artifacts (generated at runtime)
-  - Audit/proof bundles (dev-only)
-
-## Note on Ops Supervisor Stack
-
-  The background watchdog scripts (ops/*.ps1) call python by PATH name.
-  For the ops supervisor stack to work, system Python must be on PATH.
-  Normal application launch (start.bat) does NOT require system Python.
-
-## Python Bundling Status
-
-  Current strategy: Option B -- embedded Python 3.11 runtime included.
-  See tools/PYTHON_BUNDLING_STRATEGY.md for details.
-"""
-    prereq_content_a = """\
-# PREREQUISITES.md
-# Riot Commander -- Portable Bundle Prerequisites
-# Strategy: Option A (prerequisite Python)
-# Generated by: tools/build_portable.py
-
-## Required Before Running
-
-  1. Python 3.9 or newer installed
-     - Download: https://python.org/downloads
-     - During install: check "Add Python to PATH"
-     - Verify: python --version
-
-  2. Run install.bat (first time only)
-     - Installs required Python packages (anthropic, Pillow)
-     - Creates runtime directories (data/, logs/, config/)
-     - Validates API key format
-
-  3. Edit API-Key-Claude.txt with your Anthropic API key
-     - The key must start with sk-ant-
-     - Get your key at: https://console.anthropic.com/keys
-
-## After Prerequisites Are Met
-
-  Launch:       start.bat
-  Clean start:  scripts\\restart_clean.bat
-  Diagnostics:  python tools/bootstrap_env_check.py
-  Operator CLI: python tools/dev_cli.py status
-
-## What Is NOT Included in This Bundle
-
-  - API-Key-Claude.txt (supply your own key)
-  - Python interpreter (install separately)
-  - Python packages (run install.bat)
-  - Runtime coaching artifacts (generated at runtime)
-  - Audit/proof bundles (dev-only)
-
-## Python Bundling Status
-
-  Current strategy: Option A -- prerequisite Python install.
-  See tools/PYTHON_BUNDLING_STRATEGY.md for details.
-"""
-    prereq_content = prereq_content_b if strategy_label.startswith("Option B") else prereq_content_a
-    prereq_path = output_dir / "PREREQUISITES.md"
-    if not dry:
-        prereq_path.write_text(prereq_content, encoding="utf-8")
-    _ok("PREREQUISITES.md written")
-    included_files.append("PREREQUISITES.md")
-
-    # -- Build manifest --------------------------------------------------------
-    print("\n[BUILD_MANIFEST.json]")
-    manifest = {
-        "build_tool":       "tools/build_portable.py",
-        "build_timestamp":  datetime.datetime.now(datetime.timezone.utc).isoformat(),
-        "strategy":         strategy_label,
-        "strategy_doc":     "tools/PYTHON_BUNDLING_STRATEGY.md",
-        "layout_doc":       "tools/DISTRIBUTION_LAYOUT.md",
-        "output_path":      str(output_dir),
-        "project_root":     str(_PROJECT_ROOT),
-        "dry_run":          dry,
-        "included_toplevel": sorted(set(
-            p.split("/")[0] for p in included_files
-        )),
-        "included_files_count": len(included_files),
-        "excluded_categories": [
-            "API-Key-Claude.txt  (secret -- user must supply)",
-            "audit/              (proof bundles: dev-only, not deployed)",
-            "logs/               (transient runtime logs: generated at runtime)",
-            "__pycache__/        (bytecode cache: recreated at runtime)",
-            ".git/               (source control: not for distribution)",
-            "dist/               (build output: prevents self-copy)",
-            "*.pyc / *.pyo       (bytecode: recreated at runtime)",
-            "*.tmp               (transient temp files)",
-            "data/*.json         (coaching artifacts: generated at runtime)",
-            "ops/runtime/        (supervisor artifacts: generated at runtime)",
-        ],
-        "runtime_dirs_created": _RUNTIME_DIRS,
-        "prerequisites": (
-            {
-                "python_embed": "included -- python-embed/ in bundle (Python 3.11)",
-                "pythonw_embed": "included -- python-embed/pythonw.exe used for launch",
-                "api_key": "API-Key-Claude.txt must be supplied by operator",
-                "ops_ps1_path_python": "PATH python advisory for frozen ops/.ps1 scripts",
-            } if strategy_label.startswith("Option B") else {
-                "python": "3.9+ on PATH",
-                "pythonw": "on PATH (same installation as python)",
-                "pip": "accessible via python -m pip",
-                "internet": "required for initial install.bat pip step",
-            }
-        ),
-        "launch_chain": (
-            "start.bat -> python-embed/pythonw.exe main.py  (fallback: PATH pythonw.exe)"
-            if strategy_label.startswith("Option B")
-            else "start.bat -> PATH pythonw.exe main.py"
-        ),
-        "install_chain": (
-            "install.bat -> verify embedded packages (install if missing)"
-            if strategy_label.startswith("Option B")
-            else "install.bat -> python -m pip install -r requirements.txt"
-        ),
-        "warnings_if_any": errors,
-    }
-    manifest_path = output_dir / "BUILD_MANIFEST.json"
-    if not dry:
-        manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
-    _ok(f"BUILD_MANIFEST.json written  ({len(included_files)} files staged)")
-
-    # -- Summary ---------------------------------------------------------------
-    print("\n" + "=" * 64)
-    if errors:
-        print(f"Build completed with {len(errors)} warning(s):")
-        for e in errors:
-            print(f"  WARN: {e}")
-        return 0  # warnings don't fail the build
-
-    if dry:
-        print("Dry-run complete: would succeed. No output written.")
+    if dry_run:
+        print("Dry-run: the bundle would build. Nothing written.")
         return 2
 
-    print(f"Build complete: {output_dir}")
-    print(f"  {len(included_files)} files/dirs staged")
-    print("  Run: python tools/bootstrap_env_check.py  (from staged root)")
-    print("  Run: install.bat  (first time setup)")
-    print("  Run: start.bat  (launch)")
+    if out.exists():
+        shutil.rmtree(out)  # a previous build of this tool, checked above
+    out.mkdir(parents=True)
+
+    files = {}
+    for rel in plan.include:
+        src, dst = root / rel, out / rel
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(src, dst)
+        files[rel] = _sha256(dst)
+
+    stamp = None
+    try:
+        if embed == "build":
+            stamp = embed_mod.build_embed(
+                out / EMBED_DIR_NAME, requirements=lock, pin=pin, options=options,
+                cache_dir=embed_cache, opener=opener, local_zip=embed_zip,
+                runner=pip_runner, version_info=host_version)
+        elif embed == "dir":
+            shutil.copytree(Path(embed_dir), out / EMBED_DIR_NAME)
+            stamp = embed_mod.read_stamp(out / EMBED_DIR_NAME)
+    except (embed_mod.EmbedError, OSError) as exc:
+        _err(f"embedded runtime failed: {exc}")
+        return 1
+
+    if stamp:
+        python_line = (f"embedded CPython {stamp['cpython']['version']} in "
+                       f"{EMBED_DIR_NAME}/, packages from the hashed requirements.txt")
+        python_doc = {"mode": embed, "dir": EMBED_DIR_NAME, "cpython": stamp["cpython"],
+                      "requirements_sha256": stamp["requirements_sha256"],
+                      "package_count": len(stamp["packages"])}
+        steps = {"opencv_ffmpeg_dll": stamp["opencv_ffmpeg"], "certifi": stamp["certifi"]}
+        packages = stamp["packages"]
+    else:
+        python_line = ("NONE - this is the backend payload only and cannot start on "
+                       "its own (build with the embedded runtime for a runnable bundle)")
+        python_doc = {"mode": "none", "warning": python_line}
+        steps = {"opencv_ffmpeg_dll": {"stripped": options.strip_opencv_ffmpeg,
+                                       "licence": embed_mod.OPENCV_FFMPEG_LICENCE,
+                                       "applies_to": "no runtime in this bundle"},
+                 "certifi": {"included": options.include_certifi,
+                             "licence": embed_mod.CERTIFI_LICENCE,
+                             "applies_to": "no runtime in this bundle"}}
+        packages = []
+    steps["ruling"] = "M10 licence ruling is operator-gated (PKG-8) before any distribution"
+
+    (out / README_NAME).write_text(_readme(version, python_line), encoding="utf-8",
+                                   newline="\n")
+    status = _git_text(root, ["status", "--porcelain", "--untracked-files=no"], git_runner)
+    manifest = {
+        "build_tool": BUILD_TOOL,
+        "bundle": BUNDLE_NAME,
+        "version": version,
+        "built_utc": datetime.datetime.now(datetime.timezone.utc).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"),
+        "source_commit": _git_text(root, ["rev-parse", "--verify", "-q", "HEAD"], git_runner),
+        "source_tree_clean": (status == "") if status is not None else None,
+        "file_count": len(files),
+        "files": files,
+        "excluded_counts": {k: len(v) for k, v in sorted(plan.excluded.items())},
+        "excluded_named": {k: v for k, v in sorted(plan.excluded.items())
+                           if k in (R_SECRET, R_HOST, R_BOOT, R_KILL)},
+        "lfs_pointers_skipped": plan.lfs_pointers,
+        "closure": {"entries": list(CLOSURE_ENTRIES), "module_count": len(closure.files),
+                    "script_dir_imports": closure.script_dir_imports,
+                    "unparsable": closure.unparsable},
+        "python": python_doc,
+        "licence_steps": steps,
+        "third_party": {
+            "python_packages": packages,
+            "tracked_data": ("data/ carries third-party game data NOT covered by the "
+                             "Apache-2.0 licence - see NOTICE; redistribution is gated "
+                             "(PACKAGING_PLAN section 6, OVERLAY_COMPLIANCE_PLAN N8)"),
+        },
+    }
+    tmp = out / (MANIFEST_NAME + ".tmp")
+    tmp.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8",
+                   newline="\n")
+    tmp.replace(out / MANIFEST_NAME)
+
+    problems = verify_bundle(out)
+    if problems:
+        _err("post-build verification failed: " + "; ".join(problems[:20]))
+        return 1
+    print(f"Built {out.name}: {len(files)} files, runtime {python_doc['mode']}.")
     return 0
 
 
-# -- Entry point ---------------------------------------------------------------
-
-def main() -> int:
-    parser = argparse.ArgumentParser(
-        description="Build a portable staging bundle for Riot Commander."
-    )
-    parser.add_argument(
-        "--output", "-o",
-        default=str(_DEFAULT_OUTPUT),
-        help=f"Output directory (default: {_DEFAULT_OUTPUT})",
-    )
-    parser.add_argument(
-        "--dry-run", "-n",
-        action="store_true",
-        help="Validate and report without writing any output",
-    )
-    args = parser.parse_args()
-
-    output_dir = Path(args.output)
-    return build(output_dir, dry=args.dry_run)
+# --------------------------------------------------------------------------- #
+# CLI
+# --------------------------------------------------------------------------- #
+def main(argv=None) -> int:
+    p = argparse.ArgumentParser(description=f"Stage the {BUNDLE_NAME} portable bundle.")
+    p.add_argument("--output", "-o", default=str(DEFAULT_OUTPUT))
+    p.add_argument("--version", default=None, help="bundle version (default YYYYMMDD)")
+    p.add_argument("--dry-run", "-n", action="store_true")
+    p.add_argument("--skip-lfs-pointers", action="store_true",
+                   help="omit LFS files whose working copy is still the pointer")
+    group = p.add_mutually_exclusive_group()
+    group.add_argument("--python-embed", default=None, metavar="DIR",
+                       help="reuse a prebuilt runtime (verified against this lock)")
+    group.add_argument("--no-embed", action="store_true",
+                       help="stage the backend only (cannot start on its own)")
+    embed_mod.add_embed_arguments(p)
+    args = p.parse_args(argv)
+    mode = "none" if args.no_embed else ("dir" if args.python_embed else "build")
+    return build(
+        _PROJECT_ROOT, Path(args.output), embed=mode,
+        embed_dir=Path(args.python_embed) if args.python_embed else None,
+        embed_pin=embed_mod.PINS[args.python_version],
+        embed_options=embed_mod.options_from_args(args),
+        embed_cache=Path(args.embed_cache) if args.embed_cache else None,
+        embed_zip=Path(args.embed_zip) if args.embed_zip else None,
+        skip_lfs_pointers=args.skip_lfs_pointers, version=args.version,
+        dry_run=args.dry_run)
 
 
 if __name__ == "__main__":
