@@ -41,6 +41,7 @@ import pytest
 
 from ops.launcher import first_run as fr
 from ops.launcher import service_host as sh
+from tests._module_view import this_thread_only
 
 ROOT = Path(__file__).resolve().parent.parent
 FIRST_RUN_PY = ROOT / "ops" / "launcher" / "first_run.py"
@@ -326,7 +327,10 @@ def test_provisioning_spawns_no_process_at_all(tmp_path, monkeypatch):
     def no_spawn(*a, **k):
         raise AssertionError("first_run spawns nothing (no worker, no icacls)")
 
-    monkeypatch.setattr(subprocess, "Popen", no_spawn)
+    # first_run binds no `subprocess` name (no module view to scope to), so the
+    # tripwire is thread-scoped: this test's thread and every thread it starts
+    # get it, another test's leftover thread keeps the real Popen (RM-801).
+    monkeypatch.setattr(subprocess, "Popen", this_thread_only(no_spawn, subprocess.Popen))
     root = make_root(tmp_path, deploy_module=True)
     report = fr.provision(root, environ={})          # real restrict + real verify
     assert {r.state for r in report.results} == {"created"}, report.results
@@ -864,17 +868,43 @@ def test_real_verify_refuses_inherited_and_accepts_a_private_folder(tmp_path):
     assert fr.verify_private(folder) is True
 
 
+def _icacls_explicit(folder: Path, sid: str, *extra_sids: str) -> None:
+    """Owner = SID, protected DACL, one explicit full-control allow for SID
+    and for each of EXTRA_SIDS - nothing inherited. The DACL goes first: a
+    /setowner on a folder still inheriting from a 0o700 parent (pytest's own
+    tmp tree on 3.13+) re-writes the parent's ACEs as explicit ones, which a
+    later /inheritance:r then keeps (measured 2026-10-26, Python 3.14)."""
+    grants = [f"*{s}:(OI)(CI)F" for s in (sid, *extra_sids)]
+    for args in (["/inheritance:r", "/grant:r", *grants], ["/setowner", f"*{sid}"]):
+        subprocess.run(["icacls", str(folder), *args], capture_output=True,
+                       creationflags=NO_WINDOW, timeout=30, check=True)
+
+
 @WINDOWS_ONLY
-@pytest.mark.skipif(sys.version_info < (3, 13), reason="mkdir mode 0o700 ACL is 3.13+")
 def test_real_extra_explicit_principals_are_refused_then_replaced(tmp_path):
     # Python 3.13+ mkdir(mode=0o700) writes EXPLICIT ACEs for SYSTEM and
-    # Administrators too: the read-back refuses that, and restrict_held
-    # replaces the WHOLE descriptor (unlike an icacls /grant:r edit).
+    # Administrators too (an earlier Python leaves the folder inheriting):
+    # either way the read-back refuses it, and restrict_held replaces the
+    # WHOLE descriptor (unlike an icacls /grant:r edit).
     folder = tmp_path / "explicit"
     os.mkdir(folder, 0o700)
     assert fr.verify_private(folder) is False
     assert _restrict_path(folder) is True
     assert fr.verify_private(folder) is True
+    # The same descriptor shape built on ANY Python, so no interpreter skips
+    # the extra-principal refusal. Control first: the identical recipe with
+    # only this user's ACE reads back private, so the refusal below is the
+    # extra principals (SYSTEM, Administrators) and nothing else.
+    sid = fr.current_user_sid()
+    control, extra = tmp_path / "control", tmp_path / "extra"
+    for path in (control, extra):
+        path.mkdir()
+    _icacls_explicit(control, sid)
+    assert fr.verify_private(control) is True
+    _icacls_explicit(extra, sid, "S-1-5-18", "S-1-5-32-544")
+    assert fr.verify_private(extra) is False
+    assert _restrict_path(extra) is True
+    assert fr.verify_private(extra) is True
 
 
 @WINDOWS_ONLY
@@ -1162,12 +1192,18 @@ def test_the_gate_decides_whether_services_see_rc_dash_token(tmp_path, monkeypat
     token = first_line(dash_path(root))
     assert len(popen.calls) == 2
     for _argv, kw in popen.calls:
-        env = kw["env"]
+        # Read the one value / one verdict to a local: a failing assert on the
+        # child mapping itself would render the whole environment.
+        child_env = kw["env"]
         if gate:
-            assert env is not None and env["RC_DASH_TOKEN"] == token
+            child_token = None if child_env is None else child_env.get("RC_DASH_TOKEN")
+            assert child_token == token, "the gate hands every service RC_DASH_TOKEN"
         else:
-            assert env is None or not any(k.upper() == "RC_DASH_TOKEN" for k in env)
-    assert "RC_DASH_TOKEN" not in os.environ, "the host's own environment is untouched"
+            sees_token = child_env is not None and any(
+                k.upper() == "RC_DASH_TOKEN" for k in child_env)
+            assert sees_token is False, "gate off: no service sees RC_DASH_TOKEN"
+    host_has_token = "RC_DASH_TOKEN" in os.environ
+    assert host_has_token is False, "the host's own environment is untouched"
 
 
 def test_default_provisioning_logs_names_never_values(tmp_path, monkeypatch):
