@@ -12,18 +12,24 @@ the fresh / torn / non-TFT read `read_eog` and its window `EOG_MAX_AGE_S`
 come from the P0 module; `tft.tft_set.parse_set_id` turns "TFTSet18" into 18.
 
 Three layers, each fail-soft (a bad file reads as "nothing new", never an
-exception into a poll loop):
+exception into a poll loop; one bad field drops that field, never the
+snapshot; the first failure of each kind and stage logs at WARNING, its
+repeats at DEBUG):
 
   * `parse_eog(doc, salt=...)` - pure: one decoded file -> `EogSnapshot`. Keys
     are read by ALLOWLIST (DOC_FIELDS, STATS_FIELDS, PLAYER_FIELDS,
     PIECE_FIELDS). Identity fields (IDENTITY_KEYS) are read only to derive the
     section 1.2 `player_key` HMAC in memory (KEY_BASIS_FIELDS: the PUUID, or
     when it is absent or all zeros the Riot id, then the summoner name, then a
-    per-game slot), and are never copied. Unit and item ids must have the game
-    api shape (DA_18_Yorick, DA_GiantSlayer, TFT_Item_...); anything else is
-    dropped from that one unit or list.
+    per-game slot; an identity string that does not encode as UTF-8 - a lone
+    surrogate json.loads let through - is skipped as absent), and are never
+    copied. Unit and item ids must have the game api shape (DA_18_Yorick,
+    DA_GiantSlayer, TFT_Item_...); anything else is dropped from that one
+    unit or list. A number outside SQLite's signed 64-bit INTEGER reads as
+    absent (the store's writer would raise OverflowError on it).
   * LOCAL PLAYER: only from the injected `local_player_id` - the LCU summoner
-    id (an int or digit string, matched against a row's `playerId`) or a PUUID
+    id (an int, int-valued float or ASCII digit string, read through
+    `tft.local_player.real_id`, matched against a row's `playerId`) or a PUUID
     (matched against `PUUID`); a callable returning either is resolved on every
     poll. Exactly one matching row is the local player; no id, no match, two
     matches or a failing callable = unknown (`local_key` None, `is_local` None),
@@ -35,7 +41,9 @@ exception into a poll loop):
     NEW rewrite: identical content is skipped, a changed game length opens the
     next rewrite index, a changed game id restarts it.
   * `EogIngest` - writes snapshots into the TFT-01 round store: the match row
-    (found by game_id, else created with a deterministic match_id), player rows
+    (found by game_id, else created with a deterministic match_id; a file
+    without a usable gameId is named by its lobby's player keys, so two such
+    games never share a match and a restart resumes its own), player rows
     (slot 1 = local when known, final_standing, eliminated_round_seq), per round all-8
     `player_round` (hp clamped at 0; overkill stays in the raw obs), the board
     `unit_obs` (phase planning_start, zone board), the local `hp_start`
@@ -53,6 +61,7 @@ import hashlib
 import hmac
 import json
 import logging
+import math
 import re
 import time
 from bisect import bisect_right
@@ -61,9 +70,22 @@ from typing import Callable, Optional
 
 from tft import tft_set
 from tft import tft_standalone as p0
+from tft.local_player import real_id
 from tft.rounds.store import Env, RoundStore, player_key
 
 _log = logging.getLogger(__name__)
+# (stage, exception type) pairs already logged at WARNING by this process
+_WARNED: set = set()
+
+
+def _fail(stage: str, exc: BaseException) -> None:
+    """Log one fail-soft branch: the first (stage, type) pair at WARNING, its
+    repeats at DEBUG. The type name only, never the message (it can carry a
+    value from the file)."""
+    key = (stage, type(exc).__name__)
+    level = logging.DEBUG if key in _WARNED else logging.WARNING
+    _WARNED.add(key)
+    _log.log(level, "tft eog: %s failed (%s)", stage, key[1])
 
 SRC = "eog_file"
 CONF = 1.0  # section 1.1: 1.0 when the snapshot parsed and is for this round
@@ -78,6 +100,9 @@ OBS_ROUND = "eog.round"
 ROUND_GAP_MAX_S = 180.0
 # locate(): stamps this long before the estimated game start are not this match's
 MATCH_START_SLACK_S = 120.0
+# SQLite INTEGER is signed 64-bit; a larger Python int passes the store's
+# validators and then raises OverflowError in its writer thread
+_I64_MAX = (1 << 63) - 1
 
 # -- the key allowlist (the identity guard in tests/test_tft_sources_eog_file.py
 # enumerates every key of the file against these sets) -------------------------
@@ -158,6 +183,8 @@ def _as_int(v, lo=None, hi=None) -> Optional[int]:
         if v != v or v in (float("inf"), float("-inf")) or v != int(v):
             return None
         v = int(v)
+    if not -_I64_MAX - 1 <= v <= _I64_MAX:
+        return None
     if (lo is not None and v < lo) or (hi is not None and v > hi):
         return None
     return v
@@ -171,22 +198,33 @@ def _api_list(v) -> tuple:
     return tuple(x for x in (v if isinstance(v, list) else ()) if _api(x))
 
 
+def _text(v) -> Optional[str]:
+    """A stripped, non-empty string that encodes as UTF-8, else None.
+    json.loads lets a lone surrogate ("\\ud800") through, and the HMAC key
+    raises UnicodeEncodeError on it."""
+    if not isinstance(v, str):
+        return None
+    s = v.strip()
+    try:
+        s.encode("utf-8")
+    except UnicodeEncodeError:
+        return None
+    return s or None
+
+
 def _identity(p: dict) -> Optional[str]:
     """The section 1.2 identity, bare (so a key derived here equals one derived
     from the same identity anywhere else): the PUUID, else the Riot id
-    (name#tag), else the summoner name. An all-zero PUUID counts as absent."""
-    puuid = p.get("PUUID")
-    if isinstance(puuid, str) and puuid.strip() and not _ZERO_ID.fullmatch(puuid.strip()):
-        return puuid.strip()
-    name = p.get("riotIdGameName")
-    if isinstance(name, str) and name.strip():
-        tag = p.get("riotIdTagLine")
-        tag = tag.strip() if isinstance(tag, str) else ""
-        return f"{name.strip()}#{tag}" if tag else name.strip()
-    summ = p.get("summonerName")
-    if isinstance(summ, str) and summ.strip():
-        return summ.strip()
-    return None
+    (name#tag), else the summoner name. An all-zero PUUID counts as absent,
+    and so does a string that does not encode (see `_text`)."""
+    puuid = _text(p.get("PUUID"))
+    if puuid and not _ZERO_ID.fullmatch(puuid):
+        return puuid
+    name = _text(p.get("riotIdGameName"))
+    if name:
+        tag = _text(p.get("riotIdTagLine"))
+        return f"{name}#{tag}" if tag else name
+    return _text(p.get("summonerName"))
 
 
 def _player_keys(rows, salt, game_id) -> list:
@@ -229,19 +267,19 @@ def _with_local(snap: EogSnapshot, local: Optional[str]) -> EogSnapshot:
 
 
 def _local_id(v) -> Optional[tuple]:
-    """("player_id", int) | ("puuid", str) | None for an injected local id."""
-    if isinstance(v, bool) or v is None:
-        return None
-    if isinstance(v, int):
-        return ("player_id", v) if v > 0 else None
+    """("player_id", int) | ("puuid", str) | None for an injected local id.
+    An id goes through `real_id` (positive int, int-valued float or ASCII
+    digit string of at most 32 digits); any other digit string - a
+    superscript, a non-ASCII digit, past int()'s 4300-digit limit - is no id,
+    never a PUUID and never a raise."""
     if isinstance(v, str):
         s = v.strip()
         if not s or _ZERO_ID.fullmatch(s):
             return None
-        if s.isdigit():
-            return ("player_id", int(s)) if int(s) > 0 else None
-        return ("puuid", s)
-    return None
+        if not s.isdigit():
+            return ("puuid", s)
+    n = real_id(v)
+    return ("player_id", n) if n else None
 
 
 def _local_index(rows, local_player_id) -> Optional[int]:
@@ -253,8 +291,7 @@ def _local_index(rows, local_player_id) -> Optional[int]:
     hits = []
     for i, p in enumerate(rows):
         if kind == "player_id":
-            got = p.get("playerId")
-            got = int(got) if isinstance(got, str) and got.strip().isdigit() else _as_int(got)
+            got = real_id(p.get("playerId"))  # junk = 0, never equal to a real id
         else:
             got = p.get("PUUID").strip() if isinstance(p.get("PUUID"), str) else None
         if got == val:
@@ -271,7 +308,7 @@ def parse_eog(doc, *, salt: bytes, mtime: Optional[float] = None,
     try:
         return _parse(doc, salt, mtime, local_player_id)
     except Exception as exc:  # noqa: BLE001 - a malformed file never reaches a poll loop
-        _log.debug("tft eog: parse failed (%s)", type(exc).__name__)
+        _fail("parse", exc)
         return None
 
 
@@ -338,7 +375,7 @@ class EogFileSource:
             return self._poll()
         except Exception as exc:  # noqa: BLE001 - fail-soft: never into the poll loop
             self.stats["errors"] += 1
-            _log.debug("tft eog: poll failed (%s)", type(exc).__name__)
+            _fail("poll", exc)
             return None
 
     def _poll(self) -> Optional[EogSnapshot]:
@@ -375,7 +412,7 @@ class EogFileSource:
         try:
             return v()
         except Exception as exc:  # noqa: BLE001 - a failing helper = local unknown
-            _log.debug("tft eog: local id helper failed (%s)", type(exc).__name__)
+            _fail("local id helper", exc)
             return None
 
     def _sequence(self, snap: EogSnapshot) -> Optional[EogSnapshot]:
@@ -451,24 +488,31 @@ class EogIngest:
             return self._ingest(snap)
         except Exception as exc:  # noqa: BLE001 - fail-soft
             self.stats["errors"] += 1
-            _log.debug("tft eog: ingest failed (%s)", type(exc).__name__)
+            _fail("ingest", exc)
             return None
 
     # -- match / round bookkeeping
 
     def _match_for(self, snap: EogSnapshot) -> Optional[_Match]:
-        if self._m is not None and self._m.game_id == snap.game_id:
-            return self._m
+        if snap.game_id is not None:
+            mid = match_id_for(snap.game_id, self.salt)
+        else:
+            # no usable gameId: the lobby's player keys name the match, so two
+            # such games never share one (None == None) and a restart finds it
+            mid = _match_id_without_game([p.player_key for p in snap.players], self.salt)
+        cur = self._m
+        if cur is not None and cur.game_id == snap.game_id and (
+                snap.game_id is not None or cur.match_id == mid):
+            return cur
         start = snap.mtime
         if snap.mtime is not None and snap.game_length_s is not None:
             start = snap.mtime - snap.game_length_s
-        existing = None
         if snap.game_id is not None:
-            mid = match_id_for(snap.game_id, self.salt)
             existing = next((m for m in self.store.list_matches()
                              if m.get("game_id") == snap.game_id), None)
         else:
-            mid = _match_id_without_game([p.player_key for p in snap.players], self.salt)
+            found = self.store.get_match(mid, rounds=False)
+            existing = found.get("match") if isinstance(found, dict) else None
         if existing is not None:
             m = _Match(existing["match_id"], snap.game_id, existing.get("started_at") or start)
             self._resume(m)
@@ -506,9 +550,12 @@ class EogIngest:
     def locate(self, ts) -> Optional[tuple]:
         """(match_id, round_seq) for a wall-clock stamp of the current match:
         round_seq = the last rewrite at or before ts, None before the first
-        one. None when there is no match or ts is outside it."""
+        one. None when there is no match or ts is outside it (a bool, a NaN
+        or an infinity is no stamp)."""
         m = self._m
-        if m is None or not isinstance(ts, (int, float)):
+        if m is None or isinstance(ts, bool) or not isinstance(ts, (int, float)):
+            return None
+        if isinstance(ts, float) and not math.isfinite(ts):
             return None
         if m.start is not None and ts < m.start - MATCH_START_SLACK_S:
             return None
