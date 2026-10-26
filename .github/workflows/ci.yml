@@ -176,7 +176,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-ms-playwright-v2
+          key: ${{ runner.os }}-ms-playwright-v3
       - name: Install Playwright Chromium
         run: playwright install --with-deps chromium
       - name: Full Dual Suite
@@ -405,7 +405,8 @@ jobs:
       # hit never re-saves the cache post-job, so after a playwright pin change
       # the old key would restore the old browser and every run would pay the
       # download again: bump the key suffix (v1 -> v2 with playwright 1.64.0,
-      # 2026-10-17) in BOTH copies whenever the pin moves.
+      # 2026-10-17; v2 -> v3 with 1.64.1, 2026-10-26) in BOTH copies whenever
+      # the pin moves.
       #
       # NOT hash-pinned, and cannot be: `playwright install` fetches the browser
       # build from Playwright's own CDN, not from PyPI, so there is no
@@ -416,7 +417,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-ms-playwright-v2
+          key: ${{ runner.os }}-ms-playwright-v3
 
       - name: Install Playwright Chromium
         run: playwright install --with-deps chromium
