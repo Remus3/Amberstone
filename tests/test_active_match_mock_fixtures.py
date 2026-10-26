@@ -370,6 +370,18 @@ class TftRoundFixtureTests(unittest.TestCase):
         self.assertEqual(lc["as_of"], coach["tft_as_of"])
         self.assertEqual(len(lc["board"]), lc["board_size"])
 
+    def test_item_names_are_the_current_producer_form(self) -> None:
+        # RM-946: the row was recorded before tft_standalone.clean_item_name
+        # dropped the client's category token, so its one component item was
+        # re-derived (DA_Component_BFSword -> "BF Sword"). A fixture carrying
+        # the old served form would pin a string the backend no longer emits.
+        data = _load_fixture(self._NAME)
+        names = [i for u in data["coach"]["tft_board"] + data["liveclient"]["board"]
+                 for i in u["items"]]
+        self.assertIn("BF Sword", names)
+        for n in names:
+            self.assertFalse(n.startswith(("Component ", "Artifact ", "Emblem ")), n)
+
     def test_lobby_is_eight_anonymous_rows_with_one_you(self) -> None:
         rows = _load_fixture(self._NAME)["coach"]["tft_players"]
         self.assertEqual(len(rows), 8)

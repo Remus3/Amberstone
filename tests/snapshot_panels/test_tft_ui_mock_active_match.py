@@ -195,6 +195,10 @@ _UNITS_JS = (
     "() => Array.from(document.querySelectorAll("
     "'#am-build-body .am-tft-unit .am-tft-unit-name')).map(e => e.textContent)"
 )
+_ITEMS_JS = (
+    "() => Array.from(document.querySelectorAll("
+    "'#am-build-body .am-tft-unit .am-tft-unit-items')).map(e => e.textContent)"
+)
 _LOBBY_JS = (
     "() => Array.from(document.querySelectorAll("
     "'#am-map-body .am-tft-lob-row')).map(r => ["
@@ -231,6 +235,11 @@ def test_tft_ui_mock_round_feed_paints_board_and_lobby(mock_server, pw_browser):
             "LOBBY - 8 of 8 alive - as of 17:27",
         ]
         assert page.evaluate(_UNITS_JS) == _ROUND_UNITS
+        # RM-946: the chip line reads the game's item names, not the
+        # client's "Component " category token.
+        items = page.evaluate(_ITEMS_JS)
+        assert items[0] == "BF Sword / Guinsoos Rageblade", items
+        assert not any("Component" in t for t in items), items
         lobby = page.evaluate(_LOBBY_JS)
         assert [r[0] for r in lobby] == _ROUND_LOBBY_HP
         you = [r for r in lobby if r[1]]

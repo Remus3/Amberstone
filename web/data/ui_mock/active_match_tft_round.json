@@ -1,6 +1,6 @@
 {
   "mock": true,
-  "note": "Active Match TFT mock fixture, per-round feed state (session 134, lane uiux, RM-944). Activated via ?ui_mock=1&mode=tft_round#active-match (add &overlay=1 for the in-game overlay). VERBATIM real row: the /api/state the session 134 TFT QA recorder captured in run 20261025-162857, row 52 (stage 3-5, game clock 18:06, round file as of 17:27): coach + liveclient copied as served, with ONE removal - liveclient.game_id (a match id, not needed by any surface). This is the S134 standalone-client shape (tft/tft_standalone.py): liveclient carries the local hp / standing / eliminated / board and the anonymous 8-player lobby, coach carries tft_board / tft_players / tft_as_of, so the BOARD and LOBBY panes and the overlay lobby widget render - the two older twins (?mode=tft, ?mode=tft_live) predate that shape and leave both panes in their empty state. The coach advice strings (board / econ / rolldown / items / god_pick / placement / upgrade) ride along exactly as served: the no-feed fallback must never paint a coach imperative (B4), and the snapshot tests assert none of them reaches the page.",
+  "note": "Active Match TFT mock fixture, per-round feed state (session 134, lane uiux, RM-944). Activated via ?ui_mock=1&mode=tft_round#active-match (add &overlay=1 for the in-game overlay). VERBATIM real row: the /api/state the session 134 TFT QA recorder captured in run 20261025-162857, row 52 (stage 3-5, game clock 18:06, round file as of 17:27): coach + liveclient copied as served, with ONE removal - liveclient.game_id (a match id, not needed by any surface) - and ONE re-derivation: the component item, recorded as served 'Component BF Sword' (raw id DA_Component_BFSword), reads 'BF Sword', the RM-946 tft_standalone.clean_item_name output. This is the S134 standalone-client shape (tft/tft_standalone.py): liveclient carries the local hp / standing / eliminated / board and the anonymous 8-player lobby, coach carries tft_board / tft_players / tft_as_of, so the BOARD and LOBBY panes and the overlay lobby widget render - the two older twins (?mode=tft, ?mode=tft_live) predate that shape and leave both panes in their empty state. The coach advice strings (board / econ / rolldown / items / god_pick / placement / upgrade) ride along exactly as served: the no-feed fallback must never paint a coach imperative (B4), and the snapshot tests assert none of them reaches the page.",
   "mode": "tft",
   "phase": "InProgress",
   "coach": {
@@ -37,7 +37,7 @@
     "board_size": 7,
     "players_alive": 8,
     "tft_board": [
-      {"name": "Yunara", "star": 1, "items": ["Component BF Sword", "Guinsoos Rageblade"]},
+      {"name": "Yunara", "star": 1, "items": ["BF Sword", "Guinsoos Rageblade"]},
       {"name": "Rakan", "star": 2, "items": []},
       {"name": "Yorick", "star": 2, "items": []},
       {"name": "Karma", "star": 1, "items": ["Guinsoos Rageblade"]},
@@ -79,7 +79,7 @@
     "board_size": 7,
     "board_str": "Yunara*1, Rakan*2, Yorick*2, Karma*1, Diana*1, Fiddlesticks*1, Vi*1",
     "board": [
-      {"name": "Yunara", "star": 1, "items": ["Component BF Sword", "Guinsoos Rageblade"]},
+      {"name": "Yunara", "star": 1, "items": ["BF Sword", "Guinsoos Rageblade"]},
       {"name": "Rakan", "star": 2, "items": []},
       {"name": "Yorick", "star": 2, "items": []},
       {"name": "Karma", "star": 1, "items": ["Guinsoos Rageblade"]},

@@ -214,16 +214,40 @@ def clean_unit_name(raw) -> str:
 
 _ITEM_PREFIX = re.compile(r"^(?:DA_|TFT\d*_Item_|TFT\d*_)(?:\d+_)?")
 _CAMEL_GAP = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
+# RM-946: the client's category token is not part of the in-game item name
+# (DA_Component_BFSword is B.F. Sword; an Ornn DA_Artifact_ is its own name),
+# and it pushed "Component Needlessly Large Rod" past the dashboard's
+# 28-char chip clip. The lookahead keeps a bare "DA_Component" a name.
+_ITEM_CATEGORY = re.compile(r"^(?:Component|Artifact)_(?=.)")
+_ITEM_RADIANT = re.compile(r"(?<=.)_?Radiant$")
+_ITEM_EMBLEM = re.compile(r"^Emblem(?=[A-Z])")
+_ITEM_SMALL_WORDS = frozenset({"Of", "The", "And"})
 
 
 def clean_item_name(raw) -> str:
-    """``DA_18_EmblemFloraFatalis`` -> ``Emblem Flora Fatalis``;
-    ``DA_SteadfastHeart`` -> ``Steadfast Heart``. ASCII, at most 40 chars."""
+    """``DA_18_EmblemFloraFatalis`` -> ``Flora Fatalis Emblem`` (the repo's
+    "<Trait> Emblem" form, tft_placement.display_from_id);
+    ``DA_Component_TearOfTheGoddess`` -> ``Tear of the Goddess``;
+    ``DA_GiantSlayer_Radiant`` -> ``Radiant Giant Slayer``;
+    ``DA_SteadfastHeart`` -> ``Steadfast Heart``. ASCII, at most 40 chars.
+    Apostrophes are not restored (``Guinsoos Rageblade``)."""
     if not isinstance(raw, str) or not raw:
         return ""
-    s = _ITEM_PREFIX.sub("", raw).replace("_", " ")
-    s = " ".join(_CAMEL_GAP.sub(" ", s).split())
-    s = s.encode("ascii", "ignore").decode("ascii")
+    s = _ITEM_CATEGORY.sub("", _ITEM_PREFIX.sub("", raw))
+    radiant = _ITEM_RADIANT.search(s)
+    if radiant:
+        s = s[:radiant.start()]
+    emblem = _ITEM_EMBLEM.match(s)
+    if emblem:
+        s = s[emblem.end():]
+    words = _CAMEL_GAP.sub(" ", s.replace("_", " ")).split()
+    words = [w.lower() if i and w in _ITEM_SMALL_WORDS else w
+             for i, w in enumerate(words)]
+    if emblem:
+        words.append("Emblem")
+    if radiant:
+        words.insert(0, "Radiant")
+    s = " ".join(words).encode("ascii", "ignore").decode("ascii")
     return s[:40]
 
 

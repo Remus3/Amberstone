@@ -13,6 +13,7 @@ fields dropped, game id replaced.
 from __future__ import annotations
 
 import json
+import re
 import time
 from pathlib import Path
 
@@ -49,18 +50,64 @@ def test_fixture_is_sanitised():
     assert sum(1 for p in players if p["isInteractable"]) == 1
 
 
-@pytest.mark.parametrize("raw,clean", [
-    ("DA_18_EmblemFloraFatalis", "Emblem Flora Fatalis"),
+# RM-946: every id below except the last four is a REAL itemNames entry of
+# a recorded Set 18 per-round file (ops/runtime/tft_qa, 2026-10-25 runs). The
+# display form is a readable approximation of the in-game names (the set's
+# CommunityDragon data is itself inconsistent: "Hand Of Justice" beside
+# "Radiant Hand of Justice") in the repo's "<Trait> Emblem" convention
+# (tft/tft_placement.display_from_id, tft/engine/comps.EMBLEM_SUFFIX): the
+# client's category token (Component_ / Artifact_) is dropped, a _Radiant
+# suffix leads, and interior connectors read lower case. Apostrophes and
+# "B.F." are NOT restored: that needs the set's item-name data, not a string
+# rule.
+_REAL_ITEM_IDS = [
+    ("DA_18_EmblemFloraFatalis", "Flora Fatalis Emblem"),
+    ("DA_18_EmblemFae", "Fae Emblem"),
     ("DA_SteadfastHeart", "Steadfast Heart"),
     ("DA_InfinityEdge", "Infinity Edge"),
     ("DA_Evenshroud", "Evenshroud"),
+    ("DA_Component_BFSword", "BF Sword"),
+    ("DA_Component_NeedlesslyLargeRod", "Needlessly Large Rod"),
+    ("DA_Component_TearOfTheGoddess", "Tear of the Goddess"),
+    ("DA_Component_Spatula", "Spatula"),
+    ("DA_Artifact_AegisOfDawn", "Aegis of Dawn"),
+    ("DA_Artifact_TheIndomitable", "The Indomitable"),
+    ("DA_Artifact_NavoriFlickerblade", "Navori Flickerblade"),
+    ("DA_GiantSlayer_Radiant", "Radiant Giant Slayer"),
+    ("DA_ThiefsGlovesRadiant", "Radiant Thiefs Gloves"),
+    ("DA_KrakensFury_Radiant", "Radiant Krakens Fury"),
+    ("DA_HandOfJustice", "Hand of Justice"),
+    ("DA_SpearOfShojin", "Spear of Shojin"),
+    ("DA_EdgeOfNight", "Edge of Night"),
+    ("DA_GuinsoosRageblade", "Guinsoos Rageblade"),
+]
+
+
+@pytest.mark.parametrize("raw,clean", _REAL_ITEM_IDS + [
     ("TFT_Item_GuinsoosRageblade", "Guinsoos Rageblade"),
+    # a bare category or modifier word is a name, never emptied
+    ("DA_Component", "Component"),
+    ("DA_Radiant", "Radiant"),
     ("", ""),
     (None, ""),
     (7, ""),
 ])
 def test_clean_item_name(raw, clean):
     assert ts.clean_item_name(raw) == clean
+
+
+def test_clean_item_names_fit_the_board_chip_clip():
+    """The dashboard board chip clips each item name (active_match.js
+    _amTftBoard, `_amText(i, N)`): every real id must survive it whole. The
+    pre-fix "Component Needlessly Large Rod" (30) painted as
+    "Component Needlessly Large R"."""
+    js = (Path(__file__).resolve().parent.parent / "web" / "js" / "panels"
+          / "active_match.js").read_text(encoding="utf-8")
+    m = re.search(r"\.map\(\(i\) => _amText\(i, (\d+)\)\)", js)
+    assert m, "board chip item clip not found in active_match.js"
+    clip = int(m.group(1))
+    for raw, _ in _REAL_ITEM_IDS:
+        assert len(ts.clean_item_name(raw)) <= clip, raw
 
 
 def test_summary_carries_board_rows_and_the_whole_lobby(eog_file):
