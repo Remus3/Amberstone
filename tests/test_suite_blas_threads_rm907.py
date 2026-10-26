@@ -20,7 +20,8 @@ VARS = ("OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS")
 
 @pytest.mark.parametrize("var", VARS)
 def test_blas_thread_vars_are_set_in_the_test_process(var):
-    assert os.environ.get(var), var
+    value = os.environ.get(var)
+    assert value, var
 
 
 def test_a_spawned_child_inherits_the_cap():
