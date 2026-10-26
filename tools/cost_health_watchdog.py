@@ -9,8 +9,9 @@ Runs every 15 minutes (RC-CostHealthWatchdog scheduled task). Probes:
                           `_match_open.json` / `recent_matches.json` sidecars
                           that also live in that dir out of the baseline)
 
-Detects a cost breach (today > 1.5x trailing-median baseline, with an absolute
-floor so an idle day cannot false-positive against a near-zero baseline), a
+Detects a cost breach (today > 1.5x the trailing median of prior ACTIVE days,
+with an absolute floor so an idle day cannot false-positive against a
+near-zero baseline, and the same floor keeping idle days out of it), a
 per-lane cost escalation (a purpose lane whose mean USD/call >= 2x its
 trailing-baseline cost/call week-over-week - the disk proxy for the
 rc_coach_cost_usd_per_call p95 doubling), or a daemon flap (>=3 pid changes
@@ -65,7 +66,11 @@ P95_MIN_CALLS = 20            # need this many calls today for a stable p95
 # rather than \d: \d also matches non-ASCII decimal digits.
 _DAY_STEM_RE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
 
-# purpose -> (tier, primary caller file) from docs/COST_TRACE.md.
+# purpose -> (tier, primary caller file) from docs/COST_TRACE.md. Every
+# `purpose="..."` literal in production code must have a row here, or the hot
+# purpose of a breach classifies as "unmapped" and the proposal sends the
+# reader to wire a call that is already wired (MAIN FIX 2026-10-25: tft_coach).
+# Guard: tests/test_cost_health_watchdog_purposes_baseline.py.
 PURPOSE_MAP = {
     "vision_relay":   ("SONNET", "vision_server/_inference.py:141"),
     "vision_direct":  ("SONNET", "modes/shared_vision.py:251"),
@@ -73,7 +78,20 @@ PURPOSE_MAP = {
     "sr_coach":       ("HAIKU",  "coach_integration/_coach.py:354"),
     "aram_coach":     ("HAIKU",  "coaches/aram_coach.py:743"),
     "arena_coach":    ("HAIKU",  "coaches/arena_coach.py:587"),
+    "arena_aug_select": ("HAIKU", "coaches/arena_coach.py:973"),
+    "arena_anvil":    ("HAIKU",  "coaches/arena_coach.py:1115"),
     "brawl_coach":    ("HAIKU",  "coaches/brawl_coach.py:439"),
+    "aram_team_analyzer": ("HAIKU", "coaches/aram_team_analyzer.py:213"),
+    "champ_select_coach": ("HAIKU", "coaches/champ_select_coach.py:150"),
+    "experimental_builder": ("HAIKU", "coaches/experimental_builder.py:225"),
+    "replay_coach":   ("HAIKU",  "coaches/replay_coach.py:230"),
+    "tft_coach":      ("HAIKU",  "tft/tft_coach_engine.py:972"),
+    "tft_live_analysis": ("HAIKU", "tft/tft_live_analysis.py:703"),
+    "tft_live_aug_select": ("HAIKU", "tft/tft_live_analysis.py:776"),
+    # HAIKU, not SONNET: the reader's only construction site forwards a model
+    # defaulting to claude-haiku-4-5 (tft/tft_vision_reader.py tier note).
+    "tft_vision":     ("HAIKU",  "tft/tft_vision_reader.py:350"),
+    "agent7_warm":    ("HAIKU",  "agents/agent7_context/warm_session.py:284"),
 }
 
 
@@ -194,7 +212,17 @@ def probe_health(path: Path = _HEALTH) -> dict:
 
 
 def spend_baseline(spend_dir: Path, today: str) -> dict:
-    """today_usd, trailing median baseline (prior days > 0, up to 7), breach."""
+    """today_usd, trailing median baseline (prior ACTIVE days, up to 7), breach.
+
+    An ACTIVE day is one whose total clears FLOOR_ABS_USD - the same floor that
+    already says TODAY is idle. Idle days (measured: only the warm session
+    spends, about $0.002) never form the baseline, or every play day after an
+    idle week reads as a breach (measured 2026-10-25: 1.80 against 0.002088,
+    exit 1 on every run until local midnight). No prior active day = no
+    baseline = no breach, the same rule as no history at all; a spend runaway
+    on such a day is still bounded by cost_tracker's daily_budget_usd cap and
+    seen by the per-lane cost-per-call signal below. MAIN FIX 2026-10-25 1930.
+    """
     today_doc = _read_json(spend_dir / (today + ".json"), {})
     today_usd = _finite(today_doc.get("total_usd", 0.0) or 0.0)
     prior = []
@@ -202,7 +230,7 @@ def spend_baseline(spend_dir: Path, today: str) -> dict:
         if f.stem == today:
             continue
         v = _finite(_read_json(f, {}).get("total_usd", 0.0) or 0.0)
-        if v > 0:
+        if v > FLOOR_ABS_USD:
             prior.append(v)
     prior = prior[-7:]
     baseline = statistics.median(prior) if prior else 0.0

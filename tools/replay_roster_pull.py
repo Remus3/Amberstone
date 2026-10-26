@@ -17,9 +17,11 @@ fetch-by-match-id route, so a game not pulled during its residency is lost.
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import sys
 import time
+from dataclasses import dataclass
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -83,25 +85,76 @@ def _queue_lookup(match_id):
     return (blob.get("info") or {}).get("queueId")
 
 
-def _pull_one(entry, root, queues, dry_run, extract):
+_APP = Path(__file__).resolve().parent.parent
+# Machine-readable verdict of the last real run (gitignored runtime state; no
+# Riot ID is ever written here).
+_STATUS_PATH = _APP / "ops" / "runtime" / "replay_roster_status.json"
+# Gitignored acknowledgement of a KNOWN /replays 403: {"replays_forbidden_ack":
+# {"<key fingerprint>": "<why>"}}. RM-905 ruling (adjudicator, MAIN FIX
+# 2026-10-25 1930): a run blocked by that class exits 0 only while the ACTIVE
+# key is acknowledged there (the filed operator ask names that key); a key
+# that changed and still answers 403 is a new failure and exits 1.
+_ACK_PATH = _APP / "ops" / "runtime" / "replay_roster_blocked_ack.json"
+
+
+def _key_fingerprint() -> str:
+    """Seam: the active Riot key's truncated, non-reversible sha256 tag."""
+    return riot_api._key_fingerprint()
+
+
+@dataclass
+class _RunTally:
+    """What one run saw beyond the per-account exit bits."""
+
+    stale_ids: int = 0               # Account-V1 404: renamed or retagged ids
+    replays_forbidden: bool = False  # /replays answered 403 for this key
+    replays_blocked: int = 0         # accounts not listed because of that 403
+
+
+def _pull_one(entry, root, queues, dry_run, extract, tally=None):
+    tally = tally if tally is not None else _RunTally()
     pdir = rr.player_dir(root, entry.role, entry.name, entry.tag)
     _pace()
-    acct, throttled = fetch_unthrottled(
-        lambda: riot_api.get_account_by_riot_id(entry.name, entry.tag))
+    with riot_api.track_outcomes() as scope:
+        acct, throttled = fetch_unthrottled(
+            lambda: riot_api.get_account_by_riot_id(entry.name, entry.tag))
     if not acct or not acct.get("puuid"):
+        if not throttled and scope.last == "not_found":
+            # RM-905: Riot is answering "nobody owns this Riot ID" (a renamed
+            # or retagged player). Report it and move on; it is roster
+            # upkeep, not a failed run.
+            tally.stale_ids += 1
+            print(f"{entry.role:7} {entry.riot_id:24} NOT FOUND - skipped "
+                  f"(stale Riot ID: re-resolve or prune it from the roster)")
+            return 0
         why = " (RATE LIMITED)" if throttled else ""
         print(f"{entry.role:7} {entry.riot_id:24} ACCOUNT LOOKUP FAILED{why}")
         return 1
 
+    if tally.replays_forbidden:
+        # The route answered 403 earlier in this run: it is an entitlement of
+        # the KEY, so asking again per account only repeats the warning.
+        tally.replays_blocked += 1
+        return 0
+
     _pace()
-    urls, throttled = fetch_unthrottled(
-        lambda: riot_api.get_replay_urls(acct["puuid"]))
+    with riot_api.track_outcomes() as scope:
+        urls, throttled = fetch_unthrottled(
+            lambda: riot_api.get_replay_urls(acct["puuid"]))
     if throttled:
         # RM-484: the old `or []` recorded a throttled listing as an EMPTY
         # window in the rotation log, which reads as "every game rotated out".
         print(f"{entry.role:7} {entry.riot_id:24} /replays RATE LIMITED - "
               f"skipped, nothing recorded")
         return 1
+    if urls is None and scope.last == "forbidden":
+        # RM-905: same defect class as RM-484 - a 403 is not an empty window.
+        tally.replays_forbidden = True
+        tally.replays_blocked += 1
+        print(f"{entry.role:7} {entry.riot_id:24} /replays 403 FORBIDDEN - the "
+              f"route is not served to this key; not asked again this run, "
+              f"nothing recorded")
+        return 0
     urls = urls or []
     plan = rr.plan_pull(urls, _queue_lookup, queues=queues, archive_dir=pdir)
 
@@ -224,8 +277,58 @@ def main(argv=None) -> int:
     print(f"queues: {queues}")
 
     rc = 0
+    tally = _RunTally()
     for entry in entries:
-        rc |= _pull_one(entry, root, queues, args.dry_run, not args.no_extract)
+        rc |= _pull_one(entry, root, queues, args.dry_run, not args.no_extract,
+                        tally)
+    return _finish_run(rc, tally, len(entries), args.dry_run)
+
+
+def _blocked_acknowledged(fingerprint: str) -> bool:
+    try:
+        blob = json.loads(_ACK_PATH.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    acks = blob.get("replays_forbidden_ack") if isinstance(blob, dict) else None
+    return isinstance(acks, dict) and fingerprint in acks
+
+
+def _write_status(doc: dict) -> None:
+    try:
+        _STATUS_PATH.parent.mkdir(parents=True, exist_ok=True)
+        tmp = _STATUS_PATH.with_suffix(_STATUS_PATH.suffix + ".tmp")
+        tmp.write_text(json.dumps(doc, indent=2, sort_keys=True) + "\n",
+                       encoding="utf-8")
+        tmp.replace(_STATUS_PATH)
+    except OSError as exc:
+        log.warning("could not write %s: %s", _STATUS_PATH, exc)
+
+
+def _finish_run(rc: int, tally: _RunTally, accounts: int, dry_run: bool) -> int:
+    """Print the one-line run summary, apply the 403 ruling, record the verdict."""
+    acked = None
+    if tally.replays_forbidden:
+        acked = _blocked_acknowledged(_key_fingerprint())
+        verdict = ("acknowledged for this key (filed operator ask) - not a run "
+                   "failure" if acked else
+                   "NOT acknowledged for this key - run fails")
+        print(f"BLOCKED: /replays answered 403 for this key; {tally.replays_blocked} "
+              f"of {accounts} accounts not listed, nothing downloaded. The route is "
+              f"entitled to the production-app key only; {verdict}.")
+        if not acked:
+            rc |= 1
+    print(f"summary: accounts={accounts} stale_ids={tally.stale_ids} "
+          f"replays_blocked={tally.replays_blocked} exit={rc}")
+    if not dry_run:
+        _write_status({
+            "updated": _now_stamp(),
+            "accounts": accounts,
+            "stale_ids": tally.stale_ids,
+            "replays_blocked": tally.replays_forbidden,
+            "replays_blocked_accounts": tally.replays_blocked,
+            "blocked_acknowledged": bool(acked),
+            "exit": rc,
+        })
     return rc
 
 
