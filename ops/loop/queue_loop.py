@@ -716,6 +716,16 @@ def _trigger_ci_run(gh, sha, seen, *, sleep):
 CI_SETUP_STEP = "Set up job"
 
 
+def _ci_conclusion(row):
+    """A job's or step's `conclusion`, stripped and lower-cased.
+
+    The one reader for every conclusion `_ci_step_verdict` compares
+    (RM-931): a comparison that read the raw value let a casing the others
+    tolerate fall through to the wrong branch.
+    """
+    return str(row.get("conclusion") or "").strip().lower()
+
+
 def _early_failure_verdict(steps, run_id):
     """(step, detail) for a failed `check` job whose test steps were skipped.
 
@@ -729,7 +739,7 @@ def _early_failure_verdict(steps, run_id):
     for step in steps:
         if not isinstance(step, dict):
             continue
-        if str(step.get("conclusion") or "").strip().lower() != CI_FAILURE:
+        if _ci_conclusion(step) != CI_FAILURE:
             continue
         name = str(step.get("name") or "")
         if name == CI_SETUP_STEP:
@@ -783,7 +793,7 @@ def _ci_step_verdict(gh, run_id):
     if job is None:
         return CI_SKIPPED, (f"run {run_id} has no {CI_JOB!r} job - a scheduled "
                             f"run skips it (ci.yml)")
-    if str(job.get("conclusion") or "") == CI_SKIPPED:
+    if _ci_conclusion(job) == CI_SKIPPED:
         return CI_SKIPPED, f"the {CI_JOB!r} job was skipped in run {run_id}"
     steps = job.get("steps")
     if not isinstance(steps, list):
@@ -796,21 +806,18 @@ def _ci_step_verdict(gh, run_id):
                 return step
         return None
 
-    def _conclusion(step):
-        return str(step.get("conclusion") or "").strip().lower()
-
     graded = _named(CI_STEP)
     if graded is None:
         return CI_UNAVAILABLE, (f"run {run_id} has a {CI_JOB!r} job with no step "
                                 f"named like {CI_STEP!r}")
-    if _conclusion(graded) == CI_SKIPPED:
+    if _ci_conclusion(graded) == CI_SKIPPED:
         sliced = _named(CI_SLICE_STEP)
-        if sliced is not None and _conclusion(sliced) != CI_SKIPPED:
+        if sliced is not None and _ci_conclusion(sliced) != CI_SKIPPED:
             graded = sliced
-    if (_conclusion(graded) == CI_SKIPPED
-            and str(job.get("conclusion") or "").strip().lower() == CI_FAILURE):
+    if (_ci_conclusion(graded) == CI_SKIPPED
+            and _ci_conclusion(job) == CI_FAILURE):
         return _early_failure_verdict(steps, run_id)
-    verdict = _conclusion(graded)
+    verdict = _ci_conclusion(graded)
     if verdict in CI_STEPS:
         return verdict, f"{CI_JOB} step {graded.get('name')!r} -> {verdict}"
     return CI_UNKNOWN, (f"{CI_JOB} step {graded.get('name')!r} reported "

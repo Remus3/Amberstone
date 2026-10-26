@@ -1391,6 +1391,42 @@ def test_S134P03_a_test_step_that_RAN_still_wins_over_the_job_conclusion():
     assert SLICE_STEP_NAME in out["detail"]
 
 
+# RM-931: every conclusion - job or step - is read through one normaliser,
+# so a casing the step comparisons already tolerate cannot slip past the job.
+def test_S134P04_a_SKIPPED_job_in_any_case_grades_skipped():
+    """A skipped job carries no steps; read raw, "Skipped" fell through to
+    the no-step branch and graded `unavailable`."""
+    out = _grade(_jobs(steps=[], job_conclusion="Skipped"))
+    assert out["step"] == "skipped"
+
+
+def test_S134P04_a_mixed_case_FAILED_earlier_step_grades_failure():
+    jobs = _early_fail_jobs(RUFF_STEP_NAME, job_conclusion="Failure")
+    for step in jobs["jobs"][1]["steps"]:
+        if step["name"] == RUFF_STEP_NAME:
+            step["conclusion"] = " FAILURE "
+    out = _grade(jobs)
+    assert out["step"] == "failure"
+    assert RUFF_STEP_NAME in out["detail"]
+
+
+def test_S134P04_a_step_failing_AFTER_skipped_tests_grades_failure():
+    """Pins the current reading: mode=none skips both test steps, a later
+    step fails, the job is red - the first failed step is the answer."""
+    jobs = _early_fail_jobs(None, job_conclusion="failure")
+    jobs["jobs"][1]["steps"].append(
+        {"name": "Post Run actions/checkout", "conclusion": "failure"})
+    out = _grade(jobs)
+    assert out["step"] == "failure"
+    assert "Post Run actions/checkout" in out["detail"]
+
+
+def test_S134P04_one_normaliser_reads_every_conclusion():
+    assert qloop._ci_conclusion({"conclusion": " Skipped "}) == "skipped"
+    assert qloop._ci_conclusion({"conclusion": None}) == ""
+    assert qloop._ci_conclusion({}) == ""
+
+
 def test_the_result_carries_exactly_the_documented_fields():
     calls, gh = _fake_gh(list=[(0, [_row(104, "abc")])],
                          jobs=[(0, _jobs("success"))])
