@@ -50,14 +50,18 @@ re-ACLed or validated into a rewrite - a bad one is reported, not replaced):
 Writes, in this order (no secret byte ever sits where another principal can
 open it, and every check is made on an object this process holds open):
   1. BASE. On the first secret that needs creating, ops/runtime/first_run/
-     (gitignored) is created private if missing, then restricted on every
-     run (inheritance removed, one inheritable ACE for this user, owner set
-     to this user), then PINNED - opened with backup semantics, its reparse
-     point not followed, and a share mode WITHOUT FILE_SHARE_DELETE, so no
-     one can rename or delete it (or, measured, any ancestor of it) while
-     held - and VERIFIED through that handle (`verify_held`: GetSecurityInfo
-     on the handle; owner = this user's SID, a protected DACL, every ACE an
-     explicit allow for that SID - nothing inherited, no other principal).
+     (gitignored) is created private if missing, then FIRST PINNED - opened
+     with backup semantics, its reparse point opened itself and never
+     followed (a junction or symlink there is refused before anything is
+     changed), and a share mode WITHOUT FILE_SHARE_DELETE, so no one can
+     rename or delete it (or, measured, any ancestor of it) while held -
+     then restricted THROUGH THAT HANDLE on every run (`restrict_held`:
+     SetKernelObjectSecurity with owner = this user and a protected DACL of
+     one inheritable full-control ACE for this user; no path is re-resolved
+     and nothing propagates to existing children), then VERIFIED through the
+     same handle (`verify_held`: GetSecurityInfo; owner = this user's SID, a
+     protected DACL, every ACE an explicit allow for that SID - nothing
+     inherited, no other principal).
   2. RUN FOLDER. A fresh, randomly named run-<pid>-<random>/ is created
      PRIVATE FROM BIRTH (CreateDirectoryW with the security descriptor
      "O:<SID>D:P(A;OICI;FA;;;<SID>)"), pinned the same way, its identity
@@ -88,12 +92,13 @@ O_DIRECTORY | O_NOFOLLOW fds, and every scratch create / stat / link / unlink
 is dir_fd-relative to the held run folder (O_NOFOLLOW on the file), so a
 renamed or swapped path cannot redirect it.
 
-ACL: Windows = `icacls <path> /inheritance:r /grant:r *<SID>:(F)` (`(OI)(CI)`
-for a folder) then `/setowner *<SID>`, the current process token's user SID
-(USERDOMAIN\\USERNAME as a fallback), run windowless (CREATE_NO_WINDOW) with
-a timeout; POSIX = mode 0600 (0700 for a folder), verified as owner = this
-uid and no group / other bits. A volume without ACL or hard-link support
-therefore gets no secret: set RC_VISION_TOKEN for the services instead.
+ACL: no ACL is ever set or read by PATH (no icacls, no *NamedSecurityInfo):
+Windows objects are either created with their descriptor or changed
+through a held handle; POSIX = mode 0600 (0700 for a folder) through the
+fd, verified as owner = this uid and no group / other bits. The SID is the
+current process token's user SID; without one nothing is written. A volume
+without ACL or hard-link support therefore gets no secret: set
+RC_VISION_TOKEN for the services instead.
 
 Logging: report lines name the secret, its root-relative path and its state,
 never a value. Stdlib only - it runs under the host's `-I` interpreter.
@@ -105,13 +110,8 @@ import os
 import re
 import secrets
 import stat
-import subprocess
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Mapping, NamedTuple, Optional, Tuple
-
-# Same per-OS guard as ops/launcher/service_host.py:108: a non-zero
-# creationflags raises on POSIX, and CI runs on ubuntu.
-CREATE_NO_WINDOW = 0x08000000 if os.name == "nt" else 0
 
 VISION_TOKEN_REL = ("config", "vision_token.txt")          # core/vision_token.py:69
 VISION_TOKEN_ENV = "RC_VISION_TOKEN"                       # core/vision_token.py:92
@@ -125,10 +125,7 @@ DASH_TOKEN_BYTES = 32        # 64 hex chars
 DEPLOY_KEY_BYTES = 32        # 64 hex chars, ops/rc_transactional_deploy.py:115
 DEPLOY_KEY_MIN_CHARS = 32    # ops/rc_transactional_deploy.py:103
 
-ICACLS_TIMEOUT_S = 30.0
-
 _SID_RE = re.compile(r"^S-1(-\d+)+$")
-_ACCOUNT_RE = re.compile(r"^[^\x00-\x1f\"*:<>?|/]{1,256}$")
 _O_BINARY = getattr(os, "O_BINARY", 0)
 _O_NOINHERIT = getattr(os, "O_NOINHERIT", 0)
 _O_NOFOLLOW = getattr(os, "O_NOFOLLOW", 0)
@@ -161,6 +158,8 @@ _TOKEN_QUERY = 0x0008
 _TOKEN_USER = 1
 _DELETE = 0x00010000
 _READ_CONTROL = 0x00020000
+_WRITE_DAC = 0x00040000
+_WRITE_OWNER = 0x00080000
 _FILE_READ_ATTRIBUTES = 0x0080
 _FILE_SHARE_READ = 0x1
 _FILE_SHARE_WRITE = 0x2
@@ -294,6 +293,7 @@ class _Api:
             (advapi.GetSecurityDescriptorControl, (vp, ptr(w.WORD), ptr(w.DWORD)), w.BOOL),
             (advapi.GetAclInformation, (vp, vp, w.DWORD, ctypes.c_int), w.BOOL),
             (advapi.GetAce, (vp, w.DWORD, ptr(vp)), w.BOOL),
+            (advapi.SetKernelObjectSecurity, (w.HANDLE, w.DWORD, vp), w.BOOL),
             (k32.GetCurrentProcess, (), w.HANDLE),
             (k32.CloseHandle, (w.HANDLE,), w.BOOL),
             (k32.LocalFree, (vp,), vp),
@@ -505,63 +505,45 @@ def _win_delete_by_handle(handle: Optional[int]) -> bool:
 # ------------------------------------------------------------ ACL
 
 
-def _icacls() -> str:
-    # The System32 binary by absolute path, so a PATH entry cannot stand in
-    # for it; the bare name only when SystemRoot is missing.
-    system_root = os.environ.get("SystemRoot") or os.environ.get("SYSTEMROOT")
-    if system_root:
-        exe = Path(system_root) / "System32" / "icacls.exe"
-        if exe.is_file():
-            return str(exe)
-    return "icacls"
+def _win_restrict_handle(handle: int, sid: str) -> bool:
+    """Owner = this user and a protected DACL of one inheritable
+    full-control ACE for this user, set THROUGH the handle
+    (SetKernelObjectSecurity: this object only - no path is resolved and
+    nothing propagates to existing children). The handle needs WRITE_DAC
+    and WRITE_OWNER."""
+    api = _api()
+    ct = api.ctypes
+    psd = ct.c_void_p()
+    if not api.advapi.ConvertStringSecurityDescriptorToSecurityDescriptorW(
+            f"O:{sid}D:P(A;OICI;FA;;;{sid})", _SDDL_REVISION_1, ct.byref(psd), None):
+        return False
+    try:
+        return bool(api.advapi.SetKernelObjectSecurity(
+            handle, _OWNER_SECURITY_INFORMATION | _DACL_SECURITY_INFORMATION, psd))
+    finally:
+        api.k32.LocalFree(psd)
 
 
-def _account_name() -> Optional[str]:
-    user = os.environ.get("USERNAME")
-    if not user:
-        return None
-    domain = os.environ.get("USERDOMAIN")
-    name = f"{domain}\\{user}" if domain else user
-    return name if _ACCOUNT_RE.match(name.replace("\\", "")) else None
-
-
-def restrict_to_current_user(path: Path, *, run: Callable[..., Any] = subprocess.run,
-                             windows: Optional[bool] = None,
-                             sid: Optional[str] = None) -> bool:
-    """Leave only the current user on `path`'s ACL (a folder also hands that
-    single ACE to everything created in it later). True on success, False -
-    never an exception - when it could not be done."""
-    path = Path(path)
-    folder = path.is_dir()
-    win = (os.name == "nt") if windows is None else windows
-    if not win:
+def restrict_held(held: "HeldDir", *, sid: Optional[str] = None) -> bool:
+    """Make the held folder private to this user THROUGH its pin, never by
+    path. Windows: `_win_restrict_handle` (the pin must have been opened
+    with write_acl=True); POSIX: fchmod 0700 on the held fd. True on
+    success, False - never an exception - otherwise."""
+    if os.name != "nt":
+        if held.fd is None:
+            return False
         try:
-            os.chmod(path, 0o700 if folder else 0o600)
+            os.fchmod(held.fd, 0o700)
             return True
         except OSError:
             return False
-    if sid is None:
-        sid = current_user_sid()
-        who = f"*{sid}" if sid else _account_name()
-    else:
-        who = f"*{sid}" if _SID_RE.match(sid) else None
-    if not who:
+    sid = sid or current_user_sid()
+    if not sid or not held.handle:
         return False
-    grant = f"{who}:(OI)(CI)(F)" if folder else f"{who}:(F)"
-    # /setowner too: an elevated admin token's default owner is the
-    # Administrators group, and a private object is owned by this user.
-    steps = [["/inheritance:r", "/grant:r", grant], ["/setowner", who]]
-    for step in steps:
-        argv = [_icacls(), str(path)] + step
-        try:
-            done = run(argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                       stderr=subprocess.DEVNULL, creationflags=CREATE_NO_WINDOW,
-                       timeout=ICACLS_TIMEOUT_S, check=False)
-        except (OSError, subprocess.SubprocessError):
-            return False
-        if getattr(done, "returncode", 1) != 0:
-            return False
-    return True
+    try:
+        return _win_restrict_handle(held.handle, sid)
+    except (OSError, AttributeError, ValueError):
+        return False
 
 
 # ------------------------------------------------------------ held folders
@@ -595,13 +577,16 @@ class HeldDir:
 
 
 def hold_dir(path: Path, *, parent: Optional[HeldDir] = None,
-             delete: bool = False) -> Optional[HeldDir]:
+             delete: bool = False, write_acl: bool = False) -> Optional[HeldDir]:
     """Pin the folder at `path` (relative to `parent`'s fd on POSIX). None
     when it cannot be opened or is not a plain folder (a reparse point or
-    symlink is refused)."""
+    symlink is opened as itself and refused - never followed). `write_acl`
+    asks for WRITE_DAC | WRITE_OWNER so `restrict_held` can work through it."""
     path = Path(path)
     if os.name == "nt":
         access = _READ_CONTROL | _FILE_READ_ATTRIBUTES | (_DELETE if delete else 0)
+        if write_acl:
+            access |= _WRITE_DAC | _WRITE_OWNER
         handle = _win_open(path, access, _PIN_SHARE)
         if handle is None:
             return None
@@ -696,7 +681,7 @@ class ScratchFolder:
     provisioning run, made on the first secret that needs them (a tree whose
     secrets all exist gets neither) and released by close()."""
 
-    def __init__(self, base: Path, restrict: Callable[[Path], bool],
+    def __init__(self, base: Path, restrict: Callable[[HeldDir], bool],
                  verify: Callable[[HeldDir], bool]) -> None:
         self.base = Path(base)
         self.restrict = restrict
@@ -732,10 +717,13 @@ class ScratchFolder:
             _make_private_dir(self.base, sid, None)
         except FileExistsError:
             pass
-        if not self.restrict(self.base):                    # every run, even if it existed
+        # Pin FIRST: a junction / symlink planted at the base is refused
+        # here, before any ACL is touched; then restrict and verify THROUGH
+        # the pin, on every run, even if the base already existed.
+        self.base_dir = hold_dir(self.base, write_acl=True)
+        if self.base_dir is None:
             return False
-        self.base_dir = hold_dir(self.base)
-        if self.base_dir is None or not self.verify(self.base_dir):
+        if not self.restrict(self.base_dir) or not self.verify(self.base_dir):
             return False
         path = self.base / f"run-{os.getpid()}-{secrets.token_hex(8)}"
         _make_private_dir(path, sid, self.base_dir)
@@ -1031,7 +1019,7 @@ def provision_deploy_key(root: Path, *, scratch: ScratchFolder) -> SecretResult:
 
 def provision(root: Path, *, dash_token_gate: bool = False,
               environ: Optional[Mapping[str, str]] = None,
-              restrict: Optional[Callable[[Path], bool]] = None,
+              restrict: Optional[Callable[[HeldDir], bool]] = None,
               verify: Optional[Callable[[HeldDir], bool]] = None) -> ProvisionReport:
     """Create every missing per-install secret under `root`; idempotent.
 
@@ -1039,11 +1027,12 @@ def provision(root: Path, *, dash_token_gate: bool = False,
     `env` holds RC_DASH_TOKEN only when `dash_token_gate` is true AND the
     stored dash token is valid; otherwise it is empty and the services'
     environment is left exactly as the profile made it. `restrict` /
-    `verify` default to restrict_to_current_user / verify_held."""
+    `verify` (both take a held object) default to restrict_held /
+    verify_held."""
     root = Path(root)
     environ = os.environ if environ is None else environ
     scratch = ScratchFolder(root.joinpath(*SCRATCH_REL),
-                            restrict or restrict_to_current_user,
+                            restrict or restrict_held,
                             verify or verify_held)
     try:
         results = (
