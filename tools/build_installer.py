@@ -1,368 +1,241 @@
-"""
-tools/build_installer.py
-Riot Commander -- Installer staging builder.
-Phase 5 Step 3.
+"""tools/build_installer.py - scripted-extract installer staging (PKG-4).
 
-Produces a guided-setup installer artifact from the validated portable archive.
-This is the FIRST installer/distribution step above the portable ZIP.
-It does NOT use NSIS/MSIX/Inno (not yet in scope).
+Wraps the newest dist/Amberstone-portable-*.zip (tools/package_portable.py)
+in a guided setup folder:
 
-What it produces:
-  dist/installer_staging/
-    setup.bat              -- guided first-run setup launcher
-    RiotCommander-portable-<date>.zip  -- the validated portable archive (copied)
-    INSTALL_README.md      -- operator-facing install guide
-    INSTALL_MANIFEST.json  -- machine-readable installer metadata
+    dist/installer_staging/
+      setup.bat                         guided extract + first-run check
+      Amberstone-portable-<ver>.zip     the verified portable archive
+      INSTALL_README.md                 operator-facing guide
+      INSTALL_MANIFEST.json             machine-readable metadata
 
-The operator receives the installer_staging/ folder (or a ZIP of it).
-They run setup.bat which:
-  1. Extracts the portable archive to a chosen location
-  2. Calls install.bat for first-time setup (API key, package verify)
-  3. Confirms readiness via bootstrap_env_check.py
+This is NOT the NSIS shell installer: that is electron-builder's job
+(rc-shell/electron-builder.yml, PACKAGING_PLAN PKG-6). setup.bat only
+extracts and checks; it creates no Start-menu entry, no Run key, no
+scheduled task and no logon hook (plan intent 3: never start at boot).
 
-Usage (from project root):
+Usage (from the repo root):
     python tools/build_installer.py
-    python tools/build_installer.py --output dist/installer_staging
+    python tools/build_installer.py --archive dist/Amberstone-portable-1.0.0.zip
     python tools/build_installer.py --dry-run
 
-Or via wrapper:
-    tools\\build_installer.cmd
-
-Exit codes:
-    0   Installer staging produced successfully
-    1   Build failed
-    2   Dry-run: would succeed (no output written)
+Exit codes: 0 staged, 1 failed, 2 dry-run would succeed.
 """
+from __future__ import annotations
+
 import argparse
 import datetime
 import json
 import shutil
 import subprocess
 import sys
+import zipfile
 from pathlib import Path
+from typing import Callable, Optional
 
-_PROJECT_ROOT = Path(__file__).parent.parent
-_DIST_DIR = _PROJECT_ROOT / "dist"
-_DEFAULT_OUTPUT = _DIST_DIR / "installer_staging"
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+
+from tools import build_portable as bp  # noqa: E402
+from tools import package_portable as pp  # noqa: E402
+
+DIST_DIR = _PROJECT_ROOT / "dist"
+DEFAULT_OUTPUT = DIST_DIR / "installer_staging"
+ARCHIVE_GLOB = f"{pp.ZIP_ROOT_NAME}-*.zip"
+DEFAULT_INSTALL_DIR = "%LOCALAPPDATA%\\" + bp.BUNDLE_NAME
 
 
-# -- Helpers -------------------------------------------------------------------
-
-def _info(msg): print(f"  INFO    {msg}")
-def _ok(msg):   print(f"  OK      {msg}")
-def _err(msg):  print(f"  ERROR   {msg}", file=sys.stderr)
+def _err(msg: str) -> None:
+    print(f"  ERROR   {msg}", file=sys.stderr)
 
 
-def _find_archive() -> Path | None:
-    """Find the most recent validated portable ZIP in dist/."""
-    candidates = sorted(
-        _DIST_DIR.glob("RiotCommander-portable-*.zip"),
-        key=lambda p: p.stat().st_mtime,
-        reverse=True,
-    )
+def find_archive(dist_dir: Path = DIST_DIR) -> Optional[Path]:
+    """The most recent Amberstone-portable-*.zip in `dist_dir`."""
+    candidates = sorted(Path(dist_dir).glob(ARCHIVE_GLOB),
+                        key=lambda p: p.stat().st_mtime, reverse=True)
     return candidates[0] if candidates else None
 
 
-def _build_archive() -> Path | None:
-    """Run package_portable.py to produce/refresh the archive."""
-    pkg = _PROJECT_ROOT / "tools" / "package_portable.py"
-    if not pkg.exists():
-        _err(f"package_portable.py not found: {pkg}")
+def _build_archive(dist_dir: Path, runner: Optional[Callable]) -> Optional[Path]:
+    cmd = [sys.executable, str(_PROJECT_ROOT / "tools" / "package_portable.py"),
+           "--output", str(dist_dir)]
+    rc = runner(cmd) if runner else subprocess.run(cmd, cwd=str(_PROJECT_ROOT)).returncode
+    if rc != 0:
+        _err(f"package_portable.py failed: exit {rc}")
         return None
-    r = subprocess.run([sys.executable, str(pkg)], cwd=str(_PROJECT_ROOT))
-    if r.returncode not in (0, 2):
-        _err(f"package_portable.py failed: exit {r.returncode}")
-        return None
-    return _find_archive()
+    return find_archive(dist_dir)
 
 
-# -- setup.bat content ---------------------------------------------------------
+def _bundle_manifest(archive: Path) -> dict:
+    try:
+        with zipfile.ZipFile(archive) as zf:
+            return json.loads(zf.read(f"{pp.ZIP_ROOT_NAME}/{bp.MANIFEST_NAME}"))
+    except (OSError, KeyError, ValueError, zipfile.BadZipFile):
+        return {}
 
-def _setup_bat(archive_name: str) -> str:
-    return f"""\
-@echo off
-setlocal enabledelayedexpansion
-title Riot Commander -- Setup
-color 0A
+
+def setup_bat(archive_name: str) -> str:
+    """The guided setup script. Paths reach PowerShell through environment
+    variables, never spliced into the command text, so a folder name holding
+    a quote cannot change the command."""
+    root = pp.ZIP_ROOT_NAME
+    return f"""@echo off
+setlocal
+title {bp.BUNDLE_NAME} - Setup
 
 echo.
-echo  ====================================================
-echo    RIOT COMMANDER -- GUIDED SETUP
-echo  ====================================================
-echo.
-echo  This will:
-echo    1. Extract the portable bundle to a folder you choose
-echo    2. Run first-time setup (verify packages, create dirs)
-echo    3. Check readiness
+echo  {bp.BUNDLE_NAME} guided setup
+echo  This extracts the portable bundle to a folder you choose and checks it.
+echo  Nothing is registered to start at boot or at logon.
 echo.
 
-:: Step 1 -- choose install location
-set DEFAULT_DEST=%USERPROFILE%\\RiotCommander
-set /p DEST_INPUT=Install location (press Enter for default [%DEFAULT_DEST%]): 
-if "%DEST_INPUT%"=="" (
-    set INSTALL_DIR=%DEFAULT_DEST%
-) else (
-    set INSTALL_DIR=%DEST_INPUT%
-)
+set "DEFAULT_DEST={DEFAULT_INSTALL_DIR}"
+set "DEST_INPUT="
+set /p "DEST_INPUT=Install location (Enter for %DEFAULT_DEST%): "
+if "%DEST_INPUT%"=="" (set "INSTALL_DIR=%DEFAULT_DEST%") else (set "INSTALL_DIR=%DEST_INPUT%")
 
 echo.
 echo  Installing to: %INSTALL_DIR%
-echo.
-
-:: Confirm
-set /p CONFIRM=Proceed? (Y/N): 
+set "CONFIRM="
+set /p "CONFIRM=Proceed? (Y/N): "
 if /i not "%CONFIRM%"=="Y" (
     echo  Setup cancelled.
     pause
     exit /b 1
 )
 
-:: Step 2 -- extract archive
 echo.
-echo  [1/3] Extracting portable bundle...
-if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%" 2>nul
-
-:: Use PowerShell to extract the ZIP
-powershell -NoProfile -Command ^
-  "Expand-Archive -Path '%~dp0{archive_name}' -DestinationPath '%INSTALL_DIR%' -Force"
-
-if %errorlevel% neq 0 (
+echo  [1/2] Extracting...
+if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
+set "AMB_ZIP=%~dp0{archive_name}"
+set "AMB_DEST=%INSTALL_DIR%"
+powershell -NoProfile -Command "Expand-Archive -LiteralPath $env:AMB_ZIP -DestinationPath $env:AMB_DEST -Force"
+if errorlevel 1 (
     echo  [FAIL] Extraction failed.
     pause
     exit /b 1
 )
-
-:: The ZIP expands into RiotCommander-portable\\; find it
-set APP_DIR=%INSTALL_DIR%\\RiotCommander-portable
-if not exist "%APP_DIR%" (
+set "APP_DIR=%INSTALL_DIR%\\{root}"
+if not exist "%APP_DIR%\\start.bat" (
     echo  [FAIL] Expected folder not found: %APP_DIR%
     pause
     exit /b 1
 )
 echo  [OK]   Extracted to: %APP_DIR%
 
-:: Step 3 -- run install.bat
 echo.
-echo  [2/3] Running first-time setup...
-call "%APP_DIR%\\install.bat"
-if %errorlevel% neq 0 (
-    echo  [WARN] Setup completed with warnings. Check above for details.
-)
-
-:: Step 4 -- readiness check
-echo.
-echo  [3/3] Checking readiness...
-set EMBED_PY=%APP_DIR%\\python-embed\\python.exe
-if exist "%EMBED_PY%" (
-    "%EMBED_PY%" "%APP_DIR%\\tools\\bootstrap_env_check.py"
+echo  [2/2] Checking readiness...
+if exist "%APP_DIR%\\python-embed\\python.exe" (
+    "%APP_DIR%\\python-embed\\python.exe" "%APP_DIR%\\tools\\bootstrap_env_check.py"
 ) else (
-    python "%APP_DIR%\\tools\\bootstrap_env_check.py" 2>nul ^
-    || echo  [WARN] Could not run readiness check (python not on PATH)
+    echo  [WARN] No embedded runtime in this bundle - it cannot start on its own.
 )
 
 echo.
-echo  ====================================================
-echo    SETUP COMPLETE
-echo  ====================================================
-echo.
-echo  To launch Riot Commander:
+echo  Setup complete. Launch with:
 echo    %APP_DIR%\\start.bat
-echo.
-echo  To re-run setup:
-echo    %APP_DIR%\\install.bat
 echo.
 pause
 exit /b 0
 """
 
 
-# -- Build ---------------------------------------------------------------------
+def _readme(archive_name: str, python_line: str) -> str:
+    root = pp.ZIP_ROOT_NAME
+    return f"""# {bp.BUNDLE_NAME} - install guide
 
-def build(output_dir: Path, dry: bool, archive_override: Path | None) -> int:
-    print("=" * 64)
-    print("Riot Commander -- build_installer.py")
-    print(f"Output   : {output_dir}")
-    print(f"Dry-run  : {dry}")
-    print("=" * 64)
+Archive: {archive_name}
+Runtime: {python_line}
 
-    # -- Locate archive --------------------------------------------------------
-    print("\n[Step 1: Locate validated portable archive]")
-    if archive_override:
-        archive = archive_override
-        if not archive.exists():
-            _err(f"Specified archive not found: {archive}")
-            return 1
-        _ok(f"Using specified archive: {archive.name}")
-    else:
-        archive = _find_archive()
-        if not archive:
-            _info("No existing archive found -- building now...")
-            archive = _build_archive()
-            if not archive:
-                _err("Archive build failed")
-                return 1
-            _ok(f"Archive built: {archive.name}")
-        else:
-            _ok(f"Using existing archive: {archive.name}")
-    _info(f"Archive size: {archive.stat().st_size / (1024*1024):.1f} MB")
+## Install
 
-    # -- Create output dir -----------------------------------------------------
-    print("\n[Step 2: Prepare installer staging directory]")
-    if not dry:
-        if output_dir.exists():
-            shutil.rmtree(str(output_dir))
-        output_dir.mkdir(parents=True, exist_ok=True)
+1. Run setup.bat and pick a folder (default {DEFAULT_INSTALL_DIR}).
+   It extracts the archive and runs the readiness check.
+2. Optional: put an Anthropic API key in <folder>\\{root}\\API-Key-Claude.txt.
+   (start.bat still refuses to start without one - PACKAGING_PLAN S11.)
+3. Launch <folder>\\{root}\\start.bat.
 
-    # -- Copy archive ----------------------------------------------------------
-    print("\n[Step 3: Copy portable archive]")
-    dest_archive = output_dir / archive.name
-    if not dry:
-        shutil.copy2(str(archive), str(dest_archive))
-    _ok(f"Archive copied: {archive.name}")
+## What this installer does not do
 
-    # -- Write setup.bat -------------------------------------------------------
-    print("\n[Step 4: Write setup.bat]")
-    setup_content = _setup_bat(archive.name)
-    if not dry:
-        (output_dir / "setup.bat").write_text(setup_content, encoding="utf-8")
-    _ok("setup.bat written")
-
-    # -- Write INSTALL_README.md -----------------------------------------------
-    print("\n[Step 5: Write INSTALL_README.md]")
-    readme = f"""\
-# INSTALL_README.md
-# Riot Commander -- Installer Guide
-# Strategy: scripted-extract installer (Phase 5 Step 3)
-# Archive: {archive.name}
-# Generated: {datetime.datetime.now(datetime.timezone.utc).isoformat()}
-
-## What Is In This Folder
-
-  {archive.name}   -- validated portable bundle (Option B, embedded Python)
-  setup.bat        -- guided setup launcher (extract + first-run setup)
-  INSTALL_README.md -- this file
-  INSTALL_MANIFEST.json -- machine-readable installer metadata
-
-## How to Install
-
-  1. Run setup.bat
-     - You will be prompted for an install location
-     - Default: %USERPROFILE%\\RiotCommander
-     - setup.bat extracts the archive, runs install.bat, and checks readiness
-
-  2. When prompted by install.bat:
-     - Edit API-Key-Claude.txt with your Anthropic API key (starts with sk-ant-)
-     - Get your key at: https://console.anthropic.com/keys
-
-  3. After setup completes, launch via:
-     <install-location>\\RiotCommander-portable\\start.bat
-
-## What Is Included
-
-  - Embedded Python 3.11 runtime (python-embed/) -- no system Python required
-  - anthropic SDK + Pillow pre-installed in embedded runtime
-  - All source packages (core/, coaches/, tft/, ui/, lcu/, modes/, ops/)
-  - Operator tooling (bootstrap_env_check.py, dev_cli.py)
-
-## What Is NOT Included
-
-  - API-Key-Claude.txt (you must supply this)
-  - Runtime coaching artifacts (generated at runtime)
-  - Dev-only harness tools (smoke, perf, preflight)
-
-## Prerequisites
-
-  Windows 10/11 (64-bit)
-  No Python installation required for normal launch (embedded runtime included)
-  System Python still required for frozen ops/watchdog scripts (if used)
-
-## Troubleshooting
-
-  Re-run readiness check at any time:
-    <install-dir>\\RiotCommander-portable\\python-embed\\python.exe ^
-    <install-dir>\\RiotCommander-portable\\tools\\bootstrap_env_check.py
-
-  Re-run first-time setup:
-    <install-dir>\\RiotCommander-portable\\install.bat
-
-## What This Installer Does NOT Do (yet)
-
-  - No Start Menu shortcut creation
-  - No Windows registry entries
-  - No Add/Remove Programs entry
-  - No auto-update
-  - No code signing
-  These are candidates for Phase 5 Step 4+.
+- No Start-menu shortcut, registry entry or Add/Remove Programs entry.
+- Nothing starts at boot or at logon, ever (PACKAGING_PLAN intent 3).
+- No code signing and no auto-update; the NSIS shell installer and its
+  updater are built by electron-builder (PACKAGING_PLAN PKG-6).
 """
-    if not dry:
-        (output_dir / "INSTALL_README.md").write_text(readme, encoding="utf-8")
-    _ok("INSTALL_README.md written")
 
-    # -- Write INSTALL_MANIFEST.json -------------------------------------------
-    print("\n[Step 6: Write INSTALL_MANIFEST.json]")
-    manifest = {
-        "installer_tool":       "tools/build_installer.py",
-        "installer_timestamp":  datetime.datetime.now(datetime.timezone.utc).isoformat(),
-        "installer_type":       "scripted-extract",
-        "installer_version":    "phase5_step3",
-        "portable_archive":     archive.name,
-        "archive_size_mb":      round(archive.stat().st_size / (1024*1024), 1),
-        "strategy":             "Option B -- embedded Python runtime",
-        "setup_script":         "setup.bat",
-        "default_install_location": "%USERPROFILE%\\RiotCommander",
-        "zip_root_folder":      "RiotCommander-portable",
-        "embedded_runtime":     "python-embed/  (Python 3.11.9)",
-        "launch_chain":         "start.bat -> python-embed\\pythonw.exe main.py",
-        "prerequisites": {
-            "os":               "Windows 10/11 64-bit",
-            "python_system":    "not required for app launch (embedded included)",
-            "python_ops_stack": "advisory -- frozen ops/.ps1 scripts call python by PATH name",
-            "api_key":          "required -- operator must supply API-Key-Claude.txt",
-        },
-        "not_yet_implemented": [
-            "Start Menu shortcut",
-            "Windows registry entry",
-            "Add/Remove Programs entry",
-            "Code signing",
-            "Auto-update",
-            "Full NSIS/MSIX/Inno installer",
-        ],
-        "dry_run": dry,
-    }
-    if not dry:
-        (output_dir / "INSTALL_MANIFEST.json").write_text(
-            json.dumps(manifest, indent=2), encoding="utf-8"
-        )
-    _ok("INSTALL_MANIFEST.json written")
 
-    # -- Summary ---------------------------------------------------------------
-    print("\n" + "=" * 64)
+def build(output_dir: Path = DEFAULT_OUTPUT, dry: bool = False,
+          archive_override: Optional[Path] = None, dist_dir: Path = DIST_DIR,
+          build_runner: Optional[Callable] = None) -> int:
+    output_dir, dist_dir = Path(output_dir), Path(dist_dir)
+    if archive_override:
+        archive = Path(archive_override)
+        if not archive.is_file():
+            _err(f"archive not found: {archive.name}")
+            return 1
+    else:
+        archive = find_archive(dist_dir)
+        if archive is None:
+            if dry:
+                print("Dry-run: no archive yet; package_portable.py would build one.")
+                return 2
+            archive = _build_archive(dist_dir, build_runner)
+            if archive is None:
+                return 1
+    if not archive.name.startswith(pp.ZIP_ROOT_NAME + "-"):
+        _err(f"not an {pp.ZIP_ROOT_NAME} archive: {archive.name}")
+        return 1
+    man = _bundle_manifest(archive)
+    py = man.get("python") or {}
+    cp = py.get("cpython") or {}
+    python_line = (f"embedded CPython {cp.get('version')}" if cp.get("version")
+                   else "no embedded runtime recorded in this archive")
+    print(f"{bp.BUNDLE_NAME} installer staging from {archive.name}")
     if dry:
-        print("Dry-run complete: would succeed. No output written.")
+        print("Dry-run: would stage setup.bat, the archive and the manifests.")
         return 2
-    size_mb = sum(f.stat().st_size for f in output_dir.rglob("*") if f.is_file()) / (1024*1024)
-    print(f"Installer staging complete: {output_dir}")
-    print(f"  {len(list(output_dir.iterdir()))} files  ({size_mb:.1f} MB total)")
-    print("  Run setup.bat to install")
+
+    if output_dir.exists():
+        shutil.rmtree(output_dir)
+    output_dir.mkdir(parents=True)
+    shutil.copy2(archive, output_dir / archive.name)
+    (output_dir / "setup.bat").write_text(setup_bat(archive.name).replace("\n", "\r\n"),
+                                          encoding="ascii", newline="")
+    (output_dir / "INSTALL_README.md").write_text(_readme(archive.name, python_line),
+                                                  encoding="utf-8", newline="\n")
+    manifest = {
+        "installer_tool": "tools/build_installer.py",
+        "installer_utc": datetime.datetime.now(datetime.timezone.utc).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"),
+        "installer_type": "scripted-extract",
+        "portable_archive": archive.name,
+        "archive_size_mb": round(archive.stat().st_size / (1024 * 1024), 1),
+        "zip_root_folder": pp.ZIP_ROOT_NAME,
+        "default_install_location": DEFAULT_INSTALL_DIR,
+        "bundle_version": man.get("version"),
+        "embedded_runtime": cp.get("version"),
+        "starts_at_boot": False,
+        "not_implemented": ["Start-menu shortcut", "Add/Remove Programs entry",
+                            "code signing", "auto-update (electron-builder, PKG-6)"],
+    }
+    (output_dir / "INSTALL_MANIFEST.json").write_text(
+        json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8",
+        newline="\n")
+    print(f"Installer staging complete: {output_dir.name}/ (run setup.bat)")
     return 0
 
 
-# -- Entry point ---------------------------------------------------------------
-
-def main() -> int:
+def main(argv=None) -> int:
     p = argparse.ArgumentParser(
-        description="Build installer staging directory for Riot Commander."
-    )
-    p.add_argument("--output", "-o", default=str(_DEFAULT_OUTPUT))
+        description=f"Stage the {bp.BUNDLE_NAME} scripted-extract installer.")
+    p.add_argument("--output", "-o", default=str(DEFAULT_OUTPUT))
     p.add_argument("--archive", "-a", default=None,
-                   help="Path to portable archive (default: latest in dist/)")
+                   help="portable archive (default: newest in dist/)")
     p.add_argument("--dry-run", "-n", action="store_true")
-    args = p.parse_args()
-    return build(
-        Path(args.output),
-        dry=args.dry_run,
-        archive_override=Path(args.archive) if args.archive else None,
-    )
+    args = p.parse_args(argv)
+    return build(Path(args.output), dry=args.dry_run,
+                 archive_override=Path(args.archive) if args.archive else None)
 
 
 if __name__ == "__main__":
