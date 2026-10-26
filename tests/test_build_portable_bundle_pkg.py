@@ -24,6 +24,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import shutil
 import subprocess
 import sys
 import zipfile
@@ -35,6 +36,7 @@ REPO = Path(__file__).resolve().parent.parent
 if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
+from ops.launcher import updater as up  # noqa: E402
 from tools import build_installer as bi  # noqa: E402
 from tools import build_portable as bp  # noqa: E402
 from tools import build_python_embed as bpe  # noqa: E402
@@ -255,7 +257,7 @@ def test_inclusion_is_the_git_index_not_the_disk(fake_repo):
     "ops/fleet_kit/fleet_x.py", ".github/workflows/ci.yml",
     "agents/daemon_slayer/tests/test_ds.py", "CLAUDE.md",
     "ops/install_startup.bat", "ops/autostart_on_login.bat",
-    "scripts/kill.bat", "scripts/restart.bat", "data/scrape.log", ".gitignore",
+    "scripts/kill.bat", "scripts/restart.bat", "data/scrape.log", ".gitattributes",
     # fix round: the installers the first verifier found shipping
     "tools/install_ds_keepalive_task.ps1", "tools/install_mission_control_task.ps1",
     "tools/phase_watcher_install.ps1", "tools/install_daemon_slayer_task.ps1",
@@ -281,6 +283,9 @@ def test_dev_only_and_operator_only_paths_are_excluded_with_a_reason(rel):
     "data/static.json", "tools/lcu_agent.py", "ops/rc_supervisor.py",
     "requirements.txt", "start.bat", "LICENSE", "NOTICE", "agents/__init__.py",
     "tools/liveclient_relay.py", "tools/hotkey_listener.py", "core/coach_registry.py",
+    # the PKG-2 updater reads the install's own ignore files, nested ones too
+    ".gitignore", "rc-shell/.gitignore", "oss/win32_atomic_io/.gitignore",
+    "ops/audit/lolmath_ds_sweep/.gitignore",
 ])
 def test_runtime_paths_are_not_excluded(rel):
     assert bp.exclusion_reason(rel) is None, rel
@@ -452,6 +457,89 @@ def test_real_repo_plan_holds_the_import_closure_and_no_secret():
     # M6: the names the old hand-kept list carried no longer exist anywhere.
     for gone in ("coaching_timestamps.py", "run_watchdog.bat", "config/rc_config.json"):
         assert gone not in index
+
+
+# --------------------------------------------------------------------------- #
+# Ignore files ship: the PKG-2 updater refuses every update on an install
+# without its root ignore file (ops/launcher/updater.py IgnoreRules.for_install)
+# --------------------------------------------------------------------------- #
+def _is_ignore_file(rel: str) -> bool:
+    return rel.rsplit("/", 1)[-1] == bp.IGNORE_FILE_NAME
+
+
+# Per-install / runtime paths the updater must keep refusing and plain source
+# paths it must keep allowing, so an empty rule set cannot pass.
+_REAL_IGNORE_SAMPLE = (
+    "API-Key-Claude.txt", "ops/runtime/health.json", "logs/2026-10-26.log",
+    "config/vision_token.txt", "config/coach_settings.json", "ops/local_hosts.json",
+    "data/aram_coaching_data.json", "data/spend/x.json", "agents/state/x.json",
+    "agents/state/resolved_decisions.json", "rc-shell/node_modules/x/index.js",
+    "rc-shell/rc-shell-state.json", "rc-shell/out/main.js", "rc-shell/debug.log",
+    "rc-shell/x.tmp", "rc-shell/package-lock.json",
+    "oss/win32_atomic_io/__pycache__/m.cpython-314.pyc", "oss/win32_atomic_io/dist/x.whl",
+    "ops/audit/lolmath_ds_sweep/out.json", "core/helper.py", "main.py",
+    "web/index.html", ".env.example", ".env", "x.zip", "data/sim/a.zip",
+)
+
+
+def _ignore_decisions(root: Path, paths) -> dict:
+    rules = up.IgnoreRules.for_install(root)  # StateError without the root file
+    return {p: rules.ignored(p) for p in paths}
+
+
+def test_every_tracked_ignore_file_ships():
+    index = bp.git_index_files(REPO)
+    ignores = [rel for rel in index if _is_ignore_file(rel)]
+    assert bp.IGNORE_FILE_NAME in ignores  # the root one the updater requires
+    plan = bp.plan_bundle(REPO, index)
+    missing = [rel for rel in ignores if rel not in plan.include]
+    assert not missing, {rel: bp.exclusion_reason(rel) for rel in missing}
+    # Shipped files get the boot scan like any other; these carry nothing.
+    assert bp.boot_signature_hits(REPO, ignores) == {}
+
+
+def test_real_repo_bundle_ignore_decisions_match_the_repo(tmp_path):
+    """Stage the plan's ignore files the way build() copies them: the
+    updater's IgnoreRules on that tree decides exactly as on the repo."""
+    index = bp.git_index_files(REPO)
+    plan = bp.plan_bundle(REPO, index)
+    bundle = tmp_path / "bundle"
+    for rel in plan.include:
+        if _is_ignore_file(rel):
+            dst = bundle / rel
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(REPO / rel, dst)
+    sample = sorted(set(_REAL_IGNORE_SAMPLE) | set(index[::7]))
+    repo_side = _ignore_decisions(REPO, sample)
+    bundle_side = _ignore_decisions(bundle, sample)
+    assert not [p for p in sample if repo_side[p] != bundle_side[p]]
+    assert repo_side["config/vision_token.txt"] and repo_side["rc-shell/rc-shell-state.json"]
+    assert not repo_side["main.py"] and not repo_side["rc-shell/package-lock.json"]
+
+
+def test_built_bundle_ignore_decisions_match_the_source(fake_repo, tmp_path):
+    """A real build(): the install has its root ignore file, and a nested one
+    ships even from a dev-only tree whose other files stay out."""
+    _replace_lfs_with_real(fake_repo)
+    _write(fake_repo, "oss/pkg/.gitignore", "cache_dir/\n*.bin\n")
+    _write(fake_repo, "oss/pkg/mod.py", "")
+    _write(fake_repo, "web/.gitignore", "generated/\n*.map\n")
+    _commit(fake_repo, "oss/pkg/.gitignore", "oss/pkg/mod.py", "web/.gitignore")
+    out = tmp_path / "out"
+    assert bp.build(fake_repo, out, embed="none") == 0
+    for rel in (".gitignore", "oss/pkg/.gitignore", "web/.gitignore"):
+        assert (out / rel).read_bytes() == (fake_repo / rel).read_bytes(), rel
+    assert not (out / "oss" / "pkg" / "mod.py").exists()
+    man = json.loads((out / "BUILD_MANIFEST.json").read_text(encoding="utf-8"))
+    assert ".gitignore" in man["files"] and "oss/pkg/.gitignore" in man["files"]
+    sample = ("API-Key-Claude.txt", "logs/a.log", "ops/runtime/health.json",
+              "ops/local_hosts.json", "data/cache/big.json", "oss/pkg/cache_dir/x.py",
+              "oss/pkg/blob.bin", "web/generated/a.js", "web/app.js.map",
+              "web/index.html", "main.py", "core/helper.py", "oss/pkg/mod.py")
+    got = _ignore_decisions(out, sample)
+    assert got == _ignore_decisions(fake_repo, sample)
+    assert got["oss/pkg/blob.bin"] and got["web/app.js.map"] and not got["main.py"]
+    assert bp.verify_bundle(out) == []
 
 
 # --------------------------------------------------------------------------- #
