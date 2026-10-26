@@ -463,6 +463,28 @@ def reset_lockfile_notice_between_tests():
     yield
 
 
+@pytest.fixture(scope="module", autouse=True)
+def no_lcu_poller_outlives_its_module():
+    """RM-909: a thread that can reach a live LcuClient must not outlive the
+    test module that started it. The reset above cannot help against one: it
+    keeps calling `connect()` on the real clock and re-arms the process-wide
+    notice filter inside whatever test runs next (the kit v24 gated-suite
+    red, LEDGER 1919). Measured source: 6 TftWorker poll threads from
+    tests/snapshot_regressions/test_app_authority.py. tests/_lcu_poller_guard.py
+    says what "can reach" means; anything found is stopped first, so the
+    failure here cannot cascade into later modules."""
+    from tests import _lcu_poller_guard
+    before = set(threading.enumerate())
+    yield
+    leaked = _lcu_poller_guard.check_module(before)
+    if leaked:
+        pytest.fail(
+            "RM-909: this test module left thread(s) that can reach a live "
+            "LcuClient (stopped now): " + "; ".join(leaked)
+            + ". Stop or shut down every worker / poller the module starts.",
+            pytrace=False)
+
+
 @pytest.fixture(autouse=True)
 def reset_idempotency_table_between_tests():
     """`dashboard/_idempotency.py` holds the operator-intent replay table in a
