@@ -20,7 +20,11 @@ spellings of the rename and every destination-derived scratch name:
 
 Either fires ONLY inside a SANCTIONED implementation, listed below with the
 reason it may not import core.polled_json. Everything else routes through
-core.polled_json.atomic_write_json / _text / _bytes.
+core.polled_json.atomic_write_json / _text / _bytes. A row is keyed on the
+enclosing function, never a line number: its bare name, or its dotted
+qualname (`HostLog.write`) when the bare name is too generic to key a file on.
+There is no directory or package sanction on purpose - it would let every new
+writer in that tree start bare, the RM-258 failure itself.
 
 SCOPE: every tracked .py via tests/_repo_walk (ADR-015) EXCEPT the one-shot
 generator trees the rows themselves allowlist (`tools/`, `scripts/`,
@@ -34,6 +38,8 @@ ONLOGON tasks, not generators.
 from __future__ import annotations
 
 import ast
+import json
+import os
 from pathlib import Path
 
 import pytest
@@ -59,9 +65,11 @@ _RUNTIME_TOOLS = frozenset({
     "tools/hotkey_listener.py",
 })
 
-# (relpath, enclosing function) -> why this implementation may not import
-# core.polled_json. Each must itself use a per-writer scratch name, a bounded
-# WinError 5 retry and fsync (asserted below for the ops trio).
+# (relpath, enclosing function or its dotted qualname) -> why this
+# implementation may not import core.polled_json. Each must itself use a
+# per-writer scratch name, a bounded WinError 5 retry and fsync (asserted for
+# the ops trio in tests/test_ops_atomic_writers_rm261.py and for the launcher
+# below).
 SANCTIONED = {
     ("core/polled_json.py", "_replace_with_retry"):
         "the canonical implementation every other writer routes through",
@@ -91,6 +99,30 @@ SANCTIONED = {
         "flush - it only renames existing files, it writes no payload. It "
         "may not use core.polled_json because those helpers write a payload "
         "to a destination; there is no payload here",
+    ("ops/launcher/service_host.py", "_replace_with_retry"):
+        "PKG-1 launcher service host: stdlib-only and run under `python -I` "
+        "with no RC module on sys.path, because it starts and stops the "
+        "backend core.polled_json belongs to (docs/PACKAGING_PLAN.md 3.1). "
+        "Its atomic_write_json meets the three requirements, asserted by "
+        "test_launcher_writer_meets_the_sanction_contract below: a "
+        "<dest>.<pid>.<token>.tmp scratch, flush + fsync before the rename, "
+        "a bounded PermissionError (WinError 5) retry, and the scratch "
+        "removed when the rename fails for good",
+    ("ops/launcher/service_host.py", "HostLog.write"):
+        "log ROTATION, not an atomic write (the core/log_rotation.py "
+        "try_rotate class), in the same stdlib-only launcher, checked against "
+        "the three requirements. fsync: nothing to flush - the rename moves "
+        "an existing file and writes no payload. WinError 5 retry: none in "
+        "the call - a refused rename (a reader holding the log or its `.1` "
+        "open) is swallowed, the line still appended, and the next write "
+        "re-checks the size and re-attempts, so the retry is one level up "
+        "and the log outgrows LOG_MAX_BYTES only while that holder stays. "
+        "Per-writer scratch: none - the target is the fixed `.1` slot. The "
+        "host is single-writer under HostLock except main()'s two pre-lock "
+        "lines (bad manifest, lock refused), so a second launch crossing the "
+        "size threshold in the same instant as the live host can replace "
+        "`.1` with a one-line file: one lost older generation, never torn "
+        "bytes (residual reported for the PKG-1b slice)",
 }
 
 _PER_WRITER_HINTS = ("getpid", "token", "uuid", "pid")
@@ -111,19 +143,27 @@ def _runtime_files() -> list[tuple[str, Path]]:
     return out
 
 
-def _enclosing_functions(tree: ast.AST) -> dict[int, str]:
-    """node id -> innermost enclosing function name."""
-    owner: dict[int, str] = {}
+def _enclosing_functions(tree: ast.AST) -> dict[int, tuple[str, str]]:
+    """node id -> (innermost enclosing function name, its dotted qualname).
 
-    def visit(node: ast.AST, fn: str) -> None:
+    The qualname joins every enclosing class and function (`HostLog.write`),
+    so a SANCTIONED row can name one method without exempting every
+    same-named function in the file."""
+    owner: dict[int, tuple[str, str]] = {}
+
+    def visit(node: ast.AST, fn: str, qual: str, scope: str) -> None:
         for child in ast.iter_child_nodes(node):
-            name = fn
+            name, q, inner = fn, qual, scope
             if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 name = child.name
-            owner[id(child)] = name
-            visit(child, name)
+                q = scope + child.name
+                inner = q + "."
+            elif isinstance(child, ast.ClassDef):
+                inner = scope + child.name + "."
+            owner[id(child)] = (name, q)
+            visit(child, name, q, inner)
 
-    visit(tree, "<module>")
+    visit(tree, "<module>", "<module>", "")
     return owner
 
 
@@ -170,8 +210,9 @@ def _is_dest_derived_scratch(node: ast.AST, src: str) -> bool:
     return False
 
 
-def scan(files=None) -> tuple[list[str], list[str]]:
+def scan(files=None, sanctioned=None) -> tuple[list[str], list[str]]:
     """Return (rename offenders, scratch-name offenders) as 'path:line fn'."""
+    sanctioned = SANCTIONED if sanctioned is None else sanctioned
     renames: list[str] = []
     scratch: list[str] = []
     for rel, path in (files if files is not None else _runtime_files()):
@@ -179,8 +220,8 @@ def scan(files=None) -> tuple[list[str], list[str]]:
         tree = ast.parse(src)
         owner = _enclosing_functions(tree)
         for node in ast.walk(tree):
-            fn = owner.get(id(node), "<module>")
-            if (rel, fn) in SANCTIONED:
+            fn, qual = owner.get(id(node), ("<module>", "<module>"))
+            if (rel, fn) in sanctioned or (rel, qual) in sanctioned:
                 continue
             if isinstance(node, ast.Call) and _is_rename(node):
                 renames.append(f"{rel}:{node.lineno} {fn}")
@@ -226,9 +267,13 @@ def test_every_sanctioned_entry_still_exists():
     """A stale allowlist entry silently widens nothing today but hides a
     rename the day a function of that name reappears; keep it exact."""
     for rel, fn in SANCTIONED:
-        src = (REPO_ROOT / rel).read_bytes().decode("utf-8")
-        names = {n.name for n in ast.walk(ast.parse(src))
-                 if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
+        tree = ast.parse((REPO_ROOT / rel).read_bytes().decode("utf-8"))
+        owner = _enclosing_functions(tree)
+        # Each def node owns itself, so this is every function's bare name
+        # and dotted qualname.
+        names = {v for n in ast.walk(tree)
+                 if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+                 for v in owner[id(n)]}
         assert fn in names, f"SANCTIONED entry {rel}:{fn} no longer exists"
 
 
@@ -246,6 +291,76 @@ def test_detector_positive_and_negative_controls(tmp_path, snippet, rename, scra
     f.write_bytes(snippet.encode())
     r, s = scan([("core/m.py", f)])
     assert (len(r), len(s)) == (rename, scratch), (r, s)
+
+
+def test_a_qualname_row_exempts_one_method_not_every_same_named_function(tmp_path):
+    f = tmp_path / "m.py"
+    f.write_bytes(b"import os\n"
+                  b"class Log:\n"
+                  b"    def write(self, a, b):\n"
+                  b"        os.replace(a, b)\n"
+                  b"def write(a, b):\n"
+                  b"    os.replace(a, b)\n")
+    r, _ = scan([("core/m.py", f)], sanctioned={("core/m.py", "Log.write"): "x"})
+    assert r == ["core/m.py:6 write"]
+
+
+def test_launcher_writer_meets_the_sanction_contract(tmp_path, monkeypatch):
+    """The ops/launcher rows are sanctioned on the three requirements, so
+    they are asserted on the code, not on the reason string: a per-writer
+    scratch name, fsync before the rename, a bounded WinError 5 retry and no
+    scratch left behind when the rename fails for good."""
+    from ops.launcher import service_host as sh
+
+    real_replace, real_fsync = os.replace, os.fsync
+    events: list[str] = []
+    scratch: list[str] = []
+
+    def rec_replace(src, dst):
+        events.append("replace")
+        scratch.append(Path(src).name)
+        return real_replace(src, dst)
+
+    def rec_fsync(fd):
+        events.append("fsync")
+        return real_fsync(fd)
+
+    monkeypatch.setattr(sh.os, "replace", rec_replace)
+    monkeypatch.setattr(sh.os, "fsync", rec_fsync)
+    monkeypatch.setattr(sh.time, "sleep", lambda _s: None)
+    dest = tmp_path / "launcher_status.json"
+    sh.atomic_write_json(dest, {"n": 1})
+    sh.atomic_write_json(dest, {"n": 2})
+    assert events == ["fsync", "replace", "fsync", "replace"]
+    assert scratch[0] != scratch[1], scratch
+    for name in scratch:
+        assert name.startswith("launcher_status.json.") and name.endswith(".tmp")
+        assert f".{os.getpid()}." in name, name
+
+    refusals = [3]
+
+    def flaky(src, dst):
+        if refusals[0]:
+            refusals[0] -= 1
+            raise PermissionError(13, "Access is denied")
+        return real_replace(src, dst)
+
+    monkeypatch.setattr(sh.os, "replace", flaky)
+    sh.atomic_write_json(dest, {"n": 3})
+    assert json.loads(dest.read_text(encoding="ascii")) == {"n": 3}
+
+    calls = [0]
+
+    def refused(src, dst):
+        calls[0] += 1
+        raise PermissionError(13, "Access is denied")
+
+    monkeypatch.setattr(sh.os, "replace", refused)
+    with pytest.raises(PermissionError):
+        sh.atomic_write_json(dest, {"n": 4})
+    assert 1 < calls[0] <= 20, calls[0]
+    assert [p.name for p in tmp_path.iterdir()] == ["launcher_status.json"]
+    assert json.loads(dest.read_text(encoding="ascii")) == {"n": 3}
 
 
 def test_scope_keeps_runtime_tools_and_drops_generators():
