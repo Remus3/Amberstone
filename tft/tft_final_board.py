@@ -40,6 +40,7 @@ Read-only: this module writes nothing. Nothing identifying is read or kept
 from __future__ import annotations
 
 import logging
+import math
 import time
 from typing import Optional
 
@@ -53,6 +54,10 @@ PER_ROUND_MAX_AGE_S = 300.0
 # Double Up queue / type spellings (queue 1160 "Double Up (Workshop)" / PAIRS).
 _DUO_QUEUE_IDS = frozenset({1160})
 _DUO_MARKERS = ("PAIRS", "DOUBLE")
+
+# 2100-01-01 UTC: a game end past it is a corrupt stamp, and
+# datetime.fromtimestamp rejects far-future values (1e300) on every platform.
+_MAX_STAMP = 4102444800.0
 
 SOURCE_STORE = "store"
 SOURCE_PER_ROUND = "per_round_file"
@@ -68,6 +73,46 @@ def _int(v) -> Optional[int]:
     if isinstance(v, float) and v == v and v.is_integer():
         return int(v)
     return None
+
+
+def _game_id(v) -> Optional[int]:
+    """A positive game id: an int, an int-valued float, or a digit string -
+    the spellings tft_placement.load accepts, so resolve_final and
+    store_final agree on what names a game (true-audit s134 c7: "123" used
+    to be ignored here and the current game used instead). None otherwise."""
+    if isinstance(v, str):
+        s = v.strip()
+        # isascii: str.isdigit() is true for "2" superscript, which int() rejects.
+        v = int(s) if s.isascii() and s.isdigit() else None
+    gid = _int(v)
+    return gid if gid is not None and gid > 0 else None
+
+
+def _list(v) -> list:
+    return v if isinstance(v, list) else []
+
+
+def _stamp(v) -> Optional[float]:
+    """A usable unix time (finite, 0 < t < _MAX_STAMP) as a float, else None: the rating
+    passes it to datetime.fromtimestamp, which raises on NaN / inf and, on
+    Windows, on a negative stamp."""
+    if isinstance(v, bool) or not isinstance(v, (int, float)):
+        return None
+    try:
+        f = float(v)
+    except OverflowError:       # an int beyond float range (a corrupt record)
+        return None
+    return f if math.isfinite(f) and 0 < f < _MAX_STAMP else None
+
+
+def _unit_name(u) -> str:
+    name = u.get("name") if isinstance(u, dict) else None
+    return name if isinstance(name, str) else ""
+
+
+def _item_names(u: dict) -> list[str]:
+    return [i["name"] for i in _list(u.get("items"))
+            if isinstance(i, dict) and isinstance(i.get("name"), str) and i["name"]]
 
 
 def stage_from_last_round(last_round) -> int:
@@ -86,11 +131,13 @@ def set_number_of(rec, root=None) -> Optional[int]:
     """The record's own set (setCoreName "TFTSet18" -> 18, else set_number)."""
     if not isinstance(rec, dict):
         return None
+    n = None
     try:
         from tft import tft_set
-    except Exception:  # noqa: BLE001
-        return None
-    n = tft_set.parse_set_id(rec.get("set_core_name"))
+        n = tft_set.parse_set_id(rec.get("set_core_name"))
+    except Exception as exc:  # noqa: BLE001 - the set_number fallback still names it
+        _log.warning("TFT set id of %r unreadable (%s: %s)",
+                     rec.get("set_core_name"), type(exc).__name__, exc)
     if n is None:
         n = _int(rec.get("set_number"))
     return n
@@ -138,15 +185,14 @@ def trait_counts_from_board(board, traits_by_unit: dict) -> list[dict]:
     tft_placement._eog_trait_counts."""
     counts: dict = {}
     seen = set()
-    for u in board or []:
-        name = u.get("name") if isinstance(u, dict) else None
+    for u in _list(board):
+        name = _unit_name(u)
         if not name or name in seen:
             continue
         seen.add(name)
-        names = set(traits_by_unit.get(name) or [])
-        for it in u.get("items") or []:
-            nm = it.get("name") if isinstance(it, dict) else None
-            if isinstance(nm, str) and nm.endswith(" Emblem") and len(nm) > 7:
+        names = {t for t in _list(traits_by_unit.get(name)) if isinstance(t, str)}
+        for nm in _item_names(u):
+            if nm.endswith(" Emblem") and len(nm) > 7:
                 names.add(nm[:-7])
         for nm in names:
             counts[nm] = counts.get(nm, 0) + 1
@@ -240,14 +286,16 @@ def final_from_record(rec, *, root=None, source: str = SOURCE_STORE) -> Optional
     if placement is None or not 1 <= placement <= 8:
         return None
     me = local_player(rec) or {}
-    board = [u for u in (me.get("board") or []) if isinstance(u, dict) and u.get("name")]
+    # One malformed entry (a non-string name, a non-list items field) is
+    # dropped or emptied, never a TypeError that loses the whole record.
+    board = [u for u in _list(me.get("board")) if _unit_name(u)]
     # Carries first: star, then cost, then items held (EOG lists boardPieces in
     # board order, which is not a strength order).
     board = sorted(board, key=lambda u: (-(_int(u.get("star")) or 0),
                                          -(_int(u.get("cost")) or 0),
-                                         -len(u.get("items") or [])))
+                                         -len(_list(u.get("items")))))
     set_n = set_number_of(rec, root)
-    traits = me.get("traits") or []
+    traits = _list(me.get("traits"))
     if not traits and board:
         traits = trait_counts_from_board(board, unit_traits(set_n, root))
     classified = classify_traits(traits, trait_breakpoints(set_n, root))
@@ -257,7 +305,7 @@ def final_from_record(rec, *, root=None, source: str = SOURCE_STORE) -> Optional
     shown = placement
     if duo and placement > 4:
         shown = (placement + 1) // 2
-    ended = rec.get("ended_at_effective_unix") or rec.get("captured_at_unix")
+    ended = _stamp(rec.get("ended_at_effective_unix")) or _stamp(rec.get("captured_at_unix"))
     return {
         "game_id": _int(rec.get("game_id")) or 0,
         "placement": shown,
@@ -273,16 +321,14 @@ def final_from_record(rec, *, root=None, source: str = SOURCE_STORE) -> Optional
         "units": [_unit_label(u) for u in board],
         "board": [{"name": u.get("name"), "star": _int(u.get("star")),
                    "cost": _int(u.get("cost")),
-                   "items": [i.get("name") for i in (u.get("items") or [])
-                             if isinstance(i, dict) and i.get("name")]}
+                   "items": _item_names(u)}
                   for u in board],
         "traits": [f"{t['name']} {t['units']}" for t in active],
         "comp": comp_name(classified),
-        "augments": [a for a in (me.get("augments") or []) if isinstance(a, str)],
+        "augments": [a for a in _list(me.get("augments")) if isinstance(a, str)],
         "source": source,
-        "sources": list(rec.get("sources") or []),
-        "ended_at_unix": float(ended) if isinstance(ended, (int, float))
-        and not isinstance(ended, bool) else None,
+        "sources": [s for s in _list(rec.get("sources")) if isinstance(s, str)],
+        "ended_at_unix": ended,
     }
 
 
@@ -351,7 +397,10 @@ def per_round_record(now: Optional[float] = None, game_id=None) -> Optional[dict
         rec["per_round_final"] = per_round_is_final(doc, summoner_id=sid)
         return rec
     except Exception as exc:  # noqa: BLE001 - a bad file is "no file"
-        _log.debug("TFT per-round file unusable: %s", exc)
+        # read_eog already turns a missing / stale / torn file into None, so
+        # what lands here is a parser or reader defect: WARNING, not DEBUG
+        # (true-audit s134 c7). Once per game end, never per tick.
+        _log.warning("TFT per-round file unusable (%s: %s)", type(exc).__name__, exc)
         return None
 
 
@@ -377,18 +426,24 @@ def resolve_final(root=None, *, game_id=None, now: Optional[float] = None,
     counts only when it is positively that game's (per_round_record). None
     when neither source holds the game's result - the caller then has no
     placement, and must not invent one; the collector re-rates when the
-    store record lands."""
-    gid = _int(game_id) if game_id is not None else None
-    if gid is not None and gid <= 0:
-        gid = None
-    pr = per_round_record(now=now if now is not None else time.time(), game_id=gid)
-    pr_gid = _int(pr.get("game_id")) if pr else None
-    if gid is None:
-        gid = pr_gid       # matched to the current game, so it IS that game
+    store record lands.
+
+    `game_id` may be an int or a digit string (the spellings store_final
+    takes); a named game the store already holds is returned without reading
+    the per-round file or the relay LCU snapshot."""
+    gid = _game_id(game_id)
     if gid:
         fin = store_final(gid, root=root, store_dir=store_dir)
         if fin:
             return fin
+    pr = per_round_record(now=now if now is not None else time.time(), game_id=gid)
+    pr_gid = _int(pr.get("game_id")) if pr else None
+    if gid is None:
+        gid = pr_gid       # matched to the current game, so it IS that game
+        if gid:
+            fin = store_final(gid, root=root, store_dir=store_dir)
+            if fin:
+                return fin
     if pr and pr.get("per_round_final") and pr_gid == gid:
         return final_from_record(pr, root=root, source=SOURCE_PER_ROUND)
     return None
