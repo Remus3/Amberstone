@@ -253,8 +253,13 @@ DENY_PATHS = frozenset({
 })
 DENY_SEGMENTS = frozenset({".git", ".claude", "tests", "__pycache__",
                            "node_modules", "moon_sync_inbox", "tls", "certs", "cert"})
+# `.gitignore` / `.gitattributes` / `.gitmodules` never travel: a payload
+# `.gitignore` (`!*`) would re-include every ignored path for the NEXT
+# update's IgnoreRules check, so the rules only ever come from the installed
+# bundle. `.gitkeep` placeholders are plain files and still travel.
 _DENY_NAME_RE = re.compile(
-    r"(^api-key.*\.txt$)|(^\.env(\..*)?$)|((^|[._-])token\.txt$)"
+    r"(^\.git(ignore|attributes|modules)$)"
+    r"|(^api-key.*\.txt$)|(^\.env(\..*)?$)|((^|[._-])token\.txt$)"
     r"|(\.(pem|key|pfx|p12|jks|crt|salt|pyc|pyo|jsonl|log|tmp|partial|deploying)$)"
     r"|(_coaching_data\.json$)", re.I)
 # An 8.3 short-name segment (`FLEET_~1`) can alias a denied directory on a
@@ -603,7 +608,10 @@ def _parse_ignore(text: str) -> List[_IgnoreRule]:
 class IgnoreRules:
     """`git check-ignore` semantics over the install's shipped .gitignore
     files (the root one plus any nested ones), read from the INSTALLED tree,
-    never from a payload: last matching pattern wins, a deeper .gitignore
+    never from a payload - and no payload can ever write one there, since
+    check_payload_path denies every .gitignore / .gitattributes /
+    .gitmodules path, so the rules are the installed bundle's own. The
+    last matching pattern wins, a deeper .gitignore
     outranks a shallower one, and nothing inside an ignored directory can be
     re-included. A path it reports is per-install or runtime state."""
 

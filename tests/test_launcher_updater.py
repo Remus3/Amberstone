@@ -1187,6 +1187,48 @@ def test_f2_a_gitignored_payload_path_refuses_the_whole_update(tmp_path, rel):
     _no_partials(root)
 
 
+@pytest.mark.parametrize("rel", [
+    "data/.gitignore", "web/.gitignore", "config/.gitignore", "core/sub/.gitignore",
+    "web/.gitattributes", "data/.GITIGNORE", "agents/.gitmodules",
+])
+def test_r3_an_update_can_never_ship_ignore_or_attribute_files(rel):
+    # A payload .gitignore (`!*`) would re-include every ignored path for the
+    # NEXT update's check; deny wins over the data/ web/ config/ allow.
+    with pytest.raises(up.PayloadPathError):
+        up.check_payload_path(rel)
+
+
+def test_r3_a_manifest_carrying_a_gitignore_refuses_the_whole_update(tmp_path):
+    root = make_root(tmp_path)
+    files = dict(NEW_FILES, **{"data/.gitignore": b"!*\n"})
+    with pytest.raises(up.PayloadPathError):
+        _stage_into(root, tmp_path, "1.1.0", files)
+    assert not (root / "ops" / "runtime" / "staging" / "1.1.0").exists()
+    assert not (root / "data" / ".gitignore").exists()
+
+
+def test_r3_gitkeep_placeholders_still_travel():
+    assert up.check_payload_path("data/event_captures/.gitkeep") == \
+        "data/event_captures/.gitkeep"
+
+
+def test_r3_ignore_rules_come_only_from_the_installed_tree(tmp_path, monkeypatch):
+    """Never from the staging payload: every IgnoreRules is built on the
+    install root itself, in stage() and again in apply()."""
+    root = make_root(tmp_path)
+    roots = []
+    real_init = up.IgnoreRules.__init__
+
+    def spy(self, r):
+        roots.append(Path(r).resolve())
+        real_init(self, r)
+    monkeypatch.setattr(up.IgnoreRules, "__init__", spy)
+    _stage_into(root, tmp_path, "1.1.0", NEW_FILES)
+    up.apply(root, "1.1.0", game_check=no_game)
+    assert len(roots) >= 2
+    assert set(roots) == {root.resolve()}
+
+
 def test_f2_no_shipped_ignore_list_fails_closed(tmp_path):
     root = make_root(tmp_path, ignore=False)
     with pytest.raises(up.StateError):

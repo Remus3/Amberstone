@@ -818,6 +818,47 @@ class FreshnessAndReplayTests(_TmpTreeCase):
         with self.assertRaises(D.DeployAuthError):
             D.claim_request_id({"request_id": "fresh", "signature": "x"}, ledger)
 
+    def test_an_overflowing_window_is_refused_with_a_result(self) -> None:
+        # math.isfinite(10 ** 400) raises OverflowError; JSON carries such an
+        # int happily. It must be a refusal with a result, never a dead worker.
+        victim = self._victim()
+        for issued, expires in ((10 ** 400, 10 ** 400 + 60), (1.0, 10 ** 400),
+                                (-(10 ** 400), 1.0)):
+            result = D.do_deploy(self._hand_signed(self._body(
+                request_id=f"ovf-{len(str(issued))}-{len(str(expires))}",
+                issued_at=issued, expires_at=expires)))
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["phase"], "auth", result)
+        self.assertEqual(victim.read_text(encoding="utf-8"), "ORIGINAL = 1\n")
+
+    def test_finite_never_raises(self) -> None:
+        for value in (10 ** 400, -(10 ** 400), float("inf"), float("nan"), True, "1", None):
+            self.assertFalse(D._finite(value), value)
+        self.assertTrue(D._finite(1.5))
+        self.assertTrue(D._finite(7))
+
+    def test_main_always_writes_a_result(self) -> None:
+        # Last-resort net: whatever do_deploy raises, the supervisor still
+        # gets a result file (ops/rc_supervisor.py reads deploy_results/).
+        result_path = Path(self._tmp.name) / "result.json"
+        req = self._write_request(self._body(request_id="net-1"))
+        real, saved_argv = D.do_deploy, sys.argv
+
+        def boom(*_a, **_k):
+            raise OverflowError("int too large to convert to float")
+        D.do_deploy = boom
+        sys.argv = ["rc_transactional_deploy.py", "--request", str(req),
+                    "--result", str(result_path)]
+        try:
+            code = D.main()
+        finally:
+            D.do_deploy, sys.argv = real, saved_argv
+        self.assertEqual(code, 1)
+        result = json.loads(result_path.read_text(encoding="utf-8"))
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["phase"], "internal")
+        self.assertIn("OverflowError", result["error"])
+
     def test_a_request_without_an_id_is_refused(self) -> None:
         body = self._body()
         del body["request_id"]

@@ -123,6 +123,18 @@ SANCTIONED = {
         "size threshold in the same instant as the live host can replace "
         "`.1` with a one-line file: one lost older generation, never torn "
         "bytes (residual reported for the PKG-1b slice)",
+    ("ops/launcher/updater.py", "_replace_with_retry"):
+        "PKG-2 backend updater: stdlib-only and run under `python -I` with no "
+        "RC module on sys.path, because it replaces the backend tree "
+        "core.polled_json belongs to (docs/PACKAGING_PLAN.md 3.4) - the same "
+        "reason as the ops/rc_transactional_deploy.py row. Its _write_json / "
+        "_write_bytes_atomic meet the three requirements, asserted by "
+        "test_launcher_writer_meets_the_sanction_contract below: a "
+        "<dest>.<pid>.<token>.tmp scratch, flush + fsync before the rename, "
+        "a bounded PermissionError (WinError 5) retry, and the scratch "
+        "removed when the rename fails for good. The same helper also moves "
+        "the updater's own staging and quarantine entries (renames of whole "
+        "existing files and directories inside ops/runtime/, no payload)",
 }
 
 _PER_WRITER_HINTS = ("getpid", "token", "uuid", "pid")
@@ -305,12 +317,32 @@ def test_a_qualname_row_exempts_one_method_not_every_same_named_function(tmp_pat
     assert r == ["core/m.py:6 write"]
 
 
-def test_launcher_writer_meets_the_sanction_contract(tmp_path, monkeypatch):
+def _launcher_writer(module: str):
+    """(module, its atomic JSON writer) for each sanctioned launcher writer."""
+    import importlib
+    mod = importlib.import_module(f"ops.launcher.{module}")
+    write = {"service_host": "atomic_write_json", "updater": "_write_json"}[module]
+    return mod, getattr(mod, write)
+
+
+def test_every_launcher_rename_row_has_a_contract_case():
+    """A new ops/launcher _replace_with_retry row must join the contract test
+    below, or the sanction rests on its reason string alone."""
+    rows = {rel for rel, fn in SANCTIONED
+            if rel.startswith("ops/launcher/") and fn == "_replace_with_retry"}
+    assert rows == {f"ops/launcher/{m}.py" for m in _LAUNCHER_WRITERS}
+
+
+_LAUNCHER_WRITERS = ("service_host", "updater")
+
+
+@pytest.mark.parametrize("module", _LAUNCHER_WRITERS)
+def test_launcher_writer_meets_the_sanction_contract(tmp_path, monkeypatch, module):
     """The ops/launcher rows are sanctioned on the three requirements, so
     they are asserted on the code, not on the reason string: a per-writer
     scratch name, fsync before the rename, a bounded WinError 5 retry and no
     scratch left behind when the rename fails for good."""
-    from ops.launcher import service_host as sh
+    sh, write = _launcher_writer(module)
 
     real_replace, real_fsync = os.replace, os.fsync
     events: list[str] = []
@@ -329,8 +361,8 @@ def test_launcher_writer_meets_the_sanction_contract(tmp_path, monkeypatch):
     monkeypatch.setattr(sh.os, "fsync", rec_fsync)
     monkeypatch.setattr(sh.time, "sleep", lambda _s: None)
     dest = tmp_path / "launcher_status.json"
-    sh.atomic_write_json(dest, {"n": 1})
-    sh.atomic_write_json(dest, {"n": 2})
+    write(dest, {"n": 1})
+    write(dest, {"n": 2})
     assert events == ["fsync", "replace", "fsync", "replace"]
     assert scratch[0] != scratch[1], scratch
     for name in scratch:
@@ -346,7 +378,7 @@ def test_launcher_writer_meets_the_sanction_contract(tmp_path, monkeypatch):
         return real_replace(src, dst)
 
     monkeypatch.setattr(sh.os, "replace", flaky)
-    sh.atomic_write_json(dest, {"n": 3})
+    write(dest, {"n": 3})
     assert json.loads(dest.read_text(encoding="ascii")) == {"n": 3}
 
     calls = [0]
@@ -357,7 +389,7 @@ def test_launcher_writer_meets_the_sanction_contract(tmp_path, monkeypatch):
 
     monkeypatch.setattr(sh.os, "replace", refused)
     with pytest.raises(PermissionError):
-        sh.atomic_write_json(dest, {"n": 4})
+        write(dest, {"n": 4})
     assert 1 < calls[0] <= 20, calls[0]
     assert [p.name for p in tmp_path.iterdir()] == ["launcher_status.json"]
     assert json.loads(dest.read_text(encoding="ascii")) == {"n": 3}
