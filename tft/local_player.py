@@ -15,8 +15,10 @@ EOG ``isLocalPlayer`` puuid.
 Rule (``local_player_index``), in order:
   1. An LCU id is known (summoner id and / or puuid): the ONE entry whose
      ``playerId`` / ``PUUID`` matches it. Two matches -> unknown. No match ->
-     unknown, unless the file carries no ids at all (every id absent or zeroed)
-     - then the id cannot be compared and rule 2 decides.
+     unknown, unless the file carries no id of the kind the LCU gave (every
+     such id absent or zeroed; e.g. a summoner id against PUUID-only entries)
+     - then the id cannot be compared and rule 2 decides, except that a flag
+     on an id-less entry while another entry carries an id is unknown.
   2. No usable id: the entry flagged ``isInteractable``, only when EXACTLY one
      entry is flagged (the bot-lobby shape).
   3. Otherwise unknown: (None, reason). Never a guess - a stranger's HP / board
@@ -36,6 +38,7 @@ never a name, Riot id, puuid or player id.
 """
 from __future__ import annotations
 
+import math
 from typing import Any, Optional
 
 BASIS_SUMMONER_ID = "summoner_id"
@@ -43,18 +46,26 @@ BASIS_PUUID = "puuid"
 BASIS_INTERACTABLE = "isInteractable"
 
 
+# A digit string longer than this is not an id (Riot ids fit in 64 bits, 20
+# digits); it also keeps int() below CPython's 4300-digit conversion limit.
+_MAX_ID_DIGITS = 32
+
+
 def real_id(v: Any) -> int:
     """A usable summoner / player id: a positive int (bool excluded), an
-    int-valued float or a digit string; anything else is 0 (no id)."""
+    int-valued float or an ASCII digit string; anything else is 0 (no id).
+    Never raises: str.isdigit() also accepts superscripts ("\\u00b2"), which
+    int() refuses, so the string must be ASCII."""
     if isinstance(v, bool):
         return 0
     if isinstance(v, int):
         return v if v > 0 else 0
     if isinstance(v, float):
         return int(v) if v.is_integer() and v > 0 else 0
-    if isinstance(v, str) and v.strip().isdigit():
-        n = int(v.strip())
-        return n if n > 0 else 0
+    if isinstance(v, str):
+        s = v.strip()
+        if s.isascii() and s.isdigit() and len(s) <= _MAX_ID_DIGITS:
+            return int(s)
     return 0
 
 
@@ -83,6 +94,7 @@ def local_player_index(players: Any, *, summoner_id: Any = None,
     if not rows:
         return None, "no player entries"
     sid, me_p = real_id(summoner_id), real_puuid(puuid)
+    carriers: set = set()
     if sid or me_p:
         by_sid, by_puuid = [], []
         for i, p in rows:
@@ -94,10 +106,21 @@ def local_player_index(players: Any, *, summoner_id: Any = None,
             return hits[0], (BASIS_SUMMONER_ID if by_sid else BASIS_PUUID)
         if len(hits) > 1:
             return None, f"{len(hits)} entries match the LCU id"
-        if any(any(_entry_ids(p)) for _, p in rows):
+        # Comparable only against an id of the SAME kind: a summoner id says
+        # nothing about a file that carries PUUIDs alone, and vice versa.
+        ids = [_entry_ids(p) for _, p in rows]
+        if ((sid and any(pid for pid, _ in ids))
+                or (me_p and any(pp for _, pp in ids))):
             return None, "the LCU id matches no entry"
+        # The client zeroes OTHER players' ids, so an entry that carries one
+        # (of either kind) is the local candidate: a flag on an id-less entry
+        # while another carries an id contradicts it.
+        carriers = {i for (i, _), e in zip(rows, ids) if any(e)}
     flagged = [i for i, p in rows if p.get("isInteractable") is True]
     if len(flagged) == 1:
+        if carriers and flagged[0] not in carriers:
+            return None, ("the isInteractable entry carries no id and "
+                          f"{len(carriers)} other entries do")
         return flagged[0], BASIS_INTERACTABLE
     return None, (f"{len(flagged)} entries are isInteractable and no LCU id "
                   f"names one")
@@ -123,14 +146,16 @@ ALIVE = "alive"
 ELIMINATED = "eliminated"
 
 
-def _num(v: Any) -> Optional[int]:
+def _num(v: Any) -> Optional[float]:
+    """A finite number, or None (bool, junk, NaN, inf, or a JSON int too large
+    for a float). Not truncated: 0.5 HP is alive, not 0."""
     if isinstance(v, bool) or not isinstance(v, (int, float, str)):
         return None
     try:
         f = float(v)
-    except ValueError:
+    except (ValueError, OverflowError):
         return None
-    return int(f) if f == f and abs(f) != float("inf") else None
+    return f if math.isfinite(f) else None
 
 
 def player_status(p: Any) -> Optional[str]:
@@ -169,7 +194,8 @@ def lobby_counts(players: Any, local_index: Optional[int] = None) -> dict:
     rows = [p for p in players if isinstance(p, dict)]
     dead = sum(1 for p in rows if player_status(p) == ELIMINATED)
     me = None
-    if isinstance(local_index, int) and 0 <= local_index < len(players):
+    if (isinstance(local_index, int) and not isinstance(local_index, bool)
+            and 0 <= local_index < len(players)):
         me = player_status(players[local_index])
     if me is None:
         return {"players_alive": alive, "alive_others": max(0, alive - 1),
