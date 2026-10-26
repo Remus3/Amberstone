@@ -275,6 +275,11 @@ desktop.ini
 # Node (if any future tooling)
 node_modules/
 package-lock.json
+# rc-shell ships: its lock is TRACKED so a build is `npm ci`-reproducible and
+# the licence audit is pinned (docs/PACKAGING_PLAN.md M7, PKG-8). Regenerate
+# only with `npm install --package-lock-only --ignore-scripts` in rc-shell;
+# tests/test_third_party_notices_pkg.py fails when it drifts from package.json.
+!rc-shell/package-lock.json
 
 # Ad-hoc diagnostic artefacts under data/. Leading dot keeps them sorted
 # to the top of the dir + signals "transient debug output, not persistent
