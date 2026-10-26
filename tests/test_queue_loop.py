@@ -1427,6 +1427,72 @@ def test_S134P04_one_normaliser_reads_every_conclusion():
     assert qloop._ci_conclusion({}) == ""
 
 
+def test_S134P05_an_early_failure_detail_names_the_FIRST_failed_step():
+    """The detail used to say "the test steps were skipped behind it", which is
+    false when the failed step comes AFTER the skipped test steps."""
+    jobs = _early_fail_jobs(None, job_conclusion="failure")
+    jobs["jobs"][1]["steps"].append(
+        {"name": "Post Run actions/checkout", "conclusion": "failure"})
+    out = _grade(jobs)
+    assert "skipped behind it" not in out["detail"]
+    assert "first failed step" in out["detail"]
+
+
+# RM-932: the run-level status and conclusion `wait_for_ci` reads went
+# through no normaliser, so a casing the step comparisons tolerate either
+# skipped the cancel remedy or kept polling a finished run until the budget.
+def test_S134P05_a_mixed_case_CANCELLED_run_grades_cancelled():
+    calls, gh = _fake_gh(list=[(0, [_row(120, "abc", conclusion=" Cancelled ")])],
+                         jobs=[(0, _jobs("success"))])
+    out = qloop.wait_for_ci("abc", budget_s=600, poll_s=60, allow_trigger=False,
+                            gh=gh, sleep=lambda s: None, monotonic=_mono())
+    assert out["step"] == "cancelled"
+    assert not [c for c in calls if _gh_key(c) == "jobs"], (
+        "a cancelled run is answered by its own conclusion, not its steps")
+
+
+def test_S134P05_a_POLLED_mixed_case_cancel_grades_cancelled():
+    calls, gh = _fake_gh(
+        list=[(0, [_row(121, "abc", status="in_progress", conclusion=None)])],
+        view=[(0, {"status": "completed", "conclusion": "CANCELLED"})],
+        jobs=[(0, _jobs("success"))])
+    out = qloop.wait_for_ci("abc", budget_s=600, poll_s=60, allow_trigger=False,
+                            gh=gh, sleep=lambda s: None, monotonic=_mono())
+    assert out["step"] == "cancelled"
+
+
+def test_S134P05_a_mixed_case_COMPLETED_row_is_not_polled():
+    calls, gh = _fake_gh(
+        list=[(0, [_row(122, "abc", status="Completed")])],
+        view=[(0, {"status": "Completed", "conclusion": "success"})],
+        jobs=[(0, _jobs("success"))])
+    out = qloop.wait_for_ci("abc", budget_s=600, poll_s=60, gh=gh,
+                            sleep=lambda s: None, monotonic=_mono())
+    assert out["step"] == "success"
+    assert out["status"] == "completed"
+    assert not [c for c in calls if _gh_key(c) == "view"], (
+        "a finished run must not be polled")
+
+
+def test_S134P05_a_POLLED_mixed_case_COMPLETED_status_ends_the_poll():
+    """Read raw, " COMPLETED " never equalled "completed", so the loop polled
+    a finished run until the budget ran out and graded it `timeout`."""
+    calls, gh = _fake_gh(
+        list=[(0, [_row(123, "abc", status="in_progress", conclusion=None)])],
+        view=[(0, {"status": " COMPLETED ", "conclusion": "Success"})],
+        jobs=[(0, _jobs("success"))])
+    out = qloop.wait_for_ci("abc", budget_s=600, poll_s=60, gh=gh,
+                            sleep=lambda s: None, monotonic=_mono())
+    assert out["step"] == "success"
+    assert len([c for c in calls if _gh_key(c) == "view"]) == 1
+
+
+def test_S134P05_one_normaliser_reads_every_run_status():
+    assert qloop._ci_status({"status": " In_Progress "}) == "in_progress"
+    assert qloop._ci_status({"status": None}) == ""
+    assert qloop._ci_status({}) == ""
+
+
 def test_the_result_carries_exactly_the_documented_fields():
     calls, gh = _fake_gh(list=[(0, [_row(104, "abc")])],
                          jobs=[(0, _jobs("success"))])

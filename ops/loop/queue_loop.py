@@ -720,10 +720,21 @@ def _ci_conclusion(row):
     """A job's or step's `conclusion`, stripped and lower-cased.
 
     The one reader for every conclusion `_ci_step_verdict` compares
-    (RM-931): a comparison that read the raw value let a casing the others
+    (RM-931), and for the run-level one `wait_for_ci` reads (RM-932): a
+    comparison that read the raw value let a casing the others
     tolerate fall through to the wrong branch.
     """
     return str(row.get("conclusion") or "").strip().lower()
+
+
+def _ci_status(row):
+    """A run's `status`, stripped and lower-cased.
+
+    The run-level twin of `_ci_conclusion` (RM-932): `wait_for_ci` compared
+    the raw value with "completed", so a casing it did not expect kept polling
+    a finished run until the budget graded it `timeout`.
+    """
+    return str(row.get("status") or "").strip().lower()
 
 
 def _early_failure_verdict(steps, run_id):
@@ -746,8 +757,8 @@ def _early_failure_verdict(steps, run_id):
             return CI_UNAVAILABLE, (f"{CI_JOB} step {name!r} failed in run "
                                     f"{run_id} - runner infrastructure, the "
                                     f"tests never ran")
-        return CI_FAILURE, (f"{CI_JOB} step {name!r} -> failure; the test "
-                            f"steps were skipped behind it")
+        return CI_FAILURE, (f"{CI_JOB} step {name!r} -> failure, the first "
+                            f"failed step; the test steps were skipped")
     return CI_UNKNOWN, (f"the {CI_JOB!r} job concluded failure in run {run_id} "
                         f"with its test steps skipped and no failed step")
 
@@ -872,8 +883,8 @@ def wait_for_ci(sha, *, budget_s: float = DEFAULT_CI_WAIT_S,
         if run_id is None:
             return _out(CI_UNAVAILABLE, head=head,
                         detail="the ci run row carried no databaseId")
-        status = str(row.get("status") or "")
-        conclusion = str(row.get("conclusion") or "")
+        status = _ci_status(row)
+        conclusion = _ci_conclusion(row)
         while status != "completed":
             # Checked BEFORE the sleep so a zero budget answers immediately, and
             # so the last poll cannot overshoot the deadline by a whole poll_s.
@@ -892,8 +903,8 @@ def wait_for_ci(sha, *, budget_s: float = DEFAULT_CI_WAIT_S,
                 return _out(CI_UNAVAILABLE, run_id=run_id, head=head,
                             status=status or "unknown",
                             detail=f"run {run_id} status payload was not an object")
-            status = str(view.get("status") or "")
-            conclusion = str(view.get("conclusion") or "")
+            status = _ci_status(view)
+            conclusion = _ci_conclusion(view)
         if conclusion == CI_CANCELLED:
             # Read here rather than from the step, because a cancelled run's
             # steps carry no useful conclusion - and the caller has a specific
