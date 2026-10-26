@@ -161,6 +161,9 @@ class TestParseOverrides:
 class TestMainGate:
     def _run(self, monkeypatch, tmp_path, champions, *extra):
         monkeypatch.setattr(W, "extract", lambda *a, **k: _payload(champions))
+        # RM-916: main() sizes the roster to tell a --limit slice from a full run
+        monkeypatch.setattr(W, "_resolve_champion_ids",
+                            lambda patch, full_roster: [f"Champ{i:03d}" for i in range(171)])
         out = tmp_path / "wiki_stats.json"
         rc = W.main(["--patch", "16.99.1", "--out", str(out), *extra])
         return rc, out

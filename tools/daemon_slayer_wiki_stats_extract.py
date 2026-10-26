@@ -115,8 +115,10 @@ Design (don't re-litigate):
   * Mode floor (RM-911): a wiki-sourced run where a non-ARAM mode (urf / nb
     / ofa / usb / ar / swift) has no block on any champion exits 5 and writes
     nothing; ``--allow-missing-mode MODE=REASON`` (repeatable) accepts it and
-    records ``_mode_missing_override``. Skipped with a NOTE under ``--limit``
-    (a roster slice cannot measure roster-wide presence).
+    records ``_mode_missing_override``. Skipped with a NOTE under a ``--limit``
+    below the roster size (a roster slice cannot measure roster-wide presence;
+    an ``--allow-missing-mode`` given with it is reported ignored); a
+    ``--limit`` at or above the roster is gated like a full run (RM-916).
   * ASCII-only output (ensure_ascii=True) - the no-em-dash repo rule.
   * champion-id source = the committed abilities snapshot's ``data`` dict
     (171 champs at 16.11.1; keyed by DDragon id). The wiki block's ``apiname``
@@ -1270,10 +1272,16 @@ def main(argv: Optional[list[str]] = None) -> int:
                 "threshold": aram_check["threshold"],
             }
     # presence is a roster-wide fact; a --limit slice (the documented smoke run,
-    # first 5 champions) legitimately carries no swift block
-    if args.source != "cdragon" and args.limit:
+    # first 5 champions) legitimately carries no swift block. RM-916: a
+    # --limit at or above the roster is no slice, so it must not skip the floor
+    is_slice = bool(args.limit) and args.limit < len(
+        _resolve_champion_ids(patch, args.full_roster))
+    if args.source != "cdragon" and is_slice:
         print(f"NOTE: RM-911 mode presence floor skipped: --limit {args.limit} "
               "is a roster slice", file=sys.stderr)
+        if mode_overrides:
+            print(f"NOTE: --allow-missing-mode {', '.join(sorted(mode_overrides))} "
+                  "ignored: the presence floor did not run", file=sys.stderr)
     elif args.source != "cdragon":
         try:
             mode_check = check_mode_presence(payload["champions"], overrides=mode_overrides)
