@@ -890,7 +890,21 @@ _WEB = _REPO_ROOT / "web"
 # MERGED 2026-10-27 by the session 144 merger onto main (lane commit 225c49d94): main had moved
 # this pin since the lane base, so the superseded value above is main's and
 # the value below is recomputed over the merged tree.
-_LIVE_HALF_DIGEST = "584a4433974d48bc8e88d5a746c0e9f098c5d5c2d82a46fc5b632695bec37e68"
+# superseded by the RM-952 re-capture below: "584a4433974d48bc8e88d5a746c0e9f098c5d5c2d82a46fc5b632695bec37e68"
+#
+# RE-CAPTURED 2026-10-26 at RM-952 (s134 uiux cycle 19). One change rides
+# it: web/js/panels/last_match.js maps ?ui_mock=1&mode=tft to the new
+# last_match_tft.json fixture and labels the TFT hero set from set_core_name
+# ("TFTSet18" -> "Set 18") when set_number is null. Ordinary case, no
+# tokeniser change. ATTRIBUTED BY SUBSTITUTION: swapping exactly
+# last_match.js back to its 5a2072bdd blob (in memory) reproduces the
+# superseded ffb394c0... value EXACTLY. That path is the whole change. No
+# glyph change: the added lines carry 0 non-ASCII bytes. If another slice
+# re-captures in parallel, the merger recomputes.
+# MERGED 2026-10-27 by the session 144 merger onto main (lane commit 6eef215c5): main had moved
+# this pin since the lane base, so the superseded value above is main's and
+# the value below is recomputed over the merged tree.
+_LIVE_HALF_DIGEST = "5d361e88265809d2ac108ef53d2913408a4cfaf1cd6182be6c8eb5f056be9d82"
 
 
 def _web_sources() -> list[Path]:

@@ -358,7 +358,8 @@ function _lmMockUrl() {
   // ?mode=<sr|aram|arena> URL flag picks the matching fixture (mirrors
   // the _csMockLoad pattern in main.js L3263 from items 165 + 181). sr
   // added C3 (page #14) so the SR Post Game Review has CI-durable
-  // snapshot coverage like aram/arena.
+  // snapshot coverage like aram/arena. tft (RM-952) loads a real kind
+  // "tft" payload so the TFT card has an audit path without a fresh game.
   let url = null;
   try {
     const params = new URLSearchParams(window.location.search || "");
@@ -366,6 +367,7 @@ function _lmMockUrl() {
     if (m === "sr")  url = "/data/ui_mock/last_match_sr.json";
     else if (m === "aram")  url = "/data/ui_mock/last_match_aram.json";
     else if (m === "arena") url = "/data/ui_mock/last_match_arena.json";
+    else if (m === "tft")   url = "/data/ui_mock/last_match_tft.json";
   } catch (_) {}
   return url;
 }
@@ -1540,6 +1542,16 @@ function _tftNum(v) {
   return (v === null || v === undefined || v === "") ? "-" : String(v);
 }
 
+// RM-952: an eog-only record carries set_number null and set_core_name
+// "TFTSet18" (measured), so read the number out of the client token rather
+// than print it. A core name with no set number still shows as given.
+function _tftSetLabel(m) {
+  if (m.set_number) return `Set ${m.set_number}`;
+  const core = String(m.set_core_name || "");
+  const hit = /^TFTSet(\d+)/i.exec(core);
+  return hit ? `Set ${Number(hit[1])}` : core;
+}
+
 // Payload: /api/last-match kind "tft" (dashboard/builders_last_match.py
 // _build_tft_last_match). Augments and the HP curve are not recorded by the
 // client (measured s134), so they say so instead of rendering empty.
@@ -1554,7 +1566,7 @@ function _renderTftLastMatch(data) {
   const place = Number(m.placement) || 0;
   const top = place >= 1 && place <= Math.floor(lobby / 2);
   const placeTxt = place ? `${_ordinal(place)} of ${lobby}` : "Placement unknown";
-  const setTxt = m.set_number ? `Set ${m.set_number}` : (m.set_core_name || "");
+  const setTxt = _tftSetLabel(m);
   const facts = [
     ["Final HP", _tftNum(m.hp_final)],
     ["Level", _tftNum(m.level)],
