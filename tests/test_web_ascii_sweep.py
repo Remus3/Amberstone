@@ -823,7 +823,27 @@ _WEB = _REPO_ROOT / "web"
 # MERGED 2026-10-27 by the session 144 merger onto main (lane commit 8bef64ad2): main had moved
 # this pin since the lane base, so the superseded value above is main's and
 # the value below is recomputed over the merged tree.
-_LIVE_HALF_DIGEST = "334dfd868a3b774bb10659641615da7094cf193e0b3dba863308ee680a6b59f0"
+# superseded by the RM-945 re-capture below: "334dfd868a3b774bb10659641615da7094cf193e0b3dba863308ee680a6b59f0"
+#
+# RE-CAPTURED 2026-10-26 at RM-945 (s134 uiux cycle 12). Two changes ride
+# it. (1) Cycles 9-11 (RM-942 / -18 / -19) edited the live half without
+# re-capturing: web/js/panels/active_match.js, web/js/lib/overlay_tft.js and
+# web/js/main.js (their .json fixture and .test.mjs are not hashed), so this
+# guard was red at lane HEAD c9b717940 (measured 5e41a303...). (2) RM-945:
+# _line() paints its CALL pane eyebrow and table-key labels with
+# var(--text-dim), not var(--text-faint), plus a 4-line comment. Ordinary
+# case, no tokeniser change. ATTRIBUTED BY SUBSTITUTION against 24e22fa54
+# (the last lane commit whose tree hashed to the pin): swapping exactly those
+# three paths back to their 24e22fa54 blobs (in memory) reproduces the
+# superseded 3a151d85... value EXACTLY. Those three paths are the whole
+# change (the cycle 9-11 lane commits are rebased, so the shas above are the
+# post-rebase ones on lane/uiux). No glyph change: the
+# added lines carry 0 non-ASCII bytes. If another slice re-captures in
+# parallel, the merger recomputes.
+# MERGED 2026-10-27 by the session 144 merger onto main (lane commit 6f0c49073): main had moved
+# this pin since the lane base, so the superseded value above is main's and
+# the value below is recomputed over the merged tree.
+_LIVE_HALF_DIGEST = "efe6594d398dc0d7a116f126046cd68e30574ca5a033cf7dd80966399b540a6d"
 
 
 def _web_sources() -> list[Path]:

@@ -2685,8 +2685,12 @@ function _line(label, value, band) {
   // present coach fields render), so OBJECTIVE is not always the 3rd child.
   row.dataset.callLine = String(label).toLowerCase().replace(/\s+/g, "-");
   row.style.cssText = "margin-bottom:10px;font-size:var(--fs-md);line-height:1.45;";
+  // RM-945: the eyebrow is --text-dim (the base.css label token), not
+  // --text-faint: faint is AA on --surface only, and on .am-pane-call it
+  // measured 4.31 to 4.48:1 in arcane / hextech / ember / moonlit
+  // (tests/snapshot_panels/test_am_call_eyebrow_contrast.py).
   const lbl = document.createElement("span");
-  lbl.style.cssText = "color:var(--text-faint);letter-spacing:0.12em;font-size:var(--fs-xs);font-weight:700;display:block;margin-bottom:2px;";
+  lbl.style.cssText = "color:var(--text-dim);letter-spacing:0.12em;font-size:var(--fs-xs);font-weight:700;display:block;margin-bottom:2px;";
   lbl.textContent = label;
   row.appendChild(lbl);
 
@@ -2711,7 +2715,7 @@ function _line(label, value, band) {
       sub.style.cssText = "font-size:var(--fs-sm);line-height:1.35;color:var(--text);";
       if (r.label) {
         const k = document.createElement("span");
-        k.style.cssText = "color:var(--text-faint);font-weight:700;letter-spacing:0.04em;margin-right:6px;";
+        k.style.cssText = "color:var(--text-dim);font-weight:700;letter-spacing:0.04em;margin-right:6px;";
         k.textContent = r.label + ":";
         sub.appendChild(k);
       }
