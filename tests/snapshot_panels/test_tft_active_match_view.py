@@ -92,6 +92,19 @@ def _text(page, host_id: str) -> str:
     )
 
 
+# The static index.html head of the BUILD pane. The TFT fallback renames it
+# BOARD (that pane holds the board in TFT) and the feed path puts BUILD back
+# (RM-939; _amRenderLiveFallback / renderActiveMatchView in
+# web/js/panels/active_match.js).
+_BUILD_HEAD = "#view-active-match .am-pane-build .am-pane-head"
+
+
+def _build_head(page) -> list:
+    """[textContent, visible] of the BUILD pane head on the dashboard."""
+    head = page.locator(_BUILD_HEAD)
+    return [head.text_content(), head.is_visible()]
+
+
 def _display(page, el_id: str) -> str:
     return page.evaluate(
         "(id) => { const e = document.getElementById(id);"
@@ -145,6 +158,7 @@ def test_real_tft_row_renders_the_honest_tft_fallback(mock_server, pw_browser):
         assert _text(page, "am-build-body").strip() == (
             "UNITS\nUnits appear after the TFT client writes its first round."
         )
+        assert _build_head(page) == ["BOARD", True]
         assert _text(page, "am-map-body").strip() == (
             "LOBBY\nLobby placements and HP appear after the first round."
         )
@@ -198,6 +212,8 @@ def test_real_client_row_paints_no_sr_imperative_anywhere(mock_server, pw_browse
         assert _text(page, "am-build-body").strip() == (
             "Item build needs the live game feed."
         )
+        # Mode not detected is not TFT: the pane keeps its BUILD head.
+        assert _build_head(page) == ["BUILD", True]
         assert _text(page, "am-map-body").strip() == (
             "Map intel needs the live game feed."
         )
@@ -297,6 +313,7 @@ def test_lcu_phase_blink_holds_then_sr_game_rebuilds_league_panes(
         assert _text(page, "am-map-body").strip() == (
             "LOBBY\nLobby placements and HP appear after the first round."
         )
+        assert _build_head(page)[0] == "BOARD"
 
         sr = _load("sr")
         sr["lcu"] = copy.deepcopy(tft["lcu"])
@@ -313,6 +330,7 @@ def test_lcu_phase_blink_holds_then_sr_game_rebuilds_league_panes(
                        "TFT LIVE DATA"):
             assert needle not in view, f"TFT text {needle!r} left in SR game"
         assert _text(page, "am-build-body").strip(), "SR build pane left blank"
+        assert _build_head(page) == ["BUILD", True], "TFT BOARD head left in SR game"
     finally:
         page.close()
         ctx.close()
@@ -374,6 +392,49 @@ _FALLBACK_ONLY_TICK_LOG = """
 """
 
 
+# RM-940: make the SSE event the ONLY state.latest.lcu writer before the
+# first render, so the SSE-site test below cannot pass by a race.
+#   - pollLcu gets "{}" back (caller told apart by its name on the stack, as in
+#     _FALLBACK_ONLY_TICK_LOG). It fires once on load and then every 2 s, and
+#     lastSseTs starts undefined, so neither call is suppressed before the
+#     first SSE event; had one won, it would cache lcu InProgress via
+#     handleLcuEnvelope and hide a regressed SSE site.
+#   - pollIfStale stays live (its 4 s staleness floor keeps it off the first
+#     render, and its responses are what _wait_state_ticks counts), but the
+#     time of its first /api/state fetch is logged against the first SSE
+#     message, so "the first render is the SSE event" is asserted, not assumed.
+_SSE_FIRST_POLL_LCU_OFF = """
+(() => {
+  window.__sseAt = null;
+  window.__httpStateAt = null;
+  const OrigES = window.EventSource;
+  if (OrigES) {
+    const Wrapped = function (url, cfg) {
+      const es = new OrigES(url, cfg);
+      es.addEventListener('message', () => {
+        if (window.__sseAt === null) window.__sseAt = performance.now();
+      });
+      return es;
+    };
+    Wrapped.prototype = OrigES.prototype;
+    window.EventSource = Wrapped;
+  }
+  const orig = window.fetch.bind(window);
+  window.fetch = function (input, init) {
+    const url = typeof input === 'string' ? input : ((input && input.url) || '');
+    if (!url.split('?')[0].endsWith('/api/state')) return orig(input, init);
+    const stack = new Error().stack || '';
+    if (stack.indexOf('pollLcu') !== -1) {
+      return Promise.resolve(new Response('{}', {
+        status: 200, headers: {'Content-Type': 'application/json'}}));
+    }
+    if (window.__httpStateAt === null) window.__httpStateAt = performance.now();
+    return orig(input, init);
+  };
+})();
+"""
+
+
 def test_first_sse_tick_of_a_live_page_paints_no_sr_imperative(
     mock_server, pw_browser
 ):
@@ -382,14 +443,21 @@ def test_first_sse_tick_of_a_live_page_paints_no_sr_imperative(
     before the fix onState ran before handleLcuEnvelope cached state.latest.lcu,
     so the B4 mirror in next.js saw no live game and #nx-next held "Drake
     spawns 5:00 - set up vision" until the next tick. A MutationObserver
-    records every value #nx-next ever holds; none may be an SR imperative."""
+    records every value #nx-next ever holds; none may be an SR imperative.
+    pollLcu is neutralised and the SSE event is checked to land before any
+    HTTP /api/state fetch (RM-940), so no poller can pre-cache lcu."""
     ctx, page, errors = _open(
         mock_server, pw_browser, _load("tft_live_s134_client"),
-        init_scripts=(_NX_WRITE_LOG,),
+        init_scripts=(_NX_WRITE_LOG, _SSE_FIRST_POLL_LCU_OFF),
     )
     try:
         _wait_fallback(page, "game")
         _wait_state_ticks(page, 1)
+        order = page.evaluate("[window.__sseAt, window.__httpStateAt]")
+        assert order[0] is not None, "no SSE message reached the page"
+        assert order[1] is None or order[0] < order[1], (
+            f"an HTTP /api/state fetch preceded the first SSE event: {order}"
+        )
         log = page.evaluate("window.__nxLog")
         assert log and log[0] == "-", f"observer not installed: {log[:3]}"
         for value in log:
