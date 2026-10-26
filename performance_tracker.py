@@ -452,6 +452,15 @@ def _legacy_tft_placement(tft_live, tft_coaching, is_duo):
     return placement, _TFT_SOURCE_ALIVE
 
 
+def _names(value):
+    """RM-934: a meta guide field as a list of names. Only a list or tuple
+    counts (``list("Jinx")`` would split a bare string into characters, and a
+    number would raise and drop the whole target); non-string members drop."""
+    if not isinstance(value, (list, tuple)):
+        return []
+    return [v for v in value if isinstance(v, str) and v]
+
+
 def _planner_target(script_dir):
     """RM-889: the selected comp's TARGET board, under its own key
     (``tft_comp_target``), or None. It used to OVERWRITE the measured units /
@@ -477,9 +486,10 @@ def _planner_target(script_dir):
         if not isinstance(_cd, dict) or not _cd:
             return None
         return {
-            "units": list(_cd.get("lv8") or _cd.get("lv7") or _cd.get("core_units") or []),
-            "traits": [_sel] + [f"{e} Emblem" for e in (_cd.get("emblem_value") or [])[:2]],
-            "augments": list(_cd.get("augments_best") or [])[:3],
+            "units": (_names(_cd.get("lv8")) or _names(_cd.get("lv7"))
+                      or _names(_cd.get("core_units"))),
+            "traits": [_sel] + [f"{e} Emblem" for e in _names(_cd.get("emblem_value"))[:2]],
+            "augments": _names(_cd.get("augments_best"))[:3],
         }
     except Exception as _e:  # QUAL-002  # noqa: BLE001 - best-effort label
         _log.debug("TFT planner target: %s", _e)

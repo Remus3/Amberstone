@@ -161,3 +161,59 @@ def test_any_observed_board_names_the_game_over_the_planner(rig, board):
     assert want and want != "Test Comp"
     for blob in (saved, row):
         assert blob["tft_comp"] == want
+
+
+# -- RM-934: the labelled target only ever holds lists of names ----------
+# `_planner_target` coerced each guide field with `list(...)`, so a meta comp
+# whose `lv8` / `emblem_value` / `augments_best` is a STRING was split into
+# its characters, and a non-iterable (a number) raised inside the broad
+# except and dropped the whole `tft_comp_target` key. Only a list or tuple is
+# a list of names; anything else is treated as absent.
+
+def _write_guide(tmp_path, guide):
+    (tmp_path / "data" / "meta.json").write_text(
+        json.dumps({"comps": {"Test Comp": guide}}), encoding="utf-8")
+
+
+def test_a_string_guide_field_is_never_split_into_characters(rig, tmp_path):
+    _write_guide(tmp_path, {
+        "lv8": "Guide A",                       # malformed: a bare string
+        "lv7": ["Guide A", "Guide B"],
+        "emblem_value": "Guide Trait",
+        "augments_best": "Guide Aug 1",
+    })
+    saved, _row = rig(_live())
+    assert saved["tft_comp_target"] == {
+        # a non-list lv8 is absent, so the lv7 fallback applies
+        "units": ["Guide A", "Guide B"],
+        "traits": ["Test Comp"],
+        "augments": [],
+    }
+
+
+def test_a_non_iterable_guide_field_keeps_the_target(rig, tmp_path):
+    _write_guide(tmp_path, {
+        "lv8": 5,
+        "emblem_value": 7,
+        "augments_best": ("Guide Aug 1", "Guide Aug 2"),   # a tuple is a list
+    })
+    saved, _row = rig(_live())
+    assert saved["tft_comp_target"] == {
+        "units": [],
+        "traits": ["Test Comp"],
+        "augments": ["Guide Aug 1", "Guide Aug 2"],
+    }
+
+
+def test_non_string_members_are_dropped_from_the_target(rig, tmp_path):
+    _write_guide(tmp_path, {
+        "lv8": ["Guide A", None, 3, {"name": "x"}, "Guide B"],
+        "emblem_value": [None, "Guide Trait"],
+        "augments_best": [1, "Guide Aug 1"],
+    })
+    saved, _row = rig(_live())
+    assert saved["tft_comp_target"] == {
+        "units": ["Guide A", "Guide B"],
+        "traits": ["Test Comp", "Guide Trait Emblem"],
+        "augments": ["Guide Aug 1"],
+    }
