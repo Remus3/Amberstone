@@ -188,7 +188,9 @@ RESOLVED_DECISIONS = {
 
 
 def atomic_write_json(path: Path, data: dict) -> None:
-    atomic_write_text(path, json.dumps(data, indent=2))
+    # Trailing newline: the tracked resolved_decisions.json ends in one, so a
+    # re-run without it drops the final byte and dirties the tree (RM-820).
+    atomic_write_text(path, json.dumps(data, indent=2) + "\n")
 
 
 def merge_resolved_decisions(existing: dict | None) -> dict:

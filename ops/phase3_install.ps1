@@ -69,11 +69,12 @@ $action = New-ScheduledTaskAction `
     -WorkingDirectory $ProjectRoot
 
 # Trigger: at the installing account's logon + 30s delay. Matches the existing
-# RC-Supervisor convention (CLAUDE.md §"Scheduled tasks"). With the
+# RC-Supervisor convention (CLAUDE.md "Scheduled tasks"). With the
 # machine set to auto-logon as that account, this is effectively
-# at-boot. Running as that account is required so cross-machine SMB
-# pushes can access the per-user cmdkey-stored credentials for
-# \\192.0.2.237 (SYSTEM does not share those creds).
+# at-boot. It runs as that account, not SYSTEM, because the box is
+# 1-PC (ADR-011): RC, the supervisor and the game all live in the
+# operator's own interactive logon session on this one machine, and
+# $PythonExe is that account's per-user Python install.
 $trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
 $trigger.Delay = 'PT30S'
 
