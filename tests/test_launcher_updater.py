@@ -38,6 +38,7 @@ from pathlib import Path
 import pytest
 
 from ops.launcher import updater as up
+from tests._module_view import this_thread_only
 
 ROOT = Path(__file__).resolve().parent.parent
 UPDATER_PY = ROOT / "ops" / "launcher" / "updater.py"
@@ -146,11 +147,18 @@ def _requests(root: Path) -> list:
 
 @pytest.fixture(autouse=True)
 def _no_network(monkeypatch):
-    """U6: any socket a test opens fails loudly."""
+    """U6: any socket a test opens fails loudly.
+
+    The updater binds no `socket` name (it reaches the network only through
+    urllib -> http.client), so there is no module view to scope to: the
+    tripwire is thread-scoped instead (RM-801). This test's thread and every
+    thread it starts are refused; another test's leftover server keeps its
+    real socket."""
     def refuse(*_a, **_k):
         raise AssertionError("updater tests must not open a socket")
-    monkeypatch.setattr(socket, "socket", refuse)
-    monkeypatch.setattr(socket, "create_connection", refuse)
+    monkeypatch.setattr(socket, "socket", this_thread_only(refuse, socket.socket))
+    monkeypatch.setattr(socket, "create_connection",
+                        this_thread_only(refuse, socket.create_connection))
 
 
 # ------------------------------------------------------------- U1 manifest
