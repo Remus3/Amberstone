@@ -16,6 +16,11 @@ Normal TFT game (queue 1090):
                               (tft/tft_coach_engine.py output) filled with the
                               HUD values the QA report read at 4-2 (level 8,
                               gold 57, HP 100): the populated state.
+  - ?ui_mock=1&mode=tft_round web/data/ui_mock/active_match_tft_round.json -
+                              RM-944: a verbatim recorded row of the S134
+                              standalone-client shape (board, 8-player lobby,
+                              round-file as-of), the one fixture whose BOARD
+                              and LOBBY panes carry data.
 
 The page contract is the S134 T1 no-feed fallback in
 web/js/panels/active_match.js (amLiveFallbackModel); test_tft_active_match_view
@@ -165,3 +170,113 @@ def test_tft_ui_mock_states_share_one_geometry(mock_server, pw_browser):
     assert len(rects["tft"]) == 4
     assert all(r[2] > 0 and r[3] > 0 for r in rects["tft"]), rects["tft"]
     assert rects["tft"] == rects["tft_live"], json.dumps(rects)
+
+
+# RM-944: ?mode=tft_round, the per-round feed state. The two twins above
+# predate the S134 standalone-client shape, so no ui_mock audit ever reached
+# the BOARD or LOBBY pane with data in it. active_match_tft_round.json is the
+# real recorded row (run 20261025-162857 row 52, stage 3-5, round file as of
+# 17:27), including the coach advice strings it carried as served.
+_ROUND_UNITS = ["Yunara", "Rakan", "Yorick", "Karma", "Diana", "Fiddlesticks", "Vi"]
+_ROUND_LOBBY_HP = ["83", "81", "80", "79", "78", "75", "62", "60"]
+# Fragments of the served coach advice (board / econ / rolldown / items /
+# god_pick / placement / upgrade). B4: none may reach the page.
+_ROUND_ADVICE = (
+    "Rakan2 A1",
+    "roll 50g",
+    "HP>78 safe",
+    "Bramble on Diana",
+    "Void Staff",
+    "Tanks wide",
+    "pivot to",
+)
+
+_UNITS_JS = (
+    "() => Array.from(document.querySelectorAll("
+    "'#am-build-body .am-tft-unit .am-tft-unit-name')).map(e => e.textContent)"
+)
+_LOBBY_JS = (
+    "() => Array.from(document.querySelectorAll("
+    "'#am-map-body .am-tft-lob-row')).map(r => ["
+    "r.querySelector('.am-tft-lob-hp').textContent,"
+    "r.classList.contains('is-you'), r.getAttribute('aria-label')])"
+)
+_SECS_JS = (
+    "() => Array.from(document.querySelectorAll("
+    "'#view-active-match .am-tft-sec')).map(e => e.textContent)"
+)
+
+
+def test_tft_ui_mock_round_feed_paints_board_and_lobby(mock_server, pw_browser):
+    ctx, page, errors = _open(pw_browser, mock_server, "tft_round")
+    try:
+        page.wait_for_function(
+            "document.querySelectorAll('#am-map-body .am-tft-lob-row').length > 0",
+            timeout=10_000,
+        )
+        assert _text(page, "am-sub") == (
+            "TFT - stage 3-5 - 5th of 8 - phase InProgress"
+        )
+        head_text = page.locator(_FALLBACK_HEAD).inner_text()
+        assert "Board, HP and placement as of 17:27 (last combat start)" in head_text
+        assert _stat_cells(page) == [
+            ["STAGE", "3-5", False], ["LEVEL", "7", False],
+            ["HP", "78", False], ["GOLD", "21", False],
+        ]
+        assert page.locator(
+            "#view-active-match .am-pane-build .am-pane-head"
+        ).inner_text() == "BOARD"
+        assert page.evaluate(_SECS_JS) == [
+            "7 UNITS - as of 17:27",
+            "LOBBY - 8 of 8 alive - as of 17:27",
+        ]
+        assert page.evaluate(_UNITS_JS) == _ROUND_UNITS
+        lobby = page.evaluate(_LOBBY_JS)
+        assert [r[0] for r in lobby] == _ROUND_LOBBY_HP
+        you = [r for r in lobby if r[1]]
+        assert you == [["78", True, "5th, You, 78 HP"]], lobby
+        view = _text(page, "view-active-match")
+        assert all(ord(c) < 128 for c in view)
+        for needle in _LOL_ONLY + _ROUND_ADVICE:
+            assert needle not in view, f"{needle!r} painted in the TFT round mock"
+        assert page.evaluate(
+            "document.documentElement.scrollWidth"
+            " <= document.documentElement.clientWidth"
+        ), "horizontal overflow in the TFT round mock"
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [tft_round]: {errors[:3]}"
+
+
+_PANES_JS = (
+    "async () => { await document.fonts.ready;"
+    " await new Promise(r => requestAnimationFrame(() => r()));"
+    " return ['.am-pane-call', '.am-pane-build', '.am-pane-map'].map(s => {"
+    " const r = document.querySelector('#view-active-match ' + s)"
+    ".getBoundingClientRect();"
+    " return [Math.round(r.x), Math.round(r.y),"
+    " Math.round(r.width), Math.round(r.height)]; }); }"
+)
+
+
+def test_tft_ui_mock_round_feed_keeps_the_geometry(mock_server, pw_browser):
+    """NO-REFLOW: the board and lobby landing fill the fixed-height wrappers;
+    the stat strip and the three panes keep the boxes of the empty state."""
+    got = {}
+    for mode in ("tft", "tft_round"):
+        ctx, page, errors = _open(pw_browser, mock_server, mode)
+        try:
+            if mode == "tft_round":
+                page.wait_for_function(
+                    "document.querySelectorAll('#am-map-body .am-tft-lob-row')"
+                    ".length > 0",
+                    timeout=10_000,
+                )
+            got[mode] = {"strip": _stat_rects(page), "panes": page.evaluate(_PANES_JS)}
+        finally:
+            page.close()
+            ctx.close()
+        assert not errors, f"JS errors [{mode}]: {errors[:3]}"
+    assert all(r[2] > 0 and r[3] > 0 for r in got["tft"]["panes"]), got
+    assert got["tft"] == got["tft_round"], json.dumps(got)

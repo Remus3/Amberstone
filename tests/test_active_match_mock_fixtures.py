@@ -324,5 +324,60 @@ class TftFixtureTests(unittest.TestCase):
         self.assertNotIn("hp", coach)
 
 
+class TftRoundFixtureTests(unittest.TestCase):
+    """RM-944: ?ui_mock=1&mode=tft_round, a verbatim recorded /api/state
+    row of the S134 standalone-client shape (tft/tft_standalone.py), the one
+    TFT fixture whose BOARD / LOBBY panes and overlay lobby carry data. The
+    rendered page is pinned by tests/snapshot_panels/
+    test_tft_ui_mock_active_match.py and test_tft_overlay_active_match.py.
+    """
+
+    _NAME = "active_match_tft_round.json"
+
+    def test_main_js_routes_tft_round(self) -> None:
+        self.assertIn(
+            'm === "tft_round") url = "/data/ui_mock/active_match_tft_round.json"',
+            _read(_MAIN_JS),
+        )
+
+    def test_ascii_clean(self) -> None:
+        raw = (_FIXTURE_DIR / self._NAME).read_bytes()
+        self.assertEqual([b for b in raw if b > 0x7F], [])
+        self.assertNotIn(b"\r", raw)
+
+    def test_is_the_standalone_round_feed_shape(self) -> None:
+        data = _load_fixture(self._NAME)
+        self.assertEqual(data.get("mode"), "tft")
+        self.assertEqual(data.get("phase"), "InProgress")
+        lc = data.get("liveclient") or {}
+        self.assertEqual(lc.get("source"), "tft_standalone")
+        self.assertIs(lc.get("live_api"), False)
+        self.assertIs(lc.get("eliminated"), False)
+        # The one field dropped from the recorded row: a match id no surface reads.
+        self.assertNotIn("game_id", lc)
+        coach = data.get("coach") or {}
+        self.assertEqual(coach.get("mode"), "tft")
+        for key in ("tft_board", "tft_players", "tft_as_of", "standing"):
+            self.assertIn(key, coach, key)
+
+    def test_coach_and_liveclient_agree_like_the_served_row(self) -> None:
+        data = _load_fixture(self._NAME)
+        lc, coach = data["liveclient"], data["coach"]
+        self.assertEqual(lc["hp"], coach["hp"])
+        self.assertEqual(lc["standing"], coach["standing"])
+        self.assertEqual(lc["board"], coach["tft_board"])
+        self.assertEqual(lc["players"], coach["tft_players"])
+        self.assertEqual(lc["as_of"], coach["tft_as_of"])
+        self.assertEqual(len(lc["board"]), lc["board_size"])
+
+    def test_lobby_is_eight_anonymous_rows_with_one_you(self) -> None:
+        rows = _load_fixture(self._NAME)["coach"]["tft_players"]
+        self.assertEqual(len(rows), 8)
+        self.assertEqual(sorted(r["standing"] for r in rows), list(range(1, 9)))
+        self.assertEqual([r["standing"] for r in rows if r["you"]], [5])
+        for r in rows:
+            self.assertEqual(set(r), {"standing", "health", "you", "board_size"})
+
+
 if __name__ == "__main__":
     unittest.main()

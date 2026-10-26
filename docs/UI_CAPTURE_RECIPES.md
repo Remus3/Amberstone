@@ -37,6 +37,8 @@ Mock per mode (item 188):
 - Arena: `https://127.0.0.1:8888/?ui_mock=1&mode=arena#active-match`
 - TFT, no live data: `https://127.0.0.1:8888/?ui_mock=1&mode=tft#active-match`
 - TFT, live data:    `https://127.0.0.1:8888/?ui_mock=1&mode=tft_live#active-match`
+- TFT, round feed:   `https://127.0.0.1:8888/?ui_mock=1&mode=tft_round#active-match`
+  (add `&overlay=1` for the in-game TFT widgets, lobby included)
 
 Fixtures:
 - `web/data/ui_mock/active_match_sr.json` (5v5 standard, coach
@@ -55,6 +57,12 @@ Fixtures:
   the TFT coach file's stage / level / health / gold set to the HUD
   read at 4-2: STAGE 4-2, LEVEL 8, HP 100, GOLD 57). Rendered pins:
   `tests/snapshot_panels/test_tft_ui_mock_active_match.py`
+- `web/data/ui_mock/active_match_tft_round.json` (RM-944: a verbatim
+  recorded /api/state row of the standalone-client shape - stage 3-5,
+  7-unit board, 8-player anonymous lobby, round file as of 17:27 - minus
+  the match id; the only TFT fixture whose BOARD / LOBBY panes and
+  overlay lobby carry data). Overlay pins:
+  `tests/snapshot_panels/test_tft_overlay_active_match.py`
 
 Capture step: navigate to URL, hard-reload, wait 2s for the mock
 fetch + DS rerank + spike_curve + ward_heat + draft_elo modules to

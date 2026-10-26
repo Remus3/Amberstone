@@ -195,6 +195,47 @@ def test_tft_overlay_mock_states_share_one_geometry(
     assert boxes["tft"] == boxes["tft_live"], json.dumps(boxes)
 
 
+def test_tft_overlay_round_feed_paints_the_lobby_widget(mock_server, pw_browser):
+    """RM-944: ?mode=tft_round (a verbatim recorded row of the S134
+    standalone-client shape) is the one fixture with opponent rows, so it is
+    the only audit path that shows the data-gated lobby widget and a filled
+    board. The served coach advice strings must not reach the field (B4)."""
+    ctx, page, errors = _open(pw_browser, mock_server, "tft_round")
+    try:
+        page.wait_for_function(
+            "() => { const l = document.getElementById('ovt-lobby');"
+            " return !!l && !l.hidden; }",
+            timeout=10_000,
+        )
+        visible = page.evaluate(_VISIBLE_WIDGETS_JS)
+        assert set(visible) == _TFT_FIELD | {"w-tft-lobby"}, sorted(visible)
+        assert _league_panes_painted(page) == []
+        assert page.evaluate(_VITALS_JS) == {
+            "hp": "78", "place": "#5", "alive": "8",
+            "stage": "3-5", "level": "7", "gold": "21",
+        }
+        painted = page.evaluate(
+            "() => ['ovt-hud', 'ovt-board', 'ovt-lobby'].map(i =>"
+            " document.getElementById(i).innerText).join(' ')"
+        )
+        assert all(ord(c) < 128 for c in painted), painted
+        for unit in ("Yunara", "Rakan", "Fiddlesticks"):
+            assert unit in painted, f"board unit {unit!r} missing"
+        for needle in _LOL_ONLY + ("roll 50g", "Tanks wide", "Void Staff",
+                                   "Rakan2 A1", "pivot to"):
+            assert needle not in painted, (
+                f"{needle!r} on the TFT overlay field (tft_round)"
+            )
+        assert page.evaluate(
+            "document.documentElement.scrollWidth"
+            " <= document.documentElement.clientWidth"
+        ), "horizontal overflow in the TFT overlay (tft_round)"
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [tft_round]: {errors[:3]}"
+
+
 def test_tft_overlay_mock_field_survives_health_and_state_polls(
     mock_server, pw_browser
 ):
