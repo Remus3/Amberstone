@@ -2,7 +2,8 @@
 
 Status: LIVING SPEC (ROADMAP row PKG). Phase 1 = Q/A + spec, written
 2026-10-26 (session 141). Wave A (PKG-1, -2, -3, -4, -5, -8) landed the same
-session (section 4 status); PKG-1b, PKG-6 and PKG-7 are open. Each later
+session (section 4 status); PKG-1b landed after it (4859c9405..1ca036c77);
+PKG-6 and PKG-7 are open. Each later
 wave updates this file in place.
 
 Operator intent (2026-10-25, memory `project_packaged_app_requirements`),
@@ -389,7 +390,8 @@ Status 2026-10-26 (`git log 2d3e1c85b..86627008a`):
   (79ce0e9cd, 50f935416, 86627008a), PKG-3 (61c3ceed3), PKG-4 (c066cb0ca,
   dea18d069), PKG-5 (f3690023f, d2fb1c125: a peer-address gate instead of
   a loopback bind + token; CSP deferred, S15), PKG-8 (79fec0b5f, d9c5f2a47).
-- OPEN: PKG-1b (new, below), PKG-6, PKG-7.
+- LANDED after wave A: PKG-1b (below; 4859c9405..1ca036c77).
+- OPEN: PKG-6, PKG-7.
 
 - PKG-1 Service host. Files: `ops/launcher/__init__.py`,
   `ops/launcher/service_host.py`, `ops/launcher/services.json`,
