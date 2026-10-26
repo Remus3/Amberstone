@@ -14,7 +14,9 @@ was dropped. Nothing here raises into the caller's poll loop:
     'absent' or a null value claimed observed, a stored row whose src is
     'absent', a conf outside 0..1 or an llm_fallback conf above 0.5, a player
     key that is not a 12-hex HMAC key, a JSON payload whose keys or values
-    carry an identity shape) is dropped and counted as `invalid`;
+    carry an identity shape, an int outside 64 bits, a NaN / inf number, text
+    holding a lone surrogate) is dropped and counted as `invalid` - anything
+    SQLite could not bind is refused here, never in the writer;
   * a full queue drops the row (`queue_full`), so a stalled disk never blocks
     the TFT poll thread;
   * a database error inside the writer rolls back that ONE row (a savepoint per
@@ -45,6 +47,7 @@ import hmac
 import io
 import json
 import logging
+import math
 import queue
 import re
 import secrets
@@ -352,11 +355,17 @@ def _v_key(v, name="player_key"):
     return v
 
 
+# SQLite INTEGER is a signed 64-bit value: a Python int past it passes every
+# other check and only fails at bind time, in the writer thread (s134 V1).
+_I64_MIN, _I64_MAX = -(2 ** 63), 2 ** 63 - 1
+
+
 def _v_int(v, name, lo=None, hi=None, nullable=True):
     if v is None:
         _need(nullable, f"{name} is required")
         return None
     _need(_is_int(v), f"{name} must be an int")
+    _need(_I64_MIN <= v <= _I64_MAX, f"{name} outside the 64-bit integer range")
     _need(lo is None or v >= lo, f"{name} below {lo}")
     _need(hi is None or v <= hi, f"{name} above {hi}")
     return v
@@ -371,7 +380,14 @@ def _v_num(v, name, nullable=True):
         _need(nullable, f"{name} is required")
         return None
     _need((isinstance(v, (int, float)) and not isinstance(v, bool)), f"{name} must be a number")
-    return float(v)
+    try:
+        f = float(v)
+    except OverflowError:  # an int past the float range
+        f = math.inf
+    # SQLite turns NaN into NULL and keeps inf, which the exports then write as
+    # the non-JSON token Infinity (s134 V2)
+    _need(math.isfinite(f), f"{name} must be a finite number")
+    return f
 
 
 def _v_bool(v, name, nullable=True):
@@ -387,6 +403,10 @@ def _v_text(v, name, maxlen=64, nullable=True):
         _need(nullable, f"{name} is required")
         return None
     _need(isinstance(v, str) and 0 < len(v) <= maxlen, f"{name} must be a 1-{maxlen} char string")
+    try:  # a lone surrogate (json.loads of a bare \ud800 escape) cannot be bound (s134 V3)
+        v.encode("utf-8")
+    except UnicodeEncodeError:
+        raise _Invalid(f"{name} is not encodable text") from None
     _need(_string_violation(v) is None, f"{name} carries an identity shape")
     return v
 
@@ -806,7 +826,11 @@ class RoundStore:
     def _write_failed(self, n, exc, label="batch"):
         if n:
             self._bump("write_errors", n)
-            self._streaks["write_error"].fail(f"{label}: {type(exc).__name__}: {exc}", n)
+            # a SQLite message names tables and columns; any other exception's
+            # message may quote the bound value, so only its class is logged
+            why = f"{type(exc).__name__}: {exc}" if isinstance(exc, sqlite3.Error) \
+                else type(exc).__name__
+            self._streaks["write_error"].fail(f"{label}: {why}", n)
 
     # -- enqueue
 
