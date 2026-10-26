@@ -140,10 +140,28 @@ _MEASUREMENTS_HEADING = "## Measurements executed by the responder"
 _HELD_HEADING = "## Proposed and held"
 
 _EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+# RM-876 (b). The forward-slash spellings of a profile (the WSL mount
+# `/mnt/<x>/Users/`, the POSIX-shell drive `/<x>/Users/`, a forward-slash WSL
+# UNC path) all carry `/Users/` or `/home/`; the BACKSLASH WSL UNC spelling
+# `<lead>wsl$<sep><distro><sep>mnt<sep><x><sep>Users<sep><acct>` and the
+# distro's own `...<distro><sep>home<sep><acct>` carried neither, so they
+# passed the scrub and the `home-path` gate. The last alternative only ADDS a
+# match, so the gate's `search` is monotone; a scrub SPAN can differ (a
+# forward-slash UNC home now folds from its lead, distro included, and stops
+# at a backslash), never leaving the account visible. The lead is the same string as
+# `tools/credential_patterns.py` `_WSL_UNC_LEAD`, pinned equal by
+# tests/test_inbox_responder_home_re_rm876.py.
+_WSL_UNC_LEAD = (
+    r"[\\/]{2,4}(?:[?.][\\/]{1,2}unc[\\/]{1,2})?wsl(?:\$|\.localhost)"
+    r"[\\/]{1,2}[^\\/\s]{1,64}"
+)
 _HOME_RE = re.compile(
     r"[A-Za-z]:[\\/]{1,2}Users[\\/]{1,2}[^\\/\s'\"<>|]+"
     r"|/home/[^/\s'\"<>|]+"
-    r"|/Users/[^/\s'\"<>|]+",
+    r"|/Users/[^/\s'\"<>|]+"
+    r"|" + _WSL_UNC_LEAD
+    + r"[\\/]{1,2}(?:mnt[\\/]{1,2}[A-Za-z][\\/]{1,2}Users|home)"
+    r"[\\/]{1,2}[^\\/\s'\"<>|]+",
     re.IGNORECASE,
 )
 _SECRET_RE = re.compile(r"sk-ant-[A-Za-z0-9_-]+|ghp_[A-Za-z0-9]+|AKIA[0-9A-Z]{16}")
