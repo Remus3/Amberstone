@@ -350,3 +350,13 @@ pages 40230803053 success. Full suite (2c): dispatched run 40230847617 on 3ad31e
 Lobby, no game; session file 3.3 MB; no intent / steers; inbox empty; 0 PRs. Memory: 3 new.
 Board: pushed at /done NON-final (datasets/board v27, blob d51b0f61; --final marks carried rows done).
 Progress files: ops/loop/control/progress/s135-*.json (s135-done = this ritual).
+
+====================
+CLOSED - SESSION 137 HISTORY-REWRITE POINTER LINES (s138 /done trim; standing record, the s139 hand-off keeps a pointer) - verbatim from 64e63e881:RC-NEXT-SESSION.txt
+====================
+HISTORY REWRITTEN TWICE 2026-10-09 (LEDGER 1699 B, 1701): old SHAs via .git/filter-repo/commit-map*;
+s135 SHAs: docs/_archive/2026-10/s135-id-scrub-commit-map.txt (LEDGER 1899), then
+s135-cred-pragma-commit-map.txt beside it (LEDGER 1904). Fresh clone: scripts/install_hooks.py and
+LOCAL fleet.operatorIdent before any push.
+- FYI: test_routes_tft + the true-audit tests are thread-scoped (RM-801); the export scrub refusal
+  is a fixed 422 without a violations count (docs/API.md updated).

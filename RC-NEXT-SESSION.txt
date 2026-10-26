@@ -1,25 +1,22 @@
 NEXT SESSION
 ------------
-SESSION: 138
-PUSH HOLD IS ON (operator, s135 - s137): commit locally; push only when the operator lifts it in chat.
-main is 19 commits ahead of origin/main (7f3d9e124, an ancestor; fetched at the s137 /done) counting
-this hand-off commit; the C1 fix c7e2c0b0c is among them, so CI cannot confirm it until a push.
-NEVER delete riot.txt from origin. s137 (LEDGER 1911-1912; WAKEUP 2026-10-25e), s136 (LEDGER
+SESSION: 139
+PUSH: the s135-s137 operator hold was superseded by MAIN's 1935 FIX order ("push at /done";
+MAIN speaks for the operator). s138 pushed fb2ff520e..b49a4572b and, at its /done, through this
+hand-off commit (push tier: once at /done + at most one mid-session push per hour, CLAUDE.md).
+NEVER delete riot.txt from origin. s138 (LEDGER 1913-1914; WAKEUP 2026-10-25f), s137 (LEDGER 1911-1912), s136 (LEDGER
 1906-1910) and s135 (LEDGER 1883-1905) are on main; the s135 push record, fence, procedure lines and
 status moved VERBATIM to docs/handoff-archive/RC-2026-10-25.txt block 6.
-HISTORY REWRITTEN TWICE 2026-10-09 (LEDGER 1699 B, 1701): old SHAs via .git/filter-repo/commit-map*;
-s135 SHAs: docs/_archive/2026-10/s135-id-scrub-commit-map.txt (LEDGER 1899), then
-s135-cred-pragma-commit-map.txt beside it (LEDGER 1904). Fresh clone: scripts/install_hooks.py and
-LOCAL fleet.operatorIdent before any push.
+HISTORY REWRITES (2026-10-09 x2, s135 x2): SHA maps - archive RC-2026-10-25.txt block 7.
 NEVER PUSH (real game ids or the bare fixture line inside): lane/*, s135-land and the old s134 / s135
 builder branches, refs/stash, every archive/* tag incl. s135-pre-credpragma-main (never `git push
 --tags`), ops/runtime/branch_bundles/* incl. s135-pre-credpragma.bundle. Push main only. Never
 stage ops/runtime/ (gitignored; 1.12 GB bundles).
 CPU (s120): glance at CPU, FREE MEMORY and orphaned pytest / python / node trees BEFORE heavy work.
-SCRATCH (s127; collided twice again s134): every sub-agent prompt names a UNIQUE scratch subfolder.
+SCRATCH (s127): every sub-agent prompt names a UNIQUE scratch subfolder.
 FROZEN: the s135 grant was SESSION-scoped (ASKS 35) - re-ask before any frozen edit.
 
-Next action (operator, 2026-10-25, verbatim intent; NOT reached s137): "full Q/A on the ow-electron
+Next action (operator, 2026-10-25, verbatim intent; NOT reached s137-s138): "full Q/A on the ow-electron
 port and having the repo be a proper packaged output; not needing others to use claude to try and
 figure out how to get it to connect everything etc." Plus: "I also would like it to be
 live-updatable ; so that essentially I would be running the packaged output, and for updates/changes
@@ -36,16 +33,25 @@ FIRST: CPU / memory glance; inbox_tick.py --pending; gh pr list (0 at the s137 /
 origin/main still an ancestor of main.
 
 ====================
+SESSION 138 NEW ITEMS (headless MAIN work run; bodies: LEDGER 1913-1914)
+====================
+- FIRST: read back the /done push's ci run; dispatch 40267773006's two reds (mine) must be fixed.
+  No new dispatch unless red (RM-157).
+- RM-907 OPEN: the gated whole suite was REFUSED s138 (exit 3, commit 8.9 GB short; a game held
+  11 GB). On a quiet box: run it, file the --durations top 5 in ROADMAP, read back hold p90 +
+  peak_commit_mb (7 d) vs 24.5 GB / p90 483 s, send MAIN the before/after (2045 asks for it).
+- rc-shell node_modules still holds electron 44.5.1 (EBUSY, overlay running): `npm install` there
+  with the overlay closed (the untracked lock reads 44.9.1).
+- CLAUDE.md 92 percent of budget (91.5 before s138): drift_guard breach - relocate rules.
+- 131941469's text cites RM-906 (the ASKS 36 ids row) in error for RM-908.
+
+====================
 SESSION 137 NEW ITEMS (bodies: LEDGER 1911-1912)
 ====================
-- BOARD: the url in ops/status_board.json (12ChcPAR8o3RuVb9qStHK8) is not_found from this account
-  (s136 start, s137 start + /done); this account owns "RC status board" 7ofQL8BtTQfzjLPbfyi6aJ
-  (updated 2026-10-18). A distinct adjudicator decides which url RC pushes; never edit the config
-  without that ruling (with ASKS 18).
+- BOARD: claude.ai push RETIRED by kit v23 (local render only); the url question survives only as ASKS 18.
 - RM-905 residual: RC-ReplayRosterPull downloads no replays until Riot approves the production key
   (ASKS 32); exit 0 only while the active key's fingerprint is in the gitignored ack file (a new key
-  that gets 403 exits 1, by design). 10 renamed roster players sit in the roster's stale list. V2
-  count PARTIAL only (319 vs 329 passed, no failure).
+  that gets 403 exits 1, by design). 10 renamed roster players sit in the roster's stale list.
 - RM-703: 18 patch-unique / 6 patch-equivalent lift commits, never mapped; restore from
   ops/runtime/branch_bundles/s137-lift-worktrees.bundle if a lift feature is found unshipped.
 
@@ -93,8 +99,6 @@ SESSION 135 ITEMS STILL OPEN (RM-905 DONE s137, LEDGER 1911)
   None" is closed, tft_coach_engine.py:405).
 - OPERATIONS datum to add: a whole suite at -n 8 nearly exhausts commit (44.8 / 48.4 GB, 824 MB
   free); use -n 6 + FLEET_SUITE_COMMIT_MARGIN_MB=18432 until RM-737 / RM-755 is measured.
-- FYI: test_routes_tft + the true-audit tests are thread-scoped (RM-801); the export scrub refusal
-  is a fixed 422 without a violations count (docs/API.md updated).
 - RM-888 (c) applied live (LEDGER 1900): close on review against its 7816 + 114 / 226 split.
 
 ====================
@@ -162,9 +166,9 @@ Servers, TLS, secrets:
   allows only tools/*extract*); 86 bare renames / 72 shared scratch names left; the
   ops/rc_supervisor.py:1466-1468 half is FROZEN (ASKS 24); the system-drive RC-Agent copy of
   tools/legion_agent_boot.ps1 cannot import core.
+- Opt Tier-0: outbound-copy rule may name P2's 129-char cap (0d11d82cf).
 - RM-481 residual CRLF writers - confirm none remain. The console-flash guard still hand-lists hook
   scripts / task targets outside the tree (54d61bfa1 widened its scope).
-- Optional Tier-0: CLAUDE.md's outbound-copy rule could name P2's 129-char cap (0d11d82cf).
 Suites and box:
 - RM-754 xdist STALL (a --timeout kill wedges the loadfile scheduler ~20 min) + RM-792 datum; whether
   a timed-out test kills its child is unmeasured.
@@ -217,13 +221,13 @@ Rows and decisions:
   (live), RM-754, RM-755, RM-778, RM-787, RM-792, RM-797, RM-798, RM-800, RM-809, RM-816 (APPLY),
   RM-817, RM-819, RM-820..RM-823, RM-826..RM-829, RM-831, RM-833, RM-834, RM-842, RM-843, RM-847,
   RM-848, RM-861, RM-871, RM-876, RM-880 (c)-(d), RM-881, RM-883, RM-884, RM-886, RM-888 (review),
-  RM-890..RM-894, RM-896, RM-899..RM-901, RM-906, LT-02r, TFT-HUD-00..12, PKG, RM-279, RM-280,
+  RM-890..RM-894, RM-896, RM-899..RM-901, RM-906, RM-907, LT-02r, TFT-HUD-00..12, PKG, RM-279, RM-280,
   RM-368, RM-381, RM-292c, RM-251(b), RM-370, RM-229, RM-290, RM-27, RM-248, RM-189, RM-167, RM-204,
   RM-12/RM-14 flips, RM-15(b), RM-16, RM-423, RM-239/RM-242 (operator fence), RM-297b, RM-517,
-  RM-596, RM-597. Next free RM-907 (pin docs/DS_SWEEP_TRACKER.md); next free LEDGER 1913.
+  RM-596, RM-597. Next free RM-909 (pin docs/DS_SWEEP_TRACKER.md); next free LEDGER 1915.
 - ROADMAP top open: PKG (s136 NEXT), RM-488 (operator), RM-596, RM-597, then the RM-681.. rows;
-  EXTERNAL-LIFT Band 2 / 4 stay in BACKLOG. ROADMAP.md 73488 B after s137 (drift_guard 90 percent
-  line 73728; ~240 B headroom): before crossing it, move closed rows to docs/ROADMAP_HISTORY.md (ids
+  EXTERNAL-LIFT Band 2 / 4 stay in BACKLOG. ROADMAP.md 73678 B after s138 (drift_guard 90 percent
+  line 73728; ~50 B headroom): before crossing it, move closed rows to docs/ROADMAP_HISTORY.md (ids
   named literally; verify verbatim by script).
 - Desktop EXTERNAL-LIFT-DIRECTIVE.md / -2.md (-2 ingested: RM-526..RM-594). Operator APPROVED Y-44
   (frozen lcu_client.py) and Y-45 (2026-10-03); Y-45 phone push needs ntfy (host local-only).
