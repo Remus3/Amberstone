@@ -11,9 +11,18 @@ agents/. This rewrite never keeps an inclusion list:
   keys, certs, logs and data caches cannot ride along; the secret rules apply
   even to a force-added file. A failed or empty `git ls-files` refuses the
   build (no disk-walk fallback).
-* IMPORT CLOSURE: every repo module reachable by static import (plus literal
-  importlib.import_module / __import__ calls) from the processes the backend
-  runs (CLOSURE_ENTRIES) must be inside the bundle, or the build fails.
+* NEVER AT BOOT: besides the named installers, every included text file is
+  scanned for task / boot signatures (schtasks, *-ScheduledTask cmdlets,
+  -AtStartup / -AtLogOn, the Run registry keys, Startup-folder writes, login
+  items); any hit not allow-listed file-by-file with a reason in
+  BOOT_SCAN_ALLOW fails the build (plan intent 3).
+* CLEAN SOURCE: files are copied from the working tree, so an included file
+  that differs from HEAD refuses the build unless `--allow-dirty` (recorded).
+* IMPORT CLOSURE: every repo module reachable by static import (plus
+  importlib.import_module / __import__ calls on a literal or a module-level
+  string constant) from the processes the backend runs (CLOSURE_ENTRIES) and
+  from the coaches core/coach_registry.py loads by name must be inside the
+  bundle, or the build fails.
 * NO LFS POINTER: a tracked LFS file whose working copy is still the pointer
   refuses the build (plan S14: the laning coach would fail soft to live
   Haiku); `--skip-lfs-pointers` omits them instead and records which.
@@ -23,13 +32,11 @@ agents/. This rewrite never keeps an inclusion list:
   steps (M10). `--python-embed DIR` reuses a prebuilt runtime only after it
   verifies against this tree's lock; `--no-embed` stages the backend alone.
 * VERIFY: the finished folder is re-checked (no key file, no ops/runtime/,
-  nothing an exclusion rule names, no LFS pointer) before the build reports
-  success. tools/package_portable.py runs the same check before zipping.
+  no excluded path, no LFS pointer, no boot signature) before success;
+  tools/package_portable.py runs the same check before zipping.
 
-The staged folder is the bundle root. BUILD_MANIFEST.json there records the
-version, source commit, per-file sha256, exclusion counts, the closure, the
-runtime stamp and the licence steps - with repo-relative paths only, so a
-shipped manifest never carries the build machine's folder layout.
+The staged folder is the bundle root; its BUILD_MANIFEST.json (repo-relative
+paths only) records version, commit, per-file sha256, exclusions and closure.
 
 Usage (from the repo root):
     python tools/build_portable.py                    (embedded runtime, 3.14 host)
@@ -60,13 +67,6 @@ if str(_PROJECT_ROOT) not in sys.path:
 
 from tools import build_python_embed as embed_mod  # noqa: E402
 
-BUNDLE_NAME = "Amberstone"
-BUILD_TOOL = "tools/build_portable.py"
-MANIFEST_NAME = "BUILD_MANIFEST.json"
-README_NAME = "PREREQUISITES.md"
-EMBED_DIR_NAME = "python-embed"
-DEFAULT_OUTPUT = _PROJECT_ROOT / "dist" / "portable_staging"
-
 # Every process the backend runs: the plan's PKG-4 six, plus the DS launcher
 # (core/daemon_slayer_client.py _spawn_child) and the supervisor that owns
 # main.py, both spawned by path, so their closures must ship too.
@@ -82,6 +82,15 @@ CLOSURE_ENTRIES = (
     "ops/rc_supervisor.py",
 )
 
+BUNDLE_NAME = "Amberstone"
+BUILD_TOOL = "tools/build_portable.py"
+MANIFEST_NAME = "BUILD_MANIFEST.json"
+README_NAME = "PREREQUISITES.md"
+EMBED_DIR_NAME = "python-embed"
+DEFAULT_OUTPUT = _PROJECT_ROOT / "dist" / "portable_staging"
+# Written by the build / package step at the bundle root, never from the index.
+GENERATED_FILES = frozenset({MANIFEST_NAME, README_NAME, "PACKAGE_MANIFEST.json"})
+
 LFS_POINTER_PREFIX = b"version https://git-lfs.github.com/spec/v1"
 _LFS_POINTER_MAX = 1024
 
@@ -94,8 +103,13 @@ R_RUNTIME = "runtime state, logs or build output"
 R_DEV = "dev-only"
 R_TEST = "dev-only: test code"
 R_SCRATCH = "dev-only: scratch or archive"
-R_BOOT = "boot-start or scheduled-task installer (plan intent 3, S8)"
+R_BOOT = "boot-start, scheduled-task or shortcut installer (plan intent 3, S8)"
 R_KILL = "operator-only: kills by image name (plan S7)"
+R_TASKS = ("operator-only: drives the RC-* scheduled tasks the launcher replaces "
+           "(plan section 5)")
+R_PHASE3 = ("dev profile only: Phase 3 supervisor + agents (PKG-1 services.json); it "
+            "imports ops/loop/fleet_route.py, which is dev-only")
+R_BUILD = "dev-only: build-time packaging tool"
 
 _SECRET_NAME_RES = (
     re.compile(r"^api-key-.*\.txt$"),
@@ -118,7 +132,7 @@ _HOST_CONFIG = frozenset({
 })
 
 _RUNTIME_PREFIXES = ("ops/runtime/", "ops/tls/", "logs/", "dist/", "build/")
-_RUNTIME_SUFFIXES = (".log", ".pyc", ".pyo", ".tmp")
+_RUNTIME_SUFFIXES = (".log", ".jsonl", ".pyc", ".pyo", ".tmp")
 
 _DEV_PREFIXES = (
     ("tests/", R_TEST),
@@ -133,7 +147,45 @@ _DEV_PREFIXES = (
     ("lane-widget/", R_DEV + ": Mission Control lane widget"),
     ("mc/", R_DEV + ": Mission Control control plane"),
     ("oss/", R_DEV + ": standalone OSS package, not imported at runtime"),
+    ("moon_sync_inbox/", R_DEV + ": cross-repo channel inbox"),
+    ("memory/", R_DEV + ": agent memory"),
 )
+
+# Root-level files of tools/ that are documentation or agent prompts (31 at
+# PKG-4; the /agent/ deploy route that served two of them is Legion-only).
+_TOOLS_DOC_RE = re.compile(r"^tools/[^/]+\.md$")
+
+_BUILD_FILES = frozenset({
+    "tools/build_portable.py", "tools/build_portable.cmd",
+    "tools/build_python_embed.py",
+    "tools/package_portable.py", "tools/package_portable.cmd",
+    "tools/build_installer.py", "tools/build_installer.cmd",
+    "tools/run_packaged_smoke.py", "tools/run_packaged_smoke.cmd",
+})
+
+# Not the app: tools no launcher service runs. Several carry a task-install
+# recipe in their docstring, which the boot-signature scan below would flag.
+_NOT_THE_APP = {
+    "tools/rc_facts.py": R_DEV + ": agent session hook",
+    "tools/replay_chain_watch.py": (R_DEV + ": replay-chain scheduled tool (the replay "
+                                    "tasks are not the app, plan section 5)"),
+    "tools/ds_matchdb_mcp_server.py": (R_DEV + ": Claude MCP server (its docstring "
+                                       "registers an AtLogOn task)"),
+    "tools/start_ds_matchdb_mcp.py": R_DEV + ": Claude MCP server launcher",
+    "tools/keybind_listener.py": ("retired agent, not a launcher service (its docstring "
+                                  "registers an AtLogOn task)"),
+    "tools/screen_agent.py": ("retired agent, not a launcher service (its docstring "
+                              "registers AtLogOn tasks)"),
+    # mc/routes.py splices these two tables into Mission Control :8895; :8888
+    # serves neither (dashboard/_errors.py header), and both import_module
+    # the dev-only ops/loop package.
+    "dashboard/routes_loop_control.py": R_DEV + ": Mission Control route table (mc/ only)",
+    "dashboard/routes_loop_status.py": R_DEV + ": Mission Control route table (mc/ only)",
+}
+
+_PHASE3_RE = re.compile(
+    r"^agents/(?:supervisor\.py|_supervisor_[^/]+\.py|_minimap_bbox\.py"
+    r"|agent\d+_[^/]+/|state/)")
 
 _DEV_FILES = frozenset({
     "CLAUDE.md", "WAKEUP_NOTES.md", "ROADMAP.md", "BACKLOG.md",
@@ -157,7 +209,10 @@ _BOOT_FILES = frozenset({
 _BOOT_RES = (
     re.compile(r"^ops/RC-[^/]*\.xml$"),
     re.compile(r"^ops/install_RC_[^/]*\.ps1$"),
+    re.compile(r"^tools/install_[^/]*\.ps1$"),
+    re.compile(r"^tools/[^/]*_install\.ps1$"),
 )
+_TASK_DRIVER_RE = re.compile(r"^tools/legion_[^/]*\.ps1$")
 
 _KILL_FILES = frozenset({
     "ops/launch_new_system.bat",
@@ -193,13 +248,123 @@ def exclusion_reason(rel: str) -> Optional[str]:
         return R_TEST
     if any(seg in _SCRATCH_SEGMENTS for seg in parts[:-1]) or low.endswith(_SCRATCH_SUFFIXES):
         return R_SCRATCH
-    if rel in _DEV_FILES:
+    if rel in _DEV_FILES or _TOOLS_DOC_RE.match(rel):
         return R_DEV
+    if rel in _BUILD_FILES:
+        return R_BUILD
+    if rel in _NOT_THE_APP:
+        return _NOT_THE_APP[rel]
+    if _PHASE3_RE.match(rel):
+        return R_PHASE3
     if rel in _BOOT_FILES or any(r.match(rel) for r in _BOOT_RES):
         return R_BOOT
+    if _TASK_DRIVER_RE.match(rel):
+        return R_TASKS
     if rel in _KILL_FILES:
         return R_KILL
     return None
+
+
+# --------------------------------------------------------------------------- #
+# Boot-signature content scan (plan intent 3: never start at boot)
+# --------------------------------------------------------------------------- #
+# The exclusion rules above name the installers known at PKG-4; this scan
+# catches the next one. Every included text file (NUL-free head, at most
+# BOOT_SCAN_MAX_BYTES - a boot installer is never a multi-MB data table) is
+# matched against these signatures, and ANY hit the allow-list below does not
+# name, file by file and signature by signature, fails the build.
+BOOT_SIGNATURES = (
+    ("schtasks", re.compile(r"\bschtasks(?:\.exe)?\b", re.I)),
+    ("schtasks /Create", re.compile(r"\bschtasks(?:\.exe)?\b.{0,160}?/create\b",
+                                    re.I | re.S)),
+    ("Register-ScheduledTask", re.compile(r"\bRegister-ScheduledTask\b", re.I)),
+    ("New-ScheduledTaskTrigger", re.compile(r"\bNew-ScheduledTaskTrigger\b", re.I)),
+    ("ScheduledTask cmdlet", re.compile(
+        r"\b(?:Register|Unregister|New|Set|Enable|Disable|Start|Stop|Get)"
+        r"-ScheduledTask\w*", re.I)),
+    ("-AtStartup", re.compile(r"-AtStartup\b", re.I)),
+    ("-AtLogOn", re.compile(r"-AtLogOn\b", re.I)),
+    ("Run registry key", re.compile(r"CurrentVersion\\{1,2}Run(?:Once)?\b", re.I)),
+    ("Startup folder", re.compile(
+        r"Programs(?:\\{1,2}|/)Startup\b|shell:(?:common\s?)?startup\b"
+        r"|GetFolderPath\(\s*['\"]?(?:Common)?Startup|SpecialFolder\]::(?:Common)?Startup"
+        r"|CSIDL_(?:COMMON_)?STARTUP|FOLDERID_(?:Common)?Startup", re.I)),
+    ("login item", re.compile(r"\bsetLoginItemSettings\b|\bopenAtLogin\b")),
+    ("Task Scheduler COM", re.compile(r"\bSchedule\.Service\b", re.I)),
+)
+BOOT_SCAN_MAX_BYTES = 2 * 1024 * 1024
+# Cheap literal prefilter: every signature contains one of these (lower-cased),
+# so a file holding none of them cannot match and skips the regex pass.
+_BOOT_ANCHORS = ("schtasks", "scheduledtask", "-atstartup", "-atlogon",
+                 "currentversion", "startup", "loginitem", "openatlogin",
+                 "schedule.service")
+
+# rel -> (signatures it may carry, why it still ships). Kept tight: a new
+# signature in an allow-listed file is still a failure.
+BOOT_SCAN_ALLOW = {
+    "core/daemon_slayer_client.py": (
+        frozenset({"schtasks"}),
+        "DsWatchdog runs / queries an EXISTING RC-DaemonSlayer task and falls back "
+        "to a direct child where none is registered (plan S9); it creates no task"),
+    "core/port_handoff.py": (
+        frozenset({"schtasks"}),
+        "docstring measurement note about `schtasks /End` + `/Run`; runs nothing"),
+    "dashboard/routes_loop_monitor.py": (
+        frozenset({"schtasks"}),
+        "a command-name token in the loop monitor's classifier list; runs nothing"),
+    "ops/rc_supervisor.py": (
+        frozenset({"schtasks"}),
+        "FROZEN supervisor: `schtasks /Run RC-Phase3-Supervisor` of an existing task, "
+        "breaker-bounded (plan S9); it creates no task"),
+    "tools/liveclient_relay.py": (
+        frozenset({"schtasks", "schtasks /Create"}),
+        "module docstring records the legacy ONLOGON task; the agent creates none "
+        "(the launcher runs it, plan section 3.1)"),
+}
+
+
+def _scan_text(path: Path, skipped: Optional[list] = None, rel: str = "") -> Optional[str]:
+    try:
+        if path.stat().st_size > BOOT_SCAN_MAX_BYTES:
+            if skipped is not None:
+                skipped.append(rel)
+            return None
+        data = path.read_bytes()
+    except OSError:
+        return None
+    if b"\0" in data[:8192]:
+        return None
+    return data.decode("utf-8", errors="replace")
+
+
+def boot_signature_hits(root: Path, rels: Iterable[str],
+                        skipped: Optional[list] = None) -> dict:
+    """rel -> sorted signature names found in that file. Files over the size
+    cap are appended to `skipped` (recorded in the manifest), never hidden."""
+    hits = {}
+    for rel in rels:
+        text = _scan_text(Path(root) / rel, skipped, rel)
+        if text is None:
+            continue
+        low = text.lower()
+        if not any(a in low for a in _BOOT_ANCHORS):
+            continue
+        found = sorted(name for name, rx in BOOT_SIGNATURES if rx.search(text))
+        if found:
+            hits[rel] = found
+    return hits
+
+
+def boot_violations(hits: dict, allow: Optional[dict] = None) -> list:
+    """'rel: signatures' for every hit the allow-list does not cover."""
+    allow = BOOT_SCAN_ALLOW if allow is None else allow
+    out = []
+    for rel, names in sorted(hits.items()):
+        allowed = allow.get(rel, (frozenset(), ""))[0]
+        extra = [n for n in names if n not in allowed]
+        if extra:
+            out.append(f"{rel}: {', '.join(extra)}")
+    return out
 
 
 # --------------------------------------------------------------------------- #
@@ -235,6 +400,29 @@ def _git_text(root: Path, args: list, git_runner: Optional[Callable]) -> Optiona
     if rc != 0:
         return None
     return out.decode("utf-8", errors="replace").strip()
+
+
+def modified_tracked_files(root: Path, *, git_runner: Optional[Callable] = None) -> list:
+    """Tracked paths whose working copy or index entry differs from HEAD
+    (`git status --porcelain -z --untracked-files=no`). The bundle copies the
+    working tree, so any of these makes it differ from `source_commit`.
+    Raises BundleError when git cannot say."""
+    rc, out = (git_runner or _default_git_runner)(
+        ["git", "status", "--porcelain=v1", "-z", "--untracked-files=no"], Path(root))
+    if rc != 0:
+        raise BundleError(f"git status failed (exit {rc}); cannot prove a clean source")
+    tokens = out.decode("utf-8", errors="strict").split("\0")
+    paths, i = [], 0
+    while i < len(tokens):
+        tok = tokens[i]
+        i += 1
+        if len(tok) < 4:
+            continue
+        xy, path = tok[:2], tok[3:]
+        paths.append(path)
+        if "R" in xy or "C" in xy:
+            i += 1  # the rename / copy source follows as its own token
+    return sorted(set(paths))
 
 
 # --------------------------------------------------------------------------- #
@@ -285,9 +473,55 @@ class Closure:
     script_dir_imports: list = field(default_factory=list)
     unparsable: list = field(default_factory=list)
     missing_entries: list = field(default_factory=list)
+    dynamic_imports: list = field(default_factory=list)
 
 
 _DYNAMIC_IMPORTERS = {"import_module", "__import__"}
+
+# Modules loaded through a NON-literal import_module the AST walk cannot read:
+# app/_game_lifecycle.py does importlib.import_module(mp) for each coach in
+# core/coach_registry.py MODE_COACH_MAP. The map is parsed (never hand-copied),
+# so a new coach becomes a closure root on its own.
+COACH_REGISTRY = "core/coach_registry.py"
+COACH_REGISTRY_MAP = "MODE_COACH_MAP"
+
+
+def registry_roots(root: Path, universe: frozenset) -> list:
+    """Repo files for every coach module the registry names (empty when the
+    registry is not in the index, e.g. a test fixture repo)."""
+    if COACH_REGISTRY not in universe:
+        return []
+    try:
+        tree = ast.parse((Path(root) / COACH_REGISTRY).read_bytes(), filename=COACH_REGISTRY)
+    except (OSError, SyntaxError, ValueError) as exc:
+        raise BundleError(f"{COACH_REGISTRY} unreadable: {exc}") from exc
+    mapping = None
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and any(
+                isinstance(t, ast.Name) and t.id == COACH_REGISTRY_MAP for t in node.targets):
+            try:
+                mapping = ast.literal_eval(node.value)
+            except ValueError as exc:
+                raise BundleError(f"{COACH_REGISTRY_MAP} is not a literal: {exc}") from exc
+    if not isinstance(mapping, dict) or not mapping:
+        raise BundleError(f"{COACH_REGISTRY} has no literal {COACH_REGISTRY_MAP}")
+    out = []
+    for value in mapping.values():
+        modname = value[0] if isinstance(value, (tuple, list)) and value else None
+        if not isinstance(modname, str):
+            raise BundleError(f"{COACH_REGISTRY_MAP} entry without a module name: {value!r}")
+        hit = _resolve(modname, ("",), universe)
+        if hit is None:
+            raise BundleError(f"{COACH_REGISTRY_MAP} names {modname}, not in the index")
+        out.extend(hit[1])  # the module plus every parent package __init__
+    return sorted(set(out))
+
+
+def closure_roots(root: Path, universe: frozenset) -> list:
+    """CLOSURE_ENTRIES plus the registry-loaded coach modules (and the package
+    __init__ files importing them executes)."""
+    return list(CLOSURE_ENTRIES) + [r for r in registry_roots(root, universe)
+                                    if r not in CLOSURE_ENTRIES]
 
 
 def _resolve(dotted: str, bases: tuple, universe: frozenset) -> Optional[tuple]:
@@ -313,13 +547,29 @@ def _package_of(rel: str) -> list:
     return list(pp.parent.parts) if pp.parent.parts != (".",) else []
 
 
+def _module_str_constants(tree: ast.AST) -> dict:
+    """Module-level `NAME = "literal"` bindings (the shape the dashboard's
+    `importlib.import_module(_LANES_MODULE)` call sites use)."""
+    consts = {}
+    for node in getattr(tree, "body", []):
+        if isinstance(node, ast.Assign) and isinstance(node.value, ast.Constant) and \
+                isinstance(node.value.value, str):
+            for t in node.targets:
+                if isinstance(t, ast.Name):
+                    consts[t.id] = node.value.value
+    return consts
+
+
 def _imports_of(tree: ast.AST, rel: str) -> list:
-    """(dotted name, is_relative) for every import the module could execute."""
+    """(dotted name, is_relative, is_dynamic) for every import the module
+    could execute: import statements, plus import_module / __import__ calls
+    whose first argument is a literal or a module-level string constant."""
     names = []
     pkg = _package_of(rel)
+    consts = _module_str_constants(tree)
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
-            names.extend((a.name, False) for a in node.names)
+            names.extend((a.name, False, False) for a in node.names)
         elif isinstance(node, ast.ImportFrom):
             if node.level:
                 up = node.level - 1
@@ -332,18 +582,24 @@ def _imports_of(tree: ast.AST, rel: str) -> list:
                 mod = node.module or ""
                 rel_flag = False
             if mod:
-                names.append((mod, rel_flag))
+                names.append((mod, rel_flag, False))
             for a in node.names:
                 if a.name != "*":
-                    names.append((f"{mod}.{a.name}" if mod else a.name, rel_flag))
+                    names.append((f"{mod}.{a.name}" if mod else a.name, rel_flag, False))
         elif isinstance(node, ast.Call) and node.args:
             f = node.func
             fname = f.attr if isinstance(f, ast.Attribute) else (
                 f.id if isinstance(f, ast.Name) else "")
+            if fname not in _DYNAMIC_IMPORTERS:
+                continue
             arg = node.args[0]
-            if fname in _DYNAMIC_IMPORTERS and isinstance(arg, ast.Constant) and \
-                    isinstance(arg.value, str) and not arg.value.startswith("."):
-                names.append((arg.value, False))
+            target = None
+            if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+                target = arg.value
+            elif isinstance(arg, ast.Name) and arg.id in consts:
+                target = consts[arg.id]
+            if target and not target.startswith("."):
+                names.append((target, False, True))
     return names
 
 
@@ -352,7 +608,8 @@ def import_closure(root: Path, entries: Iterable[str], universe: frozenset) -> C
 
     A script entry also searches its own folder (sys.path[0] for a script);
     a module found only there is listed in `script_dir_imports`, because the
-    embedded runtime's ._pth puts no script folder on sys.path.
+    embedded runtime's ._pth puts no script folder on sys.path. Every
+    resolved dynamic import is listed in `dynamic_imports`.
     """
     root = Path(root)
     out = Closure()
@@ -375,16 +632,19 @@ def import_closure(root: Path, entries: Iterable[str], universe: frozenset) -> C
             except (OSError, SyntaxError, ValueError):
                 out.unparsable.append(rel)
                 continue
-            for dotted, is_rel in _imports_of(tree, rel):
+            for dotted, is_rel, is_dyn in _imports_of(tree, rel):
                 hit = _resolve(dotted, ("",) if is_rel else bases, universe)
                 if hit is None:
                     continue
                 base, found = hit
                 if base:
                     out.script_dir_imports.append(f"{rel}: {dotted} -> {found[0]}")
+                if is_dyn:
+                    out.dynamic_imports.append(f"{rel}: {dotted} -> {found[0]}")
                 queue.extend(f for f in found if f not in seen)
     out.script_dir_imports = sorted(set(out.script_dir_imports))
     out.unparsable = sorted(set(out.unparsable))
+    out.dynamic_imports = sorted(set(out.dynamic_imports))
     return out
 
 
@@ -400,6 +660,7 @@ def verify_bundle(bundle_dir: Path) -> list:
         problems.append("API-Key-Claude.txt: " + R_SECRET)
     if (bundle_dir / "ops" / "runtime").exists():
         problems.append("ops/runtime/: " + R_RUNTIME)
+    scan = []
     for path in sorted(bundle_dir.rglob("*")):
         if not path.is_file():
             continue
@@ -417,6 +678,11 @@ def verify_bundle(bundle_dir: Path) -> list:
             problems.append(f"{rel}: {reason}")
         elif is_lfs_pointer(path):
             problems.append(f"{rel}: git-lfs pointer, not the real file")
+        elif rel not in GENERATED_FILES:
+            # The generated manifests list the signature names themselves.
+            scan.append(rel)
+    for line in boot_violations(boot_signature_hits(bundle_dir, scan)):
+        problems.append(f"{line}: boot / scheduled-task signature not allow-listed")
     return problems
 
 
@@ -435,8 +701,14 @@ def _info(msg: str) -> None:
     print(f"  INFO    {msg}")
 
 
-def _check_output_dir(root: Path, out: Path) -> Optional[str]:
-    r, o = root.resolve(), out.resolve()
+def check_output_dir(root: Path, out: Path, *, marker: str = MANIFEST_NAME,
+                     marker_key: str = "build_tool",
+                     marker_value: str = BUILD_TOOL) -> Optional[str]:
+    """Why `out` may not be wiped and rebuilt (None = safe). Shared with
+    tools/build_installer.py: never the repo root or a folder holding it;
+    inside the repo only under an excluded tree (dist/); an existing non-empty
+    folder only when it holds `marker` written by the same tool."""
+    r, o = Path(root).resolve(), Path(out).resolve()
     if o == r:
         return "output dir cannot be the repo root"
     if o in r.parents:
@@ -448,12 +720,12 @@ def _check_output_dir(root: Path, out: Path) -> Optional[str]:
             return "output path exists and is not a folder"
         if any(o.iterdir()):
             try:
-                man = json.loads((o / MANIFEST_NAME).read_text(encoding="utf-8"))
+                man = json.loads((o / marker).read_text(encoding="utf-8"))
             except (OSError, ValueError):
                 man = {}
-            if man.get("build_tool") != BUILD_TOOL:
-                return ("output dir is not empty and holds no previous bundle "
-                        "build; refusing to delete it")
+            if not isinstance(man, dict) or man.get(marker_key) != marker_value:
+                return (f"output dir is not empty and holds no previous {marker_value} "
+                        "output; refusing to delete it")
     return None
 
 
@@ -496,7 +768,7 @@ def build(root: Path = _PROJECT_ROOT, output_dir: Path = DEFAULT_OUTPUT, *,
           opener: Optional[Callable] = None, pip_runner: Optional[Callable] = None,
           host_version=None, skip_lfs_pointers: bool = False,
           version: Optional[str] = None, dry_run: bool = False,
-          git_runner: Optional[Callable] = None) -> int:
+          allow_dirty: bool = False, git_runner: Optional[Callable] = None) -> int:
     """Stage the bundle. Returns 0 built, 1 refused / failed, 2 dry-run ok."""
     root, out = Path(root), Path(output_dir)
     if embed not in ("build", "dir", "none"):
@@ -507,24 +779,41 @@ def build(root: Path = _PROJECT_ROOT, output_dir: Path = DEFAULT_OUTPUT, *,
     version = version or datetime.date.today().strftime("%Y%m%d")
     print(f"{BUNDLE_NAME} bundle builder: version {version}, runtime mode {embed}")
 
-    problem = _check_output_dir(root, out)
+    problem = check_output_dir(root, out)
     if problem:
         _err(problem)
         return 1
     try:
         index = git_index_files(root, git_runner=git_runner)
+        universe = frozenset(index)
+        plan = plan_bundle(root, index)
+        roots = closure_roots(root, universe)
+        modified = modified_tracked_files(root, git_runner=git_runner)
     except BundleError as exc:
         _err(str(exc))
         return 1
-    plan = plan_bundle(root, index)
     if plan.missing_on_disk:
         _err(f"tracked but missing on disk: {plan.missing_on_disk[:20]}")
+        return 1
+    shipped = set(plan.include) | set(plan.lfs_pointers)
+    dirty = sorted(p for p in modified if p in shipped)
+    if dirty and not allow_dirty:
+        _err("included files differ from HEAD (commit them, or pass --allow-dirty "
+             f"to build the working tree anyway): {dirty[:20]}")
         return 1
     if plan.lfs_pointers and not skip_lfs_pointers:
         _err("git-lfs pointers instead of real files (run `git lfs pull`, or pass "
              f"--skip-lfs-pointers to omit them): {plan.lfs_pointers}")
         return 1
-    closure = import_closure(root, CLOSURE_ENTRIES, frozenset(index))
+    scan_skipped: list = []
+    boot_hits = boot_signature_hits(root, plan.include, scan_skipped)
+    boot_bad = boot_violations(boot_hits)
+    if boot_bad:
+        _err("boot / scheduled-task signatures in files that would ship (exclude the "
+             "file, or allow-list it in BOOT_SCAN_ALLOW with a reason): "
+             + "; ".join(boot_bad))
+        return 1
+    closure = import_closure(root, roots, universe)
     if closure.missing_entries:
         _err(f"closure entry points not in the index: {closure.missing_entries}")
         return 1
@@ -536,7 +825,8 @@ def build(root: Path = _PROJECT_ROOT, output_dir: Path = DEFAULT_OUTPUT, *,
         return 1
     _info(f"{len(plan.include)} files from the index, "
           f"{sum(len(v) for v in plan.excluded.values())} excluded, "
-          f"closure {len(closure.files)} modules")
+          f"closure {len(closure.files)} modules, boot scan {len(boot_hits)} "
+          f"allow-listed hit(s)")
 
     lock = root / "requirements.txt"
     if embed == "dir":
@@ -607,7 +897,6 @@ def build(root: Path = _PROJECT_ROOT, output_dir: Path = DEFAULT_OUTPUT, *,
 
     (out / README_NAME).write_text(_readme(version, python_line), encoding="utf-8",
                                    newline="\n")
-    status = _git_text(root, ["status", "--porcelain", "--untracked-files=no"], git_runner)
     manifest = {
         "build_tool": BUILD_TOOL,
         "bundle": BUNDLE_NAME,
@@ -615,15 +904,22 @@ def build(root: Path = _PROJECT_ROOT, output_dir: Path = DEFAULT_OUTPUT, *,
         "built_utc": datetime.datetime.now(datetime.timezone.utc).strftime(
             "%Y-%m-%dT%H:%M:%SZ"),
         "source_commit": _git_text(root, ["rev-parse", "--verify", "-q", "HEAD"], git_runner),
-        "source_tree_clean": (status == "") if status is not None else None,
+        "source_tree_clean": not modified,
+        "source_included_clean": not dirty,
+        "allow_dirty": allow_dirty,
+        "dirty_included": dirty,
         "file_count": len(files),
         "files": files,
         "excluded_counts": {k: len(v) for k, v in sorted(plan.excluded.items())},
         "excluded_named": {k: v for k, v in sorted(plan.excluded.items())
-                           if k in (R_SECRET, R_HOST, R_BOOT, R_KILL)},
+                           if k in (R_SECRET, R_HOST, R_BOOT, R_KILL, R_TASKS)},
         "lfs_pointers_skipped": plan.lfs_pointers,
-        "closure": {"entries": list(CLOSURE_ENTRIES), "module_count": len(closure.files),
+        "boot_scan": {"signatures": [name for name, _ in BOOT_SIGNATURES],
+                      "allow_listed": {k: v for k, v in sorted(boot_hits.items())},
+                      "skipped_over_size_cap": scan_skipped},
+        "closure": {"entries": roots, "module_count": len(closure.files),
                     "script_dir_imports": closure.script_dir_imports,
+                    "dynamic_imports": closure.dynamic_imports,
                     "unparsable": closure.unparsable},
         "python": python_doc,
         "licence_steps": steps,
@@ -657,6 +953,9 @@ def main(argv=None) -> int:
     p.add_argument("--dry-run", "-n", action="store_true")
     p.add_argument("--skip-lfs-pointers", action="store_true",
                    help="omit LFS files whose working copy is still the pointer")
+    p.add_argument("--allow-dirty", action="store_true",
+                   help="build even when included tracked files differ from HEAD "
+                        "(recorded in the manifest)")
     group = p.add_mutually_exclusive_group()
     group.add_argument("--python-embed", default=None, metavar="DIR",
                        help="reuse a prebuilt runtime (verified against this lock)")
@@ -673,7 +972,7 @@ def main(argv=None) -> int:
         embed_cache=Path(args.embed_cache) if args.embed_cache else None,
         embed_zip=Path(args.embed_zip) if args.embed_zip else None,
         skip_lfs_pointers=args.skip_lfs_pointers, version=args.version,
-        dry_run=args.dry_run)
+        dry_run=args.dry_run, allow_dirty=args.allow_dirty)
 
 
 if __name__ == "__main__":
