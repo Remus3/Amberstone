@@ -50,7 +50,7 @@ guarantees. That is asserted end-to-end below rather than argued.
 from __future__ import annotations
 
 import contextlib
-import logging
+import threading
 import time as _real_time
 import types
 import unittest
@@ -59,6 +59,8 @@ from unittest import mock
 
 from lcu import lockfile_notice
 from lcu.lcu_client import _LOCKFILE_MISSING_REPEAT_S, LcuClient
+from tests._lcu_notice_isolation import isolate_lockfile_notice
+from tests._timing_budget import fleet_test_guard
 from tools.lcu_push_watcher import _RE_LOCKFILE_GAP, classify_events
 
 
@@ -105,17 +107,43 @@ def _found_lockfile():
 
 class LockfileNotFoundLogOnceTests(unittest.TestCase):
     def setUp(self):
-        # Nothing configures logging in a bare pytest process, so rc.lcu
-        # inherits the root logger's WARNING and every record emitted OUTSIDE
-        # an assertLogs block is dropped before any handler or filter sees it -
-        # including the "LCU connected:" line that re-arms the process-wide
-        # episode in lcu/lockfile_notice.py. Production never sees that skew:
-        # there is no level that passes the DEBUG repeat while dropping the
-        # INFO connect line. Pin DEBUG so the fixture measures the throttle
-        # rather than the ambient level.
-        logger = logging.getLogger("rc.lcu")
-        self.addCleanup(logger.setLevel, logger.level)
-        logger.setLevel(logging.DEBUG)
+        # Gate rc.lcu to this test's threads, reset the process-wide filter in
+        # lcu/lockfile_notice.py and pin DEBUG (tests/_lcu_notice_isolation.py
+        # gives the why of each step). Every count below is measured THROUGH
+        # that shared filter, so a foreign LcuClient's real-clock repeat
+        # landing after the reset would otherwise suppress this client's
+        # fake-clock notices - the s140 gated-suite red, sibling file.
+        isolate_lockfile_notice(self)
+
+    def test_a_foreign_poller_tick_cannot_swallow_this_clients_first_notice(self):
+        """s140 sibling REPRO: a long-lived LcuClient elsewhere in the process
+        (past its first notice, so on its repeat branch, real clock, own
+        thread) logs just before this client's first connect. Ungated, the
+        shared filter stamps the real clock and this client's fake-clock INFO
+        at 1000 s reads as a repeat inside a live window and is dropped."""
+        foreign = LcuClient()
+        foreign._lockfile_missing_logged = True
+        foreign._lockfile_missing_last_log = -_LOCKFILE_MISSING_REPEAT_S
+        tick = threading.Thread(target=foreign.connect, daemon=True,
+                                name="foreign-lcu-poller")
+        with mock.patch("lcu.lcu_client._LOCKFILE_PATHS", _MISSING):
+            tick.start()
+            tick.join(timeout=fleet_test_guard.budget(5))
+        self.assertFalse(tick.is_alive())
+        # Non-vacuity: the foreign client really logged its repeat (the stamp
+        # moves only on the logging path).
+        self.assertGreater(foreign._lockfile_missing_last_log, 0)
+
+        client = LcuClient()
+        now = [1000.0]
+        with mock.patch("lcu.lcu_client._LOCKFILE_PATHS", _MISSING), \
+                _both_clocks(now):
+            with self.assertLogs("rc.lcu", level="DEBUG") as cm:
+                self.assertFalse(client.connect())
+        self.assertEqual(
+            [r.levelname for r in _not_found_records(cm)], ["INFO"],
+            "this client's first notice of the gap was swallowed by a record "
+            "another client in the process emitted on the real clock")
 
     def test_repeat_ticks_log_the_not_found_line_once(self):
         """50 connects inside one instant produce exactly one record AT ANY
@@ -284,6 +312,11 @@ class LockfileNotFoundLogOnceTests(unittest.TestCase):
 
 class WatcherGapDetectionSurvivesTheThrottleTests(unittest.TestCase):
     """tools/lcu_push_watcher.py must still detect the gap at this interval."""
+
+    def setUp(self):
+        # The capture below needs this client's notice to pass the shared
+        # filter, so the same gate as the class above.
+        isolate_lockfile_notice(self)
 
     def test_the_emitted_message_still_matches_the_watcher_regex(self):
         client = LcuClient()
