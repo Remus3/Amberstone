@@ -42,7 +42,7 @@ except Exception as e:  # noqa: BLE001
 
 
 def slugify(name: str) -> str:
-    """Convert item name to filesystem-safe slug matching _ItemBuildCanvas._load_icon."""
+    """Convert item name to a filesystem-safe slug, close to web/legacy_index.html itemSlug."""
     s = re.sub(r"'s?|'", "", name.lower())
     return re.sub(r"[^a-z0-9]+", "-", s).strip("-")
 

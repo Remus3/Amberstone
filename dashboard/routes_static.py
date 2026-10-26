@@ -113,7 +113,7 @@ def _make_icon_handler(subdir: str):
 
 
 # /icons/items/* lives under data/icons/aram_items/ (legacy name) - see
-# the slug-naming convention in modes/aram_overlay._load_icon.
+# the slug-naming convention in web/legacy_index.html itemSlug.
 def _serve_icon_items_route(h):
     try:
         rel = h.path[len("/icons/items/"):]
