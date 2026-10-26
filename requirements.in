@@ -20,7 +20,7 @@
 # beside each); after a pin change here regenerate them with the commands in
 # their headers, or ci.yml's "hashed CI install sets agree" step goes red.
 
-anthropic==1.11.0
+anthropic==2.1.0
 certifi==2026.10.19
 json5==0.15.0
 opencv-python==5.0.0.93
@@ -28,4 +28,4 @@ Pillow==13.0.0
 portalocker==4.4.1
 psutil==7.2.2
 pydantic==2.13.5
-websockets==17.2
+websockets==17.3
