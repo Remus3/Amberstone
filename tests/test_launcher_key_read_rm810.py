@@ -71,7 +71,10 @@ Pinned here:
       with an absolute interpreter, call names that exist in
       core/anthropic_key.py, never read, parse or set the key, run every
       system tool by its absolute System32 path and set no variable they do
-      not use;
+      not use; RC_KEY_SP is cleared before the PATH copy, which fails at a
+      PATH of about 8180 to 8191 characters and keeps the value the caller's
+      console held (RM-826 (d); a harness plants a python.exe in that
+      inherited folder and checks it never runs);
   (c) behaviour: each launcher's REAL key check runs under cmd.exe in
       tmp_path against a copy of core/anthropic_key.py, started from an
       unrelated folder (one test plants python.bat / python.cmd there, one
@@ -432,11 +435,15 @@ _ON_PATH = 'if not defined RC_KEY_PY for %%I in (python.exe) do set "RC_KEY_PY=%
 # (fourth verifier), and the common path must never pay that.
 _STRIP_COPY = 'if not defined RC_KEY_PY call set "RC_KEY_SP=%%PATH:"=%%"'
 _ON_COPY = 'if not defined RC_KEY_PY for %%I in (python.exe) do set "RC_KEY_PY=%%~$RC_KEY_SP:I"'
+# RM-826 (d): cleared before the copy, which can fail and keep its old value.
+_CLEAR_COPY = 'set "RC_KEY_SP="'
 
 
 def test_the_interpreter_is_an_absolute_path_embedded_first():
     shared = _shared_check(LAUNCHERS[0])
-    order = [_SHARED_START, _EMBED_PICK, _ON_PATH, _STRIP_COPY, _ON_COPY, 'set "RC_KEY_SP="',
+    # The clear after the search is pinned with the one before the copy
+    # (test_the_path_copy_never_keeps_an_inherited_value).
+    order = [_SHARED_START, _EMBED_PICK, _ON_PATH, _CLEAR_COPY, _STRIP_COPY, _ON_COPY,
              _check_line(LAUNCHERS[0])]
     assert [shared.index(ln) for ln in order] == sorted(shared.index(ln) for ln in order)
     for rel in LAUNCHERS:
@@ -615,7 +622,8 @@ _PLANT = b"@echo off\r\necho PLANTED>\"%~dp0planted.txt\"\r\nexit /b 10\r\n"
 
 
 def _run(tmp_path: Path, rel: str, env_value, file_bytes, with_module: bool = True,
-         plant: bool = False, path: str | None = None):
+         plant: bool = False, path: str | None = None,
+         inherit: dict[str, str] | None = None):
     if file_bytes is not None:
         (tmp_path / KEY_FILE).write_bytes(file_bytes)
     bat = _harness(tmp_path, rel, with_module)
@@ -635,6 +643,8 @@ def _run(tmp_path: Path, rel: str, env_value, file_bytes, with_module: bool = Tr
            and not k.upper().startswith("RC_KEY")}
     if env_value is not None:
         env[ENV_VAR] = env_value
+    # A launcher variable the caller's console already holds (RM-826 (d)).
+    env.update(inherit or {})
     # python.exe on PATH must be this interpreter: tmp_path has no python-embed.
     env["PATH"] = path if path is not None else (
         str(Path(sys.executable).parent) + os.pathsep + env.get("PATH", ""))
@@ -838,6 +848,64 @@ def test_a_long_path_never_aborts_the_check(tmp_path, fake_embed, rel, length, e
     rc, out, seen = _run(tmp_path, rel, "junk", _line(FILE_KEY), path=path)
     assert rc == 0, out
     assert seen == [{}], f"the check did not run: {out!r}"
+
+
+def test_the_path_copy_never_keeps_an_inherited_value():
+    # RM-826 (d): the `call set` copy fails at a PATH of about 8180 to 8191
+    # characters ("The input line is too long.") and leaves RC_KEY_SP as it
+    # was, so the next line searched a folder the CALLER named. Each
+    # launcher clears it on the line before the copy.
+    for rel in LAUNCHERS:
+        shared = _shared_check(rel)
+        at = shared.index(_STRIP_COPY)
+        assert shared[at - 1] == _CLEAR_COPY, (
+            f"{rel}: RC_KEY_SP is not cleared before the PATH copy: {shared[at - 1]}")
+        assert shared[at + 2] == _CLEAR_COPY, f"{rel}: RC_KEY_SP outlives the search"
+
+
+def _plant_interpreter(where: Path, ve: Path, marker: Path) -> None:
+    """A working python.exe in `where` whose start-up leaves `marker`: the
+    venv launcher reads pyvenv.cfg next to it, and site runs the .pth line
+    in its Lib\\site-packages even under -I (which drops only the user site)."""
+    where.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(ve / "Scripts" / "python.exe", where / "python.exe")
+    shutil.copyfile(ve / "pyvenv.cfg", where / "pyvenv.cfg")
+    site = where / "Lib" / "site-packages"
+    site.mkdir(parents=True, exist_ok=True)
+    (site / "rc826_plant.pth").write_bytes(
+        f"import pathlib; pathlib.Path({str(marker)!r}).write_text('x')\n".encode("ascii"))
+
+
+@win_only
+@pytest.mark.parametrize("rel", LAUNCHERS)
+@pytest.mark.parametrize("length", [8180, 8191])
+def test_an_inherited_path_copy_is_never_searched(tmp_path, fake_embed, rel, length):
+    # RM-826 (d). No python-embed and Python only behind a QUOTED PATH entry,
+    # so the PATH search misses and the quote-stripped copy is built; at these
+    # lengths that copy fails. An RC_KEY_SP the caller's console holds must
+    # not be searched instead: a python.exe there would run the check (and
+    # restart.bat / start_debug.bat go ahead whatever the check says).
+    marker = tmp_path / "planted.txt"
+    inherited = tmp_path / "inherited"
+    _plant_interpreter(inherited, fake_embed, marker)
+    # Positive control: the plant fires when it runs under -I.
+    subprocess.run([str(inherited / "python.exe"), "-I", "-c", "pass"], check=True,
+                   capture_output=True, timeout=60,
+                   creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    assert marker.exists(), "the planted interpreter leaves no marker; the test proves nothing"
+    marker.unlink()
+    path = f'"{Path(sys.executable).parent}";C:\\Windows\\rc826-pad-'
+    path += "y" * (length - len(path))
+    assert len(path) == length
+    rc, out, seen = _run(tmp_path, rel, "junk", _line(FILE_KEY), path=path,
+                         inherit={"RC_KEY_SP": str(inherited)})
+    assert not marker.exists(), f"the caller's RC_KEY_SP folder was searched: {out!r}"
+    if rc != 0:
+        # No interpreter found, so start.bat refuses: the RM-826 (e) residual.
+        assert rel == "start.bat" and "Could not check the Anthropic API key" in out, out
+    else:
+        assert len(seen) == 1, f"the cut did not finish: {out!r}"
+        assert "RC_KEY_SP" not in seen[0], seen
 
 
 @win_only

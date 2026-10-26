@@ -13,6 +13,9 @@ echo.
 
 :: --soft keeps changes staged so they can be re-committed or inspected
 :: Use --hard only if you want to discard all changes entirely
+:: set /p keeps CONFIRM as it was on an empty answer, so a CONFIRM=y in this
+:: console rolled back on Enter (RM-826 (d)); clear it first.
+set "CONFIRM="
 set /p CONFIRM="Roll back most recent commit? Changes stay staged. (y/N): "
 if /i not "%CONFIRM%"=="y" (
     echo [rollback] Cancelled.

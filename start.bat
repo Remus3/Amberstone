@@ -22,7 +22,10 @@ cd /d "%~dp0"
 :: of PATH. The copy is built by call, so PATH is expanded into a command
 :: line only on that last path: a whole PATH of about 8176 to 8191
 :: characters on one line aborts the batch ("The input line is too long."),
-:: and at 8192 or more the copy comes out empty. The check runs after the cd
+:: and at 8192 or more the copy comes out empty. RC_KEY_SP is cleared on the
+:: line before the copy: from about 8180 to 8191 characters the call itself
+:: fails the same way and leaves RC_KEY_SP as it was, so a value the caller's
+:: console held was searched instead (RM-826 (d)). The check runs after the cd
 :: above, so the caller's folder is never searched: a bare "python" was
 :: looked up there first, where a planted python.bat would run (an empty,
 :: "." or leading ";" PATH entry can still point the search at the repo
@@ -37,6 +40,7 @@ set "RC_KEY_MOD=%~dp0core\anthropic_key.py"
 set "RC_KEY_PY="
 if exist "%RC_KEY_EMBED%" set "RC_KEY_PY=%RC_KEY_EMBED%"
 if not defined RC_KEY_PY for %%I in (python.exe) do set "RC_KEY_PY=%%~$PATH:I"
+set "RC_KEY_SP="
 if not defined RC_KEY_PY call set "RC_KEY_SP=%%PATH:"=%%"
 if not defined RC_KEY_PY for %%I in (python.exe) do set "RC_KEY_PY=%%~$RC_KEY_SP:I"
 set "RC_KEY_SP="

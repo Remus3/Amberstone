@@ -152,6 +152,9 @@ if not exist "%API_FILE%" (
     goto :SUMMARY
 )
 
+:: set /p leaves API_KEY as it was when the file's first line is empty, so a
+:: variable of that name in this console passed as the key (RM-826 (d)).
+set "API_KEY="
 set /p API_KEY=<"%API_FILE%"
 
 :: A key file saved as UTF-8 WITH BOM (Notepad, PowerShell 5.1 -Encoding

@@ -857,12 +857,15 @@ def _step3_harness(tmp_path: Path, option_b: bool) -> Path:
     return bat
 
 
-def _run_step3(tmp_path: Path, raw: bytes, option_b: bool) -> tuple[str, str]:
+def _run_step3(tmp_path: Path, raw: bytes, option_b: bool,
+               inherit: dict[str, str] | None = None) -> tuple[str, str]:
     (tmp_path / KEY_FILE).write_bytes(raw)
     temp = tmp_path / "temp"
     temp.mkdir()
     env = dict(os.environ, TEMP=str(temp), TMP=str(temp))
     env.pop(ENV_VAR, None)
+    env.pop("API_KEY", None)
+    env.update(inherit or {})
     # Option A runs `python` from PATH; put this interpreter first on it.
     env["PATH"] = str(Path(sys.executable).parent) + os.pathsep + env.get("PATH", "")
     bat = _step3_harness(tmp_path, option_b)
@@ -903,6 +906,25 @@ def test_install_bat_step3_still_rejects_a_bad_key(tmp_path, raw):
     out, _ = _run_step3(tmp_path, raw, option_b=True)
     assert "STEP3=FAIL" in out
     assert "STEP3=PASS" not in out
+
+
+_INHERITED = "sk-ant-TESTONLY826inherited"  # rc-credential-scan: allow-fixture
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="runs install.bat under cmd.exe")
+@pytest.mark.parametrize("raw", [
+    pytest.param(b"", id="empty"),
+    pytest.param(b"\r\n", id="blank-line"),
+])
+def test_install_bat_step3_never_takes_an_inherited_api_key(tmp_path, raw):
+    # RM-826 (d) sibling: `set /p API_KEY=<file` leaves API_KEY as it was
+    # when the file's first line is empty, so a variable of that name in the
+    # caller's console passed as the key and step 4 wrote it into the key
+    # file. Step 3 clears API_KEY before the read.
+    out, got = _run_step3(tmp_path, raw, option_b=True, inherit={"API_KEY": _INHERITED})
+    assert "STEP3=FAIL" in out, out
+    assert "STEP3=PASS" not in out
+    assert _INHERITED not in out and got != _INHERITED
 
 
 # ---------------------------------------------------------------------------
