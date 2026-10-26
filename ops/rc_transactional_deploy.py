@@ -215,8 +215,14 @@ def sign_request(req: Dict[str, Any], key_path: Path = DEFAULT_KEY_PATH, *,
 
 
 def _finite(value: Any) -> bool:
-    return (isinstance(value, (int, float)) and not isinstance(value, bool)
-            and math.isfinite(value))
+    """A real, finite number. Never raises: JSON can carry an int far past
+    float range (10 ** 400), where math.isfinite raises OverflowError."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    try:
+        return math.isfinite(value)
+    except OverflowError:
+        return False
 
 
 def check_freshness(req: Dict[str, Any], now: Optional[float] = None) -> None:
@@ -930,7 +936,14 @@ def main() -> int:
         parser.error("--request is required")
 
     request_path = Path(args.request).resolve()
-    result = do_deploy(request_path)
+    try:
+        result = do_deploy(request_path)
+    except Exception as exc:  # noqa: BLE001
+        # Last-resort net: a worker that dies leaves the supervisor no
+        # result at all (ops/rc_supervisor.py reads deploy_results/<stem>);
+        # an unforeseen input must still end as a written refusal.
+        result = _fail(request_path.stem, "internal",
+                       error=f"{type(exc).__name__}: {str(exc)[:200]}")
 
     if args.result:
         result_path = Path(args.result).resolve()
