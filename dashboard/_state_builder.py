@@ -30,7 +30,7 @@ from pathlib import Path
 
 from coaches.sr_draft_profile import is_sr_draft_queue
 from core.coaching_payload import validate_coaching_payload
-from core.queue_modes import mode_key_from_queue_id
+from core.queue_modes import is_tft_context, mode_key_from_queue_id
 from dashboard._adaptation_latch import compute as _latch_compute
 from dashboard._context import APP_DIR, read_json
 from dashboard._cs_retention import apply_cs_retention
@@ -188,6 +188,12 @@ def _preflip_mode_from_lcu(lcu_snapshot: dict | None) -> str | None:
     Champ-select wins over lobby (more specific). Returns ``None`` when
     no recognised queue_id is available, so the caller falls back to the
     health.mode default ("client").
+
+    RM-924: a non-custom lobby whose queue the map does not list still
+    pre-flips to "tft" when its own game_mode / map_id say TFT (the same
+    signals as the LCU agent's TFT gate), so a rotating TFT event queue
+    shows the TFT lobby view. A map hit wins first; champ-select carries no
+    game_mode, so the lobby beside it covers an unmapped TFT champ-select.
     """
     if not isinstance(lcu_snapshot, dict):
         return None
@@ -201,6 +207,9 @@ def _preflip_mode_from_lcu(lcu_snapshot: dict | None) -> str | None:
         m = mode_key_from_queue_id(lobby.get("queue_id"))
         if m:
             return m
+        if is_tft_context(game_mode=lobby.get("game_mode"),
+                          map_id=lobby.get("map_id")):
+            return "tft"
     return None
 
 

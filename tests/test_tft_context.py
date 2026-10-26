@@ -233,6 +233,20 @@ def test_api_state_reads_the_measured_extra_tft_queues_as_a_tft_lobby(monkeypatc
                                     "source": "lcu_queue"}
 
 
+def test_api_state_reads_an_unmapped_tft_queue_lobby_from_its_game_mode(monkeypatch):
+    """RM-924: a TFT event queue the map does not list (6130) is still a
+    TFT lobby, from the lobby's own gameMode / mapId, so the lobby view mounts."""
+    from core.queue_modes import mode_key_from_queue_id
+    assert mode_key_from_queue_id(6130) is None
+    state = _build(monkeypatch, health={},
+                   lcu={"phase": "Lobby", "lobby": {"queue_id": 6130, "is_custom": False,
+                                                    "game_mode": "TFT", "map_id": 22}})
+    assert state["mode_key"] == "tft"
+    assert state["health"]["tft_mode"] is True
+    assert state["tft_context"] == {"active": True, "phase": "lobby", "queue_id": 6130,
+                                    "source": "lcu_queue"}
+
+
 def test_api_state_tft_context_is_inactive_for_a_rift_game(monkeypatch):
     state = _build(monkeypatch, health={"has_game": True},
                    lcu={"phase": "InProgress", "game_queue_id": 420})

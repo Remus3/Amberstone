@@ -51,6 +51,59 @@ class TestPreflipModeFromLcu(unittest.TestCase):
         self.assertIsNone(_state_builder._preflip_mode_from_lcu({}))
 
 
+def _lobby(queue_id, game_mode="", map_id=0, *, is_custom=False) -> dict:
+    """A lobby block in the lcu/snapshot_shape.py shape ("" and 0 = absent)."""
+    return {"queue_id": queue_id, "is_custom": is_custom,
+            "game_mode": game_mode, "map_id": map_id}
+
+
+class TestPreflipUnmappedTftQueue(unittest.TestCase):
+    """RM-924: a non-custom TFT lobby in a queue the map does not list
+    (rotating event queues such as 6130) still pre-flips to "tft", from the
+    lobby's own game_mode / map_id - the same three signals the LCU agent's
+    TFT gate reads (core.queue_modes.is_tft_context). A map hit still wins,
+    customs stay excluded, and champ-select carries no game_mode, so an
+    unmapped TFT champ-select queue is covered by the lobby beside it."""
+
+    def _pre(self, snap):
+        return _state_builder._preflip_mode_from_lcu(snap)
+
+    def test_unmapped_tft_queue_with_mode_and_map(self):
+        self.assertEqual(self._pre({"lobby": _lobby(6130, "TFT", 22)}), "tft")
+
+    def test_unmapped_tft_queue_game_mode_alone(self):
+        self.assertEqual(self._pre({"lobby": _lobby(6130, "TFT")}), "tft")
+
+    def test_unmapped_tft_queue_map_id_alone(self):
+        self.assertEqual(self._pre({"lobby": _lobby(6130, map_id=22)}), "tft")
+
+    def test_unlisted_ranked_1v0_tft_lobby_still_reads_tft(self):
+        # Recorded decision: RM-140 keeps 1101 out of the MAP because no
+        # player sees it in the menu; a lobby that IS TFT still shows TFT.
+        self.assertEqual(self._pre({"lobby": _lobby(1101, "TFT", 22)}), "tft")
+
+    def test_queue_zero_tft_lobby_reads_tft(self):
+        self.assertEqual(self._pre({"lobby": _lobby(0, "TFT")}), "tft")
+
+    def test_custom_tft_lobby_stays_none(self):
+        snap = {"lobby": _lobby(3000, "TFT", 22, is_custom=True)}
+        self.assertIsNone(self._pre(snap))
+
+    def test_unmapped_arena_lobby_stays_none(self):
+        self.assertIsNone(self._pre({"lobby": _lobby(99999, "CHERRY", 30)}))
+
+    def test_unmapped_queue_without_game_mode_stays_none(self):
+        self.assertIsNone(self._pre({"lobby": _lobby(99999)}))
+
+    def test_mapped_rift_lobby_still_reads_sr(self):
+        self.assertEqual(self._pre({"lobby": _lobby(420, "CLASSIC", 11)}), "sr")
+
+    def test_unmapped_tft_champ_select_beside_a_tft_lobby(self):
+        snap = {"champ_select": {"queue_id": 6130},
+                "lobby": _lobby(6130, "TFT", 22)}
+        self.assertEqual(self._pre(snap), "tft")
+
+
 class TestBuildStateModeResolution(unittest.TestCase):
     """End-to-end mode_key resolution via build_state()."""
 
@@ -175,6 +228,14 @@ class TestBuildStatePreflipFlagMirror(unittest.TestCase):
         out = self._run(health, lcu)
         self.assertEqual(out["mode_key"], "arena")
         self.assertTrue(out["health"]["arena_mode"])
+
+    def test_unmapped_tft_lobby_preflip_sets_tft_mode_flag(self):
+        # RM-924 through build_state: queue 6130 is not in the map.
+        health = _empty_health()
+        lcu = {"lobby": _lobby(6130, "TFT", 22)}
+        out = self._run(health, lcu)
+        self.assertEqual(out["mode_key"], "tft")
+        self.assertTrue(out["health"]["tft_mode"])
 
     def test_aram_champ_select_preflip_sets_aram_mode_flag(self):
         health = _empty_health()
