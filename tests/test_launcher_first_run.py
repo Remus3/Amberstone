@@ -10,9 +10,14 @@ once, owned-mode only, before the service host spawns anything:
                                                  only when the profile's
                                                  dash_token_gate is on - off by
                                                  default, PACKAGING_PLAN V3)
-  deploy key    ops/runtime/deploy_request.key  (created by the deploy worker's
-                                                 own --init-key / ensure_key,
-                                                 ops/rc_transactional_deploy.py:108)
+  deploy key    ops/runtime/deploy_request.key  (written by first_run itself in
+                                                 ensure_key's format,
+                                                 ops/rc_transactional_deploy.py:115;
+                                                 parity pinned against the real
+                                                 ensure_key / sign / verify)
+
+Every secret is staged in a pinned, verified-private run folder under the
+gitignored ops/runtime/first_run/ and published by hard link.
 
 Every test root is tmp_path; nothing here reads or writes the live config/ or
 ops/runtime/. Every secret value is generated at run time, never a literal.
@@ -92,8 +97,8 @@ class Timeline:
         self.fds = {}
         real_open, real_write = fr._open_new, fr._write_secret
 
-        def open_new(path):
-            fd = real_open(path)
+        def open_new(path, *rest):
+            fd = real_open(path, *rest)
             self.fds[fd] = Path(path)
             self.events.append(("open", Path(path)))
             return fd
@@ -113,9 +118,14 @@ class Timeline:
     def restrict(self, path):
         return fr.restrict_to_current_user(path, run=self.run, windows=True, sid=self.SID)
 
-    def verify(self, path):
-        self.events.append(("verify", Path(path)))
-        return self.verified
+    def verify(self, held):
+        path = Path(held.path)
+        self.events.append(("verify", path, _size(path)))
+        return self.verified(path) if callable(self.verified) else self.verified
+
+    def run_folder(self):
+        return next(e[1] for e in self.events
+                    if e[0] == "verify" and e[1].name.startswith("run-"))
 
     def for_name(self, prefix):
         return [e for e in self.events if e[1].name.startswith(prefix)]
@@ -305,9 +315,14 @@ def test_deploy_key_is_restricted_before_a_key_byte_exists(tmp_path, monkeypatch
     report = provision(root, **tl.kwargs())
     assert by_name(report)["deploy_key"].state == "created"
     events = tl.for_name("deploy_request.key")
-    assert [e[0] for e in events] == ["open", "icacls", "write"], events
-    assert events[1][2] == 0, "the scratch was empty when its ACL was set"
-    assert events[2][1] == events[0][1], "the secret went into the restricted scratch"
+    assert [e[0] for e in events] == FILE_STEPS, events
+    assert events[1][2] == 0, "the scratch read back private while still empty"
+    assert events[2][1] == events[0][1], "the secret went into that scratch"
+
+
+# Per scratch file: exclusive private-from-birth create, read-back through the
+# open handle, then the one write through that same handle. No icacls.
+FILE_STEPS = ["open", "verify", "write"]
 
 
 def test_provisioning_spawns_no_deploy_worker(tmp_path, monkeypatch):
@@ -367,16 +382,21 @@ def test_second_run_is_idempotent(tmp_path):
     assert leftover_tmp(root) == []
 
 
-def test_the_acl_is_set_on_the_scratch_file_before_it_is_published(tmp_path):
+def test_the_scratch_file_is_verified_private_before_it_is_published(tmp_path, monkeypatch):
     root = make_root(tmp_path)
     seen = []
     target = vision_path(root)
-    restrict = Recorder(side_effect=lambda p: seen.append((p, target.exists(), _size(p))))
-    provision(root, restrict=restrict)
+
+    def verified(path):
+        seen.append((path, target.exists(), _size(path)))
+        return True
+
+    tl = Timeline(monkeypatch, verified=verified)
+    provision(root, **tl.kwargs())
     scratch, existed, size = next(s for s in seen if s[0].name.startswith("vision_token.txt"))
     assert scratch != target and scratch.name.endswith(".tmp")
-    assert existed is False, "restricted before the secret has its real name"
-    assert size == 0, "restricted before a secret byte is in it"
+    assert existed is False, "verified before the secret has its real name"
+    assert size == 0, "verified before a secret byte is in it"
     base = root / "ops" / "runtime" / "first_run"
     assert scratch.parent.parent == base and scratch.parent.name.startswith("run-"), \
         "a fresh per-run folder under the ignored ops/runtime/, never config/"
@@ -384,35 +404,48 @@ def test_the_acl_is_set_on_the_scratch_file_before_it_is_published(tmp_path):
     assert run_dirs(root) == [], "the per-run folder is removed after publishing"
 
 
-def test_a_fresh_private_folder_is_made_restricted_and_verified_before_any_file(
+BASE_NAME = "first_run"
+
+
+def test_base_is_restricted_and_verified_then_a_fresh_run_folder_before_any_file(
         tmp_path, monkeypatch):
     root = make_root(tmp_path)
     tl = Timeline(monkeypatch)
     report = provision(root, **tl.kwargs())
     assert {r.state for r in report.results} == {"created"}
     base = root / "ops" / "runtime" / "first_run"
-    folder = tl.events[0][1]
-    assert folder.parent == base and folder.name.startswith("run-")
-    assert [e[0] for e in tl.events[:3]] == ["icacls", "icacls", "verify"], tl.events[:4]
+    kinds = [e[0] for e in tl.events[:4]]
+    assert kinds == ["icacls", "icacls", "verify", "verify"], tl.events[:5]
     assert [e[3] for e in tl.events[:2]] == ["/inheritance:r", "/setowner"]
-    assert all(e[1] == folder for e in tl.events[:3]) and tl.events[0][2] == "dir"
+    assert all(e[1] == base for e in tl.events[:3]) and tl.events[0][2] == "dir", \
+        "the BASE is restricted and verified first, on every run"
+    folder = tl.events[3][1]
+    assert folder.parent == base and folder.name.startswith("run-")
+    assert not [e for e in tl.events if e[0] == "icacls" and e[1] == folder], \
+        "the run folder is private from birth (no after-the-fact icacls)"
     for prefix in ("vision_token.txt", "dash_token.txt", "deploy_request.key"):
         events = tl.for_name(prefix)
-        assert [e[0] for e in events] == ["open", "icacls", "write"], (prefix, events)
-        assert events[1][2] == 0, (prefix, "restricted while still empty")
+        assert [e[0] for e in events] == FILE_STEPS, (prefix, events)
+        assert events[1][2] == 0, (prefix, "verified private while still empty")
         assert events[0][1].parent == folder and events[2][1] == events[0][1]
-    assert sum(1 for e in tl.events if e[0] == "verify") == 1, "one folder per run"
+    assert [e for e in tl.events if e[0] == "icacls" and e[1] != base] == [], \
+        "only the base is ever re-ACLed by path; folder and files are private from birth"
+    folder_verifies = [e for e in tl.events if e[0] == "verify" and e[1] in (base, folder)]
+    assert len(folder_verifies) == 2, "one base + one run folder"
     assert run_dirs(root) == [], "removed after publishing"
 
 
-def test_every_run_gets_a_new_folder(tmp_path, monkeypatch):
+def test_every_run_gets_a_new_folder_and_re_restricts_the_base(tmp_path, monkeypatch):
     root = make_root(tmp_path)
     tl = Timeline(monkeypatch)
     provision(root, **tl.kwargs())
     vision_path(root).unlink()
     provision(root, **tl.kwargs())
-    folders = [e[1] for e in tl.events if e[0] == "verify"]
+    folders = [e[1] for e in tl.events if e[0] == "verify" and e[1].name.startswith("run-")]
     assert len(folders) == 2 and folders[0] != folders[1]
+    base_restricts = [e for e in tl.events if e[0] == "icacls" and e[1].name == BASE_NAME
+                      and e[3] == "/inheritance:r"]
+    assert len(base_restricts) == 2, "the base is restricted at the start of every run"
     assert run_dirs(root) == []
 
 
@@ -423,18 +456,19 @@ def test_a_stale_scratch_folder_is_never_reused(tmp_path, monkeypatch):
     (base / "left-over.tmp").write_bytes(b"")   # e.g. an older layout, unrestricted
     tl = Timeline(monkeypatch)
     provision(root, **tl.kwargs())
-    folder = next(e[1] for e in tl.events if e[0] == "verify")
+    folder = tl.run_folder()
     assert folder != base and folder.parent == base
-    assert all(e[1] != base for e in tl.events), "the shared base is never the scratch"
+    assert all(e[1].parent == folder for e in tl.events if e[0] in ("open", "write")), \
+        "files only ever go into this run's own folder"
 
 
-@pytest.mark.parametrize("failure", ["restrict", "verify", "mkdir"])
+@pytest.mark.parametrize("failure", ["base-restrict", "base-verify", "run-verify", "mkdir"])
 def test_an_unprivate_scratch_folder_writes_nothing_at_all(tmp_path, monkeypatch, failure):
     root = make_root(tmp_path)
-    tl = Timeline(monkeypatch, rc=(lambda p: 5 if p.name.startswith("run-") else 0),
-                  verified=(failure != "verify"))
-    if failure != "restrict":
-        tl.rc = 0
+    rc = (lambda p: 5 if p.name == BASE_NAME else 0) if failure == "base-restrict" else 0
+    verified = {"base-verify": lambda p: p.name != BASE_NAME,
+                "run-verify": lambda p: not p.name.startswith("run-")}.get(failure, True)
+    tl = Timeline(monkeypatch, rc=rc, verified=verified)
     if failure == "mkdir":
         def no_mkdir(*a, **k):
             raise PermissionError(errno.EACCES, "denied")
@@ -445,10 +479,147 @@ def test_an_unprivate_scratch_folder_writes_nothing_at_all(tmp_path, monkeypatch
         assert "not written" in res.detail
         assert not res.path.exists()
     assert [e for e in tl.events if e[0] in ("open", "write")] == [], "no file, no byte"
-    assert run_dirs(root) == [], "the refused folder is removed"
+    assert run_dirs(root) == [], "a refused run folder is removed"
     lines = report.lines(root)
     for name in ("vision_token", "dash_token", "deploy_key"):
         assert any(line.startswith(f"first run: {name} error") for line in lines), lines
+
+
+def _all_bytes(top: Path) -> list:
+    return [(p, p.read_bytes()) for p in top.rglob("*") if p.is_file()]
+
+
+@WINDOWS_ONLY
+def test_the_held_run_folder_and_base_cannot_be_renamed(tmp_path, monkeypatch):
+    root = make_root(tmp_path)
+    refused = []
+
+    def try_swap(scratch):
+        for path in (scratch.path, scratch.base):
+            try:
+                os.rename(path, path.with_name(path.name + "-moved"))
+            except PermissionError as exc:
+                refused.append((path.name, exc.winerror))
+            else:
+                raise AssertionError(f"{path} was renamed while pinned")
+
+    monkeypatch.setattr(fr, "_after_scratch_verified", try_swap)
+    report = fr.provision(root, environ={})            # real restrict + real verify
+    assert len(refused) == 2, refused
+    assert {r.state for r in report.results} == {"created"}, report.results
+    for path in (vision_path(root), dash_path(root), key_path(root)):
+        assert fr.verify_private(path), path
+    assert run_dirs(root) == []
+
+
+@POSIX_ONLY
+def test_posix_swap_after_verify_cannot_redirect_a_scratch_file(tmp_path, monkeypatch):
+    root = make_root(tmp_path)
+    planted = []
+
+    def swap(scratch):
+        moved = scratch.path.with_name(scratch.path.name + "-moved")
+        os.rename(scratch.path, moved)
+        scratch.path.mkdir()
+        os.chmod(scratch.path, 0o777)                    # a permissive look-alike
+        planted.append(scratch.path)
+
+    monkeypatch.setattr(fr, "_after_scratch_verified", swap)
+    report = fr.provision(root, environ={})
+    assert {r.state for r in report.results} == {"created"}, report.results
+    assert list(planted[0].iterdir()) == [], "nothing ever landed in the planted folder"
+    for path in (vision_path(root), dash_path(root), key_path(root)):
+        assert (path.stat().st_mode & 0o777) == 0o600
+
+
+def test_a_run_folder_that_is_not_empty_is_refused(tmp_path, monkeypatch):
+    root = make_root(tmp_path)
+    real_make = fr._make_private_dir
+
+    def make_with_a_plant(path, sid, parent):
+        real_make(path, sid, parent)
+        if Path(path).name.startswith("run-"):
+            (Path(path) / "planted.lnk").write_bytes(b"")
+
+    monkeypatch.setattr(fr, "_make_private_dir", make_with_a_plant)
+    tl = Timeline(monkeypatch)
+    report = provision(root, **tl.kwargs())
+    for res in report.results:
+        assert res.state == "error" and "not written" in res.detail, res
+    assert [e for e in tl.events if e[0] in ("open", "write")] == []
+
+
+def test_a_name_that_is_not_the_open_file_is_refused(tmp_path, monkeypatch):
+    root = make_root(tmp_path)
+    monkeypatch.setattr(fr, "_identity_of_name", lambda *a: (-1, -1))
+    tl = Timeline(monkeypatch)
+    report = provision(root, **tl.kwargs())
+    for res in report.results:
+        assert res.state == "error" and res.detail == fr.MOVED, res
+    assert [e for e in tl.events if e[0] in ("verify", "write") and e[1].suffix == ".tmp"] == []
+    assert leftover_tmp(root) == []
+
+
+def test_a_published_name_that_is_not_the_written_file_is_removed(tmp_path, monkeypatch):
+    root = make_root(tmp_path)
+    planted = secrets.token_hex(16)
+
+    def evil_link(src, dst, **kw):
+        Path(dst).write_text(planted + "\n", encoding="ascii")   # not our file
+
+    monkeypatch.setattr(fr.os, "link", evil_link)
+    report = provision(root)
+    for res in report.results:
+        assert res.state == "error" and res.detail == fr.MOVED, res
+        assert not res.path.exists(), "the foreign file is not left as the secret"
+    assert leftover_tmp(root) == []
+
+
+@WINDOWS_ONLY
+def test_real_verify_held_reads_through_the_handle(tmp_path):
+    plain = tmp_path / "plain"
+    plain.mkdir()
+    held = fr.hold_dir(plain)
+    try:
+        assert held is not None and fr.verify_held(held) is False
+    finally:
+        held.close()
+    private = tmp_path / "private"
+    fr._make_private_dir(private, fr.current_user_sid(), None)
+    held = fr.hold_dir(private)
+    try:
+        assert held is not None and fr.verify_held(held) is True
+    finally:
+        held.close()
+
+
+def test_a_swap_past_the_pins_is_detected_and_writes_nothing(tmp_path, monkeypatch):
+    # Model an attacker who got PAST the pins: release them, rename the
+    # verified run folder away and plant a permissive same-name folder.
+    root = make_root(tmp_path)
+    planted = []
+
+    def swap(scratch):
+        scratch._release_pins()
+        moved = scratch.path.with_name(scratch.path.name + "-moved")
+        os.rename(scratch.path, moved)
+        scratch.path.mkdir()
+        if os.name != "nt":
+            os.chmod(scratch.path, 0o777)
+        planted.append(scratch.path)
+
+    monkeypatch.setattr(fr, "_after_scratch_verified", swap)
+    tl = Timeline(monkeypatch)
+    report = provision(root, **tl.kwargs())
+    for res in report.results:
+        assert res.state == "error" and res.detail == fr.MOVED, res
+        assert not res.path.exists()
+    assert [e for e in tl.events if e[0] == "write"] == [], "no secret byte written"
+    if os.name == "nt":
+        assert [e for e in tl.events if e[0] == "open"], \
+            "Windows reached the parent-identity check (files opened in the planted folder)"
+    assert [p for p, data in _all_bytes(tmp_path) if data] == [], "no secret bytes anywhere"
+    assert list(planted[0].iterdir()) == []
 
 
 def test_the_secret_is_written_through_the_creating_handle(tmp_path, monkeypatch):
@@ -461,18 +632,23 @@ def test_the_secret_is_written_through_the_creating_handle(tmp_path, monkeypatch
         return real_open(path, flags, *a, **k)
 
     monkeypatch.setattr(fr.os, "open", counting_open)
-    report = provision(root)
+    tl = Timeline(monkeypatch)                  # its write wrapper needs the creating fd
+    report = provision(root, **tl.kwargs())
     assert {r.state for r in report.results} == {"created"}
     for prefix in ("vision_token.txt", "dash_token.txt", "deploy_request.key"):
+        events = tl.for_name(prefix)
+        assert [e[0] for e in events] == FILE_STEPS and events[2][1] == events[0][1]
         mine = [flags for name, flags in opened if name.startswith(prefix)]
-        assert len(mine) == 1, (prefix, "opened once, never reopened by name")
-        assert mine[0] & os.O_CREAT and mine[0] & os.O_EXCL
+        # Windows creates through CreateFileW (no os.open at all); POSIX
+        # through one dir_fd-relative os.open. Never a reopen by name.
+        assert len(mine) == (0 if os.name == "nt" else 1), (prefix, mine)
+        assert all(flags & os.O_CREAT and flags & os.O_EXCL for flags in mine)
 
 
 @pytest.mark.parametrize("which", ["vision_token.txt", "dash_token.txt", "deploy_request.key"])
 def test_a_failed_acl_fails_closed_for_that_secret_only(tmp_path, monkeypatch, which):
     root = make_root(tmp_path)
-    tl = Timeline(monkeypatch, rc=lambda p: 5 if p.name.startswith(which) else 0)
+    tl = Timeline(monkeypatch, verified=lambda p: not p.name.startswith(which))
     report = provision(root, **tl.kwargs())
     name = {"vision_token.txt": "vision_token", "dash_token.txt": "dash_token",
             "deploy_request.key": "deploy_key"}[which]
@@ -497,7 +673,7 @@ def test_every_secret_and_scratch_path_is_gitignored():
         assert rel[:2] == ("ops", "runtime"), rel
 
 
-def test_a_concurrent_writer_wins_and_is_kept(tmp_path):
+def test_a_concurrent_writer_wins_and_is_kept(tmp_path, monkeypatch):
     root = make_root(tmp_path)
     target = vision_path(root)
     winner = secrets.token_hex(16)
@@ -505,8 +681,10 @@ def test_a_concurrent_writer_wins_and_is_kept(tmp_path):
     def race(path):
         if path.name.startswith("vision_token.txt"):
             target.write_text(winner + "\n", encoding="ascii")
+        return True
 
-    report = provision(root, restrict=Recorder(side_effect=race))
+    tl = Timeline(monkeypatch, verified=race)
+    report = provision(root, **tl.kwargs())
     assert by_name(report)["vision_token"].state == "present"
     assert first_line(target) == winner
     assert leftover_tmp(root) == []
@@ -517,7 +695,7 @@ def test_a_concurrent_writer_wins_and_is_kept(tmp_path):
 def test_no_hard_links_fails_closed_and_creates_nothing_in_place(tmp_path, monkeypatch, exc):
     root = make_root(tmp_path)
 
-    def no_link(src, dst):
+    def no_link(src, dst, **kw):
         raise exc
 
     monkeypatch.setattr(fr.os, "link", no_link)
@@ -528,7 +706,7 @@ def test_no_hard_links_fails_closed_and_creates_nothing_in_place(tmp_path, monke
     for res in report.results:
         assert res.state == "error" and "hard link" in res.detail, res
         assert not res.path.exists(), "never created in place under an inherited ACL"
-    assert not any(e[1].parent != tl.events[0][1] for e in tl.events if e[0] == "open"), \
+    assert not any(e[1].parent != tl.run_folder() for e in tl.events if e[0] == "open"), \
         "files are only ever opened inside the private folder"
     assert replaced == [] and leftover_tmp(root) == [] and run_dirs(root) == []
 
@@ -538,7 +716,7 @@ def test_no_hard_links_never_touches_a_file_created_in_between(tmp_path, monkeyp
     target = vision_path(root)
     winner = secrets.token_hex(16)
 
-    def no_link_and_a_racer(src, dst):
+    def no_link_and_a_racer(src, dst, **kw):
         if Path(dst) == target:
             target.write_text(winner + "\n", encoding="ascii")   # lands between steps
         raise OSError(errno.EXDEV, "hard links not supported here")
@@ -553,7 +731,7 @@ def test_no_hard_links_never_touches_a_file_created_in_between(tmp_path, monkeyp
 def test_a_link_error_that_is_not_unsupported_does_not_fall_back(tmp_path, monkeypatch):
     root = make_root(tmp_path)
 
-    def denied(src, dst):
+    def denied(src, dst, **kw):
         raise PermissionError(errno.EACCES, "access denied")
 
     monkeypatch.setattr(fr.os, "link", denied)
@@ -616,12 +794,13 @@ def test_restrict_runs_icacls_windowless_with_the_current_user_sid(tmp_path):
     path.write_text("x", encoding="ascii")
     sid = "S-1-5-21-1000-2000-3000-1001"
     assert fr.restrict_to_current_user(path, run=run, windows=True, sid=sid) is True
-    (argv, kw), = calls
-    assert Path(argv[0]).name.lower() in ("icacls", "icacls.exe")
-    assert argv[1] == str(path)
-    assert argv[2:] == ["/inheritance:r", "/grant:r", f"*{sid}:(F)"]
-    assert kw["creationflags"] == fr.CREATE_NO_WINDOW
-    assert kw["stdout"] is subprocess.DEVNULL and kw["timeout"] > 0
+    assert [argv[2:] for argv, _kw in calls] == [
+        ["/inheritance:r", "/grant:r", f"*{sid}:(F)"], ["/setowner", f"*{sid}"]]
+    for argv, kw in calls:
+        assert Path(argv[0]).name.lower() in ("icacls", "icacls.exe")
+        assert argv[1] == str(path)
+        assert kw["creationflags"] == fr.CREATE_NO_WINDOW
+        assert kw["stdout"] is subprocess.DEVNULL and kw["timeout"] > 0
 
 
 def test_restrict_on_a_folder_grants_an_inheritable_ace(tmp_path):
