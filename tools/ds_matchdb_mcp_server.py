@@ -121,6 +121,7 @@ from core.port_handoff import (  # noqa: E402
     STUCK as _HANDOFF_STUCK,
     WINDOW_S as _DEFAULT_HANDOFF_WINDOW_S,
     await_port as _await_port,
+    require_loopback as _require_loopback,
     health_answers as _health_answers,
     json_check as _json_check,
 )
@@ -948,6 +949,12 @@ def serve_forever(host: str = HOST, port: int = PORT) -> int:
     """Bind + serve. Returns an int exit code (mirrors
     agents.daemon_slayer.server.serve_forever so the launcher contract
     matches tools/start_daemon_slayer.py)."""
+    # Local-only (ADR-011): a --host '' / 0.0.0.0 never reaches the bind.
+    try:
+        _require_loopback(host)
+    except ValueError as e:
+        log.error("%s - not started", e)
+        return 1
     # Port hand-off preflight (session 129). This was a one-shot connect
     # probe: "something answers now" meant exit 0, so a start racing a
     # predecessor that was still exiting skipped, the predecessor died, and

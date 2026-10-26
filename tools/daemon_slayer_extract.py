@@ -429,9 +429,11 @@ def _extract_json_parse_string(chunk: str, anchor_substr: str) -> dict:
 # Turbopack module-factory headers. The parameter names are minifier-assigned
 # and re-roll on a lolmath redeploy (16.21.1: `(e,a,t)=>{a.exports=` became
 # `(a,i,e)=>{i.exports=`, `e=>{"use strict";` became `a=>` / `l=>`), so match
-# ANY identifier, never a pinned letter.
+# ANY identifier, never a pinned letter. The comma is REQUIRED between names
+# (never `(?:name,?)+`, which split one identifier many ways: exponential
+# backtracking, CodeQL py/redos alert 65).
 _OBJ_FACTORY_RE = re.compile(
-    r"\d+,\((?:[A-Za-z_$][\w$]*,?)+\)=>\{[A-Za-z_$][\w$]*\.exports="
+    r"\d+,\([A-Za-z_$][\w$]*(?:,[A-Za-z_$][\w$]*)*\)=>\{[A-Za-z_$][\w$]*\.exports="
 )
 _USE_STRICT_FACTORY_RE = re.compile(r'(?<![\w$])[A-Za-z_$][\w$]*=>\{"use strict";')
 
