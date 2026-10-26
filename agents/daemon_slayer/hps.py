@@ -20,7 +20,9 @@ current HP, no buff-uptime tracking). The "average teammate" model is:
   Moonstone chain rides whatever the caster heals/shields)
 
 Formulas live in ``data/daemon_slayer/<patch>/enchanter_items.json`` - a
-hand-curated registry of 10 enchanter items. The engine reads it via
+hand-curated registry of bare SR enchanter items plus their ``22xxxx`` /
+``32xxxx`` mirror rows (counts in ``docs/DAEMON_SLAYER.md``, re-derived by
+``tests/test_docs_ds_module_map_counts_s134d09.py``). The engine reads it via
 :class:`EnchanterFormulasSnapshot` (singleton, mirroring ``abilities.py``).
 
 The total throughput score is::
