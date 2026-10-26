@@ -473,6 +473,65 @@ def test_tft_overlay_lobby_chips_carry_the_hp_band(mock_server, pw_browser):
     assert not errors, f"JS errors [tft lobby healthy]: {errors[:3]}"
 
 
+def test_tft_overlay_chips_are_named_list_items(mock_server, pw_browser):
+    """RM-951 (STRUCTURE / ACCESSIBILITY): the Lobby HP and Board chips are
+    list items, each named in the dashboard lobby row's words ("Opponent, 3
+    HP", "Opponent, out"; a unit "<name>, <n> star"). Before, each chip was a
+    bare div: an aria-label there is prohibited on role generic, so a reader
+    met a run of numbers ("38 36 26 ... OUT") with no subject. Queried by ROLE
+    and accessible NAME in real Chromium, not by attribute, so a label on a
+    role that drops it would fail here. Empty slots are hidden from the list."""
+    ctx, page, errors = _open(pw_browser, mock_server, _fixture("tft_overlay_feed"))
+    try:
+        _wait_tft(page)
+        page.wait_for_function("() => !document.getElementById('ovt-lobby').hidden", timeout=10_000)
+        lobby = page.locator("#ovt-lobby").get_by_role("list")
+        assert lobby.count() == 1
+        items = lobby.get_by_role("listitem")
+        names = [items.nth(i).get_attribute("aria-label") for i in range(items.count())]
+        assert names == [
+            "Opponent, 38 HP", "Opponent, 36 HP", "Opponent, 26 HP", "Opponent, 21 HP",
+            "Opponent, 19 HP", "Opponent, 3 HP", "Opponent, out"], names
+        for n in ("Opponent, 3 HP", "Opponent, out"):
+            assert lobby.get_by_role("listitem", name=n, exact=True).count() == 1, n
+        board = page.locator("#ovt-board").get_by_role("list")
+        assert board.count() == 1
+        units = board.get_by_role("listitem")
+        painted = page.eval_on_selector_all(
+            "#ovt-board .ovt-unit-name", "els => els.map(e => e.textContent).filter(Boolean)")
+        assert 0 < units.count() == len(painted) < 12, (units.count(), painted)
+        assert board.get_by_role("listitem", name=f"{painted[0]}, ", exact=False).count() >= 1
+        box = page.eval_on_selector("#ovt-board", "e => { const r = e.getBoundingClientRect();"
+                                    " return [Math.round(r.width), Math.round(r.height)]; }")
+        # ASCII on every name the chips announce.
+        spoken = page.evaluate(
+            "() => [...document.querySelectorAll('#ovt-lobby [aria-label], #ovt-board [aria-label]')]"
+            ".map(e => e.getAttribute('aria-label')).join('')")
+        assert spoken and all(ord(c) < 128 for c in spoken), spoken
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [tft chip names]: {errors[:3]}"
+    # A short lobby: the unused chip slots read "-" on screen but leave the list.
+    short = _fixture("tft_overlay_feed")
+    short["liveclient"]["players"] = [
+        p for p in short["liveclient"]["players"] if p.get("you") or p["standing"] <= 3]
+    ctx, page, errors = _open(pw_browser, mock_server, short)
+    try:
+        _wait_tft(page)
+        page.wait_for_function("() => !document.getElementById('ovt-lobby').hidden", timeout=10_000)
+        items = page.locator("#ovt-lobby").get_by_role("listitem")
+        assert items.count() == 2
+        assert page.eval_on_selector_all("#ovt-lobby .ovt-opp", "els => els.length") == 7
+        # NO-REFLOW: the a11y attributes never move a box.
+        assert page.eval_on_selector("#ovt-board", "e => { const r = e.getBoundingClientRect();"
+                                     " return [Math.round(r.width), Math.round(r.height)]; }") == box
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [tft short lobby]: {errors[:3]}"
+
+
 def test_tft_overlay_hit_targets_and_tft_menu(mock_server, pw_browser):
     """HIT-TARGETS: widget bodies stay click-through (the only zone inside a TFT
     widget is its drag handle); the launcher menu in TFT lists the TFT panels,

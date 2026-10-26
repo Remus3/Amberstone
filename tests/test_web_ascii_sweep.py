@@ -877,7 +877,20 @@ _WEB = _REPO_ROOT / "web"
 # MERGED 2026-10-27 by the session 144 merger onto main (lane commit ba558b2db): main had moved
 # this pin since the lane base, so the superseded value above is main's and
 # the value below is recomputed over the merged tree.
-_LIVE_HALF_DIGEST = "62da54c55e881d10bc0f1af8758adda98b22b0d6dcdfbc9d74bd84e7ea1d3c15"
+# superseded by the RM-951 re-capture below: "62da54c55e881d10bc0f1af8758adda98b22b0d6dcdfbc9d74bd84e7ea1d3c15"
+#
+# RE-CAPTURED 2026-10-26 at RM-951 (s134 uiux cycle 18). One change rides
+# it: web/js/lib/overlay_tft.js gives the Lobby HP and Board chip grids list
+# semantics (role list / listitem), each lobby row a spoken label, and empty
+# slots aria-hidden. Ordinary case, no tokeniser change. ATTRIBUTED BY
+# SUBSTITUTION: swapping exactly overlay_tft.js back to its fd1dd77aa blob (in
+# memory) reproduces the superseded 9c77befd... value EXACTLY. That path is
+# the whole change. No glyph change: the added lines carry 0 non-ASCII bytes.
+# If another slice re-captures in parallel, the merger recomputes.
+# MERGED 2026-10-27 by the session 144 merger onto main (lane commit 225c49d94): main had moved
+# this pin since the lane base, so the superseded value above is main's and
+# the value below is recomputed over the merged tree.
+_LIVE_HALF_DIGEST = "584a4433974d48bc8e88d5a746c0e9f098c5d5c2d82a46fc5b632695bec37e68"
 
 
 def _web_sources() -> list[Path]:

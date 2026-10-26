@@ -359,7 +359,22 @@ test("lobby: falls back to coach.tft_players when liveclient carries none", () =
     liveclient: { hp: 70 },
     coach: { tft_players: [lobbyRow(2, 70, true), lobbyRow(1, 90)] },
   });
-  assert.deepStrictEqual(m.lobby, [{ text: "90", alive: true, band: "" }]);
+  assert.deepStrictEqual(m.lobby, [{ text: "90", alive: true, band: "", label: "Opponent, 90 HP" }]);
+});
+
+// RM-951: each chip carries its own spoken label in the dashboard lobby
+// row's words (active_match.js _amTftLobbyNode: "Opponent, <n> HP" / "out"),
+// so a bare "8" or "-" is never the whole announcement.
+test("lobby: each opponent chip carries the dashboard lobby row's spoken label", () => {
+  const m = tft.tftOverlayModel({
+    mode_key: "tft",
+    liveclient: { players: [lobbyRow(1, 80, true), lobbyRow(2, 8), lobbyRow(8, 0),
+      { standing: 3, health: null, you: false }] },
+  });
+  assert.deepStrictEqual(
+    m.lobby.map((r) => [r.text, r.label]),
+    [["8", "Opponent, 8 HP"], ["-", "Opponent, HP unknown"], ["OUT", "Opponent, out"]]
+  );
 });
 
 // RM-950: an opponent chip carries the same HP band the dashboard lobby bar
@@ -700,6 +715,47 @@ test("render: data landing fills slots without changing the slot structure", () 
   assert.deepStrictEqual(bands(), ["", "", "", "", "", "", ""]);
   tft.renderTftOverlay(fixture("tft_overlay_feed"));
   assert.deepStrictEqual(bands(), ["low", "low", "low", "low", "crit", "crit", ""]);
+});
+
+// RM-951: the Lobby HP and Board chip grids are lists. An aria-label on a
+// bare div (role generic) is prohibited in ARIA 1.2 and dropped by screen
+// readers, so the chips are listitems carrying the label; an empty slot is
+// aria-hidden so the list counts only real chips, and a later tick that fills
+// the slot un-hides it again.
+test("render: lobby and board chips are labelled list items, empty slots hidden", () => {
+  const lobby = dom.doc.getElementById("ovt-lobby");
+  const board = dom.doc.getElementById("ovt-board");
+  tft.renderTftOverlay(fixture("tft_overlay_feed"));
+  assert.strictEqual(lobby.querySelector(".ovt-opps").getAttribute("role"), "list");
+  const chips = lobby.querySelectorAll(".ovt-opp");
+  assert.ok(chips.every((c) => c.getAttribute("role") === "listitem"));
+  assert.deepStrictEqual(chips.map((c) => c.getAttribute("aria-label")), [
+    "Opponent, 38 HP", "Opponent, 36 HP", "Opponent, 26 HP", "Opponent, 21 HP",
+    "Opponent, 19 HP", "Opponent, 3 HP", "Opponent, out",
+  ]);
+  assert.ok(chips.every((c) => c.getAttribute("aria-hidden") === null));
+  // a short lobby: the unused slots read "-" visually and are hidden from AT
+  const short = fixture("tft_overlay_feed");
+  short.liveclient.players = short.liveclient.players.filter((p) => p.you || p.standing <= 3);
+  tft.renderTftOverlay(short);
+  const filled = chips.filter((c) => c.getAttribute("aria-hidden") === null);
+  assert.strictEqual(filled.length, short.liveclient.players.length - 1);
+  for (const c of chips.slice(filled.length)) {
+    assert.strictEqual(c.getAttribute("aria-hidden"), "true");
+    assert.strictEqual(c.getAttribute("aria-label"), null);
+  }
+  tft.renderTftOverlay(fixture("tft_overlay_feed"));
+  assert.ok(chips.every((c) => c.getAttribute("aria-hidden") === null), "refill un-hides");
+  // Board: units are labelled list items; the empty geometry slots are hidden.
+  assert.strictEqual(board.querySelector(".ovt-units").getAttribute("role"), "list");
+  const units = board.querySelectorAll(".ovt-unit");
+  assert.ok(units.every((u) => u.getAttribute("role") === "listitem"));
+  const named = units.filter((u) => u.getAttribute("aria-hidden") === null);
+  assert.ok(named.length > 0 && named.length < units.length, "precondition: some empty slots");
+  for (const u of named) assert.match(u.getAttribute("aria-label") || u.textContent, /\S/);
+  for (const u of units.filter((x) => x.getAttribute("aria-hidden") === "true")) {
+    assert.strictEqual(u.querySelector(".ovt-unit-name").textContent, "");
+  }
 });
 
 test("menu: in TFT the launcher menu lists the TFT panels under 'TFT PANELS'", () => {

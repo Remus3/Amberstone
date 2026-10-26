@@ -188,7 +188,9 @@ function _boardUnits(lc, c) {
 // the local row (you: true) is dropped - the vitals already carry it. Sorted
 // alive by HP, then unknown HP ("-"), then eliminated (health 0 -> "OUT").
 // Each chip carries the tftHpBand of its HP, the band the dashboard lobby bar
-// paints for the same row (RM-950); "-" and OUT carry none.
+// paints for the same row (RM-950); "-" and OUT carry none. Each chip also
+// carries its spoken label in the dashboard lobby row's words (RM-951,
+// active_match.js _amTftLobbyNode), so a bare "8" is never the announcement.
 // null when there are no opponent rows (the panel stays hidden).
 function _lobby(lc, c) {
   const list = [lc.players, c.tft_players].find((l) => Array.isArray(l) && l.length);
@@ -206,6 +208,8 @@ function _lobby(lc, c) {
     text: r.rank === 2 ? "OUT" : r.hp === null ? DASH : String(r.hp),
     alive: r.rank !== 2,
     band: tftHpBand(r.hp),
+    label: r.rank === 2 ? "Opponent, out"
+      : r.hp === null ? "Opponent, HP unknown" : `Opponent, ${r.hp} HP`,
   }));
 }
 
@@ -221,7 +225,7 @@ export function isTftState(st) {
  * @returns {{active:boolean, source:string, time:string,
  *   vitals:{key:string,label:string,text:string,major:boolean,band:string}[],
  *   board:{count:string, units:{name:string,star:number}[], overflow:number},
- *   lobby:null|{text:string,alive:boolean,band:string}[]}}
+ *   lobby:null|{text:string,alive:boolean,band:string,label:string}[]}}
  */
 export function tftOverlayModel(st) {
   const s = _obj(st);
@@ -446,6 +450,16 @@ function _setData(node, key, val) {
   }
 }
 
+// Sets an attribute, or removes it for "" / null (no rewrite when unchanged).
+function _setAttr(node, name, val) {
+  if (!node || !node.setAttribute) return;
+  if (val === "" || val === null || val === undefined) {
+    if (node.getAttribute(name) !== null) node.removeAttribute(name);
+  } else if (node.getAttribute(name) !== String(val)) {
+    node.setAttribute(name, String(val));
+  }
+}
+
 function _toggleClass(node, cls, on) {
   if (node && node.classList) node.classList.toggle(cls, !!on);
 }
@@ -505,9 +519,13 @@ function _buildBoard(doc, body) {
   head.appendChild(_el(doc, "span", "ovt-title", "Board"));
   head.appendChild(_el(doc, "span", "ovt-time", DASH));
   body.appendChild(head);
+  // RM-951: the chip grids are lists, so each chip's aria-label is read (a
+  // label on a bare div, role generic, is prohibited and dropped).
   const grid = _el(doc, "div", "ovt-units");
+  grid.setAttribute("role", "list");
   for (let i = 0; i < BOARD_SLOTS; i += 1) {
     const u = _el(doc, "div", "ovt-unit is-empty");
+    u.setAttribute("role", "listitem");
     u.appendChild(_el(doc, "span", "ovt-unit-name", ""));
     const stars = _el(doc, "span", "ovt-stars");
     for (let k = 0; k < 3; k += 1) {
@@ -526,7 +544,12 @@ function _buildLobby(doc, body) {
   head.appendChild(_el(doc, "span", "ovt-title", "Lobby HP"));
   body.appendChild(head);
   const grid = _el(doc, "div", "ovt-opps");
-  for (let i = 0; i < LOBBY_SLOTS; i += 1) grid.appendChild(_el(doc, "div", "ovt-opp", DASH));
+  grid.setAttribute("role", "list");
+  for (let i = 0; i < LOBBY_SLOTS; i += 1) {
+    const chip = _el(doc, "div", "ovt-opp", DASH);
+    chip.setAttribute("role", "listitem");
+    grid.appendChild(chip);
+  }
   body.appendChild(grid);
 }
 
@@ -568,8 +591,9 @@ function _renderBoard(el, m) {
       const want = k >= star;
       if (pips[k].hidden !== want) pips[k].hidden = want;
     }
-    if (u) slot.setAttribute("aria-label", `${u.name}, ${u.star} star`);
-    else slot.removeAttribute("aria-label");
+    _setAttr(slot, "aria-label", u ? `${u.name}, ${u.star} star` : "");
+    // an empty geometry slot leaves the list (RM-951)
+    _setAttr(slot, "aria-hidden", text ? "" : "true");
   }
   el.setAttribute("aria-label", "TFT board");
 }
@@ -583,6 +607,10 @@ function _renderLobby(el, m) {
     _setText(cells[i], r ? r.text : DASH);
     _toggleClass(cells[i], "is-out", !!(r && !r.alive));
     _setData(cells[i], "band", r ? r.band : "");
+    // RM-951: named in the dashboard row's words; an unused slot paints "-"
+    // but leaves the list, so the list counts only real opponents.
+    _setAttr(cells[i], "aria-label", r ? r.label : "");
+    _setAttr(cells[i], "aria-hidden", r ? "" : "true");
   }
   el.setAttribute("aria-label", "TFT lobby HP");
 }
