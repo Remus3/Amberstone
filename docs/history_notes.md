@@ -41,6 +41,18 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-25b - session 134: scoped TFT session - standalone TFT client, Augur engine, RM-615 / RM-616 / RM-699, three 1st-place QA reports
+
+- **Operator steers:** TFT only today; plays without interacting, wants terse output and a TFT QA after each match; "keep updates push commits locally for now" (NO push this session); "global frozen edit allowed" (session-scoped, re-confirm next session); engine name "Augur" provisional ("Hexwright" rejected; alternatives Rollwise, Tempo).
+- **Shipped on LOCAL main (LEDGER 1861-1881, mergers M1a-M1c, each verifier-gated):** F1 read-back of dispatch `40189033501` (2 RM-816 rename cases -> RM-885 `4113b0039`; RM-886 filed); LT-01 / LT-02 (L4-L9) / LT-04 `a64f90c67`, LT-03 `2f254da18` (LT-02r residual filed); RM-292 (b) + (d); T1; P0 standalone TFT client `852b85e4b..8f9b531f4` (live PASS); overlay toggle `d93834b8e..06777e6ab`; TFT program spec + ADR-018 `5004e7986` (`docs/TFT_PROGRAM.md`); M1c: RM-699 hot-reload, TFT-06, TFT-03, RM-616 + QA D4 / D5 / N4, SCOUT, TFT-13 (engine `tft/engine`), RM-615 stage gate, guard fixes `ff711999b` / `4e764a167` / `e9753d41c`; M1d (LEDGER 1882, merger terminated by the usage limit after landing): S18-COACH, TFT-01, GATE `abff87f9d..04a39e5a0`, gated suite 1 failed (socket-abort flake, file 76/76 alone) / 44755 passed.
+- **Live:** QA of matches 1-3 (`ops/runtime/tft_qa/20261025-070350`, `-081234`, `-085349`; all 1st place); LCU TFT inventory, restart and Anthropic-400 diagnoses (`ops/runtime/tft_qa/`). D1 fixed: the RC Anthropic key was not workspace-scoped (every call 400'd); a new workspace key is in `API-Key-Claude.txt`, RC pid 20788, vision bounced 20036 -> 27176.
+- **Not landed at /done (branches carried in the hand-off; builders INTERRUPTED by the usage limit, work saved in their worktrees):** P0-F `s134-tft-board-panel` 67fbc3ca0 (verified x3, ff-ready), seven s134 headless lanes (local commits only), N8 / N9 / TFT-02 / TFT-04 / TFT-08 / TFT-09 builders.
+- **Blocked:** GH1 rewrite of the 3 origin web-UI riot.txt commits halted at the scope gate (kit plan = 20 commits / 1401 SHAs, approved 3); the Riot key 403s on TFT-Match-V1 / TFT-League-V1 (operator act).
+- **Do NOT redo:** everything above; the next push MERGES origin/main (never rebase / reset local main) and never deletes `riot.txt`.
+- **Next:** land P0-F + the lane commits, resume the interrupted builders, then push (merge origin/main first, `fleet_gitlock`, `tools/bot_merge_check.py`).
+
+---
+
 # 2026-10-25 - session 133: upstream + DS 1.290.0 + TFT Set 18 ingest, A1-A27 shipped, three headless lanes
 
 - **Operator steers:** check upstream / scheduled tasks / lolmath / engines / TFT; expand DS; then headless research + queue + gated lanes (account 2) while away, every hook and spawn window-silent; interrupt 2026-10-25 "finish up current; i want to work on tft specifically today".
