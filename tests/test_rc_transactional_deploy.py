@@ -131,6 +131,54 @@ class ContainedPathTests(unittest.TestCase):
         with self.assertRaises(D.DeployPathError):
             D.contained_path(self.root, {"not": "a path"})
 
+    def test_rejects_a_contained_dotdot_alias(self) -> None:
+        # Stays inside, but the checked name is not the written name.
+        with self.assertRaises(D.DeployPathError) as ctx:
+            D.contained_path(self.root, "sub/../file.py")
+        self.assertIn("alias", str(ctx.exception))
+
+    def test_rejects_a_junction_or_symlink_alias(self) -> None:
+        # PKG-2 fix round: `ops/FLEET_~1/x` style aliases (8.3 names,
+        # junctions, symlinks) resolve elsewhere inside the root.
+        target = self.root / "real_dir"
+        target.mkdir()
+        link = self.root / "alias_dir"
+        try:
+            if os.name == "nt":
+                import _winapi
+                _winapi.CreateJunction(str(target), str(link))
+            else:
+                os.symlink(target, link)
+        except (OSError, ImportError, AttributeError):
+            self.skipTest("cannot create a link here")
+        with self.assertRaises(D.DeployPathError) as ctx:
+            D.contained_path(self.root, "alias_dir/evil.py")
+        self.assertIn("alias", str(ctx.exception))
+
+    def test_rejects_an_8dot3_short_name_alias(self) -> None:
+        # `ops/FLEET_~1/evil.py` landed in ops/fleet_kit (independent check,
+        # PKG-2): resolve() expands the short name, the parts differ.
+        if os.name != "nt":
+            self.skipTest("8.3 short names are Windows only")
+        import ctypes
+        long_dir = self.root / "fleet_kit_with_a_long_name"
+        long_dir.mkdir()
+        buf = ctypes.create_unicode_buffer(1024)
+        if not ctypes.windll.kernel32.GetShortPathNameW(str(long_dir), buf, 1024):
+            self.skipTest("no short name")
+        short = Path(buf.value).name
+        if short.lower() == long_dir.name.lower():
+            self.skipTest("this volume does not generate 8.3 names")
+        with self.assertRaises(D.DeployPathError) as ctx:
+            D.contained_path(self.root, f"{short}/evil.py")
+        self.assertIn("alias", str(ctx.exception))
+
+    def test_case_alone_is_not_an_alias(self) -> None:
+        (self.root / "sub" / "File.py").write_text("x", encoding="utf-8")
+        if os.name == "nt":
+            got = D.contained_path(self.root, "SUB/file.py")
+            self.assertEqual(got.name.casefold(), "file.py")
+
 
 class DeployPathEscapeTests(_TmpTreeCase):
     """A deploy request must not be able to write outside project_root nor
@@ -166,7 +214,7 @@ class DeployPathEscapeTests(_TmpTreeCase):
         # root copies that secret INTO the project tree, where the dashboard
         # static route would then serve it.
         secret = self.outside / "API-Key-Claude.txt"
-        secret.write_text("sk-ant-SECRET-VALUE", encoding="utf-8")
+        secret.write_text("sk-ant-SECRET-VALUE", encoding="utf-8")  # rc-credential-scan: allow-fixture
         req = self._write_request({
             "request_id": "esc3",
             "files": [{"staged": str(secret), "live": "web/leaked.txt"}],
@@ -197,7 +245,7 @@ class SecretExclusionTests(_TmpTreeCase):
     not implemented."""
 
     def test_api_key_file_cannot_be_deployed(self) -> None:
-        self._stage("API-Key-Claude.txt", "sk-ant-INJECTED")
+        self._stage("API-Key-Claude.txt", "sk-ant-INJECTED")  # rc-credential-scan: allow-fixture
         req = self._write_request({
             "request_id": "sec1",
             "files": [{"staged": "API-Key-Claude.txt",
@@ -210,7 +258,7 @@ class SecretExclusionTests(_TmpTreeCase):
         self.assertNotIn("INJECTED", json.dumps(result))
 
     def test_api_key_file_cannot_be_deployed_case_insensitively(self) -> None:
-        self._stage("api-key-claude.TXT", "sk-ant-INJECTED")
+        self._stage("api-key-claude.TXT", "sk-ant-INJECTED")  # rc-credential-scan: allow-fixture
         req = self._write_request({
             "request_id": "sec2",
             "files": [{"staged": "api-key-claude.TXT",
@@ -640,6 +688,219 @@ class RequestAuthTests(_TmpTreeCase):
         before = self.key_path.read_bytes()
         D.ensure_key(self.key_path)
         self.assertEqual(self.key_path.read_bytes(), before)
+
+
+class FreshnessAndReplayTests(_TmpTreeCase):
+    """PKG-2 fix round. A signed request carries `request_id` and a validity
+    window (`issued_at` .. `expires_at`, at most MAX_TTL_S) inside the signed
+    body, and every id is claimed once in a used-id ledger kept beside the
+    key: an expired, future-dated, over-long or replayed request is refused
+    at `auth`, before any path is read."""
+
+    def _victim(self) -> Path:
+        victim = self.project / "core" / "victim.py"
+        victim.parent.mkdir(parents=True, exist_ok=True)
+        victim.write_text("ORIGINAL = 1\n", encoding="utf-8")
+        self._stage("victim.py", "PWNED = 1\n")
+        return victim
+
+    def _body(self, **extra) -> dict:
+        body = {"request_id": "f1", "project_root": str(self.project),
+                "staging_root": str(self.staging), "runtime_dir": str(self.runtime),
+                "health_timeout_seconds": 0.05,
+                "files": [{"live": "core/victim.py", "staged": "victim.py"}]}
+        body.update(extra)
+        return body
+
+    def _hand_signed(self, body: dict) -> Path:
+        """Sign WITHOUT sign_request's stamping - a legacy or hostile shape."""
+        import hashlib
+        import hmac
+        key = D._read_key(self.key_path)
+        out = dict(body)
+        out["signature"] = hmac.new(key, D._canonical(out), hashlib.sha256).hexdigest()
+        self.request_path.write_text(json.dumps(out), encoding="utf-8")
+        return self.request_path
+
+    def test_sign_request_stamps_id_window_and_staged_hashes(self) -> None:
+        import hashlib
+        import time
+        self._victim()
+        t0 = time.time()
+        body = self._body()
+        del body["request_id"]
+        req = D.sign_request(body, self.key_path)
+        D.verify_request(req, self.key_path)
+        self.assertTrue(isinstance(req["request_id"], str) and req["request_id"])
+        self.assertLessEqual(abs(req["issued_at"] - t0), 5)
+        self.assertEqual(req["expires_at"] - req["issued_at"], D.DEFAULT_TTL_S)
+        self.assertEqual(req["files"][0]["sha256"], hashlib.sha256(
+            (self.staging / "victim.py").read_bytes()).hexdigest())
+
+    def test_sign_request_never_hashes_outside_the_staging_root(self) -> None:
+        secret = self.outside / "secret.txt"
+        secret.write_text("value", encoding="utf-8")
+        req = D.sign_request(self._body(files=[{"live": "x.txt", "staged": str(secret)}]),
+                             self.key_path)
+        self.assertNotIn("sha256", req["files"][0])
+
+    def test_a_request_with_no_window_is_refused(self) -> None:
+        victim = self._victim()
+        body = self._body()
+        body["files"][0]["sha256"] = "0" * 64
+        result = D.do_deploy(self._hand_signed(body))
+        self.assertEqual(result["phase"], "auth")
+        self.assertIn("freshness", result["error"])
+        self.assertEqual(victim.read_text(encoding="utf-8"), "ORIGINAL = 1\n")
+
+    def test_an_expired_request_is_refused(self) -> None:
+        import time
+        victim = self._victim()
+        req = D.sign_request(self._body(), self.key_path,
+                             now=time.time() - D.DEFAULT_TTL_S - 60)
+        self.request_path.write_text(json.dumps(req), encoding="utf-8")
+        result = D.do_deploy(self.request_path)
+        self.assertEqual(result["phase"], "auth")
+        self.assertIn("expired", result["error"])
+        self.assertEqual(victim.read_text(encoding="utf-8"), "ORIGINAL = 1\n")
+
+    def test_a_future_dated_request_is_refused(self) -> None:
+        import time
+        req = D.sign_request(self._body(), self.key_path,
+                             now=time.time() + D.CLOCK_SKEW_S + 600)
+        self.request_path.write_text(json.dumps(req), encoding="utf-8")
+        result = D.do_deploy(self.request_path)
+        self.assertEqual(result["phase"], "auth")
+        self.assertIn("future", result["error"])
+
+    def test_an_over_long_window_is_refused(self) -> None:
+        import time
+        t = time.time()
+        result = D.do_deploy(self._hand_signed(self._body(
+            issued_at=t, expires_at=t + D.MAX_TTL_S + 60)))
+        self.assertEqual(result["phase"], "auth")
+        self.assertIn("window", result["error"])
+
+    def test_sign_request_caps_the_ttl(self) -> None:
+        req = D.sign_request(self._body(), self.key_path, ttl_seconds=10 ** 9)
+        self.assertEqual(req["expires_at"] - req["issued_at"], D.MAX_TTL_S)
+
+    def test_the_same_signed_bytes_are_refused_the_second_time(self) -> None:
+        victim = self._victim()
+        req = self._write_request(self._body(request_id="replay-1"))
+        signed = req.read_bytes()
+        first = D.do_deploy(req)   # no heartbeat here: rolls back, id consumed
+        self.assertEqual(first["phase"], "health_check")
+        self.request_path.write_bytes(signed)
+        second = D.do_deploy(self.request_path)
+        self.assertEqual(second["phase"], "auth")
+        self.assertIn("already used", second["error"])
+        self.assertEqual(victim.read_text(encoding="utf-8"), "ORIGINAL = 1\n")
+
+    def test_the_ledger_lives_beside_the_key(self) -> None:
+        D.do_deploy(self._write_request(self._body(request_id="ledger-1")))
+        ledger = D.ledger_path_for(self.key_path)
+        self.assertEqual(ledger.parent, self.key_path.parent)
+        lines = [json.loads(x) for x in ledger.read_text(encoding="ascii").splitlines()]
+        self.assertEqual([x["id"] for x in lines], ["ledger-1"])
+
+    def test_a_racing_claim_that_appended_second_loses(self) -> None:
+        ledger = D.ledger_path_for(self.key_path)
+        ledger.write_text(json.dumps({"id": "race", "nonce": "other"}) + "\n",
+                          encoding="ascii")
+        with self.assertRaises(D.DeployAuthError):
+            D.claim_request_id({"request_id": "race", "signature": "x"}, ledger)
+
+    def test_a_torn_ledger_tail_does_not_swallow_the_next_claim(self) -> None:
+        ledger = D.ledger_path_for(self.key_path)
+        ledger.write_bytes(b'{"id": "torn", "non')
+        D.claim_request_id({"request_id": "fresh", "signature": "x"}, ledger)
+        with self.assertRaises(D.DeployAuthError):
+            D.claim_request_id({"request_id": "fresh", "signature": "x"}, ledger)
+
+    def test_a_request_without_an_id_is_refused(self) -> None:
+        body = self._body()
+        del body["request_id"]
+        import time
+        t = time.time()
+        body.update(issued_at=t, expires_at=t + 60)
+        result = D.do_deploy(self._hand_signed(body))
+        self.assertEqual(result["phase"], "auth")
+        self.assertIn("request_id", result["error"])
+
+
+class StagedIntegrityTests(_TmpTreeCase):
+    """PKG-2 fix round. Every file entry carries the signed sha256 of its
+    staged bytes; the worker checks it before anything is touched AND copies
+    from the very bytes it hashed, so a swap between signing and copying (or
+    between the check and the copy) never reaches a live file."""
+
+    def _victim(self) -> Path:
+        victim = self.project / "core" / "victim.py"
+        victim.parent.mkdir(parents=True, exist_ok=True)
+        victim.write_text("ORIGINAL = 1\n", encoding="utf-8")
+        self._stage("victim.py", "SAFE = 1\n")
+        return victim
+
+    def test_a_file_entry_without_a_signed_sha256_is_refused(self) -> None:
+        victim = self._victim()
+        req = self._write_request({
+            "request_id": "s1",
+            "files": [{"live": "core/victim.py", "staged": "victim.py",
+                       "sha256": "not-a-hash"}]})
+        result = D.do_deploy(req)
+        self.assertEqual(result["phase"], "validate")
+        self.assertIn("sha256", result["error"])
+        self.assertEqual(victim.read_text(encoding="utf-8"), "ORIGINAL = 1\n")
+
+    def test_a_staged_file_swapped_after_signing_is_refused_before_any_copy(self) -> None:
+        victim = self._victim()
+        req = self._write_request({
+            "request_id": "s2",
+            "files": [{"live": "core/victim.py", "staged": "victim.py"}]})
+        self._stage("victim.py", "PWNED = 1\n")
+        result = D.do_deploy(req)
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["phase"], "integrity")
+        self.assertEqual(victim.read_text(encoding="utf-8"), "ORIGINAL = 1\n")
+        self.assertFalse((self.project / "ops" / "backups").exists())
+
+    def test_a_swap_between_the_check_and_the_copy_rolls_back(self) -> None:
+        victim = self._victim()
+        self._stage("added.py", "ADDED = 1\n")
+        req = self._write_request({
+            "request_id": "s3",
+            "files": [{"live": "added.py", "staged": "added.py"},
+                      {"live": "core/victim.py", "staged": "victim.py"}]})
+        real = D.compile_python_files
+
+        def swap_then_compile(paths):
+            out = real(paths)
+            self._stage("victim.py", "PWNED = 1\n")   # after the hash check
+            return out
+        D.compile_python_files = swap_then_compile
+        try:
+            result = D.do_deploy(req)
+        finally:
+            D.compile_python_files = real
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["phase"], "integrity")
+        self.assertTrue(result["rollback"])
+        self.assertEqual(victim.read_text(encoding="utf-8"), "ORIGINAL = 1\n")
+        self.assertFalse((self.project / "added.py").exists())
+
+    def test_copy_verified_publishes_only_the_hashed_bytes(self) -> None:
+        import hashlib
+        src = self.staging / "x.txt"
+        src.write_bytes(b"good")
+        dst = self.project / "x.txt"
+        D.copy_verified(src, dst, hashlib.sha256(b"good").hexdigest())
+        self.assertEqual(dst.read_bytes(), b"good")
+        with self.assertRaises(D.DeployIntegrityError):
+            D.copy_verified(src, self.project / "y.txt", "0" * 64)
+        self.assertFalse((self.project / "y.txt").exists())
+        self.assertEqual([p.name for p in self.project.iterdir()
+                          if p.name.endswith(".tmp")], [])
 
 
 if __name__ == "__main__":
