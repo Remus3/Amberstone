@@ -456,6 +456,25 @@ test("model: an eliminated local player (read hp <= 0 at a valid place) reads OU
   assert.strictEqual(vit(live).hp, "4", "alive at 8th keeps its HP");
 });
 
+// RM-943: the OUT read pairs each hp with the placement from the SAME source
+// (liveclient with liveclient, coach with coach). Before, the first finite hp
+// was paired with the first valid placement of EITHER source, so a liveclient
+// game-start placeholder (hp / standing -1, QA N10) beside a valid coach
+// placement read "OUT" for a live player.
+test("model: OUT pairs hp with its own source's placement, never a placeholder with the other's", () => {
+  const st = fixture("tft_overlay_live");
+  st.liveclient = { ...st.liveclient, hp: -1, standing: -1 };
+  const m = tft.tftOverlayModel(st);
+  assert.deepStrictEqual([vit(m).hp, vit(m).place], ["96", "#2"],
+    "placeholder liveclient beside a live coach copy: the coach HP, not OUT");
+  const lcFirst = tft.tftOverlayModel({ mode_key: "tft",
+    liveclient: { hp: 96, standing: 2 }, coach: { hp: -9, health: 10, standing: 8 } });
+  assert.strictEqual(vit(lcFirst).hp, "96", "a paired liveclient read outranks the coach copy");
+  const coachPaired = tft.tftOverlayModel({ mode_key: "tft",
+    liveclient: { hp: -1, standing: -1 }, coach: { hp: -9, health: 10, standing: 8 } });
+  assert.strictEqual(vit(coachPaired).hp, "OUT", "a paired coach read <= 0 is still the elimination");
+});
+
 // S136 T11: the coach payload carries null for an UNKNOWN health / level / gold
 // (tft/tft_coach_engine.py _write_fields; it used to write the placeholders
 // health 100, level 1, gold 0). null is the no-data "-" (plain ASCII hyphen);

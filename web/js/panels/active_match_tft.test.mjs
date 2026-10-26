@@ -145,6 +145,24 @@ test("an eliminated local player (hp <= 0 at a valid place) reads OUT", () => {
   assert.strictEqual(alive.rows[2][1], "4");
 });
 
+// RM-943: OUT pairs the hp read with the placement from the SAME source.
+// The lobby you-row is a fallback for the placement only; it never pairs with
+// the envelope's hp. A game-start placeholder (hp / standing -1, QA N10)
+// beside a lobby you-row is not an elimination; the you-row's OWN health 0
+// at its own placement is.
+test("OUT never pairs the envelope hp with the lobby you-row placement", () => {
+  const lobby = (youHp) => [
+    { standing: 1, health: 70 }, { standing: 3, health: youHp, you: true }, { standing: 8, health: 0 },
+  ];
+  const ph = amLiveFallbackModel("tft", "InProgress", { hp: -1, standing: -1, tft_players: lobby(64) });
+  assert.strictEqual(ph.place, 3, "the you-row still supplies the placement");
+  assert.strictEqual(ph.rows[2][1], "-", "placeholder hp beside a live you-row: no data, not OUT");
+  const youOut = amLiveFallbackModel("tft", "InProgress", { hp: -1, standing: -1, tft_players: lobby(0) });
+  assert.strictEqual(youOut.rows[2][1], "OUT", "the you-row's own health 0 at its place is out");
+  const own = amLiveFallbackModel("tft", "InProgress", { hp: -9, standing: 3, tft_players: lobby(64) });
+  assert.strictEqual(own.rows[2][1], "OUT", "a paired envelope read wins over the you-row");
+});
+
 test("implausible / garbage values fall back to '-'", () => {
   const m = amLiveFallbackModel("tft", "InProgress",
     { stage_round: "<b>9-9</b>", level: 6, hp: "x", gold: -4 });

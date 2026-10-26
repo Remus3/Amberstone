@@ -1152,11 +1152,16 @@ export function amLiveFallbackModel(mode, phase, payload) {
   const board = _amTftBoard(p);
   const players = _amTftLobby(p);
   const youRow = players.find((r) => r.you);
-  const place = _amIntIn(p.standing, 1, 8) || (youRow ? youRow.place : null);
+  const ownPlace = _amIntIn(p.standing, 1, 8);
+  const place = ownPlace || (youRow ? youRow.place : null);
   // RM-942: a read hp <= 0 at a valid placement is the elimination (real
   // run: hp -9 at standing 8), "OUT" - not the no-data "-". Without a placement
   // it stays the producer's zero / -1 default.
-  const out = place !== null && typeof hpRaw === "number" && Number.isFinite(hpRaw) && hpRaw <= 0;
+  // RM-943: the hp pairs with its OWN source's placement: the envelope hp
+  // with p.standing, else the lobby you-row's health with its own standing.
+  const out = ownPlace !== null
+    ? typeof hpRaw === "number" && Number.isFinite(hpRaw) && hpRaw <= 0
+    : !!(youRow && youRow.place !== null && youRow.hp === 0);
   const asOf = _amTftAsOf(p);
   const hasData = !!(stage || level || hp || board.length || players.length || place);
   const dash = (v) => (v === null ? "-" : String(v));

@@ -247,6 +247,23 @@ def test_tft_overlay_eliminated_player_reads_out(mock_server, pw_browser):
     assert sizes["live"] == sizes["eliminated"], sizes
 
 
+def test_tft_overlay_placeholder_liveclient_beside_coach_is_not_out(mock_server, pw_browser):
+    """RM-943: the HP cell pairs each hp read with its OWN source's
+    placement. A liveclient game-start placeholder (hp / standing -1, QA N10)
+    beside a live coach copy (hp 96 at #2) paints the coach's 96 at #2, never
+    "OUT" from the placeholder hp joined to the coach's placement."""
+    st = _fixture("tft_overlay_live")
+    st = {**st, "liveclient": {**st["liveclient"], "hp": -1, "standing": -1}}
+    ctx, page, errors = _open(pw_browser, mock_server, st)
+    try:
+        _wait_tft(page)
+        assert [_val(page, k) for k in ("hp", "place")] == ["96", "#2"]
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors: {errors[:3]}"
+
+
 def _with_engine_unknown_coach(st, tmp_path):
     """``st`` with the coach envelope /api/state serves when the TFT engine
     wrote HP / level / gold UNKNOWN (s136 T11): the engine's own write

@@ -220,8 +220,11 @@ export function tftOverlayModel(st) {
   // own health is then a stale vision read (real run: hp -9 at #8 painted
   // "HP 10", later "HP 100"). Without a placement it is the game-start
   // placeholder (QA N10: hp / standing -1) and falls through as before.
-  const read = [lc.hp, c.hp].find((v) => typeof v === "number" && Number.isFinite(v));
-  const out = place !== null && read !== undefined && read <= 0;
+  // RM-943: each hp pairs with its OWN source's placement (liveclient
+  // first), so a liveclient placeholder never joins the coach's placement.
+  const paired = [lc, c].find((o) => typeof o.hp === "number" && Number.isFinite(o.hp)
+    && firstIn([o.standing], 1, 8) !== null);
+  const out = paired !== undefined && paired.hp <= 0;
   const hp = out ? null : firstIn([lc.hp, c.hp, c.health], 1, 100);
   const alive = firstIn([lc.players_alive, c.players_alive], 1, 8);
   const stage = stageOf(lc.stage_round ? lc : c);

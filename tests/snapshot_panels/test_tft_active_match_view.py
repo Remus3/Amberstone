@@ -538,3 +538,34 @@ def test_eliminated_player_strip_reads_out(mock_server, pw_browser):
         page.close()
         ctx.close()
     assert not errors, f"JS errors: {errors[:3]}"
+
+
+def test_placeholder_hp_beside_lobby_you_row_is_not_out(mock_server, pw_browser):
+    """RM-943: OUT pairs the hp read with the placement from the SAME source.
+    A game-start placeholder (hp / standing -1, QA N10) beside a lobby you-row
+    at 3rd with 64 HP paints the no-data "-" (dimmed), never "OUT"; the you-row
+    still supplies the placement in the sub line."""
+    data = copy.deepcopy(_load("tft_live_s134"))
+    data["coach"].update({
+        "hp": -1, "standing": -1, "stage_round": "3-2",
+        "tft_players": [
+            {"standing": 1, "health": 70}, {"standing": 3, "health": 64, "you": True},
+            {"standing": 8, "health": 0},
+        ],
+    })
+    ctx, page, errors = _open(mock_server, pw_browser, data)
+    try:
+        _wait_fallback(page, "tft")
+        page.wait_for_function(
+            "() => (document.getElementById('am-sub') || {}).textContent"
+            " === 'TFT - stage 3-2 - 3rd of 3 - phase InProgress'",
+            timeout=_LIVE_TICK_MS,
+        )
+        assert _stat_cells(page) == [
+            ["STAGE", "3-2", False], ["LEVEL", "-", True],
+            ["HP", "-", True], ["GOLD", "-", True],
+        ]
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors: {errors[:3]}"
