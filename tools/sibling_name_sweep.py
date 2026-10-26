@@ -268,6 +268,10 @@ _ALLOW_SEGMENTS = frozenset(
         "RC-CIWatchdog",
         "RC-Recordings",
         "Peer-Bridge",
+        # the fleet sidecar root (kit v22 fleet_lanes.SIDECAR_DEFAULT; holds
+        # per-tree <CODE> dirs, never a sibling checkout). Kit files are
+        # byte-pinned, so RC cannot redact the literal there.
+        "Sidecars",
         # OS roots
         "Users",
         "Program Files",

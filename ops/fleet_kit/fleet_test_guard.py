@@ -37,10 +37,20 @@ install() adds two autouse fixtures to the conftest namespace:
     runtime root from the environment writes under tmp. Requests tmp_path
     only when env_roots is non-empty.
     NOTE (v14, SS 2239 b): with env_roots non-empty this autouse fixture
-    requests tmp_path and monkeypatch for EVERY test, so both are in every
-    test's fixture closure: `"tmp_path" in request.fixturenames` is always
-    True. A test or fixture that branches on request.fixturenames must not
-    use tmp_path / monkeypatch as its signal.
+    requests tmp_path for EVERY test, so it is in every test's fixture
+    closure: `"tmp_path" in request.fixturenames` is always True. A test or
+    fixture that branches on request.fixturenames must not use tmp_path as
+    its signal.
+    v21 (CS FIX 2026-10-19-2356 item 1): the kit's autouse fixtures never
+    request the shared monkeypatch; each patches through its own private
+    pytest.MonkeyPatch(), undone at that fixture's own teardown, and
+    _fleet_runtime_roots requests tmp_path BEFORE it patches, so tmp_path's
+    teardown never runs while the kit's patches are live.
+    v21 (items 2 and 3): IGNORE holds fleet_board's render state
+    (ops/loop/control/board/state.json and status.json), and no ignore glob
+    hides a path the tree declares in ops/stop_sentinels.json: a declared
+    stop sentinel created, changed or removed by a suite always fails it.
+    v23: IGNORE adds ops/loop/control/board/board.html (the local board).
 env FLEET_TEST_GUARD=off disables both (never in a gate run).
 
 v16 (KIT-16), OPT-IN: budget(seconds) for a timing test. It returns
@@ -67,13 +77,33 @@ IGNORE = ("*.jsonl", "*.tmp", "*.log", "ops/loop/control/progress/*",
           "ops/loop/control/claims/*", "ops/loop/control/locks/*",
           "ops/loop/control/lanes/*", "ops/loop/control/inbox_status.json",
           "ops/loop/control/session_done*", "ops/loop/control/governor/*",
-          "*.lock", "ops/loop/control/headless_budget.json")
+          "*.lock", "ops/loop/control/headless_budget.json",
+          "ops/loop/control/board/state.json", "ops/loop/control/board/status.json",
+          "ops/loop/control/board/board.html")
+SENTINELS_REL = "ops/stop_sentinels.json"  # = fleet_headless.SENTINELS_REL
 SHOW = 5
 
 
+def declared_sentinels(root):
+    """v21: the tree-relative stop sentinel paths ops/stop_sentinels.json
+    declares ({"paths": [...]}), lowercased; empty when absent or unreadable
+    (the kit's spawn already fails closed on an unreadable file)."""
+    import json
+    try:
+        doc = json.loads((Path(root) / SENTINELS_REL).read_text(encoding="utf-8"))
+    except (OSError, ValueError, UnicodeError):
+        return frozenset()
+    rels = doc.get("paths") if isinstance(doc, dict) else None
+    if not isinstance(rels, list):
+        return frozenset()
+    return frozenset(Path(r).as_posix().lower() for r in rels if isinstance(r, str) and r)
+
+
 def snapshot(root, watch=WATCH, ignore=IGNORE):
-    """{relpath: (size, mtime_ns)} for every watched, non-ignored file."""
+    """{relpath: (size, mtime_ns)} for every watched, non-ignored file. A
+    declared stop sentinel (v21) is never ignored."""
     root = Path(root)
+    keep = declared_sentinels(root)
     out = {}
     for w in watch:
         base = root / w
@@ -83,7 +113,8 @@ def snapshot(root, watch=WATCH, ignore=IGNORE):
             for name in files:
                 p = Path(dirpath) / name
                 rel = p.relative_to(root).as_posix()
-                if any(fnmatch.fnmatchcase(rel.lower(), g.lower()) for g in ignore):
+                if rel.lower() not in keep and \
+                        any(fnmatch.fnmatchcase(rel.lower(), g.lower()) for g in ignore):
                     continue
                 try:
                     st = p.stat()
@@ -190,20 +221,26 @@ def install(ns, root, watch=WATCH, env_roots=None, ignore=IGNORE, inflow=INFLOW,
         tmp = request.getfixturevalue("tmp_path_factory").mktemp("fleet-route")
         p = tmp / "headless_route.json"
         p.write_text('{"mode": "split", "version": 1}\n', encoding="ascii", newline="\n")
-        mp = request.getfixturevalue("monkeypatch")
+        mp = pytest.MonkeyPatch()  # v21: private, never the test's shared one
         mp.setenv(ROUTE_ENV, str(p))
-        yield
+        try:
+            yield
+        finally:
+            mp.undo()
 
     @pytest.fixture(autouse=True)
     def _fleet_runtime_roots(request):
         if not roots or _off():
             yield
             return
-        tmp = request.getfixturevalue("tmp_path")
-        mp = request.getfixturevalue("monkeypatch")
+        tmp = request.getfixturevalue("tmp_path")  # v21: tmp_path first
+        mp = pytest.MonkeyPatch()  # private; undone before tmp_path's teardown
         for var, sub in roots.items():
             mp.setenv(var, str(Path(tmp) / sub))
-        yield
+        try:
+            yield
+        finally:
+            mp.undo()
 
     ns["_fleet_live_state_guard"] = _fleet_live_state_guard
     ns["_fleet_runtime_roots"] = _fleet_runtime_roots

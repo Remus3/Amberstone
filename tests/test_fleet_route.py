@@ -238,6 +238,12 @@ class _FakePopen:
         self.returncode = None
         self.killed = False
         self.inputs = []
+        # kit v21 (CS-1231): _run holds no pipes; a body arrives as a temp
+        # file on stdin, read here once (then rewound).
+        self.stdin_bytes = None
+        if hasattr(stdin, "read"):
+            self.stdin_bytes = stdin.read()
+            stdin.seek(0)
         _FakePopen.instances.append(self)
 
     def __enter__(self):
@@ -293,7 +299,9 @@ def test_body_rides_stdin_beside_the_argv_instruction(kit_launch, tmp_path):
     (p,) = _FakePopen.instances
     assert p.argv[2] == "INST", "the short instruction stays on argv"
     assert "BODY" not in p.argv
-    assert p.stdin_arg == subprocess.PIPE and p.inputs == ["BODY"]
+    # kit v21: the body rides a temp file on stdin, never a live pipe
+    assert p.stdin_arg is not subprocess.PIPE and p.inputs == [None]
+    assert p.stdin_bytes == b"BODY"
 
 
 # The kit's kill branches on sys.platform (taskkill /T on win32; on POSIX, kit

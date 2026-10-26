@@ -24,7 +24,9 @@ ROOT = Path(__file__).resolve().parent.parent
 KIT = ROOT / "ops" / "fleet_kit"
 # v20 patch 1 (MAIN 2026-10-19 0001 ORDER) supersedes the 1812 v20 bytes
 # (manifest 9e4f9980...b09b000): outbound cap 6 -> 12, FLEET-COMMON 14 c.
-V20_MANIFEST_SHA256 = "8017eae27ba218ea51ab77885ab0a46cc3eceb39b9e9d5f4ee277f88e77d4602"
+# Kit v23 (MAIN 2026-10-25 1926 ORDER, cumulative v21 + v22) supersedes
+# v20.1 (manifest 8017eae2...e77d4602); the v20 behaviour below still holds.
+V20_MANIFEST_SHA256 = "f5d82861cce3f5c2d565495dbd3a8cceff3b9d895117a2f6f9d4c83f11ba527c"
 
 
 def _load(name):
@@ -42,10 +44,10 @@ def test_the_vendored_kit_is_the_v20_order_bytes():
     raw = (KIT / "MANIFEST.json").read_bytes()
     assert hashlib.sha256(raw).hexdigest() == V20_MANIFEST_SHA256
     man = json.loads(raw.decode("ascii"))
-    assert man["version"] == 20
+    assert man["version"] == 23
     assert len(man["files"]) == 23
-    assert _load("fleet_headless").KIT_VERSION == 20
-    assert _load("fleet_headless").KIT_PATCH == 1
+    assert _load("fleet_headless").KIT_VERSION == 23
+    assert _load("fleet_headless").KIT_PATCH == 0
 
 
 def test_v20_1_outbound_cap_is_12_per_day_with_the_same_exempt_classes():
@@ -62,7 +64,8 @@ def test_the_common_block_carries_the_v20_route_and_eta_clock_text():
     block = text[text.index("<!-- FLEET-COMMON BEGIN -->"):text.index("<!-- FLEET-COMMON END -->")]
     assert "~/.fleet/headless_route.json" in block
     assert "7-day usage-limit refusal" in block
-    assert "<pct>% ~<rem>m of <total>m [<h:mmAM/PM>]" in block
+    # v21 KIT-ETA-REMAIN: the running row reads "started ... Remain".
+    assert "<pct>% ~<rem>m of <total>m Remain" in block
     assert _load("fleet_headless").conformance(ROOT) == []
 
 

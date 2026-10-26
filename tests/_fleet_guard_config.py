@@ -26,10 +26,10 @@ passed as install(..., extra_ignore=EXTRA_IGNORE), which ADDS to the kit IGNORE;
 the v14 IGNORE itself now holds every *.lock and headless_budget.json, so
 inbox_tick.lock and headless_budget.json left this list. Kit v19 board files
 (SS 2026-10-24 1525 FIX to MAIN): fleet_board render / pushed rewrite
-board/status.json and board/state.json at every interactive board push, in the
-main checkout (not env-routable), and the kit IGNORE misses them; listed file by
-file until a kit version adds them (tests/test_fleet_kit_v14.py then flags the
-overlap). RM-874 (s133): the per-session lane driver
+board/status.json and board/state.json at every interactive board render, in
+the main checkout (not env-routable). Kit v21 added both (v23 also board.html)
+to the kit IGNORE, so they left this list (tests/test_fleet_kit_v14.py flags
+any overlap). RM-874 (s133): the per-session lane driver
 ops/loop/control/lane_prompts/s<NNN>_lane_driver.py (gitignored, main checkout,
 not env-routable) rewrites two files of its own on its own cadence while suites
 run - write_state() -> s<NNN>_<lane>_state.json at every claim / launch / wait,
@@ -80,8 +80,6 @@ ENV_ROOTS = {
 EXTRA_IGNORE = (
     "ops/loop/control/inbox_tick_last.json",
     "ops/loop/control/inbox_held/*",
-    "ops/loop/control/board/status.json",
-    "ops/loop/control/board/state.json",
     # RM-874: live lane driver state (write_state, tmp then replace).
     "ops/loop/control/lane_prompts/s[0-9][0-9][0-9]_*_state.json",
     # RM-874: live lane driver's rendered per-cycle directive (build_prompt).

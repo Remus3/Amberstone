@@ -72,6 +72,25 @@ v16 (KIT-16):
         (atomic replace); nothing is deleted. A hand-off with no framed
         headings has nothing to archive.
 
+v22 (KIT-V22-REAP):
+    python fleet_done.py reap [--apply] [--root R]
+        Lists every LINKED worktree of the tree and, with --apply, removes
+        the ones where nothing can be lost: under a fleet worktree root
+        (<tree>/.claude/worktrees, <parent>/<code>-worktrees, a sidecar
+        <CODE>/Worktree), not a lane worktree (a name with a `lane` word -
+        fleet_lanes lane-<i> or a tree's own lane launcher - or named in a
+        lane lock: always kept), no live fleet_claims owner holding a file
+        in it, not the current directory, its lock's owner pid (`claude
+        agent ... (pid N)`) dead or no lock, `git status --porcelain
+        --untracked-files=all` empty, and every commit on the main
+        checkout's branch by patch content (`git cherry <base> <tip>` has no
+        '+' line). With --apply a rename probe must succeed (no process
+        holds the directory), then `git worktree unlock` (dead owner only),
+        `git worktree remove` (never --force) and `git branch -d` of the
+        branch checked out there (never -D: a patch-only landing keeps its
+        branch). Everything else is LISTED with its reason, never removed.
+        Dry-run by default. /done runs it with --apply before its commit.
+
 Pure stdlib. No machine path, account id or repo name appears in this file.
 """
 
@@ -454,6 +473,251 @@ def stop_hook(data, root=None):
     return {"terminalSequence": _osc(2, title) + _osc(9, title)}
 
 
+# ---------------------------------------------------------------- reap (v22)
+# KIT-V22-REAP: /done removes a linked worktree only when nothing can be lost.
+
+REAP_TIMEOUT = 300
+_LANE_NAME = re.compile(r"(^|[-_])lanes?([-_]|$)", re.I)  # lane-0, rc-lane-ds, ...
+_LOCK_PID = re.compile(r"\(pid (\d+)\)")
+
+
+def _gitr(root, *args, timeout=REAP_TIMEOUT):
+    """(rc, stdout, stderr) of one git call; rc None when git is absent or the
+    call failed to run."""
+    exe = find_git()
+    if not exe:
+        return None, "", "git not found"
+    try:
+        r = subprocess.run([exe, "-C", str(root), *args], capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=timeout,
+                           creationflags=_NO_WINDOW)
+    except (OSError, subprocess.SubprocessError) as exc:
+        return None, "", exc.__class__.__name__
+    return r.returncode, r.stdout, r.stderr
+
+
+def pid_alive(pid):
+    """True while pid names a running process. Unsure = alive (keep)."""
+    if not isinstance(pid, int) or isinstance(pid, bool) or pid <= 0:
+        return False
+    if sys.platform == "win32":
+        import ctypes
+        k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        k32.OpenProcess.restype = ctypes.c_void_p
+        h = k32.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+        if not h:
+            return ctypes.get_last_error() == 5  # access denied = it exists
+        try:
+            code = ctypes.c_ulong()
+            if not k32.GetExitCodeProcess(ctypes.c_void_p(h), ctypes.byref(code)):
+                return True
+            return code.value == 259  # STILL_ACTIVE
+        finally:
+            k32.CloseHandle(ctypes.c_void_p(h))
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except OSError:
+        return True
+    return True
+
+
+def parse_worktrees(text):
+    """`git worktree list --porcelain` -> [{path, head, branch, locked,
+    prunable, bare}]; locked is the reason text ('' for none) or None."""
+    rows, cur = [], None
+    for ln in (text or "").splitlines() + [""]:
+        if not ln.strip():
+            if cur:
+                rows.append(cur)
+            cur = None
+            continue
+        key, _, val = ln.partition(" ")
+        if key == "worktree":
+            cur = {"path": val, "head": None, "branch": None, "locked": None,
+                   "prunable": False, "bare": False}
+        elif cur is None:
+            continue
+        elif key == "HEAD":
+            cur["head"] = val
+        elif key == "branch":
+            cur["branch"] = val[len("refs/heads/"):] if val.startswith("refs/heads/") else val
+        elif key == "locked":
+            cur["locked"] = val
+        elif key == "prunable":
+            cur["prunable"] = True
+        elif key == "bare":
+            cur["bare"] = True
+    return rows
+
+
+def _norm(p):
+    return os.path.normcase(os.path.abspath(str(p)))
+
+
+def _lane_paths(root):
+    """Worktree paths named in this tree's fleet_lanes lane locks."""
+    out = set()
+    d = Path(root) / "ops" / "loop" / "control" / "lanes"
+    try:
+        locks = list(d.glob("*.lock"))
+    except OSError:
+        return out
+    for f in locks:
+        try:
+            wt = json.loads(f.read_text(encoding="utf-8")).get("worktree")
+        except (OSError, ValueError, AttributeError):
+            continue
+        if isinstance(wt, str) and wt:
+            out.add(_norm(wt))
+    return out
+
+
+def _known_root(path):
+    """True when a worktree sits under one of the roots the fleet makes them
+    in: <tree>/.claude/worktrees, <parent>/<code>-worktrees, or a sidecar
+    <root>/<CODE>/Worktree (ROADMAP KIT-V22-SIDECAR c)."""
+    parent = Path(path).parent
+    name = parent.name.lower()
+    return ((name == "worktrees" and parent.parent.name.lower() == ".claude")
+            or name.endswith("-worktrees") or name == "worktree")
+
+
+def _claimed_paths(root, alive=pid_alive):
+    """Lower-case forward-slash paths held by fleet_claims owners whose
+    session process is alive (v18 registry, read only)."""
+    out = []
+    d = Path(root) / "ops" / "loop" / "control" / "claims"
+    try:
+        files = list(d.glob("*.json"))
+    except OSError:
+        return out
+    for f in files:
+        try:
+            doc = json.loads(f.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        pid = doc.get("session_pid") if isinstance(doc, dict) else None
+        if not (isinstance(pid, int) and alive(pid)):
+            continue
+        out += [str(p).replace("\\", "/").lower() for p in (doc.get("paths") or {})]
+    return out
+
+
+def _in_use(path):
+    """A rename probe: Windows refuses to rename a directory any process has
+    its cwd or an open handle in. None = free, else the reason."""
+    probe = Path(str(path) + ".reap-probe")
+    if probe.exists():
+        return "probe path exists"
+    try:
+        os.rename(path, probe)
+    except OSError as exc:
+        return "in use ({})".format(exc.__class__.__name__)
+    try:
+        os.rename(probe, path)
+    except OSError as exc:  # pragma: no cover - renamed away and not back
+        return "PROBE LEFT AT {} ({})".format(probe.name, exc.__class__.__name__)
+    return None
+
+
+def classify_worktree(row, base, run, alive=pid_alive, lanes=(), here=None, claimed=()):
+    """('remove', why), ('kept', why) or ('listed', why) for one LINKED
+    worktree. Only 'remove' is ever acted on. In order: bare or prunable ->
+    listed; a lane (a `lane` word in the name, or named in a lane lock) -> kept;
+    outside the fleet worktree roots -> listed; a live fleet_claims owner
+    claims a file in it -> kept; the caller's own directory -> kept; locked
+    with a live owner pid -> kept,
+    locked with no pid in the reason -> listed; dirty (`status --porcelain`
+    not empty, untracked included) -> listed; any commit not on <base> by
+    patch content (`git cherry <base> <tip>` has a '+' line) -> listed; else
+    remove."""
+    path = row["path"]
+    name = Path(path).name
+    if row.get("bare"):
+        return "listed", "bare"
+    if row.get("prunable") or not Path(path).is_dir():
+        return "listed", "prunable (directory missing; `git worktree prune` by hand)"
+    if _LANE_NAME.search(name) or _norm(path) in lanes:
+        return "kept", "fleet_lanes lane worktree"
+    if not _known_root(path):
+        return "listed", "outside the fleet worktree roots"
+    key = str(path).replace("\\", "/").lower().rstrip("/") + "/"
+    if any(c.startswith(key) for c in claimed):
+        return "kept", "a live agent claims a file in it"
+    if here and (here == _norm(path) or here.startswith(_norm(path) + os.sep)):
+        return "kept", "the current working directory"
+    if row.get("locked") is not None:
+        m = _LOCK_PID.search(row["locked"] or "")
+        if not m:
+            return "listed", "locked with no owner pid"
+        if alive(int(m.group(1))):
+            return "kept", "owner pid {} alive".format(m.group(1))
+    if not base:
+        return "listed", "main checkout has no branch to compare with"
+    rc, out, _err = run(path, "status", "--porcelain", "--untracked-files=all")
+    if rc != 0:
+        return "listed", "git status failed"
+    if out.strip():
+        return "listed", "dirty ({} path(s))".format(len(out.strip().splitlines()))
+    tip = row.get("branch") or row.get("head")
+    if not tip:
+        return "listed", "no HEAD"
+    rc, out, _err = run(path, "cherry", base, tip)
+    if rc != 0:
+        return "listed", "git cherry failed"
+    plus = [ln for ln in out.splitlines() if ln.startswith("+")]
+    if plus:
+        return "listed", "{} commit(s) not on {} by patch".format(len(plus), base)
+    return "remove", "clean, every commit on {} by patch".format(base)
+
+
+def reap(root, apply=False, run=None, alive=pid_alive, cwd=None):
+    """Classify every linked worktree of the tree at root; with apply, remove
+    the 'remove' ones (`git worktree unlock` when locked by a dead owner, then
+    `git worktree remove`, never --force, after a rename probe proves no
+    process holds the directory) and delete the branch that was checked out
+    there with `git branch -d` (never -D: a patch-only landing keeps its
+    branch, listed as kept).
+    Returns {"applied", "base", "rows": [{name, path, verdict, why, branch,
+    done}]}."""
+    run = _gitr if run is None else run
+    root = Path(root)
+    rc, out, err = run(root, "worktree", "list", "--porcelain")
+    if rc != 0:
+        raise ValueError("git worktree list failed: {}".format(_one_line(err)))
+    rows = parse_worktrees(out)
+    main = rows[0]["path"] if rows else str(root)
+    rc, b, _e = run(main, "symbolic-ref", "--quiet", "--short", "HEAD")
+    base = b.strip() if rc == 0 and b.strip() else None
+    lanes = _lane_paths(main)
+    claimed = _claimed_paths(main, alive)
+    here = _norm(cwd or os.getcwd())
+    result = []
+    for row in rows[1:]:
+        verdict, why = classify_worktree(row, base, run, alive, lanes, here, claimed)
+        rec = {"name": Path(row["path"]).name, "path": row["path"], "verdict": verdict,
+               "why": why, "branch": row.get("branch"), "done": None}
+        busy = _in_use(row["path"]) if apply and verdict == "remove" else None
+        if busy:
+            rec.update(verdict="listed", why=busy)
+        elif apply and verdict == "remove":
+            if row.get("locked") is not None:
+                run(main, "worktree", "unlock", row["path"])
+            rc, _o, e = run(main, "worktree", "remove", row["path"])
+            if rc != 0:
+                rec.update(verdict="listed", why="remove failed: {}".format(_one_line(e)[:120]))
+            else:
+                rec["done"] = "removed"
+                if row.get("branch") and row["branch"] != base:
+                    rc, _o, e = run(main, "branch", "-d", row["branch"])
+                    rec["done"] += (", branch deleted" if rc == 0
+                                    else ", branch kept (not merged by ancestry)")
+        result.append(rec)
+    return {"applied": bool(apply), "base": base, "rows": result}
+
+
 # ---------------------------------------------------------------- cli
 
 def main(argv=None, stdin=None, stdout=None):
@@ -475,6 +739,9 @@ def main(argv=None, stdin=None, stdout=None):
     a.add_argument("--apply", action="store_true")
     a.add_argument("--keep", type=int, default=1)
     a.add_argument("--root")
+    r = sub.add_parser("reap")
+    r.add_argument("--apply", action="store_true")
+    r.add_argument("--root")
     args = ap.parse_args(argv)
     if args.cmd == "stop-hook":
         try:
@@ -495,6 +762,24 @@ def main(argv=None, stdin=None, stdout=None):
         if warn:
             stdout.write(warn + "\n")
         return 0 if doc["status"] == args.status else 1
+    if args.cmd == "reap":
+        try:
+            doc = reap(root, apply=args.apply)
+        except (OSError, ValueError) as exc:
+            stdout.write("reap: refused - {}\n".format(_one_line(exc) or "error"))
+            return 1
+        rows = doc["rows"]
+        n = {k: sum(1 for x in rows if x["verdict"] == k) for k in ("remove", "kept", "listed")}
+        stdout.write("reap {}: {} {}, {} kept, {} listed (base {})\n".format(
+            "applied" if doc["applied"] else "dry-run",
+            n["remove"], "removed" if doc["applied"] else "removable",
+            n["kept"], n["listed"], doc["base"] or "none"))
+        for x in rows:
+            word = {"remove": "removed" if doc["applied"] else "would remove",
+                    "kept": "kept", "listed": "listed"}[x["verdict"]]
+            stdout.write("  {}: {} ({}{})\n".format(
+                word, x["name"], x["why"], "; " + x["done"] if x["done"] else ""))
+        return 0
     if args.cmd == "archive":
         try:
             doc = archive(root, apply=args.apply, keep=max(0, args.keep))

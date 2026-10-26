@@ -16,6 +16,11 @@ what the ORDER's section 4 asks RC to do around them:
   * step 5: RC declares no stop sentinels (decision recorded in CLAUDE.md);
   * step 6: .githooks/pre-push still runs identity FIRST, with the remote
     arguments the kit needs for its ls-remote scan.
+
+Kit v23 (MAIN 2026-10-25 1926 ORDER) made the board LOCAL ONLY: the push
+pins of steps 2-4 (item 18 text, the /done and DIRECTIVE push wiring, the
+headless "push" key, the board files in EXTRA_IGNORE) moved to their v23
+form in tests/test_fleet_kit_v23.py; this file keeps the rest.
 """
 from __future__ import annotations
 
@@ -27,7 +32,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 KIT = ROOT / "ops" / "fleet_kit"
-RC_BOARD_URL = "https://claude.ai/artifact/12ChcPAR8o3RuVb9qStHK8"
 
 
 def _load(name):
@@ -51,18 +55,13 @@ def test_the_vendored_kit_is_v19_with_the_board_helper():
     assert _load("fleet_headless").KIT_VERSION == man["version"]
 
 
-def test_the_common_block_carries_item_18_and_conforms():
-    text = _text("CLAUDE.md")
-    block = text[text.index("<!-- FLEET-COMMON BEGIN -->"):text.index("<!-- FLEET-COMMON END -->")]
-    assert "18. STATUS BOARD (kit v19" in block
-    assert _load("fleet_headless").conformance(ROOT) == []
-
-
 def test_status_board_config_is_tracked_ascii_lf_and_names_rc():
     raw = (ROOT / "ops" / "status_board.json").read_bytes()
     raw.decode("ascii")
     assert b"\r\n" not in raw and raw.endswith(b"\n")
-    assert json.loads(raw) == {"code": "RC", "dataset_version": 1, "url": RC_BOARD_URL}
+    # v23: only the optional "code" is read (the page title); the file is
+    # left in place, its v19 url / dataset_version keys are inert.
+    assert json.loads(raw)["code"] == "RC"
     tracked = subprocess.run(["git", "ls-files", "--error-unmatch", "ops/status_board.json"],
                              cwd=ROOT, capture_output=True)
     assert tracked.returncode == 0
@@ -73,62 +72,6 @@ def test_board_state_dir_is_gitignored():
     ignored = subprocess.run(["git", "check-ignore", "-q", "ops/loop/control/board/state.json"],
                              cwd=ROOT, capture_output=True)
     assert ignored.returncode == 0
-
-
-BOARD_FILES = ("ops/loop/control/board/status.json", "ops/loop/control/board/state.json")
-
-
-def test_the_suite_guard_ignores_the_two_files_a_board_push_rewrites(tmp_path):
-    # SS 2026-10-24 1525 FIX to MAIN: fleet_board render / pushed rewrite both
-    # board files at every interactive push (session start, each item-13 b
-    # reprint, /done --final), resolved via the main checkout, so env_roots cannot
-    # reroute them, and the kit IGNORE does not list them. RC adds them file by
-    # file in EXTRA_IGNORE until a kit version does (then the v14 overlap test
-    # goes red and the local entries leave).
-    from tests import _fleet_guard_config as cfg
-
-    board, guard = _load("fleet_board"), _load("fleet_test_guard")
-    (tmp_path / "ops").mkdir()
-    (tmp_path / "ops" / "status_board.json").write_text(
-        '{"code": "RC", "url": "https://claude.ai/artifact/probe"}\n', encoding="ascii")
-    assert board.render(tmp_path, 1, [], environ={})["push"] is True
-    for rel in BOARD_FILES:
-        os.utime(tmp_path / rel, ns=(10**18, 10**18))
-    ignore = tuple(guard.IGNORE) + tuple(cfg.EXTRA_IGNORE)
-    raw, eff = guard.snapshot(tmp_path, ignore=()), guard.snapshot(tmp_path, ignore=ignore)
-    board.render(tmp_path, 2, [], environ={})
-    board.pushed(tmp_path, 7)
-    changed = guard.compare(raw, guard.snapshot(tmp_path, ignore=()))[0]
-    assert set(BOARD_FILES) <= set(changed), "positive control: the push touched nothing"
-    assert guard.verdict(*guard.compare(eff, guard.snapshot(tmp_path, ignore=ignore))) == ""
-    for rel in BOARD_FILES:
-        assert rel in cfg.EXTRA_IGNORE, f"{rel} must be ignored file by file"
-
-
-def test_done_pushes_the_board_once_between_handoff_readback_and_marker():
-    done = _text("tools/done.md")
-    sec9 = done[done.index("### 9. Final output"):done.index("### 10. Next-session prompt")]
-    board = sec9.index("fleet_board.py calls --final --session <n>")
-    marker = sec9.index("fleet_done.py mark --session <n> --status done")
-    assert board < marker
-    assert done.count("fleet_board.py calls --final") == 1
-    assert "never a ritual failure" in sec9
-
-
-def test_session_start_directive_wires_the_start_and_reprint_push():
-    spec = importlib.util.spec_from_file_location("rc_v19_sc", ROOT / "tools" / "session_checklist.py")
-    sc = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(sc)
-    assert "fleet_board.py calls --session <n>" in sc.DIRECTIVE
-    assert "--final" not in sc.DIRECTIVE
-    assert "reprint" in sc.DIRECTIVE
-
-
-def test_a_headless_render_pushes_nothing(tmp_path):
-    board = _load("fleet_board")
-    env = {"FLEET_SUBAGENT_FIRST": "off"}
-    assert board.render(tmp_path, 1, [], environ=env) == {"push": False, "reason": "headless"}
-    assert not (tmp_path / "ops" / "loop" / "control" / "board").exists()
 
 
 def test_rc_declares_no_stop_sentinels():

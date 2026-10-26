@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 the operator - the kit's owner and sole copyright holder. See NOTICE.
-"""Fleet kit v20 - multi-lane headless work: per-repo lanes, one worktree each,
+"""Fleet kit v22 - multi-lane headless work: per-repo lanes, one worktree each,
 under the machine-wide governor (design: MAIN docs/fleet-designs/multi-lane.md).
 
 Vendored byte-for-byte at ops/fleet_kit/ and pinned by MANIFEST.json. Do NOT
@@ -16,7 +16,9 @@ THREE LAYERS:
    variable FLEET_SIDECAR_ROOT is set (process environment first - an empty
    value disables it, which is how a suite pins it - then HKCU Environment)
    the path is <root>/<CODE>/Worktree/lane-<i>; unset,
-   it stays <parent>/<code>-worktrees/lane-<i>. STICKY: while the old path
+   it stays <parent>/<code>-worktrees/lane-<i>. v22: named nowhere, the root
+   defaults to SIDECAR_DEFAULT (E:/Sidecars) when <default>/<CODE> exists
+   (never inside a pytest test); missing = the v14 path. STICKY: while the old path
    still exists and the new one does not, the old path is used, so setting
    the variable never orphans a lane - move each idle lane with `git worktree
    move <old> <new>` (loop idle) and the next fire uses the new path. A
@@ -572,25 +574,67 @@ def _registry_sidecar():
         return False, None
 
 
-def sidecar_root(registry=_registry_sidecar, environ=None):
+# v22 (KIT-V22-SIDECAR): with the variable named NOWHERE (not in the process
+# environment, not in HKCU Environment) the root defaults to this directory -
+# but only when it exists, and never inside a pytest test (PYTEST_CURRENT_TEST),
+# so a suite keeps the v14 path unless it sets the variable itself. A machine
+# without the directory keeps the v14 behaviour (no failure).
+SIDECAR_DEFAULT = r"E:\Sidecars" if os.name == "nt" else ""
+
+
+def _default_sidecar(environ=None):
+    env = os.environ if environ is None else environ
+    if not SIDECAR_DEFAULT or env.get("PYTEST_CURRENT_TEST"):
+        return None
+    p = Path(SIDECAR_DEFAULT)
+    return p if p.is_dir() else None
+
+
+def sidecar_root(registry=_registry_sidecar, environ=None, default=None):
     """The sidecar root (v14), or None. The PROCESS environment wins when it
     names the variable at all (an empty value disables it - tests pin it so),
-    else the HKCU Environment value. Must be absolute."""
+    else the HKCU Environment value (an empty value there disables it too).
+    Named nowhere: v22 SIDECAR_DEFAULT when that directory exists (default=
+    is a tests-only hook returning the default Path or None). Must be absolute."""
     env = os.environ if environ is None else environ
     value = env.get(SIDECAR_VAR) if SIDECAR_VAR in env else registry()[1]
+    if value is None:
+        d = _default_sidecar(env) if default is None else default()
+        return Path(d) if d and Path(d).is_absolute() else None
     value = (value or "").strip().strip('"')
     return Path(value) if value and Path(value).is_absolute() else None
 
 
+def sidecar_dir(code, kind, root=None):
+    """<sidecar root>/<CODE>/<kind> (kind Worktree, Temp, ...) when the root
+    resolves AND <root>/<CODE> already exists, else None (v22: a missing
+    sidecar falls back to the caller's v21 behaviour, never a failure)."""
+    if not str(code).isalnum():
+        return None
+    root = sidecar_root() if root is None else (Path(root) if root else None)
+    if root is None:
+        return None
+    base = root / str(code).upper()
+    return base / kind if base.is_dir() else None
+
+
 def worktree_path(repo_root, code, index, root=None):
     """Lane i of repo <code> runs here: <sidecar root>/<CODE>/Worktree/lane-<i>
-    when FLEET_SIDECAR_ROOT is set (v14), else <parent>/<code>-worktrees/lane-<i>;
+    when FLEET_SIDECAR_ROOT is set (v14) or, unset, the v22 default
+    E:/Sidecars/<CODE> exists; else <parent>/<code>-worktrees/lane-<i>;
     the old path stays in use while it exists and the new one does not."""
     if not str(code).isalnum():
         raise ValueError(f"repo code {code!r} must be alphanumeric")
     parent = main_tree(repo_root).parent
     old = parent / f"{str(code).lower()}-worktrees" / f"lane-{int(index)}"
-    root = sidecar_root() if root is None else (Path(root) if root else None)
+    if root is None:
+        root = sidecar_root()
+        if (root is not None and SIDECAR_VAR not in os.environ
+                and _registry_sidecar()[1] is None
+                and not (root / str(code).upper()).is_dir()):
+            return old  # v22: the built-in default needs <root>/<CODE> to exist
+    else:
+        root = Path(root) if root else None
     if root is None:
         return old
     new = root / str(code).upper() / "Worktree" / f"lane-{int(index)}"
@@ -1049,8 +1093,11 @@ def main(argv=None, stdout=None):
                              status="done" if args.done else "running", commit=args.commit)
         else:
             doc = resume_point(args.root, args.lane)
-    except (ValueError, OSError) as exc:
+    except ValueError as exc:
         print(json.dumps({"error": str(exc)[:200]}), file=out)
+        return 2
+    except OSError as exc:  # v21 (CS 2356 item 6): the class only, never a path
+        print(json.dumps({"error": exc.__class__.__name__}), file=out)
         return 2
     print(json.dumps(doc), file=out)
     return 0

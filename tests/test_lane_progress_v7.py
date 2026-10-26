@@ -60,12 +60,13 @@ def test_the_helpers_are_the_vendored_kit():
     # 2026-10-09 2055) superseded v14: fleet_checklist and write_progress
     # unchanged (suite-gate durations / lane, foreground-only child env).
     # Kit v20 (MAIN 2026-10-18 1812): write_progress always adds "started".
-    assert lp.fleet_headless.KIT_VERSION == 20
+    # Kit v23 (MAIN 2026-10-25 1926): same 23-file set, write_progress unchanged.
+    assert lp.fleet_headless.KIT_VERSION == 23
 
 
 def test_the_vendored_kit_is_v15_with_its_twenty_two_file_set():
     man = json.loads((ROOT / "ops/fleet_kit/MANIFEST.json").read_text(encoding="ascii"))
-    assert man["version"] == 20
+    assert man["version"] == 23
     assert sorted(man["files"]) == sorted([
         "FLEET-COMMON.md", "LICENSE", "NOTICE", "cli_display.json", "fleet_board.py",
         "fleet_checklist.py", "fleet_claims.py", "fleet_done.py",

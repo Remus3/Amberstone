@@ -10,7 +10,9 @@
 // stdout: one JSON line {"id", "content"} per task whose item-12 progress file
 // matches the task label - same row grammar as the status line:
 //   [>] task-name     [####------]  45% ~3m   step text
-// v20: a file with "started" reads `45% ~3m of 6.5m [2:25PM]` (statusline etaClock).
+// v21: a running file with "started" reads
+// `started 1:55PM - 45% ~3m of 6.5m Remain [2:25PM]` (statusline runClock);
+// one without reads `45% ~3m Remain`.
 // A task with no matching file gets no line (the default row stays). Match:
 // the progress stem equals the task name, or is one word of its label or
 // description (stems shorter than 4 characters never match a word). Plain
