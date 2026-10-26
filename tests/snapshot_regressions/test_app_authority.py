@@ -18,8 +18,12 @@ No live Riot API, no Anthropic API, no Tk mainloop, no live artifact mutation.
 import copy
 import queue
 import sys
+import threading
 import unittest
 from pathlib import Path
+from unittest import mock
+
+import pytest
 
 _PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
@@ -27,6 +31,7 @@ sys.path.insert(0, str(_PROJECT_ROOT))
 # -- Import app symbols (no Tk mainloop started) -------------------------------
 import app as _app_module
 from app import OverlayApp
+from app import _game_lifecycle as _gl
 from app._game_lifecycle import GameLifecycleManager
 from app._state_authority import StateAuthority
 from core.game_snapshot import (
@@ -91,6 +96,55 @@ def _make_headless_app() -> OverlayApp:
     app._current_envelope = GameEnvelope.client()
 
     return app
+
+
+def _route_game_start(app, stub) -> None:
+    """Install `stub` where game start is ACTUALLY dispatched (RM-909).
+
+    The lifecycle's own `_process_game_state` calls `self.on_game_start`
+    (app/_game_lifecycle.py, the `self.on_game_start(canon_mode)` line), never
+    the app delegate `OverlayApp._on_game_start`. A stub on the app alone was
+    therefore bypassed and the REAL start ran for every TFT entry here: a real
+    TftWorker built with `make_lcu_request()` (a live LcuClient), started and
+    never shut down, plus its TftLiveAnalysis thread. Each leaked worker kept
+    calling `LcuClient.connect()` on the real clock for the rest of the
+    xdist worker - the source of the foreign `rc.lcu` repeat behind the kit
+    v24 gated-suite red (LEDGER 1919). The app delegate is stubbed too, so a
+    future caller of either name stays inside the stub."""
+    app._on_game_start = stub
+    app.lifecycle.on_game_start = stub
+
+
+def _staged_rewind_timers() -> list:
+    """The game-end rewind Timers `lib/rewind_live_writer.py` has staged.
+    tests/conftest.py `reset_rewind_live_writer_staging_between_tests`
+    cancels them - but its teardown runs AFTER this module's autouse fixture,
+    so they are still pending when the check below looks."""
+    rlw = sys.modules.get("lib.rewind_live_writer")
+    return list(getattr(rlw, "_STAGED_TIMERS", None) or [])
+
+
+@pytest.fixture(autouse=True)
+def _no_thread_outlives_a_test():
+    """The module promise ("No workers are started") as an assertion: any
+    thread a test leaves alive fails that test, after a short grace and after
+    it has been stopped (tests/_lcu_poller_guard.stop), so it cannot tick into
+    the next test. The one exemption is a staged rewind Timer, which conftest
+    cancels next. RM-909 measured 6 TftWorker + 5 TftLiveAnalysis threads
+    leaked from this module before `_route_game_start`."""
+    from tests import _lcu_poller_guard
+    before = set(threading.enumerate())
+    yield
+    staged = _staged_rewind_timers()
+    alive = [t for t in threading.enumerate()
+             if t not in before and t.is_alive() and t not in staged]
+    for t in alive:
+        t.join(timeout=1.0)
+    leaked = [t for t in alive if t.is_alive()]
+    for t in leaked:
+        _lcu_poller_guard.stop(t)
+    assert not leaked, "test left thread(s) alive: " + "; ".join(
+        _lcu_poller_guard.describe(t) for t in leaked)
 
 
 # -- Minimal rich SR state dict for app-level tests ---------------------------
@@ -660,7 +714,7 @@ class TestAppTftRuntimeAuthority(unittest.TestCase):
             app._arena_mode = (canon_mode == MODE_ARENA)
             app._brawl_mode = (canon_mode == MODE_BRAWL)
 
-        app._on_game_start = _stub_on_game_start
+        _route_game_start(app, _stub_on_game_start)
 
         # Provide a TFT-flavoured state dict via SrAramWorker path
         tft_state = dict(TFT_STATE, game_mode="TFT")
@@ -969,12 +1023,32 @@ class TestTftFirstEntryWorkerIngress(unittest.TestCase):
             app._arena_mode = (canon_mode == MODE_ARENA)
             app._brawl_mode = (canon_mode == MODE_BRAWL)
 
-        app._on_game_start = _stub_on_game_start
+        _route_game_start(app, _stub_on_game_start)
 
         # Stub _switch_mode (called if _auto_mode is True)
         app._switch_mode = lambda m, auto=False: None
 
         return app
+
+    # -- M0. The stubbed entry never builds a real TftWorker (RM-909) ---------
+
+    def test_tft_entry_builds_no_real_worker_or_lcu_reader(self):
+        """The stub must intercept the call the lifecycle really makes. Before
+        RM-909 it sat on the app delegate only, so this entry constructed a
+        real TftWorker holding `make_lcu_request()` and started it."""
+        built = []
+        app = self._make_pre_game_app()
+        with mock.patch.object(_gl, "HAS_TFT_WORKER", True), \
+                mock.patch.object(_gl, "TftWorker",
+                                  lambda *a, **k: built.append(k)), \
+                mock.patch.object(_gl, "_tft_lcu_kwargs",
+                                  lambda: built.append("lcu reader") or {}):
+            app._process_worker_result(
+                WorkerResult(state=dict(TFT_STATE, game_mode="TFT"),
+                             end_signal=False))
+        self.assertTrue(app._tft_mode, "the stub did not run")
+        self.assertEqual(built, [], "the real game start ran past the stub")
+        self.assertIsNone(app._tft_worker)
 
     # -- M1. WorkerResult with TFT state triggers TFT detection ---------------
 
