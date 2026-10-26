@@ -96,6 +96,17 @@ export function intIn(v, lo, hi) {
   return n >= lo && n <= hi ? n : null;
 }
 
+// The TFT HP band of a live player: "crit" at <= HP_CRIT, "low" at <= HP_LOW,
+// else "". Eliminated (<= 0) and unknown HP carry no band - out is not the
+// crit pop-out. The ONE source for both screens: the overlay vitals here and
+// the dashboard lobby bars (active_match.js _amTftLobbyNode), so the same HP
+// reads the same band on each (RM-948).
+export function tftHpBand(hp) {
+  if (typeof hp !== "number" || !Number.isFinite(hp) || hp <= 0) return "";
+  if (hp <= HP_CRIT) return "crit";
+  return hp <= HP_LOW ? "low" : "";
+}
+
 // The first candidate that is a valid integer in [lo, hi]. A -1 start-of-game
 // sentinel (QA N10) in an earlier slot falls through to a later valid one.
 export function firstIn(cands, lo, hi) {
@@ -239,9 +250,7 @@ export function tftOverlayModel(st) {
   else if (lc.source === "tft_standalone") source = "ROUND FEED";
 
   const d = (v) => (v === null || v === undefined ? DASH : String(v));
-  let band = "";
-  if (hp !== null && hp <= HP_CRIT) band = "crit";
-  else if (hp !== null && hp <= HP_LOW) band = "low";
+  const band = tftHpBand(hp);
 
   const vitals = [
     { key: "hp", label: "HP", text: out ? "OUT" : d(hp), major: true, band },

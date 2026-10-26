@@ -21,6 +21,7 @@ import {
 import { scorerUnit } from '../lib/scorer_units.js';
 import { installItemTooltip } from '../lib/overlay_tooltip.js';
 import { installItemRadial } from '../lib/overlay_item_radial.js';
+import { tftHpBand } from '../lib/overlay_tft.js';
 import { applyItemOverrides, filterSilenced, clearItemOverrides } from '../lib/item_overrides.js';
 import { renderThreatDonut } from './threat_donut.js';
 import { classifyAction, escHtml, safe } from '../lib/helpers.js';
@@ -1428,7 +1429,11 @@ function _amTftLobbyNode(players, emptyText, asOf) {
     const fill = document.createElement("span");
     fill.className = "am-tft-lob-fill";
     fill.style.width = `${Math.min(r.hp, 100)}%`;
-    if (r.hp <= 25) fill.classList.add("is-low");
+    // The overlay's HP bands (RM-948): data-band carries low / crit, and the
+    // red is-low fill is the crit band only - red is the one emergency colour.
+    const band = tftHpBand(r.hp);
+    if (band) fill.dataset.band = band;
+    if (band === "crit") fill.classList.add("is-low");
     bar.appendChild(fill);
     const hp = document.createElement("span");
     hp.className = "am-tft-lob-hp";

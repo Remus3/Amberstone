@@ -20,7 +20,7 @@ import test from "node:test";
 import assert from "node:assert";
 
 import { amLiveFallbackModel, amOrdinal, amStickyPhase } from "./active_match.js";
-import { tftOverlayModel } from "../lib/overlay_tft.js";
+import { tftHpBand, tftOverlayModel } from "../lib/overlay_tft.js";
 
 const TFT_COACH_LIVE = {
   mode: "tft", action: "", board: "", econ: "", rolldown: "", items: "",
@@ -192,6 +192,25 @@ test("strip HP and overlay vitals HP read the same text on the real start rows",
     const strip = amLiveFallbackModel("tft", "InProgress", p).rows[2][1];
     const ov = tftOverlayModel({ mode_key: "tft", liveclient: {}, coach: p }).vitals[0].text;
     assert.strictEqual(strip, ov, `row ${JSON.stringify(p)}`);
+  }
+});
+
+// RM-948: ONE set of TFT HP bands. The dashboard lobby bars went red at
+// <= 25 while the overlay vitals go amber at <= 40 and red at <= 20, so the
+// same player's HP read differently on the two screens (a 22 HP you-row was
+// red on the dashboard and amber on the overlay). tftHpBand is the one source.
+test("tftHpBand: crit 1..20, low 21..40, none above, none when out or unknown", () => {
+  const cases = [[1, "crit"], [4, "crit"], [20, "crit"], [21, "low"], [25, "low"],
+    [36, "low"], [40, "low"], [41, ""], [100, ""], [120, ""],
+    [0, ""], [-1, ""], [-9, ""], [null, ""], [undefined, ""], ["20", ""], [NaN, ""]];
+  for (const [hp, want] of cases) assert.strictEqual(tftHpBand(hp), want, `hp ${hp}`);
+});
+
+test("overlay vitals band is tftHpBand of the HP it paints", () => {
+  for (let hp = -2; hp <= 102; hp += 1) {
+    const v = tftOverlayModel({ mode_key: "tft", liveclient: { hp } }).vitals[0];
+    const painted = /^\d+$/.test(v.text) ? Number(v.text) : null;
+    assert.strictEqual(v.band, tftHpBand(painted), `hp ${hp}`);
   }
 });
 

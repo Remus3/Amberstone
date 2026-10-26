@@ -843,7 +843,24 @@ _WEB = _REPO_ROOT / "web"
 # MERGED 2026-10-27 by the session 144 merger onto main (lane commit 6f0c49073): main had moved
 # this pin since the lane base, so the superseded value above is main's and
 # the value below is recomputed over the merged tree.
-_LIVE_HALF_DIGEST = "efe6594d398dc0d7a116f126046cd68e30574ca5a033cf7dd80966399b540a6d"
+# superseded by the RM-948 re-capture below: "efe6594d398dc0d7a116f126046cd68e30574ca5a033cf7dd80966399b540a6d"
+#
+# RE-CAPTURED 2026-10-26 at RM-948 (s134 uiux cycle 15). Two changes ride
+# it. (1) Cycle 14 (RM-947, the start-sentinel HP fall-through in
+# web/js/panels/active_match.js) edited the live half without re-capturing,
+# so this guard was red at lane HEAD 8c44e9b78 (measured 0c57a0a6...). (2)
+# RM-948: web/js/lib/overlay_tft.js exports tftHpBand (the one TFT HP band
+# source) and its vitals call it; web/js/panels/active_match.js imports it for
+# the lobby bars. Ordinary case, no tokeniser change. ATTRIBUTED BY
+# SUBSTITUTION against 87c000bc9 (the last lane commit whose tree hashed to the
+# pin): swapping exactly those two paths back to their 87c000bc9 blobs (in
+# memory) reproduces the superseded 2078227f... value EXACTLY. Those two paths
+# are the whole change. No glyph change: the added lines carry 0 non-ASCII
+# bytes. If another slice re-captures in parallel, the merger recomputes.
+# MERGED 2026-10-27 by the session 144 merger onto main (lane commit 1c75b7471): main had moved
+# this pin since the lane base, so the superseded value above is main's and
+# the value below is recomputed over the merged tree.
+_LIVE_HALF_DIGEST = "d1adc684080412c0f1005763b19e506e4807c9097c89c015055512e19f37ef7c"
 
 
 def _web_sources() -> list[Path]:

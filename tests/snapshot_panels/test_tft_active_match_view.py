@@ -598,3 +598,61 @@ def test_start_sentinel_hp_falls_through_to_coach_health(mock_server, pw_browser
         page.close()
         ctx.close()
     assert not errors, f"JS errors: {errors[:3]}"
+
+
+# [hp text, is-you, data-band, is-low] per dashboard lobby row, in DOM order.
+_LOBBY_BANDS_JS = (
+    "() => Array.from(document.querySelectorAll("
+    "'#am-map-body .am-tft-lob-row')).map(r => {"
+    " const f = r.querySelector('.am-tft-lob-fill');"
+    " return [r.querySelector('.am-tft-lob-hp').textContent,"
+    " r.classList.contains('is-you'), f.dataset.band || '',"
+    " f.classList.contains('is-low')]; })"
+)
+
+# The overlay vitals band for the same coach payload, computed in the same page
+# by the overlay's own module (web/js/lib/overlay_tft.js tftOverlayModel).
+_OVERLAY_BAND_JS = (
+    "(coach) => import('/js/lib/overlay_tft.js').then(m =>"
+    " m.tftOverlayModel({ mode_key: 'tft', liveclient: {}, coach }).vitals[0].band)"
+)
+
+
+def test_lobby_hp_bands_match_the_overlay_vitals(mock_server, pw_browser):
+    """RM-948: one set of TFT HP bands on both screens. Real row 77 of tft_qa
+    run 20261025-162857 (stage 4-6, you 5th at 36 HP; lobby 70 / 64 / 60 / 52 /
+    36 / 28 / 25 / 4). The dashboard lobby used to go red at <= 25 (the 25 row
+    red, the 36 you-row plain) while the overlay vitals read 36 as amber "low".
+    Now every bar carries the overlay's band (crit <= 20, low <= 40), the red
+    is-low fill is the crit band only, and the you-row's band is the band the
+    overlay vitals paint for that same payload."""
+    data = copy.deepcopy(_load("tft_live_s134"))
+    coach = {
+        "hp": 36, "standing": 5, "stage_round": "4-6",
+        "tft_players": [
+            {"standing": s, "health": h, "you": s == 5}
+            for s, h in zip(range(1, 9), (70, 64, 60, 52, 36, 28, 25, 4))
+        ],
+    }
+    data["coach"].update(coach)
+    ctx, page, errors = _open(mock_server, pw_browser, data)
+    try:
+        _wait_fallback(page, "tft")
+        page.wait_for_function(
+            "document.querySelectorAll('#am-map-body .am-tft-lob-row').length === 8",
+            timeout=_LIVE_TICK_MS,
+        )
+        assert page.evaluate(_LOBBY_BANDS_JS) == [
+            ["70", False, "", False], ["64", False, "", False],
+            ["60", False, "", False], ["52", False, "", False],
+            ["36", True, "low", False], ["28", False, "low", False],
+            ["25", False, "low", False], ["4", False, "crit", True],
+        ]
+        overlay_band = page.evaluate(_OVERLAY_BAND_JS, data["coach"])
+        assert overlay_band == "low"
+        you = [r for r in page.evaluate(_LOBBY_BANDS_JS) if r[1]]
+        assert you[0][2] == overlay_band
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors: {errors[:3]}"
