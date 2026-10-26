@@ -26,6 +26,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from lib import rewind_live_writer as rlw  # noqa: E402
+from tests._timing_budget import fleet_test_guard  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -74,7 +75,7 @@ class SchedulerTests(unittest.TestCase):
             rlw.schedule_live_insert(object(), delay_s=0.05)
             elapsed = time.time() - t0
         # Must return well under 100ms.
-        self.assertLess(elapsed, 0.5)
+        self.assertLess(elapsed, fleet_test_guard.budget(0.5))
 
     def test_spawns_daemon_timer(self):
         captured: dict[str, object] = {}

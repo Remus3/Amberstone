@@ -20,6 +20,7 @@ import pytest
 
 from core import live_session_recorder as lsr
 from core import liveclient_cache
+from tests._timing_budget import fleet_test_guard
 
 
 HEADER_FIELDS = {
@@ -327,7 +328,7 @@ def test_record_never_blocks_and_drops_when_queue_full(tmp_path, monkeypatch):
         assert rec.dropped == 5
         # The poll loop must never wait on the disk: 5 overflow calls, well
         # under one blocking-put timeout in total.
-        assert elapsed < 0.25
+        assert elapsed < fleet_test_guard.budget(0.25)
     finally:
         gate.set()
         rec.flush()

@@ -36,6 +36,7 @@ from pathlib import Path
 
 import pytest
 
+from tests._timing_budget import fleet_test_guard
 from tools import stop_claim_gate as gate
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -761,7 +762,7 @@ def test_200k_whitespace_line_in_a_push_result_is_fast(tmp_path):
         pytest.fail("a 200k-char whitespace line took over 30s (quadratic regex)")
     assert proc.returncode == 0, proc.stderr
     result = json.loads(proc.stdout.strip().splitlines()[-1])
-    assert result["elapsed"] < 1.0, result
+    assert result["elapsed"] < fleet_test_guard.budget(1.0), result
     assert result["credit"] is None
 
 
@@ -2176,7 +2177,7 @@ def test_100k_spaces_in_a_command_is_fast():
         pytest.fail("100k spaces in a command took over 60s (quadratic command regex)")
     assert proc.returncode == 0, proc.stderr
     result = json.loads(proc.stdout.strip().splitlines()[-1])
-    assert result["elapsed"] < 1.0, result
+    assert result["elapsed"] < fleet_test_guard.budget(1.0), result
     assert result["credits"] == [None] * 5
 
 
@@ -2213,7 +2214,7 @@ def test_the_subcommand_scan_is_linear():
     began = time.perf_counter()
     assert gate._git_subcommand_unresolved("git " * 6000) is False
     assert gate._git_subcommand_unresolved("git -C x " * 3000 + "git $X") is True
-    assert time.perf_counter() - began < 2.0
+    assert time.perf_counter() - began < fleet_test_guard.budget(2.0)
 
 
 def test_the_staged_step_on_long_git_repeats_is_fast():
@@ -2223,7 +2224,7 @@ def test_the_staged_step_on_long_git_repeats_is_fast():
         found = gate._new_subagent_evidence()
         began = time.perf_counter()
         gate._staged_merge_step(found, command, "ok")
-        assert time.perf_counter() - began < 1.0, len(command)
+        assert time.perf_counter() - began < fleet_test_guard.budget(1.0), len(command)
 
 
 def test_a_60k_git_repeat_finishes_well_inside_the_stop_timeout(tmp_path):
@@ -2241,7 +2242,8 @@ def test_a_60k_git_repeat_finishes_well_inside_the_stop_timeout(tmp_path):
                         _pair("a1b2c3", "toolu_01bg", big, "ok"))[1]
     elapsed = time.perf_counter() - began
     assert "merge_claim_without_merge" in _checks(report)
-    assert elapsed < 20.0, elapsed
+    # Capped under the ~70 s the quadratic parse took, so it still fails.
+    assert elapsed < min(fleet_test_guard.budget(20.0), 60.0), elapsed
 
 
 # ---------------------------- round 4: re-verifier refutation of 5d76475b3

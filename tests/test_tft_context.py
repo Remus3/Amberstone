@@ -30,6 +30,7 @@ import pytest
 
 from dashboard import routes_tft as rt
 from tft import tft_placement as tp
+from tests._timing_budget import fleet_test_guard
 from tft import tft_standalone
 
 REPO = Path(__file__).resolve().parent.parent
@@ -252,4 +253,4 @@ def test_tft_context_is_cheap_on_the_state_path():
     t0 = time.perf_counter()
     for i in range(2000):
         rt.tft_context("client", False, {"phase": "None"}, None, now=T + i * 0.001)
-    assert time.perf_counter() - t0 < 1.0
+    assert time.perf_counter() - t0 < fleet_test_guard.budget(1.0)

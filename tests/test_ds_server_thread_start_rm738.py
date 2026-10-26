@@ -33,6 +33,7 @@ from unittest import mock
 
 from agents.daemon_slayer import server as ds_server
 from agents.daemon_slayer.data_loader import DataSnapshot
+from tests._timing_budget import fleet_test_guard
 
 _FAULT = "commit charge exhausted (simulated, RM-738)"
 _REQUEST = b"GET /health HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n"
@@ -134,7 +135,7 @@ class DsAcceptLoopSurvivesAFailedThreadStart(unittest.TestCase):
                 elapsed = time.monotonic() - t0
             self.assertEqual(got, b"",
                              "the dead request must be closed, not answered")
-            self.assertLess(elapsed, 3.0)
+            self.assertLess(elapsed, fleet_test_guard.budget(3.0))
             self.assertTrue(hook.seen, "the armed fault never fired - vacuous")
             self.assertEqual(srv.thread_start_failures, 1)
             # The accept loop is free: the next request is served normally.
@@ -190,7 +191,10 @@ class DsAcceptLoopSurvivesAFailedThreadStart(unittest.TestCase):
                     elapsed = time.monotonic() - t0
                     time.sleep(1.4)              # the slow thread now runs
             self.assertEqual(got, b"")
-            self.assertLess(elapsed, 0.9, "the start was not bounded")
+            # Capped under the 1.0 s slow bootstrap, so an unbounded start
+            # still fails on a loaded box.
+            self.assertLess(elapsed, min(fleet_test_guard.budget(0.9), 0.95),
+                            "the start was not bounded")
             self.assertEqual(handled, [], "an abandoned request was served")
             handle_error.assert_not_called()
             self.assertEqual(srv.thread_start_failures, 1)

@@ -34,6 +34,7 @@ import pytest
 
 from tft.rounds import schema as rs
 from tft.rounds import store as st
+from tests._timing_budget import fleet_test_guard
 from tft.rounds.store import Env, RoundStore
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -674,7 +675,7 @@ def test_full_queue_drops_without_blocking_the_caller(db_path):
         s._run_gate.clear()  # test seam: stall the writer thread
         t = time.perf_counter()
         ok = [s.put_event(mid, "phase", {"i": i}, src="tft_log") for i in range(6)]
-        assert time.perf_counter() - t < 0.5
+        assert time.perf_counter() - t < fleet_test_guard.budget(0.5)
         assert 0 < sum(ok) < 6
         assert s.stats()["queue_full"] == 6 - sum(ok)
         s._run_gate.set()

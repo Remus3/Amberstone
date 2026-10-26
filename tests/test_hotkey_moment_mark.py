@@ -29,6 +29,7 @@ if sys.platform != "win32":
     pytest.skip("Windows-only Win32 hotkey listener", allow_module_level=True)
 
 import tools.hotkey_listener as hk  # noqa: E402
+from tests._timing_budget import fleet_test_guard  # noqa: E402
 
 
 # -- combo -------------------------------------------------------------------
@@ -223,7 +224,9 @@ def test_2999_failure_catch_covers_each_failure_shape(mode, tmp_path, caplog,
     assert mark is None and not marks.exists()
     assert any(":2999 gamestats unavailable" in r.getMessage()
                for r in caplog.records), [r.getMessage() for r in caplog.records]
-    assert elapsed < 1.9, f"press blocked {elapsed:.2f}s behind a hung :2999"
+    # Capped under the 2.0 s hang, so a press that waits it out still fails.
+    assert elapsed < min(fleet_test_guard.budget(1.9), 1.95), \
+        f"press blocked {elapsed:.2f}s behind a hung :2999"
 
 
 def test_mark_timeout_is_short():

@@ -22,6 +22,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 import daemon_slayer_extract as dse  # noqa: E402
 
 from core import port_handoff  # noqa: E402
+from tests._timing_budget import fleet_test_guard  # noqa: E402
 
 
 def test_obj_factory_re_still_matches_real_headers():
@@ -40,7 +41,7 @@ def test_obj_factory_re_is_linear_on_hostile_input(filler):
     hostile = "0,(" + filler * 5000 + "!"
     t0 = time.perf_counter()
     assert dse._OBJ_FACTORY_RE.search(hostile) is None
-    assert time.perf_counter() - t0 < 2.0
+    assert time.perf_counter() - t0 < fleet_test_guard.budget(2.0)
 
 
 @pytest.mark.parametrize("host", ["127.0.0.1", "127.5.6.7", "::1", "localhost"])

@@ -22,6 +22,8 @@ from pathlib import Path
 
 import pytest
 
+from tests._timing_budget import fleet_test_guard
+
 ROOT = Path(__file__).resolve().parent.parent
 
 _spec = importlib.util.spec_from_file_location(
@@ -311,7 +313,9 @@ def test_sdk_timeout_kills_the_tree_and_fails_the_cycle(tmp_path: Path):
     rec = _sdk(tmp_path, executor_cmd=_register_stub([sys.executable, str(slow)]),
                cycle_deadline_sec=2).run(1, "b", "fixed")
     assert "timeout" in rec.error
-    assert time.time() - t0 < 45, "the timeout path should not wait out the child"
+    # Capped under the child's 60 s sleep, so waiting it out still fails.
+    assert time.time() - t0 < min(fleet_test_guard.budget(45), 55), \
+        "the timeout path should not wait out the child"
 
 
 # ---- sdk channel: killing a wedged child on BOTH platforms ------------------

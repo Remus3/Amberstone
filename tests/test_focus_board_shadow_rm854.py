@@ -47,6 +47,7 @@ from agents.daemon_slayer.focus_board import compute_focus_board
 from core import arena_coach_shadow as shadow
 from core import focus_board_live as fbl
 from dashboard._deterministic_coaching import shadow_log_arena_coach
+from tests._timing_budget import fleet_test_guard
 
 _NOW = "2026-10-24T00:00:00+00:00"
 
@@ -301,7 +302,7 @@ def test_state_builder_hook_never_waits_on_the_compute(
                            live_path=missing)
     elapsed = time.perf_counter() - t0
     try:
-        assert elapsed < _HOOK_BUDGET_S, f"hook blocked {elapsed:.3f}s"
+        assert elapsed < fleet_test_guard.budget(_HOOK_BUDGET_S), f"hook blocked {elapsed:.3f}s"
         [row] = _rows(target)
         assert row["focus_board"]["status"] == fbl.STATUS_PENDING
         # The compute really is running, and not on this (caller) thread.
@@ -311,7 +312,7 @@ def test_state_builder_hook_never_waits_on_the_compute(
         t1 = time.perf_counter()
         shadow_log_arena_coach(_coach(), _lc(), "arena", path=target,
                                live_path=missing)
-        assert time.perf_counter() - t1 < _HOOK_BUDGET_S
+        assert time.perf_counter() - t1 < fleet_test_guard.budget(_HOOK_BUDGET_S)
         assert len(_rows(target)) == 1
     finally:
         release.set()

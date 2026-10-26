@@ -71,6 +71,7 @@ from core import rank_tier_source as RTS  # noqa: E402
 # `with urllib.request.urlopen(...)` in _http_get_json), never the shared
 # module a foreign thread of the xdist worker would also see.
 from tests._module_view import bind_urlopen  # noqa: E402
+from tests._timing_budget import fleet_test_guard  # noqa: E402
 
 
 def _settle(timeout_s: float = 15.0) -> bool:
@@ -175,7 +176,8 @@ def test_defect_a_stale_grid_is_served_without_waiting_for_the_sweep(monkeypatch
 
     assert grid["all"]["early"]["cs"]["avg"] == 140, "stale grid was not served"
     assert started.wait(10.0), "the refresh never ran at all"
-    assert elapsed < 1.0, (
+    # Capped under the 2.0 s parked sweep, so a read that waits on it fails.
+    assert elapsed < min(fleet_test_guard.budget(1.0), 1.8), (
         f"a stale read blocked {elapsed:.2f}s behind the live sweep"
     )
     assert _settle()

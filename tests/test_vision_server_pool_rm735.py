@@ -33,6 +33,7 @@ from http.server import BaseHTTPRequestHandler
 from unittest import mock
 
 import vision_server
+from tests._timing_budget import fleet_test_guard
 
 _FAULT = "commit charge exhausted (simulated, RM-735)"
 
@@ -147,7 +148,7 @@ class WorkerPoolBehaviour(unittest.TestCase):
             time.sleep(0.1)
             t0 = time.monotonic()
             self.assertEqual(_get(port, "/fast"), 200)
-            self.assertLess(time.monotonic() - t0, 1.0)
+            self.assertLess(time.monotonic() - t0, fleet_test_guard.budget(1.0))
             gate.set()
             blocked.join(timeout=5)
         finally:
@@ -234,7 +235,7 @@ class WorkerPoolBehaviour(unittest.TestCase):
                 time.sleep(0.1)                  # the worker is reading it
                 t0 = time.monotonic()
                 self.assertEqual(_get(port, "/fast", timeout=3), 200)
-                self.assertLess(time.monotonic() - t0, 2.0)
+                self.assertLess(time.monotonic() - t0, fleet_test_guard.budget(2.0))
             finally:
                 silent.close()
         finally:

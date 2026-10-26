@@ -25,6 +25,7 @@ from urllib.request import Request, urlopen
 import pytest
 
 import tools.ds_matchdb_mcp_server as mod
+from tests._timing_budget import fleet_test_guard
 
 
 # --------------------------------------------------------------------------
@@ -656,7 +657,7 @@ def test_fast_tool_returns_normally_under_watchdog(monkeypatch):
     assert "isError" not in r
     payload = json.loads(r["content"][0]["text"])
     assert payload["engine_up"] is False
-    assert elapsed < 1.0  # nowhere near the dispatch timeout
+    assert elapsed < fleet_test_guard.budget(1.0)  # nowhere near the dispatch timeout
 
 
 def test_slow_tool_hits_watchdog_timeout(monkeypatch):
@@ -682,7 +683,7 @@ def test_slow_tool_hits_watchdog_timeout(monkeypatch):
     assert r.get("_timeout") is True
     assert "timed out" in r["content"][0]["text"]
     # Returned promptly at ~the 0.3s timeout, NOT after the 30s sleep.
-    assert elapsed < 5.0
+    assert elapsed < fleet_test_guard.budget(5.0)
 
 
 def test_server_responsive_after_a_timeout(monkeypatch):

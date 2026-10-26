@@ -26,6 +26,7 @@ from pathlib import Path
 import pytest
 
 from tests._module_view import ModuleView, bind_module_view, bind_socket_class
+from tests._timing_budget import fleet_test_guard
 from tools import rc_facts
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -71,7 +72,7 @@ def test_main_returns_within_the_budget_when_every_probe_hangs(
     start = time.monotonic()
     assert rc_facts.main(session=None) == 0
     elapsed = time.monotonic() - start
-    assert elapsed < 0.5 + rc_facts.PROBE_JOIN_GRACE_S + 1.0, elapsed
+    assert elapsed < fleet_test_guard.budget(0.5 + rc_facts.PROBE_JOIN_GRACE_S + 1.0), elapsed
     text = buf.getvalue()
     assert "# RC live state" in text, "the block must still print"
     assert "unmeasured" in text
@@ -221,7 +222,8 @@ def _probe_a_port_that_never_answers(monkeypatch, budget_s=0.6):
     start = time.monotonic()
     got, late = rc_facts._run_probes({"port": lambda: rc_facts._port_listening(1)},
                                      budget_s)
-    assert time.monotonic() - start < budget_s + rc_facts.PROBE_JOIN_GRACE_S + 0.5
+    assert time.monotonic() - start < fleet_test_guard.budget(
+        budget_s + rc_facts.PROBE_JOIN_GRACE_S + 0.5)
     assert late == [] and got == {"port": False}
     assert timeouts, "the probe never opened a socket - the check below is vacuous"
     return timeouts

@@ -1,0 +1,95 @@
+# archived from RC-NEXT-SESSION.txt at 2026-10-26T08:52:00Z
+====================
+CLOSED - S136-S139 RECORDS, STATUS AND DETAIL (s140 trim, MAIN U5 item 4; moved VERBATIM; the full prior file is git show 1cf593a58:RC-NEXT-SESSION.txt)
+====================
+From "Next action" (record of the ruling's provenance):
+no Overwolf data dependency, build in-house (TFT_PROGRAM sec 10; the July 2026 GEP CLOSED call was
+the headless loop's, not the operator's, and mis-cited ADR-006).
+FIRST: CPU / memory glance; inbox_tick.py --pending; gh pr list (0 at the s137 /done); git fetch +
+origin/main still an ancestor of main.
+From "SESSION 139 + 138 ITEMS" (record; commit messages are never edited):
+- 131941469's text cites RM-906 (the ASKS 36 ids row) in error for RM-908.
+From "CARRIED FROM s133" (one sub-item of the batched MAIN note, closed by kit v23: no board URL):
+  RC's board at a new URL (6eb820a87, INFORMATION),
+From "OPEN - WORK ITEMS" (pointer; header NEVER PUSH names the same folder):
+  branch bundles ops/runtime/branch_bundles/ (gitignored).
+From "SESSION 137 NEW ITEMS":
+- BOARD: claude.ai push RETIRED by kit v23 (local render only); the url question survives only as ASKS 18.
+From "SESSION 136 NEW ITEMS" (the T13 detail; the item itself stays carried in the hand-off):
+- T13 PARKED unmerged on branch worktree-agent-a2969c932e74f20d7 (81f83a268 + fcf913467; worktree
+  removed s137, branch kept, also in ops/runtime/branch_bundles/s137-wt-T13-parked.bundle): an id-0
+  game-end rating (in-game game-id cache lost + vision placement) must not stick in last_tft.json
+  and block the real store rating. Round 1 REFUTED (900 s window let an older game replace a newer
+  id-0 record after early elimination + requeue: store end = lobby end, tft_placement.py:552-554);
+  round 2 REFUTED (the EOG store rating lands ~19 s BEFORE the game-end rating in all 3 s136 games,
+  logs 14:00 / 16:12 / 17:05, so the id-0 floor anchors on the same game and the later history
+  re-rate is refused at performance_tracker.py:802; a regression on early elimination). Redesign; keep the eog_matches_game "0" != "0" fix idea.
+From "SESSION 136 NEW ITEMS" (file:line detail; the hand-off still names each item):
+- T9 siblings: streak (tft_state_reader.py:418), augments, partner_hp, MasterYi_AD naming
+  (tft_standalone.py:176). T10 siblings: standalone_in_game accepts a file with no game id;
+  tft/sources/eog_file.py None == None reuse (:382, :460); duplicate id-0 + real row
+  (performance_tracker.py:627-631); unconditional overwrite (:680).
+- Match row 8685 has level / stage 0 (no history store). The coach prompt is only logged under
+  _debug (tft_coach_engine.py:918). Coach slip "LEVEL TO 10" at 17 g. RM-899: a 7 s blank coaching
+  stub after an RC restart.
+From "SESSION 135 ITEMS STILL OPEN" (detail; the hand-off still names the item):
+- TFT-04 follow-ups: the gold-on-streak box is caught only by real-Tesseract tests that CI skips; the
+  legacy stage helper misreads 3-6 as 5-6 on a 2x upscale (unpinned); scoreboard HP 10 / 266 misreads
+  in the 0.5-0.8 confidence band.
+From "STATUS, CONTEXT, ACCEPTANCE" (the context list; the hand-off keeps a shorter one):
+Context: rc-shell/ (electron shell), docs/OVERLAY_COMPLIANCE_PLAN.md, ROADMAP RM-189 + PKG;
+docs/TFT_PROGRAM.md (slices, ADR-018, sec 10 HUD spec); tft/engine (Augur); tft/rounds (TFT-01
+store); tft/local_player.py (N13); data/tft_matches (RM-616); ops/runtime/tft_qa/ (QA reports incl.
+20261025-153652 and -162857); ops/runtime/gh1/ (PLAN.txt, protection-before.json).
+From "DO NOT RE-LITIGATE" (the pointer line, before the s140 trim):
+- The s133 records (shipped rows, built-not-rebuilt TFT set resolver / prompt / schedule), lolmath via
+  --lolmath-only (not --force), the RC board recreated (Dashboard artifact 12ChcPAR8o3RuVb9qStHK8),
+  the S4 ruling (git hooks fail CLOSED) and CI's sibling-sweep-tree arm PARTIAL ("ARMED WITH A
+  MEASURED ESCAPE RATE ABOVE ZERO" stays) moved VERBATIM with their Reverses if: to
+  docs/handoff-archive/RC-2026-10-25.txt (block 3); OLDER RECORDS in RC-2026-10-23.txt (s128 / s129),
+  RC-2026-10-24.txt (s130-s132) and RC-2026-10-25.txt (block 1). Read them before re-opening any.
+From "OPEN - WORK ITEMS" (reference record; the hand-off keeps a pointer):
+- Refs: refs/rw2-backup/remote-old/* (7) kept (C1 ruling, ASKS 6). LOCAL tags archive/* (rm746-r2,
+  rm793-abd89ea3, rm822-abd89ea3-tip, rm822adj-8f2-5-tip, s129-pre-rebuild, s130-pre-rebuild,
+  s135-pre-idscrub-land, s135-pre-idscrub-main): never `git push --tags`. Restore: git fetch <bundle>
+  'refs/*:refs/restored/*'. Bundles: ops/runtime/backup/rm703-, rm822-, rm822adj-branches-*.bundle;
+  s133-s137: ops/runtime/branch_bundles/ (s135-pre-idscrub, s135-worktrees, s137-lift-worktrees,
+  s137-wt-T13-parked; *-preserved/ dirs); .git/filter-repo-backup-s135/.
+- Still open rows: RM-681 (PARTIAL), RM-682 (2), RM-683, RM-686, RM-690..RM-693, RM-697, RM-698,
+  RM-702 (MAIN-ordered), RM-705..RM-731 except 728 / 729, RM-734, RM-737, RM-740 (e) fu3, RM-750
+  (live), RM-754, RM-755, RM-778, RM-787, RM-792, RM-797, RM-798, RM-800, RM-809, RM-816 (APPLY),
+  RM-817, RM-819, RM-820..RM-823, RM-826..RM-829, RM-831, RM-833, RM-834, RM-842, RM-843, RM-847,
+  RM-848, RM-861, RM-871, RM-876, RM-880 (c)-(d), RM-881, RM-883, RM-884, RM-886, RM-888 (review),
+  RM-890..RM-894, RM-896, RM-899..RM-901, RM-906, RM-907, LT-02r, TFT-HUD-00..12, PKG, RM-279, RM-280,
+  RM-368, RM-381, RM-292c, RM-251(b), RM-370, RM-229, RM-290, RM-27, RM-248, RM-189, RM-167, RM-204,
+  RM-12/RM-14 flips, RM-15(b), RM-16, RM-423, RM-239/RM-242 (operator fence), RM-297b, RM-517,
+  RM-596, RM-597. Next free RM-909 (pin docs/DS_SWEEP_TRACKER.md); next free LEDGER 1916.
+From "OPEN - OPERATOR ASKS" (records):
+1-7, 9-12 unanswered s111-s137; 15, 17, 18, 20-24, 26, 28-33, 36, 38 open; 19 WITHDRAWN s126; 25
+APPROVED + DONE s137 (LEDGER 1912); 27 RESOLVED s127; 34 APPROVED s135 (GH1); 35 granted for s135
+only; 37 ADJUDICATED s135 (LEDGER 1904).
+GitHub security read-back 2026-10-22: alerts, secret scanning, push protection ON; CodeQL ADVANCED,
+DEFAULT suite; Dependabot security updates read DISABLED though the operator reports them on.
+From "OPEN - WORK ITEMS / Channel and MAIN" (acted on by kit v21-v23, which list the board files in
+the kit IGNORE; tests/_fleet_guard_config.py EXTRA_IGNORE no longer carries them):
+- RC workaround 3f3712009: drop its EXTRA_IGNORE board entries when a kit version lists both paths.
+From "OPEN - WATCH AND DATA" (records, nothing to act on):
+- b61059c72's body says "11 of 12 red"; measured 12 of 13 (commit messages are never edited).
+- The s128 S-E builder appended 6 records to the live ops/runtime/sibling_sweep_runs.jsonl (left).
+From "DO NOT RE-LITIGATE" (each with its Reverses if:):
+- s137 (LEDGER 1911-1912): the RM-905 fix 3fff974a6, the W1 + R1 worktree removals (bundled
+  first, V1 8/8). Reverses if: either task reads back non-zero on the same acked key, or a lift /
+  agent feature is found missing on main (restore it from its bundle).
+- s136 (LEDGER 1906-1910; WAKEUP 2026-10-25d): C1 c7e2c0b0c, T4 / T5 / T9 / T10 / T11 / T12 / T14 /
+  T15 fixes, the T6 / T16 docs, the two live QAs (rated A, 3rd), the worktree removals, RM-846 = B (no
+  history rewrite). Reverses if: a live re-check of one of those acceptances fails, or CI on 3.12
+  reds the C1 file after the push.
+From "STATUS, CONTEXT, ACCEPTANCE":
+Status (s139 wrap): F1 35007e479 pushed b0c755499..35007e479 (with 2e24aa66f); /done commit
+(LEDGER 1915, WAKEUP + prune, this file) pushed 35007e479..(this commit). Gate: ruff all passed; hygiene trio
+14 passed; drift_guard 1 breach (CLAUDE.md 92 percent, carried above). CI: docs-guards 40272825498
+green (35007e479); ci 40271967354 green (b0c755499). Full suite (2c): dispatched run 40273347517 (35007e479).
+bot_merge_check clean. Reap: 0 removed, 7 kept, 1 listed (drain-wave2-tail-backlog, 4 commits not
+on main). DS :8860 ok (1.290.0, 16.21.1); RC pid 23224 alive, last_reload_ok; restart_trigger
+empty; no game (mode client); session file < 1 MB; no intent / steers; 3 PRs; no new memory.
+Board: headless, not rendered.

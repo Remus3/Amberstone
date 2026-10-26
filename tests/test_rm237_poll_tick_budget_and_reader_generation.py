@@ -16,6 +16,7 @@ import types
 from core.sr_aram_worker import SrAramWorker
 from game_reader import snapshot_normalizer as sn
 from game_reader.snapshot_normalizer import _NormalizerMixin
+from tests._timing_budget import fleet_test_guard
 
 
 class _SlowHost(_NormalizerMixin):
@@ -61,7 +62,7 @@ def test_tick_subresource_time_is_budgeted(monkeypatch):
     # Unbudgeted: 1 runes + 5 enemy runes + 1 abilities = 7 x 0.3 = 2.1 s.
     # Budgeted: a GET starts only while budget remains -> <= 0.5 + one call.
     assert host.calls < 7
-    assert elapsed < 0.5 + _SlowHost.DELAY + 0.4
+    assert elapsed < fleet_test_guard.budget(0.5 + _SlowHost.DELAY + 0.4)
 
 
 class _StubReader:

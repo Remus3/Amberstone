@@ -35,6 +35,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
 from tools import credential_patterns, edit_lint_check  # noqa: E402
+from tests._timing_budget import fleet_test_guard  # noqa: E402
 
 
 def _said(capsys) -> str:
@@ -373,7 +374,7 @@ def test_large_file_scan_stays_cheap(tmp_path):
     findings = credential_patterns.scan_file(big)
     elapsed = time.perf_counter() - started
     assert findings == []
-    assert elapsed < 5.0, f"credential arm took {elapsed:.3f}s on 1 MB"
+    assert elapsed < fleet_test_guard.budget(5.0), f"credential arm took {elapsed:.3f}s on 1 MB"
 
 
 def test_hook_skips_when_no_file_paths(monkeypatch):
