@@ -33,39 +33,50 @@ re-ACLed or validated into a rewrite - a bad one is reported, not replaced):
                 update payload allow-list (PACKAGING_PLAN 3.4, PKG-4).
   deploy_key    ops/runtime/deploy_request.key - the per-machine HMAC key the
                 deploy worker verifies signed requests with
-                (ops/rc_transactional_deploy.py:80 DEFAULT_KEY_PATH, :133
-                verify_request). Created by the worker's OWN `--init-key`
-                (:693, which calls ensure_key at :699 -> :108): the key format
-                and its create-if-absent race guard (:114-121) keep one owner,
-                and this module still imports nothing from the RC tree. It is
-                a symmetric key that never leaves the machine: the launcher's
-                updater (PKG-2) signs with it and the worker verifies with it,
-                both local, so there is no public / private split to make.
+                (ops/rc_transactional_deploy.py:80 DEFAULT_KEY_PATH, :94
+                _read_key, :133 verify_request), in ensure_key's exact format
+                (`secrets.token_hex(32)` + LF, ASCII, :115). Written HERE, by
+                the same restricted-first writer as the tokens, rather than by
+                running the worker's `--init-key`: ensure_key publishes the
+                key under ops/runtime/'s inherited ACL before anyone can
+                tighten it (:114-117), and closing that window from outside
+                would mean re-ACLing the whole shared ops/runtime/ tree.
+                Format parity is pinned by a test against the real ensure_key
+                / sign_request / verify_request. It is a symmetric key that
+                never leaves the machine (the launcher's updater, PKG-2, signs
+                with it and the worker verifies with it), so there is no
+                public / private split to make.
 
-Writes: a per-writer scratch file under the gitignored ops/runtime/first_run/
-(flushed + fsynced), the ACL restricted ON THE SCRATCH FILE, then published
-under the real name with os.link, which
-fails if the name exists - so a concurrent writer's secret is never
-replaced (the ensure_key precedent, ops/rc_transactional_deploy.py:117).
-Where hard links are unsupported (FAT / exFAT) it falls back to os.replace
-after re-checking the name. A reader never sees a torn file either way.
+Writes, in this order (no secret byte ever sits under an inherited ACL):
+  1. the scratch folder ops/runtime/first_run/ (gitignored) is created and
+     restricted with an inheritable user-only ACE when this run creates it;
+  2. an EMPTY scratch file is created exclusively and restricted; if that
+     restriction fails the scratch is deleted and the secret is NOT written
+     (fail closed for that secret; the report names it, never a value);
+  3. the secret is written into the restricted scratch and fsynced;
+  4. publish with os.link, which fails if the name exists, so a concurrent
+     writer's secret is kept (the ensure_key precedent, :117). Only when the
+     volume cannot hard-link (FAT / exFAT, another volume: `_links_unsupported`)
+     the final path is created EXCLUSIVELY (O_CREAT | O_EXCL), restricted
+     while still empty, then written and fsynced; FileExistsError there means
+     "already provisioned". Nothing here ever replaces an existing file.
 
-ACL: Windows = `icacls <file> /inheritance:r /grant:r *<SID>:(F)` (the
-current process token's user SID; USERDOMAIN\\USERNAME as a fallback), run
-windowless (CREATE_NO_WINDOW) with a timeout; POSIX = mode 0600. A failure is
-reported and not fatal: the file then keeps the ACL inherited from its folder
-(a per-user install folder), and the host logs "acl not restricted".
+ACL: Windows = `icacls <path> /inheritance:r /grant:r *<SID>:(F)` (`(OI)(CI)`
+added for a folder), the current process token's user SID (USERDOMAIN\\USERNAME
+as a fallback), run windowless (CREATE_NO_WINDOW) with a timeout; POSIX = mode
+0600 (0700 for a folder). A volume without ACL support therefore gets no
+secret: set RC_VISION_TOKEN for the services instead.
 
 Logging: report lines name the secret, its root-relative path and its state,
 never a value. Stdlib only - it runs under the host's `-I` interpreter.
 """
 from __future__ import annotations
 
+import errno
 import os
 import re
 import secrets
 import subprocess
-import sys
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Mapping, NamedTuple, Optional, Tuple
 
@@ -78,18 +89,30 @@ VISION_TOKEN_ENV = "RC_VISION_TOKEN"                       # core/vision_token.p
 DASH_TOKEN_REL = ("ops", "runtime", "dash_token.txt")
 DASH_TOKEN_ENV = "RC_DASH_TOKEN"                           # dashboard/_handler.py:654
 DEPLOY_KEY_REL = ("ops", "runtime", "deploy_request.key")  # ops/rc_transactional_deploy.py:80
-DEPLOY_WORKER_REL = ("ops", "rc_transactional_deploy.py")
 SCRATCH_REL = ("ops", "runtime", "first_run")              # gitignored (.gitignore:197)
 
 VISION_TOKEN_BYTES = 16      # 32 hex chars, core/vision_token.py:15
 DASH_TOKEN_BYTES = 32        # 64 hex chars
+DEPLOY_KEY_BYTES = 32        # 64 hex chars, ops/rc_transactional_deploy.py:115
 DEPLOY_KEY_MIN_CHARS = 32    # ops/rc_transactional_deploy.py:103
 
-INIT_KEY_TIMEOUT_S = 60.0
 ICACLS_TIMEOUT_S = 30.0
 
 _SID_RE = re.compile(r"^S-1(-\d+)+$")
 _ACCOUNT_RE = re.compile(r"^[^\x00-\x1f\"*:<>?|/]{1,256}$")
+_O_BINARY = getattr(os, "O_BINARY", 0)
+_O_NOINHERIT = getattr(os, "O_NOINHERIT", 0)
+
+# "This volume cannot hard-link here" - the ONLY link failures that may take
+# the exclusive-create path. Windows: ERROR_INVALID_FUNCTION (FAT / exFAT),
+# ERROR_NOT_SAME_DEVICE, ERROR_NOT_SUPPORTED. POSIX: EPERM (vfat refuses
+# link), EXDEV, EOPNOTSUPP / ENOTSUP, ENOSYS. Anything else is an error.
+_NO_LINK_WINERRORS = frozenset({1, 17, 50})
+_NO_LINK_ERRNOS = frozenset(e for e in (
+    errno.EPERM, errno.EXDEV, getattr(errno, "EOPNOTSUPP", None),
+    getattr(errno, "ENOTSUP", None), errno.ENOSYS) if e is not None)
+
+ACL_FAILED = "acl could not be restricted to the current user; secret not written"
 
 
 class SecretResult(NamedTuple):
@@ -112,8 +135,6 @@ class ProvisionReport(NamedTuple):
             line = f"first run: {res.name} {res.state} ({_rel(res.path, root)})"
             if res.acl is True:
                 line += ", acl restricted to the current user"
-            elif res.acl is False:
-                line += ", acl not restricted (inherited from its folder)"
             if res.detail:
                 line += f": {res.detail}"
             out.append(line)
@@ -249,13 +270,15 @@ def _account_name() -> Optional[str]:
 def restrict_to_current_user(path: Path, *, run: Callable[..., Any] = subprocess.run,
                              windows: Optional[bool] = None,
                              sid: Optional[str] = None) -> bool:
-    """Leave only the current user on `path`'s ACL. True on success, False
-    (never an exception) when it could not be done."""
+    """Leave only the current user on `path`'s ACL (a folder also hands that
+    single ACE to everything created in it later). True on success, False -
+    never an exception - when it could not be done."""
     path = Path(path)
+    folder = path.is_dir()
     win = (os.name == "nt") if windows is None else windows
     if not win:
         try:
-            os.chmod(path, 0o600)
+            os.chmod(path, 0o700 if folder else 0o600)
             return True
         except OSError:
             return False
@@ -266,7 +289,8 @@ def restrict_to_current_user(path: Path, *, run: Callable[..., Any] = subprocess
         who = f"*{sid}" if _SID_RE.match(sid) else None
     if not who:
         return False
-    argv = [_icacls(), str(path), "/inheritance:r", "/grant:r", f"{who}:(F)"]
+    grant = f"{who}:(OI)(CI)(F)" if folder else f"{who}:(F)"
+    argv = [_icacls(), str(path), "/inheritance:r", "/grant:r", grant]
     try:
         done = run(argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                    stderr=subprocess.DEVNULL, creationflags=CREATE_NO_WINDOW,
@@ -279,8 +303,62 @@ def restrict_to_current_user(path: Path, *, run: Callable[..., Any] = subprocess
 # ------------------------------------------------------------ create
 
 
+def _links_unsupported(exc: OSError) -> bool:
+    """True only for "this volume cannot hard-link these two names"."""
+    winerror = getattr(exc, "winerror", None)
+    if winerror is not None:
+        return winerror in _NO_LINK_WINERRORS
+    return exc.errno in _NO_LINK_ERRNOS
+
+
 def _scratch(path: Path, scratch_dir: Path) -> Path:
     return scratch_dir / f"{path.name}.{os.getpid()}.{secrets.token_hex(4)}.tmp"
+
+
+def _create_empty(path: Path) -> None:
+    """Exclusive create of an EMPTY file (FileExistsError if the name is
+    taken); mode 0600 where the OS honours it."""
+    fd = os.open(str(path), os.O_CREAT | os.O_EXCL | os.O_WRONLY | _O_BINARY | _O_NOINHERIT,
+                 0o600)
+    os.close(fd)
+
+
+def _write_secret(path: Path, data: bytes) -> None:
+    """Write `data` into the existing, already-restricted file and fsync."""
+    fd = os.open(str(path), os.O_WRONLY | _O_BINARY | _O_NOINHERIT)
+    try:
+        view = memoryview(data)
+        while view:
+            view = view[os.write(fd, view):]
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
+def _unlink(path: Path) -> None:
+    try:
+        Path(path).unlink()
+    except OSError:
+        pass
+
+
+def _publish_exclusive(path: Path, data: bytes,
+                       restrict: Callable[[Path], bool]) -> Tuple[bool, Optional[bool]]:
+    """No hard links here: create the FINAL name exclusively, restrict it
+    while empty, then write. FileExistsError = already provisioned."""
+    try:
+        _create_empty(path)
+    except FileExistsError:
+        return False, None
+    try:
+        if not restrict(path):
+            _unlink(path)        # ours, and still empty
+            return False, False
+        _write_secret(path, data)
+    except BaseException:
+        _unlink(path)            # ours: never leave a half-written secret behind
+        raise
+    return True, True
 
 
 def create_secret_file(path: Path, value: str, *,
@@ -288,15 +366,16 @@ def create_secret_file(path: Path, value: str, *,
                        scratch_dir: Optional[Path] = None) -> Tuple[bool, Optional[bool]]:
     """Create `path` holding `value` + LF when it does not exist.
 
-    The scratch file lives in `scratch_dir` (default: beside `path`). The
-    provisioner passes SCRATCH_REL under the gitignored ops/runtime/, so a
-    write killed midway can never leave a secret-bearing scratch file in
-    config/, where only config/vision_token.txt itself is ignored
-    (.gitignore:60). Same volume, so the link / replace still works.
+    The order is the security property (module docstring "Writes"): the ACL
+    is set on the EMPTY scratch file before a single secret byte is written,
+    and a failed restriction writes nothing. The scratch lives in
+    `scratch_dir` (default: beside `path`); the provisioner passes
+    SCRATCH_REL under the gitignored ops/runtime/, so a killed write never
+    leaves a secret-bearing scratch file in config/.
 
-    Returns (created, acl): created is False when the name already existed
-    or another writer won the race (its file is kept); acl is the result of
-    `restrict` on the new file, None when nothing was created."""
+    Returns (created, acl): (True, True) published; (False, None) the name
+    already existed or another writer won (its file is kept); (False, False)
+    the ACL could not be restricted and nothing was written."""
     path = Path(path)
     if not valid_token(value):
         raise ValueError("refusing to write a token that is not printable ASCII")
@@ -304,38 +383,38 @@ def create_secret_file(path: Path, value: str, *,
         return False, None
     path.parent.mkdir(parents=True, exist_ok=True)
     scratch_dir = Path(scratch_dir) if scratch_dir is not None else path.parent
-    scratch_dir.mkdir(parents=True, exist_ok=True)
+    if not scratch_dir.is_dir():
+        scratch_dir.mkdir(parents=True, exist_ok=True)
+        if scratch_dir != path.parent:
+            # Best effort: every scratch FILE is still gated on its own below.
+            restrict(scratch_dir)
+    data = (value + "\n").encode("ascii")
     tmp = _scratch(path, scratch_dir)
+    _create_empty(tmp)
     try:
-        with open(tmp, "x", encoding="ascii", newline="\n") as fh:
-            fh.write(value + "\n")
-            fh.flush()
-            os.fsync(fh.fileno())
-        acl = bool(restrict(tmp))
+        if not restrict(tmp):
+            return False, False              # fail closed: no secret byte written
+        _write_secret(tmp, data)
         try:
             os.link(tmp, path)
         except FileExistsError:
             return False, None
-        except OSError:
-            # No hard links on this volume: replace, after one more look.
-            if path.exists():
-                return False, None
-            os.replace(tmp, path)
-        return True, acl
+        except OSError as exc:
+            if not _links_unsupported(exc):
+                raise
+            return _publish_exclusive(path, data, restrict)
+        return True, True
     finally:
-        try:
-            tmp.unlink()
-        except OSError:
-            pass
+        _unlink(tmp)
 
 
-def _token_secret(name: str, path: Path, nbytes: int,
-                  restrict: Callable[[Path], bool], scratch_dir: Path) -> SecretResult:
+def _new_secret(name: str, path: Path, nbytes: int, restrict: Callable[[Path], bool],
+                scratch_dir: Path, valid: Callable[[Path], bool]) -> SecretResult:
     if path.exists():
-        if read_token(path):
+        if valid(path):
             return SecretResult(name, path, "present")
         return SecretResult(name, path, "invalid",
-                            detail="existing file is not a printable-ASCII token; left as is")
+                            detail="existing file is not a valid secret; left as is")
     try:
         created, acl = create_secret_file(path, secrets.token_hex(nbytes), restrict=restrict,
                                           scratch_dir=scratch_dir)
@@ -343,8 +422,13 @@ def _token_secret(name: str, path: Path, nbytes: int,
         return SecretResult(name, path, "error", detail=f"write failed: {type(exc).__name__}")
     if created:
         return SecretResult(name, path, "created", acl=acl)
-    ok = read_token(path) is not None
-    return SecretResult(name, path, "present" if ok else "invalid")
+    if acl is False:
+        return SecretResult(name, path, "error", acl=False, detail=ACL_FAILED)
+    return SecretResult(name, path, "present" if valid(path) else "invalid")
+
+
+def _is_token(path: Path) -> bool:
+    return read_token(path) is not None
 
 
 # ------------------------------------------------------------ secrets
@@ -352,56 +436,31 @@ def _token_secret(name: str, path: Path, nbytes: int,
 
 def provision_vision_token(root: Path, environ: Mapping[str, str], *,
                            restrict: Callable[[Path], bool]) -> SecretResult:
-    path = Path(root).joinpath(*VISION_TOKEN_REL)
+    root = Path(root)
+    path = root.joinpath(*VISION_TOKEN_REL)
     env = _env_get(environ, VISION_TOKEN_ENV)
     if env and env.strip():
         return SecretResult("vision_token", path, "env",
                             detail=f"{VISION_TOKEN_ENV} is set; the reader uses it first")
-    return _token_secret("vision_token", path, VISION_TOKEN_BYTES, restrict,
-                         Path(root).joinpath(*SCRATCH_REL))
+    return _new_secret("vision_token", path, VISION_TOKEN_BYTES, restrict,
+                       root.joinpath(*SCRATCH_REL), _is_token)
 
 
 def provision_dash_token(root: Path, *, restrict: Callable[[Path], bool]) -> SecretResult:
-    path = Path(root).joinpath(*DASH_TOKEN_REL)
-    return _token_secret("dash_token", path, DASH_TOKEN_BYTES, restrict,
-                         Path(root).joinpath(*SCRATCH_REL))
-
-
-def provision_deploy_key(root: Path, *, restrict: Callable[[Path], bool],
-                         run: Callable[..., Any] = subprocess.run,
-                         python: Optional[str] = None) -> SecretResult:
     root = Path(root)
-    path = root.joinpath(*DEPLOY_KEY_REL)
-    if path.exists():
-        if _valid_deploy_key(path):
-            return SecretResult("deploy_key", path, "present")
-        return SecretResult("deploy_key", path, "invalid",
-                            detail="existing key is unreadable or too short; left as is")
-    worker = root.joinpath(*DEPLOY_WORKER_REL)
-    if not worker.is_file():
-        return SecretResult("deploy_key", path, "error",
-                            detail=f"{'/'.join(DEPLOY_WORKER_REL)} missing, no key created")
-    argv = [python or sys.executable, "-I", str(worker), "--init-key"]
-    try:
-        done = run(argv, cwd=str(root), stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                   stderr=subprocess.DEVNULL, creationflags=CREATE_NO_WINDOW,
-                   timeout=INIT_KEY_TIMEOUT_S, check=False)
-    except (OSError, subprocess.SubprocessError) as exc:
-        return SecretResult("deploy_key", path, "error",
-                            detail=f"--init-key did not run: {type(exc).__name__}")
-    code = getattr(done, "returncode", 1)
-    if code != 0 or not path.is_file():
-        return SecretResult("deploy_key", path, "error",
-                            detail=f"--init-key exit {code}, no key file")
-    # ensure_key wrote it with the folder's inherited ACL; tighten it now.
-    return SecretResult("deploy_key", path, "created", acl=bool(restrict(path)))
+    return _new_secret("dash_token", root.joinpath(*DASH_TOKEN_REL), DASH_TOKEN_BYTES,
+                       restrict, root.joinpath(*SCRATCH_REL), _is_token)
+
+
+def provision_deploy_key(root: Path, *, restrict: Callable[[Path], bool]) -> SecretResult:
+    root = Path(root)
+    return _new_secret("deploy_key", root.joinpath(*DEPLOY_KEY_REL), DEPLOY_KEY_BYTES,
+                       restrict, root.joinpath(*SCRATCH_REL), _valid_deploy_key)
 
 
 def provision(root: Path, *, dash_token_gate: bool = False,
               environ: Optional[Mapping[str, str]] = None,
-              restrict: Optional[Callable[[Path], bool]] = None,
-              run: Optional[Callable[..., Any]] = None,
-              python: Optional[str] = None) -> ProvisionReport:
+              restrict: Optional[Callable[[Path], bool]] = None) -> ProvisionReport:
     """Create every missing per-install secret under `root`; idempotent.
 
     `environ` is the services' environment (default os.environ). The report's
@@ -411,11 +470,10 @@ def provision(root: Path, *, dash_token_gate: bool = False,
     root = Path(root)
     environ = os.environ if environ is None else environ
     restrict = restrict or restrict_to_current_user
-    run = run or subprocess.run
     results = (
         provision_vision_token(root, environ, restrict=restrict),
         provision_dash_token(root, restrict=restrict),
-        provision_deploy_key(root, restrict=restrict, run=run, python=python),
+        provision_deploy_key(root, restrict=restrict),
     )
     env: Dict[str, str] = {}
     if dash_token_gate:
