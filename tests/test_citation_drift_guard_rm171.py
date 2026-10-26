@@ -506,9 +506,10 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
         "docs/specs/leap/LEAP-03-onhit-consumer-completion.md",
         "docs/DAEMON_SLAYER.md:172",
         "HISTORICAL",
-        "The 6-button picker-grid text does still exist (now line 84), but it "
-        "is cited as one half of a :169 + :172 edit plan whose other half is "
-        "already done. Fixing one number alone makes the plan incoherent.",
+        "The 6-button picker-grid text was the second half of a :169 + :172 "
+        "edit plan; both halves are now done (the :172 half on 2026-10-26, "
+        "RM-922, which rewrote the UI bullet), so the spec's citation "
+        "records a finished plan and re-pointing it would revive a fixed claim.",
     ),
     (
         "docs/specs/leap/LEAP-03-onhit-consumer-completion.md",

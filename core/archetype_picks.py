@@ -13,9 +13,11 @@ The Daemon Slayer engine ships six scorer archetypes per
 
 Each champion has a *primary* archetype (the scorer the coach reads each
 tick) and a *secondary* archetype (the alt-view in the CS panel, frozen
-between item-complete events). The operator can override the primary via
-the CS picker UI; the dispatcher (``core.daemon_slayer_client``) routes
-to the right scorer.
+between item-complete events). The dispatcher
+(``core.daemon_slayer_client``) routes to the right scorer. The CS picker
+UI that let the operator override the primary was removed in LEDGER 824
+(2026-07-09): its POSTs wrote into the shared picks file the committed
+build-order precompute reads. Champ-select now only GETs the resolved pick.
 
 This module owns three things:
 
@@ -25,9 +27,9 @@ This module owns three things:
    tags ``["Fighter", "Assassin"]`` -> primary=bruiser, secondary=assassin.
 
 2. **Per-champion pick persistence** in
-   ``data/cs_archetype_picks.json``. Server-side single source of truth;
-   the dashboard's localStorage ``rc-cs-archetype-<champion>`` mirrors it
-   for instant first-paint after a page reload.
+   ``data/cs_archetype_picks.json`` (gitignored runtime state). Server-side
+   single source of truth; the dashboard keeps no localStorage copy since
+   LEDGER 824 dropped it.
 
 3. **Resolve helper** ``get_archetype_for(champion)`` that returns the
    merged view: explicit pick if set, otherwise DDragon-tag default,
