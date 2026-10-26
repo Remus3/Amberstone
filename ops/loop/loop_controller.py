@@ -328,12 +328,18 @@ def git(*args):
     # wedged git (stale index.lock, hung hook) would strand the unattended run.
     # Degrade a timeout / failure to "" - callers already tolerate empty
     # (prev_sha[:8] of "" is "", auditor guards `if not new_sha`).
+    # RM-861: decode UTF-8 explicitly, never the locale. Under cp1252 a byte it
+    # leaves undefined (0x81) killed the reader thread, stdout came back None
+    # and `.strip()` raised out of the auditor; anything else read as mojibake.
     try:
         return subprocess.run(["git", "-C", str(ROOT), *args],
-                              capture_output=True, text=True, timeout=30,
+                              capture_output=True, encoding="utf-8", errors="replace",
+                              timeout=30,
                               creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).stdout.strip()
     except (subprocess.SubprocessError, OSError) as e:
-        log(f"git {args[0] if args else ''} failed: {e}")
+        # Name the subcommand, not a leading `-c key=value` pair.
+        sub = args[2:3] if args[:1] == ("-c",) else args[:1]
+        log(f"git {sub[0] if sub else ''} failed: {e}")
         return ""
 
 def head():
@@ -813,9 +819,13 @@ def auditor(prev_sha, new_sha, clean_sha=None):
     # in git path order. Naming every changed file BEFORE the body is what stops
     # "past the truncation cut" from reading as "absent from the commit" - the
     # false-positive REGRESS #6 failure mode (see AUDIT_DIFF_CAP).
-    names = [ln for ln in git("diff", "--name-only", rng).splitlines() if ln.strip()]
-    manifest = cap_bytes(git("diff", "--name-status", rng), AUDIT_MANIFEST_CAP, "manifest")
-    diff = git("diff", rng)
+    # RM-861: paths read as themselves - the count splits `-z` output on NUL
+    # (a U+2028 in a name is one file, not two), and the manifest and body run
+    # with quotePath off so a non-ASCII path is not handed over C-quoted.
+    names = [p for p in git("diff", "--name-only", "-z", rng).split("\0") if p.strip()]
+    manifest = cap_bytes(git("-c", "core.quotepath=false", "diff", "--name-status", rng),
+                         AUDIT_MANIFEST_CAP, "manifest")
+    diff = git("-c", "core.quotepath=false", "diff", rng)
     if len(diff) > AUDIT_DIFF_CAP:
         diff = diff[:AUDIT_DIFF_CAP] + (
             f"\n...[DIFF BODY truncated at {AUDIT_DIFF_CAP} bytes. git emits paths in byte "
