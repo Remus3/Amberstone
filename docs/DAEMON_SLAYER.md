@@ -112,7 +112,7 @@ and `docs/specs/RM-141_JADE_MODE.md:24` carry the same wrong label.
 2. **Kinkou Jitte** (447116) - Arena-only item; directional weakpoint, positional geometry unmodelable
 3. **Mejai's Arena mirror** - no Arena (map 30) row in DDragon; 3041 is the only Mejai's row
 
-**Key insight**: check Meraki `passives[].cooldown` before deferring any "ability-triggered" item. If an item CD exists, use `every_n_seconds=CD` - no ability-frequency data needed.
+**Key insight**: check Meraki `passives[].cooldown` (under `items_meraki.json` `items.<id>`; int, string or null) before deferring any "ability-triggered" item. If an item CD exists, use `PeriodicProc.every_n_seconds` = CD - no ability-frequency data needed.
 
 ## Calibration pipeline
 
@@ -120,4 +120,8 @@ and `docs/specs/RM-141_JADE_MODE.md:24` carry the same wrong label.
 
 ## Arena-specific: Arcane Sweeper
 
-Every Arena player receives Arcane Sweeper in the trinket slot - exclude it from DS candidate pool when `mode=ARENA`. The beam search filters `defensive_only` items; Arcane Sweeper is handled separately.
+Every Arena player receives Arcane Sweeper (3348) in the trinket slot, and the live inventory poll returns it beside the six build slots. Two gates keep it out of DS:
+- the candidate pool: `rank._filter_candidates` keeps only items passing `_is_purchasable`, and the DDragon row has `gold.purchasable` false and `gold.total` 0. Its `inject_ids` force-admit skips that gate; the only caller passing it is `ehp.py` (the tank survivability table), which holds no 3348;
+- the caller's current items: `rank.strip_arena_trinkets` removes `ARENA_TRINKET_IDS` (3348) when the mode is ARENA (case-insensitive), so the slot count and the baseline are not padded with a zero-stat row. It is called by the carry ranker (`rank.py`), each archetype ranker (`_rank_mage.py`, `burst.py`, `ehp.py`, `hps.py`, `hybrid.py`, `onhit_dps.py`) and `beam.py`.
+
+`defensive_only` is a documentation flag on `ItemEffect`; no scorer and not the beam search reads it.
