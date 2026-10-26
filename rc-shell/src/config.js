@@ -9,7 +9,12 @@
 // name (per-host config, never a tracked literal). No JS, no panel, no
 // Electron code change.
 //
-// Precedence for resolveConfig: env RC_ORIGIN  >  saved state  >  defaults.
+// Precedence for resolveConfig: env RC_ORIGIN  >  host-served origin  >  saved
+// state  >  defaults - and every origin candidate is VALIDATED first (PKG-3,
+// docs/PACKAGING_PLAN.md S2): http(s) on loopback, or https on a host named in
+// the per-host ops/local_hosts.json. An invalid candidate is skipped and
+// reported as {source, reason}; the next one is tried. The preload bridge and
+// the scoped cert trust follow the origin, so it must never be "any URL".
 
 "use strict";
 
@@ -82,18 +87,153 @@ function posNum(v, fallback) {
   return typeof v === "number" && isFinite(v) && v > 0 ? v : fallback;
 }
 
+// ---- origin validation (PKG-3, S2) -------------------------------------------
+
+const ORIGIN_SCHEMES = Object.freeze(["http:", "https:"]);
+
+// Cap on the per-host allow-list so a bloated local_hosts.json cannot grow it.
+const MAX_ALLOWED_HOSTS = 64;
+
+// Dotted-quad IPv4 with no leading-zero octet (WHATWG URL reads "010" as
+// octal, so such a value would not mean what it says).
+function ipv4Octets(s) {
+  if (typeof s !== "string") {
+    return null;
+  }
+  const m = /^(0|[1-9]\d{0,2})\.(0|[1-9]\d{0,2})\.(0|[1-9]\d{0,2})\.(0|[1-9]\d{0,2})$/.exec(s.trim());
+  if (!m) {
+    return null;
+  }
+  const o = m.slice(1).map(Number);
+  return o.every((n) => n <= 255) ? o : null;
+}
+
+// True for localhost, 127.0.0.0/8 and ::1 (bracketed as URL.hostname gives it,
+// or bare). Case-insensitive; never throws.
+function isLoopbackHost(hostname) {
+  if (typeof hostname !== "string") {
+    return false;
+  }
+  const h = hostname.toLowerCase();
+  if (h === "localhost" || h === "[::1]" || h === "::1") {
+    return true;
+  }
+  const o = ipv4Octets(h);
+  return !!o && o[0] === 127;
+}
+
+// One per-host entry -> the lower-case hostname URL parsing would give it, or
+// null for anything that is not a bare host (port, path, wildcard, space).
+function normalizeHostEntry(entry) {
+  if (typeof entry !== "string") {
+    return null;
+  }
+  const e = entry.trim();
+  if (!e || e.length > 253 || /[\s/\\@*?#%]/.test(e)) {
+    return null;
+  }
+  const wrapped = e.includes(":") && !e.startsWith("[") ? "[" + e + "]" : e;
+  try {
+    const u = new URL("https://" + wrapped + "/");
+    if (u.port !== "" || u.username || u.password || u.pathname !== "/") {
+      return null;
+    }
+    return u.hostname.toLowerCase();
+  } catch (_e) {
+    return null;
+  }
+}
+
+// The non-loopback hosts an origin may name, from the per-host config
+// (ops/local_hosts.json shape, core/local_hosts.py): tailnet_name,
+// tailnet_fqdn, tailnet_ipv4 (only inside 100.64.0.0/10, as
+// core/local_hosts.py tailnet_ipv4 does), lan_ipv4, cert_sans. Absent or
+// malformed config -> [] (loopback only).
+function allowedOriginHosts(localHosts) {
+  const lh = localHosts && typeof localHosts === "object" && !Array.isArray(localHosts) ? localHosts : {};
+  const out = [];
+  const add = (v) => {
+    const h = normalizeHostEntry(v);
+    if (h && !out.includes(h) && out.length < MAX_ALLOWED_HOSTS) {
+      out.push(h);
+    }
+  };
+  add(lh.tailnet_name);
+  add(lh.tailnet_fqdn);
+  const t = ipv4Octets(lh.tailnet_ipv4);
+  if (t && t[0] === 100 && t[1] >= 64 && t[1] <= 127) {
+    add(lh.tailnet_ipv4);
+  }
+  if (ipv4Octets(lh.lan_ipv4)) {
+    add(lh.lan_ipv4);
+  }
+  if (Array.isArray(lh.cert_sans)) {
+    for (const san of lh.cert_sans) {
+      add(san);
+    }
+  }
+  return out;
+}
+
+// Validate one origin string. opts.localHosts = the per-host config object.
+// Returns {ok, origin, reason}: origin is the normalised URL.origin when ok,
+// else null. reason: "ok", "empty", "malformed", "bad-scheme", "credentials",
+// "not-an-origin" (a path / query / fragment), "host-not-allowed",
+// "insecure-remote" (plain http off loopback). Never throws.
+function validateOrigin(origin, opts) {
+  const o = opts && typeof opts === "object" ? opts : {};
+  const fail = (reason) => ({ ok: false, origin: null, reason });
+  if (typeof origin !== "string" || !origin.trim()) {
+    return fail("empty");
+  }
+  let u;
+  try {
+    u = new URL(origin.trim());
+  } catch (_e) {
+    return fail("malformed");
+  }
+  if (!ORIGIN_SCHEMES.includes(u.protocol)) {
+    return fail("bad-scheme");
+  }
+  if (u.username || u.password) {
+    return fail("credentials");
+  }
+  if (u.pathname !== "/" || u.search || u.hash) {
+    return fail("not-an-origin");
+  }
+  const host = u.hostname.toLowerCase();
+  if (!isLoopbackHost(host)) {
+    if (!allowedOriginHosts(o.localHosts).includes(host)) {
+      return fail("host-not-allowed");
+    }
+    if (u.protocol !== "https:") {
+      return fail("insecure-remote");
+    }
+  }
+  return { ok: true, origin: u.origin, reason: "ok" };
+}
+
 // Merge saved state + RC_ORIGIN env override + defaults into a resolved config.
 //
-//   precedence (highest first): env.RC_ORIGIN, saved, defaults
+//   origin precedence (highest first): env.RC_ORIGIN, opts.servedOrigin,
+//   saved.origin, DEFAULT_ORIGIN - the first candidate that passes
+//   validateOrigin wins
 //
 // - saved is whatever store.js loaded (may be {} / null / partial / garbage).
 // - env is a plain object (e.g. process.env); only RC_ORIGIN is consulted.
+// - opts (optional): {localHosts, servedOrigin}. localHosts widens the origin
+//   allow-list (rc_root.readLocalHosts); servedOrigin is the origin the
+//   launcher reports it actually serves (section 3.6, fixes M4).
 // - width/height fall back through saved -> preset -> default-preset.
 // - sizePreset is validated against SIZE_PRESETS; unknown -> DEFAULT_PRESET.
-function resolveConfig(saved, env) {
+// - originSource names the winning candidate ("env" | "served" | "saved" |
+//   "default"); originRejected lists the skipped ones as {source, reason},
+//   never their value (a caller may log it).
+function resolveConfig(saved, env, opts) {
   const d = defaultConfig();
   const s = saved && typeof saved === "object" ? saved : {};
   const e = env && typeof env === "object" ? env : {};
+  const op = opts && typeof opts === "object" ? opts : {};
 
   // sizePreset: saved wins if it names a real preset, else default.
   let sizePreset =
@@ -102,14 +242,30 @@ function resolveConfig(saved, env) {
       : d.sizePreset;
   const preset = SIZE_PRESETS[sizePreset];
 
-  // origin: env override beats saved beats default. A blank/whitespace env
-  // value is ignored (treated as unset) so an empty RC_ORIGIN= cannot wipe it.
-  let origin = d.origin;
-  if (typeof s.origin === "string" && s.origin.trim()) {
-    origin = s.origin.trim();
-  }
+  // origin: env override beats the served origin beats saved beats default. A
+  // blank/whitespace value is ignored (treated as unset) so an empty
+  // RC_ORIGIN= cannot wipe it; an invalid one is skipped and reported.
+  const candidates = [];
   if (typeof e.RC_ORIGIN === "string" && e.RC_ORIGIN.trim()) {
-    origin = e.RC_ORIGIN.trim();
+    candidates.push({ source: "env", value: e.RC_ORIGIN });
+  }
+  if (typeof op.servedOrigin === "string" && op.servedOrigin.trim()) {
+    candidates.push({ source: "served", value: op.servedOrigin });
+  }
+  if (typeof s.origin === "string" && s.origin.trim()) {
+    candidates.push({ source: "saved", value: s.origin });
+  }
+  let origin = d.origin;
+  let originSource = "default";
+  const originRejected = [];
+  for (const c of candidates) {
+    const v = validateOrigin(c.value, { localHosts: op.localHosts });
+    if (v.ok) {
+      origin = v.origin;
+      originSource = c.source;
+      break;
+    }
+    originRejected.push({ source: c.source, reason: v.reason });
   }
 
   // width/height: saved -> preset (selected above) -> hard default.
@@ -125,7 +281,17 @@ function resolveConfig(saved, env) {
   const alwaysOnTop =
     typeof s.alwaysOnTop === "boolean" ? s.alwaysOnTop : d.alwaysOnTop;
 
-  return { origin, width, height, x, y, alwaysOnTop, sizePreset };
+  return {
+    origin,
+    width,
+    height,
+    x,
+    y,
+    alwaysOnTop,
+    sizePreset,
+    originSource,
+    originRejected,
+  };
 }
 
 // Keep a window position on-screen. Given a desired pos {x, y, width, height}
@@ -179,4 +345,8 @@ module.exports = {
   resolveConfig,
   clampPosition,
   originHost,
+  ORIGIN_SCHEMES,
+  isLoopbackHost,
+  allowedOriginHosts,
+  validateOrigin,
 };
