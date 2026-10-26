@@ -93,18 +93,24 @@ Operator-facing scorer selection lands in three layers:
 | `coach_integration.py` (SR) | yes | Before Haiku | - |
 | TFT | N/A | N/A | N/A |
 
-**`brawl_coach.py` is live-reachable - do not delete it as deadcode (verified 2026-08-06).**
+**`brawl_coach.py` is live-reachable - do not delete it as deadcode (verified 2026-08-06; citations re-measured 2026-10-26).**
 This row previously read "backend left as deadcode". That is wrong about the CODE, and a
-cleanup pass acting on it would remove the coach for five other game modes. `core/game_snapshot.py:98-102`
+cleanup pass acting on it would remove the coach for URF, ARURF, Nexus Blitz, One for All,
+Ultimate Spellbook and GAMEMODEX. `core/game_snapshot.py:127-131`
 returns `MODE_BRAWL` for `NEXUSBLITZ` / `NEXUS` / `ULTBOOK` / `URF` / `ARURF` / `GAMEMODEX` /
-`ONEFORALL`, not only for Brawl. `app/__init__.py:158` sets `_brawl_mode` from that,
+`ONEFORALL` (a prefix match). Riot's own Brawl mode never reaches that branch: since the 2026-08-11
+compliance gate `BRAWL` is in `FORBIDDEN_GAME_MODES` (`core/game_snapshot.py:85`) and returns
+`MODE_UNSUPPORTED` ahead of every other branch, so RC's `MODE_BRAWL` (a name that predates Riot's
+mode) now covers the modes listed above only. `app/__init__.py:158` sets `_brawl_mode` from that,
 `core/coach_registry.py:7` maps `_brawl_mode` -> `coaches.brawl_coach`, and
-`app/_game_lifecycle.py:87-104` importlib-loads it on game start. `config/feature_flags.json:12-14`
+`app/_game_lifecycle.py:144-163` importlib-loads it on game start. `config/feature_flags.json:12-14`
 has `brawl.live_coaching: "allow"`, so nothing gates it off. The end-to-end path is intact and
-`coaches/brawl_coach.py:492` would issue a live Haiku call. What IS true: the BRAWL mode itself
-is disabled by Riot (patch 25.23, see `BACKLOG.md:124`), so the module is currently unexercised -
-which is a statement about Riot's rotation, not about reachability. `ops/audit/HZ_HAIKU_CALL_INVENTORY.md:11`
-and `docs/specs/RM-141_JADE_MODE.md:24` carry the same wrong label.
+`coaches/brawl_coach.py:498` would issue a live Haiku call. What IS true: the module runs only
+while one of those modes is in Riot's queue (Brawl itself is disabled by Riot, patch 25.23 - the
+"Brawl mode re-enable" row in `BACKLOG.md` - and refused by RC as above), so it is currently
+unexercised, which is a statement about Riot's rotation, not about reachability.
+`ops/audit/HZ_HAIKU_CALL_INVENTORY.md` and `docs/specs/RM-141_JADE_MODE.md` carried the same
+wrong label until both were corrected on 2026-08-06.
 
 ## Permanently deferred items (3)
 
