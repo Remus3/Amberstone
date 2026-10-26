@@ -64,14 +64,18 @@ def code_tokens(data: bytes):
 
 
 def changed_ds_files():
+    # -z + UTF-8 (RM-861): a quoted non-ASCII name failed the .py filter and
+    # silently dropped out of the proof; splitlines() also split on U+2028.
     out = subprocess.run(
-        ["git", "diff", "--name-only", "--", "agents/daemon_slayer"],
+        ["git", "diff", "--name-only", "-z", "--", "agents/daemon_slayer"],
         cwd=REPO,
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         check=True,
     ).stdout
-    return [f for f in out.splitlines() if f.endswith(".py")]
+    return [f for f in out.split("\0") if f.endswith(".py")]
 
 
 def main() -> int:
