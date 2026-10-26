@@ -295,7 +295,7 @@ CI_WORKFLOW = "ci.yml"
 # A BRANCH ref, which is what `gh workflow run` takes - so a dispatch builds
 # `main` as of trigger time, i.e. our commit or a descendant of it.
 CI_REF = "main"
-# The job (`.github/workflows/ci.yml:142`) and the step inside it (`:419`). The
+# The `check` job in `.github/workflows/ci.yml` and the step inside it. The
 # step is matched on a SUBSTRING because its shipped name carries a
 # parenthetical - "full dual suite (RM-119 - push CI now gates the whole tree)" -
 # and a parenthetical is prose that will be reworded. "full dual suite" is the
@@ -304,6 +304,12 @@ CI_REF = "main"
 # failure the "read jobs[].steps[]" rule exists to prevent.
 CI_JOB = "check"
 CI_STEP = "full dual suite"
+# RM-886: an ordinary push runs the impact slice INSTEAD of the full step, which
+# is then `skipped`. "push impact slice: run", not the bare prefix: the selector
+# step ("push impact slice: select") shares it, and a green selector over two
+# skipped test steps is mode=none, not a green slice.
+# tests/test_ci_push_impact_slice_shape.py pins both names against ci.yml.
+CI_SLICE_STEP = "push impact slice: run"
 
 # The seven words a verdict may be. Anything outside this set is a bug in this
 # file, not a state of the world, which is why the tuple is asserted in tests.
@@ -706,14 +712,20 @@ def _trigger_ci_run(gh, sha, seen, *, sleep):
 
 
 def _ci_step_verdict(gh, run_id):
-    """(step, detail) for the `full dual suite` step of the `check` job.
+    """(step, detail) for the test step of the `check` job that ran.
 
     NEVER the run conclusion. Two independent reasons, both measured: a green
     run may have SKIPPED the job that matters (`check` carries
-    `if: github.event_name != 'schedule'`, `ci.yml:143`, so the scheduled
-    nightly never runs it), and `gh run watch --exit-status` returns 0 on a
-    CANCELLED run. The only thing that means "the tree passed" is the named
-    step's own conclusion.
+    `if: github.event_name != 'schedule'` in ci.yml, so the scheduled nightly
+    never runs it), and `gh run watch --exit-status` returns 0 on a CANCELLED
+    run. The only thing that means "the tree passed" is the named step's own
+    conclusion.
+
+    The step is the `full dual suite` one, unless it was skipped and the push
+    impact slice step ran (RM-886): an ordinary push runs one or the other, so
+    grading only the full step read a RED slice as `skipped`, and `skipped`
+    never stops the loop. A skipped full step with no slice step, or a skipped
+    slice step (mode=none), stays `skipped`.
 
     An absent or skipped `check` job is `skipped` - a real answer about the
     world. A `check` job that is present but shaped in a way this function does
@@ -733,23 +745,36 @@ def _ci_step_verdict(gh, run_id):
             break
     if job is None:
         return CI_SKIPPED, (f"run {run_id} has no {CI_JOB!r} job - a scheduled "
-                            f"run skips it (ci.yml:143)")
+                            f"run skips it (ci.yml)")
     if str(job.get("conclusion") or "") == CI_SKIPPED:
         return CI_SKIPPED, f"the {CI_JOB!r} job was skipped in run {run_id}"
     steps = job.get("steps")
     if not isinstance(steps, list):
         return CI_UNAVAILABLE, (f"the {CI_JOB!r} job in run {run_id} carried "
                                 f"no steps list")
-    for step in steps:
-        if not isinstance(step, dict) or CI_STEP not in str(step.get("name") or ""):
-            continue
-        verdict = str(step.get("conclusion") or "").strip().lower()
-        if verdict in CI_STEPS:
-            return verdict, f"{CI_JOB} step {step.get('name')!r} -> {verdict}"
-        return CI_UNKNOWN, (f"{CI_JOB} step {step.get('name')!r} reported "
-                            f"conclusion {verdict!r}")
-    return CI_UNAVAILABLE, (f"run {run_id} has a {CI_JOB!r} job with no step "
-                            f"named like {CI_STEP!r}")
+
+    def _named(fragment):
+        for step in steps:
+            if isinstance(step, dict) and fragment in str(step.get("name") or ""):
+                return step
+        return None
+
+    def _conclusion(step):
+        return str(step.get("conclusion") or "").strip().lower()
+
+    graded = _named(CI_STEP)
+    if graded is None:
+        return CI_UNAVAILABLE, (f"run {run_id} has a {CI_JOB!r} job with no step "
+                                f"named like {CI_STEP!r}")
+    if _conclusion(graded) == CI_SKIPPED:
+        sliced = _named(CI_SLICE_STEP)
+        if sliced is not None and _conclusion(sliced) != CI_SKIPPED:
+            graded = sliced
+    verdict = _conclusion(graded)
+    if verdict in CI_STEPS:
+        return verdict, f"{CI_JOB} step {graded.get('name')!r} -> {verdict}"
+    return CI_UNKNOWN, (f"{CI_JOB} step {graded.get('name')!r} reported "
+                        f"conclusion {verdict!r}")
 
 
 def wait_for_ci(sha, *, budget_s: float = DEFAULT_CI_WAIT_S,

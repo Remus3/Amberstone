@@ -1258,6 +1258,74 @@ def test_the_verdict_is_the_STEP_conclusion_not_the_run_conclusion():
     assert out["status"] == "completed"
 
 
+# RM-886: on a push, `ci.yml` runs EITHER the impact slice or the full dual
+# suite, never both, and the step that did not run is `skipped`. The slice step
+# name below is the shipped one; the shape test in
+# tests/test_ci_push_impact_slice_shape.py pins CI_SLICE_STEP against ci.yml.
+SLICE_STEP_NAME = "push impact slice: run the selected modules"
+SELECTOR_STEP_NAME = "push impact slice: select"
+
+
+def _push_jobs(full, slice_=None, *, selector="success"):
+    """A push run's `check` job: selector, slice step (omitted when None), full."""
+    steps = [{"name": "Set up job", "conclusion": "success"},
+             {"name": SELECTOR_STEP_NAME, "conclusion": selector}]
+    if slice_ is not None:
+        steps.append({"name": SLICE_STEP_NAME, "conclusion": slice_})
+    steps.append({"name": CI_STEP_NAME, "conclusion": full})
+    return _jobs(steps=steps)
+
+
+def _grade(jobs):
+    calls, gh = _fake_gh(list=[(0, [_row(120, "abc", event="push")])],
+                         jobs=[(0, jobs)])
+    return qloop.wait_for_ci("abc", budget_s=600, poll_s=60, gh=gh,
+                             sleep=lambda s: None, monotonic=_mono())
+
+
+def test_RM886_a_RED_impact_slice_grades_failure_not_skipped():
+    """The bug: the full step is skipped on a slice push, so a red slice read
+    `skipped` - and `skipped` is passed over, so the loop pushed the next row
+    onto a broken main."""
+    out = _grade(_push_jobs("skipped", "failure"))
+    assert out["step"] == "failure"
+    assert SLICE_STEP_NAME in out["detail"], "the verdict must name the step it read"
+
+
+def test_RM886_a_GREEN_impact_slice_grades_success():
+    out = _grade(_push_jobs("skipped", "success"))
+    assert out["step"] == "success"
+    assert SLICE_STEP_NAME in out["detail"]
+
+
+def test_RM886_neither_step_ran_stays_skipped():
+    """mode=none: no test names a changed path, so both steps skip."""
+    assert _grade(_push_jobs("skipped", "skipped"))["step"] == "skipped"
+
+
+def test_RM886_a_skipped_full_step_with_NO_slice_step_stays_skipped():
+    assert _grade(_push_jobs("skipped"))["step"] == "skipped"
+
+
+def test_RM886_a_full_step_that_RAN_is_still_the_verdict():
+    """PR, dispatch or an escalated push: the full step ran and the slice step
+    skipped. The full step's conclusion stays the answer."""
+    assert _grade(_push_jobs("failure", "skipped"))["step"] == "failure"
+    assert _grade(_push_jobs("success", "skipped"))["step"] == "success"
+
+
+def test_RM886_the_SELECTOR_step_is_never_graded_as_the_slice():
+    """`push impact slice: select` shares the prefix; a green selector with
+    both test steps skipped is mode=none, not a green slice."""
+    out = _grade(_push_jobs("skipped", "skipped", selector="success"))
+    assert out["step"] == "skipped"
+    assert SELECTOR_STEP_NAME not in out["detail"]
+
+
+def test_RM886_an_unrecognised_slice_conclusion_is_unknown_never_green():
+    assert _grade(_push_jobs("skipped", "neutral"))["step"] == "unknown"
+
+
 def test_the_result_carries_exactly_the_documented_fields():
     calls, gh = _fake_gh(list=[(0, [_row(104, "abc")])],
                          jobs=[(0, _jobs("success"))])

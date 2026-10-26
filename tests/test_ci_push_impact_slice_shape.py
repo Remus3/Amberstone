@@ -186,6 +186,16 @@ def test_the_full_step_keeps_the_name_the_queue_driver_reads():
     assert qloop.CI_STEP in full[0]["name"]
 
 
+def test_the_slice_step_keeps_the_name_the_queue_driver_reads():
+    """RM-886: when the full step is skipped, ops/loop/queue_loop.py grades the
+    `check` step whose name contains CI_SLICE_STEP. It must match the slice
+    step and ONLY it - the selector step shares the "push impact slice:"
+    prefix, and grading a green selector would read mode=none as green."""
+    qloop = importlib.import_module("ops.loop.queue_loop")
+    named = [s["name"] for s in _check_steps() if qloop.CI_SLICE_STEP in str(s.get("name"))]
+    assert named == [_slice_step()["name"]]
+
+
 # ---- the selector and slice steps -------------------------------------------
 
 def test_the_selector_step_runs_on_push_only():
