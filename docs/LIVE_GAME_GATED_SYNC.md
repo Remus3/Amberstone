@@ -320,6 +320,25 @@ degraded, not raw (no error text; `coach.action` None at 08:57:24). So a TFT row
 Haiku coach line or a Haiku vision read (and RM-681's per-path 1.x read-back for the TFT coach path)
 is BLOCKED on the RC process's API key, not drainable, until a TFT game shows a non-error
 `rc.tft.coach` reply. Reverses if: a TFT game's log shows `rc.tft.coach` calls with no 400.
+**UPDATE 2026-10-25 20:46 local (lane 9 cycle 29): the RM-902 block above is LIFTED; its own
+reversal condition was met in a live TFT game.** Predicate (the line above, written before this
+look): a TFT game's log shows `rc.tft.coach` calls with no 400. Game 1000000914, queue 1090 Normal
+TFT (recorder match 20261025-162857: `MATCH_START.json` `start_iso` 2026-10-25T21:28:57+00:00,
+`MATCH_END.json` `end_iso` 22:05:22+00:00, `last_game_time_s` 2171.8). Log file names below are as
+of 20:46 local; the log rotated at 20:47 and each suffix moved up one (`.log` -> `.log.1`, `.log.1`
+-> `.log.2`, `.log.2` -> `.log.3`), so re-check by timestamp, not by name. `logs/2026-10-25.log`
+16:28:57 .. 17:06:00 local: 133 lines `TFT coach response in <n>ms` (first 16:29:00.829, last
+17:05:06.801) and zero `Error code: 400` / `invalid_request_error` lines, `rc.tft.vision` included.
+That log line is written only after `self._client.messages.create` returns
+(`tft/tft_coach_engine.py` `TftCoachEngine._run`), and the SDK raises on a 400, so each line is a
+returned Haiku reply. Independent corroboration: `data/spend/2026-10-25.json` `by_purpose.tft_coach`
+`calls` 548 equals the day's 548 `TFT coach response in` lines over the three day logs
+(`.log.2` 0, `.log.1` 176, `.log` 372). Day timeline: last workspace 400 at 09:28:14.951
+(`.log.1`), first reply at 10:44:10.870 (`.log.1`). Scope: this lifts the BLOCK only. It ticks no
+row: a row whose predicate is a Haiku coach line that RENDERS (overlay, dashboard panel) still needs
+its own render evidence, and a parsed reply is not guaranteed (`.log` 14:00:08.923 `TFT: no fields
+parsed from response`). Reverses if: a later TFT game's log shows an `rc.tft.coach` or
+`rc.tft.vision` 400 again.
 
 ---
 
