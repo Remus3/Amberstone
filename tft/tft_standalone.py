@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import re
 import threading
@@ -60,6 +61,13 @@ IN_GAME_PHASES = frozenset({"GameStart", "InProgress", "Reconnect"})
 # 300 s tolerates a slow round or two without treating a finished game's file
 # as live.
 EOG_MAX_AGE_S = 300.0
+# The live file is ~11 KB. A file past this cap is not read at all (it is not
+# the client's per-round file). Never below the poller's own cap
+# (tft/sources/eog_file.MAX_EOG_BYTES), which reads through read_eog.
+EOG_MAX_BYTES = 1 << 22
+# A TFT game runs ~35-45 min; a game clock the file reports past this (or
+# negative, or junk) is not one to serve or anchor a round on.
+MAX_GAME_LENGTH_S = 3 * 3600
 _PROC_CACHE_TTL_S = 3.0
 LCU_RELAY_URL = "http://127.0.0.1:8889/latest-lcu"
 LCU_RELAY_MAX_AGE_S = 20.0
@@ -152,21 +160,35 @@ def eog_stats_path() -> Path:
     override = os.environ.get("RC_TFT_EOG_PATH", "").strip()
     if override:
         return Path(override)
-    base = os.environ.get("LOCALAPPDATA", "")
-    return Path(base) / "TFT" / "Saved" / "Logs" / "TFTEoGStats.json"
+    base = os.environ.get("LOCALAPPDATA", "").strip()
+    # A process started without a loaded profile has no LOCALAPPDATA, and
+    # Path("") would make this a CWD-relative path; the profile default is
+    # the client's own location. (Path.home() raising RuntimeError when no
+    # home is known is read_eog's "unreadable".)
+    root = Path(base) if base else Path.home() / "AppData" / "Local"
+    return root / "TFT" / "Saved" / "Logs" / "TFTEoGStats.json"
 
 
 def read_eog(now: float | None = None, max_age_s: float = EOG_MAX_AGE_S):
     """Return the parsed per-round file when it is FRESH and a TFT game,
-    else None (missing, stale, unreadable, torn, non-TFT)."""
+    else None (missing, stale, unreadable, torn, oversize, non-TFT).
+
+    Never raises: json raises RecursionError (a RuntimeError, not a
+    ValueError) on a deep nest, and every caller reads None as "no file"."""
     now = time.time() if now is None else now
     try:
         p = eog_stats_path()
         st = p.stat()
         if now - st.st_mtime > max_age_s:
             return None
+        if st.st_size > EOG_MAX_BYTES:
+            _log.debug("standalone TFT: per-round file above the %d byte cap; "
+                       "not read", EOG_MAX_BYTES)
+            return None
         d = json.loads(p.read_text(encoding="utf-8"))
-    except (OSError, ValueError, UnicodeDecodeError):
+    except (OSError, ValueError, RuntimeError):
+        # ValueError covers UnicodeDecodeError and JSONDecodeError (a torn
+        # write); RuntimeError covers RecursionError and an unknown home.
         return None
     if not isinstance(d, dict) or "TFT" not in str(d.get("gameMode") or ""):
         return None
@@ -179,12 +201,15 @@ _SET_SUFFIX = re.compile(r"\d+(?:_[A-Za-z0-9]+)?$")
 
 
 def clean_unit_name(raw) -> str:
-    """``DA_18_Yorick`` -> ``Yorick``; ``DA_Gromp18_AP`` -> ``Gromp``."""
+    """``DA_18_Yorick`` -> ``Yorick``; ``DA_Gromp18_AP`` -> ``Gromp``.
+    ASCII, at most 40 chars, like ``clean_item_name`` (the name reaches the
+    coach prompt and the dashboard)."""
     if not isinstance(raw, str) or not raw:
         return ""
+    raw = raw.encode("ascii", "ignore").decode("ascii")
     s = _DA_PREFIX.sub("", raw)
     s = _SET_SUFFIX.sub("", s)
-    return s or raw
+    return (s or raw)[:40]
 
 
 _ITEM_PREFIX = re.compile(r"^(?:DA_|TFT\d*_Item_|TFT\d*_)(?:\d+_)?")
@@ -203,11 +228,43 @@ def clean_item_name(raw) -> str:
 
 
 def _int(v, default=0) -> int:
+    """``v`` truncated to an int, else ``default`` - never a raise: a JSON
+    integer too large for a float (``10**400``) raises OverflowError, which
+    used to escape every field read and drop the whole live game."""
     try:
         f = float(v)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return default
-    return int(f) if f == f and abs(f) != float("inf") else default
+    return int(f) if math.isfinite(f) else default
+
+
+def _game_length(v):
+    """The file's game clock in whole seconds, or None when it cannot vouch
+    for one (missing, junk, bool, negative, past ``MAX_GAME_LENGTH_S``): the
+    caller then falls back to the process clock. A missing field used to
+    read as 0, so the game clock became the file's AGE (a 25 min game served
+    as ~5 s) and the round clock anchored on 0."""
+    if isinstance(v, bool) or not isinstance(v, (int, float, str)):
+        return None
+    n = _int(v, -1)
+    return n if 0 <= n <= MAX_GAME_LENGTH_S else None
+
+
+def _short_ascii(v, limit: int = 40):
+    """A non-empty ASCII string of at most ``limit`` chars, else None."""
+    if not isinstance(v, str):
+        return None
+    s = v.encode("ascii", "ignore").decode("ascii").strip()[:limit]
+    return s or None
+
+
+def _file_age(eog: dict, now: float):
+    """Seconds since the file's write (``read_eog`` stamps ``_mtime``), or
+    None when the stamp is missing or junk - never a raise."""
+    mt = eog.get("_mtime")
+    if isinstance(mt, bool) or not isinstance(mt, (int, float)) or not math.isfinite(mt):
+        return None
+    return max(0.0, now - float(mt))
 
 
 def _board(pieces) -> list:
@@ -358,7 +415,7 @@ def standalone_in_game(lcu, running=None, eog=_UNSET) -> bool:
     if verdict is None:
         if eog is _UNSET:
             eog = read_eog()
-        if eog is None:
+        if not isinstance(eog, dict):
             return False
         # A known LCU game id that the file does not carry = the file is an
         # earlier game's (e.g. an SR reconnect minutes after a TFT match).
@@ -483,24 +540,25 @@ def _round_state(lcu, eog, now: float) -> dict:
     idx, basis = _lp.local_player_index(players, summoner_id=_lp.summoner_id_of(lcu))
     _note_local(game_id, idx, basis)
     local = players[idx] if idx is not None else None
-    game_len = _int(sb.get("gameLengthSeconds"))
+    game_len = _game_length(sb.get("gameLengthSeconds"))
     out.update({
         "local_index": idx,
         "local_basis": basis,
         "eog": True,
         "eog_match": True,
         "game_id": game_id,
-        "queue_id": eog.get("queueId"),
-        "set": sb.get("setCoreName"),
+        # typed here: both are served on (gameData.queueId, rc_standalone)
+        "queue_id": _lp.real_id(eog.get("queueId")) or None,
+        "set": _short_ascii(sb.get("setCoreName")),
         "players_total": len(players),
         "game_length_s": game_len,
-        "eog_age_s": max(0.0, now - float(eog.get("_mtime") or now)),
+        "eog_age_s": _file_age(eog, now),
         "lobby": _lobby(players, idx),
         # Match 3 QA: the client rewrites the file at combat start and on an
         # elimination only, so during planning board / HP / placement are the
         # LAST combat's (HP lags 10-20 s, placement up to 40 s). The file has
         # no round id; its own game clock is the honest "as of".
-        "as_of_game_s": game_len if game_len > 0 else None,
+        "as_of_game_s": game_len if game_len else None,
         # S136 T15: every entry still the start-of-game placeholder (no
         # player's status knowable by the ONE rule) = no round has resolved:
         # measured in both s136 games, the game's FIRST write lands during
