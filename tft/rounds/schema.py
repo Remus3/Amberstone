@@ -14,8 +14,16 @@ Enums are enforced by the writer, not by SQL CHECK constraints: SQLite cannot
 ALTER a CHECK, so a CHECK would turn every future enum value into a table
 rebuild. The writer refuses anything outside these sets (fail-soft: the row is
 dropped and counted, see store.py).
+
+Every contract value is read-only (tuples, and MappingProxyType for the maps),
+so no importer can rewrite the writer's validation or an applied migration
+step process-wide. The table declaration is checked before it becomes DDL: an
+applied step is permanent, so a declaration error must fail at import, never
+reach a database file (s134 true-audit S1 / S2 / S3).
 """
 from __future__ import annotations
+
+from types import MappingProxyType
 
 SCHEMA_VERSION = 1
 
@@ -53,7 +61,8 @@ BENCH_SLOTS = 9
 # item 10). 1090 / 1100 / 1130 per core/queue_modes.py (RM-140); 1160 Double Up
 # per the LCU TFT inventory (section 0 item 3). The event queues 1220 / 1230 and
 # the Set 17 revival 6110 are 'other' until a slice classifies them.
-_QUEUE_KIND_BY_ID = {1090: "normal", 1100: "ranked", 1130: "hyper_roll", 1160: "double_up"}
+_QUEUE_KIND_BY_ID = MappingProxyType(
+    {1090: "normal", 1100: "ranked", 1130: "hyper_roll", 1160: "double_up"})
 
 
 def queue_kind_for(queue_id) -> str:
@@ -79,15 +88,16 @@ def _env(name, sqltype):
     return ((name, sqltype), (name + "_conf", "REAL"), (name + "_src", _SRC_COL))
 
 
-ROUND_ENVELOPES = {  # name -> python type of the value
+ROUND_ENVELOPES = MappingProxyType({  # name -> python type of the value
     "stage": int, "round": int, "kind": str, "gold_start": int, "gold_end": int,
     "level": int, "xp_cur": int, "xp_max": int, "hp_start": int, "hp_end": int,
     "streak": int, "verdict": str, "damage_taken": int, "damage_dealt": int,
     "opponent_key": str, "opponent_is_ghost": bool,
-}
-ROUND_PLAIN = {"label": str, "planning_ts": float, "combat_ts": float, "end_ts": float}
+})
+ROUND_PLAIN = MappingProxyType(
+    {"label": str, "planning_ts": float, "combat_ts": float, "end_ts": float})
 
-_SQLTYPE = {int: "INTEGER", str: "TEXT", bool: "INTEGER", float: "REAL"}
+_SQLTYPE = MappingProxyType({int: "INTEGER", str: "TEXT", bool: "INTEGER", float: "REAL"})
 
 
 def _round_columns():
@@ -197,8 +207,8 @@ TABLES = (
 )
 
 TABLE_NAMES = tuple(t[0] for t in TABLES)
-COLUMNS = {name: tuple(c[0] for c in cols) for name, cols, _pk in TABLES}
-PRIMARY_KEYS = {name: pk for name, _cols, pk in TABLES}
+COLUMNS = MappingProxyType({name: tuple(c[0] for c in cols) for name, cols, _pk in TABLES})
+PRIMARY_KEYS = MappingProxyType({name: pk for name, _cols, pk in TABLES})
 
 # Secondary indexes for the read paths (per-match, per-round fetches).
 INDEXES = (
@@ -212,9 +222,18 @@ INDEXES = (
 
 
 def _create_table(name, cols, pk):
+    names = [c for c, _t in cols]
+    if len(set(names)) != len(names):
+        raise ValueError(f"table {name} declares a column twice")
+    if any(k not in names for k in pk):
+        raise ValueError(f"table {name} has a primary key column it does not declare")
     body = [f"{c} {t}" for c, t in cols]
     if pk == ("id",):  # rowid alias: INTEGER PRIMARY KEY autoassigns
-        body[0] = "id INTEGER PRIMARY KEY"
+        # the id column itself, wherever it sits (s134 S1: never body[0] blind)
+        i = names.index("id")
+        if cols[i][1] != "INTEGER":
+            raise ValueError(f"table {name} declares its rowid alias id as non-INTEGER")
+        body[i] = "id INTEGER PRIMARY KEY"
     elif pk:
         body.append(f"PRIMARY KEY ({', '.join(pk)})")
     return f"CREATE TABLE IF NOT EXISTS {name} (\n    " + ",\n    ".join(body) + "\n)"
@@ -223,13 +242,17 @@ def _create_table(name, cols, pk):
 def ddl_v1():
     """Every CREATE statement of schema v1, tables then indexes."""
     stmts = [_create_table(*t) for t in TABLES]
-    stmts += [f"CREATE INDEX IF NOT EXISTS {ix} ON {table} ({', '.join(cols)})"
-              for ix, table, cols in INDEXES]
+    declared = {name: {c for c, _t in cols} for name, cols, _pk in TABLES}
+    for ix, table, cols in INDEXES:
+        if table not in declared or any(c not in declared[table] for c in cols):
+            raise ValueError(f"index {ix} names a table or column that is not declared")
+        stmts.append(f"CREATE INDEX IF NOT EXISTS {ix} ON {table} ({', '.join(cols)})")
     return tuple(stmts)
 
 
 # Forward-only migrations keyed on schema_meta.schema_version: MIGRATIONS[v]
 # takes a database at v - 1 to v. A database newer than SCHEMA_VERSION is
 # refused (never downgraded); a later slice appends MIGRATIONS[2] and bumps
-# SCHEMA_VERSION, it never edits an applied step.
-MIGRATIONS = {1: ddl_v1()}
+# SCHEMA_VERSION, it never edits an applied step (the v1 bytes are pinned by
+# tests/test_tft_rounds_schema_true_audit_s134.py).
+MIGRATIONS = MappingProxyType({1: ddl_v1()})
