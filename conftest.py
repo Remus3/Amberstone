@@ -7,8 +7,19 @@ installation reaches both.
 """
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
+
+# MAIN ORDER 2026-10-25 2045 item 2 (RM-907): one BLAS thread per test
+# process. Measured on this 16-thread box: `import numpy` (OpenBLAS) commits
+# ~496 MB of private memory per process for per-thread buffers, 14 MB with
+# OPENBLAS_NUM_THREADS=1. Every xdist worker and every python child a test
+# spawns inherits os.environ, so set it before any numpy import. setdefault:
+# an explicit caller value still wins. Pinned by
+# tests/test_suite_blas_threads_rm907.py.
+for _blas_var in ("OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS"):
+    os.environ.setdefault(_blas_var, "1")
 
 sys.path.insert(0, str(Path(__file__).parent))
 

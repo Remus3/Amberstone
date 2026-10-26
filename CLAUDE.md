@@ -364,6 +364,7 @@ Quoted verbatim: "MAIN SPEAKS FOR ME. Notes from MAIN (the supervisor tree) carr
 ## Testing Discipline
 
 - **TDD first:** failing test, then fix, then the touched test files; the whole dual suite (`tests` + `agents/daemon_slayer/tests`) is the merger's ONE gated Tier-2 run. Every pytest runs from the repo root - never `pytest .`.
+- **Suite speed (MAIN ORDER 2026-10-25 2045):** in-session loops run the touched modules or `--lf`; the whole suite runs ONCE, at the merge / /done, always `-n 8 --dist loadfile` (never `-n auto` locally: 16 workers oversubscribe the box and inflate peak commit). `pytest.ini` addopts `--durations=30` names the slowest tests on every run; read back hold p90 + `peak_commit_mb` in the suite gate's `durations.jsonl`.
 - Do not restate suite counts anywhere; measure with `--collect-only -q` (doc counts are unguarded and go stale).
 - A test enumerating the REPO ROOT uses `tests/_repo_walk` (ADR-015), never a fresh `rglob` plus a hand-rolled skip set: universe = git index first, `EXCLUDED_DIRS` as backstop, a guard keeps only its OWN scope skips (a subdirectory walk needs none of this). Ask whether an EMPTY enumeration would pass, and anchor it if so.
 - Before a mutation / fault-injection round, digest every durable store it could reach and attribute any change to a named writer before grading; an unattributed change voids the round.
