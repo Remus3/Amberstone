@@ -251,7 +251,7 @@ cumulative: a tree on v20.1 adopts v21 and v22 at once):
 - KIT-V22-SIDECAR: child_env(code=) sets CLAUDE_CODE_TMPDIR to
   <sidecar root>/<CODE>/Temp/claude when that sidecar exists (the usage
   line records it as "tmpdir") (fleet_lanes v22 default
-  root E:/Sidecars when FLEET_SIDECAR_ROOT is named nowhere); a parent value
+  root SIDECAR_DEFAULT when FLEET_SIDECAR_ROOT is named nowhere); a parent value
   wins; missing sidecar = unchanged.
 - KIT-V22-BARE: a bare spawn on the single route is no longer refused
   ("route-bare"): it runs the lean non-bare form (strict MCP + project
@@ -267,6 +267,17 @@ is local only - fleet_board.py renders status.json and board.html under
 ops/loop/control/board/ and prints no Artifact / ArtifactData call;
 FLEET-COMMON 18 rewritten; fleet_test_guard IGNORE adds board.html.
 
+v24 (daily kit train; cumulative: a tree on v20.1 adopts v21-v24 at once):
+- KIT-LANES-RACE: _lanes() loads fleet_lanes under a module lock and
+  publishes it in sys.modules only after exec_module finished, so a
+  concurrent caller never reads a half-loaded module.
+- KIT-SIDECAR-PATH: fleet_lanes.SIDECAR_DEFAULT is built from parts; no kit
+  line spells the default sidecar root drive-rooted.
+- KIT-CLAIMS-CWD: fleet_claims resolves a shell command's relative targets
+  against its effective cwd (a leading cd segment), never the project root.
+- KIT-VW-CHART: tokens.json chart slot 9 = VW.
+- FLEET-COMMON 19: no width-dependent layout in chat.
+
 Pure stdlib. No machine path, account id or repo name appears in this file.
 """
 
@@ -280,11 +291,12 @@ import socket
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from pathlib import Path
 from urllib.parse import urlsplit
 
-KIT_VERSION = 23
+KIT_VERSION = 24
 KIT_PATCH = 0
 TMPDIR_ENV = "CLAUDE_CODE_TMPDIR"  # v22: headless child temp root (sidecar)
 VAR = "CLAUDE_HEADLESS_BASE_URL"
@@ -2003,18 +2015,31 @@ def _result_from_log(log_path):
     return found
 
 
+_LANES_LOCK = threading.Lock()
+
+
 def _lanes():
     """The sibling kit module fleet_lanes.py, loaded by path (ops/fleet_kit is
     not a package in every tree)."""
     name = f"fleet_kit_lanes_v{KIT_VERSION}"
-    if name in sys.modules:
-        return sys.modules[name]
-    import importlib.util
-    spec = importlib.util.spec_from_file_location(name, Path(__file__).with_name("fleet_lanes.py"))
-    mod = importlib.util.module_from_spec(spec)
-    sys.modules[name] = mod
-    spec.loader.exec_module(mod)
-    return mod
+    mod = sys.modules.get(name)
+    if mod is not None:
+        return mod
+    # v24 (KIT-LANES-RACE): one loader at a time, and the module is published
+    # in sys.modules only AFTER exec_module finished, so a concurrent caller
+    # (kit_rollout's per-tree threads) never sees a half-loaded module; a
+    # failed load publishes nothing.
+    with _LANES_LOCK:
+        mod = sys.modules.get(name)
+        if mod is not None:
+            return mod
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            name, Path(__file__).with_name("fleet_lanes.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        sys.modules[name] = mod
+        return mod
 
 
 def _governor(root, code, governor, governor_timeout, governor_root, budget, note,

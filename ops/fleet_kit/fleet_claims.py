@@ -940,7 +940,12 @@ def decide_edit(payload, me, now, ttl_s):
     target = ti.get("file_path") or ti.get("notebook_path")
     if not target or not me:
         return "allow", ""
-    path = _abs(target, payload.get("cwd") or os.getcwd())
+    base = payload.get("cwd")
+    if not base and not Path(os.path.expandvars(os.path.expanduser(str(target)))).is_absolute():
+        # v24 (KIT-CLAIMS-CWD): a relative path with no tool cwd has no known
+        # base; never guess the hook process's (project) dir - claim nothing.
+        return "allow", ""
+    path = _abs(target, base or os.getcwd())
     t = tree_of(path)
     if t is None or exempt(rel_in(path, t[0])):
         return "allow", ""
@@ -1016,18 +1021,37 @@ def porcelain_paths(top, specs, runner=None):
 
 def shell_targets(command, cwd):
     """(files, specs): files a shell command writes or `git add`s by name,
-    and the (base, pathspec) pairs a whole-tree / directory / glob add names."""
-    files = [_abs(p, cwd) for p in write_targets(command)]
-    specs = []
-    for cdir, paths in git_add_targets(command):
-        base = _abs(cdir, cwd) if cdir else Path(cwd)
-        for p in paths:
-            ap = base if p == "." else _abs(p, base)
-            if p == "." or _GLOB.search(p) or ap.is_dir():
-                specs.append(ap)
-            else:
-                files.append(ap)
+    and the (base, pathspec) pairs a whole-tree / directory / glob add names.
+    v24 (KIT-CLAIMS-CWD): a relative target resolves against the command's
+    EFFECTIVE cwd - the dir a preceding plain `cd` / Set-Location segment
+    moved to (Git Bash /d/x spellings mapped), else cwd - never against the
+    session's project root, and every returned path is absolute."""
+    files, specs = [], []
+    here = Path(cwd)
+    for seg in _segments(command):
+        cd = _cd_target(_words(seg))
+        if cd is not None:
+            here = _abs(_msys(cd), here)
+            continue
+        files += [_abs(_msys(p), here) for p in write_targets(seg)]
+        for cdir, paths in git_add_targets(seg):
+            base = _abs(_msys(cdir), here) if cdir else here
+            for p in paths:
+                ap = base if p == "." else _abs(_msys(p), base)
+                if p == "." or _GLOB.search(p) or ap.is_dir():
+                    specs.append(ap)
+                else:
+                    files.append(ap)
     return files, specs
+
+
+def _glob_base(spec):
+    """v24: the deepest parent of a glob pathspec with no glob character (the
+    spec is absolute and already resolved against the effective cwd)."""
+    p = Path(spec)
+    while _GLOB.search(str(p)) and p.parent != p:
+        p = p.parent
+    return p
 
 
 def claim_shell(payload, me, cwd, files, specs, now, ttl_s, porcelain=None):
@@ -1040,7 +1064,7 @@ def claim_shell(payload, me, cwd, files, specs, now, ttl_s, porcelain=None):
             continue
         by_main.setdefault(str(t[2]), (t, [], []))[1].append(p)
     for s in specs:
-        t = tree_of(s if not _GLOB.search(str(s)) else Path(cwd))
+        t = tree_of(s if not _GLOB.search(str(s)) else _glob_base(s))
         if t is not None:
             by_main.setdefault(str(t[2]), (t, [], []))[2].append(s)
     for main, (t, fs, ss) in by_main.items():
