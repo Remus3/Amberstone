@@ -67,7 +67,7 @@ Run from any host that reaches the alias:
   $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/daemon_slayer_wiki_ability_extract.py --dry-run  # no write
 Then inspect ``_ability_count`` / ``_with_static`` / ``_errors`` before trusting
 it: a run that edge-blocks the host records 0 abilities (fail-soft), so an
-``_ability_count == 0`` means the host could not reach the wiki - do NOT commit.
+``_ability_count == 0`` = wiki unreachable: exit 4, no write, ``--allow-empty``.
 (``_with_static == 0`` with ``_ability_count > 0`` is plausibly fine; ``static`` is
 a RARE param - only a handful of toggle/turret/trap abilities carry it.)
 
@@ -752,6 +752,16 @@ def extract(patch: str, sleep_s: float, limit: Optional[int], verbose: bool,
     }
 
 
+# RM-912: the fail-soft path records 0 abilities for an edge-blocked host,
+# and main() used to warn and write it anyway. Committed snapshots 16.11.1 ..
+# 16.21.1 carry 1046 abilities.
+EXIT_EMPTY_SIDECAR = 4
+
+
+def sidecar_is_empty(payload: dict[str, Any]) -> bool:
+    return not payload.get("_ability_count")
+
+
 def main(argv: Optional[list[str]] = None) -> int:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -774,6 +784,10 @@ def main(argv: Optional[list[str]] = None) -> int:
         help="A-26/RM-95b: source champs from champions.json (173) instead of "
              "champion_abilities.json (171); the only way Locke + Zaahen are reached",
     )
+    ap.add_argument("--allow-empty", default=None, metavar="REASON",
+                    help="RM-912: accept a run that parsed 0 abilities (the run "
+                         f"otherwise exits {EXIT_EMPTY_SIDECAR} and writes nothing); "
+                         "REASON is recorded as _empty_override")
     ap.add_argument("--dry-run", action="store_true", help="extract but do not write")
     ap.add_argument("-v", "--verbose", action="store_true", help="per-batch progress")
     args = ap.parse_args(argv)
@@ -794,9 +808,17 @@ def main(argv: Optional[list[str]] = None) -> int:
     if payload["_errors"]:
         for e in payload["_errors"][:10]:
             print("  ERR", e)
-    if payload["_ability_count"] == 0:
-        print("WARNING: 0 abilities parsed - host likely cannot reach the wiki "
-              "(edge block); NOT a committable sidecar.")
+    if sidecar_is_empty(payload):
+        reason = (args.allow_empty or "").strip()
+        if not reason:
+            print("ERROR: RM-912: 0 abilities parsed - host likely cannot reach "
+                  "the wiki (edge block); nothing was written. Re-run from a host "
+                  "that reaches it, or pass --allow-empty REASON to accept it as "
+                  "an explicit, recorded act.", file=sys.stderr)
+            return EXIT_EMPTY_SIDECAR
+        print(f"WARNING: RM-912 override: accepting an empty sidecar - "
+              f"reason: {reason}", file=sys.stderr)
+        payload["_empty_override"] = {"reason": reason}
 
     if args.dry_run:
         print("(dry-run; not written)")

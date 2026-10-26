@@ -69,8 +69,8 @@ Run from any host that reaches raw.communitydragon.org:
   $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/daemon_slayer_cdragon_spell_extract.py --dry-run    # no write
 Then inspect ``_with_*`` / ``_errors`` before trusting it: a run that edge-blocks
 the host records 0 of everything (the fail-soft path), so a sidecar with every
-``_with_*`` 0 means the host could not reach CDragon - the main() prints a
-WARNING and the file is NOT committable.
+``_with_*`` 0 means the host could not reach CDragon - main() exits 4 and
+writes nothing unless ``--allow-empty REASON`` is given (RM-912).
 
 Design (mirrors the wiki-stats extractor; don't re-litigate):
   * stdlib ``urllib`` only - no new pip dep (the DS data-pipeline rule).
@@ -676,6 +676,17 @@ def extract(patch: str, sleep_s: float, limit: Optional[int],
     }
 
 
+# RM-912: the fail-soft path records 0 of everything for an edge-blocked
+# host, and main() used to warn and write it anyway. Committed snapshots
+# 16.11.1 .. 16.21.1 carry ammo 24, missile 416-427, cc 185-186, geometry 619.
+EXIT_EMPTY_SIDECAR = 4
+_EMPTY_KEYS = ("_with_ammo", "_with_missile", "_with_cc_tags", "_with_geometry")
+
+
+def sidecar_is_empty(payload: dict[str, Any]) -> bool:
+    return all(not payload.get(key) for key in _EMPTY_KEYS)
+
+
 def main(argv: Optional[list[str]] = None) -> int:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -698,6 +709,10 @@ def main(argv: Optional[list[str]] = None) -> int:
         help="A-26/RM-95b: source champs from champions.json (173) instead of "
              "champion_abilities.json (171); the only way Locke + Zaahen are reached",
     )
+    ap.add_argument("--allow-empty", default=None, metavar="REASON",
+                    help="RM-912: accept a run where every _with_* bucket is 0 "
+                         f"(the run otherwise exits {EXIT_EMPTY_SIDECAR} and writes "
+                         "nothing); REASON is recorded as _empty_override")
     ap.add_argument("--dry-run", action="store_true", help="extract but do not write")
     ap.add_argument("-v", "--verbose", action="store_true", help="per-champ progress")
     args = ap.parse_args(argv)
@@ -719,15 +734,20 @@ def main(argv: Optional[list[str]] = None) -> int:
     if payload["_errors"]:
         for e in payload["_errors"][:10]:
             print("  ERR", e)
-    all_zero = (
-        payload["_with_ammo"] == 0 and payload["_with_missile"] == 0
-        and payload["_with_cc_tags"] == 0 and payload["_with_geometry"] == 0
-    )
-    if all_zero:
-        print(
-            "WARNING: 0 spells resolved any bucket - host likely cannot reach "
-            "CommunityDragon (edge block); NOT a committable sidecar."
-        )
+    if sidecar_is_empty(payload):
+        reason = (args.allow_empty or "").strip()
+        if not reason:
+            print(
+                "ERROR: RM-912: 0 spells resolved any bucket - host likely "
+                "cannot reach CommunityDragon (edge block); nothing was written. "
+                "Re-run from a host that reaches it, or pass --allow-empty REASON "
+                "to accept it as an explicit, recorded act.",
+                file=sys.stderr,
+            )
+            return EXIT_EMPTY_SIDECAR
+        print(f"WARNING: RM-912 override: accepting an all-zero sidecar - "
+              f"reason: {reason}", file=sys.stderr)
+        payload["_empty_override"] = {"reason": reason}
 
     if args.dry_run:
         print("(dry-run; not written)")

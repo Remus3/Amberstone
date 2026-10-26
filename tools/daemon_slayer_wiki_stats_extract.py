@@ -108,6 +108,10 @@ Design (don't re-litigate):
     is >= 95 percent neutral (no block counts as neutral) exits 3 and writes
     nothing, the lolmath RM-805 gate on the wiki side; ``--allow-neutral-aram
     REASON`` accepts it and records ``_aram_neutral_override`` in the payload.
+  * Cast floor (RM-912): a run where >= 95 percent of champions have no
+    measured attack_cast_time (an edge-blocked host: defaults only) exits 4 and
+    writes nothing, any ``--source``; ``--allow-unmeasured-cast REASON``
+    accepts it and records ``_cast_unmeasured_override``.
   * ASCII-only output (ensure_ascii=True) - the no-em-dash repo rule.
   * champion-id source = the committed abilities snapshot's ``data`` dict
     (171 champs at 16.11.1; keyed by DDragon id). The wiki block's ``apiname``
@@ -852,6 +856,62 @@ def check_aram_neutrality(champions: dict[str, Any],
     return out
 
 
+# RM-912: a host that reaches neither the wiki nor CDragon still produces a
+# well-formed payload, every attack_cast_time the 0.25 s default, and main()
+# used to warn and write it anyway. Every committed snapshot 16.11.1 .. 16.21.1
+# measures 170/171, so a run at or above the floor stops before the write; the
+# only way past it is ``--allow-unmeasured-cast REASON``. Its own exit code, so
+# an edge block is told apart from a wiki ARAM rename.
+CAST_UNMEASURED_FAIL_FRACTION = 0.95
+EXIT_CAST_UNMEASURED = 4
+
+
+class UnmeasuredCastError(RuntimeError):
+    """The payload's measured cast times are at or below the floor."""
+
+
+def check_cast_measured(payload: dict[str, Any],
+                        override_reason: Optional[str] = None) -> dict[str, Any]:
+    """Fail loudly when >= 95 percent of champions have no measured cast time.
+
+    Measured = ``_with_cast_measured`` (wiki, CDragon or wiki_offset; a default
+    fill or a null is not measured). Returns ``{rows, measured,
+    unmeasured_fraction, threshold}``; at or above the floor (an empty roster
+    included) raises ``UnmeasuredCastError`` unless ``override_reason`` is
+    non-blank, which prints a WARNING and adds ``override_reason``.
+    """
+    rows = int(payload.get("_champ_count") or 0)
+    measured = int(payload.get("_with_cast_measured") or 0)
+    fraction = (rows - measured) / rows if rows else 1.0
+    out: dict[str, Any] = {
+        "rows": rows,
+        "measured": measured,
+        "unmeasured_fraction": round(fraction, 4),
+        "threshold": CAST_UNMEASURED_FAIL_FRACTION,
+    }
+    reason = (override_reason or "").strip()
+    if fraction < CAST_UNMEASURED_FAIL_FRACTION:
+        if reason:
+            print(f"--allow-unmeasured-cast not needed: {measured}/{rows} cast "
+                  "times measured", file=sys.stderr)
+        return out
+    shape = f"{measured}/{rows} measured" if rows else "empty (0 rows)"
+    if not reason:
+        raise UnmeasuredCastError(
+            f"RM-912: attack_cast_time is {shape}, at or above the "
+            f"{CAST_UNMEASURED_FAIL_FRACTION:.0%} unmeasured floor - the host "
+            "likely reached neither the wiki nor CDragon (edge block), so only "
+            "engine defaults are present; nothing was written. Re-run from a "
+            "host that reaches the sources, or pass --allow-unmeasured-cast "
+            "REASON to accept it as an explicit, recorded act."
+        )
+    print(f"WARNING: RM-912 override: accepting attack_cast_time {shape} "
+          f"(floor {CAST_UNMEASURED_FAIL_FRACTION:.0%} unmeasured) - reason: {reason}",
+          file=sys.stderr)
+    out["override_reason"] = reason
+    return out
+
+
 def extract(patch: str, sleep_s: float, limit: Optional[int], verbose: bool,
             source: str = "both", default_cast: bool = True,
             *, full_roster: bool = False) -> dict[str, Any]:
@@ -1056,6 +1116,11 @@ def main(argv: Optional[list[str]] = None) -> int:
                          f"neutral (the run otherwise exits {EXIT_ARAM_NEUTRAL} and "
                          "writes nothing); REASON is printed and recorded in the "
                          "payload as _aram_neutral_override")
+    ap.add_argument("--allow-unmeasured-cast", default=None, metavar="REASON",
+                    help="RM-912: accept a run where >= 95%% of champions have no "
+                         f"measured cast time (the run otherwise exits {EXIT_CAST_UNMEASURED} "
+                         "and writes nothing); REASON is printed and recorded in the "
+                         "payload as _cast_unmeasured_override")
     ap.add_argument("--dry-run", action="store_true", help="extract but do not write")
     ap.add_argument("-v", "--verbose", action="store_true", help="per-champ progress")
     args = ap.parse_args(argv)
@@ -1078,9 +1143,19 @@ def main(argv: Optional[list[str]] = None) -> int:
     if payload["_errors"]:
         for e in payload["_errors"][:10]:
             print("  ERR", e)
-    if payload["_with_cast_measured"] == 0:
-        print("WARNING: 0 champs resolved a MEASURED cast time - host likely cannot reach "
-              "the source(s); NOT a committable sidecar (only engine defaults present).")
+    try:
+        cast_check = check_cast_measured(payload, override_reason=args.allow_unmeasured_cast)
+    except UnmeasuredCastError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return EXIT_CAST_UNMEASURED
+    if "override_reason" in cast_check:
+        payload["_cast_unmeasured_override"] = {
+            "reason": cast_check["override_reason"],
+            "rows": cast_check["rows"],
+            "measured": cast_check["measured"],
+            "unmeasured_fraction": cast_check["unmeasured_fraction"],
+            "threshold": cast_check["threshold"],
+        }
 
     # cdragon-only never parses mode_modifiers, so an empty block is by design
     if args.source != "cdragon":

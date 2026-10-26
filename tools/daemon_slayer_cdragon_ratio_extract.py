@@ -1030,6 +1030,16 @@ def build_drift(patch: str, cdragon: dict[str, Any]) -> dict[str, Any]:
 
 
 # --------------------------------------------------------------------------- CLI
+# RM-912: the fail-soft path resolves 0 mechanical blocks for an
+# edge-blocked host, and main() used to warn and write it anyway - a sidecar
+# the engine reads. Committed snapshots 16.11.1 .. 16.21.1 carry 838-865.
+EXIT_EMPTY_SIDECAR = 4
+
+
+def sidecar_is_empty(payload: dict[str, Any]) -> bool:
+    return not payload.get("_n_mechanical_blocks")
+
+
 def main(argv: Optional[list[str]] = None) -> int:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -1061,6 +1071,10 @@ def main(argv: Optional[list[str]] = None) -> int:
         help="A-26/RM-95b: source champs from champions.json (173) instead of "
              "champion_abilities.json (171); the only way Locke + Zaahen are reached",
     )
+    ap.add_argument("--allow-empty", default=None, metavar="REASON",
+                    help="RM-912: accept a run that resolved 0 mechanical blocks "
+                         f"(the run otherwise exits {EXIT_EMPTY_SIDECAR} and writes "
+                         "nothing); REASON is recorded as _empty_override")
     ap.add_argument("--dry-run", action="store_true", help="extract but do not write")
     ap.add_argument("-v", "--verbose", action="store_true", help="per-champ progress")
     args = ap.parse_args(argv)
@@ -1084,11 +1098,21 @@ def main(argv: Optional[list[str]] = None) -> int:
     if payload["_errors"]:
         for e in payload["_errors"][:10]:
             print("  ERR", e)
-    if payload["_n_mechanical_blocks"] == 0:
-        print(
-            "WARNING: 0 mechanical blocks resolved - host likely cannot reach "
-            "CommunityDragon (edge block); NOT a committable sidecar."
-        )
+    if sidecar_is_empty(payload):
+        reason = (args.allow_empty or "").strip()
+        if not reason:
+            print(
+                "ERROR: RM-912: 0 mechanical blocks resolved - host likely "
+                "cannot reach CommunityDragon (edge block); nothing was written "
+                "(sidecar or drift report). Re-run from a host that reaches it, "
+                "or pass --allow-empty REASON to accept it as an explicit, "
+                "recorded act.",
+                file=sys.stderr,
+            )
+            return EXIT_EMPTY_SIDECAR
+        print(f"WARNING: RM-912 override: accepting 0 mechanical blocks - "
+              f"reason: {reason}", file=sys.stderr)
+        payload["_empty_override"] = {"reason": reason}
 
     if not args.dry_run:
         _atomic_write_json(out_path, payload)
