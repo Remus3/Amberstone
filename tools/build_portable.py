@@ -10,7 +10,7 @@ agents/. This rewrite never keeps an inclusion list:
   secrets and per-host state). Gitignored files are never in the index, so
   keys, certs, logs and data caches cannot ride along; the secret rules apply
   even to a force-added file. A failed or empty `git ls-files` refuses the
-  build (no disk-walk fallback).
+  build (no disk-walk fallback). Every tracked .gitignore ships (PKG-2).
 * NEVER AT BOOT: besides the named installers, every included text file is
   scanned for task / boot signatures (schtasks, *-ScheduledTask cmdlets,
   -AtStartup / -AtLogOn, the Run registry keys, Startup-folder writes, login
@@ -134,6 +134,16 @@ _HOST_CONFIG = frozenset({
 _RUNTIME_PREFIXES = ("ops/runtime/", "ops/tls/", "logs/", "dist/", "build/")
 _RUNTIME_SUFFIXES = (".log", ".jsonl", ".pyc", ".pyo", ".tmp")
 
+# Shipped on purpose, root and nested alike, ahead of the dev-only rules: the
+# PKG-2 updater builds its IgnoreRules from the INSTALL's own ignore files and
+# refuses every update when the root one is missing (ops/launcher/updater.py
+# IgnoreRules.for_install), so a bundle without them could never be updated.
+# Shipping every tracked one makes the install's ignore decisions equal the
+# repo's. They hold ignore patterns only (no secret, host or machine path).
+# An update payload never carries one (the updater denies the name), so the
+# rules stay the installed bundle's own. .gitattributes stays dev-only.
+IGNORE_FILE_NAME = ".gitignore"
+
 _DEV_PREFIXES = (
     ("tests/", R_TEST),
     ("docs/", R_DEV + ": documentation"),
@@ -191,7 +201,7 @@ _DEV_FILES = frozenset({
     "CLAUDE.md", "WAKEUP_NOTES.md", "ROADMAP.md", "BACKLOG.md",
     "RC-NEXT-SESSION.txt", "atlas.html", "mission_control.py",
     "conftest.py", "pytest.ini", "mypy.ini", "ruff.toml", "requirements.in",
-    ".gitignore", ".gitattributes", ".nojekyll", "ops/status_board.json",
+    ".gitattributes", ".nojekyll", "ops/status_board.json",
     "ops/claude_settings.example.json", "ops/lane_worktrees.example.json",
     "ops/moon_sync_repos.example.json", "scripts/start_claude.ps1",
     "scripts/bootstrap_dev.ps1", "scripts/bootstrap_dev.cmd",
@@ -240,6 +250,8 @@ def exclusion_reason(rel: str) -> Optional[str]:
         return R_HOST
     if rel.startswith(_RUNTIME_PREFIXES) or low.endswith(_RUNTIME_SUFFIXES):
         return R_RUNTIME
+    if name == IGNORE_FILE_NAME:
+        return None
     for prefix, reason in _DEV_PREFIXES:
         if rel.startswith(prefix):
             return reason
