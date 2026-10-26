@@ -87,23 +87,36 @@ _HEAD = (
     " from a SELECTED COMP block in the message, never from memory."
 )
 
+# Mode rules (RM-927): Double Up from Riot's patch 14.1 notes (one shared
+# team HP pool; a unit crosses only when the cannon is ready, 4 rounds after
+# a 1-star, 6 after a higher star); Hyper Roll from Riot's Hyper Roll page
+# (no XP purchase, a level-up each stage, no interest). No source gives a
+# current-set starting HP for either mode, so the text names none and the
+# standard-queue HP numbers are scoped to Normal / Ranked.
 _RULES = (
-    "LEVEL TIMING: Lv6@3-2, Lv7@4-1, Lv8@4-2(rolldown), Lv9@5-1+. Fast8=Lv8@4-1"
-    " with 50g+. Fast9=Lv9@5-1 needs econ aug or winstreak. HP<35=roll now,"
-    " board>econ. Never suggest Lv9 before stage 5.\n"
+    "LEVEL TIMING (Normal / Ranked / Double Up, never Hyper Roll): Lv6@3-2,"
+    " Lv7@4-1, Lv8@4-2(rolldown), Lv9@5-1+. Fast8=Lv8@4-1 with 50g+."
+    " Fast9=Lv9@5-1 needs econ aug or winstreak. Never suggest Lv9 before"
+    " stage 5. Normal / Ranked HP: HP<35=roll now, board>econ.\n"
     "\n"
     "AUGMENTS: Reflect active augments in Action/Items/Econ/Upgrade every"
     " call. Never invent augment names.\n"
     "\n"
-    "DOUBLE UP (only when the message says MODE: DOUBLE UP): Shared HP pool."
-    " Placement carries a donation note every round (\"Donate X to partner\" /"
-    " \"Hold\"). Partner HP<30=donate 2nd tank now. Never contest partner"
-    " reroll targets. Stagger rolldowns. Split AD/AP carry between boards.\n"
+    "DOUBLE UP (only when the message says MODE: DOUBLE UP): One HP pool"
+    " shared with the partner. A unit crosses only when the cannon is ready"
+    " (cooldown 4 rounds after a 1-star, 6 after a 2-star+); items trade"
+    " freely. Never contest partner reroll targets. Stagger rolldowns. Split"
+    " AD/AP carry between boards.\n"
+    "\n"
+    "HYPER ROLL (only when the message says MODE: HYPER ROLL): No XP purchase"
+    " - you level up at each stage start. No interest - spend gold on rolls."
+    " Low starting HP: read HP from the state, never the HP numbers below.\n"
     "\n"
     "BOARD (Row A=front/enemy, D=back/bench, cols 1-7): Tanks A-row spread"
     " wide (A1,A3,A5). Ranged carry D6-7. Melee carry B-row. Support C-row"
-    " near carry. Anti-assassin: move carry to D1. HP>40=fine. HP<35=low"
-    " pressure. HP<25=critical. Stage 1 HP=100 (vision error if lower).\n"
+    " near carry. Anti-assassin: move carry to D1. Normal / Ranked HP:"
+    " HP>40=fine. HP<35=low pressure. HP<25=critical. Stage 1 HP=100 (vision"
+    " error if lower).\n"
     "\n"
     "COMP ID: Name after dominant trait (most units). 1-unit splash = ignore."
     " Commit to ID once set.\n"
@@ -120,9 +133,9 @@ _OUTPUT = (
     "Rolldown: trigger + stagger note\n"
     "Items: component names + holder\n"
     "{label}: {desc}\n"
-    "Placement: anti-flank (+ Double Up donation/request)\n"
+    "Placement: anti-flank (+ Double Up: unit to cannon when ready, or Hold)\n"
     "Upgrade: pivot trigger\n"
-    "Risk: single threat (include partner HP if critical)"
+    "Risk: single threat"
 )
 
 
