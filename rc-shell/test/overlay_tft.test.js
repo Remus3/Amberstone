@@ -586,6 +586,62 @@ test("model: a structured liveclient.board wins over board_str", () => {
   assert.deepStrictEqual(m.board.units, [{ name: "Xayah", star: 3 }]);
 });
 
+// RM-953: the board, HP and lobby of the standalone client come from its
+// per-round file, rewritten at combat start and on eliminations only
+// (liveclient.as_of, copied to coach.tft_as_of). The dashboard says so ("as of 17:27"); the overlay painted
+// the same rows under the current game clock with no age at all. The verbatim
+// recorded row (web/data/ui_mock/active_match_tft_round.json): clock 18:06,
+// round file as of 17:27.
+const ROUND_ROW = path.join(ROOT, "web", "data", "ui_mock", "active_match_tft_round.json");
+const roundState = () => {
+  const f = JSON.parse(fs.readFileSync(ROUND_ROW, "utf8"));
+  return { mode_key: "tft", coach: f.coach, liveclient: f.liveclient };
+};
+
+test("model: the round-file panels carry the file's honest as-of clock (RM-953)", () => {
+  const st = roundState();
+  assert.strictEqual(st.liveclient.as_of.clock, "17:27", "precondition: the recorded as-of");
+  const m = tft.tftOverlayModel(st);
+  assert.strictEqual(m.time, "18:06", "the vitals clock stays the game clock");
+  assert.strictEqual(m.asOf, "as of 17:27");
+  assert.strictEqual(m.board.count, "7/7");
+  assert.strictEqual(m.board.head, "7/7 - as of 17:27");
+});
+
+test("model: as-of falls back to coach.tft_as_of; the live feed and garbage clocks carry none", () => {
+  const st = roundState();
+  delete st.liveclient.as_of;
+  st.coach.tft_as_of = { clock: "16:02" };
+  assert.strictEqual(tft.tftOverlayModel(st).asOf, "as of 16:02", "coach copy");
+  for (const bad of ["17:27:00", "1047", "", null, 1047, ["17:27"]]) {
+    const g = roundState();
+    g.liveclient.as_of = { clock: bad };
+    g.coach.tft_as_of = { clock: bad };
+    const m = tft.tftOverlayModel(g);
+    assert.strictEqual(m.asOf, "", `garbage clock ${JSON.stringify(bad)}`);
+    assert.strictEqual(m.board.head, m.board.count);
+  }
+  const live = roundState();
+  live.liveclient.live_api = true;
+  const ml = tft.tftOverlayModel(live);
+  assert.strictEqual(ml.source, "LIVE");
+  assert.strictEqual(ml.asOf, "", "a live feed is current, not a round file");
+});
+
+test("model: an unknown board carries no as-of; the older real payloads carry none", () => {
+  const st = roundState();
+  st.liveclient = { as_of: st.liveclient.as_of, source: "tft_standalone" };
+  st.coach = { tft_as_of: st.coach.tft_as_of };
+  const m = tft.tftOverlayModel(st);
+  assert.strictEqual(m.board.count, "-");
+  assert.strictEqual(m.board.head, "-", "no age on a board that is not known");
+  for (const name of ["tft_overlay_live", "tft_overlay_sentinel", "tft_overlay_feed"]) {
+    const f = tft.tftOverlayModel(fixture(name));
+    assert.strictEqual(f.asOf, "", name);
+    assert.strictEqual(f.board.head, f.board.count, name);
+  }
+});
+
 // --- registry + game-family scoping ----------------------------------------------
 
 test("TFT_WIDGETS select exactly the overlay_tft mount ids, scoped to TFT", () => {
@@ -756,6 +812,23 @@ test("render: lobby and board chips are labelled list items, empty slots hidden"
   for (const u of units.filter((x) => x.getAttribute("aria-hidden") === "true")) {
     assert.strictEqual(u.querySelector(".ovt-unit-name").textContent, "");
   }
+});
+
+test("render: the board and lobby heads carry the round file's as-of (RM-953)", () => {
+  const hud = dom.doc.getElementById("ovt-hud");
+  const lobby = dom.doc.getElementById("ovt-lobby");
+  const board = dom.doc.getElementById("ovt-board");
+  tft.renderTftOverlay(roundState());
+  assert.strictEqual(hud.querySelector(".ovt-time").textContent, "18:06");
+  assert.strictEqual(board.querySelector(".ovt-time").textContent, "7/7 - as of 17:27");
+  assert.strictEqual(lobby.hidden, false, "precondition: the recorded row carries the lobby");
+  assert.strictEqual(lobby.querySelectorAll(".ovt-time").length, 1, "one as-of slot in the lobby head");
+  assert.strictEqual(lobby.querySelector(".ovt-time").textContent, "as of 17:27");
+  // a payload without a round-file age clears both, never keeps a stale one
+  tft.renderTftOverlay(fixture("tft_overlay_feed"));
+  assert.strictEqual(board.querySelector(".ovt-time").textContent, "9/9");
+  // "-", not "": the head keeps its line box (no reflow)
+  assert.strictEqual(lobby.querySelector(".ovt-time").textContent, "-");
 });
 
 test("menu: in TFT the launcher menu lists the TFT panels under 'TFT PANELS'", () => {

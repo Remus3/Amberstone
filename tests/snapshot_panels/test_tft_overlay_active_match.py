@@ -269,3 +269,95 @@ def test_tft_overlay_mock_field_survives_health_and_state_polls(
         page.close()
         ctx.close()
     assert not errors, f"JS errors: {errors[:3]}"
+
+
+_HEAD_JS = """() => ['ovt-hud', 'ovt-board', 'ovt-lobby'].map(i => {
+  const el = document.getElementById(i);
+  const head = el.querySelector('.ovt-head');
+  const t = head.querySelector('.ovt-time');
+  const hr = el.querySelector(':scope > .ovx-handle').getBoundingClientRect();
+  const tr = t.getBoundingClientRect();
+  const wr = el.getBoundingClientRect();
+  const cs = getComputedStyle(t);
+  return {
+    id: i,
+    text: t.textContent,
+    times: head.querySelectorAll('.ovt-time').length,
+    overflow: head.scrollWidth - head.clientWidth,
+    covered: Math.min(hr.right, tr.right) - Math.max(hr.left, tr.left) > 0.5
+      && Math.min(hr.bottom, tr.bottom) - Math.max(hr.top, tr.top) > 0.5,
+    inside: tr.left >= wr.left - 0.5 && tr.right <= wr.right + 0.5,
+    size: parseFloat(cs.fontSize),
+    visible: tr.width > 0 && tr.height > 0 && cs.visibility !== 'hidden',
+    height: head.getBoundingClientRect().height,
+  };
+})"""
+
+
+@pytest.mark.parametrize("scale", ["1080p", "1440p"])
+def test_tft_overlay_round_feed_heads_carry_the_as_of(scale, mock_server, pw_browser):
+    """RM-953: the board, HP and lobby of the standalone client come from
+    its per-round file, rewritten at combat start and on eliminations only.
+    The dashboard reads
+    "as of 17:27" for this recorded row; the overlay painted the same rows
+    under the 18:06 game clock with no age. The board head now reads its count
+    plus the as-of, the lobby head carries the as-of, and the vitals clock
+    stays the game clock. Each head fits its widget and clears the drag
+    handle at the design field and at the pseudo-screen scale."""
+    ctx, page, errors = _open(pw_browser, mock_server, "tft_round", scale)
+    try:
+        page.wait_for_function(
+            "() => { const l = document.getElementById('ovt-lobby');"
+            " return !!l && !l.hidden"
+            " && (l.querySelector('.ovt-time')?.textContent || '') !== ''; }",
+            timeout=10_000,
+        )
+        heads = {h["id"]: h for h in page.evaluate(_HEAD_JS)}
+        assert heads["ovt-hud"]["text"] == "18:06"
+        assert heads["ovt-board"]["text"] == "7/7 - as of 17:27"
+        assert heads["ovt-lobby"]["text"] == "as of 17:27"
+        for i, h in heads.items():
+            assert h["times"] == 1, f"{i}: one right-aligned head slot"
+            assert h["visible"], f"{i}: head clock not painted: {h}"
+            assert h["overflow"] <= 0, f"{i}: head row overflows by {h['overflow']}px"
+            assert not h["covered"], f"{i}: drag handle covers the head text"
+            assert h["inside"], f"{i}: head text leaves the widget: {h}"
+        # one type size for every head slot (the injected .ovt-time rule)
+        assert len({h["size"] for h in heads.values()}) == 1, heads
+        assert len({h["height"] for h in heads.values()}) == 1, heads
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [tft_round {scale}]: {errors[:3]}"
+
+
+def test_tft_overlay_lobby_head_holds_its_height_without_an_as_of(
+    mock_server, pw_browser
+):
+    """RM-953 audit MUST-FIX (no reflow on data absence): a lobby whose
+    payload carries no round-file age (the real tft_overlay_feed row) keeps
+    the head height it has with the age. Measured before the fix: 18px empty,
+    21px with "as of 17:27", so the field shifted 3px whenever the age landed
+    or cleared. The empty slot reads "-", like the vitals clock and the
+    board count when they are unknown (a no-break space would hold the box
+    too, but every painted byte on this field is ASCII)."""
+    from tests.snapshot_panels.test_overlay_tft_view import (
+        _fixture,
+        _open as _open_live,
+        _wait_tft,
+    )
+
+    ctx, page, errors = _open_live(pw_browser, mock_server, _fixture("tft_overlay_feed"))
+    try:
+        _wait_tft(page)
+        page.wait_for_function(
+            "() => !document.getElementById('ovt-lobby').hidden", timeout=10_000)
+        heads = {h["id"]: h for h in page.evaluate(_HEAD_JS)}
+        assert heads["ovt-lobby"]["text"] == "-", heads["ovt-lobby"]
+        assert heads["ovt-board"]["text"] == "9/9", "no age, no suffix"
+        assert heads["ovt-lobby"]["height"] == heads["ovt-hud"]["height"], heads
+        assert heads["ovt-lobby"]["overflow"] <= 0
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [tft_overlay_feed]: {errors[:3]}"

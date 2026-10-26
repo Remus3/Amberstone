@@ -23,6 +23,8 @@
 //   w-tft-board  the local board: up to 12 fixed unit slots (name + star pips).
 //   w-tft-lobby  opponents' HP. DATA-GATED: hidden until /api/state carries
 //                the lobby rows (see LOBBY_FIELDS).
+//   The board and lobby heads carry the per-round file's "as of" clock when
+//   the payload has one (RM-953, _asOf); the vitals clock is the game clock.
 //
 // Default positions live in overlay_layout.js TFT_WIDGETS and are measured
 // against the TFT HUD on real 2560x1440 frames (tests/test_overlay_tft_layout.py
@@ -141,6 +143,22 @@ export function fmtClock(sec) {
 
 const CLOCK_RE = /^\d{1,3}:\d{2}$/;
 
+// RM-953: "as of <clock>" for the rows the standalone client's per-round
+// file carries (board, HP, placement, lobby), which it rewrites at combat
+// start and on eliminations only - liveclient.as_of (tft/tft_standalone.py),
+// copied to coach.tft_as_of (dashboard/_state_builder.py
+// _TFT_STANDALONE_COACH_FILL). The dashboard says the same ("as of 17:27",
+// active_match.js _amTftAsOf). "" for a live feed (current, not a file) and
+// for a missing or malformed clock.
+function _asOf(lc, c, source) {
+  if (source === "LIVE") return "";
+  for (const a of [lc.as_of, c.tft_as_of]) {
+    const clock = _obj(a).clock;
+    if (typeof clock === "string" && CLOCK_RE.test(clock)) return `as of ${clock}`;
+  }
+  return "";
+}
+
 // "Akali_AD" -> "Akali AD". Names are already cleaned server-side
 // (tft_standalone.clean_unit_name); this only makes them readable and keeps
 // them ASCII-safe for the glyph rule.
@@ -222,9 +240,10 @@ export function isTftState(st) {
  * Every display string is final ("-" when unknown) so the renderer only copies.
  *
  * @param {object} st - /api/state (mode_key, liveclient, coach).
- * @returns {{active:boolean, source:string, time:string,
+ * @returns {{active:boolean, source:string, time:string, asOf:string,
  *   vitals:{key:string,label:string,text:string,major:boolean,band:string}[],
- *   board:{count:string, units:{name:string,star:number}[], overflow:number},
+ *   board:{count:string, head:string, units:{name:string,star:number}[],
+ *     overflow:number},
  *   lobby:null|{text:string,alive:boolean,band:string,label:string}[]}}
  */
 export function tftOverlayModel(st) {
@@ -287,12 +306,18 @@ export function tftOverlayModel(st) {
     overflow = all.length - (BOARD_SLOTS - 1);
   }
 
+  // The vitals clock stays the game clock; the board and lobby heads carry
+  // the round file's age (RM-953). An unknown board gets no age.
+  const asOf = _asOf(lc, c, source);
+  const head = asOf && count !== DASH ? `${count} - ${asOf}` : count;
+
   return {
     active,
     source,
     time: d(time),
+    asOf,
     vitals,
-    board: { count, units, overflow },
+    board: { count, head, units, overflow },
     lobby: _lobby(lc, c),
   };
 }
@@ -542,6 +567,11 @@ function _buildBoard(doc, body) {
 function _buildLobby(doc, body) {
   const head = _el(doc, "div", "ovt-head");
   head.appendChild(_el(doc, "span", "ovt-title", "Lobby HP"));
+  // the round file's age (RM-953); "-" when the payload carries none,
+  // like the vitals clock and the board count, so the head keeps its height
+  // (measured: 18px with an empty slot, 21px with the clock) and the field
+  // never reflows when the age lands or clears
+  head.appendChild(_el(doc, "span", "ovt-time", DASH));
   body.appendChild(head);
   const grid = _el(doc, "div", "ovt-opps");
   grid.setAttribute("role", "list");
@@ -569,7 +599,7 @@ function _renderHud(el, m) {
 
 function _renderBoard(el, m) {
   const b = _body(el);
-  _setText(b.querySelector(".ovt-time"), m.board.count);
+  _setText(b.querySelector(".ovt-time"), m.board.head);
   const slots = b.querySelectorAll(".ovt-unit");
   for (let i = 0; i < slots.length; i += 1) {
     const slot = slots[i];
@@ -602,6 +632,7 @@ function _renderLobby(el, m) {
   const b = _body(el);
   const cells = b.querySelectorAll(".ovt-opp");
   const rows = m.lobby || [];
+  _setText(b.querySelector(".ovt-time"), m.asOf || DASH);
   for (let i = 0; i < cells.length; i += 1) {
     const r = rows[i];
     _setText(cells[i], r ? r.text : DASH);
