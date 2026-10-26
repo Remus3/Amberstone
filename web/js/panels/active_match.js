@@ -1123,7 +1123,7 @@ export function amOrdinal(n) {
  *
  * @returns {null|{kind:string, sub:string, status:string[], rows:string[][],
  *   build:string, map:string, board:object[], players:object[],
- *   place:(number|null), hasData:boolean}}
+ *   place:(number|null), hasData:boolean, hpBand:string}}
  */
 export function amLiveFallbackModel(mode, phase, payload) {
   if (phase !== "InProgress") return null;
@@ -1143,6 +1143,7 @@ export function amLiveFallbackModel(mode, phase, payload) {
       place: null,
       asOf: null,
       hasData: false,
+      hpBand: "",
     };
   }
   const stage = _amTftStage(p);
@@ -1191,6 +1192,12 @@ export function amLiveFallbackModel(mode, phase, payload) {
     place,
     asOf,
     hasData,
+    // RM-949: the strip HP cell's band - tftHpBand (the overlay vitals' one
+    // source) of the HP this strip paints; "" when it reads OUT or "-". It
+    // equals the overlay vitals band whenever both paint the same HP text;
+    // they differ only where the texts do (a lobby you-row at 0 HP reads OUT
+    // here, while the overlay never reads the lobby for its own HP).
+    hpBand: out ? "" : tftHpBand(hp),
   };
 }
 
@@ -1230,7 +1237,7 @@ function _amRenderLiveFallback(fb, p, ctx) {
 
   const call = _AM.callBody();
   if (call) {
-    const sig = JSON.stringify([fb.status, fb.rows]);
+    const sig = JSON.stringify([fb.status, fb.rows, fb.hpBand]);
     if (call.dataset.amFallbackSig !== sig) {
       call.innerHTML = "";
       const head = _line(fb.status[0], fb.status[1]);
@@ -1248,6 +1255,8 @@ function _amRenderLiveFallback(fb, p, ctx) {
           const cell = document.createElement("div");
           cell.className = "am-tft-stat";
           if (value === "-") cell.classList.add("is-empty");
+          // RM-949: the overlay vitals' low / crit band on the HP cell only.
+          if (label === "HP" && fb.hpBand) cell.dataset.band = fb.hpBand;
           const l = document.createElement("span");
           l.className = "am-tft-stat-label";
           l.textContent = label;

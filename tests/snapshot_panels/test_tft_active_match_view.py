@@ -512,7 +512,7 @@ def test_first_fallback_tick_after_champ_select_paints_no_sr_imperative(
 
 def test_eliminated_player_strip_reads_out(mock_server, pw_browser):
     """RM-942: the real elimination moment (tft_qa run 20261025-104400,
-    states.jsonl row 72: coach hp -9 at standing 8, stage 5-2) paints HP "OUT"
+    states.jsonl line 73: coach hp -9 at standing 8, stage 5-2) paints HP "OUT"
     in the fixed strip, undimmed, beside the placement - never the no-data "-"
     and never the coach's stale health (10)."""
     data = copy.deepcopy(_load("tft_live_s134"))
@@ -652,6 +652,64 @@ def test_lobby_hp_bands_match_the_overlay_vitals(mock_server, pw_browser):
         assert overlay_band == "low"
         you = [r for r in page.evaluate(_LOBBY_BANDS_JS) if r[1]]
         assert you[0][2] == overlay_band
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors: {errors[:3]}"
+
+
+# [label, value, data-band] per .am-tft-stat cell, in DOM order.
+_STAT_BANDS_JS = (
+    "() => Array.from(document.querySelectorAll("
+    "'#am-call-body .am-tft-stat')).map(c => ["
+    "c.querySelector('.am-tft-stat-label').textContent,"
+    "c.querySelector('.am-tft-stat-value').textContent,"
+    "c.dataset.band || ''])"
+)
+
+
+def test_strip_hp_cell_band_matches_the_overlay_vitals(mock_server, pw_browser):
+    """RM-949: the fixed strip's HP cell carries the overlay vitals band for
+    the same payload. Real tft_qa rows, painted as successive ticks of one
+    page (states.jsonl line numbers, 1-based): run 20261025-162857 line 77
+    (stage 4-6, 5th at 36 HP) reads "low" on the overlay vitals, its line 95
+    (stage 5-5, 5th at 13 HP) reads "crit", and the elimination line 73 of run
+    20261025-104400 (hp -9 / health 10 at 8th,
+    stage 5-2) reads OUT with no band - out is not the crit pop-out. Only the
+    HP cell carries a band, and the band follows the HP across ticks (the
+    strip's repaint signature covers it)."""
+    data = copy.deepcopy(_load("tft_live_s134"))
+    data["coach"].update({"hp": 36, "standing": 5, "stage_round": "4-6"})
+    ctx, page, errors = _open(mock_server, pw_browser, data)
+    try:
+        _wait_fallback(page, "tft")
+        page.wait_for_function(
+            "() => [...document.querySelectorAll('#am-call-body .am-tft-stat-value')]"
+            ".some(v => v.textContent === '36')",
+            timeout=_LIVE_TICK_MS,
+        )
+        assert page.evaluate(_STAT_BANDS_JS) == [
+            ["STAGE", "4-6", ""], ["LEVEL", "-", ""],
+            ["HP", "36", "low"], ["GOLD", "-", ""],
+        ]
+        assert page.evaluate(_OVERLAY_BAND_JS, data["coach"]) == "low"
+
+        for coach, hp_text, band in (
+            ({"hp": 13, "health": 26, "standing": 5, "stage_round": "5-5"}, "13", "crit"),
+            ({"hp": -9, "health": 10, "standing": 8, "stage_round": "5-2"}, "OUT", ""),
+        ):
+            data["coach"].update(coach)
+            mock_server._store["data"] = data
+            page.wait_for_function(
+                "(t) => [...document.querySelectorAll('#am-call-body .am-tft-stat-value')]"
+                ".some(v => v.textContent === t)",
+                arg=hp_text,
+                timeout=_LIVE_TICK_MS,
+            )
+            cells = page.evaluate(_STAT_BANDS_JS)
+            assert cells[2] == ["HP", hp_text, band]
+            assert [c[2] for c in cells[:2] + cells[3:]] == ["", "", ""]
+            assert page.evaluate(_OVERLAY_BAND_JS, data["coach"]) == band
     finally:
         page.close()
         ctx.close()

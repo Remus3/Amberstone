@@ -404,3 +404,38 @@ test("amStickyPhase never invents a live game from blanks alone", () => {
   assert.strictEqual(amStickyPhase(memo, "tft", ""), "");
   assert.strictEqual(amStickyPhase(memo, "client", "-"), "-");
 });
+
+// RM-949: the strip HP cell carries the same band as the overlay vitals HP
+// cell for the same coach payload without a lobby (the overlay already bands
+// it; the strip did not). hpBand is tftHpBand of the HP the strip paints: ""
+// when the strip reads OUT or "-" (a lobby you-row at 0 HP reads OUT here; the
+// overlay never reads the lobby for its own HP).
+test("strip hpBand equals the overlay vitals band for the same payload", () => {
+  const payloads = [];
+  for (let hp = -2; hp <= 102; hp += 1) {
+    payloads.push({ hp, standing: 4 });
+    payloads.push({ hp, standing: -1, health: 30 });
+    payloads.push({ hp: -1, standing: -1, health: hp });
+  }
+  for (const coach of payloads) {
+    const m = amLiveFallbackModel("tft", "InProgress", coach);
+    const v = tftOverlayModel({ mode_key: "tft", liveclient: {}, coach }).vitals[0];
+    assert.strictEqual(m.hpBand, v.band, JSON.stringify(coach));
+    const text = m.rows[2][1];
+    assert.strictEqual(m.hpBand, tftHpBand(/^\d+$/.test(text) ? Number(text) : null),
+      JSON.stringify(coach));
+  }
+});
+
+test("strip hpBand is empty when the strip reads OUT or '-'", () => {
+  assert.strictEqual(amLiveFallbackModel("tft", "InProgress", { hp: -9, standing: 8, health: 10 }).hpBand, "");
+  assert.strictEqual(amLiveFallbackModel("tft", "InProgress", { hp: -1, standing: -1 }).hpBand, "");
+  const youOut = amLiveFallbackModel("tft", "InProgress",
+    { hp: -1, standing: -1, health: 12,
+      tft_players: [{ standing: 1, health: 70 }, { standing: 8, health: 0, you: true }] });
+  assert.strictEqual(youOut.rows[2][1], "OUT");
+  assert.strictEqual(youOut.hpBand, "");
+  assert.strictEqual(amLiveFallbackModel("tft", "InProgress", TFT_COACH_LIVE).hpBand, "");
+  assert.strictEqual(amLiveFallbackModel("tft", "InProgress", { hp: 36, standing: 5 }).hpBand, "low");
+  assert.strictEqual(amLiveFallbackModel("tft", "InProgress", { hp: 4, standing: 8 }).hpBand, "crit");
+});
