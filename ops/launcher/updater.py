@@ -37,8 +37,14 @@ update and leaves nothing staged):
   3. Every path passes check_payload_path: a relative POSIX path under an
      allow-listed top-level entry, never runtime state (ops/runtime, logs,
      backups, keys, local host config, coaching data, jsonl / log files),
-     never dev-only trees (tests, docs, ops/loop, ops/fleet_kit, .git), no
-     drive, root, `..`, reserved device name or Windows-illegal character.
+     never a per-install secret (token files, .env, certs / tls dirs,
+     pem / key / pfx / p12), never dev-only trees (tests, docs, ops/loop,
+     ops/fleet_kit, .git), no drive, root, `..`, reserved device name, 8.3
+     short-name segment (`~1`) or Windows-illegal character. Deny wins over
+     allow. Then the INSTALL's own shipped .gitignore files decide with
+     `git check-ignore` semantics (IgnoreRules): an ignored path is
+     per-install or runtime state and refuses the update; an install that
+     ships no .gitignore refuses every update.
   4. The archive's size and sha256 match the manifest BEFORE it is opened.
   5. Archive members equal the manifest file set exactly; symlinks, special
      files, encrypted members and size mismatches are refused; every file is
@@ -47,17 +53,24 @@ update and leaves nothing staged):
      directory rename to ops/runtime/staging/<ver>; a failed stage removes
      its partial and keeps any previous staging untouched.
   7. apply() re-verifies the staging (verify_staged: a file changed, added or
-     removed after staging = dirty = refused), refuses to overwrite a live
-     file no installed release owns (user or runtime state), then writes a
-     deploy request SIGNED with the per-install key that the frozen
-     supervisor's worker verifies (HMAC-SHA256 over the canonical JSON,
-     byte-compatible with ops/rc_transactional_deploy.py:88 `_canonical`,
-     :125 `sign_request`, :133 `verify_request`; key file
-     ops/runtime/deploy_request.key, :80). No key = refused (the host's
-     first-run provisioning creates it via :108 `ensure_key`).
-  8. The worker applies it with backup + compile + heartbeat + rollback
-     (ops/rc_transactional_deploy.py:553 compile, :557 backup root, :572
-     rollback, :638 heartbeat). finish() records the result; rollback()
+     removed after staging = dirty = refused), re-checks the ignore list,
+     refuses any path that RESOLVES elsewhere (live_alias: an 8.3 short
+     name, junction or symlink), and refuses to overwrite a live file no
+     installed release owns - with no ownership baseline at all it may only
+     create files that do not exist yet. Then it writes a deploy request
+     SIGNED with the per-install key (HMAC-SHA256 over the canonical JSON,
+     byte-compatible with ops/rc_transactional_deploy.py `_canonical` /
+     `sign_request` / `verify_request`; key ops/runtime/deploy_request.key).
+     No key = refused (the host's first-run provisioning creates it with
+     `ensure_key`). The signed body carries a unique request_id, a validity
+     window (issued_at .. expires_at, REQUEST_TTL_S) and the sha256 of every
+     staged file.
+  8. The worker verifies the signature, the window, and claims the id once
+     in its used-id ledger (a replay is refused), checks every staged file
+     against its signed sha256 before anything is touched, and copies from
+     the very bytes it hashed (copy_verified), so a staged file swapped
+     after signing never deploys; then backup + compile + heartbeat +
+     rollback as before. finish() records the result; rollback()
      re-deploys the worker's backup, each file checked against the sha256
      recorded before the update, and moves files the update CREATED into
      ops/runtime/launcher/quarantine/ (moved, never deleted).
@@ -83,11 +96,10 @@ whose own code changed; the plan level is the worst of them:
               frozen set :94): the watcher started by web_dashboard.py:60
               writes restart_trigger.txt itself when a module main.py LOADED
               changes (core/hot_reload.py:582 tick), held while a game is live
-              (:608). The deploy worker copies with copy2, which keeps the
-              staged mtime (ops/rc_transactional_deploy.py:254), and the
-              watcher only fires on an mtime newer than it knew
-              (core/hot_reload.py:590), so apply() touches every staged file
-              first. If the watcher is halted (ops/runtime/hot_reload_halt.txt,
+              (:608). The watcher only fires on an mtime newer than it knew
+              (core/hot_reload.py:590); the worker's copy_verified writes a
+              fresh file (no copystat), so every deployed file carries the
+              deploy time. If the watcher is halted (ops/runtime/hot_reload_halt.txt,
               core/hot_reload.py:692) or not watching (ops/runtime/
               hot_reload.json, :693), hot_reload escalates to restart.
   restart     frozen core (never watched), a .py outside the watch dirs
@@ -169,6 +181,11 @@ MAX_PATH_CHARS = 240
 CHUNK = 1 << 20
 HEALTH_FRESH_S = 30.0      # an older health.json is no evidence of a game
 HEALTH_TIMEOUT_S = 30.0    # the worker's post-copy heartbeat wait
+# Signed validity window of a deploy request. The worker refuses a request
+# outside it and caps any window at its MAX_TTL_S (3600 s); the supervisor
+# starts a queued deploy only once the app is healthy (ops/rc_supervisor.py
+# :1421), so an expired request fails `auth` and the launcher re-applies.
+REQUEST_TTL_S = 1800.0
 # A request that vanished with no result: the supervisor removes the
 # .deploying file even when it kills a worker at 120 s
 # (ops/rc_supervisor.py:1462, :1475), so after this long it is reported lost.
@@ -218,16 +235,31 @@ PAYLOAD_ROOT_FILES = frozenset({
     "overlay.py", "performance_tracker.py", "role_profiles.py",
     "requirements.txt", "LICENSE", "NOTICE",
 })
+# Deny wins over allow. Every per-install secret and runtime path is named
+# here explicitly (they are also gitignored; the shipped .gitignore is the
+# second, wider net - IgnoreRules below).
 DENY_PREFIXES = ("ops/runtime/", "ops/backups/", "ops/loop/", "ops/fleet_kit/",
                  "ops/tls/", "data/recordings/", "data/spend/", "data/tft/",
                  "data/tft_matches/", "data/game_data/")
-DENY_PATHS = frozenset({"ops/local_hosts.json", "ops/moon_sync_repos.json",
-                        "ops/install_startup.bat", "restart_trigger.txt"})
+DENY_PATHS = frozenset({
+    # per-install bearer tokens (.gitignore: config/vision_token.txt,
+    # config/mission_control_token.txt, tools/mcp_token.txt; core/vision_token
+    # also reads tools/vision_token.txt)
+    "config/vision_token.txt", "config/mission_control_token.txt",
+    "tools/mcp_token.txt", "tools/vision_token.txt",
+    # per-host config (CLAUDE.md: never in a tracked file)
+    "ops/local_hosts.json", "ops/moon_sync_repos.json", "ops/local_paths.json",
+    "ops/install_startup.bat", "restart_trigger.txt",
+})
 DENY_SEGMENTS = frozenset({".git", ".claude", "tests", "__pycache__",
-                           "node_modules", "moon_sync_inbox"})
+                           "node_modules", "moon_sync_inbox", "tls", "certs", "cert"})
 _DENY_NAME_RE = re.compile(
-    r"(^api-key.*\.txt$)|(\.(pem|key|pyc|pyo|jsonl|log|tmp|partial|deploying)$)"
+    r"(^api-key.*\.txt$)|(^\.env(\..*)?$)|((^|[._-])token\.txt$)"
+    r"|(\.(pem|key|pfx|p12|jks|crt|salt|pyc|pyo|jsonl|log|tmp|partial|deploying)$)"
     r"|(_coaching_data\.json$)", re.I)
+# An 8.3 short-name segment (`FLEET_~1`) can alias a denied directory on a
+# volume that generates short names; no tracked path has one.
+_SHORT_NAME_RE = re.compile(r"~[0-9]")
 _RESERVED = frozenset({"con", "prn", "aux", "nul", "conin$", "conout$"}
                       | {f"com{i}" for i in range(1, 10)}
                       | {f"lpt{i}" for i in range(1, 10)})
@@ -466,6 +498,8 @@ def check_payload_path(rel: Any) -> str:
             raise PayloadPathError(f"segment with an edge space or a trailing dot in {rel!r}")
         if seg.split(".")[0].casefold() in _RESERVED:
             raise PayloadPathError(f"reserved device name in {rel!r}")
+        if _SHORT_NAME_RE.search(seg):
+            raise PayloadPathError(f"8.3 short-name segment in {rel!r}")
     folded = rel.casefold()
     if any(s in DENY_SEGMENTS for s in folded.split("/")):
         raise PayloadPathError(f"dev-only or generated tree in {rel!r}")
@@ -479,6 +513,169 @@ def check_payload_path(rel: Any) -> str:
     elif segs[0] not in PAYLOAD_DIRS:
         raise PayloadPathError(f"top-level entry not on the payload allow-list: {rel!r}")
     return rel
+
+
+# ------------------------------------------------------------ ignore rules
+
+
+@dataclass(frozen=True)
+class _IgnoreRule:
+    regex: Any
+    negate: bool
+    dir_only: bool
+
+
+def _glob_to_regex(pat: str) -> str:
+    """gitignore glob -> regex body: `*` / `?` / `[...]` never cross `/`;
+    a leading or inner `**/` matches zero or more directories, a trailing
+    `/**` everything inside."""
+    out: List[str] = []
+    i, n = 0, len(pat)
+    while i < n:
+        if pat.startswith("**/", i) and (i == 0 or pat[i - 1] == "/"):
+            out.append("(?:.*/)?")
+            i += 3
+            continue
+        if pat.startswith("/**", i) and i + 3 == n:
+            out.append("/.*")
+            i += 3
+            continue
+        c = pat[i]
+        if c == "*":
+            while i < n and pat[i] == "*":
+                i += 1
+            out.append("[^/]*")
+            continue
+        if c == "?":
+            out.append("[^/]")
+        elif c == "[":
+            j = i + 1
+            if j < n and pat[j] in "!^":
+                j += 1
+            if j < n and pat[j] == "]":
+                j += 1
+            j = pat.find("]", j)
+            if j == -1:
+                out.append(re.escape(c))
+            else:
+                body = pat[i + 1:j]
+                if body[:1] in ("!", "^"):
+                    body = "^" + body[1:]
+                out.append("[" + body.replace("\\", "\\\\") + "]")
+                i = j + 1
+                continue
+        elif c == "\\" and i + 1 < n:
+            out.append(re.escape(pat[i + 1]))
+            i += 2
+            continue
+        else:
+            out.append(re.escape(c))
+        i += 1
+    return "".join(out)
+
+
+def _parse_ignore(text: str) -> List[_IgnoreRule]:
+    rules: List[_IgnoreRule] = []
+    for raw in text.splitlines():
+        line = raw.rstrip("\r")
+        if not line or line.startswith("#"):
+            continue
+        while line.endswith(" ") and not line.endswith("\\ "):
+            line = line[:-1]
+        negate = line.startswith("!")
+        if negate:
+            line = line[1:]
+        elif line.startswith(("\\!", "\\#")):
+            line = line[1:]
+        dir_only = line.endswith("/")
+        line = line.rstrip("/")
+        if not line:
+            continue
+        anchored = "/" in line
+        body = _glob_to_regex(line.lstrip("/"))
+        # Windows git runs core.ignorecase=true: fold case, and a wider match
+        # only ever denies more.
+        rx = re.compile(("^" if anchored else "^(?:.*/)?") + body + "$", re.I | re.S)
+        rules.append(_IgnoreRule(rx, negate, dir_only))
+    return rules
+
+
+class IgnoreRules:
+    """`git check-ignore` semantics over the install's shipped .gitignore
+    files (the root one plus any nested ones), read from the INSTALLED tree,
+    never from a payload: last matching pattern wins, a deeper .gitignore
+    outranks a shallower one, and nothing inside an ignored directory can be
+    re-included. A path it reports is per-install or runtime state."""
+
+    def __init__(self, root: Path) -> None:
+        self.root = Path(root)
+        self._sets: Dict[str, List[_IgnoreRule]] = {}
+        self._dirs: Dict[str, bool] = {}
+
+    @classmethod
+    def for_install(cls, root: Path) -> "IgnoreRules":
+        top = Path(root) / ".gitignore"
+        if not top.is_file() or top.is_symlink():
+            raise StateError("the install ships no .gitignore at its root, so runtime and "
+                             "per-install paths cannot be told apart - refusing (fail closed)")
+        return cls(root)
+
+    def _rules(self, base: str) -> List[_IgnoreRule]:
+        got = self._sets.get(base)
+        if got is None:
+            path = _live_path(self.root, base + "/.gitignore") if base else self.root / ".gitignore"
+            got = []
+            if path.is_file() and not path.is_symlink():
+                try:
+                    got = _parse_ignore(path.read_text(encoding="utf-8", errors="replace"))
+                except OSError as exc:
+                    raise StateError(f"ignore list unreadable: {base or '.'}/.gitignore "
+                                     f"({type(exc).__name__})") from None
+            self._sets[base] = got
+        return got
+
+    def _match(self, rel: str, is_dir: bool) -> bool:
+        parts = rel.split("/")
+        hit = False
+        for depth in range(len(parts)):
+            sub = "/".join(parts[depth:])
+            for rule in self._rules("/".join(parts[:depth])):
+                if (not rule.dir_only or is_dir) and rule.regex.match(sub):
+                    hit = not rule.negate
+        return hit
+
+    def ignored(self, rel: str) -> bool:
+        parts = rel.split("/")
+        for i in range(1, len(parts)):
+            d = "/".join(parts[:i])
+            if d not in self._dirs:
+                self._dirs[d] = self._match(d, True)
+            if self._dirs[d]:
+                return True
+        return self._match(rel, False)
+
+
+def _check_not_ignored(rules: IgnoreRules, paths: Iterable[str]) -> None:
+    for rel in paths:
+        if rules.ignored(rel):
+            raise PayloadPathError(
+                f"{rel!r} is ignored by the install's .gitignore (per-install or runtime "
+                "state never travels); refusing the whole update")
+
+
+def live_alias(root: Path, rel: str) -> Optional[str]:
+    """None when root/rel lands on itself (case aside). Otherwise the path,
+    relative to root, that it REALLY lands on: Path.resolve() expands 8.3
+    short names of existing components (GetFinalPathNameByHandleW, the
+    GetLongPathNameW equivalent) and follows junctions and symlinks, so
+    `ops/FLEET_~1/x` reports ops/fleet_kit/x."""
+    resolved = _live_path(root, rel).resolve()
+    try:
+        inside = resolved.relative_to(root)
+    except ValueError:
+        return "<outside the install root>"
+    real = "/".join(inside.parts)
+    return None if real.casefold() == rel.casefold() else real
 
 
 # ---------------------------------------------------------------- manifest
@@ -883,8 +1080,10 @@ def game_live(root: Path, *, process_names: Optional[Callable[[], Iterable[str]]
               now: Optional[float] = None) -> Optional[str]:
     """A reason string while a League / TFT game is loading or running, else
     None. Process signal first (core/hot_reload.py:170), then a fresh
-    health.json flag (core/live_game_gate.py:31). A failed process scan is
-    reported as a reason, so the caller defers."""
+    health.json flag (core/live_game_gate.py:31). Fail closed: a failed
+    process scan, and a FRESH health.json that cannot be read or parsed (a
+    torn write, a lock), are reported as reasons so the caller defers. Only
+    a missing or stale health.json is no evidence (RC is not running)."""
     try:
         names = {str(n).lower() for n in (process_names or running_process_names)()}
     except Exception as exc:   # noqa: BLE001 - any probe failure defers
@@ -895,13 +1094,21 @@ def game_live(root: Path, *, process_names: Optional[Callable[[], Iterable[str]]
     health = runtime_dir(root) / "health.json"
     try:
         age = (time.time() if now is None else now) - health.stat().st_mtime
-        doc = _read_json(health) if age <= HEALTH_FRESH_S else None
-    except (OSError, ValueError):
+    except FileNotFoundError:
         return None
-    if isinstance(doc, dict):
-        for flag in LIVE_GAME_FLAGS:
-            if doc.get(flag):
-                return f"health {flag}"
+    except OSError as exc:
+        return f"health unreadable ({type(exc).__name__}); deferring"
+    if age > HEALTH_FRESH_S:
+        return None
+    try:
+        doc = _read_json(health)
+    except (OSError, ValueError) as exc:
+        return f"health unreadable ({type(exc).__name__}); deferring"
+    if not isinstance(doc, dict):
+        return "health unreadable (not a JSON object); deferring"
+    for flag in LIVE_GAME_FLAGS:
+        if doc.get(flag):
+            return f"health {flag}"
     return None
 
 
@@ -1143,6 +1350,7 @@ def stage(root: Path, source: Source, release: Release, *, channel: str = "stabl
         # The worker may be copying out of a staging dir right now; a restage
         # would swap it underneath that copy.
         raise StateError("an update operation is pending; call finish() first")
+    ignore = IgnoreRules.for_install(root)
     version_key(release.version)
     if release.manifest != f"backend-{release.version}.json" \
             or release.archive != f"backend-{release.version}.zip":
@@ -1157,6 +1365,7 @@ def stage(root: Path, source: Source, release: Release, *, channel: str = "stabl
     if manifest.channel == "dev" and channel != "dev":
         raise ManifestError("a dev-channel release cannot be staged on the stable channel")
     _check_shell(manifest, shell_version)
+    _check_not_ignored(ignore, (f.path for f in manifest.files))
     blob = source.read(release, release.archive, MAX_ARCHIVE_BYTES)
     if len(blob) != manifest.archive_size:
         raise IntegrityError("archive size differs from the manifest")
@@ -1297,27 +1506,37 @@ class FinishResult:
 def plan_apply(root: Path, staged: StagedUpdate, *,
                hot_reload_active: Optional[bool] = None) -> ApplyPlan:
     """Which files the update changes, which it creates, and the restart it
-    needs. A live file that differs from the payload but that no installed
-    release owns is user or runtime state: the whole update is refused."""
+    needs. Fail closed throughout: a path the install's .gitignore ignores,
+    a path that resolves somewhere else (8.3 short name, junction, symlink),
+    and an existing live file no installed release owns - or ANY existing
+    file when there is no ownership baseline at all - refuse the update."""
     root = Path(root).resolve()
+    _check_not_ignored(IgnoreRules.for_install(root), (f.path for f in staged.manifest.files))
     installed = read_installed(root)
     owned = installed.get("files") if installed else None
     changed, created, unchanged, modified = [], [], [], []
     pre: Dict[str, str] = {}
     for entry in staged.manifest.files:
         live = _live_path(root, entry.path)
+        alias = live_alias(root, entry.path)
+        if alias is not None:
+            # Every allow / deny decision was made on the requested name; a
+            # different landing path voids all of them.
+            raise PayloadPathError(f"{entry.path!r} resolves to {alias!r} (8.3 short name, "
+                                   "junction or symlink); refusing the whole update")
         if os.path.islink(live) or (live.exists() and not live.is_file()):
             raise PayloadPathError(f"live path is not a regular file: {entry.path!r}")
-        try:
-            live.resolve().relative_to(root)
-        except ValueError:
-            raise PayloadPathError(f"live path escapes the root: {entry.path!r}") from None
         if live.is_file():
             sha, _ = _hash_file(live)
             if sha == entry.sha256:
                 unchanged.append(entry.path)
                 continue
-            if owned is not None and entry.path not in owned:
+            if owned is None:
+                raise PayloadPathError(
+                    f"{entry.path!r} exists in the install and there is no ownership "
+                    f"baseline (no installed record, no shipped {INSTALLED_MANIFEST}): only "
+                    "new files may be created; refusing the whole update")
+            if entry.path not in owned:
                 raise PayloadPathError(
                     f"{entry.path!r} exists in the install but no installed release owns it "
                     "(user or runtime state); refusing the whole update")
@@ -1357,6 +1576,14 @@ def sign_request(req: Dict[str, Any], key: bytes) -> Dict[str, Any]:
     return dict(body, signature=hmac.new(key, canonical, hashlib.sha256).hexdigest())
 
 
+def _window() -> Dict[str, float]:
+    """The signed validity window the worker enforces
+    (ops/rc_transactional_deploy.py check_freshness). Real wall clock, never
+    an injected one: the worker compares it with its own."""
+    issued = time.time()
+    return {"issued_at": issued, "expires_at": issued + REQUEST_TTL_S}
+
+
 def _request_id(kind: str, version: Any, now: Callable[[], float]) -> str:
     ver = version if isinstance(version, str) and VERSION_RE.match(version) else "none"
     return f"launcher-{kind}-{ver}-{int(now() * 1000)}-{secrets.token_hex(3)}"
@@ -1391,6 +1618,9 @@ def apply(root: Path, version: str, *,
     staged = verify_staged(root, version)
     plan = plan_apply(root, staged, hot_reload_active=hot_reload_active)
     if not plan.changed:
+        # Nothing to deploy, but the record and state are still writes: the
+        # game check comes first on this path too.
+        _check_game(root, game_check)
         _record_installed(root, version, staged.manifest_sha256,
                           {f.path: f.sha256 for f in staged.manifest.files},
                           request_id=None, backup_root=None, pre_hashes={}, created=[])
@@ -1399,10 +1629,6 @@ def apply(root: Path, version: str, *,
         return ApplyResult("noop", None, None, plan)
     key = _read_deploy_key(key_path or deploy_key_path(root))
     _check_game(root, game_check)
-    for rel in plan.changed:
-        # copy2 keeps this mtime on the live file; hot_reload needs it newer
-        # than what it last saw (core/hot_reload.py:590).
-        os.utime(_live_path(staged.payload, rel), None)
     shas = staged.manifest.file_map()
     request_id = _request_id("update", version, now)
     req = {
@@ -1415,6 +1641,7 @@ def apply(root: Path, version: str, *,
         "health_timeout_seconds": HEALTH_TIMEOUT_S,
         "requested_by": "ops/launcher/updater.py",
         "requested_at": utc_now(),
+        **_window(),
         "update": {"kind": "apply", "version": version,
                    "manifest_sha256": staged.manifest_sha256,
                    "level": plan.restart.level, "services": list(plan.restart.services)},
@@ -1447,9 +1674,17 @@ def _record_installed(root: Path, version: Optional[str], manifest_sha: Optional
 
 def _quarantine(root: Path, rec: Dict[str, Any], now: Callable[[], float]) -> Dict[str, list]:
     """Move (never delete) the files an update created, when they still hold
-    the bytes the update wrote. Changed since = not ours: left in place."""
-    qdir = launcher_state_dir(root) / "quarantine" / \
-        f"{rec.get('version')}-{int(now())}-{secrets.token_hex(3)}"
+    the bytes the update wrote. Changed since = not ours: left in place.
+    The record is state on disk, so nothing it says becomes a path unchecked:
+    the folder label is the version only when it is a version, and every
+    destination is proven to sit inside the install root."""
+    root = Path(root).resolve()
+    ver = rec.get("version")
+    label = ver if isinstance(ver, str) and VERSION_RE.match(ver) else "unversioned"
+    qdir = (launcher_state_dir(root) / "quarantine" /
+            f"{label}-{int(now())}-{secrets.token_hex(3)}").resolve()
+    if root not in qdir.parents:
+        raise PayloadPathError("the quarantine folder would leave the install root")
     files = rec.get("files") or {}
     moved, kept = [], []
     for rel in rec.get("created") or []:
@@ -1457,10 +1692,12 @@ def _quarantine(root: Path, rec: Dict[str, Any], now: Callable[[], float]) -> Di
         live = _live_path(root, rel)
         if not live.is_file():
             continue
-        if _hash_file(live)[0] != files.get(rel):
+        if live_alias(root, rel) is not None or _hash_file(live)[0] != files.get(rel):
             kept.append(rel)
             continue
-        dst = _live_path(qdir, rel)
+        dst = _live_path(qdir, rel).resolve()
+        if qdir not in dst.parents:
+            raise PayloadPathError(f"quarantine destination escapes its folder: {rel!r}")
         dst.parent.mkdir(parents=True, exist_ok=True)
         _replace_with_retry(live, dst)
         moved.append(rel)
@@ -1653,6 +1890,7 @@ def rollback(root: Path, *, game_check: Optional[Callable[[], Optional[str]]] = 
         "health_timeout_seconds": HEALTH_TIMEOUT_S,
         "requested_by": "ops/launcher/updater.py",
         "requested_at": utc_now(),
+        **_window(),
         "update": {"kind": "rollback", "version": rec.get("version"),
                    "to_version": prev_version, "level": restart.level,
                    "services": list(restart.services)},

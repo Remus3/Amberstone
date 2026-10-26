@@ -33,6 +33,31 @@ and `API-Key-Claude.txt`. This module named the same file in a local
 implemented. `_is_excluded_name` implements it on BOTH sides of the copy:
 the key can neither be deployed over nor lifted out of a staging tree into
 the project, where the dashboard static route would then serve it.
+
+FRESHNESS, REPLAY, STAGED BYTES (PKG-2 fix round, 2026-10-26). A signature
+alone proved WHO enqueued, not WHEN or WHAT: the same signed bytes deployed
+again when re-dropped, and a staged file swapped after signing deployed with
+ok=True. Now the signed body carries `request_id`, a validity window
+(`issued_at` .. `expires_at`, at most MAX_TTL_S) and one `sha256` per file
+entry. `check_freshness` refuses an expired, future-dated or over-long
+window; `claim_request_id` records every id once in a used-id ledger kept
+beside the key (append + first-claim-wins read-back); `copy_verified` copies
+from the very bytes it hashed, so a staged file changed at any point after
+signing never reaches a live file (the deploy rolls back instead).
+
+Producers (grep 2026-10-26, `deploy_requests` / `sign_request` / `--sign`):
+  * ops/launcher/updater.py - signs its own requests (stdlib, no import of
+    this module) with the same canonical form, window and per-file sha256.
+  * ops/run_deploy_test.bat - operator manual test: `--init-key`, then
+    `--sign <request>` (sign_request now stamps request_id, the window and
+    the staged hashes), then `--request ... --result ...`. Unchanged steps.
+  * scripts/bootstrap_dev.ps1, ops/setup_dirs.bat, ops/start_ops.bat,
+    ops/launch_new_system.bat, ops/rc_league_watcher.ps1 - only create the
+    directory. ops/rc_supervisor.py:1450 (frozen) invokes `--request
+    --result`; that CLI is unchanged.
+No unsigned path exists (RM-160) and none is added. A request signed before
+this change (no window, no per-file sha256) is refused: on 2026-10-26 the
+live deploy_requests/ was empty and no key was provisioned, so none exists.
 """
 from __future__ import annotations
 
@@ -40,7 +65,9 @@ import argparse
 import hashlib
 import hmac
 import json
+import math
 import os
+import re
 import secrets
 import py_compile
 import shutil
@@ -80,9 +107,27 @@ _REPLACE_RETRY_DELAYS_S = (0.025, 0.05, 0.2)
 DEFAULT_KEY_PATH = Path(__file__).resolve().parent / "runtime" / "deploy_request.key"
 SIGNATURE_FIELD = "signature"
 
+# Validity window of a signed request (seconds). A producer signs right
+# before dropping the request and the supervisor picks it up within a poll
+# (ops/rc_supervisor.py:1424) once the app is healthy (:1421), so a short
+# window costs nothing and bounds how long a leaked request stays usable.
+DEFAULT_TTL_S = 900.0
+MAX_TTL_S = 3600.0
+CLOCK_SKEW_S = 300.0
+# The used-id ledger lives beside the key (never named by the request), so
+# the production one is ops/runtime/deploy_request_ids.log.
+LEDGER_NAME = "deploy_request_ids.log"
+_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+_CHUNK = 1 << 20
+
 
 class DeployAuthError(ValueError):
-    """The request is unsigned, mis-signed, or no deploy key exists."""
+    """The request is unsigned, mis-signed, expired, replayed, or no deploy
+    key exists."""
+
+
+class DeployIntegrityError(ValueError):
+    """Staged bytes differ from the sha256 the request was signed with."""
 
 
 def _canonical(req: Dict[str, Any]) -> bytes:
@@ -122,12 +167,123 @@ def ensure_key(key_path: Path = DEFAULT_KEY_PATH) -> Path:
     return key_path
 
 
-def sign_request(req: Dict[str, Any], key_path: Path = DEFAULT_KEY_PATH) -> Dict[str, Any]:
-    """Return a copy of `req` carrying a valid `signature`."""
+def _sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(_CHUNK), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _with_staged_hashes(files: Any, staging_root: Any) -> Any:
+    """Fill a missing per-file `sha256` from the staged bytes as they are NOW
+    (what the signer vouches for). Only a path contained in staging_root is
+    ever read; anything else is left without a hash and fails validation."""
+    if not isinstance(files, list) or not isinstance(staging_root, str) or not staging_root:
+        return files
+    out = []
+    for item in files:
+        if isinstance(item, dict) and "sha256" not in item:
+            try:
+                staged = contained_path(Path(staging_root).resolve(), item.get("staged"))
+                if staged.is_file():
+                    item = dict(item, sha256=_sha256_file(staged))
+            except (DeployPathError, OSError):
+                pass
+        out.append(item)
+    return out
+
+
+def sign_request(req: Dict[str, Any], key_path: Path = DEFAULT_KEY_PATH, *,
+                 ttl_seconds: float = DEFAULT_TTL_S,
+                 now: Optional[float] = None) -> Dict[str, Any]:
+    """Return a copy of `req` carrying a valid `signature`, a `request_id`
+    (kept when given), a fresh validity window (`issued_at` .. `expires_at`,
+    ttl capped at MAX_TTL_S) and a `sha256` for each staged file it can read
+    inside `staging_root` - all inside the signed body."""
     key = _read_key(Path(key_path))
     out = {k: v for k, v in req.items() if k != SIGNATURE_FIELD}
+    issued = time.time() if now is None else float(now)
+    ttl = min(max(float(ttl_seconds), 1.0), MAX_TTL_S)
+    if not isinstance(out.get("request_id"), str) or not out["request_id"].strip():
+        out["request_id"] = uuid.uuid4().hex
+    out["issued_at"] = issued
+    out["expires_at"] = issued + ttl
+    out["files"] = _with_staged_hashes(out.get("files"), out.get("staging_root"))
     out[SIGNATURE_FIELD] = hmac.new(key, _canonical(out), hashlib.sha256).hexdigest()
     return out
+
+
+def _finite(value: Any) -> bool:
+    return (isinstance(value, (int, float)) and not isinstance(value, bool)
+            and math.isfinite(value))
+
+
+def check_freshness(req: Dict[str, Any], now: Optional[float] = None) -> None:
+    """Raise DeployAuthError unless the SIGNED window is valid right now."""
+    issued, expires = req.get("issued_at"), req.get("expires_at")
+    if not _finite(issued) or not _finite(expires):
+        raise DeployAuthError("request carries no freshness window (issued_at / "
+                              "expires_at) - re-sign it")
+    if expires <= issued or expires - issued > MAX_TTL_S:
+        raise DeployAuthError(f"request validity window is empty or longer than {MAX_TTL_S:g}s")
+    t = time.time() if now is None else float(now)
+    if t > expires:
+        raise DeployAuthError("request expired - re-sign it")
+    if issued > t + CLOCK_SKEW_S:
+        raise DeployAuthError("request issued in the future")
+
+
+def ledger_path_for(key_path: Path) -> Path:
+    return Path(key_path).with_name(LEDGER_NAME)
+
+
+def _ledger_first_nonce(ledger: Path, request_id: str) -> Optional[str]:
+    try:
+        lines = ledger.read_bytes().splitlines()
+    except FileNotFoundError:
+        return None
+    for raw in lines:
+        try:
+            row = json.loads(raw.decode("ascii"))
+        except (UnicodeDecodeError, ValueError):
+            continue   # a torn line from a crashed writer names nobody
+        if isinstance(row, dict) and row.get("id") == request_id:
+            return str(row.get("nonce"))
+    return None
+
+
+def claim_request_id(req: Dict[str, Any], ledger: Path) -> None:
+    """Record `request_id` as used, exactly once. Append-only: the claim is a
+    line with a fresh nonce, and the FIRST line naming the id wins, so of two
+    racing claims (or a replay) only one can read its own nonce back."""
+    rid = req.get("request_id")
+    if not isinstance(rid, str) or not rid.strip() or len(rid) > 200:
+        raise DeployAuthError("request carries no usable request_id")
+    if _ledger_first_nonce(ledger, rid) is not None:
+        raise DeployAuthError("request_id already used (replayed request)")
+    nonce = secrets.token_hex(8)
+    line = json.dumps({"id": rid, "nonce": nonce, "at": utc_now(),
+                       "sig": str(req.get(SIGNATURE_FIELD) or "")[:16]},
+                      ensure_ascii=True, sort_keys=True).encode("ascii") + b"\n"
+    ledger.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(str(ledger), os.O_WRONLY | os.O_APPEND | os.O_CREAT
+                 | getattr(os, "O_BINARY", 0), 0o600)
+    try:
+        # A crashed writer can leave a tail with no newline; start a fresh
+        # line so this claim is never glued onto it.
+        size = os.fstat(fd).st_size
+        lead = b""
+        if size:
+            with open(ledger, "rb") as fh:
+                fh.seek(size - 1)
+                lead = b"" if fh.read(1) == b"\n" else b"\n"
+        os.write(fd, lead + line)
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+    if _ledger_first_nonce(ledger, rid) != nonce:
+        raise DeployAuthError("request_id already used (replayed request)")
 
 
 def verify_request(req: Dict[str, Any], key_path: Path = DEFAULT_KEY_PATH) -> None:
@@ -189,10 +345,20 @@ def contained_path(root: Path, rel: Any) -> Path:
     base = Path(root).resolve()
     resolved = (base / candidate).resolve()
     try:
-        resolved.relative_to(base)
+        inside = resolved.relative_to(base)
     except ValueError:
         raise DeployPathError(
             f"path component escapes its root: {text!r}") from None
+    # An ALIAS lands somewhere other than the name that was checked: an 8.3
+    # short name (`ops/FLEET_~1` -> ops/fleet_kit, expanded by resolve's
+    # GetFinalPathNameByHandle), a junction or symlink inside the root, a
+    # contained `..`, or a trailing dot Windows strips. Refused, so every
+    # allow / deny decision made on the requested name holds for the file
+    # actually written (PKG-2 fix round). Case alone is not an alias.
+    if tuple(p.casefold() for p in inside.parts) != \
+            tuple(p.casefold() for p in candidate.parts):
+        raise DeployPathError(
+            f"path component resolves to a different path (alias): {text!r}")
     return resolved
 
 
@@ -252,6 +418,34 @@ def copy_atomic(src: Path, dst: Path) -> None:
     tmp = _scratch_path(dst)
     try:
         shutil.copy2(src, tmp)
+    except BaseException:
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+        raise
+    _publish(tmp, dst)
+
+
+def copy_verified(src: Path, dst: Path, sha256: str) -> None:
+    """Copy `src` over `dst` atomically, publishing ONLY bytes whose sha256
+    is the signed one. The scratch file receives exactly the bytes that were
+    hashed, so a swap of `src` at any moment cannot slip through. The new
+    file gets a fresh mtime (no copystat): core/hot_reload.py only fires on
+    an mtime newer than it knew, and the ADR-008 asset hash keys on it too."""
+    dst = Path(dst)
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    tmp = _scratch_path(dst)
+    h = hashlib.sha256()
+    try:
+        with open(src, "rb") as fin, open(tmp, "wb") as fout:
+            for chunk in iter(lambda: fin.read(_CHUNK), b""):
+                h.update(chunk)
+                fout.write(chunk)
+        if not hmac.compare_digest(h.hexdigest(), str(sha256)):
+            raise DeployIntegrityError(
+                f"staged bytes differ from the signed sha256: {Path(src).name}")
+        shutil.copymode(src, tmp)
     except BaseException:
         try:
             tmp.unlink()
@@ -490,6 +684,9 @@ def _validate_files(
         staged_path = contained_path(staging_root, raw_staged)
         if not staged_path.is_file():
             raise DeployPathError(f"staged file not found: {staged_path}")
+        if not _SHA256_RE.match(str(item.get("sha256") or "")):
+            raise DeployIntegrityError(
+                f"files[{index}] carries no signed sha256 of its staged bytes")
         entry = dict(item)
         entry["_resolved_live"] = str(live_path)
         entry["_resolved_staged"] = str(staged_path)
@@ -517,10 +714,18 @@ def do_deploy(request_path: Path,
         return _fail(request_id, "validate",
                      error=f"{type(exc).__name__}: {exc}")
     # RM-160: authenticate BEFORE the containment pass reads a single path.
+    # PKG-2 fix round: then the signed window, then claim the id exactly once
+    # (a claimed id stays used even if the request later fails validation).
+    key = Path(key_path) if key_path else DEFAULT_KEY_PATH
     try:
-        verify_request(req, Path(key_path) if key_path else DEFAULT_KEY_PATH)
+        verify_request(req, key)
+        check_freshness(req)
+        claim_request_id(req, ledger_path_for(key))
     except DeployAuthError as exc:
         return _fail(request_id, "auth", error=f"DeployAuthError: {exc}")
+    except OSError as exc:
+        return _fail(request_id, "auth",
+                     error=f"used-id ledger unwritable: {type(exc).__name__}")
     try:
         request_id = str(req.get("request_id") or request_path.stem)
         project_root = Path(req["project_root"]).resolve()
@@ -549,6 +754,18 @@ def do_deploy(request_path: Path,
     command_dir = runtime_dir / "control" / "commands"
     result_dir = runtime_dir / "control" / "results"
     safe_id = safe_stem[: -len(".probe")]
+
+    # Fail early, before any backup or copy, when staged bytes already differ
+    # from what was signed. copy_verified re-checks the very bytes it copies.
+    try:
+        for entry in entries:
+            if not hmac.compare_digest(_sha256_file(Path(entry["_resolved_staged"])),
+                                       str(entry["sha256"])):
+                return _fail(request_id, "integrity",
+                             error="staged bytes differ from the signed sha256: "
+                                   f"{entry.get('staged')!r}")
+    except OSError as exc:
+        return _fail(request_id, "integrity", error=f"{type(exc).__name__}: {exc}")
 
     compile_errors = compile_python_files(staged_paths)
     if compile_errors:
@@ -585,7 +802,7 @@ def do_deploy(request_path: Path,
                 backup_path.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(live_path, backup_path)
 
-            copy_atomic(staged_path, live_path)
+            copy_verified(staged_path, live_path, entry["sha256"])
             clear_pycache_for(live_path)
             deployed_files.append(entry)
 
@@ -666,6 +883,10 @@ def do_deploy(request_path: Path,
         if prune_errors:
             result["backup_prune_errors"] = prune_errors
         return result
+    except DeployIntegrityError as exc:
+        # A staged file changed after the early check: nothing of it was
+        # published; everything already copied is rolled back.
+        return _rollback("integrity", error=f"DeployIntegrityError: {exc}")
     except Exception as exc:  # noqa: BLE001
         # Last-resort net: whatever went wrong mid-copy, the tree must end up
         # where it started. The exception TYPE and message are reported; the

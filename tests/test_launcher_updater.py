@@ -98,11 +98,15 @@ def build_release(dirpath: Path, version: str, files: dict, *, channel="stable",
     return dirpath
 
 
-def make_root(tmp_path: Path, live=None, *, key=True, shipped="1.0.0") -> Path:
-    """An installed backend root: live files, a deploy key, and the
-    bundle's shipped backend-manifest.json naming the files it owns."""
+def make_root(tmp_path: Path, live=None, *, key=True, shipped="1.0.0",
+              ignore=True) -> Path:
+    """An installed backend root: live files, a deploy key, the bundle's
+    shipped backend-manifest.json naming the files it owns, and the shipped
+    ignore list (the repo's real .gitignore, byte for byte)."""
     root = tmp_path / "install"
     (root / "ops" / "runtime").mkdir(parents=True)
+    if ignore:
+        (root / ".gitignore").write_bytes((ROOT / ".gitignore").read_bytes())
     if key:
         (root / "ops" / "runtime" / "deploy_request.key").write_text(
             KEY + "\n", encoding="ascii")
@@ -749,13 +753,15 @@ def test_u4_request_is_written_through_a_tmp_scratch(tmp_path, monkeypatch):
     assert hits and all(s.endswith(".tmp") for s in hits)
 
 
-def test_u4_staged_files_are_touched_so_hot_reload_sees_them(tmp_path):
+def test_u4_deployed_files_carry_a_fresh_mtime_for_hot_reload(tmp_path):
+    # core/hot_reload.py:590 fires only on an mtime newer than it knew; the
+    # worker now writes the hashed bytes into a fresh file (no copy2).
     root, staged = staged_root(tmp_path)
-    p = staged.directory / "payload" / "core" / "a.py"
-    os.utime(p, (1_000_000, 1_000_000))
+    os.utime(staged.directory / "payload" / "core" / "a.py", (1_000_000, 1_000_000))
     before = time.time() - 1
-    up.apply(root, "1.1.0", game_check=no_game)
-    assert p.stat().st_mtime >= before
+    res = up.apply(root, "1.1.0", game_check=no_game)
+    assert run_worker(root, res.request_path)["ok"]
+    assert (root / "core" / "a.py").stat().st_mtime >= before
 
 
 def test_u4_force_restart_follows_the_classifier(tmp_path):
@@ -1120,6 +1126,300 @@ def test_u7_named_services_exist_in_the_launcher_manifest():
     assert set(up.ALL_SERVICE_NAMES) <= known
     assert {"supervisor", "lcu_agent", "liveclient_relay", "hotkey_listener",
             "phase3_supervisor"} <= set(up.ALL_SERVICE_NAMES)
+
+
+# ------------------------------------- fix round (independent check, s141)
+
+
+def _stage_into(root: Path, tmp_path: Path, version: str, files: dict):
+    rel_dir = build_release(tmp_path / f"rel-{version}", version, files)
+    src = up.LocalSource(rel_dir)
+    return up.stage(root, src, src.release(version), shell_version="9.9.9")
+
+
+# F1 ownership fails CLOSED without a baseline
+
+
+def test_f1_no_baseline_refuses_to_overwrite_an_existing_file(tmp_path):
+    root = make_root(tmp_path, shipped=None)
+    assert up.read_installed(root) is None
+    _stage_into(root, tmp_path, "1.1.0", NEW_FILES)
+    with pytest.raises(up.PayloadPathError):
+        up.apply(root, "1.1.0", game_check=no_game)
+    assert _requests(root) == []
+    assert (root / "core" / "a.py").read_bytes() == b"A = 1\n"
+
+
+def test_f1_no_baseline_still_creates_new_files(tmp_path):
+    root = make_root(tmp_path, shipped=None)
+    files = dict(BASE_FILES, **{"core/b.py": b"B = 1\n"})
+    _stage_into(root, tmp_path, "1.1.0", files)
+    res = up.apply(root, "1.1.0", game_check=no_game)
+    assert res.status == "requested"
+    assert res.plan.changed == ("core/b.py",) and res.plan.created == ("core/b.py",)
+
+
+# F2 secrets and ignored paths never travel; deny wins over allow
+
+
+@pytest.mark.parametrize("rel", [
+    "config/vision_token.txt", "config/mission_control_token.txt",
+    "tools/mcp_token.txt", "tools/vision_token.txt", "ops/local_paths.json",
+    "ops/runtime/dash_token.txt", "ops/runtime/deploy_request.key",
+    "core/certs/ca.txt", "web/tls/leaf.txt", "web/x.pfx", "core/x.p12",
+    "config/.env", "config/.env.local", "core/x.salt", "API-Key-Riot-TFT.txt",
+])
+def test_f2_explicit_secret_deny_list(rel):
+    with pytest.raises(up.PayloadPathError):
+        up.check_payload_path(rel)
+
+
+@pytest.mark.parametrize("rel", [
+    "config/vision_token.txt", "data/tft_scouting.json", "data/cold_advisories.json",
+    "data/ratings/last_rank.json",
+])
+def test_f2_a_gitignored_payload_path_refuses_the_whole_update(tmp_path, rel):
+    root = make_root(tmp_path)
+    files = dict(NEW_FILES, **{rel: b"x\n"})
+    with pytest.raises(up.PayloadPathError):
+        _stage_into(root, tmp_path, "1.1.0", files)
+    assert not (root / "ops" / "runtime" / "staging" / "1.1.0").exists()
+    _no_partials(root)
+
+
+def test_f2_no_shipped_ignore_list_fails_closed(tmp_path):
+    root = make_root(tmp_path, ignore=False)
+    with pytest.raises(up.StateError):
+        _stage_into(root, tmp_path, "1.1.0", NEW_FILES)
+
+
+def test_f2_ignore_rules_semantics(tmp_path):
+    (tmp_path / ".gitignore").write_text(
+        "# comment\n*.log\n/top.txt\nbuild/\ndata/*\n!data/keep.json\n"
+        "deep/**/secret.txt\nlocked/\n!locked/inside.txt\n\\#hash.txt\n",
+        encoding="ascii")
+    (tmp_path / "sub").mkdir()
+    (tmp_path / "sub" / ".gitignore").write_text("local.txt\n!keep.log\n", encoding="ascii")
+    rules = up.IgnoreRules(tmp_path)
+    ignored = ["a.log", "x/y/a.LOG", "top.txt", "build/a.py", "x/build/a.py",
+               "data/x.json", "deep/secret.txt", "deep/a/b/secret.txt",
+               "locked/inside.txt", "sub/local.txt", "#hash.txt"]
+    kept = ["x/top.txt", "builder/a.py", "data/keep.json", "deep/a/other.txt",
+            "core/a.py", "sub/keep.log", "other/local.txt"]
+    for rel in ignored:
+        assert rules.ignored(rel), rel
+    for rel in kept:
+        assert not rules.ignored(rel), rel
+
+
+def test_f2_ignore_matcher_agrees_with_git_check_ignore():
+    import shutil as _sh
+    import subprocess
+    if not _sh.which("git") or not (ROOT / ".git").exists():
+        pytest.skip("needs the git checkout")
+    sample = [
+        "config/vision_token.txt", "config/mission_control_token.txt",
+        "tools/mcp_token.txt", "API-Key-Claude.txt", "core/x.key", "ops/runtime/x.json",
+        "data/tft_scouting.json", "data/aram_coaching_data.json", "data/x_shadow.jsonl",
+        "data/ratings/last_x.json", "data/coaching/death_patterns.json", "logs/a.log",
+        "ops/local_hosts.json", "ops/tls/a.png", ".env", ".env.local", ".env.example",
+        "core/a.py", "web/js/main.js", "data/vision_regions.json", "data/coaching/x.json",
+        "ops/launcher/updater.py", "rc-shell/node_modules/a.js", "rc-shell/src/main.js",
+        "ops/audit/lolmath_ds_sweep/out.json", "data/external/x.json",
+        "data/external/101qq_hero_rank_double_tier200_capture_20260525.json",
+    ]
+    # Bytes, not text: text-mode stdin on Windows would send CRLF and git
+    # would check paths ending in a carriage return.
+    proc = subprocess.run(
+        ["git", "-c", "core.excludesFile=", "check-ignore", "--no-index", "--stdin"],
+        cwd=str(ROOT), input=("\n".join(sample) + "\n").encode("ascii"),
+        capture_output=True, check=False)
+    assert proc.returncode in (0, 1), proc.stderr
+    git_ignored = set(proc.stdout.decode("ascii").split())
+    rules = up.IgnoreRules(ROOT)
+    mine = {p for p in sample if rules.ignored(p)}
+    assert mine == git_ignored, (sorted(mine - git_ignored), sorted(git_ignored - mine))
+    assert "config/vision_token.txt" in mine and "core/a.py" not in mine
+
+
+def test_f2_ignore_matcher_agrees_with_git_over_the_index():
+    """Every tracked file git's patterns ignore (force-added ones included)
+    plus a stride of the rest: the matcher must agree on all of them."""
+    import shutil as _sh
+    import subprocess
+    if not _sh.which("git") or not (ROOT / ".git").exists():
+        pytest.skip("needs the git checkout")
+    listed = subprocess.run(["git", "-c", "core.quotepath=off", "ls-files", "-z"],
+                            cwd=str(ROOT), capture_output=True, check=True).stdout
+    tracked = [p for p in listed.decode("utf-8").split("\0") if p and p.isascii()
+               and "\n" not in p]
+    assert len(tracked) > 1000
+    proc = subprocess.run(
+        ["git", "-c", "core.excludesFile=", "check-ignore", "--no-index", "--stdin", "-z"],
+        cwd=str(ROOT), input=("\0".join(tracked) + "\0").encode("ascii"),
+        capture_output=True, check=False)
+    assert proc.returncode in (0, 1), proc.stderr
+    git_ignored = {p for p in proc.stdout.decode("ascii").split("\0") if p}
+    assert len(git_ignored) > 10
+    sample = sorted(git_ignored) + tracked[::7]
+    rules = up.IgnoreRules(ROOT)
+    mine = {p for p in sample if rules.ignored(p)}
+    assert mine == git_ignored & set(sample), (
+        sorted(mine - git_ignored)[:10], sorted((git_ignored & set(sample)) - mine)[:10])
+
+
+# F3 8.3 short names and other aliases
+
+
+@pytest.mark.parametrize("rel", ["ops/FLEET_~1/evil.py", "PROGRA~1/x.py", "core/A~12.py"])
+def test_f3_short_name_segment_refused(rel):
+    with pytest.raises(up.PayloadPathError):
+        up.check_payload_path(rel)
+
+
+def _short_name(path: Path):
+    if sys.platform != "win32":
+        return None
+    import ctypes
+    buf = ctypes.create_unicode_buffer(1024)
+    n = ctypes.windll.kernel32.GetShortPathNameW(str(path), buf, 1024)
+    short = Path(buf.value).name if n else None
+    return short if short and short.lower() != path.name.lower() else None
+
+
+def test_f3_a_real_short_name_alias_is_detected(tmp_path):
+    root = make_root(tmp_path)
+    long_dir = root / "ops" / "fleet_kit_with_a_long_name"
+    long_dir.mkdir(parents=True)
+    short = _short_name(long_dir)
+    if short is None:
+        pytest.skip("this volume does not generate 8.3 names")
+    assert up.live_alias(root.resolve(), f"ops/{short}/evil.py") == \
+        "ops/fleet_kit_with_a_long_name/evil.py"
+    assert up.live_alias(root.resolve(), "ops/fleet_kit_with_a_long_name/x.py") is None
+
+
+def test_f3_a_junction_inside_the_install_is_refused(tmp_path):
+    try:
+        import _winapi
+    except ImportError:
+        pytest.skip("directory junctions are Windows only")
+    root = make_root(tmp_path)
+    target = root / "ops" / "runtime" / "planted"
+    target.mkdir(parents=True)
+    (root / "web" / "js").mkdir(parents=True, exist_ok=True)
+    _winapi.CreateJunction(str(target), str(root / "web" / "jslink"))
+    files = dict(NEW_FILES, **{"web/jslink/evil.js": b"x\n"})
+    _stage_into(root, tmp_path, "1.1.0", files)
+    with pytest.raises(up.PayloadPathError):
+        up.apply(root, "1.1.0", game_check=no_game)
+    assert not (target / "evil.js").exists()
+    assert _requests(root) == []
+
+
+def test_f3_alias_check_runs_before_any_write(tmp_path, monkeypatch):
+    root = make_root(tmp_path)
+    _stage_into(root, tmp_path, "1.1.0", NEW_FILES)
+    monkeypatch.setattr(up, "live_alias",
+                        lambda r, rel: "ops/fleet_kit/b.py" if rel == "core/b.py" else None)
+    with pytest.raises(up.PayloadPathError):
+        up.apply(root, "1.1.0", game_check=no_game)
+    assert _requests(root) == []
+
+
+# F4 swap-after-sign and replay (the worker enforces both)
+
+
+def test_f4_signed_request_carries_a_freshness_window(tmp_path):
+    root, _ = staged_root(tmp_path)
+    t0 = time.time()
+    res = up.apply(root, "1.1.0", game_check=no_game)
+    req = json.loads(res.request_path.read_text(encoding="ascii"))
+    assert t0 - 1 <= req["issued_at"] <= time.time() + 1
+    assert req["expires_at"] - req["issued_at"] == up.REQUEST_TTL_S
+    assert up.REQUEST_TTL_S <= _rtd().MAX_TTL_S
+    assert all(re.fullmatch(r"[0-9a-f]{64}", f["sha256"]) for f in req["files"])
+
+
+def test_f4_a_staged_file_swapped_after_signing_never_deploys(tmp_path):
+    root, staged = staged_root(tmp_path)
+    res = up.apply(root, "1.1.0", game_check=no_game)
+    (staged.directory / "payload" / "core" / "a.py").write_bytes(b"A = 'evil'\n")
+    result = run_worker(root, res.request_path)
+    assert result["ok"] is False and result["phase"] == "integrity", result
+    assert (root / "core" / "a.py").read_bytes() == b"A = 1\n"
+    assert not (root / "core" / "b.py").exists()
+    assert up.finish(root).status == "failed"
+
+
+def test_f4_the_same_signed_bytes_never_deploy_twice(tmp_path):
+    root, _ = staged_root(tmp_path)
+    res = up.apply(root, "1.1.0", game_check=no_game)
+    signed = res.request_path.read_bytes()
+    assert run_worker(root, res.request_path)["ok"] is True
+    (root / "core" / "a.py").write_bytes(b"A = 1\n")   # an operator fixes a file
+    res.request_path.write_bytes(signed)               # ... and the request is replayed
+    replay = run_worker(root, res.request_path)
+    assert replay["ok"] is False and replay["phase"] == "auth", replay
+    assert "already used" in replay["error"]
+    assert (root / "core" / "a.py").read_bytes() == b"A = 1\n"
+
+
+# F5 quarantine never leaves the install root
+
+
+def test_f5_quarantine_with_a_hostile_record_version_stays_inside(tmp_path):
+    root = make_root(tmp_path)
+    files = dict(BASE_FILES, **{"web/js/new.js": b"// new\n"})
+    _stage_into(root, tmp_path, "1.0.1", files)
+    res = up.apply(root, "1.0.1", game_check=no_game)
+    assert run_worker(root, res.request_path)["ok"]
+    assert up.finish(root).status == "ok"
+    rec = up.read_installed(root)
+    rec["version"] = "../../../../../escaped"
+    up._write_json(up.installed_record_path(root), rec)
+    up.rollback(root, game_check=no_game)
+    moved = list((root / "ops" / "runtime" / "launcher" / "quarantine").rglob("new.js"))
+    assert len(moved) == 1
+    assert not any(p.name.startswith("escaped") for p in tmp_path.rglob("*"))
+
+
+def test_f5_quarantine_dir_is_asserted_inside_the_root(tmp_path, monkeypatch):
+    root = make_root(tmp_path)
+    monkeypatch.setattr(up, "launcher_state_dir", lambda r: tmp_path / "elsewhere")
+    with pytest.raises(up.PayloadPathError):
+        up._quarantine(root.resolve(), {"version": "1.0.0", "created": ["core/a.py"],
+                                        "files": {"core/a.py": _sha(b"A = 1\n")}},
+                       time.time)
+    assert (root / "core" / "a.py").exists()
+
+
+# F6 an unreadable fresh health.json defers
+
+
+def test_f6_torn_fresh_health_defers(tmp_path):
+    root = make_root(tmp_path)
+    (root / "ops" / "runtime" / "health.json").write_text('{"has_game": tr', encoding="ascii")
+    reason = up.game_live(root, process_names=lambda: frozenset())
+    assert reason and "health" in reason and "unreadable" in reason
+
+
+def test_f6_missing_health_is_still_no_evidence(tmp_path):
+    root = make_root(tmp_path)
+    assert up.game_live(root, process_names=lambda: frozenset()) is None
+
+
+# F7 the no-change path checks the game before writing anything
+
+
+def test_f7_noop_apply_is_deferred_before_any_write(tmp_path):
+    root = make_root(tmp_path)
+    _stage_into(root, tmp_path, "1.0.1", BASE_FILES)
+    with pytest.raises(up.GameLiveError):
+        up.apply(root, "1.0.1", game_check=lambda: "process league of legends.exe")
+    assert not up.installed_record_path(root).exists()
+    assert not up.state_path(root).exists()
+    assert up.installed_version(root) == "1.0.0"
 
 
 # ----------------------------------------------------------------- CLI
