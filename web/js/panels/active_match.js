@@ -1147,7 +1147,11 @@ export function amLiveFallbackModel(mode, phase, payload) {
   const stage = _amTftStage(p);
   const level = _amIntIn(p.level, 1, 10);
   const hpRaw = typeof p.hp === "number" ? p.hp : p.health;
-  const hp = _amIntIn(hpRaw, 1, 100);
+  // RM-947: an hp read outside 1..100 that is not an elimination (below) -
+  // the game-start placeholder hp -1 / standing -1 (QA N10) - falls through to
+  // the coach health, as the overlay vitals do (overlay_tft.js firstIn). Real
+  // run: health 100 beside hp -1 at 1-2 painted 100 -> "-" -> 100.
+  const hp = _amIntIn(hpRaw, 1, 100) ?? _amIntIn(p.health, 1, 100);
   const gold = _amIntIn(p.gold, 0, 999);
   const board = _amTftBoard(p);
   const players = _amTftLobby(p);

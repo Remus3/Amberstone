@@ -20,6 +20,7 @@ import test from "node:test";
 import assert from "node:assert";
 
 import { amLiveFallbackModel, amOrdinal, amStickyPhase } from "./active_match.js";
+import { tftOverlayModel } from "../lib/overlay_tft.js";
 
 const TFT_COACH_LIVE = {
   mode: "tft", action: "", board: "", econ: "", rolldown: "", items: "",
@@ -161,6 +162,37 @@ test("OUT never pairs the envelope hp with the lobby you-row placement", () => {
   assert.strictEqual(youOut.rows[2][1], "OUT", "the you-row's own health 0 at its place is out");
   const own = amLiveFallbackModel("tft", "InProgress", { hp: -9, standing: 3, tft_players: lobby(64) });
   assert.strictEqual(own.rows[2][1], "OUT", "a paired envelope read wins over the you-row");
+});
+
+// RM-947: the game-start placeholder (QA N10) is not the coach's last word.
+// Real rows 2-4 of tft_qa runs 20261025-104400 and 20261025-131926: hp absent
+// with health 100 at 1-1, then hp -1 / standing -1 with health 100 at 1-2, then
+// hp 100 at standing 1 from 1-3. The strip took hp -1 as THE read and painted
+// "-" between two "100"s (100 -> - -> 100), while the overlay vitals fell
+// through to the coach health and held 100. The -1 falls through the same way.
+const START_ROWS = [
+  { stage_round: "1-1", level: 1, gold: 0, hp: null, health: 100, standing: null },
+  { stage_round: "1-2", level: 1, gold: 0, hp: -1, health: 100, standing: -1 },
+  { stage_round: "1-3", level: 1, gold: 0, hp: 100, health: 100, standing: 1 },
+];
+
+test("the -1 start sentinel falls through to the coach health (no 100 -> - -> 100)", () => {
+  const hp = START_ROWS.map((p) => amLiveFallbackModel("tft", "InProgress", p).rows[2][1]);
+  assert.deepStrictEqual(hp, ["100", "100", "100"]);
+  // the paired envelope read still wins over a differing coach health
+  const own = amLiveFallbackModel("tft", "InProgress", { hp: 92, health: 6, standing: 7 });
+  assert.strictEqual(own.rows[2][1], "92");
+  // and the no-data case stays no-data
+  const none = amLiveFallbackModel("tft", "InProgress", { hp: -1, standing: -1 });
+  assert.strictEqual(none.rows[2][1], "-");
+});
+
+test("strip HP and overlay vitals HP read the same text on the real start rows", () => {
+  for (const p of [...START_ROWS, { stage_round: "5-2", hp: -9, health: 10, standing: 8 }]) {
+    const strip = amLiveFallbackModel("tft", "InProgress", p).rows[2][1];
+    const ov = tftOverlayModel({ mode_key: "tft", liveclient: {}, coach: p }).vitals[0].text;
+    assert.strictEqual(strip, ov, `row ${JSON.stringify(p)}`);
+  }
 });
 
 test("implausible / garbage values fall back to '-'", () => {

@@ -569,3 +569,32 @@ def test_placeholder_hp_beside_lobby_you_row_is_not_out(mock_server, pw_browser)
         page.close()
         ctx.close()
     assert not errors, f"JS errors: {errors[:3]}"
+
+
+def test_start_sentinel_hp_falls_through_to_coach_health(mock_server, pw_browser):
+    """RM-947: the real game-start placeholder row (tft_qa runs
+    20261025-104400 and 20261025-131926, states.jsonl row 3: coach hp -1 /
+    standing -1 with health 100 at stage 1-2, between a 1-1 row and a 1-3 row
+    that both paint HP 100) paints HP "100", undimmed - not the no-data "-" -
+    the same text the overlay vitals show for that row."""
+    data = copy.deepcopy(_load("tft_live_s134"))
+    data["coach"].update({
+        "hp": -1, "health": 100, "standing": -1,
+        "stage_round": "1-2", "level": 1, "gold": 0,
+    })
+    ctx, page, errors = _open(mock_server, pw_browser, data)
+    try:
+        _wait_fallback(page, "tft")
+        page.wait_for_function(
+            "() => (document.getElementById('am-sub') || {}).textContent"
+            " === 'TFT - stage 1-2 - phase InProgress'",
+            timeout=_LIVE_TICK_MS,
+        )
+        assert _stat_cells(page) == [
+            ["STAGE", "1-2", False], ["LEVEL", "1", False],
+            ["HP", "100", False], ["GOLD", "0", False],
+        ]
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors: {errors[:3]}"
