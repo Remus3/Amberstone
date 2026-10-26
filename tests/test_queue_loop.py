@@ -1326,6 +1326,71 @@ def test_RM886_an_unrecognised_slice_conclusion_is_unknown_never_green():
     assert _grade(_push_jobs("skipped", "neutral"))["step"] == "unknown"
 
 
+# RM-930: every `check` step before the test steps carries no status
+# function in its `if:`, so GitHub prefixes an implicit `success() &&`. When an
+# EARLIER step fails (a fast guard, ruff, the selector), both test steps are
+# skipped while the job concludes `failure` - and `skipped` is passed over, so
+# a push that broke a fast guard did not stop the loop.
+RUFF_STEP_NAME = "ruff lint"
+
+
+def _early_fail_jobs(failed=RUFF_STEP_NAME, *, job_conclusion="failure",
+                     slice_="skipped"):
+    """A push run's `check` job whose step `failed` failed before the tests."""
+    steps = [{"name": "Set up job", "conclusion": "success"},
+             {"name": RUFF_STEP_NAME, "conclusion": "success"},
+             {"name": SELECTOR_STEP_NAME, "conclusion": "success"}]
+    for step in steps:
+        if step["name"] == failed:
+            step["conclusion"] = "failure"
+    if failed is not None and failed not in [s["name"] for s in steps]:
+        steps.insert(1, {"name": failed, "conclusion": "failure"})
+    steps += [{"name": SLICE_STEP_NAME, "conclusion": slice_},
+              {"name": CI_STEP_NAME, "conclusion": "skipped"}]
+    return _jobs(steps=steps, job_conclusion=job_conclusion)
+
+
+def test_S134P03_an_EARLIER_failed_step_grades_failure_not_skipped():
+    out = _grade(_early_fail_jobs(RUFF_STEP_NAME))
+    assert out["step"] == "failure"
+    assert RUFF_STEP_NAME in out["detail"], "the verdict must name the failed step"
+
+
+def test_S134P03_a_failed_SELECTOR_grades_failure():
+    """The selector failing skips both test steps exactly like mode=none."""
+    out = _grade(_early_fail_jobs(SELECTOR_STEP_NAME))
+    assert out["step"] == "failure"
+    assert SELECTOR_STEP_NAME in out["detail"]
+
+
+def test_S134P03_mode_none_on_a_GREEN_job_stays_skipped():
+    """No failed step and a `success` job: both test steps skipped is mode=none."""
+    out = _grade(_early_fail_jobs(None, job_conclusion="success"))
+    assert out["step"] == "skipped"
+
+
+def test_S134P03_a_failed_SET_UP_JOB_is_unavailable_not_red():
+    """Runner infrastructure failing says nothing about the tree, so it may
+    not stop the loop - but it is not a quiet `skipped` either."""
+    out = _grade(_early_fail_jobs("Set up job"))
+    assert out["step"] == "unavailable"
+    assert "Set up job" in out["detail"]
+
+
+def test_S134P03_a_failed_job_with_NO_failed_step_is_unknown():
+    """The job says failure and no step says why: not evidence of a red tree,
+    and never a quiet `skipped`."""
+    out = _grade(_early_fail_jobs(None, job_conclusion="failure"))
+    assert out["step"] == "unknown"
+
+
+def test_S134P03_a_test_step_that_RAN_still_wins_over_the_job_conclusion():
+    """A red slice also fails the job; the slice step stays the named answer."""
+    out = _grade(_early_fail_jobs(None, slice_="failure"))
+    assert out["step"] == "failure"
+    assert SLICE_STEP_NAME in out["detail"]
+
+
 def test_the_result_carries_exactly_the_documented_fields():
     calls, gh = _fake_gh(list=[(0, [_row(104, "abc")])],
                          jobs=[(0, _jobs("success"))])

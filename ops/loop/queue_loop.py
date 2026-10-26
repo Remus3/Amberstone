@@ -711,6 +711,37 @@ def _trigger_ci_run(gh, sha, seen, *, sleep):
     return None, why
 
 
+# The runner's own first step. Its failure is infrastructure, not evidence that
+# the tree is broken, so it grades `unavailable` rather than stopping the loop.
+CI_SETUP_STEP = "Set up job"
+
+
+def _early_failure_verdict(steps, run_id):
+    """(step, detail) for a failed `check` job whose test steps were skipped.
+
+    The FIRST failed step is the answer: under the implicit `success() &&`
+    every later step was skipped because of it. `Set up job` failing is
+    `unavailable` (decision RM-930: alternatives were `failure`, which
+    would let a runner outage end the night, and `skipped`, which is the bug).
+    A failed job with no failed step is `unknown` - recorded, never red, and
+    never the quiet `skipped` it used to read as.
+    """
+    for step in steps:
+        if not isinstance(step, dict):
+            continue
+        if str(step.get("conclusion") or "").strip().lower() != CI_FAILURE:
+            continue
+        name = str(step.get("name") or "")
+        if name == CI_SETUP_STEP:
+            return CI_UNAVAILABLE, (f"{CI_JOB} step {name!r} failed in run "
+                                    f"{run_id} - runner infrastructure, the "
+                                    f"tests never ran")
+        return CI_FAILURE, (f"{CI_JOB} step {name!r} -> failure; the test "
+                            f"steps were skipped behind it")
+    return CI_UNKNOWN, (f"the {CI_JOB!r} job concluded failure in run {run_id} "
+                        f"with its test steps skipped and no failed step")
+
+
 def _ci_step_verdict(gh, run_id):
     """(step, detail) for the test step of the `check` job that ran.
 
@@ -726,6 +757,12 @@ def _ci_step_verdict(gh, run_id):
     grading only the full step read a RED slice as `skipped`, and `skipped`
     never stops the loop. A skipped full step with no slice step, or a skipped
     slice step (mode=none), stays `skipped`.
+
+    Both test steps skipped inside a `check` job that concluded `failure` is
+    an EARLIER step failing (RM-930): no step before them carries a status
+    function in its `if:`, so each gets an implicit `success() &&` and a red
+    fast guard skips the tests. That is graded by `_early_failure_verdict`,
+    never as `skipped`.
 
     An absent or skipped `check` job is `skipped` - a real answer about the
     world. A `check` job that is present but shaped in a way this function does
@@ -770,6 +807,9 @@ def _ci_step_verdict(gh, run_id):
         sliced = _named(CI_SLICE_STEP)
         if sliced is not None and _conclusion(sliced) != CI_SKIPPED:
             graded = sliced
+    if (_conclusion(graded) == CI_SKIPPED
+            and str(job.get("conclusion") or "").strip().lower() == CI_FAILURE):
+        return _early_failure_verdict(steps, run_id)
     verdict = _conclusion(graded)
     if verdict in CI_STEPS:
         return verdict, f"{CI_JOB} step {graded.get('name')!r} -> {verdict}"
