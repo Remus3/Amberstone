@@ -1,5 +1,12 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-10-26 - size-budget relocation (session 140 /done), 2 lines
+
+`ROADMAP.md` stood at 74186 of 81920 bytes on `993cde41b`, a `tools/drift_guard.py` breach (91 percent; its warn line is 73728). The SHIPPED RM-908 row and the `## 2026-10-20` stub line below move here VERBATIM as they stood at `993cde41b`, in their ROADMAP order. The `## 2026-10-23`.. pointer line in `ROADMAP.md` now names this block and the `## 2026-10-25g` block.
+
+- **[x] RM-908 SHIPPED s138 `131941469` (MAIN FIX 1935; commit says RM-906 in error): CodeQL 65 + 66, electron 44.9.1, CI waste cuts, push tier.** LEDGER 1913.
+- **[x] SHIPPED / CLOSED ROWS AND STUBS relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (`## 2026-10-20` block, session 125 merger size pass): RM-751 (CLOSED, LEDGER 1744), RM-752 (SHIPPED, LEDGER 1744), RM-256 (CLOSED, LEDGER 1743) with RM-255 (REFUTED AT HEAD - do NOT re-open), RM-253, RM-254, RM-521; and the five size-pass stubs of the `## 2026-10-10` .. `## 2026-10-17` blocks: RM-680 / RM-700, RM-685 / RM-687 / RM-688 / RM-689, RM-696, RM-217 / RM-421, RM-420, RM-295a-c, RM-301-303, RM-296a-e, RM-192-202, RM-293, RM-300, RM-317, RM-261 / RM-262 / RM-263 / RM-264, RM-266 / RM-267 / RM-268 / RM-269, RM-234 / RM-235 / RM-236 / RM-237, RM-35 .. RM-48, RM-701, RM-733, RM-735, RM-738, RM-739, RM-321, RM-191 (live probe LIVE-GATED), RM-149, RM-743, RM-741, RM-742, RM-744, RM-745, RM-746. READ the block before re-opening any of these ids.**
+
 ## 2026-10-25g - size-budget relocation (session 138 /done), 1 line
 
 `ROADMAP.md` stood at 73488 of 81920 bytes on `b49a4572b`, 240 bytes under the `tools/drift_guard.py` warn line (73728), before the RM-907 / RM-908 rows. The closed line below moves here VERBATIM.
