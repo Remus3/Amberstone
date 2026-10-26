@@ -43,11 +43,32 @@ from unittest import mock
 from lcu import lockfile_notice
 from lcu.lcu_client import _LOCKFILE_MISSING_REPEAT_S, LcuClient
 from lcu.lockfile_notice import LockfileNoticeFilter, install
+from tests._lcu_notice_isolation import isolate_lockfile_notice
+from tests._timing_budget import fleet_test_guard
 from tools.lcu_push_watcher import _RE_LOCKFILE_GAP, classify_events
 
 
 _MISSING = [Path(r"Z:\definitely-not-a-real-lockfile\lockfile")]
 _MSG = "lockfile not found"
+
+
+def _racing_clock(now_ref, racers, timeout):
+    """`time` stand-in whose monotonic() parks each RACER thread at a 2-party
+    barrier before returning now_ref[0]. Returns (clock, barrier).
+
+    Only racers park. The patch replaces a MODULE global, so any other
+    LcuClient in the process that ticks meanwhile reads this clock too; were
+    it to park, it would take a racer's slot, release one racer early and
+    strand the other until the barrier broke (forced by
+    `test_a_foreign_poller_cannot_take_a_racers_barrier_slot`)."""
+    barrier = threading.Barrier(2, timeout=timeout)
+
+    def monotonic():
+        if threading.current_thread() in racers:
+            barrier.wait()
+        return now_ref[0]
+
+    return types.SimpleNamespace(monotonic=monotonic, sleep=_real_time.sleep), barrier
 
 
 def _not_found_records(cm) -> list:
@@ -75,18 +96,12 @@ class CrossInstanceDedupeTests(unittest.TestCase):
     """Two clients, one gap - one line."""
 
     def setUp(self):
-        attached = lockfile_notice.current()
-        self.assertIsNotNone(
-            attached, "lcu/__init__.py must install the filter at package import")
-        attached.reset()
-        # coaches/_base_coach.py:228 raises this logger to WARNING at import,
-        # which drops the episode-END lines before any filter sees them and
-        # makes the re-open look swallowed. Not a production concern (no level
-        # passes the DEBUG repeat while dropping the INFO connect line) but it
-        # has to be pinned here or the fixture measures the wrong thing.
-        logger = logging.getLogger("rc.lcu")
-        self.addCleanup(logger.setLevel, logger.level)
-        logger.setLevel(logging.DEBUG)
+        # Gate rc.lcu to this test's threads, THEN reset the installed filter
+        # and pin DEBUG (tests/_lcu_notice_isolation.py says why each step and
+        # its order). Without the gate a foreign LcuClient's real-clock repeat
+        # lands in the shared filter and suppresses this test's fake-clock
+        # notices: the s140 gated-suite red.
+        self._gate = isolate_lockfile_notice(self)
 
     def test_two_racing_callers_on_one_client_log_the_notice_once(self):
         """The PRODUCTION topology: one client, two callers in two worker
@@ -99,26 +114,34 @@ class CrossInstanceDedupeTests(unittest.TestCase):
         defect at all - which is why the sibling two-client tests, though
         useful for caller-agnosticism, do not cover the production topology.
 
-        SCOPE, measured by mutation rather than asserted: removing the filter
-        entirely fails this test, so it pins the fix. Replacing the filter's
-        lock with a nullcontext does NOT fail it - the unlocked window is too
+        SCOPE, measured by mutation rather than asserted: a filter that still
+        reads its clock but passes every record fails this test, so it pins
+        the dedupe decision. A filter removed ENTIRELY passed 3 of 3 (s140
+        re-measure): nothing then parks at the second barrier and one racer's
+        write lands before the other's check. Replacing the filter's lock with
+        a nullcontext does NOT fail it either - the unlocked window is too
         narrow to preempt reliably. Mutual exclusion is pinned separately and
         deterministically by
         `FilterUnitTests.test_the_throttle_decision_is_mutually_exclusive`.
         """
+        self.assertEqual(
+            len(self._race_two_callers()),
+            1,
+            "both racing callers logged the same repeat; that unsynchronized "
+            "read-compare-write is the measured duplicate",
+        )
+
+    def _race_two_callers(self, before_first_connect=None, before_racers=None):
+        """One client, an announced gap, then two caller threads racing the
+        due repeat. Returns the not-found records the race emitted.
+
+        `before_first_connect()` and `before_racers(client_barrier)` are seams
+        for the foreign-emitter tests below; the production-topology test
+        passes neither."""
         client = LcuClient()
         now = [1000.0]
-
-        def racing_clock():
-            """Both throttles read their clock BEFORE taking any lock, so
-            barriering the read parks both threads past the check and makes the
-            interleaving deterministic instead of hoping for it. One barrier
-            each: the two clocks are read once per thread per throttle."""
-            barrier = threading.Barrier(2, timeout=10)
-            return types.SimpleNamespace(
-                monotonic=lambda: (barrier.wait(), now[0])[1],
-                sleep=_real_time.sleep,
-            )
+        if before_first_connect is not None:
+            before_first_connect()
 
         with mock.patch("lcu.lcu_client._LOCKFILE_PATHS", _MISSING):
             # main.py:227 connects synchronously before either loop spawns, so
@@ -137,28 +160,88 @@ class CrossInstanceDedupeTests(unittest.TestCase):
                 except BaseException as exc:  # noqa: BLE001
                     errors.append(exc)
 
-            # BOTH clocks are barriered. Patching only the client's would park
-            # the threads before the frozen throttle but let them run the
-            # filter one after the other, and the filter's lock would then be
-            # untested - verified by mutation: with only the client barriered,
-            # replacing the lock with a nullcontext still passed.
-            with mock.patch("lcu.lcu_client.time", racing_clock()), \
-                    mock.patch("lcu.lockfile_notice.time", racing_clock()):
+            racers = [self._gate.own(threading.Thread(
+                target=caller, daemon=True, name=f"lcu-notice-racer-{i}"))
+                for i in range(2)]
+            # Both throttles read their clock BEFORE taking any lock, so
+            # barriering the read parks both racers past the check and makes
+            # the interleaving deterministic instead of hoping for it. BOTH
+            # clocks are barriered: patching only the client's would let the
+            # racers run the filter one after the other, and the filter's lock
+            # would then be untested - verified by mutation: with only the
+            # client barriered, replacing the lock with a nullcontext passed.
+            wait_s = fleet_test_guard.budget(10)
+            client_clock, client_barrier = _racing_clock(now, set(racers), wait_s)
+            notice_clock, _ = _racing_clock(now, set(racers), wait_s)
+            with mock.patch("lcu.lcu_client.time", client_clock), \
+                    mock.patch("lcu.lockfile_notice.time", notice_clock):
+                if before_racers is not None:
+                    before_racers(client_barrier)
                 with self.assertLogs("rc.lcu", level="DEBUG") as cm:
-                    threads = [threading.Thread(target=caller) for _ in range(2)]
-                    for t in threads:
+                    for t in racers:
                         t.start()
-                    for t in threads:
-                        t.join(timeout=15)
-            self.assertEqual(errors, [])
-            self.assertFalse([t for t in threads if t.is_alive()])
+                    for t in racers:
+                        t.join(timeout=fleet_test_guard.budget(15))
+                    # Inside the capture, so a racer that raised or is still
+                    # parked names itself instead of reading as "no logs".
+                    self.assertEqual(errors, [])
+                    self.assertFalse([t for t in racers if t.is_alive()])
+        return _not_found_records(cm)
 
-        self.assertEqual(
-            len(_not_found_records(cm)),
-            1,
-            "both racing callers logged the same repeat; that unsynchronized "
-            "read-compare-write is the measured duplicate",
-        )
+    def _foreign_poller(self, last_log):
+        """A long-lived LcuClient elsewhere in this process - what a poller
+        leaked by an earlier test in the same xdist worker looks like: past its
+        first notice (so it takes the repeat branch, `lcu/lcu_client.py:135`)
+        and ticking on its OWN thread. `last_log` is its real-clock throttle
+        stamp. Returns (client, thread); the thread is not started."""
+        foreign = LcuClient()
+        foreign._lockfile_missing_logged = True
+        foreign._lockfile_missing_last_log = last_log
+        thread = threading.Thread(target=foreign.connect, daemon=True,
+                                  name="foreign-lcu-poller")
+        return foreign, thread
+
+    def test_a_foreign_poller_tick_before_the_race_cannot_suppress_it(self):
+        """s140 REPRO of the gated-suite red (ops/runtime/kit_v24_suite.log,
+        45803 passed / 1 failed): "no logs of level DEBUG or higher triggered
+        on rc.lcu", with ONE captured `lcu_client.py:136` DEBUG and NO `:132`
+        INFO from this test's own first connect.
+
+        That signature is not the race and not a slow box (a window closed by
+        load still shows the `:132` INFO - measured). It is a foreign repeat on
+        the REAL clock reaching the process-wide filter after the per-test
+        reset: the filter stamps a real monotonic (hundreds of thousands of
+        seconds), so this test's fake 1000 s and 1060 s read as inside a live
+        window and the INFO and both racing repeats are all dropped."""
+        foreign, thread = self._foreign_poller(-_LOCKFILE_MISSING_REPEAT_S)
+
+        def foreign_tick():
+            with mock.patch("lcu.lcu_client._LOCKFILE_PATHS", _MISSING):
+                thread.start()
+                thread.join(timeout=fleet_test_guard.budget(5))
+            self.assertFalse(thread.is_alive())
+            # Non-vacuity: the foreign client really took its repeat branch
+            # and logged (the stamp moves only on the logging path).
+            self.assertGreater(foreign._lockfile_missing_last_log, 0)
+
+        self.assertEqual(len(self._race_two_callers(before_first_connect=foreign_tick)), 1)
+
+    def test_a_foreign_poller_cannot_take_a_racers_barrier_slot(self):
+        """The sibling window of the same leak: a foreign client ticking WHILE
+        the clocks are barriered reads the same patched module global
+        (`lcu.lcu_client.time`), so it can park at the racers' 2-party barrier,
+        release one racer early and strand the other until the barrier breaks.
+        Forced here by parking the foreign tick before the racers start."""
+        foreign, thread = self._foreign_poller(_real_time.monotonic())
+
+        def foreign_tick(client_barrier):
+            thread.start()
+            deadline = _real_time.monotonic() + fleet_test_guard.budget(5)
+            while (thread.is_alive() and client_barrier.n_waiting == 0
+                   and _real_time.monotonic() < deadline):
+                _real_time.sleep(0.005)
+
+        self.assertEqual(len(self._race_two_callers(before_racers=foreign_tick)), 1)
 
     def test_two_clients_in_one_gap_log_the_notice_once(self):
         """Caller-agnostic by construction: the dedupe must also hold for an
