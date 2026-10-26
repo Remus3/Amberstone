@@ -68,11 +68,13 @@ updates:
     # target would reopen the PR one release lower. A release above a range
     # still opens a PR. Drop an entry when its hold lifts.
     ignore:
-      # PR #11 (1.13.0), PR #17 (1.14.0, declined 2026-10-17) and PR #19
-      # (1.15.0, declined 2026-10-20 under the same hold): held until RM-681
-      # (live call per path + truststore) closes.
+      # PR #11 (1.13.0), PR #17 (1.14.0, declined 2026-10-17), PR #19
+      # (1.15.0, declined 2026-10-20) and PR #24 (2.1.0, a major whose 2.0.0
+      # moves to API version 2026-10-21 and adds opentelemetry-api; declined
+      # 2026-10-26 under the same hold, its other bumps applied): held until
+      # RM-681 (live call per path + truststore) closes.
       - dependency-name: "anthropic"
-        versions: [">1.11.0,<=1.15.0"]
+        versions: [">1.11.0,<=2.1.0"]
       # PR #11: wait for a change that also upgrades the RC runtime.
       - dependency-name: "json5"
         versions: [">0.15.0,<=0.17.3"]
