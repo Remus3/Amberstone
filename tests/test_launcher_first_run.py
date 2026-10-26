@@ -20,6 +20,7 @@ ops/runtime/. Every secret value is generated at run time, never a literal.
 from __future__ import annotations
 
 import ast
+import errno
 import importlib
 import json
 import os
@@ -51,8 +52,8 @@ POSIX_ONLY = pytest.mark.skipif(sys.platform == "win32", reason="POSIX file mode
 
 
 class Recorder:
-    """A fake `restrict` (ACL) callable: records the path and whether the
-    final target already existed at that moment."""
+    """A fake `restrict` (ACL) callable: records each path; `result` is a
+    bool or a callable(path) -> bool."""
 
     def __init__(self, result=True, side_effect=None):
         self.calls = []
@@ -63,28 +64,46 @@ class Recorder:
         self.calls.append(Path(path))
         if self.side_effect is not None:
             self.side_effect(Path(path))
-        return self.result
+        return self.result(Path(path)) if callable(self.result) else self.result
 
 
-class FakeRun:
-    """A fake subprocess.run for the deploy worker's --init-key."""
+def _size(path: Path):
+    try:
+        return path.stat().st_size if path.is_file() else "dir"
+    except OSError:
+        return None
 
-    def __init__(self, returncode=0, create=True, raises=None):
-        self.calls = []
-        self.returncode = returncode
-        self.create = create
-        self.raises = raises
 
-    def __call__(self, argv, **kw):
-        self.calls.append((list(argv), dict(kw)))
-        if self.raises is not None:
-            raise self.raises
-        if self.create and self.returncode == 0:
-            root = Path(kw["cwd"])
-            key = root / "ops" / "runtime" / "deploy_request.key"
-            key.parent.mkdir(parents=True, exist_ok=True)
-            key.write_text(secrets.token_hex(32) + "\n", encoding="ascii")
-        return subprocess.CompletedProcess(argv, self.returncode)
+class Timeline:
+    """One ordered event list for icacls calls (through the REAL
+    restrict_to_current_user with a fake run) and secret writes (a wrapper
+    around first_run._write_secret). Each icacls event records the size of
+    its target at that moment, so "restricted before any secret byte" is
+    checked directly."""
+
+    SID = "S-1-5-21-1000-2000-3000-1001"
+
+    def __init__(self, monkeypatch, rc=0):
+        self.events = []
+        self.rc = rc
+        real_write = fr._write_secret
+
+        def write(path, data):
+            self.events.append(("write", Path(path)))
+            real_write(path, data)
+
+        monkeypatch.setattr(fr, "_write_secret", write)
+
+    def run(self, argv, **kw):
+        target = Path(argv[1])
+        self.events.append(("icacls", target, _size(target)))
+        return subprocess.CompletedProcess(argv, self.rc(target) if callable(self.rc) else self.rc)
+
+    def restrict(self, path):
+        return fr.restrict_to_current_user(path, run=self.run, windows=True, sid=self.SID)
+
+    def for_name(self, prefix):
+        return [e for e in self.events if e[1].name.startswith(prefix)]
 
 
 def make_root(tmp_path: Path, *, deploy_module: bool = False) -> Path:
@@ -118,7 +137,6 @@ def by_name(report) -> dict:
 def provision(root, **kw):
     kw.setdefault("environ", {})
     kw.setdefault("restrict", Recorder())
-    kw.setdefault("run", FakeRun())
     return fr.provision(root, **kw)
 
 
@@ -232,58 +250,54 @@ def test_dash_token_gate_on_with_an_invalid_token_exports_nothing(tmp_path):
 # ------------------------------------------------------- deploy key
 
 
-def test_deploy_key_comes_from_the_deploy_workers_own_init_key(tmp_path):
+def test_deploy_key_is_the_workers_key_in_the_workers_format(tmp_path):
     from ops import rc_transactional_deploy as td
 
-    root = make_root(tmp_path, deploy_module=True)
+    root = make_root(tmp_path)
     restrict = Recorder()
-    report = fr.provision(root, environ={}, restrict=restrict)   # REAL subprocess.run
+    report = provision(root, restrict=restrict)
     res = by_name(report)["deploy_key"]
     assert res.state == "created", res
     key = key_path(root)
     assert res.path == key
-    assert re.fullmatch(r"[0-9a-f]{64}", first_line(key)), "ensure_key format (:115)"
-    assert key in restrict.calls, "the new key is ACL-restricted"
-    # The worker's verifier accepts what the launcher's signer produces.
+    # The worker's own ensure_key output (ops/rc_transactional_deploy.py:115)
+    # is the format reference: the same 64-hex value. Its text-mode
+    # write_text ends the line CRLF on Windows; _read_key strips (:96), and
+    # this tree writes LF, so only the stripped value has to match.
+    ref = td.ensure_key(tmp_path / "ref" / "deploy_request.key")
+    hex64 = re.compile(r"[0-9a-f]{64}")
+    assert hex64.fullmatch(ref.read_text(encoding="ascii").strip())
+    assert re.fullmatch(rb"[0-9a-f]{64}\n", key.read_bytes()), "one line, LF"
+    # The worker reads, signs and verifies with it (:94 _read_key, :125, :133).
     signed = td.sign_request({"request_id": "pkg1b", "files": []}, key_path=key)
     td.verify_request(signed, key_path=key)
+    assert td.DEFAULT_KEY_PATH.relative_to(ROOT) == Path(*fr.DEPLOY_KEY_REL), \
+        "the worker verifies with exactly this file"
 
 
-def test_deploy_key_init_is_windowless_isolated_and_rooted(tmp_path):
-    root = make_root(tmp_path, deploy_module=True)
-    run = FakeRun()
-    report = provision(root, run=run, python="PYEXE")
+def test_deploy_key_is_restricted_before_a_key_byte_exists(tmp_path, monkeypatch):
+    root = make_root(tmp_path)
+    tl = Timeline(monkeypatch)
+    report = provision(root, restrict=tl.restrict)
     assert by_name(report)["deploy_key"].state == "created"
-    (argv, kw), = run.calls
-    assert argv == ["PYEXE", "-I", str(root / "ops" / "rc_transactional_deploy.py"),
-                    "--init-key"]
-    assert kw["creationflags"] == fr.CREATE_NO_WINDOW
-    assert kw["cwd"] == str(root)
-    assert kw["stdin"] is subprocess.DEVNULL and kw["stdout"] is subprocess.DEVNULL
-    assert kw["timeout"] > 0
+    events = tl.for_name("deploy_request.key")
+    assert [e[0] for e in events] == ["icacls", "write"], events
+    assert events[0][2] == 0, "the scratch was empty when its ACL was set"
+    assert events[1][1] == events[0][1], "the secret went into the restricted scratch"
+
+
+def test_provisioning_spawns_no_deploy_worker(tmp_path, monkeypatch):
+    def no_spawn(*a, **k):
+        raise AssertionError("no subprocess besides icacls")
+
+    monkeypatch.setattr(fr.subprocess, "Popen", no_spawn)
+    root = make_root(tmp_path, deploy_module=True)
+    report = provision(root)
+    assert by_name(report)["deploy_key"].state == "created"
 
 
 def test_create_no_window_is_the_per_os_constant():
     assert fr.CREATE_NO_WINDOW == (NO_WINDOW if os.name == "nt" else 0)
-
-
-def test_deploy_key_without_the_worker_is_an_error_not_a_crash(tmp_path):
-    root = make_root(tmp_path)
-    run = FakeRun()
-    report = provision(root, run=run)
-    res = by_name(report)["deploy_key"]
-    assert res.state == "error" and "rc_transactional_deploy.py" in res.detail
-    assert run.calls == []
-    assert by_name(report)["vision_token"].state == "created", "the rest still runs"
-
-
-@pytest.mark.parametrize("run", [FakeRun(returncode=1), FakeRun(create=False),
-                                 FakeRun(raises=subprocess.TimeoutExpired("x", 1)),
-                                 FakeRun(raises=OSError("no interpreter"))])
-def test_a_failed_init_key_is_an_error(tmp_path, run):
-    root = make_root(tmp_path, deploy_module=True)
-    report = provision(root, run=run)
-    assert by_name(report)["deploy_key"].state == "error"
 
 
 # ------------------------------------------- never overwrite, idempotent
@@ -306,12 +320,13 @@ def test_legion_with_every_secret_present_changes_nothing(tmp_path, gate):
     values = _seed_all(root)
     paths = [vision_path(root), dash_path(root), key_path(root)]
     before = snapshot(paths)
-    restrict, run = Recorder(), FakeRun()
-    report = provision(root, restrict=restrict, run=run, dash_token_gate=gate)
+    restrict = Recorder()
+    report = provision(root, restrict=restrict, dash_token_gate=gate)
     assert {r.name: r.state for r in report.results} == {
         "vision_token": "present", "dash_token": "present", "deploy_key": "present"}
     assert snapshot(paths) == before, "bytes and mtimes untouched"
-    assert restrict.calls == [] and run.calls == [], "no ACL change, no worker run"
+    assert restrict.calls == [], "no ACL change"
+    assert not (root / "ops" / "runtime" / "first_run").exists(), "no scratch folder made"
     assert report.env == ({"RC_DASH_TOKEN": values["dash"]} if gate else {})
     assert leftover_tmp(root) == []
 
@@ -332,14 +347,52 @@ def test_the_acl_is_set_on_the_scratch_file_before_it_is_published(tmp_path):
     root = make_root(tmp_path)
     seen = []
     target = vision_path(root)
-    restrict = Recorder(side_effect=lambda p: seen.append((p, target.exists())))
+    restrict = Recorder(side_effect=lambda p: seen.append((p, target.exists(), _size(p))))
     provision(root, restrict=restrict)
-    scratch, existed = next((p, e) for p, e in seen if p.name.startswith("vision_token.txt"))
+    scratch, existed, size = next(s for s in seen if s[0].name.startswith("vision_token.txt"))
     assert scratch != target and scratch.name.endswith(".tmp")
     assert existed is False, "restricted before the secret has its real name"
+    assert size == 0, "restricted before a secret byte is in it"
     assert scratch.parent == root / "ops" / "runtime" / "first_run", \
         "a killed write leaves its scratch under the ignored ops/runtime/, never in config/"
     assert leftover_tmp(root) == []
+
+
+def test_icacls_runs_before_any_secret_byte_is_written(tmp_path, monkeypatch):
+    root = make_root(tmp_path)
+    tl = Timeline(monkeypatch)
+    report = provision(root, restrict=tl.restrict)
+    assert {r.state for r in report.results} == {"created"}
+    scratch_dir = root / "ops" / "runtime" / "first_run"
+    first = tl.events[0]
+    assert first[:2] == ("icacls", scratch_dir) and first[2] == "dir", \
+        "the scratch FOLDER is restricted before anything is created in it"
+    for prefix in ("vision_token.txt", "dash_token.txt", "deploy_request.key"):
+        events = tl.for_name(prefix)
+        assert [e[0] for e in events] == ["icacls", "write"], (prefix, events)
+        assert events[0][2] == 0, (prefix, "restricted while still empty")
+        assert events[0][1].parent == scratch_dir and events[1][1] == events[0][1]
+    for event in tl.events:
+        if event[0] == "icacls" and event[2] != "dir":
+            assert event[2] == 0, event
+
+
+@pytest.mark.parametrize("which", ["vision_token.txt", "dash_token.txt", "deploy_request.key"])
+def test_a_failed_acl_fails_closed_for_that_secret_only(tmp_path, monkeypatch, which):
+    root = make_root(tmp_path)
+    tl = Timeline(monkeypatch, rc=lambda p: 5 if p.name.startswith(which) else 0)
+    report = provision(root, restrict=tl.restrict)
+    name = {"vision_token.txt": "vision_token", "dash_token.txt": "dash_token",
+            "deploy_request.key": "deploy_key"}[which]
+    res = by_name(report)[name]
+    assert res.state == "error" and res.acl is False
+    assert not res.path.exists(), "no secret published"
+    assert [e for e in tl.for_name(which) if e[0] == "write"] == [], "no secret byte written"
+    assert leftover_tmp(root) == []
+    others = {r.name: r.state for r in report.results if r.name != name}
+    assert set(others.values()) == {"created"}, others
+    line = next(line for line in report.lines(root) if line.startswith(f"first run: {name} "))
+    assert "not written" in line
 
 
 def test_every_secret_and_scratch_path_is_gitignored():
@@ -367,25 +420,74 @@ def test_a_concurrent_writer_wins_and_is_kept(tmp_path):
     assert leftover_tmp(root) == []
 
 
-def test_no_hard_link_support_falls_back_to_replace(tmp_path, monkeypatch):
+def test_no_hard_links_exclusive_create_restricts_before_writing(tmp_path, monkeypatch):
     root = make_root(tmp_path)
 
     def no_link(src, dst):
-        raise OSError(1, "hard links not supported")
+        raise OSError(errno.EXDEV, "hard links not supported here")
 
     monkeypatch.setattr(fr.os, "link", no_link)
-    report = provision(root)
-    assert by_name(report)["vision_token"].state == "created"
+    tl = Timeline(monkeypatch)
+    report = provision(root, restrict=tl.restrict)
+    assert {r.state for r in report.results} == {"created"}
     assert re.fullmatch(r"[0-9a-f]{32}", first_line(vision_path(root)))
+    final = [e for e in tl.events if e[1] == vision_path(root)]
+    assert [e[0] for e in final] == ["icacls", "write"], final
+    assert final[0][2] == 0, "the final file was empty when its ACL was set"
     assert leftover_tmp(root) == []
 
 
-def test_an_acl_failure_is_reported_and_not_fatal(tmp_path):
+def test_no_hard_links_never_clobbers_a_file_created_in_between(tmp_path, monkeypatch):
     root = make_root(tmp_path)
-    report = provision(root, restrict=Recorder(result=False))
-    res = by_name(report)["vision_token"]
-    assert res.state == "created" and res.acl is False
-    assert any("acl not restricted" in line for line in report.lines(root))
+    target = vision_path(root)
+    winner = secrets.token_hex(16)
+
+    def no_link_and_a_racer(src, dst):
+        if Path(dst) == target:
+            target.write_text(winner + "\n", encoding="ascii")   # lands between steps
+        raise OSError(errno.EXDEV, "hard links not supported here")
+
+    monkeypatch.setattr(fr.os, "link", no_link_and_a_racer)
+    replaced = []
+    monkeypatch.setattr(fr.os, "replace", lambda *a: replaced.append(a))
+    report = provision(root)
+    assert by_name(report)["vision_token"].state == "present", "already provisioned"
+    assert first_line(target) == winner, "the racer's secret is kept"
+    assert replaced == [], "os.replace is never a publish path"
+    assert leftover_tmp(root) == []
+
+
+def test_a_link_error_that_is_not_unsupported_does_not_fall_back(tmp_path, monkeypatch):
+    root = make_root(tmp_path)
+
+    def denied(src, dst):
+        raise PermissionError(errno.EACCES, "access denied")
+
+    monkeypatch.setattr(fr.os, "link", denied)
+    report = provision(root)
+    for res in report.results:
+        assert res.state == "error" and "PermissionError" in res.detail, res
+        assert not res.path.exists()
+    assert leftover_tmp(root) == []
+
+
+@pytest.mark.parametrize("exc, unsupported", [
+    (OSError(errno.EXDEV, "cross-device"), True),
+    (OSError(errno.EPERM, "fs refuses links"), True),
+    (PermissionError(errno.EACCES, "denied"), False),
+    (OSError(errno.ENOSPC, "disk full"), False),
+])
+def test_links_unsupported_is_narrow(exc, unsupported):
+    assert fr._links_unsupported(exc) is unsupported
+
+
+@WINDOWS_ONLY
+@pytest.mark.parametrize("winerror, unsupported", [(1, True), (17, True), (50, True),
+                                                   (5, False), (112, False)])
+def test_links_unsupported_reads_the_windows_error(winerror, unsupported):
+    exc = OSError(None, "link", None, winerror)
+    assert exc.winerror == winerror
+    assert fr._links_unsupported(exc) is unsupported
 
 
 # ------------------------------------------------- no secret in a log
@@ -427,6 +529,18 @@ def test_restrict_runs_icacls_windowless_with_the_current_user_sid(tmp_path):
     assert argv[2:] == ["/inheritance:r", "/grant:r", f"*{sid}:(F)"]
     assert kw["creationflags"] == fr.CREATE_NO_WINDOW
     assert kw["stdout"] is subprocess.DEVNULL and kw["timeout"] > 0
+
+
+def test_restrict_on_a_folder_grants_an_inheritable_ace(tmp_path):
+    calls = []
+
+    def run(argv, **kw):
+        calls.append(argv)
+        return subprocess.CompletedProcess(argv, 0)
+
+    sid = "S-1-5-21-1000-2000-3000-1001"
+    assert fr.restrict_to_current_user(tmp_path, run=run, windows=True, sid=sid) is True
+    assert calls[0][2:] == ["/inheritance:r", "/grant:r", f"*{sid}:(OI)(CI)(F)"]
 
 
 def test_restrict_reports_failure_without_raising(tmp_path):
@@ -477,12 +591,29 @@ def test_real_icacls_leaves_only_the_current_user(tmp_path):
     assert "(F)" in aces[0]
 
 
+@WINDOWS_ONLY
+def test_real_restricted_folder_hands_new_files_only_the_current_user(tmp_path):
+    folder = tmp_path / "scratch"
+    folder.mkdir()
+    assert fr.restrict_to_current_user(folder) is True
+    child = folder / "new.txt"
+    child.write_bytes(b"")
+    out = subprocess.run(["icacls", str(child)], capture_output=True, text=True,
+                         creationflags=NO_WINDOW, timeout=30).stdout
+    aces = [line for line in out.splitlines() if ":(" in line]
+    assert len(aces) == 1 and "(F)" in aces[0], out
+
+
 @POSIX_ONLY
 def test_posix_restrict_is_owner_only(tmp_path):
     path = tmp_path / "secret.txt"
     path.write_text("x", encoding="ascii")
     assert fr.restrict_to_current_user(path) is True
     assert (path.stat().st_mode & 0o777) == 0o600
+    folder = tmp_path / "scratch"
+    folder.mkdir()
+    assert fr.restrict_to_current_user(folder) is True
+    assert (folder.stat().st_mode & 0o777) == 0o700
 
 
 # ------------------------------------------------- static guards
@@ -502,7 +633,7 @@ def test_every_spawn_site_in_first_run_passes_creationflags():
                     node.lineno
             if base == "os":
                 assert node.func.attr not in {"system", "popen", "startfile"}, node.lineno
-    assert sites >= 2, "the icacls and --init-key sites must be found"
+    assert sites >= 1, "the icacls site must be found, or this guard is empty"
 
 
 def test_first_run_is_stdlib_only():
