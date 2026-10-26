@@ -77,7 +77,8 @@ export const BOARD_SLOTS = 12;
 export const LOBBY_SLOTS = 7;
 const DASH = "-";
 
-// HP bands for the vitals cell. Red is the doctrine's ONE emergency pop-out.
+// HP bands for the vitals cell and the lobby chips. Red is the doctrine's ONE
+// emergency pop-out.
 const HP_CRIT = 20;
 const HP_LOW = 40;
 
@@ -98,9 +99,9 @@ export function intIn(v, lo, hi) {
 
 // The TFT HP band of a live player: "crit" at <= HP_CRIT, "low" at <= HP_LOW,
 // else "". Eliminated (<= 0) and unknown HP carry no band - out is not the
-// crit pop-out. The ONE source for both screens: the overlay vitals here and
-// the dashboard lobby bars (active_match.js _amTftLobbyNode), so the same HP
-// reads the same band on each (RM-948).
+// crit pop-out. The ONE source for both screens: the overlay vitals and lobby
+// chips here and the dashboard lobby bars (active_match.js _amTftLobbyNode),
+// so the same HP reads the same band on each (RM-948, RM-950).
 export function tftHpBand(hp) {
   if (typeof hp !== "number" || !Number.isFinite(hp) || hp <= 0) return "";
   if (hp <= HP_CRIT) return "crit";
@@ -186,6 +187,8 @@ function _boardUnits(lc, c) {
 // The opponents' HP from the lobby rows (LOBBY_FIELDS, first non-empty list):
 // the local row (you: true) is dropped - the vitals already carry it. Sorted
 // alive by HP, then unknown HP ("-"), then eliminated (health 0 -> "OUT").
+// Each chip carries the tftHpBand of its HP, the band the dashboard lobby bar
+// paints for the same row (RM-950); "-" and OUT carry none.
 // null when there are no opponent rows (the panel stays hidden).
 function _lobby(lc, c) {
   const list = [lc.players, c.tft_players].find((l) => Array.isArray(l) && l.length);
@@ -202,6 +205,7 @@ function _lobby(lc, c) {
   return rows.slice(0, LOBBY_SLOTS).map((r) => ({
     text: r.rank === 2 ? "OUT" : r.hp === null ? DASH : String(r.hp),
     alive: r.rank !== 2,
+    band: tftHpBand(r.hp),
   }));
 }
 
@@ -217,7 +221,7 @@ export function isTftState(st) {
  * @returns {{active:boolean, source:string, time:string,
  *   vitals:{key:string,label:string,text:string,major:boolean,band:string}[],
  *   board:{count:string, units:{name:string,star:number}[], overflow:number},
- *   lobby:null|{text:string,alive:boolean}[]}}
+ *   lobby:null|{text:string,alive:boolean,band:string}[]}}
  */
 export function tftOverlayModel(st) {
   const s = _obj(st);
@@ -399,6 +403,13 @@ export const TFT_OVERLAY_CSS = [
   'body[data-shell="overlay"] .ovt-panel .ovt-opp.is-out {',
   "  color: rgba(var(--ovx-text), 0.45); font-weight: 600;",
   "}",
+  // RM-950: a crit opponent chip (the dashboard lobby bar's red fill) reads
+  // in the caution hue, never red - red is the ONE pop-out (OVERLAY_DOCTRINE
+  // rule 4) and on this field it belongs to your own crit HP in the vitals.
+  // The low band stays ambient ink (data-band only). 9.0:1 on --ovx-bg-nested.
+  'body[data-shell="overlay"] .ovt-panel .ovt-opp[data-band="crit"] {',
+  "  color: rgb(var(--ovx-warn));",
+  "}",
 ].join("\n");
 
 // -- DOM glue ---------------------------------------------------------------------
@@ -571,6 +582,7 @@ function _renderLobby(el, m) {
     const r = rows[i];
     _setText(cells[i], r ? r.text : DASH);
     _toggleClass(cells[i], "is-out", !!(r && !r.alive));
+    _setData(cells[i], "band", r ? r.band : "");
   }
   el.setAttribute("aria-label", "TFT lobby HP");
 }

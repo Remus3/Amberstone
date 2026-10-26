@@ -359,7 +359,42 @@ test("lobby: falls back to coach.tft_players when liveclient carries none", () =
     liveclient: { hp: 70 },
     coach: { tft_players: [lobbyRow(2, 70, true), lobbyRow(1, 90)] },
   });
-  assert.deepStrictEqual(m.lobby, [{ text: "90", alive: true }]);
+  assert.deepStrictEqual(m.lobby, [{ text: "90", alive: true, band: "" }]);
+});
+
+// RM-950: an opponent chip carries the same HP band the dashboard lobby bar
+// paints for that HP (active_match.js _amTftLobbyNode: tftHpBand). Real lobby:
+// tft_qa run 20261025-153652 states.jsonl line 79 (27:16) - the 8 HP opponent
+// is the dashboard's red crit fill, and was an unbanded chip on the overlay.
+test("lobby: each opponent chip carries the dashboard lobby bar's HP band", () => {
+  const players = [
+    { standing: 1, health: 60, you: false, board_size: 8 },
+    { standing: 2, health: 59, you: false, board_size: 7 },
+    { standing: 3, health: 58, you: false, board_size: 7 },
+    { standing: 4, health: 44, you: false, board_size: 7 },
+    { standing: 5, health: 28, you: true, board_size: 8 },
+    { standing: 6, health: 8, you: false, board_size: 8 },
+    { standing: 7, health: 0, you: false, board_size: 8 },
+    { standing: 8, health: 0, you: false, board_size: 6 },
+  ];
+  const m = tft.tftOverlayModel({ mode_key: "tft", liveclient: { hp: 28, standing: 5, players } });
+  assert.deepStrictEqual(
+    m.lobby.map((r) => [r.text, r.band]),
+    [["60", ""], ["59", ""], ["58", ""], ["44", ""], ["8", "crit"], ["OUT", ""], ["OUT", ""]]
+  );
+  // The feed fixture's real end-game lobby crosses both bands.
+  const feed = tft.tftOverlayModel(fixture("tft_overlay_feed"));
+  assert.deepStrictEqual(feed.lobby.map((r) => r.band), ["low", "low", "low", "low", "crit", "crit", ""]);
+  // Parity sweep: every HP the lobby accepts reads the one shared band; an
+  // unknown HP ("-") and OUT carry none.
+  for (let hp = 0; hp <= 100; hp += 1) {
+    const r = tft.tftOverlayModel({ mode_key: "tft", liveclient: { players: [lobbyRow(2, hp)] } }).lobby[0];
+    assert.strictEqual(r.band, tft.tftHpBand(hp), `hp ${hp}`);
+  }
+  const unknown = tft.tftOverlayModel({
+    mode_key: "tft", liveclient: { players: [{ standing: 2, health: null, you: false }] },
+  }).lobby[0];
+  assert.deepStrictEqual([unknown.text, unknown.band], ["-", ""]);
 });
 
 test("lobby: an empty / sentinel / garbage row list keeps the panel hidden (null)", () => {
@@ -654,6 +689,17 @@ test("render: data landing fills slots without changing the slot structure", () 
     ["38", "36", "26", "21", "19", "3", "OUT"]
   );
   assert.ok(lobby.querySelectorAll(".ovt-opp")[6].classList.contains("is-out"));
+  // RM-950: each chip carries its HP band; a later tick that lifts the
+  // chip out of the band drops the attribute (no stale red).
+  const bands = () => lobby.querySelectorAll(".ovt-opp").map((c) => c.dataset.band || "");
+  assert.deepStrictEqual(bands(), ["low", "low", "low", "low", "crit", "crit", ""]);
+  const healthy = fixture("tft_overlay_feed");
+  healthy.liveclient.players = healthy.liveclient.players.map(
+    (p) => (p.you ? p : { ...p, health: p.health > 0 ? 90 : 0 }));
+  tft.renderTftOverlay(healthy);
+  assert.deepStrictEqual(bands(), ["", "", "", "", "", "", ""]);
+  tft.renderTftOverlay(fixture("tft_overlay_feed"));
+  assert.deepStrictEqual(bands(), ["low", "low", "low", "low", "crit", "crit", ""]);
 });
 
 test("menu: in TFT the launcher menu lists the TFT panels under 'TFT PANELS'", () => {

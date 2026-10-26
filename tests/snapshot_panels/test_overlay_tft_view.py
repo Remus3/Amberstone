@@ -387,6 +387,92 @@ def test_tft_overlay_typography_and_hierarchy(mock_server, pw_browser):
     assert not errors, f"JS errors [tft typography]: {errors[:3]}"
 
 
+def _lum(rgb):
+    def ch(c):
+        c = c / 255
+        return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+    r, g, b = (ch(float(v)) for v in rgb[:3])
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def _contrast(fg, bg):
+    a, b = sorted((_lum(fg), _lum(bg)), reverse=True)
+    return (a + 0.05) / (b + 0.05)
+
+
+def test_tft_overlay_lobby_chips_carry_the_hp_band(mock_server, pw_browser):
+    """RM-950 (STRUCTURE / TYPOGRAPHY / HIERARCHY / NO-REFLOW): each Lobby HP
+    chip carries the HP band the dashboard lobby bar paints for that HP
+    (tftHpBand, crit <= 20, low <= 40). A crit opponent reads in the caution
+    hue (--ovx-warn), so the 3 HP opponent is not the same white as the 38 HP
+    one, but NEVER red: red is the overlay's ONE pop-out
+    (docs/OVERLAY_DOCTRINE.md rule 4), owned by your own crit HP in the
+    vitals. The low band stays ambient ink. The feed fixture's lobby is the
+    real end-game lobby of QA match 3 (38 / 36 / 26 / 21 / 19 / 3 / out).
+    Contrast pair: chip ink on the resolved --ovx-bg-nested (the chip
+    backing)."""
+    ctx, page, errors = _open(pw_browser, mock_server, _fixture("tft_overlay_feed"))
+    try:
+        _wait_tft(page)
+        page.wait_for_function("() => !document.getElementById('ovt-lobby').hidden", timeout=10_000)
+        chips = page.eval_on_selector_all(
+            "#ovt-lobby .ovt-opp",
+            "els => els.map(e => { const cs = getComputedStyle(e);"
+            " return [e.textContent, e.dataset.band || '', cs.color, cs.fontSize, cs.fontWeight]; })")
+        assert [c[:2] for c in chips] == [
+            ["38", "low"], ["36", "low"], ["26", "low"], ["21", "low"],
+            ["19", "crit"], ["3", "crit"], ["OUT", ""]], chips
+        tok = page.evaluate(
+            "() => { const s = getComputedStyle(document.body);"
+            " return ['--ovx-warn', '--ovx-red', '--ovx-bg-nested'].map("
+            "k => s.getPropertyValue(k).split(',').map(v => parseFloat(v))); }")
+        warn, red, nested = tok
+        assert all(len(t) == 3 and all(v == v for v in t) for t in tok), tok
+
+        def rgb(s):
+            return [float(v) for v in s[s.index("(") + 1:s.index(")")].split(",")]
+
+        colors = [rgb(c[2]) for c in chips]
+        # crit chips (19, 3): the opaque caution hue.
+        for i in (4, 5):
+            assert colors[i] == warn, (chips[i], warn)
+        ratio = _contrast(colors[4], nested)
+        assert ratio >= 4.5, f"crit chip {ratio:.2f}:1 on --ovx-bg-nested, under AA 4.5"
+        # low chips (38 .. 21) keep the plain chip ink, the same as before RM-950.
+        assert all(c == [255.0, 255.0, 255.0, 0.92] for c in colors[:4]), colors[:4]
+        # Pop-out discipline: no lobby chip ever paints the emergency red.
+        assert all(c[:3] != red for c in colors), colors
+        # The OUT chip keeps its own dimmed ink, never a band colour.
+        assert colors[6][:3] != warn and colors[6][3] == 0.45, chips[6]
+        # The band changes colour only: every chip keeps the chip size + weight.
+        assert len({(c[3], c[4]) for c in chips[:6]}) == 1, chips
+        box = page.eval_on_selector("#ovt-lobby", "e => { const r = e.getBoundingClientRect();"
+                                    " return [Math.round(r.width), Math.round(r.height)]; }")
+        # HIERARCHY: the vitals HP value stays the largest value on the field.
+        assert _fs(page, '#ovt-hud .ovt-cell[data-k="hp"] .ovt-val') > float(chips[0][3][:-2])
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [tft lobby band]: {errors[:3]}"
+    # NO-REFLOW: a healthy lobby (no band anywhere) paints the same box.
+    healthy = _fixture("tft_overlay_feed")
+    healthy["liveclient"]["players"] = [
+        p if p.get("you") else {**p, "health": 90 if p["health"] > 0 else 0}
+        for p in healthy["liveclient"]["players"]]
+    ctx, page, errors = _open(pw_browser, mock_server, healthy)
+    try:
+        _wait_tft(page)
+        page.wait_for_function("() => !document.getElementById('ovt-lobby').hidden", timeout=10_000)
+        assert page.eval_on_selector_all(
+            "#ovt-lobby .ovt-opp", "els => els.filter(e => e.dataset.band).length") == 0
+        assert page.eval_on_selector("#ovt-lobby", "e => { const r = e.getBoundingClientRect();"
+                                     " return [Math.round(r.width), Math.round(r.height)]; }") == box
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [tft lobby healthy]: {errors[:3]}"
+
+
 def test_tft_overlay_hit_targets_and_tft_menu(mock_server, pw_browser):
     """HIT-TARGETS: widget bodies stay click-through (the only zone inside a TFT
     widget is its drag handle); the launcher menu in TFT lists the TFT panels,

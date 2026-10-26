@@ -860,7 +860,24 @@ _WEB = _REPO_ROOT / "web"
 # MERGED 2026-10-27 by the session 144 merger onto main (lane commit 1c75b7471): main had moved
 # this pin since the lane base, so the superseded value above is main's and
 # the value below is recomputed over the merged tree.
-_LIVE_HALF_DIGEST = "d1adc684080412c0f1005763b19e506e4807c9097c89c015055512e19f37ef7c"
+# superseded by the RM-950 re-capture below: "d1adc684080412c0f1005763b19e506e4807c9097c89c015055512e19f37ef7c"
+#
+# RE-CAPTURED 2026-10-26 at RM-950 (s134 uiux cycle 17). Two changes ride
+# it. (1) Cycle 16 (RM-949, the strip HP cell data-band in
+# web/js/panels/active_match.js) edited the live half without re-capturing,
+# so this guard was red at lane HEAD 9174dba43 (measured d6c9bda0...). (2)
+# RM-950: web/js/lib/overlay_tft.js lobby rows carry tftHpBand, the chips
+# stamp data-band, and the injected TFT_OVERLAY_CSS colours a crit chip with
+# --ovx-warn. Ordinary case, no tokeniser change. ATTRIBUTED BY SUBSTITUTION:
+# swapping exactly overlay_tft.js back to its 9174dba43 blob and
+# active_match.js back to its 325d4cc10 blob (in memory) reproduces the
+# superseded be19cbf2... value EXACTLY. Those two paths are the whole change.
+# No glyph change: the added lines carry 0 non-ASCII bytes. If another slice
+# re-captures in parallel, the merger recomputes.
+# MERGED 2026-10-27 by the session 144 merger onto main (lane commit ba558b2db): main had moved
+# this pin since the lane base, so the superseded value above is main's and
+# the value below is recomputed over the merged tree.
+_LIVE_HALF_DIGEST = "62da54c55e881d10bc0f1af8758adda98b22b0d6dcdfbc9d74bd84e7ea1d3c15"
 
 
 def _web_sources() -> list[Path]:
