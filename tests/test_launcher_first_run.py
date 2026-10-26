@@ -57,19 +57,20 @@ POSIX_ONLY = pytest.mark.skipif(sys.platform == "win32", reason="POSIX file mode
 
 
 class Recorder:
-    """A fake `restrict` (ACL) callable: records each path; `result` is a
-    bool or a callable(path) -> bool."""
+    """A fake `restrict` (ACL) callable: records the path of each HELD
+    object it is given; `result` is a bool or a callable(path) -> bool."""
 
     def __init__(self, result=True, side_effect=None):
         self.calls = []
         self.result = result
         self.side_effect = side_effect
 
-    def __call__(self, path):
-        self.calls.append(Path(path))
+    def __call__(self, held):
+        path = Path(held.path)
+        self.calls.append(path)
         if self.side_effect is not None:
-            self.side_effect(Path(path))
-        return self.result(Path(path)) if callable(self.result) else self.result
+            self.side_effect(path)
+        return self.result(path) if callable(self.result) else self.result
 
 
 def _size(path: Path):
@@ -80,15 +81,13 @@ def _size(path: Path):
 
 
 class Timeline:
-    """One ordered event list for icacls calls (through the REAL
-    restrict_to_current_user with a fake run), scratch-folder verifies, file
-    opens (first_run._open_new) and secret writes (first_run._write_secret,
-    which takes the creating handle). Each icacls event records the size of
-    its target at that moment, so "restricted before any secret byte" is
-    checked directly. `verify` answers `verified` (the fake icacls changes
-    no real ACL, so the real verifier would - correctly - refuse)."""
-
-    SID = "S-1-5-21-1000-2000-3000-1001"
+    """One ordered event list for restricts and verifies (both of a HELD
+    object), file opens (first_run._open_new) and secret writes
+    (first_run._write_secret, which takes the creating handle). Each event
+    records the size of its target at that moment, so "private before any
+    secret byte" is checked directly. `restrict` answers rc == 0 and
+    changes nothing; `verify` answers `verified` (the real verifier would -
+    correctly - refuse a folder this fake restrict never touched)."""
 
     def __init__(self, monkeypatch, rc=0, verified=True):
         self.events = []
@@ -110,13 +109,11 @@ class Timeline:
         monkeypatch.setattr(fr, "_open_new", open_new)
         monkeypatch.setattr(fr, "_write_secret", write)
 
-    def run(self, argv, **kw):
-        target = Path(argv[1])
-        self.events.append(("icacls", target, _size(target), argv[2]))
-        return subprocess.CompletedProcess(argv, self.rc(target) if callable(self.rc) else self.rc)
-
-    def restrict(self, path):
-        return fr.restrict_to_current_user(path, run=self.run, windows=True, sid=self.SID)
+    def restrict(self, held):
+        path = Path(held.path)
+        assert held.handle or held.fd is not None, "restrict is only ever given a HELD object"
+        self.events.append(("restrict", path, _size(path)))
+        return (self.rc(path) if callable(self.rc) else self.rc) == 0
 
     def verify(self, held):
         path = Path(held.path)
@@ -325,18 +322,14 @@ def test_deploy_key_is_restricted_before_a_key_byte_exists(tmp_path, monkeypatch
 FILE_STEPS = ["open", "verify", "write"]
 
 
-def test_provisioning_spawns_no_deploy_worker(tmp_path, monkeypatch):
+def test_provisioning_spawns_no_process_at_all(tmp_path, monkeypatch):
     def no_spawn(*a, **k):
-        raise AssertionError("no subprocess besides icacls")
+        raise AssertionError("first_run spawns nothing (no worker, no icacls)")
 
-    monkeypatch.setattr(fr.subprocess, "Popen", no_spawn)
+    monkeypatch.setattr(subprocess, "Popen", no_spawn)
     root = make_root(tmp_path, deploy_module=True)
-    report = provision(root)
-    assert by_name(report)["deploy_key"].state == "created"
-
-
-def test_create_no_window_is_the_per_os_constant():
-    assert fr.CREATE_NO_WINDOW == (NO_WINDOW if os.name == "nt" else 0)
+    report = fr.provision(root, environ={})          # real restrict + real verify
+    assert {r.state for r in report.results} == {"created"}, report.results
 
 
 # ------------------------------------------- never overwrite, idempotent
@@ -414,22 +407,19 @@ def test_base_is_restricted_and_verified_then_a_fresh_run_folder_before_any_file
     report = provision(root, **tl.kwargs())
     assert {r.state for r in report.results} == {"created"}
     base = root / "ops" / "runtime" / "first_run"
-    kinds = [e[0] for e in tl.events[:4]]
-    assert kinds == ["icacls", "icacls", "verify", "verify"], tl.events[:5]
-    assert [e[3] for e in tl.events[:2]] == ["/inheritance:r", "/setowner"]
-    assert all(e[1] == base for e in tl.events[:3]) and tl.events[0][2] == "dir", \
-        "the BASE is restricted and verified first, on every run"
-    folder = tl.events[3][1]
+    kinds = [e[0] for e in tl.events[:3]]
+    assert kinds == ["restrict", "verify", "verify"], tl.events[:4]
+    assert all(e[1] == base for e in tl.events[:2]) and tl.events[0][2] == "dir", \
+        "the BASE is restricted (through its pin) and verified first, on every run"
+    folder = tl.events[2][1]
     assert folder.parent == base and folder.name.startswith("run-")
-    assert not [e for e in tl.events if e[0] == "icacls" and e[1] == folder], \
-        "the run folder is private from birth (no after-the-fact icacls)"
     for prefix in ("vision_token.txt", "dash_token.txt", "deploy_request.key"):
         events = tl.for_name(prefix)
         assert [e[0] for e in events] == FILE_STEPS, (prefix, events)
         assert events[1][2] == 0, (prefix, "verified private while still empty")
         assert events[0][1].parent == folder and events[2][1] == events[0][1]
-    assert [e for e in tl.events if e[0] == "icacls" and e[1] != base] == [], \
-        "only the base is ever re-ACLed by path; folder and files are private from birth"
+    assert [e for e in tl.events if e[0] == "restrict" and e[1] != base] == [], \
+        "only the base is ever re-ACLed; run folder and files are private from birth"
     folder_verifies = [e for e in tl.events if e[0] == "verify" and e[1] in (base, folder)]
     assert len(folder_verifies) == 2, "one base + one run folder"
     assert run_dirs(root) == [], "removed after publishing"
@@ -443,8 +433,7 @@ def test_every_run_gets_a_new_folder_and_re_restricts_the_base(tmp_path, monkeyp
     provision(root, **tl.kwargs())
     folders = [e[1] for e in tl.events if e[0] == "verify" and e[1].name.startswith("run-")]
     assert len(folders) == 2 and folders[0] != folders[1]
-    base_restricts = [e for e in tl.events if e[0] == "icacls" and e[1].name == BASE_NAME
-                      and e[3] == "/inheritance:r"]
+    base_restricts = [e for e in tl.events if e[0] == "restrict" and e[1].name == BASE_NAME]
     assert len(base_restricts) == 2, "the base is restricted at the start of every run"
     assert run_dirs(root) == []
 
@@ -783,45 +772,41 @@ def test_report_lines_never_carry_a_secret_value(tmp_path):
 # ------------------------------------------------------------- ACL
 
 
-def test_restrict_runs_icacls_windowless_with_the_current_user_sid(tmp_path):
-    calls = []
-
-    def run(argv, **kw):
-        calls.append((argv, kw))
-        return subprocess.CompletedProcess(argv, 0)
-
-    path = tmp_path / "s.txt"
-    path.write_text("x", encoding="ascii")
-    sid = "S-1-5-21-1000-2000-3000-1001"
-    assert fr.restrict_to_current_user(path, run=run, windows=True, sid=sid) is True
-    assert [argv[2:] for argv, _kw in calls] == [
-        ["/inheritance:r", "/grant:r", f"*{sid}:(F)"], ["/setowner", f"*{sid}"]]
-    for argv, kw in calls:
-        assert Path(argv[0]).name.lower() in ("icacls", "icacls.exe")
-        assert argv[1] == str(path)
-        assert kw["creationflags"] == fr.CREATE_NO_WINDOW
-        assert kw["stdout"] is subprocess.DEVNULL and kw["timeout"] > 0
+def _restrict_path(path: Path) -> bool:
+    """Test helper: pin `path` (refusing a reparse point) and restrict it
+    THROUGH the pin, the only way first_run changes an ACL."""
+    held = fr.hold_dir(path, write_acl=True)
+    if held is None:
+        return False
+    try:
+        return fr.restrict_held(held)
+    finally:
+        held.close()
 
 
-def test_restrict_on_a_folder_grants_an_inheritable_ace(tmp_path):
-    calls = []
-
-    def run(argv, **kw):
-        calls.append(argv)
-        return subprocess.CompletedProcess(argv, 0)
-
-    sid = "S-1-5-21-1000-2000-3000-1001"
-    assert fr.restrict_to_current_user(tmp_path, run=run, windows=True, sid=sid) is True
-    assert calls[0][2:] == ["/inheritance:r", "/grant:r", f"*{sid}:(OI)(CI)(F)"]
-    assert calls[1][2:] == ["/setowner", f"*{sid}"], "the folder's owner is this user"
+def test_restrict_held_refuses_an_object_that_is_not_held(tmp_path):
+    loose = fr.HeldDir(tmp_path, tmp_path.name)             # no handle, no fd
+    assert fr.restrict_held(loose) is False
+    assert fr.verify_held(loose) is False
 
 
-def test_a_failed_setowner_fails_the_folder_restriction(tmp_path):
-    def run(argv, **kw):
-        return subprocess.CompletedProcess(argv, 5 if "/setowner" in argv else 0)
+@WINDOWS_ONLY
+def test_restrict_held_needs_the_user_sid(tmp_path, monkeypatch):
+    held = fr.hold_dir(tmp_path, write_acl=True)
+    try:
+        monkeypatch.setattr(fr, "current_user_sid", lambda: None)
+        assert fr.restrict_held(held) is False
+    finally:
+        held.close()
 
-    sid = "S-1-5-21-1000-2000-3000-1001"
-    assert fr.restrict_to_current_user(tmp_path, run=run, windows=True, sid=sid) is False
+
+@WINDOWS_ONLY
+def test_restrict_held_needs_write_acl_on_the_pin(tmp_path):
+    held = fr.hold_dir(tmp_path)                            # READ_CONTROL only
+    try:
+        assert fr.restrict_held(held) is False
+    finally:
+        held.close()
 
 
 _ME = "S-1-5-21-1000-2000-3000-1001"
@@ -861,8 +846,7 @@ def test_descriptor_rule(owner, protected, aces, ok):
 @WINDOWS_ONLY
 def test_real_verify_refuses_an_unprotected_inherited_user_only_acl(tmp_path):
     parent = tmp_path / "private"
-    parent.mkdir()
-    assert fr.restrict_to_current_user(parent) is True
+    fr._make_private_dir(parent, fr.current_user_sid(), None)
     child = parent / "child"
     child.mkdir()          # inherits the single user ACE, DACL not protected
     sid = fr.current_user_sid()
@@ -876,20 +860,21 @@ def test_real_verify_refuses_inherited_and_accepts_a_private_folder(tmp_path):
     folder = tmp_path / "plain"
     folder.mkdir()
     assert fr.verify_private(folder) is False, "inherited ACEs"
-    assert fr.restrict_to_current_user(folder) is True
+    assert _restrict_path(folder) is True
     assert fr.verify_private(folder) is True
 
 
 @WINDOWS_ONLY
 @pytest.mark.skipif(sys.version_info < (3, 13), reason="mkdir mode 0o700 ACL is 3.13+")
-def test_real_verify_refuses_extra_explicit_principals(tmp_path):
+def test_real_extra_explicit_principals_are_refused_then_replaced(tmp_path):
     # Python 3.13+ mkdir(mode=0o700) writes EXPLICIT ACEs for SYSTEM and
-    # Administrators too; /inheritance:r + /grant:r keeps them, so only the
-    # read-back verify catches it - which is why the provisioner verifies.
+    # Administrators too: the read-back refuses that, and restrict_held
+    # replaces the WHOLE descriptor (unlike an icacls /grant:r edit).
     folder = tmp_path / "explicit"
     os.mkdir(folder, 0o700)
-    assert fr.restrict_to_current_user(folder) is True
     assert fr.verify_private(folder) is False
+    assert _restrict_path(folder) is True
+    assert fr.verify_private(folder) is True
 
 
 @WINDOWS_ONLY
@@ -915,35 +900,6 @@ def test_posix_verify_wants_owner_only_mode(tmp_path):
     assert fr.verify_private(folder) is True
 
 
-def test_restrict_reports_failure_without_raising(tmp_path):
-    path = tmp_path / "s.txt"
-    path.write_text("x", encoding="ascii")
-    sid = "S-1-5-21-1-2-3-1001"
-
-    def failing(argv, **kw):
-        return subprocess.CompletedProcess(argv, 5)
-
-    def missing(argv, **kw):
-        raise FileNotFoundError("icacls")
-
-    assert fr.restrict_to_current_user(path, run=failing, windows=True, sid=sid) is False
-    assert fr.restrict_to_current_user(path, run=missing, windows=True, sid=sid) is False
-
-
-def test_restrict_refuses_a_malformed_identity(tmp_path, monkeypatch):
-    path = tmp_path / "s.txt"
-    path.write_text("x", encoding="ascii")
-    calls = []
-    monkeypatch.setattr(fr, "current_user_sid", lambda: None)
-    monkeypatch.delenv("USERNAME", raising=False)
-    monkeypatch.delenv("USERDOMAIN", raising=False)
-    ok = fr.restrict_to_current_user(path, run=lambda a, **k: calls.append(a), windows=True)
-    assert ok is False and calls == [], "no identity, no icacls call"
-    assert fr.restrict_to_current_user(path, run=lambda a, **k: calls.append(a), windows=True,
-                                       sid="S-1-5-21 & calc") is False
-    assert calls == []
-
-
 @WINDOWS_ONLY
 def test_current_user_sid_is_a_real_sid():
     sid = fr.current_user_sid()
@@ -951,23 +907,10 @@ def test_current_user_sid_is_a_real_sid():
 
 
 @WINDOWS_ONLY
-def test_real_icacls_leaves_only_the_current_user(tmp_path):
-    path = tmp_path / "secret.txt"
-    path.write_text(secrets.token_hex(8), encoding="ascii")
-    assert fr.restrict_to_current_user(path) is True
-    out = subprocess.run(["icacls", str(path)], capture_output=True, text=True,
-                         creationflags=NO_WINDOW, timeout=30).stdout
-    aces = [line for line in out.splitlines() if ":(" in line]
-    assert len(aces) == 1, out
-    assert "(I)" not in out, "inheritance removed"
-    assert "(F)" in aces[0]
-
-
-@WINDOWS_ONLY
 def test_real_restricted_folder_hands_new_files_only_the_current_user(tmp_path):
     folder = tmp_path / "scratch"
     folder.mkdir()
-    assert fr.restrict_to_current_user(folder) is True
+    assert _restrict_path(folder) is True
     child = folder / "new.txt"
     child.write_bytes(b"")
     out = subprocess.run(["icacls", str(child)], capture_output=True, text=True,
@@ -977,35 +920,96 @@ def test_real_restricted_folder_hands_new_files_only_the_current_user(tmp_path):
 
 
 @POSIX_ONLY
-def test_posix_restrict_is_owner_only(tmp_path):
-    path = tmp_path / "secret.txt"
-    path.write_text("x", encoding="ascii")
-    assert fr.restrict_to_current_user(path) is True
-    assert (path.stat().st_mode & 0o777) == 0o600
+def test_posix_restrict_held_is_owner_only(tmp_path):
     folder = tmp_path / "scratch"
     folder.mkdir()
-    assert fr.restrict_to_current_user(folder) is True
+    os.chmod(folder, 0o755)
+    assert _restrict_path(folder) is True
     assert (folder.stat().st_mode & 0o777) == 0o700
+
+
+def _sddl_of(path: Path) -> str:
+    """The target's ACL as icacls prints it (test-side reading only)."""
+    return subprocess.run(["icacls", str(path)], capture_output=True, text=True,
+                          creationflags=NO_WINDOW, timeout=30, check=True).stdout
+
+
+@WINDOWS_ONLY
+def test_a_junction_planted_at_the_base_is_refused_before_any_acl_change(tmp_path):
+    import _winapi
+
+    root = make_root(tmp_path)
+    target = tmp_path / "target"
+    target.mkdir()
+    (target / "keep.txt").write_bytes(b"")
+    base = root / "ops" / "runtime" / "first_run"
+    base.parent.mkdir(parents=True)
+    _winapi.CreateJunction(str(target), str(base))
+    before = _sddl_of(target)
+    report = fr.provision(root, environ={})          # real restrict + real verify
+    for res in report.results:
+        assert res.state == "error" and "not written" in res.detail, res
+        assert not res.path.exists()
+    assert _sddl_of(target) == before, "the junction's TARGET ACL is untouched"
+    assert sorted(p.name for p in target.iterdir()) == ["keep.txt"]
+    assert [p for p, data in _all_bytes(tmp_path) if data] == [], "no secret bytes anywhere"
+
+
+def _handle_count() -> int:
+    import ctypes
+    from ctypes import wintypes
+
+    k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    k32.GetCurrentProcess.restype = wintypes.HANDLE
+    k32.GetProcessHandleCount.argtypes = (wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD))
+    count = wintypes.DWORD()
+    assert k32.GetProcessHandleCount(k32.GetCurrentProcess(), ctypes.byref(count))
+    return count.value
+
+
+@WINDOWS_ONLY
+def test_provisioning_leaks_no_handles(tmp_path):
+    # Three runs per measurement: a leak of even one handle per run shows
+    # as >= 3 against a tolerance of 2 for unrelated interpreter churn.
+    fr.provision(make_root(tmp_path / "warm"), environ={})      # warm caches / DLLs
+    start = _handle_count()
+    for i in range(3):
+        ok = fr.provision(make_root(tmp_path / f"ok{i}"), environ={})
+        assert {r.state for r in ok.results} == {"created"}, ok.results
+    after_ok = _handle_count()
+    for i in range(3):
+        bad = fr.provision(make_root(tmp_path / f"bad{i}"), environ={},
+                           verify=lambda held: False)
+        assert {r.state for r in bad.results} == {"error"}
+    after_bad = _handle_count()
+    assert abs(after_ok - start) <= 2, (start, after_ok)
+    assert abs(after_bad - start) <= 2, (start, after_bad)
 
 
 # ------------------------------------------------- static guards
 
 
-def test_every_spawn_site_in_first_run_passes_creationflags():
+def test_first_run_spawns_nothing_and_never_sets_an_acl_by_path():
+    tokens = []
     tree = ast.parse(FIRST_RUN_PY.read_text(encoding="utf-8"))
-    sites = 0
+    docstrings = {id(n.body[0].value) for n in ast.walk(tree)
+                  if isinstance(n, (ast.Module, ast.FunctionDef, ast.ClassDef)) and n.body
+                  and isinstance(n.body[0], ast.Expr) and isinstance(n.body[0].value, ast.Constant)}
     for node in ast.walk(tree):
-        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "run":
-            sites += 1
-            assert "creationflags" in {k.arg for k in node.keywords}, node.lineno
-        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
-            base = node.func.value.id if isinstance(node.func.value, ast.Name) else None
-            if base == "subprocess":
-                assert node.func.attr not in {"Popen", "call", "check_call", "check_output"}, \
-                    node.lineno
-            if base == "os":
-                assert node.func.attr not in {"system", "popen", "startfile"}, node.lineno
-    assert sites >= 1, "the icacls site must be found, or this guard is empty"
+        if isinstance(node, ast.Constant) and isinstance(node.value, str) \
+                and id(node) not in docstrings:
+            tokens.append(node.value.lower())
+        elif isinstance(node, ast.Attribute):
+            tokens.append(node.attr.lower())
+        elif isinstance(node, ast.Name):
+            tokens.append(node.id.lower())
+        elif isinstance(node, (ast.Import, ast.ImportFrom)):
+            tokens += [a.name.lower() for a in node.names] + [(getattr(node, "module", "") or "")]
+    assert "setkernelobjectsecurity" in tokens and "getsecurityinfo" in tokens, \
+        "the guard must see the handle-based calls, or it is empty"
+    for banned in ("subprocess", "icacls", "setnamedsecurityinfow", "getnamedsecurityinfow",
+                   "system", "popen", "startfile", "chmod"):
+        assert banned not in tokens, banned
 
 
 def test_first_run_is_stdlib_only():
