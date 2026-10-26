@@ -40,8 +40,12 @@ Lifecycle
   dashboard port (the pre-cutover scheduled tasks, or a dev run) = ATTACH
   mode: start nothing, only report. A live supervisor lock or a held port
   that is NOT healthy = BLOCKED: start nothing either, never double start.
-  Otherwise OWNED: generate the per-install supervisor config (absolute
-  interpreter, PACKAGING_PLAN S10) and start the services in manifest order.
+  Otherwise OWNED: create any missing per-install secret (PKG-1b,
+  ops/launcher/first_run.py: vision token, dashboard token, deploy key;
+  never overwrites one; RC_DASH_TOKEN reaches the services only when the
+  profile sets `dash_token_gate`), generate the per-install supervisor
+  config (absolute interpreter, PACKAGING_PLAN S10) and start the services
+  in manifest order.
 - Run: reap exits and restart with bounded backoff (BackoffPolicy); watch the
   parent pid; rewrite the status file on change and every few seconds.
 - Stop (a stdin line `stop`, stdin EOF, a signal, or the parent gone): write
@@ -74,6 +78,7 @@ Stdlib only: it runs under `-I`, with no RC module on sys.path.
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import os
 import re
@@ -232,6 +237,10 @@ class HostConfig:
     # then `profiles.<profile>.env`. A None value removes an inherited
     # variable (the dev profile pins RC_DASH_BIND unset this way).
     env: Tuple[Tuple[str, Optional[str]], ...] = ()
+    # PKG-1b: `profiles.<profile>.dash_token_gate`. True exports the stored
+    # per-install dashboard token as RC_DASH_TOKEN to every service; default
+    # off (PACKAGING_PLAN V3: a set token 401s the header-less callers).
+    dash_token_gate: bool = False
 
     def env_map(self) -> Dict[str, Optional[str]]:
         return dict(self.env)
@@ -317,6 +326,7 @@ def parse_config(doc: Any, profile: str) -> HostConfig:
     raw_profiles = doc.get("profiles", {})
     if not isinstance(raw_profiles, dict):
         raise ConfigError("profiles must be an object")
+    dash_token_gate = False
     for prof, block in raw_profiles.items():
         if prof.startswith("_"):
             continue
@@ -326,8 +336,12 @@ def parse_config(doc: Any, profile: str) -> HostConfig:
             raise ConfigError(f"profiles.{prof} must be an object")
         prof_env = _parse_env(block.get("env", {}), f"profiles.{prof}.env",
                               allow_unset=True)
+        gate = block.get("dash_token_gate", False)
+        if not isinstance(gate, bool):
+            raise ConfigError(f"profiles.{prof}.dash_token_gate must be true or false")
         if prof == profile:
             env.update(prof_env)
+            dash_token_gate = gate
     raw_services = doc.get("services")
     if not isinstance(raw_services, list) or not raw_services:
         raise ConfigError("services must be a non-empty list")
@@ -352,6 +366,7 @@ def parse_config(doc: Any, profile: str) -> HostConfig:
         tick_s=_num(doc, "tick_s", 0.25, "manifest", strict=True),
         stop_grace_s=_num(doc, "stop_grace_s", 15.0, "manifest"),
         env=tuple(sorted(env.items())),
+        dash_token_gate=dash_token_gate,
     )
 
 
@@ -483,6 +498,44 @@ def write_shutdown_request(runtime_dir: Path, reason: str) -> Path:
                              "requested_by": "ops/launcher/service_host.py",
                              "requested_at": utc_now()})
     return path
+
+
+# ------------------------------------------------------------ first run
+
+
+def _first_run_module() -> Any:
+    """ops/launcher/first_run.py (PKG-1b). A package import when this module
+    was imported as ops.launcher.service_host; under the shell's `-I` launch
+    the launcher folder is not on sys.path, so it is loaded from its file."""
+    if __package__:
+        from . import first_run
+        return first_run
+    name = "rc_launcher_first_run"
+    mod = sys.modules.get(name)
+    if mod is None:
+        spec = importlib.util.spec_from_file_location(name, HERE / "first_run.py")
+        if spec is None or spec.loader is None:
+            raise ImportError("ops/launcher/first_run.py is not loadable")
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules[name] = mod
+        try:
+            spec.loader.exec_module(mod)
+        except BaseException:
+            sys.modules.pop(name, None)
+            raise
+    return mod
+
+
+def provision_first_run(root: Path, config: HostConfig, environ: Dict[str, str],
+                        log: Callable[[str], None]) -> Dict[str, str]:
+    """Create the missing per-install secrets (PACKAGING_PLAN 3.2) and return
+    the environment overrides for the services: RC_DASH_TOKEN only when the
+    profile's dash_token_gate is on. Logs names and paths, never a value."""
+    report = _first_run_module().provision(
+        root, dash_token_gate=config.dash_token_gate, environ=environ)
+    for line in report.lines(Path(root)):
+        log(line)
+    return dict(report.env)
 
 
 # ------------------------------------------------------------ Win32
@@ -910,7 +963,8 @@ class ServiceHost:
                  health: Optional[Callable[[], Optional[str]]] = None,
                  python_exe: Optional[str] = None,
                  status_path: Optional[Path] = None,
-                 log: Optional[Callable[[str], None]] = None) -> None:
+                 log: Optional[Callable[[str], None]] = None,
+                 provision: Optional[Callable[..., Dict[str, str]]] = None) -> None:
         self.root = Path(root)
         self.config = config
         self.profile = profile
@@ -928,6 +982,7 @@ class ServiceHost:
         self._probe = probe or (lambda: probe_existing(self.root, port))
         self._health = health or (lambda: fetch_health_origin(port))
         self._log = log or (lambda msg: None)
+        self._provision = provision or provision_first_run
         self._env = child_environment(config.env_map())
         self.mode: Optional[str] = None
         self.job: Any = None
@@ -969,6 +1024,7 @@ class ServiceHost:
         # request still on disk is stale and would stop our supervisor at once.
         for stale in clear_stale_shutdown_requests(self.runtime_dir):
             self._log(f"removed a stale shutdown request: {stale.name}")
+        self._provision_secrets()
         self.job = self._job_factory()
         if self.job is None:
             self._log("no job object: children are stopped by owned handle only")
@@ -1046,6 +1102,21 @@ class ServiceHost:
         self._write_status(force=True)
 
     # ---- internals
+
+    def _provision_secrets(self) -> None:
+        """PKG-1b, owned mode only, before the first spawn. A provisioning
+        fault never blocks the launch: it is logged by type (no message, so
+        no value can leak) and the services start on what exists."""
+        environ = self._env if self._env is not None else dict(os.environ)
+        try:
+            overrides = self._provision(self.root, self.config, environ, self._log)
+        except Exception as exc:   # noqa: BLE001 - logged, launch continues
+            self._log(f"first run: provisioning failed ({type(exc).__name__})")
+            return
+        if overrides:
+            merged = self.config.env_map()
+            merged.update(overrides)
+            self._env = child_environment(merged)
 
     def _resolve_argv(self, spec: ServiceSpec, sup_cfg: Optional[str]) -> List[str]:
         values = {"root": str(self.root), "supervisor_config": sup_cfg or ""}
