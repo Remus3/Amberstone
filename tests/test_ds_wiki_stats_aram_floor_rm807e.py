@@ -32,15 +32,20 @@ import daemon_slayer_wiki_stats_extract as W  # noqa: E402
 
 LIVE_ARAM = {"dmg_dealt": 1.05, "dmg_taken": 0.95}
 NEUTRAL_ARAM = {"dmg_dealt": 1.0, "dmg_taken": 1.0, "ability_haste": 0.0}
+# every non-ARAM mode present, so the RM-911 presence floor stays out of
+# these ARAM-floor tests
+OTHER_MODES = {"urf": {"dmg_dealt": 1.1}, "nb": {"dmg_taken": 0.95},
+               "ofa": {"dmg_dealt": 0.9}, "usb": {"dmg_taken": 1.05},
+               "ar": {"hp_lvl": 17.0}, "swift": {"arm_lvl": -0.5}}
 
 
 def _champions(rows: int, neutral: int, *, no_block: bool = False) -> dict[str, dict]:
     out: dict[str, dict] = {}
     for i in range(rows):
         if i < neutral:
-            modes = {} if no_block else {"aram": dict(NEUTRAL_ARAM)}
+            modes = {} if no_block else {"aram": dict(NEUTRAL_ARAM), **OTHER_MODES}
         else:
-            modes = {"aram": dict(LIVE_ARAM), "urf": {"dmg_dealt": 1.1}}
+            modes = {"aram": dict(LIVE_ARAM), **OTHER_MODES}
         out[f"Champ{i:03d}"] = {"wiki_name": f"Champ{i:03d}",
                                 W._FIELD_MODE_MODIFIERS: modes}
     return out

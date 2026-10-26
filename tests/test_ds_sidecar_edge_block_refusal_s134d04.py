@@ -43,7 +43,12 @@ import daemon_slayer_wiki_ability_extract as A  # noqa: E402
 import daemon_slayer_wiki_stats_extract as W  # noqa: E402
 
 DATA = ROOT / "data" / "daemon_slayer"
-LIVE_ARAM = {"aram": {"dmg_dealt": 1.05}}
+# aram live plus every other mode present, so the RM-807 (e) and RM-911
+# floors stay out of the cast-floor tests
+LIVE_ARAM = {"aram": {"dmg_dealt": 1.05}, "urf": {"dmg_dealt": 1.1},
+             "nb": {"dmg_taken": 0.95}, "ofa": {"dmg_dealt": 0.9},
+             "usb": {"dmg_taken": 1.05}, "ar": {"hp_lvl": 17.0},
+             "swift": {"arm_lvl": -0.5}}
 
 
 # --------------------------------------------------------------------------

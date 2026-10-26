@@ -112,6 +112,11 @@ Design (don't re-litigate):
     measured attack_cast_time (an edge-blocked host: defaults only) exits 4 and
     writes nothing, any ``--source``; ``--allow-unmeasured-cast REASON``
     accepts it and records ``_cast_unmeasured_override``.
+  * Mode floor (RM-911): a wiki-sourced run where a non-ARAM mode (urf / nb
+    / ofa / usb / ar / swift) has no block on any champion exits 5 and writes
+    nothing; ``--allow-missing-mode MODE=REASON`` (repeatable) accepts it and
+    records ``_mode_missing_override``. Skipped with a NOTE under ``--limit``
+    (a roster slice cannot measure roster-wide presence).
   * ASCII-only output (ensure_ascii=True) - the no-em-dash repo rule.
   * champion-id source = the committed abilities snapshot's ``data`` dict
     (171 champs at 16.11.1; keyed by DDragon id). The wiki block's ``apiname``
@@ -912,6 +917,86 @@ def check_cast_measured(payload: dict[str, Any],
     return out
 
 
+# RM-911: ARAM has the neutral floor above; the other six wiki modes had
+# none, so a wiki rename of one mode's block key wrote {} for that mode on
+# every champion (ar / swift reach the RM-172 apply_mode_modifiers seam via
+# data_loader._WIKI_MODE_ALIASES). Every committed snapshot 16.11.1 .. 16.21.1
+# carries every mode (smallest: swift 13/171) and the counts are stable, so the
+# floor is PRESENCE: a gated mode with zero blocks on the roster stops the run
+# before the write. A partial drop is left alone - a balance patch may remove
+# blocks. The only way past it is ``--allow-missing-mode MODE=REASON``.
+GATED_MODE_KEYS = tuple(m for m in _MODE_KEYS if m != "aram")
+EXIT_MODE_MISSING = 5
+
+
+class MissingModeBlockError(RuntimeError):
+    """A gated wiki mode block is absent on every champion."""
+
+    def __init__(self, message: str, missing: list[str]) -> None:
+        super().__init__(message)
+        self.missing = missing
+
+
+def _parse_mode_overrides(values: Optional[list[str]]) -> dict[str, str]:
+    """``["ar=REASON", ...]`` -> ``{"ar": "REASON"}``; ValueError on a bad item."""
+    out: dict[str, str] = {}
+    for item in values or []:
+        mode, sep, reason = item.partition("=")
+        mode = mode.strip()
+        if not sep or mode not in GATED_MODE_KEYS:
+            raise ValueError(
+                f"--allow-missing-mode expects MODE=REASON with MODE one of "
+                f"{', '.join(GATED_MODE_KEYS)}; got {item!r}"
+            )
+        out[mode] = reason
+    return out
+
+
+def check_mode_presence(champions: dict[str, Any],
+                        overrides: Optional[dict[str, str]] = None) -> dict[str, Any]:
+    """Fail loudly when a gated wiki mode has no block on any champion (RM-911).
+
+    Counts, per mode in ``GATED_MODE_KEYS``, the champions carrying a non-empty
+    block. Returns ``{rows, counts, missing}``; a missing mode (an empty roster
+    makes every mode missing) raises ``MissingModeBlockError`` unless
+    ``overrides`` holds a non-blank reason for it, which prints a WARNING and
+    adds ``overrides`` (only the reasons actually used).
+    """
+    counts = {m: 0 for m in GATED_MODE_KEYS}
+    for rec in champions.values():
+        modes = rec.get(_FIELD_MODE_MODIFIERS) if isinstance(rec, dict) else None
+        if not isinstance(modes, dict):
+            continue
+        for m in GATED_MODE_KEYS:
+            block = modes.get(m)
+            if isinstance(block, dict) and block:
+                counts[m] += 1
+    missing = [m for m in GATED_MODE_KEYS if counts[m] == 0]
+    out: dict[str, Any] = {"rows": len(champions), "counts": counts, "missing": missing}
+    reasons = {m: r.strip() for m, r in (overrides or {}).items() if r.strip()}
+    for m in sorted(set(reasons) - set(missing)):
+        print(f"--allow-missing-mode {m} not needed: {counts.get(m, 0)}/"
+              f"{len(champions)} champions carry it", file=sys.stderr)
+    refused = [m for m in missing if m not in reasons]
+    if refused:
+        shape = "an empty roster" if not champions else f"0/{len(champions)} champions"
+        raise MissingModeBlockError(
+            f"RM-911: wiki mode block(s) {', '.join(refused)} absent on "
+            f"{shape} - a wiki rename of the block key or a failed raw-module "
+            "fetch, not a balance patch; nothing was written. Adjudicate it, "
+            "then re-run with --allow-missing-mode MODE=REASON to accept it as "
+            "an explicit, recorded act.",
+            refused,
+        )
+    used = {m: reasons[m] for m in missing}
+    if used:
+        for m, r in used.items():
+            print(f"WARNING: RM-911 override: accepting no wiki {m} block on "
+                  f"{len(champions)} champions - reason: {r}", file=sys.stderr)
+        out["overrides"] = used
+    return out
+
+
 def extract(patch: str, sleep_s: float, limit: Optional[int], verbose: bool,
             source: str = "both", default_cast: bool = True,
             *, full_roster: bool = False) -> dict[str, Any]:
@@ -1121,9 +1206,20 @@ def main(argv: Optional[list[str]] = None) -> int:
                          f"measured cast time (the run otherwise exits {EXIT_CAST_UNMEASURED} "
                          "and writes nothing); REASON is printed and recorded in the "
                          "payload as _cast_unmeasured_override")
+    ap.add_argument("--allow-missing-mode", action="append", default=None,
+                    metavar="MODE=REASON",
+                    help="RM-911: accept a run where wiki mode MODE (one of "
+                         f"{', '.join(GATED_MODE_KEYS)}) has no block on any champion "
+                         f"(the run otherwise exits {EXIT_MODE_MISSING} and writes "
+                         "nothing); repeatable; recorded in the payload as "
+                         "_mode_missing_override")
     ap.add_argument("--dry-run", action="store_true", help="extract but do not write")
     ap.add_argument("-v", "--verbose", action="store_true", help="per-champ progress")
     args = ap.parse_args(argv)
+    try:
+        mode_overrides = _parse_mode_overrides(args.allow_missing_mode)
+    except ValueError as exc:
+        ap.error(str(exc))
 
     patch = _resolve_patch(args.patch)
     out_path = Path(args.out) if args.out else (DATA_DIR / patch / "wiki_stats.json")
@@ -1172,6 +1268,23 @@ def main(argv: Optional[list[str]] = None) -> int:
                 "neutral_rows": aram_check["neutral_rows"],
                 "neutral_fraction": aram_check["neutral_fraction"],
                 "threshold": aram_check["threshold"],
+            }
+    # presence is a roster-wide fact; a --limit slice (the documented smoke run,
+    # first 5 champions) legitimately carries no swift block
+    if args.source != "cdragon" and args.limit:
+        print(f"NOTE: RM-911 mode presence floor skipped: --limit {args.limit} "
+              "is a roster slice", file=sys.stderr)
+    elif args.source != "cdragon":
+        try:
+            mode_check = check_mode_presence(payload["champions"], overrides=mode_overrides)
+        except MissingModeBlockError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return EXIT_MODE_MISSING
+        if "overrides" in mode_check:
+            payload["_mode_missing_override"] = {
+                "reasons": mode_check["overrides"],
+                "rows": mode_check["rows"],
+                "counts": mode_check["counts"],
             }
 
     if args.dry_run:
