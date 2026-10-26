@@ -28,16 +28,25 @@ the trait signatures + ITEM_WEIGHT x share of the held-or-buildable items
 (recipes completable from held components, plus finished items held that the
 set data knows) that the comp itself has used. A comp that shares no unit
 with the board is never listed, whatever the items say.
+
+JUNK: the live label and level come from the round store (free text and
+whatever envelope a source wrote), so a label is read through parse_label and
+used in its canonical "3-2" form, and a level outside LEVEL_MIN..LEVEL_MAX is
+no reading at all. Catalogue rows and per-comp aggregates are read the same
+junk-tolerant way as everywhere else here: a section that is not a mapping, a
+median that is not a finite number or a parseable label, or a count that is
+not a plain integer reads as absent (or 0), never as an exception.
 """
 from __future__ import annotations
 
+import math
 from collections import Counter
 from typing import Any, Iterable, Mapping, Optional
 
 from tft import tft_roll_odds
 from tft.engine import engine_meta
 from tft.engine.comps import SetData, as_int, as_units, comp_units, copies, jaccard, trait_signature
-from tft.engine.milestones import LEVELS, parse_label
+from tft.engine.milestones import LEVELS, format_label, parse_label
 
 NEAREST_LIMIT = 3
 SLAM_LIMIT = 5
@@ -49,6 +58,11 @@ POOL_WEIGHT = 0.25
 TRAIT_WEIGHT = 0.10
 ITEM_WEIGHT = 0.10
 ROLL_CONFIDENCE = 0.5
+# TFT player levels for level advice; anything outside is a misread, not a
+# level. 11 is real: tft/tft_data.py TIER_ODDS carries a level-11 row. Shop
+# odds do not use this bound - the odds bundle's own table decides there.
+LEVEL_MIN = 1
+LEVEL_MAX = 11
 SKIP_OFFER_KINDS = frozenset({"empty", "special"})
 
 # Shop pick priority (lower first).
@@ -62,6 +76,41 @@ def _state(state: Any) -> Mapping:
 
 def _list(value: Any) -> list:
     return list(value) if isinstance(value, (list, tuple)) else []
+
+
+def _section(obj: Any, name: Any) -> Mapping:
+    """obj[name] when both are mappings, else {}."""
+    value = obj.get(name) if isinstance(obj, Mapping) else None
+    return value if isinstance(value, Mapping) else {}
+
+
+def _number(value: Any) -> Optional[float]:
+    """A finite int / float as a float (never a bool), else None."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    try:
+        out = float(value)
+    except OverflowError:
+        return None
+    return out if math.isfinite(out) else None
+
+
+def _count(value: Any) -> int:
+    """A non-negative game count (plain or digit-string int), else 0."""
+    n = as_int(value)
+    return n if n is not None and n > 0 else 0
+
+
+def _level(value: Any) -> Optional[int]:
+    """A player level in LEVEL_MIN..LEVEL_MAX, else None."""
+    lv = as_int(value)
+    return lv if lv is not None and LEVEL_MIN <= lv <= LEVEL_MAX else None
+
+
+def _label(value: Any) -> Optional[str]:
+    """The canonical "3-2" form of a round label, else None."""
+    key = parse_label(value)
+    return format_label(key) if key is not None else None
 
 
 def _owned(state: Mapping, setdata: SetData) -> Counter:
@@ -139,7 +188,7 @@ def nearest_comps(state: Mapping, catalogue: Mapping, setdata: SetData, *, limit
                      "item_fit": round(item_fit, 3),
                      "games": comp.get("games"), "avg_placement": comp.get("avg_placement"),
                      "top4_rate": comp.get("top4_rate")})
-    rows.sort(key=lambda r: (-r["score"], -(r["top4_rate"] or 0), r["comp_id"]))
+    rows.sort(key=lambda r: (-r["score"], -(_number(r["top4_rate"]) or 0.0), r["comp_id"]))
     return rows[:limit]
 
 
@@ -250,8 +299,8 @@ def item_slams(held_items: Iterable, comp: Optional[Mapping], setdata: SetData, 
     out = []
     for item, recipe in _completable(held_items, setdata):
         out.append({"item": item, "name": setdata.item_name(item), "components": list(recipe),
-                    "on": carry.get("api"), "carry_games": carry_freq.get(item, 0),
-                    "comp_games": comp_freq.get(item, 0)})
+                    "on": carry.get("api"), "carry_games": _count(carry_freq.get(item)),
+                    "comp_games": _count(comp_freq.get(item))})
     out.sort(key=lambda r: (-r["carry_games"], -r["comp_games"], r["item"]))
     return out[:limit]
 
@@ -261,31 +310,35 @@ def item_slams(held_items: Iterable, comp: Optional[Mapping], setdata: SetData, 
 def level_advice(current: Mapping, agg: Optional[Mapping]) -> dict:
     """The current level against the comp's top-4 median at this round, plus the next milestone."""
     current = _state(current)
-    label = current.get("label") if isinstance(current.get("label"), str) else None
-    key = parse_label(label)
-    level = as_int(current.get("level"))
+    key = parse_label(current.get("label"))
+    label = format_label(key) if key is not None else None
+    level = _level(current.get("level"))
     out = {"status": "unknown", "message": "No top-4 level data yet", "next": None, "roll": None}
     if not isinstance(agg, Mapping) or not agg or key is None:
         return out
-    curve = (agg.get("level_curve") or {}).get(label)
-    if curve and level is not None:
-        med = curve["median"]
+    med = _level(_section(_section(agg, "level_curve"), label).get("median"))
+    if med is not None and level is not None:
         out["status"] = "behind" if level < med else ("ahead" if level > med else "on_curve")
         out["message"] = f"Lv{level} at {label}; your top-4 median is Lv{med} at {label}"
     else:
         out["message"] = f"No top-4 level data at {label} yet"
     if level is not None:
+        reached = _section(agg, "level_reached")
         for lv in LEVELS:
             if lv <= level:
                 continue
-            med_label = ((agg.get("level_reached") or {}).get(str(lv)) or {}).get("median")
-            if med_label and parse_label(med_label) > key:
-                out["next"] = {"level": lv, "label": med_label}
+            med_key = parse_label(_section(reached, str(lv)).get("median"))
+            if med_key is not None and med_key > key:
+                out["next"] = {"level": lv, "label": format_label(med_key)}
                 break
-    roll = agg.get("first_rolldown") or {}
-    if roll.get("n") and parse_label(roll.get("q1")) <= key <= parse_label(roll.get("q3")):
-        out["roll"] = {"label": roll["median"], "to_gold": (agg.get("rolldown_gold_end") or {}).get("median"),
-                       "games": roll["n"]}
+    roll = _section(agg, "first_rolldown")
+    games = roll.get("n")
+    lo, hi = parse_label(roll.get("q1")), parse_label(roll.get("q3"))
+    mid = _label(roll.get("median"))
+    if (isinstance(games, int) and not isinstance(games, bool) and games > 0 and mid
+            and lo is not None and hi is not None and lo <= key <= hi):
+        out["roll"] = {"label": mid, "to_gold": _number(_section(agg, "rolldown_gold_end").get("median")),
+                       "games": games}
     return out
 
 
@@ -321,18 +374,19 @@ def _fit(line: str) -> str:
 
 
 def _milestone_line(agg: Optional[Mapping]) -> Optional[str]:
-    if not agg:
+    if not isinstance(agg, Mapping) or not agg:
         return None
     parts = []
+    reached = _section(agg, "level_reached")
     for lv in (6, 8):
-        med = ((agg.get("level_reached") or {}).get(str(lv)) or {}).get("median")
+        med = _label(_section(reached, str(lv)).get("median"))
         if med:
             parts.append(f"Lv{lv} by {med}")
-    roll = (agg.get("first_rolldown") or {}).get("median")
+    roll = _label(_section(agg, "first_rolldown").get("median"))
     if roll:
-        gold = (agg.get("rolldown_gold_end") or {}).get("median")
+        gold = _number(_section(agg, "rolldown_gold_end").get("median"))
         parts.append(f"roll at {roll} to ~{int(round(gold))}g" if gold is not None else f"roll at {roll}")
-    slam = (agg.get("first_slam") or {}).get("median")
+    slam = _label(_section(agg, "first_slam").get("median"))
     if slam:
         parts.append(f"first slam {slam}")
     return ", ".join(parts) or None
@@ -386,10 +440,10 @@ def _digest(core: list, three_star: list, carry: Optional[Mapping], agg: Optiona
 
 def _summary(comp: Mapping) -> str:
     games = as_int(comp.get("games")) or 0
-    avg, rate = comp.get("avg_placement"), comp.get("top4_rate")
-    if not isinstance(avg, (int, float)) or isinstance(avg, bool):
+    avg, rate = _number(comp.get("avg_placement")), _number(comp.get("top4_rate"))
+    if avg is None:
         return f"{games} games, no placement yet"
-    rate = rate if isinstance(rate, (int, float)) and not isinstance(rate, bool) else 0.0
+    rate = rate if rate is not None else 0.0
     return f"{games} games, avg {avg:.1f}, top-4 {rate * 100:.0f}%"
 
 
