@@ -2,12 +2,16 @@ name: patch-day-ddragon-sync
 
 on:
   schedule:
-    # Run hourly on patch days (these specific dates)
+    # Run hourly ON PATCH DAYS ONLY (UTC dates). It used to be `7 * * * *`,
+    # 24 runs every day that mostly exited at the date check (MAIN FIX
+    # 2026-10-25 1935 section 4d). One line per month, the SAME dates as
+    # PATCH_DAYS below; extend both together when Riot publishes 2027.
     # Note: GitHub Actions runs in UTC. Midnight PT varies by DST:
     # - PDT (UTC-7): midnight PT = 07:00 UTC
     # - PST (UTC-8): midnight PT = 08:00 UTC
-    # We run hourly on these dates to ensure coverage.
-    - cron: '7 * * * *'  # Every hour at :07 (avoiding :00 congestion)
+    - cron: '7 * 7,21 10 *'   # Oct (at :07, avoiding :00 congestion)
+    - cron: '7 * 4,18 11 *'   # Nov
+    - cron: '7 * 9 12 *'      # Dec
   workflow_dispatch:     # Manual trigger for testing
 
 # REPORT-ONLY (MAIN kit-v13 ORDER section 4, operator authority, 2026-10-08):

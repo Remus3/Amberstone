@@ -1,0 +1,61 @@
+# GitHub Pages, ACTIONS source (MAIN FIX 2026-10-25 1935 section 4c).
+#
+# Pages used to be the LEGACY branch build (main, /), which rebuilt the whole
+# tree with Jekyll on EVERY push (89 builds in 7 days). The only page anything
+# reads is atlas.html (README badge + links), so this workflow publishes just
+# that file, and only when it changes. Repository setting: Pages source =
+# "GitHub Actions" (`gh api -X PUT repos/<owner>/<repo>/pages -f build_type=workflow`).
+
+name: pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'atlas.html'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+# Least privilege: read-only default; the deploy job alone gets the two
+# Pages scopes it needs. Nothing here writes to the repository.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # SHA-pinned, tag in the trailing comment; Dependabot's github-actions
+      # entry keeps both current.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+
+      - name: Stage the published set
+        run: |
+          mkdir -p _site
+          cp atlas.html _site/atlas.html
+          touch _site/.nojekyll
+
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write     # publish the artifact
+      id-token: write  # OIDC token the deploy action requires
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

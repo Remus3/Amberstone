@@ -33,6 +33,7 @@ import it before its server's heavy imports.
 from __future__ import annotations
 
 import http.client
+import ipaddress
 import json
 import socket
 import time
@@ -55,8 +56,31 @@ class Handoff(NamedTuple):
     waited_s: float     # seconds spent before the verdict
 
 
+def require_loopback(host: str) -> str:
+    """Return ``host`` when it is a loopback address, else raise ValueError.
+
+    Every RC server is local-only (ADR-011); a ``--host ''`` or ``0.0.0.0``
+    reaching a bind would expose it on every interface (CodeQL
+    py/bind-socket-all-network-interfaces, alert 66, MAIN FIX 2026-10-25 1935).
+    """
+    h = (host or "").strip()
+    if h.lower() == "localhost":
+        return host
+    try:
+        ok = ipaddress.ip_address(h.strip("[]")).is_loopback
+    except ValueError:
+        ok = False
+    if not ok:
+        raise ValueError(f"refusing non-loopback bind host {host!r}")
+    return host
+
+
 def can_bind(host: str, port: int) -> bool:
-    """True when a plain (no SO_REUSEADDR) bind of ``host:port`` succeeds."""
+    """True when a plain (no SO_REUSEADDR) bind of ``host:port`` succeeds.
+
+    Raises ValueError for a non-loopback ``host`` (see ``require_loopback``).
+    """
+    host = require_loopback(host)
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         s.bind((host, port))
@@ -107,6 +131,7 @@ def await_port(host: str, port: int, *, holder_live: Callable[[], bool],
                clock: Callable[[], float] = time.monotonic,
                sleep: Callable[[float], None] = time.sleep) -> Handoff:
     """Wait up to ``window_s`` for ``host:port`` to come free; see the module doc."""
+    require_loopback(host)
     start = clock()
     deadline = start + max(0.0, float(window_s))
     while True:

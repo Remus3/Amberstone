@@ -30,17 +30,29 @@ on:
   # top of this file before commenting any of them out again.
   push:
     branches: [main]
+    # MAIN FIX 2026-10-25 1935 section 4b: a push touching no analysed code
+    # (docs, data, ledgers) starts no analysis. The weekly schedule below
+    # stays whole-tree, so nothing goes unscanned for long.
+    paths:
+      - '**/*.py'
+      - '**/*.js'
+      - '**/*.ts'
+      - '**/*.mjs'
+      - '.github/workflows/**'
+      - '.github/codeql/**'
   pull_request:
     branches: [main]
   schedule:
     - cron: '23 5 * * 1'  # weekly, Monday 05:23 UTC
   workflow_dispatch:
 
-# A superseded PR run is cancelled; a push to main is NOT, so every commit
-# that lands on main gets its own complete analysis.
+# A superseded PR OR PUSH run is cancelled (MAIN FIX 2026-10-25 1935
+# section 4b): CodeQL analyses the whole tree, so the newer push run covers
+# everything the cancelled one would have. Schedule and dispatch runs are
+# never cancelled.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
 
 # Least privilege: the workflow default is read-only. The one job below is
 # elevated at job level, and only by what CodeQL needs.

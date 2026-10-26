@@ -15,9 +15,14 @@
     "electron-updater": "^6.3.9"
   },
   "devDependencies": {
-    "electron": "44.5.1",
+    "electron": "44.9.1",
     "electron-builder": "^26.0.12"
   },
   "author": "Amberstone",
-  "license": "Apache-2.0"
+  "license": "Apache-2.0",
+  "overrides": {
+    "@electron/get": {
+      "undici": "^7.30.1"
+    }
+  }
 }

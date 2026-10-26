@@ -273,6 +273,7 @@ Machine paths are never written here (MAIN 2246 sec 3): `<repo>` = this checkout
 - **Never add a `Co-Authored-By: Claude` trailer, and never file its absence as a defect** (`.githooks/commit-msg` strips it, operator policy 2026-06-03). Audit with an ANCHORED predicate on the message tail.
 - **Git hooks are the AUTHORITATIVE gate; a fresh clone has NONE.** First action in a fresh clone: `python scripts/install_hooks.py`. Claude hooks are defense in depth only.
 - **Hook findings are version-specific and expire - re-measure, never inherit.** Before concluding a hook did not fire, rule out (1) invalid `settings.json` (single-backslash paths) and (2) an untrusted workspace (trust key is per path STRING). Presence is not proof; the only valid test is end-to-end (stage a banned glyph, commit, assert HEAD unchanged). Memory `reference_git_hooks_authoritative_and_traps`.
+- **Push tier (MAIN FIX 2026-10-25 1935 sec 4a; beside RM-157 in `tools/done.md`):** lanes and sessions commit LOCALLY; push once at /done plus at most ONE mid-session push per hour (every push fans out codeql + ci + docs-guards). At most one full-suite `ci.yml` dispatch per /done (RM-157); a module red on CI is re-run locally under the runner's Python (3.12) before any re-dispatch.
 - **Restart via `restart_trigger.txt`** (supervisor restarts within ~5s).
 - **`SCRIPT_DIR` in `app/__init__.py` MUST be `Path(__file__).parent.parent`.**
 - **State assumptions explicitly before coding.**

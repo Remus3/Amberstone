@@ -59,6 +59,8 @@ The user wants to end the session cleanly so the next one starts with a fresh co
 >
 > **Why the overlap:** the old shape ran a ~27-minute local dual suite and THEN blocked on a CI watch, with ~15 minutes of doc writing after that. Pushing at Phase 2 makes the paperwork overlap the push run (13-28 minutes on 2026-10-22's slice pushes), so the wrap costs the LONGER of the two instead of their sum.
 >
+> **PUSH TIER (MAIN FIX 2026-10-25 1935 sec 4a, CLAUDE.md Hard rules).** Lanes and sessions commit locally; this ritual's push is THE push, plus at most one mid-session push per hour. A module red on CI is re-run locally under the runner's Python (3.12) before any re-dispatch.
+>
 > **RM-157 still forbids DUPLICATES.** Until 2026-08-04 section 2c fired `gh workflow run ci.yml` on every /done while every push already ran the full suite. MEASURED over 2026-08-01..04: 18 such dispatches, **485.8 minutes of runner wall clock in four days for zero added signal**. The waste was the duplicate, not the dispatch: section 2c now fires one only when no full run covers the pushed tree, and never a second one.
 >
 > **Do NOT reintroduce a SERIAL local dual suite into Phase 1.** It was measured
