@@ -55,6 +55,19 @@ def _git(cwd: Path, *args: str) -> None:
                    capture_output=True)
 
 
+def _commit(root: Path, *new_files: str) -> None:
+    """Stage tracked changes (plus the named new files) and commit, so the
+    fixture source is clean against HEAD. Hooks point at an empty folder."""
+    nohooks = root.parent / "nohooks"
+    nohooks.mkdir(exist_ok=True)
+    if new_files:
+        _git(root, "add", *new_files)
+    _git(root, "add", "-u")
+    _git(root, "-c", "user.name=fixture", "-c", "user.email=fixture@example.invalid",
+         "-c", f"core.hooksPath={nohooks}", "-c", "commit.gpgsign=false",
+         "commit", "-q", "--allow-empty", "-m", "fixture")
+
+
 def _write(root: Path, rel: str, text: str = "") -> None:
     p = root / rel
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -70,8 +83,16 @@ TRACKED = {
     "core/util.py": "from . import helper\n",
     "core/helper.py": "X = 1\n",
     "dashboard/__init__.py": "",
-    "dashboard/server.py": "import importlib\nimportlib.import_module('core.late')\n",
+    "dashboard/server.py": ("import importlib\nimportlib.import_module('core.late')\n"
+                            "_TARGET = 'core.const_target'\n"
+                            "def load():\n    return importlib.import_module(_TARGET)\n"),
     "core/late.py": "",
+    "core/const_target.py": "",
+    "core/coach_registry.py": ('MODE_COACH_MAP = {\n'
+                               '    "_x_mode": ("coaches.x_coach", "Coach", "x.json"),\n'
+                               '}\n'),
+    "coaches/__init__.py": "",
+    "coaches/x_coach.py": "from core import helper\n",
     "vision_server/__init__.py": "def main():\n    return 0\n",
     "tools/__init__.py": "",
     "tools/lcu_agent.py": "from core import helper\n",
@@ -83,7 +104,11 @@ TRACKED = {
     "agents/daemon_slayer/server.py": "def run():\n    return 0\n",
     "agents/daemon_slayer/tests/test_ds.py": "def test_x():\n    pass\n",
     "ops/__init__.py": "",
-    "ops/rc_supervisor.py": "import json\n",
+    "ops/rc_supervisor.py": "import json\nCMD = ['schtasks', '/Run', '/TN', 'X']\n",
+    "agents/supervisor.py": "from agents import _supervisor_ephemeral\n",
+    "agents/_supervisor_ephemeral.py": "from ops.loop import thing\n",
+    "tools/install_ds_keepalive_task.ps1": "New-ScheduledTaskTrigger -AtStartup\n",
+    "tools/legion_on.ps1": "Start-ScheduledTask -TaskName X\n",
     "ops/install_startup.bat": "@echo off\n",
     "ops/autostart_on_login.bat": "@echo off\n",
     "ops/loop/__init__.py": "",
@@ -131,8 +156,9 @@ def fake_repo(tmp_path: Path) -> Path:
         _write(root, rel, text)
     _git(root, "init", "-q")
     _git(root, "add", "-A")
-    # Written after the add: on disk, never in the index (the gitignored ones
-    # could not be added anyway; stray_untracked.py simply never was).
+    _commit(root)
+    # Written after the commit: on disk, never in the index (the gitignored
+    # ones could not be added anyway; stray_untracked.py simply never was).
     for rel, text in UNTRACKED.items():
         _write(root, rel, text)
     return root
@@ -141,6 +167,7 @@ def fake_repo(tmp_path: Path) -> Path:
 def _replace_lfs_with_real(root: Path) -> None:
     _write(root, "data/daemon_slayer/laning_scenarios/1.0.1/laning_scenarios_sr.json",
            '{"schema": "laning_scenarios/v4"}\n')
+    _commit(root)
 
 
 class FakeResponse(io.BytesIO):
@@ -229,6 +256,19 @@ def test_inclusion_is_the_git_index_not_the_disk(fake_repo):
     "agents/daemon_slayer/tests/test_ds.py", "CLAUDE.md",
     "ops/install_startup.bat", "ops/autostart_on_login.bat",
     "scripts/kill.bat", "scripts/restart.bat", "data/scrape.log", ".gitignore",
+    # fix round: the installers the first verifier found shipping
+    "tools/install_ds_keepalive_task.ps1", "tools/install_mission_control_task.ps1",
+    "tools/phase_watcher_install.ps1", "tools/install_daemon_slayer_task.ps1",
+    "tools/legion_on.ps1", "tools/legion_off.ps1", "tools/legion_agent_boot.ps1",
+    "tools/install_lane_widget_shortcut.ps1",
+    # belt and braces beyond the git index
+    "data/coach_trace.jsonl", "moon_sync_inbox/note.md", "memory/MEMORY.md",
+    # Phase 3 (dev profile only) and Mission Control-only route tables
+    "agents/supervisor.py", "agents/_supervisor_ephemeral.py", "agents/_minimap_bbox.py",
+    "agents/agent3_testing/agent.py", "agents/state/resolved_decisions.json",
+    "dashboard/routes_loop_control.py", "dashboard/routes_loop_status.py",
+    # build-time tools and tool docs / agent prompts
+    "tools/build_portable.py", "tools/run_packaged_smoke.py", "tools/headless-ds.md",
 ])
 def test_dev_only_and_operator_only_paths_are_excluded_with_a_reason(rel):
     reason = bp.exclusion_reason(rel)
@@ -239,8 +279,8 @@ def test_dev_only_and_operator_only_paths_are_excluded_with_a_reason(rel):
     "main.py", "web_dashboard.py", "moon_vision_server.py", "app/__init__.py",
     "dashboard/server.py", "web/index.html", "agents/daemon_slayer/server.py",
     "data/static.json", "tools/lcu_agent.py", "ops/rc_supervisor.py",
-    "requirements.txt", "start.bat", "LICENSE", "NOTICE",
-    "agents/agent3_testing/agent.py",
+    "requirements.txt", "start.bat", "LICENSE", "NOTICE", "agents/__init__.py",
+    "tools/liveclient_relay.py", "tools/hotkey_listener.py", "core/coach_registry.py",
 ])
 def test_runtime_paths_are_not_excluded(rel):
     assert bp.exclusion_reason(rel) is None, rel
@@ -279,7 +319,9 @@ def test_build_copies_the_index_and_writes_a_manifest(fake_repo, tmp_path):
                 "agents/daemon_slayer/tests", "ops/runtime", "logs"):
         assert not (out / rel).exists(), rel
     for rel in ("ops/install_startup.bat", "CLAUDE.md", "stray_untracked.py",
-                "data/scrape.log", "ops/tls/rc.pem", "data/cache/big.json"):
+                "data/scrape.log", "ops/tls/rc.pem", "data/cache/big.json",
+                "tools/install_ds_keepalive_task.ps1", "tools/legion_on.ps1",
+                "agents/supervisor.py", "agents/_supervisor_ephemeral.py"):
         assert not (out / rel).exists(), rel
     man = json.loads((out / "BUILD_MANIFEST.json").read_text(encoding="utf-8"))
     assert man["bundle"] == "Amberstone"
@@ -326,21 +368,58 @@ def test_git_failure_fails_closed(tmp_path):
 # --------------------------------------------------------------------------- #
 # Import closure
 # --------------------------------------------------------------------------- #
-def test_closure_follows_absolute_relative_and_literal_dynamic_imports(fake_repo):
+def test_closure_follows_absolute_relative_and_dynamic_imports(fake_repo):
     universe = frozenset(bp.git_index_files(fake_repo))
-    closure = bp.import_closure(fake_repo, bp.CLOSURE_ENTRIES, universe)
+    roots = bp.closure_roots(fake_repo, universe)
+    assert "coaches/x_coach.py" in roots  # parsed from MODE_COACH_MAP
+    closure = bp.import_closure(fake_repo, roots, universe)
     for rel in ("app/__init__.py", "core/util.py", "core/helper.py",
                 "core/late.py", "dashboard/server.py", "vision_server/__init__.py",
-                "agents/daemon_slayer/server.py", "agents/daemon_slayer/__init__.py"):
+                "agents/daemon_slayer/server.py", "agents/daemon_slayer/__init__.py",
+                "core/const_target.py",   # import_module(<module-level constant>)
+                "coaches/x_coach.py", "coaches/__init__.py"):
         assert rel in closure.files, rel
+    assert "dashboard/server.py: core.const_target -> core/const_target.py" in \
+        closure.dynamic_imports
 
 
 def test_closure_violation_fails_the_build(fake_repo, tmp_path):
     _replace_lfs_with_real(fake_repo)
     _write(fake_repo, "app/__init__.py", "from core import util\nimport ops.loop.thing\n")
-    _git(fake_repo, "add", "-A")
+    _commit(fake_repo)
     out = tmp_path / "out"
     assert bp.build(fake_repo, out, embed="none") == 1
+
+
+def test_a_registry_coach_the_rules_exclude_fails_the_build(fake_repo, tmp_path):
+    _replace_lfs_with_real(fake_repo)
+    _write(fake_repo, "core/coach_registry.py",
+           'MODE_COACH_MAP = {"_x_mode": ("coaches.tests.x_coach", "Coach", "x.json")}\n')
+    _write(fake_repo, "coaches/tests/__init__.py", "")
+    _write(fake_repo, "coaches/tests/x_coach.py", "")
+    _commit(fake_repo, "coaches/tests/__init__.py", "coaches/tests/x_coach.py")
+    assert bp.build(fake_repo, tmp_path / "out", embed="none") == 1
+
+
+def test_an_unparseable_registry_fails_closed(fake_repo, tmp_path):
+    _replace_lfs_with_real(fake_repo)
+    _write(fake_repo, "core/coach_registry.py", "MODE_COACH_MAP = build_map()\n")
+    _commit(fake_repo)
+    with pytest.raises(bp.BundleError):
+        bp.registry_roots(fake_repo, frozenset(bp.git_index_files(fake_repo)))
+    assert bp.build(fake_repo, tmp_path / "out", embed="none") == 1
+
+
+def test_real_repo_closure_holds_the_registry_coaches():
+    """app/_game_lifecycle.py loads these through import_module(mp), which no
+    static walk can read; they reach the closure only as registry roots."""
+    index = bp.git_index_files(REPO)
+    universe = frozenset(index)
+    roots = bp.closure_roots(REPO, universe)
+    closure = bp.import_closure(REPO, roots, universe)
+    for rel in ("coaches/tft_coach.py", "coaches/arena_coach.py",
+                "coaches/brawl_coach.py", "coaches/aram_coach.py"):
+        assert rel in roots and rel in closure.files, rel
 
 
 def test_closure_entries_cover_the_plan_named_processes():
@@ -356,7 +435,8 @@ def test_real_repo_plan_holds_the_import_closure_and_no_secret():
     assert len(index) > 1000  # an empty index would pass every check below
     plan = bp.plan_bundle(REPO, index)
     included = set(plan.include) | set(plan.lfs_pointers)
-    closure = bp.import_closure(REPO, bp.CLOSURE_ENTRIES, frozenset(index))
+    closure = bp.import_closure(REPO, bp.closure_roots(REPO, frozenset(index)),
+                                frozenset(index))
     assert len(closure.files) > 100
     missing = sorted(closure.files - included)
     assert not missing, f"import closure files the bundle would omit: {missing}"
@@ -375,8 +455,130 @@ def test_real_repo_plan_holds_the_import_closure_and_no_secret():
 
 
 # --------------------------------------------------------------------------- #
+# Never at boot: the boot-signature content scan
+# --------------------------------------------------------------------------- #
+def test_no_tracked_file_with_a_boot_signature_ships():
+    """Fails if ANY tracked file that would ship carries a scheduled-task or
+    boot signature the allow-list does not name (derived by content, not by
+    a hand list of installer names)."""
+    index = bp.git_index_files(REPO)
+    plan = bp.plan_bundle(REPO, index)
+    hits = bp.boot_signature_hits(REPO, plan.include)
+    assert bp.boot_violations(hits) == []
+    # The scan is live: the excluded installers DO carry signatures.
+    excluded = [rel for rels in plan.excluded.values() for rel in rels]
+    every = bp.boot_signature_hits(REPO, excluded)
+    for rel in ("tools/install_ds_keepalive_task.ps1", "tools/install_mission_control_task.ps1",
+                "tools/phase_watcher_install.ps1", "tools/install_daemon_slayer_task.ps1",
+                "tools/legion_on.ps1"):
+        assert rel in every, f"{rel}: signature scan went blind"
+
+
+def test_boot_allow_list_is_not_stale():
+    index = bp.git_index_files(REPO)
+    plan = bp.plan_bundle(REPO, index)
+    hits = bp.boot_signature_hits(REPO, plan.include)
+    for rel, (allowed, reason) in bp.BOOT_SCAN_ALLOW.items():
+        assert reason and rel in plan.include, rel
+        assert rel in hits and set(hits[rel]) == set(allowed), (rel, hits.get(rel))
+
+
+@pytest.mark.parametrize("text, name", [
+    ("schtasks /Run /TN X", "schtasks"),
+    ('subprocess.run(["schtasks", "/Create", "/SC", "ONLOGON"])', "schtasks /Create"),
+    ("Register-ScheduledTask -TaskName X", "Register-ScheduledTask"),
+    ("$t = New-ScheduledTaskTrigger -Daily", "New-ScheduledTaskTrigger"),
+    ("Start-ScheduledTask -TaskName X", "ScheduledTask cmdlet"),
+    ("New-ScheduledTaskTrigger -AtStartup", "-AtStartup"),
+    ("New-ScheduledTaskTrigger -AtLogOn", "-AtLogOn"),
+    (r"Registry::HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run",
+     "Run registry key"),
+    ("key = r'Software\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\RunOnce'", "Run registry key"),
+    (r"%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\x.lnk", "Startup folder"),
+    ("$d = [Environment]::GetFolderPath('Startup')", "Startup folder"),
+    ("explorer shell:startup", "Startup folder"),
+    ("app.setLoginItemSettings({openAtLogin: true})", "login item"),
+    ('CreateObject("Schedule.Service")', "Task Scheduler COM"),
+])
+def test_each_boot_signature_is_detected(tmp_path, text, name):
+    (tmp_path / "f.txt").write_text(text + "\n", encoding="utf-8")
+    assert name in bp.boot_signature_hits(tmp_path, ["f.txt"]).get("f.txt", [])
+
+
+def test_plain_words_are_not_boot_signatures(tmp_path):
+    (tmp_path / "f.py").write_text("# on startup the app logs on and runs tasks\n",
+                                   encoding="utf-8")
+    assert bp.boot_signature_hits(tmp_path, ["f.py"]) == {}
+
+
+def test_an_unlisted_installer_fails_the_build(fake_repo, tmp_path):
+    _replace_lfs_with_real(fake_repo)
+    _write(fake_repo, "core/autorun.py",
+           "CMD = ['schtasks', '/Create', '/SC', 'ONLOGON', '/TN', 'X']\n")
+    _write(fake_repo, "scripts/add_task.ps1",
+           "Register-ScheduledTask -Trigger (New-ScheduledTaskTrigger -AtLogOn)\n")
+    _commit(fake_repo, "core/autorun.py", "scripts/add_task.ps1")
+    assert bp.build(fake_repo, tmp_path / "out", embed="none") == 1
+
+
+def test_an_allow_listed_file_gaining_a_new_signature_fails():
+    hits = {"ops/rc_supervisor.py": ["schtasks", "-AtLogOn"]}
+    assert bp.boot_violations(hits) == ["ops/rc_supervisor.py: -AtLogOn"]
+    assert bp.boot_violations({"ops/rc_supervisor.py": ["schtasks"]}) == []
+
+
+# --------------------------------------------------------------------------- #
+# Clean source
+# --------------------------------------------------------------------------- #
+def test_a_modified_included_file_refuses_the_build(fake_repo, tmp_path):
+    _replace_lfs_with_real(fake_repo)
+    _write(fake_repo, "core/helper.py", "X = 2\n")
+    assert bp.build(fake_repo, tmp_path / "out", embed="none") == 1
+    out = tmp_path / "out2"
+    assert bp.build(fake_repo, out, embed="none", allow_dirty=True) == 0
+    man = json.loads((out / "BUILD_MANIFEST.json").read_text(encoding="utf-8"))
+    assert man["dirty_included"] == ["core/helper.py"]
+    assert man["allow_dirty"] is True and man["source_included_clean"] is False
+
+
+def test_a_modified_excluded_file_does_not_block(fake_repo, tmp_path):
+    _replace_lfs_with_real(fake_repo)
+    _write(fake_repo, "docs/A.md", "# changed\n")
+    out = tmp_path / "out"
+    assert bp.build(fake_repo, out, embed="none") == 0
+    man = json.loads((out / "BUILD_MANIFEST.json").read_text(encoding="utf-8"))
+    assert man["source_tree_clean"] is False and man["source_included_clean"] is True
+    assert man["dirty_included"] == []
+
+
+def test_git_status_failure_refuses_the_build(fake_repo, tmp_path):
+    _replace_lfs_with_real(fake_repo)
+
+    def runner(cmd, cwd):
+        if cmd[1] == "status":
+            return 128, b""
+        proc = subprocess.run(cmd, cwd=str(cwd), capture_output=True)
+        return proc.returncode, proc.stdout
+    assert bp.build(fake_repo, tmp_path / "out", embed="none", git_runner=runner) == 1
+
+
+def test_porcelain_parse_handles_renames(tmp_path):
+    out = b" M a.py\0R  new.py\0old.py\0A  added.py\0"
+    got = bp.modified_tracked_files(tmp_path, git_runner=lambda cmd, cwd: (0, out))
+    assert got == ["a.py", "added.py", "new.py"]
+
+
+# --------------------------------------------------------------------------- #
 # Post-build verification and output-dir safety
 # --------------------------------------------------------------------------- #
+def test_verify_bundle_flags_a_planted_unnamed_installer(fake_repo, tmp_path):
+    _replace_lfs_with_real(fake_repo)
+    out = tmp_path / "out"
+    assert bp.build(fake_repo, out, embed="none") == 0
+    (out / "tools" / "sneaky.ps1").write_text(
+        "Register-ScheduledTask -TaskName X\n", encoding="utf-8")
+    problems = "\n".join(bp.verify_bundle(out))
+    assert "tools/sneaky.ps1" in problems
 def test_verify_bundle_flags_planted_problems(fake_repo, tmp_path):
     _replace_lfs_with_real(fake_repo)
     out = tmp_path / "out"
@@ -605,7 +807,7 @@ def test_bundle_build_from_a_prebuilt_embed_dir(fake_repo, tmp_path, fake_pin):
     assert (out / "python-embed" / "python.exe").is_file()
     # A prebuilt runtime from a different lock is refused.
     (fake_repo / "requirements.txt").write_text("other\n", encoding="utf-8")
-    _git(fake_repo, "add", "-A")
+    _commit(fake_repo)
     assert bp.build(fake_repo, tmp_path / "out2", embed="dir", embed_dir=pre,
                     embed_pin=pin) == 1
 
@@ -657,9 +859,113 @@ def test_installer_staging_uses_the_amberstone_archive(tmp_path):
     assert man["zip_root_folder"] == "Amberstone-portable"
 
 
+def _archive_in(tmp_path: Path) -> Path:
+    dist = tmp_path / "dist"
+    dist.mkdir(exist_ok=True)
+    archive = dist / "Amberstone-portable-1.0.0.zip"
+    with zipfile.ZipFile(archive, "w") as zf:
+        zf.writestr("Amberstone-portable/main.py", "")
+    return archive
+
+
+def test_installer_refuses_to_wipe_a_foreign_folder(tmp_path):
+    archive = _archive_in(tmp_path)
+    foreign = tmp_path / "foreign"
+    foreign.mkdir()
+    (foreign / "keep.txt").write_text("irreplaceable", encoding="utf-8")
+    assert bi.build(foreign, archive_override=archive) == 1
+    assert (foreign / "keep.txt").read_text(encoding="utf-8") == "irreplaceable"
+    # The repo root, a folder holding it, and the archive's own folder too.
+    assert bi.build(REPO, archive_override=archive) == 1
+    assert bi.build(REPO.parent, archive_override=archive) == 1
+    assert bi.build(archive.parent, archive_override=archive) == 1
+    assert archive.is_file()
+
+
+def test_installer_replaces_only_its_own_previous_output(tmp_path):
+    archive = _archive_in(tmp_path)
+    out = tmp_path / "installer"
+    assert bi.build(out, archive_override=archive) == 0
+    assert bi.build(out, archive_override=archive) == 0
+    (out / "INSTALL_MANIFEST.json").write_text('{"installer_tool": "other"}',
+                                               encoding="utf-8")
+    assert bi.build(out, archive_override=archive) == 1
+
+
+# --------------------------------------------------------------------------- #
+# tools/run_packaged_smoke.py
+# --------------------------------------------------------------------------- #
+def test_smoke_finds_only_amberstone_archives(tmp_path):
+    from tools import run_packaged_smoke as rps
+    dist = tmp_path / "dist"
+    dist.mkdir()
+    (dist / "RiotCommander-portable-20260101.zip").write_bytes(b"old")
+    assert rps.find_archive(dist) is None
+    new = dist / "Amberstone-portable-1.zip"
+    new.write_bytes(b"new")
+    assert rps.find_archive(dist) == new
+
+
+def test_smoke_requires_nothing_the_builder_excludes():
+    from tools import run_packaged_smoke as rps
+    for rel, _label in rps.REQUIRED_FILES:
+        if rel in (bp.MANIFEST_NAME, pp.PACKAGE_MANIFEST, "PREREQUISITES.md") or \
+                rel.startswith("python-embed/"):
+            continue  # generated by the build, not taken from the index
+        assert bp.exclusion_reason(rel) is None, rel
+        assert (REPO / rel).is_file(), rel
+    names = {rel for rel, _ in rps.REQUIRED_FILES}
+    assert "scripts/restart_clean.bat" not in names
+    assert "ops/rc_league_watcher.ps1" not in names
+
+
+def test_smoke_structure_check_passes_a_complete_entry_set():
+    from tools import run_packaged_smoke as rps
+    rps.reset()
+    root = "Amberstone-portable/"
+    entries = {root + rel for rel, _ in rps.REQUIRED_FILES}
+    entries |= {root + tree + "x" for tree in rps.REQUIRED_TREES}
+    assert rps.check_archive_structure(entries) == "Amberstone-portable"
+    assert rps.failures() == []
+    rps.reset()
+    assert rps.check_archive_structure({"RiotCommander-portable/main.py"}) == ""
+    assert rps.failures()
+
+
+def test_smoke_tolerates_bootstrap_issues_about_excluded_files_only():
+    from tools import run_packaged_smoke as rps
+    # The exact lines bootstrap_env_check printed against a live bundle.
+    for line in ("ISSUE: scripts/restart_clean.bat missing",
+                 "ISSUE: API-Key-Claude.txt  [REQUIRED]",
+                 "ISSUE: config/coach_settings.json  [config]",
+                 "ISSUE: audit/ (proof bundles, baseline outputs)",
+                 "ISSUE: ops/runtime/ (supervisor artifacts)"):
+        assert rps._tolerated_issue(line), line
+    assert rps._tolerated_issue("ISSUE: main.py -- missing") is None
+    assert rps._tolerated_issue("ISSUE: core/ (source)") is None
+    assert rps._tolerated_issue("ISSUE: something else broke") is None
+
+
+def test_smoke_exclusion_check_uses_the_builder_verify(fake_repo, tmp_path):
+    from tools import run_packaged_smoke as rps
+    _replace_lfs_with_real(fake_repo)
+    out = tmp_path / "out"
+    assert bp.build(fake_repo, out, embed="none") == 0
+    z = tmp_path / "a.zip"
+    z.write_bytes(b"0" * 16)
+    rps.reset()
+    rps.check_exclusions(out, z)
+    assert rps.failures() == []
+    (out / "ops" / "install_startup.bat").write_text("x", encoding="utf-8")
+    rps.reset()
+    rps.check_exclusions(out, z)
+    assert rps.failures()
+
+
 @pytest.mark.parametrize("rel", [
     "tools/build_portable.py", "tools/build_python_embed.py",
     "tools/package_portable.py", "tools/build_installer.py",
+    "tools/run_packaged_smoke.py",
 ])
 def test_retired_brand_is_gone_and_source_is_ascii_lf(rel):
     raw = (REPO / rel).read_bytes()

@@ -44,6 +44,8 @@ DIST_DIR = _PROJECT_ROOT / "dist"
 DEFAULT_OUTPUT = DIST_DIR / "installer_staging"
 ARCHIVE_GLOB = f"{pp.ZIP_ROOT_NAME}-*.zip"
 DEFAULT_INSTALL_DIR = "%LOCALAPPDATA%\\" + bp.BUNDLE_NAME
+INSTALLER_TOOL = "tools/build_installer.py"
+MANIFEST_NAME = "INSTALL_MANIFEST.json"
 
 
 def _err(msg: str) -> None:
@@ -192,12 +194,20 @@ def build(output_dir: Path = DEFAULT_OUTPUT, dry: bool = False,
     python_line = (f"embedded CPython {cp.get('version')}" if cp.get("version")
                    else "no embedded runtime recorded in this archive")
     print(f"{bp.BUNDLE_NAME} installer staging from {archive.name}")
+    problem = bp.check_output_dir(_PROJECT_ROOT, output_dir, marker=MANIFEST_NAME,
+                                  marker_key="installer_tool", marker_value=INSTALLER_TOOL)
+    if problem:
+        _err(problem)
+        return 1
+    if output_dir.resolve() == archive.parent.resolve():
+        _err("output dir cannot be the folder that holds the archive")
+        return 1
     if dry:
         print("Dry-run: would stage setup.bat, the archive and the manifests.")
         return 2
 
     if output_dir.exists():
-        shutil.rmtree(output_dir)
+        shutil.rmtree(output_dir)  # empty, or a previous build of this tool (checked)
     output_dir.mkdir(parents=True)
     shutil.copy2(archive, output_dir / archive.name)
     (output_dir / "setup.bat").write_text(setup_bat(archive.name).replace("\n", "\r\n"),
@@ -205,7 +215,7 @@ def build(output_dir: Path = DEFAULT_OUTPUT, dry: bool = False,
     (output_dir / "INSTALL_README.md").write_text(_readme(archive.name, python_line),
                                                   encoding="utf-8", newline="\n")
     manifest = {
-        "installer_tool": "tools/build_installer.py",
+        "installer_tool": INSTALLER_TOOL,
         "installer_utc": datetime.datetime.now(datetime.timezone.utc).strftime(
             "%Y-%m-%dT%H:%M:%SZ"),
         "installer_type": "scripted-extract",
@@ -219,7 +229,7 @@ def build(output_dir: Path = DEFAULT_OUTPUT, dry: bool = False,
         "not_implemented": ["Start-menu shortcut", "Add/Remove Programs entry",
                             "code signing", "auto-update (electron-builder, PKG-6)"],
     }
-    (output_dir / "INSTALL_MANIFEST.json").write_text(
+    (output_dir / MANIFEST_NAME).write_text(
         json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8",
         newline="\n")
     print(f"Installer staging complete: {output_dir.name}/ (run setup.bat)")
