@@ -46,8 +46,17 @@ bound by `@pytest.mark.parametrize("NAME", [...])` resolves like a constant
 for-loop, scoped to the decorated function. The RM-411 fault helper is ruled
 scoped by design (ALLOWLIST below). RM-880 (b) closed the `this_thread_only`
 late-thread gap: a thread a leftover thread starts after install gets the
-real function, by creator lineage. Still RM-880: the scope-aware alias pass
-(c), the tripwires (d).
+real function, by creator lineage. RM-880 (c) made the alias pass follow
+Python's scopes (`_Scopes`: a function-local `sp = mod.subprocess` no longer
+taints a sibling function's `sp = mod.helpers`, and a file-wide first binding
+no longer hides a later function's real alias) and read the walrus, tuple /
+list target, for / comprehension target (every module walked), `getattr(mod,
+'subprocess')` and `mod.__dict__['subprocess']` / `vars(mod)[...]` /
+`.__dict__.get(...)` forms, plus a parameter default (`def f(_sp=_sp)`). A
+bare shared-module name (`subprocess`) stays that module even where a scope
+binds it to a non-module (a parameter, a helper): conservative on purpose;
+bound to another shared module, it is that module. Still RM-880: the
+tripwires (d).
 """
 from __future__ import annotations
 
@@ -153,23 +162,30 @@ ALLOWLIST: dict[tuple[str, int], str] = {
 }
 
 
+def _import_bindings(node: ast.AST) -> dict[str, str]:
+    """The names one import statement binds to a shared stdlib module."""
+    out: dict[str, str] = {}
+    if isinstance(node, ast.Import):
+        for a in node.names:
+            if a.asname and a.name in _MODULE_TERMINAL:
+                out[a.asname] = _MODULE_TERMINAL[a.name]
+            elif not a.asname:
+                head = a.name.split(".")[0]
+                if head in _MODULE_TERMINAL:
+                    out[head] = _MODULE_TERMINAL[head]
+    elif isinstance(node, ast.ImportFrom):
+        for a in node.names:
+            term = _FROM_TERMINAL.get((node.module, a.name))
+            if term:
+                out[a.asname or a.name] = term
+    return out
+
+
 def _aliases(tree: ast.AST) -> dict[str, str]:
     """Bare names in this file bound to a shared stdlib module."""
     out: dict[str, str] = {}
     for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for a in node.names:
-                if a.asname and a.name in _MODULE_TERMINAL:
-                    out[a.asname] = _MODULE_TERMINAL[a.name]
-                elif not a.asname:
-                    head = a.name.split(".")[0]
-                    if head in _MODULE_TERMINAL:
-                        out[head] = _MODULE_TERMINAL[head]
-        elif isinstance(node, ast.ImportFrom):
-            for a in node.names:
-                term = _FROM_TERMINAL.get((node.module, a.name))
-                if term:
-                    out[a.asname or a.name] = term
+        out.update(_import_bindings(node))
     return out
 
 
@@ -257,67 +273,303 @@ def _sys_modules_entry(expr: ast.AST) -> str | None:
     return _MODULE_TERMINAL.get(key) if key else None
 
 
-def _terminal(expr: ast.AST, aliases: dict[str, str],
-              attr_aliases: dict[str, str]) -> str | None:
-    """The shared-module name EXPR resolves to, or None."""
+def _dict_owner(expr: ast.AST | None) -> ast.AST | None:
+    """`X.__dict__` / `vars(X)` -> X, else None."""
+    if isinstance(expr, ast.Attribute) and expr.attr == "__dict__":
+        return expr.value
+    if (isinstance(expr, ast.Call) and isinstance(expr.func, ast.Name)
+            and expr.func.id == "vars" and len(expr.args) == 1):
+        return expr.args[0]
+    return None
+
+
+def _attribute_read(expr: ast.AST) -> ast.Attribute | None:
+    """`getattr(X, 'a')`, `X.__dict__['a']`, `vars(X)['a']` and
+    `X.__dict__.get('a')` read X's attribute `a`: the `X.a` they stand for
+    (RM-880 (c)), else None."""
+    obj = name = None
+    if isinstance(expr, ast.Call) and expr.args:
+        f = expr.func
+        if (isinstance(f, ast.Name) and f.id == "getattr"
+                and len(expr.args) >= 2):
+            obj, name = expr.args[0], _str(expr.args[1])
+        elif isinstance(f, ast.Attribute) and f.attr == "get":
+            obj, name = _dict_owner(f.value), _str(expr.args[0])
+    elif isinstance(expr, ast.Subscript):
+        obj, name = _dict_owner(expr.value), _str(expr.slice)
+    if obj is None or name is None:
+        return None
+    return ast.Attribute(value=obj, attr=name, ctx=ast.Load())
+
+
+def _terminals(expr: ast.AST, resolve, attr_aliases: dict[str, str]
+               ) -> tuple[str, ...]:
+    """Every shared-module name EXPR can resolve to (a for-target over two
+    modules is both), in binding order; () = none. RESOLVE maps a Name node
+    to the modules it is bound to in its own scope: None = unbound in every
+    scope it can see, () = bound, to no module (`_Scopes.resolve`)."""
     entry = _sys_modules_entry(expr)
     if entry:
-        return entry
+        return (entry,)
+    if isinstance(expr, ast.NamedExpr):
+        return _terminals(expr.value, resolve, attr_aliases)
+    read = _attribute_read(expr)
+    if read is not None:
+        return _terminals(read, resolve, attr_aliases)
     if isinstance(expr, ast.Name):
-        if expr.id in aliases:
-            return aliases[expr.id]
-        return (expr.id if expr.id in SHARED_ATTRS and expr.id not in _QUALIFIED
-                else None)
+        found = resolve(expr)
+        if found:
+            return found
+        # A bare shared-module name stays that module even when the scope
+        # binds it to a non-module: conservative, as before RM-880 (c).
+        return ((expr.id,) if expr.id in SHARED_ATTRS
+                and expr.id not in _QUALIFIED else ())
     if isinstance(expr, ast.Attribute):
         if expr.attr in SHARED_ATTRS:
             parent = _QUALIFIED.get(expr.attr)
             if parent is None:
-                return expr.attr
+                return (expr.attr,)
             # RM-880: `x.path` is os.path only under an `os`.
-            if _terminal(expr.value, aliases, attr_aliases) == parent:
-                return expr.attr
+            if parent in _terminals(expr.value, resolve, attr_aliases):
+                return (expr.attr,)
+            return ()
+        term = attr_aliases.get(expr.attr)
+        return (term,) if term else ()
+    return ()
+
+
+_COMPREHENSIONS = (ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)
+
+
+class _Scope:
+    __slots__ = ("node", "parent", "locals", "globals", "nonlocals",
+                 "bindings")
+
+    def __init__(self, node: ast.AST, parent: "_Scope | None") -> None:
+        self.node = node
+        self.parent = parent
+        self.locals: set[str] = set()
+        self.globals: set[str] = set()
+        self.nonlocals: set[str] = set()
+        # name -> every shared module a binding of it stands for
+        self.bindings: dict[str, tuple[str, ...]] = {}
+
+
+class _Scopes:
+    """Python's name scopes over one parsed file, and the shared-module alias
+    variables bound in each (RM-815 file-wide; RM-880 (c) scope-aware).
+
+    A name bound anywhere in a function is local to it (unless `global` /
+    `nonlocal`), so a binding never leaks to a sibling function or to the
+    module; a free name resolves outward, skipping class bodies; a walrus in
+    a comprehension binds in the enclosing scope. Binding sites: imports,
+    `x = v`, `x: T = v`, `x := v`, tuple / list targets over a same-length
+    tuple / list value (pairwise), a `for` / comprehension target over a
+    literal tuple / list / set (every element), and a parameter default.
+    Within one scope a name keeps EVERY module any of its bindings stands
+    for (a may-alias union, so the order of bindings never hides one, and
+    the fixpoint only grows a finite set); a class body also reads the
+    enclosing scope's binding."""
+
+    def __init__(self, tree: ast.AST, attr_aliases: dict[str, str]) -> None:
+        self.module = _Scope(tree, None)
+        self.of: dict[int, _Scope] = {}
+        # (lineno, col, target Name node, values: ast nodes or terminals)
+        self.sites: list[tuple[int, int, ast.Name, list]] = []
+        self._visit(tree, self.module)
+        self._finish(self.module)
+        self._bind(attr_aliases)
+
+    # ------------------------------------------------------------ scopes
+
+    def _visit(self, node: ast.AST, scope: _Scope) -> None:
+        self.of[id(node)] = scope
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef,
+                             ast.Lambda)):
+            if not isinstance(node, ast.Lambda):
+                scope.locals.add(node.name)
+                for d in node.decorator_list:
+                    self._visit(d, scope)
+                if node.returns is not None:
+                    self._visit(node.returns, scope)
+            inner = _Scope(node, scope)
+            a = node.args
+            for d in a.defaults + [d for d in a.kw_defaults if d is not None]:
+                self._visit(d, scope)
+            for arg in (a.posonlyargs + a.args + a.kwonlyargs
+                        + [x for x in (a.vararg, a.kwarg) if x is not None]):
+                inner.locals.add(arg.arg)
+                self.of[id(arg)] = inner
+                if arg.annotation is not None:
+                    self._visit(arg.annotation, scope)
+            # A default is a binding site of its parameter (`def f(_sp=_sp)`),
+            # its value read in the enclosing scope.
+            positional = a.posonlyargs + a.args
+            for arg, d in (list(zip(positional[len(positional)
+                                               - len(a.defaults):],
+                                    a.defaults))
+                           + list(zip(a.kwonlyargs, a.kw_defaults))):
+                if d is not None:
+                    tgt = ast.copy_location(ast.Name(arg.arg, ast.Store()),
+                                            arg)
+                    self.of[id(tgt)] = inner
+                    self.sites.append((arg.lineno, arg.col_offset, tgt, [d]))
+            body = node.body if isinstance(node.body, list) else [node.body]
+            for b in body:
+                self._visit(b, inner)
+            self._finish(inner)
+            return
+        if isinstance(node, ast.ClassDef):
+            scope.locals.add(node.name)
+            for d in node.decorator_list + node.bases + [
+                    k.value for k in node.keywords]:
+                self._visit(d, scope)
+            inner = _Scope(node, scope)
+            for b in node.body:
+                self._visit(b, inner)
+            self._finish(inner)
+            return
+        if isinstance(node, _COMPREHENSIONS):
+            inner = _Scope(node, scope)
+            for i, gen in enumerate(node.generators):
+                # The first iterable is evaluated in the enclosing scope.
+                self._visit(gen.iter, scope if i == 0 else inner)
+                self._visit(gen.target, inner)
+                self._for_site(gen.target, gen.iter)
+                for cond in gen.ifs:
+                    self._visit(cond, inner)
+            elts = ([node.key, node.value] if isinstance(node, ast.DictComp)
+                    else [node.elt])
+            for e in elts:
+                self._visit(e, inner)
+            self._finish(inner)
+            return
+        if isinstance(node, ast.Global):
+            scope.globals.update(node.names)
+        elif isinstance(node, ast.Nonlocal):
+            scope.nonlocals.update(node.names)
+        elif isinstance(node, ast.Name) and isinstance(
+                node.ctx, (ast.Store, ast.Del)):
+            scope.locals.add(node.id)
+        elif isinstance(node, (ast.Import, ast.ImportFrom)):
+            for a in node.names:
+                if a.name != "*":
+                    scope.locals.add(a.asname or a.name.split(".")[0])
+            for name, term in _import_bindings(node).items():
+                tgt = ast.copy_location(ast.Name(name, ast.Store()), node)
+                self.of[id(tgt)] = scope
+                self.sites.append((node.lineno, node.col_offset, tgt, [term]))
+        elif isinstance(node, ast.ExceptHandler) and node.name:
+            scope.locals.add(node.name)
+        elif isinstance(node, ast.NamedExpr):
+            owner = scope
+            while isinstance(owner.node, _COMPREHENSIONS):
+                owner = owner.parent
+            owner.locals.add(node.target.id)
+            self.of[id(node.target)] = owner
+            self._pair(node.target, node.value)
+            self._visit(node.value, scope)
+            return
+        elif isinstance(node, (ast.Assign, ast.AnnAssign)):
+            if node.value is not None:
+                targets = (node.targets if isinstance(node, ast.Assign)
+                           else [node.target])
+                for t in targets:
+                    self._pair(t, node.value)
+        elif isinstance(node, (ast.For, ast.AsyncFor)):
+            self._for_site(node.target, node.iter)
+        for child in ast.iter_child_nodes(node):
+            self._visit(child, scope)
+
+    def _finish(self, scope: _Scope) -> None:
+        if scope.parent is not None:
+            self.module.locals.update(scope.globals)
+            scope.locals -= scope.globals | scope.nonlocals
+
+    def _pair(self, target: ast.AST, value: ast.AST) -> None:
+        if isinstance(target, ast.Name):
+            self.sites.append((target.lineno, target.col_offset, target,
+                               [value]))
+        elif (isinstance(target, (ast.Tuple, ast.List))
+              and isinstance(value, (ast.Tuple, ast.List))
+              and len(target.elts) == len(value.elts)
+              and not any(isinstance(e, ast.Starred)
+                          for e in target.elts + value.elts)):
+            for t, v in zip(target.elts, value.elts):
+                self._pair(t, v)
+
+    def _for_site(self, target: ast.AST, it: ast.AST) -> None:
+        if isinstance(target, ast.Name) and isinstance(
+                it, (ast.Tuple, ast.List, ast.Set)):
+            self.sites.append((target.lineno, target.col_offset, target,
+                               list(it.elts)))
+
+    # ------------------------------------------------------------ lookup
+
+    def lookup(self, name: str, scope: _Scope) -> _Scope | None:
+        """The scope NAME resolves to when read in SCOPE, or None. `global`
+        is the module, even past an enclosing function that binds the name;
+        `_finish` already dropped a `nonlocal` name from its scope's
+        locals."""
+        s: _Scope | None = scope
+        while s is not None:
+            if name in s.globals:
+                return self.module if name in self.module.locals else None
+            if name in s.locals:
+                return s
+            s = self._enclosing(s)
+        return None
+
+    @staticmethod
+    def _enclosing(scope: _Scope) -> _Scope | None:
+        """SCOPE's parent, skipping class bodies: a class body's names are
+        invisible to the scopes it encloses."""
+        s = scope.parent
+        while s is not None and s.parent is not None and isinstance(
+                s.node, ast.ClassDef):
+            s = s.parent
+        return s
+
+    def resolve(self, node: ast.Name) -> tuple[str, ...] | None:
+        owner = self.lookup(node.id, self.of.get(id(node), self.module))
+        if owner is None:
             return None
-        return attr_aliases.get(expr.attr)
-    return None
+        found = owner.bindings.get(node.id, ())
+        if isinstance(owner.node, ast.ClassDef):
+            # A class body reads its own namespace, then falls back outward
+            # (`sp = sp`, or a read before the class binds the name).
+            outer = self._enclosing(owner)
+            outer = self.lookup(node.id, outer) if outer else None
+            if outer is not None:
+                found = tuple(dict.fromkeys(
+                    found + outer.bindings.get(node.id, ())))
+        return found
 
-
-def _variable_aliases(tree: ast.AST, aliases: dict[str, str],
-                      attr_aliases: dict[str, str]) -> dict[str, str]:
-    """ALIASES plus every plain variable bound to a shared module
-    (`sp = mod.subprocess`, `b = sp`; RM-815), to a fixpoint. File-wide, not
-    scope-aware: a name's FIRST binding wins, so two bindings cannot
-    oscillate."""
-    out = dict(aliases)
-    changed = True
-    while changed:
-        changed = False
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Assign):
-                targets, value = node.targets, node.value
-            elif isinstance(node, ast.AnnAssign) and node.value is not None:
-                targets, value = [node.target], node.value
-            else:
-                continue
-            term = _terminal(value, out, attr_aliases)
-            if not term:
-                continue
-            for t in targets:
-                if isinstance(t, ast.Name) and t.id not in out:
-                    out[t.id] = term
+    def _bind(self, attr_aliases: dict[str, str]) -> None:
+        self.sites.sort(key=lambda s: (s[0], s[1]))
+        changed = True
+        while changed:
+            changed = False
+            for _line, _col, tgt, values in self.sites:
+                owner = self.lookup(tgt.id, self.of.get(id(tgt), self.module))
+                if owner is None:
+                    continue
+                have = owner.bindings.get(tgt.id, ())
+                terms = dict.fromkeys(have)
+                for v in values:
+                    found = ((v,) if isinstance(v, str)
+                             else _terminals(v, self.resolve, attr_aliases))
+                    terms.update(dict.fromkeys(found))
+                if len(terms) > len(have):
+                    owner.bindings[tgt.id] = tuple(terms)
                     changed = True
-    return out
 
 
-def _module_dict(expr: ast.AST | None, aliases: dict[str, str],
+def _module_dict(expr: ast.AST | None, resolve,
                  attr_aliases: dict[str, str]) -> ast.AST | None:
     """`X.__dict__` / `vars(X)` -> X when X is a shared module (RM-815)."""
-    obj = None
-    if isinstance(expr, ast.Attribute) and expr.attr == "__dict__":
-        obj = expr.value
-    elif (isinstance(expr, ast.Call) and isinstance(expr.func, ast.Name)
-          and expr.func.id == "vars" and len(expr.args) == 1):
-        obj = expr.args[0]
-    if obj is not None and _terminal(obj, aliases, attr_aliases):
+    obj = _dict_owner(expr)
+    if obj is not None and _terminals(obj, resolve, attr_aliases):
         return obj
     return None
 
@@ -419,7 +671,7 @@ def scan_source(src: str,
     if attr_aliases is None:
         attr_aliases = repo_module_aliases()
     tree = _normalise_sys(ast.parse(src))
-    aliases = _variable_aliases(tree, _aliases(tree), attr_aliases)
+    resolve = _Scopes(tree, attr_aliases).resolve
     loops = _loop_constants(tree)
     params = _param_constants(tree)
     hits: list[tuple[int, str]] = []
@@ -437,12 +689,13 @@ def scan_source(src: str,
 
     def obj_attr(obj: ast.AST, names: set[str] | None, line: int,
                  value: ast.AST | None) -> None:
-        term = _terminal(obj, aliases, attr_aliases)
-        if not term or _thread_scoped(value):
+        terms = _terminals(obj, resolve, attr_aliases)
+        if not terms or _thread_scoped(value):
             return
         if names is None:
             hits.append((line, f"{ast.unparse(obj)}.<non-literal name>"))
-        for name in sorted((names or set()) & SHARED_ATTRS[term]):
+        shared = set().union(*(SHARED_ATTRS[t] for t in terms))
+        for name in sorted((names or set()) & shared):
             hits.append((line, f"{ast.unparse(obj)}.{name}"))
 
     def dotted_target(dotted: str, line: int, value: ast.AST | None) -> None:
@@ -460,7 +713,7 @@ def scan_source(src: str,
             if name in _MODULE_TERMINAL:
                 hits.append((line, f"sys.modules[{name!r}]"))
             return
-        obj = _module_dict(mapping, aliases, attr_aliases)
+        obj = _module_dict(mapping, resolve, attr_aliases)
         if obj is not None:
             obj_attr(obj, names_of(key), line, value)
 
@@ -813,10 +1066,13 @@ def test_the_detector_passes_the_rm815_clean_forms():
     assert not wrong, wrong
 
 
-def test_an_alias_variable_rebound_twice_keeps_its_first_module():
-    # First binding wins, so two bindings of one name cannot oscillate.
+def test_an_alias_variable_rebound_twice_keeps_both_modules():
+    # Was first-binding-wins ([(3, "a.run")] only); RM-880 (c) keeps every
+    # module a name is bound to in its scope, a strict superset, because the
+    # first-in-source-order binding hid a later top-level rebinding (a
+    # verifier finding). The union only grows, so the fixpoint still ends.
     src = "a = subprocess\na = socket\na.run = f\na.socket = g\n"
-    assert scan_source(src) == [(3, "a.run")]
+    assert scan_source(src) == [(3, "a.run"), (4, "a.socket")]
 
 
 # RM-880 (a): the widened attribute set, one entry per attribute family, each
@@ -914,6 +1170,137 @@ def test_the_rm880_attribute_set_is_pinned():
     assert SHARED_ATTRS["shutil"] >= {"which"}
     assert SHARED_ATTRS["BaseServer"] >= {"serve_forever"}
     assert SHARED_ATTRS["SSLContext"] >= {"load_cert_chain"}
+
+
+# RM-880 (c): the alias pass follows Python's scopes (a function-local
+# binding never leaks to another function or to the module; a free name
+# resolves outward, skipping class bodies; `global` / `nonlocal` redirect),
+# and it reads the walrus, tuple, for-target, getattr and module-dict forms.
+_FLAGGED_RM880C = {
+    "walrus": [
+        "if (sp := mod.subprocess):\n    sp.run = f",
+        "(sp := subprocess)\nsp.Popen = f",
+        "monkeypatch.setattr((sp := mod.subprocess), 'run', f)",
+        # a walrus in a comprehension binds in the enclosing scope
+        "[(sp := mod.subprocess) for _ in x]\nsp.run = f",
+    ],
+    "tuple": [
+        "sp, x = mod.subprocess, 1\nsp.run = f",
+        "(a, b) = (os, subprocess)\nb.Popen = f",
+        "[s] = [socket]\nmonkeypatch.setattr(s, 'socket', f)",
+        "x, (y, sp) = 1, (2, subprocess)\nsp.run = f",
+    ],
+    "for-target": [
+        "for m in (subprocess, mod.subprocess):\n    m.run = f",
+        # every module the loop walks, not only the first
+        "for m in (subprocess, socket):\n    monkeypatch.setattr(m, 'socket', f)",
+        "[setattr(m, 'run', f) for m in [mod.subprocess]]",
+    ],
+    "getattr": [
+        "monkeypatch.setattr(getattr(mod, 'subprocess'), 'run', f)",
+        "sp = getattr(mod, 'subprocess')\nsp.Popen = f",
+        "getattr(mod, 'socket').socket = f",
+        "monkeypatch.setattr(getattr(mod, 'os').path, 'exists', f)",
+    ],
+    "module dict entry": [
+        "monkeypatch.setattr(mod.__dict__['subprocess'], 'run', f)",
+        "sp = vars(mod)['subprocess']\nsp.run = f",
+        "mod.__dict__.get('subprocess').Popen = f",
+    ],
+    "scope-aware": [
+        # the file-wide first binding (socket) used to hide this one
+        "def a():\n    sp = socket\ndef b():\n    sp = subprocess\n    sp.run = f",
+        "sp = mod.helpers\ndef b():\n    sp = mod.subprocess\n    sp.run = f",
+        "sp = mod.subprocess\ndef b():\n    sp.run = f",
+        "def outer():\n    sp = mod.subprocess\n    def inner():\n"
+        "        sp.run = f",
+        "def a():\n    global sp\n    sp = mod.subprocess\ndef b():\n"
+        "    sp.run = f",
+        "def outer():\n    sp = mod.helpers\n    def inner():\n"
+        "        nonlocal sp\n        sp = mod.subprocess\n    sp.run = f",
+        "def a():\n    import subprocess as sp\n    sp.run = f",
+        # `global` in a nested function is the module, never the enclosing
+        # function's own binding (verifier finding)
+        "def outer():\n    sp = mod.helpers\n    def inner():\n"
+        "        global sp\n        sp = mod.subprocess\nsp.run = f",
+        "sp = mod.subprocess\ndef outer():\n    sp = mod.helpers\n"
+        "    def inner():\n        global sp\n        sp.run = f",
+    ],
+    "same-scope rebinding": [
+        # a nested binding must not hide a later top-level one (verifier)
+        "if c:\n    sp = socket\nsp = subprocess\nsp.run = f",
+        "try:\n    sp = socket\nexcept Exception:\n    pass\n"
+        "sp = subprocess\nsp.run = f",
+        "def b():\n    if c:\n        sp = socket\n    sp = subprocess\n"
+        "    sp.run = f",
+        "for i in y:\n    sp = mod.socket\nsp = mod.subprocess\nsp.Popen = f",
+        # and the reverse order, which the first-binding rule always missed
+        "sp = socket\nif c:\n    sp = subprocess\nsp.run = f",
+    ],
+    "class body": [
+        # a class body falls back to the enclosing scope (verifier)
+        "sp = mod.subprocess\nclass C:\n    sp = sp\n    sp.run = f",
+        "sp = mod.subprocess\nclass C:\n    sp.run = f\n    sp = 1",
+        "sp = mod.subprocess\nclass C:\n    sp.run = f\n    import json as sp",
+    ],
+    "default parameter": [
+        # the fast-local idiom `def run(cmd, _sp=_sp)` (verifier finding)
+        "sp = mod.subprocess\ndef b(sp=sp):\n    sp.run = f",
+        "def b(x, sp=mod.subprocess, y=1):\n    sp.Popen = f",
+        "def b(*, sp=subprocess):\n    sp.run = f",
+        "f2 = lambda sp=subprocess: setattr(sp, 'run', f)",
+    ],
+}
+
+_CLEAN_RM880C = [
+    # the row's false positive: one name, a module in one function and a
+    # helper in another
+    "def a():\n    sp = mod.subprocess\n    sp.run(['x'])\n"
+    "def b():\n    sp = mod.helpers\n    sp.run = f",
+    "sp = mod.subprocess\ndef b(sp):\n    sp.run = f",
+    "sp = mod.subprocess\ndef b(sp=mod.helpers):\n    sp.run = f",
+    "def b(sp=mod.subprocess, *, x=mod.helpers):\n    x.run = f",
+    "sp = mod.subprocess\ndef b():\n    sp = mod.helpers\n    sp.run = f",
+    "def a():\n    sp = mod.subprocess\nsp.run = f",
+    "def a():\n    import subprocess as sp\nsp.run = f",
+    # a class body's names are not visible inside its methods
+    "class C:\n    sp = mod.subprocess\n    def m(self):\n        sp.run = f",
+    "sp = mod.subprocess\nf2 = lambda sp: setattr(sp, 'run', f)",
+    "for m in (mod.helpers,):\n    m.run = f",
+    "sp, x = mod.helpers, subprocess\nsp.run = f",
+    "if (sp := mod.helpers):\n    sp.run = f",
+    "[m.run for m in (subprocess,)]",
+    "monkeypatch.setattr(getattr(mod, 'helpers'), 'run', f)",
+    "monkeypatch.setattr(getattr(subprocess, 'run'), 'x', f)",
+    "monkeypatch.setattr(mod.__dict__['helpers'], 'run', f)",
+    "monkeypatch.setattr(getattr(mod, 'subprocess'), 'TimeoutExpired', f)",
+    "monkeypatch.setattr(getattr(mod, 'subprocess'), 'run',"
+    " this_thread_only(f, real))",
+]
+
+
+@pytest.mark.parametrize("form", sorted(_FLAGGED_RM880C))
+def test_the_detector_flags_each_rm880c_alias_form(form):
+    missed = [s for s in _FLAGGED_RM880C[form] if not scan_source(s)]
+    assert not missed, missed
+
+
+def test_the_detector_passes_the_rm880c_clean_forms():
+    wrong = [(s, scan_source(s)) for s in _CLEAN_RM880C if scan_source(s)]
+    assert not wrong, wrong
+
+
+def test_a_for_target_over_two_modules_reads_both():
+    src = "for m in (subprocess, socket):\n    m.run = f\n    m.socket = g\n"
+    assert scan_source(src) == [(2, "m.run"), (3, "m.socket")]
+
+
+def test_a_bare_shared_module_name_stays_flagged_when_shadowed():
+    # Conservative on purpose: a local named `subprocess` bound to a
+    # non-module is still read as the module, exactly as before RM-880 (c).
+    assert scan_source("def t(subprocess):\n    subprocess.run = f\n")
+    assert scan_source("def t():\n    subprocess = mk()\n"
+                       "    subprocess.run = f\n")
 
 
 def test_the_rm411_ruling_still_holds():
