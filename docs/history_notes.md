@@ -41,6 +41,16 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-25e - session 137: worktree triage (in-tree + the 11 out-of-root lift worktrees, operator-approved), MAIN FIX 1930 (two scheduled tasks read back 0); push hold ON (nothing pushed)
+
+- **Operator steers:** "look at the worktree's and do what is needed"; ASKS 25 APPROVED in chat ("Remove all 11 (Recommended)"); the push hold was NOT lifted.
+- **I1 MAIN FIX 1930 (RM-905, LEDGER 1911):** `3fff974a6` + reply archive `a595e4db7`; RC-CostHealthWatchdog (purposes +11, idle-floor baseline) and RC-ReplayRosterPull (404 = skip + stale list; 403 = one BLOCKED line, exit 0 only for the acked key fingerprint) read back Last Result 0; verifier V2 CONFIRM (a count PARTIAL only). Replays still wait on the production key.
+- **W1 + R1 (LEDGER 1912):** removed agent-ad9cd227 (icon cache moved to main's gitignored `data/tft/icon_cache`), the T13 worktree (branch kept), the empty agent-a3a84bc63e49cf58c dir, and the 11 lift worktrees + branches (bundle `ops/runtime/branch_bundles/s137-lift-worktrees.bundle`, verify exit 0); verifier V1 CONFIRM 8 of 8. `git worktree list` = 9 (main, drain, 7 lanes).
+- **Do NOT redo:** the worktree removals (restore from the bundles if needed), the RM-905 fix.
+- **Next:** unchanged from s136 - full QA of the ow-electron port + a packaged, live-updatable app; then TFT-HUD-01. Operator ask 38: the now-empty out-of-root lift-worktree parent folder.
+
+---
+
 # 2026-10-25d - session 136: C1 red fixed, two live TFT games QA'd, nine TFT / overlay fixes, HUD reader spec; push hold ON (nothing pushed)
 
 - **Operator steers:** push hold stays ON (commit locally only); "dont have the panels fade as much when the data is out of date"; ruling "I want to do what they are doing; not utilize their software as a dependency" (no Overwolf data dependency); board push not needed this session; NEXT = packaged, live-updatable app (below).
