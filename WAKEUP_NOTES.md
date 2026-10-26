@@ -6,6 +6,16 @@
 
 ---
 
+# 2026-10-25e - session 137: worktree triage (in-tree + the 11 out-of-root lift worktrees, operator-approved), MAIN FIX 1930 (two scheduled tasks read back 0); push hold ON (nothing pushed)
+
+- **Operator steers:** "look at the worktree's and do what is needed"; ASKS 25 APPROVED in chat ("Remove all 11 (Recommended)"); the push hold was NOT lifted.
+- **I1 MAIN FIX 1930 (RM-905, LEDGER 1911):** `3fff974a6` + reply archive `a595e4db7`; RC-CostHealthWatchdog (purposes +11, idle-floor baseline) and RC-ReplayRosterPull (404 = skip + stale list; 403 = one BLOCKED line, exit 0 only for the acked key fingerprint) read back Last Result 0; verifier V2 CONFIRM (a count PARTIAL only). Replays still wait on the production key.
+- **W1 + R1 (LEDGER 1912):** removed agent-ad9cd227 (icon cache moved to main's gitignored `data/tft/icon_cache`), the T13 worktree (branch kept), the empty agent-a3a84bc63e49cf58c dir, and the 11 lift worktrees + branches (bundle `ops/runtime/branch_bundles/s137-lift-worktrees.bundle`, verify exit 0); verifier V1 CONFIRM 8 of 8. `git worktree list` = 9 (main, drain, 7 lanes).
+- **Do NOT redo:** the worktree removals (restore from the bundles if needed), the RM-905 fix.
+- **Next:** unchanged from s136 - full QA of the ow-electron port + a packaged, live-updatable app; then TFT-HUD-01. Operator ask 38: the now-empty out-of-root lift-worktree parent folder.
+
+---
+
 # 2026-10-25d - session 136: C1 red fixed, two live TFT games QA'd, nine TFT / overlay fixes, HUD reader spec; push hold ON (nothing pushed)
 
 - **Operator steers:** push hold stays ON (commit locally only); "dont have the panels fade as much when the data is out of date"; ruling "I want to do what they are doing; not utilize their software as a dependency" (no Overwolf data dependency); board push not needed this session; NEXT = packaged, live-updatable app (below).
@@ -32,15 +42,3 @@
 - **ASKS 37 + PUSH (LEDGER 1904-1905):** a distinct adjudicator ruled the scanner's own line pragma inside `03bdc92f3` via the id-scrub filter-repo method (52 commits rewritten, map `docs/_archive/2026-10/s135-cred-pragma-commit-map.txt`; backup tag `archive/s135-pre-credpragma-main` + bundle, never push). Pushed `df946b00d...3ad31ec6d` with a lease, protection toggled and restored (read back), riot.txt live 200 / 37 B / a2c52fbb; CI push 40230806851 (cancelled by the hand-off push), dispatch 40230847617.
 - **Do NOT redo:** the landings, the scrub, the backfills (re-dry plans 0), the GH1 rebuild, the pragma rewrite, the push.
 - **Next:** push hold ON; read dispatch 40230847617; next TFT game: confirm N13 (RC follows YOU) + stage / level / gold non-empty; QA match 20261025-131926; N9 PASSIVE-mode boxes + overlay toggle live check; remove the 10 locked worktrees.
-
----
-
-# 2026-10-25b - session 134: scoped TFT session - standalone TFT client, Augur engine, RM-615 / RM-616 / RM-699, three 1st-place QA reports
-
-- **Operator steers:** TFT only today; plays without interacting, wants terse output and a TFT QA after each match; "keep updates push commits locally for now" (NO push this session); "global frozen edit allowed" (session-scoped, re-confirm next session); engine name "Augur" provisional ("Hexwright" rejected; alternatives Rollwise, Tempo).
-- **Shipped on LOCAL main (LEDGER 1861-1881, mergers M1a-M1c, each verifier-gated):** F1 read-back of dispatch `40189033501` (2 RM-816 rename cases -> RM-885 `4113b0039`; RM-886 filed); LT-01 / LT-02 (L4-L9) / LT-04 `a64f90c67`, LT-03 `2f254da18` (LT-02r residual filed); RM-292 (b) + (d); T1; P0 standalone TFT client `852b85e4b..8f9b531f4` (live PASS); overlay toggle `d93834b8e..06777e6ab`; TFT program spec + ADR-018 `5004e7986` (`docs/TFT_PROGRAM.md`); M1c: RM-699 hot-reload, TFT-06, TFT-03, RM-616 + QA D4 / D5 / N4, SCOUT, TFT-13 (engine `tft/engine`), RM-615 stage gate, guard fixes `ff711999b` / `4e764a167` / `e9753d41c`; M1d (LEDGER 1882, merger terminated by the usage limit after landing): S18-COACH, TFT-01, GATE `abff87f9d..04a39e5a0`, gated suite 1 failed (socket-abort flake, file 76/76 alone) / 44755 passed.
-- **Live:** QA of matches 1-3 (`ops/runtime/tft_qa/20261025-070350`, `-081234`, `-085349`; all 1st place); LCU TFT inventory, restart and Anthropic-400 diagnoses (`ops/runtime/tft_qa/`). D1 fixed: the RC Anthropic key was not workspace-scoped (every call 400'd); a new workspace key is in `API-Key-Claude.txt`, RC pid 20788, vision bounced 20036 -> 27176.
-- **Not landed at /done (branches carried in the hand-off; builders INTERRUPTED by the usage limit, work saved in their worktrees):** P0-F `s134-tft-board-panel` 67fbc3ca0 (verified x3, ff-ready), seven s134 headless lanes (local commits only), N8 / N9 / TFT-02 / TFT-04 / TFT-08 / TFT-09 builders.
-- **Blocked:** GH1 rewrite of the 3 origin web-UI riot.txt commits halted at the scope gate (kit plan = 20 commits / 1401 SHAs, approved 3); the Riot key 403s on TFT-Match-V1 / TFT-League-V1 (operator act).
-- **Do NOT redo:** everything above; the next push MERGES origin/main (never rebase / reset local main) and never deletes `riot.txt`.
-- **Next:** land P0-F + the lane commits, resume the interrupted builders, then push (merge origin/main first, `fleet_gitlock`, `tools/bot_merge_check.py`).
