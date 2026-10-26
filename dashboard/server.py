@@ -142,6 +142,23 @@ def control_peer_allowed(peer, local=None, environ=None) -> bool:
       opt-in to readmit a LAN range).
 
     Everything else - the LAN, link-local, an unparseable peer - is False.
+
+    Limits, by design (know them before relying on this gate):
+
+    * ``RC_DASH_CONTROL_NETS`` matches per address family AFTER a v4-mapped
+      peer is unwrapped: ``0.0.0.0/0`` admits EVERY IPv4 peer (the whole
+      LAN and anything routed in), while ``::/0`` admits every IPv6 peer
+      and NO IPv4 peer. Name the narrowest range that works.
+    * The tailnet rule is range-only: any overlay network numbering from
+      100.64.0.0/10 or fd7a:115c:a1e0::/48 on an interface of this machine
+      is admitted, not just Tailscale. It also relies on the OS dropping a
+      packet that arrives on the LAN interface addressed to the tailnet IP
+      (Windows' default strong-host receive model does; enabling
+      weakhostreceive or IP forwarding on that interface weakens it).
+    * A local reverse proxy or tunnel (Tailscale Funnel / serve, ngrok, an
+      SSH -R forward) connects from loopback, so every remote caller it
+      forwards looks like loopback and is admitted. Run none in front of
+      :8888, or set RC_DASH_TOKEN (which then gates every peer).
     """
     ip = _peer_ip(peer)
     if ip is None:

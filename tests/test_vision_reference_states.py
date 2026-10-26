@@ -184,7 +184,9 @@ class ReferencePostRouteTests(unittest.TestCase):
                         "ok": True, "state": state, "width": 2560, "height": 1440,
                         "config_key": "cfgX"}):
             h = _FakeHandler("/api/vision-reference")
-            vc._serve_reference_post(h, {"state": "self_dead", "path": "C:/x.png"})
+            # PKG-5: the path must sit inside data/vision_calib_reference;
+            # "C:/x.png" is now refused (tests/test_dashboard_bind_profile_pkg.py).
+            vc._serve_reference_post(h, {"state": "self_dead", "path": "x.png"})
         code, payload, _ = h.sent
         self.assertEqual(code, 200)
         self.assertTrue(payload["ok"])
