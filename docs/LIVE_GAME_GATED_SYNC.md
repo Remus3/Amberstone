@@ -2318,6 +2318,55 @@ stays playable beside it, so record which set the game ran).
   odds at L1-L3 and L10-L11, which come from the CommunityDragon map22 drop rates, not the client.
   `CONSTANTS_SET_VERIFIED` stays False until both are read. Close by pinning each measured value with
   a test, or recording which surface (client or game data) is authoritative for the level.
+  **LT-02r READY (lane 9, s144 cycle 5, PREP only, no game up; NOT ticked).** One read-only
+  command indexes what is already on disk and checks a read: `python tools/gated_tft_lt02r.py
+  [--json] [--check-read <L>=<a>/<b>/<c>/<d>/<e> ...]` (reads the main checkout's
+  `ops/runtime/tft_qa/` recorder dirs; prints file names, levels and game times only, never a pixel,
+  a name, a game id or a machine path - the root prints as `<main>/ops/runtime/tft_qa`). Fields: `constants.unpinned_levels` / `unpinned_rows_pct` (the levels of
+  `TIER_ODDS` outside `TIER_ODDS_VERIFIED_LEVELS`), `level_verdicts` (`on_disk_labelled` = a
+  `hud_labels_*.csv` row reads that level - the level box only, never the odds bar; `on_disk_candidate` = frames with NO level labelled
+  (level box not read) before the first L2 frame, for L1, or the last game / vision frames of a match whose `eog_raw.json`
+  `localPlayer.boardPieces` held 10+ units - an inference, an extra-slot augment also gives 10;
+  `needs_game`), `matches[]`, `pool_sizes_verdict`, `roster`, `checks[]`. Exit 0 report / every
+  check equal, 1 a check differs or does not sum to 100, 2 bad arguments.
+  Predicate, stated before any read: level L drains iff ONE `game_*` or `vision_*` frame of a real
+  Set 18 game shows the HUD level box at L (L10: the max state, no x/y and Buy XP greyed) and a
+  legible odds bar in the SAME frame, two independent readers (author plus blind, as TFT-06) agree on
+  the five percents, and they sum to 100; then `--check-read L=<row>` decides the pin - equal: add L
+  to `TIER_ODDS_VERIFIED_LEVELS`; different: replace the row (the live client wins, as LT-02's L7).
+  Anything less (a candidate frame nobody read, one reader, a bar under an overlay) is not a drain.
+  Evidence contract: value = the five percents; source = the match dir and frame file; timestamp =
+  the frame's `gt` / `el`, the stage label in the frame, the queue from `MATCH_START.json`; predicate
+  = this paragraph.
+  SUBSTITUTION check (answer it in the tick line): `TIER_ODDS`, the CommunityDragon drop-rate table
+  and `--check-read` are the compute half; only the CLIENT's odds bar is evidence. A `dash_*` frame
+  shows RC's own rendering of `TIER_ODDS` and never counts; neither does a recorder QA_REPORT line
+  (another agent's read, `feedback_subagent_inference_vs_evidence`) until a reader re-reads the frame.
+  Idle baseline (2026-10-27 local, no game, lane/gated HEAD): 7 recorder dirs (2026-10-25);
+  unpinned L1, L2, L3, L10, L11 -> L1 `on_disk_candidate` (3 + 6 early frames in 20261025-153652 /
+  -162857), L2 and L3 `on_disk_labelled` (153652: vision_0004/0005 at L2, 0006/0007 at L3; 162857:
+  vision_0007/0008 at L2, 0009 at L3), L10 `on_disk_candidate` (boards of 10 in 081234, 085349,
+  104400), L11 `needs_game`; exit 0.
+  Class-1 finding (the answer is partly on disk; recorded, not ticked): the session 134 match-2 report
+  `ops/runtime/tft_qa/20261025-081234/QA_REPORT.md` section 4 already reads L3 = 75/25/0/0/0
+  (game_0003) and L10 = 5/10/20/40/25 (game_0071; the L10 max state runs game_0071..0080), both equal
+  to `TIER_ODDS`, and L4-L9 identical to match 1. So "never seen in client" (this row and the
+  `tft/tft_data.py` comments) should read "reported seen (QA_REPORT, not yet re-read)" for L3 and
+  L10: their drain is a frame re-read under the predicate above, no new game. The same section
+  observed a level cap of 10 (Buy XP greyed at L10) in ONE normal game, played under the 1-1 Ashe
+  modifier, so L11 likely needs an augment that raises the cap; one observation, not a measured rule.
+  L11 stays game-data-only until such a game is seen.
+  Pool sizes: `pool_sizes_verdict` is `no_client_surface` - the HUD and the shop never show pool
+  sizes, so no live game can read them and "read in client" can never close that half as written.
+  Reclassification PROPOSAL (for a human; not a move): move the pool-size half to "Not actually
+  live-gated" with game data (the CommunityDragon map22 Set 18 data) as its authority, and restate
+  `CONSTANTS_SET_VERIFIED` so it can flip on client-read odds plus game-data pools. UNITS_PER_COST
+  (headless, compute half): the LT-03 live team-planner roster crossed with the Set 18 extract's
+  costs gives {1: 14, 2: 13, 3: 14, 4: 14, 5: 10} against the Set 14 carry-over {1: 13, 2: 13, 3: 13,
+  4: 12, 5: 8} (differs at 1, 3, 4, 5); whether every planner unit is in the shop pool is not shown
+  by the planner, so this is a candidate, not a pin. Reverses if: `TIER_ODDS_VERIFIED_LEVELS`,
+  `POOL_SIZES_FROM_SET` or `UNITS_PER_COST` move, a recorder dir gains a labelled L1 / L10 / L11
+  frame, or a Set 18 surface that shows pool sizes is found.
 - **LT-03 CLOSED 2026-10-25** (`2f254da18`, LEDGER 1864: 65 Set 18 codes read with GETs only in a
   live Set 18 lobby; `scripts/discover_champion_codes.py` is passive by default) (RM-840, Set 18
   team-planner codes) With the LCU agent running in a Set 18 lobby, capture
