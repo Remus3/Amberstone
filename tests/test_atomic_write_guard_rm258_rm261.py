@@ -91,6 +91,11 @@ _RUNTIME_TOOLS = frozenset({
     # RC-InboxResponder tick: a torn read fails closed and the responder
     # answers nothing until a human repairs the file.
     "tools/inbox_responder.py",
+    # The SessionStart / UserPromptSubmit hook (and an import of the
+    # long-lived inbox poller and responder runner): the per-session
+    # reported record is read back on every fire, and a torn read fails
+    # open and re-prints the inbox block.
+    "tools/rc_facts.py",
 })
 
 # RM-258 residual (s144): tools/ is IN scope by default. Out of scope are the
@@ -146,7 +151,6 @@ _TOOLS_UNCLASSIFIED = frozenset({
     "tools/moon_sync_poller.py",
     "tools/package_portable.py",
     "tools/phase_watcher.py",
-    "tools/rc_facts.py",
     "tools/regen_ranged_marksman_builds_item213.py",
     "tools/repair_mojibake.py",
     "tools/repair_spend_ledger.py",
@@ -522,6 +526,7 @@ def test_scope_keeps_runtime_tools_and_drops_generators():
     assert _in_scope("tools/ds_feed_watch.py")
     assert _in_scope("tools/session_checklist.py")
     assert _in_scope("tools/inbox_responder.py")
+    assert _in_scope("tools/rc_facts.py")
     assert not _in_scope("tools/daemon_slayer_extract.py")
     assert not _in_scope("ops/fleet_kit/fleet_headless.py")
     assert _in_scope("coach_integration/_coach.py")

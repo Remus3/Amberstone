@@ -40,6 +40,27 @@ from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parent.parent
 
+# Where `core` is imported from. Separate from _ROOT on purpose: tests point
+# _ROOT at a tmp tree for the runtime files, and the writer must still find the
+# repo's own core/polled_json.py.
+_CODE_ROOT = _ROOT
+
+
+def _atomic_write_bytes(path: Path, data: bytes) -> None:
+    """RM-258: every writer here goes through core.polled_json (per-writer
+    scratch name, fsync, bounded WinError 5 retry, scratch removed on failure,
+    bytes verbatim so no CRLF). Imported lazily: this module is a hook run as a
+    script with tools/ as sys.path[0], and nothing may run at import. A missing
+    core is raised as OSError so each caller's existing fail-open path holds."""
+    if str(_CODE_ROOT) not in sys.path:
+        sys.path.insert(0, str(_CODE_ROOT))
+    try:
+        from core.polled_json import atomic_write_bytes
+    except ImportError as exc:
+        raise OSError(f"core.polled_json unavailable: {exc}") from exc
+    atomic_write_bytes(path, data)
+
+
 # Captured at MODULE scope, deliberately. The import happens at process start,
 # so this measures the same window the harness's hook timeout does, and a name
 # defined only under `__main__` would raise NameError when `_save_reported` is
@@ -1645,10 +1666,7 @@ def mark_inbox_seen() -> int:
         )
         return 3
 
-    seen_path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = seen_path.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps({"seen": names}, indent=2), encoding="utf-8")
-    tmp.replace(seen_path)
+    _atomic_write_bytes(seen_path, json.dumps({"seen": names}, indent=2).encode("utf-8"))
     print(f"recorded {len(names)} inbox note(s) as seen -> {seen_path}")
     return 0
 
@@ -1723,12 +1741,10 @@ def _save_reported(session: str, keys: set[str]) -> None:
             ordered = sorted(sessions.items(), key=lambda kv: str((kv[1] or {}).get("at") or ""))
             for dead, _row in ordered[: len(sessions) - _REPORTED_MAX_SIDS]:
                 sessions.pop(dead, None)
-        path = _reported_path()
-        path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_suffix(f".json.tmp.{os.getpid()}")
-        tmp.write_text(json.dumps({"schema": 1, "sessions": sessions}, indent=2),
-                       encoding="utf-8")
-        tmp.replace(path)
+        _atomic_write_bytes(
+            _reported_path(),
+            json.dumps({"schema": 1, "sessions": sessions}, indent=2).encode("utf-8"),
+        )
     except OSError:
         pass  # fail open - the entries re-print next fire
 
@@ -1759,12 +1775,9 @@ def _write_inbox_report(unread: list[str], withdrawn: list[str]) -> bool:
     try:
         if path.is_file() and path.read_bytes() == data:
             return True
-        path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_suffix(f".txt.tmp.{os.getpid()}")
-        # write_bytes, not write_text: text mode turns LF into CRLF on Windows,
-        # which moves the bytes every run and defeats the unchanged check.
-        tmp.write_bytes(data)
-        tmp.replace(path)
+        # Bytes, not text: text mode turns LF into CRLF on Windows, which
+        # moves the bytes every run and defeats the unchanged check.
+        _atomic_write_bytes(path, data)
         return True
     except OSError:
         return False
@@ -2150,9 +2163,7 @@ def _trim_invocation_log(p: Path) -> None:
         ]
         if len(lines) <= _LOG_KEEP:
             return
-        tmp = p.with_suffix(".jsonl.tmp")
-        tmp.write_text("\n".join(lines[-_LOG_KEEP:]) + "\n", encoding="utf-8", newline="\n")
-        tmp.replace(p)
+        _atomic_write_bytes(p, ("\n".join(lines[-_LOG_KEEP:]) + "\n").encode("utf-8"))
     except Exception:  # noqa: BLE001 - rotation is best-effort; never break a fire
         pass
 

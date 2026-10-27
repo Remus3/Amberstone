@@ -43,7 +43,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import tools.rc_facts as rc_facts  # noqa: E402
-from tests._replace_faults import scoped_path_fault  # noqa: E402
+from tests._replace_faults import scoped_fs_fault  # noqa: E402
 
 _PY = sys.executable
 _REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -658,13 +658,14 @@ def test_reported_write_failure_falls_open(tmp_path, monkeypatch):
     root = _repo(tmp_path, monkeypatch)
     _note(root, "a.md", "one")
 
-    def boom(real, self, _target):
+    def boom(real, _src, _dst, *a, **kw):
         raise PermissionError("denied")
 
-    # RM-464: Path.replace is a CLASS attribute; scope the deny to tmp_path so
-    # every other replace in the process keeps working while it is armed.
+    # RM-258: the writers go through core.polled_json, which renames with
+    # os.replace (and retries it), so the deny sits at that boundary, scoped
+    # to tmp_path so every other replace in the process keeps working.
     buf = _capture(monkeypatch)
-    with scoped_path_fault("replace", tmp_path, boom):
+    with scoped_fs_fault("replace", tmp_path, boom):
         rc_facts.report_inbox_only(session="s")
     assert "a.md" in buf.getvalue()
     monkeypatch.undo()
@@ -770,6 +771,11 @@ def test_cli_with_a_session_id_creates_both_files(tmp_path):
     (tmp_path / "tools").mkdir()
     copied = tmp_path / "tools" / "rc_facts.py"
     copied.write_bytes((_REPO_ROOT / "tools" / "rc_facts.py").read_bytes())
+    # RM-258: both writers import core.polled_json from the copy's own tree,
+    # so the copy carries that dependency the way the real checkout does.
+    (tmp_path / "core").mkdir()
+    for name in ("__init__.py", "polled_json.py"):
+        (tmp_path / "core" / name).write_bytes((_REPO_ROOT / "core" / name).read_bytes())
     inbox = tmp_path / "moon_sync_inbox"
     inbox.mkdir()
     for i in range(12):
