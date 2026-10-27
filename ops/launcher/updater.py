@@ -1810,7 +1810,8 @@ def finish(root: Path, *, now: Callable[[], float] = time.time,
         _write_state(root, dict(state, pending=None, last={
             "kind": kind, "version": version, "status": "lost", "request_id": rid,
             "at": utc_now()}))
-        return FinishResult("lost", kind, version, restart, None, before)
+        return FinishResult("lost", kind, version, restart, None, before,
+                            _num_or_none(pending.get("requested_at")))
     try:
         result = _read_json(result_path)
     except (OSError, ValueError):
@@ -1829,6 +1830,10 @@ def finish(root: Path, *, now: Callable[[], float] = time.time,
             pass
     summary = {"phase": result.get("phase"), "rollback": result.get("rollback"),
                "error": str(result.get("error"))[:240] if result.get("error") else None}
+    try:   # when the worker finished (PKG-6b R1: the quit window ends here)
+        summary["result_at"] = result_path.stat().st_mtime
+    except OSError:
+        pass
     if result.get("ok") is True:
         status = "ok"
         if kind == "rollback":
@@ -1845,9 +1850,13 @@ def finish(root: Path, *, now: Callable[[], float] = time.time,
         status = "failed"
     _write_state(root, dict(state, pending=None, last=dict(
         summary, kind=kind, version=version, status=status, request_id=rid, at=utc_now())))
-    req_at = pending.get("requested_at")
     return FinishResult(status, kind, version, restart, summary, before,
-                        float(req_at) if isinstance(req_at, (int, float)) else None)
+                        _num_or_none(pending.get("requested_at")))
+
+
+def _num_or_none(value: Any) -> Optional[float]:
+    return float(value) if isinstance(value, (int, float)) and not isinstance(value, bool) \
+        else None
 
 
 def _deploy_backup_dir(root: Path, request_id: str) -> Optional[Path]:
@@ -1914,7 +1923,7 @@ def _interrupted(root: Path, state: Dict[str, Any], pending: Dict[str, Any],
     _write_state(root, dict(state, pending=None, last=dict(
         salvaged, kind=kind, version=version, status="interrupted", at=utc_now())))
     return FinishResult("interrupted", kind, version, pending.get("restart"), salvaged,
-                        pending.get("run_id_before"))
+                        pending.get("run_id_before"), _num_or_none(pending.get("requested_at")))
 
 
 def _verified_backup(root: Path, rec: Dict[str, Any]) -> Path:

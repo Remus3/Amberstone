@@ -733,6 +733,17 @@ Found by the PKG-6 builder and verifier; not fixed by PKG-6.
   away by finish() and never holds a quit; F7 hot_reload needs a watcher
   written in the CURRENT run (else a supervised restart) and, when its
   status says it fired for these files, a NEW run.
+- WA18 (s143 fix round 3, FIXED): R1 a quit during a deploy (the host's
+  stop is recorded first in ops/runtime/launcher/host_stops.json) never marks
+  the release bad - it is retried; R2 `refused:open-failed` is not ours, and
+  any owed restart skipped as not ours reports `applied-unrestarted` (Shell
+  menu: "restart Amberstone to finish it"); R3 host deferrals back off 30 s
+  doubling to 10 min; R4 a recover owes restarts for the rolled-back files
+  and waits for the supervisor to take its rollback; R5 apply defers on the
+  shell's LCU-phase gate too (/api/state); R6 the shell re-evaluates its quit
+  grace while waiting; R7 a recover that cannot complete backs off and,
+  after 3 tries, shows "update recovery needs attention"; a DEFERRED
+  hot_reload status is not quiet (verify waits).
 - WA17 (open, recorded): the `quiet` hot_reload case (watcher fresh, status
   not rewritten) still verifies on the old run: core/hot_reload.py writes
   nothing when it ignores an unloaded module, so a watcher thread wedged

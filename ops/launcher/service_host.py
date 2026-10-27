@@ -188,6 +188,11 @@ _TERMINATE_WAIT_MS = 5000
 # bound - past the worker's own kill - and returns to stop_grace_s once the
 # file is gone.
 DEPLOY_STOP_GRACE_S = 150.0
+# PKG-6b fix round 3 (R1): every stop that asks the supervisor to shut down
+# (it then stops main.py, failing any deploy's heartbeat wait) is recorded
+# FIRST in ops/runtime/launcher/host_stops.json, so the update cycle can
+# tell a deploy that failed because the app was quit from a bad release.
+HOST_STOP_HISTORY = 16
 
 
 def utc_now() -> str:
@@ -557,6 +562,23 @@ def write_shutdown_request(runtime_dir: Path, reason: str) -> Path:
                              "requested_by": "ops/launcher/service_host.py",
                              "requested_at": utc_now()})
     return path
+
+
+def record_host_stop(runtime_dir: Path, reason: str) -> None:
+    """Append {at (wall epoch), reason} to runtime_dir/launcher/host_stops.json
+    (atomic, last HOST_STOP_HISTORY). Never raises: a stop must not fail on
+    its own bookkeeping."""
+    path = Path(runtime_dir) / "launcher" / "host_stops.json"
+    try:
+        try:
+            doc = json.loads(path.read_text(encoding="utf-8"))
+            stops = [x for x in doc.get("stops") or [] if isinstance(x, dict)]
+        except (OSError, ValueError, AttributeError):
+            stops = []
+        stops.append({"at": time.time(), "reason": str(reason)[:80]})
+        atomic_write_json(path, {"schema": 1, "stops": stops[-HOST_STOP_HISTORY:]})
+    except OSError:
+        pass
 
 
 # ------------------------------------------------------- command channel
@@ -963,8 +985,9 @@ def terminate_job_listener(job: Any, port: int, *,
     host's job object). The check runs on the OPENED handle, so the process
     it proves is the one terminated (a recycled pid cannot be hit). Never by
     image name, never outside the job. Outcome: terminated | not-running |
-    refused:no-job | refused:not-in-job | refused:open-failed |
-    refused:unsupported."""
+    refused:no-job | refused:not-in-job | refused:open-failed (cannot even
+    be opened: not a process of this host) | refused:terminate-failed (in
+    the job but not killable: a real failure) | refused:unsupported."""
     handle = getattr(job, "handle", None) if job is not None else None
     if not handle:
         return "refused:no-job"
@@ -989,7 +1012,9 @@ def terminate_job_listener(job: Any, port: int, *,
                 outcomes.append("refused:not-in-job")
                 continue
             if not k32.TerminateProcess(h, 1):
-                outcomes.append("refused:open-failed")
+                # In OUR job yet not killable: a real failure (fix round 3,
+                # R2), unlike open-failed, which only a foreign process gives.
+                outcomes.append("refused:terminate-failed")
                 continue
             k32.WaitForSingleObject(h, _TERMINATE_WAIT_MS)
             outcomes.append("terminated")
@@ -1529,6 +1554,7 @@ class ServiceHost:
             rt.restart_records = [record]
             graceful = False
             if rt.spec.role == "supervisor":
+                record_host_stop(self.runtime_dir, f"restart:{record['id']}")   # R1
                 try:
                     rt.restart_request = write_shutdown_request(
                         self.runtime_dir, f"restart:{record['id']}")
@@ -1617,6 +1643,7 @@ class ServiceHost:
     def _stop_owned(self, reason: str) -> None:
         request: Optional[Path] = None
         sup = next((rt for rt in self._services if rt.spec.role == "supervisor"), None)
+        record_host_stop(self.runtime_dir, reason)   # R1: before main.py is stopped
         if sup is not None and sup.alive():
             try:
                 request = write_shutdown_request(self.runtime_dir, reason)

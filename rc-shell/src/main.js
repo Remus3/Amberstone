@@ -187,6 +187,8 @@ let backendResumeTimer = null; // first resume check after launch (F1).
 let backendLastResumeMs = null; // when the last `resume` child started.
 let backendResumeQueued = null; // B5: {restartsSent} waiting for the running child.
 let backendRespawnCheck = false; // B3: a tasklist game check before a respawn is running.
+let backendDeferral = { count: 0, notBeforeMs: 0 }; // R3: host-deferral backoff.
+let backendNotice = null; // R2 / R7: a plain-words state shown in the Shell menu.
 let lastUpdateIdle = false; // F5: the last /api/state was an idle moment (bu.idleForUpdate).
 let hostRespawning = false; // a respawn for a backend update is in flight.
 let shellQuitting = false; // before-quit ran: no respawn, no new cycle.
@@ -458,6 +460,7 @@ function buildMenu() {
             maybeRelaunchForUpdate();
           },
         },
+        ...(bu.menuNotice(backendNotice) ? [bu.menuNotice(backendNotice)] : []),
         { type: "separator" },
         {
           label: "Reload",
@@ -2128,13 +2131,22 @@ function stopServiceHost(reason) {
       }
       done = true;
       if (timer) {
-        clearTimeout(timer);
+        clearInterval(timer);
       }
       hostStopped = true;
       resolve();
     };
     child.once("exit", finish);
-    timer = setTimeout(() => {
+    const begun = Date.now();
+    // R6: re-evaluated every second - a deploy that starts during the grace
+    // stretches it to bu.DEPLOY_STOP_GRACE_MS (never mid-deploy, never forever).
+    timer = setInterval(() => {
+      if (!bu.stopGraceExpired({ elapsedMs: Date.now() - begun, baseMs: lch.HOST_STOP_GRACE_MS,
+        deployInFlight: deployIsInFlight() })) {
+        return;
+      }
+      clearInterval(timer);
+      timer = null;
       console.log("[rc-shell] service host did not stop in time; ending it");
       try {
         child.kill();
@@ -2142,7 +2154,7 @@ function stopServiceHost(reason) {
         // already gone
       }
       setTimeout(finish, 2000); // never hold the quit forever.
-    }, bu.hostStopGraceMs(lch.HOST_STOP_GRACE_MS, deployIsInFlight())); // F2: never mid-deploy
+    }, 1000);
     try {
       child.stdin.write("stop\n");
       child.stdin.end();
@@ -2475,7 +2487,7 @@ function runBackendCycle() {
 function runBackendResume(restartsSent) {
   if (backendCycleChild) {
     // B5: never dropped - run once the current child ends (a sent check wins).
-    backendResumeQueued = { restartsSent: !!restartsSent || !!(backendResumeQueued && backendResumeQueued.restartsSent) };
+    backendResumeQueued = bu.queueResume(backendResumeQueued, !!restartsSent);
     return;
   }
   const plan = backendPlan("resume", restartsSent);
@@ -2521,15 +2533,21 @@ function runBackendChild(plan, onResult) {
           onResult(result);
         }
         console.log("[rc-shell] " + bu.logLine(result) + " (" + plan.mode + ")");
+        backendDeferral = bu.nextDeferral(backendDeferral.count, result, Date.now()); // R3
+        const notice = bu.friendlyNotice(result); // R2 / R7: plain words, never a raw error
+        if (notice !== backendNotice && (notice || result.status === "applied")) {
+          backendNotice = notice;
+          buildMenu();
+        }
         backendOwed = bu.mergeOwed(backendOwed, result.actions);
         if (result.actions.relaunchShell) {
           console.log("[rc-shell] the backend update named shell code: it installs through the shell updater");
         }
         applyOwedRestarts();
-        if (backendResumeQueued && !backendCycleChild && !shellQuitting) {
-          const q = backendResumeQueued; // B5: the resume asked for while this ran
-          backendResumeQueued = null;
-          runBackendResume(q.restartsSent);
+        const q = bu.takeQueued(backendResumeQueued, !!backendCycleChild || shellQuitting);
+        backendResumeQueued = q.queued;
+        if (q.run) {
+          runBackendResume(q.restartsSent); // B5: the resume asked for while this ran
         }
       }
     );
@@ -2560,24 +2578,26 @@ function runBackendChild(plan, onResult) {
 // restarts are health-checked by `resume --restarts-sent` (F3), which
 // recovers when one does not come back.
 function applyOwedRestarts() {
-  if (backendOwed.respawnHost && !hostChild && hostEnabled && !hostRespawning && !shellQuitting) {
-    // The host is already down (a respawn that failed, then a recover put the
-    // old code back): start it, nothing runs to interrupt.
+  const d = bu.owedDecision({
+    owed: backendOwed,
+    inGame: !lastUpdateIdle,
+    stateFresh: pollFresh,
+    hostRunning: !!hostChild,
+    hostEnabled,
+    blocked: hostRespawning || shellQuitting || backendRespawnCheck,
+    nowMs: Date.now(),
+    notBeforeMs: backendDeferral.notBeforeMs, // R3: no spawn while a deferral backs off
+  });
+  if (d.act === "start-host") {
+    // B1: the host is already down (a respawn that failed, then a recover put
+    // the old code back): start it - nothing runs to interrupt - and check it.
     backendOwed = Object.assign(bu.emptyOwed(), { relaunchShell: backendOwed.relaunchShell });
     hostStopPromise = null;
     hostStopped = false;
     hostExitCode = null;
     startServiceHost();
-    setTimeout(() => runBackendResume(true), 5000); // B1: health-check it, recover if it dies
-    return;
-  }
-  const d = bu.owedDecision({
-    owed: backendOwed,
-    inGame: !lastUpdateIdle,
-    stateFresh: pollFresh,
-    hostRunning: !!hostChild && !hostRespawning && !shellQuitting,
-  });
-  if (d.act === "restart-services") {
+    setTimeout(() => runBackendResume(true), 5000);
+  } else if (d.act === "restart-services") {
     const names = backendOwed.hostServices;
     const line = bu.restartCommandLine(names, "shell-" + Date.now());
     backendOwed = Object.assign(bu.emptyOwed(), { relaunchShell: backendOwed.relaunchShell });
@@ -2590,7 +2610,7 @@ function applyOwedRestarts() {
       }
     }
     setTimeout(() => runBackendResume(true), 5000); // health-check them (F3)
-  } else if (d.act === "respawn-host" && !backendRespawnCheck) {
+  } else if (d.act === "respawn-host") {
     // B3: /api/state said idle; the process list must agree before the host
     // (and every service with it) goes down.
     backendRespawnCheck = true;
@@ -2598,7 +2618,9 @@ function applyOwedRestarts() {
       backendRespawnCheck = false;
       if (running || shellQuitting) {
         console.log("[rc-shell] host respawn waits: a game process is running");
-        return; // still owed; the next poll tries again
+        // R3: the gates disagree - back off instead of a tasklist per poll.
+        backendDeferral = bu.nextDeferral(backendDeferral.count, { code: "host_deferred" }, Date.now());
+        return; // still owed
       }
       backendOwed = Object.assign(bu.emptyOwed(), { relaunchShell: backendOwed.relaunchShell });
       respawnServiceHost("backend update", () => runBackendResume(true));

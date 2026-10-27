@@ -57,6 +57,9 @@ const LIVE_GAME_FLAGS = Object.freeze(["has_game", "aram_mode", "arena_mode", "t
 // Fix round 2 (B3): the process-level check before a host respawn. Mirrors
 // ops/launcher/updater.py GAME_PROCESS_NAMES (lower-case image names).
 const GAME_PROCESS_NAMES = Object.freeze(["league of legends.exe", "tftclient-win64-shipping.exe"]);
+// Fix round 3 (R3): consecutive host deferrals back off 30 s, 60 s, ... 10 min.
+const DEFERRAL_BASE_MS = 30000;
+const DEFERRAL_MAX_MS = 10 * 60 * 1000;
 const MAX_OUTPUT_BYTES = 1024 * 1024;
 const CHECK_DEFAULTS = Object.freeze({
   initialDelayMs: 120000, // let the services settle before the first check
@@ -73,7 +76,7 @@ const SLUG_RE = /^[A-Za-z0-9_.-]{1,100}$/;
 const VERSION_RE = /^[0-9A-Za-z.+-]{1,64}$/;
 const STATUSES = Object.freeze([
   "up-to-date", "noop", "applied", "pending", "interrupted", "busy", "owed", "skipped", "idle",
-  "deferred", "refused", "failed", "lost", "recovered", "error",
+  "applied-unrestarted", "deferred", "refused", "failed", "lost", "recovered", "error",
 ]);
 // Results that carry restarts to perform: a verified deploy, restarts still
 // owed, and a recover (the old code must be loaded again).
@@ -249,6 +252,8 @@ function recordsFrom(cycleText, stateText) {
     // B4: the owed restarts were sent and their check ran (it may have
     // deferred); the check is retried on the interval while idle.
     owedSent: isObj(c.owed) && typeof c.owed.sent_at === "string" && c.owed.sent_at !== "",
+    // R7: a stuck recover's next try (the cycle's retry_after, epoch s).
+    retryAfterMs: typeof c.retry_after === "number" && Number.isFinite(c.retry_after) ? c.retry_after * 1000 : null,
     pending: isObj(st.pending),
     recovering: isObj(st.recovering),
     phase: typeof c.phase === "string" ? ascii(c.phase, 32) : null,
@@ -271,6 +276,9 @@ function resumeDue(opts) {
   const first = typeof o.lastResumeMs !== "number" || !Number.isFinite(o.lastResumeMs);
   const due = first || o.nowMs - o.lastResumeMs >= RESUME_INTERVAL_MS;
   if (urgent) {
+    if (typeof r.retryAfterMs === "number" && o.nowMs < r.retryAfterMs) {
+      return { run: false, reason: "backoff", restartsSent: false };
+    }
     return due ? { run: true, reason: "record", restartsSent: false }
       : { run: false, reason: "not-due", restartsSent: false };
   }
@@ -415,24 +423,93 @@ function owesHostWork(owed) {
 }
 
 // What to do with the owed restarts now. opts: owed, inGame, stateFresh,
-// hostRunning. act: "none" | "wait" | "respawn-host" | "restart-services".
+// hostRunning, hostEnabled (a host was planned this launch), blocked (a
+// respawn or the quit is in progress), nowMs, notBeforeMs (R3 backoff).
+// act: "none" | "wait" | "start-host" | "respawn-host" | "restart-services";
+// thenCheck = run `resume --restarts-sent` afterwards (F3 / B1).
 function owedDecision(opts) {
   const o = opts && typeof opts === "object" ? opts : {};
+  const wait = (reason) => ({ act: "wait", reason, thenCheck: false });
   if (!owesHostWork(o.owed)) {
-    return { act: "none", reason: "nothing-owed" };
+    return { act: "none", reason: "nothing-owed", thenCheck: false };
+  }
+  if (o.blocked === true) {
+    return wait("busy");
   }
   if (o.hostRunning !== true) {
-    return { act: "wait", reason: "no-host" };
+    // B1: the host is already down (a respawn that died): start it - nothing
+    // runs to interrupt - and health-check it.
+    return o.owed.respawnHost === true && o.hostEnabled === true
+      ? { act: "start-host", reason: "host-down", thenCheck: true } : wait("no-host");
+  }
+  if (typeof o.notBeforeMs === "number" && typeof o.nowMs === "number" && o.nowMs < o.notBeforeMs) {
+    return wait("backoff");
   }
   if (o.stateFresh !== true) {
-    return { act: "wait", reason: "state-unknown" };
+    return wait("state-unknown");
   }
   if (o.inGame !== false) {
-    return { act: "wait", reason: "game-live" };
+    return wait("game-live");
   }
   return o.owed.respawnHost === true
-    ? { act: "respawn-host", reason: "idle" }
-    : { act: "restart-services", reason: "idle" };
+    ? { act: "respawn-host", reason: "idle", thenCheck: true }
+    : { act: "restart-services", reason: "idle", thenCheck: true };
+}
+
+// R3: the backoff after `count` consecutive host deferrals.
+function deferralBackoffMs(count) {
+  if (!Number.isInteger(count) || count <= 0) {
+    return 0;
+  }
+  return Math.min(DEFERRAL_BASE_MS * Math.pow(2, count - 1), DEFERRAL_MAX_MS);
+}
+
+// R3: the deferral state after a cycle result: a host deferral counts up and
+// sets the next allowed restart time; anything else resets it.
+function nextDeferral(count, result, nowMs) {
+  const r = result && typeof result === "object" ? result : {};
+  if (r.code === "host_deferred") {
+    const n = (Number.isInteger(count) && count > 0 ? count : 0) + 1;
+    return { count: n, notBeforeMs: nowMs + deferralBackoffMs(n) };
+  }
+  return { count: 0, notBeforeMs: 0 };
+}
+
+// B5: a resume asked for while a child runs is queued; a sent check wins.
+function queueResume(queued, restartsSent) {
+  return { restartsSent: restartsSent === true || !!(queued && queued.restartsSent === true) };
+}
+
+function takeQueued(queued, inFlight) {
+  if (!queued || inFlight === true) {
+    return { run: false, restartsSent: false, queued: queued || null };
+  }
+  return { run: true, restartsSent: queued.restartsSent === true, queued: null };
+}
+
+// R2 / R7: the states the operator must act on, in plain words (never a
+// raw error); null otherwise.
+function friendlyNotice(result) {
+  const r = result && typeof result === "object" ? result : {};
+  if (r.status === "applied-unrestarted") {
+    return "Backend update" + (r.version ? " " + r.version : "") +
+      " installed - restart Amberstone to finish it";
+  }
+  if (r.code === "recovery_attention") {
+    return "Backend update recovery needs attention - see ops/runtime/logs/update_cycle.log";
+  }
+  return null;
+}
+
+function menuNotice(notice) {
+  return typeof notice === "string" && notice ? { label: ascii(notice, 120), enabled: false } : null;
+}
+
+// R6: has the quit's wait for the host run out? Re-evaluated while waiting,
+// so a deploy that starts during the grace extends it.
+function stopGraceExpired(opts) {
+  const o = opts && typeof opts === "object" ? opts : {};
+  return o.elapsedMs >= hostStopGraceMs(o.baseMs, o.deployInFlight === true);
 }
 
 // The host's stdin command line (ASCII JSON + LF), or null when invalid.
@@ -494,6 +571,13 @@ module.exports = {
   mergeOwed,
   owesHostWork,
   owedDecision,
+  deferralBackoffMs,
+  nextDeferral,
+  queueResume,
+  takeQueued,
+  friendlyNotice,
+  menuNotice,
+  stopGraceExpired,
   restartCommandLine,
   logLine,
 };

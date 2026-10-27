@@ -205,7 +205,7 @@ test("mergeOwed: restarts accumulate; a respawn absorbs the service list", () =>
 
 test("owedDecision: owed restarts wait for an idle, fresh state and a running host", () => {
   const owed = { hostServices: ["vision"], respawnHost: false, relaunchShell: false };
-  const idle = { owed, inGame: false, stateFresh: true, hostRunning: true };
+  const idle = { owed, inGame: false, stateFresh: true, hostRunning: true, hostEnabled: false };
   assert.strictEqual(bu.owedDecision(idle).act, "restart-services");
   assert.strictEqual(bu.owedDecision(Object.assign({}, idle, { inGame: true })).act, "wait");
   assert.strictEqual(bu.owedDecision(Object.assign({}, idle, { stateFresh: false })).act, "wait");
@@ -310,9 +310,9 @@ test("F1 recordsFrom: what an earlier cycle left on disk", () => {
   const cyc = JSON.stringify({ verify: { version: "1.1.0" }, owed: null, phase: "verifying" });
   const st = JSON.stringify({ pending: null, recovering: { version: "1.1.0" } });
   assert.deepStrictEqual(bu.recordsFrom(cyc, st),
-    { verify: true, owed: false, owedSent: false, pending: false, recovering: true, phase: "verifying" });
+    { verify: true, owed: false, owedSent: false, retryAfterMs: null, pending: false, recovering: true, phase: "verifying" });
   assert.deepStrictEqual(bu.recordsFrom("garbage", null),
-    { verify: false, owed: false, owedSent: false, pending: false, recovering: false, phase: null });
+    { verify: false, owed: false, owedSent: false, retryAfterMs: null, pending: false, recovering: false, phase: null });
 });
 
 test("F1 resumeDue: a verify / pending / recovering record resumes on its interval, any state", () => {
@@ -362,7 +362,8 @@ test("main.js F1/F2/F5/F6 wiring", () => {
   assert.ok(fnBody("maybeRunBackendCycle").includes("!lastUpdateIdle"), "cycles use the strict gate");
   assert.ok(fnBody("applyOwedRestarts").includes("!lastUpdateIdle"), "restarts use the strict gate");
   assert.ok(fnBody("applyOwedRestarts").includes("runBackendResume(true)"), "restarts are health-checked (F3)");
-  assert.ok(fnBody("stopServiceHost").includes("bu.hostStopGraceMs("), "quit grace stretches under a deploy (F2)");
+  assert.ok(fnBody("stopServiceHost").includes("bu.stopGraceExpired("),
+    "quit grace stretches under a deploy, re-evaluated while waiting (F2, R6)");
 });
 
 
@@ -430,17 +431,78 @@ test("B4 resumeDue: a SENT owed check is retried on the interval, only when idle
   assert.strictEqual(bu.recordsFrom(JSON.stringify({ owed: { sent_at: null } }), st).owedSent, false);
 });
 
-test("main.js fix round 2 wiring (B1, B3, B4, B5)", () => {
-  const owed = fnBody("applyOwedRestarts");
-  const dead = owed.slice(0, owed.indexOf("bu.owedDecision("));
-  assert.ok(dead.includes("startServiceHost()") && dead.includes("runBackendResume(true)"),
-    "B1: a host started for an owed respawn is health-checked");
-  assert.ok(owed.includes("checkGameProcess("), "B3: a respawn waits for the process-level game check");
-  assert.ok(fnBody("maybeResumeBackend").includes("idle:"), "B4: the sent check retries when idle");
-  assert.ok(fnBody("maybeResumeBackend").includes("d.restartsSent"), "B4: retried as a restart check");
-  const resume = fnBody("runBackendResume");
-  assert.ok(resume.includes("backendResumeQueued"), "B5: a resume during a running child is queued");
-  assert.ok(fnBody("runBackendChild").includes("backendResumeQueued"), "B5: run when the child ends");
-  const chk = fnBody("checkGameProcess");
-  assert.ok(chk.includes('"tasklist"') && chk.includes("windowsHide: true") && chk.includes("bu.gameInTasklist("));
+// ---- fix round 3 (behaviour through exported functions; R8 replaces the
+// round-2 source-string wiring test) -------------------------------------------
+
+const OWED_SVC = { hostServices: ["vision"], respawnHost: false, relaunchShell: false };
+const OWED_HOST = { hostServices: [], respawnHost: true, relaunchShell: false };
+const IDLE = { inGame: false, stateFresh: true, hostRunning: true, hostEnabled: true, nowMs: 1000 };
+
+test("B1/R8 owedDecision: an owed respawn with the host already down starts it - no idle gate", () => {
+  const d = bu.owedDecision(Object.assign({}, IDLE, { owed: OWED_HOST, hostRunning: false, inGame: true, stateFresh: false }));
+  assert.strictEqual(d.act, "start-host");
+  assert.strictEqual(d.thenCheck, true, "then health-checked (resume --restarts-sent)");
+  assert.strictEqual(bu.owedDecision(Object.assign({}, IDLE, { owed: OWED_HOST, hostRunning: false, hostEnabled: false })).act,
+    "wait", "no host was ever planned: nothing to start");
+  assert.strictEqual(bu.owedDecision(Object.assign({}, IDLE, { owed: OWED_HOST, blocked: true })).act, "wait");
+  assert.strictEqual(bu.owedDecision(Object.assign({}, IDLE, { owed: OWED_HOST })).thenCheck, true);
+  assert.strictEqual(bu.owedDecision(Object.assign({}, IDLE, { owed: OWED_SVC })).thenCheck, true);
+});
+
+test("R3 owedDecision + deferralBackoffMs: consecutive host deferrals back off, capped at 10 min", () => {
+  assert.strictEqual(bu.deferralBackoffMs(0), 0);
+  assert.strictEqual(bu.deferralBackoffMs(1), 30000);
+  assert.strictEqual(bu.deferralBackoffMs(2), 60000);
+  assert.strictEqual(bu.deferralBackoffMs(50), 600000);
+  const held = bu.owedDecision(Object.assign({}, IDLE, { owed: OWED_SVC, notBeforeMs: 1000 + 30000 }));
+  assert.deepStrictEqual([held.act, held.reason], ["wait", "backoff"]);
+  assert.strictEqual(bu.owedDecision(Object.assign({}, IDLE, { owed: OWED_SVC, notBeforeMs: 1000 })).act,
+    "restart-services");
+  assert.deepStrictEqual(bu.nextDeferral(0, { code: "host_deferred" }, 5000), { count: 1, notBeforeMs: 35000 });
+  assert.deepStrictEqual(bu.nextDeferral(3, { code: "host_deferred" }, 0), { count: 4, notBeforeMs: 240000 });
+  assert.deepStrictEqual(bu.nextDeferral(3, { code: null, status: "applied" }, 0), { count: 0, notBeforeMs: 0 });
+});
+
+test("B5/R8 queueResume / takeQueued: a resume asked for during a child is kept, a sent check wins", () => {
+  let q = bu.queueResume(null, false);
+  q = bu.queueResume(q, true);
+  q = bu.queueResume(q, false);
+  assert.deepStrictEqual(q, { restartsSent: true });
+  assert.deepStrictEqual(bu.takeQueued(q, true), { run: false, restartsSent: false, queued: q }, "still busy");
+  assert.deepStrictEqual(bu.takeQueued(q, false), { run: true, restartsSent: true, queued: null });
+  assert.deepStrictEqual(bu.takeQueued(null, false), { run: false, restartsSent: false, queued: null });
+});
+
+test("R2/R7 friendlyNotice: plain words for the states the operator must act on, never raw errors", () => {
+  const unrestarted = bu.parseCycleOutput(out({ ok: true, status: "applied-unrestarted", version: "1.2.0",
+    detail: "installed; restart Amberstone to finish the update - not ours to restart: ds (refused:open-failed)" }), 0);
+  assert.strictEqual(unrestarted.status, "applied-unrestarted");
+  assert.strictEqual(unrestarted.ok, true);
+  assert.strictEqual(bu.friendlyNotice(unrestarted), "Backend update 1.2.0 installed - restart Amberstone to finish it");
+  const attention = bu.parseCycleOutput(out({ ok: false, status: "failed", code: "recovery_attention",
+    detail: "completing the recover failed (OSError); next try in 240 s" }), 1);
+  assert.strictEqual(bu.friendlyNotice(attention),
+    "Backend update recovery needs attention - see ops/runtime/logs/update_cycle.log");
+  for (const r of [{ status: "applied" }, { status: "error", code: "bad-output" }, null]) {
+    assert.strictEqual(bu.friendlyNotice(r), null);
+  }
+  assert.deepStrictEqual(bu.menuNotice("x"), { label: "x", enabled: false });
+  assert.strictEqual(bu.menuNotice(null), null);
+});
+
+test("R7 resumeDue honours the cycle's retry_after backoff for a stuck recover", () => {
+  const cyc = JSON.stringify({ retry_after: 2000 });
+  const st = JSON.stringify({ recovering: { version: "1.1.0" } });
+  const rec = bu.recordsFrom(cyc, st);
+  assert.strictEqual(rec.retryAfterMs, 2000000);
+  assert.deepStrictEqual(bu.resumeDue({ records: rec, lastResumeMs: null, nowMs: 1999999 }).reason, "backoff");
+  assert.strictEqual(bu.resumeDue({ records: rec, lastResumeMs: null, nowMs: 2000000 }).run, true);
+});
+
+test("R6 stopGraceExpired: re-evaluated while waiting - a deploy that appears extends the grace", () => {
+  const base = 25000;
+  assert.strictEqual(bu.stopGraceExpired({ elapsedMs: 24999, baseMs: base, deployInFlight: false }), false);
+  assert.strictEqual(bu.stopGraceExpired({ elapsedMs: 25000, baseMs: base, deployInFlight: false }), true);
+  assert.strictEqual(bu.stopGraceExpired({ elapsedMs: 26000, baseMs: base, deployInFlight: true }), false);
+  assert.strictEqual(bu.stopGraceExpired({ elapsedMs: bu.DEPLOY_STOP_GRACE_MS, baseMs: base, deployInFlight: true }), true);
 });

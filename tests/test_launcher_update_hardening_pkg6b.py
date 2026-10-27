@@ -788,8 +788,8 @@ def test_b6_a_service_the_host_does_not_own_is_skipped_never_failed(tmp_path, mo
     assert uc.services_state(root, owed)["vision"]["skip"] == "refused:not-in-job"
     res = _resume(root, clock, lambda o: uc.services_state(root, dict(o, at_epoch=1.8e9)),
                   restarts_sent=True, health_timeout_s=60)
-    assert res.status == "applied", res.to_dict()
-    assert "not ours" in res.detail
+    assert res.status == "applied-unrestarted", res.to_dict()   # fix round 3 (R2)
+    assert "not ours" in res.detail and res.exit_code == 0
     assert "1.1.0" not in uc.read_cycle(root)["bad_versions"]
     assert up.installed_version(root) == "1.1.0"
 
@@ -884,3 +884,223 @@ def test_b9_a_deploying_left_next_to_its_result_is_cleaned(tmp_path):
         {"ok": False, "phase": "health_check", "rollback": True}), "ascii")
     assert up.finish(root).status == "failed"
     assert not dep.exists()
+
+
+# =============================================== fix round 3 (R1-R7, F7 DEFERRED)
+
+
+def _failing_after_quit(root, clock, *, quit=True):
+    """The injected sleep: the host's quit lands while the worker runs; the
+    supervisor stopped main.py, so the worker's heartbeat wait failed and it
+    rolled back (ops/rc_transactional_deploy.py:860-874)."""
+    def sleep(seconds):
+        clock.t += seconds
+        d = root / "ops" / "runtime" / "deploy_requests"
+        for req in sorted(d.glob("*.json")):
+            if quit:
+                sh.record_host_stop(root / "ops" / "runtime", "quit")
+            out = root / "ops" / "runtime" / "deploy_results"
+            out.mkdir(parents=True, exist_ok=True)
+            (out / f"{req.stem}.json").write_text(json.dumps(
+                {"ok": False, "phase": "health_check", "rollback": True}), "ascii")
+            req.unlink()
+    return sleep
+
+
+def test_r1_a_quit_during_the_deploy_never_marks_the_release_bad(tmp_path):
+    root, src = _setup(tmp_path)
+    clock = Clock()
+    res = _cycle(root, src, clock, _failing_after_quit(root, clock), Script(clock, lambda t: sample()))
+    assert res.status == "interrupted" and res.exit_code == 0, res.to_dict()
+    assert uc.read_cycle(root)["bad_versions"] == {}
+    res = _cycle(root, src, clock, Sim(root, clock), Script(clock, lambda t: sample("r1")))
+    assert res.status == "applied", "the next idle cycle retries the release"
+
+
+def test_r1_a_genuine_failure_with_no_quit_is_still_bad(tmp_path):
+    root, src = _setup(tmp_path)
+    clock = Clock()
+    res = _cycle(root, src, clock, _failing_after_quit(root, clock, quit=False),
+                 Script(clock, lambda t: sample()))
+    assert res.status == "failed"
+    assert "1.1.0" in uc.read_cycle(root)["bad_versions"]
+
+
+def test_r1_a_quit_before_the_deploy_window_does_not_excuse_it(tmp_path):
+    root, src = _setup(tmp_path)
+    sh.record_host_stop(root / "ops" / "runtime", "an older quit")
+    marks = json.loads((root / "ops" / "runtime" / "launcher" / "host_stops.json").read_text())
+    marks["stops"][0]["at"] -= 3600
+    (root / "ops" / "runtime" / "launcher" / "host_stops.json").write_text(json.dumps(marks))
+    clock = Clock()
+    res = _cycle(root, src, clock, _failing_after_quit(root, clock, quit=False),
+                 Script(clock, lambda t: sample()))
+    assert res.status == "failed" and "1.1.0" in uc.read_cycle(root)["bad_versions"]
+
+
+def test_r1_an_interrupted_deploy_after_a_quit_recovers_without_a_bad_mark(tmp_path):
+    root, src = _setup(tmp_path)
+    clock = Clock()
+    wall = [1_000_000.0]
+
+    def quit_mid_deploy(seconds):
+        clock.t += seconds
+        wall[0] += seconds
+        d = root / "ops" / "runtime" / "deploy_requests"
+        for req in sorted(d.glob("*.json")):
+            sh.record_host_stop(root / "ops" / "runtime", "quit")
+            _half_deploy(root, type("R", (), {"request_id": req.stem, "request_path": req})())
+    # The host marks its stop on the real wall clock, like apply's request
+    # time; only the boot uptime (staleness) is injected here.
+    res = _cycle(root, src, clock, quit_mid_deploy, Script(clock, lambda t: sample("r1")),
+                 uptime=lambda: wall[0], finish_timeout_s=30)
+    assert res.status == "pending"
+    wall[0] += up.DEPLOYING_STALE_S + 60
+    res = uc.resume_cycle(root, clock=clock, sleep=quit_mid_deploy,
+                          uptime=lambda: wall[0], health=Script(clock, lambda t: sample("r1")),
+                          serving=lambda: True, supervisor_alive=lambda: True, finish_timeout_s=30)
+    assert res.status == "recovered", res.to_dict()
+    assert uc.read_cycle(root)["bad_versions"] == {}, "a quit is not a bad release"
+
+
+def test_r1_the_host_records_its_stop_before_it_asks_the_supervisor(tmp_path, monkeypatch):
+    root = make_host_root(tmp_path)
+    clock = HostClock()
+    host = make_host(root, make_config(grace=1.0), popen=FakePopen(clock=clock),
+                     job=FakeJob([]), clock=clock)
+    host.start()
+    marks = root / "ops" / "runtime" / "launcher" / "host_stops.json"
+    seen = []
+    real = sh.write_shutdown_request
+
+    def spy(runtime_dir, reason):
+        seen.append(marks.is_file())
+        return real(runtime_dir, reason)
+    monkeypatch.setattr(sh, "write_shutdown_request", spy)
+    host.stop("quit")
+    assert seen == [True], "the marker exists before the shutdown request"
+    doc = json.loads(marks.read_text(encoding="ascii"))
+    assert doc["stops"][-1]["reason"] == "quit"
+    assert abs(doc["stops"][-1]["at"] - time.time()) < 60
+
+
+def test_r1_the_host_mark_list_is_bounded(tmp_path):
+    rt = tmp_path / "rt"
+    for i in range(sh.HOST_STOP_HISTORY + 5):
+        sh.record_host_stop(rt, f"r{i}")
+    doc = json.loads((rt / "launcher" / "host_stops.json").read_text(encoding="ascii"))
+    assert len(doc["stops"]) == sh.HOST_STOP_HISTORY
+    assert doc["stops"][-1]["reason"] == f"r{sh.HOST_STOP_HISTORY + 4}"
+
+
+def test_r2_open_failed_outside_the_job_is_not_ours(tmp_path):
+    root, _src, clock = _owed(tmp_path)
+    _commands_status(root, "refused:open-failed")
+    owed = dict(uc.read_cycle(root)["owed"], at_epoch=1.8e9)
+    assert uc.services_state(root, owed)["vision"]["skip"] == "refused:open-failed"
+    assert "refused:terminate-failed" not in uc.NOT_OURS, "in the job but unkillable = a failure"
+
+
+def test_r2_attach_mode_refusals_are_unrestarted_not_verified(tmp_path):
+    root, _src, clock = _owed(tmp_path)
+    _commands_status(root, "refused:not-owned")
+    res = _resume(root, clock, lambda o: uc.services_state(root, dict(o, at_epoch=1.8e9)),
+                  restarts_sent=True)
+    assert res.status == "applied-unrestarted", res.to_dict()
+    assert "restart" in res.detail.lower()
+    assert uc.read_cycle(root)["bad_versions"] == {}
+
+
+LCU_FILES = {"core/a.py": b"A = 2\n", "web/js/main.js": b"// v1\n", "data/x.json": b"{}\n",
+             "tools/lcu_agent.py": b"L = 1\n"}
+
+
+def test_r4_a_recover_owes_restarts_for_the_rolled_back_files(tmp_path):
+    root, src = _setup(tmp_path, files=LCU_FILES)
+    clock = Clock()
+    res = _cycle(root, src, clock, Sim(root, clock), Script(clock, lambda t: sample("r2", ready=False)),
+                 health_timeout_s=60)
+    assert res.status == "recovered", res.to_dict()
+    assert res.restart["host_services"] == ["lcu_agent"], \
+        "lcu_agent may hold the rolled-back code: it restarts on the restored files"
+
+
+def test_r4_recover_waits_for_the_supervisor_to_take_its_rollback(tmp_path):
+    root, src = _setup(tmp_path)
+    clock = Clock()
+    consumed = []
+    seen = []
+
+    def sim(seconds):
+        Sim(root, clock)(seconds)
+        reqs = sorted((root / "ops" / "runtime" / "supervisor_requests").glob("launcher-recover-*"))
+        if reqs:
+            seen.append(clock.t)
+        if reqs and len(seen) >= 3:   # the supervisor takes it a few polls later
+            for r in reqs:
+                r.unlink()
+            consumed.append(clock.t)
+    t_before = clock.t
+    res = _cycle(root, src, clock, sim, Script(clock, lambda t: sample("r2", ready=False)),
+                 health_timeout_s=60)
+    assert res.status == "recovered"
+    assert consumed and clock.t >= consumed[0], "returned only after the supervisor took it"
+    assert clock.t - t_before < 60 + uc.SUPERVISOR_TAKE_S + 60
+
+
+def test_r5_busy_from_state_mirrors_the_shell_gate():
+    assert uc.busy_from_state({"lcu": {"phase": "Lobby"}, "liveclient": {}, "health": {}}) is None
+    assert uc.busy_from_state({"lcu": {"phase": "ChampSelect"}}) == "lcu phase ChampSelect"
+    assert uc.busy_from_state({"lcu": {"phase": "Lobby"}, "health": {"has_game": True}})
+    assert uc.busy_from_state({"liveclient": {"activePlayer": {}}})
+    assert uc.busy_from_state(None) == "no /api/state"
+    js = (Path(__file__).resolve().parent.parent / "rc-shell" / "src" / "backend_update.js").read_text()
+    assert 'IDLE_PHASES = Object.freeze(["", "None", "Lobby"])' in js
+    assert uc.IDLE_PHASES == ("", "None", "Lobby"), "mirrors the shell's gate"
+
+
+def test_r5_apply_defers_in_champ_select(tmp_path, monkeypatch):
+    root, src = _setup(tmp_path)
+    monkeypatch.setattr(uc.up, "game_live", lambda *a, **k: None)
+    monkeypatch.setattr(uc, "fetch_api_state", lambda r: {"lcu": {"phase": "ChampSelect"}})
+    clock = Clock()
+    res = uc.run_cycle(root, src, clock=clock, sleep=Sim(root, clock), shell_version="9.9.9",
+                       serving=lambda: True, supervisor_alive=lambda: True)
+    assert res.status == "deferred" and res.exit_code == 3, res.to_dict()
+    assert "ChampSelect" in res.detail
+
+
+def test_r7_a_failing_completion_backs_off_then_asks_for_attention(tmp_path, monkeypatch):
+    root = _applied(tmp_path)
+    st = up.read_state(root)
+    up._write_state(root, dict(st, recovering={"version": "1.1.0", "kinds": [], "requests": None}))
+
+    def boom(*_a, **_k):
+        raise OSError("disk full")
+    monkeypatch.setattr(uc.up, "recover", boom)
+    t = [1e6]
+    codes = []
+    for _ in range(uc.RECOVER_ATTENTION_AFTER):
+        res = uc.resume_cycle(root, clock=Clock(), sleep=lambda s: None, now=lambda: t[0],
+                              supervisor_alive=lambda: True)
+        codes.append(res.code)
+        assert res.status == "failed" and res.exit_code == 1
+        doc = uc.read_cycle(root)
+        assert doc["retry_after"] > t[0], "backs off"
+        t[0] = doc["retry_after"] + 1
+    assert codes[0] == "recover_failed" and codes[-1] == "recovery_attention"
+
+
+def test_f7_a_deferred_reload_is_not_quiet(tmp_path):
+    root, src = _setup(tmp_path)
+    _fresh_watcher(root)
+    clock = Clock()
+
+    def deferred():
+        (root / "ops" / "runtime" / "hot_reload.json").write_text(json.dumps({
+            "watching": True, "pending": ["core/a.py"], "last_change": "2026-10-26T12:00:00",
+            "last_compile": "DEFERRED (game in progress)"}), encoding="ascii")
+    sim = Sim(root, clock, after_worker=deferred)
+    res = _cycle(root, src, clock, sim, Script(clock, lambda t: sample("r1")))
+    assert res.status == "deferred" and res.exit_code == 3, res.to_dict()
+    assert uc.read_cycle(root)["verify"]["reload_deferred"] is True

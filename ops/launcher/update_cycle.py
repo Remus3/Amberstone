@@ -81,8 +81,10 @@ import importlib.util
 import json
 import os
 import re
+import ssl
 import sys
 import time
+import urllib.request
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -133,7 +135,15 @@ OK_EXIT = 0
 FAIL_EXIT = 1
 DEFER_EXIT = 3
 OK_STATUSES = ("up-to-date", "noop", "applied", "pending", "interrupted", "busy", "owed",
-               "skipped", "idle")
+               "skipped", "idle", "applied-unrestarted")
+# Fix round 3: R4 the supervisor takes a rollback request within its loop;
+# R7 a recover that cannot complete backs off and, after this many tries,
+# asks for attention; R5 the shell's idle LCU phases (rc-shell
+# src/backend_update.js IDLE_PHASES; a test pins the mirror).
+SUPERVISOR_TAKE_S = 60.0
+RECOVER_ATTENTION_AFTER = 3
+IDLE_PHASES = ("", "None", "Lobby")
+QUIT_SLACK_S = 2.0
 FAIL_STATUSES = ("refused", "failed", "lost", "recovered", "error")
 BAD_STATUSES = ("recovered", "failed", "lost")
 # Every name the service host acts on (its services.json names plus
@@ -142,7 +152,9 @@ HOST_SERVICES = frozenset(set(up.ALL_SERVICE_NAMES) - {"app", "shell"})
 # Restart outcomes (service_host.py) that mean "not this host's to restart":
 # the service is skipped by the restart check, never a failure.
 NOT_OURS = frozenset({"refused:not-in-job", "refused:no-job", "refused:not-owned",
-                      "refused:unsupported", "not-configured", "not-running"})
+                      "refused:unsupported", "not-configured", "not-running",
+                      # R2: a process the host cannot even open is not in its job
+                      "refused:open-failed"})
 _DETAIL_RE = re.compile(r"[^\x20-\x7e]+")
 
 
@@ -279,6 +291,68 @@ def _sample_ok(s: Dict[str, Any]) -> bool:
     age = s.get("age_s")
     return bool(s.get("alive") and s.get("ready") and s.get("pid_alive") and s.get("run_id")
                 and isinstance(age, (int, float)) and age <= HEARTBEAT_STALE_S)
+
+
+def busy_from_state(doc: Any) -> Optional[str]:
+    """Why an /api/state document is NOT an idle moment, else None - the
+    shell's bu.idleForUpdate: live-game flags (under `health`,
+    dashboard/_state_builder.py:1058-1072), a non-empty liveclient, or an
+    LCU phase outside IDLE_PHASES (champ select, queue, loading, ...)."""
+    if not isinstance(doc, dict):
+        return "no /api/state"
+    health = doc.get("health") if isinstance(doc.get("health"), dict) else {}
+    for flag in up.LIVE_GAME_FLAGS:
+        if health.get(flag) is True or doc.get(flag) is True:
+            return f"health {flag}"
+    lc = doc.get("liveclient")
+    if isinstance(lc, dict) and lc:
+        return "liveclient active"
+    lcu = doc.get("lcu") if isinstance(doc.get("lcu"), dict) else {}
+    phase = "" if lcu.get("phase") is None else str(lcu.get("phase"))
+    return None if phase in IDLE_PHASES else f"lcu phase {phase}"[:80]
+
+
+def fetch_api_state(root: Path) -> Optional[Dict[str, Any]]:
+    """GET /api/state from the local dashboard (loopback, the origin the
+    host's own health probe finds), or None."""
+    origin = sh.fetch_health_origin(dashboard_port())
+    if not origin:
+        return None
+    tls = ssl.create_default_context()
+    tls.check_hostname = False
+    tls.verify_mode = ssl.CERT_NONE
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}),
+                                         urllib.request.HTTPSHandler(context=tls))
+    try:
+        with opener.open(f"{origin}/api/state", timeout=3.0) as r:
+            doc = json.loads(r.read(4 << 20).decode("utf-8", "replace"))
+    except Exception:   # noqa: BLE001 - unreadable = not idle
+        return None
+    return doc if isinstance(doc, dict) else None
+
+
+def _apply_gate(root: Path) -> Optional[str]:
+    """The default apply-time check: a game process / fresh health flag
+    (updater.game_live), else the shell's LCU-phase gate (R5)."""
+    return up.game_live(root) or busy_from_state(fetch_api_state(root))
+
+
+def _quit_overlapped(root: Path, since: Optional[float], until: Optional[float]) -> bool:
+    """R1: did the host stop the app (service_host.record_host_stop) inside
+    [since, until]? A deploy that failed then is not a bad release."""
+    if since is None:
+        return False
+    hi = (until if until is not None else time.time()) + QUIT_SLACK_S
+    try:
+        doc = json.loads((up.launcher_state_dir(root) / "host_stops.json")
+                         .read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    for stop in (doc.get("stops") if isinstance(doc, dict) else None) or []:
+        at = stop.get("at") if isinstance(stop, dict) else None
+        if isinstance(at, (int, float)) and since - QUIT_SLACK_S <= at <= hi:
+            return True
+    return False
 
 
 def dashboard_port() -> int:
@@ -541,22 +615,59 @@ def _wait_ready(ctx: _Ctx, *, before: Optional[str], need_new: bool, settle: boo
         ctx.sleep(ctx.poll_s)
 
 
+def _rolled_back_actions(root: Path, version: Optional[str]) -> Dict[str, Any]:
+    """R4: the restarts the ROLLED-BACK files need, classified exactly as
+    apply classified the update (a service may have loaded the new code)."""
+    rec = up.read_installed(root) or {}
+    if rec.get("version") != version:
+        return restart_actions(None)
+    paths = sorted(set(rec.get("pre_hashes") or {}) | set(rec.get("created") or []))
+    if not paths:
+        return restart_actions(None)
+    return restart_actions(up.classify_paths(paths, hot_reload_active=False).to_dict())
+
+
+def _merge_actions(a: Dict[str, Any], b: Dict[str, Any]) -> Dict[str, Any]:
+    respawn = bool(a.get("respawn_host") or b.get("respawn_host"))
+    out = dict(a)
+    out.update(respawn_host=respawn,
+               host_services=[] if respawn else sorted(set(a.get("host_services") or [])
+                                                     | set(b.get("host_services") or [])),
+               relaunch_shell=bool(a.get("relaunch_shell") or b.get("relaunch_shell")))
+    return out
+
+
+def _await_supervisor(ctx: _Ctx, requests: List[str]) -> None:
+    """R4: owed restarts must load the RESTORED files, so wait (bounded) for
+    the supervisor to take its rollback request (it unlinks each request
+    after handling it, ops/rc_supervisor.py:1325)."""
+    end = ctx.clock() + SUPERVISOR_TAKE_S
+    while any(Path(r).exists() for r in requests) and ctx.clock() < end:
+        ctx.check_alive(host=False)
+        ctx.sleep(ctx.poll_s)
+
+
 def _recover(ctx: _Ctx, version: Optional[str], current: Optional[str], why: str, *,
-             actions: Optional[Dict[str, Any]] = None) -> CycleResult:
+             actions: Optional[Dict[str, Any]] = None, bad: bool = True) -> CycleResult:
     ctx.check_alive()   # a quit that raced the last probe is not a broken update
     offline = not ctx.supervisor_alive()
     ctx.log(f"{why}; recovering {version} ({'offline' if offline else 'via the supervisor'})")
     ctx.phase("recovering", version)
+    owed_back = _rolled_back_actions(ctx.root, version)
     try:
         out = up.recover(ctx.root, now=ctx.now, offline=offline)
     except up.UpdateError as exc:
         _write_cycle(ctx.root, verify=None, owed=None, phase="done")
-        _mark_bad(ctx.root, version, "failed")
+        if bad:
+            _mark_bad(ctx.root, version, "failed")
         return CycleResult("failed", version, current,
                            _clean(f"{why} and recover was refused: {exc}"), code=exc.code)
     _write_cycle(ctx.root, verify=None, owed=None, phase="done")
-    _mark_bad(ctx.root, version, "recovered")
-    act = dict(actions) if actions else restart_actions(None)
+    if bad:
+        _mark_bad(ctx.root, version, "recovered")
+    if not offline:
+        _await_supervisor(ctx, list((out or {}).get("requests") or []))
+    act = _merge_actions(dict(actions) if actions else restart_actions(None), owed_back)
     if offline:
         # No supervisor ran the old code back in: the host itself failed, so
         # the shell respawns it on the restored files.
@@ -571,10 +682,31 @@ def _recover(ctx: _Ctx, version: Optional[str], current: Optional[str], why: str
 def _complete_recover(ctx: _Ctx, current: Optional[str]) -> CycleResult:
     marker = up.read_state(ctx.root).get("recovering") or {}
     version = marker.get("version")
+    doc = read_cycle(ctx.root)
+    fails = int(doc.get("recover_failures") or 0)
+    retry_after = doc.get("retry_after")
+    if isinstance(retry_after, (int, float)) and ctx.now() < retry_after:
+        return CycleResult("failed", version, current,
+                           "an interrupted recover waits before its next try",
+                           code="recovery_attention" if fails >= RECOVER_ATTENTION_AFTER
+                           else "recover_backoff")
     ctx.log(f"completing an interrupted recover of {version}")
     ctx.phase("recovering", version)
-    out = up.recover(ctx.root, now=ctx.now, offline=bool(marker.get("offline")))
-    _write_cycle(ctx.root, verify=None, owed=None, phase="done")
+    try:
+        out = up.recover(ctx.root, now=ctx.now, offline=bool(marker.get("offline")))
+    except (up.UpdateError, OSError) as exc:
+        # R7: never a tight retry loop; after RECOVER_ATTENTION_AFTER tries
+        # the shell shows "update recovery needs attention".
+        fails += 1
+        delay = min(60.0 * 2 ** (fails - 1), 3600.0)
+        _write_cycle(ctx.root, recover_failures=fails, retry_after=float(ctx.now()) + delay)
+        code = "recovery_attention" if fails >= RECOVER_ATTENTION_AFTER else "recover_failed"
+        ctx.log(f"completing the recover failed ({type(exc).__name__}); try {fails}")
+        return CycleResult("failed", version, current,
+                           _clean(f"completing the recover failed ({type(exc).__name__}); "
+                                  f"next try in {int(delay)} s"), code=code)
+    _write_cycle(ctx.root, verify=None, owed=None, phase="done", recover_failures=0,
+                 retry_after=None)
     _mark_bad(ctx.root, version, "recovered")
     act = restart_actions(None)
     if marker.get("offline"):
@@ -597,11 +729,14 @@ def _reload_outcome(root: Path, since: Optional[float], changed: List[str]) -> s
         return "quiet"
     if since is None or written + 1.0 < since or not isinstance(doc, dict):
         return "quiet"
-    named = set(doc.get("changed") or []) | {doc.get("last_change")}
+    compiled = str(doc.get("last_compile") or "")
+    named = set(doc.get("changed") or []) | set(doc.get("pending") or []) | \
+        {doc.get("last_change")}
     if not named & set(changed):
         return "quiet"
-    return "compile_failed" if str(doc.get("last_compile") or "").startswith("FAILED") \
-        else "fired"
+    if compiled.startswith("DEFERRED"):
+        return "deferred"   # held for a game: not yet reloaded (fix round 3)
+    return "compile_failed" if compiled.startswith("FAILED") else "fired"
 
 
 def _verify_and_report(ctx: _Ctx, rec: Dict[str, Any], current: Optional[str], *,
@@ -611,7 +746,7 @@ def _verify_and_report(ctx: _Ctx, rec: Dict[str, Any], current: Optional[str], *
     before = rec.get("run_id_before")
     ctx.phase("verifying", version)
     need_new = not resumed and app == "restart" and bool(before)
-    if not resumed and app == "hot_reload":
+    if (not resumed or rec.get("reload_deferred")) and app == "hot_reload":
         # The watcher was fresh at apply (updater.hot_reload_watching, else
         # the plan would be `restart`). Settle, then ask what it did.
         end = ctx.clock() + ctx.settle_s
@@ -624,6 +759,11 @@ def _verify_and_report(ctx: _Ctx, rec: Dict[str, Any], current: Optional[str], *
         ctx.log(f"hot_reload after the deploy: {what}")
         if what == "compile_failed":
             return _recover(ctx, version, current, "core/hot_reload.py could not compile it")
+        if what == "deferred":
+            _write_cycle(ctx.root, verify=dict(rec, reload_deferred=True))
+            return CycleResult("deferred", version, current,
+                               "core/hot_reload.py holds the reload for a game; verify waits",
+                               code="game_live")
         need_new = what == "fired" and bool(before)
     ok = _wait_ready(ctx, before=before, need_new=need_new, settle=False)
     if not ok:
@@ -646,14 +786,23 @@ def _after_finish(ctx: _Ctx, fin: Any, current: Optional[str]) -> CycleResult:
     if fin.status == "pending":
         return CycleResult("pending", fin.version, current,
                            "the supervisor has not finished the deploy yet")
+    res = fin.result if isinstance(fin.result, dict) else {}
+    quit_hit = fin.status in ("interrupted", "failed", "lost") and _quit_overlapped(
+        ctx.root, getattr(fin, "requested_at", None), res.get("result_at") or ctx.now())
     if fin.status == "interrupted":
         if fin.kind == "apply":
             return _recover(ctx, fin.version, current,
-                            "the deploy was cut off mid-copy (the supervisor stopped)")
+                            "the deploy was cut off mid-copy (the supervisor stopped)",
+                            bad=not quit_hit)
         return CycleResult("failed", fin.version, current,
                            "a rollback was cut off; run it again", code="interrupted")
+    if fin.status in ("failed", "lost") and quit_hit:
+        # R1: the app was quit during the deploy (the supervisor stopped
+        # main.py, the worker's heartbeat wait failed and it rolled back) -
+        # not a bad release; the next idle cycle applies it again.
+        return CycleResult("interrupted", fin.version, current,
+                           "the app was stopped during the deploy; it will be retried")
     if fin.status in ("failed", "lost"):
-        res = fin.result or {}
         _mark_bad(ctx.root, fin.version, fin.status)
         detail = (f"deploy failed in phase {res.get('phase')}" if fin.status == "failed"
                   else "the deploy request vanished with no result")
@@ -689,6 +838,7 @@ def _check_restarts(ctx: _Ctx, owed: Dict[str, Any], current: Optional[str]) -> 
             _write_cycle(ctx.root, owed=dict(owed, sent_at=None), phase="owed")
             return CycleResult("owed", version, current,
                                "the host deferred the restarts (a game): " + ", ".join(deferred),
+                               code="host_deferred",
                                restart=restart_actions(owed.get("restart")))
         skipped = {n: (st.get(n) or {}).get("skip") for n in all_names
                    if (st.get(n) or {}).get("skip")}
@@ -706,9 +856,16 @@ def _check_restarts(ctx: _Ctx, owed: Dict[str, Any], current: Optional[str]) -> 
                 detail = "verified: the restarted services stayed up: " + \
                     (", ".join(names) or "none")
                 if skipped:
-                    detail += "; not ours to restart: " + ", ".join(
-                        f"{n} ({o})" for n, o in sorted(skipped.items()))
+                    # R2: their processes still run the old code - never
+                    # "verified"; the shell asks for a restart of the app.
+                    detail = ("installed; restart Amberstone to finish the update - not ours "
+                              "to restart: " + ", ".join(f"{n} ({o})"
+                                                         for n, o in sorted(skipped.items()))
+                              + ("; restarted and verified: " + ", ".join(names) if names
+                                 else ""))
                     ctx.log(detail)
+                    return CycleResult("applied-unrestarted", version, version, _clean(detail),
+                                       restart=restart_actions(None))
                 return CycleResult("applied", version, version, detail,
                                    restart=restart_actions(None))
         else:
@@ -775,7 +932,9 @@ def _run(ctx: _Ctx, source: Any, current: Optional[str], *, channel: str,
     ctx.log(f"release {release.version} available (installed {current})")
     staged = _staged_or_stage(ctx, source, release, channel, shell_version)
     ctx.phase("staged", staged.version)
-    applied = up.apply(ctx.root, staged.version, game_check=game_check)
+    applied = up.apply(ctx.root, staged.version,
+                       game_check=game_check if game_check is not None
+                       else (lambda: _apply_gate(ctx.root)))
     if applied.status == "noop":
         _write_cycle(ctx.root, phase="done")
         return CycleResult("noop", staged.version, staged.version,
