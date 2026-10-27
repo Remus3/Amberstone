@@ -1377,6 +1377,51 @@ survivability flips below cannot roll otherwise.
   2026-07-11/12 show it has - note which value vision reports after the kill. A FAIL files a row against the vision
   tower read; it does not touch `item_extra`. The `item_extra` half still accrues and still needs the
   operator's OK.
+  **RM-869 LIVE HALF - READY (lane 9 PREP s144 cycle 10, source read at `f073b1ca1`; NOT a tick; a
+  sub-check of this row, NOT a new row, so no count moves).** RM-869 (`bfa4bbfbe`, LEDGER 1833) moved
+  the ARAM and Brawl vision readers off the promptless TFT relay (`USE_RELAY = False`:
+  `coaches/aram_coach.py:837` `_build_vision_reader`, `coaches/brawl_coach.py:643` / `:652`), so
+  finding (3) above (tower inputs stuck at the 100 / 100 seed) has a shipped upstream fix that no game
+  has exercised yet. The fix is LOADED: `ops/runtime/health.json` `started_at` 2026-10-27T12:47:45Z is
+  after the landing (committer time 2026-10-25T07:01:01Z), and `bfa4bbfbe` is an ancestor of the main
+  checkout's HEAD. The only on-disk trace of the fields is the coaching file: ARAM `_run_vision`
+  (`:869`) writes `my_tower_hp` / `enemy_tower_hp` / `wave_pct` / `hp_packs` only when the read is
+  non-null (`:920` block); Brawl `_run_vision` (`coaches/brawl_coach.py:245`) writes `event_name` /
+  `event_timer` / `event_location` / `my_nexus_hp` / `enemy_nexus_hp` (`:263-269`). A new coach
+  instance writes `_blank_artifact_data()` first (`coaches/_base_coach.py:671-678` `_ensure_data`),
+  so after that a non-seed value can only be a vision write. ONE COMMAND (read-only, prints no game
+  id and no path): `python tools/gated_rm869_vision_fields.py --mode aram --samples 30 --interval 10`
+  (Nexus Blitz: `--mode nb --samples 60 --interval 10`), run from a worktree or the main checkout,
+  started once the game is past the load screen. PREDICATE (stated before any game): PASS iff a FRESH
+  sample (file mtime at or after the cutoff, `mode` `aram` / `brawl`) holds one of those fields at a
+  non-seed, non-null, non-empty value (ARAM seeds 100 / 100 / 50 / `[true, true]`; NB seeds `""` / 0 /
+  null / 100 / 100). `wave_pct` is the cheapest signal: the wave moves every read, so 50 for a whole
+  game is itself suspicious. FAIL iff the tool says SEED_ONLY over at least 10 fresh samples spanning
+  at least 4 minutes of game time while the player is alive and the frame is fresh (`:8889/latest-frame/meta`
+  `ts`) AND, for ARAM, a tower is on screen below full HP in a sampled frame, or, for NB, an event
+  banner is on screen (100 is the prompt's own "not visible" answer for nexus HP, so nexus 100 alone
+  is never a FAIL). NO RESULT: no fresh sample (NO_GAME), a dead or tabbed-out player, a stale frame,
+  or a Sonnet error / daily cost-gate log line in the window. Restart FAIL (cutoff before the fix) =
+  restart RC first, never a row verdict. EVIDENCE: paste the tool's `fields` line (the non-seed values
+  it lists), the file it read (`data/aram_coaching_data.json` or `data/brawl_coaching_data.json`,
+  main checkout), the sample window in local time, mode / queue and `liveclient.game_time_s` at the
+  first hit, and the predicate above. SUBSTITUTION CHECK: (a) a passing
+  `tests/test_aram_brawl_vision_relay_rm869.py` proves the flag, not a field reaching disk; (b)
+  `data/vision_merge_shadow.jsonl` is NOT evidence either way - `core/vision_routing.py:148-164`
+  appends a row only when the escalation answers keys nobody asked for, so a direct read that answers
+  its own prompt writes NO row, and "no new rows" can mean fixed or dead; (c) a non-seed value in a
+  STALE file (mtime before the cutoff) is the 2026-08-02 game, which the tool excludes; (d) the
+  value's truth (does `wave_pct` 62 match the screen?) is a separate eyeball - the RM-869 predicate is
+  only "the field ARRIVED", and finding (3)'s tower CHECK above is still the row that grades the tower
+  value. URF: `--mode urf` always reports UNOBSERVABLE. Its three prompt keys (`heal_enemies`,
+  `poke_phase`, `deaths_visible`) land only in the in-memory `_vision_state` and no code reads them
+  (grep at `f073b1ca1`: only the `BrawlVisionReader` prompt, field list and validators name them;
+  Nexus Blitz `turret_count_my` / `turret_count_enemy` likewise have no reader), so the URF half has
+  no observable live result; filed for the merger (s144 gated cycle 10 report, RM-968). Nexus
+  Blitz and URF have no gate in this file (they route to RC `MODE_BRAWL`, `core/game_snapshot.py:127-131`);
+  the NB half rides any Nexus Blitz game the operator happens to play. One For All and GAMEMODEX also
+  get the NB prompt and write `mode` `brawl`, so an `--mode nb` PASS counts only when the live-client
+  `gameMode` at the first hit is `NEXUSBLITZ` (record it in the evidence).
 - **G3-15** ARAM re-checks of GATE 2 rows (no separate work, just look while you are here): G2-12 R49
   reflect ranking-vs-real-comp (the stricter read), G2-29 the ARAM flood-tint question, G2-38 PD->Kraken
   level-tick stability (ARAM-suitable, no enemy-comp dependency).
