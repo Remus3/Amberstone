@@ -28,6 +28,8 @@ the supervisor and main.py are simulated in the injected sleep / probes.
 from __future__ import annotations
 
 import json
+import os
+import re
 import time
 from pathlib import Path
 
@@ -303,6 +305,7 @@ def test_hb_an_idle_main_py_rolls_back_a_failed_restart(tmp_path):
 #    heartbeat is older than the supervisor's own 15 s stale threshold.
 # M1 the unreadable-state clock survived busy stretches the cycle never saw,
 #    so the first unreadable sample of a NEW episode released the hold at once.
+# S1 the /api/state probe waits as long as the shell's own poll (4 s).
 
 
 def _held_lost_deploy(tmp_path):
@@ -388,4 +391,24 @@ def test_r2_m1_a_new_unreadable_episode_does_not_inherit_an_old_clock(tmp_path, 
     assert _resume(root, clock, _failing(clock), **kw).status == "deferred"
     wall[0] += 151
     assert _resume(root, clock, _failing(clock), **kw).status == "recovered"
+
+
+def test_r2_s1_the_state_probe_waits_as_long_as_the_shells_poll(monkeypatch):
+    main_js = (Path(__file__).resolve().parent.parent / "rc-shell" / "src" / "main.js") \
+        .read_text(encoding="utf-8")
+    shell_ms = int(re.search(r'originRequest\(resolvedOrigin, "/api/state", (\d+),', main_js)
+                   .group(1))
+    assert shell_ms >= 4000
+    seen = []
+
+    class Opener:
+        def open(self, url, timeout):
+            seen.append((url, timeout))
+            raise OSError("no server in a test")
+
+    monkeypatch.setattr(uc.sh, "fetch_health_origin", lambda *a, **k: "https://127.0.0.1:8888")
+    monkeypatch.setattr(uc.urllib.request, "build_opener", lambda *a: Opener())
+    assert uc.fetch_api_state(Path(os.getcwd())) is None
+    assert len(seen) == 1 and seen[0][0] == "https://127.0.0.1:8888/api/state"
+    assert seen[0][1] * 1000 >= shell_ms, "the cycle gives up no sooner than the shell's poll"
 

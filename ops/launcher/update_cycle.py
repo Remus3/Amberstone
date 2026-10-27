@@ -182,6 +182,10 @@ QUIET_SKIPS = frozenset({"not-running", "not-configured"})
 # shell's 60 s resume ticks).
 STATE_UNREADABLE = "no /api/state"
 UNREADABLE_HOLD_S = 300.0
+# Round 2 (review S1): an in-game state build takes 2-18 s (logs "state-build
+# slow"); the shell's own /api/state poll waits 4000 ms (rc-shell src/main.js
+# originRequest "/api/state"), so the cycle never gives up sooner.
+STATE_TIMEOUT_S = 4.0
 # Round 2 (review M1): two unreadable samples further apart than this are two
 # episodes. One episode's samples come one restart check (health_timeout_s)
 # plus the shell's 60 s resume tick apart at most; the gap allows two ticks.
@@ -382,7 +386,7 @@ def fetch_api_state(root: Path) -> Optional[Dict[str, Any]]:
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}),
                                          urllib.request.HTTPSHandler(context=tls))
     try:
-        with opener.open(f"{origin}/api/state", timeout=3.0) as r:
+        with opener.open(f"{origin}/api/state", timeout=STATE_TIMEOUT_S) as r:
             doc = json.loads(r.read(4 << 20).decode("utf-8", "replace"))
     except Exception:   # noqa: BLE001 - unreadable = not idle
         return None
