@@ -21,7 +21,7 @@ Ground truth = `dashboard/_dispatch.py` + each `dashboard/routes_*.py` module's
 | `/api/asset-stamp` | Max mtime across `dashboard._static.asset_fileset()` (`index.html` + `css/**/*.css` + `js/**/*.js`, the same set `/api/ui-version` hashes) | `{"mtime": float}` |
 | `/api/cost` | Cost tracker state + daily spend | - |
 | `/api/coach/trace` | Coach execution trace (last N calls) | - |
-| `/api/coach/state` | Coach active/disabled state per mode | - |
+| `/api/coach/state` | Coach kill-switch state per spend gate (all `GATES`; `disabled` = disabled gate names) | - |
 | `/api/session/summary` | Current session summary (kills / deaths / gold delta etc.) | - |
 | `/api/history?...` | Match history (query: `mode`, `limit`, `since_days`) | - |
 | `/api/loadouts/all` | All stored loadout variants from `data/champion_loadouts.json` | - |

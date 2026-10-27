@@ -11,15 +11,35 @@ response via `h._send(code, body, ctype)`. Module-level GET_ROUTES is
 consumed by `dashboard._dispatch`.
 """
 import json
-from dashboard._errors import send_error
 import logging
+import re
 from urllib.parse import parse_qs, urlparse
 
-from dashboard._context import APP_DIR, read_json
+from dashboard._context import APP_DIR
 from dashboard._dispatch import equals, prefix
+from dashboard._errors import send_error
 from dashboard._json_flags import bad_flag_body, coerce_json_flag
 
 log = logging.getLogger("rc.web_dashboard")
+
+# match_id format: "NA1_5438342899" - upper-case platform, digits, underscore.
+# fullmatch, not match(...$): `$` also matches before a trailing newline.
+_MATCH_ID_RE = re.compile(r"[A-Z0-9_]{6,40}")
+# ?queue= is ASCII digits only. The old `str.isdigit()` gate let through
+# Unicode digits int() rejects (a superscript two) and digit runs past the
+# int-string limit - both a 500 - and silently DROPPED the filter on any other
+# value, so `queue=abc` answered every queue's matches. Queue ids are at most
+# four digits today; nine leaves headroom and stays far from the limit.
+_QUEUE_RE = re.compile(r"[0-9]{1,9}")
+
+
+def _send_json(h, code: int, obj) -> None:
+    """Send `obj` as STRICT JSON. allow_nan=False makes a NaN / Infinity
+    anywhere in a payload raise ValueError, which every caller's try turns
+    into the generic send_error envelope - instead of a 200 body carrying a
+    bare NaN token that the browser's JSON.parse rejects."""
+    h._send(code, json.dumps(obj, allow_nan=False).encode("utf-8"),
+            "application/json")
 
 
 def _limit_param(h, default: int, lo: int = 1, hi: int = 200) -> int:
@@ -44,7 +64,7 @@ def _serve_cost(h) -> None:
             "banner": t.banner_state(),
             "allowed": t.allow_call(),
         }
-        h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
+        _send_json(h, 200, payload)
     except Exception as exc:  # noqa: BLE001
         log.warning("api/cost: %s", exc)
         send_error(h, exc)
@@ -56,8 +76,7 @@ def _serve_coach_trace(h) -> None:
     try:
         limit = _limit_param(h, default=50)
         from core.coach_trace import read_recent as _read_recent
-        h._send(200, json.dumps({"records": _read_recent(limit)}).encode("utf-8"),
-                "application/json")
+        _send_json(h, 200, {"records": _read_recent(limit)})
     except Exception as exc:  # noqa: BLE001
         log.warning("api/coach/trace: %s", exc)
         send_error(h, exc)
@@ -68,11 +87,13 @@ def _serve_replay_matches(h) -> None:
     try:
         limit = _limit_param(h, default=25)
         qs = parse_qs(urlparse(h.path).query)
-        queue = (qs.get("queue") or [""])[0]
+        queue = (qs.get("queue") or [""])[0].strip()
+        if queue and not _QUEUE_RE.fullmatch(queue):
+            _send_json(h, 400, {"error": "bad queue"})
+            return
         from core.replay_history import list_matches as _lm
-        out = _lm(limit=limit, queue_filter=int(queue) if queue.isdigit() else None)
-        h._send(200, json.dumps({"matches": out}).encode("utf-8"),
-                "application/json")
+        out = _lm(limit=limit, queue_filter=int(queue) if queue else None)
+        _send_json(h, 200, {"matches": out})
     except Exception as exc:  # noqa: BLE001
         log.warning("api/replay/matches: %s", exc)
         send_error(h, exc)
@@ -82,18 +103,15 @@ def _serve_replay_match(h) -> None:
     # /api/replay/match/<match_id>
     try:
         mid = h.path[len("/api/replay/match/"):].split("?", 1)[0]
-        # match_id format: "NA1_5438342899" - alnum + underscore only.
-        import re as _re
-        if not _re.match(r"^[A-Z0-9_]{6,40}$", mid):
+        if not _MATCH_ID_RE.fullmatch(mid):
             h._send(400, b'{"error":"bad match_id"}', "application/json")
             return
         from core.replay_history import match_detail as _md
         d = _md(mid)
         if d is None:
-            h._send(404, json.dumps({"error": "not found"}).encode(),
-                    "application/json")
+            _send_json(h, 404, {"error": "not found"})
             return
-        h._send(200, json.dumps(d).encode("utf-8"), "application/json")
+        _send_json(h, 200, d)
     except Exception as exc:  # noqa: BLE001
         log.warning("api/replay/match: %s", exc)
         send_error(h, exc)
@@ -107,22 +125,27 @@ def _serve_spend_gates(h) -> None:
         from core.cost_tracker import get_tracker as _gt
         t = _gt()
         payload = {"gates": t.gates_state(), "per_match": t.recent_match_avg()}
-        h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
+        _send_json(h, 200, payload)
     except Exception as exc:  # noqa: BLE001
         log.warning("api/spend/gates: %s", exc)
         send_error(h, exc)
 
 
 def _serve_coach_state(h) -> None:
-    # Per-mode coach kill-switch state. GET only; toggle via POST.
+    # Per-gate coach kill-switch state. GET only; toggle via POST.
+    # Lane 8 s144: reported from the tracker's own gates_state(), the truth
+    # every coach and /api/spend/gates read. This route used to hard-code five
+    # modes (the registry has seven - vision and champ_select were never
+    # reported), read coach_settings.json alone (the tracker merges
+    # ops/rc_config.json under it) and apply its own `x.lower()`, so a
+    # non-string entry 500ed here while the tracker gated on it fine.
+    # `disabled` is now the disabled GATE names, not the raw persisted list.
     try:
-        from core.cost_tracker import _COACH_CFG, CFG_COACH_DISABLED_MODES
-        cfg = read_json(str(_COACH_CFG)) if _COACH_CFG.exists() else {}
-        disabled = cfg.get(CFG_COACH_DISABLED_MODES, []) or []
-        modes = ["sr", "aram", "arena", "brawl", "tft"]
-        state = {m: (m not in {x.lower() for x in disabled}) for m in modes}
-        h._send(200, json.dumps({"enabled": state, "disabled": disabled}).encode(),
-                "application/json")
+        from core.cost_tracker import get_tracker as _gt
+        gates = _gt().gates_state()
+        state = {g: not s["disabled"] for g, s in gates.items()}
+        disabled = [g for g, s in gates.items() if s["disabled"]]
+        _send_json(h, 200, {"enabled": state, "disabled": disabled})
     except Exception as exc:  # noqa: BLE001
         log.warning("api/coach/state: %s", exc)
         send_error(h, exc)
@@ -146,7 +169,7 @@ def _serve_branch_review(h) -> None:
         qs = parse_qs(urlparse(h.path).query)
         run = (qs.get("run") or [""])[0].strip() or None
         out = load_branch_series(run)
-        h._send(200, json.dumps(out).encode(), "application/json")
+        _send_json(h, 200, out)
     except Exception as exc:  # noqa: BLE001
         log.warning("api/branch-review: %s", exc)
         send_error(h, exc)
@@ -157,7 +180,7 @@ def _serve_branch_review_runs(h) -> None:
     try:
         from core.branch_review import list_recent_runs
         runs = list_recent_runs(limit=_limit_param(h, 20, hi=100))
-        h._send(200, json.dumps({"runs": runs}).encode(), "application/json")
+        _send_json(h, 200, {"runs": runs})
     except Exception as exc:  # noqa: BLE001
         log.warning("api/branch-review/runs: %s", exc)
         send_error(h, exc)
@@ -192,7 +215,7 @@ def _serve_champ_select_coach_post(h, payload) -> None:
                                     deterministic=advise_pick(payload or {}))
         except Exception as exc:  # noqa: BLE001
             log.debug("champ-select shadow: %s", exc)
-        h._send(200, json.dumps(result).encode(), "application/json")
+        _send_json(h, 200, result)
     except Exception as exc:  # noqa: BLE001
         log.warning("api/champ-select-coach: %s", exc)
         send_error(h, exc)
@@ -207,7 +230,7 @@ def _serve_aram_comp_verdict_post(h, payload) -> None:
     try:
         from core.aram_comp_verdict import comp_verdict
         verdict = comp_verdict(payload if isinstance(payload, dict) else {})
-        h._send(200, json.dumps(verdict).encode(), "application/json")
+        _send_json(h, 200, verdict)
     except Exception as exc:  # noqa: BLE001
         log.warning("api/aram-comp-verdict: %s", exc)
         send_error(h, exc)
@@ -233,9 +256,7 @@ def _serve_coach_toggle_post(h, payload) -> None:
             return
         from core.cost_tracker import get_tracker as _gt
         cur = _gt().set_coach_disabled(mode, disabled)
-        h._send(200, json.dumps({"ok": True,
-                                  "disabled_modes": cur}).encode(),
-                "application/json")
+        _send_json(h, 200, {"ok": True, "disabled_modes": cur})
     except Exception as exc:  # noqa: BLE001
         log.warning("api/coach/toggle: %s", exc)
         send_error(h, exc)
