@@ -68,8 +68,11 @@ class FakeClock:
 
 
 def _health(root: Path, *, alive=True, run_id="r1") -> None:
+    """A READY main.py heartbeat (fix round F1: the post-import
+    last_state_provider_ok and a live pid are part of readiness)."""
     p = root / "ops" / "runtime" / "health.json"
-    p.write_text(json.dumps({"alive": alive, "run_id": run_id}), encoding="ascii")
+    p.write_text(json.dumps({"alive": alive, "run_id": run_id, "pid": os.getpid(),
+                             "last_state_provider_ok": True}), encoding="ascii")
 
 
 class Supervisor:
@@ -126,6 +129,8 @@ def _setup(tmp_path, files=None, version="1.1.0", **kw):
 def _cycle(root, source, clock, sleep, **kw):
     kw.setdefault("game_check", no_game)
     kw.setdefault("shell_version", "9.9.9")
+    kw.setdefault("serving", lambda: True)            # never the live :8888
+    kw.setdefault("supervisor_alive", lambda: True)   # never the live lock
     return uc.run_cycle(root, source, clock=clock, sleep=sleep, **kw)
 
 
@@ -181,7 +186,7 @@ def test_c2_verify_waits_for_a_new_run_after_a_supervised_restart(tmp_path):
     seen = []
 
     def health():
-        doc = up.app_health(root)
+        doc = uc.readiness(root)
         seen.append(doc["run_id"])
         return doc
 
@@ -327,6 +332,7 @@ def test_c7_quit_mid_verify_is_interrupted_then_reverified(tmp_path, monkeypatch
     # Next launch: the app is up again; the cycle re-verifies and still owes
     # the vision restart.
     monkeypatch.setattr(uc.up, "recover", real_recover)
+    sup.comes_back = True   # the relaunched app is up again
     _health(root, run_id="r9")
     res = _cycle(root, src, clock, sup)
     assert res.status == "applied", res.to_dict()

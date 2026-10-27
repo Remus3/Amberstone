@@ -190,6 +190,13 @@ REQUEST_TTL_S = 1800.0
 # .deploying file even when it kills a worker at 120 s
 # (ops/rc_supervisor.py:1462, :1475), so after this long it is reported lost.
 LOST_AFTER_S = 600.0
+# PKG-6b: a `.deploying` request with no result, OBSERVED this long (first
+# sighting recorded in the pending state - its file times say nothing about
+# when the supervisor renamed it), was cut off: the supervisor kills a worker
+# at 120 s and removes the file in its own finally (ops/rc_supervisor.py
+# :1462, :1475), so only a supervisor that died mid-deploy (a quit that ended
+# the job) leaves one behind.
+DEPLOYING_STALE_S = 300.0
 
 _VERSION = (r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)"
             r"(?:-[0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*)?")
@@ -953,15 +960,20 @@ def _check_github_url(url: str) -> None:
 
 
 def check(source: Source, *, channel: str = "stable",
-          current_version: Optional[str] = None) -> Optional[Release]:
+          current_version: Optional[str] = None,
+          exclude: Iterable[str] = ()) -> Optional[Release]:
     """The newest release on `channel` strictly newer than current_version
-    (any release when the current version is unknown), or None."""
+    (any release when the current version is unknown), or None. `exclude`
+    names versions never to offer (PKG-6b: a release that already failed)."""
     if channel not in CHANNELS:
         raise UpdateError(f"unknown channel {channel!r}; expected one of {CHANNELS}")
     floor = version_key(current_version) if current_version else None
+    skip = {str(v) for v in exclude}
     best: Optional[Release] = None
     for rel in source.releases():
         if rel.prerelease and channel != "dev":
+            continue
+        if rel.version in skip:
             continue
         key = version_key(rel.version)
         if floor is not None and key <= floor:
@@ -1737,8 +1749,17 @@ def finish(root: Path, *, now: Callable[[], float] = time.time) -> FinishResult:
     rt = runtime_dir(root)
     result_path = rt / "deploy_results" / f"{rid}.json"
     if not result_path.is_file():
-        queued = any((rt / "deploy_requests" / f"{rid}{ext}").exists()
-                     for ext in (".json", ".deploying"))
+        deploying = rt / "deploy_requests" / f"{rid}.deploying"
+        if deploying.exists():
+            seen = pending.get("deploying_seen_at")
+            t = float(now())
+            if not isinstance(seen, (int, float)):
+                _write_state(root, dict(state, pending=dict(pending, deploying_seen_at=t)))
+                return FinishResult("pending", kind, version, restart, None, before)
+            if t - float(seen) < DEPLOYING_STALE_S:
+                return FinishResult("pending", kind, version, restart, None, before)
+            return _interrupted(root, state, pending, deploying, now)
+        queued = (rt / "deploy_requests" / f"{rid}.json").exists()
         if queued or now() - float(pending.get("requested_at") or 0) < LOST_AFTER_S:
             return FinishResult("pending", kind, version, restart, None, before)
         # Lost: the supervisor removed the request with no result - e.g. it
@@ -1771,6 +1792,69 @@ def finish(root: Path, *, now: Callable[[], float] = time.time) -> FinishResult:
     _write_state(root, dict(state, pending=None, last=dict(
         summary, kind=kind, version=version, status=status, request_id=rid, at=utc_now())))
     return FinishResult(status, kind, version, restart, summary, before)
+
+
+def _deploy_backup_dir(root: Path, request_id: str) -> Optional[Path]:
+    """The worker's backup folder for `request_id`: ops/backups/<stamp>-<id>
+    (ops/rc_transactional_deploy.py do_deploy), or None."""
+    backups = (root / "ops" / "backups").resolve()
+    if not backups.is_dir():
+        return None
+    hits = sorted(d for d in backups.iterdir()
+                  if d.is_dir() and d.name.endswith("-" + request_id))
+    return hits[-1] if hits else None
+
+
+def _interrupted(root: Path, state: Dict[str, Any], pending: Dict[str, Any],
+                 deploying: Path, now: Callable[[], float]) -> "FinishResult":
+    """A deploy cut off mid-copy (PKG-6b). The worker backs a file up BEFORE
+    it overwrites it and records nothing else, so: a backup holding the
+    file's pre-update bytes = that file may have been overwritten (restore
+    it); a backup with other bytes = torn mid-backup, the live file was never
+    touched - it is moved OUT of the backup folder, since the supervisor's
+    own rollback copies every file in the newest backup; a created file
+    still holding the release's bytes = created by this deploy (quarantine).
+    The result is a normal recovery point (installed record + backup) that
+    recover() acts on. Rollback ops are only reported: re-running one is
+    idempotent."""
+    rid = str(pending.get("request_id"))
+    kind, version = pending.get("kind"), pending.get("version")
+    root = Path(root).resolve()
+    sdir = launcher_state_dir(root) / "stale_deploys"
+    sdir.mkdir(parents=True, exist_ok=True)
+    _replace_with_retry(deploying, sdir / deploying.name)
+    salvaged: Dict[str, Any] = {"phase": "interrupted", "request_id": rid}
+    if kind == "apply":
+        files = pending.get("files") or {}
+        broot = _deploy_backup_dir(root, rid)
+        pre: Dict[str, str] = {}
+        torn: List[str] = []
+        for rel, sha in sorted((pending.get("pre_hashes") or {}).items()):
+            check_payload_path(rel)
+            src = _live_path(broot, rel) if broot is not None else None
+            if src is None or not src.is_file():
+                continue
+            if _hash_file(src)[0] == sha:
+                pre[rel] = sha
+                continue
+            dst = sdir / f"{rid}-torn" / rel
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            _replace_with_retry(src, dst)
+            torn.append(rel)
+        created = []
+        for rel in pending.get("created") or []:
+            check_payload_path(rel)
+            live = _live_path(root, rel)
+            if live.is_file() and _hash_file(live)[0] == files.get(rel):
+                created.append(rel)
+        _record_installed(root, version, pending.get("manifest_sha256"), files,
+                          request_id=rid, backup_root=str(broot) if pre else None,
+                          pre_hashes=pre, created=created)
+        salvaged.update(restore=sorted(pre), created=created, torn=torn)
+    _write_state(root, dict(state, pending=None, last=dict(
+        salvaged, kind=kind, version=version, status="interrupted", at=utc_now())))
+    return FinishResult("interrupted", kind, version, pending.get("restart"), salvaged,
+                        pending.get("run_id_before"))
 
 
 def _verified_backup(root: Path, rec: Dict[str, Any]) -> Path:
@@ -1807,7 +1891,22 @@ def app_health(root: Path, *, now: Optional[float] = None) -> Dict[str, Any]:
             "run_id": str(doc.get("run_id") or "") or None, "age_s": round(age, 1)}
 
 
-def recover(root: Path, *, now: Callable[[], float] = time.time) -> Dict[str, Any]:
+def _restore_files(root: Path, broot: Path, pre: Dict[str, str]) -> List[str]:
+    """Offline recover: copy each backed-up file over live ourselves, every
+    one re-checked against its pre-update sha256 (atomic tmp + replace)."""
+    done = []
+    for rel, sha in sorted(pre.items()):
+        check_payload_path(rel)
+        data = _live_path(broot, rel).read_bytes()
+        if not hmac.compare_digest(hashlib.sha256(data).hexdigest(), str(sha)):
+            raise IntegrityError(f"backup file changed since the update: {rel!r}")
+        _write_bytes_atomic(_live_path(root, rel), data)
+        done.append(rel)
+    return done
+
+
+def recover(root: Path, *, now: Callable[[], float] = time.time,
+            offline: bool = False) -> Dict[str, Any]:
     """The app does not come back healthy after an update. rollback() cannot
     help then: the supervisor starts a deploy only while the app is healthy
     (ops/rc_supervisor.py:1421). Its OWN rollback request needs no healthy
@@ -1818,40 +1917,71 @@ def recover(root: Path, *, now: Callable[[], float] = time.time) -> Dict[str, An
     rollback - or a restart when the update overwrote nothing. Refused when
     a later backup exists (the supervisor would restore that one instead) or
     when the backup's bytes changed. Not game-gated: the app is already
-    down. Files the update created are quarantined; the record steps back."""
+    down. Files the update created are quarantined; the record steps back.
+
+    `offline` (PKG-6b): no supervisor is running to read a request (the
+    service host itself failed), so the verified backup is copied back here.
+
+    Re-entrant (PKG-6b): a `recovering` marker is written FIRST and names
+    the requests once they are all written; a call that finds the marker
+    completes it - never writing the requests twice, stepping the record
+    back only while it still names the version being recovered - so a kill
+    anywhere inside this function is detected and finished next time."""
     root = _install_root(root)
     state = read_state(root)
     if state.get("pending"):
         raise StateError("an update operation is pending; call finish() first")
+    marker = state.get("recovering")
     rec = _read_record_file(root)
-    if not rec or not isinstance(rec.get("previous"), dict):
-        raise StateError("no recovery point: no update has been applied")
-    kinds = ["reset_circuit_breaker"]
-    if rec.get("pre_hashes"):
-        broot = _verified_backup(root, rec)
-        newest = sorted((d for d in broot.parent.iterdir() if d.is_dir()), reverse=True)[0]
-        if newest.resolve() != broot:
-            raise StateError("a later backup exists; the supervisor's rollback would restore "
-                             "it instead of this update's")
-        kinds.append("rollback")
-    else:
-        kinds.append("restart")
-    moved = _quarantine(root, rec, now)
-    stamp = int(now() * 1000)
-    written = []
-    for i, kind in enumerate(kinds, 1):
-        path = runtime_dir(root) / "supervisor_requests" / \
-            f"launcher-recover-{stamp}-{i}-{kind}.json"
-        _write_json(path, {"type": kind, "reason": f"launcher-recover:{rec.get('version')}",
-                           "requested_by": "ops/launcher/updater.py",
-                           "requested_at": utc_now()})
-        written.append(str(path))
-    _restore_previous(root, rec)
-    _write_state(root, dict(state, pending=None, last={
-        "kind": "recover", "version": rec.get("version"), "status": "requested",
-        "requests": written, "quarantine": moved, "at": utc_now()}))
-    return {"status": "requested", "requests": written, "quarantine": moved,
-            "to_version": rec["previous"].get("version")}
+    if not isinstance(marker, dict):
+        if not rec or not isinstance(rec.get("previous"), dict):
+            raise StateError("no recovery point: no update has been applied")
+        kinds = ["reset_circuit_breaker"]
+        if rec.get("pre_hashes"):
+            broot = _verified_backup(root, rec)
+            newest = sorted((d for d in broot.parent.iterdir() if d.is_dir()), reverse=True)[0]
+            if newest.resolve() != broot:
+                raise StateError("a later backup exists; the supervisor's rollback would "
+                                 "restore it instead of this update's")
+            kinds.append("rollback")
+        else:
+            kinds.append("restart")
+        marker = {"version": rec.get("version"), "kinds": kinds, "offline": bool(offline),
+                  "requests": None, "at": utc_now(), "stamp": int(now() * 1000)}
+        state = dict(state, recovering=marker)
+        _write_state(root, state)
+    moved: Dict[str, list] = {"moved": [], "kept": []}
+    restored: List[str] = []
+    if rec and rec.get("version") == marker.get("version"):
+        moved = _quarantine(root, rec, now)
+        if marker.get("offline"):
+            pre = rec.get("pre_hashes") or {}
+            if pre:
+                restored = _restore_files(root, _verified_backup(root, rec), pre)
+        elif marker.get("requests") is None:
+            written = []
+            for i, kind in enumerate(marker.get("kinds") or [], 1):
+                path = runtime_dir(root) / "supervisor_requests" / \
+                    f"launcher-recover-{marker.get('stamp')}-{i}-{kind}.json"
+                _write_json(path, {"type": kind,
+                                   "reason": f"launcher-recover:{marker.get('version')}",
+                                   "requested_by": "ops/launcher/updater.py",
+                                   "requested_at": utc_now()})
+                written.append(str(path))
+            marker = dict(marker, requests=written)
+            state = dict(state, recovering=marker)
+            _write_state(root, state)
+        _restore_previous(root, rec)
+    written = list(marker.get("requests") or [])
+    status = "restored" if marker.get("offline") else "requested"
+    _write_state(root, dict(state, pending=None, recovering=None, last={
+        "kind": "recover", "version": marker.get("version"), "status": status,
+        "requests": written, "restored": restored, "quarantine": moved, "at": utc_now()}))
+    prev = (rec or {}).get("previous") or {}
+    to_version = prev.get("version") if rec and rec.get("version") == marker.get("version") \
+        else (rec or {}).get("version")
+    return {"status": status, "requests": written, "restored": restored, "quarantine": moved,
+            "to_version": to_version}
 
 
 def rollback(root: Path, *, game_check: Optional[Callable[[], Optional[str]]] = None,

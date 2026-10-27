@@ -181,6 +181,13 @@ _PROCESS_TERMINATE = 0x0001
 _ERROR_INSUFFICIENT_BUFFER = 122
 _TCP_TABLE_OWNER_PID_LISTENER = 3
 _TERMINATE_WAIT_MS = 5000
+# PKG-6b: a stop never ends the job under a running deploy. While a
+# deploy_requests/*.deploying file exists the supervisor is inside its
+# transactional worker (it kills one at 120 s, ops/rc_supervisor.py:1462) and
+# handles the shutdown request only after it, so the grace stretches to this
+# bound - past the worker's own kill - and returns to stop_grace_s once the
+# file is gone.
+DEPLOY_STOP_GRACE_S = 150.0
 
 
 def utc_now() -> str:
@@ -1571,8 +1578,13 @@ class ServiceHost:
                     rt.proc.terminate()
                 except OSError as exc:
                     self._log(f"{rt.spec.name}: terminate failed: {exc}")
-        deadline = self._clock() + self.config.stop_grace_s
-        while self._clock() < deadline and any(rt.alive() for rt in self._services):
+        begun = self._clock()
+        deadline = begun + self.config.stop_grace_s
+        deploy_deadline = begun + max(self.config.stop_grace_s, DEPLOY_STOP_GRACE_S)
+        while any(rt.alive() for rt in self._services):
+            now = self._clock()
+            if now >= (deploy_deadline if self._deploy_in_flight() else deadline):
+                break
             self._sleep(STOP_POLL_S)
             self._write_status()   # keep the heartbeat through a long grace
         if self.job is not None:
@@ -1605,6 +1617,12 @@ class ServiceHost:
             rt.restart_pending = False
             rt.restart_deadline = None
             rt.restart_request = None
+
+    def _deploy_in_flight(self) -> bool:
+        try:
+            return any((self.runtime_dir / "deploy_requests").glob("*.deploying"))
+        except OSError:
+            return False
 
     def _top_state(self) -> str:
         if self.stopped:

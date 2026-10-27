@@ -37,9 +37,22 @@ const SOURCE_ENV = "RC_BACKEND_UPDATE_SOURCE";
 const ENABLE_ENV = "RC_BACKEND_UPDATES";
 const DEFAULT_SOURCE = "github";
 const CHANNELS = Object.freeze(["stable", "dev"]);
-// The cycle bounds its own waits (finish 300 s + verify 180 s + settle); this
-// is the shell's outer guard.
-const CYCLE_TIMEOUT_MS = 15 * 60 * 1000;
+// The cycle bounds its own waits (finish 300 s + verify 180 s + settle +
+// stable windows); this is the shell's outer guard, and it never fires while
+// the cycle's own phase says deploying or recovering (watchdogDecision).
+const CYCLE_TIMEOUT_MS = 60 * 60 * 1000;
+const PROTECTED_PHASES = Object.freeze(["deploying", "recovering"]);
+// Resume (fix round F1): what an earlier cycle left is picked up at launch
+// and on this interval while a record exists - even with main.py down.
+const RESUME_DELAY_MS = 30000;
+const RESUME_INTERVAL_MS = 60000;
+// F2: while a deploy_requests/*.deploying exists the quit waits this long for
+// the host (the host's own deploy grace is 150 s), never forever.
+const DEPLOY_STOP_GRACE_MS = 165000;
+// F5: the restart / update gate. Idle only in these LCU gameflow phases (or
+// with no LCU phase at all) and with no live game signal in /api/state.
+const IDLE_PHASES = Object.freeze(["", "None", "Lobby"]);
+const LIVE_GAME_FLAGS = Object.freeze(["has_game", "aram_mode", "arena_mode", "tft_mode", "brawl_mode"]);
 const MAX_OUTPUT_BYTES = 1024 * 1024;
 const CHECK_DEFAULTS = Object.freeze({
   initialDelayMs: 120000, // let the services settle before the first check
@@ -55,9 +68,12 @@ const ID_RE = /^[A-Za-z0-9_.:-]{1,64}$/;
 const SLUG_RE = /^[A-Za-z0-9_.-]{1,100}$/;
 const VERSION_RE = /^[0-9A-Za-z.+-]{1,64}$/;
 const STATUSES = Object.freeze([
-  "up-to-date", "noop", "applied", "pending", "interrupted", "busy",
+  "up-to-date", "noop", "applied", "pending", "interrupted", "busy", "owed", "skipped", "idle",
   "deferred", "refused", "failed", "lost", "recovered", "error",
 ]);
+// Results that carry restarts to perform: a verified deploy, restarts still
+// owed, and a recover (the old code must be loaded again).
+const ACTION_STATUSES = Object.freeze(["applied", "owed", "recovered"]);
 
 function isAbsLocal(p) {
   return typeof p === "string" && p.trim() !== "" && path.isAbsolute(p.trim());
@@ -112,9 +128,15 @@ function cyclesEnabled(opts) {
 
 // The cycle spawn, or {enabled: false, reason}. opts: root, python (the
 // host's interpreter), hostOwned, channel, shellVersion, parentPid, env,
-// isPackaged, probe (path -> "file" | null).
+// isPackaged, probe (path -> "file" | null), mode ("run" default | "resume"),
+// restartsSent (resume only). A resume needs no owned host: it is how a
+// failed host respawn gets recovered.
 function cyclePlan(opts) {
   const o = opts && typeof opts === "object" ? opts : {};
+  const mode = o.mode === undefined ? "run" : o.mode;
+  if (mode !== "run" && mode !== "resume") {
+    return { enabled: false, reason: "bad-mode" };
+  }
   const gate = cyclesEnabled(o);
   if (!gate.enabled) {
     return { enabled: false, reason: gate.reason };
@@ -125,7 +147,7 @@ function cyclePlan(opts) {
   if (!isAbsLocal(o.python)) {
     return { enabled: false, reason: "no-interpreter" };
   }
-  if (o.hostOwned !== true) {
+  if (mode === "run" && o.hostOwned !== true) {
     return { enabled: false, reason: "host-not-owning" };
   }
   const root = path.resolve(o.root.trim());
@@ -136,8 +158,13 @@ function cyclePlan(opts) {
   }
   const src = resolveSource(o.env);
   const channel = CHANNELS.includes(o.channel) ? o.channel : "stable";
-  const args = ["-I", script, "--root", root, "run", "--source", src.source, "--channel", channel];
-  if (typeof o.shellVersion === "string" && VERSION_RE.test(o.shellVersion)) {
+  const args = mode === "run"
+    ? ["-I", script, "--root", root, "run", "--source", src.source, "--channel", channel]
+    : ["-I", script, "--root", root, "resume"];
+  if (mode === "resume" && o.restartsSent === true) {
+    args.push("--restarts-sent");
+  }
+  if (mode === "run" && typeof o.shellVersion === "string" && VERSION_RE.test(o.shellVersion)) {
     args.push("--shell-version", o.shellVersion);
   }
   if (Number.isInteger(o.parentPid) && o.parentPid > 0) {
@@ -146,6 +173,7 @@ function cyclePlan(opts) {
   return {
     enabled: true,
     reason: "ok",
+    mode,
     command: path.resolve(o.python.trim()),
     args,
     cwd: root,
@@ -154,6 +182,93 @@ function cyclePlan(opts) {
     rejected: src.rejected,
     timeoutMs: CYCLE_TIMEOUT_MS,
   };
+}
+
+// F5: is this /api/state answer an idle moment for an update or a service
+// restart? Stricter than the overlay's liveGameFromState: champ select,
+// ready check, queue, loading and the post-game screens all count as busy.
+function idleForUpdate(state) {
+  if (!state || typeof state !== "object" || Array.isArray(state)) {
+    return false;
+  }
+  const lc = state.liveclient;
+  if (lc && typeof lc === "object" && !Array.isArray(lc) && Object.keys(lc).length > 0) {
+    return false;
+  }
+  for (const flag of LIVE_GAME_FLAGS) {
+    if (state[flag] === true) {
+      return false;
+    }
+  }
+  const lcu = state.lcu && typeof state.lcu === "object" && !Array.isArray(state.lcu) ? state.lcu : {};
+  const phase = lcu.phase === undefined || lcu.phase === null ? "" : String(lcu.phase);
+  return IDLE_PHASES.includes(phase);
+}
+
+function parseJsonObject(text) {
+  try {
+    const d = typeof text === "string" && text ? JSON.parse(text) : null;
+    return d && typeof d === "object" && !Array.isArray(d) ? d : null;
+  } catch (_e) {
+    return null;
+  }
+}
+
+// F1: what an earlier cycle left on disk - update_cycle.json (verify, owed,
+// phase) and the updater's update_state.json (pending, recovering).
+function recordsFrom(cycleText, stateText) {
+  const c = parseJsonObject(cycleText) || {};
+  const st = parseJsonObject(stateText) || {};
+  const isObj = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+  return {
+    verify: isObj(c.verify),
+    owed: isObj(c.owed),
+    pending: isObj(st.pending),
+    recovering: isObj(st.recovering),
+    phase: typeof c.phase === "string" ? ascii(c.phase, 32) : null,
+  };
+}
+
+// F1: run `resume` now? A verify / pending / recovering record resumes every
+// RESUME_INTERVAL_MS with NO /api/state requirement (main.py may be down);
+// an owed record only once per launch (the shell then owns the restarts).
+function resumeDue(opts) {
+  const o = opts && typeof opts === "object" ? opts : {};
+  const r = o.records && typeof o.records === "object" ? o.records : {};
+  if (o.inFlight === true) {
+    return { run: false, reason: "in-flight" };
+  }
+  const urgent = r.verify === true || r.pending === true || r.recovering === true;
+  const first = typeof o.lastResumeMs !== "number" || !Number.isFinite(o.lastResumeMs);
+  if (urgent) {
+    if (first || o.nowMs - o.lastResumeMs >= RESUME_INTERVAL_MS) {
+      return { run: true, reason: "record" };
+    }
+    return { run: false, reason: "not-due" };
+  }
+  if (r.owed === true) {
+    return first ? { run: true, reason: "owed-at-launch" } : { run: false, reason: "owed-known" };
+  }
+  return { run: false, reason: "nothing-recorded" };
+}
+
+// F2: the quit's wait for the host (base = launcher.HOST_STOP_GRACE_MS).
+function hostStopGraceMs(baseMs, inFlight) {
+  return inFlight === true ? DEPLOY_STOP_GRACE_MS : baseMs;
+}
+
+function deployInFlight(names) {
+  return Array.isArray(names) && names.some((n) => typeof n === "string" && n.endsWith(".deploying"));
+}
+
+// F6: the outer guard. "kill" only past CYCLE_TIMEOUT_MS and never while the
+// cycle reports a protected phase (its recover is re-entrant anyway).
+function watchdogDecision(opts) {
+  const o = opts && typeof opts === "object" ? opts : {};
+  if (typeof o.elapsedMs !== "number" || o.elapsedMs < CYCLE_TIMEOUT_MS) {
+    return "wait";
+  }
+  return PROTECTED_PHASES.includes(o.phase) ? "wait" : "kill";
 }
 
 // Run a cycle now? opts: nowMs, lastRunMs, intervalMs, manual, inFlight,
@@ -230,14 +345,14 @@ function parseCycleOutput(stdout, exitCode) {
   }
   const deferred = exitCode === 3 || doc.status === "deferred";
   const status = deferred ? "deferred" : doc.status;
-  const applied = status === "applied";
+  const applied = ACTION_STATUSES.includes(status);
   return {
     status,
     ok: exitCode === 0 && doc.ok === true,
     code: typeof doc.code === "string" ? ascii(doc.code, 40) : null,
     version: typeof doc.version === "string" && VERSION_RE.test(doc.version) ? doc.version : null,
     detail: ascii(doc.detail, 200),
-    // Restarts are owed only for a deploy that landed and verified.
+    // Restarts: a verified deploy, restarts still owed, or a recover.
     actions: applied ? normActions(doc.restart) : emptyOwed(),
     retryLater: deferred || status === "pending" || status === "interrupted" || status === "busy",
   };
@@ -314,6 +429,10 @@ module.exports = {
   ENABLE_ENV,
   DEFAULT_SOURCE,
   CYCLE_TIMEOUT_MS,
+  RESUME_DELAY_MS,
+  RESUME_INTERVAL_MS,
+  DEPLOY_STOP_GRACE_MS,
+  IDLE_PHASES,
   MAX_OUTPUT_BYTES,
   CHECK_DEFAULTS,
   RETRY_DELAY_MS,
@@ -322,6 +441,12 @@ module.exports = {
   resolveSource,
   cyclesEnabled,
   cyclePlan,
+  idleForUpdate,
+  recordsFrom,
+  resumeDue,
+  hostStopGraceMs,
+  deployInFlight,
+  watchdogDecision,
   cycleDue,
   lastRunAfter,
   emptyOwed,

@@ -6,38 +6,62 @@ module sequences them so the shell spawns ONE windowless child and reads ONE
 JSON line back, and so the sequencing is tested under pytest with the real
 deploy worker rather than in Electron:
 
-    run:  [resume a pending op] -> check -> stage (or reuse a verified
-          staging) -> apply (deferred, exit 3, while a game is live) ->
-          finish (poll the supervisor's result, bounded) -> verify (main.py
-          healthy again; after a supervised restart, a NEW run id) ->
-          recover() when it does not come back -> the restart actions.
+    run:     [resume, below] -> check (never a version that already failed)
+             -> stage (or reuse a verified staging) -> apply (deferred, exit
+             3, while a game is live) -> finish (bounded) -> verify ->
+             recover() when main.py does not come back -> the restarts owed.
+    resume:  only what an earlier cycle left: complete an interrupted
+             recover, finish a pending deploy (a deploy cut off mid-copy is
+             salvaged and recovered), re-verify, and - with --restarts-sent -
+             health-check the restarts the shell performed. Never checks or
+             applies a release, needs no /api/state: the shell runs it at
+             launch and while a record exists even when main.py is down.
 
-The supervisor's restart reaches main.py only (updater RESTART CLASSIFIER),
-so the result names what is still owed: `host_services` (the service host
-restarts them, ops/launcher/service_host.py command channel), `respawn_host`
-(the host's own code or the dependency set changed: the shell stops and
-respawns the host, which restarts every service), `relaunch_shell`
-(rc-shell code; a backend payload never carries it, electron-updater does).
-Those restarts are the shell's to time: it holds them until no game is live.
+READY (review F1 / F7): main.py writes alive=True from DevRuntime before its
+imports (main.py:98 -> :171), so a heartbeat proves nothing about new code.
+A run is ready when health.json carries `last_state_provider_ok` (written
+only after main.py wired its state provider, main.py:208 - after every
+import and the app constructor), its pid is alive, the heartbeat is fresh
+(<= HEARTBEAT_STALE_S) - all held by ONE run id for STABLE_S - and the
+dashboard answers /api/health at the end. After a supervised restart the run
+must also be NEW; after a hot_reload the settle window runs first and any run
+change restarts the stable window, so the old run's heartbeat cannot pass a
+reload that broke the new one.
+
+OWED RESTARTS (F3): the supervisor's restart reaches main.py only (updater
+RESTART CLASSIFIER), so a verified deploy names what is still owed:
+`host_services` (the host restarts them, service_host.py command channel),
+`respawn_host` (launcher or dependency changes: the shell respawns the
+host), `relaunch_shell` (rc-shell code; never in a backend payload). They
+are recorded (`owed`) until the shell reports them sent and every one came
+back on a NEW process and stayed up for STABLE_S; otherwise recover() - or
+`deferred` while a game is live, so a working main.py is never rolled back
+mid-game.
+
+BAD VERSIONS (F4): a version that ended recovered / failed / lost is kept in
+`bad_versions` and never applied again; a newer release still is.
 
 Restart safety (each step is a separate, persisted state):
-  - a pending op (the updater's update_state.json) is finished first, so a
-    cycle cut short by a quit resumes on the next one;
-  - between `finish ok` and `verified` the cycle keeps a `verify` record in
-    ops/runtime/launcher/update_cycle.json; the next cycle re-verifies (on
-    a fresh window, alive only) and still returns the restart actions;
+  - the updater's `recovering` marker makes recover() re-entrant (F6);
+  - a pending op (update_state.json) is finished first;
+  - `verify` / `owed` records in ops/runtime/launcher/update_cycle.json
+    survive a quit and are resumed;
   - the shell quitting is never mistaken for a broken update: a gone parent
-    (--parent-pid) or a halted host (launcher_status.json state halted)
-    ends the cycle as `interrupted`, never in recover();
-  - one cycle at a time: ops/runtime/launcher/update_cycle.lock (O_EXCL; a
-    dead holder's lock is taken over, a live one's never touched).
+    (--parent-pid) or a halted host ends the cycle as `interrupted`;
+  - `phase` in the cycle file says where a cycle is (the shell never kills
+    one in `deploying` / `recovering`);
+  - one cycle at a time: ops/runtime/launcher/update_cycle.lock.
+
+Recover is offline (the backup copied back here) when no supervisor holds
+its lock: nobody would read a supervisor request then (a respawned host that
+fails on new code).
 
 Statuses and exit codes (stdout is ONE JSON line, `status` + `ok`):
-  0  up-to-date | noop | applied | pending | interrupted | busy
+  0  up-to-date | noop | applied | pending | interrupted | busy | owed |
+     skipped (the newest release failed before) | idle (resume: nothing)
   1  refused (`code` = the updater's stable UpdateError code) | failed |
-     lost | recovered | error (`code` = the exception type, no message
-     beyond a short sanitised line: the shell only logs it)
-  3  deferred: a game is live; retry after it (the staging is kept)
+     lost | recovered | error (`code` = the exception type)
+  3  deferred: a game is live; retry after it
 
 Never at boot: nothing here registers anything; the shell runs it while the
 app is up. Stdlib only, run under `-I` (no RC module on sys.path): the
@@ -53,6 +77,7 @@ import re
 import sys
 import time
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
@@ -88,16 +113,22 @@ sh = _sibling("service_host")
 
 SCHEMA = 1
 FINISH_TIMEOUT_S = 300.0    # the supervisor kills a worker at 120 s
-HEALTH_TIMEOUT_S = 180.0    # main.py back after a supervised restart
-SETTLE_S = 20.0             # hot_reload fires on the next mtime tick
+HEALTH_TIMEOUT_S = 180.0    # main.py ready after a supervised restart
+SETTLE_S = 20.0             # hot_reload polls every 2 s, restarts in ~5 s
+STABLE_S = 30.0             # one ready run (or one restarted process) held this long
+HEARTBEAT_STALE_S = 5.0     # DevRuntime beats every 1 s (ops/rc_config.json)
+STATUS_FRESH_S = 30.0       # the host rewrites launcher_status.json every 5 s
 POLL_S = 2.0
 LOCK_STALE_S = 4 * 3600.0   # a lock older than this is stale whatever its pid
 LOCK_TORN_S = 60.0          # an unreadable lock this old is debris
+DEFAULT_DASHBOARD_PORT = 8888
 OK_EXIT = 0
 FAIL_EXIT = 1
 DEFER_EXIT = 3
-OK_STATUSES = ("up-to-date", "noop", "applied", "pending", "interrupted", "busy")
+OK_STATUSES = ("up-to-date", "noop", "applied", "pending", "interrupted", "busy", "owed",
+               "skipped", "idle")
 FAIL_STATUSES = ("refused", "failed", "lost", "recovered", "error")
+BAD_STATUSES = ("recovered", "failed", "lost")
 # Every name the service host acts on (its services.json names plus
 # WATCHDOG_PORTS); app / shell are the shell's own acts.
 HOST_SERVICES = frozenset(set(up.ALL_SERVICE_NAMES) - {"app", "shell"})
@@ -118,6 +149,13 @@ def lock_path(root: Path) -> Path:
 
 def _clean(text: Any, limit: int = 240) -> str:
     return _DETAIL_RE.sub(" ", str(text)).strip()[:limit]
+
+
+def _epoch(iso: Any) -> Optional[float]:
+    try:
+        return datetime.fromisoformat(str(iso)).timestamp()
+    except (TypeError, ValueError):
+        return None
 
 
 # ------------------------------------------------------------ results
@@ -166,6 +204,10 @@ def restart_actions(plan: Optional[Dict[str, Any]]) -> Dict[str, Any]:
             "stale_check": bool(plan.get("stale_check"))}
 
 
+def _owes(actions: Dict[str, Any]) -> bool:
+    return bool(actions.get("host_services")) or bool(actions.get("respawn_host"))
+
+
 # ------------------------------------------------------------ state file
 
 
@@ -173,11 +215,14 @@ def read_cycle(root: Path) -> Dict[str, Any]:
     try:
         doc = json.loads(cycle_path(root).read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        return {"schema": SCHEMA, "verify": None, "last": None}
+        doc = {}
     if not isinstance(doc, dict):
-        return {"schema": SCHEMA, "verify": None, "last": None}
-    doc.setdefault("verify", None)
-    doc.setdefault("last", None)
+        doc = {}
+    doc.setdefault("schema", SCHEMA)
+    for key in ("verify", "owed", "last", "phase"):
+        doc.setdefault(key, None)
+    if not isinstance(doc.get("bad_versions"), dict):
+        doc["bad_versions"] = {}
     return doc
 
 
@@ -187,6 +232,95 @@ def _write_cycle(root: Path, **changes: Any) -> None:
     doc["schema"] = SCHEMA
     doc["updated"] = utc_now()
     up._write_json(cycle_path(root), doc)
+
+
+def _mark_bad(root: Path, version: Optional[str], status: str) -> None:
+    if not isinstance(version, str) or not up.VERSION_RE.match(version):
+        return
+    bad = dict(read_cycle(root)["bad_versions"])
+    bad[version] = {"status": status, "at": utc_now()}
+    _write_cycle(root, bad_versions=bad)
+
+
+# ------------------------------------------------------------ probes
+
+
+def readiness(root: Path) -> Dict[str, Any]:
+    """One readiness sample of main.py from ops/runtime/health.json: alive,
+    ready (the post-import `last_state_provider_ok`), run_id, heartbeat age,
+    pid_alive. Never raises."""
+    path = up.runtime_dir(root) / "health.json"
+    try:
+        age = time.time() - path.stat().st_mtime
+        doc = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError):
+        return {"alive": False, "ready": False, "run_id": None, "age_s": None,
+                "pid_alive": False}
+    doc = doc if isinstance(doc, dict) else {}
+    pid = doc.get("pid")
+    alive_pid = isinstance(pid, int) and not isinstance(pid, bool) and sh.pid_alive(pid)
+    return {"alive": doc.get("alive") is True, "ready": doc.get("last_state_provider_ok") is True,
+            "run_id": str(doc.get("run_id") or "") or None, "age_s": round(age, 2),
+            "pid_alive": bool(alive_pid)}
+
+
+def _sample_ok(s: Dict[str, Any]) -> bool:
+    age = s.get("age_s")
+    return bool(s.get("alive") and s.get("ready") and s.get("pid_alive") and s.get("run_id")
+                and isinstance(age, (int, float)) and age <= HEARTBEAT_STALE_S)
+
+
+def dashboard_port() -> int:
+    try:
+        doc = json.loads(sh.DEFAULT_SERVICES.read_text(encoding="utf-8"))
+        port = int(doc.get("dashboard_port"))
+        return port if 0 < port < 65536 else DEFAULT_DASHBOARD_PORT
+    except (OSError, ValueError, TypeError):
+        return DEFAULT_DASHBOARD_PORT
+
+
+def _host_status(root: Path) -> Dict[str, Any]:
+    try:
+        doc = json.loads((up.runtime_dir(root) / "launcher_status.json")
+                         .read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return doc if isinstance(doc, dict) else {}
+
+
+def services_state(root: Path, owed: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    """For each owed name: did it come back on a process started after the
+    deploy, is it healthy, and which pid holds it. Host services from the
+    host's fresh status file; vision / ds from the process listening on
+    their port (sh.port_listener_pids + its creation time); `app` (a host
+    respawn) from a new host pid in owned mode with every service running."""
+    at = float(owed.get("at_epoch") or 0.0)
+    status = _host_status(root)
+    upd = _epoch(status.get("updated"))
+    fresh = upd is not None and time.time() - upd <= STATUS_FRESH_S
+    entries = {s.get("name"): s for s in status.get("services") or [] if isinstance(s, dict)}
+    out: Dict[str, Dict[str, Any]] = {}
+    for name in owed.get("names") or []:
+        if name == "app":
+            pid = status.get("host_pid")
+            running = bool(entries) and all(s.get("state") == "running"
+                                            for s in entries.values())
+            new = isinstance(pid, int) and pid != owed.get("host_pid_before")
+            ok = fresh and status.get("mode") == "owned" and running
+            out[name] = {"restarted": bool(fresh and new), "healthy": bool(ok), "pid": pid}
+        elif name in sh.WATCHDOG_PORTS:
+            pids = sh.port_listener_pids(sh.WATCHDOG_PORTS[name])
+            pid = pids[0] if pids else None
+            created = sh.process_created(pid) if pid else None
+            out[name] = {"restarted": bool(created is not None and created > at),
+                         "healthy": pid is not None, "pid": pid}
+        else:
+            e = entries.get(name) or {}
+            started = _epoch(e.get("started"))
+            out[name] = {"restarted": bool(fresh and started is not None and started > at),
+                         "healthy": bool(fresh and e.get("state") == "running"),
+                         "pid": e.get("pid")}
+    return out
 
 
 # ------------------------------------------------------------------ lock
@@ -247,21 +381,31 @@ class _Lock:
             self.held = False
 
 
-# ----------------------------------------------------------------- cycle
+# ----------------------------------------------------------------- context
 
 
 class _Interrupted(Exception):
     pass
 
 
+@dataclass
 class _Ctx:
-    def __init__(self, root: Path, *, clock, sleep, parent_alive, health, log) -> None:
-        self.root = root
-        self.clock = clock
-        self.sleep = sleep
-        self.parent_alive = parent_alive
-        self.health = health
-        self.log = log
+    root: Path
+    clock: Callable[[], float]
+    sleep: Callable[[float], None]
+    now: Callable[[], float]
+    parent_alive: Callable[[], bool]
+    health: Callable[[], Dict[str, Any]]
+    serving: Callable[[], bool]
+    services_probe: Callable[[Dict[str, Any]], Dict[str, Dict[str, Any]]]
+    supervisor_alive: Callable[[], bool]
+    game_check: Optional[Callable[[], Optional[str]]]
+    log: Callable[[str], None]
+    finish_timeout_s: float
+    health_timeout_s: float
+    settle_s: float
+    stable_s: float
+    poll_s: float
 
     def check_alive(self, *, host: bool = True) -> None:
         """The shell gone, or (verify only) the host halted, ends the cycle as
@@ -272,14 +416,40 @@ class _Ctx:
         if host and _host_halted(self.root):
             raise _Interrupted("the service host is stopping")
 
+    def phase(self, name: str, version: Optional[str] = None) -> None:
+        _write_cycle(self.root, phase=name, version=version)
+
+    def game_reason(self) -> Optional[str]:
+        probe = self.game_check if self.game_check is not None else \
+            (lambda: up.game_live(self.root))
+        try:
+            return probe()
+        except Exception as exc:   # noqa: BLE001 - a failed probe defers
+            return f"game check failed: {type(exc).__name__}"
+
 
 def _host_halted(root: Path) -> bool:
-    try:
-        doc = json.loads((up.runtime_dir(root) / "launcher_status.json")
-                         .read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return False
-    return isinstance(doc, dict) and doc.get("state") == "halted"
+    return _host_status(root).get("state") == "halted"
+
+
+def _make_ctx(root: Path, *, clock, sleep, now, parent_alive, health, serving,
+              services_probe, supervisor_alive, game_check, log, finish_timeout_s,
+              health_timeout_s, settle_s, stable_s, poll_s) -> _Ctx:
+    port = dashboard_port()
+    lock = up.runtime_dir(root) / "supervisor.pid"
+    return _Ctx(
+        root=root, clock=clock, sleep=sleep, now=now,
+        parent_alive=parent_alive or (lambda: True),
+        health=health or (lambda: readiness(root)),
+        serving=serving or (lambda: sh.fetch_health_origin(port) is not None),
+        services_probe=services_probe or (lambda owed: services_state(root, owed)),
+        supervisor_alive=supervisor_alive or (lambda: sh.lock_holder_alive(lock)),
+        game_check=game_check, log=log or (lambda _m: None),
+        finish_timeout_s=finish_timeout_s, health_timeout_s=health_timeout_s,
+        settle_s=settle_s, stable_s=stable_s, poll_s=poll_s)
+
+
+# ----------------------------------------------------------------- steps
 
 
 def _staged_or_stage(ctx: _Ctx, source: Any, release: Any, channel: str,
@@ -295,52 +465,127 @@ def _staged_or_stage(ctx: _Ctx, source: Any, release: Any, channel: str,
     return up.stage(ctx.root, source, release, channel=channel, shell_version=shell_version)
 
 
-def _wait_finish(ctx: _Ctx, timeout_s: float, poll_s: float) -> Any:
-    deadline = ctx.clock() + timeout_s
+def _wait_finish(ctx: _Ctx) -> Any:
+    deadline = ctx.clock() + ctx.finish_timeout_s
     while True:
-        fin = up.finish(ctx.root)
+        fin = up.finish(ctx.root, now=ctx.now)
         if fin.status != "pending":
             return fin
         ctx.check_alive(host=False)
         if ctx.clock() >= deadline:
             return fin
-        ctx.sleep(poll_s)
+        ctx.sleep(ctx.poll_s)
 
 
-def _verify(ctx: _Ctx, rec: Dict[str, Any], *, resumed: bool, timeout_s: float,
-            settle_s: float, poll_s: float) -> bool:
-    """main.py healthy after the deploy. A supervised restart (app effect
-    `restart`) must show a NEW run id; a hot_reload one first waits out the
-    settle window (the watcher fires on its next tick). A resumed verify
-    (the app was relaunched since) needs only a live heartbeat."""
-    before = rec.get("run_id_before")
-    need_new = (not resumed) and rec.get("app") == "restart" and bool(before)
-    if not resumed and rec.get("app") == "hot_reload" and settle_s > 0:
-        end = ctx.clock() + settle_s
+def _wait_ready(ctx: _Ctx, *, before: Optional[str], need_new: bool, settle: bool) -> bool:
+    """READY (module docstring): one ready run held for stable_s, then the
+    dashboard answering. A run change restarts the window."""
+    if settle and ctx.settle_s > 0:
+        end = ctx.clock() + ctx.settle_s
         while ctx.clock() < end:
             ctx.check_alive()
-            ctx.sleep(min(poll_s, max(end - ctx.clock(), 0.01)))
-    deadline = ctx.clock() + timeout_s
+            ctx.sleep(min(ctx.poll_s, max(end - ctx.clock(), 0.01)))
+    deadline = ctx.clock() + ctx.health_timeout_s
+    cand: Optional[str] = None
+    since = 0.0
     while True:
-        h = ctx.health()
-        alive = bool(h.get("alive"))
-        if alive and (not need_new or (h.get("run_id") and h.get("run_id") != before)):
-            return True
+        s = ctx.health()
+        rid = s.get("run_id")
+        if _sample_ok(s) and not (need_new and rid == before):
+            if rid != cand:
+                cand, since = rid, ctx.clock()
+            elif ctx.clock() - since >= ctx.stable_s and ctx.serving():
+                return True
+        else:
+            cand = None
         ctx.check_alive()
         if ctx.clock() >= deadline:
             return False
-        ctx.sleep(poll_s)
+        ctx.sleep(ctx.poll_s)
 
 
-def _after_finish(ctx: _Ctx, fin: Any, current: Optional[str], *, health_timeout_s: float,
-                  settle_s: float, poll_s: float) -> CycleResult:
+def _recover(ctx: _Ctx, version: Optional[str], current: Optional[str], why: str, *,
+             actions: Optional[Dict[str, Any]] = None) -> CycleResult:
+    ctx.check_alive()   # a quit that raced the last probe is not a broken update
+    offline = not ctx.supervisor_alive()
+    ctx.log(f"{why}; recovering {version} ({'offline' if offline else 'via the supervisor'})")
+    ctx.phase("recovering", version)
+    try:
+        out = up.recover(ctx.root, now=ctx.now, offline=offline)
+    except up.UpdateError as exc:
+        _write_cycle(ctx.root, verify=None, owed=None, phase="done")
+        _mark_bad(ctx.root, version, "failed")
+        return CycleResult("failed", version, current,
+                           _clean(f"{why} and recover was refused: {exc}"), code=exc.code)
+    _write_cycle(ctx.root, verify=None, owed=None, phase="done")
+    _mark_bad(ctx.root, version, "recovered")
+    act = dict(actions) if actions else restart_actions(None)
+    if offline:
+        # No supervisor ran the old code back in: the host itself failed, so
+        # the shell respawns it on the restored files.
+        act.update(respawn_host=True, host_services=[])
+    return CycleResult("recovered", version, (out or {}).get("to_version"),
+                       _clean(f"{why}; the update was rolled back "
+                              f"({'restored here' if offline else 'supervisor rollback'})"),
+                       restart=act,
+                       extra={"requests": [Path(p).name for p in (out or {}).get("requests", [])]})
+
+
+def _complete_recover(ctx: _Ctx, current: Optional[str]) -> CycleResult:
+    marker = up.read_state(ctx.root).get("recovering") or {}
+    version = marker.get("version")
+    ctx.log(f"completing an interrupted recover of {version}")
+    ctx.phase("recovering", version)
+    out = up.recover(ctx.root, now=ctx.now, offline=bool(marker.get("offline")))
+    _write_cycle(ctx.root, verify=None, owed=None, phase="done")
+    _mark_bad(ctx.root, version, "recovered")
+    act = restart_actions(None)
+    if marker.get("offline"):
+        act.update(respawn_host=True)
+    return CycleResult("recovered", version, (out or {}).get("to_version"),
+                       "an interrupted recover was completed", restart=act)
+
+
+def _verify_and_report(ctx: _Ctx, rec: Dict[str, Any], current: Optional[str], *,
+                       resumed: bool) -> CycleResult:
+    version = rec.get("version")
+    app = rec.get("app") or "none"
+    before = rec.get("run_id_before")
+    ctx.phase("verifying", version)
+    ok = _wait_ready(ctx, before=before, need_new=(not resumed and app == "restart"
+                                                   and bool(before)),
+                     settle=(not resumed and app == "hot_reload"))
+    if not ok:
+        return _recover(ctx, version, current, "main.py did not become ready")
+    actions = restart_actions(rec.get("restart"))
+    if _owes(actions):
+        names = list(actions["host_services"]) + (["app"] if actions["respawn_host"] else [])
+        owed = {"version": version, "names": names, "respawn_host": actions["respawn_host"],
+                "host_pid_before": _host_status(ctx.root).get("host_pid"),
+                "at": utc_now(), "at_epoch": float(ctx.now()), "restart": rec.get("restart")}
+        _write_cycle(ctx.root, verify=None, owed=owed, phase="owed")
+        detail = "verified: main.py is ready; restarts owed: " + ", ".join(names)
+    else:
+        _write_cycle(ctx.root, verify=None, phase="done")
+        detail = "verified: main.py is ready"
+    return CycleResult("applied", version, version, detail, restart=actions)
+
+
+def _after_finish(ctx: _Ctx, fin: Any, current: Optional[str]) -> CycleResult:
     if fin.status == "pending":
         return CycleResult("pending", fin.version, current,
                            "the supervisor has not finished the deploy yet")
+    if fin.status == "interrupted":
+        if fin.kind == "apply":
+            return _recover(ctx, fin.version, current,
+                            "the deploy was cut off mid-copy (the supervisor stopped)")
+        return CycleResult("failed", fin.version, current,
+                           "a rollback was cut off; run it again", code="interrupted")
     if fin.status in ("failed", "lost"):
         res = fin.result or {}
-        detail = (f"deploy {fin.status} in phase {res.get('phase')}"
-                  if fin.status == "failed" else "the deploy request vanished with no result")
+        _mark_bad(ctx.root, fin.version, fin.status)
+        detail = (f"deploy failed in phase {res.get('phase')}" if fin.status == "failed"
+                  else "the deploy request vanished with no result")
         return CycleResult(fin.status, fin.version, current, detail)
     if fin.status == "none":
         return CycleResult("up-to-date", None, current, "nothing pending")
@@ -348,56 +593,115 @@ def _after_finish(ctx: _Ctx, fin: Any, current: Optional[str], *, health_timeout
     rec = {"version": fin.version, "kind": fin.kind, "app": plan.get("app") or "none",
            "run_id_before": fin.run_id_before, "restart": plan, "at": utc_now()}
     _write_cycle(ctx.root, verify=rec)
-    return _verify_and_report(ctx, rec, current, resumed=False,
-                              health_timeout_s=health_timeout_s, settle_s=settle_s,
-                              poll_s=poll_s)
+    return _verify_and_report(ctx, rec, current, resumed=False)
 
 
-def _verify_and_report(ctx: _Ctx, rec: Dict[str, Any], current: Optional[str], *,
-                       resumed: bool, health_timeout_s: float, settle_s: float,
-                       poll_s: float) -> CycleResult:
-    version = rec.get("version")
-    if _verify(ctx, rec, resumed=resumed, timeout_s=health_timeout_s, settle_s=settle_s,
-               poll_s=poll_s):
-        _write_cycle(ctx.root, verify=None)
-        return CycleResult("applied", version, version, "verified: main.py is healthy",
-                           restart=restart_actions(rec.get("restart")))
-    ctx.check_alive()   # a quit that raced the last probe is not a broken update
-    ctx.log(f"main.py did not come back after {version}; recovering")
-    try:
-        out = up.recover(ctx.root)
-    except up.UpdateError as exc:
-        _write_cycle(ctx.root, verify=None)
-        return CycleResult("failed", version, current,
-                           _clean(f"the app did not come back and recover was refused: {exc}"),
-                           code=exc.code)
-    _write_cycle(ctx.root, verify=None)
-    return CycleResult("recovered", version, (out or {}).get("to_version"),
-                       "the app did not come back; the supervisor's rollback was requested",
-                       extra={"requests": [Path(p).name for p in (out or {}).get("requests", [])]})
+def _check_restarts(ctx: _Ctx, owed: Dict[str, Any], current: Optional[str]) -> CycleResult:
+    """F3: every owed name back on a NEW process, healthy, the same pids held
+    for stable_s, and main.py ready throughout; else recover (deferred while
+    a game is live)."""
+    version = owed.get("version")
+    names = list(owed.get("names") or [])
+    ctx.phase("restart-check", version)
+    deadline = ctx.clock() + ctx.health_timeout_s
+    cand = None
+    since = 0.0
+    while True:
+        st = ctx.services_probe(owed)
+        main = ctx.health()
+        good = _sample_ok(main) and all(
+            (st.get(n) or {}).get("restarted") and (st.get(n) or {}).get("healthy")
+            and (st.get(n) or {}).get("pid") for n in names)
+        if good:
+            key = tuple([(st.get(n) or {}).get("pid") for n in names] + [main.get("run_id")])
+            if key != cand:
+                cand, since = key, ctx.clock()
+            elif ctx.clock() - since >= ctx.stable_s and ctx.serving():
+                _write_cycle(ctx.root, owed=None, phase="done")
+                return CycleResult("applied", version, version,
+                                   "verified: the restarted services stayed up: "
+                                   + ", ".join(names), restart=restart_actions(None))
+        else:
+            cand = None
+        ctx.check_alive(host=False)
+        if ctx.clock() >= deadline:
+            break
+        ctx.sleep(ctx.poll_s)
+    failing = [n for n in names if not ((st.get(n) or {}).get("restarted")
+                                       and (st.get(n) or {}).get("healthy"))]
+    if _sample_ok(main):
+        reason = ctx.game_reason()
+        if reason:
+            return CycleResult("deferred", version, current,
+                               _clean(f"restarted services not healthy ({', '.join(failing)}); "
+                                      f"recover waits for the game to end ({reason})"),
+                               code="game_live")
+    actions = restart_actions(owed.get("restart"))
+    return _recover(ctx, version, current,
+                    "restarted services did not stay up: " + (", ".join(failing) or "unstable"),
+                    actions=actions)
 
 
-def run_cycle(root: Path, source: Any, *, channel: str = "stable",
-              shell_version: Optional[str] = None,
-              game_check: Optional[Callable[[], Optional[str]]] = None,
-              health: Optional[Callable[[], Dict[str, Any]]] = None,
-              parent_alive: Optional[Callable[[], bool]] = None,
-              clock: Callable[[], float] = time.monotonic,
-              sleep: Callable[[float], None] = time.sleep,
-              finish_timeout_s: float = FINISH_TIMEOUT_S,
-              health_timeout_s: float = HEALTH_TIMEOUT_S,
-              settle_s: float = SETTLE_S, poll_s: float = POLL_S,
-              log: Optional[Callable[[str], None]] = None) -> CycleResult:
-    """One update cycle. Never raises for an expected outcome: every refusal
-    is a CycleResult with its code. Every side effect is injectable."""
-    log = log or (lambda _msg: None)
+def _resume(ctx: _Ctx, current: Optional[str], *, restarts_sent: bool) -> Optional[CycleResult]:
+    """What an earlier cycle left, in order; None = nothing recorded."""
+    if up.read_state(ctx.root).get("recovering"):
+        return _complete_recover(ctx, current)
+    if up.read_state(ctx.root).get("pending"):
+        ctx.log("resuming a pending update operation")
+        fin = _wait_finish(ctx)
+        return _after_finish(ctx, fin, up.installed_version(ctx.root))
+    doc = read_cycle(ctx.root)
+    rec = doc.get("verify")
+    if isinstance(rec, dict) and rec.get("version"):
+        ctx.log(f"re-verifying {rec.get('version')} after an interrupted cycle")
+        return _verify_and_report(ctx, rec, current, resumed=True)
+    owed = doc.get("owed")
+    if isinstance(owed, dict) and owed.get("version"):
+        if not restarts_sent:
+            return CycleResult("owed", owed.get("version"), current,
+                               "restarts owed: " + ", ".join(owed.get("names") or []),
+                               restart=restart_actions(owed.get("restart")))
+        return _check_restarts(ctx, owed, current)
+    return None
+
+
+def _run(ctx: _Ctx, source: Any, current: Optional[str], *, channel: str,
+         shell_version: Optional[str], game_check) -> CycleResult:
+    resumed = _resume(ctx, current, restarts_sent=False)
+    if resumed is not None:
+        return resumed
+    bad = read_cycle(ctx.root)["bad_versions"]
+    release = up.check(source, channel=channel, current_version=current)
+    if release is None:
+        return CycleResult("up-to-date", None, current, "no newer release on this channel")
+    if release.version in bad:
+        alt = up.check(source, channel=channel, current_version=current, exclude=set(bad))
+        if alt is None:
+            return CycleResult("skipped", release.version, current,
+                               f"release {release.version} failed before "
+                               f"({bad[release.version].get('status')}); waiting for a newer one")
+        release = alt
+    ctx.log(f"release {release.version} available (installed {current})")
+    staged = _staged_or_stage(ctx, source, release, channel, shell_version)
+    ctx.phase("staged", staged.version)
+    applied = up.apply(ctx.root, staged.version, game_check=game_check)
+    if applied.status == "noop":
+        _write_cycle(ctx.root, phase="done")
+        return CycleResult("noop", staged.version, staged.version,
+                           "every file of the release is already live")
+    ctx.log(f"deploy requested: {applied.request_id}")
+    ctx.phase("deploying", staged.version)
+    fin = _wait_finish(ctx)
+    return _after_finish(ctx, fin, current)
+
+
+def _guarded(root: Path, ctx_kw: Dict[str, Any], body: Callable[[_Ctx, Optional[str]], Any],
+             log: Callable[[str], None]) -> CycleResult:
     try:
         root = up._install_root(root)
     except up.UpdateError as exc:
         return CycleResult("refused", detail=_clean(exc), code=exc.code)
-    ctx = _Ctx(root, clock=clock, sleep=sleep,
-               parent_alive=parent_alive or (lambda: True),
-               health=health or (lambda: up.app_health(root)), log=log)
+    ctx = _make_ctx(root, log=log, **ctx_kw)
     lock = _Lock(root)
     if not lock.acquire():
         return CycleResult("busy", detail="another update cycle is running")
@@ -405,9 +709,7 @@ def run_cycle(root: Path, source: Any, *, channel: str = "stable",
     try:
         try:
             current = up.installed_version(root)
-            res = _cycle(ctx, source, current, channel=channel, shell_version=shell_version,
-                         game_check=game_check, finish_timeout_s=finish_timeout_s,
-                         health_timeout_s=health_timeout_s, settle_s=settle_s, poll_s=poll_s)
+            res = body(ctx, current)
         except _Interrupted as exc:
             res = CycleResult("interrupted", None, current, _clean(exc))
         except up.GameLiveError as exc:
@@ -420,7 +722,11 @@ def run_cycle(root: Path, source: Any, *, channel: str = "stable",
         # Still under the lock: the cycle file is read-modify-write, so a
         # second cycle must never interleave with this last write.
         try:
-            _write_cycle(root, last=dict(res.to_dict(), at=utc_now()))
+            doc = read_cycle(root)
+            phase = doc.get("phase")
+            if res.status not in ("interrupted", "pending", "owed", "deferred"):
+                phase = "done"
+            _write_cycle(root, last=dict(res.to_dict(), at=utc_now()), phase=phase)
         except OSError as exc:
             log(f"cycle status not written: {type(exc).__name__}")
     finally:
@@ -429,34 +735,70 @@ def run_cycle(root: Path, source: Any, *, channel: str = "stable",
     return res
 
 
-def _cycle(ctx: _Ctx, source: Any, current: Optional[str], *, channel: str,
-           shell_version: Optional[str], game_check, finish_timeout_s: float,
-           health_timeout_s: float, settle_s: float, poll_s: float) -> CycleResult:
-    timing = {"health_timeout_s": health_timeout_s, "settle_s": settle_s, "poll_s": poll_s}
-    # 1. Resume: an op a previous cycle (or a direct CLI call) left pending.
-    if up.read_state(ctx.root).get("pending"):
-        ctx.log("resuming a pending update operation")
-        fin = _wait_finish(ctx, finish_timeout_s, poll_s)
-        return _after_finish(ctx, fin, up.installed_version(ctx.root), **timing)
-    # 2. Resume: a deploy that finished but was never verified.
-    rec = read_cycle(ctx.root).get("verify")
-    if isinstance(rec, dict) and rec.get("version"):
-        ctx.log(f"re-verifying {rec.get('version')} after an interrupted cycle")
-        return _verify_and_report(ctx, rec, current, resumed=True, **timing)
-    # 3. A new cycle.
-    release = up.check(source, channel=channel, current_version=current)
-    if release is None:
-        return CycleResult("up-to-date", None, current, "no newer release on this channel")
-    ctx.log(f"release {release.version} available (installed {current})")
-    staged = _staged_or_stage(ctx, source, release, channel, shell_version)
-    _write_cycle(ctx.root, phase="staged", version=staged.version)
-    applied = up.apply(ctx.root, staged.version, game_check=game_check)
-    if applied.status == "noop":
-        return CycleResult("noop", staged.version, staged.version,
-                           "every file of the release is already live")
-    ctx.log(f"deploy requested: {applied.request_id}")
-    fin = _wait_finish(ctx, finish_timeout_s, poll_s)
-    return _after_finish(ctx, fin, current, **timing)
+def _ctx_kw(*, clock, sleep, now, parent_alive, health, serving, services_probe,
+            supervisor_alive, game_check, finish_timeout_s, health_timeout_s, settle_s,
+            stable_s, poll_s) -> Dict[str, Any]:
+    return dict(clock=clock, sleep=sleep, now=now, parent_alive=parent_alive, health=health,
+                serving=serving, services_probe=services_probe,
+                supervisor_alive=supervisor_alive, game_check=game_check,
+                finish_timeout_s=finish_timeout_s, health_timeout_s=health_timeout_s,
+                settle_s=settle_s, stable_s=stable_s, poll_s=poll_s)
+
+
+def run_cycle(root: Path, source: Any, *, channel: str = "stable",
+              shell_version: Optional[str] = None,
+              game_check: Optional[Callable[[], Optional[str]]] = None,
+              health: Optional[Callable[[], Dict[str, Any]]] = None,
+              serving: Optional[Callable[[], bool]] = None,
+              services_probe: Optional[Callable[[Dict[str, Any]], Dict[str, Any]]] = None,
+              supervisor_alive: Optional[Callable[[], bool]] = None,
+              parent_alive: Optional[Callable[[], bool]] = None,
+              clock: Callable[[], float] = time.monotonic,
+              sleep: Callable[[float], None] = time.sleep,
+              now: Callable[[], float] = time.time,
+              finish_timeout_s: float = FINISH_TIMEOUT_S,
+              health_timeout_s: float = HEALTH_TIMEOUT_S,
+              settle_s: float = SETTLE_S, stable_s: float = STABLE_S, poll_s: float = POLL_S,
+              log: Optional[Callable[[str], None]] = None) -> CycleResult:
+    """One update cycle. Never raises for an expected outcome: every refusal
+    is a CycleResult with its code. Every side effect is injectable."""
+    kw = _ctx_kw(clock=clock, sleep=sleep, now=now, parent_alive=parent_alive, health=health,
+                 serving=serving, services_probe=services_probe,
+                 supervisor_alive=supervisor_alive, game_check=game_check,
+                 finish_timeout_s=finish_timeout_s, health_timeout_s=health_timeout_s,
+                 settle_s=settle_s, stable_s=stable_s, poll_s=poll_s)
+    return _guarded(root, kw, lambda ctx, cur: _run(
+        ctx, source, cur, channel=channel, shell_version=shell_version,
+        game_check=game_check), log or (lambda _m: None))
+
+
+def resume_cycle(root: Path, *, restarts_sent: bool = False,
+                 game_check: Optional[Callable[[], Optional[str]]] = None,
+                 health: Optional[Callable[[], Dict[str, Any]]] = None,
+                 serving: Optional[Callable[[], bool]] = None,
+                 services_probe: Optional[Callable[[Dict[str, Any]], Dict[str, Any]]] = None,
+                 supervisor_alive: Optional[Callable[[], bool]] = None,
+                 parent_alive: Optional[Callable[[], bool]] = None,
+                 clock: Callable[[], float] = time.monotonic,
+                 sleep: Callable[[float], None] = time.sleep,
+                 now: Callable[[], float] = time.time,
+                 finish_timeout_s: float = FINISH_TIMEOUT_S,
+                 health_timeout_s: float = HEALTH_TIMEOUT_S,
+                 settle_s: float = SETTLE_S, stable_s: float = STABLE_S,
+                 poll_s: float = POLL_S,
+                 log: Optional[Callable[[str], None]] = None) -> CycleResult:
+    """Only what an earlier cycle left (module docstring); `idle` when
+    nothing is recorded. Needs no /api/state and never applies a release."""
+    kw = _ctx_kw(clock=clock, sleep=sleep, now=now, parent_alive=parent_alive, health=health,
+                 serving=serving, services_probe=services_probe,
+                 supervisor_alive=supervisor_alive, game_check=game_check,
+                 finish_timeout_s=finish_timeout_s, health_timeout_s=health_timeout_s,
+                 settle_s=settle_s, stable_s=stable_s, poll_s=poll_s)
+
+    def body(ctx: _Ctx, cur: Optional[str]) -> CycleResult:
+        got = _resume(ctx, cur, restarts_sent=restarts_sent)
+        return got if got is not None else CycleResult("idle", None, cur, "nothing to resume")
+    return _guarded(root, kw, body, log or (lambda _m: None))
 
 
 # ------------------------------------------------------------------- CLI
@@ -477,10 +819,14 @@ def main(argv: Optional[List[str]] = None) -> int:
                      help="local:<dir>, github or github:<owner>/<repo>")
     run.add_argument("--channel", choices=up.CHANNELS, default="stable")
     run.add_argument("--shell-version", default=None)
-    run.add_argument("--parent-pid", type=int, default=None,
-                     help="the shell; once it is gone the cycle stops (never recovers)")
-    run.add_argument("--finish-timeout", type=float, default=FINISH_TIMEOUT_S)
-    run.add_argument("--health-timeout", type=float, default=HEALTH_TIMEOUT_S)
+    res_p = sub.add_parser("resume")
+    res_p.add_argument("--restarts-sent", action="store_true",
+                       help="the shell performed the owed restarts: health-check them")
+    for p in (run, res_p):
+        p.add_argument("--parent-pid", type=int, default=None,
+                       help="the shell; once it is gone the cycle stops (never recovers)")
+        p.add_argument("--finish-timeout", type=float, default=FINISH_TIMEOUT_S)
+        p.add_argument("--health-timeout", type=float, default=HEALTH_TIMEOUT_S)
     sub.add_parser("status")
     args = ap.parse_args(argv)
     root = Path(args.root)
@@ -491,18 +837,21 @@ def main(argv: Optional[List[str]] = None) -> int:
         return OK_EXIT
     parent = None
     try:
-        try:
-            source = up._source(args.source)
-        except up.UpdateError as exc:
-            res = CycleResult("refused", detail=_clean(exc), code=exc.code)
+        common = dict(finish_timeout_s=max(1.0, args.finish_timeout),
+                      health_timeout_s=max(1.0, args.health_timeout), log=_log_to_file(root))
+        if args.parent_pid:
+            parent = sh.ParentWatch(args.parent_pid)
+            common["parent_alive"] = parent.alive
+        if args.cmd == "resume":
+            res = resume_cycle(root, restarts_sent=args.restarts_sent, **common)
         else:
-            parent = sh.ParentWatch(args.parent_pid) if args.parent_pid else None
-            res = run_cycle(root, source, channel=args.channel,
-                            shell_version=args.shell_version,
-                            parent_alive=parent.alive if parent else None,
-                            finish_timeout_s=max(1.0, args.finish_timeout),
-                            health_timeout_s=max(1.0, args.health_timeout),
-                            log=_log_to_file(root))
+            try:
+                source = up._source(args.source)
+            except up.UpdateError as exc:
+                res = CycleResult("refused", detail=_clean(exc), code=exc.code)
+            else:
+                res = run_cycle(root, source, channel=args.channel,
+                                shell_version=args.shell_version, **common)
     finally:
         if parent is not None:
             parent.close()

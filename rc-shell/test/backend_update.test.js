@@ -164,8 +164,13 @@ test("parseCycleOutput: exit 3 is a live-game deferral, retried later; nothing i
   assert.deepStrictEqual(r.actions, bu.emptyOwed());
 });
 
-test("parseCycleOutput: restarts are owed only for an applied deploy", () => {
-  for (const status of ["pending", "recovered", "failed", "refused", "up-to-date"]) {
+test("parseCycleOutput: restarts are owed for applied, owed and recovered results only", () => {
+  for (const status of ["owed", "recovered"]) {
+    const r = bu.parseCycleOutput(out({ ok: status === "owed", status,
+      restart: { host_services: ["vision"], respawn_host: false } }), status === "owed" ? 0 : 1);
+    assert.deepStrictEqual(r.actions.hostServices, ["vision"], status);
+  }
+  for (const status of ["pending", "failed", "refused", "up-to-date", "skipped", "idle"]) {
     const r = bu.parseCycleOutput(out({ ok: status !== "failed", status,
       restart: { host_services: ["vision"], respawn_host: true } }), status === "failed" ? 1 : 0);
     assert.deepStrictEqual(r.actions, bu.emptyOwed(), status);
@@ -228,11 +233,13 @@ test("logLine: one ASCII line", () => {
 // ---- main.js wiring (source contracts) ------------------------------------------------
 
 test("main.js: the cycle is spawned from the pure plan, windowless, bounded, never through a shell", () => {
-  const body = fnBody("runBackendCycle");
-  assert.ok(body.includes("bu.cyclePlan("), "the plan decides");
+  assert.ok(fnBody("backendPlan").includes("bu.cyclePlan("), "the plan decides");
+  assert.ok(fnBody("runBackendCycle").includes('backendPlan("run"'), "run mode");
+  assert.ok(fnBody("runBackendResume").includes('backendPlan("resume"'), "resume mode");
+  const body = fnBody("runBackendChild");
   assert.ok(body.includes("execFile("), "execFile, never a shell string");
   assert.ok(body.includes("windowsHide: true"), "no console window");
-  assert.ok(body.includes("timeout: plan.timeoutMs"), "bounded");
+  assert.ok(body.includes("bu.watchdogDecision("), "bounded by the phase-aware watchdog (F6)");
   assert.ok(body.includes("bu.parseCycleOutput("), "the result is parsed by the pure core");
   assert.ok(!/shell:\s*true/.test(body), "never shell: true");
 });
@@ -240,7 +247,7 @@ test("main.js: the cycle is spawned from the pure plan, windowless, bounded, nev
 test("main.js: cycles run only through the idle gate and the owned-host check", () => {
   const body = fnBody("maybeRunBackendCycle");
   assert.ok(body.includes("bu.cycleDue("), "pure gate");
-  assert.ok(body.includes("lastInGame") && body.includes("pollFresh"), "the same idle signals as the relaunch gate");
+  assert.ok(body.includes("!lastUpdateIdle") && body.includes("pollFresh"), "the strict idle gate (F5)");
   assert.ok(fnBody("hostOwnsServices").includes('status.mode === "owned"'), "attach mode never updates");
 });
 
@@ -272,4 +279,85 @@ test("main.js: a manual backend check is in the menu", () => {
 
 test("package.json: the backend_update tests are in the enumerated npm test script", () => {
   assert.ok(PKG.scripts.test.includes("test/backend_update.test.js"));
+});
+
+// ---- fix round (review of 6e09c8bc1) ---------------------------------------------
+
+test("F5 idleForUpdate: only a lobby or no LCU phase, with no live game, is idle", () => {
+  assert.strictEqual(bu.idleForUpdate({ liveclient: {}, lcu: { phase: "Lobby" } }), true);
+  assert.strictEqual(bu.idleForUpdate({ liveclient: {}, lcu: { phase: "None" } }), true);
+  assert.strictEqual(bu.idleForUpdate({ liveclient: {}, lcu: {} }), true);
+  assert.strictEqual(bu.idleForUpdate({ mode_key: "client" }), true);
+  for (const phase of ["Matchmaking", "ReadyCheck", "ChampSelect", "GameStart", "InProgress",
+    "Reconnect", "WaitingForStats", "PreEndOfGame", "EndOfGame", "SomethingNew"]) {
+    assert.strictEqual(bu.idleForUpdate({ liveclient: {}, lcu: { phase } }), false, phase);
+  }
+  assert.strictEqual(bu.idleForUpdate({ liveclient: { activePlayer: {} }, lcu: { phase: "Lobby" } }), false);
+  assert.strictEqual(bu.idleForUpdate({ has_game: true, lcu: { phase: "Lobby" } }), false);
+  assert.strictEqual(bu.idleForUpdate(null), false, "no state = not idle");
+  assert.strictEqual(bu.idleForUpdate([]), false);
+});
+
+test("F1 cyclePlan resume: no source, no owned host needed, --restarts-sent on request", () => {
+  const p = plan({ mode: "resume", hostOwned: false, restartsSent: true });
+  assert.strictEqual(p.enabled, true);
+  assert.deepStrictEqual(p.args, ["-I", CYCLE, "--root", path.resolve(ROOT), "resume",
+    "--restarts-sent", "--parent-pid", "4242"]);
+  assert.ok(!plan({ mode: "resume" }).args.includes("--restarts-sent"));
+  assert.strictEqual(plan({ mode: "bogus" }).reason, "bad-mode");
+});
+
+test("F1 recordsFrom: what an earlier cycle left on disk", () => {
+  const cyc = JSON.stringify({ verify: { version: "1.1.0" }, owed: null, phase: "verifying" });
+  const st = JSON.stringify({ pending: null, recovering: { version: "1.1.0" } });
+  assert.deepStrictEqual(bu.recordsFrom(cyc, st),
+    { verify: true, owed: false, pending: false, recovering: true, phase: "verifying" });
+  assert.deepStrictEqual(bu.recordsFrom("garbage", null),
+    { verify: false, owed: false, pending: false, recovering: false, phase: null });
+});
+
+test("F1 resumeDue: a verify / pending / recovering record resumes on its interval, any state", () => {
+  const rec = { verify: true, owed: false, pending: false, recovering: false };
+  assert.strictEqual(bu.resumeDue({ records: rec, lastResumeMs: null, nowMs: 1 }).run, true);
+  assert.strictEqual(bu.resumeDue({ records: rec, lastResumeMs: 1000, nowMs: 1000 + bu.RESUME_INTERVAL_MS - 1 }).run, false);
+  assert.strictEqual(bu.resumeDue({ records: rec, lastResumeMs: 1000, nowMs: 1000 + bu.RESUME_INTERVAL_MS }).run, true);
+  assert.strictEqual(bu.resumeDue({ records: rec, inFlight: true, nowMs: 1 }).reason, "in-flight");
+  const owed = { verify: false, owed: true, pending: false, recovering: false };
+  assert.strictEqual(bu.resumeDue({ records: owed, lastResumeMs: null, nowMs: 1 }).run, true, "owed: once per launch");
+  assert.strictEqual(bu.resumeDue({ records: owed, lastResumeMs: 5, nowMs: 1e9 }).run, false);
+  assert.strictEqual(bu.resumeDue({ records: bu.recordsFrom(null, null), nowMs: 1 }).reason, "nothing-recorded");
+});
+
+test("F2 hostStopGraceMs: a deploy in flight stretches the quit grace, bounded", () => {
+  assert.strictEqual(bu.hostStopGraceMs(25000, false), 25000);
+  assert.strictEqual(bu.hostStopGraceMs(25000, true), bu.DEPLOY_STOP_GRACE_MS);
+  assert.ok(bu.DEPLOY_STOP_GRACE_MS > 150000, "past the host's own deploy grace");
+  assert.ok(bu.DEPLOY_STOP_GRACE_MS <= 5 * 60 * 1000, "bounded");
+  assert.strictEqual(bu.deployInFlight(["a.json", "b.deploying"]), true);
+  assert.strictEqual(bu.deployInFlight(["a.json", "x.deploying.stale"]), false);
+  assert.strictEqual(bu.deployInFlight(null), false);
+});
+
+test("F6 watchdogDecision: never kills a cycle that is deploying or recovering", () => {
+  const over = bu.CYCLE_TIMEOUT_MS + 1;
+  assert.strictEqual(bu.watchdogDecision({ elapsedMs: over, phase: "checking" }), "kill");
+  assert.strictEqual(bu.watchdogDecision({ elapsedMs: over, phase: null }), "kill");
+  assert.strictEqual(bu.watchdogDecision({ elapsedMs: over, phase: "recovering" }), "wait");
+  assert.strictEqual(bu.watchdogDecision({ elapsedMs: over, phase: "deploying" }), "wait");
+  assert.strictEqual(bu.watchdogDecision({ elapsedMs: 10, phase: "checking" }), "wait");
+  assert.ok(bu.CYCLE_TIMEOUT_MS >= 60 * 60 * 1000, "far past the cycle's own bounded waits");
+});
+
+test("main.js F1/F2/F5/F6 wiring", () => {
+  const run = fnBody("runBackendChild");
+  assert.ok(!/timeout:\s*plan\.timeoutMs/.test(run), "no execFile hard timeout (F6)");
+  assert.ok(run.includes("bu.watchdogDecision("), "the watchdog decides from the cycle phase");
+  const resume = fnBody("maybeResumeBackend");
+  assert.ok(resume.includes("bu.resumeDue("), "resume gate");
+  assert.ok(!resume.includes("pollFresh"), "resume needs no fresh /api/state (F1)");
+  assert.ok(MAIN_SRC.includes("lastUpdateIdle = bu.idleForUpdate(parsed)"), "F5 gate from /api/state");
+  assert.ok(fnBody("maybeRunBackendCycle").includes("!lastUpdateIdle"), "cycles use the strict gate");
+  assert.ok(fnBody("applyOwedRestarts").includes("!lastUpdateIdle"), "restarts use the strict gate");
+  assert.ok(fnBody("applyOwedRestarts").includes("runBackendResume(true)"), "restarts are health-checked (F3)");
+  assert.ok(fnBody("stopServiceHost").includes("bu.hostStopGraceMs("), "quit grace stretches under a deploy (F2)");
 });

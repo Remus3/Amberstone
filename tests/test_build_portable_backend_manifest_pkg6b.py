@@ -87,6 +87,9 @@ def test_m1_the_bundle_ships_a_parseable_ownership_baseline(repo, tmp_path):
     ({"version": "20261026"}, "0.0.0"),
     ({"version": "1.2.3"}, "1.2.3"),
     ({"version": "20261026", "backend_version": "2.0.0-rc.1"}, "2.0.0-rc.1"),
+    # fix round: a release tag spelling (leading v) is the same version
+    ({"version": "v1.2.3"}, "1.2.3"),
+    ({"backend_version": "V2.0.1"}, "2.0.1"),
 ])
 def test_m2_backend_version_rules(repo, tmp_path, kw, want):
     out = _built(repo, tmp_path, **kw)

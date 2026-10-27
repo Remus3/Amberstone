@@ -72,12 +72,24 @@ def test_i_the_update_cycle_stages_and_signs_on_the_bundle(tmp_path):
     labels = rps._passes
     assert any(p.startswith("updater reads the install's ownership baseline") for p in labels)
     assert any(p.startswith("update cycle: up-to-date on an empty source") for p in labels)
-    deferred = any(p.startswith("update cycle deferred") for p in labels)
-    if not deferred:   # a League client running on this box defers the apply
-        assert any(p.startswith("update cycle staged") for p in labels), labels
-        assert any(p.startswith("deploy request verifies with the per-install key")
-                   for p in labels), labels
-        assert (root / "ops" / "runtime" / "staging" / "0.0.1").is_dir()
+    # Fix round F8: the stage step runs with an injected no-game probe, so
+    # these assertions hold even with a League client running on this box.
+    assert any(p.startswith("update cycle staged") for p in labels), labels
+    assert any(p.startswith("deploy request verifies with the per-install key")
+               for p in labels), labels
+    assert any(p.startswith("the request changes exactly the owned file") for p in labels)
+    assert (root / "ops" / "runtime" / "staging" / "0.0.1").is_dir()
+
+
+def test_i_a_deferral_is_reported_as_a_failure_not_a_pass(tmp_path, monkeypatch):
+    rps.reset()
+    root = _bundle(tmp_path)
+    rps.check_launcher_from_unpacked(root, interpreter=Path(sys.executable), work_dir=tmp_path)
+    monkeypatch.setattr(rps, "_stage_without_game", lambda *a, **k: (3, {"status": "deferred"}))
+    rps.reset()
+    rps.check_updater_from_unpacked(root, interpreter=Path(sys.executable), work_dir=tmp_path)
+    assert rps.failures() == ["update cycle deferred: the no-game probe was not honoured"]
+    assert not any("deferred" in p for p in rps._passes)
 
 
 def test_i_fails_closed_without_the_cycle(tmp_path):

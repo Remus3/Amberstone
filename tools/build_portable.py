@@ -714,16 +714,24 @@ def verify_bundle(bundle_dir: Path) -> list:
 # --------------------------------------------------------------------------- #
 def resolve_backend_version(version: Optional[str], backend_version: Optional[str]) -> str:
     """The backend version the install reports to the updater: an explicit
-    --backend-version (must be semver), else the bundle version when it is
-    semver (a release build), else DEFAULT_BACKEND_VERSION."""
+    --backend-version (must be semver; a leading v is dropped), else the
+    bundle version when it is semver (a release build), else
+    DEFAULT_BACKEND_VERSION."""
     if backend_version is not None:
-        if not updater_mod.VERSION_RE.match(str(backend_version)):
-            raise BundleError(f"--backend-version must be semver X.Y.Z[-pre]: "
+        ver = _strip_v(str(backend_version))
+        if not updater_mod.VERSION_RE.match(ver):
+            raise BundleError(f"--backend-version must be semver [v]X.Y.Z[-pre]: "
                               f"{backend_version!r}")
-        return str(backend_version)
-    if version and updater_mod.VERSION_RE.match(version):
-        return version
+        return ver
+    if version and updater_mod.VERSION_RE.match(_strip_v(version)):
+        return _strip_v(version)
     return DEFAULT_BACKEND_VERSION
+
+
+def _strip_v(version: str) -> str:
+    """A release tag spelling ("v1.2.3") names the same version."""
+    v = version.strip()
+    return v[1:] if v[:1] in ("v", "V") else v
 
 
 def backend_manifest(out: Path, files: dict, version: str) -> dict:

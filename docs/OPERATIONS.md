@@ -379,29 +379,42 @@ The shell runs ONE windowless child per cycle and acts on its one JSON line; not
 - Cycle: `<python> -I ops/launcher/update_cycle.py --root <backend> run --source <src>
   [--channel stable|dev] [--shell-version V] [--parent-pid N]` = finish anything pending, then
   check, stage (or reuse a verified staging), apply (a signed deploy request for the frozen
-  supervisor), finish, verify (main.py healthy again; a NEW run id after a supervised restart),
-  `recover()` when it does not come back. Exit 0 up-to-date / noop / applied / pending /
-  interrupted / busy, 1 refused / failed / lost / recovered / error (`code` = the updater's stable
-  code), 3 deferred (a game is live; the staging is kept). `... status` prints the cycle record
-  (`ops/runtime/launcher/update_cycle.json`), the installed version and the updater state. Log:
-  `ops/runtime/logs/update_cycle.log`.
+  supervisor), finish, verify, `recover()` when it does not come back. Verify = READY: health.json
+  carries `last_state_provider_ok` (written only after main.py's imports and app constructor), a
+  live pid and a fresh heartbeat, all from ONE run id for 30 s (a NEW run after a supervised
+  restart; after a hot_reload a settle window first), then `/api/health` answers. A version that
+  ended recovered / failed / lost is never applied again (`bad_versions`; a newer one still is).
+  `... resume [--restarts-sent]` only finishes what an earlier cycle left (an interrupted recover,
+  a pending deploy - a deploy cut off by a quit is salvaged from the worker's backup and
+  recovered - a verify, owed restarts) and needs no `/api/state`. Exit 0 up-to-date / noop /
+  applied / pending / interrupted / busy / owed / skipped / idle, 1 refused / failed / lost /
+  recovered / error (`code` = the updater's stable code), 3 deferred (a game is live).
+  `... status` prints the cycle record (`ops/runtime/launcher/update_cycle.json`), the installed
+  version and the updater state. Log: `ops/runtime/logs/update_cycle.log`.
 - Source: `RC_BACKEND_UPDATE_SOURCE` = `github` (default, the repo's Releases; none published yet,
   hand-off ASKS 42) | `github:<owner>/<repo>` | `local:<absolute folder>` holding
   `backend-<ver>.json` + `backend-<ver>.zip`. A packaged launch checks 2 min after launch, then
   every 4 h, plus the menu item "Check for backend updates now"; a checkout launch only with
   `RC_BACKEND_UPDATES=1` (a linked checkout is refused anyway: it updates through git +
-  hot_reload). Every cycle waits for a fresh `/api/state` with no live game and a host in owned
-  mode (attach mode = the scheduled tasks own the services).
+  hot_reload). A NEW cycle and every restart wait for a fresh, idle `/api/state` (no live game
+  signal and an LCU phase of none / Lobby: champ select, queue, loading and post-game are busy)
+  and a host in owned mode (attach mode = the scheduled tasks own the services). `resume` runs 30 s
+  after launch and every minute while a verify / pending / recovering record exists, whatever the
+  state. A quit while a deploy runs waits for it (host 150 s, shell 165 s) instead of ending the
+  job mid-copy.
 - Restarts the cycle reports (`restart.host_services` / `respawn_host`): the shell sends the host
   `{"cmd": "restart", "id": ..., "services": [...]}` on its stdin when idle. Host-owned services
   are ended by their own handle (the supervisor through a graceful shutdown request) and started
   again at once; `vision` / `ds` are ended only when the process holding their port is inside the
   host's job object, and RC's own watchdog respawns them. `app` (launcher code or the dependency
   set) = the shell stops and respawns the host. Outcomes: `commands` in
-  `ops/runtime/launcher_status.json`.
+  `ops/runtime/launcher_status.json`. Then `resume --restarts-sent` checks every named service
+  came back on a NEW process and stayed up 30 s with main.py ready; otherwise it recovers (offline,
+  restoring the backup itself, when no supervisor runs; deferred while a game is live).
 - Baseline: every bundle ships `backend-manifest.json` (`tools/build_portable.py`; version from
   `--backend-version`, else a semver `--version`, else 0.0.0), the files a release may replace.
 - Guards: `tests/test_launcher_update_cycle_pkg6b.py`, `tests/test_launcher_host_restart_pkg6b.py`,
+  `tests/test_launcher_update_hardening_pkg6b.py`,
   `tests/test_build_portable_backend_manifest_pkg6b.py`, `tests/test_run_packaged_smoke_updater_pkg6b.py`,
   `rc-shell/test/backend_update.test.js`; the packaged smoke runs [G] (restart command) and [I]
   (stage + signed request under the embedded runtime) on every real build.

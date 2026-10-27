@@ -183,6 +183,9 @@ let backendOwed = bu.emptyOwed(); // restarts a landed backend update still owes
 let backendManualPending = false; // a menu check waiting for the idle gate.
 let backendInitialTimer = null;
 let backendGateTimer = null;
+let backendResumeTimer = null; // first resume check after launch (F1).
+let backendLastResumeMs = null; // when the last `resume` child started.
+let lastUpdateIdle = false; // F5: the last /api/state was an idle moment (bu.idleForUpdate).
 let hostRespawning = false; // a respawn for a backend update is in flight.
 let shellQuitting = false; // before-quit ran: no respawn, no new cycle.
 const signalTimers = []; // the three hotkey signal-file intervals (cleared on quit).
@@ -1649,6 +1652,7 @@ function pollState(done) {
       const parsed = JSON.parse(data);
       lastMode = ov.normMode(parsed.mode_key);
       lastInGame = ov.liveGameFromState(parsed);
+      lastUpdateIdle = bu.idleForUpdate(parsed); // PKG-6b F5: stricter than lastInGame.
       refreshSurface(lastMode, lastInGame);
       finish(true);
     } catch (_e) {
@@ -2136,7 +2140,7 @@ function stopServiceHost(reason) {
         // already gone
       }
       setTimeout(finish, 2000); // never hold the quit forever.
-    }, lch.HOST_STOP_GRACE_MS);
+    }, bu.hostStopGraceMs(lch.HOST_STOP_GRACE_MS, deployIsInFlight())); // F2: never mid-deploy
     try {
       child.stdin.write("stop\n");
       child.stdin.end();
@@ -2305,7 +2309,11 @@ function maybeRelaunchForUpdate() {
 // check / stage / apply / finish / verify / recover) as ONE windowless child
 // and owes the restarts it names: services to the host's stdin channel, a
 // host respawn for launcher / dependency changes. Every decision is in
-// ./backend_update (pure); only an idle, fresh /api/state opens the gate.
+// ./backend_update (pure). A NEW update and every restart wait for an idle
+// /api/state (bu.idleForUpdate: lobby or no LCU phase, no live game); the
+// `resume` child - finishing, verifying, recovering what an earlier cycle
+// left - needs no /api/state at all, so a backend that crash-loops after an
+// update still gets rolled back (fix round F1).
 
 // The host OWNS the services (not attach / blocked): its fresh status says so.
 function hostOwnsServices() {
@@ -2316,18 +2324,71 @@ function hostOwnsServices() {
   return status.ok && !status.stale && status.mode === "owned" && status.hostPid === hostPid;
 }
 
+function readTextOrNull(file) {
+  try {
+    return fs.readFileSync(file, "utf8");
+  } catch (_e) {
+    return null;
+  }
+}
+
+// What an earlier cycle left (update_cycle.json + the updater's state).
+function readBackendRecords() {
+  if (!backendRoot) {
+    return bu.recordsFrom(null, null);
+  }
+  const dir = path.join(backendRoot, "ops", "runtime", "launcher");
+  return bu.recordsFrom(readTextOrNull(path.join(dir, "update_cycle.json")),
+    readTextOrNull(path.join(dir, "update_state.json")));
+}
+
+// F2: a deploy worker is running right now (deploy_requests/*.deploying).
+function deployIsInFlight() {
+  if (!backendRoot) {
+    return false;
+  }
+  try {
+    return bu.deployInFlight(fs.readdirSync(path.join(backendRoot, "ops", "runtime", "deploy_requests")));
+  } catch (_e) {
+    return false;
+  }
+}
+
 function setupBackendUpdates() {
   const gate = bu.cyclesEnabled({ isPackaged: app.isPackaged, env: process.env });
   if (!gate.enabled || !hostEnabled) {
     console.log("[rc-shell] backend updates off: " + (gate.enabled ? "no service host" : gate.reason));
     return;
   }
+  backendResumeTimer = setTimeout(() => {
+    backendResumeTimer = null;
+    maybeResumeBackend();
+  }, bu.RESUME_DELAY_MS);
   backendInitialTimer = setTimeout(() => {
     backendInitialTimer = null;
     maybeRunBackendCycle(false);
   }, bu.CHECK_DEFAULTS.initialDelayMs);
-  // The gate is re-read every minute; bu.cycleDue enforces the interval.
-  backendGateTimer = setInterval(() => maybeRunBackendCycle(false), 60000);
+  // Every minute: resume what is recorded, else maybe start a new cycle
+  // (bu.cycleDue enforces the interval).
+  backendGateTimer = setInterval(() => {
+    maybeResumeBackend();
+    maybeRunBackendCycle(false);
+  }, 60000);
+}
+
+function maybeResumeBackend() {
+  if (shellQuitting) {
+    return;
+  }
+  const d = bu.resumeDue({
+    records: readBackendRecords(),
+    lastResumeMs: backendLastResumeMs,
+    nowMs: Date.now(),
+    inFlight: !!backendCycleChild || hostRespawning,
+  });
+  if (d.run) {
+    runBackendResume(false);
+  }
 }
 
 function maybeRunBackendCycle(manual) {
@@ -2343,7 +2404,7 @@ function maybeRunBackendCycle(manual) {
     intervalMs: bu.CHECK_DEFAULTS.intervalMs,
     manual: backendManualPending,
     inFlight: !!backendCycleChild || hostRespawning,
-    inGame: lastInGame,
+    inGame: !lastUpdateIdle, // F5: champ select / loading / post-game are busy too
     stateFresh: pollFresh,
   });
   if (!d.run) {
@@ -2356,8 +2417,10 @@ function maybeRunBackendCycle(manual) {
   runBackendCycle();
 }
 
-function runBackendCycle() {
-  const plan = bu.cyclePlan({
+function backendPlan(mode, restartsSent) {
+  return bu.cyclePlan({
+    mode,
+    restartsSent,
     root: backendRoot,
     python: hostPython,
     hostOwned: hostOwnsServices(),
@@ -2374,13 +2437,41 @@ function runBackendCycle() {
       }
     },
   });
+}
+
+function runBackendCycle() {
+  const plan = backendPlan("run", false);
   const startedMs = Date.now();
   backendLastRunMs = startedMs;
   if (!plan.enabled) {
     console.log("[rc-shell] backend update skipped: " + plan.reason);
     return;
   }
+  runBackendChild(plan, (result) => {
+    backendLastRunMs = bu.lastRunAfter(result, startedMs, bu.CHECK_DEFAULTS.intervalMs);
+  });
+}
+
+function runBackendResume(restartsSent) {
+  const plan = backendPlan("resume", restartsSent);
+  backendLastResumeMs = Date.now();
+  if (!plan.enabled) {
+    console.log("[rc-shell] backend resume skipped: " + plan.reason);
+    return;
+  }
+  runBackendChild(plan, null);
+}
+
+// One cycle child at a time. No execFile timeout (F6): a watchdog kills a
+// child only past bu.CYCLE_TIMEOUT_MS and never while its own phase says
+// deploying / recovering (bu.watchdogDecision).
+function runBackendChild(plan, onResult) {
+  if (backendCycleChild) {
+    return;
+  }
+  const startedMs = Date.now();
   let child = null;
+  let watchdog = null;
   try {
     child = execFile(
       plan.command,
@@ -2388,18 +2479,23 @@ function runBackendCycle() {
       {
         cwd: plan.cwd,
         windowsHide: true, // libuv adds CREATE_NO_WINDOW: no console flash.
-        timeout: plan.timeoutMs,
         maxBuffer: bu.MAX_OUTPUT_BYTES,
         encoding: "utf8",
       },
       (err, stdout) => {
+        if (watchdog) {
+          clearInterval(watchdog);
+          watchdog = null;
+        }
         if (backendCycleChild === child) {
           backendCycleChild = null;
         }
         const code = err ? (Number.isInteger(err.code) ? err.code : -1) : 0;
         const result = bu.parseCycleOutput(stdout, code);
-        backendLastRunMs = bu.lastRunAfter(result, startedMs, bu.CHECK_DEFAULTS.intervalMs);
-        console.log("[rc-shell] " + bu.logLine(result));
+        if (onResult) {
+          onResult(result);
+        }
+        console.log("[rc-shell] " + bu.logLine(result) + " (" + plan.mode + ")");
         backendOwed = bu.mergeOwed(backendOwed, result.actions);
         if (result.actions.relaunchShell) {
           console.log("[rc-shell] the backend update named shell code: it installs through the shell updater");
@@ -2412,15 +2508,41 @@ function runBackendCycle() {
     return;
   }
   backendCycleChild = child;
-  console.log("[rc-shell] backend update cycle started (source " + plan.sourceOrigin + ")");
+  watchdog = setInterval(() => {
+    const decision = bu.watchdogDecision({
+      elapsedMs: Date.now() - startedMs,
+      phase: readBackendRecords().phase,
+    });
+    if (decision === "kill" && backendCycleChild === child) {
+      console.log("[rc-shell] backend update cycle overran its bound; ending it");
+      try {
+        child.kill();
+      } catch (_e) {
+        // already gone
+      }
+    }
+  }, 60000);
+  console.log("[rc-shell] backend " + plan.mode + " started (source " + plan.sourceOrigin + ")");
 }
 
 // Owed restarts: the named services through the host's stdin channel, or a
-// host respawn - only when the last fresh /api/state said no game is live.
+// host respawn - only when the last fresh /api/state was idle (F5); then the
+// restarts are health-checked by `resume --restarts-sent` (F3), which
+// recovers when one does not come back.
 function applyOwedRestarts() {
+  if (backendOwed.respawnHost && !hostChild && hostEnabled && !hostRespawning && !shellQuitting) {
+    // The host is already down (a respawn that failed, then a recover put the
+    // old code back): start it, nothing runs to interrupt.
+    backendOwed = Object.assign(bu.emptyOwed(), { relaunchShell: backendOwed.relaunchShell });
+    hostStopPromise = null;
+    hostStopped = false;
+    hostExitCode = null;
+    startServiceHost();
+    return;
+  }
   const d = bu.owedDecision({
     owed: backendOwed,
-    inGame: lastInGame,
+    inGame: !lastUpdateIdle,
     stateFresh: pollFresh,
     hostRunning: !!hostChild && !hostRespawning && !shellQuitting,
   });
@@ -2436,15 +2558,16 @@ function applyOwedRestarts() {
         // EPIPE: the host is gone; every service restarts with the next host.
       }
     }
+    setTimeout(() => runBackendResume(true), 5000); // health-check them (F3)
   } else if (d.act === "respawn-host") {
     backendOwed = Object.assign(bu.emptyOwed(), { relaunchShell: backendOwed.relaunchShell });
-    respawnServiceHost("backend update");
+    respawnServiceHost("backend update", () => runBackendResume(true));
   }
 }
 
 // Stop the host (its job takes every service), then spawn it again on the
-// updated code. Never during a quit.
-function respawnServiceHost(reason) {
+// updated code. Never during a quit. `then` runs once the new host started.
+function respawnServiceHost(reason, then) {
   if (hostRespawning || shellQuitting || !hostChild) {
     return;
   }
@@ -2459,6 +2582,9 @@ function respawnServiceHost(reason) {
     hostStopped = false;
     hostExitCode = null;
     startServiceHost();
+    if (then) {
+      setTimeout(then, 5000);
+    }
   });
 }
 
@@ -2469,6 +2595,10 @@ function stopBackendCycles() {
   if (backendInitialTimer) {
     clearTimeout(backendInitialTimer);
     backendInitialTimer = null;
+  }
+  if (backendResumeTimer) {
+    clearTimeout(backendResumeTimer);
+    backendResumeTimer = null;
   }
   if (backendGateTimer) {
     clearInterval(backendGateTimer);

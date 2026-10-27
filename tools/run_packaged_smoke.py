@@ -33,8 +33,10 @@ by:
          empty source, then stages a newer local release that changes an
          owned file and writes a deploy request that the bundle's own deploy
          worker verifies with the per-install key [G] provisioned (no
-         supervisor runs, so the cycle ends pending; a live game on this
-         machine defers it instead, reported as such).
+         supervisor runs, so the cycle ends pending). That stage step runs
+         the bundle's cycle with an injected no-game probe, so a League
+         client on the build machine cannot turn it into a deferral; a
+         deferral there is a FAILURE, never a pass.
 
 No live Riot API, Anthropic API or League client. Network only if the
 archive has to be built (the embedded runtime download and the lock). [G]
@@ -605,6 +607,34 @@ def _smoke_release(release_dir: Path, bundle_root: Path, version: str) -> Path:
     return release_dir
 
 
+# The stage step: the bundle's own update_cycle.py, loaded from its file under
+# the embedded runtime (-I) exactly as the CLI would, but with a no-game probe
+# injected, so the smoke never depends on whether a game runs on this box.
+_STAGE_SNIPPET = (
+    "import importlib.util, json, sys; from pathlib import Path; "
+    "spec = importlib.util.spec_from_file_location('rc_launcher_update_cycle', sys.argv[1]); "
+    "m = importlib.util.module_from_spec(spec); sys.modules[spec.name] = m; "
+    "spec.loader.exec_module(m); "
+    "r = m.run_cycle(Path(sys.argv[2]), m.up.LocalSource(Path(sys.argv[3])), "
+    "game_check=lambda: None, finish_timeout_s=1.0, health_timeout_s=1.0); "
+    "print(json.dumps(r.to_dict(), sort_keys=True)); sys.exit(r.exit_code)")
+
+
+def _stage_without_game(py: Path, cycle: Path, bundle_root: Path, release_dir: Path):
+    argv = [str(py), "-I", "-c", _STAGE_SNIPPET, str(cycle), str(bundle_root), str(release_dir)]
+    try:
+        res = subprocess.run(argv, cwd=str(bundle_root), capture_output=True, text=True,
+                             timeout=UPDATER_TIMEOUT_S, creationflags=NO_WINDOW)
+    except (OSError, subprocess.SubprocessError) as exc:
+        return None, {"error": type(exc).__name__}
+    lines = (res.stdout or "").strip().splitlines()
+    try:
+        doc = json.loads(lines[-1]) if lines else {}
+    except ValueError:
+        doc = {}
+    return res.returncode, doc if isinstance(doc, dict) else {}
+
+
 def _run_cycle(py: Path, cycle: Path, bundle_root: Path, *args: str):
     argv = [str(py), "-I", str(cycle), "--root", str(bundle_root), *args]
     try:
@@ -657,11 +687,9 @@ def check_updater_from_unpacked(bundle_root: Path, interpreter: Optional[Path] =
         return
     new_version = _bump_version(version)
     rel = _smoke_release(work / "smoke_release", bundle_root, new_version)
-    code, doc = _run_cycle(py, cycle, bundle_root, "run", "--source", f"local:{rel}",
-                           "--finish-timeout", "1", "--health-timeout", "1", *parent)
-    if code == 3 and doc.get("status") == "deferred":
-        _warn("a League / TFT game is live on this machine: the apply was deferred")
-        _ok("update cycle deferred while a game is live", "exit 3")
+    code, doc = _stage_without_game(py, cycle, bundle_root, rel)
+    if code == 3 or doc.get("status") == "deferred":
+        _fail("update cycle deferred: the no-game probe was not honoured")
         return
     if not (code == 0 and doc.get("status") == "pending" and doc.get("version") == new_version):
         _fail("update cycle did not stage and request the deploy",

@@ -543,6 +543,7 @@ Status 2026-10-26 (`git log 2d3e1c85b..86627008a`):
   handle; vision / DS only when the port holder is inside the host's job);
   the shell gates cycles and restarts on a fresh not-in-game state and an
   owned host; the packaged smoke exercises both on a real build.
+  Fix round s143 (review of 6e09c8bc1): WA15 below.
   Runbook: `docs/OPERATIONS.md` "Backend updates and per-service restart".
 - PKG-7 Cutover tooling, no execution (wave B). Files:
   `tools/launcher_cutover.ps1`, `tests/test_launcher_cutover_ps1.py`,
@@ -690,11 +691,25 @@ Found by the PKG-6 builder and verifier; not fixed by PKG-6.
   refused every update that changed a shipped file. `tools/build_portable.py`
   now writes it (payload-eligible, non-ignored shipped files; version
   `--backend-version` > a semver `--version` > 0.0.0).
-- WA14 (PKG-6b limits, open): verify watches main.py only (a vision / DS /
-  agent that fails on new code is respawned by its watchdog or the host's
-  backoff, never rolled back); restarts owed when the shell quits are
-  dropped (the next launch starts every service on the new code anyway);
-  `relaunch_shell` is logged only (a backend payload never carries rc-shell).
+- WA14 (PKG-6b limits; s143 fix round closed most): owed restarts ARE now
+  health-checked and recovered (`resume --restarts-sent`), and an owed
+  record survives a quit. Still open: `relaunch_shell` is logged only (a
+  backend payload never carries rc-shell); a release that breaks
+  ops/launcher/update_cycle.py or updater.py themselves cannot be recovered
+  by the cycle (only by reinstalling) - a candidate for shipping a pinned
+  copy of the updater outside the payload.
+- WA15 (s143 fix round, review of 6e09c8bc1, FIXED): F1 verify passed on
+  DevRuntime's pre-import alive heartbeat (now READY = post-import
+  `last_state_provider_ok`, live pid, fresh beat, one run id for 30 s, then
+  /api/health; `resume` needs no /api/state); F2 a quit mid-deploy left a
+  `.deploying` forever (now salvaged after 300 s of observation and
+  recovered; host 150 s / shell 165 s quit grace while one exists); F3 owed
+  restarts unchecked; F4 a failed version re-applied every 4 h; F5 the
+  restart gate missed champ select / loading (now LCU phase none / Lobby
+  only); F6 the 15 min execFile kill could split recover() (no hard timeout;
+  a phase-aware 60 min watchdog; recover() re-entrant via a marker); F7
+  hot_reload verify trusted the old run; F8 the smoke [I] passed on a
+  deferral (now a no-game probe is injected and a deferral fails).
 - WA12 electron-builder logs "signing with signtool.exe" for every `.exe`
   under `resources/backend` (`python.exe`, `pythonw.exe`, site-packages
   `bin/*.exe`): with a cert set (S4) it would re-sign the PSF-signed
