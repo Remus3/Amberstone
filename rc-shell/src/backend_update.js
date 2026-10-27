@@ -52,7 +52,11 @@ const DEPLOY_STOP_GRACE_MS = 165000;
 // F5: the restart / update gate. Idle only in these LCU gameflow phases (or
 // with no LCU phase at all) and with no live game signal in /api/state.
 const IDLE_PHASES = Object.freeze(["", "None", "Lobby"]);
+// /api/state carries them under `health` (dashboard/_state_builder.py:1058-1072).
 const LIVE_GAME_FLAGS = Object.freeze(["has_game", "aram_mode", "arena_mode", "tft_mode", "brawl_mode"]);
+// Fix round 2 (B3): the process-level check before a host respawn. Mirrors
+// ops/launcher/updater.py GAME_PROCESS_NAMES (lower-case image names).
+const GAME_PROCESS_NAMES = Object.freeze(["league of legends.exe", "tftclient-win64-shipping.exe"]);
 const MAX_OUTPUT_BYTES = 1024 * 1024;
 const CHECK_DEFAULTS = Object.freeze({
   initialDelayMs: 120000, // let the services settle before the first check
@@ -195,8 +199,12 @@ function idleForUpdate(state) {
   if (lc && typeof lc === "object" && !Array.isArray(lc) && Object.keys(lc).length > 0) {
     return false;
   }
+  // B3: the flags live under `health` (dashboard/_state_builder.py:1058-1072);
+  // a top-level copy is honoured too.
+  const health = state.health && typeof state.health === "object" && !Array.isArray(state.health)
+    ? state.health : {};
   for (const flag of LIVE_GAME_FLAGS) {
-    if (state[flag] === true) {
+    if (health[flag] === true || state[flag] === true) {
       return false;
     }
   }
@@ -214,6 +222,21 @@ function parseJsonObject(text) {
   }
 }
 
+// B3: is a League / TFT game process running? `tasklist /FO CSV /NH` text.
+// Fail closed: no listing reads as a game (a respawn can wait).
+function gameInTasklist(text) {
+  if (typeof text !== "string" || !text.trim()) {
+    return { ok: false, running: true };
+  }
+  for (const line of text.split(/\r?\n/)) {
+    const m = /^"([^"]*)"/.exec(line.trim());
+    if (m && GAME_PROCESS_NAMES.includes(m[1].toLowerCase())) {
+      return { ok: true, running: true };
+    }
+  }
+  return { ok: true, running: false };
+}
+
 // F1: what an earlier cycle left on disk - update_cycle.json (verify, owed,
 // phase) and the updater's update_state.json (pending, recovering).
 function recordsFrom(cycleText, stateText) {
@@ -223,6 +246,9 @@ function recordsFrom(cycleText, stateText) {
   return {
     verify: isObj(c.verify),
     owed: isObj(c.owed),
+    // B4: the owed restarts were sent and their check ran (it may have
+    // deferred); the check is retried on the interval while idle.
+    owedSent: isObj(c.owed) && typeof c.owed.sent_at === "string" && c.owed.sent_at !== "",
     pending: isObj(st.pending),
     recovering: isObj(st.recovering),
     phase: typeof c.phase === "string" ? ascii(c.phase, 32) : null,
@@ -230,26 +256,38 @@ function recordsFrom(cycleText, stateText) {
 }
 
 // F1: run `resume` now? A verify / pending / recovering record resumes every
-// RESUME_INTERVAL_MS with NO /api/state requirement (main.py may be down);
-// an owed record only once per launch (the shell then owns the restarts).
+// RESUME_INTERVAL_MS with NO /api/state requirement (main.py may be down).
+// An owed record: once at launch (it returns the restarts to perform; the
+// shell then performs and health-checks them); and B4 - a SENT check (one
+// that deferred) again every interval, but only when `idle`. `restartsSent`
+// says which resume to run.
 function resumeDue(opts) {
   const o = opts && typeof opts === "object" ? opts : {};
   const r = o.records && typeof o.records === "object" ? o.records : {};
   if (o.inFlight === true) {
-    return { run: false, reason: "in-flight" };
+    return { run: false, reason: "in-flight", restartsSent: false };
   }
   const urgent = r.verify === true || r.pending === true || r.recovering === true;
   const first = typeof o.lastResumeMs !== "number" || !Number.isFinite(o.lastResumeMs);
+  const due = first || o.nowMs - o.lastResumeMs >= RESUME_INTERVAL_MS;
   if (urgent) {
-    if (first || o.nowMs - o.lastResumeMs >= RESUME_INTERVAL_MS) {
-      return { run: true, reason: "record" };
-    }
-    return { run: false, reason: "not-due" };
+    return due ? { run: true, reason: "record", restartsSent: false }
+      : { run: false, reason: "not-due", restartsSent: false };
   }
   if (r.owed === true) {
-    return first ? { run: true, reason: "owed-at-launch" } : { run: false, reason: "owed-known" };
+    if (first) {
+      return { run: true, reason: "owed-at-launch", restartsSent: false };
+    }
+    if (r.owedSent === true) {
+      if (o.idle !== true) {
+        return { run: false, reason: "owed-waits-for-idle", restartsSent: true };
+      }
+      return due ? { run: true, reason: "owed-retry", restartsSent: true }
+        : { run: false, reason: "not-due", restartsSent: true };
+    }
+    return { run: false, reason: "owed-known", restartsSent: false };
   }
-  return { run: false, reason: "nothing-recorded" };
+  return { run: false, reason: "nothing-recorded", restartsSent: false };
 }
 
 // F2: the quit's wait for the host (base = launcher.HOST_STOP_GRACE_MS).
@@ -433,6 +471,7 @@ module.exports = {
   RESUME_INTERVAL_MS,
   DEPLOY_STOP_GRACE_MS,
   IDLE_PHASES,
+  GAME_PROCESS_NAMES,
   MAX_OUTPUT_BYTES,
   CHECK_DEFAULTS,
   RETRY_DELAY_MS,
@@ -442,6 +481,7 @@ module.exports = {
   cyclesEnabled,
   cyclePlan,
   idleForUpdate,
+  gameInTasklist,
   recordsFrom,
   resumeDue,
   hostStopGraceMs,

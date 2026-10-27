@@ -348,7 +348,11 @@ def test_c7_a_halted_host_reads_as_interrupted(tmp_path):
     def sleep(seconds):
         sup(seconds)
         (root / "ops" / "runtime" / "launcher_status.json").write_text(
-            json.dumps({"schema": 1, "state": "halted", "mode": "owned"}), encoding="ascii")
+            json.dumps({"schema": 1, "state": "halted", "mode": "owned",
+                        # fix round 2 (B1): halted counts only for a live host
+                        # writing a fresh status - this one is stopping now.
+                        "host_pid": os.getpid(), "updated": up.utc_now()}),
+            encoding="ascii")
 
     res = _cycle(root, src, clock, sleep, health_timeout_s=60)
     assert res.status == "interrupted", res.to_dict()

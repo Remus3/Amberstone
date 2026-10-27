@@ -4,6 +4,8 @@
   "dashboard_port": 8888,
   "tick_s": 0.25,
   "stop_grace_s": 15,
+  "_restart_game_guard_doc": "PKG-6b: a stdin restart command is deferred (outcome deferred:game-live) while ops/launcher/updater.py game_live reports a League / TFT game. Keep true; only the packaged smoke's probe manifest turns it off.",
+  "restart_game_guard": true,
   "env": {},
   "_profiles_doc": "Per-profile settings, merged over env for every service of that profile (the dashboard is main.py under the supervisor and inherits them). A null value REMOVES an inherited variable. RC_DASH_BIND is read by dashboard/server.py (PKG-5): an IP literal, unset keeps the wildcard bind. packaged = a default install, loopback only (PACKAGING_PLAN M5 / 3.6). dev = the operator's linked checkout: RC_DASH_BIND stays UNSET so :8888 keeps the wildcard bind the documented tailnet view needs (PACKAGING_PLAN V3). No host name or tailnet address belongs in this tracked file. dash_token_gate (PKG-1b, ops/launcher/first_run.py): the host stores a per-install dashboard token in ops/runtime/dash_token.txt on first run either way; true also exports it as RC_DASH_TOKEN to every service, which turns the control-endpoint gate on. Off in both profiles until PKG-6 injects the X-RC-Token header and PKG-5 handles the header-less callers (PACKAGING_PLAN V3).",
   "profiles": {

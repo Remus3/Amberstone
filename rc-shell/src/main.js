@@ -185,6 +185,8 @@ let backendInitialTimer = null;
 let backendGateTimer = null;
 let backendResumeTimer = null; // first resume check after launch (F1).
 let backendLastResumeMs = null; // when the last `resume` child started.
+let backendResumeQueued = null; // B5: {restartsSent} waiting for the running child.
+let backendRespawnCheck = false; // B3: a tasklist game check before a respawn is running.
 let lastUpdateIdle = false; // F5: the last /api/state was an idle moment (bu.idleForUpdate).
 let hostRespawning = false; // a respawn for a backend update is in flight.
 let shellQuitting = false; // before-quit ran: no respawn, no new cycle.
@@ -2385,9 +2387,27 @@ function maybeResumeBackend() {
     lastResumeMs: backendLastResumeMs,
     nowMs: Date.now(),
     inFlight: !!backendCycleChild || hostRespawning,
+    idle: lastUpdateIdle && pollFresh, // B4: a sent (deferred) check retries only when idle
   });
   if (d.run) {
-    runBackendResume(false);
+    runBackendResume(d.restartsSent);
+  }
+}
+
+// B3: a League / TFT game process running? (the updater's process check,
+// before a host respawn; cb(true | false), true on any failure).
+function checkGameProcess(cb) {
+  try {
+    execFile("tasklist", ["/FO", "CSV", "/NH"], {
+      windowsHide: true,
+      timeout: 15000,
+      maxBuffer: 4 * 1024 * 1024,
+      encoding: "utf8",
+    }, (err, stdout) => {
+      cb(err ? true : bu.gameInTasklist(stdout).running);
+    });
+  } catch (_e) {
+    cb(true);
   }
 }
 
@@ -2453,6 +2473,11 @@ function runBackendCycle() {
 }
 
 function runBackendResume(restartsSent) {
+  if (backendCycleChild) {
+    // B5: never dropped - run once the current child ends (a sent check wins).
+    backendResumeQueued = { restartsSent: !!restartsSent || !!(backendResumeQueued && backendResumeQueued.restartsSent) };
+    return;
+  }
   const plan = backendPlan("resume", restartsSent);
   backendLastResumeMs = Date.now();
   if (!plan.enabled) {
@@ -2501,6 +2526,11 @@ function runBackendChild(plan, onResult) {
           console.log("[rc-shell] the backend update named shell code: it installs through the shell updater");
         }
         applyOwedRestarts();
+        if (backendResumeQueued && !backendCycleChild && !shellQuitting) {
+          const q = backendResumeQueued; // B5: the resume asked for while this ran
+          backendResumeQueued = null;
+          runBackendResume(q.restartsSent);
+        }
       }
     );
   } catch (e) {
@@ -2538,6 +2568,7 @@ function applyOwedRestarts() {
     hostStopped = false;
     hostExitCode = null;
     startServiceHost();
+    setTimeout(() => runBackendResume(true), 5000); // B1: health-check it, recover if it dies
     return;
   }
   const d = bu.owedDecision({
@@ -2559,9 +2590,19 @@ function applyOwedRestarts() {
       }
     }
     setTimeout(() => runBackendResume(true), 5000); // health-check them (F3)
-  } else if (d.act === "respawn-host") {
-    backendOwed = Object.assign(bu.emptyOwed(), { relaunchShell: backendOwed.relaunchShell });
-    respawnServiceHost("backend update", () => runBackendResume(true));
+  } else if (d.act === "respawn-host" && !backendRespawnCheck) {
+    // B3: /api/state said idle; the process list must agree before the host
+    // (and every service with it) goes down.
+    backendRespawnCheck = true;
+    checkGameProcess((running) => {
+      backendRespawnCheck = false;
+      if (running || shellQuitting) {
+        console.log("[rc-shell] host respawn waits: a game process is running");
+        return; // still owed; the next poll tries again
+      }
+      backendOwed = Object.assign(bu.emptyOwed(), { relaunchShell: backendOwed.relaunchShell });
+      respawnServiceHost("backend update", () => runBackendResume(true));
+    });
   }
 }
 

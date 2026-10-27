@@ -408,6 +408,9 @@ def launcher_probe_manifest(port: int) -> dict:
     dashboard port nothing serves, so the host's attach probe reads OWNED."""
     return {
         "schema": 1, "dashboard_port": int(port), "tick_s": 0.25, "stop_grace_s": 10,
+        # The host defers restart commands while a game runs (PKG-6b); the
+        # probe's [G] restart must not depend on League running on this box.
+        "restart_game_guard": False,
         "profiles": {"packaged": {"env": {"RC_DASH_BIND": "127.0.0.1"},
                                   "dash_token_gate": False}},
         "services": [{"name": LAUNCHER_PROBE_SERVICE, "role": "agent",

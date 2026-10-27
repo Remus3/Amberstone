@@ -1029,17 +1029,37 @@ def _write_state(root: Path, state: Dict[str, Any]) -> None:
     _write_json(state_path(root), dict(state, schema=SCHEMA, updated=utc_now()))
 
 
+def _iso_epoch(value: Any) -> Optional[float]:
+    try:
+        return datetime.fromisoformat(str(value)).timestamp()
+    except (TypeError, ValueError):
+        return None
+
+
 def hot_reload_watching(root: Path) -> bool:
     """Is core/hot_reload.py watching? Its status file (core/hot_reload.py:693)
-    says `watching`, and its halt file (:692) is absent. Unknown = no."""
+    says `watching`, its halt file (:692) is absent - and (PKG-6b fix round 2)
+    the status was written by the CURRENT main.py run: a fresh, alive
+    health.json whose `started_at` is not later than the status file. The
+    watcher rewrites the file at its start (write_initial_status), so a
+    status older than the running process belongs to a dead watcher; it
+    reads as not watching and the update falls back to a supervised restart.
+    Unknown = no."""
     rt = runtime_dir(root)
     if (rt / "hot_reload_halt.txt").exists():
         return False
     try:
         doc = _read_json(rt / "hot_reload.json")
+        written = (rt / "hot_reload.json").stat().st_mtime
+        health = _read_json(rt / "health.json")
+        beat = (rt / "health.json").stat().st_mtime
     except (OSError, ValueError):
         return False
-    return isinstance(doc, dict) and doc.get("watching") is True
+    if not (isinstance(doc, dict) and doc.get("watching") is True and isinstance(health, dict)):
+        return False
+    started = _iso_epoch(health.get("started_at"))
+    return bool(health.get("alive") and time.time() - beat <= HEALTH_FRESH_S
+                and started is not None and written + 1.0 >= started)
 
 
 # ------------------------------------------------------------ live game
@@ -1130,6 +1150,22 @@ def game_live(root: Path, *, process_names: Optional[Callable[[], Iterable[str]]
         if doc.get(flag):
             return f"health {flag}"
     return None
+
+
+def boot_uptime_s() -> float:
+    """Seconds since boot that do not move with the wall clock (PKG-6b fix
+    round 2): Windows QueryUnbiasedInterruptTime (excludes sleep and
+    hibernation, like a suspended deploy worker), elsewhere time.monotonic
+    (CLOCK_MONOTONIC: boot-relative). A smaller value than one recorded
+    earlier means the machine rebooted in between."""
+    if sys.platform == "win32":
+        import ctypes
+        t = ctypes.c_ulonglong(0)
+        k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        k32.QueryUnbiasedInterruptTime.argtypes = (ctypes.POINTER(ctypes.c_ulonglong),)
+        if k32.QueryUnbiasedInterruptTime(ctypes.byref(t)):
+            return t.value / 1e7
+    return time.monotonic()
 
 
 def _check_game(root: Path, game_check: Optional[Callable[[], Optional[str]]]) -> None:
@@ -1516,6 +1552,7 @@ class FinishResult:
     restart: Optional[Dict[str, Any]] = None
     result: Optional[Dict[str, Any]] = None
     run_id_before: Optional[str] = None   # main.py's run_id when requested
+    requested_at: Optional[float] = None  # wall time of the request (PKG-6b)
 
     def to_dict(self) -> Dict[str, Any]:
         return {"status": self.status, "kind": self.kind, "version": self.version,
@@ -1734,9 +1771,13 @@ def _restore_previous(root: Path, rec: Dict[str, Any]) -> None:
         "rolled_back_from": rec.get("version")})
 
 
-def finish(root: Path, *, now: Callable[[], float] = time.time) -> FinishResult:
+def finish(root: Path, *, now: Callable[[], float] = time.time,
+           uptime: Callable[[], float] = boot_uptime_s) -> FinishResult:
     """Collect the supervisor's result for the pending operation (its
-    deploy_results/<stem>.json, ops/rc_supervisor.py:1449) and record it."""
+    deploy_results/<stem>.json, ops/rc_supervisor.py:1449) and record it.
+    A `.deploying` with no result is cut off after DEPLOYING_STALE_S of
+    boot uptime since its first sighting (or at once after a reboot), never
+    by the wall clock (PKG-6b fix round 2)."""
     root = _install_root(root)
     state = read_state(root)
     pending = state.get("pending")
@@ -1751,12 +1792,14 @@ def finish(root: Path, *, now: Callable[[], float] = time.time) -> FinishResult:
     if not result_path.is_file():
         deploying = rt / "deploy_requests" / f"{rid}.deploying"
         if deploying.exists():
-            seen = pending.get("deploying_seen_at")
-            t = float(now())
+            seen = pending.get("deploying_seen_up")
+            up_now = float(uptime())
             if not isinstance(seen, (int, float)):
-                _write_state(root, dict(state, pending=dict(pending, deploying_seen_at=t)))
+                _write_state(root, dict(state, pending=dict(
+                    pending, deploying_seen_up=up_now, deploying_seen_at=float(now()))))
                 return FinishResult("pending", kind, version, restart, None, before)
-            if t - float(seen) < DEPLOYING_STALE_S:
+            rebooted = up_now < float(seen)
+            if not rebooted and up_now - float(seen) < DEPLOYING_STALE_S:
                 return FinishResult("pending", kind, version, restart, None, before)
             return _interrupted(root, state, pending, deploying, now)
         queued = (rt / "deploy_requests" / f"{rid}.json").exists()
@@ -1773,6 +1816,17 @@ def finish(root: Path, *, now: Callable[[], float] = time.time) -> FinishResult:
     except (OSError, ValueError):
         return FinishResult("pending", kind, version, restart, None, before)   # torn read
     result = result if isinstance(result, dict) else {}
+    # B9: a supervisor that died after its worker wrote the result never ran
+    # its finally (ops/rc_supervisor.py:1475); the leftover .deploying would
+    # hold every later quit for the full deploy grace.
+    leftover = rt / "deploy_requests" / f"{rid}.deploying"
+    if leftover.exists():
+        try:
+            sdir = launcher_state_dir(root) / "stale_deploys"
+            sdir.mkdir(parents=True, exist_ok=True)
+            _replace_with_retry(leftover, sdir / leftover.name)
+        except OSError:
+            pass
     summary = {"phase": result.get("phase"), "rollback": result.get("rollback"),
                "error": str(result.get("error"))[:240] if result.get("error") else None}
     if result.get("ok") is True:
@@ -1791,7 +1845,9 @@ def finish(root: Path, *, now: Callable[[], float] = time.time) -> FinishResult:
         status = "failed"
     _write_state(root, dict(state, pending=None, last=dict(
         summary, kind=kind, version=version, status=status, request_id=rid, at=utc_now())))
-    return FinishResult(status, kind, version, restart, summary, before)
+    req_at = pending.get("requested_at")
+    return FinishResult(status, kind, version, restart, summary, before,
+                        float(req_at) if isinstance(req_at, (int, float)) else None)
 
 
 def _deploy_backup_dir(root: Path, request_id: str) -> Optional[Path]:
@@ -1808,12 +1864,15 @@ def _deploy_backup_dir(root: Path, request_id: str) -> Optional[Path]:
 def _interrupted(root: Path, state: Dict[str, Any], pending: Dict[str, Any],
                  deploying: Path, now: Callable[[], float]) -> "FinishResult":
     """A deploy cut off mid-copy (PKG-6b). The worker backs a file up BEFORE
-    it overwrites it and records nothing else, so: a backup holding the
-    file's pre-update bytes = that file may have been overwritten (restore
-    it); a backup with other bytes = torn mid-backup, the live file was never
-    touched - it is moved OUT of the backup folder, since the supervisor's
-    own rollback copies every file in the newest backup; a created file
-    still holding the release's bytes = created by this deploy (quarantine).
+    it overwrites it (ops/rc_transactional_deploy.py do_deploy: copy2, then
+    copy_verified) and records nothing else, so the LIVE file decides: live
+    holding the release's bytes = overwritten, so its backup is complete
+    and is what to restore (whatever its hash - the file may have changed
+    between apply and the worker, fix round 2 B7); live holding anything
+    else = never overwritten, so its backup (complete or torn) is moved OUT
+    of the backup folder, since the supervisor's own rollback copies every
+    file in the newest backup; a created file still holding the release's
+    bytes = created by this deploy (quarantine).
     The result is a normal recovery point (installed record + backup) that
     recover() acts on. Rollback ops are only reported: re-running one is
     idempotent."""
@@ -1829,13 +1888,14 @@ def _interrupted(root: Path, state: Dict[str, Any], pending: Dict[str, Any],
         broot = _deploy_backup_dir(root, rid)
         pre: Dict[str, str] = {}
         torn: List[str] = []
-        for rel, sha in sorted((pending.get("pre_hashes") or {}).items()):
+        for rel in sorted(pending.get("pre_hashes") or {}):
             check_payload_path(rel)
             src = _live_path(broot, rel) if broot is not None else None
             if src is None or not src.is_file():
                 continue
-            if _hash_file(src)[0] == sha:
-                pre[rel] = sha
+            live = _live_path(root, rel)
+            if live.is_file() and _hash_file(live)[0] == files.get(rel):
+                pre[rel] = _hash_file(src)[0]
                 continue
             dst = sdir / f"{rid}-torn" / rel
             dst.parent.mkdir(parents=True, exist_ok=True)

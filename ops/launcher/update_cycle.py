@@ -38,6 +38,13 @@ back on a NEW process and stayed up for STABLE_S; otherwise recover() - or
 `deferred` while a game is live, so a working main.py is never rolled back
 mid-game.
 
+Fix round 2: a service the host does not own (a port holder outside its job,
+e.g. a DS run by the RC-DaemonSlayer task) is NOT ours to restart - skipped and
+logged, never a failure and never a bad-version mark; a restart the host
+deferred (a game) is owed again; a `halted` status counts only while that
+host is alive and the file fresh; hot_reload needs a watcher of the current
+run, and when the watcher reports it fired for these files, a NEW run.
+
 BAD VERSIONS (F4): a version that ended recovered / failed / lost is kept in
 `bad_versions` and never applied again; a newer release still is.
 
@@ -132,6 +139,10 @@ BAD_STATUSES = ("recovered", "failed", "lost")
 # Every name the service host acts on (its services.json names plus
 # WATCHDOG_PORTS); app / shell are the shell's own acts.
 HOST_SERVICES = frozenset(set(up.ALL_SERVICE_NAMES) - {"app", "shell"})
+# Restart outcomes (service_host.py) that mean "not this host's to restart":
+# the service is skipped by the restart check, never a failure.
+NOT_OURS = frozenset({"refused:not-in-job", "refused:no-job", "refused:not-owned",
+                      "refused:unsupported", "not-configured", "not-running"})
 _DETAIL_RE = re.compile(r"[^\x20-\x7e]+")
 
 
@@ -299,8 +310,24 @@ def services_state(root: Path, owed: Dict[str, Any]) -> Dict[str, Dict[str, Any]
     upd = _epoch(status.get("updated"))
     fresh = upd is not None and time.time() - upd <= STATUS_FRESH_S
     entries = {s.get("name"): s for s in status.get("services") or [] if isinstance(s, dict)}
+    # The host's own verdict on the newest restart command naming each
+    # service since the deploy (service_host.py `commands`).
+    outcome: Dict[str, str] = {}
+    for rec in status.get("commands") or []:
+        if not isinstance(rec, dict) or (_epoch(rec.get("at")) or 0.0) < at:
+            continue
+        for n, o in (rec.get("results") or {}).items():
+            if isinstance(o, str):
+                outcome[n] = o
     out: Dict[str, Dict[str, Any]] = {}
     for name in owed.get("names") or []:
+        o = outcome.get(name, "")
+        if o.startswith("deferred:"):
+            out[name] = {"restarted": False, "healthy": False, "pid": None, "deferred": o}
+            continue
+        if o in NOT_OURS:
+            out[name] = {"restarted": False, "healthy": False, "pid": None, "skip": o}
+            continue
         if name == "app":
             pid = status.get("host_pid")
             running = bool(entries) and all(s.get("state") == "running"
@@ -394,6 +421,7 @@ class _Ctx:
     clock: Callable[[], float]
     sleep: Callable[[float], None]
     now: Callable[[], float]
+    uptime: Callable[[], float]
     parent_alive: Callable[[], bool]
     health: Callable[[], Dict[str, Any]]
     serving: Callable[[], bool]
@@ -429,16 +457,25 @@ class _Ctx:
 
 
 def _host_halted(root: Path) -> bool:
-    return _host_status(root).get("state") == "halted"
+    """A host is stopping RIGHT NOW: its status says halted, the file is
+    fresh and its pid is alive. Every stop writes `halted`, so a dead host's
+    last status (a respawned host that died on import) is no quit."""
+    st = _host_status(root)
+    if st.get("state") != "halted":
+        return False
+    upd = _epoch(st.get("updated"))
+    pid = st.get("host_pid")
+    return bool(upd is not None and time.time() - upd <= STATUS_FRESH_S
+                and isinstance(pid, int) and not isinstance(pid, bool) and sh.pid_alive(pid))
 
 
-def _make_ctx(root: Path, *, clock, sleep, now, parent_alive, health, serving,
+def _make_ctx(root: Path, *, clock, sleep, now, uptime, parent_alive, health, serving,
               services_probe, supervisor_alive, game_check, log, finish_timeout_s,
               health_timeout_s, settle_s, stable_s, poll_s) -> _Ctx:
     port = dashboard_port()
     lock = up.runtime_dir(root) / "supervisor.pid"
     return _Ctx(
-        root=root, clock=clock, sleep=sleep, now=now,
+        root=root, clock=clock, sleep=sleep, now=now, uptime=uptime or up.boot_uptime_s,
         parent_alive=parent_alive or (lambda: True),
         health=health or (lambda: readiness(root)),
         serving=serving or (lambda: sh.fetch_health_origin(port) is not None),
@@ -468,7 +505,7 @@ def _staged_or_stage(ctx: _Ctx, source: Any, release: Any, channel: str,
 def _wait_finish(ctx: _Ctx) -> Any:
     deadline = ctx.clock() + ctx.finish_timeout_s
     while True:
-        fin = up.finish(ctx.root, now=ctx.now)
+        fin = up.finish(ctx.root, now=ctx.now, uptime=ctx.uptime)
         if fin.status != "pending":
             return fin
         ctx.check_alive(host=False)
@@ -546,15 +583,49 @@ def _complete_recover(ctx: _Ctx, current: Optional[str]) -> CycleResult:
                        "an interrupted recover was completed", restart=act)
 
 
+def _reload_outcome(root: Path, since: Optional[float], changed: List[str]) -> str:
+    """What core/hot_reload.py did with this deploy's files, from its status
+    file (core/hot_reload.py _fire / tick): `fired` (rewritten since the
+    deploy, naming one of them, compile OK), `compile_failed`, or `quiet`
+    (not rewritten: none of them was loaded, so the running main.py never
+    held their old code - the only case an old run may verify)."""
+    path = up.runtime_dir(root) / "hot_reload.json"
+    try:
+        written = path.stat().st_mtime
+        doc = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError):
+        return "quiet"
+    if since is None or written + 1.0 < since or not isinstance(doc, dict):
+        return "quiet"
+    named = set(doc.get("changed") or []) | {doc.get("last_change")}
+    if not named & set(changed):
+        return "quiet"
+    return "compile_failed" if str(doc.get("last_compile") or "").startswith("FAILED") \
+        else "fired"
+
+
 def _verify_and_report(ctx: _Ctx, rec: Dict[str, Any], current: Optional[str], *,
                        resumed: bool) -> CycleResult:
     version = rec.get("version")
     app = rec.get("app") or "none"
     before = rec.get("run_id_before")
     ctx.phase("verifying", version)
-    ok = _wait_ready(ctx, before=before, need_new=(not resumed and app == "restart"
-                                                   and bool(before)),
-                     settle=(not resumed and app == "hot_reload"))
+    need_new = not resumed and app == "restart" and bool(before)
+    if not resumed and app == "hot_reload":
+        # The watcher was fresh at apply (updater.hot_reload_watching, else
+        # the plan would be `restart`). Settle, then ask what it did.
+        end = ctx.clock() + ctx.settle_s
+        while ctx.clock() < end:
+            ctx.check_alive()
+            ctx.sleep(min(ctx.poll_s, max(end - ctx.clock(), 0.01)))
+        changed = [r.get("path") for r in (rec.get("restart") or {}).get("reasons") or []
+                   if isinstance(r, dict) and r.get("app") == "hot_reload"]
+        what = _reload_outcome(ctx.root, rec.get("requested_at"), changed)
+        ctx.log(f"hot_reload after the deploy: {what}")
+        if what == "compile_failed":
+            return _recover(ctx, version, current, "core/hot_reload.py could not compile it")
+        need_new = what == "fired" and bool(before)
+    ok = _wait_ready(ctx, before=before, need_new=need_new, settle=False)
     if not ok:
         return _recover(ctx, version, current, "main.py did not become ready")
     actions = restart_actions(rec.get("restart"))
@@ -591,7 +662,8 @@ def _after_finish(ctx: _Ctx, fin: Any, current: Optional[str]) -> CycleResult:
         return CycleResult("up-to-date", None, current, "nothing pending")
     plan = fin.restart if isinstance(fin.restart, dict) else {}
     rec = {"version": fin.version, "kind": fin.kind, "app": plan.get("app") or "none",
-           "run_id_before": fin.run_id_before, "restart": plan, "at": utc_now()}
+           "run_id_before": fin.run_id_before, "restart": plan, "at": utc_now(),
+           "requested_at": getattr(fin, "requested_at", None)}
     _write_cycle(ctx.root, verify=rec)
     return _verify_and_report(ctx, rec, current, resumed=False)
 
@@ -601,13 +673,26 @@ def _check_restarts(ctx: _Ctx, owed: Dict[str, Any], current: Optional[str]) -> 
     for stable_s, and main.py ready throughout; else recover (deferred while
     a game is live)."""
     version = owed.get("version")
-    names = list(owed.get("names") or [])
+    all_names = list(owed.get("names") or [])
+    owed = dict(owed, sent_at=utc_now())   # B4: the shell retries a sent check
+    _write_cycle(ctx.root, owed=owed)
     ctx.phase("restart-check", version)
     deadline = ctx.clock() + ctx.health_timeout_s
     cand = None
     since = 0.0
+    skipped: Dict[str, str] = {}
     while True:
         st = ctx.services_probe(owed)
+        deferred = sorted(n for n in all_names if (st.get(n) or {}).get("deferred"))
+        if deferred:
+            # The host refused to restart them mid-game: owed again (B3).
+            _write_cycle(ctx.root, owed=dict(owed, sent_at=None), phase="owed")
+            return CycleResult("owed", version, current,
+                               "the host deferred the restarts (a game): " + ", ".join(deferred),
+                               restart=restart_actions(owed.get("restart")))
+        skipped = {n: (st.get(n) or {}).get("skip") for n in all_names
+                   if (st.get(n) or {}).get("skip")}
+        names = [n for n in all_names if n not in skipped]
         main = ctx.health()
         good = _sample_ok(main) and all(
             (st.get(n) or {}).get("restarted") and (st.get(n) or {}).get("healthy")
@@ -618,15 +703,21 @@ def _check_restarts(ctx: _Ctx, owed: Dict[str, Any], current: Optional[str]) -> 
                 cand, since = key, ctx.clock()
             elif ctx.clock() - since >= ctx.stable_s and ctx.serving():
                 _write_cycle(ctx.root, owed=None, phase="done")
-                return CycleResult("applied", version, version,
-                                   "verified: the restarted services stayed up: "
-                                   + ", ".join(names), restart=restart_actions(None))
+                detail = "verified: the restarted services stayed up: " + \
+                    (", ".join(names) or "none")
+                if skipped:
+                    detail += "; not ours to restart: " + ", ".join(
+                        f"{n} ({o})" for n, o in sorted(skipped.items()))
+                    ctx.log(detail)
+                return CycleResult("applied", version, version, detail,
+                                   restart=restart_actions(None))
         else:
             cand = None
         ctx.check_alive(host=False)
         if ctx.clock() >= deadline:
             break
         ctx.sleep(ctx.poll_s)
+    names = [n for n in all_names if n not in skipped]
     failing = [n for n in names if not ((st.get(n) or {}).get("restarted")
                                        and (st.get(n) or {}).get("healthy"))]
     if _sample_ok(main):
@@ -735,10 +826,11 @@ def _guarded(root: Path, ctx_kw: Dict[str, Any], body: Callable[[_Ctx, Optional[
     return res
 
 
-def _ctx_kw(*, clock, sleep, now, parent_alive, health, serving, services_probe,
+def _ctx_kw(*, clock, sleep, now, uptime, parent_alive, health, serving, services_probe,
             supervisor_alive, game_check, finish_timeout_s, health_timeout_s, settle_s,
             stable_s, poll_s) -> Dict[str, Any]:
-    return dict(clock=clock, sleep=sleep, now=now, parent_alive=parent_alive, health=health,
+    return dict(clock=clock, sleep=sleep, now=now, uptime=uptime, parent_alive=parent_alive,
+                health=health,
                 serving=serving, services_probe=services_probe,
                 supervisor_alive=supervisor_alive, game_check=game_check,
                 finish_timeout_s=finish_timeout_s, health_timeout_s=health_timeout_s,
@@ -756,13 +848,15 @@ def run_cycle(root: Path, source: Any, *, channel: str = "stable",
               clock: Callable[[], float] = time.monotonic,
               sleep: Callable[[float], None] = time.sleep,
               now: Callable[[], float] = time.time,
+              uptime: Optional[Callable[[], float]] = None,
               finish_timeout_s: float = FINISH_TIMEOUT_S,
               health_timeout_s: float = HEALTH_TIMEOUT_S,
               settle_s: float = SETTLE_S, stable_s: float = STABLE_S, poll_s: float = POLL_S,
               log: Optional[Callable[[str], None]] = None) -> CycleResult:
     """One update cycle. Never raises for an expected outcome: every refusal
     is a CycleResult with its code. Every side effect is injectable."""
-    kw = _ctx_kw(clock=clock, sleep=sleep, now=now, parent_alive=parent_alive, health=health,
+    kw = _ctx_kw(clock=clock, sleep=sleep, now=now, uptime=uptime, parent_alive=parent_alive,
+                 health=health,
                  serving=serving, services_probe=services_probe,
                  supervisor_alive=supervisor_alive, game_check=game_check,
                  finish_timeout_s=finish_timeout_s, health_timeout_s=health_timeout_s,
@@ -782,6 +876,7 @@ def resume_cycle(root: Path, *, restarts_sent: bool = False,
                  clock: Callable[[], float] = time.monotonic,
                  sleep: Callable[[float], None] = time.sleep,
                  now: Callable[[], float] = time.time,
+                 uptime: Optional[Callable[[], float]] = None,
                  finish_timeout_s: float = FINISH_TIMEOUT_S,
                  health_timeout_s: float = HEALTH_TIMEOUT_S,
                  settle_s: float = SETTLE_S, stable_s: float = STABLE_S,
@@ -789,7 +884,8 @@ def resume_cycle(root: Path, *, restarts_sent: bool = False,
                  log: Optional[Callable[[str], None]] = None) -> CycleResult:
     """Only what an earlier cycle left (module docstring); `idle` when
     nothing is recorded. Needs no /api/state and never applies a release."""
-    kw = _ctx_kw(clock=clock, sleep=sleep, now=now, parent_alive=parent_alive, health=health,
+    kw = _ctx_kw(clock=clock, sleep=sleep, now=now, uptime=uptime, parent_alive=parent_alive,
+                 health=health,
                  serving=serving, services_probe=services_probe,
                  supervisor_alive=supervisor_alive, game_check=game_check,
                  finish_timeout_s=finish_timeout_s, health_timeout_s=health_timeout_s,

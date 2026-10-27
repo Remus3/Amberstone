@@ -384,6 +384,8 @@ The shell runs ONE windowless child per cycle and acts on its one JSON line; not
   live pid and a fresh heartbeat, all from ONE run id for 30 s (a NEW run after a supervised
   restart; after a hot_reload a settle window first), then `/api/health` answers. A version that
   ended recovered / failed / lost is never applied again (`bad_versions`; a newer one still is).
+  hot_reload needs a watcher written in the current main.py run (else a supervised restart) and,
+  when the watcher says it fired for the deployed files, a new run.
   `... resume [--restarts-sent]` only finishes what an earlier cycle left (an interrupted recover,
   a pending deploy - a deploy cut off by a quit is salvaged from the worker's backup and
   recovered - a verify, owed restarts) and needs no `/api/state`. Exit 0 up-to-date / noop /
@@ -410,7 +412,11 @@ The shell runs ONE windowless child per cycle and acts on its one JSON line; not
   set) = the shell stops and respawns the host. Outcomes: `commands` in
   `ops/runtime/launcher_status.json`. Then `resume --restarts-sent` checks every named service
   came back on a NEW process and stayed up 30 s with main.py ready; otherwise it recovers (offline,
-  restoring the backup itself, when no supervisor runs; deferred while a game is live).
+  restoring the backup itself, when no supervisor runs; deferred while a game is live). A service
+  the host does not own (outcome refused:not-in-job, e.g. DS from the RC-DaemonSlayer task) is
+  skipped, never a failure. The host itself defers restart commands while a game runs
+  (`restart_game_guard` in `ops/launcher/services.json`), and the shell checks `tasklist` before
+  a host respawn.
 - Baseline: every bundle ships `backend-manifest.json` (`tools/build_portable.py`; version from
   `--backend-version`, else a semver `--version`, else 0.0.0), the files a release may replace.
 - Guards: `tests/test_launcher_update_cycle_pkg6b.py`, `tests/test_launcher_host_restart_pkg6b.py`,

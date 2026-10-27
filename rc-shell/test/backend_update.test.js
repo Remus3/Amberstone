@@ -293,7 +293,6 @@ test("F5 idleForUpdate: only a lobby or no LCU phase, with no live game, is idle
     assert.strictEqual(bu.idleForUpdate({ liveclient: {}, lcu: { phase } }), false, phase);
   }
   assert.strictEqual(bu.idleForUpdate({ liveclient: { activePlayer: {} }, lcu: { phase: "Lobby" } }), false);
-  assert.strictEqual(bu.idleForUpdate({ has_game: true, lcu: { phase: "Lobby" } }), false);
   assert.strictEqual(bu.idleForUpdate(null), false, "no state = not idle");
   assert.strictEqual(bu.idleForUpdate([]), false);
 });
@@ -311,9 +310,9 @@ test("F1 recordsFrom: what an earlier cycle left on disk", () => {
   const cyc = JSON.stringify({ verify: { version: "1.1.0" }, owed: null, phase: "verifying" });
   const st = JSON.stringify({ pending: null, recovering: { version: "1.1.0" } });
   assert.deepStrictEqual(bu.recordsFrom(cyc, st),
-    { verify: true, owed: false, pending: false, recovering: true, phase: "verifying" });
+    { verify: true, owed: false, owedSent: false, pending: false, recovering: true, phase: "verifying" });
   assert.deepStrictEqual(bu.recordsFrom("garbage", null),
-    { verify: false, owed: false, pending: false, recovering: false, phase: null });
+    { verify: false, owed: false, owedSent: false, pending: false, recovering: false, phase: null });
 });
 
 test("F1 resumeDue: a verify / pending / recovering record resumes on its interval, any state", () => {
@@ -354,10 +353,94 @@ test("main.js F1/F2/F5/F6 wiring", () => {
   assert.ok(run.includes("bu.watchdogDecision("), "the watchdog decides from the cycle phase");
   const resume = fnBody("maybeResumeBackend");
   assert.ok(resume.includes("bu.resumeDue("), "resume gate");
-  assert.ok(!resume.includes("pollFresh"), "resume needs no fresh /api/state (F1)");
+  // F1: never gated on a fresh /api/state; pollFresh only feeds the B4 idle
+  // flag that bu.resumeDue applies to a SENT owed check alone.
+  assert.ok(!/if\s*\(\s*!?\s*pollFresh/.test(resume), "resume needs no fresh /api/state (F1)");
+  assert.strictEqual(bu.resumeDue({ records: { verify: true }, lastResumeMs: null, nowMs: 1, idle: false }).run,
+    true, "a verify record resumes while busy / down");
   assert.ok(MAIN_SRC.includes("lastUpdateIdle = bu.idleForUpdate(parsed)"), "F5 gate from /api/state");
   assert.ok(fnBody("maybeRunBackendCycle").includes("!lastUpdateIdle"), "cycles use the strict gate");
   assert.ok(fnBody("applyOwedRestarts").includes("!lastUpdateIdle"), "restarts use the strict gate");
   assert.ok(fnBody("applyOwedRestarts").includes("runBackendResume(true)"), "restarts are health-checked (F3)");
   assert.ok(fnBody("stopServiceHost").includes("bu.hostStopGraceMs("), "quit grace stretches under a deploy (F2)");
+});
+
+
+// ---- fix round 2 -------------------------------------------------------------------
+
+// The /api/state document as dashboard/_state_builder.py:1051-1077 builds it:
+// the live-game flags live under `health` (lines 1058-1072), `liveclient`
+// (1076) and `lcu` (1077) at the top level.
+function apiState(over) {
+  const base = {
+    mode_key: "client",
+    tft_context: { active: false, phase: null, queue_id: null, source: null },
+    coach_source: null,
+    health: {
+      alive: true, pid: 1234, mode: "client", has_game: false,
+      aram_mode: false, arena_mode: false, brawl_mode: false, tft_mode: false,
+      ui_pulse_age_s: 0.5, game_poll_age_s: 0.5,
+    },
+    coach: {},
+    liveclient: {},
+    lcu: { phase: "Lobby" },
+  };
+  const s = JSON.parse(JSON.stringify(base));
+  for (const [k, v] of Object.entries(over || {})) {
+    s[k] = v && typeof v === "object" && !Array.isArray(v) && s[k] && typeof s[k] === "object"
+      ? Object.assign(s[k], v) : v;
+  }
+  return s;
+}
+
+test("B3 idleForUpdate reads the live-game flags where /api/state puts them (health.*)", () => {
+  assert.strictEqual(bu.idleForUpdate(apiState()), true);
+  for (const flag of ["has_game", "aram_mode", "arena_mode", "brawl_mode", "tft_mode"]) {
+    assert.strictEqual(bu.idleForUpdate(apiState({ health: { [flag]: true } })), false, flag);
+  }
+  assert.strictEqual(bu.idleForUpdate(apiState({ lcu: { phase: "ChampSelect" } })), false);
+  assert.strictEqual(bu.idleForUpdate(apiState({ liveclient: { activePlayer: {} } })), false);
+  assert.strictEqual(bu.idleForUpdate(apiState({ health: "garbage" })), true, "a bad health block is no flag");
+});
+
+test("B3 gameInTasklist: the updater's game processes in tasklist CSV, fail closed", () => {
+  const csv = '"System Idle Process","0","Services","0","8 K"\r\n' +
+    '"League of Legends.exe","4321","Console","1","2,000,000 K"\r\n';
+  assert.deepStrictEqual(bu.gameInTasklist(csv), { ok: true, running: true });
+  assert.deepStrictEqual(bu.gameInTasklist('"TFTClient-Win64-Shipping.exe","1","C","1","1 K"'),
+    { ok: true, running: true });
+  assert.deepStrictEqual(bu.gameInTasklist('"explorer.exe","1","C","1","1 K"\r\n'), { ok: true, running: false });
+  assert.deepStrictEqual(bu.gameInTasklist(""), { ok: false, running: true }, "no listing = assume a game");
+  assert.deepStrictEqual(bu.gameInTasklist(null), { ok: false, running: true });
+  assert.deepStrictEqual(bu.GAME_PROCESS_NAMES.slice().sort(),
+    ["league of legends.exe", "tftclient-win64-shipping.exe"], "mirrors updater.GAME_PROCESS_NAMES");
+});
+
+test("B4 resumeDue: a SENT owed check is retried on the interval, only when idle", () => {
+  const sent = { verify: false, owed: true, owedSent: true, pending: false, recovering: false };
+  const busy = bu.resumeDue({ records: sent, lastResumeMs: 1000, nowMs: 1000 + bu.RESUME_INTERVAL_MS, idle: false });
+  assert.strictEqual(busy.run, false);
+  assert.strictEqual(busy.reason, "owed-waits-for-idle");
+  const due = bu.resumeDue({ records: sent, lastResumeMs: 1000, nowMs: 1000 + bu.RESUME_INTERVAL_MS, idle: true });
+  assert.deepStrictEqual([due.run, due.restartsSent], [true, true]);
+  const early = bu.resumeDue({ records: sent, lastResumeMs: 1000, nowMs: 1001, idle: true });
+  assert.strictEqual(early.run, false);
+  const st = JSON.stringify({ pending: null });
+  assert.strictEqual(bu.recordsFrom(JSON.stringify({ owed: { sent_at: "2026-10-26T00:00:00+00:00" } }), st).owedSent, true);
+  assert.strictEqual(bu.recordsFrom(JSON.stringify({ owed: { sent_at: null } }), st).owedSent, false);
+});
+
+test("main.js fix round 2 wiring (B1, B3, B4, B5)", () => {
+  const owed = fnBody("applyOwedRestarts");
+  const dead = owed.slice(0, owed.indexOf("bu.owedDecision("));
+  assert.ok(dead.includes("startServiceHost()") && dead.includes("runBackendResume(true)"),
+    "B1: a host started for an owed respawn is health-checked");
+  assert.ok(owed.includes("checkGameProcess("), "B3: a respawn waits for the process-level game check");
+  assert.ok(fnBody("maybeResumeBackend").includes("idle:"), "B4: the sent check retries when idle");
+  assert.ok(fnBody("maybeResumeBackend").includes("d.restartsSent"), "B4: retried as a restart check");
+  const resume = fnBody("runBackendResume");
+  assert.ok(resume.includes("backendResumeQueued"), "B5: a resume during a running child is queued");
+  assert.ok(fnBody("runBackendChild").includes("backendResumeQueued"), "B5: run when the child ends");
+  const chk = fnBody("checkGameProcess");
+  assert.ok(chk.includes('"tasklist"') && chk.includes("windowsHide: true") && chk.includes("bu.gameInTasklist("));
 });

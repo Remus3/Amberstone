@@ -114,19 +114,24 @@ class Sim:
     """The injected sleep: the frozen supervisor runs the worker on a queued
     request; nothing else changes (main.py is scripted separately)."""
 
-    def __init__(self, root, clock, *, worker=True):
+    def __init__(self, root, clock, *, worker=True, after_worker=None):
         self.root, self.clock, self.worker = root, clock, worker
         self.ran = 0
+        self.restarts = 0
+        self.after_worker = after_worker
 
     def __call__(self, seconds):
         self.clock.t += max(float(seconds), 0.01)
         rt = self.root / "ops" / "runtime"
         for req in sorted((rt / "supervisor_requests").glob("*.restart.json")):
             req.unlink()
+            self.restarts += 1
         if self.worker:
             for req in sorted((rt / "deploy_requests").glob("*.json")):
                 assert run_worker(self.root, req)["ok"]
                 self.ran += 1
+                if self.after_worker:
+                    self.after_worker()
 
 
 def _cycle(root, src, clock, sleep, health, **kw):
@@ -226,28 +231,80 @@ def test_f1_resume_with_nothing_recorded_is_idle(tmp_path):
 # --------------------------------------------------- F7 hot_reload verify
 
 
-def test_f7_hot_reload_old_heartbeat_does_not_pass_a_broken_restart(tmp_path):
-    """hot_reload restarts main.py AFTER the settle window began; the new run
-    never becomes ready. The old run's fresh heartbeat must not verify it."""
-    root, src = _setup(tmp_path)
-    (root / "ops" / "runtime" / "hot_reload.json").write_text('{"watching": true}', "ascii")
-    clock = Clock()
-    t0 = clock.t
+def _fresh_watcher(root: Path, *, stale: bool = False) -> None:
+    """A running main.py (health.json started_at) and its hot_reload watcher
+    status, written in THIS run (fresh) - or, stale, before the run began."""
+    rt = root / "ops" / "runtime"
+    hr = rt / "hot_reload.json"
+    hr.write_text('{"watching": true}', encoding="ascii")
+    started = up.utc_now()
+    if stale:
+        os.utime(hr, (time.time() - 3600, time.time() - 3600))
+    else:
+        old = time.time() - 120
+        started = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime(old))
+    (rt / "health.json").write_text(json.dumps({
+        "alive": True, "run_id": "r1", "pid": os.getpid(), "started_at": started,
+        "last_state_provider_ok": True}), encoding="ascii")
 
-    def fn(t):
-        if t - t0 < 26:
-            return sample("r1")                    # old run, still fine
-        return sample("r2", ready=False)            # the reload broke it
-    res = _cycle(root, src, clock, Sim(root, clock), Script(clock, fn), health_timeout_s=90,
-                 settle_s=20)
+
+def _reload_fired(root: Path, changed):
+    def write():
+        (root / "ops" / "runtime" / "hot_reload.json").write_text(json.dumps({
+            "watching": True, "last_compile": f"OK ({len(changed)} file(s))",
+            "changed": list(changed)}), encoding="ascii")
+    return write
+
+
+def test_f7_hot_reload_watching_requires_a_watcher_of_the_current_run(tmp_path):
+    root = make_root(tmp_path)
+    (root / "ops" / "runtime" / "hot_reload.json").write_text('{"watching": true}', "ascii")
+    assert up.hot_reload_watching(root) is False, "no live run: nobody is watching"
+    _fresh_watcher(root)
+    assert up.hot_reload_watching(root) is True
+    _fresh_watcher(root, stale=True)
+    assert up.hot_reload_watching(root) is False, "status from an older run"
+
+
+def test_f7_a_stale_watcher_falls_back_to_a_supervised_restart(tmp_path):
+    root, src = _setup(tmp_path)
+    _fresh_watcher(root, stale=True)
+    clock = Clock()
+    sim = Sim(root, clock)
+    res = _cycle(root, src, clock, sim, Script(clock, lambda t: sample("r1")),
+                 health_timeout_s=60)
+    assert sim.restarts == 1, "force_restart: the worker asked the supervisor"
+    assert res.status == "recovered", "the old run r1 never passes a supervised restart"
+
+
+def test_f7_a_fresh_watcher_that_ignored_the_change_verifies_on_the_old_run(tmp_path):
+    root, src = _setup(tmp_path)
+    _fresh_watcher(root)
+    clock = Clock()
+    sim = Sim(root, clock)
+    res = _cycle(root, src, clock, sim, Script(clock, lambda t: sample("r1")))
+    assert sim.restarts == 0
+    assert res.status == "applied", res.to_dict()
+
+
+def test_f7_a_reload_that_fired_needs_a_new_run(tmp_path):
+    root, src = _setup(tmp_path)
+    _fresh_watcher(root)
+    clock = Clock()
+    sim = Sim(root, clock, after_worker=_reload_fired(root, ["core/a.py"]))
+    res = _cycle(root, src, clock, sim, Script(clock, lambda t: sample("r1")),
+                 health_timeout_s=60)
     assert res.status == "recovered", res.to_dict()
 
 
-def test_f7_hot_reload_that_never_restarts_verifies_on_the_stable_old_run(tmp_path):
+def test_f7_a_reload_that_fired_and_came_back_verifies(tmp_path):
     root, src = _setup(tmp_path)
-    (root / "ops" / "runtime" / "hot_reload.json").write_text('{"watching": true}', "ascii")
+    _fresh_watcher(root)
     clock = Clock()
-    res = _cycle(root, src, clock, Sim(root, clock), Script(clock, lambda t: sample("r1")))
+    sim = Sim(root, clock, after_worker=_reload_fired(root, ["core/a.py"]))
+    t0 = clock.t
+    res = _cycle(root, src, clock, sim,
+                 Script(clock, lambda t: sample("r1" if t - t0 < 10 else "r2")))
     assert res.status == "applied", res.to_dict()
 
 
@@ -277,11 +334,12 @@ def test_f2_stale_deploying_is_interrupted_and_salvaged(tmp_path):
     root, _src, res = _staged_apply(tmp_path)
     broot = _half_deploy(root, res)
     t = [1_000_000.0]
-    assert up.finish(root, now=lambda: t[0]).status == "pending"   # first sighting
+    kw = {"now": lambda: t[0], "uptime": lambda: t[0]}
+    assert up.finish(root, **kw).status == "pending"   # first sighting
     t[0] += up.DEPLOYING_STALE_S - 1
-    assert up.finish(root, now=lambda: t[0]).status == "pending"
+    assert up.finish(root, **kw).status == "pending"
     t[0] += 2
-    fin = up.finish(root, now=lambda: t[0])
+    fin = up.finish(root, **kw)
     assert fin.status == "interrupted", fin
     assert up.read_state(root).get("pending") is None
     assert not (root / "ops" / "runtime" / "deploy_requests" /
@@ -301,9 +359,10 @@ def test_f2_a_torn_backup_is_moved_out_and_never_restored(tmp_path):
     root, _src, res = _staged_apply(tmp_path)
     broot = _half_deploy(root, res, torn=True)
     t = [1_000_000.0]
-    up.finish(root, now=lambda: t[0])
+    kw = {"now": lambda: t[0], "uptime": lambda: t[0]}
+    up.finish(root, **kw)
     t[0] += up.DEPLOYING_STALE_S + 1
-    assert up.finish(root, now=lambda: t[0]).status == "interrupted"
+    assert up.finish(root, **kw).status == "interrupted"
     assert not (broot / "core" / "a.py").exists(), "the supervisor would copy it over live"
     rec = up.read_installed(root)
     assert rec["pre_hashes"] == {} and rec["created"] == []
@@ -337,52 +396,84 @@ def test_f2_the_cycle_recovers_an_interrupted_deploy(tmp_path):
         for req in sorted(d.glob("*.json")):
             _half_deploy(root, type("R", (), {"request_id": req.stem, "request_path": req})())
     res = _cycle(root, src, clock, quit_mid_deploy, Script(clock, lambda t: sample("r1")),
-                 now=lambda: wall[0], finish_timeout_s=30)
+                 now=lambda: wall[0], uptime=lambda: wall[0], finish_timeout_s=30)
     assert res.status == "pending"
     wall[0] += up.DEPLOYING_STALE_S + 60
     res = uc.resume_cycle(root, clock=clock, sleep=quit_mid_deploy, now=lambda: wall[0],
+                          uptime=lambda: wall[0],
                           health=Script(clock, lambda t: sample("r1")), serving=lambda: True,
                           supervisor_alive=lambda: True, finish_timeout_s=30)
     assert res.status == "recovered", res.to_dict()
     assert "1.1.0" in uc.read_cycle(root)["bad_versions"]
 
 
-def test_f2_host_stop_waits_while_a_deploy_is_in_flight(tmp_path):
+class _TimedJob(FakeJob):
+    def __init__(self, clock):
+        super().__init__([])
+        self.clock = clock
+        self.terminated_at = None
+
+    def terminate(self):
+        super().terminate()
+        self.terminated_at = self.clock.t
+
+
+def _quitting_host(tmp_path):
+    """A host whose supervisor exits AT ONCE on its shutdown request (the
+    frozen supervisor does not wait for its deploy thread,
+    ops/rc_supervisor.py:1309-1314) - so every service is gone while the
+    deploy worker, a grandchild in the job, may still be copying."""
     root = make_host_root(tmp_path)
     clock = HostClock()
     fp = FakePopen(clock=clock)
-    job = FakeJob([])
+    reqs = root / "ops" / "runtime" / "supervisor_requests"
+    fp.behaviour["sup.py"] = lambda proc: 0 if any(reqs.glob("launcher-shutdown-*.json")) \
+        else None
+    job = _TimedJob(clock)
     host = make_host(root, make_config(grace=5.0), popen=fp, job=job, clock=clock)
     host.start()
-    dep = root / "ops" / "runtime" / "deploy_requests" / "launcher-update-1.1.0-1-ab.deploying"
-    dep.parent.mkdir(parents=True)
-    dep.write_text("{}", encoding="ascii")
+    d = root / "ops" / "runtime" / "deploy_requests"
+    d.mkdir(parents=True)
+    return root, clock, host, job, d
+
+
+def test_b2_quit_waits_for_the_deploy_worker_after_the_supervisor_exited(tmp_path):
+    root, clock, host, job, d = _quitting_host(tmp_path)
+    (d / "launcher-update-1.1.0-1-ab.deploying").write_text("{}", encoding="ascii")
     t0 = clock.t
-    gone_at = t0 + 40
+    done_at = t0 + 40
 
     def sleep(seconds):
         clock.sleep(seconds)
-        if clock.t >= gone_at and dep.exists():
-            dep.unlink()   # the worker finished; the supervisor removed it
+        res = root / "ops" / "runtime" / "deploy_results" / "launcher-update-1.1.0-1-ab.json"
+        if clock.t >= done_at and not res.exists():
+            res.parent.mkdir(parents=True, exist_ok=True)
+            res.write_text('{"ok": true}', encoding="ascii")   # the worker finished
     host._sleep = sleep
     host.stop("quit")
-    assert job.terminated == 1
-    assert clock.t >= gone_at, "the job was not ended under a running deploy"
-    assert clock.t < t0 + sh.DEPLOY_STOP_GRACE_S
+    assert not any(rt.alive() for rt in host._services)
+    assert job.terminated_at is not None
+    assert job.terminated_at >= done_at, "the job was ended under a copying worker"
+    assert job.terminated_at < t0 + sh.DEPLOY_STOP_GRACE_S
 
 
-def test_f2_host_stop_grace_is_bounded_even_with_a_deploy(tmp_path):
-    root = make_host_root(tmp_path)
-    clock = HostClock()
-    host = make_host(root, make_config(grace=5.0), popen=FakePopen(clock=clock),
-                     job=FakeJob([]), clock=clock)
-    host.start()
-    dep = root / "ops" / "runtime" / "deploy_requests" / "x.deploying"
-    dep.parent.mkdir(parents=True)
-    dep.write_text("{}", encoding="ascii")
+def test_b2_quit_grace_is_bounded_while_a_worker_never_finishes(tmp_path):
+    _root, clock, host, job, d = _quitting_host(tmp_path)
+    (d / "x.deploying").write_text("{}", encoding="ascii")
     t0 = clock.t
     host.stop("quit")
-    assert t0 + sh.DEPLOY_STOP_GRACE_S <= clock.t < t0 + sh.DEPLOY_STOP_GRACE_S + 1
+    assert t0 + sh.DEPLOY_STOP_GRACE_S <= job.terminated_at < t0 + sh.DEPLOY_STOP_GRACE_S + 1
+
+
+def test_b9_a_deploying_that_already_has_a_result_does_not_hold_the_quit(tmp_path):
+    root, clock, host, job, d = _quitting_host(tmp_path)
+    (d / "done.deploying").write_text("{}", encoding="ascii")
+    res = root / "ops" / "runtime" / "deploy_results" / "done.json"
+    res.parent.mkdir(parents=True)
+    res.write_text('{"ok": true}', encoding="ascii")
+    t0 = clock.t
+    host.stop("quit")
+    assert job.terminated_at < t0 + 1, "a finished deploy is not in flight"
 
 
 # ----------------------------------------------------- F6 re-entrant recover
@@ -629,3 +720,167 @@ def test_f3_the_default_probe_reads_host_status_and_ports(tmp_path, monkeypatch)
     assert got["ds"]["healthy"] is False
     owed2 = dict(owed, names=["app"], respawn_host=True)
     assert uc.services_state(root, owed2)["app"]["restarted"] is True
+
+
+# =============================================== fix round 2 (B1, B3-B9)
+
+
+def _dead_pid() -> int:
+    import subprocess
+    import sys
+    p = subprocess.Popen([sys.executable, "-c", "pass"], creationflags=0x08000000
+                         if os.name == "nt" else 0)
+    p.wait(30)
+    return p.pid
+
+
+def _status(root: Path, **doc) -> None:
+    base = {"schema": 1, "updated": up.utc_now(), "mode": "owned", "state": "running",
+            "host_pid": os.getpid(), "services": []}
+    base.update(doc)
+    (root / "ops" / "runtime" / "launcher_status.json").write_text(json.dumps(base), "ascii")
+
+
+def test_b1_halted_counts_only_for_a_live_fresh_host(tmp_path):
+    root = make_root(tmp_path)
+    _status(root, state="halted")
+    assert uc._host_halted(root) is True, "this host is stopping right now"
+    _status(root, state="halted", host_pid=_dead_pid())
+    assert uc._host_halted(root) is False, "a dead host's last word"
+    _status(root, state="halted", updated="2020-01-01T00:00:00+00:00")
+    assert uc._host_halted(root) is False, "stale"
+
+
+def test_b1_a_stale_halted_status_never_blocks_a_recover(tmp_path):
+    """The respawned host died on import: the status file still holds the OLD
+    host's "halted". The restart check must recover, not report interrupted."""
+    root, _src, clock = _owed(tmp_path)
+    _status(root, state="halted", host_pid=_dead_pid(), updated="2020-01-01T00:00:00+00:00")
+    res = _resume(root, clock, Services(clock, lambda n, t: {"restarted": False, "healthy": False,
+                                                             "pid": None}),
+                  restarts_sent=True, health_timeout_s=60)
+    assert res.status == "recovered", res.to_dict()
+    assert uc.read_cycle(root)["owed"] is None
+
+
+def test_b4_a_restart_check_marks_the_owed_record_sent(tmp_path):
+    root, _src, clock = _owed(tmp_path)
+    res = _resume(root, clock, Services(clock, lambda n, t: {"restarted": False, "healthy": False,
+                                                             "pid": None}),
+                  restarts_sent=True, health_timeout_s=60,
+                  game_check=lambda: "process league of legends.exe")
+    assert res.status == "deferred"
+    assert uc.read_cycle(root)["owed"]["sent_at"], "the shell retries a sent check"
+
+
+def _commands_status(root, outcome, *, at="2030-01-01T00:00:00+00:00"):
+    _status(root, commands=[{"id": "shell-1", "cmd": "restart", "at": at,
+                             "results": {"vision": outcome}}])
+
+
+def test_b6_a_service_the_host_does_not_own_is_skipped_never_failed(tmp_path, monkeypatch):
+    root, _src, clock = _owed(tmp_path)
+    _commands_status(root, "refused:not-in-job")
+    monkeypatch.setattr(uc.sh, "port_listener_pids", lambda port: [66])
+    monkeypatch.setattr(uc.sh, "process_created", lambda pid: 1.0)   # older than the deploy
+    owed = uc.read_cycle(root)["owed"]
+    owed["at_epoch"] = 1.8e9
+    assert uc.services_state(root, owed)["vision"]["skip"] == "refused:not-in-job"
+    res = _resume(root, clock, lambda o: uc.services_state(root, dict(o, at_epoch=1.8e9)),
+                  restarts_sent=True, health_timeout_s=60)
+    assert res.status == "applied", res.to_dict()
+    assert "not ours" in res.detail
+    assert "1.1.0" not in uc.read_cycle(root)["bad_versions"]
+    assert up.installed_version(root) == "1.1.0"
+
+
+def test_b3_restarts_the_host_deferred_are_owed_again(tmp_path):
+    root, _src, clock = _owed(tmp_path)
+    _commands_status(root, "deferred:game-live")
+    owed = dict(uc.read_cycle(root)["owed"], at_epoch=1.8e9)
+    assert uc.services_state(root, owed)["vision"]["deferred"] == "deferred:game-live"
+    res = _resume(root, clock, lambda o: uc.services_state(root, dict(o, at_epoch=1.8e9)),
+                  restarts_sent=True)
+    assert res.status == "owed" and res.restart["host_services"] == ["vision"]
+    assert uc.read_cycle(root)["owed"].get("sent_at") is None
+    assert "1.1.0" not in uc.read_cycle(root)["bad_versions"]
+
+
+def _mixed_apply(tmp_path, live_before_worker):
+    """apply hashes core/a.py, then the live file changes BEFORE the worker
+    runs; the worker backs up those bytes and overwrites the file."""
+    root, _src, res = _staged_apply(tmp_path)
+    (root / "core" / "a.py").write_bytes(live_before_worker)
+    req = res.request_path
+    req.rename(req.with_suffix(".deploying"))
+    broot = root / "ops" / "backups" / f"20261026-120000-{res.request_id}"
+    (broot / "core").mkdir(parents=True)
+    (broot / "core" / "a.py").write_bytes(live_before_worker)
+    return root, broot
+
+
+def test_b7_a_good_backup_of_a_file_changed_before_the_worker_ran_is_kept(tmp_path):
+    root, broot = _mixed_apply(tmp_path, b"A = 9\n")
+    (root / "core" / "a.py").write_bytes(NEW_FILES["core/a.py"])   # the worker overwrote it
+    t = [1e6]
+    kw = {"now": lambda: t[0], "uptime": lambda: t[0]}
+    up.finish(root, **kw)
+    t[0] += up.DEPLOYING_STALE_S + 1
+    assert up.finish(root, **kw).status == "interrupted"
+    assert (broot / "core" / "a.py").read_bytes() == b"A = 9\n", "kept for the rollback"
+    rec = up.read_installed(root)
+    assert rec["pre_hashes"] == {"core/a.py": _sha(b"A = 9\n")}
+    up.recover(root, offline=True)
+    assert (root / "core" / "a.py").read_bytes() == b"A = 9\n"
+
+
+def test_b7_a_backup_whose_file_was_never_overwritten_is_moved_out(tmp_path):
+    root, broot = _mixed_apply(tmp_path, b"A = 9\n")   # live still the backed-up bytes
+    t = [1e6]
+    kw = {"now": lambda: t[0], "uptime": lambda: t[0]}
+    up.finish(root, **kw)
+    t[0] += up.DEPLOYING_STALE_S + 1
+    assert up.finish(root, **kw).status == "interrupted"
+    assert not (broot / "core" / "a.py").exists()
+    assert up.read_installed(root)["pre_hashes"] == {}
+
+
+def test_b8_staleness_follows_boot_uptime_not_the_wall_clock(tmp_path):
+    root, _src, res = _staged_apply(tmp_path)
+    _half_deploy(root, res)
+    wall, upt = [1e6], [5000.0]
+    kw = {"now": lambda: wall[0], "uptime": lambda: upt[0]}
+    assert up.finish(root, **kw).status == "pending"
+    wall[0] += 10_000          # a clock jump: not evidence
+    upt[0] += 10
+    assert up.finish(root, **kw).status == "pending"
+    upt[0] += up.DEPLOYING_STALE_S
+    assert up.finish(root, **kw).status == "interrupted"
+
+
+def test_b8_a_reboot_since_the_first_sighting_is_stale_at_once(tmp_path):
+    root, _src, res = _staged_apply(tmp_path)
+    _half_deploy(root, res)
+    upt = [5000.0]
+    kw = {"now": lambda: 1e6, "uptime": lambda: upt[0]}
+    assert up.finish(root, **kw).status == "pending"
+    upt[0] = 30.0              # uptime went backwards: the machine rebooted
+    assert up.finish(root, **kw).status == "interrupted"
+
+
+def test_b8_the_default_uptime_is_monotonic_and_boot_relative():
+    a = up.boot_uptime_s()
+    b = up.boot_uptime_s()
+    assert 0 < a <= b < 10 ** 8
+
+
+def test_b9_a_deploying_left_next_to_its_result_is_cleaned(tmp_path):
+    root, _src, res = _staged_apply(tmp_path)
+    dep = res.request_path.with_suffix(".deploying")
+    res.request_path.rename(dep)
+    out = root / "ops" / "runtime" / "deploy_results"
+    out.mkdir(parents=True)
+    (out / f"{res.request_id}.json").write_text(json.dumps(
+        {"ok": False, "phase": "health_check", "rollback": True}), "ascii")
+    assert up.finish(root).status == "failed"
+    assert not dep.exists()

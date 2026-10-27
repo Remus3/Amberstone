@@ -85,6 +85,7 @@ def _host(tmp_path, *, behaviour=None, terminator=None, probe=None, job=True):
     host = make_host(root, make_config(), popen=fp, job=FakeJob([]) if job else None,
                      clock=clock, probe=probe)
     host._terminate_port_owner = term
+    host._game_check = lambda: None   # fix round 2: the host guard is tested on its own
     host.start()
     return host, fp, clock, root, calls
 
@@ -492,3 +493,47 @@ def test_h5_real_listener_outside_the_job_is_left_alone(tmp_path):
 @WINDOWS_ONLY
 def test_h5_real_terminate_without_a_job_handle_refuses():
     assert sh.terminate_job_listener(None, _free_port()) == "refused:no-job"
+
+
+# ------------------------------------------- fix round 2: host game guard (B3)
+
+
+def test_b3_the_host_defers_every_restart_while_a_game_runs(tmp_path):
+    host, fp, clock, root, calls = _host(tmp_path)
+    host._game_check = lambda: "process league of legends.exe"
+    old = fp.by_script("a.py")[0]
+    host.submit_command(_line(["agent_a", "vision"], cid="g"))
+    host.tick()
+    assert not old.terminated and calls == [], "nothing restarted mid-game"
+    assert _command(read_status(root), "g")["results"] == {
+        "agent_a": "deferred:game-live", "vision": "deferred:game-live"}
+
+
+def test_b3_a_failed_game_probe_defers_too(tmp_path):
+    host, fp, clock, root, calls = _host(tmp_path)
+
+    def boom():
+        raise OSError("scan failed")
+    host._game_check = boom
+    host.submit_command(_line(["agent_a"], cid="g"))
+    host.tick()
+    assert _command(read_status(root), "g")["results"] == {"agent_a": "deferred:game-live"}
+
+
+def test_b3_the_default_guard_is_the_updaters_game_check(tmp_path, monkeypatch):
+    root = make_root(tmp_path)
+    host = make_host(root, make_config(), popen=FakePopen(), job=FakeJob([]))
+    seen = []
+    monkeypatch.setattr(up, "game_live", lambda r, **k: seen.append(r) or "health has_game")
+    assert host._game_reason() == "health has_game"
+    assert seen and seen[0] == host.root
+
+
+def test_b3_the_manifest_can_turn_the_guard_off_and_ships_it_on():
+    doc = json.loads(SERVICES_JSON.read_text(encoding="utf-8"))
+    assert doc.get("restart_game_guard", True) is True
+    assert sh.parse_config(doc, "packaged").restart_game_guard is True
+    off = dict(doc, restart_game_guard=False)
+    assert sh.parse_config(off, "packaged").restart_game_guard is False
+    with pytest.raises(sh.ConfigError):
+        sh.parse_config(dict(doc, restart_game_guard="no"), "packaged")

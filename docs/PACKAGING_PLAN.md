@@ -710,6 +710,34 @@ Found by the PKG-6 builder and verifier; not fixed by PKG-6.
   a phase-aware 60 min watchdog; recover() re-entrant via a marker); F7
   hot_reload verify trusted the old run; F8 the smoke [I] passed on a
   deferral (now a no-game probe is injected and a deferral fails).
+- WA16 (s143 fix round 2, re-review of fc57e1c29, FIXED): B1 a dead host's
+  last `halted` status made recover report interrupted (halted now counts
+  only for a live host writing a fresh status; a host started for an owed
+  respawn is health-checked); B2 the frozen supervisor exits on shutdown
+  without waiting for its deploy thread, so the job was ended under a
+  copying worker (the host's quit now waits while a .deploying has no
+  result yet, bounded 150 s); B3 the shell's idle gate read the live-game
+  flags at the top level, /api/state nests them under `health`
+  (dashboard/_state_builder.py:1058-1072), and the host now defers restart
+  commands while updater.game_live reports a game (manifest
+  `restart_game_guard`, off only in the smoke's probe), the shell checks
+  tasklist before a host respawn; B4 a deferred restart check is retried on
+  the resume timer while idle (owed `sent_at`); B5 a resume asked for during
+  a running child is queued, not dropped; B6 a service the host does not own
+  (port holder outside its job, outcome refused:not-in-job / not-running /
+  not-configured) is skipped, never a failure or a bad version; B7 salvage
+  keeps a backup whenever the live file holds the release bytes (a file
+  changed between apply and the worker kept its good backup); B8 stale
+  `.deploying` counts boot uptime (QueryUnbiasedInterruptTime; a reboot =
+  stale), not the wall clock; B9 a `.deploying` beside its result is moved
+  away by finish() and never holds a quit; F7 hot_reload needs a watcher
+  written in the CURRENT run (else a supervised restart) and, when its
+  status says it fired for these files, a NEW run.
+- WA17 (open, recorded): the `quiet` hot_reload case (watcher fresh, status
+  not rewritten) still verifies on the old run: core/hot_reload.py writes
+  nothing when it ignores an unloaded module, so a watcher thread wedged
+  after its start is indistinguishable. Closing it needs a watcher
+  heartbeat in core/hot_reload.py.
 - WA12 electron-builder logs "signing with signtool.exe" for every `.exe`
   under `resources/backend` (`python.exe`, `pythonw.exe`, site-packages
   `bin/*.exe`): with a cert set (S4) it would re-sign the PSF-signed

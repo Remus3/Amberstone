@@ -292,6 +292,10 @@ class HostConfig:
     # per-install dashboard token as RC_DASH_TOKEN to every service; default
     # off (PACKAGING_PLAN V3: a set token 401s the header-less callers).
     dash_token_gate: bool = False
+    # PKG-6b fix round 2: restart commands are deferred while a League / TFT
+    # game is live (the updater's own game check). Off only for the packaged
+    # smoke's probe host, whose result must not depend on the build box.
+    restart_game_guard: bool = True
 
     def env_map(self) -> Dict[str, Optional[str]]:
         return dict(self.env)
@@ -410,6 +414,9 @@ def parse_config(doc: Any, profile: str) -> HostConfig:
     if not chosen:
         raise ConfigError(f"no services for profile {profile!r}")
     port = _port(doc.get("dashboard_port", 8888), "dashboard_port") or 8888
+    guard = doc.get("restart_game_guard", True)
+    if not isinstance(guard, bool):
+        raise ConfigError("restart_game_guard must be true or false")
     return HostConfig(
         services=chosen,
         backoff=_parse_backoff(doc.get("backoff")),
@@ -418,6 +425,7 @@ def parse_config(doc: Any, profile: str) -> HostConfig:
         stop_grace_s=_num(doc, "stop_grace_s", 15.0, "manifest"),
         env=tuple(sorted(env.items())),
         dash_token_gate=dash_token_gate,
+        restart_game_guard=guard,
     )
 
 
@@ -621,6 +629,28 @@ def _first_run_module() -> Any:
         spec = importlib.util.spec_from_file_location(name, HERE / "first_run.py")
         if spec is None or spec.loader is None:
             raise ImportError("ops/launcher/first_run.py is not loadable")
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules[name] = mod
+        try:
+            spec.loader.exec_module(mod)
+        except BaseException:
+            sys.modules.pop(name, None)
+            raise
+    return mod
+
+
+def _updater_module() -> Any:
+    """ops/launcher/updater.py (PKG-2), loaded like first_run: its game check
+    is the one the restart guard uses."""
+    if __package__:
+        from . import updater
+        return updater
+    name = "rc_launcher_updater"
+    mod = sys.modules.get(name)
+    if mod is None:
+        spec = importlib.util.spec_from_file_location(name, HERE / "updater.py")
+        if spec is None or spec.loader is None:
+            raise ImportError("ops/launcher/updater.py is not loadable")
         mod = importlib.util.module_from_spec(spec)
         sys.modules[name] = mod
         try:
@@ -1166,7 +1196,8 @@ class ServiceHost:
                  status_path: Optional[Path] = None,
                  log: Optional[Callable[[str], None]] = None,
                  provision: Optional[Callable[..., Dict[str, str]]] = None,
-                 port_terminator: Optional[Callable[[Any, int], str]] = None) -> None:
+                 port_terminator: Optional[Callable[[Any, int], str]] = None,
+                 game_check: Optional[Callable[[], Optional[str]]] = None) -> None:
         self.root = Path(root)
         self.config = config
         self.profile = profile
@@ -1203,6 +1234,7 @@ class ServiceHost:
         self._commands_in: "queue.Queue[str]" = queue.Queue(maxsize=MAX_PENDING_COMMANDS)
         self._history: Deque[Dict[str, Any]] = deque(maxlen=COMMAND_HISTORY)
         self._terminate_port_owner = port_terminator or terminate_job_listener
+        self._game_check = game_check
 
     # ---- lifecycle
 
@@ -1439,14 +1471,33 @@ class ServiceHost:
         if changed:
             self._write_status(force=True)
 
+    def _game_reason(self) -> Optional[str]:
+        """Why a restart must wait (a live game), else None. The injected
+        check, else the updater's game_live (process scan + fresh health
+        flags). A failed probe defers: a restart can wait, a mid-game
+        restart cannot be undone."""
+        try:
+            if self._game_check is not None:
+                return self._game_check()
+            return _updater_module().game_live(self.root)
+        except Exception as exc:   # noqa: BLE001 - fail closed
+            return f"game check failed ({type(exc).__name__})"
+
     def _apply_restart(self, cmd: Command, now: float) -> None:
         record: Dict[str, Any] = {"id": cmd.id, "cmd": cmd.cmd, "at": utc_now(),
                                   "results": {}}
         self._history.append(record)
         by_name = {rt.spec.name: rt for rt in self._services}
+        game = None
+        if self.mode == "owned" and not self.stopped and self.config.restart_game_guard:
+            game = self._game_reason()
+            if game:
+                self._log(f"command {cmd.id}: restarts deferred, {game}")
         for name in cmd.services:
             if self.mode != "owned" or self.stopped:
                 outcome = "refused:not-owned"
+            elif game:
+                outcome = "deferred:game-live"
             elif name in SHELL_ACTIONS:
                 outcome = SHELL_ACTIONS[name]
             elif name in WATCHDOG_PORTS:
@@ -1581,9 +1632,11 @@ class ServiceHost:
         begun = self._clock()
         deadline = begun + self.config.stop_grace_s
         deploy_deadline = begun + max(self.config.stop_grace_s, DEPLOY_STOP_GRACE_S)
-        while any(rt.alive() for rt in self._services):
-            now = self._clock()
-            if now >= (deploy_deadline if self._deploy_in_flight() else deadline):
+        while True:
+            in_flight = self._deploy_in_flight()
+            if not in_flight and not any(rt.alive() for rt in self._services):
+                break
+            if self._clock() >= (deploy_deadline if in_flight else deadline):
                 break
             self._sleep(STOP_POLL_S)
             self._write_status()   # keep the heartbeat through a long grace
@@ -1619,8 +1672,17 @@ class ServiceHost:
             rt.restart_request = None
 
     def _deploy_in_flight(self) -> bool:
+        """A deploy worker may still be copying: a deploy_requests/*.deploying
+        with no deploy_results/<stem>.json yet. Fix round 2: the frozen
+        supervisor exits on its shutdown request WITHOUT waiting for its
+        deploy thread (ops/rc_supervisor.py:1309-1314), so every service can
+        be gone while the worker, a grandchild in this job, is mid-copy; the
+        worker writes the result itself (--result), which ends the wait.
+        A .deploying beside its result is finished (B9)."""
         try:
-            return any((self.runtime_dir / "deploy_requests").glob("*.deploying"))
+            results = self.runtime_dir / "deploy_results"
+            return any(not (results / f"{p.stem}.json").exists()
+                       for p in (self.runtime_dir / "deploy_requests").glob("*.deploying"))
         except OSError:
             return False
 

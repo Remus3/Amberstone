@@ -793,6 +793,11 @@ def test_u4_halted_hot_reload_escalates_to_a_supervised_restart(tmp_path):
 
 
 def _hot_reload_status(root: Path, *, watching: bool) -> None:
+    """The watcher's status, written by the CURRENT main.py run (PKG-6b fix
+    round: a status older than the live run's started_at is not watching)."""
+    started = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime(time.time() - 60))
+    (root / "ops" / "runtime" / "health.json").write_text(json.dumps(
+        {"alive": True, "run_id": "r0", "started_at": started}), encoding="ascii")
     (root / "ops" / "runtime" / "hot_reload.json").write_text(
         json.dumps({"watching": watching}), encoding="ascii")
 

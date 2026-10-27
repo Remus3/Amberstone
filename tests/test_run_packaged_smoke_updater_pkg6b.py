@@ -121,3 +121,12 @@ def test_the_updater_check_runs_after_the_launcher_check():
     src = inspect.getsource(rps.run)
     assert src.index("check_launcher_from_unpacked(") < src.index("check_updater_from_unpacked(")
     assert src.index("check_manifests(") < src.index("check_backend_manifest(")
+
+
+def test_g_the_probe_manifest_turns_the_hosts_game_guard_off():
+    """Fix round 2: the host defers restarts while a game runs; the smoke's
+    probe host must not depend on whether League runs on the build box."""
+    cfg = rps.launcher_probe_manifest(43210)
+    assert cfg["restart_game_guard"] is False
+    from ops.launcher import service_host as sh
+    assert sh.parse_config(cfg, "packaged").restart_game_guard is False
