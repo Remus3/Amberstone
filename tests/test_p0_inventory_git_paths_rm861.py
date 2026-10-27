@@ -102,10 +102,10 @@ def test_a_tracked_non_ascii_name_counts_as_tracked(tmp_path, git_env, monkeypat
 def test_a_name_with_a_unicode_line_separator_counts_as_tracked(tmp_path, git_env, monkeypatch):
     """U+2028 is a line break to str.splitlines(), never to `ls-files -z`."""
     rel = "x" + chr(0x2028) + "y.txt"
-    try:
-        repo = _repo(tmp_path, git_env, ["a.txt", rel])
-    except OSError:
-        pytest.skip("filesystem refuses a U+2028 file name")
+    # No skip on an OSError: NTFS and ext4 (every host RC and its CI run on)
+    # take this name, so a refusal is a failure, not an absent capability
+    # (tests/test_skip_condition_hygiene.py).
+    repo = _repo(tmp_path, git_env, ["a.txt", rel])
     md, _ = _inventory(tmp_path, repo, monkeypatch)
     assert "- Git-tracked: 2 files" in md
 

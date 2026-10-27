@@ -112,10 +112,10 @@ def test_a_code_edit_in_a_non_ascii_file_fails_the_proof(tmp_path, git_env, monk
 def test_a_name_with_a_unicode_line_separator_is_listed_whole(tmp_path, git_env, monkeypatch):
     """U+2028 is a line break to str.splitlines(), never to `diff -z`."""
     rel = _DS + "x" + chr(0x2028) + "y.py"
-    try:
-        repo = _repo(tmp_path, git_env, [_DS + "a.py", rel], quotepath="false")
-    except OSError:
-        pytest.skip("filesystem refuses a U+2028 file name")
+    # No skip on an OSError: NTFS and ext4 (every host RC and its CI run on)
+    # take this name, so a refusal is a failure, not an absent capability
+    # (tests/test_skip_condition_hygiene.py).
+    repo = _repo(tmp_path, git_env, [_DS + "a.py", rel], quotepath="false")
     (repo / rel).write_bytes(_COMMENT_ONLY)
     p3 = _module(repo, monkeypatch)
     assert p3.changed_ds_files() == [rel]

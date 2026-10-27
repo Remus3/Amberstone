@@ -74,7 +74,7 @@ def bare_python_runs(lines: list[str]) -> list[tuple[int, str]]:
 
 def test_the_scan_sees_the_old_patch_step():
     old = ['if exist "apply_patches.py" (', "    python apply_patches.py", ")",
-           'if exist x.py (py.exe x.py)', "echo python is not run here",
+           'if exist x.py (py.exe x)', "echo python is not run here",
            'for %%I in (python.exe) do set "P=%%~$PATH:I"']
     assert [n for n, _ in bare_python_runs(old)] == [2, 4]
 
