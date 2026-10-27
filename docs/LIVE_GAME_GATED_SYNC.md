@@ -1543,6 +1543,79 @@ Practice customs and Mayhem q2400 NEVER reach Match-V5. This batch is unreachabl
   LCU EOG block carries `queueId` (if absent, a Mayhem game retries ~19.5 min then parks instead
   of ending `event_mode_excluded` at once). PASS = every eligible game ends `ok` for ITS OWN id and
   no game reports the previous game's id. SOURCE: ROADMAP RM-526.
+  **READY (lane 9, s144 cycle 3, PREP only, no game up; NOT ticked).** One command joins the five
+  sources per game end. Run it after EACH game ends (the pin holds only the latest game), and once
+  more 22 min after the last game ends:
+  `python tools/gated_y01_chain_report.py --since <ISO local time the session started> --json`.
+  - Sources it reads, all read-only:
+    - The game end: `rc.app.lifecycle` "Game ended" (`app/_game_lifecycle.py`).
+    - TFT ends are skipped: the "TFT game end: League rewind live-writer skipped" line, or before S134
+      N3 the collector's "triggered for mode=TFT".
+    - The game's OWN id: `rc.postgame` "postgame: saved match <id>". That is the EOG `gameId`, NOT
+      the writer's Match-V5 id list, where the Y-01 defect lived. A "match <id> already stored -
+      skip" line never vouches for it: that id was saved before this game ended, which is what a
+      stale EOG looks like.
+    - The chain end: "rewind_live_writer: chain <chain> attempt <n> ended <status> (<target>)". The
+      chain id embeds `scheduled_at`, which joins it to the game end within -2 .. +30 s.
+    - The Y-08 receipt: `ops/runtime/rewind_ingest_receipts.jsonl`, joined on `ts - elapsed_s`.
+    - The pin: `ops/runtime/last_game_end.json` -> `pin.queue_id_present`. Its Riot ID is never
+      read out.
+    - The DB row: `data/rewind_history.db` `matches`, opened `mode=ro` only when an `ok` target
+      exists. `--no-db` skips it.
+  - Field paths: `verdict`; `games[i].{status, attempts, target, own_target, pinned, fallback,
+    db_row, verdict, why}`; `pin.{queue_id, queue_id_present, game_mode}`.
+  - Ids print as `id:<8 hex of sha256>`, so the output can go into this doc under RM-906, and a
+    repeated id still shows. `--show-ids` is for the console only.
+  - Exit codes: 0 PASS, 1 INCOMPLETE, 2 FAIL.
+  - Predicate, stated before any game. PASS iff all of these hold:
+    - At least 5 League game ends since `--since`. TFT ends and VOID ends do not count. A VOID end
+      is an RC restart inside the chain window with NO chain end; the daemon Timer drops by design.
+      A TFT marker or a restart never hides a game whose chain did end. A game whose chain was never
+      scheduled (the Timer-cap line, "rewind_live_writer schedule error", or "rewind live-writer
+      trigger error" 0 .. +5 s after this game's own "Game ended") is a FAIL, restart or not. The
+      window is tight because a running chain's retry staging writes the same cap line.
+    - Every one of them has a chain-end log line and a joined receipt, with `pinned` true and
+      `fallback` false.
+    - Every one has `target` == `own_target`, whatever its status, so a Mayhem exclude that names
+      another game's id fails too.
+    - Each one ends `ok` with `db_row` true, or `event_mode_excluded` on any attempt. An attempt
+      above 1 only means the pin arrived after the 90 s delay (`lib/rewind_live_writer.py`
+      `awaiting_pin_retry_scheduled`).
+    - At least one end of each kind.
+    - No `target` repeats an earlier game's.
+  - Fails and partial results:
+    - FAIL: any game that breaks a rule above.
+    - The row's queueId sub-question. A pin with neither queueId nor KIWI never excludes: the Mayhem
+      game goes on to Match-V5 and parks as `target_not_indexed` after about 19.5 min, which is a
+      FAIL. Record `pin.queue_id_present` and `pin.game_mode` from the run made right after the
+      Mayhem game: queueId absent with KIWI present still excludes at once.
+    - INCOMPLETE, never PASS: a chain still inside its 1290 s window, no "saved match" own-id line
+      (including an "already stored" line only), a receipt without a chain-end line, no receipt, the
+      DB not checked, or an `already_present` / `short_game` end.
+  - Evidence contract:
+    - Value: the verdict plus, per game, status / attempts / redacted target and own_target /
+      pinned / fallback / db_row.
+    - Source: the tool and the five sources above.
+    - Timestamp: `now` and `games[i].ended_at`, plus mode / queue from the session.
+    - Predicate: the one above.
+  - SUBSTITUTION check: a passing `tests/test_ingest_receipt_y08.py` or a hand-made receipt shows only
+    that the writer COMPUTES a status. It does not show that a real game end SCHEDULED a chain that
+    resolved the right id and LANDED a row.
+    - Only live log lines plus `db_row` true answer that. A status `ok` without the DB row is the
+      writer's own claim, which is why `db_row` is part of the predicate.
+    - Residual limit: own id and pin both come from the same EOG block. If the collector ever pinned
+      a STALE EOG that it still logged as "saved match", the two would agree and both be wrong.
+      Only the repeat rule (within `--since`) catches that.
+  - Idle baseline, 2026-10-27 09:0x local, no `--since`:
+    - INCOMPLETE, exit 1: 0 League ends and 5 TFT ends (all 2026-10-25), void 0, receipts 0,
+      pin absent.
+    - One of the five, 09:28, predates the N3 skip line. Only the collector's "triggered for
+      mode=TFT" marks it. Before that marker was read, the tool called it a League FAIL: a positive
+      control on real logs.
+    - Zero chain-end lines and no receipt file exist in the retained logs (2026-10-13 onward). No
+      League game has ended since Y-01 / Y-08 shipped, so the writer has never run live.
+  - Reverses if: the parsed log lines or logger names change. `tests/test_gated_y01_chain_report.py`
+    pins each source literal, and the `matches` schema or the receipt row shape (`v` 1) also counts.
 
 ---
 
