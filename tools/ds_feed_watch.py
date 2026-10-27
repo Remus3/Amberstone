@@ -56,9 +56,11 @@ from typing import Iterable, Optional
 from urllib.parse import urlsplit
 
 _TOOLS = Path(__file__).resolve().parent
-if str(_TOOLS) not in sys.path:
-    sys.path.insert(0, str(_TOOLS))
+for _p in (_TOOLS, _TOOLS.parent):
+    if str(_p) not in sys.path:
+        sys.path.insert(0, str(_p))
 
+from core.polled_json import atomic_write_bytes  # noqa: E402
 from ds_feed_index import _DATA, body_md5, live_patch  # noqa: E402
 
 # The pre-existing manifest key written by tools/daemon_slayer_extract.py is
@@ -457,10 +459,11 @@ def watch(manifest: dict, high_water: str, http,
 
 
 def _atomic_write_json(path: Path, obj: dict) -> None:
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(obj, indent=2) + "\n", encoding="utf-8",
-                   newline="")
-    tmp.replace(path)
+    """Through core.polled_json (RM-258): per-writer scratch name, fsync, a
+    bounded WinError 5 retry, scratch removed on failure. --record rewrites
+    the live manifest the running DS process reads. Bytes, so the file keeps
+    LF line ends."""
+    atomic_write_bytes(path, (json.dumps(obj, indent=2) + "\n").encode("utf-8"))
 
 
 def record(path: Path, rows: dict) -> None:

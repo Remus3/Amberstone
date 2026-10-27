@@ -77,6 +77,11 @@ _RUNTIME_TOOLS = frozenset({
     # The spec / patch watch state is the only record of what was already
     # posted; a torn read re-baselines (drops a change) or reposts one.
     "tools/spec_watch.py",
+    # One-shot per DS batch, but --record rewrites the live patch's
+    # manifest.json in place, which the running DS process reads
+    # (agents/daemon_slayer/data_loader.py), and --ack the tracked
+    # high-water file.
+    "tools/ds_feed_watch.py",
 })
 
 # (relpath, enclosing function or its dotted qualname) -> why this
@@ -416,6 +421,7 @@ def test_scope_keeps_runtime_tools_and_drops_generators():
     assert _in_scope("tools/ci_watchdog.py")
     assert _in_scope("tools/progress_watch.py")
     assert _in_scope("tools/spec_watch.py")
+    assert _in_scope("tools/ds_feed_watch.py")
     assert not _in_scope("tools/daemon_slayer_extract.py")
     assert not _in_scope("ops/fleet_kit/fleet_headless.py")
     assert _in_scope("coach_integration/_coach.py")

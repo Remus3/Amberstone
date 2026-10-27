@@ -226,6 +226,62 @@ def test_cli_ack_advances_high_water_only(tmp_path):
         fw.run(["--ack", "not-a-date"], http=http, manifest=mp, watch_file=wp)
 
 
+def test_rm258_record_and_ack_route_through_polled_json(tmp_path, monkeypatch):
+    """RM-258: both writes go through the shared writer (per-writer scratch
+    name, fsync, bounded WinError 5 retry), not a hand-rolled shared
+    `<name>.tmp` plus a bare rename. The bytes stay as before: indent=2,
+    ASCII, LF, one trailing newline."""
+    import core.polled_json as pj
+    seen = []
+    real = pj._write_then_replace
+
+    def rec(path, data):
+        seen.append(Path(path).name)
+        return real(path, data)
+
+    monkeypatch.setattr(pj, "_write_then_replace", rec)
+    mp = tmp_path / "manifest.json"
+    m = _manifest()
+    mp.write_text(json.dumps(m, indent=2), encoding="utf-8")
+    rows = {"aram_modifiers": {"url": U1, "status": 200, "body_md5": "11111111",
+                               "fetched_at": "t"}}
+    fw.record(mp, rows)
+    m["sources"][fw.HASHES_KEY] = rows
+    assert mp.read_bytes() == (json.dumps(m, indent=2) + "\n").encode("ascii")
+    wp = tmp_path / "watch.json"
+    wp.write_text(json.dumps({"changelog_high_water": "2026-09-20"}),
+                  encoding="utf-8")
+    assert fw.run(["--ack", "2026-09-30"], http=FakeHttp({}), manifest=mp,
+                  watch_file=wp) == 0
+    assert seen == ["manifest.json", "watch.json"]
+    assert wp.read_bytes() == b'{\n  "changelog_high_water": "2026-09-30"\n}\n'
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["manifest.json",
+                                                          "watch.json"]
+
+
+def test_rm258_record_survives_a_transient_rename_refusal(tmp_path, monkeypatch):
+    import core.polled_json as pj
+    real = pj.os.replace
+    refusals = [2]
+
+    def flaky(src, dst):
+        if refusals[0]:
+            refusals[0] -= 1
+            raise PermissionError(13, "Access is denied")
+        return real(src, dst)
+
+    monkeypatch.setattr(pj.os, "replace", flaky)
+    monkeypatch.setattr(pj.time, "sleep", lambda _s: None)
+    mp = tmp_path / "manifest.json"
+    mp.write_text(json.dumps(_manifest(), indent=2), encoding="utf-8")
+    rows = {"aram_modifiers": {"url": U1, "status": 200, "body_md5": "11111111",
+                               "fetched_at": "t"}}
+    fw.record(mp, rows)
+    assert refusals == [0]
+    assert json.loads(mp.read_bytes())["sources"][fw.HASHES_KEY] == rows
+    assert [p.name for p in tmp_path.iterdir()] == ["manifest.json"]
+
+
 def test_new_tracked_files_never_spell_the_site_name():
     # Directive hard rule 3: provenance is "external reference L". The site
     # name is derived from the pre-existing extractor key, never spelled here.
