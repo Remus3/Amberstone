@@ -33,6 +33,14 @@ from tests._timing_budget import fleet_test_guard
 _ROOT = Path(__file__).resolve().parent.parent
 
 
+@pytest.fixture(autouse=True)
+def _short_liveness_probe(monkeypatch):
+    """Every holder here answers at once or never; a mute holder needs only the
+    probe's full timeout, so keep the pre-RM-834 2 s rather than wait 10 s each
+    (the slow-holder case is tests/test_port_handoff_residuals_rm834.py)."""
+    monkeypatch.setattr(port_handoff, "HEALTH_TIMEOUT_S", 2.0)
+
+
 # -- holders ---------------------------------------------------------------------
 def _listening_socket() -> tuple[socket.socket, int]:
     """A real listener on an ephemeral loopback port that never accepts."""

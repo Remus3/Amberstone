@@ -29,6 +29,34 @@ lets a second socket co-bind a port another socket holds; a plain bind fails
 while any socket holds the port, which is what "still held" has to mean here.
 Every side effect is injectable for tests. Stdlib only, so a launcher can
 import it before its server's heavy imports.
+
+Residuals (RM-834, measured 2026-10-27; tests/test_port_handoff_residuals_rm834.py):
+
+* (b) FIXED. The liveness probe waited 2 s, so a live server whose
+  ``/health`` was slower (a loaded box) read STUCK and its launcher logged
+  "not started (exit 1)" beside a serving instance. It now waits
+  ``HEALTH_TIMEOUT_S`` (10 s, read at call time). Reverses if: a live holder
+  is measured taking longer than that to answer ``/health``.
+* (c) The probe sends the caller's headers (the match-DB bearer) only to a
+  loopback host: ``health_answers`` refuses any other host before it
+  connects. ACCEPTED: the loopback holder is not identified before the
+  bearer goes to it, because every MCP client already sends the same bearer
+  to the same port on every call, so the probe adds no exposure. Reverses
+  if: the clients gain a holder-identity check (then the probe gets the same
+  one), or the probe's bearer stops being the one the clients already send.
+* (a) RECORDED, not fixed. A holder that keeps answering ``/health`` for the
+  whole window while it is being ended reads LIVE (exit 0), and the port can
+  go down after it exits. No outside probe can tell it from a live holder,
+  and none of these servers serves ``/health`` while it shuts down (an ended
+  task's process is terminated, with no thread left to answer). Reverses
+  if: a server gains a graceful shutdown that keeps serving ``/health``
+  (then ``/health`` must say it is stopping and the probe must reject that),
+  or a log shows a LIVE skip followed by the port down with no new start.
+* (d) NOT MEASURED. Linux refuses a plain bind while a TIME_WAIT socket
+  holds the port, so a holder that closed live connections could read held
+  for the whole window there. RC runs on Windows only (ADR-011); CI's Linux
+  runner never creates a TIME_WAIT on these ports. Reverses if: a launcher
+  runs on Linux or WSL (then measure it there first).
 """
 from __future__ import annotations
 
@@ -48,7 +76,10 @@ FREE, LIVE, STUCK = "free", "live", "stuck"
 # merely exits 30 s later.
 WINDOW_S = 30.0
 POLL_S = 0.25
-HEALTH_TIMEOUT_S = 2.0
+# The liveness probe runs once, after the whole window, so a few seconds more
+# to tell a slow live holder from a mute one is cheap (RM-834 b: 2.0 read a
+# loaded live server as STUCK). Read at call time so a test can shorten it.
+HEALTH_TIMEOUT_S = 10.0
 
 
 class Handoff(NamedTuple):
@@ -93,13 +124,24 @@ def can_bind(host: str, port: int) -> bool:
 
 def health_answers(host: str, port: int, *, path: str = "/health",
                    headers: Optional[Mapping[str, str]] = None,
-                   timeout_s: float = HEALTH_TIMEOUT_S,
+                   timeout_s: Optional[float] = None,
                    check: Optional[Callable[[bytes], bool]] = None) -> bool:
     """True when ``GET path`` answers 200 (and ``check(body)`` holds).
 
-    Never raises: a refused, reset, timed-out or malformed answer, or a
-    ``check`` that raises, is simply "does not answer as this server".
+    ``timeout_s`` defaults to ``HEALTH_TIMEOUT_S``. A non-loopback ``host``
+    is refused before any connection opens, so ``headers`` (a bearer) never
+    leave the box (RM-834 c).
+
+    Never raises: a refused, reset, timed-out or malformed answer, a
+    non-loopback host, or a ``check`` that raises, is simply "does not
+    answer as this server".
     """
+    try:
+        require_loopback(host)
+    except ValueError:
+        return False
+    if timeout_s is None:
+        timeout_s = HEALTH_TIMEOUT_S
     conn = http.client.HTTPConnection(host, port, timeout=timeout_s)
     try:
         conn.request("GET", path, headers=dict(headers or {}))
