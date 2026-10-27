@@ -27,14 +27,16 @@ There is no directory or package sanction on purpose - it would let every new
 writer in that tree start bare, the RM-258 failure itself.
 
 SCOPE: every tracked .py via tests/_repo_walk (ADR-015) EXCEPT the one-shot
-generator trees the rows themselves allowlist (`tools/`, `scripts/`,
-`ops/audit/`, `Share/`, `lib/`), plus `tests/`, `docs/`, `oss/` (the extracted
-package IS an implementation and is drift-pinned to core/polled_json by
+generator trees the rows themselves allowlist (`scripts/`, `ops/audit/`,
+`Share/`, `lib/`), plus `tests/`, `docs/`, `oss/` (the extracted package IS
+an implementation and is drift-pinned to core/polled_json by
 tests/test_oss_win32_atomic_io_drift.py) and `ops/fleet_kit/` (vendored
-byte-for-byte; a local edit fails its MANIFEST). The two separate-process
-agents under tools/ that RM-258 names ARE in scope - they are long-running
-ONLOGON tasks, not generators, and so are the tools/ watchers converted
-since (`_RUNTIME_TOOLS`).
+byte-for-byte; a local edit fails its MANIFEST). tools/ is in scope except
+the row's own `tools/*extract*` allowlist, tools/tests/ and the named
+`_TOOLS_UNCLASSIFIED` baseline, which only shrinks. The two separate-process
+agents under tools/ that RM-258 names are long-running ONLOGON tasks, not
+generators, and they and the tools/ watchers converted since stay pinned in
+`_RUNTIME_TOOLS`.
 """
 from __future__ import annotations
 
@@ -51,7 +53,6 @@ _EXCLUDED_PREFIXES = (
     "tests/",
     "docs/",
     "oss/",
-    "tools/",
     "scripts/",
     "ops/audit/",
     "ops/fleet_kit/",
@@ -61,7 +62,7 @@ _EXCLUDED_PREFIXES = (
 
 # Long-running separate-process agents that live under tools/ (RM-258 names
 # both), plus each tools/ watcher converted onto core.polled_json since, so
-# the conversion stays pinned. In scope despite the tools/ exclusion.
+# the conversion stays pinned: never an extractor, never unclassified.
 _RUNTIME_TOOLS = frozenset({
     "tools/lcu_agent.py",
     "tools/hotkey_listener.py",
@@ -83,6 +84,94 @@ _RUNTIME_TOOLS = frozenset({
     # high-water file.
     "tools/ds_feed_watch.py",
 })
+
+# RM-258 residual (s144): tools/ is IN scope by default. Out of scope are the
+# one-shot extractors the row itself allowlists (`tools/*extract*`), tools/
+# test code, and the files below - every tools/ module that offended when the
+# blanket tools/ exemption was narrowed (measured 2026-10-27: 100 renames + 82
+# scratch names across 77 files, 6 of them extractors). Each entry is
+# UNCLASSIFIED, not proven one-shot: it leaves this set by converting onto
+# core.polled_json (then it joins _RUNTIME_TOOLS if it is long-running) or by
+# a named one-shot proof (no scheduled task, no poller, no reader racing it).
+# The set only shrinks: a new tools/ writer starts guarded, and an entry that
+# stops offending fails test_tools_baseline_is_exact until it is dropped.
+_TOOLS_UNCLASSIFIED = frozenset({
+    "tools/ascii_escape_py.py",
+    "tools/backup_irreplaceable.py",
+    "tools/bot_merge_check.py",
+    "tools/build_portable.py",
+    "tools/build_python_embed.py",
+    "tools/build_third_party_notices.py",
+    "tools/champion_loadout_autogen.py",
+    "tools/champion_loadout_cleanup_pollution_item213.py",
+    "tools/champion_loadout_collapse_to_paths.py",
+    "tools/champion_loadout_sweep_item_s8.py",
+    "tools/champion_loadout_validate_meta.py",
+    "tools/compare_101qq_vs_ddragon.py",
+    "tools/console_flash_attribute.py",
+    "tools/daemon_slayer_build_orders_generate.py",
+    "tools/daemon_slayer_pickban_targets_generate.py",
+    "tools/ddragon_mirror_refresh.py",
+    "tools/ds_calibration_report.py",
+    "tools/ds_cross_eval/probe_champion.py",
+    "tools/ds_cross_eval/run_all.py",
+    "tools/ds_feed_index.py",
+    "tools/ds_parity_map.py",
+    "tools/ds_parity_run.py",
+    "tools/ds_patch_diff.py",
+    "tools/ds_wiki_staleness_check.py",
+    "tools/freeze_witness.py",
+    "tools/gen_archmap.py",
+    "tools/gen_state_schema.py",
+    "tools/hotfix_kaisa_aram_ashe_sr_item263.py",
+    "tools/hotfix_ranged_only_melee_loadouts.py",
+    "tools/hotfix_sibling_pollution_item269.py",
+    "tools/hotfix_thin_aram_adc_item275.py",
+    "tools/hotfix_thin_aram_pollution_item276.py",
+    "tools/hotfix_zaahen_loadout_item277.py",
+    "tools/hz_mismatch_diagnose.py",
+    "tools/hz_shadow_arena_contamination.py",
+    "tools/inbox_responder.py",
+    "tools/inbox_responder_runner.py",
+    "tools/ladder_role_scout.py",
+    "tools/laning_verdict_information_probe.py",
+    "tools/live_write_tracer.py",
+    "tools/moon_sync_poller.py",
+    "tools/package_portable.py",
+    "tools/phase_watcher.py",
+    "tools/rc_facts.py",
+    "tools/regen_ranged_marksman_builds_item213.py",
+    "tools/repair_mojibake.py",
+    "tools/repair_spend_ledger.py",
+    "tools/repin_subagent_cli.py",
+    "tools/replay_build_order_validate.py",
+    "tools/replay_laning_verdict_validate.py",
+    "tools/replay_matchup_validate.py",
+    "tools/replay_pickban_validate.py",
+    "tools/replay_roster_pull.py",
+    "tools/rewrite_sha_citations.py",
+    "tools/rofl_dedupe.py",
+    "tools/sanitize_agent6_reports.py",
+    "tools/session_checklist.py",
+    "tools/shadow_archive_split.py",
+    "tools/slice_orchestrator.py",
+    "tools/slot_bucket_audit.py",
+    "tools/stop_claim_gate.py",
+    "tools/strip_em_dashes.py",
+    "tools/strip_smart_quotes.py",
+    "tools/strip_u2500.py",
+    "tools/tft_cv_accuracy.py",
+    "tools/timeline_ingest.py",
+    "tools/truth_gate.py",
+    "tools/unresolved_token_scan.py",
+    "tools/upstream_drift_check.py",
+    "tools/vision_atlas_validate.py",
+    "tools/web_ascii_sweep.py",
+})
+
+
+def _is_tools_extractor(rel: str) -> bool:
+    return rel.startswith("tools/") and "extract" in rel.rsplit("/", 1)[-1]
 
 # (relpath, enclosing function or its dotted qualname) -> why this
 # implementation may not import core.polled_json. Each must itself use a
@@ -162,6 +251,9 @@ _PER_WRITER_HINTS = ("getpid", "token", "uuid", "pid")
 def _in_scope(rel: str) -> bool:
     if rel in _RUNTIME_TOOLS:
         return True
+    if rel.startswith("tools/"):
+        return not (rel.startswith("tools/tests/") or _is_tools_extractor(rel)
+                    or rel in _TOOLS_UNCLASSIFIED)
     return not rel.startswith(_EXCLUDED_PREFIXES)
 
 
@@ -425,3 +517,33 @@ def test_scope_keeps_runtime_tools_and_drops_generators():
     assert not _in_scope("tools/daemon_slayer_extract.py")
     assert not _in_scope("ops/fleet_kit/fleet_headless.py")
     assert _in_scope("coach_integration/_coach.py")
+
+
+def test_a_new_tools_writer_starts_in_scope():
+    """The RM-258 residual: a tools/ module is guarded unless it is an
+    extractor, tools/ test code or a named unclassified entry - a new writer
+    no longer starts bare under a directory-wide exemption."""
+    assert _in_scope("tools/a_new_polled_writer.py")
+    assert _in_scope("tools/ds_cross_eval/a_new_writer.py")
+    assert not _in_scope("tools/daemon_slayer_cdragon_ratio_extract.py")
+    assert not _in_scope("tools/tests/test_cdragon_ratio_extract.py")
+    assert not _in_scope("tools/stop_claim_gate.py")
+
+
+def test_tools_baseline_is_exact():
+    """Every unclassified entry is a tracked tools/ module that still
+    offends, is not an extractor and is not a converted watcher - so a
+    conversion has to shrink the set, and the set never hides a clean file."""
+    tracked = {relative_posix(p) for p in iter_repo_files(REPO_ROOT, ("*.py",))}
+    assert not _TOOLS_UNCLASSIFIED & _RUNTIME_TOOLS
+    stale = []
+    for rel in sorted(_TOOLS_UNCLASSIFIED):
+        assert rel in tracked, f"unclassified entry {rel} is not tracked"
+        assert not _is_tools_extractor(rel), rel
+        renames, scratch = scan([(rel, REPO_ROOT / rel)])
+        if not renames and not scratch:
+            stale.append(rel)
+    assert stale == [], (
+        "these no longer hand-roll an atomic write - drop them from "
+        "_TOOLS_UNCLASSIFIED (add a long-running one to _RUNTIME_TOOLS):\n  "
+        + "\n  ".join(stale))
