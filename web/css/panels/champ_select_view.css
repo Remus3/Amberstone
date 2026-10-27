@@ -2659,7 +2659,10 @@
    interactive controls (mirrors panel_visibility.css .pv-tab pattern). */
 .csv-summspell-edit:focus-visible,
 .csv-summspell-cell:focus-visible,
-.csv-ta-head:focus-visible {
+.csv-ta-head:focus-visible,
+/* RM-971: the build chooser rows are keyboard targets too. */
+.csv-build-row:focus-visible,
+.csv-build-path-row:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
 }

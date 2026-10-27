@@ -960,12 +960,15 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
   // R30 (2026-06-24): Arena pane = duo + augments, then the shared build
   // chooser + ordered build (the archetype picker already rendered into the
   // left column above). Returns before the SR/ARAM single-portrait body.
+  // RM-971: both branches below rebuild the body; carry chooser focus.
+  const chooserFocus = _csvCaptureChooserFocus(body);
   if (mode === "arena") {
     head.textContent = "My Duo + Augments";
     body.className = "csv-card-body";
     body.innerHTML = _csvArenaPaneHtml(cs, myCid, myName) + buildsHtml;
     _csvWireArenaAugments(body, cs);
     _csvWireBuildVariants(body);
+    _csvRestoreChooserFocus(body, chooserFocus);
     return;
   }
 
@@ -1001,6 +1004,7 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
   // we replace innerHTML and re-attach each tick.
   if (mode === "aram") _csvWireBench(body);
   _csvWireBuildVariants(body);
+  _csvRestoreChooserFocus(body, chooserFocus);
   _csvWireLockButton(body);
   // Operator (2026-05-23 round 2): archetype picker wired against
   // #csv-archetype-target (Allies grid-area), not the My Pick body.
@@ -3038,8 +3042,10 @@ function _csvBuildPathRowHtml(variantKey, path, isActive, ver) {
   // path's keystone falls back to the variant-level keystone (resolver
   // does the same), supplied by the caller as `path.keystone`.
   const ksAttr = path.keystone ? ` data-card-keystone="${path.keystone}"` : "";
+  // RM-971: a path row is a keyboard target (Tab + Enter / Space).
   return `
     <div class="csv-build-path-row${isActive ? " is-active" : ""}"
+         role="button" tabindex="0" aria-pressed="${isActive ? "true" : "false"}"
          data-variant="${variantKey}"
          data-path-key="${path.key || ""}"${archAttr}${primaryAttr}${ksAttr}${itemIdsAttr}>
       <div class="csv-build-path-label" title="${label}">${label}</div>
@@ -3371,8 +3377,10 @@ function _csvBuildVariantRowsHtml(variants, savedChoice, savedRuneKey) {
     // + primary icon + primary tree name) on row 2. Subtree row dropped;
     // freed vertical room rolls into the larger icon sizes.
     const rowItemIdsAttr = ` data-item-ids="${(v.item_ids || []).slice(0, 6).join(",")}"`;
+    // RM-971: the legacy row is a keyboard target (Tab + Enter / Space).
+    const pressed = idx === selectedIdx ? "true" : "false";
     return `
-      <div class="csv-build-row${idx === selectedIdx ? " selected" : ""}" data-variant="${v.key}"${summAttr}${expAttrs}${rowItemIdsAttr}>
+      <div class="csv-build-row${idx === selectedIdx ? " selected" : ""}" role="button" tabindex="0" aria-pressed="${pressed}" data-variant="${v.key}"${summAttr}${expAttrs}${rowItemIdsAttr}>
         ${cb}
         <div class="csv-build-meta">
           <div class="${badgeClass}">${v.label}</div>
@@ -3467,7 +3475,10 @@ function _csvWireBuildVariants(scope) {
       const siblings = prow.parentNode
         ? prow.parentNode.querySelectorAll(".csv-build-path-row")
         : [];
-      siblings.forEach((s) => s.classList.toggle("is-active", s === prow));
+      siblings.forEach((s) => {
+        s.classList.toggle("is-active", s === prow);
+        s.setAttribute("aria-pressed", s === prow ? "true" : "false");
+      });
       const outer = prow.closest(".csv-build-row-collapsed");
       if (outer) outer.dataset.activePath = pathKey;
       const composed = `${variantKey}:${pathKey}`;
@@ -3493,6 +3504,7 @@ function _csvWireBuildVariants(scope) {
           { push_runes: false, push_items: true, push_summoners: false });
       }
     });
+    prow.addEventListener("keydown", _csvChooserKeyActivates);
   });
 
   // item 1 Phase 2 side-panel wiring (B2/B4): a rune SIDE-panel option click
@@ -3552,7 +3564,12 @@ function _csvWireBuildVariants(scope) {
       // collapsed entry (only one entry per champ; the row is implicitly
       // selected).
       if (row.classList.contains("csv-build-row-collapsed")) return;
-      rows.forEach((r) => r.classList.toggle("selected", r === row));
+      rows.forEach((r) => {
+        r.classList.toggle("selected", r === row);
+        if (!r.classList.contains("csv-build-row-collapsed")) {
+          r.setAttribute("aria-pressed", r === row ? "true" : "false");
+        }
+      });
       const variantKey = row.dataset.variant;
       if (champion && variantKey
           && variantKey !== "empty"
@@ -3574,7 +3591,53 @@ function _csvWireBuildVariants(scope) {
                          overrideSummoners, null, null);
       }
     });
+    if (!row.classList.contains("csv-build-row-collapsed")) {
+      row.addEventListener("keydown", _csvChooserKeyActivates);
+    }
   });
+}
+
+// RM-971: Enter / Space on a focused chooser row acts as its click.
+// Space is prevented so it does not scroll the page; a held key does not
+// re-fire the pick.
+function _csvChooserKeyActivates(ev) {
+  if (ev.key !== "Enter" && ev.key !== " ") return;
+  ev.preventDefault();
+  ev.stopPropagation();
+  if (ev.repeat) return;
+  ev.currentTarget.click();
+}
+
+// RM-971: _csvRenderCentralPane rebuilds the chooser through innerHTML,
+// which destroys a focused row and throws focus to <body> (lane doc trap 2).
+// Capture a STABLE key off the focused row before the rebuild (node identity
+// is useless, the node is destroyed) and re-focus by it after. null when
+// focus was not on a chooser row inside the host, so a rebuild never steals
+// focus.
+function _csvCaptureChooserFocus(host) {
+  const a = document.activeElement;
+  if (!host || !a || a === document.body || !host.contains(a)) return null;
+  const row = a.closest && a.closest(".csv-build-path-row, .csv-build-row");
+  if (!row || !host.contains(row)) return null;
+  return {
+    cls: row.classList.contains("csv-build-path-row")
+      ? "csv-build-path-row" : "csv-build-row",
+    variant: row.dataset.variant || "",
+    path: row.dataset.pathKey || "",
+  };
+}
+
+function _csvRestoreChooserFocus(host, snap) {
+  if (!host || !snap) return;
+  const el = Array.from(host.querySelectorAll("." + snap.cls)).find((r) =>
+    (r.dataset.variant || "") === snap.variant
+    && (r.dataset.pathKey || "") === snap.path);
+  if (!el || el.tabIndex < 0) return;
+  try {
+    el.focus({ preventScroll: true });
+  } catch (_e) {
+    el.focus();
+  }
 }
 
 // Arena central pane: team header (me + up to 2 teammates; s234/#89:
