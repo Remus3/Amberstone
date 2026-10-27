@@ -27,7 +27,11 @@ the supervisor and main.py are simulated in the injected sleep / probes.
 """
 from __future__ import annotations
 
+import json
 import time
+from pathlib import Path
+
+import pytest
 
 from ops.launcher import update_cycle as uc
 from ops.launcher import updater as up
@@ -145,16 +149,17 @@ def test_ha_an_interrupted_deploy_waits_out_champ_select_on_the_default_gate(
 
 
 def test_ha_a_down_main_py_rolls_back_a_held_lost_deploy(tmp_path):
-    """Nothing to interrupt: the gate holds only a main.py that is up and
-    ready, so a held rollback runs at once when main.py goes down - game or
-    not."""
+    """Nothing to interrupt: a held rollback runs at once when main.py is
+    DOWN - game or not. Round 2 (review H1): down = its process is dead,
+    health.json is missing, or the heartbeat is past the supervisor's 15 s."""
     root, src = _setup(tmp_path)
     clock = Clock()
     game, off = [None], [0.0]
     assert _lost_then_game(root, src, clock, game, off).status == "deferred"
     res = uc.resume_cycle(root, clock=clock, sleep=Sim(root, clock),
                           now=lambda: time.time() + off[0],
-                          health=Script(clock, lambda t: sample("r1", alive=False)),
+                          health=Script(clock, lambda t: sample("r1", alive=False,
+                                                                pid_alive=False)),
                           serving=lambda: False, supervisor_alive=lambda: False,
                           game_check=lambda: game[0])
     assert res.status == "recovered", res.to_dict()
@@ -263,7 +268,10 @@ def test_hb_a_readable_state_restarts_the_unreadable_clock(tmp_path, monkeypatch
     state[0] = None
     res = _resume(root, clock, _failing(clock), **kw)
     assert res.status == "deferred", "the unreadable clock restarted at the readable sample"
-    wall[0] += uc.UNREADABLE_HOLD_S + 1
+    # the new episode, sampled within the gap (round 2 M1), runs out its own hold
+    wall[0] += uc.UNREADABLE_HOLD_S / 2
+    assert _resume(root, clock, _failing(clock), **kw).status == "deferred"
+    wall[0] += uc.UNREADABLE_HOLD_S / 2 + 1
     assert _resume(root, clock, _failing(clock), **kw).status == "recovered"
 
 
@@ -283,3 +291,101 @@ def test_hb_an_idle_main_py_rolls_back_a_failed_restart(tmp_path):
     res = _resume(root, clock, _failing(clock), restarts_sent=True, health_timeout_s=60,
                   game_check=no_game)
     assert res.status == "recovered", res.to_dict()
+
+
+# ================================ round 2 (the high-only review of 940e2fcda)
+#
+# H1 the rollback hold read "main.py is down" from ONE readiness sample: a
+#    heartbeat older than the 5 s READINESS bound, or one tick whose state
+#    provider raised, skipped the whole game gate - so a 6-10 s main.py stall
+#    mid-game let the supervisor rollback restart main.py during the game.
+#    Down is now: the process is dead, health.json is missing, or the
+#    heartbeat is older than the supervisor's own 15 s stale threshold.
+# M1 the unreadable-state clock survived busy stretches the cycle never saw,
+#    so the first unreadable sample of a NEW episode released the hold at once.
+
+
+def _held_lost_deploy(tmp_path):
+    root, src = _setup(tmp_path)
+    clock = Clock()
+    game, off = [None], [0.0]
+    assert _lost_then_game(root, src, clock, game, off).status == "deferred"
+    return root, clock, game, off
+
+
+def _resume_held(root, clock, game, off, health):
+    return uc.resume_cycle(root, clock=clock, sleep=Sim(root, clock),
+                           now=lambda: time.time() + off[0], health=health,
+                           serving=lambda: True, supervisor_alive=lambda: False,
+                           game_check=lambda: game[0])
+
+
+@pytest.mark.parametrize("stalled", [
+    {"age_s": 6.0},                     # a 6 s stall: past readiness, not the supervisor's
+    {"age_s": 15.0},                    # right at the supervisor's threshold
+    {"ready": False},                   # one tick whose state provider raised
+    {"alive": False},                   # a heartbeat that says alive=false, pid alive
+])
+def test_r2_h1_a_stalled_main_py_in_a_game_still_holds_the_rollback(tmp_path, stalled):
+    root, clock, game, off = _held_lost_deploy(tmp_path)
+    assert game[0] == GAME
+    res = _resume_held(root, clock, game, off, Script(clock, lambda t: sample("r1", **stalled)))
+    assert res.status == "deferred" and res.exit_code == 3, res.to_dict()
+    assert GAME in res.detail
+    assert (root / "core" / "a.py").read_bytes() == NEW_FILES["core/a.py"], "not rolled back"
+    assert uc.read_cycle(root)["recover_due"]["version"] == "1.1.0"
+
+
+@pytest.mark.parametrize("down", [
+    {"age_s": 16.0, "pid_alive": False},   # the reviewer's case: 16 s old, process dead
+    {"age_s": 16.0},                       # past the supervisor's own stale restart
+    {"pid_alive": False},                  # the process is gone, whatever the beat says
+])
+def test_r2_h1_a_main_py_that_is_really_down_is_rolled_back_in_a_game(tmp_path, down):
+    root, clock, game, off = _held_lost_deploy(tmp_path)
+    res = _resume_held(root, clock, game, off, Script(clock, lambda t: sample("r1", **down)))
+    assert res.status == "recovered", res.to_dict()
+    assert (root / "core" / "a.py").read_bytes() == BASE_FILES["core/a.py"]
+
+
+def test_r2_h1_the_default_probe_missing_is_down_torn_is_not(tmp_path):
+    """health.json missing = down (rolled back in a game); present but torn /
+    locked = unknown, so the game gate runs (held)."""
+    root, clock, game, off = _held_lost_deploy(tmp_path)
+    health = root / "ops" / "runtime" / "health.json"
+    health.write_text('{"alive": tr', encoding="ascii")   # a torn read
+    res = _resume_held(root, clock, game, off, None)
+    assert res.status == "deferred", res.to_dict()
+    assert uc.readiness(root).get("missing") is not True
+    health.unlink()
+    assert uc.readiness(root)["missing"] is True
+    res = _resume_held(root, clock, game, off, None)
+    assert res.status == "recovered", res.to_dict()
+
+
+def test_r2_h1_the_threshold_is_the_supervisors_own():
+    cfg = json.loads((Path(__file__).resolve().parent.parent / "ops" / "rc_config.json")
+                     .read_text(encoding="utf-8"))
+    assert uc.MAIN_DOWN_STALE_S == float(cfg["max_heartbeat_age_seconds"]) == 15.0
+    assert uc.MAIN_DOWN_STALE_S > uc.HEARTBEAT_STALE_S
+
+
+def test_r2_m1_a_new_unreadable_episode_does_not_inherit_an_old_clock(tmp_path, monkeypatch):
+    root, _src, clock = _owed(tmp_path)
+    monkeypatch.setattr(uc.up, "game_live", lambda *a, **k: None)
+    monkeypatch.setattr(uc, "fetch_api_state", lambda r: None)
+    wall = [time.time()]
+    kw = dict(restarts_sent=True, health_timeout_s=60, game_check=None, now=lambda: wall[0])
+    assert _resume(root, clock, _failing(clock), **kw).status == "deferred"
+    # An hour the cycle never sampled (a game the shell saw as busy): the
+    # next unreadable sample starts a NEW episode, it does not release.
+    wall[0] += 3600
+    res = _resume(root, clock, _failing(clock), **kw)
+    assert res.status == "deferred", res.to_dict()
+    assert up.installed_version(root) == "1.1.0"
+    # ... and that episode, sampled inside the gap, runs out its own hold.
+    wall[0] += 150
+    assert _resume(root, clock, _failing(clock), **kw).status == "deferred"
+    wall[0] += 151
+    assert _resume(root, clock, _failing(clock), **kw).status == "recovered"
+

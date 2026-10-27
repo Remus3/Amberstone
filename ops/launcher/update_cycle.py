@@ -53,18 +53,23 @@ BAD VERSIONS (F4): a version that ended recovered / failed / lost is kept in
 `bad_versions` and never applied again; a newer release still is.
 
 ROLLBACK GATE (PKG-6c H-A): a rollback restarts main.py (the supervisor's
-rollback stops and starts it), so while main.py is up and READY it waits
-for the same full idle gate as apply (_recover_hold): a lost / interrupted
-deploy's rollback is recorded as `recover_due` and taken by the next idle
-cycle (the shell resumes it unless a fresh /api/state says busy), and so is
-completing an interrupted recover. A main.py that is down has nothing to
-interrupt: the rollback runs at once. A verify that failed is not held (the
-new run never became ready). PKG-6c H-B (the H2 variant): a positive signal
-(a game process, a health flag, a readable busy /api/state) holds it for as
-long as it lasts; an UNREADABLE /api/state while main.py heartbeats holds
-it at most UNREADABLE_HOLD_S across cycles (`state_unreadable_since`; a
-readable state restarts the clock) - a state route that never answers is
-itself the fault, and the shell sees no idle moment to retry on either.
+rollback stops and starts it), so unless main.py is DOWN it waits for the
+same full idle gate as apply (_recover_hold): a lost / interrupted deploy's
+rollback is recorded as `recover_due` and taken by the next idle cycle (the
+shell resumes it unless a fresh /api/state says busy), and so is completing
+an interrupted recover and (round 2) a hot_reload compile failure's
+rollback. DOWN (round 2, review H1) = the process is dead, health.json is
+missing, or the heartbeat is past the supervisor's own 15 s stale threshold
+(MAIN_DOWN_STALE_S) - not one stale 5 s readiness sample: such a main.py has
+nothing to interrupt and the rollback runs at once. A verify that failed is
+not held (the new run never became ready). PKG-6c H-B (the H2 variant): a
+positive signal (a game process, a health flag, a readable busy /api/state)
+holds it for as long as it lasts; an UNREADABLE /api/state while main.py
+heartbeats holds it at most UNREADABLE_HOLD_S per episode, across cycles
+(`state_unreadable_since` / `_last`; a readable state, or a gap past
+UNREADABLE_GAP_S the cycle never sampled, starts a new episode) - a state
+route that never answers is itself the fault, and the shell sees no idle
+moment to retry on either.
 
 Restart safety (each step is a separate, persisted state):
   - the updater's `recovering` marker makes recover() re-entrant (F6);
@@ -177,6 +182,16 @@ QUIET_SKIPS = frozenset({"not-running", "not-configured"})
 # shell's 60 s resume ticks).
 STATE_UNREADABLE = "no /api/state"
 UNREADABLE_HOLD_S = 300.0
+# Round 2 (review M1): two unreadable samples further apart than this are two
+# episodes. One episode's samples come one restart check (health_timeout_s)
+# plus the shell's 60 s resume tick apart at most; the gap allows two ticks.
+RESUME_TICK_S = 60.0        # rc-shell src/backend_update.js RESUME_INTERVAL_MS
+UNREADABLE_GAP_S = HEALTH_TIMEOUT_S + 2 * RESUME_TICK_S
+# Round 2 (review H1): main.py is DOWN for the rollback gate only past the
+# supervisor's own stale threshold - ops/rc_supervisor.py:722
+# max_heartbeat_age = ops/rc_config.json max_heartbeat_age_seconds (15) -
+# never the 5 s readiness bound above (HEARTBEAT_STALE_S).
+MAIN_DOWN_STALE_S = 15.0
 SERVICE_LABELS = {"ds": "Daemon Slayer", "vision": "the vision server",
                   "lcu_agent": "the LCU agent", "liveclient_relay": "the Live Client relay",
                   "hotkey_listener": "the hotkey listener", "supervisor": "the RC supervisor",
@@ -308,14 +323,19 @@ def _mark_bad(root: Path, version: Optional[str], status: str) -> None:
 def readiness(root: Path) -> Dict[str, Any]:
     """One readiness sample of main.py from ops/runtime/health.json: alive,
     ready (the post-import `last_state_provider_ok`), run_id, heartbeat age,
-    pid_alive. Never raises."""
+    pid_alive. Never raises. Round 2 (review H1): `missing` (no file) and
+    `unreadable` (present but torn / locked) are told apart - only a missing
+    file says main.py is down (_main_down)."""
     path = up.runtime_dir(root) / "health.json"
+    nothing = {"alive": False, "ready": False, "run_id": None, "age_s": None,
+               "pid_alive": False}
     try:
         age = time.time() - path.stat().st_mtime
         doc = json.loads(path.read_text(encoding="utf-8-sig"))
+    except FileNotFoundError:
+        return dict(nothing, missing=True)
     except (OSError, ValueError):
-        return {"alive": False, "ready": False, "run_id": None, "age_s": None,
-                "pid_alive": False}
+        return dict(nothing, unreadable=True)
     doc = doc if isinstance(doc, dict) else {}
     pid = doc.get("pid")
     alive_pid = isinstance(pid, int) and not isinstance(pid, bool) and sh.pid_alive(pid)
@@ -694,29 +714,55 @@ def _await_supervisor(ctx: _Ctx, requests: List[str]) -> None:
         ctx.sleep(ctx.poll_s)
 
 
+def _main_down(s: Dict[str, Any]) -> bool:
+    """PKG-6c round 2 (review H1): main.py has nothing to interrupt only when
+    its process is dead, health.json is missing, or the heartbeat is older
+    than the supervisor's own stale threshold (MAIN_DOWN_STALE_S). Never the
+    5 s READINESS bound or one failed state-provider tick: a main.py stalled
+    for a few seconds mid-game is still in the game. A health.json that is
+    present but unreadable (torn, locked) is not evidence either way."""
+    if s.get("missing") is True:
+        return True
+    if s.get("unreadable") is True:
+        return False
+    age = s.get("age_s")
+    if isinstance(age, (int, float)) and not isinstance(age, bool) and age > MAIN_DOWN_STALE_S:
+        return True
+    return s.get("pid_alive") is not True
+
+
+def _num(v: Any) -> bool:
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
 def _recover_hold(ctx: _Ctx, sample: Optional[Dict[str, Any]] = None) -> Optional[str]:
     """PKG-6c H-A: why a rollback must wait, else None. A rollback restarts
-    main.py, so it waits only while main.py is up and READY (a main.py that
-    is down has nothing to interrupt) and the full idle gate says busy."""
+    main.py, so it waits unless main.py is DOWN (_main_down: nothing to
+    interrupt) and only while the full idle gate says busy."""
     s = ctx.health() if sample is None else sample
-    reason = ctx.game_reason() if _sample_ok(s) else None
+    reason = None if _main_down(s) else ctx.game_reason()
     # H-B (H2 variant): an unreadable state alone holds it UNREADABLE_HOLD_S
-    # at most, counted across cycles from the first such sample; any other
-    # answer (a positive signal, idle, main.py down) restarts that clock.
-    since = read_cycle(ctx.root).get("state_unreadable_since")
+    # at most, counted across cycles from the first sample of ONE episode;
+    # any other answer (a positive signal, idle, main.py down) ends it, and
+    # (round 2, M1) so does a gap the cycle never sampled (a busy stretch the
+    # shell started no cycle in): the next unreadable sample starts afresh.
+    doc = read_cycle(ctx.root)
+    since, last = doc.get("state_unreadable_since"), doc.get("state_unreadable_last")
     if reason != STATE_UNREADABLE:
-        if since is not None:
-            _write_cycle(ctx.root, state_unreadable_since=None)
+        if since is not None or last is not None:
+            _write_cycle(ctx.root, state_unreadable_since=None, state_unreadable_last=None)
         return reason
     now = float(ctx.now())
-    if not isinstance(since, (int, float)) or isinstance(since, bool) or since > now:
-        _write_cycle(ctx.root, state_unreadable_since=now)
+    gap = max(UNREADABLE_GAP_S, ctx.health_timeout_s + 2 * RESUME_TICK_S)
+    if not (_num(since) and _num(last)) or since > now or last > now or now - last > gap:
+        _write_cycle(ctx.root, state_unreadable_since=now, state_unreadable_last=now)
         return reason
     if now - since < UNREADABLE_HOLD_S:
+        _write_cycle(ctx.root, state_unreadable_last=now)
         return reason
     ctx.log(f"/api/state unreadable for {int(now - since)} s while main.py heartbeats: "
             "the rollback is no longer held")
-    _write_cycle(ctx.root, state_unreadable_since=None)
+    _write_cycle(ctx.root, state_unreadable_since=None, state_unreadable_last=None)
     return None
 
 
