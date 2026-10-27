@@ -132,9 +132,11 @@ async function _postSelection(chip, state) {
     game_context:  _gameContextSnapshot(state),
   };
   try {
+    // PKG-6 WA7: a control endpoint behind the RC_DASH_TOKEN gate - send the
+    // token like every other gated caller (the shell also injects it).
     const r = await fetch("/api/coach-choice", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(localStorage.getItem("rc_dash_token") ? {"X-RC-Token": localStorage.getItem("rc_dash_token")} : {}) },
       body: JSON.stringify(body),
     });
     if (!r.ok) {

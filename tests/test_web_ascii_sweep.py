@@ -799,8 +799,18 @@ _WEB = _REPO_ROOT / "web"
 # Re-checked after the rebase onto 15e39d167 (its web/js/lib/state_schema.js
 # edit is comment-only): the same four-path swap against 15e39d167
 # reproduces 7e8a2267... EXACTLY.
+# superseded by the s142 PKG-6 re-capture below: "2b50f9cd70c36aa79ec0f501ea0ce19b181503ed91462ef1104d223287dd5e43"
+#
+# RE-CAPTURED 2026-10-26 at s142 PKG-6 (WA7: the auto-accept POST in
+# web/js/main.js, the coach-choice POST in web/js/panels/coach_choices.js and
+# the ingest POST in web/vision_calibrator.html now send X-RC-Token, plus the
+# calibrator ingest placeholder / title naming data/vision_calib_reference).
+# Ordinary case, no tokeniser change. ATTRIBUTED BY SUBSTITUTION against
+# e6aa499aa: swapping exactly those three paths back to their HEAD blobs (in
+# memory) reproduces the superseded 2b50f9cd... value EXACTLY. Those three
+# paths are the whole change. No glyph change - every added byte is ASCII.
 # If another slice re-captures in parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "2b50f9cd70c36aa79ec0f501ea0ce19b181503ed91462ef1104d223287dd5e43"
+_LIVE_HALF_DIGEST = "fe43f2842c416d9fc7a7488a47ad4555218269fe8b2697d35f1bfa9163e20771"
 
 
 def _web_sources() -> list[Path]:

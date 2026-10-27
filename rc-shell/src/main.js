@@ -2241,6 +2241,7 @@ function enterAppView(cfg) {
     clearTimeout(bootShowTimer);
     bootShowTimer = null;
   }
+  console.log("[rc-shell] app view: /api/health answered (origin from " + cfg.originSource + ")");
   createWindow(cfg);
   applyCompanionAlwaysOnTop();
   startPoll();

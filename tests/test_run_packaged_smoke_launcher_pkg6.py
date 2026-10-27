@@ -111,6 +111,37 @@ def test_shell_constants_match_the_builder_config():
     assert re.search(rf"^\s*to:\s*{rps.SHELL_BACKEND_DIR}\s*$", yml, re.M)
 
 
+def test_bootstrap_check_treats_restart_clean_as_dev_only_in_a_bundle(tmp_path, monkeypatch):
+    from tools import bootstrap_env_check as bec
+    assert bp.exclusion_reason("scripts/restart_clean.bat"), "the builder excludes it"
+    assert bec.DEV_ONLY_LAUNCHERS == {"scripts/restart_clean.bat"}
+    monkeypatch.setattr(bec, "_PROJECT_ROOT", tmp_path)
+    monkeypatch.setattr(bec, "_issues", [])
+    (tmp_path / bp.MANIFEST_NAME).write_text("{}", encoding="utf-8")
+    bec._check_launcher("scripts/restart_clean.bat", "ok", "", "missing", "")
+    assert bec._issues == [], "a staged bundle omits it on purpose"
+    bec._check_launcher("start.bat", "ok", "", "start.bat missing", "")
+    assert bec._issues == [("MISS", "start.bat missing")], "every other launcher still counts"
+    (tmp_path / bp.MANIFEST_NAME).unlink()
+    monkeypatch.setattr(bec, "_issues", [])
+    bec._check_launcher("scripts/restart_clean.bat", "ok", "", "restart_clean missing", "")
+    assert bec._issues == [("MISS", "restart_clean missing")], "a dev checkout still needs it"
+
+
+def test_archmap_never_walks_the_build_output():
+    # A local build stages full copies of the tree under dist/portable_staging
+    # and rc-shell/dist/win-unpacked/resources/backend; gen_archmap's pre-commit
+    # --check then refused every commit (s142). Skipping the names is safe only
+    # while no tracked path has such a segment.
+    from tests import _repo_walk
+    from tools import gen_archmap
+    assert {"dist", "build"} <= gen_archmap.SKIP_DIRS
+    tracked = _repo_walk.tracked_relpaths()
+    assert tracked, "the git index answered"
+    hits = [p for p in tracked if {"dist", "build"} & set(p.split("/")[:-1])]
+    assert hits == [], hits[:5]
+
+
 def test_the_launcher_check_runs_after_every_bundle_content_check():
     src = inspect.getsource(rps.run)
     last = src.index("check_launcher_from_unpacked(")
