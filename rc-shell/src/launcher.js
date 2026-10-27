@@ -264,23 +264,37 @@ function readToken(text) {
   return first;
 }
 
-// Add X-RC-Token to a request for the shell's own origin only. A request for
-// any other origin keeps its headers object untouched. Any spelling the page
-// set is replaced by the install's own token.
-function withTokenHeader(headers, url, origin, token) {
+// A copy of the headers with every case spelling of X-RC-Token removed.
+function stripTokenHeader(headers) {
   const h = headers && typeof headers === "object" ? headers : {};
-  const valid = readToken(token);
-  if (valid === null || valid !== token || !nav.isSameOrigin(url, origin)) {
-    return { headers: h, added: false };
-  }
   const out = {};
   for (const k of Object.keys(h)) {
     if (k.toLowerCase() !== TOKEN_HEADER.toLowerCase()) {
       out[k] = h[k];
     }
   }
+  return out;
+}
+
+// Add X-RC-Token to a request for the shell's own origin only; any spelling
+// the page set is replaced by the install's own token. A request for ANY other
+// origin has every spelling STRIPPED (SF1): Chromium carries a header added on
+// the first hop across a redirect, so a request redirected off the RC origin
+// re-enters the hook still holding the token. No resolved origin means every
+// URL is foreign.
+function withTokenHeader(headers, url, origin, token) {
+  const h = headers && typeof headers === "object" ? headers : {};
+  if (!nav.isSameOrigin(url, origin)) {
+    const out = stripTokenHeader(h);
+    return { headers: out, added: false, stripped: Object.keys(out).length !== Object.keys(h).length };
+  }
+  const valid = readToken(token);
+  if (valid === null || valid !== token) {
+    return { headers: h, added: false, stripped: false };
+  }
+  const out = stripTokenHeader(h);
   out[TOKEN_HEADER] = token;
-  return { headers: out, added: true };
+  return { headers: out, added: true, stripped: false };
 }
 
 // ---- IPC sender (PACKAGING_PLAN S3) ------------------------------------------
@@ -497,6 +511,7 @@ module.exports = {
   hostLaunchPlan,
   dashTokenPath,
   readToken,
+  stripTokenHeader,
   withTokenHeader,
   senderAllowed,
   healthOk,

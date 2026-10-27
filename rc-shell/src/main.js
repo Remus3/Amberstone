@@ -1787,14 +1787,17 @@ function currentDashToken() {
 
 // PKG-6 (3.6, V3): attach X-RC-Token to the shell windows' requests for the
 // RC origin only, so the control endpoints accept the shell once a profile
-// turns dash_token_gate on. Every other origin's request is untouched.
+// turns dash_token_gate on. SF1: every other origin's request has the header
+// STRIPPED - a redirect off the RC origin re-enters this hook still carrying
+// the first hop's token. Registered with NO URL filter so the strip runs on
+// every hop, and an error strips rather than forwards.
 function installTokenHeader() {
   session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
-    let headers = details.requestHeaders;
+    let headers;
     try {
       headers = lch.withTokenHeader(details.requestHeaders, details.url, resolvedOrigin, currentDashToken()).headers;
     } catch (_e) {
-      headers = details.requestHeaders;
+      headers = lch.stripTokenHeader(details.requestHeaders);
     }
     callback({ requestHeaders: headers });
   });

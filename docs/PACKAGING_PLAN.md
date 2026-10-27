@@ -670,10 +670,14 @@ Found by the PKG-6 builder and verifier; not fixed by PKG-6.
   `champ_select.js` x3, `item_build.js:435`, `web/legacy_index.html`
   `postJSON`) still bind PKG-5 before `dash_token_gate` is turned on; the
   shell windows are covered by the injection.
-- SF1 (verifier s142): withTokenHeader (rc-shell launcher.js) passes
-  X-RC-Token through on non-RC origins, so a redirected subresource could
-  carry it; fix = strip on foreign origins + flip launcher_wiring.test.js
-  pass-through assertion; scheduled with DEP-25 in s142.
+- SF1 (verifier s142) FIXED s142: `withTokenHeader` (rc-shell
+  `src/launcher.js`) now STRIPS every case spelling of X-RC-Token from any
+  non-RC-origin request (new pure `stripTokenHeader`); the main.js
+  `installTokenHeader` hook was already registered with no URL filter (every
+  hop of a redirect reaches it) and its error path now strips instead of
+  forwarding. Tests: `rc-shell/test/launcher_wiring.test.js` (pass-through
+  assertion flipped to strip, case-variant, token-state, no-filter source
+  contract).
 
 ## 5. ONLOGON-to-launcher cutover (OPERATOR-GATED)
 
