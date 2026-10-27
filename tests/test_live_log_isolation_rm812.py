@@ -137,7 +137,8 @@ def test_a_relay_child_logs_into_the_redirect_not_the_live_log(tmp_path):
 # ---------------------------------------------------------------------------
 
 def test_a_vision_config_child_logs_into_the_redirect_not_the_repo_root(tmp_path):
-    # cwd=tmp_path: the module also mkdirs a CWD-relative moon_sync_inbox/.
+    # cwd=tmp_path: a stray CWD-relative write would land in tmp, not the repo
+    # (RM-828 (c) anchored SYNC_DIR; the suite points RC_VISION_SYNC_DIR at tmp).
     marker = f"rm812-vision-{uuid.uuid4().hex}"
     out = _child(
         "import json, logging\n"

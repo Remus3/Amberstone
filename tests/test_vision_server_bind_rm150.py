@@ -283,11 +283,13 @@ class MonitorRedactionTests(unittest.TestCase):
     def _isolate(self) -> Path:
         """Point every /monitor candidate at a scratch tree, and return it.
 
-        Four levers cover all six candidates without editing the server:
+        Five levers cover all six candidates without editing the server:
         ``MONITOR_HTML_PATH`` (1), the module's own ``__file__`` (2, which
-        resolves to the same repo-root file as 1), the process CWD (3, which
-        also anchors the CWD-relative ``SYNC_DIR`` behind 5 and 6), and
-        ``Path.home()`` (4). With all four redirected, which state the handler
+        resolves to the same repo-root file as 1), the process CWD (3),
+        ``Path.home()`` (4) and ``_http.SYNC_DIR`` (5 and 6; RM-828 (c)
+        anchored it to the repo root, and the suite points it at a per-worker
+        tmp dir that other tests share, so it is redirected here rather than
+        following the CWD). With all five redirected, which state the handler
         is in becomes a property of the test rather than of the machine.
         """
         tmp = Path(tempfile.mkdtemp(prefix="rc_rm214_")).resolve()
@@ -304,6 +306,8 @@ class MonitorRedactionTests(unittest.TestCase):
             mock.patch.object(_http, "__file__", str(tmp / "pkg" / "_http.py")))
         stack.enter_context(
             mock.patch.object(Path, "home", classmethod(lambda cls: tmp)))
+        stack.enter_context(
+            mock.patch.object(_http, "SYNC_DIR", tmp / "moon_sync_inbox"))
         return tmp
 
     def _assert_no_layout_disclosure(self, body: bytes, tmp: Path) -> None:
@@ -366,7 +370,7 @@ class MonitorRedactionTests(unittest.TestCase):
         point: it proves the guard survives the mechanism that silenced it.
         """
         tmp = self._isolate()
-        (tmp / "moon_sync_inbox").mkdir()   # SYNC_DIR is CWD-relative
+        (tmp / "moon_sync_inbox").mkdir()   # _isolate points SYNC_DIR here
         payload = b"<html><body>rm214 monitor payload</body></html>"
         with _Server() as s:
             put_status, _ = s.put("/sync/put/moon_monitor.html", payload)

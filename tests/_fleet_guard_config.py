@@ -13,7 +13,8 @@ dedicated per-test fixture): RC_HOOK_LOG, RC_SIBLING_SWEEP_RUN_LOG,
 RC_NOTIFY_JSONL, RC_MOMENT_MARKS_JSONL, RC_MOMENT_MARKS_DIR,
 RC_LANE_PROGRESS_ROOT, RC_FUSION_SHADOW_PATH, RC_PHASE3_LOG_DIR (RM-812: bound
 into agents/_supervisor_common.LOG_ROOT at import, i.e. during collection, so a
-per-test value would arrive too late).
+per-test value would arrive too late), RC_VISION_SYNC_DIR (RM-828 (c): bound
+into vision_server/_config.SYNC_DIR and created at import, same reason).
 Not runtime roots, left out on purpose: RC_VISION_BASE and RC_PSEUDO_BASE (URLs),
 RC_TRACER_ROOT (the tree the write tracer READS), RC_SELF_CAST_LOG (an on/off flag),
 RC_TRACER_REPORT (its default is already the system temp dir, never the live tree).

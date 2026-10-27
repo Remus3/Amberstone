@@ -54,8 +54,25 @@ COACH_MODEL  = "claude-haiku-4-5-20251001"
 from core.vision_token import get_vision_token as _get_vision_token
 AUTH_TOKEN   = _get_vision_token()
 AUTH_HEADER  = "X-RC-Token"
-SYNC_DIR     = Path("moon_sync_inbox")
-SYNC_DIR.mkdir(exist_ok=True)
+# RM-828 (c): the sync inbox is anchored to the repo root, like _LOG_PATH, not
+# to the process CWD. It used to be Path("moon_sync_inbox"), so every import -
+# a test module collected by pytest included - created the directory wherever
+# the process stood. The RM-735 watchdog spawns this server with cwd=<repo>
+# (dashboard/_vision_watchdog.spawn_vision), so the live inbox does not move.
+# A non-empty RC_VISION_SYNC_DIR replaces it; tests/conftest.py points it at
+# tmp at import, before collection imports this module.
+_SYNC_DIR    = Path(__file__).resolve().parent.parent / "moon_sync_inbox"
+SYNC_DIR_ENV = "RC_VISION_SYNC_DIR"
+
+
+def _sync_target() -> Path:
+    """``_SYNC_DIR``, or a non-empty ``RC_VISION_SYNC_DIR``."""
+    override = (os.environ.get(SYNC_DIR_ENV) or "").strip()
+    return Path(override) if override else _SYNC_DIR
+
+
+SYNC_DIR     = _sync_target()
+SYNC_DIR.mkdir(parents=True, exist_ok=True)
 _START_TIME  = time.time()
 
 

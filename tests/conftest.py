@@ -129,6 +129,13 @@ os.environ["RC_MOMENT_MARKS_DIR"] = str(_SUITE_LOG_DIR / "moment_marks_by_game")
 # Guarded by tests/test_live_log_isolation_rm812.py.
 os.environ["RC_PHASE3_LOG_DIR"] = str(_SUITE_LOG_DIR / "agents")
 
+# RM-828 (c): vision_server/_config.py binds SYNC_DIR from this and mkdirs it at
+# IMPORT, which is during collection - same reasoning as RC_PHASE3_LOG_DIR. Left
+# unset, the import created <repo>/moon_sync_inbox/ (the live channel inbox in
+# the main checkout) and tests/test_vision_server_http_hardening.py wrote its
+# probe files into and beside it. Guarded by tests/test_vision_sync_dir_rm828c.py.
+os.environ["RC_VISION_SYNC_DIR"] = str(_SUITE_LOG_DIR / "moon_sync_inbox")
+
 # FLEET-KIT v14 (MAIN 2026-10-09 0930 step 4): RC tests acquire lanes through
 # the kit (ops/loop/lanes.py -> fleet_lanes.try_acquire_lane -> worktree_path),
 # which reads the user variable FLEET_SIDECAR_ROOT (process env first, then the
