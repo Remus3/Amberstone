@@ -538,8 +538,10 @@ class _Ctx:
         _write_cycle(self.root, phase=name, version=version)
 
     def game_reason(self) -> Optional[str]:
+        # Round 5 (H2): the same full idle gate as apply (game process, health
+        # flags, liveclient, LCU phase; unreadable state = not idle).
         probe = self.game_check if self.game_check is not None else \
-            (lambda: up.game_live(self.root))
+            (lambda: _apply_gate(self.root))
         try:
             return probe()
         except Exception as exc:   # noqa: BLE001 - a failed probe defers
@@ -842,11 +844,14 @@ def _after_finish(ctx: _Ctx, fin: Any, current: Optional[str]) -> CycleResult:
         excuses[str(fin.version)] = n
         _write_cycle(ctx.root, quit_excuses=excuses)
         quit_hit = n <= QUIT_EXCUSES_MAX
+    if fin.status in ("interrupted", "lost") and fin.kind == "apply":
+        # H1: live may be mixed; restore the full pre-apply tree from the
+        # deploy's own backup first; a quit-excused one is then retried.
+        why = ("the deploy was cut off mid-copy (the supervisor stopped)"
+               if fin.status == "interrupted" else
+               "the deploy request vanished with no result (the worker was killed)")
+        return _recover(ctx, fin.version, current, why, bad=not quit_hit)
     if fin.status == "interrupted":
-        if fin.kind == "apply":
-            return _recover(ctx, fin.version, current,
-                            "the deploy was cut off mid-copy (the supervisor stopped)",
-                            bad=not quit_hit)
         return CycleResult("failed", fin.version, current,
                            "a rollback was cut off; run it again", code="interrupted")
     if fin.status in ("failed", "lost") and quit_hit:
@@ -1027,7 +1032,14 @@ def _guarded(root: Path, ctx_kw: Dict[str, Any], body: Callable[[_Ctx, Optional[
         except up.GameLiveError as exc:
             res = CycleResult("deferred", None, current, _clean(exc), code=exc.code)
         except up.UpdateError as exc:
-            res = CycleResult("refused", None, current, _clean(exc), code=exc.code)
+            extra = {}
+            if exc.code == "path":
+                # H1: files no release owns block every update until fixed.
+                extra = {"notice": "Backend update needs attention: the install holds files "
+                                   "no release owns - see ops/runtime/logs/update_cycle.log "
+                                   "(reinstall Amberstone to clear it)"}
+            res = CycleResult("refused", None, current, _clean(exc), code=exc.code,
+                              extra=extra)
         except Exception as exc:   # noqa: BLE001 - reported as one JSON line
             res = CycleResult("error", None, current, _clean(f"{type(exc).__name__}: {exc}"),
                               code=type(exc).__name__)

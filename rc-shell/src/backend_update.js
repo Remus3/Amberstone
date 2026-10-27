@@ -554,6 +554,44 @@ function owedArgs(state, live) {
   };
 }
 
+// Round 5: the shell's whole backend-update state behind one object, so
+// main.js holds no copy of the owed set, the deferral or the notice (each
+// transition is behaviour-tested here, not by grepping main.js).
+function createUpdateController() {
+  let st = initialUpdateState();
+  return {
+    get owed() {
+      return st.owed;
+    },
+    get notice() {
+      return st.notice;
+    },
+    // A cycle result: owed restarts, R3 deferral, R2/R7/M2 notice.
+    onResult(result, nowMs) {
+      const before = st.notice;
+      st = onCycleResult(st, result, nowMs);
+      return { noticeChanged: st.notice !== before };
+    },
+    // What to do with the owed restarts now (live: the shell's signals).
+    decide(live) {
+      return owedDecision(owedArgs(st, live));
+    },
+    // The owed set, handed to the caller that performs it; a pending shell
+    // relaunch stays owed.
+    takeOwed() {
+      const owed = st.owed;
+      st = Object.assign({}, st, { owed: Object.assign(emptyOwed(), { relaunchShell: owed.relaunchShell }) });
+      return owed;
+    },
+    // R3: tasklist and /api/state disagree before a respawn - back off.
+    deferHost(nowMs) {
+      st = Object.assign({}, st, {
+        deferral: nextDeferral(st.deferral.count, { code: "host_deferred" }, nowMs),
+      });
+    },
+  };
+}
+
 function menuNotice(notice) {
   return typeof notice === "string" && notice ? { label: ascii(notice, 120), enabled: false } : null;
 }
@@ -633,6 +671,7 @@ module.exports = {
   initialUpdateState,
   onCycleResult,
   owedArgs,
+  createUpdateController,
   menuNotice,
   stopGraceExpired,
   restartCommandLine,

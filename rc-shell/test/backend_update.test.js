@@ -253,7 +253,7 @@ test("main.js: cycles run only through the idle gate and the owned-host check", 
 
 test("main.js: owed restarts go to the host stdin or respawn it, only when idle", () => {
   const body = fnBody("applyOwedRestarts");
-  assert.ok(body.includes("bu.owedDecision("), "pure decision");
+  assert.ok(body.includes("backendCtl.decide("), "the tested controller decides (round 5)");
   assert.ok(body.includes("bu.restartCommandLine("), "the documented JSON line");
   assert.ok(body.includes("hostChild.stdin.write("), "the host's stdin channel");
   assert.ok(body.includes("respawnServiceHost("), "a host respawn for app-level changes");
@@ -361,7 +361,8 @@ test("main.js F1/F2/F5/F6 wiring", () => {
   assert.ok(MAIN_SRC.includes("lastUpdateIdle = bu.idleForUpdate(parsed)"), "F5 gate from /api/state");
   assert.ok(fnBody("maybeRunBackendCycle").includes("!lastUpdateIdle"), "cycles use the strict gate");
   assert.ok(fnBody("applyOwedRestarts").includes("lastUpdateIdle") &&
-    fnBody("applyOwedRestarts").includes("bu.owedArgs("), "restarts use the strict gate (via owedArgs, G4)");
+    fnBody("applyOwedRestarts").includes("backendCtl.decide("),
+  "restarts use the strict gate (via the controller's owedArgs, G4 / round 5)");
   assert.ok(fnBody("applyOwedRestarts").includes("runBackendResume(true)"), "restarts are health-checked (F3)");
   assert.ok(fnBody("stopServiceHost").includes("bu.stopGraceExpired("),
     "quit grace stretches under a deploy, re-evaluated while waiting (F2, R6)");
@@ -553,7 +554,41 @@ test("G4 onCycleResult + owedArgs: a host deferral holds the next restart, a suc
   assert.strictEqual(bu.owedArgs(st, Object.assign({}, live, { lastUpdateIdle: false })).inGame, true);
 });
 
-test("G4 main.js routes every cycle result and owed decision through the pure state", () => {
-  assert.ok(fnBody("runBackendChild").includes("bu.onCycleResult("));
-  assert.ok(fnBody("applyOwedRestarts").includes("bu.owedArgs("));
+test("round 5: the update controller owns the deferral + owed wiring main.js used to hold", () => {
+  const ctl = bu.createUpdateController();
+  const live = { lastUpdateIdle: true, pollFresh: true, hostRunning: true, hostEnabled: true,
+    blocked: false, nowMs: 1000 };
+  const deferred = bu.parseCycleOutput(out({ ok: true, status: "owed", code: "host_deferred",
+    restart: { host_services: ["vision"] } }), 0);
+  assert.deepStrictEqual(ctl.onResult(deferred, 1000), { noticeChanged: false });
+  assert.deepStrictEqual(ctl.owed.hostServices, ["vision"]);
+  // the result's deferral is KEPT (deleting it fails here) ...
+  assert.strictEqual(ctl.decide(Object.assign({}, live, { nowMs: 1000 + 1 })).reason, "backoff");
+  // ... and honoured until it runs out (a zero deferral fails here).
+  assert.strictEqual(ctl.decide(Object.assign({}, live, { nowMs: 1000 + bu.deferralBackoffMs(1) })).act,
+    "restart-services");
+  // a tasklist disagreement backs off the same way
+  ctl.deferHost(5000);
+  assert.strictEqual(ctl.decide(Object.assign({}, live, { nowMs: 5001 })).reason, "backoff");
+  assert.strictEqual(ctl.decide(Object.assign({}, live, { nowMs: 5000 + bu.deferralBackoffMs(2) })).act,
+    "restart-services");
+  // taking the owed set clears it but keeps a pending shell relaunch
+  ctl.onResult(bu.parseCycleOutput(out({ ok: true, status: "applied",
+    restart: { host_services: ["vision"], relaunch_shell: true } }), 0), 9e9);
+  const taken = ctl.takeOwed();
+  assert.deepStrictEqual(taken.hostServices, ["vision"]);
+  assert.deepStrictEqual(ctl.owed, { hostServices: [], respawnHost: false, relaunchShell: true });
+  assert.strictEqual(ctl.decide(Object.assign({}, live, { nowMs: 9e9 })).act, "none");
+  // the notice: changes are reported once, the menu reads ctl.notice
+  const r = ctl.onResult({ status: "failed", code: "recovery_attention", actions: bu.emptyOwed() }, 9e9);
+  assert.deepStrictEqual(r, { noticeChanged: true });
+  assert.ok(/needs attention/.test(ctl.notice));
+  assert.deepStrictEqual(ctl.onResult({ status: "pending", actions: bu.emptyOwed() }, 9e9),
+    { noticeChanged: false });
+});
+
+test("round 5: main.js holds no copy of the deferral or owed state", () => {
+  assert.ok(!/let backendDeferral\b/.test(MAIN_SRC) && !/let backendOwed\b/.test(MAIN_SRC));
+  assert.ok(fnBody("runBackendChild").includes("backendCtl.onResult("));
+  assert.ok(fnBody("applyOwedRestarts").includes("backendCtl.decide("));
 });

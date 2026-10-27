@@ -1290,3 +1290,111 @@ def test_g3_an_in_job_process_that_will_not_die_is_terminate_failed(monkeypatch)
     job = type("J", (), {"handle": 5})()
     assert sh.terminate_job_listener(job, 1234, listeners=lambda p: [42]) == \
         "refused:terminate-failed"
+
+
+# =============================================== round 5 (H1, H2)
+
+
+def _lost_sim(root, clock, off, *, quit):
+    """The worker was killed mid-copy (past the supervisor's 120 s): backup
+    of core/a.py written, core/a.py overwritten, core/b.py created - then the
+    supervisor removed the request with NO result, and LOST_AFTER_S passed."""
+    def sleep(seconds):
+        clock.t += seconds
+        d = root / "ops" / "runtime" / "deploy_requests"
+        for req in sorted(d.glob("*.json")):
+            if quit:
+                sh.record_host_stop(root / "ops" / "runtime", "quit")
+            broot = root / "ops" / "backups" / f"20261026-120000-{req.stem}"
+            (broot / "core").mkdir(parents=True)
+            (broot / "core" / "a.py").write_bytes(BASE_FILES["core/a.py"])
+            (root / "core" / "a.py").write_bytes(NEW_FILES["core/a.py"])
+            (root / "core" / "b.py").write_bytes(NEW_FILES["core/b.py"])
+            req.unlink()
+            off[0] = up.LOST_AFTER_S + 10
+    return sleep
+
+
+def _lost_cycle(root, src, clock, *, quit):
+    off = [0.0]
+    return _cycle(root, src, clock, _lost_sim(root, clock, off, quit=quit),
+                  Script(clock, lambda t: sample("r1")), now=lambda: time.time() + off[0],
+                  supervisor_alive=lambda: False, finish_timeout_s=30)
+
+
+def test_h1_a_lost_deploy_is_restored_recorded_and_marked_bad(tmp_path):
+    root, src = _setup(tmp_path)
+    clock = Clock()
+    res = _lost_cycle(root, src, clock, quit=False)
+    assert res.status == "recovered", res.to_dict()
+    assert (root / "core" / "a.py").read_bytes() == BASE_FILES["core/a.py"], "full N-1 tree"
+    assert not (root / "core" / "b.py").exists(), "the file N created is quarantined"
+    assert up.installed_version(root) == "1.0.0", "the record matches the tree"
+    assert "1.1.0" in uc.read_cycle(root)["bad_versions"]
+    newer = dict(NEW_FILES, **{"core/b.py": b"B = 2\n"})
+    build_release(tmp_path / "rel-1.1.0", "1.2.0", newer)
+    res = _cycle(root, src, clock, Sim(root, clock), Script(clock, lambda t: sample("r1")))
+    assert res.status == "applied", "a later release is not refused: " + str(res.to_dict())
+    assert up.installed_version(root) == "1.2.0"
+
+
+def test_h1_a_quit_excused_lost_deploy_is_restored_then_retried_clean(tmp_path):
+    root, src = _setup(tmp_path)
+    clock = Clock()
+    res = _lost_cycle(root, src, clock, quit=True)
+    assert res.status == "recovered", res.to_dict()
+    assert (root / "core" / "a.py").read_bytes() == BASE_FILES["core/a.py"]
+    assert not (root / "core" / "b.py").exists()
+    assert uc.read_cycle(root)["bad_versions"] == {}, "excused by the quit"
+    res = _cycle(root, src, clock, Sim(root, clock), Script(clock, lambda t: sample("r1")))
+    assert res.status == "applied", res.to_dict()
+    for rel, data in NEW_FILES.items():
+        assert (root / rel).read_bytes() == data
+    assert up.installed_version(root) == "1.1.0"
+
+
+def test_h1_finish_salvages_a_lost_deploy_into_a_recovery_point(tmp_path):
+    root, _src, res = _staged_apply(tmp_path)
+    broot = root / "ops" / "backups" / f"20261026-120000-{res.request_id}"
+    (broot / "core").mkdir(parents=True)
+    (broot / "core" / "a.py").write_bytes(BASE_FILES["core/a.py"])
+    (root / "core" / "a.py").write_bytes(NEW_FILES["core/a.py"])
+    res.request_path.unlink()
+    fin = up.finish(root, now=lambda: time.time() + up.LOST_AFTER_S + 10)
+    assert fin.status == "lost"
+    rec = up.read_installed(root)
+    assert rec["version"] == "1.1.0" and rec["pre_hashes"] == {"core/a.py": _sha(BASE_FILES["core/a.py"])}
+    assert rec["previous"]["version"] == "1.0.0"
+
+
+def test_h1_a_persistent_unowned_refusal_raises_the_attention_notice(tmp_path):
+    root, src = _setup(tmp_path)
+    (root / "core" / "b.py").write_bytes(b"stray\n")   # exists, owned by no release
+    clock = Clock()
+    res = _cycle(root, src, clock, Sim(root, clock), Script(clock, lambda t: sample("r1")))
+    assert res.status == "refused" and res.code == "path"
+    assert "needs attention" in res.extra.get("notice", "")
+
+
+def test_h2_a_restart_check_recover_waits_out_champ_select(tmp_path, monkeypatch):
+    root, _src, clock = _owed(tmp_path)
+    monkeypatch.setattr(uc.up, "game_live", lambda *a, **k: None)
+    phase = ["ChampSelect"]
+    monkeypatch.setattr(uc, "fetch_api_state", lambda r: {"lcu": {"phase": phase[0]}})
+    failing = Services(clock, lambda n, t: {"restarted": False, "healthy": False, "pid": None})
+    res = _resume(root, clock, failing, restarts_sent=True, health_timeout_s=60, game_check=None)
+    assert res.status == "deferred" and res.exit_code == 3, res.to_dict()
+    assert "ChampSelect" in res.detail
+    assert up.installed_version(root) == "1.1.0", "main.py was not restarted mid champ select"
+    phase[0] = "Lobby"
+    res = _resume(root, clock, failing, restarts_sent=True, health_timeout_s=60, game_check=None)
+    assert res.status == "recovered", res.to_dict()
+
+
+def test_h2_an_unreadable_state_defers_the_recover_too(tmp_path, monkeypatch):
+    root, _src, clock = _owed(tmp_path)
+    monkeypatch.setattr(uc.up, "game_live", lambda *a, **k: None)
+    monkeypatch.setattr(uc, "fetch_api_state", lambda r: None)
+    failing = Services(clock, lambda n, t: {"restarted": False, "healthy": False, "pid": None})
+    res = _resume(root, clock, failing, restarts_sent=True, health_timeout_s=60, game_check=None)
+    assert res.status == "deferred"

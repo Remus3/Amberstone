@@ -1806,11 +1806,15 @@ def finish(root: Path, *, now: Callable[[], float] = time.time,
         if queued or now() - float(pending.get("requested_at") or 0) < LOST_AFTER_S:
             return FinishResult("pending", kind, version, restart, None, before)
         # Lost: the supervisor removed the request with no result - e.g. it
-        # killed the worker at 120 s, possibly mid-copy. Live may be mixed.
-        _write_state(root, dict(state, pending=None, last={
-            "kind": kind, "version": version, "status": "lost", "request_id": rid,
-            "at": utc_now()}))
-        return FinishResult("lost", kind, version, restart, None, before,
+        # killed the worker at 120 s, possibly mid-copy. Live may be mixed,
+        # so (PKG-6b round 5, H1) the same salvage as an interrupted deploy
+        # turns it into a recovery point that recover() restores in full.
+        salvaged: Dict[str, Any] = {"phase": "lost", "request_id": rid}
+        if kind == "apply":
+            salvaged.update(_salvage_apply(Path(root).resolve(), pending))
+        _write_state(root, dict(state, pending=None, last=dict(
+            salvaged, kind=kind, version=version, status="lost", at=utc_now())))
+        return FinishResult("lost", kind, version, restart, salvaged, before,
                             _num_or_none(pending.get("requested_at")))
     try:
         result = _read_json(result_path)
@@ -1893,37 +1897,47 @@ def _interrupted(root: Path, state: Dict[str, Any], pending: Dict[str, Any],
     _replace_with_retry(deploying, sdir / deploying.name)
     salvaged: Dict[str, Any] = {"phase": "interrupted", "request_id": rid}
     if kind == "apply":
-        files = pending.get("files") or {}
-        broot = _deploy_backup_dir(root, rid)
-        pre: Dict[str, str] = {}
-        torn: List[str] = []
-        for rel in sorted(pending.get("pre_hashes") or {}):
-            check_payload_path(rel)
-            src = _live_path(broot, rel) if broot is not None else None
-            if src is None or not src.is_file():
-                continue
-            live = _live_path(root, rel)
-            if live.is_file() and _hash_file(live)[0] == files.get(rel):
-                pre[rel] = _hash_file(src)[0]
-                continue
-            dst = sdir / f"{rid}-torn" / rel
-            dst.parent.mkdir(parents=True, exist_ok=True)
-            _replace_with_retry(src, dst)
-            torn.append(rel)
-        created = []
-        for rel in pending.get("created") or []:
-            check_payload_path(rel)
-            live = _live_path(root, rel)
-            if live.is_file() and _hash_file(live)[0] == files.get(rel):
-                created.append(rel)
-        _record_installed(root, version, pending.get("manifest_sha256"), files,
-                          request_id=rid, backup_root=str(broot) if pre else None,
-                          pre_hashes=pre, created=created)
-        salvaged.update(restore=sorted(pre), created=created, torn=torn)
+        salvaged.update(_salvage_apply(root, pending))
     _write_state(root, dict(state, pending=None, last=dict(
         salvaged, kind=kind, version=version, status="interrupted", at=utc_now())))
     return FinishResult("interrupted", kind, version, pending.get("restart"), salvaged,
                         pending.get("run_id_before"), _num_or_none(pending.get("requested_at")))
+
+
+def _salvage_apply(root: Path, pending: Dict[str, Any]) -> Dict[str, Any]:
+    """The recovery point of an apply that never finished (interrupted or
+    lost): see _interrupted. Returns what was salvaged."""
+    rid = str(pending.get("request_id"))
+    version = pending.get("version")
+    sdir = launcher_state_dir(root) / "stale_deploys"
+    sdir.mkdir(parents=True, exist_ok=True)
+    files = pending.get("files") or {}
+    broot = _deploy_backup_dir(root, rid)
+    pre: Dict[str, str] = {}
+    torn: List[str] = []
+    for rel in sorted(pending.get("pre_hashes") or {}):
+        check_payload_path(rel)
+        src = _live_path(broot, rel) if broot is not None else None
+        if src is None or not src.is_file():
+            continue
+        live = _live_path(root, rel)
+        if live.is_file() and _hash_file(live)[0] == files.get(rel):
+            pre[rel] = _hash_file(src)[0]
+            continue
+        dst = sdir / f"{rid}-torn" / rel
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        _replace_with_retry(src, dst)
+        torn.append(rel)
+    created = []
+    for rel in pending.get("created") or []:
+        check_payload_path(rel)
+        live = _live_path(root, rel)
+        if live.is_file() and _hash_file(live)[0] == files.get(rel):
+            created.append(rel)
+    _record_installed(root, version, pending.get("manifest_sha256"), files,
+                      request_id=rid, backup_root=str(broot) if pre else None,
+                      pre_hashes=pre, created=created)
+    return {"restore": sorted(pre), "created": created, "torn": torn}
 
 
 def _verified_backup(root: Path, rec: Dict[str, Any]) -> Path:

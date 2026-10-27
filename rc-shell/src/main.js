@@ -179,7 +179,9 @@ let relaunchArmed = false; // the operator asked to relaunch for it when idle.
 let hostPython = null; // the host's interpreter; the update cycle runs on it.
 let backendCycleChild = null; // the in-flight update cycle child, if any.
 let backendLastRunMs = null; // when the last cycle was due-stamped (bu.lastRunAfter).
-let backendOwed = bu.emptyOwed(); // restarts a landed backend update still owes.
+// Round 5: owed restarts, the R3 deferral and the R2/R7/M2 notice all live in
+// one tested controller (./backend_update createUpdateController).
+const backendCtl = bu.createUpdateController();
 let backendManualPending = false; // a menu check waiting for the idle gate.
 let backendInitialTimer = null;
 let backendGateTimer = null;
@@ -187,8 +189,6 @@ let backendResumeTimer = null; // first resume check after launch (F1).
 let backendLastResumeMs = null; // when the last `resume` child started.
 let backendResumeQueued = null; // B5: {restartsSent} waiting for the running child.
 let backendRespawnCheck = false; // B3: a tasklist game check before a respawn is running.
-let backendDeferral = { count: 0, notBeforeMs: 0 }; // R3: host-deferral backoff.
-let backendNotice = null; // R2 / R7: a plain-words state shown in the Shell menu.
 let lastUpdateIdle = false; // F5: the last /api/state was an idle moment (bu.idleForUpdate).
 let hostRespawning = false; // a respawn for a backend update is in flight.
 let shellQuitting = false; // before-quit ran: no respawn, no new cycle.
@@ -460,7 +460,7 @@ function buildMenu() {
             maybeRelaunchForUpdate();
           },
         },
-        ...(bu.menuNotice(backendNotice) ? [bu.menuNotice(backendNotice)] : []),
+        ...(bu.menuNotice(backendCtl.notice) ? [bu.menuNotice(backendCtl.notice)] : []),
         { type: "separator" },
         {
           label: "Reload",
@@ -2533,14 +2533,8 @@ function runBackendChild(plan, onResult) {
           onResult(result);
         }
         console.log("[rc-shell] " + bu.logLine(result) + " (" + plan.mode + ")");
-        // G4: owed restarts, R3 deferral backoff and the R2/R7/M2 notice all
-        // advance through one pure, tested function.
-        const next = bu.onCycleResult({ owed: backendOwed, deferral: backendDeferral, notice: backendNotice },
-          result, Date.now());
-        backendOwed = next.owed;
-        backendDeferral = next.deferral;
-        if (next.notice !== backendNotice) {
-          backendNotice = next.notice;
+        // Owed restarts, R3 deferral and the notice advance in the controller.
+        if (backendCtl.onResult(result, Date.now()).noticeChanged) {
           buildMenu();
         }
         if (result.actions.relaunchShell) {
@@ -2581,27 +2575,26 @@ function runBackendChild(plan, onResult) {
 // restarts are health-checked by `resume --restarts-sent` (F3), which
 // recovers when one does not come back.
 function applyOwedRestarts() {
-  const d = bu.owedDecision(bu.owedArgs({ owed: backendOwed, deferral: backendDeferral }, {
+  const d = backendCtl.decide({
     lastUpdateIdle,
     pollFresh,
     hostRunning: !!hostChild,
     hostEnabled,
     blocked: hostRespawning || shellQuitting || backendRespawnCheck,
     nowMs: Date.now(),
-  })); // G4 + R3: no spawn while a deferral backs off
+  }); // R3: no spawn while a deferral backs off
   if (d.act === "start-host") {
     // B1: the host is already down (a respawn that failed, then a recover put
     // the old code back): start it - nothing runs to interrupt - and check it.
-    backendOwed = Object.assign(bu.emptyOwed(), { relaunchShell: backendOwed.relaunchShell });
+    backendCtl.takeOwed();
     hostStopPromise = null;
     hostStopped = false;
     hostExitCode = null;
     startServiceHost();
     setTimeout(() => runBackendResume(true), 5000);
   } else if (d.act === "restart-services") {
-    const names = backendOwed.hostServices;
+    const names = backendCtl.takeOwed().hostServices;
     const line = bu.restartCommandLine(names, "shell-" + Date.now());
-    backendOwed = Object.assign(bu.emptyOwed(), { relaunchShell: backendOwed.relaunchShell });
     if (line && hostChild && hostChild.stdin && !hostChild.stdin.destroyed) {
       try {
         hostChild.stdin.write(line);
@@ -2620,10 +2613,10 @@ function applyOwedRestarts() {
       if (running || shellQuitting) {
         console.log("[rc-shell] host respawn waits: a game process is running");
         // R3: the gates disagree - back off instead of a tasklist per poll.
-        backendDeferral = bu.nextDeferral(backendDeferral.count, { code: "host_deferred" }, Date.now());
+        backendCtl.deferHost(Date.now());
         return; // still owed
       }
-      backendOwed = Object.assign(bu.emptyOwed(), { relaunchShell: backendOwed.relaunchShell });
+      backendCtl.takeOwed();
       respawnServiceHost("backend update", () => runBackendResume(true));
     });
   }
