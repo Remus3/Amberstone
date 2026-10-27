@@ -1287,8 +1287,21 @@ function _setStatsGrid(m, enriched) {
 // Derived from enriched.roster (per-player KDA/damage/gold/vision)
 // + enriched.teams (tower/dragon/baron/inhibitor kills). Each row is
 // a pair of bars normalized to the larger value so the visual diff
-// reads instantly. SR-only metrics (Dragons / Barons) suppressed on
-// other modes; conversely tower kills + vision show in all 5v5 modes.
+// reads instantly. Pit objectives (Dragons / Barons / Heralds) follow
+// the MAP (_LM_MAP_PIT_ROWS); tower kills + vision show in all 5v5 modes.
+//
+// RM-976: the pit rows used to follow isSr (= not ARAM, not Arena), so a
+// Nexus Blitz game (mapId 21, a Brawl mode) drew "Dragons 0 vs 0" and
+// "Barons 0 vs 0" for a map with neither pit. Measured over
+// data/rewind_history.db: the NEXUSBLITZ games carry 0 dragon and 0 baron
+// kills on every team row but real herald kills, so map 21 keeps Heralds.
+// Any other known map draws no pit row; a payload with no map_id keeps the
+// old isSr default.
+const _LM_MAP_PIT_ROWS = Object.freeze({
+  11: Object.freeze(["dragon", "baron", "herald"]),
+  21: Object.freeze(["herald"]),
+});
+
 function _setChart(enriched) {
   const wrap = document.getElementById("lm-chart-wrap");
   const list = document.getElementById("lm-chart-list");
@@ -1330,9 +1343,17 @@ function _setChart(enriched) {
   if (myTeam.tower_kills != null || enemyTeam.tower_kills != null) {
     rows.push({ label: "Towers", ally: myTeam.tower_kills || 0, enemy: enemyTeam.tower_kills || 0 });
   }
-  if (isSr) {
+  const mapId = Number(enriched.map_id) || 0;
+  const pits = mapId > 0
+    ? (_LM_MAP_PIT_ROWS[mapId] || [])
+    : (isSr ? _LM_MAP_PIT_ROWS[11] : []);
+  if (pits.includes("dragon")) {
     rows.push({ label: "Dragons", ally: myTeam.dragon_kills || 0, enemy: enemyTeam.dragon_kills || 0 });
+  }
+  if (pits.includes("baron")) {
     rows.push({ label: "Barons",  ally: myTeam.baron_kills  || 0, enemy: enemyTeam.baron_kills  || 0 });
+  }
+  if (pits.includes("herald")) {
     rows.push({ label: "Heralds", ally: myTeam.rift_herald_kills || 0, enemy: enemyTeam.rift_herald_kills || 0 });
   }
 

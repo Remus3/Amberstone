@@ -990,7 +990,18 @@ _WEB = _REPO_ROOT / "web"
 # reproduces the superseded 2223974c... value EXACTLY. That path is the
 # whole change. No glyph change: the added lines carry 0 non-ASCII bytes. If
 # another slice re-captures in parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "571244f2fbe08589aaac6a34085baef618bb89269537cddfe738e0cc0981e081"
+# superseded by the RM-976 re-capture below: "571244f2fbe08589aaac6a34085baef618bb89269537cddfe738e0cc0981e081"
+#
+# RE-CAPTURED 2026-10-27 at RM-976 (s144 uiux cycle 7). One change rides
+# it: web/js/panels/last_match.js _setChart picks its Dragons / Barons /
+# Heralds rows by enriched.map_id (_LM_MAP_PIT_ROWS: 11 all three, 21 Heralds
+# only, other known maps none, no map_id the old isSr default). Ordinary
+# case, no tokeniser change. ATTRIBUTED BY SUBSTITUTION: swapping exactly
+# web/js/panels/last_match.js back to its edcbdf0de blob reproduces the
+# superseded 571244f2... value EXACTLY. That path is the whole change. No
+# glyph change: the added lines carry 0 non-ASCII bytes. If another slice
+# re-captures in parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "a18ee00a25939e8999cd06af3939efae6613a2ebbd62753b946dd59b592126ae"
 
 
 def _web_sources() -> list[Path]:
