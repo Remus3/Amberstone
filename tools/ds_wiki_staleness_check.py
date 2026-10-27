@@ -87,6 +87,7 @@ from daemon_slayer_wiki_ability_extract import (  # noqa: E402
     _AP_WRAPPER_RE,
     _fetch,
     _MAX_TITLES_PER_BATCH,
+    _redirect_target,
     _TEMPLATE_PREFIX,
 )
 
@@ -753,6 +754,7 @@ def compare_champion(
     skipped_pages: Optional[list[dict[str, Any]]] = None,
     skipped_labels: Optional[list[dict[str, Any]]] = None,
     stems: Optional[list[str]] = None,
+    redirected: Optional[dict[str, str]] = None,
 ) -> list[dict[str, Any]]:
     """Compare every stored ability of one champion, matched by ability NAME.
 
@@ -760,6 +762,12 @@ def compare_champion(
     leaves the stored ability with no page and nothing to compare. Pass
     ``skipped_pages`` to have that recorded instead of silently dropping the
     ability - and, when it is the champion's only one, the champion (RM-216).
+
+    A page that is still a ``#REDIRECT`` (one ``run()`` could not follow) is a
+    page skip, never a label skip: it carries no labels because it is a rename,
+    not a relabel (RM-955). ``redirected`` maps an ability name to the
+    redirect key its page was READ THROUGH; every row it yields names that key
+    in ``wiki_redirect``, as an alias row names ``wiki_label``.
     """
     findings: list[dict[str, Any]] = []
     for slot, forms in (meraki_champ or {}).items():
@@ -782,9 +790,28 @@ def compare_champion(
                     }
                 )
             continue
-        findings.extend(
-            compare_ability(champion, slot, entry, page, skipped_labels=skipped_labels)
-        )
+        target = _redirect_target(page)
+        if target is not None:
+            if skipped_pages is not None:
+                skipped_pages.append(
+                    {
+                        "champion": champion,
+                        "ability": slot,
+                        "name": name,
+                        "reason": "live wiki page is a redirect that was not followed",
+                        "wiki_redirect": target,
+                    }
+                )
+            continue
+        via = (redirected or {}).get(name)
+        labels: list[dict[str, Any]] = []
+        rows = compare_ability(champion, slot, entry, page, skipped_labels=labels)
+        if via:
+            for row in rows + labels:
+                row["wiki_redirect"] = via
+        findings.extend(rows)
+        if skipped_labels is not None:
+            skipped_labels.extend(labels)
     return findings
 
 
@@ -848,6 +875,25 @@ def fetch_pages(titles: list[str]) -> dict[str, str]:
             if content:
                 out[page.get("title", "")] = content
     return out
+
+
+def follow_redirects(pages: dict[str, str]) -> dict[str, str]:
+    """Fetch the target of every ``#REDIRECT`` page in ``pages``, ONE hop only.
+
+    Returns ``{redirect title: target title}`` and adds the fetched targets to
+    ``pages`` in place; a target already present costs no request. A target
+    that is itself a redirect is not chased, so ``compare_champion`` records it
+    as a page skip rather than this loop walking an unbounded chain (RM-955).
+    """
+    hops: dict[str, str] = {}
+    for title, text in pages.items():
+        key = _redirect_target(text)
+        if key is not None:
+            hops[title] = _TEMPLATE_PREFIX + key
+    missing = sorted({t for t in hops.values() if t not in pages})
+    if missing:
+        pages.update(fetch_pages(missing))
+    return hops
 
 
 # --------------------------------------------------------------------------- driver
@@ -924,22 +970,33 @@ def run(patch: str, champions: Optional[set[str]] = None) -> dict[str, Any]:
     for champ in targets:
         titles.extend(_titles_for(champ, data[champ], names))
     pages = fetch_pages(titles) if titles else {}
+    hops = follow_redirects(pages)
 
     findings: list[dict[str, Any]] = []
     skipped_pages: list[dict[str, Any]] = []
     skipped_labels: list[dict[str, Any]] = []
     for champ in targets:
-        by_name = {}
+        by_name: dict[str, str] = {}
+        redirected: dict[str, str] = {}
         stems = wiki_title_stems(champ, names)
         for stem in stems:
             prefix = _TEMPLATE_PREFIX + stem + "/"
             for title, text in pages.items():
-                if title.startswith(prefix):
-                    by_name.setdefault(title[len(prefix):], text)
+                if not title.startswith(prefix):
+                    continue
+                name = title[len(prefix):]
+                if name in by_name:
+                    continue
+                hop = hops.get(title)
+                if hop in pages:
+                    text = pages[hop]
+                    redirected[name] = hop[len(_TEMPLATE_PREFIX):]
+                by_name[name] = text
         findings.extend(
             compare_champion(
                 champ, data[champ], by_name, stems=stems,
                 skipped_pages=skipped_pages, skipped_labels=skipped_labels,
+                redirected=redirected,
             )
         )
 
@@ -959,7 +1016,10 @@ def run(patch: str, champions: Optional[set[str]] = None) -> dict[str, Any]:
             "so this UNDER-reports. Absence of a champion is not proof of currency "
             "- if it was skipped rather than compared it is named in "
             "skipped_champions, so a shrinking stale set can be read as "
-            "convergence or as lost coverage without a live wiki fetch (RM-216)."
+            "convergence or as lost coverage without a live wiki fetch (RM-216). "
+            "A wiki #REDIRECT page is followed one hop; a row read through one "
+            "names it in wiki_redirect, and one not followed is a skipped_pages "
+            "row (RM-955)."
         ),
         "_checked_champions": len(targets),
         "_pages_fetched": len(pages),
