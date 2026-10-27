@@ -35,7 +35,9 @@
 # The listed tasks are exactly section 5's. Dev and fleet tasks are not the app
 # and are never named here; the disabled bare legacy task is the operator's
 # separate call. Unregistering a task does not stop a process it already
-# started: stage 2 restarts Windows (the SYSTEM DS survives a sign-out).
+# started: stage 2 restarts Windows, because a sign-out leaves running both
+# the boot-trigger SYSTEM task RC-DaemonSlayer and the S4U tasks RC-LCUAgent,
+# RC-LiveClientRelay and RC-Phase3-Supervisor (S4U runs outside the session).
 # This script never stops, kills or starts a process and never starts a task.
 #
 # Exit codes: 0 done (or plan printed), 1 a step failed or a backup was
