@@ -27,6 +27,12 @@ import sys
 import urllib.request
 from pathlib import Path
 
+REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from lib.game_data.lua_text import champion_blocks  # noqa: E402
+
 WIKI_MODULE = (
     "https://wiki.leagueoflegends.com/en-us/Module:ChampionData/data?action=raw"
 )
@@ -35,7 +41,6 @@ ENGINE_DEFAULT_CAST_TIME = 0.25
 WINDUP_BASE = 0.300
 CHANGE_EPS = 1e-4
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
 DS_DATA = REPO_ROOT / "data" / "daemon_slayer"
 
 
@@ -51,22 +56,23 @@ def _num(block: str, key: str) -> float | None:
 
 
 def parse_module(text: str) -> dict[str, dict[str, float | None]]:
-    """Window-parse the Lua table keyed by each block's ["apiname"]."""
-    anchors = [m.start() for m in re.finditer(r'\["apiname"\]\s*=', text)]
-    anchors.append(len(text))
-    out: dict[str, dict[str, float | None]] = {}
-    for i in range(len(anchors) - 1):
-        block = text[anchors[i] : anchors[i + 1]]
-        name_m = re.match(r'\["apiname"\]\s*=\s*"([^"]+)"', block)
-        if not name_m:
-            continue
-        out[name_m.group(1)] = {
+    """Parse the Lua table into {apiname: windup fields}, one per champion block.
+
+    RM-787 (the RM-600 rule, ``lib.game_data.lua_text.champion_blocks``): Lua
+    comments are stripped first, so a commented scalar is never read as live, and
+    when two blocks share an apiname (Kled 240 + "Kled & Skaarl" 240.1) the
+    integer-id record wins in either order. Each champion's fields are read from
+    its own block only.
+    """
+    return {
+        apiname: {
             "attack_cast_time": _num(block, "attack_cast_time"),
             "attack_delay_offset": _num(block, "attack_delay_offset"),
             "as_base": _num(block, "as_base"),
             "as_ratio": _num(block, "as_ratio"),
         }
-    return out
+        for apiname, block in champion_blocks(text).items()
+    }
 
 
 def _resolve_patch(patch: str | None) -> str:

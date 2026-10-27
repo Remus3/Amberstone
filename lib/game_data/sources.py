@@ -23,6 +23,8 @@ import re
 from dataclasses import dataclass
 from typing import Any, Callable, Mapping
 
+from lib.game_data.lua_text import champion_blocks
+
 DDRAGON_VERSIONS_URL = "https://ddragon.leagueoflegends.com/api/versions.json"
 _DDRAGON_DATA = "https://ddragon.leagueoflegends.com/cdn/{v}/data/en_US/{name}.json"
 _MERAKI = "https://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/{name}.json"
@@ -151,8 +153,6 @@ _WIKI_CHAMP = {
     "attack_speed": "as_base", "as_per_level": "as_lvl", "as_ratio": "as_ratio",
     "move_speed": "ms", "attack_range": "range",
 }
-_ENTRY = re.compile(r'^  \["[^"]+"\] = \{', re.M)
-_APINAME = re.compile(r'\["apiname"\]\s*=\s*"([^"]+)"')
 _SCALAR = re.compile(r'^\s*\["([a-z0-9_]+)"\]\s*=\s*(-?\d+(?:\.\d+)?)\s*,?\s*$', re.M)
 
 
@@ -176,12 +176,17 @@ def _wiki_parse(bodies: Mapping[str, bytes]) -> dict:
         raise SourceParseError("wiki ChampionData: not UTF-8") from None
     if "return {" not in text:
         raise SourceParseError("wiki ChampionData: not a Lua data table")
+    # RM-787 (the RM-600 rule): comments stripped first, so a trailing
+    # ``--note`` no longer hides a scalar from the end-anchored _SCALAR (Gnar's
+    # range), and Kled's primary record (id 240) wins over "Kled & Skaarl".
+    try:
+        entries = champion_blocks(text)
+    except ValueError:
+        raise SourceParseError("wiki ChampionData: unbalanced braces") from None
     champions = {}
-    for m in _ENTRY.finditer(text):
-        entry = _block(text, text.index("{", m.start()))
-        api = _APINAME.search(entry)
+    for apiname, entry in entries.items():
         si = entry.find('["stats"] = {')
-        if api is None or si < 0:
+        if si < 0:
             continue
         stats_blk = _block(entry, entry.index("{", si))
         # Only depth-1 scalars of the stats block: drop nested mode tables.
@@ -192,7 +197,7 @@ def _wiki_parse(bodies: Mapping[str, bytes]) -> dict:
             if k in scal:
                 v = scal[k]
                 row[f] = int(v) if v.is_integer() else v
-        champions[api.group(1)] = row
+        champions[apiname] = row
     if not champions:
         raise SourceParseError("wiki ChampionData: no champion entries parsed")
     return {"champions": champions, "items": {}, "version": None}
