@@ -28,6 +28,7 @@ import re
 from pathlib import Path
 
 from coach_integration import archetype_dispatch
+from tests._repo_walk import tracked_relpaths
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 _DOC = _REPO_ROOT / "docs" / "DAEMON_SLAYER.md"
@@ -142,7 +143,14 @@ def test_table_names_every_coach_and_no_retired_module():
 def test_changelog_section_cites_no_retired_share_mirror():
     body = _section(_CHANGELOG)
     assert "Share/CHANGELOG.md" not in body
-    assert not (_REPO_ROOT / "Share").exists()
+    # The mirror's removal is a fact about the git INDEX, not the disk: a
+    # checkout made before 2026-09-07 keeps an ignored, untracked Share/ folder
+    # (build caches, logs), so a filesystem check is red there and green in a
+    # fresh worktree for the same tree (s144 L3 merger).
+    tracked = tracked_relpaths()
+    assert tracked is not None, "git index unreadable; the check would pass empty"
+    assert "docs/DAEMON_SLAYER.md" in tracked, "index enumeration lost its anchor"
+    assert not [p for p in tracked if p.startswith("Share/")]
 
 
 def test_every_cited_path_in_the_three_sections_exists():
