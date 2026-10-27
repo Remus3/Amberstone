@@ -20,47 +20,83 @@ from dashboard.builders import (
     _build_loadouts_all,
     _build_session_summary,
 )
-from dashboard._dispatch import equals, prefix
+from dashboard._dispatch import equals
 
 log = logging.getLogger("rc.web_dashboard")
 
 # Raw exception text can leak file paths - log it, never render it
 # (same policy as dashboard/_handler.do_POST; audit cycle 8 slice E).
 _GENERIC_ERR = "internal error - see logs"
+_ERR_BODY = json.dumps({"error": _GENERIC_ERR}).encode("utf-8")
+
+# The ?scope= values dashboard/builders.py _build_history honours. That
+# builder has no else branch, so any other string used to mean "the whole
+# DB" while the response echoed the bogus scope as if it had been applied
+# (s144 true-audit F1). Absent / empty still means the 14d default.
+_HISTORY_SCOPES = frozenset({"14d", "season", "prior_season", "all"})
+_DEFAULT_SCOPE = "14d"
+_BAD_SCOPE_BODY = json.dumps({"error": "bad_scope"}).encode("utf-8")
+
+
+def _encode(obj) -> bytes:
+    """STRICT JSON. allow_nan=False turns a NaN / Infinity in a builder
+    result into a ValueError (a logged 500) instead of a bare NaN token the
+    browser's JSON.parse rejects on a 200 (s144 true-audit F3)."""
+    return json.dumps(obj, allow_nan=False).encode("utf-8")
+
+
+def _reply(h, code: int, body: bytes, route: str) -> None:
+    """The ONE send per request. An OSError here means the client went
+    away mid-response (the header flush hit a reset socket); answering it
+    again would write a second status line onto the same dead connection,
+    so it is logged and dropped (s144 true-audit F4)."""
+    try:
+        h._send(code, body, "application/json")
+    except OSError as exc:
+        log.debug("%s: client gone before %d was sent: %s", route, code, exc)
+
+
+def _serve_built(h, route: str, build) -> None:
+    """Build, encode, then send - the send stays OUTSIDE the try so a
+    failed 200 can never fall into the 500 branch."""
+    try:
+        body = _encode(build())
+    except Exception as exc:  # noqa: BLE001 - route boundary: log, never render
+        log.warning("%s: %s: %s", route, type(exc).__name__, exc)
+        _reply(h, 500, _ERR_BODY, route)
+        return
+    _reply(h, 200, body, route)
+
+
+def _query_first(path: str, key: str) -> str:
+    qs = parse_qs(urlparse(path).query or "")
+    return (qs.get(key) or [""])[0]
 
 
 def _serve_session_summary(h) -> None:
-    try:
-        h._send(200, json.dumps(_build_session_summary()).encode(),
-                "application/json")
-    except Exception as exc:  # noqa: BLE001
-        log.warning("api/session/summary: %s", exc)
-        h._send(500, json.dumps({"error": _GENERIC_ERR}).encode(),
-                "application/json")
+    _serve_built(h, "api/session/summary", _build_session_summary)
 
 
 def _serve_history(h) -> None:
+    route = "api/history"
     try:
-        qs = parse_qs(urlparse(h.path).query)
-        scope = (qs.get("scope") or ["14d"])[0]
-        h._send(200, json.dumps(_build_history(scope)).encode(),
-                "application/json")
-    except Exception as exc:  # noqa: BLE001
-        log.warning("api/history: %s", exc)
-        h._send(500, json.dumps({"error": _GENERIC_ERR}).encode(),
-                "application/json")
+        scope = _query_first(h.path, "scope").strip().lower() or _DEFAULT_SCOPE
+    except Exception as exc:  # noqa: BLE001 - route boundary: log, never render
+        log.warning("%s: %s: %s", route, type(exc).__name__, exc)
+        _reply(h, 500, _ERR_BODY, route)
+        return
+    if scope not in _HISTORY_SCOPES:
+        _reply(h, 400, _BAD_SCOPE_BODY, route)
+        return
+    _serve_built(h, route, lambda: _build_history(scope))
 
 
 def _serve_loadouts_all(h) -> None:
-    try:
-        qs = parse_qs(urlparse(h.path).query)
-        mode = (qs.get("mode") or ["aram"])[0]
-        h._send(200, json.dumps(_build_loadouts_all(mode)).encode(),
-                "application/json")
-    except Exception as exc:  # noqa: BLE001
-        log.warning("api/loadouts/all: %s", exc)
-        h._send(500, json.dumps({"error": _GENERIC_ERR}).encode(),
-                "application/json")
+    def _build():
+        # loadout_resolver._normalize_mode maps any string onto
+        # aram / arena / tft / sr, so ?mode= needs no whitelist here.
+        return _build_loadouts_all(_query_first(h.path, "mode") or "aram")
+    _serve_built(h, "api/loadouts/all", _build)
 
 
 # HOME mode tabs (BE half): the ?mode= values /api/home/summary honors.
@@ -104,35 +140,41 @@ def _serve_home_summary(h) -> None:
     # Pulls from data/match_history.db (the freshest source -
     # rewind_history.db is stale). Optional ?mode=SR|ARAM|ARENA scopes
     # the stats sections to one mode (home mode tabs, HOME QA round 1).
+    route = "api/home/summary"
     try:
         mode = _parse_home_mode(h.path)
         now = time.time()
         with _CACHE_LOCK:
             cached = _CACHE.get(mode)
-            if cached and (now - cached[0]) < _CACHE_TTL_S:
-                h._send(200, cached[1], "application/json")
-                return
-        body = json.dumps(_build_home_summary(mode)).encode("utf-8")
-        # Stored only on success, so one transient DB error cannot pin a
-        # failure for the whole TTL window.
-        with _CACHE_LOCK:
-            _CACHE[mode] = (now, body)
-        h._send(200, body, "application/json")
-    except Exception as exc:  # noqa: BLE001
-        log.warning("api/home/summary: %s", exc)
-        h._send(500, json.dumps({"error": _GENERIC_ERR}).encode(),
-                "application/json")
+        if cached and (now - cached[0]) < _CACHE_TTL_S:
+            body = cached[1]
+        else:
+            body = _encode(_build_home_summary(mode))
+            # Stored only on success (a non-finite payload raises in
+            # _encode first), so one transient DB error cannot pin a
+            # failure for the whole TTL window.
+            with _CACHE_LOCK:
+                _CACHE[mode] = (now, body)
+    except Exception as exc:  # noqa: BLE001 - route boundary: log, never render
+        log.warning("%s: %s: %s", route, type(exc).__name__, exc)
+        _reply(h, 500, _ERR_BODY, route)
+        return
+    # Sent with the lock RELEASED: holding it across the socket write let
+    # one slow reader serialise every other tab's poll (s144 true-audit F5).
+    _reply(h, 200, body, route)
 
 
 # -- route table ------------------------------------------------------
 
-# /api/history and /api/loadouts/all use prefix() because the legacy
-# do_GET used `startswith`. /api/session/summary and /api/home/summary
-# are exact matches.
+# All four are exact matches (path or path?query). /api/history and
+# /api/loadouts/all used prefix() because the legacy do_GET used
+# `startswith`, which answered 200 with real data for non-routes such as
+# /api/historyX and would shadow any later route on that stem (s144
+# true-audit F2). The only callers send the bare path plus a query.
 GET_ROUTES = [
     (equals("/api/session/summary"),  _serve_session_summary),
-    (prefix("/api/history"),          _serve_history),
-    (prefix("/api/loadouts/all"),     _serve_loadouts_all),
+    (equals("/api/history"),          _serve_history),
+    (equals("/api/loadouts/all"),     _serve_loadouts_all),
     (equals("/api/home/summary"),     _serve_home_summary),
 ]
 
