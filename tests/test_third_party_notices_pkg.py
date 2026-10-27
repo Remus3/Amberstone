@@ -92,17 +92,25 @@ def test_rc_shell_lock_resolves_only_from_the_public_registry_with_integrity() -
 
 
 def test_a_package_json_bump_without_a_lock_regen_is_drift() -> None:
-    """Dependabot PR #22 shape (electron 44.9.1 -> 45.0.0 in package.json only)."""
+    """Dependabot PR #22 shape (an electron major bump in package.json only).
+
+    The target is the NEXT major of the current pin, computed, so the case
+    stays a real bump whatever electron the shell is on (a fixed 45.0.0
+    target went vacuous the day the pin itself reached 45.0.0, DEP-25).
+    """
     pkg = json.loads(PACKAGE_JSON.read_text(encoding="utf-8"))
     lock = json.loads(LOCK.read_text(encoding="utf-8"))
+    current = pkg["devDependencies"]["electron"]
+    target = f"{int(current.split('.')[0]) + 1}.0.0"
+    assert target != current
     bumped = json.loads(json.dumps(pkg))
-    bumped["devDependencies"]["electron"] = "45.0.0"
+    bumped["devDependencies"]["electron"] = target
     drift = tpn.lock_drift(bumped, lock)
     assert any("electron" in d and "devDependencies" in d for d in drift), drift
     # ...and the regenerated lock shape (root entry + resolved entry) is in sync.
     regen = json.loads(json.dumps(lock))
-    regen["packages"][""]["devDependencies"]["electron"] = "45.0.0"
-    regen["packages"]["node_modules/electron"]["version"] = "45.0.0"
+    regen["packages"][""]["devDependencies"]["electron"] = target
+    regen["packages"]["node_modules/electron"]["version"] = target
     assert tpn.lock_drift(bumped, regen) == []
 
 

@@ -103,14 +103,16 @@ updates:
     groups:
       npm:
         patterns: ["*"]
-    # Held bump. Not the pip range rule: the hold covers EVERY electron above
-    # 44.5.1, so a range would reopen a PR for each weekly 44.x patch.
+    # Held bump. Not the pip range rule: the hold covers EVERY electron minor
+    # and patch above the current pin, so a range would reopen a PR for each
+    # weekly patch.
     ignore:
-      # PR #12 (44.7.0), PR #14 (44.7.1) and PR #16 (44.7.2), all declined:
-      # rc-shell stays on electron 44.5.1 (the attended E1 shell check,
-      # LEDGER 1697) until the next attended E1 check on a newer one. Minor
-      # and patch updates are ignored; a new major still opens a PR. Security
-      # alerts are not governed by this file. Drop the entry when the hold
-      # lifts.
+      # PR #12 (44.7.0), PR #14 (44.7.1) and PR #16 (44.7.2), all declined
+      # while rc-shell stayed on 44.5.1 (the attended E1 shell check, LEDGER
+      # 1697). 44.9.1 landed by MAIN FIX (RM-908); the 45.0.0 major landed
+      # from PR #25 (DEP-25, s142) with the attended E1 check on 45 still
+      # owed. Minor and patch updates are ignored; a new major still opens a
+      # PR. Security alerts are not governed by this file. Drop the entry
+      # when the hold lifts.
       - dependency-name: "electron"
         update-types: ["version-update:semver-minor", "version-update:semver-patch"]
