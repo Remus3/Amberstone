@@ -567,10 +567,19 @@ test("round 5: the update controller owns the deferral + owed wiring main.js use
   // ... and honoured until it runs out (a zero deferral fails here).
   assert.strictEqual(ctl.decide(Object.assign({}, live, { nowMs: 1000 + bu.deferralBackoffMs(1) })).act,
     "restart-services");
-  // a tasklist disagreement backs off the same way
-  ctl.deferHost(5000);
-  assert.strictEqual(ctl.decide(Object.assign({}, live, { nowMs: 5001 })).reason, "backoff");
-  assert.strictEqual(ctl.decide(Object.assign({}, live, { nowMs: 5000 + bu.deferralBackoffMs(2) })).act,
+  // a tasklist disagreement backs off the same way. PKG-6c J3: deferHost is
+  // called only AFTER the result's deferral ran out, so the backoff seen here
+  // can come from deferHost alone (a no-op deferHost fails at t1 + 1), and it
+  // is the SECOND step of the doubling (a deferHost that reset the count
+  // fails at t1 + deferralBackoffMs(2) - 1).
+  const t1 = 1000 + bu.deferralBackoffMs(1) + 5000;
+  assert.strictEqual(ctl.decide(Object.assign({}, live, { nowMs: t1 })).act, "restart-services",
+    "the result's deferral has run out before deferHost");
+  ctl.deferHost(t1);
+  assert.strictEqual(ctl.decide(Object.assign({}, live, { nowMs: t1 + 1 })).reason, "backoff");
+  assert.strictEqual(ctl.decide(Object.assign({}, live, { nowMs: t1 + bu.deferralBackoffMs(2) - 1 })).reason,
+    "backoff", "count 2: the backoff doubled");
+  assert.strictEqual(ctl.decide(Object.assign({}, live, { nowMs: t1 + bu.deferralBackoffMs(2) })).act,
     "restart-services");
   // taking the owed set clears it but keeps a pending shell relaunch
   ctl.onResult(bu.parseCycleOutput(out({ ok: true, status: "applied",
