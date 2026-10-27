@@ -572,8 +572,10 @@ def record_host_stop(runtime_dir: Path, reason: str) -> None:
     try:
         try:
             doc = json.loads(path.read_text(encoding="utf-8"))
-            stops = [x for x in doc.get("stops") or [] if isinstance(x, dict)]
-        except (OSError, ValueError, AttributeError):
+            raw = doc.get("stops") if isinstance(doc, dict) else None
+            # L2: anything malformed reads as empty and is rewritten.
+            stops = [x for x in raw if isinstance(x, dict)] if isinstance(raw, list) else []
+        except (OSError, ValueError):
             stops = []
         stops.append({"at": time.time(), "reason": str(reason)[:80]})
         atomic_write_json(path, {"schema": 1, "stops": stops[-HOST_STOP_HISTORY:]})

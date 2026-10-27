@@ -252,6 +252,8 @@ function recordsFrom(cycleText, stateText) {
     // B4: the owed restarts were sent and their check ran (it may have
     // deferred); the check is retried on the interval while idle.
     owedSent: isObj(c.owed) && typeof c.owed.sent_at === "string" && c.owed.sent_at !== "",
+    // M2: a persisted "still runs the old code" notice in the cycle record.
+    notice: isObj(c.notice),
     // R7: a stuck recover's next try (the cycle's retry_after, epoch s).
     retryAfterMs: typeof c.retry_after === "number" && Number.isFinite(c.retry_after) ? c.retry_after * 1000 : null,
     pending: isObj(st.pending),
@@ -294,6 +296,9 @@ function resumeDue(opts) {
         : { run: false, reason: "not-due", restartsSent: true };
     }
     return { run: false, reason: "owed-known", restartsSent: false };
+  }
+  if (r.notice === true && first) {
+    return { run: true, reason: "notice-at-launch", restartsSent: false }; // M2
   }
   return { run: false, reason: "nothing-recorded", restartsSent: false };
 }
@@ -400,6 +405,8 @@ function parseCycleOutput(stdout, exitCode) {
     detail: ascii(doc.detail, 200),
     // Restarts: a verified deploy, restarts still owed, or a recover.
     actions: applied ? normActions(doc.restart) : emptyOwed(),
+    // M2: the cycle's own plain-words notice (who, and how it restarts).
+    notice: typeof doc.notice === "string" && doc.notice ? ascii(doc.notice, 240) : null,
     retryLater: deferred || status === "pending" || status === "interrupted" || status === "busy",
   };
 }
@@ -491,14 +498,60 @@ function takeQueued(queued, inFlight) {
 // raw error); null otherwise.
 function friendlyNotice(result) {
   const r = result && typeof result === "object" ? result : {};
+  if (typeof r.notice === "string" && r.notice) {
+    return r.notice; // M2: from the cycle record, so it survives a relaunch
+  }
   if (r.status === "applied-unrestarted") {
     return "Backend update" + (r.version ? " " + r.version : "") +
-      " installed - restart Amberstone to finish it";
+      " installed, but a service outside Amberstone still runs the old code - reboot the PC to finish it";
   }
   if (r.code === "recovery_attention") {
     return "Backend update recovery needs attention - see ops/runtime/logs/update_cycle.log";
   }
   return null;
+}
+
+// M2 / L4: the notice to show after a result - a new one wins; an applied,
+// a successful recover or an idle resume with no notice left clears it;
+// anything else keeps the current one.
+function nextNotice(current, result) {
+  const n = friendlyNotice(result);
+  if (n) {
+    return n;
+  }
+  const r = result && typeof result === "object" ? result : {};
+  return ["applied", "recovered", "idle", "up-to-date", "noop"].includes(r.status) ? null : current;
+}
+
+// G4: the shell's backend-update state, advanced by each cycle result.
+function initialUpdateState() {
+  return { owed: emptyOwed(), deferral: { count: 0, notBeforeMs: 0 }, notice: null };
+}
+
+function onCycleResult(state, result, nowMs) {
+  const st = state && typeof state === "object" ? state : initialUpdateState();
+  const r = result && typeof result === "object" ? result : {};
+  return {
+    owed: mergeOwed(st.owed, r.actions),
+    deferral: nextDeferral(st.deferral ? st.deferral.count : 0, r, nowMs), // R3
+    notice: nextNotice(st.notice, r), // R2 / R7 / M2 / L4
+  };
+}
+
+// G4: owedDecision's inputs from the state and the live signals.
+function owedArgs(state, live) {
+  const st = state && typeof state === "object" ? state : initialUpdateState();
+  const l = live && typeof live === "object" ? live : {};
+  return {
+    owed: st.owed,
+    inGame: l.lastUpdateIdle !== true,
+    stateFresh: l.pollFresh === true,
+    hostRunning: l.hostRunning === true,
+    hostEnabled: l.hostEnabled === true,
+    blocked: l.blocked === true,
+    nowMs: l.nowMs,
+    notBeforeMs: st.deferral ? st.deferral.notBeforeMs : 0, // R3: no spawn while backing off
+  };
 }
 
 function menuNotice(notice) {
@@ -576,6 +629,10 @@ module.exports = {
   queueResume,
   takeQueued,
   friendlyNotice,
+  nextNotice,
+  initialUpdateState,
+  onCycleResult,
+  owedArgs,
   menuNotice,
   stopGraceExpired,
   restartCommandLine,

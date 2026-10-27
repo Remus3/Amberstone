@@ -415,8 +415,11 @@ The shell runs ONE windowless child per cycle and acts on its one JSON line; not
   restoring the backup itself, when no supervisor runs; deferred while a game is live). A service
   the host does not own (outcome refused:not-in-job / open-failed, e.g. DS from the
   RC-DaemonSlayer task) is skipped, never a failure; the result is then `applied-unrestarted` and
-  the Shell menu says to restart Amberstone. A deploy that failed while the host was stopping
-  (`ops/runtime/launcher/host_stops.json`) is retried, never marked bad. The host itself defers restart commands while a game runs
+  the Shell menu names the service and says to restart it (or reboot); the notice is kept in
+  `update_cycle.json` until that service is seen on a new process. `not-running` /
+  `not-configured` raise no notice. A deploy that failed while the host was stopping
+  (`ops/runtime/launcher/host_stops.json`) inside the deploy's own life (request + TTL + worker
+  kill) is retried, never marked bad - at most twice per release. The host itself defers restart commands while a game runs
   (`restart_game_guard` in `ops/launcher/services.json`), and the shell checks `tasklist` before
   a host respawn.
 - Baseline: every bundle ships `backend-manifest.json` (`tools/build_portable.py`; version from

@@ -310,9 +310,9 @@ test("F1 recordsFrom: what an earlier cycle left on disk", () => {
   const cyc = JSON.stringify({ verify: { version: "1.1.0" }, owed: null, phase: "verifying" });
   const st = JSON.stringify({ pending: null, recovering: { version: "1.1.0" } });
   assert.deepStrictEqual(bu.recordsFrom(cyc, st),
-    { verify: true, owed: false, owedSent: false, retryAfterMs: null, pending: false, recovering: true, phase: "verifying" });
+    { verify: true, owed: false, owedSent: false, notice: false, retryAfterMs: null, pending: false, recovering: true, phase: "verifying" });
   assert.deepStrictEqual(bu.recordsFrom("garbage", null),
-    { verify: false, owed: false, owedSent: false, retryAfterMs: null, pending: false, recovering: false, phase: null });
+    { verify: false, owed: false, owedSent: false, notice: false, retryAfterMs: null, pending: false, recovering: false, phase: null });
 });
 
 test("F1 resumeDue: a verify / pending / recovering record resumes on its interval, any state", () => {
@@ -360,7 +360,8 @@ test("main.js F1/F2/F5/F6 wiring", () => {
     true, "a verify record resumes while busy / down");
   assert.ok(MAIN_SRC.includes("lastUpdateIdle = bu.idleForUpdate(parsed)"), "F5 gate from /api/state");
   assert.ok(fnBody("maybeRunBackendCycle").includes("!lastUpdateIdle"), "cycles use the strict gate");
-  assert.ok(fnBody("applyOwedRestarts").includes("!lastUpdateIdle"), "restarts use the strict gate");
+  assert.ok(fnBody("applyOwedRestarts").includes("lastUpdateIdle") &&
+    fnBody("applyOwedRestarts").includes("bu.owedArgs("), "restarts use the strict gate (via owedArgs, G4)");
   assert.ok(fnBody("applyOwedRestarts").includes("runBackendResume(true)"), "restarts are health-checked (F3)");
   assert.ok(fnBody("stopServiceHost").includes("bu.stopGraceExpired("),
     "quit grace stretches under a deploy, re-evaluated while waiting (F2, R6)");
@@ -474,11 +475,14 @@ test("B5/R8 queueResume / takeQueued: a resume asked for during a child is kept,
 });
 
 test("R2/R7 friendlyNotice: plain words for the states the operator must act on, never raw errors", () => {
+  const said = "Backend update 1.2.0 installed, but Daemon Slayer still runs the old code: it runs outside " +
+    "Amberstone (a scheduled task) - restart it or reboot the PC to finish the update";
   const unrestarted = bu.parseCycleOutput(out({ ok: true, status: "applied-unrestarted", version: "1.2.0",
-    detail: "installed; restart Amberstone to finish the update - not ours to restart: ds (refused:open-failed)" }), 0);
+    detail: "installed; not restarted (not ours): ds (refused:open-failed)", notice: said }), 0);
   assert.strictEqual(unrestarted.status, "applied-unrestarted");
   assert.strictEqual(unrestarted.ok, true);
-  assert.strictEqual(bu.friendlyNotice(unrestarted), "Backend update 1.2.0 installed - restart Amberstone to finish it");
+  assert.strictEqual(bu.friendlyNotice(unrestarted), said, "M2: who, and how it really restarts");
+  assert.ok(!/restart Amberstone/.test(bu.friendlyNotice(unrestarted)));
   const attention = bu.parseCycleOutput(out({ ok: false, status: "failed", code: "recovery_attention",
     detail: "completing the recover failed (OSError); next try in 240 s" }), 1);
   assert.strictEqual(bu.friendlyNotice(attention),
@@ -505,4 +509,51 @@ test("R6 stopGraceExpired: re-evaluated while waiting - a deploy that appears ex
   assert.strictEqual(bu.stopGraceExpired({ elapsedMs: 25000, baseMs: base, deployInFlight: false }), true);
   assert.strictEqual(bu.stopGraceExpired({ elapsedMs: 26000, baseMs: base, deployInFlight: true }), false);
   assert.strictEqual(bu.stopGraceExpired({ elapsedMs: bu.DEPLOY_STOP_GRACE_MS, baseMs: base, deployInFlight: true }), true);
+});
+
+
+// ---- fix round 4 (M2 persistence, L4, G4) ---------------------------------------
+
+test("M2 a persisted notice: idle resumes carry it; resumeDue runs once at launch for it", () => {
+  const idleWith = bu.parseCycleOutput(out({ ok: true, status: "idle", notice: "DS still old" }), 0);
+  assert.strictEqual(idleWith.notice, "DS still old");
+  assert.strictEqual(bu.friendlyNotice(idleWith), "DS still old");
+  const rec = bu.recordsFrom(JSON.stringify({ notice: { text: "DS still old" } }), "{}");
+  assert.strictEqual(rec.notice, true);
+  assert.strictEqual(bu.resumeDue({ records: rec, lastResumeMs: null, nowMs: 1 }).run, true, "survives a relaunch");
+  assert.strictEqual(bu.resumeDue({ records: rec, lastResumeMs: 5, nowMs: 1e9 }).run, false);
+});
+
+test("M2/L4 nextNotice: kept until cleared by an applied / recovered / clean idle", () => {
+  const attention = { status: "failed", code: "recovery_attention" };
+  let n = bu.nextNotice(null, attention);
+  assert.ok(/needs attention/.test(n));
+  assert.strictEqual(bu.nextNotice(n, { status: "pending" }), n, "unrelated results keep it");
+  assert.strictEqual(bu.nextNotice(n, { status: "recovered" }), null, "L4: a successful recover clears it");
+  assert.strictEqual(bu.nextNotice("x", { status: "applied" }), null);
+  assert.strictEqual(bu.nextNotice("x", { status: "idle", notice: null }), null, "the cycle record has none left");
+  assert.strictEqual(bu.nextNotice("x", { status: "idle", notice: "y" }), "y");
+});
+
+test("G4 onCycleResult + owedArgs: a host deferral holds the next restart, a success releases it", () => {
+  let st = bu.initialUpdateState();
+  const deferred = bu.parseCycleOutput(out({ ok: true, status: "owed", code: "host_deferred",
+    restart: { host_services: ["vision"] } }), 0);
+  st = bu.onCycleResult(st, deferred, 10000);
+  assert.deepStrictEqual(st.owed.hostServices, ["vision"]);
+  assert.strictEqual(st.deferral.count, 1);
+  const live = { lastUpdateIdle: true, pollFresh: true, hostRunning: true, hostEnabled: true,
+    blocked: false, nowMs: 10000 + 1000 };
+  assert.deepStrictEqual(bu.owedDecision(bu.owedArgs(st, live)).reason, "backoff");
+  live.nowMs = 10000 + bu.deferralBackoffMs(1);
+  assert.strictEqual(bu.owedDecision(bu.owedArgs(st, live)).act, "restart-services");
+  st = bu.onCycleResult(st, bu.parseCycleOutput(out({ ok: true, status: "applied" }), 0), 50000);
+  assert.deepStrictEqual(st.deferral, { count: 0, notBeforeMs: 0 });
+  assert.strictEqual(bu.owedArgs(st, live).inGame, false, "idle = not in game");
+  assert.strictEqual(bu.owedArgs(st, Object.assign({}, live, { lastUpdateIdle: false })).inGame, true);
+});
+
+test("G4 main.js routes every cycle result and owed decision through the pure state", () => {
+  assert.ok(fnBody("runBackendChild").includes("bu.onCycleResult("));
+  assert.ok(fnBody("applyOwedRestarts").includes("bu.owedArgs("));
 });

@@ -744,6 +744,19 @@ Found by the PKG-6 builder and verifier; not fixed by PKG-6.
   grace while waiting; R7 a recover that cannot complete backs off and,
   after 3 tries, shows "update recovery needs attention"; a DEFERRED
   hot_reload status is not quiet (verify waits).
+- WA19 (s143 fix round 4, FIXED): M1 a quit excuses a failed deploy only
+  inside [request, request + DEPLOY_MAX_S] (TTL + worker kill) and at most
+  twice per release; M2 the not-ours notice names the service and how it
+  really restarts (its scheduled task, or a reboot), persists in
+  update_cycle.json until that service is seen on a new process or the next
+  update lands, and not-running / not-configured raise none; L2 a malformed
+  host_stops.json is rewritten; L3 the recover-attention path survives a
+  full disk; L4 a successful recover clears the attention notice; L5 an
+  interrupted cycle leaves no protected phase and a cycle starts at
+  `starting`. L1 skipped: a quit ends the host's job, so the next launch
+  starts every service fresh on the restored files - no service keeps
+  rolled-back code (service_host.py KILL_ON_JOB_CLOSE). PKG-6c (ROADMAP):
+  WA14, WA17, the [H] shell-build smoke.
 - WA17 (open, recorded): the `quiet` hot_reload case (watcher fresh, status
   not rewritten) still verifies on the old run: core/hot_reload.py writes
   nothing when it ignores an unloaded module, so a watcher thread wedged

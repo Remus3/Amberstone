@@ -43,6 +43,7 @@ import pytest
 from ops.launcher import service_host as sh
 from ops.launcher import update_cycle as uc
 from ops.launcher import updater as up
+from tests.test_launcher_service_host import WINDOWS_ONLY
 from tests.test_launcher_service_host import FakeClock as HostClock
 from tests.test_launcher_service_host import FakeJob, FakePopen, make_config, make_host
 from tests.test_launcher_service_host import make_root as make_host_root
@@ -54,6 +55,7 @@ from tests.test_launcher_updater import (  # noqa: F401 - _no_network is an auto
     make_root,
     run_worker,
 )
+
 
 
 def no_game():
@@ -802,6 +804,7 @@ def test_b3_restarts_the_host_deferred_are_owed_again(tmp_path):
     res = _resume(root, clock, lambda o: uc.services_state(root, dict(o, at_epoch=1.8e9)),
                   restarts_sent=True)
     assert res.status == "owed" and res.restart["host_services"] == ["vision"]
+    assert res.code == "host_deferred", "the shell backs off on this code (G1)"
     assert uc.read_cycle(root)["owed"].get("sent_at") is None
     assert "1.1.0" not in uc.read_cycle(root)["bad_versions"]
 
@@ -1104,3 +1107,186 @@ def test_f7_a_deferred_reload_is_not_quiet(tmp_path):
     res = _cycle(root, src, clock, sim, Script(clock, lambda t: sample("r1")))
     assert res.status == "deferred" and res.exit_code == 3, res.to_dict()
     assert uc.read_cycle(root)["verify"]["reload_deferred"] is True
+
+
+# =============================================== fix round 4 (M1, M2, L2, L3, L5, G1-G3)
+
+
+def _stops_at(root, *ats):
+    d = root / "ops" / "runtime" / "launcher"
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "host_stops.json").write_text(json.dumps(
+        {"schema": 1, "stops": [{"at": a, "reason": "quit"} for a in ats]}), "ascii")
+
+
+def test_m1_a_stop_long_after_the_deploy_window_never_excuses_it(tmp_path):
+    root = make_root(tmp_path)
+    req = 1_000_000.0
+    _stops_at(root, req + 2 * 86400)            # two days later
+    assert uc._quit_overlapped(root, req, None) is False, "no result_at: still bounded"
+    assert uc._quit_overlapped(root, req, req + 5 * 86400) is False,         "a late result_at never widens the window past the deploy's own life"
+    _stops_at(root, req + 60)
+    assert uc._quit_overlapped(root, req, None) is True
+    _stops_at(root, req + uc.DEPLOY_MAX_S + 60)
+    assert uc._quit_overlapped(root, req, None) is False
+    assert uc.DEPLOY_MAX_S >= up.REQUEST_TTL_S, "a request is honoured until it expires"
+
+
+def test_m1_a_quit_excuses_a_release_at_most_twice(tmp_path):
+    root, src = _setup(tmp_path)
+    clock = Clock()
+    statuses = []
+    for _ in range(uc.QUIT_EXCUSES_MAX + 1):
+        res = _cycle(root, src, clock, _failing_after_quit(root, clock),
+                     Script(clock, lambda t: sample()))
+        statuses.append(res.status)
+    assert statuses[:uc.QUIT_EXCUSES_MAX] == ["interrupted"] * uc.QUIT_EXCUSES_MAX
+    assert statuses[-1] == "failed", "a visibly broken release cannot be excused forever"
+    assert "1.1.0" in uc.read_cycle(root)["bad_versions"]
+
+
+def test_m2_not_running_and_not_configured_raise_no_notice(tmp_path):
+    root, _src, clock = _owed(tmp_path)
+    _commands_status(root, "not-running")
+    res = _resume(root, clock, lambda o: uc.services_state(root, dict(o, at_epoch=1.8e9)),
+                  restarts_sent=True)
+    assert res.status == "applied", res.to_dict()
+    assert res.extra.get("notice") is None
+    assert uc.read_cycle(root).get("notice") is None
+
+
+def test_m2_a_foreign_service_names_how_it_really_restarts_and_persists(tmp_path):
+    root, _src, clock = _owed(tmp_path)
+    _commands_status(root, "refused:not-in-job")
+    res = _resume(root, clock, lambda o: uc.services_state(root, dict(o, at_epoch=1.8e9)),
+                  restarts_sent=True)
+    assert res.status == "applied-unrestarted"
+    text = res.extra["notice"]
+    assert "vision server" in text and "reboot" in text and "restart Amberstone" not in text
+    assert text.isascii()
+    rec = uc.read_cycle(root)["notice"]
+    assert rec["names"] == {"vision": "refused:not-in-job"} and rec["text"] == text
+    # A relaunch: `resume` still reports it while vision runs the old process ...
+    res = uc.resume_cycle(root, clock=clock, sleep=lambda s: None,
+                          services_probe=lambda o: {"vision": {"restarted": False}})
+    assert res.status == "idle" and res.extra["notice"] == text
+    # ... and clears it once vision is seen on a new process.
+    res = uc.resume_cycle(root, clock=clock, sleep=lambda s: None,
+                          services_probe=lambda o: {"vision": {"restarted": True}})
+    assert res.status == "idle" and res.extra.get("notice") is None
+    assert uc.read_cycle(root)["notice"] is None
+
+
+def test_m2_the_notice_probe_ignores_the_old_refusal(tmp_path, monkeypatch):
+    root = make_root(tmp_path)
+    _commands_status(root, "refused:not-in-job", at="2030-01-01T00:00:00+00:00")
+    monkeypatch.setattr(uc.sh, "port_listener_pids", lambda port: [66])
+    monkeypatch.setattr(uc.sh, "process_created", lambda pid: 2e9)
+    got = uc.services_state(root, {"names": ["vision"], "at_epoch": 1.8e9, "ignore_commands": True})
+    assert got["vision"]["restarted"] is True
+
+
+def test_m2_the_next_applied_clears_a_stale_notice(tmp_path):
+    root, src = _setup(tmp_path)
+    uc._write_cycle(root, notice={"version": "1.0.5", "names": {"ds": "refused:open-failed"},
+                                  "text": "old", "at_epoch": 1.0})
+    clock = Clock()
+    res = _cycle(root, src, clock, Sim(root, clock), Script(clock, lambda t: sample("r1")))
+    assert res.status == "applied"
+    assert uc.read_cycle(root)["notice"] is None
+
+
+def test_l2_a_malformed_stop_log_is_rewritten_never_raised(tmp_path):
+    rt = tmp_path / "rt"
+    (rt / "launcher").mkdir(parents=True)
+    for bad in ('{"stops": 5}', '[1, 2]', '{"stops": [1, "x", {"at": 1}]}', "not json"):
+        (rt / "launcher" / "host_stops.json").write_text(bad, encoding="ascii")
+        sh.record_host_stop(rt, "quit")
+        doc = json.loads((rt / "launcher" / "host_stops.json").read_text(encoding="ascii"))
+        assert isinstance(doc["stops"], list) and doc["stops"][-1]["reason"] == "quit"
+
+
+def test_l3_a_full_disk_still_reaches_the_attention_path(tmp_path, monkeypatch):
+    root = _applied(tmp_path)
+    st = up.read_state(root)
+    up._write_state(root, dict(st, recovering={"version": "1.1.0", "kinds": [], "requests": None}))
+    monkeypatch.setattr(uc.up, "recover", lambda *a, **k: (_ for _ in ()).throw(OSError("full")))
+    real = uc._write_cycle
+
+    def full(root_, **changes):
+        if "recover_failures" in changes:
+            raise OSError("disk full")
+        return real(root_, **changes)
+    monkeypatch.setattr(uc, "_write_cycle", full)
+    res = uc.resume_cycle(root, clock=Clock(), sleep=lambda s: None,
+                          supervisor_alive=lambda: True)
+    assert res.status == "failed" and res.code in ("recover_failed", "recovery_attention")
+
+
+def test_l5_an_interrupted_cycle_leaves_no_protected_phase(tmp_path):
+    root, src = _setup(tmp_path)
+    clock = Clock()
+    res = _cycle(root, src, clock, _failing_after_quit(root, clock), Script(clock, lambda t: sample()))
+    assert res.status == "interrupted"
+    assert uc.read_cycle(root)["phase"] not in ("deploying", "recovering")
+
+
+def test_l5_a_new_cycle_never_inherits_a_protected_phase(tmp_path):
+    root, src = _setup(tmp_path)
+    uc._write_cycle(root, phase="deploying")
+    seen = []
+    real = uc._run
+
+    def spy(ctx, *a, **k):
+        seen.append(uc.read_cycle(root)["phase"])
+        return real(ctx, *a, **k)
+    import pytest as _pt
+    mp = _pt.MonkeyPatch()
+    mp.setattr(uc, "_run", spy)
+    try:
+        clock = Clock()
+        _cycle(root, src, clock, Sim(root, clock), Script(clock, lambda t: sample("r1")))
+    finally:
+        mp.undo()
+    assert seen == ["starting"]
+
+
+def test_g2_the_retry_after_gate_holds_the_next_try(tmp_path, monkeypatch):
+    root = _applied(tmp_path)
+    st = up.read_state(root)
+    up._write_state(root, dict(st, recovering={"version": "1.1.0", "kinds": [], "requests": None}))
+    calls = []
+    monkeypatch.setattr(uc.up, "recover", lambda *a, **k: calls.append(1) or
+                        (_ for _ in ()).throw(OSError("x")))
+    t = [1e6]
+    uc.resume_cycle(root, clock=Clock(), sleep=lambda s: None, now=lambda: t[0],
+                    supervisor_alive=lambda: True)
+    assert calls == [1]
+    res = uc.resume_cycle(root, clock=Clock(), sleep=lambda s: None, now=lambda: t[0] + 1,
+                          supervisor_alive=lambda: True)
+    assert calls == [1], "no second try inside the backoff"
+    assert res.code == "recover_backoff"
+
+
+@WINDOWS_ONLY
+def test_g3_an_in_job_process_that_will_not_die_is_terminate_failed(monkeypatch):
+    class K32:
+        def OpenProcess(self, *_a):
+            return 77
+
+        def IsProcessInJob(self, _h, _job, ref):
+            ref._obj.value = True
+            return 1
+
+        def TerminateProcess(self, *_a):
+            return 0
+
+        def WaitForSingleObject(self, *_a):
+            return 0
+
+        def CloseHandle(self, *_a):
+            return 1
+    monkeypatch.setattr(sh, "_kernel32", lambda: K32())
+    job = type("J", (), {"handle": 5})()
+    assert sh.terminate_job_listener(job, 1234, listeners=lambda p: [42]) == \
+        "refused:terminate-failed"

@@ -2533,13 +2533,16 @@ function runBackendChild(plan, onResult) {
           onResult(result);
         }
         console.log("[rc-shell] " + bu.logLine(result) + " (" + plan.mode + ")");
-        backendDeferral = bu.nextDeferral(backendDeferral.count, result, Date.now()); // R3
-        const notice = bu.friendlyNotice(result); // R2 / R7: plain words, never a raw error
-        if (notice !== backendNotice && (notice || result.status === "applied")) {
-          backendNotice = notice;
+        // G4: owed restarts, R3 deferral backoff and the R2/R7/M2 notice all
+        // advance through one pure, tested function.
+        const next = bu.onCycleResult({ owed: backendOwed, deferral: backendDeferral, notice: backendNotice },
+          result, Date.now());
+        backendOwed = next.owed;
+        backendDeferral = next.deferral;
+        if (next.notice !== backendNotice) {
+          backendNotice = next.notice;
           buildMenu();
         }
-        backendOwed = bu.mergeOwed(backendOwed, result.actions);
         if (result.actions.relaunchShell) {
           console.log("[rc-shell] the backend update named shell code: it installs through the shell updater");
         }
@@ -2578,16 +2581,14 @@ function runBackendChild(plan, onResult) {
 // restarts are health-checked by `resume --restarts-sent` (F3), which
 // recovers when one does not come back.
 function applyOwedRestarts() {
-  const d = bu.owedDecision({
-    owed: backendOwed,
-    inGame: !lastUpdateIdle,
-    stateFresh: pollFresh,
+  const d = bu.owedDecision(bu.owedArgs({ owed: backendOwed, deferral: backendDeferral }, {
+    lastUpdateIdle,
+    pollFresh,
     hostRunning: !!hostChild,
     hostEnabled,
     blocked: hostRespawning || shellQuitting || backendRespawnCheck,
     nowMs: Date.now(),
-    notBeforeMs: backendDeferral.notBeforeMs, // R3: no spawn while a deferral backs off
-  });
+  })); // G4 + R3: no spawn while a deferral backs off
   if (d.act === "start-host") {
     // B1: the host is already down (a respawn that failed, then a recover put
     // the old code back): start it - nothing runs to interrupt - and check it.

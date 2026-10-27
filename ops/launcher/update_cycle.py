@@ -144,6 +144,20 @@ SUPERVISOR_TAKE_S = 60.0
 RECOVER_ATTENTION_AFTER = 3
 IDLE_PHASES = ("", "None", "Lobby")
 QUIT_SLACK_S = 2.0
+# Fix round 4 (M1): the longest a deploy can legitimately run after its
+# request was written - the worker honours a request until it expires
+# (updater REQUEST_TTL_S) and the supervisor kills a worker at 120 s - so a
+# host stop excuses a failed deploy only inside [request, request + this];
+# and a release is excused by a quit at most QUIT_EXCUSES_MAX times.
+WORKER_KILL_S = 120.0
+DEPLOY_MAX_S = up.REQUEST_TTL_S + WORKER_KILL_S + 60.0
+QUIT_EXCUSES_MAX = 2
+# M2: outcomes that skip a service with nothing old left running (no notice).
+QUIET_SKIPS = frozenset({"not-running", "not-configured"})
+SERVICE_LABELS = {"ds": "Daemon Slayer", "vision": "the vision server",
+                  "lcu_agent": "the LCU agent", "liveclient_relay": "the Live Client relay",
+                  "hotkey_listener": "the hotkey listener", "supervisor": "the RC supervisor",
+                  "phase3_supervisor": "the Phase 3 supervisor", "app": "the service host"}
 FAIL_STATUSES = ("refused", "failed", "lost", "recovered", "error")
 BAD_STATUSES = ("recovered", "failed", "lost")
 # Every name the service host acts on (its services.json names plus
@@ -342,7 +356,9 @@ def _quit_overlapped(root: Path, since: Optional[float], until: Optional[float])
     [since, until]? A deploy that failed then is not a bad release."""
     if since is None:
         return False
-    hi = (until if until is not None else time.time()) + QUIT_SLACK_S
+    # M1: never past the deploy's own longest life, whatever `until` says.
+    hi = min(until if until is not None else since + DEPLOY_MAX_S,
+             since + DEPLOY_MAX_S) + QUIT_SLACK_S
     try:
         doc = json.loads((up.launcher_state_dir(root) / "host_stops.json")
                          .read_text(encoding="utf-8"))
@@ -387,7 +403,7 @@ def services_state(root: Path, owed: Dict[str, Any]) -> Dict[str, Dict[str, Any]
     # The host's own verdict on the newest restart command naming each
     # service since the deploy (service_host.py `commands`).
     outcome: Dict[str, str] = {}
-    for rec in status.get("commands") or []:
+    for rec in [] if owed.get("ignore_commands") else status.get("commands") or []:
         if not isinstance(rec, dict) or (_epoch(rec.get("at")) or 0.0) < at:
             continue
         for n, o in (rec.get("results") or {}).items():
@@ -679,6 +695,30 @@ def _recover(ctx: _Ctx, version: Optional[str], current: Optional[str], why: str
                        extra={"requests": [Path(p).name for p in (out or {}).get("requests", [])]})
 
 
+def _foreign_notice(version: Optional[str], foreign: Dict[str, str]) -> str:
+    """M2: the plain-words state for services the host does not run."""
+    who = ", ".join(SERVICE_LABELS.get(n, n) for n in sorted(foreign))
+    return _clean(f"Backend update {version or ''} installed, but {who} still runs the old "
+                  "code: it runs outside Amberstone (a scheduled task) - restart it or "
+                  "reboot the PC to finish the update", 240)
+
+
+def _notice_check(ctx: _Ctx) -> Dict[str, Any]:
+    """M2: a persisted notice stays until every named service is seen on a
+    process started after the update (its old refusal is ignored)."""
+    rec = read_cycle(ctx.root).get("notice")
+    if not isinstance(rec, dict) or not rec.get("names"):
+        return {}
+    names = sorted(rec["names"])
+    st = ctx.services_probe({"names": names, "at_epoch": rec.get("at_epoch") or 0.0,
+                             "ignore_commands": True})
+    if all((st.get(n) or {}).get("restarted") for n in names):
+        _write_cycle(ctx.root, notice=None)
+        ctx.log("the services named in the update notice restarted; notice cleared")
+        return {}
+    return {"notice": rec.get("text")}
+
+
 def _complete_recover(ctx: _Ctx, current: Optional[str]) -> CycleResult:
     marker = up.read_state(ctx.root).get("recovering") or {}
     version = marker.get("version")
@@ -699,7 +739,10 @@ def _complete_recover(ctx: _Ctx, current: Optional[str]) -> CycleResult:
         # the shell shows "update recovery needs attention".
         fails += 1
         delay = min(60.0 * 2 ** (fails - 1), 3600.0)
-        _write_cycle(ctx.root, recover_failures=fails, retry_after=float(ctx.now()) + delay)
+        try:   # L3: a full disk must not hide the attention state
+            _write_cycle(ctx.root, recover_failures=fails, retry_after=float(ctx.now()) + delay)
+        except OSError:
+            ctx.log("the recover backoff could not be recorded")
         code = "recovery_attention" if fails >= RECOVER_ATTENTION_AFTER else "recover_failed"
         ctx.log(f"completing the recover failed ({type(exc).__name__}); try {fails}")
         return CycleResult("failed", version, current,
@@ -769,6 +812,9 @@ def _verify_and_report(ctx: _Ctx, rec: Dict[str, Any], current: Optional[str], *
     if not ok:
         return _recover(ctx, version, current, "main.py did not become ready")
     actions = restart_actions(rec.get("restart"))
+    excuses = dict(read_cycle(ctx.root).get("quit_excuses") or {})
+    excuses.pop(str(version), None)
+    _write_cycle(ctx.root, notice=None, quit_excuses=excuses)   # M2 / M1
     if _owes(actions):
         names = list(actions["host_services"]) + (["app"] if actions["respawn_host"] else [])
         owed = {"version": version, "names": names, "respawn_host": actions["respawn_host"],
@@ -788,7 +834,14 @@ def _after_finish(ctx: _Ctx, fin: Any, current: Optional[str]) -> CycleResult:
                            "the supervisor has not finished the deploy yet")
     res = fin.result if isinstance(fin.result, dict) else {}
     quit_hit = fin.status in ("interrupted", "failed", "lost") and _quit_overlapped(
-        ctx.root, getattr(fin, "requested_at", None), res.get("result_at") or ctx.now())
+        ctx.root, getattr(fin, "requested_at", None), res.get("result_at"))
+    if quit_hit:
+        # M1: a user restarting a visibly broken app cannot excuse it forever.
+        excuses = dict(read_cycle(ctx.root).get("quit_excuses") or {})
+        n = int(excuses.get(str(fin.version)) or 0) + 1
+        excuses[str(fin.version)] = n
+        _write_cycle(ctx.root, quit_excuses=excuses)
+        quit_hit = n <= QUIT_EXCUSES_MAX
     if fin.status == "interrupted":
         if fin.kind == "apply":
             return _recover(ctx, fin.version, current,
@@ -800,6 +853,7 @@ def _after_finish(ctx: _Ctx, fin: Any, current: Optional[str]) -> CycleResult:
         # R1: the app was quit during the deploy (the supervisor stopped
         # main.py, the worker's heartbeat wait failed and it rolled back) -
         # not a bad release; the next idle cycle applies it again.
+        _write_cycle(ctx.root, phase="interrupted")   # L5: not a protected phase
         return CycleResult("interrupted", fin.version, current,
                            "the app was stopped during the deploy; it will be retried")
     if fin.status in ("failed", "lost"):
@@ -855,17 +909,24 @@ def _check_restarts(ctx: _Ctx, owed: Dict[str, Any], current: Optional[str]) -> 
                 _write_cycle(ctx.root, owed=None, phase="done")
                 detail = "verified: the restarted services stayed up: " + \
                     (", ".join(names) or "none")
+                foreign = {n: o for n, o in skipped.items() if o not in QUIET_SKIPS}
                 if skipped:
-                    # R2: their processes still run the old code - never
-                    # "verified"; the shell asks for a restart of the app.
-                    detail = ("installed; restart Amberstone to finish the update - not ours "
-                              "to restart: " + ", ".join(f"{n} ({o})"
-                                                         for n, o in sorted(skipped.items()))
-                              + ("; restarted and verified: " + ", ".join(names) if names
-                                 else ""))
-                    ctx.log(detail)
+                    ctx.log("not ours to restart: " + ", ".join(
+                        f"{n} ({o})" for n, o in sorted(skipped.items())))
+                if foreign:
+                    # R2 / M2: these still run the old code and an app restart
+                    # does not reach them: say who they are and how they
+                    # restart; the notice persists until they are seen on a
+                    # new process (or the next update lands).
+                    text = _foreign_notice(version, foreign)
+                    _write_cycle(ctx.root, notice={
+                        "version": version, "names": foreign, "text": text, "at": utc_now(),
+                        "at_epoch": owed.get("at_epoch")})
+                    detail = "installed; not restarted (not ours): " + ", ".join(
+                        f"{n} ({o})" for n, o in sorted(foreign.items())) + \
+                        ("; restarted and verified: " + ", ".join(names) if names else "")
                     return CycleResult("applied-unrestarted", version, version, _clean(detail),
-                                       restart=restart_actions(None))
+                                       restart=restart_actions(None), extra={"notice": text})
                 return CycleResult("applied", version, version, detail,
                                    restart=restart_actions(None))
         else:
@@ -958,6 +1019,7 @@ def _guarded(root: Path, ctx_kw: Dict[str, Any], body: Callable[[_Ctx, Optional[
     current: Optional[str] = None
     try:
         try:
+            ctx.phase("starting")   # L5: never inherit a protected phase
             current = up.installed_version(root)
             res = body(ctx, current)
         except _Interrupted as exc:
@@ -1052,7 +1114,9 @@ def resume_cycle(root: Path, *, restarts_sent: bool = False,
 
     def body(ctx: _Ctx, cur: Optional[str]) -> CycleResult:
         got = _resume(ctx, cur, restarts_sent=restarts_sent)
-        return got if got is not None else CycleResult("idle", None, cur, "nothing to resume")
+        if got is not None:
+            return got
+        return CycleResult("idle", None, cur, "nothing to resume", extra=_notice_check(ctx))
     return _guarded(root, kw, body, log or (lambda _m: None))
 
 
