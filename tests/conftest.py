@@ -502,6 +502,19 @@ def no_lcu_poller_outlives_its_module():
 
 
 @pytest.fixture(autouse=True)
+def no_scheduler_compactor_outlives_its_test(monkeypatch):
+    """RM-983 (RM-909 follow-up (c)): every agent1 Scheduler built with the
+    default `compact_interval_s` starts an hourly daemon "agent1-compact"
+    thread. Measured: 30 left alive by test_rm853_task_last_error_scrub.py,
+    21 and 20 by the two task-queue reconciler files. tests/_scheduler_compactor_guard.py
+    records each one a test starts and stops it at the test's teardown."""
+    from tests import _scheduler_compactor_guard
+    started = _scheduler_compactor_guard.track(monkeypatch)
+    yield
+    _scheduler_compactor_guard.stop(started)
+
+
+@pytest.fixture(autouse=True)
 def reset_idempotency_table_between_tests():
     """`dashboard/_idempotency.py` holds the operator-intent replay table in a
     process-global OrderedDict with a 900 s TTL, so a key remembered by one

@@ -72,6 +72,17 @@ def _isolate_asyncio_running_loop():
 
 
 @pytest.fixture(autouse=True)
+def _stop_scheduler_compactors(monkeypatch):
+    """RM-983: stop every agent1 Scheduler compactor thread a test starts
+    (4 to 11 per file were left alive, some built by InputParser /
+    UIFeedback for the caller). Mirrors tests/conftest.py."""
+    from tests import _scheduler_compactor_guard
+    started = _scheduler_compactor_guard.track(monkeypatch)
+    yield
+    _scheduler_compactor_guard.stop(started)
+
+
+@pytest.fixture(autouse=True)
 def _isolate_agent6_reports(tmp_path, monkeypatch):
     """L-03: FAILED stubs from failure-path tests must not land in the live
     agent6 reports dir."""
