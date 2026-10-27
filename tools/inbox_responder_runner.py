@@ -1327,23 +1327,20 @@ def fire_checklist(log_root, cycle_id: str, *, done: bool = False,
             rows[0]["state"], rows[0]["eta_s"] = "responder running", TASK_ETL_S
         # A headless fire's <n> is its RUN COUNT (item 13 a), kept beside the
         # log; the start write advances it, the end write reuses it.
+        # RM-258: both writes go through core.polled_json (per-writer scratch
+        # name, fsync, bounded WinError 5 retry; the parent is created on
+        # demand). A refused rename used to lose the run count silently.
         counter = _runtime(log_root) / CHECKLIST_COUNT_NAME
-        counter.parent.mkdir(parents=True, exist_ok=True)
         try:
             n = int(counter.read_text(encoding="ascii").strip() or 0)
         except (OSError, ValueError):
             n = 0
         if not done:
             n += 1
-            ctmp = counter.with_name(counter.name + ".tmp")
-            ctmp.write_bytes(f"{n}\n".encode("ascii"))
-            ctmp.replace(counter)
+            atomic_write_bytes(counter, f"{n}\n".encode("ascii"))
         block = scl.render_start(n, rows, note=f"responder fire {cycle_id}")
-        log = _runtime(log_root) / CHECKLIST_LOG_NAME
-        log.parent.mkdir(parents=True, exist_ok=True)
-        tmp = log.with_name(log.name + ".tmp")
-        tmp.write_bytes((block + "\n").encode("utf-8"))
-        tmp.replace(log)
+        atomic_write_bytes(_runtime(log_root) / CHECKLIST_LOG_NAME,
+                           (block + "\n").encode("utf-8"))
         status = "running" if not done else ("failed" if "failed" in str(termination) else "done")
         step = f"fire {cycle_id} " + ("start" if not done else f"end: {termination}")
         scl.write_progress(log_root, CHECKLIST_TASK, 100 if done else 5, step,
@@ -1699,12 +1696,12 @@ def _terminate(result: CycleResult, termination: str, detail: str, *,
 
 
 def _hold_write(result: CycleResult, name: str, text: str) -> Path:
-    target = held_dir(result.root, result.cycle_id)
-    target.mkdir(parents=True, exist_ok=True)
-    path = target / name
-    tmp = path.with_name(path.name + ".tmp")
-    tmp.write_text(text, encoding="ascii", errors="backslashreplace", newline="\n")
-    tmp.replace(path)
+    """Publish one hold artifact for the operator (RM-258: core.polled_json).
+
+    ASCII with backslashreplace and no newline translation, as before.
+    """
+    path = held_dir(result.root, result.cycle_id) / name
+    atomic_write_bytes(path, text.encode("ascii", errors="backslashreplace"))
     return path
 
 
