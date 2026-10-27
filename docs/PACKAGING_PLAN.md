@@ -779,8 +779,22 @@ Found by the PKG-6 builder and verifier; not fixed by PKG-6.
   UNREADABLE_HOLD_S = 300 s across cycles (`state_unreadable_since`), and
   the shell retries a sent check when its state is unknown, not only when
   idle. J3 the controller test now kills the `deferHost` no-op mutant.
-  Not changed: a verify that failed (the new run never became ready) and a
-  hot_reload compile failure still roll back at once.
+  Round 2 (high-only review of 940e2fcda): H1 the gate's "main.py is down"
+  was one 5 s readiness sample, so a 6-10 s stall mid-game skipped the game
+  gate; down is now the process dead, health.json missing, or a heartbeat
+  past the supervisor's own 15 s (`MAIN_DOWN_STALE_S`,
+  ops/rc_supervisor.py max_heartbeat_age); M1 the unreadable clock is per
+  episode (`state_unreadable_last`; a gap past 300 s starts a new one); S1
+  the /api/state probe waits 4 s like the shell's poll; S2 a hot_reload
+  compile failure's rollback passes the same gate. Not changed: a verify
+  that failed (the new run never became ready) still rolls back at once.
+  Open (M2): finish() clears the pending op in update_state.json before the
+  cycle records `recover_due` in update_cycle.json, so an OSError between
+  the two writes loses the rollback (the tree stays mixed and the record
+  names the new version) - not a small ordering change: finish() is what
+  detects lost / interrupted, and deriving the rollback from
+  update_state.json `last` needs a "handled" marker or a refused recover
+  would be retried by every cycle.
 - WA12 electron-builder logs "signing with signtool.exe" for every `.exe`
   under `resources/backend` (`python.exe`, `pythonw.exe`, site-packages
   `bin/*.exe`): with a cert set (S4) it would re-sign the PSF-signed
