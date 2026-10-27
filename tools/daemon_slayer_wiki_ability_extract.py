@@ -118,6 +118,16 @@ _MAX_TITLES_PER_BATCH = 50
 
 _TEMPLATE_PREFIX = "Template:Data "
 
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+# RM-787: the SAME module, so the SAME RM-600 comment stripper + primary-record
+# test as the sibling stats extractor (one implementation, not two).
+from daemon_slayer_wiki_stats_extract import (  # noqa: E402
+    _is_primary_record,
+    _strip_lua_comments,
+)
+
 # The skill slots, in a stable order (i = passive/inherent, then q/w/e/r).
 _SKILL_SLOTS = ("i", "q", "w", "e", "r")
 
@@ -295,8 +305,16 @@ def _parse_champion_skills(raw: str) -> dict[str, dict[str, Any]]:
       * ``skills`` = {slot: [ability display names]} for slots i/q/w/e/r.
     Keyed by ``apiname`` (== the Riot/DDragon champion id) for joining to the
     abilities snapshot.
+
+    RM-787 (the RM-600 rule): Lua comments are stripped first, and when two
+    blocks share an ``apiname`` (Kled 240 + "Kled & Skaarl" 240.1, whose
+    Template:Data pages are bare redirects) the integer-id record wins in either
+    order; between two records of the same kind the FIRST is kept. A lone
+    non-integer-id record (GnarBig) is still used.
     """
+    raw = _strip_lua_comments(raw)
     out: dict[str, dict[str, Any]] = {}
+    primary: set[str] = set()
     for m in _BLOCK_OPEN_RE.finditer(raw):
         open_idx = raw.find("{", m.start())
         if open_idx < 0:
@@ -309,6 +327,11 @@ def _parse_champion_skills(raw: str) -> dict[str, dict[str, Any]]:
         am = _APINAME_RE.search(blk)
         if not am:
             continue
+        is_primary = _is_primary_record(blk)
+        if am.group(1) in out and (am.group(1) in primary or not is_primary):
+            continue  # RM-787: a later duplicate never displaces the record kept
+        if is_primary:
+            primary.add(am.group(1))
         skills: dict[str, list[str]] = {}
         for sm in _SKILL_ARRAY_RE.finditer(blk):
             slot = sm.group(1)

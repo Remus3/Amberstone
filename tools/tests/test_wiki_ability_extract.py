@@ -180,6 +180,102 @@ class TestBuildTitles:
         assert len([t for t in triples if t[2] == "Dup"]) == 1
 
 
+# --------------------------------------------------------------------------- RM-787 duplicate apiname
+class TestRm787PrimaryRecordWins:
+    # RM-787 (RM-600 sibling): the module carries a second Kled block ("Kled &
+    # Skaarl", id 240.1, SAME apiname) after the live record 240, and the parser
+    # kept the LAST block per apiname. Every Template:Data "Kled & Skaarl/..."
+    # page is a bare #REDIRECT, so the 16.21.1 sidecar holds 7 param-less Kled
+    # records and never fetched Pocket Pistol or the Dismounted forms. Shapes
+    # below are copied from the live module (fetched 2026-10-27).
+    KLED_PRIMARY = (
+        '  ["Kled"] = {\n'
+        '    ["id"]         = 240,\n'
+        '    ["apiname"]    = "Kled",\n'
+        '    ["skill_i"]     = {[1] = "Skaarl the Cowardly Lizard", '
+        '[2] = "Dismounted Skaarl the Cowardly Lizard"},\n'
+        '    ["skill_q"]     = {[1] = "Bear Trap on a Rope", [2] = "Pocket Pistol"},\n'
+        '    ["skill_w"]     = {[1] = "Violent Tendencies"},\n'
+        '    ["skill_e"]     = {[1] = "Jousting", [2] = "Dismounted Jousting"},\n'
+        '    ["skill_r"]     = {[1] = "Chaaaaaaaarge!!!", '
+        '[2] = "Dismounted Chaaaaaaaarge!!!"},\n'
+        "  },\n"
+    )
+    KLED_SECONDARY = (
+        '  ["Kled & Skaarl"] = {\n'
+        '    ["id"]         = 240.1,\n'
+        '    ["apiname"]    = "Kled",\n'
+        '    ["stats"] = {\n'
+        '      --["aram"] = { this is pointless\n'
+        '        --["dmg_dealt"] = 1.05,\n'
+        "      --},\n"
+        "    },\n"
+        '    ["skill_i"]     = {[1] = "Skaarl the Cowardly Lizard"},\n'
+        '    ["skill_q"]     = {[1] = "Bear Trap on a Rope"},\n'
+        '    ["skill_w"]     = {[1] = "Violent Tendencies"},\n'
+        '    ["skill_e"]     = {[1] = "Jousting", [2] = "Jousting 2"},\n'
+        '    ["skill_r"]     = {[1] = "Chaaaaaaaarge!!!", [2] = "Chaaaaaaaarge!!! 2"}\n'
+        "  },\n"
+    )
+
+    @staticmethod
+    def _wrap(*blocks: str) -> str:
+        return "-- <pre>\nreturn {\n" + "".join(blocks) + "}\n-- </pre>\n"
+
+    def _assert_primary(self, parsed):
+        kled = parsed["Kled"]
+        assert kled["display"] == "Kled"
+        assert kled["skills"]["q"] == ["Bear Trap on a Rope", "Pocket Pistol"]
+        assert kled["skills"]["e"] == ["Jousting", "Dismounted Jousting"]
+
+    def test_primary_kept_when_secondary_follows(self):
+        # the live module order
+        self._assert_primary(W._parse_champion_skills(
+            self._wrap(self.KLED_PRIMARY, self.KLED_SECONDARY)))
+
+    def test_primary_wins_when_secondary_comes_first(self):
+        self._assert_primary(W._parse_champion_skills(
+            self._wrap(self.KLED_SECONDARY, self.KLED_PRIMARY)))
+
+    def test_lone_non_integer_record_still_used(self):
+        # the live module has one such apiname (GnarBig); it must not vanish
+        parsed = W._parse_champion_skills(self._wrap(self.KLED_SECONDARY))
+        assert parsed["Kled"]["display"] == "Kled & Skaarl"
+
+    def test_first_of_two_primary_records_kept(self):
+        dup = self.KLED_PRIMARY.replace('["Kled"] = {', '["Kled Copy"] = {').replace(
+            "Pocket Pistol", "Other")
+        self._assert_primary(W._parse_champion_skills(
+            self._wrap(self.KLED_PRIMARY, dup)))
+
+    def test_commented_skill_array_is_not_live(self):
+        raw = self._wrap(
+            '  ["X"] = {\n'
+            '    ["id"]      = 1,\n'
+            '    ["apiname"] = "X",\n'
+            '    --["skill_q"] = {[1] = "Old Name"},\n'
+            '    ["skill_w"] = {[1] = "Live"}, -- ["skill_e"] = {[1] = "Gone"}\n'
+            '    --[[ ["skill_r"] = {[1] = "Block Gone"}, ]]\n'
+            "  },\n"
+        )
+        assert W._parse_champion_skills(raw)["X"]["skills"] == {"w": ["Live"]}
+
+    def test_extract_requests_the_primary_titles(self, monkeypatch):
+        monkeypatch.setattr(W, "_load_champion_apinames", lambda p: {"Kled"})
+        sent: list[str] = []
+
+        def fake_batch(titles):
+            sent.extend(titles)
+            return _query_response([_missing_page(t) for t in titles])
+
+        W.extract("16.21.1", sleep_s=0, limit=None, verbose=False,
+                  _module_text=self._wrap(self.KLED_PRIMARY, self.KLED_SECONDARY),
+                  _batch_fn=fake_batch)
+        assert len(sent) == 9
+        assert all(t.startswith("Template:Data Kled/") for t in sent)
+        assert "Template:Data Kled/Pocket Pistol" in sent
+
+
 # --------------------------------------------------------------------------- page-param parsing
 class TestParseAbilityPage:
     # Anivia Glacial Storm (verbatim params: static=1, silence=true, cooldown
