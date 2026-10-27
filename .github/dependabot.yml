@@ -71,12 +71,14 @@ updates:
       # PR #11 (1.13.0), PR #17 (1.14.0, declined 2026-10-17), PR #19
       # (1.15.0, declined 2026-10-20), PR #24 (2.1.0, a major whose 2.0.0
       # moves to API version 2026-10-21 and adds opentelemetry-api; declined
-      # 2026-10-26 under the same hold, its other bumps applied) and PR #26
+      # 2026-10-26 under the same hold, its other bumps applied), PR #26
       # (2.2.0, declined 2026-10-26, its certifi bump applied; 2.x is also
-      # relicensed MIT -> Apache-2.0 from 2.0.0): held until RM-681 (live
-      # call per path + truststore) closes.
+      # relicensed MIT -> Apache-2.0 from 2.0.0) and PR #28 (2.3.0, declined
+      # 2026-10-26; offline client-side checks green under 2.3.0, but every
+      # request moves from anthropic-version 2023-06-01 to 2026-10-21):
+      # held until RM-681 (live call per path + truststore) closes.
       - dependency-name: "anthropic"
-        versions: [">1.11.0,<=2.2.0"]
+        versions: [">1.11.0,<=2.3.0"]
       # PR #11: wait for a change that also upgrades the RC runtime.
       - dependency-name: "json5"
         versions: [">0.15.0,<=0.17.3"]
