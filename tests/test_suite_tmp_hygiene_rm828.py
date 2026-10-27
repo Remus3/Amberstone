@@ -129,7 +129,9 @@ def test_pytest_unconfigure_removes_both_dirs_without_atexit():
         "m.pytest_unconfigure(None); c.pytest_unconfigure(None)\n"
         "print(json.dumps(before + [os.path.isdir(a), c._SUITE_LOG_DIR.is_dir()]), flush=True)\n"
         "os._exit(0)\n")
-    assert _child(code, env) == [True, True, False, False]
+    # Read the result first: an assert over the call would render `env`.
+    flags = _child(code, env)
+    assert flags == [True, True, False, False]
 
 
 def test_the_agent3_conftest_never_removes_a_dir_it_did_not_create(tmp_path):

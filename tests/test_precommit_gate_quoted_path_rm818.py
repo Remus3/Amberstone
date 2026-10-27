@@ -69,7 +69,10 @@ def injected_quotepath(monkeypatch):
 def test_the_git_env_clears_env_injected_config(injected_quotepath, git_env):
     for name in _ENV_CONFIG:
         assert name not in git_env, name
-        assert name not in os.environ, name
+        # One boolean, never the mapping: an assert over os.environ renders
+        # the whole environment on failure (test_no_environ_in_assert_operands).
+        in_process_env = name in os.environ
+        assert not in_process_env, name
 
 
 def _staged(tmp_path: Path, env: dict, name: str) -> Path:
