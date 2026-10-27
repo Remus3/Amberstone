@@ -13,7 +13,7 @@ Decision is forced by RC's shape, not preference:
 
 | Need | Native (CEF wrapper) | ow-electron |
 |---|---|---|
-| Existing Electron shell (`rc-shell/package.json` v0.4.0, electron 44.9.1 since RM-908, electron-builder 26) | rewrite from zero | reuse |
+| Existing Electron shell (`rc-shell/package.json` v0.4.0, electron 45.0.0 since DEP-25, electron-builder 26) | rewrite from zero | reuse |
 | Native node modules / local sidecar process (DS `:8860`, supervisor, vision server) | no story | supported ("full support for native node.js modules") |
 | Existing web UI served from an origin (`web/js/main.js` + panels) | port to OW window model | loads as-is |
 | Overlay Platform M ads + Tebex subs + GEP + in-game overlay | yes | yes |
