@@ -52,6 +52,8 @@ import string
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from core.polled_json import atomic_write_bytes
+
 # Files the cross-repo channel treats as byte-identical-by-contract. A3 may
 # only ever target one of these, so a note cannot introduce a new shared file
 # by asking - that stays a human act (see test_a3_first_time_vendor...).
@@ -159,16 +161,17 @@ def _answered(root: Path) -> set[str] | None:
 
 
 def record_responded(root: Path, name: str) -> None:
-    """Add one note to THIS module's record. Touches nothing else."""
+    """Add one note to THIS module's record. Touches nothing else.
+
+    RM-258: through core.polled_json (per-writer scratch name, fsync, bounded
+    WinError 5 retry, LF bytes) - every responder tick reads this file back,
+    and a torn read fails closed."""
     p = responder_state_path(root)
-    p.parent.mkdir(parents=True, exist_ok=True)
     known = _answered(root) or set()
     known.add(name)
-    tmp = p.with_suffix(".json.tmp")
-    tmp.write_text(
-        json.dumps({"answered": sorted(known)}, indent=2), encoding="utf-8", newline="\n"
+    atomic_write_bytes(
+        p, json.dumps({"answered": sorted(known)}, indent=2).encode("utf-8")
     )
-    tmp.replace(p)
 
 
 def pending_notes(inbox: Path, root: Path, *, participants: tuple[str, ...]) -> list[str]:

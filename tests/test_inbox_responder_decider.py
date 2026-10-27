@@ -205,3 +205,59 @@ def test_corrupt_state_does_not_replay_every_note(tmp_path):
     responder_state_path(tmp_path).parent.mkdir(parents=True, exist_ok=True)
     responder_state_path(tmp_path).write_text("{{{ not json", encoding="utf-8")
     assert pending_notes(box, tmp_path, participants=("RSC",)) == []
+
+
+# ------------------------------------------------- RM-258: the record write is atomic
+#
+# The answered record is read back on every responder tick, and a torn read
+# fails CLOSED (nothing answered until a human repairs it). It goes through
+# core.polled_json (per-writer scratch name, fsync, bounded WinError 5 retry),
+# not a shared `<name>.json.tmp` plus a bare rename.
+
+
+def _record_writes(monkeypatch):
+    import core.polled_json as pj
+    seen = []
+    real = pj._write_then_replace
+
+    def rec(path, data):
+        seen.append((Path(path).name, bytes(data)))
+        return real(path, data)
+
+    monkeypatch.setattr(pj, "_write_then_replace", rec)
+    return seen
+
+
+def test_rm258_record_routes_through_polled_json(tmp_path, monkeypatch):
+    seen = _record_writes(monkeypatch)
+    record_responded(tmp_path, "2026-09-07-1800-from-RSC-b.md")
+    record_responded(tmp_path, "2026-09-07-1800-from-RSC-a.md")
+    expected = json.dumps(
+        {"answered": ["2026-09-07-1800-from-RSC-a.md", "2026-09-07-1800-from-RSC-b.md"]},
+        indent=2,
+    ).encode("utf-8")
+    p = responder_state_path(tmp_path)
+    assert [name for name, _ in seen] == [p.name, p.name]
+    assert seen[-1][1] == expected
+    assert p.read_bytes() == expected
+    assert b"\r" not in p.read_bytes()
+    assert [x.name for x in p.parent.iterdir()] == [p.name]
+
+
+def test_rm258_record_survives_a_transient_rename_refusal(tmp_path, monkeypatch):
+    import core.polled_json as pj
+    real = pj.os.replace
+    refusals = [2]
+
+    def flaky(src, dst):
+        if refusals[0]:
+            refusals[0] -= 1
+            raise PermissionError(13, "Access is denied")
+        return real(src, dst)
+
+    monkeypatch.setattr(pj.os, "replace", flaky)
+    monkeypatch.setattr(pj.time, "sleep", lambda _s: None)
+    record_responded(tmp_path, "2026-09-07-1800-from-RSC-x.md")
+    assert refusals == [0]
+    box = _inbox(tmp_path, "2026-09-07-1800-from-RSC-x.md")
+    assert pending_notes(box, tmp_path, participants=("RSC",)) == []

@@ -87,6 +87,10 @@ _RUNTIME_TOOLS = frozenset({
     # and the headless progress fallback (read by the lane widget and the
     # board): a torn read loses the counter or a checklist row.
     "tools/session_checklist.py",
+    # The inbox responder's answered record, read back on every
+    # RC-InboxResponder tick: a torn read fails closed and the responder
+    # answers nothing until a human repairs the file.
+    "tools/inbox_responder.py",
 })
 
 # RM-258 residual (s144): tools/ is IN scope by default. Out of scope are the
@@ -135,7 +139,6 @@ _TOOLS_UNCLASSIFIED = frozenset({
     "tools/hotfix_zaahen_loadout_item277.py",
     "tools/hz_mismatch_diagnose.py",
     "tools/hz_shadow_arena_contamination.py",
-    "tools/inbox_responder.py",
     "tools/inbox_responder_runner.py",
     "tools/ladder_role_scout.py",
     "tools/laning_verdict_information_probe.py",
@@ -518,6 +521,7 @@ def test_scope_keeps_runtime_tools_and_drops_generators():
     assert _in_scope("tools/spec_watch.py")
     assert _in_scope("tools/ds_feed_watch.py")
     assert _in_scope("tools/session_checklist.py")
+    assert _in_scope("tools/inbox_responder.py")
     assert not _in_scope("tools/daemon_slayer_extract.py")
     assert not _in_scope("ops/fleet_kit/fleet_headless.py")
     assert _in_scope("coach_integration/_coach.py")
