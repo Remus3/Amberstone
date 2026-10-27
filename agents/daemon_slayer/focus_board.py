@@ -76,7 +76,8 @@ Never raises, in two layers:
   a note and that fighter is skipped; an out-of-range level is clamped to
   1-18 with a note (``stats.clamp_level`` RAISES on out-of-range, it does
   not clamp, so the clamp is done here). An unknown item id is dropped from
-  the build with a note.
+  the build with a note. Ids a note names are ``ascii()``-escaped and cut,
+  and a long dropped-item list is counted, not listed (RM-960).
 * ENGINE calls (``_defence`` for me, ``_score_row`` per enemy) sit behind
   the DS fail-soft idiom - ``except Exception`` with a FIXED note and the
   cause logged repr()-escaped, exactly as ``combo.compute_combo`` and
@@ -244,6 +245,20 @@ def _num(value: float) -> Optional[float]:
     return float(value) if math.isfinite(value) else None
 
 
+# RM-960: ids in a note are caller-typed (an HTTP body, a live inventory),
+# so they are ascii()-escaped and cut, and a long dropped-item list is counted
+# rather than listed - a control character or a megabyte id never rides into a
+# reply verbatim (the RM-838 (d) rule for engine text, applied to echoes).
+_ID_SHOWN_MAX = 24
+_IDS_SHOWN_MAX = 5
+
+
+def _shown_id(value: str) -> str:
+    """``ascii()`` of a caller-typed id, cut to ``_ID_SHOWN_MAX`` characters."""
+    shown = ascii(value)
+    return shown if len(shown) <= _ID_SHOWN_MAX else shown[:_ID_SHOWN_MAX] + "..."
+
+
 def _as_fighters(value: Any, label: str) -> tuple[list[Any], list[str]]:
     """Normalise the ``enemies`` / ``allies`` argument to a plain list.
 
@@ -313,7 +328,7 @@ def _parse_fighter(
         ]
     if not isinstance(champion_id, str) or champion_id not in snapshot.champions:
         shown = champion_id if isinstance(champion_id, str) else type(champion_id).__name__
-        return None, [f"{role}: unknown champion id {shown!r} - skipped"]
+        return None, [f"{role}: unknown champion id {_shown_id(shown)} - skipped"]
     lvl, notes = _parse_level(level, f"{role} {champion_id}")
     if lvl is None:
         return None, notes
@@ -336,8 +351,11 @@ def _parse_fighter(
         ]
 
     if dropped:
+        listed = ", ".join(_shown_id(d) for d in dropped[:_IDS_SHOWN_MAX])
+        extra = len(dropped) - _IDS_SHOWN_MAX
+        more = f" (+{extra} more)" if extra > 0 else ""
         notes.append(
-            f"{role} {champion_id}: dropped unknown item id(s) {', '.join(dropped)}"
+            f"{role} {champion_id}: dropped unknown item id(s) {listed}{more}"
         )
     name = str(snapshot.champion(champion_id).get("name") or champion_id)
     return _Fighter(champion_id, name, lvl, tuple(kept)), notes

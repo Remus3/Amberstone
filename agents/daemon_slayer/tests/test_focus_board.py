@@ -426,5 +426,63 @@ class ModeReachesBothSidesTests(_Base):
         )
 
 
+class EchoedIdBoundTests(_Base):
+    """RM-960: a note never carries a caller-typed id raw or unbounded.
+
+    Ids reach the notes from the caller (an RM-843 route body, a live
+    inventory), so a control character or a megabyte id must not ride into a
+    reply verbatim - the RM-838 (d) rule for engine text, applied to echoes.
+    """
+
+    _NOTE_CAP = 240
+
+    def test_unknown_item_id_control_characters_are_escaped(self) -> None:
+        board = self._board(_JINX, [("Malphite", _LEVEL, (_THORNMAIL, "99\x00\n<x>"))])
+        hit = [n for n in board.notes if "dropped unknown item" in n]
+        self.assertEqual(len(hit), 1, board.notes)
+        self.assertNotIn("\x00", hit[0])
+        self.assertNotIn("\n", hit[0])
+        self.assertIn("99\\x00\\n<x>", hit[0])
+
+    def test_long_unknown_champion_id_is_truncated(self) -> None:
+        board = self._board(_JINX, [("Z" * 10_000, _LEVEL, ()), _COMP[0]])
+        self.assertEqual([r.champion_id for r in board.rows], ["Malphite"])
+        hit = [n for n in board.notes if "unknown champion id" in n]
+        self.assertEqual(len(hit), 1, board.notes)
+        self.assertLessEqual(len(hit[0]), self._NOTE_CAP, hit[0][:300])
+        self.assertIn("ZZZZ", hit[0])
+
+    def test_long_unknown_item_id_is_truncated(self) -> None:
+        board = self._board(_JINX, [("Malphite", _LEVEL, ("9" * 10_000,))])
+        hit = [n for n in board.notes if "dropped unknown item" in n]
+        self.assertEqual(len(hit), 1, board.notes)
+        self.assertLessEqual(len(hit[0]), self._NOTE_CAP, hit[0][:300])
+
+    def test_many_unknown_item_ids_are_counted_not_listed(self) -> None:
+        junk = tuple(str(900000 + i) for i in range(1000))
+        board = self._board(_JINX, [("Malphite", _LEVEL, (_THORNMAIL, *junk))])
+        hit = [n for n in board.notes if "dropped unknown item" in n]
+        self.assertEqual(len(hit), 1, board.notes)
+        self.assertLessEqual(len(hit[0]), self._NOTE_CAP, hit[0][:300])
+        self.assertIn("900000", hit[0])
+        self.assertIn("+995 more", hit[0])
+        clean = self._board(_JINX, [("Malphite", _LEVEL, (_THORNMAIL,))])
+        self.assertAlmostEqual(
+            self._row(board, "Malphite").my_ttk_s,
+            self._row(clean, "Malphite").my_ttk_s,
+            places=9,
+        )
+
+    def test_every_note_is_bounded_under_hostile_ids(self) -> None:
+        board = self._board(
+            ("Q" * 5000, _LEVEL, ()),
+            [("R" * 5000, _LEVEL, ())],
+            allies=[("S" * 5000, _LEVEL, ())],
+        )
+        self.assertEqual(board.rows, ())
+        for note in board.notes:
+            self.assertLessEqual(len(note), self._NOTE_CAP, note[:300])
+
+
 if __name__ == "__main__":
     unittest.main()
