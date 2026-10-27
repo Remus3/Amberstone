@@ -19,6 +19,7 @@ import copy
 import queue
 import sys
 import threading
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -40,6 +41,8 @@ from core.game_snapshot import (
 )
 from core.sr_aram_worker import WorkerResult
 from core.tft_worker import TftWorkerResult
+from tests import _module_view
+from tests._timing_budget import fleet_test_guard
 from tests.fixtures.state_dicts import SR_STATE, ARAM_STATE, TFT_STATE
 
 
@@ -132,15 +135,45 @@ def _no_thread_outlives_a_test():
     the next test. The one exemption is a staged rewind Timer, which conftest
     cancels next. RM-909 measured 6 TftWorker + 5 TftLiveAnalysis threads
     leaked from this module before `_route_game_start`."""
+    yield from _thread_check()
+
+
+# How long the test's own new threads get, together, to exit on their own.
+THREAD_GRACE_S = 1.0
+
+
+def _started_in_this_test(thread, test_thread, before) -> bool:
+    """True when `thread` descends from the test's own thread, by the creator
+    lineage the passive audit hook in tests/_module_view.py records (RM-880 b).
+    A thread whose nearest pre-existing ancestor is some OTHER thread alive
+    before the test (another module's server, pool or poller) is not this
+    test's leak (RM-982). A thread with no recorded creator stays blamed,
+    the pre-RM-982 answer."""
+    seen = set()
+    while thread not in seen:
+        seen.add(thread)
+        creator, _file = _module_view._lineage_of(thread)
+        if creator is None or creator is test_thread:
+            return True
+        if creator in before:
+            return False
+        thread = creator
+    return True
+
+
+def _thread_check():
+    """The body of `_no_thread_outlives_a_test`, as a plain generator so the
+    attribution below can be driven directly by the tests at the end of this
+    module. The new threads share ONE grace deadline, not one wait each."""
     from tests import _lcu_poller_guard
+    test_thread = threading.current_thread()
     before = set(threading.enumerate())
     yield
     staged = _staged_rewind_timers()
     alive = [t for t in threading.enumerate()
-             if t not in before and t.is_alive() and t not in staged]
-    for t in alive:
-        t.join(timeout=1.0)
-    leaked = [t for t in alive if t.is_alive()]
+             if t not in before and t.is_alive() and t not in staged
+             and _started_in_this_test(t, test_thread, before)]
+    leaked = _lcu_poller_guard._survivors(alive, THREAD_GRACE_S)
     for t in leaked:
         _lcu_poller_guard.stop(t)
     assert not leaked, "test left thread(s) alive: " + "; ".join(
@@ -1167,6 +1200,112 @@ class TestTftFirstEntryWorkerIngress(unittest.TestCase):
         # Still no TftSnapshot from SR worker path
         self.assertNotIsInstance(app._current_envelope.payload, TftSnapshot)
         self.assertEqual(app._current_envelope.mode, MODE_TFT)
+
+
+# -- RM-982 (RM-909 follow-up (b)): who a new thread belongs to ------------
+# The per-test check above once blamed the running test for EVERY thread that
+# appeared during it. A thread another module left alive (a server, a pool,
+# a poller) that starts a child mid-test then failed whichever test of this
+# module happened to be running - an order-dependent red with nothing wrong
+# in the test. These drive `_thread_check` directly; each test joins every
+# thread it starts, so the autouse check around it stays clean.
+
+class _Parked:
+    """A thread target that parks until `stop()`; `_lcu_poller_guard.stop`
+    finds `stop` on the target's owner, so a reported leak exits at once."""
+
+    def __init__(self, spawn_child=False):
+        self.released = threading.Event()
+        self.children = []
+        self._spawn_child = spawn_child
+
+    def run(self):
+        if self._spawn_child:
+            child = _Parked()
+            t = threading.Thread(target=child.run, daemon=True,
+                                 name="s144q09-grandchild")
+            self.children.append((child, t))
+            t.start()
+        self.released.wait(fleet_test_guard.budget(10))
+
+    def stop(self):
+        self.released.set()
+        for child, _t in self.children:
+            child.stop()
+
+
+def _start(owner, name):
+    t = threading.Thread(target=owner.run, daemon=True, name=name)
+    t.start()
+    return t
+
+
+def test_a_child_of_a_thread_alive_before_the_test_is_not_blamed_on_it():
+    go = threading.Event()
+    parent = _Parked()
+    spawned = []
+
+    def foreign():
+        go.wait(fleet_test_guard.budget(10))
+        child = _Parked()
+        spawned.append((child, _start(child, "s144q09-foreign-child")))
+        parent.released.wait(fleet_test_guard.budget(10))
+
+    f = threading.Thread(target=foreign, daemon=True, name="s144q09-foreign")
+    f.start()
+    check = _thread_check()
+    next(check)
+    try:
+        go.set()
+        deadline = time.monotonic() + fleet_test_guard.budget(5)
+        while not spawned and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert spawned and spawned[0][1].is_alive()
+        with pytest.raises(StopIteration):
+            next(check)
+        assert spawned[0][1].is_alive(), "a foreign child was stopped"
+    finally:
+        parent.stop()
+        for child, t in spawned:
+            child.stop()
+            t.join(fleet_test_guard.budget(5))
+        f.join(fleet_test_guard.budget(5))
+
+
+def test_a_thread_the_test_starts_and_its_child_still_fail_the_test():
+    check = _thread_check()
+    next(check)
+    owner = _Parked(spawn_child=True)
+    t = _start(owner, "s144q09-own")
+    try:
+        deadline = time.monotonic() + fleet_test_guard.budget(5)
+        while not owner.children and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert owner.children
+        with pytest.raises(AssertionError) as err:
+            next(check)
+        assert "s144q09-own" in str(err.value)
+        assert "s144q09-grandchild" in str(err.value)
+        assert owner.released.is_set(), "a leaked thread was not stopped"
+    finally:
+        owner.stop()
+        t.join(fleet_test_guard.budget(5))
+        for _child, ct in owner.children:
+            ct.join(fleet_test_guard.budget(5))
+
+
+def test_a_thread_the_test_starts_that_exits_in_the_grace_passes():
+    check = _thread_check()
+    next(check)
+    owner = _Parked()
+    t = _start(owner, "s144q09-short")
+    threading.Timer(0.2, owner.stop).start()
+    try:
+        with pytest.raises(StopIteration):
+            next(check)
+    finally:
+        owner.stop()
+        t.join(fleet_test_guard.budget(5))
 
 
 if __name__ == "__main__":
