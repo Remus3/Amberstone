@@ -22,7 +22,9 @@ kept non-repo per the name-scrub rule):
   1. ``subscribe`` returns an unsubscribe CLOSURE. Callers never hold a
      handle they could half-remove.
   2. Upstream acquire/release is REF-COUNTED per URI. The first subscriber
-     acquires, the last release lets the bus drop the URI.
+     fires ``on_acquire``, the last release fires ``on_release``. The bus
+     below subscribes once to the firehose and sets neither hook; they exist
+     for a transport that subscribes per endpoint (``endpoint_topic``).
   3. Every callback is isolated. One raising observer must not starve its
      siblings on the same URI - otherwise a single bad consumer silently
      kills the whole event stream.
@@ -106,7 +108,8 @@ class SubscriptionRegistry:
     """Ref-counted URI -> callback registry with generation guarding.
 
     Pure: holds no socket and performs no I/O. ``on_acquire`` / ``on_release``
-    are set by the transport so it can learn which URIs still matter.
+    are for a transport that has to learn which URIs still matter; the
+    firehose ``LcuEventBus`` leaves both None.
     """
 
     def __init__(self) -> None:
@@ -133,7 +136,18 @@ class SubscriptionRegistry:
         ``prefix=True`` also matches child URIs, e.g. subscribing to
         ``/lol-champ-select/v1/session`` will see
         ``/lol-champ-select/v1/session/actions/3``.
+
+        ``uri`` must be a non-empty str and ``callback`` callable. Both are
+        checked HERE because dispatch matches URIs outside the per-callback
+        isolation: one non-str prefix registration made every dispatch raise,
+        so a single bad caller killed the stream for every observer.
         """
+        if not isinstance(uri, str):
+            raise TypeError(f"uri must be a str, not {type(uri).__name__}")
+        if not uri:
+            raise ValueError("uri must not be empty")
+        if not callable(callback):
+            raise TypeError("callback must be callable")
         entry = _Entry(callback, prefix, self._generation)
         first = uri not in self._entries
         self._entries.setdefault(uri, []).append(entry)
@@ -191,8 +205,9 @@ class SubscriptionRegistry:
         """Re-stamp surviving listeners onto the current generation.
 
         Called by the transport after a successful reconnect so existing
-        callers keep working without re-subscribing. Returns the URIs that
-        must be re-acquired upstream.
+        callers keep working without re-subscribing. Returns the URIs a
+        per-endpoint transport must re-acquire upstream; the firehose bus
+        re-subscribes to ``OnJsonApiEvent`` instead and ignores them.
         """
         for entries in self._entries.values():
             for entry in entries:
@@ -244,6 +259,15 @@ class LcuEventBus:
         raw = f"riot:{self._password}".encode()
         return "Basic " + base64.b64encode(raw).decode()
 
+    def _url(self) -> str:
+        # An IPv6 literal needs brackets: wss://::1:2999/ is an InvalidURI
+        # ("hostname isn't provided"), so an unbracketed one failed every
+        # connect and backed off forever.
+        host = self._host
+        if ":" in host and not host.startswith("["):
+            host = f"[{host}]"
+        return f"wss://{host}:{self._port}/"
+
     @staticmethod
     def _ssl_context() -> ssl.SSLContext:
         # The LCU serves a self-signed cert on loopback; RC's frozen client
@@ -268,12 +292,16 @@ class LcuEventBus:
         while not self._stop.is_set():
             connected_at: float | None = None
             try:
-                url = f"wss://{self._host}:{self._port}/"
+                # proxy=None: websockets >= 15 defaults to proxy=True, which
+                # honours HTTPS_PROXY / the system proxy with no loopback
+                # bypass (measured on 17.2), and a proxy cannot reach the
+                # client's own loopback port.
                 async with websockets.connect(
-                    url,
+                    self._url(),
                     ssl=self._ssl_context(),
                     additional_headers={"Authorization": self._auth_header()},
                     ping_interval=None,
+                    proxy=None,
                 ) as socket:
                     connected_at = time.monotonic()
                     await socket.send(json.dumps([_WAMP_SUBSCRIBE, WAMP_TOPIC]))
@@ -318,9 +346,14 @@ class LcuEventBus:
         never runs at all on an idle socket: ``stop()`` would set the flag,
         this task would stay parked in the read, and RC shutdown would hang on
         it while the ``wss://`` socket stayed open (RM-348).
+
+        The ``finally`` cancels BOTH futures: an outer cancel (RC shutdown)
+        lands while the read is parked, and a read left pending is orphaned -
+        destroyed while pending, or an exception never retrieved.
         """
         stop_wait = asyncio.ensure_future(self._stop.wait())
         frames = socket.__aiter__()
+        read: asyncio.Future | None = None
         try:
             while not self._stop.is_set():
                 read = asyncio.ensure_future(frames.__anext__())
@@ -343,6 +376,8 @@ class LcuEventBus:
                     self.registry.dispatch(uri, payload)
         finally:
             stop_wait.cancel()
+            if read is not None and not read.done():
+                read.cancel()
 
     @staticmethod
     def _parse_event(raw: Any) -> tuple[str | None, Any]:
@@ -357,7 +392,9 @@ class LcuEventBus:
             return None, None
         try:
             frame = json.loads(raw)
-        except (json.JSONDecodeError, ValueError):
+        except (ValueError, RecursionError):
+            # RecursionError: a deeply nested frame. Escaping here it tore
+            # down the socket, costing every observer its events.
             return None, None
         if not isinstance(frame, list) or len(frame) < 3:
             return None, None

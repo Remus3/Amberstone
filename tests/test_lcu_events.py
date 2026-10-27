@@ -218,11 +218,11 @@ class TestEndpointTopic:
 # --------------------------------------------------------------------------
 # RM-348 - transport lifecycle
 #
-# NOTE ON WHAT THESE ARE NOT: LcuEventBus has ZERO in-repo consumers today
-# (the module's own docstring says callers still use their poll path), so
-# these are CONTRACT tests on the bus itself, not caller tests. Inventing a
-# call path to wrap them in would prove nothing about production - same
-# reasoning recorded for RM-346 and RM-347.
+# NOTE ON WHAT THESE ARE NOT: these are CONTRACT tests on the bus itself, not
+# caller tests. When RM-348 landed the bus had ZERO in-repo consumers; its one
+# consumer now is core/obs_recorder.py ``_lcu_supervisor`` (default OFF),
+# which has its own tests. Inventing a call path here would prove nothing
+# about production - same reasoning recorded for RM-346 and RM-347.
 #
 # Both defects are shutdown/reconnect behaviour, so neither is observable
 # against a real LCU without a live client. The fake below is a websockets
@@ -452,3 +452,146 @@ class TestTransportLifecycle:
         run_coro(target, timeout=8.0)
 
         assert delays == [1.0, 2.0, 5.0, 10.0, 30.0]
+
+
+# --------------------------------------------------------------------------
+# s144 true-audit - input validation, connect shape, read-task lifetime
+# --------------------------------------------------------------------------
+
+
+class _ConnectRecorder:
+    """``websockets.connect`` stand-in that records (url, kwargs) and ends
+    the run after one connect, so a test can read the connect shape."""
+
+    def __init__(self, bus):
+        self._bus = bus
+        self.calls = []
+
+    def __call__(self, url, **kwargs):
+        self.calls.append((url, kwargs))
+        self._bus.stop()
+        return _FakeConnection(_ScriptedSocket())
+
+
+class _CancelRecordingSocket:
+    """A quiet socket whose parked read records that it was cancelled."""
+
+    def __init__(self, connected):
+        self._connected = connected
+        self.read_cancelled = False
+
+    async def send(self, _payload):
+        self._connected.set()
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            self.read_cancelled = True
+            raise
+        raise AssertionError("unreachable - the socket never yields")
+
+
+class TestHardening:
+    @pytest.fixture(autouse=True)
+    def _bus_enabled(self, monkeypatch):
+        monkeypatch.delenv("RC_LCU_EVENTS", raising=False)
+
+    @pytest.mark.parametrize(
+        "raw",
+        ["[" * 100000, "[" * 100000 + "]" * 100000, '{"a":' * 100000],
+        ids=["open-lists", "balanced-lists", "open-objects"],
+    )
+    def test_a_deeply_nested_frame_yields_no_uri(self, raw):
+        """json.loads raises RecursionError, not JSONDecodeError, on a deep
+        frame. Escaping _parse_event it tore down the whole socket, so one
+        bad frame cost every observer its events until the reconnect."""
+        assert lcu_events.LcuEventBus._parse_event(raw) == (None, None)
+
+    def test_the_lcu_socket_never_goes_through_a_proxy(self, monkeypatch):
+        """websockets >= 15 defaults proxy=True and honours HTTPS_PROXY /
+        the system proxy with no loopback bypass (measured on 17.2: a
+        wss://127.0.0.1 URI resolves to the HTTPS_PROXY), so the LCU socket
+        would be sent to a proxy that cannot reach the client's loopback."""
+        bus = lcu_events.LcuEventBus("127.0.0.1", 12345, "pw")
+        recorder = _ConnectRecorder(bus)
+        _install_fake_websockets(monkeypatch, recorder)
+
+        run_coro(bus.run(), timeout=8.0)
+
+        assert len(recorder.calls) == 1
+        _url, kwargs = recorder.calls[0]
+        assert "proxy" in kwargs
+        assert kwargs["proxy"] is None
+
+    @pytest.mark.parametrize(
+        "host, expected",
+        [
+            ("127.0.0.1", "wss://127.0.0.1:12345/"),
+            ("localhost", "wss://localhost:12345/"),
+            ("::1", "wss://[::1]:12345/"),
+            ("[::1]", "wss://[::1]:12345/"),
+            ("fe80::1", "wss://[fe80::1]:12345/"),
+        ],
+    )
+    def test_the_connect_url_brackets_an_ipv6_literal(self, monkeypatch, host, expected):
+        """wss://::1:12345/ is an InvalidURI ("hostname isn't provided"), so
+        an IPv6 game host failed every attempt and backed off forever."""
+        bus = lcu_events.LcuEventBus(host, 12345, "pw")
+        recorder = _ConnectRecorder(bus)
+        _install_fake_websockets(monkeypatch, recorder)
+
+        run_coro(bus.run(), timeout=8.0)
+
+        assert [url for url, _kw in recorder.calls] == [expected]
+
+    @pytest.mark.parametrize("uri", [None, 123, b"/lol-gameflow", ""])
+    def test_subscribe_refuses_a_uri_that_is_not_a_non_empty_string(self, registry, uri):
+        """A non-str prefix registration made _matches raise OUTSIDE the
+        per-callback isolation, so dispatch died for every observer."""
+        acquired = []
+        registry.on_acquire = acquired.append
+        with pytest.raises((TypeError, ValueError)):
+            registry.subscribe(uri, lambda _p: None, prefix=True)
+        assert registry.active_uris() == ()
+        assert acquired == []
+
+    def test_subscribe_refuses_a_non_callable_callback(self, registry):
+        with pytest.raises(TypeError):
+            registry.subscribe("/lol-gameflow/v1/gameflow-phase", None)
+        assert registry.active_uris() == ()
+
+    def test_a_valid_subscription_still_dispatches_after_a_refused_one(self, registry):
+        seen = []
+        registry.subscribe("/lol-gameflow", seen.append, prefix=True)
+        with pytest.raises(TypeError):
+            registry.subscribe(None, seen.append, prefix=True)
+        assert registry.dispatch("/lol-gameflow/v1/gameflow-phase", "Lobby") == 1
+        assert seen == ["Lobby"]
+
+    def test_cancelling_run_cancels_the_parked_read(self, monkeypatch):
+        """An outer cancel (RC shutdown) used to leave the read task pending:
+        the finally block cancelled only the stop waiter, so the read was
+        orphaned - destroyed-while-pending, or an exception never retrieved."""
+        connected = asyncio.Event()
+        socket = _CancelRecordingSocket(connected)
+        _install_fake_websockets(monkeypatch, lambda *a, **k: _FakeConnection(socket))
+        bus = lcu_events.LcuEventBus("127.0.0.1", 12345, "pw")
+
+        async def scenario():
+            task = asyncio.ensure_future(bus.run())
+            await asyncio.wait_for(connected.wait(), timeout=2.0)
+            await asyncio.sleep(0)
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+            for _ in range(3):
+                await asyncio.sleep(0)
+            return socket.read_cancelled
+
+        assert run_coro(scenario(), timeout=8.0) is True
