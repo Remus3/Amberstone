@@ -32,6 +32,9 @@ other :8888 POST):
                              for the active profile {"ok": true, "b64", "width",
                               "height", "format": "jpeg", "age_s", "base":[w,h]}
                              ; {"ok": false, "error"} when none captured yet.
+                             On both frame routes a junk width / height is
+                             null and then no "base" is sent; a missing,
+                             junk or non-finite timestamp gives "age_s" null.
   GET  /api/vision-frame?source=reference&state=<state>  -> the named reference
                              state still (multi-state frames); state omitted /
                              "base" is the legacy base still.
@@ -52,6 +55,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import time
 import urllib.request
@@ -84,6 +88,32 @@ REGIONS_PATH = _ROOT / "data" / "vision_regions.json"
 PAGE_PATH = _ROOT / "web" / "vision_calibrator.html"
 _FRAME_URL = "http://127.0.0.1:8889/latest-frame"
 _COORD_MAX = 10000  # sanity ceiling - reject garbage coordinates
+# s144 true-audit: bounds on what a POST may persist into the TRACKED regions
+# file / a profile. Measured at the audit: the live profiles hold at most 33
+# regions, names at most 28 printable ASCII characters.
+_NAME_MAX = 64
+_REGIONS_MAX = 256
+# A 2560x1440 JPEG relay frame is ~1-2 MB of base64; the cap only stops an
+# unbounded read, it never trims a real frame.
+_FRAME_MAX_BYTES = 32 * 1024 * 1024
+_FRAME_FORMATS = ("jpeg", "png", "webp")
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Refuse every redirect: urllib copies X-RC-Token onto the redirected
+    request, and the :8889 relay never redirects."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+# s144 true-audit F4: the process-default opener honours HTTP_PROXY / the
+# registry proxy for 127.0.0.1 (measured: proxy_bypass("127.0.0.1:8889") is
+# False with HTTP_PROXY set), which would hand the vision token to the proxy,
+# and it freezes whatever proxy it saw on the first urlopen() in the process.
+# The relay is loopback: no proxy, no redirect.
+_OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}),
+                                      _NoRedirect)
 
 
 def _vision_token() -> str:
@@ -107,23 +137,37 @@ def _vision_token() -> str:
 def validate_regions(obj):
     """Validate a regions payload. Returns ``(ok, err, clean)`` where ``clean``
     is a dict of name -> [x1,y1,x2,y2] ints. Rejects any malformed shape so a
-    fat-fingered drag can never persist a zero-area or off-canvas crop."""
+    fat-fingered drag can never persist a zero-area or off-canvas crop.
+    Never raises: the dashboard parses bodies with ``json.loads``, which
+    accepts NaN, Infinity and 1e400 (= inf), and each is a refusal here, not
+    a ValueError / OverflowError out of ``int()``. The range is checked on the
+    RAW value, before ``int()`` truncates -0.5 to 0 or 10000.5 to 10000. A
+    name is at most ``_NAME_MAX`` printable characters and is checked before
+    any message quotes it, so an error never echoes a control character or a
+    huge name."""
     if not isinstance(obj, dict) or not obj:
         return (False, "regions must be a non-empty object", {})
+    if len(obj) > _REGIONS_MAX:
+        return (False, f"at most {_REGIONS_MAX} regions", {})
     clean = {}
     for name, box in obj.items():
         if not isinstance(name, str) or not name.strip():
             return (False, "region name must be a non-empty string", {})
+        if len(name) > _NAME_MAX or not name.isprintable():
+            return (False, f"region names must be at most {_NAME_MAX} "
+                           "printable characters", {})
         if not isinstance(box, (list, tuple)) or len(box) != 4:
             return (False, f"{name}: expected [x1,y1,x2,y2]", {})
         coords = []
         for c in box:
             if isinstance(c, bool) or not isinstance(c, (int, float)):
                 return (False, f"{name}: coordinates must be numbers", {})
+            if isinstance(c, float) and not math.isfinite(c):
+                return (False, f"{name}: coordinates must be finite", {})
+            if c < 0 or c > _COORD_MAX:
+                return (False, f"{name}: coordinates out of range", {})
             coords.append(int(c))
         x1, y1, x2, y2 = coords
-        if min(coords) < 0 or max(coords) > _COORD_MAX:
-            return (False, f"{name}: coordinates out of range", {})
         if x2 <= x1 or y2 <= y1:
             return (False, f"{name}: x2>x1 and y2>y1 required (non-empty box)", {})
         clean[name] = [x1, y1, x2, y2]
@@ -131,12 +175,15 @@ def validate_regions(obj):
 
 
 def load_regions(path=None) -> dict:
-    """Read the regions file. Returns {} on a missing / malformed file."""
+    """Read the regions file. Returns {} on a missing / malformed file,
+    including one whose top level is not an object. Only read and parse
+    failures are swallowed; anything else is a bug and raises."""
     p = Path(path) if path is not None else REGIONS_PATH
     try:
-        return json.loads(p.read_text(encoding="utf-8"))
-    except Exception:  # noqa: BLE001
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, ValueError, RecursionError):
         return {}
+    return data if isinstance(data, dict) else {}
 
 
 def save_regions(obj, path=None):
@@ -154,36 +201,93 @@ def save_regions(obj, path=None):
         return (False, "could not write regions file - see logs", 0)
 
 
+def _dim(v):
+    """A frame dimension as a positive int up to ``_COORD_MAX``, else None.
+    An integral float (2560.0) counts; a fraction, a bool or a string never
+    does."""
+    if isinstance(v, float) and math.isfinite(v) and v.is_integer():
+        v = int(v)
+    if isinstance(v, bool) or not isinstance(v, int):
+        return None
+    return v if 0 < v <= _COORD_MAX else None
+
+
+def _finite(v):
+    """``v`` rounded to 0.1 when it is a finite real number, else None. A
+    NaN or an infinity must never reach a response: ``json.dumps`` writes
+    them as bare tokens that no browser JSON parser accepts."""
+    if isinstance(v, bool) or not isinstance(v, (int, float)):
+        return None
+    try:
+        f = float(v)
+    except OverflowError:
+        return None
+    return round(f, 1) if math.isfinite(f) else None
+
+
+def _age_s(now_s, ts):
+    """Seconds since ``ts``, or None when ``ts`` is missing, zero,
+    non-numeric or non-finite (the frame itself is still served). Zero is
+    "no stamp", as in ``vision_profiles._age_since``, never the epoch."""
+    if not ts or _finite(ts) is None:
+        return None
+    try:
+        return _finite(float(now_s) - float(ts))
+    except (OverflowError, TypeError, ValueError):
+        return None
+
+
+def _read_frame() -> bytes:
+    """Read the relay body through the no-proxy, no-redirect opener, at most
+    ``_FRAME_MAX_BYTES``; a larger body raises ValueError."""
+    req = urllib.request.Request(_FRAME_URL,
+                                 headers={"X-RC-Token": _vision_token()})
+    with _OPENER.open(req, timeout=3) as r:
+        raw = r.read(_FRAME_MAX_BYTES + 1)
+    if len(raw) > _FRAME_MAX_BYTES:
+        raise ValueError(f"relay frame over {_FRAME_MAX_BYTES} bytes")
+    return raw
+
+
 def fetch_frame(_fetch=None, _now=None) -> dict:
     """Proxy the latest :8889 vision frame. Returns a friendly ``{"ok": false}``
-    when the relay is down (never raises, never leaks the raw error)."""
+    when the relay is down (never raises, never leaks the raw error). A frame
+    with a junk ``ts`` is still served, with ``age_s`` None; a junk width or
+    height is None (and the frame GET then derives no ``base``)."""
     now = _now or time.time
-    if _fetch is None:
-        def _fetch():
-            req = urllib.request.Request(_FRAME_URL, headers={"X-RC-Token": _vision_token()})
-            with urllib.request.urlopen(req, timeout=3) as r:
-                return r.read()
+    fetch = _fetch or _read_frame
     try:
-        d = json.loads(_fetch())
-        if not d.get("b64"):
-            return {"ok": False, "error": "no frame available yet"}
-        return {
-            "ok": True,
-            "b64": d.get("b64"),
-            "width": d.get("width"),
-            "height": d.get("height"),
-            "format": d.get("format", "jpeg"),
-            "age_s": round(now() - float(d.get("ts", 0) or 0), 1),
-        }
+        d = json.loads(fetch())
     except Exception as exc:  # noqa: BLE001
         log.warning("vision-frame proxy failed: %s", exc)
         return {"ok": False, "error": "frame relay unavailable"}
+    if not isinstance(d, dict):
+        log.warning("vision-frame proxy: relay body is a %s, not an object",
+                    type(d).__name__)
+        return {"ok": False, "error": "frame relay unavailable"}
+    b64 = d.get("b64")
+    if not isinstance(b64, str) or not b64:
+        return {"ok": False, "error": "no frame available yet"}
+    fmt = d.get("format")
+    return {
+        "ok": True,
+        "b64": b64,
+        "width": _dim(d.get("width")),
+        "height": _dim(d.get("height")),
+        # The page splices this into a data:image/<format> URL; the relay
+        # only ever sends jpeg (vision_server/_frame.py).
+        "format": fmt if fmt in _FRAME_FORMATS else "jpeg",
+        "age_s": _age_s(now(), d.get("ts")),
+    }
 
 
 # -- handlers ---------------------------------------------------------
 
 def _send_json(h, code: int, payload: dict) -> None:
-    h._send(code, json.dumps(payload).encode("utf-8"), "application/json")
+    # allow_nan=False: a non-finite number raises here (each handler's except
+    # turns it into the generic 500) instead of going out as invalid JSON.
+    h._send(code, json.dumps(payload, allow_nan=False).encode("utf-8"),
+            "application/json")
 
 
 def _scale_regions(regions: dict, sx: float, sy: float) -> dict:
@@ -207,9 +311,8 @@ def _profile_regions_payload() -> dict:
     base = prof.get("base", list(_REFERENCE_FALLBACK_BASE))
     if prof.get("source") == "legacy_seed":
         ref = vp.load_reference()
-        if ref.get("ok") and ref.get("width") and ref.get("height"):
-            ref_w, ref_h = int(ref["width"]), int(ref["height"])
-        else:
+        ref_w, ref_h = _dim(ref.get("width")), _dim(ref.get("height"))
+        if not (ref.get("ok") and ref_w and ref_h):
             ref_w, ref_h = _REFERENCE_FALLBACK_BASE
         seed_w = base[0] if base and base[0] else 1920
         seed_h = base[1] if base and len(base) > 1 and base[1] else 1080
@@ -284,16 +387,21 @@ def _reference_frame_payload(state=None) -> dict:
     ref = vp.load_reference(state=state) if state else vp.load_reference()
     if not ref.get("ok"):
         return {"ok": False, "error": ref.get("error", "no reference captured yet")}
-    w, hgt = ref.get("width"), ref.get("height")
-    return {
+    w, hgt = _dim(ref.get("width")), _dim(ref.get("height"))
+    out = {
         "ok": True,
         "b64": ref.get("b64"),
         "width": w,
         "height": hgt,
         "format": "jpeg",
-        "age_s": ref.get("age_s"),
-        "base": [w, hgt],
+        "age_s": _finite(ref.get("age_s")),
     }
+    # The sidecar meta is a separate file: a missing or junk width / height
+    # (or a NaN ts, hence a NaN age) must not become a [null, null] base or a
+    # bare NaN token in the response.
+    if w is not None and hgt is not None:
+        out["base"] = [w, hgt]
+    return out
 
 
 def _serve_frame_get(h) -> None:
@@ -321,8 +429,8 @@ def _serve_reference_states_get(h) -> None:
             try:
                 ref = vp.load_reference() if st == "base" else vp.load_reference(state=st)
                 if ref.get("ok"):
-                    entry["width"] = ref.get("width")
-                    entry["height"] = ref.get("height")
+                    entry["width"] = _dim(ref.get("width"))
+                    entry["height"] = _dim(ref.get("height"))
             except Exception:  # noqa: BLE001
                 pass
             out.append(entry)

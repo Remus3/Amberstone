@@ -19,6 +19,7 @@ from __future__ import annotations
 import io
 import json
 import logging
+import math
 import re
 import time
 from pathlib import Path
@@ -46,15 +47,23 @@ _BASE_MAX = 10000
 
 def validate_base(base):
     """Validate a profile base [width, height]. Returns (ok, err, clean).
-    Rejects None, wrong length, non-numeric, non-positive, or huge."""
+    Rejects None, wrong length, non-numeric, non-finite, non-positive, or
+    huge. Never raises: a NaN / Infinity from ``json.loads`` is a refusal,
+    not a ValueError / OverflowError out of ``int()``, and the ceiling is
+    checked on the raw value so 10000.5 is not truncated into range (s144
+    true-audit)."""
     if not isinstance(base, (list, tuple)) or len(base) != 2:
         return (False, "base must be [width, height]", None)
     coords = []
     for c in base:
         if isinstance(c, bool) or not isinstance(c, (int, float)):
             return (False, "base coordinates must be numbers", None)
+        if isinstance(c, float) and not math.isfinite(c):
+            return (False, "base coordinates must be finite", None)
+        if c > _BASE_MAX:
+            return (False, "base out of range", None)
         v = int(c)
-        if v <= 0 or v > _BASE_MAX:
+        if v <= 0:
             return (False, "base out of range", None)
         coords.append(v)
     return (True, None, coords)
@@ -368,6 +377,20 @@ def capture_reference(config_key=None, _grabber=None, state=None) -> dict:
         return {"ok": False, "error": "capture failed"}
 
 
+def _age_since(ts):
+    """Seconds since the sidecar ``ts``, rounded to 0.1, or None when it is
+    missing, zero, non-numeric or non-finite. The sidecar is a separate file:
+    a junk ``ts`` used to raise (a 500 for the whole reference frame) or, when
+    missing, report the age of the Unix epoch (s144 true-audit)."""
+    if isinstance(ts, bool) or not isinstance(ts, (int, float)) or not ts:
+        return None
+    try:
+        age = time.time() - float(ts)
+    except OverflowError:
+        return None
+    return round(age, 1) if math.isfinite(age) else None
+
+
 def load_reference(config_key=None, state=None) -> dict:
     """Load the saved native reference for the active (or given) profile as
     ``{ok, b64, width, height, age_s, config_key}`` or ``{ok: False}``. ``state``
@@ -384,12 +407,14 @@ def load_reference(config_key=None, state=None) -> dict:
         meta = json.loads(p.with_suffix(".json").read_text(encoding="utf-8"))
     except Exception:  # noqa: BLE001
         pass
+    if not isinstance(meta, dict):
+        meta = {}
     return {
         "ok": True,
         "b64": base64.b64encode(raw).decode("ascii"),
         "width": meta.get("width"),
         "height": meta.get("height"),
-        "age_s": round(time.time() - float(meta.get("ts", 0) or 0), 1),
+        "age_s": _age_since(meta.get("ts")),
         "config_key": ck,
         "format": "jpeg",
     }
