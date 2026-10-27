@@ -21,7 +21,7 @@ own comment warns that a stale token "401s every /upload-liveclient silently
 (pythonw, no console) -> relay cache empty -> the app never sees the live game
 -> coach dead". It diagnosed the failure mode precisely and then kept
 ``print()`` as its only channel. Fixed by logging to ``logs/`` on the
-in-tree precedent (``tools/daemon_slayer_extract.py:98-105``: basicConfig with
+in-tree precedent (``tools/daemon_slayer_extract.py`` ``_configure_logging``: basicConfig with
 a StreamHandler AND a FileHandler).
 
 **FINDING 2 - a dead token literal, in three files that the dashboard SERVES

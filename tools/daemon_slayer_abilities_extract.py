@@ -127,16 +127,28 @@ USER_AGENT = "Amberstone/DaemonSlayer-abilities-extract/1.0"
 # gold/golden DS tests when the WARNING fires.
 _EXPECTED_MERAKI_CONTENT_PATCH = "25.15"
 
-LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler(str(LOG_FILE), encoding="utf-8"),
-    ],
-)
 log = logging.getLogger("daemon_slayer_abilities_extract")
+
+
+def _configure_logging() -> None:
+    """Log to stdout and LOG_FILE. Called from the ``__main__`` block only.
+
+    RM-828 (b): this ran at module level, so merely IMPORTING the tool
+    created logs/ and opened LOG_FILE (the FileHandler is built as a call
+    argument, so it opens even when basicConfig is a no-op) and took over
+    the importer's root logger. A DS-only test run imports this module and
+    has no FileHandler redirect, so it created or opened the live log.
+    Guarded by tests/test_ds_extract_import_no_log_rm828b.py.
+    """
+    LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        handlers=[
+            logging.StreamHandler(sys.stdout),
+            logging.FileHandler(str(LOG_FILE), encoding="utf-8"),
+        ],
+    )
 
 
 # --- Unit -> typed-scaling-field map ------------------------------------------
@@ -854,4 +866,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    _configure_logging()
     sys.exit(main())
