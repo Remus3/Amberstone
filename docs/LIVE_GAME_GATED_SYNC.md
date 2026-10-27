@@ -2119,6 +2119,41 @@ Rail tools: `tools/hz_shadow_report.py`, `tools/replay_build_order_validate.py`,
   existence proves nothing - RM-867). The flip stays operator-gated even at `ready`. Known residual
   outside RM-868: det has no partner-dead / opponent-HP input (21 FIGHT SMART vs Haiku-defensive rows
   at HP 25-70; one partner-dead row).
+  **READY (lane 9, s144 cycle 7, PREP only, no game up; NOT ticked).** One read-only command reads
+  (a)-(d) after the game: `python tools/gated_g717_arena_readback.py [--since <ISO>] [--samples N
+  --interval S] [--json]` (reads the main checkout's `data/`; prints no path and no game id). The
+  default cutoff is `ops/runtime/health.json` `started_at`; if RC restarted AFTER the game, pass
+  `--since <game start>` instead, or the cohort is empty. **TRAP FIXED IN THE TOOL, NOT IN THE
+  REPORT:** step (c)'s `arena_shadow_report.py --since` compares `ts >= since` as STRINGS
+  (`_since_filter`), and the writer stamps UTC `+00:00`, so a local-offset cutoff such as
+  `11:00-05:00` admits every row stamped 11:00-16:00Z (5 h of pre-restart rows; pinned in
+  `tests/test_gated_g717_arena_readback.py`). Give the report a UTC cutoff only; this tool converts
+  any offset to UTC first.
+  Predicates, stated before any game (`checks.<name>.status`): `restart` PASS iff the cutoff is at
+  or after 2026-10-25T06:28:48Z (committer time of `4d07738aa`, the later fix commit); `camp` PASS iff
+  a coaching-file snapshot stamped after the cutoff reads `mode` arena with `camp_phase` true, or a
+  cohort row carries det `BUY ITEMS` (`core/arena_action_rule.py` rule 1: only a truthy camp_phase
+  yields it); `cohort` FAIL iff a post-cutoff row is a placeholder (no Haiku action AND round in
+  0 / "" / None - the shipped `_arena_artifact_is_blank` predicate, so the row's "no blank-Haiku /
+  round-0 row" is read as THAT: a blank Haiku on a real round still logs by design and is counted,
+  not failed), PASS iff samples > 0 and det `BUY ITEMS` > 0; `report` RECORDED iff >= 1 live-fight
+  comparable round (agreement and state printed verbatim, whatever they are); `anvil` CANDIDATE iff a
+  post-cutoff arena row exists - it is never passed by the tool, its `offered` must be matched by eye
+  to the cards on screen (G5-01 predicate). Exit 0 all met, 1 INCOMPLETE, 2 FAIL.
+  Evidence contract: value = the BUY ITEMS count, placeholder count, `agree/comparable` + state, and
+  the anvil `offered` list; source = `data/arena_coach_shadow.jsonl` / `data/anvil_shadow.jsonl`
+  rows (`ts`, `round`) and `data/arena_coaching_data.json` `camp_phase` + mtime; timestamp = the
+  cutoff and the row `ts` range, with mode Arena q1750; predicate = this paragraph.
+  SUBSTITUTION check (answer it in the tick line): the report's class agreement is COMPUTE over what
+  was logged; it shows the det and Haiku coaches were both fed, not that either verdict RENDERED.
+  (a) and (b) are wiring evidence (vision -> artifact -> det rule), so they count; a unit test, a
+  replayed jsonl or a fixture row never does, and the anvil row counts only once matched on screen.
+  Idle baseline (2026-10-27 16:17Z, no game, lane/gated): restart PASS (RC `started_at`
+  2026-10-27T12:47:45Z); `arena_coach_shadow.jsonl` 617 rows, all pre-fix (last `ts`
+  2026-07-21T03:17Z; 36 int-0 rounds; det `BUY ITEMS` 1, `PLAY AGGRO` 282, `KITE BACK` 195,
+  `FIGHT SMART` 139; 42 blank-Haiku rows), cohort 0, report `awaiting_accrual` (617 left out);
+  `data/anvil_shadow.jsonl` is now ABSENT (the 30 leaked rows in the GATE 5 DRAIN CARD baseline are
+  gone), so any anvil row after the cutoff is the first real one; exit 1.
 - **G7-18** (was G18) ORUN5 grade-fold refinement (`assume_carry_share_grade` default-OFF at
   `core/post_game_rubric.py:410`, OR-gated with the existing carry_efficiency fold). Shipped headless
   byte-identical OFF (full-dict equality across 7 role/stat fixtures). The live default-ON flip = pass
