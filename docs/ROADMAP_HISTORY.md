@@ -1,5 +1,29 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-10-26c - size-budget relocation (session 143 H1 housekeeping), 10 lines
+
+`ROADMAP.md` stood at 73169 of 81920 bytes on `04f0aeccf` (the `tools/drift_guard.py` warn line is 73728). The closed / shipped lines below move here VERBATIM as they stood at `04f0aeccf`, in their ROADMAP order: the s128 .. s141 shipped-rows pointer line (replaced in `ROADMAP.md` by a shorter pointer naming this block), the RM-835 .. RM-837 row (all three SHIPPED), the NEXT-5 TRIAGE stub, the RM-310 SHIPPED row, the LIFT-2 BAND 1 heading and row, and the two CLOSED-section stubs with their headings (`### CLOSED in this lane`, `### DS defensive-half sweep GAP specs (R132)`). Open rows were not moved; the residues these lines name (RM-310 sibling sites, lift-2 Bands 2-4, RM-106b, RM-125) keep their own rows.
+
+- **[x] SHIPPED / CLOSED ROWS relocated VERBATIM to `docs/ROADMAP_HISTORY.md`, blocks `## 2026-10-23` (s128 /done), `## 2026-10-24` (s128 / s129 / s131 sha lists), `## 2026-10-25` / `25b` / `25c` (s133 batch rows) and `## 2026-10-25d` (s133 /done: RM-486, RM-482 / RM-485, RM-513, RM-595, RM-600, the RM-750 shipped row, RM-851, RM-859, RM-877, RM-874, RM-878, RM-857, RM-866, RM-879 / RM-882, the SESSION 133 sha list, and the five earlier stubs naming each block's ids) and `## 2026-10-25e` (s135 landing: RM-838, RM-856, RM-864, RM-873) and `## 2026-10-25f` (s136 /done: RM-686, RM-699, the RM-740 (f) stop-gate line, RM-615 / RM-616) and `## 2026-10-25g` (s138 /done: RM-703) and `## 2026-10-26` (s140 /done: RM-908 and the `## 2026-10-20` stub, ids RM-751 .. RM-746 incl. RM-255 REFUTED AT HEAD - do NOT re-open) and `## 2026-10-26b` (s141 /done: RM-909 SHIPPED `4305752b7`). READ the archived row before re-opening an id or citing a sha.**
+
+- **[ ] RM-835..RM-837 (filed s131 by the RM-824 merger, the RM-824 follow-ups; each row carries the do-not-redo "RM-824 fixed only `dashboard/routes_loop_control.py`"):** 835 fifteen :8888 DS / analytics catch-all 500s return `str(exc)[:200]`, plus the `routes_ds_statcheck` detail and the `routes_sr_draft` notes (SHIPPED s132 `fbcdc9952` + `965b7bb92`: 18 sites, the 17 :8888 route replies plus the `/api/ds-combo` engine-notes path in `agents/daemon_slayer/combo.py` / `mana_sim.py` / `burst.py`; the out-of-scope siblings are RM-838); 836 an `ops/loop/lanes.py` lane-lock write failure reads "lane held by None" and logs no cause (SHIPPED s133 queue lane `be08fcf7a`, LEDGER 1810); 837 the RM-824 AST guard misses an exception that reaches a reply through an assignment (SHIPPED s133 queue lane `7a832062c`, LEDGER 1800). Bodies in `BACKLOG.md` "Session 131 filings".
+
+> **NEXT-5 TRIAGE (2026-08-02) archived VERBATIM in `docs/ROADMAP_HISTORY.md`** (2026-09-07e and `## 2026-10-01` blocks); its two durable conclusions survive as the RM-122 and RM-118 rows.
+
+- **RM-310 SHIPPED 2026-09-06 (`b9ca3c3c9`, LEDGER 1354)** - eleven sibling sites stay open on the RM-310 row in `BACKLOG.md`; also closes the `rofl_archive` third of RM-251's `_atomic_write_bytes` bullet. Body archived verbatim in `docs/ROADMAP_HISTORY.md` (2026-09-07e block).
+
+### External reference lift 2 (2026-10-04) - Band 1
+
+- **[x] LIFT-2 BAND 1 SHIPPED 2026-10-04 (LEDGER 1560-1581) - the 11 rows (RM-526, RM-527, RM-528, RM-529, RM-530, RM-531, RM-532, RM-533, RM-535, RM-536, RM-537) are archived VERBATIM in the `## 2026-10-04 - lift-2 Band 1` block of `docs/ROADMAP_HISTORY.md`.** Bands 2-4 stay open in `BACKLOG.md` (section "External reference lift 2"); Y-06 / Y-20 live on the CCR-135 -> Mission Control S10 line there. Live half of RM-526 is G4-30 in `docs/LIVE_GAME_GATED_SYNC.md`.
+
+### CLOSED in this lane - ids kept reachable, fences RELOCATED
+
+Block archived VERBATIM in the `## 2026-10-02` block. **Read it before re-opening RM-100 / RM-106 / RM-106a / RM-107 / RM-109 / RM-111 / RM-112 / RM-115 / RM-116 / RM-120 / RM-123 / RM-126** - each carries a do-not-re-pitch fence, not just history. RM-106b and RM-125 are still OPEN above.
+
+### DS defensive-half sweep GAP specs (R132) - ALL CLOSED, block archived in the `## 2026-10-01` + `## 2026-10-02` blocks
+
+Block archived VERBATIM in the `## 2026-10-02` block, which names every id. **Fences: RM-99's coefficient is 10 percent, NOT 8; RM-102 / RM-104 are PLURAL Arena mirrors - read the verdicts before touching the DS scorer/item surface.**
+
 ## 2026-10-26b - shipped row relocated (session 141 /done), 1 row
 
 `ROADMAP.md` stood at 73352 of 81920 bytes on `6e28127f3` (the `tools/drift_guard.py` warn line is 73728). RM-909 SHIPPED in session 141 as `4305752b7` (LEDGER 1923: `tests/snapshot_regressions/test_app_authority.py` stubbed the app delegate while the frozen lifecycle calls its own `on_game_start`, so 6 TFT-entry tests leaked live `TftWorker` + `LcuClient` pollers; suite guard `tests/_lcu_poller_guard.py`). Its row below moves here VERBATIM as it stood at `6e28127f3`; the `## 2026-10-23`.. pointer line in `ROADMAP.md` names this block.
