@@ -182,7 +182,7 @@ install on natural quit, never mid-game (`rc-shell/src/main.js:267`).
   what it owns (job object, owned PIDs); these scripts stay operator-only and
   out of the bundle.
 - S8 A boot-start installer still ships. `ops/install_startup.bat:15` and
-  `ops/install_startup.bat:29` create a Startup-folder shortcut to
+  `ops/install_startup.bat:31` create a Startup-folder shortcut to
   `ops/rc_league_watcher.ps1`, the exact thing intent 3 forbids. Exclude it
   from every bundle; retire it with the cutover.
 - S9 Task coupling in the restarters. The frozen supervisor relaunches Phase
