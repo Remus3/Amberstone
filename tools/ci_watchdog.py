@@ -154,6 +154,17 @@ FROZEN_FILES = frozenset({
 
 # --- pure decision logic (unit-tested) ----------------------------------
 
+def _atomic_write_text(path: Path, content: str) -> None:
+    """RM-258: core.polled_json.atomic_write_text (per-writer scratch name,
+    fsync, bounded WinError 5 retry, LF bytes). Imported lazily, the
+    _fleet_route() shape, so importing this module stays side-effect free."""
+    root = str(Path(__file__).resolve().parent.parent)
+    if root not in sys.path:
+        sys.path.insert(0, root)
+    from core.polled_json import atomic_write_text
+    atomic_write_text(path, content)
+
+
 def is_halted(runtime_dir: Path = RUNTIME_DIR) -> bool:
     """True when the HALT kill-switch file is present."""
     return (runtime_dir / "HALT").exists()
@@ -172,10 +183,7 @@ def write_sentinel(run_id: int, path: Path = SENTINEL) -> None:
     cur = read_sentinel(path)
     if run_id <= cur:
         return
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(str(run_id), encoding="utf-8")
-    os.replace(tmp, path)
+    _atomic_write_text(path, str(run_id))
 
 
 def select_failed_runs(runs: list[dict], last_seen: int) -> list[dict]:
@@ -217,8 +225,7 @@ def attempts_for(run_id: int, attempts_dir: Path = ATTEMPTS_DIR) -> int:
 def bump_attempts(run_id: int, attempts_dir: Path = ATTEMPTS_DIR) -> int:
     """Increment + persist this run-id's attempt counter; return the new value."""
     n = attempts_for(run_id, attempts_dir) + 1
-    attempts_dir.mkdir(parents=True, exist_ok=True)
-    (attempts_dir / f"{run_id}.txt").write_text(str(n), encoding="utf-8")
+    _atomic_write_text(attempts_dir / f"{run_id}.txt", str(n))
     return n
 
 
@@ -406,7 +413,6 @@ def escalation_body(run_id: int, head_sha: str, reason: str, detail: str = "") -
 def write_escalation(run_id: int, head_sha: str, reason: str, detail: str = "",
                      path: Path = ESCALATION) -> None:
     """Write the human-readable ESCALATION.md (overwritten per escalation)."""
-    path.parent.mkdir(parents=True, exist_ok=True)
     body = (
         f"# CI Watchdog escalation - run {run_id}\n\n"
         f"- repo: {REPO}\n"
@@ -415,7 +421,7 @@ def write_escalation(run_id: int, head_sha: str, reason: str, detail: str = "",
         f"- strikes: {MAX_ATTEMPTS} (budget exhausted)\n\n"
         f"## Detail\n\n{detail}\n"
     )
-    path.write_text(body, encoding="utf-8")
+    _atomic_write_text(path, body)
 
 
 # --- I/O wiring ---------------------------------------------------------

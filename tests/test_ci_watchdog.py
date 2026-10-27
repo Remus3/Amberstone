@@ -439,6 +439,84 @@ def test_execute_dispatch_arm_no_change_when_empty_diff(tmp_path):
     assert "push" not in fake.labels
 
 
+# -- RM-258: state writers route through core.polled_json ---------------
+
+def _record_polled_writes(monkeypatch):
+    import core.polled_json as pj
+    seen = []
+    real = pj._write_then_replace
+
+    def rec(path, data):
+        seen.append(path.name)
+        return real(path, data)
+
+    monkeypatch.setattr(pj, "_write_then_replace", rec)
+    return seen
+
+
+def test_rm258_sentinel_attempts_and_escalation_route_through_polled_json(
+        tmp_path, monkeypatch):
+    """The sentinel and the attempt counters are re-read on every poll and a
+    torn read parses as 0 (a strike budget reset); each write goes through
+    the per-writer scratch name + bounded WinError 5 retry, no litter."""
+    seen = _record_polled_writes(monkeypatch)
+    cw.write_sentinel(9, tmp_path / "last_seen_run_id.txt")
+    cw.bump_attempts(9, tmp_path / "attempts")
+    cw.write_escalation(9, "abc", "two strikes", "boom",
+                        tmp_path / "ESCALATION.md")
+    assert seen == ["last_seen_run_id.txt", "9.txt", "ESCALATION.md"]
+    assert sorted(p.name for p in tmp_path.iterdir()) == [
+        "ESCALATION.md", "attempts", "last_seen_run_id.txt"]
+    assert [p.name for p in (tmp_path / "attempts").iterdir()] == ["9.txt"]
+
+
+def test_rm258_escalation_bytes_are_lf(tmp_path):
+    p = tmp_path / "ESCALATION.md"
+    cw.write_escalation(7, "abc", "two strikes", "boom", p)
+    raw = p.read_bytes()
+    assert b"\r" not in raw
+    assert raw.startswith(b"# CI Watchdog escalation - run 7\n\n")
+
+
+def test_rm258_sentinel_survives_a_transient_rename_refusal(tmp_path, monkeypatch):
+    import core.polled_json as pj
+    real = pj.os.replace
+    refusals = [2]
+
+    def flaky(src, dst):
+        if refusals[0]:
+            refusals[0] -= 1
+            raise PermissionError(13, "Access is denied")
+        return real(src, dst)
+
+    monkeypatch.setattr(pj.os, "replace", flaky)
+    monkeypatch.setattr(pj.time, "sleep", lambda _s: None)
+    p = tmp_path / "last_seen_run_id.txt"
+    cw.write_sentinel(41, p)
+    assert cw.read_sentinel(p) == 41
+    assert [x.name for x in tmp_path.iterdir()] == ["last_seen_run_id.txt"]
+
+
+def test_rm258_importing_the_watchdog_leaves_sys_path_alone():
+    """The module docstring promises import safety: core.polled_json is
+    loaded lazily, the same shape as _fleet_route()."""
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    root = Path(cw.__file__).resolve().parent.parent
+    code = (
+        "import sys; before = list(sys.path); "
+        "from tools import ci_watchdog; "
+        "assert sys.path == before, 'sys.path mutated'; "
+        "assert 'core.polled_json' not in sys.modules, 'eager import'"
+    )
+    r = subprocess.run([sys.executable, "-c", code], cwd=str(root),
+                       capture_output=True, text=True, timeout=60,
+                       creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    assert r.returncode == 0, r.stderr
+
+
 # The land phase end to end (real git, the real kit) lives in
 # tests/test_ci_watchdog_land_e2e.py - see its docstring for why it is separate.
 
