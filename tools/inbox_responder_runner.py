@@ -46,6 +46,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from core.polled_json import atomic_write_bytes
 from ops.loop import fleet_route, slots, winmutex
 from tools.inbox_responder import (
     Cycle,
@@ -859,15 +860,22 @@ def attempts_of(root) -> dict:
     return data if isinstance(data, dict) else {}
 
 
+def _write_record(path: Path, data: Mapping[str, Any]) -> None:
+    """Publish one of the four JSON state records every tick reads back.
+
+    RM-258: through core.polled_json (per-writer scratch name, fsync, bounded
+    WinError 5 retry, LF bytes; the parent is created on demand). The hold and
+    bounce readers fail CLOSED on a torn read, so a half-written record stalls
+    the channel. ensure_ascii stays on, so the bytes are ASCII.
+    """
+    atomic_write_bytes(path, json.dumps(data, indent=2, sort_keys=True).encode("utf-8"))
+
+
 def _record_attempt(root, sha: str) -> int:
     data = attempts_of(root)
     count = int(data.get(sha, 0)) + 1
     data[sha] = count
-    path = attempts_path(root)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(data, indent=2, sort_keys=True), encoding="utf-8", newline="\n")
-    tmp.replace(path)
+    _write_record(attempts_path(root), data)
     return count
 
 
@@ -899,13 +907,8 @@ def _record_held_note(root, sha: str, entry: Mapping[str, Any]) -> bool:
     if data is None:
         return False
     data[sha] = dict(entry)
-    path = held_notes_path(root)
     try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_suffix(".json.tmp")
-        tmp.write_text(json.dumps(data, indent=2, sort_keys=True), encoding="utf-8",
-                       newline="\n")
-        tmp.replace(path)
+        _write_record(held_notes_path(root), data)
     except OSError:
         return False
     return True
@@ -962,11 +965,7 @@ def _drop_fleet_skips(root, names, ts: str) -> list:
             fresh = {k: v for k, v in seen.items() if k not in data}
             if fresh:
                 data.update(fresh)
-                path.parent.mkdir(parents=True, exist_ok=True)
-                tmp = path.with_suffix(".json.tmp")
-                tmp.write_text(json.dumps(data, indent=2, sort_keys=True), encoding="ascii",
-                               newline="\n")
-                tmp.replace(path)
+                _write_record(path, data)
         except OSError:
             pass
     return keep
@@ -1022,11 +1021,7 @@ def bounces_of(root) -> Optional[dict]:
 def _record_bounce(root, key: str, entry: Mapping[str, Any]) -> None:
     data = bounces_of(root) or {}
     data[key] = dict(entry)
-    path = bounces_path(root)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(data, indent=2, sort_keys=True), encoding="ascii", newline="\n")
-    tmp.replace(path)
+    _write_record(bounces_path(root), data)
 
 
 def bounce_body(result: "CycleResult") -> str:

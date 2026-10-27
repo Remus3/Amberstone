@@ -3934,7 +3934,7 @@ def test_an_unreadable_hold_record_stops_the_cycle_before_it_spends_anything(wor
     assert world.answered() == set()
 
 
-def test_an_unrecordable_hold_suppresses_the_bounce(world):
+def test_an_unrecordable_hold_suppresses_the_bounce(world, monkeypatch):
     """The bounce allowance only bounds the repeat while its record persists.
 
     With the hold record unwritable, a refused note re-refuses on every tick,
@@ -3944,11 +3944,21 @@ def test_an_unrecordable_hold_suppresses_the_bounce(world):
     armed(world)
     world.spawner = StubSpawner(result_bytes(proposal()))
     # Readable (absent, so it reads as empty) but UNWRITABLE: the atomic
-    # write's temporary name is occupied by a directory. That is the half the
-    # gate-4b unreadable check cannot see, because it happens after the pick.
-    path = runner.held_notes_path(world.root)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.with_suffix(".json.tmp").mkdir()
+    # write of the hold record alone is refused. That is the half the gate-4b
+    # unreadable check cannot see, because it happens after the pick. RM-258:
+    # the writer's scratch name is per-writer now (core.polled_json), so the
+    # fault is injected at the shared write primitive, not by occupying a
+    # fixed `<name>.json.tmp` with a directory.
+    import core.polled_json as pj
+    real = pj._write_then_replace
+    held = runner.held_notes_path(world.root)
+
+    def refuse_hold(path, data):
+        if Path(path) == held:
+            raise OSError(28, "No space left on device")
+        return real(path, data)
+
+    monkeypatch.setattr(pj, "_write_then_replace", refuse_hold)
     result = world.drive()
     assert result.termination == "exhausted"
     assert bounces_in(world.rsc) == []
