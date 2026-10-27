@@ -401,10 +401,13 @@ def test_f2_the_cycle_recovers_an_interrupted_deploy(tmp_path):
                  now=lambda: wall[0], uptime=lambda: wall[0], finish_timeout_s=30)
     assert res.status == "pending"
     wall[0] += up.DEPLOYING_STALE_S + 60
+    # PKG-6c H-A: main.py is up and ready here, so the rollback passes the
+    # idle gate first (injected: never this box's processes or :8888).
     res = uc.resume_cycle(root, clock=clock, sleep=quit_mid_deploy, now=lambda: wall[0],
                           uptime=lambda: wall[0],
                           health=Script(clock, lambda t: sample("r1")), serving=lambda: True,
-                          supervisor_alive=lambda: True, finish_timeout_s=30)
+                          supervisor_alive=lambda: True, finish_timeout_s=30,
+                          game_check=no_game)
     assert res.status == "recovered", res.to_dict()
     assert "1.1.0" in uc.read_cycle(root)["bad_versions"]
 
@@ -961,7 +964,8 @@ def test_r1_an_interrupted_deploy_after_a_quit_recovers_without_a_bad_mark(tmp_p
     wall[0] += up.DEPLOYING_STALE_S + 60
     res = uc.resume_cycle(root, clock=clock, sleep=quit_mid_deploy,
                           uptime=lambda: wall[0], health=Script(clock, lambda t: sample("r1")),
-                          serving=lambda: True, supervisor_alive=lambda: True, finish_timeout_s=30)
+                          serving=lambda: True, supervisor_alive=lambda: True, finish_timeout_s=30,
+                          game_check=no_game)   # PKG-6c H-A: the rollback's idle gate
     assert res.status == "recovered", res.to_dict()
     assert uc.read_cycle(root)["bad_versions"] == {}, "a quit is not a bad release"
 

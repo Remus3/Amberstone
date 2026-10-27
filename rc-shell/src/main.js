@@ -2400,6 +2400,7 @@ function maybeResumeBackend() {
     nowMs: Date.now(),
     inFlight: !!backendCycleChild || hostRespawning,
     idle: lastUpdateIdle && pollFresh, // B4: a sent (deferred) check retries only when idle
+    stateFresh: pollFresh, // PKG-6c: an unanswered /api/state lets the cycle decide
   });
   if (d.run) {
     runBackendResume(d.restartsSent);

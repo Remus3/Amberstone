@@ -11,7 +11,8 @@ deploy worker rather than in Electron:
              3, while a game is live) -> finish (bounded) -> verify ->
              recover() when main.py does not come back -> the restarts owed.
     resume:  only what an earlier cycle left: complete an interrupted
-             recover, finish a pending deploy (a deploy cut off mid-copy is
+             recover, take a held rollback (`recover_due`, PKG-6c H-A),
+             finish a pending deploy (a deploy cut off mid-copy is
              salvaged and recovered), re-verify, and - with --restarts-sent -
              health-check the restarts the shell performed. Never checks or
              applies a release, needs no /api/state: the shell runs it at
@@ -47,6 +48,15 @@ run, and when the watcher reports it fired for these files, a NEW run.
 
 BAD VERSIONS (F4): a version that ended recovered / failed / lost is kept in
 `bad_versions` and never applied again; a newer release still is.
+
+ROLLBACK GATE (PKG-6c H-A): a rollback restarts main.py (the supervisor's
+rollback stops and starts it), so while main.py is up and READY it waits
+for the same full idle gate as apply (_recover_hold): a lost / interrupted
+deploy's rollback is recorded as `recover_due` and taken by the next idle
+cycle (the shell resumes it unless a fresh /api/state says busy), and so is
+completing an interrupted recover. A main.py that is down has nothing to
+interrupt: the rollback runs at once. A verify that failed is not held (the
+new run never became ready).
 
 Restart safety (each step is a separate, persisted state):
   - the updater's `recovering` marker makes recover() re-entrant (F6);
@@ -256,7 +266,7 @@ def read_cycle(root: Path) -> Dict[str, Any]:
     if not isinstance(doc, dict):
         doc = {}
     doc.setdefault("schema", SCHEMA)
-    for key in ("verify", "owed", "last", "phase"):
+    for key in ("verify", "owed", "last", "phase", "recover_due"):
         doc.setdefault(key, None)
     if not isinstance(doc.get("bad_versions"), dict):
         doc["bad_versions"] = {}
@@ -665,6 +675,46 @@ def _await_supervisor(ctx: _Ctx, requests: List[str]) -> None:
         ctx.sleep(ctx.poll_s)
 
 
+def _recover_hold(ctx: _Ctx, sample: Optional[Dict[str, Any]] = None) -> Optional[str]:
+    """PKG-6c H-A: why a rollback must wait, else None. A rollback restarts
+    main.py, so it waits only while main.py is up and READY (a main.py that
+    is down has nothing to interrupt) and the full idle gate says busy."""
+    s = ctx.health() if sample is None else sample
+    if not _sample_ok(s):
+        return None
+    return ctx.game_reason()
+
+
+def _set_recover_due(ctx: _Ctx, version: Optional[str], why: str, *, bad: bool) -> None:
+    """H-A: the rollback owed for `version` (update_cycle.json `recover_due`),
+    kept until a recover ends; _resume takes it once the gate is open."""
+    prev = read_cycle(ctx.root).get("recover_due")
+    at = prev.get("at") if isinstance(prev, dict) and prev.get("version") == version else None
+    _write_cycle(ctx.root, recover_due={"version": version, "why": _clean(why), "bad": bool(bad),
+                                        "at": at or utc_now()})
+
+
+def _held(ctx: _Ctx, version: Optional[str], current: Optional[str], why: str,
+          hold: str) -> CycleResult:
+    _write_cycle(ctx.root, phase="recover-due")
+    ctx.log(f"{why}; the rollback waits ({hold})")
+    return CycleResult("deferred", version, current,
+                       _clean(f"{why}; the rollback waits for the game to end ({hold})"),
+                       code="game_live")
+
+
+def _due_rollback(ctx: _Ctx, version: Optional[str], current: Optional[str], why: str, *,
+                  bad: bool) -> CycleResult:
+    """H-A: a rollback the deploy left owed - recorded FIRST (neither a hold
+    nor a quit loses it: finish() already cleared the pending op), held
+    while main.py serves a busy moment, else run now."""
+    _set_recover_due(ctx, version, why, bad=bad)
+    hold = _recover_hold(ctx)
+    if hold:
+        return _held(ctx, version, current, why, hold)
+    return _recover(ctx, version, current, why, bad=bad)
+
+
 def _recover(ctx: _Ctx, version: Optional[str], current: Optional[str], why: str, *,
              actions: Optional[Dict[str, Any]] = None, bad: bool = True) -> CycleResult:
     ctx.check_alive()   # a quit that raced the last probe is not a broken update
@@ -675,12 +725,12 @@ def _recover(ctx: _Ctx, version: Optional[str], current: Optional[str], why: str
     try:
         out = up.recover(ctx.root, now=ctx.now, offline=offline)
     except up.UpdateError as exc:
-        _write_cycle(ctx.root, verify=None, owed=None, phase="done")
+        _write_cycle(ctx.root, verify=None, owed=None, recover_due=None, phase="done")
         if bad:
             _mark_bad(ctx.root, version, "failed")
         return CycleResult("failed", version, current,
                            _clean(f"{why} and recover was refused: {exc}"), code=exc.code)
-    _write_cycle(ctx.root, verify=None, owed=None, phase="done")
+    _write_cycle(ctx.root, verify=None, owed=None, recover_due=None, phase="done")
     if bad:
         _mark_bad(ctx.root, version, "recovered")
     if not offline:
@@ -732,6 +782,17 @@ def _complete_recover(ctx: _Ctx, current: Optional[str]) -> CycleResult:
                            "an interrupted recover waits before its next try",
                            code="recovery_attention" if fails >= RECOVER_ATTENTION_AFTER
                            else "recover_backoff")
+    # H-A sibling: completing it may write the supervisor's rollback (a
+    # restart of main.py) - the same gate as the rollback it completes. A
+    # recorded rollback keeps its verdict (a quit-excused one is not bad).
+    due = doc.get("recover_due")
+    bad = not (isinstance(due, dict) and due.get("version") == version
+               and due.get("bad") is False)
+    hold = _recover_hold(ctx)
+    if hold:
+        why = "an interrupted recover is not complete"
+        _set_recover_due(ctx, version, why, bad=bad)
+        return _held(ctx, version, current, why, hold)
     ctx.log(f"completing an interrupted recover of {version}")
     ctx.phase("recovering", version)
     try:
@@ -750,9 +811,10 @@ def _complete_recover(ctx: _Ctx, current: Optional[str]) -> CycleResult:
         return CycleResult("failed", version, current,
                            _clean(f"completing the recover failed ({type(exc).__name__}); "
                                   f"next try in {int(delay)} s"), code=code)
-    _write_cycle(ctx.root, verify=None, owed=None, phase="done", recover_failures=0,
-                 retry_after=None)
-    _mark_bad(ctx.root, version, "recovered")
+    _write_cycle(ctx.root, verify=None, owed=None, recover_due=None, phase="done",
+                 recover_failures=0, retry_after=None)
+    if bad:
+        _mark_bad(ctx.root, version, "recovered")
     act = restart_actions(None)
     if marker.get("offline"):
         act.update(respawn_host=True)
@@ -847,10 +909,11 @@ def _after_finish(ctx: _Ctx, fin: Any, current: Optional[str]) -> CycleResult:
     if fin.status in ("interrupted", "lost") and fin.kind == "apply":
         # H1: live may be mixed; restore the full pre-apply tree from the
         # deploy's own backup first; a quit-excused one is then retried.
+        # PKG-6c H-A: recorded first and held while main.py serves a game.
         why = ("the deploy was cut off mid-copy (the supervisor stopped)"
                if fin.status == "interrupted" else
                "the deploy request vanished with no result (the worker was killed)")
-        return _recover(ctx, fin.version, current, why, bad=not quit_hit)
+        return _due_rollback(ctx, fin.version, current, why, bad=not quit_hit)
     if fin.status == "interrupted":
         return CycleResult("failed", fin.version, current,
                            "a rollback was cut off; run it again", code="interrupted")
@@ -943,13 +1006,12 @@ def _check_restarts(ctx: _Ctx, owed: Dict[str, Any], current: Optional[str]) -> 
     names = [n for n in all_names if n not in skipped]
     failing = [n for n in names if not ((st.get(n) or {}).get("restarted")
                                        and (st.get(n) or {}).get("healthy"))]
-    if _sample_ok(main):
-        reason = ctx.game_reason()
-        if reason:
-            return CycleResult("deferred", version, current,
-                               _clean(f"restarted services not healthy ({', '.join(failing)}); "
-                                      f"recover waits for the game to end ({reason})"),
-                               code="game_live")
+    reason = _recover_hold(ctx, main)
+    if reason:
+        return CycleResult("deferred", version, current,
+                           _clean(f"restarted services not healthy ({', '.join(failing)}); "
+                                  f"recover waits for the game to end ({reason})"),
+                           code="game_live")
     actions = restart_actions(owed.get("restart"))
     return _recover(ctx, version, current,
                     "restarted services did not stay up: " + (", ".join(failing) or "unstable"),
@@ -960,6 +1022,13 @@ def _resume(ctx: _Ctx, current: Optional[str], *, restarts_sent: bool) -> Option
     """What an earlier cycle left, in order; None = nothing recorded."""
     if up.read_state(ctx.root).get("recovering"):
         return _complete_recover(ctx, current)
+    due = read_cycle(ctx.root).get("recover_due")
+    if isinstance(due, dict) and due.get("version"):
+        # H-A: a rollback a game held (or a quit cut off before it started).
+        ctx.log(f"resuming the rollback of {due.get('version')}")
+        return _due_rollback(ctx, due.get("version"), current,
+                             str(due.get("why") or "a held rollback"),
+                             bad=due.get("bad") is not False)
     if up.read_state(ctx.root).get("pending"):
         ctx.log("resuming a pending update operation")
         fin = _wait_finish(ctx)

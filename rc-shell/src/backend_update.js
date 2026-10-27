@@ -256,18 +256,31 @@ function recordsFrom(cycleText, stateText) {
     notice: isObj(c.notice),
     // R7: a stuck recover's next try (the cycle's retry_after, epoch s).
     retryAfterMs: typeof c.retry_after === "number" && Number.isFinite(c.retry_after) ? c.retry_after * 1000 : null,
+    // PKG-6c H-A: a rollback the cycle holds while main.py serves a game.
+    recoverDue: isObj(c.recover_due),
     pending: isObj(st.pending),
     recovering: isObj(st.recovering),
     phase: typeof c.phase === "string" ? ascii(c.phase, 32) : null,
   };
 }
 
+// A deferred check waits only while a FRESH /api/state says busy (PKG-6c):
+// with the state unknown (main.py down, or its state route failing) the
+// cycle decides with its own gate, so an unanswered state never holds a
+// rollback forever. `stateFresh` absent keeps the plain idle rule.
+function heldByState(o) {
+  return o.idle !== true && o.stateFresh !== false;
+}
+
 // F1: run `resume` now? A verify / pending / recovering record resumes every
 // RESUME_INTERVAL_MS with NO /api/state requirement (main.py may be down).
+// PKG-6c H-A: a rollback the cycle held for a game (`recover_due`) resumes
+// on the interval unless a fresh /api/state says busy (heldByState), before
+// the urgent rule (a held interrupted recover keeps its marker).
 // An owed record: once at launch (it returns the restarts to perform; the
 // shell then performs and health-checks them); and B4 - a SENT check (one
 // that deferred) again every interval, but only when `idle`. `restartsSent`
-// says which resume to run.
+// says which resume to run. opts.stateFresh: the last /api/state answered.
 function resumeDue(opts) {
   const o = opts && typeof opts === "object" ? opts : {};
   const r = o.records && typeof o.records === "object" ? o.records : {};
@@ -277,6 +290,16 @@ function resumeDue(opts) {
   const urgent = r.verify === true || r.pending === true || r.recovering === true;
   const first = typeof o.lastResumeMs !== "number" || !Number.isFinite(o.lastResumeMs);
   const due = first || o.nowMs - o.lastResumeMs >= RESUME_INTERVAL_MS;
+  if (r.recoverDue === true) {
+    if (typeof r.retryAfterMs === "number" && o.nowMs < r.retryAfterMs) {
+      return { run: false, reason: "backoff", restartsSent: false };
+    }
+    if (heldByState(o)) {
+      return { run: false, reason: "recover-waits-for-idle", restartsSent: false };
+    }
+    return due ? { run: true, reason: "recover-retry", restartsSent: false }
+      : { run: false, reason: "not-due", restartsSent: false };
+  }
   if (urgent) {
     if (typeof r.retryAfterMs === "number" && o.nowMs < r.retryAfterMs) {
       return { run: false, reason: "backoff", restartsSent: false };

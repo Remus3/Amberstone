@@ -310,9 +310,11 @@ test("F1 recordsFrom: what an earlier cycle left on disk", () => {
   const cyc = JSON.stringify({ verify: { version: "1.1.0" }, owed: null, phase: "verifying" });
   const st = JSON.stringify({ pending: null, recovering: { version: "1.1.0" } });
   assert.deepStrictEqual(bu.recordsFrom(cyc, st),
-    { verify: true, owed: false, owedSent: false, notice: false, retryAfterMs: null, pending: false, recovering: true, phase: "verifying" });
+    { verify: true, owed: false, owedSent: false, notice: false, retryAfterMs: null, recoverDue: false,
+      pending: false, recovering: true, phase: "verifying" });
   assert.deepStrictEqual(bu.recordsFrom("garbage", null),
-    { verify: false, owed: false, owedSent: false, notice: false, retryAfterMs: null, pending: false, recovering: false, phase: null });
+    { verify: false, owed: false, owedSent: false, notice: false, retryAfterMs: null, recoverDue: false,
+      pending: false, recovering: false, phase: null });
 });
 
 test("F1 resumeDue: a verify / pending / recovering record resumes on its interval, any state", () => {
@@ -600,4 +602,38 @@ test("round 5: main.js holds no copy of the deferral or owed state", () => {
   assert.ok(!/let backendDeferral\b/.test(MAIN_SRC) && !/let backendOwed\b/.test(MAIN_SRC));
   assert.ok(fnBody("runBackendChild").includes("backendCtl.onResult("));
   assert.ok(fnBody("applyOwedRestarts").includes("backendCtl.decide("));
+});
+
+// ---- PKG-6c (H-A, H-B H2 variant) -------------------------------------------------
+
+test("PKG-6c H-A a held rollback (recover_due) waits only for a FRESH busy state", () => {
+  const rec = bu.recordsFrom(JSON.stringify({ recover_due: { version: "1.1.0", bad: true } }), "{}");
+  assert.strictEqual(rec.recoverDue, true);
+  assert.strictEqual(bu.recordsFrom(JSON.stringify({ recover_due: null }), "{}").recoverDue, false);
+  const busy = bu.resumeDue({ records: rec, lastResumeMs: null, nowMs: 1, idle: false, stateFresh: true });
+  assert.deepStrictEqual([busy.run, busy.reason], [false, "recover-waits-for-idle"],
+    "a fresh /api/state says champ select or a game: no child at all");
+  assert.strictEqual(bu.resumeDue({ records: rec, lastResumeMs: null, nowMs: 1, idle: true, stateFresh: true }).run,
+    true, "idle: the cycle rolls back");
+  assert.strictEqual(bu.resumeDue({ records: rec, lastResumeMs: null, nowMs: 1, idle: false, stateFresh: false }).run,
+    true, "state unknown (main.py down or its state route broken): the cycle decides");
+  const early = bu.resumeDue({ records: rec, lastResumeMs: 1000, nowMs: 1001, idle: true, stateFresh: true });
+  assert.deepStrictEqual([early.run, early.reason], [false, "not-due"], "on the resume interval");
+  // An interrupted recover the cycle held: the recovering marker no longer
+  // makes it urgent (no python child a minute through a whole game).
+  const held = bu.recordsFrom(JSON.stringify({ recover_due: { version: "1.1.0" } }),
+    JSON.stringify({ recovering: { version: "1.1.0" } }));
+  assert.strictEqual(bu.resumeDue({ records: held, lastResumeMs: 1, nowMs: 1 + bu.RESUME_INTERVAL_MS,
+    idle: false, stateFresh: true }).run, false);
+  // A pending deploy still resumes with no /api/state at all (finish needs none;
+  // the cycle itself holds the rollback while main.py serves a game).
+  const pend = bu.recordsFrom("{}", JSON.stringify({ pending: { version: "1.1.0" } }));
+  assert.strictEqual(bu.resumeDue({ records: pend, lastResumeMs: null, nowMs: 1, idle: false, stateFresh: true }).run,
+    true);
+});
+
+test("PKG-6c main.js hands resumeDue whether its /api/state is fresh", () => {
+  const body = fnBody("maybeResumeBackend");
+  assert.ok(body.includes("stateFresh: pollFresh"), "the unknown-state rule needs pollFresh");
+  assert.ok(body.includes("idle: lastUpdateIdle && pollFresh"));
 });
