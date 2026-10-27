@@ -696,7 +696,10 @@ any step here. The packaged app must have passed attach mode (3.3) first.
    utilities) are not the app and stay. Deleting the disabled bare
    `RiotCommander` task stays the operator's separate call.
 3. Stage 2 proof: restart Windows (unregistering a task does not stop the
-   process it started, and the SYSTEM-context DS survives a sign-out), then
+   process it started, and a sign-out leaves running both the boot-trigger
+   SYSTEM task `RC-DaemonSlayer` and the S4U tasks `RC-LCUAgent`,
+   `RC-LiveClientRelay` and `RC-Phase3-Supervisor`, which run outside the
+   interactive session; measured 2026-10-26), then
    run the script with no switch: no listed task registered and nothing RC
    listens on :8888 / :8889 / :8860 (never-at-boot). Launch the app: all
    services up and `launcher_status.json` healthy. Quit: no RC process left.

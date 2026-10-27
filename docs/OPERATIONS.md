@@ -326,6 +326,8 @@ It is an elevated, operator-only, one-time act: no session, lane or loop runs it
   at logon at all). It UNREGISTERS and never disables (a disabled `RC-DaemonSlayer` makes RC's
   DsWatchdog raise instead of starting DS itself; plan S9). Every other task in the table above
   stays, and deleting the bare `RiotCommander` stays a separate operator call.
+- `-IncludeLiveFlipWatcher` removes `RC-LiveFlipWatcher` with NO launcher replacement: nothing
+  runs the DS live-flip watcher afterwards (a `-Rollback` re-imports it with the rest of that backup).
 - Default = DRY RUN: with no switch it reads each task, exports its XML in memory (proving the
   backup will work), prints what it would write and unregister, the listeners on 8888 / 8889 /
   8860 and `ops/runtime/launcher_status.json`, and changes nothing - no task, no file, no
@@ -349,7 +351,9 @@ Steps (run from the repo root; Windows PowerShell 5.1 or pwsh):
    level, sha256 per file), reads every file back against its sha256 - any failure stops the
    run before the first unregister - then unregisters each task and reads back that it is gone.
 4. Stage 2 proof: restart Windows. An unregistered task does not stop the process it started,
-   and DS runs as SYSTEM, so a sign-out alone leaves it listening. After logon, run the dry run
+   and a sign-out alone leaves running both the boot-trigger SYSTEM task `RC-DaemonSlayer` and
+   the S4U tasks `RC-LCUAgent`, `RC-LiveClientRelay` and `RC-Phase3-Supervisor` (S4U runs
+   outside the interactive session; measured 2026-10-26). After logon, run the dry run
    again: every task `not registered` and `listeners on 8888 / 8889 / 8860: none` is the
    never-at-boot proof. Then launch the app: every service up and `launcher_status.json`
    healthy; quit it: nothing RC is left listening.
