@@ -300,14 +300,20 @@ def test_f4_frame_proxy_never_sends_the_token_to_an_env_proxy(monkeypatch):
         monkeypatch.setenv("HTTP_PROXY", f"http://127.0.0.1:{trap.port}")
         monkeypatch.setenv("http_proxy", f"http://127.0.0.1:{trap.port}")
         monkeypatch.setattr(vc, "_vision_token", lambda: _TOKEN)
-        monkeypatch.setattr(vc, "_FRAME_URL",
-                            f"http://127.0.0.1:{_free_port()}/latest-frame")
+        frame_url = f"http://127.0.0.1:{_free_port()}/latest-frame"
+        monkeypatch.setattr(vc, "_FRAME_URL", frame_url)
         out = vc.fetch_frame()
     finally:
         trap.close()
     assert out["ok"] is False
     assert _TOKEN.encode() not in trap.received
-    assert trap.received == b""
+    # A proxied request line carries the absolute URL, and only the code under
+    # test knows this one (a fresh port). The proxy env is process-wide, so a
+    # leftover thread of an earlier test in this worker that calls urlopen()
+    # during the window reaches the trap too ("received == b''" read that as
+    # this route's request in the s144 L3 gated Tier-2 run, gw3).
+    assert frame_url.encode() not in trap.received
+    assert b"/latest-frame" not in trap.received
 
 
 class _FrameServer:

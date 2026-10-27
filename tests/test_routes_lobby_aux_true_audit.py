@@ -18,6 +18,7 @@ import sqlite3
 import pytest
 
 from dashboard import routes_lobby_aux as rla
+from tests._module_view import this_thread_only
 
 
 class _StubHandler:
@@ -423,8 +424,12 @@ class TestLiveMasteryRead:
 
         def _no_http(*a, **k):
             raise AssertionError("self-HTTP request made")
-        monkeypatch.setattr(ur, "urlopen", _no_http)
-        monkeypatch.setattr(ur.OpenerDirector, "open", _no_http)
+        # routes_lobby_aux binds no urllib name of its own, so there is no
+        # module-local view to fake; the thread-scoped form (RM-801) keeps a
+        # leftover thread of another test on the real functions.
+        monkeypatch.setattr(ur, "urlopen", this_thread_only(_no_http, ur.urlopen))
+        monkeypatch.setattr(ur.OpenerDirector, "open",
+                            this_thread_only(_no_http, ur.OpenerDirector.open))
         assert rla._read_live_mastery() == {"67": {"level": 7}}
 
     @pytest.mark.parametrize("snap", [None, [], [1], "snapshot",

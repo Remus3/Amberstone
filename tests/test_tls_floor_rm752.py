@@ -64,6 +64,11 @@ _ALLOWED_CONSTRUCTIONS = {
     # RM-752 KEEP decision: the :2999 Live Client floor stays TLSv1 until a
     # live in-game probe measures what :2999 negotiates (docs/OPERATIONS.md)
     "tools/liveclient_relay.py": 1,
+    # the RM-752 follow-up probe (s144 gated lane): relay_context() rebuilds
+    # the relay's TLSv1-floor context as the measurement CONTROL, without
+    # importing the relay; read-only, one GET per context to :2999 only, and
+    # its own test pins parity with the relay's TLS statements
+    "tools/gated_tls_2999_probe.py": 1,
 }
 
 

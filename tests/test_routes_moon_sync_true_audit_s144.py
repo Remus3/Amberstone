@@ -34,6 +34,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from dashboard import routes_moon_sync as mod
+from tests._module_view import bind_stdlib
 
 NOW = datetime(2026, 9, 15, 12, 0, 0, tzinfo=timezone.utc)
 
@@ -159,7 +160,8 @@ def test_pid_range_guard_runs_before_any_probe(monkeypatch):
 
     calls = []
     monkeypatch.setattr(sys, "platform", "linux")
-    monkeypatch.setattr(os, "kill", lambda pid, sig: calls.append(pid))
+    # RM-801: the module's own `os` only, never the shared os.kill.
+    bind_stdlib(monkeypatch, mod, os, kill=lambda pid, sig: calls.append(pid))
     assert mod._pid_alive(2 ** 32 + 5) is None
     assert calls == []
     assert mod._pid_alive(4242) is True  # positive control: the probe does run

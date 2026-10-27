@@ -40,6 +40,9 @@ _TOKENS_JS = r"""
   const probe = (prop, v) => {
     const d = document.createElement("span");
     d.style.display = "block";
+    // Out of flow: <body> is a flex column, so an in-flow probe is a
+    // flex item that shrinks once the page content overflows.
+    d.style.position = "absolute";
     d.style[prop] = "var(" + v + ")";
     document.body.appendChild(d);
     const cs = getComputedStyle(d);

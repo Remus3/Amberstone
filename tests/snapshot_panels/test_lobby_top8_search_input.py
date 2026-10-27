@@ -30,6 +30,10 @@ _READ = """() => {
   const probe = (prop, v) => {
     const d = document.createElement("span");
     d.style.display = "block";
+    // Out of flow: <body> is a flex column in the lobby view, so an
+    // in-flow probe is a flex item that SHRINKS once the page content
+    // overflows (the RM-881 (b) duo block made it 40.03 for 42px).
+    d.style.position = "absolute";
     d.style[prop] = "var(" + v + ")";
     document.body.appendChild(d);
     const cs = getComputedStyle(d);

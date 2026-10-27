@@ -21,6 +21,7 @@ import threading
 
 import pytest
 
+from tests._module_view import bind_urlopen
 from tools import gated_tls_2999_probe as gtp
 
 _HOST = "127.0.0.1"
@@ -411,8 +412,8 @@ class _Resp:
     ({"mode_key": "sr", "liveclient": None}, False, None),
 ])
 def test_read_state_counts_only_league_modes(monkeypatch, state, in_game, game_mode):
-    monkeypatch.setattr(gtp.urllib.request, "urlopen",
-                        lambda *_a, **_k: _Resp(json.dumps(state).encode()))
+    bind_urlopen(monkeypatch, gtp,
+                 lambda *_a, **_k: _Resp(json.dumps(state).encode()))
     out = gtp.read_state()
     assert out["in_league_game"] is in_game
     assert out["game_mode"] == game_mode
@@ -422,7 +423,7 @@ def test_read_state_counts_only_league_modes(monkeypatch, state, in_game, game_m
 def test_read_state_fails_soft(monkeypatch):
     def boom(*_a, **_k):
         raise ConnectionRefusedError(10061, "refused")
-    monkeypatch.setattr(gtp.urllib.request, "urlopen", boom)
+    bind_urlopen(monkeypatch, gtp, boom)
     out = gtp.read_state()
     assert out["in_league_game"] is False
     assert out["error"].startswith("ConnectionRefusedError")
