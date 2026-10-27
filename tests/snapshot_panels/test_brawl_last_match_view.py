@@ -61,6 +61,8 @@ _READ = """() => {
     wpaHidden: wpa ? wpa.hidden : null,
     qrRight: qr("lm-qr-right"),
     qrWrong: qr("lm-qr-wrong"),
+    qrWrongWhy: Array.from(document.querySelectorAll("#lm-qr-wrong > li"))
+      .map((li) => li.getAttribute("data-tt-html") || ""),
     qrChronic: qr("lm-qr-chronic"),
     pageOverflow: document.documentElement.scrollWidth - window.innerWidth,
   };
@@ -178,6 +180,16 @@ def test_brawl_quick_review_carries_the_builder_text(brawl_pgr):
     ]
     assert len(r["qrWrong"]) == 5
     assert r["qrChronic"] == ["Recent grade slump (15/20 at D/F)"]
+
+
+def test_brawl_gold_deficit_tooltip_names_legendary_items(brawl_pgr):
+    # RM-978: mythic items left League in the 2024 item rework; the
+    # rendered tooltip must not name them.
+    r, _ = brawl_pgr
+    assert len(r["qrWrongWhy"]) == len(r["qrWrong"]) == 5
+    gold = r["qrWrongWhy"][r["qrWrong"].index("Gold deficit -14k")]
+    assert "more than two completed legendary items" in gold, gold
+    assert not [w for w in r["qrWrongWhy"] if "mythic" in w.lower()]
 
 
 def test_brawl_fixture_is_ascii_and_carries_no_real_riot_ids():

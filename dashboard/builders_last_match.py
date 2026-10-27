@@ -259,9 +259,13 @@ def _compute_wrong_team_from_enriched(enriched: dict, op_k: int, op_d: int, op_a
                     "text": f"Gold deficit -{(opp_gold - my_gold)//1000}k",
                     "why":  (f"Enemy ended {opp_gold - my_gold}g ahead "
                              f"({(opp_gold/1000):.1f}k vs {(my_gold/1000):.1f}k). "
-                             f"That's roughly an extra completed mythic + "
-                             f"finisher across the team - review mid-game "
-                             f"objective trades."),
+                             # Standard legendaries top out at 3500g on maps
+                             # 11 and 12 (DDragon 16.21; the 6000g 22xxxx
+                             # ids are mode specials), so 8000g+ is more than
+                             # two. No mythics since the 2024 item rework.
+                             "That's more than two completed legendary "
+                             "items' worth across the team - review "
+                             "mid-game objective trades."),
                 })
 
     # -- Operator-side proxies (always fire if applicable) -------------

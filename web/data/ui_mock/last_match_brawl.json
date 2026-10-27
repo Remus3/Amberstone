@@ -108,7 +108,7 @@
       {"text": "Lost first blood", "why": "Enemy team took first blood - early gold + tempo advantage. Worth reviewing the lane / fight that opened the match in the deep Review page."},
       {"text": "Lost first tower", "why": "Enemy team took the first tower (250g globally + platings + first-tower trinket bounty). Indicates early lane pressure was conceded - common cause: death timer + freeze break."},
       {"text": "Team kill deficit (20-53)", "why": "Enemy outscored your team 53 kills to 20 (1.5x+ ratio with a 10+ gap). Each team-fight you took was net-losing - review engage timings + comp synergy."},
-      {"text": "Gold deficit -14k", "why": "Enemy ended 14730g ahead (73.1k vs 58.4k). That's roughly an extra completed mythic + finisher across the team - review mid-game objective trades."},
+      {"text": "Gold deficit -14k", "why": "Enemy ended 14730g ahead (73.1k vs 58.4k). That's more than two completed legendary items' worth across the team - review mid-game objective trades."},
       {"text": "Death count cost the team (13 deaths)", "why": "13 deaths is a 10+ threshold. Even with the objectives + team aggregates above, each personal death is gold + 30+s map pressure handed back."}
     ],
     "my_chronic": [
