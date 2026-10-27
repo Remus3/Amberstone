@@ -968,7 +968,19 @@ _WEB = _REPO_ROOT / "web"
 # does not. Those two paths are the whole change. No glyph change: the added
 # lines carry 0 non-ASCII bytes. If another slice re-captures in parallel,
 # the merger recomputes.
-_LIVE_HALF_DIGEST = "17a45e7e03c7cad9dbc3855256704d42a7debecf8ce859fa36cf6bed3b342d2b"
+# superseded by the RM-973 re-capture below: "17a45e7e03c7cad9dbc3855256704d42a7debecf8ce859fa36cf6bed3b342d2b"
+#
+# RE-CAPTURED 2026-10-27 at RM-973 (s144 uiux cycle 5). One change rides
+# it: a Champ Select path-row click moves the `selected` class onto its
+# collapsed variant at once, and a saved "<variant>:<path>" whose path key
+# no longer exists falls back to the primary path (_csvResolvePathKey, used
+# by the chooser render and _csvActiveBuildSelection). Ordinary case, no
+# tokeniser change. ATTRIBUTED BY SUBSTITUTION: swapping exactly
+# web/js/panels/champ_select.js back to its 630911636 blob reproduces the
+# superseded 17a45e7e... value EXACTLY. That path is the whole change. No
+# glyph change: the added lines carry 0 non-ASCII bytes. If another slice
+# re-captures in parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "2223974c446505c60c0c975d2f865efd8639a780b5f8a9758f086198c3b79a17"
 
 
 def _web_sources() -> list[Path]:

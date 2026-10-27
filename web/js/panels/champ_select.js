@@ -2465,6 +2465,22 @@ function _csvMaybePushBuildsToLCU(champion, mode, variants) {
   try { lcuCmd({ cmd: "apply_item_sets_batch", sets }); } catch (_) {}
 }
 
+// RM-973: the active path key of a collapsed variant - the saved
+// "<variant>:<path>" suffix only while that path still exists in
+// build_paths (a path renamed between patches leaves a stale key), else
+// the first primary path, else path[0]. Matches item_build.js, which
+// drops a saved key that is no longer a valid row.
+function _csvResolvePathKey(v, saved) {
+  const paths = (v && Array.isArray(v.build_paths)) ? v.build_paths : [];
+  if (!paths.length) return "";
+  if (saved && saved.startsWith(v.key + ":")) {
+    const k = saved.slice(v.key.length + 1);
+    if (k && paths.some((p) => p && p.key === k)) return k;
+  }
+  const primaryPath = paths.find((p) => p && p._is_primary);
+  return (primaryPath && primaryPath.key) || (paths[0] && paths[0].key) || "";
+}
+
 // Item 240 part-3 (3e, 2026-06-01): resolve the currently-active build
 // card for this champion+mode so the per-category push helpers know
 // which variant/path to push. Reads the persisted selection (sticky)
@@ -2482,14 +2498,7 @@ function _csvActiveBuildSelection(champion, mode, variants) {
   const paths = Array.isArray(v.build_paths) ? v.build_paths : [];
   let composedKey = v.key;
   if (paths.length) {
-    let pathKey = "";
-    if (saved && saved.startsWith(v.key + ":")) {
-      pathKey = saved.slice(v.key.length + 1);
-    }
-    if (!pathKey) {
-      const primaryPath = paths.find((p) => p && p._is_primary);
-      pathKey = (primaryPath && primaryPath.key) || (paths[0] && paths[0].key) || "";
-    }
+    const pathKey = _csvResolvePathKey(v, saved);
     if (pathKey) composedKey = `${v.key}:${pathKey}`;
   }
   const summoners = Array.isArray(v.summoners) ? v.summoners.slice(0, 2) : [];
@@ -3340,16 +3349,9 @@ function _csvBuildVariantRowsHtml(variants, savedChoice, savedRuneKey) {
     const buildPaths = Array.isArray(v.build_paths) ? v.build_paths : [];
     if (buildPaths.length) {
       // Pick the active path: saved choice's :path-key suffix if it
-      // belongs to this variant; else the first path flagged as primary;
-      // else path[0].
-      let activePathKey = "";
-      if (savedChoice && savedChoice.startsWith(v.key + ":")) {
-        activePathKey = savedChoice.slice(v.key.length + 1);
-      }
-      if (!activePathKey) {
-        const primaryPath = buildPaths.find((p) => p && p._is_primary);
-        activePathKey = (primaryPath && primaryPath.key) || buildPaths[0].key || "";
-      }
+      // belongs to this variant AND still names one of its paths; else the
+      // first path flagged as primary; else path[0] (RM-973).
+      const activePathKey = _csvResolvePathKey(v, savedChoice);
       const pathRowsHtml = buildPaths.map((p) =>
         _csvBuildPathRowHtml(v.key, p, p.key === activePathKey, ver,
           p.key === activePathKey && idx === selectedIdx)
@@ -3484,6 +3486,12 @@ function _csvWireBuildVariants(scope) {
       _csvSyncChooserPressed(prow.closest(".csv-builds") || scope, prow);
       const outer = prow.closest(".csv-build-row-collapsed");
       if (outer) outer.dataset.activePath = pathKey;
+      // RM-973: the picked path's variant becomes the one selected row,
+      // now rather than after the scheduled re-render.
+      (prow.closest(".csv-builds") || scope)
+        .querySelectorAll(".csv-build-row").forEach((r) => {
+          r.classList.toggle("selected", r === outer);
+        });
       const composed = `${variantKey}:${pathKey}`;
       _csvSaveChoice(champion, composed);
       // B6+B7: re-mark the merged section's ordered-sequence strip

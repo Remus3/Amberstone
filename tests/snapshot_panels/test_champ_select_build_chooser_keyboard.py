@@ -309,7 +309,7 @@ def _legacy_variant() -> dict:
     return v
 
 
-def _open_sr_with(pw_browser, mock_server, fixture: dict):
+def _open_sr_with(pw_browser, mock_server, fixture: dict, init: str = ""):
     import json
 
     from tests.snapshot_panels.conftest import _WS_STUB
@@ -329,6 +329,8 @@ def _open_sr_with(pw_browser, mock_server, fixture: dict):
     )
     page = ctx.new_page()
     page.add_init_script(_WS_STUB)
+    if init:
+        page.add_init_script(init)
     errors: list[str] = []
     page.on("pageerror", lambda err: errors.append(str(err)))
     page.goto(
@@ -406,6 +408,99 @@ def test_a_legacy_pick_unpresses_the_collapsed_path(mock_server, pw_browser):
         page.keyboard.press("Enter")
         pressed = page.evaluate(_PRESSED_JS, _CLICKABLE)
         assert pressed == ["sr-legacy:"], pressed
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [sr]: {errors[:3]}"
+
+
+# -- RM-973 --------------------------------------------------------------
+# Measured headless after RM-972: a path-row click moved is-active and
+# aria-pressed but never the outer row's `selected` class, so after a legacy
+# pick then a path pick the LEGACY row still read selected until the rAF
+# re-render repaired it. And a saved "<variant>:<path>" whose path key no
+# longer exists in build_paths (a path renamed between patches) was kept as
+# the active path, so no path row was is-active, none was pressed, and the
+# rune side panel followed a build id that matches nothing.
+
+_SELECTED_JS = """() => Array.from(document.querySelectorAll(
+  '#view-champ-select .csv-builds .csv-build-row.selected'))
+  .map(r => r.dataset.variant || '')"""
+
+
+def test_a_path_click_moves_selected_onto_its_variant(mock_server, pw_browser):
+    fixture = _sr_fixture_with([_legacy_variant()])
+    n_paths = len(fixture["build_variants"]["Jinx|sr"][0]["build_paths"])
+    ctx, page, errors = _open_sr_with(pw_browser, mock_server, fixture)
+    try:
+        _wait_targets(page, n_paths + 1)
+        legacy = (
+            "#view-champ-select .csv-builds"
+            " .csv-build-row[data-variant=\"sr-legacy\"]"
+        )
+        page.click(legacy)
+        _wait_targets(page, n_paths + 1)
+        page.wait_for_function(
+            "(s) => { const r = document.querySelector(s);"
+            " return !!r && r.classList.contains('selected'); }",
+            arg=legacy,
+            timeout=10_000,
+        )
+        # Click a path row and read the classes in the SAME task, before the
+        # rAF-scheduled re-render can repair them.
+        got = page.evaluate(
+            "() => { const p = document.querySelector('#view-champ-select"
+            " .csv-builds .csv-build-path-row[data-variant=\"sr-collapsed\"]');"
+            " p.click(); return Array.from(document.querySelectorAll("
+            "'#view-champ-select .csv-builds .csv-build-row.selected'))"
+            ".map(r => r.dataset.variant || ''); }"
+        )
+        assert got == ["sr-collapsed"], got
+        # And the re-render agrees.
+        page.wait_for_function(
+            "() => { const r = document.querySelector('#view-champ-select"
+            " .csv-builds .csv-build-row-collapsed');"
+            " return !!r && r.classList.contains('selected'); }",
+            timeout=10_000,
+        )
+        assert page.evaluate(_SELECTED_JS) == ["sr-collapsed"]
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [sr]: {errors[:3]}"
+
+
+def test_a_stale_saved_path_key_falls_back_to_the_primary_path(
+    mock_server, pw_browser
+):
+    fixture = _sr_fixture_with([])
+    paths = fixture["build_variants"]["Jinx|sr"][0]["build_paths"]
+    primary = next(p["key"] for p in paths if p.get("_is_primary"))
+    assert "renamed-path" not in [p["key"] for p in paths]
+    seed = (
+        "try { localStorage.setItem('rc-ingame-build-Jinx',"
+        " 'sr-collapsed:renamed-path'); } catch (_) {}"
+    )
+    ctx, page, errors = _open_sr_with(pw_browser, mock_server, fixture, seed)
+    try:
+        _wait_targets(page, len(paths))
+        assert page.evaluate(
+            "() => localStorage.getItem('rc-ingame-build-Jinx')"
+        ) == "sr-collapsed:renamed-path"
+        assert _active_path(page) == primary
+        pressed = page.evaluate(_PRESSED_JS, _CLICKABLE)
+        assert pressed == [f"sr-collapsed:{primary}"], pressed
+        outer = page.evaluate(
+            "() => document.querySelector('#view-champ-select .csv-builds"
+            " .csv-build-row-collapsed').dataset.activePath"
+        )
+        assert outer == primary, outer
+        # The rune side panel follows the same resolved build.
+        build_id = page.evaluate(
+            "() => { const s = document.querySelector('#view-champ-select"
+            " .csv-rune-side'); return s ? s.dataset.buildId : null; }"
+        )
+        assert build_id == f"sr-collapsed:{primary}", build_id
     finally:
         page.close()
         ctx.close()
