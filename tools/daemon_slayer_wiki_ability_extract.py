@@ -609,6 +609,31 @@ def _parse_ability_page(wikitext: str) -> dict[str, Any]:
     return rec
 
 
+# RM-954: a bare ``#REDIRECT`` page parses to no params, so 134 of the 173
+# param-less records in the 16.21.1 sidecar could not be told apart from a real
+# page that carries none. Live targets are spelled loosely (underscores, ``%27``,
+# ``Template: Data``, a trailing period or category link), hence the normalising.
+_REDIRECT_RE = re.compile(r"\A\s*#redirect\s*:?\s*\[\[([^\]|#]+)", re.IGNORECASE)
+
+
+def _redirect_target(wikitext: str) -> Optional[str]:
+    """The ``<Champion>/<Ability>`` key a ``#REDIRECT`` page points at; None if not one.
+
+    A target outside ``Template:Data`` keeps its full normalised title.
+    """
+    m = _REDIRECT_RE.match(wikitext)
+    if m is None:
+        return None
+    title = urllib.parse.unquote(m.group(1)).replace("_", " ")
+    title = re.sub(r"\s+", " ", title).strip()
+    ns, sep, rest = title.partition(":")
+    if sep and ns.strip() == "Template":
+        title = "Template:" + rest.strip()
+    if title.startswith(_TEMPLATE_PREFIX):
+        return title[len(_TEMPLATE_PREFIX):]
+    return title
+
+
 # --------------------------------------------------------------------------- batch walk
 def _extract_page_text(page: dict[str, Any]) -> Optional[str]:
     """Pull the main-slot wikitext out of one query-API page object; None if absent."""
@@ -715,6 +740,9 @@ def extract(patch: str, sleep_s: float, limit: Optional[int], verbose: bool,
                 missing.append(okey)
                 continue
             parsed = _parse_ability_page(wt)
+            target = _redirect_target(wt)
+            if target is not None:
+                parsed["redirect_to"] = target
             # RM-95b B2 join key: apiname + P/Q/W/E/R. Additive - every
             # pre-existing consumer keys on the ``display/ability`` map key.
             api_slot = ident_for.get(title)
@@ -737,6 +765,7 @@ def extract(patch: str, sleep_s: float, limit: Optional[int], verbose: bool,
         1 for r in abilities.values()
         if any(p + "_raw" in r for p in _LEVELING_PARAMS)
     )
+    with_redirect = sum(1 for r in abilities.values() if "redirect_to" in r)
 
     return {
         "_source": (
@@ -760,6 +789,9 @@ def extract(patch: str, sleep_s: float, limit: Optional[int], verbose: bool,
             "(multi-line, brace-depth terminated) and promoting it to typed blocks "
             "is a separate consumer-side step. Each record also carries its "
             "apiname + slot (P/Q/W/E/R) as the AbilitiesSnapshot join key. "
+            "A Template:Data page that is a bare #REDIRECT carries no params; "
+            "its record holds redirect_to = the target <Champion>/<Ability> key "
+            "(not resolved: read the target's record). "
             "Only params "
             "present on a page are emitted. An _ability_count==0 means the host "
             "could not reach the wiki (edge block) - do NOT commit."
@@ -769,6 +801,7 @@ def extract(patch: str, sleep_s: float, limit: Optional[int], verbose: bool,
         "_with_recharge": with_recharge,
         "_with_cc_flags": with_cc,
         "_with_leveling": with_leveling,
+        "_with_redirect": with_redirect,
         "_missing_pages": sorted(missing),
         "_errors": errs,
         "abilities": abilities,

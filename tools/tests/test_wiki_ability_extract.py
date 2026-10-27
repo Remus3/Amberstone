@@ -536,6 +536,73 @@ class TestExtractEndToEnd:
         assert out["_ability_count"] == 0  # unrecognized title not keyed
 
 
+# --------------------------------------------------------------------------- redirect pages
+class TestS144D01RedirectPages:
+    # RM-954: 134 of the 173 param-less records in the 16.21.1 sidecar are
+    # Template:Data pages that are a bare #REDIRECT (Aatrox/The Darkin Blade 2
+    # -> Aatrox/The Darkin Blade), indistinguishable from the 39 real pages that
+    # carry no captured params. The target spellings below are copied from the
+    # live pages (fetched 2026-10-27): underscores, %27, "Template: Data", a
+    # trailing period and a trailing category link all occur.
+    @pytest.mark.parametrize("wikitext,target", [
+        ("#REDIRECT [[Template:Data Aatrox/The Darkin Blade]]",
+         "Aatrox/The Darkin Blade"),
+        ("#REDIRECT [[Template:Data_Akshan/Heroic_Swing]]", "Akshan/Heroic Swing"),
+        ("#REDIRECT [[Template:Data_Kai%27Sa/Supercharge]]", "Kai'Sa/Supercharge"),
+        ("#REDIRECT [[Template: Data Brand/Blaze]].", "Brand/Blaze"),
+        ("#REDIRECT [[Template:Data_Annie/Summon:_Tibbers]]\n\n"
+         "[[Category:Ability Redirects]]", "Annie/Summon: Tibbers"),
+        ("#REDIRECT [[Template:Data_Kled/Chaaaaaaaarge!!!]]", "Kled/Chaaaaaaaarge!!!"),
+        ("#redirect [[Template:Data Zed/Death Mark|label]]", "Zed/Death Mark"),
+        ("#REDIRECT [[Template:Data Zed/Death Mark#Section]]", "Zed/Death Mark"),
+        # a target outside Template:Data keeps its full title
+        ("#REDIRECT [[Template:Other/Thing]]", "Template:Other/Thing"),
+    ])
+    def test_redirect_target_is_normalised(self, wikitext, target):
+        assert W._redirect_target(wikitext) == target
+
+    @pytest.mark.parametrize("wikitext", [
+        TestParseAbilityPage.ANIVIA,
+        "{{Data ability\n|cooldown = 10\n}}",
+        # #REDIRECT that is not the first token is not a redirect page
+        "{{Data ability\n|description = see #REDIRECT [[Template:Data X/Y]]\n}}",
+        "",
+    ])
+    def test_ordinary_page_is_not_a_redirect(self, wikitext):
+        assert W._redirect_target(wikitext) is None
+
+    def test_extract_marks_redirect_record(self, monkeypatch):
+        monkeypatch.setattr(W, "_load_champion_apinames",
+                            lambda p: {"Anivia", "Corki", "Teemo"})
+
+        def fake_batch(titles):
+            pages = []
+            for n, t in enumerate(titles):
+                if t.endswith("/Flash Frost"):
+                    pages.append(_page(
+                        t, "#REDIRECT [[Template:Data_Anivia/Glacial_Storm]]", n + 1))
+                elif t.endswith("/Glacial Storm"):
+                    pages.append(_page(t, TestParseAbilityPage.ANIVIA, n + 1))
+                elif t.endswith("/Valkyrie"):
+                    # a real page with no captured params stays unmarked
+                    pages.append(_page(t, "{{Data ability\n|champion = Corki\n}}", n + 1))
+                else:
+                    pages.append(_missing_page(t))
+            return _query_response(pages)
+
+        out = W.extract("16.11.1", sleep_s=0, limit=None, verbose=False,
+                        _module_text=_MODULE, _batch_fn=fake_batch)
+        ab = out["abilities"]
+        assert ab["Anivia/Flash Frost"] == {
+            "redirect_to": "Anivia/Glacial Storm", "apiname": "Anivia", "slot": "Q"}
+        assert "redirect_to" not in ab["Anivia/Glacial Storm"]
+        assert ab["Corki/Valkyrie"] == {"apiname": "Corki", "slot": "W"}
+        assert out["_with_redirect"] == 1
+        # a redirect is still a fetched page: the count and the missing list hold
+        assert out["_ability_count"] == 3
+        assert "Anivia/Flash Frost" not in out["_missing_pages"]
+
+
 # --------------------------------------------------------------------------- loader
 class TestLoadChampionApinames:
     def test_reads_data_container(self, tmp_path, monkeypatch):
