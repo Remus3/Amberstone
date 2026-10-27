@@ -2332,6 +2332,71 @@ stays playable beside it, so record which set the game ran).
   agree. In a Set 17 lobby, read the planner code with the passive GET path
   (`scripts/discover_champion_codes.py --set 17 --dry-run`) and close by correcting the file to the
   measured value, or record why `0` is right.
+- **RM-292 (c) READY (lane 9, s144 cycle 4, PREP only, no game up; NOT ticked)** (filed lane 8
+  cycle 34, body in `BACKLOG.md` under RM-292; listed here in s144 because no gate above covers a TFT
+  game) Three `data/tft_live_data.json` keys - `bench_units`, `shop_units`, `unit_swap` - are
+  written by `tft/tft_live_analysis.py` `TftLiveAnalysis._write` and, per the row, read back only off
+  in-memory dicts, never off the file. Confirm against a live TFT game before deleting them.
+  Command, in a real TFT game (the game-up discriminator stated near the top of this file: `tasklist`
+  shows `TFTClient-Win64-Shipping.exe` while `/api/state` `lcu.phase` is `InProgress` - the phase
+  alone is also true in a League game; `liveclient` stays empty and `mode_key` can read `client` in
+  a TFT game, so neither is a usable gate), from
+  stage 2-1 on: `python tools/gated_tft_live_keys.py --since <game start, local ISO> --samples 40
+  --interval 15 --json` (about 10 minutes, about ten analysis writes).
+  Fields: `verdict`, `census.readers`, `census.files_scanned`, `snapshots[].kind` / `mtime_iso` /
+  `stage_round` / `keys_present` / `filled` / `missing_head_keys`, `live_writes`, `degraded_states`,
+  `populated_writes`, `head_writer_keys`, `read_at`.
+  Predicate, stated before any game: PASS iff `census.readers` is empty AND `live_write` snapshots
+  (key `degraded` present and false, `augment_select` false, mtime at or after `--since`) carrying
+  all three keys and every key of the HEAD `_write` literal were seen in at least 3 distinct
+  non-empty `stage_round` values (an augment-select merge or a `force_scan` pre-clear rewrites the
+  last write in place with a new mtime, so neither counts and one round counts once). FAIL iff the
+  census finds a reader (RM-292 (c) is refuted: keep the keys, file the reader) or a `live_write`
+  snapshot lacks one of the three keys (the running process is not HEAD's writer: record it, re-run
+  after the next RC restart). A `live_degraded` snapshot never counts and never fails:
+  `_publish_degraded` copies whatever the file held, so over an absent or corrupt file HEAD itself
+  writes one without the keys. Anything else is INCOMPLETE. Only PASS drains (c), and PASS
+  licenses the delete as its own Tier-1 slice (the `_write` literal, the two seeds below, their
+  tests); the tool deletes nothing.
+  Evidence contract: value = `verdict`, the reader count, `live_writes` and `populated_writes` per
+  key (both over `live_write` snapshots only; degraded republishes are counted apart in
+  `degraded_states`; counts only, the tool never prints unit names); source = the tool's
+  JSON over the main checkout's `data/tft_live_data.json` plus its tracked-source census; timestamp
+  = `read_at`, the last live write's `mtime_iso` and `stage_round`, and the queue id from the LCU
+  gameflow session; predicate = this paragraph.
+  SUBSTITUTION check (answer it in the tick line): the census is the compute half, it is headless,
+  and it is what decides the delete; the live half answers only whether the RUNNING writer puts the
+  three keys into the FILE, which the census cannot. The facade seed (`coaches/tft_coach.py`
+  `_default_payloads`) and the policy placeholder (`core/feature_policy.py`
+  `_TFT_LIVE_DISABLED_PAYLOAD`) carry the same three keys, so a read of the file alone is NOT a live
+  write: only a snapshot holding `degraded` counts (`_write` and `_publish_degraded` set it, and
+  `tests/test_gated_tft_live_keys.py` pins that no seed literal carries it). A hand-edited file with
+  `degraded` false would satisfy the live half; the `--since` window, the write cadence (about one a
+  minute in the 2026-10-25 logs) and the `stage_round` values the predicate already requires to
+  advance are the cross-check, so record all three.
+  Census blind spots (recorded, not fixed): a key built at run time, a key inside a longer string or
+  f-string, and a whole-dict pass-through are invisible to the Python scan, which matches only a
+  string literal that IS the key. `agents/agent2_backend/file_ingest.py` broadcasts the whole file
+  on WS /push to `web/js/main.js`, so the JS / TS / HTML word scan is the only guard on that path,
+  and an out-of-tree WS client is not scanned at all. Hits in the writer module and in the upstream
+  vision-reply producers (`tft/tft_vision_reader.py`, `vision_server/_inference.py`,
+  `core/vision_routing.py`) are listed, never counted: the row's own claim is that they read the
+  in-memory vision dict. Today only `tft/tft_vision_reader.py` produces such hits; the other two name
+  the keys inside longer prompt / docstring text, which the scan does not see.
+  Idle baseline (2026-10-27 local, no game, lane/gated HEAD): INCOMPLETE, exit 1; census 1133
+  files, 17 key hits, 0 readers, 9 in the writer, 4 `sequence` (the writer's sanitizer loop and
+  `tft/tft_vision_reader.py` `_STR_LIST_FIELDS`, both upstream of the file); the live file is a
+  `seed` (mtime 2026-10-25 17:05 local, the game-end reset) with all three keys present and none
+  filled. Prior partial evidence, not a drain: `logs/2026-10-25.log.2` (10:46 to 13:30 local) and
+  `.log.1` (13:32 to 17:04 local) hold 124 `rc.tft.live` DEBUG `Live analysis written` lines across
+  that day's TFT games, so `_write` ran live; its `out` key literal last changed 2026-04-26 and the
+  `out["degraded"]` store landed 2026-08-31, both before those games. That the keys reached the file
+  is an inference, not an observed value, and no QA recorder run under `ops/runtime/tft_qa/`
+  snapshots this file.
+  Reclassification PROPOSAL (for a human; not a move): the delete decision rests on the census,
+  which needs no game; only the "running writer emits them" half does. Reverses if: the `_write`
+  literal, the `degraded` discriminator or a seed literal changes (the source-pin tests in
+  `tests/test_gated_tft_live_keys.py` fail first), or a reader of any of the three keys lands.
 
 ## PARKED / HOLD - deliberately OFF the active checklist
 
