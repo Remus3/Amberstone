@@ -14,10 +14,13 @@ Loader implementation: ``_load_overrides`` (reads the file) +
 midpoints) + ``_apply_per_entry_overrides`` (returns the lookup map
 threaded into each ConditionalCcEntry at builder time).
 
-The operator can tune the 10 per-tag probability midpoints AND the 28
-per-entry probabilities without modifying source by dropping a JSON
-file at ``data/cc_conditional_calibration.json`` (gitignored as
-personal calibration data alongside ``data/post_game_rubric_weights.json``
+The operator can tune every per-tag probability midpoint in
+``_DEFAULT_CONDITION_PROBABILITY`` (one per ``COND_*`` tag) AND the
+probability of any registry entry (``<champion>:<spell>`` for a primary
+entry, ``<champion>:<spell>:<form>`` for a form-explicit sidecar entry)
+without modifying source by dropping a JSON file at
+``data/cc_conditional_calibration.json`` (gitignored as personal
+calibration data alongside ``data/post_game_rubric_weights.json``
 and ``data/coaching/death_patterns.json``).
 
 Schema (both top-level keys optional; missing keys keep the defaults):
