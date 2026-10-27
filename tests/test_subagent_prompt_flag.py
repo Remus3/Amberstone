@@ -189,7 +189,16 @@ CONFIG = ROOT / "ops" / "loop" / "config.json"
 # completion, one Agent spawn, subagent tool uses 0; 2. negative control
 # NO-CANARY, codeword count 0; 3. top-level leak control NO-CANARY,
 # codeword count 0. Previous pin 2.1.309.
-PINNED_CLI = "2.1.310"
+# RE-MEASURED 2026-10-26 on 2.1.311 by tools/repin_subagent_cli.py (RM-795):
+# the four RM-684 controls, each a real headless run through the fleet
+# kit's spawn() (sonnet / effort low, a FRESH codeword only in the flag
+# value; the stream-json init of runs 1-3 reports claude_code_version
+# 2.1.311), all passed BEFORE this pin was written: 0. unknown option
+# exit 1; 1. CANARY=<codeword>, first seen in the subagent's
+# completion, one Agent spawn, subagent tool uses 0; 2. negative control
+# NO-CANARY, codeword count 0; 3. top-level leak control NO-CANARY,
+# codeword count 0. Previous pin 2.1.310.
+PINNED_CLI = "2.1.311"
 FLAG = "--append-subagent-system-prompt"
 
 
