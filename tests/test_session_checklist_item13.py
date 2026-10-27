@@ -118,6 +118,89 @@ def test_write_progress_carries_checklist(tmp_path):
     assert {"task", "pct", "step", "eta_s", "status", "updated", "checklist"} <= set(doc)
 
 
+# RM-258: both writers go through core.polled_json (per-writer scratch name,
+# fsync, bounded WinError 5 retry), not a shared `<name>.tmp` plus a bare
+# rename. The hand-off is read by the SessionStart hook and the progress file
+# by the lane widget and the board, so a torn read loses the counter or a row.
+
+def _record_writes(monkeypatch):
+    import core.polled_json as pj
+    seen = []
+    real = pj._write_then_replace
+
+    def rec(path, data):
+        seen.append((Path(path).name, bytes(data)))
+        return real(path, data)
+
+    monkeypatch.setattr(pj, "_write_then_replace", rec)
+    return seen
+
+
+def test_rm258_stamp_routes_through_polled_json(tmp_path, monkeypatch):
+    seen = _record_writes(monkeypatch)
+    p = _write(tmp_path, HANDOFF)
+    sc.stamp_session(42, p)
+    expected = HANDOFF.replace("SESSION: 41", "SESSION: 42").encode("ascii")
+    assert seen == [("RC-NEXT-SESSION.txt", expected)]
+    assert p.read_bytes() == expected
+    assert [x.name for x in tmp_path.iterdir()] == ["RC-NEXT-SESSION.txt"]
+
+
+def test_rm258_stamp_survives_a_transient_rename_refusal(tmp_path, monkeypatch):
+    import core.polled_json as pj
+    real = pj.os.replace
+    refusals = [2]
+
+    def flaky(src, dst):
+        if refusals[0]:
+            refusals[0] -= 1
+            raise PermissionError(13, "Access is denied")
+        return real(src, dst)
+
+    monkeypatch.setattr(pj.os, "replace", flaky)
+    monkeypatch.setattr(pj.time, "sleep", lambda _s: None)
+    p = _write(tmp_path, HANDOFF)
+    sc.stamp_session(43, p)
+    assert refusals == [0]
+    assert sc.read_session(p) == 43
+
+
+def test_rm258_local_progress_fallback_routes_through_polled_json(tmp_path, monkeypatch):
+    seen = _record_writes(monkeypatch)
+    monkeypatch.setattr(sc, "KIT_HEADLESS", tmp_path / "no_kit.py")
+    rows = [{"id": "R1", "task": "Pick the note", "state": None, "eta_s": None}]
+    doc = sc.write_progress(tmp_path, "inbox-responder", 10, "fire start", 60, "running",
+                            checklist=rows)
+    target = tmp_path / "ops/loop/control/progress/inbox-responder.json"
+    assert seen == [("inbox-responder.json", json.dumps(doc).encode("ascii"))]
+    assert target.read_bytes() == json.dumps(doc).encode("ascii")
+    assert [x.name for x in target.parent.iterdir()] == ["inbox-responder.json"]
+
+
+def test_rm258_stamp_works_when_run_as_a_script(tmp_path):
+    """`python tools/session_checklist.py --stamp` (tools/done.md section 10)
+    puts tools/, not the repo root, on sys.path; the writer must still find
+    core.polled_json."""
+    import os
+    import subprocess
+    p = _write(tmp_path, HANDOFF)
+    tools = str(ROOT / "tools")
+    code = (
+        "import sys\n"
+        "from pathlib import Path\n"
+        f"root = Path({str(ROOT)!r}).resolve()\n"
+        f"sys.path[:] = [{tools!r}] + [x for x in sys.path[1:] if Path(x or '.').resolve() != root]\n"
+        "import session_checklist as sc\n"
+        f"sc.stamp_session(9, {str(p)!r})\n"
+    )
+    env = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"}
+    r = subprocess.run([sys.executable, "-c", code], cwd=str(tmp_path), env=env,
+                       capture_output=True, text=True, timeout=60,
+                       creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    assert r.returncode == 0, r.stderr
+    assert sc.read_session(p) == 9
+
+
 def test_cli_next_and_stamp(tmp_path, capsys):
     p = _write(tmp_path, HANDOFF)
     assert sc.main(["--next"], path=p) == 0

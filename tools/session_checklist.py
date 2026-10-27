@@ -61,6 +61,18 @@ DIRECTIVE = (
 
 # ------------------------------------------------------------------ counter
 
+def _atomic_write_bytes(path: Path, data: bytes) -> None:
+    """Through core.polled_json (RM-258): per-writer scratch name, fsync, a
+    bounded WinError 5 retry for a reader's share lock, scratch removed on
+    failure. Imported here, not at module top, so the SessionStart block
+    never depends on it; ROOT goes onto sys.path for the script run
+    (`python tools/session_checklist.py --stamp`), which puts tools/ there."""
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
+    from core.polled_json import atomic_write_bytes
+    atomic_write_bytes(path, data)
+
+
 def read_session(path: Path = HANDOFF) -> int | None:
     """The `SESSION: <n>` value in the hand-off, or None when absent/unreadable."""
     try:
@@ -89,9 +101,7 @@ def stamp_session(n: int, path: Path = HANDOFF) -> None:
             at = 2
         lines.insert(at, line)
         new = "\n".join(lines)
-    tmp = path.with_name(path.name + ".tmp")
-    tmp.write_bytes(new.encode("utf-8"))
-    tmp.replace(path)
+    _atomic_write_bytes(path, new.encode("utf-8"))
 
 
 def next_action(path: Path = HANDOFF) -> str | None:
@@ -203,9 +213,7 @@ def write_progress(root, task: str, pct: int, step: str, eta_s, status: str,
                           "eta_s": r.get("eta_s")} for r in checklist]}
     target = Path(root) / PROGRESS_REL / f"{task}.json"
     target.parent.mkdir(parents=True, exist_ok=True)
-    tmp = target.with_name(target.name + ".tmp")
-    tmp.write_text(json.dumps(doc), encoding="ascii", newline="\n")
-    tmp.replace(target)
+    _atomic_write_bytes(target, json.dumps(doc).encode("ascii"))
     return doc
 
 

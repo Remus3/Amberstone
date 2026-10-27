@@ -83,6 +83,10 @@ _RUNTIME_TOOLS = frozenset({
     # (agents/daemon_slayer/data_loader.py), and --ack the tracked
     # high-water file.
     "tools/ds_feed_watch.py",
+    # The session counter in the hand-off (read by the SessionStart hook)
+    # and the headless progress fallback (read by the lane widget and the
+    # board): a torn read loses the counter or a checklist row.
+    "tools/session_checklist.py",
 })
 
 # RM-258 residual (s144): tools/ is IN scope by default. Out of scope are the
@@ -152,7 +156,6 @@ _TOOLS_UNCLASSIFIED = frozenset({
     "tools/rewrite_sha_citations.py",
     "tools/rofl_dedupe.py",
     "tools/sanitize_agent6_reports.py",
-    "tools/session_checklist.py",
     "tools/shadow_archive_split.py",
     "tools/slice_orchestrator.py",
     "tools/slot_bucket_audit.py",
@@ -514,6 +517,7 @@ def test_scope_keeps_runtime_tools_and_drops_generators():
     assert _in_scope("tools/progress_watch.py")
     assert _in_scope("tools/spec_watch.py")
     assert _in_scope("tools/ds_feed_watch.py")
+    assert _in_scope("tools/session_checklist.py")
     assert not _in_scope("tools/daemon_slayer_extract.py")
     assert not _in_scope("ops/fleet_kit/fleet_headless.py")
     assert _in_scope("coach_integration/_coach.py")
