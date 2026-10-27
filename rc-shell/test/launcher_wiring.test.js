@@ -167,14 +167,60 @@ test("withTokenHeader: added for the shell's own origin only, replacing any page
   const own = lch.withTokenHeader({ "x-rc-token": "stale", Accept: "a" }, ORIGIN + "/api/lcu-cmd", ORIGIN, "tok");
   assert.strictEqual(own.added, true);
   assert.deepStrictEqual(own.headers, { Accept: "a", "X-RC-Token": "tok" });
-  const foreign = { Accept: "a" };
-  const other = lch.withTokenHeader(foreign, "https://example.com/x", ORIGIN, "tok");
-  assert.strictEqual(other.added, false);
-  assert.strictEqual(other.headers, foreign, "a foreign request is passed through untouched");
   const port = lch.withTokenHeader({}, "https://127.0.0.1:9999/x", ORIGIN, "tok");
   assert.strictEqual(port.added, false, "another port is another origin");
   assert.strictEqual(lch.withTokenHeader({}, ORIGIN + "/x", ORIGIN, null).added, false);
   assert.strictEqual(lch.withTokenHeader({}, ORIGIN + "/x", ORIGIN, "bad token").added, false);
+});
+
+// SF1 (verifier s142): Chromium keeps a header added on the first hop across a
+// redirect, so a request redirected off the RC origin re-enters the hook still
+// carrying X-RC-Token. Every non-RC origin has the header STRIPPED, never
+// passed through.
+test("withTokenHeader: X-RC-Token is stripped from every non-RC origin (SF1)", () => {
+  const foreign = { Accept: "a", "X-RC-Token": "tok" };
+  const other = lch.withTokenHeader(foreign, "https://example.com/x", ORIGIN, "tok");
+  assert.strictEqual(other.added, false);
+  assert.strictEqual(other.stripped, true);
+  assert.deepStrictEqual(other.headers, { Accept: "a" }, "a redirected foreign request loses the token");
+  assert.deepStrictEqual(foreign, { Accept: "a", "X-RC-Token": "tok" }, "the caller's object is not mutated");
+  const port = lch.withTokenHeader({ "X-RC-Token": "tok" }, "https://127.0.0.1:9999/x", ORIGIN, "tok");
+  assert.deepStrictEqual(port.headers, {}, "another port is another origin: stripped");
+  const plain = lch.withTokenHeader({ "X-RC-Token": "tok" }, ORIGIN.replace("https:", "http:") + "/x", ORIGIN, "tok");
+  assert.deepStrictEqual(plain.headers, {}, "another scheme is another origin: stripped");
+  const clean = lch.withTokenHeader({ Accept: "a" }, "https://example.com/x", ORIGIN, "tok");
+  assert.strictEqual(clean.stripped, false);
+  assert.deepStrictEqual(clean.headers, { Accept: "a" }, "other headers survive");
+});
+
+test("withTokenHeader: the strip matches every case spelling of the header (SF1)", () => {
+  const spellings = { "x-rc-token": "a", "X-Rc-Token": "b", "X-RC-TOKEN": "c", "x-RC-token": "d", Accept: "keep" };
+  const r = lch.withTokenHeader(spellings, "https://example.com/x", ORIGIN, "tok");
+  assert.deepStrictEqual(r.headers, { Accept: "keep" });
+  assert.strictEqual(r.stripped, true);
+});
+
+test("withTokenHeader: stripped on a foreign origin whatever the token state (SF1)", () => {
+  for (const tok of ["tok", null, "bad token", undefined]) {
+    const r = lch.withTokenHeader({ "x-rc-token": "leak" }, "https://example.com/x", ORIGIN, tok);
+    assert.deepStrictEqual(r.headers, {}, "token " + String(tok));
+    assert.strictEqual(r.added, false);
+  }
+  for (const o of [null, "", "not a url"]) {
+    const r = lch.withTokenHeader({ "X-RC-Token": "leak" }, ORIGIN + "/x", o, "tok");
+    assert.deepStrictEqual(r.headers, {}, "no resolved origin = every origin is foreign: " + String(o));
+  }
+  assert.deepStrictEqual(lch.withTokenHeader({ "X-RC-Token": "leak" }, "not a url", ORIGIN, "tok").headers, {});
+  assert.deepStrictEqual(lch.withTokenHeader(null, "https://example.com/x", ORIGIN, "tok").headers, {});
+});
+
+test("stripTokenHeader: pure, case-insensitive, copies (SF1)", () => {
+  const src = { "X-RC-TOKEN": "x", Accept: "a" };
+  const out = lch.stripTokenHeader(src);
+  assert.deepStrictEqual(out, { Accept: "a" });
+  assert.notStrictEqual(out, src);
+  assert.deepStrictEqual(src, { "X-RC-TOKEN": "x", Accept: "a" });
+  assert.deepStrictEqual(lch.stripTokenHeader(null), {});
 });
 
 // ---- IPC sender ------------------------------------------------------------------
@@ -404,6 +450,16 @@ test("main.js: every rcShell IPC channel checks its sender (S3)", () => {
 test("main.js: X-RC-Token is injected for the own origin only", () => {
   assert.ok(MAIN_SRC.includes("onBeforeSendHeaders("), "a request hook exists");
   assert.ok(fnBody("installTokenHeader").includes("lch.withTokenHeader("), "through the pure own-origin rule");
+});
+
+test("main.js: the token hook sees EVERY url and fails closed (SF1)", () => {
+  const body = fnBody("installTokenHeader");
+  // No filter argument: a URL filter would skip the foreign hop of a redirect,
+  // and the strip would never run on it.
+  assert.ok(/onBeforeSendHeaders\(\(details, callback\) =>/.test(body), "registered without a URL filter");
+  assert.strictEqual((MAIN_SRC.match(/onBeforeSendHeaders\(/g) || []).length, 1, "one hook, no second unfiltered path");
+  const catchBody = body.slice(body.indexOf("catch"));
+  assert.ok(catchBody.includes("lch.stripTokenHeader("), "an error strips the header, never forwards it");
 });
 
 test("main.js: will-redirect and will-frame-navigate apply the navigation policy (V2)", () => {
