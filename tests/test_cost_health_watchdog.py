@@ -335,5 +335,66 @@ class P95BreachCronInvariantTests(unittest.TestCase):
         self.assertEqual(st["incidents"][-1]["remediated"], False)
 
 
+class AtomicWriterTests(unittest.TestCase):
+    """RM-258: both writers (the state file and the --remediate edit of
+    config/coach_settings.json, which the running app reads) route through
+    core.polled_json - a per-writer scratch name and a bounded WinError 5
+    retry - instead of a bare rename of a shared `<dest>.tmp`."""
+
+    def test_writer_routes_through_core_polled_json(self):
+        import core.polled_json as pj
+        seen = []
+        real = pj._write_then_replace
+
+        def rec(path, data):
+            seen.append(Path(path).name)
+            return real(path, data)
+
+        import tempfile
+        d = Path(tempfile.mkdtemp())
+        orig = pj._write_then_replace
+        pj._write_then_replace = rec
+        try:
+            chw._atomic_write_json(d / "state.json", {"b": 1, "a": 2})
+        finally:
+            pj._write_then_replace = orig
+        self.assertEqual(seen, ["state.json"])
+        self.assertEqual(sorted(p.name for p in d.iterdir()), ["state.json"])
+
+    def test_written_bytes_are_lf_sorted_json(self):
+        import tempfile
+        d = Path(tempfile.mkdtemp())
+        dest = d / "state.json"
+        chw._atomic_write_json(dest, {"b": 1, "a": {"y": 1, "x": 2}})
+        raw = dest.read_bytes()
+        self.assertNotIn(b"\r", raw)
+        self.assertEqual(raw.decode("ascii"), json.dumps(
+            {"a": {"x": 2, "y": 1}, "b": 1}, indent=2, sort_keys=True))
+
+    def test_retries_a_transient_rename_refusal(self):
+        import core.polled_json as pj
+        import tempfile
+        d = Path(tempfile.mkdtemp())
+        dest = d / "coach_settings.json"
+        real = pj.os.replace
+        refusals = [2]
+
+        def flaky(src, dst):
+            if refusals[0]:
+                refusals[0] -= 1
+                raise PermissionError(13, "Access is denied")
+            return real(src, dst)
+
+        orig_replace, orig_sleep = pj.os.replace, pj.time.sleep
+        pj.os.replace, pj.time.sleep = flaky, (lambda _s: None)
+        try:
+            chw._atomic_write_json(dest, {"vision_calls_per_min": 3.96})
+        finally:
+            pj.os.replace, pj.time.sleep = orig_replace, orig_sleep
+        self.assertEqual(json.loads(dest.read_bytes()),
+                         {"vision_calls_per_min": 3.96})
+        self.assertEqual([p.name for p in d.iterdir()], ["coach_settings.json"])
+
+
 if __name__ == "__main__":
     unittest.main()

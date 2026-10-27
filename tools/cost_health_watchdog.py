@@ -39,6 +39,12 @@ import time
 from datetime import date, datetime, timezone
 from pathlib import Path
 
+# Run as ``python tools/cost_health_watchdog.py`` (RC-CostHealthWatchdog), so
+# sys.path[0] is tools/ and the repo's own packages are invisible.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from core.polled_json import atomic_write_text  # noqa: E402
+
 _APP = Path(__file__).parent.parent
 _HEALTH = _APP / "ops" / "runtime" / "health.json"
 _SPEND_DIR = _APP / "data" / "spend"
@@ -123,10 +129,10 @@ def _finite(val, default: float = 0.0) -> float:
 
 
 def _atomic_write_json(p: Path, obj) -> None:
-    p.parent.mkdir(parents=True, exist_ok=True)
-    tmp = p.with_suffix(p.suffix + ".tmp")
-    tmp.write_text(json.dumps(obj, indent=2, sort_keys=True), encoding="utf-8")
-    tmp.replace(p)
+    """RM-258: through core.polled_json (per-writer scratch name, bounded
+    WinError 5 retry, LF bytes) - --remediate rewrites coach_settings.json
+    while the running app reads it."""
+    atomic_write_text(p, json.dumps(obj, indent=2, sort_keys=True))
 
 
 def _age_s(ts):

@@ -33,7 +33,8 @@ package IS an implementation and is drift-pinned to core/polled_json by
 tests/test_oss_win32_atomic_io_drift.py) and `ops/fleet_kit/` (vendored
 byte-for-byte; a local edit fails its MANIFEST). The two separate-process
 agents under tools/ that RM-258 names ARE in scope - they are long-running
-ONLOGON tasks, not generators.
+ONLOGON tasks, not generators, and so are the tools/ watchers converted
+since (`_RUNTIME_TOOLS`).
 """
 from __future__ import annotations
 
@@ -59,10 +60,14 @@ _EXCLUDED_PREFIXES = (
 )
 
 # Long-running separate-process agents that live under tools/ (RM-258 names
-# both). In scope despite the tools/ exclusion.
+# both), plus each tools/ watcher converted onto core.polled_json since, so
+# the conversion stays pinned. In scope despite the tools/ exclusion.
 _RUNTIME_TOOLS = frozenset({
     "tools/lcu_agent.py",
     "tools/hotkey_listener.py",
+    # RC-CostHealthWatchdog, every 15 min; --remediate rewrites
+    # config/coach_settings.json, which the running app reads.
+    "tools/cost_health_watchdog.py",
 })
 
 # (relpath, enclosing function or its dotted qualname) -> why this
@@ -398,6 +403,7 @@ def test_launcher_writer_meets_the_sanction_contract(tmp_path, monkeypatch, modu
 def test_scope_keeps_runtime_tools_and_drops_generators():
     assert _in_scope("tools/lcu_agent.py")
     assert _in_scope("tools/hotkey_listener.py")
+    assert _in_scope("tools/cost_health_watchdog.py")
     assert not _in_scope("tools/daemon_slayer_extract.py")
     assert not _in_scope("ops/fleet_kit/fleet_headless.py")
     assert _in_scope("coach_integration/_coach.py")
