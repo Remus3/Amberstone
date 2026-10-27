@@ -415,6 +415,102 @@ only, TFT, not League). Reverses if: the vision server stops importing Pillow la
 proves nothing about use), `_maybe_obs_frame` stops gating `width` / `height` on a successful decode,
 or `/upload-frame` stops recording `frame_upload`.
 
+**RM-752 follow-up READY (lane 9, s144 cycle 2, PREP only, no game up; NOT ticked): does Riot's
+`:2999` accept a TLSv1_2-floor, default-cipher handshake, so `tools/liveclient_relay.py` can drop its
+deliberate TLSv1 floor plus `ALL:@SECLEVEL=0` ciphers?** The question is the `Reverses if:` of
+`docs/OPERATIONS.md` "TLS protocol floor (RM-752)" (LEDGER 1744; PKG WA8). Any League game (GATE 2 / 3
+/ 4 / 5, or Jade once it is live). A TFT game can never answer it: the standalone TFT client serves no
+`:2999`.
+Probe: `python tools/gated_tls_2999_probe.py --json`, run TWICE at least 30 s apart. Each run makes
+one GET of `/liveclientdata/gamestats`
+per context, in this order: `relay` (the relay's own context rebuilt: TLSv1 floor, SECLEVEL=0),
+`floor12` (`core/tls_policy.py` `client_context_noverify()`: TLSv1_2 floor, default ciphers),
+`floor12_legacy` (TLSv1_2 floor, SECLEVEL=0 ciphers) and `tls13_only` (context only). `gamestats`
+carries no player names or ids, and the tool prints JSON keys, never values.
+Predicate, stated before any game. Both runs give the same `verdict`, and each run reads:
+- `in_league_game` true. The tool computes it from four reads:
+  - `/api/state` reads `mode_key` sr / aram / arena / brawl / jade with a non-empty `liveclient`,
+    both before and after the handshakes.
+  - `listener.names` (before) and `listener_after.names` are each exactly
+    `["League of Legends.exe"]`.
+  - `past_loading` is true: `state_before.game_time_s`, the numeric field, is above 0.
+    `game_time` is only the `m:ss` display string.
+- `relay_parity` true: a fail-closed pin. The tool hashes the canonical parse tree of every
+  top-level relay statement that is TLS-relevant: it builds or tunes `_ssl_ctx`, makes a request,
+  imports or names a TLS / HTTP module, or names `LIVE_URLS` / `fetch_live` / `_try_one`. Today
+  that is the imports, `LIVE_URLS`, the `_ssl_ctx` block, `_try_one`, `fetch_live`, `upload` and
+  `loop`. The hash must equal `_RELAY_TLS_SHA256`, which was set when `relay_context()` was checked
+  against that code.
+  - Any change there reads false, including a later override, an `options |=`, an alias, the
+    floor moved under an `if` or into a function, a request that passes another context, and
+    https dropped from `LIVE_URLS` or skipped in `fetch_live`.
+  - Comments, formatting and non-TLS code do not count.
+  - Out of its reach: a write through `globals()` or `sys.modules`, the process environment
+    (`OPENSSL_CONF`), and another module's code that the relay calls into.
+  - The same digest was measured on Python 3.12.13 and 3.14.4.
+- `results[relay]` is OK. OK = `handshake` true, `status` 200, and `json_keys` contains `gameTime`.
+  REJECTED = `handshake` false with `error_class` `ssl` or `reset`.
+Then the verdict is:
+- RAISE iff `floor12` is OK.
+- RAISE-FLOOR-KEEP-CIPHERS iff `floor12` is REJECTED and `floor12_legacy` is OK.
+- KEEP iff both are REJECTED.
+- NOT-YET otherwise, including refused, timeout, a 404 during loading, and a run where the `relay`
+  control itself fails.
+A timeout is never a rejection. On this box a connect to a closed loopback port takes about 2 s.
+Idle baseline 2026-10-27 08:2x local: every context was `refused` at 2023 .. 2062 ms, the verdict
+NOT-YET, exit 1, `relay_parity` true. The relay's own log reads the same way. `fetch_live` keeps
+only the LAST scheme's error, so every failure line is `http://1 -> ...`, refused or timed out (808
+of them: 385 refused, 423 timed out).
+What each verdict licenses (the merger's act, not the lane's; nothing is changed on a probe):
+- RAISE meets the `Reverses if:` as written. Raise the relay inline to TLSv1_2, because it is
+  served standalone and cannot import `core/`. Drop SECLEVEL=0. Then, in the next League game,
+  read the relay back: the `liveclient_envelope.source` is `agent_push` with `age_s` < 3. That
+  read-back is its own check and is not implied by this probe.
+- RAISE-FLOOR-KEEP-CIPHERS: raise `minimum_version` only, and record the negotiated cipher.
+- KEEP: the OPERATIONS keep stands, now on a measurement rather than the relay's old comment.
+  Record `results[relay].tls_version`.
+Evidence contract:
+- value = the verdict; per context `handshake`, `tls_version`, `cipher`, `status`, `json_keys`
+  and `error_class`; `relay_parity`; `listener.names` and `listener_after.names`;
+  `past_loading`; the `python` and `openssl` strings;
+  `liveclient_envelope.source` and `age_s`
+- source = the tool's JSON
+- timestamp = `wall`, `state_before.game_mode` and `state_before.game_time_s`
+- predicate = this paragraph
+SUBSTITUTION check (answer it in the tick line). The question is itself a handshake question, so a
+probe answers it directly; this is not the compute half of something that RENDERS. What is
+substituted is the CLIENT: the probe's interpreter, not the relay process, and a rebuild of the
+relay's context, not the relay's object.
+- Measured 2026-10-27 (read-only `schtasks /Query /XML`, paths compared in-process and never
+  printed): the RC-LiveClientRelay task runs this repo's `tools/liveclient_relay.py`, byte-equal
+  to the main checkout. It runs under `pythonw.exe` from the same install directory as the
+  probe's `python.exe` (3.14.4, OpenSSL 3.0.19 27 Jan 2026). So the probe's OpenSSL is the
+  relay's.
+- The tick line records `openssl` and repeats that comparison on the day.
+- `relay_parity` pins the relay's TLS-relevant code, which the rebuild was checked against.
+- Who owns the port: `listener` and `listener_after` must each name League of Legends.exe alone,
+  so a portproxy self-loop (memory `project_iphlpsvc_portproxy_2999`) or any other `:2999` listener
+  reads NOT-YET. Known limit: it is a NAME check, with no exe path or signature, so a renamed
+  process on `:2999` plus a pushed `liveclient` payload would pass. That takes deliberate forgery,
+  not a fixture, and the tick line says so.
+Synthetic reach: a loopback TLS server reproduces every verdict. `tests/test_gated_tls_2999_probe.py`
+does RAISE and RAISE-FLOOR-KEEP-CIPHERS with real handshakes, and a TLSv1_1-only loopback server
+gave KEEP on this box. That is why no verdict counts without `in_league_game` and the League-owned
+listener. What the probe does NOT show is that a RAISED relay then delivers: that is the follow-on
+read-back above.
+Prior evidence on disk, not a drain:
+- The relay log `logs/liveclient_relay.log` (first line 2026-08-03) holds 0 `fetch recovered`
+  lines. That is silent, not negative: `data/match_history.db` holds no League game after its
+  ARAM row of 2026-08-02 (every later row is TFT), so the relay has not faced a live `:2999`
+  since logging began.
+- The in-process readers (`vision_server/_relay.py` `_fetch_liveclient_direct`, using
+  `ssl._create_unverified_context()`, which has a TLSv1_2 floor on 3.14; and `game_reader`
+  `_get`) swallow every exception. So their existence still proves nothing.
+Reverses if: the relay's TLS-relevant code changes (`relay_parity` then reads false, and
+`tests/test_gated_tls_2999_probe.py` names the re-pin),
+`core/tls_policy.py` `TLS_MIN_VERSION` moves, or the relay task starts running another interpreter
+or another copy of the relay.
+
 ---
 
 ## GATE 1 - ANY LOBBY / CHAMP-SELECT (no game ever starts)
@@ -3068,7 +3164,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   OWED (operator-gated, NOT headless): over a REAL champ-select + match, set `RC_LCU_POOL=1` and confirm
   (a) champ-select reads (`game_reader/poller._lcu_get`) still return correct sessions with the pool active,
   (b) no `UNEXPECTED_EOF_WHILE_READING` / SSL EOF on the reused socket (if it appears, check
-  `netsh interface portproxy show all` FIRST per `reference_iphlpsvc_portproxy_2999` - that is a self-loop
+  `netsh interface portproxy show all` FIRST per `project_iphlpsvc_portproxy_2999` - that is a self-loop
   rule, not a pool bug), (c) the reconnect-on-drop path self-heals across a client restart mid-session, and
   (d) loopback socket count stays bounded (one long-lived socket per LCU port instead of one-per-call) under
   a tightened poll cadence. Only after (a)-(d) check out over a live game, authorize the default-ON flip.
