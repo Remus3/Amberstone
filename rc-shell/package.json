@@ -1,12 +1,15 @@
 {
   "name": "rc-shell",
+  "productName": "Amberstone Shell",
   "version": "0.4.0",
   "description": "Amberstone Electron companion shell (Phase 1) + in-game overlay (Phase 2/3): a frameless always-on-top window loading RC_ORIGIN, surface-switching companion <-> transparent overlay by mode_key with a global hotkey toggle. Phase 4: ACTIVE-mode glow indicator + overlay position/panel-set persistence. Phase 5: electron-updater on stable/dev GitHub Release channels. Vanguard-safe: DWM compositor window only, no capture / memory / injection.",
   "private": true,
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
-    "test": "node --test test/config.test.js test/store.test.js test/overlay_state.test.js test/overlay_state_contract.test.js test/overlay_settings_ipc.test.js test/clickthrough_zones.test.js test/drag_region.test.js test/window_controls.test.js test/active_indicator.test.js test/update_channel.test.js test/crash_guard.test.js test/overlay_layout_hide.test.js test/overlay_layout_drag.test.js test/overlay_launcher.test.js test/overlay_flash.test.js test/overlay_display_change.test.js test/overlay_toggle.test.js test/overlay_tft.test.js test/nav_guard.test.js test/rc_root.test.js test/tls_pin.test.js test/service_status.test.js"
+    "dist:dir": "electron-builder --win --dir",
+    "dist": "electron-builder --win",
+    "test": "node --test test/config.test.js test/store.test.js test/overlay_state.test.js test/overlay_state_contract.test.js test/overlay_settings_ipc.test.js test/clickthrough_zones.test.js test/drag_region.test.js test/window_controls.test.js test/active_indicator.test.js test/update_channel.test.js test/crash_guard.test.js test/overlay_layout_hide.test.js test/overlay_layout_drag.test.js test/overlay_launcher.test.js test/overlay_flash.test.js test/overlay_display_change.test.js test/overlay_toggle.test.js test/overlay_tft.test.js test/nav_guard.test.js test/rc_root.test.js test/tls_pin.test.js test/service_status.test.js test/launcher_wiring.test.js"
   },
   "engines": {
     "node": ">=18"

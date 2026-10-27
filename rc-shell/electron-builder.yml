@@ -22,6 +22,8 @@
 # application, so an existing install will NOT upgrade in place; it co-installs
 # alongside and the old one must be uninstalled by hand.
 appId: com.amberstone.shell
+# Must equal package.json productName (S6: one userData folder for a dev and a
+# packaged launch; rc-shell/test/launcher_wiring.test.js pins it).
 productName: Amberstone Shell
 
 directories:
@@ -31,9 +33,26 @@ files:
   - src/**/*
   - package.json
 
+# PKG-6: the backend ships BESIDE the asar, as real files (Python cannot run
+# from inside an asar): resources/backend = the PKG-4 bundle staging
+# (tools/build_portable.py -> dist/portable_staging, embedded runtime in
+# python-embed/ included). Build it first:
+#   python tools/package_portable.py --rebuild-staging   (or build_portable.py)
+# main.js resolves resources/backend through rc_root (bundled source) and
+# spawns its ops/launcher/service_host.py with python-embed/python.exe.
+extraResources:
+  - from: ../dist/portable_staging
+    to: backend
+    filter:
+      - "**/*"
+
 win:
   target: nsis
+  # S5: an RC-own icon (original geometric drawing, no third-party asset).
+  icon: assets/icon.ico
 
+# Start-menu + optional desktop shortcut only. Nothing here (and nothing in
+# main.js) registers a start at login or boot: PACKAGING_PLAN intent 3.
 nsis:
   oneClick: true
   perMachine: false

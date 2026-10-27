@@ -631,7 +631,11 @@ test("a display change re-clamps the toggle icon", () => {
 });
 
 test("the keyboard toggle reads the hotkey listener's signal file, gated to in-game", () => {
-  assert.match(MAIN_SRC, /"overlay_visible_toggle\.txt"/);
+  // PKG-6 (M3): the file name lives in rc_root.SIGNAL_FILES; main.js watches it
+  // under the resolved backend root by key.
+  const rcRootSrc = fs.readFileSync(path.join(__dirname, "..", "src", "rc_root.js"), "utf8");
+  assert.match(rcRootSrc, /visibleToggle: "overlay_visible_toggle\.txt"/);
+  assert.match(fnBody("startVisibleToggleWatch"), /watchSignal\("visibleToggle"/);
   const listener = fs.readFileSync(
     path.join(__dirname, "..", "..", "tools", "hotkey_listener.py"),
     "utf8"

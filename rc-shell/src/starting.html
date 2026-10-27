@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' file:; style-src 'unsafe-inline'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Amberstone</title>
+<!--
+  rc-shell/src/starting.html - the launcher's starting / error view (PKG-6,
+  docs/PACKAGING_PLAN.md section 3.1 "Status surface"). Loaded by main.js
+  createStartingWindow into a small FRAMED window with NO preload bridge while
+  the service host brings RC up; main.js pushes a plain-data model (the pure
+  launcher.startingModel) through window.__rcStarting and starting_page.js
+  renders it with textContent only. Local file, no remote content, no inline
+  script. ASCII only.
+-->
+<style>
+  :root {
+    --bg: #0b0e14;
+    --panel: #161d29;
+    --text: #e6e1d3;
+    --muted: #a39d8f;
+    --gold: #c8aa6e;
+    --bad: #e0705a;
+  }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.45 "Segoe UI", system-ui, sans-serif;
+  }
+  main {
+    box-sizing: border-box;
+    padding: 28px 32px;
+  }
+  h1 {
+    margin: 0 0 10px;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--gold);
+  }
+  main.error h1 {
+    color: var(--bad);
+  }
+  #detail {
+    margin: 0 0 18px;
+    color: var(--text);
+  }
+  ul {
+    margin: 0;
+    padding: 12px 16px;
+    list-style: none;
+    background: var(--panel);
+    border-radius: 6px;
+    font: 13px/1.6 Consolas, "Cascadia Mono", monospace;
+  }
+  ul:empty {
+    display: none;
+  }
+  li .word {
+    color: var(--muted);
+  }
+  #note {
+    margin: 18px 0 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+</style>
+</head>
+<body>
+<main id="view" aria-live="polite">
+  <h1 id="title">Amberstone is starting</h1>
+  <p id="detail">Starting the local services...</p>
+  <ul id="rows"></ul>
+  <p id="note">Closing this window stops Amberstone. Nothing here starts with Windows.</p>
+</main>
+<script src="starting_page.js"></script>
+</body>
+</html>
