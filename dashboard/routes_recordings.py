@@ -35,6 +35,7 @@ from __future__ import annotations
 import hmac
 import json
 import logging
+import math
 import os
 import re
 import stat
@@ -61,10 +62,35 @@ _VIDEO_TYPES = {".mp4": "video/mp4", ".m4v": "video/mp4",
 # than one buffer per request in memory.
 _CHUNK = 256 * 1024
 
+# s144 true-audit F3: the longest one socket write may block. This handler
+# carries no class-level timeout (dashboard/_handler.py _read_body_deadlined
+# says why), so a client that stops reading - a paused <video>, a dead tab -
+# used to hold its thread and the open recording forever. A <video> element
+# re-requests with Range when it resumes, so dropping a stalled one is safe.
+_WRITE_STALL_S = 60.0
+
 UNSATISFIABLE = "unsatisfiable"
 
-_BYTES_RE = re.compile(r"^\s*bytes\s*=\s*(.*)$", re.I)
-_SPEC_RE = re.compile(r"^\s*(\d*)\s*-\s*(\d*)\s*$")
+# re.ASCII: a str-pattern \d also matches non-ASCII decimal digits (and int()
+# accepts them); the Range grammar is ASCII.
+_BYTES_RE = re.compile(r"^\s*bytes\s*=\s*(.*)$", re.I | re.ASCII)
+_SPEC_RE = re.compile(r"^\s*(\d*)\s*-\s*(\d*)\s*$", re.ASCII)
+# s144 true-audit F1: int() refuses a digit run past sys.int_info's str limit
+# (4300) with ValueError, which surfaced as a 500. 18 significant digits is
+# beyond any file size, so a longer value is "past the end" without parsing.
+_MAX_DIGITS = 18
+
+
+def _digits_key(d: str) -> tuple[int, str]:
+    """Order two ASCII digit runs by value without converting them."""
+    t = d.lstrip("0") or "0"
+    return (len(t), t)
+
+
+def _dec(d: str) -> int | None:
+    """The value of an ASCII digit run, or None when it exceeds any size."""
+    t = d.lstrip("0") or "0"
+    return int(t) if len(t) <= _MAX_DIGITS else None
 
 
 def parse_range(header, size: int):
@@ -90,16 +116,18 @@ def parse_range(header, size: int):
     if a == "" and b == "":
         return None
     if a == "":
-        n = int(b)
+        n = _dec(b)
         if n == 0 or size <= 0:
             return UNSATISFIABLE
-        return (max(0, size - n), size - 1)
-    start = int(a)
-    end = int(b) if b != "" else None
-    if end is not None and end < start:
+        if n is None or n >= size:
+            return (0, size - 1)
+        return (size - n, size - 1)
+    if b != "" and _digits_key(b) < _digits_key(a):
         return None
-    if start >= size:
+    start = _dec(a)
+    if start is None or start >= size:
         return UNSATISFIABLE
+    end = _dec(b) if b != "" else None
     if end is None or end >= size:
         end = size - 1
     return (start, end)
@@ -198,8 +226,24 @@ def _auth_ok(h) -> bool:
                                token.encode("utf-8", "surrogatepass"))
 
 
+def _strict(v):
+    """``v`` with every non-finite float replaced by None (s144 F4).
+
+    json.loads accepts NaN / Infinity in a sidecar and json.dumps would echo
+    them, but neither is JSON: the browser's JSON.parse rejects the reply.
+    """
+    if isinstance(v, float):
+        return v if math.isfinite(v) else None
+    if isinstance(v, dict):
+        return {k: _strict(x) for k, x in v.items()}
+    if isinstance(v, list):
+        return [_strict(x) for x in v]
+    return v
+
+
 def _json(h, code: int, body: dict) -> None:
-    h._send(code, json.dumps(body).encode("utf-8"), "application/json")
+    raw = json.dumps(_strict(body), allow_nan=False).encode("utf-8")
+    h._send(code, raw, "application/json")
 
 
 def _summary(data: dict, name: str) -> dict:
@@ -247,6 +291,37 @@ def _stream(h, real: str) -> None:
         if code == 206:
             h.send_header("Content-Range", f"bytes {start}-{end}/{size}")
         h.end_headers()
+        # The status line and headers are on the wire from here on: a failure
+        # must end the connection, never reach _serve_recordings' catch-all,
+        # whose JSON 500 would land INSIDE the body (s144 F2).
+        try:
+            left = _copy_body(h, fh, start, length)
+        except Exception:  # noqa: BLE001 - headers already sent; see above
+            log.warning("api/recordings: stream aborted", exc_info=True)
+            h.close_connection = True
+            return
+        if left > 0:
+            # Short body (client gone, or the file shrank under its fstat):
+            # never let the connection be reused after a Content-Length lie.
+            h.close_connection = True
+
+
+def _copy_body(h, fh, start: int, length: int) -> int:
+    """Copy ``length`` bytes from ``start``; return the bytes NOT sent.
+
+    Each write is bounded by _WRITE_STALL_S on the socket when the handler
+    has one, and the socket's prior timeout is restored afterwards (s144 F3).
+    """
+    sock = getattr(h, "connection", None)
+    arm = callable(getattr(sock, "settimeout", None))
+    prior = None
+    if arm:
+        try:
+            prior = sock.gettimeout()
+            sock.settimeout(_WRITE_STALL_S)
+        except OSError:
+            arm = False
+    try:
         fh.seek(start)
         left = length
         while left > 0:
@@ -256,8 +331,17 @@ def _stream(h, real: str) -> None:
             try:
                 h.wfile.write(chunk)
             except OSError:
-                return  # client went away mid-seek; normal for <video>
+                # client went away mid-seek (normal for <video>) or stalled
+                # past _WRITE_STALL_S (TimeoutError is an OSError)
+                return left
             left -= len(chunk)
+        return left
+    finally:
+        if arm:
+            try:
+                sock.settimeout(prior)
+            except OSError:
+                pass
 
 
 def _serve_recordings(h) -> None:
@@ -288,7 +372,9 @@ def _serve_recordings(h) -> None:
             return
         _stream(h, real)
     except Exception as exc:  # noqa: BLE001 - never leak a path in a reply
-        log.warning("api/recordings: %s", type(exc).__name__)
+        # The traceback goes to the local log only (s144 F5); the reply below
+        # stays generic.
+        log.warning("api/recordings: %s", type(exc).__name__, exc_info=True)
         try:
             _json(h, 500, {"ok": False, "error": "internal error - see logs"})
         except Exception:  # noqa: BLE001
