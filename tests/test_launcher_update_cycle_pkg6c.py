@@ -44,6 +44,7 @@ from tests.test_launcher_update_hardening_pkg6b import (
     Sim,
     _applied,
     _cycle,
+    _fresh_watcher,
     _half_deploy,
     _lost_sim,
     _owed,
@@ -306,6 +307,7 @@ def test_hb_an_idle_main_py_rolls_back_a_failed_restart(tmp_path):
 # M1 the unreadable-state clock survived busy stretches the cycle never saw,
 #    so the first unreadable sample of a NEW episode released the hold at once.
 # S1 the /api/state probe waits as long as the shell's own poll (4 s).
+# S2 a hot_reload compile failure's rollback passes the same game gate.
 
 
 def _held_lost_deploy(tmp_path):
@@ -412,3 +414,30 @@ def test_r2_s1_the_state_probe_waits_as_long_as_the_shells_poll(monkeypatch):
     assert len(seen) == 1 and seen[0][0] == "https://127.0.0.1:8888/api/state"
     assert seen[0][1] * 1000 >= shell_ms, "the cycle gives up no sooner than the shell's poll"
 
+
+def test_r2_s2_a_compile_failure_rollback_waits_out_a_game(tmp_path):
+    root, src = _setup(tmp_path)
+    _fresh_watcher(root)
+    clock = Clock()
+    game = [None]
+
+    def failed_compile():
+        (root / "ops" / "runtime" / "hot_reload.json").write_text(json.dumps({
+            "watching": True, "changed": ["core/a.py"],
+            "last_compile": "FAILED core/a.py: SyntaxError"}), encoding="ascii")
+        game[0] = GAME   # a game started while the reload ran
+    sim = Sim(root, clock, after_worker=failed_compile)
+    res = _cycle(root, src, clock, sim, Script(clock, lambda t: sample("r1")),
+                 game_check=lambda: game[0], supervisor_alive=lambda: False)
+    assert res.status == "deferred" and res.exit_code == 3, res.to_dict()
+    assert "hot_reload" in res.detail
+    assert (root / "core" / "a.py").read_bytes() == NEW_FILES["core/a.py"], "not rolled back"
+    assert uc.read_cycle(root)["recover_due"]["version"] == "1.1.0"
+    game[0] = None
+    res = uc.resume_cycle(root, clock=clock, sleep=Sim(root, clock),
+                          health=Script(clock, lambda t: sample("r1")), serving=lambda: True,
+                          supervisor_alive=lambda: False, game_check=lambda: game[0])
+    assert res.status == "recovered", res.to_dict()
+    assert (root / "core" / "a.py").read_bytes() == BASE_FILES["core/a.py"]
+    assert "1.1.0" in uc.read_cycle(root)["bad_versions"]
+    assert uc.read_cycle(root)["verify"] is None and uc.read_cycle(root)["recover_due"] is None

@@ -950,7 +950,11 @@ def _verify_and_report(ctx: _Ctx, rec: Dict[str, Any], current: Optional[str], *
         what = _reload_outcome(ctx.root, rec.get("requested_at"), changed)
         ctx.log(f"hot_reload after the deploy: {what}")
         if what == "compile_failed":
-            return _recover(ctx, version, current, "core/hot_reload.py could not compile it")
+            # Round 2 (review S2): main.py still runs the OLD code in memory,
+            # so its rollback passes the same gate (held while a game is on,
+            # at once when main.py is down).
+            return _due_rollback(ctx, version, current,
+                                 "core/hot_reload.py could not compile it", bad=True)
         if what == "deferred":
             _write_cycle(ctx.root, verify=dict(rec, reload_deferred=True))
             return CycleResult("deferred", version, current,
