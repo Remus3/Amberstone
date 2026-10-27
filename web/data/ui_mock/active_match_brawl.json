@@ -1,0 +1,306 @@
+{
+  "mock": true,
+  "note": "Active Match brawl mock fixture (RM-969, session 144 lane uiux). Activated via ?ui_mock=1&mode=brawl. Brawl is live-reachable (URF / ARURF / ONEFORALL / GAMEMODEX / NEXUSBLITZ route to MODE_BRAWL) but had no out-of-game audit path. The coach block is the SERVED shape: the coaches/brawl_coach.py artifact key set (_blank_artifact_data plus the tick update plus mirror_live_stats) with the dashboard/_liveclient.py liveclient_summary() fields dashboard/_state_builder.py merges into blank coach keys (game_time, hp / hp_max, mana / mana_max, owned_items / owned_item_ids, enemy_team / ally_team); the brawl artifact itself carries game_time_s only, so a fixture without the merged game_time would show the clock as a dash where a live game shows it. Values are rooted in a recorded URF (queue 900, patch 15.24) match in data/rewind_history.db at its 11:00 timeline frame: the ten champions, teams, levels, cs, kills / deaths / assists and the tracked Smolder's inventory are the recorded ones; summoner names are synthetic, the coach prose is authored against that state, and currentHealth / maxHealth are derived (the timeline frame carries no HP). daemon_slayer_picks is empty: no DS rank was recorded for this state, so none is invented.",
+  "mode": "brawl",
+  "phase": "InProgress",
+  "coach": {
+    "mode": "brawl",
+    "champion": "Smolder",
+    "game_mode": "URF",
+    "game_id": "",
+    "game_time_s": 660,
+    "game_time": "11:00",
+    "hp_pct": 70,
+    "kda": "1/4/3",
+    "gold": 123,
+    "cs": 32,
+    "level": 10,
+    "hp": 1301,
+    "hp_max": 1858,
+    "mana": 0,
+    "mana_max": 0,
+    "owned_items": [
+      "Doran's Blade",
+      "Trinity Force",
+      "Boots of Swiftness",
+      "Pickaxe",
+      "Ruby Crystal",
+      "Stealth Ward"
+    ],
+    "owned_item_ids": [
+      "1055",
+      "3078",
+      "3009",
+      "1037",
+      "1028"
+    ],
+    "enemy_team": [
+      "Rumble",
+      "Vayne",
+      "Zyra",
+      "Veigar",
+      "Malphite"
+    ],
+    "ally_team": [
+      "Zed",
+      "Singed",
+      "Zilean",
+      "Mel",
+      "Smolder"
+    ],
+    "action": "GROUP MID WITH ZILEAN AND POKE",
+    "immediate": "Malphite is 10/1/1 - stay outside his R range and poke from max Q range.",
+    "event_advice": "",
+    "event_name": "",
+    "event_timer": 0,
+    "fight_rule": "Fight only after Malphite has used R; your stacked Q wins the long fight.",
+    "wave": "Clear the mid wave with Q before you rotate - URF waves crash fast.",
+    "reset_item": "Back with 1100g for B. F. Sword toward Infinity Edge.",
+    "objective": "Their mid tier-1 is low - take it while Malphite shows bot.",
+    "risk": "HIGH - Malphite is fed and his R comes back fast in URF.",
+    "comp_analysis": "Their front line is one fed Malphite; your team out-scales after two items.",
+    "choices": [
+      {
+        "key": "A",
+        "label": "Poke mid tower",
+        "expected_outcome": "Tier-1 falls if Malphite stays bot.",
+        "confidence": "mid",
+        "source_tag": "siege-call"
+      },
+      {
+        "key": "B",
+        "label": "Group bot with Zilean",
+        "expected_outcome": "A 5v5 into a fed Malphite R is likely lost.",
+        "confidence": "low",
+        "source_tag": "fight-trade"
+      },
+      {
+        "key": "C",
+        "label": "Farm side and scale",
+        "expected_outcome": "Stacks and items close the gap by 15:00.",
+        "confidence": "mid",
+        "source_tag": "spam-poke"
+      }
+    ],
+    "my_nexus_hp": 100,
+    "enemy_nexus_hp": 100,
+    "ally_spells": {
+      "Smolder": [
+        {
+          "spell": "SummonerFlash",
+          "cd_s": 0
+        },
+        {
+          "spell": "SummonerHaste",
+          "cd_s": 0
+        }
+      ]
+    },
+    "daemon_slayer_picks": [],
+    "log": []
+  },
+  "liveclient": {
+    "activePlayer": {
+      "summonerName": "SamplePlayer",
+      "riotIdGameName": "SamplePlayer",
+      "level": 10,
+      "currentGold": 123,
+      "championStats": {
+        "currentHealth": 1301,
+        "maxHealth": 1858,
+        "resourceValue": 0,
+        "resourceMax": 0
+      }
+    },
+    "gameData": {
+      "gameMode": "URF",
+      "gameTime": 660.3,
+      "mapNumber": 11
+    },
+    "allPlayers": [
+      {
+        "summonerName": "SampleOrderA",
+        "championName": "Rumble",
+        "rawChampionName": "Rumble",
+        "team": "ORDER",
+        "level": 11,
+        "isDead": false,
+        "scores": {
+          "kills": 2,
+          "deaths": 3,
+          "assists": 1,
+          "creepScore": 71
+        },
+        "items": []
+      },
+      {
+        "summonerName": "SampleOrderB",
+        "championName": "Vayne",
+        "rawChampionName": "Vayne",
+        "team": "ORDER",
+        "level": 10,
+        "isDead": false,
+        "scores": {
+          "kills": 2,
+          "deaths": 5,
+          "assists": 0,
+          "creepScore": 34
+        },
+        "items": []
+      },
+      {
+        "summonerName": "SampleOrderC",
+        "championName": "Zyra",
+        "rawChampionName": "Zyra",
+        "team": "ORDER",
+        "level": 11,
+        "isDead": false,
+        "scores": {
+          "kills": 1,
+          "deaths": 2,
+          "assists": 3,
+          "creepScore": 71
+        },
+        "items": []
+      },
+      {
+        "summonerName": "SampleOrderD",
+        "championName": "Veigar",
+        "rawChampionName": "Veigar",
+        "team": "ORDER",
+        "level": 11,
+        "isDead": false,
+        "scores": {
+          "kills": 1,
+          "deaths": 3,
+          "assists": 2,
+          "creepScore": 57
+        },
+        "items": []
+      },
+      {
+        "summonerName": "SampleOrderE",
+        "championName": "Malphite",
+        "rawChampionName": "Malphite",
+        "team": "ORDER",
+        "level": 13,
+        "isDead": false,
+        "scores": {
+          "kills": 10,
+          "deaths": 1,
+          "assists": 1,
+          "creepScore": 114
+        },
+        "items": []
+      },
+      {
+        "summonerName": "SampleChaosA",
+        "championName": "Zed",
+        "rawChampionName": "Zed",
+        "team": "CHAOS",
+        "level": 12,
+        "isDead": false,
+        "scores": {
+          "kills": 6,
+          "deaths": 4,
+          "assists": 4,
+          "creepScore": 69
+        },
+        "items": []
+      },
+      {
+        "summonerName": "SampleChaosB",
+        "championName": "Singed",
+        "rawChampionName": "Singed",
+        "team": "CHAOS",
+        "level": 11,
+        "isDead": false,
+        "scores": {
+          "kills": 2,
+          "deaths": 5,
+          "assists": 2,
+          "creepScore": 55
+        },
+        "items": []
+      },
+      {
+        "summonerName": "SampleChaosC",
+        "championName": "Zilean",
+        "rawChampionName": "Zilean",
+        "team": "CHAOS",
+        "level": 11,
+        "isDead": false,
+        "scores": {
+          "kills": 0,
+          "deaths": 1,
+          "assists": 6,
+          "creepScore": 60
+        },
+        "items": []
+      },
+      {
+        "summonerName": "SampleChaosD",
+        "championName": "Mel",
+        "rawChampionName": "Mel",
+        "team": "CHAOS",
+        "level": 11,
+        "isDead": false,
+        "scores": {
+          "kills": 5,
+          "deaths": 2,
+          "assists": 1,
+          "creepScore": 52
+        },
+        "items": []
+      },
+      {
+        "summonerName": "SamplePlayer",
+        "riotIdGameName": "SamplePlayer",
+        "championName": "Smolder",
+        "rawChampionName": "Smolder",
+        "team": "CHAOS",
+        "level": 10,
+        "isDead": false,
+        "scores": {
+          "kills": 1,
+          "deaths": 4,
+          "assists": 3,
+          "creepScore": 32
+        },
+        "items": [
+          {
+            "itemID": 1055,
+            "slot": 0,
+            "displayName": "Doran's Blade"
+          },
+          {
+            "itemID": 3078,
+            "slot": 1,
+            "displayName": "Trinity Force"
+          },
+          {
+            "itemID": 3009,
+            "slot": 2,
+            "displayName": "Boots of Swiftness"
+          },
+          {
+            "itemID": 1037,
+            "slot": 3,
+            "displayName": "Pickaxe"
+          },
+          {
+            "itemID": 1028,
+            "slot": 4,
+            "displayName": "Ruby Crystal"
+          },
+          {
+            "itemID": 3340,
+            "slot": 6,
+            "displayName": "Stealth Ward"
+          }
+        ]
+      }
+    ]
+  },
+  "summoner_cooldowns": []
+}

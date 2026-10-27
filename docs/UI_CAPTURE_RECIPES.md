@@ -35,6 +35,7 @@ Mock per mode (item 188):
 - SR:    `https://127.0.0.1:8888/?ui_mock=1&mode=sr#active-match`
 - ARAM:  `https://127.0.0.1:8888/?ui_mock=1&mode=aram#active-match`
 - Arena: `https://127.0.0.1:8888/?ui_mock=1&mode=arena#active-match`
+- Brawl: `https://127.0.0.1:8888/?ui_mock=1&mode=brawl#active-match`
 - TFT, no live data: `https://127.0.0.1:8888/?ui_mock=1&mode=tft#active-match`
 - TFT, live data:    `https://127.0.0.1:8888/?ui_mock=1&mode=tft_live#active-match`
 - TFT, round feed:   `https://127.0.0.1:8888/?ui_mock=1&mode=tft_round#active-match`
@@ -49,6 +50,15 @@ Fixtures:
 - `web/data/ui_mock/active_match_arena.json` (6x2 = 12 players per
   item 180 `_arena_teams()` distil; NOT 6x3 - that was a stale
   c3a1e23 premise corrected at item 183)
+- `web/data/ui_mock/active_match_brawl.json` (RM-969: the SERVED
+  brawl shape - the coaches/brawl_coach.py artifact keys plus the
+  liveclient_summary() fields the state builder merges, game_time
+  included - with a recorded URF match's 11:00 values; no
+  capability_gap block, so the GAP chip stays hidden). Rendered pins:
+  `tests/snapshot_panels/test_ui_mock_active_match_brawl.py`
+- The capability-gap chip reads the fixture the page renders (one
+  `?mode=` map, `AM_MOCK_FIXTURES` in `web/js/panels/active_match.js`);
+  only `active_match_sr.json` carries a `capability_gap` block.
 - `web/data/ui_mock/active_match_tft.json` (session 134: the TFT
   payload RC really served in a recorded live TFT game - every TFT
   field empty, liveclient `{}` because the standalone TFT client has

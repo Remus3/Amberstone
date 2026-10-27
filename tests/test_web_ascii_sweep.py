@@ -918,7 +918,20 @@ _WEB = _REPO_ROOT / "web"
 # MERGED 2026-10-27 by the session 144 merger onto main (lane commit f603ee914): main had moved
 # this pin since the lane base, so the superseded value above is main's and
 # the value below is recomputed over the merged tree.
-_LIVE_HALF_DIGEST = "0ffaff1daf8e0024251ed733de7a11a74caf5e0b8366a9f9b4bee7dc98b504b6"
+# superseded by the RM-969 re-capture below: "0ffaff1daf8e0024251ed733de7a11a74caf5e0b8366a9f9b4bee7dc98b504b6"
+#
+# RE-CAPTURED 2026-10-27 at RM-969 (s144 uiux cycle 1). One change rides
+# it: the ?ui_mock=1 Active Match ?mode= -> fixture map moves from main.js
+# _amMockUrl into web/js/panels/active_match.js (AM_MOCK_FIXTURES /
+# amMockFixtureUrl, plus the new mode=brawl entry), and the capability-gap
+# mock fetch reads that map instead of active_match_sr.json for every mode.
+# Ordinary case, no tokeniser change. ATTRIBUTED BY SUBSTITUTION: swapping
+# exactly web/js/main.js and web/js/panels/active_match.js back to their
+# 0747c8bdc blobs reproduces the superseded 0ffaff1d... value EXACTLY. Those
+# two paths are the whole change. No glyph change: the added lines carry 0
+# non-ASCII bytes. If another slice re-captures in parallel, the merger
+# recomputes.
+_LIVE_HALF_DIGEST = "c97b0f8062f3b76918561564ebe17fff49980d05ec7f8676a44d60f4360ee4fc"
 
 
 def _web_sources() -> list[Path]:

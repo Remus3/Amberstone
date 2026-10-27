@@ -1880,6 +1880,33 @@ function _amCapgapKey(myChamp, enemyNames, mode) {
   return `${myChamp}|${(enemyNames || []).join(",")}|${mode}`;
 }
 
+// ?ui_mock=1 Active Match fixtures by ?mode= value - the ONE map. main.js
+// _amMockUrl renders the page from it and the capability-gap mock below
+// reads the same fixture, so the chip never shows another mode's verdict
+// (RM-969: it read active_match_sr.json for every mode).
+const AM_MOCK_FIXTURES = {
+  sr:        "/data/ui_mock/active_match_sr.json",
+  aram:      "/data/ui_mock/active_match_aram.json",
+  arena:     "/data/ui_mock/active_match_arena.json",
+  mayhem:    "/data/ui_mock/active_match_aram_mayhem.json",
+  complete:  "/data/ui_mock/active_match_complete.json",
+  brawl:     "/data/ui_mock/active_match_brawl.json",
+  tft:       "/data/ui_mock/active_match_tft.json",
+  tft_live:  "/data/ui_mock/active_match_tft_live.json",
+  tft_round: "/data/ui_mock/active_match_tft_round.json",
+};
+
+// Fixture URL for a location.search string, or null (unknown / absent mode).
+export function amMockFixtureUrl(search) {
+  try {
+    const m = (new URLSearchParams(search || "").get("mode") || "").toLowerCase();
+    return Object.prototype.hasOwnProperty.call(AM_MOCK_FIXTURES, m)
+      ? AM_MOCK_FIXTURES[m] : null;
+  } catch (_) {
+    return null;
+  }
+}
+
 function _amFetchCapabilityGap(myChamp, enemyNames, mode, cb) {
   if (!myChamp || !(enemyNames && enemyNames.length) || !mode) return;
   const key = _amCapgapKey(myChamp, enemyNames, mode);
@@ -1888,11 +1915,19 @@ function _amFetchCapabilityGap(myChamp, enemyNames, mode, cb) {
   // UI mock short-circuit (mirrors the champ-select chip): under ?ui_mock=1
   // the chip seeds from the fixture's capability_gap block so the active-
   // match page renders deterministically for the visual-audit ritual (the
-  // live /api/ds-preview path is default-OFF).
+  // live /api/ds-preview path is default-OFF). The fixture is the one the
+  // page renders; one with no capability_gap block leaves the chip hidden.
   const isMock = !!(typeof document !== "undefined" && document.body
                     && document.body.dataset.uiMock === "1");
   if (isMock) {
-    fetch("/data/ui_mock/active_match_sr.json", { cache: "no-store" })
+    const mockUrl = amMockFixtureUrl(
+      (typeof window !== "undefined" && window.location) ? window.location.search : "");
+    if (!mockUrl) {
+      _AM_CAPGAP_INFLIGHT[key] = false;
+      _AM_CAPGAP_CACHE[key] = false;
+      return;
+    }
+    fetch(mockUrl, { cache: "no-store" })
       .then((r) => (r && r.ok ? r.json() : null))
       .then((data) => {
         _AM_CAPGAP_INFLIGHT[key] = false;

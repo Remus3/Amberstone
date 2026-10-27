@@ -31,7 +31,7 @@ import { renderAugmentReco } from './panels/augment_reco.js';
 import { handleChampSelect, renderChampSelectCoach, renderChampSelectView } from './panels/champ_select.js';
 import { renderTeamContext } from './panels/team_context.js';
 import { renderScreenRead } from './panels/screen_read.js';
-import { renderActiveMatch, activeMatchEnabled } from './panels/active_match.js';
+import { renderActiveMatch, activeMatchEnabled, amMockFixtureUrl } from './panels/active_match.js';
 import { renderAramBalance } from './panels/aram_balance.js';
 // HZ-D1 Phase 4: overlay-only DS fight-model pane. Piggybacks every
 // active-match dispatch below; self-gates on body[data-shell="overlay"]
@@ -4127,21 +4127,12 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       liveclient: _amMockData.liveclient || {},
     };
   }
+  // The ?mode= -> fixture map lives in active_match.js (AM_MOCK_FIXTURES), so
+  // the page and its capability-gap chip read the same fixture (RM-969).
+  // RM-969 also adds ?mode=brawl: the served brawl shape (URF) for the
+  // live-reachable MODE_BRAWL, which had no audit path.
   function _amMockUrl() {
-    let url = null;
-    try {
-      const params = new URLSearchParams(window.location.search || "");
-      const m = (params.get("mode") || "").toLowerCase();
-      if (m === "sr")         url = "/data/ui_mock/active_match_sr.json";
-      else if (m === "aram")  url = "/data/ui_mock/active_match_aram.json";
-      else if (m === "arena") url = "/data/ui_mock/active_match_arena.json";
-      else if (m === "mayhem") url = "/data/ui_mock/active_match_aram_mayhem.json";
-      else if (m === "complete") url = "/data/ui_mock/active_match_complete.json";
-      else if (m === "tft") url = "/data/ui_mock/active_match_tft.json";
-      else if (m === "tft_live") url = "/data/ui_mock/active_match_tft_live.json";
-      else if (m === "tft_round") url = "/data/ui_mock/active_match_tft_round.json";
-    } catch (_) {}
-    return url;
+    return amMockFixtureUrl(window.location.search || "");
   }
   function _amMockLoad() {
     if (_amMockPromise) return _amMockPromise;

@@ -221,10 +221,13 @@ class MainJsMockDispatcherWiringTests(unittest.TestCase):
         self.assertIn("function _amMockLoad()", self.src)
 
     def test_url_routes_sr_aram_arena(self) -> None:
-        # All 3 mode branches present in _amMockUrl.
-        self.assertIn('"/data/ui_mock/active_match_sr.json"', self.src)
-        self.assertIn('"/data/ui_mock/active_match_aram.json"', self.src)
-        self.assertIn('"/data/ui_mock/active_match_arena.json"', self.src)
+        # RM-969: the ?mode= -> fixture map moved to active_match.js
+        # (AM_MOCK_FIXTURES), read by _amMockUrl AND the capability-gap mock.
+        self.assertIn("return amMockFixtureUrl(window.location.search", self.src)
+        am = _read(_ACTIVE_MATCH_JS)
+        self.assertIn('sr:        "/data/ui_mock/active_match_sr.json"', am)
+        self.assertIn('aram:      "/data/ui_mock/active_match_aram.json"', am)
+        self.assertIn('arena:     "/data/ui_mock/active_match_arena.json"', am)
 
     def test_render_active_match_call_site_uses_mock_branch(self) -> None:
         # The call-site at applyState wraps renderActiveMatch in the mock
@@ -280,13 +283,11 @@ class TftFixtureTests(unittest.TestCase):
     """
 
     def test_main_js_routes_both_tft_modes(self) -> None:
-        src = _read(_MAIN_JS)
+        # RM-969: the map main.js _amMockUrl reads lives in active_match.js.
+        src = _read(_ACTIVE_MATCH_JS)
+        self.assertIn('tft:       "/data/ui_mock/active_match_tft.json"', src)
         self.assertIn(
-            'm === "tft") url = "/data/ui_mock/active_match_tft.json"', src
-        )
-        self.assertIn(
-            'm === "tft_live") url = "/data/ui_mock/active_match_tft_live.json"',
-            src,
+            'tft_live:  "/data/ui_mock/active_match_tft_live.json"', src
         )
 
     def test_both_fixtures_are_a_live_tft_game_with_no_feed(self) -> None:
@@ -335,9 +336,10 @@ class TftRoundFixtureTests(unittest.TestCase):
     _NAME = "active_match_tft_round.json"
 
     def test_main_js_routes_tft_round(self) -> None:
+        # RM-969: the map main.js _amMockUrl reads lives in active_match.js.
         self.assertIn(
-            'm === "tft_round") url = "/data/ui_mock/active_match_tft_round.json"',
-            _read(_MAIN_JS),
+            'tft_round: "/data/ui_mock/active_match_tft_round.json"',
+            _read(_ACTIVE_MATCH_JS),
         )
 
     def test_ascii_clean(self) -> None:
@@ -389,6 +391,76 @@ class TftRoundFixtureTests(unittest.TestCase):
         self.assertEqual([r["standing"] for r in rows if r["you"]], [5])
         for r in rows:
             self.assertEqual(set(r), {"standing", "health", "you", "board_size"})
+
+
+class BrawlFixtureTests(unittest.TestCase):
+    """RM-969: the ?ui_mock=1&mode=brawl Active Match fixture.
+
+    The SERVED brawl shape: the coaches/brawl_coach.py artifact keys plus the
+    dashboard/_liveclient.py liveclient_summary() fields that
+    dashboard/_state_builder.py merges into blank coach keys. The rendered
+    page is pinned by tests/snapshot_panels/test_ui_mock_active_match_brawl.py.
+    """
+
+    def setUp(self) -> None:
+        self.data = _load_fixture("active_match_brawl.json")
+        self.coach = self.data["coach"]
+
+    def test_routed_from_the_fixture_map(self) -> None:
+        self.assertIn(
+            'brawl:     "/data/ui_mock/active_match_brawl.json"',
+            _read(_ACTIVE_MATCH_JS),
+        )
+
+    def test_live_brawl_game_envelope(self) -> None:
+        self.assertEqual(self.data["mode"], "brawl")
+        self.assertEqual(self.data["phase"], "InProgress")
+        self.assertTrue(self.data.get("mock"))
+        self.assertEqual(self.coach["mode"], "brawl")
+        self.assertIn(self.coach["game_mode"], (
+            "URF", "ARURF", "ONEFORALL", "GAMEMODEX", "NEXUSBLITZ"))
+
+    def test_carries_the_brawl_coach_artifact_keys(self) -> None:
+        for key in ("action", "immediate", "event_advice", "fight_rule",
+                    "wave", "reset_item", "objective", "risk",
+                    "event_name", "event_timer", "my_nexus_hp",
+                    "enemy_nexus_hp", "game_id", "game_time_s", "kda",
+                    "gold", "champion", "choices"):
+            self.assertIn(key, self.coach, key)
+        # The brawl coach never writes the SR "next" field.
+        self.assertNotIn("next", self.coach)
+
+    def test_carries_the_merged_liveclient_clock(self) -> None:
+        # #am-sub reads coach.game_time; the brawl artifact has game_time_s
+        # only, so the served value is the liveclient_summary() merge.
+        mm, ss = divmod(int(self.coach["game_time_s"]), 60)
+        self.assertEqual(self.coach["game_time"], f"{mm}:{ss:02d}")
+        gt = int(self.data["liveclient"]["gameData"]["gameTime"])
+        self.assertEqual(gt, int(self.coach["game_time_s"]))
+
+    def test_coach_and_liveclient_agree_on_the_active_player(self) -> None:
+        lc = self.data["liveclient"]
+        me = lc["activePlayer"]["summonerName"]
+        rows = [p for p in lc["allPlayers"] if p["summonerName"] == me]
+        self.assertEqual(len(rows), 1)
+        s = rows[0]["scores"]
+        self.assertEqual(
+            self.coach["kda"], f'{s["kills"]}/{s["deaths"]}/{s["assists"]}')
+        self.assertEqual(self.coach["cs"], s["creepScore"])
+        self.assertEqual(self.coach["champion"], rows[0]["championName"])
+        enemies = [p["championName"] for p in lc["allPlayers"]
+                   if p["team"] != rows[0]["team"]]
+        self.assertEqual(self.coach["enemy_team"], enemies)
+        self.assertEqual(len(lc["allPlayers"]), 10)
+
+    def test_no_capability_gap_block(self) -> None:
+        # No gap was computed for this state; the chip must stay hidden.
+        self.assertNotIn("capability_gap", self.data)
+
+    def test_ascii_clean(self) -> None:
+        raw = (_FIXTURE_DIR / "active_match_brawl.json").read_bytes()
+        self.assertTrue(all(b < 0x80 for b in raw))
+        self.assertNotIn(b"\r", raw)
 
 
 if __name__ == "__main__":
