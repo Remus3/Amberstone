@@ -2659,12 +2659,19 @@
    interactive controls (mirrors panel_visibility.css .pv-tab pattern). */
 .csv-summspell-edit:focus-visible,
 .csv-summspell-cell:focus-visible,
-.csv-ta-head:focus-visible,
-/* RM-971: the build chooser rows are keyboard targets too. */
+.csv-ta-head:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+/* RM-971: the build chooser rows are keyboard targets too.
+   RM-972: drawn INSET - the aram legacy row sits flush against the
+   overflow-x: hidden .csv-card-body.csv-mypick, which cut the outer 2px
+   ring off its left edge. --focus-ring is "0 0 0 2px <color>", so the
+   inset keyword in front of it is still one valid shadow. */
 .csv-build-row:focus-visible,
 .csv-build-path-row:focus-visible {
   outline: none;
-  box-shadow: var(--focus-ring);
+  box-shadow: inset var(--focus-ring);
 }
 
 /* B5: compact summoner-spell strip (2 current D/F cells + EDIT). */

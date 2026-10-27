@@ -3020,7 +3020,7 @@ function _csvBuildVariantsFor(cid, name, mode, cs) {
 // persist) and fires the LCU push via _csvApplyLoadout with the
 // `<variant>:<path-key>` form so the backend resolver overlays the
 // path's items / runes / summoners on the variant.
-function _csvBuildPathRowHtml(variantKey, path, isActive, ver) {
+function _csvBuildPathRowHtml(variantKey, path, isActive, ver, isPressed = isActive) {
   const items = (path.item_ids || []).slice(0, 6).map((iid) => {
     const lolHtml = itemTooltipHtml(iid);
     const ttAttr = lolHtml ? ` data-tt-html="${lolHtml.replace(/"/g, "&quot;")}"` : "";
@@ -3043,9 +3043,11 @@ function _csvBuildPathRowHtml(variantKey, path, isActive, ver) {
   // does the same), supplied by the caller as `path.keystone`.
   const ksAttr = path.keystone ? ` data-card-keystone="${path.keystone}"` : "";
   // RM-971: a path row is a keyboard target (Tab + Enter / Space).
+  // RM-972: is-active marks the path within ITS variant; aria-pressed
+  // is the chooser-wide pick, so only the selected variant's path is pressed.
   return `
     <div class="csv-build-path-row${isActive ? " is-active" : ""}"
-         role="button" tabindex="0" aria-pressed="${isActive ? "true" : "false"}"
+         role="button" tabindex="0" aria-pressed="${isPressed ? "true" : "false"}"
          data-variant="${variantKey}"
          data-path-key="${path.key || ""}"${archAttr}${primaryAttr}${ksAttr}${itemIdsAttr}>
       <div class="csv-build-path-label" title="${label}">${label}</div>
@@ -3349,7 +3351,8 @@ function _csvBuildVariantRowsHtml(variants, savedChoice, savedRuneKey) {
         activePathKey = (primaryPath && primaryPath.key) || buildPaths[0].key || "";
       }
       const pathRowsHtml = buildPaths.map((p) =>
-        _csvBuildPathRowHtml(v.key, p, p.key === activePathKey, ver)
+        _csvBuildPathRowHtml(v.key, p, p.key === activePathKey, ver,
+          p.key === activePathKey && idx === selectedIdx)
       ).join("");
       // item 1 Phase 2: the nested per-card rune column was PROMOTED to the
       // one champ-wide rune SIDE panel (sibling of .csv-builds - see
@@ -3477,8 +3480,8 @@ function _csvWireBuildVariants(scope) {
         : [];
       siblings.forEach((s) => {
         s.classList.toggle("is-active", s === prow);
-        s.setAttribute("aria-pressed", s === prow ? "true" : "false");
       });
+      _csvSyncChooserPressed(prow.closest(".csv-builds") || scope, prow);
       const outer = prow.closest(".csv-build-row-collapsed");
       if (outer) outer.dataset.activePath = pathKey;
       const composed = `${variantKey}:${pathKey}`;
@@ -3566,10 +3569,8 @@ function _csvWireBuildVariants(scope) {
       if (row.classList.contains("csv-build-row-collapsed")) return;
       rows.forEach((r) => {
         r.classList.toggle("selected", r === row);
-        if (!r.classList.contains("csv-build-row-collapsed")) {
-          r.setAttribute("aria-pressed", r === row ? "true" : "false");
-        }
       });
+      _csvSyncChooserPressed(row.closest(".csv-builds") || scope, row);
       const variantKey = row.dataset.variant;
       if (champion && variantKey
           && variantKey !== "empty"
@@ -3594,6 +3595,18 @@ function _csvWireBuildVariants(scope) {
     if (!row.classList.contains("csv-build-row-collapsed")) {
       row.addEventListener("keydown", _csvChooserKeyActivates);
     }
+  });
+}
+
+// RM-972: exactly one chooser target is pressed - the one just picked.
+// Covers every legacy row and every collapsed variant's path rows, so a
+// pick in one variant un-presses the path still active in another.
+function _csvSyncChooserPressed(host, picked) {
+  if (!host) return;
+  host.querySelectorAll(
+    ".csv-build-row:not(.csv-build-row-collapsed), .csv-build-path-row"
+  ).forEach((t) => {
+    t.setAttribute("aria-pressed", t === picked ? "true" : "false");
   });
 }
 

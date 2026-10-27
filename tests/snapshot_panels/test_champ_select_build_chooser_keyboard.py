@@ -212,3 +212,201 @@ def test_a_rebuild_never_steals_focus(mock_server, pw_browser):
         page.close()
         ctx.close()
     assert not errors, f"JS errors [sr]: {errors[:3]}"
+
+
+# -- RM-972 --------------------------------------------------------------
+# Measured headless after RM-971: on the aram page the legacy row sits
+# flush against an overflow-x: hidden card body, so the outer 2px
+# --focus-ring was cut off on its left edge. And aria-pressed on a path row
+# mirrored is-active even when its collapsed variant was not the selected
+# one, so a chooser with two collapsed variants (or a collapsed variant
+# plus a legacy row) announced two pressed builds.
+
+_RING_BOX_JS = r"""(el) => {
+  const bs = getComputedStyle(el).boxShadow || "none";
+  if (bs === "none") return {ring: false};
+  const inset = /\binset\b/.test(bs);
+  const px = (bs.match(/-?[\d.]+px/g) || []).map(parseFloat);
+  const spread = inset ? 0 : (px[3] || 0);
+  const r = el.getBoundingClientRect();
+  const box = {l: r.left - spread, t: r.top - spread,
+               r: r.right + spread, b: r.bottom + spread};
+  const cuts = [];
+  for (let a = el.parentElement; a; a = a.parentElement) {
+    const s = getComputedStyle(a);
+    const ar = a.getBoundingClientRect();
+    const cl = ar.left + a.clientLeft, ct = ar.top + a.clientTop;
+    const cr = cl + a.clientWidth, cb = ct + a.clientHeight;
+    if (s.overflowX !== "visible" && (box.l < cl - 0.5 || box.r > cr + 0.5)) {
+      cuts.push(["x", a.className, box.l - cl, cr - box.r]);
+    }
+    if (s.overflowY !== "visible" && (box.t < ct - 0.5 || box.b > cb + 0.5)) {
+      cuts.push(["y", a.className, box.t - ct, cb - box.b]);
+    }
+  }
+  return {ring: true, inset, cuts, bs};
+}"""
+
+
+@pytest.mark.parametrize("mode", ["sr", "aram", "arena"])
+def test_the_focus_ring_is_never_clipped(mode, mock_server, pw_browser):
+    ctx, page, errors = _open_champ_select(pw_browser, mock_server, mode)
+    try:
+        _wait_rows(page)
+        n = page.evaluate(
+            "(s) => document.querySelectorAll(s).length", _CLICKABLE
+        )
+        assert n, mode
+        for i in range(n):
+            page.evaluate(
+                "([s, i]) => document.querySelectorAll(s)[i].focus()",
+                [_CLICKABLE, i],
+            )
+            page.keyboard.press("Shift")
+            got = page.evaluate_handle("() => document.activeElement")
+            res = page.evaluate(_RING_BOX_JS, got)
+            assert res["ring"], (mode, i)
+            assert res["cuts"] == [], (mode, i, res)
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [{mode}]: {errors[:3]}"
+
+
+def _sr_fixture_with(extra_variants: list) -> dict:
+    import json
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[2] / "web" / "data" / "ui_mock"
+    sr = json.loads((root / "champ_select_sr.json").read_text(encoding="utf-8"))
+    sr["build_variants"]["Jinx|sr"] = (
+        list(sr["build_variants"]["Jinx|sr"]) + extra_variants
+    )
+    return sr
+
+
+def _second_collapsed_variant() -> dict:
+    import copy
+
+    v = copy.deepcopy(_sr_fixture_with([])["build_variants"]["Jinx|sr"][0])
+    v["key"] = "sr-collapsed-b"
+    v["label"] = "Second set"
+    for p in v.get("build_paths") or []:
+        p["key"] = "b-" + str(p.get("key") or "")
+    return v
+
+
+def _legacy_variant() -> dict:
+    import json
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[2] / "web" / "data" / "ui_mock"
+    aram = json.loads(
+        (root / "champ_select_aram.json").read_text(encoding="utf-8")
+    )
+    v = dict(aram["build_variants"]["Jinx|aram"][0])
+    v["key"] = "sr-legacy"
+    return v
+
+
+def _open_sr_with(pw_browser, mock_server, fixture: dict):
+    import json
+
+    from tests.snapshot_panels.conftest import _WS_STUB
+
+    mock_server._store["data"] = {}
+    ctx = pw_browser.new_context(
+        ignore_https_errors=True,
+        viewport={"width": 1920, "height": 1080},
+        service_workers="block",
+    )
+    body = json.dumps(fixture)
+    ctx.route(
+        "**/data/ui_mock/champ_select_sr.json",
+        lambda route: route.fulfill(
+            status=200, content_type="application/json", body=body
+        ),
+    )
+    page = ctx.new_page()
+    page.add_init_script(_WS_STUB)
+    errors: list[str] = []
+    page.on("pageerror", lambda err: errors.append(str(err)))
+    page.goto(
+        mock_server.url + "/?ui_mock=1&mode=sr#champ-select",
+        wait_until="domcontentloaded",
+        timeout=15_000,
+    )
+    return ctx, page, errors
+
+
+_PRESSED_JS = """(s) => Array.from(document.querySelectorAll(s))
+  .filter(r => r.getAttribute('aria-pressed') === 'true')
+  .map(r => (r.dataset.variant || '') + ':' + (r.dataset.pathKey || ''))"""
+
+
+def _wait_targets(page, count: int) -> None:
+    page.wait_for_function(
+        "([s, n]) => document.querySelectorAll(s).length >= n",
+        arg=[_CLICKABLE, count],
+        timeout=10_000,
+    )
+
+
+def test_two_collapsed_variants_announce_one_pressed_build(
+    mock_server, pw_browser
+):
+    fixture = _sr_fixture_with([_second_collapsed_variant()])
+    n_paths = sum(
+        len(v.get("build_paths") or [])
+        for v in fixture["build_variants"]["Jinx|sr"]
+    )
+    ctx, page, errors = _open_sr_with(pw_browser, mock_server, fixture)
+    try:
+        _wait_targets(page, n_paths)
+        pressed = page.evaluate(_PRESSED_JS, _CLICKABLE)
+        assert len(pressed) == 1, pressed
+        assert pressed[0].startswith("sr-collapsed:"), pressed
+        # Pick a path in the SECOND variant: after the rebuild it is the one
+        # pressed build.
+        target = page.evaluate(
+            "() => document.querySelector('#view-champ-select .csv-builds"
+            " .csv-build-path-row[data-variant=\"sr-collapsed-b\"]')"
+            ".dataset.pathKey"
+        )
+        _mark_nodes(page)
+        page.click(
+            "#view-champ-select .csv-builds .csv-build-path-row"
+            f"[data-variant=\"sr-collapsed-b\"][data-path-key=\"{target}\"]"
+        )
+        _wait_rebuilt(page)
+        _wait_targets(page, n_paths)
+        pressed = page.evaluate(_PRESSED_JS, _CLICKABLE)
+        assert pressed == [f"sr-collapsed-b:{target}"], pressed
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [sr]: {errors[:3]}"
+
+
+def test_a_legacy_pick_unpresses_the_collapsed_path(mock_server, pw_browser):
+    fixture = _sr_fixture_with([_legacy_variant()])
+    n_paths = len(fixture["build_variants"]["Jinx|sr"][0]["build_paths"])
+    ctx, page, errors = _open_sr_with(pw_browser, mock_server, fixture)
+    try:
+        _wait_targets(page, n_paths + 1)
+        pressed = page.evaluate(_PRESSED_JS, _CLICKABLE)
+        assert len(pressed) == 1 and pressed[0].startswith("sr-collapsed:"), (
+            pressed
+        )
+        legacy = (
+            "#view-champ-select .csv-builds"
+            " .csv-build-row[data-variant=\"sr-legacy\"]"
+        )
+        page.focus(legacy)
+        page.keyboard.press("Enter")
+        pressed = page.evaluate(_PRESSED_JS, _CLICKABLE)
+        assert pressed == ["sr-legacy:"], pressed
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [sr]: {errors[:3]}"

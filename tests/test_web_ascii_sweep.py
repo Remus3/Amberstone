@@ -955,7 +955,20 @@ _WEB = _REPO_ROOT / "web"
 # EXACTLY; either file alone does not. Those two paths are the whole change.
 # No glyph change: the added lines carry 0 non-ASCII bytes. If another slice
 # re-captures in parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "bb12e57a88a878b41c3c29ffb54cfd46ba6555f13a7bcbb337623f541b89c38e"
+# superseded by the RM-972 re-capture below: "bb12e57a88a878b41c3c29ffb54cfd46ba6555f13a7bcbb337623f541b89c38e"
+#
+# RE-CAPTURED 2026-10-27 at RM-972 (s144 uiux cycle 4). One change rides
+# it: the Champ Select build-chooser focus ring is drawn inset (the aram
+# legacy row's outer ring was clipped by an overflow-x: hidden card body)
+# and aria-pressed is chooser-wide (one pressed target across every variant;
+# _csvSyncChooserPressed). Ordinary case, no tokeniser change. ATTRIBUTED BY
+# SUBSTITUTION: swapping exactly web/js/panels/champ_select.js and
+# web/css/panels/champ_select_view.css back to their b25f042b8 blobs
+# reproduces the superseded bb12e57a... value EXACTLY; either file alone
+# does not. Those two paths are the whole change. No glyph change: the added
+# lines carry 0 non-ASCII bytes. If another slice re-captures in parallel,
+# the merger recomputes.
+_LIVE_HALF_DIGEST = "17a45e7e03c7cad9dbc3855256704d42a7debecf8ce859fa36cf6bed3b342d2b"
 
 
 def _web_sources() -> list[Path]:
