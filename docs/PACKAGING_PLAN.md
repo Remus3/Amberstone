@@ -3,8 +3,8 @@
 Status: LIVING SPEC (ROADMAP row PKG). Phase 1 = Q/A + spec, written
 2026-10-26 (session 141). Wave A (PKG-1, -2, -3, -4, -5, -8) landed the same
 session (section 4 status); PKG-1b landed after it (4859c9405..1ca036c77);
-PKG-6 and PKG-7 are open. Each later
-wave updates this file in place.
+PKG-6 landed in session 142 (65cc65565, 34990bcd6). PKG-6b (updater
+wiring) and PKG-7 are open. Each later wave updates this file in place.
 
 Operator intent (2026-10-25, memory `project_packaged_app_requirements`),
 all binding:
@@ -65,14 +65,17 @@ install on natural quit, never mid-game (`rc-shell/src/main.js:267`).
   `rc-shell/src/main.js:494`, wired at `rc-shell/src/main.js:584` and
   `rc-shell/src/main.js:705`: same-origin stays, cross-origin http(s) opens
   in the default browser, anything else is dropped.
-- M3 HELPERS LANDED (PKG-3 61c3ceed3), WIRING OPEN (PKG-6). The three Win32
+- M3 FIXED (helpers PKG-3 61c3ceed3; wired PKG-6 65cc65565: the signal
+  files come from `rc_root.js` `signalPaths`). Was: the three Win32
   hotkey signal files are still resolved as `__dirname/../../ops/runtime/*`
   (`rc-shell/src/main.js:1557`, `rc-shell/src/main.js:1588`,
   `rc-shell/src/main.js:1619`); in a packaged build `__dirname` is inside
   `resources/app.asar/src`, so Ctrl+Shift+A / B / O silently stop working
   in-game. `rc-shell/src/rc_root.js` `resolveRcRoot` (argv, env, bundled
   root; packaged with no root = null) + `signalPaths` replace them.
-- M4 Fresh-machine origin mismatch. The shell defaults to
+- M4 FIXED (PKG-6 65cc65565: `resolveConfig` gets `localHosts` and the
+  host-served origin). Was: fresh-machine origin mismatch. The shell
+  defaults to
   `https://127.0.0.1:8888` (`rc-shell/src/config.js:25`) but the dashboard
   serves plain HTTP when `ops/tls/rc.pem` + `rc-key.pem` are absent
   (`dashboard/server.py:585`, `dashboard/server.py:593`). Producing the pair
@@ -101,12 +104,16 @@ install on natural quit, never mid-game (`rc-shell/src/main.js:267`).
   repo-wide ignore at `.gitignore:277`), copied byte-level from the main
   checkout; `tests/test_third_party_notices_pkg.py` fails when it drifts
   from `rc-shell/package.json`. Build with `npm ci`.
-- M8 PARTIAL: the PKG-2 updater landed; the shell calls it in PKG-6.
+- M8 SHELL SIDE FIXED (PKG-6 65cc65565: extraResources carry the backend
+  to `resources/backend`; relaunch-when-idle for a downloaded shell update).
+  OPEN: the shell calling the PKG-2 updater CLI is PKG-6b (WA11).
   `rc-shell/electron-builder.yml:30` packages only `src/**/*` +
   package.json and electron-updater updates only that shell, so the
   backend needs its own path (section 3.4).
-- M9 PARTIAL: the PKG-1 service host landed; the shell spawns it in
-  PKG-6. Today the shell starts nothing at launch
+- M9 FIXED (PKG-6 65cc65565: the shell spawns the PKG-1 service host at
+  launch and stops it on quit; a checkout launch starts it only with a
+  NAMED profile, so Legion is unchanged until the section-5 cutover). Was:
+  the shell started nothing at launch
   (`rc-shell/src/main.js:1746`); RC's services start only from scheduled
   tasks, two of them at boot (`RC-DaemonSlayer` at boot as SYSTEM,
   `RC-DSKeepalive` at startup; `docs/OPERATIONS.md` "Scheduled tasks").
@@ -134,7 +141,10 @@ install on natural quit, never mid-game (`rc-shell/src/main.js:267`).
 
 ### 1b. SHOULD
 
-- S1 Blanket TLS trust. `certificate-error` accepts ANY certificate for the
+- S1 FIXED (PKG-6 65cc65565: leaf pin in `certificate-error` and every
+  https origin request; re-read on a miss; expiry ignored; no pin = normal
+  validation, never a blanket accept). Was: `certificate-error` accepted
+  ANY certificate for the
   origin host (`rc-shell/src/main.js:1694`) and the poll runs
   `rejectUnauthorized: false` for any origin (`rc-shell/src/main.js:1483`).
   Pin the install's own leaf fingerprint instead: `rc-shell/src/tls_pin.js`
@@ -144,16 +154,20 @@ install on natural quit, never mid-game (`rc-shell/src/main.js:267`).
   `validateOrigin` (`rc-shell/src/config.js:183`) now allows http(s) on
   loopback or https on a host named in `ops/local_hosts.json`; until PKG-6
   passes `localHosts`, only loopback passes.
-- S3 IPC trusts every sender except the toggle channel
+- S3 FIXED (PKG-6 65cc65565: `trustedSender` on every `rcShell` IPC
+  channel). Was: IPC trusted every sender except the toggle channel
   (`rc-shell/src/main.js:1213`). Check `event.senderFrame` origin against the
   resolved origin on every `rcShell` channel (defense in depth behind M2).
 - S4 Unsigned installer and updates. `rc-shell/electron-builder.yml` has no
   signing config; electron-updater then checks only the sha512 in
   `latest.yml` over HTTPS, and SmartScreen warns on every install. Signing
   certificate = operator decision (cost); until then document unsigned.
-- S5 No app icon: `rc-shell/electron-builder.yml` declares none, so the
+- S5 FIXED (PKG-6 65cc65565: RC-own `rc-shell/assets/icon.ico`). Was: no
+  app icon: `rc-shell/electron-builder.yml` declared none, so the
   default Electron icon ships. N8 asset provenance wants an RC-own icon.
-- S6 userData split. `rc-shell/package.json:2` names the app `rc-shell`
+- S6 FIXED (PKG-6 65cc65565: `productName` "Amberstone Shell" plus a
+  one-time state migration). Was: userData split.
+  `rc-shell/package.json:2` named the app `rc-shell`
   while `rc-shell/electron-builder.yml:25` says `Amberstone Shell`, so a dev
   launch and a packaged launch keep window / overlay state in different
   folders. Add `productName` to package.json (one-time state migration).
@@ -201,13 +215,16 @@ install on natural quit, never mid-game (`rc-shell/src/main.js:267`).
 
 - N1 `sanitizeWidgetLayout` caps neither id count nor id length
   (`rc-shell/src/overlay_state.js:766`), so a page can bloat the state file.
-- N2 `will-quit` (`rc-shell/src/main.js:1768`) clears no handle of the three
+- N2 FIXED (PKG-6 65cc65565). Was: `will-quit`
+  (`rc-shell/src/main.js:1768`) cleared no handle of the three
   200 ms signal-file intervals (`rc-shell/src/main.js:1571` and siblings).
-- N3 No `app.setAppUserModelId` call, so toasts and taskbar grouping are
+- N3 FIXED (PKG-6 65cc65565). Was: no `app.setAppUserModelId` call, so
+  toasts and taskbar grouping are
   unnamed in a packaged build.
 - N4 Three 200 ms file polls for hotkey signals; once the launcher owns the
   hotkey listener, one watcher or a local pipe replaces them.
-- N5 `rc-shell/README.md:29` still says "the preload is empty" (false since
+- N5 FIXED (PKG-6 34990bcd6). Was: `rc-shell/README.md:29` said "the
+  preload is empty" (false since
   OVL1) and the Run section assumes `npm install`.
 - N6 `rc-shell/node_modules` still holds electron 44.5.1 against the 44.9.1
   pin (regen blocked by EBUSY while the overlay runs), so a dev launch runs
@@ -391,7 +408,9 @@ Status 2026-10-26 (`git log 2d3e1c85b..86627008a`):
   dea18d069), PKG-5 (f3690023f, d2fb1c125: a peer-address gate instead of
   a loopback bind + token; CSP deferred, S15), PKG-8 (79fec0b5f, d9c5f2a47).
 - LANDED after wave A: PKG-1b (below; 4859c9405..1ca036c77).
-- OPEN: PKG-6, PKG-7.
+- LANDED in session 142: PKG-6 (65cc65565, 34990bcd6; checklist result
+  below the PKG-6 row).
+- OPEN: PKG-6b (updater CLI wiring, WA11), PKG-7.
 
 - PKG-1 Service host. Files: `ops/launcher/__init__.py`,
   `ops/launcher/service_host.py`, `ops/launcher/services.json`,
@@ -466,6 +485,40 @@ Status 2026-10-26 (`git log 2d3e1c85b..86627008a`):
   - CSP (S15) is blocked by the `web/index.html` inline scripts.
   - `tools/bootstrap_env_check.py` still expects `scripts/restart_clean.bat`.
   - Acceptance: `tools/run_packaged_smoke.py` over a real build.
+  Result (s142, LANDED 65cc65565 + 34990bcd6):
+  - DONE: `src/launcher.js` (pure) + `main.js` spawn the PKG-1 host at
+    launch (`-I service_host.py --root --profile --parent-pid`; interpreter
+    `RC_PYTHON`, then `python-embed`, then the canonical one, checkout
+    only) and hold the quit until `stop` + 25 s grace + kill; M3 signal
+    files from `rc_root.js`; S1 pin; S3 `trustedSender`; own-origin
+    `X-RC-Token` injection; `resolveConfig` with `localHosts` + the
+    host-served origin (S2, M4); framed local starting view until
+    `/api/health` (`shellView`); V2 handlers; relaunch-when-idle menu for a
+    downloaded shell update; N3; S6 + one-time state migration; S5;
+    extraResources `dist/portable_staging` -> `resources/backend`; a
+    never-at-login guard. WA7 callers send `X-RC-Token`; the calibrator
+    ingest hint names `data/vision_calib_reference`;
+    `tools/bootstrap_env_check.py` treats `scripts/restart_clean.bat` as
+    dev-only in a bundle; `tools/gen_archmap.py` skips `dist/` + `build/`
+    (a local build made the pre-commit refuse every commit).
+  - Legion profile: a checkout launch starts the host only with a NAMED
+    profile; `launch_overlay.bat` (no profile) starts no host, so
+    behaviour is unchanged until the cutover, after which Legion launches
+    with `--profile dev` (PKG-7 / ASKS 45).
+  - DEFERRED: updater CLI `check` / `stage` / `apply` / `finish` +
+    `recover()` + per-service restart = PKG-6b (WA11). CSP (S15) still
+    blocked by the `web/index.html` inline scripts.
+  - Acceptance: `tools/run_packaged_smoke.py --archive
+    dist/Amberstone-portable-20261026.zip --shell-dir
+    rc-shell/dist/win-unpacked` over a real build from the branch tip ->
+    ALL PASS, exit 0 (builder and verifier). Live packaged launch works
+    with `--disable-gpu-sandbox`; default flags crashed in the agent
+    environment (GPU process CreateProcess error_code=18, FATAL), likely
+    environmental - operator visual check from a normal Explorer launch
+    PENDING (gated).
+  - Operator note: userData moves to `%APPDATA%\Amberstone Shell` (one-time
+    copy of `rc-shell-state.json`); close the OLD overlay before relaunching
+    (old and new instances hold different single-instance locks).
 - PKG-7 Cutover tooling, no execution (wave B). Files:
   `tools/launcher_cutover.ps1`, `tests/test_launcher_cutover_ps1.py`,
   `docs/OPERATIONS.md`. Accept: `-WhatIf` is the default; it exports each
@@ -496,7 +549,7 @@ item binds the named slice.
   (both add test files to its enumerated `test` script). They sit in
   different waves, so wave A is disjoint, but PKG-6 must rebase onto
   PKG-3's `package.json`, never start from today's.
-- V2 Nav guard gaps (PKG-6). Only `will-navigate`
+- V2 FIXED (PKG-6 65cc65565). Nav guard gaps (PKG-6). Only `will-navigate`
   (`rc-shell/src/main.js:502`) and `setWindowOpenHandler`
   (`rc-shell/src/main.js:498`) are wired today. PKG-6 adds `will-redirect`
   and `will-frame-navigate` handlers applying the same `nav_guard.js`
@@ -564,12 +617,44 @@ a new slice. Ledger: `docs/LEDGER.md` 1924.
 - WA6 Until the cutover, the frozen `ops/rc_supervisor.py` relaunches the
   Phase 3 supervisor and DS with `schtasks /Run`, outside the launcher's
   job.
-- WA7 Token callers beyond V3 (PKG-6): the auto-accept toggle in
+- WA7 FIXED (PKG-6 34990bcd6). Token callers beyond V3 (PKG-6): the
+  auto-accept toggle in
   `web/js/main.js`, the ingest call in `web/vision_calibrator.html` and
   `web/js/panels/coach_choices.js` send no `X-RC-Token`.
 - WA8 `tools/liveclient_relay.py` sets its context `minimum_version` to
   `ssl.TLSVersion.TLSv1` (a DeprecationWarning; the RM-752 TLSv1_2 live
   probe decides the floor).
+
+### Residuals (s142 PKG-6)
+
+Found by the PKG-6 builder and verifier; not fixed by PKG-6.
+
+- WA9 NSIS upgrade vs per-install state: the backend runs from
+  `resources/backend` inside the install dir; an NSIS (oneClick) shell
+  upgrade is expected to replace the install dir (not measured), losing
+  `ops/runtime` secrets, logs, `data/` runtime files and any PKG-2 backend
+  update. Decide before the first Release: seed a user-data backend root
+  (e.g. under LOCALAPPDATA) from `resources/backend` and pass `--rc-root`.
+- WA10 The backend bundle carries `rc-shell/` sources
+  (`resources/backend/rc-shell` duplicates the asar); exclude `rc-shell/`
+  in `build_portable` or the extraResources filter (check the PKG-2
+  ownership baseline first).
+- WA11 PKG-6b: updater CLI `check` / `stage` / `apply` / `finish` +
+  `recover` + restart the named services. Needs a host command channel
+  (service_host stdin accepts only `stop`) and a release source (none
+  published, ASKS 42).
+- WA12 electron-builder logs "signing with signtool.exe" for every `.exe`
+  under `resources/backend` (`python.exe`, `pythonw.exe`, site-packages
+  `bin/*.exe`): with a cert set (S4) it would re-sign the PSF-signed
+  interpreter; add a signing exclusion when S4 lands.
+- V3 (still open after PKG-6) header-less callers (`web/js/main.js:174`,
+  `champ_select.js` x3, `item_build.js:435`, `web/legacy_index.html`
+  `postJSON`) still bind PKG-5 before `dash_token_gate` is turned on; the
+  shell windows are covered by the injection.
+- SF1 (verifier s142): withTokenHeader (rc-shell launcher.js) passes
+  X-RC-Token through on non-RC origins, so a redirected subresource could
+  carry it; fix = strip on foreign origins + flip launcher_wiring.test.js
+  pass-through assertion; scheduled with DEP-25 in s142.
 
 ## 5. ONLOGON-to-launcher cutover (OPERATOR-GATED)
 
