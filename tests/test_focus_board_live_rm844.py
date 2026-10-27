@@ -18,13 +18,14 @@ Grounded before writing (file:line at main 4b0bc3ce4):
   ``liveclient_summary()`` (``dashboard/_liveclient.py:178``), whose only
   input is ``core.liveclient_cache.get()`` (``:193-197``; ``Snapshot.data`` /
   ``age_s`` at ``core/liveclient_cache.py:68`` / ``:80``).
-* THE ENGINE. ``agents/daemon_slayer/focus_board.py:475``
-  ``compute_focus_board(snapshot, me, enemies, allies=(), mode="SR",
-  apply_mode_modifiers=False)``; ``FocusBoard.to_dict`` (``:226-239``) keys
-  ``me`` / ``kill_order`` / ``danger_order`` / ``rows`` / ``notes``;
-  ``FocusRow.to_dict`` (``:184-202``). Unknown champion -> note + skip
-  (``:314-316``); unknown item -> dropped with a note (``:338-341``);
-  unresolvable me -> ``me == ""`` and no rows (``:523-524``).
+* THE ENGINE (cited by symbol; its line numbers move with every slice).
+  ``agents/daemon_slayer/focus_board.py`` ``compute_focus_board(snapshot,
+  me, enemies, allies=(), mode="SR", apply_mode_modifiers=False)``;
+  ``FocusBoard.to_dict`` keys ``me`` / ``kill_order`` / ``danger_order`` /
+  ``rows`` / ``notes``; ``FocusRow.to_dict``. Unknown champion -> note +
+  skip and unknown item -> dropped with a note (both in ``_parse_fighter``);
+  unresolvable me -> ``me == ""`` and no rows (``_empty`` inside
+  ``compute_focus_board``).
 * ``DataSnapshot.champions`` (``agents/daemon_slayer/data_loader.py:133``),
   each record carrying ``id`` / ``name``.
 * ``core.daemon_slayer_resolver.NON_INVENTORY_IDS`` (``:247``) - the shared

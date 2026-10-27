@@ -77,7 +77,9 @@ Never raises, in two layers:
   1-18 with a note (``stats.clamp_level`` RAISES on out-of-range, it does
   not clamp, so the clamp is done here). An unknown item id is dropped from
   the build with a note. Ids a note names are ``ascii()``-escaped and cut,
-  and a long dropped-item list is counted, not listed (RM-960).
+  and a long dropped-item list is counted, not listed (RM-960); an item
+  id whose ``str()`` raises (an int past the int-to-str digit limit) is
+  dropped, and a clamp note prints a huge level in ``:g`` form (RM-961).
 * ENGINE calls (``_defence`` for me, ``_score_row`` per enemy) sit behind
   the DS fail-soft idiom - ``except Exception`` with a FIXED note and the
   cause logged repr()-escaped, exactly as ``combo.compute_combo`` and
@@ -303,8 +305,11 @@ def _parse_level(level: Any, label: str) -> tuple[Optional[int], list[str]]:
         notes.append(f"{label}: level {as_float:g} truncated to {lvl}")
     clamped = max(LEVEL_MIN, min(LEVEL_MAX, lvl))
     if clamped != lvl:
+        # :g, not the int: int(1e300) is 301 digits (RM-961 (b)); a small
+        # level prints exactly as before ("level 25 outside ...").
         notes.append(
-            f"{label}: level {lvl} outside {LEVEL_MIN}-{LEVEL_MAX}, clamped to {clamped}"
+            f"{label}: level {float(lvl):g} outside {LEVEL_MIN}-{LEVEL_MAX}, "
+            f"clamped to {clamped}"
         )
     return clamped, notes
 
@@ -343,7 +348,13 @@ def _parse_fighter(
     dropped: list[str] = []
     try:
         for iid in raw:
-            key = str(iid)
+            try:
+                key = str(iid)
+            except ValueError:
+                # RM-961 (a): str() of an int past
+                # sys.get_int_max_str_digits() raises; drop it, never raise.
+                dropped.append(f"<{type(iid).__name__} too long to show>")
+                continue
             (kept if key in snapshot.items else dropped).append(key)
     except TypeError:
         return None, notes + [

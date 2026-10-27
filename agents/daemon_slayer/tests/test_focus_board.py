@@ -484,5 +484,58 @@ class EchoedIdBoundTests(_Base):
             self.assertLessEqual(len(note), self._NOTE_CAP, note[:300])
 
 
+class HugeNumberInputTests(_Base):
+    """RM-961 (a)(b): a huge number neither raises nor rides into a note.
+
+    (a) ``str()`` of an int past ``sys.get_int_max_str_digits()`` raises
+    ValueError, which the item loop did not catch, so ``compute_focus_board``
+    raised - against its "Never raises". (b) the clamp note printed the
+    truncated level in full: ``1e300`` gave a 301-digit level in the note.
+    """
+
+    _NOTE_CAP = 240
+    _HUGE = 10 ** 5000
+
+    def test_huge_int_item_id_is_dropped_not_raised(self) -> None:
+        board = self._board(_JINX, [("Malphite", _LEVEL, (_THORNMAIL, self._HUGE))])
+        clean = self._board(_JINX, [("Malphite", _LEVEL, (_THORNMAIL,))])
+        self.assertAlmostEqual(
+            self._row(board, "Malphite").my_ttk_s,
+            self._row(clean, "Malphite").my_ttk_s,
+            places=9,
+        )
+        hit = [n for n in board.notes if "dropped unknown item" in n]
+        self.assertEqual(len(hit), 1, board.notes)
+        self.assertLessEqual(len(hit[0]), self._NOTE_CAP, hit[0][:300])
+
+    def test_huge_int_scalar_item_ids_is_dropped_not_raised(self) -> None:
+        board = self._board(_JINX, [("Malphite", _LEVEL, self._HUGE)])
+        self.assertEqual(self._row(board, "Malphite").item_ids, ())
+        self.assertTrue(
+            any("dropped unknown item" in n for n in board.notes), board.notes,
+        )
+
+    def test_huge_int_item_id_for_me_still_builds_the_board(self) -> None:
+        board = self._board(("Jinx", _LEVEL, ("6672", self._HUGE)), _COMP[:1])
+        self.assertEqual(board.me, "Jinx")
+        self.assertEqual([r.champion_id for r in board.rows], ["Malphite"])
+
+    def test_huge_level_clamp_note_is_bounded(self) -> None:
+        for level in (1e300, -1e300, 10 ** 300):
+            with self.subTest(level=f"{level:.3g}"):
+                board = self._board(_JINX, [("Zed", level, ())])
+                row = self._row(board, "Zed")
+                self.assertIn(row.level, (1, 18))
+                hit = [n for n in board.notes if "Zed" in n and "clamped to" in n]
+                self.assertEqual(len(hit), 1, [n[:300] for n in board.notes])
+                for note in board.notes:
+                    self.assertLessEqual(len(note), self._NOTE_CAP, note[:300])
+
+    def test_small_out_of_range_level_note_text_is_unchanged(self) -> None:
+        board = self._board(_JINX, [("Zed", 25, ()), ("Lux", -3, ())])
+        self.assertIn("enemy 0 Zed: level 25 outside 1-18, clamped to 18", board.notes)
+        self.assertIn("enemy 1 Lux: level -3 outside 1-18, clamped to 1", board.notes)
+
+
 if __name__ == "__main__":
     unittest.main()

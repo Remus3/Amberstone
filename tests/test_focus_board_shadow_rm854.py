@@ -25,7 +25,7 @@ Grounded before writing (file:line at main 17ae75595, before this change):
   calls on its own thread (``dashboard/_state_builder.py:840``); the live
   Haiku block is read through ``_live_arena_block`` (``:1162``), so a missing
   ``live_path`` is a blank side.
-* ``agents/daemon_slayer/focus_board.py:475`` ``compute_focus_board``.
+* ``agents/daemon_slayer/focus_board.py`` ``compute_focus_board``.
 * Added by this change (cited from the new code): ``STATUS_PENDING``,
   ``TRANSIENT_STATUSES``, ``board_for_lc(..., background=True)``,
   ``prefetch``, ``_set_engine_for_tests(engine, *, inline_worker)``,
