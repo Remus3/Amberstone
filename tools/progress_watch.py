@@ -281,35 +281,18 @@ def _save_state(path: Path, state: dict) -> None:
     _atomic_write(p, data)
 
 
-def _replace(src: Path, dst: Path) -> None:
-    """Path.replace; a module seam so a test can interpose a writer (RM-785)."""
-    Path(src).replace(dst)
-
-
-def _atomic_write(p: Path, data: bytes) -> bool:
-    """tmp + replace in the target's own dir (the watcher's own state file).
-    The tmp name ends in .tmp, so a *.json scan of the progress dir never
-    reads it as a record. A progress row the reaper rewrites does NOT come
-    through here: a replace would overwrite a writer that came back, so that
-    path is _swap_if_unchanged's create-only commit (RM-816)."""
-    tmp = p.with_name(f"{p.name}.{os.getpid()}.tmp")
-    try:
-        tmp.write_bytes(data)
-        for attempt in range(6):        # a polling reader can share-lock the target
-            try:
-                _replace(tmp, p)
-                return True
-            except PermissionError:
-                if attempt == 5:
-                    raise
-                time.sleep(0.05 * (attempt + 1))
-        return False                    # unreachable: the last attempt raises
-    finally:
-        if tmp.exists():
-            try:
-                tmp.unlink()
-            except OSError:
-                pass
+def _atomic_write(p: Path, data: bytes) -> None:
+    """The watcher's own state file, through core.polled_json (RM-258):
+    per-writer scratch name ending in .tmp (so a *.json scan of the progress
+    dir never reads it as a record), fsync, a bounded WinError 5 retry for a
+    polling reader's share lock, and the scratch removed on failure. Imported
+    lazily, the _recycle_default() shape. A progress row the reaper rewrites
+    does NOT come through here: a replace would overwrite a writer that came
+    back, so that path is _swap_if_unchanged's create-only commit (RM-816)."""
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
+    from core.polled_json import atomic_write_bytes
+    atomic_write_bytes(p, data)
 
 
 # ---------------------------------------------------------------- transport

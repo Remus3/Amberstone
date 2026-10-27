@@ -395,6 +395,50 @@ def test_state_write_is_atomic_json(env):
     assert not list(s.parent.glob("*.tmp"))
 
 
+def test_rm258_state_write_routes_through_polled_json(env, monkeypatch):
+    """RM-258: the watcher's own state file goes through the shared writer
+    (per-writer scratch name, fsync, bounded WinError 5 retry), so the
+    tools/ exemption no longer covers a hand-rolled copy of it."""
+    import core.polled_json as pj
+    seen = []
+    real = pj._write_then_replace
+
+    def rec(path, data):
+        seen.append(Path(path).name)
+        return real(path, data)
+
+    monkeypatch.setattr(pj, "_write_then_replace", rec)
+    d, s = env
+    _plant(d, "job")
+    _run(env)
+    assert seen == ["progress_watch.json"]
+    raw = s.read_bytes()
+    assert b"\r" not in raw and raw.endswith(b"}\n")
+    assert json.loads(raw.decode("ascii"))["schema"] == pw.STATE_SCHEMA
+    assert [x.name for x in s.parent.iterdir()] == ["progress_watch.json"]
+
+
+def test_rm258_state_write_survives_a_transient_rename_refusal(env, monkeypatch):
+    import core.polled_json as pj
+    real = pj.os.replace
+    refusals = [2]
+
+    def flaky(src, dst):
+        if refusals[0]:
+            refusals[0] -= 1
+            raise PermissionError(13, "Access is denied")
+        return real(src, dst)
+
+    monkeypatch.setattr(pj.os, "replace", flaky)
+    monkeypatch.setattr(pj.time, "sleep", lambda _s: None)
+    d, s = env
+    _plant(d, "job")
+    _run(env)
+    assert refusals == [0]
+    assert "job" in json.loads(s.read_text(encoding="ascii"))["tasks"]
+    assert [x.name for x in s.parent.iterdir()] == ["progress_watch.json"]
+
+
 def test_now_defaults_to_wall_clock(env):
     d, _ = env
     _plant(d, "job", age_s=NOW - time.time())  # i.e. updated == real now

@@ -71,6 +71,9 @@ _RUNTIME_TOOLS = frozenset({
     # RC-CIWatchdog: the run-id sentinel and the 2-strike attempt counters
     # are read back on every poll, and a torn read parses as 0.
     "tools/ci_watchdog.py",
+    # The progress watcher's own state file is its first-sight baseline;
+    # a torn read re-baselines every task and drops a pending alert.
+    "tools/progress_watch.py",
 })
 
 # (relpath, enclosing function or its dotted qualname) -> why this
@@ -408,6 +411,7 @@ def test_scope_keeps_runtime_tools_and_drops_generators():
     assert _in_scope("tools/hotkey_listener.py")
     assert _in_scope("tools/cost_health_watchdog.py")
     assert _in_scope("tools/ci_watchdog.py")
+    assert _in_scope("tools/progress_watch.py")
     assert not _in_scope("tools/daemon_slayer_extract.py")
     assert not _in_scope("ops/fleet_kit/fleet_headless.py")
     assert _in_scope("coach_integration/_coach.py")
