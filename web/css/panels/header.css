@@ -1061,7 +1061,10 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   min-height: 30px;
 }
 .lv-top8-row.is-placeholder { opacity: 0.5; border: 1px dashed var(--border-soft); }
-.lv-top8-row { cursor: pointer; }
+/* RM-980: the row carried `cursor: pointer`, but no handler is bound
+ * to it (_wireTop8Actions wires only [data-action] descendants), so the
+ * name / games / role / rank cells showed a hand and did nothing. The
+ * pointer now lives only on the controls that act. */
 .lv-top8-row:hover { border: 1px solid var(--info-soft); }
 /* s162 v7: offline rows - light red tint at reduced opacity so the
  * "this person isn't around right now" signal reads at a glance
@@ -1148,6 +1151,39 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 }
 .lv-top8-tag    { color: var(--text-dim); font-style: italic; cursor: pointer; }
 .lv-top8-tag:hover { color: var(--info); }
+/* RM-980: the tag cell is now a <button> (it was a click-only <span>
+ * a keyboard could never reach). Button chrome is reset so it reads as
+ * the same italic cell. overflow stays visible so the ::before overlay
+ * is not clipped - the ellipsis moves to the inner .lv-top8-tag-text -
+ * and min-width 0 keeps a long tag from widening the 0.9fr column.
+ * The overlay lifts the effective target to var(--hit-min) without
+ * growing the row: centred on a 39px row at a 43px pitch it reaches
+ * 1.5px into each 4px list gap and stops short of the neighbour's. Full
+ * width only - the rank cell and online dot sit beside it. */
+.lv-top8-tag {
+  appearance: none; -webkit-appearance: none;
+  position: relative;
+  background: transparent;
+  border: 0; margin: 0; padding: 0;
+  font-family: inherit; font-weight: inherit; line-height: inherit;
+  letter-spacing: inherit;
+  overflow: visible;
+  min-width: 0;
+}
+.lv-top8-tag::before {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; top: 50%;
+  height: var(--hit-min);
+  transform: translateY(-50%);
+}
+.lv-top8-tag-text {
+  display: block;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.lv-top8-tag:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 1px;
+}
 /* s162 v8: name cell left-aligns so it reads at the leading edge of
  * the row, mirroring native client friends list.
  * s162 v9: tag (Notes) cell flipped to right-align - it's the last

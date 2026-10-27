@@ -5680,7 +5680,10 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
           `<span class="lv-top8-cell lv-top8-games">${games}</span>` +
           `<span class="lv-top8-cell lv-top8-role">${role}</span>` +
           `<span class="lv-top8-cell lv-top8-rank">${rankCellHtml}</span>` +
-          `<span class="lv-top8-cell lv-top8-tag" data-action="edit-tag" data-idx="${i}" title="Click to edit tag">${escapeHtml(tag)}</span>` +
+          // RM-980: a real <button> (was a click-only <span>, tabIndex -1),
+          // so the tag is keyboard-reachable; the inner span carries the
+          // ellipsis so the button can stay overflow:visible for its overlay.
+          `<button type="button" class="lv-top8-cell lv-top8-tag" data-action="edit-tag" data-idx="${i}" title="Click to edit tag"><span class="lv-top8-tag-text">${escapeHtml(tag)}</span></button>` +
           `<span class="lv-top8-dot ${dotCls}" title="${dotTitle}"></span>` +
           `<button type="button" class="lv-member-action" data-action="invite" data-idx="${i}" title="Invite to lobby" aria-label="Invite">➕</button>` +
           '<span class="lv-top8-reorder">' +
