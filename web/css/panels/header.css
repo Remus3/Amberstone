@@ -1090,8 +1090,12 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   border: none;
   color: var(--text);
   font-family: inherit;
-  font-size: 14px; font-weight: 700;
-  padding: 4px 6px;
+  font-size: var(--fs-xs); font-weight: 700;  /* RM-979: 14 -> --fs-xs (16) floor */
+  padding: 0 6px;
+  /* RM-979: the one text field on the page was 25px tall; the
+   * keyboard-and-fingertip floor is --hit-min. */
+  min-height: var(--hit-min);
+  box-sizing: border-box;
   outline: none;
   width: 100%;
   /* s162 v5: span the first 5 cols of the inherited 9-col grid
@@ -1101,6 +1105,11 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   grid-column: 1 / 6;
 }
 .lv-top8-search-input::placeholder { color: var(--text-faint); }
+/* RM-979: `outline: none` above left a focused search box with no ring
+ * at all; same affordance as .settings-filter-input. */
+.lv-top8-search-input:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 1px;
+}
 .lv-top8-cell {
   font-size: var(--fs-xs); color: var(--text); text-align: center;  /* legibility: 12 -> 16 floor */
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
