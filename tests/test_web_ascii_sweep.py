@@ -1023,7 +1023,20 @@ _WEB = _REPO_ROOT / "web"
 # reproduces the superseded 0571242f... value EXACTLY. That path is the
 # whole change. No glyph change: the added lines carry 0 non-ASCII bytes. If
 # another slice re-captures in parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "3fa759001f0bdd1439557c7374a891cc9ab998def1d02e1f4caaa524e17b23e7"
+# superseded by the RM-979 + RM-980 re-capture below: "3fa759001f0bdd1439557c7374a891cc9ab998def1d02e1f4caaa524e17b23e7"
+#
+# RE-CAPTURED 2026-10-27 by the session 144 L3 merger, at the landing of the
+# s144 uiux lane: its cycles for RM-979 (Lobby Top 8 search box on the
+# --fs-xs floor, --hit-min tall, focus ring) and RM-980 (Top 8 rows drop the
+# pointer no handler serves; the tag cell is a keyboard-reachable --hit-min
+# button) edited the live half without re-capturing, so the lane tip itself
+# read 624589f4... against this 3fa75900... pin. Ordinary case, no tokeniser
+# change. ATTRIBUTED BY SUBSTITUTION: swapping exactly
+# web/css/panels/header.css and web/js/main.js back to their 1af7799f4 blobs
+# (in memory) reproduces the superseded 3fa75900... value EXACTLY. Those
+# paths are the whole change. No glyph change: the added web/ lines carry 0
+# non-ASCII bytes.
+_LIVE_HALF_DIGEST = "624589f47f47d313fd16da31fba81738c5943d3054244d6e640038c28562ad45"
 
 
 def _web_sources() -> list[Path]:
