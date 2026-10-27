@@ -89,6 +89,26 @@ def _info(label: str, detail: str = "") -> None:
     print(f"{_INFO}{label}{suffix}")
 
 
+# Dev-checkout-only launchers a staged bundle deliberately does NOT ship:
+# restart_clean.bat kills by image name (`taskkill /IM pythonw.exe`), which on
+# a user's machine ends unrelated Python apps (PACKAGING_PLAN S7); the PKG-6
+# launcher stops only what it owns. tools/build_portable.py _KILL_FILES.
+DEV_ONLY_LAUNCHERS = frozenset({"scripts/restart_clean.bat"})
+
+
+def _check_launcher(name: str, ok_label: str, ok_note: str, missing_label: str,
+                    missing_note: str) -> None:
+    """One launcher-script line: present, intentionally omitted from a staged
+    bundle (dev-only), or missing."""
+    if (_PROJECT_ROOT / name).exists():
+        _ok(ok_label, ok_note)
+    elif name in DEV_ONLY_LAUNCHERS and _is_staged_bundle():
+        _omitted(f"{name} not shipped (dev checkout only)",
+                 "kill-by-image script; the launcher stops only what it owns")
+    else:
+        _miss(missing_label, missing_note)
+
+
 def _check_writable(path: Path, label: str) -> None:
     if not path.exists():
         _miss(label, f"directory does not exist: {path}")
@@ -151,11 +171,7 @@ def main() -> int:
         ("main.py",          "true application entrypoint"),
     ]
     for name, desc in launchers:
-        p = _PROJECT_ROOT / name
-        if p.exists():
-            _ok(name, desc)
-        else:
-            _miss(name, desc)
+        _check_launcher(name, name, desc, name, desc)
 
     # -- Dev tools ---------------------------------------------------------
     print("\n[Dev Tools]")
@@ -310,11 +326,8 @@ def main() -> int:
         ("install.bat",       "uses %~dp0 -- root-relative"),
     ]
     for name, note in portable_launchers:
-        p = _PROJECT_ROOT / name
-        if p.exists():
-            _ok(f"{name} present", note)
-        else:
-            _miss(f"{name} missing", "required for portable distribution")
+        _check_launcher(name, f"{name} present", note, f"{name} missing",
+                        "required for portable distribution")
 
     # Frozen files that cannot be changed: document as packaging constraints
     frozen_constraints = [

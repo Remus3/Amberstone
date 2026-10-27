@@ -5892,9 +5892,10 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     // the in-process force-accept. Fail-soft, fire-and-forget; a failure here
     // never disturbs the set_config path or the inflight guard.
     try {
+      // PKG-6 WA7: auto-accept is a gated control endpoint - send the token.
       fetch("/api/lcu/auto-accept", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(localStorage.getItem("rc_dash_token") ? {"X-RC-Token": localStorage.getItem("rc_dash_token")} : {}) },
         body: JSON.stringify({ enabled: nextOn }),
       }).catch(() => {});
     } catch (_) {}

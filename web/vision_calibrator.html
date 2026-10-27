@@ -81,7 +81,7 @@
 </div>
 <div id="ingestbar">
   <input id="ingestState" placeholder="state label e.g. self_dead">
-  <input id="ingestPath" placeholder="full path to screenshot">
+  <input id="ingestPath" placeholder="file in data/vision_calib_reference" title="The screenshot must be a local image file inside data/vision_calib_reference (a name or a path relative to that folder); other paths are refused.">
   <button id="ingest">Ingest screenshot</button>
 </div>
 <div id="seedwarn" role="alert"></div>
@@ -255,8 +255,10 @@ async function ingest() {
   const path = (document.getElementById("ingestPath").value || "").trim();
   if (!state || !path) { setStatus("ingest needs a state label and a path"); return; }
   try {
+    // PKG-6 WA7: a gated control endpoint - send the token like every other caller.
+    const tok = localStorage.getItem("rc_dash_token");
     const d = await (await fetch("/api/vision-reference", {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      method: "POST", headers: { "Content-Type": "application/json", ...(tok ? {"X-RC-Token": tok} : {}) },
       body: JSON.stringify({ state, path }),
     })).json();
     if (d.ok) {

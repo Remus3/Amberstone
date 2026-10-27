@@ -26,15 +26,81 @@ the dashboard origin and remembers where you put it.
 - No Pengu / in-client panels (Phase 6).
 
 It loads a URL. That is all - the same bar Overlay App E / aggregator A / Overlay App F clear.
-`contextIsolation` is on, `nodeIntegration` is off, the preload is empty.
+`contextIsolation` is on, `nodeIntegration` is off, `sandbox` is on. The
+preload (`src/preload.js`) exposes only a small allow-listed `rcShell` bridge
+(overlay settings, widget layout, window controls), and since PKG-6 every one
+of its channels answers only the shell's own windows on the RC origin.
 
 ## Run
 
 ```
 cd rc-shell
-npm install     # pulls electron (devDependency)
-npm start       # launches the companion window
+npm ci          # the tracked package-lock.json pins electron + electron-builder
+npm start       # launches the companion window (no service host - see below)
 ```
+
+## Launcher (PKG-6)
+
+The shell is also the app's LAUNCHER (`docs/PACKAGING_PLAN.md` sections 3 and
+4). Decisions live in `src/launcher.js` (pure, node:testable); `main.js`
+applies them.
+
+- **Start**: at launch the shell spawns ONE windowless child, the service host
+  `ops/launcher/service_host.py`, as
+  `<python> -I <root>/ops/launcher/service_host.py --root <root> --profile <p>
+  --parent-pid <shell pid>`. The host owns every RC service inside one Windows
+  job object (supervisor + dashboard :8888, vision :8889, DS :8860, LCU agent,
+  Live Client relay, hotkey listener). If a healthy RC already serves :8888
+  (the pre-cutover scheduled tasks), the host attaches and starts nothing.
+- **Starting view**: a small framed local window (`src/starting.html`, no
+  bridge, strict CSP) shows the service states from
+  `ops/runtime/launcher_status.json` until `GET <origin>/api/health` answers;
+  then the normal companion / overlay surfaces take over. Closing it quits.
+- **Quit**: the shell writes `stop` to the host's stdin and waits up to 25 s;
+  a host that has not exited is ended, and its job object takes every service
+  with it. Nothing outlives the app.
+- **Never at boot**: no Run key, Startup-folder shortcut, scheduled task or
+  Electron login-item setting - a test pins it. Services start when the APP
+  starts.
+- **Which launches start the host**: a packaged build always (opt-out
+  `--no-host` or `RC_SHELL_NO_HOST=1`). A checkout launch (`npm start`,
+  `launch_overlay.bat`) only when a profile is named: `--profile dev` (or
+  `RC_LAUNCHER_PROFILE=dev`). Before the section-5 cutover the RC-* scheduled
+  tasks own the agents on Legion, so a plain checkout launch stays a thin
+  client exactly as before.
+- **Backend root**: `--rc-root <dir>` > `RC_ROOT` > the packaged
+  `resources/backend` > this checkout (`src/rc_root.js`). The hotkey signal
+  files (Ctrl+Shift+A / B / O) are read under `<root>/ops/runtime`.
+- **Interpreter**: `RC_PYTHON` (absolute) > `<root>/python-embed/python.exe` >
+  (checkout launch only) `%LOCALAPPDATA%\Programs\Python\Python314\python.exe`.
+- **TLS**: an https origin is trusted only when it presents the install's own
+  leaf, `<root>/ops/tls/rc.pem` (SHA-256 pin, re-read on a miss so a renewed
+  leaf needs no relaunch; expiry is not checked). With no pin file, normal
+  certificate validation (including the OS store) applies - never a blanket
+  accept. The packaged default is plain http on loopback.
+- **Token**: once the host has provisioned `ops/runtime/dash_token.txt`, the
+  shell adds `X-RC-Token` to its windows' requests for the RC origin only.
+- **Shell updates**: a downloaded update installs on quit; the Shell menu's
+  "Relaunch to update when idle" relaunches only when no game is live.
+
+### Packaging
+
+```
+python tools/build_portable.py            # backend -> dist/portable_staging
+                                          # (embedded runtime included)
+cd rc-shell
+npm run dist:dir                          # unpacked app in rc-shell/dist/win-unpacked
+npm run dist                              # NSIS installer (operator-gated publish)
+cd ..
+python tools/package_portable.py
+python tools/run_packaged_smoke.py --shell-dir rc-shell/dist/win-unpacked
+```
+
+`electron-builder.yml` copies `dist/portable_staging` to `resources/backend`
+(real files beside `app.asar`). `productName` is `Amberstone Shell` in both
+`package.json` and the builder config, so a checkout launch and a packaged
+launch share one userData folder; the first launch after this change copies
+the old `rc-shell` state file across once.
 
 > The visual launch is **operator-verified**. This build host may be headless
 > and has restricted outbound network, so `npm install` (which downloads the
@@ -66,7 +132,10 @@ $env:RC_ORIGIN = "https://127.0.0.1:8888"; npm start
 RC_ORIGIN=https://127.0.0.1:8888 npm start
 ```
 
-Precedence: `env RC_ORIGIN` > saved state > default.
+Precedence: `env RC_ORIGIN` > the origin the service host reports it serves >
+saved state > default. Every candidate is validated first (`src/config.js`
+`validateOrigin`): http(s) on loopback, or https on a host named in the
+per-host `ops/local_hosts.json`.
 
 ## Size presets
 
@@ -82,15 +151,20 @@ Switch from the **Shell** app menu (Ctrl+1 / Ctrl+2 / Ctrl+3 while focused).
 
 ```
 rc-shell/
-  package.json        electron devDependency + start/test scripts
+  package.json        electron devDependency + start/test/dist scripts
+  electron-builder.yml  packaging (backend in resources/backend, icon, NSIS)
+  assets/icon.ico     the app icon (original drawing, no third-party asset)
   src/
-    main.js           Electron main process (window lifecycle, cert, presets)
+    main.js           Electron main process (windows, launcher wiring, cert, presets)
+    launcher.js       PURE launcher decisions (host plan, token, sender, relaunch)
+    rc_root.js        PURE backend-root resolution + signal / cert / config paths
+    tls_pin.js        PURE leaf-certificate pin decision
+    service_status.js PURE launcher_status.json parse + the shell's view
     config.js         PURE config core (no electron) - defaults/presets/resolve/clamp
     store.js          PURE persistence (no electron) - atomic JSON read/write
-    preload.js        context-isolated preload (empty for Phase 1)
-  test/
-    config.test.js    node:test - resolveConfig precedence, clamp, presets
-    store.test.js     node:test - round-trip, missing/corrupt file tolerance
+    preload.js        context-isolated preload (the allow-listed rcShell bridge)
+    starting.html     the launcher's starting / error view (+ starting_page.js)
+  test/               node:test suites, enumerated in package.json scripts.test
   README.md
   .gitignore
 ```
@@ -100,7 +174,8 @@ testable core. `main.js` wires them to the Electron runtime.
 
 ## Window state file
 
-Persisted to `<userData>/rc-shell-state.json` (per-OS-user app data). Delete it
+Persisted to `<userData>/rc-shell-state.json` (per-OS-user app data;
+`<userData>` = `%APPDATA%\Amberstone Shell` since PKG-6). Delete it
 to reset window position/size. A missing or corrupt file is tolerated (the shell
 falls back to defaults, never crashes).
 

@@ -43,6 +43,15 @@ SKIP_DIRS = {
     # machine committed next. Anything under a runtime dir is by definition
     # not part of the architecture map.
     "runtime",
+    # Gitignored BUILD OUTPUT, same failure shape as `runtime` above:
+    # tools/build_portable.py stages a full copy of the tracked tree under
+    # `dist/portable_staging/`, and electron-builder copies it again into
+    # `rc-shell/dist/win-unpacked/resources/backend/` (PKG-4 / PKG-6).
+    # MEASURED 2026-10-26 (s142 PKG-6): with both present a regen swept 420
+    # copies into `docs/ARCHITECTURE.md` and the pre-commit --check refused
+    # every commit. No tracked path has a `dist` or `build` segment.
+    "dist",
+    "build",
 }
 
 # Files skipped only by the phase-journal scan (their docstrings/comments
