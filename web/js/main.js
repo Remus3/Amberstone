@@ -28,7 +28,7 @@ import { NX, renderNext, arenaDetectPartner, arenaPartnerLine, arenaWaveLine } f
 import { IB, renderItemBuild, renderItemTiles, _updateItemBuildHeader, _ibPushItems, _ibMaybeRenderBuilds, _ibFetchAndRender, _ibSetStatus, _ibRenderRows, _ibMarkSelectedRow, _ibSaveChoice } from './panels/item_build.js';
 import { MM, renderMinimap, _tickSpellCooldowns, _tickObjectiveCountdowns, _updateGameClock, _applyGamePhase, _snapshotSpells, _fmtMMSS, _renderMmStateLine } from './panels/map_state.js';
 import { renderAugmentReco } from './panels/augment_reco.js';
-import { handleChampSelect, renderChampSelectCoach, renderChampSelectView } from './panels/champ_select.js';
+import { handleChampSelect, renderChampSelectCoach, renderChampSelectView, csMockFixtureUrl } from './panels/champ_select.js';
 import { renderTeamContext } from './panels/team_context.js';
 import { renderScreenRead } from './panels/screen_read.js';
 import { renderActiveMatch, activeMatchEnabled, amMockFixtureUrl } from './panels/active_match.js';
@@ -4058,16 +4058,10 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     // loads the ARAM fixture (Mark / Snowball + bench), else SR.
     // 2026-05-25 page #10: ?mode=arena URL flag loads the Arena 6x2
     // fixture (6 sub-teams, augments scaffold, Flash + Heal spells).
-    let mockUrl = "/data/ui_mock/champ_select_sr.json";
-    try {
-      const params = new URLSearchParams(window.location.search || "");
-      const m = (params.get("mode") || "").toLowerCase();
-      if (m === "aram") {
-        mockUrl = "/data/ui_mock/champ_select_aram.json";
-      } else if (m === "arena") {
-        mockUrl = "/data/ui_mock/champ_select_arena.json";
-      }
-    } catch (_) {}
+    // RM-970: the ?mode= -> fixture map lives in champ_select.js
+    // (CS_MOCK_FIXTURES), so the build chooser and the capability-gap chip
+    // read the fixture this page renders.
+    const mockUrl = csMockFixtureUrl(window.location.search || "");
     _csMockPromise = fetch(mockUrl, { cache: "no-store" })
       .then((r) => (r && r.ok ? r.json() : null))
       .then((data) => {

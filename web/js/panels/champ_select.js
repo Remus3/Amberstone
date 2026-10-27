@@ -2019,6 +2019,33 @@ function _csvRenderTeamAnalysis(cs) {
 const _CSV_CAPGAP_CACHE = {};
 const _CSV_CAPGAP_INFLIGHT = {};
 
+// ?ui_mock=1 Champ Select fixtures by ?mode= value - the ONE map. main.js
+// _csMockLoad renders the page from it, and the build-chooser and
+// capability-gap mock fetches read the same fixture (RM-970: both read
+// champ_select_sr.json for every mode, so the ARAM / Arena chooser found no
+// "Jinx|aram" / "Jinx|arena" rows). An absent or unknown mode is SR.
+const CS_MOCK_FIXTURES = {
+  sr:    "/data/ui_mock/champ_select_sr.json",
+  aram:  "/data/ui_mock/champ_select_aram.json",
+  arena: "/data/ui_mock/champ_select_arena.json",
+};
+
+// Fixture URL for a location.search string (SR when ?mode= is absent / unknown).
+export function csMockFixtureUrl(search) {
+  try {
+    const m = (new URLSearchParams(search || "").get("mode") || "").toLowerCase();
+    return Object.prototype.hasOwnProperty.call(CS_MOCK_FIXTURES, m)
+      ? CS_MOCK_FIXTURES[m] : CS_MOCK_FIXTURES.sr;
+  } catch (_) {
+    return CS_MOCK_FIXTURES.sr;
+  }
+}
+
+function _csvMockFixtureUrl() {
+  return csMockFixtureUrl(
+    (typeof window !== "undefined" && window.location) ? window.location.search : "");
+}
+
 function _csvCapgapKey(myChamp, enemyNames, mode) {
   return `${myChamp}|${(enemyNames || []).join(",")}|${mode}`;
 }
@@ -2032,9 +2059,11 @@ function _csvFetchCapabilityGap(myChamp, enemyNames, mode, cb) {
   // ?ui_mock=1 the chip seeds from the fixture's capability_gap block so
   // the champ-select page renders the chip deterministically for the
   // visual-audit ritual (the live /api/ds-preview path is default-OFF).
+  // The fixture is the one the page renders; one with no capability_gap
+  // block leaves the chip hidden.
   const isMock = !!(document && document.body && document.body.dataset.uiMock === "1");
   if (isMock) {
-    fetch("/data/ui_mock/champ_select_sr.json", { cache: "no-store" })
+    fetch(_csvMockFixtureUrl(), { cache: "no-store" })
       .then((r) => (r && r.ok ? r.json() : null))
       .then((data) => {
         _CSV_CAPGAP_INFLIGHT[key] = false;
@@ -2786,10 +2815,11 @@ function _csvFetchUserVariants(champion, mode) {
   // UI scale v2.1 page #8 audit (2026-05-23): when body.dataset.uiMock
   // === "1", short-circuit the live POST and seed the cache from the
   // mock fixture so the build chooser renders the operator-curated
-  // variants alongside the rest of the mocked champ-select state.
+  // variants alongside the rest of the mocked champ-select state. It reads
+  // the fixture the page renders (CS_MOCK_FIXTURES), never SR for every mode.
   const isMock = !!(document && document.body && document.body.dataset.uiMock === "1");
   if (isMock) {
-    fetch("/data/ui_mock/champ_select_sr.json", { cache: "no-store" })
+    fetch(_csvMockFixtureUrl(), { cache: "no-store" })
       .then((r) => (r && r.ok ? r.json() : null))
       .then((data) => {
         _CSV_USER_INFLIGHT[key] = false;

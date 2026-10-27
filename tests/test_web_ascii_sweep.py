@@ -931,7 +931,19 @@ _WEB = _REPO_ROOT / "web"
 # two paths are the whole change. No glyph change: the added lines carry 0
 # non-ASCII bytes. If another slice re-captures in parallel, the merger
 # recomputes.
-_LIVE_HALF_DIGEST = "c97b0f8062f3b76918561564ebe17fff49980d05ec7f8676a44d60f4360ee4fc"
+# superseded by the RM-970 re-capture below: "c97b0f8062f3b76918561564ebe17fff49980d05ec7f8676a44d60f4360ee4fc"
+#
+# RE-CAPTURED 2026-10-27 at RM-970 (s144 uiux cycle 2). One change rides
+# it: the ?ui_mock=1 Champ Select ?mode= -> fixture map moves from main.js
+# _csMockLoad into web/js/panels/champ_select.js (CS_MOCK_FIXTURES /
+# csMockFixtureUrl), and the build-chooser and capability-gap mock fetches
+# read that map instead of champ_select_sr.json for every mode. Ordinary
+# case, no tokeniser change. ATTRIBUTED BY SUBSTITUTION: swapping exactly
+# web/js/main.js and web/js/panels/champ_select.js back to their 082d31da2
+# blobs reproduces the superseded c97b0f80... value EXACTLY. Those two paths
+# are the whole change. No glyph change: the added lines carry 0 non-ASCII
+# bytes. If another slice re-captures in parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "5303c0412a171b1bfb25147d20584bb3ad5eb5446e520f84e949b3329ffb5591"
 
 
 def _web_sources() -> list[Path]:
