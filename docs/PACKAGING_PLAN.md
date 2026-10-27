@@ -5,7 +5,9 @@ Status: LIVING SPEC (ROADMAP row PKG). Phase 1 = Q/A + spec, written
 session (section 4 status); PKG-1b landed after it (4859c9405..1ca036c77);
 PKG-6 landed in session 142 (65cc65565, 34990bcd6, docs cceec4798). The
 PKG-7 cutover tooling was built in session 142 and waits for the operator
-(section 5; not run, hand-off ASKS 45). PKG-6b (updater wiring) is open.
+(section 5; not run, hand-off ASKS 45). PKG-6b (backend update cycle,
+host command channel, per-service restart) was built in session 143
+(section 4 PKG-6b row).
 Each later wave updates this file in place.
 
 Operator intent (2026-10-25, memory `project_packaged_app_requirements`),
@@ -108,7 +110,8 @@ install on natural quit, never mid-game (`rc-shell/src/main.js:267`).
   from `rc-shell/package.json`. Build with `npm ci`.
 - M8 SHELL SIDE FIXED (PKG-6 65cc65565: extraResources carry the backend
   to `resources/backend`; relaunch-when-idle for a downloaded shell update).
-  OPEN: the shell calling the PKG-2 updater CLI is PKG-6b (WA11).
+  PKG-6b (s143): the shell runs `ops/launcher/update_cycle.py` (the PKG-2
+  steps in one child) and restarts the services it names (WA11).
   `rc-shell/electron-builder.yml:30` packages only `src/**/*` +
   package.json and electron-updater updates only that shell, so the
   backend needs its own path (section 3.4).
@@ -414,7 +417,8 @@ Status 2026-10-26 (`git log 2d3e1c85b..86627008a`):
   checklist result below the PKG-6 row).
 - BUILT s142, not run: PKG-7 (below). Running it is the operator step
   (section 5; hand-off ASKS 45).
-- OPEN: PKG-6b (updater CLI wiring + per-service restart, WA11).
+- BUILT s143: PKG-6b (update cycle + host command channel + per-service
+  restart + the bundle's ownership baseline; row below).
 
 - PKG-1 Service host. Files: `ops/launcher/__init__.py`,
   `ops/launcher/service_host.py`, `ops/launcher/services.json`,
@@ -523,6 +527,23 @@ Status 2026-10-26 (`git log 2d3e1c85b..86627008a`):
   - Operator note: userData moves to `%APPDATA%\Amberstone Shell` (one-time
     copy of `rc-shell-state.json`); close the OLD overlay before relaunching
     (old and new instances hold different single-instance locks).
+- PKG-6b Backend update cycle + per-service restart (WA11; after PKG-6).
+  Files: `ops/launcher/update_cycle.py` (new), `ops/launcher/service_host.py`,
+  `tools/build_portable.py`, `tools/run_packaged_smoke.py`,
+  `rc-shell/src/backend_update.js` (new), `rc-shell/src/main.js`,
+  `rc-shell/package.json`, tests `tests/test_launcher_update_cycle_pkg6b.py`,
+  `tests/test_launcher_host_restart_pkg6b.py`,
+  `tests/test_build_portable_backend_manifest_pkg6b.py`,
+  `tests/test_run_packaged_smoke_updater_pkg6b.py`,
+  `rc-shell/test/backend_update.test.js`. Accept: one cycle sequences the
+  PKG-2 steps (resume pending, check, stage or reuse, apply deferred while a
+  game is live = exit 3, finish bounded, verify a NEW main.py run after a
+  supervised restart, recover when it does not come back, never recover on a
+  quit); the host restarts named services on a stdin JSON command (owned
+  handle; vision / DS only when the port holder is inside the host's job);
+  the shell gates cycles and restarts on a fresh not-in-game state and an
+  owned host; the packaged smoke exercises both on a real build.
+  Runbook: `docs/OPERATIONS.md` "Backend updates and per-service restart".
 - PKG-7 Cutover tooling, no execution (wave B). Files:
   `tools/launcher_cutover.ps1`, `tests/test_launcher_cutover_ps1.py`,
   `docs/OPERATIONS.md`. Accept: `-WhatIf` is the default; it exports each
@@ -658,10 +679,22 @@ Found by the PKG-6 builder and verifier; not fixed by PKG-6.
   (`resources/backend/rc-shell` duplicates the asar); exclude `rc-shell/`
   in `build_portable` or the extraResources filter (check the PKG-2
   ownership baseline first).
-- WA11 PKG-6b: updater CLI `check` / `stage` / `apply` / `finish` +
-  `recover` + restart the named services. Needs a host command channel
-  (service_host stdin accepts only `stop`) and a release source (none
-  published, ASKS 42).
+- WA11 PKG-6b BUILT s143: `ops/launcher/update_cycle.py` runs `check` /
+  `stage` / `apply` / `finish` + verify + `recover` in one child; the host
+  gained a stdin JSON command channel and per-service restart; the shell
+  wires both (`rc-shell/src/backend_update.js`). Still open: a release
+  source (none published, ASKS 42).
+- WA13 (found by PKG-6b, FIXED s143): no builder wrote the
+  `backend-manifest.json` the updater reads as the install's ownership
+  baseline, so a real install had no installed version and plan_apply
+  refused every update that changed a shipped file. `tools/build_portable.py`
+  now writes it (payload-eligible, non-ignored shipped files; version
+  `--backend-version` > a semver `--version` > 0.0.0).
+- WA14 (PKG-6b limits, open): verify watches main.py only (a vision / DS /
+  agent that fails on new code is respawned by its watchdog or the host's
+  backoff, never rolled back); restarts owed when the shell quits are
+  dropped (the next launch starts every service on the new code anyway);
+  `relaunch_shell` is logged only (a backend payload never carries rc-shell).
 - WA12 electron-builder logs "signing with signtool.exe" for every `.exe`
   under `resources/backend` (`python.exe`, `pythonw.exe`, site-packages
   `bin/*.exe`): with a cert set (S4) it would re-sign the PSF-signed

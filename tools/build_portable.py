@@ -65,6 +65,7 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
+from ops.launcher import updater as updater_mod  # noqa: E402
 from tools import build_python_embed as embed_mod  # noqa: E402
 
 # Every process the backend runs: the plan's PKG-4 six, plus the DS launcher
@@ -88,8 +89,16 @@ MANIFEST_NAME = "BUILD_MANIFEST.json"
 README_NAME = "PREREQUISITES.md"
 EMBED_DIR_NAME = "python-embed"
 DEFAULT_OUTPUT = _PROJECT_ROOT / "dist" / "portable_staging"
+# PKG-6b: the install's ownership baseline for the PKG-2 updater
+# (ops/launcher/updater.py read_installed / plan_apply): version + the files
+# a release may overwrite. Without it an install has no installed version and
+# no baseline, and plan_apply refuses every update that changes a shipped file.
+INSTALLED_MANIFEST = updater_mod.INSTALLED_MANIFEST
+# A local build that names no semver: every published release is newer.
+DEFAULT_BACKEND_VERSION = "0.0.0"
 # Written by the build / package step at the bundle root, never from the index.
-GENERATED_FILES = frozenset({MANIFEST_NAME, README_NAME, "PACKAGE_MANIFEST.json"})
+GENERATED_FILES = frozenset({MANIFEST_NAME, README_NAME, "PACKAGE_MANIFEST.json",
+                             INSTALLED_MANIFEST})
 
 LFS_POINTER_PREFIX = b"version https://git-lfs.github.com/spec/v1"
 _LFS_POINTER_MAX = 1024
@@ -701,6 +710,64 @@ def verify_bundle(bundle_dir: Path) -> list:
 
 
 # --------------------------------------------------------------------------- #
+# Updater ownership baseline (PKG-6b)
+# --------------------------------------------------------------------------- #
+def resolve_backend_version(version: Optional[str], backend_version: Optional[str]) -> str:
+    """The backend version the install reports to the updater: an explicit
+    --backend-version (must be semver), else the bundle version when it is
+    semver (a release build), else DEFAULT_BACKEND_VERSION."""
+    if backend_version is not None:
+        if not updater_mod.VERSION_RE.match(str(backend_version)):
+            raise BundleError(f"--backend-version must be semver X.Y.Z[-pre]: "
+                              f"{backend_version!r}")
+        return str(backend_version)
+    if version and updater_mod.VERSION_RE.match(version):
+        return version
+    return DEFAULT_BACKEND_VERSION
+
+
+def backend_manifest(out: Path, files: dict, version: str) -> dict:
+    """backend-manifest.json for the staged bundle `out`: every shipped file
+    a release payload may legally replace (the updater's own path check, and
+    not ignored by the bundle's shipped .gitignore files), with its sha256
+    and size. Everything else ships but is never update-owned."""
+    out = Path(out)
+    try:
+        ignore = updater_mod.IgnoreRules.for_install(out)
+    except updater_mod.UpdateError:
+        ignore = None   # the updater then refuses every update anyway
+        _info("no root .gitignore in the bundle: the updater will refuse updates")
+    entries, total = [], 0
+    for rel in sorted(files):
+        try:
+            updater_mod.check_payload_path(rel)
+        except updater_mod.UpdateError:
+            continue
+        if ignore is not None and ignore.ignored(rel):
+            continue
+        size = (out / rel).stat().st_size
+        if size > updater_mod.MAX_FILE_BYTES or total + size > updater_mod.MAX_TOTAL_BYTES:
+            continue
+        total += size
+        entries.append({"path": rel, "sha256": files[rel], "size": size})
+    return {"schema": updater_mod.SCHEMA, "kind": updater_mod.KIND, "version": version,
+            "channel": "dev" if "-" in version else "stable", "files": entries}
+
+
+def write_backend_manifest(out: Path, files: dict, version: str) -> int:
+    """Write it atomically and re-read it through the updater's own schema
+    check (a baseline the updater cannot parse is no baseline). Returns the
+    number of update-owned files."""
+    doc = backend_manifest(out, files, version)
+    data = (json.dumps(doc, indent=1, sort_keys=True, ensure_ascii=True) + "\n").encode("ascii")
+    updater_mod.parse_manifest_bytes(data, require_archive=False)
+    tmp = Path(out) / (INSTALLED_MANIFEST + ".tmp")
+    tmp.write_bytes(data)
+    tmp.replace(Path(out) / INSTALLED_MANIFEST)
+    return len(doc["files"])
+
+
+# --------------------------------------------------------------------------- #
 # Build
 # --------------------------------------------------------------------------- #
 def _sha256(path: Path) -> str:
@@ -782,7 +849,8 @@ def build(root: Path = _PROJECT_ROOT, output_dir: Path = DEFAULT_OUTPUT, *,
           opener: Optional[Callable] = None, pip_runner: Optional[Callable] = None,
           host_version=None, skip_lfs_pointers: bool = False,
           version: Optional[str] = None, dry_run: bool = False,
-          allow_dirty: bool = False, git_runner: Optional[Callable] = None) -> int:
+          allow_dirty: bool = False, git_runner: Optional[Callable] = None,
+          backend_version: Optional[str] = None) -> int:
     """Stage the bundle. Returns 0 built, 1 refused / failed, 2 dry-run ok."""
     root, out = Path(root), Path(output_dir)
     if embed not in ("build", "dir", "none"):
@@ -790,8 +858,14 @@ def build(root: Path = _PROJECT_ROOT, output_dir: Path = DEFAULT_OUTPUT, *,
         return 1
     pin = embed_pin or embed_mod.PINS[embed_mod.DEFAULT_VERSION]
     options = embed_options or embed_mod.EmbedOptions()
+    try:
+        backend_ver = resolve_backend_version(version, backend_version)
+    except BundleError as exc:
+        _err(str(exc))
+        return 1
     version = version or datetime.date.today().strftime("%Y%m%d")
-    print(f"{BUNDLE_NAME} bundle builder: version {version}, runtime mode {embed}")
+    print(f"{BUNDLE_NAME} bundle builder: version {version} (backend {backend_ver}), "
+          f"runtime mode {embed}")
 
     problem = check_output_dir(root, out)
     if problem:
@@ -915,6 +989,7 @@ def build(root: Path = _PROJECT_ROOT, output_dir: Path = DEFAULT_OUTPUT, *,
         "build_tool": BUILD_TOOL,
         "bundle": BUNDLE_NAME,
         "version": version,
+        "backend_version": backend_ver,
         "built_utc": datetime.datetime.now(datetime.timezone.utc).strftime(
             "%Y-%m-%dT%H:%M:%SZ"),
         "source_commit": _git_text(root, ["rev-parse", "--verify", "-q", "HEAD"], git_runner),
@@ -944,6 +1019,12 @@ def build(root: Path = _PROJECT_ROOT, output_dir: Path = DEFAULT_OUTPUT, *,
                              "(PACKAGING_PLAN section 6, OVERLAY_COMPLIANCE_PLAN N8)"),
         },
     }
+    try:
+        owned = write_backend_manifest(out, files, backend_ver)
+    except (updater_mod.UpdateError, OSError) as exc:
+        _err(f"{INSTALLED_MANIFEST} not written: {exc}")
+        return 1
+    manifest["backend_manifest"] = {"name": INSTALLED_MANIFEST, "owned_files": owned}
     tmp = out / (MANIFEST_NAME + ".tmp")
     tmp.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8",
                    newline="\n")
@@ -964,6 +1045,9 @@ def main(argv=None) -> int:
     p = argparse.ArgumentParser(description=f"Stage the {BUNDLE_NAME} portable bundle.")
     p.add_argument("--output", "-o", default=str(DEFAULT_OUTPUT))
     p.add_argument("--version", default=None, help="bundle version (default YYYYMMDD)")
+    p.add_argument("--backend-version", default=None,
+                   help="semver the install reports to the backend updater (default: "
+                        "--version when it is semver, else 0.0.0)")
     p.add_argument("--dry-run", "-n", action="store_true")
     p.add_argument("--skip-lfs-pointers", action="store_true",
                    help="omit LFS files whose working copy is still the pointer")
@@ -986,7 +1070,8 @@ def main(argv=None) -> int:
         embed_cache=Path(args.embed_cache) if args.embed_cache else None,
         embed_zip=Path(args.embed_zip) if args.embed_zip else None,
         skip_lfs_pointers=args.skip_lfs_pointers, version=args.version,
-        dry_run=args.dry_run, allow_dirty=args.allow_dirty)
+        dry_run=args.dry_run, allow_dirty=args.allow_dirty,
+        backend_version=args.backend_version)
 
 
 if __name__ == "__main__":

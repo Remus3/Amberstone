@@ -73,7 +73,7 @@ const fs = require("fs");
 const https = require("https");
 const http = require("http");
 const nodeTls = require("tls");
-const { spawn } = require("child_process");
+const { spawn, execFile } = require("child_process");
 const {
   app,
   BrowserWindow,
@@ -93,6 +93,7 @@ const wctl = require("./window_controls");
 const ind = require("./active_indicator");
 const ctz = require("./clickthrough_zones");
 const upd = require("./update_channel");
+const bu = require("./backend_update");
 const cg = require("./crash_guard");
 const tog = require("./overlay_toggle");
 const nav = require("./nav_guard");
@@ -174,6 +175,16 @@ let bootShowTimer = null; // delayed first show of the starting view.
 let pollFresh = false; // the last /api/state poll answered (relaunch gate).
 let pendingShellUpdate = null; // version of a downloaded shell update (installs on quit).
 let relaunchArmed = false; // the operator asked to relaunch for it when idle.
+// --- PKG-6b backend update state ----------------------------------------------
+let hostPython = null; // the host's interpreter; the update cycle runs on it.
+let backendCycleChild = null; // the in-flight update cycle child, if any.
+let backendLastRunMs = null; // when the last cycle was due-stamped (bu.lastRunAfter).
+let backendOwed = bu.emptyOwed(); // restarts a landed backend update still owes.
+let backendManualPending = false; // a menu check waiting for the idle gate.
+let backendInitialTimer = null;
+let backendGateTimer = null;
+let hostRespawning = false; // a respawn for a backend update is in flight.
+let shellQuitting = false; // before-quit ran: no respawn, no new cycle.
 const signalTimers = []; // the three hotkey signal-file intervals (cleared on quit).
 const pinCache = { pins: [], readAt: null }; // the install's leaf pin (S1), lazily (re)read.
 const tokenCache = { token: null, readAt: null }; // the per-install X-RC-Token, lazily (re)read.
@@ -421,6 +432,11 @@ function buildMenu() {
               console.log("[rc-shell] updates disabled: " + plan.reason);
             }
           },
+        },
+        {
+          // PKG-6b: run the backend update cycle now (still idle-gated).
+          label: "Check for backend updates now",
+          click: () => maybeRunBackendCycle(true),
         },
         {
           // PKG-6: a downloaded shell update installs on a natural quit; this
@@ -1818,6 +1834,7 @@ function runPoll() {
     pollFailures = ok ? 0 : pollFailures + 1;
     pollFresh = ok; // the relaunch gate trusts lastInGame only off a fresh answer.
     maybeRelaunchForUpdate();
+    applyOwedRestarts(); // PKG-6b: owed backend restarts, only when idle.
     schedulePoll(ov.nextPollDelay(pollFailures, ov.OVERLAY_DEFAULTS.pollMs));
   });
 }
@@ -2062,6 +2079,7 @@ function startServiceHost() {
   }
   hostChild = child;
   hostPid = Number.isInteger(child.pid) ? child.pid : null;
+  hostPython = plan.command; // PKG-6b: the update cycle runs on the same interpreter.
   console.log("[rc-shell] service host started (profile " + plan.profile + ", python " + plan.pythonSource + ")");
   if (child.stdin) {
     child.stdin.on("error", () => {}); // EPIPE once the host is gone.
@@ -2282,6 +2300,183 @@ function maybeRelaunchForUpdate() {
   });
 }
 
+// --- PKG-6b: backend updates (docs/PACKAGING_PLAN.md 3.4, WA11) --------------
+// The shell runs the backend's update cycle (ops/launcher/update_cycle.py:
+// check / stage / apply / finish / verify / recover) as ONE windowless child
+// and owes the restarts it names: services to the host's stdin channel, a
+// host respawn for launcher / dependency changes. Every decision is in
+// ./backend_update (pure); only an idle, fresh /api/state opens the gate.
+
+// The host OWNS the services (not attach / blocked): its fresh status says so.
+function hostOwnsServices() {
+  if (!hostChild || !backendRoot) {
+    return false;
+  }
+  const status = svc.readStatus(rcRoot.runtimeFile(backendRoot, svc.STATUS_FILE_NAME));
+  return status.ok && !status.stale && status.mode === "owned" && status.hostPid === hostPid;
+}
+
+function setupBackendUpdates() {
+  const gate = bu.cyclesEnabled({ isPackaged: app.isPackaged, env: process.env });
+  if (!gate.enabled || !hostEnabled) {
+    console.log("[rc-shell] backend updates off: " + (gate.enabled ? "no service host" : gate.reason));
+    return;
+  }
+  backendInitialTimer = setTimeout(() => {
+    backendInitialTimer = null;
+    maybeRunBackendCycle(false);
+  }, bu.CHECK_DEFAULTS.initialDelayMs);
+  // The gate is re-read every minute; bu.cycleDue enforces the interval.
+  backendGateTimer = setInterval(() => maybeRunBackendCycle(false), 60000);
+}
+
+function maybeRunBackendCycle(manual) {
+  if (manual) {
+    backendManualPending = true;
+  }
+  if (shellQuitting) {
+    return;
+  }
+  const d = bu.cycleDue({
+    nowMs: Date.now(),
+    lastRunMs: backendLastRunMs,
+    intervalMs: bu.CHECK_DEFAULTS.intervalMs,
+    manual: backendManualPending,
+    inFlight: !!backendCycleChild || hostRespawning,
+    inGame: lastInGame,
+    stateFresh: pollFresh,
+  });
+  if (!d.run) {
+    if (manual) {
+      console.log("[rc-shell] backend update check waits: " + d.reason);
+    }
+    return;
+  }
+  backendManualPending = false;
+  runBackendCycle();
+}
+
+function runBackendCycle() {
+  const plan = bu.cyclePlan({
+    root: backendRoot,
+    python: hostPython,
+    hostOwned: hostOwnsServices(),
+    channel: updateChannel,
+    shellVersion: app.getVersion(),
+    parentPid: process.pid,
+    env: process.env,
+    isPackaged: app.isPackaged,
+    probe: (p) => {
+      try {
+        return fs.statSync(p).isFile() ? "file" : null;
+      } catch (_e) {
+        return null;
+      }
+    },
+  });
+  const startedMs = Date.now();
+  backendLastRunMs = startedMs;
+  if (!plan.enabled) {
+    console.log("[rc-shell] backend update skipped: " + plan.reason);
+    return;
+  }
+  let child = null;
+  try {
+    child = execFile(
+      plan.command,
+      plan.args,
+      {
+        cwd: plan.cwd,
+        windowsHide: true, // libuv adds CREATE_NO_WINDOW: no console flash.
+        timeout: plan.timeoutMs,
+        maxBuffer: bu.MAX_OUTPUT_BYTES,
+        encoding: "utf8",
+      },
+      (err, stdout) => {
+        if (backendCycleChild === child) {
+          backendCycleChild = null;
+        }
+        const code = err ? (Number.isInteger(err.code) ? err.code : -1) : 0;
+        const result = bu.parseCycleOutput(stdout, code);
+        backendLastRunMs = bu.lastRunAfter(result, startedMs, bu.CHECK_DEFAULTS.intervalMs);
+        console.log("[rc-shell] " + bu.logLine(result));
+        backendOwed = bu.mergeOwed(backendOwed, result.actions);
+        if (result.actions.relaunchShell) {
+          console.log("[rc-shell] the backend update named shell code: it installs through the shell updater");
+        }
+        applyOwedRestarts();
+      }
+    );
+  } catch (e) {
+    console.log("[rc-shell] backend update spawn failed: " + (e && e.code ? e.code : "error"));
+    return;
+  }
+  backendCycleChild = child;
+  console.log("[rc-shell] backend update cycle started (source " + plan.sourceOrigin + ")");
+}
+
+// Owed restarts: the named services through the host's stdin channel, or a
+// host respawn - only when the last fresh /api/state said no game is live.
+function applyOwedRestarts() {
+  const d = bu.owedDecision({
+    owed: backendOwed,
+    inGame: lastInGame,
+    stateFresh: pollFresh,
+    hostRunning: !!hostChild && !hostRespawning && !shellQuitting,
+  });
+  if (d.act === "restart-services") {
+    const names = backendOwed.hostServices;
+    const line = bu.restartCommandLine(names, "shell-" + Date.now());
+    backendOwed = Object.assign(bu.emptyOwed(), { relaunchShell: backendOwed.relaunchShell });
+    if (line && hostChild && hostChild.stdin && !hostChild.stdin.destroyed) {
+      try {
+        hostChild.stdin.write(line);
+        console.log("[rc-shell] asked the service host to restart: " + names.join(", "));
+      } catch (_e) {
+        // EPIPE: the host is gone; every service restarts with the next host.
+      }
+    }
+  } else if (d.act === "respawn-host") {
+    backendOwed = Object.assign(bu.emptyOwed(), { relaunchShell: backendOwed.relaunchShell });
+    respawnServiceHost("backend update");
+  }
+}
+
+// Stop the host (its job takes every service), then spawn it again on the
+// updated code. Never during a quit.
+function respawnServiceHost(reason) {
+  if (hostRespawning || shellQuitting || !hostChild) {
+    return;
+  }
+  hostRespawning = true;
+  console.log("[rc-shell] respawning the service host (" + reason + ")");
+  stopServiceHost(reason).then(() => {
+    hostRespawning = false;
+    if (shellQuitting) {
+      return; // the quit owns the stop now
+    }
+    hostStopPromise = null;
+    hostStopped = false;
+    hostExitCode = null;
+    startServiceHost();
+  });
+}
+
+// On quit: no new cycle. A running cycle is NOT killed (every write it makes
+// is atomic and resumable, a kill could split one); it watches this pid
+// (--parent-pid) and stops at its next wait as "interrupted".
+function stopBackendCycles() {
+  if (backendInitialTimer) {
+    clearTimeout(backendInitialTimer);
+    backendInitialTimer = null;
+  }
+  if (backendGateTimer) {
+    clearInterval(backendGateTimer);
+    backendGateTimer = null;
+  }
+  backendCycleChild = null;
+}
+
 // Single-instance: a second launch focuses the existing window instead of
 // spawning a duplicate companion.
 const gotLock = app.requestSingleInstanceLock();
@@ -2331,6 +2526,7 @@ if (!gotLock) {
     installTokenHeader();
     startServiceHost(); // PKG-6: the services start with the APP, never at boot.
     setupAutoUpdater();
+    setupBackendUpdates(); // PKG-6b: after the host plan (needs hostEnabled).
     registerHotkeys();
     watchDisplayChanges(); // RM-145: overlay must track a display-mode change.
     startActiveToggleWatch();
@@ -2357,6 +2553,7 @@ if (!gotLock) {
   // PKG-6: hold the quit until the service host has stopped (stop line,
   // bounded grace, then the host is ended and its job takes the services).
   app.on("before-quit", (event) => {
+    shellQuitting = true; // PKG-6b: no host respawn, no new backend cycle.
     if (lch.quitNeedsHostStop({ running: !!hostChild, stopped: hostStopped })) {
       event.preventDefault();
       stopServiceHost("quit").then(() => app.quit());
@@ -2399,6 +2596,7 @@ if (!gotLock) {
       clearInterval(updateIntervalTimer);
       updateIntervalTimer = null;
     }
+    stopBackendCycles(); // PKG-6b
     activeRevert.cancel();
     globalShortcut.unregisterAll();
   });

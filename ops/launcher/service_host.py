@@ -55,6 +55,31 @@ Lifecycle
   included, dies with it. A request nobody consumed is removed so it cannot
   shut down the next launch's supervisor.
 
+Command channel (PKG-6b, PACKAGING_PLAN WA11). Besides `stop`, the shell
+writes one JSON object per stdin line; only the parent holds that pipe, so
+no other local process can command the host:
+    {"cmd": "restart", "id": "<id>", "services": ["lcu_agent", "vision"]}
+    {"cmd": "stop"}
+The stdin thread only queues a line (bounded); tick() parses and applies it,
+so every service change stays on the supervision thread. Per name:
+  - a service this host spawned: running = ended by its OWNED handle (the
+    supervisor gracefully, through the same shutdown request a quit writes)
+    and respawned at once, killed after stop_grace_s if it hangs; not
+    running (backoff, failed, halted) = started now with a fresh backoff
+    window. A requested restart is never counted as a crash.
+  - vision / ds (WATCHDOG_PORTS): grandchildren RC's own watchdogs own
+    (dashboard/_vision_watchdog.py, core/daemon_slayer_client.py DsWatchdog).
+    The host ends the process listening on the service port ONLY when that
+    process is inside this host's job object (IsProcessInJob on the opened
+    handle, so a recycled pid cannot be hit); the watchdog then respawns it
+    on fresh code. A listener outside the job (a pre-cutover task) is left
+    alone.
+  - app / shell (SHELL_ACTIONS): the shell's own acts (respawn this host,
+    relaunch the shell); refused here with that reason.
+Attach and blocked mode refuse every restart (nothing here is owned). The
+outcome of the last COMMAND_HISTORY commands is in the status file under
+`commands`: [{"id", "cmd", "at", "results": {name: outcome}, "error"?}].
+
 Status: ops/runtime/launcher_status.json, written atomically and rewritten
 at least every STATUS_HEARTBEAT_S while the host lives. Schema 1 is the
 contract the shell parses (rc-shell/src/service_status.js header, PKG-3):
@@ -81,6 +106,7 @@ import argparse
 import importlib.util
 import json
 import os
+import queue
 import re
 import secrets
 import signal
@@ -137,6 +163,24 @@ _NAME_RE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 _PLACEHOLDER_RE = re.compile(r"\{([^{}]*)\}")
 _ENV_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 SHUTDOWN_REQUEST_PREFIX = "launcher-shutdown-"
+
+# ---- command channel (PKG-6b)
+COMMANDS = ("restart", "stop")
+STOP_WORDS = ("stop", "quit", "exit")
+MAX_COMMAND_CHARS = 4096
+MAX_COMMAND_SERVICES = 16
+MAX_PENDING_COMMANDS = 32
+COMMAND_HISTORY = 8
+COMMAND_ID_RE = re.compile(r"^[A-Za-z0-9_.:-]{1,64}$")
+# Services RC's own watchdogs respawn (grandchildren in the job), by the port
+# they listen on. Mirrors core/ports.py VISION / DS_ENGINE (a test pins it).
+WATCHDOG_PORTS = {"vision": 8889, "ds": 8860}
+# Names the updater reports that only the shell can act on.
+SHELL_ACTIONS = {"app": "refused:respawn-host", "shell": "refused:relaunch-shell"}
+_PROCESS_TERMINATE = 0x0001
+_ERROR_INSUFFICIENT_BUFFER = 122
+_TCP_TABLE_OWNER_PID_LISTENER = 3
+_TERMINATE_WAIT_MS = 5000
 
 
 def utc_now() -> str:
@@ -500,6 +544,60 @@ def write_shutdown_request(runtime_dir: Path, reason: str) -> Path:
     return path
 
 
+# ------------------------------------------------------- command channel
+
+
+class CommandError(ValueError):
+    """A command line the host refuses. `code` is stable; match on it."""
+
+    def __init__(self, code: str, message: str) -> None:
+        super().__init__(message)
+        self.code = code
+
+
+@dataclass(frozen=True)
+class Command:
+    cmd: str
+    id: str
+    services: Tuple[str, ...] = ()
+
+
+def parse_command(line: Any) -> Command:
+    """One stdin JSON line -> Command, or CommandError. Strict: an object,
+    a known `cmd`, an id inside COMMAND_ID_RE (generated when absent), and
+    for `restart` 1..MAX_COMMAND_SERVICES service names in _NAME_RE
+    (duplicates dropped, order kept)."""
+    text = str(line).strip()
+    if len(text) > MAX_COMMAND_CHARS:
+        raise CommandError("size", f"command longer than {MAX_COMMAND_CHARS} chars")
+    try:
+        doc = json.loads(text)
+    except ValueError:
+        raise CommandError("json", "not a JSON command") from None
+    if not isinstance(doc, dict):
+        raise CommandError("shape", "a command is a JSON object")
+    cmd = doc.get("cmd")
+    if cmd not in COMMANDS:
+        raise CommandError("cmd", f"unknown command {str(cmd)[:32]!r}")
+    cid = doc.get("id")
+    if cid is None:
+        cid = f"host-{int(time.time() * 1000)}-{secrets.token_hex(3)}"
+    if not isinstance(cid, str) or not COMMAND_ID_RE.match(cid):
+        raise CommandError("id", "command id must match [A-Za-z0-9_.:-]{1,64}")
+    if cmd == "stop":
+        return Command("stop", cid)
+    names = doc.get("services")
+    if not isinstance(names, list) or not names or len(names) > MAX_COMMAND_SERVICES:
+        raise CommandError("services", f"services must be a list of 1..{MAX_COMMAND_SERVICES}")
+    out: List[str] = []
+    for name in names:
+        if not isinstance(name, str) or not _NAME_RE.match(name):
+            raise CommandError("services", "a service name must match [a-z][a-z0-9_]*")
+        if name not in out:
+            out.append(name)
+    return Command("restart", cid, tuple(out))
+
+
 # ------------------------------------------------------------ first run
 
 
@@ -564,6 +662,9 @@ def _kernel32():
                                                 ctypes.c_void_p, wintypes.DWORD)
         k32.AssignProcessToJobObject.argtypes = (wintypes.HANDLE, wintypes.HANDLE)
         k32.TerminateJobObject.argtypes = (wintypes.HANDLE, wintypes.UINT)
+        k32.IsProcessInJob.argtypes = (wintypes.HANDLE, wintypes.HANDLE,
+                                       ctypes.POINTER(wintypes.BOOL))
+        k32.TerminateProcess.argtypes = (wintypes.HANDLE, wintypes.UINT)
         _K32 = k32
     return _K32
 
@@ -775,6 +876,94 @@ class ParentWatch:
                 pass
 
 
+def port_listener_pids(port: int) -> List[int]:
+    """Pids of every process LISTENING on TCP `port`, IPv4 and IPv6 (Win32
+    GetExtendedTcpTable, TCP_TABLE_OWNER_PID_LISTENER). Elsewhere: []."""
+    if sys.platform != "win32" or not isinstance(port, int) or not 0 < port < 65536:
+        return []
+    import ctypes
+    import struct
+    from ctypes import wintypes
+    ip = ctypes.WinDLL("iphlpapi")
+    fn = ip.GetExtendedTcpTable
+    fn.restype = wintypes.DWORD
+    fn.argtypes = (ctypes.c_void_p, ctypes.POINTER(wintypes.DWORD), wintypes.BOOL,
+                   wintypes.ULONG, ctypes.c_int, wintypes.ULONG)
+    found: List[int] = []
+    # (address family, row bytes, dwLocalPort offset, dwOwningPid offset):
+    # MIB_TCPROW_OWNER_PID and MIB_TCP6ROW_OWNER_PID.
+    for family, row, port_at, pid_at in ((2, 24, 8, 20), (23, 56, 20, 52)):
+        size = wintypes.DWORD(0)
+        raw = None
+        for _ in range(5):
+            buf = ctypes.create_string_buffer(max(int(size.value), 4))
+            size = wintypes.DWORD(len(buf))
+            rc = fn(buf, ctypes.byref(size), False, family,
+                    _TCP_TABLE_OWNER_PID_LISTENER, 0)
+            if rc == 0:
+                raw = buf.raw
+                break
+            if rc != _ERROR_INSUFFICIENT_BUFFER:
+                break
+        if raw is None or len(raw) < 4:
+            continue
+        count = struct.unpack_from("<I", raw, 0)[0]
+        for i in range(count):
+            off = 4 + i * row
+            if off + row > len(raw):
+                break
+            v = struct.unpack_from("<I", raw, off + port_at)[0]
+            if (((v & 0xFF) << 8) | ((v >> 8) & 0xFF)) == port:   # network order
+                pid = struct.unpack_from("<I", raw, off + pid_at)[0]
+                if pid and pid not in found:
+                    found.append(pid)
+    return found
+
+
+def terminate_job_listener(job: Any, port: int, *,
+                           listeners: Callable[[int], List[int]] = port_listener_pids) -> str:
+    """End the process listening on `port` ONLY if it is inside `job` (this
+    host's job object). The check runs on the OPENED handle, so the process
+    it proves is the one terminated (a recycled pid cannot be hit). Never by
+    image name, never outside the job. Outcome: terminated | not-running |
+    refused:no-job | refused:not-in-job | refused:open-failed |
+    refused:unsupported."""
+    handle = getattr(job, "handle", None) if job is not None else None
+    if not handle:
+        return "refused:no-job"
+    if sys.platform != "win32":
+        return "refused:unsupported"
+    import ctypes
+    from ctypes import wintypes
+    pids = listeners(port)
+    if not pids:
+        return "not-running"
+    k32 = _kernel32()
+    outcomes = []
+    for pid in pids:
+        h = k32.OpenProcess(_PROCESS_TERMINATE | _SYNCHRONIZE
+                            | _PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+        if not h:
+            outcomes.append("refused:open-failed")
+            continue
+        try:
+            inside = wintypes.BOOL(False)
+            if not k32.IsProcessInJob(h, handle, ctypes.byref(inside)) or not inside.value:
+                outcomes.append("refused:not-in-job")
+                continue
+            if not k32.TerminateProcess(h, 1):
+                outcomes.append("refused:open-failed")
+                continue
+            k32.WaitForSingleObject(h, _TERMINATE_WAIT_MS)
+            outcomes.append("terminated")
+        finally:
+            k32.CloseHandle(h)
+    for want in ("terminated", "refused:not-in-job"):
+        if want in outcomes:
+            return want
+    return outcomes[0]
+
+
 class HostLock:
     """Single host per backend root: ops/runtime/service_host.pid (3.3).
 
@@ -941,6 +1130,11 @@ class _Runtime:
     next_start: Optional[float] = None
     exits: Deque[float] = field(default_factory=deque)
     argv: Optional[List[str]] = None
+    # PKG-6b: a requested restart in flight (the exit is not a crash).
+    restart_pending: bool = False
+    restart_deadline: Optional[float] = None
+    restart_request: Optional[Path] = None
+    restart_records: List[Dict[str, Any]] = field(default_factory=list)
 
     def alive(self) -> bool:
         return self.proc is not None and self.proc.poll() is None
@@ -964,7 +1158,8 @@ class ServiceHost:
                  python_exe: Optional[str] = None,
                  status_path: Optional[Path] = None,
                  log: Optional[Callable[[str], None]] = None,
-                 provision: Optional[Callable[..., Dict[str, str]]] = None) -> None:
+                 provision: Optional[Callable[..., Dict[str, str]]] = None,
+                 port_terminator: Optional[Callable[[Any, int], str]] = None) -> None:
         self.root = Path(root)
         self.config = config
         self.profile = profile
@@ -997,6 +1192,10 @@ class ServiceHost:
         self._last_doc: Optional[Dict[str, Any]] = None
         self._last_write = float("-inf")
         self._services = [_Runtime(spec) for spec in config.services]
+        # PKG-6b command channel: filled by the stdin thread, drained by tick().
+        self._commands_in: "queue.Queue[str]" = queue.Queue(maxsize=MAX_PENDING_COMMANDS)
+        self._history: Deque[Dict[str, Any]] = deque(maxlen=COMMAND_HISTORY)
+        self._terminate_port_owner = port_terminator or terminate_job_listener
 
     # ---- lifecycle
 
@@ -1055,7 +1254,12 @@ class ServiceHost:
             self.stop("parent_exit")
             return False
         now = self._clock()
+        self._drain_commands(now)
+        if self.stopped:   # a {"cmd": "stop"} line
+            return False
         if self.mode == "owned":
+            for rt in self._services:
+                self._restart_overdue(rt, now)
             for rt in self._services:
                 self._reap(rt, now)
             for rt in self._services:
@@ -1186,7 +1390,140 @@ class ServiceHost:
         rt.proc = None
         rt.pid = None
         self._log(f"{rt.spec.name}: exited with code {code} after {runtime:.1f}s")
+        if rt.restart_pending:
+            self._respawn_requested(rt, now)
+            return
         self._on_exit(rt, now, f"exit code {code}", clean=(code == 0), runtime=runtime)
+
+    # ---- PKG-6b command channel
+
+    def submit_command(self, line: str) -> bool:
+        """Queue one command line (any thread). Applied by the next tick();
+        a full queue drops the line (logged)."""
+        try:
+            self._commands_in.put_nowait(str(line)[:MAX_COMMAND_CHARS + 1])
+            return True
+        except queue.Full:
+            self._log("command queue full; a command line was dropped")
+            return False
+
+    def _drain_commands(self, now: float) -> None:
+        changed = False
+        while True:
+            try:
+                line = self._commands_in.get_nowait()
+            except queue.Empty:
+                break
+            changed = True
+            try:
+                cmd = parse_command(line)
+            except CommandError as exc:
+                self._history.append({"id": None, "cmd": None, "at": utc_now(),
+                                      "results": {}, "error": exc.code})
+                self._log(f"command refused ({exc.code})")
+                continue
+            if cmd.cmd == "stop":
+                self._history.append({"id": cmd.id, "cmd": "stop", "at": utc_now(),
+                                      "results": {}})
+                self.stop_reason = self.stop_reason or "command_stop"
+                self.stop(self.stop_reason)
+                return
+            self._apply_restart(cmd, now)
+        if changed:
+            self._write_status(force=True)
+
+    def _apply_restart(self, cmd: Command, now: float) -> None:
+        record: Dict[str, Any] = {"id": cmd.id, "cmd": cmd.cmd, "at": utc_now(),
+                                  "results": {}}
+        self._history.append(record)
+        by_name = {rt.spec.name: rt for rt in self._services}
+        for name in cmd.services:
+            if self.mode != "owned" or self.stopped:
+                outcome = "refused:not-owned"
+            elif name in SHELL_ACTIONS:
+                outcome = SHELL_ACTIONS[name]
+            elif name in WATCHDOG_PORTS:
+                outcome = self._restart_watchdog_service(name)
+            elif name in by_name:
+                outcome = self._request_restart(by_name[name], record, now)
+            else:
+                outcome = "not-configured"
+            record["results"][name] = outcome
+        self._log(f"command {cmd.id}: restart {record['results']}")
+
+    def _restart_watchdog_service(self, name: str) -> str:
+        if self.job is None:
+            return "refused:no-job"
+        try:
+            outcome = str(self._terminate_port_owner(self.job, WATCHDOG_PORTS[name]))
+        except Exception as exc:   # noqa: BLE001 - reported, never raised
+            self._log(f"{name}: restart failed ({type(exc).__name__})")
+            return "refused:error"
+        return outcome[:40]
+
+    def _request_restart(self, rt: _Runtime, record: Dict[str, Any], now: float) -> str:
+        if rt.restart_pending:
+            rt.restart_records.append(record)
+            return "restarting"
+        if rt.alive():
+            rt.restart_pending = True
+            rt.restart_deadline = now + self.config.stop_grace_s
+            rt.restart_records = [record]
+            graceful = False
+            if rt.spec.role == "supervisor":
+                try:
+                    rt.restart_request = write_shutdown_request(
+                        self.runtime_dir, f"restart:{record['id']}")
+                    graceful = True
+                except OSError as exc:
+                    self._log(f"{rt.spec.name}: restart request failed: {exc}")
+            if not graceful:
+                try:
+                    rt.proc.terminate()
+                except OSError as exc:
+                    self._log(f"{rt.spec.name}: terminate failed: {exc}")
+            self._log(f"{rt.spec.name}: restart requested ({record['id']})")
+            return "restarting"
+        if rt.argv is None:
+            return "refused:not-startable"
+        # Not running (backoff, failed, halted): start now, fresh window.
+        rt.proc = None
+        rt.pid = None
+        rt.consecutive = 0
+        rt.exits.clear()
+        rt.next_start = None
+        self._spawn(rt, now)
+        return "restarted" if rt.state == "running" else f"failed:{rt.state}"
+
+    def _restart_overdue(self, rt: _Runtime, now: float) -> None:
+        if not rt.restart_pending or rt.restart_deadline is None or now < rt.restart_deadline:
+            return
+        if rt.proc is not None and rt.proc.poll() is None:
+            self._log(f"{rt.spec.name}: did not stop for its restart in "
+                      f"{self.config.stop_grace_s:g}s; ending it")
+            self._kill(rt.proc)
+        rt.restart_deadline = None
+
+    def _respawn_requested(self, rt: _Runtime, now: float) -> None:
+        if rt.restart_request is not None:
+            try:
+                rt.restart_request.unlink()
+                self._log(f"{rt.spec.name}: removed its unconsumed restart request")
+            except FileNotFoundError:
+                pass
+            except OSError as exc:
+                self._log(f"{rt.spec.name}: restart request not removed: {exc}")
+        records = rt.restart_records
+        rt.restart_pending = False
+        rt.restart_deadline = None
+        rt.restart_request = None
+        rt.restart_records = []
+        rt.next_start = None
+        self._spawn(rt, now)
+        outcome = "restarted" if rt.state == "running" else f"failed:{rt.state}"
+        for rec in records:
+            rec["results"][rt.spec.name] = outcome
+        self._write_status(force=True)
 
     def _on_exit(self, rt: _Runtime, now: float, error: str, *,
                  clean: bool, runtime: float) -> None:
@@ -1259,6 +1596,15 @@ class ServiceHost:
                 self._log("removed the unconsumed shutdown request")
             except OSError:
                 pass
+        for rt in self._services:   # PKG-6b: a restart caught by the stop
+            if rt.restart_request is not None:
+                try:
+                    rt.restart_request.unlink()
+                except OSError:
+                    pass
+            rt.restart_pending = False
+            rt.restart_deadline = None
+            rt.restart_request = None
 
     def _top_state(self) -> str:
         if self.stopped:
@@ -1301,6 +1647,8 @@ class ServiceHost:
                 "in_job": rt.in_job,
                 "started": rt.started_wall,
             } for rt in self._services],
+            # PKG-6b: copies, so an in-place outcome update reads as a change.
+            "commands": [dict(rec, results=dict(rec["results"])) for rec in self._history],
         }
 
     def _write_status(self, force: bool = False) -> None:
@@ -1341,14 +1689,18 @@ class HostLog:
 
 
 def _watch_stdin(host: ServiceHost, event: threading.Event, stream: Any) -> None:
-    """The shell's quit channel: a `stop` line, or EOF when the shell's end
-    of the pipe closes (it quit or died)."""
+    """The shell's channel: a `stop` line (or EOF when the shell's end of the
+    pipe closes: it quit or died) stops the host; any other non-empty line
+    is queued as a command (PKG-6b) and applied by the supervision loop."""
     try:
         for line in stream:
-            if line.strip().lower() in ("stop", "quit", "exit"):
+            text = line.strip()
+            if text.lower() in STOP_WORDS:
                 host.stop_reason = host.stop_reason or "stdin_stop"
                 event.set()
                 return
+            if text:
+                host.submit_command(text)
     except (OSError, ValueError):
         pass
     host.stop_reason = host.stop_reason or "stdin_eof"

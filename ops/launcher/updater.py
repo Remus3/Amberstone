@@ -161,7 +161,7 @@ KIND = "amberstone-backend"
 CHANNELS = ("stable", "dev")
 LEVELS = ("none", "hot_reload", "restart", "relaunch")
 APP_EFFECTS = ("none", "hot_reload", "restart")
-INSTALLED_MANIFEST = "backend-manifest.json"   # shipped at the bundle root (PKG-4)
+INSTALLED_MANIFEST = "backend-manifest.json"   # shipped at the bundle root (tools/build_portable.py, PKG-6b)
 
 # The release feed. Must equal rc-shell/electron-builder.yml `publish`
 # (a test pins it), or the backend and the shell would read different feeds.

@@ -24,7 +24,17 @@ by:
          exits 0 with the service gone,
      [H] (when a shell build exists) the electron-builder output carries the
          SAME backend build in resources/backend beside app.asar, with the
-         service host and the embedded runtime.
+         service host and the embedded runtime,
+     [G] also (PKG-6b) sends the host the shell's JSON restart command and
+         sees the probe restarted (new pid, old process gone),
+     [I] (PKG-6b) the backend updater: the bundle's update_cycle.py under the
+         embedded runtime reads the shipped ownership baseline
+         (backend-manifest.json, checked in [C1]), reports up-to-date on an
+         empty source, then stages a newer local release that changes an
+         owned file and writes a deploy request that the bundle's own deploy
+         worker verifies with the per-install key [G] provisioned (no
+         supervisor runs, so the cycle ends pending; a live game on this
+         machine defers it instead, reported as such).
 
 No live Riot API, Anthropic API or League client. Network only if the
 archive has to be built (the embedded runtime download and the lock). [G]
@@ -65,6 +75,7 @@ if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
 from ops.launcher import service_host as sh  # noqa: E402
+from ops.launcher import updater as up  # noqa: E402
 from tools import build_portable as bp  # noqa: E402
 from tools import package_portable as pp  # noqa: E402
 
@@ -87,6 +98,7 @@ REQUIRED_FILES = (
     ("requirements.txt", "hashed lock: requirements.txt"),
     ("PREREQUISITES.md", "operator doc: PREREQUISITES.md"),
     (bp.MANIFEST_NAME, "build manifest: " + bp.MANIFEST_NAME),
+    (bp.INSTALLED_MANIFEST, "updater ownership baseline: " + bp.INSTALLED_MANIFEST),
     (pp.PACKAGE_MANIFEST, "package manifest: " + pp.PACKAGE_MANIFEST),
     ("python-embed/python.exe", "embedded runtime: python-embed/python.exe"),
     ("python-embed/pythonw.exe", "embedded runtime: python-embed/pythonw.exe"),
@@ -230,6 +242,21 @@ def check_manifests(bundle_root: Path) -> dict:
     return docs
 
 
+def check_backend_manifest(bundle_root: Path) -> Optional[str]:
+    """C1) The updater's ownership baseline (PKG-6b): parses under the
+    updater's own schema check and owns the entry point. Returns its version."""
+    try:
+        man = up.parse_manifest_bytes((bundle_root / bp.INSTALLED_MANIFEST).read_bytes(),
+                                      require_archive=False)
+    except (OSError, up.UpdateError) as exc:
+        _fail(f"{bp.INSTALLED_MANIFEST} is not a valid updater baseline",
+              f"{type(exc).__name__}")
+        return None
+    _ok(f"{bp.INSTALLED_MANIFEST} parses as the updater baseline",
+        f"version {man.version}, {len(man.files)} owned files")
+    return man.version
+
+
 def check_launch_chain(bundle_root: Path) -> None:
     """D) start.bat launches the embedded runtime, which can import the root."""
     print("\n[D] Launch Chain")
@@ -364,6 +391,8 @@ LAUNCHER_SECRETS = ("config/vision_token.txt", "ops/runtime/dash_token.txt",
 LAUNCHER_SECRET_ENV = frozenset({"RC_VISION_TOKEN", "RC_DASH_TOKEN"})
 LAUNCHER_START_TIMEOUT_S = 60.0
 LAUNCHER_STOP_TIMEOUT_S = 45.0
+LAUNCHER_RESTART_TIMEOUT_S = 30.0
+LAUNCHER_RESTART_ID = "smoke-restart"
 
 
 def _free_port() -> int:
@@ -473,6 +502,7 @@ def check_launcher_from_unpacked(bundle_root: Path, interpreter: Optional[Path] 
             _fail("first-run secrets not provisioned", str(missing))
         else:
             _ok("first-run secrets provisioned", ", ".join(LAUNCHER_SECRETS))
+        watch = _check_restart_command(proc, status_path, entry, watch)
         try:
             proc.stdin.write(b"stop\n")
             proc.stdin.close()
@@ -498,6 +528,166 @@ def check_launcher_from_unpacked(bundle_root: Path, interpreter: Optional[Path] 
                 pass
         if watch is not None:
             watch.close()
+
+
+def _check_restart_command(proc, status_path: Path, entry: dict, watch):
+    """[G] PKG-6b: the shell's JSON restart command restarts the probe (the
+    host's command channel). Returns the watch on the probe's CURRENT pid."""
+    old_pid = int(entry["pid"])
+    line = json.dumps({"cmd": "restart", "id": LAUNCHER_RESTART_ID,
+                       "services": [LAUNCHER_PROBE_SERVICE]}) + "\n"
+    try:
+        proc.stdin.write(line.encode("ascii"))
+        proc.stdin.flush()
+    except OSError as exc:
+        _fail("restart command could not be sent", str(exc))
+        return watch
+    deadline = time.monotonic() + LAUNCHER_RESTART_TIMEOUT_S
+    new: dict = {}
+    result = None
+    while time.monotonic() < deadline and proc.poll() is None:
+        doc = _read_status(status_path)
+        new = _probe_entry(doc)
+        rec = next((c for c in doc.get("commands") or []
+                    if isinstance(c, dict) and c.get("id") == LAUNCHER_RESTART_ID), {})
+        result = (rec.get("results") or {}).get(LAUNCHER_PROBE_SERVICE)
+        if result == "restarted" and new.get("pid") not in (None, old_pid) \
+                and new.get("state") == "running":
+            break
+        time.sleep(0.25)
+    if not (result == "restarted" and new.get("pid") not in (None, old_pid)):
+        _fail("restart command did not restart the probe",
+              f"result {result!r}, pid {new.get('pid')!r}")
+        return watch
+    _ok("host restarted the probe service on a restart command",
+        f"pid {old_pid} -> {new['pid']}")
+    gone_by = time.monotonic() + 10
+    while watch.alive() and time.monotonic() < gone_by:
+        time.sleep(0.1)
+    (_fail if watch.alive() else _ok)("the restarted service's old process is gone")
+    watch.close()
+    return sh.ParentWatch(int(new["pid"]))
+
+
+# -- [I] backend updater (PKG-6b) ----------------------------------------------
+
+UPDATER_TIMEOUT_S = 180.0
+UPDATER_SMOKE_FILE = "LICENSE"   # update-owned, not loaded at runtime (level none)
+_VERIFY_SNIPPET = (
+    "import json, sys; from pathlib import Path; sys.path.insert(0, sys.argv[1]); "
+    "from ops import rc_transactional_deploy as r; "
+    "r.verify_request(json.loads(Path(sys.argv[2]).read_text(encoding='ascii')), "
+    "Path(sys.argv[3])); print('VERIFY-OK')")
+
+
+def _bump_version(version: str) -> str:
+    core = str(version).split("-", 1)[0].split("+", 1)[0]
+    major, minor, patch = (int(x) for x in core.split("."))
+    return f"{major}.{minor}.{patch + 1}"
+
+
+def _smoke_release(release_dir: Path, bundle_root: Path, version: str) -> Path:
+    """backend-<ver>.zip + backend-<ver>.json changing UPDATER_SMOKE_FILE."""
+    import hashlib
+    release_dir.mkdir(parents=True, exist_ok=True)
+    data = (bundle_root / UPDATER_SMOKE_FILE).read_bytes() + b"\n"
+    zpath = release_dir / f"backend-{version}.zip"
+    with zipfile.ZipFile(str(zpath), "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr(UPDATER_SMOKE_FILE, data)
+    blob = zpath.read_bytes()
+    doc = {"schema": up.SCHEMA, "kind": up.KIND, "version": version, "channel": "stable",
+           "archive": {"name": zpath.name, "sha256": hashlib.sha256(blob).hexdigest(),
+                       "size": len(blob)},
+           "files": [{"path": UPDATER_SMOKE_FILE, "sha256": hashlib.sha256(data).hexdigest(),
+                      "size": len(data)}]}
+    (release_dir / f"backend-{version}.json").write_bytes(
+        json.dumps(doc, indent=1).encode("ascii"))
+    return release_dir
+
+
+def _run_cycle(py: Path, cycle: Path, bundle_root: Path, *args: str):
+    argv = [str(py), "-I", str(cycle), "--root", str(bundle_root), *args]
+    try:
+        res = subprocess.run(argv, cwd=str(bundle_root), capture_output=True, text=True,
+                             timeout=UPDATER_TIMEOUT_S, creationflags=NO_WINDOW)
+    except (OSError, subprocess.SubprocessError) as exc:
+        return None, {"error": type(exc).__name__}
+    lines = (res.stdout or "").strip().splitlines()
+    try:
+        doc = json.loads(lines[-1]) if lines else {}
+    except ValueError:
+        doc = {}
+    return res.returncode, doc if isinstance(doc, dict) else {}
+
+
+def check_updater_from_unpacked(bundle_root: Path, interpreter: Optional[Path] = None,
+                                work_dir: Optional[Path] = None) -> None:
+    """I) The backend updater the shell runs (PKG-6b), under the embedded
+    runtime. Runs AFTER [G]: the deploy key is the one the host's first run
+    provisioned. `interpreter` / `work_dir` exist for the unit tests only."""
+    print("\n[I] Backend updater (update cycle under the embedded runtime)")
+    py = Path(interpreter) if interpreter else bundle_root / "python-embed" / "python.exe"
+    cycle = bundle_root / "ops" / "launcher" / "update_cycle.py"
+    if not py.is_file() or not cycle.is_file():
+        _fail("updater cannot run", "embedded python.exe or ops/launcher/update_cycle.py missing")
+        return
+    try:
+        baseline = json.loads((bundle_root / bp.INSTALLED_MANIFEST).read_text("ascii"))
+        version = str(baseline["version"])
+    except (OSError, ValueError, KeyError, TypeError):
+        _fail("updater has no ownership baseline", bp.INSTALLED_MANIFEST)
+        return
+    code, doc = _run_cycle(py, cycle, bundle_root, "status")
+    if code == 0 and doc.get("installed") == version:
+        _ok("updater reads the install's ownership baseline", f"installed {version}")
+    else:
+        _fail("updater status did not read the baseline",
+              f"exit {code}, installed {doc.get('installed')!r}")
+        return
+    work = Path(work_dir) if work_dir else bundle_root.parent
+    empty = work / "smoke_release_empty"
+    empty.mkdir(parents=True, exist_ok=True)
+    parent = ["--parent-pid", str(os.getpid())]
+    code, doc = _run_cycle(py, cycle, bundle_root, "run", "--source", f"local:{empty}", *parent)
+    if code == 0 and doc.get("status") == "up-to-date":
+        _ok("update cycle: up-to-date on an empty source")
+    else:
+        _fail("update cycle failed on an empty source",
+              f"exit {code}, status {doc.get('status')!r}, code {doc.get('code')!r}")
+        return
+    new_version = _bump_version(version)
+    rel = _smoke_release(work / "smoke_release", bundle_root, new_version)
+    code, doc = _run_cycle(py, cycle, bundle_root, "run", "--source", f"local:{rel}",
+                           "--finish-timeout", "1", "--health-timeout", "1", *parent)
+    if code == 3 and doc.get("status") == "deferred":
+        _warn("a League / TFT game is live on this machine: the apply was deferred")
+        _ok("update cycle deferred while a game is live", "exit 3")
+        return
+    if not (code == 0 and doc.get("status") == "pending" and doc.get("version") == new_version):
+        _fail("update cycle did not stage and request the deploy",
+              f"exit {code}, status {doc.get('status')!r}, code {doc.get('code')!r}")
+        return
+    _ok("update cycle staged a newer release and requested the deploy",
+        f"{version} -> {new_version}, pending on the supervisor")
+    reqs = sorted((bundle_root / "ops" / "runtime" / "deploy_requests")
+                  .glob(f"launcher-update-{new_version}-*.json"))
+    key = bundle_root / "ops" / "runtime" / "deploy_request.key"
+    if len(reqs) != 1:
+        _fail("deploy request missing", f"{len(reqs)} request files")
+        return
+    try:
+        res = subprocess.run([str(py), "-I", "-c", _VERIFY_SNIPPET, str(bundle_root),
+                              str(reqs[0]), str(key)], capture_output=True, text=True,
+                             timeout=60, creationflags=NO_WINDOW)
+        ok = res.returncode == 0 and "VERIFY-OK" in res.stdout
+    except (OSError, subprocess.SubprocessError):
+        ok = False
+    (_ok if ok else _fail)("deploy request verifies with the per-install key",
+                           "ops/rc_transactional_deploy.py verify_request")
+    body = json.loads(reqs[0].read_text(encoding="ascii"))
+    named = [f.get("live") for f in body.get("files") or []]
+    (_ok if named == [UPDATER_SMOKE_FILE] else _fail)(
+        "the request changes exactly the owned file", str(named))
 
 
 def _same_build(a: Path, b: Path) -> bool:
@@ -559,6 +749,7 @@ def run(archive_path: Path, keep_temp: bool = False,
     if bundle_root is not None:
         check_exclusions(bundle_root, archive_path)
         check_manifests(bundle_root)
+        check_backend_manifest(bundle_root)
         check_launch_chain(bundle_root)
         check_operator_docs(bundle_root)
         check_bootstrap_from_unpacked(bundle_root)
@@ -571,6 +762,8 @@ def run(archive_path: Path, keep_temp: bool = False,
         # LAST: the host's first run writes per-install secrets and
         # ops/runtime/ into the unpacked copy, which [B] would flag.
         check_launcher_from_unpacked(bundle_root)
+        # After [G]: the cycle signs with the deploy key [G] provisioned.
+        check_updater_from_unpacked(bundle_root)
 
     if not keep_temp:
         shutil.rmtree(str(tmp), ignore_errors=True)

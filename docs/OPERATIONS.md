@@ -371,6 +371,41 @@ The script never ships in a packaged build (`tools/build_portable.py`, operator-
 driver). Guard: `tests/test_launcher_cutover_ps1.py` (static gate checks everywhere; the 5.1
 parse and fake-cmdlet dry runs where Windows PowerShell 5.1 exists).
 
+### Backend updates and per-service restart (PKG-6b)
+
+A packaged install updates its Python backend without a reinstall (`docs/PACKAGING_PLAN.md` 3.4).
+The shell runs ONE windowless child per cycle and acts on its one JSON line; nothing runs at boot.
+
+- Cycle: `<python> -I ops/launcher/update_cycle.py --root <backend> run --source <src>
+  [--channel stable|dev] [--shell-version V] [--parent-pid N]` = finish anything pending, then
+  check, stage (or reuse a verified staging), apply (a signed deploy request for the frozen
+  supervisor), finish, verify (main.py healthy again; a NEW run id after a supervised restart),
+  `recover()` when it does not come back. Exit 0 up-to-date / noop / applied / pending /
+  interrupted / busy, 1 refused / failed / lost / recovered / error (`code` = the updater's stable
+  code), 3 deferred (a game is live; the staging is kept). `... status` prints the cycle record
+  (`ops/runtime/launcher/update_cycle.json`), the installed version and the updater state. Log:
+  `ops/runtime/logs/update_cycle.log`.
+- Source: `RC_BACKEND_UPDATE_SOURCE` = `github` (default, the repo's Releases; none published yet,
+  hand-off ASKS 42) | `github:<owner>/<repo>` | `local:<absolute folder>` holding
+  `backend-<ver>.json` + `backend-<ver>.zip`. A packaged launch checks 2 min after launch, then
+  every 4 h, plus the menu item "Check for backend updates now"; a checkout launch only with
+  `RC_BACKEND_UPDATES=1` (a linked checkout is refused anyway: it updates through git +
+  hot_reload). Every cycle waits for a fresh `/api/state` with no live game and a host in owned
+  mode (attach mode = the scheduled tasks own the services).
+- Restarts the cycle reports (`restart.host_services` / `respawn_host`): the shell sends the host
+  `{"cmd": "restart", "id": ..., "services": [...]}` on its stdin when idle. Host-owned services
+  are ended by their own handle (the supervisor through a graceful shutdown request) and started
+  again at once; `vision` / `ds` are ended only when the process holding their port is inside the
+  host's job object, and RC's own watchdog respawns them. `app` (launcher code or the dependency
+  set) = the shell stops and respawns the host. Outcomes: `commands` in
+  `ops/runtime/launcher_status.json`.
+- Baseline: every bundle ships `backend-manifest.json` (`tools/build_portable.py`; version from
+  `--backend-version`, else a semver `--version`, else 0.0.0), the files a release may replace.
+- Guards: `tests/test_launcher_update_cycle_pkg6b.py`, `tests/test_launcher_host_restart_pkg6b.py`,
+  `tests/test_build_portable_backend_manifest_pkg6b.py`, `tests/test_run_packaged_smoke_updater_pkg6b.py`,
+  `rc-shell/test/backend_update.test.js`; the packaged smoke runs [G] (restart command) and [I]
+  (stage + signed request under the embedded runtime) on every real build.
+
 ---
 
 ## Mission Control (:8895)
