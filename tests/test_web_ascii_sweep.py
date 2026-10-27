@@ -980,7 +980,17 @@ _WEB = _REPO_ROOT / "web"
 # superseded 17a45e7e... value EXACTLY. That path is the whole change. No
 # glyph change: the added lines carry 0 non-ASCII bytes. If another slice
 # re-captures in parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "2223974c446505c60c0c975d2f865efd8639a780b5f8a9758f086198c3b79a17"
+# superseded by the RM-974 re-capture below: "2223974c446505c60c0c975d2f865efd8639a780b5f8a9758f086198c3b79a17"
+#
+# RE-CAPTURED 2026-10-27 at RM-974 (s144 uiux cycle 6). One change rides
+# it: web/js/panels/last_match.js _lmMockUrl maps ?ui_mock=1&mode=brawl to
+# the new last_match_brawl.json fixture (a URF game, match mode "BRAWL").
+# Ordinary case, no tokeniser change. ATTRIBUTED BY SUBSTITUTION: swapping
+# exactly web/js/panels/last_match.js back to its 2d580dec4 blob (in memory)
+# reproduces the superseded 2223974c... value EXACTLY. That path is the
+# whole change. No glyph change: the added lines carry 0 non-ASCII bytes. If
+# another slice re-captures in parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "571244f2fbe08589aaac6a34085baef618bb89269537cddfe738e0cc0981e081"
 
 
 def _web_sources() -> list[Path]:

@@ -360,6 +360,8 @@ function _lmMockUrl() {
   // added C3 (page #14) so the SR Post Game Review has CI-durable
   // snapshot coverage like aram/arena. tft (RM-952) loads a real kind
   // "tft" payload so the TFT card has an audit path without a fresh game.
+  // brawl (RM-974) loads a URF game (match_db mode "BRAWL") built by
+  // RC's own builders, so the Brawl PGR has the same audit path.
   let url = null;
   try {
     const params = new URLSearchParams(window.location.search || "");
@@ -368,6 +370,7 @@ function _lmMockUrl() {
     else if (m === "aram")  url = "/data/ui_mock/last_match_aram.json";
     else if (m === "arena") url = "/data/ui_mock/last_match_arena.json";
     else if (m === "tft")   url = "/data/ui_mock/last_match_tft.json";
+    else if (m === "brawl") url = "/data/ui_mock/last_match_brawl.json";
   } catch (_) {}
   return url;
 }
@@ -389,7 +392,7 @@ export function fetchAndRenderLastMatch() {
   if (isNaN(_b)) _b = 20;
   _b = Math.max(5, Math.min(50, _b));
   // Item 183 + C3: UI scale v2.1 audit ritual short-circuit. When the
-  // dev mock toggle is on AND ?mode=sr|aram|arena is present, render the
+  // dev mock toggle is on AND ?mode=sr|aram|arena|tft|brawl is present, render the
   // local fixture instead of the live /api/last-match feed - so pages
   // #14/#15/#16 PGR SR/ARAM/Arena audit captures stand on authored data
   // even when the operator's most-recent live match differs in mode.

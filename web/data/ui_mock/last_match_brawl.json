@@ -1,0 +1,118 @@
+{
+  "mock": true,
+  "note": "Mock fixture for the Post Game Review (Last Match) view - Brawl variant (URF, RM-974). Activated by ?ui_mock=1&mode=brawl. Shape mirrors /api/last-match -> dashboard.builders_last_match._build_last_match output, and the payload was assembled by RC's own builders: grade and label from performance_tracker.calculate_brawl_rating (match_db mode BRAWL), gold/dmg share from core.carry_share, carry_normalized and quick_review from builders_last_match. Stat values are one real URF game (queue 900, mapId 11, game_mode URF, 16:45, a loss); every name and id is synthetic. URF runs on Summoner's Rift, so dragons, barons and towers are real objectives here.",
+  "found": true,
+  "history_count": 20,
+  "match": {
+    "id": 9005,
+    "timestamp": "2026-10-26T11:16:45",
+    "mode": "BRAWL",
+    "champion": "Quinn",
+    "grade": "D",
+    "kda_str": "3/13/9",
+    "kda_ratio": 0.92,
+    "duration_s": 1005,
+    "kills": 3,
+    "deaths": 13,
+    "assists": 9,
+    "cs": 50,
+    "cs_per_min": 2.99,
+    "gold": 9964,
+    "gold_per_min": 594.9,
+    "kp_pct": 60.0,
+    "gold_share_pct": 17.1,
+    "label": "BELOW - focus on one area at a time",
+    "coach_action": "",
+    "ds_picks": [],
+    "lcu_ingested_at": "2026-10-26T11:17:52",
+    "enriched": {
+      "champion_id": 133,
+      "team_id": 100,
+      "win": false,
+      "champ_level": 17,
+      "spell1_id": 4,
+      "spell2_id": 6,
+      "items": [3087, 3006, 3142, 1037, 3086, 1018, 3340],
+      "runes": {
+        "keystone": 8005,
+        "primary_style": 8000,
+        "sub_style": 8100,
+        "primary": [8005, 9111, 9103, 8017],
+        "secondary": [8143, 8140, 0, 0]
+      },
+      "damage": {
+        "dealt_to_champs": 16349,
+        "physical_to_champs": 13792,
+        "magic_to_champs": 1547,
+        "true_to_champs": 1009,
+        "taken": 22956,
+        "self_mitigated": 9174,
+        "to_objectives": 21488,
+        "to_turrets": 148
+      },
+      "support": {
+        "total_heal": 1655,
+        "heal_on_teammates": 0,
+        "shield_on_teammates": 0,
+        "heal_plus_shield": 0,
+        "units_healed": 1
+      },
+      "arena_augments": [0, 0, 0, 0, 0, 0],
+      "vision": {
+        "score": 25,
+        "wards_placed": 14,
+        "wards_killed": 0,
+        "control_wards": 0
+      },
+      "roster": [
+        {"participant_id": 1, "team_id": 100, "champion_id": 48, "game_name": "SampleTop", "tag_line": "MOCK", "is_me": false, "kills": 2, "deaths": 11, "assists": 5, "cs": 76, "gold": 10102, "damage_to_champs": 16106, "damage_taken": 31965, "vision_score": 0, "champ_level": 16, "items": [3153, 3078, 3111, 1055, 2021, 1028, 3340], "summoner1": 4, "summoner2": 6, "augments": [0, 0, 0, 0, 0, 0], "win": false},
+        {"participant_id": 2, "team_id": 100, "champion_id": 38, "game_name": "SampleMid", "tag_line": "MOCK", "is_me": false, "kills": 6, "deaths": 12, "assists": 5, "cs": 91, "gold": 14547, "damage_to_champs": 25846, "damage_taken": 28995, "vision_score": 6, "champ_level": 19, "items": [3147, 3020, 3100, 3089, 3135, 2508, 3340], "summoner1": 4, "summoner2": 14, "augments": [0, 0, 0, 0, 0, 0], "win": false},
+        {"participant_id": 3, "team_id": 100, "champion_id": 131, "game_name": "SampleJg", "tag_line": "MOCK", "is_me": false, "kills": 4, "deaths": 7, "assists": 4, "cs": 80, "gold": 10493, "damage_to_champs": 16871, "damage_taken": 20208, "vision_score": 6, "champ_level": 18, "items": [3100, 3010, 3157, 4645, 0, 0, 3364], "summoner1": 4, "summoner2": 6, "augments": [0, 0, 0, 0, 0, 0], "win": false},
+        {"participant_id": 4, "team_id": 100, "champion_id": 133, "game_name": "SamplePlayer", "tag_line": "MOCK", "is_me": true, "kills": 3, "deaths": 13, "assists": 9, "cs": 50, "gold": 9964, "damage_to_champs": 16349, "damage_taken": 22956, "vision_score": 25, "champ_level": 17, "items": [3087, 3006, 3142, 1037, 3086, 1018, 3340], "summoner1": 4, "summoner2": 6, "augments": [0, 0, 0, 0, 0, 0], "win": false},
+        {"participant_id": 5, "team_id": 100, "champion_id": 15, "game_name": "SampleBot", "tag_line": "MOCK", "is_me": false, "kills": 5, "deaths": 10, "assists": 7, "cs": 121, "gold": 13285, "damage_to_champs": 21351, "damage_taken": 27135, "vision_score": 21, "champ_level": 19, "items": [3032, 1018, 6675, 3031, 3123, 3006, 3340], "summoner1": 4, "summoner2": 6, "augments": [0, 0, 0, 0, 0, 0], "win": false},
+        {"participant_id": 6, "team_id": 200, "champion_id": 23, "game_name": "MockFoeA", "tag_line": "MOCK", "is_me": false, "kills": 12, "deaths": 4, "assists": 8, "cs": 144, "gold": 15252, "damage_to_champs": 23882, "damage_taken": 28527, "vision_score": 12, "champ_level": 21, "items": [3172, 3153, 3046, 3031, 3072, 0, 3340], "summoner1": 4, "summoner2": 6, "augments": [0, 0, 0, 0, 0, 0], "win": true},
+        {"participant_id": 7, "team_id": 200, "champion_id": 111, "game_name": "MockFoeB", "tag_line": "MOCK", "is_me": false, "kills": 6, "deaths": 3, "assists": 14, "cs": 42, "gold": 12516, "damage_to_champs": 13751, "damage_taken": 22246, "vision_score": 19, "champ_level": 20, "items": [1054, 3084, 3047, 3075, 2504, 1011, 3340], "summoner1": 6, "summoner2": 4, "augments": [0, 0, 0, 0, 0, 0], "win": true},
+        {"participant_id": 8, "team_id": 200, "champion_id": 110, "game_name": "MockFoeC", "tag_line": "MOCK", "is_me": false, "kills": 12, "deaths": 4, "assists": 4, "cs": 121, "gold": 15676, "damage_to_champs": 24338, "damage_taken": 14738, "vision_score": 6, "champ_level": 21, "items": [3124, 3115, 0, 3153, 3302, 3172, 3340], "summoner1": 4, "summoner2": 7, "augments": [0, 0, 0, 0, 0, 0], "win": true},
+        {"participant_id": 9, "team_id": 200, "champion_id": 75, "game_name": "MockFoeD", "tag_line": "MOCK", "is_me": false, "kills": 13, "deaths": 5, "assists": 6, "cs": 151, "gold": 16054, "damage_to_champs": 34861, "damage_taken": 52505, "vision_score": 27, "champ_level": 22, "items": [3078, 3139, 3073, 3170, 3742, 1033, 3340], "summoner1": 6, "summoner2": 4, "augments": [0, 0, 0, 0, 0, 0], "win": true},
+        {"participant_id": 10, "team_id": 200, "champion_id": 142, "game_name": "MockFoeE", "tag_line": "MOCK", "is_me": false, "kills": 10, "deaths": 4, "assists": 9, "cs": 62, "gold": 13623, "damage_to_champs": 23623, "damage_taken": 16826, "vision_score": 16, "champ_level": 20, "items": [6655, 3175, 4645, 3089, 3145, 0, 3340], "summoner1": 6, "summoner2": 4, "augments": [0, 0, 0, 0, 0, 0], "win": true}
+      ],
+      "teams": [
+        {"team_id": 100, "win": false, "first_blood": false, "first_tower": false, "first_baron": false, "first_dragon": true, "first_inhibitor": false, "baron_kills": 0, "dragon_kills": 2, "tower_kills": 3, "inhibitor_kills": 0, "rift_herald_kills": 0, "horde_kills": 0, "bans": [0, 0, 0, 0, 0]},
+        {"team_id": 200, "win": true, "first_blood": true, "first_tower": true, "first_baron": true, "first_dragon": false, "first_inhibitor": true, "baron_kills": 1, "dragon_kills": 2, "tower_kills": 11, "inhibitor_kills": 3, "rift_herald_kills": 0, "horde_kills": 3, "bans": [0, 0, 0, 0, 0]}
+      ],
+      "game_id": 9005,
+      "game_mode": "URF",
+      "queue_id": 900,
+      "map_id": 11,
+      "game_duration_s": 1005,
+      "game_creation_ts": 1793030400000,
+      "game_creation_date": "2026-10-26T16:00:00Z",
+      "game_version": "15.24.733.5841",
+      "end_of_game_result": "GameComplete",
+      "ended_in_surrender": false,
+      "ended_in_early_surrender": false
+    },
+    "dmg_share_pct": 16.9,
+    "carry_normalized": {
+      "bench_key": "URF|short",
+      "kp_pct": {"value": 60.0, "p25": 33.3, "p50": 43.7, "p75": 54.4, "n": 260, "band": "high"},
+      "gold_share_pct": {"value": 17.1, "p25": 18.0, "p50": 19.7, "p75": 22.1, "n": 260, "band": "low"},
+      "dmg_share_pct": {"value": 16.9, "p25": 13.9, "p50": 19.6, "p75": 24.6, "n": 260, "band": "avg"}
+    }
+  },
+  "quick_review": {
+    "right": [
+      {"text": "No standout positives this match", "why": "None of the v1 thresholds tripped (S/A grade, KDA>=3, CS/min>=8, KP>=70%, or 10+ kills with <=5 deaths)."}
+    ],
+    "wrong_team": [
+      {"text": "Lost first blood", "why": "Enemy team took first blood - early gold + tempo advantage. Worth reviewing the lane / fight that opened the match in the deep Review page."},
+      {"text": "Lost first tower", "why": "Enemy team took the first tower (250g globally + platings + first-tower trinket bounty). Indicates early lane pressure was conceded - common cause: death timer + freeze break."},
+      {"text": "Team kill deficit (20-53)", "why": "Enemy outscored your team 53 kills to 20 (1.5x+ ratio with a 10+ gap). Each team-fight you took was net-losing - review engage timings + comp synergy."},
+      {"text": "Gold deficit -14k", "why": "Enemy ended 14730g ahead (73.1k vs 58.4k). That's roughly an extra completed mythic + finisher across the team - review mid-game objective trades."},
+      {"text": "Death count cost the team (13 deaths)", "why": "13 deaths is a 10+ threshold. Even with the objectives + team aggregates above, each personal death is gold + 30+s map pressure handed back."}
+    ],
+    "my_chronic": [
+      {"text": "Recent grade slump (15/20 at D/F)", "why": "15 of your last 20 games graded D or F - a third+ of recent matches in the weak-performance tier. Worth a focused review session."}
+    ]
+  }
+}

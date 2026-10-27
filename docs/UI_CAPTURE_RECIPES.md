@@ -89,16 +89,25 @@ fires the dispatcher on first navigation too.
 Live: navigate to `#last-match` after completing a game. SR baseline
 captured at item 182; ARAM + Arena captured via item 183 mock fixtures.
 
-Mock per mode:
-- SR:    `https://127.0.0.1:8888/?ui_mock=1#last-match` (default fixture)
+Mock per mode (`_lmMockUrl` in `web/js/panels/last_match.js`; with no
+`mode` the page falls through to the live `/api/last-match` feed):
+- SR:    `https://127.0.0.1:8888/?ui_mock=1&mode=sr#last-match`
 - ARAM:  `https://127.0.0.1:8888/?ui_mock=1&mode=aram#last-match`
 - Arena: `https://127.0.0.1:8888/?ui_mock=1&mode=arena#last-match`
+- TFT:   `https://127.0.0.1:8888/?ui_mock=1&mode=tft#last-match`
+- Brawl: `https://127.0.0.1:8888/?ui_mock=1&mode=brawl#last-match`
 
 Fixtures:
+- `web/data/ui_mock/last_match_sr.json` (10p Ranked Solo mapId 11
+  queue 420 CLASSIC)
 - `web/data/ui_mock/last_match_aram.json` (10p ARAM mapId 12 queue 450,
   `data-aug="0"` empty augment grid)
 - `web/data/ui_mock/last_match_arena.json` (12p Arena 6x2 mapId 30
   queue 1750 CHERRY, `data-aug="1"` 9-col augment grid)
+- `web/data/ui_mock/last_match_tft.json` (kind "tft" card, RM-952)
+- `web/data/ui_mock/last_match_brawl.json` (10p URF mapId 11 queue 900,
+  match mode "BRAWL"; pinned by
+  `tests/snapshot_panels/test_brawl_last_match_view.py`)
 
 ## Notes
 
