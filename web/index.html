@@ -939,6 +939,9 @@
             <ul class="lobby-members-list" id="lv-members-list">
               <li class="home-empty">no members visible - LCU agent needs to forward lcu.lobby.members[]</li>
             </ul>
+            <!-- RM-881 (b): duo picks, fetched from /api/duo-synergy once the
+                 party reaches 2 (panels/lobby_duo_synergy.js); hidden solo. -->
+            <div class="lv-duosyn" id="lv-duo-synergy" aria-live="polite" hidden></div>
           </div>
           <div class="lobby-view-card lobby-view-card-mainchamps">
             <!-- s162 v4 (2026-05-10): Mains panel with two tabs. YOUR

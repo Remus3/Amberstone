@@ -56,6 +56,7 @@ import { refreshBranchReview } from './panels/branch_review.js';
 // Session match row). Separate DOM + state from last_match.js - never
 // clobbers the live PGR.
 import { wireHistoricalPgrOnce, renderHistoricalPgr } from './panels/historical_pgr.js';
+import { createLobbyDuoSynergy, lobbyDuoSynergyHtml } from './panels/lobby_duo_synergy.js';
 import { renderCoachDecisions, renderRecentCoachCalls } from './panels/coach_decisions.js';
 import { _settingsRefresh, renderSpendGates, _replayViewWireOnce, _replayViewRefresh, _replayLoadMatch } from './panels/dev.js';
 import { renderBuildInsights } from './panels/build_insights.js';
@@ -3958,6 +3959,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     lastLcuPartyType: null,      // s209: track external LCU changes vs operator clicks
     autoAccept:    false,    // s162 v2: Auto Accept default off
     mainsTab:      null,     // s162 v4: "you" | "party" | null (auto from party_size)
+    duo:           null,     // RM-881 (b): lobby duo-synergy controller (_lvDuoCtl)
   };
   // s162 v15: action-button glyph constants. Crown swapped to the
   // actual League captain-icon (CommunityDragon mirror, downloaded
@@ -4590,6 +4592,49 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       return true;
     }
     return false;
+  }
+  // RM-881 (b) (QA23): the lobby re-fires /api/duo-synergy when the party
+  // size reaches 2 in an SR queue. It fetches once per party episode (the 2 s
+  // refresh never re-fires it) and renders into #lv-duo-synergy under the
+  // PARTY roster; solo hides the block. Under ui_mock it reads the page's
+  // own duo_synergy.json fixture. Logic + tests: panels/lobby_duo_synergy.js.
+  function _lvDuoIconUrl(name) {
+    const cid = _resolveChampId(name);
+    return cid ? `/data/ddragon/${CHAMPS.version}/img/champion/${cid}.png` : "";
+  }
+  function _lvDuoRender(st) {
+    const box = document.getElementById("lv-duo-synergy");
+    if (!box) return;
+    const html = lobbyDuoSynergyHtml(st, _lvDuoIconUrl);
+    // Repaint only on a real change (an innerHTML rebuild drops focus).
+    if (box.dataset.sig !== html) {
+      box.innerHTML = html;
+      box.dataset.sig = html;
+      // A missing portrait keeps its slot as a blank tile (no broken glyph,
+      // no reflow), as the other champion images here drop themselves.
+      box.querySelectorAll("img.lv-duosyn-icon").forEach((img) => {
+        img.addEventListener("error", () => {
+          const blank = document.createElement("span");
+          blank.className = "lv-duosyn-icon is-blank";
+          blank.setAttribute("aria-hidden", "true");
+          img.replaceWith(blank);
+        }, { once: true });
+      });
+    }
+    box.hidden = html === "";
+  }
+  // Created on first use and kept on _LV, so a refresh that runs before this
+  // line is evaluated cannot hit a const temporal-dead-zone error.
+  function _lvDuoCtl() {
+    if (!_LV.duo) {
+      _LV.duo = createLobbyDuoSynergy({
+        isMock: () => _lobbyIsMock(),
+        // SR only, like the lane-pair control: ARAM / Arena have no bot lane.
+        isDuoQueue: (qid) => SR_QUEUE_IDS.has(qid),
+        onChange: _lvDuoRender,
+      });
+    }
+    return _LV.duo;
   }
   // Signature over every field _renderPartyMembers reads. Covers the
   // conflict pre-pass too - it derives purely from the prefs + is_self
@@ -5453,6 +5498,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     // YOU/LEADER pips + rank / peak / most-played role + per-row
     // action pips (copy / promote / kick) right-aligned.
     _renderPartyMembers(lobby);
+    _lvDuoCtl().update(lobby);
 
     // s162 v4: Your Mains / Party Mains panel - tab-switched.
     _renderMains();

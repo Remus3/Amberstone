@@ -1036,7 +1036,24 @@ _WEB = _REPO_ROOT / "web"
 # (in memory) reproduces the superseded 3fa75900... value EXACTLY. Those
 # paths are the whole change. No glyph change: the added web/ lines carry 0
 # non-ASCII bytes.
-_LIVE_HALF_DIGEST = "624589f47f47d313fd16da31fba81738c5943d3054244d6e640038c28562ad45"
+# superseded by the RM-881 (b) re-capture below: "624589f47f47d313fd16da31fba81738c5943d3054244d6e640038c28562ad45"
+#
+# RE-CAPTURED 2026-10-27 at RM-881 (b) (s144 queue cycle 4, provisional
+# until the merger lands it). One change rides it: the lobby DUO PICKS block
+# - the new web/js/panels/lobby_duo_synergy.js, its wiring in web/js/main.js
+# (_lvDuoCtl / _lvDuoRender, called from _lobbyViewRefresh), the
+# #lv-duo-synergy mount in web/index.html and its .lv-duosyn rules in
+# web/css/panels/header.css; the block is SR-queue only (isDuoQueue gets
+# main.js SR_QUEUE_IDS). Ordinary case, no tokeniser change. ATTRIBUTED
+# BY SUBSTITUTION: swapping exactly main.js, index.html and header.css back
+# to their local-main f073b1ca1 blobs and dropping the new module (in memory)
+# reproduces the superseded 0ffaff1d... value EXACTLY. Those paths are the
+# whole change. No glyph change: the added lines carry 0 non-ASCII bytes.
+# If another slice re-captures in parallel, the merger recomputes.
+# MERGED 2026-10-27 by the session 144 L3 merger onto main (lane commit c7ee8c3d0): main had moved
+# this pin since the lane base, so the superseded value above is main's and
+# the value below is recomputed over the merged tree.
+_LIVE_HALF_DIGEST = "4c75c2a807beaa734ce59aed29b89189fc285abdd9fdaf63eb01a8a871b96c64"
 
 
 def _web_sources() -> list[Path]:

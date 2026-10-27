@@ -1361,6 +1361,75 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   /* s162 v4: tightened 3->1 to fit 5 stacked party rows comfortably. */
   gap: 1px;
 }
+/* RM-881 (b): DUO PICKS block under the PARTY roster (party size >= 2,
+ * panels/lobby_duo_synergy.js). Two labeled rows - BOT, SUPPORT - of four
+ * cells (icon, name, smoothed win rate). Text never drops below --fs-xs. */
+.lv-duosyn {
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border-soft);
+}
+.lv-duosyn[hidden] { display: none; }
+.lv-duosyn-title {
+  font-size: var(--fs-xs);
+  letter-spacing: 0.14em;
+  color: var(--text-dim);
+  text-align: center;
+  padding-bottom: var(--space-1);
+}
+.lv-duosyn-note {
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  text-align: center;
+}
+.lv-duosyn-row {
+  display: grid;
+  grid-template-columns: 6.5em minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+}
+.lv-duosyn-row + .lv-duosyn-row { margin-top: var(--space-1); }
+.lv-duosyn-role {
+  font-size: var(--fs-xs);
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+}
+.lv-duosyn-cells {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-1);
+}
+.lv-duosyn-cell {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: var(--space-1);
+  align-items: center;
+  min-width: 0;
+}
+.lv-duosyn-icon {
+  grid-row: 1 / span 2;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  object-fit: cover;
+  background: var(--surface-alt);
+}
+.lv-duosyn-name {
+  font-size: var(--fs-xs);
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lv-duosyn-wr {
+  font-size: var(--fs-xs);
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+}
 /* s162 v4: leader crown pip - non-interactive but sized like the
  * kick/promote/copy action buttons so they line up consistently.
  * s162 v15: crown is now the actual League captain-icon-crown PNG
