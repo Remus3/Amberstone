@@ -47,6 +47,19 @@
 // update events are console-only (no dialogs over a live game) and a download
 // installs on natural quit - never quitAndInstall mid-session.
 //
+// PKG-6 (docs/PACKAGING_PLAN.md section 4): the shell is the LAUNCHER. At app
+// launch it spawns ONE windowless child, the PKG-1 service host
+// (ops/launcher/service_host.py), which owns every RC service inside one
+// Windows job object; quit writes "stop" to the host's stdin and waits a
+// bounded grace. The decisions live in ./launcher (pure); this file applies
+// them. Also wired here: the backend root from ./rc_root (hotkey signal files,
+// M3), the install's leaf-certificate pin from ./tls_pin (S1), a sender check
+// on every bridge IPC channel (S3), the per-install X-RC-Token for the own
+// origin only (3.6), the host-served origin (M4), a local starting view until
+// /api/health answers (./service_status shellView), will-redirect +
+// will-frame-navigate guards (V2), and "relaunch when idle" for a downloaded
+// shell update. Nothing starts at login or boot (intent 3; a test pins it).
+//
 // What it does NOT do (Vanguard-safe; see docs/ELECTRON_OVERLAY.md sections 3.8 + 8):
 //   - No DXGI / frame capture, no game-memory reads, no input injection - ever.
 //     The overlay is a DWM compositor window only; the hotkey is RegisterHotKey
@@ -59,7 +72,18 @@ const path = require("path");
 const fs = require("fs");
 const https = require("https");
 const http = require("http");
-const { app, BrowserWindow, Menu, screen, shell, globalShortcut, ipcMain } = require("electron");
+const nodeTls = require("tls");
+const { spawn } = require("child_process");
+const {
+  app,
+  BrowserWindow,
+  Menu,
+  screen,
+  shell,
+  globalShortcut,
+  ipcMain,
+  session,
+} = require("electron");
 
 const cfgmod = require("./config");
 const store = require("./store");
@@ -72,6 +96,10 @@ const upd = require("./update_channel");
 const cg = require("./crash_guard");
 const tog = require("./overlay_toggle");
 const nav = require("./nav_guard");
+const rcRoot = require("./rc_root");
+const tls = require("./tls_pin");
+const svc = require("./service_status");
+const lch = require("./launcher");
 
 // In-game overlay liveness (CRITICAL). A fullscreen League window fully OCCLUDES
 // this always-on-top transparent overlay. On Windows, Chromium's native window-
@@ -104,7 +132,6 @@ function statePath() {
 let mainWindow = null;
 let overlayWindow = null;
 let overlayReady = false; // false until the overlay window fires 'ready-to-show' (first paint); gates the first show so it never appears pre-layout.
-let originHost = ""; // host:port we trust the self-signed cert for.
 let resolvedOrigin = ""; // the origin resolved at boot (companion + overlay + poll).
 let surfaceHidden = false; // hotkey-driven force-hide override.
 let overlayClickThrough = ov.OVERLAY_DEFAULTS.clickThrough;
@@ -130,6 +157,26 @@ let toggleReady = false; // false until the icon window's first paint (same gate
 let toggleGaveUp = false; // the crash guard gave up on the icon window: it stays dark (never re-raised).
 let overlayContentOn = tog.TOGGLE_DEFAULTS.visible; // overlay content ON/OFF (persisted overlay.toggle.visible; default ON).
 const toggleDrag = tog.makeToggleDrag({ thresholdPx: tog.TOGGLE_DEFAULTS.dragThresholdPx }); // tap-vs-drag for one icon press.
+
+// --- PKG-6 launcher state ------------------------------------------------------
+let backendRoot = null; // the resolved RC backend root (./rc_root); null = none found.
+let localHosts = {}; // <root>/ops/local_hosts.json (widens the origin allow-list, S2).
+let hostChild = null; // the service host ChildProcess while it runs.
+let hostEnabled = false; // a host spawn was planned and attempted this launch.
+let hostPid = null; // its pid (the status file is filtered by it).
+let hostExitCode = null; // its exit code once it ended (null while running).
+let hostLaunchedAt = 0; // Date.now() at spawn (drives the start timeout).
+let hostStopPromise = null; // the one in-flight stop (quit / relaunch share it).
+let hostStopped = false; // true once the host was asked to stop and ended.
+let appViewLoaded = false; // the companion left the starting view for the app.
+let bootTimer = null; // starting-view tick (setTimeout chain).
+let bootShowTimer = null; // delayed first show of the starting view.
+let pollFresh = false; // the last /api/state poll answered (relaunch gate).
+let pendingShellUpdate = null; // version of a downloaded shell update (installs on quit).
+let relaunchArmed = false; // the operator asked to relaunch for it when idle.
+const signalTimers = []; // the three hotkey signal-file intervals (cleared on quit).
+const pinCache = { pins: [], readAt: null }; // the install's leaf pin (S1), lazily (re)read.
+const tokenCache = { token: null, readAt: null }; // the per-install X-RC-Token, lazily (re)read.
 
 // Debounced state writer so a drag (many move events) does not hammer the disk.
 let saveTimer = null;
@@ -277,10 +324,12 @@ function setupAutoUpdater() {
     );
   });
   autoUpdater.on("update-downloaded", (info) => {
+    pendingShellUpdate = info && info.version ? String(info.version) : "?";
     console.log(
-      "[rc-shell] update downloaded (installs on quit): " +
-        (info && info.version ? info.version : "?")
+      "[rc-shell] update downloaded (installs on quit, or relaunch when idle): " +
+        pendingShellUpdate
     );
+    buildMenu(); // offer "Relaunch to update when idle".
   });
   updateInitialTimer = setTimeout(() => {
     updateInitialTimer = null;
@@ -371,6 +420,21 @@ function buildMenu() {
             } else {
               console.log("[rc-shell] updates disabled: " + plan.reason);
             }
+          },
+        },
+        {
+          // PKG-6: a downloaded shell update installs on a natural quit; this
+          // arms a relaunch that waits until no game is live (never mid-game).
+          label: pendingShellUpdate
+            ? "Relaunch to update (" + pendingShellUpdate + ") when idle"
+            : "Relaunch to update when idle (no update downloaded)",
+          type: "checkbox",
+          checked: relaunchArmed,
+          enabled: !!pendingShellUpdate,
+          click: () => {
+            relaunchArmed = !relaunchArmed;
+            buildMenu();
+            maybeRelaunchForUpdate();
           },
         },
         { type: "separator" },
@@ -512,21 +576,39 @@ function guardNavigation(win) {
       openExternalSafe(target);
     }
   });
+  // PKG-6 (V2): a server redirect is checked like a navigation, so the guard
+  // never depends on the dashboard sending no 3xx. A cross-origin redirect is
+  // cancelled; it is never opened externally (the user did not ask for it).
+  win.webContents.on("will-redirect", (event, legacyUrl) => {
+    const target = event && typeof event.url === "string" ? event.url : legacyUrl;
+    if (!nav.navigationDecision(target, resolvedOrigin).allow) {
+      event.preventDefault();
+    }
+  });
+  // PKG-6 (V2): subframe navigations. The main frame is will-navigate's (one
+  // decision, one external open); a subframe never leaves the RC origin and
+  // never opens externally. web/ embeds no iframe today (grep 2026-10-26).
+  win.webContents.on("will-frame-navigate", (event) => {
+    if (!event || event.isMainFrame) {
+      return;
+    }
+    if (!nav.navigationDecision(event.url, resolvedOrigin).allow) {
+      event.preventDefault();
+    }
+  });
 }
 
-function createWindow() {
+// The saved shell state every surface reads before it applies (OVL1 overlay
+// settings, the S134 content toggle, the panel set, the release channel).
+// Loaded once at launch, before the updater, the hotkeys and any window.
+function loadShellState() {
   const saved = store.load(statePath(), {});
-  const cfg = cfgmod.resolveConfig(saved, process.env);
-
   // OVL1: load the operator overlay settings + aim the ACTIVE auto-revert at
   // the saved delay before any hotkey can arm it.
   overlaySettings = ov.overlaySettingsFrom(saved);
   activeRevert = ov.makeActiveRevert({ delayMs: overlaySettings.activeRevertSec * 1000 });
   // S134: restore the overlay content ON/OFF choice before any surface applies.
   overlayContentOn = tog.toggleStateFrom(saved).visible;
-
-  originHost = cfgmod.originHost(cfg.origin);
-  resolvedOrigin = cfg.origin;
 
   // Restore the overlay panel set before the overlay ever loads. Empty string
   // (nothing saved / unknown) -> null so the plain overlay=1 URL is kept.
@@ -535,6 +617,28 @@ function createWindow() {
   // Phase 5: the release channel resolves like the origin - env override
   // beats saved state beats the stable default.
   updateChannel = upd.resolveChannel(saved, process.env);
+}
+
+// The origin config: env RC_ORIGIN > the host-served origin (PKG-6, M4) >
+// saved > default, each VALIDATED against loopback + this host's
+// ops/local_hosts.json (S2). servedOrigin is optional.
+function resolveShellConfig(servedOrigin) {
+  const cfg = cfgmod.resolveConfig(store.load(statePath(), {}), process.env, {
+    localHosts,
+    servedOrigin: typeof servedOrigin === "string" ? servedOrigin : undefined,
+  });
+  return cfg;
+}
+
+// cfg: an already-resolved config (the boot watch passes the one health
+// answered on); omitted = resolve now.
+function createWindow(resolved) {
+  const cfg = resolved && typeof resolved === "object" ? resolved : resolveShellConfig();
+  if (cfg.originRejected && cfg.originRejected.length) {
+    // {source, reason} only - never the rejected value (no host in a log).
+    console.log("[rc-shell] origin candidates refused: " + JSON.stringify(cfg.originRejected));
+  }
+  resolvedOrigin = cfg.origin;
 
   // Resolve the on-screen position. If saved coords exist, clamp them to the
   // display nearest those coords; if not, leave x/y unset so Electron centers.
@@ -584,6 +688,7 @@ function createWindow() {
   guardNavigation(mainWindow);
 
   mainWindow.loadURL(cfg.origin);
+  appViewLoaded = true;
 
   // Overlay-only (operator 2026-06-21): the companion dashboard no longer
   // auto-surfaces on launch. This boot-show caused a ~2s flash of the big
@@ -1206,12 +1311,36 @@ function applyOverlaySettings() {
   refreshSurface(lastMode);
 }
 
+// PKG-6 (S3): every rcShell bridge channel answers only one of the shell's own
+// bridge windows (companion / overlay) whose SENDING FRAME is on the RC origin.
+// Defense in depth behind the navigation guard: a foreign frame that ever got
+// the preload bridge still cannot drive the shell. The toggle icon's channels
+// keep their own stricter rule (its local page only).
+function trustedSender(event) {
+  let frameUrl = null;
+  let sender = null;
+  try {
+    sender = event ? event.sender : null;
+    frameUrl = event && event.senderFrame ? event.senderFrame.url : null;
+  } catch (_e) {
+    frameUrl = null; // a destroyed frame throws on access: untrusted.
+  }
+  const knownWindow =
+    !!sender &&
+    ((mainWindow && !mainWindow.isDestroyed() && sender === mainWindow.webContents) ||
+      (overlayWindow && !overlayWindow.isDestroyed() && sender === overlayWindow.webContents));
+  return lch.senderAllowed({ frameUrl, origin: resolvedOrigin, knownWindow });
+}
+
 // IPC bridge handlers (OVL1). The ?overlay=1 renderer reads + writes the
 // operator overlay settings through the preload bridge; the state file is the
 // authority. set persists via the pure merger (overlay position/panelSet +
 // companion keys survive), re-resolves, and applies the new delay live.
 function registerIpc() {
-  ipcMain.handle("rc-shell:overlay-settings:get", () => {
+  ipcMain.handle("rc-shell:overlay-settings:get", (event) => {
+    if (!trustedSender(event)) {
+      return null;
+    }
     overlaySettings = ov.overlaySettingsFrom(store.load(statePath(), {}));
     return overlaySettings;
   });
@@ -1219,15 +1348,24 @@ function registerIpc() {
   // seeds the field when localStorage is empty (across a wipe / fresh profile);
   // set persists a drag / scale / reset through the pure merger so the sibling
   // overlay keys (position / panelSet / settings) + the companion keys survive.
-  ipcMain.handle("rc-shell:overlay-layout:get", () => {
+  ipcMain.handle("rc-shell:overlay-layout:get", (event) => {
+    if (!trustedSender(event)) {
+      return null;
+    }
     return ov.widgetLayoutFrom(store.load(statePath(), {}));
   });
-  ipcMain.handle("rc-shell:overlay-layout:set", (_event, layout) => {
+  ipcMain.handle("rc-shell:overlay-layout:set", (event, layout) => {
+    if (!trustedSender(event)) {
+      return null;
+    }
     const merged = ov.mergeWidgetLayoutPatch(store.load(statePath(), {}), layout);
     store.save(statePath(), merged);
     return ov.widgetLayoutFrom(merged);
   });
-  ipcMain.handle("rc-shell:overlay-settings:set", (_event, patch) => {
+  ipcMain.handle("rc-shell:overlay-settings:set", (event, patch) => {
+    if (!trustedSender(event)) {
+      return null;
+    }
     const merged = ov.mergeOverlaySettingsPatch(store.load(statePath(), {}), patch);
     store.save(statePath(), merged);
     overlaySettings = ov.overlaySettingsFrom(merged);
@@ -1237,7 +1375,10 @@ function registerIpc() {
   // RC2 4.2: a one-way hover ping from the overlay page (no reply needed). The
   // renderer's zone detector reports cursor-over-a-zone; we re-resolve the
   // effective click-through so the HUD captures clicks only over a control.
-  ipcMain.on("rc-shell:overlay-zone-hover", (_event, on) => {
+  ipcMain.on("rc-shell:overlay-zone-hover", (event, on) => {
+    if (!trustedSender(event)) {
+      return;
+    }
     overlayZoneHover = on === true;
     applyClickThrough();
   });
@@ -1245,7 +1386,10 @@ function registerIpc() {
   // ov.normOverlayAction is the allow-list + payload validator (an unlisted /
   // malformed message -> null -> no-op), then we run the SAME primitives the
   // Alt+Shift+C / Alt+Shift+A hotkeys use.
-  ipcMain.on("rc-shell:overlay-action", (_event, raw) => {
+  ipcMain.on("rc-shell:overlay-action", (event, raw) => {
+    if (!trustedSender(event)) {
+      return;
+    }
     const m = ov.normOverlayAction(raw);
     if (!m) {
       return;
@@ -1269,21 +1413,33 @@ function registerIpc() {
   // toggleAlwaysOnTop() so the menu checkbox + persisted companionAlwaysOnTop
   // stay coherent with the on-screen pin, and returns the new state for the
   // strip to reflect. get returns the live state to seed the strip on load.
-  ipcMain.on("rc-shell:win:minimize", () => {
+  ipcMain.on("rc-shell:win:minimize", (event) => {
+    if (!trustedSender(event)) {
+      return;
+    }
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.minimize();
     }
   });
-  ipcMain.on("rc-shell:win:close", () => {
+  ipcMain.on("rc-shell:win:close", (event) => {
+    if (!trustedSender(event)) {
+      return;
+    }
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.close();
     }
   });
-  ipcMain.handle("rc-shell:win:toggle-aot", () => {
+  ipcMain.handle("rc-shell:win:toggle-aot", (event) => {
+    if (!trustedSender(event)) {
+      return null;
+    }
     toggleAlwaysOnTop();
     return mainWindow && !mainWindow.isDestroyed() ? mainWindow.isAlwaysOnTop() : false;
   });
-  ipcMain.handle("rc-shell:win:get-aot", () => {
+  ipcMain.handle("rc-shell:win:get-aot", (event) => {
+    if (!trustedSender(event)) {
+      return null;
+    }
     return mainWindow && !mainWindow.isDestroyed() ? mainWindow.isAlwaysOnTop() : false;
   });
   // S134 overlay ON/OFF icon (toggle_preload.js). One-way pointer protocol,
@@ -1462,55 +1618,186 @@ function pollState(done) {
     finish(false);
     return;
   }
+  // timeout was 1500ms, but /api/state can take ~2.2s in-game (the
+  // minimap_dots ZOI CV stage dominates state-build); at 1500ms every
+  // in-game poll timed out -> finish(false) -> lastInGame never updated ->
+  // the overlay stayed stuck on the companion surface (2026-07-11).
+  // 4000ms clears the ~2.2s build with headroom. Real fix: make
+  // minimap_dots not block /api/state so this can go back to 1500.
+  originRequest(resolvedOrigin, "/api/state", 4000, (statusCode, data) => {
+    if (statusCode !== 200) {
+      finish(false);
+      return;
+    }
+    try {
+      const parsed = JSON.parse(data);
+      lastMode = ov.normMode(parsed.mode_key);
+      lastInGame = ov.liveGameFromState(parsed);
+      refreshSurface(lastMode, lastInGame);
+      finish(true);
+    } catch (_e) {
+      // leave surface as-is on a parse miss; counts as a failure.
+      finish(false);
+    }
+  });
+}
+
+// --- PKG-6 (S1): requests to the RC origin, TLS pinned to the install's leaf --
+// A GET to <origin><pathname>; done(statusCode, body) exactly once, with
+// statusCode 0 on any failure. https with a pin: the mkcert leaf does not chain
+// to Node's CA store, so the handshake skips chain validation and the leaf's
+// SHA-256 must match <root>/ops/tls/rc.pem before one byte is read. https with
+// no pin: NORMAL validation (system store included where Node offers it),
+// never a blanket accept. http (the packaged loopback default): plain.
+function originRequest(origin, pathname, timeoutMs, done) {
+  let settled = false;
+  const finish = (code, body) => {
+    if (settled) {
+      return;
+    }
+    settled = true;
+    done(code, body);
+  };
+  const mode = lch.pollTlsMode(origin, currentPins(false));
   let url;
   try {
-    url = new URL("/api/state", resolvedOrigin);
+    url = new URL(pathname, origin);
   } catch (_e) {
-    finish(false);
+    finish(0, "");
     return;
   }
-  const mod = url.protocol === "https:" ? https : http;
+  if (mode === "invalid") {
+    finish(0, "");
+    return;
+  }
+  const opts = { method: "GET", timeout: timeoutMs };
+  if (mode === "pin") {
+    opts.rejectUnauthorized = false; // the leaf pin below replaces chain validation.
+  } else if (mode === "verify") {
+    opts.rejectUnauthorized = true;
+    const ca = systemCaList();
+    if (ca) {
+      opts.ca = ca;
+    }
+  }
+  const mod = mode === "plain" ? http : https;
   let req;
   try {
-    req = mod.request(
-      url,
-      // timeout was 1500ms, but /api/state can take ~2.2s in-game (the
-      // minimap_dots ZOI CV stage dominates state-build); at 1500ms every
-      // in-game poll timed out -> finish(false) -> lastInGame never updated ->
-      // the overlay stayed stuck on the companion surface (2026-07-11).
-      // 4000ms clears the ~2.2s build with headroom. Real fix: make
-      // minimap_dots not block /api/state so this can go back to 1500.
-      { method: "GET", timeout: 4000, rejectUnauthorized: false },
-      (res) => {
-        let data = "";
-        res.on("data", (d) => {
-          data += d;
-        });
-        res.on("end", () => {
-          try {
-            const parsed = JSON.parse(data);
-            lastMode = ov.normMode(parsed.mode_key);
-            lastInGame = ov.liveGameFromState(parsed);
-            refreshSurface(lastMode, lastInGame);
-            finish(true);
-          } catch (_e) {
-            // leave surface as-is on a parse miss; counts as a failure.
-            finish(false);
-          }
-        });
+    req = mod.request(url, opts, (res) => {
+      if (mode === "pin") {
+        let cert = null;
+        try {
+          cert = res.socket.getPeerCertificate();
+        } catch (_e) {
+          cert = null;
+        }
+        const d = pinTrust(url.href, cert, origin);
+        if (!d.trust) {
+          console.log("[rc-shell] refused the origin's certificate: " + d.reason);
+          res.destroy();
+          req.destroy();
+          finish(0, "");
+          return;
+        }
       }
-    );
+      let data = "";
+      let size = 0;
+      res.on("data", (d) => {
+        size += d.length;
+        if (size > lch.MAX_HEALTH_BYTES * 16) {
+          req.destroy(); // a runaway answer is not RC.
+          finish(0, "");
+          return;
+        }
+        data += d;
+      });
+      res.on("end", () => finish(res.statusCode || 0, data));
+      res.on("error", () => finish(0, ""));
+    });
   } catch (_e) {
-    finish(false);
+    finish(0, "");
     return;
   }
-  req.on("error", () => finish(false));
+  req.on("error", () => finish(0, ""));
   req.on("timeout", () => {
-    finish(false);
+    finish(0, "");
     req.destroy();
   });
-  req.on("close", () => finish(false)); // backstop: no response at all.
+  req.on("close", () => finish(0, "")); // backstop: no response at all.
   req.end();
+}
+
+// Node's default CA set plus the OS store (where mkcert -install puts its
+// root), for "verify" mode. null = let Node use its default set.
+function systemCaList() {
+  try {
+    if (typeof nodeTls.getCACertificates === "function") {
+      return nodeTls.getCACertificates("default").concat(nodeTls.getCACertificates("system"));
+    }
+  } catch (_e) {
+    // fall through to Node's default set
+  }
+  return null;
+}
+
+// The install's leaf pin: <root>/ops/tls/rc.pem, the file the dashboard
+// serves (dashboard/server.py). Re-read at most once per refresh window, so
+// a renewed leaf (tools/regen_rc_cert.ps1 rewrites the same file) is trusted
+// without a relaunch. Expiry is deliberately NOT checked: the trust is "this
+// install's own leaf", not CA validity (PACKAGING_PLAN S1 renewal decision).
+function currentPins(force) {
+  const now = Date.now();
+  if (force ? lch.refreshDue(pinCache.readAt, now) : pinCache.readAt === null) {
+    const pin = tls.pinFromFile(rcRoot.tlsCertPath(backendRoot));
+    pinCache.pins = pin ? [pin] : [];
+    pinCache.readAt = now;
+  }
+  return pinCache.pins;
+}
+
+// The trust decision for a certificate presented by `url` (S1): pinned leaf
+// only; a miss re-reads the pin once (renewal) before it refuses.
+function pinTrust(url, cert, origin) {
+  const o = typeof origin === "string" && origin ? origin : resolvedOrigin;
+  let d = tls.pinDecision({ url, origin: o, cert, pins: currentPins(false) });
+  if (!d.trust && (d.reason === "pin-mismatch" || d.reason === "no-pin")) {
+    d = tls.pinDecision({ url, origin: o, cert, pins: currentPins(true) });
+  }
+  return d;
+}
+
+// The per-install dashboard token (ops/runtime/dash_token.txt, written by the
+// host's first-run provisioning); null until it exists. Re-read at most once
+// per refresh window while missing.
+function currentDashToken() {
+  const now = Date.now();
+  if (tokenCache.token === null && lch.refreshDue(tokenCache.readAt, now)) {
+    tokenCache.readAt = now;
+    const p = lch.dashTokenPath(backendRoot);
+    if (p) {
+      try {
+        tokenCache.token = lch.readToken(fs.readFileSync(p, "utf8"));
+      } catch (_e) {
+        tokenCache.token = null;
+      }
+    }
+  }
+  return tokenCache.token;
+}
+
+// PKG-6 (3.6, V3): attach X-RC-Token to the shell windows' requests for the
+// RC origin only, so the control endpoints accept the shell once a profile
+// turns dash_token_gate on. Every other origin's request is untouched.
+function installTokenHeader() {
+  session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
+    let headers = details.requestHeaders;
+    try {
+      headers = lch.withTokenHeader(details.requestHeaders, details.url, resolvedOrigin, currentDashToken()).headers;
+    } catch (_e) {
+      headers = details.requestHeaders;
+    }
+    callback({ requestHeaders: headers });
+  });
 }
 
 // Chained-setTimeout poll loop: each completed poll schedules the next at
@@ -1526,6 +1813,8 @@ function schedulePoll(delayMs) {
 function runPoll() {
   pollState((ok) => {
     pollFailures = ok ? 0 : pollFailures + 1;
+    pollFresh = ok; // the relaunch gate trusts lastInGame only off a fresh answer.
+    maybeRelaunchForUpdate();
     schedulePoll(ov.nextPollDelay(pollFailures, ov.OVERLAY_DEFAULTS.pollMs));
   });
 }
@@ -1554,27 +1843,49 @@ function doToggleActive() {
 // it (fs.watch is unreliable across the atomic tmp+replace on Windows) and flip
 // ACTIVE when the value advances. Seeded at boot so a pre-existing file does not
 // toggle on launch.
-const ACTIVE_TOGGLE_SIGNAL = path.join(
-  __dirname, "..", "..", "ops", "runtime", "overlay_active_toggle.txt"
-);
-let _lastActiveToggleSeen = 0;
-function _readActiveToggleSignal() {
+//
+// PKG-6 (M3): the three signal files live under the RESOLVED backend root's
+// ops/runtime (rc_root.SIGNAL_FILES: overlay_active_toggle.txt,
+// overlay_panel_cycle.txt, overlay_visible_toggle.txt), never relative to
+// this file - in a packaged build __dirname is inside resources/app.asar, so
+// the old __dirname-relative path pointed nowhere and the hotkeys went dead.
+// No root = the watches stay off (logged once), never a guessed path.
+function signalFiles() {
+  return rcRoot.signalPaths(backendRoot);
+}
+function _readSignal(file) {
+  if (!file) {
+    return 0;
+  }
   try {
-    const v = parseFloat(fs.readFileSync(ACTIVE_TOGGLE_SIGNAL, "utf8").trim());
+    const v = parseFloat(fs.readFileSync(file, "utf8").trim());
     return Number.isFinite(v) ? v : 0;
   } catch (_e) {
     return 0; // absent / unreadable -> treat as no signal
   }
 }
+// One poll-on-advance watch: seeded with the current value (a stale file never
+// fires on launch), then onAdvance() each time the stamp grows.
+function watchSignal(key, onAdvance) {
+  const files = signalFiles();
+  if (!files) {
+    console.log("[rc-shell] hotkey signal watch off (" + key + "): no backend root");
+    return;
+  }
+  const file = files[key];
+  let lastSeen = _readSignal(file);
+  signalTimers.push(
+    setInterval(() => {
+      const v = _readSignal(file);
+      if (v > lastSeen) {
+        lastSeen = v;
+        onAdvance();
+      }
+    }, 200)
+  );
+}
 function startActiveToggleWatch() {
-  _lastActiveToggleSeen = _readActiveToggleSignal(); // ignore a stale value
-  setInterval(() => {
-    const v = _readActiveToggleSignal();
-    if (v > _lastActiveToggleSeen) {
-      _lastActiveToggleSeen = v;
-      doToggleActive();
-    }
-  }, 200);
+  watchSignal("activeToggle", doToggleActive);
 }
 
 // Win32 listener -> overlay panel-cycle signal. tools/hotkey_listener.py owns
@@ -1585,28 +1896,11 @@ function startActiveToggleWatch() {
 // and stamps an epoch here on each press. Same poll-on-advance contract as the
 // ACTIVE-toggle watch above; rotates coach -> build -> threat so the build
 // widget (hidden outside the build panelset) is reachable in-game.
-const PANEL_CYCLE_SIGNAL = path.join(
-  __dirname, "..", "..", "ops", "runtime", "overlay_panel_cycle.txt"
-);
-let _lastPanelCycleSeen = 0;
-function _readPanelCycleSignal() {
-  try {
-    const v = parseFloat(fs.readFileSync(PANEL_CYCLE_SIGNAL, "utf8").trim());
-    return Number.isFinite(v) ? v : 0;
-  } catch (_e) {
-    return 0; // absent / unreadable -> treat as no signal
-  }
-}
 function startPanelCycleWatch() {
-  _lastPanelCycleSeen = _readPanelCycleSignal(); // ignore a stale value
-  setInterval(() => {
-    const v = _readPanelCycleSignal();
-    if (v > _lastPanelCycleSeen) {
-      _lastPanelCycleSeen = v;
-      applyPanelSet(ov.cyclePanelSet(panelSet));
-      scheduleActiveRevert();
-    }
-  }, 200);
+  watchSignal("panelCycle", () => {
+    applyPanelSet(ov.cyclePanelSet(panelSet));
+    scheduleActiveRevert();
+  });
 }
 
 // Win32 listener -> overlay content ON/OFF signal (S134, the keyboard twin of
@@ -1616,29 +1910,12 @@ function startPanelCycleWatch() {
 // observes the chord system-wide, and out of a game Ctrl+Shift+O belongs to
 // whatever app has focus (VS Code / Chrome bind it) - acting on it there would
 // silently flip the persisted choice and start the next match with the HUD off.
-const VISIBLE_TOGGLE_SIGNAL = path.join(
-  __dirname, "..", "..", "ops", "runtime", "overlay_visible_toggle.txt"
-);
-let _lastVisibleToggleSeen = 0;
-function _readVisibleToggleSignal() {
-  try {
-    const v = parseFloat(fs.readFileSync(VISIBLE_TOGGLE_SIGNAL, "utf8").trim());
-    return Number.isFinite(v) ? v : 0;
-  } catch (_e) {
-    return 0; // absent / unreadable -> treat as no signal
-  }
-}
 function startVisibleToggleWatch() {
-  _lastVisibleToggleSeen = _readVisibleToggleSignal(); // ignore a stale value
-  setInterval(() => {
-    const v = _readVisibleToggleSignal();
-    if (v > _lastVisibleToggleSeen) {
-      _lastVisibleToggleSeen = v;
-      if (tog.acceptsToggleInput(currentSurface())) {
-        toggleOverlayContent();
-      }
+  watchSignal("visibleToggle", () => {
+    if (tog.acceptsToggleInput(currentSurface())) {
+      toggleOverlayContent();
     }
-  }, 200);
+  });
 }
 
 // Global hotkeys (Electron globalShortcut). Toggle hides the active surface;
@@ -1688,23 +1965,318 @@ function registerHotkeys() {
   });
 }
 
-// Scoped certificate trust: trust ONLY the RC origin host's self-signed cert.
-// Every other host falls through to normal cert validation. This is the spec's
-// hard requirement (section 3.4): never globally disable cert errors.
-app.on("certificate-error", (event, _webContents, url, _error, _cert, callback) => {
-  let host = "";
-  try {
-    host = new URL(url).host;
-  } catch (_e) {
-    host = "";
-  }
-  if (host && originHost && host === originHost) {
+// Scoped certificate trust: trust ONLY the install's own leaf on the RC origin.
+// Every other host / certificate falls through to normal cert validation. This
+// is the spec's hard requirement (section 3.4): never globally disable cert
+// errors. PKG-6 (S1): it used to trust ANY certificate presented for the origin
+// host; now the certificate's SHA-256 must equal <root>/ops/tls/rc.pem's.
+app.on("certificate-error", (event, _webContents, url, _error, cert, callback) => {
+  const d = pinTrust(url, cert, resolvedOrigin);
+  if (d.trust) {
     event.preventDefault();
-    callback(true); // trust RC's mkcert self-signed cert
+    callback(true); // the pinned RC leaf
   } else {
     callback(false); // everything else: normal cert rules
   }
 });
+
+// --- PKG-6: the launcher -----------------------------------------------------
+
+// The backend root (./rc_root): --rc-root, RC_ROOT, the packaged
+// resources/backend, or (checkout launch only) this checkout. Rejections are
+// logged as {source, reason} - never a path.
+function resolveBackend() {
+  const r = rcRoot.resolveRcRoot({
+    argv: process.argv,
+    env: process.env,
+    isPackaged: app.isPackaged,
+    bundledRoot: lch.bundledBackendDir(process.resourcesPath),
+    devDir: __dirname,
+  });
+  backendRoot = r.root;
+  if (r.rejected.length) {
+    console.log("[rc-shell] backend root candidates refused: " + JSON.stringify(r.rejected));
+  }
+  console.log("[rc-shell] backend root: " + (r.root ? "found (" + r.source + ")" : "none"));
+  localHosts = rcRoot.readLocalHosts(backendRoot);
+}
+
+// S6: productName moved userData from <appData>/rc-shell to
+// <appData>/<productName>; copy the old state file across once (exclusive
+// copy - never overwrites) so window, overlay and widget layout survive.
+function migrateUserData() {
+  let m;
+  try {
+    m = lch.userDataMigration({
+      userDataDir: app.getPath("userData"),
+      appDataDir: app.getPath("appData"),
+    });
+  } catch (_e) {
+    return;
+  }
+  if (!m.migrate) {
+    return;
+  }
+  try {
+    fs.mkdirSync(path.dirname(m.to), { recursive: true });
+    fs.copyFileSync(m.from, m.to, fs.constants.COPYFILE_EXCL);
+    console.log("[rc-shell] migrated the shell state file to the productName folder");
+  } catch (e) {
+    console.log("[rc-shell] state migration skipped: " + (e && e.code ? e.code : "error"));
+  }
+}
+
+// Spawn the PKG-1 service host: ONE windowless child that owns every RC
+// service in a job object. stdin is its quit channel; stdout / stderr are
+// ignored (the host logs to ops/runtime/logs/service_host.log). The plan
+// (./launcher hostLaunchPlan) decides; a disabled plan leaves the shell
+// exactly as it was before PKG-6.
+function startServiceHost() {
+  const plan = lch.hostLaunchPlan({
+    root: backendRoot,
+    argv: process.argv,
+    env: process.env,
+    isPackaged: app.isPackaged,
+    parentPid: process.pid,
+  });
+  if (!plan.enabled) {
+    console.log("[rc-shell] service host not started: " + plan.reason);
+    return;
+  }
+  hostEnabled = true;
+  hostLaunchedAt = Date.now();
+  let child;
+  try {
+    child = spawn(plan.command, plan.args, {
+      cwd: plan.cwd,
+      windowsHide: true, // libuv adds CREATE_NO_WINDOW: no console flash.
+      stdio: ["pipe", "ignore", "ignore"],
+    });
+  } catch (e) {
+    hostExitCode = -1;
+    console.log("[rc-shell] service host spawn failed: " + (e && e.code ? e.code : "error"));
+    return;
+  }
+  hostChild = child;
+  hostPid = Number.isInteger(child.pid) ? child.pid : null;
+  console.log("[rc-shell] service host started (profile " + plan.profile + ", python " + plan.pythonSource + ")");
+  if (child.stdin) {
+    child.stdin.on("error", () => {}); // EPIPE once the host is gone.
+  }
+  child.on("error", (e) => {
+    console.log("[rc-shell] service host error: " + (e && e.code ? e.code : "error"));
+    if (hostChild === child && child.exitCode === null && !child.pid) {
+      hostChild = null;
+      hostExitCode = -1;
+    }
+  });
+  child.on("exit", (code) => {
+    if (hostChild === child) {
+      hostChild = null;
+    }
+    hostExitCode = Number.isInteger(code) ? code : -1;
+    console.log("[rc-shell] service host exited: " + hostExitCode);
+  });
+}
+
+// Stop the host: the documented "stop" line (it writes the supervisor's
+// shutdown request, stops the agents by owned handle, then ends its job),
+// a bounded wait, then end the host process itself - its job object then
+// takes every service with it (KILL_ON_JOB_CLOSE). One stop in flight.
+function stopServiceHost(reason) {
+  if (hostStopPromise) {
+    return hostStopPromise;
+  }
+  const child = hostChild;
+  if (!child) {
+    hostStopped = true;
+    return Promise.resolve();
+  }
+  hostStopPromise = new Promise((resolve) => {
+    let done = false;
+    let timer = null;
+    const finish = () => {
+      if (done) {
+        return;
+      }
+      done = true;
+      if (timer) {
+        clearTimeout(timer);
+      }
+      hostStopped = true;
+      resolve();
+    };
+    child.once("exit", finish);
+    timer = setTimeout(() => {
+      console.log("[rc-shell] service host did not stop in time; ending it");
+      try {
+        child.kill();
+      } catch (_e) {
+        // already gone
+      }
+      setTimeout(finish, 2000); // never hold the quit forever.
+    }, lch.HOST_STOP_GRACE_MS);
+    try {
+      child.stdin.write("stop\n");
+      child.stdin.end();
+    } catch (_e) {
+      // a closed pipe is EOF to the host: it stops either way.
+    }
+    console.log("[rc-shell] stopping the service host (" + reason + ")");
+  });
+  return hostStopPromise;
+}
+
+// The starting view: a small, FRAMED local window (native close button, no
+// preload bridge, strict CSP) shown while the services come up. Closing it
+// before the app is ready quits the app (and stops the host).
+let startingWindow = null;
+function createStartingWindow() {
+  if (startingWindow && !startingWindow.isDestroyed()) {
+    return startingWindow;
+  }
+  startingWindow = new BrowserWindow({
+    width: 560,
+    height: 380,
+    show: false,
+    resizable: false,
+    minimizable: true,
+    maximizable: false,
+    backgroundColor: "#0b0e14",
+    title: "Amberstone",
+    autoHideMenuBar: true,
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+    },
+  });
+  startingWindow.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  startingWindow.webContents.on("will-navigate", (e) => e.preventDefault());
+  startingWindow.loadFile(path.join(__dirname, "starting.html"));
+  startingWindow.on("closed", () => {
+    startingWindow = null;
+  });
+  return startingWindow;
+}
+
+function renderStartingView(model) {
+  if (!startingWindow || startingWindow.isDestroyed()) {
+    return;
+  }
+  // The model is plain ASCII data (./launcher startingModel); JSON is a valid
+  // JS literal, and the page renders it with textContent only.
+  startingWindow.webContents
+    .executeJavaScript("window.__rcStarting && window.__rcStarting(" + JSON.stringify(model) + ")", true)
+    .catch(() => {});
+  if (model.view === "error" && !startingWindow.isVisible()) {
+    startingWindow.show(); // an error is shown at once, not after the delay.
+  }
+}
+
+// GET <origin>/api/health -> done(ok). Same pinned request as the poll.
+function probeHealth(origin, done) {
+  originRequest(origin, "/api/health", lch.HEALTH_TIMEOUT_MS, (code, body) => {
+    done(lch.healthOk(code, body));
+  });
+}
+
+// One boot-watch pass: read the host's status file, re-resolve the origin
+// with the origin the host reports it serves (validated, never trusted), ask
+// /api/health, and either enter the app or refresh the starting view.
+function bootTick() {
+  bootTimer = null;
+  if (appViewLoaded) {
+    return;
+  }
+  const status = svc.readStatus(rcRoot.runtimeFile(backendRoot, svc.STATUS_FILE_NAME));
+  const served = status.ok && !status.stale && status.origin ? status.origin : undefined;
+  const cfg = resolveShellConfig(served);
+  probeHealth(cfg.origin, (ok) => {
+    if (appViewLoaded) {
+      return;
+    }
+    const view = lch.bootView({
+      view: svc.shellView({
+        status,
+        healthOk: ok,
+        sinceLaunchMs: Date.now() - hostLaunchedAt,
+        hostPid: lch.statusHostPid({ hostPid, hostExitCode }),
+      }),
+      hostEnabled,
+      hostRunning: !!hostChild,
+      hostExitCode,
+    });
+    if (view.view === "app") {
+      enterAppView(cfg);
+      return;
+    }
+    renderStartingView(lch.startingModel(view, status));
+    bootTimer = setTimeout(bootTick, lch.BOOT_TICK_MS);
+  });
+}
+
+function startBootWatch() {
+  createStartingWindow();
+  // Show only if the start takes a while: a healthy attach-mode launch (the
+  // pre-cutover scheduled tasks already run RC) never flashes it.
+  bootShowTimer = setTimeout(() => {
+    bootShowTimer = null;
+    if (!appViewLoaded && startingWindow && !startingWindow.isDestroyed()) {
+      startingWindow.show();
+    }
+  }, lch.STARTING_SHOW_DELAY_MS);
+  bootTick();
+}
+
+// /api/health answered: the companion takes over on the origin health answered
+// on, the poll starts, and the starting window goes (after the companion
+// exists, so closing it never counts as "all windows closed").
+function enterAppView(cfg) {
+  if (bootTimer) {
+    clearTimeout(bootTimer);
+    bootTimer = null;
+  }
+  if (bootShowTimer) {
+    clearTimeout(bootShowTimer);
+    bootShowTimer = null;
+  }
+  createWindow(cfg);
+  applyCompanionAlwaysOnTop();
+  startPoll();
+  if (startingWindow && !startingWindow.isDestroyed()) {
+    const wasVisible = startingWindow.isVisible();
+    startingWindow.destroy();
+    if (wasVisible && mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.showInactive(); // the operator was watching: hand over visibly.
+    }
+  }
+}
+
+// PKG-6: a downloaded shell update relaunches only when the operator armed it
+// and the last fresh /api/state said no game is live; the host stops first,
+// then the installer runs (it would otherwise race the running services).
+let relaunchStarted = false;
+function maybeRelaunchForUpdate() {
+  const d = lch.relaunchDecision({
+    pending: pendingShellUpdate,
+    armed: relaunchArmed,
+    inGame: lastInGame,
+    stateFresh: pollFresh,
+  });
+  if (!d.relaunch || relaunchStarted || !autoUpdater) {
+    return;
+  }
+  relaunchStarted = true;
+  console.log("[rc-shell] relaunching to install shell update " + pendingShellUpdate);
+  stopServiceHost("shell update").then(() => {
+    try {
+      autoUpdater.quitAndInstall(true, true);
+    } catch (_e) {
+      app.quit(); // the update still installs on this quit (autoInstallOnAppQuit).
+    }
+  });
+}
 
 // Single-instance: a second launch focuses the existing window instead of
 // spawning a duplicate companion.
@@ -1740,23 +2312,36 @@ if (!gotLock) {
       }
       mainWindow.show(); // un-hide (focus alone will not) + raise to front
       mainWindow.focus();
+    } else if (startingWindow && !startingWindow.isDestroyed()) {
+      startingWindow.show(); // PKG-6: still starting - show the starting view.
+      startingWindow.focus();
     }
   });
 
   app.whenReady().then(() => {
+    app.setAppUserModelId("com.amberstone.shell"); // N3: = electron-builder.yml appId.
+    migrateUserData(); // S6: before the first state read.
+    resolveBackend(); // PKG-6: backend root, per-host config.
+    loadShellState();
     registerIpc();
-    createWindow();
-    // RC2 E1: apply the persisted companion pin once the window exists. The
-    // saved top-level alwaysOnTop already seeded the BrowserWindow at create;
-    // this aligns the overlay-settings companionAlwaysOnTop with it.
-    applyCompanionAlwaysOnTop();
+    installTokenHeader();
+    startServiceHost(); // PKG-6: the services start with the APP, never at boot.
     setupAutoUpdater();
     registerHotkeys();
     watchDisplayChanges(); // RM-145: overlay must track a display-mode change.
     startActiveToggleWatch();
     startPanelCycleWatch();
     startVisibleToggleWatch(); // S134: Ctrl+Shift+O overlay content ON/OFF.
-    startPoll();
+    if (hostEnabled) {
+      startBootWatch(); // starting view until /api/health answers (enterAppView).
+    } else {
+      createWindow();
+      // RC2 E1: apply the persisted companion pin once the window exists. The
+      // saved top-level alwaysOnTop already seeded the BrowserWindow at create;
+      // this aligns the overlay-settings companionAlwaysOnTop with it.
+      applyCompanionAlwaysOnTop();
+      startPoll();
+    }
     app.on("activate", () => {
       // macOS re-open behavior; harmless on Windows.
       if (BrowserWindow.getAllWindows().length === 0) {
@@ -1765,10 +2350,30 @@ if (!gotLock) {
     });
   });
 
+  // PKG-6: hold the quit until the service host has stopped (stop line,
+  // bounded grace, then the host is ended and its job takes the services).
+  app.on("before-quit", (event) => {
+    if (lch.quitNeedsHostStop({ running: !!hostChild, stopped: hostStopped })) {
+      event.preventDefault();
+      stopServiceHost("quit").then(() => app.quit());
+    }
+  });
+
   app.on("will-quit", () => {
     if (pollTimer) {
       clearTimeout(pollTimer);
       pollTimer = null;
+    }
+    if (bootTimer) {
+      clearTimeout(bootTimer);
+      bootTimer = null;
+    }
+    if (bootShowTimer) {
+      clearTimeout(bootShowTimer);
+      bootShowTimer = null;
+    }
+    while (signalTimers.length) {
+      clearInterval(signalTimers.pop()); // N2: the hotkey signal-file polls.
     }
     if (activeRevertTimer) {
       clearTimeout(activeRevertTimer);

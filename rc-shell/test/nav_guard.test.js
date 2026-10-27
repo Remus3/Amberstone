@@ -120,12 +120,17 @@ test("main.js guards both bridge-carrying windows (companion + overlay)", () => 
 });
 
 test("main.js has no unguarded window-open handler left", () => {
-  // Every setWindowOpenHandler is either the guard's own or the toggle icon's
-  // flat deny (a local file page with no links).
+  // Every setWindowOpenHandler is either the guard's own or a flat deny on a
+  // local file page with no links: the toggle icon and (PKG-6) the launcher's
+  // starting view.
   const handlers = MAIN_SRC.match(/setWindowOpenHandler\(/g) || [];
-  assert.strictEqual(handlers.length, 2, "guardNavigation + toggle icon only");
+  assert.strictEqual(handlers.length, 3, "guardNavigation + toggle icon + starting view only");
   assert.ok(
     MAIN_SRC.includes('toggleWindow.webContents.setWindowOpenHandler(() => ({ action: "deny" }))'),
     "the toggle icon keeps its flat deny"
+  );
+  assert.ok(
+    MAIN_SRC.includes('startingWindow.webContents.setWindowOpenHandler(() => ({ action: "deny" }))'),
+    "the starting view denies every window.open"
   );
 });
