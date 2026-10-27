@@ -314,6 +314,59 @@ Subscription failover routing: MEASURED 2026-07-29 - the MSIX Claude desktop GUI
 
 RC coaching stays on the direct API regardless: it uses the Console API key (`API-Key-Claude.txt`), not the subscription. Key lookup (ENV-APIKEY, MAIN order 2026-10-13): every reader goes through `core/anthropic_key.py` - the process variable `ANTHROPIC_API_KEY` first when usable (only when the parent environment carries it: no launcher sets it), then `API-Key-Claude.txt` at the repo root (gitignored). `start.bat`, `scripts\restart.bat` and `scripts\start_debug.bat` run `core/anthropic_key.py` itself as their key check (RM-810): after `cd /d` to the repo root, with an absolute interpreter (`python-embed` first, else `python.exe` found by the PATH search of `for`, retried over a quote-stripped copy of PATH only when that misses; never the caller's folder), they keep a usable inherited variable, clear an unusable one, and `start.bat` refuses to start when no usable key exists or the check cannot run. No user- or machine-scope variable is needed or wanted: an inherited one can move a `claude` session's billing to the API. `install.bat` writes the key file and never runs `setx`. Every production `anthropic.Anthropic(...)` pins `base_url="https://api.anthropic.com"` (defense-in-depth in case the user-wide var is ever re-set); `tests/test_anthropic_base_url_pin.py` guards it (fails on any unpinned or new construction site). Keep the pins.
 
+### Launcher cutover (PKG-7) - OPERATOR ONLY
+
+`tools/launcher_cutover.ps1` moves the RC app off its scheduled tasks so the packaged launcher
+(rc-shell + `ops/launcher/service_host.py`) owns the services (`docs/PACKAGING_PLAN.md` section 5).
+It is an elevated, operator-only, one-time act: no session, lane or loop runs it with `-Apply`.
+
+- Scope: exactly `RC-Supervisor`, `RC-LCUAgent`, `RC-LiveClientRelay`, `RC-HotkeyListener`,
+  `RC-Phase3-Supervisor`, `RC-DaemonSlayer` and `RC-DSKeepalive`, plus `RC-LiveFlipWatcher` only
+  with `-IncludeLiveFlipWatcher` (the launcher does not run that watcher, so it then stops running
+  at logon at all). It UNREGISTERS and never disables (a disabled `RC-DaemonSlayer` makes RC's
+  DsWatchdog raise instead of starting DS itself; plan S9). Every other task in the table above
+  stays, and deleting the bare `RiotCommander` stays a separate operator call.
+- Default = DRY RUN: with no switch it reads each task, exports its XML in memory (proving the
+  backup will work), prints what it would write and unregister, the listeners on 8888 / 8889 /
+  8860 and `ops/runtime/launcher_status.json`, and changes nothing - no task, no file, no
+  process. Only `-Apply` changes anything; `-WhatIf` always wins over `-Apply`; `-Apply` refuses
+  (exit 2) in a shell that is not elevated. It never starts, stops or kills a process or a task.
+- Exit codes: 0 done or plan printed; 1 a step failed or a backup was refused; 2 refused before
+  any change (not elevated, no backup to roll back, bad switches).
+
+Steps (run from the repo root; Windows PowerShell 5.1 or pwsh):
+
+1. Stage 0, no change: launch the app beside the tasks (`--profile dev` on this checkout) - it
+   attaches and starts nothing (plan 3.3). Confirm the shell, the starting view and the update
+   check.
+2. Dry run (no elevation needed):
+   `powershell -NoProfile -ExecutionPolicy Bypass -File tools\launcher_cutover.ps1`.
+   Each listed task shows its state, logon type, run level and exported XML size, or
+   `not registered - nothing to do`.
+3. Stage 1, elevated: the same command plus `-Apply`. It writes a NEW gitignored folder
+   `ops\runtime\launcher_cutover\cutover-<yyyyMMdd-HHmmss>\` holding one `<task>.xml` each
+   (UTF-16, as Task Scheduler exports it) and `manifest.json` (prior state, logon type, run
+   level, sha256 per file), reads every file back against its sha256 - any failure stops the
+   run before the first unregister - then unregisters each task and reads back that it is gone.
+4. Stage 2 proof: restart Windows. An unregistered task does not stop the process it started,
+   and DS runs as SYSTEM, so a sign-out alone leaves it listening. After logon, run the dry run
+   again: every task `not registered` and `listeners on 8888 / 8889 / 8860: none` is the
+   never-at-boot proof. Then launch the app: every service up and `launcher_status.json`
+   healthy; quit it: nothing RC is left listening.
+5. Rollback: `-Rollback` (dry run), then `-Rollback -Apply` (elevated). It takes the newest
+   backup folder, or `-BackupDir <folder>`; every XML must match its manifest sha256 or nothing is
+   re-registered; a task that is registered again is left alone; a task whose account needs a
+   password is reported for a hand import (Task Scheduler, Import Task). None of the seven needs
+   one today (measured 2026-10-26: Interactive, S4U and ServiceAccount logons).
+6. Record, in the same commit as the cutover record: this table, its live count and the
+   `tools/rc_facts.py` expectations (plan section 5 step 5). After the cutover
+   `tools/legion_on.ps1` / `tools/legion_off.ps1` report the moved tasks as MISSING; start and
+   stop RC through the app instead.
+
+The script never ships in a packaged build (`tools/build_portable.py`, operator-only task
+driver). Guard: `tests/test_launcher_cutover_ps1.py` (static gate checks everywhere; the 5.1
+parse and fake-cmdlet dry runs where Windows PowerShell 5.1 exists).
+
 ---
 
 ## Mission Control (:8895)

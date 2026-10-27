@@ -263,6 +263,8 @@ def test_inclusion_is_the_git_index_not_the_disk(fake_repo):
     "tools/phase_watcher_install.ps1", "tools/install_daemon_slayer_task.ps1",
     "tools/legion_on.ps1", "tools/legion_off.ps1", "tools/legion_agent_boot.ps1",
     "tools/install_lane_widget_shortcut.ps1",
+    # PKG-7: the operator's ONLOGON-to-launcher cutover
+    "tools/launcher_cutover.ps1",
     # belt and braces beyond the git index
     "data/coach_trace.jsonl", "moon_sync_inbox/note.md", "memory/MEMORY.md",
     # Phase 3 (dev profile only) and Mission Control-only route tables
@@ -558,7 +560,7 @@ def test_no_tracked_file_with_a_boot_signature_ships():
     every = bp.boot_signature_hits(REPO, excluded)
     for rel in ("tools/install_ds_keepalive_task.ps1", "tools/install_mission_control_task.ps1",
                 "tools/phase_watcher_install.ps1", "tools/install_daemon_slayer_task.ps1",
-                "tools/legion_on.ps1"):
+                "tools/legion_on.ps1", "tools/launcher_cutover.ps1"):
         assert rel in every, f"{rel}: signature scan went blind"
 
 

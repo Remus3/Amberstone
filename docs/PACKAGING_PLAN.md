@@ -3,8 +3,10 @@
 Status: LIVING SPEC (ROADMAP row PKG). Phase 1 = Q/A + spec, written
 2026-10-26 (session 141). Wave A (PKG-1, -2, -3, -4, -5, -8) landed the same
 session (section 4 status); PKG-1b landed after it (4859c9405..1ca036c77);
-PKG-6 landed in session 142 (65cc65565, 34990bcd6). PKG-6b (updater
-wiring) and PKG-7 are open. Each later wave updates this file in place.
+PKG-6 landed in session 142 (65cc65565, 34990bcd6, docs cceec4798). The
+PKG-7 cutover tooling was built in session 142 and waits for the operator
+(section 5; not run, hand-off ASKS 45). PKG-6b (updater wiring) is open.
+Each later wave updates this file in place.
 
 Operator intent (2026-10-25, memory `project_packaged_app_requirements`),
 all binding:
@@ -408,9 +410,11 @@ Status 2026-10-26 (`git log 2d3e1c85b..86627008a`):
   dea18d069), PKG-5 (f3690023f, d2fb1c125: a peer-address gate instead of
   a loopback bind + token; CSP deferred, S15), PKG-8 (79fec0b5f, d9c5f2a47).
 - LANDED after wave A: PKG-1b (below; 4859c9405..1ca036c77).
-- LANDED in session 142: PKG-6 (65cc65565, 34990bcd6; checklist result
-  below the PKG-6 row).
-- OPEN: PKG-6b (updater CLI wiring, WA11), PKG-7.
+- LANDED in session 142: PKG-6 (65cc65565, 34990bcd6, docs cceec4798;
+  checklist result below the PKG-6 row).
+- BUILT s142, not run: PKG-7 (below). Running it is the operator step
+  (section 5; hand-off ASKS 45).
+- OPEN: PKG-6b (updater CLI wiring + per-service restart, WA11).
 
 - PKG-1 Service host. Files: `ops/launcher/__init__.py`,
   `ops/launcher/service_host.py`, `ops/launcher/services.json`,
@@ -525,6 +529,21 @@ Status 2026-10-26 (`git log 2d3e1c85b..86627008a`):
   task's XML before touching it; it UNREGISTERS (never disables) exactly
   the section-5 list; `-Rollback` re-imports the XML; PS 5.1 ParseFile
   clean, ASCII + LF. Running it is the operator step. Tier-1.
+  Status s142: BUILT, never run with `-Apply`. A real run needs `-Apply`
+  (refused unelevated, exit 2) and `-WhatIf` beats it; every change goes
+  through ONE gate, `Invoke-Change`, which only prints in a dry run. The
+  backup (`<task>.xml` + `manifest.json` with sha256, under the gitignored
+  `ops/runtime/launcher_cutover/`) is read back before the first unregister;
+  `-Rollback` (dry by default) checks each sha256, leaves a re-registered
+  task alone and reports a password-logon task for a hand import. The
+  default dry run doubles as the stage-2 check (tasks, listeners on 8888 /
+  8889 / 8860, `launcher_status.json`). Also touched:
+  `tools/build_portable.py` excludes the script from every bundle
+  (`R_TASKS`; the boot-signature scan would otherwise fail the build).
+  Runbook: `docs/OPERATIONS.md` "Launcher cutover (PKG-7)". Guard
+  `tests/test_launcher_cutover_ps1.py`: static gate checks run everywhere;
+  the 5.1 parse and the dry runs against fake task cmdlets (real task
+  module blocked from loading) run where Windows PowerShell 5.1 exists.
 - PKG-8 Lockfile + third-party notices. Files: `.gitignore` (negate
   `rc-shell/package-lock.json`), `rc-shell/package-lock.json`,
   `tools/build_third_party_notices.py`,
@@ -664,9 +683,11 @@ any step here. The packaged app must have passed attach mode (3.3) first.
 1. Stage 0, no system change: run the packaged app in attach mode beside
    the existing tasks and confirm the shell, the status view and the update
    check.
-2. Stage 1, OPERATOR STEP (elevated): `tools/launcher_cutover.ps1` without
-   `-WhatIf` exports each task's XML to a gitignored backup folder under
-   `ops/runtime/`, then UNREGISTERS `RC-Supervisor`, `RC-LCUAgent`,
+2. Stage 1, OPERATOR STEP (elevated): `tools/launcher_cutover.ps1 -Apply`
+   (with no switch it is a dry run; read that plan first) exports each
+   task's XML to a gitignored backup folder under
+   `ops/runtime/launcher_cutover/`, reads it back, then UNREGISTERS
+   `RC-Supervisor`, `RC-LCUAgent`,
    `RC-LiveClientRelay`, `RC-HotkeyListener`, `RC-Phase3-Supervisor`,
    `RC-DaemonSlayer` and `RC-DSKeepalive` (plus `RC-LiveFlipWatcher` if the
    operator wants it launcher-owned). Unregister, never disable (S9). Dev
@@ -674,10 +695,13 @@ any step here. The packaged app must have passed attach mode (3.3) first.
    inbox responder, data-pipeline and replay tasks, the proxy and quota
    utilities) are not the app and stay. Deleting the disabled bare
    `RiotCommander` task stays the operator's separate call.
-3. Stage 2 proof: sign out and back in; nothing RC listens on :8888 /
-   :8889 / :8860 (never-at-boot). Launch the app: all services up and
-   `launcher_status.json` healthy. Quit: no RC process left.
-4. Rollback: `tools/launcher_cutover.ps1 -Rollback` re-imports the XML.
+3. Stage 2 proof: restart Windows (unregistering a task does not stop the
+   process it started, and the SYSTEM-context DS survives a sign-out), then
+   run the script with no switch: no listed task registered and nothing RC
+   listens on :8888 / :8889 / :8860 (never-at-boot). Launch the app: all
+   services up and `launcher_status.json` healthy. Quit: no RC process left.
+4. Rollback: `tools/launcher_cutover.ps1 -Rollback` (dry run), then
+   `-Rollback -Apply` (elevated), re-imports the XML after a sha256 check.
 5. Record: `docs/OPERATIONS.md` scheduled-task table and its live count,
    plus `tools/rc_facts.py` expectations, change in the same commit as the
    cutover record.
