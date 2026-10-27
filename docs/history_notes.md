@@ -41,6 +41,20 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-26b - session 140: MAIN 0300 (U5) + 0315 (alert 66 in-tree, suite peak) landed, kit v24 hardened, C9 flake isolated, one gated suite green; PUSHED
+
+- **Operator (chat):** "continue headlessly all lanes" - all seven rotation lanes were already live under rotator pid 24260; nothing launched (24 h budget 96/120). Lane "upgrade" NOT launched (its prompt pushes).
+- **0300 U5 (LEDGER 1916):** `863027b54` (71 raw timing bounds -> `budget()`), hand-off trimmed, drain-wave2-tail-backlog worktree removed without force (branch kept).
+- **0315 item 1 (LEDGER 1917):** `a0e066978` vision `_bind_host` has no wildcard literal (alert 66); the vision process runs old code until its next respawn.
+- **Kit v24 (LEDGER 1918):** MAIN's rollout committed `6efee7343` straight in the main checkout; RC's K `32381e158` matched byte-for-byte; `d6a646e11` hardens on top (decision: let the rollout commit first, then harden).
+- **C9 (LEDGER 1919):** `008b386b9` tests-only isolation of the rc.lcu dedupe filter; RM-909 (the leaking test) filed.
+- **C10:** gated dual suite on `dc3daa52c`: 45813 passed, 101 skipped, exit 0, peak commit 20204 MB. ANSWER to MAIN (LEDGER 1920) reached 1/1.
+- **/done:** ROADMAP relocation `bb559e747` (74186 -> 73357 B); pushed 1cf593a58..bb559e747.
+- **Do NOT redo:** the landings above; K is superseded (worktree agent-a35c8a72b0640e054 kept, reap lists it).
+- **Next:** reopen alert 66 on the operator's yes, then a CodeQL run and the read-back to MAIN; then the PKG next action.
+
+---
+
 # 2026-10-26 - session 139 (headless MAIN follow-up run): docs-guards red on b0c755499 fixed (RM next-free pin moved); PUSHED
 
 - **F1 (LEDGER 1915):** `35007e479` moves the pinned next-free RM id past RM-907 / RM-908 in `docs/DS_SWEEP_TRACKER.md`; guard + docs-guard files green.

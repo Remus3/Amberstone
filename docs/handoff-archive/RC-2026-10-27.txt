@@ -1,0 +1,78 @@
+# archived from RC-NEXT-SESSION.txt at 2026-10-27T05:46:06Z
+====================
+CLOSED - S142 RECORDS: OLD NEXT ACTION 1, THE s143-DONE S142 ITEMS, DO-NOT-RE-LITIGATE, STATUS AND ACCEPTANCE (s143 /done trim; moved VERBATIM; the full prior file is git show 04f0aeccf:RC-NEXT-SESSION.txt)
+====================
+From the header (s143 replaced it with Next action 1 = PKG-6c; PKG-6b was built + verified s143,
+not merged, LEDGER 1934):
+Next action 1 (PKG-6b, autonomous; operator intent VERBATIM in A26 block 2; memory
+project_packaged_app_requirements.md; spec docs/PACKAGING_PLAN.md section 4 WA11): the backend
+updater CLI (check / stage / apply / finish) + per-service restart; accept: tests + an independent
+verifier + tools/run_packaged_smoke.py over a real build. Then the operator-gated batch in ONE line
+(ASKS 45 packaged-app acts, 39 + 49). PKG-6 (autonomous half) + PKG-7 (built, never run) LANDED
+s142 (LEDGER 1927 / 1928). No Overwolf data dependency (operator ruling 2026-10-25). The ONLOGON
+tasks stay until the cutover. No lane works PKG (lane 7 excludes rc-shell/**).
+FIRST: CPU / memory glance; inbox_tick.py --pending; gh pr list; the CLI re-pin + the Dependabot
+alerts re-read (SESSION 142 ITEMS); git fetch + origin/main still an
+ancestor of main; gh run view any s142 run Status lists as pending.
+From "SESSION 142 ITEMS" (all four done s143: alerts re-read 0 open / 100 fixed and the CLI re-pin
+bc799b46a, LEDGER 1933; the memory split and the a1662617 / ad3a17c51 branch deletes, LEDGER 1935;
+the ae4b613943b5ff34a branch stays in the s144 hand-off):
+- Dependabot ALERTS: 38 open at the push (22 high), ALL rc-shell/package-lock.json, opened
+  2026-10-26 (xmldom, brace-expansion, fast-uri, js-yaml < 4.3.2, ...); local npm audit 0 after
+  JSY. Re-read `gh api repos/<owner>/<repo>/dependabot/alerts?state=open`; triage what stays open.
+- CLI pin (the s142 suite's one red): CLI 2.1.311 vs PINNED_CLI 2.1.310
+  (tests/test_subagent_prompt_flag.py): `python tools/repin_subagent_cli.py` (4 kit runs).
+- MEMORY SPLIT: 20 memories exist only in the second account's memory dir (incl.
+  feedback_squash_merged_branch_delete.md, project_packaged_app_requirements.md): reconcile (copy +
+  index + drift_guard), never drop.
+- s142 branches landed by CHERRY-PICK (kept): worktree-agent-a1662617f730c31cf (DEP-26),
+  -ad3a17c51f245c525 (PKG-6), -ae4b613943b5ff34a (PKG-7; worktree kept, acba657f3 resolved a
+  conflict): delete per the squash-merged recipe (memory).
+From "OPEN - WORK ITEMS" (done s143: H1 deleted 9 s141 branches, LEDGER 1935):
+- s141 reap kept 7 worktree-agent-* branches dated 2026-10-26 "not merged by ancestry" (squash
+  landings, every commit on main by patch): delete per the squash-merged recipe (memory).
+From "DO NOT RE-LITIGATE" (each still stands with its Reverses if:; the anthropic line is
+superseded by the s143 2.3.0 decline, LEDGER 1936):
+- s142 (LEDGER 1926-1932): every landing (DEP-26 2fc75b886, PKG-6 65cc65565 + 34990bcd6 + cceec4798,
+  PKG-7 acba657f3 + 21da946ed, SF1 a0c20ea24, DEP-25 72324c7b5, JSY 537b72710 + e13219044). Reverses
+  if: a live re-check or CI reds one of them.
+- s142 decisions (LEDGER 1926 / 1927 / 1928): anthropic 2.2.0 declined (ignore widened to
+  ">1.11.0,<=2.2.0"); the packaged GPU error_code=18 read as the agent environment; PKG-7 built and
+  never run by a session; board rendered --final (every s142 task done). Reverses if, each: RM-681
+  closes + a 2.x migration is scoped; an Explorer launch on Legion fails the same way; the operator
+  runs ASKS 45 (c); a task is carried open at a /done.
+From "STATUS, CONTEXT, ACCEPTANCE" (the s142 record; ci 40432669270 read back success s143):
+Status (s142 /done): session commits 2fc75b886..e13219044 (10) + e6aa499aa (s141 /done), PUSHED
+6e28127f3..e13219044 main -> main (pre-push dry runs clean: identity 0, sweep "ARMED" 56 files / 11
+messages, credential 0 over 4315 lines; no game-id-shaped numbers); then this /done commit (LEDGER
+1926-1932, ROADMAP PKG row, OPERATIONS headroom datum, WAKEUP + prune, A26 block 3, this hand-off;
+local until the next push). bot_merge_check clean (11); contributors = the operator only. Gate:
+ruff clean; hygiene trio 14 passed; drift_guard 0; gated dual suite on e13219044 (-n 6, margin
+18432): 1 failed (CLI pin), 46668 passed, 104 skipped, exit 1, 910 s; md + hand-off guards (125
+modules) 4267 passed, 4 skipped, exit 0. Full suite (2c):
+covered by the push's own head e13219044 (ci_impact_selector mode=full, requirements-ci.txt) = push
+ci 40432669270, PENDING at the /done (check job running; sibling-sweep-tree green): `gh run view
+40432669270` first; no dispatch. codeql 40432669126 green; docs-guards 40432669352 green. Reap: 1
+removed + 2 deregistered orphans deleted by long path, a383 branch -d (LEDGER 1932). RC: pid 14092
+alive, last_reload_ok true, restart_trigger empty; no game (mode client); vision pid 31944 runs
+a0e066978. Session file 1.5 MB. Inbox 0 pending; no steer / intent. perseus_sync + --verify 2267 /
+2267. Memory: 1 new (packaged GPU error_code=18). Board: rendered --final after this commit.
+Acceptance: PKG-6b landed and verifier-gated (smoke green over a real build); the CLI re-pin and the
+Dependabot alerts re-read done; ASKS 45 read back (Explorer check, npm ci, cutover stage-2 check);
+alert 66 reads "fixed" after the reopen and a later CodeQL run, read-back sent to MAIN; the operator
+asks re-batched in one line.
+# archived from RC-NEXT-SESSION.txt at 2026-10-27T05:46:06Z
+====================
+CLOSED - WATCH-AND-DATA DETAIL MOVED FROM THE OPEN LISTS (s143 /done trim; watch triggers, act only when seen; the s144 hand-off keeps every item's name and a pointer here) - verbatim from 04f0aeccf:RC-NEXT-SESSION.txt lines 335-345
+====================
+- RM-699 (s134, LEDGER 1873 / 1881): a restart storm on a non-loaded edit is new evidence (older
+  storms: s108 8, s113 27, s116 8).
+- RM-833 skips: gated 101-141 (s129-s141; 101 / 104 s141), dispatch 340 -> 448 (s130), 443 (s131);
+  cause not investigated (BACKLOG row).
+- Advisory mypy (ci.yml:774-776, continue-on-error): 417 errors / 84 files (was 400 / 82). Not a gate.
+- Timing flake: test_dashboard_server_thread_start_rm738.py test_long_lived_requests_do_not_starve_
+  a_short_one (1.0 s) failed 2 of 4 at 100 percent CPU (s113); s140 (MAIN U5 item 1) scales it by
+  fleet_test_guard.budget(1.0) - re-measure if it reds again on a quiet box.
+- logs/vision_wedge_*.txt or "vision server hung" on the POOLED server = new evidence (stack dump).
+- UNATTRIBUTED: the 2026-10-10 07:36-10:02 hang (RM-737 note) + RC starts 06:37 / 06:51, a
+  heartbeat_error fatal 04:51:23Z; s104: 24 children died 0xC0000142 once. W1: OPERATIONS.md section.

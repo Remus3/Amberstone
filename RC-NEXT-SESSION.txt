@@ -1,14 +1,14 @@
 NEXT SESSION
 ------------
-SESSION: 143
+SESSION: 144
 PUSH: the s135-s137 operator hold was superseded by MAIN's 1935 FIX order ("push at /done"; MAIN
 speaks for the operator). Push tier: once at /done + at most one mid-session push per hour.
-NEVER delete riot.txt from origin. s135-s142 (LEDGER 1883-1932) are on main (the s142 /done docs +
+NEVER delete riot.txt from origin. s135-s143 (LEDGER 1883-1937) are on main (the s143 /done docs +
 hand-off commit rides the next push). VERBATIM archives in docs/handoff-archive/: RC-2026-10-25.txt
 block 6 (s135 push record, fence, procedure, status), block 7 (rewrite SHA maps: 2026-10-09 x2, s135
 x2); RC-2026-10-26.txt (= "A26" below: block 1 s136-s139 records; block 2 s140 records, old next
 actions incl. the operator's verbatim PKG intent, s140 status; block 3 s141 records; block 4
-standing notes).
+standing notes); RC-2026-10-27.txt (= "A27": block 1 s142 records + status; block 2 watch detail).
 NEVER PUSH (real game ids or the bare fixture line inside): lane/*, s135-land and the old s134 / s135
 builder branches, refs/stash, every archive/* tag incl. s135-pre-credpragma-main (never `git push
 --tags`), ops/runtime/branch_bundles/* incl. s135-pre-credpragma.bundle. Push main only. Never
@@ -17,21 +17,45 @@ CPU (s120): glance at CPU, FREE MEMORY and orphaned pytest / python / node trees
 SCRATCH (s127): every sub-agent prompt names a UNIQUE scratch subfolder.
 FROZEN: the s135 grant was SESSION-scoped (ASKS 35) - re-ask before any frozen edit.
 
-Next action 1 (PKG-6b, autonomous; operator intent VERBATIM in A26 block 2; memory
-project_packaged_app_requirements.md; spec docs/PACKAGING_PLAN.md section 4 WA11): the backend
-updater CLI (check / stage / apply / finish) + per-service restart; accept: tests + an independent
-verifier + tools/run_packaged_smoke.py over a real build. Then the operator-gated batch in ONE line
-(ASKS 45 packaged-app acts, 39 + 49). PKG-6 (autonomous half) + PKG-7 (built, never run) LANDED
-s142 (LEDGER 1927 / 1928). No Overwolf data dependency (operator ruling 2026-10-25). The ONLOGON
-tasks stay until the cutover. No lane works PKG (lane 7 excludes rc-shell/**).
+Next action 1 (PKG-6c, autonomous; ROADMAP row PKG-6c; file:line detail + the med / low lists in
+LEDGER 1934; operator intent VERBATIM in A26 block 2): PKG-6b (backend updater CLI + per-service
+restart, WA11) is BUILT + VERIFIED, NOT MERGED: branch worktree-agent-ade3dd10ba7a548d1 tip
+9819e60e7 (6 commits on 04f0aeccf), worktree .claude/worktrees/agent-ade3dd10ba7a548d1 - KEEP both
+(never --force / -D). V6a PASS (962 Python + 619/619 node, smoke 60/60 over a real build,
+merge-tree vs a5c8d94ff clean); V6b found 2 PLAUSIBLE highs, so (rule: merge only if the review
+after round 5 finds no high) it is carried. H-A: a lost / interrupted apply recovers with no idle /
+game gate (update_cycle.py:847-853, updater.py:2002, backend_update.js:277): a rollback can restart
+main.py in champ select or a live game; fix = the H2 _apply_gate deferral. H-B: readiness never
+reads /api/state (update_cycle.py:626, backend_update.js:333), so a release whose state route 500s
+is kept and no later cycle runs; plus the H2 variant (an owed service's recover deferred forever).
+J3: the deferHost no-op mutant survives (backend_update.test.js:571-573).
+Recipe: fix H-A + H-B + J3 TDD on 9819e60e7 in that worktree; verifier + a high-only review (one
+writer OR one verifier per worktree at a time); land per commit with `git cherry-pick --no-commit
+<sha>` + `fleet_gitlock.py run -- git commit -C <sha>`; touched tests on the merged tree. Smoke [H]
+never ran (no node_modules / electron-builder cache). Dev-mode RC is unaffected. Never hand-edit
+docs/PACKAGING_PLAN.md on main (the branch carries its edits). Then the operator-gated batch in ONE
+line (ASKS 45, 39 + 49). No Overwolf data dependency (ruling 2026-10-25). ONLOGON tasks stay until
+the cutover. No lane works PKG (lane 7 excludes rc-shell/**).
 Next action 2 (C7, NOT DONE; MAIN ORDER 0315 item 1; waits on the operator's in-chat yes = ASKS 39 /
 49): `gh api -X PATCH repos/<owner>/<repo>/code-scanning/alerts/66 -f state=open` (read back
 "dismissed false positive" s141). Fix a0e066978 is pushed; the s141 push's CodeQL 40354895079 ran
 with the alert dismissed, so after the reopen a LATER CodeQL run is needed (next push or a codeql
 workflow_dispatch); then read back "fixed" and send MAIN the read-back in the batched note.
-FIRST: CPU / memory glance; inbox_tick.py --pending; gh pr list; the CLI re-pin + the Dependabot
-alerts re-read (SESSION 142 ITEMS); git fetch + origin/main still an
-ancestor of main; gh run view any s142 run Status lists as pending.
+FIRST: CPU / memory glance; inbox_tick.py --pending; gh pr list; git fetch + origin/main still an
+ancestor of main; `gh run view` every run the Status block lists as pending (the dispatch
+40456618221 first); the CLI pin (tests/test_subagent_prompt_flag.py vs the live CLI).
+
+====================
+SESSION 143 ITEMS (LEDGER 1933-1937; WAKEUP_NOTES 2026-10-27)
+====================
+- UNTRACKED, not authored by s143: agents/agent6_auditor/reports/20261027-015000-full-audit-pass.md
+  (owner unknown, never committed): find its writer, then commit, gitignore or leave.
+- Branches deletable (memory feedback_squash_merged_branch_delete.md; tips into the LEDGER):
+  worktree-agent-a5c8ab05ced8bb41a (s140; on main as a0e066978), worktree-agent-af942e93f8bac58b6
+  (A1; on main by patch as a5c8d94ff). worktree-agent-ae4b613943b5ff34a (PKG-7; worktree kept; 1
+  commit not on main by patch; PACKAGING_PLAN differs at acba657f3): diff, then decide.
+- Every anthropic 2.x bump is declined until ROADMAP ANTHROPIC-2X (gated on RM-681) runs; ignore
+  ">1.11.0,<=2.3.0"; PR #28 closed by Dependabot after the push.
 
 ====================
 SESSION 142 ITEMS (LEDGER 1926-1932; WAKEUP_NOTES 2026-10-26d)
@@ -44,19 +68,8 @@ SESSION 142 ITEMS (LEDGER 1926-1932; WAKEUP_NOTES 2026-10-26d)
 - PKG-7: an unregister failure continues and returns 1 (backup already read back);
   -IncludeLiveFlipWatcher removes RC-LiveFlipWatcher with NO replacement; the cutover needs a
   RESTART (3 RC tasks are S4U, RC-DaemonSlayer a SYSTEM boot trigger).
-- Bot PRs #25 / #26 read back CLOSED by Dependabot after the push. Main checkout
-  rc-shell/node_modules still electron 44.5.1 (overlay lock; ASKS 45 b); the lock reads 45.0.0.
-- Dependabot ALERTS: 38 open at the push (22 high), ALL rc-shell/package-lock.json, opened
-  2026-10-26 (xmldom, brace-expansion, fast-uri, js-yaml < 4.3.2, ...); local npm audit 0 after
-  JSY. Re-read `gh api repos/<owner>/<repo>/dependabot/alerts?state=open`; triage what stays open.
-- CLI pin (the s142 suite's one red): CLI 2.1.311 vs PINNED_CLI 2.1.310
-  (tests/test_subagent_prompt_flag.py): `python tools/repin_subagent_cli.py` (4 kit runs).
-- MEMORY SPLIT: 20 memories exist only in the second account's memory dir (incl.
-  feedback_squash_merged_branch_delete.md, project_packaged_app_requirements.md): reconcile (copy +
-  index + drift_guard), never drop.
-- s142 branches landed by CHERRY-PICK (kept): worktree-agent-a1662617f730c31cf (DEP-26),
-  -ad3a17c51f245c525 (PKG-6), -ae4b613943b5ff34a (PKG-7; worktree kept, acba657f3 resolved a
-  conflict): delete per the squash-merged recipe (memory).
+- Main checkout rc-shell/node_modules still electron 44.5.1 (overlay lock; ASKS 45 b); the lock
+  reads 45.0.0.
 
 ====================
 SESSION 141 ITEMS (LEDGER 1921-1925; WAKEUP_NOTES 2026-10-26c)
@@ -69,8 +82,7 @@ SESSION 141 ITEMS (LEDGER 1921-1925; WAKEUP_NOTES 2026-10-26c)
 - K branch worktree-agent-a35c8a72b0640e054 (32381e158; its worktree removed s141): NOT superseded
   byte-for-byte (tests/test_fleet_kit_v20.py / v23.py differ from main, comments only; no other ref
   holds it), so the squash-merged recipe forbids branch -D: decide keep vs delete (bundle first).
-- Dependabot: #23 / #24 CLOSED (LEDGER 1921); #22 closed by Dependabot, superseded by #25 = DEP-25
-  (s142, LEDGER 1930). Live Python still runs websockets 17.2 (ASKS 48).
+- Live Python still runs websockets 17.2 (ASKS 48).
 - Kit observations for the MAIN note: a bare `git merge --ff-only` met only a hook suggestion
   (fleet_gitlock), not a block; the RM-258 guard now keys Class.method (eb90635d5). s142: `reap
   --apply` on a worktree with long paths printed "remove failed: Filename too long" AFTER git had
@@ -135,7 +147,7 @@ STANDING NOTES (s134 steers, sweep-config / md-selector / lane-8 rules, CI image
 expected-not-findings, orphans, quarantine ids): VERBATIM in A26 block 4 - read at session start.
 
 ====================
-CARRIED FROM s133 (not reached s134-s142; bodies in BACKLOG)
+CARRIED FROM s133 (not reached s134-s143; bodies in BACKLOG)
 ====================
 - RM-880 (c)-(d) RM-815 residue ((b) SHIPPED s135; RM-838 and RM-807 CLOSED s135, LEDGER 1884).
 - Fix RM-817 push-CI shape guard gaps; measure RM-819 d (test_rm740_cg / test_body_read_timeout_rm152
@@ -147,12 +159,12 @@ CARRIED FROM s133 (not reached s134-s142; bodies in BACKLOG)
   RM-871, RM-876, RM-881 (RM-856 / RM-864 / RM-873 SHIPPED s135); the research lane's `queue-ready`
   index = the ROADMAP "s133 research lane" row.
 - Re-check RM-823 (kit fleet_board version bump; open until MAIN ships a fix). Watch RM-833.
-- Send ONE batched note to MAIN (not a REPLY - outside the carve-out; unsent s131-s142; 12/day cap;
+- Send ONE batched note to MAIN (not a REPLY - outside the carve-out; unsent s131-s143; 12/day cap;
   operator yes = ASKS 49): RM-831, RM-778 / RM-798 status, the route single ruling, the s130 board
-  finding (kit v24 --final still marks listed rows done, re-read s141), the GH1 outcome
-  (operator-approved range-limited rebuild, s135; a kit range option still helps), the s140 rollout
-  observation (A26 block 2; memory feedback_kit_rollout_commits_in_main_checkout.md), the s141 + s142
-  kit observations (SESSION 141 above), the C7 read-back.
+  finding (kit v24 --final still marks listed rows done, re-read s141; s143 rendered NON-final),
+  the GH1 outcome (operator-approved range-limited rebuild, s135; a kit range option still helps),
+  the s140 rollout observation (A26 block 2; memory feedback_kit_rollout_commits_in_main_checkout.md),
+  the s141 + s142 kit observations (SESSION 141 above), the C7 read-back.
 - At the next League game read back S6: vision decodes a live frame under Pillow 13 (cef8bfd22).
 - Decisions: RM-883 (show the deterministic ARAM objective? no Haiku baseline, ever; an Objective
   field grows the Haiku call R78 retires); RM-884 (deterministic item_extra is a constant "omit",
@@ -207,22 +219,21 @@ Channel and MAIN:
 - B3 read-back of MAIN 2237: the next pane shows the acct2 status line, no [Legion] line.
 - mission_control.py holds the old worktree base until restart; the old lane folder + junction are
   MAIN's to release.
-Worktrees, branches, refs (after s142: main + 7 lanes + agent-ae4b613943b5ff34a; K, T13, drain,
-s141 + s142 agent branches kept):
+Worktrees, branches, refs (after s143: main + 7 lanes + agent-ade3dd10ba7a548d1 (PKG-6b) +
+agent-ae4b613943b5ff34a; K, T13, drain and the SESSION 143 branches kept):
 - RM-822 PARTIAL (LEDGER 1786; table: gitignored ops/runtime/rm822-result.md): KEEP
   drain/wave2-tail-backlog (RM-229; branch only since s140), worktree-agent-a0a31cf1b05f41e28
   (RM-519; only its branch_bundles/ bundle since s137), worktree-wf_0815ac54-8f2-4 (RM-239 / RM-242 /
   RM-297b); WATCH m2-prebuild-56e5572e4 (the only ref with the a25593521 commits 348d5e3b7 /
   beff33b88 cite - tag 3a484e425 first). Refs, archive/* tags, restore recipe, bundle list: A26.
-- s141 reap kept 7 worktree-agent-* branches dated 2026-10-26 "not merged by ancestry" (squash
-  landings, every commit on main by patch): delete per the squash-merged recipe (memory).
 - RM-681 PARTIAL: owes one attended live call per path (truststore MET s133 c6; it also holds the
-  dependabot anthropic range); then origin c1/deps-pip-anthropic1-measure (24c54ec39) can go.
+  dependabot anthropic range; ROADMAP ANTHROPIC-2X waits on it); then origin
+  c1/deps-pip-anthropic1-measure (24c54ec39) can go.
 Rows and decisions:
 - Still open rows: the s139 index (100+ ids) is VERBATIM in A26; each row
-  lives in BACKLOG / ROADMAP. Next free RM-910 (pin docs/DS_SWEEP_TRACKER.md); next LEDGER 1933.
-- ROADMAP top open: PKG (PKG-6b + ASKS 45), RM-488 (operator), RM-596, RM-597, then the
-  RM-681.. rows; EXTERNAL-LIFT Band 2 / 4 stay in BACKLOG. ROADMAP.md 73169 B (s142 /done; the
+  lives in BACKLOG / ROADMAP. Next free RM-910 (pin docs/DS_SWEEP_TRACKER.md); next LEDGER 1938.
+- ROADMAP top open: PKG (PKG-6c + ASKS 45), RM-488 (operator), RM-596, RM-597, then the
+  RM-681.. rows; EXTERNAL-LIFT Band 2 / 4 stay in BACKLOG. ROADMAP.md 71426 B (s143 /done; the
   drift_guard 90 percent line is 73728): before crossing it, move closed rows to
   docs/ROADMAP_HISTORY.md (ids named literally; verify verbatim).
 - Y-45 phone push needs ntfy (host local-only). Operator APPROVED Y-44 (frozen lcu_client.py) + Y-45
@@ -254,14 +265,15 @@ BLOCKED-BOUNDARY (halt: out-of-tree, joint, or MAIN's act):
   sibling-to-sibling note stuck in a stale folder (ASKS 26).
 - Joint re-pins, never solo: CHANNEL_PIN (docs/CHANNEL.md still lists LL / lacks EW - five-way),
   RM-502, RM-429, RM-430; any further SHARED_SHA256 re-pin.
-- SessionStart anomalies: "slot bucket 0.lock DEAD_PID (pid 6668)" (machine-wide; not re-checked
-  s116-s141); RC-ClaudeQuotaWatch FAILURE 0x800710E0 (s131 / s132 ExecutionTimeLimit kill; no RM id).
+- SessionStart anomalies: slot bucket 0.lock DEAD_PID (machine-wide; pid 27412 at s143, left alone:
+  slots.py reap() clears it when both slots are busy); RC-ClaudeQuotaWatch FAILURE 0x800710E0
+  (s131 / s132 ExecutionTimeLimit kill; no RM id). s143 left 2 dead-parent procs (13596, 12984).
 
 ====================
 OPEN - OPERATOR ASKS (batched, re-ask in ONE line; last re-batched in chat s141)
 ====================
-Open: 1-7, 9-12 (unanswered s111-s142), 15, 17, 18, 20-24, 26, 28-33, 36, 38-49. Closed asks (19,
-25, 27, 34, 35, 37) and the 2026-10-22 GitHub security read-back: A26. s142: operator away.
+Open: 1-7, 9-12 (unanswered s111-s143), 15, 17, 18, 20-24, 26, 28-33, 36, 38-49. Closed asks (19,
+25, 27, 34, 35, 37) and the 2026-10-22 GitHub security read-back: A26. s142 / s143: operator away.
 1. GitHub repo topics (README item 8, RM-731): pick them (20 today).
 2. Pages deployment records (240 = 231 active, 9 error): mark old inactive + delete (irreversible),
    or leave? Backup: sidecar pages-deployments-20261009-131815.json. Never touch riot.txt.
@@ -313,7 +325,8 @@ Open: 1-7, 9-12 (unanswered s111-s142), 15, 17, 18, 20-24, 26, 28-33, 36, 38-49.
 40. (s141 PKG M10) Licence ruling: the two LGPL ffmpeg DLLs (Electron ffmpeg.dll; the opencv videoio
     DLL, stripped by default) and certifi (MPL-2.0) - ship, strip or replace?
 41. Code-signing certificate for the packaged app, or ship unsigned (S4)?
-42. OK to publish the first packaged-app GitHub Release (PKG-6 / PKG-7 landed s142; WA9 first)?
+42. OK to publish the first packaged-app GitHub Release (PKG-6 / PKG-7 landed s142; PKG-6b waits on
+    PKG-6c; WA9 first)?
 43. RM-189 public-release gates: Riot dev-portal registration, public site + ToS + Privacy Policy,
     the B4-f live-advice ruling.
 44. Reopen ADR-006 (personal Riot key) before any build goes to anyone else?
@@ -332,37 +345,25 @@ Open: 1-7, 9-12 (unanswered s111-s142), 15, 17, 18, 20-24, 26, 28-33, 36, 38-49.
 ====================
 OPEN - WATCH AND DATA (act only when seen)
 ====================
-- RM-699 (s134, LEDGER 1873 / 1881): a restart storm on a non-loaded edit is new evidence (older
-  storms: s108 8, s113 27, s116 8).
-- RM-833 skips: gated 101-141 (s129-s141; 101 / 104 s141), dispatch 340 -> 448 (s130), 443 (s131);
-  cause not investigated (BACKLOG row).
-- Advisory mypy (ci.yml:774-776, continue-on-error): 417 errors / 84 files (was 400 / 82). Not a gate.
-- Timing flake: test_dashboard_server_thread_start_rm738.py test_long_lived_requests_do_not_starve_
-  a_short_one (1.0 s) failed 2 of 4 at 100 percent CPU (s113); s140 (MAIN U5 item 1) scales it by
-  fleet_test_guard.budget(1.0) - re-measure if it reds again on a quiet box.
-- logs/vision_wedge_*.txt or "vision server hung" on the POOLED server = new evidence (stack dump).
-- UNATTRIBUTED: the 2026-10-10 07:36-10:02 hang (RM-737 note) + RC starts 06:37 / 06:51, a
-  heartbeat_error fatal 04:51:23Z; s104: 24 children died 0xC0000142 once. W1: OPERATIONS.md section.
+- Items (detail + triggers VERBATIM in A27 block 2): RM-699 restart storm on a non-loaded edit;
+  RM-833 skips; advisory mypy 417 / 84 (not a gate); the rm738 timing flake (re-measure on a quiet
+  box); vision_wedge_*.txt / "vision server hung" = new evidence; the UNATTRIBUTED 2026-10-10 hang.
 
 ====================
 DO NOT RE-LITIGATE (each with Reverses if:)
 ====================
-- s142 (LEDGER 1926-1932): every landing (DEP-26 2fc75b886, PKG-6 65cc65565 + 34990bcd6 + cceec4798,
-  PKG-7 acba657f3 + 21da946ed, SF1 a0c20ea24, DEP-25 72324c7b5, JSY 537b72710 + e13219044). Reverses
-  if: a live re-check or CI reds one of them.
-- s142 decisions (LEDGER 1926 / 1927 / 1928): anthropic 2.2.0 declined (ignore widened to
-  ">1.11.0,<=2.2.0"); the packaged GPU error_code=18 read as the agent environment; PKG-7 built and
-  never run by a session; board rendered --final (every s142 task done). Reverses if, each: RM-681
-  closes + a 2.x migration is scoped; an Explorer launch on Legion fails the same way; the operator
-  runs ASKS 45 (c); a task is carried open at a /done.
-- All earlier ones VERBATIM with their Reverses if: in docs/handoff-archive/ - s141 (LEDGER
-  1921-1925; incl. the s141 decisions + NON-final board): RC-2026-10-26.txt block 3; s140 (LEDGER
-  1916-1920): RC-2026-10-26.txt block 2; s136-s137 (LEDGER 1906-1912): RC-2026-10-26.txt block 1;
-  s135 (LEDGER 1883-1905): RC-2026-10-25.txt block 6; s134 (1861-1882): block 5; s133 (shipped
-  rows, TFT set resolver, lolmath --lolmath-only not --force, the board, the S4 ruling that git hooks
-  fail CLOSED, the sibling-sweep-tree arm PARTIAL - "ARMED WITH A MEASURED ESCAPE RATE ABOVE ZERO"
-  stays): block 3; older: RC-2026-10-23.txt (s128 / s129), RC-2026-10-24.txt (s130-s132),
-  RC-2026-10-25.txt block 1. Read them before re-opening any.
+- s143 (LEDGER 1933-1937): the landings bc799b46a / fbe3fb7ef / a5c8d94ff and the 11 branch
+  deletes (tips LEDGER 1935). Reverses if: a live re-check or CI reds one of them.
+- s143 decisions: anthropic 2.3.0 declined (LEDGER 1936); PKG-6b NOT merged by the round-5 rule
+  (LEDGER 1934); board NON-final (LEDGER 1937). Reverses if, each: RM-681 closes + ANTHROPIC-2X is
+  scoped; H-A + H-B fixed or refuted and a high-only review finds no high; MAIN ships the RM-823 fix
+  or a /done carries no task.
+- All earlier ones VERBATIM with their Reverses if: in docs/handoff-archive/: s142 RC-2026-10-27.txt
+  block 1; s141 / s140 / s136-s137 RC-2026-10-26.txt blocks 3 / 2 / 1; s135 / s134 / s133
+  RC-2026-10-25.txt blocks 6 / 5 / 3 (s133: shipped rows, TFT set resolver, lolmath --lolmath-only
+  not --force, the board, git hooks fail CLOSED, the sibling-sweep-tree arm PARTIAL - "ARMED WITH A
+  MEASURED ESCAPE RATE ABOVE ZERO" stays); older: RC-2026-10-23.txt (s128 / s129),
+  RC-2026-10-24.txt (s130-s132), RC-2026-10-25.txt block 1. Read them before re-opening any.
 
 ====================
 PROCEDURE: docs/OPERATIONS.md "Session procedure" + the lines VERBATIM in docs/handoff-archive/
@@ -375,28 +376,29 @@ guards (memory feedback_new_test_files_meet_repo_hygiene_guards.md).
 ====================
 STATUS, CONTEXT, ACCEPTANCE
 ====================
-Status (s142 /done): session commits 2fc75b886..e13219044 (10) + e6aa499aa (s141 /done), PUSHED
-6e28127f3..e13219044 main -> main (pre-push dry runs clean: identity 0, sweep "ARMED" 56 files / 11
-messages, credential 0 over 4315 lines; no game-id-shaped numbers); then this /done commit (LEDGER
-1926-1932, ROADMAP PKG row, OPERATIONS headroom datum, WAKEUP + prune, A26 block 3, this hand-off;
-local until the next push). bot_merge_check clean (11); contributors = the operator only. Gate:
-ruff clean; hygiene trio 14 passed; drift_guard 0; gated dual suite on e13219044 (-n 6, margin
-18432): 1 failed (CLI pin), 46668 passed, 104 skipped, exit 1, 910 s; md + hand-off guards (125
-modules) 4267 passed, 4 skipped, exit 0. Full suite (2c):
-covered by the push's own head e13219044 (ci_impact_selector mode=full, requirements-ci.txt) = push
-ci 40432669270, PENDING at the /done (check job running; sibling-sweep-tree green): `gh run view
-40432669270` first; no dispatch. codeql 40432669126 green; docs-guards 40432669352 green. Reap: 1
-removed + 2 deregistered orphans deleted by long path, a383 branch -d (LEDGER 1932). RC: pid 14092
-alive, last_reload_ok true, restart_trigger empty; no game (mode client); vision pid 31944 runs
-a0e066978. Session file 1.5 MB. Inbox 0 pending; no steer / intent. perseus_sync + --verify 2267 /
-2267. Memory: 1 new (packaged GPU error_code=18). Board: rendered --final after this commit.
+Status (s143 /done): session commits bc799b46a, fbe3fb7ef, a5c8d94ff (+ 04f0aeccf, the s142 /done),
+PUSHED e13219044..a5c8d94ff main -> main (pre-push dry runs: identity 0, sweep "ARMED" clean 11
+files / 4 messages, credential 0 over 238 lines); then this /done commit (LEDGER 1933-1937, ROADMAP
+PKG-6c + ANTHROPIC-2X rows, WAKEUP + prune, A27, this hand-off; local until the next push).
+bot_merge_check clean (4); contributors = 1 (User). Gate: ruff clean; hygiene trio 14 passed; slice
+230 passed; md + hand-off guards (115 modules) 3154 passed, 4 skipped, exit 0; drift_guard 0; no
+local whole suite (no Tier-2 change on main). CI: push ci 40456593464 GREEN (mode=slice, 27 modules); codeql 40456593513 green;
+docs-guards 40456593470 green; the s142 push ci 40432669270 green. Full suite (2c): no full run
+covered HEAD, so dispatched ci 40456618221 (headSha a5c8d94ff) - PENDING at the /done: `gh run view
+40456618221` first; no second dispatch. PR #28 CLOSED by Dependabot. Reap: 1 removed
+(agent-af942e93f8bac58b6), 2 listed (PKG-6b, agent-ae4b613943b5ff34a), 7 lanes kept. RC: pid 6848
+alive, last_reload_ok true, restart_trigger empty; no game (mode client). Session file 2.1 MB.
+Inbox 0 pending; no steer / intent. perseus_sync --verify 2293 / 2293. Memory: 1 updated
+(feedback_verifier_needs_a_frozen_tree.md). Board: rendered NON-final after this commit (P1 / V1
+carried).
 
-Context: docs/PACKAGING_PLAN.md; ops/launcher/; rc-shell/src/; tools/build_portable.py,
-tools/run_packaged_smoke.py; docs/TFT_PROGRAM.md; tft/engine (Augur); ops/runtime/tft_qa/ (A26).
+Context: docs/PACKAGING_PLAN.md (the branch copy is newer); ops/launcher/; rc-shell/src/;
+tools/build_portable.py, tools/run_packaged_smoke.py; docs/TFT_PROGRAM.md; tft/engine (Augur);
+ops/runtime/tft_qa/ (A26).
 
-Acceptance: PKG-6b landed and verifier-gated (smoke green over a real build); the CLI re-pin and the
-Dependabot alerts re-read done; ASKS 45 read back (Explorer check, npm ci, cutover stage-2 check);
-alert 66 reads "fixed" after the reopen and a later CodeQL run, read-back sent to MAIN; the operator
-asks re-batched in one line.
+Acceptance: PKG-6c landed (H-A + H-B + J3 fixed TDD, verifier PASS, a high-only review with no
+high, smoke green over a real build, the touched tests green on merged main); ASKS 45 read back
+(Explorer check, npm ci, cutover stage-2 check); alert 66 reads "fixed" after the reopen and a
+later CodeQL run, read-back sent to MAIN; the operator asks re-batched in one line.
 
 Start with: read this file first, then CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.

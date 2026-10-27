@@ -6,6 +6,19 @@
 
 ---
 
+# 2026-10-27 - session 143: PKG-6b built + verified but NOT merged (2 plausible highs, carried as PKG-6c), CLI re-pinned, memory split reconciled, Dependabot #28 declined; PUSHED
+
+- **Operator:** away all session ("Headless - Operator Is Away"); no steers or intents. Decisions self-adjudicated and recorded in LEDGER 1934 / 1936 / 1937.
+- **S1 (LEDGER 1933):** start checks clean; CLI pin `bc799b46a` (2.1.310 -> 2.1.311); Dependabot 0 open alerts, rc-shell npm audit 0.
+- **PKG-6b (LEDGER 1934):** branch `worktree-agent-ade3dd10ba7a548d1` tip `9819e60e7`, 6 commits, 5 review rounds; V6a PASS (smoke 60/60 over a real build); V6b found 2 plausible highs (H-A recover with no game gate, H-B readiness never reads /api/state), so by the adjudicated rule it is NOT merged.
+- **H1 (LEDGER 1935):** 21 memories reconciled; 11 landed branches deleted; ROADMAP 73169 -> 70220 B (`fbe3fb7ef`).
+- **A1 (LEDGER 1936):** PR #28 (anthropic 2.3.0) declined `a5c8d94ff`; the 2.x migration is row ANTHROPIC-2X, gated on RM-681.
+- **/done (LEDGER 1937):** pushed `e13219044..a5c8d94ff`; one full-suite dispatch ci 40456618221; board NON-final (P1 / V1 carried).
+- **Do NOT redo:** the S1 / H1 / A1 landings; PKG-6b's 5 review rounds (fix only H-A / H-B / J3 on top of `9819e60e7`).
+- **Next:** PKG-6c (ROADMAP row): fix H-A + H-B + the J3 guard in that worktree, verify, land by cherry-pick through fleet_gitlock; then the operator batch (ASKS 45, 39, 49).
+
+---
+
 # 2026-10-26d - session 142: PKG-6 (autonomous half) + PKG-7 (built, never run) landed, SF1 fixed, Dependabot #25 / #26 path B, js-yaml audit cleared; PUSHED
 
 - **Operator:** away; no steers or intents. Every landing was verifier-gated first, then landed by a separate agent.
@@ -29,17 +42,3 @@
 - **/done:** pushed 2d3e1c85b..6e28127f3 (push ci mode=full = the full suite on HEAD); RM-909 row to ROADMAP_HISTORY; PKG residuals WA1-WA8 in the plan.
 - **Do NOT redo:** the landings above. The K branch `32381e158` is NOT byte-identical to main (comments only) - keep vs delete is open.
 - **Next:** PKG-6 shell launcher wiring per the PACKAGING_PLAN checklist, then PKG-7 (never run by a session); C7 + the MAIN note on the operator's yes.
-
----
-
-# 2026-10-26b - session 140: MAIN 0300 (U5) + 0315 (alert 66 in-tree, suite peak) landed, kit v24 hardened, C9 flake isolated, one gated suite green; PUSHED
-
-- **Operator (chat):** "continue headlessly all lanes" - all seven rotation lanes were already live under rotator pid 24260; nothing launched (24 h budget 96/120). Lane "upgrade" NOT launched (its prompt pushes).
-- **0300 U5 (LEDGER 1916):** `863027b54` (71 raw timing bounds -> `budget()`), hand-off trimmed, drain-wave2-tail-backlog worktree removed without force (branch kept).
-- **0315 item 1 (LEDGER 1917):** `a0e066978` vision `_bind_host` has no wildcard literal (alert 66); the vision process runs old code until its next respawn.
-- **Kit v24 (LEDGER 1918):** MAIN's rollout committed `6efee7343` straight in the main checkout; RC's K `32381e158` matched byte-for-byte; `d6a646e11` hardens on top (decision: let the rollout commit first, then harden).
-- **C9 (LEDGER 1919):** `008b386b9` tests-only isolation of the rc.lcu dedupe filter; RM-909 (the leaking test) filed.
-- **C10:** gated dual suite on `dc3daa52c`: 45813 passed, 101 skipped, exit 0, peak commit 20204 MB. ANSWER to MAIN (LEDGER 1920) reached 1/1.
-- **/done:** ROADMAP relocation `bb559e747` (74186 -> 73357 B); pushed 1cf593a58..bb559e747.
-- **Do NOT redo:** the landings above; K is superseded (worktree agent-a35c8a72b0640e054 kept, reap lists it).
-- **Next:** reopen alert 66 on the operator's yes, then a CodeQL run and the read-back to MAIN; then the PKG next action.
