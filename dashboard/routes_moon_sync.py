@@ -100,6 +100,27 @@ scrubbed of path-shaped runs before serialisation. ``unmapped roots`` is
 reported as an integer COUNT for the same reason - a list of roots is a list of
 names.
 
+THE HEADER GRAMMAR IS THE POLLER'S, NOT A FRIENDLIER ONE. Binding the rule and
+the entry points still left a third place to diverge: the PARSER. This route
+used to normalise keys (case, spacing), take the first digit run of a value and
+read a naive stamp as UTC, while ``tools/moon_sync_poller.parse_status_header``
+reads exact ``- <key>: `` prefixes, ``int(...)`` or nothing, and a naive stamp
+as LOCAL time (``.timestamp()``). Each difference graded one file two ways, and
+three of them (a digit run past the int limit, an interval past the timedelta
+range, a pid past the DWORD range) made the route answer 500. The parser below
+mirrors the poller's line grammar fact for fact; date arithmetic saturates at
+the calendar ends instead of raising, which is what the poller's epoch floats
+do. ``tests/test_routes_moon_sync_true_audit_s144.py`` drives both entry points
+over each of those files.
+
+FLEET ROWS keep every row the writer emits. An ``INBOX ABSENT`` row (the
+poller's deliberately LOUD row) and an ``UNMAPPED-<n>`` code used to vanish,
+and the status token was searched for across the note names after
+``newest:``, so a note named ``...-STALE-...`` set a healthy row's status. The
+counts and the token are read from the text before ``newest:`` only, and an
+entries row with no token is ``OK``, which is the only status the writer
+renders that way.
+
 READS DO NOT WRITE. This route creates no directory (not even the state dir),
 writes no file and touches no mtime. Pinned by
 ``test_route_reads_only_and_creates_nothing``, whose absent-directory arm is
@@ -128,7 +149,7 @@ VERDICTS = ("LIVE", "OVERDUE", "STALE", "DEAD", "FAULT", "UNMEASURED")
 # A per-repo row may end in one of these and nothing else. A fixed vocabulary
 # stops a fragment of a filename from being promoted to a "status".
 _CODE_STATUSES = frozenset(
-    {"LIVE", "OVERDUE", "STALE", "DEAD", "FAULT", "UNMEASURED", "QUIET", "OK"}
+    {"LIVE", "OVERDUE", "STALE", "DEAD", "FAULT", "UNMEASURED", "QUIET", "OK", "ABSENT"}
 )
 
 # `- NEW: <name>` / `- WITHDRAWN: <name>` are the poller's per-note body lines
@@ -137,9 +158,18 @@ _CODE_STATUSES = frozenset(
 _NOT_CODES = frozenset({"NEW", "WITHDRAWN"})
 
 _KV = re.compile(r"^-\s*([^:]+):\s*(.*)$")
-_CODE = re.compile(r"^[A-Z][A-Z0-9_-]{0,7}$")
+# A participant code, or the poller's code_for() name for an unmapped root.
+_CODE = re.compile(r"^(?:[A-Z][A-Z0-9_-]{0,7}|UNMAPPED-\d{1,6})$")
 # A drive-letter or UNC path run, up to the next separator of a list.
 _PATHISH = re.compile(r"(?:[A-Za-z]:[\\/]|\\\\)[^,;]*")
+
+# Where the status rule's date arithmetic saturates. The poller grades epoch
+# floats, which never overflow; a datetime past either end raises instead.
+_DT_MAX = datetime.max.replace(tzinfo=timezone.utc)
+_DT_MIN = datetime.min.replace(tzinfo=timezone.utc)
+
+# A Windows pid is a DWORD; ctypes raises ArgumentError past it.
+_PID_MAX = 0xFFFFFFFF
 
 
 def _now() -> datetime:
@@ -173,22 +203,32 @@ def _scrub(value: str) -> str:
 
 
 def _parse_dt(value: str) -> datetime | None:
+    """An ISO stamp, or None. A NAIVE stamp is LOCAL time, as the poller's
+    ``_parse_iso`` reads it through ``.timestamp()``."""
     try:
         dt = datetime.fromisoformat(value.strip())
-    except (TypeError, ValueError):
+        if dt.tzinfo is None:
+            dt = dt.astimezone()
+    except (TypeError, ValueError, OverflowError, OSError):
         return None
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
     return dt
 
 
-def _parse_int(value: str) -> int | None:
-    m = re.search(r"-?\d+", value or "")
-    return int(m.group(0)) if m else None
+def _strict_int(value: str) -> int | None:
+    """``int(value)`` or None - the poller's parse, so a value it refuses
+    (a suffix, a digit run past the int limit) is refused here too."""
+    try:
+        return int(value)
+    except ValueError:
+        return None
 
 
-def _normalise_key(raw: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "_", raw.strip().lower()).strip("_")
+def _shift(dt: datetime, seconds: int) -> datetime:
+    """``dt + seconds``, saturating at the calendar ends instead of raising."""
+    try:
+        return dt + timedelta(seconds=seconds)
+    except OverflowError:
+        return _DT_MAX if seconds > 0 else _DT_MIN
 
 
 def _count_roots(value: str) -> int:
@@ -199,32 +239,43 @@ def _count_roots(value: str) -> int:
     if not value or value in {"-", "none", "0"}:
         return 0
     if value.isdigit():
-        return int(value)
+        n = _strict_int(value)
+        if n is not None:
+            return n
     return len([t for t in value.split(",") if t.strip()])
+
+
+def _count_absent(value: str) -> int:
+    """The writer's ``participants map absent: N roots UNMAPPED`` line, read
+    the way the poller reads it: the first token as an int, else 0."""
+    parts = value.split()
+    return (_strict_int(parts[0]) or 0) if parts else 0
 
 
 def _parse_code_row(code: str, rest: str) -> dict | None:
     """One per-repo row -> code, counts and a status token. Returns None when
     the line carries no count and no known status, which is how a note-name
-    body line is rejected rather than half-parsed."""
-    entries = None
-    m = re.search(r"(\d+)\s*entr", rest)
-    if m:
-        entries = int(m.group(1))
-    arrivals = None
-    m = re.search(r"\+\s*(\d+)", rest)
-    if m:
-        arrivals = int(m.group(1))
-    withdrawals = None
-    m = re.search(r"(?:^|[\s,])-\s*(\d+)", rest)
-    if m:
-        withdrawals = int(m.group(1))
+    body line is rejected rather than half-parsed.
+
+    Only the text before ``newest:`` is read: what follows it is note names,
+    and neither a count nor a status may come out of a name."""
+    head = rest.split("newest:", 1)[0]
+
+    def _first(pattern: str) -> int | None:
+        m = re.search(pattern, head)
+        return _strict_int(m.group(1)) if m else None
+
+    entries = _first(r"(\d+)\s*entr")
+    arrivals = _first(r"\+\s*(\d+)")
+    withdrawals = _first(r"(?:^|[\s,])-\s*(\d+)")
     status = None
-    for token in re.findall(r"[A-Z]{2,}", rest):
+    for token in re.findall(r"[A-Z]{2,}", head):
         if token in _CODE_STATUSES:
             status = token
     if entries is None and arrivals is None and withdrawals is None and status is None:
         return None
+    if status is None and entries is not None:
+        status = "OK"
     return {
         "code": code,
         "entries": entries,
@@ -237,7 +288,12 @@ def _parse_code_row(code: str, rest: str) -> dict | None:
 def parse_status_header(text: str) -> dict:
     """Parse the poller's status.md into facts. Tolerant by design: an unknown
     or missing line yields None for that fact rather than an exception, so a
-    header that grows a field never 500s this route."""
+    header that grows a field never 500s this route.
+
+    Header facts use the poller's own grammar (``parse_status_header`` in
+    tools/moon_sync_poller.py): a ``- `` prefix, the exact lower-case key and
+    ``: ``, and the same value parse. ``unmapped roots`` is this route's one
+    extra key; the writer's own line is ``participants map absent``."""
     facts: dict = {
         "checked": None,
         "checked_dt": None,
@@ -253,37 +309,52 @@ def parse_status_header(text: str) -> dict:
         "prompt_half_dead": False,
         "per_code": [],
     }
-    for line in (text or "").splitlines():
-        m = _KV.match(line.strip())
+    for raw in (text or "").splitlines():
+        line = raw.strip()
+        if line.startswith("- "):
+            body = line[2:]
+            if body.startswith("checked: "):
+                value = body[9:].strip()
+                facts["checked_dt"] = _parse_dt(value)
+                facts["checked"] = value if facts["checked_dt"] else None
+                continue
+            if body.startswith("next interval: "):
+                facts["next_interval_s"] = _strict_int(body[15:].strip().rstrip("s"))
+                continue
+            if body.startswith("pid: "):
+                facts["fleet_view"] = True
+                facts["pid"] = _strict_int(body[5:].strip())
+                continue
+            if body.startswith("expect next poll by: "):
+                value = body[21:].strip()
+                facts["expect_dt"] = _parse_dt(value)
+                facts["expect_next_poll_by"] = value if facts["expect_dt"] else None
+                continue
+            if body.startswith("fault: "):
+                facts["fault"] = _scrub(body[7:]) or None
+                continue
+            if body.startswith("boot: "):
+                facts["boot"] = _scrub(body[6:]) or None
+                continue
+            if body.startswith("participants map absent: "):
+                facts["unmapped_roots"] = _count_absent(body[25:])
+                continue
+            if body.startswith("unmapped roots: "):
+                facts["unmapped_roots"] = _count_roots(body[16:])
+                continue
+            if body.startswith("prompt half: "):
+                value = body[13:].strip()
+                facts["prompt_half"] = _scrub(value) or None
+                facts["prompt_half_dead"] = value.endswith("DEAD")
+                continue
+        m = _KV.match(line)
         if not m:
             continue
-        raw_key, value = m.group(1).strip(), m.group(2).strip()
-        if _CODE.match(raw_key) and raw_key not in _NOT_CODES:
-            row = _parse_code_row(raw_key, value)
+        code, value = m.group(1).strip(), m.group(2).strip()
+        if _CODE.match(code) and code not in _NOT_CODES:
+            row = _parse_code_row(code, value)
             if row is not None:
                 facts["per_code"].append(row)
-            continue
-        key = _normalise_key(raw_key)
-        if key == "checked":
-            facts["checked_dt"] = _parse_dt(value)
-            facts["checked"] = value if facts["checked_dt"] else None
-        elif key == "next_interval":
-            facts["next_interval_s"] = _parse_int(value)
-        elif key == "pid":
-            facts["fleet_view"] = True
-            facts["pid"] = _parse_int(value)
-        elif key == "expect_next_poll_by":
-            facts["expect_dt"] = _parse_dt(value)
-            facts["expect_next_poll_by"] = value if facts["expect_dt"] else None
-        elif key == "fault":
-            facts["fault"] = _scrub(value) or None
-        elif key == "boot":
-            facts["boot"] = _scrub(value) or None
-        elif key == "unmapped_roots":
-            facts["unmapped_roots"] = _count_roots(value)
-        elif key == "prompt_half":
-            facts["prompt_half"] = _scrub(value) or None
-            facts["prompt_half_dead"] = re.search(r"\bDEAD\b", value) is not None
     return facts
 
 
@@ -295,7 +366,9 @@ def _pid_alive(pid: int) -> bool | None:
     see must be treated as alive. Here "I could not look" is its own answer -
     reporting DEAD on an access-denied handle would be a fabricated verdict.
     """
-    if pid is None or pid <= 0:
+    if pid is None or pid <= 0 or pid > _PID_MAX:
+        # Past the DWORD range no process can carry the pid, but that is a
+        # junk header, not a proof of death: unprobeable, graded by time.
         return None
     if sys.platform != "win32":
         try:
@@ -305,7 +378,7 @@ def _pid_alive(pid: int) -> bool | None:
             return False
         except PermissionError:
             return None
-        except OSError:
+        except (OSError, OverflowError):
             return None
     import ctypes
 
@@ -324,7 +397,7 @@ def _pid_alive(pid: int) -> bool | None:
             return code.value == STILL_ACTIVE
         finally:
             k32.CloseHandle(h)
-    except OSError:
+    except (OSError, ctypes.ArgumentError):
         return None
 
 
@@ -334,7 +407,9 @@ def status_verdict(fault, pid_alive, checked, expect, interval_s, now) -> str:
     module docstring for the ordering and why each step is where it is.
     Duplicated from the poller on purpose; the parity test is what keeps the
     two copies honest, and it binds every parameter BY NAME, so the two
-    signatures differ only in the units their facts carry."""
+    signatures differ only in the units their facts carry. The one dialect
+    detail: the promise saturates at the calendar ends (``_shift``) where an
+    epoch float simply grows, which keeps every branch's answer the same."""
     if fault:
         return "FAULT"
     if pid_alive is False:
@@ -342,7 +417,7 @@ def status_verdict(fault, pid_alive, checked, expect, interval_s, now) -> str:
     if checked is None:
         return "STALE"
     if expect is None and interval_s:
-        expect = checked + timedelta(seconds=interval_s + 60)
+        expect = _shift(checked, interval_s + 60)
     if expect is None:
         return "STALE"
     if now <= expect:
@@ -374,8 +449,11 @@ def build_moon_sync_status() -> dict:
     """
     now = _now()
     path = _state_dir_path() / STATUS_FILENAME
+    # Bytes, decoded with replacement: a stray non-UTF-8 byte in a note line
+    # must not turn a gradeable header into a 500 (UnicodeDecodeError is a
+    # ValueError, not the OSError an absent file raises).
     try:
-        text = path.read_text(encoding="utf-8")
+        text = path.read_bytes().decode("utf-8", errors="replace")
     except OSError:
         text = None
 
