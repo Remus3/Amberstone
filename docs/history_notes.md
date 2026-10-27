@@ -41,6 +41,15 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-26 - session 139 (headless MAIN follow-up run): docs-guards red on b0c755499 fixed (RM next-free pin moved); PUSHED
+
+- **F1 (LEDGER 1915):** `35007e479` moves the pinned next-free RM id past RM-907 / RM-908 in `docs/DS_SWEEP_TRACKER.md`; guard + docs-guard files green.
+- **F2:** pushed b0c755499..35007e479; docs-guards 40272825498 green; ci 40271967354 on b0c755499 green. No note to MAIN (CI green).
+- **Do NOT redo:** the pin bump. R1 slip recorded (Bash byte-replace, commit backs it).
+- **Next:** unchanged - RM-907 gated suite on a quiet box; then the PKG next action.
+
+---
+
 # 2026-10-25f - session 138 (headless MAIN work run): MAIN FIX 1935 (CodeQL 65/66, electron 44.9.1, CI waste cuts, push tier) + MAIN ORDER 2045 (BLAS cap, --durations); PUSHED
 
 - **Kit v23:** already adopted (manifest sha f5d82861 matches); verify only.
