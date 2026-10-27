@@ -340,6 +340,81 @@ its own render evidence, and a parsed reply is not guaranteed (`.log` 14:00:08.9
 parsed from response`). Reverses if: a later TFT game's log shows an `rc.tft.coach` or
 `rc.tft.vision` 400 again.
 
+**S6 READY (lane 9, s144 cycle 1, PREP only, no game up; NOT ticked): vision decodes a live League
+frame under Pillow 13 (`cef8bfd22` pinned 13.0.0).** Any League game (GATE 2 / 3 / 4 / 5; IN-GAME =
+`mode_key` sr / aram / arena / brawl AND a non-empty `liveclient`). Predicate, stated before any game.
+Verdicts: PASS iff (a), (b) with `meta.source` `obs`, and (d) hold in ONE game; PARTIAL iff (a) and
+(b) hold with `meta.source` `self_grab`; FAIL-SIGNAL if (e) is seen; anything else is NOT-YET. Only
+PASS drains S6. PARTIAL and FAIL-SIGNAL are recorded beside this row, never ticked or struck.
+- (a) PROCESS SIDE, `python tools/gated_vision_pillow.py --json`, run TWICE: once just before and
+  once just after (b)'s readback. Both runs: exit 0 (exactly one listener), the same `pid` AND the
+  same `create_time`, that `create_time` earlier than (b)'s `meta.ts` (the frame was served by THIS
+  process, not by one a restart replaced), `stats_tie.same_process_after_get` and
+  `stats_tie.uptime_matches_create_time` both true (the tool re-reads the listener after its `/stats`
+  GET and checks `uptime_s` against `create_time`, so the counters below are THIS pid's),
+  `pil_loaded` true (a `PIL\_imaging*.pyd` is mapped IN the `:8889` listener process), and `s6` reads
+  `single_pillow_dist` true, `version_is_13.0.0` true, `installed_before_process_start` true. The
+  after-run must read `stats.frame_upload.calls` = 0: no `/upload-frame` in that process's whole life
+  (it read 0 at the idle baseline; `tools/screen_agent.py` and `tools/phase_watcher.py`, the two
+  uploaders, have no scheduled task). A non-zero count makes the game NOT-YET: a lifetime count of
+  one pinned process cannot be gamed by timing, where a start / end bracket could. `pil_loaded` alone
+  is not a decode: a header-only read (`/upload-frame`, `/vision`) imports Pillow too.
+- (b) FRAME, `python tools/gated_frame_readback.py --json` between the two (a) runs: exit 0, `age_s`
+  <= 5, `pillow.format` JPEG, `pillow.width` and `pillow.height` > 0, `pillow.luma_extrema` span > 0
+  (not blank), and `meta.width` / `meta.height` NOT null. `meta.source` decides the verdict: on an
+  `obs` frame `vision_server/_frame.py` `_maybe_obs_frame` runs `Image.open` plus `img.load()` IN the
+  vision process and sets `width` / `height` only after the whole block succeeds (its `except` serves
+  the raw bytes with both None), so an `obs` frame with a non-null `meta.width` is an in-process
+  DECODE - provided it did not arrive through `/upload-frame`, which copies `source`, `width` and
+  `height` from the request body after a header read only (`handle_upload_frame`); (a)'s count of 0
+  rules that out. A `self_grab` frame is `ImageGrab.grab()` plus a JPEG ENCODE in-process, never a
+  decode.
+- (c) Context only, never a verdict input: the `stats.vision` / `stats.ocr` rows of (a). A `vision`
+  success does not prove a decode: `_inference.py` `_crop_to_primary` reads only the header of a
+  frame at or under 1920x1080 (a `self_grab` / `obs` frame is at most 1280 wide) and forwards the
+  original after any `Image.open` failure other than a bomb or `MemoryError`, which still records
+  `ok=True` once Sonnet's reply
+  parses. `ocr` has no League caller (`core/moon_proxy.py` `ocr_crops` has no production caller).
+- (d) IN-GAME at the readback: `/api/state` read within the same minute shows `mode_key` sr / aram /
+  arena / brawl and a non-empty `liveclient`; record `liveclient.game_mode`, `liveclient.game_time`,
+  the read time and the listener pid. Known limit: the `obs` lane has no foreground gate, so (b)
+  proves a decode of what OBS captured; that it shows League rests on (d) plus the OBS source
+  (default `Game Capture`, `core/obs_frame_source.py`), and the tick line says so.
+- (e) FAIL-SIGNAL (re-opens the `cef8bfd22` question for a measured re-check; it closes and strikes
+  nothing): with (a)'s pid pinned and `frame_upload.calls` 0, readback exit 3 with `Pillow could not
+  decode` (exit 3 with `reply carried no image bytes` is NOT-YET), or an `obs` frame with
+  `meta.width` null that the probe decodes (Pillow in the vision process failed somewhere in open /
+  load / resize / encode); or, in the VISION log `moon_vision_server.log` (not `logs/<date>.log`;
+  `vision_server/_config.py` `_LOG_PATH`, `RC_VISION_SERVER_LOG` overrides), a traceback naming
+  `PIL` during the game. A `Vision crop failed` line there is context only: any token holder can
+  write one with a junk `/vision` body.
+Evidence contract: value = the four `s6.*` booleans, the two `stats_tie.*` booleans of each (a) run,
+both (a) pids and `create_time`, the dist-info
+name, `meta.source`, `meta.ts`, `meta.width` / `meta.height`, the probe's frame facts and the
+after-run `frame_upload.calls`; source = the two tools' JSON (fields above); timestamp = the readback
+`wall` and `liveclient.game_time`; predicate = this paragraph.
+SUBSTITUTION check (answer it in the tick line): (b) alone is the probe's OWN Pillow decoding bytes
+the relay served, NOT the vision process decoding anything - the compute half, and the whole of the
+read-back as first filed (`tools/gated_frame_readback.py` docstring), so the filed S6 UNDERSTATES its
+own question. (a) ties the loaded module to the vision process (memory map, not `pip show`, not this
+checkout's interpreter); only the `obs` arm of (b) shows that process decoding a frame. If OBS is not
+the frame source in the game (config `frame_source` false, or OBS yields nothing so the frame reads
+`self_grab`), S6 cannot reach PASS that game: record PARTIAL and leave the row open. Synthetic
+reach: no verdict holds without (d)'s live game window; inside it, a token-holding `/upload-frame`
+with `source` `obs` would satisfy (b)'s frame facts, and (a)'s pinned pid plus its lifetime count of
+0 exclude it (every upload is counted, `handle_upload_frame`; nothing outside the test helpers lowers
+`_stats`). Not retro-fittable: (a)'s map and (b)'s frame are only readable while live.
+Idle baseline (2026-10-27 07:3x local, no game): the listener started 2026-10-26 20:45 local, Pillow
+13.0.0 METADATA dated 2026-10-22; `pil_loaded` false (no capture since start: `capture_skip`
+`not_foreground` 2), `frame_upload.calls` 0, so `s6` reads `pil_loaded_in_process` false and its
+other three checks None until a frame is taken. Positive control: the same reader on its own process
+after `from PIL import Image` maps `site-packages\PIL` and reads `pillow-13.0.0.dist-info` version
+13.0.0. Prior partial evidence (not a drain): the TFT
+game of 2026-10-25 08:56 above decoded a `self_grab` frame in the PROBE under 13.0.0 ((b) probe half
+only, TFT, not League). Reverses if: the vision server stops importing Pillow lazily (then (a)
+proves nothing about use), `_maybe_obs_frame` stops gating `width` / `height` on a successful decode,
+or `/upload-frame` stops recording `frame_upload`.
+
 ---
 
 ## GATE 1 - ANY LOBBY / CHAMP-SELECT (no game ever starts)
