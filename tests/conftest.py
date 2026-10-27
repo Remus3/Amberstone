@@ -54,6 +54,7 @@ from tests._logger_leak_report import (  # noqa: F401,E402
     pytest_runtest_teardown,
     pytest_terminal_summary,
 )
+from tests import _suite_tmp_cleanup  # noqa: E402
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -79,7 +80,15 @@ _REPO_ROOT = Path(__file__).resolve().parents[1]
 # One directory per worker PROCESS. `tmp_path_factory` does not exist at
 # import time, and both pytest and the tracer already ignore the system temp
 # tree, so plain `mkdtemp` is the right tool at this point in the lifecycle.
+# RM-828 (d): removed again at `pytest_unconfigure` (below) and at interpreter
+# exit, so a run leaves no `rc-suite-logs-*` dir behind in %TEMP%.
 _SUITE_LOG_DIR = Path(tempfile.mkdtemp(prefix="rc-suite-logs-"))
+_suite_tmp_cleanup.remove_dir_at_exit(_SUITE_LOG_DIR)
+
+
+def pytest_unconfigure(config):
+    _suite_tmp_cleanup.remove_dir(_SUITE_LOG_DIR)
+
 
 # RM-451: `tools/rc_facts.py` appends every fire to the LIVE hook log unless
 # `RC_HOOK_LOG` redirects it, and the responder dry cycle reads a null-session
@@ -685,6 +694,12 @@ _PROD_PATH_GLOBALS = (
     # RM-812 sibling sweep: _get_conn() opens _DB_PATH (data/postgame_stats.db)
     # at call time; tests/test_p2w1_app_b.py's timeline tests created it.
     ("lcu.lcu_postgame_collector", "_DB_PATH", "postgame_stats/postgame_stats.db", False),
+    # RM-828 (a): _LOCK_FILE (ops/runtime/coaching_data.lock) is fixed at
+    # import and opened at call time (core/coaching_data_lock.py `_CombinedLock`);
+    # every test reaching coaching_data_lock() through a production writer
+    # (CoachIntegration.reset_state in tests/test_p2w1_app_b.py, the App write
+    # in tests/test_rm277_app_write_data_lock.py) contended with the live app.
+    ("core.coaching_data_lock", "_LOCK_FILE", "coaching_data_lock/coaching_data.lock", False),
     ("tft.placement_aggregator", "_RATINGS_DIR", "placement_ratings", True),
     ("tft.placement_aggregator", "_HEATMAP_FILE", "placement_heatmap.json", False),
     # RM-616: the append-only TFT post-game store (data/tft_matches/), written

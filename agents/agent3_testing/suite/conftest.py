@@ -33,10 +33,26 @@ if str(_PROJECT_ROOT) not in sys.path:
 # RM-812: agents/_supervisor_common.py binds LOG_ROOT (logs/agents/) from this
 # at IMPORT, so it is set here, before any test module imports the supervisor.
 # The ephemeral-dispatch tests (test_supervisor_stub.py) otherwise appended
-# agent6.log / task-<id>.log to the live logs/agents/. Mirrors tests/conftest.py;
-# a combined run with tests/ keeps whichever tmp dir was set first.
+# agent6.log / task-<id>.log to the live logs/agents/. Mirrors tests/conftest.py.
+# In a combined run with tests/, tests/conftest.py sets it unconditionally when
+# it is imported, so its dir wins even if this one ran first; a module that
+# bound LOG_ROOT before that keeps this dir. Both are tmp (RM-828 (e)).
+# RM-828 (d): the dir this conftest creates (never a preset one) is removed at
+# pytest_unconfigure and at interpreter exit.
+_CREATED_LOG_DIR = None
 if not (os.environ.get("RC_PHASE3_LOG_DIR") or "").strip():
-    os.environ["RC_PHASE3_LOG_DIR"] = tempfile.mkdtemp(prefix="rc-agent3-agent-logs-")
+    from tests import _suite_tmp_cleanup
+
+    _CREATED_LOG_DIR = tempfile.mkdtemp(prefix="rc-agent3-agent-logs-")
+    os.environ["RC_PHASE3_LOG_DIR"] = _CREATED_LOG_DIR
+    _suite_tmp_cleanup.remove_dir_at_exit(_CREATED_LOG_DIR)
+
+
+def pytest_unconfigure(config):
+    if _CREATED_LOG_DIR is not None:
+        from tests import _suite_tmp_cleanup
+
+        _suite_tmp_cleanup.remove_dir(_CREATED_LOG_DIR)
 
 
 def _clear_running_loop() -> None:
