@@ -109,12 +109,8 @@ LEGION = os.environ.get("RC_VISION_BASE", "http://127.0.0.1:8889")
 # Loopback by default for the same reasons as LEGION above (1-PC, ADR-011);
 # it was a hardcoded LAN address. RC_DASHBOARD_BASE overrides.
 LEGION_DASHBOARD = os.environ.get("RC_DASHBOARD_BASE", "https://127.0.0.1:8888")
-# AUDIT (cycle-restore 2026-04-25): token resolver - env -> config file -> fallback.
-import os as _os_tok
-from pathlib import Path as _Path_tok
-def _resolve_auth_token() -> str:
-    env = _os_tok.environ.get("RC_VISION_TOKEN")
-    if env: return env.strip()
+# Token resolver: env -> config file -> "" (never a hardcoded token).
+def _token_candidates() -> list:
     # 1-PC consolidation (item 215): the agent now runs Legion-local, so it
     # must read the SAME canonical token the vision server + dashboard use
     # (core.vision_token -> config/vision_token.txt). Without this the agent
@@ -122,14 +118,59 @@ def _resolve_auth_token() -> str:
     # the rotated config token -> every /upload-lcu POST 401s silently ->
     # the relay caches no LCU snapshot -> the lobby/champ-select UI never
     # updates. Canonical config path wins; tools-sibling stays for back-compat.
-    here = _Path_tok(__file__).resolve().parent
-    for cand in (here.parent / "config" / "vision_token.txt",
-                 here / "vision_token.txt"):
+    here = Path(__file__).resolve().parent
+    return [here.parent / "config" / "vision_token.txt", here / "vision_token.txt"]
+
+
+def _header_safe(tok: str) -> bool:
+    # RM-241 parity with core.vision_token._checked: printable ASCII only.
+    return all(0x21 <= ord(c) <= 0x7E for c in tok)
+
+
+def _resolve_auth_token() -> str:
+    """Same contract as core.vision_token, but returns "" instead of raising.
+
+    s144 true-audit. This runs at IMPORT under pythonw, where an exception is
+    a silent exit. An empty file raised IndexError and a non-UTF-8 one
+    (PowerShell 5.1 ``>`` writes UTF-16) raised UnicodeDecodeError, which is a
+    ValueError, not an OSError. A token with a CR/LF or space was returned as
+    is; urllib then raised ``Invalid header value b'<token>'`` on every
+    request and the push loop logged that once a second, token included.
+    Every refusal is logged by SOURCE and problem, never by value, and never
+    with the decode error, whose text quotes a byte of the token.
+    """
+    env = os.environ.get("RC_VISION_TOKEN")
+    if env and env.strip():
+        if _header_safe(env.strip()):
+            return env.strip()
+        log.error("vision token: RC_VISION_TOKEN contains whitespace, control "
+                  "or non-ASCII characters and cannot be sent as a header "
+                  "value; refusing it")
+        return ""
+    for cand in _token_candidates():
+        problem = ""
         try:
-            if cand.exists():
-                line = cand.read_text(encoding="utf-8").splitlines()[0].strip()
-                if line: return line
-        except OSError: pass
+            if not cand.exists():
+                continue
+            lines = cand.read_text(encoding="utf-8").splitlines()
+            first = lines[0].strip() if lines else ""
+            if first and _header_safe(first):
+                return first
+            if first:
+                problem = ("contains whitespace, control or non-ASCII "
+                           "characters and cannot be sent as a header value")
+            else:
+                problem = "is empty" if not lines else "is unusable: its first line is empty"
+        except UnicodeDecodeError:
+            problem = "is not UTF-8 text"
+        except OSError as exc:
+            problem = f"could not be read ({type(exc).__name__})"
+        # An EXISTING but unusable file is refused, never skipped: the next
+        # candidate is the legacy copy, which the server never reads, so
+        # falling through would authenticate with a stale token (silent 401s).
+        log.error("vision token: %s %s; re-write it as one printable-ASCII "
+                  "line", cand, problem)
+        return ""
     # Lane 8 audit 2026-08-03: a hardcoded 32-hex token used to be
     # returned here. It was DEAD (it did not match the live token) but
     # dashboard/routes_static.py serves this file's SOURCE at
@@ -1848,7 +1889,8 @@ if __name__ == "__main__":
         # Exit non-zero so the RC-LCUAgent task's Last Result is not a
         # reassuring 0 while every /upload-lcu POST 401s and champ-select
         # never updates.
-        log.error("no vision token: set RC_VISION_TOKEN or create %s",
+        log.error("no usable vision token: set RC_VISION_TOKEN or write one "
+                  "printable-ASCII line to %s",
                   Path(__file__).resolve().parent.parent / "config" / "vision_token.txt")
         sys.exit(2)
     try: loop()
