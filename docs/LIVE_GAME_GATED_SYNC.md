@@ -150,9 +150,10 @@ subtracted from it. Check this line's history before adjusting the tally for any
 Per gate: G1 6 / G2 41 / G3 12 / G4 28 / G5 10 / G6 3 / G7 18. Of these, 9 carry a PARKED/HOLD
 tag (3 inline at G5-10 / G7-16 / G7-19, 6 in the PARKED section) and 1 (G3-15) is a cross-reference
 that adds no new work. G3-03 was BLOCKED ON WIRING on 2026-10-24 until RM-850 shipped the same day
-(`14f804fc2`, LEDGER 1816); it is drainable again. G3-13 is BLOCKED ON WIRING since 2026-10-24
-(RM-860): still counted OPEN, but no game drains its on-screen half until RM-860 lands. G1-03 was
-re-tagged the same day (draft lobby only); no count moved.
+(`14f804fc2`, LEDGER 1816); it is drainable again. G3-13 was BLOCKED ON WIRING on 2026-10-24
+until RM-860 shipped the next day (`9b51bc90f` + `32f625d4c`, LEDGER 1832); it is drainable again
+(re-tagged 2026-10-27, s144 lane gated cycle 8). G1-03 was re-tagged the same day (draft lobby
+only); no count moved.
 The 2026-08-12 `hz_choice_shadow` game_id row was filed as a SECOND "G3-14"; it is G3-16 since
 2026-10-24 and, like G6-04, was never in the 111 (its commit `0dc5dbd0d` did not touch this line).
 
@@ -1210,8 +1211,62 @@ survivability flips below cannot roll otherwise.
   error, budget-gate or kill-switch log line in its window; with one, the sample is INCONCLUSIVE.
   The coherence half stays an operator eyeball. (Adversarial pass 2026-10-24 corrected a first draft
   that bounded the lag on the 45 s ceiling.)
-- **G3-13** `[BLOCKED ON WIRING - RE-TAGGED 2026-10-24]` (was C15+C16) Augment OCR rank-vs-pick + live
-  on-screen render validation. **WHY THE ON-SCREEN HALF CANNOT PASS AT HEAD (lane 9 PREP s133 cycle 4,
+- **G3-13** `[UNBLOCKED 2026-10-27 by RM-860 + RM-877; was BLOCKED ON WIRING 2026-10-24]` (was
+  C15+C16) Augment OCR rank-vs-pick + live on-screen render validation.
+  **READY (lane 9 PREP s144 cycle 8, source read at `f073b1ca1`; NOT a tick). The blocker below is
+  GONE: RM-860 shipped surface (A) (`9b51bc90f` + `32f625d4c`, LEDGER 1832) and RM-877 retired the
+  Haiku fallback (`5d3d1df67`, LEDGER 1845).** What a Mayhem game now does, read at HEAD:
+  `coaches/aram_coach.py` `_run_vision` latches `_augment_resolved`, counts the panel
+  (`_track_augment_panel`) and calls `_handle_augment_select` BEFORE it loads the artifact (the stale
+  write-back that used to clobber the stamp is fixed there); the handler ranks the offered cards with
+  `_mayhem_augment_recommendation` -> `core.augment_recommender.recommend(mode="mayhem")` (only when
+  `is_mayhem` on the coach's own live-client state) and writes `augment_select: true`,
+  `augment_choices` and the `_AUG_RECO_KEYS` (`aug_reco`, `aug_reco_top`, `aug_reco_mode`,
+  `aug_reco_stage`, ...) into `data/aram_coaching_data.json`; a scan that explicitly reports
+  `augment_select: false` sets the file's flag False. `web/js/panels/augment_reco.js`
+  `renderAugmentReco` (called from `web/js/main.js` on every state envelope that drives the
+  panels) shows `#ib-aug-reco-block` iff
+  `coach.aug_reco` is a non-empty array, headed `PICK NOW` while `augment_select === true` and
+  `TOP PICK` after. An offer whose card names do not resolve (`resolve_id`, normalised exact match)
+  stamps NOTHING (not even `augment_select` / `augment_choices`) and drops the previous ranking:
+  the panel goes DARK and no model call is made (RM-877). A dark block while the in-game augment
+  panel is up is a FAIL of this row, and only the operator's glance can record it: the artifact
+  of an unresolved offer looks the same as a scan that missed the panel.
+  **DRAIN CARD (one ARAM Mayhem q2400 game, from the load screen):**
+  (1) `python tools/gated_g313_mayhem_aug.py --samples 45 --interval 4 > <evidence>.jsonl` from
+  the repo root at the load screen (about 3 min of samples; the grade goes to stderr), then
+  `python tools/gated_g313_mayhem_aug.py --grade <evidence>.jsonl`. Read-only: two local GETs
+  (`/api/state`, `:8889/latest-frame/meta` over plain http with the token), no write, no game id.
+  (2) PREDICATES, stated before any game (the tool's docstring is the long form): `game` PASS iff
+  `mode_key` aram AND `liveclient` non-empty; `mayhem` PASS iff `liveclient.game_mode` is Mayhem
+  (`core.mayhem_detect.is_mayhem`, KIWI live; the Live Client, NOT the coach file's `mayhem` key, so
+  a stale artifact cannot vouch for itself); `panel` SEEN iff `coach.augment_select` true with
+  non-empty `coach.augment_choices`; `reco` PASS iff an open-panel sample has non-empty
+  `coach.aug_reco`, `aug_reco_mode` "mayhem" and an `aug_reco_top` whose normalised name
+  (`_norm_name`) is an offered card; FAIL iff any open-panel sample's reco is another mode or names
+  a card not offered (an OCR alias can trip this - eye it before filing); in a Mayhem game with no
+  open-panel sample the verdict is NOT_SEEN (vision missed the panel OR its cards did not resolve
+  and the block stayed dark - the glance in (3) decides, and dark on screen is a FAIL); DARK only
+  for open-panel samples without a reco (a stale open flag from an earlier panel); `clear` PASS
+  iff a later sample has `augment_select` not true, STUCK (FAIL) iff it stays true over 75 s of
+  game time; `frame` FRESH iff 0 <= sample time minus the frame meta `ts` <= 10 s for the PASS
+  sample (STALE leaves the compute verdict alone; take the glance from a fresher sample). Plain
+  ARAM is the negative control: any `aug_reco` in a non-Mayhem game is a FAIL. Exit 0 = reco PASS
+  and clear PASS, 1 = no game / not Mayhem / NOT_SEEN / DARK / incomplete, 2 = FAIL.
+  (3) ON-SCREEN HALF (the row's actual acceptance, the operator's glance - the tool never passes
+  it): while the in-game augment panel is up (about 10-15 s), the dashboard's "Augment pick" block
+  shows `PICK NOW` and a top pick that is one of the three cards on screen; after the pick it
+  flips to `TOP PICK` (not stuck on PICK NOW).
+  **EVIDENCE CONTRACT.** Value = the PASS sample's `aug_reco_top`, `augment_choices`,
+  `aug_reco_stage` (1 for the game-start panel when the coach saw it inside `_AUGMENT_WINDOW_S`
+  = 45 s, None when RC started mid-game) and the operator's on-screen line; source = `/api/state` ->
+  `coach.aug_reco_top` / `coach.augment_choices` / `liveclient.game_mode`, plus the dashboard block
+  `#ib-aug-reco-block`; timestamp = the sample `t` + `liveclient.game_time_s`, mode KIWI, q2400;
+  predicate = (2) and (3) above. **SUBSTITUTION CHECK:** the tool's PASS proves the coach COMPUTED
+  and STAMPED a reco for the offered cards in the window; it does not prove the panel RENDERED it
+  or that the cards on screen are the OCR's cards. Only (3), with a FRESH frame, closes the row; a
+  green tool run plus a dark or wrong panel on screen is a FAIL.
+  **SUPERSEDED HISTORY (kept as written; the blocker it describes is fixed):** **WHY THE ON-SCREEN HALF CANNOT PASS AT HEAD (lane 9 PREP s133 cycle 4,
   source read at `af8c28fc8`, independent adversarial pass CONFIRMED 9 / 9 claims; NOT a tick): the
   Mayhem augment reco has NO render surface.** KIWI maps to ARAM (`core/game_snapshot.py:118`) and one
   coach runs per mode (`core/coach_registry.py:8`, `_aram_mode` -> `coaches.aram_coach`), so
