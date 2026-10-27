@@ -21,8 +21,9 @@ entries plus the 1.130.0-1.139.0 / 1.145.0-1.156.0 gap notes and the cc_conditio
 lineage - was moved verbatim to `docs/history_notes.md` on 2026-07-17 (mdclean C6). 1.144.0 is merely
 the newest entry that MOVED: it is NOT the current engine version, and this doc is NOT frozen or stale
 at it (the live version is the status line at the top of this doc). Canonical per-version entries live
-in `agents/daemon_slayer/CHANGELOG.md` + `Share/CHANGELOG.md` + `docs/LEDGER.md`; new ENGINE bumps log
-to those canonical files - do not resume a summary changelog here.
+in `agents/daemon_slayer/CHANGELOG.md` + `docs/LEDGER.md`; new ENGINE bumps log to those canonical
+files - do not resume a summary changelog here. (The Share mirror changelog went with the whole Share
+package on 2026-09-07; older entries still name it as history.)
 
 ## Module map (`agents/daemon_slayer/`)
 
@@ -60,18 +61,24 @@ to those canonical files - do not resume a summary changelog here.
 
 ## DS-before-Haiku pattern (required in all coaches)
 
-DS `rank_for()` must run **before** `messages.create()` so Haiku sees per-champion DPS-ranked picks in the user turn.
+`coach_integration.archetype_dispatch.dispatch_for_coach()` must run **before** `messages.create()` so Haiku sees scorer-aware DS picks in the user turn. Since s182 (2026-05-13) no coach calls `rank_for()` directly: the dispatcher resolves the champion's archetype and ranks through its scorer (`rank_for_primary_archetype()`, see "Phase 3 archetype picker + dispatcher" below). Shape, from `coaches/aram_coach.py` (trimmed; the import aliases dropped):
 
 ```python
-_ds_rows = None
+_ds_dispatch = None
 _ds_picks_str = "unavailable"
+_ds_label = "DPS"
 try:
-    _ds_rows = _ds_client.rank_for(champion=champ, level=level, item_ids=owned_ids, mode="ARAM", top=5)
-    _ds_picks_str = " > ".join(f"{r.item_name}(+{r.delta_dps:.0f}dps,{r.gold}g)" for r in _ds_rows) if _ds_rows else "none"
-except Exception as e:
-    logger.debug("daemon_slayer pre-call: %s", e)
-# user turn includes DS top items line
-# post-Haiku: reuse _ds_rows for cur["daemon_slayer_picks"] - no second engine call
+    _ds_dispatch = dispatch_for_coach(
+        champion=champ, mode_engine="ARAM", level=_lvl,
+        item_ids=_owned_ids, enemy_stats=_es, top=5,
+    )
+    if _ds_dispatch is not None:
+        _ds_picks_str = _ds_dispatch.picks_str
+        _ds_label = display_label(_ds_dispatch.scorer)
+except Exception as _ds_exc:
+    logger.debug("ARAM daemon_slayer pre-call: %s", _ds_exc)
+# user turn: "DS top items ({_ds_label} ranked, own-items-accounted): {_ds_picks_str}"
+# post-Haiku: cur["daemon_slayer_picks"] = _ds_dispatch.display_rows - no second engine call
 ```
 
 ## Phase 3 archetype picker + dispatcher (s176)
@@ -90,7 +97,7 @@ Scorer selection lands in four layers. The operator-facing picker s176 shipped i
 | `coaches/aram_coach.py` | yes | Before Haiku | yes (-37% system prompt) |
 | `coaches/arena_coach.py` | yes | Before Haiku | yes |
 | `coaches/brawl_coach.py` (BRAWL mode retired from champ-select s214, but the module is NOT deadcode - see below) | yes | Before Haiku | yes |
-| `coach_integration.py` (SR) | yes | Before Haiku | - |
+| `coach_integration/_coach.py` (SR) | yes | Before Haiku | - |
 | TFT | N/A | N/A | N/A |
 
 **`brawl_coach.py` is live-reachable - do not delete it as deadcode (verified 2026-08-06; citations re-measured 2026-10-26).**
