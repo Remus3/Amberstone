@@ -176,3 +176,66 @@ Acceptance: alert 66 reads "fixed" after the reopen and a later CodeQL run, read
 a QA'd packaged build of the ow-electron shell that starts every local service on launch, takes
 local / GitHub updates with minimal or no restart and never starts at boot; the operator asks
 re-batched in one line.
+# archived from RC-NEXT-SESSION.txt at 2026-10-27T01:31:12Z
+====================
+CLOSED - S141 RECORDS: OLD NEXT ACTION 1, DO-NOT-RE-LITIGATE, STATUS AND ACCEPTANCE (s142 /done trim; moved VERBATIM; the full prior file is git show e6aa499aa:RC-NEXT-SESSION.txt)
+====================
+Next action 1 (PKG wave B; operator intent VERBATIM in A26 block 2; memory
+project_packaged_app_requirements.md; spec docs/PACKAGING_PLAN.md): PKG-6 shell launcher wiring
+per its section 4 checklist (rebase on PKG-3's package.json, V1); accept: tools/run_packaged_smoke.py
+over a real build + the operator's visual check. Then PKG-7 cutover script + docs (-WhatIf default;
+never run by a session: ASKS 45). Landed s141 (LEDGER 1924): phase 1, PKG-1..5, -8, -1b; residuals
+WA1-WA8 in the plan's section 4. No Overwolf data dependency (operator ruling 2026-10-25). The
+ONLOGON tasks stay until the cutover. No lane works PKG (lane 7 excludes rc-shell/**).
+- s141 (LEDGER 1921-1925): every landing (PKG phase 1 + wave A + PKG-1b, RM-909, Dependabot #23 /
+  #24, the CLAUDE.md relocation + RM-809). Reverses if: a live re-check or CI reds one of them.
+- s141 decisions (alternatives + why in LEDGER 1921 / 1924 / 1925): calibrator ingest strict
+  folder-only (UNC path opened SMB); anthropic 2.x declined; dash token generated, gate OFF; deploy
+  key by first_run in ensure_key format; K branch kept. Reverses if, each: the operator accepts a
+  gated absolute-path ingest; RM-681 closes + a 2.x migration is scoped; every browser caller (V3 +
+  WA7) sends X-RC-Token; ensure_key restricts before it publishes; a session deletes K after a
+  bundle.
+- s141 board rendered NON-final (kit v24 --final still marks every listed row done, the s130
+  finding). Reverses if: a kit version keeps listed open rows open under --final.
+Status (s141 /done): session commits 5d2e8e71e..6e28127f3 (28), PUSHED 2d3e1c85b..6e28127f3 main ->
+main (pre-push dry runs clean: identity 0, sweep "ARMED", credential 0; no game-id-shaped numbers);
+then this /done commit (LEDGER 1921-1925, ROADMAP / ROADMAP_HISTORY, PACKAGING_PLAN WA1-WA8,
+WAKEUP + prune, A26 block 2, this hand-off; local until the next push). bot_merge_check clean (28);
+contributors = the operator only. Gate: ruff clean; hygiene trio + 3 test-hygiene guards + 3
+launcher files 902 passed, 3 skipped, exit 0; drift_guard 0; md guards (99 modules) 2374 passed, 4
+skipped, exit 0. Full suite (2c): covered by the push's own head 6e28127f3 (ci_impact_selector
+mode=full, requirements-ci.txt) = push ci 40354894788, PENDING at the /done (check job running;
+sibling-sweep-tree green): `gh run view 40354894788` first; no dispatch. codeql 40354895079 green;
+docs-guards 40354895078 green. Reap: 8 agent worktrees removed (LEDGER 1925), 7 lanes kept. RC: pid
+13800 alive, last_reload_ok true, restart_trigger empty; no game (mode client). Session file 3.2 MB.
+Inbox 0 pending; no steer / intent. perseus_sync + --verify 2259 / 2259. Memory: 1 new (new test
+files meet the hygiene guards). Board: rendered NON-final after this commit. Hand-off 30121 B of
+the 30720 B cap: trim before adding.
+Acceptance: PKG-6 landed and verifier-gated with tools/run_packaged_smoke.py green over a real build
+and the operator's visual check, then PKG-7 (not run); alert 66 reads "fixed" after the reopen and a
+later CodeQL run, read-back sent to MAIN; the operator asks re-batched in one line.
+# archived from RC-NEXT-SESSION.txt at 2026-10-27T01:31:12Z
+====================
+CLOSED - STANDING NOTES MOVED FROM THE OPEN LISTS (s142 /done trim; standing rules and expected-not-findings notes, not open items; the s143 hand-off keeps a pointer here) - verbatim from e6aa499aa:RC-NEXT-SESSION.txt lines 116-117, 147, 175-179, 181-182, 328-330, 334-341
+====================
+Operator (s134 steers): terse output; a TFT QA after each match; engine "Augur" provisional; one
+Riot key for League + TFT. Full steers, QA trend and SECURITY record: VERBATIM in archive block 5.
+- Hygiene pointer: lane exclusions ops/loop/control/lane_exclusions.txt.
+- SWEEP CONFIG (s127): after ANY per-host sweep config change run tests/test_sibling_sweep_*.py +
+  test_ci_sibling_sweep_tree_wiring.py + test_junction_drive_spellings_pubrepo_f.py BEFORE the
+  gated suite (LOCAL-only reds).
+- tools/md_guard_selector.py prints CRLF on Windows: strip \r before `$(cat list)` or pytest runs
+  nothing (s135: "no tests ran", exit 5).
+- Lane 8 (true-audit) runs in the in-tree rc-lane-true-audit worktree; a sidecar-base worktree is
+  out-of-tree (halt).
+- ubuntu-latest = Ubuntu 26 from 2026-10-19: a first red on an unchanged test may be the image.
+- CI runs Python 3.12, the box 3.14: an audit-event / stdlib-internals test can be green here and red
+  in CI (s136 C1); run such tests on a 3.12 venv before merging.
+- A future kit may change the /done closing line; do NOT pre-edit the byte-pinned block.
+- Expected, not findings: the PostToolUse credential scan flags the LEDGER "W3" fake key on every
+  LEDGER edit (s141: LEDGER.md:2158); the stop-claim gate flags main-chat push claims when
+  sub-agents pushed (RM-687; say "board updated").
+- Non-RC orphans (s129: server.ew, lw_monitor, node console server) are left alone; helpers name the
+  canonical interpreter, never `python3` (the WindowsApps stub hangs).
+- matches_quarantine.reason (local match_history.db) holds raw game ids: never copy it into a
+  tracked file.

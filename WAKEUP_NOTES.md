@@ -6,6 +6,18 @@
 
 ---
 
+# 2026-10-26d - session 142: PKG-6 (autonomous half) + PKG-7 (built, never run) landed, SF1 fixed, Dependabot #25 / #26 path B, js-yaml audit cleared; PUSHED
+
+- **Operator:** away; no steers or intents. Every landing was verifier-gated first, then landed by a separate agent.
+- **PKG-6 (LEDGER 1927):** `65cc65565` + `34990bcd6` + docs `cceec4798` - the Electron shell launches and stops the service host; packaged smoke 63/63. The packaged GPU process dies (error_code=18) only in the agent env; the operator's Explorer launch is the real check.
+- **PKG-7 (LEDGER 1928):** `acba657f3` + `21da946ed` - `tools/launcher_cutover.ps1`, dry run by default, XML backup read back before unregister. Never run by a session (ASKS 45).
+- **SF1 / DEP-26 / DEP-25 / JSY (LEDGER 1929 / 1926 / 1930 / 1931):** token header stripped off-origin `a0c20ea24`; certifi `2fc75b886` (anthropic 2.2.0 declined); electron 45.0.0 `72324c7b5`; js-yaml 4.3.2 `537b72710` + docs `e13219044`.
+- **/done (LEDGER 1932):** gated suite on `e13219044` 46668 passed, 1 failed (CLI pin 2.1.311 vs 2.1.310, environment); pushed `6e28127f3..e13219044` (push ci mode=full); both bot PRs closed by Dependabot; reap removed 3 worktrees (2 by long-path delete after git deregistered them).
+- **Do NOT redo:** the landings above; PR #22 is superseded by #25 (applied).
+- **Next:** PKG-6b (updater CLI + per-service restart); the CLI re-pin; the 38 lock-file Dependabot alerts re-read; then the operator batch (ASKS 45 packaged-app acts, 39, 49).
+
+---
+
 # 2026-10-26c - session 141: PKG phase 1 + wave A + PKG-1b landed, RM-909 root-caused, Dependabot #23 / #24 path B, CLAUDE.md back under budget; PUSHED
 
 - **Operator (chat):** "Continue" only; no steers. Decisions were the session's own (recorded in LEDGER 1921 / 1924 / 1925).
@@ -31,12 +43,3 @@
 - **/done:** ROADMAP relocation `bb559e747` (74186 -> 73357 B); pushed 1cf593a58..bb559e747.
 - **Do NOT redo:** the landings above; K is superseded (worktree agent-a35c8a72b0640e054 kept, reap lists it).
 - **Next:** reopen alert 66 on the operator's yes, then a CodeQL run and the read-back to MAIN; then the PKG next action.
-
----
-
-# 2026-10-26 - session 139 (headless MAIN follow-up run): docs-guards red on b0c755499 fixed (RM next-free pin moved); PUSHED
-
-- **F1 (LEDGER 1915):** `35007e479` moves the pinned next-free RM id past RM-907 / RM-908 in `docs/DS_SWEEP_TRACKER.md`; guard + docs-guard files green.
-- **F2:** pushed b0c755499..35007e479; docs-guards 40272825498 green; ci 40271967354 on b0c755499 green. No note to MAIN (CI green).
-- **Do NOT redo:** the pin bump. R1 slip recorded (Bash byte-replace, commit backs it).
-- **Next:** unchanged - RM-907 gated suite on a quiet box; then the PKG next action.
