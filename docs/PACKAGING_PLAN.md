@@ -762,6 +762,25 @@ Found by the PKG-6 builder and verifier; not fixed by PKG-6.
   nothing when it ignores an unloaded module, so a watcher thread wedged
   after its start is indistinguishable. Closing it needs a watcher
   heartbeat in core/hot_reload.py.
+- WA20 (PKG-6c s144, the review after round 5, FIXED test-first): H-A a
+  lost / interrupted apply rolled back with no game gate (a supervisor
+  rollback restarts main.py): the rollback is now recorded first as
+  `recover_due` in update_cycle.json and, while main.py is up and READY,
+  waits for the full apply gate (game process, health flags, liveclient,
+  LCU phase); a main.py that is down is rolled back at once; completing an
+  interrupted recover waits the same way and keeps a quit-excused verdict;
+  the shell resumes `recover_due` on its 60 s tick unless a FRESH
+  /api/state says busy. H-B readiness never read /api/state, so a release
+  whose state builder 500s verified, was kept and blocked every later cycle:
+  the readiness end check now needs /api/health AND a 200 JSON /api/state
+  (`dashboard_serving`); the H2 variant (an unreadable state held a failed
+  restart's rollback forever) is bounded - a positive game / LCU signal
+  holds for as long as it lasts, an unreadable state alone at most
+  UNREADABLE_HOLD_S = 300 s across cycles (`state_unreadable_since`), and
+  the shell retries a sent check when its state is unknown, not only when
+  idle. J3 the controller test now kills the `deferHost` no-op mutant.
+  Not changed: a verify that failed (the new run never became ready) and a
+  hot_reload compile failure still roll back at once.
 - WA12 electron-builder logs "signing with signtool.exe" for every `.exe`
   under `resources/backend` (`python.exe`, `pythonw.exe`, site-packages
   `bin/*.exe`): with a cert set (S4) it would re-sign the PSF-signed
