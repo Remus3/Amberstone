@@ -25,13 +25,16 @@ Anything else - a server thread, an executor worker, a fake reader - is not
 this guard's business.
 
 `check_module(before)` runs at module teardown (wired from tests/conftest.py):
-it stops what it finds, so one leak cannot cascade into later modules, and
-returns a description of each for the failure message.
+a found thread first gets GRACE_S to exit on its own (a poller its test
+already stopped may still be finishing its last sleep); what survives is
+stopped, so one leak cannot cascade into later modules, and described for
+the failure message.
 """
 from __future__ import annotations
 
 import sys
 import threading
+import time
 import types
 
 # Qualnames of the lazy readers that construct and keep an LcuClient.
@@ -46,6 +49,14 @@ MAX_DEPTH = 3
 
 # How long a found thread gets to exit after it has been told to stop.
 STOP_JOIN_S = 2.0
+
+# How long the found threads get, together, to exit ON THEIR OWN before any
+# is called a leak (RM-981). The frozen `LcuClient.stop_auto_accept()`
+# only clears `_running` and never joins, so a thread its test stopped
+# correctly is still alive in its last `time.sleep(interval)` (default 1.0 s)
+# at module teardown. One shared deadline, not one wait per thread; a thread
+# that exits inside it has exited before the next module starts.
+GRACE_S = 2.0
 
 _SKIP_TYPES = (type, types.ModuleType, str, bytes, int, float, bool,
                type(None))
@@ -139,14 +150,24 @@ def describe(thread: threading.Thread) -> str:
     return f"{thread.name!r} (target {what})"
 
 
+def _survivors(threads, grace_s: float) -> list:
+    """The threads still alive once `grace_s` has passed, all of them
+    waited on against ONE deadline."""
+    deadline = time.monotonic() + grace_s
+    for t in threads:
+        t.join(timeout=max(0.0, deadline - time.monotonic()))
+    return [t for t in threads if t.is_alive()]
+
+
 def check_module(before) -> list:
     """Every thread alive now, absent from `before`, that can reach a live
-    LcuClient: each is stopped, then described. Returns the descriptions
-    (empty = clean)."""
+    LcuClient and is still alive after GRACE_S: each is stopped, then
+    described. Returns the descriptions (empty = clean)."""
     found = [t for t in threading.enumerate()
              if t not in before and t.is_alive()
              and t is not threading.current_thread()
              and thread_reaches_lcu_client(t)]
+    found = _survivors(found, GRACE_S)
     out = []
     for t in found:
         out.append(describe(t))

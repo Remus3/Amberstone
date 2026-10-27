@@ -15,6 +15,7 @@ from __future__ import annotations
 import ast
 import queue
 import threading
+import time
 from pathlib import Path
 
 from core import tft_worker
@@ -107,6 +108,70 @@ def test_the_frozen_clients_auto_accept_thread_is_found_and_stopped():
     finally:
         client._running = False
         t.join(fleet_test_guard.budget(5))
+
+
+def _sleeping_auto_accept(interval):
+    """A frozen-client auto-accept thread parked in its `time.sleep(interval)`
+    after one tick. The tick is replaced on the instance, as above."""
+    client = LcuClient()
+    ticked = threading.Event()
+    client._auto_accept_tick = ticked.set
+    client._running = True
+    t = threading.Thread(target=client._auto_accept_loop, args=(interval,),
+                         daemon=True, name="rm909-stopping")
+    t.start()
+    assert ticked.wait(fleet_test_guard.budget(5)), "the loop never ticked"
+    return client, t
+
+
+def test_a_poller_its_test_already_stopped_is_not_a_leak():
+    """RM-981 (RM-909 follow-up (a)): the frozen `stop_auto_accept()` only
+    clears `_running`; it does not join, so a correctly stopped thread is
+    still alive in its last `time.sleep(interval)` when the module tears
+    down. The guard gives it GRACE_S to finish before calling it a leak; one
+    that exits inside the grace has exited before the next module starts."""
+    client, t = _sleeping_auto_accept(1.0)  # start_auto_accept's default
+    before = set(threading.enumerate()) - {t}
+    try:
+        client.stop_auto_accept()           # what a well-behaved test does
+        assert t.is_alive(), "non-vacuity: the thread is still sleeping"
+        assert guard.check_module(before) == []
+        assert not t.is_alive()
+        assert client._running is False
+    finally:
+        client._running = False
+        t.join(fleet_test_guard.budget(5))
+
+
+def test_a_poller_still_running_after_the_grace_is_still_a_leak():
+    """The grace is not an exemption: a poller nobody stopped outlives it and
+    is reported (and stopped) exactly as before."""
+    client, t = _sleeping_auto_accept(0.05)
+    before = set(threading.enumerate()) - {t}
+    try:
+        found = guard.check_module(before)
+        assert found == ["'rm909-stopping' (target LcuClient._auto_accept_loop)"]
+        assert client._running is False and not t.is_alive()
+    finally:
+        client._running = False
+        t.join(fleet_test_guard.budget(5))
+
+
+def test_the_grace_is_one_deadline_not_one_wait_per_thread():
+    """Three unstopped pollers cost about one GRACE_S, not three."""
+    owners = [_Owner(tft_worker.make_lcu_request()) for _ in range(3)]
+    before = set(threading.enumerate())
+    threads = [_parked(o) for o in owners]
+    try:
+        t0 = time.monotonic()
+        assert len(guard.check_module(before)) == 3
+        elapsed = time.monotonic() - t0
+        assert elapsed < min(fleet_test_guard.budget(guard.GRACE_S + 1.0),
+                             3 * guard.GRACE_S)
+    finally:
+        for o, t in zip(owners, threads):
+            o.stop()
+            t.join(fleet_test_guard.budget(5))
 
 
 def test_a_thread_that_cannot_reach_the_lcu_is_left_alone():
