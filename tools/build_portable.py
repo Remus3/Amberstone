@@ -223,6 +223,8 @@ _BOOT_RES = (
     re.compile(r"^tools/[^/]*_install\.ps1$"),
 )
 _TASK_DRIVER_RE = re.compile(r"^tools/legion_[^/]*\.ps1$")
+# PKG-7: the operator's one-time cutover (unregisters / re-imports RC-* tasks).
+_TASK_DRIVER_FILES = frozenset({"tools/launcher_cutover.ps1"})
 
 _KILL_FILES = frozenset({
     "ops/launch_new_system.bat",
@@ -270,7 +272,7 @@ def exclusion_reason(rel: str) -> Optional[str]:
         return R_PHASE3
     if rel in _BOOT_FILES or any(r.match(rel) for r in _BOOT_RES):
         return R_BOOT
-    if _TASK_DRIVER_RE.match(rel):
+    if _TASK_DRIVER_RE.match(rel) or rel in _TASK_DRIVER_FILES:
         return R_TASKS
     if rel in _KILL_FILES:
         return R_KILL
