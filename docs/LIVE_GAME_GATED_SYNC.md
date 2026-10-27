@@ -2446,6 +2446,81 @@ stays playable beside it, so record which set the game ran).
   which needs no game; only the "running writer emits them" half does. Reverses if: the `_write`
   literal, the `degraded` discriminator or a seed literal changes (the source-pin tests in
   `tests/test_gated_tft_live_keys.py` fail first), or a reader of any of the three keys lands.
+- **TFT-15 READY (lane 9, s144 cycle 6, PREP only, no game up; NOT ticked)** (`docs/TFT_PROGRAM.md`
+  section 7 slice TFT-15, section 6 paths A / B; listed here in s144 because no gate above covers a
+  TFT game; TFT-14 waits on it) Two unknowns: the team-code FORMAT (can path A copy a code with no
+  LCU write?) and whether a planner change PROPAGATES between the client planner and the in-game
+  planner mid-match. Findings go to the gitignored `ops/runtime/tft_qa/PLANNER_PROBE.md` (TFT-15's
+  only file); this row holds the commands, predicates and the tick line. One read-only tool,
+  `tools/gated_tft15_planner.py` (LCU GETs only through RC's own `lcu/lcu_client.py`, pinned by
+  `tests/test_gated_tft15_planner.py`; prints no team title, no team id and no TFT.log line text).
+  Half 1, FORMAT (any lobby or match, operator present): the operator builds a planner team whose
+  units they name, takes its code from the client planner's own copy / share control (an in-client
+  act, no RC write) and runs `python tools/gated_tft15_planner.py decode "<code>" --expect
+  "<Unit1>,<Unit2>,..." --json`, once for a one-unit team and once for a team of 3 or more units in
+  a known order. If the client shows no copy control, the code needs the write-shaped `POST
+  /v1/sets/{set}/team-code/{team}`, which is path B's explicit-click rule (an attended session, never
+  a lane): record which. Fields: `verdict`, `h1.prefix`, `h1.tail`, `slot_count`, `filled`, `units`,
+  `unknown_codes`, `round_trip`, `empty_between`, `order_matches`. Candidate grammar H1, stated
+  before any code is read: a 2-character prefix, 3-hex-digit slots (`000` = empty, filled slots
+  first), an optional `TFTSet<N>` tail. Its one measured basis is the legacy Set 17 probe reading
+  `code[2:5]` of a one-unit team as that unit's `team_planner_code` in hex
+  (`scripts/discover_champion_codes.py` `legacy_probe`, source-pinned); every Set 18 code (1001 to
+  1085) fits 3 hex digits. Predicate: PASS iff H1 parses the code, every filled slot maps to a unit
+  in `data/meta/tft_set<N>_champion_codes.json`, re-encoding gives the code back and the units equal
+  `--expect` as a multiset; FAIL iff any of those breaks. Close half 1 with PASS on both codes (H1 is
+  the offline encoder; write the prefix value, slot count, tail and `order_matches` into
+  PLANNER_PROBE.md) or with the refuting field ("no offline encoder under H1"; path A falls back as
+  section 6 says).
+  Half 2, PROPAGATION (a real TFT match; the game-up discriminator is RM-292 (c)'s: `tasklist` shows
+  `TFTClient-Win64-Shipping.exe` while `/api/state` `lcu.phase` is `InProgress`). Game-to-client
+  needs no RC write: `python tools/gated_tft15_planner.py snapshot --since <game start, local ISO>
+  --json > <main>/ops/runtime/tft_qa/planner_before.json`, the operator adds or removes one unit of
+  one team in the IN-GAME planner (note the local time), wait 60 s, the same command into
+  `planner_after.json`, then `python tools/gated_tft15_planner.py diff <before> <after> --direction
+  game-to-lcu --edit-at <the noted edit time, local ISO> --json`. Client-to-game needs a client
+  planner write mid-match: that is path B's write, made only in an attended session with the
+  operator present (never by a lane); bracket it with the same two snapshots and `--direction
+  lcu-to-game --edit-at <the write time>`, then the operator reopens the in-game planner and says
+  whether the changed team shows. Fields: `verdict`, `why`, `changes[].change` / `units_before` /
+  `units_after`, `new_log_events[].kind` / `iso` (UTC), `edit_at`, `phase_before`, `phase_after`,
+  and the snapshot `planner.dirty_shape`. `diff` says INCOMPLETE (never `NO_CHANGE`) unless both
+  snapshots read a recognised planner shape holding at least one team and were both taken
+  `InProgress`, and for game-to-client unless `--edit-at` is given. Predicate: game-to-client
+  PROPAGATES iff `diff` says `PROPAGATED_LOG` (the client planner changed and a `data_saved` line
+  follows BEFORE and the edit time) AND `changes[]` is exactly one `edited` team whose
+  `units_before` / `units_after` differ by the one unit the operator added or removed (any other
+  change: record it, close nothing); NOT MID-MATCH iff `NO_CHANGE` holds at 60 s and again on a
+  third snapshot at 180 s; `NO_LOG_SIGNAL` is recorded as is (the change came another way);
+  INCOMPLETE closes nothing (record `why`). Client-to-game PROPAGATES iff the
+  operator sees the changed team in the in-game planner; DOES NOT iff they see the old team after
+  reopening it - then path B is lobby-only (section 6). `PROPAGATED_LOG` (a `data_received` after
+  BEFORE) supports that call and never replaces it.
+  Evidence contract: value = the verdicts and fields above plus the operator's in-game observation
+  (team shown: new or old); source = the tool's JSON over `GET /lol-tft-team-planner/v1/sets/dirty`,
+  `/v1/previous-context`, `/lol-gameflow/v1/gameflow-phase` and the allowlisted
+  `TFTPlannerSubsystem` lines of the client's `TFT.log`; timestamp = each snapshot's `read_at`, the
+  log events' UTC `iso`, `edit_at` and `phase_before` / `phase_after` (the tool reads no queue id;
+  TFT-15 does not depend on the queue, so record it only if the drain already has it); predicate =
+  this paragraph. The codes themselves and the team titles stay in the gitignored notes,
+  never in a tracked file.
+  SUBSTITUTION check (answer it in the tick line): the format half is NOT a substitution only
+  because its input is a code the CLIENT produced; the synthetic codes in the test file prove the
+  parser, never the grammar. For propagation, the diff shows only that the CLIENT planner changed,
+  and a log line only that the game's planner subsystem loaded or saved; neither shows the in-game
+  planner RENDERED the team, so only the operator's look closes client-to-game. `data_saved` lines
+  appear in matches with no RC planner write (baseline below), so a save that does not follow the
+  operator's noted edit is no signal.
+  Idle baseline (2026-10-27 local, no game, client closed): `snapshot` NO_LCU, exit 1. The TFT.log
+  scan over the seven 2026-10-25 files (the live file and six backups): `data_received` exactly 1
+  per file (the match-start load, as section 6 says), `set_loaded` 1 per file (`TFTSet18` in the
+  live file), `data_saved` 7, 7, 0, 0, 5, 3, 2 with `prefs_saved` equal to it in each file - the
+  same counts as a raw grep of those files (positive control). The `/v1/sets/dirty` shape is
+  unmeasured here (the LCU TFT inventory names champions[].championId, title, id and reminder, 40
+  TFTSet18 teams); the summary accepts a per-set list, a per-set `teams` list or a flat list and
+  says `dirty_shape: unrecognised` otherwise, so the first drain records the real shape. Reverses
+  if: the legacy probe's `code[2:5]` read changes (the source pin fails first), a fresh match's
+  TFT.log scan finds no `data_received` (the line wording moved), or TFT-14 lands.
 
 ## PARKED / HOLD - deliberately OFF the active checklist
 
