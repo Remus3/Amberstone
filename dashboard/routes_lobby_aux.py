@@ -21,9 +21,19 @@ Schema (``data/top8_list.json``):
         "level":         412,
         "icon_id":       4567,
         "added_ts":      1778561234,
+        "user_tag":      "duo",                 # the rest only when sent
+        "is_online":     false,
+        "games_with_me": null,
+        "preferred_role": null,
+        "summoner_level": 412,
+        "puuid":         "...",
       },
       ...                                    # up to TOP8_MAX entries
     ]
+
+    Every string is type-checked and capped (_MAX_*_LEN); every number is
+    a non-negative int or the field is dropped (``rank.lp`` falls to 0,
+    ``added_ts`` to now). Unknown fields are dropped.
 
 Mains schema (``/api/mains?puuid=...`` response):
 
@@ -33,6 +43,7 @@ Mains schema (``/api/mains?puuid=...`` response):
       "main_champs": [
         {
           "name":           "Vayne",
+          "champion_id":    67,               # null on a DB without it
           "icon":           "/data/ddragon/16.9.1/img/champion/Vayne.png",
           "mastery_level":  7,
           "mastery_points": 487213,
@@ -51,6 +62,7 @@ local files only (``data/top8_list.json``, ``match_history.db``,
 """
 import json
 import logging
+import math
 import sqlite3
 import time
 from pathlib import Path
@@ -68,22 +80,49 @@ _REWIND_DB = _DATA_DIR / "rewind_history.db"
 
 _TOP8_MAX = 8
 
+# s144 true-audit: caps on every persisted string. A Riot ID is at most
+# 16 + 1 + 5 characters and a puuid is 78; the caps leave headroom while
+# keeping one POST from parking a 1 MiB note in a file served on every GET.
+_MAX_ID_LEN = 64
+_MAX_NOTE_LEN = 200
+_MAX_PUUID_LEN = 128
+_MAX_RANK_LEN = 16
+
 
 # -- Top 8 storage ----------------------------------------------------
 
 def _load_top8() -> list:
+    """The stored list, re-sanitized on the way out.
+
+    s144 true-audit: the file used to be served raw. json.load accepts a
+    bare NaN, which then went back out as a non-strict token that the
+    browser's r.json() rejects; main.js then sets its cache to [] and the
+    operator's next add POSTs a one-entry list over the whole file. Every
+    entry now passes the same sanitizer a POST does, capped at TOP8_MAX.
+    """
     try:
         if not _TOP8_PATH.exists():
             return []
         with _TOP8_PATH.open("r", encoding="utf-8") as f:
             data = json.load(f)
-        if not isinstance(data, list):
-            log.warning("top8: not a list, returning empty (got %r)", type(data))
-            return []
-        return data
-    except Exception as exc:  # noqa: BLE001
-        log.warning("top8: load failed: %s", exc)
+    except (OSError, ValueError, RecursionError) as exc:
+        # ValueError covers JSONDecodeError and UnicodeDecodeError;
+        # RecursionError is json.load on a deeply nested file, and GET has
+        # no wrapper above it (do_GET does not catch a route exception).
+        log.warning("top8: load failed: %s", type(exc).__name__)
         return []
+    if not isinstance(data, list):
+        log.warning("top8: not a list, returning empty (got %s)",
+                    type(data).__name__)
+        return []
+    out = []
+    for e in data:
+        s = _sanitize_top8_entry(e)
+        if s is not None:
+            out.append(s)
+        if len(out) >= _TOP8_MAX:
+            break
+    return out
 
 
 def _save_top8(entries: list) -> None:
@@ -92,36 +131,82 @@ def _save_top8(entries: list) -> None:
     atomic_write_json(_TOP8_PATH, entries)
 
 
+def _clean_str(value, cap: int) -> str:
+    """A stripped, length-capped string, or "" for anything not a str.
+
+    Non-strings used to go through str(), so a dict landed on disk as its
+    Python repr."""
+    if not isinstance(value, str):
+        return ""
+    return value.strip()[:cap]
+
+
+def _nonneg_int(value) -> int | None:
+    """A non-negative int from an int, a finite float or a short ASCII
+    digit string (the old int() coercion accepted "12"), else None.
+
+    bool is refused (int(True) is 1). int() of inf raises OverflowError and
+    of nan ValueError - the bare int() calls this replaces let both escape
+    the handler, and do_POST does not catch a route exception, so the
+    request died with no HTTP response."""
+    if isinstance(value, str):
+        s = value.strip()
+        return int(s) if s.isascii() and s.isdigit() and len(s) <= 12 \
+            else None
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    n = int(value)
+    return n if n >= 0 else None
+
+
 def _sanitize_top8_entry(raw) -> dict | None:
     """Coerce a single entry into the saved schema. Drops fields we
-    don't recognise so client bugs can't poison the file."""
+    don't recognise so client bugs can't poison the file.
+
+    s144 true-audit: every field is type-checked and every string capped,
+    and the fields web/js/main.js renders and lets the operator edit
+    (``user_tag``, ``is_online``, ``games_with_me``, ``preferred_role``,
+    ``summoner_level``) are kept when sent. The client replaces its cache
+    with this response, so a dropped ``user_tag`` vanished on save."""
     if not isinstance(raw, dict):
         return None
-    rid = str(raw.get("riot_id") or "").strip()
-    sn  = str(raw.get("summoner_name") or "").strip()
+    rid = _clean_str(raw.get("riot_id"), _MAX_ID_LEN)
+    sn = _clean_str(raw.get("summoner_name"), _MAX_ID_LEN)
     if not rid and not sn:
         return None
+    added = _nonneg_int(raw.get("added_ts"))
     out = {
         "riot_id":       rid,
         "summoner_name": sn,
-        "note":          str(raw.get("note") or "").strip(),
-        "added_ts":      int(raw.get("added_ts") or time.time()),
+        "note":          _clean_str(raw.get("note"), _MAX_NOTE_LEN),
+        "added_ts":      added if added else int(time.time()),
     }
     rank = raw.get("rank")
     if isinstance(rank, dict):
         out["rank"] = {
-            "tier":     str(rank.get("tier") or "").upper(),
-            "division": str(rank.get("division") or "").upper(),
-            "lp":       int(rank.get("lp") or 0),
+            "tier":     _clean_str(rank.get("tier"), _MAX_RANK_LEN).upper(),
+            "division": _clean_str(rank.get("division"),
+                                   _MAX_RANK_LEN).upper(),
+            "lp":       _nonneg_int(rank.get("lp")) or 0,
         }
-    if raw.get("level") is not None:
-        try: out["level"] = int(raw["level"])
-        except (TypeError, ValueError): pass
-    if raw.get("icon_id") is not None:
-        try: out["icon_id"] = int(raw["icon_id"])
-        except (TypeError, ValueError): pass
-    if raw.get("puuid"):
-        out["puuid"] = str(raw["puuid"])
+    for key in ("level", "icon_id", "summoner_level"):
+        n = _nonneg_int(raw.get(key))
+        if n is not None:
+            out[key] = n
+    puuid = _clean_str(raw.get("puuid"), _MAX_PUUID_LEN)
+    if puuid:
+        out["puuid"] = puuid
+    if "user_tag" in raw:
+        out["user_tag"] = _clean_str(raw.get("user_tag"), _MAX_NOTE_LEN)
+    if "is_online" in raw:
+        out["is_online"] = raw.get("is_online") is True
+    if "games_with_me" in raw:
+        out["games_with_me"] = _nonneg_int(raw.get("games_with_me"))
+    if "preferred_role" in raw:
+        out["preferred_role"] = (
+            _clean_str(raw.get("preferred_role"), _MAX_RANK_LEN) or None)
     return out
 
 
@@ -239,12 +324,33 @@ def _kp_by_champ(conn: sqlite3.Connection, puuid: str) -> dict:
     return out
 
 
+def _champion_ids(conn: sqlite3.Connection, puuid: str) -> dict:
+    """champion_name -> champion_id for one puuid, the key the LCU mastery
+    map uses. Fail-soft to {} (an older DB without the column) so the mains
+    payload never depends on it."""
+    try:
+        cur = conn.execute(
+            "SELECT champion_name, MAX(champion_id) FROM participants "
+            "WHERE puuid = ? AND champion_id IS NOT NULL "
+            "GROUP BY champion_name", (puuid,))
+        return {n: int(cid) for n, cid in cur.fetchall()
+                if n and isinstance(cid, int) and cid > 0}
+    except sqlite3.Error:
+        return {}
+
+
 def _query_mains_for_puuid(conn: sqlite3.Connection, puuid: str,
                            top_n: int) -> list:
     """Per-champion aggregate stats for one puuid, ranked by games
     played. Last-match details are resolved via a follow-on query so
     GROUP BY doesn't have to pick a representative row."""
     cur = conn.cursor()
+    # s144 true-audit: cs_per_min is CS from games WITH a time_played over
+    # those games' minutes. It used to be all CS over max(1, minutes), so a
+    # champ whose rows carry no time_played reported its total CS across
+    # every game as a per-minute rate. `champ ASC` and `p.match_id DESC`
+    # make ties (and so the LIMIT cut) a rule rather than a query-plan
+    # accident.
     cur.execute("""
         SELECT champion_name AS champ,
                COUNT(*) AS games,
@@ -253,32 +359,39 @@ def _query_mains_for_puuid(conn: sqlite3.Connection, puuid: str,
                SUM(kills), SUM(deaths), SUM(assists),
                SUM(COALESCE(total_minions_killed,0) + COALESCE(neutral_minions_killed,0)) AS cs,
                SUM(vision_score), SUM(total_damage_dealt_to_champs) AS dmg,
-               SUM(time_played) AS played_s
+               SUM(CASE WHEN time_played > 0 THEN time_played ELSE 0 END)
+                   AS played_s,
+               SUM(CASE WHEN time_played > 0
+                        THEN COALESCE(total_minions_killed,0)
+                             + COALESCE(neutral_minions_killed,0)
+                        ELSE 0 END) AS cs_timed
         FROM participants
         WHERE puuid = ?
           AND champion_name IS NOT NULL
           AND champion_name != ''
         GROUP BY champion_name
-        ORDER BY games DESC
+        ORDER BY games DESC, champ ASC
         LIMIT ?
     """, (puuid, top_n))
     agg_rows = cur.fetchall()
     # R30: kill-participation per champ (one self-join pass) so the lobby
     # AVG/Match KP% cell fills from real data instead of "-".
     kp_by_champ = _kp_by_champ(conn, puuid)
+    ids_by_champ = _champion_ids(conn, puuid)
     out_rows = []
     for r in agg_rows:
-        champ, games, wins, losses, ks, ds, as_, cs, vs, dmg, played_s = r
+        (champ, games, wins, losses, ks, ds, as_, cs, vs, dmg, played_s,
+         cs_timed) = r
         wins, losses = wins or 0, losses or 0
         games = games or 0
-        played_min = max(1, (played_s or 0) / 60)
+        played_min = (played_s or 0) / 60
         # Last 5 for this champ - row 0 is the last match; all 5 grade AVG 5.
         cur.execute("""
             SELECT p.win, p.kills, p.deaths, p.assists, m.game_creation_ts
             FROM participants p
             LEFT JOIN matches m ON m.match_id = p.match_id
             WHERE p.puuid = ? AND p.champion_name = ?
-            ORDER BY m.game_creation_ts DESC
+            ORDER BY m.game_creation_ts DESC, p.match_id DESC
             LIMIT 5
         """, (puuid, champ))
         recent = cur.fetchall()
@@ -297,6 +410,7 @@ def _query_mains_for_puuid(conn: sqlite3.Connection, puuid: str,
         # because the data/ddragon/ mount doesn't exist on disk.
         out_rows.append({
             "name": champ,
+            "champion_id": ids_by_champ.get(champ),
             "icon": f"/icons/champions/{champ}.png",
             "last_match": last_match,
             "overall": {
@@ -315,11 +429,23 @@ def _query_mains_for_puuid(conn: sqlite3.Connection, puuid: str,
                 "cs":         round((cs or 0) / games) if games else None,
                 "vision":     round((vs or 0) / games, 1) if games else None,
                 "dmg":        int((dmg or 0) / games) if games else None,
-                "cs_per_min": round((cs or 0) / played_min, 1),
+                "cs_per_min": (round((cs_timed or 0) / played_min, 1)
+                               if played_min > 0 else None),
                 "avg5":       _avg5_grade(recent),
             },
         })
     return out_rows
+
+
+def _connect_rewind_ro() -> sqlite3.Connection:
+    """Read-only connection to the rewind DB.
+
+    s144 true-audit: the URI was ``f"file:{path}?mode=ro"`` built from the
+    raw path, so a ``#`` (fragment) or ``%`` (escape) in the checkout path
+    opened the wrong file and the panel went silently empty. as_uri()
+    percent-encodes the path."""
+    return sqlite3.connect(_REWIND_DB.resolve().as_uri() + "?mode=ro",
+                           uri=True)
 
 
 def _operator_mains(puuid: str | None, top_n: int = 8) -> list:
@@ -328,7 +454,7 @@ def _operator_mains(puuid: str | None, top_n: int = 8) -> list:
     if not _REWIND_DB.exists():
         return []
     try:
-        conn = sqlite3.connect(f"file:{_REWIND_DB}?mode=ro", uri=True)
+        conn = _connect_rewind_ro()
         try:
             if not puuid:
                 puuid = _resolve_operator_puuid(conn)
@@ -344,35 +470,46 @@ def _operator_mains(puuid: str | None, top_n: int = 8) -> list:
 
 def _mastery_overlay(rows: list, mastery_state: dict | None) -> list:
     """Layer LCU mastery (mastery_level + mastery_points) onto the
-    SQLite-derived stat rows. The agent's LCU mastery hook posts
-    state.mastery shaped as ``{champion_name: {level, points, ...}}``."""
+    SQLite-derived stat rows.
+
+    s144 true-audit: lcu/snapshot_shape._maybe_refresh_mastery keys the map
+    by integer championId (a string key once it has crossed JSON), and this
+    used to look it up by champion NAME, so nothing ever matched. Rows now
+    carry ``champion_id``; the id is tried as str and int, then the name
+    (the legacy shape this docstring used to promise)."""
     if not isinstance(mastery_state, dict):
         return rows
     for r in rows:
-        m = mastery_state.get(r["name"])
+        cid = r.get("champion_id")
+        m = None
+        if cid is not None:
+            m = mastery_state.get(str(cid), mastery_state.get(cid))
+        if m is None:
+            m = mastery_state.get(r.get("name"))
         if isinstance(m, dict):
-            r["mastery_level"]  = m.get("level")
-            r["mastery_points"] = m.get("points")
+            r["mastery_level"] = _nonneg_int(m.get("level"))
+            r["mastery_points"] = _nonneg_int(m.get("points"))
     return rows
 
 
 def _read_live_mastery() -> dict:
-    """Pull LCU mastery off the most recent state envelope so /api/mains
-    can layer mastery_level/_points onto SQLite-derived stats without
-    needing the client to pass them in. The /api/state response chain
-    already enriches lcu.mastery via the Legion LCU agent (s168)."""
+    """LCU mastery off the same snapshot /api/state serves as ``lcu``, so
+    /api/mains can layer mastery_level/_points onto SQLite-derived stats.
+
+    s144 true-audit: this used to make a self-HTTPS request from inside a
+    request handler to a hard-coded :8888 through urllib's default opener
+    (which honours a process proxy), to read one key this process already
+    builds. It now asks the state builder's LCU reader directly; the import
+    is lazy so gathering the route table does not pull in the state builder
+    (coaches, team context, the relay pool)."""
     try:
-        import ssl as _ssl
-        import urllib.request as _ur
-        ctx = _ssl.create_default_context()
-        ctx.check_hostname = False
-        ctx.verify_mode = _ssl.CERT_NONE
-        req = _ur.Request("https://127.0.0.1:8888/api/state")
-        with _ur.urlopen(req, timeout=1.0, context=ctx) as r:
-            body = json.loads(r.read())
-        return ((body.get("lcu") or {}).get("mastery")) or {}
-    except Exception:  # noqa: BLE001
+        from dashboard._state_builder import _read_lcu_snapshot
+        snap = _read_lcu_snapshot()
+    except Exception as exc:  # noqa: BLE001 - fail-soft: mastery is optional
+        log.debug("mains: live mastery unavailable: %s", type(exc).__name__)
         return {}
+    mastery = snap.get("mastery") if isinstance(snap, dict) else None
+    return mastery if isinstance(mastery, dict) else {}
 
 
 def _serve_mains_get(h) -> None:
@@ -382,6 +519,13 @@ def _serve_mains_get(h) -> None:
     try:
         qs = parse_qs(urlparse(h.path).query)
         puuid = (qs.get("puuid") or [""])[0].strip()
+        if len(puuid) > _MAX_PUUID_LEN:
+            # s144 true-audit: a Riot puuid is 78 characters; anything this
+            # long is not one, and is not echoed back.
+            h._send(400, json.dumps(
+                {"ok": False, "error": "bad puuid"}).encode(),
+                "application/json")
+            return
         rows = _operator_mains(puuid or None, top_n=8)
         # Mastery layer is operator-only; party members have their own
         # mastery via LCU agent but we don't surface it here yet.
