@@ -25,6 +25,16 @@ variant takes its game fields and BOTH team rows from one real NEXUSBLITZ
 game in rewind_history (team 100 lost: 1 tower; team 200 won: 2 towers, 2
 heralds, 1 inhibitor, 0 dragons, 0 barons). No id is copied (RM-906): the
 fixture's synthetic ids stay.
+
+RM-977 (s144 uiux cycle 9) adds the Void Grubs row on the same map gate.
+dashboard/builders_lcu_enrich.py emits teams[].horde_kills (LCU hordeKills)
+and the fixtures carry it (SR 4 vs 2, the URF game 0 vs 3), but _setChart
+never drew it, so the one early-game Rift objective was missing from the
+team compare. Measured over rewind_history (read-only): 3244 grub kills on
+the 1432 map-11 team rows, 0 on every map-12 / 21 / 30 row. Rule: the row
+is a map-11 pit row (a missing map_id keeps the Rift default), and it is
+drawn only when a team row carries the horde_kills key, so a payload
+enriched before the key existed shows no row rather than a fake 0 vs 0.
 """
 import json
 from pathlib import Path
@@ -45,7 +55,7 @@ _CHART = """() => Array.from(
   r.querySelector(".lm-chart-bar-enemy .lm-chart-bar-value").textContent.trim(),
 ])"""
 
-_PIT_ROWS = ("Dragons", "Barons", "Heralds")
+_PIT_ROWS = ("Dragons", "Barons", "Heralds", "Void Grubs")
 
 
 def _team(src, **over):
@@ -81,6 +91,12 @@ def _map(map_id):
 
 def _drop_map_id(payload):
     payload["match"]["enriched"].pop("map_id", None)
+    return payload
+
+
+def _drop_horde_kills(payload):
+    for team in payload["match"]["enriched"]["teams"]:
+        team.pop("horde_kills", None)
     return payload
 
 
@@ -138,14 +154,32 @@ def test_another_known_map_draws_no_pit_objective_row(
     assert chart["Towers"] == ("3", "11")
 
 
-def test_rift_brawl_keeps_all_three_pit_rows(mock_server, pw_browser):
+def test_rift_brawl_keeps_every_pit_row(mock_server, pw_browser):
     # Positive control for the gate: the unedited URF game on mapId 11.
     chart, labels = _chart(mock_server, pw_browser, "brawl", BRAWL,
                            lambda p: p)
     assert chart["Dragons"] == ("2", "2")
     assert chart["Barons"] == ("0", "1")
     assert chart["Heralds"] == ("0", "0")
-    assert labels[-4:] == ["Towers", "Dragons", "Barons", "Heralds"]
+    assert chart["Void Grubs"] == ("0", "3")
+    assert labels[-5:] == ["Towers", "Dragons", "Barons", "Heralds",
+                           "Void Grubs"]
+
+
+def test_rift_ranked_game_shows_the_void_grubs_row(mock_server, pw_browser):
+    # The SR fixture's operator team (100) took 4 grubs to the enemy's 2.
+    chart, labels = _chart(mock_server, pw_browser, "sr", SR, lambda p: p)
+    assert chart["Void Grubs"] == ("4", "2"), labels
+    assert labels[-1] == "Void Grubs"
+
+
+def test_payload_without_horde_kills_draws_no_void_grubs_row(
+        mock_server, pw_browser):
+    # A payload enriched before horde_kills existed must not claim 0 vs 0.
+    chart, labels = _chart(mock_server, pw_browser, "sr", SR,
+                           _drop_horde_kills)
+    assert "Void Grubs" not in chart, labels
+    assert chart["Heralds"] == ("1", "1")
 
 
 def test_payload_without_map_id_keeps_the_rift_default(
@@ -154,3 +188,4 @@ def test_payload_without_map_id_keeps_the_rift_default(
     chart, labels = _chart(mock_server, pw_browser, "sr", SR, _drop_map_id)
     for row in _PIT_ROWS:
         assert row in chart, labels
+    assert chart["Void Grubs"] == ("4", "2")

@@ -1287,7 +1287,7 @@ function _setStatsGrid(m, enriched) {
 // Derived from enriched.roster (per-player KDA/damage/gold/vision)
 // + enriched.teams (tower/dragon/baron/inhibitor kills). Each row is
 // a pair of bars normalized to the larger value so the visual diff
-// reads instantly. Pit objectives (Dragons / Barons / Heralds) follow
+// reads instantly. Pit objectives (Dragons / Barons / Heralds / Void Grubs) follow
 // the MAP (_LM_MAP_PIT_ROWS); tower kills + vision show in all 5v5 modes.
 //
 // RM-976: the pit rows used to follow isSr (= not ARAM, not Arena), so a
@@ -1297,8 +1297,13 @@ function _setStatsGrid(m, enriched) {
 // kills on every team row but real herald kills, so map 21 keeps Heralds.
 // Any other known map draws no pit row; a payload with no map_id keeps the
 // old isSr default.
+//
+// RM-977: Void Grubs (teams[].horde_kills, LCU hordeKills) is a Rift pit
+// row too. builders_lcu_enrich emits it but the chart never drew it. Drawn
+// only when a team row carries the key, so a payload enriched before the
+// key existed shows no row instead of a fake "0 vs 0".
 const _LM_MAP_PIT_ROWS = Object.freeze({
-  11: Object.freeze(["dragon", "baron", "herald"]),
+  11: Object.freeze(["dragon", "baron", "herald", "grubs"]),
   21: Object.freeze(["herald"]),
 });
 
@@ -1355,6 +1360,9 @@ function _setChart(enriched) {
   }
   if (pits.includes("herald")) {
     rows.push({ label: "Heralds", ally: myTeam.rift_herald_kills || 0, enemy: enemyTeam.rift_herald_kills || 0 });
+  }
+  if (pits.includes("grubs") && (myTeam.horde_kills != null || enemyTeam.horde_kills != null)) {
+    rows.push({ label: "Void Grubs", ally: myTeam.horde_kills || 0, enemy: enemyTeam.horde_kills || 0 });
   }
 
   list.innerHTML = rows.map((r) => {

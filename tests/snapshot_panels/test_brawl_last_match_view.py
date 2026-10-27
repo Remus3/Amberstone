@@ -143,6 +143,8 @@ def test_brawl_team_compare_keeps_the_rift_objective_rows(brawl_pgr):
     assert chart["Dragons"] == ("2", "2")
     assert chart["Barons"] == ("0", "1")
     assert chart["Heralds"] == ("0", "0")
+    # RM-977: the URF game's real grub count reaches the chart.
+    assert chart["Void Grubs"] == ("0", "3")
 
 
 def test_brawl_hides_the_sr_trained_wpa_strip(brawl_pgr):
