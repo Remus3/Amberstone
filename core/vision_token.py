@@ -92,14 +92,28 @@ def _resolve() -> tuple[str, TokenSource]:
     env = os.environ.get("RC_VISION_TOKEN")
     if env and env.strip():
         return _checked(env.strip(), "env")
+    # s144 true-audit: a file that EXISTS but is empty, unreadable or not
+    # UTF-8 used to raise IndexError (empty file) or "no token configured"
+    # (false - a file is there). Name what is wrong with it; never its content
+    # and never the decode error, whose text quotes a byte of the token.
+    problem = ""
     try:
         if _CONFIG_PATH.exists():
-            first_line = _CONFIG_PATH.read_text(encoding="utf-8").splitlines()[0].strip()
+            lines = _CONFIG_PATH.read_text(encoding="utf-8").splitlines()
+            first_line = lines[0].strip() if lines else ""
             if first_line:
                 return _checked(first_line, "config")
+            problem = "is empty" if not lines else "is unusable: its first line is empty"
     # RM-291A: UnicodeDecodeError is a ValueError, not an OSError.
-    except (OSError, UnicodeDecodeError):
-        pass
+    except UnicodeDecodeError:
+        problem = "is not UTF-8 text (re-write it as one printable-ASCII line)"
+    except OSError as exc:
+        problem = f"could not be read ({type(exc).__name__})"
+    if problem:
+        raise RuntimeError(
+            f"vision_token: the config file {_CONFIG_PATH} {problem}. Set "
+            "RC_VISION_TOKEN env var OR write the token on its first line. "
+            "See module docstring for rotation procedure.") from None
     raise RuntimeError(
         "vision_token: no token configured. Set RC_VISION_TOKEN env var "
         f"OR write a token to {_CONFIG_PATH}. See module docstring for "
@@ -121,13 +135,25 @@ def get_vision_token_source() -> TokenSource:
 
 def debug() -> None:
     """Print the active source + first/last 4 chars of the token. Never
-    prints the full secret - safe for copy-paste troubleshooting."""
+    prints the full secret - safe for copy-paste troubleshooting.
+
+    s144 true-audit: the line used to go only to ``logger.info``, so the
+    documented ``python -c`` call printed nothing (no handler, WARNING root);
+    it is printed AND logged now. And first4...last4 was shown from 8 chars
+    up - all of an 8-char token. It needs 32 chars now (the rotation recipe's
+    ``token_hex(16)``), so at most a quarter of the token is ever shown.
+    """
     tok, src = _resolve()
-    if len(tok) >= 8:
+    if len(tok) >= _DEBUG_REVEAL_MIN_LEN:
         masked = f"{tok[:4]}...{tok[-4:]}"
     else:
         masked = "(short)"
-    logger.info(f"vision_token source={src} token={masked} len={len(tok)}")
+    line = f"vision_token source={src} token={masked} len={len(tok)}"
+    logger.info("%s", line)
+    print(line)
+
+
+_DEBUG_REVEAL_MIN_LEN = 32
 
 
 # Log resolution source once at import time so operators see it in the
