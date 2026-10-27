@@ -632,6 +632,20 @@ test("PKG-6c H-A a held rollback (recover_due) waits only for a FRESH busy state
     true);
 });
 
+test("PKG-6c H-B (H2 variant) a SENT owed check retries when the state is unknown, not only when idle", () => {
+  const sent = { verify: false, owed: true, owedSent: true, pending: false, recovering: false };
+  const at = { records: sent, lastResumeMs: 1000, nowMs: 1000 + bu.RESUME_INTERVAL_MS };
+  const unknown = bu.resumeDue(Object.assign({}, at, { idle: false, stateFresh: false }));
+  assert.deepStrictEqual([unknown.run, unknown.restartsSent], [true, true],
+    "a state route that never answers can no longer hold the recover forever");
+  const busy = bu.resumeDue(Object.assign({}, at, { idle: false, stateFresh: true }));
+  assert.deepStrictEqual([busy.run, busy.reason], [false, "owed-waits-for-idle"]);
+  assert.strictEqual(bu.resumeDue(Object.assign({}, at, { idle: false })).run, false,
+    "a caller that does not say the state is unknown keeps the idle rule");
+  const early = bu.resumeDue(Object.assign({}, at, { nowMs: 1001, idle: false, stateFresh: false }));
+  assert.deepStrictEqual([early.run, early.reason], [false, "not-due"], "still on the resume interval");
+});
+
 test("PKG-6c main.js hands resumeDue whether its /api/state is fresh", () => {
   const body = fnBody("maybeResumeBackend");
   assert.ok(body.includes("stateFresh: pollFresh"), "the unknown-state rule needs pollFresh");

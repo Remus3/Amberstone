@@ -24,7 +24,10 @@ A run is ready when health.json carries `last_state_provider_ok` (written
 only after main.py wired its state provider, main.py:208 - after every
 import and the app constructor), its pid is alive, the heartbeat is fresh
 (<= HEARTBEAT_STALE_S) - all held by ONE run id for STABLE_S - and the
-dashboard answers /api/health at the end. After a supervised restart the run
+dashboard answers /api/health AND a 200 JSON /api/state at the end (PKG-6c
+H-B: a release whose state builder fails on every call is not ready - kept,
+it would block every later cycle, which needs a fresh /api/state). After a
+supervised restart the run
 must also be NEW; after a hot_reload the settle window runs first and any run
 change restarts the stable window, so the old run's heartbeat cannot pass a
 reload that broke the new one.
@@ -56,7 +59,12 @@ deploy's rollback is recorded as `recover_due` and taken by the next idle
 cycle (the shell resumes it unless a fresh /api/state says busy), and so is
 completing an interrupted recover. A main.py that is down has nothing to
 interrupt: the rollback runs at once. A verify that failed is not held (the
-new run never became ready).
+new run never became ready). PKG-6c H-B (the H2 variant): a positive signal
+(a game process, a health flag, a readable busy /api/state) holds it for as
+long as it lasts; an UNREADABLE /api/state while main.py heartbeats holds
+it at most UNREADABLE_HOLD_S across cycles (`state_unreadable_since`; a
+readable state restarts the clock) - a state route that never answers is
+itself the fault, and the shell sees no idle moment to retry on either.
 
 Restart safety (each step is a separate, persisted state):
   - the updater's `recovering` marker makes recover() re-entrant (F6);
@@ -164,6 +172,11 @@ DEPLOY_MAX_S = up.REQUEST_TTL_S + WORKER_KILL_S + 60.0
 QUIT_EXCUSES_MAX = 2
 # M2: outcomes that skip a service with nothing old left running (no notice).
 QUIET_SKIPS = frozenset({"not-running", "not-configured"})
+# PKG-6c H-B: busy_from_state's reason for an unreadable /api/state, and the
+# longest it alone holds a rollback while main.py heartbeats (five of the
+# shell's 60 s resume ticks).
+STATE_UNREADABLE = "no /api/state"
+UNREADABLE_HOLD_S = 300.0
 SERVICE_LABELS = {"ds": "Daemon Slayer", "vision": "the vision server",
                   "lcu_agent": "the LCU agent", "liveclient_relay": "the Live Client relay",
                   "hotkey_listener": "the hotkey listener", "supervisor": "the RC supervisor",
@@ -323,7 +336,7 @@ def busy_from_state(doc: Any) -> Optional[str]:
     dashboard/_state_builder.py:1058-1072), a non-empty liveclient, or an
     LCU phase outside IDLE_PHASES (champ select, queue, loading, ...)."""
     if not isinstance(doc, dict):
-        return "no /api/state"
+        return STATE_UNREADABLE
     health = doc.get("health") if isinstance(doc.get("health"), dict) else {}
     for flag in up.LIVE_GAME_FLAGS:
         if health.get(flag) is True or doc.get(flag) is True:
@@ -338,7 +351,8 @@ def busy_from_state(doc: Any) -> Optional[str]:
 
 def fetch_api_state(root: Path) -> Optional[Dict[str, Any]]:
     """GET /api/state from the local dashboard (loopback, the origin the
-    host's own health probe finds), or None."""
+    host's own health probe finds), or None - also for any non-200 (urllib
+    raises HTTPError) or a body that is not a JSON object."""
     origin = sh.fetch_health_origin(dashboard_port())
     if not origin:
         return None
@@ -359,6 +373,12 @@ def _apply_gate(root: Path) -> Optional[str]:
     """The default apply-time check: a game process / fresh health flag
     (updater.game_live), else the shell's LCU-phase gate (R5)."""
     return up.game_live(root) or busy_from_state(fetch_api_state(root))
+
+
+def dashboard_serving(root: Path) -> bool:
+    """PKG-6c H-B: the readiness end check - /api/health says alive AND
+    /api/state answers 200 with a JSON object (fetch_api_state does both)."""
+    return fetch_api_state(root) is not None
 
 
 def _quit_overlapped(root: Path, since: Optional[float], until: Optional[float]) -> bool:
@@ -574,13 +594,12 @@ def _host_halted(root: Path) -> bool:
 def _make_ctx(root: Path, *, clock, sleep, now, uptime, parent_alive, health, serving,
               services_probe, supervisor_alive, game_check, log, finish_timeout_s,
               health_timeout_s, settle_s, stable_s, poll_s) -> _Ctx:
-    port = dashboard_port()
     lock = up.runtime_dir(root) / "supervisor.pid"
     return _Ctx(
         root=root, clock=clock, sleep=sleep, now=now, uptime=uptime or up.boot_uptime_s,
         parent_alive=parent_alive or (lambda: True),
         health=health or (lambda: readiness(root)),
-        serving=serving or (lambda: sh.fetch_health_origin(port) is not None),
+        serving=serving or (lambda: dashboard_serving(root)),   # H-B: /api/state too
         services_probe=services_probe or (lambda owed: services_state(root, owed)),
         supervisor_alive=supervisor_alive or (lambda: sh.lock_holder_alive(lock)),
         game_check=game_check, log=log or (lambda _m: None),
@@ -680,9 +699,25 @@ def _recover_hold(ctx: _Ctx, sample: Optional[Dict[str, Any]] = None) -> Optiona
     main.py, so it waits only while main.py is up and READY (a main.py that
     is down has nothing to interrupt) and the full idle gate says busy."""
     s = ctx.health() if sample is None else sample
-    if not _sample_ok(s):
-        return None
-    return ctx.game_reason()
+    reason = ctx.game_reason() if _sample_ok(s) else None
+    # H-B (H2 variant): an unreadable state alone holds it UNREADABLE_HOLD_S
+    # at most, counted across cycles from the first such sample; any other
+    # answer (a positive signal, idle, main.py down) restarts that clock.
+    since = read_cycle(ctx.root).get("state_unreadable_since")
+    if reason != STATE_UNREADABLE:
+        if since is not None:
+            _write_cycle(ctx.root, state_unreadable_since=None)
+        return reason
+    now = float(ctx.now())
+    if not isinstance(since, (int, float)) or isinstance(since, bool) or since > now:
+        _write_cycle(ctx.root, state_unreadable_since=now)
+        return reason
+    if now - since < UNREADABLE_HOLD_S:
+        return reason
+    ctx.log(f"/api/state unreadable for {int(now - since)} s while main.py heartbeats: "
+            "the rollback is no longer held")
+    _write_cycle(ctx.root, state_unreadable_since=None)
+    return None
 
 
 def _set_recover_due(ctx: _Ctx, version: Optional[str], why: str, *, bad: bool) -> None:

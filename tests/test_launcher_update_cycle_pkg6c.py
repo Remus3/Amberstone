@@ -1,5 +1,5 @@
-# arch: PKG-6c update cycle - rollback game gate (H-A) | section=tests | frozen=no
-"""PKG-6c: the plausible highs the review after PKG-6b round 5 found
+# arch: PKG-6c update cycle - rollback game gate (H-A) + /api/state readiness (H-B) | section=tests | frozen=no
+"""PKG-6c: the two plausible highs the review after PKG-6b round 5 found
 (LEDGER 1934), fixed test-first.
 
   H-A a lost / interrupted apply rolled back with no idle / game gate
@@ -12,6 +12,15 @@
       by the next idle cycle. A main.py that is down has nothing to
       interrupt: the rollback runs at once. The sibling - completing an
       interrupted recover - waits the same way.
+  H-B readiness read health.json + /api/health only, never /api/state, so a
+      release whose state builder 500s on every call verified and was kept,
+      and every later cycle needs a fresh 200 /api/state, so none ran. Now
+      the default readiness needs a 200 JSON /api/state. The H2 variant: an
+      unreadable /api/state held a failed restart's rollback forever (the
+      shell retried a sent check only on an idle state it never got). Now a
+      positive game / LCU signal still holds it for as long as it lasts,
+      but an unreadable state holds it at most UNREADABLE_HOLD_S, measured
+      across cycles; a readable state in between restarts that clock.
 
 Every root is tmp_path; no network (the updater suite's socket tripwire);
 the supervisor and main.py are simulated in the injected sleep / probes.
@@ -25,13 +34,17 @@ from ops.launcher import updater as up
 from tests.test_launcher_update_hardening_pkg6b import (
     Clock,
     Script,
+    Services,
     Sim,
     _applied,
     _cycle,
     _half_deploy,
     _lost_sim,
+    _owed,
+    _resume,
     _setup,
     _sup_requests,
+    no_game,
     sample,
 )
 from tests.test_launcher_updater import (  # noqa: F401 - _no_network is an autouse fixture
@@ -188,3 +201,85 @@ def test_ha_completing_an_interrupted_recover_waits_out_a_game(tmp_path, monkeyp
     assert any(n.endswith("-rollback.json") for n in _recover_requests(root))
     assert up.installed_version(root) == "1.0.0"
     assert uc.read_cycle(root)["recover_due"] is None
+
+
+# ------------------------------------------------ H-B /api/state readiness
+
+
+def test_hb_the_default_readiness_needs_a_200_api_state(tmp_path, monkeypatch):
+    """/api/health answers (the old readiness) but the state builder 500s:
+    the release is not ready, so it is rolled back and marked bad."""
+    monkeypatch.setattr(uc.sh, "fetch_health_origin", lambda *a, **k: "https://127.0.0.1:8888")
+    state = [None]
+    monkeypatch.setattr(uc, "fetch_api_state", lambda r: state[0])
+    root, src = _setup(tmp_path)
+    clock = Clock()
+    res = _cycle(root, src, clock, Sim(root, clock), Script(clock, lambda t: sample("r2")),
+                 serving=None, health_timeout_s=90)
+    assert res.status == "recovered", res.to_dict()
+    assert "1.1.0" in uc.read_cycle(root)["bad_versions"]
+    # positive control: the same release with a 200 /api/state verifies
+    state[0] = {"lcu": {"phase": "Lobby"}, "health": {}, "liveclient": {}}
+    root2, src2 = _setup(tmp_path / "b")
+    res = _cycle(root2, src2, clock, Sim(root2, clock), Script(clock, lambda t: sample("r2")),
+                 serving=None, health_timeout_s=90)
+    assert res.status == "applied", res.to_dict()
+
+
+def _failing(clock):
+    return Services(clock, lambda n, t: {"restarted": False, "healthy": False, "pid": None})
+
+
+def test_hb_an_unreadable_state_holds_a_failed_restart_only_for_a_bounded_time(
+        tmp_path, monkeypatch):
+    root, _src, clock = _owed(tmp_path)
+    monkeypatch.setattr(uc.up, "game_live", lambda *a, **k: None)
+    monkeypatch.setattr(uc, "fetch_api_state", lambda r: None)
+    wall = [time.time()]
+    kw = dict(restarts_sent=True, health_timeout_s=60, game_check=None, now=lambda: wall[0])
+    res = _resume(root, clock, _failing(clock), **kw)
+    assert res.status == "deferred", res.to_dict()   # round 5 H2: held at first
+    wall[0] += uc.UNREADABLE_HOLD_S - 5
+    assert _resume(root, clock, _failing(clock), **kw).status == "deferred"
+    assert up.installed_version(root) == "1.1.0"
+    wall[0] += 10
+    res = _resume(root, clock, _failing(clock), **kw)
+    assert res.status == "recovered", res.to_dict()
+    assert up.installed_version(root) == "1.0.0"
+
+
+def test_hb_a_readable_state_restarts_the_unreadable_clock(tmp_path, monkeypatch):
+    root, _src, clock = _owed(tmp_path)
+    monkeypatch.setattr(uc.up, "game_live", lambda *a, **k: None)
+    state = [None]
+    monkeypatch.setattr(uc, "fetch_api_state", lambda r: state[0])
+    wall = [time.time()]
+    kw = dict(restarts_sent=True, health_timeout_s=60, game_check=None, now=lambda: wall[0])
+    assert _resume(root, clock, _failing(clock), **kw).status == "deferred"
+    wall[0] += uc.UNREADABLE_HOLD_S - 10
+    state[0] = {"lcu": {"phase": "ChampSelect"}}
+    assert _resume(root, clock, _failing(clock), **kw).status == "deferred"
+    wall[0] += 20
+    state[0] = None
+    res = _resume(root, clock, _failing(clock), **kw)
+    assert res.status == "deferred", "the unreadable clock restarted at the readable sample"
+    wall[0] += uc.UNREADABLE_HOLD_S + 1
+    assert _resume(root, clock, _failing(clock), **kw).status == "recovered"
+
+
+def test_hb_a_positive_game_signal_holds_past_the_bound(tmp_path):
+    root, _src, clock = _owed(tmp_path)
+    wall = [time.time()]
+    kw = dict(restarts_sent=True, health_timeout_s=60, game_check=lambda: GAME,
+              now=lambda: wall[0])
+    assert _resume(root, clock, _failing(clock), **kw).status == "deferred"
+    wall[0] += 10 * uc.UNREADABLE_HOLD_S
+    assert _resume(root, clock, _failing(clock), **kw).status == "deferred"
+    assert up.installed_version(root) == "1.1.0"
+
+
+def test_hb_an_idle_main_py_rolls_back_a_failed_restart(tmp_path):
+    root, _src, clock = _owed(tmp_path)
+    res = _resume(root, clock, _failing(clock), restarts_sent=True, health_timeout_s=60,
+                  game_check=no_game)
+    assert res.status == "recovered", res.to_dict()

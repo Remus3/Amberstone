@@ -279,8 +279,9 @@ function heldByState(o) {
 // the urgent rule (a held interrupted recover keeps its marker).
 // An owed record: once at launch (it returns the restarts to perform; the
 // shell then performs and health-checks them); and B4 - a SENT check (one
-// that deferred) again every interval, but only when `idle`. `restartsSent`
-// says which resume to run. opts.stateFresh: the last /api/state answered.
+// that deferred) again every interval, but only when `idle` or (PKG-6c H-B)
+// with the state unknown. `restartsSent` says which resume to run.
+// opts.stateFresh: the last /api/state answered.
 function resumeDue(opts) {
   const o = opts && typeof opts === "object" ? opts : {};
   const r = o.records && typeof o.records === "object" ? o.records : {};
@@ -312,7 +313,9 @@ function resumeDue(opts) {
       return { run: true, reason: "owed-at-launch", restartsSent: false };
     }
     if (r.owedSent === true) {
-      if (o.idle !== true) {
+      // PKG-6c H-B (H2 variant): an unanswered /api/state no longer holds a
+      // deferred check forever; the cycle bounds that hold itself.
+      if (heldByState(o)) {
         return { run: false, reason: "owed-waits-for-idle", restartsSent: true };
       }
       return due ? { run: true, reason: "owed-retry", restartsSent: true }
