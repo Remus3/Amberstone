@@ -106,6 +106,7 @@ from .extendedduel import compute_extendedduel
 from .matchup import compute_matchup
 from .onhit_dps import rank_items_by_onhit
 from .rank import SORT_KEYS, rank_items
+from .stats import clamp_level
 
 _log = logging.getLogger("daemon_slayer.server")
 
@@ -2153,7 +2154,8 @@ def _route_fight_report(body: dict) -> dict:
       * ``runes`` (list or comma string of Riot perk ids) - keystone/proc
         rune layer; junk ids ignored
     ``compute_fight_report`` is itself fail-soft (per-section notes), so a
-    KeyError here is only the champion-resolution failure (404).
+    KeyError here is only the champion-resolution failure (404); a level
+    outside ``[LEVEL_MIN, LEVEL_MAX]`` is 422, like every sibling route.
     """
     snap = _CACHE.get()
     champion = _resolve_champion_id(snap, _required_str(body, "champion"))
@@ -2175,6 +2177,10 @@ def _route_fight_report(body: dict) -> dict:
     apply_ability_haste = _opt_bool(body, "apply_ability_haste", False)
     apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)
     try:
+        # RM-959: compute_fight_report is fail-soft and only lifts < 1, so
+        # an out-of-range level answered 200 with zeroed sections. Reject it
+        # here, as every sibling route does through the same check.
+        clamp_level(level)
         result = compute_fight_report(
             champion, level, item_ids=items, sequence=sequence, runes=runes,
             target_armor=target_armor, target_mr=target_mr,
