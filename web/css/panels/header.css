@@ -519,16 +519,24 @@ footer .prefs-chip:hover { color: var(--text); }
   /* Hextech: page titles take the gold accent (mirrors the overlay gold
    * pane-heads), not the info-blue the neo-fintech palette used. */
   color: var(--accent); font-weight: 900;
+  /* RM-975: the title keeps its one line; at the ~923px companion
+   * width a long --fs-sm sub-line wraps inside its own box instead of
+   * squeezing USER BUILDS / BUILD INSIGHTS / POST GAME REVIEW onto two. */
+  flex-shrink: 0;
 }
+/* RM-975 (s144): 12px -> --fs-sm, the tier docs/UI_SCALE_SPEC_V2.md
+ * names for .view-section-sub; 12 was the s218 value the v2.1 lift never
+ * reached. Guard: tests/snapshot_panels/test_view_section_sub_floor.py. */
 .view-section-sub {
-  font-size: 12px; color: var(--text-faint); letter-spacing: 0.04em;
+  font-size: var(--fs-sm); color: var(--text-faint); letter-spacing: 0.04em;
 }
 /* s162 v14: bumped + recolored error variant. The "live" idle text is
  * suppressed in JS; this rule only fires when the panel falls into
  * an error/empty state (e.g. "awaiting LCU lobby data feed") and
- * needs to actually be read. */
+ * needs to actually be read. RM-975: 15px -> --fs-sm, so it is never
+ * smaller than the plain sub-line; color + weight set it apart. */
 .view-section-sub.is-error {
-  font-size: 15px;
+  font-size: var(--fs-sm);
   color: var(--bad);
   font-weight: 700;
   letter-spacing: 0.04em;

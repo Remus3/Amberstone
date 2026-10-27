@@ -1001,7 +1001,19 @@ _WEB = _REPO_ROOT / "web"
 # superseded 571244f2... value EXACTLY. That path is the whole change. No
 # glyph change: the added lines carry 0 non-ASCII bytes. If another slice
 # re-captures in parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "a18ee00a25939e8999cd06af3939efae6613a2ebbd62753b946dd59b592126ae"
+# superseded by the RM-975 re-capture below: "a18ee00a25939e8999cd06af3939efae6613a2ebbd62753b946dd59b592126ae"
+#
+# RE-CAPTURED 2026-10-27 at RM-975 (s144 uiux cycle 8). One change rides
+# it: web/css/panels/header.css .view-section-sub 12px -> var(--fs-sm),
+# .view-section-sub.is-error 15px -> var(--fs-sm) and flex-shrink: 0 on
+# .view-section-head h2 (the title keeps one line at the companion width),
+# plus their comments.
+# Ordinary case, no tokeniser change. ATTRIBUTED BY SUBSTITUTION: swapping
+# exactly web/css/panels/header.css back to its b9f942aaf blob reproduces the
+# superseded a18ee00a... value EXACTLY. That path is the whole change. No
+# glyph change: the added lines carry 0 non-ASCII bytes. If another slice
+# re-captures in parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "0571242f7efd18a0e612756b5cad9955c9b7d648cae935cf80750172674cedbd"
 
 
 def _web_sources() -> list[Path]:
