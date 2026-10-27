@@ -193,6 +193,46 @@ def test_same_version_with_no_key_change_posts_nothing(env):
     assert _events(env) == []
 
 
+def test_rm258_state_write_routes_through_polled_json(env, monkeypatch):
+    """RM-258: the state file goes through the shared writer (per-writer
+    scratch name, fsync, bounded WinError 5 retry), not a hand-rolled
+    shared `<name>.tmp` plus a bare rename."""
+    import core.polled_json as pj
+    seen = []
+    real = pj._write_then_replace
+
+    def rec(path, data):
+        seen.append(Path(path).name)
+        return real(path, data)
+
+    monkeypatch.setattr(pj, "_write_then_replace", rec)
+    _run(env)
+    assert seen == ["spec_watch_state.json"]
+    raw = env["state"].read_bytes()
+    assert b"\r" not in raw and raw.endswith(b"}\n")
+    assert json.loads(raw.decode("ascii"))["posted"] == {}
+    assert [x.name for x in env["state"].parent.iterdir()] == ["spec_watch_state.json"]
+
+
+def test_rm258_state_write_survives_a_transient_rename_refusal(env, monkeypatch):
+    import core.polled_json as pj
+    real = pj.os.replace
+    refusals = [2]
+
+    def flaky(src, dst):
+        if refusals[0]:
+            refusals[0] -= 1
+            raise PermissionError(13, "Access is denied")
+        return real(src, dst)
+
+    monkeypatch.setattr(pj.os, "replace", flaky)
+    monkeypatch.setattr(pj.time, "sleep", lambda _s: None)
+    code, summary = _run(env)
+    assert code == 0 and summary["outcome"] == "baseline"
+    assert refusals == [0]
+    assert json.loads(env["state"].read_text(encoding="ascii"))["snapshot"]["version"] == "16.19.1"
+
+
 def test_upstream_drift_check_runs_the_watch_only_when_asked(monkeypatch):
     from tools import upstream_drift_check as udc
 

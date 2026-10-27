@@ -46,6 +46,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from core.polled_json import atomic_write_bytes  # noqa: E402
 from lib.game_data.sources import DDRAGON_VERSIONS_URL, SourceParseError, parse_versions  # noqa: E402
 
 STATE_PATH = ROOT / "ops" / "runtime" / "spec_watch_state.json"
@@ -146,10 +147,11 @@ def _tracked_markers(events_path: Path) -> set[str]:
 
 
 def _write_state(path: Path, state: dict) -> None:
+    """Through core.polled_json (RM-258): per-writer scratch name, fsync, a
+    bounded WinError 5 retry for a reader's share lock, scratch removed on
+    failure. Bytes, so the file stays ASCII with LF line ends."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(path.name + ".tmp")
-    tmp.write_text(json.dumps(state, indent=1, sort_keys=True) + "\n", encoding="ascii", newline="\n")
-    tmp.replace(path)
+    atomic_write_bytes(path, (json.dumps(state, indent=1, sort_keys=True) + "\n").encode("ascii"))
 
 
 def append_event(events_path: Path, record: dict) -> dict:
