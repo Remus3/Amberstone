@@ -841,16 +841,90 @@ EV_BACKGROUND = re.compile(r"running in background with ID|Output is being writt
 # a bound, so one launch does not credit every summary-shaped line read for the
 # rest of the session.
 DEFERRED_SUMMARY_CAP = 2
+
+# RM-829: EV_SUMMARY_LINE stayed quadratic after RM-814 - a digit run 1.79 s at
+# 20k chars, `1,` repeated 0.89 s, `1 passed ` repeated 0.34 s, four times the
+# time for twice the input, on every tool result, uncapped. Every digit of a
+# run was a start whose `[\d,]*` re-read the run, and every count on a line
+# re-read the rest of the line looking for `in Ns`.
+#
+# _SummaryLineScan keeps the regex as the ONLY authority for the match it
+# returns and skips just the starts proven dead. PROOF. Write the first
+# alternative HEAD SPAN TAIL: HEAD `\d[\d,]*\s+(?:passed|failed|error)\b`, SPAN
+# `[^\n]*?`, TAIL the rest. HEAD has ONE reading from a start: `[\d,]*` stopping
+# early leaves a digit or comma where `\s+` needs whitespace, `\s+` stopping
+# early leaves whitespace where the word must start, and the three words differ
+# in their first letter. (1) Every digit of a maximal `[\d,]` run reads the run
+# to its end, so all of them try the same continuation: only the run's first
+# digit is tried. (2) Let the try at s fail with HEAD ending at h_s, and let a
+# later start t have HEAD ending at h_t with no newline in text[h_s:h_t].
+# Suppose t matched, SPAN reading text[h_t:c] and TAIL matching at c. Then
+# text[h_s:c] has no newline, so SPAN reads it from s too, and TAIL reads only
+# its own text and the char before c (`\b`), no group: s matches, a
+# contradiction. So a failed try retires every later start whose HEAD ends at or
+# before the next newline; each try reads a disjoint segment, and search is
+# linear. FREE (the `duration_ms` line) is searched once and the answer is the
+# regex's own match at the smaller of the two leftmost starts, as in _SpanScan.
+# Pinned against the plain regex by
+# tests/test_stop_claim_gate_heredoc_summary_scan_rm829.py.
+
+
+class _SummaryLineScan:
+    """EV_SUMMARY_LINE whose search tries one start per digit run and skips
+    the starts a failed try proved dead (RM-829, proof above). Its result equals
+    the plain regex's; every other attribute is the regex's own."""
+
+    def __init__(self, regex, head, free):
+        span = regex.pattern
+        if not span.endswith("|" + free):
+            raise ValueError("FREE is not the last top-level alternative")
+        if not span.startswith(head + r"[^\n]*?") or not head.startswith(r"\d[\d,]*\s+"):
+            raise ValueError(r"not a \d[\d,]*\s+ HEAD [^\n]*? TAIL pattern")
+        self.regex = regex
+        self._head = re.compile(head, regex.flags)
+        self._runs = re.compile(r"[\d,]+", regex.flags)
+        self._digit = re.compile(r"\d", regex.flags)
+        self._free = re.compile(free, regex.flags)
+
+    def __getattr__(self, name):
+        if name.startswith("__") or name == "regex":
+            raise AttributeError(name)
+        return getattr(self.regex, name)
+
+    def search(self, text):
+        free = self._free.search(text)
+        limit = len(text) + 1 if free is None else free.start()
+        dead = -1
+        for run in self._runs.finditer(text):
+            digit = self._digit.search(text, run.start(), run.end())
+            if digit is None:
+                continue
+            start = digit.start()
+            if start >= limit:
+                break
+            head = self._head.match(text, start)
+            if head is None or head.end() <= dead:
+                continue
+            match = self.regex.match(text, start)
+            if match is not None:
+                return match
+            newline = text.find("\n", head.end())
+            dead = len(text) if newline < 0 else newline
+        return None if free is None else self.regex.match(text, limit)
+
+
 # Deliberately the TERMINAL-SUMMARY shape, not a bare "N passed". Crediting any
 # floating count is what poisoned the first armed gate; requiring the trailing
 # duration is what keeps this a widening of evidence and not of belief.
-EV_SUMMARY_LINE = re.compile(
+EV_SUMMARY_LINE = _SummaryLineScan(re.compile(
     r"\d[\d,]*\s+(?:passed|failed|error)\b[^\n]*?\bin\s+[\d.]+\s*s"
     # Node's equivalent terminal marker: the duration line closing its summary
     # block. Same intent - a SUMMARY shape, never a floating count. Prefix class
     # is [^a-zA-Z] for the same measured reason as EV_NODE_PASS: node's U+2139
     # marker is a WORD character to Python's Unicode \w, so \W* never matches it.
-    r"|^[^a-zA-Z\n]{0,4}duration_ms\s+[\d.]+\s*$", re.I | re.M)
+    r"|^[^a-zA-Z\n]{0,4}duration_ms\s+[\d.]+\s*$", re.I | re.M),
+    head=r"\d[\d,]*\s+(?:passed|failed|error)\b",
+    free=r"^[^a-zA-Z\n]{0,4}duration_ms\s+[\d.]+\s*$")
 
 EDIT_TOOLS = {"edit", "write", "multiedit", "notebookedit"}
 
@@ -887,7 +961,111 @@ def _written_content(name, data):
 # heredoc that was writing documentation, the phrase "no tests ran" appearing in
 # prose, and a claim quoted as an example. Stripping quotation before matching is
 # the fix; matching inside it is the bug.
-_HEREDOC = re.compile(r"<<-?\s*'?(\w+)'?.*?^\1\s*$", re.S | re.M)
+#
+# RM-829: that regex was quadratic - ` <<A<i>` 0.75 s at 20k chars, one long
+# word with a one-letter terminator line 1.19 s - on every main bash command
+# (strip_command_noise and audit's raw-bash pass), uncapped. A start with no
+# terminator line read the WHOLE rest of the text (`.*?` is re.S), once per
+# start and once more per shorter backtracked word.
+#
+# _HeredocScan keeps the regex as the authority and skips just the starts proven
+# dead. PROOF. From a start, `<<-?\s*'?(\w+)` has one reading up to the word W
+# (each optional piece left out leaves a char `\w` cannot take), and `(\w+)`
+# backtracks through every non-empty prefix of W, longest first. For a prefix P
+# the rest `'?.*?^\1\s*$` matches iff some line starting after W's start is P
+# followed only by non-newline whitespace (`^` needs a newline before it, W
+# holds none, and `\s*` stopping at a non-space cannot reach `$`). One pass
+# indexes those lines in a trie of their words; a walk along W finds the
+# longest P with such a line after the start, or proves there is none and the
+# start is skipped. The match itself is the regex with `(\w+)` pinned to
+# `(\w{len(P)})`, whose `.*?` stops at the first such line, so each kept try
+# reads only the text it consumes. Words of successive starts are disjoint, so
+# the walks, the index and the tries are all linear.
+_HEREDOC_HEAD = r"<<-?\s*'?(\w+)"
+
+
+class _HeredocScan:
+    """_HEREDOC whose finditer / sub / search skip every start the terminator
+    index proved dead (RM-829, proof above). Each result equals the plain
+    regex's; every other attribute is the regex's own."""
+
+    def __init__(self, regex):
+        if not regex.pattern.startswith(_HEREDOC_HEAD) or regex.pattern.count(r"(\w+)") != 1:
+            raise ValueError("not a <<WORD ... WORD heredoc pattern")
+        self.regex = regex
+        self._head = re.compile(_HEREDOC_HEAD, regex.flags)
+        self._lines = re.compile(r"^(\w+)[^\S\n]*$", re.M)
+        self._pinned = {}
+
+    def __getattr__(self, name):
+        if name.startswith("__") or name == "regex":
+            raise AttributeError(name)
+        return getattr(self.regex, name)
+
+    def _fixed(self, depth):
+        pinned = self._pinned.get(depth)
+        if pinned is None:
+            if len(self._pinned) > 256:
+                self._pinned.clear()
+            pattern = self.regex.pattern.replace(r"(\w+)", rf"(\w{{{depth}}})", 1)
+            pinned = self._pinned[depth] = re.compile(pattern, self.regex.flags)
+        return pinned
+
+    def _terminators(self, text):
+        trie = {}
+        for line in self._lines.finditer(text):
+            node = trie
+            for char in line.group(1):
+                node = node.setdefault(char, {})
+            node.setdefault(None, []).append(line.start())
+        return trie
+
+    def finditer(self, string):
+        if "<<" not in string:
+            return
+        trie, pos = None, 0
+        while True:
+            head = self._head.search(string, pos)
+            if head is None:
+                return
+            if trie is None:
+                trie = self._terminators(string)
+            word, depth, node = head.start(1), 0, trie
+            for length, char in enumerate(head.group(1), 1):
+                node = node.get(char)
+                if node is None:
+                    break
+                lines = node.get(None)
+                if lines and lines[-1] > word:
+                    depth = length
+            match = self._fixed(depth).match(string, head.start()) if depth else None
+            if depth and match is None:
+                # Unreachable by the proof; the plain regex decides if it is wrong.
+                match = self.regex.match(string, head.start())
+            if match is None:
+                pos = head.start() + 1
+                continue
+            yield match
+            pos = match.end()
+
+    def search(self, string):
+        return next(self.finditer(string), None)
+
+    def sub(self, repl, string, count=0):
+        pieces, last = [], 0
+        for done, match in enumerate(self.finditer(string)):
+            if count and done == count:
+                break
+            pieces.append(string[last:match.start()])
+            pieces.append(repl(match) if callable(repl) else match.expand(repl))
+            last = match.end()
+        if not pieces:
+            return string
+        pieces.append(string[last:])
+        return "".join(pieces)
+
+
+_HEREDOC = _HeredocScan(re.compile(r"<<-?\s*'?(\w+)'?.*?^\1\s*$", re.S | re.M))
 _QUOTED = re.compile(r"'[^']*'|\"[^\"]*\"", re.S)
 _FENCED = re.compile(r"```.*?```", re.S)
 _INLINE_CODE = re.compile(r"`[^`]*`")

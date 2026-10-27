@@ -169,7 +169,23 @@ def test_a_whitespace_run_after_a_bound_name_costs_at_most_one_try(monkeypatch):
 # The separator as alternatives of atoms (the old one for contrast). Each
 # parse is a split of the word into slices that fullmatch their atoms, checked
 # by the engine; a failing tail attempt explores every parse of every prefix.
-_NEW_SEP = [[r"\s*", ",", r"\s*"], [r"\s", r"\s*"]]  # (?:\s*,|\s)\s*
+# RM-829 (c): the new table is DERIVED from gate._CI_VAR_SEP, not a hand copy,
+# so an edit to the gate's separator is the separator these tests count.
+def _atoms(text):
+    atoms = re.findall(r"\\.[*+?]?|[^\\][*+?]?", text)
+    assert "".join(atoms) == text, (text, atoms)
+    return atoms
+
+
+def _sep_alternatives(pattern):
+    """`(?:A|B|...)T` as one atom list per alternative, each ending in T's atoms."""
+    group = re.fullmatch(r"\(\?:([^()]*)\)([^()|]*)", pattern)
+    assert group is not None, pattern
+    tail = _atoms(group.group(2))
+    return [_atoms(alt) + tail for alt in group.group(1).split("|")]
+
+
+_NEW_SEP = _sep_alternatives(gate._CI_VAR_SEP)
 _OLD_SEP = [[r"\s*", r"[,\s]", r"\s*"]]  # \s*[,\s]\s*
 
 
@@ -194,6 +210,8 @@ def test_the_ci_var_separator_has_one_parse():
     char, so a failing attempt on a run of w explored about w * w / 2)."""
     assert gate._CI_VAR_SEP == r"(?:\s*,|\s)\s*"
     assert gate._CI_VAR_SEP in gate.EV_CI_VAR.pattern
+    # The derivation reads the gate's own separator (RM-829 (c)).
+    assert _NEW_SEP == [[r"\s*", ",", r"\s*"], [r"\s", r"\s*"]]
     sep, old = re.compile(gate._CI_VAR_SEP), re.compile(r"\s*[,\s]\s*")
     checked = 0
     for length in range(7):
