@@ -228,9 +228,9 @@ install on natural quit, never mid-game (`rc-shell/src/main.js:267`).
 - N5 FIXED (PKG-6 34990bcd6). Was: `rc-shell/README.md:29` said "the
   preload is empty" (false since
   OVL1) and the Run section assumes `npm install`.
-- N6 `rc-shell/node_modules` still holds electron 44.5.1 against the 44.9.1
-  pin (regen blocked by EBUSY while the overlay runs), so a dev launch runs
-  an older runtime than a packaged one.
+- N6 `rc-shell/node_modules` still holds electron 44.5.1 against the 45.0.0
+  pin (DEP-25; regen blocked by EBUSY while the overlay runs), so a dev
+  launch runs an older runtime than a packaged one.
 
 ### 1d. What a fresh machine lacks today
 
