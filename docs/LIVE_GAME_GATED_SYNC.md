@@ -2710,6 +2710,50 @@ Ids `LX-nn` map to the RM rows in `BACKLOG.md` "External-lift intake".
   under `logs/sessions/` carries the real gameId, the `config_key` from game.cfg and fresh
   vision_state; then replay it into the headless UI with `tools/replay_session.py`. A replay never
   closes any gated row.
+  **READY (s144 lane gated c22, 2026-10-28; PREP only, nothing ticked).** PRECONDITIONS measured
+  2026-10-28 at idle: (1) the flag is OFF on the live box - `logs/sessions/` does not exist, no day
+  log carries `live session recorder enabled`, and `RC_SESSION_RECORDER` is in neither the user nor
+  the machine environment key. The tap installs once, at `core/liveclient_cache.start()`
+  (`install_if_enabled`, flag read from the RC PROCESS env), so turning it on is an env change plus an
+  RC restart: a main-session / operator act, never a lane's. Without it the drain has nothing to read.
+  (2) `config_key` reads `unknown` on this box today: `core.hud_settings.read_hud_settings()` finds no
+  `[General]` `Width` / `Height` in game.cfg (`ok=False`; HEAD logs nothing for it, the unlanded
+  rewrite below warns once), and the recorder writes that value through unchanged (`_config_key`). So
+  "the config_key from game.cfg" is satisfied by `unknown` as long as it EQUALS the reader at drain
+  time; a header `unknown` is not a recorder defect, and a `WxH|...` key would mean League rewrote
+  game.cfg since this read (record which). The unlanded lane/true-audit `core/hud_settings.py` rewrite
+  (`a9eb22c9d`) returns the same dict on this box (compared in memory, every field equal), so a drain
+  on either code version reads the same key.
+  PROBE (after the game ends, from the main checkout - the :8889 token file is gitignored and absent
+  in a lane worktree, where `/latest-lcu` answers 401): note the LCU game id while InProgress
+  (`/latest-lcu` -> `data.game_id`, the recorder's own `default_game_id_provider` source), then
+  `python tools/gated_lx03_session_check.py logs/sessions/<file>.jsonl --live-config-key
+  --expect-game-id <id> --json` (read-only; the stem is printed only with `--show-id`, and a real game
+  id never goes into this file - RM-906). FIELD PATHS: file stem; header `config_key` / `mode_key` /
+  `patch` / `ENGINE_VERSION`; per frame `seq`, `game_time`, `snapshot`, `vision_state`.
+  PREDICATE (stated before any game): PASS iff `stem_kind=gameid` and `game_id_match=true`;
+  `config_key_match=true` against the live reader; header `mode_key` is RC's mode for the game played
+  (`sr` / `aram` / `arena` / `tft` / `brawl` / `jade` / `unsupported`, from
+  `mode_from_game_mode_string(gameData.gameMode)`; `unsupported` for a playable mode is a FAIL);
+  `seq_contiguous=true`; `game_time_backsteps=0` (a backstep of more than 5 s closes the session and
+  reopens the same `<gameId>.jsonl` with `seq` back at 0 and no second header - `_write_frame` /
+  `_start_session` - so it shows as `seq_contiguous=false`: a FAIL to explain, not a pass; if the LCU
+  id was empty at that moment the reopen lands in a second, `nogameid-*` file instead, so list every
+  file whose mtime falls in the game window); `frames_with_snapshot` equals `frames`; and
+  `frames_with_vision_state` is above 0 (vision_state rides only when `data/vision_state.json` is
+  under 10 s old, so not every frame carries it). FAIL on a `nogameid-*` stem (the LCU relay had no
+  game id when the session opened - record whether the relay was up).
+  EVIDENCE CONTRACT: the tool's JSON fields above (values, not "ok"), the file's mtime, the game's
+  mode / queue and its last game_time, and the code RC ran: `ops/runtime/health.json` carries no
+  commit, so record its `pid` / `started_at` and the main checkout's HEAD (an RC started after the
+  HEAD commit runs that code, as the GATE 3 vision row does).
+  SUBSTITUTION CHECK: `tests/test_live_session_recorder.py` and
+  `tests/test_gated_lx03_session_check.py` write the same format from synthetic snapshots and pass
+  every check above, so a passing check on a file whose frames did not come from the live :2999 poll
+  proves nothing. The file must be created during the played game (mtime inside the game window,
+  `captured_at` span close to the game length) and its stem must equal the id read live from the LCU
+  while that game was InProgress. A `tools/replay_session.py` replay of the file is downstream UI work
+  and never closes LX-03.
 
 ## TFT SET 18 live halves (filed 2026-10-24, RM-840; counted HERE, not in the OPEN figure above)
 
