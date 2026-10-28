@@ -56,6 +56,7 @@ import json
 import re
 import sqlite3
 import statistics
+import sys
 import time
 from collections import Counter
 from pathlib import Path
@@ -747,23 +748,20 @@ def render_markdown(report: dict) -> str:
 
 
 def write_markdown(report: dict, path: Path) -> None:
-    """The ONLY side effect: write the markdown report (mkdir parents)."""
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    # Bytes, not write_text: the report is TRACKED and write_text turns LF into
-    # CRLF on Windows (RM-441). No core helper import - this module must stay
-    # importable from the bare tools/-on-sys.path CLI (see the header).
-    # RM-447: full-name temp in the same dir; remove it if write/rename raises.
-    tmp = path.with_name(path.name + ".tmp")
-    try:
-        tmp.write_bytes(render_markdown(report).encode("utf-8"))
-        tmp.replace(path)
-    except BaseException:
-        try:
-            tmp.unlink(missing_ok=True)
-        except OSError:
-            pass  # best-effort; never mask the original error
-        raise
+    """The ONLY side effect: write the markdown report atomically through
+    core.polled_json (RM-258).
+
+    Bytes, not write_text: the report is TRACKED and write_text turns LF into
+    CRLF on Windows (RM-441). atomic_write_bytes creates the parent directory,
+    uses a per-writer scratch name, fsyncs, retries a WinError 5 refusal and
+    never leaves the scratch file behind. The import is lazy and puts the repo
+    root on sys.path first, so the module keeps no top-level core import and
+    the bare tools/-on-sys.path CLI still resolves it (see the header)."""
+    if str(_ROOT) not in sys.path:
+        sys.path.insert(0, str(_ROOT))
+    from core import polled_json
+    polled_json.atomic_write_bytes(Path(path),
+                                   render_markdown(report).encode("utf-8"))
 
 
 def _print_human(report: dict, md_path: Optional[Path]) -> None:

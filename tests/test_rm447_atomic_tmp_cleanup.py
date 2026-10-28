@@ -169,7 +169,38 @@ def test_gen_state_schema_main_cleans_up(tmp_path, monkeypatch, fault):
     _assert_clean_failure(excinfo, fault, tmp_path, out, _ORIGINAL)
 
 
-def test_hz_mismatch_write_markdown_cleans_up(tmp_path, monkeypatch, fault):
+@pytest.fixture
+def polled_replace_fails(tmp_path, monkeypatch):
+    """The core.polled_json rename raises for a ``.tmp`` source in tmp_path.
+
+    RM-258: hz_mismatch_diagnose.write_markdown now writes through
+    core.polled_json, whose rename is ``os.replace`` inside
+    ``_replace_with_retry``, so the ``Path.replace`` arm above never reaches
+    it. This arm faults that boundary instead; the cleanup asserted is
+    polled_json's."""
+    from core import polled_json
+
+    fault = _Fault()
+    real = polled_json._replace_with_retry
+
+    def _replace(src, dst):
+        src = pathlib.Path(src)
+        if src.name.endswith(".tmp") and src.parent == tmp_path:
+            fault.fired += 1
+            raise PermissionError(5, "Access is denied (injected)")
+        return real(src, dst)
+
+    monkeypatch.setattr(polled_json, "_replace_with_retry", _replace)
+    return fault
+
+
+@pytest.fixture(params=["write", "polled_replace"])
+def hz_fault(request):
+    return request.getfixturevalue(f"{request.param}_fails")
+
+
+def test_hz_mismatch_write_markdown_cleans_up(tmp_path, monkeypatch, hz_fault):
+    fault = hz_fault
     target = tmp_path / "report.md"
     target.write_bytes(_ORIGINAL)
     monkeypatch.setattr(hmd, "render_markdown", lambda report: "# report\n\nbody\n")
@@ -214,7 +245,15 @@ def test_hz_write_markdown_temp_keeps_full_name(tmp_path, monkeypatch, temp_spy)
     monkeypatch.setattr(hmd, "render_markdown", lambda report: "# r\n")
     hmd.write_markdown({}, tmp_path / "a.md")
     hmd.write_markdown({}, tmp_path / "a.txt")
-    assert [p.name for p in temp_spy] == ["a.md.tmp", "a.txt.tmp"]
+    # RM-258: the scratch is core.polled_json's per-writer
+    # `<full name>.<pid>.<hex>.tmp`, so pin the RM-447 intent (the FULL target
+    # name, never a dropped suffix; same dir; distinct for a same-stem pair)
+    # rather than the old fixed `<name>.tmp`.
+    names = [p.name for p in temp_spy]
+    assert len(names) == 2
+    assert names[0].startswith("a.md.") and names[1].startswith("a.txt.")
+    assert all(p.parent == tmp_path for p in temp_spy)
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["a.md", "a.txt"]
 
 
 # -- success path: bytes unchanged ----------------------------------------------
