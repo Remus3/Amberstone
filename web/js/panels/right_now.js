@@ -5,6 +5,7 @@ import { selectPrimary, shouldPulse, signalFromState } from '../lib/overlay_prio
 import { isFightCue, makeCombatLatch } from '../lib/combat_mode.js';
 import { condenseKvRows } from '../lib/condense.js';
 import { registerEscapeLayer } from '../lib/escape_layers.js';
+import { directivesAllowed, withoutLiveDirectives } from '../lib/live_directive_gate.js';
 
 // RC2 P3.3 SHADOW: the previous S0 cue across renders, for shouldPulse's
 // cross-detection. Module scope so it survives between renderRightNow calls.
@@ -463,7 +464,15 @@ function renderStats(p) {
   _hideEmptyStatRows();
 }
 
-function renderRightNow(p) {
+function renderRightNow(payload) {
+  // B4 defence in depth (RM-896, the right_now.js half of the next.js fix):
+  // while a game is live, read the payload with the server's live-suppressed
+  // imperatives blanked. MEASURED on the real session-134 TFT row (mode_key
+  // client, lcu InProgress, no :2999 feed): the server did not see a live
+  // game, so #rn-action / #rn-immediate held "Drake spawns 5:00 - set up
+  // vision" and #rn-fight-rule the FAIR FIGHT rule in the DOM, hidden only
+  // by the live view pin.
+  const p = directivesAllowed(state.latest) ? payload : withoutLiveDirectives(payload);
   const arena = isArenaPayload(p);
   let rawAction = safe(p.action);
   // DEAD state: the coral `DEAD Ns` pill in the header is the authoritative

@@ -292,6 +292,81 @@ def test_client_row_after_the_game_keeps_the_next_headline(
     assert not errors, f"JS errors: {errors[:3]}"
 
 
+def _right_now_text(page) -> dict:
+    """#right-now subtree text via textContent (the DOM, hidden or not) plus
+    the coach-field rows right_now.js paints."""
+    return page.evaluate(
+        "() => { const t = (id) => document.getElementById(id).textContent;"
+        " return {all: t('right-now'), action: t('rn-action'),"
+        " immediate: t('rn-immediate'), risk: t('rn-risk'),"
+        " fight: t('rn-fight-rule')}; }"
+    )
+
+
+# The real client row's live-suppressed coach fields that are not SR
+# imperatives by name: coach.fight_rule and coach.risk ("MEDIUM").
+_RN_SUPPRESSED = _SR_IMPERATIVES + ("FAIR FIGHT", "coinflips")
+
+
+def test_real_client_row_right_now_holds_no_sr_imperative(
+    mock_server, pw_browser
+):
+    """RM-896 (right_now.js half). Same real row as the NEXT test above: the
+    live view pin hides #right-now, but #rn-action and #rn-immediate held
+    "Drake spawns 5:00 - set up vision" and #rn-fight-rule the FAIR FIGHT
+    rule in the DOM. textContent, not innerText: the guarantee must not rest
+    on view routing. right_now.js now reads the coach payload through the B4
+    client mirror (live_directive_gate.withoutLiveDirectives) while a game is
+    live, so every row it paints from a suppressed field shows the no-data
+    "-"."""
+    ctx, page, errors = _open(
+        mock_server, pw_browser, _load("tft_live_s134_client")
+    )
+    try:
+        _wait_fallback(page, "game")
+        _wait_state_ticks(page, 1)
+        rn = _right_now_text(page)
+        for needle in _RN_SUPPRESSED:
+            assert needle not in rn["all"], (
+                f"live-suppressed text {needle!r} held in #right-now mid-game"
+            )
+        assert rn["action"] == "-"
+        assert rn["risk"] == "-"
+        assert rn["fight"] == "-"
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors: {errors[:3]}"
+
+
+def test_client_row_after_the_game_keeps_the_right_now_headline(
+    mock_server, pw_browser
+):
+    """Positive control: the same row at EndOfGame is not a live game, so
+    RIGHT NOW still paints coach.action, immediate, risk and fight_rule - the
+    gate is phase-driven, not a blanket strip, and the live test above is not
+    passing because right_now.js never renders this row."""
+    row = _load("tft_live_s134_client")
+    row["lcu"]["phase"] = "EndOfGame"
+    ctx, page, errors = _open(mock_server, pw_browser, row)
+    try:
+        page.wait_for_function(
+            "() => (document.getElementById('rn-action')?.textContent || '')"
+            ".includes('Drake spawns')",
+            timeout=_LIVE_TICK_MS,
+        )
+        _wait_state_ticks(page, 2)
+        rn = _right_now_text(page)
+        assert rn["action"].endswith("Drake spawns 5:00 - set up vision")
+        assert rn["immediate"] == "Drake spawns 5:00 - set up vision"
+        assert rn["risk"] == "MEDIUM"
+        assert rn["fight"].startswith("FAIR FIGHT")
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors: {errors[:3]}"
+
+
 def test_lcu_phase_blink_holds_then_sr_game_rebuilds_league_panes(
     mock_server, pw_browser
 ):

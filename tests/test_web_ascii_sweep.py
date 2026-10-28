@@ -1435,7 +1435,22 @@ _WEB = _REPO_ROOT / "web"
 # MERGED 2026-10-28 by the session 144 L5 merger onto main (lane commit 1767e37c6): main had moved
 # this pin since the lane base, so the superseded value above is main's and
 # the value below is recomputed over the merged tree.
-_LIVE_HALF_DIGEST = "45d25ab4e737296ea61cfaf26b3b4a34db56392d878eaafde7b73589494f28cf"
+# superseded by the RM-896 re-capture below: "45d25ab4e737296ea61cfaf26b3b4a34db56392d878eaafde7b73589494f28cf"
+#
+# RE-CAPTURED 2026-10-28 at RM-896 (s144 queue cycle 35, the right_now.js
+# half; provisional until the merger lands it). One change rides it:
+# renderRightNow in web/js/panels/right_now.js reads the coach payload
+# through live_directive_gate.withoutLiveDirectives while a game is live.
+# Ordinary case, no tokeniser change. ATTRIBUTED BY SUBSTITUTION: swapping
+# exactly web/js/panels/right_now.js back to its lane/queue db297b1ef blob
+# (in memory) reproduces the superseded f477037b... value EXACTLY. That path
+# is the whole change. No glyph change: the added lines carry 0 non-ASCII
+# bytes. lane/uiux re-captures this line in parallel, so the merger
+# recomputes.
+# MERGED 2026-10-28 by the session 144 L5 merger onto main (lane commit a7b165a45): main had moved
+# this pin since the lane base, so the superseded value above is main's and
+# the value below is recomputed over the merged tree.
+_LIVE_HALF_DIGEST = "d249371e441175a285fc76471445c8d6510a1a75bb2a8d3c808fde0eb20b8f45"
 
 
 def _web_sources() -> list[Path]:
