@@ -16,8 +16,12 @@ STRUCTURE (two labeled rows of four cells inside the PARTY card, the card
 still inside the 1920x1080 viewport, no cell spilling out of the card),
 TYPOGRAPHY (no text under --fs-xs, 16 px), HIT-TARGETS (the block is
 read-only: no focusable control in it), ASCII (rendered text), HIERARCHY
-(title, then BOT, then SUPPORT, top to bottom). It also checks the 2 s
-lobby refresh does not re-fire the fetch for the same party.
+(title, then BOT, then SUPPORT, top to bottom). It also checks that
+repeated lobby refreshes for the same party do not re-fire the fetch. A
+plain wait does not reliably add a refresh here (the mock store is empty,
+so pollLcu never calls handleLcuEnvelope, and the HTTP state fallback only
+starts after 4 s without a frame), so the test drives the refreshes and
+proves each one ran (RM-1092).
 """
 import json
 from pathlib import Path
@@ -74,6 +78,36 @@ _MEASURE = """() => {
 }"""
 
 
+# RM-1092: at least one lobby refresh per loop, proven. Each loop leaves
+# #lobby, overwrites the queue name with a sentinel, and comes back.
+# _lobbyViewRefresh is the only writer of #lv-queue-name in web/js, so the
+# name repainted means it ran again for the same party. The router's lobby
+# activation (main.js `if (viewId === "lobby") { _lobbyViewWireOnce();
+# _lobbyViewRefresh(); }`) is the expected caller; the HTTP state fallback
+# (handleLcuEnvelope -> _maybeRefreshLobbyView) also repaints it once it
+# starts, so the proof is about the refresh, not about which caller ran it.
+_SENTINEL = "__s144q23__"
+
+
+def _drive_lobby_refreshes(page, n):
+    done = 0
+    for _ in range(n):
+        page.evaluate("() => { location.hash = '#home'; }")
+        page.wait_for_function(
+            "document.body.dataset.view === 'home'", timeout=10_000)
+        page.evaluate(
+            "(s) => { document.getElementById('lv-queue-name')"
+            ".textContent = s; }", _SENTINEL)
+        page.evaluate("() => { location.hash = '#lobby'; }")
+        page.wait_for_function(
+            "(s) => document.body.dataset.view === 'lobby'"
+            " && document.getElementById('lv-queue-name').textContent"
+            ".trim() !== '' && document.getElementById('lv-queue-name')"
+            ".textContent !== s", arg=_SENTINEL, timeout=10_000)
+        done += 1
+    return done
+
+
 def test_lobby_duo_synergy_renders_at_party_size_2_plus(
         mock_server, pw_browser):
     ctx, page, errors = _open_lobby(pw_browser, mock_server)
@@ -83,8 +117,12 @@ def test_lobby_duo_synergy_renders_at_party_size_2_plus(
             ".length === 8",
             timeout=10_000,
         )
-        # Let the 2 s lobby refresh run past at least one more tick.
-        page.wait_for_timeout(2_500)
+        # RM-1092: a plain wait here did not reliably add a refresh
+        # (see the module docstring), so drive the extra refreshes for the
+        # same party and prove each one ran.
+        refreshes = _drive_lobby_refreshes(page, 2)
+        # Margin for a late duplicate duo fetch to reach Resource Timing.
+        page.wait_for_timeout(750)
         m = page.evaluate(_MEASURE)
         lane_pair = page.evaluate(_LANE_PAIR)
         SCREENSHOTS.mkdir(exist_ok=True)
@@ -126,8 +164,14 @@ def test_lobby_duo_synergy_renders_at_party_size_2_plus(
     assert [x["text"] for x in roles] == ["BOT", "SUPPORT"]
     assert m["title"]["top"] < roles[0]["top"] < roles[1]["top"]
 
-    # One fetch for this party episode, the fixture not the live route.
-    # Resource Timing covers the fetch even though it fired during goto.
+    # One fetch for this party episode, the fixture not the live route,
+    # across the mock-landing refresh plus the driven ones: >= 3 refreshes
+    # of the same party of 3 (the view-entry refresh before the mock lands
+    # has no lobby and does not count). The per-refresh proof is the
+    # sentinel wait in _drive_lobby_refreshes, which raises on a timeout;
+    # this line only records the count. Resource Timing covers the fetch
+    # even though it fired during goto.
+    assert refreshes == 2, refreshes
     duo = m["duo"]
     assert len(duo) == 1, duo
     assert duo[0].endswith("/data/ui_mock/duo_synergy.json"), duo
