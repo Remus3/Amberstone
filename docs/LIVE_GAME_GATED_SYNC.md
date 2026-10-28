@@ -685,6 +685,32 @@ Cheapest gate in the file. Enter a lobby, capture, leave. Nothing here needs a m
   mock-fed render - none says the operator's dashboard SENT the request. Worse, a shell GET or a headless
   Chromium load of `:8888` inside the window adds its OWN trace line and can fake the SENT half: run no
   probe GET of the route between `<since>` and `<until>`, and treat any extra client as `--clients`.
+  **AUTO-RELOAD VOIDS THE WINDOW (s144 gated c20, PREP; stated before any lobby):** the page reloads
+  itself on any served-asset change, through two pollers in `web/js/main.js`: `/api/ui-version`
+  (ADR-008, `dashboard/_static.compute_asset_hash`) and the `_hotReloadInit` `/api/asset-stamp`
+  poller (3 s, off only when `localStorage.rc_hot_reload` is `0`). A reload re-fires the duo GET by
+  design. So a merger landing that writes any watched asset (`web/index.html`, `web/css/**/*.css`,
+  `web/js/**/*.js`) inside the window (RM-1089 and the lane/uiux web commits were unlanded at
+  2026-10-28 05:00 local) makes two episodes. The tool can
+  then grade FAIL (more than `<n>` expected GETs inside 10 s) or NO_RESULT. Read
+  `curl -sk https://127.0.0.1:8888/api/ui-version` and `curl -sk https://127.0.0.1:8888/api/asset-stamp`
+  just before `<since>` and again at `<until>`. Both routes are in `dashboard/_handler.py`
+  `_SUPPRESS_LOG_PATHS`, so these reads add no trace line. Both walk the same
+  `dashboard._static.asset_fileset()`, but `v` hashes whole-second mtimes, so a sub-second change
+  shows only in `mtime`. A changed `v`, or ANY change in `mtime` (stricter than the poller's own
+  0.5 s threshold, because the poller compares against its page-load baseline, not against the
+  `<since>` read), makes the window NO_RESULT whatever the tool printed: re-run on a fresh
+  window, never tick or FAIL on it. Both before / after pairs go into the tick line.
+  **PORTRAITS ARE NOT GRADED (s144 gated c20):** each cell writes the champion name and the rate
+  as text spans beside the portrait (`web/js/panels/lobby_duo_synergy.js` `_cellHtml`), so a blank
+  tile never fails the RENDERED half. Code without the queue-lane fix RM-1089 ("the duo block
+  re-renders its portraits when the champion index lands after the duo response"; on lane/queue,
+  NOT landed on main at 2026-10-28 05:00 local) has a known race. If the duo response arrives
+  before `/data/champions_index.json` loads, every cell keeps a blank tile until the next duo
+  controller state change (party back to solo, or a role change). Check for the fix by SYMBOL,
+  not sha: the `rc:champs-ready` listener in `main.js` calls `_lvDuoRender(_LV.duo.state())`. Record which code the page ran and whether the tiles were blank.
+  With the fix loaded, blank tiles that are still there 10 s after the block first rendered are a
+  separate finding for the report, never a G1-07 FAIL.
   Tool: `tools/gated_rm881_duo_lobby.py` (tests `tests/test_gated_rm881_duo_lobby.py`; trace lines built
   by the real `Handler.log_message` through the day log's own format, the SR set parsed from the real
   `main.js`).
