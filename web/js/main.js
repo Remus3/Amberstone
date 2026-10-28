@@ -2720,9 +2720,76 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       cap.textContent = t.name;
       b.appendChild(img);
       b.appendChild(cap);
+      // RM-1086: each tab names the rows pane it drives.
+      b.id = `ub-rp-tab-${t.key}`;
+      b.setAttribute("aria-controls", "ub-rp-primary-rows");
       b.addEventListener("click", () => _ubRpPickPrimary(t.key));
       tabs.appendChild(b);
     }
+    _ubRpTabStops(tabs, "ub-rp-primary-rows");
+  }
+  // RM-1085: the roving-tabindex half of the two tree tablists. The
+  // selected enabled tab (else the first enabled one) is the bar's single Tab
+  // stop; the rows pane is labelled by the selected tab.
+  function _ubRpTabStops(bar, panelId) {
+    const tabs = Array.from(bar.querySelectorAll("button"));
+    const live = tabs.filter((b) => !b.disabled);
+    const sel = live.find((b) => b.getAttribute("aria-selected") === "true");
+    const stop = sel || live[0] || null;
+    for (const b of tabs) b.tabIndex = (b === stop) ? 0 : -1;
+    const panel = _ubEl(panelId);
+    if (!panel) return;
+    if (sel) panel.setAttribute("aria-labelledby", sel.id);
+    else panel.removeAttribute("aria-labelledby");
+    if (bar.dataset.kbWired !== "1") {
+      bar.addEventListener("keydown", _ubRpOnTabKeydown);
+      bar.dataset.kbWired = "1";
+    }
+  }
+  // RM-1085: arrow keys for the tree tablists. WAI-ARIA APG tabs, MANUAL
+  // activation: arrows only move focus, Enter / Space pick (native button
+  // click). Not automatic, because a tree pick clears that pane's keystone
+  // and minor runes, so arrowing across the bar must not pick every tree it
+  // passes. Disabled tabs (the secondary copy of the primary tree) are
+  // skipped; modified keys and Up / Down are left to the browser.
+  function _ubRpOnTabKeydown(e) {
+    const tabs = Array.from(e.currentTarget.querySelectorAll("button"))
+      .filter((b) => !b.disabled);
+    const at = tabs.indexOf(e.target);
+    if (at < 0 || e.altKey || e.ctrlKey || e.metaKey) return;
+    let next = -1;
+    if (e.key === "ArrowRight") next = (at + 1) % tabs.length;
+    else if (e.key === "ArrowLeft") next = (at - 1 + tabs.length) % tabs.length;
+    else if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = tabs.length - 1;
+    if (next < 0) return;
+    e.preventDefault();
+    tabs[next].focus();
+  }
+  // RM-1085: every pick rebuilds the builder with innerHTML, which threw
+  // keyboard focus to <body>. Capture a stable key (pane id plus data-tree /
+  // data-rune / data-row) before the rebuild and re-focus by it after. Null
+  // when focus was not inside a pane, so the restore never steals focus.
+  const _UB_RP_PANES = ["ub-rp-tabs", "ub-rp-primary-rows", "ub-rp-sec-trees", "ub-rp-secondary-rows"];
+  function _ubRpCaptureFocus() {
+    const el = document.activeElement;
+    if (!el || el.tagName !== "BUTTON") return null;
+    const pane = _UB_RP_PANES.find((id) => {
+      const p = _ubEl(id);
+      return p && p.contains(el);
+    });
+    if (!pane) return null;
+    return { pane, tree: el.dataset.tree || "", rune: el.dataset.rune || "", row: el.dataset.row || "" };
+  }
+  function _ubRpRestoreFocus(key) {
+    if (!key) return;
+    const pane = _ubEl(key.pane);
+    if (!pane) return;
+    const hit = Array.from(pane.querySelectorAll("button")).find((b) =>
+      (b.dataset.tree || "") === key.tree
+      && (b.dataset.rune || "") === key.rune
+      && (b.dataset.row || "") === key.row);
+    if (hit && !hit.disabled) hit.focus();
   }
   function _ubRpRenderSecTrees() {
     const row = _ubEl("ub-rp-sec-trees");
@@ -2749,9 +2816,12 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       cap.textContent = t.name;
       b.appendChild(img);
       b.appendChild(cap);
+      b.id = `ub-rp-sec-tab-${t.key}`;
+      b.setAttribute("aria-controls", "ub-rp-secondary-rows");
       b.addEventListener("click", () => { if (!isPrimary) _ubRpPickSecondary(t.key); });
       row.appendChild(b);
     }
+    _ubRpTabStops(row, "ub-rp-secondary-rows");
   }
   function _ubRpBuildRow(rune, kind, rowIdx) {
     const c = document.createElement("button");
@@ -2831,12 +2901,14 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     if (sc) sc.value = _RP.secondaryTree || "";
   }
   function _ubRpRenderAll() {
+    const focusKey = _ubRpCaptureFocus();
     _ubRpRenderTabs();
     _ubRpRenderRows(_RP.primaryTree,   "ub-rp-primary-rows",   "primary");
     _ubRpRenderSecTrees();
     _ubRpRenderRows(_RP.secondaryTree, "ub-rp-secondary-rows", "secondary");
     _ubRpRenderSummary();
     _ubRpSyncTextFields();
+    _ubRpRestoreFocus(focusKey);
   }
   function _ubRpPickPrimary(treeName) {
     if (_RP.primaryTree === treeName) return;

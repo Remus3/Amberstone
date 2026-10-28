@@ -1395,7 +1395,21 @@ _WEB = _REPO_ROOT / "web"
 # Those two paths are the whole change. No glyph change: the added lines
 # carry 0 non-ASCII bytes. If another slice re-captures in parallel, the
 # merger recomputes.
-_LIVE_HALF_DIGEST = "b57cc4716a891730e036fa0f592bf590756f47debd153b70fb9a6ef6625e3042"
+# superseded by the RM-1085 re-capture below: "b57cc4716a891730e036fa0f592bf590756f47debd153b70fb9a6ef6625e3042"
+#
+# RE-CAPTURED 2026-10-28 at RM-1085 + RM-1086 (s144 uiux cycle 57,
+# provisional until the merger lands it and maps the ids). One change
+# rides it: the
+# User Builds rune tree tablists gain a roving tabindex, arrow / Home / End
+# keys, focus carried across the innerHTML rebuild, and tab ids plus
+# aria-controls in web/js/main.js, and the two rows panes become
+# role="tabpanel" in web/index.html. Ordinary case, no tokeniser change.
+# ATTRIBUTED BY SUBSTITUTION: swapping those two files back to their lane
+# tip b4ed4cd74 blobs reproduces the superseded b57cc471... value EXACTLY.
+# Those two paths are the whole change. No glyph change: the added lines
+# carry 0 non-ASCII bytes. If another slice re-captures in parallel, the
+# merger recomputes.
+_LIVE_HALF_DIGEST = "3074e40873fc552aaa654960b6403b304ebf791f5d7f26098849319627a948be"
 
 
 def _web_sources() -> list[Path]:
