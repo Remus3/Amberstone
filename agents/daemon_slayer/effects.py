@@ -4,8 +4,9 @@ DDragon item ``stats`` blocks only carry the flat/percent stat lines
 (AD, AS, crit, hp, ...). The DPS-relevant text - IE's crit-damage bump,
 Kraken's every-3rd-attack proc, Stormrazor's Energized, Trinity Force's
 Spellblade - lives in the description prose with the numbers stripped.
-This module pins those numbers per-patch as Python constants so ``dps.py``
-can layer them onto the rotation math.
+Those numbers are pinned as Python constants in ``_effects_data.py``
+(``ITEM_EFFECTS``, re-exported here); this module holds the logic that
+folds them so ``dps.py`` can layer them onto the rotation math.
 
 Schema layers
 ~~~~~~~~~~~~~
@@ -25,12 +26,13 @@ Schema layers
   schema is exercised end-to-end and "did we forget item X?" becomes a
   one-grep check.
 
-Numbers below are pinned to patch 16.9.1 (matches
-``data/daemon_slayer/current.txt``). Values are honest patch-pinned
+The table was seeded at an early 16.x patch and rows re-verified since
+carry their own source patch in a comment; no single patch covers the
+whole table, so none is recited here. Values are honest patch-pinned
 approximations; promote to callables when the first item demands it
 (Phase 4 expansion 2026-05-03 promoted the schema for TriForce, Wit's
 End, Runaan's, Voltaic, Sundered Sky, Guinsoo's). When the snapshot
-bumps, the extractor manifest will diverge from this constant table
+bumps, the extractor manifest will diverge from the constant table
 and a patch-notes diff re-pins the values.
 """
 

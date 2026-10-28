@@ -24,7 +24,8 @@ from ._effects_types import (
 )
 
 
-# Patch 16.9.1 - refresh on patch bump (extractor manifest is the trigger).
+# Seeded at patch 16.9.1; rows re-verified since name their own source patch.
+# Refresh on patch bump (extractor manifest is the trigger).
 ITEM_EFFECTS: dict[str, ItemEffect] = {
     # ----------------------------------------------- crit / DPS-positive
     "3031": ItemEffect(
