@@ -24,6 +24,20 @@ test_settings_view.py test_settings_toggle_present, which checks the FIRST
 row only, against 40px, and never clicks. This one fails if any checkbox
 loses its label wrapper, a label drops under --hit-min, a click outside the
 box stops toggling, or a box loses its focus ring.
+
+RM-1061 (s144 uiux): the view painted TWO different checkbox focus rings.
+The .settings-row boxes (static rows and spend gates) drew a one-off
+`0 0 0 2px var(--accent), 0 0 8px var(--glow)` (web/css/panels/header.css)
+while the PANEL VISIBILITY cells drew the system `--focus-ring` token
+(web/css/tokens.css, re-declared per theme in web/css/themes.css;
+web/css/panels/panel_visibility.css), so one Tab walk down the page switched
+ring colour halfway (measured on the default arcane theme: a muted violet
+accent plus a cyan glow, then a cyan 2px ring; on hextech a gold accent,
+then a blue ring). Ruling: every checkbox in #view-settings draws
+the system token, the ring the Replay filter checkboxes (RM-1017) and the
+panel-visibility tabs already use, because it is the one value each theme
+tunes for its own surfaces. The last test below pins one computed ring
+across every checkbox, equal to the resolved token, on every theme.
 """
 import json
 
@@ -239,4 +253,77 @@ def test_every_settings_checkbox_shows_a_focus_ring(mock_server, pw_browser, vp)
     assert len(rings) >= 20, f"only {len(rings)} checkboxes measured"
     bad = [r for r in rings if not r["fv"] or "0px 0px 0px 2px" not in r["shadow"]]
     assert not bad, f"checkbox without a 2px focus ring: {bad[:3]}"
+    assert not errors, f"JS errors: {errors[:3]}"
+
+
+# Every theme the picker offers (web/js/lib/theme.js THEMES). hextech is the
+# ABSENCE of the attribute; the others stamp <html data-theme>.
+_THEMES = ["hextech", "terminal", "ember", "bloodmoon", "moonlit", "arcane"]
+
+_RINGS_BY_THEME = """
+(themes) => {
+  const root = document.documentElement;
+  const view = document.getElementById('view-settings');
+  const out = {};
+  for (const t of themes) {
+    if (t === 'hextech') root.removeAttribute('data-theme');
+    else root.dataset.theme = t;
+    // The token as the browser resolves it, read through a probe inside
+    // the view so it inherits exactly what the checkboxes inherit.
+    const probe = document.createElement('div');
+    probe.style.cssText = 'position:absolute;visibility:hidden;'
+      + 'box-shadow:var(--focus-ring)';
+    view.appendChild(probe);
+    const token = getComputedStyle(probe).boxShadow;
+    probe.remove();
+    const rings = [];
+    for (const cb of view.querySelectorAll('input[type=checkbox]')) {
+      if (!cb.getBoundingClientRect().width) continue;
+      cb.focus();
+      const lab = cb.closest('label');
+      rings.push({id: cb.id || cb.dataset.pvPanel || 'gate',
+                  kind: lab ? lab.className : '(no label)',
+                  fv: cb.matches(':focus-visible'),
+                  shadow: getComputedStyle(cb).boxShadow});
+    }
+    out[t] = {token, rings};
+  }
+  return out;
+}
+"""
+
+
+@pytest.mark.parametrize("vp", VIEWPORTS, ids=lambda v: f"{v[0]}x{v[1]}")
+def test_every_settings_checkbox_draws_the_one_system_focus_ring(
+    mock_server, pw_browser, vp
+):
+    ctx, page, errors = _open(pw_browser, mock_server, vp)
+    try:
+        page.keyboard.press("Tab")  # keyboard modality, as above
+        by_theme = page.evaluate(_RINGS_BY_THEME, _THEMES)
+    finally:
+        page.close()
+        ctx.close()
+    assert sorted(by_theme) == sorted(_THEMES), by_theme.keys()
+    tokens = set()
+    for theme, got in by_theme.items():
+        token, rings = got["token"], got["rings"]
+        # Anchor: the token resolved to a real 2px ring, and the whole view
+        # was measured (8 static rows + 2 gates + the panel grid).
+        assert "0px 0px 0px 2px" in token, f"{theme}: --focus-ring = {token!r}"
+        kinds = _kinds(rings)
+        assert kinds["settings-row"] == 8, f"{theme}: {kinds}"
+        assert kinds["spend-gate-row"] == 2, f"{theme}: {kinds}"
+        assert kinds["pv-cell"] >= 10, f"{theme}: {kinds}"
+        assert all(r["fv"] for r in rings), f"{theme}: not :focus-visible"
+        shadows = {r["shadow"] for r in rings}
+        off = [r for r in rings if r["shadow"] != token]
+        assert shadows == {token}, (
+            f"{theme}: {len(shadows)} distinct checkbox rings; token {token!r};"
+            f" first off-token: {off[:2]}"
+        )
+        tokens.add(token)
+    # The comparison is not vacuous: the token really changes with the
+    # theme, so a hard-coded colour would fail on at least one theme.
+    assert len(tokens) >= 3, f"--focus-ring did not vary by theme: {tokens}"
     assert not errors, f"JS errors: {errors[:3]}"

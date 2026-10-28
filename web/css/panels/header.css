@@ -3071,9 +3071,12 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   accent-color: var(--good);
   cursor: pointer;
 }
+/* RM-1061: the system ring (tokens.css --focus-ring, tuned per theme),
+ * the one the PANEL VISIBILITY cells draw (panel_visibility.css), so a Tab
+ * walk down the view keeps one checkbox ring (was a one-off accent + glow). */
 .settings-row input[type="checkbox"]:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px var(--accent), 0 0 8px var(--glow);
+  box-shadow: var(--focus-ring);
 }
 .settings-row select, .settings-row input[type="range"] {
   flex: 1; max-width: 360px;       /* was 240px -> 360px                */

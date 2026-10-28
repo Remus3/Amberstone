@@ -1209,7 +1209,18 @@ _WEB = _REPO_ROOT / "web"
 # paths are the whole change. No glyph change: the added lines carry 0
 # non-ASCII bytes. If another slice re-captures in parallel, the merger
 # recomputes.
-_LIVE_HALF_DIGEST = "d4f71f55849a155c549d740953b857eb68d610a3cea6a73139ba078cde249095"
+# superseded by the RM-1061 re-capture below: "d4f71f55849a155c549d740953b857eb68d610a3cea6a73139ba078cde249095"
+#
+# RE-CAPTURED 2026-10-28 at RM-1061 (s144 uiux cycle 31, provisional
+# until the merger lands it and maps the id). One change rides it: the
+# .settings-row checkbox :focus-visible ring draws the system --focus-ring
+# token instead of a one-off accent + glow, in web/css/panels/header.css.
+# Ordinary case, no tokeniser change. ATTRIBUTED BY SUBSTITUTION: swapping
+# exactly that one file back to its lane-tip b1c2302fa blob (in memory)
+# reproduces the superseded d4f71f55... value EXACTLY. That path is the
+# whole change. No glyph change: the added lines carry 0 non-ASCII bytes.
+# If another slice re-captures in parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "a17b83545bbcfe6cf2949eda901cdf5104856599b2595cda4e26f210ca944970"
 
 
 def _web_sources() -> list[Path]:
