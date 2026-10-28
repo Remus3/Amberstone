@@ -9,16 +9,17 @@ ground truth rather than rediscovered and re-filed.
 WHY IT WAS LEFT ALONE, both halves:
 
   1. The filed ROOT CAUSE was wrong. The filing blamed the engine-wide crit
-     clamp at ``engine.py:217-218``. That clamp is not what binds. The binding
-     clamp is ``crit_total = min(raw_crit + crit_from_effects, 1.0)`` at
-     ``dps.py:1148``, which runs AFTER the engine one and re-clamps a sum the
-     engine never saw. Simulating removal of the ``engine.py`` clamp leaves the
-     term at +50.0 unchanged.
+     clamp, the ``out["crit"]`` clamp in ``engine._combine_items``. That clamp
+     is not what binds. The binding clamp is
+     ``crit_total = min(raw_crit + crit_from_effects, 1.0)`` in
+     ``dps.compute_dps``, which runs AFTER the engine one and re-clamps a sum
+     the engine never saw. Simulating removal of the ``engine.py`` clamp
+     leaves the term at +50.0 unchanged.
      ``test_effect_sourced_crit_still_saturates_at_fifty`` demonstrates this
      against the live engine rather than by argument: crit arriving from an
-     ``ItemEffect`` bypasses ``engine.py:217-218`` entirely, lands on a build
-     whose DDragon crit is exactly 1.00 (so the engine clamp is not even
-     triggered), and is still discarded - by ``dps.py:1148``.
+     ``ItemEffect`` bypasses ``engine._combine_items`` entirely, lands on a
+     build whose DDragon crit is exactly 1.00 (so the engine clamp is not even
+     triggered), and is still discarded - by the ``crit_total`` clamp.
 
   2. Game truth is UNRESOLVED, so a "fix" would be a guess. The DDragon prose
      ("every 1% critical strike chance in excess of 100% is converted into 0.5
@@ -26,8 +27,9 @@ WHY IT WAS LEFT ALONE, both halves:
      itself capped, which is exactly the ordering question that decides whether
      the ceiling is +50.0 or +100.0. The module author knew about the clamp and
      reasoned about its consequence in writing - see
-     ``_crit_chance_overrides.py:264-267``, where Senna's overflow is recorded
-     as structurally zero on the shipped engine for the same reason.
+     the ``overflow_lifesteal_pct`` docstring in ``_crit_chance_overrides.py``,
+     where Senna's overflow is recorded as structurally zero on the shipped
+     engine for the same reason.
 
   And the clamp itself is CORRECT for the other 171 champions: crit chance above
   100 percent is meaningless for everyone without an overflow conversion, so
@@ -37,8 +39,9 @@ TO REVISIT IT you need a wiki-verified re-derivation of whether Riot caps crit
 chance BEFORE or AFTER Yasuo's doubling. Not a re-reading of the DDragon
 string, which has already been read and does not answer it. If the answer turns
 out to be "after", the fix is to hand the overflow helper the UNCLAMPED sum at
-``dps.py:1148`` - the registry helper is already unsaturated and needs no
-change, which ``test_registry_helper_is_not_saturated`` pins.
+the ``crit_total`` clamp in ``dps.compute_dps`` - the registry helper is
+already unsaturated and needs no change, which
+``test_registry_helper_is_not_saturated`` pins.
 
 WHAT THIS FILE ADDS over ``test_crit_chance_overrides_r212.py``: that suite's
 ``test_yasuo_overflow_ad_is_credited_above_the_cap`` is TAUTOLOGICAL above the
@@ -68,8 +71,8 @@ from agents.daemon_slayer.dps import compute_dps
 YASUO = "Yasuo"
 
 # The raw-crit level at which the term stops growing. This is the ``1.0`` in
-# ``dps.py:1148``, not a property of any build - measured by the boundary test
-# below rather than assumed by it.
+# the ``crit_total`` clamp in ``dps.compute_dps``, not a property of any build
+# - measured by the boundary test below rather than assumed by it.
 SATURATION_RAW_CRIT = 1.00
 SATURATED_OVERFLOW_AD = 50.0
 
@@ -88,7 +91,7 @@ LADDER = (
     ("3031", "3046", "3085", "3094", "3033", "3036"),
 )
 # Yun Tal Wildarrows: zero DDragon crit, +0.25 from its ItemEffect. The only
-# crit source in this file that does not pass through ``engine.py:217-218``.
+# crit source in this file that does not pass through ``engine._combine_items``.
 YUN_TAL = "3032"
 
 LEVEL = 16
@@ -146,8 +149,8 @@ def _emitted_overflow_ad(build) -> float:
     """The overflow AD the engine actually credited, read off its own note.
 
     ``compute_dps`` folds the grant into three internal channels and reports the
-    magnitude only in the R212 note (``dps.py:1197-1203``), so the note is the
-    emitted artifact. Absent note means the seam credited nothing.
+    magnitude only in the R212 ``crit_chance_note`` in ``dps.compute_dps``, so
+    the note is the emitted artifact. Absent note means the seam credited nothing.
     """
     result = compute_dps(
         _snap(),
@@ -261,11 +264,12 @@ class SaturationBoundaryTests(unittest.TestCase):
     def test_effect_sourced_crit_still_saturates_at_fifty(self) -> None:
         """The refutation of the filed root cause, run against the engine.
 
-        ``engine.py:217-218`` clamps only when the DDragon sum EXCEEDS 1.0. On
-        this build it is exactly 1.00, so that clamp never fires - and Yun Tal's
-        +0.25 rides on an ItemEffect the engine stat pass never sees. The extra
-        crit is still discarded and the term is still +50.0, which can only be
-        ``dps.py:1148``.
+        The ``engine._combine_items`` clamp fires only when the DDragon sum
+        EXCEEDS 1.0. On this build it is exactly 1.00, so that clamp never
+        fires - and Yun Tal's +0.25 rides on an ItemEffect the engine stat
+        pass never sees. The extra crit is still discarded and the term is
+        still +50.0, which can only be
+        the ``crit_total`` clamp in ``dps.compute_dps``.
         """
         base = ("3031", "3046", "3085", "3094")
         self.assertAlmostEqual(_raw_crit_sum(base), SATURATION_RAW_CRIT, places=12)
