@@ -1881,6 +1881,38 @@ waits on the RM-875 wiring.)
   matches NEITHER order (the missing self-HP is the first suspect). The newest row in that file is
   still 2026-08-02 (an ARAM game; 10469 lines on 2026-10-25); record the baseline line count before
   queueing.
+  **RE-READ + TOOL (lane 9 PREP s144 cycle 12, 2026-10-27, source read at `d257c4f43`; NOT a tick).**
+  STALE in the SPLIT paragraph above (kept as the cycle 7 record): "BLOCKED ON WIRING ... NEITHER has
+  an `apply_mode_modifiers` parameter". Since `f5782b25b` (an ancestor of main) `inspect.signature`
+  finds it on BOTH `dispatch_for_coach` and `rank_for_primary_archetype` (15 public
+  `core/daemon_slayer_client.py` functions now). The Arena call is at `coaches/arena_coach.py:709` and
+  passes the flag at `:721`, and `archetype_dispatch.py:369` forwards it. `core/focus_board_live.py:439`
+  still hard-codes `False` (the focus board is not part of G5-05). CHECK B's own cites
+  (`arena_coach.py:84`, `:728`, `:742-752`, `ds_calibration.py:25-28`) still hold at HEAD.
+  FLAG STATE: no launcher, script or ops file sets `RC_ARENA_MODE_MODIFIERS` (grep over `ops/`,
+  `scripts/`, `tools/`). RC started 2026-10-27T19:35:33Z, after `f5782b25b`, so it runs RM-875 code with
+  the flag OFF. CHECK B still owes a merger / operator restart under `RC_ARENA_MODE_MODIFIERS=1`.
+  TOOL (read-only, `tools/gated_g505_mode_mods.py`; tests `tests/test_gated_g505_mode_mods.py`). It
+  implements both predicates above verbatim, and its output is NOT a tick:
+  `python tools/gated_g505_mode_mods.py stat --lc <scratch>/g505_lc.json --augments <apiName,...> --clean`
+  (CHECK A: the own `allPlayers` row via `activePlayer.riotId`, the champion via `rawChampionName`, the
+  in-process DS `build_champion` ON / OFF, and only the HP / AD axes the `ar` block moves). The tool
+  cannot see a Stat Anvil, a timed buff or an unmodelled stat. Without `--clean` (the operator's
+  assertion that all three are absent) a PASS or FAIL is capped at INCOMPLETE and printed as `would be`.
+  `python tools/gated_g505_mode_mods.py coach --since <game load> --champion <id> --rerun` (CHECK B: the
+  main checkout's `data/ds_calibration.jsonl`, ARENA rows in the window, vintage split
+  `pre_rm875` / `flag_off` / `flag_on`, the engine-version guard, then `dispatch_for_coach` ON / OFF as
+  stateless DS `:8860` compute). Exit 0 PASS, 1 INCOMPLETE, 2 FAIL.
+  BASELINE at 2026-10-27T21:30-05:00: 10469 lines, newest row still 2026-08-02 (ARAM). The `coach` mode over
+  `--since 2026-07-01` reads 615 ARENA rows, all `pre_rm875` (no row carries the key). A smoke re-run
+  (synthetic row Quinn, level 9, no items, armor 80 / MR 60 / 2500 HP) gives ON and OFF top-5 orders that
+  differ at positions 3-4, so a flag-ON Quinn row would be decidable.
+  SUBSTITUTION CHECK: (1) ON != OFF in-process proves only that the engine COMPUTES an addend; CHECK A's
+  observed value is the game's `championStats`, never DS output. (2) A re-run that matches itself is
+  not evidence; CHECK B's observed value is the order the live coach WROTE (`ds_picks`). (3) A row
+  without `apply_mode_modifiers` is never re-run: code from before the seam cannot have sent the flag.
+  (4) The dashboard's DS picks panel is NOT evidence for B: it renders the same dispatch output the
+  row records, so reading it instead of the row adds nothing.
 - **G5-06** (was D5) `RC_ARENA_STATE_DEBOUNCE` default-ON flip validation. **TRY THE REPLAY
   ALTERNATIVE FIRST to dodge the Arena game entirely.** NOT attempted 2026-07-04.
   **PREP 2026-10-25 (lane 9 s133 cycle 6, source read at `6af9f081f`; NOT a tick).**
