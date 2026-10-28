@@ -2665,6 +2665,131 @@ Ids `LX-nn` map to the RM rows in `BACKLOG.md` "External-lift intake".
   names the right lane opponent; an ARAM / Arena session with no pick actions writes no rows and
   reads `draft_source='none'`; the agent's writes coexist with the post-game ingest without lock
   errors.
+  **READY (s144 lane gated c31, 2026-10-28; PREP only, nothing ticked).** PRECONDITIONS measured
+  2026-10-28 at idle (read-only `mode=ro` opens of the main checkout's `data/rewind_history.db`):
+  (1) the DB holds NO `draft_log` table. `ensure_table` runs only inside `store_draft`, so the
+  sink has never written one draft since RM-609 landed (2026-10-04); the first drain's rows are the
+  table's first rows. (2) The newest `matches` row is from 2026-07-20 (`game_creation_ts`); the last
+  90 days of stored games are queues 420 / 400 / 1700 / 1750. The JOIN half therefore also waits on
+  the post-game ingest (`app/_game_lifecycle.py` -> `lib/rewind_live_writer.schedule_live_insert`, a
+  Match-V5 fetch about 90 s after the game ends, `rewind_live_writer:` lines in that day's
+  `logs/YYYY-MM-DD.log`) landing that game's row; until it does, the grader reads `NO_MATCH_ROW`.
+  (3) The running LCU agent (`pythonw`, its `lcu agent ->` start line at 2026-10-26 20:45:21 in
+  `logs/lcu_agent.log`) imported `lcu/draft_log.py` BEFORE RM-1033 (`5b880630a`, 2026-10-28 01:03:
+  Reconnect keeps the pending draft, a refused write is retried at most 5 times). Restarting
+  RC-LCUAgent before the game is a main-session / operator act, never a lane's. Either way the
+  evidence names the agent start time against `5b880630a`, so the graded code is known.
+  (4) `attach_draft_log` has NO production caller (only `tests/test_draft_log_*.py`). Nothing
+  renders a draft, so LX-01 asks whether the rows are WRITTEN and JOIN right, never whether
+  anything renders. The grader calls the real `attach_draft_log` on a read-only connection.
+  (5) The row carries no "which path wrote me" field: time is the only witness. The recorder writes at the
+  first finalized tick when the session carries a gameId (still in champ select), else at the
+  first GameStart / InProgress / Reconnect tick (`lcu/snapshot_shape.py` `note_game_id`). The
+  agent sends `lcu.phase` / `lcu.ts` every 1 s (`tools/lcu_agent.py` `INTERVAL`); they reach
+  `/api/state` through the :8889 `/latest-lcu` relay (`dashboard/_liveclient.py`). `/api/state`
+  exposes no champ-select gameId. (6) `lcu/draft_log.session_queue_id` has no gameflow fallback,
+  while the champ-select shaper has one (`lcu/champ_select_shape.py`: the session "frequently
+  omits gameData" during BAN_PICK). So a genuine draft can store `queue_id=0`; the grader then
+  skips the queue comparison in the join.
+  PROBE (from the main checkout; queue a ranked or normal DRAFT game, SR):
+  (a) BEFORE entering the queue, start the tape:
+  `mkdir -p ops/runtime/lx01; python tools/gated_lx01_draft_check.py tape --out
+  ops/runtime/lx01/phase_$(date +%s).jsonl`. Its first row is a read-only BASELINE of the DB
+  (`draft_log` present? how many rows?). It then GETs `/api/state` and writes one row per
+  `lcu.phase` CHANGE. While the phase is ChampSelect it also writes one WITNESS row per change of
+  `lcu.champ_select` (timer phase, queue, cell -> locked champion over both teams; ids only, no
+  name / puuid / summonerId). It writes into a NEW file (it refuses an existing one) and stops 5 s
+  after a game phase, or after 3600 s.
+  (b) Write down `date +%s` before the pop and again at the end screen.
+  (c) After the post-game ingest's `rewind_live_writer:` line, run `python
+  tools/gated_lx01_draft_check.py grade --since <pop epoch> --until <end epoch + 600>
+  --phase-tape <tape> --log 'logs/lcu_agent.log*' --log 'logs/<day>.log*' --json`. Quote the
+  globs: the tool expands them itself, because BOTH logs rotate by size inside a day (measured:
+  `logs/2026-10-25.log.1` .. `.3`). If the window crosses midnight, add the next day's glob.
+  `RC_LCU_INPROCESS=1` in the RC env lets the dashboard read LCU itself
+  (`dashboard/_state_builder.py`), falling back to the agent's relay tick by tick. The tape
+  cannot tell which source fed a witness row, so the evidence records the flag's value. With
+  the flag on, the witness rows may mix the dashboard's own read and the agent's view. The no-pick half rides any ARAM / KIWI / Arena game afterwards, as the same `grade`
+  over that game's window; no tape is needed.
+  The grader is read-only: a `mode=ro` URI, and only the `lcu.draft_log` SELECT readers. Game and
+  match ids print only with `--show-id` (RM-906: never paste them), and no player name is read.
+  FIELD PATHS: `table_present`; `games[].actions`, `.types`, `.picks_ally`, `.picks_enemy`,
+  `.swaps`, `.enemy_position_hidden`, `.unowned_actions`, `.queue_id`, `.captured_at`,
+  `.problems[]`; `tape_baseline.table_present` / `.rows`; `games[].witness.witness` (`MATCH` /
+  `MISMATCH` / `NONE`), `.cells_differing`, `.witness_cells`; `games[].captured_after_tape_start`;
+  `games[].join.verdict` (`JOIN_OK` / `JOIN_MISMATCH` / `NO_MATCH_ROW`), `.mismatches[]`,
+  `.match_queue_id`, `.tracked_position`, `.lane_opponent_champion_id`,
+  `.expected_opponent_champion_id`, `.local_picked_before_opponent`; `games[].path.path`
+  (`FINALIZATION` / `FALLBACK` / `LATE` / `UNKNOWN`), `.captured_minus_first_game_phase_s`,
+  `.champ_select_on_tape`; `no_draft_matches[].queue_id`, `.draft_source`, `.clean_none`;
+  `logs.files[].name` / `.lines_in_window` / `.counts.sink_failed` / `.observe_failed` /
+  `.note_game_id_failed` / `.sink_not_installed` / `.database_locked` (totals in `logs.counts`).
+  PREDICATE (stated before any game):
+  - WRITE half PASSES iff ALL of these hold:
+    - `table_present=true` and exactly one game is in the window;
+    - `problems=[]`: action_index 0..n-1, turns non-decreasing, every pick / ban on ally or
+      enemy, one `captured_at`, exactly one local pick, every pick completed with a final
+      champion;
+    - `picks_ally=5` and `picks_enemy=5`;
+    - `queue_id` is the lobby's queue, or 0. A 0 is RECORDED, not failed: it is the (6) gap, and
+      it files S144-G-21;
+    - `captured_after_tape_start=true` (`store_draft` replaces a game's rows whole, so a row from
+      before the tape would carry an earlier `captured_at`); on the first drain,
+      `tape_baseline.table_present=false` as well;
+    - `witness.witness=MATCH`;
+    - `path.path` is `FINALIZATION` or `FALLBACK`.
+    `LATE` never passes. A sink retry that finally lands after a refused write (with
+    `sink_failed` above 0) cannot be told apart from a row written by hand after the game
+    started, so it is RECORDED and the WRITE half stays OPEN for the next draft game.
+    `unowned_actions` (actions with no actor cell) is RECORDED, never a fail.
+  - PATH half is RECORDED: which of `FINALIZATION` / `FALLBACK` the live session took. `UNKNOWN`
+    means the tape missed the game phase, so the row stays open for this half.
+  - TRADE half is RECORDED: `swaps` equals the trades the operator saw in champ select (0 is a
+    valid reading when nobody traded). A trade made but `swaps=0` is a FAIL.
+  - JOIN half PASSES iff `join.verdict=JOIN_OK`: ally pick finals are the tracked team's
+    champions, enemy pick finals the other team's, the local final is
+    `matches.tracked_champion_id`, `lane_opponent` is the enemy at the tracked `team_position`,
+    and a non-zero draft `queue_id` equals `matches.queue_id`. `NO_MATCH_ROW` keeps this half
+    open.
+  - NO-PICK half PASSES iff an ARAM / KIWI / Arena game in its own window has no draft game and
+    a `no_draft_matches` entry with `clean_none=true`. A draft game in that window is RECORDED,
+    not failed: those sessions DO carry pick actions, and the row's "no pick actions" premise is
+    refuted.
+  - COEXIST half PASSES iff:
+    - every `logs.files[]` entry has every count at 0;
+    - the agent-log glob matched at least one file (no `missing=true`);
+    - within each day-log glob the window touches, at least one file has `lines_in_window`
+      above 0.
+    The agent log is quiet (about 6 KB over three days, measured 2026-10-28), so its
+    `lines_in_window` is RECORDED and may read 0. Every agent-log line carries its full date, so
+    any `draft_log sink failed` WARNING in the window is counted however few lines it has. A
+    rotated `.N` file with 0 lines in the window is normal. A
+    glob entry with `missing=true` is a FAIL for that glob. The check is per file because a zero count over zero lines proves
+    nothing, and a total can hide a wrong-day log.
+  EVIDENCE CONTRACT: the grader's JSON (values, not "ok"); the tape file itself (baseline,
+  phase and witness rows); the two epochs; the queue and the trades the operator saw in champ
+  select; the agent's `lcu agent ->` start line against `5b880630a`; the main checkout HEAD; and
+  the `rewind_live_writer:` line with its time; and whether `RC_LCU_INPROCESS` was set.
+  SUBSTITUTION CHECK: `tests/test_gated_lx01_draft_check.py` writes rows through the REAL
+  `parse_draft` + `store_draft` from a hand-built session and reaches every verdict above, so a
+  verdict proves nothing unless the rows came from the live agent's sink during the played champ
+  select. Four wired checks narrow that:
+  - the tape's BASELINE, taken before the pop, records the table's state before the game;
+  - `captured_after_tape_start` shows the write came after;
+  - `path` places it in champ select or within the slack of the first game phase;
+  - the WITNESS shows the stored pick finals equal what `/api/state` showed during that champ
+    select.
+  A row written by hand after the first game phase plus the slack reads `LATE`, and `LATE` never
+  passes the WRITE half, with or without `sink_failed`. THE RESIDUE THE GRADER CANNOT SEE is a row written
+  by hand from the same session at any time between ALL picks being locked (the witness used is
+  the last one taken no later than 2 s after the write, `WITNESS_LAG_S`, not the final one;
+  `captured_at` is whole seconds and the relay stamp lags) and the first game phase plus the slack
+  (`--path-slack`, default 10 s). Built from that witness, it reads
+  `FINALIZATION` or `FALLBACK` and `MATCH`, exactly like the sink's own write. The tape itself is
+  an operator-written file and is no stronger than its provenance. So no `store_draft` /
+  `sqlite_sink` call by hand may run against the live DB at any point in the drain window, and
+  none ever closes LX-01. The witness alone is not evidence of a WRITE: it shows
+  what the agent SAW, the DB shows what it STORED, and the WRITE half needs both.
 - **LX-02** (RM-601 / RM-602, Live Client hygiene) Capture one real allgamedata payload into a
   gitignored path and run `tools/liveclient_shape_audit.py` on it; confirm a real `HordeKill` event's
   fields (KillerName, Stolen type) match the synthetic fixture; record whether `KillerName` carries a
