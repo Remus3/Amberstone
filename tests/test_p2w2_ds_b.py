@@ -19,8 +19,8 @@ These FAIL on the pre-fix code (NaN/inf score, TypeError) and PASS on the fix.
 Symbols grep-confirmed live:
   agents/daemon_slayer/antitank.py:_effective_magnitude, _finite_float,
     compute_antitank, AntiTankEntry (Gwen P is the AP-seeded ap_ratio=0.0005 row,
-    antitank.py:274).
-  agents/daemon_slayer/engine.py:26 ResolvedStats, :43 .get(key, default).
+    its ``add("Gwen", ...)`` call in ``_build_antitank_registry``).
+  agents/daemon_slayer/engine.py: ResolvedStats, ResolvedStats.get(key, default).
 """
 from __future__ import annotations
 
@@ -35,7 +35,8 @@ from agents.daemon_slayer.antitank import (
     compute_antitank,
 )
 
-# Gwen P: MAX_HP / SUSTAINED, magnitude 0.85, ap_ratio 0.0005 (antitank.py:274).
+# Gwen P: MAX_HP / SUSTAINED, magnitude 0.85, ap_ratio 0.0005
+# (antitank._build_antitank_registry).
 # Static antitank_score is the single P row's value = 0.85 (no other Gwen rows).
 _GWEN_STATIC = 0.85
 
