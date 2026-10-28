@@ -64,6 +64,11 @@ import unicodedata
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from core import polled_json  # noqa: E402
+
 REPORTS_DIR = REPO_ROOT / "agents" / "agent6_auditor" / "reports"
 
 # Tier 1: explicit spellings for the decoratives these routines emit.
@@ -175,11 +180,10 @@ def main(argv: list[str] | None = None) -> int:
             print("     DROPPED (no ASCII spelling): "
                   + ", ".join(f"{k} x{v}" for k, v in sorted(dropped.items())))
         if args.apply:
-            # Atomic write, per the CLAUDE.md hard rule. Only non-ASCII
-            # codepoints are touched, so CRLF line endings survive intact.
-            tmp = p.with_suffix(p.suffix + ".tmp")
-            tmp.write_bytes(clean.encode("ascii"))
-            tmp.replace(p)
+            # Atomic write through the shared writer (fsync, WinError 5
+            # retry, no scratch left behind). Only non-ASCII codepoints are
+            # touched, so CRLF line endings survive intact.
+            polled_json.atomic_write_bytes(p, clean.encode("ascii"))
             print("     rewritten -> 7-bit ASCII")
 
     if args.apply:
