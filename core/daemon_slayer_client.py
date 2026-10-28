@@ -1940,7 +1940,7 @@ def rank_assassin_for(
     # ``assume_magic_burst`` above is DELIBERATELY NOT one of them and must not
     # be "fixed" by adding a route parse: /rank-assassin correctly refuses it
     # (rank_items_by_burst has no such parameter, only compute_burst_damage
-    # does, burst.py:522). It stays here because it is load-bearing across
+    # does). It stays here because it is load-bearing across
     # coach_integration/archetype_dispatch.py and dashboard/routes_state.py.
     # The lever is now legitimately reachable on the route that DOES parse it:
     # ``burst_for(assume_magic_burst=...)``, wired in the same pass.
@@ -2000,7 +2000,8 @@ def rank_assassin_for(
     if assume_magic_burst:
         body["assume_magic_burst"] = True
     # RM-86 L1: the engine consults the kit-conversion registry only when the
-    # lever is strictly positive (burst.py:2160-2162), so 0.0 and any negative
+    # lever is strictly positive (rank_items_by_burst gates its kit_conversion
+    # lookup on kit_conversion_strength > 0.0), so 0.0 and any negative
     # are inert server-side - emit nothing and stay byte-identical.
     if kit_conversion_strength > 0.0:
         body["kit_conversion_strength"] = float(kit_conversion_strength)
@@ -2011,12 +2012,14 @@ def rank_assassin_for(
     #
     # TWO TRANSPORT TRAPS, both measured and both silent:
     #   * assume_squishy_target is disabled by any POSITIVE target_armor - the
-    #     substitution is guarded on target_armor <= 0.0 (burst.py:2018). At
+    #     substitution in rank_items_by_burst is guarded on
+    #     ranking_target_armor <= 0.0 (the caller's armor). At
     #     the client default 0.0 it works; a coach that supplies a measured
     #     enemy armor turns it off without any error.
     #   * the Collector arm of assume_takedown is disabled by target_max_hp
-    #     == 0.0 (burst.py:1075), which IS this function's own default. Hubris
-    #     and Hollow Radiance still move; The Collector never gets credited.
+    #     == 0.0 (compute_burst_damage credits it only when target_max_hp > 0),
+    #     which IS this function's own default. Hubris and Hollow Radiance
+    #     still move; The Collector never gets credited.
     if exclude_off_axis_items:
         body["exclude_off_axis_items"] = True
     if assume_takedown:
