@@ -279,3 +279,103 @@ def test_lobby_duo_synergy_stays_hidden_in_a_non_sr_queue(
     assert m["duo"] == [], m["duo"]
     assert m["hidden"] and not m["visible"], m
     assert m["rows"] == 0 and m["cells"] == [], m
+
+
+# RM-1089 (queue lane cycle 4 filing): portraits re-resolve when the
+# champion index lands late. _lvDuoIconUrl resolves each name through
+# CHAMPS (web/js/lib/items_index.js), which loads
+# /data/champions_index.json asynchronously; before it lands every name
+# resolves to null and the cell keeps a blank tile. The block repaints only
+# on a controller state change, so a duo response that beat the index kept
+# blank tiles until the next party episode. This render holds the index
+# request until the block has painted its blank tiles, then releases it and
+# asserts every cell gains its portrait. The ddragon image mirror is absent
+# under this harness, so the portrait route serves a 1x1 PNG (otherwise the
+# block's own error handler would swap each img back to a blank tile).
+_PNG_1X1 = bytes.fromhex(
+    "89504e470d0a1a0a0000000d4948445200000001000000010806000000"
+    "1f15c4890000000d4944415478da63f8ffff3f0005fe02fea7d6a4520000"
+    "000049454e44ae426082")
+
+_ICONS = """() => {
+  const box = document.getElementById('lv-duo-synergy');
+  if (!box) return null;
+  return {
+    cells: box.querySelectorAll('.lv-duosyn-cell').length,
+    blank: box.querySelectorAll('.lv-duosyn-icon.is-blank').length,
+    imgs: [...box.querySelectorAll('img.lv-duosyn-icon')].map((i) => ({
+      src: i.getAttribute('src'), loaded: i.complete && i.naturalWidth > 0})),
+  };
+}"""
+
+
+def test_lobby_duo_portraits_resolve_when_the_champion_index_lands_late(
+        mock_server, pw_browser):
+    from tests.snapshot_panels.conftest import _WS_STUB
+
+    mock_server._store["data"] = {}
+    ctx = pw_browser.new_context(
+        ignore_https_errors=True, viewport={"width": 1920, "height": 1080}
+    )
+    held = []
+    portraits = []
+
+    def _hold_index(route, request):
+        # Left unhandled here; released by the test body below.
+        held.append(route)
+
+    def _portrait(route, request):
+        portraits.append(request.url)
+        route.fulfill(status=200, content_type="image/png", body=_PNG_1X1)
+
+    ctx.route("**/data/champions_index.json*", _hold_index)
+    ctx.route("**/data/ddragon/**/img/champion/*.png", _portrait)
+    page = ctx.new_page()
+    page.add_init_script(_WS_STUB)
+    errors: list[str] = []
+    page.on("pageerror", lambda err: errors.append(str(err)))
+    try:
+        page.goto(mock_server.url + "/?ui_mock=1#lobby",
+                  wait_until="domcontentloaded", timeout=15_000)
+        # The duo response landed before the index: 8 blank tiles.
+        page.wait_for_function(
+            "document.querySelectorAll("
+            "'#lv-duo-synergy .lv-duosyn-icon.is-blank').length === 8",
+            timeout=10_000,
+        )
+        before = page.evaluate(_ICONS)
+        assert held, "the champion index request was never held"
+        for route in held:
+            route.continue_()
+        # The index lands: every cell gains its portrait.
+        page.wait_for_function(
+            "(() => { const i = document.querySelectorAll("
+            "'#lv-duo-synergy img.lv-duosyn-icon');"
+            " return i.length === 8 && [...i].every("
+            "(e) => e.complete && e.naturalWidth > 0); })()",
+            timeout=10_000,
+        )
+        after = page.evaluate(_ICONS)
+        duo = page.evaluate(
+            "() => performance.getEntriesByType('resource')"
+            ".map((e) => e.name).filter((u) => u.includes('duo_synergy.json')"
+            " || u.includes('/api/duo-synergy'))")
+    finally:
+        page.close()
+        ctx.close()
+
+    assert not errors, f"JS errors [lobby duo late index]: {errors[:3]}"
+    assert before == {"cells": 8, "blank": 8, "imgs": []}, before
+    assert after["cells"] == 8 and after["blank"] == 0, after
+    index = json.loads(
+        (ROOT / "web" / "data" / "champions_index.json")
+        .read_text(encoding="utf-8"))
+    want = [index["byName"]["".join(ch for ch in c["champ"].lower()
+                                    if ch.isalnum())]
+            for c in FIXTURE["top_row"] + FIXTURE["bottom_row"]]
+    got = [i["src"].rsplit("/", 1)[-1][:-len(".png")] for i in after["imgs"]]
+    assert got == want, (got, want)
+    assert all(i["src"].startswith(f"/data/ddragon/{index['version']}/")
+               for i in after["imgs"]), after["imgs"]
+    # The repaint came from the index landing, not from a second fetch.
+    assert len(duo) == 1, duo

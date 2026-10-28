@@ -5295,6 +5295,11 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   // fires once globally.
   document.addEventListener("rc:champs-ready", () => {
     if (_VIEW.current === "lobby") _renderMains();
+    // RM-1089: the duo block repaints only on a controller state change,
+    // so a duo response that beat the index kept blank tiles. Re-render it
+    // once with the resolved portraits (the signature check makes this a
+    // no-op when nothing changed).
+    if (_LV.duo) _lvDuoRender(_LV.duo.state());
   });
   function _lobbyViewWireOnce() {
     if (_LV.wired) return;

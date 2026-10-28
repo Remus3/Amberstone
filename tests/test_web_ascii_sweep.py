@@ -1420,7 +1420,22 @@ _WEB = _REPO_ROOT / "web"
 # value EXACTLY. That one path is the whole change. No glyph change: the
 # added lines carry 0 non-ASCII bytes. If another slice re-captures in
 # parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "e32f8d5c468ad15e6edfbe07f17382160ca8eeb38e21a28a11451262462d37f5"
+# superseded by the RM-1089 re-capture below: "e32f8d5c468ad15e6edfbe07f17382160ca8eeb38e21a28a11451262462d37f5"
+#
+# RE-CAPTURED 2026-10-28 at RM-1089 (s144 queue cycle 32, provisional
+# until the merger lands it). One change rides it: the rc:champs-ready
+# listener in web/js/main.js re-renders the lobby duo block, so portraits
+# resolve when the champion index lands after the duo response. Ordinary
+# case, no tokeniser change. ATTRIBUTED BY SUBSTITUTION: swapping exactly
+# web/js/main.js back to its local-main e14071faa blob (in memory)
+# reproduces the superseded 89c8be0e... value EXACTLY. That path is the
+# whole change. No glyph change: the added lines carry 0 non-ASCII bytes.
+# lane/uiux 49192018e re-captures this same line in parallel, so the merger
+# recomputes.
+# MERGED 2026-10-28 by the session 144 L5 merger onto main (lane commit 1767e37c6): main had moved
+# this pin since the lane base, so the superseded value above is main's and
+# the value below is recomputed over the merged tree.
+_LIVE_HALF_DIGEST = "45d25ab4e737296ea61cfaf26b3b4a34db56392d878eaafde7b73589494f28cf"
 
 
 def _web_sources() -> list[Path]:
