@@ -246,12 +246,17 @@ export function _resetDraftElo() {
 // no persistent JS state - the existing contract guards stay green.
 if (typeof document !== "undefined" && !document.__deEscBound) {
   document.__deEscBound = true;
+  // RM-1068: a press that dismissed an overlay is consumed (capture
+  // phase, preventDefault) so main.js's Escape chain does not also exit
+  // zen; with no overlay showing the press passes through untouched.
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape" && e.code !== "Escape") return;
     const overlays = document.querySelectorAll(".draft-elo-contributions");
+    let dismissed = false;
     overlays.forEach((o) => {
       if (getComputedStyle(o).display === "none") return;
       o.style.display = "none";
+      dismissed = true;
       // Clear the inline override on mouseleave of the parent chip so
       // the next hover cycle reveals the overlay again. one-shot.
       const chip = o.closest(".draft-elo-chip");
@@ -263,7 +268,8 @@ if (typeof document !== "undefined" && !document.__deEscBound) {
         chip.addEventListener("mouseleave", clear);
       }
     });
-  });
+    if (dismissed) e.preventDefault();
+  }, true);
 }
 
 export const __test = {

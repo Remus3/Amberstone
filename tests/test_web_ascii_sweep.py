@@ -1233,7 +1233,20 @@ _WEB = _REPO_ROOT / "web"
 # EXACTLY. That path is the whole change. No glyph change: the added lines
 # carry 0 non-ASCII bytes. If another slice re-captures in parallel, the
 # merger recomputes.
-_LIVE_HALF_DIGEST = "13794bf847867823c42de9fd92bd94b68752a7c97cf84e8d1d278ba234a1c03a"
+# superseded by the RM-1068 re-capture below: "13794bf847867823c42de9fd92bd94b68752a7c97cf84e8d1d278ba234a1c03a"
+#
+# RE-CAPTURED 2026-10-28 at RM-1068 (s144 uiux cycle 34, provisional
+# until the merger lands it and maps the id). One change rides it: the
+# Right Now digest popover (web/js/panels/right_now.js) and the draft-elo
+# contributions overlay (web/js/panels/draft_elo.js) consume the Escape
+# they act on (capture phase, preventDefault), so it no longer also exits
+# zen. Ordinary case, no tokeniser change. ATTRIBUTED BY SUBSTITUTION:
+# swapping exactly those two files back to their lane-tip 970b7a2e5 blobs
+# (in memory) reproduces the superseded 13794bf8... value EXACTLY; neither
+# file alone does. Those paths are the whole change. No glyph change: the
+# added lines carry 0 non-ASCII bytes. If another slice re-captures in
+# parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "add8c81218b76ee2ef3b83ef35a0c7e61a7649ce36513a5bb209fa2312fc020f"
 
 
 def _web_sources() -> list[Path]:

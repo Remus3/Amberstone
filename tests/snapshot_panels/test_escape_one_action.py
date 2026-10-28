@@ -21,6 +21,14 @@ chain, like the player (review_player_model.js hotkeyAction), stands down on
 a press already consumed. A second Escape still reaches the next handler
 (positive controls below), and an Escape with no layer open is untouched.
 
+RM-1068 (s144 uiux) closes the same double action on two more layers
+outside main.js: the Right Now cross-session digest popover
+(#digest-popout, web/js/panels/right_now.js bindDigestIcon) and the
+draft-elo contributions overlay (.draft-elo-contributions,
+web/js/panels/draft_elo.js, the hover-only overlay Escape dismisses). Each
+closed AND exited zen on one press; each now consumes the press it acts on,
+and only that press.
+
 The Replay lane stays hidden under ?ui_mock=1, so the player tests reveal
 #replay-video-section the way a servable sidecar would (the helper from
 test_replay_space_single_action.py).
@@ -172,3 +180,78 @@ def test_escape_with_no_layer_open_still_exits_zen(mock_server, pw_browser, vp):
         page.close()
         ctx.close()
     assert not errors, f"JS errors: {errors[:3]}"
+
+
+# RM-1068 ----------------------------------------------------------------
+
+_DIGEST_OPEN = (
+    "() => !document.getElementById('digest-popout').classList.contains('hidden')"
+)
+
+
+@pytest.mark.parametrize("vp", VIEWPORTS, ids=lambda v: f"{v[0]}x{v[1]}")
+def test_escape_closes_the_digest_popover_and_keeps_zen(
+        mock_server, pw_browser, vp):
+    ctx, page, errors = _open_view(pw_browser, mock_server, vp, "home")
+    try:
+        _zen_on(page)
+        # #digest-icon stays [hidden] until a digest payload arrives (the
+        # fixtures carry none); its click handler is the real opener.
+        page.evaluate("() => document.getElementById('digest-icon').click()")
+        assert page.evaluate(_DIGEST_OPEN), "the digest popover did not open"
+        page.keyboard.press("Escape")
+        assert not page.evaluate(_DIGEST_OPEN), "Escape did not close the popover"
+        st = page.evaluate(_STATE)
+        assert st["zen"] == "1", f"closing the digest popover also exited zen: {st}"
+        page.keyboard.press("Escape")
+        assert page.evaluate(_STATE)["zen"] == "", "a second Escape no longer exits zen"
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors: {errors[:3]}"
+
+
+_CONTRIB_SHOWN = """
+() => {
+  const o = document.querySelector('#am-draft-elo .draft-elo-contributions');
+  return !!o && getComputedStyle(o).display !== 'none';
+}
+"""
+
+
+def test_escape_dismisses_the_draft_elo_overlay_and_keeps_zen(
+        mock_server, pw_browser):
+    from tests.snapshot_panels.conftest import DRAFT_ELO_GOOD_BAND
+    from tests.snapshot_panels.test_active_match_view import _open_active_match
+
+    mock_server.set_draft_elo(DRAFT_ELO_GOOD_BAND)
+    try:
+        ctx, page, errors = _open_active_match(pw_browser, mock_server, "sr")
+        try:
+            page.wait_for_function(
+                "document.querySelector('#am-draft-elo') && "
+                "document.querySelector('#am-draft-elo').dataset.deState "
+                "=== 'ready'",
+                timeout=15_000,
+            )
+            _zen_on(page)
+            page.hover("#am-draft-elo")
+            assert page.evaluate(_CONTRIB_SHOWN), "hover did not show the overlay"
+            page.keyboard.press("Escape")
+            assert not page.evaluate(_CONTRIB_SHOWN), "Escape did not dismiss it"
+            st = page.evaluate(_STATE)
+            assert st["zen"] == "1", (
+                f"dismissing the draft-elo overlay also exited zen: {st}"
+            )
+            # Nothing left to dismiss (still hovered, inline display:none),
+            # so the next Escape reaches the zen exit.
+            page.keyboard.press("Escape")
+            assert page.evaluate(_STATE)["zen"] == "", (
+                "a second Escape no longer exits zen"
+            )
+        finally:
+            page.close()
+            ctx.close()
+        assert not errors, f"JS errors: {errors[:3]}"
+    finally:
+        mock_server.set_draft_elo(None)
