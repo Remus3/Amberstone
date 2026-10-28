@@ -516,3 +516,105 @@ def test_every_escape_layer_registers_with_the_one_dispatcher(
         "panels/right_now.js": ["digest-popover"],
         "panels/draft_elo.js": ["draft-elo-contributions"],
     }, names
+
+
+# RM-1074 ----------------------------------------------------------------
+# The dispatcher ranks layers by their STACKING CONTEXTS, not by the z-index
+# of the outermost positioned ancestor. Each case builds two registered
+# layers over the same 400x400 box: a child (position:absolute; inset:0;
+# z-index childZ) inside a wrapper styled to create, or not create, a
+# stacking context, and a position:fixed sibling at z-index sibZ appended
+# after it. The paint truth is Chromium's own hit test,
+# document.elementsFromPoint, and each case also states the expected winner
+# so the oracle itself is pinned. One Escape must close exactly the layer
+# painted on top. Under the first cut (RM-1070) every case marked RED
+# closed the wrong layer: a z-index trapped in a transform / opacity /
+# filter / isolation / will-change / contain / blend context out-ranked the
+# z 50 sibling, a static flex item's z-index 60 was ignored, and a top-layer
+# popover ranked by its child's z-index 1.
+
+_BOX = "position:absolute;top:0;left:0;width:400px;height:400px;"
+_ITEM = "width:400px;height:400px;z-index:60;"
+_POPOVER = _BOX + "margin:0;padding:0;border:0;right:auto;bottom:auto;"
+
+# id -> (outer style, wrapper style, wrapper is a popover, childZ, sibZ, winner)
+_STACK_CASES = {
+    "transform-RED": ("", _BOX + "transform:translateZ(0)", False, 9999, 50, "sibling"),
+    "opacity-RED": ("", _BOX + "opacity:0.99", False, 9999, 50, "sibling"),
+    "filter-RED": ("", _BOX + "filter:brightness(1)", False, 9999, 50, "sibling"),
+    "isolation-RED": ("", _BOX + "isolation:isolate", False, 9999, 50, "sibling"),
+    "will-change-RED": ("", _BOX + "will-change:transform", False, 9999, 50, "sibling"),
+    "contain-paint-RED": ("", _BOX + "contain:paint", False, 9999, 50, "sibling"),
+    "blend-RED": ("", _BOX + "mix-blend-mode:multiply", False, 9999, 50, "sibling"),
+    "flex-item-z-RED": (_BOX + "display:flex", _ITEM, False, 1, 50, "child"),
+    "grid-item-z-RED": (_BOX + "display:grid", _ITEM, False, 1, 50, "child"),
+    "popover-top-layer-RED": ("", _POPOVER, True, 1, 2147483647, "child"),
+    "block-item-z-control": (_BOX, _ITEM, False, 1, 50, "sibling"),
+    "no-context-control": ("", _BOX, False, 9999, 50, "child"),
+    "positioned-z-control": ("", _BOX + "z-index:10", False, 9999, 50, "sibling"),
+    # Measured in headless Chromium 147: container-type creates no context.
+    "container-type-control": ("", _BOX + "container-type:size", False, 9999, 50, "child"),
+}
+
+_BUILD_STACK = """
+async ([outer, wrap, popover, childZ, sibZ]) => {
+  const m = await import('/js/lib/escape_layers.js');
+  const o = document.createElement('div');
+  o.style.cssText = outer;
+  const w = document.createElement('div');
+  w.style.cssText = wrap;
+  if (popover) w.setAttribute('popover', 'manual');
+  const c = document.createElement('div');
+  c.id = 'u47-child';
+  c.style.cssText = 'position:absolute;inset:0;background:#123;z-index:' + childZ;
+  const sib = document.createElement('div');
+  sib.id = 'u47-sibling';
+  sib.style.cssText = 'position:fixed;top:0;left:0;width:400px;height:400px;'
+    + 'background:#321;z-index:' + sibZ;
+  w.appendChild(c);
+  o.appendChild(w);
+  document.body.appendChild(o);
+  document.body.appendChild(sib);
+  if (popover) w.showPopover();
+  for (const el of [c, sib]) {
+    el.dataset.open = '1';
+    m.registerEscapeLayer({
+      name: el.id, el: () => el,
+      isOpen: () => el.dataset.open === '1',
+      close: () => { el.dataset.open = '0'; },
+    });
+  }
+  const hit = document.elementsFromPoint(200, 200).find((e) => e === c || e === sib);
+  return hit ? hit.id.slice(4) : null;
+}
+"""
+
+_STACK_OPEN = """
+() => ({
+  child: document.getElementById('u47-child').dataset.open === '1',
+  sibling: document.getElementById('u47-sibling').dataset.open === '1',
+})
+"""
+
+
+@pytest.mark.parametrize("case", sorted(_STACK_CASES))
+def test_escape_ranks_layers_by_their_stacking_contexts(
+        mock_server, pw_browser, case):
+    outer, wrap, popover, child_z, sib_z, winner = _STACK_CASES[case]
+    loser = "sibling" if winner == "child" else "child"
+    ctx, page, errors = _open_view(pw_browser, mock_server, VIEWPORTS[0], "home")
+    try:
+        on_top = page.evaluate(_BUILD_STACK, [outer, wrap, popover, child_z, sib_z])
+        assert on_top == winner, (
+            f"{case}: Chromium paints {on_top} on top, the case expects {winner}"
+        )
+        page.keyboard.press("Escape")
+        st = page.evaluate(_STACK_OPEN)
+        assert st == {winner: False, loser: True}, (
+            f"{case}: one Escape should close only the {winner} painted on "
+            f"top, got open={st}"
+        )
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors: {errors[:3]}"

@@ -13,13 +13,26 @@
 // open the press passes through untouched.
 //
 // A layer: { name, el: () => Element|null, isOpen: () => bool, close() }.
-// "Topmost" is the paint order of the root stacking context: the z-index
-// of the outermost positioned ancestor-or-self with a numeric z-index
-// (0 when none), ties broken by tree order (later paints on top). That is
-// exact for this page's layers, which are all position:fixed children of
-// <body> or of a static wrapper (measured: modal 200, view menu 9100,
-// picker 9200, digest 9500); a nested stacking context is compared by its
-// root-level ancestor, which is what decides which one covers the other.
+// "Topmost" is paint order. Each open layer's element gets its stacking
+// path: every ancestor-or-self that creates a stacking context, outermost
+// first, with the z it paints at inside its parent context, then the
+// element itself at z 0 when it creates none. Two paths are compared at
+// the first entry where they differ: the higher z wins, equal z goes to
+// the later element in tree order (later paints on top), and a layer
+// inside another one's context wins over it.
+//
+// RM-1074: the first cut ranked a layer by the z-index of its outermost
+// POSITIONED ancestor, which is exact for this page's five layers (all
+// position:fixed in the root context: modal 200, view menu 9100, picker
+// 9200, digest 9500) but not for a layer inside a context created any
+// other way. A position:fixed z-index 9999 layer under a transformed
+// wrapper paints at the wrapper's z 0, below a z-index 50 layer, yet ranked
+// 9999; a static flex item with z-index 60 lifts its z-index 1 child over
+// that z-index 50 layer, yet ranked 1. stackingZ() below carries the CSS
+// creation rules; a top-layer element (an open popover or modal dialog)
+// paints over every z-index and ranks above all of them.
+// Known approximations: a non-positioned leaf ranks with the z 0 positioned
+// ones, and a negative-z child is still ranked over its own context root.
 
 const _layers = [];
 let _bound = false;
@@ -32,26 +45,91 @@ export function registerEscapeLayer(layer) {
   }
 }
 
-// Pure choice over [{ layer, z, node }]: the highest z wins; equal z goes to
-// the later node in tree order. `follows(a, b)` is true when a comes after b.
+// Pure: the z an element paints at inside its parent stacking context when
+// it creates a stacking context of its own, else null. `cs` is its computed
+// style, `parentCs` its parent's (null at the top). z-index applies to a
+// positioned element and to a flex or grid item; anywhere else, and as
+// "auto", the context paints at z 0. Every rule here was measured against
+// elementsFromPoint in headless Chromium 147; container-type was measured
+// to create NO context there and is left out.
+const _GRID_FLEX = /^(inline-)?(flex|grid)$/;
+const _WILL_CHANGE = new Set([
+  "transform", "translate", "rotate", "scale", "opacity", "filter",
+  "backdrop-filter", "perspective", "clip-path", "mask", "mask-image",
+  "isolation", "mix-blend-mode", "z-index", "position", "contain",
+]);
+const _isSet = (v) => !!v && v !== "none";
+
+export function stackingZ(cs, parentCs) {
+  const pos = cs.position || "static";
+  const item = !!parentCs && _GRID_FLEX.test(parentCs.display || "");
+  const n = parseInt(cs.zIndex, 10);
+  const z = (pos !== "static" || item) && !Number.isNaN(n) ? n : null;
+  const contain = String(cs.contain || "");
+  const forms = (
+    z !== null
+    || pos === "fixed" || pos === "sticky"
+    || (cs.opacity !== undefined && cs.opacity !== "" && Number(cs.opacity) < 1)
+    || _isSet(cs.transform) || _isSet(cs.translate)
+    || _isSet(cs.rotate) || _isSet(cs.scale)
+    || _isSet(cs.filter) || _isSet(cs.backdropFilter)
+    || _isSet(cs.perspective) || _isSet(cs.clipPath)
+    || _isSet(cs.maskImage) || _isSet(cs.webkitMaskImage)
+    || (!!cs.mixBlendMode && cs.mixBlendMode !== "normal")
+    || cs.isolation === "isolate"
+    || /\b(layout|paint|strict|content)\b/.test(contain)
+    || String(cs.willChange || "").split(",").some((p) => _WILL_CHANGE.has(p.trim()))
+  );
+  return forms ? (z === null ? 0 : z) : null;
+}
+
+// Pure: paint-order comparison of two { path, node } entries, where path is
+// [{ el, z }] outermost first (see the header). Positive when `a` paints
+// over `b`. `follows(x, y)` is true when x comes after y in tree order.
+export function compareStacking(a, b, follows) {
+  const n = Math.min(a.path.length, b.path.length);
+  for (let i = 0; i < n; i++) {
+    const x = a.path[i];
+    const y = b.path[i];
+    if (x.el === y.el) continue;
+    if (x.z !== y.z) return x.z > y.z ? 1 : -1;
+    return follows(x.el, y.el) ? 1 : -1;
+  }
+  if (follows(a.node, b.node)) return 1;
+  return follows(b.node, a.node) ? -1 : 0;
+}
+
+// Pure choice over [{ layer, path, node }]: the entry painted on top, or
+// null when there is none; a full tie keeps the first entry.
 export function pickTopmost(entries, follows) {
   let best = null;
   for (const c of entries) {
-    if (!best || c.z > best.z || (c.z === best.z && follows(c.node, best.node))) {
-      best = c;
-    }
+    if (!best || compareStacking(c, best, follows) > 0) best = c;
   }
   return best;
 }
 
-function _rootZ(node) {
-  let z = 0;
-  for (let a = node; a && a !== document.body; a = a.parentElement) {
-    const cs = getComputedStyle(a);
-    const n = parseInt(cs.zIndex, 10);
-    if (cs.position !== "static" && !Number.isNaN(n)) z = n;
+function _inTopLayer(el) {
+  for (const sel of [":modal", ":popover-open"]) {
+    try { if (el.matches(sel)) return true; } catch (_) { /* unsupported */ }
   }
-  return z;
+  return false;
+}
+
+function _stackPath(node) {
+  if (!node) return [{ el: null, z: 0 }];
+  const path = [];
+  for (let a = node; a && a !== document.documentElement; a = a.parentElement) {
+    if (_inTopLayer(a)) {
+      path.push({ el: a, z: Infinity });
+      break;
+    }
+    const parent = a.parentElement;
+    const z = stackingZ(getComputedStyle(a), parent ? getComputedStyle(parent) : null);
+    if (z !== null) path.push({ el: a, z });
+    else if (a === node) path.push({ el: a, z: 0 });
+  }
+  return path.reverse();
 }
 
 function _follows(a, b) {
@@ -67,7 +145,7 @@ function _onEscape(e) {
     try { isOpen = !!layer.isOpen(); } catch (_) { isOpen = false; }
     if (!isOpen) continue;
     const node = layer.el();
-    open.push({ layer, node, z: node ? _rootZ(node) : 0 });
+    open.push({ layer, node, path: _stackPath(node) });
   }
   const top = pickTopmost(open, _follows);
   if (!top) return;

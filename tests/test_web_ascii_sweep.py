@@ -1326,7 +1326,19 @@ _WEB = _REPO_ROOT / "web"
 # value EXACTLY. That path is the whole change. No glyph change: the added
 # lines carry 0 non-ASCII bytes. If another slice re-captures in parallel,
 # the merger recomputes.
-_LIVE_HALF_DIGEST = "718bec48ed072db16f285e9ce6ace20a2230e96ef1ba8eed87678e491e8a60c6"
+# superseded by the RM-1074 re-capture below: "718bec48ed072db16f285e9ce6ace20a2230e96ef1ba8eed87678e491e8a60c6"
+#
+# RE-CAPTURED 2026-10-28 at RM-1074 (s144 uiux cycle 45, provisional
+# until the merger lands it and maps the id). One change rides it: the
+# Escape dispatcher (web/js/lib/escape_layers.js) ranks open layers by
+# their stacking-context paths (stackingZ / compareStacking) instead of the
+# outermost positioned z-index. Ordinary case, no tokeniser change.
+# ATTRIBUTED BY SUBSTITUTION: swapping that one file back to its lane-tip
+# a44d38871 blob reproduces the superseded 718bec48... value EXACTLY. That
+# path is the whole change. No glyph change: the added lines carry 0
+# non-ASCII bytes. If another slice re-captures in parallel, the merger
+# recomputes.
+_LIVE_HALF_DIGEST = "d7d6b9878b22c11a3048404ef444c1032f98a7c8f766468a379337f7547d1e30"
 
 
 def _web_sources() -> list[Path]:
