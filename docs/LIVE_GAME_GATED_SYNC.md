@@ -2706,6 +2706,77 @@ Ids `LX-nn` map to the RM rows in `BACKLOG.md` "External-lift intake".
 - **LX-05** (RM-607, item tape) One ARAM Mayhem (KIWI) game with `RC_ITEM_TAPE=1`: folded tape equals
   the final allPlayers inventories; combines match DDragon recipes; anvil / augment grants typed
   ITEM_GRANTED; rows land in timeline_events with `source='live_tape'` after the 180 s delay.
+  **READY (s144 lane gated c23, 2026-10-28; PREP only, nothing ticked).** PRECONDITIONS measured
+  2026-10-28 at idle: (1) the flag has never been ON on the live box - `data/rewind_history.db`
+  `timeline_events` has NO `source` column (the column is added lazily by the first `persist_tape`,
+  so its absence means no tape was ever written), and `RC_ITEM_TAPE` is in neither the user nor the
+  machine environment key nor any tracked or gitignored config outside the code, docs and tests. The
+  listener installs once, at `core/liveclient_cache.start()` (`_install_optional_taps` ->
+  `install_if_enabled`, flag read from the RC PROCESS env), so turning it on is an env change plus an
+  RC restart BEFORE the game: a main-session / operator act, never a lane's. An RC that starts
+  mid-game sees held items as `INVENTORY_BASELINE`, which is never persisted, so the fold will not
+  match: the RC start must come before the game's first shop visit. (2) The persist is a daemon
+  `threading.Timer` of `DEFAULT_DELAY_S` = 180 s, scheduled from
+  `PostgameCollector._publish_game_end_pin` with the EOG gameId: an RC restart (or a supervisor
+  bounce) inside those 180 s loses the tape with no log line (the Timer only logs a failed open or
+  write), so do not restart RC until the probe below shows rows. (3) The independent final-inventory
+  source is the LCU end-of-game block in `data/postgame_stats.db` `aram_player_stats` (KIWI maps to
+  ARAM in `_MODE_MAP`; `match_id` is the bare gameId; item0..item6 per `game_name#tag_line` + team),
+  and its newest `aram_matches` row is `captured_at` 2026-08-02 (7 KIWI rows): no KIWI game has been
+  stored since. Each of those 7 matches holds exactly ONE `aram_player_stats` row (with
+  `is_local_player=0`), so the EOG source grades at most the players it names (the tool reports
+  `all_players=false`; RM-1057). Only an LX-03 recording of the SAME game (`--session`, last frame
+  with `allPlayers`, which needs `RC_SESSION_RECORDER=1` too) grades all ten. With neither, the fold
+  half stays open and only the row / recipe / grant halves can be graded.
+  PROBE (from the main checkout, where the DBs live; a lane worktree has no `data/`): note the LCU
+  game id while InProgress (as LX-03: `/latest-lcu` -> `data.game_id`). Within 180 s of the end
+  screen run `python tools/gated_lx05_tape_check.py --game-id <id> --no-final` once (expect
+  `tape_rows=0`), then after 200 s `python tools/gated_lx05_tape_check.py --game-id <id> --json`
+  (add `--session logs/sessions/<id>.jsonl` when the EOG row is missing). Read-only: both DBs open
+  with a `mode=ro` URI; SQLite still updates the `-shm` wal-index mtime on any open (measured this
+  cycle: content files' size and mtime unchanged, `-shm` mtime moved), which is every reader's
+  behaviour and no content write. Riot ids and the match id print only with `--show-id`, and never go
+  into this file (RM-906). FIELD PATHS: `source_column`, `tape_rows`, `rows_by_type`,
+  `non_tape_item_rows`, `timestamp_ms_first` / `_last`, `combine_rows`, `combine_recipe_bad`,
+  `grant_ids_persisted`, `fold.players_compared` / `players_tape_only` / `players_final_only` /
+  `unexplained_diffs` / `fold_match` / `implicit_transforms`, and per player `tape_extra` / `final_extra` with each id's
+  `explained` class (`grant` / `consumable` / `trinket` / `consumable_or_trinket` / `transform`).
+  PREDICATE (stated before any game): PASS iff the first probe reads `tape_rows=0` and the second
+  `source_column=true` with `tape_rows` above 0 (the delay); `non_tape_item_rows=0` (Match-V5 serves
+  no KIWI timeline, so a non-zero means the tape was refused as `v5_present` - a FAIL to explain);
+  `combine_rows` above 0 and `combine_recipe_bad=[]` (a game with no completed item cannot grade the
+  recipe half: record it open, not passed); `grant_ids_persisted=[]` AND at least one player's
+  `final_extra` carries an id explained `grant` (that is the only DB-visible trace of an
+  ITEM_GRANTED: the type is never persisted, so a game with no Mayhem augment item or anvil grant
+  leaves the grant half open); `unexplained_diffs=0`, `players_final_only=0` and `fold_match=true`,
+  with `fold.players_compared=10` and `players_tape_only=0` on the session source
+  (`all_players=true`), or `players_compared` equal to the EOG row count on the EOG source (a
+  PARTIAL fold pass: record which players were graded); `timestamp_ms_last` within the game length.
+  The fold reads PERSISTED rows only (PURCHASED / SOLD / COMBINED, one row per copy) and clamps at
+  zero after every row as the writer's `fold` does, so the tool explains, never hides, a diff on a
+  consumable, trinket, grant or transform id (a transform pairs one copy for one copy, and a sale or
+  combine of a transform TARGET the fold never saw consumes its held source, counted in
+  `implicit_transforms` - ITEM_TRANSFORMED itself is tape-only, never a row); a diff it cannot
+  explain is a real tape miss and is a FAIL to record with the id, not to argue away. (The tape's
+  known blind spots do NOT produce fold diffs: a buy-and-undo between two snapshots never reaches
+  the tape, and a component bought and combined inside one poll - `_DEFAULT_POLL_S` 0.5 s in
+  `core/liveclient_cache.py` - folds correctly as a PURCHASED of the finished item; both only
+  mis-type, never mis-count.)
+  EVIDENCE CONTRACT: the two probe outputs (values, not "ok") with the wall-clock time of each
+  against the end-screen time; the game's mode / queue (KIWI / 2400) and length; which final source
+  graded the fold (`eog` or `session`); the code RC ran (`ops/runtime/health.json` `pid` /
+  `started_at` against the game start and the main checkout's HEAD, as LX-03); and how the flag was
+  set (who set it, user env or launcher, and when RC restarted).
+  SUBSTITUTION CHECK: `tests/test_gated_lx05_tape_check.py` drives the REAL diff engine over
+  synthetic snapshots and writes through the REAL `persist_tape`, and every check above passes on
+  it, so a passing probe proves nothing unless the rows came from the live RC: on the FIRST drain
+  the `source` column must first appear AFTER the drain game's end (its absence was measured this
+  cycle; once any tape has landed this check is gone, so later drains rely on the two below and on
+  the first probe's `tape_rows=0` for this match id inside the 180 s window), the rows'
+  match id must be `<PLATFORM>_<the gameId read live while InProgress>`, and the 180 s gap between
+  the two probes must be observed, not assumed. A `persist_tape` / `on_game_end` call made by hand
+  or by a test against the live DB writes the same rows: no such call may run on the box between
+  the game and the probe, and none ever closes LX-05.
 - **LX-03** (RM-605, session recorder) With `RC_SESSION_RECORDER=1` during a real match: the file
   under `logs/sessions/` carries the real gameId, the `config_key` from game.cfg and fresh
   vision_state; then replay it into the headless UI with `tools/replay_session.py`. A replay never
