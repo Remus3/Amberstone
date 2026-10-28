@@ -17,6 +17,8 @@ what the ORDER's section 5 asks RC to do around them:
     on True, ends the lane after its current cycle - never kill / terminate;
     an "admission" refusal is recorded like lanes_full;
   * section 4: lane_cap above the machine cap clamps instead of raising;
+  * section 4b: an invalid lane_cap_max config (0, -1, bad JSON, string, float,
+    bool, 33, 99, unreadable) reads 3 and 8-32 is honoured;
   * CLAUDE.md carries the RC "KIT v25" rules line naming this guard.
 RC was on v24 (MAIN drift 2026-10-27 21:3x), so section 2 owes nothing.
 """
@@ -280,6 +282,65 @@ def test_a_cap_above_the_machine_cap_clamps_instead_of_raising(config_missing):
         kit_lanes.lane_cap(0)
     with pytest.raises(ValueError):
         kit_lanes.lane_cap(True)
+
+
+# ---------------------------------------------------------------- section 4b
+# The machine config is untrusted input: lanes.lane_cap() must fail safe to the
+# kit default (3) for every invalid lane_cap_max and honour 8-32 (CONFIG_BOUNDS,
+# ops/fleet_kit/fleet_lanes.py:134; validation _valid :155-162; load_config
+# :179-218). The config path is injected the same way as the config5 fixture
+# above (lines 63-67): FLEET_LANES_CONFIG -> a file under tmp_path, so the real
+# ~/.fleet/lanes.json is never read or written. governor_width is 32 in every
+# invalid-cap case so the governor clamp (fleet_lanes.py:743) cannot mask a
+# lane_cap_max that slipped through validation: a raw 33 / 99 would read 32.
+
+def _point_config_at(tmp_path, monkeypatch, raw):
+    cfg = tmp_path / "lanes.json"
+    cfg.write_bytes(raw)
+    monkeypatch.setenv(kit_lanes.CONFIG_ENV, str(cfg))
+    return cfg
+
+
+@pytest.mark.parametrize("raw", [
+    pytest.param(b'{"governor_width": 32, "lane_cap_max": 0}', id="zero"),
+    pytest.param(b'{"governor_width": 32, "lane_cap_max": -1}', id="negative"),
+    pytest.param(b'{"governor_width": 32, "lane_cap_max": ', id="bad-json"),
+    pytest.param(b'{"governor_width": 32, "lane_cap_max": "7"}', id="string"),
+    pytest.param(b'{"governor_width": 32, "lane_cap_max": 7.5}', id="float"),
+    pytest.param(b'{"governor_width": 32, "lane_cap_max": true}', id="bool"),
+    pytest.param(b'{"governor_width": 32, "lane_cap_max": 33}', id="above-32"),
+    pytest.param(b'{"governor_width": 32, "lane_cap_max": 99}', id="far-above-32"),
+])
+def test_an_invalid_lane_cap_config_fails_safe_to_three(raw, tmp_path, monkeypatch, lanes_root):
+    _point_config_at(tmp_path, monkeypatch, raw)
+    assert lanes.lane_cap() == 3
+    assert len(lanes.lanes_state(lanes_root)) == 3
+    cfg = kit_lanes.load_config()
+    assert cfg["lane_cap_max"] == 3
+    assert cfg["errors"], "the fallback must be recorded, not silent"
+
+
+def test_an_unreadable_lane_config_fails_safe_to_three(tmp_path, monkeypatch, lanes_root):
+    # A directory where the file should be: read_bytes() raises an OSError that
+    # is not FileNotFoundError (PermissionError on Windows, IsADirectoryError
+    # elsewhere), the "unreadable" branch at fleet_lanes.py:193-196.
+    cfg = tmp_path / "lanes.json"
+    cfg.mkdir()
+    monkeypatch.setenv(kit_lanes.CONFIG_ENV, str(cfg))
+    assert lanes.lane_cap() == 3
+    assert len(lanes.lanes_state(lanes_root)) == 3
+    loaded = kit_lanes.load_config()
+    assert loaded["lane_cap_max"] == 3
+    assert loaded["errors"] and loaded["errors"][0].startswith("unreadable")
+
+
+@pytest.mark.parametrize("n", [8, 20, 32])
+def test_a_lane_cap_inside_eight_to_thirty_two_is_honoured(n, tmp_path, monkeypatch, lanes_root):
+    raw = json.dumps({"governor_width": n, "lane_cap_max": n}).encode("ascii")
+    _point_config_at(tmp_path, monkeypatch, raw)
+    assert kit_lanes.load_config()["errors"] == []
+    assert lanes.lane_cap() == n
+    assert len(lanes.lanes_state(lanes_root)) == n
 
 
 # ---------------------------------------------------------------- CLAUDE.md
