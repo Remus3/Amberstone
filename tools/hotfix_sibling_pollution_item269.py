@@ -29,17 +29,23 @@ Arena auto-flavor "Mage (sec/flav)" mislabels are a separate broad carry
 
 The item-167 root (rank.py auto-seed coverage gap + the align tool archetype
 routing) is UNCHANGED; this is the data-side hand-curate, mirroring
-tools/hotfix_kaisa_aram_ashe_sr_item263.py. Idempotent + atomic. Touches
-items + label + path key only; runes + summoners are preserved.
+tools/hotfix_kaisa_aram_ashe_sr_item263.py. Idempotent + atomic: the write
+goes through core.polled_json.atomic_write_bytes (fsync, WinError 5 retry,
+no scratch left behind; ensure_ascii=True, LF). Touches items + label + path
+key only; runes + summoners are preserved.
 """
 from __future__ import annotations
 
 import json
-import os
+import sys
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parent.parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
 _LOADOUTS = _ROOT / "data" / "champion_loadouts.json"
+
+from core import polled_json  # noqa: E402
 
 # Real AP sets per AP champion (no two items share a unique-passive family).
 _AP = {
@@ -231,9 +237,8 @@ def apply(data):
 def main():
     data = json.loads(_LOADOUTS.read_text(encoding="utf-8"))
     n = apply(data)
-    tmp = _LOADOUTS.with_suffix(".json.tmp")
-    tmp.write_bytes((json.dumps(data, indent=2, ensure_ascii=True) + "\n").encode("utf-8"))
-    os.replace(tmp, _LOADOUTS)
+    text = json.dumps(data, indent=2, ensure_ascii=True) + "\n"
+    polled_json.atomic_write_bytes(_LOADOUTS, text.encode("utf-8"))
     print(f"item269 hotfix applied: {n} build_paths fixed")
 
 
