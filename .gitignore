@@ -86,6 +86,9 @@ data/tft_coaching_data.json
 data/tft_scouting.json
 data/tft_scouting_cache.json
 data/tft_scouting*.tmp
+# RM-846 residual: raw third-party TFT meta fetch (scripts/fetch_external_tft_meta.py);
+# uncleared content, read by hand for manual integration, never committed
+data/meta/tft_set17_external_raw.json
 data/cold_advisories.json
 data/insight_cooldowns.json
 data/ratings/last_*.json

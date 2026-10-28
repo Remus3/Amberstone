@@ -350,3 +350,27 @@ def test_coach_engine_on_set17_skeleton_degrades_quietly(monkeypatch, _no_live_s
     prompt = eng._build_prompt({"level": 4})
     assert "SELECTED COMP" not in prompt
     assert "Roll odds at Lv4" in prompt
+
+
+def test_raw_external_fetch_target_is_gitignored():
+    """RM-846 residual: scripts/fetch_external_tft_meta.py writes the raw,
+    uncleared third-party payload next to the tracked meta files. Rule 1
+    fails only once that file is TRACKED, so ignore it at the source: a
+    plain `git add data/meta` must never stage it. `git check-ignore` exits
+    0 on a negation match too, so the matching pattern is read back."""
+    import subprocess
+
+    from scripts import fetch_external_tft_meta as fetch
+
+    rel = fetch.RAW_OUT.relative_to(REPO_ROOT).as_posix()
+    assert rel == "data/meta/tft_set17_external_raw.json", rel
+    proc = subprocess.run(["git", "check-ignore", "-v", rel], cwd=REPO_ROOT,
+                          capture_output=True, text=True)
+    assert proc.returncode == 0, f"{rel} is not gitignored"
+    # The tracked .gitignore, not a local exclude a fresh clone lacks.
+    assert proc.stdout.startswith(".gitignore:"), proc.stdout
+    pattern = proc.stdout.split("\t", 1)[0].split(":", 2)[2]
+    assert not pattern.startswith("!"), proc.stdout
+    tracked = subprocess.run(["git", "ls-files", "--", rel], cwd=REPO_ROOT,
+                             capture_output=True, text=True).stdout.strip()
+    assert tracked == "", f"{rel} is tracked"

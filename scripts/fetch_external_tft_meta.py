@@ -2,6 +2,8 @@
 scripts/fetch_external_tft_meta.py
 Fetches Set 17 comp data from the configured external TFT meta source and
 writes it to data/meta/tft_set17_external_raw.json for manual integration.
+That file is gitignored: the payload is uncleared third-party content, and a
+public Apache-2.0 repo cannot absorb it (RM-846).
 
 Every target is operator configuration, read from config/external_sources.json
 (template: config/external_sources.example.json) at RUN time rather than at
@@ -20,8 +22,12 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from core import external_sources  # noqa: E402
+from core.polled_json import atomic_write_text  # noqa: E402
 
 PROJECT = ROOT
+# Raw, uncleared third-party payload for manual integration only: gitignored
+# (RM-846), and written LF through the shared atomic helper (RM-441 / RM-481).
+RAW_OUT = PROJECT / "data" / "meta" / "tft_set17_external_raw.json"
 
 ctx = ssl.create_default_context()
 ctx.check_hostname = False
@@ -88,9 +94,8 @@ def main() -> int:
             print(f"DATA FAILED {url}: {e}")
 
     if results:
-        out = PROJECT / "data" / "meta" / "tft_set17_external_raw.json"
-        out.write_text(json.dumps(results, indent=2))
-        print(f"\nWrote to {out}")
+        atomic_write_text(RAW_OUT, json.dumps(results, indent=2))
+        print(f"\nWrote to {RAW_OUT}")
         return 0
 
     if not graphql_url and not external_sources.values("tft_meta_data_urls"):

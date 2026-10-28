@@ -70,6 +70,10 @@ SWEPT_WRITERS = (
     # data/champion_loadouts_align_patch_<slice>.json, which is neither
     # tracked nor gitignored, so it would be committed as written.
     "tools/champion_loadout_align.py",
+    # RM-441 filed it, RM-481 residual (s144): the raw TFT meta fetch lands
+    # in data/meta/ beside tracked files; it is gitignored now (RM-846
+    # residual), and its writer goes through core.polled_json either way.
+    "scripts/fetch_external_tft_meta.py",
 )
 
 _PAYLOAD = json.dumps({"a": 1, "b": [1, 2], "c": {"d": None}}, indent=2) + "\n"
