@@ -3,10 +3,11 @@
 The RM-325 slice folded ``canonical_mode`` into the 12 public SCORER entry
 points, which makes every scorer-routed call correct. It does not reach the
 five modules that call ``build_champion`` DIRECTLY with a caller-supplied
-mode - ``antitank.py:856``, ``cli.py:58``, ``fight_report.py:312``,
-``matchup.py:153``, ``server.py:443``. A lowercase mode arriving through any
-of those still failed the bare ``mode != "ARAM"`` gate at ``engine.py:254``
-and silently skipped the ARAM stat modifiers (aramAttackSpeed /
+mode - ``antitank.compute_antitank_live``, ``cli._cmd_stats``,
+``fight_report.compute_fight_report``, ``matchup._defensive_stats``,
+``server._route_stats``. A lowercase mode arriving through any of those
+still failed the bare ``mode != "ARAM"`` gate in
+``engine._apply_mode_modifiers`` and silently skipped the ARAM stat modifiers (aramAttackSpeed /
 aramAbilityHaste / aramTenacity), which is the SAME defect RM-325 exists to
 close, one layer down.
 
