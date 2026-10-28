@@ -85,7 +85,8 @@ The Jhin fragment is the whole reason ``crit_damage_multiplier`` multiplies
 ``(1.0 + crit_bonus)`` instead of ``crit_bonus``: at crit 1.0 the auto-attack
 term must read 1.75 x 0.86 = 1.505, and with a +0.40 crit-damage source
 2.15 x 0.86 = 1.849. (The note's "40" is a historical Infinity Edge value; the
-SHIPPED IE in ``_effects_data.py:33`` carries crit_damage_bonus=0.30. The
+SHIPPED IE (``ITEM_EFFECTS["3031"]`` in ``_effects_data.py``) carries
+crit_damage_bonus=0.30. The
 identity being pinned is the ORDER OF OPERATIONS, not IE's current number.)
 """
 from __future__ import annotations

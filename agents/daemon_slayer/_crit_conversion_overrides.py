@@ -25,9 +25,10 @@ CONSUMER: ``dps.compute_dps(apply_crit_conversion=True)`` - DEFAULT-OFF. With th
 flag omitted (the default) NOTHING in this module is imported or read and every
 champion, Ashe included, is byte-identical to the pre-seam engine. The live
 default-ON flip stays validation-gated (do-not-flip-blind), same posture as the
-sibling ``apply_melee_aa_gate`` / ``assume_passive_as_stacks`` seams; the shipped
-build tables are additionally unreachable today because ``rank.py`` has no
-crit-conversion parameter and the table generator drives ``:8860``.
+sibling ``apply_melee_aa_gate`` / ``assume_passive_as_stacks`` seams. The shipped
+build tables are additionally untouched today: ``rank.rank_items`` forwards the
+flag and ``POST /rank`` (``server._route_rank``) parses it, both DEFAULT-OFF, but
+no build-table generator sends it.
 
 WHY AN EXPLICIT DICT, not a parsed rule: the DDragon innate prose that carries
 the numbers ("(75% + 40%) critical strike chance") is free text that is rewritten
@@ -43,12 +44,12 @@ notes state verbatim: "Runaan's Hurricane's will not deal additional damage on
 critical strikes." Any proc riding a denied item is therefore resolved against a
 crit_chance=0.0 context, so a crit-scaling on-hit rider can never be credited the
 converted crit. Runaan's own ``Wind's Fury`` proc is a flat ``2 x 55% total AD``
-with no crit term (``_effects_data.py:184-202``), so the shipped 3085 / 223085
-entry measures as a REGRESSION GUARD rather than a numeric demotion today - it
-pins the invariant that a future re-model of the bolts cannot quietly hand Ashe
+with no crit term (``ITEM_EFFECTS["3085"]`` in ``_effects_data.py``), so the
+shipped 3085 / 223085 entry measures as a REGRESSION GUARD rather than a
+numeric demotion today - it pins the invariant that a future re-model of the bolts cannot quietly hand Ashe
 the Frost bonus twice. The mechanism itself is live and is proven to bite in
-``tests/test_crit_conversion_ashe_rm46.py`` against Essence Reaver, whose proc
-does read ``CallContext.crit_chance``.
+``agents/daemon_slayer/tests/test_crit_conversion_ashe_rm46.py`` against Essence
+Reaver, whose proc does read ``CallContext.crit_chance``.
 
 GROUND TRUTH: ``data/daemon_slayer/16.14.1/champion_abilities.json`` -> data ->
 Ashe -> P (patch 16.14.1), verbatim:
@@ -98,7 +99,7 @@ _CRIT_CONVERSION: dict[str, CritConversionEntry] = {
         crit_bonus=_ASHE_FROST_SHOT_FACTOR,
         replaces_item_crit_damage=True,
         # SR 3085 plus the Arena mirror 223085 (same Wind's Fury proc,
-        # _effects_data.py:4272-4285).
+        # ITEM_EFFECTS["223085"] in _effects_data.py).
         crit_denied_item_ids=frozenset({"3085", "223085"}),
         note=(
             "Frost Shot (P): basic attacks deal bonus physical damage equal to "
