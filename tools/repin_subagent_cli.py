@@ -57,6 +57,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from core import polled_json  # noqa: E402 - needs ROOT on sys.path first
+
 PIN_FILE = ROOT / "tests" / "test_subagent_prompt_flag.py"
 EVIDENCE_ROOT = ROOT / "ops" / "runtime" / "repin_cli"
 FLAG = "--append-subagent-system-prompt"
@@ -292,9 +294,8 @@ def _summary(m: Measurement) -> dict:
 
 
 def _write_ascii(path: Path, text: str) -> None:
-    tmp = path.with_name(path.name + ".tmp")
-    tmp.write_bytes(text.replace("\r\n", "\n").encode("ascii", errors="replace"))
-    tmp.replace(path)
+    polled_json.atomic_write_bytes(
+        path, text.replace("\r\n", "\n").encode("ascii", errors="replace"))
 
 
 def _stderr_of(log_path) -> str:
