@@ -73,9 +73,7 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
-import tempfile
 import time
 from pathlib import Path
 from typing import Iterable, Optional
@@ -86,6 +84,7 @@ sys.path.insert(0, str(_ROOT))
 
 from core import archetype_picks
 from core import daemon_slayer_client as dsc
+from core import polled_json
 from core.build_order import (
     SCORE_BY_DEFAULT,
     SCORE_BY_VALUES,
@@ -299,29 +298,16 @@ def _now_iso() -> str:
 
 
 def atomic_write(payload: dict, out_path: Path) -> None:
-    """Write ``payload`` to ``out_path`` via tmp + os.replace (atomic).
+    """Write ``payload`` to ``out_path`` atomically.
 
-    Mirrors ``core.archetype_picks._atomic_write_picks`` /
-    ``tools/champion_loadout_autogen.atomic_write_loadouts``: a reader
-    (the coach) polling mid-write must never see a partial file. ASCII-only
-    JSON.
+    A reader (the coach) polling mid-write must never see a partial file, so
+    the bytes go through ``core.polled_json.atomic_write_bytes`` (RM-258):
+    per-writer scratch, fsync, bounded WinError 5 retry, scratch removed on
+    failure, parent created on demand. ASCII-only JSON, sorted keys, one
+    trailing LF; encoded here as bytes, so no CRLF on Windows (RM-481).
     """
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_fd, tmp_path = tempfile.mkstemp(
-        prefix=f".{out_path.stem}.", suffix=".tmp", dir=str(out_path.parent),
-    )
-    try:
-        # newline="\n": text mode writes CRLF on Windows otherwise (RM-481).
-        with os.fdopen(tmp_fd, "w", encoding="utf-8", newline="\n") as f:
-            json.dump(payload, f, ensure_ascii=True, indent=2, sort_keys=True)
-            f.write("\n")
-        os.replace(tmp_path, str(out_path))
-    except Exception:
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
-        raise
+    text = json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True)
+    polled_json.atomic_write_bytes(out_path, (text + "\n").encode("utf-8"))
 
 
 def _count_cells(payload: dict) -> tuple[int, int]:
