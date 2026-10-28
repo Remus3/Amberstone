@@ -153,7 +153,6 @@ _RUNTIME_TOOLS = frozenset({
 # The set only shrinks: a new tools/ writer starts guarded, and an entry that
 # stops offending fails test_tools_baseline_is_exact until it is dropped.
 _TOOLS_UNCLASSIFIED = frozenset({
-    "tools/ascii_escape_py.py",
     "tools/build_portable.py",
     "tools/build_python_embed.py",
     "tools/build_third_party_notices.py",

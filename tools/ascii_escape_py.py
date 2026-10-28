@@ -41,6 +41,10 @@ import tokenize
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
+if str(REPO) not in sys.path:
+    sys.path.insert(0, str(REPO))
+
+from core import polled_json  # noqa: E402 - needs REPO on sys.path first
 
 # Prose transliterations for comments and docstrings. Anything not listed
 # falls back to the literal text "U+XXXX", which is ASCII and still says what
@@ -238,9 +242,7 @@ def main(argv: list[str] | None = None) -> int:
             continue
         print(f"{n:5d}  {rel}")
         if args.apply:
-            tmp = path.with_name(path.name + ".ascii_tmp")
-            tmp.write_bytes(new.encode("ascii"))
-            tmp.replace(path)
+            polled_json.atomic_write_bytes(path, new.encode("ascii"))
     mode = "APPLIED" if args.apply else "DRY-RUN"
     print(f"{mode}: {dirty} file(s) with non-ASCII, {failed} refused")
     return 1 if failed else 0
