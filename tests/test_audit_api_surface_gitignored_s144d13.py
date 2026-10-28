@@ -25,6 +25,7 @@ from pathlib import Path
 import pytest
 
 import scripts.audit_api_surface as aas
+from tests._module_view import bind_subprocess
 
 pytestmark = pytest.mark.skipif(shutil.which("git") is None, reason="git not on PATH")
 
@@ -146,7 +147,10 @@ def test_a_git_failure_falls_back_to_the_name_lists(repo, monkeypatch):
     def _boom(*_args, **_kwargs):
         raise OSError("git missing")
 
-    monkeypatch.setattr(aas.subprocess, "run", _boom)
+    # audit_api_surface's OWN subprocess only (RM-801): patching
+    # aas.subprocess.run would replace subprocess.run for every module in this
+    # xdist worker.
+    bind_subprocess(monkeypatch, aas, run=_boom)
     got = _rels(repo)
     assert set(_LEGIT) <= got
     assert "python-embed/Lib/x.py" in got

@@ -23,6 +23,7 @@ from pathlib import Path
 import pytest
 
 import tools.gen_archmap as gam
+from tests._module_view import bind_subprocess
 
 pytestmark = pytest.mark.skipif(shutil.which("git") is None, reason="git not on PATH")
 
@@ -108,5 +109,7 @@ def test_a_failed_git_call_ignores_nothing(repo, monkeypatch):
     def _boom(*_a, **_k):
         raise OSError("git missing")
 
-    monkeypatch.setattr(gam.subprocess, "run", _boom)
+    # gen_archmap's OWN subprocess only (RM-801): patching gam.subprocess.run
+    # would replace subprocess.run for every module in this xdist worker.
+    bind_subprocess(monkeypatch, gam, run=_boom)
     assert _rels(repo) == set(_LEGIT) | set(_IGNORED_FILES)
