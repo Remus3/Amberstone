@@ -209,19 +209,32 @@ def _bad_solo_payload(**overrides):
 
 
 def test_non_numeric_league_points_fails_soft_to_none():
-    """RM-349 acceptance: a str leaguePoints must not escape as ValueError."""
-    assert lr.read_ranked_identity(_FakeLcu(_bad_solo_payload(leaguePoints="N/A"))) is None
+    """RM-349 acceptance: a str leaguePoints must not escape as ValueError.
+
+    s144 true-audit narrowed the soft-fail: RM-349 made the whole read None,
+    which showed a Platinum player as "Unranked" over one junk number. Now
+    only the junk field drops; the rank that CAN be named still shows.
+    """
+    out = lr.read_ranked_identity(_FakeLcu(_bad_solo_payload(leaguePoints="N/A")))
+    assert out["ranked"] is True
+    assert out["lp"] is None
+    assert out["display"] == "PLATINUM II"
 
 
 def test_non_numeric_wins_fails_soft_to_none():
-    """Sibling coercion at the same shape - int() on a dict raises TypeError.
+    """Sibling coercion at the same shape - int() on a dict raised TypeError.
 
     Deliberately a NON-EMPTY dict. The filed row cited ``int({})``, but that
     value never reaches the coercion: ``or 0`` short-circuits every FALSY
     input, so ``{}``, ``[]`` and ``""`` are absorbed into 0 and are safe.
     Only a TRUTHY non-numeric gets through, which is the real reachable set.
+    Since s144 it drops ``wins`` (and the win rate) only.
     """
-    assert lr.read_ranked_identity(_FakeLcu(_bad_solo_payload(wins={"count": 1}))) is None
+    out = lr.read_ranked_identity(_FakeLcu(_bad_solo_payload(wins={"count": 1})))
+    assert out["ranked"] is True
+    assert out["wins"] is None
+    assert out["win_rate_pct"] is None
+    assert out["display"] == "PLATINUM II 47 LP"
 
 
 def test_falsy_wire_values_are_absorbed_not_raised():
@@ -235,7 +248,10 @@ def test_falsy_wire_values_are_absorbed_not_raised():
 
 def test_non_numeric_losses_fails_soft_to_none():
     """Third bare coercion in the same parse - a list is not int-able."""
-    assert lr.read_ranked_identity(_FakeLcu(_bad_solo_payload(losses=["3"]))) is None
+    out = lr.read_ranked_identity(_FakeLcu(_bad_solo_payload(losses=["3"])))
+    assert out["ranked"] is True
+    assert out["losses"] is None
+    assert out["win_rate_pct"] is None
 
 
 def test_read_never_raises_for_any_hostile_wire_type():
@@ -259,10 +275,17 @@ def test_home_rank_payload_survives_a_hostile_ranked_entry():
     dashboard/builders_home.py:393-397 maps a None read to the graceful
     unranked placeholder. Asserted here because the raise escaped the home
     builder's own try, so the failure was the whole payload, not one field.
+    Since s144 a junk count no longer makes the read None, so the None path
+    is driven by a tier that cannot be named, and the count case is pinned
+    to keep the rank.
     """
     from dashboard import builders_home
 
-    out = builders_home._home_rank_identity(_FakeLcu(_bad_solo_payload(leaguePoints="N/A")))
+    out = builders_home._home_rank_identity(_FakeLcu(_bad_solo_payload(tier={"t": "GOLD"})))
     assert isinstance(out, dict)
     assert out["ranked"] is False
     assert out["display"] == "Unranked"
+
+    out = builders_home._home_rank_identity(_FakeLcu(_bad_solo_payload(leaguePoints="N/A")))
+    assert out["ranked"] is True
+    assert out["display"] == "PLATINUM II"
