@@ -14,7 +14,8 @@ Rules (re-implemented from the behaviour text only):
     or the first after a link loss / no-game) emits nothing.
   * A None reading never transitions anything. A missing / junk / None value
     on EITHER side of a field (isDead, level, items, the Events block) emits
-    nothing for that field, and ``cur is None`` emits nothing at all.
+    nothing for that field, and ``cur is None`` emits nothing at all. A junk
+    championName or EventName drops only its own row or entry.
   * A backwards game clock (new match, or a rewind) is treated as a first
     snapshot.
 
@@ -27,7 +28,9 @@ Kinds:
                      inventory (components never fire). The completed set is
                      dashboard/_deterministic_coaching.py ``_legendary_catalog``
                      (the repo's existing owned-item spike classifier) unless
-                     the caller passes ``completed_ids``.
+                     the caller passes ``completed_ids``. A default catalog
+                     that fails to load or is empty yields no item events
+                     and one WARNING per streak.
   objective_taken    a new events.Events entry (by EventID) whose EventName is
                      in ``OBJECTIVE_EVENT_NAMES`` (incl. HordeKill = voidgrub),
                      with the RM-601 ``stolen`` flag and dragon_type.
@@ -44,7 +47,9 @@ replay server (tools/replay_session.py) can call it directly.
 """
 from __future__ import annotations
 
+import logging
 import math
+import threading
 from collections import Counter
 from typing import Any, Callable, Dict, FrozenSet, Iterable, List, Optional
 
@@ -77,6 +82,34 @@ _BACKWARDS_TOLERANCE_S = 1.0
 _IDENTITY_KEYS = ("summonerName", "riotId", "riotIdGameName")
 
 
+_log = logging.getLogger("core.live_event_deriver")
+
+# s144 true-audit F3: an unloadable or empty default catalog turns
+# item_completed off. That used to be silent; it now warns once per streak
+# (a good, non-empty load ends the streak).
+_catalog_warned = False
+_catalog_lock = threading.Lock()
+
+
+def _reset_catalog_warned_for_tests() -> None:
+    global _catalog_warned
+    with _catalog_lock:
+        _catalog_warned = False
+
+
+def _catalog_state(problem: Optional[str]) -> None:
+    global _catalog_warned
+    with _catalog_lock:
+        if problem is None:
+            _catalog_warned = False
+            return
+        if _catalog_warned:
+            return
+        _catalog_warned = True
+    _log.warning("live events: %s; item_completed events are off until it "
+                 "loads (logged once per streak)", problem)
+
+
 def _load_completed_ids() -> FrozenSet[str]:
     """The repo's existing completed-item set (memoised there)."""
     from dashboard._deterministic_coaching import _legendary_catalog
@@ -87,9 +120,13 @@ def _resolve_completed(completed_ids: Optional[Iterable[Any]]) -> FrozenSet[str]
     if completed_ids is not None:
         return frozenset(str(i) for i in completed_ids)
     try:
-        return _load_completed_ids()
-    except Exception:  # noqa: BLE001 - no catalog -> no item events
+        ids = _load_completed_ids()
+    except Exception as exc:  # noqa: BLE001 - no catalog -> no item events
+        _catalog_state(f"completed-item catalog failed to load "
+                       f"({type(exc).__name__}: {exc})")
         return frozenset()
+    _catalog_state(None if ids else "completed-item catalog is empty")
+    return ids
 
 
 def _unwrap(row: Any) -> Optional[dict]:
@@ -122,13 +159,12 @@ def _game_time(snap: dict) -> Optional[float]:
 def _players(snap: dict) -> Dict[str, dict]:
     """championName -> row, ambiguous (duplicate) names dropped."""
     rows = [p for p in as_list(snap.get("allPlayers"), "allPlayers") if isinstance(p, dict)]
-    counts = Counter(p.get("championName") for p in rows)
-    out: Dict[str, dict] = {}
-    for p in rows:
-        name = p.get("championName")
-        if isinstance(name, str) and name and counts[name] == 1:
-            out[name] = p
-    return out
+    # Only a non-empty str is a key. A junk (possibly unhashable) name drops
+    # its own row; it must not raise and void every other row's events.
+    named = [(p.get("championName"), p) for p in rows]
+    named = [(n, p) for n, p in named if isinstance(n, str) and n]
+    counts = Counter(n for n, _ in named)
+    return {n: p for n, p in named if counts[n] == 1}
 
 
 def _identities(row: dict) -> set:
@@ -168,7 +204,11 @@ def _objectives(snap: dict) -> Optional[Dict[int, dict]]:
         return None
     out: Dict[int, dict] = {}
     for e in lst:
-        if not isinstance(e, dict) or e.get("EventName") not in OBJECTIVE_EVENT_NAMES:
+        if not isinstance(e, dict):
+            continue
+        name = e.get("EventName")
+        # a junk (possibly unhashable) EventName skips its own entry only
+        if not isinstance(name, str) or name not in OBJECTIVE_EVENT_NAMES:
             continue
         eid = _int(e.get("EventID"))
         if eid is not None:
