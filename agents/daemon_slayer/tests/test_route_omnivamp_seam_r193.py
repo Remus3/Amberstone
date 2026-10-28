@@ -3,7 +3,7 @@
 THE GAP THIS CLOSES
 -------------------
 ``compute_ehp`` has carried a DEFAULT-OFF ``assume_max_stacks_omnivamp`` kwarg
-since 2026-07-10 (ehp.py:1251, consumed :1517-1521) that credits the
+since 2026-07-10 (declared and consumed in ``ehp.compute_ehp``) that credits the
 Riftmaker-family item-passive omnivamp into the EHP SUSTAIN axis. It was proven
 in-process by ``test_item_omnivamp_credit_r100.py`` and then STRANDED: the
 string never appeared in ``agents/daemon_slayer/server.py``, so no shipped HTTP

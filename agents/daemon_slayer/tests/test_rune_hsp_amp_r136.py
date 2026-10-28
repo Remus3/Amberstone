@@ -2,10 +2,10 @@
 
 Characterizes ``_rune_hsp_amp.sum_rune_hsp_pct`` - the rune twin of the
 item-keyed ``_hsp_amp.sum_wielder_hsp_pct``. The structural gap it closes:
-``_hsp_amp.py:23`` sums ``heal_shield_amp_pct`` across EQUIPPED ITEMS ONLY (the
-curated ``enchanter_items.json`` field, keyed by item id), so a RUNE can never
-reach it and 8453 Revitalize earned ZERO for the flat Heal and Shield Power it
-grants.
+``_hsp_amp.sum_wielder_hsp_pct`` sums ``heal_shield_amp_pct`` across EQUIPPED
+ITEMS ONLY (the curated ``enchanter_items.json`` field, keyed by item id), so a
+RUNE can never reach it and 8453 Revitalize earned ZERO for the flat Heal and
+Shield Power it grants.
 
 Property-style invariants are preferred over exact floats wherever the property
 is the real contract (fail-soft zero, inertness of non-HSP runes, order

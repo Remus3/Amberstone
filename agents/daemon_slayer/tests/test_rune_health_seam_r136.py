@@ -6,9 +6,10 @@ NUMERATOR-side, and they reuse the SAME ``rune_ids`` transport R132 already
 plumbed, so no new ids parameter lands on any entry point:
 
   * ``apply_rune_health_grants`` - Overgrowth 8451 permanent max health, plus
-    Grasp 8437's SELF side (heal + permanent health). ``rune_procs.py:606``
-    scores Grasp's DAMAGE and admits verbatim "(heal + permanent-HP sides not
-    modeled)", so the self side earned ZERO before this slice.
+    Grasp 8437's SELF side (heal + permanent health).
+    ``rune_procs.RUNE_PROCS[8437].formula`` scores Grasp's DAMAGE and admits
+    verbatim "(heal + permanent-HP sides not modeled)", so the self side
+    earned ZERO before this slice.
   * ``apply_rune_hsp_amp`` - Revitalize 8453's flat 5% Heal and Shield Power.
     ``_hsp_amp.sum_wielder_hsp_pct`` sums ``heal_shield_amp_pct`` across EQUIPPED
     ITEMS ONLY, so a rune could never reach it.

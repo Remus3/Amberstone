@@ -231,10 +231,11 @@ class ConquerorGrantTests(unittest.TestCase):
 class ConquerorStackKnobTests(unittest.TestCase):
     """The stack count is an explicit knob, not a hardcoded 12.
 
-    ``rune_procs.py:212`` assigns the live stack count to the CALLER ("the caller
-    multiplies by the live stack count (max 12)"). The default is the feed's cap
-    because the modeled fight is fully committed, but max-stacks is the
-    anti-conservative reading on the SELF side, so it must stay overridable.
+    ``rune_procs._conqueror_adaptive`` assigns the live stack count to the
+    CALLER ("the caller multiplies by the live stack count (max 12)"). The
+    default is the feed's cap because the modeled fight is fully committed, but
+    max-stacks is the anti-conservative reading on the SELF side, so it must
+    stay overridable.
     """
 
     def test_the_feed_cap_and_the_assumed_default_are_both_twelve(self) -> None:
