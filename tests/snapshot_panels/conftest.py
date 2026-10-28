@@ -9,6 +9,7 @@ Architecture:
   fallback (which kicks in only after 4 s).
 """
 import json
+import socket
 import sys
 import threading
 import time
@@ -239,18 +240,40 @@ def _make_handler(store: dict, closing: threading.Event) -> type:
     return _Handler
 
 
+def _cancel_blocked_io(sock: socket.socket) -> None:
+    """Cancel I/O another thread has pending on `sock` (Windows only;
+    elsewhere `shutdown()` already wakes a blocked recv)."""
+    if sys.platform != "win32":
+        return
+    import ctypes
+    cancel = ctypes.WinDLL("kernel32").CancelIoEx
+    cancel.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+    cancel.restype = ctypes.c_int
+    try:
+        cancel(ctypes.c_void_p(sock.fileno()), None)
+    except (OSError, ValueError):
+        pass  # already closed: nothing is pending on it
+
+
 class _TrackedHTTPServer(ThreadingHTTPServer):
     """ThreadingHTTPServer that remembers its handler threads.
 
     Its handler threads are daemons, and socketserver only tracks
     non-daemon threads for `server_close()` to join, so without this list
     `stop()` has nothing to join (RM-1023).
+
+    It also remembers each accepted connection until its handler closes
+    it, so `stop()` can end the ones still open: a handler parked on an
+    idle keep-alive connection has no read timeout and would otherwise
+    outlive `stop()` (RM-1025).
     """
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.handler_threads: list[threading.Thread] = []
         self._threads_lock = threading.Lock()
+        self._open_requests: set[socket.socket] = set()
+        self._ending = False
 
     def process_request(self, request, client_address) -> None:
         t = threading.Thread(target=self.process_request_thread,
@@ -259,12 +282,47 @@ class _TrackedHTTPServer(ThreadingHTTPServer):
             self.handler_threads = [
                 h for h in self.handler_threads if h.is_alive()]
             self.handler_threads.append(t)
+            self._open_requests.add(request)
         t.start()
+
+    def shutdown_request(self, request) -> None:
+        # Forget the connection BEFORE it is closed, under the lock, so
+        # end_open_requests() never touches a closed (reusable) socket.
+        with self._threads_lock:
+            self._open_requests.discard(request)
+        super().shutdown_request(request)
+
+    def end_open_requests(self) -> None:
+        """Shut down every accepted connection still open, so a handler
+        blocked reading its next request returns.
+
+        On Windows `shutdown()` alone does NOT wake a recv another thread
+        is blocked in (measured: a parked handler stayed alive until the
+        peer closed). Cancelling the pending I/O after the shutdown does:
+        the retried recv then fails with WSAESHUTDOWN (40/40 measured).
+        The handle stays open, so no other socket can reuse it; the
+        handler closes it as usual."""
+        with self._threads_lock:
+            self._ending = True
+            for request in self._open_requests:
+                try:
+                    request.shutdown(socket.SHUT_RDWR)
+                except OSError:
+                    pass  # the peer already went away
+                _cancel_blocked_io(request)
+
+    def handle_error(self, request, client_address) -> None:
+        # A connection end_open_requests() cut fails its read with an
+        # OSError by design; that is not worth a traceback on stderr.
+        if self._ending and isinstance(sys.exception(), OSError):
+            return
+        super().handle_error(request, client_address)
 
 
 class _MockServer:
     # Budget for joining handler threads at stop(); a released SSE hold and
-    # a closed keep-alive connection both end in well under a second.
+    # a keep-alive connection stop() shut down both end in well under a
+    # second.
     STOP_JOIN_S = 5.0
 
     def __init__(self) -> None:
@@ -295,12 +353,15 @@ class _MockServer:
         t.start()
 
     def stop(self) -> None:
-        """Stop serving, release every held SSE handler, join the handler
-        threads and close the listening socket (RM-1023)."""
+        """Stop serving, release every held SSE handler, end every idle
+        keep-alive connection (RM-1025), join the handler threads and
+        close the listening socket (RM-1023). Nothing here runs while
+        the session renders, so the HTTP/1.0 / 1.1 split is untouched."""
         if not self._server:
             return
         self._closing.set()
         self._server.shutdown()
+        self._server.end_open_requests()
         self._server.server_close()
         deadline = time.monotonic() + self.STOP_JOIN_S
         with self._server._threads_lock:

@@ -16,7 +16,11 @@ The contract pinned here:
   - while the server runs, the SSE hold still HOLDS (the render-timing
     behaviour the `_send_sse` docstring records must not change);
   - `stop()` releases every held handler, joins it, and closes the
-    listening socket, and it returns promptly.
+    listening socket, and it returns promptly;
+  - that includes a handler parked on an idle connection - a Windows
+    HTTP/1.1 keep-alive connection the client left open - which has no
+    read timeout, so `stop()` ends the accepted connection itself
+    (RM-1025).
 
 A handler thread is this server's when the passive lineage hook in
 tests/_module_view.py traces it to the server's serve_forever thread, not
@@ -24,6 +28,8 @@ when its name says `process_request_thread`: another stdlib server serving
 in the same worker meanwhile must not read as a leak (RM-1029).
 """
 import http.client
+import socket
+import sys
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -132,6 +138,99 @@ def test_stop_joins_a_handler_that_is_still_finishing():
     srv.stop()
     left = _left_after(srv, before)
     assert left == [], f"stop() returned before joining: {left}"
+
+
+def _wait_for_handler(srv: _MockServer, before: set) -> list:
+    """Poll until `srv` has started a handler thread for an accepted
+    connection, so a test knows the handler is parked before it stops."""
+    deadline = time.monotonic() + 5.0
+    while time.monotonic() < deadline:
+        held = _server_threads(srv, before)
+        if held:
+            return held
+        time.sleep(0.02)
+    return []
+
+
+def test_stop_ends_a_handler_parked_on_an_idle_connection(capfd):
+    """RM-1025: a handler blocked reading a request that never comes
+    (the state an idle keep-alive connection leaves it in) has no read
+    timeout, so `stop()` used to spend its whole join budget and return
+    with that thread alive. It must end the connection itself, and the
+    read it cuts must not print a traceback."""
+    before = set(threading.enumerate())
+    srv = _MockServer()
+    srv.start()
+    host, port = srv.url.split("//", 1)[1].split(":")
+    client = socket.create_connection((host, int(port)), timeout=10)
+    try:
+        assert _wait_for_handler(srv, before), "control: no handler parked"
+        started = time.monotonic()
+        srv.stop()
+        elapsed = time.monotonic() - started
+        left = _left_after(srv, before)
+        assert left == [], f"idle handler outlived stop(): {left}"
+        assert elapsed < 2.0, f"stop() waited {elapsed:.1f}s on an idle handler"
+        err = capfd.readouterr().err
+        assert "Traceback" not in err, f"stop() printed: {err}"
+    finally:
+        client.close()
+        srv.stop()
+
+
+def test_a_finished_connection_is_forgotten():
+    """A connection its handler already closed must leave the server's
+    open-connection set, so `stop()` never shuts down or cancels I/O on
+    a closed (and possibly reused) socket handle (RM-1025)."""
+    before = set(threading.enumerate())
+    srv = _MockServer()
+    srv.set_fixture("lobby")
+    srv.start()
+    host, port = srv.url.split("//", 1)[1].split(":")
+    conn = http.client.HTTPConnection(host, int(port), timeout=10)
+    try:
+        conn.request("GET", "/api/state", headers={"Connection": "close"})
+        conn.getresponse().read()
+        for t in _wait_for_handler(srv, before):
+            t.join(5)
+        assert _left_after(srv, before) == [], "control: handler still open"
+        assert srv._server._open_requests == set()
+    finally:
+        conn.close()
+        srv.stop()
+
+
+@pytest.mark.skipif(sys.platform != "win32",
+                    reason="keep-alive (HTTP/1.1) is the Windows-only path; "
+                           "HTTP/1.0 closes after every response")
+def test_stop_ends_an_idle_keep_alive_connection():
+    """RM-1025, the real shape: one request answered on a persistent
+    connection that the client then leaves open. The connection must stay
+    up while the server runs (keep-alive is the Windows flake fix) and must
+    not survive `stop()`."""
+    before = set(threading.enumerate())
+    srv = _MockServer()
+    srv.set_fixture("lobby")
+    srv.start()
+    host, port = srv.url.split("//", 1)[1].split(":")
+    conn = http.client.HTTPConnection(host, int(port), timeout=10)
+    try:
+        conn.request("GET", "/api/state")
+        resp = conn.getresponse()
+        resp.read()
+        assert resp.status == 200
+        time.sleep(0.3)
+        assert _server_threads(srv, before), (
+            "control: the keep-alive connection closed while the server ran")
+        started = time.monotonic()
+        srv.stop()
+        elapsed = time.monotonic() - started
+        left = _left_after(srv, before)
+        assert left == [], f"keep-alive handler outlived stop(): {left}"
+        assert elapsed < 2.0, f"stop() waited {elapsed:.1f}s on keep-alive"
+    finally:
+        conn.close()
+        srv.stop()
 
 
 def test_stop_closes_the_listening_socket():
