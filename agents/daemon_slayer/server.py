@@ -1587,7 +1587,7 @@ def _route_rank_bruiser(body: dict) -> dict:
         body, "apply_ad_axis_dual_scaling_split", False
     )
     # RM-115 p4 / RM-86 L1: the kit-conversion gate, extended from the CARRY
-    # route (server.py:518) to the bruiser ranker - the gate-2 half of the
+    # route (_route_rank) to the bruiser ranker - the gate-2 half of the
     # plumb that strands Olaf / Pantheon / RekSai / Riven. hybrid.py consults
     # the registry ONLY when the strength is > 0.0, so 0.0 does no lookup and
     # no arithmetic and is byte-identical to omitting the key.
@@ -2063,7 +2063,8 @@ def _route_burst(body: dict) -> dict:
     aoe_targets_hit = _opt_int(body, "aoe_targets_hit", 1) or 1
     # R30 seam flag (DEFAULT-OFF -> byte-identical when the body omits it). Scoped to
     # /burst: rank_items_by_burst does NOT accept assume_magic_burst, only the direct
-    # compute_burst_damage does (burst.py:485 - the on-cast magic-burst item proc).
+    # compute_burst_damage does (its assume_magic_burst parameter - the on-cast
+    # magic-burst item proc).
     assume_magic_burst = _opt_bool(body, "assume_magic_burst", False)
     # R74 DSV8 seam flag (DEFAULT-OFF -> byte-identical when the body omits it).
     # Scoped to /burst exactly like assume_magic_burst above: rank_items_by_burst
@@ -2714,7 +2715,7 @@ def _route_rank_assassin(body: dict) -> dict:
     #   prefer_kit_axis_by_win (DSP11) - float a champ's WIN-anchored kit-axis items.
     # R30 assume_magic_burst + R74 assume_physical_burst + R75
     # assume_shielded_target are scoped to the /burst route: rank_items_by_burst
-    # does NOT accept them (only compute_burst_damage does at burst.py:485).
+    # does NOT accept them (only compute_burst_damage takes them as parameters).
     #   exclude_off_axis_items (RM-41) - strip candidates whose offense sits
     #     entirely on the champion's OFF damage axis (AD spellblade/on-hit/crit
     #     on a pure-AP assassin, and the RM-35 mirror). Data-driven gate; a
@@ -2733,8 +2734,9 @@ def _route_rank_assassin(body: dict) -> dict:
     assume_ability_amp = _opt_bool(body, "assume_ability_amp", False)
     target_preset = _opt_str(body, "target_preset", None)
     # RM-115 / RM-83: the RM-86 L1 kit-conversion gate, extended from the CARRY
-    # route (server.py:481) to the assassin/burst ranker. burst.py:2160-2163
-    # consults the registry ONLY when the strength is > 0.0, so 0.0 does no
+    # route (_route_rank) to the assassin/burst ranker. rank_items_by_burst
+    # consults the registry ONLY when the strength is > 0.0 (it gates its
+    # kit_conversion lookup on kit_conversion_strength > 0.0), so 0.0 does no
     # lookup and no arithmetic and is byte-identical to omitting the key.
     kit_conversion_strength = _opt_float(body, "kit_conversion_strength", 0.0)
     # RM-115 / A-03 / RM-81 - load-time ability-base corrections. Naafiri is the
