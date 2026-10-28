@@ -28,4 +28,4 @@ LANDING: commit on this branch (git commit -F tmpfile, ASCII msg). Then try land
 main: git fetch origin; git rebase origin/main; git push origin HEAD:main - retry x3 on
 race (other autonomous lanes push tonight). If still refused, push the branch
 (git push -u origin docs/research-20260716) and stop. Final act: append a 5-line summary
-to ops/loop/reports/lane_research.done.txt in the MAIN checkout (the repo root `spawn_lanes.ps1` resolves).
+to ops/loop/reports/lane_research.done.txt in the MAIN checkout (the repo root, not this worktree).

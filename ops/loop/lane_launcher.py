@@ -17,7 +17,8 @@ concurrent-index corruption class (memory
 retrying.
 
 REUSES THE PROVEN RUNNER. `ops/loop/run_lane.ps1` has detached headless
-`claude -p` workers since 2026-07-16 (`spawn_lanes.ps1`): prompt piped on stdin
+`claude -p` workers since 2026-07-16 (that night's one-shot spawner, archived
+under docs/_archive/2026-07/ by RM-721 (c)): prompt piped on stdin
 so there is no command-line quoting risk, stderr folded into the log so a native
 warning cannot kill the lane. Since FLEET-KIT v10 (MAIN 0839 ORDER step 5) the
 runner starts the worker through the fleet kit (`ops/loop/fleet_route.py` ->

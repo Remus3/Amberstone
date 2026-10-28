@@ -65,9 +65,14 @@ def test_default_config_path_is_the_gitignored_per_host_file():
     assert "ops/lane_worktrees.json" in [ln.strip() for ln in ignored]
 
 
-def test_no_drive_rooted_literal_in_the_two_sites():
-    """The order's two sites carry no machine path literal any more."""
-    for rel in ("ops/loop/lane_launcher.py", "ops/loop/spawn_lanes.ps1"):
-        text = (REPO / rel).read_text(encoding="ascii")
-        assert r"C:\rc-worktrees" not in text, rel
-        assert "Sidecars" not in text, rel
+def test_no_drive_rooted_literal_in_the_launcher():
+    """The order's live site carries no machine path literal any more.
+
+    The order had two sites; the other, the 2026-07-16 one-shot spawner, was
+    archived to docs/_archive/2026-07/ by RM-721 (c) and is pinned there by
+    tests/test_orphan_ops_loop_spawn_lanes_rm721.py.
+    """
+    rel = "ops/loop/lane_launcher.py"
+    text = (REPO / rel).read_text(encoding="ascii")
+    assert r"C:\rc-worktrees" not in text, rel
+    assert "Sidecars" not in text, rel
