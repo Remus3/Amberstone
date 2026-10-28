@@ -46,9 +46,15 @@ from http.server import BaseHTTPRequestHandler
 # escape keeps that injective too.
 EXTRA_SCRUB = ((0x061C, 0x200E, 0x200F, 0x2028, 0x2029)
                + tuple(range(0x202A, 0x202F)) + tuple(range(0x2066, 0x206A)))
+# s144 true-audit: a lone surrogate (U+D800..U+DFFF; ``json.loads`` makes
+# one out of a client's ``"\\ud800"``) is no control character, but RC's
+# file handler encodes UTF-8 strictly, so ``emit`` raised UnicodeEncodeError
+# and the WHOLE record was lost - a client could erase its own log line.
+# Escaped as ``\\uHHHH`` like the extras, so every scrub's output encodes.
+SURROGATES = tuple(range(0xD800, 0xE000))
 # The ONE range table (dashboard._handler re-exports it, RM-825).
 SCRUB_RANGES = (tuple(range(0x00, 0x20)) + tuple(range(0x7F, 0xA0))
-                + EXTRA_SCRUB)
+                + EXTRA_SCRUB + SURROGATES)
 
 
 def _escape(cp: int) -> str:
@@ -56,11 +62,13 @@ def _escape(cp: int) -> str:
 
 
 # Borrowed from the stdlib rather than re-rolled so it tracks any future
-# widening of the table, then widened by EXTRA_SCRUB; the fallback covers a
-# Python that drops the private attribute and is asserted equivalent by tests.
+# widening of the table, then widened by EXTRA_SCRUB and SURROGATES; the
+# fallback covers a Python that drops the private attribute and is asserted
+# equivalent by tests.
 _STDLIB_TABLE = getattr(BaseHTTPRequestHandler, "_control_char_table", None)
 CONTROL_CHAR_TABLE = (None if _STDLIB_TABLE is None else
-                      {**_STDLIB_TABLE, **{c: _escape(c) for c in EXTRA_SCRUB}})
+                      {**_STDLIB_TABLE,
+                       **{c: _escape(c) for c in EXTRA_SCRUB + SURROGATES}})
 
 _UNSET = object()
 
@@ -103,9 +111,9 @@ def scrub_log(text: str, table=_UNSET) -> str:
 
 
 def scrub_controls(text: str) -> str:
-    """Escape C0, DEL and C1 as ``\\xHH`` and the RM-825 extras as
-    ``\\uHHHH``; leave every other character, backslashes included, as it
-    is. Idempotent (see the module docstring)."""
+    """Escape C0, DEL and C1 as ``\\xHH`` and the RM-825 extras and lone
+    surrogates as ``\\uHHHH``; leave every other character, backslashes
+    included, as it is. Idempotent (see the module docstring)."""
     return text.translate(_CONTROLS_ONLY)
 
 
@@ -218,7 +226,9 @@ class ScrubFilter(logging.Filter):
             try:
                 text = scrub_traceback(exc_info[1], exc_info[2])
             except Exception:  # noqa: BLE001
-                text = (f"{type(exc_info[1]).__name__} "
+                # The type name is data too: a class built at runtime can
+                # carry an ESC or a newline, so it is scrubbed like the rest.
+                text = (f"{scrub_log(type(exc_info[1]).__name__)} "
                         "(traceback could not be rendered)")
             record.exc_text = text.rstrip("\n")
         return True
