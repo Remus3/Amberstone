@@ -321,7 +321,7 @@ Every audited file gets a durable record, or the next run re-audits it.
 
 ### 9. The wrap
 
-1. **Tests from the REPO ROOT**, both suites, fresh: `tests/ -q -n 8` and `agents/daemon_slayer/tests -q`. Report the counts YOU observed this run. Add
+1. **Tests from the REPO ROOT**, both suites, fresh: the ONE gated Tier-2 run in section 5 (the `tools/done.md` TIER TABLE command over `tests` and `agents/daemon_slayer/tests`). Report the counts YOU observed this run. Add
    `tests/snapshot_panels/ -q` if the slice touched a rendered surface, `npm test` under `rc-shell/` if it touched the Electron overlay.
 2. **Lint and compile:** `-m ruff check .` (F541 is the recurring CI killer; the BLE ratchet flags any NEW bare `except Exception` you introduce) plus
    `-m py_compile` on every touched `.py`. If you touched `web/js`, run `tests/test_web_js_esm_parse.py` explicitly.

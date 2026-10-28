@@ -110,10 +110,14 @@ installed locally. Both were fixed; the point is that neither was VISIBLE.
 **Rules of thumb**
 - Claiming "suite green" in a ledger entry, a commit message or a hand-off:
   write the command you actually ran plus the counts you actually saw.
-- `pytest . -n 8` is the pre-merge / pre-release bar. Measured on Legion
-  2026-08-06 after the RM-170 fixes: `29840 passed, 158 skipped, 8449 subtests
-  passed`, zero failures and zero collection errors, in 232-278s across two
-  runs (about 4 to 4.5 min).
+- The pre-merge / pre-release bar is the `tools/done.md` TIER TABLE's Tier-2
+  command: one run over `tests` + `agents/daemon_slayer/tests` through the kit
+  suite gate (FLEET-COMMON 16c), with `--max-worker-restart=0` (RM-754). Never
+  run a repo-root suite as a bar: CLAUDE.md bans it by name, because it has
+  deleted the live supervisor lock. Historical record only (2026-08-06, after
+  the RM-170 fixes, before that ban and the gate): an eight-worker repo-root run
+  measured `29840 passed, 158 skipped, 8449 subtests passed`, zero failures and
+  zero collection errors, in 232-278s across two runs.
 - Tier-0/Tier-1 edits keep using the narrow, fast per-module runs - see
   CLAUDE.md "Execution Efficiency & Tooling Rules". This section defines what
   the words mean, it does not raise the per-edit verification tax.
@@ -157,8 +161,11 @@ PID, and only an HTTP request finds it (memory
 
 ```powershell
 $env:RC_REQUIRE_DS_ENGINE = "1"
-python -m pytest tests/ agents/daemon_slayer/tests/ -q -n 8
+python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- python -m pytest tests agents/daemon_slayer/tests -q -n 8 --dist loadfile --max-worker-restart=0 --timeout=300
 ```
+
+That is the `tools/done.md` TIER TABLE command (`<id>` = your claims owner id);
+the gate's child inherits the variable.
 
 With it set, a down or wedged engine becomes an AssertionError instead of a
 skip, and `tests/test_ds_live_route_gate.py` additionally probes every route in
