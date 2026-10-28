@@ -165,3 +165,71 @@ def test_a_combined_run_ends_on_the_tests_dir_and_removes_both():
     text = AGENT3_CONFTEST.read_text(encoding="utf-8")
     assert "keeps whichever tmp dir was set first" not in text
     assert "tests/conftest.py sets it unconditionally" in text
+
+
+# ---------------------------------------------------------------------------
+# (d) residual, RM-1027: a handler that no logger holds
+#
+# An entry-point module that builds `handlers=[FileHandler(...)]` for an
+# import-time `logging.basicConfig` gets a no-op call under pytest, because
+# pytest's own capture handler is already on root, so the FileHandler is never
+# attached. scripts/data_pipeline.py (`_handlers`) and tools/lcu_agent.py
+# (`_FILE_HANDLER`) keep theirs in a module global, so it stays OPEN on its
+# redirected log inside the suite dir, and a cleanup that only walks
+# `logger.handlers` never sees it. Measured 2026-10-27: leftover
+# `rc-suite-logs-*` dirs holding nothing but `lcu_agent.log` or
+# `data_pipeline.log`.
+
+
+def test_remove_dir_closes_a_handler_no_logger_holds(tmp_path):
+    import logging
+
+    from tests import _suite_tmp_cleanup
+
+    inside = tmp_path / "suite"
+    inside.mkdir()
+    outside = tmp_path / "elsewhere"
+    outside.mkdir()
+    orphan = logging.FileHandler(str(inside / "orphan.log"), encoding="utf-8")
+    bystander = logging.FileHandler(str(outside / "keep.log"), encoding="utf-8")
+    try:
+        # Positive control: both are open and neither is on any logger.
+        assert orphan.stream is not None and not orphan.stream.closed
+        loggers = [logging.getLogger()] + [
+            lg for lg in logging.Logger.manager.loggerDict.values()
+            if isinstance(lg, logging.Logger)]
+        assert not any(orphan in lg.handlers for lg in loggers)
+        _suite_tmp_cleanup.remove_dir(inside)
+        assert orphan.stream is None, "the unattached handler inside the dir is still open"
+        assert not inside.exists(), f"{inside} outlived remove_dir"
+        # Scope: a handler writing OUTSIDE the dir is not touched.
+        assert bystander.stream is not None and not bystander.stream.closed
+    finally:
+        orphan.close()
+        bystander.close()
+
+
+def test_the_suite_log_dir_is_removed_after_an_entry_point_import_under_pytest():
+    # Root carries a handler first, as pytest's capture handler does when a
+    # test imports these modules, so their import-time basicConfig is a no-op.
+    code = (
+        "import logging\n"
+        "logging.getLogger().addHandler(logging.NullHandler())\n"
+        "import tests.conftest as c\n"
+        "import scripts.data_pipeline as dp\n"
+        "sys.path.insert(0, os.path.join(r'" + str(REPO) + "', 'tools'))\n"
+        "import lcu_agent as la\n"
+        "hs = [dp._handlers[-1], la._FILE_HANDLER]\n"
+        "roots = logging.getLogger().handlers\n"
+        "print(json.dumps([str(c._SUITE_LOG_DIR), [h.baseFilename for h in hs],\n"
+        "                  [h.stream is not None for h in hs],\n"
+        "                  [h in roots for h in hs]]))\n"
+    )
+    d, files, opened, attached = _child(code, dict(os.environ))
+    # Positive control: both handlers were open on files inside the suite dir
+    # and neither was attached - the shape that left the measured dirs behind.
+    assert opened == [True, True]
+    assert attached == [False, False]
+    assert [Path(f).name for f in files] == ["data_pipeline.log", "lcu_agent.log"]
+    assert all(Path(f).resolve().is_relative_to(Path(d).resolve()) for f in files)
+    assert not Path(d).exists(), f"{d} outlived its process"
