@@ -706,6 +706,45 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
         ("BACKLOG.md", "tft_pbe_engine.py:118"),             # RM-130
         ("docs/_research_refill_2026-09-05.md", "tft/tft_pbe_engine.py:420"),
     )
+) + tuple(
+    # 2026-10-28, RM-721 (c) and (d) (session 144 repo lane). Three dead
+    # launchers were ARCHIVED with git mv: ops/loop/spawn_lanes.ps1 to
+    # docs/_archive/2026-07/ (pinned by
+    # tests/test_orphan_ops_loop_spawn_lanes_rm721.py), and
+    # ops/autostart_on_login.bat + ops/launch_new_system.bat to
+    # docs/_archive/2026-10/ (pinned by
+    # tests/test_orphan_ops_legacy_bat_chain_rm721.py). The archived copies
+    # keep the cited lines, but the guard resolves the ops/ path, which is no
+    # longer tracked.
+    #
+    # Every citation below sits in a retained row body (BACKLOG RM-721), a
+    # dated audit / spec, or a dated "verified 2026-07-26" snapshot list
+    # (docs/handoff/POWERSHELL_7_MIGRATION.md) recording the file as it stood
+    # when measured; re-pointing them at the archive would make each say it
+    # measured a path it never measured. ONE is a living doc:
+    # docs/PACKAGING_PLAN.md S7 lists launch_new_system.bat:18 among the
+    # kill-by-image scripts. That file is the main session's in s144 (lane
+    # exclusions), so its sentence is a merger follow-up; when it is
+    # re-worded, the guard reports the entry as no longer broken and it is
+    # deleted here.
+    (doc, raw, "HISTORICAL",
+     "Points into a launcher archived by RM-721 (c) / (d) on 2026-10-28, "
+     "from a retained row body or dated artifact - see the block comment "
+     "above for why it is not re-pointed.")
+    for doc, raw in (
+        ("BACKLOG.md", "ops/autostart_on_login.bat:19"),
+        ("BACKLOG.md", "ops/launch_new_system.bat:37"),
+        ("BACKLOG.md", "ops/launch_new_system.bat:9-10"),
+        ("docs/PACKAGING_PLAN.md", "ops/launch_new_system.bat:18"),
+        ("docs/audits/2026-10-09-repo-review-findings.md", "ops/loop/spawn_lanes.ps1:20"),
+        ("docs/audits/2026-10-09-repo-review-findings.md", "ops/loop/spawn_lanes.ps1:21"),
+        ("docs/audits/2026-10-09-repo-review-findings.md", "ops/loop/spawn_lanes.ps1:26"),
+        ("docs/audits/2026-10-09-repo-review-findings.md", "ops/loop/spawn_lanes.ps1:27"),
+        ("docs/handoff/POWERSHELL_7_MIGRATION.md", "ops/launch_new_system.bat:36"),
+        ("docs/specs/2026-09-20-shared-git-root-bucket-rc-share-scan.md",
+         "ops/autostart_on_login.bat:7"),
+        ("docs/specs/mission_control_removal_gap_analysis.md", "ops/loop/spawn_lanes.ps1:7"),
+    )
 )
 
 _REASON_FAMILIES = frozenset({"EXTERNAL", "DELETED", "HISTORICAL", "ROT"})

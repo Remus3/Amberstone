@@ -52,8 +52,9 @@ Producers (grep 2026-10-26, `deploy_requests` / `sign_request` / `--sign`):
     `--sign <request>` (sign_request now stamps request_id, the window and
     the staged hashes), then `--request ... --result ...`. Unchanged steps.
   * scripts/bootstrap_dev.ps1, ops/setup_dirs.bat, ops/start_ops.bat,
-    ops/launch_new_system.bat, ops/rc_league_watcher.ps1 - only create the
-    directory. ops/rc_supervisor.py:1450 (frozen) invokes `--request
+    ops/rc_league_watcher.ps1 - only create the directory (the legacy
+    launcher that also did was archived by RM-721 (d), session 144).
+    ops/rc_supervisor.py:1450 (frozen) invokes `--request
     --result`; that CLI is unchanged.
 No unsigned path exists (RM-160) and none is added. A request signed before
 this change (no window, no per-file sha256) is refused: on 2026-10-26 the

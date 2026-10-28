@@ -14,6 +14,9 @@ ops/launch_new_system.bat:18-20, 47 and its `start ... powershell.exe` target
 scripts/bootstrap_dev.cmd:3, tools/preflight.cmd:16 (`where`) and
 tools/snapshot.cmd:11 (powershell inside a `for /f ('...')` clause; found by
 the first verifier, which the RM-810 command-token scan cannot see).
+RM-721 (d) (session 144) later archived the dormant autostart_on_login.bat /
+launch_new_system.bat pair to docs/_archive/2026-10/, outside this scan, so
+the reach anchor in _batch_files names ops/start_ops.bat instead.
 
 The RM-810 tool map also named powershell as %SystemRoot%\\System32\\
 powershell.exe, a path that does not exist (Windows PowerShell lives under
@@ -87,7 +90,7 @@ def _batch_files() -> dict[str, list[str]]:
     files = _repo_walk.repo_files(REPO, ("*.bat", "*.cmd"))
     out = {_repo_walk.relative_posix(p, REPO): p.read_text(encoding="latin-1").splitlines()
            for p in files}
-    assert set(_ROW_NAMES) | {"scripts/restart.bat", "ops/launch_new_system.bat"} <= set(out), (
+    assert set(_ROW_NAMES) | {"scripts/restart.bat", "ops/start_ops.bat"} <= set(out), (
         f"batch files not reached - the scan proves nothing: {sorted(out)}")
     return out
 
@@ -220,7 +223,9 @@ def test_no_batch_system_tool_resolves_from_the_current_folder(tmp_path):
             (caller / f"{tool}{ext}").write_bytes(_PLANT)
     body = _harmless_tool_lines()
     # Anchor: the kill.bat / restart_clean.bat lines must be in the cut.
-    assert sum("taskkill" in ln.lower() for ln in body) >= 4, body
+    # kill.bat, restart.bat and restart_clean.bat run one taskkill each; the
+    # other three lines left with the RM-721 (d) archived ops/ pair.
+    assert sum("taskkill" in ln.lower() for ln in body) >= 3, body
     assert sum("timeout" in ln.lower() for ln in body) >= 3, body
     bat = tmp_path / "tools_harness.bat"
     bat.write_bytes(("\r\n".join(["@echo off", "setlocal"] + body + ["echo TOOLS=DONE"])
