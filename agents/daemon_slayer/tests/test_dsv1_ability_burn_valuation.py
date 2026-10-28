@@ -1,11 +1,12 @@
 """DSV1 (P6-G5 residual 1): AP damage-over-time burn valuation.
 
 Root cause characterized: ``compute_ability_dps`` (the mage / ability scorer)
-mirrors ``compute_dps``'s item AMP + PEN handling (ability_dps.py:950-965) but
-NEVER folded the item PERIODIC procs - so the ability-triggered AP burn DoTs
-(Liandry's Torment, Blackfire's Baleful Blaze, Demonic Embrace's Azakana's
-Gaze) were invisible to the mage item ranking even though ``compute_dps`` (the
-auto-attack scorer) has valued them via ``_periodic_proc_dps`` since Phase 4.
+mirrors ``compute_dps``'s item AMP + PEN handling (the AP-amp chain after
+``collect_effects`` in ``ability_dps.compute_ability_dps``) but NEVER folded
+the item PERIODIC procs - so the ability-triggered AP burn DoTs (Liandry's
+Torment, Blackfire's Baleful Blaze, Demonic Embrace's Azakana's Gaze) were
+invisible to the mage item ranking even though ``compute_dps`` (the auto-attack
+scorer) has valued them via ``_periodic_proc_dps`` since Phase 4.
 P6-G5 logged this as the "AP DoT burn vs single-rotation ability model" gap
 (Lux Liandry's ranked #23). DSV1 completes the mirror: the same time-based item
 procs now flow into the ability DPS total under the established "always-active
