@@ -246,7 +246,9 @@ def compute_skill_wpa_from_db(
     """
     from pathlib import Path
 
-    src = Path(db_path) if db_path is not None else (Path("data") / "rewind_history.db")
+    # Anchored to the repo root, never the CWD (RM-1022).
+    default = Path(__file__).resolve().parent.parent / "data" / "rewind_history.db"
+    src = Path(db_path) if db_path is not None else default
     if not src.exists():
         return {"ok": False, "error": "rewind_history.db missing"}
     model = load_model(model_path)

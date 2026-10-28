@@ -73,8 +73,10 @@ WPA_MODEL_VERSION = 1
 # demand and not stored, so there are no stale rows to re-derive.
 DERIVE_VERSION = 1
 
-# Default location for the persisted coefficients.
-_DEFAULT_MODEL_PATH = Path("data") / "post_game_wpa_model.json"
+# Default locations, anchored to the repo root, never the CWD (RM-1022).
+_DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+_DEFAULT_MODEL_PATH = _DATA_DIR / "post_game_wpa_model.json"
+_REWIND_DB = _DATA_DIR / "rewind_history.db"
 
 # Hand-coded fallback sigmoid: gold_diff -> P(team100 wins). Derived
 # from LoLytics' published evaluation curve. Calibrated so that 5000
@@ -817,7 +819,7 @@ def train_from_db(
     """End-to-end training entry point. Reads
     ``data/rewind_history.db``, builds samples, fits the LR, persists
     the coefficients."""
-    src = Path(db_path) if db_path is not None else (Path("data") / "rewind_history.db")
+    src = Path(db_path) if db_path is not None else _REWIND_DB
     conn = sqlite3.connect(f"file:{src}?mode=ro", uri=True, timeout=5.0)
     try:
         X, y = build_training_samples(conn, frames_per_match=frames_per_match)

@@ -59,7 +59,8 @@ from core.resolved_wr import classify, resolution_select, resolved_wr, wr_pct
 
 log = logging.getLogger("rc.web_dashboard")
 
-_REWIND_DB = Path("data") / "rewind_history.db"
+# Anchored to the repo root, never the CWD (RM-1022).
+_REWIND_DB = Path(__file__).resolve().parent.parent / "data" / "rewind_history.db"
 
 # Default SR queue set - same constant as routes_pickban._DEFAULT_SR_QUEUES.
 # Duplicated locally to avoid a cross-module import (mirrors how other route

@@ -48,7 +48,7 @@ from core import champion_info_overrides as _cio
 
 log = logging.getLogger("rc.web_dashboard")
 
-_REWIND_DB = Path("data") / "rewind_history.db"
+_REWIND_DB = Path(__file__).resolve().parent.parent / "data" / "rewind_history.db"
 _COUNTERS_PATH = Path(__file__).resolve().parent.parent / "data" / "meta" / "champion_counters.json"
 _DDRAGON_CHAMPS_PATH = Path(__file__).resolve().parent.parent / "data" / "meta" / "ddragon_champions.json"
 

@@ -45,7 +45,8 @@ from typing import Iterable, Optional
 from core import smoothed_rates as _sr
 
 
-_REWIND_DB = Path("data") / "rewind_history.db"
+# Anchored to the repo root, never the CWD (RM-1022).
+_REWIND_DB = Path(__file__).resolve().parent.parent / "data" / "rewind_history.db"
 
 # Default queue set used by the draft Elo route (the SR ranked + draft
 # + flex + quickplay queues). Caller can pass a different set per call.

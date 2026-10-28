@@ -99,8 +99,11 @@ from pathlib import Path
 _LOG = logging.getLogger(__name__)
 
 # Per-role JSON override file. See module docstring for schema. Operator-tunable;
-# missing/malformed file is fail-soft. Gitignored.
-_OVERRIDES_PATH = Path("data") / "post_game_rubric_weights.json"
+# missing/malformed file is fail-soft. Gitignored. Anchored to the repo root,
+# never the CWD (RM-1022).
+_OVERRIDES_PATH = (
+    Path(__file__).resolve().parent.parent / "data" / "post_game_rubric_weights.json"
+)
 
 
 @dataclass(frozen=True)

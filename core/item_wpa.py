@@ -67,8 +67,11 @@ log = logging.getLogger("rc.item_wpa")
 # DS patch marker) so the catalog tracks live patch bumps; _ITEMS_JSON is
 # the pinned authoring-time fallback (verified at 16.11.1 to yield ~125
 # SR-legal completed legendaries) used only when the marker or the
-# patch-current file is absent (fresh checkout).
-_DS_DIR = Path("data") / "daemon_slayer"
+# patch-current file is absent (fresh checkout). Anchored to the repo root,
+# never the CWD (RM-1022).
+_DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+_DS_DIR = _DATA_DIR / "daemon_slayer"
+_REWIND_DB = _DATA_DIR / "rewind_history.db"
 _ITEMS_JSON = _DS_DIR / "16.11.1" / "items.json"
 
 
@@ -373,7 +376,7 @@ def compute_item_wpa_from_db(
     Returns ``{"ok": False, "error": "rewind_history.db missing"}`` when
     the DB is absent.
     """
-    src = Path(db_path) if db_path is not None else (Path("data") / "rewind_history.db")
+    src = Path(db_path) if db_path is not None else _REWIND_DB
     if not src.exists():
         return {"ok": False, "error": "rewind_history.db missing"}
     model = load_model(model_path)

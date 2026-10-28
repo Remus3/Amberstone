@@ -62,8 +62,11 @@ log = logging.getLogger("rc.summoner_spell_wpa")
 # resolve is load-bearing: the bundle cache keeps only a current+previous
 # window (item 397 prune), so a fixed pin goes stale on the next patch and
 # VANISHES one patch later, silently emptying the spell-WPA panel
-# (deep-audit P2 W1-C). Mirrors core.rune_wpa.
-_DDRAGON_DIR = Path("data") / "meta_build" / "ddragon"
+# (deep-audit P2 W1-C). Mirrors core.rune_wpa. Anchored to the repo root,
+# never the CWD (RM-1022).
+_DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+_DDRAGON_DIR = _DATA_DIR / "meta_build" / "ddragon"
+_REWIND_DB = _DATA_DIR / "rewind_history.db"
 _SUMMONER_JSON = _DDRAGON_DIR / "16.11.1" / "summoner.json"
 
 
@@ -293,7 +296,7 @@ def compute_summoner_spell_wpa_from_db(
     Returns ``{"ok": False, "error": "rewind_history.db missing"}`` when
     the DB is absent.
     """
-    src = Path(db_path) if db_path is not None else (Path("data") / "rewind_history.db")
+    src = Path(db_path) if db_path is not None else _REWIND_DB
     if not src.exists():
         return {"ok": False, "error": "rewind_history.db missing"}
     model = load_model(model_path)

@@ -453,11 +453,12 @@ class DocstringTests(unittest.TestCase):
     def test_overrides_path_module_attr_present(self):
         # The constant is module-public-ish (single underscore) so tests
         # and ad-hoc inspection can find it. It is the canonical file
-        # path for the override.
+        # path for the override, anchored to the repo root (RM-1022).
         self.assertTrue(hasattr(pgr, "_OVERRIDES_PATH"))
         self.assertEqual(
             pgr._OVERRIDES_PATH,
-            Path("data") / "post_game_rubric_weights.json",
+            Path(__file__).resolve().parent.parent
+            / "data" / "post_game_rubric_weights.json",
         )
 
 
