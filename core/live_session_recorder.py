@@ -41,6 +41,14 @@ lines. The log is append-only by nature, so the tmp+replace atomic-write rule
 for runtime state files does not apply; each line is written whole and
 flushed, and ``read_session`` tolerates only a torn FINAL line (crash mid-write).
 
+Torn tails (s144 true-audit, RM-1036): appending after a torn final line
+would make it an INTERIOR bad line, which ``read_session`` refuses, losing the
+whole recording. So the writer truncates a trailing partial line every time it
+(re)opens a file (``_repair_torn_tail``: an RC restart in the same game reopens
+the same ``<gameId>.jsonl``), and a write that fails part-way closes the handle
+so the next frame reopens, repairs and appends. A persistent writer failure is
+warned once per streak, not once per frame.
+
 Wiring
 ------
 ``install_if_enabled()`` registers ``on_liveclient_snapshot`` on
@@ -57,6 +65,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import queue
 import re
@@ -95,6 +104,10 @@ _VISION_FRESH_S = 10.0
 # Our choice: bounded queue so a wedged disk cannot grow memory without limit
 # (0.5s poll -> 4096 frames is ~34 minutes of backlog). Overflow drops frames.
 _QUEUE_MAX = 4096
+
+# Our choice: bytes read per step when scanning back for the last newline of
+# a torn tail. A frame line is tens of KB, so a few steps reach it.
+_TAIL_SCAN_CHUNK = 64 * 1024
 
 # Used with fullmatch: "$" alone would accept a trailing newline.
 _SAFE_ID = re.compile(r"[A-Za-z0-9_-]{1,64}")
@@ -201,18 +214,85 @@ def default_vision_provider() -> Optional[dict]:
     return data if isinstance(data, dict) else None
 
 
+def _finite_or_none(v: Any) -> Optional[float]:
+    """A real finite number as float, else None.
+
+    Infinity / NaN would be written as bare tokens that no strict JSON reader
+    (the dashboard's JSON.parse included) accepts, and an infinite gameTime
+    would trip the rewind check on the next frame.
+    """
+    if isinstance(v, bool) or not isinstance(v, (int, float)):
+        return None
+    f = float(v)
+    return f if math.isfinite(f) else None
+
+
+def _scrub_non_finite(obj: Any) -> Any:
+    """Copy of a JSON-shaped value with every non-finite float set to None."""
+    if isinstance(obj, float):
+        return obj if math.isfinite(obj) else None
+    if isinstance(obj, dict):
+        return {k: _scrub_non_finite(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_scrub_non_finite(v) for v in obj]
+    return obj
+
+
+def _strict_dumps(obj: Any) -> str:
+    """Compact strict JSON: a non-finite float becomes null, never NaN / Infinity.
+
+    The scrub copy is made only when the fast path refuses, so a normal
+    snapshot costs one dumps call.
+    """
+    try:
+        return json.dumps(obj, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
+    except ValueError:
+        return json.dumps(_scrub_non_finite(obj), ensure_ascii=False,
+                          separators=(",", ":"), allow_nan=False)
+
+
 def _game_time(snapshot: Any) -> Optional[float]:
     try:
         gt = (snapshot.get("gameData") or {}).get("gameTime")
     except Exception:  # noqa: BLE001
         return None
-    if isinstance(gt, bool) or not isinstance(gt, (int, float)):
-        return None
-    return float(gt)
+    return _finite_or_none(gt)
 
 
 def _open_append(path: Path):
     return open(path, "a", encoding="utf-8", newline="\n")
+
+
+def _repair_torn_tail(path: Path) -> int:
+    """Truncate a trailing partial line; return the number of bytes removed.
+
+    A file that does not exist, is empty, or ends in a newline is untouched.
+    A file with no newline at all (torn inside the header) is truncated to
+    zero so the caller writes a fresh header.
+    """
+    try:
+        fh = open(path, "r+b")
+    except FileNotFoundError:
+        return 0
+    with fh:
+        size = fh.seek(0, os.SEEK_END)
+        if size == 0:
+            return 0
+        fh.seek(size - 1)
+        if fh.read(1) == b"\n":
+            return 0
+        keep = 0
+        pos = size
+        while pos > 0:
+            step = min(_TAIL_SCAN_CHUNK, pos)
+            pos -= step
+            fh.seek(pos)
+            idx = fh.read(step).rfind(b"\n")
+            if idx != -1:
+                keep = pos + idx + 1
+                break
+        fh.truncate(keep)
+        return size - keep
 
 
 # -- recorder ---------------------------------------------------------------
@@ -246,6 +326,7 @@ class LiveSessionRecorder:
         self._fh = None
         self._seq = 0
         self._last_game_time: Optional[float] = None
+        self._fail_streak = 0
         self._thread = threading.Thread(
             target=self._run, name=WRITER_THREAD_NAME, daemon=True)
         self._thread.start()
@@ -258,8 +339,8 @@ class LiveSessionRecorder:
             self.end_session()
             return False
         try:
-            snap_json = json.dumps(snapshot, ensure_ascii=False, separators=(",", ":"))
-        except (TypeError, ValueError) as exc:
+            snap_json = _strict_dumps(snapshot)
+        except (TypeError, ValueError, RecursionError) as exc:
             _log.debug("session recorder: unserializable snapshot dropped: %s", exc)
             return False
         with self._clock_lock:
@@ -279,14 +360,30 @@ class LiveSessionRecorder:
             pass
 
     def flush(self, timeout: float = 10.0) -> bool:
+        """Wait until every frame enqueued so far is on disk.
+
+        False when that did not happen within ``timeout`` - including a full
+        queue behind a wedged writer, where an untimed put would block forever.
+        """
+        deadline = time.monotonic() + timeout
         ev = threading.Event()
-        self._q.put((_FLUSH, ev))
-        return ev.wait(timeout)
+        try:
+            self._q.put((_FLUSH, ev), timeout=max(0.0, timeout))
+        except queue.Full:
+            return False
+        return ev.wait(max(0.0, deadline - time.monotonic()))
 
     def close(self, timeout: float = 10.0) -> None:
-        if self._thread.is_alive():
-            self._q.put(_STOP)
-            self._thread.join(timeout)
+        """Stop the writer; returns within about ``timeout`` even if it is wedged."""
+        if not self._thread.is_alive():
+            return
+        deadline = time.monotonic() + timeout
+        try:
+            self._q.put(_STOP, timeout=max(0.0, timeout))
+        except queue.Full:
+            _log.warning("session recorder close: writer wedged, queue full")
+            return
+        self._thread.join(max(0.0, deadline - time.monotonic()))
 
     @property
     def dropped(self) -> int:
@@ -311,7 +408,24 @@ class LiveSessionRecorder:
                     continue
                 self._write_frame(*item)
             except Exception as exc:  # noqa: BLE001
-                _log.warning("session recorder writer: %s", exc)
+                self._on_write_failure(exc)
+            else:
+                if isinstance(item, tuple) and self._fail_streak:
+                    _log.info("session recorder writer recovered after %d failed frame(s)",
+                              self._fail_streak)
+                    self._fail_streak = 0
+
+    def _on_write_failure(self, exc: BaseException) -> None:
+        # The handle may hold a partial line: drop it, so the next frame
+        # reopens the file and _repair_torn_tail cuts the fragment off
+        # instead of the next line being appended onto it.
+        self._close_file()
+        self._fail_streak += 1
+        if self._fail_streak == 1:
+            _log.warning("session recorder writer: %s (further failures in this "
+                         "streak are logged at debug)", exc)
+        else:
+            _log.debug("session recorder writer (failure %d): %s", self._fail_streak, exc)
 
     def _close_file(self) -> None:
         if self._fh is not None:
@@ -333,18 +447,27 @@ class LiveSessionRecorder:
             gid = f"nogameid-{int(captured_at)}"
         self._dir.mkdir(parents=True, exist_ok=True)
         path = self._dir / (gid + ".jsonl")
-        fh = _open_append(path)
+        cut = _repair_torn_tail(path)
+        if cut:
+            _log.warning("session recorder: cut a %d-byte torn tail from %s", cut, path.name)
         try:
             fields = self._header_fields(snapshot)
         except Exception:  # noqa: BLE001
             fields = {}
-        if fh.tell() == 0:
-            fh.write(json.dumps(build_header(fields), separators=(",", ":")) + "\n")
+        fh = _open_append(path)
+        try:
+            if fh.tell() == 0:
+                fh.write(json.dumps(build_header(fields), separators=(",", ":")) + "\n")
+                fh.flush()
+        except BaseException:
+            fh.close()
+            raise
         self._fh = fh
         self._seq = 0
 
     def _write_frame(self, snap_json: str, game_time: Optional[float],
                      captured_at: float, ts: Optional[float], snapshot: Any) -> None:
+        game_time = _finite_or_none(game_time)
         if (self._fh is not None and game_time is not None
                 and self._last_game_time is not None
                 and game_time < self._last_game_time - _REWIND_NEW_SESSION_S):
@@ -357,8 +480,9 @@ class LiveSessionRecorder:
             "kind": "frame", "seq": self._seq,
             "captured_at": captured_at, "game_time": game_time,
         }
-        if isinstance(ts, (int, float)) and not isinstance(ts, bool):
-            meta["source_ts"] = float(ts)
+        source_ts = _finite_or_none(ts)
+        if source_ts is not None:
+            meta["source_ts"] = source_ts
         line = json.dumps(meta, separators=(",", ":"))[:-1] + ',"snapshot":' + snap_json
         vision = None
         try:
@@ -367,9 +491,8 @@ class LiveSessionRecorder:
             vision = None
         if isinstance(vision, dict):
             try:
-                line += ',"vision_state":' + json.dumps(
-                    vision, ensure_ascii=False, separators=(",", ":"))
-            except (TypeError, ValueError):
+                line += ',"vision_state":' + _strict_dumps(vision)
+            except (TypeError, ValueError, RecursionError):
                 pass
         self._fh.write(line + "}\n")
         self._fh.flush()
@@ -380,15 +503,21 @@ class LiveSessionRecorder:
 
 def read_session(path: Path, max_schema: int = SCHEMA_VERSION
                  ) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
-    """Return (header, frames). Rejects a newer or non-integer schema."""
-    lines = Path(path).read_text(encoding="utf-8").split("\n")
-    if lines and lines[-1] == "":
+    """Return (header, frames). Rejects a newer or non-integer schema.
+
+    Lines are decoded one at a time: a crash can tear the final line inside a
+    multi-byte UTF-8 character (names are written with ensure_ascii=False),
+    and that torn final line is tolerated like any other. Bad bytes anywhere
+    else raise ``SessionFormatError``, never ``UnicodeDecodeError``.
+    """
+    lines = Path(path).read_bytes().split(b"\n")
+    if lines and lines[-1] == b"":
         lines.pop()
     if not lines:
         raise SessionFormatError("empty session file")
     try:
-        header = json.loads(lines[0])
-    except ValueError as exc:
+        header = json.loads(lines[0].decode("utf-8"))
+    except ValueError as exc:   # UnicodeDecodeError is a ValueError
         raise SessionFormatError(f"header is not JSON: {exc}") from None
     if not isinstance(header, dict) or header.get("kind") != "header":
         raise SessionFormatError("first line is not a header")
@@ -402,8 +531,8 @@ def read_session(path: Path, max_schema: int = SCHEMA_VERSION
     last = len(lines) - 1
     for i, raw in enumerate(lines[1:], start=1):
         try:
-            obj = json.loads(raw)
-        except ValueError:
+            obj = json.loads(raw.decode("utf-8"))
+        except ValueError:   # bad JSON or bad UTF-8
             if i == last:
                 break  # torn final line from a crash mid-write
             raise SessionFormatError(f"line {i + 1} is not JSON") from None
