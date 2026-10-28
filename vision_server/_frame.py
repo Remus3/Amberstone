@@ -180,7 +180,15 @@ def _maybe_obs_frame():
     flag off is byte-identical to prior behavior.
 
     Mirrors the GDI path's contract: downscales to ``_SELF_GRAB_MAX_WIDTH``
-    (the documented coaching width) and returns the cache-shaped dict."""
+    (the documented coaching width) and returns the cache-shaped dict.
+
+    s144 true-audit (RM-1108): only a payload PIL fully decodes is served
+    (an undecodable, truncated or non-bytes one returns None, so GDI runs and
+    nothing is recorded; PIL absent counts as undecodable, and the GDI path
+    needs PIL too), every decoded frame goes through the Y-03 blank check, and the
+    ``"jpeg"`` label always matches the bytes - a decoded JPEG at or under the
+    coaching width passes through byte-identical, anything else is re-encoded
+    as JPEG."""
     try:
         from core.obs_frame_source import get_obs_frame, obs_frame_source_enabled
         if not obs_frame_source_enabled():
@@ -188,37 +196,46 @@ def _maybe_obs_frame():
         raw = get_obs_frame()
         if not raw:
             return None
-        width = height = None
         try:
             from PIL import Image
             img = Image.open(io.BytesIO(raw))
             img.load()
-            if _frame_blank(img):  # Y-03: drop a flat scene, fall to GDI
-                _note_capture_skip("blank")
-                return None
-            if img.width > _SELF_GRAB_MAX_WIDTH:
-                ratio = _SELF_GRAB_MAX_WIDTH / img.width
-                img = img.resize((_SELF_GRAB_MAX_WIDTH,
-                                  int(img.height * ratio)))
-                buf = io.BytesIO()
-                img.convert("RGB").save(buf, format="JPEG",
-                                        quality=_SELF_GRAB_JPEG_QUALITY,
-                                        optimize=True)
-                raw = buf.getvalue()
-            width, height = img.width, img.height
-        except Exception:  # noqa: BLE001 - PIL absent/undecodable: serve raw as-is
-            pass
+        except Exception as exc:  # noqa: BLE001 - PIL absent/undecodable: fall to GDI
+            log.debug("obs frame undecodable, falling back to GDI: %s", exc)
+            return None
+        if _frame_blank(img):  # Y-03: drop a flat scene, fall to GDI
+            _note_capture_skip("blank")
+            return None
+        if img.width > _SELF_GRAB_MAX_WIDTH or img.format != "JPEG":
+            img = _downscaled(img)
+            buf = io.BytesIO()
+            img.convert("RGB").save(buf, format="JPEG",
+                                    quality=_SELF_GRAB_JPEG_QUALITY,
+                                    optimize=True)
+            raw = buf.getvalue()
         b64 = _b64.b64encode(raw).decode("ascii")
         return {
             "b64":    b64,
             "size":   len(b64),
-            "width":  width,
-            "height": height,
+            "width":  img.width,
+            "height": img.height,
             "format": "jpeg",
             "source": "obs",
         }
-    except Exception:  # noqa: BLE001 - never let the OBS lane break the grab
+    except Exception as exc:  # noqa: BLE001 - never let the OBS lane break the grab
+        log.debug("obs frame lane failed, falling back to GDI: %s", exc)
         return None
+
+
+def _downscaled(img):
+    """``img`` resized to ``_SELF_GRAB_MAX_WIDTH`` wide, keeping its aspect,
+    or ``img`` itself when it is already that narrow. The height is clamped
+    to at least 1: a super-wide frame (20000x1) would otherwise compute a
+    zero height and make PIL raise (s144 true-audit, RM-1108)."""
+    if img.width <= _SELF_GRAB_MAX_WIDTH:
+        return img
+    ratio = _SELF_GRAB_MAX_WIDTH / img.width
+    return img.resize((_SELF_GRAB_MAX_WIDTH, max(1, int(img.height * ratio))))
 
 
 def _fetch_frame_direct():
@@ -265,9 +282,7 @@ def _fetch_frame_direct():
             save_reference_image(img)
         except Exception:  # noqa: BLE001
             pass
-        if img.width > _SELF_GRAB_MAX_WIDTH:
-            ratio = _SELF_GRAB_MAX_WIDTH / img.width
-            img = img.resize((_SELF_GRAB_MAX_WIDTH, int(img.height * ratio)))
+        img = _downscaled(img)
         buf = io.BytesIO()
         img.convert("RGB").save(buf, format="JPEG",
                                 quality=_SELF_GRAB_JPEG_QUALITY, optimize=True)

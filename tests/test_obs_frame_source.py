@@ -288,7 +288,19 @@ def test_vision_frame_obs_first_when_flag_on(monkeypatch):
     from core import obs_frame_source as ofs
     from vision_server import _frame
 
-    raw = b"\xff\xd8\xff-not-a-real-jpeg"
+    # s144 true-audit (RM-1108): the OBS lane serves only a payload PIL
+    # decodes (garbage bytes fall through to GDI), so this is a real JPEG.
+    # A JPEG at or under the coaching width still passes through as-is.
+    pytest.importorskip("PIL")
+    import io
+
+    from PIL import Image
+
+    ramp = Image.new("L", (64, 36))
+    ramp.putdata([x * 4 for _y in range(36) for x in range(64)])
+    buf = io.BytesIO()
+    ramp.convert("RGB").save(buf, format="JPEG")
+    raw = buf.getvalue()
     monkeypatch.setattr(ofs, "obs_frame_source_enabled", lambda: True)
     monkeypatch.setattr(ofs, "get_obs_frame", lambda *a, **k: raw)
 
