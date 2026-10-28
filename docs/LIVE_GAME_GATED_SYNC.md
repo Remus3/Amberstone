@@ -2669,6 +2669,82 @@ Ids `LX-nn` map to the RM rows in `BACKLOG.md` "External-lift intake".
   gitignored path and run `tools/liveclient_shape_audit.py` on it; confirm a real `HordeKill` event's
   fields (KillerName, Stolen type) match the synthetic fixture; record whether `KillerName` carries a
   champion name or a player name (decides RM-673).
+  **READY (s144 lane gated c28, 2026-10-28; PREP only, nothing ticked).** PRECONDITIONS measured
+  2026-10-28 at idle: the :8889 relay answers `/health` 200 and `/latest-liveclient` 404
+  (`no_liveclient_yet`, `vision_server/_http.py` `/latest-liveclient`), and
+  `ops/runtime/liveclient_captures/` does not exist yet (gitignored under `ops/runtime/`; the drain
+  creates it). WHY THE ROW MATTERS NOW: RC reads `KillerName` two ways. `dashboard/_liveclient.py`
+  (the `objective_events` block) classifies an objective's `killer_team` against `enemy_team` /
+  `ally_team`, which hold `championName` only, so a player-name killer reads `unknown`;
+  `game_reader/snapshot_normalizer.py` `_side_keys` (RM-236 drake tally) matches player names AND
+  champion names. The synthetic fixture `tests/fixtures/liveclient/allgamedata_synthetic_rm601.json`
+  is itself split: its ChampionKill / Multikill killers are player names, its DragonKill / HordeKill /
+  TurretKilled killers are champion names. Only a real payload decides which RC reader is right. The
+  same capture answers RM-674: `snapshot_normalizer.py` matches `"FirstBloodKill"`, `coaches/arena_coach.py`
+  and the fixture use `"FirstBlood"`.
+  PROBE (any League game with a voidgrub or dragon take: SR after the first grub camp, so past about
+  6:00 game time; run from the main checkout, where the token resolves - a lane worktree answers
+  401): take at least two captures at least 60 s apart, the last one after an objective falls:
+  `mkdir -p ops/runtime/liveclient_captures; TOK=$(python -c 'from core.vision_token import
+  get_vision_token as g; print(g())'); curl -sf -H "X-RC-Token: $TOK"
+  http://127.0.0.1:8889/latest-liveclient -o ops/runtime/liveclient_captures/lx02_$(date +%s).json`
+  (`-f`: a 401 / 404 error body is not saved as a capture), then `python tools/gated_lx02_payload_check.py ops/runtime/liveclient_captures/ --json` and
+  `python tools/liveclient_shape_audit.py ops/runtime/liveclient_captures/` (both read-only). The
+  checker never prints a name field (RM-906: every name field is reduced to a FORM against the
+  payload's own `allPlayers`, and the shape audit's quoted mismatch examples are cut; event names,
+  game modes and key names print verbatim, which on a real wire payload are fixed Riot strings); the raw `liveclient_shape_audit`
+  output CAN quote a value, so paste only its event-name and key-path lists. FIELD PATHS:
+  `events.Events[].EventName`, `.KillerName`, `.VictimName`, `.Recipient`, `.Acer`, `.Assisters[]`,
+  `.Stolen`; `allPlayers[].championName` / `.riotIdGameName` / `.summonerName` / `.riotId`;
+  `gameData.gameMode` / `.gameTime`; the relay wrapper `ts`.
+  PREDICATE (stated before any game): VALID only if `synthetic=0`, `duplicates=0`, `payloads>=2`,
+  `relay_ts_span_s>=30` and `game_time_max` is past the first objective (anything else is NO_RESULT,
+  re-capture). Then, recorded as values: `rm673.verdict` PLAYER_NAME = RM-673 CONFIRMED (the
+  `_liveclient.py` objective `killer_team` is `unknown` on live rows; the fix side is that reader),
+  CHAMPION_NAME = EVERY objective killer is in `champion` form and equals a team-assigned roster
+  `championName` EXACTLY (`rm673.champion_exact` equals the `champion` count, which equals the sum
+  of `objective_killer_forms`; `_liveclient.py` tests the raw string, no case fold, no tag strip)
+  AND `rm673.reader_killer_team` holds only `ally` / `enemy` (the checker's `reader_sets` /
+  `reader_team` mirror that reader: "me" is the first `allPlayers` row whose raw `summonerName`
+  equals `activePlayer.summonerName`, else both sets stay empty):
+  RM-673 REFUTED (record it and close RM-673 as a non-defect; `_side_keys` keeps its wider match),
+  CHAMPION_NAME_READER_FAILS = exact champion names, but the reader still reads `unknown` (no
+  self-identification: `reader_self_identified` below `payloads`) or `ambiguous` (a mirror champion,
+  blind pick / One for All, which the reader sends to `enemy` first): the name premise of RM-673 is
+  refuted, the reader is NOT cleared - record both and file the reader failure, never close on it,
+  CHAMPION_NAME_INEXACT = every killer in `champion` form but some match only after the checker's
+  fold or belong to a roster row with no `team`, so `_liveclient.py` still reads `unknown` (RM-673
+  CONFIRMED on that reader; record the count), MIXED = champion forms beside ANY other form
+  (`player`, `unmapped` - possibly a player form the roster misses -, `nonplayer`, `empty`, or `both`
+  - a player named like a champion): record the per-event forms and file it, never close RM-673 on
+  it, NO_RESULT = no objective killer in `champion` or `player` form in the window (only `nonplayer` /
+  `unmapped` / `empty` / `both`, or no objective at all: record the forms; RM-673 stays open;
+  re-capture after a grub or drake take); `rm674.verdict` FIRSTBLOOD = the
+  `snapshot_normalizer.py` side is the wrong one, FIRSTBLOODKILL = the `arena_coach.py` side is,
+  BOTH or OTHER (a name that reads `firstblood` only once lowercased and stripped of underscores) =
+  record the names and file it (both RC sides may then be wrong), NO_RESULT = no such event name in
+  the window; `horde.verdict` MATCH (key set equals the fixture's `Assisters` /
+  `EventID` / `EventName` / `EventTime` / `KillerName` / `Stolen`, and each key carries ONE JSON type
+  equal to the fixture's own, `horde.fixture_types`, so `Stolen` a string) or DIFFERS (record the
+  missing / extra keys and types; the fixture and
+  `tests/test_liveclient_shape_audit_rm601.py` then owe a re-pin). LX-02 PASSES when the shape audit
+  ran on a VALID capture set and `horde.verdict=MATCH`; the RM-673 / RM-674 verdicts are recorded
+  either way and are each that row's own decision, not LX-02's pass bar. An SR game with no grub
+  take reads `horde.verdict=NO_RESULT`: the row stays open on that half.
+  EVIDENCE CONTRACT: the checker's JSON (`rm673`, `rm674`, `horde`, `name_forms`, `payloads`,
+  `relay_ts_span_s`, `game_time_max`, `game_modes`), each capture file's mtime, the game's mode /
+  queue, and the main checkout HEAD plus `ops/runtime/health.json` `pid` / `started_at`. LX-07
+  (VictimName / KillerName forms) may cite the same `name_forms.ChampionKill` counts for its name
+  half; its death-recap row is its own.
+  SUBSTITUTION CHECK: `tests/test_gated_lx02_payload_check.py` and the RM-601 fixture produce every
+  verdict above from hand-built payloads (the fixture alone reads CHAMPION_NAME / FIRSTBLOOD / MATCH),
+  so a verdict proves nothing unless the files came off the live relay during the played game. Three
+  look-alikes: a copy of the fixture (`synthetic=1`), one capture saved twice (`duplicates>0`), and the
+  relay's last snapshot served after the game ended - `get_latest_liveclient` returns the stale cache
+  when the :2999 self-read fails (`vision_server/_relay.py`), so two captures with the same `ts` are one
+  read (`relay_ts_span_s=0`). Mtimes must fall inside the game window. This tool reads the wire FORM
+  only; whether the dashboard then RENDERS the right grub / drake side is a separate on-screen check
+  and is not closed by this row.
 - **LX-04** (RM-606, self cast log) Replay recorded sessions (LX-03) through
   `core/self_cast_log.detect_from_frames`; per-slot totals within tolerance of Match-V5
   spell1..4 casts; re-measure FALL_THRESHOLD, GAP_S, the partial-cost tolerance and the validator
