@@ -49,6 +49,7 @@ import argparse
 import hashlib
 import json
 import os
+import secrets
 import sys
 import time
 import urllib.request
@@ -210,6 +211,33 @@ def _write_tmp(path: Path, data: bytes) -> None:
         os.fsync(fh.fileno())
 
 
+def _scratch(path: Path) -> Path:
+    """A per-writer scratch beside ``path`` (pid + token), so two runs never
+    share one."""
+    return path.with_name(
+        f"{path.name}.split.{os.getpid()}.{secrets.token_hex(4)}.tmp")
+
+
+def _swap_in(archive_tmp: Path, archive: Path, kept_tmp: Path,
+             live: Path) -> bool:
+    """One swap attempt: the archive scratch onto ``archive``, then the kept
+    scratch onto ``live``. A refused live rename (a writer holding the file
+    on Windows) puts the archive back and returns False with the live file
+    unchanged; the caller re-reads the live file and retries a level up.
+
+    The one place this module renames. It stays off core.polled_json on
+    purpose (SANCTIONED in tests/test_atomic_write_guard_rm258_rm261.py): an
+    in-call retry would rename a stale kept snapshot over a row appended
+    while it waited."""
+    os.replace(archive_tmp, archive)
+    try:
+        os.replace(kept_tmp, live)
+    except OSError:
+        os.replace(archive, archive_tmp)
+        return False
+    return True
+
+
 def _unlink_quiet(path: Path) -> None:
     try:
         path.unlink()
@@ -268,8 +296,8 @@ def archive_split(live: Path, archive: Path,
 
     kept_bytes = b"".join(kept)
     archived_bytes = b"".join(archived)
-    archive_tmp = archive.with_name(archive.name + ".split.tmp")
-    kept_tmp = live.with_name(live.name + ".split.tmp")
+    archive_tmp = _scratch(archive)
+    kept_tmp = _scratch(live)
     source = original
     tail = b""
     done = False
@@ -291,13 +319,9 @@ def archive_split(live: Path, archive: Path,
                 continue  # re-check until the live file is stable
             if archive.exists():
                 raise SplitAborted("archive_exists", str(archive))
-            os.replace(archive_tmp, archive)
-            try:
-                os.replace(kept_tmp, live)
-            except OSError:
-                # Writer holds the file (Windows) - put the archive back and
-                # retry the round; the live file is unchanged.
-                os.replace(archive, archive_tmp)
+            if not _swap_in(archive_tmp, archive, kept_tmp, live):
+                # Writer holds the file (Windows) - the archive is back in
+                # its scratch and the live file is unchanged; retry the round.
                 time.sleep(REPLACE_RETRY_S)
                 continue
             done = True

@@ -157,7 +157,6 @@ _TOOLS_UNCLASSIFIED = frozenset({
     "tools/build_python_embed.py",
     "tools/build_third_party_notices.py",
     "tools/package_portable.py",
-    "tools/shadow_archive_split.py",
 })
 
 
@@ -213,6 +212,21 @@ SANCTIONED = {
         "when the rename fails for good. prune_seen's move of a stale seen "
         "file into pruned/ (a rename of an existing file, no payload) goes "
         "through the same helper",
+    ("tools/shadow_archive_split.py", "_swap_in"):
+        "RM-859 data-fix SWAP, not a payload write: it renames an archive "
+        "scratch onto a new archive (never clobbering one) and a kept scratch "
+        "onto the live shadow jsonl, and on a refused live rename puts the "
+        "archive back. It may not use core.polled_json because that helper's "
+        "in-call WinError 5 retry would rename a STALE kept snapshot over any "
+        "row a shadow writer appended during the retry; here the bounded "
+        "retry is one level up - archive_split's round loop re-reads the live "
+        "file, grow-merges a pure append into the kept scratch and retries, "
+        "at most MAX_ROUNDS times with REPLACE_RETRY_S between. Checked "
+        "against the three requirements by "
+        "test_shadow_archive_split_swap_meets_the_sanction_contract below: a "
+        "<name>.split.<pid>.<token>.tmp scratch, flush + fsync before every "
+        "rename (_write_tmp), a bounded retry, and both scratch files removed "
+        "when the swap fails for good",
     ("core/log_rotation.py", "try_rotate"):
         "log ROTATION, not an atomic write (RM-718 a), checked against the "
         "three requirements above. Per-writer scratch: yes - "
@@ -747,6 +761,98 @@ def test_stop_claim_gate_writer_meets_the_sanction_contract(tmp_path, monkeypatc
     assert json.loads(dest.read_bytes()) == {"n": 3}
 
 
+def test_shadow_archive_split_swap_meets_the_sanction_contract(tmp_path,
+                                                               monkeypatch):
+    """tools/shadow_archive_split.py swaps two files (archive + live) and
+    keeps core.polled_json out of the swap on purpose (SANCTIONED row): a
+    retry inside one rename call would land a stale kept snapshot over a row
+    appended meanwhile. Asserted on the code: a per-writer scratch name,
+    fsync before every rename, a refused live rename rolled back and retried
+    a level up with the append merged, the retry bounded, and no scratch
+    left when it fails for good."""
+    from tools import shadow_archive_split as sas
+    real_replace, real_fsync = os.replace, os.fsync
+    leak = b'{"ts": "2026-07-01T00:00:00", "enemy_comp": []}\n'
+    real_row = (b'{"ts": "2026-07-01T00:00:01", '
+                b'"enemy_comp": ["Ahri", "Ashe", "Garen", "Lux", "Zed"]}\n')
+    late_row = real_row.replace(b"00:00:01", b"00:00:02")
+
+    def corpus(d):
+        live = d / "x_shadow.jsonl"
+        live.parent.mkdir(parents=True, exist_ok=True)
+        live.write_bytes(real_row + leak + real_row)
+        return live, d / "x_rm859_test_leak_shadow.jsonl"
+
+    events: list[str] = []
+    scratch: list[str] = []
+
+    def rec_replace(src, dst):
+        events.append("replace")
+        scratch.append(Path(src).name)
+        return real_replace(src, dst)
+
+    def rec_fsync(fd):
+        events.append("fsync")
+        return real_fsync(fd)
+
+    monkeypatch.setattr(sas.os, "replace", rec_replace)
+    monkeypatch.setattr(sas.os, "fsync", rec_fsync)
+    monkeypatch.setattr(sas.time, "sleep", lambda _s: None)
+    idle = lambda: False  # noqa: E731
+    live, archive = corpus(tmp_path / "a")
+    sas.archive_split(live, archive, game_live=idle)
+    assert events == ["fsync", "fsync", "replace", "replace"], events
+    names = list(scratch)
+    live2, archive2 = corpus(tmp_path / "b")
+    sas.archive_split(live2, archive2, game_live=idle)
+    names += scratch[2:]
+    assert len(set(names)) == 4, names
+    for name in names:
+        assert name.endswith(".tmp") and ".split." in name, name
+        assert f".{os.getpid()}." in name, name
+
+    # A refused live rename: the archive goes back, the round re-reads the
+    # live file, merges the row appended meanwhile, and the retry lands it.
+    live3, archive3 = corpus(tmp_path / "c")
+    refusals = [1]
+
+    def flaky(src, dst):
+        if os.fspath(dst) == os.fspath(live3) and refusals[0]:
+            refusals[0] -= 1
+            raise PermissionError(13, "Access is denied")
+        return real_replace(src, dst)
+
+    def writer_appends(round_no):
+        if round_no == 1:
+            with open(live3, "ab") as fh:
+                fh.write(late_row)
+
+    monkeypatch.setattr(sas.os, "replace", flaky)
+    report = sas.archive_split(live3, archive3, game_live=idle,
+                               _before_replace=writer_appends)
+    assert report["verified"] and report["tail_rows_merged"] == 1, report
+    assert live3.read_bytes() == real_row + real_row + late_row
+    assert archive3.read_bytes() == leak
+
+    live4, archive4 = corpus(tmp_path / "d")
+    original = live4.read_bytes()
+    calls = [0]
+
+    def refused(src, dst):
+        if os.fspath(dst) == os.fspath(live4):
+            calls[0] += 1
+            raise PermissionError(13, "Access is denied")
+        return real_replace(src, dst)
+
+    monkeypatch.setattr(sas.os, "replace", refused)
+    with pytest.raises(sas.SplitAborted) as exc:
+        sas.archive_split(live4, archive4, game_live=idle, max_rounds=3)
+    assert exc.value.reason == "replace_failed"
+    assert calls[0] == 3
+    assert live4.read_bytes() == original
+    assert sorted(p.name for p in live4.parent.iterdir()) == [live4.name]
+
+
 def test_scope_keeps_runtime_tools_and_drops_generators():
     assert _in_scope("tools/lcu_agent.py")
     assert _in_scope("tools/hotkey_listener.py")
@@ -780,7 +886,7 @@ def test_a_new_tools_writer_starts_in_scope():
     assert _in_scope("tools/ds_cross_eval/a_new_writer.py")
     assert not _in_scope("tools/daemon_slayer_cdragon_ratio_extract.py")
     assert not _in_scope("tools/tests/test_cdragon_ratio_extract.py")
-    assert not _in_scope("tools/shadow_archive_split.py")
+    assert not _in_scope("tools/build_third_party_notices.py")
 
 
 def test_tools_baseline_is_exact():
