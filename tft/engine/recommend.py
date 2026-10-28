@@ -458,7 +458,10 @@ def _digest(core: list, three_star: list, carry: Optional[Mapping], agg: Optiona
     line = _milestone_line(agg if isinstance(agg, Mapping) else None)
     if line:
         lines.append(line)
-    opener = agg.get("opener") if isinstance(agg, Mapping) else None
+    # RM-1099: an opener share from fewer than MIN_GAMES stage-2 boards is no
+    # evidence (one game makes every unit a 1.0 share), so the line is dropped.
+    opener_games = _sample({"n": agg.get("opener_games")}) if isinstance(agg, Mapping) else 0
+    opener = agg.get("opener") if opener_games >= MIN_GAMES else None
     names = [setdata.unit_name(o["api"]) for o in _list(opener) if isinstance(o, Mapping) and isinstance(o.get("api"), str)]
     if names:
         lines.append("Opener: " + ", ".join(names))

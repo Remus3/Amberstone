@@ -396,6 +396,7 @@ def aggregate(mined: Iterable, *, key_units: Optional[Iterable] = None) -> dict:
                   for label in HP_CHECKPOINTS},
         "star_ups": star_ups,
         "opener": opener,
+        "opener_games": opener_games,
     }
 
 

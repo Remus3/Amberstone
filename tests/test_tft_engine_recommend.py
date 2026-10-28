@@ -253,7 +253,8 @@ def test_planner_choices_payload_for_the_overlay_picker(sd, built):
     # RM-1098: this comp's first roll-down median rests on 2 top-4 games, under
     # MIN_GAMES, so the digest drops it rather than print "roll at 4-1 to ~20g".
     assert "roll at" not in " | ".join(digest)
-    assert "Opener: " in " | ".join(digest)
+    # RM-1099: the opener rests on 2 stage-2 boards, under MIN_GAMES, so it is dropped too.
+    assert "Opener: " not in " | ".join(digest)
     # Every listed comp has at least one top-4 game; at most 8 rows.
     assert all(c["top4_games"] >= 1 for c in out["choices"]) and len(out["choices"]) <= 8
     json.dumps(out)
