@@ -5,7 +5,7 @@ Characterization tests for ``_crit_chance_overrides`` (the registry) + the
 
 The engine resolves every champion's basic attack as ``ad * (1 + crit *
 crit_bonus)`` with ``crit_bonus = DEFAULT_CRIT_BONUS (0.75) +
-total_crit_damage_bonus(items)`` (``dps.py:893``). The sibling RM-46 registry
+total_crit_damage_bonus(items)`` (``dps.compute_dps``). The sibling RM-46 registry
 (``_crit_conversion_overrides``) overrides only the crit-DAMAGE-BONUS axis, and
 only additively / by replacement. Three axes had no seam anywhere:
 
@@ -66,7 +66,7 @@ RAPID_FIRECANNON = "3094"
 OVERFLOW_BUILD = (BERSERKERS, INFINITY_EDGE, PHANTOM_DANCER, RAPID_FIRECANNON)
 
 # The wiki note cites Infinity Edge at +40% crit damage; the SHIPPED
-# ``_effects_data.py:33`` IE carries crit_damage_bonus=0.30. The verbatim
+# ``_effects_data.ITEM_EFFECTS["3031"]`` IE carries crit_damage_bonus=0.30. The verbatim
 # identity below is asserted at the NOTE's stated numbers - the point is the
 # ORDER of operations ((base + bonuses) x penalty), not IE's current value.
 _NOTE_INFINITY_EDGE_CRIT_DAMAGE = 0.40
