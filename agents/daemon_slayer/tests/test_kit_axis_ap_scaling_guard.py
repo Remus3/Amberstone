@@ -719,7 +719,7 @@ class DefaultPostureTests(unittest.TestCase):
 
         NOT a tautology: the earlier form of this test compared ``dps``
         against ``post_mitigation_damage_per_cast * casts_per_sec``, which
-        is how ``dps`` is DEFINED at ``ability_dps.py:1323`` - it held by
+        is how ``dps`` is DEFINED in ``ability_dps.compute_ability_dps`` - it held by
         construction and survived every mutant. This version forces the
         field to a value it could never legitimately take and asserts every
         computed number is byte-identical, so it goes RED the moment
