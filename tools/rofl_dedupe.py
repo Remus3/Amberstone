@@ -38,6 +38,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from core import polled_json  # noqa: E402  (after sys.path insert)
 from core.rofl_archive import default_archive_dir  # noqa: E402  (after sys.path insert)
 
 # One resolver (RC_ROFL_ARCHIVE_DIR, else the core default): never a second
@@ -152,14 +153,14 @@ def main(argv=None) -> int:
 
     done = failed = 0
     for keeper, other, _sz in links:
-        tmp = other.with_suffix(".rofl.relink")
+        # Per-writer scratch + WinError 5 retry are polled_json's, the same
+        # two helpers core/rofl_archive.py's _atomic_copy uses (RM-258).
+        tmp = polled_json._scratch_path(other)
         try:
             # Link beside the target first, then swap. A crash mid-operation
             # leaves either the original or the link, never a missing replay.
-            if tmp.exists():
-                tmp.unlink()
             os.link(keeper, tmp)
-            os.replace(tmp, other)
+            polled_json._replace_with_retry(tmp, other)
             done += 1
         except OSError as exc:
             failed += 1

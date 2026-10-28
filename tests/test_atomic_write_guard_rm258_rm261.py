@@ -125,6 +125,10 @@ _RUNTIME_TOOLS = frozenset({
     # serves while the task writes it, and _index.json / the manifest are
     # read back on the next run.
     "tools/ddragon_mirror_refresh.py",
+    # RC-RoflDedupe (a daily scheduled task, `--apply`): relinks replays in
+    # the archive RC-RoflArchive writes every 15 minutes and replay readers
+    # open, so the swap meets a held target.
+    "tools/rofl_dedupe.py",
 })
 
 # RM-258 residual (s144): tools/ is IN scope by default. Out of scope are the
@@ -174,7 +178,6 @@ _TOOLS_UNCLASSIFIED = frozenset({
     "tools/replay_pickban_validate.py",
     "tools/replay_roster_pull.py",
     "tools/rewrite_sha_citations.py",
-    "tools/rofl_dedupe.py",
     "tools/sanitize_agent6_reports.py",
     "tools/shadow_archive_split.py",
     "tools/slot_bucket_audit.py",
@@ -790,6 +793,7 @@ def test_scope_keeps_runtime_tools_and_drops_generators():
     assert _in_scope("tools/moon_sync_poller.py")
     assert _in_scope("tools/upstream_drift_check.py")
     assert _in_scope("tools/stop_claim_gate.py")
+    assert _in_scope("tools/rofl_dedupe.py")
     assert not _in_scope("tools/daemon_slayer_extract.py")
     assert not _in_scope("ops/fleet_kit/fleet_headless.py")
     assert _in_scope("coach_integration/_coach.py")
