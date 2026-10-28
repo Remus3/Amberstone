@@ -22,7 +22,8 @@ Coverage classes:
 * ``ArmedZeroCritNoOpTests`` - flag armed on a zero-crit build -> byte-identical
   to OFF (no silent drift for every non-crit champion).
 * ``CritCapTests`` - the multiplier honours the engine's 1.0 crit cap
-  (engine.py:185), so an over-100% crit input cannot over-scale the pool.
+  (``engine._combine_items``), so an over-100% crit input cannot over-scale
+  the pool.
 """
 
 import unittest
@@ -137,7 +138,7 @@ class ArmedZeroCritNoOpTests(unittest.TestCase):
 
 
 class CritCapTests(unittest.TestCase):
-    """The multiplier honours the engine's 1.0 crit cap (engine.py:185)."""
+    """The multiplier honours the engine's 1.0 crit cap (``engine._combine_items``)."""
 
     def test_identity_when_disabled(self):
         self.assertEqual(
