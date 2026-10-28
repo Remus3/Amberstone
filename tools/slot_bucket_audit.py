@@ -252,9 +252,14 @@ def main(argv=None) -> int:
             encoding="utf-8", errors="replace").splitlines(), args.stale_after)
         text = json.dumps(corpus, indent=1) + "\n"
         if args.out:
-            tmp = args.out.with_suffix(args.out.suffix + ".tmp")
-            tmp.write_bytes(text.encode("ascii"))
-            tmp.replace(args.out)
+            # RM-258: per-writer scratch, fsync, a bounded WinError 5 retry and
+            # no scratch left on failure; the parent is created on demand.
+            # Imported here, not at module level, so tools/rc_facts.py's
+            # session-start import of this module stays unchanged.
+            if str(ROOT) not in sys.path:
+                sys.path.insert(0, str(ROOT))
+            from core import polled_json
+            polled_json.atomic_write_bytes(args.out, text.encode("ascii"))
         else:
             sys.stdout.write(text)
         return 0

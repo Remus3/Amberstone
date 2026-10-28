@@ -189,7 +189,6 @@ _TOOLS_UNCLASSIFIED = frozenset({
     "tools/rewrite_sha_citations.py",
     "tools/sanitize_agent6_reports.py",
     "tools/shadow_archive_split.py",
-    "tools/slot_bucket_audit.py",
     "tools/strip_em_dashes.py",
     "tools/strip_smart_quotes.py",
     "tools/strip_u2500.py",
