@@ -17,13 +17,22 @@ Carry from the 2026-06-02 live-watch DEFERRED note:
 The item-167 root (auto-seed coverage gap + the align tool routing a
 ranged ADC through an enchanter archetype) is unchanged; this is the
 data-side hand-curate, mirroring tools/hotfix_sr_adc_loadouts_item167.py.
-Idempotent + atomic.
+Idempotent + atomic: the write goes through
+core.polled_json.atomic_write_bytes (fsync, WinError 5 retry, no scratch left
+behind; ensure_ascii=True, LF, no trailing newline as before).
 """
 from __future__ import annotations
 
 import json
-import os
+import sys
 from pathlib import Path
+
+_ROOT = Path(__file__).resolve().parent.parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+_LOADOUTS = _ROOT / "data" / "champion_loadouts.json"
+
+from core import polled_json  # noqa: E402
 
 
 def path(key, label, items, ks, prim, sec, summs, arch="", is_primary=False):
@@ -77,8 +86,7 @@ PATCH = {
 
 
 def main() -> None:
-    p = Path(__file__).resolve().parent.parent / "data" / "champion_loadouts.json"
-    d = json.loads(p.read_text(encoding="utf-8"))
+    d = json.loads(_LOADOUTS.read_text(encoding="utf-8"))
     ch = d["champions"]
     flips = 0
     for (name, vk), paths in PATCH.items():
@@ -96,9 +104,8 @@ def main() -> None:
         v["build_paths"] = paths
         flips += 1
         print(f"  patched {name} {vk}: PRIMARY = {prim['label']} {prim['items'][:3]}...")
-    tmp = p.with_suffix(".json.tmp")
-    tmp.write_bytes(json.dumps(d, ensure_ascii=True, indent=2).encode("utf-8"))
-    os.replace(tmp, p)
+    text = json.dumps(d, ensure_ascii=True, indent=2)
+    polled_json.atomic_write_bytes(_LOADOUTS, text.encode("utf-8"))
     print(f"OK {flips} variants patched, atomic write done")
 
 
