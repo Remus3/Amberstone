@@ -322,6 +322,40 @@ _SPELL_HEAL     = 7
 
 _SPELL_PREFS_PATH = _APP_DIR / "data" / "spell_prefs.json"
 
+
+# RM-1035 (s144 true-audit). One definition of "a spell id" and "a spell
+# pair RC can apply", shared by the live-session read, the per-champ memory
+# (save AND load) and the WR adapter. A bare int() used to accept a bool
+# (True -> 1), a float (4.9 -> 4), a string ("47" read as (4, 7)) and 0 /
+# negatives, so a half-filled or junk pair was remembered and then served
+# back ahead of the WR / role default - a pair set_summoner_spells refuses
+# (RM-1034), so that champion got no auto-push at all.
+def _spell_id(value) -> int:
+    """`value` when it is a positive int (not a bool), else 0 ("no spell")."""
+    if isinstance(value, int) and not isinstance(value, bool) and value > 0:
+        return value
+    return 0
+
+
+def _usable_spell_pair(pair) -> Optional[tuple[int, int]]:
+    """(s1, s2) when `pair` is a 2-item list / tuple of two DIFFERENT
+    positive int spell ids, else None. The client never holds the same
+    spell in both slots, so a duplicate is not a pair to remember or push.
+    """
+    if not isinstance(pair, (list, tuple)) or len(pair) != 2:
+        return None
+    s1, s2 = _spell_id(pair[0]), _spell_id(pair[1])
+    if not s1 or not s2 or s1 == s2:
+        return None
+    return (s1, s2)
+
+
+def _mode_upper(mode) -> str:
+    """Upper-cased mode string; a non-str mode reads as "" (the SR default)
+    instead of raising AttributeError out of mode_tag / resolve_spell_pair."""
+    return mode.upper() if isinstance(mode, str) else ""
+
+
 def load_spell_pair(mode: str, is_aram: bool) -> tuple[int, int]:
     """
     Load (spell1_id, spell2_id) from spell_prefs.json.
@@ -367,7 +401,8 @@ def resolve_spell_pair(champion: str, mode: str) -> tuple[int, int]:
     override could key off it) but is not used today - the pair is
     mode-driven so it stays correct for every champion.
     """
-    is_aram = (mode or "").upper() in _ARAM_MODE_STRINGS or "ARAM" in (mode or "").upper()
+    m = _mode_upper(mode)
+    is_aram = m in _ARAM_MODE_STRINGS or "ARAM" in m
     return load_spell_pair(mode, is_aram)
 
 
@@ -379,9 +414,21 @@ def resolve_spell_pair(champion: str, mode: str) -> tuple[int, int]:
 # scratch file on any failure path.
 _SPELL_PREFS_LOCK = threading.Lock()
 
+# The only two keys load_spell_pair reads (RM-1035). Any other key - the
+# "by_champ" memory, the "_modes" / "_note" documentation blocks - is not a
+# generic preference, and writing it here would clobber that block.
+_SPELL_PREF_KEYS = frozenset({"aram_mode", "sr_mode"})
+
 
 def save_spell_pref(mode_key: str, value: str) -> None:
-    """Write updated spell preference to spell_prefs.json (atomic write)."""
+    """Write updated spell preference to spell_prefs.json (atomic write).
+
+    Only "aram_mode" / "sr_mode" with a str value is written; anything else
+    is refused with a warning and the file is left as it was.
+    """
+    if mode_key not in _SPELL_PREF_KEYS or not isinstance(value, str):
+        _log.warning("save_spell_pref: refused %r = %r", mode_key, value)
+        return
     try:
         with _SPELL_PREFS_LOCK:
             prefs = read_json_dict(_SPELL_PREFS_PATH)
@@ -419,7 +466,7 @@ _MODE_TAGS = {
 
 def mode_tag(mode: str) -> str:
     """LCU game-mode string -> collector mode tag ('SR' default)."""
-    m = (mode or "").upper()
+    m = _mode_upper(mode)
     if m in _MODE_TAGS:
         return _MODE_TAGS[m]
     if "ARAM" in m:
@@ -432,26 +479,27 @@ def load_champ_spell_pref(champion: str, mode: str) -> Optional[tuple[int, int]]
 
     Reads spell_prefs.json["by_champ"][<mode_tag>][<champion>]. Returns None
     when the file is missing/malformed, the mode or champion has no entry, or
-    the stored value is not a 2-element int list - callers then fall back to
-    the WR pick / role default.
+    the stored value is not a usable pair (_usable_spell_pair: two different
+    positive non-bool ints) - callers then fall back to the WR pick / role
+    default. An unusable pair already on disk is therefore absent, not
+    served (RM-1035); the next manual change for that champion overwrites
+    it.
+
+    No broad except: read_json_dict never raises for a missing / corrupt /
+    non-dict file, every nested level is isinstance-guarded, and a non-str
+    champion is refused up front (it used to raise TypeError on an
+    unhashable key, swallowed at DEBUG).
     """
-    if not champion:
+    if not isinstance(champion, str) or not champion:
         return None
-    try:
-        prefs = read_json_dict(_SPELL_PREFS_PATH)
-        by_champ = prefs.get("by_champ")
-        if not isinstance(by_champ, dict):
-            return None
-        per_mode = by_champ.get(mode_tag(mode))
-        if not isinstance(per_mode, dict):
-            return None
-        pair = per_mode.get(champion)
-        if (isinstance(pair, (list, tuple)) and len(pair) == 2
-                and all(isinstance(x, int) for x in pair)):
-            return (int(pair[0]), int(pair[1]))
-    except Exception as exc:  # noqa: BLE001
-        _log.debug("load_champ_spell_pref(%s/%s): %s", champion, mode, exc)
-    return None
+    prefs = read_json_dict(_SPELL_PREFS_PATH)
+    by_champ = prefs.get("by_champ")
+    if not isinstance(by_champ, dict):
+        return None
+    per_mode = by_champ.get(mode_tag(mode))
+    if not isinstance(per_mode, dict):
+        return None
+    return _usable_spell_pair(per_mode.get(champion))
 
 
 def save_champ_spell_pref(champion: str, mode: str,
@@ -463,13 +511,20 @@ def save_champ_spell_pref(champion: str, mode: str,
     Shares _SPELL_PREFS_LOCK and core.polled_json.atomic_write_json with
     save_spell_pref (RM-297d), so the read-modify-write is serialized
     in-process and the write rides out a transient WinError 5.
+
+    Only a str champion and a _usable_spell_pair are stored (RM-1035): a
+    half-filled (0, 4), a bool, a float, a duplicate or a string such as
+    "47" is refused with a warning, so it can never shadow the WR / role
+    default on the next lock.
     """
-    if not champion:
+    if not isinstance(champion, str) or not champion:
         return
-    try:
-        s1, s2 = int(pair[0]), int(pair[1])
-    except (TypeError, ValueError, IndexError):
+    usable = _usable_spell_pair(pair)
+    if usable is None:
+        _log.warning("save_champ_spell_pref(%s/%s): refused pair %r",
+                     champion, mode, pair)
         return
+    s1, s2 = usable
     try:
         with _SPELL_PREFS_LOCK:
             prefs = read_json_dict(_SPELL_PREFS_PATH)
@@ -903,7 +958,11 @@ class RuneWriter:
             import sqlite3
             conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=3.0)
             try:
-                return best_wr_spell_pair(conn, champion, mode)
+                # RM-1035: a corpus pair is pushed as-is, so it passes the
+                # same usable-pair check as a remembered one (None -> the
+                # role default).
+                return _usable_spell_pair(
+                    best_wr_spell_pair(conn, champion, mode))
             finally:
                 conn.close()
         except Exception as exc:  # noqa: BLE001
@@ -966,11 +1025,16 @@ class RuneWriter:
             if my_pick is None:
                 return False  # my cell not in the session yet - nothing to do
 
-            try:
-                cur = (int(my_pick.get("spell1Id", 0) or 0),
-                       int(my_pick.get("spell2Id", 0) or 0))
-            except (TypeError, ValueError):
-                cur = (0, 0)
+            # RM-1035: a slot that is not a positive int reads as 0. The old
+            # int() let an infinite float raise OverflowError past its
+            # (TypeError, ValueError) catch, voiding the whole sync.
+            cur = (_spell_id(my_pick.get("spell1Id")),
+                   _spell_id(my_pick.get("spell2Id")))
+            # Only a WHOLE live pair can be an operator change. A half-filled
+            # read such as (0, 12) used to latch the manual override for the
+            # rest of the lock and be remembered as this champion's pair; it
+            # is now treated like (0, 0) (RM-1035).
+            cur_is_whole = _usable_spell_pair(cur) is not None
 
             champion = self._detect_my_champion(session)
 
@@ -996,7 +1060,7 @@ class RuneWriter:
                         and cur == self._midpick_pushed_pair):
                     return True  # still our pair - nothing to do
                 if (self._midpick_pushed_pair is not None
-                        and cur != (0, 0)):
+                        and cur_is_whole):
                     # Live pair drifted from what RC pushed -> operator changed
                     # it by hand. Stop overwriting (no champ key to remember).
                     self._midpick_manual_override = True
@@ -1029,7 +1093,7 @@ class RuneWriter:
             if self._spell_pushed_pair is not None and cur == self._spell_pushed_pair:
                 return True  # still our pair - nothing to do, no re-push
 
-            if self._spell_pushed_pair is not None and cur != (0, 0):
+            if self._spell_pushed_pair is not None and cur_is_whole:
                 # Live pair drifted from what RC pushed -> operator changed it
                 # by hand. Stop overwriting AND remember it for next time.
                 self._spell_manual_override = True
