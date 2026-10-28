@@ -55,6 +55,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import threading
 from collections import deque
 from dataclasses import dataclass, field
@@ -135,13 +136,38 @@ class Reading:
     ranks: Dict[str, int] = field(default_factory=dict)
 
 
+# Range bounds on Live Client readings (s144 true-audit). A value outside is
+# junk, not a reading: a resourceValue of -50 was a fake 450-point "cast".
+_T_MAX = 10.0 ** 6        # game-time seconds
+_RES_MAX = 10.0 ** 5      # resourceValue / resourceMax
+_RANK_MAX = 6             # the highest abilityLevel any slot reaches
+_COUNT_MAX = 10 ** 5      # a Match-V5 spellNCasts truth
+
+
 def _num(v: Any) -> Optional[float]:
+    """A finite float from an int-not-bool or float, else None. A >1e308 int
+    is None rather than OverflowError."""
     if isinstance(v, bool) or not isinstance(v, (int, float)):
         return None
-    f = float(v)
+    try:
+        f = float(v)
+    except OverflowError:
+        return None
     if f != f or f in (float("inf"), float("-inf")):
         return None
     return f
+
+
+def _bounded(v: Any, hi: float) -> Optional[float]:
+    f = _num(v)
+    return f if f is not None and 0.0 <= f <= hi else None
+
+
+def _count(v: Any, hi: int) -> Optional[int]:
+    """An int-not-bool or integral float in 0..hi, else None (12.7 is not a
+    count, and neither is -3)."""
+    f = _bounded(v, float(hi))
+    return int(f) if f is not None and f == int(f) else None
 
 
 def reading_from_allgamedata(data: Any) -> Optional[Reading]:
@@ -151,6 +177,10 @@ def reading_from_allgamedata(data: Any) -> Optional[Reading]:
     game_reader/snapshot_normalizer.py): activePlayer.championStats.
     {resourceValue, resourceMax, resourceType}, activePlayer.abilities.
     {Q,W,E,R}.abilityLevel, gameData.gameTime.
+
+    gameTime must be a number in 0..10**6 and resourceValue / resourceMax
+    numbers in 0..10**5, else None. An abilityLevel that is not an integral
+    0..6 reads as 0 (unlearned), so a junk rank never names a slot.
     """
     if not isinstance(data, dict):
         return None
@@ -161,9 +191,9 @@ def reading_from_allgamedata(data: Any) -> Optional[Reading]:
     cs = ap.get("championStats")
     if not isinstance(cs, dict):
         return None
-    t = _num(gd.get("gameTime"))
-    value = _num(cs.get("resourceValue"))
-    maximum = _num(cs.get("resourceMax"))
+    t = _bounded(gd.get("gameTime"), _T_MAX)
+    value = _bounded(cs.get("resourceValue"), _RES_MAX)
+    maximum = _bounded(cs.get("resourceMax"), _RES_MAX)
     if t is None or value is None or maximum is None:
         return None
     rtype = cs.get("resourceType")
@@ -173,37 +203,62 @@ def reading_from_allgamedata(data: Any) -> Optional[Reading]:
     if isinstance(abilities, dict):
         for slot in SLOTS:
             ab = abilities.get(slot) or abilities.get(slot.lower())
-            lvl = _num(ab.get("abilityLevel")) if isinstance(ab, dict) else None
-            ranks[slot] = int(lvl) if lvl is not None and lvl >= 0 else 0
+            lvl = _count(ab.get("abilityLevel"), _RANK_MAX) \
+                if isinstance(ab, dict) else None
+            ranks[slot] = lvl if lvl is not None else 0
     else:
         ranks = {s: 0 for s in SLOTS}
     return Reading(t=t, value=value, maximum=maximum, rtype=rtype, ranks=ranks)
 
 
+def _str(v: Any) -> str:
+    return v.strip() if isinstance(v, str) else ""
+
+
+def _full_ids(p: Mapping[str, Any]) -> set:
+    """Every "Name#TAG" form a player row carries (riotId, a summonerName
+    with a tag, riotIdGameName + riotIdTagLine)."""
+    out = {_str(p.get("riotId")), _str(p.get("summonerName"))}
+    name, tag = _str(p.get("riotIdGameName")), _str(p.get("riotIdTagLine"))
+    if name and tag:
+        out.add(name + "#" + tag)
+    return {s for s in out if "#" in s and not s.startswith("#")}
+
+
+def _base_names(p: Mapping[str, Any]) -> set:
+    """Every game name (no tag) a player row carries."""
+    out = set()
+    for k in ("riotIdGameName", "summonerName", "riotId"):
+        s = _str(p.get(k)).split("#", 1)[0].strip()
+        if s:
+            out.add(s)
+    return out
+
+
 def active_champion_name(data: Any) -> Optional[str]:
-    """championName of the active player from allPlayers (display name)."""
+    """championName of the active player from allPlayers (display name).
+
+    An exact "Name#TAG" match wins; a game-name-only match counts only when
+    exactly one player has it (two players may share a game name across tag
+    lines). Ambiguous or absent is None, never the first row that matched.
+    """
     if not isinstance(data, dict):
         return None
     ap = data.get("activePlayer")
     if not isinstance(ap, dict):
         return None
-    me = ap.get("riotIdGameName") or ap.get("summonerName")
-    if not isinstance(me, str) or not me:
-        return None
-    me_base = me.split("#", 1)[0]
     players = data.get("allPlayers")
     if not isinstance(players, list):
         return None
-    for p in players:
-        if not isinstance(p, dict):
-            continue
-        rid = p.get("riotIdGameName") or p.get("summonerName")
-        if not isinstance(rid, str) or not rid:
-            continue
-        if rid == me or rid.split("#", 1)[0] == me_base:
-            name = p.get("championName")
-            return name if isinstance(name, str) and name else None
-    return None
+    rows = [p for p in players if isinstance(p, dict)]
+    me_full, me_base = _full_ids(ap), _base_names(ap)
+    hits = [p for p in rows if me_full & _full_ids(p)] if me_full else []
+    if not hits and me_base:
+        hits = [p for p in rows if me_base & _base_names(p)]
+    if len(hits) != 1:
+        return None
+    name = _str(hits[0].get("championName"))
+    return name or None
 
 
 # -- slot matching -----------------------------------------------------------
@@ -357,11 +412,32 @@ _COST_CACHE: Dict[str, Dict[str, CostTable]] = {}
 _COST_LOCK = threading.Lock()
 
 
+# current.txt names ONE directory under the DS data root ("16.21.1"), so
+# "../x", "a/b" or "." is refused instead of read outside the root.
+_PATCH_RE = re.compile(r"[0-9A-Za-z][0-9A-Za-z._-]{0,63}")
+
+
 def _current_patch(root: Path) -> Optional[str]:
     try:
-        return (root / "current.txt").read_text(encoding="utf-8").strip() or None
-    except OSError:
+        patch = (root / "current.txt").read_text(encoding="utf-8").strip()
+    except (OSError, ValueError):
         return None
+    if not _PATCH_RE.fullmatch(patch) or ".." in patch:
+        return None
+    return patch
+
+
+def _per_rank_costs(cost: Any) -> Optional[Tuple[float, ...]]:
+    """Per-rank costs, POSITIONAL: a junk entry is 0.0 (no usable cost at
+    that rank) instead of being dropped, which shifted every later rank down
+    one place."""
+    if not isinstance(cost, list):
+        return None
+    out = []
+    for x in cost:
+        f = _num(x)
+        out.append(f if f is not None and f > 0 else 0.0)
+    return tuple(out) if any(c > 0 for c in out) else None
 
 
 def _load_all_costs(root: Path, patch: str) -> Dict[str, CostTable]:
@@ -383,12 +459,9 @@ def _load_all_costs(root: Path, patch: str) -> Dict[str, CostTable]:
             if not isinstance(forms, list) or not forms:
                 continue
             f0 = forms[0] if isinstance(forms[0], dict) else {}
-            cost = f0.get("cost")
-            costs = (tuple(float(x) for x in cost
-                           if _num(x) is not None)
-                     if isinstance(cost, list) else None)
             res = f0.get("resource")
-            table[slot] = (res if isinstance(res, str) else None, costs or None)
+            table[slot] = (res if isinstance(res, str) else None,
+                           _per_rank_costs(f0.get("cost")))
         out[champ] = table
     return out
 
@@ -396,16 +469,23 @@ def _load_all_costs(root: Path, patch: str) -> Dict[str, CostTable]:
 def load_cost_table(champion_id: str, data_root: Optional[Path] = None
                     ) -> CostTable:
     """slot -> (resource, per-rank costs) for a DDragon champion id, from the
-    current DS patch. Uses form 0 of each slot. {} if unknown/unavailable."""
+    current DS patch. Uses form 0 of each slot. {} if unknown/unavailable.
+
+    Only a load that produced champions is cached: a read that failed (the
+    file mid-rewrite, a truncated JSON) is retried on the next call instead of
+    leaving every champion costless for the life of the process."""
     root = data_root or _DS_DATA_ROOT
     patch = _current_patch(root)
-    if not patch or not champion_id:
+    if not patch or not isinstance(champion_id, str) or not champion_id:
         return {}
     key = str(root) + "|" + patch
     with _COST_LOCK:
-        if key not in _COST_CACHE:
-            _COST_CACHE[key] = _load_all_costs(root, patch)
-        return dict(_COST_CACHE[key].get(champion_id, {}))
+        tables = _COST_CACHE.get(key)
+        if tables is None:
+            tables = _load_all_costs(root, patch)
+            if tables:
+                _COST_CACHE[key] = tables
+        return dict(tables.get(champion_id, {}))
 
 
 def _canonical_id(name: str) -> str:
@@ -421,14 +501,26 @@ def _canonical_id(name: str) -> str:
 _state_lock = threading.Lock()
 _detector: Optional[SelfCastDetector] = None
 _champion: Optional[str] = None
+# Game time of the last cost-table load for the live detector, and the
+# minimum game-time spacing between retries while that detector is costless.
+_cost_try_t: Optional[float] = None
+COST_RETRY_S = 30.0
 _events: deque = deque(maxlen=_EVENTS_MAX)
 _LISTENER_INSTALLED = False
 
 
 def on_snapshot(snap: object) -> int:
     """liveclient_cache listener. Returns the number of events emitted.
-    Fail-soft: anything unexpected returns 0 with no state change."""
-    global _detector, _champion
+    Fail-soft: anything unexpected returns 0.
+
+    A frame whose champion lookup fails (champ None) keeps the current
+    detector: swapping in an empty-cost one dropped the pending candidate and
+    its baseline on one bad frame. The cost table (a multi-MB JSON on the
+    first call) is read outside _state_lock so events() / reset() never wait
+    on it. A detector left costless by a failed load retries the load at most
+    once per COST_RETRY_S of game time instead of staying costless until the
+    champion changes."""
+    global _detector, _champion, _cost_try_t
     try:
         data = getattr(snap, "data", None)
         if not isinstance(data, dict):
@@ -438,10 +530,29 @@ def on_snapshot(snap: object) -> int:
             return 0
         champ = active_champion_name(data)
         with _state_lock:
-            if _detector is None or champ != _champion:
-                cid = _canonical_id(champ) if champ else ""
-                _detector = SelfCastDetector(load_cost_table(cid) if cid else {})
+            need = _detector is None or (champ is not None
+                                         and champ != _champion)
+            retry = (not need and champ is not None and _detector is not None
+                     and not _detector.costs
+                     and (_cost_try_t is None or r.t < _cost_try_t
+                          or r.t - _cost_try_t >= COST_RETRY_S))
+        costs: CostTable = {}
+        if (need or retry) and champ:
+            cid = _canonical_id(champ)
+            costs = load_cost_table(cid) if cid else {}
+        with _state_lock:
+            if _detector is None or (champ is not None
+                                     and champ != _champion):
+                if not need:
+                    return 0  # reset() ran between the locks; rebuild next
+                _detector = SelfCastDetector(costs)
                 _champion = champ
+                _cost_try_t = r.t
+            elif retry and champ == _champion and not _detector.costs:
+                # A costless detector (the load failed) picks the table up
+                # in place, keeping its baseline and candidate.
+                _cost_try_t = r.t
+                _detector.costs = dict(costs)
             new = _detector.feed(r)
             _events.extend(new)
         return len(new)
@@ -451,15 +562,18 @@ def on_snapshot(snap: object) -> int:
 
 
 def events() -> List[Dict[str, Any]]:
+    """A copy of the log: each record is a new dict, so a consumer that
+    mutates one never rewrites the stored event."""
     with _state_lock:
-        return list(_events)
+        return [dict(e) for e in _events]
 
 
 def reset() -> None:
-    global _detector, _champion
+    global _detector, _champion, _cost_try_t
     with _state_lock:
         _detector = None
         _champion = None
+        _cost_try_t = None
         _events.clear()
 
 
@@ -484,13 +598,22 @@ def install_if_enabled() -> bool:
 
 def per_slot_totals(evs: Iterable[Mapping[str, Any]],
                     min_confidence: float = 0.0) -> Dict[str, int]:
+    """Per-slot event counts. A non-mapping entry is not an event and is
+    skipped; a confidence that is not a finite number reads 0.0 (so a NaN no
+    longer passes every min_confidence); a junk min_confidence is 0.0; a
+    slot_guess outside Q/W/E/R is unattributed."""
     out = {s: 0 for s in SLOTS}
     out["unattributed"] = 0
+    floor = _num(min_confidence)
+    floor = 0.0 if floor is None else floor
     for e in evs:
-        if float(e.get("confidence") or 0.0) < min_confidence:
+        if not isinstance(e, Mapping):
+            continue
+        conf = _num(e.get("confidence"))
+        if (0.0 if conf is None else conf) < floor:
             continue
         s = e.get("slot_guess")
-        if s in out and s != "unattributed":
+        if s in SLOTS:  # tuple membership: an unhashable guess cannot raise
             out[s] += 1
         else:
             out["unattributed"] += 1
@@ -512,6 +635,27 @@ _TRUTH_KEYS = {
 }
 
 
+def _as_row(participant: Any) -> Dict[str, Any]:
+    if isinstance(participant, Mapping):
+        return dict(participant)
+    keys = getattr(participant, "keys", None)
+    if not callable(keys):
+        return {}
+    try:
+        return {k: participant[k] for k in keys()}
+    except (TypeError, KeyError, IndexError):
+        return {}
+
+
+def _observable(entry: Any) -> bool:
+    if not isinstance(entry, (tuple, list)) or len(entry) != 2:
+        return False
+    res, cst = entry
+    if not is_tracked_resource(res) or not isinstance(cst, (tuple, list)):
+        return False
+    return any((_num(x) or 0.0) > 0 for x in cst)
+
+
 def validate_against_match_v5(evs: Iterable[Mapping[str, Any]],
                               participant: Mapping[str, Any],
                               costs: CostTable,
@@ -522,23 +666,27 @@ def validate_against_match_v5(evs: Iterable[Mapping[str, Any]],
     resource bar and are reported compared=False. pass is True only when at
     least one slot was compared and every compared slot is within
     match_tolerance(truth).
+
+    participant is a Mapping or a sqlite3.Row (anything with keys() and
+    item access). A truth that is not an integral count in 0..10**5 is no
+    truth (12.7 was truncated to 12, -3 was compared). A cost entry that is
+    not a (resource, per-rank costs) pair with a positive finite cost is not
+    observable.
     """
     totals = per_slot_totals(evs, min_confidence=min_confidence)
+    row = _as_row(participant)
+    table = costs if isinstance(costs, Mapping) else {}
     slots: Dict[str, Any] = {}
     compared = 0
     ok = True
     for slot in SLOTS:
         truth = None
         for k in _TRUTH_KEYS[slot]:
-            v = participant.get(k) if isinstance(participant, Mapping) else None
-            if _num(v) is not None:
-                truth = int(v)
+            truth = _count(row.get(k), _COUNT_MAX)
+            if truth is not None:
                 break
-        entry = costs.get(slot) or (None, None)
-        res, cst = entry
-        observable = (is_tracked_resource(res) and bool(cst)
-                      and any(float(x) > 0 for x in cst))
         log_n = totals[slot]
+        observable = _observable(table.get(slot))
         if truth is None or not observable:
             slots[slot] = {"log": log_n, "truth": truth, "diff": None,
                            "allowed": None, "within": None, "compared": False}
