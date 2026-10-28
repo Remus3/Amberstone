@@ -25,7 +25,7 @@ PREDICATES (stated in docs/LIVE_GAME_GATED_SYNC.md G7-17 before any game):
   camp     PASS iff a coaching-file snapshot taken at or after the cutoff has
            ``mode`` arena and ``camp_phase`` True, OR a cohort row carries
            deterministic BUY ITEMS (``core/arena_action_rule.py`` rule 1: only a
-           truthy camp_phase yields it, and the row's camp_phase is the coaching
+           camp_phase of True yields it, and the row's camp_phase is the coaching
            file's, ``dashboard/_deterministic_coaching.py``); else NOT_SEEN.
   cohort   FAIL iff any cohort row is a placeholder row (no Haiku action AND a
            round in ``_ARENA_PLACEHOLDER_ROUNDS`` 0 / "" / None - the exact

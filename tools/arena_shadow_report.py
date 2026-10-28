@@ -166,7 +166,7 @@ DET_ACTION_CLASS: dict[str, str] = {
 
 # Free-text Haiku labels: whole-word keyword rules, FIRST MATCH WINS. The
 # order mirrors decide_action, where the camp phase beats every HP band
-# (core/arena_action_rule.py:68-76), so a phase word wins over a posture word
+# (core/arena_action_rule.py decide_action rule 1), so a phase word wins over a posture word
 # ("SURVIVE CAMP PHASE" is SHOP). DEFENSIVE precedes AGGRESSIVE and NEUTRAL so
 # "DISENGAGE" and "DO NOT FIGHT" never read as ENGAGE / FIGHT.
 _CLASS_RULES: tuple[tuple[str, "re.Pattern[str]"], ...] = (
