@@ -35,12 +35,14 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
 DEFAULT_MANIFEST = Path("ops/runtime/slice_manifest.json")
+# Repo root, so a `python tools/slice_orchestrator.py` run (tools/headless_run.ps1)
+# can import core/.
+_ROOT = str(Path(__file__).resolve().parent.parent)
 
 STATUSES = ("pending", "in_progress", "verified", "failed", "committed")
 # Order in which `next` prefers work-needing slices: not-started, then a failed
@@ -63,11 +65,15 @@ def load_manifest(path: Path) -> dict:
 
 
 def save_manifest(path: Path, data: dict) -> None:
-    """Atomic write: temp file in the same dir, then os.replace."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=True) + "\n", encoding="utf-8")
-    os.replace(tmp, path)
+    """RM-258: through core.polled_json (per-writer scratch, fsync, bounded
+    WinError 5 retry; it creates the parent). Bytes, not write_text, so the
+    manifest is LF on Windows too (RM-481)."""
+    if _ROOT not in sys.path:
+        sys.path.insert(0, _ROOT)
+    from core.polled_json import atomic_write_bytes
+
+    body = json.dumps(data, indent=2, ensure_ascii=True) + "\n"
+    atomic_write_bytes(path, body.encode("ascii"))
 
 
 def _find(data: dict, slice_id: str) -> dict | None:

@@ -161,8 +161,33 @@ def test_save_is_atomic_round_trip(tmp_path):
     mf = Path(_mf(tmp_path))
     data = {"run_id": "r", "created_at": "t", "head_sha": "h", "slices": []}
     so.save_manifest(mf, data)
-    assert not mf.with_suffix(mf.suffix + ".tmp").exists()  # temp cleaned by os.replace
+    assert [q.name for q in mf.parent.iterdir()] == [mf.name]  # no scratch left
     assert so.load_manifest(mf) == data
+
+
+def test_save_routes_through_polled_json_and_writes_lf_bytes(tmp_path, monkeypatch):
+    """RM-258: the manifest goes through core.polled_json (per-writer scratch,
+    fsync, bounded WinError 5 retry), not a hand-rolled `<dest>.tmp` + bare
+    os.replace. RM-481: bytes, not write_text, so the file is LF on Windows."""
+    import core.polled_json as pj
+
+    calls = []
+    real = pj.atomic_write_bytes
+
+    def spy(path, data):
+        calls.append(Path(path))
+        real(path, data)
+
+    monkeypatch.setattr(pj, "atomic_write_bytes", spy)
+    mf = tmp_path / "nested" / "slice_manifest.json"
+    data = {"run_id": "r", "created_at": "t", "head_sha": "h",
+            "slices": [{"id": "A", "title": "x"}]}
+    so.save_manifest(mf, data)
+    assert calls == [mf]
+    raw = mf.read_bytes()
+    assert b"\r\n" not in raw
+    assert raw == (json.dumps(data, indent=2, ensure_ascii=True) + "\n").encode("ascii")
+    assert [q.name for q in mf.parent.iterdir()] == ["slice_manifest.json"]
 
 
 def test_load_missing_returns_empty(tmp_path):
