@@ -25,11 +25,19 @@ CALIBRATION:
   with it - which is why MinimapScale is part of config_key. The operator-nudge
   + clamps absorb any residual error.
 
+INPUTS (s144 true-audit): compute_minimap_rect never raises. A target size
+that is not a real number in (0, _MAX_TARGET] (NaN, inf, str, None, bool, an
+int too big for a float) returns None; a junk scale (incl. a bool or an
+overflowing int) falls back to CAL_SCALE; flip is on only for an explicit on
+value (True, 1, "1", "true"), never plain truthiness - the game.cfg string
+"0" is truthy and used to mirror the minimap onto the wrong corner.
+
 ASCII only (repo hard rule).
 """
 from __future__ import annotations
 
 import math
+import numbers
 from dataclasses import dataclass
 from typing import Optional
 
@@ -50,6 +58,10 @@ _MAX_SIDE_FRAC_H = 0.45
 # MinimapScale upper bound (defensive clamp; the affine floor covers the low end,
 # and a real scale of 0 is the smallest minimap, not a sentinel).
 _MAX_SCALE = 3.0
+# Upper bound on a target dimension (px). Never tighter than the 1..10000
+# resolution bound core.league_settings / core.hud_settings apply (_RES_MAX);
+# a bigger value is junk, and an unbounded one built 300-digit rect fields.
+_MAX_TARGET = 10000
 
 
 @dataclass(frozen=True)
@@ -67,10 +79,41 @@ class MinimapRect:
         return (self.x, self.y, self.x + self.w, self.y + self.h)
 
 
+def _coerce_target(v: object) -> Optional[float]:
+    """A target dimension as a float in (0, _MAX_TARGET], else None."""
+    if isinstance(v, bool) or not isinstance(v, numbers.Real):
+        return None
+    try:
+        f = float(v)
+    except (OverflowError, TypeError, ValueError):
+        return None
+    if not 0 < f <= _MAX_TARGET:  # also refuses NaN and +-inf
+        return None
+    return f
+
+
+def _coerce_flip(flip: object) -> bool:
+    """FlipMiniMap as a bool: True, a number equal to 1, or the strings "1" /
+    "true" (any case, padded) flip; anything else is League's default
+    unflipped corner (bottom-right)."""
+    if isinstance(flip, bool):
+        return flip
+    if isinstance(flip, str):
+        return flip.strip().lower() in ("1", "true")
+    if isinstance(flip, numbers.Real):
+        try:
+            return float(flip) == 1.0
+        except (OverflowError, TypeError, ValueError):
+            return False
+    return False
+
+
 def _coerce_scale(scale: object) -> float:
+    if isinstance(scale, bool):
+        return CAL_SCALE  # a bool is not a MinimapScale
     try:
         s = float(scale)  # type: ignore[arg-type]
-    except (TypeError, ValueError):
+    except (OverflowError, TypeError, ValueError):
         return CAL_SCALE
     if not math.isfinite(s):
         return CAL_SCALE
@@ -82,16 +125,21 @@ def _coerce_scale(scale: object) -> float:
 def compute_minimap_rect(
     scale: object,
     flip: object,
-    target_w: int,
-    target_h: int,
+    target_w: object,
+    target_h: object,
 ) -> Optional[MinimapRect]:
     """Compute the minimap square for the given scale/flip in target px.
 
-    Returns None when the target dimensions are non-positive or the computed
-    rect fails the on-screen sanity check (caller falls back).
+    Returns None when a target dimension is not a real number in
+    (0, _MAX_TARGET] or the computed rect fails the on-screen sanity check
+    (caller falls back). Never raises.
     """
-    if target_w <= 0 or target_h <= 0:
+    tw = _coerce_target(target_w)
+    th = _coerce_target(target_h)
+    if tw is None or th is None:
         return None
+    target_w, target_h = tw, th
+    want_flip = _coerce_flip(flip)
 
     s = _coerce_scale(scale)
     side_frac = SIDE_FRAC_H_SLOPE * s + SIDE_FRAC_H_INTERCEPT
@@ -101,7 +149,7 @@ def compute_minimap_rect(
     margin_r = MARGIN_R_FRAC_W * target_w
     margin_b = MARGIN_B_FRAC_H * target_h
 
-    if flip:
+    if want_flip:
         left = margin_r
     else:
         left = target_w - margin_r - side
@@ -113,4 +161,4 @@ def compute_minimap_rect(
         return None
     if x < 0 or y < 0 or x + w > target_w or y + h > target_h:
         return None
-    return MinimapRect(x=x, y=y, w=w, h=h, flip=bool(flip))
+    return MinimapRect(x=x, y=y, w=w, h=h, flip=want_flip)

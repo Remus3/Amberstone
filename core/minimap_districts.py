@@ -9,7 +9,7 @@ Coordinate frame: box-fraction ``[0, 1]`` within the minimap crop, y-down
 image convention, UNFLIPPED (blue base bottom-left) - the same frame as
 ``core.minimap_blob_detect.detect_team_dots`` dots and the legacy
 ``core.zoi_influence._action_quadrant`` prototype. A flipped HUD anchors
-the minimap left (core/minimap_geometry.py:104-108); ``district_of``
+the minimap left (core/minimap_geometry.py:152-155); ``district_of``
 de-flips by mirroring x -> 1 - x BEFORE any lookup.
 
 Configs live in ``config/minimap_grids/<mode>.json`` (mode lowercased).

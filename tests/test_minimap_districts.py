@@ -4,7 +4,7 @@
 Grep-confirmed API surfaces used here:
 - core/zoi_influence.py:177 `_action_quadrant(cx, cy)` (9-label prototype)
 - core/zoi_influence.py:206-216 `_QUADRANT_READABLE` (label -> readable)
-- flip semantics: core/minimap_geometry.py:104-108 (flip anchors the rect
+- flip semantics: core/minimap_geometry.py:152-155 (flip anchors the rect
   left, i.e. a flipped frame mirrors on X; district_of de-flips x -> 1-x)
 
 Synthetic fixtures only (deterministic, no live frame), mirrors the
