@@ -22,6 +22,8 @@ lobby refresh does not re-fire the fetch for the same party.
 import json
 from pathlib import Path
 
+import pytest
+
 from tests.snapshot_panels.test_lobby_view import _open_lobby
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -84,6 +86,7 @@ def test_lobby_duo_synergy_renders_at_party_size_2_plus(
         # Let the 2 s lobby refresh run past at least one more tick.
         page.wait_for_timeout(2_500)
         m = page.evaluate(_MEASURE)
+        lane_pair = page.evaluate(_LANE_PAIR)
         SCREENSHOTS.mkdir(exist_ok=True)
         page.locator(".lobby-view-card-party").screenshot(
             path=str(SCREENSHOTS / "lobby_duo_synergy_rm881.png"))
@@ -128,3 +131,107 @@ def test_lobby_duo_synergy_renders_at_party_size_2_plus(
     duo = m["duo"]
     assert len(duo) == 1, duo
     assert duo[0].endswith("/data/ui_mock/duo_synergy.json"), duo
+
+    # RM-1088 positive control for the non-SR renders below: the SR
+    # lobby (queue 420) shows the lane-pair control on the same gate.
+    assert lane_pair == {"exists": True, "shown": True}, lane_pair
+
+
+# RM-1088 (queue lane cycle 4 filing): the real main.js queue gate.
+# The node tests cover the gate with a stand-in predicate, and the render
+# above is the ui_mock SR lobby (queue 420), so deleting the main.js
+# `isDuoQueue: (qid) => SR_QUEUE_IDS.has(qid)` line stayed green: the
+# controller then defaults to "every queue" and an ARAM / Arena party
+# fetches and shows BOT / SUPPORT picks. These renders swap the page's
+# lobby.json for the same party of 3 in a non-SR queue (ARAM 450, Arena
+# 1750; the tracked fixture is not edited) and assert the block stays
+# hidden and no duo request is made, through the real wiring.
+_LANE_PAIR = """() => {
+  const e = document.querySelector('#lv-queue-controls .lq-lane-pair');
+  return {exists: !!e, shown: !!e && e.offsetParent !== null
+    && !e.classList.contains('hidden')};
+}"""
+
+_NON_SR_LOBBIES = {
+    450: "ARAM",
+    1750: "Arena",
+}
+
+
+def _non_sr_lobby_body(queue_id):
+    body = json.loads(
+        (ROOT / "web" / "data" / "ui_mock" / "lobby.json")
+        .read_text(encoding="utf-8"))
+    assert body["lobby"]["party_size"] >= 2, body["lobby"]
+    body["lobby"]["queue_id"] = queue_id
+    body["lobby"]["queue_name"] = _NON_SR_LOBBIES[queue_id]
+    return json.dumps(body)
+
+
+def _open_non_sr_lobby(pw_browser, mock_server, queue_id):
+    from tests.snapshot_panels.conftest import _WS_STUB
+
+    # Same router drive as test_lobby_view._open_lobby, plus a route that
+    # serves the non-SR lobby variant. Registered before navigation.
+    mock_server._store["data"] = {}
+    ctx = pw_browser.new_context(
+        ignore_https_errors=True, viewport={"width": 1920, "height": 1080}
+    )
+    served = []
+    body = _non_sr_lobby_body(queue_id)
+
+    def _handle_lobby(route, request):
+        served.append(request.url)
+        route.fulfill(status=200, content_type="application/json", body=body)
+
+    ctx.route("**/data/ui_mock/lobby.json*", _handle_lobby)
+    page = ctx.new_page()
+    page.add_init_script(_WS_STUB)
+    errors: list[str] = []
+    page.on("pageerror", lambda err: errors.append(str(err)))
+    page.goto(mock_server.url + "/?ui_mock=1#lobby",
+              wait_until="domcontentloaded", timeout=15_000)
+    page.wait_for_function(
+        "(n) => { const e = document.querySelector('#lv-queue-name');"
+        " return !!e && e.textContent.trim() === n.toUpperCase(); }",
+        arg=_NON_SR_LOBBIES[queue_id],
+        timeout=10_000,
+    )
+    return ctx, page, errors, served
+
+
+@pytest.mark.parametrize("queue_id", sorted(_NON_SR_LOBBIES))
+def test_lobby_duo_synergy_stays_hidden_in_a_non_sr_queue(
+        mock_server, pw_browser, queue_id):
+    ctx, page, errors, served = _open_non_sr_lobby(
+        pw_browser, mock_server, queue_id)
+    try:
+        # The party roster rendered, so the refresh that calls the duo
+        # controller ran on this lobby. With an empty mock store the page
+        # runs that refresh on view entry and when the mock lands, not on
+        # the 2 s LCU poll; the wait is a margin for a late duo fetch.
+        page.wait_for_function(
+            "document.querySelectorAll("
+            "'#lv-members-list .lobby-member-row:not(.is-placeholder)')"
+            ".length >= 2",
+            timeout=10_000,
+        )
+        page.wait_for_timeout(2_500)
+        m = page.evaluate(_MEASURE)
+        lane_pair = page.evaluate(_LANE_PAIR)
+    finally:
+        page.close()
+        ctx.close()
+
+    assert not errors, f"JS errors [lobby duo {queue_id}]: {errors[:3]}"
+    # The variant really was the lobby the page rendered.
+    assert served, "the non-SR lobby.json route was never requested"
+    # Same-root sibling: the lane-pair control is gated on the same
+    # SR_QUEUE_IDS set (main.js `showLanes`) and had no headless render
+    # either. Hidden here; shown in the SR render above.
+    assert lane_pair == {"exists": True, "shown": False}, lane_pair
+
+    # The gate: no duo request of either kind, and the block stays empty.
+    assert m["duo"] == [], m["duo"]
+    assert m["hidden"] and not m["visible"], m
+    assert m["rows"] == 0 and m["cells"] == [], m
