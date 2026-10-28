@@ -57,6 +57,7 @@ SWEPT_WRITERS = (
     "scripts/fetch_cdragon_pbe.py",
     "scripts/probe_missing_codes.py",
     "tools/champion_loadout_cleanup_pollution_item213.py",
+    "tools/champion_loadout_collapse_to_paths.py",
     "tools/champion_loadout_sweep_item_s8.py",
     "tools/champion_loadout_validate_meta.py",
     "tools/hotfix_kaisa_aram_ashe_sr_item263.py",

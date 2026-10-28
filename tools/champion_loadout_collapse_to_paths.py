@@ -68,21 +68,25 @@ Usage::
 * ``--mode`` selects which mode(s) to collapse (default ``sr`` for
   item-178 CLI compatibility; pass ``all`` for the item-179 SR+ARAM+
   Arena pass).
+
+Atomic write (core.polled_json.atomic_write_bytes; ensure_ascii=True, LF).
 """
 from __future__ import annotations
 
 import argparse
 import json
-import os
 import shutil
 import sys
-import tempfile
 import time
 from pathlib import Path
 from typing import Any
 
 _ROOT = Path(__file__).resolve().parent.parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
 _LOADOUTS_PATH = _ROOT / "data" / "champion_loadouts.json"
+
+from core import polled_json  # noqa: E402
 
 SR_MODE = "sr"
 ARAM_MODE = "aram"
@@ -535,42 +539,28 @@ def collapse_payload_modes(
     return cur, per_mode
 
 
-def atomic_write_loadouts(payload: dict, dest: Path = _LOADOUTS_PATH) -> None:
-    """Write payload via tmp + replace. Mirrors champion_loadout_autogen's writer."""
-    out_dir = dest.parent
-    out_dir.mkdir(parents=True, exist_ok=True)
-    tmp_fd, tmp_path = tempfile.mkstemp(
-        prefix=".champion_loadouts.", suffix=".tmp", dir=str(out_dir),
-    )
-    try:
-        with os.fdopen(tmp_fd, "w", encoding="utf-8", newline="\n") as f:
-            json.dump(payload, f, indent=2, ensure_ascii=True, sort_keys=False)
-            f.write("\n")
-        # Brief retry loop covers WinError 5 transient (cross_project memory).
-        for delay_ms in (0, 25, 50, 200):
-            if delay_ms:
-                time.sleep(delay_ms / 1000.0)
-            try:
-                os.replace(tmp_path, dest)
-                break
-            except PermissionError:
-                if delay_ms == 200:
-                    raise
-    except Exception:
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
-        raise
+def atomic_write_loadouts(payload: dict, dest: Path | None = None) -> None:
+    """Write payload atomically; ``dest`` defaults to ``_LOADOUTS_PATH``.
+
+    RM-258: the shared writer (per-writer scratch name, fsync, WinError 5
+    retry, no scratch left behind). Bytes, so the LF stays LF on Windows.
+    The default is read at call time, so a patched ``_LOADOUTS_PATH`` is the
+    path main() writes as well as the one it read.
+    """
+    dest = _LOADOUTS_PATH if dest is None else dest
+    text = json.dumps(payload, indent=2, ensure_ascii=True, sort_keys=False)
+    polled_json.atomic_write_bytes(dest, (text + "\n").encode("ascii"))
 
 
-def backup_loadouts(dest: Path = _LOADOUTS_PATH, item_tag: str = "item178") -> Path:
+def backup_loadouts(dest: Path | None = None, item_tag: str = "item178") -> Path:
     """Copy current file to data/champion_loadouts.json.bak-<item_tag>-<ts>.
 
     Returns the backup path (or the dest path unchanged if no source).
     The ``item_tag`` parameter lets the caller stamp the run with the
     ledger item number (item178 = SR-only, item179 = SR+ARAM+Arena).
+    ``dest`` defaults to ``_LOADOUTS_PATH``, read at call time.
     """
+    dest = _LOADOUTS_PATH if dest is None else dest
     if not dest.exists():
         return dest
     ts = time.strftime("%Y%m%d-%H%M%S")
