@@ -202,7 +202,7 @@ def test_level_advice_against_the_top4_median(sd, built):
     ahead = recommend.level_advice({"label": "3-2", "level": 7}, agg)
     assert ahead["status"] == "ahead"
     roll = recommend.level_advice({"label": "4-1", "level": 8, "gold": 50}, agg)
-    assert roll["roll"] == {"label": "4-1", "to_gold": 20.0, "games": 2}
+    assert roll["roll"] == {"label": "4-1", "to_gold": 20.0, "games": 2, "insufficient": True}
     unknown = recommend.level_advice({"label": "6-6", "level": 9}, agg)
     assert unknown["status"] == "unknown" and unknown["message"].isascii()
 

@@ -101,6 +101,13 @@ def _count(value: Any) -> int:
     return n if n is not None and n > 0 else 0
 
 
+def _sample(row: Any) -> int:
+    """An aggregate row's top-4 game count `n` when it is a plain positive int, else 0.
+    RM-1096: a row whose n is missing or junk is no evidence, so it reads as under the floor."""
+    n = row.get("n") if isinstance(row, Mapping) else None
+    return n if isinstance(n, int) and not isinstance(n, bool) and n > 0 else 0
+
+
 def _level(value: Any) -> Optional[int]:
     """A player level in LEVEL_MIN..LEVEL_MAX, else None."""
     lv = as_int(value)
@@ -310,7 +317,10 @@ def item_slams(held_items: Iterable, comp: Optional[Mapping], setdata: SetData, 
 # ------------------------------------------------------------- level advice
 
 def level_advice(current: Mapping, agg: Optional[Mapping]) -> dict:
-    """The current level against the comp's top-4 median at this round, plus the next milestone."""
+    """The current level against the comp's top-4 median at this round, plus the next milestone.
+    RM-1096: below MIN_GAMES top-4 games at this round the median is no verdict
+    (status "insufficient", "too few top-4 games"), and the roll hint carries the
+    same `insufficient` flag beside the game count it already discloses."""
     current = _state(current)
     key = parse_label(current.get("label"))
     label = format_label(key) if key is not None else None
@@ -318,8 +328,13 @@ def level_advice(current: Mapping, agg: Optional[Mapping]) -> dict:
     out = {"status": "unknown", "message": "No top-4 level data yet", "next": None, "roll": None}
     if not isinstance(agg, Mapping) or not agg or key is None:
         return out
-    med = _level(_section(_section(agg, "level_curve"), label).get("median"))
-    if med is not None and level is not None:
+    row = _section(_section(agg, "level_curve"), label)
+    med = _level(row.get("median"))
+    n = _sample(row)
+    if med is not None and level is not None and n < MIN_GAMES:
+        out["status"] = "insufficient"
+        out["message"] = f"Too few top-4 games at {label} ({n} of {MIN_GAMES}) to judge Lv{level}"
+    elif med is not None and level is not None:
         out["status"] = "behind" if level < med else ("ahead" if level > med else "on_curve")
         out["message"] = f"Lv{level} at {label}; your top-4 median is Lv{med} at {label}"
     else:
@@ -340,7 +355,7 @@ def level_advice(current: Mapping, agg: Optional[Mapping]) -> dict:
     if (isinstance(games, int) and not isinstance(games, bool) and games > 0 and mid
             and lo is not None and hi is not None and lo <= key <= hi):
         out["roll"] = {"label": mid, "to_gold": _number(_section(agg, "rolldown_gold_end").get("median")),
-                       "games": games}
+                       "games": games, "insufficient": games < MIN_GAMES}
     return out
 
 
@@ -357,7 +372,8 @@ def recommend(state: Mapping, catalogue: Mapping, milestones_payload: Optional[M
     target = None
     if comp is not None:
         target = next((n for n in nearest if n["comp_id"] == comp["comp_id"]),
-                      {"comp_id": comp["comp_id"], "label": comp.get("label"), "score": None})
+                      {"comp_id": comp["comp_id"], "label": comp.get("label"), "score": None,
+                       "insufficient": _under_floor(comp)})
     per_comp = milestones_payload.get("comps") if isinstance(milestones_payload, Mapping) else None
     agg = per_comp.get(comp["comp_id"]) if comp is not None and isinstance(per_comp, Mapping) else None
     return dict(
