@@ -1,0 +1,242 @@
+"""
+tests/snapshot_panels/test_settings_checkbox_hit_targets.py
+RM-1016 (s144 uiux): every checkbox on the Settings view is a 24x24 box,
+below the 42px --hit-min floor (web/css/tokens.css). The design rule beside
+both tokens says the visible control may be smaller as long as its <label>
+wrapper pads to --hit-min and IS the click target (web/css/panels/header.css
+`.settings-row`; web/css/panels/panel_visibility.css `.pv-cell`). An earlier
+sweep listed "Settings checkboxes are 24x24" for triage; this file is the
+check that the label really is the target, and the pin that keeps it so.
+
+Measured in headless Chromium under /?ui_mock=1#settings, 1920x920 and
+923x1280, with Dev mode on and two synthetic spend gates routed in:
+- 8 static rows (CLIENT SETTINGS / DISPLAY / API SPEND GATES) wrap their box
+  in label.settings-row, 51px tall;
+- the JS-built spend gates (web/js/panels/dev.js renderSpendGates) use
+  label.settings-row spend-gate-row, 81px tall with a two-line explain;
+- the 17 PANEL VISIBILITY cells (web/js/panels/panel_visibility.js) use
+  label.pv-cell, 42px tall;
+- a real pointer click at the far edge of each label, outside the box,
+  toggled its checkbox (every one, both widths);
+- keyboard focus paints a 2px box-shadow ring on every one.
+So no defect: the label is the target. Before this file the only guard was
+test_settings_view.py test_settings_toggle_present, which checks the FIRST
+row only, against 40px, and never clicks. This one fails if any checkbox
+loses its label wrapper, a label drops under --hit-min, a click outside the
+box stops toggling, or a box loses its focus ring.
+"""
+import json
+
+import pytest
+
+from tests.snapshot_panels.conftest import _WS_STUB
+
+VIEWPORTS = [(1920, 920), (923, 1280)]
+
+# Synthetic /api/spend/gates payload (shape: dashboard/routes_coach.py
+# _serve_spend_gates; one gate with a cost line, one without), so Dev mode
+# builds its label rows. No live data is involved.
+_GATES = {
+    "gates": {
+        "aram": {
+            "label": "ARAM coach",
+            "explain": "Coaching calls during ARAM games",
+            "disabled": False,
+        },
+        "vision": {
+            "label": "Vision",
+            "explain": "Vision reads for OCR misses",
+            "disabled": True,
+        },
+    },
+    "per_match": {"aram": {"usd": 0.0123, "tokens": 4567, "n": 2}},
+}
+
+_TOKENS = """
+() => {
+  const probe = document.createElement('div');
+  probe.style.cssText = 'position:absolute;visibility:hidden;'
+    + 'height:var(--hit-min)';
+  document.body.appendChild(probe);
+  const hit = parseFloat(getComputedStyle(probe).height);
+  probe.remove();
+  return hit;
+}
+"""
+
+# Every rendered checkbox in the view: its own box and its label's box.
+_BOXES = """
+() => {
+  const out = [];
+  const all = document.querySelectorAll('#view-settings input[type=checkbox]');
+  all.forEach((cb, i) => {
+    const r = cb.getBoundingClientRect();
+    if (!r.width) return;
+    const lab = cb.closest('label');
+    const lr = lab ? lab.getBoundingClientRect() : null;
+    out.push({
+      i, id: cb.id || cb.dataset.pvPanel || '',
+      kind: lab ? lab.className : '(no label)',
+      cbW: r.width, cbH: r.height,
+      labW: lr ? lr.width : 0, labH: lr ? lr.height : 0,
+    });
+  });
+  return out;
+}
+"""
+
+
+def _open(pw_browser, mock_server, vp):
+    mock_server._store["data"] = {}
+    ctx = pw_browser.new_context(
+        ignore_https_errors=True, viewport={"width": vp[0], "height": vp[1]}
+    )
+    page = ctx.new_page()
+    page.add_init_script(_WS_STUB)
+    errors: list[str] = []
+    page.on("pageerror", lambda err: errors.append(str(err)))
+    page.route(
+        "**/api/spend/gates*",
+        lambda route: route.fulfill(
+            status=200, content_type="application/json", body=json.dumps(_GATES)
+        ),
+    )
+    page.goto(
+        mock_server.url + "/?ui_mock=1#settings",
+        wait_until="domcontentloaded", timeout=15_000,
+    )
+    page.wait_for_function(
+        "document.body.dataset.view === 'settings' && "
+        "document.querySelector('#panel-visibility-card .pv-cell') !== null",
+        timeout=10_000,
+    )
+    # Dev mode on, so the spend-gate rows render (and are measured too).
+    if not page.is_checked("#set-dev-mode"):
+        page.click("#set-dev-mode")
+    page.wait_for_selector("#spend-gates-list .spend-gate-row", timeout=10_000)
+    return ctx, page, errors
+
+
+def _kinds(boxes):
+    return {
+        "settings-row": sum(1 for b in boxes if b["kind"] == "settings-row"),
+        "spend-gate-row": sum(1 for b in boxes if "spend-gate-row" in b["kind"]),
+        "pv-cell": sum(1 for b in boxes if b["kind"] == "pv-cell"),
+    }
+
+
+@pytest.mark.parametrize("vp", VIEWPORTS, ids=lambda v: f"{v[0]}x{v[1]}")
+def test_every_settings_checkbox_label_clears_hit_min(mock_server, pw_browser, vp):
+    ctx, page, errors = _open(pw_browser, mock_server, vp)
+    try:
+        hit = page.evaluate(_TOKENS)
+        boxes = page.evaluate(_BOXES)
+    finally:
+        page.close()
+        ctx.close()
+    assert hit >= 42, f"--hit-min resolved to {hit}px"
+    # Anchor: an empty or half-built view must not pass. 8 static rows,
+    # both synthetic gates, and the panel-visibility grid.
+    kinds = _kinds(boxes)
+    assert kinds["settings-row"] == 8, f"static settings rows: {kinds}"
+    assert kinds["spend-gate-row"] == 2, f"spend-gate rows: {kinds}"
+    assert kinds["pv-cell"] >= 10, f"panel-visibility cells: {kinds}"
+    bad = [b for b in boxes if b["kind"] == "(no label)"]
+    assert not bad, f"checkbox without a <label> wrapper: {bad[:3]}"
+    for b in boxes:
+        # The box itself is the small visible control the rule allows ...
+        assert b["cbH"] < hit, f"premise: box {b} already clears --hit-min"
+        # ... and its label is the full fingertip target.
+        assert b["labH"] >= hit - 0.5, (
+            f"{b['kind']} #{b['id']} label {b['labH']}px < --hit-min {hit}px"
+        )
+        assert b["labW"] >= hit - 0.5, (
+            f"{b['kind']} #{b['id']} label {b['labW']}px wide < --hit-min"
+        )
+    assert not errors, f"JS errors: {errors[:3]}"
+
+
+@pytest.mark.parametrize("vp", VIEWPORTS, ids=lambda v: f"{v[0]}x{v[1]}")
+def test_click_on_label_outside_the_box_toggles(mock_server, pw_browser, vp):
+    """A real pointer click 4px inside the label's far corner, well clear of
+    the 24px box, toggles the checkbox. The point is checked to land inside
+    the label and outside the checkbox before clicking."""
+    ctx, page, errors = _open(pw_browser, mock_server, vp)
+    failures = []
+    clicked = 0
+    try:
+        sel = "#view-settings input[type=checkbox]"
+        for i in range(len(page.query_selector_all(sel))):
+            # Re-query each step: a spend-gate click re-renders the gate
+            # list (dev.js renderSpendGates after its POST), detaching the
+            # handles taken before it.
+            h = page.query_selector_all(sel)[i]
+            if not h.is_visible():
+                continue
+            # Dev mode is the precondition of this fixture; toggling it off
+            # would unmount the gate rows still to be clicked.
+            if h.get_attribute("id") == "set-dev-mode":
+                continue
+            h.evaluate("e => e.closest('label').scrollIntoView({block: 'center'})")
+            pt = h.evaluate(
+                """e => {
+                  const lr = e.closest('label').getBoundingClientRect();
+                  const x = lr.right - 4, y = lr.bottom - 4;
+                  const at = document.elementFromPoint(x, y);
+                  return {x, y, inLabel: !!at && e.closest('label').contains(at),
+                          onBox: at === e};
+                }"""
+            )
+            name = h.get_attribute("id") or h.get_attribute("data-pv-panel") or "gate"
+            if not pt["inLabel"] or pt["onBox"]:
+                failures.append(f"{name}: probe point {pt}")
+                continue
+            before = h.is_checked()
+            page.mouse.click(pt["x"], pt["y"])
+            after = h.evaluate("e => e.checked")
+            clicked += 1
+            if after == before:
+                failures.append(f"{name}: label click did not toggle")
+            elif h.evaluate("e => !!e.closest('.spend-gate-row')"):
+                # The gate re-renders from the routed payload; wait for it.
+                page.wait_for_function("e => !e.isConnected", arg=h, timeout=5_000)
+            else:
+                page.mouse.click(pt["x"], pt["y"])  # restore
+    finally:
+        page.close()
+        ctx.close()
+    assert clicked >= 20, f"only {clicked} checkboxes clicked"
+    assert not failures, failures[:5]
+    assert not errors, f"JS errors: {errors[:3]}"
+
+
+@pytest.mark.parametrize("vp", VIEWPORTS, ids=lambda v: f"{v[0]}x{v[1]}")
+def test_every_settings_checkbox_shows_a_focus_ring(mock_server, pw_browser, vp):
+    ctx, page, errors = _open(pw_browser, mock_server, vp)
+    try:
+        # One keyboard press sets keyboard modality, so .focus() below
+        # matches :focus-visible the way Tab traversal does.
+        page.keyboard.press("Tab")
+        rings = page.evaluate(
+            """() => {
+              const out = [];
+              const all = document.querySelectorAll(
+                '#view-settings input[type=checkbox]');
+              for (const cb of all) {
+                if (!cb.getBoundingClientRect().width) continue;
+                cb.focus();
+                const cs = getComputedStyle(cb);
+                out.push({id: cb.id || cb.dataset.pvPanel || 'gate',
+                          fv: cb.matches(':focus-visible'),
+                          shadow: cs.boxShadow});
+              }
+              return out;
+            }"""
+        )
+    finally:
+        page.close()
+        ctx.close()
+    assert len(rings) >= 20, f"only {len(rings)} checkboxes measured"
+    bad = [r for r in rings if not r["fv"] or "0px 0px 0px 2px" not in r["shadow"]]
+    assert not bad, f"checkbox without a 2px focus ring: {bad[:3]}"
+    assert not errors, f"JS errors: {errors[:3]}"
