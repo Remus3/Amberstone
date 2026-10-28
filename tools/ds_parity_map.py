@@ -34,6 +34,11 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from core import polled_json  # noqa: E402
+
 SERVER_PY = ROOT / "agents" / "daemon_slayer" / "server.py"
 DEFAULT_OUT = ROOT / "ops" / "runtime" / "ds_parity_map.json"
 
@@ -232,10 +237,8 @@ def main(argv: list[str] | None = None) -> int:
     m = build_map()
     if args.json:
         out = Path(args.out)
-        out.parent.mkdir(parents=True, exist_ok=True)
-        tmp = out.with_suffix(".tmp")
-        tmp.write_text(json.dumps(m, indent=2, sort_keys=True), encoding="utf-8", newline="\n")
-        tmp.replace(out)
+        polled_json.atomic_write_bytes(
+            out, json.dumps(m, indent=2, sort_keys=True).encode("utf-8"))
         print(f"map: {out}")
 
     drop = sum(len(e["dropped"]) for e in m.values())
