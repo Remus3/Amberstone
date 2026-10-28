@@ -1274,7 +1274,20 @@ _WEB = _REPO_ROOT / "web"
 # e7d890a5... value EXACTLY; no one or two of them do. Those paths are the
 # whole change. No glyph change: the added lines carry 0 non-ASCII bytes.
 # If another slice re-captures in parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "9060e9038cb07e04961a7b98314b8fc42c2dc110786be7408f0dff9742687494"
+# superseded by the RM-1064 re-capture below: "9060e9038cb07e04961a7b98314b8fc42c2dc110786be7408f0dff9742687494"
+#
+# RE-CAPTURED 2026-10-28 at RM-1064 (s144 uiux cycle 37, provisional
+# until the merger lands it and maps the id). One change rides it: the
+# .replay-main-pane gold corner brackets (web/css/panels/primitives.css)
+# are background layers instead of ::before / ::after, so they stay on the
+# pane's visible corners while it scrolls, and the pane styles a 12px
+# scrollbar with a transparent gutter so the bottom-right one shows.
+# Ordinary case, no tokeniser change. ATTRIBUTED BY SUBSTITUTION: swapping
+# that one file back to its lane-tip fb6dcd6ce blob reproduces the
+# superseded 9060e903... value EXACTLY. That path is the whole change. No
+# glyph change: the added lines carry 0 non-ASCII bytes. If another slice
+# re-captures in parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "3115dc8cf650d43614a0ae6fd722e8f27160518eb732e5785253d80f62bc2344"
 
 
 def _web_sources() -> list[Path]:

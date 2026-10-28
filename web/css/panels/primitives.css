@@ -221,7 +221,6 @@ header { transition: height 180ms ease; }
 /* hx-card tactical frame (see .replay-list-pane note above). */
 .replay-main-pane {
   position: relative;
-  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--panel-radius);
   box-shadow: var(--shadow-card);
@@ -237,17 +236,48 @@ header { transition: height 180ms ease; }
    * could never be seen, so the pane scrolls on y and keeps the x clip. */
   overflow-x: hidden;
   overflow-y: auto;
+  /* RM-1064: the gold corner brackets (see the list-pane rule below)
+   * are painted here as background layers, not ::before / ::after. An
+   * absolute box in a scroll container scrolls with the content, so at
+   * max scroll the brackets had left the visible corners; a background
+   * with the default attachment: scroll is fixed to the pane's own box.
+   * Each layer is the quarter ring the list pane's pseudo-element draws:
+   * '*' sizes no pseudo-element, so that box is content-box 14px + 2px
+   * border = 16px, its 18px radius clamps to 16 (inner 14), and the
+   * rounded padding-box clip trims it; padding-box sets origin + clip. */
+  background:
+    radial-gradient(circle at 100% 100%, transparent 14px,
+      var(--accent) 14px, var(--accent) 16px, transparent 16px)
+      left top / 16px 16px no-repeat padding-box,
+    radial-gradient(circle at 0 0, transparent 14px,
+      var(--accent) 14px, var(--accent) 16px, transparent 16px)
+      right bottom / 16px 16px no-repeat padding-box,
+    var(--surface);
 }
-/* Gold corner brackets shared by both replay panes (the Hextech bracket
+/* The padding-box background runs under the pane's scrollbar, and a
+ * classic (opaque, ~15-17px) Windows scrollbar hid the bottom-right
+ * bracket. A 12px scrollbar with a transparent gutter lets it show; the
+ * track's block margins keep the thumb out of the rounded corners, so it
+ * never covers the bracket, even at max scroll. The thumb is the only
+ * cue that the grid rows below the fold exist (RM-1019), so it is drawn
+ * in --text-faint (>= 3:1 on --surface, WCAG 1.4.11), not the 30% --border
+ * tint the smaller scrollers use. */
+.replay-main-pane::-webkit-scrollbar { width: 12px; background: transparent; }
+.replay-main-pane::-webkit-scrollbar-track { margin-block: var(--panel-radius); }
+.replay-main-pane::-webkit-scrollbar-thumb {
+  background: var(--text-faint);
+  border-radius: 6px;
+}
+.replay-main-pane::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+/* Gold corner brackets of the replay list pane (the Hextech bracket
  * motif from web/css/hextech.css .hx-card). Two 14px L-strokes at
- * top-left + bottom-right; decorative + pointer-inert. Both panes clip
- * their overflow (rounded scroll clip), so unlike the canonical
- * .hx-card the strokes are inset to 0 (not -1px) to sit just inside the
- * clip region and stay visible. */
+ * top-left + bottom-right; decorative + pointer-inert. The pane clips
+ * its overflow (rounded clip), so unlike the canonical .hx-card the
+ * strokes are inset to 0 (not -1px) to sit just inside the clip region
+ * and stay visible. .replay-main-pane scrolls, so it paints the same
+ * brackets as background layers instead (RM-1064, rule above). */
 .replay-list-pane::before,
-.replay-list-pane::after,
-.replay-main-pane::before,
-.replay-main-pane::after {
+.replay-list-pane::after {
   content: "";
   position: absolute;
   width: 14px; height: 14px;
@@ -256,14 +286,12 @@ header { transition: height 180ms ease; }
   border-style: solid;
   z-index: 1;
 }
-.replay-list-pane::before,
-.replay-main-pane::before {
+.replay-list-pane::before {
   top: 0; left: 0;
   border-width: 2px 0 0 2px;
   border-top-left-radius: var(--panel-radius);
 }
-.replay-list-pane::after,
-.replay-main-pane::after {
+.replay-list-pane::after {
   bottom: 0; right: 0;
   border-width: 0 2px 2px 0;
   border-bottom-right-radius: var(--panel-radius);
