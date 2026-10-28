@@ -134,9 +134,10 @@ class WindowParamTests(WardHeatBase):
         # should also be 30s (not the default 60s). Sanity-check that
         # mechanic with a 45s-old ward: at window_s=30 mid is uncovered;
         # at window_s=90 mid is still covered.
-        # Two separate observations because the buffer is global module
-        # state and recent_wards lazy-evicts past-window entries; reset
-        # between them so each call starts on a fresh snapshot.
+        # Two separate observations on a fresh buffer each (the buffer is
+        # global module state, and the response cache is keyed by
+        # window_s). A narrow read no longer evicts what a wide read
+        # needs - see test_narrow_request_does_not_erase_the_wide_view.
         now = time.time()
         ward_events.record_ward("ally", "mid", "yellow", ts=now - 45.0)
         body_narrow = _do("/api/ward-heat?window_s=30").parsed()
@@ -147,6 +148,24 @@ class WindowParamTests(WardHeatBase):
         ward_events.record_ward("ally", "mid", "yellow", ts=now - 45.0)
         body_wide = _do("/api/ward-heat?window_s=90").parsed()
         self.assertNotIn("mid", body_wide["lanes_uncovered_ally"])
+
+
+    def test_narrow_request_does_not_erase_the_wide_view(self):
+        # s144 true-audit: the eviction horizon used to be the caller's
+        # own window, so a window_s=5 request deleted a 45s-old ward
+        # that the default 90s view still had to show. No reset between
+        # the two requests here, on purpose.
+        now = time.time()
+        ward_events.record_ward("ally", "mid", "yellow", ts=now - 45.0)
+        narrow = _do("/api/ward-heat?window_s=5").parsed()
+        self.assertEqual(narrow["wards"], [])
+        wide = _do("/api/ward-heat?window_s=90").parsed()
+        self.assertEqual([w["lane"] for w in wide["wards"]], ["mid"])
+        self.assertNotIn("mid", wide["lanes_uncovered_ally"])
+
+    def test_retention_covers_the_widest_route_window(self):
+        self.assertGreaterEqual(
+            ward_events._RETENTION_S, routes_ward_heat._WINDOW_MAX_S)
 
 
 class CacheTests(WardHeatBase):

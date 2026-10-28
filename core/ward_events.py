@@ -31,9 +31,12 @@ Public API:
       Convenience: derive the lane label from (x, z) game-units on
       Summoner's Rift, then record_ward(). Returns the resolved lane.
   - recent_wards(now_s=None, window_s=90) -> list[dict]
-      The rolling window. Entries older than ``window_s`` are dropped
-      lazily on read. Returns a list of dicts:
+      The rolling window: entries with now_s - window_s <= ts <= now_s,
+      in insertion order. Returns a list of dicts:
         {ts, side, lane, ward_type}
+      Entries older than the RETENTION horizon (not the caller's window)
+      are dropped lazily on read, so one narrow read never erases what a
+      wider reader still needs.
   - counts_by_lane(now_s=None, window_s=90) -> dict
       Aggregate per-side per-lane count over the window:
         {"ally": {"top": 3, "mid": 2, "bot": 0, "jg": 1, "unknown": 0},
@@ -53,11 +56,21 @@ Internals:
     deque is the simplest correct shape - well under any contention
     threshold that would warrant a lock-free design.
   - Maximum buffer size: 256 entries. A defensive cap so a producer bug
-    can't unbounded-grow the buffer. 256 is ~3 mins of placements at
-    the theoretical 1-ward-per-second-per-player peak for a 10-player
-    game; in practice the cap is never reached.
+    can't unbounded-grow the buffer. A real game places on the order of
+    100-150 wards across all ten players in 30 minutes, so the 600 s
+    retention horizon holds well under 256; only a producer bug firing
+    every tick reaches the cap, and then the oldest entries fall off.
+  - Retention: ``_RETENTION_S`` (600 s, the widest window
+    /api/ward-heat accepts). Eviction on read uses
+    ``now_s - max(window_s, _RETENTION_S)``. It used to use the caller's
+    own window, so a ``?window_s=5`` request deleted every ward older
+    than 5 s from the default 90 s view (s144 true-audit).
+  - Every timestamp (``ts``, ``now_s``) must be a finite real number; a
+    bool, NaN or inf is refused. A NaN ``ts`` at the head of the deque
+    used to block the lazy GC forever while reporting itself in every
+    window.
 
-Lane zones (SR, game units, 0..14800):
+Lane zones (SR, game units, 0..16000 accepted; the map is ~14800):
   The Live Client emits position in raw game-unit coordinates with
   origin at the blue base corner. SR lane regions (broad zones):
     top  : low x  + high z  (top-left quadrant)
@@ -70,6 +83,7 @@ Lane zones (SR, game units, 0..14800):
 """
 from __future__ import annotations
 
+import math
 import threading
 import time
 from collections import deque
@@ -77,6 +91,11 @@ from typing import Optional
 
 # Buffer cap. Defensive; never reached in real play.
 _MAX_BUFFER = 256
+
+# Eviction horizon, independent of any caller's window. Must stay >= the
+# widest window /api/ward-heat accepts (routes_ward_heat._WINDOW_MAX_S);
+# tests/test_routes_ward_heat.py pins that.
+_RETENTION_S = 600.0
 
 # Default windows.
 _DEFAULT_WINDOW_S = 90.0
@@ -97,6 +116,26 @@ _buffer: deque[dict] = deque(maxlen=_MAX_BUFFER)
 _lock = threading.Lock()
 
 
+# -- Input coercion ---------------------------------------------------------
+
+def _finite(value) -> Optional[float]:
+    """``value`` as a finite float, else None. A bool is not a number here
+    (``True`` would otherwise read as 1.0 s / 1 game unit)."""
+    if isinstance(value, bool):
+        return None
+    try:
+        out = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return out if math.isfinite(out) else None
+
+
+def _label(value) -> str:
+    """A str label lower-cased and stripped; anything that is not a str is
+    the empty label (never str()'d - a hostile __str__ must not escape)."""
+    return value.lower().strip() if isinstance(value, str) else ""
+
+
 # -- Lane inference ---------------------------------------------------------
 
 def lane_from_position(x: float, z: float) -> str:
@@ -109,12 +148,12 @@ def lane_from_position(x: float, z: float) -> str:
       * jg   : everything else
 
     Returns one of {top, mid, bot, jg, unknown}. Out-of-bounds inputs
-    (negative, or beyond the SR map cap of ~14800) -> 'unknown'.
+    (negative, or beyond 16000 - the SR map is ~14800) and anything that
+    is not a finite number (NaN, inf, a bool, junk) -> 'unknown'.
     """
-    try:
-        x = float(x)
-        z = float(z)
-    except (TypeError, ValueError):
+    x = _finite(x)
+    z = _finite(z)
+    if x is None or z is None:
         return "unknown"
     if x < 0 or z < 0 or x > 16000 or z > 16000:
         return "unknown"
@@ -138,25 +177,24 @@ def record_ward(side: str, lane: str, ward_type: str,
     """Register a ward placement event.
 
     Inputs are sanity-checked and normalised:
-      * unknown side / ward_type -> the event is dropped (no exception)
-      * unknown lane -> stored as 'unknown'
+      * unknown or non-str side / ward_type -> the event is dropped
+        (no exception)
+      * a ``ts`` that is not a finite number (NaN, inf, bool) -> dropped
+      * unknown or non-str lane -> stored as 'unknown'
     The drop-on-bad-input shape matches vision_tracker.ingest: a
     malformed producer can't poison the buffer, but it also can't
     crash the dashboard route.
     """
+    ts = _finite(time.time() if ts is None else ts)
     if ts is None:
-        ts = time.time()
-    try:
-        ts = float(ts)
-    except (TypeError, ValueError):
         return
-    side = str(side or "").lower().strip()
+    side = _label(side)
     if side not in SIDES:
         return
-    ward_type = str(ward_type or "").lower().strip()
+    ward_type = _label(ward_type)
     if ward_type not in WARD_TYPES:
         return
-    lane = str(lane or "").lower().strip()
+    lane = _label(lane)
     if lane not in LANES:
         lane = "unknown"
     entry = {
@@ -183,32 +221,46 @@ def record_from_position(side: str, x: float, z: float, ward_type: str,
 
 def recent_wards(now_s: Optional[float] = None,
                  window_s: float = _DEFAULT_WINDOW_S) -> list[dict]:
-    """Return entries within the last ``window_s`` seconds, newest-first
-    discarded after stale-prune. Older entries are evicted from the
-    buffer on read (lazy GC).
+    """Return entries with ``now_s - window_s <= ts <= now_s``.
+
+    Each entry is tested on its own ``ts``: the buffer is in insertion
+    order, which is NOT time order once a producer passes an older
+    ``ts`` or the wall clock steps, so a left-only prune that returned
+    the rest unfiltered reported stale and future entries as current.
+
+    Entries older than ``now_s - max(window_s, _RETENTION_S)`` are
+    evicted from the buffer on read (lazy GC). The horizon is the
+    retention, not the caller's window, so a narrow read never erases an
+    entry a wider reader still needs. A ``now_s`` that is not a finite
+    number, or a NaN / non-positive ``window_s``, returns [] and evicts
+    nothing; ``window_s=inf`` means every retained entry up to ``now_s``.
 
     Entries are returned in INSERTION order (oldest-first). The UX-3
     canvas renders dots fading left over time, so insertion order is
     what the frontend wants - dot[0] is the oldest still in window.
     """
-    if now_s is None:
-        now_s = time.time()
-    try:
-        now_s = float(now_s)
-        window_s = float(window_s)
-    except (TypeError, ValueError):
+    now_s = _finite(time.time() if now_s is None else now_s)
+    if now_s is None or isinstance(window_s, bool):
         return []
-    if window_s <= 0:
+    try:
+        window_s = float(window_s)
+    except (TypeError, ValueError, OverflowError):
+        return []
+    if math.isnan(window_s) or window_s <= 0:
         return []
     cutoff = now_s - window_s
+    horizon = now_s - max(window_s, _RETENTION_S)
     with _lock:
-        # Lazy GC: drop everything older than cutoff from the LEFT.
-        # deque.popleft is O(1) so this stays cheap.
-        while _buffer and _buffer[0]["ts"] < cutoff:
-            _buffer.popleft()
+        # Lazy GC over the whole buffer, not just the left run: an
+        # out-of-order old entry behind a newer head must go too. At
+        # most 256 entries, so the rebuild stays cheap.
+        if any(e["ts"] < horizon for e in _buffer):
+            kept = [e for e in _buffer if e["ts"] >= horizon]
+            _buffer.clear()
+            _buffer.extend(kept)
         # Snapshot for the caller. dict copies so caller can mutate
         # safely (e.g. add a 'lane_label' frontend field).
-        return [dict(e) for e in _buffer]
+        return [dict(e) for e in _buffer if cutoff <= e["ts"] <= now_s]
 
 
 def counts_by_lane(now_s: Optional[float] = None,
@@ -237,9 +289,10 @@ def lanes_uncovered(side: str,
     in the last ``window_s`` seconds. Default 60s per UX-3 spec.
 
     Order: top, mid, bot, jg (canonical lane order). An empty return
-    means full coverage; the list never includes 'unknown'.
+    means full coverage; the list never includes 'unknown'. An unknown
+    or non-str side reads as fully uncovered rather than raising.
     """
-    side = str(side or "").lower().strip()
+    side = _label(side)
     if side not in SIDES:
         return list(NAMED_LANES)
     seen: set[str] = set()

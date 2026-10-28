@@ -84,8 +84,13 @@ class WindowPruneTests(WardEventsBase):
         # Only the second event should remain.
         self.assertEqual(len(snap), 1)
         self.assertEqual(snap[0]["lane"], "top")
-        # Lazy GC also drops it from the underlying buffer.
-        self.assertEqual(ward_events.buffer_size(), 1)
+        # s144 true-audit: the buffer KEEPS it (inside the retention
+        # horizon) so a wider-window reader still sees it; the lazy GC
+        # drops it only once it is older than _RETENTION_S.
+        self.assertEqual(ward_events.buffer_size(), 2)
+        ward_events.recent_wards(
+            now_s=50.0 + ward_events._RETENTION_S + 1.0, window_s=90.0)
+        self.assertEqual(ward_events.buffer_size(), 0)
 
     def test_window_zero_returns_empty(self):
         ward_events.record_ward("ally", "mid", "yellow", ts=100.0)
