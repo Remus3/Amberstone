@@ -456,8 +456,9 @@ class KitAxisChokepointTests(unittest.TestCase):
     def test_indecisive_distribution_falls_back_to_the_rating_split(self):
         """A genuine hybrid keeps the legacy verdict, it does not flip on noise.
 
-        Measured indecisive cohort at this patch: DrMundo Jax Kaisa Sejuani
-        Shaco Shen Shyvana Udyr Volibear Warwick.
+        Measured indecisive cohort at 16.15.1: DrMundo Jax Kaisa Sejuani
+        Shaco Shen Shyvana Udyr Volibear Warwick. The set moves with each
+        patch's kit data (Sejuani resolves from 16.19.1, see _EXPECTED_FLIPS).
         """
         for champ in ("Shaco", "Jax", "Kaisa", "Udyr", "Warwick"):
             with self.subTest(champion=champ):

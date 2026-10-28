@@ -3,8 +3,10 @@ term on the AD branch of the BRUISER (hybrid) scorer.
 
 Adjudicated in docs/specs/SPEC_rm39_rm43_ability_haste.md section 2.2
 (VERDICT: BUILD_DIFFERENT_THING). The named mechanism in the original work
-item - ability haste - is inert for these champions; the real defect is that
-92 of 173 champions resolve ``_damage_axis`` to "ad" and are then scored on
+item - ability haste - is inert for these champions; the real defect was that
+92 of 173 champions resolved ``_damage_axis`` to "ad" at L1 (patch 16.14.1,
+DDragon rating rule; the live count since the kit-axis rule is re-derived by
+``tests/test_docs_ds_damage_axis_s144d11.py``) and were then scored on
 auto-attack DPS ALONE. All three ``_ability_damage`` call sites
 (``compute_hybrid`` + the ranker baseline + the ranker per-candidate) gate on
 the "ap" branch, and ``dps.py:34`` says the AD branch omits ability damage by

@@ -78,8 +78,8 @@ from .survivability_credit import survivability_item_ids
 # ratings this function used to read ALONE are cosmetic class flavor that
 # reflects base stat GROWTH, not build reality - the exact complaint
 # ``onhit_dps.py:315-324`` already had to write down when it bolted on a local
-# ``_onhit_ap_axis`` workaround for Gwen and KogMaw. Measured against the live
-# snapshot the ratings disagree with the kit for 12 of 173 champions: Alistar
+# ``_onhit_ap_axis`` workaround for Gwen and KogMaw. Measured at patch 16.15.1,
+# when this rule landed, the ratings disagreed with the kit for 12 of 173: Alistar
 # Gwen KogMaw Leona Locke Ornn Rell Seraphine TwistedFate Vex all read "ad" and
 # are really AP, while Belveth and Qiyana read "ap" and are really AD. Belveth
 # was the broken and unmitigated one - the "ap" branch below drops
@@ -88,8 +88,9 @@ from .survivability_credit import survivability_item_ids
 #
 # DECISIVENESS GATES mirror ``core.archetype_picks._axis_from_distribution``
 # (dominant share >= 0.55 AND margin >= 0.20) so the two resolvers agree by
-# construction. A genuine hybrid (measured at this patch: DrMundo Jax Kaisa
-# Sejuani Shaco Shen Shyvana Udyr Volibear Warwick) clears neither gate and
+# construction. A genuine hybrid (at 16.15.1: DrMundo Jax Kaisa Sejuani Shaco
+# Shen Shyvana Udyr Volibear Warwick; the set moves with each patch's kit
+# data) clears neither gate and
 # FALLS BACK to the rating split rather than flipping on noise - as does any
 # champion with a missing or malformed distribution block.
 #
@@ -509,11 +510,13 @@ def compute_hybrid(
     score line runs on the same raw value with the same op order.
 
     ``apply_ad_axis_ability_damage`` (RM-39 / RM-43, DEFAULT-OFF) adds the
-    PHYSICAL-only ability term to the AD branch of the damage axis, which is
+    PHYSICAL + TRUE ability term to the AD branch of the damage axis, which is
     otherwise scored on auto-attack DPS ALONE (``dps.py:34`` - "Ability damage
-    is not included"). 84 of 173 champions resolve ``_damage_axis`` to "ad"
-    (92 before the kit-axis fix; the 12 flips are listed above _damage_axis),
-    so their real ability DPS is computed nowhere today; this is the defect
+    is not included"). 84 of 173 champions resolved ``_damage_axis`` to "ad"
+    at patch 16.15.1 (92 before the kit-axis fix; the 12 flips are listed
+    above _damage_axis; the live count is re-derived by
+    ``tests/test_docs_ds_damage_axis_s144d11.py``), so their real ability DPS
+    is computed nowhere today; this is the defect
     RM-39 and RM-43 actually describe (spec section 2.2 - the ability-HASTE
     mechanism they originally named is inert precisely BECAUSE there is no
     ability term on this branch to credit it into). When True the AD branch
@@ -639,8 +642,8 @@ def compute_hybrid(
     # magic-dominant, ratings as fallback) is scored on ABILITY damage so AP
     # items surface; AD champions keep compute_dps().weighted_dps.
     # RM-39/RM-43 (DEFAULT-OFF): the AD branch is auto-attack-only by design
-    # (dps.py:34), so 84 of 173 champions never price their ability damage.
-    # ON adds the PHYSICAL-only term; OFF binds the SAME raw value (a name
+    # (dps.py:34), so AD-axis champions never price their ability damage.
+    # ON adds the PHYSICAL + TRUE term; OFF binds the SAME raw value (a name
     # bind, not a float op) so this line is byte-identical at the default.
     # RM-98 (DEFAULT-OFF): the cast-rate propensity prior rides BOTH ability
     # branches. Passed by keyword so the positional tail is unchanged.
@@ -1076,7 +1079,7 @@ def rank_items_by_hybrid(
     byte-identical (the OFF branches are the pre-R58 lines verbatim).
 
     ``apply_ad_axis_ability_damage`` (RM-39 / RM-43, DEFAULT-OFF) adds the
-    PHYSICAL-only ability term to the AD branch of BOTH the baseline and every
+    PHYSICAL + TRUE ability term to the AD branch of BOTH the baseline and every
     candidate - the ranker mirrors of the ``compute_hybrid`` gate. See that
     function for the rationale and ``_physical_ability_damage`` for the
     mandatory damage-type guard. Unlike the R58 MS multiplier this is an
