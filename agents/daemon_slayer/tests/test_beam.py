@@ -186,7 +186,7 @@ class BeamSearchConstraintTests(unittest.TestCase):
             self.assertLessEqual(boots_count, 1)
 
     # RETIRED 2026-07-09 (LEDGER 826): the boots_unique=False branch is still
-    # live (beam.py:280-360, exposed via cli.py --no-boots-unique + the
+    # live (``beam.beam_search_build``, exposed via cli.py --no-boots-unique + the
     # server.py :8860 body param), but a BEHAVIORAL test of it is no longer
     # constructible. It only ever passed because the pool held stat-dense T3
     # quest-reward boots (3170-3175) that beam WANTED two of; commit 8aa7c64f

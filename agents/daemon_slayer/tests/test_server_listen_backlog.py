@@ -7,7 +7,7 @@ timeout can fix a refusal. Under 12-way load, 3 of 500 sequential POSTs raised
 `ConnectionRefusedError [WinError 10061]` even at a 30s deadline.
 
 The consequence was not a slow test, it was a WRONG one.
-`core/daemon_slayer_client.py:95-112` maps every transport failure to `None` -
+`core.daemon_slayer_client._post_json` maps every transport failure to `None` -
 correct production shape, because a live coach tick must fail fast rather than
 stall a frame - and callers then read `None` as "the engine had nothing to say"
 instead of "the engine never answered". So a refused socket surfaced as an

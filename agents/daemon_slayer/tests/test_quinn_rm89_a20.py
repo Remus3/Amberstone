@@ -34,7 +34,7 @@ top-8 entries - asserted here as a fact, not hoped away.
 
 BOTH seams stay DEFAULT-OFF. The L1 lever is gated on
 ``kit_conversion_strength > 0.0``; the exemption table is gated on
-``rank_items(exempt_offclass_by_win=True)`` (``rank.py:1146``). Byte-identical
+``rank_items(exempt_offclass_by_win=True)`` (``rank.rank_items``). Byte-identical
 defaults are asserted first because everything else is worthless without them.
 """
 

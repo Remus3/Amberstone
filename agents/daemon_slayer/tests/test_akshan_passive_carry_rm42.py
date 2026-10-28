@@ -10,7 +10,7 @@ holds 33 entries and `apply_passive_damage` reaches `compute_dps` (`/dps`) and
 table and coach tick goes through. Measured 2026-08-04 at ENGINE 1.272.0:
 `grep apply_passive_damage rank.py` returned ZERO. So Caitlyn's Headshot,
 Jhin's Whisper, Kai'Sa's Plasma and thirty more were priced nowhere the item
-ranking could see them. A docstring at `server.py:1609` asserted the opposite -
+ranking could see them. A docstring at `server._route_rank_mage` asserted the opposite -
 that `/rank` parses the flag - which is the "ownership prose lies in both
 directions" trap; it is corrected in this slice.
 
