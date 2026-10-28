@@ -97,8 +97,10 @@ import builtins
 import io
 import json
 import os
+import sys
 import tempfile
 import threading
+from pathlib import Path
 
 import pytest
 
@@ -129,6 +131,9 @@ _SESSION_NODEID = "<collection-or-session>"
 # and `path.with_suffix(".tmp")` produce different names and both are in use.
 _ATOMIC_TMP_SUFFIX = ".tmp"
 
+# Repo root, so the report writer can import core/ whatever the cwd.
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 _state = None
 
 
@@ -139,10 +144,7 @@ class _Tracer:
         self.root = root
         self.root_norm = os.path.normcase(root)
         self.report = report
-        self.report_norms = {
-            os.path.normcase(report),
-            os.path.normcase(report + ".tmp"),
-        }
+        self.report_norm = os.path.normcase(report)
         self.extra_roots = tuple(
             os.path.normcase(os.path.abspath(p)) for p in _EXTRA_WATCH_ROOTS
         )
@@ -169,7 +171,7 @@ class _Tracer:
         norm = os.path.normcase(disp)
         if _TMP_PATH_MARKER in norm:
             return None
-        if norm in self.report_norms:
+        if self._is_own_report(norm):
             return None
         if norm == self.tempdir_norm or norm.startswith(self.tempdir_norm + os.sep):
             return None
@@ -186,6 +188,13 @@ class _Tracer:
             if rel_norm == sub or rel_norm.startswith(sub + "/"):
                 return rel
         return None
+
+    def _is_own_report(self, norm):
+        """The report or a scratch of it: core.polled_json writes through
+        `<report>.<pid>.<hex>.tmp`, and the old writer used `<report>.tmp`."""
+        if norm == self.report_norm:
+            return True
+        return norm.startswith(self.report_norm + ".") and norm.endswith(".tmp")
 
     def credit_units(self, key, count, nodeid, record=None):
         with self.lock:
@@ -369,16 +378,22 @@ def _build_report(tracer):
 
 
 def _write_report(tracer):
+    """RM-258: through core.polled_json - a per-writer `<report>.<pid>.<hex>.tmp`
+    scratch, fsync, a bounded WinError 5 retry, the scratch removed on failure
+    and the parent created. The old hand-rolled `<report>.tmp` was one name
+    shared by every serial run on the default report path.
+
+    It runs from sessionfinish, before unconfigure, so the write goes through
+    the patched routes. The report still cannot trace itself: the payload is
+    serialized first, and key_for excludes the report and its scratch.
+    """
     payload = json.dumps(_build_report(tracer), indent=2, sort_keys=True)
-    parent = os.path.dirname(tracer.report)
-    if parent:
-        os.makedirs(parent, exist_ok=True)
-    tmp = tracer.report + ".tmp"
-    # The saved originals, not the live builtins - the report must not be able
-    # to trace itself, and unconfigure may not have run yet.
-    with tracer.orig_open(tmp, "w", encoding="ascii", newline="\n") as handle:
-        handle.write(payload)
-    tracer.orig_replace(tmp, tracer.report)
+    if _ROOT not in sys.path:
+        sys.path.insert(0, _ROOT)
+    from core.polled_json import atomic_write_bytes
+    # json.dumps escapes non-ASCII by default, so the encode cannot fail, and
+    # bytes keep the LF line ends the old newline="\n" text handle wrote.
+    atomic_write_bytes(Path(tracer.report), payload.encode("ascii"))
 
 
 def _default_report_path():

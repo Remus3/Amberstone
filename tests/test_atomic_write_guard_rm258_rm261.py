@@ -168,7 +168,6 @@ _TOOLS_UNCLASSIFIED = frozenset({
     "tools/hz_shadow_arena_contamination.py",
     "tools/ladder_role_scout.py",
     "tools/laning_verdict_information_probe.py",
-    "tools/live_write_tracer.py",
     "tools/package_portable.py",
     "tools/regen_ranged_marksman_builds_item213.py",
     "tools/repair_mojibake.py",

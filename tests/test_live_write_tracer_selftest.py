@@ -24,7 +24,7 @@ TWO LIMITS THIS CONTROL DOES NOT AND CANNOT CLAIM AWAY
    it. Green here means "the in-process routes fire", never "nothing wrote".
 2. A CONTROL PROVES THE ROUTES FIRE, NEVER THAT THE WATCH SET IS COMPLETE.
    Every positive arm below plants into a path this control itself chose to be
-   inside `_WATCH_SUBTREES` (`tools/live_write_tracer.py:105`). Nothing here
+   inside `_WATCH_SUBTREES` (`tools/live_write_tracer.py:111`). Nothing here
    tests whether that watch set names every subtree holding operator state, and
    a path the watch set omits is invisible to the instrument AND to this test.
 
@@ -42,7 +42,7 @@ removes its own tree in a `finally`.
 WHY NOT A pytest tmp_path
 -------------------------
 `key_for` excludes the system temp dir and any path carrying the `pytest-of-`
-segment (`tools/live_write_tracer.py:170-175`), on purpose. A specimen planted
+segment (`tools/live_write_tracer.py:172-177`), on purpose. A specimen planted
 in `tmp_path` would be discarded by the instrument for reasons that have
 nothing to do with whether the routes fire, and the control would read as a
 false negative - the exact failure a sibling repo's first run hit on Windows
@@ -94,7 +94,7 @@ class _StubConfig:
     """Stand-in for a pytest Config - the tracer reads exactly one option.
 
     `pytest_configure` consults `numprocesses` through `_is_xdist_controller`
-    (`tools/live_write_tracer.py:395-403`) and touches nothing else on config;
+    (`tools/live_write_tracer.py:410-418`) and touches nothing else on config;
     `pytest_unconfigure` ignores it entirely.
     """
 
@@ -148,7 +148,7 @@ def _plant_and_report(base, monkeypatch):
     monkeypatch.setenv("RC_TRACER_ROOT", str(root))
     monkeypatch.setenv("RC_TRACER_REPORT", str(report_path))
     # Without this the report path is suffixed per worker
-    # (`tools/live_write_tracer.py:471-475`) and this control would read a file
+    # (`tools/live_write_tracer.py:486-490`) and this control would read a file
     # that was never written, which presents as a clean zero.
     monkeypatch.delenv("PYTEST_XDIST_WORKER", raising=False)
 
@@ -188,7 +188,7 @@ def _plant_and_report(base, monkeypatch):
         os.replace(atomic_tmp, atomic_dst)
 
         # POSITIVE arm 3 - pathlib, which reaches io.open rather than
-        # builtins.open (`tools/live_write_tracer.py:489-495`).
+        # builtins.open (`tools/live_write_tracer.py:504-510`).
         tracer.nodeid = _NODEID_PATHLIB
         pathlib_path.write_text(_PATHLIB_PAYLOAD, encoding="ascii")
 
@@ -203,7 +203,7 @@ def _plant_and_report(base, monkeypatch):
         evidence["atomic_tmp_consumed"] = not atomic_tmp.exists()
 
         # SCRUB before the report is built. The report is assembled from
-        # in-memory state (`tools/live_write_tracer.py:342-368`), so removing
+        # in-memory state (`tools/live_write_tracer.py:351-377`), so removing
         # the specimens first costs nothing - and skipping it would leave a
         # manufactured finding in every tree this control ever runs in.
         shutil.rmtree(root)
@@ -262,7 +262,7 @@ def test_open_append_route_fires(control):
     assert report["wrote_units"].get(_APPEND_KEY) == len(_APPEND_PAYLOAD)
     assert report["written_by"].get(_APPEND_KEY) == [_NODEID_APPEND]
     # Data reached the path, so it must NOT be filed as an empty open
-    # (`tools/live_write_tracer.py:344-351`).
+    # (`tools/live_write_tracer.py:353-360`).
     assert _APPEND_KEY not in report["opened_for_write_only"]
 
 
@@ -282,7 +282,7 @@ def test_os_replace_route_fires_and_tmp_is_reported_separately(control):
 def test_pathlib_route_is_covered_by_the_io_open_patch(control):
     """pathlib reaches io.open, a separate binding from builtins.open.
 
-    Deleting `io.open = traced_open` at `tools/live_write_tracer.py:495` reds
+    Deleting `io.open = traced_open` at `tools/live_write_tracer.py:510` reds
     exactly this arm - that mutation is what promotes the patch's presence from
     an assumption to a measurement.
     """
@@ -326,3 +326,57 @@ def test_control_regenerates_within_one_process(request):
         assert report["wrote_units"].get(_ATOMIC_DST_KEY) == len(_ATOMIC_PAYLOAD)
         assert report["wrote_units"].get(_PATHLIB_KEY) == len(_PATHLIB_PAYLOAD)
         assert _NODEID_NEGATIVE not in json.dumps(report)
+
+
+def test_report_writer_routes_through_polled_json(tmp_path, monkeypatch):
+    """RM-258: the report goes through core.polled_json, not a hand-rolled
+    `<report>.tmp` plus a bare rename. Two serial runs on the default report
+    path used to share that one scratch name, with no fsync and no WinError 5
+    retry. The bytes stay what the old writer produced: ASCII, LF only."""
+    from core import polled_json
+
+    calls = []
+    real = polled_json.atomic_write_bytes
+
+    def spy(path, data):
+        calls.append((Path(path), data))
+        real(path, data)
+
+    monkeypatch.setattr(polled_json, "atomic_write_bytes", spy)
+    report_path = tmp_path / "out" / "live_write_trace.json"
+    tracer = live_write_tracer._Tracer(str(tmp_path / "root"), str(report_path))
+    # The pre-RM-258 writer read these two; set so it fails on the spy, not
+    # on a missing original.
+    tracer.orig_open = builtins.open
+    tracer.orig_replace = os.replace
+    tracer.credit_units("data/x.json", 5, "selftest::writer")
+
+    live_write_tracer._write_report(tracer)
+
+    expected = json.dumps(live_write_tracer._build_report(tracer),
+                          indent=2, sort_keys=True).encode("ascii")
+    assert calls == [(report_path, expected)]
+    assert report_path.read_bytes() == expected
+    assert b"\r" not in report_path.read_bytes()
+    assert sorted(p.name for p in report_path.parent.iterdir()) == [
+        "live_write_trace.json"]
+
+
+def test_key_for_excludes_the_report_and_its_polled_json_scratch():
+    """The instrument never counts its own report. With the report inside a
+    watched subtree (RC_TRACER_REPORT may point anywhere), neither the report
+    nor its core.polled_json scratch `<report>.<pid>.<hex>.tmp` is a key,
+    while another watched file's scratch still is."""
+    base = _SCRATCH_BASE / f"keyfor-{uuid.uuid4().hex[:8]}"
+    root = base / "root"
+    report = root / "data" / "live_write_trace.json"
+    tracer = live_write_tracer._Tracer(str(root), str(report))
+
+    assert tracer.key_for(str(report)) is None
+    assert tracer.key_for(str(report) + ".tmp") is None
+    assert tracer.key_for(str(report) + ".4242.0a1b2c3d.tmp") is None
+    # Controls: the watch set itself is untouched.
+    assert tracer.key_for(str(root / "data" / "other.json.4242.0a1b2c3d.tmp")) == (
+        "data/other.json.4242.0a1b2c3d.tmp")
+    assert tracer.key_for(str(root / "data" / "live_write_trace.json.bak")) == (
+        "data/live_write_trace.json.bak")
