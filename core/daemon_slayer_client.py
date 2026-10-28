@@ -695,7 +695,7 @@ def rank_for(
     fight_length: Optional[float] = None,    # per-champ burst-carry blend (Jhin pilot)
     widen_carry_pool: bool = False,          # RM-04 A-01
     # W2 conversion seams - appended LAST per the repo convention. Both are
-    # parsed off the SAME POST /rank body server-side (server.py:481 / :488).
+    # parsed off the SAME POST /rank body server-side (_route_rank).
     kit_conversion_strength: float = 0.0,    # RM-86 L1 lever
     apply_crit_conversion: bool = False,     # A-12 / RM-46 (Ashe Frost Shot)
     apply_ad_axis_ability_damage: bool = False,  # RM-36 / RM-38 (AD-caster)
@@ -743,12 +743,12 @@ def rank_for(
     ``kit_conversion_strength`` (RM-86 L1, DEFAULT-0.0) and
     ``apply_crit_conversion`` (A-12 / RM-46, DEFAULT-OFF) are the two
     champion-selective conversion seams. Both were already parsed by the server
-    (``agents/daemon_slayer/server.py:481`` / ``:488``) and accepted by the
-    engine (``rank.py:918`` / ``:921``) but had NO client plumb, so the Ashe +
+    (``_route_rank`` in ``agents/daemon_slayer/server.py``) and accepted by the
+    engine (``rank_items`` parameters) but had NO client plumb, so the Ashe +
     Quinn fixes shipped 2026-07-25 could not reach a live coach tick or a
     generated build table. The engine gates are NOT symmetric:
     ``apply_crit_conversion`` is a bool whose omit-value is False, while
-    ``kit_conversion_strength`` is a float that ``rank.py:1303-1305`` consults
+    ``kit_conversion_strength`` is a float that ``rank_items`` consults
     the registry for ONLY when it is ``> 0.0``. Each key is therefore emitted
     only when it would actually do something, keeping a flagless request
     byte-identical to the pre-plumb path.
@@ -797,8 +797,8 @@ def rank_for(
     if widen_carry_pool:
         body["widen_carry_pool"] = True
     # RM-86 L1: the engine consults the kit-conversion registry only when the
-    # lever is strictly positive (rank.py:1303-1305), so 0.0 and any negative
-    # are inert server-side - emit nothing and stay byte-identical.
+    # lever is strictly positive (rank_items' RM-86 L1 gate), so 0.0 and any
+    # negative are inert server-side - emit nothing and stay byte-identical.
     if kit_conversion_strength > 0.0:
         body["kit_conversion_strength"] = float(kit_conversion_strength)
     # A-12 / RM-46: bool seam, engine default False - emit only when ON.
@@ -943,7 +943,7 @@ def rank_tank_for(
     assume_item_health_stacks: bool = False,
     assume_item_proc_heal: bool = False,
     # TRI-STATE, unlike every other seam in this block. ``_route_rank_tank``
-    # (server.py:701-703) reads it as None-when-absent, and the engine turns it
+    # reads it as None-when-absent (``in body`` test), and the engine turns it
     # ON by default for the cc_blended metric - so this is an OFF switch, and a
     # plain ``bool = False`` with emit-when-True could never express the OFF.
     # None = inherit (omit the key), False = explicitly disable.
@@ -984,7 +984,7 @@ def rank_tank_for(
     # when True. Appended at END per the no-mid-signature-insert convention.
     assume_passive_flat_mitigation: bool = False,
     # RM-118 residual (2026-07-30): the two SELF-side rune survivability lanes on
-    # the RANKER lane. ``rank_items_by_ehp`` names BOTH (ehp.py:3161-3162), so
+    # the RANKER lane. ``rank_items_by_ehp`` names BOTH as parameters, so
     # unlike the three scalar-only seams noted above these are a real sort input
     # here. Routed through ``_emit_ehp_family_seams`` because all four of that
     # helper's callers now post to a route that parses them.
@@ -1280,10 +1280,11 @@ def ehp_for(
     - ``_route_ehp`` does not parse it (it needs a resolved build, which /ehp
     does not rank over)". RM-334 measured that reason backwards and corrected
     it: build tenacity needs a RESOLVED build, and ``/ehp`` is the route that
-    scores exactly one - ``ehp.py:2582`` reads
-    ``total_item_tenacity(item_ids)``, and ``item_ids`` is the ``items`` list
-    this function already sends. The RANKERS are the endpoints without a single
-    resolved build, which is why they carry the tri-state and this does not.
+    scores exactly one - ``compute_ehp``'s ``if apply_build_tenacity:``
+    branch reads ``total_item_tenacity(item_ids or ())``, and ``item_ids`` is
+    the ``items`` list this function already sends. The RANKERS are the
+    endpoints without a single resolved build, which is why they carry the
+    tri-state and this does not.
     Its TRANSPORT is ``item_ids`` plus ``enemies``: a build with no tenacity
     source, or an empty enemy comp, leaves it arithmetically inert.
     """
@@ -1553,7 +1554,7 @@ def rank_bruiser_for(
     # DEFAULT-OFF bool, emitted by _emit_ehp_family_seams only when True.
     apply_ad_axis_dual_scaling_split: bool = False,
     # TRI-STATE, unlike every other seam in this block - see rank_tank_for.
-    # ``_route_rank_bruiser`` (server.py:973-975) reads it as None-when-absent
+    # ``_route_rank_bruiser`` reads it as None-when-absent (``in body`` test)
     # and the engine defaults it ON for cc_blended, so None = inherit and
     # False = explicitly disable. A plain bool could not express the OFF.
     apply_build_tenacity: Optional[bool] = None,
@@ -1562,7 +1563,7 @@ def rank_bruiser_for(
     # emitted via _emit_ehp_family_seams only when True -> byte-identical off.
     assume_hsp_amp: bool = False,
     # RM-118 residual (2026-07-30): all three stranded rune lanes on the BRUISER
-    # ranker. ``rank_items_by_hybrid`` names every one (hybrid.py:1037-1042), so
+    # ranker. ``rank_items_by_hybrid`` names every one as a parameter, so
     # each can change an item CHOICE here. ``rune_ids`` above is the transport.
     apply_rune_self_heal: bool = False,
     apply_rune_shield_grants: bool = False,
@@ -1721,11 +1722,11 @@ def rank_mage_for(
     filter_shared_uniques: bool = True,
     timeout: float = DEFAULT_TIMEOUT,
     # A-07 / RM-82 TERM 2 seam - appended LAST per the repo convention. Parsed
-    # off the POST /rank-mage body server-side (server.py:1265).
+    # off the POST /rank-mage body server-side (_route_rank_mage).
     apply_passive_aura_damage: bool = False,  # A-07 / RM-82 (Morde Darkness Rise)
     # RM-115 A-03 / RM-81 ability-base seam. DEFAULT-OFF; omitted key ==
-    # byte-identical. Load-time on the engine (abilities.py:1006), resolved
-    # server-side into an abilities snapshot.
+    # byte-identical. Load-time on the engine (AbilitiesSnapshot.load),
+    # resolved server-side into an abilities snapshot.
     apply_ability_base_overrides: bool = False,
     # RM-115 tail (1.254.0). The Hwei staged-block lane is keyed
     # ("Hwei","Q",2), so it needs form_index={"Q": 2} to fire; Illaoi is
@@ -1763,7 +1764,8 @@ def rank_mage_for(
 
     NOT to be confused with ``apply_passive_damage`` - that is the separate
     AA-cadence passive flag on /rank and /rank-onhit. This one is MAGE-ONLY:
-    /rank-mage is the sole route that parses it (server.py:1265).
+    /rank-mage is the sole RANKER route that parses it (``_route_rank_mage``;
+    the scalar /ability-dps route parses it too).
     """
     body: dict = {
         "champion": champion,
@@ -3020,9 +3022,9 @@ def rank_for_primary_archetype(
     apply_ad_axis_dual_scaling_split: bool = False,
     apply_passive_damage: bool = False,          # carry (RM-42)
     apply_extra_shot_procs: bool = False,        # carry (RM-42 follow-on)
-    # RM-115 gate-3 seam, MAGE-ONLY: /rank-mage is the sole route that parses
-    # apply_passive_aura_damage (server.py:1265), so it is forwarded to the
-    # ds.ability branch alone. Forwarding it elsewhere would be inert.
+    # RM-115 gate-3 seam, MAGE-ONLY: /rank-mage is the sole RANKER route that
+    # parses apply_passive_aura_damage (_route_rank_mage), so it is forwarded
+    # to the ds.ability branch alone. Forwarding it elsewhere would be inert.
     apply_passive_aura_damage: bool = False,     # mage (A-07 / RM-82 TERM 2)
     # RM-115 A-03 / RM-81: mage + assassin. All six corrected champions route
     # to one of those two archetypes, so it is forwarded to both branches and
