@@ -30,7 +30,7 @@ against the shipped 16.14.1 data, not carried forward from a doc):
 WHY THE KIT HALF IS A SEPARATE AXIS ENTIRELY:
 
   ``effects.effective_target_mr(target_mr, effects)`` accepts ONLY
-  ``ItemEffect`` objects (effects.py:631). There is no champion-id
+  ``ItemEffect`` objects (its signature). There is no champion-id
   parameter and no kit lane anywhere in that pipeline, so
   kit-intrinsic magic penetration NEVER enters the damage math. It is
   scored only on the standalone opt-in anti-tank axis,
