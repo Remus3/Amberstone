@@ -54,6 +54,11 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from core import polled_json  # noqa: E402
+
 KIT_DIR = ROOT / "ops" / "fleet_kit"
 STATE_REL = Path("ops/loop/control/bot_merge_check.json")
 LOG_REL = Path("ops/loop/control/bot_merge_check.jsonl")
@@ -120,10 +125,9 @@ def _read_state(root):
 
 
 def _atomic_write(path, text):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(path.name + ".tmp")
-    tmp.write_bytes(text.encode("ascii"))
-    tmp.replace(path)
+    """ASCII bytes through core.polled_json (per-writer scratch, fsync,
+    bounded rename retry, scratch removed on failure - RM-258)."""
+    polled_json.atomic_write_bytes(path, text.encode("ascii"))
 
 
 def _now():

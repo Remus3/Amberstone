@@ -134,7 +134,6 @@ _RUNTIME_TOOLS = frozenset({
 # stops offending fails test_tools_baseline_is_exact until it is dropped.
 _TOOLS_UNCLASSIFIED = frozenset({
     "tools/ascii_escape_py.py",
-    "tools/bot_merge_check.py",
     "tools/build_portable.py",
     "tools/build_python_embed.py",
     "tools/build_third_party_notices.py",
