@@ -13,10 +13,15 @@ Recorded facts the assertions lean on (re-checkable by eye in the fixtures):
 - Akshan MR: DDragon 33, wiki 33, Meraki 30 (Meraki is a "latest" feed that
   lags patches).
 - Draven base AD: 62 in DDragon 16.18.1, 64 in 16.19.1.
+- The wiki fixture is TRIMMED to Kled's primary block (id 240). The live
+  module also carries a "Kled & Skaarl" block (id 240.1, same apiname), so the
+  RM-600 / RM-787 shape is planted into the private copy by the test below,
+  never into the tracked recording.
 """
 from __future__ import annotations
 
 import json
+import re
 import shutil
 from pathlib import Path
 
@@ -24,6 +29,7 @@ import pytest
 
 from lib.game_data import build as gd_build
 from lib.game_data import fetch as gd_fetch
+from lib.game_data import lua_text
 from lib.game_data import sources as gd_sources
 from lib.game_data.replay import ReplayClient, ReplayMiss
 
@@ -156,6 +162,70 @@ def test_verify_catches_a_disagreement_the_build_did_not_explain(replay, tmp_pat
     b.caveats = [c for c in b.caveats if not (c["entity"] == "champion:Kled" and c["field"] == "attack_range")]
     rep = gd_build.verify(b, fetched)
     assert [(u["entity"], u["field"]) for u in rep["unexplained"]] == [("champion:Kled", "attack_range")]
+
+
+# ----------------------------------------------------------------- RM-600 shape
+
+# RM-1020: the second Kled record the live module carries (RM-787 measured it
+# on 2026-10-27: id 240.1, hp_base 810, range 125, ms 345, and a Lua-commented
+# aram table). Synthetic text in the live shape; planted only into the private
+# replay copy, because the tracked fixture's _index.json promises unmodified
+# recordings.
+_KLED_SKAARL = """\
+  ["Kled & Skaarl"] = {
+    ["id"]         = 240.1,
+    ["apiname"]    = "Kled",
+    ["title"]      = "The Cantankerous Cavalier",
+    ["stats"] = {
+      ["hp_base"]  = 810,
+      ["hp_lvl"]   = 84+1000/17,
+      ["range"]    = 125,
+      ["ms"]       = 345,
+      ["as_base"]  = 0.7,
+      ["as_ratio"] = 0.7,
+      --["aram"] = { this is pointless
+      --["dmg_dealt"] = 1.05,
+      --},
+    },
+    ["fullname"]   = "Kled and Skaarl",
+  },
+"""
+
+
+def _plant_kled_skaarl(replay_dir: Path, *, primary_first: bool) -> None:
+    p = replay_dir / "wiki_championdata.lua.txt"
+    text = p.read_text(encoding="utf-8")
+    start = text.index('  ["Kled"] = {')
+    end = lua_text.block_end(text, text.index("{", start))
+    assert text[end:end + 2] == ",\n"
+    if primary_first:
+        text = text[:end + 2] + _KLED_SKAARL + text[end + 2:]
+    else:
+        text = text[:start] + _KLED_SKAARL + text[start:]
+    p.write_bytes(text.encode("utf-8"))
+
+
+@pytest.mark.parametrize("primary_first", [True, False], ids=["primary_first", "primary_last"])
+def test_a_second_kled_record_changes_nothing_in_the_build(replay, tmp_path, primary_first):
+    base, _f, _c = _build(replay, tmp_path / "base")
+    _plant_kled_skaarl(replay, primary_first=primary_first)
+    planted = (replay / "wiki_championdata.lua.txt").read_text(encoding="utf-8")
+    # Positive control: the plant really put two Kled records in the module.
+    assert len(re.findall(r'\["apiname"\]\s*=\s*"Kled"', planted)) == 2
+    assert (planted.index('["Kled"] = {') < planted.index('["Kled & Skaarl"]')) is primary_first
+    b, fetched, _c = _build(replay, tmp_path / "planted")
+    cav = {(c["entity"], c["field"]): c for c in b.caveats}
+    # The wiki's Kled is still the primary record (range 250, ms 305, hp 410),
+    # not "Kled & Skaarl" (125 / 345 / 810).
+    assert cav[("champion:Kled", "attack_range")]["values_by_source"] == {
+        "ddragon": 125, "meraki": 250, "wiki": 250,
+    }
+    assert cav[("champion:Kled", "move_speed")]["values_by_source"]["wiki"] == 305
+    assert ("champion:Kled", "hp") not in cav
+    # And the build as a whole is the one the trimmed recording gives.
+    assert b.champions == base.champions
+    assert b.caveats == base.caveats
+    assert gd_build.verify(b, fetched)["unexplained"] == []
 
 
 # ----------------------------------------------------------------- era / patch
