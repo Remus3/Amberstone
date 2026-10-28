@@ -65,15 +65,17 @@ def _clear_cache():
 
 
 def _spy_read_text(monkeypatch):
-    """Wrap pathlib.Path.read_text with a call counter (original still runs)."""
+    """Wrap the module's one file read (league_settings._read_cfg, the capped
+    bytes read since the s144 true-audit; it was Path.read_text before) with a
+    call counter (original still runs)."""
     calls = {"n": 0}
-    orig = Path.read_text
+    orig = league_settings._read_cfg
 
-    def counting(self, *args, **kwargs):
+    def counting(*args, **kwargs):
         calls["n"] += 1
-        return orig(self, *args, **kwargs)
+        return orig(*args, **kwargs)
 
-    monkeypatch.setattr(Path, "read_text", counting)
+    monkeypatch.setattr(league_settings, "_read_cfg", counting)
     return calls
 
 
