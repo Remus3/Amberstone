@@ -32,6 +32,12 @@ span; a span is split on `;`, `&&`, `||` and `|`, so the gate covers its own
 command only; and the TIER TABLE flags match as whole tokens (`-n 80` is not
 `-n 8`).
 
+RM-1104 (the s144 queue cycle 49 verifier's four residues): a single `&`
+between two commands chains (cmd.exe) while a leading `&` (PowerShell's call
+operator) does not; the gate counts only where it prefixes the run; `-n=8` and
+`-n8` run xdist; and the TIER TABLE flags accept every spelling pytest parses
+the same way (`-n8`, `-n=8`, `--dist=loadfile`), pinned by a test.
+
 Out of scope: dated records (docs/_archive/, measurement docs, plans, audits,
 LEDGER, ROADMAP history) quote the command that was run at the time; they are
 evidence, not instructions. CLAUDE.md is the main session's file.
@@ -58,7 +64,9 @@ SCANNED = tuple(f"tools/{name}" for name in COMMANDS) + LIVING_OPS_DOCS
 GATE = "fleet_suite_gate.py"
 SUITE_ROOTS = {"tests", "agents/daemon_slayer/tests", "agents/daemon_slayer",
                "tools/tests", "tests/snapshot_panels", "."}
-_XDIST = re.compile(r"(?:^|\s)(?:-n\s*(?:\d+|auto|logical)|--numprocesses(?:=|\s+)\S+)(?=\s|$)")
+# `-n 8`, `-n8` and `-n=8` all run xdist (RM-1104 (c)).
+_XDIST = re.compile(r"(?:^|\s)(?:-n(?:\s*|=)(?:\d+|auto|logical)"
+                    r"|--numprocesses(?:=|\s+)\S+)(?=\s|$)")
 _PYTEST_WORD = re.compile(r"\bpytest\b")
 _FENCE = re.compile(r"^\s*(?:>\s*)*```")
 _INLINE = re.compile(r"`([^`\n]+)`")
@@ -121,7 +129,12 @@ def _is_collect_only(span: str) -> bool:
 
 
 def _is_gated(span: str) -> bool:
-    return f"{GATE} run" in span or f'{GATE}" run' in span
+    """The gate PREFIXES the run: it sits before the first `pytest` word (else
+    the first xdist flag), so a gate named after the run - a trailing comment,
+    an argument - does not gate it (RM-1104 (b))."""
+    run = _PYTEST_WORD.search(span) or _XDIST.search(span)
+    head = span if run is None else span[:run.start()]
+    return f"{GATE} run" in head or f'{GATE}" run' in head
 
 
 def _pytest_args(span: str) -> str:
@@ -272,3 +285,58 @@ def test_fenced_and_inline_spans_are_both_read(tmp_path, monkeypatch):
     assert (1, "tests/ -q -n 8") in spans
     assert (3, "python -m pytest tests -q -n 8") in spans
     assert all(n != 5 for n, _ in spans)
+
+
+def test_a_single_ampersand_chains_but_a_call_operator_does_not():
+    # RM-1104 (a): cmd.exe's `a & b` runs b after a, so a gate before a
+    # single `&` does not cover the suite after it; PowerShell's leading `&`
+    # call operator (`& "py.exe" -m pytest`, also after `;`) is not a chain.
+    gated = ("python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- "
+             "python -m pytest tests -q -n 8 --dist loadfile "
+             "--max-worker-restart=0")
+    assert _ungated_suite_segments(gated + " & python -m pytest tests -n 8")
+    call = ('& "py.exe" ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- '
+            '"py.exe" -m pytest tests -q -n 8 --dist loadfile --max-worker-restart=0')
+    assert _segments(call) == [call]
+    assert not _ungated_suite_segments(call)
+    assert not _ungated_suite_segments("cd <repo>; " + call)
+    assert _segments('cd <repo>; & "py.exe" -V') == ["cd <repo>", '& "py.exe" -V']
+    # `2>&1` and `&&` are not single-ampersand chains.
+    assert _segments("a 2>&1 && b") == ["a 2>&1", "b"]
+
+
+def test_the_gate_must_precede_the_suite_it_covers():
+    # RM-1104 (b): a gate named AFTER the run (a trailing comment, an
+    # argument) does not gate the run; the gate prefixes the command. The
+    # quoted form is the reachable one: a bare `...gate.py` token reads as a
+    # cited test file and already makes the span a slice.
+    for frag in ('python -m pytest tests -n 8 # "ops/fleet_kit/fleet_suite_gate.py" run',
+                 'python -m pytest tests -n 8 --ignore=x "fleet_suite_gate.py" run',
+                 'tests/ -q -n 8 then "fleet_suite_gate.py" run'):
+        assert _is_xdist_whole_suite(frag) and not _is_gated(frag), frag
+    assert _is_gated('& "py.exe" ops/fleet_kit/fleet_suite_gate.py" run --owner <id> '
+                     '-- "py.exe" -m pytest tests -n 8')
+
+
+def test_every_argparse_spelling_of_n_runs_xdist():
+    # RM-1104 (c): pytest parses `-n=8` and `-n8` as `-n 8`.
+    for frag in ("python -m pytest tests -n=8", "python -m pytest tests -n8",
+                 "tests/ -q -n=auto", "pytest . --numprocesses 4"):
+        assert _is_xdist_whole_suite(frag) and not _is_gated(frag), frag
+    for prose in ("-name", "--no-header", "-nx"):
+        assert not _runs_xdist(prose), prose
+
+
+def test_the_tier_table_flags_accept_each_argparse_spelling():
+    # RM-1104 (d), the choice pinned: the guard pins what the run DOES, so
+    # every spelling pytest parses identically to `-n 8 --dist loadfile` is
+    # accepted; a different value is not. `--max-worker-restart=0` stays the
+    # one literal token the RM-754 guards and the TIER TABLE name.
+    for ok in ("-n8 --dist loadfile --max-worker-restart=0",
+               "-n=8 --dist loadfile --max-worker-restart=0",
+               "-n 8 --dist=loadfile --max-worker-restart=0"):
+        assert _has_tier_table_flags(ok), ok
+    for bad in ("-n=80 --dist loadfile --max-worker-restart=0",
+                "-n8 --dist=loadscope --max-worker-restart=0",
+                "-n 8 --dist loadfile --max-worker-restart 0"):
+        assert not _has_tier_table_flags(bad), bad

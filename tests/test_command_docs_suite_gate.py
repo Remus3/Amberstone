@@ -53,12 +53,16 @@ GATE = "fleet_suite_gate.py"
 RESTART_CAP = "--max-worker-restart=0"
 _PYTEST = re.compile(r"-m pytest\b")
 _GATED = re.compile(r'fleet_suite_gate\.py"? run --owner <id> -- (?P<cmd>[^`]*)')
-# Shell chain operators: a gate covers its own command only (RM-1103).
-_CHAIN = re.compile(r"\s*(?:&&|\|\||;|\|)\s*")
+# Shell chain operators: a gate covers its own command only (RM-1103). A
+# single `&` between two commands chains too (cmd.exe, RM-1104 (a)). One that
+# opens a span or follows another operator (PowerShell's call operator, `; &`)
+# has no whitespace of its own before it, and one inside a token (`2>&1`) none
+# around it, so neither splits.
+_CHAIN = re.compile(r"\s*(?:&&|\|\||;|\|)\s*|\s+&\s+")
 # Options whose value names a file the run SKIPS (RM-1103); the
 # `--opt=value` form is one token, `--opt value` two.
 _SKIP_OPTS = ("--ignore", "--ignore-glob", "--deselect")
-_TIER_FLAGS = (re.compile(r"(?:^|\s)-n\s*8(?=\s|$)"),
+_TIER_FLAGS = (re.compile(r"(?:^|\s)-n(?:\s*|=)8(?=\s|$)"),
                re.compile(r"(?:^|\s)--dist(?:\s+|=)loadfile(?=\s|$)"))
 
 
@@ -92,7 +96,10 @@ def _names_a_test_file(args: str) -> bool:
 
 def _has_tier_table_flags(cmd: str) -> bool:
     """`-n 8 --dist loadfile --max-worker-restart=0` as whole tokens, so `-n 80`
-    or `--dist loadfilex` is not read as the TIER TABLE flags (RM-1103)."""
+    or `--dist loadfilex` is not read as the TIER TABLE flags (RM-1103).
+    Every spelling pytest parses the same way (`-n8`, `-n=8`, `--dist=loadfile`)
+    is accepted: the guard pins what the run does, not its spelling (RM-1104
+    (d)). The restart cap stays the one literal token the RM-754 guards name."""
     return (all(rx.search(cmd) for rx in _TIER_FLAGS)
             and RESTART_CAP in cmd.split())
 
@@ -211,3 +218,18 @@ def test_command_docs_point_at_the_one_table():
                  "directed-headless-upgrade.md", "ship-batch.md",
                  "test-first-autopilot.md", "test-driven-development.md"):
         assert "TIER TABLE" in _text(name), name
+
+
+def test_a_single_ampersand_ends_the_gated_command(tmp_path, monkeypatch):
+    # RM-1104 (a): cmd.exe's `a & b` chains, so the gate before `&` does not
+    # cover the pytest after it; PowerShell's leading `&` call operator does
+    # not split, so `& "py.exe" ...gate... -- "py.exe" -m pytest` stays gated.
+    gated = ("`python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- "
+             "python -m pytest tests -q -n 8 --dist loadfile "
+             "--max-worker-restart=0")
+    call = ('`& "py.exe" ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- '
+            '"py.exe" -m pytest tests -q -n 8 --dist loadfile --max-worker-restart=0`')
+    (tmp_path / "x.md").write_bytes(
+        (gated + " & python -m pytest tests -q -n 8`\n" + call + "\n").encode())
+    monkeypatch.setattr(sys.modules[__name__], "TOOLS", tmp_path)
+    assert [hit.split(":")[1] for hit in _ungated_whole_suites("x.md")] == ["1"]

@@ -41,8 +41,8 @@ _WORKFLOWS = _REPO / ".github" / "workflows"
 _PYTEST_INI = _REPO / "pytest.ini"
 _DONE = _REPO / "tools" / "done.md"
 FLAG = "--max-worker-restart=0"
-# `-n auto` / `-n 8` / `-n=4` / `--numprocesses 2` as a whole token.
-_XDIST = re.compile(r"(?:^|\s)(?:-n|--numprocesses)(?:\s+|=)\S")
+# `-n auto` / `-n 8` / `-n=4` / `-n8` / `--numprocesses 2` as a whole token.
+_XDIST = re.compile(r"(?:^|\s)(?:(?:-n|--numprocesses)(?:\s+|=)\S|-n\d)")
 
 
 def _yaml():
@@ -104,6 +104,9 @@ def test_the_detector_flags_a_step_without_the_cap():
     other = {"jobs": {"j": {"steps": [
         {"name": "s", "run": "pytest tests/ -n 4 --max-worker-restart=1\n"}]}}}
     assert _offenders(other) == (1, ["j / s"])
+    # RM-1104 (c) sibling: pytest parses `-n8` as `-n 8`.
+    glued = {"jobs": {"j": {"steps": [{"name": "s", "run": "pytest tests/ -n8\n"}]}}}
+    assert _offenders(glued) == (1, ["j / s"])
 
 
 def test_the_cap_is_not_in_pytest_ini_addopts():
