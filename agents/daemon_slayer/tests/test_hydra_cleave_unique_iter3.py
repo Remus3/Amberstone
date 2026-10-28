@@ -7,8 +7,9 @@ per AA, not twice. Prior to this fix the engine left
 ``unique_passive_key=""`` on all 4 SR + 4 Arena mirrors, and
 ``effects.collect_effects`` therefore handed BOTH cleave periodics to
 ``_periodic_proc_dps`` which fires every periodic on every AA -> double
-(or triple) damage attribution for any 2+ hydra build. The comment at
-``_effects_data.py:609-612`` claimed Tiamat-tree exclusivity was
+(or triple) damage attribution for any 2+ hydra build. The comment the
+iter-3 note now replaces (above the Profane Hydra ``"6698"`` row in
+``_effects_data.py``) claimed Tiamat-tree exclusivity was
 "enforced by the ranker's build legality checks" but
 ``rank._filter_candidates`` has no such check - the documented invariant
 was wishful thinking. Fix: tag all 8 items with
