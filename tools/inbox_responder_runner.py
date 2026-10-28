@@ -1138,20 +1138,20 @@ def load_participants(repo_root) -> tuple:
 
 
 def _trim(path: Path, keep: int = INVOCATION_LOG_KEEP) -> None:
-    """This log's OWN trimmer. The hook log's 32 KB rule would evict hook fires."""
+    """This log's OWN trimmer. The hook log's 32 KB rule would evict hook fires.
+
+    RM-258: through core.polled_json (per-writer scratch name, fsync, bounded
+    WinError 5 retry, scratch removed on failure). A failed trim stays silent;
+    the next append retries it.
+    """
     try:
         lines = path.read_text(encoding="utf-8", errors="replace").splitlines(True)
     except OSError:
         return
     if len(lines) <= keep:
         return
-    tmp = path.with_suffix(".jsonl.tmp")
-    try:
-        tmp.write_text("".join(lines[-keep:]), encoding="utf-8", newline="")
-        tmp.replace(path)
-    except OSError:
-        with contextlib.suppress(OSError):
-            tmp.unlink()
+    with contextlib.suppress(OSError):
+        atomic_write_bytes(path, "".join(lines[-keep:]).encode("utf-8"))
 
 
 def _append_line(path: Path, payload: dict) -> None:
@@ -1237,11 +1237,13 @@ def _rotate_metrics(path: Path) -> None:
     who relocates the record mid-window empties what the live file can quote.
     The rows are in the archive beside it, not deleted.
 
-    ORDER IS THE FAIL DIRECTION. The carry file is written first, the archive
-    appended second and the live file replaced last, so every failure leaves
-    the live file COMPLETE rather than short. The disclosed cost is that a
-    crash between the append and the replace can duplicate rows into an
-    archive on the next rotation - duplicated evidence beats deleted evidence,
+    ORDER IS THE FAIL DIRECTION. The archive is appended first and the live
+    file replaced last, through core.polled_json (RM-258: per-writer scratch
+    name, fsync, bounded WinError 5 retry, scratch removed on failure), so
+    every failure leaves the live file COMPLETE rather than short. The
+    disclosed cost is that a failure after the append - a crash, a carry write
+    that cannot land, a rename refused past the retry - duplicates rows into an
+    archive on the next rotation. Duplicated evidence beats deleted evidence,
     and the stamp in the name makes it visible.
     """
     try:
@@ -1262,15 +1264,10 @@ def _rotate_metrics(path: Path) -> None:
     if not archive:
         return
     dest = path.with_name(f"{path.stem}.{_archive_stamp(archive[-1])}{path.suffix}")
-    tmp = path.with_suffix(".jsonl.rotate")
-    try:
-        tmp.write_text("".join(carry), encoding="utf-8", newline="")
+    with contextlib.suppress(OSError):
         with dest.open("ab") as handle:
             handle.write("".join(archive).encode("utf-8", "replace"))
-        tmp.replace(path)
-    except OSError:
-        with contextlib.suppress(OSError):
-            tmp.unlink()
+        atomic_write_bytes(path, "".join(carry).encode("utf-8"))
 
 
 def _append_metrics_row(log_root, row: dict) -> None:
