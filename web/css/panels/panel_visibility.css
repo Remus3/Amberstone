@@ -54,9 +54,18 @@ body:not([data-shell="overlay"]) [data-pv-hidden="1"] {
   cursor: pointer;
 }
 
+/* RM-1082: the selected tab names which context the rows below edit, so it
+ * is the brightest thing in the bar. --clock alone was not: on arcane it is
+ * DIMMER than --text-dim, and the 1px border was the only other cue. Now the
+ * brightest text token, the input-well fill and a 2px inset --clock underline
+ * (the .home-mode-tab.active idiom, web/css/panels/home.css). The focus ring
+ * below replaces the underline while the tab holds focus. Guard:
+ * tests/snapshot_panels/test_panel_visibility_tab_selected_state.py. */
 #panel-visibility-card .pv-tab[aria-selected="true"] {
-  color: var(--clock);
+  color: var(--text);
+  background: var(--surface-3);
   border-color: var(--clock);
+  box-shadow: inset 0 -2px 0 0 var(--clock);
 }
 
 #panel-visibility-card .pv-tab:focus-visible {
