@@ -31,7 +31,10 @@ KIT = ROOT / "ops" / "fleet_kit"
 # Kit v24 (MAIN 2026-10-26 0315 ORDER) superseded the v23 bytes (manifest
 # f5d82861...11ba527c, block 5e8fa06f...bbc663); step 1 now pins the v24
 # bytes and tests/test_fleet_kit_v24.py pins what v24 adds.
-V23_MANIFEST_SHA256 = "a41ff08e4c2ace7f48119f9ffec051ce18458184c2417d6806be39f3c8804a7d"
+# Kit v25 (MAIN 2026-10-27 2136 ORDER) superseded v24 (manifest
+# a41ff08e...c8804a7d); step 1 now pins the v25 bytes
+# (tests/test_fleet_kit_v25.py pins what v25 adds).
+V23_MANIFEST_SHA256 = "fa04c87ceca7c1e08f853d0447a439143f317fa21b6434c1dcefe1e5d25c1bea"
 V23_COMMON_BLOCK_SHA256 = "886c5f8b1a86928f91412d2800e9dfef3dd8e5b9158d14a06e65d06c22964800"
 BOARD_FILES = ("ops/loop/control/board/status.json", "ops/loop/control/board/state.json",
                "ops/loop/control/board/board.html")
@@ -62,10 +65,10 @@ def test_the_vendored_kit_is_the_v23_order_bytes():
     raw = (KIT / "MANIFEST.json").read_bytes()
     assert hashlib.sha256(raw).hexdigest() == V23_MANIFEST_SHA256
     man = json.loads(raw.decode("ascii"))
-    assert man["version"] == 24 and len(man["files"]) == 23
+    assert man["version"] == 25 and len(man["files"]) == 23
     assert man["common_block_sha256"] == V23_COMMON_BLOCK_SHA256
     fh = _load("fleet_headless")
-    assert (fh.KIT_VERSION, fh.KIT_PATCH) == (24, 0)
+    assert (fh.KIT_VERSION, fh.KIT_PATCH) == (25, 0)
     for name, want in man["files"].items():
         assert hashlib.sha256((KIT / name).read_bytes()).hexdigest() == want, name
 

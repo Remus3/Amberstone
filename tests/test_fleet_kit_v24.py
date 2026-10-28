@@ -35,7 +35,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 KIT = ROOT / "ops" / "fleet_kit"
-V24_MANIFEST_SHA256 = "a41ff08e4c2ace7f48119f9ffec051ce18458184c2417d6806be39f3c8804a7d"
+# Kit v25 (MAIN 2026-10-27 2136 ORDER, LANE-CAP) superseded the v24 bytes
+# (manifest a41ff08e...c8804a7d); step 1 now pins the v25 bytes, the v24
+# behaviours below still hold. tests/test_fleet_kit_v25.py pins what v25 adds.
+V24_MANIFEST_SHA256 = "fa04c87ceca7c1e08f853d0447a439143f317fa21b6434c1dcefe1e5d25c1bea"
 V24_COMMON_BLOCK_SHA256 = "886c5f8b1a86928f91412d2800e9dfef3dd8e5b9158d14a06e65d06c22964800"
 BEGIN, END = "<!-- FLEET-COMMON BEGIN -->\n", "<!-- FLEET-COMMON END -->"
 # A drive-rooted spelling of the default sidecar root (any drive, either slash).
@@ -65,10 +68,10 @@ def test_the_vendored_kit_is_the_v24_order_bytes():
     raw = (KIT / "MANIFEST.json").read_bytes()
     assert hashlib.sha256(raw).hexdigest() == V24_MANIFEST_SHA256
     man = json.loads(raw.decode("ascii"))
-    assert man["version"] == 24 and len(man["files"]) == 23
+    assert man["version"] == 25 and len(man["files"]) == 23
     assert man["common_block_sha256"] == V24_COMMON_BLOCK_SHA256
     fh = _load("fleet_headless")
-    assert (fh.KIT_VERSION, fh.KIT_PATCH) == (24, 0)
+    assert (fh.KIT_VERSION, fh.KIT_PATCH) == (25, 0)
     for name, want in man["files"].items():
         assert hashlib.sha256((KIT / name).read_bytes()).hexdigest() == want, name
 

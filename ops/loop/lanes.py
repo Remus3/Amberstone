@@ -17,10 +17,28 @@ lane locks `<main tree>/ops/loop/control/lanes/<i>.lock` for i in
 range(LANE_CAP), the lane NAME a payload field, a name exclusive by default.
 So any three DIFFERENT lanes may run at once and no lane runs twice.
 
-WHY THE CAP IS 3. The kit's maximum (LANE_CAP_MAX), and no measured RC reason
-for less: each lane is worktree-isolated and each executor call takes its own
-machine-wide governor slot (width 3), so the governor - not this cap - is what
-bounds total concurrent model calls across the fleet.
+THE CAP IS THE MACHINE'S, READ LIVE (FLEET-KIT v25 LANE-CAP, MAIN 2026-10-27
+2136 ORDER section 5 step 2). RC takes the kit's whole per-tree cap and asks for
+no less: `lane_cap()` is `fleet_lanes.lane_cap(None)`, the live `lane_cap_max`
+of the machine config `~/.fleet/lanes.json` (clamped to its governor width),
+re-read on every acquire and state read, so a widened machine config needs no
+restart and no RC edit. With the file missing it is the kit default (3), so
+nothing changes until MAIN writes the file. `LANE_CAP` below is that DEFAULT
+only, kept for readers that want the no-config value; no code path here sizes
+anything by it. Each lane is worktree-isolated and each executor call still
+takes its own governor slot, so the governor - not this cap - bounds total
+concurrent model calls across the fleet.
+
+FAIR RELEASE (v25). `should_yield()` is the kit's `should_yield("RC")`: True
+when another tree waits for a slot, none is free, and RC holds more than its
+fair share. A multi-cycle lane driver (queue_loop.run_loop) asks it BETWEEN
+cycles and, on True, ends that lane instead of starting the next cycle. It is
+advisory and read-only: nothing here or in the driver kills, terminates or
+signals a running worker because of it.
+
+ADMISSION (v25). The kit may refuse an acquire with `refused == "admission"`
+(free RAM below ram_floor_mb or CPU above cpu_ceiling_pct); it writes no lock
+and is handled exactly like `lanes_full` - recorded, retried next tick.
 
 THE LOCK DIR IS RESOLVED AGAINST THE MAIN TREE (SS 2245 section 5a, measured in
 RC too). `DEFAULT_ROOT` used to be `Path(__file__).parent / "control/lanes"`;
@@ -51,8 +69,8 @@ READS DO NOT WRITE. `lane_state` / `lanes_state` are the dashboard's poll path.
 Clearing a stale lock happens only inside `try_acquire_lane`.
 
 REFUSE, DO NOT QUEUE. A fire against a held name, or with every index held,
-returns `{"ok": False, "refused": "lane_held" | "lanes_full", ...}` and writes
-no lane lock.
+returns `{"ok": False, "refused": "lane_held" | "lanes_full" | "admission", ...}`
+and writes no lane lock.
 
 ONE GOVERNOR SLOT PER EXECUTOR CALL, NOT HERE. Nothing in this module takes a
 governor slot; loop_controller's slots.hold around its executor call is that
@@ -195,8 +213,8 @@ fleet_lanes = _bind_kit_lanes()
 
 LANES = ("upgrade", "uiux", "research", "ds", "repo", "true-audit", "gated",
          "queue")
-# The kit maximum; see the module docstring for why RC takes all of it.
-LANE_CAP = 3
+# v25: the kit DEFAULT cap (no machine config); the live cap is lane_cap().
+LANE_CAP = fleet_lanes.LANE_CAP_MAX
 REPO_CODE = "RC"
 LANES_REL = fleet_lanes.LANES_REL
 DEFAULT_ROOT = REPO_ROOT / LANES_REL
@@ -278,11 +296,29 @@ def _read_payload(lock: Path) -> dict:
 
 # ---- state -----------------------------------------------------------------
 
+def lane_cap() -> int:
+    """The live per-tree lane cap (v25): the machine config's lane_cap_max,
+    clamped to its governor width; the kit default with no config."""
+    return int(fleet_lanes.lane_cap(None))
+
+
+def should_yield() -> bool:
+    """v25 FAIR RELEASE: True when RC should end one lane at its next cycle
+    boundary. Read-only and advisory; a kit fault reads False (an unreadable
+    governor never ends a lane)."""
+    try:
+        return bool(fleet_lanes.should_yield(REPO_CODE))
+    except Exception as exc:  # noqa: BLE001 - advisory read, fail open
+        log.warning("lanes: should_yield unreadable, not yielding: %s: %s",
+                    type(exc).__name__, _scrub_log(str(exc)))
+        return False
+
+
 def lanes_state(root=None, now=None) -> list:
-    """One row per lane index 0..LANE_CAP-1 - {index, state, lane, run_id,
-    pid, worktree, age_s}. NEVER mutates anything; reads exactly the named
-    lock files (no directory walk)."""
-    return fleet_lanes.repo_lane_state(_repo_for(root), LANE_CAP, now)
+    """One row per lane index 0..lane_cap()-1 (plus any index still held above
+    a narrowed cap) - {index, state, lane, run_id, pid, worktree, age_s}.
+    NEVER mutates anything; reads only the kit's lane lock files."""
+    return fleet_lanes.repo_lane_state(_repo_for(root), None, now)
 
 
 def lane_state(root=None, now=None) -> dict:
@@ -336,7 +372,9 @@ def try_acquire_lane(lane, *, run_id, worktree, root=None) -> dict:
 
     Returns `{"ok": False, "refused": "lane_held" | "lanes_full", "holder",
     "pid", "holders"}` when the same lane NAME is running, or every index is
-    held by a live lane. A refusal writes no lane lock. A dead holder is
+    held by a live lane, and `{"ok": False, "refused": "admission", "reason",
+    ...}` when the kit's v25 admission check refuses (RAM floor / CPU
+    ceiling; retry next tick). A refusal writes no lane lock. A dead holder is
     reclaimed instead of respected.
 
     Returns `{"ok": False, "refused": "lane_lock_unwritable", "holder": None,
@@ -349,8 +387,9 @@ def try_acquire_lane(lane, *, run_id, worktree, root=None) -> dict:
             f"unknown lane {lane!r} - valid lanes are {', '.join(LANES)}")
     wt = _require_worktree(worktree)
     repo = _repo_for(root)
+    # v25: cap=None = the live machine lane_cap_max (re-read per call).
     claim = fleet_lanes.try_acquire_lane(repo, REPO_CODE, lane, str(run_id),
-                                         LANE_CAP, exclusive=True)
+                                         None, exclusive=True)
     if not claim.get("ok"):
         holders = list(claim.get("holders") or [])
         refused = claim.get("refused") or "lanes_full"
@@ -361,8 +400,11 @@ def try_acquire_lane(lane, *, run_id, worktree, root=None) -> dict:
                 if row["state"] == RUNNING and row["lane"] == lane:
                     pid = _int_or_none(row["pid"])
                     break
-        return {"ok": False, "refused": refused, "holder": holder, "pid": pid,
-                "holders": holders}
+        out = {"ok": False, "refused": refused, "holder": holder, "pid": pid,
+               "holders": holders}
+        if refused == "admission":
+            out["reason"] = str(claim.get("reason") or "")[:200]
+        return out
 
     token = claim["token"]
     # The kit records ITS per-index worktree; RC runs in the per-name one (see

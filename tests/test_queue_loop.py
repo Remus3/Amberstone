@@ -158,6 +158,10 @@ def _loop_seams(**kw):
 
     seams["head_sha"] = lambda: "cafe1234"
     seams["gh"] = gh
+    # Kit v25 FAIR RELEASE seam: the real one reads the live machine governor,
+    # so every run_loop test here pins it False (tests/test_fleet_kit_v25.py
+    # owns the True path).
+    seams["should_yield"] = lambda: False
     return log, seams
 
 

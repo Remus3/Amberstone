@@ -373,6 +373,11 @@ STOPPED_BY_CONSECUTIVE_ERRORS = "consecutive_errors"
 # this cycle pushed. Every further cycle would stack another row on top of a
 # break, so the night ends here.
 STOPPED_BY_CI_RED = "ci_red"
+# Kit v25 FAIR RELEASE: lanes.should_yield() was True at a cycle boundary, so
+# the lane ended after its current cycle (another tree waits for a slot and RC
+# holds more than its fair share). A graceful end, exit EXIT_OK; nothing is
+# killed for it.
+STOPPED_BY_FAIR_YIELD = "fair_yield"
 
 # Process exit codes. Distinct on purpose: the launcher and any future scheduled
 # task can only tell "ran the night" from "refused to start" by the number.
@@ -955,6 +960,9 @@ def _refusal_detail(claim: dict) -> str:
         return f"every lane slot is held ({names or 'holders unknown'})"
     if refused == "lane_held":
         return f"lane held by {claim.get('holder')!r} (pid {claim.get('pid')})"
+    if refused == "admission":
+        # Kit v25: RAM floor / CPU ceiling. Like lanes_full - retry next tick.
+        return f"admission refused ({str(claim.get('reason') or 'no reason')[:80]})"
     if not refused:
         return "lane refused (no reason given)"
     return f"lane refused ({str(refused)[:40]!r})"
@@ -1123,6 +1131,7 @@ def run_loop(*, max_cycles: int = DEFAULT_MAX_CYCLES,
              proc_started=lanes.proc_started,
              stranger=lanes._holder_is_a_stranger,
              kill=_taskkill,
+             should_yield=lanes.should_yield,
              head_sha=_head_sha,
              gh=_gh,
              wait=wait_for_ci,
@@ -1135,7 +1144,9 @@ def run_loop(*, max_cycles: int = DEFAULT_MAX_CYCLES,
     `stopped_by` is the sentinel's file name, "max_cycles" when the loop ran its
     full course, or one of the three hard stops: OUTCOME_KILL_FAILED (a worker
     survived its kill, so the lane worktree may still have a live writer),
-    STOPPED_BY_CONSECUTIVE_ERRORS, and STOPPED_BY_CI_RED.
+    STOPPED_BY_CONSECUTIVE_ERRORS, and STOPPED_BY_CI_RED - or
+    STOPPED_BY_FAIR_YIELD, the graceful kit v25 end when `should_yield()` reads
+    True at a cycle boundary (no kill).
 
     The sentinel check is at the TOP of the iteration, which is what makes a
     QUEUE_DRAINED written by the worker mid-cycle stop the NEXT cycle rather
@@ -1168,6 +1179,14 @@ def run_loop(*, max_cycles: int = DEFAULT_MAX_CYCLES,
         if reason:
             stopped_by = reason
             emit(f"queue-loop stop: {reason} present - {len(records)} cycle(s) run")
+            break
+        # Kit v25 FAIR RELEASE, at the cycle BOUNDARY only (never before cycle
+        # 1, never mid-cycle): on True the lane is simply not started again.
+        # Advisory - no kill, no terminate, no signal to any worker.
+        if cycle > 1 and should_yield():
+            stopped_by = STOPPED_BY_FAIR_YIELD
+            emit(f"queue-loop stop: fair_yield (another tree waits for a slot) "
+                 f"- {len(records)} cycle(s) run")
             break
         # Minted HERE, not inside run_cycle, so the error record below can name
         # the SAME run as the claim and the worker log. A cycle that faulted

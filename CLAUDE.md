@@ -228,6 +228,8 @@ RC channel code: `RC`. Kit conformance: `tests/test_fleet_kit_conformance.py`. L
 
 **KIT v24 (MAIN 2026-10-26 0315, cumulative, FLEET-COMMON item 19).** No width-dependent layout in chat (item 19). `fleet_claims` resolves a relative target against the command's EFFECTIVE cwd and claims absolute paths only; no kit line spells the sidecar root drive-rooted, so the v23 "Sidecars" allow segment left `tools/sibling_name_sweep.py`. Guard `tests/test_fleet_kit_v24.py`.
 
+**KIT v25 (MAIN 2026-10-27 2136, cumulative, LANE-CAP).** Machine config `~/.fleet/lanes.json` is MAIN's; RC never writes it. RC's lane cap is the live `lanes.lane_cap()` (kit `cap=None`), never a hard-coded 3; `queue_loop.run_loop` asks `lanes.should_yield()` between cycles and on True ends the lane (`fair_yield`), never kills; an `admission` refusal is handled like `lanes_full`. The executor slot count (`ops/loop/slots.py`, `SHARED_SHA256`) is a joint act, not raised here. Guard `tests/test_fleet_kit_v25.py`.
+
 **PYTEST BASETEMP (MAIN FIX TEMP-1, 2026-10-09).** Never pass `--basetemp` inside a session scratchpad: use the default tmp_path (`pytest.ini`: retention `failed`, count `1`), or, if a run truly needs one, the ONE fixed `<scratchpad>/pytest-basetemp`. Every session, lane and loop prompt follows this; the rootdir `conftest.py` refuses any other scratchpad basetemp. Guard `tests/test_pytest_basetemp_scratchpad_temp1.py`.
 
 **Known overlaps with the FLEET-COMMON block, kept as RC gates until MAIN rules on them (reported to MAIN at adoption; not silently weakened):**

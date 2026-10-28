@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 the operator - the kit's owner and sole copyright holder. See NOTICE.
-"""Fleet kit v22 - multi-lane headless work: per-repo lanes, one worktree each,
+"""Fleet kit v25 - multi-lane headless work: per-repo lanes, one worktree each,
 under the machine-wide governor (design: MAIN docs/fleet-designs/multi-lane.md).
 
 Vendored byte-for-byte at ops/fleet_kit/ and pinned by MANIFEST.json. Do NOT
@@ -27,7 +27,7 @@ THREE LAYERS:
    (a commit or merge into the main checkout) is the tree's code and goes
    through fleet_gitlock (`with git_lock(main, owner): ...`, FLEET-COMMON 16a);
    nothing in this file commits.
-3. GOVERNOR   - one of GOVERNOR_WIDTH (3) machine-wide slots, ON-DISK
+3. GOVERNOR   - one of governor_width (default 3) machine-wide slots, ON-DISK
    COMPATIBLE with the vendored slots.py (same root, same <i>.lock names, same
    O_CREAT|O_EXCL create, same {pid, repo, run_id, cycle, ts} payload, same
    reap rules). Extra payload keys are ignored by slots.py.
@@ -62,6 +62,30 @@ resumable units (usage_pct, unit_mode, plan_units, unit_brief, checkpoint,
 resume_point, pending_units; CLI `unit` / `resume`); run_lane's claim carries
 usage_pct, unit_mode and resume. Unit size only - never routing.
 
+LANE-CAP (v25, RC FLEET KIT REQUEST, operator approved 2026-10-27): the
+per-tree lane cap ceiling (lane_cap_max) and the machine-wide governor width
+come from machine config ~/.fleet/lanes.json (beside the headless route file),
+RE-READ on every acquire, state read and should_yield(). Defaults 3 and 3,
+so nothing changes until the file is written. An unreadable file = all
+defaults; an invalid key = that key's default; both logged once to
+~/.fleet/lanes_config.log - never wider than the defaults. A caller cap above
+lane_cap_max CLAMPS to it (and to the width) instead of raising, so a tree can
+raise its own cap before the machine config is applied. Under pytest the
+machine file is never read (FLEET_LANES_CONFIG names a test file; named empty
+= defaults). Holders at indices above a narrowed cap or width still count.
+BORROWING: a tree may hold governor slots up to its own cap (governor_slot
+cap=, default lane_cap_max); its tickets carry that cap, and a capped tree's
+ticket never blocks another tree. FAIR RELEASE: the request queue is the
+governor ticket queue; should_yield(code) is True when another tree has a
+live ticket, no slot is free, and code holds more than its fair share
+(width // active trees, at least 1). The lane driver calls it between
+cycles and ends a lane there; NOTHING in this file stops or kills a worker.
+ADMISSION (lane acquire): refuse a new lane below ram_floor_mb free physical
+memory or above cpu_ceiling_pct machine CPU (CpuMeter from fleet_suite_gate);
+an unreadable reading admits (like the suite gate); skipped under pytest
+unless admit= is passed. CLI `status` (and status()/status_lines()) lists
+slot holders, the queue, the config and the admission readings.
+
 Pure stdlib (psutil used only if present). No machine path, account id or repo
 name appears in this file; the governor root derives from %ProgramData%.
 """
@@ -74,8 +98,8 @@ import sys
 import time
 from pathlib import Path
 
-GOVERNOR_WIDTH = 3
-LANE_CAP_MAX = 3
+GOVERNOR_WIDTH = 3  # v25: the DEFAULT; live value load_config()["governor_width"]
+LANE_CAP_MAX = 3  # v25: the DEFAULT; live value load_config()["lane_cap_max"]
 LANES_REL = Path("ops/loop/control/lanes")
 ACQUIRE_MUTEX = ".acquire"
 DEFAULT_STALE_AFTER = 3.0 * 5400.0
@@ -97,6 +121,109 @@ class SlotTimeout(RuntimeError):
 
 class LaneRefused(RuntimeError):
     """The repo's lanes are held, or the lane's worktree is unusable."""
+
+
+# ---------------------------------------------------------------- config (v25)
+
+CONFIG_ENV = "FLEET_LANES_CONFIG"
+CONFIG_NAME = "lanes.json"
+CONFIG_LOG = "lanes_config.log"
+CONFIG_DEFAULTS = {"governor_width": GOVERNOR_WIDTH, "lane_cap_max": LANE_CAP_MAX,
+                   "ram_floor_mb": 2048, "cpu_ceiling_pct": 90.0}
+# (type, low, high) inclusive; cpu_ceiling_pct 100 = no ceiling.
+CONFIG_BOUNDS = {"governor_width": (int, 1, 32), "lane_cap_max": (int, 1, 32),
+                 "ram_floor_mb": (int, 0, 1 << 20), "cpu_ceiling_pct": (float, 1.0, 100.0)}
+# The RC request's suggested starting point - recorded, never applied by the kit.
+RECOMMENDED_CONFIG = {"governor_width": 7, "lane_cap_max": 7, "ram_floor_mb": 4096,
+                      "cpu_ceiling_pct": 90.0}
+_LOGGED = {}
+
+
+def config_path(environ=None):
+    """~/.fleet/lanes.json; FLEET_LANES_CONFIG names another file (named empty
+    = no file, the defaults). Under pytest with the variable unset: None, so a
+    suite never depends on this box's machine config."""
+    env = os.environ if environ is None else environ
+    if CONFIG_ENV in env:
+        v = (env.get(CONFIG_ENV) or "").strip().strip('"')
+        return Path(v) if v else None
+    if env.get("PYTEST_CURRENT_TEST"):
+        return None
+    return Path.home() / ".fleet" / CONFIG_NAME
+
+
+def _valid(key, value):
+    kind, lo, hi = CONFIG_BOUNDS[key]
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    if kind is int and not isinstance(value, int):
+        return None
+    value = kind(value)
+    return value if lo <= value <= hi else None
+
+
+def _log_config(path, errors):
+    key = str(path)
+    msg = "; ".join(errors)
+    log = Path(path).with_name(CONFIG_LOG)
+    if _LOGGED.get(key) == msg and log.exists():
+        return  # logged once per distinct problem, not on every re-read
+    _LOGGED[key] = msg
+    with contextlib.suppress(OSError):
+        log.parent.mkdir(parents=True, exist_ok=True)
+        stamp = time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime())
+        with log.open("a", encoding="ascii", errors="replace", newline="\n") as fh:
+            fh.write(f"{stamp} lanes config invalid, defaults used: {msg[:400]}\n")
+
+
+def load_config(path=False, environ=None):
+    """The live lane config: CONFIG_DEFAULTS overlaid with the valid keys of
+    the file, plus "source" (the file, or "defaults") and "errors". path=False
+    resolves config_path(); None = defaults only. Never raises."""
+    if path is False:
+        path = config_path(environ)
+    cfg = dict(CONFIG_DEFAULTS, source="defaults", errors=[])
+    if path is None:
+        return cfg
+    path = Path(path)
+    try:
+        raw = path.read_bytes()
+    except FileNotFoundError:
+        return cfg
+    except OSError as exc:
+        cfg["errors"] = [f"unreadable ({exc.__class__.__name__})"]
+        _log_config(path, cfg["errors"])
+        return cfg
+    try:
+        doc = json.loads(raw.decode("ascii"))
+    except (ValueError, UnicodeError):
+        doc = None
+    if not isinstance(doc, dict):
+        cfg["errors"] = ["not a JSON object"]
+        _log_config(path, cfg["errors"])
+        return cfg
+    errors = []
+    for key, value in doc.items():
+        if key not in CONFIG_DEFAULTS:
+            errors.append(f"unknown key {str(key)[:40]!r} ignored")
+            continue
+        good = _valid(key, value)
+        if good is None:
+            errors.append(f"{key}={str(value)[:40]!r} invalid, default {CONFIG_DEFAULTS[key]}")
+        else:
+            cfg[key] = good
+    cfg["source"], cfg["errors"] = str(path), errors
+    if errors:
+        _log_config(path, errors)
+    return cfg
+
+
+def _cfg(config):
+    return load_config() if config is None else config
+
+
+def _width(width, config=None):
+    return int(_cfg(config)["governor_width"]) if width is None else int(width)
 
 
 # ---------------------------------------------------------------- processes
@@ -344,22 +471,35 @@ def governor_slot_stale(path, stale_after=DEFAULT_STALE_AFTER, now=None):
     return _slot_stale(path, _raw(path), stale_after, now)
 
 
-def governor_state(root=None, width=GOVERNOR_WIDTH, stale_after=DEFAULT_STALE_AFTER,
+def _indices(root, n):
+    """range(n) plus every <i>.lock already present (v25: a holder taken under
+    a wider width or cap still counts after the config narrows)."""
+    extra = set()
+    with contextlib.suppress(OSError):
+        for p in Path(root).glob("*.lock"):
+            if p.stem.isdigit():
+                extra.add(int(p.stem))
+    return sorted(set(range(n)) | extra)
+
+
+def governor_state(root=None, width=None, stale_after=DEFAULT_STALE_AFTER,
                    now=None):
-    """One row per governor slot. READ ONLY."""
+    """One row per governor slot (v25: width None = the live config, plus any
+    held index above it). READ ONLY."""
     root = governor_root() if root is None else Path(root)
     now = time.time() if now is None else now
     rows = []
-    for i in range(width):
+    for i in _indices(root, _width(width)):
         p = root / f"{i}.lock"
         row = {"index": i, "state": FREE, "repo": None, "run_id": None, "pid": None,
-               "age_s": None}
+               "age_s": None, "lane_index": None, "ts": None}
         raw = _raw(p)
         if raw is not None:
             rec = _parse(raw)
             ts = rec.get("ts")
             row.update({"repo": rec.get("repo"), "run_id": rec.get("run_id"),
-                        "pid": rec.get("pid"),
+                        "pid": rec.get("pid"), "lane_index": rec.get("lane"),
+                        "ts": ts if isinstance(ts, (int, float)) else None,
                         "age_s": None if not isinstance(ts, (int, float)) else
                         max(0.0, now - ts)})
             row["state"] = RECLAIMABLE if _slot_stale(p, raw, stale_after, now) \
@@ -368,10 +508,10 @@ def governor_state(root=None, width=GOVERNOR_WIDTH, stale_after=DEFAULT_STALE_AF
     return rows
 
 
-def reap_governor(root, width=GOVERNOR_WIDTH, stale_after=DEFAULT_STALE_AFTER):
+def reap_governor(root, width=None, stale_after=DEFAULT_STALE_AFTER):
     """Remove stale slots; a slot whose bytes changed since judged is kept."""
     removed = 0
-    for i in range(width):
+    for i in _indices(root, _width(width)):
         p = Path(root) / f"{i}.lock"
         raw = _raw(p)
         if raw is not None and _slot_stale(p, raw, stale_after, time.time()) \
@@ -380,7 +520,7 @@ def reap_governor(root, width=GOVERNOR_WIDTH, stale_after=DEFAULT_STALE_AFTER):
     return removed
 
 
-def held_by_repo(root, width=GOVERNOR_WIDTH):
+def held_by_repo(root, width=None):
     counts = {}
     for row in governor_state(root, width):
         if row["state"] == RUNNING:
@@ -431,30 +571,52 @@ def ticket_rank(rec, now, held):
     return (tier, held.get(rec.get("repo"), 0), ts)
 
 
+def _capped(rec, held):
+    """v25: the ticket's repo already holds its own cap of slots."""
+    cap = rec.get("cap")
+    return isinstance(cap, int) and not isinstance(cap, bool) and \
+        held.get(rec.get("repo"), 0) >= cap
+
+
 def my_turn(qroot, mine, free, held, now=None):
-    """True when the ticket at path `mine` is among the first `free` by rank."""
+    """True when the ticket at path `mine` is among the first `free` by rank.
+    v25: a ticket whose repo is at its own cap is skipped (never blocks)."""
     if free <= 0:
         return False
     now = time.time() if now is None else now
-    live = tickets(qroot, now=now)
+    live = [t for t in tickets(qroot, now=now) if not _capped(t[1], held)]
     order = sorted(live, key=lambda t: ticket_rank(t[1], now, held))
     keys = [os.path.normcase(str(p)) for p, _ in order[:free]]
     return os.path.normcase(str(mine)) in keys
 
 
-def enqueue(qroot, repo, run_id, priority="queued", since=None, clock=time.time):
+def enqueue(qroot, repo, run_id, priority="queued", since=None, clock=time.time, cap=None):
     """File a ticket. since = when this caller FIRST asked (kept across retries
-    so a timeout-and-retry caller still ages into tier 0)."""
+    so a timeout-and-retry caller still ages into tier 0). v25: cap = the most
+    slots this repo may hold (recorded so other waiters can skip it)."""
     if priority not in PRIORITIES:
         raise ValueError(f"priority {priority!r} not in {PRIORITIES}")
     qroot = Path(qroot)
     rec = {**_identity(), "repo": str(repo), "run_id": str(run_id),
            "priority": priority, "ts": float(since) if since is not None else clock()}
+    if cap is not None:
+        rec["cap"] = int(cap)
     for n in range(100):
         p = qroot / f"{time.time_ns():020d}-{os.getpid()}-{n}.ticket"
         if _exclusive_create(p, rec):
             return p
     raise OSError("could not file a queue ticket")
+
+
+def _capped_ticket(ticket, cap):
+    """v25: record the waiter's own cap in its ticket (written after enqueue,
+    so enqueue's v6 signature is unchanged for callers and spies)."""
+    rec = _read(ticket)
+    if rec and rec.get("cap") != int(cap):
+        rec["cap"] = int(cap)
+        with contextlib.suppress(OSError):
+            _atomic_write(ticket, rec)
+    return ticket
 
 
 def _drop_ticket(ticket):
@@ -466,9 +628,14 @@ def _drop_ticket(ticket):
 
 
 def try_governor(root, width, payload):
-    """One non-blocking pass: reap, then exclusive-create the first free slot."""
+    """One non-blocking pass: reap, then exclusive-create the first free slot
+    below width (None = the live config). v25: holders above the width count,
+    so a narrowed width never admits past it."""
     root = Path(root)
+    width = _width(width)
     reap_governor(root, width)
+    if sum(held_by_repo(root, width).values()) >= width:
+        return None
     for i in range(width):
         p = root / f"{i}.lock"
         if _exclusive_create(p, payload):
@@ -477,19 +644,31 @@ def try_governor(root, width, payload):
 
 
 @contextlib.contextmanager
-def governor_slot(repo, run_id, priority="queued", root=None, width=GOVERNOR_WIDTH,
+def governor_slot(repo, run_id, priority="queued", root=None, width=None,
                   timeout=None, poll=2.0, cycle=0, since=None, sleep=time.sleep,
-                  on_wait=None):
+                  on_wait=None, cap=None, lane=None):
     """Hold one machine-wide slot for the block, waiting in the fair queue.
     Raises SlotTimeout when timeout (seconds) elapses first; timeout=0 is a
-    single try. Never proceeds unslotted. Take it around the executor call only."""
+    single try. Never proceeds unslotted. Take it around the executor call only.
+    v25: width None = the live config (re-read every poll); the repo holds at
+    most cap slots (None = lane_cap_max; clamped to it and to the width) -
+    BORROWING idle slots up to its own cap; lane = the lane index, recorded."""
     root = governor_root() if root is None else Path(root)
     qroot = queue_root(root)
     poll = min(float(poll), MAX_POLL_S)
     payload = {**_identity(), "repo": str(repo), "run_id": str(run_id),
                "cycle": cycle, "ts": time.time(), "priority": priority}
+    if lane is not None:
+        payload["lane"] = int(lane)
     deadline = None if timeout is None else time.monotonic() + timeout
-    ticket = enqueue(qroot, repo, run_id, priority, since)
+
+    def limits():
+        cfg = load_config()
+        w = _width(width, cfg)
+        c = lane_cap(cfg["lane_cap_max"] if cap is None else cap, cfg)
+        return w, min(c, w)
+    w, c = limits()
+    ticket = _capped_ticket(enqueue(qroot, repo, run_id, priority, since), c)
     first_ask = _read(ticket).get("ts", since)
     slot, waited = None, False
     try:
@@ -500,17 +679,18 @@ def governor_slot(repo, run_id, priority="queued", root=None, width=GOVERNOR_WID
                 if not ticket.exists():
                     # Reaped while we were suspended (sleep, hibernate): re-file
                     # with the ORIGINAL ask time so no age is lost.
-                    ticket = enqueue(qroot, repo, run_id, priority, first_ask)
-            reap_governor(root, width)
-            held = held_by_repo(root, width)
-            free = width - sum(held.values())
-            if my_turn(qroot, ticket, free, held):
+                    ticket = _capped_ticket(enqueue(qroot, repo, run_id, priority, first_ask), c)
+            w, c = limits()
+            reap_governor(root, w)
+            held = held_by_repo(root, w)
+            free = w - sum(held.values())
+            if held.get(str(repo), 0) < c and my_turn(qroot, ticket, free, held):
                 payload["ts"] = time.time()
-                slot = try_governor(root, width, payload)
+                slot = try_governor(root, w, payload)
                 if slot is not None:
                     break
             if deadline is not None and time.monotonic() >= deadline:
-                raise SlotTimeout(f"no governor slot within {timeout}s (width {width})")
+                raise SlotTimeout(f"no governor slot within {timeout}s (width {w}, cap {c})")
             if not waited and on_wait:
                 on_wait()
             waited = True
@@ -544,14 +724,23 @@ def main_tree(path):
     return path
 
 
-def lane_cap(cap):
+def lane_cap(cap=None, config=None):
+    """The effective lane cap: cap (None = lane_cap_max) clamped to the live
+    lane_cap_max and governor_width (v25: above them CLAMPS, never raises, so
+    a tree may raise its cap before the machine config is set). Below 1 or not
+    an integer: ValueError."""
+    cfg = _cfg(config)
+    if cap is None:
+        cap = cfg["lane_cap_max"]
+    if isinstance(cap, bool):
+        raise ValueError(f"lane cap {cap!r} is not an integer")
     try:
         cap = int(cap)
     except (TypeError, ValueError):
         raise ValueError(f"lane cap {cap!r} is not an integer") from None
-    if not 1 <= cap <= LANE_CAP_MAX:
-        raise ValueError(f"lane cap {cap} outside 1..{LANE_CAP_MAX}")
-    return min(cap, GOVERNOR_WIDTH)
+    if cap < 1:
+        raise ValueError(f"lane cap {cap} below 1")
+    return min(cap, int(cfg["lane_cap_max"]), int(cfg["governor_width"]))
 
 
 SIDECAR_VAR = "FLEET_SIDECAR_ROOT"
@@ -672,13 +861,14 @@ def _lane_row(lock, raw, now):
     return row
 
 
-def repo_lane_state(repo_root, cap=LANE_CAP_MAX, now=None):
+def repo_lane_state(repo_root, cap=None, now=None, config=None):
     """One row per lane index 0..cap-1: FREE / RUNNING / RECLAIMABLE. READ ONLY.
-    The lane widget's contract: exactly these files, no directory walk."""
+    The lane widget's contract: these files only (v25: cap None = the live
+    lane_cap_max, plus any <i>.lock still held above it after a narrowing)."""
     now = time.time() if now is None else now
     d = main_tree(repo_root) / LANES_REL
     rows = []
-    for i in range(lane_cap(cap)):
+    for i in _indices(d, lane_cap(cap, config)):
         lock = d / f"{i}.lock"
         rows.append(_lane_row(lock, _raw(lock), now))
     return rows
@@ -714,27 +904,38 @@ def _age(path):
         return 0.0
 
 
-def try_acquire_lane(repo_root, code, lane, run_id, cap=LANE_CAP_MAX, exclusive=True):
+def try_acquire_lane(repo_root, code, lane, run_id, cap=None, exclusive=True, admit=None):
     """Claim the lowest free (or reclaimable) lane index. Returns
     {"ok": True, "index", "token", "worktree", "lane", "run_id"} or
-    {"ok": False, "refused": "lanes_full" | "lane_held", "holders": [...]} - a
-    refusal writes no lane lock. exclusive=True refuses a lane NAME that is
-    already running. Lanes never expire on age."""
+    {"ok": False, "refused": "lanes_full" | "lane_held" | "admission",
+    "holders": [...]} - a refusal writes no lane lock. exclusive=True refuses a
+    lane NAME that is already running. Lanes never expire on age.
+    v25: cap None = the live lane_cap_max (config re-read here, every call);
+    a held index above the cap still counts; admission (free RAM floor, CPU
+    ceiling; admit= a readings callable, tests) runs before any lock."""
+    cfg = load_config()
+    eff = lane_cap(cap, cfg)
+    adm = admission(cfg, readings=_readings(admit))
+    if not adm["admit"]:
+        return {"ok": False, "refused": "admission", "reason": adm["reason"],
+                "admission": adm, "holders": []}
     root = main_tree(repo_root)
     d = root / LANES_REL
     d.mkdir(parents=True, exist_ok=True)
     with _acquire_mutex(d):
         now = time.time()
         rows = []
-        for i in range(lane_cap(cap)):
+        for i in _indices(d, eff):
             lock = d / f"{i}.lock"
             raw = _raw(lock)
             rows.append((lock, raw, _lane_row(lock, raw, now)))
         holders = [r["lane"] for _, _, r in rows if r["state"] == RUNNING]
         if exclusive and str(lane) in holders:
             return {"ok": False, "refused": "lane_held", "holders": holders}
+        if len(holders) >= eff:
+            return {"ok": False, "refused": "lanes_full", "holders": holders}
         for lock, raw, row in rows:
-            if row["state"] == RUNNING:
+            if row["state"] == RUNNING or row["index"] >= eff:
                 continue
             if row["state"] == RECLAIMABLE and not _unlink_if_raw(lock, raw):
                 continue
@@ -846,6 +1047,177 @@ def ensure_worktree(repo_root, path, base="HEAD", run=_git, clock=time.time):
     if r.returncode != 0:
         raise LaneRefused(f"lane worktree {path} could not move to {base!r}")
     return {"created": False, "saved_ref": saved}
+
+
+# ---------------------------------------------------------------- LANE-CAP (v25)
+
+def should_yield(code, root=None, config=None, now=None):
+    """True when tree `code` should END one lane at its next cycle boundary:
+    another tree has a live ticket (the request queue), no governor slot is
+    free, and `code` holds more than its fair share (width // trees holding
+    or waiting, at least 1). READ ONLY - it never stops a worker; the lane
+    driver checks it between cycles and simply does not start the next one."""
+    root = governor_root() if root is None else Path(root)
+    now = time.time() if now is None else now
+    w = _width(None, config)
+    held = held_by_repo(root, w)
+    if w - sum(held.values()) > 0:
+        return False
+    others = {str(rec.get("repo")) for _p, rec in tickets(queue_root(root), reap=False, now=now)
+              if str(rec.get("repo")) != str(code) and not _capped(rec, held)}
+    if not others:
+        return False
+    active = {str(k) for k in held} | others | {str(code)}
+    fair = max(1, w // len(active))
+    return held.get(str(code), 0) > fair
+
+
+def free_ram_mb():
+    """Available physical memory in MB, or None where it cannot be read."""
+    if sys.platform == "win32":
+        try:
+            import ctypes
+
+            class _MS(ctypes.Structure):
+                _fields_ = [("dwLength", ctypes.c_ulong), ("dwMemoryLoad", ctypes.c_ulong),
+                            ("ullTotalPhys", ctypes.c_ulonglong),
+                            ("ullAvailPhys", ctypes.c_ulonglong),
+                            ("ullTotalPageFile", ctypes.c_ulonglong),
+                            ("ullAvailPageFile", ctypes.c_ulonglong),
+                            ("ullTotalVirtual", ctypes.c_ulonglong),
+                            ("ullAvailVirtual", ctypes.c_ulonglong),
+                            ("ullAvailExtendedVirtual", ctypes.c_ulonglong)]
+            ms = _MS()
+            ms.dwLength = ctypes.sizeof(_MS)
+            if not ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(ms)):
+                return None
+            return ms.ullAvailPhys / float(1 << 20)
+        except (OSError, AttributeError, ValueError):
+            return None
+    try:
+        return os.sysconf("SC_AVPHYS_PAGES") * os.sysconf("SC_PAGE_SIZE") / float(1 << 20)
+    except (ValueError, OSError, AttributeError):
+        return None
+
+
+_METER = []
+
+
+def cpu_pct():
+    """Machine CPU busy percent from fleet_suite_gate.CpuMeter (the suite
+    gate's own reader; the first call samples ~1 s), or None."""
+    try:
+        if not _METER:
+            import importlib.util
+            key = "fleet_kit_fleet_suite_gate"
+            mod = sys.modules.get(key)
+            if mod is None:
+                spec = importlib.util.spec_from_file_location(
+                    key, Path(__file__).with_name("fleet_suite_gate.py"))
+                mod = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(mod)
+            _METER.append(mod.CpuMeter())
+        return _METER[0].busy()
+    except Exception:  # noqa: BLE001 - an unreadable meter admits, like the gate
+        return None
+
+
+def readings():
+    """The live admission readings (free RAM MB, CPU busy percent)."""
+    return {"free_ram_mb": free_ram_mb(), "cpu_pct": cpu_pct()}
+
+
+def _readings(admit):
+    if callable(admit):
+        return admit()
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        return {"free_ram_mb": None, "cpu_pct": None}  # a suite never refuses on the box
+    return readings()
+
+
+def admission(config=None, readings=None):
+    """{"admit", "reason", "free_ram_mb", "cpu_pct", "ram_floor_mb",
+    "cpu_ceiling_pct"}. A reading of None admits (cannot be read)."""
+    cfg = _cfg(config)
+    r = readings if readings is not None else {"free_ram_mb": None, "cpu_pct": None}
+    ram, cpu = r.get("free_ram_mb"), r.get("cpu_pct")
+    floor, ceil = cfg["ram_floor_mb"], cfg["cpu_ceiling_pct"]
+    reason = None
+    if isinstance(ram, (int, float)) and ram < floor:
+        reason = f"ram {ram:.0f} MB free below the floor {floor} MB"
+    elif isinstance(cpu, (int, float)) and ceil < 100.0 and cpu > ceil:
+        reason = f"cpu {cpu:.0f} percent above the ceiling {ceil:.0f} percent"
+    return {"admit": reason is None, "reason": reason,
+            "free_ram_mb": None if ram is None else round(float(ram), 1),
+            "cpu_pct": None if cpu is None else round(float(cpu), 1),
+            "ram_floor_mb": floor, "cpu_ceiling_pct": ceil}
+
+
+def _iso(ts):
+    if not isinstance(ts, (int, float)) or isinstance(ts, bool):
+        return None
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(ts))
+
+
+def status(root=None, trees=None, admit=None, config=None, now=None):
+    """Machine lane status: config, slot holders (tree, slot, lane index, pid,
+    since), the request queue, admission readings and, per tree in `trees`
+    ({code: repo root}), its lane rows. READ ONLY - writes and stops nothing."""
+    root = governor_root() if root is None else Path(root)
+    now = time.time() if now is None else now
+    cfg = load_config() if config is None else config
+    rows = governor_state(root, cfg["governor_width"], now=now)
+    holders = [{"slot": r["index"], "tree": r["repo"], "lane_index": r["lane_index"],
+                "pid": r["pid"], "since": _iso(r["ts"]), "run_id": r["run_id"],
+                "state": r["state"]} for r in rows if r["state"] != FREE]
+    queue = []
+    for _p, rec in sorted(tickets(queue_root(root), reap=False, now=now),
+                          key=lambda t: t[1].get("ts") or 0):
+        ts = rec.get("ts")
+        queue.append({"tree": rec.get("repo"), "priority": rec.get("priority"),
+                      "pid": rec.get("pid"), "since": _iso(ts), "cap": rec.get("cap"),
+                      "waited_s": round(now - ts, 1) if isinstance(ts, (int, float)) else None})
+    running = sum(1 for h in holders if h["state"] == RUNNING)
+    out = {"config": {k: cfg[k] for k in (*CONFIG_DEFAULTS, "source", "errors")},
+           "recommended": dict(RECOMMENDED_CONFIG),
+           "free_slots": max(0, cfg["governor_width"] - running),
+           "holders": holders, "queue": queue,
+           "admission": admission(cfg, _readings(admit)), "trees": {}}
+    for code, repo in (trees or {}).items():
+        lanes = []
+        for r in repo_lane_state(repo, None, now=now, config=cfg):
+            if r["state"] == FREE:
+                continue
+            lanes.append({"index": r["index"], "lane": r["lane"], "pid": r["pid"],
+                          "state": r["state"],
+                          "since": None if r["age_s"] is None else _iso(now - r["age_s"])})
+        out["trees"][str(code)] = lanes
+    return out
+
+
+def status_lines(doc):
+    """One `key: value` / `- item: value` line per item (FLEET-COMMON 19)."""
+    c, a = doc["config"], doc["admission"]
+    lines = [f"config: width {c['governor_width']}, cap {c['lane_cap_max']}, ram floor "
+             f"{c['ram_floor_mb']} MB, cpu ceiling {c['cpu_ceiling_pct']:.0f} percent "
+             f"({'file' if c['source'] != 'defaults' else 'defaults'})"]
+    lines += [f"config error: {e}" for e in c["errors"]]
+    ram = "?" if a["free_ram_mb"] is None else f"{a['free_ram_mb']:.0f} MB"
+    cpu = "?" if a["cpu_pct"] is None else f"{a['cpu_pct']:.0f} percent"
+    lines.append(f"admission: {'admit' if a['admit'] else 'refuse - ' + a['reason']}, "
+                 f"free ram {ram}, cpu {cpu}")
+    lines.append(f"free slots: {doc['free_slots']}")
+    for h in doc["holders"]:
+        lane = "" if h["lane_index"] is None else f" lane {h['lane_index']}"
+        lines.append(f"- slot {h['slot']}: {h['tree']}{lane} pid {h['pid']} since "
+                     f"{h['since'] or '?'} ({h['state']})")
+    for q in doc["queue"]:
+        lines.append(f"- waiting: {q['tree']} {q['priority']} since {q['since'] or '?'}")
+    for code, lanes in doc["trees"].items():
+        for ln in lanes:
+            lines.append(f"- {code} lane {ln['index']}: {ln['lane']} pid {ln['pid']} since "
+                         f"{ln['since'] or '?'} ({ln['state']})")
+    return lines
 
 
 # ---------------------------------------------------------------- LANE-95 (v20)
@@ -1009,8 +1381,8 @@ def _usage_of(usage):
 
 
 @contextlib.contextmanager
-def run_lane(repo_root, code, lane_name, run_id, cap=LANE_CAP_MAX, base="HEAD",
-             exclusive=True, run=_git, usage=None):
+def run_lane(repo_root, code, lane_name, run_id, cap=None, base="HEAD",
+             exclusive=True, run=_git, usage=None, admit=None):
     """Repo lane + clean worktree for the block. Yields the claim ("worktree",
     "index", "saved_ref"). Takes NO governor slot: hold one around the executor
     call (spawn(governor=...) or slots.hold), never around git. Raises
@@ -1021,9 +1393,9 @@ def run_lane(repo_root, code, lane_name, run_id, cap=LANE_CAP_MAX, base="HEAD",
     v20 (LANE-95): the claim also carries "usage_pct" (usage: a number, a
     callable, or None = usage_pct()), "unit_mode" (small at >= UNIT_PCT) and
     "resume" (the lane's open unit, or None; an unreadable record = None)."""
-    claim = try_acquire_lane(repo_root, code, lane_name, run_id, cap, exclusive)
+    claim = try_acquire_lane(repo_root, code, lane_name, run_id, cap, exclusive, admit=admit)
     if not claim["ok"]:
-        raise LaneRefused(f"{claim['refused']}: {claim['holders']}")
+        raise LaneRefused(f"{claim['refused']}: {claim.get('reason') or claim['holders']}")
     claim["held_by_block"] = True
     try:
         claim["saved_ref"] = ensure_worktree(repo_root, claim["worktree"], base,
@@ -1069,10 +1441,33 @@ def _close_lane_row(repo_root, index):
 
 # ---------------------------------------------------------------- CLI (v20)
 
+def _status_cli(args, out):
+    trees = {}
+    for t in args.tree:
+        code, _, path = t.partition("=")
+        if not path:
+            print(json.dumps({"error": "--tree takes CODE=ROOT"}), file=out)
+            return 2
+        trees[code] = path
+    if args.no_sample:
+        def admit():
+            return {"free_ram_mb": None, "cpu_pct": None}
+    else:
+        admit = readings
+    doc = status(root=args.slots, trees=trees, admit=admit)
+    if args.json:
+        print(json.dumps(doc, indent=1), file=out)
+    else:
+        print("\n".join(status_lines(doc)), file=out)
+    return 0
+
+
 def main(argv=None, stdout=None):
     """`python fleet_lanes.py unit --root R --lane L --unit U --step S [--done]
     [--commit SHA]` writes a LANE-95 checkpoint; `resume --root R --lane L`
-    prints the open unit (JSON, null when none). Exit 0 ok, 2 bad input."""
+    prints the open unit (JSON, null when none); v25 `status [--slots DIR]
+    [--tree CODE=ROOT ...] [--json] [--no-sample]` prints the lane status.
+    Exit 0 ok, 2 bad input."""
     import argparse
     ap = argparse.ArgumentParser(prog="fleet_lanes.py")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -1086,11 +1481,18 @@ def main(argv=None, stdout=None):
     rp = sub.add_parser("resume")
     rp.add_argument("--root", required=True)
     rp.add_argument("--lane", required=True)
+    sp = sub.add_parser("status")
+    sp.add_argument("--slots", help="governor slot root (default: the machine root)")
+    sp.add_argument("--tree", action="append", default=[], metavar="CODE=ROOT")
+    sp.add_argument("--json", action="store_true")
+    sp.add_argument("--no-sample", action="store_true", help="skip the RAM / CPU readings")
     out = stdout or sys.stdout
     try:
         args = ap.parse_args(argv)
     except SystemExit:
         return 2
+    if args.cmd == "status":
+        return _status_cli(args, out)
     try:
         if args.cmd == "unit":
             doc = checkpoint(args.root, args.lane, args.unit, args.step,
