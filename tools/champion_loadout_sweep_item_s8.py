@@ -40,7 +40,8 @@ Usage::
 
     $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/champion_loadout_sweep_item_s8.py [--dry-run] [--no-backup]
 
-Atomic write (tmp + replace) with a timestamped .bak. Idempotent.
+Atomic write (core.polled_json.atomic_write_bytes; ensure_ascii=True, LF)
+with a timestamped .bak. Idempotent.
 """
 from __future__ import annotations
 
@@ -56,6 +57,7 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 _LOADOUTS_PATH = _ROOT / "data" / "champion_loadouts.json"
 
+from core import polled_json  # noqa: E402
 from core.daemon_slayer_client import (  # noqa: E402
     CARRY_RANGED_ATTACKRANGE_FLOOR,
     CARRY_RANGED_OFFCLASS_ITEM_NAMES,
@@ -267,10 +269,11 @@ def main(argv: list[str] | None = None) -> int:
         print(f"backup: {bak.name}")
 
     # Atomic write per the repo hard rule - overlays poll mid-write.
-    tmp = _LOADOUTS_PATH.with_suffix(".json.tmp")
+    # RM-258: the shared writer (per-writer scratch name, fsync, WinError 5
+    # retry, no scratch left behind). Bytes, so the LF stays LF on Windows.
     text = json.dumps(payload, indent=2, ensure_ascii=True, sort_keys=False)
-    tmp.write_text(text + "\n", encoding="utf-8", newline="\n")
-    tmp.replace(_LOADOUTS_PATH)
+    polled_json.atomic_write_bytes(
+        _LOADOUTS_PATH, (text + "\n").encode("ascii"))
     print(f"wrote: {_LOADOUTS_PATH}")
     return 1 if sweep.failed_target else 0
 
