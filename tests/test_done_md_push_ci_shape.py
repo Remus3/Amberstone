@@ -66,7 +66,11 @@ _JOB = re.compile(r"^  ([A-Za-z0-9_-]+):\s*$", re.M)
 _REQUIRE_FLAG = re.compile(r"\b(RC_REQUIRE_[A-Z_]+)=1\b")
 _ENV_ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 _PYTHON = re.compile(r"^python3?$")
-_CHAIN = re.compile(r"&&|\|\||;|\|")
+# Shell chain operators. A single `&` (bash background, spaced or not;
+# RM-1105) chains too, and so `|&` splits as `|` then `&`; an `&` touching a
+# redirection (`2>&1`, `&>`, `>&`) does not. Same `&` predicate as
+# tools/stop_claim_gate.py _STATEMENT_BREAK.
+_CHAIN = re.compile(r"&&|\|\||;|\||(?<![<>&])&(?![>&])")
 _NOT_A_PATH = ("-", '"', "'", "@", "$")
 
 
@@ -88,10 +92,12 @@ def _check_job_run_lines(ci: str) -> list[str]:
 
 def _commands(lines: list[str]) -> list[list[str]]:
     """Each shell command as tokens (RM-817): trailing-backslash continuations
-    joined, `&&` / `||` / `;` / `|` chains split, a YAML `- run:` prefix and
-    leading env assignments dropped. Naive whitespace split: a quoted argument
-    holding a space is several tokens, so a pytest path token carrying a quote
-    character is dropped (`-k 'a or b/c'` is no tree)."""
+    joined, `&&` / `||` / `;` / `|` / `|&` / single `&` chains split
+    (RM-1105), a YAML `- run:` prefix and leading env assignments dropped.
+    Naive whitespace split: a quoted argument holding a space is several
+    tokens, so a pytest path token carrying a quote character is dropped
+    (`-k 'a or b/c'` is no tree), and an `&` or `|` inside quotes still
+    splits."""
     logical: list[str] = []
     pending = ""
     for ln in lines:
@@ -258,6 +264,20 @@ PLANTED = {
         "          python tools/ds_feed_index.py --write && "
         "python tools/new_sync.py --check",
         "python tools/new_sync.py --check"),
+    # RM-1105: bash `a & b` backgrounds a and runs b, so b is its own command;
+    # `a |& b` pipes stdout and stderr into b.
+    "--check behind a backgrounded command": (
+        "          python tools/ds_feed_index.py --write & "
+        "python tools/new_sync.py --check",
+        "python tools/new_sync.py --check"),
+    "pytest behind a backgrounded command": (
+        "          python tools/ds_feed_index.py --write & "
+        "python -m pytest newtree/tests -q",
+        "`newtree/tests`"),
+    "--check behind a |& pipe": (
+        "          python tools/ds_feed_index.py --write |& "
+        "python tools/new_sync.py --check",
+        "python tools/new_sync.py --check"),
 }
 
 
@@ -291,6 +311,10 @@ def test_shapes_the_guard_must_not_read_as_steps():
         "          python -m pytest \"@$RUNNER_TEMP/impact_tests.txt\" -q",
         "          python -m pytest --check",
         "          pytest tests/ -k 'a or b/c'",
+        # RM-1105: an `&` inside a redirection chains nothing.
+        "          python tools/new_sync.py --write 2>&1",
+        "          python tools/new_sync.py --write &> sync.log",
+        "          python tools/new_sync.py --write >& sync.log",
     )
     table = _tier_table(_read(DONE))
     for line in near_misses:
@@ -306,3 +330,17 @@ def test_a_table_naming_the_step_clears_it():
     assert _unnamed_steps(module_named, _fixture(planted)) == []
     reversed_order = table + "\n> - `--check` then tools/new_sync.py"
     assert _unnamed_steps(reversed_order, _fixture(planted)) == [expected]
+
+
+def test_single_ampersand_splits_but_redirections_do_not():
+    """RM-1105: the splitter itself, so a shape is pinned even where the
+    derivation downstream would happen to tolerate a missed split."""
+    assert _commands(["a x & b y"]) == [["a", "x"], ["b", "y"]]
+    assert _commands(["a x |& b y"]) == [["a", "x"], ["b", "y"]]
+    assert _commands(["a x &"]) == [["a", "x"]]
+    assert _commands(["a x& b y"]) == [["a", "x"], ["b", "y"]]
+    assert _commands(["a x &b y"]) == [["a", "x"], ["b", "y"]]
+    assert _commands(["a x && b y || c ; d | e"]) == [
+        ["a", "x"], ["b", "y"], ["c"], ["d"], ["e"]]
+    for line in ("a 2>&1", "a &> f", "a >& f", "a 1>&2 f"):
+        assert _commands([line]) == [line.split()], line
