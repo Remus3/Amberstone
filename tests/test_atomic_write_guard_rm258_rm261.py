@@ -100,6 +100,12 @@ _RUNTIME_TOOLS = frozenset({
     # read back on the next fire, and its bounce and reply land in a
     # sibling's polled inbox under a hidden per-writer `_<file>.<pid>.<hex>.tmp`.
     "tools/inbox_responder_runner.py",
+    # The LCU WAMP phase watcher (a long-running loop, installed as an
+    # at-logon task by tools/phase_watcher_install.ps1): one JSON sidecar per
+    # captured phase event under data/event_captures/, which
+    # core/data_retention.py prunes; a failed write used to leave a torn
+    # sidecar or a stray destination-derived .tmp.
+    "tools/phase_watcher.py",
 })
 
 # RM-258 residual (s144): tools/ is IN scope by default. Out of scope are the
@@ -153,7 +159,6 @@ _TOOLS_UNCLASSIFIED = frozenset({
     "tools/live_write_tracer.py",
     "tools/moon_sync_poller.py",
     "tools/package_portable.py",
-    "tools/phase_watcher.py",
     "tools/regen_ranged_marksman_builds_item213.py",
     "tools/repair_mojibake.py",
     "tools/repair_spend_ledger.py",
@@ -203,6 +208,15 @@ SANCTIONED = {
     ("ops/rc_transactional_deploy.py", "_replace_with_retry"):
         "deploy transaction runs while the app tree is being swapped, so it "
         "must not import from the tree it is replacing",
+    ("tools/phase_watcher.py", "_replace_with_retry"):
+        "RC-PhaseWatcher is served standalone to its agent directory with no "
+        "repo above it (tools/phase_watcher_install.ps1), so it cannot import "
+        "core/ - the same constraint tests/test_tls_floor_rm752.py pins for "
+        "its TLS floor. Its write_sidecar meets the three requirements, "
+        "asserted by test_phase_watcher_writer_meets_the_sanction_contract "
+        "below: a <name>.<pid>.<token>.tmp scratch, flush + fsync before the "
+        "rename, a bounded PermissionError (WinError 5) retry, and the "
+        "scratch removed when the rename fails for good",
     ("core/log_rotation.py", "try_rotate"):
         "log ROTATION, not an atomic write (RM-718 a), checked against the "
         "three requirements above. Per-writer scratch: yes - "
@@ -519,6 +533,87 @@ def test_launcher_writer_meets_the_sanction_contract(tmp_path, monkeypatch, modu
     assert json.loads(dest.read_text(encoding="ascii")) == {"n": 3}
 
 
+def _load_phase_watcher():
+    """tools/phase_watcher.py under a private name (it is a script, not a
+    package module, and its deployed copy has no repo above it)."""
+    import importlib.util
+    import sys
+    alias = "_phase_watcher_rm258"
+    spec = importlib.util.spec_from_file_location(
+        alias, REPO_ROOT / "tools" / "phase_watcher.py")
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[alias] = mod
+    try:
+        spec.loader.exec_module(mod)
+    finally:
+        sys.modules.pop(alias, None)
+    return mod
+
+
+def test_phase_watcher_writer_meets_the_sanction_contract(tmp_path, monkeypatch):
+    """tools/phase_watcher.py is served to a standalone agent directory with
+    no repo above it (tools/phase_watcher_install.ps1), so it cannot import core.polled_json (the RM-752 pin in
+    tests/test_tls_floor_rm752.py); its sidecar writer is sanctioned on the
+    three requirements instead, asserted here on the code: a per-writer
+    scratch name, fsync before the rename, a bounded WinError 5 retry, the
+    scratch removed when the rename fails for good - and LF bytes on disk."""
+    pw = _load_phase_watcher()
+    real_replace, real_fsync = os.replace, os.fsync
+    events: list[str] = []
+    scratch: list[str] = []
+
+    def rec_replace(src, dst):
+        events.append("replace")
+        scratch.append(Path(src).name)
+        return real_replace(src, dst)
+
+    def rec_fsync(fd):
+        events.append("fsync")
+        return real_fsync(fd)
+
+    monkeypatch.setattr(pw.os, "replace", rec_replace)
+    monkeypatch.setattr(pw.os, "fsync", rec_fsync)
+    monkeypatch.setattr(pw.time, "sleep", lambda _s: None)
+    meta = {"topic": "gameflow_phase", "sub_phase": "ChampSelect",
+            "queue_id": 420, "captured_at": "2026-05-27T21:15:00Z"}
+    dest = pw.write_sidecar(tmp_path, meta, [{"monitor": "game"}])
+    assert pw.write_sidecar(tmp_path, meta, [{"monitor": "game"}]) == dest
+    assert events == ["fsync", "replace", "fsync", "replace"]
+    assert scratch[0] != scratch[1], scratch
+    for name in scratch:
+        assert name.startswith(dest.name + ".") and name.endswith(".tmp")
+        assert f".{os.getpid()}." in name, name
+    raw = dest.read_bytes()
+    assert b"\r\n" not in raw and b"\n" in raw
+    assert json.loads(raw)["frames"] == [{"monitor": "game"}]
+
+    refusals = [3]
+
+    def flaky(src, dst):
+        if refusals[0]:
+            refusals[0] -= 1
+            raise PermissionError(13, "Access is denied")
+        return real_replace(src, dst)
+
+    monkeypatch.setattr(pw.os, "replace", flaky)
+    pw.write_sidecar(tmp_path, dict(meta, queue_id=450), [])
+    assert json.loads((tmp_path / dest.name.replace("_420_", "_450_"))
+                      .read_bytes())["queue_id"] == 450
+
+    calls = [0]
+
+    def refused(src, dst):
+        calls[0] += 1
+        raise PermissionError(13, "Access is denied")
+
+    monkeypatch.setattr(pw.os, "replace", refused)
+    with pytest.raises(PermissionError):
+        pw.write_sidecar(tmp_path, dict(meta, queue_id=1700), [])
+    assert 1 < calls[0] <= 20, calls[0]
+    assert sorted(p.name for p in tmp_path.iterdir()) == sorted(
+        [dest.name, dest.name.replace("_420_", "_450_")])
+
+
 def test_scope_keeps_runtime_tools_and_drops_generators():
     assert _in_scope("tools/lcu_agent.py")
     assert _in_scope("tools/hotkey_listener.py")
@@ -531,6 +626,7 @@ def test_scope_keeps_runtime_tools_and_drops_generators():
     assert _in_scope("tools/inbox_responder.py")
     assert _in_scope("tools/rc_facts.py")
     assert _in_scope("tools/inbox_responder_runner.py")
+    assert _in_scope("tools/phase_watcher.py")
     assert not _in_scope("tools/daemon_slayer_extract.py")
     assert not _in_scope("ops/fleet_kit/fleet_headless.py")
     assert _in_scope("coach_integration/_coach.py")

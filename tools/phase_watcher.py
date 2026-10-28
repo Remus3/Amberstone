@@ -36,6 +36,7 @@ import io
 import json
 import logging
 import os
+import secrets
 import ssl
 import sys
 import threading
@@ -475,12 +476,31 @@ def sidecar_filename(topic_or_short: str, sub_phase: str, queue_id: int | None,
     return f"{topic_or_short}_{sub_phase}_{qid}_{captured_at_iso}.json"
 
 
+def _replace_with_retry(src: Path, dst: Path) -> None:
+    # RM-258: this file is served standalone (no repo above it), so it cannot
+    # import core.polled_json; this is the same bounded backoff. A reader
+    # holding the target open makes os.replace raise WinError 5 on Windows
+    # until it closes.
+    delays = (0.01, 0.025, 0.05, 0.1, 0.2, 0.4)
+    for i in range(len(delays) + 1):
+        try:
+            os.replace(src, dst)
+            return
+        except PermissionError:
+            if i >= len(delays):
+                raise
+            time.sleep(delays[i])
+
+
 def write_sidecar(base_dir: Path, meta: dict, frame_meta: list[dict]) -> Path:
     """Write the JSON sidecar to ``base_dir`` (data/event_captures/).
 
     File contents = meta + ``frames`` list (per-monitor frame metadata,
     minus the b64 payload which lives in the vision server's frame
-    cache). Atomic write via tmp + os.replace.
+    cache). Atomic write (RM-258 / RM-261): a per-writer
+    ``<name>.<pid>.<hex>.tmp`` scratch, flush + fsync, then a bounded-retry
+    rename; the scratch is removed if any step fails. Bytes are written
+    as-is, so the file is LF on Windows too.
     """
     base_dir = Path(base_dir)
     base_dir.mkdir(parents=True, exist_ok=True)
@@ -502,10 +522,19 @@ def write_sidecar(base_dir: Path, meta: dict, frame_meta: list[dict]) -> Path:
     path = base_dir / name
     body = dict(meta)
     body["frames"] = list(frame_meta)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(body, ensure_ascii=True, indent=2),
-                   encoding="utf-8")
-    os.replace(tmp, path)
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.{secrets.token_hex(4)}.tmp")
+    try:
+        with open(tmp, "wb") as fh:
+            fh.write(json.dumps(body, ensure_ascii=True, indent=2).encode("ascii"))
+            fh.flush()
+            os.fsync(fh.fileno())
+        _replace_with_retry(tmp, path)
+    except BaseException:
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+        raise
     return path
 
 
