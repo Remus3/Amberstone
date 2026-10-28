@@ -65,13 +65,13 @@ class RankedItem:
     @classmethod
     def from_dict(cls, d: dict) -> "RankedItem":
         return cls(
-            item_id=str(d.get("item_id", "")),
-            item_name=str(d.get("item_name", "")),
+            item_id=_row_item_id(d.get("item_id")),
+            item_name=_row_text(d.get("item_name")),
             delta_dps=float(d.get("delta_dps", 0.0)),
             gold=int(d.get("gold", 0)),
             shares_dead_unique=bool(d.get("shares_dead_unique", False)),
-            dead_unique_key=str(d.get("dead_unique_key", "")),
-            unique_passive_key=str(d.get("unique_passive_key", "")),
+            dead_unique_key=_row_text(d.get("dead_unique_key")),
+            unique_passive_key=_row_text(d.get("unique_passive_key")),
             effective_score=float(d.get("effective_score", 0.0)),
         )
 
@@ -131,6 +131,8 @@ def _ranked_rows(data: dict, cls, path: str) -> Optional[list]:
     coerce, is DROPPED rather than defaulted to 0.0: a zero-delta row would
     pose as a real candidate, and an all-garbage ranking would trip
     ``_kitless_all_zero``, whose non-empty guard an empty list does not.
+    A row whose ``item_id`` is missing, null or empty is dropped too
+    (RM-1004); ``from_dict`` itself still parses it, as ``""``.
     """
     ranked = data.get("ranked") or []
     if not isinstance(ranked, list):
@@ -142,9 +144,14 @@ def _ranked_rows(data: dict, cls, path: str) -> Optional[list]:
             logger.debug("daemon_slayer %s dropped non-object row: %s", path, type(r).__name__)
             continue
         try:
-            rows.append(cls.from_dict(r))
+            row = cls.from_dict(r)
         except (TypeError, ValueError, OverflowError) as e:
             logger.debug("daemon_slayer %s dropped malformed row: %s", path, e)
+            continue
+        if not row.item_id:
+            logger.debug("daemon_slayer %s dropped row without item_id", path)
+            continue
+        rows.append(row)
     return rows
 
 
@@ -156,6 +163,21 @@ def _str_tags(value: object) -> tuple[str, ...]:
     if isinstance(value, (list, tuple)):
         return tuple(t for t in value if isinstance(t, str))
     return ()
+
+
+def _row_item_id(value: object) -> str:
+    # str(None) is "None", a row posing as a real item id (RM-1004). Anything
+    # that is not a string or an int becomes "", which _ranked_rows drops; a
+    # bool is an int, so it is refused before the int branch.
+    if isinstance(value, bool) or not isinstance(value, (str, int)):
+        return ""
+    return str(value)
+
+
+def _row_text(value: object) -> str:
+    # Descriptive strings never cost the row, and a null must not read as the
+    # text "None" (a non-empty unique_passive_key means a locked family).
+    return value if isinstance(value, str) else ""
 
 
 def is_engine_up(timeout: float = 0.25) -> bool:
@@ -843,13 +865,13 @@ class TankRankedItem:
     @classmethod
     def from_dict(cls, d: dict) -> "TankRankedItem":
         return cls(
-            item_id=str(d.get("item_id", "")),
-            item_name=str(d.get("item_name", "")),
+            item_id=_row_item_id(d.get("item_id")),
+            item_name=_row_text(d.get("item_name")),
             delta_ehp=float(d.get("delta_ehp", 0.0)),
             gold=int(d.get("gold", 0)),
             shares_dead_unique=bool(d.get("shares_dead_unique", False)),
-            dead_unique_key=str(d.get("dead_unique_key", "")),
-            unique_passive_key=str(d.get("unique_passive_key", "")),
+            dead_unique_key=_row_text(d.get("dead_unique_key")),
+            unique_passive_key=_row_text(d.get("unique_passive_key")),
             delta_team_blended_ehp=float(
                 d.get("delta_team_blended_ehp", d.get("delta_ehp", 0.0))
             ),
@@ -1451,15 +1473,15 @@ class BruiserRankedItem:
     @classmethod
     def from_dict(cls, d: dict) -> "BruiserRankedItem":
         return cls(
-            item_id=str(d.get("item_id", "")),
-            item_name=str(d.get("item_name", "")),
+            item_id=_row_item_id(d.get("item_id")),
+            item_name=_row_text(d.get("item_name")),
             delta_dps=float(d.get("delta_dps", 0.0)),
             delta_ehp=float(d.get("delta_ehp", 0.0)),
             hybrid_delta_pct=float(d.get("hybrid_delta_pct", 0.0)),
             gold=int(d.get("gold", 0)),
             shares_dead_unique=bool(d.get("shares_dead_unique", False)),
-            dead_unique_key=str(d.get("dead_unique_key", "")),
-            unique_passive_key=str(d.get("unique_passive_key", "")),
+            dead_unique_key=_row_text(d.get("dead_unique_key")),
+            unique_passive_key=_row_text(d.get("unique_passive_key")),
         )
 
 
@@ -1667,14 +1689,14 @@ class MageRankedItem:
     @classmethod
     def from_dict(cls, d: dict) -> "MageRankedItem":
         return cls(
-            item_id=str(d.get("item_id", "")),
-            item_name=str(d.get("item_name", "")),
+            item_id=_row_item_id(d.get("item_id")),
+            item_name=_row_text(d.get("item_name")),
             delta_ability_dps=float(d.get("delta_ability_dps", 0.0)),
             new_ability_dps=float(d.get("new_ability_dps", 0.0)),
             gold=int(d.get("gold", 0)),
             shares_dead_unique=bool(d.get("shares_dead_unique", False)),
-            dead_unique_key=str(d.get("dead_unique_key", "")),
-            unique_passive_key=str(d.get("unique_passive_key", "")),
+            dead_unique_key=_row_text(d.get("dead_unique_key")),
+            unique_passive_key=_row_text(d.get("unique_passive_key")),
         )
 
 
@@ -1871,14 +1893,14 @@ class AssassinRankedItem:
     @classmethod
     def from_dict(cls, d: dict) -> "AssassinRankedItem":
         return cls(
-            item_id=str(d.get("item_id", "")),
-            item_name=str(d.get("item_name", "")),
+            item_id=_row_item_id(d.get("item_id")),
+            item_name=_row_text(d.get("item_name")),
             delta_burst=float(d.get("delta_burst", 0.0)),
             new_burst=float(d.get("new_burst", 0.0)),
             gold=int(d.get("gold", 0)),
             shares_dead_unique=bool(d.get("shares_dead_unique", False)),
-            dead_unique_key=str(d.get("dead_unique_key", "")),
-            unique_passive_key=str(d.get("unique_passive_key", "")),
+            dead_unique_key=_row_text(d.get("dead_unique_key")),
+            unique_passive_key=_row_text(d.get("unique_passive_key")),
         )
 
 
@@ -2287,14 +2309,14 @@ class EnchanterRankedItem:
     @classmethod
     def from_dict(cls, d: dict) -> "EnchanterRankedItem":
         return cls(
-            item_id=str(d.get("item_id", "")),
-            item_name=str(d.get("item_name", "")),
+            item_id=_row_item_id(d.get("item_id")),
+            item_name=_row_text(d.get("item_name")),
             delta_hps=float(d.get("delta_hps", 0.0)),
             new_hps=float(d.get("new_hps", 0.0)),
             gold=int(d.get("gold", 0)),
             shares_dead_unique=bool(d.get("shares_dead_unique", False)),
-            dead_unique_key=str(d.get("dead_unique_key", "")),
-            unique_passive_key=str(d.get("unique_passive_key", "")),
+            dead_unique_key=_row_text(d.get("dead_unique_key")),
+            unique_passive_key=_row_text(d.get("unique_passive_key")),
         )
 
 
@@ -2446,8 +2468,8 @@ class OnhitRankedItem:
     @classmethod
     def from_dict(cls, d: dict) -> "OnhitRankedItem":
         return cls(
-            item_id=str(d.get("item_id", "")),
-            item_name=str(d.get("item_name", "")),
+            item_id=_row_item_id(d.get("item_id")),
+            item_name=_row_text(d.get("item_name")),
             gold=int(d.get("gold", 0)),
             delta_dps=float(d.get("delta_dps", 0.0)),
             new_dps=float(d.get("new_dps", 0.0)),
@@ -2457,8 +2479,8 @@ class OnhitRankedItem:
             is_terminal=bool(d.get("is_terminal", False)),
             tags=_str_tags(d.get("tags")),
             shares_dead_unique=bool(d.get("shares_dead_unique", False)),
-            dead_unique_key=str(d.get("dead_unique_key", "")),
-            unique_passive_key=str(d.get("unique_passive_key", "")),
+            dead_unique_key=_row_text(d.get("dead_unique_key")),
+            unique_passive_key=_row_text(d.get("unique_passive_key")),
         )
 
 
@@ -3034,7 +3056,8 @@ def rank_for_primary_archetype(
     collapses a timeout, a refused connection, any HTTP error status, a
     non-JSON body and a body that is not a JSON object into one ``None``
     (RM-1000, RM-1001), and a ``ranked`` that is not a list is ``None``
-    too, while a single malformed row is dropped (RM-1002). Callers test
+    too, while a single malformed row is dropped (RM-1002), including one
+    whose ``item_id`` is missing, null or empty (RM-1004). Callers test
     ``out is None``.
     Every archetype has its
     own scorer (Phase 6 s181), so ``fell_back`` is True only for a kit-less
