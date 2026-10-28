@@ -33,22 +33,24 @@ PURE + PARTIAL-READ + FAIL-SOFT (this is the design, not a bug)
     ``build_block`` takes PRIMITIVES (so it is trivially unit-testable and the
     impure file/engine reads stay in the dashboard wiring layer) and works from
     WHATEVER inputs are actually present on a given tick:
-      * hp_pct absent / non-coercible -> action = "" (no action signal).
+      * hp_pct absent / not a reading -> action = "" (no action signal).
         (Note: the underlying decide_action neutral-defaults to HOLD on an
         unusable hp_pct; the assembler instead emits "" for a TOTALLY-ABSENT
         hp_pct so the shadow row honestly shows nothing was computable. A
         present-but-garbage hp_pct also yields "".)
-      * wave_pct absent -> decide_action just gets None (no tier shift).
+      * wave_pct absent / not a reading -> decide_action gets None (no tier
+        shift); a low-enemy count that is not a reading is 0.
       * cc_threat_line absent / empty -> fight_rule = risk = "".
       * item_build absent -> item fields = "".
       * next_item_name absent -> reset_item = "" (no item to anchor the
         no-recall fact to).
+    A numeric READING is a finite int / float (never a bool, never a str) in
+    its band: hp_pct 0..150, wave_pct and tower HP 0..100, low-enemy count a
+    whole 0..5, owned-item count a whole 0..64, gold a whole 1..10**5.
     On ANY internal failure each field independently degrades to "" / {}.
     ``build_block`` NEVER raises.
 """
 from __future__ import annotations
-
-import math
 
 from core import aram_action_rule, aram_fight_risk
 from core.coach_choices import CoachChoice, synthesize_simple_choices, to_jsonable
@@ -71,32 +73,68 @@ _ARAM_CHOICE_LABELS = {
 }
 
 
-def _has_usable_number(value: object) -> bool:
-    """True only when ``value`` coerces to a finite float (not NaN/inf).
+# Reading bands. hp_pct tops out at 150 because the producer
+# (dashboard/_deterministic_coaching.py _hp_fraction) admits hp up to 1.5x max:
+# a transient over-max reading is full HP, not junk. A percent is 0..100; ARAM
+# fields five enemies; the Live Client inventory has at most seven slots, so 64
+# rejects only junk; no ARAM item costs anywhere near 10**5 gold.
+_HP_PCT_MAX = 150.0
+_PCT_MAX = 100.0
+_MAX_LOW_ENEMIES = 5
+_MAX_OWNED_ITEMS = 64
+_MAX_GOLD = 10**5
 
-    Used to decide whether an ACTION signal exists at all. A None or a
-    non-coercible / NaN hp_pct means "no action computable" -> action "".
+
+def _real_number(value: object, lo: float, hi: float) -> float | None:
+    """A finite int / float in ``lo..hi`` as a float, else None. Never raises.
+
+    Strict on purpose (core/aram_coach_shadow.py _norm_number records the same
+    gate): a bool is a flag, not a measurement (False tower HP read "Enemy tower
+    down"), a str is not a reading ("2" low enemies promoted ALL-IN), and an
+    int past the float range raised OverflowError out of a helper that sat
+    outside its try and blanked every field of the block.
     """
-    if value is None:
-        return False
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
     try:
-        out = float(value)  # type: ignore[arg-type]
-    except (TypeError, ValueError):
-        return False
-    return not (math.isnan(out) or math.isinf(out))
+        out = float(value)
+    except OverflowError:
+        return None
+    # The bounds are finite, so this also rejects NaN (every comparison is
+    # False) and +/-inf.
+    if not lo <= out <= hi:
+        return None
+    return out
+
+
+def _whole_number(value: object, lo: int, hi: int) -> int | None:
+    """An int, or an integral float, in ``lo..hi``, else None. Never raises.
+
+    A fractional count is not a count: 2.9 low enemies used to read 2 and -0.5
+    owned items read 0.
+    """
+    num = _real_number(value, lo, hi)
+    if num is None or num != int(num):
+        return None
+    return int(num)
 
 
 def _safe_action(hp_pct: object, wave_pct: object, low_enemy_count: object) -> str:
     """decide_action over the inputs, but "" when no HP signal is present.
 
-    decide_action itself never raises and neutral-defaults to HOLD on an
-    unusable hp_pct; we gate on a usable hp_pct first so a no-data tick logs
-    an empty action instead of a misleading HOLD.
+    decide_action itself neutral-defaults to HOLD on an unusable hp_pct; we gate
+    on a usable hp_pct first so a no-data tick logs an empty action instead of a
+    misleading HOLD. The secondary inputs are validated HERE, so a junk wave is
+    the no-shift case and a junk low-enemy count is 0 - neither can erase the
+    action (an inf count used to raise inside decide_action and blank it).
     """
-    if not _has_usable_number(hp_pct):
-        return ""
     try:
-        return aram_action_rule.decide_action(hp_pct, wave_pct, low_enemy_count)
+        hp = _real_number(hp_pct, 0.0, _HP_PCT_MAX)
+        if hp is None:
+            return ""
+        wave = _real_number(wave_pct, 0.0, _PCT_MAX)
+        low = _whole_number(low_enemy_count, 0, _MAX_LOW_ENEMIES) or 0
+        return aram_action_rule.decide_action(hp, wave, low)
     except Exception:  # noqa: BLE001 - hard fail-soft contract
         return ""
 
@@ -181,11 +219,11 @@ def _build_path_from_order(build_order: object) -> str:
     ``build_order`` is the full ordered list of completed-item display NAMES for
     the champion+mode (as the ARAM build-order table provides it). Non-str /
     blank / None entries (components or gaps) are skipped; the result is a
-    ", "-joined string of at most _MAX_BUILD_ITEMS names. A non-list order, an
-    empty list, or an all-blank list yields "" - the fail-soft default that
-    leaves item_build unchanged. Never raises.
+    ", "-joined string of at most _MAX_BUILD_ITEMS names. A list or tuple is an
+    order; anything else, an empty order or an all-blank one yields "" - the
+    fail-soft default that leaves item_build unchanged. Never raises.
     """
-    if not isinstance(build_order, list):
+    if not isinstance(build_order, (list, tuple)):
         return ""
     names: list[str] = []
     for entry in build_order:
@@ -202,16 +240,17 @@ def _reset_line(next_item_name: object, next_item_remaining_gold: object) -> str
     """Compose the ARAM reset/item line, or "" when no next item is known.
 
     ARAM has no recall, so the line states that fact and names the next core
-    item to save toward, with the remaining gold when it is a clean number.
+    item to save toward, with the remaining gold when it is a whole number in
+    1.._MAX_GOLD. Anything else names no gold: an inf gold used to raise
+    OverflowError and a 5000-digit one ValueError (in the f-string) out of this
+    unwrapped helper, blanking the whole block; 12.9 was truncated to 12g and
+    True or "1400" were named as gold.
     """
     name = _clean_str(next_item_name)
     if not name:
         return ""
-    try:
-        gold = int(next_item_remaining_gold)  # type: ignore[arg-type]
-    except (TypeError, ValueError):
-        gold = None
-    if gold is not None and gold > 0:
+    gold = _whole_number(next_item_remaining_gold, 1, _MAX_GOLD)
+    if gold is not None:
         return f"{_ARAM_NO_RECALL_PREFIX}; save toward {name} ({gold}g remaining)."
     return f"{_ARAM_NO_RECALL_PREFIX}; save toward {name}."
 
@@ -224,14 +263,22 @@ def _build_reasons(
     """Merge the per-item reason map with the anti-tank / heal-threat reasons.
 
     The base map (item -> why-this-item) is copied so the caller's dict is
-    never mutated. The anti-tank + heal-threat reason strings ride in under
-    stable, non-colliding keys so the operator sees the full build rationale.
-    A non-dict base / blank hint each degrades to absent, never raises.
+    never mutated. Only a non-blank str key with a non-blank str reason is
+    kept, both stripped: the map reaches the shadow jsonl through json.dumps,
+    where a NaN reason wrote a bare NaN token and an object reason raised and
+    lost the record, and str() of a non-str key manufactured an item named
+    "None" (or raised out of the block). The anti-tank + heal-threat reason
+    strings ride in under stable, non-colliding keys so the operator sees the
+    full build rationale. A non-dict base / blank hint each degrades to absent,
+    never raises.
     """
     out: dict = {}
     if isinstance(item_build_reasons, dict):
         for k, v in item_build_reasons.items():
-            out[str(k)] = v
+            key = _clean_str(k)
+            reason = _clean_str(v)
+            if key and reason:
+                out[key] = reason
     at = _clean_str(antitank_hint)
     if at:
         out["anti-tank"] = at
@@ -250,18 +297,16 @@ def _safe_item_extra(owned_item_count: object) -> str:
     7th item, and picking a SPECIFIC consumable is a judgment call we DECLINE
     rather than fabricate (do-not-flip-blind: a wrong precompute is worse than a
     Haiku call). So the safe, never-misleading resolution is: a known
-    non-negative owned-item count -> the literal "omit" (the exact value the
-    live coach itself emits for this state); no count signal / garbage /
-    negative -> "" (honest empty, same as every other absent-input field here).
-    Never raises.
+    whole-number owned-item count in 0.._MAX_OWNED_ITEMS -> the literal "omit"
+    (the exact value the live coach itself emits for this state); no count
+    signal / garbage / negative / fractional / bool / str -> "" (honest empty,
+    same as every other absent-input field here). Never raises.
     """
-    if not _has_usable_number(owned_item_count):
-        return ""
     try:
-        count = int(float(owned_item_count))  # type: ignore[arg-type]
-    except (TypeError, ValueError):
+        count = _whole_number(owned_item_count, 0, _MAX_OWNED_ITEMS)
+    except Exception:  # noqa: BLE001 - fail-soft contract: never raises
         return ""
-    return "omit" if count >= 0 else ""
+    return "" if count is None else "omit"
 
 
 # objective tower-HP thresholds (percent; 0 = tower destroyed, <=25 = in danger).
@@ -285,13 +330,12 @@ _OBJ_MY_HEALTHY = "Hold and poke; wait for a pick before you commit."
 
 
 def _coerce_tower_hp(value: object) -> float | None:
-    """Coerce a tower-HP percent to a float, or None when it is not usable."""
-    if not _has_usable_number(value):
-        return None
-    try:
-        return float(value)  # type: ignore[arg-type]
-    except (TypeError, ValueError):
-        return None
+    """A tower-HP percent 0..100 as a float, or None when it is not usable.
+
+    A bool, a str and an out-of-range value are no reading: False / "0" / -5
+    used to route "Enemy tower down - push to their base".
+    """
+    return _real_number(value, 0.0, _PCT_MAX)
 
 
 def _safe_objective(my_tower_hp: object, enemy_tower_hp: object) -> str:
@@ -329,6 +373,18 @@ def _safe_objective(my_tower_hp: object, enemy_tower_hp: object) -> str:
         return ""
 
 
+def _guarded(default, fn, *args):
+    """``fn(*args)``, or ``default`` when it raises: one field, one failure.
+
+    Without it a raise inside one field helper fell through to build_block's
+    outer except and blanked every field of the block.
+    """
+    try:
+        return fn(*args)
+    except Exception:  # noqa: BLE001 - per-field fail-soft contract
+        return default
+
+
 def build_block(
     hp_pct: object = None,
     wave_pct: object = None,
@@ -353,11 +409,12 @@ def build_block(
     failure. NEVER raises.
 
     Args:
-        hp_pct: self HP percent 0..100. Absent / non-coercible -> action "".
+        hp_pct: self HP percent 0..150 (over 100 is a transient over-max
+            reading). Absent / not a reading -> action "".
         wave_pct: minion-wave position 0..100 (vision-only; often absent
             server-side). Absent -> no tier shift in decide_action.
         low_enemy_count: count of low-HP enemies (>=2 enables the ALL-IN top
-            tier). Non-int -> treated as 0 by decide_action.
+            tier). Not a whole 0..5 -> treated as 0.
         cc_threat_line: the ``enemy_cc_threat_line`` string OR a ranked
             iterable of CC entries (see core.aram_fight_risk). Drives
             fight_rule + risk. Absent / malformed -> both "".
@@ -372,12 +429,13 @@ def build_block(
             possibly populated by the hint reasons below).
         next_item_name: display name of the next un-bought core item. Anchors
             the no-recall reset line; absent -> reset_item "".
-        next_item_remaining_gold: gold remaining to afford next_item_name.
+        next_item_remaining_gold: gold remaining to afford next_item_name;
+            named in the line only when it is a whole 1..10**5.
         antitank_hint: the ds_antitank_hint "hint" string. Folded into reasons.
         heal_threat_line: the heal_threat_callout "line" string. Folded in.
         owned_item_count: count of COMPLETED items the player owns. Drives
-            item_extra: a known non-negative count -> "omit"; absent /
-            garbage / negative -> "".
+            item_extra: a whole 0..64 count -> "omit"; absent / garbage /
+            negative / fractional -> "".
         my_tower_hp: your nearest-tower HP percent 0..100 (vision-only; null
             when not visible). Drives objective.
         enemy_tower_hp: enemy nearest-tower HP percent 0..100 (vision-only).
@@ -399,12 +457,15 @@ def build_block(
             "action": action,
             "fight_rule": fight_rule,
             "risk": _safe_risk(cc_threat_line),
-            "reset_item": _reset_line(next_item_name, next_item_remaining_gold),
-            "item_build": _clean_str(item_build) or _build_path_from_order(
-                build_order
+            "reset_item": _guarded(
+                "", _reset_line, next_item_name, next_item_remaining_gold
             ),
-            "item_build_reasons": _build_reasons(
-                item_build_reasons, antitank_hint, heal_threat_line
+            "item_build": _clean_str(item_build) or _guarded(
+                "", _build_path_from_order, build_order
+            ),
+            "item_build_reasons": _guarded(
+                {}, _build_reasons,
+                item_build_reasons, antitank_hint, heal_threat_line,
             ),
             "choices": _safe_choices(action, fight_rule),
             "item_extra": _safe_item_extra(owned_item_count),
