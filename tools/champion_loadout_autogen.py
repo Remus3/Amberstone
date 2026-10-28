@@ -62,9 +62,7 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
-import tempfile
 import time
 from pathlib import Path
 from typing import Iterable, Optional
@@ -75,6 +73,7 @@ sys.path.insert(0, str(_ROOT))
 
 from core import archetype_picks
 from core import daemon_slayer_client as dsc
+from core import polled_json
 
 _LOADOUTS_PATH = _ROOT / "data" / "champion_loadouts.json"
 _CHAMPS_PATH = _ROOT / "data" / "meta" / "ddragon_champions.json"
@@ -387,42 +386,27 @@ def load_champions() -> list[tuple[str, str]]:
 
 
 def atomic_write_loadouts(payload: dict) -> None:
-    """Write payload to the loadouts JSON via tmp + replace.
+    """Write payload to the loadouts JSON atomically.
 
-    Mirrors ``core.archetype_picks._atomic_write_picks``. Sort keys
-    inside ``champions`` for stable diffs; preserve top-level key
-    order (schema_version, doc, champions).
+    RM-258: the shared writer (core.polled_json.atomic_write_bytes: a
+    per-writer scratch name, fsync, a bounded WinError 5 retry, no scratch
+    left behind). Bytes, so the LF stays LF on Windows (the file is TRACKED,
+    RM-441). Sort keys inside ``champions`` for stable diffs; preserve
+    top-level key order (schema_version, doc, champions).
     """
-    out_dir = _LOADOUTS_PATH.parent
-    out_dir.mkdir(parents=True, exist_ok=True)
-    tmp_fd, tmp_path = tempfile.mkstemp(
-        prefix=".champion_loadouts.", suffix=".tmp", dir=str(out_dir),
-    )
-    try:
-        # newline="\n": the loadouts file is TRACKED and a default text-mode
-        # handle writes CRLF on Windows (RM-441).
-        with os.fdopen(tmp_fd, "w", encoding="utf-8", newline="\n") as f:
-            # Sort within champions, but preserve top-level ordering.
-            ordered = {
-                "_schema_version": payload.get("_schema_version", SCHEMA_VERSION),
-                "_doc":            payload.get("_doc", []),
-                "champions":       {
-                    name: sort_champ_entry(entry)
-                    for name, entry in sorted(
-                        (payload.get("champions") or {}).items(),
-                        key=lambda kv: kv[0].lower(),
-                    )
-                },
-            }
-            json.dump(ordered, f, ensure_ascii=False, indent=2)
-            f.write("\n")
-        os.replace(tmp_path, str(_LOADOUTS_PATH))
-    except Exception:
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
-        raise
+    ordered = {
+        "_schema_version": payload.get("_schema_version", SCHEMA_VERSION),
+        "_doc":            payload.get("_doc", []),
+        "champions":       {
+            name: sort_champ_entry(entry)
+            for name, entry in sorted(
+                (payload.get("champions") or {}).items(),
+                key=lambda kv: kv[0].lower(),
+            )
+        },
+    }
+    text = json.dumps(ordered, ensure_ascii=False, indent=2) + "\n"
+    polled_json.atomic_write_bytes(_LOADOUTS_PATH, text.encode("utf-8"))
 
 
 def sort_champ_entry(entry: dict) -> dict:
