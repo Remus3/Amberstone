@@ -162,7 +162,6 @@ _TOOLS_UNCLASSIFIED = frozenset({
     "tools/hotfix_kaisa_aram_ashe_sr_item263.py",
     "tools/hotfix_ranged_only_melee_loadouts.py",
     "tools/hotfix_sibling_pollution_item269.py",
-    "tools/hotfix_thin_aram_adc_item275.py",
     "tools/package_portable.py",
     "tools/regen_ranged_marksman_builds_item213.py",
     "tools/repair_mojibake.py",

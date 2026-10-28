@@ -31,8 +31,10 @@ OUT OF SCOPE (flagged, NOT swept this pass, per operator decision):
 
 The item-167 root (rank.py auto-seed coverage gap + the align tool's
 archetype routing) is UNCHANGED; this is the data-side hand-curate,
-mirroring tools/hotfix_sibling_pollution_item269.py. Idempotent + atomic.
-Touches items + label only; runes + summoners + keys are preserved.
+mirroring tools/hotfix_sibling_pollution_item269.py. Idempotent + atomic:
+the write goes through core.polled_json.atomic_write_bytes (fsync, WinError 5
+retry, no scratch left behind; ensure_ascii=True, LF). Touches items + label
+only; runes + summoners + keys are preserved.
 
 Usage:
     $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/hotfix_thin_aram_adc_item275.py [--dry-run]
@@ -41,12 +43,15 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parent.parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
 _LOADOUTS = _ROOT / "data" / "champion_loadouts.json"
+
+from core import polled_json  # noqa: E402
 
 # Thin n=4 ADC ARAM carry PRIMARY paths -> coherent 6-item set matching
 # the path's existing archetype key. Each set is clash-free (no two items
@@ -141,9 +146,7 @@ def run(dry_run: bool = False) -> int:
         print("no changes; data already clean (idempotent no-op)")
         return 0
     text = json.dumps(data, indent=2, ensure_ascii=True) + "\n"
-    tmp = _LOADOUTS.with_suffix(".json.tmp")
-    tmp.write_bytes(text.encode("utf-8"))
-    os.replace(str(tmp), str(_LOADOUTS))
+    polled_json.atomic_write_bytes(_LOADOUTS, text.encode("utf-8"))
     print(f"wrote {_LOADOUTS}")
     return 0
 
