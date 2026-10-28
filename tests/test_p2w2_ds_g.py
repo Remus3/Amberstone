@@ -6,35 +6,37 @@ Covers the FIX-NOW hardening landed in this slice:
   (``math.inf`` for a manaless / energy champion) to JSON-safe ``None``
   instead of emitting a bare ``Infinity`` token. The DS server serializes a
   fight-report via ``json.dumps(payload, default=str)`` with the DEFAULT
-  ``allow_nan=True`` (``agents/daemon_slayer/server.py:1740``), so an
+  ``allow_nan=True`` (``server.Handler._send_json``), so an
   ``Infinity`` token survives to the wire and breaks the dashboard's
   ``JSON.parse`` (the cycle-7..11 dominant finding class). The
   ``ManaBoundedResult.mana_pool`` dataclass field itself stays ``math.inf``
   (its documented "no finite-mana gate" sentinel, pinned by
-  ``tests/.../test_mana_sim.py:115``) - only the JSON BOUNDARY is hardened.
+  ``ManalessChampionTests.test_zed_energy_is_not_gated`` in
+  ``agents/daemon_slayer/tests/test_mana_sim.py``) - only the JSON BOUNDARY
+  is hardened.
 
 Characterization locks (already-correct guards, proven here so a future
 edit cannot silently regress them):
 
 * ``matchup.compute_matchup`` guards a zero / unresolvable HP pool
-  (``matchup.py:260-261``) so a 0-HP target never divides by zero -> the
+  (the 0-HP guards in ``matchup.compute_matchup`` on ``pct_b_removed`` /
+  ``pct_a_removed``) so a 0-HP target never divides by zero -> the
   serialized ``to_dict`` carries no NaN / Infinity token.
 
 Every emitted scorer number must be JSON-finite. The mana_pool test asserts
 the OLD behavior would have failed (a bare ``Infinity`` leak via the
 production ``allow_nan=True`` encoder) and the NEW behavior is JSON-safe.
 
-Symbols grep-confirmed against the live tree before use:
-  data_loader.DataSnapshot.load              (data_loader.py:67)
-  fight_report.compute_fight_report          (fight_report.py:157)
-  fight_report.FightReport.to_dict           (fight_report.py:110)
-  fight_report.FightReport.to_dict mana_pool emit (fight_report.py:124)
-  mana_sim.compute_mana_bounded_combo        (mana_sim.py:494)
-  mana_sim.ManaBoundedResult.mana_pool       (mana_sim.py:165)
-  mana_sim._champion_mana_profile (inf pool) (mana_sim.py:216-220)
-  matchup.compute_matchup                    (matchup.py:209)
-  matchup.MatchupResult.to_dict              (matchup.py:67)
-  server.Handler._send_json (allow_nan=True) (server.py:1740)
+Symbols this file relies on, cited by symbol (a line number goes stale):
+  data_loader.DataSnapshot.load
+  fight_report.compute_fight_report
+  fight_report.FightReport.to_dict - and its mana_pool emit
+  mana_sim.compute_mana_bounded_combo
+  mana_sim.ManaBoundedResult.mana_pool - a dataclass field
+  mana_sim._champion_mana_profile - its non-mana branch returns the inf pool
+  matchup.compute_matchup
+  matchup.MatchupResult.to_dict
+  server.Handler._send_json - json.dumps with the default allow_nan=True
 """
 
 from __future__ import annotations
@@ -56,7 +58,8 @@ def snap() -> DataSnapshot:
 
 
 # A manaless champion: partype is "None" -> _champion_mana_profile returns
-# math.inf for the pool (mana_sim.py:216-220). Garen is the canonical
+# math.inf for the pool (the non-mana branch of
+# ``mana_sim._champion_mana_profile``). Garen is the canonical
 # manaless bruiser; if Garen ever changes, any energy champ (Kennen / Lee
 # Sin) exhibits the same inf pool.
 _MANALESS_CHAMP = "Garen"
@@ -65,7 +68,7 @@ _MANALESS_CHAMP = "Garen"
 def _production_encode(payload: dict) -> str:
     """Encode exactly as the DS server does: json.dumps(default=str).
 
-    The production ``Handler._send_json`` (server.py:1740) uses the DEFAULT
+    The production ``server.Handler._send_json`` uses the DEFAULT
     ``allow_nan=True``, so a non-finite float survives as a bare ``NaN`` /
     ``Infinity`` token rather than raising. This helper reproduces that path
     so the test exercises the real leak.
@@ -148,7 +151,8 @@ class TestMatchupZeroHpDivGuard:
         self, snap: DataSnapshot
     ) -> None:
         # hp_*_pct=0.0 drives a_hp_eff / b_hp_eff to 0; the pct_removed lines
-        # (matchup.py:260-261) must NOT divide by zero into a NaN/inf.
+        # (the 0-HP guards in compute_matchup) must NOT divide by zero into a
+        # NaN/inf.
         r = compute_matchup(
             snap, "Garen", "Darius", 9, 9, hp_a_pct=0.0, hp_b_pct=0.0,
         )

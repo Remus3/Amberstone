@@ -128,8 +128,9 @@ class FightReport:
             # mana_pool is math.inf for a manaless / energy champion (the
             # ManaBoundedResult "no finite-mana gate" sentinel). json.dumps
             # with the DEFAULT allow_nan=True (the DS server's encoder,
-            # server.py:1740) would emit a bare ``Infinity`` token here -
-            # invalid JSON that breaks the dashboard's JSON.parse. Coerce a
+            # ``server.Handler._send_json``) would emit a bare ``Infinity``
+            # token here - invalid JSON that breaks the dashboard's
+            # JSON.parse. Coerce a
             # non-finite pool to JSON-safe None at the serialization boundary;
             # resource_type still carries "Energy"/"None" so the "no gate"
             # signal is preserved. The dataclass field stays math.inf.
