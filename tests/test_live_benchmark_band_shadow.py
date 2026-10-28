@@ -77,8 +77,10 @@ def test_coarse_state_dedup(tmp_path):
 def test_never_raises_on_junk(tmp_path):
     p = tmp_path / "shadow.jsonl"
     # Non-str champion, junk band entries - fail-soft, no exception, no row.
+    # A list holding no real band dict is not a firing (s144 true-audit F3).
     assert lbs.log_live_bands("sr", 123, bands=[_BAND], path=p) is None  # type: ignore[arg-type]
-    assert lbs.log_live_bands("sr", "Tristana", bands=["junk", 5], cs=90, path=p) is not None
+    assert lbs.log_live_bands("sr", "Tristana", bands=["junk", 5], cs=90, path=p) is None
+    assert not p.exists()
 
 
 # --- wrapper-level (state-builder seam) -------------------------------------
