@@ -25,6 +25,8 @@ import { tftHpBand } from '../lib/overlay_tft.js';
 import { applyItemOverrides, filterSilenced, clearItemOverrides } from '../lib/item_overrides.js';
 import { renderThreatDonut } from './threat_donut.js';
 import { classifyAction, escHtml, safe } from '../lib/helpers.js';
+import { state } from '../lib/state.js';
+import { directivesAllowed, withoutLiveDirectives } from '../lib/live_directive_gate.js';
 import { renderSpikeCurve, fetchSpikeCurve, getCachedSpikeCurve } from './spike_curve.js';
 import { renderSpikeMarkers, fetchSpikeMarkers, getCachedSpikeMarkers } from './spike_markers.js';
 import { renderWardHeat, fetchWardHeat, getCachedWardHeat } from './ward_heat.js';
@@ -1546,9 +1548,16 @@ export function renderActiveMatch(payload, ctx) {
     // text (the BARON/DRAKE/HERALD chips carry the real timers). Without this the
     // raw [T]...[/T] markup leaked into the overlay coach card (operator-reported
     // 2026-06-29). Matches right_now.js / next.js, which already route through it.
-    const action = safe(p.action);
-    const immediate = safe(p.immediate);
-    const next = safe(p.next);
+    // B4 defence in depth (RM-1093, the same gate line as right_now.js and
+    // next.js): while a game is live, read the coach with the server's
+    // live-suppressed imperatives blanked. MEASURED: in the no-draft champ
+    // select -> game window the server serves a pre-flip (mode_key aram,
+    // preflip_active) with the coach unblanked, while the :2999 relay may
+    // already answer. objective is not suppressed and keeps painting.
+    const gp = directivesAllowed(state.latest) ? p : withoutLiveDirectives(p);
+    const action = safe(gp.action);
+    const immediate = safe(gp.immediate);
+    const next = safe(gp.next);
     const objective = safe(p.objective);
     // s171: ``immediate`` is the most actionable field - the coach's
     // RIGHT NOW prompt (e.g. "Recall now - Ryze + Yi respawn ~47s").

@@ -1450,7 +1450,22 @@ _WEB = _REPO_ROOT / "web"
 # MERGED 2026-10-28 by the session 144 L5 merger onto main (lane commit a7b165a45): main had moved
 # this pin since the lane base, so the superseded value above is main's and
 # the value below is recomputed over the merged tree.
-_LIVE_HALF_DIGEST = "d249371e441175a285fc76471445c8d6510a1a75bb2a8d3c808fde0eb20b8f45"
+# superseded by the RM-1093 re-capture below: "d249371e441175a285fc76471445c8d6510a1a75bb2a8d3c808fde0eb20b8f45"
+#
+# RE-CAPTURED 2026-10-28 at RM-1093 (s144 queue cycle 36, provisional
+# until the merger lands it). One change rides it: renderActiveMatch in
+# web/js/panels/active_match.js reads coach.action / immediate / next on the
+# feed path through live_directive_gate.withoutLiveDirectives while a game is
+# live. Ordinary case, no tokeniser change. ATTRIBUTED BY SUBSTITUTION:
+# swapping exactly web/js/panels/active_match.js back to its lane/queue
+# a7b165a45 blob (in memory) reproduces the superseded 11dceaa2... value
+# EXACTLY. That path is the whole change. No glyph change: the added lines
+# carry 0 non-ASCII bytes. lane/uiux re-captures this line in parallel, so
+# the merger recomputes.
+# MERGED 2026-10-28 by the session 144 L5 merger onto main (lane commit f9f786d71): main had moved
+# this pin since the lane base, so the superseded value above is main's and
+# the value below is recomputed over the merged tree.
+_LIVE_HALF_DIGEST = "c3f3b3bf1767ce77fcaeab8f1af2e57d5b3758a3390b54df8d1ec596f087969e"
 
 
 def _web_sources() -> list[Path]:
