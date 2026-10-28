@@ -11,6 +11,7 @@ Architecture:
 import json
 import sys
 import threading
+import time
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -109,8 +110,11 @@ DRAFT_ELO_GOOD_BAND = {
 }
 
 
-def _make_handler(store: dict) -> type:
-    """Return an HTTP handler class bound to the shared fixture store."""
+def _make_handler(store: dict, closing: threading.Event) -> type:
+    """Return an HTTP handler class bound to the shared fixture store.
+
+    `closing` is set by `_MockServer.stop()`; it ends the SSE hold early.
+    """
 
     class _Handler(SimpleHTTPRequestHandler):
         # HTTP/1.1 keep-alive is the at-scale flake fix - but ONLY on Windows,
@@ -200,15 +204,16 @@ def _make_handler(store: dict) -> type:
             open so EventSource treats it as a live stream rather than a
             buffered one-shot response.
 
-            The hold is a plain bounded sleep (the long-proven behavior). Two
+            The hold is a bounded 15 s wait (the long-proven behavior). Two
             earlier iterations tried to release the held thread promptly - a
             generation-gated close and a heartbeat-disconnect close - and BOTH
             raced the page render on the Linux CI runner (the stream closed or
-            churned mid-render and 4-5 render tests timed out). The SSE thread is
-            a daemon and the response is Connection: close, so a lingering sleep
-            costs only a short-lived idle thread - not worth a render-timing risk.
+            churned mid-render and 4-5 render tests timed out). So nothing
+            releases it mid-session: the wait ends early ONLY when
+            `_MockServer.stop()` sets `closing` at session teardown, after every
+            page is done (RM-1023: a plain sleep left one handler thread per
+            page alive after the session).
             """
-            import time as _time
             event_data = json.dumps(store["data"])
             body = f"data: {event_data}\n\n".encode()
             self.send_response(200)
@@ -227,17 +232,45 @@ def _make_handler(store: dict) -> type:
                 self.wfile.flush()
                 # Hold open so the browser's EventSource processes the event as a
                 # stream rather than a buffered one-shot response.
-                _time.sleep(15)
+                closing.wait(15)
             except (BrokenPipeError, ConnectionResetError):
                 pass
 
     return _Handler
 
 
+class _TrackedHTTPServer(ThreadingHTTPServer):
+    """ThreadingHTTPServer that remembers its handler threads.
+
+    Its handler threads are daemons, and socketserver only tracks
+    non-daemon threads for `server_close()` to join, so without this list
+    `stop()` has nothing to join (RM-1023).
+    """
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.handler_threads: list[threading.Thread] = []
+        self._threads_lock = threading.Lock()
+
+    def process_request(self, request, client_address) -> None:
+        t = threading.Thread(target=self.process_request_thread,
+                             args=(request, client_address), daemon=True)
+        with self._threads_lock:
+            self.handler_threads = [
+                h for h in self.handler_threads if h.is_alive()]
+            self.handler_threads.append(t)
+        t.start()
+
+
 class _MockServer:
+    # Budget for joining handler threads at stop(); a released SSE hold and
+    # a closed keep-alive connection both end in well under a second.
+    STOP_JOIN_S = 5.0
+
     def __init__(self) -> None:
         self._store: dict = {"data": {}, "draft_elo": None}
-        self._server: ThreadingHTTPServer | None = None
+        self._server: _TrackedHTTPServer | None = None
+        self._closing = threading.Event()
         self.url: str = ""
 
     def set_fixture(self, name: str) -> None:
@@ -250,16 +283,26 @@ class _MockServer:
         self._store["draft_elo"] = payload
 
     def start(self) -> None:
-        handler_cls = _make_handler(self._store)
-        self._server = ThreadingHTTPServer(("127.0.0.1", 0), handler_cls)
+        handler_cls = _make_handler(self._store, self._closing)
+        self._server = _TrackedHTTPServer(("127.0.0.1", 0), handler_cls)
         port = self._server.server_address[1]
         self.url = f"http://127.0.0.1:{port}"
         t = threading.Thread(target=self._server.serve_forever, daemon=True)
         t.start()
 
     def stop(self) -> None:
-        if self._server:
-            self._server.shutdown()
+        """Stop serving, release every held SSE handler, join the handler
+        threads and close the listening socket (RM-1023)."""
+        if not self._server:
+            return
+        self._closing.set()
+        self._server.shutdown()
+        self._server.server_close()
+        deadline = time.monotonic() + self.STOP_JOIN_S
+        with self._server._threads_lock:
+            threads = list(self._server.handler_threads)
+        for t in threads:
+            t.join(max(0.0, deadline - time.monotonic()))
 
 
 @pytest.fixture(scope="session")
