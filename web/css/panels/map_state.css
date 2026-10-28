@@ -12,7 +12,9 @@
   border-radius: 999px;
   background: var(--surface);
   color: var(--text-dim);
-  font-size: 12px;
+  /* RM-1014: 12px -> --fs-xs, the footer's tier (it sat below the
+   * floor, unseen only because the rule below hides it). */
+  font-size: var(--fs-xs);
   letter-spacing: 0.06em;
   font-variant-numeric: tabular-nums;
 }
@@ -23,7 +25,7 @@
   border-radius: 999px;
   background: var(--surface);
   color: var(--text-dim);
-  font-size: 12px;
+  font-size: var(--fs-xs);  /* RM-1014: was 12px, as .latency-stat */
   letter-spacing: 0.06em;
 }
 .analyze-stat.pending { color: var(--gold); }

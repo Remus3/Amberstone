@@ -475,11 +475,29 @@ footer .ui-version {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* RM-1014: and it gives way FIRST: the status items below can
+   * shrink too, and at 1920 a 60-character stamp beside them truncated all
+   * three; the stamp keeps its full text in the title, they have none. */
+  flex-shrink: 1000;
 }
 /* RM-1012: stampFooter (main.js autoReload) leaves the span empty when
  * neither rc_version nor the ui hash is known; without this the padding
  * and background painted a 16x4px speck. */
 footer .ui-version:empty { display: none; }
+/* RM-1014: the latency / analyze / frame-count status text gives way like
+ * the stamp if the map_state.css hide rules are ever removed (its
+ * documented restore): measured at 923px, the restored row overflowed the
+ * footer by 340px (376px with a 60-character stamp). Class selectors on purpose:
+ * the map_state.css id rules outrank them, so this paints nothing until
+ * those rules are removed. */
+footer .latency-stat,
+footer .analyze-stat,
+footer .frame-stat {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 footer .prefs-chip {
   font-size: var(--fs-xs);
   color: var(--gold);

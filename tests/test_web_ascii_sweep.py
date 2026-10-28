@@ -1114,7 +1114,22 @@ _WEB = _REPO_ROOT / "web"
 # reproduces the superseded d04739f4... value EXACTLY. Those paths are the
 # whole change. No glyph change: the added lines carry 0 non-ASCII bytes.
 # If another slice re-captures in parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "14e99e48ba1f301ca7cb04bb83a6ac5987f603fa9d8bc373dd3b328d6c11e1c2"
+# superseded by the RM-1014 re-capture below: "14e99e48ba1f301ca7cb04bb83a6ac5987f603fa9d8bc373dd3b328d6c11e1c2"
+#
+# RE-CAPTURED 2026-10-27 at RM-1014 (s144 uiux cycle 23, provisional
+# until the merger lands it). One change rides it: the hidden footer status
+# items keep the one-row footer if their hide rules are removed -
+# .latency-stat / .analyze-stat 12px -> --fs-xs in
+# web/css/panels/map_state.css; min-width 0 + ellipsis on them and on the
+# new `.frame-stat` class, and flex-shrink 1000 on the stamp, in
+# web/css/panels/input_activity.css; class="frame-stat" on #frame-count in
+# web/index.html. Ordinary case, no tokeniser change. ATTRIBUTED BY
+# SUBSTITUTION: swapping exactly those three files back to their lane-tip
+# f9f357a00 blobs (in memory) reproduces the superseded 14e99e48... value
+# EXACTLY. Those paths are the whole change. No glyph change: the added
+# lines carry 0 non-ASCII bytes. If another slice re-captures in parallel,
+# the merger recomputes.
+_LIVE_HALF_DIGEST = "c4e3e73fc2b1add6461692cef3cf484df9dec65a4477df277915aecd788c08f3"
 
 
 def _web_sources() -> list[Path]:
