@@ -53,6 +53,7 @@ from typing import Any, Iterable, Mapping, Optional
 
 from tft.engine import engine_meta
 from tft.engine.comps import (
+    MIN_GAMES,
     TOP4_MAX_PLACEMENT,
     SetData,
     as_int,
@@ -442,28 +443,42 @@ def _is_num(value) -> bool:
     return _finite(value)
 
 
+def _games(row: Any) -> int:
+    """An aggregate row's top-4 game count `n` when it is a plain positive int, else 0 (no evidence)."""
+    n = row.get("n") if isinstance(row, Mapping) else None
+    return n if isinstance(n, int) and not isinstance(n, bool) and n > 0 else 0
+
+
 def compare_to_average(mined: Mapping, agg: Mapping) -> list:
-    """Rows of this match's milestones next to the comp's top-4 medians (post-match digest)."""
+    """Rows of this match's milestones next to the comp's top-4 medians (post-match digest).
+    RM-1098: every row carries the median's top-4 game count (`games`) and
+    `insufficient` below MIN_GAMES; the verdict stays so a consumer can grey it."""
     rows = []
 
-    def order_row(name, this, med):
+    def floor(row, stat):
+        games = _games(stat)
+        rows.append(dict(row, games=games, insufficient=games < MIN_GAMES))
+
+    def order_row(name, this, stat):
+        med = stat.get("median")
         a, b = parse_label(this), parse_label(med)
         if a is not None and b is not None:
-            rows.append({"milestone": name, "this_match": this, "median": med, "verdict": _order_verdict(a, b)})
+            floor({"milestone": name, "this_match": this, "median": med, "verdict": _order_verdict(a, b)}, stat)
 
     reached, agg_reached = _section(mined, "level_reached"), _section(agg, "level_reached")
     for lv in LEVELS:
-        order_row(f"level_{lv}", reached.get(str(lv)), _section(agg_reached, str(lv)).get("median"))
+        order_row(f"level_{lv}", reached.get(str(lv)), _section(agg_reached, str(lv)))
     order_row("first_rolldown", mined.get("first_rolldown") if isinstance(mined, Mapping) else None,
-              _section(agg, "first_rolldown").get("median"))
-    order_row("first_slam", _section(mined, "first_slam").get("label"), _section(agg, "first_slam").get("median"))
+              _section(agg, "first_rolldown"))
+    order_row("first_slam", _section(mined, "first_slam").get("label"), _section(agg, "first_slam"))
     for group, prefix in (("gold_at", "gold_at_"), ("hp_at", "hp_at_")):
         agg_group = _section(agg, group)
         for label, this in sorted(_section(mined, group).items(), key=lambda kv: str(kv[0])):
-            med = _section(agg_group, label).get("median")
+            stat = _section(agg_group, label)
+            med = stat.get("median")
             if _is_num(this) and _is_num(med):
-                rows.append({"milestone": prefix + str(label), "this_match": this, "median": med,
-                             "verdict": _number_verdict(this, med)})
+                floor({"milestone": prefix + str(label), "this_match": this, "median": med,
+                       "verdict": _number_verdict(this, med)}, stat)
     return rows
 
 

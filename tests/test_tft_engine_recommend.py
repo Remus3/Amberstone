@@ -196,7 +196,7 @@ def test_level_advice_against_the_top4_median(sd, built):
     behind = recommend.level_advice({"label": "3-2", "level": 5, "gold": 30}, agg)
     assert behind["status"] == "behind"
     assert behind["message"] == "Lv5 at 3-2; your top-4 median is Lv6 at 3-2"
-    assert behind["next"] == {"level": 7, "label": "3-6"}
+    assert behind["next"] == {"level": 7, "label": "3-6", "games": 3, "insufficient": False}  # RM-1098
     on_curve = recommend.level_advice({"label": "3-2", "level": 6}, agg)
     assert on_curve["status"] == "on_curve"
     ahead = recommend.level_advice({"label": "3-2", "level": 7}, agg)
@@ -250,7 +250,9 @@ def test_planner_choices_payload_for_the_overlay_picker(sd, built):
     assert 1 <= len(digest) <= 6 and all(line.isascii() and len(line) <= 64 for line in digest)
     assert digest[0].startswith("Core: ")
     assert "Lv6 by 3-1" in " | ".join(digest)
-    assert "roll at 4-1 to ~20g" in " | ".join(digest)
+    # RM-1098: this comp's first roll-down median rests on 2 top-4 games, under
+    # MIN_GAMES, so the digest drops it rather than print "roll at 4-1 to ~20g".
+    assert "roll at" not in " | ".join(digest)
     assert "Opener: " in " | ".join(digest)
     # Every listed comp has at least one top-4 game; at most 8 rows.
     assert all(c["top4_games"] >= 1 for c in out["choices"]) and len(out["choices"]) <= 8

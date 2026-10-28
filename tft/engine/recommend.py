@@ -344,9 +344,12 @@ def level_advice(current: Mapping, agg: Optional[Mapping]) -> dict:
         for lv in LEVELS:
             if lv <= level:
                 continue
-            med_key = parse_label(_section(reached, str(lv)).get("median"))
+            stat = _section(reached, str(lv))
+            med_key = parse_label(stat.get("median"))
             if med_key is not None and med_key > key:
-                out["next"] = {"level": lv, "label": format_label(med_key)}
+                games = _sample(stat)
+                out["next"] = {"level": lv, "label": format_label(med_key), "games": games,
+                               "insufficient": games < MIN_GAMES}
                 break
     roll = _section(agg, "first_rolldown")
     games = roll.get("n")
@@ -391,20 +394,28 @@ def _fit(line: str) -> str:
     return line if len(line) <= DIGEST_MAX_CHARS else line[: DIGEST_MAX_CHARS - 3] + "..."
 
 
+def _floored(stat: Mapping) -> Optional[Mapping]:
+    """RM-1098: a median row resting on at least MIN_GAMES top-4 games, else None."""
+    return stat if _sample(stat) >= MIN_GAMES else None
+
+
 def _milestone_line(agg: Optional[Mapping]) -> Optional[str]:
+    """The planner hover digest. RM-1098: a text line carries no flag, so a part
+    whose median rests on fewer than MIN_GAMES top-4 games is dropped (a thin gold
+    median drops only the gold)."""
     if not isinstance(agg, Mapping) or not agg:
         return None
     parts = []
     reached = _section(agg, "level_reached")
     for lv in (6, 8):
-        med = _label(_section(reached, str(lv)).get("median"))
+        med = _label((_floored(_section(reached, str(lv))) or {}).get("median"))
         if med:
             parts.append(f"Lv{lv} by {med}")
-    roll = _label(_section(agg, "first_rolldown").get("median"))
+    roll = _label((_floored(_section(agg, "first_rolldown")) or {}).get("median"))
     if roll:
-        gold = _number(_section(agg, "rolldown_gold_end").get("median"))
+        gold = _number((_floored(_section(agg, "rolldown_gold_end")) or {}).get("median"))
         parts.append(f"roll at {roll} to ~{int(round(gold))}g" if gold is not None else f"roll at {roll}")
-    slam = _label(_section(agg, "first_slam").get("median"))
+    slam = _label((_floored(_section(agg, "first_slam")) or {}).get("median"))
     if slam:
         parts.append(f"first slam {slam}")
     return ", ".join(parts) or None

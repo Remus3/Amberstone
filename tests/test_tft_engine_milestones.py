@@ -198,9 +198,12 @@ def test_compare_to_average_reads_earlier_same_later(sd):
     agg = milestones.aggregate([milestones.mine_match(r, sd) for r in recs[:3]])
     this = milestones.mine_match(recs[3], sd)
     rows = {r["milestone"]: r for r in milestones.compare_to_average(this, agg)}
-    assert rows["level_5"] == {"milestone": "level_5", "this_match": "3-1", "median": "2-5", "verdict": "later"}
+    # RM-1098: each row carries its median's top-4 game count and the floor flag.
+    assert rows["level_5"] == {"milestone": "level_5", "this_match": "3-1", "median": "2-5", "verdict": "later",
+                               "games": 3, "insufficient": False}
     assert rows["level_6"]["verdict"] == "later"
-    assert rows["gold_at_3-2"] == {"milestone": "gold_at_3-2", "this_match": 2, "median": 40.0, "verdict": "lower"}
+    assert rows["gold_at_3-2"] == {"milestone": "gold_at_3-2", "this_match": 2, "median": 40.0, "verdict": "lower",
+                                   "games": 3, "insufficient": False}
     assert "level_8" not in rows  # never reached in this match
 
 

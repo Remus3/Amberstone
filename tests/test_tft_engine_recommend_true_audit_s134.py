@@ -124,9 +124,9 @@ def test_f3_curve_row_without_a_numeric_median_is_no_data(curve_row):
 
 
 def test_f3_unparseable_level_reached_median_is_skipped(built):
-    agg = dict(_agg(built), level_reached={"7": {"median": "zz"}, "8": {"median": "4-2"}})
+    agg = dict(_agg(built), level_reached={"7": {"median": "zz", "n": 3}, "8": {"median": "4-2", "n": 3}})
     out = recommend.level_advice({"label": "3-2", "level": 6}, agg)
-    assert out["next"] == {"level": 8, "label": "4-2"}
+    assert out["next"] == {"level": 8, "label": "4-2", "games": 3, "insufficient": False}
 
 
 @pytest.mark.parametrize("bad", [{"7": "3-6"}, {"7": ["3-6"]}, ["x"], "x", {"7": {"median": 7}}])
@@ -158,7 +158,7 @@ def test_f3_roll_window_still_answers_on_good_rows(built):
 def test_f3_any_non_mapping_section_never_raises(built, key, junk):
     agg = dict(_agg(built), **{key: junk})
     out = recommend.level_advice({"label": "4-1", "level": 8}, agg)
-    assert out["status"] in ("behind", "ahead", "on_curve", "unknown")
+    assert out["status"] in ("behind", "ahead", "on_curve", "unknown", "insufficient")
 
 
 def test_f3_recommend_survives_a_junk_aggregate(sd, built):
@@ -175,19 +175,21 @@ def test_f3_recommend_survives_a_junk_aggregate(sd, built):
 
 @pytest.mark.parametrize("gold", ["x", float("nan"), float("inf"), True, [3], {"g": 1}])
 def test_f4_milestone_line_drops_a_bad_gold_median(gold):
-    line = recommend._milestone_line({"first_rolldown": {"median": "4-1"}, "rolldown_gold_end": {"median": gold}})
+    line = recommend._milestone_line({"first_rolldown": {"median": "4-1", "n": 3},
+                                      "rolldown_gold_end": {"median": gold, "n": 3}})
     assert line == "roll at 4-1"
 
 
 def test_f4_milestone_line_keeps_a_good_gold_median():
-    line = recommend._milestone_line({"first_rolldown": {"median": "4-1"}, "rolldown_gold_end": {"median": 12.6}})
+    line = recommend._milestone_line({"first_rolldown": {"median": "4-1", "n": 3},
+                                      "rolldown_gold_end": {"median": 12.6, "n": 3}})
     assert line == "roll at 4-1 to ~13g"
 
 
 @pytest.mark.parametrize("junk", [{"level_reached": ["x"]}, {"level_reached": {"6": "3-2"}},
                                   {"first_rolldown": ["4-1"]}, {"first_slam": "4-1"},
-                                  {"rolldown_gold_end": 12, "first_rolldown": {"median": "4-1"}},
-                                  {"first_rolldown": {"median": 41}}, {"first_slam": {"median": ["x"]}}])
+                                  {"rolldown_gold_end": 12, "first_rolldown": {"median": "4-1", "n": 3}},
+                                  {"first_rolldown": {"median": 41, "n": 3}}, {"first_slam": {"median": ["x"], "n": 3}}])
 def test_f4_milestone_line_never_raises_on_junk_sections(junk):
     line = recommend._milestone_line(junk)
     assert line is None or isinstance(line, str)
@@ -195,10 +197,13 @@ def test_f4_milestone_line_never_raises_on_junk_sections(junk):
 
 def test_f4_planner_choices_survive_a_non_finite_gold_median(sd, built):
     cat, ms, comp_a = built
-    bad = {"comps": {cid: dict(agg, rolldown_gold_end={"median": float("nan")})
+    # n = 3 (MIN_GAMES) on both rows so the RM-1098 floor lets the roll through and the gold reaches _number.
+    bad = {"comps": {cid: dict(agg, first_rolldown=dict(agg["first_rolldown"], n=3),
+                               rolldown_gold_end={"median": float("nan"), "n": 3})
                      for cid, agg in ms["comps"].items()}, "top4_only": True}
     out = recommend.planner_choices(cat, bad, sd)
     assert out["choices"]
+    assert any("roll at" in line for choice in out["choices"] for line in choice["digest"])
     for choice in out["choices"]:
         assert all("nan" not in line for line in choice["digest"])
 
@@ -274,13 +279,14 @@ def test_item_slams_negative_count_reads_zero(sd, built):
     assert rows[0]["comp_games"] == 0
 
 
-@pytest.mark.parametrize("agg", [{"first_rolldown": {"median": "zz"}}, {"first_rolldown": {"median": 41}},
-                                 {"level_reached": {"6": {"median": "late"}}}, {"first_slam": {"median": 7}},
-                                 {"first_slam": {"median": "4-x"}}])
+# Every row carries n = 3 (MIN_GAMES) so the RM-1098 floor passes and the label parse is what drops it.
+@pytest.mark.parametrize("agg", [{"first_rolldown": {"median": "zz", "n": 3}}, {"first_rolldown": {"median": 41, "n": 3}},
+                                 {"level_reached": {"6": {"median": "late", "n": 3}}},
+                                 {"first_slam": {"median": 7, "n": 3}}, {"first_slam": {"median": "4-x", "n": 3}}])
 def test_f4_milestone_line_prints_only_parseable_labels(agg):
     assert recommend._milestone_line(agg) is None
 
 
 def test_f4_milestone_line_canonicalises_labels():
-    agg = {"level_reached": {"6": {"median": "3-02"}}, "first_slam": {"median": " 2-5"}}
+    agg = {"level_reached": {"6": {"median": "3-02", "n": 3}}, "first_slam": {"median": " 2-5", "n": 3}}
     assert recommend._milestone_line(agg) == "Lv6 by 3-2, first slam 2-5"
