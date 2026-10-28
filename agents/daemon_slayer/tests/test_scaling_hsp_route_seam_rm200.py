@@ -3,7 +3,7 @@
 THE DEFECT
 ----------
 ``_hsp_amp.sum_wielder_hsp_pct`` gained a keyword-only ``assume_scaling_hsp_grants``
-at R197 (``_hsp_amp.py:26``). It folds in the ADDITIONAL Heal-and-Shield-Power an
+at R197. It folds in the ADDITIONAL Heal-and-Shield-Power an
 item earns from a SCALING clause, which the curated ``enchanter_items.json``
 ``heal_shield_amp_pct`` field structurally cannot carry - that field stores only
 the FLAT PRINTED stat. Dawncore prints 16% and its First Light clause
@@ -11,9 +11,9 @@ the FLAT PRINTED stat. Dawncore prints 16% and its First Light clause
 earned zero without the flag.
 
 The seam was EXECUTED but STRANDED. Both production call sites -
-``ehp.py:1951`` and ``sustain.py:382`` - called the helper without the kwarg, so
-neither ``compute_ehp`` nor ``compute_sustain`` could express it, no route parsed
-it, and no client could set it. ``grep -c assume_scaling_hsp_grants server.py``
+``ehp.compute_ehp`` and ``sustain.compute_sustain`` - called the helper without
+the kwarg, so neither could express it, no route parsed it, and no client could
+set it. ``grep -c assume_scaling_hsp_grants server.py``
 returned 0.
 
 Same defect class as R197 (``assume_hsp_amp``) and R194(a)
@@ -36,8 +36,8 @@ something settable, guard-green and arithmetically INERT:
   2. TRANSPORT . the id that ARMS the seam must be able to reach the helper.
      Here that is the item list: Dawncore ``6621`` travels ``items`` ->
      ``_coerce_str_list`` -> ``item_ids`` -> ``sum_wielder_hsp_pct``. Both
-     routes already carried it (``server.py:656`` for /ehp, ``server.py:2115``
-     for /sustain), so no new transport was needed - CONFIRMED by measurement
+     routes already carried it (``server._route_ehp`` for /ehp,
+     ``server._route_sustain`` for /sustain), so no new transport was needed - CONFIRMED by measurement
      below, not assumed.
   3. OWNER ..... the engine function that actually reads it. Measured here by a
      package-wide ``inspect.signature`` sweep, never inherited from a docstring:
