@@ -11,7 +11,8 @@ Override hook: an optional `data/external/101qq_hero_id_map.json` file
 of the same shape (overlaid LAST) lets the operator hand-correct
 mismatches without re-running the comparison.
 
-STDLIB-ONLY: argparse / json / pathlib / sys. ASCII-clean.
+STDLIB-ONLY at import time: argparse / json / pathlib / sys. The `--out`
+writer imports core.polled_json lazily (RM-258). ASCII-clean.
 
 Usage:
   $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/compare_101qq_vs_ddragon.py --json C:/path/to/captured.json
@@ -181,10 +182,19 @@ def main(argv: list | None = None) -> int:
 
     if args.out:
         out_path = Path(args.out)
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = out_path.with_suffix(out_path.suffix + ".tmp")
-        tmp.write_text(json.dumps(alignment["aligned"], ensure_ascii=True, indent=2, sort_keys=True), encoding="utf-8")
-        tmp.replace(out_path)
+        # RM-258: atomic_write_text creates the parent directory, uses a
+        # per-writer scratch name, fsyncs, retries a WinError 5 refusal and
+        # never leaves the scratch behind; it writes UTF-8 bytes verbatim, so
+        # the map keeps LF on Windows (Path.write_text turned it into CRLF).
+        # The import is lazy and puts the repo root on sys.path first, so the
+        # bare `python tools/compare_101qq_vs_ddragon.py` CLI resolves it.
+        if str(_REPO_ROOT) not in sys.path:
+            sys.path.insert(0, str(_REPO_ROOT))
+        from core import polled_json
+        polled_json.atomic_write_text(
+            out_path,
+            json.dumps(alignment["aligned"], ensure_ascii=True, indent=2, sort_keys=True),
+        )
         print(f"Wrote id_map: {out_path}")
     return 0
 
