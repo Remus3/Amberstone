@@ -48,8 +48,8 @@ slice FEWER). Swept over every module in the package:
 The asymmetries are the thing the guards below protect, and each is asserted
 rather than left to convention:
 
-  * ``rank_items_by_hps`` does NOT name ``apply_ability_hsp_amp`` (hps.py:863),
-    so ``/rank-enchanter`` must not grow that key.
+  * ``rank_items_by_hps`` does NOT name ``apply_ability_hsp_amp`` in its
+    signature, so ``/rank-enchanter`` must not grow that key.
   * ``rank_items()`` - the CARRY ranker behind ``/rank`` - does NOT name
     ``apply_crit_chance_overrides``, so ``/rank`` must not grow it. ``/dps`` is
     the sole owner, exactly as R7 / R12 / the melee-AA gate are /dps-scoped.
@@ -75,9 +75,13 @@ below is the proof - not the absence of a transport-shaped parameter.
 DEFAULT-OFF
 -----------
 All four default False on every engine entry point and each consumer sits
-inside the ``if`` its flag opens (dps.py:1124, hps.py:685, hybrid.py:193 / 332 /
-792 / 1363). An omitted body key is therefore a byte-identical route response,
-measured below against an explicit ``False``.
+inside the ``if`` its flag opens: ``if apply_crit_chance_overrides:`` in
+``compute_dps``; ``amp_factor if apply_ability_hsp_amp else 1.0`` in
+``compute_hps``; the propensity gates in ``hybrid._ability_damage`` and
+``_ad_axis_ability.physical_ability_damage``; ``if assume_ms_utility:`` in
+``compute_hybrid`` and ``rank_items_by_hybrid``. An omitted body key is
+therefore a byte-identical route response, measured below against an explicit
+``False``.
 
 OFFLINE ONLY: no live :8860, no network. Direct handler + engine + client calls.
 """

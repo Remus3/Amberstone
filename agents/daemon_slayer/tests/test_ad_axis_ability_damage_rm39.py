@@ -9,8 +9,8 @@ DDragon rating rule; the live count since the kit-axis rule is re-derived by
 ``tests/test_docs_ds_damage_axis_s144d11.py``) and were then scored on
 auto-attack DPS ALONE. All three ``_ability_damage`` call sites
 (``compute_hybrid`` + the ranker baseline + the ranker per-candidate) gate on
-the "ap" branch, and ``dps.py:34`` says the AD branch omits ability damage by
-design. Their real ability DPS is computed nowhere.
+the "ap" branch, and dps.py's module docstring says the AD branch omits
+ability damage by design. Their real ability DPS is computed nowhere.
 
 The seam is DEFAULT-OFF. When ON, the AD branch becomes
 ``weighted_dps + _physical_ability_damage(...)``. The AP branch is untouched
@@ -648,7 +648,7 @@ class AutoAttackDisjointnessTests(unittest.TestCase):
     ability term of 19.69 reads as a huge PERCENTAGE lift off a small base.
 
     Verified in the source, not inferred: ``_rotation_attack_dps``
-    (``dps.py:508``) reads ONLY ``duration`` / ``basic`` / ``basicTime`` /
+    (in ``dps.py``) reads ONLY ``duration`` / ``basic`` / ``basicTime`` /
     ``numberOfTargets`` from the rotation dict. The rotation dicts DO carry
     per-spell cast counts under "q"/"w"/"e"/"r"/"p", and ``dps.py`` never reads
     any of them anywhere, so an ability cast cannot reach the auto term.
@@ -671,7 +671,7 @@ class AutoAttackDisjointnessTests(unittest.TestCase):
 
         def _is_rotation_ref(node: ast.AST) -> bool:
             # PREFIX match, not substring: ``stats_for_rotation`` is the STATS
-            # mapping (dps.py:945/950/967 read "crit"/"as"/"ad" off it) and is
+            # mapping (``compute_dps`` keys it by "crit" / "as" / "ad") and is
             # NOT a rotation dict. A substring test swept it in and produced a
             # false positive on the allowlist guard below.
             if isinstance(node, ast.Name):

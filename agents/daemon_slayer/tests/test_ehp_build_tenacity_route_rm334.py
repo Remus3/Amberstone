@@ -3,15 +3,15 @@
 THE DEFECT
 ----------
 ``ehp.compute_ehp`` has shipped ``apply_build_tenacity: bool = False`` since item
-236 (ehp.py:1389) and consumes it at ehp.py:2582, where it reads
+236 and consumes it under its own ``if apply_build_tenacity:``, where it reads
 ``total_item_tenacity(item_ids)`` - the RESOLVED build the caller already sent.
 ``/ehp`` exposes ``compute_ehp`` directly and has carried the ``enemies``
 transport that makes tenacity bite since ENGINE 1.39.0, yet it is the ONE route
 in the family that never parsed the flag.
 
 The three routes that DO parse it, source-mapped off the AST rather than
-inherited from prose, are ``_route_rank_tank`` (server.py:968),
-``_route_hybrid`` (:1255) and ``_route_rank_bruiser`` (:1397). ``_route_ehp``
+inherited from prose, are ``_route_rank_tank``, ``_route_hybrid``
+and ``_route_rank_bruiser``. ``_route_ehp``
 was absent from that list, so the seam was live on the rankers and
 arithmetically INERT on the primitive they are built out of.
 
@@ -33,7 +33,7 @@ its ``items`` list to ``compute_ehp(item_ids=...)``, which is the only input
 ``total_item_tenacity`` reads. The RANKERS are the endpoints that do not have a
 single resolved build - they iterate a candidate item over a base build - and
 that is why ``rank_items_by_ehp`` carries the flag as a TRI-STATE
-``Optional[bool] = None`` (ehp.py:3204) resolved per scoring mode at :3431,
+``Optional[bool] = None`` resolved per scoring mode into its ``apply_tenacity``,
 while ``compute_ehp`` carries a plain ``bool = False``.
 
 So the note describes the defect rather than a decision. It is pinned in
@@ -263,8 +263,9 @@ class OwnerShapeTests(unittest.TestCase):
     def test_ranker_owner_is_tri_state_and_that_is_why_the_shapes_differ(self) -> None:
         """Pins WHY _route_ehp must NOT copy the two tri-state ranker sites.
 
-        ``rank_items_by_ehp`` resolves None per scoring mode (ehp.py:3431 - ON
-        for cc_blended, OFF for blended), so its routes parse a tri-state.
+        ``rank_items_by_ehp`` resolves None per scoring mode (its
+        ``apply_tenacity`` - ON for cc_blended, OFF for blended), so its routes
+        parse a tri-state.
         ``compute_ehp`` has no scoring mode to resolve against, so /ehp parses
         the plain default-False bool that _route_hybrid uses. Copying the
         tri-state here would hand a ``None`` to a ``bool``-annotated parameter.

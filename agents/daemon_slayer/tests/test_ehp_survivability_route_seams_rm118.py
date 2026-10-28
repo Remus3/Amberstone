@@ -45,8 +45,8 @@ ROUTE OWNERSHIP IS PER-SEAM, NOT PER-FAMILY (reference_ds_seam_reachability_per_
 -------------------------------------------------------------------------------------
 Measured off ``inspect.signature``, not assumed:
 
-  * ``assume_passive_flat_mitigation`` is on ``compute_ehp`` (ehp.py:1372) AND
-    ``rank_items_by_ehp`` (ehp.py:3127) -> BOTH ``/ehp`` and ``/rank-tank``.
+  * ``assume_passive_flat_mitigation`` is on ``compute_ehp`` AND
+    ``rank_items_by_ehp`` (both signatures) -> BOTH ``/ehp`` and ``/rank-tank``.
   * the other three are on ``compute_ehp`` ONLY -> ``/ehp`` alone.
 
 So the flat-mitigation wire is the one that can change an item CHOICE, and the

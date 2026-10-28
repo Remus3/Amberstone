@@ -26,7 +26,7 @@ Every one of the three is keyed by Riot perk id, so the flag is inert without a
 ``rune_ids`` roster on the wire. Four of the five routes here have parsed
 ``rune_ids`` since R136 (/ehp, /rank-tank, /hybrid, /rank-bruiser). ``/dps`` did
 NOT: ``compute_dps`` grew its own ``rune_ids`` parameter with the seam
-(dps.py:758) and the route never carried either. Wiring the flag alone would
+and the route never carried either. Wiring the flag alone would
 have shipped a key that parses and then does nothing - the RM-115
 reachable-and-dead failure mode - so the transport is wired in the same slice
 and pinned below.
@@ -52,8 +52,8 @@ assumed from the family name:
 The predecessor slice's write-up said these three reach ``compute_dps`` /
 ``compute_hybrid`` / ``rank_items_by_hybrid``. That is right for the offense
 lane and INCOMPLETE for the other two: ``ehp.py`` names both of them on
-``compute_ehp`` (ehp.py:1570-1571) and on ``rank_items_by_ehp``
-(ehp.py:3161-3162), so /ehp and /rank-tank own them too and are wired here.
+``compute_ehp`` and on ``rank_items_by_ehp`` (both signatures), so /ehp and
+/rank-tank own them too and are wired here.
 Corrected by measurement, not by trusting the prose.
 
 The asymmetry is the thing the guards below protect: ``compute_ehp`` and
@@ -64,9 +64,11 @@ against below rather than left to convention.
 
 DEFAULT-OFF
 -----------
-All three default False on every engine entry point, and ``dps.py:1058`` /
-``ehp.py:1763`` / ``ehp.py:1888`` consult their registry ONLY inside the
-``if`` the flag opens. So an omitted body key is a byte-identical route
+All three default False on every engine entry point, and each consults its
+registry ONLY inside the ``if`` its flag opens
+(``if apply_rune_offense_grants:`` in ``compute_dps``;
+``if apply_rune_shield_grants:`` / ``if apply_rune_self_heal:`` in
+``compute_ehp``). So an omitted body key is a byte-identical route
 response, and - stronger - a body that carries a full ``rune_ids`` roster with
 the flags OFF is byte-identical too. Both measured below.
 

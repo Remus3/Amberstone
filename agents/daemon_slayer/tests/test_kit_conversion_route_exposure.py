@@ -7,11 +7,13 @@ PART 7 of docs/_archive/2026-07/OPEN_ITEMS_REVIEW_2026-07-25.md measured the cro
 through ``:8860``, so no kit-conversion fix could reach a shipped artifact.
 
 Confirmed API surface before scaffolding:
-  * ``rank_items(..., kit_conversion_strength: float = 0.0)`` - rank.py:918.
-  * the gate is consulted ONLY when > 0.0 - rank.py:1294-1297.
-  * ``server._route_rank`` builds the ``rank_items`` call - server.py:421-501.
+  * ``rank_items(..., kit_conversion_strength: float = 0.0)`` - its signature.
+  * the gate is consulted ONLY when > 0.0 - ``rank_items``'
+    ``kit_conversion(...) if kit_conversion_strength > 0.0 else None``.
+  * ``server._route_rank`` builds the ``rank_items`` call.
   * ``server._CACHE.set(DataSnapshot)`` seeds the route snapshot holder
-    - test_rank_route_seam_passthrough.py:42 precedent.
+    - test_rank_route_seam_passthrough.py precedent (its ``setUpModule``'s
+    ``server._CACHE.set(_SNAP)``).
   * Naafiri separates 116-of-134 rows at strength 0.0 -> 1.0 (PART 7 measurement).
 
 DEFAULT-OFF contract: a body that omits the key is byte-identical to one that
