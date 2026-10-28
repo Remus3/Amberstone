@@ -7,9 +7,10 @@ THE PROBLEM (adjudicated, not re-opened here)
 ---------------------------------------------
 ``data/daemon_slayer/spell_cast_rates.json`` is a WHOLE-GAME rate:
 ``participants.spell[1-4]_casts / matches.game_duration_s``. Every consumer
-multiplies it into a per-second COMBAT term (``ability_dps.py:1261``
-``dps = post_mit * measured``), which is a units error - a whole-game
-denominator divided into a combat-window numerator. The spec sized the
+multiplies it into a per-second COMBAT term
+(``ability_dps.compute_ability_dps``: ``dps = post_mit * measured``), which
+is a units error - a whole-game denominator divided into a combat-window
+numerator. The spec sized the
 characteristic distortion at ~7x per spell (SPEC:100-107) and proved the
 term is NOT inert (SPEC:91-99).
 
@@ -135,7 +136,7 @@ from typing import Iterable, Optional
 FULL_AVAILABILITY_PROPENSITY = 0.7191
 
 # The row-level filter ``ability_dps`` uses for a missing damage_type
-# (``ability_dps.py:1220`` - ``(damage_type or "MAGIC").upper()``). Mirrored
+# (``compute_ability_dps`` - ``(form.damage_type or "MAGIC").upper()``). Mirrored
 # here verbatim so a None damage_type sorts the same way on both paths.
 _DEFAULT_DAMAGE_TYPE = "MAGIC"
 
@@ -228,17 +229,20 @@ def propensity_adjusted_dps_delta(
     ``per_spell`` is a sequence of ``ability_dps.AbilitySpellDps`` rows. Each
     row already carries everything needed: ``post_mitigation_damage_per_cast``,
     ``casts_per_sec``, ``casts_per_sec_source`` and ``cooldown``. The
-    reconstruction is exact - ``ability_dps.py:1261`` sets
-    ``dps = post_mit * casts_per_sec``.
+    reconstruction is exact - ``ability_dps.compute_ability_dps`` sets
+    ``dps = post_mit * measured`` with ``casts_per_sec=measured``.
 
     ``credited_damage_types`` mirrors the RM-39 AD-axis filter in
     ``hybrid._physical_ability_damage``; None credits every row. The None
-    damage_type falls back to MAGIC exactly as ``ability_dps.py:1220`` does.
+    damage_type falls back to MAGIC exactly as ``compute_ability_dps`` does.
 
     NOT WIRED (SPEC:109-114, deliberate - narrow first, widen on evidence):
-    ``ability_dps.py:1252`` itself, the ``item_proc_dps`` fold inside
-    ``total_ability_dps``, ``dps.py:1023`` (Malignance ult rate),
-    ``hps.py:679`` and the ``ability_dps + auto_dps`` sum in
+    the measured ``get_spell_casts_per_sec`` lookup in
+    ``compute_ability_dps`` itself, the ``item_proc_dps`` fold inside
+    ``total_ability_dps``, the Malignance ult rate
+    (``get_ult_casts_per_sec`` in ``dps.compute_dps``), the
+    ``ability_hps_total`` fold in ``hps.compute_hps`` and the
+    ``ability_dps + auto_dps`` sum in
     ``onhit_dps.compute_onhit_dps``. Each is its own consumer with its
     own default-flip decision; this landing wires ``hybrid.py`` only.
     """
