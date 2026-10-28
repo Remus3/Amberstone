@@ -2,26 +2,27 @@
 """Regression tests for deep-audit cycle 8 slice D (DS dashboard routes).
 
 One test class per fixed behavior; every test was written FAILING first
-against the pre-fix route code (TDD). API surfaces verified before writing:
+against the pre-fix route code (TDD). API surfaces verified before writing
+(named by symbol; tests/test_p2w1_route_symbol_cites_s144d33.py pins them):
 
   * routes_ds_statcheck._serve_ds_statcheck / _reset_caches / _load_engine
-    (dashboard/routes_ds_statcheck.py:193 / 64 / 72)
+    (dashboard/routes_ds_statcheck.py)
   * routes_ds_combo._serve_ds_combo / _parse_float / _parse_level
-    (dashboard/routes_ds_combo.py:331 / 165 / 154)
+    (dashboard/routes_ds_combo.py)
   * routes_ds_knobs._serve_ds_knobs / _parse_float / _parse_budget
-    (dashboard/routes_ds_knobs.py:289 / 149 / 162)
-  * routes_ds_relscore._serve_ds_relscore (dashboard/routes_ds_relscore.py:214)
+    (dashboard/routes_ds_knobs.py)
+  * routes_ds_relscore._serve_ds_relscore (dashboard/routes_ds_relscore.py)
   * routes_ds_matchup._serve_ds_matchup / _compute
-    (dashboard/routes_ds_matchup.py:208 / 156)
+    (dashboard/routes_ds_matchup.py)
   * routes_ds_profile._serve_ds_profile / _compute
-    (dashboard/routes_ds_profile.py:385 / 366)
+    (dashboard/routes_ds_profile.py)
   * routes_spike_curve._serve_spike_curve / _load_snapshot
-    (dashboard/routes_spike_curve.py:422 / 146)
-  * routes_damage_mix._serve_damage_mix (dashboard/routes_damage_mix.py:60);
-    DataSnapshot.load (agents/daemon_slayer/data_loader.py:67)
+    (dashboard/routes_spike_curve.py)
+  * routes_damage_mix._serve_damage_mix (dashboard/routes_damage_mix.py);
+    DataSnapshot.load (agents/daemon_slayer/data_loader.py)
   * routes_archetype._serve_archetype_post + module-level
-    save_archetype_pick import (dashboard/routes_archetype.py:71 / 33)
-  * stats.clamp_level RAISES on out-of-range (agents/daemon_slayer/stats.py:126)
+    save_archetype_pick import (dashboard/routes_archetype.py)
+  * stats.clamp_level RAISES on out-of-range (agents/daemon_slayer/stats.py)
 
 Covers:
   * statcheck - level clamped (out-of-range no longer mislabeled as

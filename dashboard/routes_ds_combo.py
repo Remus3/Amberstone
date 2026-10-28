@@ -388,9 +388,11 @@ def _serve_ds_combo(h) -> None:
         target_bonus_hp = _parse_float(
             (qs.get("target_bonus_hp") or [""])[0].strip()
         )
-        # Uppercase like every sibling route: the engine compares
-        # mode == "ARAM" case-sensitively (burst.py / dps.py), so a
-        # lowercase mode=aram silently skipped the ARAM multiplier.
+        # Uppercase like every sibling routes_ds_* route. Pre-RM-325 a
+        # lowercase mode=aram silently skipped the ARAM multiplier; the
+        # scorer now folds case itself (data_loader.canonical_mode in
+        # compute_burst_damage), so this keeps the cache key and the
+        # echoed "mode" field to one spelling.
         mode = (qs.get("mode") or ["SR"])[0].strip().upper() or "SR"
         # runes= is the canonical comma-separated id list; keystone= is a
         # convenience single-id alias. Both feed the same rune_procs path;
