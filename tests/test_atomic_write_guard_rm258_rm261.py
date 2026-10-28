@@ -120,6 +120,11 @@ _RUNTIME_TOOLS = frozenset({
     # decides what is surfaced again), and parallel sub-agents of one session
     # can stop in the same instant, so a shared `<dest>.tmp` could interleave.
     "tools/stop_claim_gate.py",
+    # RC-DDragonMirrorRefresh (a daily scheduled task): assets are fetched
+    # on a thread pool into web/data/ddragon/<patch>/, which the dashboard
+    # serves while the task writes it, and _index.json / the manifest are
+    # read back on the next run.
+    "tools/ddragon_mirror_refresh.py",
 })
 
 # RM-258 residual (s144): tools/ is IN scope by default. Out of scope are the
@@ -145,7 +150,6 @@ _TOOLS_UNCLASSIFIED = frozenset({
     "tools/compare_101qq_vs_ddragon.py",
     "tools/daemon_slayer_build_orders_generate.py",
     "tools/daemon_slayer_pickban_targets_generate.py",
-    "tools/ddragon_mirror_refresh.py",
     "tools/ds_cross_eval/probe_champion.py",
     "tools/ds_cross_eval/run_all.py",
     "tools/gen_archmap.py",

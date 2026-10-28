@@ -27,7 +27,7 @@ Modes:
   --full            ignore manifest, re-fetch every asset for the version
   --version <pin>   pin a specific patch version (escape hatch)
 
-Atomic writes throughout (tmp.write_bytes -> os.replace). py_compile clean.
+Atomic writes throughout (core.polled_json.atomic_write_bytes, RM-258).
 Fail-loud on bundle JSON corruption. After a clean (non-dry) run, stale
 ``web/data/ddragon/<semver>/`` dirs beyond the retention set (current patch
 + one previous; ``--retain`` / ``--no-prune`` to adjust) are deleted -
@@ -59,6 +59,11 @@ from urllib import error as urllib_error
 from urllib import request as urllib_request
 
 ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from core import polled_json  # noqa: E402
+
 META_DIR = ROOT / "data" / "meta_build" / "ddragon"
 WEB_DIR = ROOT / "web" / "data" / "ddragon"
 INDEX_PATH = META_DIR / "_index.json"
@@ -182,15 +187,14 @@ def http_head(url: str) -> HttpResult:
 
 
 def _atomic_write_bytes(path: Path, data: bytes) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_bytes(data)
-    os.replace(tmp, path)
+    # RM-258: core.polled_json gives each writer its own pid+token scratch
+    # (the asset pool runs concurrently while the dashboard serves this tree),
+    # fsyncs, retries a WinError 5 rename, removes the scratch on failure and
+    # creates the parent folder on demand.
+    polled_json.atomic_write_bytes(path, data)
 
 
 def _atomic_write_json(path: Path, obj: Any) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
     # 2-space indent + trailing newline = friendly diffs in tracked manifests.
     # Bytes, not write_text: on Windows Path.write_text rewrites every LF as
     # CRLF while read_text translates it back, so the extra bytes are invisible
@@ -204,8 +208,11 @@ def _atomic_write_json(path: Path, obj: Any) -> None:
     # Encoding here makes the payload byte-identical on every platform; this
     # moves line endings only - indent, sort_keys and the trailing newline are
     # unchanged. Do NOT "simplify" this back to write_text.
-    tmp.write_bytes((json.dumps(obj, indent=2, sort_keys=True) + "\n").encode("utf-8"))
-    os.replace(tmp, path)
+    # Not polled_json.atomic_write_json: that one drops sort_keys and the
+    # trailing newline and writes ensure_ascii=False, which would rewrite
+    # every tracked bundle.
+    _atomic_write_bytes(
+        path, (json.dumps(obj, indent=2, sort_keys=True) + "\n").encode("utf-8"))
 
 
 def _safe_basename(name: str | None) -> str | None:
