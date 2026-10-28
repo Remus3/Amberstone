@@ -656,6 +656,11 @@ body[data-view="user-builds"]    #view-user-builds,
 body[data-view="build-insights"] #view-build-insights,
 body[data-view="settings"]       #view-settings,
 body[data-view="replay"]         #view-replay { display: block; }
+/* RM-1063: the Replay view is a flex column, so .replay-body
+ * (primitives.css) takes the height left under the view head rather than
+ * 100% of the whole box; that 100% overflowed the section by the head's
+ * height. Guard: tests/snapshot_panels/test_replay_view_fit.py. */
+body[data-view="replay"] #view-replay { display: flex; flex-direction: column; }
 /* Hide the home overlay when a non-default view is active. (E11: the
  * inline #lobby-overlay strip was removed; #view-lobby is the sole
  * lobby surface, so only #home-overlay needs suppressing here.) */

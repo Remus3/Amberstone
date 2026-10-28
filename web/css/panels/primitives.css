@@ -114,15 +114,18 @@ header { transition: height 180ms ease; }
  * at 1920x1080 windowed, usable ~920px). Its parent .view-section
  * (#view-replay) is already a growing flex child of <main>
  * (flex: 1 1 auto; min-height: 0; overflow-y: auto in header.css), so
- * it carries a resolved content height. height: 100% makes the body
- * track that real height naturally - no vh, no magic 200px constant.
- * align-items: stretch lets the two grid panes fill the row height. */
+ * it carries a resolved content height. RM-1063: height: 100% of that
+ * box overflowed it by the view head above the body (865 vs 821 at
+ * 1920x920), so the active view is a flex column (header.css) and the
+ * body flex-grows into the height left under the head - still no vh, no
+ * magic constant. align-items: stretch lets the two grid panes fill the
+ * row height. */
 .replay-body {
   display: grid;
   grid-template-columns: 320px 1fr;
   gap: var(--space-5);
   align-items: stretch;
-  height: 100%;
+  flex: 1 1 auto;
   min-height: 0;
 }
 /* hx-card tactical frame: card body surface + gold corner brackets.

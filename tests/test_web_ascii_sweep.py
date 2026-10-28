@@ -1180,7 +1180,19 @@ _WEB = _REPO_ROOT / "web"
 # aa31e3f3... value EXACTLY; no single file alone does. Those paths are the
 # whole change. No glyph change: the added lines carry 0 non-ASCII bytes.
 # If another slice re-captures in parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "89c8be0e7b589c7bab7febb4f2994f417c0da4ecd2b1bc68306edad946ccce92"
+# superseded by the RM-1063 re-capture below: "89c8be0e7b589c7bab7febb4f2994f417c0da4ecd2b1bc68306edad946ccce92"
+#
+# RE-CAPTURED 2026-10-28 at RM-1063 (s144 uiux cycle 29, provisional
+# until the merger lands it and maps the id). One change rides it: the
+# active #view-replay becomes a flex column in web/css/panels/header.css,
+# and .replay-body flex-grows under the view head instead of height: 100%
+# in web/css/panels/primitives.css. Ordinary case, no tokeniser change.
+# ATTRIBUTED BY SUBSTITUTION: swapping exactly those two files back to
+# their main e14071faa blobs (in memory) reproduces the superseded
+# 89c8be0e... value EXACTLY; no single file alone does. Those paths are the
+# whole change. No glyph change: the added lines carry 0 non-ASCII bytes.
+# If another slice re-captures in parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "2ad292b4e2acffc3cac72a43b9f84912c792288de038c3b52b702da47c45a0f6"
 
 
 def _web_sources() -> list[Path]:
