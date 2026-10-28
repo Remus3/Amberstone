@@ -29,22 +29,27 @@ champion (a display-name key would be DEAD - never match the canonical lookup).
 The charter calls for asserting resolution through the live accessor, not a
 bare string compare.
 
-Symbols grep-confirmed against the live tree before use:
-  _passive_resist_overrides.resist_grants            (_passive_resist_overrides.py:607)
-  _passive_resist_overrides._PASSIVE_RESIST_OVERRIDES (_passive_resist_overrides.py:216)
-  _passive_resist_overrides._ASSUMED_SOUL_COUNT       (_passive_resist_overrides.py:156)
-  _passive_ally_grant_overrides.ally_resist_grant    (_passive_ally_grant_overrides.py:225)
-  _passive_damage_overrides._PASSIVE_DAMAGE_OVERRIDES (_passive_damage_overrides.py:346)
-  _passive_damage_overrides.to_damage_block          (_passive_damage_overrides.py:791)
-  _passive_revive_overrides.revive_multiplier        (_passive_revive_overrides.py:250)
-  _passive_survival_window_overrides.survival_window_multiplier (_passive_survival_window_overrides.py:300)
+Symbols grep-confirmed against the live tree before use (cited by symbol, not
+line - RM-1053; guard tests/test_p2w2_ds_e_symbol_cites_s144d33.py):
+  _passive_resist_overrides.resist_grants
+  _passive_resist_overrides._PASSIVE_RESIST_OVERRIDES
+  _passive_resist_overrides._ASSUMED_SOUL_COUNT
+  _passive_ally_grant_overrides.ally_resist_grant
+  _passive_ally_grant_overrides.ally_revive_multiplier
+  _passive_damage_overrides._PASSIVE_DAMAGE_OVERRIDES
+  _passive_damage_overrides.to_damage_block
+  _passive_revive_overrides.revive_multiplier
+  _passive_survival_window_overrides.survival_window_multiplier
 """
 
 from __future__ import annotations
 
 import math
 
-from agents.daemon_slayer._passive_ally_grant_overrides import ally_resist_grant
+from agents.daemon_slayer._passive_ally_grant_overrides import (
+    ally_resist_grant,
+    ally_revive_multiplier,
+)
 from agents.daemon_slayer._passive_resist_overrides import (
     _ASSUMED_SOUL_COUNT,
     _PASSIVE_RESIST_OVERRIDES,
@@ -164,15 +169,20 @@ class TestCanonicalIdKeysResolve:
     def test_renata_canonical_id_is_renata_not_glasc(self) -> None:
         # Renata Glasc's canonical DDragon id is "Renata" (verified against
         # ddragon_champions.json). The ally-grant registry keys ("Renata", "W")
-        # -> the revive accessor must NOT resolve a "Renata Glasc" display form.
-        m_canon = revive_multiplier  # smoke: importable accessor
+        # -> the ally-revive accessor must NOT resolve a "Renata Glasc" display
+        # form.
+        m_canon = revive_multiplier  # smoke: importable self-revive accessor
         assert m_canon is not None
         ally_canon, _ = ally_resist_grant("Renata", 11, True)
         ally_display, _ = ally_resist_grant("Renata Glasc", 11, True)
-        # Renata W is a revive (not a resist) so ally_resist_grant returns 0 for
-        # both; the load-bearing assertion is that the DISPLAY form never matches
-        # a live entry - confirmed by the ally_revive path below.
+        # Renata W is a revive (not a resist), so ally_resist_grant returns 0
+        # for BOTH spellings and cannot tell a canonical key from a dead one.
         assert ally_display == 0.0
+        # The load-bearing check runs through ally_revive_multiplier, the
+        # accessor the ("Renata", "W", 0) Bailout entry feeds: the canonical id
+        # resolves (> 1.0) and the display form is the no-op 1.0.
+        assert ally_revive_multiplier("Renata", 11, True) > 1.0
+        assert ally_revive_multiplier("Renata Glasc", 11, True) == 1.0
 
     def test_thresh_per_stack_resist_resolves_at_soul_count(self) -> None:
         # Thresh P is the per-stack UNBOUNDED resist (item 272); confirm it
