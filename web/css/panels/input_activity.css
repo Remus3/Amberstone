@@ -435,21 +435,27 @@
 footer {
   /* s218: shrunk 44 -> 36, color text-faint -> text-dim for legibility
    * without dominating, all children inline-flex/center so they sit
-   * on the same baseline regardless of intrinsic size. */
-  height: 36px;
+   * on the same baseline regardless of intrinsic size.
+   * RM-1009: 36 -> --hit-min so the footer buttons get a full-height
+   * click band (header.css `footer .footer-btn::after`), and
+   * flex-shrink:0 like `header` - without it the bar SHRANK to 20px on the
+   * tall scrolling views (#settings, #session). Text on --fs-xs, the
+   * footer's tier in docs/UI_SCALE_SPEC_V2.md. */
+  height: var(--hit-min);
+  flex-shrink: 0;
   padding: 0 22px;
   display: flex; align-items: center; gap: 18px;
-  font-size: 15px;
+  font-size: var(--fs-xs);
   color: var(--text-dim);
   background: var(--canvas);
   line-height: 1;
 }
 footer > * { display: inline-flex; align-items: center; }
-footer code { color: var(--text); font-family: "SF Mono", Consolas, "Courier New", monospace; font-size: 14px; }
+footer code { color: var(--text); font-family: "SF Mono", Consolas, "Courier New", monospace; font-size: var(--fs-xs); }
 footer .spacer { flex: 1; }
 footer .ui-version {
   font-family: "SF Mono", Consolas, monospace;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-dim);
   opacity: 0.85;
   padding: 2px 8px;
@@ -458,7 +464,7 @@ footer .ui-version {
   letter-spacing: 0.02em;
 }
 footer .prefs-chip {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--gold);
   background: var(--gold-soft);
   padding: 2px 8px;

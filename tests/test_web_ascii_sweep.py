@@ -1064,7 +1064,21 @@ _WEB = _REPO_ROOT / "web"
 # reproduces the superseded 4c75c2a8... value EXACTLY. That path is the whole
 # change. No glyph change: the added lines carry 0 non-ASCII bytes. If
 # another slice re-captures in parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "842b95b2830516ac030bd9e7831d23b8a0255ec27e20f87fbc4bed868f9c0f2c"
+# superseded by the RM-1009 re-capture below: "842b95b2830516ac030bd9e7831d23b8a0255ec27e20f87fbc4bed868f9c0f2c"
+#
+# RE-CAPTURED 2026-10-27 at RM-1009 (s144 uiux cycle 18, provisional
+# until the merger lands it). One change rides it: the dashboard footer is
+# --hit-min tall and flex-shrink:0, its text and controls sit on --fs-xs,
+# its buttons get a full-height click band and an accent :focus-visible
+# ring, and the lobby cards trim 8 -> 6px vertical padding to keep the
+# 1920x920 no-scroll fit - in web/css/panels/header.css and
+# web/css/panels/input_activity.css. Ordinary case, no tokeniser change.
+# ATTRIBUTED BY SUBSTITUTION: swapping exactly those two files back to their
+# lane-tip 32f57b73f blobs (in memory) reproduces the superseded 842b95b2...
+# value EXACTLY. Those paths are the whole change. No glyph change: the
+# added lines carry 0 non-ASCII bytes. If another slice re-captures in
+# parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "a0b0ed06b513d23b4b5c555a7c1b362cbcf81236deae92e2fede3cb0f0d7627c"
 
 
 def _web_sources() -> list[Path]:

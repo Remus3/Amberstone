@@ -165,20 +165,20 @@ header .header-row-1 .win-pill {
 footer .advisory-badge.in-footer,
 footer .digest-icon.in-footer {
   width: auto;
-  font-size: 12px !important;
+  font-size: var(--fs-xs) !important;
   padding: 2px 8px !important;
   letter-spacing: 0.04em;
 }
 footer .advisory-badge.in-footer b,
 footer .digest-icon.in-footer b {
-  font-size: 12px;
+  font-size: var(--fs-xs);
 }
 /* Mode pill in footer (moved 2026-04-29). Parent-selector scale-down so
  * we don't need a `.in-footer` modifier - JS does
  * `modePill.className = "mode-pill " + tag` which would clobber any
  * extra class on every mode change. Parent-selector survives that. */
 footer .mode-pill {
-  font-size: 12px !important;
+  font-size: var(--fs-xs) !important;
   padding: 3px 10px !important;
   letter-spacing: 0.08em;
   width: auto !important;
@@ -191,15 +191,35 @@ footer .mode-pill {
  * (which is also used outside the footer e.g. in the adapt panel). */
 footer .footer-btn,
 footer .voice-picker {
-  font-size: 12px !important;
+  font-size: var(--fs-xs) !important;
   padding: 2px 9px !important;
   letter-spacing: 0.06em;
+}
+/* RM-1009: the visible chip stays compact (the 2026-04-29 ask above),
+ * but the CLICK band spans the full footer: a transparent pseudo-element
+ * --hit-min tall, centered on the chip, hit-tests as the button itself.
+ * The footer is --hit-min tall (input_activity.css), so the band never
+ * reaches into the page above it. The select cannot carry a pseudo, so
+ * it takes the floor on its own box (it only shows while voice is on). */
+footer .footer-btn { position: relative; }
+footer .footer-btn::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0;
+  top: 50%;
+  height: var(--hit-min);
+  transform: translateY(-50%);
+}
+footer .voice-picker { min-height: var(--hit-min); }
+footer .footer-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 /* prefs-chip ("ZEN:OFF") sits between voice-picker and mode-pill in
  * the footer (insertion point set by the dashboard JS prefs-chip renderer).
  * Match the in-footer pill scale so it doesn't look like a runt. */
 footer .prefs-chip {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   padding: 2px 8px;
   border-radius: 999px;
   background: var(--surface);
@@ -649,9 +669,13 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   background: var(--surface); border: 1px solid var(--border);
   /* UI scale v2.1 (2026-05-23): card radius bumped to --panel-radius-sm
    * (10). Padding preserved at s162-v4 8/16 tuning - the lobby fits
-   * without scroll only because each card runs compact. */
+   * without scroll only because each card runs compact.
+   * RM-1009: 8 -> 6 vertical. The footer grew 36 -> --hit-min (42) so
+   * its buttons meet the hit floor; at 1920x920 the lobby had 0px slack
+   * and scrolled 6px. 2px x 2 sides x 2 rows = 8px back (2px slack),
+   * pinned by test_lobby_card_containment.py's no-scroll check. */
   border-radius: var(--panel-radius-sm);
-  padding: 8px 16px;
+  padding: 6px 16px;
   min-height: 160px;
   display: flex; flex-direction: column;
 }
