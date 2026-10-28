@@ -37,6 +37,8 @@ the cache clock is fine.
 from __future__ import annotations
 
 import json
+import logging
+import math
 import os
 import threading
 import time
@@ -49,6 +51,7 @@ from core.coach_choices import (
 )
 from core.event_callouts import _sort_key as _callout_sort_key
 from core.event_callouts import dragon_soul_callout, next_callouts
+from core.failed_load_gate import FailedLoadGate
 from core.heal_threat import heal_threat_callout
 from core.laning_verdicts import laning_choices
 from core.lead_projection import phase_for, project_lead
@@ -58,6 +61,8 @@ from core.macro_response import macro_response_callout
 from core.objective_playbook import playbook_callout
 
 _DS_DATA = Path(__file__).resolve().parent.parent / "data" / "daemon_slayer"
+
+_log = logging.getLogger(__name__)
 
 # Build-order + item-cost data is loaded lazily once and memoised. WHY here and
 # not in core.event_callouts: that module is pure (no file reads); the recall
@@ -86,6 +91,22 @@ _NON_SPIKE_TAGS = frozenset({"Boots", "Consumable", "Trinket"})
 # (ids, lowercased names) of every completed legendary; built once on demand.
 _LEGENDARY_CATALOG_CACHE: tuple[frozenset[str], frozenset[str]] | None = None
 
+# RM-1039: a failed or EMPTY load of the three DS-data memos above is NOT
+# memoised. Before this, a cold start that ran ahead of the DS data sync (no
+# patch in current.txt yet, items.json mid-write) cached the empty value for the
+# process lifetime, so item spikes, RM-604 item_completed and the recall callout
+# stayed dark until an RC restart. Each loader retries after its gate's backoff
+# and warns once per failure streak (core/failed_load_gate.py, the RM-439 shape).
+# One gate PER MODE for build orders, so a broken arena table never backs off SR.
+_BUILD_ORDERS_GATES: dict[str, FailedLoadGate] = {}
+_ITEM_COST_GATE = FailedLoadGate()
+_LEGENDARY_CATALOG_GATE = FailedLoadGate()
+# Guards all three memos. The item-cost dict used to be filled in place, so a
+# concurrent caller (the warm-path refresh thread, the live-event poller) could
+# see a half-built table as "loaded"; each loader now builds locally and
+# publishes under this lock. No loader calls another while holding it.
+_DS_DATA_LOCK = threading.Lock()
+
 
 def _current_patch() -> str:
     try:
@@ -95,42 +116,96 @@ def _current_patch() -> str:
         return ""
 
 
-def _load_build_orders(mode_lower: str) -> dict:
-    """champ -> bucket -> [item_id_str]. Memoised per mode; {} fail-soft."""
-    if mode_lower in _BUILD_ORDERS_CACHE:
-        return _BUILD_ORDERS_CACHE[mode_lower]
-    out: dict = {}
+def _require_patch() -> str:
     patch = _current_patch()
-    if patch:
-        path = _DS_DATA / patch / f"build_orders_{mode_lower}.json"
+    if not patch:
+        raise FileNotFoundError("data/daemon_slayer/current.txt names no patch")
+    return patch
+
+
+def _read_items_data() -> dict:
+    """``data`` object of the current patch's items.json.
+
+    Raises OSError / ValueError on a missing patch, an unreadable file or a
+    wrong-shaped document (top level or ``data`` not an object), so callers
+    route every failure through their gate instead of an AttributeError."""
+    patch = _require_patch()
+    raw = json.loads((_DS_DATA / patch / "items.json").read_text(encoding="utf-8"))
+    data = raw.get("data") if isinstance(raw, dict) else None
+    if not isinstance(data, dict):
+        raise ValueError(f"items.json for patch {patch} has no 'data' object")
+    return data
+
+
+def _finite_total(gold: object) -> float | None:
+    """``gold.total`` as a finite number, else None. json.loads accepts NaN and
+    Infinity: int() of either raises, and NaN clears every ``<`` floor check."""
+    total = gold.get("total") if isinstance(gold, dict) else None
+    if isinstance(total, bool) or not isinstance(total, (int, float)):
+        return None
+    return float(total) if math.isfinite(total) else None
+
+
+def _load_build_orders(mode_lower: str) -> dict:
+    """champ -> bucket -> [item_id_str]. Memoised per mode; {} fail-soft.
+
+    A missing, unreadable, wrong-shaped or empty table is not memoised (see
+    _BUILD_ORDERS_GATES)."""
+    with _DS_DATA_LOCK:
+        if mode_lower in _BUILD_ORDERS_CACHE:
+            return _BUILD_ORDERS_CACHE[mode_lower]
+        gate = _BUILD_ORDERS_GATES.setdefault(mode_lower, FailedLoadGate())
+        if not gate.should_attempt():
+            return {}
         try:
+            patch = _require_patch()
+            path = _DS_DATA / patch / f"build_orders_{mode_lower}.json"
             raw = json.loads(path.read_text(encoding="utf-8"))
-            out = raw.get("build_orders") or {}
-        except (OSError, ValueError):
-            out = {}
-    _BUILD_ORDERS_CACHE[mode_lower] = out
-    return out
+            out = raw.get("build_orders") if isinstance(raw, dict) else None
+            if not isinstance(out, dict) or not out:
+                raise ValueError(f"{path.name} has no non-empty 'build_orders' object")
+        except (OSError, ValueError) as exc:
+            if gate.record_failure():
+                _log.warning("deterministic coaching: build_orders_%s load failed "
+                             "(%s: %s); recall and build callouts are off until it "
+                             "loads (logged once per streak)",
+                             mode_lower, type(exc).__name__, exc)
+            return {}
+        gate.record_success()
+        _BUILD_ORDERS_CACHE[mode_lower] = out
+        return out
 
 
 def _load_item_costs() -> dict[str, tuple[str, int]]:
-    """item_id_str -> (display_name, total_gold). Memoised; {} fail-soft."""
-    if _ITEM_COST_CACHE:
-        return _ITEM_COST_CACHE
-    patch = _current_patch()
-    if patch:
-        path = _DS_DATA / patch / "items.json"
+    """item_id_str -> (display_name, total_gold). Memoised; {} fail-soft.
+
+    A failed or empty load is not memoised (_ITEM_COST_GATE); an item whose
+    total is missing or non-finite is skipped, never the rest of the table."""
+    with _DS_DATA_LOCK:
+        if _ITEM_COST_CACHE:
+            return _ITEM_COST_CACHE
+        if not _ITEM_COST_GATE.should_attempt():
+            return {}
+        out: dict[str, tuple[str, int]] = {}
         try:
-            data = (json.loads(path.read_text(encoding="utf-8")).get("data") or {})
+            data = _read_items_data()
             for iid, it in data.items():
                 if not isinstance(it, dict):
                     continue
-                gold = it.get("gold")
-                total = gold.get("total") if isinstance(gold, dict) else None
-                if isinstance(total, (int, float)) and not isinstance(total, bool):
-                    _ITEM_COST_CACHE[str(iid)] = (str(it.get("name") or ""), int(total))
-        except (OSError, ValueError):
-            pass
-    return _ITEM_COST_CACHE
+                total = _finite_total(it.get("gold"))
+                if total is not None:
+                    out[str(iid)] = (str(it.get("name") or ""), int(total))
+            if not out:
+                raise ValueError("items.json holds no priced item")
+        except (OSError, ValueError) as exc:
+            if _ITEM_COST_GATE.record_failure():
+                _log.warning("deterministic coaching: item cost table load failed "
+                             "(%s: %s); recall callouts are off until it loads "
+                             "(logged once per streak)", type(exc).__name__, exc)
+            return {}
+        _ITEM_COST_GATE.record_success()
+        _ITEM_COST_CACHE.update(out)
+        return _ITEM_COST_CACHE
 
 
 def _legendary_catalog() -> tuple[frozenset[str], frozenset[str]]:
@@ -149,42 +224,55 @@ def _legendary_catalog() -> tuple[frozenset[str], frozenset[str]]:
 
     Same catalog + memoisation discipline as _load_item_costs. Fail-soft: an
     unreadable catalog yields empty sets, which reads as "nothing completed".
+    A failed or empty build is not memoised (_LEGENDARY_CATALOG_GATE): an empty
+    catalog cached at a cold start silenced item spikes and item_completed
+    until a restart (RM-1039).
     """
     global _LEGENDARY_CATALOG_CACHE
-    if _LEGENDARY_CATALOG_CACHE is not None:
-        return _LEGENDARY_CATALOG_CACHE
-    ids: set[str] = set()
-    names: set[str] = set()
-    patch = _current_patch()
-    if patch:
-        path = _DS_DATA / patch / "items.json"
+    empty: tuple[frozenset[str], frozenset[str]] = (frozenset(), frozenset())
+    with _DS_DATA_LOCK:
+        if _LEGENDARY_CATALOG_CACHE is not None:
+            return _LEGENDARY_CATALOG_CACHE
+        if not _LEGENDARY_CATALOG_GATE.should_attempt():
+            return empty
+        ids: set[str] = set()
+        names: set[str] = set()
         try:
-            data = (json.loads(path.read_text(encoding="utf-8")).get("data") or {})
-        except (OSError, ValueError):
-            data = {}
-        for iid, it in data.items():
-            if not isinstance(it, dict):
-                continue
-            gold = it.get("gold")
-            if not isinstance(gold, dict) or not gold.get("purchasable"):
-                continue
-            total = gold.get("total")
-            if isinstance(total, bool) or not isinstance(total, (int, float)):
-                continue
-            if total < _LEGENDARY_GOLD_FLOOR:
-                continue
-            # A non-empty "into" means the item builds onward, so it is a
-            # component and holding it is mid-purchase, not a completed spike.
-            if it.get("into"):
-                continue
-            if set(it.get("tags") or ()) & _NON_SPIKE_TAGS:
-                continue
-            ids.add(str(iid))
-            name = str(it.get("name") or "").strip().lower()
-            if name:
-                names.add(name)
-    _LEGENDARY_CATALOG_CACHE = (frozenset(ids), frozenset(names))
-    return _LEGENDARY_CATALOG_CACHE
+            data = _read_items_data()
+            for iid, it in data.items():
+                if not isinstance(it, dict):
+                    continue
+                gold = it.get("gold")
+                if not isinstance(gold, dict) or not gold.get("purchasable"):
+                    continue
+                total = _finite_total(gold)
+                if total is None or total < _LEGENDARY_GOLD_FLOOR:
+                    continue
+                # A non-empty "into" means the item builds onward, so it is a
+                # component and holding it is mid-purchase, not a completed spike.
+                if it.get("into"):
+                    continue
+                tags = it.get("tags")
+                if not isinstance(tags, list):
+                    tags = []
+                if {t for t in tags if isinstance(t, str)} & _NON_SPIKE_TAGS:
+                    continue
+                ids.add(str(iid))
+                name = str(it.get("name") or "").strip().lower()
+                if name:
+                    names.add(name)
+            if not ids:
+                raise ValueError("items.json holds no completed legendary")
+        except (OSError, ValueError) as exc:
+            if _LEGENDARY_CATALOG_GATE.record_failure():
+                _log.warning("deterministic coaching: legendary catalog load failed "
+                             "(%s: %s); item-spike callouts read 'nothing completed' "
+                             "until it loads (logged once per streak)",
+                             type(exc).__name__, exc)
+            return empty
+        _LEGENDARY_CATALOG_GATE.record_success()
+        _LEGENDARY_CATALOG_CACHE = (frozenset(ids), frozenset(names))
+        return _LEGENDARY_CATALOG_CACHE
 
 
 def _owned_legendary_count(owned_item_ids: object,
