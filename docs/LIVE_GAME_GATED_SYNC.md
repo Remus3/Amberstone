@@ -2772,6 +2772,65 @@ Ids `LX-nn` map to the RM rows in `BACKLOG.md` "External-lift intake".
 - **LX-08** (RM-603, skill points) Capture whether `/allgamedata` `activePlayer.abilities` carries
   `abilityLevel` per slot; whether the free R rank of Jayce / Elise / Nidalee / Karma reads 1 at level 1;
   what Aphelios's slots report; whether ranks read the same in ARAM, Arena and URF.
+  **READY (s144 lane gated c29, 2026-10-28; PREP only, nothing ticked).** PRECONDITIONS measured
+  2026-10-28 at idle: the :8889 relay answers `/health` 200 and
+  `ops/runtime/liveclient_captures/` does not exist yet (the LX-02 drain creates it; this row reuses
+  that capture set). WHY THE ROW MATTERS: RC reads the ranks two ways. `dashboard/_liveclient.py`
+  passes `activePlayer.level` + `activePlayer.abilities` to
+  `core.skill_point_tracker.read_skill_snapshot` (the `ability_ranks` field), and
+  `game_reader/snapshot_normalizer.py` `_read_my_abilities` reads the separate
+  `/activeplayerabilities` endpoint and DROPS a slot with neither a `displayName` nor a `name`, so the tracker
+  reads None for that whole state. The tracker's free-R model (`SPECIAL_KITS`, `free_r=1` for Jayce /
+  Elise / Nidalee / Karma) and its Aphelios fence rest on a Match-V5 probe only; its own docstring
+  says the free R rank reading 1 at level 1 "is unverified on a real frame".
+  PROBE (run from the main checkout, where the token resolves; the LX-02 relay captures count here
+  too): during any League game take relay captures as in LX-02 (`curl -sf -H "X-RC-Token: $TOK"
+  http://127.0.0.1:8889/latest-liveclient -o ops/runtime/liveclient_captures/lx08_$(date +%s).json`),
+  at least one at level 1 before the first level-up when the champion is Jayce / Elise / Nidalee /
+  Karma; plus at least one direct read of the normalizer's endpoint,
+  `curl -sfk https://127.0.0.1:2999/liveclientdata/activeplayerabilities -o
+  ops/runtime/liveclient_captures/lx08_apa_$(date +%s).json` (no token: Riot's local API), then
+  `python tools/gated_lx08_ranks_check.py ops/runtime/liveclient_captures/ --json` (read-only, no
+  network). The checker prints the active player's `championName` (a fixed Riot string that picks
+  the kit) and never a summoner name, Riot id or ability display name (RM-906). FIELD PATHS:
+  `activePlayer.level`, `activePlayer.abilities.{Q,W,E,R}.abilityLevel`, the roster row matched on
+  `activePlayer.summonerName` -> `allPlayers[].championName`, `gameData.gameMode`; for the apa file
+  `{Q,W,E,R}.abilityLevel` / `.displayName`; the relay wrapper `ts`.
+  PREDICATE (stated before any game): VALID only if `synthetic=0`, `duplicates=0` and every file's
+  mtime falls inside the played game (else NO_RESULT, re-capture). Then, recorded as values:
+  `ranks.verdict` PRESENT (every allgamedata capture carries an integer `abilityLevel` on all four of
+  Q/W/E/R AND `read_skill_snapshot` returns a reading: the first LX-08 question is YES) / PARTIAL
+  (record `ranks.abilityLevel_types` per slot and file it) / ABSENT (the dashboard `ability_ranks`
+  field is structurally None live: file it against `dashboard/_liveclient.py`); `self` must read
+  `exact` for every capture, else the kit lookup ran on a fallback row and the free-R / fenced answers
+  are void for those captures. `free_r.verdict` READS_1 = the `free_r=1` model holds; READS_0 = the
+  free R rank is NOT on the wire at level 1, so `unspent` still counts right but `slot_open` lights R
+  at level 1 for that kit (file it against `core/skill_point_tracker.py` `_FREE_R_KIT` / Jayce);
+  MIXED = record per champion and file it; NO_RESULT = no level-1 capture of a free-R kit (that half
+  stays open). `fenced` (Aphelios): record the level and the four ranks; ranks that track level points
+  would re-open the fence (file it, never edit the fence in the game), ranks frozen at 0 / 1 confirm
+  it. `per_mode`: one row per `gameMode` (CLASSIC, ARAM, KIWI, CHERRY = Arena, URF); CONSISTENT =
+  every capture has `0 <= unspent <= level` and no rank above the slot cap; the URF / ARAM / Arena
+  half of the question is answered only for a mode that appears, and `modes_agree` is recorded,
+  never extrapolated to an unplayed mode. `apa.verdict` READABLE (every slot named and ranked: the
+  normalizer path reads) / DROPS_SLOT (record `apa.dropped_slots`: the normalizer state reads None for
+  the tracker; file it against `_read_my_abilities` `if name:`) / NO_RANK / NO_RESULT (no apa
+  capture). LX-08 PASSES on `ranks.verdict=PRESENT` from a VALID set; each other verdict is recorded
+  and is its own question's answer, not LX-08's pass bar.
+  EVIDENCE CONTRACT: the checker's JSON (`ranks`, `self`, `champions`, `free_r`, `fenced`, `per_mode`,
+  `modes_agree`, `apa`, `kinds`, `synthetic`, `duplicates`, `relay_ts_span_s`), each file's mtime, the
+  game's mode / queue and game time at each capture, and the main checkout HEAD plus
+  `ops/runtime/health.json` `pid` / `started_at`.
+  SUBSTITUTION CHECK: `tests/test_gated_lx08_ranks_check.py` produces every verdict above from
+  hand-built payloads (`tests/test_skill_point_tracker.py` and
+  `tests/test_liveclient_ability_ranks_rm603.py` do the same for the readers under it), so a verdict proves nothing unless the files came off the live relay / :2999 during the
+  played game. Look-alikes: a copy of a test payload (`synthetic` catches only a SYNTHETIC
+  `_comment` or `Synthetic` roster names, so a scrubbed hand-built file passes it - the mtime check
+  is the guard), one capture saved twice (`duplicates>0`), the relay's last snapshot served after
+  the game (`relay_ts_span_s=0` across the set), and a level-1 capture taken in the Practice Tool
+  after a level reset (record the queue). This row reads the wire ranks only; whether the dashboard
+  RENDERS a skill-point nag is a separate on-screen check, and `/api/state` callouts are blanked while
+  a game is live (B4, `skill_point_callout` docstring), so no nag on screen is NOT a failure here.
 - **LX-07** (RM-608, death recap) With `RC_DEATH_RECAP=1`, one real own death writes a row to
   `data/coaching/death_recaps.jsonl` (champion names only); confirm the live VictimName / KillerName
   forms (shared with LX-02 / RM-673); sanity-check the estimated split per mode (SR, ARAM / KIWI, Arena).
