@@ -23,16 +23,41 @@ from typing import Any
 FUTURE_TOLERANCE_S = 2.0
 
 
+def _finite(value: Any, *, text_ok: bool) -> float | None:
+    """`value` as a finite float, or None. A bool is never a time or a
+    duration, and only the wire `ts` may be numeric text (`text_ok`); a
+    caller's own duration or clock must be a number. ArithmeticError covers
+    OverflowError (a JSON big-int such as 10**400) and a numeric type whose
+    __float__ refuses."""
+    if isinstance(value, bool):
+        return None
+    if not text_ok and isinstance(value, (str, bytes, bytearray)):
+        return None
+    try:
+        out = float(value)
+    except (TypeError, ValueError, ArithmeticError):
+        return None
+    return out if math.isfinite(out) else None
+
+
 def is_stale(ts: Any, max_age_s: float, now: float | None = None) -> bool:
     """True when `ts` is older than `max_age_s`, from the future (backward
-    clock step), or not a finite number."""
-    try:
-        stamp = float(ts)
-    except (TypeError, ValueError):
+    clock step), or not a finite number.
+
+    Fails CLOSED: a `max_age_s` or `now` that is not a finite number (NaN
+    made every comparison False, so an hour-old stamp read fresh) also
+    reports stale, because the callers decide on this answer whether to serve
+    a cached snapshot as live game state (s144 true-audit). Never raises for
+    any JSON-decoded value or any number; only a foreign object whose
+    __float__ raises outside TypeError / ValueError / ArithmeticError still
+    propagates, so a real bug in such a type is not masked as "stale".
+    """
+    stamp = _finite(ts, text_ok=True)
+    limit = _finite(max_age_s, text_ok=False)
+    clock = _finite(time.time() if now is None else now, text_ok=False)
+    if stamp is None or limit is None or clock is None:
         return True
-    if not math.isfinite(stamp):
-        return True
-    age = (time.time() if now is None else now) - stamp
+    age = clock - stamp
     if age < -FUTURE_TOLERANCE_S:
         return True
-    return age > max_age_s
+    return age > limit
