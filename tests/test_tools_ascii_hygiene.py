@@ -5,6 +5,11 @@ R217-U2 (2026-07-28) swept the non-ASCII residue out of two host-only tools:
     tools/extract_panels.py   pre=189 bytes -> post=0
     tools/rc_facts.py         pre=10  bytes -> post=0
 
+tools/extract_panels.py was later DELETED as a spent one-shot (s144 repo
+lane; pinned absent by tests/test_orphan_tools_extract_panels_s144.py), so
+only tools/rc_facts.py is still pinned here, and the PANEL_IMPORTS width
+check that read the extractor's source went with it.
+
 Replacement doctrine is the item-176 one: 1:1 character substitution that
 preserves visual width and semantic intent (U+2500 box rule -> '-',
 U+25B6 -> '>', U+2022 -> '*', U+00B7 -> '-', U+26A0 -> '!'), never a
@@ -26,7 +31,6 @@ actual sweep of the file being added.
 """
 from __future__ import annotations
 
-import ast
 from pathlib import Path
 
 import pytest
@@ -35,7 +39,6 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # Swept by R217-U2. Every entry must hold zero bytes > 0x7F.
 _SWEPT: frozenset[str] = frozenset({
-    "tools/extract_panels.py",
     "tools/rc_facts.py",
 })
 
@@ -105,40 +108,6 @@ def test_p3_ascii_sweep_keeps_its_glyph_inventory() -> None:
         assert chr(cp) in mod.GLYPH_MAP, (
             f"U+{cp:04X} dropped out of the sweeper's inventory"
         )
-
-
-def test_panel_import_rule_keeps_the_generated_width() -> None:
-    """The ASCII rule the extractor emits must match the width it replaced.
-
-    Read via ast rather than import: tools/extract_panels.py is a spent
-    one-shot that rewrites web/js/main.js at module scope, so importing it
-    would destroy the file this test reads.
-    """
-    src = (_REPO_ROOT / "tools" / "extract_panels.py").read_text(encoding="utf-8")
-    tree = ast.parse(src)
-    emitted = None
-    for node in tree.body:
-        if isinstance(node, ast.Assign) and any(
-            isinstance(t, ast.Name) and t.id == "PANEL_IMPORTS" for t in node.targets
-        ):
-            emitted = ast.literal_eval(node.value)
-    assert emitted is not None, "PANEL_IMPORTS assignment not found"
-
-    rule_line = next(
-        ln for ln in emitted.splitlines() if "Panel modules" in ln
-    )
-    on_disk = next(
-        ln
-        for ln in (_REPO_ROOT / "web" / "js" / "main.js")
-        .read_text(encoding="utf-8")
-        .splitlines()
-        if "Panel modules" in ln
-    )
-    assert rule_line.isascii(), f"emitted rule is not ASCII: {rule_line!r}"
-    assert len(rule_line) == len(on_disk), (
-        f"emitted rule width {len(rule_line)} != generated width "
-        f"{len(on_disk)}; the sweep must be a 1:1 character substitution."
-    )
 
 
 def test_this_drift_guard_is_ascii() -> None:

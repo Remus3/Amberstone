@@ -92,11 +92,14 @@ class BridgeDecommissionGuardTests(unittest.TestCase):
         )
 
     def test_panel_codegen_drops_bridge_pending_import(self):
-        src = (_PROJECT_ROOT / "tools" / "extract_panels.py").read_text(encoding="utf-8")
-        self.assertNotIn(
-            "bridge_pending.js",
-            src,
-            "extract_panels.py PANEL_IMPORTS still imports the deleted bridge_pending.js panel (OQ2)",
+        # The panel codegen (tools/extract_panels.py) was itself deleted as a
+        # spent one-shot in s144 and is pinned absent by
+        # tests/test_orphan_tools_extract_panels_s144.py; a codegen that
+        # cannot run can no longer re-emit the bridge_pending.js import.
+        self.assertFalse(
+            (_PROJECT_ROOT / "tools" / "extract_panels.py").exists(),
+            "tools/extract_panels.py is back - if it is truly needed again, it must not "
+            "import the deleted bridge_pending.js panel (OQ2)",
         )
 
     def test_live_main_js_has_no_peer_bridge_health_render(self):
