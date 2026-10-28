@@ -1,9 +1,10 @@
 """Deterministic ARAM action verdict (Stage 1, Tier-1, no live wiring).
 
 A pure, fail-soft encoding of the ARAM HP-band / wave-position decision
-tree that the ARAM coach already documents in its user prompt at
-``coaches/aram_coach.py:251-260``. This is the correct-by-construction
-replacement surface for the ARAM per-tick Haiku *action* verdict.
+tree that the ARAM coach already documents in its user prompt, the
+``=== ARAM DECISION TREE ===`` block of ``coaches/aram_coach.py``. This
+is the correct-by-construction replacement surface for the ARAM per-tick
+Haiku *action* verdict.
 
 Rationale: the earlier ARAM laning-VERDICT precompute was measured at
 23% agreement vs Haiku and is a settled dead-end. The viable path is
@@ -21,7 +22,7 @@ one of these canonical UPPERCASE strings):
     index 4  "FALL BACK"
 
 Base tier from HP percent (exact, non-overlapping bands - mirrors the
-prompt lines 256-260):
+prompt's HP lines):
 
     hp_pct > 80           -> tier 0 ALL-IN  IF low_enemy_count >= 2
                              else tier 1 POKE
@@ -30,23 +31,42 @@ prompt lines 256-260):
     30 <= hp_pct < 40     -> tier 3 DISENGAGE
     hp_pct < 30           -> tier 4 FALL BACK
 
-Wave shift on the tier INDEX, then clamp to [0, 4] (prompt lines
-252-255):
+Wave shift on the tier INDEX, then clamp to [0, 4] (the prompt's
+WAVE POSITION lines):
 
     wave_pct > 65         -> index - 1  (one tier MORE aggressive)
     wave_pct < 35         -> index + 1  (one tier LESS aggressive)
     35 <= wave_pct <= 65  -> no shift
     wave_pct is None      -> no shift
 
+What counts as a reading (s144 true-audit). A reading is an int or a
+float (subclasses included), never a bool (a flag, not a measurement:
+True hp read 1% and coached FALL BACK) and never a str (it used to be
+float()-parsed, so " 6e1 " read 60% and "1_000" read 1000%), that is
+finite and inside its band:
+
+    hp_pct           0..150   (the producer admits hp up to 1.5x max,
+                               so a transient over-max reading is full
+                               HP, not junk - the same band
+                               core/aram_deterministic_coach.py gates)
+    wave_pct         0..100   (a percent)
+    low_enemy_count  a whole number 0..5 (ARAM fields five enemies; an
+                               integral float like 2.0 is a count, 2.9
+                               is not - it used to truncate to 2 and
+                               promote ALL-IN)
+
 Fail-soft guards (this function NEVER raises):
-    * hp_pct is None / non-coercible / NaN -> "HOLD" (neutral).
-    * wave_pct non-coercible / NaN -> treated as the no-shift case.
-    * low_enemy_count non-coercible -> treated as 0 (cannot reach the
+    * hp_pct that is not a reading -> "HOLD" (neutral).
+    * wave_pct that is not a reading -> the no-shift case.
+    * low_enemy_count that is not a reading -> 0 (cannot reach the
       ALL-IN top tier without an explicit >=2 low signal).
+    * A number whose conversion raises (an int past the float range, a
+      subclass with a raising __float__, an object whose __class__
+      raises) is not a reading. Before this
+      pass int(inf) and float(10**400) raised OverflowError out of the
+      function.
 """
 from __future__ import annotations
-
-import math
 
 # Index-ordered ladder, most -> least aggressive.
 _LADDER = ("ALL-IN", "POKE", "HOLD", "DISENGAGE", "FALL BACK")
@@ -55,21 +75,38 @@ _LADDER = ("ALL-IN", "POKE", "HOLD", "DISENGAGE", "FALL BACK")
 _NEUTRAL = "HOLD"
 
 
-def _coerce_float(value):
-    """Best-effort float coercion. Returns None on any failure or NaN.
+# Reading bands (see the module docstring).
+_HP_PCT_MAX = 150.0
+_WAVE_PCT_MAX = 100.0
+_MAX_LOW_ENEMIES = 5
 
-    NaN is rejected because all NaN comparisons are False, which would
-    silently bypass every HP band; callers must treat it as 'unknown'.
+
+def _reading(value, lo: float, hi: float):
+    """A finite int / float in ``lo..hi`` as a float, else None. Never raises.
+
+    The bounds are finite, so the band check also rejects NaN (every
+    comparison is False, which would silently bypass every HP band) and
+    +/-inf.
     """
-    if value is None:
-        return None
     try:
+        # isinstance sits inside the try too: an object whose __class__
+        # raises makes isinstance raise.
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            return None
         out = float(value)
-    except (TypeError, ValueError):
+    except Exception:  # noqa: BLE001 - OverflowError or a hostile __float__ / __class__
         return None
-    if math.isnan(out) or math.isinf(out):
+    if not lo <= out <= hi:
         return None
     return out
+
+
+def _low_count(value) -> int:
+    """A whole number of low enemies in ``0..5``, else 0. Never raises."""
+    num = _reading(value, 0.0, float(_MAX_LOW_ENEMIES))
+    if num is None or not num.is_integer():
+        return 0
+    return int(num)
 
 
 def _base_tier(hp_pct: float, low_enemy_count: int) -> int:
@@ -92,20 +129,15 @@ def decide_action(hp_pct, wave_pct, low_enemy_count) -> str:
     Always returns one of the five canonical UPPERCASE labels and never
     raises.
     """
-    hp = _coerce_float(hp_pct)
+    hp = _reading(hp_pct, 0.0, _HP_PCT_MAX)
     if hp is None:
         return _NEUTRAL
 
     # low_enemy_count gates only the >80 ALL-IN promotion. Anything that
-    # is not a clean integer >=2 cannot promote (defensive default 0).
-    try:
-        low = int(low_enemy_count)
-    except (TypeError, ValueError):
-        low = 0
+    # is not a whole count in 0..5 cannot promote (defensive default 0).
+    index = _base_tier(hp, _low_count(low_enemy_count))
 
-    index = _base_tier(hp, low)
-
-    wave = _coerce_float(wave_pct)
+    wave = _reading(wave_pct, 0.0, _WAVE_PCT_MAX)
     if wave is not None:
         if wave > 65:
             index -= 1

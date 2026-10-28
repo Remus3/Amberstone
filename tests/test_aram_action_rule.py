@@ -2,8 +2,8 @@
 
 Stage 1 of the deterministic ARAM coach (Tier-1, no live wiring). The
 function encodes the ARAM HP-band / wave-position decision tree that is
-ALREADY documented in the coach user prompt at
-``coaches/aram_coach.py:251-260``. This is a correct-by-construction
+ALREADY documented in the coach user prompt, the ``=== ARAM DECISION
+TREE ===`` block of ``coaches/aram_coach.py``. This is a correct-by-construction
 surface that will later replace the ARAM per-tick Haiku action verdict
 (the laning-VERDICT precompute measured 23% agreement vs Haiku and is a
 settled dead-end; this tree is not a predictor, it is the operator's
@@ -113,10 +113,16 @@ class FailSoftTests(unittest.TestCase):
         # 70% HP base stays POKE rather than shifting.
         self.assertEqual(decide_action(70, "junk", 0), "POKE")
 
-    def test_string_numeric_inputs_coerce(self) -> None:
+    def test_string_inputs_are_no_reading(self) -> None:
         from core.aram_action_rule import decide_action
 
-        self.assertEqual(decide_action("90", "50", 2), "ALL-IN")
+        # A str is not a reading (s144 true-audit; it used to be float()-
+        # parsed, so " 6e1 " read 60% and "1_000" read 1000%). A str hp is
+        # the neutral HOLD, a str wave the no-shift case, a str low count 0.
+        self.assertEqual(decide_action("90", 50, 2), "HOLD")
+        self.assertEqual(decide_action(" 6e1 ", 50, 0), "HOLD")
+        self.assertEqual(decide_action(70, "80", 0), "POKE")
+        self.assertEqual(decide_action(90, 50, "2"), "POKE")
 
     def test_always_returns_canonical_label(self) -> None:
         from core.aram_action_rule import decide_action
@@ -139,6 +145,135 @@ class FailSoftTests(unittest.TestCase):
             with self.subTest(args=_label(args)):
                 out = decide_action(*args)
                 self.assertIn(out, self.LABELS)
+
+
+class _RaisingFloat(float):
+    """A float subclass whose __float__ raises (a hostile number)."""
+
+    def __float__(self):
+        raise RuntimeError("hostile __float__")
+
+
+class _RaisingInt(int):
+    """An int subclass whose __float__ / __int__ / __index__ raise."""
+
+    def __float__(self):
+        raise RuntimeError("hostile __float__")
+
+    def __int__(self):
+        raise RuntimeError("hostile __int__")
+
+    def __index__(self):
+        raise RuntimeError("hostile __index__")
+
+
+class JunkInputHardeningTests(unittest.TestCase):
+    """s144 true-audit: a junk input is no reading and never raises.
+
+    Each case was measured against the pre-fix module; the comment names
+    what it did then.
+    """
+
+    def test_inf_low_count_does_not_raise(self) -> None:
+        from core.aram_action_rule import decide_action
+
+        # int(inf) raised OverflowError out of a "never raises" function.
+        self.assertEqual(decide_action(50, None, float("inf")), "HOLD")
+        self.assertEqual(decide_action(90, None, float("inf")), "POKE")
+        self.assertEqual(decide_action(90, None, float("-inf")), "POKE")
+        self.assertEqual(decide_action(90, None, float("nan")), "POKE")
+
+    def test_huge_int_hp_or_wave_does_not_raise(self) -> None:
+        from core.aram_action_rule import decide_action
+
+        # float(10**400) raised OverflowError (only TypeError / ValueError
+        # were caught).
+        self.assertEqual(decide_action(10**400, None, 0), "HOLD")
+        self.assertEqual(decide_action(70, 10**400, 0), "POKE")
+        self.assertEqual(decide_action(70, -(10**400), 0), "POKE")
+
+    def test_raising_number_subclass_does_not_raise(self) -> None:
+        from core.aram_action_rule import decide_action
+
+        # A __float__ / __int__ raising RuntimeError propagated.
+        self.assertEqual(decide_action(_RaisingFloat(70), 50, 0), "HOLD")
+        self.assertEqual(decide_action(_RaisingInt(70), 50, 0), "HOLD")
+        self.assertEqual(decide_action(70, _RaisingFloat(80), 0), "POKE")
+        self.assertEqual(decide_action(90, 50, _RaisingInt(2)), "POKE")
+
+    def test_raising_class_object_does_not_raise(self) -> None:
+        from core.aram_action_rule import decide_action
+
+        class _RaisingClass:
+            @property
+            def __class__(self):
+                raise RuntimeError("hostile __class__")
+
+        # An isinstance-first gate raises on it (the pre-fix float() path
+        # did not; this pins the new gate, which checks the type first).
+        self.assertEqual(decide_action(_RaisingClass(), 50, 0), "HOLD")
+        self.assertEqual(decide_action(70, _RaisingClass(), 0), "POKE")
+        self.assertEqual(decide_action(90, 50, _RaisingClass()), "POKE")
+
+    def test_bool_is_never_a_reading(self) -> None:
+        from core.aram_action_rule import decide_action
+
+        # True hp read 1% -> FALL BACK; False wave read 0 -> one tier less
+        # aggressive; a bool low count is a flag, not a count.
+        self.assertEqual(decide_action(True, 50, 0), "HOLD")
+        self.assertEqual(decide_action(False, 50, 0), "HOLD")
+        self.assertEqual(decide_action(70, False, 0), "POKE")
+        self.assertEqual(decide_action(70, True, 0), "POKE")
+        self.assertEqual(decide_action(90, 50, True), "POKE")
+
+    def test_hp_outside_its_band_is_neutral(self) -> None:
+        from core.aram_action_rule import decide_action
+
+        # -50 read FALL BACK and 1e300 read the top tier. 0..150 is the
+        # band the caller admits (the producer allows up to 1.5x max HP).
+        self.assertEqual(decide_action(-50, 50, 0), "HOLD")
+        self.assertEqual(decide_action(-0.001, 50, 0), "HOLD")
+        self.assertEqual(decide_action(1e300, 50, 2), "HOLD")
+        self.assertEqual(decide_action(150.001, 50, 2), "HOLD")
+        # The band edges are readings.
+        self.assertEqual(decide_action(0, 50, 0), "FALL BACK")
+        self.assertEqual(decide_action(150, 50, 2), "ALL-IN")
+
+    def test_wave_outside_its_band_is_no_shift(self) -> None:
+        from core.aram_action_rule import decide_action
+
+        # -500 shifted one tier less aggressive, 1e9 one tier more.
+        self.assertEqual(decide_action(70, -500, 0), "POKE")
+        self.assertEqual(decide_action(70, 1e9, 0), "POKE")
+        self.assertEqual(decide_action(70, 100.5, 0), "POKE")
+        self.assertEqual(decide_action(70, -0.5, 0), "POKE")
+        # The band edges are readings.
+        self.assertEqual(decide_action(70, 0, 0), "HOLD")
+        self.assertEqual(decide_action(70, 100, 0), "ALL-IN")
+
+    def test_low_count_is_a_whole_number_in_band(self) -> None:
+        from core.aram_action_rule import decide_action
+
+        # 2.9 truncated to 2 and promoted ALL-IN; 10**9 promoted too. ARAM
+        # fields five enemies, so a count is a whole 0..5.
+        self.assertEqual(decide_action(90, 50, 2.9), "POKE")
+        self.assertEqual(decide_action(90, 50, 10**9), "POKE")
+        self.assertEqual(decide_action(90, 50, 6), "POKE")
+        self.assertEqual(decide_action(90, 50, -2), "POKE")
+        # An integral float and the band edge are counts.
+        self.assertEqual(decide_action(90, 50, 2.0), "ALL-IN")
+        self.assertEqual(decide_action(90, 50, 5), "ALL-IN")
+
+    def test_int_and_float_subclasses_still_read(self) -> None:
+        from core.aram_action_rule import decide_action
+
+        class MyFloat(float):
+            pass
+
+        class MyInt(int):
+            pass
+
+        self.assertEqual(decide_action(MyFloat(90), MyInt(50), MyInt(2)), "ALL-IN")
 
 
 if __name__ == "__main__":
