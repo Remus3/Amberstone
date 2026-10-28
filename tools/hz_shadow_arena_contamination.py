@@ -77,7 +77,7 @@ USAGE
     python tools/hz_shadow_arena_contamination.py --report
     python tools/hz_shadow_arena_contamination.py --flag --source <backup> --backup <path>
 
-Writes are atomic (tmp + os.replace) and byte-preserving for every row that is
+Writes are atomic (core.polled_json.atomic_write_bytes) and byte-preserving for every row that is
 not flagged: binary line IO, original CRLF kept, unparseable lines passed
 through untouched. A flagged row is re-serialised with ``json.dumps`` defaults,
 which is byte-identical to the writer's own format (verified over all 1148 arena
@@ -99,6 +99,7 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from core import laning_scenario_precompute as _gen  # noqa: E402
+from core import polled_json  # noqa: E402
 from core.hz_choice_shadow import (  # noqa: E402
     PRECOMPUTE_SOURCE_KEY,
     SR_COPY_TAG,
@@ -299,18 +300,18 @@ def flag_rows(src: Path, dst: Path, backup: Optional[Path] = None) -> dict:
     """Write ``dst`` from ``src``, tagging every proven SR-derived arena row.
 
     Byte-preserving for every line that is NOT newly tagged, including torn
-    appends and CRLF. Atomic (tmp + os.replace). Idempotent - a row that already
-    carries the tag is left byte-identical.
+    appends and CRLF. Atomic: the whole source is read before
+    core.polled_json swaps the result in, so ``src`` may be ``dst``.
+    Idempotent - a row that already carries the tag is left byte-identical.
     """
     if backup is not None and dst.exists():
         backup.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(dst, backup)
-    dst.parent.mkdir(parents=True, exist_ok=True)
-    tmp = dst.with_suffix(dst.suffix + ".tmp")
+    out: list[bytes] = []
     tagged = 0
     already = 0
     untouched = 0
-    with open(src, "rb") as fsrc, open(tmp, "wb") as fdst:
+    with open(src, "rb") as fsrc:
         for raw in fsrc:
             line = raw.strip()
             row = None
@@ -322,16 +323,16 @@ def flag_rows(src: Path, dst: Path, backup: Optional[Path] = None) -> dict:
             if isinstance(row, dict) and sr_derived_reason(row) is not None:
                 if is_flagged(row):
                     already += 1
-                    fdst.write(raw)
+                    out.append(raw)
                     continue
                 row[PRECOMPUTE_SOURCE_KEY] = SR_COPY_TAG
                 eol = raw[len(raw.rstrip(b"\r\n")):]
-                fdst.write(json.dumps(row).encode("utf-8") + eol)
+                out.append(json.dumps(row).encode("utf-8") + eol)
                 tagged += 1
                 continue
             untouched += 1
-            fdst.write(raw)
-    os.replace(tmp, dst)
+            out.append(raw)
+    polled_json.atomic_write_bytes(dst, b"".join(out))
     return {"tagged": tagged, "already_tagged": already, "untouched": untouched,
             "backup": str(backup) if backup else None}
 
