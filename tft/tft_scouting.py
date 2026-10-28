@@ -84,6 +84,11 @@ CACHE_PATH = ROOT / "data" / "tft_scouting_cache.json"
 SCHEMA = "rc.tft_scouting.v1"
 DEFAULT_N = 10
 MAX_N = 20
+# Recent games below which an unranked opponent's threat is "unknown" and a ranked
+# one is scored from the rank alone. Not tft.engine.comps.MIN_GAMES: that floors a
+# lobby-wide aggregate row, this floors ONE player's last DEFAULT_N matches, so an
+# engine retune must not move it (RM-1101).
+MIN_THREAT_GAMES = 3
 MAX_OPPONENTS = 7
 DIGEST_TTL_S = 900.0
 CACHE_MAX_ENTRIES = 300
@@ -448,17 +453,19 @@ def _streak(placements: list) -> dict:
 def compute_threat(rank: Optional[dict], sample: dict, streak: dict,
                    top_traits: list, top_carries: list) -> dict:
     """Deterministic 0-100 threat score + level + ONE ASCII summary line."""
-    n = sample.get("n") or 0
+    n = sample.get("n")
+    # build_digest writes n as an int; a digit string, a float or a bool is no game count.
+    n = n if isinstance(n, int) and not isinstance(n, bool) and n > 0 else 0
     avg = sample.get("avg_placement")
     top4 = sample.get("top4_rate")
     ranked = bool(rank and rank.get("ranked"))
     rank_txt = rank["display"] if rank else "Rank unknown"
-    if n < 3 and not ranked:
+    if n < MIN_THREAT_GAMES and not ranked:
         msg = (f"{rank_txt} - only {n} recent game{'s' if n != 1 else ''}"
                if n else f"{rank_txt} - no recent TFT games")
         return {"level": "unknown", "score": None, "summary": _ascii(msg)}
     score = 50.0
-    if avg is not None and n >= 3:
+    if avg is not None and n >= MIN_THREAT_GAMES:
         score += 30.0 * max(-1.0, min(1.0, (4.5 - avg) / 2.5))
         score += 20.0 * ((top4 or 0.0) - 0.5)
     if ranked:
@@ -468,7 +475,7 @@ def compute_threat(rank: Optional[dict], sample: dict, streak: dict,
     score = int(round(max(0.0, min(100.0, score))))
     level = "high" if score >= 65 else "medium" if score >= 45 else "low"
     parts = [rank_txt]
-    if avg is not None:
+    if avg is not None and n:
         parts.append(f"avg {avg:.1f}, top4 {int(round((top4 or 0) * 100))}% (last {n})")
     if streak.get("length", 0) >= 2:
         word = "top-4" if streak["kind"] == "top4" else "bottom-4"
