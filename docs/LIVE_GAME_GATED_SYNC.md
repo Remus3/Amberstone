@@ -156,6 +156,8 @@ until RM-860 shipped the next day (`9b51bc90f` + `32f625d4c`, LEDGER 1832); it i
 only); no count moved.
 The 2026-08-12 `hz_choice_shadow` game_id row was filed as a SECOND "G3-14"; it is G3-16 since
 2026-10-24 and, like G6-04, was never in the 111 (its commit `0dc5dbd0d` did not touch this line).
+G5-11 (the focus-board Arena team layout, filed 2026-10-27 by s144 lane gated cycle 11) was never in
+the 111 either; do not add it to this tally or to the per-gate figures.
 
 **SYNTHETIC-TRIAGE PASS 2026-07-18 - read before proposing this again.** All 124 rows were run
 through a 14-agent triage-then-adversarial-refutation pass asking whether recorded data
@@ -1974,6 +1976,69 @@ waits on the RM-875 wiring.)
   first - one unrelated OCR miss is the likelier cause than the gate.
 - **G5-10** `[HOLD 2026-06-20]` (was D8) Arena S2 augment level-up + crafting - trigger on the 26.09
   PBE (separate PBE install). ADR-010. NOT part of the current Arena sitting.
+- **G5-11** Focus-board Arena team layout - the GATE 5 verification RM-844 / RM-854 left owed ("shadow-only
+  ... until a gated row verifies it in GATE 5", `BACKLOG.md` RM-844). Filed and READIED 2026-10-27 by lane 9 PREP (s144 cycle 11,
+  source read at `d257c4f43`; NOT a tick). The shadow column (`core/arena_coach_shadow.py:139`
+  `_focus_board_column`) feeds the DS focus board from `core/focus_board_live.py:283` `roster_from_lc`,
+  which calls every Live Client player on my `team` (minus me) an ally and every other non-blank team an
+  enemy. Its own docstring (`core/focus_board_live.py:32` TEAMS) says "In Arena that makes my partner the
+  one ally ... NOT live-verified yet: the gated GATE 5 row owns that." This is that row. It asks ONE
+  thing: was the board fed the right teams? Whether its pick is any good is accrual (the G7-17 shape),
+  and nothing here renders (the column is shadow-only, nothing is served).
+  BASELINE (idle, read-only, 2026-10-27 about 21:00 local): RC `started_at` 2026-10-27T19:35:33Z, after
+  RM-854 (`ec2efcc89`, 2026-10-25), so no restart is owed; the kill switch `RC_FOCUS_BOARD_SHADOW`
+  defaults ON (only `0` turns it off). `data/arena_coach_shadow.jsonl` holds 617 rows, all
+  2026-07-05..07-21, and 0 of them carry a `focus_board` column: no Arena game has run since RM-844.
+  WHY PASS MUST NOT BE ASSUMED (a historical observation, not evidence for this row): those 617 rows'
+  `enemy_comp` comes from the same `team != my_team` rule (`dashboard/_liveclient.py:284-285`), and its
+  sizes are 0 (182 rows), 3 (49), 6 (19), 9 (331), 12 (34) and 15 (2). If each Live Client `team` value
+  grouped one duo and every listed group were whole, the enemy count would always be even; 3, 9 and 15
+  rule that out for the July rotation, and the sizes fit whole groups of 3. The repo itself records
+  live queue 1750 as "Arena 3x6" (`core/queue_modes.py:82`, `lcu/champ_select_shape.py:62`); read as
+  6 teams of 3, 15 = 18 - 3 is a CORRECT trio grouping, and then my side holds 2 allies, not 1. The
+  size also changes inside one game (12 -> 6 -> 12 within minutes, 2026-07-08), so the listed players
+  are not a fixed lobby. So a PASS here may well be a trio PASS - and even then the RM-844 "my partner
+  the one ally" / "2v2 team TTK" wording (`core/focus_board_live.py:32` TEAMS) is stale and owed a
+  docstring fix. The tool below reads the truth instead of guessing the format.
+  DRAIN STEPS (copy-paste; `<scratch>` is any directory outside the repo, never a tracked path):
+  (1) in champ select, after every pick locks: `curl -sk https://127.0.0.1:8888/api/state >
+  <scratch>/g511_cs.json` (the subteam roster is `lcu.champ_select.arena_teams`, distilled from LCU
+  `additionalSubteamData` by `lcu/champ_select_shape.py:180` `arena_teams`, `is_me` on mine); note the
+  local time the game loads. (2) in game, after round 1 starts: `curl -s -H "X-RC-Token: $TOK"
+  http://127.0.0.1:8889/latest-liveclient > <scratch>/g511_lc.json`. (3) after 3 or more rounds:
+  `python tools/gated_g5_focus_layout.py --cs <scratch>/g511_cs.json --lc <scratch>/g511_lc.json
+  --since <game load time> --until <game end>` (any ISO form; read-only; exit 0 PASS, 1 INCOMPLETE,
+  2 FAIL).
+  PREDICATE (stated before any game; the tool implements exactly this). Truth = the `is_me` subteam's
+  champions minus me (partners) and every other subteam's champions (enemy cells), mapped from DDragon
+  numeric keys to snapshot ids. NO RESULT first: not exactly one `is_me` subteam, no other subteam or
+  an empty one (lobby not revealed), a cell with championId 0, or my live champion not in my subteam
+  (the two captures are from different games). LAYOUT TEST, on one allies list and one enemies list,
+  in order: NO RESULT if an id is unresolved or is in no subteam (another game; my own champion counts
+  as known); FAIL iff a player is on the WRONG SIDE - an ally that is not a partner (me included), or
+  an enemy beyond the enemy cells as a multiset (a partner counted as an
+  enemy; a mirror champion on an enemy subteam is not one); NO RESULT if a partner is merely missing
+  (not listed, or skipped by the board for a missing level); else PASS. ROSTER = the layout test on
+  `roster_from_lc` over the in-game capture (NO RESULT if the Live Client lists more players than the
+  subteams hold). SHADOW = the layout test on each `ok` column's `allies` / `kill_order`, over rows in
+  the window (`--since` inclusive, `--until` exclusive) whose `champ` is my champion; one unresolved or
+  outside id makes that column NO RESULT before the wrong-side test runs, so it can hide a FAIL but
+  never makes a PASS; PASS iff one column passes and none
+  fails, FAIL iff any fails, else NO RESULT (only `warming` / `pending` / `throttled`, or no rows -
+  then check the kill switch). The row PASSES only when ROSTER and SHADOW both PASS.
+  EVIDENCE CONTRACT: the tool's printout is the VALUE (team-value histogram, subteam sizes, partners,
+  allies, enemy count, column status counts, `kill_order` lengths); SOURCE = `/api/state` ->
+  `lcu.champ_select.arena_teams`, relay `/latest-liveclient` -> `data.allPlayers[].team`, and
+  `data/arena_coach_shadow.jsonl` -> `focus_board.allies` / `.kill_order`; TIMESTAMP = both capture
+  times plus `data.gameData.gameTime` from the in-game capture, mode `arena`, queue 1750; and this
+  predicate. The tool prints champion ids only; never paste a Riot id, game id or puuid.
+  SUBSTITUTION CHECK (answer it before the tick): the column's `allies` are made by the very rule under
+  test, so the column agreeing with the Live Client grouping proves nothing (circular); a `status` `ok`
+  proves only that the board COMPUTED. The one independent source is the LCU subteam roster, a
+  different API the rule never reads. If the operator wants a second witness, the in-game HUD names the
+  partner. A FAIL is a Tier-1 adapter fix (the partner from a subteam signal, not `team` equality, and
+  the same question for `coaches/arena_coach.py` `is_partner`, which uses the same equality); the
+  column stays shadow-only either way.
 
 ---
 
