@@ -258,10 +258,11 @@ class F6CatalogPriceTests(unittest.TestCase):
 
 class R1RouteLevelNeverRaisesTests(unittest.TestCase):
     def test_coerce_enemy_levels_inf_reads_zero(self):
-        self.assertEqual(
-            routes_build_plan._coerce_enemy_levels(
-                [float("inf"), 11, float("-inf"), "x"]),
-            [0, 11, 0, 0])
+        # RM-1113: the route passes levels through raw and fed_threat owns
+        # the coercion; the junk ones read as a missing level (0) there.
+        raw = [float("inf"), 11, float("-inf"), "x"]
+        passed = routes_build_plan._coerce_enemy_levels(raw)
+        self.assertEqual([ft._level(v) for v in passed], [0, 11, 0, 0])
 
     def test_inf_enemy_level_keeps_the_plan_ok(self):
         resp = _post(_fed_payload(enemy_levels=[float("inf"), 9]))

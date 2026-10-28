@@ -53,6 +53,8 @@ from __future__ import annotations
 
 import json
 import logging
+import math
+from typing import Optional
 
 from dashboard._dispatch import equals
 from dashboard._json_flags import coerce_json_flag
@@ -62,6 +64,41 @@ log = logging.getLogger("rc.web_dashboard")
 # Default knob echo when the caller sends none - advisory display values only
 # (the module reads target_stats from the seed, not these).
 _DEFAULT_KNOBS = {"armor": 0, "mr": 0, "budget": 0, "fight_length": 0.0}
+
+# s144 true-audit (RM-1113): plausibility bounds for the payload numbers.
+# A game clock past 1e6 s is junk (dashboard/_liveclient bounds gameTime the
+# same way); a knob past +-1e6 is junk (1e300 used to become a 301-digit
+# armor echoed back and forwarded to DS as target_armor).
+_MAX_CLOCK_S = 1e6
+_KNOB_BOUND = 1e6
+
+
+def _finite_number(value) -> Optional[float]:
+    """A finite float from a JSON number or numeric string, else None.
+
+    A bool is never a number. ``float()`` raises OverflowError on a huge int
+    and returns inf / nan for "1e400" / "nan" - a non-finite value echoed
+    into the reply becomes a bare Infinity / NaN token the browser's
+    JSON.parse rejects for the WHOLE body."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, str):
+        value = value.strip()
+    elif not isinstance(value, (int, float)):
+        return None
+    try:
+        f = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return f if math.isfinite(f) else None
+
+
+def _coerce_clock(value) -> float:
+    """The game clock in 0.._MAX_CLOCK_S seconds; junk / missing -> 0.0."""
+    f = _finite_number(value)
+    if f is None or not 0.0 <= f <= _MAX_CLOCK_S:
+        return 0.0
+    return f + 0.0  # -0.0 -> 0.0
 
 
 def _make_route_seed_fn(*, level: int, archetype: str, enemies: list,
@@ -172,18 +209,17 @@ def _coerce_knobs(raw) -> dict:
     """Echo the caller's UI knobs, coercing to the contract field types.
 
     Missing / malformed fields fall back to the default knob (advisory display
-    only - they do not drive the engine math, which reads target_stats)."""
+    only - they do not drive the engine math, which reads target_stats).
+    s144 true-audit: a bool, non-finite or out-of-range (|x| > _KNOB_BOUND)
+    knob keeps its default - a JSON Infinity armor used to raise
+    OverflowError and turn the whole reply into ok:false."""
     out = dict(_DEFAULT_KNOBS)
     if isinstance(raw, dict):
-        for k in ("armor", "mr", "budget"):
-            try:
-                out[k] = int(raw.get(k, out[k]) or 0)
-            except (TypeError, ValueError):
-                pass
-        try:
-            out["fight_length"] = float(raw.get("fight_length", out["fight_length"]) or 0.0)
-        except (TypeError, ValueError):
-            pass
+        for k in ("armor", "mr", "budget", "fight_length"):
+            f = _finite_number(raw.get(k))
+            if f is None or abs(f) > _KNOB_BOUND:
+                continue
+            out[k] = f if k == "fight_length" else int(f)
     return out
 
 
@@ -316,9 +352,15 @@ def _serve_build_plan(h, payload) -> None:
             level = max(1, min(18, int(payload.get("level") or 11)))
         except (TypeError, ValueError, OverflowError):  # JSON Infinity
             level = 11
-        owned = [str(i) for i in (payload.get("items") or []) if str(i).strip()]
+        # s144 true-audit: a non-list is [] - a str used to be iterated per
+        # character ("3031" -> owned ids "3", "0", "3", "1").
+        raw_items = payload.get("items")
+        owned = ([str(i) for i in raw_items if str(i).strip()]
+                 if isinstance(raw_items, list) else [])
         archetype = str(payload.get("archetype") or "").strip().lower()
-        enemies = [str(x) for x in (payload.get("enemies") or []) if x]
+        raw_enemies = payload.get("enemies")
+        enemies = ([str(x) for x in raw_enemies if x]
+                   if isinstance(raw_enemies, list) else [])
         # WP-R103: optional per-enemy item-id lists, index-aligned with
         # ``enemies``. Enriches counter_hints ONLY (a SEPARATE hint profile) -
         # the champion-only enemy_profile that feeds loop.tick is untouched, so
@@ -332,10 +374,7 @@ def _serve_build_plan(h, payload) -> None:
         # malformed -> None, so a payload without them can never fire the chip.
         enemy_scores = _coerce_enemy_scores(payload.get("enemy_scores"))
         enemy_levels = _coerce_enemy_levels(payload.get("enemy_levels"))
-        try:
-            clock_s = float(payload.get("clock_s") or 0.0)
-        except (TypeError, ValueError):
-            clock_s = 0.0
+        clock_s = _coerce_clock(payload.get("clock_s"))
 
         # Build the seed boundary (route-composing in prod; faked in tests).
         seed_fn = _seed_fn_factory(
@@ -439,7 +478,11 @@ def _serve_build_plan(h, payload) -> None:
             result, result.owned_prefix, deferred_set, comp_set, swap_by_id)
         meta = _build_meta_rows(result)
 
-        h._send(200, json.dumps({
+        # allow_nan=False: a stray non-finite float (e.g. a NaN target_stats
+        # from the seed boundary, whose json.loads accepts NaN) raises here
+        # and lands on the strict-JSON ok:false envelope below, instead of a
+        # 200 body the browser's JSON.parse rejects whole (s144 true-audit).
+        body = json.dumps({
             "ok": True,
             "live": live,
             "meta": meta,
@@ -451,7 +494,8 @@ def _serve_build_plan(h, payload) -> None:
                 "target_stats": seed.get("target_stats") or {},
             },
             "counter_hints": counter_hints,
-        }).encode("utf-8"), "application/json")
+        }, allow_nan=False)
+        h._send(200, body.encode("utf-8"), "application/json")
 
     except Exception as exc:  # noqa: BLE001 - NEVER raise into the route.
         log.warning("api/build-plan: %s", exc)
@@ -504,17 +548,14 @@ def _coerce_enemy_scores(raw):
 
 def _coerce_enemy_levels(raw):
     """Optional per-enemy levels (index-aligned with ``enemies``) for the C3
-    fed estimator, or None. Fail-soft: a junk entry reads 0 (an honest
-    undercount - a missing level is never guessed)."""
+    fed estimator, or None. Outer-shape check only, like
+    _coerce_enemy_scores: the level coercion lives in fed_threat._level
+    (single source; a junk entry reads as a missing level 0 there). s144
+    true-audit: an int() here truncated 17.9 to 17 and read "1_7" as 17
+    before fed_threat's strict vocabulary saw them."""
     if not isinstance(raw, list):
         return None
-    out = []
-    for lv in raw:
-        try:
-            out.append(int(lv))
-        except (TypeError, ValueError, OverflowError):  # JSON Infinity
-            out.append(0)
-    return out
+    return list(raw)
 
 
 def _enrich_fed_hint(hints: list, fed_info) -> list:
