@@ -320,8 +320,16 @@ def _repoint_existing_live_log_handlers():
     logging package. One replacement per ORIGINAL handler, because
     `_install_rc_log_tee` shares a single handler instance between two loggers and
     swapping per-logger would leave the second one pointed at the live file.
+
+    RM-1030: the originals are closed once EVERY logger has been swept, and
+    so is a live-log handler that no logger holds. Measured 2026-10-27:
+    `python tests/test_hotkey_lowlevel_decoder.py` imports
+    tools.hotkey_listener before its `pytest.main([__file__])` loads this
+    conftest, so the "rc.hotkey" original stayed open on the live
+    logs/hotkey_listener.log for the whole run.
     """
     replacements = {}
+    originals = {}
     loggers = [logging.getLogger()]
     loggers += [lg for lg in logging.Logger.manager.loggerDict.values()
                 if isinstance(lg, logging.Logger)]
@@ -339,12 +347,24 @@ def _repoint_existing_live_log_handlers():
                 repl.setFormatter(handler.formatter)
                 repl.setLevel(handler.level)
                 replacements[id(handler)] = repl
+                originals[id(handler)] = handler
             lg.removeHandler(handler)
             lg.addHandler(repl)
-    # The originals are intentionally NOT closed. Another logger this sweep
-    # has not reached yet may still hold the same object, and a closed handler
-    # raises on its next emit; an orphaned open file descriptor on a log
-    # nobody writes to is the cheaper of the two failure modes.
+    # Closed only AFTER the loop: a shared original is still held by a logger
+    # the loop has not reached yet, so closing it mid-sweep is premature. Past
+    # this point no logger in the manager holds an original. A FileHandler in
+    # append mode that is emitted to after close() reopens its file, so a
+    # stray direct reference degrades to the old behaviour, never to a raise.
+    attached = {id(h) for lg in loggers for h in lg.handlers}
+    for ref in list(logging._handlerList):
+        handler = ref()
+        if handler is None or id(handler) in attached:
+            continue
+        base = getattr(handler, "baseFilename", None)
+        if base and _tmp_log_path(base) != base:
+            originals.setdefault(id(handler), handler)
+    for handler in originals.values():
+        handler.close()
 
 
 _repoint_existing_live_log_handlers()

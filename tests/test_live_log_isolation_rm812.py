@@ -179,6 +179,67 @@ def test_an_in_process_handler_on_the_repo_root_vision_log_lands_in_tmp():
 
 
 # ---------------------------------------------------------------------------
+# The import-time sweep of handlers built BEFORE tests/conftest.py loaded
+# (RM-1030).
+# ---------------------------------------------------------------------------
+
+def _raw_file_handler(path: Path) -> logging.FileHandler:
+    """A FileHandler built WITHOUT the conftest constructor redirect, as one
+    built before this conftest was imported would be."""
+    handler = logging.FileHandler.__new__(logging.FileHandler)
+    rc_conftest._orig_file_handler_init(handler, str(path), encoding="utf-8")
+    return handler
+
+
+def test_the_sweep_closes_the_originals_it_replaced(monkeypatch, tmp_path):
+    """RM-1030, MEASURED 2026-10-27: `python tests/test_hotkey_lowlevel_decoder.py`
+    (and tests/test_hotkey_panel_cycle_signal.py) import tools.hotkey_listener,
+    whose import-time RotatingFileHandler opens the live logs/hotkey_listener.log,
+    BEFORE their `pytest.main([__file__])` loads this conftest. The sweep moved
+    the "rc.hotkey" logger onto a tmp replacement but left the original OPEN on
+    the live file for the whole run. A normal `pytest <path>` run builds no
+    such handler (measured: none in `logging._handlerList`), so the defect is
+    the script entry point.
+
+    The live tree is stood in for by tmp_path/"live-logs", so this test opens
+    no file under the checkout's real logs/."""
+    live_dir = tmp_path / "live-logs"
+    live_dir.mkdir()
+    monkeypatch.setattr(rc_conftest, "_REAL_LOG_DIR", live_dir)
+    monkeypatch.setattr(rc_conftest, "_SUITE_LOG_DIR", tmp_path / "suite")
+    tag = uuid.uuid4().hex
+    shared = _raw_file_handler(live_dir / "shared.log")   # one object, two loggers
+    orphan = _raw_file_handler(live_dir / "orphan.log")   # on no logger at all
+    bystander = _raw_file_handler(tmp_path / "bystander.log")  # not a live log
+    loose = _raw_file_handler(tmp_path / "loose.log")  # not live, on no logger
+    first = logging.getLogger(f"s144q20.first.{tag}")
+    second = logging.getLogger(f"s144q20.second.{tag}")
+    first.addHandler(shared)
+    second.addHandler(shared)
+    second.addHandler(bystander)
+    try:
+        assert shared.stream is not None and orphan.stream is not None
+        rc_conftest._repoint_existing_live_log_handlers()
+        assert shared not in first.handlers and shared not in second.handlers
+        repl = [h for h in first.handlers if isinstance(h, logging.FileHandler)]
+        assert len(repl) == 1 and repl[0] in second.handlers, (
+            "the shared original must get ONE shared replacement")
+        assert Path(repl[0].baseFilename) == tmp_path / "suite" / "shared.log"
+        assert shared.stream is None, "the replaced original is still open on the live log"
+        assert orphan.stream is None, "a live-log handler on no logger is still open"
+        # Scope: a handler on a non-live path is neither moved nor closed.
+        assert bystander in second.handlers and bystander.stream is not None
+        assert loose.stream is not None, "a non-live handler on no logger was closed"
+    finally:
+        for lg in (first, second):
+            for h in list(lg.handlers):
+                lg.removeHandler(h)
+                h.close()
+        for h in (shared, orphan, bystander, loose):
+            h.close()
+
+
+# ---------------------------------------------------------------------------
 # data/decisions.db (modules/cache_engine.py, coaches/feedback.py,
 # coach_integration/_coach.py)
 # ---------------------------------------------------------------------------
