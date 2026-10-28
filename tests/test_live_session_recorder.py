@@ -99,7 +99,7 @@ def test_liveclient_cache_start_tap_is_flag_gated(monkeypatch):
 def test_liveclient_cache_start_calls_the_tap(monkeypatch):
     calls = []
     monkeypatch.setattr(liveclient_cache, "_install_optional_taps", lambda: calls.append(1))
-    monkeypatch.setattr(liveclient_cache, "_loop", lambda poll_s: None)
+    monkeypatch.setattr(liveclient_cache, "_loop", lambda poll_s, gen: None)
     monkeypatch.setattr(liveclient_cache, "_thread", None)
     monkeypatch.setattr(liveclient_cache, "_task", None)
     import app._loop as app_loop

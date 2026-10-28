@@ -117,7 +117,11 @@ class TestMalformedTsDoesNotEscape(unittest.TestCase):
         self.assertEqual(snap.age_s, _UNKNOWN_AGE_S)
 
     def test_malformed_ts_is_logged_at_warning(self):
-        """A relay contract change must be visible in logs/, not debug-only."""
+        """A relay contract change must be visible in logs/, not debug-only.
+
+        The warning is once per streak (s144 true-audit), so re-arm it: the
+        other tests in this class leave a streak open."""
+        lc._reset_log_streaks_for_tests()
         with self.assertLogs("rc.liveclient_cache", level="WARNING") as cm:
             _fetch_with(json.dumps({"data": {"gameData": {}}, "ts": "abc"}))
         self.assertTrue(any("ts" in line for line in cm.output), cm.output)

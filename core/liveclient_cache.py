@@ -119,12 +119,43 @@ _task: Optional[Any] = None  # asyncio.Task or concurrent.futures.Future
 _stop = threading.Event()
 _start_lock = threading.Lock()
 
-# Snapshot listeners (UX wave 1, ward-heat producer wire). Each listener
-# is called after every successful fetch with the new Snapshot. Listeners
-# must be cheap and fail-soft; any exception is logged at debug and
-# swallowed so a noisy listener never stalls the poll loop.
+# How long stop() waits for the thread poller to exit. A fetch can outlast it
+# (2s socket timeout per operation, plus listeners), which is why each poller
+# also carries a generation (below) instead of relying on _stop alone.
+_STOP_JOIN_S = 3.0
+
+# Poller generation. stop() bumps it and each poller exits once its own
+# generation is no longer current, without publishing the fetch it was in.
+# AUDIT 2026-10-27 (s144 true-audit): the shared _stop event alone was not
+# enough - stop() then start() while the old thread was still inside a slow
+# fetch (past the join timeout) cleared _stop again, and BOTH pollers ran for
+# the life of the process, the stale one still rebinding _snapshot and firing
+# every listener a second time.
+_gen = 0
+
+# Snapshot listeners (UX wave 1, ward-heat producer wire). Each listener is
+# called after EVERY fetch with the new Snapshot, failed fetches included
+# (RM-637's consecutive transport-failure stop counts on seeing them).
+# Listeners must be cheap and fail-soft; an exception is swallowed so a noisy
+# listener never stalls the poll loop, and is warned once per failure streak
+# per listener (DEBUG for the repeats) so a broken tap is visible in logs/.
 _listeners: list = []
 _listeners_lock = threading.Lock()
+_failing_listeners: set = set()  # id(fn) of listeners in a failure streak
+
+# Once-per-streak warning flags for conditions that would otherwise repeat on
+# every 0.5s poll: an unusable relay `ts` and an unresolvable vision token.
+_ts_warned = False
+_token_warned = False
+
+
+def _reset_log_streaks_for_tests() -> None:
+    """Re-arm every once-per-streak warning. Test helper."""
+    global _ts_warned, _token_warned
+    _ts_warned = False
+    _token_warned = False
+    with _listeners_lock:
+        _failing_listeners.clear()
 
 
 def add_listener(fn: Callable[..., object]) -> None:
@@ -147,12 +178,14 @@ def remove_listener(fn: Callable[..., object]) -> None:
             _listeners.remove(fn)
         except ValueError:
             pass
+        _failing_listeners.discard(id(fn))
 
 
 def clear_listeners() -> None:
     """Drop all listeners. Test helper."""
     with _listeners_lock:
         _listeners.clear()
+        _failing_listeners.clear()
 
 
 def _fire_listeners(snap: Snapshot) -> None:
@@ -162,7 +195,21 @@ def _fire_listeners(snap: Snapshot) -> None:
         try:
             fn(snap)
         except Exception as exc:  # noqa: BLE001
-            _log.debug("liveclient_cache listener %r: %s", fn, exc)
+            with _listeners_lock:
+                first = id(fn) not in _failing_listeners
+                _failing_listeners.add(id(fn))
+            if first:
+                _log.warning(
+                    "liveclient_cache listener %r failed: %r "
+                    "(further failures logged at debug until it succeeds)",
+                    fn, exc,
+                )
+            else:
+                _log.debug("liveclient_cache listener %r: %r", fn, exc)
+        else:
+            if _failing_listeners:
+                with _listeners_lock:
+                    _failing_listeners.discard(id(fn))
 
 
 def _auth_headers() -> dict:
@@ -176,13 +223,27 @@ def _auth_headers() -> dict:
     authenticate against a live server anyway - it only masked a broken
     deploy. On resolver failure we now send an empty token: the request
     401s, the snapshot fails soft, and the 0.5s poll loop retries.
+
+    The failure is warned once per streak (DEBUG for the repeats): it was
+    DEBUG-only, so a broken token source left the cache 401ing on every poll
+    with nothing in logs/. Only the exception is logged, never a token.
     """
+    global _token_warned
     try:
         from core.vision_token import get_vision_token
-        return {"X-RC-Token": get_vision_token()}
+        headers = {"X-RC-Token": get_vision_token()}
     except Exception as exc:  # noqa: BLE001
-        _log.debug("liveclient_cache: vision token unresolved: %s", exc)
+        if not _token_warned:
+            _token_warned = True
+            _log.warning(
+                "liveclient_cache: vision token unresolved (%r); relay requests "
+                "will 401 until it resolves", exc,
+            )
+        else:
+            _log.debug("liveclient_cache: vision token unresolved: %r", exc)
         return {"X-RC-Token": ""}
+    _token_warned = False
+    return headers
 
 
 def _coerce_ts(raw: Any) -> Optional[float]:
@@ -206,6 +267,7 @@ def _coerce_ts(raw: Any) -> Optional[float]:
 
 def _fetch_once() -> Snapshot:
     """One relay round-trip. Returns a Snapshot reflecting whatever happened."""
+    global _ts_warned
     fetched_at = time.time()
     try:
         req = Request(_RELAY_URL, headers=_auth_headers())
@@ -239,37 +301,58 @@ def _fetch_once() -> Snapshot:
         # Logged at WARNING (not debug) so it is visible in logs/ - the
         # previous code raised here, OUTSIDE the try above, and the poll loop
         # swallowed it at debug level while _snapshot silently froze.
-        _log.warning(
-            "liveclient_cache: relay envelope carried an unusable ts (%r); "
-            "snapshot will be reported stale",
-            wrap.get("ts"),
-        )
+        # Once per streak (s144 true-audit): warning on every 0.5s poll wrote
+        # about 7200 lines an hour for the rest of the game after one relay
+        # contract change. A usable ts re-arms it.
+        if not _ts_warned:
+            _ts_warned = True
+            _log.warning(
+                "liveclient_cache: relay envelope carried an unusable ts (%r); "
+                "snapshot will be reported stale (repeats logged at debug)",
+                wrap.get("ts"),
+            )
+        else:
+            _log.debug("liveclient_cache: unusable relay ts (%r)", wrap.get("ts"))
         ts = 0.0
+    else:
+        _ts_warned = False
     if not isinstance(data, dict):
         return Snapshot(data=None, ts=ts, fetched_at=fetched_at, no_game=False,
                         failure="parse")
     return Snapshot(data=data, ts=ts, fetched_at=fetched_at, no_game=False)
 
 
-def _loop(poll_s: float) -> None:
+def _current(gen: int) -> bool:
+    """True while ``gen`` is the live poller generation and stop is not set."""
+    return gen == _gen and not _stop.is_set()
+
+
+def _publish(snap: Snapshot, gen: int) -> None:
+    """Rebind _snapshot and fire listeners, unless the poller was superseded
+    while its fetch was in flight (a stale fetch must never overwrite the
+    current poller's snapshot or reach the listeners twice)."""
     global _snapshot
-    while not _stop.is_set():
+    if gen != _gen:
+        return
+    _snapshot = snap
+    _fire_listeners(snap)
+
+
+def _loop(poll_s: float, gen: int) -> None:
+    while _current(gen):
         try:
-            _snapshot = _fetch_once()
-            _fire_listeners(_snapshot)
+            _publish(_fetch_once(), gen)
         except Exception as exc:  # noqa: BLE001
             _log.debug("liveclient_cache loop: %s", exc)
         _stop.wait(poll_s)
 
 
-async def _loop_async(poll_s: float) -> None:
+async def _loop_async(poll_s: float, gen: int) -> None:
     """Async equivalent of _loop. Wraps blocking HTTP in asyncio.to_thread
     so a 2s urlopen timeout never stalls the event loop."""
-    global _snapshot
-    while not _stop.is_set():
+    while _current(gen):
         try:
-            _snapshot = await asyncio.to_thread(_fetch_once)
-            _fire_listeners(_snapshot)
+            _publish(await asyncio.to_thread(_fetch_once), gen)
         except Exception as exc:  # noqa: BLE001
             _log.debug("liveclient_cache loop: %s", exc)
         try:
@@ -331,46 +414,56 @@ def _install_optional_taps() -> None:
     match recorder (obs.record.enabled). Each tap has its own
     try-block. Fail-soft: a tap that cannot install never blocks the poll
     loop from starting, nor the other taps."""
+    # A raise here is a real failure, not a flag that is off (every
+    # install_if_enabled returns False when its flag is off), so it is a
+    # WARNING: at debug an operator who set the flag got no tap and no log
+    # line (s144 true-audit). start() runs this once per (re)spawn, not per poll.
     try:
         from core.live_session_recorder import install_if_enabled
         install_if_enabled()
     except Exception as exc:  # noqa: BLE001
-        _log.debug("liveclient_cache optional tap: %s", exc)
+        _warn_tap_failed("core.live_session_recorder", exc)
     try:
         from core.self_cast_log import install_if_enabled as _self_cast_install
         _self_cast_install()
     except Exception as exc:  # noqa: BLE001
-        _log.debug("liveclient_cache optional tap: %s", exc)
+        _warn_tap_failed("core.self_cast_log", exc)
     # RM-607: the live inventory tape (RC_ITEM_TAPE, default OFF). Own try so
     # one tap failing never stops another from installing.
     try:
         from core.live_item_tape import install_if_enabled as _tape_install
         _tape_install()
     except Exception as exc:  # noqa: BLE001
-        _log.debug("liveclient_cache item-tape tap: %s", exc)
+        _warn_tap_failed("core.live_item_tape", exc)
     # RM-608: the ESTIMATED death recap (RC_DEATH_RECAP, default OFF). Its own
     # try-block so one tap failing never disables the other.
     try:
         from core.death_recap import install_if_enabled as _recap_install
         _recap_install()
     except Exception as exc:  # noqa: BLE001
-        _log.debug("liveclient_cache death-recap tap: %s", exc)
+        _warn_tap_failed("core.death_recap", exc)
     # RM-637 (ADR-016): OBS match recorder, gated on obs.record.enabled
     # (default false) plus the default-off vod_record feature policy.
     try:
         from core.obs_recorder import install_if_enabled as _rec_install
         _rec_install()
     except Exception as exc:  # noqa: BLE001
-        _log.debug("liveclient_cache optional tap (obs recorder): %s", exc)
+        _warn_tap_failed("core.obs_recorder", exc)
+
+
+def _warn_tap_failed(name: str, exc: BaseException) -> None:
+    _log.warning("liveclient_cache optional tap %s failed to install: %r", name, exc)
 
 
 def start(poll_s: float = _DEFAULT_POLL_S) -> None:
     """Launch the background fetcher (idempotent). Prefers spawning on the
     main AppLoop if one exists; falls back to a daemon thread otherwise."""
-    global _thread, _task
+    global _thread, _task, _gen
     with _start_lock:
         if (_thread is not None and _thread.is_alive()) or _task_alive():
             return
+        _gen += 1
+        gen = _gen
         _stop.clear()
         _install_optional_taps()
         try:
@@ -379,7 +472,7 @@ def start(poll_s: float = _DEFAULT_POLL_S) -> None:
         except Exception:  # noqa: BLE001
             _sched = None
         if _sched is not None:
-            _task = _sched.spawn_task(_loop_async(poll_s))
+            _task = _sched.spawn_task(_loop_async(poll_s, gen))
             # Self-heal: clear _task when the loop ends so a cancelled/exited task
             # never wedges the idempotent guard (the overlay-freeze regression).
             _add_cb = getattr(_task, "add_done_callback", None)
@@ -388,7 +481,7 @@ def start(poll_s: float = _DEFAULT_POLL_S) -> None:
             _log.info("liveclient_cache started (poll=%.2fs, async)", poll_s)
         else:
             _thread = threading.Thread(
-                target=_loop, args=(poll_s,),
+                target=_loop, args=(poll_s, gen),
                 daemon=True, name="liveclient-cache",
             )
             _thread.start()
@@ -396,11 +489,17 @@ def start(poll_s: float = _DEFAULT_POLL_S) -> None:
 
 
 def stop() -> None:
-    """Stop the background fetcher (mostly for tests)."""
-    global _thread, _task
+    """Stop the background fetcher (mostly for tests).
+
+    Bumps the poller generation first, so a poller that outlives the join
+    timeout (still inside a fetch) exits without publishing instead of
+    resuming when a later start() clears _stop."""
+    global _thread, _task, _gen
+    with _start_lock:
+        _gen += 1
     _stop.set()
     if _thread is not None:
-        _thread.join(timeout=3)
+        _thread.join(timeout=_STOP_JOIN_S)
         _thread = None
     if _task is not None:
         try: _task.cancel()
