@@ -148,6 +148,16 @@ def _ranked_rows(data: dict, cls, path: str) -> Optional[list]:
     return rows
 
 
+def _str_tags(value: object) -> tuple[str, ...]:
+    # tuple() over a str splits it into characters, and over None raises,
+    # which _ranked_rows would turn into a dropped row (RM-1003).
+    if isinstance(value, str):
+        return (value,)
+    if isinstance(value, (list, tuple)):
+        return tuple(t for t in value if isinstance(t, str))
+    return ()
+
+
 def is_engine_up(timeout: float = 0.25) -> bool:
     url = f"http://{DEFAULT_HOST}:{DEFAULT_PORT}/health"
     try:
@@ -2412,6 +2422,10 @@ class OnhitRankedItem:
     per row). There is NO ``effective_score`` field here - the AP/AD
     axis-coherence penalty (``ap_ad_coherence``) is applied to the sort key
     SERVER-side, so rows already arrive sorted.
+
+    ``tags`` is descriptive, not scored, so a malformed value never costs the
+    row (RM-1003): a string becomes a one-tuple, a list or tuple keeps only
+    its string elements, and anything else becomes ``()``.
     """
     item_id: str
     item_name: str
@@ -2441,7 +2455,7 @@ class OnhitRankedItem:
             auto_dps=float(d.get("auto_dps", 0.0)),
             dps_per_1k_gold=float(d.get("dps_per_1k_gold", 0.0)),
             is_terminal=bool(d.get("is_terminal", False)),
-            tags=tuple(d.get("tags", ())),
+            tags=_str_tags(d.get("tags")),
             shares_dead_unique=bool(d.get("shares_dead_unique", False)),
             dead_unique_key=str(d.get("dead_unique_key", "")),
             unique_passive_key=str(d.get("unique_passive_key", "")),
