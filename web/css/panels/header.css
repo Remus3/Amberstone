@@ -2437,10 +2437,17 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   border-color: var(--bad);
 }
 .ub-btn-danger:hover { background: var(--bad); color: var(--canvas); }
+/* RM-1007: an explicit accent ring - the UA default resolved to a
+ * near-black auto outline, invisible on the dark row surface. */
+.ub-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* RM-1007: the row Edit / Delete keep the --hit-min floor (was
+ * `min-height: 0`, 28px tall, with no operator exception on record). The
+ * row is already taller than 42px, so this does not grow it.
+ * Guard: tests/snapshot_panels/test_user_builds_row_actions_hit.py. */
 .ub-btn-tiny {
   padding: var(--space-1) var(--space-3); /* was 3 9   -> 4 12             */
   font-size: var(--fs-xs);                /* was 12px -> 16px              */
-  min-height: 0;                          /* row-scoped; floor relaxed     */
+  min-height: var(--hit-min);             /* 42px fingertip floor          */
   font-weight: 700;
 }
 .ub-layout {

@@ -1053,7 +1053,18 @@ _WEB = _REPO_ROOT / "web"
 # MERGED 2026-10-27 by the session 144 L3 merger onto main (lane commit c7ee8c3d0): main had moved
 # this pin since the lane base, so the superseded value above is main's and
 # the value below is recomputed over the merged tree.
-_LIVE_HALF_DIGEST = "4c75c2a807beaa734ce59aed29b89189fc285abdd9fdaf63eb01a8a871b96c64"
+# superseded by the RM-1007 re-capture below: "4c75c2a807beaa734ce59aed29b89189fc285abdd9fdaf63eb01a8a871b96c64"
+#
+# RE-CAPTURED 2026-10-27 at RM-1007 (s144 uiux cycle 17, provisional
+# until the merger lands it). One change rides it: User Builds row Edit /
+# Delete (.ub-btn-tiny) keep the --hit-min floor and every .ub-btn gets an
+# accent :focus-visible ring, both in web/css/panels/header.css. Ordinary
+# case, no tokeniser change. ATTRIBUTED BY SUBSTITUTION: swapping exactly
+# web/css/panels/header.css back to its lane-tip b0794d9c2 blob (in memory)
+# reproduces the superseded 4c75c2a8... value EXACTLY. That path is the whole
+# change. No glyph change: the added lines carry 0 non-ASCII bytes. If
+# another slice re-captures in parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "842b95b2830516ac030bd9e7831d23b8a0255ec27e20f87fbc4bed868f9c0f2c"
 
 
 def _web_sources() -> list[Path]:
