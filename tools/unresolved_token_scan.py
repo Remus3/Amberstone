@@ -255,11 +255,15 @@ def load_registry(path: Path | None = None) -> dict:
 
 
 def _write_atomic(target: Path, payload: str) -> None:
-    tmp = target.with_suffix(target.suffix + ".tmp")
-    # Bytes, not write_text: the registry is TRACKED and write_text turns LF
-    # into CRLF on Windows (RM-441).
-    tmp.write_bytes(payload.encode("utf-8"))
-    tmp.replace(target)
+    # RM-258: through core.polled_json (per-writer scratch, fsync, bounded
+    # WinError 5 retry), never a hand-rolled `<dest>.tmp` rename. Bytes, not
+    # write_text: the registry is TRACKED and write_text turns LF into CRLF on
+    # Windows (RM-441).
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
+    from core.polled_json import atomic_write_bytes
+
+    atomic_write_bytes(target, payload.encode("utf-8"))
 
 
 def regen_allowlist(

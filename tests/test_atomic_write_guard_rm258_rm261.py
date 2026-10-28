@@ -187,7 +187,6 @@ _TOOLS_UNCLASSIFIED = frozenset({
     "tools/strip_u2500.py",
     "tools/tft_cv_accuracy.py",
     "tools/timeline_ingest.py",
-    "tools/unresolved_token_scan.py",
     "tools/vision_atlas_validate.py",
     "tools/web_ascii_sweep.py",
 })

@@ -26,6 +26,7 @@ champion. Counting there buys churn and zero signal.
 """
 from __future__ import annotations
 
+import json
 import re
 import sys
 from pathlib import Path
@@ -40,6 +41,8 @@ from tools.unresolved_token_scan import (  # noqa: E402
     Finding,
     load_json,
     load_registry,
+    main,
+    regen_allowlist,
     resolve_feed_glob,
     scan,
     value_at,
@@ -141,3 +144,57 @@ def test_scan_is_patch_invariant(findings):
         "feed_glob normalization leaked a literal patch number; every DDragon "
         "bump would redden CI: " + repr(leaked[:10])
     )
+
+
+@pytest.fixture
+def write_spy(monkeypatch):
+    """Record every core.polled_json.atomic_write_bytes call, then write."""
+    import core.polled_json as pj
+
+    calls = []
+    real = pj.atomic_write_bytes
+
+    def spy(path, data):
+        calls.append(Path(path))
+        real(path, data)
+
+    monkeypatch.setattr(pj, "atomic_write_bytes", spy)
+    return calls
+
+
+def test_regen_allowlist_routes_through_polled_json_and_writes_lf_bytes(
+    tmp_path, write_spy
+):
+    """RM-258: --regen-allowlist goes through core.polled_json (per-writer
+    scratch, fsync, bounded WinError 5 retry), not a hand-rolled
+    `<dest>.json.tmp` and a bare rename. RM-441: the TRACKED registry stays
+    LF-only bytes on Windows."""
+    registry = {"numeric_read_keys": [],
+                "display_key_allowlist": {"_comment": "c", "keys": ["old"]}}
+    dest = tmp_path / "unresolved_template_tokens.json"
+    dest.write_bytes((json.dumps(registry, indent=2) + "\n").encode("utf-8"))
+    finding = Finding("data/x.json", "a.tooltip", "tooltip", "@Tok@", None)
+    keys, wrote = regen_allowlist([finding], dest)
+    assert (keys, wrote) == (["tooltip"], True)
+    assert write_spy == [dest]
+    registry["display_key_allowlist"]["keys"] = ["tooltip"]
+    raw = dest.read_bytes()
+    assert b"\r\n" not in raw
+    assert raw == (json.dumps(registry, indent=2, ensure_ascii=True)
+                   + "\n").encode("utf-8")
+    assert [q.name for q in tmp_path.iterdir()] == [dest.name]
+
+
+def test_json_report_routes_through_polled_json(tmp_path, write_spy, monkeypatch):
+    """RM-258: the --json report shares the same writer, so it gets the same
+    per-writer scratch and leaves no scratch behind."""
+    import tools.unresolved_token_scan as uts
+
+    monkeypatch.setattr(uts, "scan", lambda roots=None: [])
+    dest = tmp_path / "out" / "report.json"
+    assert main(["--json", str(dest)]) == 0
+    assert write_spy == [dest]
+    assert dest.read_bytes() == (json.dumps(
+        {"occurrences": 0, "distinct_tokens": 0, "findings": []},
+        indent=2, ensure_ascii=True) + "\n").encode("utf-8")
+    assert [q.name for q in dest.parent.iterdir()] == [dest.name]
