@@ -29,7 +29,7 @@ _EVENT_ROWS = ".replay-events-row"
 _GRID_ROWS = ".replay-grid-wrap tbody tr"
 
 
-def _load_first_match(page, mock_server):
+def _load_match_rows(page, mock_server):
     page.goto(mock_server.url + "/?ui_mock=1#replay",
               wait_until="domcontentloaded", timeout=15_000)
     page.wait_for_selector("#replay-match-list .replay-match-row", timeout=10_000)
@@ -39,6 +39,31 @@ def _load_first_match(page, mock_server):
         f" && document.querySelectorAll('{_GRID_ROWS}').length > 0",
         timeout=10_000,
     )
+
+
+# RM-1071: the rows can render before Lato (the display=swap Google
+# Fonts @import in web/css/dashboard.css) arrives. The swap re-lays the
+# Replay view out - match rows 66 -> 64px, line boxes 21 -> 19px - and the
+# timeline filter labels move up 7-10px within about 25ms, so a point
+# measured before the swap can miss its label. Force a layout (it requests
+# every face the rendered text uses), wait for those loads, then two frames
+# for the re-layout to land: the condition a measurement or a click needs.
+_SETTLE = """async () => {
+  void document.body.offsetHeight;
+  await document.fonts.ready;
+  await new Promise((ok) =>
+    requestAnimationFrame(() => requestAnimationFrame(ok)));
+  return document.fonts.status;
+}"""
+
+
+def _settle_layout(page):
+    return page.evaluate(_SETTLE)
+
+
+def _load_first_match(page, mock_server):
+    _load_match_rows(page, mock_server)
+    _settle_layout(page)
 
 
 _ROW_HEIGHTS = """
