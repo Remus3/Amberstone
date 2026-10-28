@@ -109,6 +109,9 @@ const STORAGE_KEY = "rc-panel-visibility";
 // sessionStorage key for the selected settings tab (per-session sticky).
 const TAB_STORAGE_KEY = "rc-pv-tab";
 
+// id of the rows host, the tablist's tabpanel (every tab's aria-controls).
+const PANEL_HOST_ID = "pv-tabpanel";
+
 // Settings-card tabs: one per context, in CONTEXTS order. ASCII labels only.
 const TABS = Object.freeze([
   Object.freeze({ context: "in-game-sr", label: "SR" }),
@@ -360,8 +363,45 @@ function _selectTab(card, context) {
   }
   const host = card.querySelector(".pv-table");
   if (host) {
+    host.setAttribute("aria-labelledby", _tabId(context));
     _renderRows(host, context);
   }
+}
+
+function _tabId(context) {
+  return `pv-tab-${context}`;
+}
+
+// RM-1081: arrow-key half of the roving tabindex _selectTab sets up.
+// Without it only the selected tab was in the tab sequence and the other
+// four contexts were unreachable from the keyboard. WAI-ARIA APG tabs,
+// horizontal, automatic activation (selecting only re-renders the rows):
+// Left / Right move with wrap, Home / End jump to the ends; Up / Down are
+// left to the browser.
+function _onTabKeydown(card, e) {
+  const tabs = Array.from(card.querySelectorAll(".pv-tab"));
+  const at = tabs.indexOf(e.target);
+  if (at < 0 || e.altKey || e.ctrlKey || e.metaKey) {
+    return;
+  }
+  let next = -1;
+  if (e.key === "ArrowRight") {
+    next = (at + 1) % tabs.length;
+  } else if (e.key === "ArrowLeft") {
+    next = (at - 1 + tabs.length) % tabs.length;
+  } else if (e.key === "Home") {
+    next = 0;
+  } else if (e.key === "End") {
+    next = tabs.length - 1;
+  }
+  if (next < 0) {
+    return;
+  }
+  e.preventDefault();
+  const context = tabs[next].dataset.pvTab;
+  _saveTab(context);
+  _selectTab(card, context);
+  tabs[next].focus();
 }
 
 // Build (idempotently) the "PANEL VISIBILITY" settings card: a
@@ -400,16 +440,21 @@ function buildPanelVisibilitySettings() {
     btn.setAttribute("aria-selected", "false");
     btn.textContent = tab.label;
     btn.dataset.pvTab = tab.context;
+    btn.id = _tabId(tab.context);
+    btn.setAttribute("aria-controls", PANEL_HOST_ID);
     btn.addEventListener("click", () => {
       _saveTab(tab.context);
       _selectTab(card, tab.context);
     });
     tabBar.appendChild(btn);
   }
+  tabBar.addEventListener("keydown", (e) => _onTabKeydown(card, e));
   card.appendChild(tabBar);
 
   const table = document.createElement("div");
   table.className = "pv-table";
+  table.id = PANEL_HOST_ID;
+  table.setAttribute("role", "tabpanel");
   card.appendChild(table);
 
   host.appendChild(card);
