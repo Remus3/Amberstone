@@ -146,8 +146,7 @@ def heads(request, mock_server, pw_browser):
                 per_face[face or "fallback"] = page.evaluate(_READ)
             page.evaluate(_SWAP, None)
             got[view] = per_face
-        probe = {face: page.evaluate(_PROBE, face)
-                 for face in ("sans-serif", "monospace", "serif")}
+        probe = _probe_faces(page)
         yield request.param, got, probe, errors
     finally:
         page.close()
@@ -176,9 +175,39 @@ def test_every_view_head_is_measured(heads):
 _WINDOWS_FACES = "the face-swap premise is measured on Windows system faces only"
 
 
+_PROBED = ("sans-serif", "monospace", "serif")
+
+
+def _probe_faces(page):
+    # The generic families plus "stack": the page's own font stack (the
+    # web/css/panels/base.css body rule; inside the swapped view scopes the
+    # only other families set are monospace ones), which with Lato blocked
+    # IS the first-paint face of the view text every swap replaces.
+    probe = {face: page.evaluate(_PROBE, face) for face in _PROBED}
+    stack = page.evaluate("getComputedStyle(document.body).fontFamily")
+    assert "Lato" in stack, ("body font stack not read", stack)
+    probe["stack"] = page.evaluate(_PROBE, stack)
+    return probe
+
+
 def _require_distinct_faces(probe):
     assert len(set(probe.values())) >= 2, (
         "local faces share one normal line-height", probe)
+    # Every swap guard forces `serif`; two generic families differing does
+    # not make serif differ from the face it replaces.
+    assert abs(probe["serif"] - probe["stack"]) > 0.5, (
+        "serif and the first-paint stack share one normal line-height", probe)
+
+
+def test_distinct_faces_premise_rejects_serif_matching_the_stack():
+    # The generic families differ here, but `serif` measures the same as the
+    # first-paint stack, so every serif swap would compare a face with itself.
+    with pytest.raises(AssertionError):
+        _require_distinct_faces(
+            {"sans-serif": 35.0, "monospace": 33.0, "serif": 39.0,
+             "stack": 39.0})
+    _require_distinct_faces(
+        {"sans-serif": 35.0, "monospace": 33.0, "serif": 39.0, "stack": 35.0})
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_FACES)

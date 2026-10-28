@@ -43,11 +43,11 @@ import pytest
 
 from tests.snapshot_panels.test_focus_ring_token_sites import VIEWPORTS, _new_page
 from tests.snapshot_panels.test_view_head_font_swap import (
-    _PROBE,
     _SETTLE,
     _VIEWS,
     _WINDOWS_FACES,
     _block_webfonts,
+    _probe_faces,
     _require_distinct_faces,
 )
 
@@ -139,8 +139,7 @@ def bodies(request, mock_server, pw_browser):
                 per_face[face or "fallback"] = page.evaluate(_READ)
             page.evaluate(_SWAP, None)
             got[view] = per_face
-        probe = {face: page.evaluate(_PROBE, face)
-                 for face in ("sans-serif", "monospace", "serif")}
+        probe = _probe_faces(page)
         yield got, probe, errors
     finally:
         page.close()

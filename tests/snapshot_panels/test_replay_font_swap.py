@@ -52,9 +52,9 @@ from tests.snapshot_panels.test_replay_timeline_rows_and_grid_reach import (
     _settle_layout,
 )
 from tests.snapshot_panels.test_view_head_font_swap import (
-    _PROBE,
     _WINDOWS_FACES,
     _block_webfonts,
+    _probe_faces,
     _require_distinct_faces,
 )
 
@@ -142,8 +142,7 @@ def faces(request, mock_server, pw_browser):
                 _READ, [list(_TEXT), list(_PURE)]
             )
         page.evaluate(_SWAP, None)
-        probe = {face: page.evaluate(_PROBE, face)
-                 for face in ("sans-serif", "monospace", "serif")}
+        probe = _probe_faces(page)
         yield per_face, probe, errors
     finally:
         page.close()
