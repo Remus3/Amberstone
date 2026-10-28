@@ -45,7 +45,6 @@ import fnmatch
 import hashlib
 import html
 import json
-import os
 import re
 import sys
 import unicodedata
@@ -55,6 +54,11 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from core import polled_json  # noqa: E402 - needs ROOT on sys.path first
+
 DEFAULT_OUT = ROOT / "dist" / "THIRD_PARTY_NOTICES.txt"
 DEFAULT_REQUIREMENTS = ROOT / "requirements.txt"
 DEFAULT_NODE_ROOT = ROOT / "rc-shell"
@@ -1156,13 +1160,6 @@ def render(rows, problems: Sequence[str], sources: Sequence[str], chromium_count
     return asciify("\n".join(out))
 
 
-def _write_atomic(path: Path, data: bytes) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
-    tmp.write_bytes(data)
-    tmp.replace(path)
-
-
 def _parse_rulings(values: Sequence[str]) -> Dict[str, str]:
     out: Dict[str, str] = {}
     for raw in values:
@@ -1231,7 +1228,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     by_class = ", ".join(f"{k} {counts[k]}" for k in sorted(counts)) or "none"
     summary = f"third-party notices: {len(rows)} components ({by_class}), {len(problems)} problem(s)"
     if not args.check:
-        _write_atomic(Path(args.out), text.encode("ascii"))
+        # RM-258: the shared writer (per-writer scratch beside --out, fsync,
+        # WinError 5 retry, scratch removed if the write or rename raises).
+        polled_json.atomic_write_bytes(Path(args.out), text.encode("ascii"))
         summary += " -> " + Path(args.out).name
     print(summary)
     return 1 if problems else 0
