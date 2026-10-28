@@ -96,6 +96,10 @@ _RUNTIME_TOOLS = frozenset({
     # reported record is read back on every fire, and a torn read fails
     # open and re-prints the inbox block.
     "tools/rc_facts.py",
+    # The RC-InboxResponder runner, fired every tick: its state records are
+    # read back on the next fire, and its bounce and reply land in a
+    # sibling's polled inbox under a hidden per-writer `_<file>.<pid>.<hex>.tmp`.
+    "tools/inbox_responder_runner.py",
 })
 
 # RM-258 residual (s144): tools/ is IN scope by default. Out of scope are the
@@ -144,7 +148,6 @@ _TOOLS_UNCLASSIFIED = frozenset({
     "tools/hotfix_zaahen_loadout_item277.py",
     "tools/hz_mismatch_diagnose.py",
     "tools/hz_shadow_arena_contamination.py",
-    "tools/inbox_responder_runner.py",
     "tools/ladder_role_scout.py",
     "tools/laning_verdict_information_probe.py",
     "tools/live_write_tracer.py",
@@ -527,6 +530,7 @@ def test_scope_keeps_runtime_tools_and_drops_generators():
     assert _in_scope("tools/session_checklist.py")
     assert _in_scope("tools/inbox_responder.py")
     assert _in_scope("tools/rc_facts.py")
+    assert _in_scope("tools/inbox_responder_runner.py")
     assert not _in_scope("tools/daemon_slayer_extract.py")
     assert not _in_scope("ops/fleet_kit/fleet_headless.py")
     assert _in_scope("coach_integration/_coach.py")

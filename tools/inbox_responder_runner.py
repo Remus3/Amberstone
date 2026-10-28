@@ -33,6 +33,7 @@ import hashlib
 import json
 import os
 import re
+import secrets
 import shutil
 import stat
 import sys
@@ -46,7 +47,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from core.polled_json import atomic_write_bytes
+from core.polled_json import _replace_with_retry, atomic_write_bytes
 from ops.loop import fleet_route, slots, winmutex
 from tools.inbox_responder import (
     Cycle,
@@ -1044,6 +1045,18 @@ def bounce_body(result: "CycleResult") -> str:
     ])
 
 
+def _hidden_scratch(directory: Path, filename: str) -> Path:
+    """The scratch name for a write into a SIBLING's inbox (RM-258 / RM-261).
+
+    The leading `_` is load-bearing: the sibling's inbox reader skips
+    underscore names, so a half-written bounce or reply is never read as a
+    note. core.polled_json's `<name>.<pid>.<hex>.tmp` has no leading `_`, so
+    these two writes build their own; the pid and token keep two writers of
+    one name off one scratch file, as core.polled_json's do.
+    """
+    return Path(directory) / f"_{filename}.{os.getpid()}.{secrets.token_hex(4)}.tmp"
+
+
 def _emit_bounce(result: "CycleResult") -> None:
     """Write the bounce for an undelivered note. Called once, from `_finish`.
 
@@ -1070,15 +1083,22 @@ def _emit_bounce(result: "CycleResult") -> None:
     except OSError:
         return
     target = Path(dest) / filename
-    tmp = target.with_name("_" + filename + ".tmp")
+    tmp = _hidden_scratch(target.parent, filename)
+    # `backslashreplace`, as `_hold_write` does. `_finish` runs in a
+    # `finally`, so a bounce that raised would destroy the cycle's END line and
+    # its row. Every value here is runner-owned and ASCII on the tracked path;
+    # the handler is what keeps that true when it is not. The body is joined on
+    # "\n", so encoding it here writes the bytes the old newline="\n" text
+    # write did.
+    payload = bounce_body(result).encode("ascii", errors="backslashreplace")
     try:
-        # `backslashreplace`, as `_hold_write` does. `_finish` runs in a
-        # `finally`, so a bounce that raised would destroy the cycle's END
-        # line and its row. Every value here is runner-owned and ASCII on the
-        # tracked path; the handler is what keeps that true when it is not.
-        tmp.write_text(bounce_body(result), encoding="ascii", errors="backslashreplace",
-                       newline="\n")
-        tmp.replace(target)
+        # RM-258: fsync, then core.polled_json's bounded WinError 5 retry, so a
+        # reader holding the inbox open for a moment no longer drops the bounce.
+        with open(tmp, "wb") as fh:
+            fh.write(payload)
+            fh.flush()
+            os.fsync(fh.fileno())
+        _replace_with_retry(tmp, target)
     except OSError:
         with contextlib.suppress(OSError):
             tmp.unlink()
@@ -2141,7 +2161,7 @@ def _deliver(result: CycleResult, dest: Path, filename: str, assembled: str, not
              "status": "attempted", "dry": bool(result.dry)}
     _append_line(deliveries_path(result.root), entry)
 
-    tmp = dest / ("_" + filename + ".tmp")
+    tmp = _hidden_scratch(dest, filename)
     final = dest / filename
     payload = assembled.encode("ascii")
     try:
