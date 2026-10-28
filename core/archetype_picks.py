@@ -68,7 +68,9 @@ ARCHETYPE_SET = frozenset(ARCHETYPES)
 # Archetypes with a real scorer wired today. s209 flipped to all 6 after
 # verifying Phases 4-6 shipped (s179 mage->ds.ability, s180 assassin->ds.burst,
 # s181 enchanter->ds.hps per CLAUDE.md priorities 34-36). The dispatcher
-# routes each archetype to its dedicated scorer; none fall back to ds.dps.
+# routes each archetype to its dedicated scorer; only a kit-less champion
+# (all-zero mage / assassin / enchanter ranking) falls back to ds.dps, and a
+# kit-less bruiser keeps ds.hybrid but is flagged fell_back.
 IMPLEMENTED_SCORERS: frozenset[str] = frozenset({
     "carry", "bruiser", "tank", "mage", "assassin", "enchanter",
 })

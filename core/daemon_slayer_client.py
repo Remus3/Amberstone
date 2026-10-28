@@ -2987,14 +2987,18 @@ def rank_for_primary_archetype(
         {
             "ok":          bool,
             "scorer":      "dps" | "ehp" | "hybrid" | "ability" | "burst" | "hps" | "onhit",
-            "archetype":   str,   # the requested archetype (echoed)
+            "archetype":   str,   # the requested archetype ("carry" on a fallback)
             "ranked":      [RankedItem-like dicts],
-            "fell_back":   bool,  # always False post-Phase-6 (all archetypes wired)
+            "fell_back":   bool,  # True only for a kit-less champion
         }
-    ``ok=False`` means the engine was unreachable. ``fell_back`` is kept
-    for backward compatibility - all 7 archetype branches return
-    ``fell_back=False`` now that ds.hps shipped (Phase 6 s181). Unknown
-    archetype strings fall through to ds.dps with ``fell_back=False`` too.
+    ``ok=False`` means the engine was unreachable. Every archetype has its
+    own scorer (Phase 6 s181), so ``fell_back`` is True only for a kit-less
+    champion: the mage / assassin / enchanter branches fall through to
+    ds.dps when ``_kitless_all_zero`` sees an all-zero ranking (LEDGER 907),
+    and the served row is labelled ``archetype="carry"``; the bruiser branch
+    keeps its ds.hybrid build but flags it when
+    ``champion_has_ability_data`` is False (LEDGER 931). Unknown archetype strings fall
+    through to ds.dps with ``fell_back=False``.
 
     Args ``alpha`` / ``beta`` only apply to ``bruiser``; ``only_item_ids``
     applies to tank/bruiser/mage/assassin/enchanter; ``target_current_hp_pct``
