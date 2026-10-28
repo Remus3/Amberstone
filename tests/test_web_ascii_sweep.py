@@ -1154,7 +1154,20 @@ _WEB = _REPO_ROOT / "web"
 # memory) reproduces the superseded afebe58d... value EXACTLY. Those paths
 # are the whole change. No glyph change: the added lines carry 0 non-ASCII
 # bytes. If another slice re-captures in parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "8ea4a3cf29e6fd062c7535e9ab3ec788ea70a726c650d700afb7f73129254d73"
+# superseded by the RM-1018 re-capture below: "8ea4a3cf29e6fd062c7535e9ab3ec788ea70a726c650d700afb7f73129254d73"
+#
+# RE-CAPTURED 2026-10-27 at RM-1018 (s144 uiux cycle 27, provisional
+# until the merger lands it). One change rides it: the Replay RECENT
+# MATCHES rows become keyboard buttons (tabindex 0, role button, Enter /
+# Space load the match) in web/js/panels/dev.js, and the rows and
+# #replay-slider paint the --focus-ring box-shadow under keyboard focus in
+# web/css/panels/primitives.css. Ordinary case, no tokeniser change.
+# ATTRIBUTED BY SUBSTITUTION: swapping exactly those two files back to their
+# lane-tip 0b1c68229 blobs (in memory) reproduces the superseded 8ea4a3cf...
+# value EXACTLY. Those paths are the whole change. No glyph change: the
+# added lines carry 0 non-ASCII bytes. If another slice re-captures in
+# parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "aa31e3f33a90f5c93ace42508aaa0661c7220cd7df3799a1cf859b5fa58c5690"
 
 
 def _web_sources() -> list[Path]:

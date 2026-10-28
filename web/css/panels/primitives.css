@@ -170,6 +170,15 @@ header { transition: height 180ms ease; }
 .replay-match-row.active { background: var(--surface-head); }
 .replay-match-row.won    { box-shadow: inset 3px 0 0 var(--good); }
 .replay-match-row.lost   { box-shadow: inset 3px 0 0 var(--bad); }
+/* RM-1018: rows are keyboard buttons (dev.js). The ring is INSET because
+ * #replay-match-list scrolls and would clip an outer one, and a won / lost
+ * row keeps its result stripe under it. */
+.replay-match-row:focus-visible {
+  outline: none;
+  box-shadow: inset var(--focus-ring);
+}
+.replay-match-row.won:focus-visible  { box-shadow: inset 3px 0 0 var(--good), inset var(--focus-ring); }
+.replay-match-row.lost:focus-visible { box-shadow: inset 3px 0 0 var(--bad), inset var(--focus-ring); }
 .replay-match-top {
   display: flex; align-items: baseline; gap: var(--space-2);
   font-size: var(--fs-sm); font-weight: 700;
@@ -267,6 +276,11 @@ header { transition: height 180ms ease; }
   cursor: pointer;
 }
 .replay-slider:disabled { opacity: 0.3; cursor: default; }
+/* RM-1018: the system ring, not the UA `auto` outline. */
+.replay-slider:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
 
 /* RM-612 replay minimap */
 /* Map figure beside the timeline ribbon. The row keeps the ribbon's height

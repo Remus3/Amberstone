@@ -307,7 +307,17 @@ function _replayViewRefresh() {
         bot.className = "replay-match-bot";
         bot.textContent = `${_replayDateStr(m.game_creation_ts)} - ${_replayDurStr(m.duration_s)} - patch ${m.patch || "?"}`;
         li.append(top, bot);
+        // RM-1018: picking a match gates the whole view, so the row is a
+        // keyboard button too (Tab stop, Enter / Space load it like a click).
+        li.tabIndex = 0;
+        li.setAttribute("role", "button");
         li.addEventListener("click", () => _replayLoadMatch(m.match_id, li));
+        li.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            _replayLoadMatch(m.match_id, li);
+          }
+        });
         ul.appendChild(li);
         if (focusMatchId && m.match_id === focusMatchId) focusRow = li;
       }
