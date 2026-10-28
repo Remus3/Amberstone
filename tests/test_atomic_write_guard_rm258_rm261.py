@@ -184,7 +184,6 @@ _TOOLS_UNCLASSIFIED = frozenset({
     "tools/repin_subagent_cli.py",
     "tools/replay_build_order_validate.py",
     "tools/replay_laning_verdict_validate.py",
-    "tools/replay_matchup_validate.py",
     "tools/replay_pickban_validate.py",
     "tools/rewrite_sha_citations.py",
     "tools/sanitize_agent6_reports.py",
