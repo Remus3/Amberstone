@@ -46,9 +46,10 @@ THE TRANSPORT IS THE PAIR ITSELF
 Unlike the rune lanes (keyed by perk id, inert without a ``rune_ids`` roster)
 this seam needs no third body key: the math reads ``champion_id`` - already on
 every ``/rank-tank`` body - and the candidate's own ``delta_max_mp``
-(ehp.py:3966-3968). So the "armed transport, flags OFF" control here is the
-MAGNITUDE half sent alone: a body carrying ``mana_coupling_strength`` with the
-gate absent must be byte-identical.
+(the nested ``_mana_key`` in ``ehp.rank_items_by_ehp``). So the "armed
+transport, flags OFF" control here is the MAGNITUDE half sent alone: a body
+carrying ``mana_coupling_strength`` with the gate absent must be
+byte-identical.
 
 REACHABILITY IS PROVED, NOT GREPPED
 -----------------------------------

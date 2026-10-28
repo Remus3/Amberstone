@@ -4,11 +4,11 @@ Meraki 16.13.1 item 3124 passive "Seething Strike": basic attacks grant
 8% bonus attack speed for 3 seconds, stacking up to 4 times (32% total).
 Modeled on the EXISTING ungated conditional-AS lane (``bonus_as_conditional``,
 the same field Yun Tal Flurry carries at 0.08 with NO flag - see
-test_conditional_as_base_fold_r42.py:11), pinned at the full-stack
-steady state per repo convention (Black Cleaver 5-stack shred, Mejai's
-full-stack AP): a Guinsoo carry auto-attacking continuously in a
-sustained fight sits at 4 stacks. Gemini director approved UNGATED -
-no new seam, no flag.
+``ITEM_EFFECTS["3032"]`` and the test_conditional_as_base_fold_r42.py
+docstring), pinned at the full-stack steady state per repo convention
+(Black Cleaver 5-stack shred, Mejai's full-stack AP): a Guinsoo carry
+auto-attacking continuously in a sustained fight sits at 4 stacks.
+Gemini director approved UNGATED - no new seam, no flag.
 
 The fold itself is the R42 base_as-scaled fold (dps.py cond_as block:
 cond_as is a bonus-AS FRACTION folded as ``innate_base_as * cond_as``

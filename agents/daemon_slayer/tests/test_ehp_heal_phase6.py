@@ -1,7 +1,8 @@
 """ENGINE 1.28.0 (2026-05-21) - Phase 6 EHP healing throughput.
 
-Closes the ``ehp.py:23`` Phase-6 deliberate omission "Healing throughput
-(lifesteal, Spirit Visage amp)". Three contributions feed the heal pool:
+Closes the Phase-6 deliberate omission "Healing throughput (lifesteal,
+Spirit Visage amp)" listed in the ``ehp`` module docstring. Three
+contributions feed the heal pool:
 
 * item-passive heals via NEW ``ItemHeal`` dataclass + ``ItemEffect.heal``
   (Sundered Sky 6610 / Arena 226610 Lightshield Strike: 100% base AD

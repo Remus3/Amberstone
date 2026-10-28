@@ -1,9 +1,10 @@
 """ENGINE 1.27.0 (2026-05-21) - Phase 1.5 EHP shield throughput.
 
-Closes the ``ehp.py:21`` Phase-1.5 omission "Shield throughput (Sterak's
-lifeline, Doran's Shield, Bloodthirster) - needs uptime modeling". Ships
-the four LIFELINE-style shields (single trigger per fight, value-additive
-to the effective-HP pool at top of the damage stack):
+Closes the Phase-1.5 omission "Shield throughput (Sterak's lifeline,
+Doran's Shield, Bloodthirster) - needs uptime modeling" listed in the
+``ehp`` module docstring. Ships the four LIFELINE-style shields (single
+trigger per fight, value-additive to the effective-HP pool at top of the
+damage stack):
 
 * Sterak's Gage 3053 - any-damage, 60% bonus_hp
 * Immortal Shieldbow 6673 - any-damage, 400 L1-L8 -> 700 L18, ranged x0.80
