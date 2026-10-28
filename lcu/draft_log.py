@@ -57,7 +57,10 @@ FINALIZE_TIMER_PHASES = frozenset({"FINALIZATION"})
 # Gameflow phases in which a captured-but-unpersisted draft is still the
 # draft of the game about to start. Any other phase (Lobby, None,
 # Matchmaking...) means champ select ended without a game: a dodge.
-_KEEP_PENDING_PHASES = frozenset({"ChampSelect", "GameStart", "InProgress"})
+# Reconnect is the same live game (lcu/snapshot_shape notes its gameId), and
+# shape_champ_select reports it here BEFORE that note, so it must keep too.
+_KEEP_PENDING_PHASES = frozenset({
+    "ChampSelect", "GameStart", "InProgress", "Reconnect"})
 
 DRAFT_LOG_SCHEMA = """
 CREATE TABLE IF NOT EXISTS draft_log (
@@ -86,13 +89,25 @@ _ROW_COLS = (
 )
 
 
+# SQLite INTEGER is a signed 64-bit value; binding anything outside it raises
+# OverflowError, which through the live sink cost the WHOLE draft for one
+# out-of-range LCU field (s144 true-audit F2).
+_SQLITE_INT_MIN = -(2 ** 63)
+_SQLITE_INT_MAX = 2 ** 63 - 1
+
+
 def _as_int(value, default):
     if isinstance(value, bool):
         return default
     try:
-        return int(value)
+        out = int(value)
     except (TypeError, ValueError, OverflowError):
         return default
+    return out if _SQLITE_INT_MIN <= out <= _SQLITE_INT_MAX else default
+
+
+def _as_str(value) -> str:
+    return value if isinstance(value, str) else ""
 
 
 def _as_list(value) -> list:
@@ -160,8 +175,8 @@ def parse_draft(sess) -> list[dict]:
                 "turn": turn,
                 "actor_cell_id": cell,
                 "side": side,
-                "assigned_position": str(entry.get("assignedPosition") or ""),
-                "action_type": str(action.get("type") or ""),
+                "assigned_position": _as_str(entry.get("assignedPosition")),
+                "action_type": _as_str(action.get("type")),
                 "champion_id": max(_as_int(action.get("championId"), 0), 0),
                 "completed": 1 if action.get("completed") is True else 0,
                 "final_champion_id": max(_as_int(entry.get("championId"), 0), 0),
@@ -171,11 +186,16 @@ def parse_draft(sess) -> list[dict]:
 
 
 def game_id_from_match_id(match_id) -> int | None:
-    """Match-V5 'NA1_<gameId>' (or a bare numeric id) -> int gameId."""
+    """Match-V5 'NA1_<gameId>' (or a bare numeric id) -> int gameId.
+
+    The tail must be ASCII digits within SQLite's INTEGER range: str.isdigit()
+    alone also passes a superscript digit (int() then raises) and Arabic-Indic
+    digits (int() converts them), and a 4300+ digit tail raises ValueError.
+    """
     tail = str(match_id or "").rsplit("_", 1)[-1]
-    if not tail.isdigit():
+    if not (tail.isascii() and tail.isdigit()):
         return None
-    gid = int(tail)
+    gid = _as_int(tail, 0)
     return gid if gid > 0 else None
 
 
@@ -289,6 +309,9 @@ def attach_draft_log(conn: sqlite3.Connection, match_id: str) -> dict:
 
 Sink = Callable[[int, list, int], object]
 
+# Refused writes per draft before the recorder stops offering it to the sink.
+_MAX_SINK_ATTEMPTS = 5
+
 
 def sqlite_sink(db_path) -> Sink:
     """A sink that stores each finalized draft into ``db_path``."""
@@ -318,6 +341,13 @@ class DraftRecorder:
         self._queue_id = 0
         self._game_id = 0
         self._written_sig = None
+        # The sig of the last refused write and how often it was refused: a
+        # refusal is logged once per streak, not once per tick of the
+        # finalization window (F7), and a draft is offered to the sink at
+        # most _MAX_SINK_ATTEMPTS times, so a DB held locked for the whole
+        # game cannot stall every agent tick by the sink's 10 s busy timeout.
+        self._failed_sig = None
+        self._failed_count = 0
 
     def set_sink(self, sink: Sink | None) -> None:
         with self._lock:
@@ -341,14 +371,22 @@ class DraftRecorder:
             _log.warning("draft_log observe failed: %s", exc)
 
     def note_game_id(self, game_id) -> None:
+        """Key a pending draft to ``game_id`` and write it.
+
+        Called every GameStart / InProgress / Reconnect tick. The first id
+        wins (a later, different one never re-keys the draft); every call
+        re-attempts the write, so a refused one (a locked DB) is retried on
+        the next tick instead of being lost. A written draft is not rewritten.
+        """
         try:
             gid = _as_int(game_id, 0)
             if gid <= 0:
                 return
             with self._lock:
-                if self._rows is None or self._game_id:
+                if self._rows is None:
                     return
-                self._game_id = gid
+                if not self._game_id:
+                    self._game_id = gid
             self._flush()
         except Exception as exc:  # noqa: BLE001
             _log.warning("draft_log note_game_id failed: %s", exc)
@@ -356,8 +394,9 @@ class DraftRecorder:
     def observe_phase(self, phase) -> None:
         """Drop an unpersisted draft once the client leaves champ select
         without starting a game (dodge), so it can never attach to a later,
-        unrelated game id."""
-        if phase in _KEEP_PENDING_PHASES:
+        unrelated game id. A non-str phase (a failed gameflow read) counts as
+        a dodge, as it always has; it never raises."""
+        if isinstance(phase, str) and phase in _KEEP_PENDING_PHASES:
             return
         with self._lock:
             self._rows = None
@@ -373,10 +412,23 @@ class DraftRecorder:
             sig = (gid, tuple(tuple(r[c] for c in _ROW_COLS) for r in rows))
             if sig == self._written_sig:
                 return
+            if (sig == self._failed_sig
+                    and self._failed_count >= _MAX_SINK_ATTEMPTS):
+                return
         try:
             sink(gid, rows, qid)
         except Exception as exc:  # noqa: BLE001
-            _log.warning("draft_log sink failed for game %s: %s", gid, exc)
+            with self._lock:
+                first = sig != self._failed_sig
+                if first:
+                    self._failed_sig, self._failed_count = sig, 0
+                self._failed_count += 1
+                last = self._failed_count >= _MAX_SINK_ATTEMPTS
+            if first or last:
+                _log.warning("draft_log sink failed for game %s%s: %s", gid,
+                             " (giving up on this draft)" if last else "", exc)
+            else:
+                _log.debug("draft_log sink failed for game %s: %s", gid, exc)
             return
         with self._lock:
             self._written_sig = sig
