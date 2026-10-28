@@ -34,6 +34,9 @@ CURATION (the opinionated part)
 
 FAIL-SOFT
     Any bad / missing / non-list input -> None (no callout), never raises.
+    A junk item id (NaN / inf / fractional float, out-of-range or huge int,
+    non-digit string) is dropped, and the callout line names only the
+    curated canonical champion names, never the raw roster string.
 """
 from __future__ import annotations
 
@@ -46,34 +49,48 @@ from typing import Optional
 # SR-equivalent for the live coach).
 _HEAL_THREAT_MODES: frozenset[str] = frozenset({"sr", "aram", "client", "game"})
 
-# Curated heavy-sustain champions (display names). Each is a champion where
-# rushing Grievous Wounds is standard advice because the bulk of their
-# durability is ability / passive HEALING (not shields or pure tankiness).
-# Stored normalized (lowercase, alphanumeric-only) so a Live Client display
-# name ("Dr. Mundo") and any punctuation/spacing variant match the same key.
-_HEAVY_SUSTAIN_CHAMPIONS: frozenset[str] = frozenset({
-    "aatrox",
-    "briar",
-    "drmundo",
-    "fiddlesticks",
-    "illaoi",
-    "kayn",
-    "maokai",
-    "mordekaiser",
-    "nilah",
-    "renekton",
-    "sett",
-    "soraka",
-    "swain",
-    "sylas",
-    "trundle",
-    "tryndamere",
-    "vladimir",
-    "volibear",
-    "warwick",
-    "yuumi",
-    "zac",
-})
+# Curated heavy-sustain champions. Each is a champion where rushing Grievous
+# Wounds is standard advice because the bulk of their durability is ability /
+# passive HEALING (not shields or pure tankiness). Keyed normalized
+# (lowercase, alphanumeric-only) so a Live Client display name ("Dr. Mundo")
+# and any punctuation/spacing variant match the same key; the value is the
+# canonical display name the callout line prints. The line never echoes the
+# raw roster string (s144 true-audit: markup, zero-width or non-ASCII letters
+# and control characters all normalized onto a curated key and were printed).
+_SUSTAIN_DISPLAY: dict[str, str] = {
+    "aatrox": "Aatrox",
+    "briar": "Briar",
+    "drmundo": "Dr. Mundo",
+    "fiddlesticks": "Fiddlesticks",
+    "illaoi": "Illaoi",
+    "kayn": "Kayn",
+    "maokai": "Maokai",
+    "mordekaiser": "Mordekaiser",
+    "nilah": "Nilah",
+    "renekton": "Renekton",
+    "sett": "Sett",
+    "soraka": "Soraka",
+    "swain": "Swain",
+    "sylas": "Sylas",
+    "trundle": "Trundle",
+    "tryndamere": "Tryndamere",
+    "vladimir": "Vladimir",
+    "volibear": "Volibear",
+    "warwick": "Warwick",
+    "yuumi": "Yuumi",
+    "zac": "Zac",
+}
+_HEAVY_SUSTAIN_CHAMPIONS: frozenset[str] = frozenset(_SUSTAIN_DISPLAY)
+
+# A roster entry longer than this is junk, not a champion display name (the
+# longest real one is about 15 characters); it is never normalized or matched.
+_CHAMP_NAME_MAX = 64
+
+# Item-id vocabulary, the same as dashboard/_liveclient._item_id: an int (never
+# a bool) or a string of ASCII digits with optional surrounding whitespace, in
+# 1.._ITEM_ID_LIMIT-1. Floats, signs, exponents and non-ASCII digits are junk.
+_ITEM_ID_LIMIT = 10 ** 7
+_ID_MAX_DIGITS = 20
 
 # Completed lifesteal / omnivamp / heal-amp items (base DDragon ids as the
 # Live Client reports them). A SECONDARY signal: two or more on the enemy
@@ -116,35 +133,48 @@ def _norm_champ(name: object) -> str:
     """Normalize a champion display name to a lowercase alphanumeric key.
 
     'Dr. Mundo' -> 'drmundo', 'Aurelion Sol' -> 'aurelionsol'. Non-str /
-    empty -> '' (never matches a curated key, so a junk roster entry is
-    silently skipped). The curation can never produce a WRONG match - a
-    name not in the set simply does not contribute to the threat count.
+    empty / longer than _CHAMP_NAME_MAX -> '' (never matches a curated key,
+    so a junk roster entry is silently skipped). The curation can never
+    produce a WRONG match - a name not in the set simply does not contribute
+    to the threat count.
     """
-    if not isinstance(name, str):
+    if not isinstance(name, str) or len(name) > _CHAMP_NAME_MAX:
         return ""
     return _NON_ALNUM.sub("", name.lower())
 
 
-def _id_strs(ids: object) -> list[str]:
-    """Coerce an item-id list to non-empty string ids; bad input -> [].
+def _item_id(raw: object) -> str:
+    """Canonical item id string, or '' for a junk id (see _ITEM_ID_LIMIT).
 
-    Accepts ints or strings (the Live Client itemID can arrive either way)
-    and drops bools / None / empties. Fail-soft: a non-list -> []."""
+    s144 true-audit: ``str(int(i))`` raised on a NaN / inf float and on an
+    int past 4300 digits, and truncated 3072.9 into Bloodthirster."""
+    if isinstance(raw, bool):
+        return ""
+    if isinstance(raw, int):
+        value = raw
+    elif isinstance(raw, str):
+        text = raw.strip()
+        if not (text.isascii() and text.isdigit()
+                and len(text) <= _ID_MAX_DIGITS):
+            return ""
+        value = int(text)
+    else:
+        return ""
+    return str(value) if 0 < value < _ITEM_ID_LIMIT else ""
+
+
+def _id_strs(ids: object) -> list[str]:
+    """Coerce an item-id list to canonical string ids; bad input -> [].
+
+    Accepts ints or digit strings (the Live Client itemID can arrive either
+    way) and drops every junk entry (_item_id). Fail-soft: a non-list -> []."""
     if not isinstance(ids, list):
         return []
-    out: list[str] = []
-    for i in ids:
-        if isinstance(i, bool) or i is None:
-            continue
-        if isinstance(i, (int, float)):
-            out.append(str(int(i)))
-        elif isinstance(i, str) and i.strip():
-            out.append(i.strip())
-    return out
+    return [iid for iid in map(_item_id, ids) if iid]
 
 
 def _matched_sustain_champs(enemy_comp: object) -> list[str]:
-    """Return the original display names of enemy champs in the curated set.
+    """Return the canonical display names of enemy champs in the curated set.
 
     Order-preserving + de-duplicated on the normalized key (a roster never
     repeats a champ, but two junk entries normalizing alike are collapsed).
@@ -157,7 +187,7 @@ def _matched_sustain_champs(enemy_comp: object) -> list[str]:
         key = _norm_champ(c)
         if key and key in _HEAVY_SUSTAIN_CHAMPIONS and key not in seen:
             seen.add(key)
-            out.append(c.strip() if isinstance(c, str) else str(c))
+            out.append(_SUSTAIN_DISPLAY[key])
     return out
 
 
