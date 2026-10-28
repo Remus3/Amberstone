@@ -24,11 +24,23 @@ CONTRACT (Live Client API, 2026-05):
     * ``count``     - stack count. Control wards stack up to 2; a count
                       decrement from N -> N-1 means one was placed (or
                       consumed; we treat both as "placement attempt").
+                      An ABSENT count is 1. A present count that is not an
+                      int (or integral float) in 0.._MAX_WARD_COUNT - a
+                      bool, null, str, non-finite or out-of-range value -
+                      is UNKNOWN: the player's previous count is carried,
+                      and with no previous count the control ward is not
+                      tracked that tick. Duplicate entries of one item id
+                      are summed (the list order is not promised).
     * ``canUse``    - bool. True when the item is usable RIGHT NOW. For the
                       yellow / blue trinkets this is the only reliable
                       "fired" signal we have - a True -> False transition
                       means it was activated. A False -> True transition
                       is the cooldown finishing; we ignore that direction.
+                      Only a JSON bool is a signal: an absent or non-bool
+                      canUse carries the previous value, and with none it
+                      reads False (not known usable), so a missing field
+                      can neither fire nor re-open an edge. Duplicate
+                      entries are usable if any of them is.
     * ``slot``      - 0..6, with slot 6 being the trinket slot. Stable.
 
   CAVEAT 1 (yellow trinket charges):
@@ -64,10 +76,14 @@ CONTRACT (Live Client API, 2026-05):
     common solo-queue case.
 
 DESIGN:
-  Stateless callers; the producer holds its own per-puuid (or
-  per-summonerName, since Live Client doesn't expose puuid) state across
-  ticks. The state is a flat dict mapping summoner_name -> last-seen
-  inventory snapshot (a dict ``{itemID: (count, canUse)}``). The first
+  Stateless callers; the producer holds its own per-player state across
+  ticks (Live Client doesn't expose puuid). The state is a flat dict
+  mapping ``(summonerName, team)`` -> last-seen inventory snapshot (a dict
+  ``{itemID: (count, canUse)}``); the team keeps two same-named players on
+  opposite teams apart. A key seen twice in ONE snapshot cannot be
+  attributed: both entries are skipped and the key's state is dropped, so
+  the next unique sighting is a baseline (they used to diff against each
+  other and record the same false placements every tick). The first
   call after a reset just snapshots state and returns 0. Subsequent calls
   diff against prior state, record_ward() for each detected event, and
   refresh state.
@@ -82,25 +98,28 @@ PUBLIC API:
   - tick(allplayers_now, ts=None, *, active_summoner=None) -> int
       Diff vs prior state, record_ward() for each new event, refresh
       state. Returns count of records made. ``ts`` defaults to
-      time.time(). ``active_summoner`` is the operator's summoner name
-      (from ``activePlayer.summonerName``) and lets us resolve the side
-      label; omit and we fall back to ORDER=ally / CHAOS=enemy.
+      time.time(), and so does a ts that is not a finite number (a bool,
+      str, NaN or inf - ``ward_events.record_ward`` would drop it, losing
+      the tick's placements). ``active_summoner`` is the operator's
+      summoner name (from ``activePlayer.summonerName``) and lets us
+      resolve the side label; omit and we fall back to ORDER=ally /
+      CHAOS=enemy.
   - reset() -> None
       Drop internal state. Called automatically on game shape change.
   - snapshot_size() -> int
       Debug helper: number of players currently tracked.
 
 INTEGRATION:
-  This module is pure - it does NOT poll Live Client. A future wire into
-  ``core/liveclient_cache.py`` (or a sibling daemon) will call ``tick()``
-  every snapshot refresh. Until that wire ships, the producer is
-  unit-tested standalone and the heat-strip route returns an empty
-  rolling window. The producer module + tests are the safe shippable
-  layer; the wire is operator-gated (touches a frozen file or adjacent
-  hot path).
+  This module is pure - it does NOT poll Live Client. ``main.py`` calls
+  ``install_liveclient_listener()`` at boot, which registers
+  ``tick_from_snapshot`` on ``core.liveclient_cache.add_listener``, so
+  ``tick()`` runs on every relay snapshot refresh (0.5 s). The cache
+  catches a listener exception, but ``tick`` must not rely on that: one
+  raise used to leave the per-player state half-updated.
 """
 from __future__ import annotations
 
+import math
 import threading
 import time
 from typing import Optional
@@ -115,6 +134,12 @@ WARD_ITEM_IDS: dict[int, str] = {
     # 3364 (Sweeper / Oracle) is NOT a placeable ward - excluded.
     # 3513 Eye-of-Herald was deprecated post-patch 12.x; not in 16.10.
 }
+_CONTROL_WARD_ID = 2055
+
+# Largest ward stack count read as real. A magnitude guard, not a game rule
+# (control wards stack to 2): a junk count of 10**6 dropping to 0 used to
+# make 10**6 record_ward calls in one tick, and a negative one a burst.
+_MAX_WARD_COUNT = 10
 
 # Lane mapping from Live Client ``position`` strings.
 _POSITION_TO_LANE: dict[str, str] = {
@@ -127,8 +152,8 @@ _POSITION_TO_LANE: dict[str, str] = {
 
 # Module state.
 _state_lock = threading.Lock()
-# _state[summoner_name] = {itemID: (count, canUse)}
-_state: dict[str, dict[int, tuple[int, bool]]] = {}
+# _state[(summoner_name, team)] = {itemID: (count, canUse)}
+_state: dict[tuple[str, str], dict[int, tuple[int, bool]]] = {}
 # _signature is the sorted tuple of summoner names from the last tick;
 # used to auto-reset on game shape change.
 _signature: Optional[tuple[str, ...]] = None
@@ -151,32 +176,96 @@ def _player_signature(allplayers: list) -> tuple[str, ...]:
     return tuple(sorted(names))
 
 
-def _extract_ward_inventory(items: list) -> dict[int, tuple[int, bool]]:
+def _ward_count(value: object) -> Optional[int]:
+    """A stack count in 0.._MAX_WARD_COUNT, else None (unknown).
+
+    An int or an integral finite float; a bool is not a count. Never
+    raises (``int(inf)`` used to raise OverflowError out of ``tick``)."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, float):
+        if not math.isfinite(value) or not value.is_integer():
+            return None
+        value = int(value)
+    if not isinstance(value, int) or not 0 <= value <= _MAX_WARD_COUNT:
+        return None
+    return value
+
+
+def _extract_ward_inventory(
+    items: list,
+    prev: Optional[dict[int, tuple[int, bool]]] = None,
+) -> dict[int, tuple[int, bool]]:
     """Pull just the ward-relevant entries from a player's ``items`` array.
 
     Returns a dict ``{itemID: (count, canUse)}``. Non-ward items are
     excluded. Malformed entries are skipped silently (defensive against
-    relay churn).
+    relay churn). ``prev`` is the player's previous ward inventory: an
+    unknown count or canUse carries its value (see the module CONTRACT).
     """
     out: dict[int, tuple[int, bool]] = {}
     if not isinstance(items, list):
         return out
+    prev = prev if isinstance(prev, dict) else {}
+    # Duplicate entries of one item id are folded order-independently.
+    counts: dict[int, list[Optional[int]]] = {}
+    usable: dict[int, list[bool]] = {}
     for it in items:
         if not isinstance(it, dict):
             continue
         iid = it.get("itemID")
-        if not isinstance(iid, int) or iid not in WARD_ITEM_IDS:
+        if isinstance(iid, bool) or not isinstance(iid, int) \
+                or iid not in WARD_ITEM_IDS:
             continue
         # ``count`` defaults to 1 (single-stack items omit it on some
-        # patches); ``canUse`` defaults to True when absent so a missing
-        # field never falsely registers a placement.
-        try:
-            count = int(it.get("count", 1))
-        except (TypeError, ValueError):
-            count = 1
-        can_use = bool(it.get("canUse", True))
+        # patches); a present but unusable count is unknown (None).
+        counts.setdefault(iid, []).append(
+            _ward_count(it["count"]) if "count" in it else 1)
+        flags = usable.setdefault(iid, [])
+        can_use = it.get("canUse")
+        if isinstance(can_use, bool):
+            flags.append(can_use)
+    for iid, seen in counts.items():
+        before = prev.get(iid)
+        known = [c for c in seen if c is not None]
+        count: Optional[int] = sum(known) if len(known) == len(seen) else None
+        if count is not None and count > _MAX_WARD_COUNT:
+            count = None
+        if count is None:
+            count = before[0] if before else None
+        if count is None:
+            if iid == _CONTROL_WARD_ID:
+                continue  # no known count: not tracked this tick
+            count = 1  # a trinket's count is never read
+        flags = usable[iid]
+        if flags:
+            can_use = any(flags)
+        else:
+            # Not known usable: an absent / junk canUse can neither fire a
+            # True -> False edge nor re-open one mid-cooldown.
+            can_use = before[1] if before else False
         out[iid] = (count, can_use)
     return out
+
+
+def _usable_ts(ts: object) -> Optional[float]:
+    """``ts`` as a finite float, else None. A bool is not a time."""
+    if isinstance(ts, bool) or not isinstance(ts, (int, float)):
+        return None
+    try:
+        out = float(ts)
+    except OverflowError:
+        return None
+    return out if math.isfinite(out) else None
+
+
+def _player_key(player: dict) -> Optional[tuple[str, str]]:
+    """``(summonerName, team)`` for state keying, or None without a name."""
+    name = player.get("summonerName")
+    if not isinstance(name, str) or not name:
+        return None
+    team = player.get("team")
+    return name, team if isinstance(team, str) else ""
 
 
 def _resolve_side(player: dict, active_summoner: Optional[str],
@@ -254,6 +343,7 @@ def tick(allplayers_now: list, ts: Optional[float] = None,
     real team membership rather than ORDER-fallback. Optional.
     """
     global _state, _signature
+    ts = _usable_ts(ts)
     if ts is None:
         ts = time.time()
     if not isinstance(allplayers_now, list):
@@ -280,14 +370,26 @@ def tick(allplayers_now: list, ts: Optional[float] = None,
 
         first_tick = not _state
 
+        players: list[tuple[tuple[str, str], dict]] = []
+        seen: dict[tuple[str, str], int] = {}
         for player in allplayers_now:
             if not isinstance(player, dict):
                 continue
-            name = player.get("summonerName")
-            if not isinstance(name, str) or not name:
+            key = _player_key(player)
+            if key is None:
                 continue
-            curr_inv = _extract_ward_inventory(player.get("items") or [])
-            prev_inv = _state.get(name, {})
+            seen[key] = seen.get(key, 0) + 1
+            players.append((key, player))
+        for key, n in seen.items():
+            if n > 1:
+                _state.pop(key, None)  # ambiguous: re-baseline when unique
+
+        for key, player in players:
+            if seen[key] > 1:
+                continue
+            prev_inv = _state.get(key, {})
+            curr_inv = _extract_ward_inventory(player.get("items") or [],
+                                               prev_inv)
 
             if not first_tick:
                 events = _detect_placements(prev_inv, curr_inv)
@@ -298,7 +400,7 @@ def tick(allplayers_now: list, ts: Optional[float] = None,
                         ward_events.record_ward(side, lane, ward_type, ts=ts)
                         records += 1
 
-            _state[name] = curr_inv
+            _state[key] = curr_inv
 
     return records
 

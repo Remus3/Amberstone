@@ -52,8 +52,8 @@ warned once per streak, not once per frame.
 Wiring
 ------
 ``install_if_enabled()`` registers ``on_liveclient_snapshot`` on
-``core.liveclient_cache.add_listener`` (core/liveclient_cache.py:118, the same
-tap core/ward_producer.py:359 uses). It is called from
+``core.liveclient_cache.add_listener`` (the same tap
+``core.ward_producer.install_liveclient_listener`` uses). It is called from
 ``core.liveclient_cache.start()`` via ``_install_optional_taps()``, so no
 frozen file (main.py) and neither game_reader/poller.py nor
 dashboard/_liveclient.py is touched.

@@ -15,8 +15,8 @@ Players are keyed by ``(riot id, team)`` - ``riotIdGameName#riotIdTagLine``
 list index or bare ``participantId``. The Live Client does not promise a
 stable ``allPlayers`` order, and keying by position cross-contaminates one
 player's purchases into another's when the list reorders. This follows the
-per-name state map of ``core/ward_producer.py`` (``_state[summoner_name]``,
-ward_producer.py:130-131 and the per-player loop at :285-303), strengthened
+per-name state map of ``core/ward_producer.py`` (its ``_state`` and the
+per-player loop in its ``tick``), strengthened
 with the riot id and the team so two same-named players on opposite teams
 stay distinct. A key seen twice in ONE snapshot is skipped for that tick
 (it cannot be attributed).
