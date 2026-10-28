@@ -1303,7 +1303,18 @@ _WEB = _REPO_ROOT / "web"
 # Those paths are the whole change (the new .test.mjs is not a swept
 # language). No glyph change: the added lines carry 0 non-ASCII bytes. If
 # another slice re-captures in parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "780a2c7e34ff4953425ab6f40eff3e42ee66d8fdb4305e7b2949ad1087d1ef1e"
+# superseded by the RM-1072 re-capture below: "780a2c7e34ff4953425ab6f40eff3e42ee66d8fdb4305e7b2949ad1087d1ef1e"
+#
+# RE-CAPTURED 2026-10-28 at RM-1072 (s144 uiux cycle 40, provisional
+# until the merger lands it and maps the id). One change rides it: the
+# Replay view body (.replay-body in web/css/panels/primitives.css) takes a
+# fixed line-height: 1.2, so its text keeps its boxes when Lato swaps in.
+# Ordinary case, no tokeniser change. ATTRIBUTED BY SUBSTITUTION: swapping
+# that one file back to its lane-tip 1c1b2faf6 blob reproduces the
+# superseded 780a2c7e... value EXACTLY. That path is the whole change. No
+# glyph change: the added lines carry 0 non-ASCII bytes. If another slice
+# re-captures in parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "2801677fdd16f0c5b7c5bb0af1b871930171b0bd73087ac6ea3c53f91c0348ac"
 
 
 def _web_sources() -> list[Path]:

@@ -127,6 +127,15 @@ header { transition: height 180ms ease; }
   align-items: stretch;
   flex: 1 1 auto;
   min-height: 0;
+  /* RM-1072: a fixed line-height for the whole view body (the RM-1011
+   * fix covered only the head), so the Replay text keeps its boxes when
+   * Lato (Google Fonts, display=swap) replaces the first-paint fallback.
+   * `normal` is the face's own ascent + descent: match rows 68 -> 64px,
+   * meta 24 -> 22px per line, and the timeline filter labels moved up
+   * 7px (1920x920) / 10px (923x1280) on the swap. 1.2 is about Lato's own
+   * normal value. The row buttons inherit it through `font: inherit`.
+   * Guard: tests/snapshot_panels/test_replay_font_swap.py. */
+  line-height: 1.2;
 }
 /* hx-card tactical frame: card body surface + gold corner brackets.
  * Mirrors web/css/hextech.css .hx-card (the markup carries no .hx-card

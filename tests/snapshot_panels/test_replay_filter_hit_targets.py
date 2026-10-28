@@ -156,15 +156,21 @@ _STABLE_FRAMES = """async ([ids, n]) => {
 }"""
 
 
+_LATO_LOADED = """() => Array.from(document.fonts).some(
+  (f) => f.family.replace(/["']/g, "") === "Lato" && f.status === "loaded")"""
+
+
 @pytest.mark.parametrize("vp", VIEWPORTS, ids=lambda v: f"{v[0]}x{v[1]}")
 def test_a_late_webfont_swap_is_settled_before_the_label_click(
         mock_server, pw_browser, vp):
     """The flake made deterministic: every webfont response is held until the
-    timeline rows exist, then released. The swap must move the labels by
-    more than the 4px probe inset (otherwise the race this guards is not
-    exercised and the test skips), and _settle_layout must return only once
+    timeline rows exist, then released. _settle_layout must return only once
     the fonts are loaded and the labels have stopped moving, after which the
-    corner click toggles every filter."""
+    corner click toggles every filter. RM-1072: the swap moved the labels
+    7px (1920x920) / 10px (923x1280), past the 4px probe inset; the Replay
+    body's fixed line-height (web/css/panels/primitives.css .replay-body)
+    holds that move to 1px, under the inset, so a pre-swap point can no
+    longer miss its label (test_replay_font_swap.py pins the cause)."""
     ctx, page, errors = _new_page(pw_browser, mock_server, vp)
     held = []
     page.route("**/fonts.gstatic.com/**", lambda route: held.append(route))
@@ -187,15 +193,21 @@ def test_a_late_webfont_swap_is_settled_before_the_label_click(
                                timeout=10_000)
         stable = page.evaluate(_STABLE_FRAMES, [list(_IDS), 10])
         final = page.evaluate(_LABEL_RECTS, list(_IDS))
+        # A held request that fails once released leaves the fallback face
+        # in place: no swap, so `moved` below would pass on any CSS.
+        if not page.evaluate(_LATO_LOADED):
+            pytest.skip("the held webfont did not load once released; "
+                        "the swap is not exercised")
         moved = max(abs(b[1] - a[1]) for a, b in zip(pre, final))
-        if moved <= 4:
-            pytest.skip(f"the webfont did not move the labels past the 4px "
-                        f"inset (moved {moved}px; font fetch failed?)")
         failures = _click_each_label_corner(page)
     finally:
         page.close()
         ctx.close()
     assert status == "loaded", f"_settle_layout returned with fonts {status!r}"
+    assert moved <= 1.0, (
+        f"the webfont swap moved the filter labels {moved}px (RM-1072 "
+        f"holds it to 1px): {pre} then {final}"
+    )
     assert post == final, (
         f"_settle_layout returned before the swap re-laid the labels out: "
         f"{post} then {final}"
