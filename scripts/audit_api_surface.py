@@ -35,6 +35,7 @@ import argparse
 import csv
 import os
 import re
+import subprocess
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -100,6 +101,37 @@ SCAN_SUFFIXES = {".py", ".js", ".ts", ".jsx", ".tsx", ".ps1", ".bat",
                  ".md", ".json", ".yaml", ".yml", ".sh"}
 
 
+def _git_ignored() -> tuple[frozenset[str], frozenset[str]]:
+    """(ignored dirs, ignored files) as root-relative posix paths, as git reports them.
+
+    SKIP_DIRS is a hand list and lags the .gitignore: MEASURED 2026-10-27
+    (RM-988), 2924 of the 6613 files the walk returned in the main checkout
+    were gitignored (python-embed/, moon_sync_inbox/, .superpowers/ and more),
+    and a sibling's note in moon_sync_inbox/ put an endpoint RC never calls
+    into the report. One git call is the authority: `--directory` collapses an
+    ignored dir to one "dir/" entry, and a file-pattern ignore outside such a
+    dir comes back as a bare file entry. Outside a git work tree, or if git is
+    missing, both sets are empty and the walk falls back to the name lists.
+    Same shape as tools/gen_archmap.py `_git_ignored_dirs` (RM-985).
+    """
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(ROOT), "ls-files", "-z", "--others", "--ignored",
+             "--exclude-standard", "--directory"],
+            capture_output=True,
+            timeout=60,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+    except (OSError, subprocess.SubprocessError):
+        return frozenset(), frozenset()
+    if proc.returncode != 0:
+        return frozenset(), frozenset()
+    entries = [e for e in proc.stdout.decode("utf-8", errors="replace").split("\0") if e]
+    dirs = frozenset(e.rstrip("/") for e in entries if e.endswith("/"))
+    files = frozenset(e for e in entries if not e.endswith("/"))
+    return dirs, files
+
+
 def iter_source_files() -> list[Path]:
     """Candidate source files under ROOT, excluding fixture/data dirs, sorted.
 
@@ -108,15 +140,23 @@ def iter_source_files() -> list[Path]:
     never entered. The pre-fix `ROOT.rglob("*")` + parts-filter enumerated
     every directory under the repo root before the filter ran (same defect
     family as core/hot_reload.py and tools/gen_archmap.py). File-level
-    filters (suffix, name) are unchanged.
+    filters (suffix, name) are unchanged. A directory git reports as ignored
+    is pruned the same way, and an ignored file is skipped (`_git_ignored`).
     """
+    ignored_dirs, ignored_files = _git_ignored()
     out: list[Path] = []
     for dirpath, dirnames, filenames in os.walk(ROOT):
+        rel = Path(dirpath).relative_to(ROOT).as_posix()
+        prefix = "" if rel == "." else rel + "/"
         # Prune in place: a skipped directory is never descended.
         dirnames[:] = [
-            n for n in dirnames if n not in SKIP_DIRS and n not in SKIP_PARTS
+            n for n in dirnames
+            if n not in SKIP_DIRS and n not in SKIP_PARTS
+            and prefix + n not in ignored_dirs
         ]
         for name in filenames:
+            if prefix + name in ignored_files:
+                continue
             path = Path(dirpath, name)
             if path.suffix in SKIP_FILE_SUFFIXES:
                 continue
