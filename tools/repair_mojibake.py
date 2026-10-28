@@ -75,7 +75,6 @@ authorization (mirrors strip_smart_quotes.py precedent).
 from __future__ import annotations
 
 import argparse
-import os
 import re
 import subprocess
 import sys
@@ -99,6 +98,11 @@ MOJIBAKE_SIGS: tuple[bytes, ...] = (MOJIBAKE_SIG, MOJIBAKE_SIG_B)
 EM_DASH_BYTES = b"\xe2\x80\x94"
 
 ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from core import polled_json  # noqa: E402 - needs ROOT on sys.path first
+
 _SELF = Path(__file__).resolve()
 
 # HARD SKIP: paths in this set are NEVER rewritten, even when listed in
@@ -244,9 +248,7 @@ def main() -> int:
             continue  # NEVER rewrite frozen files (no operator grant)
 
         if args.apply:
-            tmp = p.with_suffix(p.suffix + ".mjtmp")
-            tmp.write_bytes(new)
-            os.replace(tmp, p)
+            polled_json.atomic_write_bytes(p, new)
 
     mode = "APPLIED" if args.apply else "DRY-RUN (no writes)"
     print(f"=== repair_mojibake {mode} ===")
