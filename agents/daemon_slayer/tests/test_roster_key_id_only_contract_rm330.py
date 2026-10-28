@@ -3,7 +3,7 @@
 THE ROW, AND WHY THIS IS NOT A BUG FIX
 --------------------------------------
 The DS HTTP surface resolves ``champion`` through the tolerant
-``_resolve_champion_id`` (server.py:398), but the ROSTER keys - ``enemies``,
+``server._resolve_champion_id``, but the ROSTER keys - ``enemies``,
 ``ally_grant_champions``, ``granter_resists`` - take exact canonical DDragon
 ids, so a Riot DISPLAY name silently contributes nothing. Probed live on the
 filed row: ``enemies=["Chogath"]`` moves the number, ``["Cho'Gath"]`` returns

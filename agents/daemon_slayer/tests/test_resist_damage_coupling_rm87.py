@@ -152,9 +152,10 @@ class RegistryProvenanceTests(unittest.TestCase):
                 self.assertTrue(entry.note, msg=f"{champ} needs a sourced note")
 
     def test_documented_rejects_stay_out(self) -> None:
-        # K'Sante P All Out Bonus is a documented reject at
-        # _passive_damage_overrides.py:840-843 (bilinear caster-resist * target
-        # max HP AND gated on the R-empowered All Out state). Skarner carries no
+        # K'Sante P All Out Bonus is a documented reject in the
+        # GAP-2 CASTER-DEFENSIVE-STAT header comment of _passive_damage_overrides
+        # (bilinear caster-resist * target max HP AND gated on the R-empowered
+        # All Out state). Skarner carries no
         # resist-scaling ability text at all at 16.14.1. Poppy's only resist
         # passive is resist -> resist, not resist -> damage.
         for champ in ("KSante", "Skarner", "Poppy"):

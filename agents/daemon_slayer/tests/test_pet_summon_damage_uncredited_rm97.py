@@ -44,8 +44,8 @@ block filter.
 
 Engine seams pinned:
 
-* ``agents/daemon_slayer/abilities.py:274`` ``AbilityForm.damage_blocks_only``
-  - the ``attribute_kind == "damage"`` filter.
+* ``abilities.AbilityForm.damage_blocks_only`` - the
+  ``attribute_kind == "damage"`` filter.
 * ``ability_dps._select_blocks`` - re-applies
   the same filter and returns ``0.0`` when nothing survives it.
 """

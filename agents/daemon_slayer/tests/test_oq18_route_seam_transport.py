@@ -20,7 +20,8 @@ Wired inputs:
 Confirmed API surface before scaffolding:
   * server._route_antitank + server._CACHE.set - agents/daemon_slayer/server.py.
   * compute_antitank(champion, mode, stats, level) + compute_antitank_live(
-    snapshot, champion, level, item_ids, mode, augments) - antitank.py:639/731.
+    snapshot, champion, level, item_ids, mode, augments) -
+    ``antitank.compute_antitank`` / ``antitank.compute_antitank_live``.
   * summoner_fight_adjustments / enemy_rune_threat / ally_protected_ehp -
     dsp_live_consumers.py.
   * Ramp-seeded champ (Aatrox P 4:8) is disjoint from the P3.2 seeded champ
