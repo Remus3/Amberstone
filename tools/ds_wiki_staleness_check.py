@@ -1051,9 +1051,7 @@ def reannotate_report(patch: str) -> Path:
         row.pop("override_effective", None)
         row.pop("resolved_by_override", None)
     annotate_override_resolution(report, _override_lookup(patch))
-    tmp = out.with_suffix(".tmp")
-    tmp.write_text(json.dumps(report, indent=1), encoding="utf-8", newline="\n")
-    tmp.replace(out)
+    _write_report_atomic(out, report)
     return out
 
 
@@ -1250,11 +1248,23 @@ def write_report(
             merged["_mode"] = "recent+merged"
         except (OSError, ValueError, AttributeError, KeyError):
             merged = dict(report)
-    tmp = out.with_suffix(".tmp")
-    # newline="\n": write_text translates LF to CRLF on Windows otherwise.
-    tmp.write_text(json.dumps(merged, indent=1), encoding="utf-8", newline="\n")
-    tmp.replace(out)
+    _write_report_atomic(out, merged)
     return out
+
+
+def _write_report_atomic(out: Path, report: dict[str, Any]) -> None:
+    """RM-258: write the report through core.polled_json (per-writer scratch,
+    fsync, bounded WinError 5 retry, scratch removed on failure), never a
+    hand-rolled ``<dest>.tmp`` rename. The running RC app reads this file
+    (core/daemon_slayer_client.py), so a torn swap is reader-visible. Bytes,
+    not write_text: write_text turns LF into CRLF on Windows.
+    """
+    root = str(SCRIPT_DIR.parent)
+    if root not in sys.path:
+        sys.path.insert(0, root)
+    from core.polled_json import atomic_write_bytes
+
+    atomic_write_bytes(out, json.dumps(report, indent=1).encode("utf-8"))
 
 
 def _current_patch() -> str:
