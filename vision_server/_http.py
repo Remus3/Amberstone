@@ -123,11 +123,13 @@ class Handler(HostAllowlistMixin, BaseHTTPRequestHandler):
                 self._err500("Stats error", e)
         elif self.path in ("/monitor", "/monitor.html"):
             try:
-                # Look next to server script AND in same dir as working directory
+                # Look beside the server package (the repo root, where a PUT
+                # writes it), then the Desktop and the sync inbox. Never the
+                # process CWD (RM-1022): live it IS the repo root, anywhere
+                # else it served whatever file the CWD happened to hold.
                 candidates = [
                     MONITOR_HTML_PATH,
                     Path(__file__).parent.parent / "moon_monitor.html",
-                    Path.cwd() / "moon_monitor.html",
                     Path.home() / "Desktop" / "moon_monitor.html",
                     SYNC_DIR / "moon_monitor.html",   # delivered via PUT
                     SYNC_DIR / "monitor.html",        # alternate PUT name
@@ -313,9 +315,12 @@ class Handler(HostAllowlistMixin, BaseHTTPRequestHandler):
         data = self.rfile.read(cl)
         try:
             fname = Path(self.path.split("/")[-1]).name
-            # Write monitor files to both cwd AND sync inbox for discoverability
+            # Write monitor files beside the server AND into the sync inbox for
+            # discoverability. This was Path.cwd(), which is the repo root only
+            # when the process was spawned there (RM-1022); MONITOR_HTML_PATH
+            # is that same file, anchored, and the first /monitor candidate.
             if fname in ("moon_monitor.html", "monitor.html"):
-                (Path.cwd() / "moon_monitor.html").write_bytes(data)
+                MONITOR_HTML_PATH.write_bytes(data)
             fp = SYNC_DIR / fname
             fp.write_bytes(data)
             self._j(200, {"ok": True})

@@ -47,9 +47,9 @@ RM-214 - the ``/monitor`` half of HALF B used to disarm itself.
 That guard was a single test that called ``skipTest`` the moment ``/monitor``
 answered 200, and the assertions it thereby skipped were the redaction ones.
 The server creates the file that flips the state: an authenticated PUT of
-``moon_monitor.html`` writes it into ``Path.cwd()`` (``_http.do_PUT``) and
-into ``SYNC_DIR``, which are three of the six candidates the ``/monitor``
-branch probes. So one PUT silently stopped the guard asserting for that
+``moon_monitor.html`` wrote it into ``Path.cwd()`` (``_http.do_PUT``; since
+RM-1022 into the anchored ``MONITOR_HTML_PATH``) and into ``SYNC_DIR``,
+which were three of the then six candidates the ``/monitor`` branch probes. So one PUT silently stopped the guard asserting for that
 working directory, forever. It is now ``MonitorRedactionTests``: two
 deterministic states driven from a scratch tree, neither of them skipped.
 """
@@ -269,12 +269,13 @@ class MonitorRedactionTests(unittest.TestCase):
     the conditional skip becomes two deterministic cases.
     """
 
-    # The six candidate expressions ``_http.do_GET`` probes for /monitor, as
-    # source. Pinned so a seventh cannot silently escape ``_isolate`` below.
+    # The five candidate expressions ``_http.do_GET`` probes for /monitor, as
+    # source. Pinned so a sixth cannot silently escape ``_isolate`` below.
+    # RM-1022 dropped the ``Path.cwd()`` candidate (its test pins that the
+    # CWD is neither read nor written).
     _CANDIDATE_SOURCES = (
         "MONITOR_HTML_PATH",
         "Path(__file__).parent.parent / 'moon_monitor.html'",
-        "Path.cwd() / 'moon_monitor.html'",
         "Path.home() / 'Desktop' / 'moon_monitor.html'",
         "SYNC_DIR / 'moon_monitor.html'",
         "SYNC_DIR / 'monitor.html'",
@@ -283,14 +284,16 @@ class MonitorRedactionTests(unittest.TestCase):
     def _isolate(self) -> Path:
         """Point every /monitor candidate at a scratch tree, and return it.
 
-        Five levers cover all six candidates without editing the server:
+        Four levers cover all five candidates without editing the server:
         ``MONITOR_HTML_PATH`` (1), the module's own ``__file__`` (2, which
-        resolves to the same repo-root file as 1), the process CWD (3),
-        ``Path.home()`` (4) and ``_http.SYNC_DIR`` (5 and 6; RM-828 (c)
-        anchored it to the repo root, and the suite points it at a per-worker
-        tmp dir that other tests share, so it is redirected here rather than
-        following the CWD). With all five redirected, which state the handler
-        is in becomes a property of the test rather than of the machine.
+        resolves to the same repo-root file as 1), ``Path.home()`` (3) and
+        ``_http.SYNC_DIR`` (4 and 5; RM-828 (c) anchored it to the repo root,
+        and the suite points it at a per-worker tmp dir that other tests
+        share, so it is redirected here rather than following the CWD). With
+        all four redirected, which state the handler is in becomes a property
+        of the test rather than of the machine. The process CWD is moved into
+        the scratch tree too: no candidate reads it since RM-1022, so this
+        only keeps a CWD-relative regression from touching the checkout.
         """
         tmp = Path(tempfile.mkdtemp(prefix="rc_rm214_")).resolve()
         # LIFO: unpatch, then leave the dir, then delete it. Windows refuses to
@@ -364,8 +367,8 @@ class MonitorRedactionTests(unittest.TestCase):
         """State B - reached by the exact write that used to disarm the guard.
 
         ``do_PUT`` writes an authenticated ``moon_monitor.html`` into
-        ``Path.cwd()`` and into ``SYNC_DIR``, lighting up candidates 3, 5 and
-        (because ``_isolate`` points MONITOR_HTML_PATH at that same file) 1.
+        ``MONITOR_HTML_PATH`` and into ``SYNC_DIR``, lighting up candidates
+        1 and 4 (``_isolate`` points MONITOR_HTML_PATH at ``tmp``).
         Driving the real PUT rather than writing the file directly is the
         point: it proves the guard survives the mechanism that silenced it.
         """
