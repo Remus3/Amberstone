@@ -201,7 +201,7 @@ def _coerce_num(value, default=0.0) -> float:
     """
     try:
         f = float(value)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):  # s144 M1: float(long JSON int)
         return float(default)
     return f if math.isfinite(f) else float(default)
 
