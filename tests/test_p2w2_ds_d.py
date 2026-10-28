@@ -30,23 +30,25 @@ Each test asserts the OLD path leaked a non-finite value (RED) and the
 NEW path returns a JSON-finite number (GREEN). tmp_path is not needed -
 these are pure in-memory dataclass tests with no file writes.
 
-Symbols grep-confirmed against the live tree before use:
-  _effects_types.PeriodicProc                 (_effects_types.py:143)
-  _effects_types.PeriodicProc.resolve_damage  (_effects_types.py:204)
-  _effects_types.PeriodicProc.bonus_damage    (_effects_types.py:170)
-  _effects_types.ItemShield                   (_effects_types.py:217)
-  _effects_types.ItemShield.resolve_magnitude (_effects_types.py:279)
-  _effects_types.ItemHeal                     (_effects_types.py:311)
-  _effects_types.ItemHeal.resolve_magnitude   (_effects_types.py:396)
-  _effects_types.CallContext                  (_effects_types.py:30)
-  _effects_types.CallContext.target_max_hp    (_effects_types.py:80)
-  _effects_types.CallContext.base_ad          (_effects_types.py:74)
-  _effects_types.MAGICAL / PHYSICAL / ANY     (_effects_types.py:16,17,26)
-  effects.collect_effects                     (effects.py:55)
-  effects.total_crit_chance_bonus             (effects.py:110)
-  _effects_data.ITEM_EFFECTS                  (_effects_data.py:26)
-  _effects_data ITEM_EFFECTS["3153"] (BotRK, 0.09*target_max_hp lambda)
-                                              (_effects_data.py:532)
+Symbols grep-confirmed against the live tree before use (cited by symbol,
+not line; tests/test_p2w2_ds_d_symbol_cites_s144d33.py pins them):
+  _effects_types.PeriodicProc
+  _effects_types.PeriodicProc.resolve_damage
+  _effects_types.PeriodicProc.bonus_damage
+  _effects_types.ItemShield
+  _effects_types.ItemShield.resolve_magnitude
+  _effects_types.ItemHeal
+  _effects_types.ItemHeal.resolve_magnitude
+  _effects_types.CallContext
+  _effects_types.CallContext.target_max_hp
+  _effects_types.CallContext.base_ad
+  _effects_types.MAGICAL / PHYSICAL / ANY
+  effects.collect_effects
+  effects.total_crit_chance_bonus
+  effects.total_bonus_ap_from_hp
+  _effects_data.ITEM_EFFECTS
+  _effects_data.ITEM_EFFECTS["3153"] (BotRK Mist's Edge; its lambda opens
+      ``0.09 * c.target_max_hp``)
 """
 
 from __future__ import annotations
