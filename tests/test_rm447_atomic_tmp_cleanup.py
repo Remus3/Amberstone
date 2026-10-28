@@ -157,7 +157,10 @@ def test_merge_refresh_builds_write_json_lf_cleans_up(tmp_path, fault):
     _assert_clean_failure(excinfo, fault, tmp_path, target, _ORIGINAL)
 
 
-def test_gen_state_schema_main_cleans_up(tmp_path, monkeypatch, fault):
+def test_gen_state_schema_main_cleans_up(tmp_path, monkeypatch, polled_fault):
+    # RM-258: main() writes through core.polled_json, so its rename arm is
+    # polled_json's (the pair hz_mismatch_diagnose takes below).
+    fault = polled_fault
     out = tmp_path / "state_schema.js"
     out.write_bytes(_ORIGINAL)
     monkeypatch.setattr(gss, "ROOT", tmp_path)
@@ -195,12 +198,12 @@ def polled_replace_fails(tmp_path, monkeypatch):
 
 
 @pytest.fixture(params=["write", "polled_replace"])
-def hz_fault(request):
+def polled_fault(request):
     return request.getfixturevalue(f"{request.param}_fails")
 
 
-def test_hz_mismatch_write_markdown_cleans_up(tmp_path, monkeypatch, hz_fault):
-    fault = hz_fault
+def test_hz_mismatch_write_markdown_cleans_up(tmp_path, monkeypatch, polled_fault):
+    fault = polled_fault
     target = tmp_path / "report.md"
     target.write_bytes(_ORIGINAL)
     monkeypatch.setattr(hmd, "render_markdown", lambda report: "# report\n\nbody\n")

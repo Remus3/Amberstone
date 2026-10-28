@@ -45,6 +45,7 @@ from core.coaching_payload import (  # noqa: E402
     SrPayload,
     TftPayload,
 )
+from core.polled_json import atomic_write_bytes  # noqa: E402
 
 OUTPUT = ROOT / "web" / "js" / "lib" / "state_schema.js"
 
@@ -170,18 +171,10 @@ def main() -> int:
         return 1
 
     # Atomic LF bytes, not write_text: on Windows write_text turns LF into
-    # CRLF and state_schema.js is TRACKED (RM-441).
-    # RM-447: full-name temp in the same dir; remove it if write/rename raises.
-    tmp = OUTPUT.with_name(OUTPUT.name + ".tmp")
-    try:
-        tmp.write_bytes(content.encode("utf-8"))
-        tmp.replace(OUTPUT)
-    except BaseException:
-        try:
-            tmp.unlink(missing_ok=True)
-        except OSError:
-            pass  # best-effort; never mask the original error
-        raise
+    # CRLF and state_schema.js is TRACKED (RM-441). RM-258: the shared writer
+    # (per-writer scratch in the same dir, fsync, WinError 5 retry, scratch
+    # removed if the write or rename raises - the RM-447 contract).
+    atomic_write_bytes(OUTPUT, content.encode("utf-8"))
     print(f"Wrote {OUTPUT.relative_to(ROOT)}")
     return 0
 
