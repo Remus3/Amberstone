@@ -112,7 +112,7 @@ def _git_ignored() -> tuple[frozenset[str], frozenset[str]]:
     ignored dir to one "dir/" entry, and a file-pattern ignore outside such a
     dir comes back as a bare file entry. Outside a git work tree, or if git is
     missing, both sets are empty and the walk falls back to the name lists.
-    Same shape as tools/gen_archmap.py `_git_ignored_dirs` (RM-985).
+    Same shape as tools/gen_archmap.py `_git_ignored` (RM-985, RM-989).
     """
     try:
         proc = subprocess.run(
