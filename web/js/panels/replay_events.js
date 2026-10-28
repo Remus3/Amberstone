@@ -357,6 +357,8 @@ export function wireReplayEventsOnce() {
   if (list) {
     list.addEventListener("click", (e) => _seekFromRow(e.target));
     list.addEventListener("keydown", (e) => {
+      // RM-1062: modifier+key belongs to the recording player.
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
         _seekFromRow(e.target);

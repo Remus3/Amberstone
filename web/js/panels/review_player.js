@@ -59,10 +59,14 @@ function _hide() {
   }
 }
 
+// Rendered, not attribute, visibility: #view-replay keeps its `hidden`
+// attribute while body[data-view="replay"] CSS displays it, so a
+// `view.hidden` test was always true and every player hotkey was dead
+// (RM-1062). A box with no client rects is not displayed (self or an
+// ancestor is display: none, e.g. another view or the overlay shell).
 function _visible() {
   const sec = _el("replay-video-section");
-  const view = _el("view-replay");
-  return !!(sec && !sec.hidden && view && !view.hidden);
+  return !!(sec && !sec.hidden && sec.getClientRects().length > 0);
 }
 
 function _describe(el) {
@@ -72,6 +76,8 @@ function _describe(el) {
     type: el.getAttribute ? el.getAttribute("type") : null,
     editable: !!el.isContentEditable,
     marker: !!(el.classList && el.classList.contains("replay-video-marker")),
+    role: el.getAttribute ? el.getAttribute("role") : null,
+    href: !!(el.hasAttribute && el.hasAttribute("href")),
   };
 }
 
@@ -162,7 +168,7 @@ function _onKeydown(ev) {
   if (target && target.tag === "VIDEO") return;  // native controls own it
   const action = hotkeyAction({
     key: ev.key, ctrlKey: ev.ctrlKey, altKey: ev.altKey, metaKey: ev.metaKey,
-    shiftKey: ev.shiftKey, target,
+    shiftKey: ev.shiftKey, target, defaultPrevented: ev.defaultPrevented,
   });
   if (!action) return;
   const v = _el("replay-video");

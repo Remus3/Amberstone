@@ -11,7 +11,7 @@ import assert from "node:assert";
 import {
   CLUSTER_RADIUS_PX, OPEN_LEAD_S, ICON_PRIORITY,
   markerX, clusterMarkers, pickIcon, markersFromSidecar, openTimeS,
-  videoTimeFor, isTypingTarget, hotkeyAction, seekTarget, costMoments,
+  videoTimeFor, isTypingTarget, isSpaceActivated, hotkeyAction, seekTarget, costMoments,
 } from "./review_player_model.js";
 
 // ---- clustering ------------------------------------------------------------
@@ -175,6 +175,39 @@ test("modifier+Space plays from inside a field", () => {
 test("browser shortcuts are never hijacked", () => {
   assert.strictEqual(hotkeyAction(k("d", BODY, { ctrlKey: true })), null);
   assert.strictEqual(hotkeyAction(k("]", BODY, { metaKey: true })), null);
+});
+
+test("a key a closer handler consumed is never a player hotkey (RM-1062)", () => {
+  const taken = { defaultPrevented: true };
+  for (const key of [" ", "]", "[", "d", "D", "Escape"]) {
+    assert.strictEqual(hotkeyAction(k(key, BODY, taken)), null, `key ${JSON.stringify(key)}`);
+  }
+  assert.strictEqual(hotkeyAction(k(" ", BODY, { ...taken, ctrlKey: true })), null);
+  assert.deepStrictEqual(hotkeyAction(k(" ", BODY, { defaultPrevented: false })),
+                         { type: "toggle-play" });
+});
+
+test("plain Space stays with the control it activates; modifier+Space still plays", () => {
+  const controls = [
+    { tag: "INPUT", type: "checkbox" }, { tag: "INPUT", type: "radio" },
+    { tag: "BUTTON" }, { tag: "SUMMARY" }, { tag: "A", href: true },
+    { tag: "LI", role: "button" }, { tag: "DIV", role: "switch" },
+    { tag: "SPAN", role: "button link" },
+  ];
+  for (const t of controls) {
+    assert.strictEqual(isSpaceActivated(t), true, JSON.stringify(t));
+    assert.strictEqual(hotkeyAction(k(" ", t)), null, JSON.stringify(t));
+    assert.deepStrictEqual(hotkeyAction(k(" ", t, { ctrlKey: true })),
+                           { type: "toggle-play" }, JSON.stringify(t));
+  }
+  for (const t of [BODY, MARKER, { tag: "A" }, { tag: "INPUT", type: "range" },
+                   { tag: "DIV" }, null]) {
+    assert.strictEqual(isSpaceActivated(t), false, JSON.stringify(t));
+  }
+  assert.deepStrictEqual(hotkeyAction(k(" ", MARKER)), { type: "toggle-play" });
+  // Navigation keys never activate a control, so they stay ours on one.
+  assert.deepStrictEqual(hotkeyAction(k("]", { tag: "INPUT", type: "checkbox" })),
+                         { type: "next-marker" });
 });
 
 test("Escape hands focus back, from a field or from a marker", () => {

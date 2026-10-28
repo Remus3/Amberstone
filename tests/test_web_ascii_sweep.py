@@ -1192,7 +1192,24 @@ _WEB = _REPO_ROOT / "web"
 # 89c8be0e... value EXACTLY; no single file alone does. Those paths are the
 # whole change. No glyph change: the added lines carry 0 non-ASCII bytes.
 # If another slice re-captures in parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "2ad292b4e2acffc3cac72a43b9f84912c792288de038c3b52b702da47c45a0f6"
+# superseded by the RM-1062 re-capture below: "2ad292b4e2acffc3cac72a43b9f84912c792288de038c3b52b702da47c45a0f6"
+#
+# RE-CAPTURED 2026-10-28 at RM-1062 (s144 uiux cycle 30, provisional
+# until the merger lands it and maps the id). One change rides it: the
+# Replay recording player reads rendered visibility in
+# web/js/panels/review_player.js (its hotkeys were dead) and stands down on
+# a key a closer handler consumed and on a plain Space a focused control
+# activates (web/js/panels/review_player_model.js);
+# the Replay match and timeline rows leave modifier+key to the player
+# (web/js/panels/dev.js, web/js/panels/replay_events.js) and the loaded
+# match row carries aria-current (dev.js). Ordinary case, no tokeniser
+# change. ATTRIBUTED BY SUBSTITUTION: swapping exactly those four files
+# back to their lane-tip 49192018e blobs (in memory) reproduces the
+# superseded 2ad292b4... value EXACTLY; no single file alone does. Those
+# paths are the whole change. No glyph change: the added lines carry 0
+# non-ASCII bytes. If another slice re-captures in parallel, the merger
+# recomputes.
+_LIVE_HALF_DIGEST = "d4f71f55849a155c549d740953b857eb68d610a3cea6a73139ba078cde249095"
 
 
 def _web_sources() -> list[Path]:

@@ -129,10 +129,31 @@ export function isTypingTarget(target) {
   return false;
 }
 
-// ev: {key, ctrlKey, altKey, metaKey, shiftKey, target}. Returns an action
-// or null (null = not ours, let the browser have it).
+// Controls a plain Space ACTIVATES (click / toggle). Once the hotkeys went
+// live (RM-1062) a plain Space here must stay the control's, or a keyboard
+// user can no longer tick the Replay filters or press a header button while
+// a recording shows. Marker buttons are the one exception (Space plays).
+const _SPACE_INPUTS = new Set(["checkbox", "radio", "button", "submit",
+  "reset", "color", "file", "image"]);
+const _SPACE_ROLES = new Set(["button", "checkbox", "switch", "radio",
+  "link", "menuitem", "menuitemcheckbox", "menuitemradio", "tab", "option"]);
+
+export function isSpaceActivated(target) {
+  if (!target || target.marker === true) return false;
+  const tag = String(target.tag || "").toUpperCase();
+  if (tag === "BUTTON" || tag === "SUMMARY") return true;
+  if (tag === "A" && target.href === true) return true;
+  if (tag === "INPUT" && _SPACE_INPUTS.has(String(target.type || "").toLowerCase())) return true;
+  // A role list falls back left to right; the first token is the one we read.
+  return _SPACE_ROLES.has(String(target.role || "").trim().toLowerCase().split(/\s+/)[0]);
+}
+
+// ev: {key, ctrlKey, altKey, metaKey, shiftKey, target, defaultPrevented}.
+// Returns an action or null (null = not ours, let the browser have it).
+// A key a closer handler already consumed (defaultPrevented, e.g. Space on a
+// Replay row that seeks or loads) is never ours too (RM-1062).
 export function hotkeyAction(ev) {
-  if (!ev) return null;
+  if (!ev || ev.defaultPrevented) return null;
   const key = ev.key;
   const mod = !!(ev.ctrlKey || ev.altKey || ev.metaKey);
   if (key === "Escape") return { type: "release-focus" };
@@ -142,7 +163,7 @@ export function hotkeyAction(ev) {
   if (isTypingTarget(ev.target)) return null;
   // Space toggles play and never seeks, even when a marker button has focus
   // (the render layer preventDefaults so the button does not activate).
-  if (isSpace) return { type: "toggle-play" };
+  if (isSpace) return isSpaceActivated(ev.target) ? null : { type: "toggle-play" };
   if (key === "]") return { type: "next-marker" };
   if (key === "[") return { type: "prev-marker" };
   if (key === "d") return { type: "next-death" };

@@ -309,10 +309,13 @@ function _replayViewRefresh() {
         li.append(top, bot);
         // RM-1018: picking a match gates the whole view, so the row is a
         // keyboard button too (Tab stop, Enter / Space load it like a click).
+        // RM-1062: Ctrl / Alt / Meta + key is left to the recording
+        // player (modifier+Space plays from anywhere).
         li.tabIndex = 0;
         li.setAttribute("role", "button");
         li.addEventListener("click", () => _replayLoadMatch(m.match_id, li));
         li.addEventListener("keydown", (e) => {
+          if (e.ctrlKey || e.altKey || e.metaKey) return;
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
             _replayLoadMatch(m.match_id, li);
@@ -332,8 +335,12 @@ function _replayViewRefresh() {
   _replayLoadItemsIndex();
 }
 function _replayLoadMatch(matchId, rowEl) {
-  document.querySelectorAll(".replay-match-row.active").forEach(r => r.classList.remove("active"));
-  if (rowEl) rowEl.classList.add("active");
+  // RM-1062: aria-current names the loaded match for a screen reader.
+  document.querySelectorAll(".replay-match-row.active").forEach(r => {
+    r.classList.remove("active");
+    r.removeAttribute("aria-current");
+  });
+  if (rowEl) { rowEl.classList.add("active"); rowEl.setAttribute("aria-current", "true"); }
   const meta = document.getElementById("replay-meta");
   if (meta) meta.textContent = "loading " + matchId + "...";
   // s220 PGR S5: fire the Match-V5 timeline event ribbon fetch in
