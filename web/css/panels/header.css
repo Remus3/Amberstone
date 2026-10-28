@@ -502,6 +502,26 @@ footer .prefs-chip:hover { color: var(--text); }
 /* RM-1011: the UA `font` on a button resets line-height to `normal`,
  * so a head button's text line would keep the face-dependent box. */
 .view-section-head button { line-height: inherit; }
+/* RM-1073: the same fixed line-height for every view BODY (RM-1011
+ * fixed the heads, RM-1072 the Replay body alone). Measured in
+ * headless Chromium, Google Fonts blocked against the real Lato load:
+ * the body text of all 10 other views computed `normal`, so the
+ * first-paint fallback face laid the bodies out taller than Lato and
+ * they shrank on the swap - content moved up to 23px (Lobby), 39px
+ * (Session) and 35px (Settings) at 1920x920, 48px (Build Insights) at
+ * 923x1280. 1.2 is Lato's own normal value, so the settled layout keeps
+ * its boxes (body heights move 3px at most). Body form controls inherit
+ * it for the head-button reason above, at zero specificity (:where) so
+ * any control rule that sets its own line-height still wins. No
+ * <select>: Chromium computes `normal`
+ * for a drop-down select whatever the author rule (measured, even an
+ * inline style), and the body selects hold a fixed height (44 / 45px)
+ * in every face.
+ * Guard: tests/snapshot_panels/test_view_body_font_swap.py. */
+.view-section-body { line-height: 1.2; }
+:where(.view-section-body :is(button, input, textarea)) {
+  line-height: inherit;
+}
 /* s162 v5: panel title sits at the top of each panel, centered.
  * Same scale as My Top 8 / Recently Played title (15px white). */
 .lv-panel-title {

@@ -1314,7 +1314,19 @@ _WEB = _REPO_ROOT / "web"
 # superseded 780a2c7e... value EXACTLY. That path is the whole change. No
 # glyph change: the added lines carry 0 non-ASCII bytes. If another slice
 # re-captures in parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "2801677fdd16f0c5b7c5bb0af1b871930171b0bd73087ac6ea3c53f91c0348ac"
+# superseded by the RM-1073 re-capture below: "2801677fdd16f0c5b7c5bb0af1b871930171b0bd73087ac6ea3c53f91c0348ac"
+#
+# RE-CAPTURED 2026-10-28 at RM-1073 (s144 uiux cycle 41, provisional
+# until the merger lands it and maps the id). One change rides it: every
+# view body (.view-section-body in web/css/panels/header.css) takes a fixed
+# line-height: 1.2 and its button / input / textarea controls inherit it,
+# so the body text keeps its boxes when Lato swaps in. Ordinary case, no
+# tokeniser change. ATTRIBUTED BY SUBSTITUTION: swapping that one file back
+# to its lane-tip bf4414c73 blob reproduces the superseded 2801677f...
+# value EXACTLY. That path is the whole change. No glyph change: the added
+# lines carry 0 non-ASCII bytes. If another slice re-captures in parallel,
+# the merger recomputes.
+_LIVE_HALF_DIGEST = "718bec48ed072db16f285e9ce6ace20a2230e96ef1ba8eed87678e491e8a60c6"
 
 
 def _web_sources() -> list[Path]:
