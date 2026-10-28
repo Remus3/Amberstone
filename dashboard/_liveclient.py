@@ -17,7 +17,10 @@ shape used by the dashboard:
 
 Both treat any HTTP failure or stale (>5 s) snapshot as "not in a
 game / not in champ select" and return `{}` so callers can `if lc:`
-cheaply.
+cheaply. `lcu_summary` also treats a non-finite or >5 s future stamp
+and a non-dict `data` as `{}` (s144 true-audit). Every leaf of the
+`liveclient_summary` dict is JSON-strict (no NaN / inf); the clock,
+level, scoreboard counts, ids and event times are bounded.
 
 The vision server requires the `X-RC-Token` header (auth handled
 inside the same Legion process). Token is sourced via
@@ -121,6 +124,84 @@ def _dicts(v, field: str | None = None) -> list:
     return [x for x in _as_list(v, field) if isinstance(x, dict)]
 
 
+# s144 true-audit: plausibility bounds for the foreign :2999 frame. A value
+# outside them is junk, not data: a 1e308 gameTime rendered a 30-digit clock, a
+# 1e300 level a 301-digit int. Real games sit far inside every bound.
+_MAX_GAME_S = 10 ** 6
+_MAX_LEVEL = 100
+_MAX_COUNT = 10 ** 6
+_GAME_ID_LIMIT = 2 ** 63
+_ITEM_ID_LIMIT = 10 ** 7
+_ID_MAX_DIGITS = 20
+
+
+def _str_or(v, default):
+    """``v`` when it is a str, else ``default`` (the value a MISSING key gave)."""
+    return v if isinstance(v, str) else default
+
+
+def _count(v) -> int:
+    """A scoreboard count: ``_as_int`` held to 0.._MAX_COUNT; beyond it, 0."""
+    n = _as_int(v)
+    return n if n <= _MAX_COUNT else 0
+
+
+def _event_time(t) -> float | None:
+    """EventTime as a float in [0, _MAX_GAME_S], else None (skip the event).
+
+    Only a real int / float (never a bool) is a time. NaN / inf used to reach
+    /api/state as a bare ``NaN`` token (``json.dumps`` default), which the
+    browser's ``JSON.parse`` rejects, and a long int raised OverflowError in
+    ``float()`` and dropped every event of its kind."""
+    if isinstance(t, bool) or not isinstance(t, (int, float)):
+        return None
+    if isinstance(t, int):
+        return float(t) if 0 <= t <= _MAX_GAME_S else None
+    return t if 0.0 <= t <= _MAX_GAME_S else None
+
+
+def _positive_id(raw, limit: int) -> int | None:
+    """A positive id below ``limit``, else None.
+
+    Same vocabulary as game_reader/poller.py ``_positive_id``: an int (never a
+    bool) or a string of ASCII digits with optional surrounding whitespace.
+    Floats, containers, signs, exponents and non-ASCII digits are refused
+    (``str(it.get("itemID"))`` used to turn None / True / 3031.0 / -7 into the
+    ids "None" / "True" / "3031.0" / "-7")."""
+    if isinstance(raw, bool):
+        return None
+    if isinstance(raw, int):
+        value = raw
+    elif isinstance(raw, str):
+        text = raw.strip()
+        if not (text.isascii() and text.isdigit()
+                and len(text) <= _ID_MAX_DIGITS):
+            return None
+        value = int(text)
+    else:
+        return None
+    return value if 0 < value < limit else None
+
+
+def _item_id(raw) -> str:
+    """Canonical item id string, or "" for a junk / missing itemID."""
+    value = _positive_id(raw, _ITEM_ID_LIMIT)
+    return str(value) if value is not None else ""
+
+
+def _slot(v) -> int | None:
+    """An inventory slot index (int 0..99, never a bool), else None."""
+    if isinstance(v, bool) or not isinstance(v, int):
+        return None
+    return v if 0 <= v < 100 else None
+
+
+def _item_ids(items) -> list:
+    """The canonical ids of an ``items`` list, junk entries dropped."""
+    return [iid for iid in (_item_id(it.get("itemID"))
+                            for it in _dicts(items, "items")) if iid]
+
+
 def _lean_roster(all_players) -> list:
     """Project the raw Live Client ``allPlayers`` list down to the lean per-player
     shape the in-game BUILD panel counter-hint consumers read
@@ -135,16 +216,19 @@ def _lean_roster(all_players) -> list:
         if not isinstance(p, dict):
             continue
         sc = _as_dict(p.get("scores"))
+        # s144 true-audit: a junk itemID is None and a non-str identity field
+        # is "" (the missing default), never a raw container for the JS side.
         items = [
-            {"itemID": it.get("itemID"), "slot": it.get("slot")}
+            {"itemID": _positive_id(it.get("itemID"), _ITEM_ID_LIMIT),
+             "slot": _slot(it.get("slot"))}
             for it in _dicts(p.get("items"), "items")
         ]
         out.append({
-            "summonerName":    p.get("summonerName", ""),
-            "riotIdGameName":  p.get("riotIdGameName", ""),
-            "championName":    p.get("championName", ""),
-            "rawChampionName": p.get("rawChampionName", ""),
-            "team":            p.get("team", ""),
+            "summonerName":    _str_or(p.get("summonerName"), ""),
+            "riotIdGameName":  _str_or(p.get("riotIdGameName"), ""),
+            "championName":    _str_or(p.get("championName"), ""),
+            "rawChampionName": _str_or(p.get("rawChampionName"), ""),
+            "team":            _str_or(p.get("team"), ""),
             "level":           _as_int(p.get("level")),
             "items":           items,
             "scores": {
@@ -166,11 +250,20 @@ def lcu_summary() -> dict:
         )
         with urllib.request.urlopen(req, timeout=1) as r:
             wrap = json.loads(r.read())
-        if "error" in wrap:
+        if not isinstance(wrap, dict) or "error" in wrap:
             return {}
-        if (time.time() - wrap.get("ts", 0)) > 5:
+        # s144 true-audit: the age must be a finite number within 5 s either
+        # way. NaN / inf compared False against "> 5" and a stamp pushed
+        # before a backward clock step sat in the future, so each read as
+        # FRESH FOREVER after the agent stopped pushing. A non-number ts
+        # raises here and lands in the except below.
+        age = time.time() - wrap.get("ts", 0)
+        if not -5 <= age <= 5:
             return {}
-        return wrap.get("data", {}) or {}
+        data = wrap.get("data")
+        # Callers read the result with ``.get``: a list / str ``data`` used
+        # to be handed straight back against the dict contract.
+        return data if isinstance(data, dict) else {}
     except Exception:  # noqa: BLE001
         return {}
 
@@ -208,12 +301,18 @@ def liveclient_summary() -> dict:
         # "nan" / inf leaf degrades THAT field to 0 instead of blanking the
         # whole summary via the outer except.
         gt = _int_or_zero(gd.get("gameTime", 0))
+        # s144 true-audit: a clock outside 0.._MAX_GAME_S is junk and reads
+        # as the missing default 0 ("-1:55" / a 30-digit clock before).
+        if not 0 <= gt <= _MAX_GAME_S:
+            gt = 0
         out["game_time_s"] = gt
         mm, ss = divmod(gt, 60)
         out["game_time"] = f"{mm}:{ss:02d}"
         # RM-461: level degrades to None, its MISSING default (stats_panel.js
-        # renders a null level as "-"), never a fabricated 0.
-        out["level"] = _int_or_none(ap.get("level"))
+        # renders a null level as "-"), never a fabricated 0. s144: so does
+        # a level outside 1.._MAX_LEVEL.
+        lvl = _int_or_none(ap.get("level"))
+        out["level"] = lvl if lvl is not None and 1 <= lvl <= _MAX_LEVEL else None
         # RM-603: Q/W/E/R ranks for the skill-point tracker (descriptive
         # state). None unless all four read, so a partial frame is "no
         # reading" rather than fabricated zeros.
@@ -241,7 +340,7 @@ def liveclient_summary() -> dict:
             "magic_resist":  _int_or_zero(cs.get("magicResist", 0)),
             "attack_damage": _int_or_zero(cs.get("attackDamage", 0)),
             "ability_power": _int_or_zero(cs.get("abilityPower", 0)),
-            "resource_type": cs.get("resourceType", ""),
+            "resource_type": _str_or(cs.get("resourceType"), ""),
         }
         owned_items: list = []
         enemy_team: list = []
@@ -250,14 +349,21 @@ def liveclient_summary() -> dict:
         ally_item_ids: list = []
         if me_pl:
             s = _as_dict(me_pl.get("scores"))
-            out["kda"] = f'{s.get("kills",0)}/{s.get("deaths",0)}/{s.get("assists",0)}'
+            # s144 true-audit: each score through _count, never interpolated
+            # raw ("None/{'a': 1}/1e+308" before).
+            out["kda"] = (f'{_count(s.get("kills"))}/{_count(s.get("deaths"))}'
+                          f'/{_count(s.get("assists"))}')
             # RM-461: a missing OR unreadable creep score is None, not 0. The
             # adaptation latch skips a None cs frame but latches a 0 as
             # cs_at_10 / csd_at_15 for the rest of the game; stats_panel.js
             # renders a null cs as "-". Same seam as players[].creep_score.
             out["cs"]  = _int_or_none(s.get("creepScore"))
-            out["champion"] = me_pl.get("championName")
-            owned_items = [it.get("displayName", "") for it in _dicts(me_pl.get("items"), "items")]
+            # s144 true-audit: a non-str champion is None (its missing value)
+            # and a non-str displayName "" - a list champion or a None name
+            # used to raise in the build view below and lose sr_items.
+            out["champion"] = _str_or(me_pl.get("championName"), None)
+            owned_items = [_str_or(it.get("displayName"), "")
+                           for it in _dicts(me_pl.get("items"), "items")]
             # s184 - item-id list so server-side consumers (archetype_mismatch
             # nudge, DS relscore / knobs build context) don't need a name -> id
             # resolver for the operator's own inventory.
@@ -275,29 +381,28 @@ def liveclient_summary() -> dict:
             # the next-buy TRINKET nudge and the ward cue both require the
             # trinket to still be present in the name list.
             from core.daemon_slayer_resolver import NON_INVENTORY_IDS
-            owned_item_ids = [
-                iid for iid in
-                (str(it.get("itemID", "")) for it in _dicts(me_pl.get("items"), "items"))
-                if iid and iid not in NON_INVENTORY_IDS
-            ]
+            # s144 true-audit: ids are canonical (``_item_id``); a junk or
+            # missing itemID is dropped here and in the per-team pools.
+            owned_item_ids = [iid for iid in _item_ids(me_pl.get("items"))
+                              if iid not in NON_INVENTORY_IDS]
             my_team = me_pl.get("team")
-            enemy_team = [p.get("championName", "") for p in all_players
+            enemy_team = [_str_or(p.get("championName"), "") for p in all_players
                           if p.get("team") and p.get("team") != my_team]
             # Symmetric ally roster (full same-team champion list, incl the
             # operator). Consumed by routes_peel_priority (item 304 Phase D),
             # which drops self for its teammate-only peel verdict.
-            ally_team = [p.get("championName", "") for p in all_players
+            ally_team = [_str_or(p.get("championName"), "") for p in all_players
                          if p.get("team") and p.get("team") == my_team]
             # Per-team item-id pools for the deterministic heal-threat nudge
             # (core.heal_threat). allPlayers[].items is PUBLIC scoreboard data
             # for ALL 10 players (unlike gold, which is activePlayer-only), so
             # scanning enemy sustain + ally anti-heal is a hard live fact.
-            enemy_item_ids = [str(it.get("itemID", "")) for p in all_players
+            enemy_item_ids = [iid for p in all_players
                               if p.get("team") and p.get("team") != my_team
-                              for it in _dicts(p.get("items"), "items")]
-            ally_item_ids = [str(it.get("itemID", "")) for p in all_players
+                              for iid in _item_ids(p.get("items"))]
+            ally_item_ids = [iid for p in all_players
                              if p.get("team") and p.get("team") == my_team
-                             for it in _dicts(p.get("items"), "items")]
+                             for iid in _item_ids(p.get("items"))]
             # Riot compliance 2026-08-11: the per-enemy summoner-spell producer
             # (slice 4, 2026-06-28) was REMOVED here along with its overlay
             # tap-tracker. Riot's third-party rules ban tracking enemy summoner
@@ -311,8 +416,8 @@ def liveclient_summary() -> dict:
             # match. Emitted as a flat list so the latch stays HTTP-agnostic.
             out["players"] = [
                 {
-                    "position":    p.get("position") or "",
-                    "team":        p.get("team") or "",
+                    "position":    _str_or(p.get("position"), ""),
+                    "team":        _str_or(p.get("team"), ""),
                     # RM-461: None (not RM-456's 0) for a missing or
                     # unreadable creep score, so _find_opponent_cs returns
                     # None and csd_at_15 waits instead of latching a diff
@@ -334,21 +439,23 @@ def liveclient_summary() -> dict:
             # missing key already produced) instead of dropping the whole
             # percentage; the try stays as a last-resort guard.
             try:
+                # s144 true-audit: _count, so a negative score can no longer
+                # shrink the denominator or the numerator ("200%" before).
                 team_kills = sum(
-                    _int_or_zero(_as_dict(p.get("scores")).get("kills", 0))
+                    _count(_as_dict(p.get("scores")).get("kills", 0))
                     for p in all_players
                     if p.get("team") and p.get("team") == my_team
                 )
                 if team_kills > 0:
-                    involved = (_int_or_zero(s.get("kills", 0))
-                                + _int_or_zero(s.get("assists", 0)))
+                    involved = (_count(s.get("kills", 0))
+                                + _count(s.get("assists", 0)))
                     pct = round(100 * involved / team_kills)
                     out["kill_participation_pct"] = f"{pct}%"
             except Exception:  # noqa: BLE001
                 pass
         else:
             owned_item_ids = []
-        out["game_mode"] = gd.get("gameMode")
+        out["game_mode"] = _str_or(gd.get("gameMode"), None)
         out["owned_items"] = owned_items
         out["owned_item_ids"] = owned_item_ids
         # QA1 overlay ward-ready cue: trinket off-cooldown (items[].canUse) +
@@ -373,8 +480,8 @@ def liveclient_summary() -> dict:
         # live-absent behavior).
         out["allPlayers"] = _lean_roster(all_players)
         out["activePlayer"] = {
-            "summonerName":   ap.get("summonerName", ""),
-            "riotIdGameName": ap.get("riotIdGameName", ""),
+            "summonerName":   _str_or(ap.get("summonerName"), ""),
+            "riotIdGameName": _str_or(ap.get("riotIdGameName"), ""),
         }
         # Inhibitor-down events for the respawn-timing callout. Live Client
         # emits InhibKilled with EventTime (s) + the structure name; we surface
@@ -390,10 +497,13 @@ def liveclient_summary() -> dict:
             for ev in _as_list(_as_dict(d.get("events")).get("Events"), "Events"):
                 if not isinstance(ev, dict) or ev.get("EventName") != "InhibKilled":
                     continue
-                t = ev.get("EventTime")
-                if isinstance(t, (int, float)) and not isinstance(t, bool):
-                    inhib_events.append({"down_at_s": float(t),
-                                         "name": ev.get("InhibKilled")})
+                # s144 true-audit: _event_time skips THIS event on a NaN /
+                # inf / long-int / out-of-range time (a long int used to
+                # raise and empty the whole list; NaN reached /api/state).
+                t = _event_time(ev.get("EventTime"))
+                if t is not None:
+                    inhib_events.append({"down_at_s": t,
+                                         "name": _str_or(ev.get("InhibKilled"), None)})
         except Exception:  # noqa: BLE001
             inhib_events = []
         out["inhib_events"] = inhib_events
@@ -409,9 +519,9 @@ def liveclient_summary() -> dict:
             for ev in _as_list(_as_dict(d.get("events")).get("Events"), "Events"):
                 if not isinstance(ev, dict) or ev.get("EventName") != "MinionsSpawning":
                     continue
-                t = ev.get("EventTime")
-                if isinstance(t, (int, float)) and not isinstance(t, bool):
-                    minion_events.append({"at_s": float(t)})
+                t = _event_time(ev.get("EventTime"))
+                if t is not None:
+                    minion_events.append({"at_s": t})
         except Exception:  # noqa: BLE001
             minion_events = []
         out["minion_events"] = minion_events
@@ -424,10 +534,10 @@ def liveclient_summary() -> dict:
             for ev in _as_list(_as_dict(d.get("events")).get("Events"), "Events"):
                 if not isinstance(ev, dict) or ev.get("EventName") != "TurretKilled":
                     continue
-                t = ev.get("EventTime")
-                if isinstance(t, (int, float)) and not isinstance(t, bool):
-                    turret_events.append({"down_at_s": float(t),
-                                          "name": ev.get("TurretKilled")})
+                t = _event_time(ev.get("EventTime"))
+                if t is not None:
+                    turret_events.append({"down_at_s": t,
+                                          "name": _str_or(ev.get("TurretKilled"), None)})
         except Exception:  # noqa: BLE001
             turret_events = []
         out["turret_events"] = turret_events
@@ -447,6 +557,11 @@ def liveclient_summary() -> dict:
             # it sat unmodelled, so grub takes never reached a callout.
             # RM-604: the name map is shared with core/live_event_deriver.py.
             _obj_names = OBJECTIVE_EVENT_NAMES
+            # s144 true-audit: the rosters are str-only (enemy_team /
+            # ally_team above) and only a str KillerName is looked up, so an
+            # unhashable name can no longer raise here; and each event is
+            # parsed in its OWN try, so one entry that still fails is skipped
+            # instead of nulling every take of the game to "no event data".
             enemy_set = {c for c in enemy_team if c}
             ally_set = {c for c in ally_team if c}
             _raw_events = _as_dict(d.get("events")).get("Events")
@@ -458,33 +573,41 @@ def liveclient_summary() -> dict:
             for ev in _ev_list:
                 if not isinstance(ev, dict):
                     continue
-                obj = _obj_names.get(ev.get("EventName"))
+                name = ev.get("EventName")
+                obj = _obj_names.get(name) if isinstance(name, str) else None
                 if obj is None:
                     continue
-                t = ev.get("EventTime")
-                if not isinstance(t, (int, float)) or isinstance(t, bool):
+                t = _event_time(ev.get("EventTime"))
+                if t is None:
                     continue
-                killer = ev.get("KillerName")
-                if killer in enemy_set:
-                    killer_team = "enemy"
-                elif killer in ally_set:
-                    killer_team = "ally"
-                else:
-                    killer_team = "unknown"
-                # RM-601: the wire sends Stolen as the STRING "True"/"False";
-                # as_bool reads both forms, and a missing key is not a steal.
-                entry = {"name": obj, "killer_team": killer_team,
-                         "down_at_s": float(t),
-                         "stolen": as_bool(ev.get("Stolen"), False)}
-                # Elder discriminator for the epic-buff countdown
-                # (core.event_callouts.epic_buff_callouts). DragonKill carries a
-                # DragonType ("Fire"/"Earth".../"Elder"); surface it as an
-                # additive key so name stays "dragon" and macro_response is
-                # unchanged. Only dragon events carry it.
-                if obj == "dragon":
-                    dt = ev.get("DragonType")
-                    if isinstance(dt, str) and dt:
-                        entry["dragon_type"] = dt
+                try:
+                    killer = ev.get("KillerName")
+                    if not isinstance(killer, str):
+                        killer_team = "unknown"
+                    elif killer in enemy_set:
+                        killer_team = "enemy"
+                    elif killer in ally_set:
+                        killer_team = "ally"
+                    else:
+                        killer_team = "unknown"
+                    # RM-601: the wire sends Stolen as the STRING
+                    # "True"/"False"; as_bool reads both forms, and a missing
+                    # key is not a steal.
+                    entry = {"name": obj, "killer_team": killer_team,
+                             "down_at_s": t,
+                             "stolen": as_bool(ev.get("Stolen"), False)}
+                    # Elder discriminator for the epic-buff countdown
+                    # (core.event_callouts.epic_buff_callouts). DragonKill
+                    # carries a DragonType ("Fire"/"Earth".../"Elder");
+                    # surface it as an additive key so name stays "dragon"
+                    # and macro_response is unchanged. Only dragon events
+                    # carry it.
+                    if obj == "dragon":
+                        dt = ev.get("DragonType")
+                        if isinstance(dt, str) and dt:
+                            entry["dragon_type"] = dt
+                except Exception:  # noqa: BLE001 - skip THIS event only
+                    continue
                 objective_events.append(entry)
         except Exception:  # noqa: BLE001
             objective_events = None
@@ -507,13 +630,13 @@ def liveclient_summary() -> dict:
             for ev in _as_list(_as_dict(d.get("events")).get("Events"), "Events"):
                 if not isinstance(ev, dict) or ev.get("EventName") != "MinionsSpawning":
                     continue
-                t = ev.get("EventTime")
-                if not isinstance(t, (int, float)) or isinstance(t, bool):
+                t = _event_time(ev.get("EventTime"))
+                if t is None:
                     continue
                 eid = ev.get("EventID")
                 if not isinstance(eid, int) or isinstance(eid, bool):
                     eid = None
-                minion_spawn_events.append({"spawn_at_s": float(t),
+                minion_spawn_events.append({"spawn_at_s": t,
                                             "event_id": eid})
         except Exception:  # noqa: BLE001
             minion_spawn_events = []
@@ -521,8 +644,13 @@ def liveclient_summary() -> dict:
         # s184 - surface liveclient's gameId for per-game dedup tokens
         # (archetype-nudge state). Live Client doesn't always expose this
         # at gameData root; fall back to "" so callers detect absence.
-        gid = gd.get("gameId") or gd.get("gameID") or ""
-        out["game_id"] = str(gid) if gid else ""
+        # s144 true-audit: a canonical positive decimal or "" (the poller's
+        # LCU game id rule) - True / 1.5 / -5 / a dict used to become the
+        # per-game dedup token.
+        gid = _positive_id(gd.get("gameId"), _GAME_ID_LIMIT)
+        if gid is None:
+            gid = _positive_id(gd.get("gameID"), _GAME_ID_LIMIT)
+        out["game_id"] = str(gid) if gid is not None else ""
 
         # Build path + boots phase via item_advisor (works for SR/Practice;
         # ARAM/Arena/Brawl have their own flows but this fallback is OK).

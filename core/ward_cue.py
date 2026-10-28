@@ -42,12 +42,16 @@ CONTROL_WARD_ID = 2055
 def _coerce_int(value: Any) -> int | None:
     """Best-effort int coercion. Live Client itemID is numeric, but JSON can
     surface either an int or a stringy id depending on the relay path; a value
-    that will not coerce is treated as absent (the entry is skipped)."""
+    that will not coerce is treated as absent (the entry is skipped).
+
+    s144 true-audit: OverflowError too - ``int(float("inf"))`` raised out of
+    compute_ward_cue into liveclient_summary's outer except and blanked the
+    whole /api/state liveclient block on one inf itemID or count."""
     if value is None or isinstance(value, bool):
         return None
     try:
         return int(value)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return None
 
 
