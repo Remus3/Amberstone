@@ -60,6 +60,15 @@ if "%RC_KEY_EC%"=="12" (
     pause
     exit /b 1
 )
+:: RM-826 (e), an accepted residual: with python-embed absent and Python only
+:: behind a quoted PATH entry, the check above finds no interpreter once PATH
+:: is about 8179 characters or more - the quote-stripped copy no longer fits
+:: on one command line - so this refuses although Python is installed.
+:: Measured 2026-10-27: 8178 runs the check, 8179 to 20000 refuse; an unquoted
+:: entry runs at any length. The remedy is python-embed, an unquoted PATH
+:: entry or a shorter PATH. Reverses if: the shared check stops putting PATH
+:: on a command line, this refusal goes, or a real install hits it - then fix
+:: it rather than keep it. tests\test_start_bat_quoted_long_path_rm826.py.
 if not "%RC_KEY_EC%"=="10" if not "%RC_KEY_EC%"=="11" (
     echo Could not check the Anthropic API key - is Python installed? Run install.bat
     pause
