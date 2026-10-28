@@ -141,6 +141,17 @@ from typing import Any, Optional
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+# RM-600 (RM-1091): the Lua comment stripper and the primary-record test are
+# the ONE library implementation; the private names stay bound because
+# tools/daemon_slayer_wiki_ability_extract.py imports them from here.
+from lib.game_data.lua_text import (  # noqa: E402
+    is_primary_record as _is_primary_record,
+    strip_lua_comments as _strip_lua_comments,
+)
+
 DATA_DIR = PROJECT_ROOT / "data" / "daemon_slayer"
 META_DDRAGON_DIR = PROJECT_ROOT / "data" / "meta_build" / "ddragon"
 _PATCH_DIR_RE = re.compile(r"^\d+\.\d+\.\d+$")
@@ -407,81 +418,6 @@ def _parse_scalar(s: str) -> Optional[float]:
     except (TypeError, ValueError):
         return None
     return v if math.isfinite(v) else None
-
-
-def _long_bracket_level(text: str, i: int) -> int:
-    """Level of a Lua long bracket opening at ``text[i]`` (``[`` ``=``* ``[``), else -1."""
-    n = len(text)
-    if i >= n or text[i] != "[":
-        return -1
-    j = i + 1
-    while j < n and text[j] == "=":
-        j += 1
-    return j - i - 1 if (j < n and text[j] == "[") else -1
-
-
-def _strip_lua_comments(text: str) -> str:
-    """Remove every Lua comment from ``text``; string literals stay verbatim.
-
-    RM-600: the module carries Lua-commented code (Kled's second record has a
-    whole ``--["aram"] = { ... --},`` block commented out) and the brace-scan /
-    scalar regexes cannot tell a comment from live data, so comments go first.
-    Handled: ``--`` line comments (to end of line; the newline is kept), and
-    ``--[[ ... ]]`` / ``--[==[ ... ]==]`` block comments (replaced by one space,
-    so the tokens either side never glue). ``-- [[`` (a space before the
-    brackets) is a LINE comment, as in Lua. A ``--`` inside a ``"..."`` /
-    ``'...'`` string (backslash escapes honoured) or a ``[[ ... ]]`` long string
-    is data, not a comment. Fail-soft on malformed input: an unterminated block
-    comment drops the rest of the text, an unterminated short string ends at the
-    newline.
-    """
-    out: list[str] = []
-    n = len(text)
-    i = 0
-    seg = 0  # start of the verbatim segment not yet copied to ``out``
-    while i < n:
-        c = text[i]
-        if c == "-" and text.startswith("--", i):
-            out.append(text[seg:i])
-            lvl = _long_bracket_level(text, i + 2)
-            if lvl >= 0:
-                close = "]" + "=" * lvl + "]"
-                end = text.find(close, i + lvl + 4)
-                i = n if end < 0 else end + len(close)
-                out.append(" ")
-            else:
-                nl = text.find("\n", i)
-                i = n if nl < 0 else nl
-            seg = i
-            continue
-        if c in "\"'":
-            j = i + 1
-            while j < n and text[j] != c and text[j] != "\n":
-                j += 2 if text[j] == "\\" else 1
-            i = j + 1 if (j < n and text[j] == c) else min(j, n)
-            continue
-        if c == "[":
-            lvl = _long_bracket_level(text, i)
-            if lvl >= 0:
-                close = "]" + "=" * lvl + "]"
-                end = text.find(close, i + lvl + 2)
-                i = n if end < 0 else end + len(close)
-                continue
-        i += 1
-    out.append(text[seg:])
-    return "".join(out)
-
-
-def _is_primary_record(blk: str) -> bool:
-    """True when a champion block's ``["id"]`` is an integer (the live record).
-
-    RM-600: the module can carry a second block with the SAME ``apiname`` and a
-    fractional id (Kled 240 vs "Kled & Skaarl" 240.1); the integer-id block is
-    the primary record. A missing or non-numeric id is not primary.
-    """
-    m = re.search(r'\["id"\]\s*=\s*(-?[0-9.]+)', blk)
-    val = _parse_scalar(m.group(1)) if m else None
-    return val is not None and val == int(val)
 
 
 _BLOCK_OPEN_RE = re.compile(r'\["([^"]+)"\]\s*=\s*\{')

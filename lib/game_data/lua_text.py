@@ -13,13 +13,16 @@ So comments are stripped first, and when two blocks share an apiname the
 integer-id record wins in either order; between two records of the same kind
 the FIRST is kept, and a lone non-integer-id record (GnarBig) is still used.
 
-This is the library copy of the rule that ``tools/daemon_slayer_wiki_stats_extract.py``
-(``_strip_lua_comments`` / ``_is_primary_record`` / ``_parse_lua_table``)
-implements for the DS sidecar; ``lib/game_data/sources.py`` cannot import a
-script from ``tools/``.
+This is the ONE implementation of the rule (RM-1091):
+``tools/daemon_slayer_wiki_stats_extract.py`` imports ``strip_lua_comments`` and
+``is_primary_record`` under its old private names (``_strip_lua_comments`` /
+``_is_primary_record``, which ``tools/daemon_slayer_wiki_ability_extract.py``
+imports from it) and keeps only its own dedupe loop in ``_parse_lua_table``.
+``tests/test_lua_text_one_definition_s144q06.py`` fails on a second definition.
 """
 from __future__ import annotations
 
+import math
 import re
 
 _BLOCK_OPEN_RE = re.compile(r'\["([^"]+)"\]\s*=\s*\{')
@@ -90,7 +93,11 @@ def strip_lua_comments(text: str) -> str:
 
 
 def is_primary_record(block: str) -> bool:
-    """True when a champion block's ``["id"]`` is an integer (the live record)."""
+    """True when a champion block's ``["id"]`` is an integer (the live record).
+
+    A missing, non-numeric or non-finite id (a digit run too long for a float
+    parses to ``inf``) is not primary.
+    """
     m = _ID_RE.search(block)
     if m is None:
         return False
@@ -98,7 +105,7 @@ def is_primary_record(block: str) -> bool:
         val = float(m.group(1))
     except ValueError:
         return False
-    return val == int(val)
+    return math.isfinite(val) and val == int(val)
 
 
 def block_end(text: str, open_idx: int) -> int:
