@@ -157,7 +157,8 @@ only); no count moved.
 The 2026-08-12 `hz_choice_shadow` game_id row was filed as a SECOND "G3-14"; it is G3-16 since
 2026-10-24 and, like G6-04, was never in the 111 (its commit `0dc5dbd0d` did not touch this line).
 G5-11 (the focus-board Arena team layout, filed 2026-10-27 by s144 lane gated cycle 11) was never in
-the 111 either; do not add it to this tally or to the per-gate figures.
+the 111 either; do not add it to this tally or to the per-gate figures. Nor was G1-07 (the RM-881 (b)
+lobby duo-synergy read-back, filed 2026-10-27 by s144 lane gated cycle 16).
 
 **SYNTHETIC-TRIAGE PASS 2026-07-18 - read before proposing this again.** All 124 rows were run
 through a 14-agent triage-then-adversarial-refutation pass asking whether recorded data
@@ -611,6 +612,58 @@ Cheapest gate in the file. Enter a lobby, capture, leave. Nothing here needs a m
 - **G1-06** `[NOT BUILT]` (was A12) Mode-specific overlay layout AUTO-SELECT-ARAM acceptance - queued
   for planning, not yet built. Once built the auto-select needs a live ARAM queue/lobby state and a
   per-map placement eyeball. SOURCE: BACKLOG.md:48.
+- **G1-07** `[LOBBY-PARTY, READY 2026-10-27 - s144 lane gated cycle 16; PREP only, nothing ticked]`
+  RM-881 (b) (QA23) live read-back: the lobby view re-fires `/api/duo-synergy` when the party reaches 2.
+  SHIPPED headless `a503ce413` (s144 queue lane, LEDGER 1951): `web/js/panels/lobby_duo_synergy.js`
+  `duoSynergyQuery` (null while solo, in a non-SR queue or before the lobby lands; `my_role` = `sup` iff
+  the local member's first lane preference is `UTILITY`, else `bot`; `top_n=4`) and
+  `createLobbyDuoSynergy` (ONE fetch per party episode, so the 2 s lobby refresh never re-fires it),
+  called from `web/js/main.js` `_lobbyViewRefresh` via `_lvDuoCtl().update(lobby)`; renders into
+  `#lv-duo-synergy` under the PARTY roster. The BACKLOG RM-881 header says the live party >= 2
+  read-back is still owed; no row carried it. **Needs a real second player** (same blocker as G1-04): a
+  custom or practice lobby is not an SR queue and bots are not party members, so neither fires it.
+  **PRECONDITIONS:** an SR queue lobby (`web/js/main.js` `SR_QUEUE_IDS`: 400 / 420 / 430 / 440 / 480 /
+  700 and the co-op ids) with party_size >= 2; the dashboard on the Lobby view (`main.js` routes phase
+  Lobby / Matchmaking / ReadyCheck to `lobby`; the fetch runs only from that view); ui_mock OFF; count
+  the open dashboard clients on the Lobby view (rc-shell = 1; every extra tab fires its own GET). Keep
+  the window ONE stable episode: form the party once, do not change the lane preference, do not reload
+  the page (a re-formed party, a role flip and back, or a reload each re-fire by design).
+  **PROBE (copy-paste, from a worktree; read-only):** note the clock when the second player joins
+  (`<since>`), wait 10 s (the tool grades a window under 10 s NO_RESULT), then
+  `curl -sk https://127.0.0.1:8888/api/state > _scratch/g107_state.json` and
+  `python tools/gated_rm881_duo_lobby.py --state _scratch/g107_state.json --since <since> --until <now>
+  --clients <n>` (reads `<main>/logs/<day>.log`). Field paths: `/api/state` -> `lcu.phase`,
+  `lcu.lobby.party_size`, `lcu.lobby.queue_id`,
+  `lcu.lobby.local_member.position_preferences.first_preference`; the day log's request trace
+  (`dashboard/_handler.py` `Handler.log_message`, DEBUG, always written to the file; the route is not in
+  `_SUPPRESS_LOG_PATHS`).
+  **PREDICATE, SENT half (stated before any lobby):** PASS iff the window holds 1 .. `<n>` trace lines
+  `GET /api/duo-synergy?my_role=<expected>&top_n=4` and every one answered 200. FAIL iff no duo-synergy
+  GET appears while other trace lines do, a mock-fixture fetch appears, an expected GET answered non-200,
+  or more than `<n>` expected GETs inside any 10 s span (the 2 s lobby refresh re-firing). NO_RESULT iff
+  the window holds no HTTP trace line at all (the trace was not captured - silence proves nothing), the
+  captured state is not a duo SR lobby, or more than `<n>` expected GETs lie further apart than that (the
+  window spans more than one episode or a reload: narrow it and re-run). The tool reads the day log and
+  its size-rotated `.log.<n>` siblings. A GET with another `my_role` is printed, not graded (a lane-preference change
+  re-fires by design). Idle baseline 2026-10-27 23:40: `lcu.phase` None, `lcu` = config / phase / ts only
+  -> tool `lobby NO_RESULT` exit 1; the 2026-10-27 day log held 7 trace lines (`/api/health/all`,
+  `/api/mains`) and 0 duo-synergy GETs, all parsed by the tool.
+  **PREDICATE, RENDERED half (operator present - a drain session screenshot; a lane takes no capture):**
+  PASS iff within 10 s of the PASS trace line the Lobby view shows the `DUO PICKS` block under the PARTY
+  roster with a BOT and/or SUPPORT row holding at least one cell with a champion name and an `NN.N%`
+  rate. FAIL iff the block is absent with a duo SR lobby up, `loading duo picks...` persists past 10 s,
+  or it reads `duo picks unavailable right now` (record the route's status from the trace line).
+  **EVIDENCE CONTRACT:** the tool's printed `sent` block (times, query, status - no peer address is
+  printed), the `/api/state` capture's party_size / queue_id / first_preference values, the screenshot
+  path with its capture time, and the queue name; no Riot id or summoner name copied into this doc.
+  **SUBSTITUTION CHECK:** a GET of `/api/duo-synergy` from a shell, the 19 `node --test` cases and the
+  `tests/snapshot_panels/test_lobby_duo_synergy_rm881.py` headless render all prove the COMPUTE half or a
+  mock-fed render - none says the operator's dashboard SENT the request. Worse, a shell GET or a headless
+  Chromium load of `:8888` inside the window adds its OWN trace line and can fake the SENT half: run no
+  probe GET of the route between `<since>` and `<until>`, and treat any extra client as `--clients`.
+  Tool: `tools/gated_rm881_duo_lobby.py` (tests `tests/test_gated_rm881_duo_lobby.py`; trace lines built
+  by the real `Handler.log_message` through the day log's own format, the SR set parsed from the real
+  `main.js`).
 
 ---
 
