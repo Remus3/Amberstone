@@ -77,8 +77,8 @@ from .survivability_credit import survivability_item_ids
 # champion record. The DDragon ``info.attack`` / ``info.magic`` 0-10 designer
 # ratings this function used to read ALONE are cosmetic class flavor that
 # reflects base stat GROWTH, not build reality - the exact complaint
-# ``onhit_dps.py:315-324`` already had to write down when it bolted on a local
-# ``_onhit_ap_axis`` workaround for Gwen and KogMaw. Measured at patch 16.15.1,
+# onhit_dps.py already had to write down (the comment above ``_onhit_ap_axis``)
+# when it bolted on that local workaround for Gwen and KogMaw. Measured at patch 16.15.1,
 # when this rule landed, the ratings disagreed with the kit for 12 of 173: Alistar
 # Gwen KogMaw Leona Locke Ornn Rell Seraphine TwistedFate Vex all read "ad" and
 # are really AP, while Belveth and Qiyana read "ap" and are really AD. Belveth

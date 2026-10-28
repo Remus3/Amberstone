@@ -2003,7 +2003,7 @@ def _route_rank_onhit(body: dict) -> dict:
     apply_passive_damage = _opt_bool(body, "apply_passive_damage", True)
     ap_ad_coherence = _opt_float(body, "ap_ad_coherence", 0.0)
     # RM-172: rank_items_by_onhit has accepted this kwarg since Slice B
-    # (onhit_dps.py:369) and forwards it to BOTH the baseline and every
+    # (its ap_ad_coherence parameter) and forwards it to BOTH the baseline and every
     # candidate, but no route ever parsed it - a kwarg nobody can reach over
     # HTTP is inert. DEFAULT-OFF. See the /stats docstring.
     apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)

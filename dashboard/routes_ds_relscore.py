@@ -121,7 +121,8 @@ _DEFAULT_TOP_N = 12
 
 # The DS engine ranks the NEXT of six inventory slots, so a build holding six
 # of them has no slot left to score. Mirrors the engine-side precondition
-# (agents/daemon_slayer/onhit_dps.py:434 and its per-scorer twins).
+# (the ``len(current_ids) >= slot_count`` check in
+# agents.daemon_slayer.onhit_dps.rank_items_by_onhit and its per-scorer twins).
 _INVENTORY_SLOTS = 6
 
 

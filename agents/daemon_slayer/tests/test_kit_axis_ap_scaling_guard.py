@@ -5,8 +5,8 @@ TWO COUPLED PARTS. Part 1 must hold so Part 2 is safe.
 THE DEFECT (Part 2). ``hybrid._damage_axis`` classified a champion's damage
 axis from the DDragon ``info.attack`` / ``info.magic`` cosmetic 0-10 designer
 ratings. Those ratings reflect base stat GROWTH, not build reality - the same
-complaint ``onhit_dps.py:315-324`` already wrote down when it had to bolt on a
-local ``_onhit_ap_axis`` workaround for Gwen and KogMaw. Measured against the
+complaint onhit_dps.py already wrote down (the comment above ``_onhit_ap_axis``)
+when it had to bolt on that local workaround for Gwen and KogMaw. Measured against the
 live snapshot the rating split disagrees with the kit's own
 ``lolmath.damage_distribution`` for 12 of 173 champions:
 

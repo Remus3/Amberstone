@@ -11,7 +11,8 @@ through 300 HP an ability-DPS objective cannot read at all.
 
 This module supplies the conversion vector. It does NOT apply it; each ranker
 scales its own SORT key and leaves every row field raw (transparency), exactly
-as ``ap_ad_coherence`` does at ``onhit_dps.py:498-509``.
+as ``ap_ad_coherence`` does through ``_coherence_key`` in
+``onhit_dps.rank_items_by_onhit``.
 
 WHY A CURATED REGISTRY AND NOT A ``damage_blocks`` SCAN
 ------------------------------------------------------
@@ -358,14 +359,14 @@ def item_exposures(item_id: str, rec: dict, objective: str) -> dict[str, float]:
     * Presence fails for attack speed. It crushes Stridebreaker, whose AS is only
       19 pct of its gold, and drops it far BELOW its ungated rank.
     * Presence is the house precedent for axis channels: ``_coherence_key`` tests
-      ``"SpellDamage" in tags``, a bare presence test (``onhit_dps.py:505``).
+      ``"SpellDamage" in tags``, a bare presence test (in ``onhit_dps.rank_items_by_onhit``).
 
     The on-hit CONJUNCTION is load-bearing. The DDragon ``OnHit`` tag alone is not
     a marker of auto-attack-cadence value: Black Cleaver, Trinity Force, Essence
     Reaver, Lich Bane and Iceborn Gauntlet all carry it while proccing on a
     spellblade clock rather than per attack. Conversely Stridebreaker has a
     per-attack proc and NO ``OnHit`` tag. Requiring both is the same
-    two-independent-sources shape as ``_onhit_ap_axis`` (``onhit_dps.py:316-329``).
+    two-independent-sources shape as ``onhit_dps._onhit_ap_axis``.
     """
     stats = rec.get("stats") or {}
     tags = set(rec.get("tags") or ())

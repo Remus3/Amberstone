@@ -238,7 +238,8 @@ def propensity_adjusted_dps_delta(
     NOT WIRED (SPEC:109-114, deliberate - narrow first, widen on evidence):
     ``ability_dps.py:1252`` itself, the ``item_proc_dps`` fold inside
     ``total_ability_dps``, ``dps.py:1023`` (Malignance ult rate),
-    ``hps.py:679`` and ``onhit_dps.py:143``. Each is its own consumer with its
+    ``hps.py:679`` and the ``ability_dps + auto_dps`` sum in
+    ``onhit_dps.compute_onhit_dps``. Each is its own consumer with its
     own default-flip decision; this landing wires ``hybrid.py`` only.
     """
     total = 0.0

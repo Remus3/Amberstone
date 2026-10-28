@@ -279,10 +279,10 @@ class ComputeHpsModeProvenanceTests(unittest.TestCase):
 # pool by mode - every one of them calls ``rank._filter_candidates(mode=mode)``
 # -> ``rank._is_legal_in_mode``:
 #
-#   /rank-bruiser   hybrid.rank_items_by_hybrid          hybrid.py:1269
-#   /rank-assassin  burst.rank_items_by_burst            burst.py:2118
-#   /rank-mage      _rank_mage.rank_items_by_ability_dps _rank_mage.py:301
-#   /rank-onhit     onhit_dps.rank_items_by_onhit        onhit_dps.py:456
+#   /rank-bruiser   hybrid.rank_items_by_hybrid
+#   /rank-assassin  burst.rank_items_by_burst
+#   /rank-mage      _rank_mage.rank_items_by_ability_dps
+#   /rank-onhit     onhit_dps.rank_items_by_onhit
 #
 # so all four earn the item-filter wording, not the weaker table wording
 # ``compute_hps`` had to settle for.

@@ -362,7 +362,8 @@ def rank_items_by_ability_dps(
     # RM-86 L1 kit-conversion gate (DEFAULT-OFF). This ranker had NO sort
     # transform before - raw delta was the key - so _base_key is introduced here
     # to match the five sibling rankers. Registry consulted ONLY when the lever
-    # is engaged, so 0.0 is provably byte-identical (onhit_dps.py:494-496).
+    # is engaged, so 0.0 is provably byte-identical (the ap_ad_coherence gate
+    # in onhit_dps.rank_items_by_onhit).
     #
     # This is the ranker carrying the Orianna anchor: Liandry's Torment must
     # leave #1 while Blackfire Torch is NOT suppressed with it. Both carry a burn
@@ -381,7 +382,7 @@ def rank_items_by_ability_dps(
 
         Only ever LOWERS: a non-positive value is returned unchanged, because
         scaling a negative number toward zero would RAISE its rank
-        (the onhit_dps.py:501-504 rule).
+        (the ``onhit_dps`` ``_coherence_key`` rule).
         """
         if _conv is None or value <= 0.0:
             return value

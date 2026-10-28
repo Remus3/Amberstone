@@ -11,7 +11,7 @@ ability damage through 300 HP an ability-DPS objective cannot read at all.
 ``kit_conversion_strength`` (default 0.0 = OFF, byte-identical sort) scales a
 candidate's SORT score by the fraction of face value at which the champion's kit
 actually converts each channel the item sells. Generalises the Slice-B
-``ap_ad_coherence`` precedent (``onhit_dps.py:498-509``) from a boolean AP/AD
+``ap_ad_coherence`` precedent (``onhit_dps`` ``_coherence_key``) from a boolean AP/AD
 axis flag to a continuous per-channel vector in [0, 1]. Row fields stay RAW
 (transparency); only the in-function sort key is scaled, and only downward.
 
@@ -99,9 +99,10 @@ class DefaultOffByteIdenticalTests(ConversionGateHarness):
 
     Mirrors the real default-off pattern at test_cost_aware_top_f2.py:60-62
     (absent param == explicit default), strengthened to compare FULL ordered
-    lists. Deliberately does NOT copy test_onhit_dps.py:90-96, which is named
-    ..._byte_identical but only asserts one item is present and would stay green
-    if the off-path broke.
+    lists. Deliberately does NOT copy the pre-2026-07-18 shape of
+    ``test_onhit_dps.test_coherence_off_is_byte_identical``, which was named
+    ..._byte_identical but only asserted one item was present and would have
+    stayed green if the off-path broke (that test now compares full lists).
     """
 
     def test_omitted_param_equals_explicit_zero(self):

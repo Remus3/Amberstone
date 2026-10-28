@@ -3879,7 +3879,8 @@ def rank_items_by_ehp(
     # RM-86 L1 kit-conversion gate (DEFAULT-OFF). Objective is "ehp", not the
     # damage axis: for a tank, health and resists ARE the output, so only raw
     # damage stats are off-axis. Registry consulted ONLY when the lever is
-    # engaged -> 0.0 is provably byte-identical (onhit_dps.py:494-496).
+    # engaged -> 0.0 is provably byte-identical (the ap_ad_coherence gate in
+    # onhit_dps.rank_items_by_onhit).
     _conv = (
         kit_conversion(str(champion_id), champ_rec)
         if kit_conversion_strength > 0.0 else None
@@ -3891,7 +3892,7 @@ def rank_items_by_ehp(
 
         Only ever LOWERS: a non-positive value is returned unchanged, because
         scaling a negative number toward zero would RAISE its rank
-        (the onhit_dps.py:501-504 rule).
+        (the ``onhit_dps`` ``_coherence_key`` rule).
         """
         if _conv is None or value <= 0.0:
             return value

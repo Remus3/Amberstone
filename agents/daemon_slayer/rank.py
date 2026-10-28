@@ -1455,7 +1455,7 @@ def rank_items(
     # RM-86 L1 kit-conversion gate (DEFAULT-OFF). The registry is consulted ONLY
     # when the lever is engaged, so 0.0 performs no lookup and no arithmetic and
     # is provably byte-identical, not merely numerically equal - the
-    # onhit_dps.py:494-496 contract.
+    # contract of the ap_ad_coherence gate in onhit_dps.rank_items_by_onhit.
     _conv = (
         kit_conversion(str(champion_id), champ_rec)
         if kit_conversion_strength > 0.0 else None
@@ -1468,7 +1468,7 @@ def rank_items(
 
         Only ever LOWERS: a non-positive value is returned unchanged, because
         scaling a negative number toward zero would RAISE, not lower, its rank
-        (the onhit_dps.py:501-504 rule).
+        (the ``onhit_dps`` ``_coherence_key`` rule).
         """
         if _conv is None or value <= 0.0:
             return value
