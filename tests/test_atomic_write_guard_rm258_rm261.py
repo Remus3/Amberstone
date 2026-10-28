@@ -156,7 +156,6 @@ _TOOLS_UNCLASSIFIED = frozenset({
     "tools/ds_parity_run.py",
     "tools/ds_patch_diff.py",
     "tools/ds_wiki_staleness_check.py",
-    "tools/freeze_witness.py",
     "tools/gen_archmap.py",
     "tools/gen_state_schema.py",
     "tools/hotfix_kaisa_aram_ashe_sr_item263.py",

@@ -32,6 +32,8 @@ import time
 from pathlib import Path
 
 SKIP_DIRS = frozenset({".git"})
+# Repo root, so a `python tools/freeze_witness.py` run can import core/.
+_ROOT = str(Path(__file__).resolve().parent.parent)
 
 
 def _walk(root: Path):
@@ -77,9 +79,19 @@ def git_witness(root: Path) -> str:
 
 
 def _write_atomic(path: Path, text: str) -> None:
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_bytes(text.encode("ascii"))
-    tmp.replace(path)
+    """RM-258: through core.polled_json (per-writer scratch, fsync, bounded
+    WinError 5 retry; it creates the parent). Bytecode is off for the import:
+    this witness exists to catch a .pyc write, so its own import of core/
+    must not write one into a tree it may be measuring."""
+    if _ROOT not in sys.path:
+        sys.path.insert(0, _ROOT)
+    prior = sys.dont_write_bytecode
+    sys.dont_write_bytecode = True
+    try:
+        from core.polled_json import atomic_write_bytes
+    finally:
+        sys.dont_write_bytecode = prior
+    atomic_write_bytes(path, text.encode("ascii"))
 
 
 def main(argv=None) -> int:
