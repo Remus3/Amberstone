@@ -26,6 +26,7 @@ import argparse
 import os
 import pathlib
 import re
+import subprocess
 import sys
 
 ROOT = pathlib.Path(__file__).parent.parent
@@ -103,22 +104,57 @@ PHASE_RE = re.compile(
 )
 
 
+def _git_ignored_dirs() -> frozenset[str]:
+    """Root-relative posix paths of every gitignored directory, as git reports them.
+
+    SKIP_DIRS is a hand list and lags the .gitignore: MEASURED 2026-10-27
+    (RM-985), 2125 gitignored .py files sat outside it (python-embed/,
+    moon_sync_inbox/, ops/loop/control/) and were read on every commit, and
+    a verifier's scratch copy under the gitignored logs/ put 4 phantom rows
+    into the archmap so --check refused an unrelated commit. One git call
+    (`--directory` collapses an ignored dir to one entry) is the authority.
+    Outside a git work tree, or if git is missing, this is empty and the walk
+    falls back to SKIP_DIRS alone.
+    """
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(ROOT), "ls-files", "-z", "--others", "--ignored",
+             "--exclude-standard", "--directory"],
+            capture_output=True,
+            timeout=60,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+    except (OSError, subprocess.SubprocessError):
+        return frozenset()
+    if proc.returncode != 0:
+        return frozenset()
+    entries = proc.stdout.decode("utf-8", errors="replace").split("\0")
+    return frozenset(e.rstrip("/") for e in entries if e.endswith("/"))
+
+
 def _iter_source_py() -> list[pathlib.Path]:
-    """Every .py under ROOT outside SKIP_DIRS, sorted by path.
+    """Every .py under ROOT outside SKIP_DIRS and every gitignored dir, sorted by path.
 
     Scoping, not filtering: the walk PRUNES. A directory whose name is in
-    SKIP_DIRS is removed from os.walk's dirnames in place and never entered.
+    SKIP_DIRS, or whose root-relative path git reports as ignored, is removed
+    from os.walk's dirnames in place and never entered.
     The pre-fix `sorted(ROOT.rglob("*.py"))` + parts-filter enumerated every
     directory under the repo root first - `.claude/worktrees` (~40 agent
     worktrees, ~197k files) and `ops/runtime/responder_export` (~14k files)
     included - and this module is wired into .githooks/pre-commit via
     --check, so that cost landed on EVERY commit, twice (one walk per
-    collector). Same set of files, same Path ordering, as the rglob form.
+    collector).
     """
+    ignored = _git_ignored_dirs()
     found: list[pathlib.Path] = []
     for dirpath, dirnames, filenames in os.walk(ROOT):
         # Prune in place: a skipped directory is never descended.
-        dirnames[:] = [n for n in dirnames if n not in SKIP_DIRS]
+        rel = pathlib.Path(dirpath).relative_to(ROOT).as_posix()
+        prefix = "" if rel == "." else rel + "/"
+        dirnames[:] = [
+            n for n in dirnames
+            if n not in SKIP_DIRS and prefix + n not in ignored
+        ]
         for name in filenames:
             if name.endswith(".py"):
                 found.append(pathlib.Path(dirpath, name))
