@@ -8,10 +8,12 @@ through ``:8860``. That is the same blocker PART 7 named for RM-86
 measurement had to monkeypatch ``rank.compute_dps`` to work around it.
 
 Confirmed API surface before scaffolding:
-  * ``compute_dps(..., apply_crit_conversion: bool = False)`` - dps.py:747, gate at :890.
-  * ``rank_items`` calls ``compute_dps`` at rank.py:1091 (baseline) and :1206 (candidate).
+  * ``compute_dps(..., apply_crit_conversion: bool = False)`` - ``dps.compute_dps``,
+    gated by its ``if apply_crit_conversion:`` branch.
+  * ``rank.rank_items`` calls ``compute_dps`` twice: the ``baseline`` call and the
+    per-candidate ``scored`` call.
     BOTH must receive the flag or the delta is computed against a mismatched baseline.
-  * ``server._route_rank`` builds the ``rank_items`` call - server.py:421.
+  * ``server._route_rank`` builds the ``rank_items`` call.
   * Registry holds exactly one champion, Ashe - _crit_conversion_overrides.py.
 
 Gate params are the ones A-12 reproduced byte-for-byte against the PART 7 filing:
