@@ -31,8 +31,9 @@ ORDERING: build_paths items follow purchase order (boots integral for
 SR/ARAM at slot ~2, excluded for Arena). plan_build_order injects boots
 for SR/ARAM and is called with inject_boots=False for Arena.
 
-Atomic write (tmp.write_text + tmp.replace, ensure_ascii=True) with a
-timestamped backup of the prior file.
+The write goes through core.polled_json.atomic_write_bytes (fsync, WinError 5
+retry, no scratch left behind; ensure_ascii=True, LF, one trailing newline as
+before), after a timestamped backup of the prior file.
 """
 from __future__ import annotations
 
@@ -53,6 +54,7 @@ from agents.daemon_slayer.rank import (  # noqa: E402
     OFFCLASS_MARKSMAN_ITEM_NAMES,
     _is_ranged_marksman,
 )
+from core import polled_json  # noqa: E402
 
 _LOADOUTS = _ROOT / "data" / "champion_loadouts.json"
 
@@ -240,11 +242,10 @@ def main(argv: list[str]) -> int:
     ts = datetime.now().strftime("%Y%m%d-%H%M%S")
     backup = _LOADOUTS.with_suffix(f".json.bak-item213-{ts}")
     backup.write_bytes(_LOADOUTS.read_bytes())
-    tmp = _LOADOUTS.with_suffix(".json.tmp")
-    tmp.write_bytes(
+    polled_json.atomic_write_bytes(
+        _LOADOUTS,
         (json.dumps(data, indent=2, ensure_ascii=True) + "\n").encode("utf-8"),
     )
-    tmp.replace(_LOADOUTS)
     print(f"wrote {_LOADOUTS} (backup {backup.name})")
     return 0
 

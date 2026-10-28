@@ -160,7 +160,6 @@ _TOOLS_UNCLASSIFIED = frozenset({
     "tools/gen_archmap.py",
     "tools/gen_state_schema.py",
     "tools/package_portable.py",
-    "tools/regen_ranged_marksman_builds_item213.py",
     "tools/repair_mojibake.py",
     "tools/repin_subagent_cli.py",
     "tools/rewrite_sha_citations.py",
