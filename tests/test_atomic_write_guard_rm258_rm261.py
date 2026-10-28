@@ -157,7 +157,6 @@ _TOOLS_UNCLASSIFIED = frozenset({
     "tools/build_portable.py",
     "tools/build_python_embed.py",
     "tools/build_third_party_notices.py",
-    "tools/daemon_slayer_pickban_targets_generate.py",
     "tools/gen_archmap.py",
     "tools/gen_state_schema.py",
     "tools/hotfix_kaisa_aram_ashe_sr_item263.py",

@@ -70,7 +70,7 @@ Usage
         [--top-k 8] [--out <dir>]
 
 * ``--limit N`` caps the roster to the first N champs (fast dev iteration).
-* ``--check`` regenerates to a temp + diffs against the committed file = the CI
+* ``--check`` regenerates in memory + diffs against the committed file = the CI
   drift guard (mirrors the build_orders generator convention). Exits 1 on drift.
 * ``--top-k`` overrides the per-list slice length (default 8).
 * ``--out`` overrides the output directory (default resolves from current.txt).
@@ -82,9 +82,7 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
-import tempfile
 from pathlib import Path
 from typing import Optional
 
@@ -94,6 +92,7 @@ sys.path.insert(0, str(_ROOT))
 
 from agents.daemon_slayer.matchup import DataSnapshot, compute_matchup
 from agents.daemon_slayer.mode_variants import canonical_champions
+from core import polled_json
 
 _DATA_DIR = _ROOT / "data"
 _DS_DIR = _DATA_DIR / "daemon_slayer"
@@ -322,26 +321,15 @@ def _serialize(payload: dict) -> str:
 
 
 def atomic_write(payload: dict, out_path: Path) -> None:
-    """Write ``payload`` to ``out_path`` via tmp + os.replace (atomic).
+    """Write ``payload`` to ``out_path`` atomically.
 
-    Mirrors ``tools/daemon_slayer_build_orders_generate.atomic_write``: a reader
-    (the coach) polling mid-write must never see a partial file. ASCII-only JSON.
+    A reader (the coach) polling mid-write must never see a partial file, so
+    the bytes go through ``core.polled_json.atomic_write_bytes`` (RM-258):
+    per-writer scratch, fsync, bounded WinError 5 retry, scratch removed on
+    failure, parent created on demand. The bytes are ``_serialize(payload)``
+    (the --check path's text) encoded as UTF-8, so no CRLF on Windows (RM-481).
     """
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_fd, tmp_path = tempfile.mkstemp(
-        prefix=f".{out_path.stem}.", suffix=".tmp", dir=str(out_path.parent),
-    )
-    try:
-        # newline="\n": text mode writes CRLF on Windows otherwise (RM-481).
-        with os.fdopen(tmp_fd, "w", encoding="utf-8", newline="\n") as f:
-            f.write(_serialize(payload))
-        os.replace(tmp_path, str(out_path))
-    except Exception:
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
-        raise
+    polled_json.atomic_write_bytes(out_path, _serialize(payload).encode("utf-8"))
 
 
 def main() -> int:
