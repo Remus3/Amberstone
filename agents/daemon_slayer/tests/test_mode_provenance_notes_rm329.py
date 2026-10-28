@@ -288,10 +288,12 @@ class ComputeHpsModeProvenanceTests(unittest.TestCase):
 # ``compute_hps`` had to settle for.
 #
 # THE CASE FOLD IS NOT UNIFORM ACROSS THEM, and that is the whole subtlety.
-# ``rank_items_by_burst`` folds ``mode = canonical_mode(mode)`` at burst.py:2032,
-# so its ``result.mode`` is the resolved spelling. The other three fold NOWHERE
-# (measured: ``canonical_mode`` does not appear in hybrid.py, _rank_mage.py or
-# onhit_dps.py at all), so ``result.mode`` echoes the caller's RAW spelling
+# ``rank_items_by_burst`` folds ``mode = canonical_mode(mode)`` at its public
+# entry (the RM-325 "fold once at the public entry" line in its own body), so
+# its ``result.mode`` is the resolved spelling. The other three never fold
+# ``mode`` itself (each reads ``canonical_mode`` only inside its
+# ``mode_filter_note(canonical_mode(mode))`` call, which builds the note string
+# and nothing else), so ``result.mode`` echoes the caller's RAW spelling
 # while ``_is_legal_in_mode`` upper-cases and filters anyway. Reporting the raw
 # spelling there would print the pre-RM-325 falsehood - "mode=aram not in
 # MODE_MAP_ID" over a pool the map-12 filter had in fact been applied to. So
@@ -440,7 +442,8 @@ class RankAssassinModeProvenanceTests(
         )
 
     def test_result_mode_is_already_folded_here(self) -> None:
-        # The one route of the four that folds at its entry (burst.py:2032),
+        # The one route of the four that folds at its entry
+        # (``mode = canonical_mode(mode)`` in ``rank_items_by_burst``),
         # so the plain ``mode_filter_note(result.mode)`` form is also correct
         # for it. Pinned so a future fold removal is caught here.
         r = self._rank("aram")
