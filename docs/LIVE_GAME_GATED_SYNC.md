@@ -369,9 +369,14 @@ PASS drains S6. PARTIAL and FAIL-SIGNAL are recorded beside this row, never tick
   `obs` frame `vision_server/_frame.py` `_maybe_obs_frame` runs `Image.open` plus `img.load()` IN the
   vision process and sets `width` / `height` only after the whole block succeeds (its `except` serves
   the raw bytes with both None), so an `obs` frame with a non-null `meta.width` is an in-process
-  DECODE - provided it did not arrive through `/upload-frame`, which copies `source`, `width` and
-  `height` from the request body after a header read only (`handle_upload_frame`); (a)'s count of 0
-  rules that out. A `self_grab` frame is `ImageGrab.grab()` plus a JPEG ENCODE in-process, never a
+  DECODE - provided it did not arrive through `/upload-frame`, which copies `source` from the request
+  body and, since `393c7f512` (RM-1046), takes `width` / `height` from a Pillow HEADER read of the
+  payload (`_frame_dims`; the body's claim only when that header is unreadable) - a header read, never
+  a decode (`handle_upload_frame`); (a)'s count of 0 rules that out (`_stats.py` `_record` bumps
+  `calls` on every upload the handler sees, accepted or refused; a 401 or bad-length POST that
+  `do_POST` turns away never reaches it, and never caches a frame either). Context only, never a verdict input: record whether
+  (a)'s `create_time` is before or after the vision respawn that loads `393c7f512`; `_maybe_obs_frame`
+  is unchanged by it. A `self_grab` frame is `ImageGrab.grab()` plus a JPEG ENCODE in-process, never a
   decode.
 - (c) Context only, never a verdict input: the `stats.vision` / `stats.ocr` rows of (a). A `vision`
   success does not prove a decode: `_inference.py` `_crop_to_primary` reads only the header of a
