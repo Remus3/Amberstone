@@ -2703,6 +2703,90 @@ Ids `LX-nn` map to the RM rows in `BACKLOG.md` "External-lift intake".
   (including `stolen` on a stolen objective) reach a live `/api/events` EventSource client; a
   reconnect resumes with Last-Event-ID across the real 600 s connection cap and across a dashboard
   restart (expect a `gap`, then a re-read of /api/state).
+  **READY (s144 lane gated c24, finished c27, 2026-10-28; PREP only, nothing ticked).** PRECONDITIONS measured
+  2026-10-28 06:59 -05:00 at idle against the live RC (`ops/runtime/health.json` pid 6392,
+  `started_at` 2026-10-28T06:49:36Z): (1) the running code serves the route with the s144 true-audit
+  fixes - `GET /api/events` answered 200 `{"head": <h>, "events": [], "gap": null, ...}`, `?since=%C2%B2`
+  answered 400 `{"error":"bad_since"}`, and an SSE GET sent `retry: 2000` then one `hello` at the head.
+  (2) The hub had never been built in that RC lifetime: `<h>` equalled the wall clock in ms at this
+  cycle's first request (the id seed), so no client had subscribed since the start. That probe itself
+  built the hub and installed its listener (idempotent, one derive per 0.5 s relay poll, until the next
+  RC restart): a later drain must not read a non-seed head as proof that a client ran. (3) The hub
+  is built LAZILY by the first `/api/events` request (`core/live_event_hub.ensure_installed`), and
+  there is no backlog before it: the recorder must connect BEFORE the game loads (champ select).
+  (4) Nothing in `web/` subscribes to `/api/events`, so the drain's client is
+  `tools/gated_lx06_events_check.py record`, an EventSource-semantics client (server `retry`, then
+  `Last-Event-ID` = the last id seen, as WHATWG EventSource does). Its wire behaviour is pinned by
+  `tests/test_gated_lx06_events_check.py` against the REAL route over loopback. A browser EventSource
+  is not exercised: RC ships no browser consumer, so the row grades the protocol; a headless-Chromium
+  page is an optional strengthening, not a pass condition (decision recorded here; it reverses if a
+  `web/` consumer lands). (5) The restart half needs no game (a reconnect after any RC restart reads
+  the new ms seed as a huge `gap`): RM-1058 proposes it as a `Not actually live-gated` candidate for
+  a human to move; it stays here until then.
+  PROBE (any checkout; the tool reads no `data/`; the capture holds riot ids from allPlayers, so it
+  goes under gitignored `ops/runtime/`, whose directory must exist first): at champ select start
+  `python tools/gated_lx06_events_check.py record --out ops/runtime/lx06/<stamp>.jsonl --final-url
+  https://127.0.0.1:2999/liveclientdata/allgamedata --minutes 45` (GETs only; `RC_GAME_HOST` if the
+  game is not local; `--out` must be NEW). It polls the Live Client every 20 s into
+  `<out>.final.json` (the last non-empty body). Let it run at least 11 game minutes so the server's
+  600 s cap closes one connection. After the game: `python tools/gated_lx06_events_check.py check
+  ops/runtime/lx06/<stamp>.jsonl --json`. FIELD PATHS: `bases`, `replay_conns`, `non_sse_conns`,
+  `connections`, `end_reasons`, `kinds`, `missing_kinds`, `unknown_kinds`, `stolen_objectives`,
+  `duplicate_objective_ids`,
+  `holes`, `bad_gaps`, `lost_gaps`, `answered_conns`, `reconnect_hello`, `last_event_id_mismatch`,
+  `cap_resumes`, `restart_resumes`, `state_reread_after_restart`, `stream_ok`, and `final.window` /
+  `objectives_in_window` / `objectives_missing` / `objectives_stolen_mismatch` /
+  `objectives_unexpected` /
+  `victim_name_form` / `death_mismatch` / `level_chain_breaks` / `level_final_mismatch` /
+  `level_final_skipped` / `ok`.
+  PREDICATE (stated before any game): PASS iff `bases=["https://127.0.0.1:8888"]` (or the
+  configured dashboard host), `replay_conns=[]`, `non_sse_conns=[]` and `stream_ok=true`. That
+  means: at least one connection answered 200 with a frame; every event id is exactly the previous
+  id + 1; the only gap accepted is a reconnect's FIRST frame spanning more than 10 x RING_MAX ids
+  (a new process's ms seed, the restart class); a gap a ring overflow left (`lost_gaps`) fails,
+  because those events never reached the client; every connection sent the cursor as
+  Last-Event-ID (none before the first frame ever arrived); no RESUME (a connection that sent
+  Last-Event-ID) got a `hello`; and no objective `event_id` arrived twice
+  (`duplicate_objective_ids=[]`). Also: `unknown_kinds=[]`;
+  `missing_kinds=[]` (a game with no completed item or no objective leaves that kind open: record
+  it open, not passed); `cap_resumes` non-empty (a connection that hit EOF at 595 s or later, whose
+  successor answered 200 with a frame, resumed with Last-Event-ID, got no `hello` and no hole);
+  `final.ok=true` with `objectives_in_window` of 1 or more. The window runs from
+  the first timed event to the earlier of the last one and the final file's `gameData.gameTime`.
+  `final.ok=true` means: every objective in `events.Events` inside that window matched by
+  `event_id` with the same `stolen`; no objective_taken whose `event_id` the game never logged
+  (`objectives_unexpected=[]`; one within 3 s of the final poll or after it is not judged);
+  every death and every ChampionKill at least 5 s inside both
+  edges paired (same champion, the kill at most 3 s before the death or 0.5 s after it, the relay
+  poll lag); each champion's level_up chain is continuous; its level as of the final poll equals
+  the final file's level (a champion with a level-up within 3 s of that poll is listed in
+  `level_final_skipped`, not graded); and `victim_name_form` has no `unmapped`. `item_completed`
+  is graded only as SEEN (`missing_kinds`), never against the final inventory: sales, consumption
+  and transforms make the final file no witness for a completed buy (LX-05's tape fold owns item
+  correctness). STOLEN half: only if the final file
+  holds a `Stolen` objective in the window, `stolen_objectives` of 1 or more; otherwise it stays
+  open (steals are rare; one game rarely closes it). RESTART half: `restart_resumes` non-empty and
+  `state_reread_after_restart` non-empty and all 200. An RC restart is a main-session act, never a lane's, and is
+  best done idle (RM-1058), not mid-game: a mid-game restart blinds the new hub across the
+  outage, so that game's `final.ok` fails by design (missed objectives, unpaired kills, broken level
+  chains) and cannot grade the event half. Record `victim_name_form` (`champion` vs `player`) for
+  LX-02 / RM-673. A death the pairing cannot match is a FAIL to record with the champion and the
+  time, not to argue away. (Untested assumption: a turret or minion execute fires a ChampionKill.
+  If one does not, the unmatched death is the measurement that says so.)
+  EVIDENCE CONTRACT: the check output (values, not "ok"); the capture's first `conn` wall time
+  against the game start and the last `end` against the end screen; mode, queue and game length;
+  the final file's `gameData.gameTime`; the capture's `meta` row `final_url` (it must name `:2999`, read by hand: `check` does not print it); and the code RC ran (`ops/runtime/health.json` `pid` /
+  `started_at` against the game start and the main checkout's HEAD, as LX-03).
+  SUBSTITUTION CHECK: the tests drive the REAL route and a REAL `LiveEventHub` with synthetic
+  snapshots over loopback, and every stream check passes on them, so a passing capture proves
+  nothing about a real game unless it came from the live dashboard during that game. So `bases` must
+  name the live dashboard. `replay_conns` must be empty: `tools/replay_session.py` marks every
+  response `X-RC-Replay: 1` and serves `/api/events` as JSON, which `non_sse_conns` catches. The
+  first `conn` must come before the game's first event time. The objective and death checks must
+  grade against the Live Client's OWN `/liveclientdata/allgamedata`, read directly at `:2999`, not
+  against anything RC computed (`/api/state` reads the same RC liveclient cache feed the hub derives from, so
+  grading against it is the substitution kill). A capture recorded from a replay, a test or a hand-fed hub never closes
+  LX-06.
 - **LX-05** (RM-607, item tape) One ARAM Mayhem (KIWI) game with `RC_ITEM_TAPE=1`: folded tape equals
   the final allPlayers inventories; combines match DDragon recipes; anvil / augment grants typed
   ITEM_GRANTED; rows land in timeline_events with `source='live_tape'` after the 180 s delay.
