@@ -85,8 +85,9 @@ index was verified, magnitude was not - and THREE of the four were wrong:
 226665 is 40% not 30% (under-credited), 224401 is 50 flat MR not 70
 (over-credited), and 663059 is 10% not 20% (over-credited). Only 663058 happened
 to match its base. Values verified identical in 16.13.1 and 16.14.1, so this was
-never patch drift. ``tests/test_item_resist_mirror_magnitudes_r133.py`` pins every
-row to its own tooltip so a future "base nominal" copy cannot land silently.
+never patch drift.
+``agents/daemon_slayer/tests/test_item_resist_mirror_magnitudes_r133.py`` pins
+every row to its own tooltip so a future "base nominal" copy cannot land silently.
 
 Only the resist MAGNITUDE is modelled per row. The Arena Force of Nature mirror
 is a DIFFERENT passive shape (Absorb / Dissipate: max 10 stacks, 7s duration,
@@ -155,7 +156,8 @@ _ITEM_RESIST_STACK_PROB: float = 0.5
 
 
 # Mode-mirror ids of a REGISTERED carrier that are deliberately NOT priced, so the
-# R144 coverage guard (``tests/test_r144_mirror_slice_b.py``) can distinguish a
+# R144 coverage guard
+# (``agents/daemon_slayer/tests/test_r144_mirror_slice_b.py``) can distinguish a
 # knowing exclusion from the silent-0.0 defect class (a registry keyed on bare ids
 # missing the mirror ``name_to_id`` actually returns). Membership here is a
 # documented DECISION, not a magnitude: every id below contributes 0.0 exactly as an
@@ -278,18 +280,19 @@ _ITEM_RESIST_GRANTS: dict[str, ItemResistEntry] = {
     #
     # conditional_probability=1.0 (NOT the registry's ramping 0.5 default). This was
     # a judgement call between two live conventions and the evidence for each:
-    #   (a) the registry default, ``_ITEM_RESIST_STACK_PROB = 0.5`` at line 123 of
-    #       this file, whose rationale note reads "the expected fraction of the
-    #       modeled sustained fight spent AT MAX STACKS ... so the first seconds of
-    #       a fight are sub-max".
+    #   (a) the registry default, ``_ITEM_RESIST_STACK_PROB = 0.5`` in this file,
+    #       whose rationale note reads "the expected fraction of the modeled
+    #       sustained fight spent AT MAX STACKS ... so the first seconds of a
+    #       fight are sub-max".
     #   (b) the ALREADY-SHIPPED DARK half of the SAME tooltip clause, which is
     #       credited at the FULL 3-stack steady state with NO amortization:
-    #       ``_effects_data.py:633-634`` sets ``armor_pen_pct=0.30`` /
-    #       ``magic_pen_pct=0.30`` (10%/stack x 3), and its note at
-    #       ``_effects_data.py:620-623`` justifies that as "the full-stack
+    #       ``ITEM_EFFECTS["3302"]`` in ``_effects_data.py`` sets
+    #       ``armor_pen_pct=0.30`` / ``magic_pen_pct=0.30`` (10%/stack x 3), and
+    #       the comment inside that row justifies it as "the full-stack
     #       sustained-DPS convention (Black Cleaver 3071 5-stack 0.30 shred, Guinsoo
-    #       3124 4-stack 0.32 cond-AS)". ``tests/test_pen_pct_catalog_r160.py:105``
-    #       pins it: ``"3302": (10.0, 0.30)``.
+    #       3124 4-stack 0.32 cond-AS)". ``_STACKING_FULL_STACK`` in
+    #       ``agents/daemon_slayer/tests/test_pen_pct_catalog_r160.py`` pins it:
+    #       ``"3302": (10.0, 0.30)``.
     # DECISION: (b). Light and Dark are two halves of ONE alternating-basic-attack
     # accrual - same stack cap 3, same 5s window, same trigger. Crediting Light at
     # 0.5 while Dark sits at 1.0 would make one mechanic's two halves disagree
