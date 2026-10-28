@@ -5,11 +5,12 @@ Measured defect (this session, on HEAD 3ab8c741):
 
   * ``apply_crit_conversion`` (Ashe Frost Shot, registry
     ``agents/daemon_slayer/_crit_conversion_overrides.py``) is PARSED by the
-    server (``agents/daemon_slayer/server.py:488``) and ACCEPTED by the engine
-    (``agents/daemon_slayer/rank.py:921``).
+    server (``_route_rank`` in ``agents/daemon_slayer/server.py``) and ACCEPTED
+    by the engine
+    (a ``rank_items`` parameter in ``agents/daemon_slayer/rank.py``).
   * ``kit_conversion_strength`` (RM-86 L1 lever, registry
-    ``agents/daemon_slayer/kit_conversion.py:106``) is likewise parsed
-    (``server.py:481``) and accepted (``rank.py:918``).
+    ``agents/daemon_slayer/kit_conversion.py`` ``_KIT_CONVERSION``) is likewise
+    parsed (``_route_rank``) and accepted (``rank_items``).
   * ``core/daemon_slayer_client.py`` had ZERO occurrences of either name, so
     neither ``rank_for`` nor ``rank_for_primary_archetype`` could emit the body
     key. Every live coach tick and every generated build table therefore ran
@@ -20,23 +21,29 @@ This is the same failure mode as memory ``reference_ds_kit_conversion_not_
 route_exposed`` one layer further down the stack: the seam measures correct
 in-process and is inert on the wire.
 
-Verified against source BEFORE writing (file:line cited above plus):
-  - Both keys live ONLY on POST /rank (the carry / ds.dps route). ``grep -n
-    'apply_crit_conversion|kit_conversion_strength' agents/daemon_slayer/*.py``
-    returns server.py 481/488/511/512 and rank.py 918/921/1112/1228/1304/1322
-    and nothing on any /rank-<archetype> route.
-  - ``core/daemon_slayer_client.py`` has exactly ONE ``rank_for(`` call site
-    (line 1840, the carry + kit-less-fallback chokepoint of
-    ``rank_for_primary_archetype``), so one forward covers the dispatcher.
+Verified against source BEFORE writing (symbols cited above plus):
+  - Both keys lived ONLY on POST /rank (the carry / ds.dps route) at authoring.
+    ``grep -n 'apply_crit_conversion|kit_conversion_strength'
+    agents/daemon_slayer/*.py`` hit only ``_route_rank`` in server.py and
+    ``rank_items`` in rank.py, nothing on any /rank-<archetype> route. Since
+    then (re-read by symbol 2026-10-28): ``apply_crit_conversion`` is still
+    ``_route_rank`` only, but
+    since 041984580 / c09d9397b ``_route_rank_assassin`` and
+    ``_route_rank_bruiser`` parse ``kit_conversion_strength`` too.
+  - ``core/daemon_slayer_client.py`` has exactly ONE ``rank_for(`` call site,
+    inside
+    ``rank_for_primary_archetype`` (its carry + kit-less-fallback chokepoint),
+    so one forward covers the dispatcher.
   - Engine gate asymmetry (do NOT assume symmetry):
-      ``apply_crit_conversion`` is a BOOL defaulting False (server.py:488
+      ``apply_crit_conversion`` is a BOOL defaulting False (``_route_rank``'s
       ``_opt_bool(..., False)``), so omit == False.
-      ``kit_conversion_strength`` is a FLOAT defaulting 0.0 (server.py:481
-      ``_opt_float(..., 0.0)``) and rank.py:1303-1305 consults the registry
-      ONLY when ``kit_conversion_strength > 0.0`` - so omit == 0.0 == any
-      non-positive value, and the client emits the key only when > 0.0.
-  - ``registry_champion_ids()`` (kit_conversion.py:269) and ``_CRIT_CONVERSION``
-    (_crit_conversion_overrides.py:95) are read AT RUNTIME here so control
+      ``kit_conversion_strength`` is a FLOAT defaulting 0.0 (``_route_rank``'s
+      ``_opt_float(..., 0.0)``) and ``rank_items``' RM-86 L1 gate consults
+      the registry ONLY when ``kit_conversion_strength > 0.0`` - so omit ==
+      0.0 == any non-positive value, and the client emits the key only when
+      > 0.0.
+  - ``registry_champion_ids()`` (kit_conversion module) and ``_CRIT_CONVERSION``
+    (_crit_conversion_overrides module) are read AT RUNTIME here so control
     champions can never silently decay into the registry (the premise-decay
     trap that killed a hardcoded Quinn negative control last session).
 """
@@ -146,7 +153,7 @@ class RankForConversionSeamBodyTests(unittest.TestCase):
         self.assertIsInstance(spy.last.get(_KIT_KEY), float)
 
     def test_kit_conversion_strength_non_positive_omits_the_body_key(self):
-        """rank.py:1303-1305 gates on ``> 0.0``; 0.0 and negatives are inert
+        """``rank_items``' RM-86 L1 gate is ``> 0.0``; 0.0 and negatives are inert
         server-side, so the client must not send them at all."""
         for value in (0.0, -0.5):
             with self.subTest(value=value):
@@ -299,7 +306,7 @@ class EngineTransportError(RuntimeError):
 # --------------------------------------------------------------------------- #
 # xdist root cause (MEASURED 2026-07-26 against the live :8860 engine).
 #
-# ``_post_json`` (``core/daemon_slayer_client.py:95-112``) maps EVERY transport
+# ``_post_json`` (``core/daemon_slayer_client.py``) maps EVERY transport
 # failure to ``None``, and every caller up the stack reads ``None`` as "the
 # engine had nothing to say" rather than "the engine never answered". That is
 # the correct PRODUCTION shape - a live coach tick must fail fast rather than
@@ -308,14 +315,17 @@ class EngineTransportError(RuntimeError):
 #
 # TWO independent transport faults were measured, not one:
 #
-#   1. DEADLINE. ``core/daemon_slayer_client.py:33`` sets
+#   1. DEADLINE. ``core/daemon_slayer_client`` sets
 #      ``DEFAULT_TIMEOUT = 0.5`` s. Solo POST /rank is 22 - 37 ms, but at
 #      8-way concurrency the tail reaches 513 ms and 3 of 24 calls returned
 #      None. Fixed here by forcing ``_LIVE_TIMEOUT`` on the live calls.
 #
-#   2. LISTEN BACKLOG. ``agents/daemon_slayer/server.py:2630`` builds a stdlib
-#      ``ThreadingHTTPServer`` and never raises ``request_queue_size``, so the
-#      socketserver default of 5 applies. When more than 5 connects are pending
+#   2. LISTEN BACKLOG. ``agents/daemon_slayer/server.py`` ``start_server``
+#      built a stock ``ThreadingHTTPServer`` that never raised
+#      ``request_queue_size``, so the socketserver default of 5 applied (the
+#      commit that wrote this block, ca2dbb5c5, also raised it: its
+#      ``_RcThreadingHTTPServer`` sets ``request_queue_size = 128``; the retry
+#      below stays as a harness backstop). When more than 5 connects are pending
 #      the OS refuses the connection outright: MEASURED 3 of 500 sequential
 #      POSTs failing with ``ConnectionRefusedError [WinError 10061]`` while a
 #      12-way load ran, at a 30 s deadline - so NO timeout can fix this one.
@@ -377,7 +387,7 @@ def _signature(champion: str, **kw):
         raise EngineTransportError(
             f"live POST /rank returned NO BODY for champion={champion!r} "
             f"kw={kw!r} (args={_LIVE_ARGS!r}) - this is a TRANSPORT failure at "
-            f"core/daemon_slayer_client.py:107, not a ranking change"
+            f"core/daemon_slayer_client.py _post_json, not a ranking change"
         )
     return [(r["item_id"], round(float(r["delta"]), 6)) for r in res["ranked"]]
 
@@ -417,7 +427,8 @@ class LiveConversionSeamReachabilityTests(unittest.TestCase):
         # above). ``_post_json`` is resolved as a module global at call time by
         # every client entry point, so rebinding it here reaches the entire
         # nested call chain - the same seam
-        # ``core/build_order_precompute.py:604-638`` uses in production.
+        # ``_install_static_transport`` in ``core/build_order_precompute.py``
+        # uses in production.
         self.transport = _PatientTransport()
         patcher = mock.patch.object(dsc, "_post_json", self.transport)
         patcher.start()
