@@ -63,6 +63,48 @@ LCU_RELAY_MAX_AGE = 20.0  # LCU agent posts every 1s; 20s is a generous stalenes
 
 _log = logging.getLogger("game_reader.poller")
 
+# s144 true-audit: id ceilings. A Riot game id is a signed 64-bit value; a
+# champion id is far below 2**31. A larger value is junk, not an id.
+_GAME_ID_LIMIT = 2 ** 63
+_CHAMP_ID_LIMIT = 2 ** 31
+_ID_MAX_DIGITS = 20
+
+
+def _positive_id(raw, limit: int) -> str:
+    """Canonical decimal string for a positive id below LIMIT, else "".
+
+    Accepts an int (never a bool - `True` used to become "True") or a string
+    of ASCII digits with optional surrounding whitespace. Floats, containers,
+    signs, exponents and non-ASCII digits (`str.isdigit` accepts U+0661 and
+    fullwidth digits, and `int()` parses them) are refused. Leading zeros are
+    dropped so one id has one spelling.
+    """
+    if isinstance(raw, bool):
+        return ""
+    if isinstance(raw, int):
+        value = raw
+    elif isinstance(raw, str):
+        text = raw.strip()
+        if not (text.isascii() and text.isdigit()
+                and len(text) <= _ID_MAX_DIGITS):
+            return ""
+        value = int(text)
+    else:
+        return ""
+    return str(value) if 0 < value < limit else ""
+
+
+def _close_http_error(exc) -> None:
+    """Release the socket an HTTPError carries instead of leaving it to the GC.
+
+    The relay answers 404 on EVERY tick while no game runs, so an unclosed
+    error is one dangling response per poll for as long as RC idles.
+    """
+    try:
+        exc.close()
+    except Exception:  # noqa: BLE001 - best-effort release on an error path
+        pass
+
 
 class _PollerMixin:
     """HTTP/relay/LCU primitives. State (`_lcu_port`, `_ssl`, etc.) is
@@ -98,13 +140,17 @@ class _PollerMixin:
             )
             with urllib.request.urlopen(req, timeout=2) as r:
                 wrap = json.loads(r.read())
-            if "error" in wrap:
+            if not isinstance(wrap, dict) or "error" in wrap:
                 return None
             # RM-269: a backward clock step made `age` negative and served
             # old data as fresh; is_stale treats a future ts as stale.
             if _relay_is_stale(wrap.get("ts", 0), RELAY_MAX_AGE_S):
                 return None
-            return wrap.get("data")
+            # s144 true-audit: the contract is a dict or None. A list / str /
+            # number `data` used to come back as-is, and `check_in_game`
+            # (`is not None`) read even `[]` or `0` as a live game.
+            data = wrap.get("data")
+            return data if isinstance(data, dict) else None
         except urllib.error.HTTPError as e:
             # 404 from the relay is authoritative: no game running (the vision
             # server's in-process self-read of :2999 also came up empty).
@@ -112,6 +158,7 @@ class _PollerMixin:
             # can skip the direct-API fallback (which times out + spams logs).
             if e.code == 404:
                 self._relay_says_no_game = True
+            _close_http_error(e)
             return None
         except Exception:  # noqa: BLE001
             return None
@@ -122,6 +169,11 @@ class _PollerMixin:
         Returns '' if the relay is stale, unavailable, or game_id not yet
         set (e.g. phase != InProgress). No caching - the vision server
         already caches the last upload-lcu payload.
+
+        s144 true-audit: the id is a canonical positive decimal string or ''.
+        `str(...)` used to turn a bool, float, container or negative value
+        into "True" / "1.5" / "{'a': 1}" / "-5", and that string rode the
+        snapshot into ds_calibration and the coach game_id fields.
         """
         try:
             req = urllib.request.Request(
@@ -129,19 +181,33 @@ class _PollerMixin:
             )
             with urllib.request.urlopen(req, timeout=1.0) as r:
                 wrap = json.loads(r.read())
+            if not isinstance(wrap, dict):
+                return ""
             if _relay_is_stale(wrap.get("ts", 0), LCU_RELAY_MAX_AGE):  # RM-269
                 return ""
-            return str((wrap.get("data") or {}).get("game_id") or "")
+            data = wrap.get("data")
+            if not isinstance(data, dict):
+                return ""
+            return _positive_id(data.get("game_id"), _GAME_ID_LIMIT)
+        except urllib.error.HTTPError as e:
+            _close_http_error(e)
+            return ""
         except Exception:  # noqa: BLE001
             return ""
 
     def check_in_game(self):
-        """Quick check: is the in-game API responding?"""
+        """Quick check: is the in-game API responding?
+
+        s144 true-audit: mirrors `read_game` - the relay's 404 is
+        authoritative (no 2 s direct :2999 probe), and the direct read must
+        answer a dict; any JSON at all, even `null`, used to count as a game.
+        """
         if self._try_relay() is not None:
             return True
+        if getattr(self, "_relay_says_no_game", False):
+            return False
         try:
-            self._get(f"{LIVE_API}/gamestats")
-            return True
+            return isinstance(self._get(f"{LIVE_API}/gamestats"), dict)
         except Exception:  # noqa: BLE001
             return False
 
@@ -254,17 +320,20 @@ class _PollerMixin:
         Assemble game state from individual Riot endpoints.
         Used when /allgamedata returns a non-dict response.
         """
+        # s144 true-audit: each endpoint is kept only in its documented
+        # shape. A list `gameData` / `activePlayer` (or a dict `allPlayers`)
+        # used to pass the old dict-or-list check and reach _process_game.
         endpoints = {
-            "gameData":     f"{LIVE_API}/gamestats",
-            "activePlayer": f"{LIVE_API}/activeplayer",
-            "allPlayers":   f"{LIVE_API}/allplayers",
-            "events":       f"{LIVE_API}/eventdata",
+            "gameData":     (f"{LIVE_API}/gamestats", dict),
+            "activePlayer": (f"{LIVE_API}/activeplayer", dict),
+            "allPlayers":   (f"{LIVE_API}/allplayers", list),
+            "events":       (f"{LIVE_API}/eventdata", (dict, list)),
         }
         result = {}
-        for key, url in endpoints.items():
+        for key, (url, shape) in endpoints.items():
             try:
                 data = self._get(url)
-                if isinstance(data, (dict, list)):
+                if isinstance(data, shape):
                     result[key] = data
             except Exception:  # noqa: BLE001
                 pass
@@ -312,8 +381,12 @@ class _PollerMixin:
 
     def _get(self, url):
         req = urllib.request.Request(url)
-        with urllib.request.urlopen(req, context=self._ssl, timeout=2) as r:
-            return json.loads(r.read())
+        try:
+            with urllib.request.urlopen(req, context=self._ssl, timeout=2) as r:
+                return json.loads(r.read())
+        except urllib.error.HTTPError as e:
+            _close_http_error(e)
+            raise
 
     def _ensure_lcu(self):
         if self._lcu_port and self._lcu_auth:
@@ -330,7 +403,12 @@ class _PollerMixin:
                         # for the process lifetime - accepting garbage once
                         # breaks every later LCU request until a restart.
                         port, pw = parts[2], parts[3]
-                        if not (port.isdigit() and 0 < int(port) <= 65535):
+                        # s144 true-audit: ASCII digits only - isdigit()
+                        # also accepts U+0661 and fullwidth digits, which
+                        # int() parses but a URL authority does not.
+                        if not (port.isascii() and port.isdigit()
+                                and len(port) <= 10
+                                and 0 < int(port) <= 65535):
                             _log.debug(
                                 "LCU lockfile %s: bad port %r - skipping", lf, port
                             )
@@ -340,7 +418,7 @@ class _PollerMixin:
                                 "LCU lockfile %s: empty auth field - skipping", lf
                             )
                             continue
-                        self._lcu_port = port
+                        self._lcu_port = str(int(port))
                         self._lcu_auth = base64.b64encode(
                             f"riot:{pw}".encode()
                         ).decode()
@@ -385,12 +463,24 @@ class _PollerMixin:
                 headers={"Authorization": f"Basic {self._lcu_auth}"},
             )
             if res is not None:
+                # RM-1112: a pooled answer used to be parsed whatever its
+                # status, so an LCU 404 / 500 error body read as a session.
+                # The urlopen path raises on non-2xx; the pooled path answers
+                # None (like lcu/lcu_client.py) and never re-sends.
+                status = res[0]
+                if (isinstance(status, bool) or not isinstance(status, int)
+                        or not 200 <= status < 300):
+                    return None
                 return json.loads(res[1])
         url = f"https://{GAME_HOST}:{self._lcu_port}{endpoint}"
         req = urllib.request.Request(url)
         req.add_header("Authorization", f"Basic {self._lcu_auth}")
-        with urllib.request.urlopen(req, context=self._ssl, timeout=3) as r:
-            return json.loads(r.read())
+        try:
+            with urllib.request.urlopen(req, context=self._ssl, timeout=3) as r:
+                return json.loads(r.read())
+        except urllib.error.HTTPError as e:
+            _close_http_error(e)
+            raise
 
     # ------------------------------------------------------------------
     # Champ select processing
@@ -403,7 +493,9 @@ class _PollerMixin:
         The LCU sends `null` for fields it populates later, and it sends them
         as PRESENT keys - which is why `dict.get(key, [])` is not enough: the
         default applies only when the key is ABSENT. Anything that is not a
-        list of dicts contributes nothing rather than raising.
+        list of dicts contributes nothing rather than raising. s144
+        true-audit: an id is a positive int (or ASCII digit string); `True`,
+        -1, 1.5 or a container used to be stringified into the id list.
         """
         out = []
         entries = session.get(key)
@@ -412,9 +504,9 @@ class _PollerMixin:
         for pick in entries:
             if not isinstance(pick, dict):
                 continue
-            champ_id = pick.get("championId", 0)
+            champ_id = _positive_id(pick.get("championId"), _CHAMP_ID_LIMIT)
             if champ_id:
-                out.append(str(champ_id))
+                out.append(champ_id)
         return out
 
     def _process_champ_select(self, session):
@@ -445,8 +537,9 @@ class _PollerMixin:
                 if not isinstance(entries, list):
                     continue
                 for ban in entries:
-                    if ban:
-                        bans.append(str(ban))
+                    ban_id = _positive_id(ban, _CHAMP_ID_LIMIT)
+                    if ban_id:
+                        bans.append(ban_id)
 
         return {
             "phase": "champ_select",
