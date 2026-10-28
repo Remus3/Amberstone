@@ -458,11 +458,18 @@ footer .ui-version {
   font-size: var(--fs-xs);
   color: var(--text-dim);
   opacity: 0.85;
-  padding: 2px 8px;
+  /* RM-1012: the mode-pill box (3px + 1px border) so the stamp matches
+   * the 24px VOICE / CLIENT / prefs chips (it was 20px). */
+  padding: 3px 8px;
+  border: 1px solid transparent;
   border-radius: 3px;
   background: var(--surface);
   letter-spacing: 0.02em;
 }
+/* RM-1012: stampFooter (main.js autoReload) leaves the span empty when
+ * neither rc_version nor the ui hash is known; without this the padding
+ * and background painted a 16x4px speck. */
+footer .ui-version:empty { display: none; }
 footer .prefs-chip {
   font-size: var(--fs-xs);
   color: var(--gold);
