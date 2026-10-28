@@ -1382,7 +1382,20 @@ _WEB = _REPO_ROOT / "web"
 # six gives 241b920e... (the lane tip). Those eight paths are the whole
 # change. No glyph change: the added lines carry 0 non-ASCII bytes. If
 # another slice re-captures in parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "26408507ccd0f052d5a90e0ae7bbb0738c454443fcfe8b15e63721ed2eb5a3f6"
+# superseded by the RM-1084 re-capture below: "26408507ccd0f052d5a90e0ae7bbb0738c454443fcfe8b15e63721ed2eb5a3f6"
+#
+# RE-CAPTURED 2026-10-28 at RM-1084 (s144 uiux cycle 56, provisional
+# until the merger lands it and maps the id). One change rides it: the
+# User Builds rune tree tabs gain aria-selected (and role="tab" on the
+# secondary bar) in web/js/main.js _ubRpRenderTabs / _ubRpRenderSecTrees,
+# plus a --text-dim / --text caption split and the system focus ring in
+# web/css/panels/header.css. Ordinary case, no tokeniser change.
+# ATTRIBUTED BY SUBSTITUTION: swapping those two files back to their lane
+# tip 846db25c0 blobs reproduces the superseded 26408507... value EXACTLY.
+# Those two paths are the whole change. No glyph change: the added lines
+# carry 0 non-ASCII bytes. If another slice re-captures in parallel, the
+# merger recomputes.
+_LIVE_HALF_DIGEST = "b57cc4716a891730e036fa0f592bf590756f47debd153b70fb9a6ef6625e3042"
 
 
 def _web_sources() -> list[Path]:

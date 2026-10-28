@@ -2833,11 +2833,21 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   min-height: var(--hit-min);
   cursor: pointer;
   font-family: inherit;
+  /* RM-1084: unselected trees caption in --text-dim, the selected one in
+     --text, so the selected tree is the brightest in its bar. */
+  color: var(--text-dim);
   transition: border-color 0.1s, background 0.1s, opacity 0.1s;
 }
 .ub-rp-tab:hover, .ub-rp-sec-tab:hover { border-color: var(--clock); }
 .ub-rp-tab.active, .ub-rp-sec-tab.active {
   border-color: var(--info); background: var(--info-soft);
+  color: var(--text);
+}
+/* RM-1084: the one system focus ring (tokens.css --focus-ring), not the
+   UA outline. */
+.ub-rp-tab:focus-visible, .ub-rp-sec-tab:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 .ub-rp-sec-tab.disabled {
   opacity: 0.35; cursor: not-allowed;
@@ -2847,7 +2857,7 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   background: var(--surface); object-fit: cover;
 }
 .ub-rp-tab span, .ub-rp-sec-tab span {
-  font-size: var(--fs-sm); font-weight: 700; color: var(--text);
+  font-size: var(--fs-sm); font-weight: 700; color: inherit;
   letter-spacing: 0.02em;
 }
 .ub-rp-pane {

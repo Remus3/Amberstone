@@ -2708,7 +2708,11 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       b.className = "ub-rp-tab";
       b.dataset.tree = t.key;
       b.setAttribute("role", "tab");
-      b.classList.toggle("active", _RP.primaryTree === t.key);
+      // RM-1084: aria-selected follows the .active paint, so the selected
+      // tree is announced as selected, not just drawn that way.
+      const on = _RP.primaryTree === t.key;
+      b.setAttribute("aria-selected", on ? "true" : "false");
+      b.classList.toggle("active", on);
       const img = document.createElement("img");
       img.src = _runeIconUrl(t.icon);
       img.alt = t.name;
@@ -2731,7 +2735,12 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       b.className = "ub-rp-sec-tab";
       b.dataset.tree = t.key;
       b.disabled = isPrimary;
-      b.classList.toggle("active", _RP.secondaryTree === t.key);
+      // RM-1084: #ub-rp-sec-trees is a role="tablist"; its buttons are its
+      // tabs (the tablist had no tab children before).
+      const on = _RP.secondaryTree === t.key;
+      b.setAttribute("role", "tab");
+      b.setAttribute("aria-selected", on ? "true" : "false");
+      b.classList.toggle("active", on);
       b.classList.toggle("disabled", isPrimary);
       const img = document.createElement("img");
       img.src = _runeIconUrl(t.icon);
