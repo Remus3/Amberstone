@@ -254,19 +254,30 @@ def _build_logger() -> logging.Logger:
     sh = logging.StreamHandler(sys.stderr)
     sh.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
     lg.addHandler(sh)
-    # T3 #15 follow-on (2026-05-01): also route rc.* loggers (decision_detector,
-    # liveclient_cache, etc.) into supervisor.log when those modules run inside
-    # this process. Same handler instances - Python's logging.Handler.emit holds
-    # a per-handler lock so concurrent writes interleave safely.
-    rc_lg = logging.getLogger("rc")
-    if not rc_lg.handlers:
-        rc_lg.setLevel(logging.INFO)
-        rc_lg.addHandler(h)
-        rc_lg.addHandler(sh)
     return lg
 
 
 log = _build_logger()
+
+
+def _install_rc_log_tee() -> None:
+    """Route the rc.* loggers into the supervisor's handlers. Process-wide.
+
+    T3 #15 follow-on (2026-05-01): decision_detector, liveclient_cache, etc.
+    run inside the supervisor process, and their rc.* records belong in
+    supervisor.log. Same handler instances - Python's logging.Handler.emit
+    holds a per-handler lock so concurrent writes interleave safely.
+
+    RM-909 (d): called by ``agents.supervisor.main()`` only, never at import.
+    "rc" is the parent of every RC module's logger, so the old import-time tee
+    duplicated a whole test worker's rc.* traffic to the stderr bound at
+    import and pinned rc at INFO. A no-op when "rc" already has handlers.
+    """
+    rc_lg = logging.getLogger("rc")
+    if not rc_lg.handlers:
+        rc_lg.setLevel(logging.INFO)
+        for handler in log.handlers:
+            rc_lg.addHandler(handler)
 
 
 # -------- PID lock ----------------------------------------------------

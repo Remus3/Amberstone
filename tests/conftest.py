@@ -272,12 +272,15 @@ def _hermetic_file_handler_init(self, filename, *args, **kwargs):
     """Every file-logging handler the suite builds lands in tmp, not `logs/`.
 
     ROOT CAUSE, and why the fix is here rather than in one module:
-    `agents/_supervisor_common.py:224` runs `log = _build_logger()` at IMPORT,
-    and `_build_logger` (:197) attaches its RotatingFileHandler to BOTH the
+    `agents/_supervisor_common.py` runs `log = _build_logger()` at IMPORT,
+    and `_build_logger` then attached its RotatingFileHandler to BOTH the
     "supervisor" logger and the "rc" logger. Every RC module logs under
     `rc.*`, so the instant any test imports anything that reaches
-    `agents._supervisor_common`, the whole worker's `rc.*` traffic is teed
-    into the operator's live `logs/agents/supervisor.log`. MEASURED: 182940
+    `agents._supervisor_common`, the whole worker's `rc.*` traffic was teed
+    into the operator's live `logs/agents/supervisor.log`. (RM-909 (d) moved
+    the "rc" tee into `_install_rc_log_tee()`, called only by
+    `agents.supervisor.main()`; the "supervisor" logger's own file handler is
+    still built at import, so this redirect still applies.) MEASURED: 182940
     bytes across 850 distinct tests in one run - by a wide margin the largest
     single leak in the census, and NOT attributable to any of those 850 tests,
     which is exactly why a per-test fix was never going to find it.
@@ -315,7 +318,7 @@ def _repoint_existing_live_log_handlers():
     object (rather than mutating `baseFilename` and reopening the stream) is
     the conservative move: the stream lifecycle stays entirely inside the
     logging package. One replacement per ORIGINAL handler, because
-    `_build_logger` shares a single handler instance between two loggers and
+    `_install_rc_log_tee` shares a single handler instance between two loggers and
     swapping per-logger would leave the second one pointed at the live file.
     """
     replacements = {}

@@ -118,6 +118,7 @@ from agents._supervisor_common import (
     _SECRET_PATTERNS,
     _STARTED_AT,
     _build_logger,
+    _install_rc_log_tee,
     _iso_now,
     _pid_alive,
     _port_available,
@@ -173,6 +174,7 @@ __all__ = [
     "_WebServer",
     "_build_logger",
     "_format_task_prompt",
+    "_install_rc_log_tee",
     "_iso_now",
     "_pid_alive",
     "_port_available",
@@ -1144,6 +1146,9 @@ async def _run() -> int:
 
 
 def main() -> int:
+    # RM-909 (d): the rc.* -> supervisor.log tee is this process's, not an
+    # importer's, so it is installed here rather than at import.
+    _install_rc_log_tee()
     try:
         return asyncio.run(_run())
     except KeyboardInterrupt:
