@@ -182,6 +182,26 @@ def _legacy_axis(snapshot, champion_id: str) -> str:
     return "ap" if magic > attack else "ad"
 
 
+def _indecisive_cohort(snapshot) -> list:
+    """Champions whose kit split clears neither gate, re-derived from raw data.
+
+    The gate literals are restated, not imported, for the same reason as
+    ``_legacy_axis``; ``test_thresholds_are_the_documented_literals`` pins the
+    engine's copies to these values.
+    """
+    cohort = []
+    for cid, rec in sorted(snapshot.champions.items()):
+        dist = ((rec or {}).get("lolmath") or {}).get("damage_distribution")
+        if not isinstance(dist, dict) or not dist:
+            continue
+        magical = float(dist.get("magical") or 0.0)
+        physical = float(dist.get("physical") or 0.0)
+        dominant, other = max(magical, physical), min(magical, physical)
+        if not (dominant >= 0.55 and dominant - other >= 0.20):
+            cohort.append(cid)
+    return cohort
+
+
 def _ap_pct_sum_for(champion_id: str, key: str) -> float:
     """Independent re-derivation of a form's AP-scaling sum from raw blocks."""
     from agents.daemon_slayer.abilities import load_default
@@ -456,16 +476,40 @@ class KitAxisChokepointTests(unittest.TestCase):
     def test_indecisive_distribution_falls_back_to_the_rating_split(self):
         """A genuine hybrid keeps the legacy verdict, it does not flip on noise.
 
-        Measured indecisive cohort at 16.15.1: DrMundo Jax Kaisa Sejuani
-        Shaco Shen Shyvana Udyr Volibear Warwick. The set moves with each
-        patch's kit data (Sejuani resolves from 16.19.1, see _EXPECTED_FLIPS).
+        The cohort is derived from the live snapshot, not named: a hand list
+        went stale silently (Udyr was indecisive at 16.15.1 and is kit-decisive
+        AD by 16.21.1, where it still equals its rating verdict, so its subtest
+        passed without exercising the fallback). Measured at 16.21.1: Chogath
+        DrMundo Jax Kaisa Shaco Shen Shyvana Volibear Warwick.
         """
-        for champ in ("Shaco", "Jax", "Kaisa", "Udyr", "Warwick"):
+        cohort = _indecisive_cohort(self.snap)
+        self.assertTrue(cohort, "no indecisive champion - assertion is vacuous")
+        for champ in cohort:
             with self.subTest(champion=champ):
                 self.assertEqual(
                     hybrid._damage_axis(self.snap, champ),
                     _legacy_axis(self.snap, champ),
                 )
+
+    def test_indecisive_split_follows_the_ratings_not_the_larger_share(self):
+        """The fallback is distinguishable from an ungated larger-share pick.
+
+        Synthetic, so it does not depend on a live champion whose larger share
+        disagrees with its ratings (Shaco at 16.21.1: magical 0.510 over
+        physical 0.338, ratings attack > magic, served "ad").
+        """
+        class _Snap:
+            def __init__(self, rec):
+                self.champions = {"X": rec}
+
+        for dist, info, want in (
+                ({"physical": 0.34, "magical": 0.51},
+                 {"attack": 9, "magic": 2}, "ad"),
+                ({"physical": 0.51, "magical": 0.34},
+                 {"attack": 2, "magic": 9}, "ap")):
+            with self.subTest(dist=dist):
+                rec = {"lolmath": {"damage_distribution": dist}, "info": info}
+                self.assertEqual(hybrid._damage_axis(_Snap(rec), "X"), want)
 
     def test_missing_or_malformed_distribution_falls_back(self):
         class _Snap:
