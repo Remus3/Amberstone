@@ -221,6 +221,94 @@ def test_every_selected_module_carries_a_reason():
     assert all(out.reasons[m] for m in out.modules)
 
 
+# ---- RM-734: guards that walk the git index --------------------------------
+# A repo-wide guard names no file, so the text map never ties it to a change.
+# `07dbdc589` added ops/loop/repo_review.py and turned two such guards red while
+# push CI stayed green, and a push adding only a new module selected NOTHING.
+# A separate universe, so the exact-set cases above keep their meaning.
+
+_WALK_TEXTS = dict(_TEXTS, **{
+    "tests/_repo_walk.py": "def repo_files():\n    return []\n",
+    "tests/test_walks_from_pkg.py": "from tests import _repo_walk  # noqa\n",
+    "tests/test_walks_from_mod.py": (
+        "def test_x():\n    from tests._repo_walk import repo_files\n    assert repo_files\n"),
+    "tests/test_walks_import_alias.py": "from tests import json_helpers, _repo_walk as rw\n",
+    "tests/test_walks_ls_files.py": (
+        "import subprocess\nOUT = subprocess.run(['git', 'ls-files', '-z'])\n"),
+    "tests/test_walks_unparseable.py": "from tests import _repo_walk\ndef broken(:\n",
+    "tests/test_mentions_walker_only.py": '"""Not a walker: see tests/_repo_walk and ls-files."""\n',
+    "ops/loop/existing.py": "Z = 3\n",
+})
+_WALK_TRACKED = sorted(_WALK_TEXTS)
+_WALKERS = [
+    "tests/test_walks_from_mod.py",
+    "tests/test_walks_from_pkg.py",
+    "tests/test_walks_import_alias.py",
+    "tests/test_walks_ls_files.py",
+    "tests/test_walks_unparseable.py",
+]
+
+
+def _select_walk(changed, extra_tracked=()):
+    return sel.select_impacted(list(changed), _WALK_TRACKED + list(extra_tracked),
+                               _WALK_TEXTS.get)
+
+
+def test_a_new_module_selects_every_index_walker():
+    """The RM-734 acceptance, on a hypothetical new module: nothing names it,
+    so before the fix the push ran no impact slice at all."""
+    new = "ops/loop/zz_new_probe.py"
+    out = _select_walk([new], extra_tracked=[new])
+    assert out.mode == sel.MODE_SLICE, out.detail
+    assert out.modules == _WALKERS
+    for mod in _WALKERS:
+        assert any("walks the git index" in r for r in out.reasons[mod]), out.reasons[mod]
+
+
+def test_any_python_change_adds_the_walkers_to_its_text_matches():
+    out = _select_walk(["core/game_snapshot.py"])
+    assert "tests/test_snapshot_dotted.py" in out.modules
+    assert set(_WALKERS) <= set(out.modules)
+    assert "tests/test_unrelated.py" not in out.modules
+    out = _select_walk(["tests/test_unrelated.py"])
+    assert set(out.modules) == {"tests/test_unrelated.py", *_WALKERS}
+
+
+def test_a_mention_of_the_walker_is_not_a_walk():
+    out = _select_walk(["ops/loop/existing.py"])
+    assert "tests/test_mentions_walker_only.py" not in out.modules
+
+
+def test_a_non_python_change_adds_no_walker():
+    out = _select_walk(["lane-widget/src/new_thing.js"])
+    assert out.modules == ["tests/test_lane_widget.py"]
+    out = _select_walk(["data/daemon_slayer/16.19/items.json"])
+    assert not set(_WALKERS) & set(out.modules)
+
+
+def test_a_markdown_only_change_still_selects_nothing():
+    out = _select_walk(["docs/X.md"])
+    assert out.mode == sel.MODE_NONE
+    assert out.modules == []
+
+
+@pytest.mark.parametrize("source,expected", [
+    ("from tests import _repo_walk\n", True),
+    ("from tests._repo_walk import iter_repo_files, relative_posix\n", True),
+    ("import tests._repo_walk\n", True),
+    ("from tests import (\n    _repo_walk,\n)\n", True),
+    ("x = ['git', 'ls-files', '-z']\n", True),
+    ("from tests import _repo_walk\ndef broken(:\n", True),
+    ("x = ['git', 'ls-files'\n", True),
+    ("# from tests import _repo_walk\n", False),
+    ('"""tests/_repo_walk (ADR-015) and git ls-files"""\n', False),
+    ("from tests import _repo_walker_other\n", False),
+    ("import json\n", False),
+])
+def test_index_walker_detection(source, expected):
+    assert (sel.index_walker_reason(source) is not None) is expected, source
+
+
 # ---- git plumbing and the CLI ---------------------------------------------
 
 def _git(root, *args):
@@ -318,6 +406,31 @@ def test_live_couplings_are_mapped(changed, must_select):
     out = _live([changed])
     assert out.mode == sel.MODE_SLICE, (changed, out.detail)
     assert must_select in out.modules, (changed, len(out.modules))
+
+
+def test_live_new_module_selects_both_rm734_guards():
+    """RM-734 on the real index: a brand-new module that no test names still
+    runs the two guards `07dbdc589` turned red behind a green push CI."""
+    new = "ops/loop/zz_rm734_new_probe.py"
+    out = sel.select_impacted([new], sel.git_tracked(_REPO) + [new], sel.disk_reader(_REPO))
+    assert out.mode == sel.MODE_SLICE, out.detail
+    for guard in ("tests/test_atomic_write_guard_rm258_rm261.py",
+                  "tests/test_no_console_flash_scheduled_tools.py"):
+        assert guard in out.modules, (guard, len(out.modules))
+        assert any("walks the git index" in r for r in out.reasons[guard]), out.reasons[guard]
+
+
+def test_live_07dbdc589_diff_selects_both_rm734_guards():
+    """The RM-734 acceptance verbatim: `07dbdc589`'s own changed paths select
+    both guards it turned red, each for walking the index."""
+    changed = ["docs/audits/2026-10-09-repo-review-plan.md", "ops/loop/repo_review.py",
+               "tests/test_headless_env.py", "tests/test_repo_review_driver.py"]
+    out = _live(changed)
+    assert out.mode == sel.MODE_SLICE, out.detail
+    for guard in ("tests/test_atomic_write_guard_rm258_rm261.py",
+                  "tests/test_no_console_flash_scheduled_tools.py"):
+        assert guard in out.modules, (guard, len(out.modules))
+        assert any("walks the git index" in r for r in out.reasons[guard]), out.reasons[guard]
 
 
 def test_live_ci_workflow_edit_runs_the_whole_tree():

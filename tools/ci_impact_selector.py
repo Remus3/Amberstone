@@ -31,7 +31,14 @@ is selected when:
   (`lane-widget/`, `rc-shell/`, `web/`, `data/`, `.githooks/`, ...) and the
   module carries a string literal naming that tree (`"lane-widget"`). Such a
   tree's coupling to the tests is its PATH, and a brand-new file in it is named
-  by no test - the tree is.
+  by no test - the tree is;
+* the push changed any Python path and the module WALKS THE GIT INDEX - it
+  imports `tests._repo_walk` (ADR-015) or runs `git ls-files` (RM-734). Such
+  a guard is repo-wide and names no file, so the text map never ties it to a
+  change: `07dbdc589` added `ops/loop/repo_review.py` and turned two of them
+  red behind a green push CI, and a push adding only a new module selected
+  nothing at all. Detection reads the import or the argv literal, so a new
+  walker joins without a list to maintain.
 
 `.md` paths are skipped: `.github/workflows/docs-guards.yml` fires on every
 push carrying a `.md` and runs every module that reads one
@@ -194,6 +201,42 @@ def _string_literals(text: str) -> List[str]:
     return [n.value for n in ast.walk(tree) if isinstance(n, ast.Constant) and isinstance(n.value, str)]
 
 
+_WALK_VIA_REPO_WALK = "walks the git index (imports tests._repo_walk, ADR-015)"
+_WALK_VIA_LS_FILES = "walks the git index (runs git ls-files)"
+# The unparseable fallback only: a module pytest cannot import fails on its
+# own, so erring wide here costs nothing.
+_WALK_IMPORT_RX = re.compile(
+    r"^[ \t]*(?:from[ \t]+tests\._repo_walk[ \t]+import|import[ \t]+tests\._repo_walk\b"
+    r"|from[ \t]+tests[ \t]+import[ \t][^\n]*\b_repo_walk\b)", re.MULTILINE)
+_LS_FILES_RX = re.compile(r"(['\"])ls-files\1")
+
+
+def index_walker_reason(source: str) -> Optional[str]:
+    """Why this test module walks the git index (RM-734), or None. An import
+    of `tests._repo_walk` or a `"ls-files"` argv literal counts; prose that
+    only mentions either does not."""
+    if "_repo_walk" not in source and "ls-files" not in source:
+        return None
+    try:
+        tree = ast.parse(source)
+    except (SyntaxError, ValueError):
+        if _WALK_IMPORT_RX.search(source):
+            return _WALK_VIA_REPO_WALK
+        return _WALK_VIA_LS_FILES if _LS_FILES_RX.search(source) else None
+    lists_files = False
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom):
+            if node.module == "tests._repo_walk" or (
+                    node.module == "tests" and any(a.name == "_repo_walk" for a in node.names)):
+                return _WALK_VIA_REPO_WALK
+        elif isinstance(node, ast.Import):
+            if any(a.name == "tests._repo_walk" for a in node.names):
+                return _WALK_VIA_REPO_WALK
+        elif isinstance(node, ast.Constant) and node.value == "ls-files":
+            lists_files = True
+    return _WALK_VIA_LS_FILES if lists_files else None
+
+
 def _names_tree(literals: Iterable[str], tree: str) -> bool:
     for lit in literals:
         lit = _norm(lit)
@@ -236,11 +279,16 @@ def select_impacted(changed: Iterable[str], tracked: Iterable[str],
             text_needles.setdefault(needle.label, needle)
         for tree in trees:
             tree_needles.setdefault(f"names the {tree}/ tree", tree)
+    any_python = any(p.endswith(".py") for p in relevant)
 
     for mod in (p for p in tracked if is_test_module(p)):
         source = read_text(mod)
         if source is None:
             continue
+        if any_python:
+            walk = index_walker_reason(source)
+            if walk:
+                reasons.setdefault(mod, []).append(walk)
         words = set(re.findall(r"\w+", source))
         for label, needle in text_needles.items():
             if needle.words <= words and needle.pattern.search(source):
