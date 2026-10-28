@@ -35,6 +35,8 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import re
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -43,6 +45,7 @@ from agents.daemon_slayer._effects_types import PeriodicProc
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _DS_DATA = _REPO_ROOT / "data" / "daemon_slayer"
+_PATCH_DIR_RE = re.compile(r"^\d+\.\d+\.\d+$")
 
 # Absent from Meraki -> their Immolate formulas are inherited assumptions.
 _UNSOURCED_ARENA_MIRRORS = ("223068", "226664", "226660")
@@ -54,14 +57,23 @@ _SOURCED_ARENA_IMMOLATE = "223069"
 _WINDOW_FIELD_TOKENS = ("window", "duration", "uptime", "active_for", "seconds_active")
 
 
-def _meraki_snapshots() -> list[tuple[str, dict]]:
-    """Every ``items_meraki.json`` on disk, newest-first by directory name.
+def _snapshot_order(path: Path) -> tuple[int, tuple[int, ...]]:
+    name = path.parent.name
+    if _PATCH_DIR_RE.match(name):
+        return (0, tuple(-int(x) for x in name.split(".")))
+    return (1, ())
+
+
+def _meraki_snapshots(ds_data: Path = _DS_DATA) -> list[tuple[str, dict]]:
+    """Every ``items_meraki.json`` on disk, newest patch first by integer semver.
 
     Globbed rather than pinned: only the current patch snapshot is guaranteed
     on disk, so a hardcoded patch list would make this guard unrunnable.
+    RM-992: a reverse string sort put 16.9.1 ahead of 16.21.1; a non-patch
+    dir is still checked, after every patch.
     """
     out: list[tuple[str, dict]] = []
-    for path in sorted(_DS_DATA.glob("*/items_meraki.json"), reverse=True):
+    for path in sorted(ds_data.glob("*/items_meraki.json"), key=_snapshot_order):
         payload = json.loads(path.read_text(encoding="utf-8"))
         out.append((path.parent.name, payload["items"]))
     return out
@@ -165,6 +177,37 @@ class PeriodicProcHasNoActivationWindowTests(unittest.TestCase):
                         f"'uptime modelled as equal to Sunfire's' caveat on "
                         f"223069 in _effects_data.py - both are now stale.",
                     )
+
+
+class MerakiSnapshotOrderTests(unittest.TestCase):
+    """RM-992: snapshots come back newest-first by integer semver.
+
+    A reverse string sort put 16.9.1 ahead of 16.21.1, so the docstring's
+    "newest-first" was false past a one-digit minor. Synthetic trees here.
+    """
+
+    def _names(self, dirs: list[str]) -> list[str]:
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name)
+        for name in dirs:
+            (root / name).mkdir()
+            (root / name / "items_meraki.json").write_text(
+                '{"items": {}}', encoding="utf-8"
+            )
+        return [patch for patch, _items in _meraki_snapshots(root)]
+
+    def test_two_digit_minor_is_newest(self) -> None:
+        self.assertEqual(
+            self._names(["16.9.1", "16.21.1", "16.10.1"]),
+            ["16.21.1", "16.10.1", "16.9.1"],
+        )
+
+    def test_non_patch_dir_is_still_checked_but_last(self) -> None:
+        self.assertEqual(
+            self._names(["zz_scratch", "16.9.1", "16.21.1"]),
+            ["16.21.1", "16.9.1", "zz_scratch"],
+        )
 
 
 if __name__ == "__main__":
