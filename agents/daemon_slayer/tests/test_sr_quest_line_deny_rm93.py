@@ -18,8 +18,9 @@ correctly says SR-legal and ARAM-illegal. The World Atlas support quest is a
 Summoner's Rift system; Howling Abyss has no support quest at all.
 
 The CORRECT rationale is the one already adjudicated and test-pinned for the
-enchanter pool in ``tests/test_enchanter_pool_hsp_rm90.py:31-36``: these are 400g
-MUTUALLY EXCLUSIVE quest-progression upgrades - you pick exactly one when Bounty
+enchanter pool by
+``test_enchanter_pool_hsp_rm90.test_world_atlas_support_quest_line_absent``:
+these are 400g MUTUALLY EXCLUSIVE quest-progression upgrades - you pick exactly one when Bounty
 of Worlds (3867) completes - so ranking them against 3000g legendaries is a
 category error. Admitting them was MEASURED to put Bloodsong at rank #2 for
 Vel'Koz and #3 for Jinx, which is an RM-92 (non-output item) mispricing, not a
@@ -91,7 +92,8 @@ class WorldAtlasQuestLineDenyTests(unittest.TestCase):
             "Bounty of Worlds upgrades leaked into the SR candidate pool: "
             f"{leaked}. They are mutually exclusive 400g quest rewards, not "
             "free-slot purchases - ranking them against legendaries is the "
-            "category error pinned in test_enchanter_pool_hsp_rm90.py:31-36.",
+            "category error pinned by test_enchanter_pool_hsp_rm90."
+            "test_world_atlas_support_quest_line_absent.",
         )
 
     def test_world_atlas_starter_denied_on_sr(self) -> None:

@@ -19,7 +19,8 @@ The conversion vector is a curated champion-keyed registry, NOT a scan of
 ``damage_blocks``: verified 2026-07-18 that damage_blocks carries no
 attack-speed, crit, on-hit or DoT key for ANY champion (all 1709 blocks, 171
 champions), and that the loader drops ``effects_descriptions``
-(``abilities.py:220-263``). Seeding therefore follows the
+(``abilities.AbilityForm.from_dict`` reads no such key). Seeding therefore
+follows the
 ``_passive_damage_overrides.py`` prose-seeded precedent.
 
 MEASURED REACHABILITY (main-thread simulation against live 16.14.1 deltas).
@@ -97,7 +98,8 @@ class ConversionGateHarness(unittest.TestCase):
 class DefaultOffByteIdenticalTests(ConversionGateHarness):
     """The non-negotiable contract: OFF must be byte-identical, not merely close.
 
-    Mirrors the real default-off pattern at test_cost_aware_top_f2.py:60-62
+    Mirrors the real default-off pattern in
+    ``test_cost_aware_top_f2.test_default_off_byte_identical``
     (absent param == explicit default), strengthened to compare FULL ordered
     lists. Deliberately does NOT copy the pre-2026-07-18 shape of
     ``test_onhit_dps.test_coherence_off_is_byte_identical``, which was named

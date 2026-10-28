@@ -216,8 +216,9 @@ _NON_COACHABLE_ITEM_IDS: frozenset[str] = frozenset({
 #    maps["11"]=True AND maps["12"]=False for all eight line items, i.e. the data
 #    correctly says SR-legal / ARAM-illegal (the World Atlas support quest is a
 #    Summoner's Rift system; Howling Abyss has no support quest). The real reason
-#    to deny them is the one already pinned for the enchanter pool in
-#    tests/test_enchanter_pool_hsp_rm90.py:31-36: they are 400g MUTUALLY EXCLUSIVE
+#    to deny them is the one already pinned for the enchanter pool by
+#    test_enchanter_pool_hsp_rm90.test_world_atlas_support_quest_line_absent:
+#    they are 400g MUTUALLY EXCLUSIVE
 #    quest-progression upgrades (you pick exactly one when Bounty of Worlds 3867
 #    completes), so ranking them against 3000g legendaries is a category error.
 #    Admitting them was MEASURED to put Bloodsong at rank #2 for Vel'Koz and #3
