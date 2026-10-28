@@ -169,10 +169,10 @@ def _res_key(width, height):
 def _resolution_key_from_config_key(config_key):
     """The resolution-only key implied by a config_key STRING, or None.
 
-    Format proved from core/hud_settings.py:133-134 - read_hud_settings builds
+    Format proved from core.hud_settings.read_hud_settings, which builds
     ``config_key = "|".join([f"{width}x{height}"] + layout parts)``, so the
-    leading pipe-delimited token is always ``WxH``. Anything else (notably the
-    ``"unknown"`` sentinel at hud_settings.py:136) yields None."""
+    leading pipe-delimited token is always ``WxH``. Anything else (notably its
+    ``"unknown"`` sentinel) yields None."""
     head = str(config_key or "").split("|", 1)[0].strip()
     m = _RES_KEY_RE.match(head)
     if not m:
@@ -183,7 +183,7 @@ def _resolution_key_from_config_key(config_key):
 def _live_resolution_key():
     """The resolution-only key from the LIVE settings, or None. Preferred over
     the string parse because ``read_hud_settings`` exposes real integer
-    ``width`` / ``height`` fields (core/hud_settings.py:121-122, 148-149) rather
+    ``width`` / ``height`` fields (int in 1..10000, or None) rather
     than a formatted key. Fail-soft: never raises."""
     try:
         from core.hud_settings import read_hud_settings
@@ -204,7 +204,7 @@ def load_profile(config_key=None) -> dict:
       2. ``"resolution_seed"`` - the resolution-only profile file keyed
          ``"WxH"``, which is how ``seed_profiles`` writes the shipped seeds.
          A live config_key carries the HUD toggles too (see
-         core/hud_settings.py:133-134), so without this tier a seeded machine
+         core.hud_settings.read_hud_settings), so without this tier a seeded machine
          never matched its own seed and fell to tier 3. The resolution is taken
          from the live ``read_hud_settings`` width/height when available and
          from the key's leading ``WxH`` token otherwise; the response also
