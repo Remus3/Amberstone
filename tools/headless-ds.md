@@ -71,7 +71,7 @@ From the `CLAUDE.md` "Settled - do not re-litigate" section:
   Do NOT re-pitch Part-2 or re-scan for conditional candidates.
 - **block_index / form_index / max_priority / combo_sequence registries are provably saturated** (swept s223-s232, machine-guarded). The
   `tools/ds_*_prefilter.py` + `tools/ds_block_scanner.py` pre-filters stay durable for patch re-extracts, but there is no uncovered-champion population left.
-- **Never `--force` a Meraki re-extract.** `tools/daemon_slayer_extract.py:1108` carries the flag and its docstring at line 20 advertises it; the `latest`
+- **Never `--force` a Meraki re-extract.** `tools/daemon_slayer_extract.py` carries the flag (`ap.add_argument("--force", ...)`) and its module docstring advertises it; the `latest`
   endpoint is MUTABLE, so a forced re-extract silently rebases the snapshot.
 - **`core/build_order.py` no-double-unique is engine-authoritative** - a guard test fails on any family literal. The engine has 6 unique-passive families, not
   3.
@@ -91,17 +91,17 @@ Dangerous rather than annoying, because the failure NAMES read like real regress
 ritual, thirteen going red is indistinguishable at a glance from having broken the registries. Do not start "fixing" a data file. Re-run from the root before
 believing any registry-count or ASCII-hygiene failure.
 
-DS-only (`agents/daemon_slayer/tests`, 410 test modules) is minutes; the dual run with `tests/` is roughly 16x that. Order the ritual so the dual run is LAST
+DS-only (`agents/daemon_slayer/tests`; count its modules live, no figure is written here) is minutes; the dual run with `tests/` is roughly 16x that. Order the ritual so the dual run is LAST
 (section 7).
 
 ### 4. The probe traps - each returns plausible-but-WRONG output
 
 None fail loudly; each has already manufactured a false finding here.
 
-1. **`POST /rank` is the CARRY scorer** (`ds.dps`, auto-attack DPS delta), NOT the champion's routed scorer - `agents/daemon_slayer/server.py:2573` maps it to
+1. **`POST /rank` is the CARRY scorer** (`ds.dps`, auto-attack DPS delta), NOT the champion's routed scorer - the `_POST_ROUTES` table in `agents/daemon_slayer/server.py` maps it to
    `_route_rank`. Probe a mage there and you get an AD head, and `enemy_ad_share` / `enemy_ap_share` are accepted and SILENTLY IGNORED. `candidates_evaluated`
-   returns a plausible 251, so the mistake is invisible. Use the archetype routes, verified in the same table: `/rank-tank` (2576), `/rank-bruiser` (2578),
-   `/rank-mage` (2580), `/rank-onhit` (2581), `/rank-assassin` (2583), `/rank-enchanter` (2585). **`/rank-hybrid` does not exist** - bruisers score through the
+   returns a plausible 251, so the mistake is invisible. Use the archetype routes, all in the same `_POST_ROUTES` table: `/rank-tank`, `/rank-bruiser`,
+   `/rank-mage`, `/rank-onhit`, `/rank-assassin`, `/rank-enchanter`. **`/rank-hybrid` does not exist** - bruisers score through the
    `ds.hybrid` MODULE but are served by the `/rank-bruiser` ROUTE. Routed rows carry `delta`, not `delta_dps`.
 2. **`item_ids=[]` is not a neutral measurement.** An empty build systematically under-ranks anything multiplicative on an existing build: amp and
    complementary items. Measured: Soraka Moonstone Renewer reads #10 of 10 from empty, #5 after Echoes, #2 at depth, and the SHIPPED build order already buys
@@ -171,7 +171,7 @@ changed`; after the bounce the same regen changed 82 of 173).
 
 1. Bump the quoted literal in `agents/daemon_slayer/__init__.py` (`ENGINE_VERSION = "<read the current value>"`). Minor for a feature batch, patch for a correctness fix.
 2. **Bounce DS :8860** (section 8) and confirm `/health` serves the NEW version. This is a CORRECTNESS step, not stamp hygiene - **IN MAIN.** **DO NOT do this from a lane worktree (measured 2026-09-01, LEDGER 1317).** The scheduled task launches the MAIN checkout, so a bounce either changes nothing or, if you repoint it, serves UNMERGED lane code on the port RC and every other live lane reads - inverting your own failure onto four other lanes. From a lane worktree, regenerate IN-PROCESS instead: `core/build_order_precompute.py` and `core/build_order_variants.py` both take `--static`, which installs `_install_static_transport()` and computes through the DS server's own POST handlers with no HTTP and no running server, documented as identical to the live path by construction. That is strictly MORE correct here than regenerating against a foreign-version server. **The bounce is then OWED AT MERGE, in main.**
-3. Regenerate the precompute tables. Verified live: `data/daemon_slayer/build_orders/16.15.1/` holds 6 files - `build_orders_{sr,aram,arena}.json` +
+3. Regenerate the precompute tables. Verified live (2026-10-27, patch 16.21.1): `data/daemon_slayer/build_orders/<the current.txt patch>/` holds 6 files - `build_orders_{sr,aram,arena}.json` +
    `build_order_variants_{sr,aram,arena}.json`. `core/build_order_precompute.py` and `core/build_order_variants.py` both need an explicit `--champions all`
    ("all" is the ONLY full-roster path; the default is a seed sample and silently shrinks a shipped 173-champion table).
    `tools/daemon_slayer_build_orders_generate.py` differs - its `--champion` (singular) defaults to all and it REQUIRES live :8860. **The stamp is independent
