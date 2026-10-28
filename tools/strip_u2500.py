@@ -31,7 +31,8 @@ horizontal separator rule is preserved. Tree-drawing patterns like
 with; ASCII-art like '----' (built from U+2500) becomes '----' which still
 reads as a rule.
 
-ATOMIC WRITE: tmp.write_bytes() + os.replace() (Windows-safe).
+ATOMIC WRITE: core.polled_json.atomic_write_bytes (fsync, WinError 5
+retry, no scratch left behind on a refused rename; RM-258).
 
 EXCLUSIONS: the tool refuses to operate on any file NOT listed in
 --allow-frozen. There is no implicit walk. _HARD_SKIP_FROZEN is the
@@ -58,7 +59,6 @@ self-trip the drift guard.
 from __future__ import annotations
 
 import argparse
-import os
 import sys
 from pathlib import Path
 
@@ -68,6 +68,11 @@ U2500_BYTES = b"\xe2\x94\x80"
 ASCII_HYPHEN = b"\x2d"  # ASCII '-'
 
 ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from core import polled_json  # noqa: E402 - needs ROOT on sys.path first
+
 _SELF = Path(__file__).resolve()
 
 # HARD SKIP: paths in this set are NEVER rewritten, even when listed in
@@ -113,9 +118,7 @@ def _process_file(rel_posix: str, dry_run: bool) -> tuple[int, int, str]:
         return (pre, post, "decode-fail")
     if dry_run:
         return (pre, post, "dry-run")
-    tmp = abs_path.with_suffix(abs_path.suffix + ".u2500tmp")
-    tmp.write_bytes(new)
-    os.replace(tmp, abs_path)
+    polled_json.atomic_write_bytes(abs_path, new)
     return (pre, post, "rewritten")
 
 
