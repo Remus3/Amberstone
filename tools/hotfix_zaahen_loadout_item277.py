@@ -26,8 +26,10 @@ Scope:
 
 Every rebuilt path is a coherent clash-free 6-item set per
 tests/test_champion_loadouts_no_unique_clash.py (one lifeline item max, no
-spellblade/immolate/hydra double). Idempotent + atomic (tmp.write_text +
-os.replace). Mirrors tools/hotfix_thin_aram_pollution_item276.py.
+spellblade/immolate/hydra double). Idempotent + atomic: the write goes through
+core.polled_json.atomic_write_bytes (fsync, WinError 5 retry, no scratch left
+behind; ensure_ascii=True, LF). Shaped after
+tools/hotfix_thin_aram_pollution_item276.py.
 
 Usage:
     $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/hotfix_zaahen_loadout_item277.py [--dry-run]
@@ -36,12 +38,15 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parent.parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
 _LOADOUTS = _ROOT / "data" / "champion_loadouts.json"
+
+from core import polled_json  # noqa: E402
 
 # Bruiser primary (Fighter): Sundered Sky sustain opener + Black Cleaver/Death's
 # Dance core (item 276 bruiser core) + Sterak's (lone lifeline) + Guardian Angel.
@@ -156,9 +161,7 @@ def run(dry_run: bool = False) -> int:
         print("no changes; Zaahen already curated (idempotent no-op)")
         return 0
     text = json.dumps(data, indent=2, ensure_ascii=True) + "\n"
-    tmp = _LOADOUTS.with_suffix(".json.tmp")
-    tmp.write_bytes(text.encode("utf-8"))
-    os.replace(str(tmp), str(_LOADOUTS))
+    polled_json.atomic_write_bytes(_LOADOUTS, text.encode("utf-8"))
     print(f"wrote {_LOADOUTS}")
     return 0
 
