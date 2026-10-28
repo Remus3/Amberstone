@@ -68,7 +68,6 @@ import argparse
 import datetime as _dt
 import json
 import math
-import os
 import re
 import sqlite3
 import sys
@@ -683,11 +682,16 @@ def make_comp_lean_fn() -> Callable[[Sequence[str]], Optional[Tuple[str, str]]]:
 
 
 def _write_report(report: dict, out_path: Path) -> None:
-    """Atomic JSON write of the gate artifact (ASCII-only)."""
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = out_path.with_suffix(out_path.suffix + ".tmp")
-    tmp.write_text(json.dumps(report, indent=2, ensure_ascii=True), encoding="utf-8")
-    os.replace(str(tmp), str(out_path))
+    """Atomic JSON write of the gate artifact (ASCII-only).
+
+    RM-258: per-writer scratch, fsync, a bounded WinError 5 retry and no
+    scratch left on failure; the parent is created on demand. Imported here,
+    not at module level, so the tests that import this module for its
+    readers stay unchanged."""
+    from core import polled_json
+
+    body = json.dumps(report, indent=2, ensure_ascii=True)
+    polled_json.atomic_write_bytes(out_path, body.encode("ascii"))
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
