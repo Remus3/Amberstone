@@ -11,8 +11,10 @@ before the fix: Tab never landed on a row and `row.focus()` left focus on
 `.replay-slider`) had no :focus-visible rule and showed only the UA `auto`
 outline, unlike every other Replay control after RM-1017.
 
-The fix: each row is `tabindex="0" role="button"`, Enter and Space load the
-match exactly like a click, and rows and the slider paint the system
+The fix: each row is a keyboard button (since RM-1066 a real
+`<button type="button">` inside its li, which keeps the listitem role; see
+test_replay_row_list_semantics.py), Enter and Space load the match exactly
+like a click, and rows and the slider paint the system
 --focus-ring box-shadow under keyboard focus. Rows draw it INSET because
 #replay-match-list scrolls (an outer ring would be clipped), and a won / lost
 row keeps its 3px result stripe under focus.
@@ -93,12 +95,13 @@ def test_match_rows_are_keyboard_buttons(mock_server, pw_browser, vp):
         attrs = page.evaluate(
             f"""() => [...document.querySelectorAll('{_ROWS}')].map(r => ({{
               id: r.dataset.matchId, tab: r.tabIndex,
-              role: r.getAttribute('role')
+              tag: r.tagName, type: r.getAttribute('type')
             }}))"""
         )
         # Anchor: the fixture (web/data/ui_mock/replay.json) carries 4 matches.
         assert len(attrs) == 4, attrs
-        bad = [a for a in attrs if a["tab"] != 0 or a["role"] != "button"]
+        bad = [a for a in attrs if a["tab"] != 0 or a["tag"] != "BUTTON"
+               or a["type"] != "button"]
         assert not bad, f"match rows not keyboard buttons: {bad}"
     finally:
         page.close()

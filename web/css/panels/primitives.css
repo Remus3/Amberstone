@@ -159,7 +159,18 @@ header { transition: height 180ms ease; }
   flex: 1;
   min-height: 0;
 }
+/* RM-1066: the row is a <button> inside an li (the li keeps the list's
+ * listitem semantics), so the UA button chrome is reset here: it fills the
+ * li, inherits the panel font and color, and draws no face or bevel. */
 .replay-match-row {
+  width: 100%;
+  margin: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  text-align: start;
+  background: transparent;
+  border: 0;
   padding: var(--panel-gap-tight) var(--panel-padding-comp);
   min-height: 44px;
   display: flex;
@@ -201,6 +212,7 @@ header { transition: height 180ms ease; }
   text-transform: uppercase;
 }
 .replay-match-bot {
+  display: block;
   margin-top: 2px;
   font-size: var(--fs-xs); color: var(--text-dim);
   font-variant-numeric: tabular-nums;

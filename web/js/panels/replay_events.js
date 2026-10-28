@@ -197,19 +197,20 @@ function _saveInclude(set) {
 }
 
 // RM-638: one "you flagged" pin row. Same row contract as an event row
-// (class, data-clock seek, role=button, tabindex) so the delegated click /
+// (li > button.replay-events-row, data-clock seek) so the delegated click /
 // keydown seek in wireReplayEventsOnce works on it unchanged.
 function _flagRowHtml(pin) {
   const clockS = Math.max(0, Math.floor(Number(pin && pin.game_time_s) || 0));
   const clock  = _fmtMmSs(clockS);
-  return `<li class="replay-events-row" data-kind="flag" data-team="0"
-      data-clock="${clockS}" role="button" tabindex="0"
+  return `<li class="replay-events-item"><button type="button"
+      class="replay-events-row" data-kind="flag" data-team="0"
+      data-clock="${clockS}"
       title="You flagged this moment in game - jump the scrubber to ${_escHtml(clock)}">
       <span class="replay-events-clock">${_escHtml(clock)}</span>
       <span class="replay-events-label">${_escHtml(FLAG_LABEL)}</span>
       <span class="replay-events-actor"></span>
       <span class="replay-events-victim"></span>
-    </li>`;
+    </button></li>`;
 }
 
 // Merge event rows and flag rows by clock. A flag sorts AFTER an event at
@@ -247,7 +248,7 @@ function _renderEvents() {
   list.innerHTML = _rowsHtml(events, flags);
 }
 
-// One timeline-event row (the pre-RM-638 map body, unchanged).
+// One timeline-event row (the pre-RM-638 map body; li > button since RM-1066).
 function _eventRowHtml(e) {
     const clockS  = Number(e.clock_s) || 0;
     const clock   = _fmtMmSs(e.clock_s);
@@ -263,14 +264,16 @@ function _eventRowHtml(e) {
     // Each row is a seek control: clicking it (or Enter/Space when focused)
     // drives the scrubber to this event's timestamp via the delegated
     // listener in wireReplayEventsOnce. data-clock carries the raw seconds.
-    return `<li class="replay-events-row" data-kind="${kind}" data-team="${team}"
-      data-clock="${clockS}" role="button" tabindex="0"
+    // RM-1066: the li stays a listitem and the control is a real button.
+    return `<li class="replay-events-item"><button type="button"
+      class="replay-events-row" data-kind="${kind}" data-team="${team}"
+      data-clock="${clockS}"
       title="Jump the scrubber to ${_escHtml(clock)}">
       <span class="replay-events-clock">${_escHtml(clock)}</span>
       <span class="replay-events-label">${_escHtml(label)}${sub}${lane}</span>
       <span class="replay-events-actor"${aTitle}>${actor.html}</span>
       <span class="replay-events-victim"${vTitle}>${victim.html}</span>
-    </li>`;
+    </button></li>`;
 }
 
 /**

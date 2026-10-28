@@ -283,15 +283,20 @@ function _replayViewRefresh() {
       }
       let focusRow = null;
       for (const m of items) {
+        // RM-1066: the li stays a listitem (the list keeps its count for a
+        // screen reader); the row control is a real button inside it.
         const li = document.createElement("li");
-        li.className = "replay-match-row";
-        if (m.tracked && m.tracked.win === true)  li.classList.add("won");
-        if (m.tracked && m.tracked.win === false) li.classList.add("lost");
-        li.dataset.matchId = m.match_id;
+        li.className = "replay-match-item";
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "replay-match-row";
+        if (m.tracked && m.tracked.win === true)  btn.classList.add("won");
+        if (m.tracked && m.tracked.win === false) btn.classList.add("lost");
+        btn.dataset.matchId = m.match_id;
         const champ = (m.tracked && m.tracked.champion_name) || "?";
         const verdict = m.tracked && m.tracked.win === true ? "W" :
                         m.tracked && m.tracked.win === false ? "L" : "-";
-        const top = document.createElement("div");
+        const top = document.createElement("span");
         top.className = "replay-match-top";
         const span1 = document.createElement("span");
         span1.className = "replay-match-verdict " + (verdict === "W" ? "won" : verdict === "L" ? "lost" : "");
@@ -303,26 +308,27 @@ function _replayViewRefresh() {
         span3.className = "replay-match-queue";
         span3.textContent = _replayQueueLabel(m.queue_id);
         top.append(span1, span2, span3);
-        const bot = document.createElement("div");
+        const bot = document.createElement("span");
         bot.className = "replay-match-bot";
         bot.textContent = `${_replayDateStr(m.game_creation_ts)} - ${_replayDurStr(m.duration_s)} - patch ${m.patch || "?"}`;
-        li.append(top, bot);
+        btn.append(top, bot);
+        li.append(btn);
         // RM-1018: picking a match gates the whole view, so the row is a
         // keyboard button too (Tab stop, Enter / Space load it like a click).
+        // Enter / Space load on keydown and preventDefault, so the native
+        // button activation never fires a second load.
         // RM-1062: Ctrl / Alt / Meta + key is left to the recording
         // player (modifier+Space plays from anywhere).
-        li.tabIndex = 0;
-        li.setAttribute("role", "button");
-        li.addEventListener("click", () => _replayLoadMatch(m.match_id, li));
-        li.addEventListener("keydown", (e) => {
+        btn.addEventListener("click", () => _replayLoadMatch(m.match_id, btn));
+        btn.addEventListener("keydown", (e) => {
           if (e.ctrlKey || e.altKey || e.metaKey) return;
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
-            _replayLoadMatch(m.match_id, li);
+            _replayLoadMatch(m.match_id, btn);
           }
         });
         ul.appendChild(li);
-        if (focusMatchId && m.match_id === focusMatchId) focusRow = li;
+        if (focusMatchId && m.match_id === focusMatchId) focusRow = btn;
       }
       // s220 PGR S5: auto-load the focused match (from PGR Review ->).
       // Fires AFTER all rows are mounted so .active highlighting works.

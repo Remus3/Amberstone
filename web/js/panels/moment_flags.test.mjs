@@ -53,7 +53,10 @@ test("replay: flag rows render with the flag kind, label and seek clock", () => 
   assert.match(html, /class="replay-events-row"/);
   assert.match(html, /data-kind="flag"/);
   assert.match(html, /data-clock="200"/);
-  assert.match(html, /role="button" tabindex="0"/);
+  // RM-1066: an li (listitem) holding a real button, no role override.
+  assert.match(html, /^<li class="replay-events-item"><button type="button"/);
+  assert.match(html, /<\/button><\/li>$/);
+  assert.ok(!html.includes("role="), html);
   assert.ok(html.includes(">you flagged<"), html);
   assert.strictEqual(replay.FLAG_LABEL, "you flagged");
 });

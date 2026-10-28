@@ -177,7 +177,7 @@ def test_a_key_consumed_upstream_is_not_a_player_hotkey(
     mock_server, pw_browser, vp
 ):
     # Pins the review_player.js defaultPrevented pass-through on its own: the
-    # Replay rows are role=button, so isSpaceActivated alone already stands
+    # Replay rows are buttons (RM-1066), so isSpaceActivated alone already stands
     # Space down on them. The slider is a range input (Space would play), so
     # a closer handler that consumes Space there must win.
     ctx, page, errors = _open_loaded(pw_browser, mock_server, vp)

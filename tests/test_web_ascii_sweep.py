@@ -1246,7 +1246,21 @@ _WEB = _REPO_ROOT / "web"
 # file alone does. Those paths are the whole change. No glyph change: the
 # added lines carry 0 non-ASCII bytes. If another slice re-captures in
 # parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "add8c81218b76ee2ef3b83ef35a0c7e61a7649ce36513a5bb209fa2312fc020f"
+# superseded by the RM-1066 re-capture below: "add8c81218b76ee2ef3b83ef35a0c7e61a7649ce36513a5bb209fa2312fc020f"
+#
+# RE-CAPTURED 2026-10-28 at RM-1066 (s144 uiux cycle 35, provisional
+# until the merger lands it and maps the id). One change rides it: every
+# Replay row (RECENT MATCHES in web/js/panels/dev.js, the timeline ribbon
+# in web/js/panels/replay_events.js) is a plain li holding a real
+# <button type="button"> instead of an li with role=button, and the row
+# rules in web/css/panels/primitives.css and replay_events.css reset the
+# UA button chrome. Ordinary case, no tokeniser change. ATTRIBUTED BY
+# SUBSTITUTION: swapping exactly those four files back to their lane-tip
+# fcd452bb9 blobs (in memory) reproduces the superseded add8c812... value
+# EXACTLY; no three of them do. Those paths are the whole change. No glyph
+# change: the added lines carry 0 non-ASCII bytes. If another slice
+# re-captures in parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "e7d890a5ea1dc18b58c648e5bd310a606cb06d4d8d2b0fb40990be93ba41e9be"
 
 
 def _web_sources() -> list[Path]:

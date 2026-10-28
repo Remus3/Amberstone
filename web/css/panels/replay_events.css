@@ -88,7 +88,16 @@
   max-height: 320px;
   overflow-y: auto;
 }
+/* RM-1066: the row is a <button> inside an li (the li keeps the list's
+ * listitem semantics); the UA button chrome is reset so it fills the li
+ * and inherits the panel font and color. */
 .replay-events-row {
+  width: 100%;
+  margin: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  text-align: start;
   display: grid;
   grid-template-columns: 64px 1fr 140px 160px;
   align-items: center;
