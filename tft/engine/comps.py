@@ -141,6 +141,14 @@ def as_int(value) -> Optional[int]:
     return None
 
 
+def sample_count(row: Any) -> int:
+    """An aggregate row's top-4 game count `n` when it is a plain positive int, else 0 (no evidence).
+    RM-1100: the one reader behind every MIN_GAMES floor on a milestones aggregate row. The
+    aggregate writes `n` as an int, so a float (3.0), a digit string or a bool is not its output."""
+    n = row.get("n") if isinstance(row, Mapping) else None
+    return n if isinstance(n, int) and not isinstance(n, bool) and n > 0 else 0
+
+
 def _conf_ok(conf, min_conf: float) -> bool:
     try:
         c = float(conf)

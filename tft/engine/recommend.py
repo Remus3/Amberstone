@@ -45,7 +45,8 @@ from typing import Any, Iterable, Mapping, Optional
 
 from tft import tft_roll_odds
 from tft.engine import engine_meta
-from tft.engine.comps import MIN_GAMES, SetData, as_int, as_units, comp_units, copies, jaccard, trait_signature
+from tft.engine.comps import (MIN_GAMES, SetData, as_int, as_units, comp_units, copies, jaccard, sample_count,
+                              trait_signature)
 from tft.engine.milestones import LEVELS, format_label, parse_label
 
 NEAREST_LIMIT = 3
@@ -99,13 +100,6 @@ def _count(value: Any) -> int:
     """A non-negative game count (plain or digit-string int), else 0."""
     n = as_int(value)
     return n if n is not None and n > 0 else 0
-
-
-def _sample(row: Any) -> int:
-    """An aggregate row's top-4 game count `n` when it is a plain positive int, else 0.
-    RM-1096: a row whose n is missing or junk is no evidence, so it reads as under the floor."""
-    n = row.get("n") if isinstance(row, Mapping) else None
-    return n if isinstance(n, int) and not isinstance(n, bool) and n > 0 else 0
 
 
 def _level(value: Any) -> Optional[int]:
@@ -330,7 +324,7 @@ def level_advice(current: Mapping, agg: Optional[Mapping]) -> dict:
         return out
     row = _section(_section(agg, "level_curve"), label)
     med = _level(row.get("median"))
-    n = _sample(row)
+    n = sample_count(row)
     if med is not None and level is not None and n < MIN_GAMES:
         out["status"] = "insufficient"
         out["message"] = f"Too few top-4 games at {label} ({n} of {MIN_GAMES}) to judge Lv{level}"
@@ -347,16 +341,15 @@ def level_advice(current: Mapping, agg: Optional[Mapping]) -> dict:
             stat = _section(reached, str(lv))
             med_key = parse_label(stat.get("median"))
             if med_key is not None and med_key > key:
-                games = _sample(stat)
+                games = sample_count(stat)
                 out["next"] = {"level": lv, "label": format_label(med_key), "games": games,
                                "insufficient": games < MIN_GAMES}
                 break
     roll = _section(agg, "first_rolldown")
-    games = roll.get("n")
+    games = sample_count(roll)
     lo, hi = parse_label(roll.get("q1")), parse_label(roll.get("q3"))
     mid = _label(roll.get("median"))
-    if (isinstance(games, int) and not isinstance(games, bool) and games > 0 and mid
-            and lo is not None and hi is not None and lo <= key <= hi):
+    if games > 0 and mid and lo is not None and hi is not None and lo <= key <= hi:
         out["roll"] = {"label": mid, "to_gold": _number(_section(agg, "rolldown_gold_end").get("median")),
                        "games": games, "insufficient": games < MIN_GAMES}
     return out
@@ -396,7 +389,7 @@ def _fit(line: str) -> str:
 
 def _floored(stat: Mapping) -> Optional[Mapping]:
     """RM-1098: a median row resting on at least MIN_GAMES top-4 games, else None."""
-    return stat if _sample(stat) >= MIN_GAMES else None
+    return stat if sample_count(stat) >= MIN_GAMES else None
 
 
 def _milestone_line(agg: Optional[Mapping]) -> Optional[str]:
@@ -460,7 +453,7 @@ def _digest(core: list, three_star: list, carry: Optional[Mapping], agg: Optiona
         lines.append(line)
     # RM-1099: an opener share from fewer than MIN_GAMES stage-2 boards is no
     # evidence (one game makes every unit a 1.0 share), so the line is dropped.
-    opener_games = _sample({"n": agg.get("opener_games")}) if isinstance(agg, Mapping) else 0
+    opener_games = sample_count({"n": agg.get("opener_games")}) if isinstance(agg, Mapping) else 0
     opener = agg.get("opener") if opener_games >= MIN_GAMES else None
     names = [setdata.unit_name(o["api"]) for o in _list(opener) if isinstance(o, Mapping) and isinstance(o.get("api"), str)]
     if names:

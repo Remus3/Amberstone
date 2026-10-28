@@ -65,6 +65,7 @@ from tft.engine.comps import (
     placement_of,
     record_id,
     row_is_evidence,
+    sample_count,
 )
 
 LEVELS = (4, 5, 6, 7, 8, 9)
@@ -444,12 +445,6 @@ def _is_num(value) -> bool:
     return _finite(value)
 
 
-def _games(row: Any) -> int:
-    """An aggregate row's top-4 game count `n` when it is a plain positive int, else 0 (no evidence)."""
-    n = row.get("n") if isinstance(row, Mapping) else None
-    return n if isinstance(n, int) and not isinstance(n, bool) and n > 0 else 0
-
-
 def compare_to_average(mined: Mapping, agg: Mapping) -> list:
     """Rows of this match's milestones next to the comp's top-4 medians (post-match digest).
     RM-1098: every row carries the median's top-4 game count (`games`) and
@@ -457,7 +452,7 @@ def compare_to_average(mined: Mapping, agg: Mapping) -> list:
     rows = []
 
     def floor(row, stat):
-        games = _games(stat)
+        games = sample_count(stat)
         rows.append(dict(row, games=games, insufficient=games < MIN_GAMES))
 
     def order_row(name, this, stat):
