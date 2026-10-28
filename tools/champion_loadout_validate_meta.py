@@ -22,7 +22,8 @@ Invariants enforced (one per ``build_path``):
 Drift action: leftmost ``BOOTS`` token moved to ``items[1]`` by index swap; for
 bootsless drift, every boots token is removed.
 
-Atomic write: tmp.write_text + tmp.replace; backup at
+Atomic write: ``core.polled_json.atomic_write_bytes`` (per-writer scratch,
+fsync, bounded WinError 5 retry; the running app reads this file); backup at
 ``data/champion_loadouts.json.bak-slice-a-<UTC-stamp>`` BEFORE edit.
 
 Re-running on already-conformant data is a no-op (return code 0, "0 fixes").
@@ -187,10 +188,11 @@ def _apply_fixes(loadouts: dict, drift: list[dict]) -> int:
 
 
 def _atomic_write(target: Path, payload: dict) -> None:
-    tmp = target.with_suffix(target.suffix + ".tmp")
+    # Lazy: _ROOT is on sys.path above, so the bare CLI resolves core/ too.
+    from core import polled_json
+
     txt = json.dumps(payload, indent=2, ensure_ascii=True)
-    tmp.write_bytes((txt + "\n").encode("ascii"))
-    tmp.replace(target)
+    polled_json.atomic_write_bytes(target, (txt + "\n").encode("ascii"))
 
 
 def main() -> int:
