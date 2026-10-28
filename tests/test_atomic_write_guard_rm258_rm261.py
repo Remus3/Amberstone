@@ -148,7 +148,6 @@ _TOOLS_UNCLASSIFIED = frozenset({
     "tools/ddragon_mirror_refresh.py",
     "tools/ds_cross_eval/probe_champion.py",
     "tools/ds_cross_eval/run_all.py",
-    "tools/ds_parity_run.py",
     "tools/gen_archmap.py",
     "tools/gen_state_schema.py",
     "tools/hotfix_kaisa_aram_ashe_sr_item263.py",

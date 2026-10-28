@@ -42,6 +42,11 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from core import polled_json  # noqa: E402
+
 FIXTURES = ROOT / "tests" / "fixtures" / "ds_parity_fixtures.jsonl"
 DEFAULT_REPORT = ROOT / "ops" / "runtime" / "ds_parity_report.json"
 BASE_URL = "http://127.0.0.1:8860"
@@ -223,10 +228,8 @@ def main(argv: list[str] | None = None) -> int:
 
     report = run(fixtures)
     out = Path(args.report)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    tmp = out.with_suffix(".tmp")
-    tmp.write_text(json.dumps(report, indent=2), encoding="utf-8", newline="\n")
-    tmp.replace(out)
+    polled_json.atomic_write_bytes(
+        out, json.dumps(report, indent=2).encode("utf-8"))
 
     print(f"report: {out}")
     print(f"repo {report['repo_engine_version']} | live {report['live_engine_version']}")
