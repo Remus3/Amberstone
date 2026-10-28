@@ -13,7 +13,7 @@ Route homes (chosen where each seam actually has effect):
       (R53). The three rune-gate seams are /burst-scoped (single-build burst
       NUMBER) exactly like R30 assume_magic_burst: a flat keystone amp washes out
       of the ranker delta, so it only reads meaningfully on the direct route.
-  * ``_route_rank_assassin`` (rank_items_by_burst, already forwards these) -
+  * ``_route_rank_assassin`` (rank_items_by_burst, already accepts these) -
     assume_takedown (DSV2), assume_squishy_target (DSV3), assume_ability_amp
     (DSV4), target_preset (DSP8).
   * ``_route_dps`` (compute_dps direct, /dps-scoped like R7/R12) -
@@ -28,10 +28,10 @@ Confirmed API surface before scaffolding:
     - agents/daemon_slayer/server.py.
   * compute_burst_damage accepts runes / assume_takedown / assume_ability_amp /
     score_completion_runes / gate_target_hp_amp / gate_caster_hp_amp /
-    caster_current_hp_pct - burst.py:461-492.
-  * rank_items_by_burst forwards assume_takedown / assume_squishy_target /
-    assume_ability_amp / target_preset - burst.py:1596-1628.
-  * compute_dps accepts apply_melee_aa_gate - dps.py:628.
+    caster_current_hp_pct - ``burst.compute_burst_damage``.
+  * rank_items_by_burst accepts assume_takedown / assume_squishy_target /
+    assume_ability_amp / target_preset - ``burst.rank_items_by_burst``.
+  * compute_dps accepts apply_melee_aa_gate - ``dps.compute_dps``.
   * BurstRankResult.to_dict exposes target_armor / target_mr - burst.py.
   * Divergence scenarios lifted from the engine seam tests:
     Shield Bash 8401 (DSP4), Last Stand 8299 (R53), Cut Down 8017 (R51),

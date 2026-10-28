@@ -13,15 +13,17 @@ In-process (the route functions take a body dict + read the module
     _route_rank_assassin / _route_rank_enchanter / _route_dps / _route_burst
     - agents/daemon_slayer/server.py (grepped def lines).
   * server._CACHE.set(DataSnapshot) seeds the snapshot holder
-    - server.py:166 (_SnapshotCache.set).
+    - ``server._SnapshotCache.set``.
   * rank_items accepts exempt_offclass_by_win / prefer_kit_axis_by_win /
-    cost_ceiling - rank.py:549-551.
+    cost_ceiling - ``rank.rank_items``.
   * rank_items_by_ehp accepts prefer_survivability_by_win / cost_ceiling
-    - ehp.py:1930-1931.
+    - ``ehp.rank_items_by_ehp``.
   * rank_items_by_hybrid accepts prefer_survivability_by_win / cost_ceiling
-    - hybrid.py:618-619.
-  * rank_items_by_burst accepts prefer_kit_axis_by_win - burst.py:1512.
-  * rank_items_by_hps accepts prefer_survivability_by_win - hps.py:815.
+    - ``hybrid.rank_items_by_hybrid``.
+  * rank_items_by_burst accepts prefer_kit_axis_by_win
+    - ``burst.rank_items_by_burst``.
+  * rank_items_by_hps accepts prefer_survivability_by_win
+    - ``hps.rank_items_by_hps``.
   * Off-class win-exempt set surfaces Trinity Force for Ezreal; RF2 surfaces
     Guardian's Horn / Warmog's Armor / Heartsteel for Rakan (live-probed).
 
