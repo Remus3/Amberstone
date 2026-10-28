@@ -106,6 +106,11 @@ _RUNTIME_TOOLS = frozenset({
     # core/data_retention.py prunes; a failed write used to leave a torn
     # sidecar or a stray destination-derived .tmp.
     "tools/phase_watcher.py",
+    # RC-MoonSyncPoller (at logon, a long-running loop) plus its --ping
+    # UserPromptSubmit hook: status.md and findings.json are read by
+    # --status and /api/moon-sync-status while the poller rewrites them,
+    # and poller_seen.json is read back on every poll.
+    "tools/moon_sync_poller.py",
 })
 
 # RM-258 residual (s144): tools/ is IN scope by default. Out of scope are the
@@ -157,7 +162,6 @@ _TOOLS_UNCLASSIFIED = frozenset({
     "tools/ladder_role_scout.py",
     "tools/laning_verdict_information_probe.py",
     "tools/live_write_tracer.py",
-    "tools/moon_sync_poller.py",
     "tools/package_portable.py",
     "tools/regen_ranged_marksman_builds_item213.py",
     "tools/repair_mojibake.py",
@@ -217,6 +221,17 @@ SANCTIONED = {
         "below: a <name>.<pid>.<token>.tmp scratch, flush + fsync before the "
         "rename, a bounded PermissionError (WinError 5) retry, and the "
         "scratch removed when the rename fails for good",
+    ("tools/moon_sync_poller.py", "_replace_with_retry"):
+        "RC-MoonSyncPoller is the only process watching the cross-repo "
+        "channel, so nothing from core/ may join its import path (an "
+        "import-time fault there would kill every poller restart; its own "
+        "comment above _replace_with_retry), and its --ping hook must run in "
+        "a copy without RC's modules (MAIN 1254 #17). Its _atomic_write meets "
+        "the three requirements, asserted by "
+        "test_moon_sync_poller_writer_meets_the_sanction_contract below: a "
+        "<name>.<pid>.<token>.tmp scratch, flush + fsync before the rename, a "
+        "bounded PermissionError (WinError 5) retry, and the scratch removed "
+        "when the rename fails for good",
     ("core/log_rotation.py", "try_rotate"):
         "log ROTATION, not an atomic write (RM-718 a), checked against the "
         "three requirements above. Per-writer scratch: yes - "
@@ -614,6 +629,66 @@ def test_phase_watcher_writer_meets_the_sanction_contract(tmp_path, monkeypatch)
         [dest.name, dest.name.replace("_420_", "_450_")])
 
 
+def test_moon_sync_poller_writer_meets_the_sanction_contract(tmp_path, monkeypatch):
+    """tools/moon_sync_poller.py keeps core/ off its import path on purpose,
+    so its one writer (status.md, findings.json, poller_seen.json and the
+    --ping stamp all go through _atomic_write) is sanctioned on the three
+    requirements, asserted here on the code: a per-writer scratch name, fsync
+    before the rename, a bounded WinError 5 retry, the scratch removed when
+    the rename fails for good - and LF bytes on disk."""
+    from tools import moon_sync_poller as msp
+    real_replace, real_fsync = os.replace, os.fsync
+    events: list[str] = []
+    scratch: list[str] = []
+
+    def rec_replace(src, dst):
+        events.append("replace")
+        scratch.append(Path(src).name)
+        return real_replace(src, dst)
+
+    def rec_fsync(fd):
+        events.append("fsync")
+        return real_fsync(fd)
+
+    monkeypatch.setattr(msp.os, "replace", rec_replace)
+    monkeypatch.setattr(msp.os, "fsync", rec_fsync)
+    monkeypatch.setattr(msp.time, "sleep", lambda _s: None)
+    dest = tmp_path / "status.md"
+    msp._atomic_write(dest, "# a\n- b\n")
+    msp._atomic_write(dest, "# a\n- c\n")
+    assert events == ["fsync", "replace", "fsync", "replace"]
+    assert scratch[0] != scratch[1], scratch
+    for name in scratch:
+        assert name.startswith("status.md.") and name.endswith(".tmp"), name
+        assert f".{os.getpid()}." in name, name
+    assert dest.read_bytes() == b"# a\n- c\n"
+
+    refusals = [3]
+
+    def flaky(src, dst):
+        if refusals[0]:
+            refusals[0] -= 1
+            raise PermissionError(13, "Access is denied")
+        return real_replace(src, dst)
+
+    monkeypatch.setattr(msp.os, "replace", flaky)
+    msp._atomic_write(dest, "# a\n- d\n")
+    assert dest.read_bytes() == b"# a\n- d\n"
+
+    calls = [0]
+
+    def refused(src, dst):
+        calls[0] += 1
+        raise PermissionError(13, "Access is denied")
+
+    monkeypatch.setattr(msp.os, "replace", refused)
+    with pytest.raises(PermissionError):
+        msp._atomic_write(dest, "# a\n- e\n")
+    assert 1 < calls[0] <= 20, calls[0]
+    assert [p.name for p in tmp_path.iterdir()] == ["status.md"]
+    assert dest.read_bytes() == b"# a\n- d\n"
+
+
 def test_scope_keeps_runtime_tools_and_drops_generators():
     assert _in_scope("tools/lcu_agent.py")
     assert _in_scope("tools/hotkey_listener.py")
@@ -627,6 +702,7 @@ def test_scope_keeps_runtime_tools_and_drops_generators():
     assert _in_scope("tools/rc_facts.py")
     assert _in_scope("tools/inbox_responder_runner.py")
     assert _in_scope("tools/phase_watcher.py")
+    assert _in_scope("tools/moon_sync_poller.py")
     assert not _in_scope("tools/daemon_slayer_extract.py")
     assert not _in_scope("ops/fleet_kit/fleet_headless.py")
     assert _in_scope("coach_integration/_coach.py")

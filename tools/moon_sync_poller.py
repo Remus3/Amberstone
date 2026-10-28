@@ -96,6 +96,7 @@ import json
 import math
 import os
 import re
+import secrets
 import sys
 import time
 from ctypes import wintypes
@@ -313,15 +314,29 @@ def _replace_with_retry(src: Path, dst: Path) -> None:
 
 
 def _atomic_write(target: Path, text: str) -> None:
-    """tmp then replace, with LF held.
+    """Per-writer scratch, fsync, then a bounded-retry replace, with LF held.
 
-    newline="\\n" is load-bearing, not hygiene: the default translates every LF
-    to CRLF on Windows, so the bytes on disk are larger than the bytes the size
-    cap measured and a render that fits in memory can overflow the file bound.
+    The bytes are written as-is, never through a text-mode file: the default
+    newline translates every LF to CRLF on Windows, so the bytes on disk would
+    be larger than the bytes the size cap measured and a render that fits in
+    memory could overflow the file bound. RM-258 / RM-261: the scratch is
+    `<name>.<pid>.<hex>.tmp` (two sessions' --ping hooks can stamp one repo
+    at once), it is flushed and fsynced before the rename, and it is removed if
+    any step fails, so a refused rename leaves no orphan beside the target.
     """
-    tmp = target.with_name(f"{target.name}.tmp.{os.getpid()}")
-    tmp.write_text(text, encoding="utf-8", newline="\n")
-    _replace_with_retry(tmp, target)
+    tmp = target.with_name(f"{target.name}.{os.getpid()}.{secrets.token_hex(4)}.tmp")
+    try:
+        with open(tmp, "wb") as fh:
+            fh.write(text.encode("utf-8"))
+            fh.flush()
+            os.fsync(fh.fileno())
+        _replace_with_retry(tmp, target)
+    except BaseException:
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+        raise
 
 
 def _log_line(text: str) -> None:
