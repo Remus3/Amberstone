@@ -2834,6 +2834,78 @@ Ids `LX-nn` map to the RM rows in `BACKLOG.md` "External-lift intake".
 - **LX-07** (RM-608, death recap) With `RC_DEATH_RECAP=1`, one real own death writes a row to
   `data/coaching/death_recaps.jsonl` (champion names only); confirm the live VictimName / KillerName
   forms (shared with LX-02 / RM-673); sanity-check the estimated split per mode (SR, ARAM / KIWI, Arena).
+  **READY (s144 lane gated c30, 2026-10-28; PREP only, nothing ticked).** PRECONDITIONS measured
+  2026-10-28 at idle: (1) the flag has never been ON in any retained RC lifetime -
+  `data/coaching/death_recaps.jsonl` does not exist (gitignored), and none of the 37 `logs/*.log`
+  files (the 15 dated daily logs span 2026-10-14 .. 2026-10-28, 14-day retention) holds the
+  writer's INFO line `death recap (estimated) enabled`, while other `rc.*` INFO lines do reach them. The listener installs
+  once, at `core/liveclient_cache.start()` (`_install_optional_taps` -> `core.death_recap.install_if_enabled`,
+  flag read from the RC PROCESS env), so turning it on is an env change plus an RC restart BEFORE the
+  game: a main-session / operator act, never a lane's; the INFO line in that day's log is the proof
+  it took. (2) `DeathRecapTap.on_snapshot` uses the FIRST snapshot only to set the EventID
+  high-water: a death already in the event list when RC first polls is never recapped, so the RC
+  start must come before the game. (3) The DS split needs DS `:8860` up (`fetch_ds_profiles`,
+  0.4 s per `/burst` call on one daemon worker thread); with DS down every row reads `basis=local`
+  and only the local half can be graded. (4) No panel renders a recap: `latest_recap` /
+  `format_line` have no caller outside `core/death_recap.py` and its tests, and the rows' only
+  consumer is `scripts/postmortem_analyze.py` (`damage_recap`), so LX-07 asks whether the row is
+  WRITTEN and right, never whether it renders. (5) THE RISK THIS ROW CAN EXPOSE: `is_self_death`
+  matches `VictimName` against the active player's PLAYER-name keys only (`summonerName` /
+  `riotIdGameName` / `riotId`), while `resolve_player` accepts a champion name for the killer
+  (RM-673). If the wire's `VictimName` carries the champion name, the tap never fires and no row is
+  ever written; `tests/test_gated_lx07_recap_check.py::test_champion_name_victim_is_tap_blind`
+  shows the real `process_kill` returning None on that shape. The grader reads it as `TAP_BLIND`.
+  PROBE (from the main checkout, during the same game as an LX-02 capture set, any mode): write down
+  `date +%s` at game start; take an LX-02 capture (the LX-02 PROBE command, same directory) after
+  each own death and one after the last; write down `date +%s` at the end screen; then run
+  `python tools/gated_lx07_recap_check.py --since <start> --until <end + 60> --captures
+  ops/runtime/liveclient_captures/ --json`. The capture directory is shared with LX-02 / LX-08 and
+  will hold earlier games: the grader drops every capture whose relay wrapper `ts` falls outside
+  the window (`captures_outside_window`), and a capture with no wrapper `ts` cannot be placed, so
+  save this game's captures into a fresh subdirectory (`.../liveclient_captures/lx07_<start>/`) and
+  pass that instead when any doubt remains. Read-only: the log is read line by line, the captures
+  through the LX-02 loader, no network call. No player name is printed (RM-906); champion names,
+  modes, event ids and game times are. FIELD PATHS: `log_exists`, `torn_lines`, `rows_in_window`,
+  `rows_outside_window`, `recorded_at_first` / `_last`, `rows_verdict`, `rows_failed[].problems`
+  (`schema` / `provenance` / `mode` / `contributors` / `shares` / `basis` / `names_only` /
+  `player_name_leak`), `player_name_leaks`, `modes`, `per_mode.<MODE>.rows` / `.basis` /
+  `.mean_shares` / `.ds_contributors` / `.divergent[]`; `join.join_verdict`, `join.own_deaths`,
+  `join.tap_blind`, `join.deaths_without_row`, `join.contributors_mismatch`,
+  `join.rows_without_wire_death`, `join.rows_after_last_capture`, `join.victim_forms`,
+  `join.killer_forms`, `join.deaths[]`; `synthetic`, `payloads`, `captures_outside_window`.
+  PREDICATE (stated before any game): the WRITE half PASSES iff `log_exists=true`, `torn_lines=0`,
+  `rows_in_window` at least 1, `rows_verdict=PASS` (so `player_name_leaks=0` and `names_only` held on
+  every row), and `join.join_verdict=MATCH` with `contributors_mismatch=0` and
+  `rows_without_wire_death=0`, on a VALID LX-02 capture set (`synthetic=0`, its own `duplicates=0`
+  and `relay_ts_span_s` above 0). `TAP_BLIND` is a FAIL: record `victim_forms` and file S144-G-20.
+  `MISSING` with every death `tap_sees=true` is a FAIL to explain (an RC start after the death, a
+  dropped worker, a DS hang), never to argue away. The NAME half is RECORDED either way:
+  `victim_forms` / `killer_forms` over own deaths, beside LX-02's `name_forms.ChampionKill`; it is
+  RM-673's decision, not LX-07's pass bar. The SPLIT half is graded PER MODE, one game each (SR;
+  ARAM or KIWI, both `ARAM`; Arena `CHERRY` -> `ARENA`); an unplayed mode stays open. A mode PASSES
+  iff it has at least one row with `basis` `ds` or `mixed` (DS up) and `divergent` holds at most half
+  of that mode's `ds_contributors`; every `divergent` entry is listed in the evidence by champion
+  (a divergence from the coarse DDragon fallback is not by itself a defect; more than half is a FAIL
+  to file). A game with no own death reads `rows_verdict=NO_RESULT` / `join_verdict=NO_RESULT`: the
+  row stays open. `names_only` checks champion names against the tracked
+  `data/meta/ddragon_champions.json` (16.21.1 at this cycle): a champion newer than that file, or a
+  non-English client's localized `championName`, reads `names_only` on a genuine row - record the
+  name and refresh the catalog, it is not a leak.
+  EVIDENCE CONTRACT: the grader's JSON (values, not "ok"); the two epochs and the end-screen time;
+  the game's mode / queue and length; the capture files' mtimes; the RC that ran
+  (`ops/runtime/health.json` `pid` / `started_at` against the game start, and the main checkout
+  HEAD); the `death recap (estimated) enabled` log line with its time (who set the flag, where, and
+  when RC restarted); and DS `:8860/health` read during the game.
+  SUBSTITUTION CHECK: `tests/test_gated_lx07_recap_check.py` writes rows through the REAL
+  `process_kill` from hand-built payloads (DS stubbed) and produces every verdict above, so a
+  verdict proves nothing unless the rows came from the live RC during the played game. The rows
+  carry NO game id, so `recorded_at` inside the observed game window and the `event_id` /
+  `game_time_s` join against that game's own captures are the only per-game keys; on the FIRST
+  drain the log file must first appear after the game starts (its absence was measured this cycle).
+  A `process_kill` call by hand, or a test that omits `path=`, writes the same row into the live
+  `DEFAULT_RECAPS_PATH`: no such call may run on the box between the game and the probe, and none
+  ever closes LX-07. Grading against `/api/state` or a dashboard surface is the substitution kill:
+  the join reads the wire's ChampionKill events from the relay captures only.
 - **LX-06** (RM-604, event channel) A real game's death, level-up, completed item and objective events
   (including `stolen` on a stolen objective) reach a live `/api/events` EventSource client; a
   reconnect resumes with Last-Event-ID across the real 600 s connection cap and across a dashboard
