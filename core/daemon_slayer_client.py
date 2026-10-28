@@ -2983,15 +2983,18 @@ def rank_for_primary_archetype(
     exposes a single call shape that the coaches + UI use, routing based on
     the operator's pick from ``state.cs_archetype_pick.primary``.
 
-    Returns a dict with shape:
+    Returns ``None`` or a dict with shape:
         {
-            "ok":          bool,
+            "ok":          True,  # always True; a failure returns None instead
             "scorer":      "dps" | "ehp" | "hybrid" | "ability" | "burst" | "hps" | "onhit",
             "archetype":   str,   # the requested archetype ("carry" on a fallback)
             "ranked":      [RankedItem-like dicts],
             "fell_back":   bool,  # True only for a kit-less champion
         }
-    ``ok=False`` means the engine was unreachable. Every archetype has its
+    The dispatcher returns ``None`` whenever the scorer POST fails: ``_post_json``
+    collapses a timeout, a refused connection, any HTTP error status and a
+    non-JSON body into one ``None`` (RM-1000). Callers test ``out is None``.
+    Every archetype has its
     own scorer (Phase 6 s181), so ``fell_back`` is True only for a kit-less
     champion: the mage / assassin / enchanter branches fall through to
     ds.dps when ``_kitless_all_zero`` sees an all-zero ranking (LEDGER 907),
