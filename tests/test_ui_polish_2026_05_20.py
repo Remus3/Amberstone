@@ -40,6 +40,7 @@ CSS_LAST_MATCH   = ROOT / "web" / "css" / "panels" / "last_match.css"
 CSS_REPLAY_EV    = ROOT / "web" / "css" / "panels" / "replay_events.css"
 JS_RIGHT_NOW     = ROOT / "web" / "js" / "panels" / "right_now.js"
 JS_DRAFT_ELO     = ROOT / "web" / "js" / "panels" / "draft_elo.js"
+JS_ESCAPE_LAYERS = ROOT / "web" / "js" / "lib" / "escape_layers.js"
 
 
 def _read(p: Path) -> str:
@@ -233,19 +234,28 @@ class CoachPulseWireTests(unittest.TestCase):
 
 
 class DraftEloEscTests(unittest.TestCase):
-    """draft_elo.js adds a document-level keydown listener for ESC,
-    does NOT introduce a click handler, does NOT add a pinned class."""
+    """draft_elo.js registers its overlay as an ESC layer with the shared
+    document-level dispatcher, does NOT introduce a click handler, does
+    NOT add a pinned class.
 
-    def test_js_adds_keydown_listener_on_document(self):
-        js = _read(JS_DRAFT_ELO)
-        self.assertIn('document.addEventListener("keydown"', js,
-                      "draft_elo.js must add a document-level keydown listener")
+    RM-1070 moved the document keydown listener and the Escape key test
+    out of draft_elo.js into web/js/lib/escape_layers.js (one listener that
+    closes the topmost open layer); the dismiss itself is pinned in a real
+    browser by tests/snapshot_panels/test_escape_one_action.py."""
 
-    def test_js_checks_escape_key(self):
+    def test_js_registers_with_the_document_escape_dispatcher(self):
         js = _read(JS_DRAFT_ELO)
+        self.assertIn('registerEscapeLayer({\n    name: "draft-elo-contributions"',
+                      js, "draft_elo.js must register its overlay as an ESC layer")
+        lib = _read(JS_ESCAPE_LAYERS)
+        self.assertIn('document.addEventListener("keydown", _onEscape, true)', lib,
+                      "the dispatcher must listen on document")
+
+    def test_dispatcher_checks_escape_key(self):
+        lib = _read(JS_ESCAPE_LAYERS)
         # Either e.key === "Escape" OR e.code === "Escape" (both safe).
-        self.assertTrue('"Escape"' in js,
-                        "draft_elo.js must check for the Escape key")
+        self.assertIn('e.key !== "Escape" && e.code !== "Escape"', lib,
+                      "the dispatcher must check for the Escape key")
 
     def test_js_does_not_introduce_click_handler(self):
         """HoverOnlyContractTests in test_draft_elo_panel_dom.py already

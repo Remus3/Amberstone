@@ -18,6 +18,7 @@ import { state, CADENCE, VIEW_IDS, VIEW_LABELS, _VIEW } from './lib/state.js';
 import { ITEMS, ITEM_COSTS, CHAMPS, SPELLS, DDRAGON_FALLBACK_VERSION, _itemResolveCache, _normItemName, _resolveItemId, _splitItemList, _resolveChampId, _resolveSpell } from './lib/items_index.js';
 import { idempotentRender, makeSig, makeStreamGate } from './lib/idempotent_render.js';
 import { applyTheme, resolveBootTheme } from './lib/theme.js';
+import { registerEscapeLayer } from './lib/escape_layers.js';
 
 // -- Panel modules ---------------------------------------------------------
 import { RN, renderRightNow, renderWhatWent, renderDigest, renderGameSense, renderStats } from './panels/right_now.js';
@@ -368,16 +369,16 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       if (e.target === TMODAL.root) closeTaskModal();   // click backdrop
     });
   }
-  // RM-1067: the Escape that closes the modal is consumed (capture phase,
-  // preventDefault) so the general Escape chain and the Replay player
-  // stand down on it - one press, one action. RM-1069: it stands down
-  // too on a press another layer already consumed (stacked layers).
-  document.addEventListener("keydown", (e) => {
-    if (e.key !== "Escape" || e.defaultPrevented || !TMODAL.root) return;
-    if (TMODAL.root.classList.contains("hidden")) return;
-    closeTaskModal();
-    e.preventDefault();
-  }, true);
+  // RM-1067: the Escape that closes the modal is consumed so the general
+  // Escape chain and the Replay player stand down on it - one press, one
+  // action. RM-1070: the shared dispatcher gives the press to the layer
+  // painted on top, so a menu or picker open over the modal closes first.
+  registerEscapeLayer({
+    name: "task-modal",
+    el: () => TMODAL.root,
+    isOpen: () => !!TMODAL.root && !TMODAL.root.classList.contains("hidden"),
+    close: closeTaskModal,
+  });
 
   // -- Insight-card COPY button ----------------------------------------
   const ADAPT_COPY_BTN = el("adapt-copy");
@@ -927,16 +928,16 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     document.addEventListener("click", (e) => {
       if (menu && !menu.contains(e.target) && e.target !== trig) _viewMenuClose();
     });
-    // RM-1067: only an OPEN menu takes the Escape, and it consumes it
-    // (capture phase, preventDefault) so the zen exit and the Replay
-    // player's release-focus do not also run on the same press.
-    // RM-1069: a press another layer consumed is not taken again.
-    document.addEventListener("keydown", (e) => {
-      if (e.key !== "Escape" || e.defaultPrevented) return;
-      if (!menu || menu.classList.contains("hidden")) return;
-      _viewMenuClose();
-      e.preventDefault();
-    }, true);
+    // RM-1067: only an OPEN menu takes the Escape, and it consumes it so
+    // the zen exit and the Replay player's release-focus do not also run
+    // on the same press. RM-1070: through the shared dispatcher, which
+    // picks the topmost open layer.
+    registerEscapeLayer({
+      name: "view-menu",
+      el: () => menu,
+      isOpen: () => !!menu && !menu.classList.contains("hidden"),
+      close: _viewMenuClose,
+    });
     document.querySelectorAll(".view-menu-item").forEach((btn) => {
       btn.addEventListener("click", () => {
         const v = btn.dataset.view;
@@ -3822,18 +3823,17 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       backdrop.className = "home-find-match-backdrop";
       backdrop.addEventListener("click", _homeFindMatchPickerHide);
       document.body.appendChild(backdrop);
-      // Escape closes the picker. Bound once; safe to leave attached.
-      // RM-1067: consumed (capture phase, preventDefault) - this is
-      // bound lazily, after the general Escape chain, which would
-      // otherwise exit zen on the same press. RM-1069: a press another
-      // layer consumed is not taken again.
-      document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape" && !e.defaultPrevented
-            && !picker.classList.contains("hidden")) {
-          _homeFindMatchPickerHide();
-          e.preventDefault();
-        }
-      }, true);
+      // Escape closes the picker. Registered once, with the backdrop.
+      // RM-1067: consumed, so the general Escape chain does not also
+      // exit zen on the same press. RM-1070: the shared dispatcher gives
+      // the press to the topmost open layer, so the picker closes before a
+      // task modal open underneath it.
+      registerEscapeLayer({
+        name: "find-match-picker",
+        el: () => picker,
+        isOpen: () => !picker.classList.contains("hidden"),
+        close: _homeFindMatchPickerHide,
+      });
     }
     backdrop.classList.remove("hidden");
     picker.classList.remove("hidden");
@@ -6831,8 +6831,8 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       return;
     }
     // Esc: close modal -> dismiss reply toast -> exit Zen mode (in order).
-    // A press a layer already consumed (view menu, task modal, Find Match
-    // picker; RM-1067) is not acted on again here.
+    // A press a layer already consumed (the escape_layers.js dispatcher;
+    // RM-1067, RM-1070) is not acted on again here.
     if (e.key === "Escape") {
       if (e.defaultPrevented) return;
       const modal = el("task-modal");

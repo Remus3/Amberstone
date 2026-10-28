@@ -4,6 +4,7 @@ import { state } from '../lib/state.js';
 import { selectPrimary, shouldPulse, signalFromState } from '../lib/overlay_priority.js';
 import { isFightCue, makeCombatLatch } from '../lib/combat_mode.js';
 import { condenseKvRows } from '../lib/condense.js';
+import { registerEscapeLayer } from '../lib/escape_layers.js';
 
 // RC2 P3.3 SHADOW: the previous S0 cue across renders, for shouldPulse's
 // cross-detection. Module scope so it survives between renderRightNow calls.
@@ -170,16 +171,16 @@ function renderDigest(p) {
   });
   if (close) close.addEventListener("click", hide);
   pop.addEventListener("click", e => { if (e.target === pop) hide(); });
-  // RM-1068: an OPEN popover takes the Escape and consumes it (capture
-  // phase, preventDefault), so main.js's Escape chain does not also exit
-  // zen on the same press. RM-1069: a press another layer consumed is
-  // not taken again, so stacked layers close one per press.
-  document.addEventListener("keydown", e => {
-    if (e.key !== "Escape" || e.defaultPrevented) return;
-    if (pop.classList.contains("hidden")) return;
-    hide();
-    e.preventDefault();
-  }, true);
+  // RM-1068: an OPEN popover takes the Escape and consumes it, so
+  // main.js's Escape chain does not also exit zen on the same press.
+  // RM-1070: through the shared dispatcher, which gives one press to the
+  // topmost open layer, so stacked layers close top down, one per press.
+  registerEscapeLayer({
+    name: "digest-popover",
+    el: () => pop,
+    isOpen: () => !pop.classList.contains("hidden"),
+    close: hide,
+  });
 })();
 
 // -- GAME SENSE panel renderer -------------------------------------

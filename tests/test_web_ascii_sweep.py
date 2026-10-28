@@ -1287,7 +1287,23 @@ _WEB = _REPO_ROOT / "web"
 # superseded 9060e903... value EXACTLY. That path is the whole change. No
 # glyph change: the added lines carry 0 non-ASCII bytes. If another slice
 # re-captures in parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "3115dc8cf650d43614a0ae6fd722e8f27160518eb732e5785253d80f62bc2344"
+# superseded by the RM-1070 re-capture below: "3115dc8cf650d43614a0ae6fd722e8f27160518eb732e5785253d80f62bc2344"
+#
+# RE-CAPTURED 2026-10-28 at RM-1070 (s144 uiux cycle 38, provisional
+# until the merger lands it and maps the id). One change rides it: the five
+# Escape layers (task modal, view menu and Find Match picker in
+# web/js/main.js, the digest popover in web/js/panels/right_now.js, the
+# draft-elo overlay in web/js/panels/draft_elo.js) register with one
+# dispatcher, the new web/js/lib/escape_layers.js, which closes the topmost
+# open layer instead of the first registered one. Ordinary case, no
+# tokeniser change. ATTRIBUTED BY SUBSTITUTION: swapping those three files
+# back to their lane-tip 06aae01a3 blobs and leaving out the new module (in
+# memory) reproduces the superseded 3115dc8c... value EXACTLY; no one or two
+# of the three swapped alone do, nor the three without dropping the module.
+# Those paths are the whole change (the new .test.mjs is not a swept
+# language). No glyph change: the added lines carry 0 non-ASCII bytes. If
+# another slice re-captures in parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "780a2c7e34ff4953425ab6f40eff3e42ee66d8fdb4305e7b2949ad1087d1ef1e"
 
 
 def _web_sources() -> list[Path]:

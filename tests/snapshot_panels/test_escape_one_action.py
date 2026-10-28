@@ -266,11 +266,11 @@ def test_escape_dismisses_the_draft_elo_overlay_and_keeps_zen(
 # only zen survived, because the bubble-phase chain does check it). Each
 # layer now stands down on a press another layer consumed, so the press goes
 # to the first registered listener: right_now.js is imported by main.js and
-# binds at module evaluation, before main.js wires the task modal, which is
-# also the topmost layer here. One press peels one layer; for THIS pair the
-# registration order is also top down. Close order is registration order,
-# not z-order: a view menu or Find Match picker open over the task modal
-# would lose the press to the modal first (filed RM-1070).
+# binds at module evaluation, before main.js wires the task modal. One press
+# peels one layer. RM-1070 then moved every layer onto one dispatcher that
+# picks the topmost open layer (web/js/lib/escape_layers.js), so the order is
+# paint order, not registration order; for THIS pair the two agree, and the
+# RM-1070 tests at the end of the file pin a pair where they disagree.
 
 _STACK = """
 () => ({
@@ -395,3 +395,124 @@ def test_a_press_consumed_upstream_leaves_the_draft_elo_overlay_shown(
         assert not errors, f"JS errors: {errors[:3]}"
     finally:
         mock_server.set_draft_elo(None)
+
+
+# RM-1070 ----------------------------------------------------------------
+# Close order is PAINT order. Measured in headless Chromium (?ui_mock=1#home,
+# 1920x920): #task-modal is z-index 200, #view-menu 9100, the Find Match
+# picker 9200 (its backdrop 9100) and #digest-popout 9500, all position:
+# fixed in the root stacking context. Before the fix each layer had its own
+# document capture listener and the first REGISTERED open layer took the
+# press: the task modal is wired before the view menu and the lazily bound
+# picker, so with either open OVER the modal one Escape closed the modal
+# underneath and left the upper layer showing. Both upper layers are opened
+# here the way the keyboard opens them (an activation, no pointer): the modal
+# backdrop intercepts the mouse, which is why only keyboard users reach this.
+
+_OVER_MODAL = {
+    "view-menu": "() => document.getElementById('view-trigger').click()",
+    "find-match-picker": "() => document.getElementById('home-hero-cta').click()",
+}
+
+
+@pytest.mark.parametrize("vp", VIEWPORTS, ids=lambda v: f"{v[0]}x{v[1]}")
+@pytest.mark.parametrize("upper", sorted(_OVER_MODAL))
+def test_escape_closes_the_layer_painted_on_top_first(
+        mock_server, pw_browser, vp, upper):
+    ctx, page, errors = _open_view(pw_browser, mock_server, vp, "home")
+    try:
+        _zen_on(page)
+        page.wait_for_selector("#home-hero-cta", state="visible", timeout=10_000)
+        _open_layer(page, "task-modal")
+        page.evaluate(_OVER_MODAL[upper])
+        assert page.evaluate(_LAYER_OPEN[upper]), f"{upper} did not open"
+        assert page.evaluate(_LAYER_OPEN["task-modal"]), "the modal closed"
+        z = page.evaluate(
+            """(sel) => [sel, '#task-modal'].map(s =>
+                 +getComputedStyle(document.querySelector(s)).zIndex)""",
+            "#view-menu" if upper == "view-menu" else "#home-find-match-picker",
+        )
+        assert z[0] > z[1], f"{upper} is not painted over the modal: z={z}"
+        page.keyboard.press("Escape")
+        st = page.evaluate(_STATE)
+        assert page.evaluate(_LAYER_OPEN["task-modal"]) and st["zen"] == "1", (
+            f"the first Escape closed the task modal UNDER the open {upper}: {st}"
+        )
+        assert not page.evaluate(_LAYER_OPEN[upper]), (
+            f"the first Escape did not close the topmost layer ({upper}): {st}"
+        )
+        page.keyboard.press("Escape")
+        st = page.evaluate(_STATE)
+        assert not st["modalOpen"] and st["zen"] == "1", (
+            f"the second Escape did not close only the task modal: {st}"
+        )
+        page.keyboard.press("Escape")
+        assert page.evaluate(_STATE)["zen"] == "", "the third Escape kept zen"
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors: {errors[:3]}"
+
+
+# Every layer goes through the one dispatcher: several document capture
+# listeners racing on registration order is the defect class, so the page
+# may not grow a second one. An init script records every capture-phase
+# keydown listener added to document or window whose source names Escape;
+# after load, with the lazily bound Find Match picker opened too, exactly one
+# may exist (the dispatcher). The source check pins which layers register.
+
+_RECORD_CAPTURES = """
+(() => {
+  window.__escCaptures = [];
+  const orig = EventTarget.prototype.addEventListener;
+  EventTarget.prototype.addEventListener = function (type, fn, opts) {
+    const capture = opts === true || !!(opts && opts.capture);
+    if (type === 'keydown' && capture
+        && (this === document || this === window)
+        && String(fn).includes('Escape')) {
+      window.__escCaptures.push(String(fn).slice(0, 80));
+    }
+    return orig.call(this, type, fn, opts);
+  };
+})();
+"""
+
+
+def test_every_escape_layer_registers_with_the_one_dispatcher(
+        mock_server, pw_browser):
+    import re
+    from pathlib import Path
+
+    ctx, page, errors = _new_page(pw_browser, mock_server, VIEWPORTS[0])
+    try:
+        page.add_init_script(_RECORD_CAPTURES)
+        page.goto(mock_server.url + "/?ui_mock=1#home",
+                  wait_until="domcontentloaded", timeout=15_000)
+        page.wait_for_function("() => document.body.dataset.view === 'home'",
+                               timeout=10_000)
+        page.wait_for_selector("#home-hero-cta", state="visible", timeout=10_000)
+        page.evaluate("() => document.getElementById('home-hero-cta').click()")
+        page.keyboard.press("Escape")
+        caps = page.evaluate("() => window.__escCaptures")
+        assert len(caps) == 1, (
+            f"expected the one Escape dispatcher, found {len(caps)} capture-"
+            f"phase Escape listeners: {caps}"
+        )
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors: {errors[:3]}"
+
+    root = Path(__file__).resolve().parents[2] / "web" / "js"
+    names = {}
+    for rel in ("main.js", "panels/right_now.js", "panels/draft_elo.js"):
+        src = (root / rel).read_text(encoding="utf-8")
+        assert re.search(r"import \{[^}]*registerEscapeLayer[^}]*\} from "
+                         r"['\"]\.{1,2}/lib/escape_layers\.js['\"]", src), rel
+        names[rel] = re.findall(r"registerEscapeLayer\(\{\s*name:\s*\"([^\"]+)\"",
+                                src)
+    assert names == {
+        "main.js": ["task-modal", "view-menu", "find-match-picker"],
+        "panels/right_now.js": ["digest-popover"],
+        "panels/draft_elo.js": ["draft-elo-contributions"],
+    }, names
