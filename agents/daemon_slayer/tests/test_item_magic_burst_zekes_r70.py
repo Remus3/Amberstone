@@ -11,9 +11,9 @@ tether-ally shape is gone; the stale registry notes said otherwise).
 
 The per-cast total rides the EXISTING default-OFF DSV6
 ``assume_magic_burst`` seam (ItemEffect ``magic_burst_base`` /
-``magic_burst_ap_ratio`` since 1.152.0, _effects_types.py:793-794;
+``magic_burst_ap_ratio`` since 1.152.0, fields in _effects_types.py;
 consumed ONLY by ``compute_burst_damage`` under the assume_magic_burst
-gate via ``total_magic_burst_damage`` at effects.py:349). Pure DATA pin -
+gate via ``effects.total_magic_burst_damage``). Pure DATA pin -
 no schema change, and this file deliberately does NOT assert
 ENGINE_VERSION (a sibling R70 slice owns the bump).
 
