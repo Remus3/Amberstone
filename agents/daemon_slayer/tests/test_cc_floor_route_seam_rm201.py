@@ -3,14 +3,13 @@
 THE DEFECT
 ----------
 ``cc_pressure.compute_cc_pressure`` has shipped ``apply_cc_floor: bool = False``
-since ENGINE 1.150.0 (cc_pressure.py:237). It has FIVE production callers and
-NOT ONE forwards it:
+since ENGINE 1.150.0. It has FIVE production callers and NOT ONE forwards it:
 
-  * ``ehp.compute_ehp``                              (ehp.py:2525)
-  * ``core/cc_blended_ehp_context.py``               (:101)
-  * ``core/cc_conditional_impact_context.py``        (:137)
-  * ``core/enemy_cc_threat_context.py``              (:185)
-  * ``dashboard/routes_cc_conditional_pressure.py``  (:207)
+  * ``ehp.compute_ehp``
+  * ``core/cc_blended_ehp_context.cc_blended_ehp_impact_line``
+  * ``core/cc_conditional_impact_context.cc_conditional_impact_line``
+  * ``core/enemy_cc_threat_context.enemy_cc_threat_line``
+  * ``dashboard/routes_cc_conditional_pressure._side_conditional``
 
 So the guaranteed-minimum CC band - the ``durations_floor_s`` half of the
 conditional registry, seeded from Meraki for five champions - could not be armed
@@ -23,21 +22,22 @@ and dashboard consumers on their own routes and are out of scope.
 
 STEP ZERO - REACHABILITY, PROVEN NOT ASSUMED
 --------------------------------------------
-The gap would be COSMETIC rather than live if ``ehp.py:2525`` were itself
-unreachable from ``/ehp``. It is not, and the call path is opened in
-``RouteReachabilityTests`` below rather than asserted in prose.
+The gap would be COSMETIC rather than live if the ``compute_cc_pressure``
+call in ``ehp.compute_ehp`` were itself unreachable from ``/ehp``. It is not,
+and the call path is opened in ``RouteReachabilityTests`` below rather than
+asserted in prose.
 
 Two facts in the filed row are CORRECTED here, both measured:
 
   1. The ``/ehp`` body key for the enemy comp is ``enemies``, NOT
-     ``enemy_champions``. ``_route_ehp`` reads ``enemies`` (server.py:661) and
-     forwards it as ``enemy_champions=enemies`` (server.py:826). A body sent
-     with the engine-side name is silently dropped.
+     ``enemy_champions``. ``_route_ehp`` reads ``enemies`` and forwards it
+     as ``enemy_champions=enemies``. A body sent with the engine-side name is
+     silently dropped.
   2. ``/ehp`` does not parse ``score_by`` AT ALL - that key belongs to
-     ``/rank-tank`` and ``/rank-bruiser``. The ``ehp.py:2525`` call site runs on
-     EVERY ``/ehp`` request carrying a non-empty ``enemies`` list; there is no
-     ``score_by`` gate to satisfy. ``cc_blended_ehp`` is an unconditional field
-     of the ``/ehp`` response, not a ranking mode.
+     ``/rank-tank`` and ``/rank-bruiser``. The ``compute_ehp`` cc call site
+     runs on EVERY ``/ehp`` request carrying a non-empty ``enemies`` list;
+     there is no ``score_by`` gate to satisfy. ``cc_blended_ehp`` is an
+     unconditional field of the ``/ehp`` response, not a ranking mode.
 
 THE THREE GATES (RM-118 durable)
 --------------------------------
@@ -52,7 +52,7 @@ TWO keys, not one:
                              the conditional axis is also on. Pinned by
                              ``test_floor_is_inert_without_the_conditional_axis``.
 
-``_route_ehp`` already parsed both (server.py:661-662). The PYTHON CLIENT did
+``_route_ehp`` already parsed both. The PYTHON CLIENT did
 not: ``core/daemon_slayer_client.ehp_for`` carried ``enemies`` but had no
 ``include_conditional`` parameter anywhere in the module - measured, zero
 occurrences of the name in the file before this slice. Adding ``apply_cc_floor``
@@ -196,7 +196,8 @@ class RouteReachabilityTests(_Base):
         bare = server._route_ehp(_body(enemies=()))
         self.assertGreater(
             armed["enemy_cc_pressure_s"], 0.0,
-            "ehp.py:2525 did not run - the /ehp cc block is unreachable and this "
+            "the compute_cc_pressure call in ehp.compute_ehp did not run - the "
+            "/ehp cc block is unreachable and this "
             "whole slice is moot",
         )
         self.assertEqual(bare["enemy_cc_pressure_s"], 0.0)
