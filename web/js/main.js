@@ -368,9 +368,15 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       if (e.target === TMODAL.root) closeTaskModal();   // click backdrop
     });
   }
+  // RM-1067: the Escape that closes the modal is consumed (capture phase,
+  // preventDefault) so the general Escape chain and the Replay player
+  // stand down on it - one press, one action.
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") closeTaskModal();
-  });
+    if (e.key !== "Escape" || !TMODAL.root) return;
+    if (TMODAL.root.classList.contains("hidden")) return;
+    closeTaskModal();
+    e.preventDefault();
+  }, true);
 
   // -- Insight-card COPY button ----------------------------------------
   const ADAPT_COPY_BTN = el("adapt-copy");
@@ -920,9 +926,14 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     document.addEventListener("click", (e) => {
       if (menu && !menu.contains(e.target) && e.target !== trig) _viewMenuClose();
     });
+    // RM-1067: only an OPEN menu takes the Escape, and it consumes it
+    // (capture phase, preventDefault) so the zen exit and the Replay
+    // player's release-focus do not also run on the same press.
     document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") _viewMenuClose();
-    });
+      if (e.key !== "Escape" || !menu || menu.classList.contains("hidden")) return;
+      _viewMenuClose();
+      e.preventDefault();
+    }, true);
     document.querySelectorAll(".view-menu-item").forEach((btn) => {
       btn.addEventListener("click", () => {
         const v = btn.dataset.view;
@@ -3809,11 +3820,15 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       backdrop.addEventListener("click", _homeFindMatchPickerHide);
       document.body.appendChild(backdrop);
       // Escape closes the picker. Bound once; safe to leave attached.
+      // RM-1067: consumed (capture phase, preventDefault) - this is
+      // bound lazily, after the general Escape chain, which would
+      // otherwise exit zen on the same press.
       document.addEventListener("keydown", (e) => {
         if (e.key === "Escape" && !picker.classList.contains("hidden")) {
           _homeFindMatchPickerHide();
+          e.preventDefault();
         }
-      });
+      }, true);
     }
     backdrop.classList.remove("hidden");
     picker.classList.remove("hidden");
@@ -6811,7 +6826,10 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       return;
     }
     // Esc: close modal -> dismiss reply toast -> exit Zen mode (in order).
+    // A press a layer already consumed (view menu, task modal, Find Match
+    // picker; RM-1067) is not acted on again here.
     if (e.key === "Escape") {
+      if (e.defaultPrevented) return;
       const modal = el("task-modal");
       if (modal && !modal.classList.contains("hidden")) {
         modal.classList.add("hidden");

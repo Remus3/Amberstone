@@ -1220,7 +1220,20 @@ _WEB = _REPO_ROOT / "web"
 # reproduces the superseded d4f71f55... value EXACTLY. That path is the
 # whole change. No glyph change: the added lines carry 0 non-ASCII bytes.
 # If another slice re-captures in parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "a17b83545bbcfe6cf2949eda901cdf5104856599b2595cda4e26f210ca944970"
+# superseded by the RM-1067 re-capture below: "a17b83545bbcfe6cf2949eda901cdf5104856599b2595cda4e26f210ca944970"
+#
+# RE-CAPTURED 2026-10-28 at RM-1067 (s144 uiux cycle 33, provisional
+# until the merger lands it and maps the id). One change rides it: one
+# Escape does one thing - the view menu, the task modal and the Home Find
+# Match picker consume the Escape that closes them (capture phase,
+# preventDefault) and the general Escape chain stands down on a consumed
+# press, in web/js/main.js. Ordinary case, no tokeniser change. ATTRIBUTED
+# BY SUBSTITUTION: swapping exactly that one file back to its lane-tip
+# 60853812c blob (in memory) reproduces the superseded a17b8354... value
+# EXACTLY. That path is the whole change. No glyph change: the added lines
+# carry 0 non-ASCII bytes. If another slice re-captures in parallel, the
+# merger recomputes.
+_LIVE_HALF_DIGEST = "13794bf847867823c42de9fd92bd94b68752a7c97cf84e8d1d278ba234a1c03a"
 
 
 def _web_sources() -> list[Path]:
