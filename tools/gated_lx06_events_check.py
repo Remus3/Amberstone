@@ -227,9 +227,10 @@ def record(out: Path, base: str = DEFAULT_BASE, minutes: float = 45.0,
             next_final = clock() + final_every
             status, body = get_json(final_url)
             if status == 200 and isinstance(body, dict) and body.get("allPlayers"):
-                tmp = final_path.with_name(final_path.name + ".tmp")
-                tmp.write_text(json.dumps(body), encoding="utf-8", newline="\n")
-                tmp.replace(final_path)
+                # RM-258: per-writer scratch, fsync, bounded WinError 5 retry,
+                # no scratch left on failure (the atomic-write guard's rule).
+                from core import polled_json
+                polled_json.atomic_write_text(final_path, json.dumps(body))
 
         emit({"t": "meta", "tool": "gated_lx06_events_check", "base": base,
               "final_url": final_url})
