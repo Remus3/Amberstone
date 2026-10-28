@@ -47,7 +47,7 @@ def test_onhit_dps_is_exact_sum_of_two_halves():
 # module already established the fix directly above (Task 1's own docstring):
 # ``DataSnapshot.load()`` is the real snapshot-loader idiom used across the DS
 # test suite. A module-level singleton (mirrors
-# ``test_hybrid_enemy_champions.py:55`` ``_SNAPSHOT = DataSnapshot.load()``)
+# ``test_hybrid_enemy_champions._SNAPSHOT`` ``= DataSnapshot.load()``)
 # avoids re-reading the champions/items JSON from disk once per parametrized
 # case.
 import pytest
@@ -93,7 +93,8 @@ def test_coherence_off_is_byte_identical():
     Ranks once with ``ap_ad_coherence`` OMITTED and once with an explicit 0.0,
     then compares the FULL ordered row list as (item_id, delta_dps) pairs, so a
     silent reordering OR a delta change is caught. Mirrors the real default-off
-    pattern at ``test_cost_aware_top_f2.py:60-62``.
+    pattern at
+    ``test_cost_aware_top_f2.TestCostCeilingFilter.test_default_off_byte_identical``.
 
     Before 2026-07-18 this test asserted only that one item was present after a
     single ranking call. It never built a second ranking, so it would have
@@ -179,8 +180,8 @@ def test_kit_onhit_credited_for_kayle_kog(champ):
 # --- Slice B Task 6 (2026-07-16) - /rank-onhit server route ----------------
 #
 # Exposes rank_items_by_onhit over HTTP so later Slice-B tasks can wire the
-# RC client + live-validate. Dispatch symbol is _POST_ROUTES (confirmed at
-# server.py:2018), not the _ROUTES guess in the original task brief.
+# RC client + live-validate. Dispatch symbol is _POST_ROUTES (confirmed in
+# ``server._POST_ROUTES``), not the _ROUTES guess in the original task brief.
 def test_rank_onhit_route_registered():
     from agents.daemon_slayer.server import _POST_ROUTES
     assert "/rank-onhit" in _POST_ROUTES
@@ -195,8 +196,8 @@ def test_rank_onhit_route_registered():
 # ap_ad_coherence being dropped between the HTTP body and the ranker call.
 # In-process, no HTTP - same idiom as test_rank_route_seam_passthrough.py:
 # server._CACHE.set(...) seeds the module-level snapshot holder the route
-# reads (server.py:181-185 _SnapshotCache.get raises RuntimeError if
-# unseeded; server.py:1160 _route_rank_onhit reads snap = _CACHE.get()).
+# reads (``server._SnapshotCache.get`` raises RuntimeError if unseeded;
+# ``server._route_rank_onhit`` reads snap = _CACHE.get()).
 from agents.daemon_slayer import server
 
 server._CACHE.set(_RANK_SNAPSHOT)
@@ -227,8 +228,8 @@ def test_route_rank_onhit_forwards_passive_damage_and_coherence():
 
 def test_route_rank_onhit_ignores_stray_mage_only_keys():
     # max_priority / block_strategy are parsed by _route_rank_mage (and the
-    # ability-dps/hybrid/tank routes) but _route_rank_onhit's own docstring
-    # (server.py:1154-1158) says rank_items_by_onhit has no such params, so
+    # ability-dps/hybrid/tank routes) but ``server._route_rank_onhit``'s own
+    # docstring says rank_items_by_onhit has no such params, so
     # they are never read off body. A body that carries them anyway (e.g. a
     # client reusing one options object across rank routes) must not raise -
     # this would fail if the route ever started blindly forwarding **body.
