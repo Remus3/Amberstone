@@ -24,6 +24,14 @@ external reference F; the rank tables are game rules, stated in our words):
   anything - the state is returned unchanged and no event fires.
 * First sight is STATE, not an event: the first complete reading of a game
   seeds the held count silently, even when a point is already held.
+* Wire input is untrusted (s144 true-audit): a rank outside 0.._MAX_RANK, a
+  level outside 1.._MAX_LEVEL, a str that is not plain ASCII digits, a
+  malformed hand-built ``SkillReading``, or a clock that is not an int /
+  float within +-_MAX_GAME_TIME_S (bool, str, NaN, inf, a long int, 1e300)
+  is "no reading" - nothing
+  transitions, nothing fires, nothing raises. A non-str champion is unknown,
+  and an unknown champion on one tick keeps the kit already stored in the
+  state rather than flipping to the standard kit.
 
 Events (dicts, kind-tagged, ASCII):
   {"kind": "skill_point", "t_s", "unspent", "champion"}
@@ -61,6 +69,16 @@ SLOTS = ("q", "w", "e", "r")
 # never toast and the toast marks a genuine outlier hold.
 NAG_AFTER_S = 15.0
 
+# Plausibility bounds, not game rules: the highest real kit cap is 6 (Udyr,
+# Jayce) and a standard level cap is 18, with headroom for a mode that
+# levels past it. Anything beyond is junk, never a 300-digit rank echoed into
+# /api/state ``ability_ranks`` (dashboard/_liveclient.py).
+_MAX_RANK = 10
+_MAX_LEVEL = 100
+# A real game clock is under two hours; 10**6 s (11.5 days) is junk, never a
+# 301-digit "unspent for ...s" callout line.
+_MAX_GAME_TIME_S = 1e6
+
 
 @dataclass(frozen=True)
 class KitRules:
@@ -96,10 +114,15 @@ SPECIAL_KITS = {
 }
 
 
+def _champ(champion) -> str:
+    """The champion name, or "" (unknown) for anything that is not a str."""
+    return champion if isinstance(champion, str) else ""
+
+
 def kit_rules(champion) -> KitRules:
     """Rules for ``champion`` (Live Client championName / Match-V5
-    championName); unknown or empty -> the standard kit."""
-    key = str(champion or "").replace(" ", "").replace("'", "")
+    championName); unknown, empty or not a str -> the standard kit."""
+    key = _champ(champion).replace(" ", "").replace("'", "")
     return SPECIAL_KITS.get(key, STANDARD)
 
 
@@ -109,17 +132,57 @@ class SkillReading:
     ranks: dict
 
 
-def _rank_int(v):
-    """A non-negative int rank, or None. bool is rejected (True is not 1)."""
+def _rank_int(v, hi=_MAX_RANK):
+    """An int in 0..``hi``, or None. bool is rejected (True is not 1); a
+    float must be integral; a str must be plain ASCII digits (int() alone
+    also takes "1_0", " 3", "+5" and non-ASCII digits)."""
     if isinstance(v, bool) or v is None:
+        return None
+    if isinstance(v, str):
+        if not (v.isascii() and v.isdigit()) or len(v) > 6:
+            return None
+        v = int(v)
+    elif not isinstance(v, (int, float)):
         return None
     try:
         n = int(v)
     except (TypeError, ValueError, OverflowError):
         return None
-    if n != v and not isinstance(v, str):
+    if n != v:
         return None
-    return n if n >= 0 else None
+    return n if 0 <= n <= hi else None
+
+
+def _game_time(v):
+    """A finite float game time within +-_MAX_GAME_TIME_S, or None. Only an
+    int or float is a clock: bool, str, NaN, inf and a long int that float()
+    overflows are not."""
+    if isinstance(v, bool) or not isinstance(v, (int, float)):
+        return None
+    try:
+        t = float(v)
+    except OverflowError:
+        return None
+    return t if abs(t) <= _MAX_GAME_TIME_S else None
+
+
+def _is_int(v, lo, hi) -> bool:
+    """A real int (not bool, float or str) in lo..hi."""
+    return isinstance(v, int) and not isinstance(v, bool) and lo <= v <= hi
+
+
+def _valid(reading) -> bool:
+    """True for a SkillReading whose level and four ranks are ints in range.
+    read_skill_snapshot only builds those; a hand-built one can carry a str,
+    a float or a missing slot, which the rank arithmetic cannot take."""
+    if not isinstance(reading, SkillReading):
+        return False
+    if not _is_int(reading.level, 1, _MAX_LEVEL):
+        return False
+    ranks = reading.ranks
+    if not isinstance(ranks, dict):
+        return False
+    return all(_is_int(ranks.get(s), 0, _MAX_RANK) for s in SLOTS)
 
 
 def _slot_rank(container, slot):
@@ -150,7 +213,7 @@ def read_skill_snapshot(src) -> SkillReading | None:
     """
     if not isinstance(src, dict):
         return None
-    level = _rank_int(src.get("level"))
+    level = _rank_int(src.get("level"), _MAX_LEVEL)
     if level is None or level < 1:
         return None
     container = None
@@ -172,13 +235,13 @@ def read_skill_snapshot(src) -> SkillReading | None:
 def unspent(reading: SkillReading | None, champion) -> int | None:
     """Level points not yet placed. None for a fenced kit or no reading.
     May be negative on an inconsistent frame; callers clamp."""
-    if reading is None:
+    if not _valid(reading):
         return None
     rules = kit_rules(champion)
     if not rules.supported:
         return None
     free = min(rules.free_r, reading.ranks["r"])
-    return reading.level - (sum(reading.ranks.values()) - free)
+    return reading.level - (sum(reading.ranks[s] for s in SLOTS) - free)
 
 
 def _slot_cap(rules: KitRules, level: int, slot: str) -> int:
@@ -191,6 +254,8 @@ def _slot_cap(rules: KitRules, level: int, slot: str) -> int:
 
 def slot_open(reading: SkillReading, champion, slot: str) -> bool:
     """True when ``slot`` can take one more rank at this level."""
+    if slot not in SLOTS or not _valid(reading):
+        return False
     rules = kit_rules(champion)
     if not rules.supported:
         return False
@@ -222,14 +287,14 @@ class TrackerState:
 
 def step(state: TrackerState, reading: SkillReading | None, now_s,
          champion) -> tuple:
-    """Advance one tick. Returns (new_state, events)."""
-    try:
-        t = float(now_s)
-    except (TypeError, ValueError):
+    """Advance one tick. Returns (new_state, events).
+
+    A tick with no champion (or a non-str one) keeps the champion already
+    stored in ``state``: it is neither a new game nor a kit change."""
+    t = _game_time(now_s)
+    if t is None or not _valid(reading):
         return state, []
-    if reading is None:
-        return state, []
-    champ = str(champion or "")
+    champ = _champ(champion) or state.champion
     n = spendable(reading, champ)
     new_game = (not state.seen or reading.level < state.level
                 or (state.champion and champ and champ != state.champion))
@@ -264,12 +329,15 @@ def skill_point_callout(state: TrackerState, now_s,
     """
     if not state.since:
         return None
-    try:
-        t = float(now_s)
-    except (TypeError, ValueError):
+    t = _game_time(now_s)
+    start = _game_time(state.since[0])
+    if t is None or start is None:
         return None
-    held_s = t - state.since[0]
-    if held_s < nag_after_s:
+    nag = _game_time(nag_after_s)
+    if nag is None or nag < 0:
+        nag = NAG_AFTER_S
+    held_s = t - start
+    if held_s < nag:
         return None
     n = len(state.since)
     noun = "point" if n == 1 else "points"
