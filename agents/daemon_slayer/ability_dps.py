@@ -1517,13 +1517,19 @@ def compute_ability_dps(
     # seams.
     _ = assume_item_lowhp_magic_crit  # documented-inert seam; see comment above
     # DSV1 (P6-G5 residual 1): complete the compute_dps item-handling mirror.
-    # The amp + pen layers above (lines ~950-995) already mirror compute_dps so
-    # the two scorers agree on item value; the time-based item PERIODIC procs
-    # were the missing half. Ability-triggered burn DoTs (Liandry's Torment
-    # %max-HP burn, Blackfire's Baleful Blaze, Demonic's Azakana's Gaze) plus
-    # the other every_n_seconds AP procs (Malignance, Stormsurge, Luden's,
-    # spellblades) deal real sustained magic the single-rotation ability model
-    # omitted - the same "always-active convention" compute_dps already uses.
+    # The amp + pen layers above (the AP-amp chain after
+    # ``collect_effects``, the ``damage_amp`` / ``magic_amp`` folds and
+    # ``effective_target_armor`` / ``effective_target_mr``) already mirror
+    # compute_dps so the two scorers agree on item value; the time-based item
+    # PERIODIC procs were the missing half. Ability-triggered burn DoTs
+    # (Liandry's Torment %max-HP burn, Blackfire's Baleful Blaze, Demonic's
+    # Azakana's Gaze) deal real sustained magic the single-rotation ability
+    # model omitted - the same "always-active convention" compute_dps already
+    # uses. ``ability_dot_only=True`` keeps ONLY the procs tagged
+    # ``ability_dot`` (those three burns): Luden's Echo, Stormsurge Squall,
+    # Malignance Hatefog and the spellblades are NOT tagged, so
+    # ``_periodic_proc_dps`` skips them here (the on-cast magic procs are
+    # burst-only, see the assume_magic_burst seam above).
     # Reuse _periodic_proc_dps directly: every_n_attacks procs are skipped
     # (total_attacks=0.0), and duration cancels for time-based procs so 1.0 is
     # a unit anchor. The proc DPS already carries magic-amp + effective-resist
