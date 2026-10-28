@@ -27,6 +27,7 @@ modules), and tests/conftest.py still moves its file handler to tmp.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -34,6 +35,8 @@ import subprocess
 import sys
 import uuid
 from pathlib import Path
+
+from tests._asyncio_isolation import run_coro
 
 REPO = Path(__file__).resolve().parents[1]
 _FLAGS = getattr(subprocess, "CREATE_NO_WINDOW", 0) if sys.platform == "win32" else 0
@@ -121,7 +124,11 @@ def test_main_installs_the_tee_before_the_event_loop_runs(monkeypatch):
 
     monkeypatch.setattr(sup, "_install_rc_log_tee", lambda: order.append("tee"))
     monkeypatch.setattr(sup, "_run", _fake_run)
-    assert sup.main() == 0
+    # main() calls asyncio.run(), which raises on the main thread after any
+    # snapshot_panels test in the same worker (the Playwright running-loop
+    # marker, tests/_asyncio_isolation.py), so main() runs on an executor
+    # thread of a fresh loop; its result and any exception come back here.
+    assert run_coro(asyncio.to_thread(sup.main)) == 0
     assert order == ["tee", "run"]
 
 

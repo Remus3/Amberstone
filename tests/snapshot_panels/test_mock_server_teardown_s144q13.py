@@ -37,6 +37,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import pytest
 
 from tests import _module_view
+from tests._timing_budget import fleet_test_guard
 from tests.snapshot_panels.conftest import _MockServer
 
 
@@ -113,7 +114,10 @@ def test_stop_releases_and_joins_every_sse_handler():
     elapsed = time.monotonic() - started
     left = _left_after(srv, before)
     assert left == [], f"handler threads outlived stop(): {left}"
-    assert elapsed < 5.0, f"stop() took {elapsed:.1f}s"
+    # Idle-box bound scaled by the live suite-gate slots (U5). An unreleased
+    # SSE hold spends the whole STOP_JOIN_S (5.0 s) and leaves its thread
+    # alive, which `left == []` above already fails.
+    assert elapsed < fleet_test_guard.budget(5.0), f"stop() took {elapsed:.1f}s"
 
 
 class _SlowReleaseEvent(threading.Event):
@@ -170,7 +174,11 @@ def test_stop_ends_a_handler_parked_on_an_idle_connection(capfd):
         elapsed = time.monotonic() - started
         left = _left_after(srv, before)
         assert left == [], f"idle handler outlived stop(): {left}"
-        assert elapsed < 2.0, f"stop() waited {elapsed:.1f}s on an idle handler"
+        # Capped below STOP_JOIN_S (5.0 s), the time the unfixed stop() spent
+        # before returning with the handler alive, so a widened bound never
+        # admits it (U5).
+        assert elapsed < min(fleet_test_guard.budget(2.0), 4.5), (
+            f"stop() waited {elapsed:.1f}s on an idle handler")
         err = capfd.readouterr().err
         assert "Traceback" not in err, f"stop() printed: {err}"
     finally:
@@ -227,7 +235,9 @@ def test_stop_ends_an_idle_keep_alive_connection():
         elapsed = time.monotonic() - started
         left = _left_after(srv, before)
         assert left == [], f"keep-alive handler outlived stop(): {left}"
-        assert elapsed < 2.0, f"stop() waited {elapsed:.1f}s on keep-alive"
+        # Capped below STOP_JOIN_S (5.0 s), as above (U5).
+        assert elapsed < min(fleet_test_guard.budget(2.0), 4.5), (
+            f"stop() waited {elapsed:.1f}s on keep-alive")
     finally:
         conn.close()
         srv.stop()

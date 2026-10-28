@@ -38,6 +38,7 @@ import types
 import pytest
 
 from core import liveclient_cache as lc
+from tests._asyncio_isolation import run_coro
 
 _LOGGER = "rc.liveclient_cache"
 
@@ -327,7 +328,9 @@ def test_superseded_async_loop_returns_without_fetching(monkeypatch):
     old_gen = lc._gen
     lc._gen = old_gen + 1
     try:
-        asyncio.run(asyncio.wait_for(lc._loop_async(0.01, old_gen), 2))
+        # Off the main thread (tests/_asyncio_isolation.py): a bare
+        # asyncio.run() raises after any snapshot_panels test in the worker.
+        run_coro(asyncio.wait_for(lc._loop_async(0.01, old_gen), 2))
     finally:
         lc._gen = old_gen
     assert calls == []
