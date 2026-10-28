@@ -2898,6 +2898,12 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   border-color: var(--info); background: var(--info-soft);
   transform: scale(1.02);
 }
+/* RM-1087: rune cells are keyboard-pickable (RM-1085), so they draw the
+   one system focus ring (tokens.css --focus-ring), as the tree tabs do. */
+.ub-rp-rune:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
 .ub-rp-rune-keystone img { width: 44px; height: 44px; }
 .ub-rp-rune img {
   width: 36px; height: 36px; border-radius: var(--panel-radius-sm);

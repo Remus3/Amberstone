@@ -1409,7 +1409,18 @@ _WEB = _REPO_ROOT / "web"
 # Those two paths are the whole change. No glyph change: the added lines
 # carry 0 non-ASCII bytes. If another slice re-captures in parallel, the
 # merger recomputes.
-_LIVE_HALF_DIGEST = "3074e40873fc552aaa654960b6403b304ebf791f5d7f26098849319627a948be"
+# superseded by the RM-1087 re-capture below: "3074e40873fc552aaa654960b6403b304ebf791f5d7f26098849319627a948be"
+#
+# RE-CAPTURED 2026-10-28 at RM-1087 (s144 uiux cycle 58, provisional
+# until the merger lands it and maps the id). One change rides it: the
+# User Builds rune cells (.ub-rp-rune) draw the system focus ring on
+# :focus-visible in web/css/panels/header.css. Ordinary case, no
+# tokeniser change. ATTRIBUTED BY SUBSTITUTION: swapping that file back
+# to its lane tip b5a8dfe25 blob reproduces the superseded 3074e408...
+# value EXACTLY. That one path is the whole change. No glyph change: the
+# added lines carry 0 non-ASCII bytes. If another slice re-captures in
+# parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "e32f8d5c468ad15e6edfbe07f17382160ca8eeb38e21a28a11451262462d37f5"
 
 
 def _web_sources() -> list[Path]:
