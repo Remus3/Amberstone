@@ -524,8 +524,19 @@ class ClientNoteTests(unittest.TestCase):
         doc = self._ehp_for_doc()
         self.assertTrue(doc, "ehp_for lost its docstring - this guard is vacuous")
         self.assertIn(_SEAM, doc)
+        # The anchor is the engine's own call text, quoted verbatim by the
+        # refutation (the s144 symbol-cite pass, RM-1053, replaced the
+        # `ehp.py:<n>` line cite with it). Pin that the quote is still the
+        # engine's real call, then that the docstring carries it.
+        anchor = "total_item_tenacity(item_ids or ())"
+        import agents.daemon_slayer.ehp as ehp_mod
         self.assertIn(
-            "total_item_tenacity(item_ids)", doc,
+            anchor, pathlib.Path(ehp_mod.__file__).read_text(encoding="utf-8"),
+            "compute_ehp no longer calls total_item_tenacity(item_ids or ()); "
+            "re-quote the ehp_for refutation against the engine's call",
+        )
+        self.assertIn(
+            anchor, doc,
             "ehp_for's docstring no longer carries the one-line refutation of "
             "the old 'no resolved build' claim. That claim is what kept the "
             "seam off /ehp; without the correction it can be re-derived and "
