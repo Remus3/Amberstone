@@ -3,7 +3,7 @@
 RELOCATED here from ``hybrid.py`` by RM-36 / RM-38 (2026-08-04) so the CARRY
 ranker (``rank.rank_items``) can consume the SAME term the bruiser scorer
 already uses. It could not simply import ``hybrid``: ``hybrid`` imports
-``rank`` (hybrid.py:50), so the dependency only runs one way.
+``rank`` at module level, so the dependency only runs one way.
 
 There is exactly ONE definition of this term in the engine. ``hybrid`` binds
 ``_physical_ability_damage`` to ``physical_ability_damage`` below, so its
@@ -11,8 +11,9 @@ behaviour is unchanged and no private copy exists to drift.
 
 ``ability_dps`` imports ``rank`` at module level, so ``rank`` must import THIS
 module lazily inside the function that needs it - the same deferred-import idiom
-``dps.py:911`` already uses. ``hybrid`` imports it at module level, which is
-safe because ``hybrid`` already imports ``ability_dps`` that way.
+``dps.compute_dps`` already uses for ``ability_dps.rank_at_level``. ``hybrid``
+imports it at module level, which is safe because ``hybrid`` already imports
+``ability_dps`` that way.
 """
 
 from __future__ import annotations
@@ -44,7 +45,7 @@ def _dual_scaling_ad_share(row) -> float:
 
     THE SHARE IS READ, NOT ASSUMED. The MIXED treatment the module docstring
     describes is a flat 50 pct because ``_mitigation_factor`` splits MIXED
-    50/50 across armor and MR by construction (``ability_dps.py:385``). A
+    50/50 across armor and MR by construction (its MIXED branch). A
     dual-SCALING row has no such structural constant: it carries its own
     ratio in its damage blocks, so the honest analogue of that 50 pct is the
     row's OWN ratio. Measured 2026-08-04, that share is 0.7647 for Ezreal Q
@@ -103,8 +104,9 @@ def physical_ability_damage(
 
     THE SUM IS NOT DIMENSIONALLY ADDITIVE WITH ``weighted_dps`` (RM-98,
     corrected 2026-07-24). This docstring previously asserted that rows being
-    "post-mitigation and post-cast-rate (``ability_dps.py:1261``)" made the sum
-    "directly additive". Post-cast-rate is precisely what BREAKS additivity:
+    "post-mitigation and post-cast-rate" (``compute_ability_dps`` sets each
+    row's ``dps = post_mit * measured``) made the sum "directly additive".
+    Post-cast-rate is precisely what BREAKS additivity:
     the cast rate is a WHOLE-GAME rate
     (``data/daemon_slayer/spell_cast_rates.json`` - casts divided by
     ``matches.game_duration_s``) while ``weighted_dps`` is a combat-window
@@ -123,8 +125,8 @@ def physical_ability_damage(
     never re-admit a row the sum excluded. Default False never calls the helper
     (byte-identical).
 
-    The filter reuses the canonical normalization idiom from
-    ``ability_dps.py:371`` verbatim - ``(damage_type or "MAGIC").upper()`` - so
+    The filter reuses ``ability_dps._mitigation_factor``'s canonical
+    normalization idiom verbatim - ``(damage_type or "MAGIC").upper()`` - so
     a None damage_type falls back to MAGIC and is EXCLUDED, never treated as
     physical. That fallback is load-bearing: Aatrox E / R and Darius E all
     carry ``damage_type=None``.
@@ -135,15 +137,15 @@ def physical_ability_damage(
     filter does not prevent that and never did: Aatrox has ZERO nonzero
     non-PHYSICAL rows (Q 16.2499 / W 2.6193 PHYSICAL, E and R 0.0), so every
     filter arm - PHYSICAL, +TRUE, +MIXED, unfiltered - returns the identical
-    number for him. The mechanism is ``item_proc_dps``
-    (``ability_dps.py:1376-1381``), which folds item burn / DoT into
+    number for him. The mechanism is ``item_proc_dps`` (``compute_ability_dps``'s
+    ``_periodic_proc_dps`` fold), which folds item burn / DoT into
     ``total_ability_dps`` and appears in NO per_spell row. Measured residue
     (total minus the per_spell sum) for Aatrox: 0.0000 on an empty build,
     exactly 31.2500 with Liandry's (6653). Pinned by
     ``test_ad_axis_term_is_per_spell_sum_not_total_ability_dps``.
 
     WHY TRUE IS CREDITED (the L2 widen): ``_mitigation_factor`` returns a flat
-    1.0 for TRUE (``ability_dps.py:372-373``), so a TRUE row carries no resist
+    1.0 for TRUE before any resist is read, so a TRUE row carries no resist
     derivative onto the AD axis. All 5 in-cohort TRUE rows - Olaf E Reckless
     Swing, Vayne W Silver Bolts, Darius R Noxian Guillotine, MasterYi E Wuju
     Style, Garen R Demacian Justice - measured dAP 0.0000 and dVoid 0.0000, so
@@ -194,7 +196,7 @@ def physical_ability_damage(
     WHY MIXED IS STILL HELD (a decision, not an oversight): the whole
     in-cohort MIXED population is Yone (W Spirit Cleave, R Fate Sealed).
     Unlike TRUE, MIXED does import magic-pen valuation - ``_mitigation_factor``
-    splits it 50/50 across armor and MR (``ability_dps.py:377``), and a full
+    splits it 50/50 across armor and MR (its MIXED branch), and a full
     credit moves Yone's Void Staff from 129 to 111. Yone's W / R genuinely are
     half-physical, so the honest treatment is a 50 pct credit mirroring that
     same split - a separate design, not a filter widen. MAGIC stays excluded

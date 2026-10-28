@@ -19,7 +19,8 @@ the snapshot's ``data`` container KEYS-NOT-PRESENT-ONLY. This file pins:
 * RED 1 - both champions reach ``champion_ids()``.
 * RED 2 - Locke Q carries a damage block with a non-empty ``base``.
 * ACCEPTANCE - both champions score ``total_burst_damage > 0.0`` (the exact
-  quantity ``rank.baseline_burst`` reads, see ``rank.py:1118-1131``).
+  quantity ``rank.baseline_burst`` reads, in the ``reweight`` branch
+  of ``rank.rank_items``).
 * NEGATIVE CONTROLS - Zed stays EXACTLY 807.3862433862435 and Aphelios stays
   in its 259.5 band at the measured probe params, and the full-roster sweep is
   byte-identical on all 171 pre-existing champions between flag OFF and ON.

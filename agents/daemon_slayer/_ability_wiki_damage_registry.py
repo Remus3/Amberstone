@@ -11,8 +11,9 @@ DEGENERATE zero:
 * ``compute_burst_damage`` returns ``total_burst_damage == 0.0`` with every
   cast noted ``"ability data unavailable"`` and ``form_index == -1``.
 * ``rank_items(..., fight_length=...)`` reads that as ``baseline_burst 0.0``
-  (``rank.py:1118-1131``), so every one of the 706 candidates scores
-  ``delta_burst 0.0`` - the entire ranked table is degenerate.
+  (the ``reweight`` branch of ``rank.rank_items``), so every one of the 706
+  candidates scores ``delta_burst 0.0`` - the entire ranked table is
+  degenerate.
 
 Measured on a live ``:8860`` at ``items=["3142","6691","3814"], level=13,
 target_armor=140, target_mr=90, target_hp=2800``: ``POST /rank-assassin``
@@ -95,7 +96,7 @@ CONVENTIONS, and the two places this deviates from Meraki.
 3. FORM-LEVEL ``damage_type`` FOLLOWS BLOCK 0, NOT THE PAGE HEADER, on the two
    pages whose ``|damagetype`` is a compound. ``burst`` applies ONE mitigation
    factor per form from ``form.damage_type``, and MIXED splits 50/50
-   armor/MR (``ability_dps.py:371,384``). Locke R's page says "Magic True" but
+   armor/MR (``ability_dps._mitigation_factor``). Locke R's page says "Magic True" but
    the TRUE half is the execute threshold, which is authored as a non-damage
    block; Zaahen E's page says "Physical Magic" but the magic half is the
    outer-edge percent-max-HP block at index 2. Labelling either form MIXED

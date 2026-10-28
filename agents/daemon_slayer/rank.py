@@ -1193,12 +1193,12 @@ def rank_items(
 
     # RM-36 / RM-38 (DEFAULT-OFF): the AD-axis ability term, the same one the
     # bruiser scorer has priced since RM-39 / RM-43. ``compute_dps`` is
-    # auto-attack-only by design (dps.py:34), so an AD-CASTER whose damage
-    # rides an ability - Ezreal's Q, Corki's package of them - is scored here
-    # as though he were a sustained-auto marksman. The term is champion-
-    # SENSITIVE by construction: it sums that champion's own credited
-    # per-spell rows, so it cannot be the archetype-template rescale that made
-    # RM-40 / RM-44 / RM-48 unfalsifiable.
+    # auto-attack-only by design (the ``dps`` module docstring), so an
+    # AD-CASTER whose damage rides an ability - Ezreal's Q, Corki's package of
+    # them - is scored here as though he were a sustained-auto marksman. The
+    # term is champion-SENSITIVE by construction: it sums that champion's own
+    # credited per-spell rows, so it cannot be the archetype-template rescale
+    # that made RM-40 / RM-44 / RM-48 unfalsifiable.
     #
     # NO AXIS GATE HERE, unlike ``hybrid`` (deliberate). ``hybrid`` serves both
     # axes off one entry point and must branch; ``rank_items`` IS the AD-axis
@@ -1213,9 +1213,9 @@ def rank_items(
     # alone, which is what finally reaches Ezreal (credited 0.0 -> 14.1067 at
     # level 16 on the sweep-standard tanky target).
     #
-    # DEFERRED IMPORT: ``ability_dps`` imports ``rank`` at module level
-    # (ability_dps.py:148), so the module-level import that ``hybrid`` uses
-    # would be circular here. Same idiom as ``dps.py:911``.
+    # DEFERRED IMPORT: ``ability_dps`` imports ``rank`` at module level, so
+    # the module-level import that ``hybrid`` uses would be circular here.
+    # Same idiom as ``compute_dps``'s function-level ``rank_at_level`` import.
     def _ad_axis_term(item_ids: tuple[str, ...]) -> float:
         from ._ad_axis_ability import physical_ability_damage
 
@@ -1229,8 +1229,9 @@ def rank_items(
     # A-12 / RM-46: the crit-conversion flag must reach BOTH compute_dps calls
     # (this baseline and the per-candidate score below). Feeding only one would
     # subtract a converted score from an unconverted baseline and manufacture a
-    # delta out of the seam itself. DEFAULT-OFF -> byte-identical (dps.py:890
-    # performs no lookup and no arithmetic when the flag is False).
+    # delta out of the seam itself. DEFAULT-OFF -> byte-identical
+    # (``compute_dps``'s ``if apply_crit_conversion:`` branch performs no
+    # lookup and no arithmetic when the flag is False).
     baseline = compute_dps(
         snapshot,
         champion_id=champion_id,

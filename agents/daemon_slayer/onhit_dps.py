@@ -14,8 +14,9 @@ therefore "the champion's true total sustained DPS". Both claims are false.
 ``weighted_dps`` is a combat-window per-second figure; every spell row inside
 ``total_ability_dps`` is multiplied by a WHOLE-GAME cast rate
 (``data/daemon_slayer/spell_cast_rates.json`` - casts divided by
-``matches.game_duration_s``, ``ability_dps.py:1261``), so the ability half is
-systematically under-weighted against the auto half.
+``matches.game_duration_s``; ``compute_ability_dps`` sets each row's
+``dps = post_mit * measured``), so the ability half is systematically
+under-weighted against the auto half.
 ``docs/specs/SPEC_rm98_cast_rate_time_base.md:76-83`` adjudicates this and
 names THIS line as the shipped, DEFAULT-ON instance of the defect; the
 characteristic per-spell distortion is ~7x (SPEC:100-107).
