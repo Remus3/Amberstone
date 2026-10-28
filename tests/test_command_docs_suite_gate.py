@@ -57,8 +57,9 @@ _GATED = re.compile(r'fleet_suite_gate\.py"? run --owner <id> -- (?P<cmd>[^`]*)'
 # single `&` between two commands chains too (cmd.exe, RM-1104 (a)). One that
 # opens a span or follows another operator (PowerShell's call operator, `; &`)
 # has no whitespace of its own before it, and one inside a token (`2>&1`) none
-# around it, so neither splits.
-_CHAIN = re.compile(r"\s*(?:&&|\|\||;|\|)\s*|\s+&\s+")
+# around it, so neither splits. Bash's `|&` is ONE operator (RM-1106): split
+# as `|` alone it left `&` glued to the next command's first token.
+_CHAIN = re.compile(r"\s*(?:&&|\|\||\|&|;|\|)\s*|\s+&\s+")
 # Options whose value names a file the run SKIPS (RM-1103); the
 # `--opt=value` form is one token, `--opt value` two.
 _SKIP_OPTS = ("--ignore", "--ignore-glob", "--deselect")
@@ -233,3 +234,14 @@ def test_a_single_ampersand_ends_the_gated_command(tmp_path, monkeypatch):
         (gated + " & python -m pytest tests -q -n 8`\n" + call + "\n").encode())
     monkeypatch.setattr(sys.modules[__name__], "TOOLS", tmp_path)
     assert [hit.split(":")[1] for hit in _ungated_whole_suites("x.md")] == ["1"]
+
+
+def test_a_pipe_ampersand_is_one_chain_operator():
+    # RM-1106: bash's `a |& b` pipes stdout and stderr into b, one operator.
+    # Split as `|` alone it left `& b`, so a suite root glued to it (`&tests/`)
+    # was no longer a suite token. PowerShell's `| & cmd` keeps its call operator.
+    for sep in (" |& ", "|&", " |&", "|& "):
+        assert _CHAIN.split("x" + sep + "tests/ -q -n 8") == ["x", "tests/ -q -n 8"], sep
+    assert _CHAIN.split('x | & "py.exe" -V') == ["x", '& "py.exe" -V']
+    assert _CHAIN.split("a || b |& c") == ["a", "b", "c"]
+    assert _CHAIN.split("a 2>&1 | b") == ["a 2>&1", "b"]

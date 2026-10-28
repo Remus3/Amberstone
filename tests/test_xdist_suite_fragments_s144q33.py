@@ -38,6 +38,9 @@ operator) does not; the gate counts only where it prefixes the run; `-n=8` and
 `-n8` run xdist; and the TIER TABLE flags accept every spelling pytest parses
 the same way (`-n8`, `-n=8`, `--dist=loadfile`), pinned by a test.
 
+RM-1106 (the s144 queue cycle 54 verifier): bash's `|&` is one chain
+operator, so `x|&tests/ -q -n 8` reads its suite root `tests/`, not `&tests/`.
+
 Out of scope: dated records (docs/_archive/, measurement docs, plans, audits,
 LEDGER, ROADMAP history) quote the command that was run at the time; they are
 evidence, not instructions. CLAUDE.md is the main session's file.
@@ -303,6 +306,21 @@ def test_a_single_ampersand_chains_but_a_call_operator_does_not():
     assert _segments('cd <repo>; & "py.exe" -V') == ["cd <repo>", '& "py.exe" -V']
     # `2>&1` and `&&` are not single-ampersand chains.
     assert _segments("a 2>&1 && b") == ["a 2>&1", "b"]
+
+
+def test_a_suite_after_a_pipe_ampersand_is_still_a_suite():
+    # RM-1106: `x |& <cmd>` classifies <cmd> as if it stood alone. Before,
+    # `x|&tests/ -q -n 8` left the token `&tests/`, which names no suite root.
+    gated = ("python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- "
+             "python -m pytest tests -q -n 8 --dist loadfile "
+             "--max-worker-restart=0")
+    for cmd in ("tests/ -q -n 8", "python -m pytest tests -n 8", "pytest . -n 8"):
+        assert _ungated_suite_segments(cmd)
+        for sep in (" |& ", "|&", " |&", "|& "):
+            assert _ungated_suite_segments("x" + sep + cmd) == [cmd], (sep, cmd)
+    for sep in (" |& ", "|&"):
+        assert _suite_segments("x" + sep + gated) == [gated], sep
+        assert not _ungated_suite_segments("x" + sep + gated), sep
 
 
 def test_the_gate_must_precede_the_suite_it_covers():
