@@ -32,10 +32,19 @@ SCOPE (correct-by-construction, deliberately narrow):
     bands (a mid-window value is not comparable to an at-checkpoint distribution).
   - >= 5 games gate. Mirrors core.aftergame_summary's trust gate - a distribution
     backed by < 5 of the player's games is too thin to coach against.
+
+INPUT VOCABULARY (s144 true-audit): every number is an int or float, never a
+bool or a str, and finite. Game time is 0..10**6 s, cs 0..10**5 and level 1..30
+(the sibling vocabularies of dashboard/_adaptation_latch and
+core/build_planner/fed_threat); anything else is no reading for that metric. The
+champion is a str, stripped, 1..64 chars. A junk tolerance_s / min_games keeps
+its default, and a distribution whose p25 / p50 / p75 are not finite ordered
+numbers is no band.
 """
 
 from __future__ import annotations
 
+import math
 from typing import Dict, List, Optional
 
 from core import benchmarks
@@ -55,10 +64,24 @@ _CHECKPOINTS = (
 
 # How far from a checkpoint center a live value is still treated as "at" it.
 _TOLERANCE_S = 45.0
+# A caller tolerance must stay under half the 300 s gap between the checkpoint
+# centers, so one clock never sits in both windows (an inf tolerance used to band
+# cs at 33:20 as both cs_at_10 and cs_at_15).
+_MAX_TOLERANCE_S = 150.0
 
 # Minimum personal games behind a distribution before it is trustworthy to band
 # against. Matches core.aftergame_summary.have_benchmarks (>= 5).
 _MIN_GAMES = 5
+_MAX_MIN_GAMES = 10 ** 6
+
+# Plausibility bounds for the live readings (see INPUT VOCABULARY).
+_MAX_GAME_TIME_S = 10 ** 6
+_MAX_CHAMPION_LEN = 64
+# live field -> (lo, hi) inclusive.
+_LIVE_BOUNDS = {
+    "cs": (0, 10 ** 5),
+    "level": (1, 30),
+}
 
 # metric_key -> the live game_state field it bands.
 _METRIC_LIVE_FIELD = {
@@ -76,22 +99,85 @@ _METRIC_DISPLAY = {
 _SOURCE_TAG = "live-bench"
 
 
+def _finite(val, lo, hi) -> Optional[float]:
+    """``val`` as a float when it is an int / float (not a bool) that is finite
+    and inside ``lo..hi``; else None. Bounds are checked BEFORE float() so a
+    >1e308 int is refused instead of raising OverflowError, and the range check
+    alone refuses NaN (every comparison is False) and +-inf."""
+    if isinstance(val, bool) or not isinstance(val, (int, float)):
+        return None
+    if not lo <= val <= hi:
+        return None
+    return float(val)
+
+
+def _tolerance(val) -> float:
+    """A caller tolerance in 0.._MAX_TOLERANCE_S (exclusive), else the default."""
+    tol = _finite(val, 0, _MAX_TOLERANCE_S)
+    if tol is None or tol >= _MAX_TOLERANCE_S:
+        return _TOLERANCE_S
+    return tol
+
+
+def _min_games(val) -> int:
+    """A caller games floor that is an int (not a bool) in 1.._MAX_MIN_GAMES,
+    else the default. A floor of 0 used to resolve to a mode with NO games."""
+    if isinstance(val, bool) or not isinstance(val, int):
+        return _MIN_GAMES
+    if not 1 <= val <= _MAX_MIN_GAMES:
+        return _MIN_GAMES
+    return val
+
+
+def _champion(val) -> str:
+    """The stripped champion name, or "" for a non-str, blank or long one."""
+    if not isinstance(val, str):
+        return ""
+    name = val.strip()
+    if len(name) > _MAX_CHAMPION_LEN:
+        return ""
+    return name
+
+
+def _percentiles(entry) -> Optional[tuple]:
+    """(p25, p50, p75) from a benchmark entry when all three are finite numbers
+    (not bools) in order, else None. A NaN distribution used to band every value
+    "top quartile" because each comparison is False."""
+    if not isinstance(entry, dict):
+        return None
+    out = []
+    for key in ("p25", "p50", "p75"):
+        val = entry.get(key)
+        if isinstance(val, bool) or not isinstance(val, (int, float)):
+            return None
+        if isinstance(val, float) and not math.isfinite(val):
+            return None
+        out.append(val)
+    if not out[0] <= out[1] <= out[2]:
+        return None
+    return tuple(out)
+
+
 def _resolve_sr_mode(champion: str, mode: str, min_games: int) -> Optional[str]:
     """Resolve a coarse live mode to the SR benchmark-mode key with enough games.
 
     Returns the first ``_SR_MODE_PRIORITY`` member that has ``>= min_games`` of
     the player's history on ``champion``, or None when the mode is not SR-family
-    or no family member clears the gate. Fail-soft: never raises."""
-    if not champion:
+    or no family member clears the gate. A games count that is not a finite
+    number (a bool, a str, NaN, inf) is not trusted. Fail-soft: never raises."""
+    if not champion or not isinstance(champion, str):
         return None
-    if (mode or "").strip().upper() != "SR":
+    if not isinstance(mode, str) or mode.strip().upper() != "SR":
         return None
     for bench_mode in _SR_MODE_PRIORITY:
         try:
-            if benchmarks.games_for(champion, bench_mode) >= min_games:
-                return bench_mode
+            games = benchmarks.games_for(champion, bench_mode)
         except Exception:  # noqa: BLE001
             continue
+        if _finite(games, 0, _MAX_MIN_GAMES) is None:
+            continue
+        if games >= min_games:
+            return bench_mode
     return None
 
 
@@ -140,44 +226,65 @@ def band_metrics(
       source_tag : always "live-bench"
 
     Pure + fail-soft: a non-SR mode, a thin (< min_games) distribution, an
-    off-checkpoint game time, a missing champion, an absent / non-numeric live
-    value, or a "no-data" benchmark all yield NO band for that metric. Never
-    raises. The returned list is empty when nothing is bandable."""
+    off-checkpoint game time, a missing champion, an absent / non-numeric /
+    out-of-range live value (see INPUT VOCABULARY), a degenerate distribution or
+    a "no-data" benchmark all yield NO band for that metric. Never raises. The
+    returned list is empty when nothing is bandable."""
     out: List[Dict] = []
-    try:
-        gts = float(game_time_s)
-    except (TypeError, ValueError):
+    gts = _finite(game_time_s, 0, _MAX_GAME_TIME_S)
+    if gts is None:
         return out
-    if gts < 0:
-        return out
+    tolerance = _tolerance(tolerance_s)
+    games_floor = _min_games(min_games)
 
     # Benchmarks are keyed on canonical ids (TahmKench); the live coach passes the
     # Live Client display name ("Tahm Kench"). Look up canonically, but keep the
     # readable display name for the coach line.
-    lookup = canonical_champion_id(champion) if champion else ""
-    bench_mode = _resolve_sr_mode(lookup, mode, min_games)
+    name = _champion(champion)
+    if not name:
+        return out
+    try:
+        lookup = canonical_champion_id(name)
+    except Exception:  # noqa: BLE001 - fail-soft resolver
+        return out
+    if not isinstance(lookup, str):
+        return out
+    bench_mode = _resolve_sr_mode(lookup, mode, games_floor)
     if bench_mode is None:
         return out
 
-    live_values: Dict[str, Optional[float]] = {"cs": cs, "level": level}
+    live_values: Dict[str, Optional[float]] = {
+        field: _finite(raw, lo, hi)
+        for field, raw, (lo, hi) in (
+            ("cs", cs, _LIVE_BOUNDS["cs"]),
+            ("level", level, _LIVE_BOUNDS["level"]),
+        )
+    }
 
-    for label, metric_keys in _active_checkpoints(gts, tolerance_s):
+    for label, metric_keys in _active_checkpoints(gts, tolerance):
         for metric_key in metric_keys:
             field = _METRIC_LIVE_FIELD.get(metric_key)
-            raw = live_values.get(field) if field else None
-            if isinstance(raw, bool) or not isinstance(raw, (int, float)):
+            value = live_values.get(field) if field else None
+            if value is None:
                 continue
-            value = float(raw)
             try:
                 band = benchmarks.rank_value(lookup, bench_mode, metric_key, value)
             except Exception:  # noqa: BLE001
                 continue
             if band == "no-data":
                 continue
+            # A readable entry must be a sane distribution; an unreadable one
+            # (get() raised or answered empty) keeps rank_value's band, no p50.
             try:
-                p50 = benchmarks.get(lookup, bench_mode, metric_key).get("p50")
+                entry = benchmarks.get(lookup, bench_mode, metric_key)
             except Exception:  # noqa: BLE001
-                p50 = None
+                entry = None
+            p50 = None
+            if isinstance(entry, dict) and entry:
+                pct = _percentiles(entry)
+                if pct is None:
+                    continue
+                p50 = pct[1]
             display = _METRIC_DISPLAY.get(metric_key, metric_key)
             out.append(
                 {
@@ -187,7 +294,7 @@ def band_metrics(
                     "value": value,
                     "band": band,
                     "p50": p50,
-                    "line": _line(display, label, band, champion),
+                    "line": _line(display, label, band, name),
                     "source_tag": _SOURCE_TAG,
                 }
             )
@@ -211,18 +318,18 @@ def band_from_state(game_state: dict, *, mode: str = "SR") -> List[Dict]:
             break
 
     def _num(*keys: str) -> Optional[float]:
+        # A junk number (bool, NaN, inf, negative, >1e308 int) is no reading,
+        # so the next alias is tried; band_metrics applies the per-field bounds.
         for key in keys:
-            val = game_state.get(key)
-            if isinstance(val, bool):
-                continue
-            if isinstance(val, (int, float)):
-                return float(val)
+            val = _finite(game_state.get(key), 0, _MAX_GAME_TIME_S)
+            if val is not None:
+                return val
         return None
 
     return band_metrics(
         champion,
         _num("game_time_s", "game_seconds") or 0.0,
-        cs=_num("cs"),
-        level=_num("level"),
+        cs=game_state.get("cs"),
+        level=game_state.get("level"),
         mode=mode,
     )
