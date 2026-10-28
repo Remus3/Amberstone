@@ -271,6 +271,9 @@ class _MockServer:
         self._store: dict = {"data": {}, "draft_elo": None}
         self._server: _TrackedHTTPServer | None = None
         self._closing = threading.Event()
+        # The serve_forever thread, so a test can tell this server's handler
+        # threads (it starts them) from another server's (RM-1029).
+        self.serve_thread: threading.Thread | None = None
         self.url: str = ""
 
     def set_fixture(self, name: str) -> None:
@@ -288,6 +291,7 @@ class _MockServer:
         port = self._server.server_address[1]
         self.url = f"http://127.0.0.1:{port}"
         t = threading.Thread(target=self._server.serve_forever, daemon=True)
+        self.serve_thread = t
         t.start()
 
     def stop(self) -> None:
