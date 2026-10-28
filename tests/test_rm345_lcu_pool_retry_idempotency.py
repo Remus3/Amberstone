@@ -156,9 +156,13 @@ class NonIdempotentIsSentOnceTests(unittest.TestCase):
         self.assertEqual(len(factory.sent), 1)
 
     def test_non_string_method_is_treated_as_non_idempotent(self):
+        # s144 true-audit H1: a non-string method is refused before the wire
+        # (the real http.client raised TypeError on it, so it was never sent);
+        # the RM-345 point - it is never replayed - holds a fortiori.
         factory = _Factory(fail_first=1)
-        _pool(factory).request("h", 1, None, "/x")
-        self.assertEqual(len(factory.sent), 1)
+        out = _pool(factory).request("h", 1, None, "/x")
+        self.assertEqual(len(factory.sent), 0)
+        self.assertIsNone(out)
 
 
 class IdempotentRetryIsPreservedTests(unittest.TestCase):
