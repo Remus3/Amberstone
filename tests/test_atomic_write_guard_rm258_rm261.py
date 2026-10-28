@@ -160,7 +160,6 @@ _TOOLS_UNCLASSIFIED = frozenset({
     "tools/gen_state_schema.py",
     "tools/package_portable.py",
     "tools/shadow_archive_split.py",
-    "tools/strip_smart_quotes.py",
     "tools/strip_u2500.py",
     "tools/web_ascii_sweep.py",
 })
