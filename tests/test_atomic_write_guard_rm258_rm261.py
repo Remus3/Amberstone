@@ -115,6 +115,11 @@ _RUNTIME_TOOLS = frozenset({
     # back on every run, and the drift alerts are read by tools/rc_facts.py
     # at session start while the task may be rewriting them (RM-514).
     "tools/upstream_drift_check.py",
+    # The Claude Stop hook, fired on every main-session and sub-agent Stop:
+    # its report and seen set are read back by the next Stop (the seen set
+    # decides what is surfaced again), and parallel sub-agents of one session
+    # can stop in the same instant, so a shared `<dest>.tmp` could interleave.
+    "tools/stop_claim_gate.py",
 })
 
 # RM-258 residual (s144): tools/ is IN scope by default. Out of scope are the
@@ -182,7 +187,6 @@ _TOOLS_UNCLASSIFIED = frozenset({
     "tools/shadow_archive_split.py",
     "tools/slice_orchestrator.py",
     "tools/slot_bucket_audit.py",
-    "tools/stop_claim_gate.py",
     "tools/strip_em_dashes.py",
     "tools/strip_smart_quotes.py",
     "tools/strip_u2500.py",
@@ -235,6 +239,18 @@ SANCTIONED = {
         "<name>.<pid>.<token>.tmp scratch, flush + fsync before the rename, a "
         "bounded PermissionError (WinError 5) retry, and the scratch removed "
         "when the rename fails for good",
+    ("tools/stop_claim_gate.py", "_replace_with_retry"):
+        "the Claude Stop hook is PORTABLE and stdlib-only on purpose: a copy "
+        "runs at any depth in another tree with no RC package above it (MAIN "
+        "1254 #9, tests/test_stop_claim_gate_portable_main1254.py), so it "
+        "cannot import core/. Its _atomic_write (the report, the history "
+        "roll and the seen set) meets the three requirements, asserted by "
+        "test_stop_claim_gate_writer_meets_the_sanction_contract below: a "
+        "<name>.<pid>.<token>.tmp scratch, flush + fsync before the rename, a "
+        "bounded PermissionError (WinError 5) retry, and the scratch removed "
+        "when the rename fails for good. prune_seen's move of a stale seen "
+        "file into pruned/ (a rename of an existing file, no payload) goes "
+        "through the same helper",
     ("core/log_rotation.py", "try_rotate"):
         "log ROTATION, not an atomic write (RM-718 a), checked against the "
         "three requirements above. Per-writer scratch: yes - "
@@ -692,6 +708,83 @@ def test_moon_sync_poller_writer_meets_the_sanction_contract(tmp_path, monkeypat
     assert dest.read_bytes() == b"# a\n- d\n"
 
 
+def test_stop_claim_gate_writer_meets_the_sanction_contract(tmp_path, monkeypatch):
+    """tools/stop_claim_gate.py is a portable stdlib-only Stop hook, so its
+    one writer (the report, the history roll and the seen set all go through
+    _atomic_write) is sanctioned on the three requirements, asserted here on
+    the code: a per-writer scratch name, fsync before the rename, a bounded
+    WinError 5 retry, the scratch removed when the rename fails for good -
+    and LF bytes on disk. The three callers keep their failure contracts:
+    write_report raises (RM-796 reports it), the history and the seen set
+    swallow (bookkeeping never breaks the gate)."""
+    from tools import stop_claim_gate as gate
+    real_replace, real_fsync = os.replace, os.fsync
+    events: list[str] = []
+    scratch: list[str] = []
+
+    def rec_replace(src, dst):
+        events.append("replace")
+        scratch.append(Path(src).name)
+        return real_replace(src, dst)
+
+    def rec_fsync(fd):
+        events.append("fsync")
+        return real_fsync(fd)
+
+    monkeypatch.setattr(gate.os, "replace", rec_replace)
+    monkeypatch.setattr(gate.os, "fsync", rec_fsync)
+    monkeypatch.setattr(gate.time, "sleep", lambda _s: None)
+    dest = tmp_path / "stop_claim_gate_last.json"
+    gate.write_report({"n": 1}, dest)
+    gate.write_report({"n": 2}, dest)
+    assert events == ["fsync", "replace", "fsync", "replace"]
+    assert scratch[0] != scratch[1], scratch
+    for name in scratch:
+        assert name.startswith(dest.name + ".") and name.endswith(".tmp"), name
+        assert f".{os.getpid()}." in name, name
+    raw = dest.read_bytes()
+    assert b"\r\n" not in raw and b"\n" in raw
+    assert json.loads(raw) == {"n": 2}
+
+    history = tmp_path / "history.jsonl"
+    for i in range(4):
+        gate.append_history({"session_id": f"s{i}"}, history, cap=2)
+    rows = history.read_bytes().split(b"\n")
+    assert b"\r" not in history.read_bytes()
+    assert [json.loads(r)["session_id"] for r in rows if r] == ["s2", "s3"]
+
+    refusals = [3]
+
+    def flaky(src, dst):
+        if refusals[0]:
+            refusals[0] -= 1
+            raise PermissionError(13, "Access is denied")
+        return real_replace(src, dst)
+
+    monkeypatch.setattr(gate.os, "replace", flaky)
+    gate.write_report({"n": 3}, dest)
+    assert json.loads(dest.read_bytes()) == {"n": 3}
+
+    calls = [0]
+
+    def refused(src, dst):
+        calls[0] += 1
+        raise PermissionError(13, "Access is denied")
+
+    monkeypatch.setattr(gate.os, "replace", refused)
+    with pytest.raises(PermissionError):
+        gate.write_report({"n": 4}, dest)
+    assert 1 < calls[0] <= 20, calls[0]
+    gate.append_history({"session_id": "s4"}, history, cap=2)
+    seen = tmp_path / "seen" / "s.json"
+    gate.save_seen(seen, "s", {"k"})
+    assert not seen.exists()
+    assert list(seen.parent.iterdir()) == []
+    assert sorted(p.name for p in tmp_path.iterdir()) == sorted(
+        [dest.name, history.name, "seen"])
+    assert json.loads(dest.read_bytes()) == {"n": 3}
+
+
 def test_scope_keeps_runtime_tools_and_drops_generators():
     assert _in_scope("tools/lcu_agent.py")
     assert _in_scope("tools/hotkey_listener.py")
@@ -707,6 +800,7 @@ def test_scope_keeps_runtime_tools_and_drops_generators():
     assert _in_scope("tools/phase_watcher.py")
     assert _in_scope("tools/moon_sync_poller.py")
     assert _in_scope("tools/upstream_drift_check.py")
+    assert _in_scope("tools/stop_claim_gate.py")
     assert not _in_scope("tools/daemon_slayer_extract.py")
     assert not _in_scope("ops/fleet_kit/fleet_headless.py")
     assert _in_scope("coach_integration/_coach.py")
@@ -720,7 +814,7 @@ def test_a_new_tools_writer_starts_in_scope():
     assert _in_scope("tools/ds_cross_eval/a_new_writer.py")
     assert not _in_scope("tools/daemon_slayer_cdragon_ratio_extract.py")
     assert not _in_scope("tools/tests/test_cdragon_ratio_extract.py")
-    assert not _in_scope("tools/stop_claim_gate.py")
+    assert not _in_scope("tools/web_ascii_sweep.py")
 
 
 def test_tools_baseline_is_exact():

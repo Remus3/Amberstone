@@ -59,7 +59,9 @@ import itertools
 import json
 import os
 import re
+import secrets
 import sys
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -2964,20 +2966,56 @@ def append_history(report, target, cap=HISTORY_MAX):
         if cap > 0:
             lines = [ln for ln in target.read_text(encoding="utf-8").splitlines() if ln]
             if len(lines) > cap:
-                tmp = target.with_suffix(target.suffix + ".tmp")
-                tmp.write_text("\n".join(lines[-cap:]) + "\n",
-                               encoding="utf-8", newline="\n")
-                tmp.replace(target)
+                _atomic_write(target, "\n".join(lines[-cap:]) + "\n")
     except (OSError, ValueError):
         pass
+
+
+# RM-258 / RM-261: os.replace raises PermissionError (WinError 5) on Windows
+# while a reader holds the target open, and parallel sub-agents of one session
+# can Stop in the same instant, so a scratch named after the destination alone
+# could be shared by two writers. The backoff is copied from core/polled_json.py
+# rather than imported: this hook is portable and stdlib-only (MAIN 1254 #9), a
+# copy runs in another tree with no RC package above it.
+_REPLACE_RETRY_DELAYS_S = (0.025, 0.05, 0.2)
+
+
+def _replace_with_retry(src, dst):
+    """os.replace with bounded backoff (~275 ms worst case, then re-raise)."""
+    for i in range(len(_REPLACE_RETRY_DELAYS_S) + 1):
+        try:
+            os.replace(src, dst)
+            return
+        except PermissionError:
+            if i >= len(_REPLACE_RETRY_DELAYS_S):
+                raise
+            time.sleep(_REPLACE_RETRY_DELAYS_S[i])
+
+
+def _atomic_write(target, text):
+    """Per-writer `<name>.<pid>.<hex>.tmp` scratch, fsync, then a bounded-retry
+    replace; the bytes are written as-is (LF held on Windows), and the scratch
+    is removed if any step fails, so a refused rename leaves no orphan."""
+    target = Path(target)
+    tmp = target.with_name(f"{target.name}.{os.getpid()}.{secrets.token_hex(4)}.tmp")
+    try:
+        with open(tmp, "wb") as handle:
+            handle.write(text.encode("utf-8"))
+            handle.flush()
+            os.fsync(handle.fileno())
+        _replace_with_retry(tmp, target)
+    except BaseException:
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+        raise
 
 
 def write_report(report, target):
     target = Path(target)
     target.parent.mkdir(parents=True, exist_ok=True)
-    tmp = target.with_suffix(target.suffix + ".tmp")
-    tmp.write_text(json.dumps(report, indent=2), encoding="utf-8")
-    tmp.replace(target)
+    _atomic_write(target, json.dumps(report, indent=2))
 
 
 # RM-796: the report is bookkeeping like the history and the seen set, so an
@@ -3030,16 +3068,15 @@ def load_seen(path):
 
 
 def save_seen(path, session_id, keys):
-    """Atomic write (a per-process tmp name, so two Stops cannot share one)."""
+    """Atomic write through _atomic_write (a per-writer tmp name, so two Stops
+    cannot share one)."""
     try:
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
-        tmp.write_text(json.dumps({
+        _atomic_write(path, json.dumps({
             "session_id": str(session_id or ""),
             "updated": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-            "keys": sorted(keys)}, indent=1) + "\n", encoding="utf-8", newline="\n")
-        tmp.replace(path)
+            "keys": sorted(keys)}, indent=1) + "\n")
     except (OSError, ValueError):
         pass
 
@@ -3069,7 +3106,7 @@ def prune_seen(seen_dir, keep=SEEN_MAX_SESSIONS):
                 stamp = path.stat().st_mtime_ns
                 target = pruned / f"{path.stem}.{stamp}.json"
                 if not target.exists():
-                    os.replace(path, target)
+                    _replace_with_retry(path, target)
             except OSError:
                 continue
     except OSError:
