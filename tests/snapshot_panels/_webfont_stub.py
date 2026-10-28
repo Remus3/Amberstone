@@ -11,6 +11,8 @@ fixed gstatic URL), and each face request is passed to `hold`, which
 answers it later with fulfill_stub_font(route). No byte leaves the box.
 RM-1079: route_offline_webfont(ctx) answers both at once for a whole
 context; the shared snapshot _new_page installs it on every page it makes.
+RM-1080: the session pw_browser fixture is OfflineWebfontBrowser, which
+installs it on every context any snapshot file makes.
 
 build_stub_ttf() writes a minimal TrueType font in pure Python (fontTools
 is not a test dependency): glyph 0 is .notdef and U+0020..U+007E map one
@@ -37,7 +39,13 @@ STUB_CSS = (
 UPM = 1000
 ASCENT = 950
 DESCENT = 250
-ADVANCE = 520
+# RM-1080: real Lato averaged 0.47-0.52 em per character over the visible
+# text of six dashboard views (overlay, home, active match, replay,
+# settings, lobby; mean about 0.49), measured with canvas measureText at
+# each element's own weight. 520 sat at the top of that band, so a string
+# heavy in narrow letters ("Farsight Alteration") overran a box real Lato
+# fits (test_next_buy_view); 490 is the measured mean.
+ADVANCE = 490
 _FIRST, _LAST = 0x20, 0x7E
 
 # "iiiiiiii" and "MMMMMMMM" are the same width only in a face whose glyphs
@@ -168,10 +176,39 @@ def route_offline_webfont(ctx):
     """RM-1079: answer every Google Fonts request in a browser context
     with the stub at once, so a page renders the same face on every host
     and no byte leaves the box. A page-level route (route_stub_webfont, or
-    an abort) is checked before this one and still wins."""
+    an abort) is checked before this one and still wins. A second call on
+    the same context is a no-op (RM-1080: the fixture browser already
+    installed it on every context, and _new_page installs it again)."""
+    if getattr(ctx, "_rc_offline_webfont", False):
+        return
+    ctx._rc_offline_webfont = True
     ctx.route(lambda url: "fonts.googleapis.com" in url,
               lambda route: route.fulfill(
                   status=200, body=STUB_CSS, content_type="text/css",
                   headers={"Access-Control-Allow-Origin": "*"}))
     ctx.route(lambda url: "fonts.gstatic.com" in url,
               lambda route: fulfill_stub_font(route))
+
+
+class OfflineWebfontBrowser:
+    """RM-1080: the session pw_browser. Every context it makes, through
+    new_context or new_page, is answered by route_offline_webfont before
+    its first navigation, so no snapshot call site has to install it.
+    Everything else (browser_type, contexts, close, ...) is the wrapped
+    Playwright Browser's own."""
+
+    def __init__(self, browser):
+        self._browser = browser
+
+    def __getattr__(self, name):
+        return getattr(self._browser, name)
+
+    def new_context(self, *args, **kwargs):
+        ctx = self._browser.new_context(*args, **kwargs)
+        route_offline_webfont(ctx)
+        return ctx
+
+    def new_page(self, *args, **kwargs):
+        page = self._browser.new_page(*args, **kwargs)
+        route_offline_webfont(page.context)
+        return page

@@ -19,6 +19,8 @@ from pathlib import Path
 import pytest
 from playwright.sync_api import sync_playwright
 
+from tests.snapshot_panels._webfont_stub import OfflineWebfontBrowser
+
 WEB_DIR = Path(__file__).parent.parent.parent / "web"
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
 
@@ -417,5 +419,7 @@ def pw_browser():
             headless=True,
             args=["--no-sandbox", "--disable-dev-shm-usage"],
         )
-        yield b
+        # RM-1080: every context from this browser takes the Lato webfont
+        # from the local stub, never Google Fonts (_webfont_stub.py).
+        yield OfflineWebfontBrowser(b)
         b.close()

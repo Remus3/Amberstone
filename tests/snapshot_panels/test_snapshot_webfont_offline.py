@@ -18,6 +18,16 @@ files abort the webfonts to force their faces, and the late-swap test holds
 the face. This file pins all three halves: the default page is answered by
 the stub and draws 'Lato' with it, nothing fails or leaves for Google
 Fonts, and a page-level route still wins.
+
+RM-1080: the rest of the snapshot directory (its own _new_page helpers
+and about a hundred direct pw_browser.new_context calls) still reached
+Google Fonts. The session pw_browser fixture now yields
+OfflineWebfontBrowser, whose new_context and new_page install the stub on
+every context they make, so no call site changes. The tests at the end pin
+that a context made straight from the fixture, with no helper, is answered
+by the stub, and that the wrapper still passes the rest of the Browser API
+through (test_replay_pane_corner_brackets launches its second browser from
+pw_browser.browser_type).
 """
 import pytest
 
@@ -25,7 +35,9 @@ from tests.snapshot_panels._webfont_stub import (
     STUB_APPLIED,
     STUB_CSS,
     STUB_FONT_URL,
+    OfflineWebfontBrowser,
 )
+from tests.snapshot_panels.conftest import _WS_STUB
 from tests.snapshot_panels.test_focus_ring_token_sites import VIEWPORTS, _new_page
 from tests.snapshot_panels.test_replay_timeline_rows_and_grid_reach import (
     _load_first_match,
@@ -99,4 +111,52 @@ def test_a_page_level_route_still_overrides_the_stub(mock_server, pw_browser):
     assert seen["failed"], "premise: the page-level abort saw the @import"
     assert not seen["css"], f"the stub answered past a page route: {seen}"
     assert not applied, "the stub face drew text past a page-level abort"
+    assert not errors, f"JS errors: {errors[:3]}"
+
+
+def test_the_fixture_browser_is_the_wrapper_and_passes_through(pw_browser):
+    """RM-1080: every snapshot file gets the wrapper from the fixture,
+    and the Browser API it does not override still answers."""
+    assert isinstance(pw_browser, OfflineWebfontBrowser), type(pw_browser)
+    assert pw_browser.browser_type.name == "chromium"
+    assert pw_browser.is_connected()
+
+
+@pytest.mark.parametrize("via", ["new_context", "new_page"])
+def test_a_bare_fixture_context_serves_the_webfont_from_the_stub(
+        mock_server, pw_browser, via):
+    """RM-1080: a context made straight from the fixture, the way most
+    snapshot files make theirs, installs no route itself and is still
+    answered by the stub."""
+    mock_server._store["data"] = {}
+    opts = {"ignore_https_errors": True,
+            "viewport": {"width": VIEWPORTS[0][0], "height": VIEWPORTS[0][1]}}
+    if via == "new_context":
+        ctx = pw_browser.new_context(**opts)
+        page = ctx.new_page()
+    else:
+        page = pw_browser.new_page(**opts)
+        ctx = page.context
+    seen = _watch_font_traffic(ctx)
+    page.add_init_script(_WS_STUB)
+    errors: list[str] = []
+    page.on("pageerror", lambda err: errors.append(str(err)))
+    try:
+        _load_first_match(page, mock_server)
+        status = page.evaluate("document.fonts.status")
+        applied = page.evaluate(STUB_APPLIED)
+    finally:
+        page.close()
+        if via == "new_context":
+            ctx.close()
+    assert seen["requests"], "premise: the dashboard.css Lato @import fired"
+    assert seen["css"] and all(seen["css"]), (
+        f"a Google Fonts CSS response was not the stub CSS: {seen}"
+    )
+    assert seen["faces"] and set(seen["faces"]) == {STUB_FONT_URL}, (
+        f"a face came from somewhere other than the stub: {seen}"
+    )
+    assert not seen["failed"], f"webfont requests failed: {seen['failed']}"
+    assert status == "loaded", f"fonts settled as {status!r}"
+    assert applied, "the stub face, not a fallback, draws 'Lato' text"
     assert not errors, f"JS errors: {errors[:3]}"
