@@ -216,8 +216,9 @@ class _AbilitiesOverrideCache:
     """RM-115 / A-03 / RM-81: lazy holder for the OVERRIDE-ON abilities snapshot.
 
     ``apply_ability_base_overrides`` is a load-time kwarg on
-    ``AbilitiesSnapshot.load`` (abilities.py:1006), not a per-call ranking
-    flag, and ``abilities.load_default()`` (abilities.py:1302-1315) is keyless
+    ``AbilitiesSnapshot.load``, not a per-call ranking flag, and
+    ``abilities.load_default()`` (a bare ``AbilitiesSnapshot.load()`` behind a
+    module ``_cache``) is keyless
     - it caches ONE snapshot for the process and cannot represent both states.
 
     Rather than key that global cache, this holder builds the flag-ON snapshot
@@ -1201,9 +1202,9 @@ def _route_rank_tank(body: dict) -> dict:
     # is the only route where a kit's mana-scaling block is priced nowhere. The
     # two documented rejects both route elsewhere and are already paid there:
     #   * Kassadin (Assassin-primary) -> ds.burst, whose AbilityContext carries
-    #     caster_max_mp (ability_dps.py:299-300).
+    #     caster_max_mp (set by ``AbilityContext.from_build``).
     #   * Ryze (Mage-primary) -> ds.ability, whose AbilityContext carries
-    #     caster_bonus_mp (same pair of lines).
+    #     caster_bonus_mp (set beside it in ``AbilityContext.from_build``).
     # Wiring this key onto those routes would double-count the same block.
     #
     # A SEPARATE flag from BOTH shipped coupling levers: the three registries are
@@ -1843,8 +1844,9 @@ def _route_ability_dps(body: dict) -> dict:
     form_index_overrides = _parse_form_index(body)
     block_index_overrides = _parse_block_index(body)
     apply_ability_amps = _opt_bool(body, "apply_ability_amps", False)
-    # RM-115: both seams below are accepted by compute_ability_dps
-    # (ability_dps.py:960 / :949) but were never parsed here, so /ability-dps
+    # RM-115: both seams below are accepted by compute_ability_dps (its
+    # ``apply_passive_aura_damage`` parameter, and the override snapshot through
+    # its ``abilities_snapshot`` parameter) but were never parsed here, so /ability-dps
     # could not reach either. A-07 / RM-82 TERM 2 and A-03 / RM-81 respectively.
     apply_passive_aura_damage = _opt_bool(body, "apply_passive_aura_damage", False)
     apply_ability_base_overrides = _opt_bool(
@@ -2823,11 +2825,13 @@ def _route_hps(body: dict) -> dict:
     # engine-only since ENGINE 1.202.0 and ledgered stranded by the R197 guard
     # ever since. The ITEM lane has been amped by ``amp_factor`` since R60;
     # ``ability_hps_total`` was folded RAW, so a wielder's Heal/Shield-Power
-    # items amped her item heals but not her ability heals (hps.py:685).
+    # items amped her item heals but not her ability heals (``compute_hps``'s
+    # ``ability_hps_total`` fold).
     #
     # NO extra transport: ``amp_factor`` is derived from ``item_ids``, already
-    # parsed above. /hps is the SOLE owner (hps.py:520) - ``rank_items_by_hps``
-    # (hps.py:863) does not name it, so /rank-enchanter must NOT grow this key.
+    # parsed above. /hps is the SOLE owner (``compute_hps`` takes it as a
+    # parameter) - ``rank_items_by_hps`` does not name it, so /rank-enchanter
+    # must NOT grow this key.
     # DEFAULT-OFF -> the ability fold stays RAW -> byte-identical; and even ON
     # it is identity when the build carries no HSP item (amp_factor == 1.0) or
     # the champion has no ability heal block (ability_hps_total == 0.0).

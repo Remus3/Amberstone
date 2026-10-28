@@ -19,11 +19,12 @@ on BOTH paths.
 MANDATORY DAMAGE-TYPE GUARD - PHYSICAL + TRUE (L2 widen). Per the L2 spec,
 ``_physical_ability_damage`` sums only per-spell rows whose ``damage_type``
 normalizes into ``hybrid._AD_AXIS_CREDITED_DAMAGE_TYPES`` under the canonical
-``ability_dps.py:371`` idiom ``(damage_type or "MAGIC").upper()``, so a None
-damage_type falls back to MAGIC and is EXCLUDED. L1 credited PHYSICAL alone;
+``ability_dps._mitigation_factor`` idiom ``(damage_type or "MAGIC").upper()``,
+so a None damage_type falls back to MAGIC and is EXCLUDED. L1 credited
+PHYSICAL alone;
 L2 adds TRUE on measured evidence (all 5 in-cohort TRUE rows carry dAP 0.0000
-and dVoid 0.0000, and ``_mitigation_factor`` returns a flat 1.0 for TRUE at
-``ability_dps.py:372``, so nothing AP-derivative rides in with them). MAGIC
+and dVoid 0.0000, and ``_mitigation_factor`` returns a flat 1.0 for TRUE
+before any resist is read, so nothing AP-derivative rides in with them). MAGIC
 stays excluded permanently - crediting it climbs Udyr's Rabadon's 55 places.
 MIXED stays excluded BY DECISION, not by oversight - see
 ``test_mixed_row_still_contributes_zero``.
@@ -92,7 +93,8 @@ _LEVEL = 13
 _CREDITED_DAMAGE_TYPES = ("PHYSICAL", "TRUE")
 
 # Liandry's Torment. Its burn reaches total_ability_dps through
-# ``item_proc_dps`` (ability_dps.py:1376-1381) and appears in NO per_spell row,
+# ``item_proc_dps`` (``compute_ability_dps`` adds its ``_periodic_proc_dps``
+# result to ``total_dps`` after the per-spell loop) and appears in NO per_spell row,
 # which is what makes it the probe for the per_spell-sum guard.
 _LIANDRYS = "6653"
 
@@ -187,13 +189,13 @@ class HelperFilterTests(unittest.TestCase):
         self.assertEqual(self._phys([_spell("Q", "MAGIC", 500.0)]), 0.0)
 
     def test_true_row_contributes_its_dps(self):
-        # L2 widen. TRUE returns mitigation 1.0 at ability_dps.py:372-373, so
+        # L2 widen. ``_mitigation_factor`` returns 1.0 for TRUE, so
         # a TRUE row imports no resist- or AP-derivative into the AD axis; it
         # is flat post-mitigation damage the AD branch was simply dropping.
         self.assertAlmostEqual(self._phys([_spell("R", "TRUE", 500.0)]), 500.0)
 
     def test_none_damage_type_falls_back_to_magic_and_is_excluded(self):
-        # ability_dps.py:371 - a None damage_type normalizes to MAGIC. It must
+        # ``_mitigation_factor`` - a None damage_type normalizes to MAGIC. It must
         # never be treated as physical.
         self.assertEqual(self._phys([_spell("E", None, 500.0)]), 0.0)
 
@@ -202,8 +204,8 @@ class HelperFilterTests(unittest.TestCase):
 
         The whole in-cohort MIXED population is Yone (W Spirit Cleave, R Fate
         Sealed). Unlike TRUE, MIXED genuinely does import magic-pen valuation:
-        ``_mitigation_factor`` splits it 50/50 across armor and MR at
-        ability_dps.py:377, and crediting it in full moves Yone's Void Staff
+        ``_mitigation_factor`` splits it 50/50 across armor and MR (its MIXED
+        branch), and crediting it in full moves Yone's Void Staff
         from 129 to 111. Yone's W/R really are half-physical, so the honest
         treatment is a 50 pct credit mirroring that same split - a separate
         design, not a filter widen. Do not "fix" this by adding MIXED to
@@ -311,8 +313,8 @@ class AxisCharacterizationTests(unittest.TestCase):
         """The term must sum ``per_spell``, NEVER return ``total_ability_dps``.
 
         This is the guard the damage-type filter is often mistaken for.
-        ``item_proc_dps`` (ability_dps.py:1376-1381) folds item burn / DoT into
-        ``total_ability_dps`` and appears in NO per_spell row, so a
+        ``item_proc_dps`` (``compute_ability_dps``'s ``_periodic_proc_dps``
+        fold) folds item burn / DoT into ``total_ability_dps`` and appears in NO per_spell row, so a
         "simplification" to ``return result.total_ability_dps`` would import AP
         burn items onto every AD bruiser with no filter change visible in the
         diff. Aatrox is the probe precisely BECAUSE he has zero nonzero
