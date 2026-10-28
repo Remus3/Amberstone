@@ -36,19 +36,17 @@ def roster() -> list:
     return []
 
 
-def main() -> int:
+def main(outdir: Path | None = None) -> int:
     champs = roster()
-    outdir = ROOT / "ops" / "audit" / "ds_cross_eval" / "data"
+    if outdir is None:
+        outdir = ROOT / "ops" / "audit" / "ds_cross_eval" / "data"
     outdir.mkdir(parents=True, exist_ok=True)
     ok, fail = 0, []
     t0 = time.time()
     for ch in champs:
         try:
             data = P.probe(ch)
-            fp = outdir / (data["champion"] + ".json")
-            tmp = fp.with_suffix(".tmp")
-            tmp.write_text(json.dumps(data, indent=2), encoding="utf-8", newline="\n")
-            tmp.replace(fp)
+            P._write_probe(outdir / (data["champion"] + ".json"), data)
             ok += 1
         except Exception as exc:  # noqa: BLE001
             fail.append((ch, f"{type(exc).__name__}: {exc}"))

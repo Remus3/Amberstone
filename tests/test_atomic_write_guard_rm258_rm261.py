@@ -165,8 +165,6 @@ _TOOLS_UNCLASSIFIED = frozenset({
     "tools/compare_101qq_vs_ddragon.py",
     "tools/daemon_slayer_build_orders_generate.py",
     "tools/daemon_slayer_pickban_targets_generate.py",
-    "tools/ds_cross_eval/probe_champion.py",
-    "tools/ds_cross_eval/run_all.py",
     "tools/gen_archmap.py",
     "tools/gen_state_schema.py",
     "tools/hotfix_kaisa_aram_ashe_sr_item263.py",

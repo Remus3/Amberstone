@@ -29,6 +29,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
+from core import polled_json  # noqa: E402
 from core.archetype_picks import canonical_champion_id, get_archetype_for  # noqa: E402
 from core.daemon_slayer_client import rank_for_primary_archetype  # noqa: E402
 
@@ -262,6 +263,13 @@ def probe(champion: str) -> dict:
     }
 
 
+def _write_probe(fp: Path, data: dict) -> None:
+    """Write one per-champion record atomically (RM-258). Same text as before:
+    json.dumps(indent=2), ASCII-escaped, no trailing newline; atomic_write_text
+    encodes the UTF-8 bytes itself, so there is no CRLF on Windows."""
+    polled_json.atomic_write_text(fp, json.dumps(data, indent=2))
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("champion")
@@ -271,9 +279,7 @@ def main() -> int:
     outdir = Path(a.out) / "data"
     outdir.mkdir(parents=True, exist_ok=True)
     fp = outdir / (data["champion"] + ".json")
-    tmp = fp.with_suffix(".tmp")
-    tmp.write_text(json.dumps(data, indent=2), encoding="utf-8", newline="\n")
-    tmp.replace(fp)
+    _write_probe(fp, data)
     print(str(fp))
     return 0
 
