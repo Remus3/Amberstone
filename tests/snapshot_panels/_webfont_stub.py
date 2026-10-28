@@ -9,6 +9,8 @@ calls route_stub_webfont(page, hold) before navigating: the CSS request is
 answered with STUB_CSS (one Lato @font-face, every weight, served from a
 fixed gstatic URL), and each face request is passed to `hold`, which
 answers it later with fulfill_stub_font(route). No byte leaves the box.
+RM-1079: route_offline_webfont(ctx) answers both at once for a whole
+context; the shared snapshot _new_page installs it on every page it makes.
 
 build_stub_ttf() writes a minimal TrueType font in pure Python (fontTools
 is not a test dependency): glyph 0 is .notdef and U+0020..U+007E map one
@@ -160,3 +162,16 @@ def route_stub_webfont(page, hold):
                    status=200, body=STUB_CSS, content_type="text/css",
                    headers={"Access-Control-Allow-Origin": "*"}))
     page.route(lambda url: "fonts.gstatic.com" in url, hold)
+
+
+def route_offline_webfont(ctx):
+    """RM-1079: answer every Google Fonts request in a browser context
+    with the stub at once, so a page renders the same face on every host
+    and no byte leaves the box. A page-level route (route_stub_webfont, or
+    an abort) is checked before this one and still wins."""
+    ctx.route(lambda url: "fonts.googleapis.com" in url,
+              lambda route: route.fulfill(
+                  status=200, body=STUB_CSS, content_type="text/css",
+                  headers={"Access-Control-Allow-Origin": "*"}))
+    ctx.route(lambda url: "fonts.gstatic.com" in url,
+              lambda route: fulfill_stub_font(route))

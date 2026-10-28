@@ -33,6 +33,7 @@ from pathlib import Path
 
 import pytest
 
+from tests.snapshot_panels._webfont_stub import route_offline_webfont
 from tests.snapshot_panels.conftest import _WS_STUB
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -136,6 +137,8 @@ def _new_page(pw_browser, mock_server, vp):
     ctx = pw_browser.new_context(
         ignore_https_errors=True, viewport={"width": vp[0], "height": vp[1]}
     )
+    # RM-1079: the webfont comes from the local stub, never the network.
+    route_offline_webfont(ctx)
     page = ctx.new_page()
     page.add_init_script(_WS_STUB)
     errors: list[str] = []
