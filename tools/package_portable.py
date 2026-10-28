@@ -8,7 +8,9 @@ dist/portable_staging/) into ONE redistributable archive:
         start.bat, main.py, ..., python-embed/, BUILD_MANIFEST.json,
         PACKAGE_MANIFEST.json
 
-plus `<archive>.sha256` beside it. The archive is built from the staged
+plus `<archive>.sha256` beside it, both published through
+core.polled_json.atomic_write_bytes (per-writer scratch, fsync, bounded
+WinError 5 retry, no scratch left behind; RM-258). The archive is built from the staged
 folder, never from the live tree, so build_portable.py's exclusion rules stay
 the authority - and they are re-checked here (build_portable.verify_bundle)
 before a single byte is zipped: a staged folder holding a key file,
@@ -29,6 +31,7 @@ from __future__ import annotations
 import argparse
 import datetime
 import hashlib
+import io
 import json
 import subprocess
 import sys
@@ -40,6 +43,7 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
+from core import polled_json  # noqa: E402
 from tools import build_portable as bp  # noqa: E402
 
 STAGED_DIR = bp.DEFAULT_OUTPUT
@@ -121,24 +125,28 @@ def package(out_dir: Path = DEFAULT_OUT_DIR, version: Optional[str] = None,
     }
     out_dir.mkdir(parents=True, exist_ok=True)
     archive = out_dir / name
-    tmp = out_dir / (name + ".tmp")
+    side = out_dir / (name + ".sha256")
+    # RM-258: the archive is built in memory (the packer used to read it back
+    # whole to hash it, so the peak is unchanged in kind) and published
+    # through the shared writer, never a hand-rolled scratch + rename; the
+    # digest is taken from the very bytes published.
+    buf = io.BytesIO()
     try:
-        with zipfile.ZipFile(tmp, "w", compression=zipfile.ZIP_DEFLATED,
+        with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED,
                              compresslevel=6) as zf:
             for src in files:
                 zf.write(src, f"{ZIP_ROOT_NAME}/{src.relative_to(staged_dir).as_posix()}")
             zf.writestr(f"{ZIP_ROOT_NAME}/{PACKAGE_MANIFEST}",
                         json.dumps(pkg_manifest, indent=2, sort_keys=True) + "\n")
-        tmp.replace(archive)
+        data = buf.getvalue()
+        digest = hashlib.sha256(data).hexdigest()
+        polled_json.atomic_write_bytes(archive, data)
+        polled_json.atomic_write_bytes(side, f"{digest}  {name}\n".encode("ascii"))
     except OSError as exc:
-        tmp.unlink(missing_ok=True)
         _err(f"zip failed: {exc}")
         return 1
-    digest = hashlib.sha256(archive.read_bytes()).hexdigest()
-    side = out_dir / (name + ".sha256")
-    side.write_text(f"{digest}  {name}\n", encoding="ascii", newline="\n")
     print(f"Packaged {name}: {len(files)} files, "
-          f"{archive.stat().st_size / (1024 * 1024):.1f} MB, sha256 {digest}")
+          f"{len(data) / (1024 * 1024):.1f} MB, sha256 {digest}")
     return 0
 
 
