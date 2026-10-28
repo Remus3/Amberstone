@@ -44,6 +44,8 @@ Drive path: /?ui_mock=1#<view>, the recipe of the per-view snapshot tests,
 landing on body[data-view], then the settle wait of
 test_user_builds_fit.py.
 """
+import sys
+
 import pytest
 
 from tests.snapshot_panels.conftest import _WS_STUB
@@ -164,12 +166,25 @@ def test_every_view_head_is_measured(heads):
     assert errors == []
 
 
+# The face swap is simulated with the HOST's own `monospace` and `serif`
+# faces. Without two faces of different normal line-height the swap check
+# below compares a face with itself and passes on any CSS. On Windows (the
+# one host RC runs on, ADR-011) the three faces measure distinct, so the
+# premise is ASSERTED there; other hosts' font sets are not measured, so the
+# two face-swap tests are Windows-only (a platform capability the skip
+# hygiene guard resolves; a body skip on the measured `probe` it cannot).
+_WINDOWS_FACES = "the face-swap premise is measured on Windows system faces only"
+
+
+def _require_distinct_faces(probe):
+    assert len(set(probe.values())) >= 2, (
+        "local faces share one normal line-height", probe)
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_FACES)
 def test_the_swapped_faces_really_differ(heads):
-    # Without two faces of different normal line-height the swap check
-    # below compares a face with itself and passes on any CSS.
     _, _, probe, _ = heads
-    if len(set(probe.values())) < 2:
-        pytest.skip(f"local faces share one normal line-height: {probe}")
+    _require_distinct_faces(probe)
 
 
 def _lines(t):
@@ -178,10 +193,10 @@ def _lines(t):
     return round(t["height"] / float(t["lineHeight"].removesuffix("px")))
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_FACES)
 def test_single_line_view_heads_do_not_change_height_with_the_face(heads):
     vp, got, probe, _ = heads
-    if len(set(probe.values())) < 2:
-        pytest.skip(f"local faces share one normal line-height: {probe}")
+    _require_distinct_faces(probe)
     compared = []
     for view, per_face in got.items():
         # A sub-line that wraps (the RM-975 companion-width wrap, or a wide
@@ -209,10 +224,13 @@ def test_view_head_text_lines_compute_a_resolved_line_height(heads):
                 assert abs(t["height"] - _lines(t) * lh) <= 0.5, (view, face, t)
 
 
+# Baseline only: the 40px figure is the 1920x920 measurement, so this test is
+# collected at 1920x920 alone instead of skipping at 923 (the skip hygiene
+# guard rejects a skip on the fixture's own viewport parameter).
+@pytest.mark.parametrize("heads", ["baseline"], indirect=True)
 def test_first_paint_head_is_the_settled_40px_head(heads):
     vp, got, _, _ = heads
-    if vp != "baseline":
-        pytest.skip("the 40px figure is the 1920x920 baseline measurement")
+    assert vp == "baseline", vp
     for view, per_face in got.items():
         if view in _CONTROL_HEADS:
             continue
