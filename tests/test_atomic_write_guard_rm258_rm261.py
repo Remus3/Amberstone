@@ -160,7 +160,6 @@ _TOOLS_UNCLASSIFIED = frozenset({
     "tools/gen_state_schema.py",
     "tools/package_portable.py",
     "tools/shadow_archive_split.py",
-    "tools/web_ascii_sweep.py",
 })
 
 
@@ -783,7 +782,7 @@ def test_a_new_tools_writer_starts_in_scope():
     assert _in_scope("tools/ds_cross_eval/a_new_writer.py")
     assert not _in_scope("tools/daemon_slayer_cdragon_ratio_extract.py")
     assert not _in_scope("tools/tests/test_cdragon_ratio_extract.py")
-    assert not _in_scope("tools/web_ascii_sweep.py")
+    assert not _in_scope("tools/shadow_archive_split.py")
 
 
 def test_tools_baseline_is_exact():

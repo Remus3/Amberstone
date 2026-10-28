@@ -27,6 +27,9 @@ Usage:
 
 Exit codes: 0 clean, 2 a comment-span glyph is absent from REPLACEMENTS (the
 tool names file, line, byte offset and codepoint and writes nothing).
+
+ATOMIC WRITE: core.polled_json.atomic_write_bytes (fsync, WinError 5
+retry, no scratch left behind on a refused rename; RM-258).
 """
 from __future__ import annotations
 
@@ -35,6 +38,12 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import NamedTuple, Optional
+
+ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from core import polled_json  # noqa: E402 - needs ROOT on sys.path first
 
 LIVE = "live"
 COMMENT = "comment"
@@ -167,10 +176,8 @@ def read_source(path) -> str:
 
 
 def write_source(path, text: str) -> None:
-    target = Path(path)
-    tmp = target.with_suffix(target.suffix + ".rm125tmp")
-    tmp.write_bytes(text.encode("utf-8"))
-    tmp.replace(target)
+    # Bytes, so the CRLF read_source kept is written back as authored.
+    polled_json.atomic_write_bytes(Path(path), text.encode("utf-8"))
 
 
 def _is_ident(ch: str) -> bool:
