@@ -158,7 +158,6 @@ _TOOLS_UNCLASSIFIED = frozenset({
     "tools/build_python_embed.py",
     "tools/build_third_party_notices.py",
     "tools/champion_loadout_autogen.py",
-    "tools/champion_loadout_cleanup_pollution_item213.py",
     "tools/champion_loadout_collapse_to_paths.py",
     "tools/champion_loadout_sweep_item_s8.py",
     "tools/daemon_slayer_build_orders_generate.py",

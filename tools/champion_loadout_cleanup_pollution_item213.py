@@ -50,7 +50,8 @@ Usage::
     $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/champion_loadout_cleanup_pollution_item213.py [--dry-run]
         [--no-backup]
 
-Atomic write (tmp.write_text + tmp.replace; ensure_ascii=True). Idempotent.
+Atomic write (core.polled_json.atomic_write_bytes; ensure_ascii=True, LF).
+Idempotent.
 """
 from __future__ import annotations
 
@@ -58,7 +59,6 @@ import argparse
 import json
 import shutil
 import sys
-import tempfile
 import time
 from pathlib import Path
 from typing import Any
@@ -85,6 +85,7 @@ _MAP_FOR_MODE = {"sr": "11", "aram": "12", "arena": "30"}
 # as the live scorer (core.daemon_slayer_client carry branch) so the
 # layers cannot disagree. Bruiser/assassin rows of ranged champs keep
 # melee items - they are archetype-legitimate there.
+from core import polled_json  # noqa: E402
 from core.daemon_slayer_client import (  # noqa: E402
     CARRY_RANGED_ATTACKRANGE_FLOOR,
     CARRY_RANGED_OFFCLASS_ITEM_NAMES,
@@ -888,16 +889,10 @@ class Cleaner:
 
 
 def _atomic_write(path: Path, obj: Any) -> None:
+    # RM-258: the shared writer (per-writer scratch name, fsync, WinError 5
+    # retry, no scratch left behind). Bytes, so the LF stays LF on Windows.
     text = json.dumps(obj, indent=2, ensure_ascii=True) + "\n"
-    fd, tmp = tempfile.mkstemp(
-        dir=str(path.parent), prefix=path.name + ".", suffix=".tmp"
-    )
-    import os
-
-    os.close(fd)
-    tmp_p = Path(tmp)
-    tmp_p.write_bytes(text.encode("ascii"))
-    tmp_p.replace(path)
+    polled_json.atomic_write_bytes(path, text.encode("ascii"))
 
 
 def main(argv: list[str] | None = None) -> int:
