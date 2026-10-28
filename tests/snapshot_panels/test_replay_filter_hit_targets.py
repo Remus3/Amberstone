@@ -30,9 +30,20 @@ more than the 4px corner inset, so a point probed before the swap could land
 under the label by the time it was clicked. The shared load helper now waits
 for the fonts and the re-layout (_settle_layout); the last test below holds
 the font responses until the rows exist to make the swap happen every run.
+
+RM-1078: that last test skipped when Google Fonts was unreachable or the
+held face failed to load, two skips tests/test_skip_condition_hygiene.py
+cannot resolve to an environment capability. It now serves a local stub
+Lato (_webfont_stub.py) for both requests, so the swap runs on every host
+with no network, and both former skips are assertions.
 """
 import pytest
 
+from tests.snapshot_panels._webfont_stub import (
+    STUB_APPLIED,
+    fulfill_stub_font,
+    route_stub_webfont,
+)
 from tests.snapshot_panels.test_focus_ring_token_sites import VIEWPORTS, _new_page
 from tests.snapshot_panels.test_replay_timeline_rows_and_grid_reach import (
     _load_first_match,
@@ -170,21 +181,24 @@ def test_a_late_webfont_swap_is_settled_before_the_label_click(
     7px (1920x920) / 10px (923x1280), past the 4px probe inset; the Replay
     body's fixed line-height (web/css/panels/primitives.css .replay-body)
     holds that move to 1px, under the inset, so a pre-swap point can no
-    longer miss its label (test_replay_font_swap.py pins the cause)."""
+    longer miss its label (test_replay_font_swap.py pins the cause).
+    RM-1078: the face is the local stub (_webfont_stub.py), not the
+    network Lato, so the swap is exercised on every host."""
     ctx, page, errors = _new_page(pw_browser, mock_server, vp)
     held = []
-    page.route("**/fonts.gstatic.com/**", lambda route: held.append(route))
+    route_stub_webfont(page, lambda route: held.append(route))
     try:
         _load_match_rows(page, mock_server)
-        if not held:
-            pytest.skip("no webfont was requested (Google Fonts CSS not "
-                        "reachable); the swap is not exercised")
+        assert held, (
+            "premise: the page requested the webfont face (the dashboard.css "
+            "Lato @import, answered by the stub CSS)"
+        )
         assert page.evaluate("document.fonts.status") == "loading", (
             "premise: the webfont is still pending when the rows exist"
         )
         pre = page.evaluate(_LABEL_RECTS, list(_IDS))
         for route in held:
-            route.continue_()
+            fulfill_stub_font(route)
         status = _settle_layout(page)
         post = page.evaluate(_LABEL_RECTS, list(_IDS))
         # The reference settle is independent of the helper under test, so
@@ -193,16 +207,18 @@ def test_a_late_webfont_swap_is_settled_before_the_label_click(
                                timeout=10_000)
         stable = page.evaluate(_STABLE_FRAMES, [list(_IDS), 10])
         final = page.evaluate(_LABEL_RECTS, list(_IDS))
-        # A held request that fails once released leaves the fallback face
-        # in place: no swap, so `moved` below would pass on any CSS.
-        if not page.evaluate(_LATO_LOADED):
-            pytest.skip("the held webfont did not load once released; "
-                        "the swap is not exercised")
+        # A face that fails to load leaves the fallback in place: no swap,
+        # so `moved` below would pass on any CSS. STUB_APPLIED also proves
+        # the stub, not a fallback, draws 'Lato' text.
+        loaded = page.evaluate(_LATO_LOADED)
+        applied = page.evaluate(STUB_APPLIED)
         moved = max(abs(b[1] - a[1]) for a, b in zip(pre, final))
         failures = _click_each_label_corner(page)
     finally:
         page.close()
         ctx.close()
+    assert loaded, "premise: the stub Lato face loaded once released"
+    assert applied, "premise: the stub face, not a fallback, draws Lato text"
     assert status == "loaded", f"_settle_layout returned with fonts {status!r}"
     assert moved <= 1.0, (
         f"the webfont swap moved the filter labels {moved}px (RM-1072 "
