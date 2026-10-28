@@ -60,6 +60,12 @@
   accent-color: var(--accent);
   width: 20px; height: 20px;
 }
+/* RM-1017: keyboard focus paints the system ring (it fell back to the
+ * UA outline), as the Settings PANEL VISIBILITY checkboxes do. */
+.replay-events-filter input[type="checkbox"]:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
 /* Count badge mirrors the .hx-chip control treatment (outline pill,
  * sharp radius, tabular-nums so the digit does not jitter). */
 .replay-events-count {
@@ -104,9 +110,12 @@
   background: var(--surface-alt);
   border-color: var(--accent);
 }
+/* RM-1017: --focus-ring is a box-shadow value, so it was an invalid
+ * outline that painted nothing; drawn inset, inside the row, as the old
+ * outline-offset -2px asked. */
 .replay-events-row:focus-visible {
-  outline: var(--focus-ring);
-  outline-offset: -2px;
+  outline: none;
+  box-shadow: inset var(--focus-ring);
 }
 
 .replay-events-clock {

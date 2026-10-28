@@ -45,9 +45,11 @@
   color: var(--text);
   border-color: var(--accent);
 }
+/* RM-1017: --focus-ring is a box-shadow value ("0 0 0 2px <color>"); as
+ * an outline it is invalid at computed-value time and paints nothing. */
 .bi-tab:focus-visible {
-  outline: var(--focus-ring);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 .bi-tab.is-active {
   color: var(--surface);
@@ -77,8 +79,8 @@
   border-radius: var(--radius-sm);
 }
 .bi-controls input#bi-min-n:focus-visible {
-  outline: var(--focus-ring);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: var(--focus-ring);
   border-color: var(--accent);
 }
 
@@ -238,9 +240,10 @@
 .bi-table th.bi-sortable:hover {
   color: var(--accent);
 }
+/* Drawn inside the cell (was outline-offset -2px), the RM-972 pattern. */
 .bi-table th.bi-sortable:focus-visible {
-  outline: var(--focus-ring);
-  outline-offset: -2px;
+  outline: none;
+  box-shadow: inset var(--focus-ring);
 }
 .bi-table tbody td {
   padding: var(--space-2) var(--space-3);

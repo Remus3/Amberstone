@@ -1141,7 +1141,20 @@ _WEB = _REPO_ROOT / "web"
 # EXACTLY. That path is the whole change. No glyph change: the added lines
 # carry 0 non-ASCII bytes. If another slice re-captures in parallel, the
 # merger recomputes.
-_LIVE_HALF_DIGEST = "afebe58df410761c7fbfd8fd8684046c487d71a8fe0c76fbd8d47c5affd8301b"
+# superseded by the RM-1017 re-capture below: "afebe58df410761c7fbfd8fd8684046c487d71a8fe0c76fbd8d47c5affd8301b"
+#
+# RE-CAPTURED 2026-10-27 at RM-1017 (s144 uiux cycle 26, provisional
+# until the merger lands it). One change rides it: six :focus-visible rules
+# that fed the box-shadow token --focus-ring to `outline:` (invalid, so no
+# ring painted) now draw it as a box-shadow, and the Replay Timeline filter
+# checkboxes gain a :focus-visible ring - in web/css/panels/build_insights.css,
+# web/css/panels/duration_winrate.css and web/css/panels/replay_events.css.
+# Ordinary case, no tokeniser change. ATTRIBUTED BY SUBSTITUTION: swapping
+# exactly those three files back to their lane-tip 0efa3a6fd blobs (in
+# memory) reproduces the superseded afebe58d... value EXACTLY. Those paths
+# are the whole change. No glyph change: the added lines carry 0 non-ASCII
+# bytes. If another slice re-captures in parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "8ea4a3cf29e6fd062c7535e9ab3ec788ea70a726c650d700afb7f73129254d73"
 
 
 def _web_sources() -> list[Path]:

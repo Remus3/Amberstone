@@ -118,9 +118,11 @@
   outline: none;
   border-color: #6cf;
 }
+/* RM-1017: --focus-ring is a box-shadow value ("0 0 0 2px <color>"); as
+ * an outline it is invalid at computed-value time and paints nothing. */
 #bi-duration-mount .dw-champ-input:focus-visible {
-  outline: var(--focus-ring);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 #bi-duration-mount .dw-champ.is-filtered .dw-champ-input {
   border-color: #6cf;
@@ -140,8 +142,8 @@
   border-color: #6cf;
 }
 #bi-duration-mount .dw-champ-clear:focus-visible {
-  outline: var(--focus-ring);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 /* R71 F2 - early/late tendency chip. Descriptive lean label only; reuses the
