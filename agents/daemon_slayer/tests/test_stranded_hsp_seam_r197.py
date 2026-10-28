@@ -99,8 +99,8 @@ def _route_facing_entry_points() -> dict[str, object]:
 # axis - A SEAM UNDER A DIFFERENT DEFAULT TYPE IS INVISIBLE TO A DEFAULT-KEYED
 # CHECKER. Both tiers keyed on ``p.default is False``, so
 # ``apply_canonical_cast_rate_keys`` (``bool | None = None`` on
-# ``ult_rates.get_ult_casts_per_sec``, ult_rates.py:167, and
-# ``get_spell_casts_per_sec``, ult_rates.py:205) was in NEITHER universe, and
+# ``ult_rates.get_ult_casts_per_sec`` and
+# ``ult_rates.get_spell_casts_per_sec``) was in NEITHER universe, and
 # both equality ledgers stayed green while the seam was unreachable from every
 # route. ``grep -c apply_canonical_cast_rate_keys server.py`` returns 0.
 #
@@ -168,12 +168,12 @@ def _passed_kwargs(src: str) -> set[str]:
     read as inert, so parsing alone is NOT reachability.
 
     RM-202: also counts keys forwarded through a ``**splat``. Collecting only
-    ``kw.arg`` made this helper blind to ``handler(**assumed_share_kwargs)`` at
-    ``server.py:1155``, and it reported three genuinely-wired keys
-    (assume_item_aa_dr / assume_item_crit_dr / assume_item_enemy_as_slow) as
-    stranded. That is the one blind spot in this file that produces FALSE
-    POSITIVES rather than false negatives - it would have written three lies
-    into the debt ledger. Resolution is precise, not an over-approximation:
+    ``kw.arg`` made this helper blind to the ``**assumed_share_kwargs`` splat into
+    ``rank_items_by_ehp`` in ``server._route_rank_tank``, and it reported
+    three genuinely-wired keys (assume_item_aa_dr / assume_item_crit_dr /
+    assume_item_enemy_as_slow) as stranded. That is the one blind spot in
+    this file that produces FALSE POSITIVES rather than false negatives - it
+    would have written three lies into the debt ledger. Resolution is precise, not an over-approximation:
     only dicts that are actually splatted into a call are read, so this cannot
     silently mark an unrelated seam as reachable.
     """
@@ -320,7 +320,7 @@ STRANDED_TODAY: dict[str, str] = {
 #
 #   1. FUNCTION-LOCAL IMPORTS. ``getattr(module, name)`` cannot see
 #      ``from .cc_pressure import compute_cc_pressure`` written INSIDE
-#      ``compute_ehp`` (ehp.py:2510, a deliberate lazy import that breaks a
+#      ``compute_ehp`` (a deliberate lazy import that breaks a
 #      circular module load). Depth extension ALONE still did not reach
 #      ``apply_cc_floor``; the local-import map is what reaches it.
 #   2. ``**SPLAT`` FORWARDING - see _passed_kwargs. Without it this tier
@@ -422,7 +422,7 @@ def _depth1_only_seams() -> dict[str, list[str]]:
 # A fifth blind-spot class, and the only one that cannot be fixed by widening
 # the universe: this checker keys on the PARAMETER NAME, so a seam that is
 # fully wired at the route level under a DIFFERENT name reads as stranded.
-# ``hybrid.py:657`` forwards ``apply_dual_scaling_split=<route name>``, and the
+# ``hybrid.compute_hybrid`` forwards ``apply_dual_scaling_split=<route name>``, and the
 # route name is on three depth-0 entry points, parsed and passed by server.py,
 # and exposed on the Python client.
 #
@@ -545,15 +545,16 @@ def stranded_tristate_seams(src: str) -> dict[str, list[str]]:
 STRANDED_TRISTATE: dict[str, str] = {
     "apply_canonical_cast_rate_keys": (
         "no TRANSPORT, not an unflipped default. The seam sits on two ult_rates "
-        "lookups reached only through three intermediaries - ability_dps.py:1378 "
-        "and :1501, ability_hps.py:925, dps.py:1369 - and NONE of the three "
+        "lookups reached only through three intermediaries - "
+        "ability_dps.compute_ability_dps (both lookups), "
+        "ability_hps.compute_ability_hps and dps.compute_dps - and NONE of the three "
         "carries the kwarg: all four call sites pass resolved.champion_name "
         "positionally, so there is nothing for a route key to travel on. Wiring "
         "means threading the parameter through those intermediaries first, which "
         "is its own slice. This is NOT the crit-chance / per-item-shield "
         "confusion recorded in STRANDED_TODAY: exposing the seam DEFAULT-OFF is "
-        "byte-identical, and RM-333 did not flip the live default, which stays "
-        "False at ult_rates.py:80"
+        "byte-identical, and RM-333 did not flip the live default, "
+        "ult_rates.APPLY_CANONICAL_CAST_RATE_KEYS, which stays False"
     ),
 }
 
@@ -739,10 +740,9 @@ class StrandedSeamDefaultTypeAxisRM333(unittest.TestCase):
     This is the same failure along a new axis - a seam under a DIFFERENT
     DEFAULT TYPE is invisible to a default-keyed checker. Both tiers keyed on
     ``p.default is False``, so ``apply_canonical_cast_rate_keys``
-    (``bool | None = None`` on ``ult_rates.get_ult_casts_per_sec`` at
-    ult_rates.py:167 and ``ult_rates.get_spell_casts_per_sec`` at
-    ult_rates.py:205) was in NEITHER universe. Both ledgers stayed green while
-    the seam was unreachable from every route:
+    (``bool | None = None`` on ``ult_rates.get_ult_casts_per_sec`` and
+    ``ult_rates.get_spell_casts_per_sec``) was in NEITHER universe. Both
+    ledgers stayed green while the seam was unreachable from every route:
     ``grep -c apply_canonical_cast_rate_keys server.py`` returns 0.
 
     ``None`` is a DEFAULT-OFF seam here, not a third state to be ignored: the
@@ -840,7 +840,19 @@ class StrandedSeamDefaultTypeAxisRM333(unittest.TestCase):
             with self.subTest(seam=name):
                 self.assertGreater(len(reason), 80, "reason is a placeholder")
                 self.assertNotIn("TODO", reason)
-                self.assertIn(".py:", reason, "reason cites no source location")
+                # A symbol, resolved against the package: a line cite resolves
+                # to SOME line forever, a moved or deleted symbol fails here.
+                cited = [
+                    (mod, sym)
+                    for mod, sym in re.findall(r"\b([a-z_]+)\.([A-Za-z_]\w*)\b", reason)
+                    if (SERVER_PATH.parent / f"{mod}.py").is_file()
+                ]
+                self.assertTrue(cited, "reason cites no resolvable <module>.<symbol>")
+                for mod, sym in cited:
+                    self.assertTrue(
+                        hasattr(importlib.import_module(f"{_PKG}.{mod}"), sym),
+                        f"reason cites {mod}.{sym}, which does not resolve",
+                    )
 
     def test_rm333_the_three_tiers_are_disjoint(self):
         # No seam may be measured - or excused - by two tiers at once, or
