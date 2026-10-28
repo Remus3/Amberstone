@@ -15,15 +15,16 @@ Every emitted scorer number must be JSON-finite. Each test asserts the
 OLD behavior would have failed (a non-finite leak) and the NEW behavior is
 finite / dropped.
 
-Symbols grep-confirmed against the live tree before use:
-  data_loader.DataSnapshot.load        (data_loader.py:67)
-  missile.spell_travel_time            (missile.py:112)
-  dps_sweep.compute_dps_sweep          (dps_sweep.py:151)
-  dps_sweep.SweepResult                (dps_sweep.py:88)
-  objdamage.compute_objdamage          (objdamage.py:719)
-  objdamage._mechanism_value           (objdamage.py:132)
-  objdamage.ObjDamageEntry             (objdamage.py:112)
-  dps._armor_factor                    (dps.py:196)
+Symbols grep-confirmed against the live tree before use (cited by symbol,
+not line; guard tests/test_p2w2_ds_a_symbol_cites_s144d33.py):
+  data_loader.DataSnapshot.load
+  missile.spell_travel_time
+  dps_sweep.compute_dps_sweep
+  dps_sweep.SweepResult
+  objdamage.compute_objdamage
+  objdamage._mechanism_value
+  objdamage.ObjDamageEntry
+  dps._armor_factor
 """
 
 from __future__ import annotations
