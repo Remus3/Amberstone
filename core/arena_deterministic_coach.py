@@ -29,21 +29,24 @@ PURE + PARTIAL-READ + FAIL-SOFT (this is the design, not a bug)
     ``build_block`` takes PRIMITIVES (so it is trivially unit-testable and
     the impure file/engine reads stay in the dashboard wiring layer) and
     works from WHATEVER inputs are actually present on a given tick:
-      * hp_pct absent / non-coercible AND camp_phase not truthy ->
-        action = "" (no action signal; a truthy camp_phase alone IS a
-        real signal - BUY ITEMS needs no HP).
-      * low_opp_count absent -> decide_action just gets None (the ALL IN
+      * hp_pct not a reading AND camp_phase not True -> action = "" (no
+        action signal; a True camp_phase alone IS a real signal - BUY
+        ITEMS needs no HP).
+      * low_opp_count not a reading -> decide_action gets 0 (the ALL IN
         promotion stays dormant; no live opponent-HP source exists yet).
-      * alive_teams absent / non-coercible -> the teams clause is omitted
-        from round_strategy, the rest of the line still renders.
+      * alive_teams not a reading -> the teams clause is omitted from
+        round_strategy, the rest of the line still renders.
       * cc_threat_line absent / empty -> fight_rule = risk = "".
       * alive_opponents / build_remaining absent -> those fields "".
-    On ANY internal failure each field independently degrades to "".
-    ``build_block`` NEVER raises.
+    A numeric READING is a finite int / float (never a bool, never a str) in
+    its band: hp_pct 0..150 (shown capped at 100%), alive_teams a whole 1..8,
+    low_opp_count a whole 0..14. camp_phase is a signal only when it is the
+    bool True (the producer's vision schema admits a bool and nothing else).
+    The anvil head is a str of at most 64 characters after whitespace is
+    collapsed. On ANY internal failure each field independently degrades to
+    "" ([] for choices). ``build_block`` NEVER raises.
 """
 from __future__ import annotations
-
-import math
 
 from core import (
     aram_fight_risk,
@@ -80,45 +83,80 @@ _ARENA_CHOICE_LABELS = {
 }
 
 
-def _has_usable_number(value: object) -> bool:
-    """True only when ``value`` coerces to a finite float (not NaN/inf).
+# Reading bands. hp_pct tops out at 150 because the producer
+# (dashboard/_deterministic_coaching.py _hp_fraction) admits hp up to 1.5x max:
+# a transient over-max reading is full HP, not junk, and is SHOWN as 100%.
+# Arena fields eight teams of two (coaches/arena_coach.py defaults alive_teams
+# to 8), so at most 14 opponents can be low; an item name is far shorter than
+# 64 characters.
+_HP_PCT_MAX = 150.0
+_HP_SHOWN_MAX = 100.0
+_MAX_TEAMS = 8
+_MAX_LOW_OPPONENTS = 14
+_MAX_ITEM_NAME = 64
 
-    Used to decide whether an HP-based ACTION signal exists at all. A
-    None or a non-coercible / NaN hp_pct means "no action computable"
-    unless the camp phase supplies its own signal.
+
+def _real_number(value: object, lo: float, hi: float) -> float | None:
+    """A finite int / float in ``lo..hi`` as a float, else None. Never raises.
+
+    Strict on purpose (core/aram_deterministic_coach.py _real_number is the
+    sibling gate): a bool is a flag, not a measurement (True hp read "Your HP
+    1%" and KITE BACK), a str is not a reading (" 6e1 " read 60%), and an int
+    past the float range is no reading rather than an OverflowError. hp is
+    read through here BEFORE the per-field guards, so the whole gate sits in
+    one try: a number subclass whose __float__ raises, or an object whose
+    __class__ lookup raises inside isinstance, is no reading too, never a
+    raise out of build_block.
     """
-    if value is None:
-        return False
     try:
-        out = float(value)  # type: ignore[arg-type]
-    except Exception:  # noqa: BLE001 - a raising __float__ is still 'no signal'
-        return False
-    return not (math.isnan(out) or math.isinf(out))
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            return None
+        out = float(value)
+        # The bounds are finite, so this also rejects NaN (every comparison
+        # is False) and +/-inf.
+        if not lo <= out <= hi:
+            return None
+    except Exception:  # noqa: BLE001 - OverflowError or any raising dunder
+        return None
+    return out
 
 
-def _truthy(value: object) -> bool:
-    """bool(value), but a raising __bool__ counts as falsy (fail-soft)."""
-    try:
-        return bool(value)
-    except Exception:  # noqa: BLE001 - hard fail-soft contract
-        return False
+def _whole_number(value: object, lo: int, hi: int) -> int | None:
+    """An int, or an integral float, in ``lo..hi``, else None. Never raises.
 
-
-def _safe_action(hp_pct: object, camp_phase: object, low_opp_count: object) -> str:
-    """decide_action over the inputs, but "" when no signal is present.
-
-    decide_action itself never raises and neutral-defaults to FIGHT SMART
-    on an unusable hp_pct; we gate on (usable hp OR truthy camp phase)
-    first so a no-data tick logs an empty action instead of a misleading
-    FIGHT SMART. Camp phase counts as a signal because BUY ITEMS needs
-    no HP at all.
+    A fractional count is not a count: 2.7 alive teams used to read 2.
     """
-    if not _has_usable_number(hp_pct) and not _truthy(camp_phase):
+    num = _real_number(value, lo, hi)
+    if num is None or num != int(num):
+        return None
+    return int(num)
+
+
+def _in_camp(camp_phase: object) -> bool:
+    """True only for the bool True.
+
+    The producer writes a bool (the arena vision schema in
+    coaches/arena_coach.py rejects anything else), so a NaN, a "false" str
+    or a [0] list is junk, not a camp phase: each used to be truthy and
+    routed BUY ITEMS over any HP band.
+    """
+    return camp_phase is True
+
+
+def _safe_action(hp: float | None, in_camp: bool, low_opp_count: object) -> str:
+    """decide_action over the validated inputs, but "" when no signal is present.
+
+    decide_action itself neutral-defaults to FIGHT SMART on an unusable
+    hp_pct; we gate on (a reading of hp OR a True camp phase) first so a
+    no-data tick logs an empty action instead of a misleading FIGHT SMART.
+    Camp phase counts as a signal because BUY ITEMS needs no HP at all. The
+    low-opponent count is validated HERE: anything but a whole 0..14 is 0, so
+    a 10**400 count no longer promotes ALL IN and an integral 2.0 does.
+    """
+    if hp is None and not in_camp:
         return ""
-    try:
-        return arena_action_rule.decide_action(hp_pct, camp_phase, low_opp_count)
-    except Exception:  # noqa: BLE001 - hard fail-soft contract
-        return ""
+    low = _whole_number(low_opp_count, 0, _MAX_LOW_OPPONENTS) or 0
+    return arena_action_rule.decide_action(hp, in_camp, low)
 
 
 def _safe_fight_rule(threats: object) -> str:
@@ -137,19 +175,6 @@ def _safe_risk(threats: object) -> str:
         return ""
 
 
-def _coerce_teams(value: object):
-    """Best-effort finite-int coercion for alive_teams. None on failure."""
-    if value is None or isinstance(value, bool):
-        return None
-    try:
-        out = float(value)  # type: ignore[arg-type]
-    except Exception:  # noqa: BLE001 - a raising __float__ omits the clause
-        return None
-    if math.isnan(out) or math.isinf(out):
-        return None
-    return int(out)
-
-
 def _clamp_words(text: str, max_words: int) -> str:
     """Trim to at most ``max_words`` whitespace-delimited words."""
     words = text.split()
@@ -158,22 +183,23 @@ def _clamp_words(text: str, max_words: int) -> str:
     return " ".join(words[:max_words])
 
 
-def _round_strategy(action: str, hp_pct: object, alive_teams: object) -> str:
+def _round_strategy(action: str, hp: float | None, alive_teams: object) -> str:
     """Bounded template: "Your HP {hp}%; {teams} teams left - {approach}".
 
     Each leading clause is independently optional so a partial tick still
-    renders: the HP clause needs a usable hp_pct (a BUY ITEMS verdict can
-    come from camp_phase alone), the teams clause needs a coercible
-    alive_teams. No action -> "" (nothing was computable). Kept <=20
-    words - the prompt's own budget for this field.
+    renders: the HP clause needs a reading of hp (a BUY ITEMS verdict can
+    come from camp_phase alone) and shows at most 100%, the teams clause
+    needs a whole 1..8 alive_teams (a str, a fraction, -5, 0 or 1000000
+    teams used to be printed). No action -> "" (nothing was computable).
+    Kept <=20 words - the prompt's own budget for this field.
     """
     approach = _APPROACH.get(action, "")
     if not approach:
         return ""
     parts = []
-    if _has_usable_number(hp_pct):
-        parts.append(f"Your HP {float(hp_pct):.0f}%")  # type: ignore[arg-type]
-    teams = _coerce_teams(alive_teams)
+    if hp is not None:
+        parts.append(f"Your HP {min(hp, _HP_SHOWN_MAX):.0f}%")
+    teams = _whole_number(alive_teams, 1, _MAX_TEAMS)
     if teams is not None:
         parts.append(f"{teams} teams left")
     head = "; ".join(parts)
@@ -186,14 +212,20 @@ def _anvil_line(build_remaining: object) -> str:
 
     Only the head is coached - the prompt's own anvil rule is "complete
     carry item first", and the wiring layer already orders the remaining
-    list that way. A non-list / empty / blank-head input degrades to "".
+    list that way. A list or tuple is an order; anything else, an empty
+    order or a blank / non-str head degrades to "". The head's whitespace
+    is collapsed to single spaces (a newline used to be coached verbatim)
+    and a head longer than 64 characters is not an item name.
     """
-    if not isinstance(build_remaining, list) or not build_remaining:
+    if not isinstance(build_remaining, (list, tuple)) or not build_remaining:
         return ""
     head = build_remaining[0]
-    if not isinstance(head, str) or not head.strip():
+    if not isinstance(head, str):
         return ""
-    return f"Build toward {head.strip()} next."
+    name = " ".join(head.split())
+    if not name or len(name) > _MAX_ITEM_NAME:
+        return ""
+    return f"Build toward {name} next."
 
 
 def _safe_choices(action: str, fight_rule: str) -> list[dict]:
@@ -257,6 +289,19 @@ def _safe_target(alive_opponents: object, frontline_names: object) -> str:
         return ""
 
 
+def _field(helper, default, *args):
+    """``helper(*args)`` when it returns the default's type, else ``default``.
+
+    The per-field fail-soft guard: a raise or a wrong-typed result degrades
+    ONLY this field. Never raises.
+    """
+    try:
+        out = helper(*args)
+    except Exception:  # noqa: BLE001 - hard per-field fail-soft contract
+        return default
+    return out if isinstance(out, type(default)) else default
+
+
 def build_block(
     hp_pct: object = None,
     camp_phase: object = None,
@@ -276,15 +321,17 @@ def build_block(
     absence or failure. NEVER raises.
 
     Args:
-        hp_pct: self HP percent 0..100. Unusable AND no camp phase ->
-            action "".
-        camp_phase: truthy = between-round camp/shop phase; wins over any
-            HP band and is a valid action signal on its own.
-        low_opp_count: count of low-HP alive opponents. NO live source
-            exists today - callers pass None and the ALL IN promotion
-            stays dormant (same shape as ARAM's low_enemy_count).
-        alive_teams: teams still alive this round; only decorates the
-            round_strategy line. Non-coercible -> clause omitted.
+        hp_pct: self HP percent, a number in 0..150 (over-max HP is shown
+            as 100%). Not a reading AND no camp phase -> action "".
+        camp_phase: True = between-round camp/shop phase; wins over any
+            HP band and is a valid action signal on its own. Anything but
+            the bool True is no camp phase.
+        low_opp_count: count of low-HP alive opponents, a whole 0..14. NO
+            live source exists today - callers pass None and the ALL IN
+            promotion stays dormant (same shape as ARAM's low_enemy_count).
+        alive_teams: teams still alive this round, a whole 1..8; only
+            decorates the round_strategy line. Not a reading -> clause
+            omitted.
         cc_threat_line: the ``enemy_cc_threat_line`` string OR a ranked
             iterable of CC entries (see core.aram_fight_risk). Drives
             fight_rule + risk. Absent / malformed -> both "".
@@ -305,34 +352,26 @@ def build_block(
         seven string columns plus ``choices`` (the list-typed A/B array
         derived from action + fight_rule; [] on no signal).
     """
-    try:
-        # Compute action + fight_rule ONCE so choices reuses them without
-        # re-deriving (same shape as the ARAM assembler).
-        action = _safe_action(hp_pct, camp_phase, low_opp_count)
-        fight_rule = _safe_fight_rule(cc_threat_line)
-        return {
-            "action": action,
-            "round_strategy": _round_strategy(action, hp_pct, alive_teams),
-            "fight_rule": fight_rule,
-            "augment_advice": _safe_augment_advice(owned_augments),
-            "anvil_advice": _anvil_line(build_remaining),
-            "target_priority": _safe_target(alive_opponents, frontline_names),
-            "risk": _safe_risk(cc_threat_line),
-            # choices: the deterministic A/B array derived from action +
-            # fight_rule (the eighth, list-typed column). Empty on no signal.
-            "choices": _safe_choices(action, fight_rule),
-        }
-    except Exception:  # noqa: BLE001 - total fail-soft: empty block
-        return {
-            "action": "",
-            "round_strategy": "",
-            "fight_rule": "",
-            "augment_advice": "",
-            "anvil_advice": "",
-            "target_priority": "",
-            "risk": "",
-            "choices": [],
-        }
+    # Read hp and the camp phase ONCE, so every field sees the same values.
+    hp = _real_number(hp_pct, 0.0, _HP_PCT_MAX)
+    in_camp = _in_camp(camp_phase)
+    # Compute action + fight_rule ONCE so choices reuses them without
+    # re-deriving (same shape as the ARAM assembler). Each field runs under
+    # its own guard: one raising helper used to blank all eight.
+    action = _field(_safe_action, "", hp, in_camp, low_opp_count)
+    fight_rule = _field(_safe_fight_rule, "", cc_threat_line)
+    return {
+        "action": action,
+        "round_strategy": _field(_round_strategy, "", action, hp, alive_teams),
+        "fight_rule": fight_rule,
+        "augment_advice": _field(_safe_augment_advice, "", owned_augments),
+        "anvil_advice": _field(_anvil_line, "", build_remaining),
+        "target_priority": _field(_safe_target, "", alive_opponents, frontline_names),
+        "risk": _field(_safe_risk, "", cc_threat_line),
+        # choices: the deterministic A/B array derived from action +
+        # fight_rule (the eighth, list-typed column). Empty on no signal.
+        "choices": _field(_safe_choices, [], action, fight_rule),
+    }
 
 
 __all__ = ["build_block"]

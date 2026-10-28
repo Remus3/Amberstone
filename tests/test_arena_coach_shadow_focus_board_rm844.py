@@ -13,7 +13,7 @@ Grounded before writing (file:line at main 4b0bc3ce4):
   (``:61``).
 * ``dashboard/_deterministic_coaching.py:1362`` ``shadow_log_arena_coach``:
   alive opponents from ``coach["teams"]`` (``:1419-1431``), the
-  ``build_block`` call (``:1485-1494``, ``core/arena_deterministic_coach.py:260``)
+  ``build_block`` call (``:1485-1494``, ``core/arena_deterministic_coach.py:305``)
   and the ``log_arena_coach`` call (``:1499-1501``).
 * The adapter is ``core.focus_board_live`` (tests/test_focus_board_live_rm844.py
   cites its inputs).
