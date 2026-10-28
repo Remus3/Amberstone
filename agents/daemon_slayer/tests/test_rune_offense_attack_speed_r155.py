@@ -10,15 +10,16 @@ registry.
 
 Three ways to get this wrong, each pinned below:
 
-  * UNITS. ``stats["as"]`` is FINAL attacks/sec (``engine.py:196`` resolves it
-    as ``base_as * (1 + bonus)``), and the rune's number is a bonus-AS FRACTION.
+  * UNITS. ``stats["as"]`` is FINAL attacks/sec (``engine._combine_items``
+    resolves it as ``base_as * (1 + bonus)``), and the rune's number is a
+    bonus-AS FRACTION.
     The fold must be ``innate_base_as * fraction``; adding the raw fraction
     over-credits by ``1 / base_as``. Same unit bug the R42 cond_as and R7
     passive_as guards exist for, and the same colinear-calibration proof shape.
   * ADAPTIVE BLEED. The registry's other three entries pay ONE side by
     ``prefer_ad``. Attack speed has no sides, so the third column must bypass
     that branch entirely and must never move the AD/AP columns.
-  * ATTACK-SPEED-LOCK CHAMPIONS. ``engine.py:439`` zeroes ``as_pct`` for a
+  * ATTACK-SPEED-LOCK CHAMPIONS. ``engine.build_champion`` zeroes ``as_pct`` for a
     champion carrying an ``as_lock_entry`` with ``locks_as`` (Jhin's Whisper).
     A rune AS fold in ``dps.py`` happens DOWNSTREAM of that zeroing, so without
     a gate it would hand an AS-locked champion attack speed they cannot have.
@@ -371,7 +372,7 @@ class SeamOnMovesDpsTests(unittest.TestCase):
 class AttackSpeedLockGateTests(unittest.TestCase):
     """An AS-locked champion must receive ZERO rune attack speed.
 
-    ``engine.py:439`` zeroes ``item_totals["as_pct"]`` for a locked champion
+    ``engine.build_champion`` zeroes ``item_totals["as_pct"]`` for a locked champion
     (Jhin's Whisper converts would-be attack speed into AD). The ``dps.py`` rune
     fold runs AFTER that zeroing, so it must re-check the lock. Granting zero is
     a deliberately CONSERVATIVE recorded limitation: the ``ad_per_bonus_as``
