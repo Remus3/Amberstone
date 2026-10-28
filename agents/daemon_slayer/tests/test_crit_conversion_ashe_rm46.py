@@ -57,7 +57,8 @@ RUNAANS_ARENA = "223085"
 ESSENCE_REAVER = "3508"        # its proc DOES read CallContext.crit_chance
 BERSERKERS = "3006"
 
-# PART 7 gate params (docs/_archive/2026-07/OPEN_ITEMS_REVIEW_2026-07-25.md:473-482). This build
+# PART 7 gate params (the "A-12 / RM-46 Ashe" entry in
+# docs/_archive/2026-07/OPEN_ITEMS_REVIEW_2026-07-25.md). This build
 # reproduces the filed gate line byte-for-byte on the shipped engine:
 # Ashe BotRK #1 / Runaan's #2 / IE #8 vs Aphelios Yun Tal #1 / IE #2 / BotRK #13.
 GATE_BUILD = [BERSERKERS]
@@ -289,7 +290,8 @@ class TestRunaansCritDeny(unittest.TestCase):
 
     def test_deny_set_zeroes_a_crit_scaling_proc(self):
         # Mechanism proof. Essence Reaver's proc reads CallContext.crit_chance
-        # (_effects_data.py:750, ``1.25*base_ad + 50*crit_chance``). Denying it
+        # (``ITEM_EFFECTS["3508"]`` in _effects_data.py,
+        # ``1.25*base_ad + 50*crit_chance``). Denying it
         # for Ashe must strip exactly that crit-scaled half. Runaan's own proc
         # carries no crit term, so the shipped 3085 entry is a REGRESSION GUARD
         # rather than a numeric demotion - this test proves the guard is live.

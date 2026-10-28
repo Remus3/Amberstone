@@ -4,23 +4,25 @@ Adjudicated 2026-10-22 (RM-660 ruling, W2-E slice). The SR row and its
 Arena mirror model the SAME proc (DDragon names 3153 and 223153 the same
 item), but only the SR row read the target-current-HP% seam:
 
-  - SR 3153 (``_effects_data.py:603``):
+  - SR 3153 (``ITEM_EFFECTS["3153"]`` in ``_effects_data.py``):
     ``0.09 * c.target_max_hp * c.target_current_hp_pct``
-  - Arena 223153 (``_effects_data.py:4520-4530``) carried
-    ``0.09 * c.target_max_hp`` with no seam factor and a note saying
-    "9% target max HP".
+  - Arena 223153 (``ITEM_EFFECTS["223153"]`` in ``_effects_data.py``)
+    carried ``0.09 * c.target_max_hp`` with no seam factor and a note
+    saying "9% target max HP".
 
 Seam ground truth (cited before writing this file):
   - ``CallContext.target_current_hp_pct: float = 1.0``
-    (``_effects_types.py:137``); ``CallContext`` and ``ITEM_EFFECTS`` are
-    re-exported by ``agents.daemon_slayer.effects`` (``effects.py:43-45``).
-  - ``PeriodicProc.resolve_damage(ctx)`` (``_effects_types.py:262``).
+    (``_effects_types.py``); ``CallContext`` and ``ITEM_EFFECTS`` are
+    re-exported by ``agents.daemon_slayer.effects`` (its module imports).
+  - ``PeriodicProc.resolve_damage(ctx)`` (``_effects_types.py``).
   - ``compute_dps(snapshot, champion_id, level, item_ids, ...,
-    target_max_hp, ..., target_current_hp_pct=1.0)`` (``dps.py:768-778``).
-  - The d(p) harness mirrors ``test_target_current_hp_pct_lever.py:35-41``.
+    target_max_hp, ..., target_current_hp_pct=1.0)`` (``dps.py``).
+  - The d(p) harness mirrors ``_dps`` in
+    ``test_target_current_hp_pct_lever.py``.
   - The pre-existing 223153 pin
-    (``test_meraki_formula_audit_pipeline_a.py:186-192``) evaluates the
-    proc at the default 1.0 and must stay green.
+    (``test_arena_223153_mists_edge_is_9pct_target_max_hp`` in
+    ``test_meraki_formula_audit_pipeline_a.py``) evaluates the proc at the
+    default 1.0 and must stay green.
 
 The seam stays default 1.0 (no default, flag or route is changed here),
 so every live default-path result is byte-identical; only a caller that
