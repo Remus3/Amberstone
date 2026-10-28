@@ -85,6 +85,8 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from core import polled_json  # noqa: E402
+
 SCHEMA = "tft_cv_labels/1"
 REPORT_SCHEMA = "tft_cv_accuracy/1"
 DEFAULT_LABELS = ROOT / "tests" / "fixtures" / "tft_cv" / "labels_20261025-070350.json"
@@ -982,11 +984,10 @@ def format_table(report: dict, title: str, top: int = 3) -> str:
 
 
 def _write_json(path: Path, doc: dict) -> None:
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(path.name + ".tmp")
-    tmp.write_text(json.dumps(doc, indent=1, sort_keys=False) + "\n", encoding="utf-8")
-    tmp.replace(path)
+    # RM-258: per-writer scratch, fsync, a bounded WinError 5 retry and no
+    # scratch left on failure; the parent is created on demand; LF bytes.
+    polled_json.atomic_write_text(Path(path),
+                                  json.dumps(doc, indent=1, sort_keys=False) + "\n")
 
 
 def _parser() -> argparse.ArgumentParser:
