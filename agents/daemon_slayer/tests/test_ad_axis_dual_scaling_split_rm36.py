@@ -12,8 +12,8 @@ cannot reach.
 ``apply_ad_axis_dual_scaling_split`` (DEFAULT-OFF) ships the AD half of such a
 row: a credit of ``dps * ad_pct_sum / (ad_pct_sum + ap_pct_sum)``. That mirrors
 the honest-50-pct treatment the term's docstring already describes for MIXED,
-where ``_mitigation_factor`` splits the row 50/50 across armor and MR
-(``ability_dps.py:385``); the difference is that a dual-SCALING row carries its
+where ``ability_dps._mitigation_factor`` splits the row 50/50 across armor
+and MR; the difference is that a dual-SCALING row carries its
 own split ratio in its blocks, so the share is read rather than assumed.
 
 THE SPLIT IS PHYSICAL-ONLY, AND THAT IS THE GUARD, NOT AN OVERSIGHT.
