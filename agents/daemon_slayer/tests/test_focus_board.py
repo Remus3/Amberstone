@@ -18,7 +18,9 @@ from __future__ import annotations
 import json
 import math
 import unittest
+from pathlib import Path
 
+from agents.daemon_slayer import focus_board as _focus_board_module
 from agents.daemon_slayer.ability_dps import compute_ability_dps
 from agents.daemon_slayer.data_loader import DataSnapshot
 from agents.daemon_slayer.dps import compute_dps
@@ -535,6 +537,44 @@ class HugeNumberInputTests(_Base):
         board = self._board(_JINX, [("Zed", 25, ()), ("Lux", -3, ())])
         self.assertIn("enemy 0 Zed: level 25 outside 1-18, clamped to 18", board.notes)
         self.assertIn("enemy 1 Lux: level -3 outside 1-18, clamped to 1", board.notes)
+
+
+class DeferredNoteTests(unittest.TestCase):
+    """RM-993: the module's DEFERRED note names only what is still owed.
+
+    It listed the live adapter (with "per-enemy level is missing") and the
+    shadow ``target_priority`` wiring as deferred after RM-844 / RM-854
+    shipped both in ``core/focus_board_live.py`` and
+    ``core/arena_coach_shadow.py``, and the adapter reads the level from
+    ``allPlayers``. The route half is checked both ways so the note has to
+    move when RM-843 registers a focus-board route.
+    """
+
+    _REPO = Path(__file__).resolve().parents[3]
+
+    def _deferred(self) -> str:
+        doc = _focus_board_module.__doc__ or ""
+        self.assertIn("\nDEFERRED (", doc)
+        note = doc.split("\nDEFERRED (", 1)[1].split("\nSHIPPED ", 1)[0]
+        self.assertGreater(len(note.strip()), 20, note)
+        return " ".join(note.split())
+
+    def test_shipped_live_adapter_is_not_listed_as_deferred(self) -> None:
+        self.assertTrue((self._REPO / "core" / "focus_board_live.py").is_file())
+        note = self._deferred()
+        self.assertNotIn("live adapter (", note)
+        self.assertNotIn("level is missing", note)
+
+    def test_shipped_shadow_wiring_is_not_listed_as_deferred(self) -> None:
+        shadow = self._REPO / "core" / "arena_coach_shadow.py"
+        self.assertIn("focus_board_live", shadow.read_text(encoding="utf-8"))
+        self.assertNotIn("shadow ``target_priority`` wiring", self._deferred())
+
+    def test_route_is_listed_iff_no_focus_board_route_is_registered(self) -> None:
+        from agents.daemon_slayer import server
+
+        routed = any("focus-board" in path for path in server._POST_ROUTES)
+        self.assertEqual("``/focus-board`` route" in self._deferred(), not routed)
 
 
 if __name__ == "__main__":

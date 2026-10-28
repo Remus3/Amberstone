@@ -17,8 +17,8 @@ and ``danger_order`` (their_ttk_on_me_s ascending - who kills me fastest).
 Pure + deterministic: composes ONLY existing scorers. No LLM, no network, no
 new data. Purely additive - a new module with no route; it changes no
 existing scorer's output, so ENGINE_VERSION does not move (item-374
-precedent). The HTTP route, the version bump, the docs rows and the live
-adapter belong to later slices (see DEFERRED below).
+precedent). The HTTP route, the version bump and the docs rows belong to
+later slices (see DEFERRED below).
 
 Composition (cite before changing - each was re-grepped at RM-841):
 
@@ -89,10 +89,14 @@ Never raises, in two layers:
 
 DEFERRED (owned by the merger / later rows): the ``/focus-board`` route in
 ``server.py`` + ENGINE bump + ``docs/DAEMON_SLAYER.md`` / ``docs/API.md``
-rows; the live adapter (per-enemy level is missing from the Live Client
-players list in ``dashboard/_liveclient.py``); the shadow ``target_priority``
-wiring (``core/arena_coach_shadow.py``, ``core/arena_target_rule.py``); the
-Arena 2v2 partner variant (pass the partner as the one ally today).
+rows (RM-843); the Arena 2v2 partner variant (pass the partner as the one
+ally today).
+
+SHIPPED since RM-841: the live adapter ``core/focus_board_live.py`` (RM-844;
+it reads each player's level from the Live Client ``allPlayers`` list) and
+its shadow-only ``focus_board`` column in ``core/arena_coach_shadow.py``
+(RM-844 / RM-854). ``core/arena_target_rule.py`` ``target_priority`` stays
+the authoritative served rule.
 """
 
 from __future__ import annotations
