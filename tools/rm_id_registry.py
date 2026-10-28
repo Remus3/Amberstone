@@ -43,6 +43,12 @@ THREE RULES, EACH PAID FOR BY A REAL LINE IN THIS REPO
 
 Ids are compared BY VALUE. `RM-380` must not match inside `RM-3801`, and
 `RM-38` must not match a query for `RM-380`.
+
+Ids are 2 to 4 digits. WIDENED 2026-10-28 (s144 L4 merger): the live range
+crossed RM-999 (RM-1000 and up exist), and with the old 2-3 digit pattern a
+4-digit id was invisible - a `Next free id = **RM-1047**` pin matched nothing
+and the lazy pin pattern reached past it to the next 3-digit id on the same
+line (an allocated one), so the guard would have read a taken id as free.
 """
 
 from __future__ import annotations
@@ -80,8 +86,8 @@ ARCHIVE_DOCS = ("docs/ROADMAP_HISTORY.md", "docs/history_notes.md", PIN_DOC)
 #: (LEDGER 1338 finding (a)).
 REFILL_GLOB = "docs/_research_refill_*.md"
 
-_ID = re.compile(r"RM-(\d{2,3})(?!\d)")
-_PIN = re.compile(r"next[-\s]free\s+id\b.{0,60}?RM-(\d{2,3})(?!\d)", re.IGNORECASE)
+_ID = re.compile(r"RM-(\d{2,4})(?!\d)")
+_PIN = re.compile(r"next[-\s]free\s+id\b.{0,60}?RM-(\d{2,4})(?!\d)", re.IGNORECASE)
 #: A pin, not a sentence ABOUT pins. The negative lookahead is a measured
 #: blocklist: a census of every `next[-space]free <word>` in tracked `.md`
 #: returned "pointer", "figure(s)" and "statements" as the only followers that
@@ -203,7 +209,7 @@ BACKLOG_CLOSED_MARKERS = frozenset({"SHIPPED", "CLOSED", "DONE", "REFUTED"})
 _ENUM_SEP = re.compile(r"^[\s/,+&*_`\"'()\[\].:;|-]*$")
 
 #: A `BACKLOG.md` row body opener - `- **RM-250 ...`, with the bold optional.
-_ROW_HEAD = re.compile(r"^\s*[-*]\s+\*{0,2}RM-(\d{2,3})(?!\d)")
+_ROW_HEAD = re.compile(r"^\s*[-*]\s+\*{0,2}RM-(\d{2,4})(?!\d)")
 
 #: A lowercase letter means prose has started, so anything past it is no longer
 #: the row-leading disposition. See `backlog_row_dispositions`.

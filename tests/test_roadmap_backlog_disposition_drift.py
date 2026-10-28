@@ -184,6 +184,11 @@ class BacklogRowDisposition(unittest.TestCase):
         rows = reg.backlog_row_dispositions("- **RM-920 SHIPPED 2026-09-08** - x.")
         self.assertEqual("SHIPPED", rows[920].marker)
 
+    def test_a_four_digit_row_opener_is_read(self) -> None:
+        """Live ids reached RM-1000 at the s144 L4 landing (2026-10-28)."""
+        rows = reg.backlog_row_dispositions("- **RM-9200 SHIPPED 2026-10-28** - x.")
+        self.assertEqual("SHIPPED", rows[9200].marker)
+
     def test_a_shouted_qualifier_does_not_hide_the_disposition(self) -> None:
         """`RM-250 FIRST HALF SHIPPED` and `RM-291 FULLY CLOSED` are both real."""
         for text, expected in (

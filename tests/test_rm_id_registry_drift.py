@@ -164,6 +164,13 @@ class PointerVersusAllocatedPredicate(unittest.TestCase):
     def test_ids_are_matched_by_value_not_by_substring(self) -> None:
         self.assertEqual([], _kinds("RM-92 and RM-9200", 920))
 
+    def test_a_four_digit_id_is_graded_like_any_other(self) -> None:
+        """RM-1000 and up are live ids (s144 L4); a 2-3 digit pattern never saw them."""
+        self.assertEqual(["pointer"], _kinds("Next free id = **RM-9200**.", 9200))
+        self.assertEqual(["allocated"], _kinds("- **RM-9200 OPEN (filed)** - a thing.", 9200))
+        self.assertEqual([], _kinds("RM-92001 is a different id", 9200))
+        self.assertEqual([], _kinds("RM-9200 is not RM-920", 920 + 1))
+
 
 class LivePinParsing(unittest.TestCase):
     def test_pins_are_read_in_document_order(self) -> None:
@@ -190,6 +197,18 @@ class LivePinParsing(unittest.TestCase):
     def test_the_pin_takes_the_nearest_id_not_a_later_one(self) -> None:
         text = "Next free id = **RM-920** (2026-09-06). RM-919 was minted by"
         self.assertEqual([920], reg.pin_ids(text))
+
+    def test_a_four_digit_pin_is_read_whole(self) -> None:
+        """The live range crossed RM-999 at the s144 L4 landing (2026-10-28).
+
+        With a 2-3 digit id pattern a 4-digit pin matched nothing, and the
+        lazy pin pattern reached past it to the next 3-digit id on the line -
+        here RM-985, an ALLOCATED id - so the guard would have called a taken
+        id free. Synthetic ids stay far above the live range (RM-92xx).
+        """
+        text = "Next free id = **RM-9200** (2026-10-28: RM-985..RM-9199 = x)\n"
+        self.assertEqual([9200], reg.pin_ids(text))
+        self.assertEqual(9200, reg.live_pin(text))
 
 
 class TrackerStructure(unittest.TestCase):
