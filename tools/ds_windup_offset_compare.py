@@ -42,6 +42,7 @@ WINDUP_BASE = 0.300
 CHANGE_EPS = 1e-4
 
 DS_DATA = REPO_ROOT / "data" / "daemon_slayer"
+_PATCH_DIR_RE = re.compile(r"^\d+\.\d+\.\d+$")
 
 
 def _fetch_module(url: str = WIKI_MODULE) -> str:
@@ -83,10 +84,12 @@ def _resolve_patch(patch: str | None) -> str:
         txt = cur.read_text(encoding="utf-8").strip()
         if txt:
             return txt.splitlines()[0].strip()
-    dirs = sorted(p.name for p in DS_DATA.iterdir() if p.is_dir())
+    # RM-990: semver dirs only, compared as integers. A string sort ranked
+    # laning_scenarios/ above every patch and 16.9.1 above 16.21.1.
+    dirs = [p.name for p in DS_DATA.iterdir() if p.is_dir() and _PATCH_DIR_RE.match(p.name)]
     if not dirs:
         raise SystemExit(f"no patch dir under {DS_DATA}")
-    return dirs[-1]
+    return max(dirs, key=lambda v: tuple(int(x) for x in v.split(".")))
 
 
 def load_sidecar(patch: str) -> dict:

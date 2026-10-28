@@ -143,6 +143,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parent
 DATA_DIR = PROJECT_ROOT / "data" / "daemon_slayer"
 META_DDRAGON_DIR = PROJECT_ROOT / "data" / "meta_build" / "ddragon"
+_PATCH_DIR_RE = re.compile(r"^\d+\.\d+\.\d+$")
 
 # The .wiki.gg host edge-blocks this host (HTTP 401 host-wide). The Riot vanity
 # alias is the SAME wiki.gg backend and is reachable. See module docstring.
@@ -314,7 +315,13 @@ def _load_meta_champ_data(patch: str) -> dict[str, Any]:
     exact = META_DDRAGON_DIR / patch / "champion.json"
     champ_json = exact
     if not champ_json.exists():
-        candidates = sorted(META_DDRAGON_DIR.glob("*/champion.json"), key=lambda p: p.parts)
+        # RM-990: semver dirs compared as integers; a string sort ranks
+        # 16.9.1 above 16.21.1 and any non-patch dir above every patch.
+        candidates = sorted(
+            (p for p in META_DDRAGON_DIR.glob("*/champion.json")
+             if _PATCH_DIR_RE.match(p.parent.name)),
+            key=lambda p: tuple(int(x) for x in p.parent.name.split(".")),
+        )
         if not candidates:
             raise SystemExit(f"no champion.json under {META_DDRAGON_DIR}")
         champ_json = candidates[-1]

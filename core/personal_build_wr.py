@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import sqlite3
 from pathlib import Path
 from typing import Optional
@@ -49,6 +50,7 @@ LEGENDARY_GOLD_FLOOR = 2000
 
 _REWIND_DB = Path(__file__).resolve().parent.parent / "data" / "rewind_history.db"
 _DDRAGON_ROOT = Path(__file__).resolve().parent.parent / "data" / "daemon_slayer"
+_PATCH_DIR_RE = re.compile(r"^\d+\.\d+\.\d+$")
 
 # Boots item ids (tier-2 SR + the 22-prefixed Arena mirrors) - tagged, not dropped.
 _BOOTS_IDS = frozenset({
@@ -73,9 +75,11 @@ def _item_meta() -> dict[str, dict]:
     out: dict[str, dict] = {}
     try:
         import json
+        # RM-990: semver dirs compared as integers; a name sort read 16.9.1
+        # after 16.21.1, and gold here decides which items count as completed.
         dirs = sorted(
-            (p for p in _DDRAGON_ROOT.iterdir() if p.is_dir()),
-            key=lambda p: p.name,
+            (p for p in _DDRAGON_ROOT.iterdir() if p.is_dir() and _PATCH_DIR_RE.match(p.name)),
+            key=lambda p: tuple(int(x) for x in p.name.split(".")),
         )
         for d in reversed(dirs):
             f = d / "items.json"

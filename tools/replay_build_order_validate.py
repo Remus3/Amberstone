@@ -69,6 +69,7 @@ import datetime as _dt
 import json
 import math
 import os
+import re
 import sqlite3
 import sys
 from dataclasses import dataclass
@@ -103,6 +104,8 @@ _FLIP_MIN_N = 300
 _PER_ITEM_MIN_N = 50
 
 _VARIANTS = ("anti_tank", "anti_squishy")
+
+_PATCH_DIR_RE = re.compile(r"^\d+\.\d+\.\d+$")
 
 
 # ------------------------------------------------------------------------- datatypes
@@ -549,10 +552,17 @@ def _timing_report(timing: List[Tuple[float, bool]]) -> dict:
 def _load_item_names() -> Dict[str, str]:
     """Best-effort ``{item_id: name}`` from the newest DDragon ``item.json`` for
     the per-item carrier summary. Fail-soft: ANY problem returns ``{}`` (the
-    printer then shows bare ids). Never raises; never touched by the unit tests."""
+    printer then shows bare ids). Never raises.
+
+    RM-990: semver dirs only, newest first by integer compare; a string
+    sort read 16.9.1 before 16.21.1 and a non-patch dir before either."""
     try:
         base = _ROOT / "data" / "meta_build" / "ddragon"
-        patches = sorted((p for p in base.iterdir() if p.is_dir()), reverse=True)
+        patches = sorted(
+            (p for p in base.iterdir() if p.is_dir() and _PATCH_DIR_RE.match(p.name)),
+            key=lambda p: tuple(int(x) for x in p.name.split(".")),
+            reverse=True,
+        )
         for pdir in patches:
             path = pdir / "item.json"
             if not path.exists():
