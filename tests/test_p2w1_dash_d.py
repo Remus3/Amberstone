@@ -194,9 +194,11 @@ class ComboModeAndFiniteTests(unittest.TestCase):
         return h
 
     def test_lowercase_mode_is_uppercased(self) -> None:
-        """Pre-fix the route passed mode verbatim; the engine compares
-        mode == 'ARAM' case-sensitively (agents/daemon_slayer/burst.py:539)
-        so mode=aram silently skipped the ARAM multiplier."""
+        """Pre-fix the route passed mode verbatim; the engine then compared
+        mode == 'ARAM' case-sensitively (``mode_mult`` in
+        burst.compute_burst_damage), so mode=aram silently skipped the ARAM
+        multiplier. The engine now folds mode once at entry
+        (data_loader.canonical_mode, RM-325); the route still uppercases."""
         h = self._do("/api/ds-combo?champion=Lux&seq=Q&mode=aram")
         body = h.parsed()
         self.assertEqual(h.last_status, 200)

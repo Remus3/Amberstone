@@ -7,8 +7,8 @@ The disagreement, MEASURED 2026-08-06 at ENGINE 1.275.0 / patch 16.15.1:
 * ``ability_dps.compute_ability_dps`` DIFFERS between mode="SR" and mode="ARENA"
   for 142 of 173 champions at level 2, itemless.
 * ``matchup.compute_matchup`` - which is what
-  ``core/laning_scenario_precompute.py:545`` actually calls - is IDENTICAL for
-  every probed pair at the same inputs. It never differs.
+  ``core/laning_scenario_precompute.py``'s ``_matchup`` actually calls - is
+  IDENTICAL for every probed pair at the same inputs. It never differs.
 
 The received explanation for that gap was that ARENA carries its own DDragon
 champion stat line. That is REFUTED here by direct measurement:
@@ -19,8 +19,8 @@ champion stat line. That is REFUTED here by direct measurement:
   between the two modes (``test_ability_dps_per_cast_raw_damage_is_mode_blind``).
 
 Be precise about WHICH field. The mode-blindness is a claim about ``.stats``
-ONLY. ``.notes`` differs on 173 of 173 ARENA calls - ``engine.py:458`` appends
-"mode=ARENA - modifier table not plugged in for this mode" every time
+ONLY. ``.notes`` differs on 173 of 173 ARENA calls - ``engine.build_champion``
+appends "mode=ARENA - modifier table not plugged in for this mode" every time
 (``test_build_champion_notes_DO_differ_and_say_not_plugged_in``). That is the
 language of unfinished work, so calling the axis unreachable "by design" would
 overstate the evidence: it is unreachable, and the engine itself says the table
@@ -30,7 +30,7 @@ seam, or are those 45 arena stat lines discarded on purpose? RM-169 closes only
 the narrow question it proved: ``compute_matchup`` is not missing an argument.
 
 The SOLE source of the ability-DPS divergence is the per-mode MEASURED cast-rate
-table read at ``agents/daemon_slayer/ability_dps.py:1350`` via
+table read in ``ability_dps.compute_ability_dps`` via
 ``ult_rates.get_spell_casts_per_sec(champion_name, key, mode)``. That is a
 casts-per-SECOND quantity. ``compute_matchup`` composes ``compute_burst_damage``,
 a per-COMBO model with no casts-per-second term at all, so it has nothing to read
@@ -41,15 +41,15 @@ every scorer it composes, via the ``_defensive_stats`` / ``_combo_into`` /
 ``_can_full_combo`` helpers, which pass it on to ``engine.build_champion``,
 ``burst.compute_burst_damage`` and ``mana_sim.compute_mana_bounded_combo``
 respectively. (Line numbers are deliberately omitted: an earlier draft of this
-file cited matchup.py:238-268 for those calls, and its own docstring edit had
-already shifted them - a true conclusion on a false citation, which is exactly
+file cited matchup.py line numbers for those calls, and its own docstring edit
+had already shifted them - a true conclusion on a false citation, which is exactly
 the failure this row was opened to correct.) It resolves to the same numbers
 because every per-mode lane reachable from there is either ARAM-gated or opt-in:
 
-* ``engine._apply_mode_modifiers`` early-returns for ``mode != "ARAM"``
-  (engine.py:254).
+* ``engine._apply_mode_modifiers`` early-returns for ``mode != "ARAM"``.
 * ``burst.py``'s only mode term is ``aramDamageDealt``, gated on
-  ``mode == "ARAM"`` (burst.py:674-676), so ``mode_multiplier`` is 1.0 for ARENA.
+  ``mode == "ARAM"`` (``mode_mult`` in ``burst.compute_burst_damage``), so
+  ``mode_multiplier`` is 1.0 for ARENA.
 * The ARENA stat-ADDEND axis exists in the wiki sidecar (45 of 173 champions
   carry an ``ar`` axis) but is reached only through ``build_champion``'s
   ``apply_mode_modifiers`` flag, which defaults False and is not exposed by
@@ -144,8 +144,8 @@ class MechanismTests(_SharedSnapshot):
         """The field that hides the point - and the one that undercuts "by design".
 
         ``.stats`` is mode-blind for 0 of 173; ``.notes`` differs for 173 of 173,
-        because engine.py:458 appends "mode=ARENA - modifier table not plugged in
-        for this mode" on every ARENA call. Comparing only ``.stats`` would let a
+        because engine.build_champion appends "mode=ARENA - modifier table not
+        plugged in for this mode" on every ARENA call. Comparing only ``.stats`` would let a
         reader conclude the engine has nothing to say about ARENA. It does, and
         what it says is that the table is not plugged in.
         """
@@ -190,11 +190,12 @@ class MechanismTests(_SharedSnapshot):
             )
 
     def test_mode_multiplier_is_one_outside_aram_on_both_paths(self) -> None:
-        """burst.py:674-676 / ability_dps.py:1134-1140 gate on ARAM only.
+        """``mode_mult`` gates on ARAM only in both scorers.
 
-        ability_dps.py:1134-1140 is a TRUE citation that supports a FALSE
-        conclusion: the multiplier really is ARAM-only, but that is not why the
-        matchup path is mode-blind.
+        Both burst.compute_burst_damage and ability_dps.compute_ability_dps set
+        ``mode_mult`` only under ``mode == "ARAM"``. The ability_dps gate is a
+        TRUE citation that supports a FALSE conclusion: the multiplier really is
+        ARAM-only, but that is not why the matchup path is mode-blind.
         """
         for mode in ("SR", "ARENA"):
             res = compute_ability_dps(
@@ -203,7 +204,9 @@ class MechanismTests(_SharedSnapshot):
             self.assertEqual(res.mode_multiplier, 1.0, f"mode={mode}")
 
     def test_cast_rate_table_is_the_sole_divergence_source(self) -> None:
-        """ability_dps.py:1350 -> ult_rates.get_spell_casts_per_sec(.., mode).
+        """ability_dps.compute_ability_dps -> ult_rates.get_spell_casts_per_sec.
+
+        The read passes ``mode``, so the measured cast rate is per-mode.
 
         At least one spell key must report a different measured casts/sec for
         SR vs ARENA on the anchor champion. This is the mechanism; if it stops
@@ -230,8 +233,9 @@ class MechanismTests(_SharedSnapshot):
 
         45 of 173 champions carry a wiki ``ar`` mode_modifier axis, and
         apply_mode_modifiers=True changes their resolved stats. Nothing on the
-        matchup / burst / ability-dps path exposes that flag (engine.py:295
-        default False), so the axis is unreachable there.
+        matchup / burst / ability-dps path exposes that flag
+        (build_champion's apply_mode_modifiers defaults False), so the axis is
+        unreachable there.
 
         Deliberately NOT asserted: whether that is by design or unfinished. The
         engine's own note says the table is "not plugged in" (see
