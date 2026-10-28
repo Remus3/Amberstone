@@ -18,10 +18,10 @@ Confirmed API surface before scaffolding:
   * rank_items_by_hps(..., assume_missing_hp_heal_amp, caster_missing_hp_pct)
     -> HpsRankResult with .ranked[*].new_hps - hps.py.
   * compute_ability_hps accepts caster_missing_hp_pct +
-    assume_missing_hp_heal_amp - ability_hps.py:689-690.
+    assume_missing_hp_heal_amp - `ability_hps.compute_ability_hps`.
   * _MISSING_HP_HEAL_AMP registry = MasterYi W / Lissandra R / Sylas W /
-    Briar P - ability_hps.py:455-458. MasterYi / Sylas have a non-trivial
-    self-heal throughput that the amp scales (live-probed).
+    Briar P - `ability_hps._build_missing_hp_heal_amp`. MasterYi / Sylas
+    have a non-trivial self-heal throughput that the amp scales (live-probed).
 
 No ENGINE_VERSION assertion here (version bump is a separate agent).
 """
