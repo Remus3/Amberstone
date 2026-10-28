@@ -552,9 +552,9 @@ def _route_dps(body: dict) -> dict:
     # wiring the flag alone would have made the seam reachable and dead (the
     # RM-115 failure mode). Its four siblings (/ehp, /rank-tank, /hybrid,
     # /rank-bruiser) have parsed ``rune_ids`` since R136; /dps is the last
-    # compute route to get it. dps.py:1058 consults the registry ONLY when the
-    # flag is True, so an omitted key leaves an empty roster AND a False flag
-    # and the response is byte-identical.
+    # compute route to get it. ``compute_dps`` consults the registry ONLY when
+    # the flag is True, so an omitted key leaves an empty roster AND a False
+    # flag and the response is byte-identical.
     rune_ids = _coerce_str_list(body.get("rune_ids"), "rune_ids")
     apply_rune_offense_grants = _opt_bool(body, "apply_rune_offense_grants", False)
     # RM-118 residual (2026-08-04): the R212 CRIT-CHANCE / CRIT-DAMAGE override
@@ -566,9 +566,10 @@ def _route_dps(body: dict) -> dict:
     #
     # NO extra transport: the registry is keyed by champion id, which this route
     # already requires - so unlike the rune lanes there is no roster to carry.
-    # /dps is the SOLE owner (dps.py:765); ``rank_items()`` does not name it, so
-    # /rank must NOT grow this key. Only 4 of 173 champions have a registry row
-    # and dps.py:1124 consults it ONLY when the flag is True, so an omitted key
+    # /dps is the SOLE owner (``compute_dps`` is the only engine function that
+    # takes the parameter); ``rank_items()`` does not name it, so /rank must
+    # NOT grow this key. Only 4 of 173 champions have a registry row and
+    # ``compute_dps`` consults it ONLY when the flag is True, so an omitted key
     # is byte-identical for everyone, and an ON flag is byte-identical for the
     # other 169.
     apply_crit_chance_overrides = _opt_bool(body, "apply_crit_chance_overrides", False)
@@ -652,9 +653,10 @@ def _route_rank(body: dict) -> dict:
     # Reuses the existing champion_burst_axis gate, no new curated list.
     exclude_off_axis_items = _opt_bool(body, "exclude_off_axis_items", False)
     # RM-86 L1 kit-conversion gate, route-exposed (PART 7 prerequisite slice,
-    # docs/_archive/2026-07/OPEN_ITEMS_REVIEW_2026-07-25.md:451-457). rank.py:1294-1297 consults
-    # the registry ONLY when the strength is > 0.0, so the 0.0 default performs
-    # no lookup and no arithmetic and is byte-identical to omitting the key.
+    # docs/_archive/2026-07/OPEN_ITEMS_REVIEW_2026-07-25.md:451-457).
+    # ``rank_items`` consults the registry ONLY when the strength is > 0.0, so
+    # the 0.0 default performs no lookup and no arithmetic and is
+    # byte-identical to omitting the key.
     # Until this landed the lever was Python-API-only, and
     # tools/daemon_slayer_build_orders_generate.py drives the shipped build
     # tables through :8860 - so no kit-conversion fix could reach an artifact.
@@ -662,8 +664,9 @@ def _route_rank(body: dict) -> dict:
     # A-12 / RM-46 crit conversion (Ashe Frost Shot: ad * (1 + 1.15c), and
     # Infinity Edge's bonus crit damage REPLACED rather than added, because her
     # passive states critical strikes deal no additional damage). Registry is
-    # _crit_conversion_overrides.py, gate at dps.py:890. Route-exposed for the
-    # same reason as kit_conversion_strength above: the shipped build tables are
+    # _crit_conversion_overrides.py, gate ``if apply_crit_conversion:`` in
+    # ``compute_dps``. Route-exposed for the same reason as
+    # kit_conversion_strength above: the shipped build tables are
     # generated through :8860, so a Python-API-only seam cannot reach them.
     apply_crit_conversion = _opt_bool(body, "apply_crit_conversion", False)
     # RM-36 / RM-38 (DEFAULT-OFF): the AD-axis ability term on the CARRY
@@ -757,18 +760,18 @@ def _route_ehp(body: dict) -> dict:
     # the very route that exposes ``compute_ehp`` directly.
     #
     # TRANSPORT is TWO keys, both parsed above since Phase 1 / ENGINE 1.39.0:
-    # ``items`` (ehp.py:2582 reads ``total_item_tenacity(item_ids)``, so a build
-    # with no tenacity source is a no-op) and ``enemies`` (an empty comp skips
-    # the whole cc block). No new transport needed.
+    # ``items`` (``compute_ehp`` reads ``total_item_tenacity(item_ids)``, so a
+    # build with no tenacity source is a no-op) and ``enemies`` (an empty comp
+    # skips the whole cc block). No new transport needed.
     #
-    # PARSE SHAPE is the PLAIN default-False bool, matching ``_route_hybrid``
-    # (:1255) and deliberately NOT the tri-state the two rankers use.
+    # PARSE SHAPE is the PLAIN default-False bool, matching ``_route_hybrid``'s
+    # own parse and deliberately NOT the tri-state the two rankers use.
     # MEASURED off inspect.signature: ``rank_items_by_ehp`` takes
-    # ``Optional[bool] = None`` and resolves it per scoring mode (ehp.py:3431 -
-    # ON for cc_blended, OFF for blended), which is what the tri-state exists
-    # for; ``compute_ehp`` takes a plain ``bool = False`` and has no scoring
-    # mode to resolve against, so a tri-state here would hand ``None`` to a
-    # bool-annotated parameter for no gain.
+    # ``Optional[bool] = None`` and resolves it per scoring mode (its
+    # ``apply_tenacity`` - ON for cc_blended, OFF for blended), which is what
+    # the tri-state exists for; ``compute_ehp`` takes a plain ``bool = False``
+    # and has no scoring mode to resolve against, so a tri-state here would
+    # hand ``None`` to a bool-annotated parameter for no gain.
     #
     # An older note on ``core/daemon_slayer_client.ehp_for`` called the flag
     # "deliberately absent - _route_ehp does not parse it (it needs a resolved
@@ -1225,7 +1228,7 @@ def _route_rank_tank(body: dict) -> dict:
     # RM-118 residual (2026-07-29): the per-instance FLAT damage-block credit
     # (Fizz P, Amumu E, Leona W) on the RANKER lane. Of the four EHP
     # survivability seams wired in this slice, this is the ONLY one
-    # ``rank_items_by_ehp`` accepts (ehp.py:3127) - the other three
+    # ``rank_items_by_ehp`` takes as a parameter - the other three
     # (assume_passive_health_stacks / assume_item_revive / assume_item_stasis)
     # exist on ``compute_ehp`` alone, so they stay scalar-only on ``/ehp`` and
     # parsing them here would read a key that dies before the engine call.
@@ -1237,8 +1240,8 @@ def _route_rank_tank(body: dict) -> dict:
         body, "assume_passive_flat_mitigation", False
     )
     # RM-118 residual (2026-07-30): the two SELF-side rune survivability lanes on
-    # the RANKER. ``rank_items_by_ehp`` names BOTH (ehp.py:3161-3162) and forwards
-    # them per candidate (ehp.py:3422 / 3618), so unlike
+    # the RANKER. ``rank_items_by_ehp`` names BOTH in its signature and forwards
+    # them to its baseline and per-candidate ``compute_ehp`` calls, so unlike
     # assume_passive_flat_mitigation's three scalar-only siblings above these are
     # a real sort input here, not a reporting-only value: measured over the full
     # 137-row pool for Leona at level 13 the order moves under every score_by
@@ -1408,7 +1411,7 @@ def _route_hybrid(body: dict) -> dict:
     apply_survival_window = _opt_bool(body, "apply_survival_window", False)
     # RM-118 residual (2026-07-30): all THREE stranded rune lanes land on this
     # route, because ``compute_hybrid`` is the one engine entry point that names
-    # every one of them (hybrid.py:484-489). The offense grant moves the DPS
+    # every one of them in its signature. The offense grant moves the DPS
     # axis, the self-heal and the self-shield move the EHP axis, and the blended
     # ``hybrid_score`` therefore moves for either half. All three ride the
     # ``rune_ids`` transport already parsed above; all three DEFAULT-OFF ->
@@ -1420,10 +1423,11 @@ def _route_hybrid(body: dict) -> dict:
     #   apply_cast_rate_propensity_prior (RM-98) - RM-98 adjudicated and shipped
     #     the cast-rate TIME BASE; the propensity PRIOR is the separate half that
     #     was never route-exposed. It rides ``result.per_spell`` on BOTH ability
-    #     branches (hybrid.py:193 AP, hybrid.py:332 AD-axis), so it moves the
-    #     score with or without ``apply_ad_axis_ability_damage``.
+    #     branches (``_ability_damage`` for AP, ``physical_ability_damage`` in
+    #     _ad_axis_ability.py for the AD axis), so it moves the score with or
+    #     without ``apply_ad_axis_ability_damage``.
     #   assume_ms_utility (R58, ENGINE 1.167.0) - the bonus-movement-speed
-    #     utility multiplier on the blended score (hybrid.py:792).
+    #     utility multiplier on the blended score (``_ms_utility_multiplier``).
     # NO extra transport for either: the prior is computed in-engine off the
     # per-spell rows, and the MS multiplier reads ``dps_result.stats["ms"]``
     # against the champion's base movespeed out of the snapshot. Both DEFAULT-OFF
@@ -1569,11 +1573,11 @@ def _route_rank_bruiser(body: dict) -> dict:
     # scorer's DPS axis. Default 1.0 -> byte-identical when the body omits it.
     target_current_hp_pct = _opt_float(body, "target_current_hp_pct", 1.0)
     # RM-39/RM-43 (DEFAULT-OFF): add the credited-type ability term to the AD
-    # branch, which is auto-attack-only by design (dps.py:34) for 84 of 173
-    # champions. Routed here so the mandatory cohort-wide golden diff (ON vs
-    # OFF across every AD-axis champion) is measurable over HTTP; without the
-    # surface the ON path is unreachable from :8860. Default body =
-    # byte-identical.
+    # branch, which is auto-attack-only by design (dps.py's module docstring)
+    # for 84 of 173 champions. Routed here so the mandatory cohort-wide golden
+    # diff (ON vs OFF across every AD-axis champion) is measurable over HTTP;
+    # without the surface the ON path is unreachable from :8860. Default body
+    # = byte-identical.
     apply_ad_axis_ability_damage = _opt_bool(
         body, "apply_ad_axis_ability_damage", False
     )
@@ -1596,18 +1600,18 @@ def _route_rank_bruiser(body: dict) -> dict:
     # bruiser ranker. Sibling of the /rank-tank wire (1a2f92e7). DEFAULT-OFF.
     assume_hsp_amp = _opt_bool(body, "assume_hsp_amp", False)
     # RM-118 residual (2026-07-30): all three stranded rune lanes on the BRUISER
-    # ranker. ``rank_items_by_hybrid`` names every one (hybrid.py:1037-1042) and
-    # forwards them per candidate (hybrid.py:1344 / 1396-1397), so each one can
-    # change an item CHOICE here rather than only a reported number: measured for
-    # Jinx at level 13 over the full 139-row pool, the order moves for the
-    # offense lane and for the heal/shield pair independently. DEFAULT-OFF ->
-    # byte-identical when omitted.
+    # ranker. ``rank_items_by_hybrid`` names every one in its signature and
+    # forwards them to its per-candidate ``compute_dps`` / ``compute_ehp``
+    # calls, so each one can change an item CHOICE here rather than only a
+    # reported number: measured for Jinx at level 13 over the full 139-row
+    # pool, the order moves for the offense lane and for the heal/shield pair
+    # independently. DEFAULT-OFF -> byte-identical when omitted.
     apply_rune_self_heal = _opt_bool(body, "apply_rune_self_heal", False)
     apply_rune_shield_grants = _opt_bool(body, "apply_rune_shield_grants", False)
     apply_rune_offense_grants = _opt_bool(body, "apply_rune_offense_grants", False)
     # RM-118 residual (2026-08-04): the same two stranded hybrid-axis seams on
-    # the BRUISER ranker. ``rank_items_by_hybrid`` names both (hybrid.py:1099 /
-    # 1127) and forwards them per candidate, so each can change an item CHOICE
+    # the BRUISER ranker. ``rank_items_by_hybrid`` names both in its signature
+    # and applies them per candidate, so each can change an item CHOICE
     # here rather than only a reported number - measured for Ahri at level 13
     # over the full 140-row pool, the order moves for each seam independently.
     # DEFAULT-OFF -> byte-identical when omitted.
