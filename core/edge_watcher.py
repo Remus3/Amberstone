@@ -17,8 +17,17 @@ calls that an appearance.
     ``PRESENT -> ABSENT -> PRESENT`` fires again - a genuine new occurrence);
   * ``UNREACHABLE`` un-primes the target, so the next good read re-primes
     silently - a reconnect is not an event;
-  * a probe that raises, or returns anything that is not a ``ProbeState``,
-    counts as ``UNREACHABLE``; nothing escapes ``poll``.
+  * a probe that raises, or returns anything that is not a ``ProbeState``
+    (or a ``poll`` with no probe at all), counts as ``UNREACHABLE``; such a
+    failure never escapes ``poll`` and is WARNED once per failure streak per
+    target (any ``ProbeState`` return ends the streak), so a probe that can
+    never read its target is not silent at the default log level;
+  * an ``on_appear`` that raises is logged with its traceback and recorded,
+    never re-raised.
+
+Caller errors are loud instead: a non-callable ``probe`` / ``on_appear``
+raises ``TypeError`` at construction, and an unhashable target raises
+``TypeError`` from ``poll`` / ``observe`` before the probe runs.
 
 Dry-run mode builds the same record but does not call ``on_appear``. Every
 fire / would-fire comes back as a JSON-serialisable dict, provided the target
@@ -32,7 +41,7 @@ from __future__ import annotations
 import logging
 import time
 from enum import Enum
-from typing import Any, Callable, Dict, Hashable, Optional
+from typing import Any, Callable, Dict, Hashable, Optional, Set
 
 _log = logging.getLogger("rc.edge_watcher")
 
@@ -64,11 +73,19 @@ class EdgeWatcher:
         on_appear: Optional[Callable[[Any], Any]],
         dry_run: bool = False,
     ) -> None:
+        if probe is not None and not callable(probe):
+            raise TypeError(f"edge_watcher: probe must be callable or None, got {type(probe).__name__}")
+        if on_appear is not None and not callable(on_appear):
+            raise TypeError(
+                f"edge_watcher: on_appear must be callable or None, got {type(on_appear).__name__}"
+            )
         self._probe = probe
         self._on_appear = on_appear
         self.dry_run = bool(dry_run)
         self._primed: Dict[Hashable, bool] = {}
         self._last: Dict[Hashable, ProbeState] = {}
+        # Targets inside a probe-failure streak (already warned once).
+        self._failing: Set[Hashable] = set()
 
     # -- queries -------------------------------------------------------------
 
@@ -82,19 +99,46 @@ class EdgeWatcher:
     # -- driving -------------------------------------------------------------
 
     def poll(self, target: Hashable) -> Optional[Dict[str, Any]]:
-        """Probe ``target`` and observe the result. Never raises."""
+        """Probe ``target`` and observe the result.
+
+        A probe failure (raises, returns a non-``ProbeState``, or no probe is
+        configured) is ``UNREACHABLE`` and never escapes; it is warned once
+        per failure streak. An unhashable ``target`` is a caller error and
+        raises ``TypeError`` before the probe runs.
+        """
+        _require_hashable(target)
+        if self._probe is None:
+            self._probe_failed(target, "no probe configured", exc_info=False)
+            return self.observe(target, UNREACHABLE)
         try:
-            state = self._probe(target) if self._probe is not None else UNREACHABLE
-        except Exception:  # noqa: BLE001 - a failing probe is an unreachable target
-            _log.debug("edge_watcher: probe raised for %r", target, exc_info=True)
-            state = UNREACHABLE
+            state = self._probe(target)
+        except Exception as exc:  # noqa: BLE001 - a failing probe is an unreachable target
+            self._probe_failed(target, f"probe raised {_describe(exc)}", exc_info=True)
+            return self.observe(target, UNREACHABLE)
         if not isinstance(state, ProbeState):
-            state = UNREACHABLE
+            self._probe_failed(
+                target, f"probe returned {type(state).__name__}, not a ProbeState", exc_info=False
+            )
+            return self.observe(target, UNREACHABLE)
+        self._failing.discard(target)
         return self.observe(target, state)
+
+    def _probe_failed(self, target: Hashable, why: str, exc_info: bool) -> None:
+        if target in self._failing:
+            _log.debug("edge_watcher: %r unreachable (%s)", target, why, exc_info=exc_info)
+            return
+        self._failing.add(target)
+        _log.warning(
+            "edge_watcher: %r treated as unreachable: %s (warned once until a good read)",
+            target, why, exc_info=exc_info,
+        )
 
     def observe(self, target: Hashable, state: ProbeState) -> Optional[Dict[str, Any]]:
         """Feed one observation. Returns a fire / would_fire record on an
-        ABSENT -> PRESENT edge of a primed target, else None."""
+        ABSENT -> PRESENT edge of a primed target, else None. Raises
+        ``TypeError`` for an unhashable target and ``ValueError`` for a
+        ``state`` that is not a ``ProbeState``."""
+        _require_hashable(target)
         if not isinstance(state, ProbeState):
             raise ValueError(f"edge_watcher: state must be a ProbeState, got {state!r}")
         if state is UNREACHABLE:
@@ -102,6 +146,7 @@ class EdgeWatcher:
             # flag alone is what stops the next good read from firing.
             self._primed[target] = False
             return None
+        self._failing.discard(target)  # a reachable read ends a failure streak
         prev = self._last.get(target)
         self._last[target] = state
         if not self._primed.get(target, False):
@@ -127,6 +172,26 @@ class EdgeWatcher:
             try:
                 self._on_appear(target)
             except Exception as exc:  # noqa: BLE001 - the watcher must keep polling
-                _log.warning("edge_watcher: on_appear(%r) raised: %s", target, exc)
-                record["error"] = f"{type(exc).__name__}: {exc}"
+                error = _describe(exc)
+                _log.warning("edge_watcher: on_appear(%r) raised %s", target, error, exc_info=True)
+                record["error"] = error
         return record
+
+
+def _require_hashable(target: Any) -> None:
+    try:
+        hash(target)
+    except TypeError:
+        raise TypeError(
+            f"edge_watcher: target must be hashable, got {type(target).__name__}"
+        ) from None
+
+
+def _describe(exc: BaseException) -> str:
+    """``"Type: message"`` that never raises, even when ``str(exc)`` does."""
+    name = type(exc).__name__
+    try:
+        text = str(exc)
+    except Exception:  # noqa: BLE001 - a broken __str__ must not escape poll
+        return f"{name}: <unprintable>"
+    return f"{name}: {text}" if text else name
