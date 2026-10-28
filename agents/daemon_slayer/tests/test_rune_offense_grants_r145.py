@@ -3,8 +3,9 @@
 Sorcery's two adaptive STAT grants - Gathering Storm 8236 and Absolute Focus
 8233 - were registered in ``rune_procs.py`` with ``proc_type="adaptive"``, and
 every consumer of that registry skips exactly that proc_type
-(``burst.py:1034``). The force was computed and discarded: no DPS / hybrid / rank
-path credited a single point of the up-to-101 AD or 168 AP those runes grant.
+(``burst.compute_burst_damage``'s rune-proc loop). The force was computed and
+discarded: no DPS / hybrid / rank path credited a single point of the up-to-101
+AD or 168 AP those runes grant.
 
 This module pins the new ``_rune_offense_grants`` registry, the DEFAULT-OFF
 ``apply_rune_offense_grants`` seam, and the byte-identity contract.
@@ -520,11 +521,12 @@ class DivergenceFromRuneProcsIsDeliberateAndOneSidedTests(unittest.TestCase):
 
     It is not two LIVE readings. ``rune_procs`` registers 8236 with
     ``proc_type="adaptive"`` and every consumer of that registry skips exactly
-    that proc_type (``burst.py:1034``), so the linear value is computed and
-    discarded on every path - it has never reached a score. This lane is the only
-    reachable reading. R145 deliberately did NOT edit ``rune_procs`` for that
-    reason: changing a shipped constant on the already-shipped burst path is not
-    something a DEFAULT-OFF slice gets to do as a side effect.
+    that proc_type (``burst.compute_burst_damage``'s rune-proc loop), so the
+    linear value is computed and discarded on every path - it has never reached
+    a score. This lane is the only reachable reading. R145 deliberately did NOT
+    edit ``rune_procs`` for that reason: changing a shipped constant on the
+    already-shipped burst path is not something a DEFAULT-OFF slice gets to do as
+    a side effect.
 
     This test therefore pins BOTH facts, so neither can drift silently: the two
     readings differ, AND the rune_procs one is unreachable. If a future slice

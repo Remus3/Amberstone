@@ -1135,8 +1135,9 @@ def compute_dps(
     # R145 (ENGINE 1.232.0): the OFFENSE-side rune adaptive stat-grant lane -
     # Sorcery's Gathering Storm 8236 and Absolute Focus 8233. Both are registered
     # in rune_procs.py with proc_type "adaptive", and EVERY consumer of that
-    # registry skips exactly that proc_type (burst.py:1034), so the adaptive force
-    # was computed and then discarded - no DPS path had ever credited it.
+    # registry skips exactly that proc_type (burst.compute_burst_damage's rune-proc
+    # loop), so the adaptive force was computed and then discarded - no DPS path
+    # had ever credited it.
     # apply_rune_offense_grants=False (the default) -> both grants are 0.0, no
     # stats copy, no note, byte-identical to pre-R145 regardless of what rune_ids
     # carries. Placed HERE so the AP side lands next to stacked_ap: before ap_amp,

@@ -24,9 +24,11 @@ grants - Absolute Focus 8233 (``rune_procs.py:743``) and Gathering Storm 8236
 (``rune_procs.py:762``) - but it registers them with ``proc_type="adaptive"``,
 and EVERY consumer of that registry skips exactly that proc_type:
 
-  * ``burst.py:1034``   -> ``if proc is None or proc.proc_type == "adaptive": continue``
-  * ``fight_report.py:45`` -> "adaptive" returns a stat value, not damage, so it
-    is surfaced as a report line and never folded into a damage total.
+  * ``burst.compute_burst_damage`` (its rune-proc loop) -> ``if proc is None
+    or proc.proc_type == "adaptive": continue``
+  * ``fight_report._BURST_PROC_TYPES`` -> "adaptive" is not in that set: it
+    returns a stat value, not damage, so it is surfaced as a report line and
+    never folded into a damage total.
 
 So the adaptive force is COMPUTED and then DISCARDED. No DPS, ability-DPS,
 hybrid or rank path has ever seen it. ``rune_procs.py:426`` and
@@ -158,7 +160,7 @@ of this rune; the citation above is the feed and the rune_procs contract.
 THE RANGED STACK PENALTY IS OUT OF SCOPE, recorded rather than guessed. The feed
 says "Ranged champions gain only 1 stack per basic attack" - a stacking-RATE
 difference against a cap that is 12 for everyone. ``rune_offense_grants`` has no
-role parameter and no attack-range input: ``burst.py:1030`` derives its
+role parameter and no attack-range input: ``burst.compute_burst_damage`` derives its
 ``_caster_role`` from attackrange, but this lane never receives it. Applying a
 ranged reduction would mean inventing a magnitude rather than deriving one, so it
 is left unmodeled and stated. A consumer that knows the real accrual should
