@@ -156,7 +156,6 @@ _TOOLS_UNCLASSIFIED = frozenset({
     "tools/build_portable.py",
     "tools/build_python_embed.py",
     "tools/build_third_party_notices.py",
-    "tools/gen_archmap.py",
     "tools/package_portable.py",
     "tools/shadow_archive_split.py",
 })

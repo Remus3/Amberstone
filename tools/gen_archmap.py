@@ -30,6 +30,9 @@ import subprocess
 import sys
 
 ROOT = pathlib.Path(__file__).parent.parent
+# Script mode puts tools/ first on sys.path; the write path imports core/.
+if str(ROOT.resolve()) not in sys.path:
+    sys.path.insert(0, str(ROOT.resolve()))
 
 SKIP_DIRS = {
     "__pycache__", ".git", ".claude", "node_modules",
@@ -276,11 +279,15 @@ def _update_file(path: pathlib.Path, start_marker: str, end_marker: str, new_blo
     if updated == original:
         return False
     if not check:
-        tmp = path.with_suffix(path.suffix + ".tmp")
+        # Imported here, not at the top: the pre-commit hook runs --check on
+        # every commit, and a broken core/ must not block the commit fixing it.
+        from core.polled_json import atomic_write_bytes
+
         # Bytes, not write_text: on Windows write_text turns LF into CRLF and
-        # docs/ARCHITECTURE.md is TRACKED (RM-441).
-        tmp.write_bytes(updated.encode("utf-8"))
-        tmp.replace(path)
+        # docs/ARCHITECTURE.md is TRACKED (RM-441). RM-258: the shared writer
+        # (per-writer scratch in the same dir, fsync, WinError 5 retry,
+        # scratch removed if the write or rename raises).
+        atomic_write_bytes(path, updated.encode("utf-8"))
     return True
 
 
