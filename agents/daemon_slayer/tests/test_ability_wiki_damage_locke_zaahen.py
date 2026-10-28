@@ -149,11 +149,13 @@ class DamageBlockShapeTests(unittest.TestCase):
                     )
 
     def test_no_block_carries_two_fields_of_one_stat_family(self) -> None:
-        """Repo-wide machine guard (``test_cdragon_ratio_matcher.py:33`` +
-        ``test_cdragon_surplus_ad_a29.py:83``): no damage block may hold two
-        AD-family or two HP-family fields. Zaahen Q's wiki row carries both a
-        total-AD and a bonus-AD ratio, so the registry splits it across
-        adjacent blocks - this pins that split."""
+        """Repo-wide machine guard
+        (``test_cdragon_ratio_matcher.test_no_same_family_double_count_flag_on``
+        + ``test_cdragon_surplus_ad_a29.test_no_ad_family_double_count_flag_on``):
+        no damage block may hold two AD-family or two HP-family fields.
+        Zaahen Q's wiki row carries both a total-AD and a bonus-AD ratio, so
+        the registry splits it across adjacent blocks - this pins that
+        split."""
         ad = ("total_ad_pct", "bonus_ad_pct")
         hp = ("caster_max_hp_pct", "caster_bonus_hp_pct")
         for cid in _MISSING:

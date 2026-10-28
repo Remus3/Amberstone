@@ -5,8 +5,8 @@ ENGINE 1.252.0, so the four bruiser entries in ``kit_conversion._KIT_CONVERSION`
 - Olaf, Pantheon, RekSai, Riven - were stranded at GATE 1, before any route or
 client question arose. ``rank_items_by_hybrid`` is the only target: it is the
 one entry point in the module that SORTS, and the RM-86 transform is a sort-key
-transform (``kit_conversion.py:16-18``: the module supplies the vector, each
-ranker scales its own sort key). ``compute_hybrid`` scores a single resolved
+transform (the ``kit_conversion`` module docstring: the module supplies the
+vector, each ranker scales its own sort key). ``compute_hybrid`` scores a single resolved
 build and has no sort key, so the kwarg would be inert there.
 
 THE OBJECTIVE STRING IS THE LOAD-BEARING DECISION HERE
@@ -32,9 +32,9 @@ Control is **Darius** - a tabled bruiser ABSENT from ``_KIT_CONVERSION``, so
 ``kit_conversion`` returns the identity and every channel factor is exactly 1.0.
 He must not move at any strength.
 
-Do NOT anchor on Stridebreaker: ``kit_conversion.py:54-58`` records that Olaf's
-Stridebreaker rising is not reachable at any setting and is filed as L2
-objective-coverage work. Measured here at #34 -> #34, consistent with that note.
+Do NOT anchor on Stridebreaker: the REACHABILITY section of the
+``kit_conversion`` module docstring records that Olaf's Stridebreaker rising
+is not reachable at any setting and is filed as L2 objective-coverage work. Measured here at #34 -> #34, consistent with that note.
 
 OFFLINE: loads the DataSnapshot, no server, no network.
 """
@@ -144,7 +144,7 @@ class KitConversionHybridTests(unittest.TestCase):
         self.assertLess(seen[0], seen[-1], f"no movement across the sweep: {seen}")
 
     def test_stridebreaker_is_not_an_anchor(self) -> None:
-        """Guard the documented negative (kit_conversion.py:54-58).
+        """Guard the documented negative (``kit_conversion`` REACHABILITY).
 
         The exact #34 -> #34 identity was measured on 16.15.1 data, so that
         half is pinned there. At 16.18.1 the OFF ranking moved (Stridebreaker

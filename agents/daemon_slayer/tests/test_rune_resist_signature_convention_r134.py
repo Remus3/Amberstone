@@ -134,10 +134,11 @@ _A1250_TAIL = (
 
 # RM-115 p4 (ENGINE 1.252.0) appends the RM-86 L1 kit-conversion gate to
 # ``rank_items_by_hybrid`` ONLY. This is the HYBRID mirror of the 1.250.0 split
-# above: the seam is a SORT-KEY transform (``kit_conversion.py:16-18`` - the
-# registry supplies the vector, each ranker scales its own key), and
-# ``compute_hybrid`` scores one resolved build and has no sort key, so putting
-# the kwarg there would be a signature-tidy pretending to be a capability. The
+# above: the seam is a SORT-KEY transform (the ``kit_conversion`` module
+# docstring - the registry supplies the vector, each ranker scales its own
+# key), and ``compute_hybrid`` scores one resolved build and has no sort key,
+# so putting the kwarg there would be a signature-tidy pretending to be a
+# capability. The
 # two hybrid entry points are therefore cased separately below rather than
 # sharing one expected tuple, exactly as the two EHP ones already are. The
 # invariant the guard protects is unchanged: seam kwargs land at the END, in

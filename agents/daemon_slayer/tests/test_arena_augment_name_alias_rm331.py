@@ -5,7 +5,7 @@ The defect (probed live, re-probed independently, source-read):
 ``DataSnapshot.arena_augment`` looked its key up EXACT-match against
 ``arena_augments_by_api``, so ``"The Brutalizer"`` (the display ``name``
 that a human types, and that RC's own OCR layer surfaces) missed, the
-miss was swallowed at ``agents/daemon_slayer/augments.py:227``
+miss was swallowed in ``augments.compute_augment_stats``
 (``except (KeyError, AttributeError): continue``), and the request
 scored BYTE-IDENTICALLY to sending no augment at all - a silent ~10 pct
 DPS error that presents as a correct answer.
@@ -18,10 +18,10 @@ a human would type - and no route docstring anywhere states an
 apiName-only contract for augments.
 
 WHY THE EXISTING SUITE DID NOT CATCH IT:
-``test_arena_augment_e2e_p1l26.py:245-259`` asserts that an UNREGISTERED
-augment leaves the baseline byte-identical. That is exactly what a
-MISSPELLED REAL augment produced, so that assertion could not tell the
-two apart. Every test in this lane therefore carries BOTH halves:
+``test_unknown_augment_zero_overlay_through_rank`` (in
+``test_arena_augment_e2e_p1l26.py``) asserts that an UNREGISTERED augment
+leaves the baseline byte-identical. That is exactly what a MISSPELLED
+REAL augment produced, so that assertion could not tell the two apart. Every test in this lane therefore carries BOTH halves:
 
   1. the alias arm equals the exact-apiName arm, AND
   2. both differ from the ``augments=[]`` baseline.

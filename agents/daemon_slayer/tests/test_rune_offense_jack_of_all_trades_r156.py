@@ -5,9 +5,9 @@ DELIBERATE EXCLUSIONS block: a real, exactly-quantified Adaptive Force grant
 whose stack count is a census of DISTINCT STAT TYPES across the resolved build,
 with no such per-build decomposition available. That decomposition does exist -
 ``stats.aggregate_item_stats`` already maps every DDragon item stat key onto a
-canonical ``{axis}_{flat|pct}`` slot, and ``engine.py:318-320`` is the exact
-shape a resolved build uses to produce it. This slice builds the census on top
-of that and credits the rune.
+canonical ``{axis}_{flat|pct}`` slot, and its call in ``engine.build_champion``
+is the exact shape a resolved build uses to produce it. This slice builds the
+census on top of that and credits the rune.
 
 DDragon 16.14.1 longDesc, verbatim (tags stripped): "For each different stat
 gained from items, gain one Jack stack. Each stack grants you 1 Ability
