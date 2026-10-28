@@ -36,7 +36,7 @@ red the day the engine starts crediting persistent-entity damage. Do NOT
 slice that ships the lane, and re-state what the new behavior is.
 
 OBSERVED-NOT-ASSUMED note on the "P" spell key: ``ability_dps.SPELL_KEYS`` is
-``("Q", "W", "E", "R")`` (``agents/daemon_slayer/ability_dps.py:209``), so the
+``("Q", "W", "E", "R")``, so the
 passive row is ABSENT from ``result.per_spell`` rather than present-and-zero.
 This file pins the ABSENCE, because absence is what was measured. Zyra's
 passive (Garden of Thorns - the plant seeds) therefore never even reaches the
@@ -46,7 +46,7 @@ Engine seams pinned:
 
 * ``agents/daemon_slayer/abilities.py:274`` ``AbilityForm.damage_blocks_only``
   - the ``attribute_kind == "damage"`` filter.
-* ``agents/daemon_slayer/ability_dps.py:459`` ``_select_blocks`` - re-applies
+* ``ability_dps._select_blocks`` - re-applies
   the same filter and returns ``0.0`` when nothing survives it.
 """
 from __future__ import annotations
