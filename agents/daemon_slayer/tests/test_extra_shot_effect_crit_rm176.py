@@ -2,23 +2,26 @@
 
 REGRESSION. ``dps.py`` credits an every-AA extra shot with its own critical
 strike when the champion's ``_extra_shot_overrides`` entry sets ``can_crit``
-(``dps.py:1577``). That term used to read the bare build stat
-``stats["crit"]``, which is the DDragon stat line only. It OMITS crit that
-arrives from an ``ItemEffect.crit_chance_bonus_flat``, and the engine folds
-those two together into ``crit_total`` at ``dps.py:1148`` - the same value the
-base auto-attack resolves against at ``dps.py:1390``.
+(the ``extra_shot_entry_.can_crit`` branch in ``dps.compute_dps``). That term
+used to read the bare build stat ``stats["crit"]``, which is the DDragon stat
+line only. It OMITS crit that arrives from an
+``ItemEffect.crit_chance_bonus_flat``, and ``compute_dps`` folds those two
+together into ``crit_total`` (``min(raw_crit + crit_from_effects, 1.0)``) -
+the same value the base auto-attack resolves against (``crit = crit_total``,
+just above ``avg_attack_dmg``).
 
 The measured consequence, Akshan level 13 on a lone Yun Tal Wildarrows
 (``3032``): the item's DDragon stat block carries ZERO crit and the whole 25
 percent arrives as ``crit_chance_bonus_flat=0.25`` on the effect
-(``_effects_data.py:1263``), so the shot resolved completely flat while the
-base auto beside it resolved at crit 0.25 - a 15.79 percent under-credit on
-the shot. Worse, that made the entire ``apply_extra_shot_procs`` flag
-arithmetically INERT on that build: Yun Tal carries no ``every_n_attacks``
-proc for the on-hit-application half to accelerate, so with the crit half
-silently zeroed the flag ON and OFF produced bit-identical ``weighted_dps``.
-A seam that is settable, note-emitting and arithmetically inert is the exact
-failure class this file exists to catch.
+(the ``"3032"`` row of ``_effects_data.ITEM_EFFECTS``), so the shot resolved
+completely flat while the base auto beside it resolved at crit 0.25 - a 15.79
+percent under-credit on the shot. Worse, that made the entire
+``apply_extra_shot_procs`` flag arithmetically INERT on that build: Yun Tal
+carries no ``every_n_attacks`` proc for the on-hit-application half to
+accelerate, so with the crit half silently zeroed the flag ON and OFF
+produced bit-identical ``weighted_dps``. A seam that is settable,
+note-emitting and arithmetically inert is the exact failure class this file
+exists to catch.
 
 WHAT IS PINNED:
   * effect-sourced crit reaches the shot (the fix),
@@ -94,9 +97,10 @@ def _shot_pair(champion: str, build):
     """Per-hit on-hit damage with the shot seam OFF and ON.
 
     ``per_attack_on_hit_damage`` is the channel the routed passive is added to
-    (``dps.py:1589``). Every build in this file carries no OTHER on-hit source
-    and no ``every_n_attacks`` proc, so the OFF -> ON movement in this field is
-    the shot's crit term alone and nothing else.
+    (``per_attack_on_hit_damage += passive_aa_per_hit`` in ``compute_dps``).
+    Every build in this file carries no OTHER on-hit source and no
+    ``every_n_attacks`` proc, so the OFF -> ON movement in this field is the
+    shot's crit term alone and nothing else.
     """
     off = _dps(champion, build, apply_passive_damage=True)
     on = _dps(
@@ -106,7 +110,7 @@ def _shot_pair(champion: str, build):
 
 
 def _crit_bonus(build) -> float:
-    """The engine's own crit multiplier for a build - ``dps.py:958``."""
+    """The engine's own crit multiplier - ``compute_dps``'s ``crit_bonus`` binding."""
     return DEFAULT_CRIT_BONUS + total_crit_damage_bonus(collect_effects(list(build)))
 
 
