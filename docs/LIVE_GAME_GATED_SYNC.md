@@ -1958,6 +1958,64 @@ waits on the RM-875 wiring.)
   the log. Otherwise the sample is INCONCLUSIVE. A vision-read failure does not touch the write path
   and excuses nothing. The coherence half (does the reused text still fit the board?) stays an
   operator eyeball, as in G3-12.
+  **TOOL 2026-10-27 (lane 9 s144 cycles 13-14, source read at `ff32d603f`; NOT a tick).** The CHECK above
+  is now one command per half: NEW read-only `tools/gated_g506_debounce_lag.py` (tests
+  `tests/test_gated_g506_debounce_lag.py`). It grades the predicates above and adds tool-side
+  preconditions, each of which can only turn a PASS into INCONCLUSIVE. Three verifier passes this
+  cycle reproduced a false PASS (or a false FAIL) without them:
+  (a) WINDOW. `--since` / `--until` (game clock start to game end, local time) are REQUIRED, so a
+  proof line or sample from another game cannot count. The window must hold the WHOLE game: the
+  first known sample's `liveclient.game_time_s` is at most 60 s, and the first poll after the last
+  known sample comes within 35 s and shows the game over (a clean poll whose `mode_key` is not
+  arena or that has no live game time; a failed poll does not count).
+  (b) COVERAGE. The KNOWN samples tile the window, both edges included, with no gap over 35 s (the
+  CHECK's 20-30 s cadence plus 5 s of poll jitter). Known = usable, or dead: `mode_key` arena,
+  `liveclient.hp == 0` with `liveclient.hp_max > 0`, and a numeric game time. A failed poll is
+  unknown, never dead, so it cannot excuse a gap. `dashboard/_liveclient.py` `_int_or_zero` turns a
+  missing `currentHealth` into 0, so a run of dead samples may not span over 120 s.
+  (c) STALE FILE. A coach file AHEAD of the live clock by more than 30 s is another game's file, not
+  a fresh one.
+  (d) SLOW CALL. A `data/coach_tick_trace.jsonl` record's `ts` is the call's END
+  (`coaches/_base_coach.py` `_trace_coach_tick`, called from a `finally`), so the call spans
+  `ts - dur_ms` to `ts`, and it excuses a lag when that span OVERLAPS the lag window, including a
+  call still running at the sample.
+  (1) CITE DRIFT, line numbers only, behaviour unchanged: RM-875 (`f5782b25b`) moved
+  `coaches/arena_coach.py` lines below about `:740` down by 21 and lines `:77-707` down by 10 after
+  `6af9f081f` (so the PREP's `:77` signature is now `:87` and its `:432` is `:442`). At HEAD the
+  debounce log call is
+  `:815-819` (was `:795`), the `Arena: no fields parsed` return `:842` (was `:821`), the `game_time_s`
+  write `:875` (was `:854`), the `safe_write` `:914` (was `:893`), the ceiling stamp `:923`, the
+  Haiku `timeout=20` `:831`, `_run_coach` `:638` with the `@safe_coach_output("Arena")` decorator at
+  `:637`, and `_run_vision` `:609`. `:68` (flag read) and `:74` (45 s ceiling) hold. The tool's
+  test pins the three log strings and the `"arena"` trace mode against the source, so a later drift
+  of the STRINGS turns it red; line numbers are not pinned.
+  (2) LIVE HALF, during the Arena game, from the main checkout, RC started with
+  `RC_ARENA_STATE_DEBOUNCE=1` (the precondition above stays a merger / operator act):
+  `python tools/gated_g506_debounce_lag.py sample --interval 25 > <scratch>/g506.jsonl`, started
+  before the game clock starts and stopped with Ctrl-C after the game ends. Polls run at a fixed
+  rate, so a slow GET does not stretch the cadence. Each poll reads `data/arena_coaching_data.json`
+  -> `game_time_s` FIRST, then `/api/state` -> `mode_key`, `liveclient.game_time_s`, `liveclient.hp`,
+  `liveclient.hp_max`, so a slow GET can only make the measured lag larger. One JSON line per poll,
+  with `lag_s` and the local wall time. A PowerShell 5.1 `>` redirect (UTF-16 with a BOM, CRLF) is
+  read back fine. A sample is usable only when `mode_key == "arena"`, `liveclient.hp > 0` (alive)
+  and both game times are finite numbers.
+  (3) GRADE HALF, after the game: `python tools/gated_g506_debounce_lag.py grade --samples
+  <scratch>/g506.jsonl --log logs/<date>.log --since <clock-start HH:MM:SS> --until <end HH:MM:SS>`,
+  plus `--budget-ok` only when the operator asserts the daily budget was not exhausted and `arena`
+  was not kill-switched (those gates log nothing, so without the assertion an unexcused lag over
+  150 s stays INCONCLUSIVE, never FAIL). The excuse window of an over-bound sample is the `lag_s`
+  seconds before it; excuses are the two log strings above and an overlapping slow call (d). A
+  missing `--trace` file cannot rule a slow call out (trace writes are best-effort), so it keeps an
+  unexcused lag INCONCLUSIVE, never FAIL (cycle 14 verifier find).
+  Exit 0 PASS, 1 INCONCLUSIVE / NO_RESULT, 2 FAIL.
+  (4) EVIDENCE CONTRACT for the tick: the grade output's max lag (value), the sample file plus the
+  `/api/state` and coach-file field paths above (source), the sample wall times with mode Arena,
+  queue 1750 and the game time span (timestamp + context), and the predicate in the CHECK above.
+  SUBSTITUTION CHECK: the unit tests in `tests/test_arena_state_debounce.py` prove the skip FIRES on
+  an unchanged signature (compute); they say nothing about whether the SERVED file kept pace with the
+  game clock, which only the sampled pair answers. A grade run over samples taken with the flag OFF
+  is caught by the zero-proof-line rule (INCONCLUSIVE). Idle smoke at 22:01 local: `sample` read
+  `mode_key` client with both game times null, and `grade` returned NO_RESULT, exit 1.
 - **G5-07** Arena deterministic A/B choices lever (`dc6b3d80`) - shipped SHADOW-only; served coach
   output unchanged. The live serve flip is gated on shadow accrual (G7-17).
 - **G5-08** (was the B47b Arena tail) Celestial Opposition Arena mirror **444644 magnitude confirm**
