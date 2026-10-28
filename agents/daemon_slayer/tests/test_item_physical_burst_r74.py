@@ -21,7 +21,8 @@ assume_magic_burst).
 
 ``defensive_only`` stays True on 226630: the flag is documentation-only
 (no engine consumer in rank/dps/burst/effects filters on it - verified
-R69, re-verified R74: only docstring prose in effects.py:23 + ehp.py:71),
+R69, re-verified R74: no engine module reads the attribute; past the
+field and the data rows it appears only in docstring and comment prose),
 and ``collect_effects`` passes every registered entry through to
 ``total_physical_burst_damage`` regardless of the flag.
 
@@ -172,8 +173,8 @@ class RegistryPins(unittest.TestCase):
 
     def test_defensive_only_flag_retained_and_no_periodics(self) -> None:
         # defensive_only is documentation-only (no engine consumer filters
-        # on it - re-verified R74: effects.py:23 + ehp.py:71 are docstring
-        # prose only). It stays True: the entry still has no sustained-DPS
+        # on it - re-verified R74: no engine module reads the attribute).
+        # It stays True: the entry still has no sustained-DPS
         # proc, so compute_dps sees nothing from Goredrinker.
         eff = ITEM_EFFECTS[_GOREDRINKER_ARENA]
         self.assertTrue(eff.defensive_only)

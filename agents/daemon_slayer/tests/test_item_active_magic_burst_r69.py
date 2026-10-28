@@ -15,10 +15,11 @@ unmodeled: a long-CD active is not a sustained stream, there is no
 PeriodicProc, so nothing double-counts.
 
 ``defensive_only`` stays True on all three entries: the flag is
-documentation-only (defined _effects_types.py:687; described
-effects.py:23) - no engine consumer in rank/dps/burst/effects filters on
-it, and ``collect_effects`` (effects.py:72-83) passes every registered
-entry through to ``total_magic_burst_damage`` regardless of the flag.
+documentation-only (the ``ItemEffect.defensive_only`` field in
+_effects_types.py, described in the effects.py module docstring) - no
+engine consumer in rank/dps/burst/effects filters on it, and
+``collect_effects`` in effects.py passes every registered entry through
+to ``total_magic_burst_damage`` regardless of the flag.
 Batch-31/40/43 coverage tests pin defensive_only=True + no periodics for
 these exact ids; both stay true after R69.
 
@@ -170,7 +171,7 @@ class RegistryPins(unittest.TestCase):
 
     def test_defensive_only_flag_retained(self) -> None:
         # defensive_only is documentation-only (no engine consumer filters
-        # on it - collect_effects at effects.py:72-83 passes every entry to
+        # on it - effects.collect_effects passes every entry to
         # total_magic_burst_damage). It stays True: the entries still have
         # no sustained-DPS proc, and batch-31/40/43 coverage tests pin it.
         for iid in (_ROCKETBELT, _ROCKETBELT_ARENA, _EVERFROST_ARENA):
