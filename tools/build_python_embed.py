@@ -64,6 +64,9 @@ from pathlib import Path
 from typing import Callable, Optional
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
+# Script mode puts tools/ first on sys.path; the writers import core/.
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
 
 STAMP_NAME = "EMBED_STAMP.json"
 SITE_PACKAGES_REL = ("Lib", "site-packages")
@@ -152,9 +155,11 @@ def _utc_now() -> str:
 
 
 def _atomic_write_text(path: Path, text: str) -> None:
-    tmp = path.with_name(path.name + ".tmp")
-    tmp.write_text(text, encoding="utf-8", newline="\n")
-    tmp.replace(path)
+    # RM-258: per-writer scratch, fsync, bounded WinError 5 retry and no
+    # scratch left behind - the shared writer, not a hand-rolled swap. UTF-8
+    # bytes, so the LF the callers authored stays LF on Windows.
+    from core import polled_json
+    polled_json.atomic_write_bytes(path, text.encode("utf-8"))
 
 
 def site_packages(target: Path) -> Path:
@@ -181,8 +186,9 @@ def fetch_embed_zip(pin: EmbedPin, cache_dir: Path, *, opener: Optional[Callable
 
     `local_zip` is verified in place. Otherwise a cached copy in `cache_dir`
     is reused while its hash matches, else the pin's https URL is downloaded
-    through `opener(url, timeout=...)` (default urllib.request.urlopen) to a
-    temp file, verified, then moved into place. A mismatch keeps nothing.
+    through `opener(url, timeout=...)` (default urllib.request.urlopen) into
+    memory, verified, then written through core.polled_json. A mismatch keeps
+    nothing.
     """
     if local_zip is not None:
         local_zip = Path(local_zip)
@@ -201,30 +207,32 @@ def fetch_embed_zip(pin: EmbedPin, cache_dir: Path, *, opener: Optional[Callable
     if dest.is_file() and sha256_file(dest) == pin.sha256:
         return dest
     open_url = opener if opener is not None else urllib.request.urlopen
-    tmp = dest.with_name(dest.name + ".part")
-    h = hashlib.sha256()
-    size = 0
+    # Held in memory (bounded by EMBED_ZIP_MAX_BYTES) and hash-checked BEFORE
+    # a byte reaches the cache, so a mismatch or a cut download keeps nothing.
+    body = bytearray()
     try:
-        with open_url(pin.url, timeout=timeout) as resp, open(tmp, "wb") as out:
+        with open_url(pin.url, timeout=timeout) as resp:
             while True:
                 block = resp.read(_CHUNK)
                 if not block:
                     break
-                size += len(block)
-                if size > EMBED_ZIP_MAX_BYTES:
+                if len(body) + len(block) > EMBED_ZIP_MAX_BYTES:
                     raise EmbedError(f"embed download exceeded {EMBED_ZIP_MAX_BYTES} bytes")
-                h.update(block)
-                out.write(block)
-        if h.hexdigest() != pin.sha256:
-            raise EmbedError(f"downloaded {dest.name} sha256 {h.hexdigest()} != "
-                             f"pinned {pin.sha256}; refusing it")
-        tmp.replace(dest)
-    except EmbedError:
-        tmp.unlink(missing_ok=True)
-        raise
+                body.extend(block)
     except OSError as exc:
-        tmp.unlink(missing_ok=True)
         raise EmbedError(f"embed download failed: {exc}") from exc
+    got = hashlib.sha256(body).hexdigest()
+    if got != pin.sha256:
+        raise EmbedError(f"downloaded {dest.name} sha256 {got} != "
+                         f"pinned {pin.sha256}; refusing it")
+    # RM-258: the shared writer (per-writer scratch, fsync, bounded WinError 5
+    # retry, scratch removed on failure), not a fixed partial-download file
+    # plus a bare rename.
+    from core import polled_json
+    try:
+        polled_json.atomic_write_bytes(dest, bytes(body))
+    except OSError as exc:
+        raise EmbedError(f"could not write {dest.name} to the cache: {exc}") from exc
     return dest
 
 

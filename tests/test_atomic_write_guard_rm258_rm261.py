@@ -154,7 +154,6 @@ _RUNTIME_TOOLS = frozenset({
 # stops offending fails test_tools_baseline_is_exact until it is dropped.
 _TOOLS_UNCLASSIFIED = frozenset({
     "tools/build_portable.py",
-    "tools/build_python_embed.py",
     "tools/package_portable.py",
 })
 
@@ -885,7 +884,7 @@ def test_a_new_tools_writer_starts_in_scope():
     assert _in_scope("tools/ds_cross_eval/a_new_writer.py")
     assert not _in_scope("tools/daemon_slayer_cdragon_ratio_extract.py")
     assert not _in_scope("tools/tests/test_cdragon_ratio_extract.py")
-    assert not _in_scope("tools/build_python_embed.py")
+    assert not _in_scope("tools/package_portable.py")
 
 
 def test_tools_baseline_is_exact():
