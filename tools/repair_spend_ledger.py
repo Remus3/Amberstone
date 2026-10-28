@@ -46,15 +46,16 @@ USAGE
   python tools/repair_spend_ledger.py
   python tools/repair_spend_ledger.py --spend-dir <path> --json
 
-Writes are atomic (temp file + `os.replace`) because the dashboard and the
-cost-health watchdog poll these files.
+Writes go through `core.polled_json.atomic_write_bytes` (per-writer scratch,
+fsync, bounded rename retry, scratch removed on failure) because the dashboard
+and the cost-health watchdog poll these files (RM-258). The bytes are
+`json.dumps(doc, indent=1)` in UTF-8, LF only (RM-481).
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -98,9 +99,9 @@ def _micros(usd) -> int:
 
 
 def _atomic_write_json(target: Path, doc: dict) -> None:
-    tmp = target.with_suffix(target.suffix + ".tmp")
-    tmp.write_text(json.dumps(doc, indent=1), encoding="utf-8")
-    os.replace(tmp, target)
+    from core import polled_json
+    polled_json.atomic_write_bytes(
+        target, json.dumps(doc, indent=1).encode("utf-8"))
 
 
 def classify_bucket(purpose: str, bucket, usd_per_call: float) -> str:

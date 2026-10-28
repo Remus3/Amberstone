@@ -169,7 +169,6 @@ _TOOLS_UNCLASSIFIED = frozenset({
     "tools/package_portable.py",
     "tools/regen_ranged_marksman_builds_item213.py",
     "tools/repair_mojibake.py",
-    "tools/repair_spend_ledger.py",
     "tools/repin_subagent_cli.py",
     "tools/replay_build_order_validate.py",
     "tools/replay_laning_verdict_validate.py",
