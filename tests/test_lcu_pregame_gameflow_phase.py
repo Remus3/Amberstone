@@ -107,8 +107,9 @@ class _FakeResponse:
     def __exit__(self, *exc):
         return False
 
-    def read(self) -> bytes:
-        return self._body
+    def read(self, size: int = -1) -> bytes:
+        # The raw fetch reads a capped size (RM-1034), like HTTPResponse.
+        return self._body if size < 0 else self._body[:size]
 
 
 @contextlib.contextmanager

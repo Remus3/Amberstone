@@ -11,9 +11,8 @@ Covers:
 """
 from __future__ import annotations
 
-import io
-import json
 import logging
+import re
 import ssl
 import urllib.request
 from typing import Optional
@@ -80,21 +79,89 @@ def spells_for_role(role: Optional[str]) -> tuple[int, int]:
 
 
 def _as_int(value) -> int:
-    """Coerce an LCU numeric field to int, defaulting to 0.
+    """Coerce an LCU id field to a non-negative int, defaulting to 0.
 
     The champ-select session carries JSON `null` for ids the client has
     not filled in yet (pre-hover window), and `int(None)` raises. Junk
     strings coerce to 0 too - these readers document total contracts
     ("0 if none", "(0, 0)"), so nothing here may raise (RM-346).
+
+    s144 true-audit (RM-1034): `json.loads` accepts the bare token
+    `Infinity`, and `int(float("inf"))` raises OverflowError, which the
+    old `(TypeError, ValueError)` catch let through. Every field read
+    here is an id, so a JSON `true` (bool is an int subclass), a
+    non-integral float (3.9 used to truncate to champion 3) and a
+    negative number are not ids either: all of them read as 0.
     """
-    try:
-        return int(value)
-    except (TypeError, ValueError):
+    if isinstance(value, bool):
         return 0
+    if isinstance(value, float) and not value.is_integer():
+        return 0  # also NaN and +-inf: is_integer() is False for both
+    try:
+        n = int(value)
+    except (TypeError, ValueError, OverflowError):
+        return 0
+    return n if n > 0 else 0
+
+
+def _valid_id(value) -> Optional[int]:
+    """`value` when it is a positive int (not a bool), else None.
+
+    The guard for every caller-supplied id that is interpolated into an
+    LCU request path or sent as a write body (RM-1034). No coercion on
+    purpose: a string id is how `"7/../../lol-login/v1/session"` reaches
+    the client as a different route, so only a real int passes.
+    """
+    if isinstance(value, int) and not isinstance(value, bool) and value > 0:
+        return value
+    return None
+
+
+def _my_cell(session) -> Optional[int]:
+    """The session's `localPlayerCellId` as a cell index, or None.
+
+    A null / absent / non-int local cell is "no cell", never a value to
+    compare with `==`: the old `session.get("localPlayerCellId", -1)`
+    made a null local cell match every entry whose cell was ALSO null or
+    absent, and a JSON `true` cell matched cell 1 (RM-1034).
+    """
+    if not isinstance(session, dict):
+        return None
+    cell = session.get("localPlayerCellId")
+    if isinstance(cell, int) and not isinstance(cell, bool) and cell >= 0:
+        return cell
+    return None
+
+
+def _is_cell(value, my_cell: int) -> bool:
+    """True when an entry's cell field is exactly my (int) cell."""
+    return (isinstance(value, int) and not isinstance(value, bool)
+            and value == my_cell)
 
 
 # The live gameflow phase route (QA D5, s134: the former /phase path 404s).
 _GAMEFLOW_PHASE_PATH = "/lol-gameflow/v1/gameflow-phase"
+
+# Every gameflow phase the client names is one identifier word ("None",
+# "Lobby", "ChampSelect", "CheckedIntoTournament", ...). A body that is
+# not one is an error page, a truncated object or a bare JSON null, and
+# reporting it as a phase hands the caller a truthy value that claims to
+# be a live read - the RM-347 class again (RM-1034).
+_PHASE_RE = re.compile(r"[A-Za-z][A-Za-z0-9_]{0,63}")
+
+# Byte caps on the two raw reads (RM-1034). A phase is one short word;
+# a champion square icon is tens of KiB. Anything past the cap is not the
+# expected body and is never read whole into memory.
+_PHASE_MAX_BYTES = 4096
+_ICON_MAX_BYTES = 2 * 1024 * 1024
+
+
+def _read_capped(resp, cap: int) -> Optional[bytes]:
+    """Read at most `cap` bytes of `resp`, or None when the body is longer."""
+    body = resp.read(cap + 1)
+    if len(body) > cap:
+        return None
+    return body
 
 
 def _phase_or_none(raw: str) -> Optional[str]:
@@ -104,13 +171,16 @@ def _phase_or_none(raw: str) -> Optional[str]:
     arrives quoted (`"Lobby"`) on some client versions and unquoted on
     others. An EMPTY body is not a phase name - reporting it as one
     would hand a caller a value that claims to be a live read (RM-347).
+    Nor is a body that is not one identifier word, or the JSON `null`
+    (RM-1034). The string 'None' IS a real phase (idle) and passes.
+    Also the live predicate of lcu/snapshot_shape.py (RM-367).
     """
+    if not isinstance(raw, str):
+        return None
     phase = raw.strip().strip('"').strip()
-    return phase or None
-
-
-def _aram_mode(mode: str) -> bool:
-    return mode.upper() in ("ARAM", "KIWI", "ARAM_5V5", "ARAM_MAYHEM")
+    if not phase or phase == "null" or not _PHASE_RE.fullmatch(phase):
+        return None
+    return phase
 
 
 # -- LcuPregame mixin / helper -------------------------------------------------
@@ -129,11 +199,18 @@ class LcuPregame:
         Fetch champion square icon PNG from LCU local asset server.
         Returns raw PNG bytes or None.
         URL: https://{RC_GAME_HOST}:{port}/lol-game-data/assets/v1/champion-icons/{id}.png
+
+        None, without a fetch, for an id that is not a positive int, and
+        None for a body over _ICON_MAX_BYTES (RM-1034).
         """
         if not self._port or not self._auth:
             return None
+        cid = _valid_id(champion_id)
+        if cid is None:
+            _log.debug("get_champion_icon_bytes: refused id %r", champion_id)
+            return None
         from core.game_host import GAME_HOST
-        url = f"https://{GAME_HOST}:{self._port}/lol-game-data/assets/v1/champion-icons/{champion_id}.png"
+        url = f"https://{GAME_HOST}:{self._port}/lol-game-data/assets/v1/champion-icons/{cid}.png"
         try:
             req = urllib.request.Request(
                 url,
@@ -146,10 +223,14 @@ class LcuPregame:
             ctx.check_hostname = False
             ctx.verify_mode = ssl.CERT_NONE
             with urllib.request.urlopen(req, context=ctx, timeout=3) as resp:
-                return resp.read()
+                body = _read_capped(resp, _ICON_MAX_BYTES)
         except Exception as exc:  # noqa: BLE001
-            _log.debug("get_champion_icon_bytes(%d): %s", champion_id, exc)
+            _log.debug("get_champion_icon_bytes(%d): %s", cid, exc)
             return None
+        if body is None:
+            _log.debug("get_champion_icon_bytes(%d): body over %d bytes",
+                       cid, _ICON_MAX_BYTES)
+        return body
 
     # -- Session parsing -------------------------------------------------------
 
@@ -162,9 +243,12 @@ class LcuPregame:
         `dict.get(key, default)` yields the default only when the key is
         ABSENT, so a key present with a JSON `null` yields None and
         `for group in None` raises. Non-list groups and non-dict actions
-        are skipped rather than raising.
+        are skipped rather than raising. A non-dict session, or one with no
+        int local cell, has no pick action of mine (RM-1034).
         """
-        my_cell = session.get("localPlayerCellId", -1)
+        my_cell = _my_cell(session)
+        if my_cell is None:
+            return None
         groups = session.get("actions") or []
         if not isinstance(groups, list):
             return None
@@ -174,7 +258,7 @@ class LcuPregame:
             for action in group:
                 if not isinstance(action, dict):
                     continue
-                if (action.get("actorCellId") == my_cell
+                if (_is_cell(action.get("actorCellId"), my_cell)
                         and action.get("type") == "pick"
                         and not action.get("completed", False)):
                     return action
@@ -188,10 +272,22 @@ class LcuPregame:
         LCU sends exactly that in the pre-hover window of champ select.
         Non-dict entries are dropped so callers can `.get` freely.
         """
+        if not isinstance(session, dict):
+            return []
         team = session.get("myTeam") or []
         if not isinstance(team, list):
             return []
         return [p for p in team if isinstance(p, dict)]
+
+    def _my_team_entry(self, session: dict) -> Optional[dict]:
+        """My own myTeam entry, or None (no int local cell, no match)."""
+        my_cell = _my_cell(session)
+        if my_cell is None:
+            return None
+        for player in self._my_team_entries(session):
+            if _is_cell(player.get("cellId"), my_cell):
+                return player
+        return None
 
     def get_my_current_champion(self, session: dict) -> int:
         """Return my current championId (0 if none) from session.
@@ -200,11 +296,10 @@ class LcuPregame:
         rather than raising, and a null championId still falls through
         to championPickIntent (RM-346).
         """
-        my_cell = session.get("localPlayerCellId", -1)
-        for player in self._my_team_entries(session):
-            if player.get("cellId") == my_cell:
-                return (_as_int(player.get("championId"))
-                        or _as_int(player.get("championPickIntent")))
+        player = self._my_team_entry(session)
+        if player is not None:
+            return (_as_int(player.get("championId"))
+                    or _as_int(player.get("championPickIntent")))
         return 0
 
     def get_my_summoner_spells(self, session: dict) -> tuple[int, int]:
@@ -221,11 +316,10 @@ class LcuPregame:
         mixin, so the total contract still has to hold, but the defect
         this docstring describes was latent, not a live crash.
         """
-        my_cell = session.get("localPlayerCellId", -1)
-        for player in self._my_team_entries(session):
-            if player.get("cellId") == my_cell:
-                return (_as_int(player.get("spell1Id")),
-                        _as_int(player.get("spell2Id")))
+        player = self._my_team_entry(session)
+        if player is not None:
+            return (_as_int(player.get("spell1Id")),
+                    _as_int(player.get("spell2Id")))
         return (0, 0)
 
     def get_bench_champion_ids(self, session: dict) -> list[int]:
@@ -235,6 +329,8 @@ class LcuPregame:
         versions) and unparseable ids are skipped rather than raising
         (RM-346).
         """
+        if not isinstance(session, dict):
+            return []
         bench = session.get("benchChampions")
         if not isinstance(bench, list):
             return []
@@ -249,11 +345,19 @@ class LcuPregame:
         Select/lock a champion in the pick action.
         PATCH /lol-champ-select/v1/session/actions/{id}
         completed=True to lock in; False to just hover.
+
+        Both ids must be positive ints, else False with no request: the
+        action id is interpolated into the LCU path (RM-1034).
         """
+        aid, cid = _valid_id(action_id), _valid_id(champion_id)
+        if aid is None or cid is None:
+            _log.warning("pick_champion: refused action=%r champ=%r",
+                         action_id, champion_id)
+            return False
         result = self._request(
             "PATCH",
-            f"/lol-champ-select/v1/session/actions/{action_id}",
-            data={"championId": champion_id, "completed": completed},
+            f"/lol-champ-select/v1/session/actions/{aid}",
+            data={"championId": cid, "completed": completed},
         )
         if result is not None:
             _log.info("pick_champion: action=%d champ=%d completed=%s",
@@ -270,10 +374,17 @@ class LcuPregame:
         """
         Swap to bench champion - bypasses the 5-second client-side cooldown.
         POST /lol-champ-select/v1/session/bench/swap/{championId}
+
+        False with no request for an id that is not a positive int: it is
+        interpolated into the LCU path (RM-1034).
         """
+        cid = _valid_id(champion_id)
+        if cid is None:
+            _log.warning("bench_swap_fast: refused champ=%r", champion_id)
+            return False
         result = self._request(
             "POST",
-            f"/lol-champ-select/v1/session/bench/swap/{champion_id}",
+            f"/lol-champ-select/v1/session/bench/swap/{cid}",
         )
         if result is not None:
             _log.info("bench_swap_fast: champ=%d", champion_id)
@@ -307,22 +418,30 @@ class LcuPregame:
             If None, PATCH is sent unconditionally - preserves the
             pre-Phase-8 contract for callers that haven't been
             updated yet.
+
+        Both target ids must be positive ints, else False with no PATCH
+        (a junk target used to raise ValueError in the compare). Only a
+        2-item tuple / list of exact ids counts as a known current pair:
+        the string "47" used to read as (4, 7) and (4.9, 7.2) truncated
+        to it, both skipping a PATCH that was owed (RM-1034).
         """
-        if current_pair is not None:
-            try:
-                cur = (int(current_pair[0]), int(current_pair[1]))
-            except (ValueError, IndexError, TypeError):
-                cur = (0, 0)
-            if cur == (int(spell1_id), int(spell2_id)):
-                _log.debug(
-                    "set_summoner_spells: idempotent skip (%d + %d already set)",
-                    spell1_id, spell2_id,
-                )
-                return True
+        s1, s2 = _valid_id(spell1_id), _valid_id(spell2_id)
+        if s1 is None or s2 is None:
+            _log.warning("set_summoner_spells: refused %r + %r",
+                         spell1_id, spell2_id)
+            return False
+        if (isinstance(current_pair, (tuple, list)) and len(current_pair) == 2
+                and (_valid_id(current_pair[0]), _valid_id(current_pair[1]))
+                == (s1, s2)):
+            _log.debug(
+                "set_summoner_spells: idempotent skip (%d + %d already set)",
+                s1, s2,
+            )
+            return True
         result = self._request(
             "PATCH",
             "/lol-champ-select/v1/session/my-selection",
-            data={"spell1Id": spell1_id, "spell2Id": spell2_id},
+            data={"spell1Id": s1, "spell2Id": s2},
         )
         if result is not None:
             _log.info("set_summoner_spells: %d + %d", spell1_id, spell2_id)
@@ -384,8 +503,12 @@ class LcuPregame:
                 ctx.check_hostname = False
                 ctx.verify_mode = _ssl.CERT_NONE
                 with urllib.request.urlopen(req, context=ctx, timeout=2) as resp:
-                    raw = resp.read().decode()
-                    return _phase_or_none(raw)
+                    body = _read_capped(resp, _PHASE_MAX_BYTES)
+                if body is None:
+                    _log.debug("get_gameflow_phase: body over %d bytes",
+                               _PHASE_MAX_BYTES)
+                    return None
+                return _phase_or_none(body.decode())
         except Exception as exc:  # noqa: BLE001
             _log.debug("get_gameflow_phase: %s", exc)
             return None
