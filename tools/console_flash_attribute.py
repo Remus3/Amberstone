@@ -56,6 +56,10 @@ from pathlib import Path
 from typing import Dict, List, Optional, Sequence
 
 ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from core import polled_json  # noqa: E402
 
 #: A heartbeat interval longer than this proves nothing happened only in the
 #: sense that nothing was WATCHED. Three times the detector's 30 s cadence.
@@ -461,10 +465,10 @@ def render(report: Report) -> str:
 
 
 def _write_atomic(target: Path, text: str) -> None:
-    target.parent.mkdir(parents=True, exist_ok=True)
-    tmp = target.with_suffix(target.suffix + ".tmp")
-    tmp.write_text(text, encoding="ascii", errors="replace")
-    tmp.replace(target)
+    # RM-258: per-writer scratch, fsync, bounded rename retry, scratch removed
+    # on failure. Bytes, not write_text, so the report stays LF on Windows.
+    polled_json.atomic_write_bytes(
+        target, text.encode("ascii", errors="replace"))
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
