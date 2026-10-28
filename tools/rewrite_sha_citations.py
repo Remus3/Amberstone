@@ -43,6 +43,12 @@ import sys
 from collections.abc import Callable
 from pathlib import Path
 
+REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from core import polled_json  # noqa: E402
+
 ZERO_SHA = "0" * 40
 # 7 is git's historical default abbreviation; 40 is a full sha.
 # Boundary is ANY word character, not just hex (RM-501): with a hex-only
@@ -208,10 +214,10 @@ def main(argv: list[str] | None = None) -> int:
         if updated != original:
             changed_any = True
             if args.apply:
-                # Atomic write: overlays and other readers poll mid-write.
-                tmp = path.with_suffix(path.suffix + ".tmp")
-                tmp.write_text(updated, encoding="utf-8", newline="")
-                tmp.replace(path)
+                # Atomic write through the shared writer (fsync, WinError 5
+                # retry, no scratch left behind): readers poll mid-write.
+                # UTF-8 bytes verbatim, as write_text(newline="") wrote them.
+                polled_json.atomic_write_text(path, updated)
 
     print(f"\nTOTAL: remapped {totals['ok']}, dropped {totals['dropped']}, "
           f"unknown {totals['unknown']}, ambiguous {totals['ambiguous']}, "
