@@ -67,7 +67,7 @@ DOCUMENTED REJECTS - deliberately NOT seeded
   * ``Kassadin`` (``champions.json`` tags ``["Assassin", "Mage"]``) is
     ASSASSIN-primary, so he routes to ``ds.burst``, not to this tank route. That
     scorer consumes ``AbilityContext``, which ALREADY carries ``caster_max_mp``
-    and ``caster_bonus_mp`` derived at ``ability_dps.py:299-300``, so his R
+    and ``caster_bonus_mp`` derived in ``ability_dps.AbilityContext.from_build``, so his R
     mana term is already priced where he is actually scored. Wiring him here
     double-counts. His four blocks are additionally a textbook instance of the
     sub-component trap - "Bonus Damage Per Stack" 1.0 and "Maximum Bonus Damage"

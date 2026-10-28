@@ -86,7 +86,8 @@ _SEEDED = "Blitzcrank"
 
 # The two documented rejects, excluded by ARCHETYPE ROUTE. Both already receive
 # their mana term through AbilityContext.caster_max_mp / caster_bonus_mp
-# (ability_dps.py:299-300), so seeding either here would double-count.
+# (derived in ability_dps.AbilityContext.from_build), so seeding either here
+# would double-count.
 _REJECTS = {
     "Kassadin": "Assassin-primary (tags ['Assassin', 'Mage']) - routes to ds.burst, "
                 "whose AbilityContext already carries caster_max_mp",
@@ -540,7 +541,7 @@ class PoolGuardTests(unittest.TestCase):
 
 
 class BonusBasisTests(unittest.TestCase):
-    """The ``pct_base == "bonus"`` branch (``ehp.py:3603-3615``).
+    """The mana lane's ``pct_base == "bonus"`` branch (``ehp.rank_items_by_ehp``).
 
     No SEEDED entry reaches it - Blitzcrank is ``"total"`` - so without this
     class the branch ships with zero coverage and a future regression there
