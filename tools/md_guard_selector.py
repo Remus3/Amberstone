@@ -26,6 +26,13 @@ a segment-boundary suffix of a tracked `.md` path (`ORCHESTRATION_PLAN.md`,
 glob pattern that matches at least one tracked `.md` path (`**/*.md`, the shape
 the repo-wide ASCII-hygiene guards use).
 
+A `test_*.py` module is ALSO selected when its git-index enumeration can
+include a `.md` (RM-1107, `index_walk_reasons`): a `git ls-files` argv with
+no pathspec or a `.md`-reaching one, a `tests._repo_walk.tracked_relpaths`
+call, or an `iter_repo_files` / `repo_files` glob that matches a `.md`. Such a
+guard names no `.md` at all - `tests/test_text_line_endings.py` reads every
+tracked file - so the literal rule alone left it unwatched on a docs push.
+
 Two deliberate design choices, both scar-driven:
 
 1. **The universe comes from the PRODUCING side.** Tracked `.md` paths come out
@@ -154,8 +161,124 @@ def _hits(literal: str, md_suffixes, tracked_md) -> bool:
     return False
 
 
+def _md_pathspec(spec: str, tracked_md) -> bool:
+    """A `git ls-files` pathspec (or a basename glob) that can match a tracked
+    `.md`: `.`, a directory holding one, or a glob matching one."""
+    spec = _strip_dot_prefix(spec.replace("\\", "/"))
+    if spec in ("", "."):
+        return True
+    if any(ch in spec for ch in "*?["):
+        bare = spec.rsplit("/", 1)[-1]
+        return any(fnmatch.fnmatch(p, spec) or fnmatch.fnmatch(p.rsplit("/", 1)[-1], bare)
+                   for p in tracked_md)
+    prefix = spec.rstrip("/") + "/"
+    return any(p == spec or p.startswith(prefix) for p in tracked_md)
+
+
+def _module_constants(tree: ast.AST) -> dict:
+    """Top-level `NAME = "x"` / `NAME = ("a", "b")` bindings, so a pattern or
+    pathspec held in a module constant resolves like an inline literal."""
+    out = {}
+    for node in getattr(tree, "body", []):
+        if isinstance(node, ast.Assign) and len(node.targets) == 1 \
+                and isinstance(node.targets[0], ast.Name):
+            out[node.targets[0].id] = node.value
+    return out
+
+
+def _const_strings(node, consts, _depth=0):
+    """The string values an argument expression stands for, or None when they
+    cannot be read statically (the caller then assumes the wide reading)."""
+    if _depth > 3:
+        return None
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return [node.value]
+    if isinstance(node, ast.Name) and node.id in consts:
+        return _const_strings(consts[node.id], consts, _depth + 1)
+    if isinstance(node, ast.Starred):
+        return _const_strings(node.value, consts, _depth + 1)
+    if isinstance(node, (ast.Tuple, ast.List)):
+        values = []
+        for elt in node.elts:
+            got = _const_strings(elt, consts, _depth + 1)
+            if got is None:
+                return None
+            values.extend(got)
+        return values
+    return None
+
+
+def _ls_files_reaches_md(after, consts, tracked_md) -> bool:
+    """The argv elements after `ls-files`: no pathspec walks the whole index;
+    otherwise any pathspec that can match a `.md` (an unreadable one included)."""
+    specs = []
+    for node in after:
+        got = _const_strings(node, consts)
+        if got is None:
+            return True
+        specs.extend(s for s in got if not s.startswith("-"))
+    return not specs or any(_md_pathspec(s, tracked_md) for s in specs)
+
+
+_INDEX_LISTERS = frozenset({"tracked_relpaths"})
+_GLOB_WALKERS = frozenset({"iter_repo_files", "repo_files"})
+
+
+def _call_name(node: ast.Call) -> str:
+    func = node.func
+    if isinstance(func, ast.Name):
+        return func.id
+    if isinstance(func, ast.Attribute):
+        return func.attr
+    return ""
+
+
+def index_walk_reasons(tree: ast.AST, tracked_md) -> list:
+    """RM-1107: why this module's git-index enumeration can include a `.md`.
+
+    The rule reads the ENUMERATION, never the filter after it: RM-273's guard
+    names only `.xml` (an exemption) and still reads every tracked `.md`.
+    - an argv literal holding `"ls-files"` (passed anywhere, or bound to a
+      name), or a helper call `f("ls-files", ...)`, with no pathspec or a
+      pathspec that can match a `.md`;
+    - a call to `tests._repo_walk.tracked_relpaths` (the whole index);
+    - `iter_repo_files` / `repo_files` with a basename glob matching a `.md`
+      (their default is `*.py`, so a bare call does not select).
+    An argument that cannot be read statically takes the wide reading: a
+    false positive costs CI seconds, a false negative is this file's defect.
+    """
+    consts = _module_constants(tree)
+    reasons = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.List, ast.Tuple)):
+            elts = node.elts
+            for i, elt in enumerate(elts):
+                if isinstance(elt, ast.Constant) and elt.value == "ls-files":
+                    if _ls_files_reaches_md(elts[i + 1:], consts, tracked_md):
+                        reasons.add("<index walk: git ls-files>")
+                    break
+        elif isinstance(node, ast.Call):
+            name = _call_name(node)
+            args = node.args
+            if args and isinstance(args[0], ast.Constant) and args[0].value == "ls-files":
+                if _ls_files_reaches_md(args[1:], consts, tracked_md):
+                    reasons.add("<index walk: git ls-files>")
+            elif name in _INDEX_LISTERS:
+                reasons.add(f"<index walk: {name}>")
+            elif name in _GLOB_WALKERS:
+                pattern = args[1] if len(args) > 1 else next(
+                    (kw.value for kw in node.keywords if kw.arg == "patterns"), None)
+                if pattern is None:
+                    continue
+                globs = _const_strings(pattern, consts)
+                if globs is None or any(_md_pathspec(g, tracked_md) for g in globs):
+                    reasons.add(f"<index walk: {name}>")
+    return sorted(reasons)
+
+
 def select_md_guard_modules(repo_root: Path = REPO_ROOT, explain: bool = False):
-    """Repo-relative paths of every test module that references a tracked `.md`.
+    """Repo-relative paths of every test module that references a tracked `.md`,
+    or whose git-index enumeration can include one (RM-1107).
 
     With ``explain=True`` returns ``{path: [literals]}`` instead of a list.
     """
@@ -180,6 +303,10 @@ def select_md_guard_modules(repo_root: Path = REPO_ROOT, explain: bool = False):
             lit for lit in _string_literals(tree)
             if _is_path_like(lit) and _hits(lit, md_suffixes, tracked_md)
         })
+        # Only modules pytest collects: a helper that walks the index is
+        # reached through the test modules that call it.
+        if rel.rsplit("/", 1)[-1].startswith("test_"):
+            hits.extend(index_walk_reasons(tree, tracked_md))
         if hits:
             found[rel] = hits
 
