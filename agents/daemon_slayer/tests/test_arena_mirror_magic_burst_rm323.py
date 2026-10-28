@@ -4,8 +4,9 @@ Malignance 223118, Stormsurge 224646 and Luden's Echo 226655 each carry a
 populated ``periodics`` tuple and a ``note`` that asserts a concrete
 magnitude, but none of the three carried ``magic_burst_base`` /
 ``magic_burst_ap_ratio``. burst.py deliberately excludes periodic procs
-from the burst window (only the DSV6 ``assume_magic_burst`` seam at
-burst.py:1143-1163 reads those two fields), so magic_burst is the ONLY
+from the burst window (only the DSV6 ``assume_magic_burst`` seam in
+``burst.compute_burst_damage`` reads those two fields, through
+``effects.total_magic_burst_damage``), so magic_burst is the ONLY
 path the burst lane has for these rows - they scored 0.00 while their SR
 twins scored the full magnitude.
 
@@ -173,8 +174,8 @@ class ArenaBurstObservable(unittest.TestCase):
         self.assertAlmostEqual(delta_without, 0.0, places=4)
         self.assertGreater(delta_with, delta_without)
         # At target_mr=0 the MAGIC mitigation factor is 1.0 and mode_mult is
-        # 1.0 outside ARAM (burst.py:681-683), so the delta cannot fall below
-        # the note's 75.0 base floor.
+        # 1.0 outside ARAM (``mode_mult`` in burst.compute_burst_damage), so
+        # the delta cannot fall below the note's 75.0 base floor.
         self.assertGreaterEqual(delta_with, 75.0)
 
     def test_full_arena_build_total_rises(self) -> None:

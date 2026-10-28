@@ -3,11 +3,12 @@
 Spec: docs/specs/2026-07-13-ds-crit-burst-fix.md lever L2 + root-cause #2.
 
 Root cause: ``rank.py`` ``_safe_burst`` - the burst helper the fight-length-
-reweight knob calls for ``baseline_burst`` (rank.py:991) and every candidate
-``trial_burst`` (rank.py:1090) - invoked ``compute_burst_damage`` WITHOUT
+reweight knob calls for ``baseline_burst`` and every candidate
+``trial_burst`` in ``rank.rank_items`` - invoked ``compute_burst_damage`` WITHOUT
 ``assume_takedown``, so it defaulted to False. The Collector (6676) kill-state
 execute (5% target max HP TRUE damage) is gated on ``assume_takedown``
-(burst.py:1051), so it stayed 0.0 and NEVER surfaced through the fight-length
+(the execute block in ``burst.compute_burst_damage``), so it stayed 0.0 and
+NEVER surfaced through the fight-length
 burst term for a crit ADC.
 
 L2 passes ``assume_takedown=True`` at that ONE call site so the execute (and the
@@ -83,9 +84,9 @@ class SafeBurstArmsExecute(unittest.TestCase):
 
     def test_execute_magnitude_mirrors_rank_items_burst_gain(self) -> None:
         # rank_items computes burst_gain = _safe_burst(new_build) - _safe_burst(
-        # current_build) (rank.py:1090 / :991). The empty baseline carries no
-        # execute, so the Collector candidate's burst_gain rises by EXACTLY the
-        # 5% execute once L2 arms the seam.
+        # current_build) (``rank.rank_items``: ``trial_burst`` - ``baseline_burst``).
+        # The empty baseline carries no execute, so the Collector candidate's
+        # burst_gain rises by EXACTLY the 5% execute once L2 arms the seam.
         gain_with = _safe(self.snap, [_COLLECTOR]) - _safe(self.snap, [])
         gain_without = (
             _burst(self.snap, [_COLLECTOR], assume_takedown=False).total_burst_damage
