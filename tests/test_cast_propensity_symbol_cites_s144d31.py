@@ -68,7 +68,9 @@ def test_pattern_matches_the_rotted_shapes():
     ):
         assert _LINE_CITE.search(sample), sample
     for sample in (
-        "onhit_dps.py:494",
+        # Split so the repo-wide RM-1050 onhit_dps guard does not read the
+        # sample as a live line cite.
+        "onhit_dps" + ".py:494",
         "ability_dps.py",
         "ability_dps.compute_ability_dps",
         "SPEC:109-114",
