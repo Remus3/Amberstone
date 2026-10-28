@@ -51,6 +51,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from core import polled_json                                    # noqa: E402
 from core import replay_roster as rr                            # noqa: E402
 from core import riot_api                                       # noqa: E402
 from core.riot_retry import fetch_unthrottled                   # noqa: E402
@@ -179,9 +180,11 @@ def ingest_match(match_id: str, dest_dir: Path, retry_partial: bool = False) -> 
     if throttled:
         return "rate_limited"
     payload = {"match": match, "timeline": timeline}
-    tmp = dest.with_suffix(".tmp")
-    tmp.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
-    tmp.replace(dest)
+    # RM-258: per-writer scratch, fsync and the WinError 5 retry are
+    # polled_json's - RC-ReplayChainWatch counts and the miner reads this
+    # directory while the ingest runs.
+    polled_json.atomic_write_bytes(
+        dest, json.dumps(payload, separators=(",", ":")).encode("utf-8"))
     return "ok" if timeline else "partial"
 
 

@@ -129,6 +129,10 @@ _RUNTIME_TOOLS = frozenset({
     # the archive RC-RoflArchive writes every 15 minutes and replay readers
     # open, so the swap meets a held target.
     "tools/rofl_dedupe.py",
+    # tools/timeline_ingest.py: a detached, hours-long Match-V5 ingest whose
+    # <corpus>/timelines/ directory the 15-minute RC-ReplayChainWatch task
+    # counts and tools/mine_event_patterns.py reads while it runs.
+    "tools/timeline_ingest.py",
 })
 
 # RM-258 residual (s144): tools/ is IN scope by default. Out of scope are the
@@ -185,7 +189,6 @@ _TOOLS_UNCLASSIFIED = frozenset({
     "tools/strip_smart_quotes.py",
     "tools/strip_u2500.py",
     "tools/tft_cv_accuracy.py",
-    "tools/timeline_ingest.py",
     "tools/vision_atlas_validate.py",
     "tools/web_ascii_sweep.py",
 })
@@ -794,6 +797,7 @@ def test_scope_keeps_runtime_tools_and_drops_generators():
     assert _in_scope("tools/upstream_drift_check.py")
     assert _in_scope("tools/stop_claim_gate.py")
     assert _in_scope("tools/rofl_dedupe.py")
+    assert _in_scope("tools/timeline_ingest.py")
     assert not _in_scope("tools/daemon_slayer_extract.py")
     assert not _in_scope("ops/fleet_kit/fleet_headless.py")
     assert _in_scope("coach_integration/_coach.py")
