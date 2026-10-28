@@ -92,6 +92,8 @@ _log = logging.getLogger(__name__)
 # RM-616 source -> gt_board.source (schema.GT_SOURCES): both routes are LCU.
 GT_SOURCE_BY_RM616 = {tp.SOURCE_EOG: "lcu_eog", tp.SOURCE_HISTORY: "lcu_mh"}
 # Most trusted first, for final boards: EOG display data, then history.
+# tft/engine/milestones.py keeps an equal copy (the engine does not import
+# tft.rounds); tests/test_tft_gt_source_order_parity_s144q28.py pins the two.
 GT_SOURCE_ORDER = ("lcu_eog", "lcu_mh", "match_v1", "eog_file_final")
 PLACEMENT_SRC = "lcu"
 PLACEMENT_CONF = 1.0

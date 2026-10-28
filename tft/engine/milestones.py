@@ -76,6 +76,9 @@ OPENER_SHARE = 0.5
 STAR_TARGETS = (2, 3)
 SKIP_PHASES = frozenset({"carousel"})
 BOARD_ZONES = frozenset({"board", "bench"})
+# Most trusted first. An equal copy of tft/rounds/ground_truth.py's, kept here
+# because importing tft.rounds would load the store; the two are pinned by
+# tests/test_tft_gt_source_order_parity_s144q28.py.
 GT_SOURCE_ORDER = ("lcu_eog", "lcu_mh", "match_v1", "eog_file_final")
 _STORE_ERRORS = (OSError, ValueError, TypeError, KeyError, AttributeError, LookupError, sqlite3.Error)
 # The largest count the store can hold (SQLite INTEGER is int64); a bigger
