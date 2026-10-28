@@ -14,28 +14,34 @@ _supervisor_common.py, supervisor.py):
   instead of a bare ``NaN`` / ``Infinity`` token that breaks a strict
   dashboard ``JSON.parse`` (non-finite-token class).
 * ``spawn_ephemeral_llm`` redacts the subprocess stderr it embeds in the
-  ``EphemeralSpawnFailed`` message - that text becomes the task's
-  ``last_error`` -> the /api/task/<id> wire body, so an ANTHROPIC_API_KEY
-  echo in stderr must not leak there raw.
+  ``EphemeralSpawnFailed`` message. That text once became the task's
+  wire-visible last error; since RM-853 the dispatcher stores
+  ``TASK_FAILED_ERROR`` instead and the /api/task/<id> reply maps every
+  stored value through ``public_last_error``, but the dispatcher still logs
+  the message, so an ANTHROPIC_API_KEY echo in stderr must not reach it raw.
 * ``refresh_lock`` / ``acquire_lock`` write the supervisor lockfile
   atomically (tmp + os.replace) so the frozen _Phase3Watcher never reads a
   torn JSON mid-write (non-atomic-write hard rule).
 * ``Supervisor.stop`` toggles ``logging.raiseExceptions = False`` for the
   teardown drain (cycle-5 logging-after-close class) and restores it.
 
-Symbols grep-confirmed against the live tree before use:
-  _supervisor_http._QuietHandler                 (_supervisor_http.py:27)
-  _QuietHandler._send_json                       (_supervisor_http.py:118)
-  _QuietHandler._send_error                      (_supervisor_http.py:135)
-  _QuietHandler._handle_input                    (_supervisor_http.py:152)
-  _QuietHandler._handle_adaptation               (_supervisor_http.py:602)
-  _supervisor_ephemeral.spawn_ephemeral_llm      (_supervisor_ephemeral.py:102)
-  _supervisor_ephemeral.EphemeralSpawnFailed     (_supervisor_ephemeral.py:45)
-  _supervisor_common.refresh_lock                (_supervisor_common.py:359)
-  _supervisor_common._atomic_write_json          (_supervisor_common.py:226)
-  _supervisor_common._STARTED_AT                 (_supervisor_common.py:170)
-  agents.supervisor.Supervisor.stop              (supervisor.py:315)
-  agent7_context.input_parser.InputParser        (input_parser.py:91)
+Symbols grep-confirmed against the live tree before use (cited by symbol,
+not line; tests/test_p2w2_ds_h_symbol_cites_s144d33.py pins them):
+  _supervisor_http._QuietHandler
+  _QuietHandler._send_json
+  _QuietHandler._send_error
+  _QuietHandler._handle_input
+  _QuietHandler._handle_adaptation
+  _supervisor_http.TASK_FAILED_ERROR
+  _supervisor_http.public_last_error
+  _supervisor_ephemeral.spawn_ephemeral_llm
+  _supervisor_ephemeral.EphemeralSpawnFailed
+  _supervisor_common.refresh_lock
+  _supervisor_common.acquire_lock
+  _supervisor_common._atomic_write_json
+  _supervisor_common._STARTED_AT
+  agents.supervisor.Supervisor.stop
+  agent7_context.input_parser.InputParser
 """
 
 from __future__ import annotations
@@ -268,7 +274,7 @@ def test_ephemeral_failure_message_redacts_stderr(tmp_path: Path) -> None:
     #     the spawn chain's OWN names only (RM-801, tests/_module_view.py): eph
     #     and its facade, fleet_route (the conftest launch forwarder calls
     #     fleet_route.subprocess.run) and the kit (its git probe
-    #     ops/fleet_kit/fleet_headless.py:1613) - never the shared module
+    #     fleet_headless._git) - never the shared module
     #     another thread of the worker also calls.
     from ops.loop import fleet_route
     run = mock.MagicMock(return_value=_FakeProc())
@@ -285,7 +291,7 @@ def test_ephemeral_failure_message_redacts_stderr(tmp_path: Path) -> None:
 
     msg = str(ei.value)
     # NEW behavior: the secret is scrubbed from the exception text (which
-    # flows to Scheduler.fail(error=...) -> last_error -> the wire).
+    # the dispatcher logs; since RM-853 the wire gets TASK_FAILED_ERROR).
     assert secret not in msg
     assert "[REDACTED-SECRET]" in msg
 
