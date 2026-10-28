@@ -73,6 +73,10 @@ test("stackingZ: non-position creators paint at their z, 0 when it does not appl
     { isolation: "isolate" }, { contain: "paint" }, { contain: "strict" },
     { contain: "layout" }, { willChange: "transform" },
     { willChange: "scroll-position, opacity" },
+    // RM-1075: measured in headless Chromium 147.
+    { viewTransitionName: "u48" }, { contentVisibility: "auto" },
+    { contentVisibility: "hidden" }, { webkitBoxReflect: "below" },
+    { offsetPath: 'path("M0,0")' },
   ];
   for (const extra of made) {
     const cs = { position: "static", zIndex: "auto", ...extra };
@@ -86,10 +90,24 @@ test("stackingZ: non-position creators paint at their z, 0 when it does not appl
     { containerType: "size" }, { containerType: "inline-size" },
     { willChange: "auto" },
     { willChange: "scroll-position" },
+    { viewTransitionName: "none" }, { contentVisibility: "visible" },
+    { webkitBoxReflect: "none" }, { offsetPath: "none" },
   ];
   for (const extra of inert) {
     const cs = { position: "static", zIndex: "auto", ...extra };
     assert.strictEqual(stackingZ(cs, BLOCK), null, JSON.stringify(extra));
+  }
+});
+
+test("stackingZ: a display:contents element has no box and makes no context", () => {
+  for (const extra of [
+    { opacity: "0.5" }, { transform: "matrix(1, 0, 0, 1, 0, 0)" },
+    { position: "fixed" }, { isolation: "isolate" },
+    { position: "relative", zIndex: "9" },
+  ]) {
+    const cs = { display: "contents", position: "static", zIndex: "auto", ...extra };
+    assert.strictEqual(stackingZ(cs, BLOCK), null, JSON.stringify(extra));
+    assert.strictEqual(stackingZ({ ...cs, zIndex: "9" }, FLEX), null, JSON.stringify(extra));
   }
 });
 
@@ -127,6 +145,34 @@ test("compareStacking: a layer inside another layer's context paints over it", (
 
 test("compareStacking: the top layer ranks over any z-index", () => {
   assert.ok(compareStacking(s(1, [1, Infinity]), s(9, [9, 2147483647]), follows) > 0);
+});
+
+// RM-1075: top-layer entries carry their open stamp `seq`.
+const t = (node, seq) => ({ node, path: [seq === undefined
+  ? { el: node, z: Infinity } : { el: node, z: Infinity, seq }] });
+
+test("compareStacking: two top-layer layers go to the one opened last", () => {
+  // Tree order 1 < 2; 2 was opened first (seq 4), 1 second (seq 9).
+  assert.ok(compareStacking(t(1, 9), t(2, 4), follows) > 0);
+  assert.ok(compareStacking(t(2, 4), t(1, 9), follows) < 0);
+});
+
+test("compareStacking: a stamped top-layer layer beats an unstamped one", () => {
+  // The unstamped one was opened before the listener bound, so earlier.
+  assert.ok(compareStacking(t(1, 1), t(2), follows) > 0);
+  assert.ok(compareStacking(t(2), t(1, 1), follows) < 0);
+});
+
+test("compareStacking: two unstamped top-layer layers fall back to tree order", () => {
+  assert.ok(compareStacking(t(2), t(1), follows) > 0);
+  assert.ok(compareStacking(t(1), t(2), follows) < 0);
+});
+
+test("compareStacking: open stamps never outrank a z difference", () => {
+  // seq is only ever set on top-layer entries; a stray one below is inert.
+  const low = { node: 2, path: [{ el: 2, z: 10, seq: 99 }] };
+  const high = { node: 1, path: [{ el: 1, z: 20 }] };
+  assert.ok(compareStacking(high, low, follows) > 0);
 });
 
 test("pickTopmost: picks by stacking path, not by the deepest z-index", () => {

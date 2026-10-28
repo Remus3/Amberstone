@@ -554,13 +554,39 @@ _STACK_CASES = {
     "positioned-z-control": ("", _BOX + "z-index:10", False, 9999, 50, "sibling"),
     # Measured in headless Chromium 147: container-type creates no context.
     "container-type-control": ("", _BOX + "container-type:size", False, 9999, 50, "child"),
+    # RM-1075: four more creators Chromium 147 honours that the RM-1074
+    # rules missed (view-transition-name makes a context with no transition
+    # running; content-visibility:auto implies paint containment while the
+    # computed `contain` stays none), a display:contents element that has no
+    # box and so makes NO context whatever it carries, and a flex item whose
+    # parent is display:contents (the item belongs to the nearest box). An
+    # `outer` list nests its styles outermost first.
+    "view-transition-name-RED": ("", _BOX + "view-transition-name:u48", False, 9999, 50, "sibling"),
+    "content-visibility-auto-RED": ("", _BOX + "content-visibility:auto", False, 9999, 50, "sibling"),
+    "box-reflect-RED": ("", _BOX + "-webkit-box-reflect:below", False, 9999, 50, "sibling"),
+    "offset-path-RED": ("", _BOX + "offset-path:path('M0,0')", False, 9999, 50, "sibling"),
+    "contents-opacity-RED": ("", "display:contents;opacity:0.5", False, 9999, 50, "child"),
+    "contents-parent-flex-item-RED": (
+        [_BOX + "display:flex", "display:contents"], _ITEM, False, 1, 50, "child"),
+    "contents-parent-block-item-control": (
+        [_BOX, "display:contents"], _ITEM, False, 1, 50, "sibling"),
+    "mask-border-control": ("", _BOX + "mask-border-source:linear-gradient(red,red)",
+                            False, 9999, 50, "child"),
 }
 
 _BUILD_STACK = """
 async ([outer, wrap, popover, childZ, sibZ]) => {
   const m = await import('/js/lib/escape_layers.js');
+  const outers = Array.isArray(outer) ? outer : [outer];
   const o = document.createElement('div');
-  o.style.cssText = outer;
+  o.style.cssText = outers[0];
+  let host = o;
+  for (const css of outers.slice(1)) {
+    const d = document.createElement('div');
+    d.style.cssText = css;
+    host.appendChild(d);
+    host = d;
+  }
   const w = document.createElement('div');
   w.style.cssText = wrap;
   if (popover) w.setAttribute('popover', 'manual');
@@ -572,7 +598,7 @@ async ([outer, wrap, popover, childZ, sibZ]) => {
   sib.style.cssText = 'position:fixed;top:0;left:0;width:400px;height:400px;'
     + 'background:#321;z-index:' + sibZ;
   w.appendChild(c);
-  o.appendChild(w);
+  host.appendChild(w);
   document.body.appendChild(o);
   document.body.appendChild(sib);
   if (popover) w.showPopover();
@@ -613,6 +639,89 @@ def test_escape_ranks_layers_by_their_stacking_contexts(
         assert st == {winner: False, loser: True}, (
             f"{case}: one Escape should close only the {winner} painted on "
             f"top, got open={st}"
+        )
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors: {errors[:3]}"
+
+
+# RM-1075 ----------------------------------------------------------------
+# Two layers in the TOP LAYER (an open popover, a modal dialog) both paint
+# over every z-index, and between them the one opened LAST paints on top,
+# whatever their tree order. The RM-1074 cut ranked such a tie by tree
+# order, so opening the later-in-tree layer first and the earlier one second
+# made Escape close the one underneath. Each case builds `first` then
+# `second` in tree order, registers both, opens them in `opens` order and
+# checks the winner against Chromium's hit test before pressing Escape.
+_TOP = ("position:fixed;inset:auto;top:0;left:0;width:400px;height:400px;"
+        "margin:0;padding:0;border:0;max-width:none;max-height:none;")
+
+# id -> (first kind, second kind, open order, winner)
+_TOP_CASES = {
+    "popover-opened-second-RED": ("popover", "popover", ["second", "first"], "first"),
+    "popover-tree-order-control": ("popover", "popover", ["first", "second"], "second"),
+    "dialog-opened-over-popover-RED": ("dialog", "popover", ["second", "first"], "first"),
+    "dialog-opened-second-RED": ("dialog", "dialog", ["second", "first"], "first"),
+    "dialog-tree-order-control": ("dialog", "dialog", ["first", "second"], "second"),
+    # No popover-over-modal case: a popover outside an open modal dialog is
+    # inert, so the hit test (the oracle here) never reports it on top.
+}
+
+_BUILD_TOP = """
+async ([kinds, opens, css]) => {
+  const m = await import('/js/lib/escape_layers.js');
+  const els = {};
+  ['first', 'second'].forEach((key, i) => {
+    const el = document.createElement(kinds[i] === 'dialog' ? 'dialog' : 'div');
+    el.id = 'u48-' + key;
+    el.style.cssText = css + 'background:#' + (i ? '321' : '123');
+    if (kinds[i] === 'popover') el.setAttribute('popover', 'manual');
+    document.body.appendChild(el);
+    els[key] = el;
+    const dlg = kinds[i] === 'dialog';
+    m.registerEscapeLayer({
+      name: el.id, el: () => el,
+      isOpen: () => (dlg ? el.open : el.matches(':popover-open')),
+      close: () => (dlg ? el.close() : el.hidePopover()),
+    });
+  });
+  for (const key of opens) {
+    const el = els[key];
+    if (el.tagName === 'DIALOG') el.showModal(); else el.showPopover();
+  }
+  const hit = document.elementsFromPoint(200, 200)
+    .find((e) => e === els.first || e === els.second);
+  return hit ? hit.id.slice(4) : null;
+}
+"""
+
+_TOP_OPEN = """
+() => {
+  const st = (el) => (el.tagName === 'DIALOG' ? el.open : el.matches(':popover-open'));
+  return {
+    first: st(document.getElementById('u48-first')),
+    second: st(document.getElementById('u48-second')),
+  };
+}
+"""
+
+
+@pytest.mark.parametrize("case", sorted(_TOP_CASES))
+def test_escape_ranks_top_layer_ties_by_open_order(mock_server, pw_browser, case):
+    first, second, opens, winner = _TOP_CASES[case]
+    loser = "second" if winner == "first" else "first"
+    ctx, page, errors = _open_view(pw_browser, mock_server, VIEWPORTS[0], "home")
+    try:
+        on_top = page.evaluate(_BUILD_TOP, [[first, second], opens, _TOP])
+        assert on_top == winner, (
+            f"{case}: Chromium paints {on_top} on top, the case expects {winner}"
+        )
+        page.keyboard.press("Escape")
+        st = page.evaluate(_TOP_OPEN)
+        assert st == {winner: False, loser: True}, (
+            f"{case}: one Escape should close only the {winner} opened last, "
+            f"got open={st}"
         )
     finally:
         page.close()

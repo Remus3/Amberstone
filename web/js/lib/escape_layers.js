@@ -33,16 +33,33 @@
 // paints over every z-index and ranks above all of them.
 // Known approximations: a non-positioned leaf ranks with the z 0 positioned
 // ones, and a negative-z child is still ranked over its own context root.
+//
+// RM-1075: four more creators measured in Chromium 147 (view-transition-
+// name, content-visibility auto / hidden, -webkit-box-reflect, offset-path);
+// a display:contents element has no box and makes no context; a flex or
+// grid item's parent is its nearest ancestor that has a box. Two top-layer
+// layers paint in the order they were OPENED, not in tree order: a capture
+// beforetoggle listener (fired synchronously by showPopover and showModal)
+// stamps each open with a sequence number, a later stamp wins, a stamped
+// layer beats an unstamped one (opened before the listener was bound), and
+// two unstamped ones fall back to tree order.
 
 const _layers = [];
 let _bound = false;
+const _openSeq = new WeakMap();
+let _seq = 0;
 
 export function registerEscapeLayer(layer) {
   _layers.push(layer);
   if (!_bound && typeof document !== "undefined") {
     _bound = true;
     document.addEventListener("keydown", _onEscape, true);
+    document.addEventListener("beforetoggle", _onBeforeToggle, true);
   }
+}
+
+function _onBeforeToggle(e) {
+  if (e.newState === "open" && e.target) _openSeq.set(e.target, ++_seq);
 }
 
 // Pure: the z an element paints at inside its parent stacking context when
@@ -61,6 +78,7 @@ const _WILL_CHANGE = new Set([
 const _isSet = (v) => !!v && v !== "none";
 
 export function stackingZ(cs, parentCs) {
+  if (cs.display === "contents") return null;
   const pos = cs.position || "static";
   const item = !!parentCs && _GRID_FLEX.test(parentCs.display || "");
   const n = parseInt(cs.zIndex, 10);
@@ -78,14 +96,18 @@ export function stackingZ(cs, parentCs) {
     || (!!cs.mixBlendMode && cs.mixBlendMode !== "normal")
     || cs.isolation === "isolate"
     || /\b(layout|paint|strict|content)\b/.test(contain)
+    || cs.contentVisibility === "auto" || cs.contentVisibility === "hidden"
+    || _isSet(cs.viewTransitionName) || _isSet(cs.webkitBoxReflect)
+    || _isSet(cs.offsetPath)
     || String(cs.willChange || "").split(",").some((p) => _WILL_CHANGE.has(p.trim()))
   );
   return forms ? (z === null ? 0 : z) : null;
 }
 
 // Pure: paint-order comparison of two { path, node } entries, where path is
-// [{ el, z }] outermost first (see the header). Positive when `a` paints
-// over `b`. `follows(x, y)` is true when x comes after y in tree order.
+// [{ el, z, seq }] outermost first (see the header; `seq` is the open stamp
+// of a top-layer entry, absent elsewhere). Positive when `a` paints over
+// `b`. `follows(x, y)` is true when x comes after y in tree order.
 export function compareStacking(a, b, follows) {
   const n = Math.min(a.path.length, b.path.length);
   for (let i = 0; i < n; i++) {
@@ -93,6 +115,9 @@ export function compareStacking(a, b, follows) {
     const y = b.path[i];
     if (x.el === y.el) continue;
     if (x.z !== y.z) return x.z > y.z ? 1 : -1;
+    const xs = x.seq === undefined ? -1 : x.seq;
+    const ys = y.seq === undefined ? -1 : y.seq;
+    if (xs !== ys) return xs > ys ? 1 : -1;
     return follows(x.el, y.el) ? 1 : -1;
   }
   if (follows(a.node, b.node)) return 1;
@@ -116,16 +141,25 @@ function _inTopLayer(el) {
   return false;
 }
 
+// The computed style of the nearest ancestor that generates a box (a
+// display:contents ancestor is walked through), or null at the top.
+function _boxParentStyle(el) {
+  for (let p = el.parentElement; p; p = p.parentElement) {
+    const cs = getComputedStyle(p);
+    if (cs.display !== "contents") return cs;
+  }
+  return null;
+}
+
 function _stackPath(node) {
   if (!node) return [{ el: null, z: 0 }];
   const path = [];
   for (let a = node; a && a !== document.documentElement; a = a.parentElement) {
     if (_inTopLayer(a)) {
-      path.push({ el: a, z: Infinity });
+      path.push({ el: a, z: Infinity, seq: _openSeq.get(a) });
       break;
     }
-    const parent = a.parentElement;
-    const z = stackingZ(getComputedStyle(a), parent ? getComputedStyle(parent) : null);
+    const z = stackingZ(getComputedStyle(a), _boxParentStyle(a));
     if (z !== null) path.push({ el: a, z });
     else if (a === node) path.push({ el: a, z: 0 });
   }
