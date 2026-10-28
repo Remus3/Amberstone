@@ -733,12 +733,13 @@ def _crit_weighted_vamp_multiplier(
 
     WHY this seam exists: ``_vamp_heal_pool`` prices vamp off ``AD * AS *
     window``, the UNCRIT auto-attack throughput. An auto-attack actually lands
-    ``AD * (1 + crit * crit_damage_bonus)`` (the expression DS already ships at
-    dps.py:1283) and lifesteal heals off that crit-inflated hit, so a crit
-    carry's sustain is under-credited by the whole crit factor (measured 306.18
-    -> 547.30, x1.788, on a 5-item L16 Jinx). Crit is a WIELDER-side stat the
-    EHP scorer already fully resolves - ``stats["crit"]`` plus the item-effect
-    crit-chance lane (Yun Tal / Atma's) that dps.py:1083 folds in - so unlike an
+    ``AD * (1 + crit * crit_damage_bonus)`` (the expression DS already ships as
+    ``avg_attack_dmg`` in ``dps.compute_dps``) and lifesteal heals off that
+    crit-inflated hit, so a crit carry's sustain is under-credited by the whole
+    crit factor (measured 306.18 -> 547.30, x1.788, on a 5-item L16 Jinx). Crit
+    is a WIELDER-side stat the EHP scorer already fully resolves -
+    ``stats["crit"]`` plus the item-effect crit-chance lane (Yun Tal / Atma's)
+    that ``dps.compute_dps`` folds into ``crit_total`` - so unlike an
     enemy-state term there is nothing to assume here.
 
     WHY it is nonetheless DEFAULT-OFF and operator-gated: the pool's
@@ -752,10 +753,12 @@ def _crit_weighted_vamp_multiplier(
     pre-mitigation posture in either direction.
 
     No formula is invented here: the crit-chance stack (sum then clamp at 1.0,
-    honouring the engine's crit cap at engine.py:185) and the crit-damage bonus
-    (``DEFAULT_CRIT_BONUS`` plus ``total_crit_damage_bonus``) are lifted from
-    dps.py:1083 / dps.py:1283 verbatim so the two sides cannot drift. The dps
-    import is lazy + flag-gated so the OFF path pays no import cost.
+    honouring the engine's crit cap in ``engine._combine_items``) and the
+    crit-damage bonus (``DEFAULT_CRIT_BONUS`` plus ``total_crit_damage_bonus``)
+    are the ``crit_total`` fold and the ``crit_bonus`` binding of
+    ``dps.compute_dps``, plus non-negative clamps, so the two sides cannot
+    drift. The dps import is lazy + flag-gated so the OFF path pays no import
+    cost.
     """
     if not assume_crit_weighted_vamp:
         return 1.0
@@ -1603,9 +1606,10 @@ def compute_ehp(
     # (lifesteal / spellvamp / omnivamp). The pool prices vamp off the UNCRIT
     # ``AD * AS * window`` throughput even though the wielder's crit is already
     # resolved in ``stats``; an auto-attack lands ``AD * (1 + crit *
-    # crit_damage_bonus)`` (dps.py:1283) and lifesteal heals off that hit, so a
-    # crit carry's sustain is under-credited by the whole crit factor (x1.788
-    # measured on a 5-item L16 Jinx; a zero-crit build is an exact no-op).
+    # crit_damage_bonus)`` (``avg_attack_dmg`` in ``dps.compute_dps``) and
+    # lifesteal heals off that hit, so a crit carry's sustain is
+    # under-credited by the whole crit factor (x1.788 measured on a 5-item L16
+    # Jinx; a zero-crit build is an exact no-op).
     # Byte-identical OFF (``_crit_weighted_vamp_multiplier`` returns 1.0).
     # Live default-ON flip is operator-gated BECAUSE arming it widens the
     # deliberate pre-mitigation over-credit on crit builds - see
@@ -1617,8 +1621,9 @@ def compute_ehp(
     # Meraki 16.14.1 states benefit from life steal at 100% effectiveness and
     # that ``_vamp_heal_pool`` (AA throughput only) cannot see. ``targets_in_
     # rotation`` is the enemy count the AoE lands on, the same field name the
-    # DPS side's ``CallContext`` carries (dps.py:40) so the two halves of the
-    # engine name the quantity identically. Passing ``targets_in_rotation``
+    # DPS side's ``CallContext`` carries (``CallContext.targets_in_rotation``,
+    # in ``_effects_types``) so the two halves of the engine name the
+    # quantity identically. Passing ``targets_in_rotation``
     # ALONE does NOT arm the credit: the Cleave term is already 0.0 at 1.0, but
     # the Crescent term is not, so the FLAG is what guarantees byte-identity.
     # Live default-ON flip is operator-gated - see ``_cleave_vamp_damage`` for
