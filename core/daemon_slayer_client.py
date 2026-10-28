@@ -122,6 +122,32 @@ def _post_json(path: str, body: dict, timeout: float = DEFAULT_TIMEOUT) -> Optio
         return None
 
 
+def _ranked_rows(data: dict, cls, path: str) -> Optional[list]:
+    """Parse ``data["ranked"]`` into ``cls`` rows for the seven rank clients.
+
+    A ``ranked`` that is present but not a list is a malformed body and
+    returns ``None``, like a failed POST (RM-1002, the RM-1001 rule one
+    level down). A row that is not an object, or whose numeric field does not
+    coerce, is DROPPED rather than defaulted to 0.0: a zero-delta row would
+    pose as a real candidate, and an all-garbage ranking would trip
+    ``_kitless_all_zero``, whose non-empty guard an empty list does not.
+    """
+    ranked = data.get("ranked") or []
+    if not isinstance(ranked, list):
+        logger.debug("daemon_slayer %s non-list ranked: %s", path, type(ranked).__name__)
+        return None
+    rows = []
+    for r in ranked:
+        if not isinstance(r, dict):
+            logger.debug("daemon_slayer %s dropped non-object row: %s", path, type(r).__name__)
+            continue
+        try:
+            rows.append(cls.from_dict(r))
+        except (TypeError, ValueError, OverflowError) as e:
+            logger.debug("daemon_slayer %s dropped malformed row: %s", path, e)
+    return rows
+
+
 def is_engine_up(timeout: float = 0.25) -> bool:
     url = f"http://{DEFAULT_HOST}:{DEFAULT_PORT}/health"
     try:
@@ -775,8 +801,7 @@ def rank_for(
     data = _post_json("/rank", body, timeout=timeout)
     if data is None:
         return None
-    ranked = data.get("ranked") or []
-    return [RankedItem.from_dict(r) for r in ranked]
+    return _ranked_rows(data, RankedItem, "/rank")
 
 
 @dataclass(frozen=True)
@@ -1045,8 +1070,7 @@ def rank_tank_for(
     data = _post_json("/rank-tank", body, timeout=timeout)
     if data is None:
         return None
-    ranked = data.get("ranked") or []
-    return [TankRankedItem.from_dict(r) for r in ranked]
+    return _ranked_rows(data, TankRankedItem, "/rank-tank")
 
 
 def ehp_for(
@@ -1607,8 +1631,7 @@ def rank_bruiser_for(
     data = _post_json("/rank-bruiser", body, timeout=timeout)
     if data is None:
         return None
-    ranked = data.get("ranked") or []
-    return [BruiserRankedItem.from_dict(r) for r in ranked]
+    return _ranked_rows(data, BruiserRankedItem, "/rank-bruiser")
 
 
 @dataclass(frozen=True)
@@ -1747,8 +1770,7 @@ def rank_mage_for(
     data = _post_json("/rank-mage", body, timeout=timeout)
     if data is None:
         return None
-    ranked = data.get("ranked") or []
-    return [MageRankedItem.from_dict(r) for r in ranked]
+    return _ranked_rows(data, MageRankedItem, "/rank-mage")
 
 
 def ability_dps_for(
@@ -1979,8 +2001,7 @@ def rank_assassin_for(
     data = _post_json("/rank-assassin", body, timeout=timeout)
     if data is None:
         return None
-    ranked = data.get("ranked") or []
-    return [AssassinRankedItem.from_dict(r) for r in ranked]
+    return _ranked_rows(data, AssassinRankedItem, "/rank-assassin")
 
 
 def burst_for(
@@ -2326,8 +2347,7 @@ def rank_enchanter_for(
     data = _post_json("/rank-enchanter", body, timeout=timeout)
     if data is None:
         return None
-    ranked = data.get("ranked") or []
-    return [EnchanterRankedItem.from_dict(r) for r in ranked]
+    return _ranked_rows(data, EnchanterRankedItem, "/rank-enchanter")
 
 
 def hps_for(
@@ -2488,8 +2508,7 @@ def rank_onhit_for(
     data = _post_json("/rank-onhit", body, timeout=timeout)
     if data is None:
         return None
-    ranked = data.get("ranked") or []
-    return [OnhitRankedItem.from_dict(r) for r in ranked]
+    return _ranked_rows(data, OnhitRankedItem, "/rank-onhit")
 
 
 # Ranged-carry off-class gate (item 208 carry, 2026-06-10). The engine's
@@ -3000,7 +3019,9 @@ def rank_for_primary_archetype(
     The dispatcher returns ``None`` whenever the scorer POST fails: ``_post_json``
     collapses a timeout, a refused connection, any HTTP error status, a
     non-JSON body and a body that is not a JSON object into one ``None``
-    (RM-1000, RM-1001). Callers test ``out is None``.
+    (RM-1000, RM-1001), and a ``ranked`` that is not a list is ``None``
+    too, while a single malformed row is dropped (RM-1002). Callers test
+    ``out is None``.
     Every archetype has its
     own scorer (Phase 6 s181), so ``fell_back`` is True only for a kit-less
     champion: the mage / assassin / enchanter branches fall through to
