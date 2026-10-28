@@ -1350,7 +1350,22 @@ _WEB = _REPO_ROOT / "web"
 # d7d6b987... value EXACTLY. That path is the whole change. No glyph
 # change: the added lines carry 0 non-ASCII bytes. If another slice
 # re-captures in parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "fd1764e185c9d85194384633ffc616f9b36dcd2aeae98d93e1f35b3532ce92cb"
+# superseded by the RM-1076 re-capture below: "fd1764e185c9d85194384633ffc616f9b36dcd2aeae98d93e1f35b3532ce92cb"
+#
+# RE-CAPTURED 2026-10-28 at RM-1076 (s144 uiux cycle 48, provisional
+# until the merger lands it and maps the id). One change rides it: a
+# comment block in the Escape dispatcher (web/js/lib/escape_layers.js)
+# naming the three assumptions behind the open-order rule (beforetoggle
+# fires for showModal, beforetoggle is not composed, fullscreen is not
+# detected as top layer). Comment-only, no behaviour change; the digest
+# moves because the newline ending each added // line is a live byte
+# (live_text keeps everything outside the comment spans). Ordinary
+# case, no tokeniser change. ATTRIBUTED BY SUBSTITUTION: swapping that one
+# file back to its lane-tip d61245feb blob reproduces the superseded
+# fd1764e1... value EXACTLY. That path is the whole change. No glyph
+# change: the added lines carry 0 non-ASCII bytes. If another slice
+# re-captures in parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "2c4794d9b4fbc31f0edb9b8fead4a02a3f57d749dc4dd1bf5e41c21f91139d9d"
 
 
 def _web_sources() -> list[Path]:

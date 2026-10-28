@@ -43,6 +43,23 @@
 // stamps each open with a sequence number, a later stamp wins, a stamped
 // layer beats an unstamped one (opened before the listener was bound), and
 // two unstamped ones fall back to tree order.
+//
+// RM-1076: the open-order rule rests on three assumptions.
+// 1. beforetoggle fires for showModal as well as showPopover. Measured in
+//    Chromium 147 (the dialog-opened-second-RED case in
+//    tests/snapshot_panels/test_escape_one_action.py). An engine that fired
+//    it for popovers only would leave every modal unstamped, so a stamped
+//    popover opened BEFORE a modal would outrank it and Escape would close
+//    the inert popover underneath instead of the modal.
+// 2. beforetoggle is not composed: a popover or dialog opened inside a
+//    shadow root never reaches the document capture listener, so it stays
+//    unstamped and ranks by tree order (and _stackPath's parentElement walk
+//    stops at its shadow root anyway). No layer here lives in a shadow root.
+// 3. Fullscreen is not detected as top layer. The page only ever
+//    fullscreens the root (main.js requestFullscreen on documentElement),
+//    which _stackPath never walks, so a :fullscreen check would rank
+//    nothing. A layer inside a fullscreened non-root element would also
+//    need a fullscreenchange stamp to order it against open popovers.
 
 const _layers = [];
 let _bound = false;
