@@ -203,6 +203,26 @@ def test_main_reads_a_local_source_without_network(tmp_path, monkeypatch):
     assert json.loads(out.read_bytes())["_content_version"] is None
 
 
+@pytest.mark.parametrize("meta, expected", [
+    ({"version": "16.21.7+meta"}, "16.21.7+meta"),
+    ({"version": 16.21}, None),
+    (["16.21"], None),
+    (b"not json", None),
+])
+def test_main_local_source_reads_a_content_metadata_file_beside_it(tmp_path, monkeypatch,
+                                                                   meta, expected):
+    """RM-1094: a --source payload takes its `_content_version` from a
+    content-metadata.json in its own directory; a malformed one stays None."""
+    monkeypatch.setattr(fct, "_http_get", lambda url, **_kw: pytest.fail("network used"))
+    src = tmp_path / "en_us.json"
+    src.write_bytes(json.dumps(FIXTURE).encode("utf-8"))
+    raw = meta if isinstance(meta, bytes) else json.dumps(meta).encode("ascii")
+    (tmp_path / "content-metadata.json").write_bytes(raw)
+    out = tmp_path / "x.json"
+    assert fct.main(["--set", "18", "--source", str(src), "--out", str(out)]) == 0
+    assert json.loads(out.read_bytes())["_content_version"] == expected
+
+
 def test_default_out_path_is_the_set_file():
     assert fct.default_out(18) == REPO_ROOT / "data" / "meta" / "tft_set18_cdragon.json"
 

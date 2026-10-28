@@ -18,6 +18,9 @@ guessed; `_placeholders` records the total and resolved count per kind.
     python scripts/fetch_cdragon_tft.py --set 17 --branch pbe
     python scripts/fetch_cdragon_tft.py --set 18 --source <local en_us.json>
 
+A local --source takes `_content_version` from a content-metadata.json in its
+own directory when one is there, else None (RM-1094).
+
 The extract carries the key shapes the TFT lane already reads out of
 data/meta/tft_set17_meta.json (champions / unit_costs / unit_traits /
 all_traits) so tft/tft_set.py can read a roster off either file.
@@ -364,13 +367,27 @@ def write_atomic(path: Path, obj: dict) -> None:
     tmp.replace(path)
 
 
+def local_content_version(source: Path) -> str | None:
+    """The `version` of a content-metadata.json beside a local en_us.json, or
+    None when there is none or it is not a JSON object with a string version."""
+    meta_path = Path(source).parent / "content-metadata.json"
+    if not meta_path.is_file():
+        return None
+    try:
+        meta = json.loads(meta_path.read_bytes().decode("utf-8"))
+    except ValueError:
+        return None
+    version = meta.get("version") if isinstance(meta, dict) else None
+    return version if isinstance(version, str) else None
+
+
 def fetch_set(set_number: int, *, branch: str = "latest", out: Path | None = None,
               source: Path | None = None) -> Path:
     if branch not in BRANCHES:
         raise ValueError(f"branch must be one of {BRANCHES}, got {branch!r}")
     if source is not None:
         raw = json.loads(Path(source).read_bytes().decode("utf-8"))
-        version = None
+        version = local_content_version(source)
     else:
         raw = json.loads(_http_get(tft_url(branch)).decode("utf-8"))
         try:

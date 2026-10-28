@@ -287,6 +287,80 @@ def test_cli_with_local_sources_writes_ascii_lf_json_and_no_network(tmp_path, mo
     d = json.loads(data)
     assert d["units"]["DA_18_Hecarim"]["stats"]["initialMana"] == {"old": 30, "new": 50}
     assert d["_old"]["directory"] == "16.20"
+    # RM-1094: no flag and no content-metadata.json beside a source = None.
+    assert d["_old"]["content_version"] is None
+    assert d["_new"]["content_version"] is None
+
+
+def _sources(tmp_path):
+    old, new = _pair()
+    (tmp_path / "a").mkdir()
+    (tmp_path / "b").mkdir()
+    return (_write(tmp_path / "a" / "en_us.json", old),
+            _write(tmp_path / "b" / "en_us.json", new))
+
+
+def test_cli_version_flags_reach_the_header_for_local_sources(tmp_path, monkeypatch):
+    """RM-1094: --old-version / --new-version state the content version of a
+    local --old-source / --new-source payload."""
+    monkeypatch.setattr(fct, "_http_get", lambda *a, **k: pytest.fail("network used"))
+    a, b = _sources(tmp_path)
+    out = tmp_path / "d.json"
+    assert tpd.main(["16.20", "16.21", "--old-source", str(a), "--new-source", str(b),
+                     "--old-version", "16.20.1+x", "--new-version", "16.21.2+y",
+                     "--out", str(out)]) == 0
+    d = json.loads(out.read_bytes())
+    assert d["_old"] == {"directory": "16.20", "content_version": "16.20.1+x"}
+    assert d["_new"] == {"directory": "16.21", "content_version": "16.21.2+y"}
+
+
+def test_cli_reads_a_content_metadata_file_beside_a_local_source(tmp_path, monkeypatch):
+    """RM-1094: with no flag, a content-metadata.json in the source's own
+    directory (the shape load_payload caches) supplies the version; a flag
+    wins over it; the side without one stays None."""
+    monkeypatch.setattr(fct, "_http_get", lambda *a, **k: pytest.fail("network used"))
+    a, b = _sources(tmp_path)
+    _write(a.parent / "content-metadata.json", {"version": "16.20.7+meta"})
+    out = tmp_path / "d.json"
+    assert tpd.main(["16.20", "16.21", "--old-source", str(a), "--new-source", str(b),
+                     "--out", str(out)]) == 0
+    d = json.loads(out.read_bytes())
+    assert d["_old"]["content_version"] == "16.20.7+meta"
+    assert d["_new"]["content_version"] is None
+    assert tpd.main(["16.20", "16.21", "--old-source", str(a), "--new-source", str(b),
+                     "--old-version", "16.20.8+flag", "--out", str(out)]) == 0
+    assert json.loads(out.read_bytes())["_old"]["content_version"] == "16.20.8+flag"
+
+
+@pytest.mark.parametrize("version", ["", " ", "16.21\u2013x", "a b", "x\n", "v" * 129])
+def test_cli_refuses_a_version_that_is_not_printable_ascii(tmp_path, monkeypatch, version):
+    monkeypatch.setattr(fct, "_http_get", lambda *a, **k: pytest.fail("network used"))
+    a, b = _sources(tmp_path)
+    out = tmp_path / "d.json"
+    assert tpd.main(["16.20", "16.21", "--old-source", str(a), "--new-source", str(b),
+                     "--new-version", version, "--out", str(out)]) == 1
+    assert not out.exists()
+
+
+def test_cli_refuses_a_bad_version_before_the_other_side_is_fetched(tmp_path, monkeypatch):
+    monkeypatch.setattr(fct, "_http_get", lambda *a, **k: pytest.fail("network used"))
+    _, b = _sources(tmp_path)
+    out = tmp_path / "d.json"
+    assert tpd.main(["16.20", "16.21", "--new-source", str(b), "--new-version", "a b",
+                     "--cache-dir", str(tmp_path / "cache"), "--out", str(out)]) == 1
+    assert not out.exists() and not (tmp_path / "cache").exists()
+
+
+def test_cli_refuses_a_version_flag_without_its_local_source(tmp_path, monkeypatch, capsys):
+    """A fetched or cached directory carries its own content-metadata.json; a
+    flag would only be able to mislabel it, so it is refused before a fetch."""
+    monkeypatch.setattr(fct, "_http_get", lambda *a, **k: pytest.fail("network used"))
+    a, _ = _sources(tmp_path)
+    out = tmp_path / "d.json"
+    assert tpd.main(["16.20", "16.21", "--old-source", str(a), "--new-version", "16.21.1",
+                     "--cache-dir", str(tmp_path / "cache"), "--out", str(out)]) == 1
+    assert "--new-version" in capsys.readouterr().err
+    assert not out.exists()
 
 
 def test_cli_fetches_through_the_fetcher_and_caches_numbered_directories_only(tmp_path, monkeypatch):

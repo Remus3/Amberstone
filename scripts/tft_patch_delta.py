@@ -11,6 +11,7 @@ the output says so in `ability_values` rather than reporting "no change".
     python scripts/tft_patch_delta.py 16.20 16.21
     python scripts/tft_patch_delta.py latest pbe --mutator TFTSet18
     python scripts/tft_patch_delta.py 16.20 16.21 --old-source a.json --new-source b.json
+    python scripts/tft_patch_delta.py 16.20 16.21 --old-source a.json --old-version 16.20.1
 
 A directory is `latest`, `pbe` or a numbered patch directory (`16.21`);
 anything else is refused before any fetch or path is built. Reads go through
@@ -20,7 +21,11 @@ moving branch is re-read every run. The delta goes to the gitignored
 data/tft/patch_delta/, never to tracked data/meta/ (the tree tracks reduced
 extracts only). Values are the payload's own, verbatim (float32 noise such as
 0.8500000238418579 kept); hashed trait keys are passed through verbatim, never
-renamed or guessed. Display use is pre-game or post-game only (RM-892).
+renamed or guessed. A local --old-source / --new-source payload takes its
+content version from --old-version / --new-version, else from a
+content-metadata.json in the source's own directory (the shape the cache
+keeps), else None; a version flag without its source is refused, because a
+fetched or cached directory carries its own metadata. Display use is pre-game or post-game only (RM-892).
 
 Data terms: CommunityDragon, credited in NOTICE ("CommunityDragon (CDragon)");
 no third-party stat or patch-note site.
@@ -48,6 +53,8 @@ DEFAULT_CACHE = ROOT / "data" / "tft" / "cdragon_raw"
 _PATCH_DIR_RE = re.compile(r"[0-9]{1,2}\.[0-9]{1,2}")
 # A mutator becomes an output file-name segment, so it is held to this.
 _MUTATOR_RE = re.compile(r"[A-Za-z0-9_]{1,64}")
+# A stated content version: printable ASCII, no space, bounded.
+_VERSION_RE = re.compile(r"[!-~]{1,128}")
 _NOTE = ("Client-file delta between two CommunityDragon payloads, not patch "
          "notes: it lists what the game files changed (unit stats, costs and "
          "traits, trait breakpoints, augment and item effects and text), "
@@ -68,6 +75,12 @@ def check_mutator(mutator) -> str:
     if isinstance(mutator, str) and _MUTATOR_RE.fullmatch(mutator):
         return mutator
     raise ValueError(f"mutator must match {_MUTATOR_RE.pattern}, got {mutator!r}")
+
+
+def check_version(version) -> str:
+    if isinstance(version, str) and _VERSION_RE.fullmatch(version):
+        return version
+    raise ValueError(f"content version must match {_VERSION_RE.pattern}, got {version!r}")
 
 
 def patch_url(directory) -> str:
@@ -312,6 +325,16 @@ def load_payload(directory: str, *, cache_dir: Path = DEFAULT_CACHE) -> tuple:
     return json.loads(raw_bytes.decode("utf-8")), _version(meta_bytes)
 
 
+def load_source(source: Path, version=None) -> tuple:
+    """(raw payload, content version) for a local en_us.json: the stated
+    version, else a content-metadata.json beside it, else None."""
+    source = Path(source)
+    raw = json.loads(source.read_bytes().decode("utf-8"))
+    if version is not None:
+        return raw, check_version(version)
+    return raw, fct.local_content_version(source)
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("old", help="latest, pbe or a patch directory such as 16.20")
@@ -323,14 +346,25 @@ def main(argv=None) -> int:
                     help="read a local en_us.json for OLD instead of the network")
     ap.add_argument("--new-source", type=Path, default=None,
                     help="read a local en_us.json for NEW instead of the network")
+    ap.add_argument("--old-version", default=None,
+                    help="content version of --old-source (default: its content-metadata.json)")
+    ap.add_argument("--new-version", default=None,
+                    help="content version of --new-source (default: its content-metadata.json)")
     args = ap.parse_args(argv)
     try:
         old, new = check_directory(args.old), check_directory(args.new)
         mutator = check_mutator(args.mutator)
+        sides = (("old", old, args.old_source, args.old_version),
+                 ("new", new, args.new_source, args.new_version))
+        for side, _, source, version in sides:
+            if version is not None:
+                check_version(version)
+                if source is None:
+                    raise ValueError(f"--{side}-version needs --{side}-source")
         loaded = []
-        for directory, source in ((old, args.old_source), (new, args.new_source)):
+        for _, directory, source, version in sides:
             if source is not None:
-                loaded.append((json.loads(Path(source).read_bytes().decode("utf-8")), None))
+                loaded.append(load_source(source, version))
             else:
                 loaded.append(load_payload(directory, cache_dir=args.cache_dir))
         delta = diff_set(loaded[0][0], loaded[1][0], mutator, old_label=old, new_label=new,
