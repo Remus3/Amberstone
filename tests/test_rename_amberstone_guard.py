@@ -101,6 +101,51 @@ class Tier0IsClean(unittest.TestCase):
         self.assertIn("Amberstone", _read("web/index.html"))
 
 
+# RM-730 (a): header and prose lines that named the old product. Clean in
+# every spelling, case-insensitively (the row's acceptance is a git grep -i).
+_OLD_NAME_RE = re.compile(r"riot[ _-]?commander", re.IGNORECASE)
+TIER1_HEADER_FILES = (
+    "ruff.toml",
+    "requirements.in",
+    ".githooks/commit-msg",
+    ".githooks/pre-commit",
+    "tools/DEV_WORKFLOW.md",
+    "docs/MISSION_CONTROL_PLAN.md",
+)
+# ops/install_startup.bat keeps the startup-shortcut file names: they match
+# shortcuts already installed on a machine, and its cleanup globs must still
+# find and delete them. Only those tokens may carry the old name.
+_STARTUP_BAT = "ops/install_startup.bat"
+_KEPT_SHORTCUT_RE = re.compile(r"RiotCommander(?:Watcher\.lnk|\*\.(?:lnk|bat))")
+
+
+class Tier1HeaderLinesAreClean(unittest.TestCase):
+    """RM-730 (a): the old name is gone from header, echo and prose lines."""
+
+    def test_header_files_have_no_old_product_name(self) -> None:
+        for rel in TIER1_HEADER_FILES:
+            with self.subTest(file=rel):
+                hits = [f"{n}: {ln}" for n, ln in
+                        enumerate(_read(rel).splitlines(), 1)
+                        if _OLD_NAME_RE.search(ln)]
+                self.assertEqual(hits, [], f"{rel} still names the old product")
+
+    def test_startup_installer_keeps_only_shortcut_names(self) -> None:
+        stripped = 0
+        leftover = []
+        for n, ln in enumerate(_read(_STARTUP_BAT).splitlines(), 1):
+            rest, k = _KEPT_SHORTCUT_RE.subn("", ln)
+            stripped += k
+            if _OLD_NAME_RE.search(rest):
+                leftover.append(f"{n}: {ln}")
+        self.assertEqual(leftover, [],
+                         f"{_STARTUP_BAT} names the old product outside a "
+                         "shortcut file name")
+        # The exemption must still be load-bearing: if the shortcut names are
+        # ever renamed, delete it rather than leave it as a blanket pass.
+        self.assertGreater(stripped, 0, "the shortcut-name exemption is inert")
+
+
 class NominativeReferencesSurvive(unittest.TestCase):
     """THE IMPORTANT HALF. A blind replace would silently kill these."""
 

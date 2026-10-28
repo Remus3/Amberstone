@@ -1,4 +1,4 @@
-# ruff.toml - Riot Commander
+# ruff.toml - Amberstone
 # Conservative config: catches real errors without churn
 # py39-compatible (project targets Python 3.9+)
 

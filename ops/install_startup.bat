@@ -4,7 +4,7 @@
 :: on login - hidden, no window. Run this ONCE.
 
 echo ========================================
-echo  Riot Commander - Startup Installer
+echo  Amberstone - Startup Installer
 echo ========================================
 echo.
 
@@ -28,14 +28,14 @@ echo oShell.Run "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -Fil
 :: a literal, so a command split over lines ended at its first line (RM-826).
 :: The paths reach PowerShell as environment variables, never pasted into
 :: its source, so a quote or an apostrophe in a path cannot break it.
-"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -Command "$q = [char]34; $d = $env:SCRIPT_DIR; $s = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $env:STARTUP 'RiotCommanderWatcher.lnk')); $s.TargetPath = 'wscript.exe'; $s.Arguments = '/nologo ' + $q + $d + 'rc_watcher_launch.vbs' + $q; $s.WorkingDirectory = $d; $s.Description = 'Riot Commander League Watcher'; $s.WindowStyle = 7; $s.Save()"
+"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -Command "$q = [char]34; $d = $env:SCRIPT_DIR; $s = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $env:STARTUP 'RiotCommanderWatcher.lnk')); $s.TargetPath = 'wscript.exe'; $s.Arguments = '/nologo ' + $q + $d + 'rc_watcher_launch.vbs' + $q; $s.WorkingDirectory = $d; $s.Description = 'Amberstone League Watcher'; $s.WindowStyle = 7; $s.Save()"
 
 echo.
 if exist "%STARTUP%\RiotCommanderWatcher.lnk" (
     echo [OK] Startup entry created:
     echo      %STARTUP%\RiotCommanderWatcher.lnk
     echo.
-    echo Riot Commander will now auto-start when League opens,
+    echo Amberstone will now auto-start when League opens,
     echo and auto-stop when League closes.
     echo.
     echo To start immediately without rebooting, run:

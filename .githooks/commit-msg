@@ -1,5 +1,5 @@
 #!/bin/sh
-# Riot Commander commit-msg hook.
+# Amberstone commit-msg hook.
 #
 # Install per-clone with:
 #   python scripts/install_hooks.py        (sets core.hooksPath for you)

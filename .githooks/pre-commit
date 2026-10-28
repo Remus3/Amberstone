@@ -1,5 +1,5 @@
 #!/bin/sh
-# Riot Commander pre-commit hook.
+# Amberstone pre-commit hook.
 #
 # Install per-clone with:
 #   python scripts/install_hooks.py        (sets core.hooksPath for you)

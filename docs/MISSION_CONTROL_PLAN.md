@@ -158,7 +158,7 @@ capacity is a MACHINE question and not a per-repo one:
 
 | Repo | Concurrent lanes | Notes |
 |---|---|---|
-| Riot Commander | **2** | next up: true-audit loop + research loop |
+| Amberstone (RC) | **2** | next up: true-audit loop + research loop |
 | Sibling-B (`C:\Sibling-B`) | 1 | reserved, its own control plane |
 | Sibling-E (`C:\Sibling-E`) | 1 | reserved, lane port in progress |
 

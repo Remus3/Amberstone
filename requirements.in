@@ -1,4 +1,4 @@
-# Runtime dependencies of Riot Commander - the HUMAN-EDITED source of
+# Runtime dependencies of Amberstone - the HUMAN-EDITED source of
 # requirements.txt. Exact `==` pins of what RC's own tracked source imports,
 # no hashes (tests/test_requirements_currency_rm515.py reads this file).
 #

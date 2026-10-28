@@ -1,5 +1,5 @@
 # DEV_WORKFLOW.md (updated -- Step 5.1)
-# Riot Commander -- Local Developer/Operator Workflow
+# Amberstone -- Local Developer/Operator Workflow
 
 ---
 
@@ -180,8 +180,8 @@ Packaging readiness is now also reported by:
     python tools/package_portable.py --rebuild-staging
     tools\package_portable.cmd
 
-  Output: dist/RiotCommander-portable-<YYYYMMDD>.zip
-  ZIP root: RiotCommander-portable/  (single top-level folder)
+  Output: dist/Amberstone-portable-<YYYYMMDD>.zip
+  ZIP root: Amberstone-portable/  (single top-level folder)
 
   Produce installer staging directory (Phase 5 Step 3):
     python tools/build_installer.py
@@ -189,7 +189,7 @@ Packaging readiness is now also reported by:
 
   Output: dist/installer_staging/
     setup.bat                        -- guided extract + first-time setup
-    RiotCommander-portable-*.zip     -- validated portable archive
+    Amberstone-portable-*.zip        -- validated portable archive
     INSTALL_README.md                -- operator install guide
     INSTALL_MANIFEST.json            -- machine-readable metadata
 
