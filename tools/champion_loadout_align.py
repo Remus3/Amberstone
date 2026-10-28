@@ -29,8 +29,10 @@ Per-mode policy (operator-decided):
             inserted from _DEFAULT_BOOTS_BY_ARCHETYPE.
   * Arena : dedupe in-place. No boots (Arena has no shop boots).
 
-Architecture mirrors tools/champion_loadout_handcurate.py: per-slice
-patch files, merged via tools/champion_loadout_handcurate_merge.py.
+Architecture mirrors the item-166 hand-curate tool: per-slice patch
+files, merged by tools/champion_loadout_handcurate_merge.py. Both of
+those were quarantined in RC2 P7.3 (2026-06-20) and are no longer
+tracked; recover the merge tool from git history to apply a patch.
 """
 from __future__ import annotations
 
@@ -359,7 +361,7 @@ def main(argv: list[str]) -> int:
                      / f"champion_loadouts_align_patch_{args.slice}.json")
     patch = build_patch(names)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    with out_path.open("w", encoding="utf-8") as f:
+    with out_path.open("w", encoding="utf-8", newline="\n") as f:
         json.dump(patch, f, indent=2, ensure_ascii=True)
         f.write("\n")
     n = len(patch["champions"])

@@ -66,6 +66,10 @@ SWEPT_WRITERS = (
     "tools/hotfix_thin_aram_pollution_item276.py",
     "tools/hotfix_zaahen_loadout_item277.py",
     "tools/regen_ranged_marksman_builds_item213.py",
+    # RM-481 residual (s144): the align patch slice defaults to
+    # data/champion_loadouts_align_patch_<slice>.json, which is neither
+    # tracked nor gitignored, so it would be committed as written.
+    "tools/champion_loadout_align.py",
 )
 
 _PAYLOAD = json.dumps({"a": 1, "b": [1, 2], "c": {"d": None}}, indent=2) + "\n"
