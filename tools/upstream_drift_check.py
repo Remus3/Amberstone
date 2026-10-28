@@ -61,7 +61,6 @@ import argparse
 import hashlib
 import json
 import logging
-import os
 import subprocess
 import sys
 import time
@@ -408,11 +407,22 @@ def load_sentinel() -> dict:
     return base
 
 
+def _atomic_write_bytes(path: Path, data: bytes) -> None:
+    """RM-258: route every durable write through core.polled_json (per-writer
+    scratch, fsync, the WinError 5 retry, scratch removed on failure). The
+    scheduled task runs this file as a script, so the repo root may not be on
+    sys.path yet. Raises on failure, like the bare rename it replaces."""
+    root = str(ROOT)
+    if root not in sys.path:
+        sys.path.insert(0, root)
+    from core.polled_json import atomic_write_bytes
+
+    atomic_write_bytes(path, data)
+
+
 def _atomic_write_sentinel(obj: dict) -> None:
-    SENTINEL_PATH.parent.mkdir(parents=True, exist_ok=True)
-    tmp = SENTINEL_PATH.with_suffix(".json.tmp")
-    tmp.write_bytes((json.dumps(obj, indent=2) + "\n").encode("utf-8"))
-    os.replace(tmp, SENTINEL_PATH)
+    _atomic_write_bytes(SENTINEL_PATH,
+                        (json.dumps(obj, indent=2) + "\n").encode("utf-8"))
 
 
 # RM-514: the ALERT CHANNEL. The scheduled task runs under pythonw.exe with no
@@ -440,10 +450,7 @@ def load_alerts(path: Path | None = None) -> list[dict]:
 
 def _write_alerts(alerts: list[dict], path: Path | None = None) -> None:
     path = path or _alerts_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(".json.tmp")
-    tmp.write_bytes((json.dumps(alerts, indent=2) + "\n").encode("ascii"))
-    os.replace(tmp, path)
+    _atomic_write_bytes(path, (json.dumps(alerts, indent=2) + "\n").encode("ascii"))
 
 
 def record_alert(fields, path: Path | None = None) -> dict:

@@ -111,6 +111,10 @@ _RUNTIME_TOOLS = frozenset({
     # --status and /api/moon-sync-status while the poller rewrites them,
     # and poller_seen.json is read back on every poll.
     "tools/moon_sync_poller.py",
+    # RC-UpstreamDriftCheck (a daily scheduled task): the sentinel is read
+    # back on every run, and the drift alerts are read by tools/rc_facts.py
+    # at session start while the task may be rewriting them (RM-514).
+    "tools/upstream_drift_check.py",
 })
 
 # RM-258 residual (s144): tools/ is IN scope by default. Out of scope are the
@@ -186,7 +190,6 @@ _TOOLS_UNCLASSIFIED = frozenset({
     "tools/timeline_ingest.py",
     "tools/truth_gate.py",
     "tools/unresolved_token_scan.py",
-    "tools/upstream_drift_check.py",
     "tools/vision_atlas_validate.py",
     "tools/web_ascii_sweep.py",
 })
@@ -703,6 +706,7 @@ def test_scope_keeps_runtime_tools_and_drops_generators():
     assert _in_scope("tools/inbox_responder_runner.py")
     assert _in_scope("tools/phase_watcher.py")
     assert _in_scope("tools/moon_sync_poller.py")
+    assert _in_scope("tools/upstream_drift_check.py")
     assert not _in_scope("tools/daemon_slayer_extract.py")
     assert not _in_scope("ops/fleet_kit/fleet_headless.py")
     assert _in_scope("coach_integration/_coach.py")

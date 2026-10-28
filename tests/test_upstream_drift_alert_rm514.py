@@ -71,3 +71,52 @@ def test_check_only_records_nothing(iso):
     _run("16.18.1")
     assert M.main(["--check-only", "--patch", "16.19.1"]) == 1
     assert M.load_alerts() == []
+
+
+def test_sentinel_and_alerts_route_through_polled_json(iso, monkeypatch):
+    """RM-258: both durable writers go through core.polled_json, the one
+    implementation with a per-writer scratch, fsync and the WinError 5 retry.
+    rc_facts reads the alerts at session start while the scheduled task may be
+    rewriting them, so a bare destination-derived `.json.tmp` rename is a torn
+    or failed read waiting to happen."""
+    import core.polled_json as pj
+
+    real = pj._write_then_replace
+    written = []
+
+    def spy(path, data):
+        written.append((path.name, data))
+        real(path, data)
+
+    monkeypatch.setattr(pj, "_write_then_replace", spy)
+    _run("16.18.1")
+    _run("16.19.1")
+    names = [n for n, _ in written]
+    assert "upstream_drift.json" in names
+    assert M.ALERTS_NAME in names
+    for name, data in written:
+        # Same bytes as before the conversion: LF only, one trailing newline.
+        assert data.endswith(b"\n") and not data.endswith(b"\n\n"), name
+        assert b"\r" not in data, name
+    last = dict(written)                 # the newest write of each file
+    for name, data in last.items():
+        assert (iso / name).read_bytes() == data, name
+    assert sorted(p.name for p in iso.iterdir()) == sorted(
+        {"upstream_drift.json", M.ALERTS_NAME})
+
+
+def test_a_failed_alert_write_leaves_no_scratch_and_no_alert(iso, monkeypatch):
+    """The rename fails for good: the old alerts file stands, the scratch is
+    removed, and the error still reaches the caller (RM-514: the sentinel
+    must not advance past a drift it could not record)."""
+    import core.polled_json as pj
+
+    _run("16.18.1")
+
+    def deny(tmp, dst):
+        raise PermissionError(5, "Access is denied")
+
+    monkeypatch.setattr(pj, "_replace_with_retry", deny)
+    assert _run("16.19.1") == 2
+    assert not (iso / M.ALERTS_NAME).exists()
+    assert sorted(p.name for p in iso.iterdir()) == ["upstream_drift.json"]
