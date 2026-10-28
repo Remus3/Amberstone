@@ -83,6 +83,10 @@ DASHES: tuple[str, ...] = tuple(sorted(
 # Cheap byte prefilter: every form's UTF-8 encoding.
 _DASH_BYTES = tuple(d.encode("utf-8") for d in DASHES)
 ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from core import polled_json  # noqa: E402 - needs ROOT on sys.path first
 
 # git-tracked enumeration already excludes everything gitignored
 # (.pyc, ops/runtime state, web/data/ddragon mirror, logs if ignored,
@@ -155,7 +159,6 @@ def main() -> int:
     files_changed = 0
     skipped_binary = 0
 
-    import os
     for p in _tracked_files():
         if _skip(p):
             continue
@@ -178,9 +181,7 @@ def main() -> int:
         by_ext[p.suffix.lower() or "<none>"] += n
         per_file.append((n, str(p.relative_to(ROOT))))
         if args.apply:
-            tmp = p.with_suffix(p.suffix + ".emtmp")
-            tmp.write_text(new, encoding="utf-8", newline="")
-            os.replace(tmp, p)
+            polled_json.atomic_write_bytes(p, new.encode("utf-8"))
 
     mode = "APPLIED" if args.apply else "DRY-RUN (no writes)"
     print(f"=== strip_em_dashes (em+en) {mode} ===")
