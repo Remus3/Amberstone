@@ -3,12 +3,13 @@
 This is the heal-side twin of an ``ItemEffect.periodics`` entry. A handful of
 items deal periodic damage AND convert a multiple of that damage back into
 health for the wielder. The package already models the DAMAGE half of exactly
-such a proc (Unending Despair's Anguish, a ``PeriodicProc`` at
-``_effects_data.py:2040-2047`` for SR 2502 and ``:3711-3716`` for Arena 222502)
-but had NO carrier anywhere for the heal half - ``_effects_data.py:2050``
-dismisses it as an "ally self-heal component utility-only", which is wrong on
-both counts: it is a SELF heal, and a 2.5x multiplier per champion hit is not
-utility. This module fills that gap.
+such a proc (Unending Despair's Anguish, a ``PeriodicProc`` on
+``ITEM_EFFECTS["2502"]`` for SR and ``ITEM_EFFECTS["222502"]`` for Arena in
+``_effects_data.py``) but had NO carrier anywhere for the heal half - the 2502
+note originally dismissed it as an "ally self-heal component utility-only"
+(quoted in the RM-103 filing), which is wrong on both counts: it is a SELF
+heal, and a 2.5x multiplier per champion hit is not utility. Both notes now
+point here instead. This module fills that gap.
 
 SOURCE MAGNITUDE (vendored feed, re-derived - not inherited from the filing):
 ``data/daemon_slayer/16.14.1/items_meraki.json`` item 2502, passive "Anguish"
@@ -54,17 +55,19 @@ text rather than assumed. Pinned by ``tests/test_r144_mirror_slice_c.py``.
 
 THE ONE ASSUMPTION IN THIS LANE: ``_ASSUMED_TARGET_MR_FOR_PROC_HEAL``.
 The heal is 250% of POST-mitigation damage, but the EHP consumer
-(``ehp._collect_heals`` -> ``ItemHeal.resolve_magnitude``,
-``_effects_types.py:457-464``) takes only base_ad / bonus_hp / bonus_ad /
+(``ehp._collect_heals`` -> ``ItemHeal.resolve_magnitude`` in
+``_effects_types.py``) takes only base_ad / bonus_hp / bonus_ad /
 missing_hp / is_ranged - it has no victim-resist input at all, and ``ehp.py``
-carries ZERO executable references to ``target_mr`` (its only mention, at
-``ehp.py:188``, is prose describing the DPS-side helpers). Crediting the raw
-0.075 would therefore silently price the heal as if every victim had 0 MR,
+carries ZERO executable references to ``target_mr`` (its only mention, in the
+``_effective_resist_after_pen`` docstring, is prose describing the DPS-side
+helpers). Crediting the raw 0.075 would therefore silently price the heal as
+if every victim had 0 MR,
 over-crediting it by 60% at a typical target. Rather than impute a live value
 that the EHP lane cannot supply, this module names the assumption, seeds it at
 the sweep-standard TANKY target's MR of 60.0 (the ``100 / 60 / 2500 / 1200``
 armor / MR / HP / bonus-HP profile used as the standard probe target - see
-``tests/test_ad_axis_ability_damage_rm39.py:30`` and the 1.223.0 CHANGELOG
+``_TARGET_KW`` in
+``agents/daemon_slayer/tests/test_ad_axis_ability_damage_rm39.py`` and the 1.223.0 CHANGELOG
 entry's golden-diff target pair), pins it with a test, and exposes it as an
 optional per-call override so no caller inherits it silently.
 
@@ -75,8 +78,9 @@ At the seed, the effective coefficient is::
 CONSERVATIVE ACTIVITY SEEDS. ``_PROC_HEAL_TRIGGERS_PER_FIGHT`` and
 ``_PROC_HEAL_CHAMPIONS_IN_RANGE`` are both seeded at 1.0 - the most
 conservative setting available and the exact setting the RM-103 filing's own
-counterfactual was measured at (ROADMAP.md:268-270: "1 champ in range, 1
-trigger per fight window"). Both are identity multipliers at that seed, so they
+counterfactual was measured at (the RM-103 row, now in
+docs/ROADMAP_HISTORY.md: "1 champ in range, 1 trigger per fight window"). Both
+are identity multipliers at that seed, so they
 add NO credit beyond a single proc on a single champion; a 4s proc cadence in a
 6s fight window and a 650-unit AoE around a frontline tank would both support
 higher numbers, and deliberately are not claimed. Both are per-call
@@ -125,7 +129,7 @@ def _magic_mitigation_factor(target_mr: float) -> float:
 
     Positive resist: ``100 / (100 + mr)``. Negative resist (shred):
     ``2 - 100 / (100 - mr)``. Inlined rather than imported from
-    ``ehp._armor_factor`` (``ehp.py:147-157``) because ``ehp`` is this module's
+    ``ehp._armor_factor`` because ``ehp`` is this module's
     CONSUMER - importing back into it would be circular. The two must stay in
     agreement; ``TargetMrOverrideTests`` pins the negative-resist branch.
     """
@@ -149,8 +153,8 @@ def item_proc_heal_hp(
     False, no registered item is equipped, or any input drives the product to
     zero. The caller folds a positive return into ``heal_item_total`` BEFORE
     ``heal_amp_mult`` (Anguish's heal is an ordinary heal and IS amplified by
-    Spirit Visage in game), matching the ``rune_heal_hp`` precedent at
-    ``ehp.py:1534``.
+    Spirit Visage in game), matching the ``rune_heal_hp`` precedent in the
+    ``heal_total`` sum of ``ehp.compute_ehp``.
 
     UNIQUE-PASSIVE DEDUP: Anguish is flagged ``"unique": true`` in the Meraki
     feed, so the heal is credited exactly ONCE no matter how many registered
