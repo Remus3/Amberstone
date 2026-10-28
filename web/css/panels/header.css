@@ -624,8 +624,13 @@ footer .prefs-chip:hover { color: var(--text); }
 .view-section-btn:hover, .view-tab:hover {
   background: #1c1c2a; color: var(--text); border-color: var(--clock);
 }
+/* RM-1083: --info text on the --info-soft fill measured a hair DIMMER
+ * than the unselected --text-dim labels (luminance 0.395 vs 0.398 arcane,
+ * 0.411 vs 0.423 terminal). The selected History scope now takes --text;
+ * the --info fill, border and weight stay the cue. Guard:
+ * tests/snapshot_panels/test_tab_bars_selected_state.py. */
 .view-tab.active {
-  background: var(--info-soft); color: var(--info);
+  background: var(--info-soft); color: var(--text);
   border-color: var(--info); font-weight: 700;
 }
 

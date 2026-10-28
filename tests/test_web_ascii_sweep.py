@@ -1365,7 +1365,24 @@ _WEB = _REPO_ROOT / "web"
 # fd1764e1... value EXACTLY. That path is the whole change. No glyph
 # change: the added lines carry 0 non-ASCII bytes. If another slice
 # re-captures in parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "2c4794d9b4fbc31f0edb9b8fead4a02a3f57d749dc4dd1bf5e41c21f91139d9d"
+# superseded by the RM-1083 re-capture below: "2c4794d9b4fbc31f0edb9b8fead4a02a3f57d749dc4dd1bf5e41c21f91139d9d"
+#
+# RE-CAPTURED 2026-10-28 at RM-1083 (s144 uiux cycle 55, provisional
+# until the merger lands it and maps the id). THREE changes ride it.
+# (1) RM-1081 (web/js/panels/panel_visibility.js, tab keyboard) and
+# (2) RM-1082 (web/css/panels/panel_visibility.css, selected tab) moved
+# the digest without re-capturing it, so this test was already red at the
+# lane tip 6e72fe75a (241b920e...). (3) RM-1083 restyles the selected
+# state of seven tab bars (web/css/panels/champ_benchmarks.css,
+# duration_winrate.css, op_score.css, perf_curve.css, home.css,
+# header.css). Ordinary case, no tokeniser change. ATTRIBUTED BY
+# SUBSTITUTION: at this tree, reverting the six RM-1083 files AND
+# swapping both panel_visibility files back to their b3f74344a blobs
+# reproduces the superseded 2c4794d9... value EXACTLY; reverting only the
+# six gives 241b920e... (the lane tip). Those eight paths are the whole
+# change. No glyph change: the added lines carry 0 non-ASCII bytes. If
+# another slice re-captures in parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "26408507ccd0f052d5a90e0ae7bbb0738c454443fcfe8b15e63721ed2eb5a3f6"
 
 
 def _web_sources() -> list[Path]:

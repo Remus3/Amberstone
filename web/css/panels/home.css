@@ -320,8 +320,13 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   transition: border-color 0.12s, color 0.12s;
 }
 .home-mode-tab:hover { border-color: var(--info); }
+/* RM-1083: --accent-2 text was 2.56-2.85:1 on the --surface-3 fill on
+ * ember / bloodmoon / arcane and dimmer than the unselected --text-dim
+ * labels, so the selected mode read as the faded one. It now takes the
+ * brightest text token; the fill, border tint and underline stay the cue.
+ * Guard: tests/snapshot_panels/test_tab_bars_selected_state.py. */
 .home-mode-tab.active {
-  color: var(--accent-2);
+  color: var(--text);
   border-color: color-mix(in srgb, var(--accent-2) 45%, var(--border));
   background: var(--surface-3);
   box-shadow: inset 0 -2px 0 0 var(--accent);

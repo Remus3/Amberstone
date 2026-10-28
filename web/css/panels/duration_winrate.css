@@ -15,11 +15,19 @@
   display: flex;
   gap: var(--space-2, 8px);
 }
+/* RM-1083: the selected mode button drew the same --surface-3 fill as its
+ * siblings with only a border colour to tell them apart, and the unselected
+ * --text-faint labels were 3.64-3.94:1 on that fill (below AA on every theme
+ * but terminal). Unselected text is now --text-dim (AA on --surface-3), the
+ * selected one keeps --text and gains a 2px inset --signal-info underline,
+ * and focus draws the one system ring (it replaces the underline while the
+ * button holds focus). Guard: tests/snapshot_panels/
+ * test_tab_bars_selected_state.py. */
 #bi-duration-mount .dw-mode-btn {
   min-height: var(--hit-min, 42px);
   padding: var(--space-2, 8px) var(--space-4, 16px);
   font-size: var(--fs-sm, 18px);
-  color: var(--text-faint, #9ca3af);
+  color: var(--text-dim, #8fa3bf);
   background: var(--surface-3, #1c1c24);
   border: 1px solid var(--border-soft, #2a2a35);
   border-radius: var(--panel-radius-sm, 10px);
@@ -28,6 +36,11 @@
 #bi-duration-mount .dw-mode-btn.is-active {
   color: var(--text, #f0f0f5);
   border-color: var(--signal-info, #8a8cf0);
+  box-shadow: inset 0 -2px 0 0 var(--signal-info, #8a8cf0);
+}
+#bi-duration-mount .dw-mode-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 #bi-duration-mount .dw-chart {
   display: flex;
