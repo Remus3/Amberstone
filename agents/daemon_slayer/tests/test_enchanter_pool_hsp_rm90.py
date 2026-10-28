@@ -1,9 +1,9 @@
 """RM-90 / RM-86 (c) - close the enchanter formulas-registry omissions.
 
 `ds.hps` ranks ONLY the items curated in
-`data/daemon_slayer/<patch>/enchanter_items.json` (`enchanter_only=True`,
-`hps.py:871`); everything else "contributes zero (treated as non-enchanter
-items)". That closed pool is the measured root cause of the champion-invariant
+`data/daemon_slayer/<patch>/enchanter_items.json` (`enchanter_only=True` in
+`hps.rank_items_by_hps`); everything else "contributes zero (treated as
+non-enchanter items)" (`hps.compute_hps`). That closed pool is the measured root cause of the champion-invariant
 enchanter ranking - proven 2026-07-18 by forcing `apply_ability_hsp_amp` ON and
 observing the 8-champion order stay byte-identical (RM-86 spec section 10), which
 satisfied REFUTE condition 2 and moved finding (c) from RC-1 to RC-2.
