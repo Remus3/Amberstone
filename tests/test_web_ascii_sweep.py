@@ -1078,7 +1078,19 @@ _WEB = _REPO_ROOT / "web"
 # value EXACTLY. Those paths are the whole change. No glyph change: the
 # added lines carry 0 non-ASCII bytes. If another slice re-captures in
 # parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "a0b0ed06b513d23b4b5c555a7c1b362cbcf81236deae92e2fede3cb0f0d7627c"
+# superseded by the RM-1010 re-capture below: "a0b0ed06b513d23b4b5c555a7c1b362cbcf81236deae92e2fede3cb0f0d7627c"
+#
+# RE-CAPTURED 2026-10-27 at RM-1010 (s144 uiux cycle 20, provisional
+# until the merger lands it). One change rides it: the footer VOICE button
+# and the prefs chip take the mode-pill box (3px padding, 1px transparent
+# border, line-height 1) so every footer chip renders one height - in
+# web/css/panels/header.css and web/css/panels/input_activity.css. Ordinary
+# case, no tokeniser change. ATTRIBUTED BY SUBSTITUTION: swapping exactly
+# those two files back to their lane-tip a9a44206f blobs (in memory)
+# reproduces the superseded a0b0ed06... value EXACTLY. Those paths are the
+# whole change. No glyph change: the added lines carry 0 non-ASCII bytes.
+# If another slice re-captures in parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "63f0e105b1b3a53e98c725430bde95b53083d3fe74d5a440c68595aed6756732"
 
 
 def _web_sources() -> list[Path]:

@@ -467,7 +467,11 @@ footer .prefs-chip {
   font-size: var(--fs-xs);
   color: var(--gold);
   background: var(--gold-soft);
-  padding: 2px 8px;
+  /* RM-1010: the mode-pill box (3px + 1px border) so the chip matches
+   * the VOICE / CLIENT chips beside it (it was 20px vs 24px). This rule
+   * wins over header.css `footer .prefs-chip` (loaded earlier). */
+  padding: 3px 8px;
+  border: 1px solid transparent;
   border-radius: 999px;
   letter-spacing: 0.08em;
   font-weight: 700;
