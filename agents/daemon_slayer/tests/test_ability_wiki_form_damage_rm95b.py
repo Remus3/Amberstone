@@ -28,7 +28,8 @@ and the live evaluator, that count is **1, not 3**:
   wiki states a plain base-plus-bonus-AD formula.
 
 SOURCE (live, fetched 2026-07-26 from the same host + endpoint
-``tools/daemon_slayer_wiki_ability_extract.py:108-110`` uses):
+``tools/daemon_slayer_wiki_ability_extract.py`` uses, ``WIKI_HOST`` /
+``WIKI_API``):
 
     Template:Data Quinn/Skystrike
     |leveling = {{st|Physical Damage|{{ap|60 to 120}} {{as|(+ 35% '''bonus''' AD)}}}}

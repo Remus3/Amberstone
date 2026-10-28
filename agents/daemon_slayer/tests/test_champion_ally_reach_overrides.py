@@ -125,7 +125,8 @@ class TestAllyReachPositiveOverrides(unittest.TestCase):
 
         Locket of the Iron Solari is the ONE real support core item that
         ``_item_ally_grant`` prices today (Knight's Vow / Zeke's / Bandlepipes /
-        Solstice Sleigh are hard-excluded at ``_item_ally_grant.py:95-105``).
+        Solstice Sleigh are hard-excluded by
+        ``_item_ally_grant._ALLY_GRANT_EXCLUDED_ITEM_IDS``).
         Before this slice the four sat pinned in the low twenties under BOTH
         objectives; they must now behave like the derived cohort - a strict
         improvement under ``team_blended`` - while the two documented non-reach

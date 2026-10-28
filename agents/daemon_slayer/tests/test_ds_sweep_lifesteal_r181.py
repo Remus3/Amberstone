@@ -10,7 +10,7 @@ so DDragon is authoritative for the base-stat magnitudes.
 Contract pinned here (all VERIFIED-TRUE at write time):
   * Base-stat plumbing: ITEM_STAT_KEY_MAP routes ``PercentLifeStealMod`` ->
     ("lifesteal","pct") and ``PercentSpellVampMod`` -> ("spellvamp","pct")
-    (stats.py:110-111). ``aggregate_item_stats`` sums each item's OWN block, so
+    (``stats.ITEM_STAT_KEY_MAP``). ``aggregate_item_stats`` sums each item's OWN block, so
     every Arena/ARAM mirror credits its own DDragon line by construction
     (R161 doctrine B is STRUCTURAL, not per-item wiring).
   * Lifesteal magnitudes + deliberately-divergent Arena spreads:

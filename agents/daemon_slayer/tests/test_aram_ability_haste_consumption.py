@@ -251,7 +251,8 @@ class AramAbilityHasteIsDeltaOnlyTests(unittest.TestCase):
     ARAM delta), so an SR build holding Cosmic Drive reported
     ``aram_ability_haste=25.0`` when the true ARAM delta is 0. The engine
     writes the pure delta into ``scaled["aram_ability_haste"]``
-    (engine.py:273), so the result field has to mean the same thing.
+    (``engine._apply_mode_modifiers``), so the result field has to mean
+    the same thing.
 
     The honestly-named per-spell ``total_ability_haste`` remains the SUM
     (that is the number the cooldown formula consumes) - these tests pin
