@@ -601,12 +601,14 @@ class XXX_FlaggedRobustnessGaps(_SnapBase):
         conditional AS in dps.py). This now passes and guards the cap.
 
         Repro: ``build_champion('Aatrox', level=18, item_ids=['3046']*6)``
-        (six Phantom Dancers - a reachable 6-slot build) resolves
-        ``stats['as'] ~= 3.47``. ``compute_dps`` then consumes it raw at
-        ``agents/daemon_slayer/dps.py:436`` (``eff_as = float(stats.get(
-        "as", 0.0))`` in ``_rotation_attack_dps``) and again at
-        ``dps.py:708``, with NO ``min(2.5, eff_as)`` anywhere in
-        ``engine._combine_items`` or the DPS layer.
+        (six Phantom Dancers - a reachable 6-slot build) resolved
+        ``stats['as'] ~= 3.47`` before the fix. ``compute_dps`` then
+        consumed it raw at the ``eff_as = float(stats.get("as", 0.0))``
+        read in ``dps._rotation_attack_dps`` and again at the per-hit
+        ``eff_as`` read in ``dps.compute_dps``, with NO ``min(2.5,
+        eff_as)`` anywhere in ``engine._combine_items`` or the DPS layer.
+        The fix clamps to ``engine.ATTACK_SPEED_CAP`` in
+        ``engine._combine_items``.
 
         Observed: ``stats['as'] == 3.4666...`` and the weighted DPS scales
         linearly off that uncapped value (~214 vs the ~ value a 2.5-capped
@@ -618,7 +620,8 @@ class XXX_FlaggedRobustnessGaps(_SnapBase):
         Expected clamp: resolved ``stats['as']`` (or ``eff_as`` at the DPS
         consumption sites) clamped to <= 2.5, mirroring the existing
         ``crit`` clamp to 1.0 in ``_combine_items`` and the defensive
-        ``min(crit, 1.0)`` at ``dps.py:441``.
+        ``min(float(stats.get("crit", 0.0)), 1.0)`` in
+        ``dps._rotation_attack_dps``.
 
         Not fixed here: P1-L12 is test-only; a parallel lane owns engine
         edits and concurrent source edits would conflict. This xfail
