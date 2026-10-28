@@ -29,7 +29,8 @@ This module exposes a single ``dispatch_for_coach()`` helper that:
    - ``out``: the full dispatcher dict (for callers that want shape parity).
 
 Engine-down semantics: ``rank_for_primary_archetype()`` returns ``None``
-when the engine is unreachable; this helper propagates that as a return
+when the scorer POST fails (engine unreachable, an HTTP error status, or a
+body that is not a JSON object); this helper propagates that as a return
 value of ``None`` so callers can fall back to ``picks_str="unavailable"``
 without writing partial calibration entries.
 

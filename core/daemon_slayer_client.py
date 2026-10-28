@@ -107,7 +107,13 @@ def _post_json(path: str, body: dict, timeout: float = DEFAULT_TIMEOUT) -> Optio
         )
         with urlopen(req, timeout=timeout) as resp:
             raw = resp.read()
-            return json.loads(raw.decode("utf-8"))
+            data = json.loads(raw.decode("utf-8"))
+        # Every caller reads the body with ``.get`` (RM-1001), so a JSON list
+        # or scalar would raise there instead of degrading like a failed POST.
+        if not isinstance(data, dict):
+            logger.debug("daemon_slayer %s non-object body: %s", path, type(data).__name__)
+            return None
+        return data
     except (URLError, HTTPError, socket.timeout, TimeoutError, ConnectionError) as e:
         logger.debug("daemon_slayer %s unreachable: %s", path, e)
         return None
@@ -2992,8 +2998,9 @@ def rank_for_primary_archetype(
             "fell_back":   bool,  # True only for a kit-less champion
         }
     The dispatcher returns ``None`` whenever the scorer POST fails: ``_post_json``
-    collapses a timeout, a refused connection, any HTTP error status and a
-    non-JSON body into one ``None`` (RM-1000). Callers test ``out is None``.
+    collapses a timeout, a refused connection, any HTTP error status, a
+    non-JSON body and a body that is not a JSON object into one ``None``
+    (RM-1000, RM-1001). Callers test ``out is None``.
     Every archetype has its
     own scorer (Phase 6 s181), so ``fell_back`` is True only for a kit-less
     champion: the mage / assassin / enchanter branches fall through to
