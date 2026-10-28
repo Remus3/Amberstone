@@ -34,6 +34,16 @@ reason (vocabulary: vision_server._stats.CAPTURE_SKIP_REASONS), counted in
   from both lanes before it can reach OCR, Sonnet or a calibration still.
 The probes read only the foreground window's image name and whether the input
 desktop opens; nothing is injected (Vanguard).
+
+s144 true-audit (RM-1046): in-process intervals (the self-grab throttle,
+the foreground grace window, upload latency) run on the MONOTONIC clock, so a
+backward wall-clock step can neither freeze the self-grab nor hold the grace
+window open; the frame ``ts`` stays wall-clock (it crosses the process
+boundary) and is aged through core.relay_age.is_stale (RM-269). An upload's
+``image_b64`` must be an ASCII string, ``source`` a short non-empty string
+and ``primary`` a bool; the cached width / height / format are read from the
+payload header, not taken from the uploader's claim; distinct source slots are
+capped.
 """
 from __future__ import annotations
 
@@ -44,6 +54,7 @@ import threading
 import time
 
 from core.game_host import GAME_HOST
+from core.relay_age import is_stale
 from core.screen_grab import frame_is_blank, input_desktop_locked
 
 from ._config import log
@@ -71,7 +82,9 @@ _SELF_GRAB_MIN_INTERVAL_S = 0.5   # min gap between in-process grab attempts
 _SELF_GRAB_MAX_WIDTH = 1280       # downscale to the documented coaching width
 _SELF_GRAB_JPEG_QUALITY = 85      # matches the legacy screen-agent sweet spot
 _self_grab_lock = threading.Lock()
-_last_self_grab_attempt = 0.0
+# Monotonic stamp of the last attempt; None = none yet (the monotonic origin
+# is unspecified, so 0.0 is not a safe "long ago").
+_last_self_grab_attempt: "float | None" = None
 # Y-03 grace window: a GDI grab is still allowed this long after League was
 # last SEEN in the foreground. Derived, not lifted: it spans one screen-agent
 # cycle (2.0s) plus margin over the self-grab stale/throttle cadence
@@ -79,7 +92,8 @@ _last_self_grab_attempt = 0.0
 # does not drop a cycle, while a sustained alt-out stops shipping desktop
 # frames within ~3s. tools/screen_agent.py mirrors this value (test-pinned).
 _FOREGROUND_GRACE_S = 3.0
-_league_fg_last_seen = 0.0
+# Monotonic stamp of the last League foreground sighting; None = never seen.
+_league_fg_last_seen: "float | None" = None
 
 
 def _input_desktop_locked() -> bool:
@@ -125,11 +139,12 @@ def _gdi_gate() -> "str | None":
     """Foreground gate for the GDI desktop grab. Returns ``not_foreground``
     to refuse, else None. A foreground sighting refreshes the grace window."""
     global _league_fg_last_seen
-    now = time.time()
+    now = time.monotonic()
     if _league_foreground():
         _league_fg_last_seen = now
         return None
-    if now - _league_fg_last_seen <= _FOREGROUND_GRACE_S:
+    seen = _league_fg_last_seen
+    if seen is not None and now - seen <= _FOREGROUND_GRACE_S:
         return None
     return "not_foreground"
 
@@ -274,8 +289,8 @@ def _reset_self_read_state() -> None:
     """Test helper: clear the self-grab throttle + the cached frame slots."""
     global _last_self_grab_attempt, _league_fg_last_seen
     with _self_grab_lock:
-        _last_self_grab_attempt = 0.0
-        _league_fg_last_seen = 0.0
+        _last_self_grab_attempt = None
+        _league_fg_last_seen = None
     with _frame_lock:
         _latest_frame.update({"b64": None, "ts": 0.0, "size": 0,
                               "source": None, "width": None, "height": None,
@@ -292,17 +307,19 @@ def _maybe_self_grab() -> dict | None:
     reason ``locked`` before any source is tried; ``not_foreground`` (GDI
     only) and ``blank`` are refused inside ``_fetch_frame_direct``."""
     global _last_self_grab_attempt
-    now = time.time()
+    mono = time.monotonic()
     with _self_grab_lock:
-        if now - _last_self_grab_attempt < _SELF_GRAB_MIN_INTERVAL_S:
+        last = _last_self_grab_attempt
+        if last is not None and mono - last < _SELF_GRAB_MIN_INTERVAL_S:
             return None
-        _last_self_grab_attempt = now
+        _last_self_grab_attempt = mono
     if _input_desktop_locked():
         _note_capture_skip("locked")
         return None
     grabbed = _fetch_frame_direct()
     if not isinstance(grabbed, dict) or not grabbed.get("b64"):
         return None
+    now = time.time()  # the published ts is wall-clock (read cross-process)
     # Spec O: the direct grab may come from OBS ("obs") instead of the GDI
     # BitBlt ("self_grab"); propagate its label. GDI grabs always stamp
     # "self_grab" so the flag-off path is byte-identical to before.
@@ -320,7 +337,7 @@ def _maybe_self_grab() -> dict | None:
     }
     with _frame_lock:
         _latest_frame.update(frame)
-        _frames_by_source[src] = dict(frame)
+        _store_source_slot(src, frame)
         return dict(_latest_frame)
 
 
@@ -333,6 +350,31 @@ _MAX_FRAME_B64 = 7_000_000
 # frames are 1920x1080 or stitched 3840x1080/1280; 8K is the hard ceiling.
 _MAX_FRAME_W = 7680
 _MAX_FRAME_H = 4320
+# s144 true-audit: every distinct ``source`` holds a full frame (up to the
+# b64 cap) for the process lifetime, so the slot count is bounded; the real
+# channels are a handful (league, legion-ui, phase-watcher, self_grab, obs).
+_MAX_SOURCE_LEN = 128
+_MAX_SOURCE_SLOTS = 32
+_FRAME_FORMATS = ("jpeg", "png")
+
+
+def _store_source_slot(src: str, frame: dict) -> None:
+    """Write one per-source slot, evicting the least recently WRITTEN other
+    slot when a new source would exceed ``_MAX_SOURCE_SLOTS``. Write order is
+    the dict's insertion order (a rewrite moves the key to the end), so no
+    clock is involved. Caller holds ``_frame_lock``."""
+    _frames_by_source.pop(src, None)
+    while len(_frames_by_source) >= _MAX_SOURCE_SLOTS:
+        del _frames_by_source[next(iter(_frames_by_source))]
+    _frames_by_source[src] = dict(frame)
+
+
+def _claimed_dim(value) -> "int | None":
+    """An uploader-claimed dimension, kept only when it is a sane int."""
+    if (isinstance(value, int) and not isinstance(value, bool)
+            and 0 < value <= max(_MAX_FRAME_W, _MAX_FRAME_H)):
+        return value
+    return None
 
 
 def _frame_dims(img_b64) -> "tuple[int, int] | None":
@@ -371,44 +413,51 @@ def handle_upload_frame(body: bytes) -> dict:
     frame the vision coaches are consuming. Legion-side readers that want
     that secondary stream query ``/latest-frame?source=<channel>``.
     """
-    t0 = time.time()
+    t0 = time.monotonic()
+
+    def _refuse(reply: dict) -> dict:
+        _record("frame_upload", int((time.monotonic() - t0) * 1000), ok=False)
+        return reply
+
     try:
         d = json.loads(body)
     except Exception as e:  # noqa: BLE001
         # RM-771 sibling: this refusal logged nothing; _relay's two upload
         # refusals already log the parser's detail. Never echoed to the client.
         log.warning("upload-frame: bad JSON body: %s: %s", type(e).__name__, e)
-        _record("frame_upload", int((time.time() - t0) * 1000), ok=False)
-        return {"error": "bad_json"}
+        return _refuse({"error": "bad_json"})
     # AUDIT 2026-08-30 (lane 8 cycle 20, sibling of the _inference fix): the
     # guard above covers only the DECODE. A body that is valid JSON but not an
     # object - `[1,2]`, `"x"`, `5` - decoded fine and then died on `.get`
     # below with AttributeError, which do_POST turned into an HTTP 500.
     if not isinstance(d, dict):
-        _record("frame_upload", int((time.time() - t0) * 1000), ok=False)
-        return {"error": "bad_body"}
+        return _refuse({"error": "bad_body"})
     img = d.get("image_b64", "")
     if not img:
-        _record("frame_upload", int((time.time() - t0) * 1000), ok=False)
-        return {"error": "no image_b64"}
+        return _refuse({"error": "no image_b64"})
+    # s144 true-audit: an int raised TypeError at len() (an HTTP 500); a list
+    # or a non-ASCII string raised inside the fail-open magic check below and
+    # was then CACHED as the frame every coach base64-decodes.
+    if not isinstance(img, str) or not img.isascii():
+        return _refuse({"error": "bad_image_b64"})
     if len(img) > _MAX_FRAME_B64:
-        _record("frame_upload", int((time.time() - t0) * 1000), ok=False)
-        return {"error": "frame_too_large", "size": len(img),
-                "limit": _MAX_FRAME_B64}
+        return _refuse({"error": "frame_too_large", "size": len(img),
+                        "limit": _MAX_FRAME_B64})
     # 2026-04-25: Magic-byte validation. Catches a corrupt / truncated /
     # non-image payload at upload time so coaches don't get garbage at the
     # /latest-frame fetch and waste a Sonnet call analyzing it. Cost is one
     # base64 decode of the leading 16 bytes - negligible vs the ~150 KB
     # frame we're about to cache.
+    magic_format = None
     try:
         head = _b64.b64decode(img[:64], validate=False)[:8]
         is_jpeg = head[:3] == b"\xff\xd8\xff"
         is_png = head[:8] == b"\x89PNG\r\n\x1a\n"
         if not (is_jpeg or is_png):
-            _record("frame_upload", int((time.time() - t0) * 1000), ok=False)
-            return {"error": "not_an_image",
-                    "head_hex": head.hex(),
-                    "size": len(img)}
+            return _refuse({"error": "not_an_image",
+                            "head_hex": head.hex(),
+                            "size": len(img)})
+        magic_format = "jpeg" if is_jpeg else "png"
     except Exception as _exc:  # noqa: BLE001
         log.debug("frame magic check failed: %s", _exc)
         # Don't fail-closed on validation glitches - let the frame through so
@@ -421,12 +470,20 @@ def handle_upload_frame(body: bytes) -> dict:
     if dims is not None:
         fw, fh = dims
         if not (0 < fw <= _MAX_FRAME_W and 0 < fh <= _MAX_FRAME_H):
-            _record("frame_upload", int((time.time() - t0) * 1000), ok=False)
-            return {"error": "frame_dimensions_out_of_range",
-                    "width": fw, "height": fh,
-                    "limit": [_MAX_FRAME_W, _MAX_FRAME_H]}
+            return _refuse({"error": "frame_dimensions_out_of_range",
+                            "width": fw, "height": fh,
+                            "limit": [_MAX_FRAME_W, _MAX_FRAME_H]})
+    # s144 true-audit: a list / dict source raised TypeError on the slot dict
+    # (unhashable, an HTTP 500); an int was cached under a key no ?source=
+    # query (always a string) can name.
     src = d.get("source", "unknown")
-    primary = bool(d.get("primary", True))
+    if not isinstance(src, str) or not 0 < len(src) <= _MAX_SOURCE_LEN:
+        return _refuse({"error": "bad_source"})
+    # bool() read the string "false" as True, so a secondary stream clobbered
+    # the League frame the coaches read. Every producer sends a JSON bool.
+    primary = d.get("primary", True)
+    if not isinstance(primary, bool):
+        return _refuse({"error": "bad_primary"})
     # Item 207: optional event_meta field tags the frame as event-
     # driven (LCU phase-watcher capture). Backward-compatible: polling
     # uploads omit the field and get a None entry. UI-audit-ritual
@@ -434,22 +491,34 @@ def handle_upload_frame(body: bytes) -> dict:
     event_meta = d.get("event_meta")
     if event_meta is not None and not isinstance(event_meta, dict):
         event_meta = None
+    # The cached metadata describes the PAYLOAD: header dims and magic-byte
+    # format win over the uploader's claim; a claim is kept only when the
+    # header could not be read, and only when it is sane.
+    if dims is not None:
+        width, height = dims
+    else:
+        width = _claimed_dim(d.get("width"))
+        height = _claimed_dim(d.get("height"))
+    fmt = magic_format
+    if fmt is None:
+        claimed = d.get("format", "png")
+        fmt = claimed if claimed in _FRAME_FORMATS else "png"
     frame = {
         "b64":    img,
         "ts":     time.time(),
         "size":   len(img),
         "source": src,
-        "width":  d.get("width"),
-        "height": d.get("height"),
-        "format": d.get("format", "png"),
+        "width":  width,
+        "height": height,
+        "format": fmt,
         "primary": primary,
         "event_meta": event_meta,
     }
     with _frame_lock:
-        _frames_by_source[src] = dict(frame)
+        _store_source_slot(src, frame)
         if primary:
             _latest_frame.update(frame)
-    ms = int((time.time() - t0) * 1000)
+    ms = int((time.monotonic() - t0) * 1000)
     with _stats_lock:
         _stats["frame_upload"]["bytes"] = (
             _stats["frame_upload"].get("bytes", 0) + len(img)
@@ -478,8 +547,10 @@ def get_latest_frame(source: str | None = None) -> dict:
             return dict(_frames_by_source.get(source, {"b64": None, "ts": 0.0}))
         snap = dict(_latest_frame)
     if GAME_HOST in _LOCAL_HOSTS:
-        age = time.time() - float(snap.get("ts") or 0.0)
-        if age > _SELF_GRAB_STALE_S:
+        # RM-269 / RM-1045: a future ts (backward wall-clock step) or a
+        # junk one is STALE; a bare now - ts went negative and served an
+        # arbitrarily old frame as current.
+        if is_stale(snap.get("ts"), _SELF_GRAB_STALE_S, now=time.time()):
             fresh = _maybe_self_grab()
             if fresh is not None:
                 return fresh

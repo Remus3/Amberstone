@@ -223,7 +223,8 @@ def test_foreground_grab_is_served(monkeypatch):
 
 def test_grace_window_allows_brief_alt_tab(monkeypatch):
     grabs = _gdi(monkeypatch, _textured(), fg=False)
-    _frame._league_fg_last_seen = time.time() - (_frame._FOREGROUND_GRACE_S / 2)
+    # The grace window runs on the monotonic clock (s144 true-audit).
+    _frame._league_fg_last_seen = time.monotonic() - (_frame._FOREGROUND_GRACE_S / 2)
     assert _frame._maybe_self_grab() is not None
     assert grabs == [1]
     assert _counts()["not_foreground"] == 0
@@ -231,7 +232,7 @@ def test_grace_window_allows_brief_alt_tab(monkeypatch):
 
 def test_grace_window_expires(monkeypatch):
     grabs = _gdi(monkeypatch, _textured(), fg=False)
-    _frame._league_fg_last_seen = time.time() - (_frame._FOREGROUND_GRACE_S + 1)
+    _frame._league_fg_last_seen = time.monotonic() - (_frame._FOREGROUND_GRACE_S + 1)
     assert _frame._maybe_self_grab() is None
     assert grabs == []
     assert _counts()["not_foreground"] == 1
@@ -239,7 +240,7 @@ def test_grace_window_expires(monkeypatch):
 
 def test_foreground_sighting_refreshes_grace(monkeypatch):
     _gdi(monkeypatch, _textured(), fg=True)
-    before = time.time()
+    before = time.monotonic()
     _frame._maybe_self_grab()
     assert _frame._league_fg_last_seen >= before
 
