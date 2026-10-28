@@ -915,3 +915,33 @@ def test_exempt_feeds_still_classify_as_unrefreshed():
         "the only one that exercises the no-stamp branch, so losing either "
         "leaves half the pipeline unasserted"
     )
+
+
+def test_write_routes_through_polled_json_and_writes_lf_bytes(tmp_path, monkeypatch):
+    """RM-258: --write goes through core.polled_json (per-writer scratch,
+    fsync, bounded WinError 5 retry), not a hand-rolled `<dest>.json.tmp` and a
+    bare rename. RM-481: the index stays LF-only bytes on Windows."""
+    import core.polled_json as pj
+
+    calls = []
+    real = pj.atomic_write_bytes
+
+    def spy(path, data):
+        calls.append(Path(path))
+        real(path, data)
+
+    index = {"generated_from_current_txt": "0.0.1", "known_stamp_lag": {},
+             "known_static_body": {}, "dirs": {"0.0.1": {"a.json": {
+                 "body_md5": "0" * 32, "stamp_field": None,
+                 "declared_patch": None}}}}
+    dest = tmp_path / "ds_feed_index.json"
+    monkeypatch.setattr(pj, "atomic_write_bytes", spy)
+    monkeypatch.setattr(fi, "build_index", lambda: index)
+    monkeypatch.setattr(fi, "_INDEX_PATH", dest)
+    monkeypatch.setattr(sys, "argv", ["ds_feed_index.py", "--write"])
+    assert fi.main() == 0
+    assert calls == [dest]
+    raw = dest.read_bytes()
+    assert b"\r\n" not in raw
+    assert raw == (json.dumps(index, indent=2, sort_keys=True) + "\n").encode("utf-8")
+    assert [q.name for q in tmp_path.iterdir()] == [dest.name]

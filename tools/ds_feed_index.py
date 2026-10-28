@@ -325,13 +325,18 @@ def main() -> int:
     rows = sum(len(v) for v in fresh["dirs"].values())
 
     if mode == "--write":
-        tmp = _INDEX_PATH.with_suffix(".json.tmp")
-        # newline="" so Python does NOT translate to CRLF on Windows. The index
-        # is a tracked .json and .gitattributes pins it to eol=lf, so a default
-        # write makes tests/test_text_line_endings.py red on the machine that
-        # regenerated it - measured 2026-09-07, one --write did exactly that.
-        tmp.write_text(_dump(fresh), encoding="utf-8", newline="")
-        tmp.replace(_INDEX_PATH)
+        # RM-258: through core.polled_json (per-writer scratch, fsync, bounded
+        # WinError 5 retry), never a hand-rolled `<dest>.json.tmp` rename.
+        # Bytes, never a text-mode write, so Python does NOT translate to CRLF
+        # on Windows. The index is a tracked .json and .gitattributes pins it to
+        # eol=lf, so a CRLF write makes tests/test_text_line_endings.py red on
+        # the machine that regenerated it - measured 2026-09-07, one --write did
+        # exactly that.
+        if str(ROOT) not in sys.path:
+            sys.path.insert(0, str(ROOT))
+        from core.polled_json import atomic_write_bytes
+
+        atomic_write_bytes(_INDEX_PATH, _dump(fresh).encode("utf-8"))
         print(f"WROTE {_INDEX_PATH.name}: {len(fresh['dirs'])} dirs, {rows} rows")
         return 0
 

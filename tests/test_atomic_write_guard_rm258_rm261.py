@@ -151,7 +151,6 @@ _TOOLS_UNCLASSIFIED = frozenset({
     "tools/ds_calibration_report.py",
     "tools/ds_cross_eval/probe_champion.py",
     "tools/ds_cross_eval/run_all.py",
-    "tools/ds_feed_index.py",
     "tools/ds_parity_map.py",
     "tools/ds_parity_run.py",
     "tools/ds_patch_diff.py",
