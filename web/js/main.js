@@ -370,9 +370,10 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   }
   // RM-1067: the Escape that closes the modal is consumed (capture phase,
   // preventDefault) so the general Escape chain and the Replay player
-  // stand down on it - one press, one action.
+  // stand down on it - one press, one action. RM-1069: it stands down
+  // too on a press another layer already consumed (stacked layers).
   document.addEventListener("keydown", (e) => {
-    if (e.key !== "Escape" || !TMODAL.root) return;
+    if (e.key !== "Escape" || e.defaultPrevented || !TMODAL.root) return;
     if (TMODAL.root.classList.contains("hidden")) return;
     closeTaskModal();
     e.preventDefault();
@@ -929,8 +930,10 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     // RM-1067: only an OPEN menu takes the Escape, and it consumes it
     // (capture phase, preventDefault) so the zen exit and the Replay
     // player's release-focus do not also run on the same press.
+    // RM-1069: a press another layer consumed is not taken again.
     document.addEventListener("keydown", (e) => {
-      if (e.key !== "Escape" || !menu || menu.classList.contains("hidden")) return;
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      if (!menu || menu.classList.contains("hidden")) return;
       _viewMenuClose();
       e.preventDefault();
     }, true);
@@ -3822,9 +3825,11 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       // Escape closes the picker. Bound once; safe to leave attached.
       // RM-1067: consumed (capture phase, preventDefault) - this is
       // bound lazily, after the general Escape chain, which would
-      // otherwise exit zen on the same press.
+      // otherwise exit zen on the same press. RM-1069: a press another
+      // layer consumed is not taken again.
       document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape" && !picker.classList.contains("hidden")) {
+        if (e.key === "Escape" && !e.defaultPrevented
+            && !picker.classList.contains("hidden")) {
           _homeFindMatchPickerHide();
           e.preventDefault();
         }

@@ -249,8 +249,10 @@ if (typeof document !== "undefined" && !document.__deEscBound) {
   // RM-1068: a press that dismissed an overlay is consumed (capture
   // phase, preventDefault) so main.js's Escape chain does not also exit
   // zen; with no overlay showing the press passes through untouched.
+  // RM-1069: a press another layer consumed is not taken again.
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape" && e.code !== "Escape") return;
+    if (e.defaultPrevented) return;
     const overlays = document.querySelectorAll(".draft-elo-contributions");
     let dismissed = false;
     overlays.forEach((o) => {

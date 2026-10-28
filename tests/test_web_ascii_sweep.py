@@ -1260,7 +1260,21 @@ _WEB = _REPO_ROOT / "web"
 # EXACTLY; no three of them do. Those paths are the whole change. No glyph
 # change: the added lines carry 0 non-ASCII bytes. If another slice
 # re-captures in parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "e7d890a5ea1dc18b58c648e5bd310a606cb06d4d8d2b0fb40990be93ba41e9be"
+# superseded by the RM-1069 re-capture below: "e7d890a5ea1dc18b58c648e5bd310a606cb06d4d8d2b0fb40990be93ba41e9be"
+#
+# RE-CAPTURED 2026-10-28 at RM-1069 (s144 uiux cycle 36, provisional
+# until the merger lands it and maps the id). One change rides it: every
+# capture-phase Escape layer (the task modal, view menu and Find Match
+# picker in web/js/main.js, the digest popover in web/js/panels/right_now.js,
+# the draft-elo overlay in web/js/panels/draft_elo.js) stands down on a
+# press another layer already consumed (e.defaultPrevented), so stacked
+# layers close one per press. Ordinary case, no tokeniser change.
+# ATTRIBUTED BY SUBSTITUTION: swapping exactly those three files back to
+# their lane-tip c773ce5de blobs (in memory) reproduces the superseded
+# e7d890a5... value EXACTLY; no one or two of them do. Those paths are the
+# whole change. No glyph change: the added lines carry 0 non-ASCII bytes.
+# If another slice re-captures in parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "9060e9038cb07e04961a7b98314b8fc42c2dc110786be7408f0dff9742687494"
 
 
 def _web_sources() -> list[Path]:

@@ -172,9 +172,11 @@ function renderDigest(p) {
   pop.addEventListener("click", e => { if (e.target === pop) hide(); });
   // RM-1068: an OPEN popover takes the Escape and consumes it (capture
   // phase, preventDefault), so main.js's Escape chain does not also exit
-  // zen on the same press.
+  // zen on the same press. RM-1069: a press another layer consumed is
+  // not taken again, so stacked layers close one per press.
   document.addEventListener("keydown", e => {
-    if (e.key !== "Escape" || pop.classList.contains("hidden")) return;
+    if (e.key !== "Escape" || e.defaultPrevented) return;
+    if (pop.classList.contains("hidden")) return;
     hide();
     e.preventDefault();
   }, true);
