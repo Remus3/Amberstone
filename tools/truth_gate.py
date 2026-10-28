@@ -385,11 +385,15 @@ def load_claims(path):
 
 
 def write_report_atomic(report, target):
-    target = Path(target)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    tmp = target.with_suffix(".tmp")
-    tmp.write_text(json.dumps(report, indent=2), encoding="utf-8")
-    tmp.replace(target)
+    """RM-258: through core.polled_json (per-writer scratch, fsync, bounded
+    WinError 5 retry; it creates the parent). Bytes, not write_text, so the
+    report is LF on Windows too (RM-481)."""
+    root = str(ROOT)
+    if root not in sys.path:
+        sys.path.insert(0, root)
+    from core.polled_json import atomic_write_bytes
+
+    atomic_write_bytes(Path(target), json.dumps(report, indent=2).encode("utf-8"))
 
 
 def main(argv=None):

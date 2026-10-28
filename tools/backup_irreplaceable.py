@@ -99,9 +99,14 @@ def _online_copy(src: Path, dest: Path) -> None:
 
 
 def _write_json_atomic(path: Path, obj) -> None:
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_bytes((json.dumps(obj, indent=1, sort_keys=True) + "\n").encode("ascii"))
-    tmp.replace(path)
+    """RM-258: through core.polled_json (per-writer scratch, fsync, bounded
+    WinError 5 retry); the bytes stay sorted, indent-1, ASCII and LF."""
+    root = str(ROOT)
+    if root not in sys.path:
+        sys.path.insert(0, root)
+    from core.polled_json import atomic_write_bytes
+
+    atomic_write_bytes(path, (json.dumps(obj, indent=1, sort_keys=True) + "\n").encode("ascii"))
 
 
 def backup(data_dir: Path = DATA, backup_root: Path = BACKUP_ROOT,

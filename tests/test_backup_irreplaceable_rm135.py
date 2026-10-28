@@ -75,3 +75,29 @@ def test_retention_keeps_newest_complete_snapshots(data, tmp_path):
 def test_backup_target_is_inside_the_repo_and_excluded_from_rollback():
     assert bk.BACKUP_ROOT.is_relative_to(bk.ROOT)
     assert bk.BACKUP_ROOT.parts[-3:-1] == ("ops", "backups")
+
+
+def test_manifest_write_routes_through_polled_json(data, tmp_path, monkeypatch):
+    """RM-258: the manifest goes through core.polled_json (per-writer
+    scratch, fsync, bounded WinError 5 retry) instead of a hand-rolled
+    `manifest.json.tmp`, and its bytes stay the sorted, indent-1, ASCII,
+    LF-terminated JSON the verify path reads back."""
+    import json
+
+    import core.polled_json as pj
+
+    seen = []
+    real = pj.atomic_write_bytes
+
+    def spy(path, data_bytes):
+        seen.append(Path(path))
+        real(path, data_bytes)
+
+    monkeypatch.setattr(pj, "atomic_write_bytes", spy)
+    snap = bk.backup(data, tmp_path / "backups", now=1_000_000)
+    assert [(p.parent.name, p.name) for p in seen] == [
+        (snap.name + ".partial", "manifest.json")]
+    raw = (snap / "manifest.json").read_bytes()
+    assert raw == (json.dumps(json.loads(raw), indent=1, sort_keys=True)
+                   + "\n").encode("ascii")
+    assert b"\r" not in raw

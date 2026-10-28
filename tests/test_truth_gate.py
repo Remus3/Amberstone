@@ -709,3 +709,27 @@ def test_truth_gate_never_passes_shell_true():
     for node in ast.walk(ast.parse(src)):
         if isinstance(node, ast.keyword) and node.arg == "shell":
             assert not (isinstance(node.value, ast.Constant) and node.value.value is True)
+
+
+def test_report_write_routes_through_polled_json_with_lf_bytes(tmp_path, monkeypatch):
+    """RM-258: the report goes through core.polled_json (per-writer scratch,
+    fsync, bounded WinError 5 retry), not a hand-rolled `<target>.tmp` that
+    two concurrent gates would share. RM-481: the bytes on disk are the
+    serialized bytes - Path.write_text turned every LF into CRLF on Windows."""
+    import core.polled_json as pj
+    from tools.truth_gate import write_report_atomic
+
+    seen = []
+    real = pj.atomic_write_bytes
+
+    def spy(path, data):
+        seen.append(Path(path))
+        real(path, data)
+
+    monkeypatch.setattr(pj, "atomic_write_bytes", spy)
+    target = tmp_path / "rt" / "report.json"
+    report = {"verdict": "PROCEED", "slices": [{"id": "s1", "ok": True}]}
+    write_report_atomic(report, target)
+    assert seen == [target]
+    assert target.read_bytes() == json.dumps(report, indent=2).encode("utf-8")
+    assert sorted(p.name for p in target.parent.iterdir()) == ["report.json"]
