@@ -248,6 +248,17 @@ def render_report(results):
     return "\n".join(out)
 
 
+def _write_report(md, out_path):
+    """Write the markdown report atomically through core.polled_json (RM-258).
+
+    Bytes, not write_text: the report is TRACKED and write_text turns LF into
+    CRLF on Windows (RM-441). atomic_write_bytes creates the parent directory,
+    uses a per-writer scratch name, fsyncs, retries a WinError 5 refusal and
+    never leaves the scratch file behind."""
+    from core import polled_json
+    polled_json.atomic_write_bytes(out_path, md.encode("utf-8"))
+
+
 def main(argv=None):
     import argparse
     ap = argparse.ArgumentParser(description="Offline CV atlas flip-readiness validator")
@@ -270,12 +281,7 @@ def main(argv=None):
     out_path = Path(ns.out)
     if not out_path.is_absolute():
         out_path = _ROOT / out_path
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = out_path.with_suffix(out_path.suffix + ".tmp")
-    # Bytes, not write_text: the report is TRACKED and write_text turns LF into
-    # CRLF on Windows (RM-441).
-    tmp.write_bytes(md.encode("utf-8"))
-    tmp.replace(out_path)
+    _write_report(md, out_path)
     print("wrote " + str(out_path))
     return 0
 

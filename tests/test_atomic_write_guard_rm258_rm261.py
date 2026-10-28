@@ -187,7 +187,6 @@ _TOOLS_UNCLASSIFIED = frozenset({
     "tools/strip_em_dashes.py",
     "tools/strip_smart_quotes.py",
     "tools/strip_u2500.py",
-    "tools/vision_atlas_validate.py",
     "tools/web_ascii_sweep.py",
 })
 
