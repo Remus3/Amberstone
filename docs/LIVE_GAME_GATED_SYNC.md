@@ -397,6 +397,25 @@ PASS drains S6. PARTIAL and FAIL-SIGNAL are recorded beside this row, never tick
   `vision_server/_config.py` `_LOG_PATH`, `RC_VISION_SERVER_LOG` overrides), a traceback naming
   `PIL` during the game. A `Vision crop failed` line there is context only: any token holder can
   write one with a junk `/vision` body.
+- (f) CODE VERSION (s144 gated c19, PREP; record it in the tick line). The (b) / (e) text above
+  describes `_maybe_obs_frame` WITHOUT the true-audit OBS-lane fix RM-1108 (on lane/true-audit,
+  NOT landed on main at 2026-10-28 04:29 local). Test which code the listener runs by SYMBOL, not
+  sha (a landing can rewrite it): the fix defines `_downscaled` in `vision_server/_frame.py`, so
+  check that file at the checkout the (a) pid started from, and only count it as loaded when
+  (a)'s `create_time` is after that code reached the checkout. With the fix loaded: (b) still
+  holds, more strongly - every `obs` frame is fully decoded (`Image.open` plus `img.load()`), and
+  `width` / `height` are always set, or the function returns None. But the (e) arm "an `obs` frame
+  with `meta.width` null" can no longer occur. A vision-process Pillow failure on an OBS payload
+  (open, load, resize or encode) now returns None. The GDI path then runs: it serves a
+  `self_grab` frame (verdict PARTIAL, not FAIL-SIGNAL), or it refuses with its own `capture_skip`
+  (`not_foreground`, `blank`). The OBS failure's only trace is a `log.debug` line ("obs frame
+  undecodable, falling back to GDI" or "obs frame lane failed, falling back to GDI"). The vision
+  log runs at INFO (`vision_server/_config.py` `basicConfig`), so that line is never written, and
+  the OBS failure itself records no `capture_skip`. So with the fix loaded, a PARTIAL
+  while OBS is enabled cannot tell "OBS yielded nothing" apart from "vision Pillow could not
+  decode the OBS bytes". Record PARTIAL and leave the row open; do NOT read it as Pillow 13
+  passing or failing. The (e) readback-exit-3 and PIL-traceback arms are unchanged. Gap filed as
+  RM-1054 (cycle report).
 Evidence contract: value = the four `s6.*` booleans, the two `stats_tie.*` booleans of each (a) run,
 both (a) pids and `create_time`, the dist-info
 name, `meta.source`, `meta.ts`, `meta.width` / `meta.height`, the probe's frame facts and the
