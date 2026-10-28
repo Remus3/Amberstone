@@ -17,7 +17,8 @@ often the operator followed a DS recommendation and how those games ended. It
 is NOT a coach input and must never be wired into ``agents/daemon_slayer``
 rank - see the firewall note in ``core/ds_calibration_agreement.py``.
 
-Writes ATOMICALLY (tmp.write_text then tmp.replace - CLAUDE.md hard rule). The
+Writes ATOMICALLY through ``core.polled_json.atomic_write_bytes`` (per-writer
+scratch, fsync, bounded rename retry - CLAUDE.md hard rule, RM-258). The
 payload carries NO wall-clock timestamp, so a re-run over unchanged inputs
 yields a byte-identical file. ASCII only.
 
@@ -35,6 +36,7 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
+from core import polled_json  # noqa: E402
 from core.ds_calibration_agreement import (  # noqa: E402
     MIN_BUCKET_N,
     compute_ds_calibration_agreement_from_db,
@@ -73,15 +75,17 @@ def build_payload(result: dict) -> dict:
 
 
 def write_atomic(payload: dict, out_path: Path) -> None:
-    """Serialise ``payload`` to ``out_path`` via a tmp file plus replace."""
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = out_path.with_suffix(out_path.suffix + ".tmp")
-    tmp.write_text(
-        json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=True),
-        encoding="utf-8",
-        newline="\n",
+    """Serialise ``payload`` to ``out_path`` through core.polled_json (RM-258).
+
+    ``atomic_write_bytes`` keeps this file's own encoding (sorted keys, ASCII,
+    LF only) and adds the per-writer scratch, fsync, bounded rename retry and
+    scratch cleanup on failure that a hand-rolled ``<file>.tmp`` lacked.
+    """
+    polled_json.atomic_write_bytes(
+        out_path,
+        json.dumps(payload, indent=2, sort_keys=True,
+                   ensure_ascii=True).encode("utf-8"),
     )
-    tmp.replace(out_path)
 
 
 def summarise(payload: dict) -> str:

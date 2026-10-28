@@ -148,7 +148,6 @@ _TOOLS_UNCLASSIFIED = frozenset({
     "tools/daemon_slayer_build_orders_generate.py",
     "tools/daemon_slayer_pickban_targets_generate.py",
     "tools/ddragon_mirror_refresh.py",
-    "tools/ds_calibration_report.py",
     "tools/ds_cross_eval/probe_champion.py",
     "tools/ds_cross_eval/run_all.py",
     "tools/ds_parity_map.py",
