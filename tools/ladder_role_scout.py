@@ -36,6 +36,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from core import polled_json                                  # noqa: E402
 from core import riot_api                                     # noqa: E402
 from core.riot_retry import fetch_unthrottled                 # noqa: E402
 from core.replay_roster import ROLES                           # noqa: E402
@@ -236,9 +237,9 @@ def main(argv=None) -> int:
     out["match_failures"] = match_failures
 
     dest = Path(args.out)
-    tmp = dest.with_suffix(dest.suffix + ".tmp")
-    tmp.write_text(json.dumps(out, indent=2), encoding="utf-8")
-    tmp.replace(dest)
+    # RM-258: per-writer scratch, fsync and a bounded WinError 5 retry, since
+    # tools/timeline_ingest.py --source ladder reads this file; LF bytes.
+    polled_json.atomic_write_text(dest, json.dumps(out, indent=2))
     print(f"wrote {dest}  elapsed={time.time() - t0:.0f}s", flush=True)
 
     # RM-510: a written file is not a clean run. Ids failures live in

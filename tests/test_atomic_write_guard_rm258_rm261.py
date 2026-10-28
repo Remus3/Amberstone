@@ -136,6 +136,10 @@ _RUNTIME_TOOLS = frozenset({
     # tools/replay_roster_pull.py: the hourly RC-ReplayRosterPull task, which
     # rewrites ops/runtime/replay_roster_status.json unattended every run.
     "tools/replay_roster_pull.py",
+    # tools/ladder_role_scout.py: a background bulk ingest (~50 Riot calls a
+    # minute) that RC-ReplayChainWatch treats as a busy ingest; its
+    # data/ladder_role_mains.json is tools/timeline_ingest.py's ladder input.
+    "tools/ladder_role_scout.py",
 })
 
 # RM-258 residual (s144): tools/ is IN scope by default. Out of scope are the
@@ -173,7 +177,6 @@ _TOOLS_UNCLASSIFIED = frozenset({
     "tools/hotfix_zaahen_loadout_item277.py",
     "tools/hz_mismatch_diagnose.py",
     "tools/hz_shadow_arena_contamination.py",
-    "tools/ladder_role_scout.py",
     "tools/laning_verdict_information_probe.py",
     "tools/package_portable.py",
     "tools/regen_ranged_marksman_builds_item213.py",
@@ -801,6 +804,7 @@ def test_scope_keeps_runtime_tools_and_drops_generators():
     assert _in_scope("tools/rofl_dedupe.py")
     assert _in_scope("tools/timeline_ingest.py")
     assert _in_scope("tools/replay_roster_pull.py")
+    assert _in_scope("tools/ladder_role_scout.py")
     assert not _in_scope("tools/daemon_slayer_extract.py")
     assert not _in_scope("ops/fleet_kit/fleet_headless.py")
     assert _in_scope("coach_integration/_coach.py")
