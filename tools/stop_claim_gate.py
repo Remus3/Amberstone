@@ -110,7 +110,15 @@ PRUNED_DIRNAME = "pruned"
 CLAIM_TESTS_PASS = re.compile(
     r"\b(?:suite|tests?)\b[^.\n]{0,40}?\b(?:pass(?:es|ed|ing)?|green)\b"
     r"|\bgreen\b[^.\n]{0,20}?\b(?:suite|tests?)\b", re.I)
-CLAIM_COUNT = re.compile(r"(?:(\w+)\s+)?\b(\d[\d,]{0,9})\s+passed\b", re.I)
+CLAIM_COUNT = re.compile(r"(?:\b(\w+)\s+)?\b(\d[\d,]{0,9})\s+passed\b", re.I)
+# The `\b` before the prefix is a BOUND, not a change of meaning (RM-1090):
+# without it every char of a word was a start whose `(\w+)\s+` re-read the rest
+# of the word (2.91 s on a 20k digit run). Same findall, because (1) a start
+# INSIDE a word can match only through the prefix (the count's own `\b` fails
+# between two word chars), (2) that prefix runs to the word's end (it must meet
+# `\s+`), so its continuation is the one the word's first char already tried,
+# and (3) findall never resumes inside a word (a match ends at `passed\b`).
+# Pinned against the old text by tests/test_stop_claim_gate_alt_scan_s144q04.py.
 # "Test 1 passed" names ONE case; "1397 passed" counts a suite. Same three
 # tokens, opposite meanings, and reading the first as the second flagged a
 # backed claim on 2026-08-01. A variable-width lookbehind is not available in
@@ -486,6 +494,78 @@ class _SpanScan:
         return None if free is None else self.regex.match(text, limit)
 
 
+# _AltScan (RM-1090, the RM-829 sibling sweep). A top-level alternation whose
+# plain search re-read a run once per start: EV_VACUOUS's `^\s*INTERNALERROR>`
+# once per line start of a blank run, EV_FILTERED's `[\w/\\.-]+...` once per
+# char of a path-like run and `\btests?[\w/\\.-]*\.py\b` once per `test` in it.
+# The search is taken one alternative at a time. A FREE alternative (a literal)
+# is searched once. A RUN alternative is tried only where its HEAD matches, and
+# a failed try at s retires every start up to e, the first char at or after s
+# outside its RUN class. Proof, per alternative, that no start in (s, e)
+# matches: `^\s*INTERNALERROR>` from a later line start s' reads the same blank
+# run to e, and INTERNALERROR> cannot begin on a blank, so it needs the marker
+# at e - which s's `\s*` already reached. `\btests?[\w/\\.-]*\.py\b` from a later
+# head needs `.py` + `\b` at some j in (s'+3, e) (`.` is in the class, so j is
+# in the run), and s's span covers s+4..j-1 too. `[\w/\\.-]+\.test\.[cm]?js\b`
+# likewise needs its tail at some j in (s', e), which s's span reaches; so its
+# HEAD is the run itself and one try per run is the whole cost. Each run is
+# read by at most one failed try per alternative, so search is linear. The
+# answer is the regex's OWN match at the smallest leftmost start: no
+# alternative matches before it, so the plain search stops there too and takes
+# the first alternative, in order, that matches at it. Pinned against the plain
+# regexes by tests/test_stop_claim_gate_alt_scan_s144q04.py.
+
+
+class _AltScan:
+    """A top-level alternation searched one alternative at a time, each RUN
+    alternative skipping the starts a failed try proved dead (RM-1090, proof
+    above). Its search equals the plain regex's; every other attribute is the
+    regex's own. PARTS: (alternative, head, run class body), head and run None
+    for a FREE alternative."""
+
+    def __init__(self, regex, parts):
+        if "|".join(alt for alt, _head, _run in parts) != regex.pattern:
+            raise ValueError("PARTS do not spell the pattern")
+        if any((head is None) != (run is None) for _alt, head, run in parts):
+            raise ValueError("a RUN alternative needs both a head and a run")
+        self.regex = regex
+        self._parts = [(re.compile(alt, regex.flags),
+                        None if head is None else re.compile(head, regex.flags),
+                        None if run is None else re.compile("[^" + run + "]"))
+                       for alt, head, run in parts]
+
+    def __getattr__(self, name):
+        # Reached only for names this class lacks; never for dunders or
+        # `regex`, so a copy / pickle probe cannot recurse before __init__.
+        if name.startswith("__") or name == "regex":
+            raise AttributeError(name)
+        return getattr(self.regex, name)
+
+    def search(self, text):
+        best = None
+        for alt, head, stop in self._parts:
+            limit = len(text) + 1 if best is None else best
+            if head is None:
+                match = alt.search(text)
+                if match is not None and match.start() < limit:
+                    best = match.start()
+                continue
+            pos = 0
+            while True:
+                found = head.search(text, pos)
+                if found is None or found.start() >= limit:
+                    break
+                start = found.start()
+                if alt.match(text, start) is not None:
+                    best = start
+                    break
+                end = stop.search(text, start)
+                if end is None:
+                    break
+                pos = max(end.start(), start + 1)
+        return None if best is None else self.regex.match(text, best)
+
+
 # Evidence patterns.
 EV_PYTEST = re.compile(r"(?:^|\s|-m\s)pytest\b", re.I)
 # A CI-log fetch. ADDED 2026-09-06: this gate indexed only LOCAL pytest
@@ -536,9 +616,12 @@ EV_NODE_TEST = _SpanScan(re.compile(r"\bnpm\s+(?:run\s+)?test\b|\bnode\b[^|;&\n]
 # widening was silently inert. Measured, not assumed. The glyph is matched by
 # class rather than written out because this file is 7-bit ASCII by repo rule.
 EV_NODE_PASS = re.compile(r"^[^a-zA-Z\n]{0,4}pass\s+(\d[\d,]{0,9})\s*$", re.M)
-EV_FILTERED = re.compile(r"\s-k\s|::|\btests?[\w/\\.-]*\.py\b"
-                         # `node --test <one file>` is as filtered as `-k`.
-                         r"|[\w/\\.-]+\.test\.[cm]?js\b", re.I)
+EV_FILTERED = _AltScan(re.compile(r"\s-k\s|::|\btests?[\w/\\.-]*\.py\b"
+                                  # `node --test <one file>` is as filtered as `-k`.
+                                  r"|[\w/\\.-]+\.test\.[cm]?js\b", re.I),
+                       [(r"\s-k\s", None, None), ("::", None, None),
+                        (r"\btests?[\w/\\.-]*\.py\b", r"\btest", r"\w/\\.-"),
+                        (r"[\w/\\.-]+\.test\.[cm]?js\b", r"[\w/\\.-]+", r"\w/\\.-")])
 # (?<!-): `--no-commit` (cherry-pick / revert / merge) is the OPPOSITE of
 # committing, and \b alone let it count as evidence.
 EV_COMMIT = _SpanScan(re.compile(r"\bgit\b[^|;&]*(?<!-)\bcommit\b", re.I),
@@ -832,8 +915,10 @@ EV_PASSED = re.compile(r"\b(\d[\d,]{0,9})\s+passed\b", re.I)
 # and an OOM `INTERNALERROR MemoryError` during a five-slice parallel run).
 # Anchored on the line-leading marker pytest prints, so prose that merely NAMES
 # the word does not poison a real run.
-EV_VACUOUS = re.compile(r"no tests ran|collected 0 items|^\s*INTERNALERROR>",
-                        re.I | re.M)
+EV_VACUOUS = _AltScan(re.compile(r"no tests ran|collected 0 items|^\s*INTERNALERROR>",
+                                 re.I | re.M),
+                      [("no tests ran", None, None), ("collected 0 items", None, None),
+                       (r"^\s*INTERNALERROR>", "^", r"\s")])
 # A backgrounded run answers with a launcher handoff, not a summary. The real
 # output lands later, when the output file is read by some unrelated command.
 EV_BACKGROUND = re.compile(r"running in background with ID|Output is being written to",
