@@ -228,8 +228,14 @@ jobs:
           # `check` job would cost roughly this, taking that job from ~8m30s to
           # ~20min per push. That is an operator call on minutes, not a free
           # coverage win, and the estimate to beat is measured, not local.
+          #
+          # --max-worker-restart=0 (RM-754, every xdist step in this file):
+          # after a --timeout kill, --dist loadfile hands the crashed test to
+          # every replacement worker (1 + 4 x n times by default), so one hung
+          # test would burn the step timeout instead of failing in 5 minutes.
+          # Pinned by tests/test_xdist_worker_restart_cap_rm754.py.
           pytest tests/ agents/daemon_slayer/tests/ -q --tb=short --timeout=300 \
-            -n auto --dist loadfile
+            -n auto --dist loadfile --max-worker-restart=0
 
   check:
     if: github.event_name != 'schedule'
@@ -672,7 +678,7 @@ jobs:
         timeout-minutes: 45
         run: |
           python -m pytest "@$RUNNER_TEMP/impact_tests.txt" -q --tb=short --timeout=300 \
-            -n auto --dist loadfile
+            -n auto --dist loadfile --max-worker-restart=0
 
       # The step name keeps "full dual suite": ops/loop/queue_loop.py grades
       # the `check` job's step whose name CONTAINS that string.
@@ -770,7 +776,7 @@ jobs:
           # 95cded3b. Any future "the DS tests are flaky under -n" claim should
           # be re-measured before it is believed.
           pytest tests/ agents/daemon_slayer/tests/ -q --tb=short --timeout=300 \
-            -n auto --dist loadfile
+            -n auto --dist loadfile --max-worker-restart=0
 
       - name: mypy gradual typing
         continue-on-error: true

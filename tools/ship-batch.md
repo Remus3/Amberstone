@@ -72,8 +72,8 @@ to check in. ASCII only, no em/en dashes or smart quotes in any authored byte.
   `@staticmethod` correctly.
 - Full DS suite until green, then the wider dual suite before the version bump,
   each ONE run through the kit's suite gate (the TIER TABLE in `tools/done.md`):
-  `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- python -m pytest agents/daemon_slayer/tests -q -n 8 --dist loadfile --timeout=300`
-  then `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- python -m pytest tests agents/daemon_slayer/tests -q -n 8 --dist loadfile --timeout=300`.
+  `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- python -m pytest agents/daemon_slayer/tests -q -n 8 --dist loadfile --max-worker-restart=0 --timeout=300`
+  then `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- python -m pytest tests agents/daemon_slayer/tests -q -n 8 --dist loadfile --max-worker-restart=0 --timeout=300`.
   Iterate on the failing test FILES by name in between; never `pytest -q` from the root.
 
 ## 3. Bump ENGINE_VERSION (with the guard)

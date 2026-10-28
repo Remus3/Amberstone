@@ -12,7 +12,12 @@ lane docs ran serial or ungated whole suites. Pinned here:
   * every LOCAL whole-suite command in a command doc - written `-m pytest`
     naming no test file and not a `--collect-only` count - sits inside a
     `fleet_suite_gate.py run` call on the same line;
-  * every gated pytest call runs `-n 8 --dist loadfile`;
+  * every gated pytest call runs `-n 8 --dist loadfile`, and caps xdist
+    worker restarts with `--max-worker-restart=0` (RM-754: after a
+    `--timeout` kill, `--dist loadfile` hands the crashed test to every
+    replacement worker, 1 + 4 x n times by default, so one hung test can hold
+    a worker for hours while the rest sit idle; the CI half and the
+    "not in pytest.ini" half live in tests/test_xdist_worker_restart_cap_rm754.py);
   * the stale "NOT yet adopted" xdist block is gone from tools/done.md;
   * exactly one TIER TABLE exists across tools/*.md, in tools/done.md, and it
     says what each tier runs, that Tier-2 runs once by the merger at -n 8 and
@@ -44,6 +49,7 @@ COMMANDS = (
 
 TIER_TABLE_HEAD = "**TIER TABLE"
 GATE = "fleet_suite_gate.py"
+RESTART_CAP = "--max-worker-restart=0"
 _PYTEST = re.compile(r"-m pytest\b")
 _GATED = re.compile(r'fleet_suite_gate\.py"? run --owner <id> -- (?P<cmd>[^`]*)')
 
@@ -102,10 +108,12 @@ def test_every_gated_pytest_call_runs_in_parallel():
                 if "pytest" not in cmd:
                     continue  # the RACE GUARDS block's `<suite cmd>` placeholder
                 seen += 1
-                if "-n 8" not in cmd or "--dist loadfile" not in cmd:
+                if ("-n 8" not in cmd or "--dist loadfile" not in cmd
+                        or RESTART_CAP not in cmd.split()):
                     bad.append(f"tools/{name}:{n}: {cmd.strip()[:140]}")
     assert seen >= 8, f"only {seen} gated pytest calls found - the sweep went blind"
-    assert not bad, "gated suite without -n 8 --dist loadfile:\n" + "\n".join(bad)
+    assert not bad, (f"gated suite without -n 8 --dist loadfile {RESTART_CAP}:\n"
+                     + "\n".join(bad))
 
 
 def test_the_detector_catches_a_serial_whole_suite():

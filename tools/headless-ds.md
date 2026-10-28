@@ -79,7 +79,7 @@ From the `CLAUDE.md` "Settled - do not re-litigate" section:
 ### 3. Running the suite - ALWAYS from the REPO ROOT
 
 **Hard rule: run the DS suite from the repo root, through the kit's suite gate and in parallel (TIER TABLE in `tools/done.md`):
-`python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- python -m pytest agents/daemon_slayer/tests -q -n 8 --dist loadfile --timeout=300`. Running the same
+`python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- python -m pytest agents/daemon_slayer/tests -q -n 8 --dist loadfile --max-worker-restart=0 --timeout=300`. Running the same
 suite with cwd `agents/daemon_slayer/` produces 13 FALSE failures.**
 
 Measured 2026-07-26: from the DS directory the run reported 15 failed / 9917 passed - two real, thirteen pure CWD artifacts (all 159 of their tests pass from

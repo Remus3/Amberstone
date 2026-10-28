@@ -179,7 +179,7 @@ When the tracker and `ROADMAP.md` disagree, believe the HIGHER one, then re-deri
 ONE gated parallel run over both trees (the TIER TABLE's Tier-2 command in `tools/done.md`):
 
 ```
-python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- python -m pytest tests agents/daemon_slayer/tests -q -n 8 --dist loadfile --timeout=300
+python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- python -m pytest tests agents/daemon_slayer/tests -q -n 8 --dist loadfile --max-worker-restart=0 --timeout=300
 ```
 
 - **BOTH suites, EVERY cycle, before you push - not only at Tier-2.** This lane's worker is the MERGER of its one row and lands it on `main` unattended, so its push gate is the TIER TABLE's Tier-2 run, ONCE per cycle, whatever the row's tier; the tier still governs how much you verify while you WORK. The trees above are exactly what `.github/workflows/ci.yml:504-505` runs, so a local green is the same evidence CI would give you, roughly 40 minutes sooner. Report both counts, observed this run.

@@ -59,7 +59,7 @@ already have and proves it with derived tests before a line of impl exists.
   gated parallel run over both trees (the TIER TABLE in `tools/done.md`; the
   DS baseline is ENGINE-pinned - know the current passed + subtests count and
   do not drop it):
-  `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- python -m pytest tests agents/daemon_slayer/tests -q -n 8 --dist loadfile --timeout=300`.
+  `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- python -m pytest tests agents/daemon_slayer/tests -q -n 8 --dist loadfile --max-worker-restart=0 --timeout=300`.
 - Do not weaken a real assertion to get green. If a prior pin legitimately
   moved because the spec corrects it, rebaseline it deliberately and say so
   in the commit; never silently.

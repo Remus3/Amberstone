@@ -219,7 +219,7 @@ the suite. A test written after the fix proves the fix ran, not that the bug exi
 Tier-1 names the touched modules' test files instead):
 
 ```
-python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- python -m pytest tests agents/daemon_slayer/tests -q -n 8 --dist loadfile --timeout=300
+python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- python -m pytest tests agents/daemon_slayer/tests -q -n 8 --dist loadfile --max-worker-restart=0 --timeout=300
 ```
 
 **The DS suite MUST run from the repo root.** Measured 2026-07-26: with cwd `agents/daemon_slayer/` the run reported 15 failed against 9917 passed - two real,
