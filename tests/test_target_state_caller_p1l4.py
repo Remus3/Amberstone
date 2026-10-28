@@ -222,7 +222,8 @@ class TestCoachFeedsFixedCurveNotEnemyBuild:
 # ===========================================================================
 # BUG - compute_target_stats_from_items (live path, ds-preview) omits the
 # champion base resist-by-level. Engine treats target_armor as ABSOLUTE
-# (dps.py:574 effective_target_armor(target_armor,...) - no base added),
+# (dps.compute_dps passes it to effective_target_armor(target_armor,...)
+# - no base added),
 # and the live-items branch in _resolve_ds_target_stats RETURNS instead of
 # summing with the curve, so the base is never added anywhere. Fixed
 # test-first via an opt-in champion-base layer in the non-frozen module.
