@@ -37,7 +37,9 @@ BRIDGE (`sync` / `ingest_game`), idempotent by game id:
 READS. `final_boards(store, set_id)` is the TFT-08 hand-off to the engine's
 comp catalogue (tft/engine/milestones.records_from_store final_boards=): per match,
 the local player's final board from the most trusted source present
-(GT_SOURCE_ORDER).
+(GT_SOURCE_ORDER). `lobby_rows(store, set_id, queue_kind)` is the lobby
+view for tft/engine/comps.pair_stats (RM-1095): one plain row per placed
+player of every match, its board from that same one most trusted source.
 
 BACKFILL (`backfill`, the CLI). `--eog-raw` takes recorder raw tft-eog-stats
 documents (ops/runtime/tft_qa/<stamp>/eog_raw.json; a directory means every
@@ -545,6 +547,37 @@ def final_boards(store: RoundStore, set_id=None) -> dict:
                 out[m["match_id"]] = [{k: r.get(k) for k in ("champion_api", "star", "items", "cost", "source")}
                                       for r in picked]
                 break
+    return out
+
+
+def lobby_rows(store: RoundStore, set_id=None, queue_kind=None) -> list:
+    """Plain lobby rows for tft/engine/comps.pair_stats (RM-1095): one
+    {placement, units, queue_kind} per player with a gt_player placement and a
+    gt_board board, joined by player_key. Each player's units come from ONE
+    source, the most trusted present (GT_SOURCE_ORDER), so a player two sources
+    carry is counted once. queue_kind is the match's: Double Up rows stay
+    apart in pair_stats. Ordered by match_id, then placement. Post-game only
+    (RM-892): never a live round input."""
+    out = []
+    for m in sorted(store.list_matches(set_id=set_id, queue_kind=queue_kind),
+                    key=lambda m: m["match_id"]):
+        doc = store.get_match(m["match_id"], rounds=False)
+        if not doc:
+            continue
+        boards: dict = {}
+        for r in doc.get("gt_board") or []:
+            boards.setdefault(r.get("player_key"), {}).setdefault(r.get("source"), []).append(r)
+        players = []
+        for p in doc.get("gt_player") or []:
+            place = _bounded(p.get("placement"), 1, 8)
+            by_src = boards.get(p.get("player_key")) or {}
+            src = next((s for s in GT_SOURCE_ORDER if by_src.get(s)), None)
+            units = [r["champion_api"] for r in by_src.get(src) or ()
+                     if isinstance(r.get("champion_api"), str) and r["champion_api"]]
+            if place is not None and units:
+                players.append({"placement": place, "units": units,
+                                "queue_kind": doc["match"].get("queue_kind")})
+        out.extend(players)                      # get_match orders gt_player by placement
     return out
 
 
