@@ -450,7 +450,9 @@ footer {
   background: var(--canvas);
   line-height: 1;
 }
-footer > * { display: inline-flex; align-items: center; }
+/* RM-1013: nowrap so the bar holds ONE row; at 923px a 60-character
+ * stamp wrapped itself (56px), "RC | -" (32px) and VOICE (40px). */
+footer > * { display: inline-flex; align-items: center; white-space: nowrap; }
 footer code { color: var(--text); font-family: "SF Mono", Consolas, "Courier New", monospace; font-size: var(--fs-xs); }
 footer .spacer { flex: 1; }
 footer .ui-version {
@@ -465,6 +467,14 @@ footer .ui-version {
   border-radius: 3px;
   background: var(--surface);
   letter-spacing: 0.02em;
+  /* RM-1013: the stamp is the one footer item that gives way: block (an
+   * inline-flex box cannot ellipsize its text), min-width 0 so it shrinks,
+   * and a too-long stamp truncates with an ellipsis; stampFooter copies the
+   * full text into the title. */
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 /* RM-1012: stampFooter (main.js autoReload) leaves the span empty when
  * neither rc_version nor the ui hash is known; without this the padding

@@ -7526,6 +7526,9 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       const v = rcVer ? `RC ${rcVer}` : "";
       const u = uiHash ? `ui ${uiHash}` : "";
       host.textContent = [v, u].filter(Boolean).join(" · ");
+      // RM-1013: the CSS ellipsizes a stamp too long for the footer row;
+      // the title keeps the full stamp readable on hover.
+      host.title = host.textContent;
     }
     async function fetchRcVersion() {
       try {

@@ -15,6 +15,13 @@ Measured before this slice (headless Chromium, ?ui_mock=1, #home, 1920x920):
 
 The stamped case fulfils /api/health and /api/ui-version per page through
 Playwright routing with synthetic values; the mock server is untouched.
+
+RM-1013 (s144 uiux): the footer holds ONE row. Measured before that slice
+(923x1280, a 60-character stamp): no footer child carried
+`white-space: nowrap`, so the stamp wrapped to 56px, the "RC | -" span to
+32px and #voice-toggle to 40px inside the 42px bar. Now every footer chip stays one line, a stamp
+too long for the row truncates with an ellipsis instead of wrapping, and the
+full stamp stays readable in the span's title.
 """
 import json
 
@@ -36,7 +43,7 @@ def _json_route(payload):
     )
 
 
-def _open(pw_browser, mock_server, width, height, stamped):
+def _open(pw_browser, mock_server, width, height, stamped, rc_version=_RC_VERSION):
     mock_server._store["data"] = {}
     ctx = pw_browser.new_context(
         ignore_https_errors=True, viewport={"width": width, "height": height}
@@ -47,7 +54,7 @@ def _open(pw_browser, mock_server, width, height, stamped):
         page.route("**/api/ui-version", _json_route({"v": _UI_HASH}))
         page.route(
             "**/api/health",
-            _json_route({"alive": True, "rc_version": _RC_VERSION}),
+            _json_route({"alive": True, "rc_version": rc_version}),
         )
     errors: list[str] = []
     page.on("pageerror", lambda err: errors.append(str(err)))
@@ -111,4 +118,67 @@ def test_stamp_renders_at_footer_chip_height(mock_server, pw_browser, width, hei
     assert abs(m["mid"] - m["footerMid"]) <= 1, (
         f"stamp centre {m['mid']} off the footer centre {m['footerMid']}"
     )
+    assert not errors, f"JS errors: {errors[:3]}"
+
+
+# RM-1013: a synthetic build tag long enough to make a 60-character stamp
+# ("RC <43 chars> . ui 0a1b2c3d").
+_LONG_RC_VERSION = "9.8.7-rc.12+build.20261027.0123456789abcdef"
+
+_ROW = """
+() => {
+  const f = document.querySelector('footer');
+  const pillH = f.querySelector('#mode-pill').getBoundingClientRect().height;
+  const kids = [];
+  for (const el of f.children) {
+    const cs = getComputedStyle(el);
+    if (cs.display === 'none' || el.classList.contains('spacer')) continue;
+    if (el.tagName === 'SELECT') continue;  // takes the --hit-min floor itself
+    const r = el.getBoundingClientRect();
+    if (!r.width && !r.height) continue;
+    kids.push({id: el.id || el.className, h: r.height, ws: cs.whiteSpace});
+  }
+  const s = f.querySelector('.ui-version');
+  const scs = getComputedStyle(s);
+  return {pillH, kids,
+          footerH: f.getBoundingClientRect().height,
+          footerOverflow: f.scrollWidth - f.clientWidth,
+          stamp: {text: s.textContent, title: s.title,
+                  h: s.getBoundingClientRect().height,
+                  clipped: s.scrollWidth > s.clientWidth,
+                  overflow: scs.overflow, textOverflow: scs.textOverflow,
+                  ws: scs.whiteSpace}};
+}
+"""
+
+
+@pytest.mark.parametrize("width,height", VIEWPORTS)
+def test_footer_holds_one_row_with_a_long_stamp(
+    mock_server, pw_browser, width, height
+):
+    ctx, page, errors = _open(
+        pw_browser, mock_server, width, height, True, _LONG_RC_VERSION
+    )
+    try:
+        m = page.evaluate(_ROW)
+    finally:
+        page.close()
+        ctx.close()
+    s = m["stamp"]
+    full = f"RC {_LONG_RC_VERSION} \u00b7 ui {_UI_HASH}"
+    # anchor: the long stamp reached the span, and the row has chips to check.
+    assert s["text"] == full and len(full) == 60, s
+    assert len(m["kids"]) >= 3, m["kids"]
+    tall = [k for k in m["kids"] if k["h"] > m["pillH"] + 0.5]
+    assert not tall, f"{width}x{height}: footer items wrapped past the {m['pillH']}px pill: {tall}"
+    assert abs(s["h"] - m["pillH"]) <= 0.5, f"{width}x{height}: stamp {s}"
+    assert m["footerOverflow"] <= 0, f"{width}x{height}: footer overflows by {m['footerOverflow']}px"
+    # anchor: at companion width the row cannot hold the whole stamp (measured
+    # 563px of text in a 344px box at 923), so the ellipsis branch really runs.
+    if width < 1000:
+        assert s["clipped"], s
+    if s["clipped"]:
+        assert s["textOverflow"] == "ellipsis" and s["ws"] == "nowrap", s
+    # a truncated stamp stays readable on hover.
+    assert s["title"] == full, s
     assert not errors, f"JS errors: {errors[:3]}"

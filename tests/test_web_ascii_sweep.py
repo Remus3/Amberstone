@@ -1102,7 +1102,19 @@ _WEB = _REPO_ROOT / "web"
 # EXACTLY. That path is the whole change. No glyph change: the added lines
 # carry 0 non-ASCII bytes. If another slice re-captures in parallel, the
 # merger recomputes.
-_LIVE_HALF_DIGEST = "d04739f476e54171170b25c066cfea7d45de302f0532e41b4d1dee7c0df097e5"
+# superseded by the RM-1013 re-capture below: "d04739f476e54171170b25c066cfea7d45de302f0532e41b4d1dee7c0df097e5"
+#
+# RE-CAPTURED 2026-10-27 at RM-1013 (s144 uiux cycle 22, provisional
+# until the merger lands it). One change rides it: the footer holds one row
+# (`footer > *` nowrap; the build stamp `footer .ui-version` is display
+# block, min-width 0, ellipsis) in web/css/panels/input_activity.css, and
+# web/js/main.js autoReload `stampFooter` copies the stamp into the span's
+# title. Ordinary case, no tokeniser change. ATTRIBUTED BY SUBSTITUTION:
+# swapping exactly those two files back to their lane-tip fc5d58121 blobs
+# reproduces the superseded d04739f4... value EXACTLY. Those paths are the
+# whole change. No glyph change: the added lines carry 0 non-ASCII bytes.
+# If another slice re-captures in parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "14e99e48ba1f301ca7cb04bb83a6ac5987f603fa9d8bc373dd3b328d6c11e1c2"
 
 
 def _web_sources() -> list[Path]:
