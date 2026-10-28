@@ -40,6 +40,8 @@ absent so a data-less checkout does not red the suite.
 from __future__ import annotations
 
 import json
+import re
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -51,6 +53,8 @@ from agents.daemon_slayer._rune_offense_grants import (
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _CURRENT_TXT = _REPO_ROOT / "data" / "daemon_slayer" / "current.txt"
+_DDRAGON_ROOT = _REPO_ROOT / "data" / "meta_build" / "ddragon"
+_PATCH_DIR_RE = re.compile(r"^\d+\.\d+\.\d+$")
 
 # ALL FIVE trees, swept to saturation as of R159. Precision 8000, Inspiration
 # 8300 and Resolve 8400 joined Domination 8100 + Sorcery 8200 - see the module
@@ -59,7 +63,9 @@ _CURRENT_TXT = _REPO_ROOT / "data" / "daemon_slayer" / "current.txt"
 _SATURATED_TREE_IDS: tuple[int, ...] = (8000, 8100, 8200, 8300, 8400)
 
 
-def _feed_path() -> Path | None:
+def _feed_path(
+    ddragon_root: Path = _DDRAGON_ROOT, current_txt: Path = _CURRENT_TXT
+) -> Path | None:
     """Resolve the vendored ``runesReforged.json`` the same way sibling DS tests do.
 
     Patch comes from ``data/daemon_slayer/current.txt`` (the same source
@@ -68,17 +74,21 @@ def _feed_path() -> Path | None:
     ``test_rune_hsp_amp_r136._rune_files`` globs for one. Returns None when no
     snapshot exists at all, so the caller decides how to react.
     """
-    if _CURRENT_TXT.exists():
-        patch = _CURRENT_TXT.read_text(encoding="utf-8").strip()
-        candidate = (
-            _REPO_ROOT / "data" / "meta_build" / "ddragon" / patch / "runesReforged.json"
-        )
+    if current_txt.exists():
+        patch = current_txt.read_text(encoding="utf-8").strip()
+        candidate = ddragon_root / patch / "runesReforged.json"
         if candidate.exists():
             return candidate
-    vendored = sorted(
-        (_REPO_ROOT / "data" / "meta_build" / "ddragon").glob("*/runesReforged.json")
-    )
-    return vendored[-1] if vendored else None
+    # RM-991: semver dirs only, compared as integers. A string sort ranked
+    # 16.9.1 above 16.21.1 and any non-patch dir above every patch.
+    vendored = [
+        p
+        for p in ddragon_root.glob("*/runesReforged.json")
+        if _PATCH_DIR_RE.match(p.parent.name)
+    ]
+    if not vendored:
+        return None
+    return max(vendored, key=lambda p: tuple(int(x) for x in p.parent.name.split(".")))
 
 
 def _require_feed_path() -> Path:
@@ -294,6 +304,50 @@ class RuneOffenseSaturationInvarianceTests(unittest.TestCase):
                 self.assertEqual(
                     self._grants([rid], bonus_ad=0.0, ap=400.0), (0.0, 0.0, 0.0)
                 )
+
+
+class FeedPathNewestSnapshotTests(unittest.TestCase):
+    """RM-991: the fallback picks the newest patch by integer semver.
+
+    A string sort ranks 16.9.1 above 16.21.1 and 17.9.1 above 17.10.1, and any
+    non-patch dir above every patch, so the guard would sweep a stale feed.
+    Latent while every vendored patch is 16.1x / 16.2x; synthetic trees here.
+    """
+
+    def _tree(self, dirs: list[str], current: str | None) -> tuple[Path, Path]:
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name) / "ddragon"
+        for name in dirs:
+            (root / name).mkdir(parents=True)
+            (root / name / "runesReforged.json").write_text("[]", encoding="utf-8")
+        current_txt = Path(tmp.name) / "current.txt"
+        if current is not None:
+            current_txt.write_text(current + "\n", encoding="utf-8")
+        return root, current_txt
+
+    def _picked(self, dirs: list[str], current: str | None) -> str | None:
+        root, current_txt = self._tree(dirs, current)
+        path = _feed_path(ddragon_root=root, current_txt=current_txt)
+        return None if path is None else path.parent.name
+
+    def test_two_digit_minor_beats_one_digit_minor(self) -> None:
+        self.assertEqual(self._picked(["16.9.1", "16.21.1"], None), "16.21.1")
+
+    def test_minor_ten_beats_minor_nine(self) -> None:
+        self.assertEqual(self._picked(["17.9.1", "17.10.1"], None), "17.10.1")
+
+    def test_non_patch_dir_is_never_the_newest(self) -> None:
+        self.assertEqual(self._picked(["16.21.1", "zz_scratch"], None), "16.21.1")
+
+    def test_current_txt_without_its_dir_falls_back_to_newest(self) -> None:
+        self.assertEqual(self._picked(["16.9.1", "16.21.1"], "16.22.1"), "16.21.1")
+
+    def test_current_txt_with_its_dir_wins(self) -> None:
+        self.assertEqual(self._picked(["16.9.1", "16.21.1"], "16.9.1"), "16.9.1")
+
+    def test_no_snapshot_returns_none(self) -> None:
+        self.assertIsNone(self._picked([], None))
 
 
 if __name__ == "__main__":  # pragma: no cover
