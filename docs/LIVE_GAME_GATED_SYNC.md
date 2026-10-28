@@ -539,6 +539,28 @@ Reverses if: the relay's TLS-relevant code changes (`relay_parity` then reads fa
 `core/tls_policy.py` `TLS_MIN_VERSION` moves, or the relay task starts running another interpreter
 or another copy of the relay.
 
+**AUTO-RELOAD SWEEP (s144 gated c21, RM-1055, PREP; NOT a tick).** The dashboard reloads itself
+when a watched web asset changes (`web/js/main.js`: the `/api/ui-version` poller and the
+`_hotReloadInit` `/api/asset-stamp` poller), so a merger landing that writes `web/` mid-game can
+void a predicate that counts browser-sent requests or grades a dashboard render inside a window.
+Two READY rows have that shape and now carry the before / after read with its NO_RESULT rule:
+G1-07 (duo GET count and the DUO PICKS render) and G3-13 (the on-screen augment block). The other
+READY / PREP rows below cannot be moved by a reload. Each predicate reads a server-side artifact, a
+non-browser endpoint, a game-client screen, or a page-driven shadow jsonl graded on row contents,
+never on row count: S6 (the vision process's frame decode), the RM-752 follow-up (the `:2999` TLS
+handshake of the relay), G4-30 (Y-01; the match DB and the day log), RM-292 (c)
+(`tft_live_data.json` keys), LT-02r (recorded `tft_qa` evidence and game frames), TFT-15 (LCU GETs
+and the client planner), the GATE 8 READY block (`/api/state` and raw `:2999` field paths), G3-12
+(PREP; `data/aram_coaching_data.json` `game_time_s` vs the probe's own `/api/state` read), G3-16
+(`data/hz_choice_shadow.jsonl`, appended by `dashboard/_state_builder.py` `build_state`, so a
+reload may add rows, but the predicate grades each row's `game_id` and `game_run_id`), the RM-869
+live half (the coaching files' vision fields), G5-11 (the LCU subteam roster, the relay's Live
+Client capture and the `focus_board` column of `data/arena_coach_shadow.jsonl`; nothing renders)
+and G7-17 (`tools/arena_shadow_report.py` over that same jsonl, which `build_state` also appends
+to, de-duplicated by round and action; its on-screen checks are game-client cards). An RC restart is
+a different event and each row's own restart rule covers it. A NEW row whose predicate counts
+browser requests or watches a render over time copies the G1-07 paragraph.
+
 ---
 
 ## GATE 1 - ANY LOBBY / CHAMP-SELECT (no game ever starts)
@@ -1371,6 +1393,25 @@ survivability flips below cannot roll otherwise.
   and STAMPED a reco for the offered cards in the window; it does not prove the panel RENDERED it
   or that the cards on screen are the OCR's cards. Only (3), with a FRESH frame, closes the row; a
   green tool run plus a dark or wrong panel on screen is a FAIL.
+  **AUTO-RELOAD VOIDS THE GLANCE (s144 gated c21, PREP; stated before any game; the G1-07 trap, swept
+  here by RM-1055):** the dashboard reloads itself on any watched asset change (`web/index.html`,
+  `web/css/**/*.css`, `web/js/**/*.js`) through two pollers in `web/js/main.js`: `/api/ui-version`
+  (every 4 s) and the `_hotReloadInit` `/api/asset-stamp` poller (every 3 s, a 250 ms delay before the
+  reload). A merger landing that writes web assets during the game can therefore blank the page inside
+  the 10-15 s panel window, and the block stays dark until the first state envelope after the reload
+  calls `renderAugmentReco`. That fakes a DARK glance (a false FAIL). It can also fake the flip:
+  `renderAugmentReco` (`web/js/panels/augment_reco.js`) includes `augment_select` in its `_lastSig`
+  repaint guard, so the cue it paints follows the payload it is handed, but whether an envelope
+  reaches it at all is decided upstream in `main.js` (the `driveNow` early return before the render
+  calls), and a reloaded page starts that path fresh. A `TOP PICK` seen after a reload therefore
+  says nothing about whether the live page would have flipped. A `PICK NOW` glance whose top pick is
+  one of the cards on screen is a real render either way. Read
+  `curl -sk https://127.0.0.1:8888/api/ui-version` and `curl -sk https://127.0.0.1:8888/api/asset-stamp`
+  at the load screen and again after the pick (both routes are in `dashboard/_handler.py`
+  `_SUPPRESS_LOG_PATHS`, so the reads add no trace line). A changed `v`, or any change in `mtime`,
+  makes a DARK or wrong glance and the whole flip half NO_RESULT (re-run on the next Mayhem game,
+  never FAIL or PASS on it); a matching `PICK NOW` glance stands. Both before / after pairs go into
+  the tick line.
   **SUPERSEDED HISTORY (kept as written; the blocker it describes is fixed):** **WHY THE ON-SCREEN HALF CANNOT PASS AT HEAD (lane 9 PREP s133 cycle 4,
   source read at `af8c28fc8`, independent adversarial pass CONFIRMED 9 / 9 claims; NOT a tick): the
   Mayhem augment reco has NO render surface.** KIWI maps to ARAM (`core/game_snapshot.py:118`) and one
