@@ -133,6 +133,9 @@ _RUNTIME_TOOLS = frozenset({
     # <corpus>/timelines/ directory the 15-minute RC-ReplayChainWatch task
     # counts and tools/mine_event_patterns.py reads while it runs.
     "tools/timeline_ingest.py",
+    # tools/replay_roster_pull.py: the hourly RC-ReplayRosterPull task, which
+    # rewrites ops/runtime/replay_roster_status.json unattended every run.
+    "tools/replay_roster_pull.py",
 })
 
 # RM-258 residual (s144): tools/ is IN scope by default. Out of scope are the
@@ -180,7 +183,6 @@ _TOOLS_UNCLASSIFIED = frozenset({
     "tools/replay_laning_verdict_validate.py",
     "tools/replay_matchup_validate.py",
     "tools/replay_pickban_validate.py",
-    "tools/replay_roster_pull.py",
     "tools/rewrite_sha_citations.py",
     "tools/sanitize_agent6_reports.py",
     "tools/shadow_archive_split.py",
@@ -798,6 +800,7 @@ def test_scope_keeps_runtime_tools_and_drops_generators():
     assert _in_scope("tools/stop_claim_gate.py")
     assert _in_scope("tools/rofl_dedupe.py")
     assert _in_scope("tools/timeline_ingest.py")
+    assert _in_scope("tools/replay_roster_pull.py")
     assert not _in_scope("tools/daemon_slayer_extract.py")
     assert not _in_scope("ops/fleet_kit/fleet_headless.py")
     assert _in_scope("coach_integration/_coach.py")

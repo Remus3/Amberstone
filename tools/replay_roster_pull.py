@@ -27,6 +27,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from core import log_rotation                                    # noqa: E402
+from core import polled_json                                     # noqa: E402
 from core import riot_api                                        # noqa: E402
 from core import replay_roster as rr                             # noqa: E402
 from core.riot_retry import fetch_unthrottled                    # noqa: E402
@@ -294,12 +295,12 @@ def _blocked_acknowledged(fingerprint: str) -> bool:
 
 
 def _write_status(doc: dict) -> None:
+    # RM-258: per-writer scratch, fsync, the WinError 5 retry and LF bytes are
+    # polled_json's - the hourly RC-ReplayRosterPull run rewrites this file
+    # unattended, and a manual run can overlap it.
     try:
-        _STATUS_PATH.parent.mkdir(parents=True, exist_ok=True)
-        tmp = _STATUS_PATH.with_suffix(_STATUS_PATH.suffix + ".tmp")
-        tmp.write_text(json.dumps(doc, indent=2, sort_keys=True) + "\n",
-                       encoding="utf-8")
-        tmp.replace(_STATUS_PATH)
+        polled_json.atomic_write_text(
+            _STATUS_PATH, json.dumps(doc, indent=2, sort_keys=True) + "\n")
     except OSError as exc:
         log.warning("could not write %s: %s", _STATUS_PATH, exc)
 
