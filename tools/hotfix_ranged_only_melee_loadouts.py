@@ -29,11 +29,13 @@ clash.py):
   * NO DUP: the first candidate not already in the row is used.
 
 Idempotent: a second run finds no Runaan's on any melee row and is a no-op.
+The write goes through core.polled_json.atomic_write_bytes (fsync, WinError 5
+retry, no scratch left behind; ensure_ascii=True, LF, one trailing newline as
+before).
 """
 from __future__ import annotations
 
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -45,6 +47,7 @@ from agents.daemon_slayer._melee_ranged import (  # noqa: E402
     MELEE_RANGED_ATTACKRANGE_SPLIT,
     attackrange_is_ranged,
 )
+from core import polled_json  # noqa: E402
 from core.daemon_slayer_client import champion_attackrange  # noqa: E402
 from tools.champion_loadout_align import _detect_archetype  # noqa: E402
 
@@ -146,13 +149,12 @@ def apply(data: dict) -> int:
 def main() -> None:
     data = json.loads(_LOADOUTS.read_text(encoding="utf-8"))
     n = apply(data)
-    tmp = _LOADOUTS.with_suffix(".json.tmp")
     # Bytes, not write_text: on Windows write_text turns LF into CRLF and the
     # loadouts file is TRACKED (RM-441).
-    tmp.write_bytes(
-        (json.dumps(data, indent=2, ensure_ascii=True) + "\n").encode("utf-8")
+    polled_json.atomic_write_bytes(
+        _LOADOUTS,
+        (json.dumps(data, indent=2, ensure_ascii=True) + "\n").encode("utf-8"),
     )
-    os.replace(tmp, _LOADOUTS)
     print(f"ranged-only melee backfill applied: {n} item list(s) fixed")
 
 
