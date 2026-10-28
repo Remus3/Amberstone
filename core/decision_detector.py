@@ -35,6 +35,7 @@ from __future__ import annotations
 import contextlib
 import json
 import logging
+import math
 import threading
 import time
 import uuid
@@ -45,6 +46,7 @@ from typing import Callable, Iterator, Optional
 import portalocker
 
 from core.polled_json import atomic_write_json
+from core.relay_age import is_stale
 
 _log = logging.getLogger("rc.decision_detector")
 _APP_DIR = Path(__file__).parent.parent
@@ -63,6 +65,8 @@ _HEARTBEAT_PATH   = _APP_DIR / "data" / "decisions_heartbeat.json"
 
 _DEFAULT_POLL_S   = 1.0
 _LOCK_TIMEOUT_S   = 2.0
+# Heartbeat liveness window: alive while the last eval is under this old.
+_ALIVE_S          = 5.0
 # Cap on the heartbeat's last_detector_error string. It is served over
 # /api/decisions/heartbeat and an exception message can quote snapshot
 # fields, so it is bounded the way routes_diag bounds its own notes.
@@ -975,7 +979,13 @@ class DecisionLoop:
         self._thread: Optional[threading.Thread] = None
         # Per-game rate-cap state (reset on game-time reversal).
         self._game_decisions = 0
-        self._last_new_t = 0.0          # unix time of most recent NEW emit
+        # time.monotonic() of the most recent NEW emit, None before the
+        # first. Monotonic, not wall: the min-gap window is measured inside
+        # this process, and a backward wall step (NTP) made the gap negative
+        # and dropped every new decision until wall time caught up (s144
+        # true-audit cycle 29). None, not 0.0, because a monotonic clock may
+        # read under _MIN_GAP_S shortly after boot.
+        self._last_new_m: Optional[float] = None
         self._prev_game_time = 0.0      # for new-game detection
         # ADR-007 (s169): heartbeat counter - increments on each successful
         # eval-with-fresh-state, resets when a new game is detected. Exposed
@@ -1040,7 +1050,7 @@ class DecisionLoop:
             return fresh
         existing_ids = {d["id"] for d in self._store.list_pending()}
         kept: list[Decision] = []
-        now = time.time()
+        now = time.monotonic()
         for d in fresh:
             if d.id in existing_ids:
                 kept.append(d)            # already pending - pass through
@@ -1048,12 +1058,13 @@ class DecisionLoop:
             if self._game_decisions >= _MAX_PER_GAME:
                 _log.debug("rate-cap: dropping %s (per-game max)", d.id)
                 continue
-            if (now - self._last_new_t) < _MIN_GAP_S:
+            if (self._last_new_m is not None
+                    and now - self._last_new_m < _MIN_GAP_S):
                 _log.debug("rate-cap: dropping %s (min-gap)", d.id)
                 continue
             kept.append(d)
             self._game_decisions += 1
-            self._last_new_t = now
+            self._last_new_m = now
         return kept
 
     def _loop(self) -> None:
@@ -1077,7 +1088,7 @@ class DecisionLoop:
                 # (new match) or a resync from 0.
                 if game_time + 5 < self._prev_game_time:
                     self._game_decisions = 0
-                    self._last_new_t = 0.0
+                    self._last_new_m = None
                     # ADR-007 (s169): also reset heartbeat counter on new
                     # match so the dashboard pill starts from 0 each game.
                     with self._heartbeat_lock:
@@ -1156,7 +1167,7 @@ class DecisionLoop:
             counter:             eval cycles in current match (resets on new game)
             last_eval_unix:      wall-clock time of most recent eval
             age_s:               seconds since last eval (None if never ran)
-            alive:               bool - true when age_s < 5
+            alive:               bool - true when -2 <= age_s < 5 (jitter; see _liveness)
             game_time:           last observed game_time (0 when no game)
             detectors:           count of registered detectors
             detector_errors:     detectors that raised during the last eval
@@ -1168,9 +1179,7 @@ class DecisionLoop:
             game_t = self._prev_game_time
             errors = self._detector_errors
             last_err = self._last_detector_error
-        now = time.time()
-        age_s = (now - last) if last > 0 else None
-        alive = age_s is not None and age_s < 5.0
+        age_s, alive = _liveness(last, time.time())
         return {
             "counter": count,
             "last_eval_unix": last if last > 0 else None,
@@ -1181,6 +1190,33 @@ class DecisionLoop:
             "detector_errors": errors,
             "last_detector_error": last_err,
         }
+
+
+def _liveness(last: object, now: float) -> tuple[Optional[float], bool]:
+    """(age_s, alive) for a heartbeat `last_eval_unix` aged at `now`.
+
+    The stamp is wall-clock and read_heartbeat() ages it in another process
+    (RM-269 class), so the stale decision routes through
+    core.relay_age.is_stale: a stamp from the FUTURE beyond its jitter
+    tolerance (a backward NTP step after the write) is NOT alive. Before
+    s144 true-audit cycle 29 a negative age read alive, so a dead loop
+    reported alive until wall time caught up. A stamp that is not a finite
+    positive number (bool, text, null, 0, inf from a JSON 1e400, an int too
+    large for a float) means "never ran": age None, not alive - the route
+    serialises age_s, and an inf there became the non-JSON token -Infinity.
+    The age is still reported when negative, as the diagnostic.
+    """
+    if isinstance(last, bool) or not isinstance(last, (int, float)):
+        return None, False
+    try:
+        stamp = float(last)
+    except OverflowError:
+        return None, False
+    if not math.isfinite(stamp) or stamp <= 0:
+        return None, False
+    age = now - stamp
+    alive = age < _ALIVE_S and not is_stale(stamp, _ALIVE_S, now)
+    return age, alive
 
 
 # Module singleton
@@ -1235,12 +1271,9 @@ def read_heartbeat() -> dict:
     # let it KeyError.
     raw.setdefault("detector_errors", 0)
     raw.setdefault("last_detector_error", None)
-    last = raw.get("last_eval_unix")
-    if isinstance(last, (int, float)) and last > 0:
-        age_s = time.time() - float(last)
-        raw["age_s"] = round(age_s, 2)
-        raw["alive"] = age_s < 5.0
-    else:
-        raw["age_s"] = None
-        raw["alive"] = False
+    age_s, alive = _liveness(raw.get("last_eval_unix"), time.time())
+    raw["age_s"] = round(age_s, 2) if age_s is not None else None
+    raw["alive"] = alive
+    if age_s is None:
+        raw["last_eval_unix"] = None
     return raw
