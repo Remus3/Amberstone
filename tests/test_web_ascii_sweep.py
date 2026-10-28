@@ -1167,7 +1167,20 @@ _WEB = _REPO_ROOT / "web"
 # value EXACTLY. Those paths are the whole change. No glyph change: the
 # added lines carry 0 non-ASCII bytes. If another slice re-captures in
 # parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "aa31e3f33a90f5c93ace42508aaa0661c7220cd7df3799a1cf859b5fa58c5690"
+# superseded by the RM-1019 re-capture below: "aa31e3f33a90f5c93ace42508aaa0661c7220cd7df3799a1cf859b5fa58c5690"
+#
+# RE-CAPTURED 2026-10-28 at RM-1019 (s144 uiux cycle 28, provisional
+# until the merger lands it). One change rides it: the Replay timeline rows
+# take min-height: var(--hit-min) in web/css/panels/replay_events.css, and
+# .replay-main-pane scrolls on y in web/css/panels/primitives.css, which
+# folds in the recording-only overflow-y rule removed from
+# web/css/panels/review_player.css. Ordinary case, no tokeniser change.
+# ATTRIBUTED BY SUBSTITUTION: swapping exactly those three files back to
+# their lane-tip fda3a44c2 blobs (in memory) reproduces the superseded
+# aa31e3f3... value EXACTLY; no single file alone does. Those paths are the
+# whole change. No glyph change: the added lines carry 0 non-ASCII bytes.
+# If another slice re-captures in parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "89c8be0e7b589c7bab7febb4f2994f417c0da4ecd2b1bc68306edad946ccce92"
 
 
 def _web_sources() -> list[Path]:

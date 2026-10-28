@@ -216,12 +216,17 @@ header { transition: height 180ms ease; }
   gap: var(--panel-gap);
   height: 100%;
   min-height: 0;
-  overflow: hidden;
+  /* RM-1019: the children (meta, slider, timeline <= 320px list, grid
+   * >= 360px floor, item 185) measure ~210px taller than this pane at the
+   * 1920x920 baseline. Under overflow: hidden the grid's last four rows
+   * could never be seen, so the pane scrolls on y and keeps the x clip. */
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 /* Gold corner brackets shared by both replay panes (the Hextech bracket
  * motif from web/css/hextech.css .hx-card). Two 14px L-strokes at
- * top-left + bottom-right; decorative + pointer-inert. Both panes carry
- * overflow: hidden (rounded scroll clip), so unlike the canonical
+ * top-left + bottom-right; decorative + pointer-inert. Both panes clip
+ * their overflow (rounded scroll clip), so unlike the canonical
  * .hx-card the strokes are inset to 0 (not -1px) to sit just inside the
  * clip region and stay visible. */
 .replay-list-pane::before,

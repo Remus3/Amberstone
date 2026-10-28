@@ -19,13 +19,10 @@
 }
 .replay-video-section[hidden] { display: none; }
 .replay-video-section { flex-shrink: 0; }
-/* UI audit HIERARCHY fix: the Replay main pane (primitives.css) is a
- * fixed-height flex column with overflow: hidden whose existing children
- * (meta, slider, timeline <= 320px list, grid >= 360px) already fill a
- * ~920px viewport. A visible recording would push the grid off the clipped
- * bottom, so the pane scrolls ONLY while the lane is shown; without a
- * recording the page is byte-for-byte the old layout. */
-.replay-main-pane:has(> .replay-video-section:not([hidden])) { overflow-y: auto; }
+/* A visible recording adds height to the Replay main pane; the pane itself
+ * scrolls on y (primitives.css .replay-main-pane, RM-1019), so the grid
+ * stays reachable under the lane. The old recording-only overflow-y rule
+ * here is folded into that base rule. */
 .replay-video-section:focus-visible { box-shadow: var(--focus-ring); outline: none; }
 
 .replay-video-keys {

@@ -100,7 +100,10 @@
   border-radius: var(--radius-sm);
   font-size: var(--fs-sm);
   /* R30 page-6: each row is a seek control (click -> scrub to its
-   * timestamp), so it carries a pointer + hover/focus affordance. */
+   * timestamp), so it carries a pointer + hover/focus affordance.
+   * RM-1019: and the --hit-min floor (rows measured 36px). The list
+   * keeps its 320px cap (item 185), so taller rows add no height. */
+  min-height: var(--hit-min);
   cursor: pointer;
   transition: background 120ms ease, border-color 120ms ease;
 }
