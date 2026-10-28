@@ -1129,7 +1129,19 @@ _WEB = _REPO_ROOT / "web"
 # EXACTLY. Those paths are the whole change. No glyph change: the added
 # lines carry 0 non-ASCII bytes. If another slice re-captures in parallel,
 # the merger recomputes.
-_LIVE_HALF_DIGEST = "c4e3e73fc2b1add6461692cef3cf484df9dec65a4477df277915aecd788c08f3"
+# superseded by the RM-1011 re-capture below: "c4e3e73fc2b1add6461692cef3cf484df9dec65a4477df277915aecd788c08f3"
+#
+# RE-CAPTURED 2026-10-27 at RM-1011 (s144 uiux cycle 24, provisional
+# until the merger lands it). One change rides it: the dashboard view head
+# keeps its height when Lato swaps in - `.view-section-head` line-height
+# 1.2, head buttons inherit it, and `.view-section-tabs` align-self center
+# - in web/css/panels/header.css. Ordinary case, no tokeniser change.
+# ATTRIBUTED BY SUBSTITUTION: swapping exactly that file back to its
+# lane-tip aff5e2ecd blob reproduces the superseded c4e3e73f... value
+# EXACTLY. That path is the whole change. No glyph change: the added lines
+# carry 0 non-ASCII bytes. If another slice re-captures in parallel, the
+# merger recomputes.
+_LIVE_HALF_DIGEST = "afebe58df410761c7fbfd8fd8684046c487d71a8fe0c76fbd8d47c5affd8301b"
 
 
 def _web_sources() -> list[Path]:

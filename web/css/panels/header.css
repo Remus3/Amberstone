@@ -492,7 +492,16 @@ footer .prefs-chip:hover { color: var(--text); }
    * lobby grid without losing the divider line. */
   margin-bottom: 4px;
   border-bottom: 1px solid var(--border-soft); padding-bottom: 4px;
+  /* RM-1011: a fixed line-height, so the head keeps its height when
+   * Lato (Google Fonts, display=swap) replaces the first-paint fallback.
+   * `normal` is the face's own ascent + descent: 44px head on the
+   * fallback, 40px on Lato, a 4px jump on every view. 1.2 is Lato's own
+   * normal value. Guard: tests/snapshot_panels/test_view_head_font_swap.py. */
+  line-height: 1.2;
 }
+/* RM-1011: the UA `font` on a button resets line-height to `normal`,
+ * so a head button's text line would keep the face-dependent box. */
+.view-section-head button { line-height: inherit; }
 /* s162 v5: panel title sits at the top of each panel, centered.
  * Same scale as My Top 8 / Recently Played title (15px white). */
 .lv-panel-title {
@@ -576,7 +585,14 @@ footer .prefs-chip:hover { color: var(--text); }
  * view-tab is used only on History (4 scope buttons); view-section-btn
  * is a shared primitive but the History sweep brings it along since
  * the two share the same rule block. */
-.view-section-tabs { display: flex; gap: var(--space-1); margin-left: auto; }
+/* RM-1011: centred like .hpgr-back, not baseline-aligned. Baseline
+ * alignment of the 29px title with 16px tab text depends on the face's
+ * ascent / descent, so the History head still moved 1px when Lato
+ * swapped in. */
+.view-section-tabs {
+  display: flex; gap: var(--space-1); margin-left: auto;
+  align-self: center;
+}
 .view-section-btn, .view-tab {
   background: var(--surface-head); border: 1px solid var(--border);
   color: var(--text-dim); padding: var(--space-2) var(--space-3); font-size: var(--fs-xs);
