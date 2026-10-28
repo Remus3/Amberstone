@@ -44,6 +44,7 @@ import pytest
 
 from agents.daemon_slayer import server as ds_server
 from dashboard import server as dash_server
+from tests import _module_view
 from tests._timing_budget import fleet_test_guard
 
 # The simulated fault kills a thread in bootstrap, outside run(); CPython
@@ -90,6 +91,12 @@ _CASES = {
 }
 
 
+# server -> the thread running its serve_forever (the accept loop), which is
+# the thread that starts every request handler; `_settled_get` waits on that
+# thread's starts only (RM-1021).
+_SERVE_THREADS: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
+
+
 @pytest.fixture(params=sorted(_CASES))
 def served(request):
     cls, host, module, counter = _CASES[request.param]
@@ -98,6 +105,7 @@ def served(request):
     serve = threading.Thread(target=srv.serve_forever, daemon=True,
                              name="rm740-cg-serve")
     serve.start()
+    _SERVE_THREADS[srv] = serve
     try:
         yield srv, host, port, module, counter
     finally:
@@ -120,15 +128,39 @@ def _get(host: str, port: int, timeout: float = 5.0) -> int:
         return resp.status
 
 
-def _settled_get(host: str, port: int, timeout: float = 5.0) -> int:
+def _started_by_server(thread, serve, before) -> bool:
+    """True when `thread` descends from `serve` (the server's accept loop),
+    by the creator lineage the passive audit hook in tests/_module_view.py
+    records. A thread whose nearest pre-existing ancestor is some OTHER
+    thread alive before the request (another module's pool, poller or
+    server) is not this request's handler (RM-1021). A thread with no
+    recorded creator is still waited on, the pre-RM-1021 answer."""
+    seen = set()
+    while thread not in seen:
+        seen.add(thread)
+        creator, _file = _module_view._lineage_of(thread)
+        if creator is None or creator is serve:
+            return True
+        if creator in before:
+            return False
+        thread = creator
+    return True
+
+
+def _settled_get(srv, host: str, port: int, timeout: float = 5.0) -> int:
     """``_get``, then wait for the request's handler thread to exit. The
     client has the whole reply before that thread runs ``shutdown_request``,
     so a seam armed right after a bare ``_get`` could still record the
-    control socket (seen once on Legion: two drops recorded, not one)."""
+    control socket (seen once on Legion: two drops recorded, not one).
+    Only threads the server's accept loop started are waited on: a long-lived
+    thread an unrelated pre-existing thread starts meanwhile is not the
+    handler, and waiting on it failed the budget (RM-1021)."""
+    serve = _SERVE_THREADS[srv]
     before = set(threading.enumerate())
     status = _get(host, port, timeout)
     deadline = time.monotonic() + fleet_test_guard.budget(timeout)
-    while [t for t in threading.enumerate() if t not in before]:
+    while [t for t in threading.enumerate()
+           if t not in before and _started_by_server(t, serve, before)]:
         assert time.monotonic() < deadline, (
             "the control request's handler thread never exited")
         time.sleep(0.01)
@@ -167,7 +199,8 @@ def test_c_a_thread_dead_in_bootstrap_no_longer_pins_the_dropped_socket(served):
     """RM-740 (c): once the accept loop abandons a start, the thread object
     left in ``threading._limbo`` must not keep the request socket alive."""
     srv, host, port, _module, counter = served
-    assert _settled_get(host, port) == 200, "control request before the fault"
+    assert _settled_get(srv, host, port) == 200, (
+        "control request before the fault")
     dropped: list[weakref.ref] = []
     real_shutdown = srv.shutdown_request
 
@@ -305,3 +338,106 @@ def test_g_a_start_that_raises_before_any_thread_runs_is_still_dropped(served):
     assert got == b""
     assert getattr(srv, counter) == 1
     assert _get(host, port) == 200
+
+
+# -- RM-1021: `_settled_get` waits on the server's handler, not on every
+# thread that appears during the request ------------------------------------
+
+class _LingeringHandler(_Handler):
+    """Replies, then stays alive in ``finish`` until released, so the handler
+    thread outlives the reply the client already has."""
+
+    release = threading.Event()
+
+    def finish(self) -> None:
+        super().finish()
+        type(self).release.wait(10)
+
+
+@pytest.fixture
+def lingering():
+    srv = ds_server._RcThreadingHTTPServer(("127.0.0.1", 0), _LingeringHandler)
+    serve = threading.Thread(target=srv.serve_forever, daemon=True,
+                             name="s144q10-serve")
+    serve.start()
+    _SERVE_THREADS[srv] = serve
+    _LingeringHandler.release.clear()
+    try:
+        yield srv, "127.0.0.1", srv.server_address[1]
+    finally:
+        _LingeringHandler.release.set()
+        stopper = threading.Thread(target=srv.shutdown, daemon=True)
+        stopper.start()
+        stopper.join(timeout=2)
+        srv.server_close()
+        serve.join(timeout=2)
+
+
+def test_s144q10_a_foreign_thread_started_mid_request_does_not_hold_the_wait(
+        served, monkeypatch):
+    """A thread alive before the request starts a long-lived child while the
+    request is in flight. That child is not the server's handler, so
+    `_settled_get` returns once the handler exits instead of failing its
+    budget (the order-flake shape of RM-982)."""
+    srv, host, port, _module, _counter = served
+    go = threading.Event()
+    child_up = threading.Event()
+    stop = threading.Event()
+
+    def child() -> None:
+        child_up.set()
+        stop.wait(30)
+
+    def foreign() -> None:
+        go.wait(30)
+        threading.Thread(target=child, daemon=True,
+                         name="s144q10-foreign-child").start()
+        stop.wait(30)
+
+    owner = threading.Thread(target=foreign, daemon=True,
+                             name="s144q10-foreign")
+    owner.start()  # alive BEFORE the request: a pre-existing thread
+    real_get = _get
+
+    def get_then_foreign_start(*a, **kw):
+        status = real_get(*a, **kw)
+        go.set()
+        assert child_up.wait(5), "the foreign child never started"
+        return status
+
+    monkeypatch.setattr(sys.modules[__name__], "_get", get_then_foreign_start)
+    try:
+        t0 = time.monotonic()
+        assert _settled_get(srv, host, port, timeout=1.0) == 200
+        assert time.monotonic() - t0 < fleet_test_guard.budget(1.0)
+    finally:
+        stop.set()
+        owner.join(timeout=5)
+
+
+def test_s144q10_the_handler_thread_itself_is_still_waited_on(lingering):
+    """The other side: a handler thread that outlives the reply holds
+    `_settled_get` until it exits."""
+    srv, host, port = lingering
+    result: list = []
+    caller = threading.Thread(
+        target=lambda: result.append(_settled_get(srv, host, port, 5.0)),
+        daemon=True, name="s144q10-caller")
+    caller.start()
+    caller.join(timeout=0.5)
+    assert caller.is_alive(), (
+        "_settled_get returned while the handler thread was still alive")
+    _LingeringHandler.release.set()
+    caller.join(timeout=fleet_test_guard.budget(5.0))
+    assert not caller.is_alive()
+    assert result == [200]
+
+
+def test_s144q10_an_unrecorded_new_thread_is_still_waited_on(monkeypatch):
+    """A new thread with no recorded creator keeps the pre-RM-1021 answer:
+    it is waited on, so a lineage miss cannot quietly skip the handler."""
+    serve = threading.current_thread()
+    fresh = threading.Thread(target=lambda: None)
+    monkeypatch.setattr(_module_view, "_lineage_of",
+                        lambda t: _module_view._UNRECORDED)
+    assert _started_by_server(fresh, serve, set()) is True
