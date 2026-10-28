@@ -314,7 +314,7 @@ def _serve_build_plan(h, payload) -> None:
         mode = str(payload.get("mode") or "SR").upper()
         try:
             level = max(1, min(18, int(payload.get("level") or 11)))
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):  # JSON Infinity
             level = 11
         owned = [str(i) for i in (payload.get("items") or []) if str(i).strip()]
         archetype = str(payload.get("archetype") or "").strip().lower()
@@ -512,7 +512,7 @@ def _coerce_enemy_levels(raw):
     for lv in raw:
         try:
             out.append(int(lv))
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):  # JSON Infinity
             out.append(0)
     return out
 

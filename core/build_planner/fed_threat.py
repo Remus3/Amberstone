@@ -45,15 +45,24 @@ DAMAGE AXIS (existing facts only)
 
 FAIL-SOFT
     Any bad / missing / non-list input -> None / False / 0.0, never raises.
+    s144 true-audit: a junk value now drops only ITSELF (one id, one level,
+    one enemy row), never the whole read. Item ids share
+    core.heal_threat._id_strs (int or ASCII digits, 1..10**7-1); a count is
+    an int / integral float / ASCII digit string in 0.._MAX_COUNT; a level
+    outside 1.._MAX_LEVEL is a missing level (0); a present-but-junk kills
+    or deaths skips the row (an ABSENT one still reads 0); a non-str, blank
+    or over-long champion is never named fed.
 """
 from __future__ import annotations
 
 import json
 import logging
+import math
 from pathlib import Path
 from typing import Optional
 
 from core.failed_load_gate import FailedLoadGate
+from core.heal_threat import _id_strs
 
 _log = logging.getLogger("rc.fed_threat")
 
@@ -64,6 +73,15 @@ GOLD_LEAD_CUT = 2000.0
 # Gold-equivalent per champion level: folds a level lead into the single
 # economy estimate (a modest secondary term dominated by items).
 LEVEL_GOLD = 130.0
+# Plausibility bounds (s144 true-audit). A level past the game's cap (18 on
+# every current queue; 30 leaves headroom) is junk - a level of 10**6 used to
+# forge a 130M-gold economy lead. A scoreboard count past 10**6 is junk, the
+# same bound dashboard/_liveclient._count uses.
+_MAX_LEVEL = 30
+_MAX_COUNT = 10 ** 6
+_COUNT_MAX_DIGITS = 7
+# A real champion name is under 20 chars (heal_threat uses the same 64 cap).
+_MAX_NAME_LEN = 64
 
 _ITEMS_PATH = Path(__file__).resolve().parent.parent.parent / "data" / "meta" / "ddragon_items.json"
 _GOLD_MAP: dict | None = None
@@ -90,9 +108,16 @@ def _load_gold_map() -> dict:
         data = raw.get("data", raw)
         for item_id, entry in data.items():
             try:
-                out[str(item_id)] = float((entry.get("gold") or {}).get("total") or 0.0)
-            except (TypeError, ValueError, AttributeError):
+                total = (entry.get("gold") or {}).get("total") or 0.0
+                if isinstance(total, bool):
+                    continue
+                price = float(total)
+            except (TypeError, ValueError, AttributeError, OverflowError):
                 continue
+            # A NaN price made every lead compare False, an inf one made every
+            # enemy fed, a negative one a discount: none is a price.
+            if math.isfinite(price) and price >= 0.0:
+                out[str(item_id)] = price
     except Exception as exc:  # noqa: BLE001 - any load failure -> empty map
         if _GOLD_MAP_GATE.record_failure():
             _log.warning("fed_threat gold map load failed: %s", exc)
@@ -102,39 +127,61 @@ def _load_gold_map() -> dict:
     return out
 
 
-def _as_int(value: object) -> int:
-    """Coerce a scoreboard number to int; junk -> 0 (fail-soft)."""
+def _count(value: object) -> Optional[int]:
+    """A scoreboard count in 0.._MAX_COUNT, or None for a junk value.
+
+    Accepts an int (never a bool), an integral finite float, or a plain
+    ASCII digit string. s144 true-audit: ``int()`` raised OverflowError on
+    inf, truncated 3.9 to 3, and read "+5" / "1_0" / Arabic-Indic digits /
+    a negative count as numbers."""
     if isinstance(value, bool):
-        return 0
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return 0
+        return None
+    if isinstance(value, int):
+        n = value
+    elif isinstance(value, float):
+        if not (math.isfinite(value) and value.is_integer()):
+            return None
+        n = int(value)
+    elif isinstance(value, str):
+        text = value.strip()
+        if not (text.isascii() and text.isdigit()
+                and len(text) <= _COUNT_MAX_DIGITS):
+            return None
+        n = int(text)
+    else:
+        return None
+    return n if 0 <= n <= _MAX_COUNT else None
 
 
-def _id_strs(ids: object) -> list[str]:
-    """Coerce an item-id list to string ids; bad input -> [] (the Live
-    Client itemID can arrive int or str - mirrors heal_threat._id_strs)."""
-    if not isinstance(ids, list):
-        return []
-    out: list[str] = []
-    for i in ids:
-        if isinstance(i, bool) or i is None:
-            continue
-        if isinstance(i, (int, float)):
-            out.append(str(int(i)))
-        elif isinstance(i, str) and i.strip():
-            out.append(i.strip())
-    return out
+def _as_int(value: object) -> int:
+    """A count, with junk and missing -> 0 (fail-soft)."""
+    n = _count(value)
+    return 0 if n is None else n
+
+
+def _level(value: object) -> int:
+    """A champion level in 1.._MAX_LEVEL, else 0 (a missing level - an
+    honest undercount, never a guessed or forged one)."""
+    n = _as_int(value)
+    return n if 1 <= n <= _MAX_LEVEL else 0
+
+
+def _champ_name(value: object) -> str:
+    """The stripped champion name, or "" for a non-str / blank / over-long
+    one (such an entry is never named fed)."""
+    if not isinstance(value, str):
+        return ""
+    name = value.strip()
+    return name if len(name) <= _MAX_NAME_LEN else ""
 
 
 def estimate_player_gold(item_ids, level) -> float:
     """Estimated on-board gold: sum(gold.total over owned ids) + LEVEL_GOLD *
-    level. An unknown id contributes 0 (truthful undercount). Fail-soft 0.0
-    on bad / missing input."""
+    level. An unknown or junk id contributes 0 (truthful undercount), and so
+    does a junk level. Fail-soft 0.0 on bad / missing input; never raises."""
     gold_map = _load_gold_map()
     total = sum(gold_map.get(i, 0.0) for i in _id_strs(item_ids))
-    return total + LEVEL_GOLD * max(0, _as_int(level))
+    return total + LEVEL_GOLD * _level(level)
 
 
 def _champ_axis(name: object) -> str:
@@ -184,9 +231,16 @@ def assess_fed_threat(enemies, enemy_items_by_player, enemy_scores,
         best: Optional[dict] = None
         best_key = None
         for i, champ in enumerate(enemies):
+            name = _champ_name(champ)
+            if not name:
+                continue
             row = score_rows[i] if i < len(score_rows) and isinstance(score_rows[i], dict) else {}
-            kills = _as_int(row.get("kills"))
-            deaths = _as_int(row.get("deaths"))
+            # Absent -> 0 (unchanged); present but junk -> the row is unread.
+            raw_kills, raw_deaths = row.get("kills"), row.get("deaths")
+            kills = 0 if raw_kills is None else _count(raw_kills)
+            deaths = 0 if raw_deaths is None else _count(raw_deaths)
+            if kills is None or deaths is None:
+                continue
             if kills - deaths < KDA_LEAD_CUT:
                 continue
             items = items_rows[i] if i < len(items_rows) else []
@@ -196,7 +250,6 @@ def assess_fed_threat(enemies, enemy_items_by_player, enemy_scores,
             key = (kills - deaths, kills)
             if best_key is None or key > best_key:
                 best_key = key
-                name = champ.strip() if isinstance(champ, str) else str(champ)
                 best = {
                     "champion": name,
                     "kills": kills,
