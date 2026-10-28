@@ -44,6 +44,20 @@ Per comp: id = "c-" + the first 10 hex of SHA-1 over the sorted core apiNames
 games, placed games, average placement, top-4 rate, core units (in at least
 CORE_SHARE of its games), flex units, the carry (most-itemised unit, ties to
 the higher cost) with its most common item sets, 3-star targets and augments.
+
+PLACEMENT STATS (RM-893)
+------------------------
+Every comp also carries hist (8 ints, games placed 1st..8th, summing to its
+placed games; the mean of hist IS avg_placement) and insufficient (fewer than
+MIN_GAMES placed games). A comp under the floor keeps its row and its numbers,
+but sorts after every comp at or over it and the planner never offers it.
+pair_stats() is the lobby view over plain rows {placement, units: [apiName],
+queue_kind}: per unit its hist, and per ORDERED unit pair (self, partner) the
+pair's mean place with delta = place - the PARTNER's base and delta2 = place -
+the unit's OWN base (pair_delta), so each co-occurring pair yields both
+directions. A key under min_count is flagged and never ranked. Solo and Double
+Up rows never mix (queue_kinds). The caller builds the rows (one per player
+board, traits never needed); nothing here reads or writes a file.
 """
 from __future__ import annotations
 
@@ -69,6 +83,8 @@ JOIN_SIMILARITY = 0.50
 UNIT_WEIGHT = 0.50
 REFINE_PASSES = 10
 TOP4_MAX_PLACEMENT = 4
+PLACEMENTS = 8
+MIN_GAMES = 3  # placed games below which a comp / unit / pair is flagged, never ranked
 DEFAULT_EXCLUDED_QUEUE_KINDS = frozenset({"double_up", "hyper_roll"})
 MAX_FLEX = 8
 MAX_ITEM_SETS = 3
@@ -159,12 +175,116 @@ def copies(star: int) -> int:
     return 3 ** (max(1, int(star)) - 1)
 
 
-def placement_of(record: Mapping) -> Optional[int]:
-    value = envelope_value(record, "placement")
+def _as_placement(value) -> Optional[int]:
     if isinstance(value, float) and not value.is_integer():
         return None  # 4.9 is no placement, not a 4th
     p = as_int(value)
-    return p if p is not None and 1 <= p <= 8 else None
+    return p if p is not None and 1 <= p <= PLACEMENTS else None
+
+
+def placement_of(record: Mapping) -> Optional[int]:
+    return _as_placement(envelope_value(record, "placement"))
+
+
+def placement_hist(placements: Any) -> dict:
+    """{count, hist (8 ints, 1st..8th), mean, top4, won} over the real placements given."""
+    if placements is None or isinstance(placements, (str, bytes, Mapping)):
+        placements = ()
+    try:
+        placed = [p for p in (_as_placement(v) for v in placements) if p is not None]
+    except TypeError:  # not iterable
+        placed = []
+    hist = [0] * PLACEMENTS
+    for p in placed:
+        hist[p - 1] += 1
+    return {"count": len(placed), "hist": hist,
+            "mean": round(sum(placed) / len(placed), 2) if placed else None,
+            "top4": sum(hist[:TOP4_MAX_PLACEMENT]), "won": hist[0]}
+
+
+def _finite(value) -> Optional[float]:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    return float(value) if math.isfinite(value) else None
+
+
+def pair_delta(place, self_base, partner_base) -> tuple:
+    """(delta, delta2) of an ordered pair: its mean place minus the PARTNER's base,
+    and minus the unit's OWN base (teardown F1); (None, None) on a missing number."""
+    place, self_base, partner_base = _finite(place), _finite(self_base), _finite(partner_base)
+    if place is None or self_base is None or partner_base is None:
+        return None, None
+    return round(place - partner_base, 2), round(place - self_base, 2)
+
+
+def _lobby_row(row: Any, kinds: Optional[frozenset]) -> Optional[tuple]:
+    """(placement, sorted unique apiNames) of one plain lobby row, or None to skip it."""
+    if not isinstance(row, Mapping):
+        return None
+    queue_kind = row.get("queue_kind")
+    if kinds is None:
+        if isinstance(queue_kind, str) and queue_kind in DEFAULT_EXCLUDED_QUEUE_KINDS:
+            return None
+    elif not (isinstance(queue_kind, str) and queue_kind in kinds):
+        return None
+    place = placement_of(row)
+    units = row.get("units")
+    if place is None or not isinstance(units, (list, tuple)):
+        return None
+    apis = sorted({x for x in units if isinstance(x, str) and x})
+    return (place, apis) if apis else None
+
+
+def pair_stats(rows: Any, *, queue_kinds: Optional[Iterable] = None, min_count: int = MIN_GAMES) -> dict:
+    """Per-unit placement hist and per ORDERED unit pair delta / delta2 over plain
+    lobby rows. queue_kinds=None keeps the solo rows (every queue kind but the
+    DEFAULT_EXCLUDED ones); otherwise only rows of those kinds. A unit or pair
+    seen in fewer than min_count rows is flagged insufficient and gets rank None."""
+    if isinstance(min_count, int) and not isinstance(min_count, bool):
+        floor = max(1, min_count)  # 0 or less = no floor
+    else:
+        floor = MIN_GAMES  # a float, a numeric string or junk is no floor setting
+    if queue_kinds is None:
+        kinds = None
+    elif isinstance(queue_kinds, str):
+        kinds = frozenset({queue_kinds})
+    else:
+        try:
+            kinds = frozenset(k for k in queue_kinds if isinstance(k, str))
+        except TypeError:  # not iterable: no kind asked, so no row
+            kinds = frozenset()
+    unit_places: dict = defaultdict(list)
+    pair_places: dict = defaultdict(list)
+    used = 0
+    for row in _record_rows(rows):
+        parsed = _lobby_row(row, kinds)
+        if parsed is None:
+            continue
+        place, apis = parsed
+        used += 1
+        for a in apis:
+            unit_places[a].append(place)
+            for b in apis:
+                if a != b:
+                    pair_places[(a, b)].append(place)
+    units = {}
+    base = {}
+    for api in sorted(unit_places):
+        places = unit_places[api]
+        base[api] = sum(places) / len(places)
+        units[api] = dict(placement_hist(places), insufficient=len(places) < floor)
+    ranked, flagged = [], []
+    for (a, b), places in pair_places.items():
+        place = sum(places) / len(places)
+        delta, delta2 = pair_delta(place, base[a], base[b])
+        entry = {"self": a, "partner": b, "count": len(places), "place": round(place, 2),
+                 "delta": delta, "delta2": delta2, "insufficient": len(places) < floor, "rank": None}
+        (flagged if entry["insufficient"] else ranked).append(entry)
+    ranked.sort(key=lambda e: (e["delta"], e["delta2"], e["self"], e["partner"]))
+    flagged.sort(key=lambda e: (e["self"], e["partner"]))
+    for i, entry in enumerate(ranked, 1):
+        entry["rank"] = i
+    return {"rows": used, "min_count": floor, "units": units, "pairs": ranked + flagged}
 
 
 def _plain(obj):
@@ -656,6 +776,8 @@ def _summarise(members: list, setdata: SetData) -> dict:
         "top4_games": top4,
         "avg_placement": round(sum(placed) / len(placed), 2) if placed else None,
         "top4_rate": round(top4 / len(placed), 3) if placed else None,
+        "hist": placement_hist(placed)["hist"],
+        "insufficient": len(placed) < MIN_GAMES,
         "core": [_unit_row(a, setdata, unit_games[a] / n) for a in core],
         "flex": [_unit_row(a, setdata, unit_games[a] / n) for a in flex],
         "carry": carry,
@@ -671,7 +793,7 @@ def _summarise(members: list, setdata: SetData) -> dict:
 
 def _comp_sort_key(comp: dict) -> tuple:
     avg = comp["avg_placement"] if comp["avg_placement"] is not None else 99.0
-    return (-comp["top4_games"], avg, -comp["games"], comp["comp_id"])
+    return (comp["insufficient"], -comp["top4_games"], avg, -comp["games"], comp["comp_id"])
 
 
 def build_catalogue(records: Any, setdata: SetData, *,
@@ -707,8 +829,8 @@ def build_catalogue(records: Any, setdata: SetData, *,
         for mid in comp["match_ids"]:
             assignments[mid] = comp["comp_id"]
     ordered = [dict(comp_id=c["comp_id"], **{k: v for k, v in c.items() if k != "comp_id"}) for c in comps]
-    return dict(engine_meta(), set_id=setdata.set_id, games=len(boards), skipped=skipped, comps=ordered,
-                assignments={k: assignments[k] for k in sorted(assignments)})
+    return dict(engine_meta(), set_id=setdata.set_id, games=len(boards), skipped=skipped,
+                min_games=MIN_GAMES, comps=ordered, assignments={k: assignments[k] for k in sorted(assignments)})
 
 
 def assign_comp(board: Any, catalogue: Mapping, setdata: SetData) -> Optional[dict]:

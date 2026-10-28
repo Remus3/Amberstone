@@ -45,7 +45,7 @@ from typing import Any, Iterable, Mapping, Optional
 
 from tft import tft_roll_odds
 from tft.engine import engine_meta
-from tft.engine.comps import SetData, as_int, as_units, comp_units, copies, jaccard, trait_signature
+from tft.engine.comps import MIN_GAMES, SetData, as_int, as_units, comp_units, copies, jaccard, trait_signature
 from tft.engine.milestones import LEVELS, format_label, parse_label
 
 NEAREST_LIMIT = 3
@@ -187,8 +187,10 @@ def nearest_comps(state: Mapping, catalogue: Mapping, setdata: SetData, *, limit
                      "core_owned": sorted(owned & core), "core_missing": sorted(core - owned),
                      "item_fit": round(item_fit, 3),
                      "games": comp.get("games"), "avg_placement": comp.get("avg_placement"),
-                     "top4_rate": comp.get("top4_rate")})
-    rows.sort(key=lambda r: (-r["score"], -(_number(r["top4_rate"]) or 0.0), r["comp_id"]))
+                     "top4_rate": comp.get("top4_rate"), "insufficient": _under_floor(comp)})
+    # RM-893: an under-floor comp's top-4 rate is shown, but never breaks a tie.
+    rows.sort(key=lambda r: (-r["score"], -((_number(r["top4_rate"]) or 0.0) if not r["insufficient"] else 0.0),
+                             r["comp_id"]))
     return rows[:limit]
 
 
@@ -447,9 +449,16 @@ def _summary(comp: Mapping) -> str:
     return f"{games} games, avg {avg:.1f}, top-4 {rate * 100:.0f}%"
 
 
+def _under_floor(comp: Mapping) -> bool:
+    """RM-893: a comp flagged insufficient, or with fewer than MIN_GAMES placed games
+    (a row that lacks the flag, or whose flag disagrees with its own count), is never offered."""
+    return comp.get("insufficient") is True or (as_int(comp.get("placed_games")) or 0) < MIN_GAMES
+
+
 def planner_choices(catalogue: Mapping, milestones_payload: Optional[Mapping], setdata: SetData, *,
                     lobby_boards: Any = None, limit: int = PLANNER_LIMIT) -> dict:
-    """Up to `limit` comps with at least one top-4 game, each with its hover digest."""
+    """Up to `limit` comps with at least one top-4 game and at least MIN_GAMES placed
+    games (RM-893: a one-game comp is no evidence), each with its hover digest."""
     lobby_apis = set(_lobby_copies(lobby_boards, setdata)) if lobby_boards is not None else None
     payload = milestones_payload if isinstance(milestones_payload, Mapping) else {}
     per_comp = payload.get("comps") if isinstance(payload.get("comps"), Mapping) else {}
@@ -457,7 +466,7 @@ def planner_choices(catalogue: Mapping, milestones_payload: Optional[Mapping], s
     for comp in _comps(catalogue):
         if len(choices) >= limit:
             break
-        if (as_int(comp.get("top4_games")) or 0) < 1:
+        if (as_int(comp.get("top4_games")) or 0) < 1 or _under_floor(comp):
             continue
         agg = per_comp.get(comp["comp_id"]) if payload else None
         core = _unit_rows(comp, "core", setdata)

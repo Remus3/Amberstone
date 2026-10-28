@@ -905,7 +905,7 @@ def build_engine_milestones(qs: dict, now: Optional[float] = None) -> dict:
         return out
     out["milestones"] = model["milestones"]
     keys = ("comp_id", "label", "games", "placed_games", "top4_games", "avg_placement",
-            "top4_rate")
+            "top4_rate", "hist", "insufficient")
     out["catalogue"] = [{k: c.get(k) for k in keys} for c in model["catalogue"].get("comps") or []]
     return out
 

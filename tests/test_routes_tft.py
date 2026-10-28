@@ -474,9 +474,13 @@ def test_scouting_digest_passthrough_and_fail_soft(env):
 
 # ------------------------------------------------------------------ engine
 
+# RM-893: the planner never offers a comp with fewer than comps.MIN_GAMES placed
+# games, so the engine route fixtures finish enough store matches on the one board.
+ENGINE_FINISHED = 3
+
 
 def test_engine_routes_warm_then_serve_milestones_planner_and_recommend(env):
-    _store(env)
+    _store(env, finished=ENGINE_FINISHED)
     _rm616(env)
     first = _get("/api/tft/engine/milestones?set=18").json()
     assert first["status"] == "warming" and first["milestones"] is None
@@ -485,6 +489,8 @@ def test_engine_routes_warm_then_serve_milestones_planner_and_recommend(env):
     ms = _get("/api/tft/engine/milestones?set=18").json()
     assert ms["status"] == "ready" and ms["set_id"] == 18
     assert ms["catalogue"] and ms["catalogue"][0]["top4_games"] >= 2
+    top = ms["catalogue"][0]                                 # RM-893 keys reach the route
+    assert top["insufficient"] is False and sum(top["hist"]) == top["placed_games"] >= ENGINE_FINISHED
     comp_id = ms["catalogue"][0]["comp_id"]
     assert comp_id in ms["milestones"]["comps"]
     planner = _get("/api/tft/engine/planner?set=18").json()
@@ -527,7 +533,7 @@ def test_engine_record_board_prefers_the_postgame_record_then_store_ground_truth
 
 
 def _ready_engine(env_root, *, fresh):
-    _store(env_root, fresh=fresh)
+    _store(env_root, fresh=fresh, finished=ENGINE_FINISHED)
     _rm616(env_root)
     _get("/api/tft/engine/milestones?set=18")
     rt._engine_join()
