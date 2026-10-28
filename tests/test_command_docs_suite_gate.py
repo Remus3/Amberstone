@@ -30,6 +30,7 @@ matched. Local commands in every command doc use the `python -m pytest` form.
 from __future__ import annotations
 
 import re
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -52,6 +53,13 @@ GATE = "fleet_suite_gate.py"
 RESTART_CAP = "--max-worker-restart=0"
 _PYTEST = re.compile(r"-m pytest\b")
 _GATED = re.compile(r'fleet_suite_gate\.py"? run --owner <id> -- (?P<cmd>[^`]*)')
+# Shell chain operators: a gate covers its own command only (RM-1103).
+_CHAIN = re.compile(r"\s*(?:&&|\|\||;|\|)\s*")
+# Options whose value names a file the run SKIPS (RM-1103); the
+# `--opt=value` form is one token, `--opt value` two.
+_SKIP_OPTS = ("--ignore", "--ignore-glob", "--deselect")
+_TIER_FLAGS = (re.compile(r"(?:^|\s)-n\s*8(?=\s|$)"),
+               re.compile(r"(?:^|\s)--dist(?:\s+|=)loadfile(?=\s|$)"))
 
 
 def _text(name: str) -> str:
@@ -65,8 +73,35 @@ def _args_after(line: str, end: int) -> str:
     return rest if tick == -1 else rest[:tick]
 
 
+def _cited_tokens(args: str):
+    """The tokens minus every --ignore / --deselect option and its value: those
+    name a file the run SKIPS, not one it cites (RM-1103)."""
+    skip_next = False
+    for tok in args.split():
+        if skip_next:
+            skip_next = False
+        elif tok in _SKIP_OPTS:
+            skip_next = True
+        elif not tok.startswith(tuple(f"{opt}=" for opt in _SKIP_OPTS)):
+            yield tok
+
+
 def _names_a_test_file(args: str) -> bool:
-    return any(tok.endswith(".py") or "::" in tok for tok in args.split())
+    return any(tok.endswith(".py") or "::" in tok for tok in _cited_tokens(args))
+
+
+def _has_tier_table_flags(cmd: str) -> bool:
+    """`-n 8 --dist loadfile --max-worker-restart=0` as whole tokens, so `-n 80`
+    or `--dist loadfilex` is not read as the TIER TABLE flags (RM-1103)."""
+    return (all(rx.search(cmd) for rx in _TIER_FLAGS)
+            and RESTART_CAP in cmd.split())
+
+
+def _gate_covers(prefix: str) -> bool:
+    """The gate prefixes THIS command: it sits in the last chain segment before
+    the pytest word, so `gate ... ; python -m pytest ...` is not gated."""
+    seg = _CHAIN.split(prefix)[-1]
+    return f"{GATE} run" in seg or f'{GATE}" run' in seg
 
 
 def _is_collect_only(args: str) -> bool:
@@ -81,7 +116,7 @@ def _ungated_whole_suites(name: str) -> list[str]:
             args = _args_after(line, m.end())
             if _names_a_test_file(args) or _is_collect_only(args):
                 continue
-            if f"{GATE} run" not in line[:m.start()] and f'{GATE}" run' not in line[:m.start()]:
+            if not _gate_covers(line[:m.start()]):
                 bad.append(f"tools/{name}:{n}: {line.strip()[:140]}")
     return bad
 
@@ -108,8 +143,7 @@ def test_every_gated_pytest_call_runs_in_parallel():
                 if "pytest" not in cmd:
                     continue  # the RACE GUARDS block's `<suite cmd>` placeholder
                 seen += 1
-                if ("-n 8" not in cmd or "--dist loadfile" not in cmd
-                        or RESTART_CAP not in cmd.split()):
+                if not _has_tier_table_flags(cmd):
                     bad.append(f"tools/{name}:{n}: {cmd.strip()[:140]}")
     assert seen >= 8, f"only {seen} gated pytest calls found - the sweep went blind"
     assert not bad, (f"gated suite without -n 8 --dist loadfile {RESTART_CAP}:\n"
@@ -124,6 +158,25 @@ def test_the_detector_catches_a_serial_whole_suite():
     assert not _names_a_test_file(args) and not _is_collect_only(args)
     assert _names_a_test_file(" tests/test_x.py -q")
     assert _is_collect_only(" tests --collect-only -q")
+
+
+def test_the_detector_closes_the_s144q34_holes(tmp_path, monkeypatch):
+    # RM-1103 siblings: an --ignore / --deselect value is not a cited test
+    # file, a gate covers only its own chained command, and the TIER TABLE
+    # flags match as whole tokens.
+    assert not _names_a_test_file(" tests -q -n 8 --ignore=tests/test_x.py")
+    assert not _names_a_test_file(" tests -n 8 --deselect tests/test_x.py::t")
+    assert _names_a_test_file(" tests/test_a.py -n 8 --ignore=tests/test_b.py")
+    assert _has_tier_table_flags("-n 8 --dist loadfile --max-worker-restart=0")
+    assert not _has_tier_table_flags("-n 80 --dist loadfile --max-worker-restart=0")
+    assert not _has_tier_table_flags("-n 8 --dist loadfilex --max-worker-restart=0")
+    gated = ("`python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- "
+             "python -m pytest tests -q -n 8 --dist loadfile "
+             "--max-worker-restart=0")
+    (tmp_path / "x.md").write_bytes(
+        (gated + "; python -m pytest tests -q -n 8`\n" + gated + "`\n").encode())
+    monkeypatch.setattr(sys.modules[__name__], "TOOLS", tmp_path)
+    assert [hit.split(":")[1] for hit in _ungated_whole_suites("x.md")] == ["1"]
 
 
 def test_done_md_drops_the_stale_xdist_block():

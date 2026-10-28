@@ -24,6 +24,14 @@ call, and every gated call in a living ops doc carries the TIER TABLE flags
 (`-n 8 --dist loadfile --max-worker-restart=0`). A bare `-n 8` span in prose
 (a worker count, not a command) is not a suite and is not matched.
 
+RM-1103 (the s144 queue cycle 48 verifier's five blind spots) tightened the
+predicate: a `tests\\` / `./tests` root names the suite; an `--ignore` /
+`--ignore-glob` / `--deselect` value is a file the run skips, not one it cites;
+a fenced command continued by a trailing backtick, caret or backslash is one
+span; a span is split on `;`, `&&`, `||` and `|`, so the gate covers its own
+command only; and the TIER TABLE flags match as whole tokens (`-n 80` is not
+`-n 8`).
+
 Out of scope: dated records (docs/_archive/, measurement docs, plans, audits,
 LEDGER, ROADMAP history) quote the command that was run at the time; they are
 evidence, not instructions. CLAUDE.md is the main session's file.
@@ -34,7 +42,13 @@ import re
 import sys
 from pathlib import Path
 
-from tests.test_command_docs_suite_gate import COMMANDS, RESTART_CAP
+from tests.test_command_docs_suite_gate import (
+    _CHAIN,
+    COMMANDS,
+    RESTART_CAP,
+    _has_tier_table_flags,
+    _names_a_test_file,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 LIVING_OPS_DOCS = ("docs/OPERATIONS.md", "docs/ARCHITECTURE.md", "docs/API.md",
@@ -48,36 +62,57 @@ _XDIST = re.compile(r"(?:^|\s)(?:-n\s*(?:\d+|auto|logical)|--numprocesses(?:=|\s
 _PYTEST_WORD = re.compile(r"\bpytest\b")
 _FENCE = re.compile(r"^\s*(?:>\s*)*```")
 _INLINE = re.compile(r"`([^`\n]+)`")
+# A fenced line ending in a PowerShell backtick, a cmd caret or a shell
+# backslash continues on the next line (RM-1103 (c)).
+_CONTINUED = re.compile(r"\s[`^\\]$")
+# The chain split (d), the --ignore / --deselect skip (b) and the whole-token
+# TIER TABLE flags (e) are the RM-754 guard's own predicates, imported above.
 
 
 def _spans(rel: str):
-    """Yield (line_no, span) for every inline code span and fenced code line."""
-    fenced = False
+    """Yield (line_no, span) for every inline code span and fenced code line;
+    a continued fenced command is one span, numbered by its first line."""
+    fenced, held, start = False, "", 0
     text = (ROOT / rel).read_bytes().decode("utf-8")
     for n, line in enumerate(text.split("\n"), start=1):
         if _FENCE.match(line):
-            fenced = not fenced
+            if held:
+                yield start, held
+            fenced, held = not fenced, ""
             continue
         if fenced:
-            yield n, line.strip()
+            part = line.strip()
+            if not held:
+                start = n
+            held = f"{held} {part}".strip()
+            if _CONTINUED.search(" " + held):
+                held = held[:-1].rstrip()
+                continue
+            yield start, held
+            held = ""
         else:
             for m in _INLINE.finditer(line):
                 yield n, m.group(1).strip()
+    if held:
+        yield start, held
 
 
 def _runs_xdist(span: str) -> bool:
     return bool(_XDIST.search(span))
 
 
+def _root(tok: str) -> str:
+    """`tests\\`, `./tests/` and `.\\tests` all name the root `tests`."""
+    tok = tok.replace("\\", "/")
+    while tok.startswith("./"):
+        tok = tok[2:]
+    return tok.rstrip("/") or "."
+
+
 def _names_a_suite(span: str) -> bool:
     if _PYTEST_WORD.search(span):
         return True
-    return any(tok.rstrip("/") in SUITE_ROOTS or tok in SUITE_ROOTS
-               for tok in span.split())
-
-
-def _names_a_test_file(span: str) -> bool:
-    return any(tok.endswith(".py") or "::" in tok for tok in span.split())
+    return any(_root(tok) in SUITE_ROOTS for tok in span.split())
 
 
 def _is_collect_only(span: str) -> bool:
@@ -104,6 +139,18 @@ def _is_xdist_whole_suite(span: str) -> bool:
             and not _names_a_test_file(args) and not _is_collect_only(args))
 
 
+def _segments(span: str) -> list[str]:
+    return [seg for seg in _CHAIN.split(span) if seg]
+
+
+def _suite_segments(span: str) -> list[str]:
+    return [seg for seg in _segments(span) if _is_xdist_whole_suite(seg)]
+
+
+def _ungated_suite_segments(span: str) -> list[str]:
+    return [seg for seg in _suite_segments(span) if not _is_gated(seg)]
+
+
 def test_the_scanned_docs_exist():
     missing = [rel for rel in SCANNED if not (ROOT / rel).is_file()]
     assert not missing, missing
@@ -113,11 +160,9 @@ def test_no_living_doc_carries_an_ungated_xdist_suite_fragment():
     seen, bad = 0, []
     for rel in SCANNED:
         for n, span in _spans(rel):
-            if not _is_xdist_whole_suite(span):
-                continue
-            seen += 1
-            if not _is_gated(span):
-                bad.append(f"{rel}:{n}: {span[:140]}")
+            seen += len(_suite_segments(span))
+            bad.extend(f"{rel}:{n}: {seg[:140]}"
+                       for seg in _ungated_suite_segments(span))
     # The TIER TABLE command alone recurs across the command docs; a sweep that
     # matched none of it has gone blind, and an empty sweep would pass.
     assert seen >= 8, f"only {seen} xdist suite spans found - the sweep went blind"
@@ -134,9 +179,7 @@ def test_every_gated_call_in_a_living_ops_doc_carries_the_tier_table_flags():
             if not (_is_gated(span) and _PYTEST_WORD.search(span)):
                 continue
             seen += 1
-            toks = span.split()
-            if ("-n 8" not in span or "--dist loadfile" not in span
-                    or RESTART_CAP not in toks):
+            if not _has_tier_table_flags(span):
                 bad.append(f"{rel}:{n}: {span[:140]}")
     assert seen >= 1, "no gated pytest call in the living ops docs - the sweep went blind"
     assert not bad, (f"gated suite without -n 8 --dist loadfile {RESTART_CAP}:\n"
@@ -162,6 +205,61 @@ def test_the_detector_spares_counts_files_prose_and_the_gated_command():
              "python -m pytest tests agents/daemon_slayer/tests -q -n 8 "
              "--dist loadfile --max-worker-restart=0 --timeout=300")
     assert _is_xdist_whole_suite(gated) and _is_gated(gated)
+
+
+def test_a_backslash_or_dot_slash_suite_root_is_a_suite():
+    # RM-1103 (a): a Windows `tests\` or a `./tests` root names the suite.
+    for frag in ("tests\\ -q -n 8", ".\\tests -n 8", "./tests -q -n 8",
+                 "./tests/ agents\\daemon_slayer\\tests -n 4"):
+        assert _is_xdist_whole_suite(frag) and not _is_gated(frag), frag
+
+
+def test_an_ignore_or_deselect_value_is_not_a_cited_test_file():
+    # RM-1103 (b): a whole suite that skips one file still runs the suite.
+    for frag in ("python -m pytest tests -n 8 --ignore=tests/test_x.py",
+                 "python -m pytest tests -n 8 --ignore tests/test_x.py",
+                 "python -m pytest tests -n 8 --deselect tests/test_x.py::test_y",
+                 "python -m pytest tests -n 8 --deselect=tests/test_x.py::test_y",
+                 "python -m pytest tests -n 8 --ignore-glob=tests/test_x*.py"):
+        assert _is_xdist_whole_suite(frag), frag
+    # A cited file next to an --ignore value is still a slice.
+    assert not _is_xdist_whole_suite(
+        "python -m pytest tests/test_a.py -n 8 --ignore=tests/test_b.py")
+
+
+def test_a_continued_fenced_command_is_read_as_one_span(tmp_path, monkeypatch):
+    # RM-1103 (c): PowerShell backtick, cmd caret and shell backslash
+    # continuations join with the next fenced line.
+    doc = tmp_path / "docs" / "X.md"
+    doc.parent.mkdir()
+    doc.write_bytes(b"```powershell\npython -m pytest tests `\n  -q -n 8\n"
+                    b"python -m pytest tests ^\n  -n 8\n"
+                    b"python -m pytest tests \\\n  -n 8\n```\n")
+    monkeypatch.setattr(sys.modules[__name__], "ROOT", tmp_path)
+    hits = [(n, s) for n, s in _spans("docs/X.md") if _ungated_suite_segments(s)]
+    assert [n for n, _ in hits] == [2, 4, 6], hits
+
+
+def test_a_gate_does_not_cover_a_chained_ungated_suite():
+    # RM-1103 (d): the gate covers its own command, not the next one.
+    gated = ("python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- "
+             "python -m pytest tests -q -n 8 --dist loadfile "
+             "--max-worker-restart=0")
+    for sep in ("; ", " && ", " || ", " | "):
+        assert _ungated_suite_segments(gated + sep + "python -m pytest tests -n 8"), sep
+    assert not _ungated_suite_segments(gated)
+    assert not _ungated_suite_segments("cd <repo> && " + gated)
+
+
+def test_the_tier_table_flags_are_matched_as_whole_tokens():
+    # RM-1103 (e): `-n 80` and `--dist loadfilex` are not the TIER TABLE flags.
+    ok = "-q -n 8 --dist loadfile --max-worker-restart=0"
+    assert _has_tier_table_flags(ok)
+    for bad in ("-q -n 80 --dist loadfile --max-worker-restart=0",
+                "-q -n 8 --dist loadfilex --max-worker-restart=0",
+                "-q -n 8 --dist loadscope --max-worker-restart=0",
+                "-q -n 8 --dist loadfile"):
+        assert not _has_tier_table_flags(bad), bad
 
 
 def test_fenced_and_inline_spans_are_both_read(tmp_path, monkeypatch):
