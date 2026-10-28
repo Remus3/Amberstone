@@ -38,7 +38,13 @@ import sys
 from pathlib import Path
 from typing import Any, Optional
 
-SNAPSHOT_ROOT = Path(__file__).resolve().parent.parent / "data" / "daemon_slayer"
+ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from core import polled_json  # noqa: E402
+
+SNAPSHOT_ROOT = ROOT / "data" / "daemon_slayer"
 
 SECTIONS = ("items", "champions", "abilities", "builds")
 
@@ -426,10 +432,10 @@ def main(argv: Optional[list] = None) -> int:
         print(render_text(report))
     if args.json_out:
         out = Path(args.json_out)
-        out.parent.mkdir(parents=True, exist_ok=True)
-        tmp = out.with_suffix(out.suffix + ".tmp")
-        tmp.write_text(json.dumps(report, indent=1), encoding="utf-8", newline="\n")
-        tmp.replace(out)
+        # RM-258: per-writer scratch, fsync, bounded rename retry, scratch
+        # removed on failure, parent created on demand. Same bytes as before.
+        polled_json.atomic_write_bytes(
+            out, json.dumps(report, indent=1).encode("utf-8"))
         print(f"wrote {out}")
     return 0
 
