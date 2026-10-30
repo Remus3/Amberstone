@@ -8,14 +8,15 @@ PREMISE (measured 2026-07-24 against ENGINE 1.241.0 / patch 16.14.1, live
     Smolder / Ezreal.
   * Black Cleaver (3071), Spear of Shojin (3161), Stridebreaker (6631) and
     Sterak's Gage (3053) are excluded by the item-213 ranged-marksman
-    off-class NAME deny-set ``rank.OFFCLASS_MARKSMAN_ITEM_NAMES``
-    (rank.py:83-127), applied via ``_filter_candidates(exclude_names=...)``
-    at rank.py:1044 / rank.py:711-712.
+    off-class NAME deny-set ``rank.OFFCLASS_MARKSMAN_ITEM_NAMES``, applied
+    via ``_filter_candidates(exclude_names=...)`` from the ranged-marksman
+    gate in ``rank_items`` (the ``rec.get("name") in exclude_names`` skip in
+    ``_filter_candidates``).
   * Bloodsong (3877) is excluded by a DIFFERENT mechanism -
-    ``rank._SR_EXCLUDED_ITEM_IDS`` (rank.py:170-188), the RM-93 support-quest
-    deny. That deny is deliberate and MEASURED (admitting it put Bloodsong at
-    #2 for Vel'Koz / #3 for Jinx - an RM-92 non-output mispricing), so the
-    widen seam does NOT resurrect it. Pinned below.
+    ``rank._SR_EXCLUDED_ITEM_IDS``, the RM-93 support-quest deny. That deny
+    is deliberate and MEASURED (admitting it put Bloodsong at #2 for
+    Vel'Koz / #3 for Jinx - an RM-92 non-output mispricing), so the widen
+    seam does NOT resurrect it. Pinned below.
   * Eclipse (6692) IS admitted at the default - it is not in either deny.
 
 The seam ``rank_items(widen_carry_pool=True)`` un-strips
