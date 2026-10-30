@@ -2625,12 +2625,18 @@
   min-height: var(--hit-min);
 }
 .csv-ta-head:hover .csv-ta-title { color: var(--text); }
+/* RM-1144: the TEAM ANALYSIS label + caret and the ORDERED SEQUENCE
+   tag / message / slot numbers below take --text-dim, not --text-faint.
+   --text-faint is AA on --surface only (base.css); on these raised
+   surfaces it measured 3.16-4.52:1 (--surface-2, the in-variant chip
+   tint, --surface-3). Pinned per theme by
+   tests/snapshot_panels/test_champ_select_faint_text_contrast.py. */
 .csv-ta-title {
   font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.10em;
   text-transform: uppercase;
-  color: var(--text-faint);
+  color: var(--text-dim);
   flex: 0 0 auto;
 }
 .csv-ta-verdict {
@@ -2645,7 +2651,7 @@
 .csv-ta-caret {
   font-size: var(--fs-xs);
   font-weight: 700;
-  color: var(--text-faint);
+  color: var(--text-dim);
   flex: 0 0 auto;
 }
 .csv-ta-body {
@@ -2730,13 +2736,13 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text-faint);
+  color: var(--text-dim);
   flex: 0 0 auto;
 }
 .csv-boseq-msg {
   font-size: var(--fs-xs);
   font-style: italic;
-  color: var(--text-faint);
+  color: var(--text-dim);
 }
 .csv-boseq-chips {
   display: inline-flex;
@@ -2760,7 +2766,7 @@
 .csv-boseq-num {
   font-size: var(--fs-xs);
   font-weight: 700;
-  color: var(--text-faint);
+  color: var(--text-dim);
   min-width: 12px;
   text-align: center;
 }

@@ -1624,7 +1624,19 @@ _WEB = _REPO_ROOT / "web"
 # memory) reproduces the superseded 7b624e20... value EXACTLY. Those paths
 # are the whole change. No glyph change: the added lines carry 0 non-ASCII
 # bytes. If another slice re-captures in parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "3d21cecbfd5c37ce82a5918cc57bc5fb1e7b014cbe1b19974edc0c5a36824a68"
+# superseded by the RM-1144 re-capture below: "3d21cecbfd5c37ce82a5918cc57bc5fb1e7b014cbe1b19974edc0c5a36824a68"
+#
+# RE-CAPTURED 2026-10-30 at RM-1144 (s144 uiux cycle 75, provisional
+# until the merger lands it and maps the id). One change rides it: the
+# champ-select TEAM ANALYSIS label + caret and the ORDERED SEQUENCE tag /
+# message / slot numbers move from --text-faint to --text-dim so they
+# reach AA on their raised surfaces (web/css/panels/champ_select_view.css).
+# Ordinary case, no tokeniser change. ATTRIBUTED BY SUBSTITUTION: swapping
+# exactly that file back to its lane HEAD 4e86faea3 blob (in memory)
+# reproduces the superseded 3d21cecb... value EXACTLY. That path is the
+# whole change. No glyph change: the added lines carry 0 non-ASCII bytes.
+# If another slice re-captures in parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "e14af6b480728c5f9e1a5eb4259c906267c60b6347cf6f46389a1802dd2019cd"
 
 
 def _web_sources() -> list[Path]:
