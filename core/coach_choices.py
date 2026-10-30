@@ -25,10 +25,22 @@ choices array alongside the prose). The synthesizer is a pure-Python
 fallback.
 
 Logging the user's selection lives in ``core.decision_detector.record_coach_choice``.
+
+Trust boundary (s144 true-audit): ``choices`` is model output. A text field is
+a reading only when it is a str or a finite non-bool number (a container, a
+bool, NaN / inf and an int too long to print are no reading); whitespace runs
+collapse to one space, other control characters and lone surrogates drop, and
+a truncated field ends in "..." WITHIN its cap (the chip renderer slices at
+the same caps, so a marker past the cap was cut off). Keys are the A / B / C
+the Alt+1..3 hotkeys address, unique per list; rebranch_to is A / B / C and
+never the chip's own key. Malformed entries do not consume the 3-choice cap.
 """
 
 from __future__ import annotations
 
+import math
+import re
+import unicodedata
 from dataclasses import asdict
 from typing import Iterable
 
@@ -41,6 +53,16 @@ _MAX_LABEL_LEN = 80
 _MAX_OUTCOME_LEN = 160
 _MAX_TRIGGER_LEN = 120
 _MAX_REBRANCH_LEN = 120
+# The chip keys the panel's Alt+1..3 hotkeys address
+# (web/js/panels/coach_choices.js _KEY_TO_DIGIT); one per possible choice.
+_KEYS = "ABC"
+# Entries scanned for valid choices. Bounds the work on a long junk array while
+# letting a few malformed entries ahead of the real ones not cost a chip.
+_MAX_SCAN = 16
+# A number longer than this many characters is no reading (int -> str raises
+# past ~4300 digits, and no chip text is a 20-digit number).
+_MAX_NUMBER_CHARS = 20
+_ELLIPSIS = "..."
 
 
 @pydantic.dataclasses.dataclass(frozen=True)
@@ -80,12 +102,41 @@ class CoachChoice:
         return asdict(self)
 
 
-def _coerce_str(v: object, limit: int) -> str:
-    if v is None:
+def _as_text(v: object) -> str:
+    """The raw text of a field, or "" when it is no reading.
+
+    A str is text; a finite int / float (never a bool) is printed; anything
+    else - a container, a bool, NaN / inf, an over-long number - is no reading
+    rather than its Python repr on a chip."""
+    if isinstance(v, str):
+        return v
+    if isinstance(v, bool) or not isinstance(v, (int, float)):
         return ""
-    s = str(v).strip()
+    if isinstance(v, float) and not math.isfinite(v):
+        return ""
+    if isinstance(v, int) and v.bit_length() > 64:
+        return ""
+    s = str(v)
+    return s if len(s) <= _MAX_NUMBER_CHARS else ""
+
+
+def _scrub(s: str) -> str:
+    """Collapse whitespace runs to one space; drop other controls + surrogates."""
+    kept = []
+    for ch in s:
+        if ch.isspace():
+            kept.append(" ")
+        elif unicodedata.category(ch) in ("Cc", "Cs"):
+            continue
+        else:
+            kept.append(ch)
+    return " ".join("".join(kept).split())
+
+
+def _coerce_str(v: object, limit: int) -> str:
+    s = _scrub(_as_text(v))
     if len(s) > limit:
-        s = s[:limit].rstrip() + "..."
+        s = s[: max(0, limit - len(_ELLIPSIS))].rstrip() + _ELLIPSIS
     return s
 
 
@@ -96,29 +147,41 @@ def _coerce_band(v: object) -> str:
     return "mid"
 
 
-def _coerce_key(v: object, fallback: str) -> str:
-    s = _coerce_str(v, 4).upper()
-    if not s:
-        return fallback
-    return s[:1]
+def _key_letter(v: object) -> str:
+    """The first character of `v` upper-cased when it is A / B / C, else ""."""
+    s = _coerce_str(v, 4)[:1].upper()
+    return s if s and s in _KEYS else ""
 
 
-def _coerce_rebranch_to(v: object) -> str:
+def _coerce_key(v: object, used: set[str]) -> str:
+    """The requested key when it is A / B / C and unused, else the first free one."""
+    s = _key_letter(v)
+    if s and s not in used:
+        return s
+    for k in _KEYS:
+        if k not in used:
+            return k
+    return ""
+
+
+def _coerce_rebranch_to(v: object, own_key: str = "") -> str:
     """One upper-case key letter (A/B/C) or "" when absent.
 
     Unlike ``_coerce_key`` this allows EMPTY (a chip with no pre-stated branch);
-    a non-empty value is normalized to its first upper-case character."""
-    s = _coerce_str(v, 4).upper()
-    return s[:1] if s else ""
+    a non-empty value is normalized to its first upper-case character, and is
+    "" unless that is A / B / C other than the chip's own key."""
+    s = _key_letter(v)
+    return "" if s == own_key else s
 
 
 def parse_choices(coach: dict | None) -> list[CoachChoice]:
     """Pull a clean list of choices out of a coach JSON dict.
 
     Returns an empty list on any of: coach is None, ``choices`` absent,
-    ``choices`` not a list, or all entries malformed. Truncates to
-    ``_MAX_CHOICES``. Each entry is sanitized: label/outcome are
-    string-coerced + length-limited, key is one upper-case letter,
+    ``choices`` not a list, or all entries malformed. Keeps the first
+    ``_MAX_CHOICES`` VALID entries among the first ``_MAX_SCAN``. Each entry is
+    sanitized: label/outcome are text-coerced + length-limited, key is a unique
+    A / B / C (a missing, foreign or repeated key takes the first free letter),
     confidence falls back to ``mid`` when out-of-range.
     """
 
@@ -128,26 +191,54 @@ def parse_choices(coach: dict | None) -> list[CoachChoice]:
     if not isinstance(raw, list):
         return []
     out: list[CoachChoice] = []
-    for idx, entry in enumerate(raw[:_MAX_CHOICES]):
+    used: set[str] = set()
+    for entry in raw[:_MAX_SCAN]:
+        if len(out) >= _MAX_CHOICES:
+            break
         if not isinstance(entry, dict):
             continue
-        fallback_key = chr(ord("A") + idx)
         label = _coerce_str(entry.get("label"), _MAX_LABEL_LEN)
         if not label:
             continue
+        key = _coerce_key(entry.get("key"), used)
+        used.add(key)
         out.append(
             CoachChoice(
-                key=_coerce_key(entry.get("key"), fallback_key),
+                key=key,
                 label=label,
                 expected_outcome=_coerce_str(entry.get("expected_outcome"), _MAX_OUTCOME_LEN),
                 confidence=_coerce_band(entry.get("confidence")),
                 source_tag=_coerce_str(entry.get("source_tag"), 32),
                 trigger=_coerce_str(entry.get("trigger"), _MAX_TRIGGER_LEN),
                 rebranch_when=_coerce_str(entry.get("rebranch_when"), _MAX_REBRANCH_LEN),
-                rebranch_to=_coerce_rebranch_to(entry.get("rebranch_to")),
+                rebranch_to=_coerce_rebranch_to(entry.get("rebranch_to"), key),
             )
         )
     return out
+
+
+_PAIRS: tuple[tuple[tuple[str, ...], str, str], ...] = (
+    (("contest", "fight for", "take the"), "Contest", "Concede"),
+    (("engage", "all-in", "pick"), "Engage", "Disengage"),
+    (("push",), "Push", "Freeze"),
+    (("freeze",), "Freeze", "Push"),
+    (("recall", "back", "reset"), "Recall", "Stay"),
+    (("ward", "vision"), "Ward", "Skip vision"),
+    (("rotate", "swap"), "Rotate", "Hold"),
+    (("siege",), "Siege", "Disengage"),
+)
+# A trigger counts only at a WORD START ("pushing" is push; "disengage" is not
+# engage, "toward" is not ward) and only when no negator word sits right before
+# it ("don't push" is not a call to push). U+2019 is the typographic apostrophe
+# a model emits in "don't".
+_PAIR_RES = tuple(
+    (tuple(re.compile(r"(?<![a-z0-9])" + re.escape(t)) for t in triggers), a_lbl, b_lbl)
+    for triggers, a_lbl, b_lbl in _PAIRS
+)
+_APOSTROPHES = "'" + chr(0x2019)
+_NEGATED_RE = re.compile(
+    r"(?<![a-z0-9])(?:don[" + _APOSTROPHES + r"]?t|do not|never|avoid|no|not)\s+\Z"
+)
 
 
 def _action_choice(action: str) -> tuple[str, str] | None:
@@ -155,19 +246,11 @@ def _action_choice(action: str) -> tuple[str, str] | None:
     binary verb pair. Returns None when no A/B can be derived."""
 
     a = action.lower()
-    pairs: list[tuple[tuple[str, ...], str, str]] = [
-        (("contest", "fight for", "take the"), "Contest", "Concede"),
-        (("engage", "all-in", "pick"), "Engage", "Disengage"),
-        (("push",), "Push", "Freeze"),
-        (("freeze",), "Freeze", "Push"),
-        (("recall", "back", "reset"), "Recall", "Stay"),
-        (("ward", "vision"), "Ward", "Skip vision"),
-        (("rotate", "swap"), "Rotate", "Hold"),
-        (("siege",), "Siege", "Disengage"),
-    ]
-    for triggers, a_lbl, b_lbl in pairs:
-        if any(t in a for t in triggers):
-            return a_lbl, b_lbl
+    for triggers, a_lbl, b_lbl in _PAIR_RES:
+        for rx in triggers:
+            for m in rx.finditer(a):
+                if not _NEGATED_RE.search(a, 0, m.start()):
+                    return a_lbl, b_lbl
     return None
 
 
