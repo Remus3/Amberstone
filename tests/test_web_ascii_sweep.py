@@ -1477,7 +1477,19 @@ _WEB = _REPO_ROOT / "web"
 # reproduces the superseded c3f3b3bf... value EXACTLY. Those three paths
 # are the whole change. No glyph change: the added lines carry 0 non-ASCII
 # bytes. If another slice re-captures in parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "80c1b8522089f13ad72543428c590f0604df98ce61293f3ca21c58ec1e00adfa"
+# superseded by the RM-1084 residue re-capture below: "80c1b8522089f13ad72543428c590f0604df98ce61293f3ca21c58ec1e00adfa"
+#
+# RE-CAPTURED 2026-10-30 at RM-1084 residue (s144 uiux cycle 62,
+# provisional until the merger lands it and maps the id). One change rides
+# it: the Lobby YOUR MAINS / PARTY MAINS tabs (.lv-mc-tab) take the
+# --hit-min floor and draw the system focus ring (web/css/panels/
+# header.css). Ordinary case, no tokeniser change. ATTRIBUTED BY
+# SUBSTITUTION: swapping exactly web/css/panels/header.css back to its lane
+# HEAD 9e677f2f4 blob (in memory) reproduces the superseded 80c1b852...
+# value EXACTLY. That path is the whole change. No glyph change: the added
+# lines carry 0 non-ASCII bytes. If another slice re-captures in parallel,
+# the merger recomputes.
+_LIVE_HALF_DIGEST = "478a1f4986c2a4867e877a999c0c69b5abd2148b93e8d71135502f98e0f9be4e"
 
 
 def _web_sources() -> list[Path]:

@@ -1786,6 +1786,14 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   color: var(--text);
   background: color-mix(in srgb, var(--bad-soft) 30%, transparent);
 }
+/* RM-1084 residue: the pair measured 33.6px tall (under --hit-min) and drew
+   only the UA outline on keyboard focus. Pinned by
+   tests/snapshot_panels/test_lobby_mains_tabs.py. */
+.lv-mc-tab { min-height: var(--hit-min); }
+.lv-mc-tab:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
 /* E11: tab-aware 4-column mains grid. The icon column is always 76px
  * (icon + copy button). YOUR MAINS = icon | Recent | Overall | Form.
  * PARTY MAINS = icon | Player | Mastery | Recent. Grid tracks are
