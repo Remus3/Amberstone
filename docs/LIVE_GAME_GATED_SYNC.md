@@ -636,6 +636,64 @@ Cheapest gate in the file. Enter a lobby, capture, leave. Nothing here needs a m
   champ-select view shows `#csv-sugg-cc-conditional-pressure` with `hidden` false and a non-empty
   `data-cc-cond-tier` in {`good`, `warn`, `bad`}; FAIL = still hidden with both rosters committed. A GET
   of `/api/cc-conditional-pressure` is the COMPUTE half only (SUBSTITUTION) - never tick from it.
+  **READY (lane 9 PREP s144 cycle 36, source read at `b14160751`; NOT a tick).** The predicate above is
+  TIGHTENED before any game, for two traps measured in source: (1) `web/index.html` ships the chip with
+  `data-cc-cond-tier="warn"` already set, so a non-empty tier attribute proves nothing on its own; (2) the
+  chip sits inside the TEAM ANALYSIS drawer `#csv-ta-body`, which is COLLAPSED by default
+  (`champ_select.js` `_csvTaOpen` reads sessionStorage `csv-ta-open`; `if (body) body.hidden = !open;`),
+  so `hidden` false on the chip is not "renders". A third trap, reproduced under node: the renderer
+  skips a repaint when the payload signature is unchanged (`cc_conditional_pressure.js`
+  `renderCcConditionalPressure`, the `_CCP_SIG` early return), but the gate hides the chip directly
+  without clearing that signature, so a chip hidden once stays hidden for a later identical payload -
+  a hidden chip is graded only on a dashboard RELOADED in this lobby. A fourth, MEASURED 2026-10-30 in
+  headless Chromium on the `?ui_mock=1&mode=sr#champ-select` fixture: the SHOWN `#view-champ-select`
+  keeps its `hidden` attribute while its computed display is `block`, so view and chip are graded on
+  rendered boxes (`getClientRects`), never on a `hidden` attribute. A fifth: "committed" ids include
+  HOVERS (`lcu/champ_select_shape.py` `_team_picks`, `championId` = locked or `championPickIntent`), and
+  a hover change starts a route fetch that resource timing does not list until it ends, so the page's
+  last LISTED fetch can be for the previous roster with the same counts - the tie is by NAME and mode.
+  **PROBE (one command each, read-only):** `python tools/gated_g103_cc_pressure.py snippet` prints an
+  async expression; in the real dashboard tab (operator Chrome DevTools console, or headless Chromium
+  on `https://127.0.0.1:8888`), with the champ-select view up, run it and save the returned JSON to
+  `ops/runtime/g103/<n>.json` (gitignored). It reads `/api/state` itself (keeps only `lcu.phase`,
+  `lcu.champ_select.queue_id` and the committed `my_team[]` / `their_team[]` `championId`s - never a
+  puuid or a player name), maps those ids to champion slugs through `/data/champions_index.json` (the file
+  the page's own `resolveChampNames` reads), the view / drawer / chip DOM, the chip box, `performance.now()` as page age, and the
+  `/api/cc-conditional-pressure` URL the PAGE last fetched (resource timing), re-fetched once for a tie.
+  Then `python tools/gated_g103_cc_pressure.py grade --evidence ops/runtime/g103/<n>.json` (exit 0 PASS,
+  1 FAIL, 3 INCONCLUSIVE, 2 bad input).
+  **PREDICATE (stated now):** PASS iff origin `https://...:8888`, `ui_mock` off, `lcu.phase` ==
+  `ChampSelect`, >= 1 ally and >= 1 enemy `championId > 0`, `#view-champ-select` rendered, the chip not
+  hidden with tier in {good, warn, bad} AND the matching label (FAVORABLE / EVEN / AT RISK) AND both
+  rows "Enemy can chain on one target" / "You can chain on one target" reading `<n>.<n>s` AND a verdict
+  line, AND on screen (the chip's rendered box is visible with width and height > 0), AND tied to THIS
+  roster: the page's last route URL (resource timing) carries this roster's ally / enemy names and mode
+  (the queue -> mode map of the `champ_select.js` gate) and the rendered tier / seconds match its body
+  within 0.05 s. FAIL iff the chip is captured as absent (`chip_present` false); or shown but malformed
+  (tier / label / rows / verdict captured and wrong or null); or populated with the drawer proven OPEN
+  (`#csv-ta-body` hidden false) and no rendered box; or hidden (attribute set AND no rendered box - a
+  rendered box wins over the attribute) in a VISIBLE tab on a page reloaded in this lobby and captured
+  10 to 90 s after the reload, with the page's last route fetch SEEN, tied to this roster by name and
+  mode, its status 2xx or unrecorded, and its body `ok` true. A field the bundle never captured, any tie
+  missing or off, no route fetch seen, a background tab, a non-2xx page fetch or a non-ok body is
+  INCONCLUSIVE (a request still in flight is not listed; a non-ok body hides the chip BY DESIGN - file
+  that against the route, not this row).
+  INCONCLUSIVE: drawer COLLAPSED (click the TEAM ANALYSIS head, capture again), BLIND (no enemy pick:
+  ARAM / Mayhem select - record, not a fail), not in ChampSelect, or a provenance miss.
+  **IDLE SMOKE (2026-10-30, no game, read-only page loads in headless Chromium):** the live dashboard
+  graded INCONCLUSIVE `NOT_IN_CHAMP_SELECT` (phase None; chip hidden yet `data-cc-cond-tier` already
+  `warn`, trap 1 seen live). On the ui_mock SR fixture the snippet read a populated chip (FAVORABLE, two
+  rows, verdict line), box 0 x 0 with the drawer shut (COLLAPSED) and about 538 x 143 after a click on
+  `#csv-ta-head`, and the page's own route URL was found and re-fetched ok; the fixture's ids mapped
+  through `/data/champions_index.json` tied to that URL by name and mode (5 + 5, SR). That run proves the
+  selectors, the box read and the name tie only; ui_mock makes it NOT evidence.
+  **DRAIN STEPS (draft lobby, q400 / q420):** wait for the first enemy pick, press F5 on the dashboard,
+  wait about 15 s with no pick or hover change, open TEAM ANALYSIS, run the snippet, save, grade. One PASS bundle plus its
+  `captured_at`, queue id and verdict line is the evidence; do not paste champion ids into this file.
+  **SUBSTITUTION CHECK:** `tests/test_gated_g103_cc_pressure.py` reaches PASS from hand-built bundles and
+  from the real renderer's markup drawn under node with a stub element - neither saw the dashboard. A
+  route GET (or the route body inside the bundle) is compute only; the tie just proves the rendered
+  numbers are THIS roster's. Only a bundle from the real tab, origin and page age checked, ticks this.
 - **G1-04** (was A4 + QA24) LOBBY1 top-8 friend-invite live verify (`b9cb0092`) + the QA24 non-friend
   invite path end-to-end + the operator-reported defect that inviting others does not send unless the
   confirm dialog is accepted. BLOCKED ON: a real invite target / second account. SOURCE:
