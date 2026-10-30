@@ -1503,7 +1503,20 @@ _WEB = _REPO_ROOT / "web"
 # value EXACTLY. Those two paths are the whole change. No glyph change: the
 # added lines carry 0 non-ASCII bytes. If another slice re-captures in
 # parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "82814d1763c8487beb9bfb33ccac2c40dbd93fe3507399b7f80d148d05a57108"
+# superseded by the RM-1134 re-capture below: "82814d1763c8487beb9bfb33ccac2c40dbd93fe3507399b7f80d148d05a57108"
+#
+# RE-CAPTURED 2026-10-30 at RM-1134 (s144 uiux cycle 65, provisional
+# until the merger lands it and maps the id). One change rides it: the dead
+# section-button co-selector leaves the History .view-tab base / :hover
+# rules and the arcane selected-tab underline list (web/css/panels/
+# header.css, web/css/themes.css); no page or script ever rendered that
+# class. Ordinary case, no tokeniser change. ATTRIBUTED BY SUBSTITUTION:
+# swapping those two files back to their lane HEAD fcc68307a blobs (in
+# memory) reproduces the superseded 82814d17... value EXACTLY. Those two
+# paths are the whole change. No glyph change: the added lines carry 0
+# non-ASCII bytes. If another slice re-captures in parallel, the merger
+# recomputes.
+_LIVE_HALF_DIGEST = "70459a3110c559322e4bae0074ce6b6ae9ab839eed568961d8c1997667a2f1b2"
 
 
 def _web_sources() -> list[Path]:

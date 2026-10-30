@@ -615,9 +615,10 @@ footer .prefs-chip:hover { color: var(--text); }
   letter-spacing: 0.04em;
 }
 /* v2.1 UI scale (docs/UI_SCALE_SPEC_V2.md page #4 History, 2026-05-23):
- * view-tab is used only on History (4 scope buttons); view-section-btn
- * is a shared primitive but the History sweep brings it along since
- * the two share the same rule block. */
+ * view-tab is used only on History (4 scope buttons). RM-1134 dropped
+ * the dead section-button co-selector these rules carried: no page or
+ * script ever rendered that class. Guard:
+ * tests/test_view_section_btn_selector_removed.py. */
 /* RM-1011: centred like .hpgr-back, not baseline-aligned. Baseline
  * alignment of the 29px title with 16px tab text depends on the face's
  * ascent / descent, so the History head still moved 1px when Lato
@@ -626,7 +627,7 @@ footer .prefs-chip:hover { color: var(--text); }
   display: flex; gap: var(--space-1); margin-left: auto;
   align-self: center;
 }
-.view-section-btn, .view-tab {
+.view-tab {
   background: var(--surface-head); border: 1px solid var(--border);
   color: var(--text-dim); padding: var(--space-2) var(--space-3); font-size: var(--fs-xs);
   letter-spacing: 0.06em; text-transform: uppercase;
@@ -634,7 +635,7 @@ footer .prefs-chip:hover { color: var(--text); }
   min-height: var(--hit-min);
   transition: background 0.1s, color 0.1s, border-color 0.1s;
 }
-.view-section-btn:hover, .view-tab:hover {
+.view-tab:hover {
   background: #1c1c2a; color: var(--text); border-color: var(--clock);
 }
 /* RM-1083: --info text on the --info-soft fill measured a hair DIMMER
