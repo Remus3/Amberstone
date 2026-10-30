@@ -53,6 +53,13 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+# Run as `python scripts/build_spell_cast_rates.py`, sys.path[0] is scripts/;
+# the repo root makes `core` importable (same as patch_champion.py).
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from core.polled_json import atomic_write_bytes  # noqa: E402
+
 DB_PATH = ROOT / "data" / "rewind_history.db"
 OUTPUT = ROOT / "data" / "daemon_slayer" / "spell_cast_rates.json"
 
@@ -184,9 +191,11 @@ def main() -> int:
     }
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    tmp = OUTPUT.with_suffix(OUTPUT.suffix + ".tmp")
-    tmp.write_text(json.dumps(payload, indent=2), encoding="utf-8", newline="\n")
-    tmp.replace(OUTPUT)
+    # Bytes, LF (RM-448). RM-1128: the DS :8860 process reads this file
+    # in-process (ult_rates._load_spells), so the swap goes through
+    # core.polled_json (per-writer scratch, fsync, WinError 5 retry, no
+    # scratch left on a failed rename).
+    atomic_write_bytes(OUTPUT, json.dumps(payload, indent=2).encode("utf-8"))
 
     print(
         f"wrote {OUTPUT.relative_to(ROOT)} - {len(reduced)} champs, "
