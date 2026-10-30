@@ -273,9 +273,63 @@ def _ls_files_reaches_md(after, consts, tracked_md, base="", md_suffixes=()) -> 
         specs.extend(s for s in got if not s.startswith("-"))
     if not specs or any(_md_pathspec(s, tracked_md) for s in specs):
         return True
+    if _magic_reaches_md(specs, tracked_md, base, md_suffixes):
+        return True
     if base == "":
         return False
     return any(_md_pathspec_in(s, base, tracked_md, md_suffixes) for s in specs)
+
+
+_SHORT_MAGIC = {"/": "top", "!": "exclude", "^": "exclude"}
+_PLAIN_MAGIC = frozenset({"top", "literal", "glob"})
+
+
+def _pathspec_magic(spec):
+    """RM-1146 (4): a pathspec's magic words and the path after them, or
+    (None, spec) for a plain one. `:(top,glob)x` is the long form, `:/x`,
+    `:!x`, `:^x` and `:/!:x` the short form."""
+    if not spec.startswith(":"):
+        return None, spec
+    if spec.startswith(":("):
+        close = spec.find(")")
+        if close < 0:
+            return {"?"}, ""
+        return {w.split(":", 1)[0].strip() for w in spec[2:close].split(",")}, spec[close + 1:]
+    i = 1
+    words = set()
+    while i < len(spec) and spec[i] in _SHORT_MAGIC:
+        words.add(_SHORT_MAGIC[spec[i]])
+        i += 1
+    if spec[i:i + 1] == ":":
+        i += 1
+    return words, spec[i:]
+
+
+def _magic_reaches_md(specs, tracked_md, base, md_suffixes) -> bool:
+    """RM-1146 (4): the magic pathspecs among `specs`, read by their magic.
+    An exclude adds no path, so an argv of excludes only lists the directory
+    git runs in (`base`); `top` reads from the root whatever `-C` says;
+    `literal` / `glob` read the path like a plain spec (wider, never
+    narrower); any other magic (`icase`, `attr`) takes the wide reading."""
+    positive = False
+    for spec in specs:
+        words, rest = _pathspec_magic(spec)
+        if words is None:
+            positive = True
+            continue
+        if "exclude" in words:
+            continue
+        if not words <= _PLAIN_MAGIC:
+            return True
+        positive = True
+        if _md_pathspec(rest, tracked_md):
+            return True
+        if "top" not in words and base != "" \
+                and _md_pathspec_in(rest, base, tracked_md, md_suffixes):
+            return True
+    if positive:
+        return False
+    return base == "" or _md_pathspec_in(".", base, tracked_md, md_suffixes)
 
 
 def _call_base(call: ast.Call, consts):
@@ -290,6 +344,22 @@ def _call_base(call: ast.Call, consts):
             got = _const_strings(kw.value, consts)
             base = _join_rel("", got[0]) if got is not None and len(got) == 1 else None
     return base
+
+
+def _add_operands(node, chained) -> list:
+    """RM-1146 (1): the operands of an `a + b + c` chain, left to right;
+    each inner `+` node is recorded in `chained` so it is not read again.
+    Iterative: a long `"a" + "a" + ...` chain must not hit the recursion
+    limit."""
+    operands, stack = [], [node]
+    while stack:
+        item = stack.pop()
+        if isinstance(item, ast.BinOp) and isinstance(item.op, ast.Add):
+            chained.add(id(item))
+            stack.extend((item.right, item.left))
+        else:
+            operands.append(item)
+    return operands
 
 
 _INDEX_LISTERS = frozenset({"tracked_relpaths"})
@@ -323,7 +393,9 @@ def index_walk_reasons(tree: ast.AST, tracked_md, md_suffixes=None) -> list:
       and from the directory git resolves it in (RM-1145): the argv's
       `-C` flags and the call's `cwd=`, joined when constant; an unreadable
       one, or a helper call (its directory is not visible), reads it in any
-      directory - against every segment-boundary suffix of a tracked `.md`;
+      directory - against every segment-boundary suffix of a tracked `.md`.
+      An argv concatenated from lists is read as one, and a magic pathspec
+      (`:(exclude)`, `:!`, `:(top)`, ...) by its magic (RM-1146);
     - a call to `tests._repo_walk.tracked_relpaths` (the whole index);
     - `iter_repo_files` / `repo_files` with a basename glob matching a `.md`
       (their default is `*.py`, so a bare call does not select).
@@ -331,27 +403,56 @@ def index_walk_reasons(tree: ast.AST, tracked_md, md_suffixes=None) -> list:
     false positive costs CI seconds, a false negative is this file's defect.
     """
     consts = _module_constants(tree)
+    # RM-1146 (3): read more than once, so a one-shot iterator is not spent.
+    tracked_md = list(tracked_md)
     if md_suffixes is None:
         md_suffixes = _md_suffix_index(tracked_md)
     # RM-1145: the directory each call runs its argv in (`cwd=`). ast.walk
     # is breadth-first, so a call is met before the argv list inside it.
     call_bases = {}
+    # RM-1146 (1): the elements a `[...] + [...]` operand follows, and the
+    # directory its whole chain runs in (kept apart from `call_bases`, so the
+    # list's own reading stays what it was).
+    argv_prefix = {}
+    chain_bases = {}
+    chained = set()
     reasons = set()
     for node in ast.walk(tree):
-        if isinstance(node, (ast.List, ast.Tuple)):
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add) \
+                and id(node) not in chained:
+            # One argv in pieces: each list operand reads the operands ahead
+            # of it (an unreadable one may hold a `-C`, like a starred
+            # element) and the call's `cwd=` reaches every operand.
+            base = call_bases.get(id(node), "")
+            before = []
+            for operand in _add_operands(node, chained):
+                if isinstance(operand, (ast.List, ast.Tuple)):
+                    argv_prefix[id(operand)] = list(before)
+                    chain_bases[id(operand)] = base
+                    before.extend(operand.elts)
+                else:
+                    before.append(ast.Starred(value=operand, ctx=ast.Load()))
+        elif isinstance(node, (ast.List, ast.Tuple)):
             elts = node.elts
             for i, elt in enumerate(elts):
                 if isinstance(elt, ast.Constant) and elt.value == "ls-files":
-                    base = _ls_files_base(elts[:i], consts, call_bases.get(id(node), ""))
-                    if _ls_files_reaches_md(elts[i + 1:], consts, tracked_md, base,
-                                            md_suffixes):
-                        reasons.add("<index walk: git ls-files>")
+                    # The list's own reading first, then (RM-1146) the one
+                    # after the operands ahead of it - so the chain only adds.
+                    readings = [(elts[:i], call_bases.get(id(node), ""))]
+                    if id(node) in argv_prefix:
+                        readings.append((argv_prefix[id(node)] + elts[:i], chain_bases[id(node)]))
+                    for before, start in readings:
+                        base = _ls_files_base(before, consts, start)
+                        if _ls_files_reaches_md(elts[i + 1:], consts, tracked_md, base,
+                                                md_suffixes):
+                            reasons.add("<index walk: git ls-files>")
+                            break
                     break
         elif isinstance(node, ast.Call):
             name = _call_name(node)
             args = node.args
             argvs = [*args[:1], *(kw.value for kw in node.keywords if kw.arg == "args")]
-            if any(isinstance(a, (ast.List, ast.Tuple)) for a in argvs):
+            if any(isinstance(a, (ast.List, ast.Tuple, ast.BinOp)) for a in argvs):
                 call_base = _call_base(node, consts)
                 for argv in argvs:
                     call_bases[id(argv)] = call_base
