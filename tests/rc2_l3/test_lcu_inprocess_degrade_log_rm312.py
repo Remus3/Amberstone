@@ -3,7 +3,8 @@
 ``dashboard/_lcu_inprocess.lcu_summary_inprocess`` wraps the whole
 ``shape_snapshot`` assembly in ``try: ... except Exception: return None``
 (``dashboard/_lcu_inprocess.py:182-191`` as filed 2026-08-31; the same three
-lines are :255-257 after the RM-312 fix). Returning ``None`` IS the contract -
+lines are :255-257 after the RM-312 fix and :340-342 after s144 true-audit
+cycle 70). Returning ``None`` IS the contract -
 ``dashboard/_state_builder._read_lcu_snapshot`` (:80-100) falls back to the
 relay ``lcu_summary()`` on it - but before RM-312
 that path emitted nothing, so a real shaping fault was indistinguishable from
@@ -50,15 +51,17 @@ offset in this module, so the pre-edit numbers this block first carried were
 all stale (``feedback_your_own_edit_staled_the_citation``). RE-DERIVED AGAIN
 under RM-405, which added 5 comment lines to ``_lcu_inprocess`` at :110 and 83
 lines to ``_state_builder`` near its top - the same failure class arriving a
-second time from a NEIGHBOURING slice rather than from this file's own edit:
-  * ``lcu_summary_inprocess``        dashboard/_lcu_inprocess.py:237
-  * ``_log_degrade``                 dashboard/_lcu_inprocess.py:132
-  * ``_get_client``                  dashboard/_lcu_inprocess.py:163
+second time from a NEIGHBOURING slice rather than from this file's own edit.
+RE-DERIVED a third time under s144 true-audit cycle 70 (+ budget, ticket and
+port-capture code above and inside ``lcu_summary_inprocess``):
+  * ``lcu_summary_inprocess``        dashboard/_lcu_inprocess.py:289
+  * ``_log_degrade``                 dashboard/_lcu_inprocess.py:168
+  * ``_get_client``                  dashboard/_lcu_inprocess.py:199
   * ``shape_snapshot`` (module ref)  dashboard/_lcu_inprocess.py:76
-  * ``_read_relay_snapshot``         dashboard/_lcu_inprocess.py:195
-  * ``_reset_client_for_tests``      dashboard/_lcu_inprocess.py:265
-  * ``_expire_degrade_log_for_tests`` dashboard/_lcu_inprocess.py:295
-  * ``client._port`` read            dashboard/_lcu_inprocess.py:178, :254, :257
+  * ``_read_relay_snapshot``         dashboard/_lcu_inprocess.py:242
+  * ``_reset_client_for_tests``      dashboard/_lcu_inprocess.py:345
+  * ``_expire_degrade_log_for_tests`` dashboard/_lcu_inprocess.py:384
+  * ``client._port`` read            dashboard/_lcu_inprocess.py:219, :320, :335
   * logger name "rc.web_dashboard"   dashboard/_lcu_inprocess.py:78,
                                      dashboard/_state_builder.py:42
 

@@ -22,7 +22,7 @@ trace at all. Two concrete classes RM-312 provably cannot cover:
     import, a failure inside ``lcu.snapshot_shape`` at module load), the
     module never loads, so RM-312's ``_log_degrade`` does not exist to run;
   * a fault RE-RAISED past ``lcu_summary_inprocess``'s own guard - it catches
-    with ``except Exception`` at ``dashboard/_lcu_inprocess.py:260``, so
+    with ``except Exception`` at ``dashboard/_lcu_inprocess.py:340``, so
     anything that escapes that clause (including a fault raised from inside
     the except body itself) surfaces one frame up, here.
 

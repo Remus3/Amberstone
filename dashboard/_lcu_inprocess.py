@@ -80,6 +80,9 @@ log = logging.getLogger("rc.web_dashboard")
 _client = None
 _client_lock = threading.Lock()
 
+# Patchable monotonic seam for the TTL, the snapshot budget and its cooldown.
+_clock = time.monotonic
+
 # Last-resort mirror of the agent's boot CONFIG (tools/lcu_agent.py:120-125),
 # used ONLY when the agent has never posted a snapshot this process has seen.
 # Drift-guarded by test_lcu_inprocess_config_port_l3.
@@ -96,7 +99,40 @@ _AGENT_CONFIG_DEFAULTS = {
 # count well below the flag-OFF path (one read per build).
 _CONFIG_TTL_S = 3.0
 _config_lock = threading.Lock()
-_config_cache: dict = {"config": None, "ts": None}
+# "seq" tickets each relay refresh at its START and "committed" is the newest
+# ticket whose read has landed. Three callers reach _agent_config concurrently
+# (the routes_state builder, core/obs_publisher's own build_state and
+# routes_lobby_aux), so two TTL refreshes can overlap; without the ticket the
+# read that LANDED last won, and an older read could overwrite a newer one and
+# re-stamp the TTL - an auto-accept click then read back as the pre-click
+# value for up to _CONFIG_TTL_S (s144 true-audit cycle 70, F3).
+_config_cache: dict = {"config": None, "ts": None, "seq": 0, "committed": 0}
+
+# --- Snapshot budget (s144 true-audit cycle 70, F2) -------------------------
+# LcuClient._request may spend its 3 s timeout plus one idempotent retry per
+# call, shape_snapshot makes several calls, and tools/lcu_agent.capture_state
+# records in-game captures taking 8-11 s under League CPU pressure. In the
+# agent that cost is its own; here it is spent inside build_state under
+# routes_state._STATE_BUILD_LOCK, so every /api/state build and SSE tick would
+# wait for it. One read therefore gets a budget: the request adapter refuses
+# to START an LCU call once it is spent (an in-flight call still runs to the
+# frozen client's own timeout - the bound is budget plus one call), the
+# partial read is discarded, and the next _BUDGET_COOLDOWN_S of builds go
+# straight to the relay, so a slow LCU costs one budget per cooldown rather
+# than one per build. A read that finishes complete but over budget is kept
+# (it is valid data) and arms the cooldown too.
+_SNAPSHOT_BUDGET_S = 1.0
+_BUDGET_COOLDOWN_S = 30.0
+_budget_lock = threading.Lock()
+_budget_state: dict = {"until": None}
+
+
+class _SnapshotBudgetExceeded(Exception):
+    """Raised by the request adapter once a snapshot has spent its budget.
+
+    Carries no message: _log_degrade names the type and the raising frame,
+    never str(exc), and a path or payload has no business in it anyway.
+    """
 
 
 # --- RM-312: the degrade to the relay must not be SILENT --------------------
@@ -168,6 +204,11 @@ def _get_client():
     restart) once connected, and a cold ``connect()`` when not yet connected
     or after League closed. The import is lazy so importing this module never
     drags in the frozen client at dashboard load.
+
+    s144 true-audit cycle 70, F4: the connect-or-refresh step runs under the
+    lock as well, so two concurrent cold callers cannot both connect the one
+    shared client (duplicate "LCU connected" lines, interleaved port / auth
+    assignment). Both steps are a lockfile stat plus at most one small read.
     """
     global _client
     with _client_lock:
@@ -175,19 +216,25 @@ def _get_client():
             from lcu.lcu_client import LcuClient
             _client = LcuClient()
         client = _client
-    if not client._port:
-        client.connect()
-    else:
-        client._refresh_conn_if_changed()
+        if not client._port:
+            client.connect()
+        else:
+            client._refresh_conn_if_changed()
     return client
 
 
-def _make_request(client):
+def _make_request(client, deadline=None):
     """Adapt ``LcuClient._request`` (payload | None) to the agent transport
     contract ``(payload, err)`` that shape_snapshot / shape_champ_select
     expect. err is always None: a None payload already signals 'no data',
-    which every consumer tolerates (isinstance checks + phase gates)."""
+    which every consumer tolerates (isinstance checks + phase gates).
+
+    With a ``deadline`` (a ``_clock()`` value) the adapter raises
+    ``_SnapshotBudgetExceeded`` instead of starting a call once it has
+    passed; nothing in shape_snapshot catches it, so the read aborts."""
     def _req(method, path, body=None):
+        if deadline is not None and _clock() >= deadline:
+            raise _SnapshotBudgetExceeded()
         return client._request(method, path, data=body), None
     return _req
 
@@ -209,11 +256,14 @@ def _agent_config() -> dict:
     Falls back to the last value observed this process, then to the agent's
     boot defaults. Never raises.
     """
-    now = time.monotonic()
+    now = _clock()
     with _config_lock:
         cached = _config_cache["config"]
         ts = _config_cache["ts"]
         fresh = ts is not None and (now - ts) < _CONFIG_TTL_S
+        if not fresh:
+            _config_cache["seq"] += 1
+            ticket = _config_cache["seq"]
     if fresh:
         return dict(cached) if cached is not None else dict(_AGENT_CONFIG_DEFAULTS)
 
@@ -227,9 +277,11 @@ def _agent_config() -> dict:
         observed = None
 
     with _config_lock:
-        _config_cache["ts"] = now
-        if observed is not None:
-            _config_cache["config"] = observed
+        if ticket > _config_cache["committed"]:
+            _config_cache["committed"] = ticket
+            _config_cache["ts"] = now
+            if observed is not None:
+                _config_cache["config"] = observed
         cached = _config_cache["config"]
     return dict(cached) if cached is not None else dict(_AGENT_CONFIG_DEFAULTS)
 
@@ -248,14 +300,42 @@ def lcu_summary_inprocess():
     expected case and a line there would be worse than none. The except branch
     is NOT silent: it WARNs through the throttled ``_log_degrade`` so a real
     fault is visible instead of presenting as a permanent quiet relay hop.
+
+    s144 true-audit cycle 70: the port is read ONCE, and a read during which
+    the shared client's port changed (League closed, or the lockfile rotated -
+    another caller's refresh or ``_request``'s own retry refresh) is discarded,
+    silently, because a close is an expected event. Before, the port was read
+    for the gate and again for the stamp, so a close in between stamped
+    ``lcu_port == "None"`` - a truthy port for a closed client - and a change
+    during the shape stamped the old port over a body read from nothing or
+    from another client (F1). The read also runs under the snapshot budget
+    above (F2); during its cooldown this returns None at once.
     """
     try:
-        client = _get_client()
-        if not client._port:
+        with _budget_lock:
+            until = _budget_state["until"]
+        if until is not None and _clock() < until:
             return None
+        client = _get_client()
+        port = client._port
+        if not port:
+            return None
+        # The relay config read stays OUTSIDE the budget: it has its own 1 s
+        # timeout (dashboard/_liveclient.lcu_summary), and a wedged relay must
+        # not be booked as a slow LCU and switch this path off.
         config = _agent_config()
-        snap = {"config": config, "lcu_port": str(client._port)}
-        snap.update(shape_snapshot(_make_request(client), config))
+        start = _clock()
+        try:
+            shaped = shape_snapshot(
+                _make_request(client, start + _SNAPSHOT_BUDGET_S), config)
+        finally:
+            if _clock() - start >= _SNAPSHOT_BUDGET_S:
+                with _budget_lock:
+                    _budget_state["until"] = _clock() + _BUDGET_COOLDOWN_S
+        if client._port != port:
+            return None
+        snap = {"config": config, "lcu_port": str(port)}
+        snap.update(shaped)
         return snap
     except Exception as exc:  # noqa: BLE001
         _log_degrade(exc)
@@ -269,6 +349,7 @@ def _reset_client_for_tests() -> None:
         _client = None
     _reset_config_cache_for_tests()
     _reset_degrade_log_for_tests()
+    _reset_budget_for_tests()
 
 
 def _reset_config_cache_for_tests() -> None:
@@ -276,6 +357,14 @@ def _reset_config_cache_for_tests() -> None:
     with _config_lock:
         _config_cache["config"] = None
         _config_cache["ts"] = None
+        _config_cache["seq"] = 0
+        _config_cache["committed"] = 0
+
+
+def _reset_budget_for_tests() -> None:
+    """Disarm the F2 budget cooldown."""
+    with _budget_lock:
+        _budget_state["until"] = None
 
 
 def _expire_config_cache_for_tests() -> None:

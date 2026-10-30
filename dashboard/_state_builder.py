@@ -93,7 +93,7 @@ MODE_FILES: tuple[str, ...] = tuple(dict.fromkeys(MODE_TO_FILE.values()))
 # Swallowed silently, either one means RC pays the :8889 relay hop that lever
 # L3 exists to REMOVE, forever, with nothing in logs/ saying why - the exact
 # failure RM-312 closed, one frame up. Same shape as the fix it mirrors
-# (dashboard/_lcu_inprocess.py:102-160): WARN on CHANGE of the fault
+# (dashboard/_lcu_inprocess.py:138-196): WARN on CHANGE of the fault
 # signature, then at most once per throttle window, built from the exception
 # TYPE plus the innermost raising frame and NEVER from str(exc) - an LCU
 # payload carries PUUIDs and this repo is public.

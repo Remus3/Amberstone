@@ -31,11 +31,11 @@ review that found the first wording both overstated and understated:
     a persistently mistyped field freezes the dashboard's LCU panel while
     re-failing once a second.
   * DORMANT path. ``dashboard/_lcu_inprocess.lcu_summary_inprocess`` calls
-    ``shape_snapshot`` at :258 and catches at :260, returning None so the
+    ``shape_snapshot`` at :329 and catches at :340, returning None so the
     caller falls back to the :8889 relay. The SILENCE half of this bullet is
     HISTORY as of 2026-09-11 and is kept only so the original radius reads
     straight: RM-312 added a throttled WARN inside the module
-    (``_log_degrade``, ``dashboard/_lcu_inprocess.py:132``) and RM-405 added a
+    (``_log_degrade``, ``dashboard/_lcu_inprocess.py:168``) and RM-405 added a
     deliberately DISTINCT one at the caller seam one frame up
     (``dashboard/_state_builder.py:177``), so the degrade is now traced at
     both layers. The RETURN contract is unchanged. This half is gated on
