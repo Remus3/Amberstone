@@ -1507,7 +1507,7 @@ def _maybe_force_augment_scan(state: dict) -> None:
 # doesn't cause the next boot to miss the ingest. RM-1116 (c): the default
 # lives under the repo root (gitignored ops/runtime/), per CLAUDE.md "Keep
 # runtime records under the repo root"; RC_AGENT_STATE_FILE overrides. The old
-# default sat in the retired copy-out folder of tools/legion_agent_boot.ps1;
+# default sat in the copy-out folder of the boot launcher RM-1116 (a) retired;
 # _load_ingest_state reads it once when the default is in use and the new file
 # is absent, then re-saves to the new path.
 _DEFAULT_INGEST_STATE_FILE = _APP_DIR_LCU / "ops" / "runtime" / "agent_state.json"
