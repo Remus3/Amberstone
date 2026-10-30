@@ -5,8 +5,9 @@ A NEW forward-marker accessor ``spell_missile_width`` exposing the CDragon
 perpendicular HITBOX WIDTH (game units) of a line skillshot. The width
 dimension governs ease-of-landing (a narrow 40u Nidalee spear vs a wide 100u
 Xerath bolt) and was structurally inexpressible: ``geometry.py`` reads
-``line_width`` ONLY as a non-null presence flag (line -> shape classifier,
-line 84) and ``missile._distance_from_geometry`` explicitly REJECTS it
+``line_width`` ONLY as a non-null presence flag (the line branch of
+``classify_spell_shape``) and ``missile._distance_from_geometry`` explicitly
+REJECTS it
 ("a perpendicular width, not a travel length, so it is never used here").
 No module exposed the numeric width, so the magnitude was discarded.
 

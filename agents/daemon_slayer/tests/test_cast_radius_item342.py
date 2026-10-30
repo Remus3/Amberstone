@@ -6,8 +6,9 @@ RADIUS (units) of a circular / point-blank AoE spell.  This is the LAST unlifted
 geometry magnitude in ``cdragon_spell_stats.json`` (``line_width`` shipped item
 338, ``cone_angle`` item 340, ``cone_distance`` item 341).  The radius was
 structurally inexpressible as a queryable magnitude: ``classify_spell_shape``
-reads ``cast_radius`` ONLY as the "circle" presence flag (geometry.py line 102,
-``cast_radius is not None AND NOT conflated AND not a sentinel``) and
+reads ``cast_radius`` ONLY as the "circle" presence flag (the circle branch of
+``classify_spell_shape``: ``cast_radius is not None AND NOT conflated AND not a
+sentinel``) and
 ``missile._distance_from_geometry`` reads it ONLY as a travel-distance input that
 it folds into ``dist / speed`` to produce a travel TIME - the raw radius itself
 was never surfaced.

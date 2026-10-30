@@ -7,8 +7,8 @@ axis from the item-340 ``spell_cone_angle`` (the angular SPREAD in degrees): a
 spell can carry a real cone reach with NO angle (Braum E Unbreakable, reach 700,
 angle None) - the two together describe the cone footprint (a long narrow cone
 vs a short wide cone).  The reach was structurally inexpressible: ``geometry.py``
-reads ``cone_distance`` ONLY as a non-null presence flag (the cone -> shape
-classifier, line 89 ``geometry.get("cone_distance") is not None``) and
+reads ``cone_distance`` ONLY as a non-null presence flag (the cone branch of
+``classify_spell_shape``: ``geometry.get("cone_distance") is not None``) and
 ``missile._distance_from_geometry`` reads it ONLY as a travel-distance input that
 it immediately folds into ``dist / speed`` to produce a travel TIME - the raw
 length was never surfaced as a queryable magnitude.

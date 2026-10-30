@@ -5,8 +5,8 @@ A NEW forward-marker accessor ``spell_cone_angle`` exposing the CDragon
 angular SPREAD (degrees) of a cone spell. The angle governs ease-of-landing
 and overlap density (a tight 20deg Ashe Volley vs a wide 40deg Cassiopeia R
 petrify) and was structurally inexpressible: ``geometry.py`` reads
-``cone_angle`` ONLY as a non-null presence flag (the cone -> shape
-classifier, line 90 ``geometry.get("cone_angle") is not None``) and
+``cone_angle`` ONLY as a non-null presence flag (the cone branch of
+``classify_spell_shape``: ``geometry.get("cone_angle") is not None``) and
 ``missile._distance_from_geometry`` reads only ``cone_distance`` /
 ``cast_radius``, never the angle. No module exposed the numeric angle, so
 the magnitude was discarded.
