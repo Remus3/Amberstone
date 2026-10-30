@@ -152,9 +152,10 @@ class RegistryShapeTests(unittest.TestCase):
     def test_conditional_probability_is_full_matching_the_dark_half(self) -> None:
         # See the row's inline note: the Dark half of the SAME tooltip clause is
         # credited at the FULL 3-stack steady state unamortized
-        # (_effects_data.py:633-634 armor_pen_pct=0.30 == 10%/stack x 3), so the
-        # Light half of the same accrual gets prob 1.0 rather than the registry
-        # ramping default of 0.5 (_item_resist_grants.py:123).
+        # (the _effects_data row "3302" armor_pen_pct=0.30 == 10%/stack x 3), so
+        # the Light half of the same accrual gets prob 1.0 rather than the
+        # registry ramping default of 0.5
+        # (_item_resist_grants._ITEM_RESIST_STACK_PROB).
         self.assertAlmostEqual(
             _ITEM_RESIST_GRANTS["3302"].conditional_probability, 1.0, places=9
         )

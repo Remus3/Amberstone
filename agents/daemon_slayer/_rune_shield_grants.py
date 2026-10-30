@@ -133,11 +133,10 @@ value is NOT silently inherited:
   * 0.2 is not a new number. It is the value this engine already accepts for "a
     reactively popped 1.5s spell shield"
     (``_champion_spell_shield_overrides._SPELL_SHIELD_REACTIVE_PROB`` = 0.2,
-    declared at ``_champion_spell_shield_overrides.py:111`` and aliased by
-    ``_item_spell_shield_overrides._ITEM_SPELL_SHIELD_PROB``). Guardian's shield
-    duration is ALSO exactly 1.5s and its shape is the same cooldown-gated single
-    reactive absorb, so it lands on the existing price for that shape rather than
-    inventing one.
+    aliased by ``_item_spell_shield_overrides._ITEM_SPELL_SHIELD_PROB``).
+    Guardian's shield duration is ALSO exactly 1.5s and its shape is the same
+    cooldown-gated single reactive absorb, so it lands on the existing price for
+    that shape rather than inventing one.
 
 It is RESTATED as a literal rather than imported: an import would couple a rune
 registry to a champion registry with a different flip gate, and the sibling
@@ -205,9 +204,10 @@ _GUARDIAN_SHIELD_DURATION_S: float = 1.5
 # (_rune_resist_grants._RUNE_ACTIVE_RESIST_PROB) because Guardian's cooldown is
 # 2x-3.75x Aftershock's and cannot fire twice in one fight. 0.2 is the value this
 # engine already accepts for "a reactively popped 1.5s spell shield"
-# (_champion_spell_shield_overrides._SPELL_SHIELD_REACTIVE_PROB, line 111);
-# Guardian's shield is also exactly 1.5s and the same cooldown-gated single
-# reactive absorb, so it adopts that existing price rather than a new one.
+# (_champion_spell_shield_overrides._SPELL_SHIELD_REACTIVE_PROB, the same value
+# _item_spell_shield_overrides._ITEM_SPELL_SHIELD_PROB aliases); Guardian's
+# shield is also exactly 1.5s and the same cooldown-gated single reactive
+# absorb, so it adopts that existing price rather than a new one.
 # Restated, not imported, to keep this registry import-pure. The Proc Threshold
 # ("50 - 165 postmitigation damage") is folded in HERE - it is why the midpoint
 # is not higher, since sub-threshold chip damage never procs the guard.
