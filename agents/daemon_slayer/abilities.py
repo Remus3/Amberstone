@@ -601,7 +601,7 @@ def check_artifact_patch(
 # check reports them red forever and the red means nothing.
 #
 # VINTAGE alone under-reports, and the founding RM-213 instance is why:
-# tools/ds_wiki_staleness_check.py:454-455 writes ``_patch`` and
+# tools/ds_wiki_staleness_check.py ``run`` writes ``_patch`` and
 # ``_generated_at`` into the SAME dict literal, so a genuine run cannot emit
 # one without the other - yet ability_staleness.json once sat in the current
 # dir declaring the current patch over a ``_generated_at`` byte-identical to

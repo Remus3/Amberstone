@@ -30,8 +30,9 @@ evaluator, only one of the three is a data gap:
 
 SOURCE. Fetched 2026-07-26 from ``https://wiki.leagueoflegends.com/en-us/api.php``
 ``action=query&prop=revisions&rvslots=main&rvprop=content`` - the same host and
-endpoint ``tools/daemon_slayer_wiki_ability_extract.py:108-110`` uses. The raw
-line is quoted verbatim beside the entry it produced. The page states no
+endpoint ``tools/daemon_slayer_wiki_ability_extract.py`` builds as ``WIKI_API``
+from ``WIKI_HOST``. The raw line is quoted verbatim beside the entry it
+produced. The page states no
 missing-health amplifier and no other conditional term, so the authored block
 is the whole of the wiki's damage statement, not a truncation of it.
 

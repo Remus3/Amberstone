@@ -929,7 +929,8 @@ _PASSIVE_DAMAGE_OVERRIDES: dict[tuple[str, str, int], PassiveDamageEntry] = {
     # magic riders keyed at their REAL non-P slot (E / W) so a champion's
     # attack-speed / on-hit itemization pays off in the on-hit-AP scorer. Both
     # are authored FLAT at the L13 max-rank value (both abilities are maxed by
-    # the scorer's L13 target): the AA-routing consumer (dps.py:1195) evaluates
+    # the scorer's L13 target): the AA-routing consumer (the
+    # ``apply_passive_damage`` block of ``dps.compute_dps``) evaluates
     # the routed entry through a HARDCODED _rank_at_level("P", level) index, so a
     # flat base + level-independent scaling fields evaluate correctly regardless
     # of the real E / W slot (identical flat-field pattern to the Gwen P entry).
@@ -942,7 +943,7 @@ _PASSIVE_DAMAGE_OVERRIDES: dict[tuple[str, str, int], PassiveDamageEntry] = {
     # The E ACTIVE (empowered next attack: 8:10% target-missing-HP + 1.5%/100 AP)
     # is a cooldown-gated empowered-FIRST-hit, NOT every-AA, and resolves to 0 at
     # the full-HP scorer ctx - intentionally NOT modeled (same every-AA-only
-    # scope as the :1041-1051 v1 routing note).
+    # scope as the v1 routing note above ``_AA_ROUTED_ON_HIT_KEYS``).
     ("Kayle", "E", 0): PassiveDamageEntry(
         base=(35.0,),
         bonus_ad_pct=10.0,
