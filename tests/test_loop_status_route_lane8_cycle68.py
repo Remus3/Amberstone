@@ -189,9 +189,13 @@ def test_f4_a_raising_pid_probe_degrades_only_the_lock_block(loopdir, monkeypatc
 
 
 # --------------------------------------------------------------------------- F3
-@pytest.mark.parametrize("ts_text", ["1e999", "NaN", "true",
-                                     str(time.time() + 10 ** 7)])
+@pytest.mark.parametrize("ts_text", ["1e999", "NaN", "true", "future"])
 def test_f3_a_junk_or_future_ts_falls_back_to_the_file_mtime(loopdir, ts_text):
+    if ts_text == "future":
+        # Computed at run time, not at collection: a collection-time
+        # time.time() gave every xdist worker a different test id, and xdist
+        # aborts a run whose workers collect different tests.
+        ts_text = str(time.time() + 10 ** 7)
     ctl, _ = loopdir
     _old_lock(ctl, '{"pid": "not-a-pid", "ts": ' + ts_text + "}")
     status, body = _serve_strict()
