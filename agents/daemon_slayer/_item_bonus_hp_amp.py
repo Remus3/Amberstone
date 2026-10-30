@@ -23,9 +23,10 @@ axes.
 Why NOT ``build_champion`` (unlike the always-on flat item HP): the engine already
 folds each item's FLAT health stat into the resolved block, and it walks bonus-HP
 -> bonus-AD (Overlord's Bloodmail / Sterak's "Tyranny", ``bonus_ad_pct_bonus_hp``,
-``engine.py`` ~line 404), but it has NO bonus-HP -> bonus-HP self-amp walk and no
-``_effects_types.ItemEffect`` field for it, so the Vitality HP is absent from the
-resolved stat block. A live probe (Sion L13 with Warmog's + Heartsteel + Sunfire:
+in ``engine.build_champion``), but it has NO bonus-HP -> bonus-HP self-amp walk
+and no ``_effects_types.ItemEffect`` field for it, so the Vitality HP is absent
+from the resolved stat block. A live probe (Sion L13 with Warmog's + Heartsteel +
+Sunfire:
 resolved ``hp - base_hp`` == the raw item flat-HP sum EXACTLY, +0.12 * item HP
 absent - R107 / LEDGER 852) confirmed the miss. This lane credits it as a
 DEFAULT-OFF opt-in EHP-NUMERATOR term (mirroring ``apply_item_mana_health`` /

@@ -203,7 +203,8 @@ def _ability_damage(
 
 # RM-36 / RM-38 (2026-08-04): the AD-axis ability term MOVED to
 # _ad_axis_ability so the CARRY ranker can consume the same definition.
-# hybrid imports rank (line 50), so rank cannot import hybrid.
+# hybrid imports rank at module level (its ``from .rank import`` block), so
+# rank cannot import hybrid.
 # These two names are re-bound, not re-implemented - there is ONE definition.
 _AD_AXIS_CREDITED_DAMAGE_TYPES = AD_AXIS_CREDITED_DAMAGE_TYPES
 _physical_ability_damage = physical_ability_damage
@@ -511,8 +512,9 @@ def compute_hybrid(
 
     ``apply_ad_axis_ability_damage`` (RM-39 / RM-43, DEFAULT-OFF) adds the
     PHYSICAL + TRUE ability term to the AD branch of the damage axis, which is
-    otherwise scored on auto-attack DPS ALONE (``dps.py:34`` - "Ability damage
-    is not included"). 84 of 173 champions resolved ``_damage_axis`` to "ad"
+    otherwise scored on auto-attack DPS ALONE (the ``dps`` module docstring -
+    "Ability damage is not included"). 84 of 173 champions resolved
+    ``_damage_axis`` to "ad"
     at patch 16.15.1 (92 before the kit-axis fix; the 12 flips are listed
     above _damage_axis; the live count is re-derived by
     ``tests/test_docs_ds_damage_axis_s144d11.py``), so their real ability DPS
@@ -642,7 +644,8 @@ def compute_hybrid(
     # magic-dominant, ratings as fallback) is scored on ABILITY damage so AP
     # items surface; AD champions keep compute_dps().weighted_dps.
     # RM-39/RM-43 (DEFAULT-OFF): the AD branch is auto-attack-only by design
-    # (dps.py:34), so AD-axis champions never price their ability damage.
+    # (the dps module docstring), so AD-axis champions never price their
+    # ability damage.
     # ON adds the PHYSICAL + TRUE term; OFF binds the SAME raw value (a name
     # bind, not a float op) so this line is byte-identical at the default.
     # RM-98 (DEFAULT-OFF): the cast-rate propensity prior rides BOTH ability

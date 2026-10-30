@@ -15,10 +15,11 @@ the champion revive / survival-window / spell-shield axes.
 
 Why NOT ``build_champion`` (unlike the always-on Awe-AD / Awe-AP walks): the
 engine already folds mana -> bonus AD (Manamune / Muramana ``bonus_ad_pct_max_mp``,
-``engine.py`` ~line 362) and bonus mana -> AP (Archangel's / Seraph's
-``bonus_ap_pct_bonus_mp``, ~line 383), but it has NO mana -> HP walk and no
-``_effects_types.ItemEffect`` mana -> HP field, so the mana-derived HP is absent
-from the resolved stat block (a live probe: Rell L13 with Fimbulwinter carries
+in ``engine.build_champion``) and bonus mana -> AP (Archangel's / Seraph's
+``bonus_ap_pct_bonus_mp``, the same function), but it has NO mana -> HP walk and
+no ``_effects_types.ItemEffect`` mana -> HP field, so the mana-derived HP is
+absent from the resolved stat block (a live probe: Rell L13 with Fimbulwinter
+carries
 only the item's FLAT health stat, not +0.15 * bonus mana). This lane credits it
 as a DEFAULT-OFF opt-in EHP-numerator term (mirroring ``assume_item_revive`` /
 ``assume_item_stasis`` / ``apply_item_spell_shield`` / ``assume_passive_health_stacks``)
