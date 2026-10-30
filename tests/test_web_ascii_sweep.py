@@ -1598,7 +1598,20 @@ _WEB = _REPO_ROOT / "web"
 # EXACTLY. Those paths are the whole change. No glyph change: the added
 # lines carry 0 non-ASCII bytes. If another slice re-captures in parallel,
 # the merger recomputes.
-_LIVE_HALF_DIGEST = "49c4659148c2464c8db992e1cdf5234912205826ca1a1d3d0fa19b805e79d398"
+# superseded by the RM-1142 re-capture below: "49c4659148c2464c8db992e1cdf5234912205826ca1a1d3d0fa19b805e79d398"
+#
+# RE-CAPTURED 2026-10-30 at RM-1142 (s144 uiux cycle 73, provisional
+# until the merger lands it and maps the id). One change rides it: every
+# line of text on the Active Match DS matchup card reaches AA on its
+# resolved surface - the pending "-" sentinels move to 0.55, the pending
+# champion keeps its landed tint, and the red verdicts lighten
+# --signal-bad through color-mix (web/css/panels/ds_matchup.css). Ordinary
+# case, no tokeniser change. ATTRIBUTED BY SUBSTITUTION: swapping exactly
+# that file back to its lane HEAD d9f8197a1 blob (in memory) reproduces the
+# superseded 49c46591... value EXACTLY. That path is the whole change. No
+# glyph change: the added lines carry 0 non-ASCII bytes. If another slice
+# re-captures in parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "7b624e20490b3b7223839b46c0de73cac2ad9ee5cef3dfa8f48ab507290dbfa9"
 
 
 def _web_sources() -> list[Path]:

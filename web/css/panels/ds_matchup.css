@@ -73,7 +73,12 @@
 }
 
 /* all-in + trade read favorable (green), back-off reads danger (red),
- * even reads neutral (info). */
+ * even reads neutral (info).
+ * RM-1142: the red text lightens the theme's own --signal-bad toward white.
+ * Plain --signal-bad measured 3.70-4.05:1 on its soft chip and 4.15:1 on a
+ * grid row, under AA; mixed 70% it clears 5.2:1 on every theme and still
+ * follows the theme hue. Pinned by
+ * tests/snapshot_panels/test_ds_matchup_text_contrast.py. */
 .dsm-verdict.dsm-all_in {
   background: var(--signal-good-soft, rgba(110, 201, 119, 0.18));
   color: var(--signal-good, #6ec977);
@@ -86,7 +91,7 @@
 
 .dsm-verdict.dsm-back_off {
   background: var(--signal-bad-soft, rgba(255, 80, 80, 0.18));
-  color: var(--signal-bad, #ff5050);
+  color: color-mix(in srgb, var(--signal-bad, #ff5050) 70%, #fff);
 }
 
 .dsm-verdict.dsm-even {
@@ -299,8 +304,9 @@
   border-left-color: rgba(255, 80, 80, 0.55);
 }
 
+/* Paler than the bad bin (60% vs 70%), so the lean still reads weaker. */
 .dsm-sev-lean-bad .dsm-grid-verdict {
-  color: rgba(255, 80, 80, 0.9);
+  color: color-mix(in srgb, var(--signal-bad, #ff5050) 60%, #fff);
 }
 
 .dsm-sev-bad {
@@ -308,18 +314,21 @@
 }
 
 .dsm-sev-bad .dsm-grid-verdict {
-  color: var(--signal-bad, #ff5050);
+  color: color-mix(in srgb, var(--signal-bad, #ff5050) 70%, #fff);
 }
 
-/* Cell whose fetch has not landed - muted, same footprint. */
+/* Cell whose fetch has not landed - muted, same footprint.
+ * RM-1142: the champion is known before its fetch lands, so it keeps its
+ * landed tint (it rendered dimmer than its own role label, at 3.6:1). The
+ * "-" sentinels sit at 0.55, which clears AA (5.4:1 or better) and stays
+ * dimmer than a landed reading; 0.4 measured 3.59-3.84:1. */
 .dsm-sev-unknown {
   border-left-color: rgba(255, 255, 255, 0.15);
 }
 
-.dsm-sev-unknown .dsm-grid-champ,
 .dsm-sev-unknown .dsm-grid-verdict,
 .dsm-sev-unknown .dsm-grid-swing {
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.55);
 }
 
 /* --- C-09 no-data scaffold states ---------------------------------
@@ -333,7 +342,7 @@
  * box + the --hit-min floor inherited from .dsm-verdict. */
 .dsm-verdict.is-empty {
   background: rgba(255, 255, 255, 0.05);
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.55);
 }
 
 /* Swing bar with no verdict behind it - the gold marker is the strongest mark
@@ -345,14 +354,14 @@
 }
 
 .dsm-swing.is-empty .dsm-swing-pct {
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.55);
 }
 
 /* Grid row whose fetch has not landed. Pairs with .dsm-sev-unknown; both are
  * tint-only so the row height never moves. */
 .dsm-grid-cell.is-empty .dsm-grid-verdict,
 .dsm-grid-cell.is-empty .dsm-grid-swing {
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.55);
 }
 
 /* Full-combo marker tag prefixing a note line. */
