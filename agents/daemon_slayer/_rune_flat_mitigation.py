@@ -76,8 +76,8 @@ DEFAULT BEHAVIOR IS BYTE-IDENTICAL: ``apply_rune_flat_mitigation`` defaults Fals
 ON THIS FUNCTION, so an un-opted caller - including one that supplies a full rune
 page containing 8473 - receives ``(0.0, 0.0, 0.0)`` and every EHP numerator is
 unchanged. The flag lives here as well as at the eventual ``compute_ehp`` seam
-deliberately, mirroring ``_rune_health_grants.rune_health_grants``
-(``_rune_health_grants.py:441-445``): a caller that forgets the outer check still
+deliberately, mirroring ``_rune_health_grants.rune_health_grants`` (its own
+``apply_rune_health_grants`` gate): a caller that forgets the outer check still
 gets inert output rather than silently live numbers.
 
 The prevented HP folds into the EHP NUMERATOR next to the champion lane's
@@ -220,8 +220,7 @@ def _value_at_level(
     the nearest endpoint rather than raising or extrapolating - the
     ``rank_at_level('P', level)`` convention ``_lerp_per_level`` is built for
     (``_passive_damage_overrides.py:202-220``) and the same clamping semantics as
-    ``_rune_health_grants.stacks_at_level`` (``_rune_health_grants.py:312-324``).
-    A non-level-scaled term is its float.
+    ``_rune_health_grants.stacks_at_level``. A non-level-scaled term is its float.
     """
     if level_scaled and isinstance(flat, (tuple, list)):
         if not flat:

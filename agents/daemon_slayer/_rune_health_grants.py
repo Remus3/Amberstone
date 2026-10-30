@@ -16,9 +16,10 @@ the credit lands on:
 WHAT WAS MISSING. ``rune_procs.py`` registers Grasp of the Undying (8437) for its
 bonus magic DAMAGE alone, and its own formula string admits the gap verbatim in the
 ``RUNE_PROCS[8437]`` entry: "(heal + permanent-HP sides not modeled)". Overgrowth
-(8451) was modelled NOWHERE - ``_rune_resist_grants.py:52-57`` explicitly read and
-rejected it for the RESIST registry ("8451 Overgrowth max health") because max
-health is not a resist. This module is the lane that rejection pointed at. Both
+(8451) was modelled NOWHERE - the ``_rune_resist_grants`` module docstring (its
+"Only three ids are SEEDED" allowlist paragraph) explicitly read and rejected it
+for the RESIST registry ("8451 Overgrowth max health") because max health is not
+a resist. This module is the lane that rejection pointed at. Both
 runes' self-side survivability was therefore worth exactly ZERO EHP.
 
 DDragon 16.14.1 ``data/meta_build/ddragon/16.14.1/runesReforged.json`` longDescs,
@@ -64,14 +65,15 @@ convention is adopted verbatim:
 
   * the shape - an 18-entry (levels 1-18) monotonic-non-decreasing
     ``assumed_stacks_by_level`` tuple, read at ``level-1`` and clamped to the
-    tuple bounds (``_passive_health_overrides.py:69-94`` for the curves,
-    ``:207-213`` for the ``_stacks_at_level`` reader);
+    tuple bounds (``_passive_health_overrides._SION_STACKS`` / ``_SWAIN_STACKS``
+    / ``_CHO_STACKS`` for the curves, ``_passive_health_overrides._stacks_at_level``
+    for the reader);
   * the arithmetic - credited HP is ``per_stack_value * stacks_at_level(level)``
-    (``_passive_health_overrides.py:107-109``);
+    (the ``PassiveHealthEntry`` docstring and ``passive_health_stack_hp``);
   * the CALIBRATION RULE - "deliberately LOW ... the midpoint under-credits on
     purpose so a flipped-on scorer never OVER-states the pool"
-    (``_passive_health_overrides.py:33-38``). Both curves below are set under a
-    realistic game so an accidental flip cannot inflate a tank.
+    (the ``_passive_health_overrides`` module docstring). Both curves below are
+    set under a realistic game so an accidental flip cannot inflate a tank.
 
 Per-rune proxy reasoning is on each curve. The MAGNITUDES are EXACT DDragon;
 ONLY THE STACK COUNTS ARE ASSUMPTIONS - the same split the sibling registries
@@ -110,9 +112,9 @@ BOTH self-side halves take 0.40. Overgrowth's longDesc carries NO ``<rules>``
 clause at all, so its ``ranged_factor`` stays 1.0. A blanket "scale every rune by
 0.40 when ranged" bug is caught by ``test_overgrowth_has_no_ranged_penalty`` and
 by ``test_combined_page_is_reduced_but_not_by_40_percent``. The caller supplies
-``is_ranged``; ``compute_ehp`` already computes it at ``ehp.py:1411`` via
-``_is_ranged(base)`` (base attackrange >= 350, ``ehp._is_ranged`` / RM-123), so no champion
-lookup is needed here and this module stays import-pure.
+``is_ranged``; ``compute_ehp`` already computes it as ``is_ranged =
+_is_ranged(base)`` (base attackrange >= 350, ``ehp._is_ranged`` / RM-123), so no
+champion lookup is needed here and this module stays import-pure.
 
 PERCENT-OF-MAX-HP IS TAKEN ON THE CALLER'S RESOLVED POOL. Overgrowth's 3.5% reads
 the ``max_hp`` the caller passes - the RESOLVED build health - and NOT a total
@@ -166,9 +168,10 @@ _OVERGROWTH_THRESHOLD_ABSORBS: float = 120.0
 _OVERGROWTH_THRESHOLD_PCT_MAX_HP: float = 3.5
 
 # --- Conservative assumed STACK-COUNT-by-level curves (the live feeds we lack) -
-# Convention copied verbatim from _passive_health_overrides.py:69-94: an 18-entry
-# (levels 1-18) monotonic-non-decreasing count, deliberately LOW relative to a
-# real game so the modeled pool never OVER-states. Operator-tunable; a future live
+# Convention copied verbatim from the _passive_health_overrides stack curves
+# (_SION_STACKS / _SWAIN_STACKS / _CHO_STACKS): an 18-entry (levels 1-18)
+# monotonic-non-decreasing count, deliberately LOW relative to a real game so the
+# modeled pool never OVER-states. Operator-tunable; a future live
 # consumer (the in-game stack count, when it surfaces) replaces the curve without
 # re-authoring any math.
 
@@ -317,9 +320,8 @@ def stacks_at_level(assumed_stacks_by_level: tuple[float, ...], level: int) -> f
 
     The tuple read at ``level-1``, clamped to the tuple bounds so an out-of-range
     caller yields the nearest endpoint rather than raising or extrapolating.
-    Identical semantics to ``_passive_health_overrides._stacks_at_level``
-    (``_passive_health_overrides.py:207-213``); duplicated rather than imported to
-    keep this registry standalone and import-pure.
+    Identical semantics to ``_passive_health_overrides._stacks_at_level``;
+    duplicated rather than imported to keep this registry standalone and import-pure.
     """
     if not assumed_stacks_by_level:
         return 0.0
@@ -418,11 +420,14 @@ def rune_health_grants(
 
     * ``permanent_hp`` is a flat bonus MAX HEALTH pool add. The caller folds it
       into every per-type numerator next to ``passive_health_hp`` /
-      ``ext_flat_hp`` (``ehp.py:1791-1793``), so it lifts physical, magical AND
-      true EHP uniformly - the correct "more health survives more" direction.
+      ``ext_flat_hp`` (the ``physical_ehp`` / ``magical_ehp`` / ``true_ehp``
+      numerators of ``compute_ehp``, as ``rune_perm_hp``), so it lifts
+      physical, magical AND true EHP uniformly - the correct "more health
+      survives more" direction.
     * ``heal_hp`` is a RAW per-fight heal, pre-amplification. The caller folds it
-      into the heal lane BEFORE ``heal_amp_mult`` (``ehp.py:1477``,
-      ``heal_total = (heal_item_total + heal_lifesteal) * heal_amp_mult``) so
+      into the heal lane BEFORE ``heal_amp_mult`` (the ``heal_total`` line of
+      ``compute_ehp``, ``heal_total = (heal_item_total + heal_lifesteal +
+      rune_heal_hp + rune_self_heal_hp) * heal_amp_mult``, as ``rune_heal_hp``) so
       Revitalize and other heal-power sources apply to it as they do in game.
 
     Neither value touches the denominator - this registry grants no resists. Its
@@ -437,8 +442,8 @@ def rune_health_grants(
     numerator).
 
     ``level`` indexes both conservative stack-count proxies. ``is_ranged`` is the
-    wielder's ranged status - ``compute_ehp`` already has it at ``ehp.py:1411``
-    (``_is_ranged(base)``) - and scales Grasp's two halves by 0.40 while leaving
+    wielder's ranged status - ``compute_ehp`` already has it as ``is_ranged =
+    _is_ranged(base)`` - and scales Grasp's two halves by 0.40 while leaving
     Overgrowth untouched.
 
     ``apply_rune_health_grants`` is the DEFAULT-OFF seam gate: False (the default)

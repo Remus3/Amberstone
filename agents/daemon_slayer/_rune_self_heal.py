@@ -93,8 +93,8 @@ sibling registries' ``_RUNE_ACTIVE_RESIST_PROB`` firing midpoint:
 
 This is strictly more conservative than crediting the full 10s heal and is the
 direction the sibling registries' calibration rule requires
-(``_passive_health_overrides.py:33-38``: under-credit on purpose so a flipped-on
-scorer never OVER-states). ``_SECOND_WIND_WINDOW_UPTIME`` is the single
+(the ``_passive_health_overrides`` module docstring: under-credit on purpose so a
+flipped-on scorer never OVER-states). ``_SECOND_WIND_WINDOW_UPTIME`` is the single
 operator-tunable knob; a future live consumer with a real fight-duration feed
 replaces it without re-authoring any math.
 
@@ -181,7 +181,7 @@ _FIGHT_WINDOW_S: float = 6.0
 # the fight is decided. DERIVED from the two named constants above rather than
 # hand-typed (0.6 today) so a fight-window retune carries automatically, and
 # clamped at 1.0 so a future window longer than the heal cannot over-credit.
-# Conservative by construction, per the _passive_health_overrides.py:33-38
+# Conservative by construction, per the _passive_health_overrides module-docstring
 # calibration rule (under-credit on purpose so a flipped-on scorer never
 # OVER-states). A live fight-duration feed replaces this without touching math.
 _SECOND_WIND_WINDOW_UPTIME: float = min(
