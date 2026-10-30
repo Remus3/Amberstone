@@ -28,6 +28,7 @@ LOGGER_NAMES = (
     "dashboard.routes_ops_panels",
     "dashboard.routes_player_snapshot",
     "dashboard._deterministic_coaching",
+    "dashboard._cs_retention",
 )
 
 _install_scrub_filter(*LOGGER_NAMES)

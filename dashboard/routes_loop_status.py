@@ -17,7 +17,8 @@ Sources (each read is individually fail-soft -> None / [] on any error):
                   ({cycle, sha, tests_pass, regressions, ts}); the controller
                   unlinks it after consuming, so it is usually ABSENT at rest.
   controller.log  append log; the "claude.done sha=..." lines are the durable
-                  per-cycle summary fallback when the sentinel is gone.
+                  per-cycle summary fallback when the sentinel is gone. Only
+                  its newest LOG_READ_CAP_BYTES are read, once per poll.
   budget.json     {adjudicator, adjudicator_usd, claude_usd_info, cycle} and
                   executor_usd on the sdk channel. The gemini_usd /
                   gemini_ceiling pair was dropped 2026-08-01 with the vendor;
@@ -25,6 +26,9 @@ Sources (each read is individually fail-soft -> None / [] on any error):
                   readers must treat both as optional.
   ahk_mode.txt    live | dry.
   config.json     max_cycles (the run ceiling, for "cycle N / max").
+
+Every value served passes _json_safe: a NaN / Infinity read from any source
+becomes null, because a bare NaN token is not JSON to a browser.
 
 State (derived, never trusted from a single field):
   stopped  STOP file exists (stop_reason = its text).
@@ -74,6 +78,7 @@ import json
 from core.log_scrub import scrub_log
 from dashboard._errors import send_error
 import logging
+import math
 import os
 import re
 import subprocess
@@ -93,6 +98,23 @@ CONTROLLER_LOG = CONTROL_DIR / "controller.log"
 
 # Tail length for the controller.log preview (newest LOG_TAIL_LINES lines).
 LOG_TAIL_LINES = 12
+
+# controller.log is an append log that is never rotated (565 KB measured
+# 2026-10-30) and this route is polled every 4s, so only its newest bytes are
+# read - once per poll, shared by log_tail and the last_done fallback. The
+# newest "claude.done" line sat 269 bytes from the end of the real log, so the
+# cap costs the fallback nothing in practice; a done line older than the cap
+# reads as no last_done, which is the stated tradeoff.
+LOG_READ_CAP_BYTES = 512 * 1024
+
+# Nesting depth past which a parsed JSON value is replaced by None before it is
+# served. Every source here is flat; a deeper one is junk, and json.dumps on it
+# could hit the recursion limit inside the handler.
+_MAX_JSON_DEPTH = 32
+
+# A RUNNING.lock ts more than this far in the future is a junk clock, not a
+# fresh write: it would pin age_s at 0 and keep an unreadable holder "live".
+_TS_FUTURE_SLACK_S = 60.0
 
 # Where lane_launcher._log_path writes one log per lane run.
 LANE_LOG_DIR = ROOT / "ops" / "loop" / "reports"
@@ -229,14 +251,60 @@ def _lane_log() -> dict | None:
         return None
 
 
+def _read_tail_text(path: Path, cap: int | None = None) -> str | None:
+    """The newest `cap` bytes of `path` as text, starting at a line boundary.
+
+    A tail that starts mid-file drops everything up to its first newline, so no
+    cut-off fragment (or half a UTF-8 sequence) is ever shown as a line. Fail-soft
+    to None like _read_text.
+    """
+    cap = LOG_READ_CAP_BYTES if cap is None else cap
+    try:
+        with open(path, "rb") as fh:
+            size = os.fstat(fh.fileno()).st_size
+            start = max(0, size - cap)
+            fh.seek(start)
+            raw = fh.read(cap)
+    except OSError:
+        return None
+    if start > 0:
+        nl = raw.find(b"\n")
+        raw = b"" if nl < 0 else raw[nl + 1:]
+    return raw.decode("utf-8", "replace")
+
+
 def _read_json(path: Path):
+    """Parse `path` as JSON, fail-soft to None.
+
+    RecursionError is caught too - json.loads raises it, not ValueError, on a
+    deeply nested document. NaN / Infinity (and 1e999) still parse; the served
+    payload is cleaned by _json_safe and the lock ts by _lock_ts.
+    """
     raw = _read_text(path)
     if raw is None:
         return None
     try:
         return json.loads(raw)
-    except (json.JSONDecodeError, ValueError):
+    except (json.JSONDecodeError, ValueError, RecursionError):
         return None
+
+
+def _json_safe(value, depth: int = 0):
+    """`value` with every non-finite float replaced by None.
+
+    Applied to the WHOLE payload, not only to what _read_json parses: the lock
+    and steer blocks come from other modules, and a single NaN anywhere makes
+    the response invalid JSON. Nesting past _MAX_JSON_DEPTH is cut to None.
+    """
+    if depth > _MAX_JSON_DEPTH:
+        return None
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+    if isinstance(value, dict):
+        return {k: _json_safe(v, depth + 1) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(v, depth + 1) for v in value]
+    return value
 
 
 def _parse_int(raw: str | None) -> int | None:
@@ -261,12 +329,18 @@ _NO_WINDOW = 0x08000000 if os.name == "nt" else 0  # CREATE_NO_WINDOW
 
 
 def _last_commit() -> dict | None:
-    """The repo HEAD as {sha(8), subject, iso}. Fail-soft to None."""
+    """The repo HEAD as {sha(8), subject, iso}. Fail-soft to None.
+
+    git writes log output as UTF-8. `text=True` alone would decode it with the
+    LOCALE codec - cp1252 under pythonw when PYTHONUTF8 is not in the process
+    environment - so a non-ASCII subject became mojibake, or raised
+    UnicodeDecodeError and dropped the whole block. Decode as UTF-8 explicitly.
+    """
     try:
         out = subprocess.run(
             ["git", "-C", str(ROOT), "log", "-1", "--format=%h%x1f%s%x1f%cI"],
-            capture_output=True, text=True, timeout=10,
-            creationflags=_NO_WINDOW,
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            timeout=10, creationflags=_NO_WINDOW,
         )
         line = (out.stdout or "").strip()
         if not line:
@@ -274,26 +348,56 @@ def _last_commit() -> dict | None:
         parts = line.split("\x1f")
         if len(parts) < 3:
             return None
-        return {"sha": parts[0], "subject": parts[1], "iso": parts[2]}
+        # The sha and the date never carry the separator; a subject could.
+        return {"sha": parts[0], "subject": "\x1f".join(parts[1:-1]),
+                "iso": parts[-1]}
     except Exception as exc:  # noqa: BLE001 - git env is heterogeneous; never fatal
         log.warning("loop-status: last_commit failed: %s", scrub_log(str(exc)))
         return None
 
 
 # --------------------------------------------------------------------------- last-cycle summary
-def _last_done() -> dict | None:
-    """Prefer the live claude.done sentinel; fall back to the controller.log."""
+_HEX_RE = re.compile(r"[0-9a-fA-F]+")
+
+
+def _int_or_none(value) -> int | None:
+    """An int that is not a bool, else None."""
+    return value if isinstance(value, int) and not isinstance(value, bool) else None
+
+
+def _last_done(log_text: str | None = None) -> dict | None:
+    """Prefer the live claude.done sentinel; fall back to the controller.log.
+
+    Sentinel fields are typed here, not passed through: done_sentinel.py writes
+    {cycle:int, sha:hex|"", tests_pass:str (argparse, default "?"),
+    regressions:bool, ts:float}, and anything else is junk the panel would
+    render verbatim (a list sha used to show as "['deadbe"). `regressions` stays
+    plain truthiness on purpose - it is exactly how loop_controller.py reads the
+    same field, and the two must not disagree about a cycle.
+
+    `log_text` is the controller.log tail build_loop_status already read; None
+    reads it here.
+    """
     sentinel = _read_json(CONTROL_DIR / "claude.done")
     if isinstance(sentinel, dict):
+        sha = sentinel.get("sha")
+        tests = sentinel.get("tests_pass")
+        if not (isinstance(tests, str) or _int_or_none(tests) is not None):
+            tests = None
+        ts = sentinel.get("ts")
+        if isinstance(ts, bool) or not isinstance(ts, (int, float)):
+            ts = None
         return {
-            "cycle": sentinel.get("cycle"),
-            "sha": str(sentinel.get("sha") or "")[:8],
-            "tests_pass": sentinel.get("tests_pass"),
+            "cycle": _int_or_none(sentinel.get("cycle")),
+            "sha": (sha[:8] if isinstance(sha, str) and _HEX_RE.fullmatch(sha)
+                    else ""),
+            "tests_pass": tests,
             "regressions": bool(sentinel.get("regressions")),
-            "ts": sentinel.get("ts"),
+            "ts": ts,
             "source": "sentinel",
         }
-    log_text = _read_text(CONTROLLER_LOG)
+    if log_text is None:
+        log_text = _read_tail_text(CONTROLLER_LOG)
     if not log_text:
         return None
     matches = list(_DONE_LOG_RE.finditer(log_text))
@@ -408,30 +512,73 @@ def _controller_lock() -> dict | None:
     Same rule as the lane lock: the verdict comes from probing the recorded pid.
     A lock whose holder is gone reads RECLAIMABLE, never RUNNING - collapsing
     the two is what made a dead loop report as live.
+
+    Fail-soft to None like the lane block: the lock body is not ours to trust,
+    and a probe failure here once took the whole poll down with a 500.
     """
     try:
         lanes = _lanes()
     except Exception as exc:  # noqa: BLE001
         log.warning("loop-status: lanes import failed: %s", scrub_log(str(exc)))
         return None
+    try:
+        return _probe_controller_lock(lanes)
+    except Exception as exc:  # noqa: BLE001 - a junk lock must not 500 the poll
+        log.warning("loop-status: controller_lock failed: %s", scrub_log(str(exc)))
+        return None
+
+
+# Win32 pids are DWORDs. slots.pid_alive hands the value to OpenProcess through
+# ctypes, which raises ArgumentError on anything wider (measured 2026-10-30).
+_PID_MAX = 0xFFFFFFFF
+
+
+def _lock_pid(value) -> int | None:
+    """The recorded pid, or None when the record carries no usable one.
+
+    A bool is not a pid (int(True) used to probe pid 1), and a value beyond the
+    DWORD range is not a process at all. pid <= 0 passes through: pid_alive
+    already answers False for it, so it reads RECLAIMABLE as before.
+    """
+    if isinstance(value, bool):
+        return None
+    try:
+        pid = int(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return pid if pid <= _PID_MAX else None
+
+
+def _lock_ts(value, lock: Path) -> float | None:
+    """The lock's write time: the recorded ts when it is a sane clock reading,
+    else the file mtime. A non-finite or future ts used to pin age_s at 0, which
+    kept an unreadable holder "inside the grace window" forever."""
+    ts = None
+    if not isinstance(value, bool):
+        try:
+            ts = float(value)
+        except (TypeError, ValueError, OverflowError):
+            ts = None
+    if ts is not None and (not math.isfinite(ts)
+                           or ts > time.time() + _TS_FUTURE_SLACK_S):
+        ts = None
+    if ts is None:
+        try:
+            ts = lock.stat().st_mtime
+        except OSError:
+            ts = None
+    return ts
+
+
+def _probe_controller_lock(lanes) -> dict:
     lock = controller_lock_path()
     free = {"state": lanes.FREE, "pid": None, "run_id": None, "age_s": None}
     if not lock.exists():
         return free
     rec = _read_json(lock)
     rec = rec if isinstance(rec, dict) else {}
-    try:
-        pid = int(rec.get("pid"))
-    except (TypeError, ValueError):
-        pid = None
-    ts = rec.get("ts")
-    try:
-        ts = float(ts)
-    except (TypeError, ValueError):
-        try:
-            ts = lock.stat().st_mtime
-        except OSError:
-            ts = None
+    pid = _lock_pid(rec.get("pid"))
+    ts = _lock_ts(rec.get("ts"), lock)
     out = {
         "state": lanes.RUNNING,
         "pid": pid,
@@ -468,10 +615,14 @@ def build_loop_status() -> dict:
 
     config_raw = _read_json(CONFIG_PATH)
     max_cycles = None
-    if isinstance(config_raw, dict) and isinstance(config_raw.get("max_cycles"), int):
-        max_cycles = config_raw["max_cycles"]
+    if isinstance(config_raw, dict):
+        # A bool is an int to isinstance; "cycle 3 / True" is not a ceiling.
+        max_cycles = _int_or_none(config_raw.get("max_cycles"))
+        if max_cycles is not None and max_cycles < 0:
+            max_cycles = None
 
-    log_text = _read_text(CONTROLLER_LOG)
+    # One bounded read, shared with the last_done fallback (LOG_READ_CAP_BYTES).
+    log_text = _read_tail_text(CONTROLLER_LOG)
     log_tail = log_text.splitlines()[-LOG_TAIL_LINES:] if log_text else []
 
     try:
@@ -480,14 +631,14 @@ def build_loop_status() -> dict:
         log.warning("loop-status: last_commit raised: %s", scrub_log(str(exc)))
         last_commit = None
 
-    return {
+    return _json_safe({
         "ok": True,
         "state": state,
         "stop_reason": stop_reason,
         "mode": mode,
         "cycle": cycle,
         "max_cycles": max_cycles,
-        "last_done": _last_done(),
+        "last_done": _last_done(log_text or ""),
         "budget": budget,
         "last_commit": last_commit,
         "lanes": _lane_lock(),
@@ -500,14 +651,18 @@ def build_loop_status() -> dict:
         # existed a running lane had no surface in Mission Control at all.
         "lane_log": _lane_log(),
         "updated_at": _now_iso(),
-    }
+    })
 
 
 def _serve_loop_status(h) -> None:
     """GET /api/loop-status handler."""
     try:
         payload = build_loop_status()
-        h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
+        # allow_nan=False: the payload is already _json_safe, so this can only
+        # fire on a regression - better a logged 500 than a body no browser
+        # can parse.
+        h._send(200, json.dumps(payload, allow_nan=False).encode("utf-8"),
+                "application/json")
     except Exception as exc:  # noqa: BLE001 - last-resort guard
         log.warning("api/loop-status: %s", scrub_log(str(exc)))
         try:
