@@ -33,7 +33,7 @@ _DATA_ROOT = _REPO_ROOT / "data" / "daemon_slayer"
 # ranks are the values literally on disk in
 # data/daemon_slayer/16.14.1/champion_abilities.json. Corrected series are the
 # linear ramp across the same rank count (the wiki "{{ap|X to Y}}" semantics
-# the notes' method section, :528-532, states the harness used).
+# the notes' "### Method" section states the harness used).
 _EXPECTED: tuple[tuple[str, str, int, str, tuple, tuple], ...] = (
     (
         "Mordekaiser",
@@ -213,8 +213,10 @@ def test_negative_control_every_other_form_is_byte_identical(
 
 
 def test_non_registry_champion_dps_unchanged() -> None:
-    """Ziggs (an ability-route champion the notes list as SENSITIVE harness
-    control at :546) must score identically with the flag ON."""
+    """Ziggs, Zed and Lux are not in the override registry, so their ability
+    DPS must be identical with the flag ON. (The notes' "### Positive control"
+    table lists Ahri, Zed and Gwen as SENSITIVE harness controls; Zed is the
+    one of them sampled here.)"""
     data = DataSnapshot.load(data_root=_DATA_ROOT)
     for champ in ("Ziggs", "Zed", "Lux"):
         a = ability_dps.compute_ability_dps(
