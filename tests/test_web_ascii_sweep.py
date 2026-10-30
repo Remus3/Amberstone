@@ -1528,7 +1528,21 @@ _WEB = _REPO_ROOT / "web"
 # value EXACTLY. That path is the whole change. No glyph change: the added
 # lines carry 0 non-ASCII bytes. If another slice re-captures in parallel,
 # the merger recomputes.
-_LIVE_HALF_DIGEST = "eb16b9ec1744b55f742606c0a66fc7e2559eec859ec0aa2eee2b453262724475"
+# superseded by the RM-1137 re-capture below: "eb16b9ec1744b55f742606c0a66fc7e2559eec859ec0aa2eee2b453262724475"
+#
+# RE-CAPTURED 2026-10-30 at RM-1137 (s144 uiux cycle 68, provisional
+# until the merger lands it and maps the id). One change rides it: the
+# Champ Select LOCK IN button (#csv-lock-btn) draws the inset system focus
+# ring (web/css/panels/champ_select_view.css) and keeps keyboard focus across
+# a central-pane rebuild (web/js/panels/champ_select.js
+# _csvCaptureChooserFocus / _csvRestoreChooserFocus). Ordinary case, no
+# tokeniser change. ATTRIBUTED BY SUBSTITUTION: swapping exactly those two
+# paths back to their lane HEAD f9c2ba452 blobs (in memory) reproduces the
+# superseded eb16b9ec... value EXACTLY; swapping either one alone does not.
+# Those two paths are the whole change. No glyph change: the added lines
+# carry 0 non-ASCII bytes. If another slice re-captures in parallel, the
+# merger recomputes.
+_LIVE_HALF_DIGEST = "55c98a0d04dac475c5265d1a160491811b7a60bd000bd359507f4a77e5e8755c"
 
 
 def _web_sources() -> list[Path]:

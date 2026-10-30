@@ -3638,6 +3638,9 @@ function _csvChooserKeyActivates(ev) {
 function _csvCaptureChooserFocus(host) {
   const a = document.activeElement;
   if (!host || !a || a === document.body || !host.contains(a)) return null;
+  // RM-1137: the LOCK IN button rides the same carry (it was thrown to
+  // <body> by every async land while focused).
+  if (a.id === "csv-lock-btn") return { id: "csv-lock-btn" };
   const row = a.closest && a.closest(".csv-build-path-row, .csv-build-row");
   if (!row || !host.contains(row)) return null;
   return {
@@ -3650,9 +3653,11 @@ function _csvCaptureChooserFocus(host) {
 
 function _csvRestoreChooserFocus(host, snap) {
   if (!host || !snap) return;
-  const el = Array.from(host.querySelectorAll("." + snap.cls)).find((r) =>
-    (r.dataset.variant || "") === snap.variant
-    && (r.dataset.pathKey || "") === snap.path);
+  const el = snap.id
+    ? host.querySelector("#" + snap.id)
+    : Array.from(host.querySelectorAll("." + snap.cls)).find((r) =>
+      (r.dataset.variant || "") === snap.variant
+      && (r.dataset.pathKey || "") === snap.path);
   if (!el || el.tabIndex < 0) return;
   try {
     el.focus({ preventScroll: true });
