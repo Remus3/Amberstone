@@ -1,10 +1,12 @@
 #Requires AutoHotkey v2.0
-; tools/claude_send.ahk - send a command into the Claude Code desktop app (PROVISIONAL)
+; tools/claude_send.ahk - send a command into the Claude Code desktop app
 ; Drives the Claude Code window (ahk_exe claude.exe, title "Claude") to type a
 ; command (default "/clear") and press Enter - the headless self-clear-between-tasks
 ; primitive. SAFETY: verifies the target window exists before typing; DRY-RUN unless
-; "go" is passed; 1.5s abort window with a kill-switch; logs every action. NOT wired
-; into any loop or trigger - it only acts when invoked explicitly.
+; "go" is passed; 1.5s abort window with a kill-switch; logs every action.
+; Caller: tools/rc_headless_launcher.ps1 (the one-click Desktop launcher installed by
+; tools/install_headless_launcher_shortcut.ps1) sends /headless-upgrade through it.
+; No loop or scheduled task invokes it; it only acts when a caller runs it.
 ;
 ; Usage (AHK v2):
 ;   AutoHotkey64.exe claude_send.ahk                 -> DRY RUN, default cmd "/clear"
