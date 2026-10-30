@@ -16,13 +16,55 @@ Rules:
   into the JSON. `tests/test_loop_config_notes_relocated.py` fails on any
   `_`-prefixed key in `ops/loop/config.json` other than `_notes`, and pins the
   load-bearing sentence of each note below.
-- This file covers `ops/loop/config.json` only. The variant configs beside it
-  (`config.gate.json`, `config.p5.json`, `config.dry*.json` and the rest) still
-  carry their own copies of some notes.
-- Each section below is the note exactly as it stood in `ops/loop/config.json`
-  at f19d63c1b, with JSON string escapes decoded (a doubled backslash is one
-  backslash). Dated statements are records of their date, not live checks:
-  re-probe before acting on one.
+- The per-key notes cover `ops/loop/config.json` only. The variant configs
+  beside it still carry their own copies of some notes; each variant has one
+  line in the index below, and a new variant adds its line in the same commit
+  (`tests/test_loop_config_notes_relocated.py` fails on a tracked
+  `ops/loop/config*.json` with no line, or a line for a file that is gone).
+- Each per-key section below is the note exactly as it stood in
+  `ops/loop/config.json` at f19d63c1b, with JSON string escapes decoded (a
+  doubled backslash is one backslash). Dated statements are records of their
+  date, not live checks: re-probe before acting on one.
+
+## Variant config index
+
+Any variant is selected with `ops/loop/launch_loop.ps1 -Cfg <path>`;
+`-Mode live` defaults to `config.json` and `-Mode dry` to `config.dry.json`.
+"Historical, kept" means no launcher, skill or test names the file: it is
+DOCUMENTED, never deleted or moved, because four tests sweep
+`ops/loop/config*.json` by glob (`tests/test_loop_adjudicator.py`
+`test_no_config_reintroduces_a_spend_ceiling`, `tests/test_loop_concurrency.py`
+`_lane_counts`, `tests/test_rm511_model_pins_current.py`,
+`tests/test_rm516_coach_vision_model_pins.py`), so a removal silently changes
+what they cover (RM-724).
+
+- `config.json` - the live loop config; every consumer listed at the top of
+  this file reads it, and its per-key notes are the sections below.
+- `config.dry.json` - the `-Mode dry` default (drives `ops/loop/claude_stub.py`
+  instead of a real session); `tests/test_loop_concurrency.py` reads it.
+- `config.dry-budget.json` - historical, kept: a dry run equal to
+  `config.dry.json` minus its three window / exe keys; it exercised the retired
+  `ceiling_usd` spend ceiling (1.0), which the 2026-08-01 Gemini decommission
+  removed.
+- `config.dry-hang.json` - historical, kept: `config.dry-budget.json` with
+  `cycle_deadline_sec` 15 instead of 120, a dry run whose cycle deadline fires
+  (the hang path).
+- `config.live1.json` - historical, kept: a one-cycle live smoke (`max_cycles`
+  1) whose `directive_suffix` orders a local commit and no push.
+- `config.fixed.json` - historical, kept: a `fixed_directive` run (a 10-scout
+  DS schema-lift fan-out); `ops/loop/executor.py` cites it in prose as the real
+  on-disk directive that names no files.
+- `config.gate.json` - one full-length director cycle on the `sdk` channel
+  (2026-07-26); `tests/test_loop_executor.py` reads it.
+- `config.p5.json` - the P5 concurrent-run smoke on the `sdk` channel (Tier-0
+  docs only, one line per cycle); `tests/test_loop_executor.py` reads it.
+- `config.mdclean.json` - the 2026-07-16 Tier-0 md-cleanup run (8 cycles),
+  launched by `ops/loop/launch_mdclean.ps1`.
+- `config.overlay.json` - the overlay + adaptive-build program
+  (`tools/overlay-build-continue.md`); pinned by
+  `tests/test_loop_overlay_config.py`.
+- `config.rc2.json` - the RC2 `cycle_command` mode (`/RC2-Continue` each
+  cycle); pinned by `tests/test_loop_cycle_source_rc2.py`.
 
 ## `_max_concurrent_lanes_note`
 

@@ -146,6 +146,39 @@ def test_consumers_still_find_their_keys():
         assert set(prices[tier]) == {"input", "output", "cache_write", "cache_read"}, tier
 
 
+VARIANT_INDEX_HEAD = "## Variant config index"
+
+
+def _tracked_loop_configs() -> set[str]:
+    from tests._repo_walk import iter_repo_files
+
+    loop_dir = CONFIG.parent
+    return {p.name for p in iter_repo_files(loop_dir, ("config*.json",))
+            if p.parent == loop_dir}
+
+
+def test_every_config_variant_has_one_index_line():
+    """RM-724: the variants beside config.json had no line saying what they
+    are for, and four were named by no loader. Each tracked
+    ops/loop/config*.json gets exactly one `- `name` - ...` line under the
+    index heading, and the index names no file that is gone. The variants are
+    documented, never deleted: four tests sweep ops/loop/config*.json by glob,
+    so a removal would silently change what they cover."""
+    configs = _tracked_loop_configs()
+    assert "config.json" in configs and len(configs) > 1, configs
+    text = DOC.read_text(encoding="utf-8")
+    assert VARIANT_INDEX_HEAD in text, f"{DOC.name} has no variant index"
+    section = text.split(VARIANT_INDEX_HEAD, 1)[1].split("\n## ", 1)[0]
+    indexed = re.findall(r"^- `(config[^`]*\.json)` - \S", section, re.M)
+    dupes = sorted({n for n in indexed if indexed.count(n) > 1})
+    assert not dupes, f"indexed more than once: {dupes}"
+    missing = sorted(configs - set(indexed))
+    assert not missing, (
+        f"ops/loop config variants with no index line in {DOC.name}: {missing}")
+    stale = sorted(set(indexed) - configs)
+    assert not stale, f"{DOC.name} indexes configs that are not tracked: {stale}"
+
+
 def test_the_doc_is_ascii_and_lf():
     data = DOC.read_bytes()
     assert data.isascii()
