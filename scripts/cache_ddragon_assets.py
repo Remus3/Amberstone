@@ -20,6 +20,10 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 # RM-379: the RM-359 filename validator, applied before every join below.
 from lib.icons.downloader import _safe_basename  # noqa: E402
+# RM-1130: per-writer scratch, fsync and a bounded WinError 5 retry. The
+# RC-DDragonMirror task (tools/ddragon_mirror_refresh.py) writes the same
+# web/data/ddragon/<ver>/img/ tree through the same helper.
+from core.polled_json import atomic_write_bytes  # noqa: E402
 
 # RM-372: the same shape as tools/ddragon_mirror_refresh.py VERSION_RE /
 # validate_version (fullmatch, so a trailing newline is refused). Kept local
@@ -54,10 +58,7 @@ def fetch(url: str, dest: Path, *, retries: int = 2, timeout: float = 6.0) -> bo
             req = Request(url, headers={"User-Agent": "amberstone-asset-cache/1"})
             with urlopen(req, timeout=timeout) as r:
                 body = r.read()
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            tmp = dest.with_suffix(dest.suffix + ".tmp")
-            tmp.write_bytes(body)
-            tmp.replace(dest)
+            atomic_write_bytes(dest, body)
             return True
         except (URLError, HTTPError, TimeoutError) as e:
             if attempt == retries:
