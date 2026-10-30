@@ -23,6 +23,7 @@ import ipaddress
 import json
 import logging
 import os
+import threading
 import time
 from email import errors as _email_errors
 
@@ -60,6 +61,29 @@ _allowed_names_cache: frozenset[str] | None = None
 # a reset instead of the refusal. Bounded in size and in total time.
 _HOST_REFUSAL_DRAIN_CAP = 64 * 1024
 _HOST_REFUSAL_DRAIN_TIMEOUT_S = 2.0
+
+# s144 true-audit cycle 69: the refusal log line was unbounded - repr() of
+# every Host line and of the whole target, and the stdlib admits 100 header
+# lines of 64 KiB, so ONE refused request logged 5.4 MB (measured). The
+# sampling below bounds the line COUNT; these bound its SIZE. A hostname is
+# at most 253 characters, so the cap loses nothing a reader needs.
+_LOG_FIELD_CAP = 256
+_LOG_MAX_HOST_LINES = 4
+# The per-server refusal counter is read-modify-written by every handler
+# thread of a ThreadingHTTPServer; unlocked, concurrent refusals lost counts.
+_REFUSAL_COUNT_LOCK = threading.Lock()
+
+
+def _log_field(value) -> str:
+    """``repr(value)`` cut to ``_LOG_FIELD_CAP`` characters, then scrubbed.
+
+    Cut BEFORE the scrub, so a field of control bytes (escaped up to four
+    characters each) is still bounded."""
+    text = repr(value)
+    if len(text) > _LOG_FIELD_CAP:
+        text = (f"{text[:_LOG_FIELD_CAP]}[... "
+                f"{len(text) - _LOG_FIELD_CAP} chars cut]")
+    return _scrub_log(text)
 
 
 def _canon_host(name: str) -> str:
@@ -338,27 +362,43 @@ class HostAllowlistMixin:
             self.close_connection = True
             self._note_host_refusal("HTTP/0.9 request refused, closed")
             return False
+        refusal = self._head_refusal()
+        if refusal is None:
+            return True
+        what, tag, code, phrase, error = refusal
+        self._note_host_refusal(what, tag=tag)
+        self._refuse_head(code, phrase, error)
+        return False
+
+    def _head_refusal(self) -> tuple | None:
+        """Why the parsed head is refused - ``(log text, tag, status,
+        phrase, error)`` - or None when it may reach a route."""
         # RM-773: a head whose parse lost lines (a Host among them, possibly)
         # is refused before the Host gate, which would see no Host and pass.
         defect = head_parse_defect(getattr(self, "headers", None))
         if defect:
-            self._note_host_refusal(
-                f"header block parse defect ({defect}) refused (400)",
-                tag="RM-773")
-            self._refuse_head(400, "Bad Request", "bad_header_block")
-            return False
+            return (f"header block parse defect ({defect}) refused (400)",
+                    "RM-773", 400, "Bad Request", "bad_header_block")
         # RM-774: an absolute-form target's authority would replace Host
         # (RFC 9112 3.2.2), so only origin-form (and OPTIONS *) reaches it.
         if not request_target_ok(getattr(self, "command", None),
                                  getattr(self, "path", None)):
-            self._note_host_refusal(
-                "non-origin-form request target refused (400)", tag="RM-774")
-            self._refuse_head(400, "Bad Request", "bad_request_target")
-            return False
-        if self._host_header_allowed():
+            return ("non-origin-form request target refused (400)",
+                    "RM-774", 400, "Bad Request", "bad_request_target")
+        if not self._host_header_allowed():
+            return ("misdirected Host refused (421)", "RM-759", 421,
+                    "Misdirected Request", "misdirected_host")
+        return None
+
+    def handle_expect_100(self) -> bool:
+        # s144 true-audit cycle 69: the stdlib parse_request answers
+        # `Expect: 100-continue` (HTTP/1.1 handlers only) BEFORE it returns
+        # to the gate above, inviting the body of a request about to be
+        # refused. A head the gate refuses gets no 100: returning True lets
+        # parse_request finish, and the gate then sends the final status.
+        if self._head_refusal() is not None:
             return True
-        self._refuse_misdirected_host()
-        return False
+        return super().handle_expect_100()
 
     def _host_lines(self) -> list | None:
         """Every Host line, or None when the headers are not a Message."""
@@ -385,11 +425,12 @@ class HostAllowlistMixin:
 
     def _note_host_refusal(self, what: str, tag: str = "RM-759") -> None:
         server = getattr(self, "server", None)
-        count = getattr(server, "host_refusals", 0) + 1
-        try:
-            server.host_refusals = count
-        except AttributeError:
-            pass
+        with _REFUSAL_COUNT_LOCK:
+            count = getattr(server, "host_refusals", 0) + 1
+            try:
+                server.host_refusals = count
+            except AttributeError:
+                pass
         # First, then every 100th per server: a looping page must not be
         # able to flood logs/ with one line per request.
         if count == 1 or count % 100 == 0:
@@ -398,30 +439,45 @@ class HostAllowlistMixin:
             except (AttributeError, IndexError, TypeError):
                 peer = "?"
             self.host_refusal_log.warning(
-                "%s %s peer=%s host=%s path=%s count=%d", tag, what, peer,
-                _scrub_log(repr(self._host_lines())),
-                _scrub_log(repr(getattr(self, "path", ""))), count)
+                "%s %s peer=%s host=%s path=%s count=%d", tag, what,
+                peer, self._host_lines_for_log(),
+                _log_field(getattr(self, "path", "")), count)
 
-    def _refuse_misdirected_host(self) -> None:
-        self._note_host_refusal("misdirected Host refused (421)")
-        self._refuse_head(421, "Misdirected Request", "misdirected_host")
+    def _host_lines_for_log(self) -> str:
+        """The Host lines as one bounded log field: at most
+        ``_LOG_MAX_HOST_LINES`` values, each trimmed before the repr so a
+        100-line, 64 KiB-a-line head is never rendered whole."""
+        lines = self._host_lines()
+        if not isinstance(lines, list):
+            return _log_field(lines)
+        shown = [v[:_LOG_FIELD_CAP + 1] if isinstance(v, str) else v
+                 for v in lines[:_LOG_MAX_HOST_LINES]]
+        field = _log_field(shown)
+        if len(lines) > _LOG_MAX_HOST_LINES:
+            field += f" (+{len(lines) - _LOG_MAX_HOST_LINES} more lines)"
+        return field
 
     def _refuse_head(self, code: int, phrase: str, error: str) -> None:
-        """A fixed JSON refusal of the parsed head; the connection closes."""
+        """A fixed JSON refusal of the parsed head; the connection closes.
+
+        A peer that resets mid-refusal is not an error: the status line and
+        headers are guarded like the body (s144 true-audit cycle 69), so a
+        reset never raises out of ``parse_request`` into socketserver's
+        unsampled ``handle_error`` traceback."""
         self._drain_small_body()
         body = json.dumps({"error": error}, separators=(",", ":")).encode()
         self.close_connection = True
-        self.send_response(code, phrase)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(body)))
-        self.send_header("Cache-Control", "no-store")
-        self.send_header("Connection", "close")
-        self.end_headers()
-        if self.command != "HEAD":
-            try:
+        try:
+            self.send_response(code, phrase)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Connection", "close")
+            self.end_headers()
+            if self.command != "HEAD":
                 self.wfile.write(body)
-            except OSError:
-                pass
+        except OSError:
+            pass
 
     def _drain_small_body(self) -> None:
         try:
