@@ -163,6 +163,30 @@ def test_every_whole_index_enumeration_shape_selects(tmp_path):
     assert over == [], f"scoped / non-walking modules selected: {over}"
 
 
+_HISTORY_WALKERS = {
+    # s144 L5 merger: a whole-index walker that ALSO asks git for history
+    # cannot run in docs-guards.yml, which checks out at fetch-depth: 1
+    # (tests/test_ci_checkout_history_depth.py). The RM-1107 widening selected
+    # four such modules; the full suite (fetch-depth: 0) still runs them.
+    "cat_file": _walker('subprocess.run(["git", "ls-files"]); '
+                        'subprocess.run(["git", "cat-file", "-e", "abc^:x.md"])'),
+    "diff_filter": _walker('subprocess.run(["git", "ls-files"]); '
+                           'subprocess.run(["git", "log", "--all", "--diff-filter=DR"])'),
+    "rev_list": _walker('subprocess.run(["git", "ls-files"]); '
+                        'subprocess.run(["git", "rev-list", "HEAD"])'),
+}
+
+
+@needs_git
+def test_a_history_reading_walker_is_not_selected(tmp_path):
+    modules = {f"test_hist_{k}.py": v for k, v in _HISTORY_WALKERS.items()}
+    modules["test_plain_walk.py"] = _SELECTED["list_no_pathspec"]
+    got = set(_selected(_repo(tmp_path, modules)))
+    assert "tests/test_plain_walk.py" in got, "control: the plain walker must still select"
+    over = sorted(k for k in _HISTORY_WALKERS if f"tests/test_hist_{k}.py" in got)
+    assert over == [], f"history-reading walkers selected into the depth-1 docs-guards run: {over}"
+
+
 @needs_git
 def test_explain_names_the_walk(tmp_path):
     repo = _repo(tmp_path, {"test_ascii_walk.py": _ASCII_WALKER})

@@ -223,6 +223,13 @@ def _ls_files_reaches_md(after, consts, tracked_md) -> bool:
 _INDEX_LISTERS = frozenset({"tracked_relpaths"})
 _GLOB_WALKERS = frozenset({"iter_repo_files", "repo_files"})
 
+# s144 L5 merger: docs-guards.yml checks out at fetch-depth: 1 on purpose, so
+# a module that also asks git for HISTORY cannot run there. The same markers
+# tests/test_ci_checkout_history_depth.py uses (_HISTORY_MARKERS). Applied to
+# the index-walk route only: such a module stays in the full suite
+# (fetch-depth: 0), exactly as before the RM-1107 widening selected it.
+_HISTORY_MARKERS = ("cat-file", "--diff-filter", "rev-list")
+
 
 def _call_name(node: ast.Call) -> str:
     func = node.func
@@ -305,7 +312,8 @@ def select_md_guard_modules(repo_root: Path = REPO_ROOT, explain: bool = False):
         })
         # Only modules pytest collects: a helper that walks the index is
         # reached through the test modules that call it.
-        if rel.rsplit("/", 1)[-1].startswith("test_"):
+        if (rel.rsplit("/", 1)[-1].startswith("test_")
+                and not any(m in source for m in _HISTORY_MARKERS)):
             hits.extend(index_walk_reasons(tree, tracked_md))
         if hits:
             found[rel] = hits
