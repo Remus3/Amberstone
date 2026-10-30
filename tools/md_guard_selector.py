@@ -38,7 +38,9 @@ whose directory is not visible) matches it against every `.md` suffix. The
 root reading still selects, so this can only add a module. An option's
 separate value (`-x <pattern>`) is also read as git reads it, not as a
 pathspec, and a `cwd=` reaches an argv wrapped in a call (RM-1147); both
-are extra readings, so they too only add.
+are extra readings, so they too only add. So does a `cwd=` reaching an argv
+bound to a name (`cmd = [...]; run(cmd, cwd=...)`, RM-1146 (2)), read only
+in the scope Python resolves the name to.
 
 Two deliberate design choices, both scar-driven:
 
@@ -258,8 +260,23 @@ def _md_pathspec_in(spec, base, tracked_md, md_suffixes) -> bool:
     any directory, so the spec is matched against every `.md` suffix."""
     path = _join_rel(base, spec)
     if path is None:
-        return _md_pathspec(spec, md_suffixes)
+        return _md_pathspec(spec, md_suffixes) or _md_pathspec(_climb_free(spec), md_suffixes)
     return _md_pathspec(path, tracked_md)
+
+
+def _climb_free(spec) -> str:
+    """RM-1146 (2): `spec` normalised with its leading `..` segments dropped
+    (`sub/../guide.md` -> `guide.md`, `..` -> `.`). In an unknown directory a
+    climb can land anywhere, so this reads at least what any one directory
+    reads - which is what lets a bound argv's many directories collapse to
+    the any-directory reading (None) without losing one a git run makes.
+    Not covered, by measurement (round-4 verifier): a directory holding a
+    glob character (`cwd="[d]"`), whose joined path fnmatch reads as a glob;
+    such a match is spurious (git reads the directory literally)."""
+    parts = posixpath.normpath(spec.replace("\\", "/")).split("/")
+    while parts and parts[0] == "..":
+        parts.pop(0)
+    return "/".join(parts) or "."
 
 
 # RM-1147 (a): the `git ls-files` options whose value is the NEXT word.
@@ -422,6 +439,224 @@ def _outer_argvs(nodes) -> list:
     return found
 
 
+_COMPREHENSIONS = (ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)
+_TYPE_ALIAS = getattr(ast, "TypeAlias", ())
+# RM-1146 (2): past this many directories for one bound argv, also read it
+# in any directory (None, the widest reading of what git lists - see
+# `_climb_free`) and record no more, so the readings stay bounded.
+_MAX_BASES = 8
+
+
+class _Scope:
+    """One Python scope: the names it binds and its `name = value` bindings."""
+
+    __slots__ = ("kind", "parent", "stores", "declared", "assigns")
+
+    def __init__(self, kind, parent):
+        # "module" | "function" | "class" | "comprehension" | "annotation"
+        # (PEP 695: type parameters and a `type X = ...` value).
+        self.kind = kind
+        self.parent = parent
+        self.stores = set()
+        self.declared = {}          # name -> "global" | "nonlocal"
+        self.assigns = []           # (name, value node, scope it is read in)
+
+
+def _bind_args(args: ast.arguments, scope) -> None:
+    for arg in (*args.posonlyargs, *args.args, *args.kwonlyargs, args.vararg, args.kwarg):
+        if arg is not None:
+            scope.stores.add(arg.arg)
+
+
+def _collect_scopes(tree):
+    """RM-1146 (2): every scope of the module, and each call with the scope
+    it runs in. Iterative, so a deep tree cannot hit the recursion limit."""
+    module = _Scope("module", None)
+    scopes, calls = [module], []
+    stack = [(tree, module)]
+    while stack:
+        node, scope = stack.pop()
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)):
+            # The name, decorators, defaults and bases belong to the outer scope.
+            # PEP 695 type parameters live in a scope of their own around it.
+            holder = scope
+            params = getattr(node, "type_params", None)
+            if params:
+                holder = _Scope("annotation", scope)
+                holder.stores.update(param.name for param in params)
+                scopes.append(holder)
+            kind = "class" if isinstance(node, ast.ClassDef) else "function"
+            inner = _Scope(kind, holder)
+            scopes.append(inner)
+            outer = list(getattr(node, "decorator_list", []))
+            if isinstance(node, ast.ClassDef):
+                stack.extend((part, holder) for part in
+                             (*node.bases, *(kw.value for kw in node.keywords)))
+            else:
+                outer += [*node.args.defaults, *(d for d in node.args.kw_defaults if d)]
+                _bind_args(node.args, inner)
+            if not isinstance(node, ast.Lambda):
+                scope.stores.add(node.name)
+            body = [node.body] if isinstance(node, ast.Lambda) else node.body
+            stack.extend((part, scope) for part in outer)
+            stack.extend((part, inner) for part in body)
+            continue
+        if isinstance(node, _COMPREHENSIONS):
+            # Its targets are its own; the first iterable is read outside it.
+            inner = _Scope("comprehension", scope)
+            scopes.append(inner)
+            for i, gen in enumerate(node.generators):
+                stack.append((gen.iter, inner if i else scope))
+                stack.extend((part, inner) for part in (gen.target, *gen.ifs))
+            elts = (node.key, node.value) if isinstance(node, ast.DictComp) else (node.elt,)
+            stack.extend((part, inner) for part in elts)
+            continue
+        if isinstance(node, _TYPE_ALIAS):
+            # `type X[T] = value`: the value is read in an annotation scope.
+            holder = _Scope("annotation", scope)
+            holder.stores.update(param.name for param in node.type_params)
+            scopes.append(holder)
+            scope.stores.add(node.name.id)
+            stack.append((node.value, holder))
+            continue
+        if isinstance(node, ast.NamedExpr):
+            # A walrus binds in the nearest scope that is not a comprehension.
+            owner = scope
+            while owner.kind == "comprehension" and owner.parent is not None:
+                owner = owner.parent
+            owner.stores.add(node.target.id)
+            owner.assigns.append((node.target.id, node.value, scope))
+            stack.append((node.value, scope))
+            continue
+        if isinstance(node, (ast.Global, ast.Nonlocal)):
+            kind = "global" if isinstance(node, ast.Global) else "nonlocal"
+            scope.declared.update(dict.fromkeys(node.names, kind))
+        elif isinstance(node, ast.Name) and not isinstance(node.ctx, ast.Load):
+            scope.stores.add(node.id)
+        elif isinstance(node, ast.ExceptHandler) and node.name:
+            scope.stores.add(node.name)
+        elif isinstance(node, (ast.MatchAs, ast.MatchStar)) and node.name:
+            scope.stores.add(node.name)
+        elif isinstance(node, ast.MatchMapping) and node.rest:
+            scope.stores.add(node.rest)
+        elif isinstance(node, (ast.Import, ast.ImportFrom)):
+            scope.stores.update((a.asname or a.name).split(".")[0] for a in node.names)
+        elif isinstance(node, ast.Assign):
+            scope.assigns.extend((t.id, node.value, scope) for t in node.targets
+                                 if isinstance(t, ast.Name))
+        elif isinstance(node, ast.AnnAssign) and node.value is not None \
+                and isinstance(node.target, ast.Name):
+            scope.assigns.append((node.target.id, node.value, scope))
+        elif isinstance(node, ast.Call):
+            calls.append((node, scope))
+        stack.extend((child, scope) for child in ast.iter_child_nodes(node))
+    return scopes, calls
+
+
+def _resolve(scope, name, first=True):
+    """The scope whose binding of `name` a read in `scope` sees, as Python
+    resolves it, or None when no scope binds it. An enclosing class body is
+    skipped whole, its `global` included - except by a read made directly
+    in an annotation scope just inside it (PEP 695). `first=False` skips
+    `scope` itself when it is a class (a `nonlocal` never binds there)."""
+    start = prev = scope
+    while scope is not None:
+        if first or scope.kind != "class" or (prev is start and start.kind == "annotation"):
+            declared = scope.declared.get(name)
+            if declared == "global":
+                while scope.parent is not None:
+                    scope = scope.parent
+                return scope
+            if declared != "nonlocal" and name in scope.stores:
+                return scope
+        prev, scope, first = scope, scope.parent, False
+    return None
+
+
+def _bound_argv_bases(tree, consts) -> dict:
+    """RM-1146 (2): the `cwd=` of a call whose argv is reached through a
+    name - `cmd = [...]; run(cmd, cwd=...)`, `args=cmd`, a walrus, a name
+    wrapped in `list(...)` or used as a `+` operand, an alias `cmd = base` -
+    keyed by the bound list, tuple or `+` chain. A name is read only in the
+    scope Python resolves it to, never a same-named binding elsewhere. An
+    extra reading: the root one still selects first."""
+    # Exact gate: a bound reading needs an `"ls-files"` list element and a
+    # call that runs outside the root (`cwd=` or `**kwargs`); most test
+    # modules have neither, so they skip the scope walk.
+    verb = outside = False
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Constant) and node.value == "ls-files":
+            verb = True
+        elif isinstance(node, ast.keyword) and node.arg in ("cwd", None):
+            outside = True
+        if verb and outside:
+            break
+    else:
+        return {}
+    scopes, calls = _collect_scopes(tree)
+    values = {}
+    for scope in scopes:
+        for name, value, written in scope.assigns:
+            owner = scope
+            if scope.declared.get(name) == "global":
+                owner = _resolve(scope, name)
+            elif scope.declared.get(name) == "nonlocal":
+                owner = _resolve(scope.parent, name, first=False)
+            if owner is not None:
+                owner.stores.add(name)
+                # The value is read where it is written, not where it binds.
+                values.setdefault((id(owner), name), []).append((value, written))
+    bound = {}
+    # A binding is followed once per directory, and past _MAX_BASES
+    # directories once more in any directory (None): an alias cycle ends, and
+    # many calls reading one name cost a bounded number of walks.
+    walked = {}
+    for call, scope in calls:
+        argvs = [*call.args[:1], *(kw.value for kw in call.keywords if kw.arg == "args")]
+        call_base = _call_base(call, consts) if argvs else ""
+        if call_base == "":
+            continue
+        stack = [(argv, scope, False, call_base) for argv in argvs]
+        while stack:
+            node, where, via_name, base = stack.pop()
+            if isinstance(node, (ast.List, ast.Tuple)) or \
+                    (isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add)):
+                # A literal at the call site already has its call's reading.
+                if via_name:
+                    bases = bound.setdefault(id(node), [])
+                    if None in bases or base in bases:
+                        pass
+                    elif len(bases) >= _MAX_BASES:
+                        bases.append(None)
+                    else:
+                        bases.append(base)
+                if isinstance(node, ast.BinOp):
+                    stack.extend((op, where, via_name, base)
+                                 for op in _add_operands(node, set())
+                                 if not isinstance(op, (ast.List, ast.Tuple)))
+            elif isinstance(node, ast.Name):
+                owner = _resolve(where, node.id)
+                if owner is None:
+                    continue
+                key = (id(owner), node.id)
+                seen = walked.setdefault(key, set())
+                if None in seen or base in seen:
+                    continue
+                if len(seen) >= _MAX_BASES:
+                    base = None
+                seen.add(base)
+                stack.extend((value, written, True, base)
+                             for value, written in values.get(key, ()))
+            elif isinstance(node, ast.NamedExpr):
+                stack.append((node.value, where, True, base))
+            elif isinstance(node, ast.Starred):
+                stack.append((node.value, where, via_name, base))
+            elif isinstance(node, ast.Call):
+                stack.extend((part, where, via_name, base)
+                             for part in (*node.args, *(kw.value for kw in node.keywords)))
+    return bound
+
+
 _INDEX_LISTERS = frozenset({"tracked_relpaths"})
 _GLOB_WALKERS = frozenset({"iter_repo_files", "repo_files"})
 
@@ -458,7 +693,8 @@ def index_walk_reasons(tree: ast.AST, tracked_md, md_suffixes=None) -> list:
       (`:(exclude)`, `:!`, `:(top)`, ...) by its magic (RM-1146). An
       option's value (`-x <pattern>`, `--format <format>`) is not a
       pathspec, and a `cwd=` reaches an argv wrapped in `list(...)`
-      (RM-1147);
+      (RM-1147) or bound to a name, in the name's own scope only
+      (RM-1146 (2));
     - a call to `tests._repo_walk.tracked_relpaths` (the whole index);
     - `iter_repo_files` / `repo_files` with a basename glob matching a `.md`
       (their default is `*.py`, so a bare call does not select).
@@ -483,6 +719,9 @@ def index_walk_reasons(tree: ast.AST, tracked_md, md_suffixes=None) -> list:
     # call, `run(list([...] + [...]), cwd=...)`, for the outermost lists and
     # chains inside it. An extra reading: the old ones still select first.
     wrap_bases = {}
+    # RM-1146 (2): the `cwd=` of each call whose argv is bound to a name,
+    # keyed by the bound literal (a pre-pass: the binding can come first).
+    bound_bases = _bound_argv_bases(tree, consts)
     reasons = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add) \
@@ -493,6 +732,7 @@ def index_walk_reasons(tree: ast.AST, tracked_md, md_suffixes=None) -> list:
             bases = [call_bases.get(id(node), "")]
             if id(node) in wrap_bases:
                 bases.append(wrap_bases[id(node)])
+            bases.extend(bound_bases.get(id(node), ()))
             before = []
             for operand in _add_operands(node, chained):
                 if isinstance(operand, (ast.List, ast.Tuple)):
@@ -510,6 +750,7 @@ def index_walk_reasons(tree: ast.AST, tracked_md, md_suffixes=None) -> list:
                     readings = [(elts[:i], call_bases.get(id(node), ""))]
                     if id(node) in wrap_bases:
                         readings.append((elts[:i], wrap_bases[id(node)]))
+                    readings.extend((elts[:i], base) for base in bound_bases.get(id(node), ()))
                     if id(node) in argv_prefix:
                         readings.extend((argv_prefix[id(node)] + elts[:i], base)
                                         for base in chain_bases[id(node)])
