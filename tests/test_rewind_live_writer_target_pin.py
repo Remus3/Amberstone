@@ -473,6 +473,30 @@ class PinSourceTests(_PinBase):
         self.assertFalse(rlw.write_game_end_pin("M-bad"))
         self.assertFalse(self.pin_path.exists())
 
+    def test_pin_write_goes_through_the_shared_atomic_writer(self):
+        # RM-258: no hand-rolled rename - core.polled_json carries the fsync
+        # and the WinError 5 retry.
+        from core import polled_json
+        with mock.patch.object(polled_json, "atomic_write_text",
+                               wraps=polled_json.atomic_write_text) as spy:
+            self.assertTrue(rlw.write_game_end_pin(TARGET_GAME, queue_id=450))
+        spy.assert_called_once()
+        self.assertEqual(Path(spy.call_args.args[0]), self.pin_path)
+        self.assertEqual(json.loads(self.pin_path.read_text(encoding="utf-8"))
+                         ["game_id"], TARGET_GAME)
+
+    def test_pin_write_os_error_returns_false_and_leaves_no_scratch(self):
+        blocker = self.tmp / "blocker"
+        blocker.write_text("x", encoding="utf-8")
+        with mock.patch.object(rlw, "PIN_PATH", blocker / "last_game_end.json"):
+            self.assertFalse(rlw.write_game_end_pin(TARGET_GAME))
+        self.assertEqual(list(self.tmp.rglob("*.tmp")), [])
+        with mock.patch("core.polled_json._replace_with_retry",
+                        side_effect=PermissionError(5, "denied")):
+            self.assertFalse(rlw.write_game_end_pin(TARGET_GAME))
+        self.assertFalse(self.pin_path.exists())
+        self.assertEqual(list(self.tmp.rglob("*.tmp")), [])
+
 
 class NeverRaisesTests(_PinBase):
 

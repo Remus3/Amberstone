@@ -103,7 +103,6 @@ from __future__ import annotations
 import json
 import logging
 import math
-import os
 import sqlite3
 import threading
 import time
@@ -349,18 +348,13 @@ def write_game_end_pin(
     if riot_id and len(riot_id) == 2:
         payload["game_name"] = str(riot_id[0] or "").strip()
         payload["tag_line"] = str(riot_id[1] or "").strip()
-    tmp = PIN_PATH.with_name(
-        f"{PIN_PATH.name}.{os.getpid()}.{threading.get_ident()}.tmp")
+    # RM-258: the shared writer adds the fsync and the WinError 5 retry a
+    # bare rename lacked, and removes its per-writer scratch on failure.
+    from core.polled_json import atomic_write_text
     try:
-        PIN_PATH.parent.mkdir(parents=True, exist_ok=True)
-        tmp.write_text(json.dumps(payload), encoding="utf-8")
-        tmp.replace(PIN_PATH)
+        atomic_write_text(PIN_PATH, json.dumps(payload))
     except OSError as exc:
         _log.debug("rewind_live_writer pin write error: %s", exc)
-        try:
-            tmp.unlink(missing_ok=True)
-        except OSError:
-            pass
         return False
     return True
 

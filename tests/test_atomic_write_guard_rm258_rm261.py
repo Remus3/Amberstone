@@ -28,7 +28,7 @@ writer in that tree start bare, the RM-258 failure itself.
 
 SCOPE: every tracked .py via tests/_repo_walk (ADR-015) EXCEPT the one-shot
 generator trees the rows themselves allowlist (`scripts/`, `ops/audit/`,
-`Share/`, `lib/`), plus `tests/`, `docs/`, `oss/` (the extracted package IS
+`Share/`), plus `tests/`, `docs/`, `oss/` (the extracted package IS
 an implementation and is drift-pinned to core/polled_json by
 tests/test_oss_win32_atomic_io_drift.py) and `ops/fleet_kit/` (vendored
 byte-for-byte; a local edit fails its MANIFEST). tools/ is in scope except
@@ -36,7 +36,9 @@ the row's own `tools/*extract*` allowlist, tools/tests/ and the named
 `_TOOLS_UNCLASSIFIED` baseline, which only shrinks. The two separate-process
 agents under tools/ that RM-258 names are long-running ONLOGON tasks, not
 generators, and they and the tools/ watchers converted since stay pinned in
-`_RUNTIME_TOOLS`.
+`_RUNTIME_TOOLS`. lib/ is in scope except the named `_LIB_UNCLASSIFIED`
+baseline, which only shrinks: it is not a generator tree - the in-process app
+and the LCU post-game collector import lib/rewind_live_writer.py at runtime.
 """
 from __future__ import annotations
 
@@ -57,7 +59,6 @@ _EXCLUDED_PREFIXES = (
     "ops/audit/",
     "ops/fleet_kit/",
     "Share/",
-    "lib/",
 )
 
 # Long-running separate-process agents that live under tools/ (RM-258 names
@@ -154,6 +155,23 @@ _RUNTIME_TOOLS = frozenset({
 # stops offending fails test_tools_baseline_is_exact until it is dropped.
 _TOOLS_UNCLASSIFIED = frozenset({
     "tools/build_portable.py",
+})
+
+# RM-258 residual (s144): lib/ was exempted wholesale as a "one-shot generator
+# tree", but app/_game_lifecycle.py and lcu/lcu_postgame_collector.py import
+# lib/rewind_live_writer.py in-process, so a new lib/ writer started bare. lib/
+# is IN scope now; measured 2026-10-30, 6 lib/ modules offended (6 renames + 5
+# scratch names) and the runtime one, lib/rewind_live_writer.py, was converted
+# onto core.polled_json in the same slice. The entries below are the library
+# writers behind the fetch / build pipelines and the two site scrapers: each
+# leaves by converting onto core.polled_json or by a named one-shot proof, and
+# an entry that stops offending fails test_lib_baseline_is_exact.
+_LIB_UNCLASSIFIED = frozenset({
+    "lib/ddragon/fetch.py",
+    "lib/game_data/build.py",
+    "lib/game_data/fetch.py",
+    "lib/icons/downloader.py",
+    "lib/scrapers/_base.py",
 })
 
 
@@ -288,6 +306,8 @@ def _in_scope(rel: str) -> bool:
     if rel.startswith("tools/"):
         return not (rel.startswith("tools/tests/") or _is_tools_extractor(rel)
                     or rel in _TOOLS_UNCLASSIFIED)
+    if rel in _LIB_UNCLASSIFIED:
+        return False
     return not rel.startswith(_EXCLUDED_PREFIXES)
 
 
@@ -397,7 +417,8 @@ def offenders():
     # exists for.
     rels = {r for r, _ in files}
     for anchor in ("coach_integration/_coach.py", "tools/lcu_agent.py",
-                   "ops/rc_supervisor.py", "core/polled_json.py"):
+                   "ops/rc_supervisor.py", "core/polled_json.py",
+                   "lib/rewind_live_writer.py"):
         assert anchor in rels, f"guard scope lost {anchor}"
     return scan(files)
 
@@ -903,3 +924,30 @@ def test_tools_baseline_is_exact():
         "these no longer hand-roll an atomic write - drop them from "
         "_TOOLS_UNCLASSIFIED (add a long-running one to _RUNTIME_TOOLS):\n  "
         + "\n  ".join(stale))
+
+
+def test_a_new_lib_writer_starts_in_scope():
+    """lib/ is no longer a directory-wide exemption: the runtime writer and
+    any new lib/ module are guarded; only the named baseline is not."""
+    assert _in_scope("lib/rewind_live_writer.py")
+    assert _in_scope("lib/ingest_receipt.py")
+    assert _in_scope("lib/a_new_polled_writer.py")
+    assert not _in_scope("lib/scrapers/_base.py")
+    assert not _in_scope("scripts/rewind_scraper.py")
+
+
+def test_lib_baseline_is_exact():
+    """Every lib/ baseline entry is a tracked lib/ module that still offends,
+    so a conversion has to shrink the set and the set never hides a clean
+    file."""
+    tracked = {relative_posix(p) for p in iter_repo_files(REPO_ROOT, ("*.py",))}
+    stale = []
+    for rel in sorted(_LIB_UNCLASSIFIED):
+        assert rel.startswith("lib/"), rel
+        assert rel in tracked, f"lib/ baseline entry {rel} is not tracked"
+        renames, scratch = scan([(rel, REPO_ROOT / rel)])
+        if not renames and not scratch:
+            stale.append(rel)
+    assert stale == [], (
+        "these no longer hand-roll an atomic write - drop them from "
+        "_LIB_UNCLASSIFIED:\n  " + "\n  ".join(stale))
