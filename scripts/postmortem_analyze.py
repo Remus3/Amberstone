@@ -65,11 +65,9 @@ from __future__ import annotations
 import argparse
 import datetime as _dt
 import json
-import os
 import pathlib
 import sqlite3
 import sys
-import tempfile
 from dataclasses import dataclass
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -77,6 +75,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from core.obj_participation import compute_obj_participation  # noqa: E402
+from core.polled_json import atomic_write_text  # noqa: E402
 from core.post_game_rubric import compute_role_grade  # noqa: E402
 from core.smoothed_rates import laplace_rate, shrink  # noqa: E402
 
@@ -515,19 +514,10 @@ def aggregate_death_recaps(rows: list[dict]) -> dict:
 
 
 def write_atomic(target: pathlib.Path, payload: dict) -> None:
-    target.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp_name = tempfile.mkstemp(prefix=".postmortem.", suffix=".tmp", dir=str(target.parent))
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            json.dump(payload, f, indent=2, sort_keys=False)
-            f.write("\n")
-        os.replace(tmp_name, target)
-    except Exception:
-        try:
-            os.unlink(tmp_name)
-        except OSError:
-            pass
-        raise
+    # The dashboard route and the mode coaches read this file while the
+    # analyzer runs (RC is bounced only after the write), so the rename needs
+    # core.polled_json's WinError 5 retry; bytes are LF on every platform.
+    atomic_write_text(target, json.dumps(payload, indent=2) + "\n")
 
 
 def main(argv: list[str] | None = None) -> int:
