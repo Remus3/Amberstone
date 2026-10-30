@@ -27,7 +27,18 @@ swap, focus and blur, over the measured elements and all their ancestors):
   - test_panel_visibility_tab_selected_state,
     test_settings_checkbox_hit_targets, test_am_call_eyebrow_contrast: no
     sheet, and none needed - nothing they read transitions.
-This module pins all nine verdicts at runtime with each test's own opener,
+Audit (2026-10-30, s144 L6 merger, the same detector), the six later
+s144 uiux modules. Each stamps its theme at BOOT (?theme=) for every theme
+it uses and never swaps in-page, so the sweep each depends on is its boot,
+plus the focus / blur its ring reads use; the in-page swaps run as well:
+  - test_ds_combo_controls_hit_floor, test_ds_knob_inputs_focus_ring,
+    test_lm_hero_stats_disclosure, test_ds_matchup_text_contrast,
+    test_ds_cards_muted_text_contrast: no sheet, and none needed - nothing
+    they read transitions on boot, swap, focus or blur.
+  - test_champ_select_lock_button_focus: #csv-lock-btn DOES transition
+    box-shadow on focus ("transition: 0.15s", all properties); settled only
+    because both of its reads await getAnimations().finished.
+This module pins all fifteen verdicts at runtime with each test's own opener,
 so a new transition on a no-sheet surface, or the sheet dropped from a
 shared opener, fails HERE with the element and property named. The fix is
 the sheet in that test's opener, not a sleep. The inventory test keeps the
@@ -44,6 +55,35 @@ from tests.snapshot_panels.test_am_call_eyebrow_contrast import _EXPECT_LINES
 from tests.snapshot_panels.test_am_call_eyebrow_contrast import (
     _THEMES as _EYEBROW_THEMES,
 )
+from tests.snapshot_panels.test_champ_select_lock_button_focus import (
+    _BTN as _LOCK_BTN,
+)
+from tests.snapshot_panels.test_champ_select_lock_button_focus import (
+    _READ_BTN as _LOCK_READ_BTN,
+)
+from tests.snapshot_panels.test_champ_select_lock_button_focus import (
+    _open as _lock_open,
+)
+from tests.snapshot_panels.test_ds_cards_muted_text_contrast import (
+    _open as _cards_open,
+)
+from tests.snapshot_panels.test_ds_combo_controls_hit_floor import (
+    _INPUT as _COMBO_INPUT,
+)
+from tests.snapshot_panels.test_ds_combo_controls_hit_floor import (
+    _SELECT as _COMBO_SELECT,
+)
+from tests.snapshot_panels.test_ds_combo_controls_hit_floor import (
+    _open as _combo_open,
+)
+from tests.snapshot_panels.test_ds_knob_inputs_focus_ring import _DSK, _DSS
+from tests.snapshot_panels.test_ds_knob_inputs_focus_ring import (
+    _open as _knob_open,
+)
+from tests.snapshot_panels.test_lm_hero_stats_disclosure import _SEL as _LM_SEL
+from tests.snapshot_panels.test_lm_hero_stats_disclosure import (
+    _open as _lm_open,
+)
 from tests.snapshot_panels.test_settings_checkbox_hit_targets import (
     _open as _settings_open,
 )
@@ -58,9 +98,15 @@ from tests.snapshot_panels.test_user_builds_rune_tabs import _open as _ub_open
 
 _HERE = Path(__file__).resolve().parent
 
-# The nine modules audited above, keyed by file name.
+# The fifteen modules audited above, keyed by file name.
 _COVERED = {
     "test_am_call_eyebrow_contrast.py",
+    "test_champ_select_lock_button_focus.py",
+    "test_ds_cards_muted_text_contrast.py",
+    "test_ds_combo_controls_hit_floor.py",
+    "test_ds_knob_inputs_focus_ring.py",
+    "test_ds_matchup_text_contrast.py",
+    "test_lm_hero_stats_disclosure.py",
     "test_lobby_mains_tabs.py",
     "test_panel_visibility_tab_selected_state.py",
     "test_settings_checkbox_hit_targets.py",
@@ -120,8 +166,8 @@ _RUNNING = """
 """
 
 
-def _check(page, sel, focus, tag):
-    got = page.evaluate(_RUNNING, [sel, _THEMES, focus])
+def _check(page, sel, focus, tag, themes=_THEMES):
+    got = page.evaluate(_RUNNING, [sel, themes, focus])
     assert got["n"] > 0, f"{tag}: {sel!r} matched nothing"
     assert not got["running"], (
         f"{tag}: a theme-swap read would straddle a transition "
@@ -244,6 +290,102 @@ def ub_page(mock_server, pw_browser):
 def test_user_builds_reads_are_settled(ub_page, what):
     ub_page.keyboard.press("Shift")
     _check(ub_page, _UB_SELS[what], True, what)
+
+
+def _matchup_open(mock_server, pw_browser, theme):
+    # test_ds_matchup_text_contrast boots inline in its _measure: the same
+    # URL, viewport and ready wait, kept in step with it by hand.
+    mock_server._store["data"] = {}
+    ctx = pw_browser.new_context(
+        ignore_https_errors=True, viewport={"width": 1920, "height": 1080}
+    )
+    page = ctx.new_page()
+    page.add_init_script(_WS_STUB)
+    page.goto(
+        mock_server.url + f"/?ui_mock=1&mode=sr&theme={theme}#active-match",
+        wait_until="domcontentloaded", timeout=15_000,
+    )
+    page.wait_for_function(
+        "(() => { const g = document.querySelector("
+        "'#csv-sugg-ds-matchup .dsm-grid');"
+        " return !!g && g.checkVisibility(); })()",
+        timeout=10_000,
+    )
+    return ctx, page, []
+
+
+# The boot-theme modules: (opener(mock_server, pw_browser, theme), the
+# elements they read, whether they read after focus()).
+_BOOT = {
+    "ds combo controls": (
+        lambda ms, pw, t: _combo_open(ms, pw, "sr", t),
+        f"{_COMBO_INPUT}, {_COMBO_SELECT}", True,
+    ),
+    "ds knob inputs": (
+        lambda ms, pw, t: _knob_open(ms, pw, t), f"{_DSK}, {_DSS}", True,
+    ),
+    "lm hero stats summary": (
+        lambda ms, pw, t: _lm_open(ms, pw, "sr", t), _LM_SEL, True,
+    ),
+    "ds matchup card": (
+        _matchup_open, "#csv-sugg-ds-matchup, #csv-sugg-ds-matchup *", False,
+    ),
+    "ds relscore and shaper": (
+        lambda ms, pw, t: _cards_open(ms, pw, t, {"ok": False})[:3],
+        "#csv-ds-relscore, #csv-ds-relscore *,"
+        " #view-active-match .bm-shaper, #view-active-match .bm-shaper *",
+        False,
+    ),
+}
+
+
+@pytest.mark.parametrize("theme", _THEMES)
+@pytest.mark.parametrize("what", sorted(_BOOT))
+def test_boot_theme_reads_are_settled(mock_server, pw_browser, what, theme):
+    opener, sel, focus = _BOOT[what]
+    ctx, page, _errors = opener(mock_server, pw_browser, theme)
+    try:
+        assert page.evaluate(
+            "document.documentElement.dataset.theme || 'hextech'"
+        ) == theme, f"{what}: booted on the wrong theme, not {theme}"
+        page.keyboard.press("Shift")  # keyboard modality, as the ring reads do
+        # The boot this module depends on, then focus / blur on that theme.
+        _check(page, sel, focus, f"{what}/{theme}", themes=[theme])
+        # The in-page swaps still run.
+        _check(page, sel, False, f"{what}/{theme} swaps")
+    finally:
+        _close(ctx, page)
+
+
+@pytest.mark.parametrize("theme", _THEMES)
+def test_lock_button_reads_wait_out_its_transition(mock_server, pw_browser, theme):
+    # #csv-lock-btn is settled at boot and across swaps, but its box-shadow
+    # DOES transition on focus, so its reads must await the transition.
+    ctx, page, _errors = _lock_open(mock_server, pw_browser, "sr", theme)
+    try:
+        assert page.evaluate(
+            "document.documentElement.dataset.theme || 'hextech'"
+        ) == theme, f"booted on the wrong theme, not {theme}"
+        page.keyboard.press("Shift")
+        _check(page, _LOCK_BTN, False, f"lock button/{theme}", themes=[theme])
+        _check(page, _LOCK_BTN, False, f"lock button/{theme} swaps")
+        got = page.evaluate(_RUNNING, [_LOCK_BTN, [theme], True])
+    finally:
+        _close(ctx, page)
+    assert got["n"] == 1, got
+    assert any("box-shadow" in r for r in got["running"]), (
+        f"{theme}: the LOCK IN focus transition is gone - re-audit "
+        f"test_champ_select_lock_button_focus and update the verdict: {got}"
+    )
+    src = (_HERE / "test_champ_select_lock_button_focus.py").read_text(
+        encoding="utf-8"
+    )
+    assert "await Promise.all(el.getAnimations().map((a) => a.finished));" in src, (
+        "the focused-ring read no longer waits out the box-shadow transition"
+    )
+    assert "await Promise.all(b.getAnimations().map((x) => x.finished));" in (
+        _LOCK_READ_BTN
+    ), "the pending-lock read no longer waits out the transition"
 
 
 def test_positive_control_detects_a_real_transition(mock_server, pw_browser):
