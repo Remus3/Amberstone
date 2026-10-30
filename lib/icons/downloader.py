@@ -15,6 +15,11 @@ import logging
 import os
 from pathlib import Path
 
+# RM-258: core.polled_json, not a hand-rolled `<dest>.tmp` + os.replace - a
+# per-writer scratch name, a bounded retry on a transient WinError 5, and
+# no scratch file left behind (LEDGER 1350 noted the old writer orphaned
+# its `.tmp` whenever os.replace failed). Also RM-251 (b)'s re-roll here.
+from core.polled_json import atomic_write_bytes as _atomic_write_bytes
 from lib.ddragon import DDragon
 from lib.http import HttpError, get_client
 
@@ -24,13 +29,6 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 ICONS_ROOT = _PROJECT_ROOT / "data" / "icons"
 
 DDRAGON_CDN = "https://ddragon.leagueoflegends.com/cdn"
-
-
-def _atomic_write_bytes(path: Path, data: bytes) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_bytes(data)
-    os.replace(tmp, path)
 
 
 def _safe_basename(img: str) -> str | None:

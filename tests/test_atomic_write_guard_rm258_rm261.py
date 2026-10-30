@@ -167,12 +167,13 @@ _TOOLS_UNCLASSIFIED = frozenset({
 # leaves by converting onto core.polled_json or by a named one-shot proof, and
 # an entry that stops offending fails test_lib_baseline_is_exact.
 # lib/scrapers/_base.py left in s144 (converted onto core.polled_json;
-# tests/test_scrapers_atomic_write_rm258.py).
+# tests/test_scrapers_atomic_write_rm258.py), then lib/icons/downloader.py
+# and lib/game_data/fetch.py (both byte caches onto
+# core.polled_json.atomic_write_bytes;
+# tests/test_lib_byte_writers_atomic_write_rm258.py).
 _LIB_UNCLASSIFIED = frozenset({
     "lib/ddragon/fetch.py",
     "lib/game_data/build.py",
-    "lib/game_data/fetch.py",
-    "lib/icons/downloader.py",
 })
 
 
@@ -934,7 +935,9 @@ def test_a_new_lib_writer_starts_in_scope():
     assert _in_scope("lib/ingest_receipt.py")
     assert _in_scope("lib/a_new_polled_writer.py")
     assert _in_scope("lib/scrapers/_base.py")
-    assert not _in_scope("lib/icons/downloader.py")
+    assert _in_scope("lib/icons/downloader.py")
+    assert _in_scope("lib/game_data/fetch.py")
+    assert not _in_scope("lib/ddragon/fetch.py")
     assert not _in_scope("scripts/rewind_scraper.py")
 
 

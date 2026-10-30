@@ -22,6 +22,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
+# RM-258: core.polled_json, not a hand-rolled fixed `<dest>.tmp` + rename - a
+# per-writer scratch name, a bounded retry on a transient WinError 5, and no
+# scratch file left behind.
+from core.polled_json import atomic_write_bytes as _atomic_write_bytes
 from lib.game_data.sources import DDRAGON_VERSIONS_URL, SOURCES, Source, SourceParseError, parse_versions
 from lib.http.client import HttpClient
 
@@ -52,13 +56,6 @@ def live_client() -> HttpClient:
 def _cache_path(cache_dir: Path, version: str, source_id: str, url: str) -> Path:
     key = hashlib.sha256(url.encode("utf-8")).hexdigest()[:16]
     return cache_dir / version / source_id / f"{key}.body"
-
-
-def _atomic_write_bytes(path: Path, data: bytes) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(path.name + ".tmp")
-    tmp.write_bytes(data)
-    tmp.replace(path)
 
 
 def _get(client: Any, url: str) -> bytes:
