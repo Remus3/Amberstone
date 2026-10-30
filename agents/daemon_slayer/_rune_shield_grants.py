@@ -16,8 +16,9 @@ Grasp (8437) and Overgrowth (8451), and it credits HEALS, never shields.
 ``_rune_hsp_amp`` credits only Revitalize (8453), and it returns an
 AMPLIFICATION FRACTION rather than a shield magnitude - it is a consumer of
 whatever this module produces, not a peer source of it. ``_rune_resist_grants``
-explicitly READ AND REJECTED Guardian at ``_rune_resist_grants.py:52-57``
-("8465 Guardian ally shield") because a shield is not a resist. This module is
+explicitly READ AND REJECTED Guardian in the ``_rune_resist_grants`` module
+docstring (its "Only three ids are SEEDED" allowlist paragraph: "8465 Guardian
+ally shield") because a shield is not a resist. This module is
 the lane that rejection pointed at. Guardian's SELF-shield was therefore worth
 exactly ZERO EHP.
 
@@ -98,8 +99,9 @@ level 1 and level 18 - the identical semantics as
 ``_rune_resist_grants.aftershock_resist_cap`` (its "80-150 (based on level)"
 walk), so the two rune lanes read "based on level" the same way. BONUS health is
 ``max(0.0, total_hp - base_hp)``, clamped exactly like the percent-of-BONUS
-resist term at ``_rune_resist_grants.py:273-275``, so a below-base build yields
-the flat term alone and never a negative contribution.
+resist term of ``_rune_resist_grants.rune_resist_grants`` (its
+``pct_base == "bonus"`` branch), so a below-base build yields the flat term alone
+and never a negative contribution.
 
 AMORTIZATION IS LOAD-BEARING HERE, and it is the ONLY assumption in the module -
 every MAGNITUDE above is exact DDragon. The raw duty cycle is tiny: a 1.5s shield
@@ -354,10 +356,10 @@ def _entry_shield(
     """Exact pre-amortization shield magnitude for one entry.
 
     The level-scaled flat term PLUS ``bonus_hp_pct`` of ``max(0.0, total - base)``
-    - the percent-of-BONUS clamp of ``_rune_resist_grants.py:273-275``, so a
-    below-base build contributes the flat term alone rather than a negative. The
-    result is floored at 0.0 so a degenerate pool cannot produce a negative
-    numerator term.
+    - the percent-of-BONUS clamp of ``_rune_resist_grants.rune_resist_grants``,
+    so a below-base build contributes the flat term alone rather than a
+    negative. The result is floored at 0.0 so a degenerate pool cannot produce a
+    negative numerator term.
     """
     total = _lerp_by_level(entry.shield_at_level_1, entry.shield_at_level_18, level)
     if entry.bonus_hp_pct:

@@ -4,23 +4,24 @@ Pins the registry that closes the RUNE-side hole in the flat per-instance
 damage-block lane. The champion sibling
 ``_passive_flat_mitigation_overrides`` is keyed by ``champion_id``, so a RUNE
 can never match it - the same structural gap ``_rune_resist_grants`` filled for
-the resist axis. ``_rune_resist_grants.py:55-57`` names 8473 explicitly as
-rejected from THAT registry because it is "a flat per-instance damage BLOCK",
-which is this lane.
+the resist axis. The ``_rune_resist_grants`` module docstring (its "Only three
+ids are SEEDED" allowlist paragraph) names 8473 explicitly as rejected from THAT
+registry because it is "a flat per-instance damage BLOCK", which is this lane.
 
 WHAT MAKES 8473 SPECIAL, and what this file exists to guard: the champion
-sibling's single largest assumption is ``_ASSUMED_FLAT_DR_INSTANCES = 6.0``
-(``_passive_flat_mitigation_overrides.py:92``) - an operator-tunable proxy for a
+sibling's single largest assumption is ``_ASSUMED_FLAT_DR_INSTANCES = 6.0`` in
+``_passive_flat_mitigation_overrides`` - an operator-tunable proxy for a
 per-instance damage feed the engine does not have. Bone Plating STATES its
 instance count in the rune text ("the next 3 spells or attacks"), so this
 registry REPLACES that assumption with an exact number rather than adding a new
 one. GUARD 3 pins that the 3.0 is the stated count and is NOT the assumed 6.0.
 
 THE ROUNDING TRAP (GUARD 2b): ``_lerp_per_level`` rounds to 6 decimal places
-(``_passive_damage_overrides.py:215-220``), so the level-13 element is
-51.176471 while the raw formula 30 + 30*12/17 gives 51.17647058823529. Every
-magnitude assertion here pins against the ENGINE PRIMITIVE or against the
-ROUNDED literal - never against a hand-recomputed float.
+(the ``round(..., 6)`` in ``_passive_damage_overrides._lerp_per_level``), so the
+level-13 element is 51.176471 while the raw formula 30 + 30*12/17 gives
+51.17647058823529. Every magnitude assertion here pins against the ENGINE
+PRIMITIVE or against the ROUNDED literal - never against a hand-recomputed
+float.
 
 Ground truth, quoted VERBATIM from
 ``data/meta_build/ddragon/16.14.1/runesReforged.json`` (id 8473 longDesc):

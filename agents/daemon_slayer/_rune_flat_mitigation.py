@@ -5,12 +5,13 @@ That registry is keyed by ``champion_id`` and its shape covers exactly this
 mechanic - a FLAT NUMBER removed from each incoming damage instance - but a RUNE
 can never match a champion key, so Bone Plating earned ZERO EHP. This is the same
 structural gap the R132 ``_rune_resist_grants`` registry filled for the resist
-axis, and ``_rune_resist_grants.py:55-57`` names 8473 explicitly as REJECTED from
-that registry because it is "a flat per-instance damage BLOCK" rather than a
-resist add. That rejection note points at the PERCENT registry
-(``_passive_mitigation_overrides``); the correct lane is the FLAT sibling
-``_passive_flat_mitigation_overrides``, which is what this module extends. The
-rejection itself is right - only the lane name in that comment is imprecise.
+axis, and the ``_rune_resist_grants`` module docstring (its "Only three ids are
+SEEDED" allowlist paragraph) names 8473 explicitly as REJECTED from that registry
+because it is "a flat per-instance damage BLOCK" rather than a resist add. That
+rejection note points at the PERCENT registry (``_passive_mitigation_overrides``);
+the correct lane is the FLAT sibling ``_passive_flat_mitigation_overrides``, which
+is what this module extends. The rejection itself is right - only the lane name in
+that comment is imprecise.
 
 Ground truth, quoted VERBATIM from ``data/meta_build/ddragon/16.14.1/
 runesReforged.json`` (id 8473, longDesc; the shortDesc is byte-identical and
@@ -22,7 +23,7 @@ runesReforged.json`` (id 8473, longDesc; the shortDesc is byte-identical and
 
 WHY THIS RUNE IS DIFFERENT FROM EVERY CHAMPION SEED - it REPLACES an assumption
 instead of adding one. The champion sibling's largest single assumption is
-``_ASSUMED_FLAT_DR_INSTANCES = 6.0`` (``_passive_flat_mitigation_overrides.py:92``),
+``_ASSUMED_FLAT_DR_INSTANCES = 6.0`` in ``_passive_flat_mitigation_overrides``,
 an operator-tunable proxy for the per-instance damage feed the engine does not
 have; every champion seed multiplies its flat block by that guess. Bone Plating
 STATES its instance count in the rune text - "the next 3 spells or attacks" - so
@@ -41,7 +42,8 @@ sibling's Leona W seed). The reasoning, in both directions:
     damage taken from an enemy champion, which is the opening instant of the very
     engagement the EHP frame models. Pricing it at its raw duty cycle would credit
     almost nothing for a rune that is, in practice, up at the start of a fight.
-    This is the identical argument ``_rune_resist_grants.py:86-97`` makes for
+    This is the identical argument the
+    ``_rune_resist_grants._RUNE_ACTIVE_RESIST_PROB`` comment makes for
     Aftershock and Unflinching.
   * BELOW the 0.3 short-active midpoint, for three compounding reasons that the
     champion sibling's Leona W seed does NOT carry:
@@ -57,7 +59,7 @@ sibling's Leona W seed). The reasoning, in both directions:
     The instance count stays EXACT at 3.0 (never impute, never shade a stated
     number); the realization shortfall belongs in this probability, which is what
     the field is for in the sibling ("amortizes a cooldown-gated active by its
-    expected uptime midpoint", ``_passive_flat_mitigation_overrides.py:119-120``).
+    expected uptime midpoint", the ``PassiveFlatMitigationEntry`` docstring).
 
 0.25 is therefore a documented conservative midpoint, not a guess, and it is
 pinned by ``tests/test_rune_flat_mitigation_rm101.py`` with a strict
@@ -75,17 +77,18 @@ defaulted to the sibling's 0.5 - an unstated number stays unstated.
 DEFAULT BEHAVIOR IS BYTE-IDENTICAL: ``apply_rune_flat_mitigation`` defaults False
 ON THIS FUNCTION, so an un-opted caller - including one that supplies a full rune
 page containing 8473 - receives ``(0.0, 0.0, 0.0)`` and every EHP numerator is
-unchanged. The flag lives here as well as at the eventual ``compute_ehp`` seam
-deliberately, mirroring ``_rune_health_grants.rune_health_grants`` (its own
-``apply_rune_health_grants`` gate): a caller that forgets the outer check still
-gets inert output rather than silently live numbers.
+unchanged. The flag lives here as well as at the ``compute_ehp``
+``apply_rune_flat_mitigation`` seam deliberately, mirroring
+``_rune_health_grants.rune_health_grants`` (its own ``apply_rune_health_grants``
+gate): a caller that forgets the outer check still gets inert output rather than
+silently live numbers.
 
-The prevented HP folds into the EHP NUMERATOR next to the champion lane's
-``flat_mit_*`` terms (``ehp.py:1659-1661``), NOT the denominator - a flat
+The prevented HP folds into the EHP NUMERATOR, added into the champion lane's
+``flat_mit_*`` locals of ``compute_ehp``, NOT the denominator: a flat
 per-instance block prevents a fixed quantity of post-mitigation damage over a
 fight, which behaves like bonus effective HP. The pre-vs-post-mitigation
-simplification documented in the champion sibling's module docstring (lines 28-35)
-applies here unchanged.
+simplification documented in the champion sibling's module docstring (its
+PRE-VS-POST-MITIGATION SIMPLIFICATION paragraph) applies here unchanged.
 
 Keyed by string rune_id to match the engine's item-id convention (strings
 throughout); integer ids are coerced on lookup.
@@ -99,8 +102,9 @@ from typing import Iterable
 from ._passive_damage_overrides import _lerp_per_level
 
 # Damage-type axis tokens. Identical strings to the champion sibling's
-# (``_passive_flat_mitigation_overrides.py:78-81``) so the two lanes fold into the
-# same three EHP numerators through a shared vocabulary; a test pins the parity.
+# (``_passive_flat_mitigation_overrides.PHYS`` / ``MAG`` / ``TRUE`` / ``ANY``) so
+# the two lanes fold into the same three EHP numerators through a shared
+# vocabulary; a test pins the parity.
 PHYS = "physical"
 MAG = "magical"
 TRUE = "true"
@@ -110,10 +114,11 @@ _VALID_TYPES = frozenset((PHYS, MAG, TRUE, ANY))
 # Bone Plating's per-level magnitude: "30-60 (based on level)". Built by the
 # ENGINE PRIMITIVE rather than transcribed, so the authored values can never drift
 # from the convention every other per-level registry uses. ``_lerp_per_level``
-# ROUNDS TO 6 PLACES (``_passive_damage_overrides.py:215-220``), so element 12
-# (level 13) is 51.176471, NOT the raw 30 + 30*12/17 = 51.17647058823529. Any
-# assertion against this magnitude must go through the primitive or the rounded
-# literal; a hand-recomputed float will not compare equal.
+# ROUNDS TO 6 PLACES (the ``round(..., 6)`` in
+# ``_passive_damage_overrides._lerp_per_level``), so element 12 (level 13) is
+# 51.176471, NOT the raw 30 + 30*12/17 = 51.17647058823529. Any assertion against
+# this magnitude must go through the primitive or the rounded literal; a
+# hand-recomputed float will not compare equal.
 _BONE_PLATING_FLAT_BY_LEVEL: tuple[float, ...] = _lerp_per_level(30.0, 60.0)
 
 # EXACT, from the rune text ("the next 3 spells or attacks"). NOT an assumption -
@@ -219,8 +224,9 @@ def _value_at_level(
     ``level - 1``, CLAMPED to the tuple bounds so an out-of-range caller yields
     the nearest endpoint rather than raising or extrapolating - the
     ``rank_at_level('P', level)`` convention ``_lerp_per_level`` is built for
-    (``_passive_damage_overrides.py:202-220``) and the same clamping semantics as
-    ``_rune_health_grants.stacks_at_level``. A non-level-scaled term is its float.
+    (the ``_passive_damage_overrides._lerp_per_level`` docstring) and the same
+    clamping semantics as ``_rune_health_grants.stacks_at_level``. A
+    non-level-scaled term is its float.
     """
     if level_scaled and isinstance(flat, (tuple, list)):
         if not flat:
@@ -243,11 +249,12 @@ def rune_flat_mitigation_hp(
 
     The RUNE twin of ``_passive_flat_mitigation_overrides.flat_mitigation_hp``,
     with the identical return contract: each value is an EHP NUMERATOR term
-    measured in prevented post-mitigation HP, which the caller ADDS to the
-    matching per-type numerator next to the champion lane's ``flat_mit_*``
-    (``ehp.py:1884-1886``). More prevented damage = a larger numerator = larger
-    EHP = the correct "less damage taken -> survives more" direction. Nothing here
-    touches the denominator - this registry grants no resists.
+    measured in prevented post-mitigation HP, which ``compute_ehp`` ADDS into
+    the champion lane's ``flat_mit_*`` locals, so it lands in the matching
+    per-type numerator (the ``physical_ehp`` / ``magical_ehp`` / ``true_ehp``
+    numerators of ``compute_ehp``). More prevented damage = a larger numerator =
+    larger EHP = the correct "less damage taken -> survives more" direction.
+    Nothing here touches the denominator - this registry grants no resists.
 
     For each registered rune id and each ``(flat, type)`` term the prevented HP is
     ``entry.instances * flat * entry.conditional_probability``, added to the
@@ -257,9 +264,10 @@ def rune_flat_mitigation_hp(
     ``apply_rune_flat_mitigation`` is the DEFAULT-OFF seam gate: False (the
     default) returns ``(0.0, 0.0, 0.0)`` for ANY rune page, so an un-opted caller
     - including one that supplies a page containing 8473 - is byte-identical. The
-    flag lives on this function as well as at the eventual ``compute_ehp`` seam
-    deliberately, mirroring ``_rune_health_grants.rune_health_grants``: a caller
-    that forgets the outer check still gets inert output.
+    flag lives on this function as well as at the ``compute_ehp``
+    ``apply_rune_flat_mitigation`` seam deliberately, mirroring
+    ``_rune_health_grants.rune_health_grants``: a caller that forgets the outer
+    check still gets inert output.
 
     A ``family`` tag is credited at most once, so a duplicated or aliased id
     cannot double-credit; different families sum. Runes outside the seeded
