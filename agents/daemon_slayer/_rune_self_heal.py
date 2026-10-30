@@ -49,10 +49,10 @@ the longDesc - so this module carries no coefficient the tooltip does not state.
 The absence of a ranged factor is deliberate and asserted, mirroring how
 ``_rune_health_grants`` handles Overgrowth's missing ``<rules>`` clause.
 
-THE MISSING-HEALTH CONVENTION IS REUSED, NOT RE-INVENTED. ``ehp.py:356`` already
-defines ``_MISSING_HP_SHARE_FOR_HEALS = 0.5`` - "the Phase 6.5 mid-fight HP-share
-assumption for items whose heal piece scales with missing HP" - and ``ehp.py``
-resolves the pool ONCE at ``ehp.py:1501`` (``missing_hp = hp *
+THE MISSING-HEALTH CONVENTION IS REUSED, NOT RE-INVENTED.
+``ehp._MISSING_HP_SHARE_FOR_HEALS = 0.5`` already defines "the Phase 6.5 mid-fight
+HP-share assumption for items whose heal piece scales with missing HP", and
+``ehp`` resolves the pool ONCE inside ``ehp.compute_ehp`` (``missing_hp = hp *
 _MISSING_HP_SHARE_FOR_HEALS``) before handing it to ``_collect_heals``. Second
 Wind asks EXACTLY the question that constant answers, so it adopts that value
 rather than introducing a second, competing mid-fight share. The R136 finding was
@@ -66,7 +66,7 @@ of it would create an import cycle. The restatement is held safe by
 ``ConventionPinTests`` in ``tests/test_rune_self_heal_r142.py``, which imports
 BOTH sides - it lives outside the production import graph, so it can hold the
 pair at once and goes RED the moment either side is edited alone. Same treatment
-for ``_FIGHT_WINDOW_S = 6.0`` (``ehp.py:342``).
+for ``_FIGHT_WINDOW_S = 6.0`` (``ehp._FIGHT_WINDOW_S``).
 
 AMORTIZATION - WHAT IS EXACT AND WHAT IS AN ASSUMPTION. The MAGNITUDE (4% of
 missing health) is EXACT DDragon and is never scaled by a firing probability.
@@ -83,7 +83,8 @@ sibling registries' ``_RUNE_ACTIVE_RESIST_PROB`` firing midpoint:
     assumption in this module and it is labelled as such.
   * THE DURATION DOES NEED A DISCOUNT. The heal is spread "over 10s" while the
     engine's modeled engagement is ``_FIGHT_WINDOW_S = 6.0`` seconds
-    (``ehp.py:342``, the same window the lifesteal heal pool accumulates over).
+    (``ehp._FIGHT_WINDOW_S``, the same window the lifesteal heal pool
+    accumulates over).
     Only the fraction of the regeneration that lands INSIDE that window is
     survivability the scorer may credit; the tail heals after the fight is
     decided. ``_SECOND_WIND_WINDOW_UPTIME`` is therefore ``min(1.0,
@@ -100,10 +101,10 @@ replaces it without re-authoring any math.
 
 RETURNS A BARE FLOAT and takes NO position on how the caller folds it. The heal
 is a RAW pre-amplification heal like Grasp's: a caller folding it into
-``heal_total`` should add it BEFORE ``heal_amp_mult`` (``ehp.py:791``) so
-Revitalize and other heal-power sources apply to it as they do in game. That
-seam - and the DEFAULT-OFF flag gating it - belongs to the orchestrator. There is
-deliberately NO flag inside this module.
+``heal_total`` should add it BEFORE ``heal_amp_mult`` (the ``heal_total``
+composition in ``ehp.compute_ehp``) so Revitalize and other heal-power sources
+apply to it as they do in game. That seam - and the DEFAULT-OFF flag gating it -
+belongs to the orchestrator. There is deliberately NO flag inside this module.
 
 ONE id is SEEDED. This registry is a deliberate ALLOWLIST, not a tree-wide
 sweep. Every other Resolve rune was read and ROUTED, not overlooked:
@@ -163,13 +164,13 @@ SECOND_WIND_HEAL_DURATION_S: float = 10.0
 # wires this module into ehp.py; ConventionPinTests holds the pair and goes RED
 # on any drift.
 
-# ehp.py:356 - the Phase 6.5 mid-fight HP-share assumption for heals that scale
-# with missing HP. Second Wind asks exactly this question, so it adopts the
-# EXISTING convention instead of introducing a second one.
+# ehp._MISSING_HP_SHARE_FOR_HEALS - the Phase 6.5 mid-fight HP-share assumption
+# for heals that scale with missing HP. Second Wind asks exactly this question,
+# so it adopts the EXISTING convention instead of introducing a second one.
 _MISSING_HP_SHARE_FOR_HEALS: float = 0.5
 
-# ehp.py:342 - the modeled sustained-engagement window in seconds, the same one
-# the lifesteal heal pool accumulates over.
+# ehp._FIGHT_WINDOW_S - the modeled sustained-engagement window in seconds, the
+# same one the lifesteal heal pool accumulates over.
 _FIGHT_WINDOW_S: float = 6.0
 
 # THE ONE ASSUMPTION IN THIS MODULE, and the single operator-tunable knob.
@@ -284,7 +285,7 @@ def second_wind_heal(
 
     ``missing_hp_pct * (max_health * missing_hp_share) * window_uptime``.
     ``missing_hp_share`` defaults to the engine's existing
-    ``_MISSING_HP_SHARE_FOR_HEALS`` (``ehp.py:356``) and is clamped into
+    ``ehp._MISSING_HP_SHARE_FOR_HEALS`` and is clamped into
     ``[0.0, 1.0]``. Exposed separately from the page-level entry point so the
     exact DDragon coefficient and the window amortization are testable without
     constructing a rune page.
@@ -309,9 +310,10 @@ def sum_rune_self_heal(
 
     Returns a BARE FLOAT - a RAW, pre-amplification EHP NUMERATOR contribution.
     This module takes no position on how the caller folds it; a caller adding it
-    to ``heal_total`` should do so BEFORE ``heal_amp_mult`` (``ehp.py:791``) so
-    heal-power sources apply to it as they do in game. The DEFAULT-OFF gating
-    lives in the orchestrator's seam, deliberately not here.
+    to ``heal_total`` should do so BEFORE ``heal_amp_mult`` (the ``heal_total``
+    composition in ``ehp.compute_ehp``) so heal-power sources apply to it as
+    they do in game. The DEFAULT-OFF gating lives in the orchestrator's seam,
+    deliberately not here.
 
     ``max_health`` is the champion's RESOLVED build max health (base per-level +
     items) - the same pool the caller's ``hp`` numerator term carries, and NOT a
@@ -323,9 +325,9 @@ def sum_rune_self_heal(
     numerator).
 
     ``missing_hp_share`` defaults to ``_MISSING_HP_SHARE_FOR_HEALS``, the
-    convention ``ehp.py`` already resolves once at ``ehp.py:1501``; a caller that
-    has already computed ``missing_hp / hp`` should pass it rather than let the
-    default re-derive it.
+    convention ``ehp.compute_ehp`` already resolves once as ``missing_hp``; a
+    caller that has already computed ``missing_hp / hp`` should pass it rather
+    than let the default re-derive it.
 
     A ``family`` tag is credited at most once, so a duplicated or aliased id
     cannot double-credit; different families sum. Runes outside the one-id
