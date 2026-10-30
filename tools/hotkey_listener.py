@@ -42,13 +42,10 @@ alt-tabbing out of League. The Edge dashboard updates from its own poll loop
 within a second of the POST landing, so the banner clears whether the player
 glances over or not.
 
-Deploy:
-  curl.exe -sk -o C:\\RC-Agent\\hotkey_listener.py \\
-      https://127.0.0.1:8888/agent/hotkey_listener.py
-  Start-Process -WindowStyle Hidden py -ArgumentList "C:\\RC-Agent\\hotkey_listener.py"
-
-Or - preferred - let the logon boot script start it at logon (it's now
-in the canonical agent list).
+Deploy: the RC-HotkeyListener ONLOGON scheduled task runs THIS in-repo file
+(docs/OPERATIONS.md, scheduled tasks). Run it from the checkout, never as a
+copy: it imports core.* at module top level, so a copy outside the repo dies
+at import (the retired copy-out boot script did exactly that).
 
 Stops on Ctrl+C (when run interactively) or when the process is killed
 via taskkill /F. No state to flush - pending decisions live on Legion.

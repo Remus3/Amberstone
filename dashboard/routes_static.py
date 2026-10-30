@@ -130,7 +130,6 @@ _AGENT_ALLOWED = {
     "screen_agent.py", "liveclient_relay.py",
     "lcu_agent.py",
     "hotkey_listener.py",
-    "legion_agent_boot.ps1",
     "rc_rootCA.pem",
     "diagnose.md",
     "caveman.md",
