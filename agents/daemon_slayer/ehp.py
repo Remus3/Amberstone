@@ -175,11 +175,11 @@ def _clamp_pct(value: float) -> float:
     """Clamp a percent-fraction input to ``[0.0, 0.99]``.
 
     T1-F3 (2026-06-09): the enemy-pen pipeline caps every percent term
-    (shred + general %pen) at 0.99 per the lift-doc spec
-    (docs/COMPETITOR_LIFT_2026-06-08.md line 60) so a single source can
-    never fully zero a resist (mirrors League's 99% shred/pen practical
-    ceiling). Negative inputs floor at 0.0 (a percent term cannot heal a
-    resist back upward).
+    (shred + general %pen) at 0.99 per the lift-doc spec (the T1-F3
+    WHAT line of docs/_archive/COMPETITOR_LIFT_2026-06-08.md) so a single
+    source can never fully zero a resist (mirrors League's 99% shred/pen
+    practical ceiling). Negative inputs floor at 0.0 (a percent term
+    cannot heal a resist back upward).
     """
     if value <= 0.0:
         return 0.0
@@ -197,7 +197,7 @@ def _effective_resist_after_pen(
 ) -> float:
     """Apply the enemy-side pen pipeline to one of the tank's resists.
 
-    T1-F3 (BACKLOG MED, docs/COMPETITOR_LIFT_2026-06-08.md lines 59-66) -
+    T1-F3 (BACKLOG MED, docs/_archive/COMPETITOR_LIFT_2026-06-08.md T1-F3) -
     the OPT-IN enemy-penetration seam for the EHP scorer. Mirrors the
     DPS-side ``effects.effective_target_armor`` / ``effective_target_mr``
     convention so the two scorers stay consistent, but takes the already-
@@ -2289,7 +2289,7 @@ def compute_ehp(
     # Default 0.0 -> byte-identical. Negative clamped (never lowers EHP).
     ext_flat_hp = max(0.0, float(external_flat_hp))
 
-    # T1-F3 (2026-06-09, docs/COMPETITOR_LIFT_2026-06-08.md lines 59-66):
+    # T1-F3 (2026-06-09, docs/_archive/COMPETITOR_LIFT_2026-06-08.md T1-F3):
     # OPT-IN enemy-penetration seam. The five enemy_* kwargs default to 0.0
     # -> ``_effective_resist_after_pen`` is an identity no-op -> eff_armor /
     # eff_mr stay exactly the resist sum above -> BYTE-IDENTICAL to the
@@ -2812,7 +2812,7 @@ def compute_ehp(
 # Source: League of Legends Wiki "Gold efficiency" reference values
 # (https://wiki.leagueoflegends.com/en-us/Gold_efficiency), the same
 # convention the lift-doc target (seb16120 stat advisor) uses for its
-# "EHP per gold" verdict (docs/COMPETITOR_LIFT_2026-06-08.md lines 68-75):
+# "EHP per gold" verdict (docs/_archive/COMPETITOR_LIFT_2026-06-08.md T1-F4):
 # Cloth Armor 300g / 15 armor = 20g per armor; Null-Magic Mantle 450g /
 # 25 MR = 18g per MR; Ruby Crystal 400g / 150 HP = 2.6667g per HP. These
 # are the canonical "raw stat" gold values RC uses ONLY for the per-unit
@@ -2840,7 +2840,7 @@ def ehp_gold_efficiency(
 ) -> dict:
     """Marginal EHP gained per 1 gold for ARMOR vs MR vs HP.
 
-    T1-F4 (BACKLOG LOW, docs/COMPETITOR_LIFT_2026-06-08.md lines 68-75) -
+    T1-F4 (BACKLOG LOW, docs/_archive/COMPETITOR_LIFT_2026-06-08.md T1-F4) -
     the per-unit-stat gold-efficiency verdict built on the shipped T1-F3
     enemy-pen seam. Given the champion's CURRENT resolved armor / MR / HP
     context (the same build + enemy-mix structures ``compute_ehp`` already

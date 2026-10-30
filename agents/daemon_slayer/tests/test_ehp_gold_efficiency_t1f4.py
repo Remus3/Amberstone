@@ -1,4 +1,4 @@
-"""T1-F4 (BACKLOG LOW, docs/COMPETITOR_LIFT_2026-06-08.md lines 68-75) -
+"""T1-F4 (BACKLOG LOW, docs/_archive/COMPETITOR_LIFT_2026-06-08.md T1-F4) -
 per-stat EHP gold-efficiency verdict built on the shipped T1-F3 enemy-pen
 seam.
 

@@ -674,8 +674,9 @@ def _build_per_spell_cc_durations() -> dict[str, dict[str, tuple[float, ...]]]:
     #   bomb stack conditional stun).
     # * Senna W Last Embrace: ALREADY in wave 4 (item 145's REJECT-list
     #   note "Senna W (unconditional)" matched the existing wave-4 entry;
-    #   verified via grep on ability_dps.py - line 1182 has Senna W
-    #   root 1.25/1.5/1.75/2.0/2.25 seeded item 138 wave 4).
+    #   verified in this module: the ENGINE 1.34.0 wave 4 block of
+    #   _build_per_spell_cc_durations seeds Senna W root
+    #   1.25/1.5/1.75/2.0/2.25, item 138 wave 4).
     # * Tristana W Rocket Jump landing: REJECT per item 140 wave 6 list
     #   (the landing applies a small slow not a discrete knockback at
     #   16.10.1; only the Tristana R buster-shot knockback is canonical

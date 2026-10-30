@@ -1,4 +1,4 @@
-"""T1-F3 (BACKLOG MED, docs/COMPETITOR_LIFT_2026-06-08.md lines 59-66) -
+"""T1-F3 (BACKLOG MED, docs/_archive/COMPETITOR_LIFT_2026-06-08.md T1-F3) -
 opt-in enemy-penetration effective-resist seam on the EHP scorer.
 
 Covers the new ``_effective_resist_after_pen`` helper (pure math, no
