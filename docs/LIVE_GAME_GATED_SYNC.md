@@ -2947,6 +2947,81 @@ Ids `LX-nn` map to the RM rows in `BACKLOG.md` "External-lift intake".
   hazard G6-03 never exercised stays out of scope while the resolution is locked.
 - **LX-11** (RM-612, replay-scrubber minimap) Visual check on the real dashboard: map art loads, badges
   and ally / enemy rings render, "sampled every 60 s" label visible, a death hides the victim.
+  **READY (s144 lane gated c35, 2026-10-30; PREP only, nothing ticked).** PRECONDITIONS measured
+  2026-10-30 at idle (read-only): (1) This row needs NO game in progress. It reads a STORED match:
+  `dev.js` draws from `/api/replay/match/<id>` (`core/replay_history.match_detail`, timeline frames +
+  kill events in `rewind_history.db`). `/api/replay/matches?limit=30` listed 30 stored matches: 20
+  queue 420 and 3 queue 400, each with a position on every frame entry (170 to 410 per match) and a
+  kill position on every kill, plus 7 Arena (1750) matches, for which the map is HIDDEN by design
+  (`NO_MAP_QUEUES` {2400, 1700, 1750} in `web/js/panels/replay_minimap.js`). No ARAM (450) match is in
+  that list, so the ARAM art branch (`map12.png`) is not checkable on today's data. Filed as a
+  "Not actually live-gated" CANDIDATE (provisional RM-1118, lane report c35); this lane neither
+  moved nor ticked the row. (2) The map art serves from the dashboard origin:
+  `/data/ddragon/16.21.1/img/map/map11.png` 200 (70985 B; `items_index.json` version 16.21.1),
+  `map12.png` 200, fallback `/data/icons/sr-minimap.svg` 200. Champion icons come from
+  `/icons/champions/`. All are same-origin, so the canvas is not tainted and `toDataURL` works.
+  PROBE (from the main checkout, at any time; no game needed):
+  (a) `mkdir -p ops/runtime/lx11`, then `curl -sk "https://127.0.0.1:8888/api/replay/matches?limit=30"`
+  and pick an SR entry (`queue_id` 420 or 400). Save it with `curl -sk
+  https://127.0.0.1:8888/api/replay/match/<id> > ops/runtime/lx11/match_<n>.json`. Never paste the id
+  into a tracked file (RM-906).
+  (b) `python tools/gated_lx11_minimap_check.py plan --match-json ops/runtime/lx11/match_<n>.json
+  --json > ops/runtime/lx11/plan_<n>.json` (drop `--json` for the human form). Node runs the SHIPPED
+  `replay_minimap.js` (`buildModel` / `stateAt` / `worldToCanvas`) over every stored frame. It picks
+  the first slider index with a dead champion, an ally badge and an enemy badge that overlap nothing
+  (`--index` overrides), and names that index, the frame clock (`t = X.Xmin`), the map clock (`Map at
+  M:SS`), and the canvas pixel centre of each badge (ring role ally / enemy) and each death cross.
+  The plan carries only a truncated SHA-256 of the match id.
+  (c) In the dashboard (the operator's Chrome at `https://127.0.0.1:8888/`, or headless Chromium on
+  that origin): View -> Replay, click that match, and move the slider to the planned index (the
+  frame clock reads the planned text). Evaluate the expression `python
+  tools/gated_lx11_minimap_check.py snippet` prints. In DevTools: `copy(JSON.stringify((<snippet>)()))`,
+  pasted into `ops/runtime/lx11/evidence_<n>.json`. In Playwright: `page.evaluate(<snippet>)`. The
+  bundle holds the DOM text, the resolved `--signal-info` / `--signal-bad` / `--text` tokens and the
+  480x480 canvas as a PNG data URL.
+  (d) `python tools/gated_lx11_minimap_check.py grade --plan ops/runtime/lx11/plan_<n>.json --evidence
+  ops/runtime/lx11/evidence_<n>.json --json > ops/runtime/lx11/grade_<n>.json`. The tool is
+  read-only, makes no network call and never prints a match id. Exit codes: 0 PASS, 1 FAIL,
+  3 INCONCLUSIVE, 2 input error.
+  PREDICATE (stated before any capture): PASS iff `verdict == PASS`. That needs all of:
+  - provenance: `match_tie` and `real_origin` (https :8888) true, `ui_mock` not "1";
+  - DOM: the figure is shown; the note holds "sampled every 60 s" and is visible; both clocks equal
+    the plan;
+  - capture: the slider is at the planned index (`slider_ok`);
+  - art: `ART_DRAWN` (>= 0.9 of pixels opaque and >= 16 distinct colours on a 12 px grid; an opaque
+    flat fill reads `ART_FLAT`);
+  - rings: every unobstructed badge is `RING_OK` in its role colour (ally = the tracked champion's
+    team, `--signal-info`; enemy `--signal-bad`), with at least one ally and one enemy;
+  - death: every unobstructed dead champion is `HIDDEN` (ring share <= 0.2 at its death spot) with
+    `CROSS_SEEN`, at least one of them.
+  FAIL is a definite contradiction on PROVEN evidence: a ring missing, a badge on a dead champion,
+  no art, a hidden Replay view or figure, a canvas of another size, or a wrong note. A provenance miss (not the :8888 origin, `ui_mock` on,
+  `match_tie` false) reads INCONCLUSIVE whatever the canvas shows, and the render findings are
+  still listed. So do DOM fields that are not real booleans or strings, and a ring whose samples
+  fall mostly off the canvas. A wrong-shaped plan or evidence file exits 2. INCONCLUSIVE is never
+  a pass. A wrong clock or slider reads INCONCLUSIVE
+  (a capture taken at the wrong index, or before the next animation frame redrew the map): re-capture.
+  The art loads asynchronously and the map redraws on its `onload`, so capture about 2 s after
+  the match opens. An `ART_MISSING` counts as a defect only if a second capture also reads it.
+  Anything else inconclusive: re-run at another `--index`. KNOWN LIMIT: "hidden" is graded only at
+  the death spot. The grader does not count badges, so a stray badge elsewhere needs the human look.
+  The positions themselves are not graded either: the plan runs the same shipped model the page
+  draws with.
+  CALIBRATION: the pixel thresholds were set on PIL-drawn canvases. They have NOT been run on a real
+  Chromium canvas, since that run is the drain itself. If the first real bundle reads `RING_UNCLEAR`
+  or `CROSS_UNCLEAR`, that is a threshold question: keep the bundle and fix the tool. It is neither a
+  pass nor a failure of the row. A human look at the same frame goes with the grade either way.
+  EVIDENCE: the plan, evidence and grade JSON (paths + mtimes), the bundle's `captured_at`, the queue
+  and slider index, and the code RC ran: `ops/runtime/health.json` `pid` / `started_at` plus the
+  main checkout HEAD.
+  SUBSTITUTION CHECK: none of these closes the row:
+  - `tests/test_gated_lx11_minimap_check.py` reaches PASS from PIL canvases and a hand-built match;
+  - `web/js/panels/replay_minimap.test.mjs` and `tests/test_replay_minimap_crosscheck.py` prove only
+    that the model COMPUTES;
+  - the ui_mock fixture (`/data/ui_mock/replay.json`, body `data-ui-mock="1"`) runs the same drawing
+    code on fixture data.
+  Only a bundle read on the :8888 origin with `ui_mock` off, from a stored REAL match, with
+  `match_tie` true, can close it.
 - **LX-09** (RM-638, mark hotkey; restart the RC-HotkeyListener task first so it loads the new slot)
   In a real game press Ctrl+Shift+K: a row lands in `ops/runtime/moment_marks.jsonl` with a real game id;
   a press during the loading screen is dropped and logged; after the game the marks attach to that
