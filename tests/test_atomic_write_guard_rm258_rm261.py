@@ -36,9 +36,10 @@ the row's own `tools/*extract*` allowlist, tools/tests/ and the named
 `_TOOLS_UNCLASSIFIED` baseline, which only shrinks. The two separate-process
 agents under tools/ that RM-258 names are long-running ONLOGON tasks, not
 generators, and they and the tools/ watchers converted since stay pinned in
-`_RUNTIME_TOOLS`. lib/ is in scope except the named `_LIB_UNCLASSIFIED`
-baseline, which only shrinks: it is not a generator tree - the in-process app
-and the LCU post-game collector import lib/rewind_live_writer.py at runtime.
+`_RUNTIME_TOOLS`. lib/ is wholly in scope: it is not a generator tree - the
+in-process app and the LCU post-game collector import
+lib/rewind_live_writer.py at runtime - and its s144 baseline of library
+writers shrank to empty and was removed.
 """
 from __future__ import annotations
 
@@ -163,19 +164,15 @@ _TOOLS_UNCLASSIFIED = frozenset({
 # is IN scope now; measured 2026-10-30, 6 lib/ modules offended (6 renames + 5
 # scratch names) and the runtime one, lib/rewind_live_writer.py, was converted
 # onto core.polled_json in the same slice. The entries below are the library
-# writers behind the fetch / build pipelines and the two site scrapers: each
-# leaves by converting onto core.polled_json or by a named one-shot proof, and
-# an entry that stops offending fails test_lib_baseline_is_exact.
-# lib/scrapers/_base.py left in s144 (converted onto core.polled_json;
-# tests/test_scrapers_atomic_write_rm258.py), then lib/icons/downloader.py
-# and lib/game_data/fetch.py (both byte caches onto
-# core.polled_json.atomic_write_bytes;
-# tests/test_lib_byte_writers_atomic_write_rm258.py), then
-# lib/game_data/build.py (its `_dump` onto core.polled_json.atomic_write_bytes;
-# tests/test_lib_game_data_build_writer_rm258.py).
-_LIB_UNCLASSIFIED = frozenset({
-    "lib/ddragon/fetch.py",
-})
+# writers behind the fetch / build pipelines and the two site scrapers, a
+# `_LIB_UNCLASSIFIED` baseline that only shrank. Every entry left in s144 by
+# converting onto core.polled_json: lib/scrapers/_base.py
+# (tests/test_scrapers_atomic_write_rm258.py), lib/icons/downloader.py and
+# lib/game_data/fetch.py (tests/test_lib_byte_writers_atomic_write_rm258.py),
+# lib/game_data/build.py (tests/test_lib_game_data_build_writer_rm258.py) and
+# last lib/ddragon/fetch.py (tests/test_ddragon_fetch_writer_emits_lf.py). The
+# empty baseline was removed rather than kept as a switch a new writer could
+# be parked behind; test_every_lib_module_is_in_scope pins its absence.
 
 
 def _is_tools_extractor(rel: str) -> bool:
@@ -309,8 +306,6 @@ def _in_scope(rel: str) -> bool:
     if rel.startswith("tools/"):
         return not (rel.startswith("tools/tests/") or _is_tools_extractor(rel)
                     or rel in _TOOLS_UNCLASSIFIED)
-    if rel in _LIB_UNCLASSIFIED:
-        return False
     return not rel.startswith(_EXCLUDED_PREFIXES)
 
 
@@ -930,8 +925,8 @@ def test_tools_baseline_is_exact():
 
 
 def test_a_new_lib_writer_starts_in_scope():
-    """lib/ is no longer a directory-wide exemption: the runtime writer and
-    any new lib/ module are guarded; only the named baseline is not."""
+    """lib/ is no longer a directory-wide exemption: the runtime writer, every
+    converted library writer and any new lib/ module are guarded."""
     assert _in_scope("lib/rewind_live_writer.py")
     assert _in_scope("lib/ingest_receipt.py")
     assert _in_scope("lib/a_new_polled_writer.py")
@@ -939,22 +934,18 @@ def test_a_new_lib_writer_starts_in_scope():
     assert _in_scope("lib/icons/downloader.py")
     assert _in_scope("lib/game_data/fetch.py")
     assert _in_scope("lib/game_data/build.py")
-    assert not _in_scope("lib/ddragon/fetch.py")
+    assert _in_scope("lib/ddragon/fetch.py")
     assert not _in_scope("scripts/rewind_scraper.py")
 
 
-def test_lib_baseline_is_exact():
-    """Every lib/ baseline entry is a tracked lib/ module that still offends,
-    so a conversion has to shrink the set and the set never hides a clean
-    file."""
-    tracked = {relative_posix(p) for p in iter_repo_files(REPO_ROOT, ("*.py",))}
-    stale = []
-    for rel in sorted(_LIB_UNCLASSIFIED):
-        assert rel.startswith("lib/"), rel
-        assert rel in tracked, f"lib/ baseline entry {rel} is not tracked"
-        renames, scratch = scan([(rel, REPO_ROOT / rel)])
-        if not renames and not scratch:
-            stale.append(rel)
-    assert stale == [], (
-        "these no longer hand-roll an atomic write - drop them from "
-        "_LIB_UNCLASSIFIED:\n  " + "\n  ".join(stale))
+def test_every_lib_module_is_in_scope():
+    """The lib/ baseline emptied in s144 and was removed: every tracked lib/
+    module is scanned, so no lib/ writer can be parked outside the guard.
+    Anchored on the last converted writer so an empty walk cannot pass."""
+    lib_files = [rel for rel in (relative_posix(p) for p in
+                 iter_repo_files(REPO_ROOT, ("*.py",)))
+                 if rel.startswith("lib/")]
+    assert "lib/ddragon/fetch.py" in lib_files
+    scanned = {rel for rel, _ in _runtime_files()}
+    assert sorted(set(lib_files) - scanned) == []
+    assert "_LIB_UNCLASSIFIED" not in globals()

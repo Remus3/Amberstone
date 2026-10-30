@@ -15,10 +15,10 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 from pathlib import Path
 from typing import Any
 
+from core.polled_json import atomic_write_bytes
 from lib.http import get_client
 from tools.ddragon_mirror_refresh import prune_stale_versions, validate_version
 
@@ -31,8 +31,9 @@ logger = logging.getLogger("lib.ddragon")
 
 
 def _atomic_write_json(path: Path, data: Any) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
+    # RM-258 residual: the scratch name, fsync, WinError 5 retry and scratch
+    # cleanup are core.polled_json's (the old fixed `<dest>.tmp` and bare
+    # os.replace broke on a squatter and leaked the scratch on a failed swap).
     # Bytes, not write_text - this writes the same TRACKED, eol=lf-pinned files
     # as tools/ddragon_mirror_refresh._atomic_write_json, where write_text put
     # CRLF on disk while git's index normalization kept `git status` clean. The
@@ -40,8 +41,7 @@ def _atomic_write_json(path: Path, data: Any) -> None:
     # identical now; it is the writer, not the current payload, that has to be
     # safe, because adding an `indent=` here would silently reintroduce the
     # defect against files nothing would flag as dirty.
-    tmp.write_bytes(json.dumps(data, separators=(",", ":")).encode("utf-8"))
-    os.replace(tmp, path)
+    atomic_write_bytes(path, json.dumps(data, separators=(",", ":")).encode("utf-8"))
 
 
 def latest_version(client=None) -> str:

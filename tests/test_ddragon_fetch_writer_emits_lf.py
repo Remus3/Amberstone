@@ -18,7 +18,7 @@ parametrised id inside a six-row table. It is overlap, not a gap, and it should
 not be cited as this file's reason to exist.
 
 WHAT IS NET-NEW HERE - the actual reason this file exists. The class guard
-asserts NONE of the following five:
+asserts NONE of the following:
   1. The exact compact-encoding byte pin - ``raw`` equals
      ``json.dumps(payload, separators=(",", ":")).encode("utf-8")``, which fixes
      the separators, the encoding and the absence of a trailing newline. The
@@ -36,10 +36,15 @@ asserts NONE of the following five:
      keeps its bytes when the swap fails. The injection is DESTINATION-SCOPED
      and carries a control assertion inside its own armed window - see that
      test's docstring for why an unscoped shim is a process-wide hazard.
-  6. A zero-patching arm that induces a REAL ``os.replace`` failure, plus the
-     CHARACTERIZED (not endorsed) finding that the ``.tmp`` sibling LEAKS on
-     the failure path because ``lib/ddragon/fetch.py:33-44`` carries no
-     ``try``/``finally``. That file is deliberately UNMODIFIED this cycle.
+  6. A zero-patching arm that induces a REAL ``os.replace`` failure. Until the
+     RM-258 residual (s144) this arm CHARACTERIZED a ``.tmp`` leak on the
+     failure path (the writer had no ``try``/``finally``); the writer now goes
+     through ``core.polled_json.atomic_write_bytes``, so both failure arms
+     assert that NO scratch file survives, flipped on purpose.
+  7. RM-258 residual (s144): a transient ``PermissionError`` (WinError 5) on
+     the rename is retried, a squatter at the old fixed ``<dest>.tmp`` name no
+     longer blocks the write, and a source pin keeps the module off a local
+     re-roll of the rename.
 
 HONESTY NOTE, kept deliberately. An earlier draft of this docstring claimed the
 producer had no direct caller and that this file was the first to call it. That
@@ -50,12 +55,12 @@ Sibling precedent in style: ``tests/test_ddragon_mirror_writes_bytes.py``, the
 direct test of ``tools/ddragon_mirror_refresh._atomic_write_json``.
 
 WRITER GROUND TRUTH, verified against the tree this test ships with:
-``lib/ddragon/fetch.py:33`` ``def _atomic_write_json(path: Path, data: Any)``,
-``:34`` ``mkdir(parents=True, exist_ok=True)``, ``:35`` ``.tmp`` sibling,
-``:43`` ``tmp.write_bytes(json.dumps(data, separators=(",", ":")).encode(...))``,
-``:44`` ``os.replace(tmp, path)``. ``json``/``os``/``Path`` are imported at
-``lib/ddragon/fetch.py:16-19``, so ``os`` is a module global and is the stdlib
-module itself - that is the fault-injection handle used below.
+``lib/ddragon/fetch.py`` ``_atomic_write_json(path, data)`` encodes
+``json.dumps(data, separators=(",", ":")).encode("utf-8")`` and hands the bytes
+to ``core.polled_json.atomic_write_bytes`` (mkdir on demand, a per-writer
+scratch name, fsync, the bounded WinError 5 retry, the scratch removed on
+failure). The rename therefore happens in ``core.polled_json``, so its ``os``
+global - the stdlib module itself - is the fault-injection handle used below.
 
 THE RED-PROOF HONESTY NOTE - read this before "improving" the teeth.
 The pre-fix line (commit ``c00b9af89``, which replaced it) was
@@ -92,6 +97,7 @@ from pathlib import Path
 import pytest
 
 import lib.ddragon.fetch as fetch_mod
+from core import polled_json
 from lib.ddragon.fetch import _atomic_write_json
 
 # Multi-key and nested, matching the sibling test's shape. An indent= regression
@@ -177,15 +183,15 @@ def test_atomic_write_json_leaves_target_intact_when_replace_fails(
 ):
     """A failed ``os.replace`` must not leave a partially written TARGET.
 
-    ``lib/ddragon/fetch.py:43-44`` writes the payload to a ``.tmp`` sibling and
-    only then swaps it in, so the target either holds its old bytes or the new
-    ones - never a half-written file. Fault-injected at the module's own ``os``
-    handle (``lib/ddragon/fetch.py:18``).
+    The writer puts the payload in a scratch file and only then swaps it in,
+    so the target either holds its old bytes or the new ones - never a
+    half-written file. Fault-injected at ``core.polled_json``'s ``os`` handle,
+    where the rename now happens.
 
     THE INJECTION IS DESTINATION-SCOPED, AND THAT SCOPING IS LOAD-BEARING.
-    ``fetch_mod.os`` is NOT a per-module copy - it is the stdlib ``os`` module
-    singleton itself (MEASURED: ``lib.ddragon.fetch.os is os`` -> True), so
-    ``monkeypatch.setattr(fetch_mod.os, "replace", ...)`` replaces
+    ``polled_json.os`` is NOT a per-module copy - it is the stdlib ``os``
+    module singleton itself, so
+    ``monkeypatch.setattr(polled_json.os, "replace", ...)`` replaces
     ``os.replace`` PROCESS-WIDE for as long as the patch is armed. An
     unconditional shim therefore breaks ``os.replace`` for everything else
     running in that process during this test - background threads in
@@ -200,9 +206,8 @@ def test_atomic_write_json_leaves_target_intact_when_replace_fails(
     unconditional ``raise`` and the control ``os.replace`` below is what fails
     first.
 
-    The ``.tmp`` leak is characterized in
-    ``test_atomic_write_json_surfaces_a_real_replace_failure``; it is asserted
-    here too because it costs nothing.
+    The injected error is a plain ``OSError``, not ``PermissionError``, so
+    ``core.polled_json`` does not retry it and the failure surfaces at once.
     """
     target = tmp_path / "runesReforged.json"
     target.write_bytes(_SENTINEL)
@@ -219,7 +224,7 @@ def test_atomic_write_json_leaves_target_intact_when_replace_fails(
 
     control_dir = Path(tempfile.mkdtemp())
     try:
-        monkeypatch.setattr(fetch_mod.os, "replace", _scoped_boom)
+        monkeypatch.setattr(polled_json.os, "replace", _scoped_boom)
 
         # CONTROL, inside the armed window: a replace whose destination lives
         # OUTSIDE tmp_path must still SUCCEED, because the process-wide patch
@@ -238,10 +243,8 @@ def test_atomic_write_json_leaves_target_intact_when_replace_fails(
 
     assert target.read_bytes() == _SENTINEL
 
-    # CHARACTERIZED, NOT ENDORSED - the .tmp sibling survives a failed swap.
-    assert sorted(p.name for p in tmp_path.glob("*.tmp")) == [
-        "runesReforged.json.tmp"
-    ]
+    # RM-258 residual (s144): no scratch file survives a failed swap.
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["runesReforged.json"]
 
 
 def test_atomic_write_json_surfaces_a_real_replace_failure(tmp_path):
@@ -259,14 +262,14 @@ def test_atomic_write_json_surfaces_a_real_replace_failure(tmp_path):
     ``IsADirectoryError`` / ``NotADirectoryError``. All are ``OSError``
     subclasses; pinning the Windows one would red this file on a POSIX runner.
 
-    CHARACTERIZED, NOT ENDORSED - THE ``.tmp`` SIBLING LEAKS. MEASURED: after
-    the failed swap, ``runesReforged.json.tmp`` survives on disk carrying the
-    full new payload, because ``lib/ddragon/fetch.py:33-44`` has no
-    ``try``/``finally`` around ``os.replace`` and never unlinks the temp file.
-    This test records the writer's ACTUAL behaviour - it does not bless it.
-    ``lib/ddragon/fetch.py`` is DELIBERATELY UNMODIFIED this cycle, so a later
-    cleanup that adds the ``finally`` must flip these two assertions on purpose
-    instead of meeting them as a surprise.
+    NO SCRATCH FILE SURVIVES (flipped on purpose by the RM-258 residual,
+    s144). This arm used to CHARACTERIZE a leak: the old hand-rolled writer
+    had no ``try``/``finally`` around ``os.replace``, so
+    ``runesReforged.json.tmp`` survived carrying the full new payload. The
+    writer now goes through ``core.polled_json.atomic_write_bytes``, which
+    removes its scratch file when the rename fails for good (on Windows the
+    directory refusal is a ``PermissionError``, so the bounded retry runs
+    first - about 0.3 s - and then gives up).
     """
     target = tmp_path / "runesReforged.json"
     target.mkdir()
@@ -281,11 +284,53 @@ def test_atomic_write_json_surfaces_a_real_replace_failure(tmp_path):
     assert sorted(p.name for p in target.iterdir()) == ["marker.txt"]
     assert marker.read_bytes() == b"marker-stays"
 
-    # The leak, asserted as measured.
-    leaked = sorted(p.name for p in tmp_path.glob("*.tmp"))
-    assert leaked == ["runesReforged.json.tmp"], (
-        f"expected the CHARACTERIZED .tmp leak, saw {leaked}"
-    )
-    assert (tmp_path / "runesReforged.json.tmp").read_bytes() == json.dumps(
-        _PAYLOAD, separators=(",", ":")
-    ).encode("utf-8")
+    # No scratch file of any name is left beside the destination.
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["runesReforged.json"]
+
+
+def test_a_leftover_at_the_old_fixed_scratch_name_does_not_block_the_write(tmp_path):
+    """The old writer always used ``<dest>.tmp``; a directory squatting on
+    that name made every write fail. core.polled_json uses a per-writer
+    scratch name, so the squatter is ignored."""
+    target = tmp_path / "champion.json"
+    (tmp_path / "champion.json.tmp").mkdir()
+    _atomic_write_json(target, _PAYLOAD)
+    assert target.read_bytes() == json.dumps(
+        _PAYLOAD, separators=(",", ":")).encode("utf-8")
+
+
+def test_a_transient_permission_error_on_replace_is_retried(tmp_path, monkeypatch):
+    """One WinError 5 (a reader holding the cache file open) used to raise at
+    once; core.polled_json retries it with a bounded backoff."""
+    target = tmp_path / "item.json"
+    target.write_bytes(_SENTINEL)
+    real_replace = polled_json.os.replace
+    tmp_root = tmp_path.resolve()
+    calls = {"n": 0}
+
+    def flaky(src, dst):
+        resolved = Path(os.fspath(dst)).resolve()
+        if resolved == tmp_root or tmp_root in resolved.parents:
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise PermissionError(5, "Access is denied")
+        return real_replace(src, dst)
+
+    monkeypatch.setattr(polled_json.os, "replace", flaky)
+    monkeypatch.setattr(polled_json.time, "sleep", lambda _s: None)
+    _atomic_write_json(target, _PAYLOAD)
+    assert target.read_bytes() == json.dumps(
+        _PAYLOAD, separators=(",", ":")).encode("utf-8")
+    assert calls["n"] == 2
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["item.json"]
+
+
+def test_the_module_does_not_hand_roll_the_rename():
+    """Source pin: the writer is core.polled_json's, not a local re-roll."""
+    src = Path(fetch_mod.__file__).read_text(encoding="utf-8")
+    assert "os.replace(" not in src
+    assert ".replace(path)" not in src
+    assert '".tmp"' not in src
+    assert ".write_text(" not in src
+    assert "from core.polled_json import atomic_write_bytes" in src
+    assert fetch_mod.atomic_write_bytes is polled_json.atomic_write_bytes
