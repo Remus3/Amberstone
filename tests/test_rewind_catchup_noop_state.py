@@ -39,7 +39,7 @@ import time
 
 import pytest
 
-from core import riot_api
+from core import polled_json, riot_api
 from scripts import rewind_catchup as rc
 
 _OP_PUUID = "PUUID_OPERATOR_FIXTURE"
@@ -254,19 +254,21 @@ def test_state_write_is_atomic(env, monkeypatch):
     env.state.write_text(json.dumps(old), encoding="utf-8")
 
     seen = []
-    real_replace = pathlib.Path.replace
+    # save_state routes through core.polled_json (RM-258), whose rename is
+    # os.replace, so the spy sits there rather than on Path.replace.
+    real_replace = polled_json.os.replace
 
-    def _spy_replace(self, target):
-        target = pathlib.Path(target)
+    def _spy_replace(src, target):
+        src, target = pathlib.Path(src), pathlib.Path(target)
         if target == env.state:
             # The tmp source must already be complete and parseable.
-            json.loads(self.read_text(encoding="utf-8"))
+            json.loads(src.read_text(encoding="utf-8"))
             # The target must still be the COMPLETE previous document.
             assert json.loads(target.read_text(encoding="utf-8")) == old
-            seen.append(self.name)
-        return real_replace(self, target)
+            seen.append(src.name)
+        return real_replace(src, target)
 
-    monkeypatch.setattr(pathlib.Path, "replace", _spy_replace)
+    monkeypatch.setattr(polled_json.os, "replace", _spy_replace)
     monkeypatch.setattr(riot_api, "get_recent_matches", _ids_returning([]))
 
     assert rc.main([]) == 0

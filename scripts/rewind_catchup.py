@@ -49,6 +49,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from core import riot_api  # noqa: E402
+from core.polled_json import atomic_write_text  # noqa: E402
 from scripts.rewind_scraper import (  # noqa: E402
     insert_rows,
     parse_event,
@@ -437,11 +438,10 @@ def load_state() -> dict:
 
 
 def save_state(state: dict) -> None:
-    target = Path(STATE_PATH)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    tmp = target.with_suffix(".tmp")
-    tmp.write_text(json.dumps(state, indent=2), encoding="utf-8")
-    tmp.replace(target)
+    # core/ops_panels.py re-reads this file on every dashboard poll, so the
+    # write goes through the shared writer: per-writer scratch, LF bytes and a
+    # bounded WinError 5 retry (tests/test_rewind_catchup_state_writer_atomic_rm258.py).
+    atomic_write_text(Path(STATE_PATH), json.dumps(state, indent=2))
 
 
 def record_run(
