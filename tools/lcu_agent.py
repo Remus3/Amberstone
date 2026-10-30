@@ -1504,26 +1504,48 @@ def _maybe_force_augment_scan(state: dict) -> None:
         log.info("[augment-scan] force_scan bumped (Cherry picker opened)")
 
 # Persisted state path. Survives agent restart so a crash right at game end
-# doesn't cause the next boot to miss the ingest.
-INGEST_STATE_FILE = Path(os.environ.get(
-    "RC_AGENT_STATE_FILE",
-    "C:/RC-Agent/agent_state.json"
-))
+# doesn't cause the next boot to miss the ingest. RM-1116 (c): the default
+# lives under the repo root (gitignored ops/runtime/), per CLAUDE.md "Keep
+# runtime records under the repo root"; RC_AGENT_STATE_FILE overrides. The old
+# default sat in the retired copy-out folder of tools/legion_agent_boot.ps1;
+# _load_ingest_state reads it once when the default is in use and the new file
+# is absent, then re-saves to the new path.
+_DEFAULT_INGEST_STATE_FILE = _APP_DIR_LCU / "ops" / "runtime" / "agent_state.json"
+_LEGACY_INGEST_STATE_FILE = Path("C:/RC-Agent/agent_state.json")
+
+
+def _resolve_ingest_state_file() -> Path:
+    """RC_AGENT_STATE_FILE when set to a non-blank value, else the in-repo
+    default (a blank value no longer resolves to the current folder)."""
+    override = os.environ.get("RC_AGENT_STATE_FILE", "").strip()
+    return Path(override) if override else _DEFAULT_INGEST_STATE_FILE
+
+
+INGEST_STATE_FILE = _resolve_ingest_state_file()
 
 
 def _load_ingest_state() -> None:
     """Restore last_game_id_ingested from disk on agent boot. Safe to call
     even if the file is missing or malformed - empty state means
-    everything will look uningested + recovery will fire."""
+    everything will look uningested + recovery will fire. An override never
+    falls back to the legacy file."""
     try:
-        if not INGEST_STATE_FILE.exists():
-            return
-        data = json.loads(INGEST_STATE_FILE.read_text(encoding="utf-8"))
+        source = INGEST_STATE_FILE
+        migrated = False
+        if not source.exists():
+            if (INGEST_STATE_FILE != _DEFAULT_INGEST_STATE_FILE
+                    or not _LEGACY_INGEST_STATE_FILE.exists()):
+                return
+            source = _LEGACY_INGEST_STATE_FILE
+            migrated = True
+        data = json.loads(source.read_text(encoding="utf-8"))
         gid = data.get("last_game_id_ingested")
         if gid is not None:
             _post_match_ingest_state["last_game_id_ingested"] = gid
             log.info(f"[ingest-state] restored last_game_id_ingested={gid} "
-                  f"from {INGEST_STATE_FILE}")
+                  f"from {source}")
+            if migrated:
+                _save_ingest_state()
     except (OSError, ValueError) as exc:
         log.error(f"[ingest-state] load failed (continuing fresh): {exc}")
 
