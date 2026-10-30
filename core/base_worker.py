@@ -84,13 +84,20 @@ class BaseCoachWorker:
 
     def __init__(self) -> None:
         self._stop_event = threading.Event()
+        # Serialises start(): the generation bump, its re-read and the
+        # self._thread swap are one step, so two starters (restart() included,
+        # which ends in start()) can never share a generation (s144 true-audit
+        # F2). Never held across restart()'s join, so a slow join cannot block
+        # another start().
+        self._lifecycle_lock = threading.Lock()
         self._generation: int = 0
         self._thread: Optional[threading.Thread] = None
         # Single-slot float writes stay GIL-atomic on CPython - no lock needed.
-        # pulse_ts goes through a property (see below) whose setter is still a
-        # single store to _pulse_ts, so the reader cannot observe a torn value.
+        # pulse_ts and last_success_ts go through properties (see below) whose
+        # setters are still a single store, so a reader cannot observe a torn
+        # value.
         self._pulse_ts: float = 0.0
-        self.last_success_ts: float = 0.0
+        self._last_success_ts: float = 0.0
         # RM-198: lifecycle failures that used to be invisible. A restart()
         # whose bounded join timed out leaves the old thread running; it is
         # kept here (gen -> thread) until it finally exits, and reported by
@@ -109,22 +116,38 @@ class BaseCoachWorker:
     def pulse_ts(self, value: Any) -> None:
         self._pulse_ts = _sanitise_pulse(value)
 
+    @property
+    def last_success_ts(self) -> float:
+        """Monotonic stamp of the last successful read (same clock contract
+        as pulse_ts; the RM-357 guard used to cover pulse_ts only)."""
+        return self._last_success_ts
+
+    @last_success_ts.setter
+    def last_success_ts(self, value: Any) -> None:
+        self._last_success_ts = _sanitise_pulse(value)
+
     # -- Public lifecycle --------------------------------------------------
 
     def start(self) -> None:
         """Spawn a fresh worker thread. Always increments generation; an
         already-running thread is left to exit on its own via the
-        generation mismatch check inside `_run`."""
-        self._stop_event.clear()
-        self._generation += 1
-        gen = self._generation
-        self._thread = threading.Thread(
-            target=self._run_safe,
-            args=(gen,),
-            name=f"{self._thread_name_prefix}-{gen}",
-            daemon=True,
-        )
-        self._thread.start()
+        generation mismatch check inside `_run`, and is reported by
+        stranded_generations() until it does (a wedged one would otherwise be
+        invisible once self._thread is rebound - the RM-198 class)."""
+        with self._lifecycle_lock:
+            prev, prev_gen = self._thread, self._generation
+            if prev is not None and prev.is_alive():
+                self._stranded[prev_gen] = prev
+            self._stop_event.clear()
+            gen = self._generation + 1
+            self._generation = gen
+            self._thread = threading.Thread(
+                target=self._run_safe,
+                args=(gen,),
+                name=f"{self._thread_name_prefix}-{gen}",
+                daemon=True,
+            )
+            self._thread.start()
         _log.info("%s gen=%d started", self._thread_name_prefix, gen)
 
     def stop(self) -> None:
@@ -138,17 +161,21 @@ class BaseCoachWorker:
             self._thread.join(timeout=timeout)
 
     def restart(self) -> None:
-        """stop() + bounded join + start() with a fresh generation."""
+        """stop() + bounded join + start() with a fresh generation.
+
+        Safe to call from inside the worker's own thread: that thread cannot
+        join itself, so the join is skipped and it exits on the generation
+        mismatch once its _run returns."""
         self.stop()
         old = self._thread
         old_gen = self._generation
-        if old is not None:
+        if old is not None and old is not threading.current_thread():
             old.join(timeout=self._restart_join_timeout_s)
             # Thread.join returns None either way; is_alive() is the only
             # truth. restart() exists for a wedged worker, which is exactly
-            # when this join times out (RM-198).
+            # when this join times out (RM-198). start() records the
+            # still-running generation as stranded.
             if old.is_alive():
-                self._stranded[old_gen] = old
                 _log.warning(
                     "%s gen=%d did not exit within %.1fs of restart; "
                     "left running (stranded)",
@@ -194,9 +221,22 @@ class BaseCoachWorker:
         notices via the stale pulse_ts."""
         try:
             self._run(my_gen)
-        except Exception as exc:  # noqa: BLE001
+        except (Exception, SystemExit) as exc:  # noqa: BLE001
             # RM-198: record the crash where health_pulse() can see it.
+            # SystemExit is caught too: threading.excepthook drops it
+            # silently, so a worker that called sys.exit() left no trace.
             self.crash_count += 1
-            self.last_error = f"gen={my_gen} {type(exc).__name__}: {exc}"[:300]
+            self.last_error = _describe_crash(my_gen, exc)
             self.died_ts = time.monotonic()
             _log.exception("%s gen=%d crashed", self._thread_name_prefix, my_gen)
+
+
+def _describe_crash(my_gen: int, exc: BaseException) -> str:
+    """One capped line for health_pulse()["last_error"]. Never raises: an
+    exception whose __str__ raises used to escape the crash handler before
+    last_error, died_ts or the log line were written."""
+    try:
+        text = str(exc)
+    except Exception:  # noqa: BLE001 - any __str__ failure degrades the text only
+        text = "<unprintable>"
+    return f"gen={my_gen} {type(exc).__name__}: {text}"[:300]
