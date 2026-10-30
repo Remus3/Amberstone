@@ -1611,7 +1611,20 @@ _WEB = _REPO_ROOT / "web"
 # superseded 49c46591... value EXACTLY. That path is the whole change. No
 # glyph change: the added lines carry 0 non-ASCII bytes. If another slice
 # re-captures in parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "7b624e20490b3b7223839b46c0de73cac2ad9ee5cef3dfa8f48ab507290dbfa9"
+# superseded by the RM-1143 re-capture below: "7b624e20490b3b7223839b46c0de73cac2ad9ee5cef3dfa8f48ab507290dbfa9"
+#
+# RE-CAPTURED 2026-10-30 at RM-1143 (s144 uiux cycle 74, provisional
+# until the merger lands it and maps the id). One change rides it: the
+# muted status lines on the Active Match DS relative-score card
+# (.dsr-empty) and the Builds SHAPER row (.bm-shaper-note) move from white
+# 0.45 to 0.55 so they reach AA on their resolved surface
+# (web/css/panels/ds_relscore.css and web/css/panels/ds_shaper.css).
+# Ordinary case, no tokeniser change. ATTRIBUTED BY SUBSTITUTION: swapping
+# exactly those two files back to their lane HEAD 01fe43869 blobs (in
+# memory) reproduces the superseded 7b624e20... value EXACTLY. Those paths
+# are the whole change. No glyph change: the added lines carry 0 non-ASCII
+# bytes. If another slice re-captures in parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "3d21cecbfd5c37ce82a5918cc57bc5fb1e7b014cbe1b19974edc0c5a36824a68"
 
 
 def _web_sources() -> list[Path]:

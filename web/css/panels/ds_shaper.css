@@ -98,7 +98,11 @@
   color: var(--signal-info, #8a8cf0);
 }
 
+/* RM-1143: 0.45 measured 4.26-4.39:1 on the row surface (5 of 6 themes),
+ * below AA; 0.55 is the muted tint the other DS cards use and stays dimmer
+ * than the landed preview lines. Guard:
+ * tests/snapshot_panels/test_ds_cards_muted_text_contrast.py. */
 .bm-shaper-note {
   font-size: var(--fs-xs, 16px);
-  color: rgba(255, 255, 255, 0.45);
+  color: rgba(255, 255, 255, 0.55);
 }

@@ -118,8 +118,11 @@
   color: rgba(255, 255, 255, 0.55);
 }
 
+/* RM-1143: 0.45 sat on the AA floor (4.50-4.52:1); 0.55 matches
+ * .dsr-head-sub / .dsr-gold. Guard:
+ * tests/snapshot_panels/test_ds_cards_muted_text_contrast.py. */
 .dsr-empty {
   font-size: var(--fs-xs);
-  color: rgba(255, 255, 255, 0.45);
+  color: rgba(255, 255, 255, 0.55);
   padding: 4px 0;
 }
