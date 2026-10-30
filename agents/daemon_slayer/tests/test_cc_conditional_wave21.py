@@ -22,8 +22,8 @@ SHIP candidates (both primary registry):
 
   (1) Xin Zhao Q Three Talon Strike 3rd-hit knockup 0.75s flat
       across all 5 Q ranks. COND_NTH_HIT (prob 0.7 tag midpoint).
-      The COND_NTH_HIT tag's own docstring in cc_conditional.py
-      (line 190) EXPLICITLY named "Xin Zhao Q 3rd-attack knockup"
+      The comment under the COND_NTH_HIT constant in cc_conditional.py
+      EXPLICITLY names "Xin Zhao Q 3rd-attack knockup"
       as the canonical motivating example for the tag. Wave 21
       closes the gap.
       - durations_s=(0.75, 0.75, 0.75, 0.75, 0.75)

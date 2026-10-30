@@ -33,8 +33,8 @@ _CHANGELOG = _PKG / "CHANGELOG.md"
 #
 # Both halves of this pattern are load-bearing and were arrived at by measurement,
 # not by guessing. A plain ^ anchor over \d+\.\d+\.\d+ over-matches TWICE on the
-# live file: CHANGELOG.md:1691 wraps the prose "16.13.1 (items['3040'] passive ..."
-# onto its own line, and :6979 wraps "1.25.0 (item 122). Engine-side math ...".
+# live file: the prose "16.13.1 (items['3040'] passive ..." wraps onto its own
+# line, and so does "1.25.0 (item 122). Engine-side math ...".
 # Both are mid-paragraph continuations, not headers. Requiring a preceding blank
 # line rejects both, and restricting the major to 1 keeps a patch stamp such as
 # 16.13.1 from ever reading as an engine version.
