@@ -40,6 +40,7 @@ if str(ROOT) not in sys.path:
 
 from agents.daemon_slayer import mode_variants  # noqa: E402
 from core import external_sources  # noqa: E402
+from core.polled_json import atomic_write_bytes  # noqa: E402
 # RM-379: the RM-359 filename validator, applied before every icon write.
 from lib.icons.downloader import _safe_basename  # noqa: E402
 
@@ -109,22 +110,14 @@ def _atomic_write_text(path: Path, text: str) -> None:
 def _atomic_write_bytes(path: Path, data: bytes) -> None:
     """Write ``data`` to a sibling temp file, then rename it over ``path``.
 
-    RM-447: the temp name APPENDS ``.tmp`` to the full file name, so same-stem
-    outputs (``a.json`` / ``a.md``) never share a temp path - ``with_suffix``
-    dropped the real suffix. If the write or the rename raises, the temp file
-    is removed and the original error propagates, so a failed run does not
-    strand an untracked ``*.tmp`` beside the target.
+    RM-1125: delegates to core.polled_json, because RC is up while
+    RC-PatchRefresh runs and its routes read these files. The scratch is a
+    per-writer ``<full name>.<pid>.<hex>.tmp`` (RM-447's full-name rule, plus
+    no collision between two writers of one file), it is fsynced, a transient
+    WinError 5 on the rename is retried, and on a failure the scratch is
+    removed and the original error propagates.
     """
-    tmp = path.with_name(path.name + ".tmp")
-    try:
-        tmp.write_bytes(data)
-        tmp.replace(path)
-    except BaseException:
-        try:
-            tmp.unlink(missing_ok=True)
-        except OSError:
-            pass  # cleanup is best-effort; never mask the original error
-        raise
+    atomic_write_bytes(path, data)
 
 
 def _write_json(path: Path, data) -> None:

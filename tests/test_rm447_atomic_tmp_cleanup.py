@@ -117,7 +117,10 @@ _ORIGINAL = b'{"previous": true}\n'
 
 # -- failure path: no stranded temp, error propagates, target intact -------------
 
-def test_data_pipeline_atomic_write_text_cleans_up(tmp_path, fault):
+def test_data_pipeline_atomic_write_text_cleans_up(tmp_path, polled_fault):
+    # RM-1125: the pipeline writes through core.polled_json, so its rename
+    # arm is polled_json's (the pair hz_mismatch_diagnose takes below).
+    fault = polled_fault
     target = tmp_path / "ddragon_items.json"
     target.write_bytes(_ORIGINAL)
     with pytest.raises(OSError) as excinfo:
@@ -125,7 +128,8 @@ def test_data_pipeline_atomic_write_text_cleans_up(tmp_path, fault):
     _assert_clean_failure(excinfo, fault, tmp_path, target, _ORIGINAL)
 
 
-def test_data_pipeline_write_bytes_cleans_up(tmp_path, fault):
+def test_data_pipeline_write_bytes_cleans_up(tmp_path, polled_fault):
+    fault = polled_fault
     target = tmp_path / "icon.png"
     target.write_bytes(_ORIGINAL)
     with pytest.raises(OSError) as excinfo:
@@ -133,7 +137,8 @@ def test_data_pipeline_write_bytes_cleans_up(tmp_path, fault):
     _assert_clean_failure(excinfo, fault, tmp_path, target, _ORIGINAL)
 
 
-def test_data_pipeline_rank_tiers_cleans_up(tmp_path, monkeypatch, fault):
+def test_data_pipeline_rank_tiers_cleans_up(tmp_path, monkeypatch, polled_fault):
+    fault = polled_fault
     rt = tmp_path / "rank_tiers"
     rt.mkdir()
     seed = rt / "rank_tier_averages.seed.json"
@@ -174,7 +179,7 @@ def test_gen_state_schema_main_cleans_up(tmp_path, monkeypatch, polled_fault):
 
 @pytest.fixture
 def polled_replace_fails(tmp_path, monkeypatch):
-    """The core.polled_json rename raises for a ``.tmp`` source in tmp_path.
+    """The core.polled_json rename raises for a ``.tmp`` source under tmp_path.
 
     RM-258: hz_mismatch_diagnose.write_markdown now writes through
     core.polled_json, whose rename is ``os.replace`` inside
@@ -188,7 +193,9 @@ def polled_replace_fails(tmp_path, monkeypatch):
 
     def _replace(src, dst):
         src = pathlib.Path(src)
-        if src.name.endswith(".tmp") and src.parent == tmp_path:
+        # Under tmp_path, not only in it: cmd_rank_tiers writes one level
+        # down (tmp_path / "rank_tiers"); still nothing outside the test dir.
+        if src.name.endswith(".tmp") and tmp_path in src.parents:
             fault.fired += 1
             raise PermissionError(5, "Access is denied (injected)")
         return real(src, dst)
@@ -228,9 +235,15 @@ def temp_spy(monkeypatch):
 
 
 _PATH_WRITERS = [
+    ("merge_refresh_builds._write_json_lf", lambda p: mrb._write_json_lf(p, {"x": 1})),
+]
+
+# RM-1125: these write through core.polled_json, whose scratch is the
+# per-writer `<full name>.<pid>.<hex>.tmp`, so they pin the RM-447 intent the
+# way test_hz_write_markdown_temp_keeps_full_name does.
+_POLLED_PATH_WRITERS = [
     ("data_pipeline._atomic_write_text", lambda p: dp._atomic_write_text(p, "x\n")),
     ("data_pipeline._write_bytes", lambda p: dp._write_bytes(p, b"x\n")),
-    ("merge_refresh_builds._write_json_lf", lambda p: mrb._write_json_lf(p, {"x": 1})),
 ]
 
 
@@ -241,6 +254,18 @@ def test_same_stem_outputs_get_distinct_temp_paths(tmp_path, temp_spy, writer):
     writer(tmp_path / "a.md")
     assert [p.name for p in temp_spy] == ["a.json.tmp", "a.md.tmp"]
     assert all(p.parent == tmp_path for p in temp_spy), "temp must share the target dir"
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["a.json", "a.md"]
+
+
+@pytest.mark.parametrize("writer", [w for _, w in _POLLED_PATH_WRITERS],
+                         ids=[name for name, _ in _POLLED_PATH_WRITERS])
+def test_polled_writers_temp_keeps_full_name(tmp_path, temp_spy, writer):
+    writer(tmp_path / "a.json")
+    writer(tmp_path / "a.md")
+    names = [p.name for p in temp_spy]
+    assert len(names) == 2
+    assert names[0].startswith("a.json.") and names[1].startswith("a.md.")
+    assert all(p.parent == tmp_path for p in temp_spy)
     assert sorted(p.name for p in tmp_path.iterdir()) == ["a.json", "a.md"]
 
 
