@@ -2,8 +2,8 @@
 """Action-queue combo simulator - ordered cast/attack list over a clock.
 
 Competitor lift #2 (breadth scan item 213; DEPTH spec
-``docs/COMPETITOR_LIFT_2026-05-30.md`` "Lift 2"). calc.gg ships an
-"Action Queue" where the user types a SEQUENTIAL cast/attack list
+``docs/_archive/COMPETITOR_LIFT_2026-05-30.md`` "Lift 2"). calc.gg ships
+an "Action Queue" where the user types a SEQUENTIAL cast/attack list
 (``["Q", "AA", "W", "R", "AA"]``) and each action is evaluated in time
 order, producing a per-hit damage breakdown + running total over the
 sequence (vs RC's single aggregate DPS / burst). The homepage text:

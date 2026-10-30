@@ -2,8 +2,8 @@
 """Live power-spike markers - discrete level + item-completion thresholds.
 
 Competitor lift #4 (Aggregator C power-spike timeline; DEPTH spec
-``docs/COMPETITOR_LIFT_2026-05-30.md`` "Lift 4"). Pure presentation over
-RC's OWN DS curves - NO new ENGINE math, NO schema lift, NO new external
+``docs/_archive/COMPETITOR_LIFT_2026-05-30.md`` "Lift 4"). Pure presentation
+over RC's OWN DS curves - NO new ENGINE math, NO schema lift, NO new external
 dependency. This module classifies a champion's discrete power spikes
 against the operator's LIVE level + owned item count and tells the
 operator which spikes are CROSSED and which is NEXT - the "now you can

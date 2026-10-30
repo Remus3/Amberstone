@@ -5,7 +5,7 @@ Engine-layer duel-sim that walks a clock over an ordered cast/attack list
 cumulative} + totals. NET-NEW COMPOSE over ``compute_burst_damage`` (per-
 cast damage through the full mitigation pipeline) + the patch-pinned
 cast_time / cooldown data - NO new scoring math, NO ENGINE bump. Spec:
-docs/COMPETITOR_LIFT_2026-05-30.md "Lift 2".
+docs/_archive/COMPETITOR_LIFT_2026-05-30.md "Lift 2".
 
 Pinned values grounded against the live patch 16.11.1 dump at write time
 (Lux L11, no items, vs 80 armor / 60 MR):

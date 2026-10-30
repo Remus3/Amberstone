@@ -1,5 +1,6 @@
 """Tests for agents/daemon_slayer/spike_markers.py - live power-spike
-markers (competitor lift #4, docs/COMPETITOR_LIFT_2026-05-30.md).
+markers (competitor lift #4, docs/_archive/COMPETITOR_LIFT_2026-05-30.md
+"Lift 4").
 
 The module is a read-only classifier over RC's own DS curves: given the
 operator's live champion + level + finished-item count, it returns which

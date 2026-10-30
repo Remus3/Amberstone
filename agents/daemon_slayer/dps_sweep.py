@@ -2,8 +2,8 @@
 """DPS stat-sweep - loop ``compute_dps`` over ONE swept variable.
 
 Competitor lift #3 (calc.gg stat-sweep graphs; DEPTH spec
-``docs/COMPETITOR_LIFT_2026-05-30.md`` "Lift 3"). Pure presentation over the
-EXISTING DS auto-attack DPS engine - NO new compute, NO ENGINE math change,
+``docs/_archive/COMPETITOR_LIFT_2026-05-30.md`` "Lift 3"). Pure presentation
+over the EXISTING DS auto-attack DPS engine - NO new compute, NO ENGINE math change,
 NO schema lift, NO new external dependency. This module is a thin loop that
 re-calls ``agents.daemon_slayer.dps.compute_dps`` (or delegates to its
 sibling ``compute_dps_curve`` for the level axis) with ONE input varied and
