@@ -32,6 +32,10 @@ no pathspec or a `.md`-reaching one, a `tests._repo_walk.tracked_relpaths`
 call, or an `iter_repo_files` / `repo_files` glob that matches a `.md`. Such a
 guard names no `.md` at all - `tests/test_text_line_endings.py` reads every
 tracked file - so the literal rule alone left it unwatched on a docs push.
+A pathspec is also read in the directory git resolves it in (RM-1145): a
+constant `-C <dir>` is joined, and an unreadable `-C` or `cwd=` (or a helper
+whose directory is not visible) matches it against every `.md` suffix. The
+root reading still selects, so this can only add a module.
 
 Two deliberate design choices, both scar-driven:
 
@@ -66,6 +70,7 @@ import argparse
 import ast
 import fnmatch
 import json
+import posixpath
 import shutil
 import subprocess
 import sys
@@ -208,16 +213,83 @@ def _const_strings(node, consts, _depth=0):
     return None
 
 
-def _ls_files_reaches_md(after, consts, tracked_md) -> bool:
+_UNREADABLE = object()
+
+
+def _join_rel(base, part):
+    """`base` / `part` as a normalised repo-relative path ("" = the root), or
+    None when `part` is absolute or the result leaves the repo."""
+    part = part.replace("\\", "/")
+    if base is None or part.startswith("/") or part[1:2] == ":":
+        return None
+    path = posixpath.normpath(posixpath.join(base, part)) if (base or part) else "."
+    if path == ".." or path.startswith("../"):
+        return None
+    return "" if path == "." else path
+
+
+def _ls_files_base(before, consts, base=""):
+    """RM-1145: the directory git resolves an `ls-files` pathspec in, after
+    the argv's own `-C <dir>` flags (`before` = the elements ahead of
+    `ls-files`), starting from `base` ("" = the root, None = unreadable). A
+    constant `-C` is joined; anything else, or a starred element that may hide
+    a `-C`, makes it None."""
+    tokens = []
+    for node in before:
+        got = _const_strings(node, consts)
+        if got is None:
+            if isinstance(node, ast.Starred):
+                return None
+            tokens.append(_UNREADABLE)
+        else:
+            tokens.extend(got)
+    for i, token in enumerate(tokens):
+        if token == "-C":
+            value = tokens[i + 1] if i + 1 < len(tokens) else _UNREADABLE
+            base = None if value is _UNREADABLE else _join_rel(base, value)
+    return base
+
+
+def _md_pathspec_in(spec, base, tracked_md, md_suffixes) -> bool:
+    """`_md_pathspec` for a spec git resolves in directory `base`: None means
+    any directory, so the spec is matched against every `.md` suffix."""
+    path = _join_rel(base, spec)
+    if path is None:
+        return _md_pathspec(spec, md_suffixes)
+    return _md_pathspec(path, tracked_md)
+
+
+def _ls_files_reaches_md(after, consts, tracked_md, base="", md_suffixes=()) -> bool:
     """The argv elements after `ls-files`: no pathspec walks the whole index;
-    otherwise any pathspec that can match a `.md` (an unreadable one included)."""
+    otherwise any pathspec that can match a `.md` (an unreadable one included),
+    read from the root AND from `base`, the directory git resolves it in
+    (RM-1145; "" = the root, None = unreadable). The root reading still
+    selects, so a wrongly read base widens the run but never drops a walker."""
     specs = []
     for node in after:
         got = _const_strings(node, consts)
         if got is None:
             return True
         specs.extend(s for s in got if not s.startswith("-"))
-    return not specs or any(_md_pathspec(s, tracked_md) for s in specs)
+    if not specs or any(_md_pathspec(s, tracked_md) for s in specs):
+        return True
+    if base == "":
+        return False
+    return any(_md_pathspec_in(s, base, tracked_md, md_suffixes) for s in specs)
+
+
+def _call_base(call: ast.Call, consts):
+    """The directory a call runs its argv in: "" (the root, pytest's cwd)
+    unless it passes `cwd=` - joined when constant, else None - or `**kwargs`,
+    which may hold one (None)."""
+    base = ""
+    for kw in call.keywords:
+        if kw.arg is None:
+            return None
+        if kw.arg == "cwd":
+            got = _const_strings(kw.value, consts)
+            base = _join_rel("", got[0]) if got is not None and len(got) == 1 else None
+    return base
 
 
 _INDEX_LISTERS = frozenset({"tracked_relpaths"})
@@ -240,14 +312,18 @@ def _call_name(node: ast.Call) -> str:
     return ""
 
 
-def index_walk_reasons(tree: ast.AST, tracked_md) -> list:
+def index_walk_reasons(tree: ast.AST, tracked_md, md_suffixes=None) -> list:
     """RM-1107: why this module's git-index enumeration can include a `.md`.
 
     The rule reads the ENUMERATION, never the filter after it: RM-273's guard
     names only `.xml` (an exemption) and still reads every tracked `.md`.
     - an argv literal holding `"ls-files"` (passed anywhere, or bound to a
       name), or a helper call `f("ls-files", ...)`, with no pathspec or a
-      pathspec that can match a `.md`;
+      pathspec that can match a `.md`. The pathspec is read from the root
+      and from the directory git resolves it in (RM-1145): the argv's
+      `-C` flags and the call's `cwd=`, joined when constant; an unreadable
+      one, or a helper call (its directory is not visible), reads it in any
+      directory - against every segment-boundary suffix of a tracked `.md`;
     - a call to `tests._repo_walk.tracked_relpaths` (the whole index);
     - `iter_repo_files` / `repo_files` with a basename glob matching a `.md`
       (their default is `*.py`, so a bare call does not select).
@@ -255,20 +331,45 @@ def index_walk_reasons(tree: ast.AST, tracked_md) -> list:
     false positive costs CI seconds, a false negative is this file's defect.
     """
     consts = _module_constants(tree)
+    if md_suffixes is None:
+        md_suffixes = _md_suffix_index(tracked_md)
+    # RM-1145: the directory each call runs its argv in (`cwd=`). ast.walk
+    # is breadth-first, so a call is met before the argv list inside it.
+    call_bases = {}
     reasons = set()
     for node in ast.walk(tree):
         if isinstance(node, (ast.List, ast.Tuple)):
             elts = node.elts
             for i, elt in enumerate(elts):
                 if isinstance(elt, ast.Constant) and elt.value == "ls-files":
-                    if _ls_files_reaches_md(elts[i + 1:], consts, tracked_md):
+                    base = _ls_files_base(elts[:i], consts, call_bases.get(id(node), ""))
+                    if _ls_files_reaches_md(elts[i + 1:], consts, tracked_md, base,
+                                            md_suffixes):
                         reasons.add("<index walk: git ls-files>")
                     break
         elif isinstance(node, ast.Call):
             name = _call_name(node)
             args = node.args
+            argvs = [*args[:1], *(kw.value for kw in node.keywords if kw.arg == "args")]
+            if any(isinstance(a, (ast.List, ast.Tuple)) for a in argvs):
+                call_base = _call_base(node, consts)
+                for argv in argvs:
+                    call_bases[id(argv)] = call_base
+            # RM-1145: a helper call with git's global flags ahead of the verb,
+            # `f("-C", "dir", "ls-files", ...)` - string literals, or any value
+            # right after a `-C`. Checked on its own, so it only adds.
+            verb = next((i for i, a in enumerate(args[1:], 1)
+                         if isinstance(a, ast.Constant) and a.value == "ls-files"), None)
+            if verb is not None and all(
+                    (isinstance(a, ast.Constant) and isinstance(a.value, str))
+                    or (j and isinstance(args[j - 1], ast.Constant) and args[j - 1].value == "-C")
+                    for j, a in enumerate(args[:verb])) \
+                    and _ls_files_reaches_md(args[verb + 1:], consts, tracked_md, None,
+                                             md_suffixes):
+                reasons.add("<index walk: git ls-files>")
             if args and isinstance(args[0], ast.Constant) and args[0].value == "ls-files":
-                if _ls_files_reaches_md(args[1:], consts, tracked_md):
+                # A helper's own `-C` / `cwd=` is not visible here: any directory.
+                if _ls_files_reaches_md(args[1:], consts, tracked_md, None, md_suffixes):
                     reasons.add("<index walk: git ls-files>")
             elif name in _INDEX_LISTERS:
                 reasons.add(f"<index walk: {name}>")
@@ -314,7 +415,7 @@ def select_md_guard_modules(repo_root: Path = REPO_ROOT, explain: bool = False):
         # reached through the test modules that call it.
         if (rel.rsplit("/", 1)[-1].startswith("test_")
                 and not any(m in source for m in _HISTORY_MARKERS)):
-            hits.extend(index_walk_reasons(tree, tracked_md))
+            hits.extend(index_walk_reasons(tree, tracked_md, md_suffixes))
         if hits:
             found[rel] = hits
 
