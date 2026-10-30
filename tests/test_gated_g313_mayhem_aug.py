@@ -63,9 +63,28 @@ def test_panel_still_renders_from_those_keys():
         assert needle in js
 
 
-def test_liveclient_summary_carries_game_mode():
-    src = (ROOT / "dashboard" / "_liveclient.py").read_text(encoding="utf-8")
-    assert 'out["game_mode"] = gd.get("gameMode")' in src
+def test_liveclient_summary_carries_game_mode(monkeypatch):
+    # Behavioural (s144 L5 merger): this was a source-text pin on
+    # `out["game_mode"] = gd.get("gameMode")`, which the s144 true-audit
+    # hardening of dashboard/_liveclient.py rewrote as
+    # `_str_or(gd.get("gameMode"), None)` (a non-str mode reads None). What the
+    # G3-13 grader needs is the VALUE on /api/state's liveclient block, so the
+    # real summary builder is driven with a KIWI frame and must carry it.
+    import time
+
+    from core import liveclient_cache
+    from dashboard import _liveclient
+
+    frame = {"activePlayer": {"summonerName": "Me", "level": 5, "currentGold": 100,
+                              "championStats": {}},
+             "allPlayers": [{"summonerName": "Me", "championName": "Lux", "team": "ORDER",
+                             "items": [], "scores": {"kills": 0, "deaths": 0,
+                                                     "assists": 0, "creepScore": 0}}],
+             "events": {"Events": []},
+             "gameData": {"gameTime": 12.5, "gameMode": "KIWI"}}
+    snap = liveclient_cache.Snapshot(data=frame, ts=time.time())
+    monkeypatch.setattr(liveclient_cache, "get", lambda: snap)
+    assert _liveclient.liveclient_summary()["game_mode"] == "KIWI"
 
 
 def test_norm_name_matches_the_resolver():
