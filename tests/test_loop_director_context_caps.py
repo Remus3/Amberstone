@@ -415,6 +415,28 @@ def test_real_recent_commits_block_survives_the_stdin_cap(lc, tmp_path):
     )
 
 
+def test_recent_commits_block_is_bounded_per_line(lc, tmp_path, monkeypatch):
+    """s144 L5 (2026-10-30): the RECENT COMMITS block was the one UNBOUNDED
+    component - `git log --oneline -n 25` verbatim. The s144 true-audit lane
+    landed 28 commits whose subjects run ~500 chars, so the live body read
+    75,710 bytes against ADJ_STDIN_CAP 60,000, past what plan repayment can
+    cover (PLAN_CTX_MIN). Like the ledger digest, each commit line keeps its
+    head only (the sha + the opening of the subject is the de-dup evidence).
+    Measured with a fake git whose 25 subjects are 2,000 chars each."""
+    long_lines = [f"{i:09x} " + ("x" * 2000) for i in range(25)]
+    monkeypatch.setattr(lc, "git", lambda *a: "\n".join(long_lines))
+    _seed(tmp_path, plan_bytes=400_000, ledger_line_bytes=3_000, roadmap_bytes=150_000)
+    _seed_directive_chain(tmp_path)
+    ctx = lc.build_director_context({}, "", root=tmp_path, ctl=tmp_path)
+    block = ctx.split(_COMMITS_MARKER, 1)[1].split("\n\n--- ", 1)[0].strip("\n")
+    lines = block.splitlines()
+    assert len(lines) == 25, "every recent commit keeps its line"
+    assert all(len(ln) <= lc.COMMIT_LINE_HEAD for ln in lines), max(map(len, lines))
+    assert all(ln.startswith(f"{i:09x} ") for i, ln in enumerate(lines)), "sha kept"
+    body = lc.build_director_body({}, "", root=tmp_path, ctl=tmp_path)
+    assert len(body) <= lc.ADJ_STDIN_CAP, len(body)
+
+
 def test_real_completed_digest_header_survives_the_stdin_cap(lc, tmp_path):
     """The header is what tells the director the block beneath it is DONE
     work. Losing it silently downgrades the digest to unlabelled prose."""

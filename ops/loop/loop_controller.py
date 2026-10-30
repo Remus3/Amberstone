@@ -523,6 +523,23 @@ DIRECTIVE_SUFFIX_HEADER = (
 LEDGER_ITEM_HEAD = 300
 LEDGER_HEAD_LINES = 240
 
+# s144 L5 (2026-10-30). The RECENT COMMITS block was the one component with no
+# bound at all (`git log --oneline -n 25` verbatim). One lane's 28 commits with
+# ~500-char subjects put the live body at 75,710 bytes against ADJ_STDIN_CAP,
+# more than plan repayment (down to PLAN_CTX_MIN) can cover. De-dup needs the
+# sha and the opening of the subject, so each line keeps its head, as the
+# ledger items do: 25 x 160 = 4,000 bytes at most.
+COMMIT_LINE_HEAD = 160
+RECENT_COMMITS_N = 25
+
+
+def recent_commits_digest(n=RECENT_COMMITS_N, line_head=COMMIT_LINE_HEAD):
+    """`git log --oneline -n N`, each line cut to LINE_HEAD chars ("..." marks a cut)."""
+    out = []
+    for line in git("log", "--oneline", "-n", str(n)).splitlines():
+        out.append(line if len(line) <= line_head else line[:line_head - 3] + "...")
+    return "\n".join(out)
+
 _LEDGER_ITEM_RE = re.compile(r"^\d{3,4}\. ")
 
 
@@ -734,7 +751,7 @@ def build_director_context(last_done, last_audit, *, root=None, ctl=None,
     ctx = (
         f"\n\n=== ORCHESTRATION PLAN (PRIMARY work source; pick next OPEN session, skip EXCLUDED) ===\n{plan_txt}"
         "\n\n=== ALREADY-COMPLETED DIGEST - every item below is DONE. BUILD ON it; NEVER re-issue it ==="
-        f"\n\n--- RECENT COMMITS (newest first) ---\n{git('log', '--oneline', '-n', '25')}"
+        f"\n\n--- RECENT COMMITS (newest first) ---\n{recent_commits_digest()}"
         "\n\n--- docs/LEDGER.md NEWEST items (newest-first; each line is a COMPLETED item) ---\n"
         f"{ledger_digest(head_lines('docs/LEDGER.md', LEDGER_HEAD_LINES, root=root), LEDGER_ITEM_HEAD, LEDGER_CTX_CAP, 'LEDGER head')}"
         "\n\n--- DIRECTIVES ALREADY ISSUED THIS RUN (do NOT re-issue any unit below) ---\n"
