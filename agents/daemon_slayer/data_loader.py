@@ -43,13 +43,13 @@ def _norm_augment_key(s: Any) -> str:
     only alphanumerics. "The Brutalizer", "the-brutalizer" and
     " TheBrutalizer! " all collapse to "thebrutalizer".
 
-    This deliberately MIRRORS the existing ``_norm_name`` at
-    ``core/augment_external_source.py:445`` (and the same
-    ``name.lower().replace(" ", "")`` shape at
-    ``coaches/arena_coach.py:264-272``) rather than inventing a third
-    convention. It is re-implemented instead of imported because the
-    ``agents/daemon_slayer`` package is deliberately standalone and must
-    not depend on ``core``.
+    This deliberately MIRRORS the existing ``_norm_name`` in
+    ``core/augment_external_source.py`` (and the same
+    ``name.lower().replace(" ", "")`` shape in ``coaches/arena_coach.py``
+    ``_augment_name_map`` and ``_resolve_augment_apiname``) rather than
+    inventing a third convention. It is re-implemented instead of imported
+    because the ``agents/daemon_slayer`` package is deliberately
+    standalone and must not depend on ``core``.
     """
     return "".join(ch for ch in str(s or "").lower() if ch.isalnum())
 

@@ -68,9 +68,11 @@ from .augments import Augment
 #  * mStat=11 is "AbilityHaste" - NOT a canonical stats.py key today, so
 #    an augment-sourced AH contribution is still dropped on merge. The
 #    engine DOES model ability haste, just on a different lane: item AH
-#    via ``_item_ability_haste`` into ``ability_dps.py:1113``. (An older
-#    comment here cited `ability_dps.py:49` for "the engine has no AH
-#    model" - that cross-reference had rotted and the claim was wrong.)
+#    via ``_item_ability_haste.total_item_ability_haste``, which
+#    ``ability_dps.compute_ability_dps`` adds into
+#    ``ability_dps._total_ability_haste``. (An older comment here cited a
+#    line of ``ability_dps.py`` for "the engine has no AH model" - that
+#    cross-reference had rotted and the claim was wrong.)
 #    Mapping mStat=11 still gives the calc its honest read; the caller is
 #    responsible for whether to consume it. Returning a non-zero
 #    contribution from `read_stat` for AH is fine - the only
