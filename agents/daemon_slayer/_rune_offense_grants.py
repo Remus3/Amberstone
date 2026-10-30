@@ -64,15 +64,16 @@ text otherwise unaltered):
 LEGEND: ALACRITY IS A FRACTION, AND THE FOLD IS WHERE IT GOES WRONG. The value
 this entry returns is a BONUS-AS FRACTION (0.03 at zero stacks, 0.18 at the
 feed's 10-stack cap), but ``stats["as"]`` in the DPS pipeline is FINAL attacks
-per second - ``engine.py:196`` resolves it as ``base_as * (1 + bonus_pct)``.
+per second - ``engine._combine_items`` resolves it as
+``base_as * (1 + bonus_pct)``.
 League folds bonus attack speed onto the INNATE base AS, so the consumer MUST
 scale by ``champ["stats"]["attackspeed"]`` before adding. Adding the raw
 fraction to the final AS field over-credits by ``1 / base_as`` - the identical
 unit bug R42 fixed for Yun Tal's ``cond_as`` and R7 for ``passive_as``, whose
 folds this one is written to mirror exactly.
 
-ATTACK-SPEED-LOCK CHAMPIONS GET ZERO, AND THAT IS DELIBERATE. ``engine.py:439``
-zeroes ``item_totals["as_pct"]`` for any champion carrying an
+ATTACK-SPEED-LOCK CHAMPIONS GET ZERO, AND THAT IS DELIBERATE. The
+``as_lock.locks_as`` branch of ``engine.build_champion`` zeroes ``item_totals["as_pct"]`` for any champion carrying an
 ``_passive_as_lock_overrides.as_lock_entry`` with ``locks_as`` set (Jhin's
 Whisper: his attack speed cannot increase, and would-be bonus AS is converted
 into bonus AD instead). The rune AS fold in ``dps.py`` runs DOWNSTREAM of that
@@ -559,8 +560,8 @@ def jack_of_all_trades_stacks(item_stat_blocks) -> float:
     (movement speed is the live case) is ONE different stat and so contributes
     ONE stack, which is the specific miscount this shape exists to avoid.
 
-    ``item_stat_blocks`` is the same list ``engine.py:318-320`` builds from a
-    resolved build: ``[record.get("stats", {}) for record in item_records]``.
+    ``item_stat_blocks`` is the same list ``engine.build_champion`` builds from
+    a resolved build: ``[record.get("stats", {}) for record in item_records]``.
 
     STATED LIMITATION - ABILITY HASTE IS INVISIBLE HERE: ``ITEM_STAT_KEY_MAP``
     carries no Ability Haste key because DDragon item stat blocks do not carry
@@ -781,7 +782,8 @@ _RUNE_OFFENSE_GRANTS: dict[str, RuneOffenseEntry] = {
     # assumption.
     #
     # AS-LOCK CHAMPIONS: the consumer gates this grant on
-    # _passive_as_lock_overrides.as_lock_entry (engine.py:439) and grants ZERO to
+    # _passive_as_lock_overrides.as_lock_entry (the lock the as_lock.locks_as
+    # branch of engine.build_champion applies) and grants ZERO to
     # a locked champion (Jhin). Deliberately conservative - the override table's
     # ad_per_bonus_as conversion is authored against ITEM attack speed and is not
     # applied to a rune. Stated, not guessed.

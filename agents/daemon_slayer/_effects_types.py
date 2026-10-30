@@ -287,9 +287,10 @@ class PeriodicProc:
 class ItemShield:
     """A shield contribution to EHP (ENGINE 1.27.0, Phase 1.5).
 
-    Closes the ``ehp.py:21`` Phase-1.5 omission "Shield throughput
-    (Sterak's lifeline, Doran's Shield, Bloodthirster) - needs uptime
-    modeling". Phase 1.5 ships the four LIFELINE-style shields (single
+    Closes the Phase-1.5 "Shield throughput" bullet of the ``ehp`` module
+    docstring's "Phase 1 deliberate omissions" list (at the time: "Shield
+    throughput (Sterak's lifeline, Doran's Shield, Bloodthirster) - needs
+    uptime modeling"). Phase 1.5 ships the four LIFELINE-style shields (single
     trigger per fight, value-additive to the effective-HP pool at top of
     the damage stack): Sterak's Gage 3053, Immortal Shieldbow 6673, Maw
     of Malmortius 3156, Hexdrinker 3155. Bloodthirster's ichor-shield is
@@ -406,8 +407,9 @@ class ItemHeal:
     """An item-passive heal contribution to EHP throughput (ENGINE 1.28.0,
     Phase 6).
 
-    Closes the ``ehp.py:23`` Phase-6 deliberate omission "Healing
-    throughput (lifesteal, Spirit Visage amp) - fits Phase 6". Phase 6
+    Closes the Phase-6 "Healing throughput" bullet of the ``ehp`` module
+    docstring's "Phase 1 deliberate omissions" list (at the time: "Healing
+    throughput (lifesteal, Spirit Visage amp) - fits Phase 6"). Phase 6
     ships the item-passive heal sources that fit a one-trigger-per-fight
     model:
       * Sundered Sky 6610 Lightshield Strike (100% base AD melee /
@@ -757,7 +759,8 @@ class ItemEffect:
     # multiple items would over-count.
     unique_passive_key: str = ""
     # ENGINE 1.27.0 (2026-05-21): Phase 1.5 shield throughput (closes the
-    # ehp.py:21 deliberate omission). Single ``ItemShield`` per item;
+    # "Shield throughput" omission in the ``ehp`` module docstring). Single
+    # ``ItemShield`` per item;
     # ``None`` = no shield contribution (today's behavior for every item
     # except the 4 wired lifelines). The EHP scorer reads this field via
     # ``ehp.compute_ehp -> _collect_shields`` and folds it into
@@ -767,8 +770,8 @@ class ItemEffect:
     # most one (the rank.py dead-unique filter; see EhpRankedItem docs).
     shield: "ItemShield | None" = None
     # ENGINE 1.28.0 (2026-05-21): Phase 6 healing throughput - item-passive
-    # heal contribution (closes the ehp.py:23 deliberate omission). Single
-    # ``ItemHeal`` per item; ``None`` = no item-passive heal contribution
+    # heal contribution (closes the "Healing throughput" omission in the
+    # ``ehp`` module docstring). Single ``ItemHeal`` per item; ``None`` = no item-passive heal contribution
     # (today's behavior for every item except Sundered Sky in the initial
     # Phase 6 wire). The EHP scorer reads this field via
     # ``ehp.compute_ehp -> _collect_heals`` and folds the total into the

@@ -54,8 +54,8 @@ axis - the consumer must pair tenacity_mult with their own CC
 assumption).
 
 ENGINE 1.28.0 (2026-05-21) - Phase 6 healing throughput. Closes the
-``ehp.py:23`` deliberate Phase-6 omission "Healing throughput
-(lifesteal, Spirit Visage amp)". Three contributions feed the heal
+deliberate Phase-6 omission "Healing throughput (lifesteal, Spirit
+Visage amp)" in the "Phase 1 deliberate omissions" list above. Three contributions feed the heal
 pool: (a) item-passive heals (Sundered Sky 6610 Lightshield Strike,
 100% base AD melee / 50% base AD ranged per one-trigger-per-fight),
 (b) lifesteal-derived heal accumulated over the 6s fight window
@@ -968,7 +968,8 @@ class EhpResult:
     # CC assumption via the module-level ``effective_cc_duration`` helper.
     aram_tenacity_mult: float = 1.0
     # ENGINE 1.27.0 (2026-05-21): Phase 1.5 shield throughput. Aggregated
-    # shield_hp by damage type (closes ehp.py:21 deliberate omission).
+    # shield_hp by damage type (closes the "Shield throughput" omission in
+    # the module docstring).
     # ``shield_any`` is type-agnostic (Sterak / Shieldbow lifelines) -
     # absorbs all 3 damage components. ``shield_phys`` / ``shield_mag``
     # / ``shield_true`` are type-gated (Maw / Hexdrinker are magic-only).

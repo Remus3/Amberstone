@@ -1159,7 +1159,8 @@ def compute_dps(
         # R156 (ENGINE 1.237.0): Jack Of All Trades 8316 is the first entry whose
         # stack count is COMPUTED rather than assumed - "For each different stat
         # gained from items, gain one Jack stack" - so the census is taken HERE,
-        # from the resolved build, in the same shape engine.py:318-320 uses. It
+        # from the resolved build, in the same shape ``engine.build_champion``
+        # builds its ``item_stat_blocks``. It
         # sits INSIDE the seam so the default-OFF path pays neither the item
         # lookups nor the aggregation and stays byte-identical. Passing no census
         # (the registry's None default) means the entry contributes nothing, so
@@ -1345,13 +1346,14 @@ def compute_dps(
     # into the rotation AS. Same shape as the R42 cond_as fold and the R7
     # passive_as fold below - and the same unit trap: rune_offense_as is a
     # bonus-AS FRACTION (0.18 at the feed's 10-stack cap) while stats["as"] is
-    # FINAL attacks/sec (engine.py:196 resolves it as base_as * (1 + bonus_pct)).
+    # FINAL attacks/sec (``engine._combine_items`` resolves it as
+    # base_as * (1 + bonus_pct)).
     # League folds bonus AS onto the INNATE base AS, so scale by base_as before
     # adding; adding the raw fraction over-credits by 1/base_as. The 2.5 League
     # hard-cap re-clamp is mandatory and matches both neighbouring folds.
     #
-    # ATTACK-SPEED-LOCK GATE: engine.py:439 zeroes item_totals["as_pct"] for a
-    # champion carrying an as_lock_entry with locks_as (Jhin's Whisper - his AS
+    # ATTACK-SPEED-LOCK GATE: the ``as_lock.locks_as`` branch of
+    # ``engine.build_champion`` zeroes item_totals["as_pct"] for a champion carrying an as_lock_entry with locks_as (Jhin's Whisper - his AS
     # cannot increase and would-be bonus AS converts to AD instead). This fold
     # runs DOWNSTREAM of that zeroing, so without this gate it would hand a
     # locked champion attack speed they can never have in game. A locked
