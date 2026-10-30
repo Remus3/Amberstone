@@ -183,3 +183,90 @@ def test_a_rebuild_never_steals_focus(mock_server, pw_browser):
         "a rebuild moved focus onto LOCK IN when it was not there"
     )
     assert not errors, errors[:3]
+
+
+# RM-1138: a click on LOCK IN holds the lock for 1.5s so a second click
+# cannot fire a second lock_pick. MEASURED before the fix (sr and aram, the
+# lock_pick POST stubbed to never answer): the hold lived only on the
+# clicked node as btn.disabled, so a central-pane rebuild inside the window
+# rendered a fresh ENABLED button and a second click POSTed a second
+# lock_pick (2 POSTs); and disabling the focused button threw keyboard focus
+# to <body> at once, before any rebuild. Contract pinned here: the hold
+# survives a rebuild, is announced (aria-disabled="true"), keeps keyboard
+# focus on the button, and releases after the window.
+_STUB_LOCK_POST = """() => {
+  window.__lockPosts = 0;
+  const orig = window.fetch;
+  window.fetch = (u, o) => {
+    if (String(u).includes('/api/lcu-cmd') && !String(u).includes('result')) {
+      window.__lockPosts += 1;
+      return new Promise(() => {});
+    }
+    return orig(u, o);
+  };
+}"""
+
+# Opacity is read SETTLED: .csv-lock-btn carries "transition: 0.15s".
+_READ_BTN = """async (sel) => {
+  const b = document.querySelector(sel);
+  await Promise.all(b.getAnimations().map((x) => x.finished));
+  const a = document.activeElement;
+  return {aria: b.getAttribute('aria-disabled'), disabled: b.disabled,
+    opacity: getComputedStyle(b).opacity,
+    active: a ? (a.id || a.tagName) : null, posts: window.__lockPosts};
+}"""
+
+
+@pytest.mark.parametrize("mode", ["sr", "aram"])
+def test_a_pending_lock_survives_a_rebuild(mock_server, pw_browser, mode):
+    ctx, page, errors = _open(mock_server, pw_browser, mode)
+    try:
+        page.evaluate(_STUB_LOCK_POST)
+        _focus_by_keyboard(page)
+        page.keyboard.press("Enter")
+        held = page.evaluate(_READ_BTN, _BTN)
+        out = page.evaluate(_REBUILD, _BTN)
+        rebuilt = page.evaluate(_READ_BTN, _BTN)
+        # Both a keyboard and a pointer-style activation of the NEW node.
+        page.keyboard.press("Enter")
+        page.evaluate("(s) => document.querySelector(s).click()", _BTN)
+        posts = page.evaluate("() => window.__lockPosts")
+    finally:
+        page.close()
+        ctx.close()
+    assert held["posts"] == 1, held
+    assert held["aria"] == "true", f"{mode}: the held button is not announced: {held}"
+    assert held["active"] == "csv-lock-btn", (
+        f"{mode}: activating LOCK IN threw focus to {held['active']}"
+    )
+    assert out["rebuilt"], f"{mode}: the central pane never rebuilt"
+    assert rebuilt["aria"] == "true", (
+        f"{mode}: a rebuild inside the hold rendered a live button: {rebuilt}"
+    )
+    assert rebuilt["active"] == "csv-lock-btn", rebuilt
+    # The held state still LOOKS held (the dimmed [disabled] treatment).
+    assert held["opacity"] == "0.5" and rebuilt["opacity"] == "0.5", (
+        f"{mode}: the held button is not dimmed: {held} / {rebuilt}"
+    )
+    assert posts == 1, f"{mode}: a click after the rebuild fired lock_pick #{posts}"
+    assert not errors, errors[:3]
+
+
+def test_the_lock_hold_releases_after_its_window(mock_server, pw_browser):
+    ctx, page, errors = _open(mock_server, pw_browser, "sr")
+    try:
+        page.evaluate(_STUB_LOCK_POST)
+        page.evaluate("(s) => document.querySelector(s).click()", _BTN)
+        page.evaluate(_REBUILD, _BTN)
+        page.wait_for_function(
+            "(s) => document.querySelector(s).getAttribute('aria-disabled')"
+            " !== 'true'",
+            arg=_BTN, timeout=5_000,
+        )
+        page.evaluate("(s) => document.querySelector(s).click()", _BTN)
+        posts = page.evaluate("() => window.__lockPosts")
+    finally:
+        page.close()
+        ctx.close()
+    assert posts == 2, f"the released button did not fire a retry ({posts} POSTs)"
+    assert not errors, errors[:3]

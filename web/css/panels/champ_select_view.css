@@ -332,7 +332,9 @@
   color: #44ff88;
   background: #0d2c1a;
 }
-.csv-lock-btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+/* RM-1138: the click hold is aria-disabled (keeps keyboard focus). */
+.csv-lock-btn[disabled],
+.csv-lock-btn[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; }
 
 /* Archetype scorer-picker styles removed (LEDGER 823). The .csv-archetype-*
  * / .csv-arch-* / .csv-arch-preview / .csv-arch-btn rules styled the

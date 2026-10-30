@@ -844,7 +844,7 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
   // nothing left to do; LCU re-emits `my_completed=true` and the next
   // render re-renders without the button.
   const lockBtnHtml = (myCid && !locked)
-    ? `<button class="csv-lock-btn" id="csv-lock-btn" data-cid="${myCid}">LOCK IN ${myName.toUpperCase()}</button>`
+    ? `<button class="csv-lock-btn" id="csv-lock-btn" data-cid="${myCid}"${_csvLockHeld() ? ' aria-disabled="true"' : ""}>LOCK IN ${myName.toUpperCase()}</button>`
     : "";
 
   let extraHtml = "";
@@ -1315,19 +1315,45 @@ function _csvVariantBadgeClass(v) {
 // ghost wrapper; both were removed with the wrapper.
 
 // s171: lock button click handler - same shape as the legacy overlay's
-// #cs-lock-btn. Disables the button on click to prevent double-fire,
-// stamps the state line with the agent's response, then re-enables on
-// timeout so a real failure can be retried.
+// #cs-lock-btn. Holds the button on click to prevent double-fire, stamps
+// the state line with the agent's response, then releases on timeout so a
+// real failure can be retried.
+// RM-1138: the hold lives at module scope, not on the clicked node. The
+// central pane rebuilds through innerHTML on every async land, and a node
+// flag (btn.disabled) died with the node, so a rebuild inside the window
+// rendered a live button and a second click fired a second lock_pick. It is
+// aria-disabled, not disabled: disabling the focused button threw keyboard
+// focus to <body>, and a disabled rebuilt node could not take the RM-971
+// focus carry. _csvLockSeq lets only the click that set the hold clear it.
+const _CSV_LOCK_HOLD_MS = 1500;
+let _csvLockHoldUntil = 0;
+let _csvLockSeq = 0;
+
+function _csvLockHeld() {
+  return Date.now() < _csvLockHoldUntil;
+}
+
+function _csvSetLockHold(seq, on) {
+  if (seq !== _csvLockSeq) return;
+  _csvLockHoldUntil = on ? Date.now() + _CSV_LOCK_HOLD_MS : 0;
+  const cur = document.getElementById("csv-lock-btn");
+  if (!cur) return;
+  if (on) cur.setAttribute("aria-disabled", "true");
+  else cur.removeAttribute("aria-disabled");
+}
+
 function _csvWireLockButton(scope) {
   const btn = scope.querySelector("#csv-lock-btn");
   if (!btn) return;
   btn.addEventListener("click", () => {
-    btn.disabled = true;
+    if (_csvLockHeld()) return;
     const cid = (btn.dataset.cid | 0);
-    if (!(cid > 0)) { btn.disabled = false; return; }
+    if (!(cid > 0)) return;
+    const seq = ++_csvLockSeq;
+    _csvSetLockHold(seq, true);
     lcuCmd({ cmd: "lock_pick", championId: cid }).then((resp) => {
       const id = resp && resp.id;
-      if (!id) { btn.disabled = false; return; }
+      if (!id) { _csvSetLockHold(seq, false); return; }
       lcuPollResult(id, (result) => {
         const stateEl = document.getElementById("csv-mypick-state");
         if (stateEl) {
@@ -1343,7 +1369,7 @@ function _csvWireLockButton(scope) {
         }
       });
     });
-    setTimeout(() => { btn.disabled = false; }, 1500);
+    setTimeout(() => { _csvSetLockHold(seq, false); }, _CSV_LOCK_HOLD_MS);
   });
 }
 
