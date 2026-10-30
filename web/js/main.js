@@ -883,8 +883,13 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     // "(R) Auto (clear manual)" entry in the title dropdown menu.
   }
   function _viewUpdateMenuActive(viewId) {
+    // RM-1084: aria-current names the current view to a screen reader,
+    // so the menu's cue is not colour-only.
     document.querySelectorAll(".view-menu-item").forEach((b) => {
-      b.classList.toggle("active", b.dataset.view === viewId);
+      const cur = b.dataset.view === viewId;
+      b.classList.toggle("active", cur);
+      if (cur) b.setAttribute("aria-current", "page");
+      else b.removeAttribute("aria-current");
     });
   }
   function _viewMenuClose() {

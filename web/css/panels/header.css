@@ -396,7 +396,9 @@ footer .prefs-chip:hover { color: var(--text); }
   border-radius: var(--radius-sm);
   cursor: pointer;
   padding: 11px 18px; text-align: left;
-  font-family: inherit; font-size: 15px; font-weight: 700;
+  /* RM-1084: 15px sat under the --fs-xs floor with no recorded exception
+   * (docs/UI_SCALE_SPEC_V2.md v2.1); the rows are the out-of-game nav. */
+  font-family: inherit; font-size: var(--fs-xs); font-weight: 700;
   letter-spacing: 0.05em;
   transition: background 0.1s, color 0.1s, border-color 0.1s;
   width: 100%;
@@ -409,14 +411,25 @@ footer .prefs-chip:hover { color: var(--text); }
   color: var(--text);
   border-color: var(--info);
 }
+/* RM-1084 residue: --info text on the --info-soft fill read DIMMER than
+ * the unselected --text-dim rows on four themes (the RM-1083 measurement:
+ * L 0.395 vs 0.398 arcane, 0.411 vs 0.423 terminal), so the current view
+ * takes --text; the --info fill, border and weight stay the cue, and
+ * main.js _viewUpdateMenuActive stamps aria-current="page" on it. */
 .view-menu-item.active {
   background: var(--info-soft);
-  color: var(--info);
+  color: var(--text);
   border-color: var(--info);
   font-weight: 800;
 }
-.view-menu-item:focus-visible {
-  outline: 2px solid var(--info); outline-offset: 1px;
+/* The one system focus ring (tokens.css --focus-ring), not a private
+ * outline. The second selector outranks the arcane current-row underline
+ * (themes.css, 0,4,0), so the ring replaces it while focus is held.
+ * Guard: tests/snapshot_panels/test_view_menu_items.py. */
+.view-menu-item:focus-visible,
+:root[data-theme] .view-menu-item.active:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 .view-menu-divider {
   /* No margin - the parent flex `gap: 6px` provides uniform spacing

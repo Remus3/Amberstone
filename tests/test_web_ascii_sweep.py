@@ -1489,7 +1489,21 @@ _WEB = _REPO_ROOT / "web"
 # value EXACTLY. That path is the whole change. No glyph change: the added
 # lines carry 0 non-ASCII bytes. If another slice re-captures in parallel,
 # the merger recomputes.
-_LIVE_HALF_DIGEST = "478a1f4986c2a4867e877a999c0c69b5abd2148b93e8d71135502f98e0f9be4e"
+# superseded by the RM-1084 view-menu re-capture below: "478a1f4986c2a4867e877a999c0c69b5abd2148b93e8d71135502f98e0f9be4e"
+#
+# RE-CAPTURED 2026-10-30 at RM-1084 last residue (s144 uiux cycle 63,
+# provisional until the merger lands it and maps the id). One change rides
+# it: the title dropdown's view menu rows (.view-menu-item) - the current
+# row takes --text, every row draws the system focus ring and meets the
+# --fs-xs type floor (was 15px), and main.js
+# _viewUpdateMenuActive stamps aria-current="page" (web/css/panels/
+# header.css, web/js/main.js). Ordinary case, no tokeniser change.
+# ATTRIBUTED BY SUBSTITUTION: swapping those two files back to their lane
+# HEAD 0e1d2a7d1 blobs (in memory) reproduces the superseded 478a1f49...
+# value EXACTLY. Those two paths are the whole change. No glyph change: the
+# added lines carry 0 non-ASCII bytes. If another slice re-captures in
+# parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "82814d1763c8487beb9bfb33ccac2c40dbd93fe3507399b7f80d148d05a57108"
 
 
 def _web_sources() -> list[Path]:
