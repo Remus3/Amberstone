@@ -1,14 +1,15 @@
 """
 scripts/patch_champion.py - Modular champion data patcher for aram_champion_builds.json
 
-Usage:
-    python patch_champion.py --list                          # show all champions + tiers
-    python patch_champion.py --show Lucian                   # show one champion's data
-    python patch_champion.py --apply patches/lucian.json     # apply a champion patch file
-    python patch_champion.py --validate                      # check all builds for issues
-    python patch_champion.py --apply-all patches/            # apply all patch files in dir
+Usage (subcommands, from the repo root; patch files live in data/meta_build/patches/):
+    python scripts/patch_champion.py list                    # show all champions + tiers
+    python scripts/patch_champion.py show Lucian             # show one champion's data
+    python scripts/patch_champion.py apply <patch.json>      # apply a champion patch file
+    python scripts/patch_champion.py validate                # check all builds for issues
+    python scripts/patch_champion.py apply-all <patch dir>   # apply all patch files in dir
+    (apply / apply-all take --force)
 
-Patch file format (patches/lucian.json):
+Patch file format (for example data/meta_build/patches/Lucian.json):
 {
   "champion": "Lucian",
   "aram_tier": "A",
@@ -27,6 +28,13 @@ import logging
 from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
+# Run as `python scripts/patch_champion.py`, sys.path[0] is scripts/; the repo
+# root makes `core` importable (same as data_pipeline.py and tft_patch_delta.py).
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from core.polled_json import atomic_write_bytes  # noqa: E402
+
 BUILDS_FILE = ROOT / "data" / "meta_build" / "aram_champion_builds.json"
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -66,10 +74,12 @@ def load_builds() -> dict:
 
 def save_builds(builds: dict) -> None:
     # Bytes, not write_text: on Windows write_text turns LF into CRLF and this
-    # is a TRACKED file (RM-441; same pattern as data_pipeline._atomic_write_text).
-    tmp = BUILDS_FILE.with_suffix(".json.tmp")
-    tmp.write_bytes(json.dumps(builds, indent=2, ensure_ascii=False).encode("utf-8"))
-    tmp.replace(BUILDS_FILE)
+    # is a TRACKED file (RM-441). RM-1127: the coaches read it in-process
+    # while RC is up, so the swap goes through core.polled_json (per-writer
+    # scratch, fsync, WinError 5 retry, no scratch left on a failed rename).
+    atomic_write_bytes(
+        BUILDS_FILE,
+        json.dumps(builds, indent=2, ensure_ascii=False).encode("utf-8"))
 
 
 def validate_build(champion: str, data: dict) -> list[str]:
