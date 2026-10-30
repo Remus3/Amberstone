@@ -188,8 +188,9 @@ def test_main_exit_codes(tmp_path, capsys):
 
 def test_live_ds_cost_table_is_used_when_present(tmp_path):
     root = Path(g._ROOT) / "data" / "daemon_slayer"
-    if not (root / "current.txt").is_file():
-        pytest.skip("no DS data in this checkout")
+    # data/daemon_slayer/current.txt is TRACKED, so its absence is a broken
+    # checkout and must fail here, never skip (tests/test_skip_condition_hygiene.py).
+    assert (root / "current.txt").is_file(), "tracked DS data missing from this checkout"
     s = g.check(_write(tmp_path / f"{STEM}.jsonl"))
     assert s["champion_id"] == "Ahri"
     assert s["costs"]["Q"]["resource"] == "MANA" and s["costs"]["Q"]["observable"]
