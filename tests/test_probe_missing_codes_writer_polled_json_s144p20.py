@@ -19,20 +19,25 @@ the save goes through ``save_codes`` -> ``core.polled_json
 no trailing newline). scripts/ sits outside the repo-wide guard
 tests/test_atomic_write_guard_rm258_rm261.py (one-shot generator tree), so
 this module carries its own source pin. No test touches a League client:
-the import runs with ``urllib.request.urlopen`` replaced by a recorder that
-raises, and ``main()`` only runs with every lockfile path pointed at a
-missing file.
+the import is proved call-free in a CHILD process whose
+``urllib.request.urlopen`` is a recorder that raises; in this process every
+test refuses and records the script's OWN ``urllib.request.urlopen``
+(``bind_urlopen``, never the process-wide stdlib attribute, RM-801); and
+``main()`` only runs with every lockfile path pointed at a missing file.
 """
 from __future__ import annotations
 
 import ast
 import importlib
 import json
+import os
 import pathlib
+import subprocess
 import sys
-import urllib.request
 
 import pytest
+
+from tests._module_view import bind_urlopen
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
@@ -83,22 +88,50 @@ def test_the_module_body_runs_no_probe():
                            for c in calls), calls
 
 
+_CHILD_IMPORT = (
+    "import sys, urllib.request\n"
+    "calls = []\n"
+    "def refuse(*args, **kwargs):\n"
+    "    calls.append(args)\n"
+    "    raise RuntimeError('test refuses network access')\n"
+    "urllib.request.urlopen = refuse\n"
+    "sys.path.insert(0, sys.argv[1])\n"
+    "import scripts.probe_missing_codes\n"
+    "print('urlopen calls at import:', len(calls))\n"
+)
+
+
+def test_importing_the_script_makes_no_network_call():
+    """Runtime twin of the static guard, in a child process so the refusing
+    urlopen can never leak into another test (RM-801)."""
+    test_the_module_body_runs_no_probe()
+    no_window = 0x08000000 if os.name == "nt" else 0
+    r = subprocess.run(
+        [sys.executable, "-I", "-c", _CHILD_IMPORT, str(ROOT)],
+        capture_output=True, text=True, timeout=60, cwd=str(ROOT),
+        creationflags=no_window,
+    )
+    assert r.returncode == 0, r.stderr[-2000:]
+    assert r.stdout.strip().splitlines()[-1] == "urlopen calls at import: 0", r.stdout
+
+
 @pytest.fixture
 def pmc(monkeypatch):
-    """Import the script with every network call refused and recorded."""
+    """Import the script, then refuse and record every network call it makes."""
     test_the_module_body_runs_no_probe()
+    sys.modules.pop(_MOD, None)
+    mod = importlib.import_module(_MOD)
     calls: list[object] = []
 
     def refuse(*args, **kwargs):
         calls.append(args)
         raise RuntimeError("test refuses network access")
 
-    monkeypatch.setattr(urllib.request, "urlopen", refuse)
-    sys.modules.pop(_MOD, None)
-    mod = importlib.import_module(_MOD)
-    assert calls == []
+    # Scoped to the script's own urllib.request.urlopen (RM-801).
+    assert bind_urlopen(monkeypatch, mod, refuse) >= 1
     yield mod
     sys.modules.pop(_MOD, None)
+    assert calls == [], f"the script attempted network access: {calls}"
 
 
 def test_main_without_a_lockfile_stops_before_any_lcu_call(
