@@ -30,8 +30,9 @@ of its own; the data stays governed by CDragon's terms and Riot's underneath
 them (NOTICE, "CommunityDragon (CDragon)"). Only game data goes in the
 extract - comps and tier lists from third-party sites stay out of the repo.
 
-Writes are atomic (tmp then replace), 7-bit ASCII (non-ASCII escaped) and
-LF-only. Superseded one-off: scripts/fetch_cdragon_pbe.py (Set 17 only).
+Writes go through core.polled_json (per-writer scratch, fsync, WinError 5
+retry; RM-1126), 7-bit ASCII (non-ASCII escaped) and LF-only.
+Superseded one-off: scripts/fetch_cdragon_pbe.py (Set 17 only).
 """
 from __future__ import annotations
 
@@ -48,6 +49,11 @@ from urllib import error as urllib_error
 from urllib import request as urllib_request
 
 ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from core.polled_json import atomic_write_bytes  # noqa: E402
+
 CDRAGON_BASE = "https://raw.communitydragon.org"
 BRANCHES = ("latest", "pbe")
 USER_AGENT = "Amberstone/fetch-cdragon-tft/1.0"
@@ -359,12 +365,12 @@ def build_extract(raw: dict, set_number: int, *, branch: str,
 
 
 def write_atomic(path: Path, obj: dict) -> None:
-    """ASCII + LF bytes via tmp then replace (overlays poll mid-write)."""
-    path = Path(path)
+    """ASCII + LF bytes, atomically: RC reads the extract in-process
+    (tft/tft_set.py load_cdragon) while it is up, so the swap goes through
+    core.polled_json - a per-writer scratch, fsync, a bounded WinError 5
+    retry and no scratch left behind (RM-1126)."""
     data = (json.dumps(obj, indent=1, ensure_ascii=True) + "\n").encode("ascii")
-    tmp = path.with_name(path.name + ".tmp")
-    tmp.write_bytes(data)
-    tmp.replace(path)
+    atomic_write_bytes(Path(path), data)
 
 
 def local_content_version(source: Path) -> str | None:

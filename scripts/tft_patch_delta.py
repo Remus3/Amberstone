@@ -42,6 +42,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from core.polled_json import atomic_write_bytes  # noqa: E402
 from scripts import fetch_cdragon_tft as fct  # noqa: E402
 
 DEFAULT_MUTATOR = "TFTSet18"
@@ -287,9 +288,9 @@ def diff_set(old_raw, new_raw, mutator: str = DEFAULT_MUTATOR, *, old_label=None
 
 
 def _write_bytes_atomic(path: Path, data: bytes) -> None:
-    tmp = path.with_name(path.name + ".tmp")
-    tmp.write_bytes(data)
-    tmp.replace(path)
+    """Cache write through core.polled_json: a per-writer scratch, fsync, a
+    bounded WinError 5 retry and no scratch left behind (RM-1126)."""
+    atomic_write_bytes(path, data)
 
 
 def _version(meta_bytes) -> str | None:
