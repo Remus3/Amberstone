@@ -1,17 +1,18 @@
 """The lockfile-not-found notice is deduped across every caller of connect().
 
 `tests/test_lcu_lockfile_log_once.py` pins the throttle for one caller. That
-throttle is instance state (`lcu/lcu_client.py:73` + `:77`) read and written
+throttle is instance state (set in `LcuClient.__init__`) read and written
 with no lock, and the RC process drives it from TWO 1 Hz callers on ONE shared
-client - the frozen auto-accept tick (`lcu/lcu_client.py:260`) and the rune
-writer's poll (`lcu/lcu_rune_writer.py:626`), which holds the same object
-(`main.py:226` builds it, `main.py:244` hands it over). Both run their body via
-`asyncio.to_thread`, so they race the read-compare-write at
-`lcu/lcu_client.py:108` + `:113-115`: both read the old timestamp, both pass,
-both log.
+client - the frozen auto-accept tick (`LcuClient._auto_accept_tick`) and the
+rune writer's poll (`RuneWriter._poll` in `lcu/lcu_rune_writer.py`), which
+holds the same object (`main.py` builds it and hands it over). Both run their
+body via `asyncio.to_thread`, so they race the read-compare-write inside
+`LcuClient.connect()`: both read the old timestamp, both pass, both log.
+(Citations name symbols: the frozen client's line numbers drifted, re-measured
+s144 true-audit cycle 71.)
 
 MEASURED on the daily logs this run (`logs/YYYY-MM-DD.log` has exactly one
-writer process - `main.py:40` is the only caller of `core.log_setup.setup`):
+writer process - `main.py` is the only caller of `core.log_setup.setup`):
 
     2026-08-06  2567 / 4924 lines (52.1 pct), 1052 duplicates (41.0 pct)
     2026-08-07  2681 / 4756 lines (56.4 pct), 1143 duplicates (42.6 pct)
@@ -19,13 +20,12 @@ writer process - `main.py:40` is the only caller of `core.log_setup.setup`):
 
 Per-timestamp histogram `{1: n, 2: m}` on every day sampled - never 3 - with the
 pair 0-1 ms apart. That it is one client and not two is measured: on 2026-08-07
-the first-of-gap line at `lcu/lcu_client.py:110` is 19 singles and NEVER paired
-(one per boot, and that day had 19 boots) while the `:114` repeat is 1143 pairs.
-Two clients would each own `_lockfile_missing_logged` and both would announce
-the gap.
+the first-of-gap INFO line is 19 singles and NEVER paired (one per boot, and
+that day had 19 boots) while the DEBUG repeat is 1143 pairs. Two clients would
+each own `_lockfile_missing_logged` and both would announce the gap.
 
-The anti-degrade half is the important half. `lcu/lcu_client.py:105-107`
-records the intent that "a re-opened gap must not be swallowed by a
+The anti-degrade half is the important half. `LcuClient.connect()` records the
+intent that "a re-opened gap must not be swallowed by a
 still-running window", so the dedupe suppresses per EPISODE, not per window:
 a gap that ends and re-opens inside a live throttle window MUST still notify.
 `test_a_reopened_gap_still_notifies_across_instances` is that assertion.
@@ -441,6 +441,111 @@ class FilterUnitTests(unittest.TestCase):
         self.assertIn(lockfile_notice.MISSING_NEEDLE, source)
         for needle in lockfile_notice.EPISODE_END_NEEDLES:
             self.assertIn(needle, source)
+
+
+class FilterHardeningTests(unittest.TestCase):
+    """s144 true-audit cycle 71: the filter must never be the thing that breaks
+    a log call, the one-per-logger install must hold under a race, and a bad
+    repeat interval must be refused rather than silence the notice forever."""
+
+    def _record(self, msg, args=None):
+        return logging.LogRecord(
+            "rc.lcu", logging.INFO, __file__, 0, msg, args, None)
+
+    def test_a_malformed_record_is_passed_through_not_raised(self):
+        """A logger-level filter runs inside `Logger.handle()` with no guard,
+        so a getMessage() that raises escapes from the CALLER's `_log.info()`
+        - a harmless format slip anywhere on `rc.lcu` would kill the frozen
+        client's connect(). Without the filter the stdlib reports it through
+        Handler.handleError and carries on; the filter must not change that."""
+        f = LockfileNoticeFilter()
+        bad = (
+            ("LCU connected: port %d", ("not-a-number",)),
+            ("LCU lockfile not found %s %s", ("one",)),
+            ("%(missing)s", ({"other": 1},)),
+            ("not all converted", ("extra",)),
+        )
+        for msg, args in bad:
+            with self.subTest(msg=msg):
+                self.assertTrue(f.filter(self._record(msg, args)))
+
+    def test_a_raising_str_on_the_message_object_is_passed_through(self):
+        class Boom:
+            def __str__(self):
+                raise RuntimeError("str() of the message failed")
+
+        self.assertTrue(LockfileNoticeFilter().filter(self._record(Boom())))
+
+    def test_a_malformed_record_does_not_touch_the_episode(self):
+        now = [0.0]
+        with mock.patch("lcu.lockfile_notice.time", _fake_clock(now)):
+            f = LockfileNoticeFilter()
+            missing = self._record(
+                "LCU lockfile not found - client may not be running")
+            self.assertTrue(f.filter(missing))
+            f.filter(self._record("LCU connected: port %d", ("x",)))
+            now[0] += 0.001
+            self.assertFalse(
+                f.filter(missing),
+                "an unformattable record closed the open episode",
+            )
+
+    def test_a_malformed_log_call_on_the_real_logger_does_not_raise(self):
+        """End to end through `Logger.handle()`. Handlers are stubbed out
+        (pytest's own capture handler deliberately re-raises a bad record in
+        its handleError), so the only stage left that can raise is the
+        logger-level filter chain - the stage under test."""
+        logger = logging.getLogger("rc.lcu")
+        self.assertIsNotNone(lockfile_notice.current())
+        handed_on = []
+        with mock.patch.object(logging.Logger, "callHandlers",
+                               lambda _self, record: handed_on.append(record)):
+            logger.warning("LCU connected: port %d", "not-a-number")
+        self.assertEqual(len(handed_on), 1,
+                         "the malformed record was dropped, not passed on")
+
+    def test_install_attaches_one_filter_under_a_race(self):
+        name = "rc.lcu.test-install-race-s144t071"
+        logger = logging.getLogger(name)
+        self.addCleanup(lambda: [logger.removeFilter(f)
+                                 for f in list(logger.filters)])
+        barrier = threading.Barrier(2, timeout=0.5)
+        real_current = lockfile_notice.current
+
+        def parked_current(logger_name=lockfile_notice.LOGGER_NAME):
+            found = real_current(logger_name)
+            try:
+                barrier.wait()
+            except threading.BrokenBarrierError:
+                pass
+            return found
+
+        results = []
+        with mock.patch.object(lockfile_notice, "current", parked_current):
+            threads = [threading.Thread(
+                target=lambda: results.append(install(name)), daemon=True)
+                for _ in range(2)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join(timeout=5)
+        attached = [f for f in logger.filters
+                    if isinstance(f, LockfileNoticeFilter)]
+        self.assertEqual(len(attached), 1, "two racing install() calls "
+                         "attached two independent filters")
+        self.assertEqual(len(results), 2)
+        self.assertIs(results[0], results[1])
+
+    def test_a_non_finite_or_negative_repeat_interval_is_refused(self):
+        for bad in (float("nan"), -1.0, float("inf"), True, "60", None):
+            with self.subTest(repeat_s=bad):
+                with self.assertRaises((TypeError, ValueError)):
+                    LockfileNoticeFilter(repeat_s=bad)
+
+    def test_a_zero_or_integer_repeat_interval_is_accepted(self):
+        for ok in (0, 0.0, 60, 1.5):
+            with self.subTest(repeat_s=ok):
+                LockfileNoticeFilter(repeat_s=ok)
 
 
 if __name__ == "__main__":
