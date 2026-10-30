@@ -31,7 +31,8 @@ to check in. ASCII only, no em/en dashes or smart quotes in any authored byte.
 - Upstream feed watch (RM-668, external reference L). READ-ONLY, run by hand
   here every batch and at least every 3-4 weeks; it is not a poller and has no
   scheduled task: `python tools/ds_feed_watch.py`. It diffs the upstream
-  changelog against the tracked high-water date in `tools/ds_feed_watch.json`,
+  changelog against the tracked high-water date in
+  `data/daemon_slayer/ds_feed_watch.json`,
   HEADs every chunk URL in the current manifest's data-block list, hashes
   each live chunk body (`ds_feed_index.body_md5`, raw bytes), and (RM-839)
   walks the live build's chunk graph from the upstream root, because chunk

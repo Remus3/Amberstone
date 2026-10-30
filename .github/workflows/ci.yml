@@ -455,7 +455,8 @@ jobs:
 
       - name: DS feed provenance index in sync - a stale row hides a copy-forward
         run: |
-          # tools/ds_feed_index.json stores, per shipped patch dir per feed, a
+          # data/daemon_slayer/ds_feed_index.json stores, per shipped patch
+          # dir per feed, a
           # content-addressed body hash with every marker / wall-clock / prose
           # key stripped. --check recomputes all of it off disk and exits 1 on
           # any disagreement.

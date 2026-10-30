@@ -40,7 +40,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 _DATA = ROOT / "data" / "daemon_slayer"
 _CURRENT_TXT = _DATA / "current.txt"
-_INDEX_PATH = Path(__file__).resolve().parent / "ds_feed_index.json"
+_INDEX_PATH = _DATA / "ds_feed_index.json"
 
 SEMVER_DIR = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
 

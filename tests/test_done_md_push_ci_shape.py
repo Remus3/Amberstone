@@ -207,7 +207,7 @@ def test_tier_table_orders_the_ds_feed_index_write_before_check():
     assert write in table and check in table, "RM-790: name both DS index steps"
     assert table.index(write) < table.index(check)
     assert "data/daemon_slayer/" in table, "say WHICH change needs the DS index steps"
-    assert "tools/ds_feed_index.json" in table, "say what to commit with the data"
+    assert "data/daemon_slayer/ds_feed_index.json" in table, "say what to commit with the data"
 
 
 # --------------------------------------------------------------------------- #

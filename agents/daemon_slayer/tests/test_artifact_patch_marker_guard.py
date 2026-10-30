@@ -10,7 +10,7 @@ forward is undetectable by inspection.
 
 MEASURED 2026-07-24, re-measured 2026-08-15 across all six shipped dirs
 (16.10.1 .. 16.15.1, 107 feed rows - both numbers re-derived from disk and from
-tools/ds_feed_index.json, which agree; the line here previously said five dirs
+data/daemon_slayer/ds_feed_index.json, which agree; the line here previously said five dirs
 and 87 rows and had gone stale by a whole patch). The marker is spelled FOUR
 different ways on disk and the audit that filed this residual undercounted the
 healthy artifacts badly:

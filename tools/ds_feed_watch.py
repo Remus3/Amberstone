@@ -10,7 +10,7 @@ What one run does (network: HEAD + GET only, never a write upstream):
   1. CHANGELOG - GET <origin>/info/changelog/ (origin derived from the
      manifest's own chunk URLs, never a literal here), pull every date out of
      the page and list the ones strictly after the tracked high-water date in
-     tools/ds_feed_watch.json.
+     data/daemon_slayer/ds_feed_watch.json.
   2. HEAD each chunk URL in the manifest's data-block list. Non-200 = the
      chunk hash rotated or the block moved; the extractor must re-discover.
   3. GET each live chunk and hash its body with ds_feed_index.body_md5 (raw
@@ -78,7 +78,7 @@ def data_blocks_key(src) -> Optional[str]:
 # New sibling key: per-block body hash recorded beside each URL.
 HASHES_KEY = "data_block_body_md5"
 CHANGELOG_PATH = "/info/changelog/"
-WATCH_FILE = _TOOLS / "ds_feed_watch.json"
+WATCH_FILE = _DATA / "ds_feed_watch.json"
 USER_AGENT = "Amberstone/DaemonSlayer-feed-watch/1.0"
 TIMEOUT_S = 30
 # The extractor that owns the block -> anchor table. Read by AST only: an

@@ -289,7 +289,7 @@ def test_new_tracked_files_never_spell_the_site_name():
     m = re.search(r'"([a-z0-9]+)' + fw.DATA_BLOCKS_SUFFIX + '"', src)
     assert m, "extractor no longer writes a *_data_blocks key"
     site = m.group(1)
-    for rel in ("tools/ds_feed_watch.py", "tools/ds_feed_watch.json",
+    for rel in ("tools/ds_feed_watch.py", "data/daemon_slayer/ds_feed_watch.json",
                 "tests/test_ds_feed_watch.py", "tools/ship-batch.md"):
         text = (ROOT / rel).read_text(encoding="utf-8").lower()
         assert site not in text, rel
@@ -448,3 +448,16 @@ def test_extractor_anchors_resolve_names_and_literals(tmp_path):
                    ' ("c", MISSING))\n', encoding="utf-8")
     assert fw.extractor_anchors(src) == {"a": "alpha", "b": "beta"}
     assert fw.extractor_anchors(tmp_path / "absent.py") == {}
+
+
+def test_feed_state_files_live_under_data_not_tools():
+    # RM-725 (c): the provenance index and the watch high-water file are
+    # tracked RUN STATE, so they live beside the DS data they describe, not
+    # among the scripts in tools/. Both constants point there, both files
+    # exist there, and the old tools/ copies are gone.
+    data = ROOT / "data" / "daemon_slayer"
+    assert fi._INDEX_PATH == data / "ds_feed_index.json"
+    assert fw.WATCH_FILE == data / "ds_feed_watch.json"
+    for name in ("ds_feed_index.json", "ds_feed_watch.json"):
+        assert (data / name).is_file(), name
+        assert not (ROOT / "tools" / name).exists(), f"tools/{name} came back"

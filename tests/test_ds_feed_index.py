@@ -1,4 +1,4 @@
-"""Guard: the DS feed provenance index (tools/ds_feed_index.json) stays honest.
+"""Guard: the DS feed provenance index (data/daemon_slayer/ds_feed_index.json) stays honest.
 
 Three groups. The first five tests guard the index itself; T1 is their
 META-GUARD, because without it an index that walked nothing would leave T2/T3
@@ -61,7 +61,7 @@ from agents.daemon_slayer.abilities import (  # noqa: E402
 from test_ds_fixture_policy import RETIRED_FIXTURES  # noqa: E402
 
 _DATA = _ROOT / "data" / "daemon_slayer"
-_INDEX = json.loads((_ROOT / "tools" / "ds_feed_index.json").read_text(encoding="utf-8"))
+_INDEX = json.loads((_DATA / "ds_feed_index.json").read_text(encoding="utf-8"))
 
 # 16.14.1 is the live dir and is deliberately NOT hash-frozen here (see T2).
 FROZEN_DIRS = ("16.10.1", "16.11.1", "16.12.1", "16.13.1")
