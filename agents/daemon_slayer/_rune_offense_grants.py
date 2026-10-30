@@ -20,8 +20,9 @@ branch and accumulates on every entry. Folding it through the adaptive branch
 would silently delete the grant for whichever side lost the comparison.
 
 WHAT WAS MISSING. ``rune_procs.py`` DOES register both Sorcery adaptive stat
-grants - Absolute Focus 8233 (``rune_procs.py:743``) and Gathering Storm 8236
-(``rune_procs.py:762``) - but it registers them with ``proc_type="adaptive"``,
+grants - Absolute Focus 8233 (``rune_procs.RUNE_PROCS[8233]``) and Gathering
+Storm 8236 (``rune_procs.RUNE_PROCS[8236]``) - but it registers them with
+``proc_type="adaptive"``,
 and EVERY consumer of that registry skips exactly that proc_type:
 
   * ``burst.compute_burst_damage`` (its rune-proc loop) -> ``if proc is None
@@ -31,8 +32,9 @@ and EVERY consumer of that registry skips exactly that proc_type:
     never folded into a damage total.
 
 So the adaptive force is COMPUTED and then DISCARDED. No DPS, ability-DPS,
-hybrid or rank path has ever seen it. ``rune_procs.py:426`` and
-``rune_procs.py:434`` state this outcome in their own words ("the grant does NOT
+hybrid or rank path has ever seen it. The Absolute Focus and Gathering Storm
+paragraphs of the ``rune_procs`` "Conditionally modeled" item 232 comment block
+state this outcome in their own words ("the grant does NOT
 enter the burst total", "burst is BYTE-IDENTICAL"), which was the correct call
 for a BURST scorer at t=0 but leaves the SUSTAINED scorers - which evaluate a
 completed six-item build well past the 10-minute mark - crediting zero AD/AP for
@@ -139,9 +141,10 @@ side by 1/0.6 = 1.667x.
 
 CONQUEROR'S STACK COUNT IS A KNOB, NOT A HARDCODED 12 - this is the load-bearing
 modelling decision for 8010. The feed's cap is 12 ("Stacks up to 12 times"), and
-``rune_procs.py:212`` states the engine's own contract for this rune in its own
-words: "compute_rune_proc_damage surfaces the PER-STACK adaptive force; the
-caller multiplies by the live stack count (max 12)". The stack count therefore
+``rune_procs._conqueror_adaptive`` states the engine's own contract for this
+rune in its own words: "compute_rune_proc_damage surfaces the PER-STACK
+adaptive force; the caller multiplies by the live stack count (max 12)". The
+stack count therefore
 belongs to the CALLER, and this module exposes it as
 ``_ASSUMED_CONQUEROR_STACKS`` (default 12.0, the feed's cap) overridable per call
 via ``conqueror_stacks`` - exactly the shape ``_ASSUMED_GAME_MINUTE`` /
@@ -259,7 +262,7 @@ seeded ALLOWLIST like its R132 sibling, and the rest of the Sorcery + Domination
   * 9923 Hail of Blades grants "120% (60% for ranged champions) Attack Speed ...
     for up to 3 attacks" - a real offensive stat, but a 3-attack window on a 10s
     cooldown is a BURST-window steroid, and it is ALREADY registered and scored
-    in ``rune_procs.py:685``. Adding it here would double-credit it.
+    as ``rune_procs.RUNE_PROCS[9923]``. Adding it here would double-credit it.
   * 8112 Electrocute, 8128 Dark Harvest, 8229 Arcane Comet, 8214 Summon Aery,
     8237 Scorch, 8126 Cheap Shot, 8143 Sudden Impact, 8992 Deathfire Touch are
     PROC DAMAGE, already registered in ``rune_procs.py`` and scored by the burst
@@ -359,10 +362,11 @@ _CONQUEROR_AF_PER_STACK_AT_LEVEL_18: float = 4.0
 _CONQUEROR_MAX_STACKS: float = 12.0
 
 # The modeled stack count, EXPLICIT and overridable per call via
-# ``conqueror_stacks`` - rune_procs.py:212 puts the stack count on the caller
-# ("the caller multiplies by the live stack count (max 12)"). Defaults to the cap
-# for the fully-committed teamfight this registry models, but stays a knob
-# because max-stacks is conservative on a threat lane and ANTI-conservative here.
+# ``conqueror_stacks`` - rune_procs._conqueror_adaptive puts the stack count on
+# the caller ("the caller multiplies by the live stack count (max 12)").
+# Defaults to the cap for the fully-committed teamfight this registry models,
+# but stays a knob because max-stacks is conservative on a threat lane and
+# ANTI-conservative here.
 _ASSUMED_CONQUEROR_STACKS: float = 12.0
 
 # Legend: Alacrity 9104, verbatim: "Gain 3% attack speed plus an additional 1.5%
@@ -482,9 +486,9 @@ def conqueror_grant(
 
     ``stacks`` defaults to ``_ASSUMED_CONQUEROR_STACKS`` and is CLAMPED to the
     feed's 0..12 range. It is a knob rather than a constant because
-    ``rune_procs.py:212`` assigns the live stack count to the caller, and because
-    a max-stack assumption is conservative on a threat lane but ANTI-conservative
-    on this one, where it flatters our own build.
+    ``rune_procs._conqueror_adaptive`` assigns the live stack count to the
+    caller, and because a max-stack assumption is conservative on a threat lane
+    but ANTI-conservative on this one, where it flatters our own build.
 
     STATED LIMITATION - RANGED ACCRUAL IS OUT OF SCOPE: the "only 1 stack per
     basic attack" clause is not applied. It is a stacking-RATE difference against
@@ -679,8 +683,9 @@ _RUNE_OFFENSE_GRANTS: dict[str, RuneOffenseEntry] = {
     # + 48 AP or 29 AD  40 min: + 80 AP or 48 AD  50 min: + 120 AP or 72 AD
     # 60 min: + 168 AP or 101 AD  etc..." Modeled as the discrete step table, not
     # a ramp; clamped at the 60-minute row because the feed states nothing past
-    # it. Already registered in rune_procs.py:762 as proc_type "adaptive", which
-    # every consumer skips - this entry is what actually pays it into the stats.
+    # it. Already registered as rune_procs.RUNE_PROCS[8236] with proc_type
+    # "adaptive", which every consumer skips - this entry is what actually pays
+    # it into the stats.
     "8236": RuneOffenseEntry(
         name="Gathering Storm",
         tree="Sorcery",
@@ -699,8 +704,8 @@ _RUNE_OFFENSE_GRANTS: dict[str, RuneOffenseEntry] = {
     # gain an adaptive bonus of up to 18 Attack Damage or 30 Ability Power (based
     # on level). Grants 1.8 Attack Damage or 3 Ability Power at level 1." Level
     # walk between the two stated endpoints, gated STRICTLY above 70% caster
-    # health. Already registered in rune_procs.py:743 as proc_type "adaptive",
-    # which every consumer skips.
+    # health. Already registered as rune_procs.RUNE_PROCS[8233] with proc_type
+    # "adaptive", which every consumer skips.
     "8233": RuneOffenseEntry(
         name="Absolute Focus",
         tree="Sorcery",
@@ -730,14 +735,14 @@ _RUNE_OFFENSE_GRANTS: dict[str, RuneOffenseEntry] = {
     #
     # STACK MODELLING: the stack count is a KNOB (_ASSUMED_CONQUEROR_STACKS,
     # default 12 = the feed's cap, per-call override conqueror_stacks), NOT a
-    # hardcoded 12. rune_procs.py:212 assigns the live stack count to the caller
-    # in its own words, and the conservatism inverts by side: max-stacks is the
-    # safe pessimistic reading for an ENEMY's Conqueror but the unsafe optimistic
-    # one for our own, where it inflates this build against every item ranked
-    # under it. Hence a stated default, not a constant. The ranged
-    # 1-stack-per-AA clause is left unmodeled because no role / attack-range
-    # input reaches this lane - stated in conqueror_grant's docstring, and
-    # expressible through the same knob.
+    # hardcoded 12. rune_procs._conqueror_adaptive assigns the live stack count
+    # to the caller in its own words, and the conservatism inverts by side:
+    # max-stacks is the safe pessimistic reading for an ENEMY's Conqueror but
+    # the unsafe optimistic one for our own, where it inflates this build
+    # against every item ranked under it. Hence a stated default, not a
+    # constant. The ranged 1-stack-per-AA clause is left unmodeled because no
+    # role / attack-range input reaches this lane - stated in conqueror_grant's
+    # docstring, and expressible through the same knob.
     #
     # The fully-stacked 8% / 5% HEAL is deliberately excluded: it is sustain, not
     # an offensive stat, so it belongs to the survivability lane and not to this
@@ -887,7 +892,7 @@ _ADJUDICATED_NON_GRANTS: dict[str, str] = {
     "8128": "proc damage, registered in rune_procs.py and scored by the burst consumer",
     "9923": (
         "burst-window attack-speed steroid (3 attacks on a 10s cooldown), already "
-        "registered and scored at rune_procs.py:685 - adding it here would "
+        "registered and scored as rune_procs.RUNE_PROCS[9923] - adding it here would "
         "double-credit it"
     ),
     "8126": "proc damage, registered in rune_procs.py and scored by the burst consumer",
@@ -1088,8 +1093,8 @@ def rune_offense_grants(
     ``caster_hp_pct`` defaults to 1.0 (the full-health sustained-DPS frame) and
     gates Absolute Focus. ``conqueror_stacks`` defaults to the equally explicit
     ``_ASSUMED_CONQUEROR_STACKS`` and scales Conqueror; it is a knob because
-    ``rune_procs.py:212`` puts the live stack count on the caller and because a
-    max-stack assumption flatters our own build on this side of the fight.
+    ``rune_procs._conqueror_adaptive`` puts the live stack count on the caller
+    and because a max-stack assumption flatters our own build on this side of the fight.
     ``legend_stacks`` is the same shape for Legend: Alacrity, defaulting to
     ``_ASSUMED_LEGEND_STACKS`` and clamped to the feed's 0..10 range.
 
