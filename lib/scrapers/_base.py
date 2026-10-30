@@ -3,13 +3,13 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import time
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 from urllib.robotparser import RobotFileParser
 
+from core.polled_json import atomic_write_text
 from lib.http import Blocked, HttpError, get_client
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -85,10 +85,11 @@ def _reject_reason(text: str, body: bytes) -> str | None:
 
 
 def _atomic_write_text(path: Path, text: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(text, encoding="utf-8")
-    os.replace(tmp, path)
+    # RM-258: core.polled_json, not a hand-rolled `<dest>.tmp` + os.replace.
+    # It writes the UTF-8 bytes verbatim (Path.write_text turned a served
+    # "\r\n" into "\r\r\n" on Windows), uses a per-writer scratch name,
+    # retries a transient WinError 5 and never leaves its scratch file.
+    atomic_write_text(path, text)
 
 
 def _atomic_write_json(path: Path, data: Any) -> None:

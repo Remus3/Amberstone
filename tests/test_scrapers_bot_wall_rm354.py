@@ -162,7 +162,7 @@ class TestBotWallDoesNotDestroyTheCache(_ScraperTestCase):
         self.assertIn("bot_wall", entry["status"])
 
     def test_bot_wall_leaves_no_temp_file_behind(self):
-        """`_atomic_write_text` writes `<name>.html.tmp` then replaces.
+        """`_atomic_write_text` writes a `*.tmp` scratch file then replaces.
 
         A rejection that still wrote the temp file would leave a bot wall on
         disk beside the good page for the next reader to find.
