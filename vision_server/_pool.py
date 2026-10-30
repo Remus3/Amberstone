@@ -22,10 +22,36 @@ logged and its worker keeps serving; a connection silent for
 ``request_timeout_s`` is dropped so a stuck client cannot pin a worker for
 good. ``dashboard/_vision_watchdog.py`` is the outer backstop for whatever
 this cannot cover.
+
+Hardened by the s144 true-audit (``tests/test_vision_server_pool_true_audit_s144.py``):
+
+* Stopping never blocks and never strands a worker. One stop pill goes into
+  the queue and every worker that takes it puts it back before it exits, so
+  the pill outlives the pool: a worker still inside a request when
+  ``server_close`` runs finds it as soon as that request ends. The old
+  one-sentinel-per-worker scheme waited up to 1 s for a free slot, gave up,
+  and left every other busy worker parked in ``queue.get()`` for good.
+* Once closing, the accept path and the workers shut every connection
+  instead of queueing or serving it - nothing is left waiting for a worker
+  that no longer exists.
+* A worker outlives ANY request: a ``BaseException`` that is not an
+  ``Exception`` (``SystemExit`` from handler code) used to end the thread,
+  and ``threading.excepthook`` ignores SystemExit, so the pool shrank in
+  silence. It is logged like any other handler failure now.
+* The pool sizes and the per-connection deadline are validated at
+  construction, before a thread starts or the port is bound. A deadline of 0
+  made every socket non-blocking, and a negative, NaN or overflowing one
+  raised inside ``settimeout`` - on every request, a whole-server outage
+  reported only as one warning per request.
+
+The deadline is per socket OPERATION: a peer that trickles a byte inside
+every window is not silent and can still hold a worker. The bind is loopback
+only (RM-150), so only a local process can do that.
 """
 from __future__ import annotations
 
 import logging
+import operator
 import queue
 import sys
 import threading
@@ -43,6 +69,40 @@ DEFAULT_QUEUE_SIZE = 64
 # request at once; only a silent or stalled peer ever reaches it. Handler
 # compute time (an inference call) is not a socket operation and is unaffected.
 DEFAULT_REQUEST_TIMEOUT_S = 60.0
+# Upper bound on that deadline. Past an hour it no longer stops a stuck
+# client pinning a worker in any sense that matters, and far enough past it
+# ``settimeout`` itself overflows (OverflowError on every request).
+MAX_REQUEST_TIMEOUT_S = 3600.0
+
+
+def _count(name: str, value: object) -> int:
+    """A pool size: a real int >= 1. bool and float are refused, not coerced
+    (``True`` used to mean one worker and ``2.5`` two)."""
+    if not isinstance(value, bool):
+        try:
+            n = operator.index(value)
+        except TypeError:
+            n = 0
+        if n >= 1:
+            return n
+    raise ValueError(f"PooledHTTPServer {name} must be an int >= 1, "
+                     f"got {value!r}")
+
+
+def _deadline(value: object) -> float | None:
+    """The per-connection socket deadline: None (no deadline) or a finite
+    number of seconds in (0, MAX_REQUEST_TIMEOUT_S]."""
+    if value is None:
+        return None
+    if not isinstance(value, bool) and isinstance(value, (int, float)):
+        seconds = float(value)
+        # NaN fails both comparisons and inf the upper one, so the range
+        # check alone refuses them.
+        if 0.0 < seconds <= MAX_REQUEST_TIMEOUT_S:
+            return seconds
+    raise ValueError("PooledHTTPServer request_timeout_s must be None or "
+                     f"seconds in (0, {MAX_REQUEST_TIMEOUT_S:g}], "
+                     f"got {value!r}")
 
 
 class PooledHTTPServer(HTTPServer):
@@ -53,13 +113,14 @@ class PooledHTTPServer(HTTPServer):
                  queue_size: int = DEFAULT_QUEUE_SIZE,
                  request_timeout_s: float | None = DEFAULT_REQUEST_TIMEOUT_S,
                  bind_and_activate: bool = True) -> None:
-        workers = int(workers)
-        if workers < 1:
-            raise ValueError("PooledHTTPServer needs at least one worker")
-        self.request_timeout_s = request_timeout_s
+        # Validated before any thread starts or the port is bound, so a bad
+        # value leaves nothing half-built behind.
+        workers = _count("workers", workers)
+        queue_size = _count("queue_size", queue_size)
+        self.request_timeout_s = _deadline(request_timeout_s)
         self.dropped = 0
         self._closing = False
-        self._queue: queue.Queue = queue.Queue(maxsize=max(1, int(queue_size)))
+        self._queue: queue.Queue = queue.Queue(maxsize=queue_size)
         self._workers: list[threading.Thread] = []
         try:
             for i in range(workers):
@@ -78,6 +139,11 @@ class PooledHTTPServer(HTTPServer):
 
     # -- accept path: never blocks -------------------------------------------
     def process_request(self, request, client_address) -> None:
+        if self._closing:
+            # No worker will take it any more; closing it now is the only
+            # answer that does not leave the client hanging.
+            self.shutdown_request(request)
+            return
         try:
             self._queue.put_nowait((request, client_address))
         except queue.Full:
@@ -91,16 +157,22 @@ class PooledHTTPServer(HTTPServer):
     def _work(self) -> None:
         while True:
             item = self._queue.get()
-            if item is None or self._closing:
-                if item is not None:
-                    self.shutdown_request(item[0])
+            if item is None:
+                self._pass_on_stop()
                 return
             request, client_address = item
+            if self._closing:
+                self.shutdown_request(request)
+                continue
             try:
                 if self.request_timeout_s is not None:
                     request.settimeout(self.request_timeout_s)
                 self.finish_request(request, client_address)
-            except Exception:  # noqa: BLE001 - a worker must outlive any request
+            except BaseException:  # noqa: BLE001 - a worker must outlive any request
+                # BaseException, not Exception: SystemExit from handler code
+                # would otherwise end this thread with nothing logged.
+                # KeyboardInterrupt is only ever raised in the main thread,
+                # so nothing a worker should obey is swallowed here.
                 self.handle_error(request, client_address)
             finally:
                 self.shutdown_request(request)
@@ -131,7 +203,9 @@ class PooledHTTPServer(HTTPServer):
         self._stop_workers()
 
     def _stop_workers(self) -> None:
+        """Stop the pool without blocking. Safe to call more than once."""
         self._closing = True
+        # Whatever is still queued will never be served now.
         while True:
             try:
                 item = self._queue.get_nowait()
@@ -139,10 +213,27 @@ class PooledHTTPServer(HTTPServer):
                 break
             if item is not None:
                 self.shutdown_request(item[0])
-        # One sentinel per worker; each worker that takes one exits and frees
-        # its slot, so a queue smaller than the pool still drains.
-        for _ in self._workers:
+        if self._workers:
+            self._pass_on_stop()
+
+    def _pass_on_stop(self) -> None:
+        """Leave one stop pill in the queue, never blocking.
+
+        Called by ``_stop_workers`` and by every worker that takes the pill,
+        so the pill is always there for the next worker that reaches
+        ``get()`` - including one that was busy when the server closed. A
+        connection that raced into the last free slot is shut (nobody will
+        serve it) to make room, so a full queue can never swallow the pill.
+        """
+        while True:
             try:
-                self._queue.put(None, timeout=1.0)
+                self._queue.put_nowait(None)
+                return
             except queue.Full:
-                break
+                pass
+            try:
+                item = self._queue.get_nowait()
+            except queue.Empty:
+                continue
+            if item is not None:
+                self.shutdown_request(item[0])
