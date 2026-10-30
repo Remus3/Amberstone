@@ -29,6 +29,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from core.polled_json import atomic_write_bytes
 from lib.game_data.fetch import Fetched
 
 ROSTER_SOURCE = "ddragon"
@@ -187,10 +188,10 @@ def verify(b: Build, fetched: Fetched) -> dict:
 
 
 def _dump(path: Path, obj: Any) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(path.name + ".tmp")
-    tmp.write_text(json.dumps(obj, indent=1, sort_keys=True, ensure_ascii=True) + "\n", encoding="ascii", newline="\n")
-    tmp.replace(path)
+    # RM-258: the shared writer (per-writer scratch name, WinError 5 retry,
+    # no orphaned scratch); encoded here, so the bytes stay ASCII + LF.
+    body = json.dumps(obj, indent=1, sort_keys=True, ensure_ascii=True) + "\n"
+    atomic_write_bytes(path, body.encode("ascii"))
 
 
 def write_build(b: Build, out_dir: Path) -> None:

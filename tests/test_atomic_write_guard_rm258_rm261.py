@@ -170,10 +170,11 @@ _TOOLS_UNCLASSIFIED = frozenset({
 # tests/test_scrapers_atomic_write_rm258.py), then lib/icons/downloader.py
 # and lib/game_data/fetch.py (both byte caches onto
 # core.polled_json.atomic_write_bytes;
-# tests/test_lib_byte_writers_atomic_write_rm258.py).
+# tests/test_lib_byte_writers_atomic_write_rm258.py), then
+# lib/game_data/build.py (its `_dump` onto core.polled_json.atomic_write_bytes;
+# tests/test_lib_game_data_build_writer_rm258.py).
 _LIB_UNCLASSIFIED = frozenset({
     "lib/ddragon/fetch.py",
-    "lib/game_data/build.py",
 })
 
 
@@ -937,6 +938,7 @@ def test_a_new_lib_writer_starts_in_scope():
     assert _in_scope("lib/scrapers/_base.py")
     assert _in_scope("lib/icons/downloader.py")
     assert _in_scope("lib/game_data/fetch.py")
+    assert _in_scope("lib/game_data/build.py")
     assert not _in_scope("lib/ddragon/fetch.py")
     assert not _in_scope("scripts/rewind_scraper.py")
 
