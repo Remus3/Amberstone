@@ -101,7 +101,7 @@ _BODY_READERS = ("_opt_bool", "_opt_float", "_opt_int", "_opt_str",
 _STRANDED_BY_ROUTE: dict[str, frozenset[str]] = {
     # DECLINED 1.254.0. /beam has exactly one live consumer,
     # coaches/sr_draft_profile.py, and it holds its OWN HTTP call
-    # (sr_draft_profile.py:271-304) rather than going through this client, for
+    # (sr_draft_profile._call_beam) rather than going through this client, for
     # two reasons that a migration would have to break: it needs a 4.0s budget
     # because a cold beam exceeds a second, against this module's deliberate
     # 0.5s DEFAULT_TIMEOUT fail-silent contract; and it needs the error STRING
@@ -123,9 +123,10 @@ _STRANDED_BY_ROUTE: dict[str, frozenset[str]] = {
     # test_fight_report.py / test_flag_wiring_item235.py call
     # compute_fight_report IN PROCESS, never the route. The route is served and
     # has never been requested by anything. The three seams are engine-complete
-    # (gate_ammo -> mana_sim.py:600-604, apply_ability_haste ->
-    # mana_sim.py:609-611, apply_mode_modifiers -> the self-shred physical-DPS
-    # term), so this is a consumer gap, not an engine gap.
+    # (gate_ammo -> the ammo_by_slot resolve in
+    # mana_sim.compute_mana_bounded_combo, apply_ability_haste -> its
+    # total_item_ability_haste term, apply_mode_modifiers -> the self-shred
+    # physical-DPS term), so this is a consumer gap, not an engine gap.
     # RE-OPEN IF: any caller of the ROUTE appears. Wire the consumer first.
     '/v2/fight-report': frozenset({
         'apply_ability_haste',

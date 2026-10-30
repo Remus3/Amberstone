@@ -17,14 +17,16 @@ sampling / narrowing is applied - every ammo slot and every champion is
 covered.
 
 Field provenance (grepped before use):
-  * ``DataSnapshot.spell_ammo`` -> data_loader.py:314, returns
+  * ``DataSnapshot.spell_ammo`` (data_loader) returns
     ``{"max": [...], "recharge": [...]}`` or None.
-  * ``ManaBoundedResult`` fields -> mana_sim.py:145-177 (mana_pool,
+  * ``ManaBoundedResult`` fields (the mana_sim dataclass): mana_pool,
     mana_regen_per_s, mana_spent, duration_s, casts_allowed, total_mitigated,
-    bounded_dps, unbounded_dps, oom_at_t, hits).
-  * The unbounded reference pass is never ammo-gated -> mana_sim.py:519-528.
+    bounded_dps, unbounded_dps, oom_at_t, hits.
+  * The unbounded reference pass is never ammo-gated -> the
+    ``gate_mana=False`` ``_walk`` call in ``compute_mana_bounded_combo``,
+    which passes no ``gate_ammo``.
   * ``_recharge_to`` is reached through the module so a mutation probe can
-    rebind it -> mana_sim.py:346 resolves the module global at call time.
+    rebind it -> ``_walk`` resolves the module global at call time.
 """
 
 from __future__ import annotations
@@ -240,8 +242,10 @@ class GateAmmoDominanceInvariantTests(unittest.TestCase):
                         self.assertLessEqual(
                             on.total_mitigated, off.total_mitigated + 1e-6
                         )
-                        # The reference pass is never ammo-gated
-                        # (mana_sim.py:519-528) - exact equality, not a bound.
+                        # The reference pass is never ammo-gated (the
+                        # gate_mana=False _walk call in
+                        # compute_mana_bounded_combo) - exact equality, not a
+                        # bound.
                         self.assertEqual(
                             on.unbounded_dps, off.unbounded_dps
                         )
