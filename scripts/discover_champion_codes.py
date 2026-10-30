@@ -36,6 +36,17 @@ import urllib.request
 from pathlib import Path
 
 PROJECT = Path(__file__).resolve().parent.parent
+# Run as `python scripts/discover_champion_codes.py`, sys.path[0] is scripts/;
+# the repo root makes `core` importable (same as build_spell_cast_rates.py).
+if str(PROJECT) not in sys.path:
+    sys.path.insert(0, str(PROJECT))
+
+# RM-1129: the tracked code maps are read by the gated TFT planner tools
+# (tools/gated_tft15_planner.py, tools/gated_tft_lt02r.py), so the swap goes
+# through core.polled_json (per-writer scratch, fsync, WinError 5 retry, no
+# scratch left on a failed rename). passive() and legacy_probe() call it.
+from core.polled_json import atomic_write_bytes  # noqa: E402
+
 META_REL = Path("data") / "meta"
 
 LOCKFILES = (
@@ -112,13 +123,6 @@ def codes_from_game_data(game_data: dict, set_id: str) -> dict:
 def encode(codes: dict) -> bytes:
     """Byte format of the committed Set 17 file: indent 2, sorted, LF."""
     return json.dumps(codes, indent=2, sort_keys=True).encode("utf-8")
-
-
-def atomic_write_bytes(path: Path, data: bytes) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(path.name + ".tmp")
-    tmp.write_bytes(data)
-    tmp.replace(path)
 
 
 def passive(lcu: Lcu, set_override: str | None, root: Path, dry_run: bool) -> int:
