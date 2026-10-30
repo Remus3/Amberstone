@@ -398,10 +398,14 @@ class KindHintsTests(unittest.TestCase):
         self.assertEqual(_kind("MysteryChamp", "R"), "CC")
         self.assertEqual(_kind("", ""), "CC")
 
-    def test_registry_size_is_53(self):
-        # Mirror the 53-entry _PER_SPELL_CC_DURATIONS seed exactly.
+    def test_registry_size_matches_engine_registry(self):
+        # Mirror the _PER_SPELL_CC_DURATIONS slot count exactly (was a
+        # hard-coded 53 that went stale as the registry grew to 108; the
+        # set-equality guard lives in test_enemy_cc_threat_context_hardening).
+        from agents.daemon_slayer.ability_dps import _PER_SPELL_CC_DURATIONS
         from core.enemy_cc_threat_context import _CC_KIND_HINTS
-        self.assertEqual(len(_CC_KIND_HINTS), 53)
+        slots = sum(len(v) for v in _PER_SPELL_CC_DURATIONS.values())
+        self.assertEqual(len(_CC_KIND_HINTS), slots)
 
     def test_wave2_alistar_q_knockup(self):
         from core.enemy_cc_threat_context import _kind

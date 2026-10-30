@@ -33,13 +33,34 @@ Returns "" when:
 Patch + registry data are read once at module import inside the engine
 (``agents.daemon_slayer.cc_pressure``); this consumer holds NO
 champion data of its own and rebuilds nothing on call. The kind-hint
-table is hand-curated at module load - it mirrors the 53-entry
-``_PER_SPELL_CC_DURATIONS`` seed exactly so any registry add owes a
-matching hint add or the chunk degrades to a generic "CC" word.
+table is hand-curated at module load and must cover every
+``_PER_SPELL_CC_DURATIONS`` slot (a registry add owes a matching hint
+add, or the chunk degrades to a generic "CC" word);
+``tests/test_enemy_cc_threat_context_hardening.py`` fails on a slot in
+either set but not the other.
+
+NAMES (s144 true-audit cycle 72)
+    Every coach passes the Live Client roster, whose ``championName`` is a
+    DISPLAY name ("Wukong", "Cho'Gath", "Jarvan IV"), while the registry
+    and the hint table key on canonical DDragon ids ("MonkeyKing",
+    "Chogath", "JarvanIV"). Each entry is resolved through
+    ``core.archetype_picks.canonical_champion_id`` before the engine read
+    and the hint lookup; the rendered chunk keeps the display name the
+    coach prompt uses everywhere else. One champion renders once, however
+    many name forms of it the roster carries.
+
+FAIL-SOFT
+    Never raises on a malformed argument: a non-str / blank ``mode``, a
+    non-int (or bool) ``limit``, a roster that is not a list / tuple
+    (a bare string is NOT iterated per character), a non-str entry, and a
+    non-finite (NaN / inf) total or spell duration all degrade to "" or
+    skip that one entry.
 """
 
 from __future__ import annotations
 
+import logging
+import math
 from typing import Dict, Tuple
 
 try:
@@ -54,6 +75,8 @@ try:
 except ImportError:  # pragma: no cover - exercised only pre-merge
     def compute_cc_pressure(champion: str, mode: str = "SR"):  # type: ignore[misc]
         return None
+
+_log = logging.getLogger(__name__)
 
 _ARAM_MODES = frozenset(
     ("ARAM", "KIWI", "ARAM_5V5", "ARAM_MAYHEM", "aram", "kiwi")
@@ -74,7 +97,13 @@ _ARAM_MODES = frozenset(
 #   Neeko (E+R) / Orianna / Poppy / Riven / Singed / Skarner /
 #   Varus / Xerath / Zac.
 #
-# Total = 53 entries / 44 champs at patch 16.10.1 (matches registry).
+# Waves 3+ (+55 entries; s144 true-audit cycle 72): every registry slot
+#   seeded after item 135 had no hint and rendered the generic "CC". Each
+#   word below is the CC kind the registry's OWN comment names for that
+#   slot in agents/daemon_slayer/_per_spell_cc.py (the duration authority),
+#   never a fresh reading of the champion's kit.
+#
+# Total = 108 entries / 89 champs (matches registry; guarded both ways).
 # Missing-key fallback: "CC" (generic; covered by KindHintsTests).
 _CC_KIND_HINTS: Dict[Tuple[str, str], str] = {
     # Wave 1
@@ -132,18 +161,105 @@ _CC_KIND_HINTS: Dict[Tuple[str, str], str] = {
     ("Varus", "R"): "root",
     ("Xerath", "E"): "stun",
     ("Zac", "E"): "knockup",
+    # Waves 3+ (s144 true-audit cycle 72; kinds from the registry comments)
+    ("AurelionSol", "R"): "stun",
+    ("Bard", "R"): "stasis",
+    ("Caitlyn", "W"): "root",
+    ("Camille", "E"): "stun",
+    ("Chogath", "W"): "silence",
+    ("Diana", "R"): "knockup",
+    ("Draven", "E"): "knockback",
+    ("Ekko", "W"): "stun",
+    ("Elise", "E"): "stun",
+    ("Hecarim", "E"): "knockback",
+    ("Hecarim", "R"): "fear",
+    ("Heimerdinger", "E"): "stun",
+    ("Irelia", "E"): "stun",
+    ("Ivern", "Q"): "root",
+    ("Janna", "Q"): "knockup",
+    ("Jax", "E"): "stun",
+    ("Jinx", "E"): "root",
+    ("KSante", "R"): "knockup",
+    ("Kalista", "R"): "knockup",
+    ("Lillia", "R"): "sleep",
+    ("Lissandra", "W"): "root",
+    ("Lulu", "R"): "knockup",
+    ("Malphite", "R"): "knockup",
+    ("Malzahar", "Q"): "silence",
+    ("Maokai", "W"): "root",
+    ("Mel", "E"): "root",
+    ("Mordekaiser", "E"): "pull",
+    ("Nocturne", "E"): "fear",
+    ("Ornn", "R"): "knockup",
+    ("Pyke", "Q"): "stun",
+    ("Quinn", "E"): "knockback",
+    ("Rakan", "R"): "charm",
+    ("Rammus", "E"): "taunt",
+    ("Rell", "Q"): "root",
+    ("Ryze", "W"): "root",
+    ("Sejuani", "Q"): "stun",
+    ("Senna", "W"): "root",
+    ("Seraphine", "R"): "stun",
+    ("Shaco", "W"): "fear",
+    ("Shen", "E"): "taunt",
+    ("Shyvana", "R"): "knockback",
+    ("Sion", "Q"): "stun",
+    ("Smolder", "R"): "knockup",
+    ("Soraka", "E"): "root",
+    ("Thresh", "E"): "knockback",
+    ("Tristana", "R"): "knockback",
+    ("Urgot", "E"): "knockback",
+    ("Vayne", "E"): "knockback",
+    ("Viego", "W"): "stun",
+    ("Volibear", "E"): "knockup",
+    ("XinZhao", "W"): "knockup",
+    ("Yone", "R"): "knockup",
+    ("Zac", "R"): "knockup",
+    ("Ziggs", "W"): "knockback",
+    ("Zyra", "E"): "root",
 }
 
 
 def _kind(champion: str, spell_key: str) -> str:
     """Lookup the CC kind word; fallback to 'CC' for unregistered shapes.
 
-    The registry SHOULD cover every (champion, spell_key) the engine
-    seam returns (the 53-entry seed is the source of truth). The
-    fallback is a defense against a future patch adding spells before
-    the hint table catches up.
+    ``champion`` is the canonical DDragon id (the table's key form). The
+    registry SHOULD cover every (champion, spell_key) the engine seam
+    returns (guarded both ways in the hardening tests). The fallback is a
+    defense against a future patch adding spells before the hint table
+    catches up.
     """
     return _CC_KIND_HINTS.get((champion, spell_key), "CC")
+
+
+def _canonical_id(display: str) -> str:
+    """Resolve a Live Client display name to its canonical DDragon id.
+
+    Lazy import: ``core.archetype_picks`` costs a few tens of ms to import
+    and is only needed once a roster arrives. Any failure of the resolver
+    falls back to the display name itself, which is exactly the pre-fix
+    behaviour (a canonical id still matches; a display form does not).
+    """
+    try:
+        from core.archetype_picks import canonical_champion_id
+
+        cid = canonical_champion_id(display)
+    except Exception:  # noqa: BLE001 - fail-soft resolver, never break a prompt
+        _log.debug("enemy_cc_threat: id resolve failed for %r", display,
+                   exc_info=True)
+        return display
+    return cid if isinstance(cid, str) and cid else display
+
+
+def _finite_float(value: object) -> float | None:
+    """``float(value)`` when it is a finite number, else None."""
+    if isinstance(value, bool):
+        return None
+    try:
+        out = float(value or 0.0)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return out if math.isfinite(out) else None
 
 
 def enemy_cc_threat_line(
@@ -154,67 +270,75 @@ def enemy_cc_threat_line(
 ) -> str:
     """Render a one-line ENEMY CC threat context for the coach user prompt.
 
-    Reads ``compute_cc_pressure(champion, mode)`` for each enemy; ranks
-    by descending ``total_cc_seconds`` (alphabetical tiebreak), takes
-    the top ``limit`` (default 3), formats each as
-    ``{champion} {duration:.1f}s {kind} ({spell_key})`` where the
-    spell with the highest duration is picked from
+    Resolves each enemy display name to its canonical DDragon id, reads
+    ``compute_cc_pressure(champion_id, mode)``; ranks by descending
+    ``total_cc_seconds`` (alphabetical tiebreak on the display name),
+    takes the top ``limit`` (default 3), formats each as
+    ``{display_name} {duration:.1f}s {kind} ({spell_key})`` where the
+    spell with the highest finite duration is picked from
     ``result.spells``.
 
     Returns "" when:
-      * mode is None / blank
-      * limit is non-positive
-      * enemies is None / empty / contains only champs with no CC
+      * mode is not a non-blank str
+      * limit is not a positive int (a bool is not an int here)
+      * enemies is not a list / tuple, is empty, or contains only champs
+        with no CC
 
     Mode-agnostic: SR / ARAM / KIWI / Arena / Brawl all flow through
     ``compute_cc_pressure``. ARAM uses tenacity-lengthened durations;
     other modes use the base.
     """
-    if not mode:
+    if not isinstance(mode, str) or not mode.strip():
         return ""
-    if limit is None or limit <= 0:
+    if isinstance(limit, bool) or not isinstance(limit, int) or limit <= 0:
         return ""
-    if not enemies:
+    if not isinstance(enemies, (list, tuple)) or not enemies:
         return ""
 
-    candidates: list[tuple[str, float, str, float]] = []
-    for name in enemies:
+    candidates: list[tuple[str, float, str, float, str]] = []
+    seen_ids: set[str] = set()
+    for raw in enemies:
+        if not isinstance(raw, str):
+            continue
+        name = raw.strip()
         if not name:
             continue
+        cid = _canonical_id(name)
+        if cid in seen_ids:
+            continue
         try:
-            result = compute_cc_pressure(name, mode)
-        except Exception:  # noqa: BLE001
+            result = compute_cc_pressure(cid, mode)
+        except Exception:  # noqa: BLE001 - engine seam is fail-soft by contract
+            _log.debug("enemy_cc_threat: compute_cc_pressure failed for %r",
+                       cid, exc_info=True)
             continue
         if result is None:
             continue
-        try:
-            total = float(getattr(result, "total_cc_seconds", 0.0) or 0.0)
-        except (TypeError, ValueError):
-            continue
-        if total <= 0.0:
+        total = _finite_float(getattr(result, "total_cc_seconds", 0.0))
+        if total is None or total <= 0.0:
             continue
         spells = getattr(result, "spells", ()) or ()
-        if not spells:
+        if not isinstance(spells, (list, tuple)) or not spells:
             continue
         # Pick the highest-duration spell of this champion. Use the
         # post-tenacity value when ARAM/KIWI mode pumps it; SR mode
-        # returns the same value (identity at tenacity=1.0).
+        # returns the same value (identity at tenacity=1.0). A
+        # non-finite duration is skipped, so it neither wins nor hides
+        # a finite sibling.
         best_spell_key = ""
         best_spell_dur = 0.0
         for sp in spells:
             sp_key = getattr(sp, "spell_key", "") or ""
-            try:
-                sp_dur = float(
-                    getattr(sp, "duration_post_tenacity_s", 0.0) or 0.0
-                )
-            except (TypeError, ValueError):
-                sp_dur = 0.0
-            if sp_dur > best_spell_dur:
+            if not isinstance(sp_key, str):
+                continue
+            sp_dur = _finite_float(getattr(sp, "duration_post_tenacity_s", 0.0))
+            if sp_dur is not None and sp_dur > best_spell_dur:
                 best_spell_dur = sp_dur
                 best_spell_key = sp_key
         if not best_spell_key or best_spell_dur <= 0.0:
             continue
-        candidates.append((name, total, best_spell_key, best_spell_dur))
+        seen_ids.add(cid)
+        candidates.append((name, total, best_spell_key, best_spell_dur, cid))
 
     if not candidates:
         return ""
@@ -224,8 +348,8 @@ def enemy_cc_threat_line(
     top = candidates[:limit]
 
     chunks: list[str] = []
-    for name, _total, sp_key, sp_dur in top:
-        kind = _kind(name, sp_key)
+    for name, _total, sp_key, sp_dur, cid in top:
+        kind = _kind(cid, sp_key)
         chunks.append(f"{name} {sp_dur:.1f}s {kind} ({sp_key})")
 
     return "Enemy CC threats: " + ", ".join(chunks)
