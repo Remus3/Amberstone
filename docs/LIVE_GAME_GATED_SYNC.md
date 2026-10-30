@@ -2874,6 +2874,64 @@ Ids `LX-nn` map to the RM rows in `BACKLOG.md` "External-lift intake".
   `core/self_cast_log.detect_from_frames`; per-slot totals within tolerance of Match-V5
   spell1..4 casts; re-measure FALL_THRESHOLD, GAP_S, the partial-cost tolerance and the validator
   tolerance on real data; note per-second drains / toggles (expected slot_guess None).
+  **READY (s144 lane gated c33, 2026-10-30; PREP only, nothing ticked).** PRECONDITIONS measured
+  2026-10-30 at idle: (1) LX-04 is an OFFLINE replay, so `RC_SELF_CAST_LOG` is NOT needed; it needs
+  an LX-03 recording, and `logs/sessions/` does not exist on the live box (the LX-03 precondition:
+  `RC_SESSION_RECORDER=1` in the RC process env plus an RC restart, a main-session / operator act).
+  LX-04 drains on the SAME game that passes LX-03. (2) The truth is the Match-V5 participant row,
+  which `lib/rewind_live_writer.py` writes into `data/rewind_history.db` about 90 s after the game
+  ends (`schedule_live_insert`, wired at `app/_game_lifecycle.py` `on_game_end`); measured read-only:
+  all 30440 participant rows carry non-null `spell1_casts` .. `spell4_casts`, across 2965 of the 2966
+  matches (one q830 match has no participant rows) and 22 queue values (21 plus NULL). The live
+  writer's pinned path ends a q2400 / KIWI game `event_mode_excluded` with no Riot call
+  (`EVENT_MODE_QUEUE_IDS` / `EVENT_MODE_GAME_MODES`, `_is_event_mode`; only the legacy unpinned
+  fallback, taken when no game-end pin exists, skips that check), so an ARAM Mayhem game gets
+  no truth row at game end; the DB does hold ONE q2400 KIWI match with all 10 casts populated (how it
+  landed was not measured), so a Mayhem game is graded only if its own row appears, else
+  `no_match_row`. The one PRACTICETOOL (q3140) match present carries `spell1_casts=0` on both rows, so
+  a Practice Tool row is no truth either. Play a matchmade SR (q400 / q420) or a plain ARAM (q450),
+  whose rows the live writer does land. (3) The champion
+  must spend MANA or ENERGY on at least one slot in the DS cost data (`data/daemon_slayer/current.txt`
+  = `16.21.1` at prep, `champion_abilities.json` form 0): Ahri / Ezreal (all four MANA) qualify, Garen
+  (no cost on any slot) reads `NO_COSTS` / `NOT_OBSERVABLE` and drains nothing, Akali grades Q and E
+  only. Every match id (all 2966) has the shape `<PLATFORM>_<gameId>` with no two sharing a game id,
+  so the tool joins the
+  recording to its truth row by the file stem, with no id typed or printed.
+  PROBE (after the game ends and the rewind write has landed, from the main checkout):
+  `python tools/gated_lx04_cast_check.py logs/sessions/<file>.jsonl --truth-db
+  data/rewind_history.db --json` (read-only: the session through `read_session`, the DB in sqlite
+  `mode=ro`; no stem, match id or player name is printed - RM-906; `--champion-id` overrides a
+  session that names no single champion; `--truth-json` takes a saved Match-V5 participant object
+  instead of the DB). FIELD PATHS: `verdict`, `truth_status`, `truth_match.queue_id` /
+  `game_duration_s`, `champion_id`, `costs.<slot>.observable`, `totals`, `validation.slots.<slot>`
+  (`log` / `truth` / `diff` / `allowed` / `within` / `compared` / `rel_diff`), and the re-measure
+  inputs `cadence` (median / p95 / max game-time step, `over_gap_s`), `sub_threshold` (falls under
+  FALL_THRESHOLD between readings), `shortfall` (matched cost minus observed fall, `frac_of_tolerance`
+  against `partial_tolerance`, `near_edge` above 80 percent of it), `gap_events`,
+  `unattributed_costs` / `unattributed_top`.
+  PREDICATE (stated before any game): PASS iff `verdict=PASS` - `truth_status=ok` (one match row whose
+  id ends in `_<stem>`, one participant on the session's champion), at least one slot `compared=true`,
+  and every compared slot `within=true` under `match_tolerance` (max(3, round(0.20 * truth))). FAIL on
+  `verdict=FAIL` (record each slot's `log` / `truth` / `diff`); `no_match_row` 15 minutes after the
+  end means the rewind write did not land (check `lib/ingest_receipt.py`'s receipt), not a detector
+  fault. The RE-MEASURE half records values and grades no constant in the drain: it flags a follow-up
+  row (never an edit) when `cadence.p95` exceeds GAP_S (1.25) or `over_gap_s` is above 5 percent of the
+  steps; when `shortfall.near_edge` is above 0 or a FAIL slot under-counts while `gap_events` is 0 (the
+  partial tolerance, PARTIAL_ABS 8 / PARTIAL_REL 0.15); when a PASS slot needed the absolute floor
+  (|`rel_diff`| above 0.20); and it lists `unattributed_top` as the drains / toggles the row asks to
+  note (slot_guess None is the EXPECTED result for them, not a FAIL; a champion whose drain sits on an
+  untracked resource in the DS data, e.g. Anivia R `OTHER`, lands there too).
+  EVIDENCE CONTRACT: the tool's JSON fields above (values, not "ok"), the session file's mtime, the
+  game's mode / queue (`truth_match`) and `game_time_last` against `truth_match.game_duration_s`, the
+  champion, the DS patch the cost table came from against the header `patch`, and the code RC ran
+  (`ops/runtime/health.json` `pid` / `started_at` plus the main checkout's HEAD, as LX-03).
+  SUBSTITUTION CHECK: `tests/test_gated_lx04_cast_check.py` and `tests/test_self_cast_log.py` reach
+  `verdict=PASS` from hand-built frames and a hand-built truth row, so a PASS proves nothing unless
+  the recording is the one that passed LX-03 for this game (stem = the LCU game id read while
+  InProgress, mtime inside the game window) and the truth row came from Match-V5 for that same game
+  (`--truth-db`, joined by the stem; a `--truth-json` file needs its fetch recorded). The live
+  listener (`RC_SELF_CAST_LOG`, `self_cast_log.events()`) and any dashboard surface answer a
+  different question and never close this row.
 - **LX-12** (RM-639, death reel; after LX-10 and an operator ffmpeg install) Cut a real OBS recording after
   a real game: keyframe snapping still gives usable windows, the faststart output plays in the dashboard,
   ffprobe duration roughly equals the sum of the windows.
