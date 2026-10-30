@@ -517,11 +517,23 @@
   color: var(--text-dim, var(--text));
   user-select: none;
   list-style: none;
+  /* RM-1136: the summary measured 19px tall (under --hit-min) and drew
+     only the UA outline on keyboard focus. Pinned by
+     tests/snapshot_panels/test_lm_hero_stats_disclosure.py. */
+  display: flex;
+  align-items: center;
+  min-height: var(--hit-min);
+}
+.lm-hero-stats-summary:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 .lm-hero-stats-summary::-webkit-details-marker { display: none; }
 .lm-hero-stats-summary::before {
   content: "+ ";
   color: var(--accent-2, var(--accent));
+  /* a flex item trims its trailing space; keep the "+ " / "- " gap */
+  white-space: pre;
 }
 .lm-hero-stats-details[open] .lm-hero-stats-summary::before {
   content: "- ";

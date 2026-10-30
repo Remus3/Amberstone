@@ -1516,7 +1516,19 @@ _WEB = _REPO_ROOT / "web"
 # paths are the whole change. No glyph change: the added lines carry 0
 # non-ASCII bytes. If another slice re-captures in parallel, the merger
 # recomputes.
-_LIVE_HALF_DIGEST = "70459a3110c559322e4bae0074ce6b6ae9ab839eed568961d8c1997667a2f1b2"
+# superseded by the RM-1136 re-capture below: "70459a3110c559322e4bae0074ce6b6ae9ab839eed568961d8c1997667a2f1b2"
+#
+# RE-CAPTURED 2026-10-30 at RM-1136 (s144 uiux cycle 67, provisional
+# until the merger lands it and maps the id). One change rides it: the Post
+# Game Review "Detailed stats" summary (.lm-hero-stats-summary) takes the
+# --hit-min floor and draws the system focus ring (web/css/panels/
+# last_match.css). Ordinary case, no tokeniser change. ATTRIBUTED BY
+# SUBSTITUTION: swapping exactly web/css/panels/last_match.css back to its
+# lane HEAD 8ddb269bc blob (in memory) reproduces the superseded 70459a31...
+# value EXACTLY. That path is the whole change. No glyph change: the added
+# lines carry 0 non-ASCII bytes. If another slice re-captures in parallel,
+# the merger recomputes.
+_LIVE_HALF_DIGEST = "eb16b9ec1744b55f742606c0a66fc7e2559eec859ec0aa2eee2b453262724475"
 
 
 def _web_sources() -> list[Path]:
