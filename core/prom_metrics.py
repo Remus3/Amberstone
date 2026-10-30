@@ -26,6 +26,7 @@ fails fast in dev rather than silently dropping samples.
 """
 from __future__ import annotations
 
+import math
 import threading
 from typing import Iterable, List, Tuple
 
@@ -51,6 +52,14 @@ def _format_labels(labelnames: Tuple[str, ...],
 
 
 def _format_value(v: float) -> str:
+    # Text format 0.0.4 spells non-finite samples NaN / +Inf / -Inf. int(v)
+    # raises on all three, and a metric keeps its value, so ONE non-finite
+    # set used to fail render_all() - and every later /metrics scrape - until
+    # the process restarted (lane 8 s144 cycle 67).
+    if math.isnan(v):
+        return "NaN"
+    if math.isinf(v):
+        return "+Inf" if v > 0 else "-Inf"
     if v == int(v) and abs(v) < 1e15:
         return str(int(v))
     return repr(v)
@@ -131,6 +140,16 @@ class Gauge(_Metric):
         lv = self._labelvalues(labels)
         with _LOCK:
             self._values[lv] = float(value)
+
+    def clear(self, **labels) -> None:
+        """Drop the sample, so the series is ABSENT until the next `set`.
+
+        For a gauge refreshed at scrape time whose source became unknown:
+        keeping the last value would serve a stale number as current.
+        """
+        lv = self._labelvalues(labels)
+        with _LOCK:
+            self._values.pop(lv, None)
 
     def render(self) -> List[str]:
         out = [f"# HELP {self.name} {self.help_text}",

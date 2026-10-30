@@ -10,9 +10,17 @@ Gauges read from already-canonical sources:
 - `ops/runtime/health.json` for RC liveness + worker ages.
 - `core.decision_detector.DecisionStore` for pending decision count.
 - `core.cost_tracker.daily_spend()` for today's USD ledger.
+
+Every source is read independently and every value is validated before it
+reaches a gauge (lane 8 s144 cycle 67): a junk field degrades only its own
+gauge instead of 500ing the whole body, a non-finite or bool value is
+rejected, and a value that is UNKNOWN this scrape (key absent or None, store
+unreadable) clears its gauge, so a stale number is never served as current.
 """
 import logging
+import math
 import time
+from typing import Optional
 
 from core.prom_metrics import Gauge, render_all
 from dashboard._context import read_json
@@ -83,6 +91,31 @@ _G_CACHE_OVER_CAP = Gauge(
 )
 
 
+def _num(value) -> Optional[float]:
+    """`value` as a finite float, or None when it is not a usable number.
+
+    Accepts int, float and numeric strings (float() accepted those before).
+    Rejects bool (True is not an age of 1 s), every other type, and
+    non-finite results: json.loads turns 1e400 into inf and accepts NaN /
+    Infinity literals, and a non-finite gauge is not a measurement.
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        return None
+    try:
+        f = float(value)
+    except (ValueError, OverflowError):
+        return None
+    return f if math.isfinite(f) else None
+
+
+def _set_or_clear(gauge: Gauge, value: Optional[float]) -> None:
+    """Set a validated value, or clear the gauge when it is unknown."""
+    if value is None:
+        gauge.clear()
+    else:
+        gauge.set(value)
+
+
 def _refresh_cache_gauges() -> None:
     """Size gauges for the Riot API cache. Cheap and fail-soft.
 
@@ -98,40 +131,66 @@ def _refresh_cache_gauges() -> None:
     the larger. Reconciling them would mean paying the scan this function
     exists to avoid, so the asymmetry is kept: the alarm fires at or before
     the planner would act, never after. Both sites say so.
+
+    Each field is validated on its own, so one junk field no longer aborts
+    the rest; an unknown disk size clears the over-cap alarm rather than
+    leaving the previous verdict standing.
     """
+    st = None
     try:
         st = riot_api_cache.get_cache().stats_fast()
-        disk = float(st.get("disk_bytes") or 0)
-        _G_CACHE_DISK_BYTES.set(disk)
-        _G_CACHE_IMMUTABLE_ROWS.set(float(st.get("immutable_rows") or 0))
-        _G_CACHE_TTL_ROWS.set(float(st.get("ttl_live_rows") or 0))
-        _G_CACHE_OVER_CAP.set(1.0 if disk > _CACHE_CAP_BYTES else 0.0)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001 - a scrape never 500s on the cache
         log.debug("metrics riot_api_cache refresh: %s", exc)
+    if not isinstance(st, dict):
+        st = {}
+    disk = _num(st.get("disk_bytes"))
+    _set_or_clear(_G_CACHE_DISK_BYTES, disk)
+    _set_or_clear(_G_CACHE_IMMUTABLE_ROWS, _num(st.get("immutable_rows")))
+    _set_or_clear(_G_CACHE_TTL_ROWS, _num(st.get("ttl_live_rows")))
+    _set_or_clear(_G_CACHE_OVER_CAP,
+                  None if disk is None
+                  else (1.0 if disk > _CACHE_CAP_BYTES else 0.0))
 
 
-def _refresh_gauges() -> None:
-    h = read_json("ops/runtime/health.json") or {}
-    _G_RC_ALIVE.set(1.0 if h.get("alive") else 0.0)
-    if h.get("ui_pulse_age_s") is not None:
-        _G_UI_PULSE_AGE.set(float(h.get("ui_pulse_age_s") or 0.0))
-    if h.get("game_poll_worker_age_s") is not None:
-        _G_GAME_POLL_AGE.set(float(h.get("game_poll_worker_age_s") or 0.0))
+def _refresh_health_gauges() -> None:
+    h = read_json("ops/runtime/health.json")
+    if not isinstance(h, dict):
+        h = {}
+    # Strict: the writer stores a real bool, and "false" / "0" are truthy.
+    _G_RC_ALIVE.set(1.0 if h.get("alive") is True else 0.0)
+    # game_poll_worker_age_s is None while the worker has never pulsed
+    # (app/_health_monitor.py); that clears the gauge, never keeps the old age.
+    _set_or_clear(_G_UI_PULSE_AGE, _num(h.get("ui_pulse_age_s")))
+    _set_or_clear(_G_GAME_POLL_AGE, _num(h.get("game_poll_worker_age_s")))
 
+
+def _refresh_decision_gauges() -> None:
+    pending = None
     try:
         from core.decision_detector import DecisionStore
-        _G_DECISIONS_PENDING.set(len(DecisionStore().list_pending()))
-    except Exception as exc:  # noqa: BLE001
+        pending = len(DecisionStore().list_pending())
+    except Exception as exc:  # noqa: BLE001 - a scrape never 500s on the store
         log.debug("metrics decisions_pending refresh: %s", exc)
+    _set_or_clear(_G_DECISIONS_PENDING, pending)
 
+
+def _refresh_spend_gauges() -> None:
+    spend = None
     try:
         from core.cost_tracker import get_tracker
         spend = get_tracker().daily_spend()
-        _G_DAILY_SPEND_USD.set(float(spend.get("total_usd") or 0.0))
-        _G_DAILY_CALLS.set(float(spend.get("calls") or 0))
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001 - a scrape never 500s on the ledger
         log.debug("metrics daily_spend refresh: %s", exc)
+    if not isinstance(spend, dict):
+        spend = {}
+    _set_or_clear(_G_DAILY_SPEND_USD, _num(spend.get("total_usd")))
+    _set_or_clear(_G_DAILY_CALLS, _num(spend.get("calls")))
 
+
+def _refresh_gauges() -> None:
+    _refresh_health_gauges()
+    _refresh_decision_gauges()
+    _refresh_spend_gauges()
     _refresh_cache_gauges()
 
 
