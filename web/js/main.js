@@ -4071,7 +4071,21 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     autoAccept:    false,    // s162 v2: Auto Accept default off
     mainsTab:      null,     // s162 v4: "you" | "party" | null (auto from party_size)
     duo:           null,     // RM-881 (b): lobby duo-synergy controller (_lvDuoCtl)
+    findHoldUntil: 0,        // RM-1139: Find Match double-fire hold (clock ms)
+    findHoldSeq:   0,        // RM-1139: only the click that set the hold clears it
   };
+  const _LV_FIND_HOLD_MS = 1500;
+  function _lvFindHeld() {
+    return Date.now() < _LV.findHoldUntil;
+  }
+  function _lvSetFindHold(seq, on) {
+    if (seq !== _LV.findHoldSeq) return;
+    _LV.findHoldUntil = on ? Date.now() + _LV_FIND_HOLD_MS : 0;
+    const cur = document.getElementById("lv-find-match");
+    if (!cur) return;
+    if (on) cur.setAttribute("aria-disabled", "true");
+    else cur.removeAttribute("aria-disabled");
+  }
   // s162 v15: action-button glyph constants. Crown swapped to the
   // actual League captain-icon (CommunityDragon mirror, downloaded
   // to /icons/lobby/captain-icon-crown.png) so the Party panel
@@ -5325,16 +5339,22 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     // s171: surface non-leader 400s and other LCU failures inline so
     // the operator knows why "Find Match" silently no-op'd. Previously
     // the result was swallowed by the empty `(_r) => {}` callback.
+    // RM-1139: the 1.5s double-fire hold lives on _LV and is shown as
+    // aria-disabled, not disabled. Disabling the focused button threw
+    // keyboard focus to <body>, and the lobby refresh wrote
+    // find.disabled = !enabled, re-arming the button inside the hold.
+    // _LV.findHoldSeq lets only the click that set the hold clear it.
     const find = document.getElementById("lv-find-match");
     if (find) find.addEventListener("click", () => {
-      if (find.disabled) return;
-      find.disabled = true;
+      if (find.disabled || _lvFindHeld()) return;
+      const seq = ++_LV.findHoldSeq;
+      _lvSetFindHold(seq, true);
       lcuCmd({ cmd: "start_matchmaking" }).then((res) => {
         lcuPollResult(res && res.id, (r) => {
           if (r && r.ok === false) _lvQueueChangeError("Find Match: " + (r.err || "failed"));
         });
       });
-      setTimeout(() => { find.disabled = false; }, 1500);
+      setTimeout(() => { _lvSetFindHold(seq, false); }, _LV_FIND_HOLD_MS);
     });
     // ---- Cancel Queue ----
     const cancel = document.getElementById("lv-cancel-match");
@@ -5600,13 +5620,26 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     const cancel = document.getElementById("lv-cancel-match");
     const searching = lobby && lobby.search_state === "Searching";
     const found = lobby && (lobby.search_state === "MatchFound" || lcu.phase === "ReadyCheck");
+    // RM-1139: a search flip disables whichever of the pair holds
+    // focus, which threw it to <body>. Hand it to the other button when
+    // that one is enabled (Find -> Cancel on search start, Cancel -> Find
+    // on search end); focus that was not on the pair is never moved.
+    const focusWasFind = !!find && document.activeElement === find;
+    const focusWasCancel = !!cancel && document.activeElement === cancel;
     if (find) {
       const enabled = !searching && !found;
       find.disabled = !enabled;
       find.classList.toggle("is-searching", !!searching);
+      if (_lvFindHeld()) find.setAttribute("aria-disabled", "true");
+      else find.removeAttribute("aria-disabled");
     }
     if (cancel) {
       cancel.disabled = !searching;
+    }
+    if (focusWasFind && find.disabled && cancel && !cancel.disabled) {
+      cancel.focus({ preventScroll: true });
+    } else if (focusWasCancel && cancel.disabled && find && !find.disabled) {
+      find.focus({ preventScroll: true });
     }
 
     // s162 v4: Party panel render. Solo (1 member) collapses YOU/LEADER

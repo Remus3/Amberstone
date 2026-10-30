@@ -1557,7 +1557,23 @@ _WEB = _REPO_ROOT / "web"
 # EXACTLY; swapping either one alone does not. Those two paths are the whole
 # change. No glyph change: the added lines carry 0 non-ASCII bytes. If
 # another slice re-captures in parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "f6e74fab3c3e66d4d7f0bcb6c7e26fdab6477c183ee2700d4790a332d4ed63f4"
+# superseded by the RM-1139 re-capture below: "f6e74fab3c3e66d4d7f0bcb6c7e26fdab6477c183ee2700d4790a332d4ed63f4"
+#
+# RE-CAPTURED 2026-10-30 at RM-1139 (s144 uiux cycle 70, provisional
+# until the merger lands it and maps the id). One change rides it: the
+# Lobby Find Match click hold moves from the node (find.disabled) to _LV and
+# renders as aria-disabled="true", so the lobby refresh cannot re-arm it
+# inside the 1.5s window and the button keeps keyboard focus; a search flip
+# hands focus between Find Match and Cancel Queue (web/js/main.js
+# _lvFindHeld / _lvSetFindHold and the _lobbyViewRefresh focus hand-off,
+# web/css/panels/header.css the held-state rules). Ordinary case, no
+# tokeniser change. ATTRIBUTED BY SUBSTITUTION: swapping exactly those two
+# paths back to their lane HEAD f944c06a3 blobs reproduces the superseded
+# f6e74fab... value EXACTLY; swapping either one alone does not. Those two
+# paths are the whole change. No glyph change: the added lines carry 0
+# non-ASCII bytes. If another slice re-captures in parallel, the merger
+# recomputes.
+_LIVE_HALF_DIGEST = "2fccc2e2f484333d57dd83d211bf9c3ef9cea8a0c86f327525aa9bb8c98a0c55"
 
 
 def _web_sources() -> list[Path]:

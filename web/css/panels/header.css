@@ -829,9 +829,12 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   font-family: inherit; cursor: pointer;
   transition: border-color 0.12s, background 0.12s, transform 0.06s, box-shadow 0.2s;
 }
-.lq-btn:hover:not(:disabled) { border-color: var(--info); }
-.lq-btn:active:not(:disabled) { transform: scale(0.97); }
+.lq-btn:hover:not(:disabled):not([aria-disabled="true"]) { border-color: var(--info); }
+.lq-btn:active:not(:disabled):not([aria-disabled="true"]) { transform: scale(0.97); }
+/* RM-1139: [aria-disabled="true"] is the Find Match click hold - held,
+ * still focusable, so it reads exactly like disabled. */
 .lq-btn:disabled,
+.lq-btn[aria-disabled="true"],
 .lq-btn.is-disabled { opacity: 0.55; cursor: default; }
 .lq-btn .lq-btn-line1 {
   /* UI scale v2.1: 13 -> --fs-xs (16). */
@@ -933,13 +936,14 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   border-color: var(--good);
   color: var(--canvas);
 }
-.lq-find:disabled {
+.lq-find:disabled,
+.lq-find[aria-disabled="true"] {
   background: color-mix(in srgb, var(--good) 60%, var(--canvas));
   opacity: 1;
 }
 .lq-find .lq-btn-line1,
 .lq-find .lq-btn-line2 { color: var(--canvas); }
-.lq-find:hover:not(:disabled) {
+.lq-find:hover:not(:disabled):not([aria-disabled="true"]) {
   background: color-mix(in srgb, var(--good) 85%, var(--text));
 }
 @keyframes lq-find-pulse {
