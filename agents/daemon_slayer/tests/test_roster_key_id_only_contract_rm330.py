@@ -23,10 +23,11 @@ like a bug fix". Two independent checks say the silent skip is intended:
      compute_cc_pressure)". Pinned in ``UpstreamContractTests`` - if that
      sentence moves, everything this slice propagated is orphaned.
   2. TWO client-side canonicalizers already exist for exactly this bridge -
-     ``core/archetype_picks.canonical_champion_id`` (:400), written to bridge
+     ``core/archetype_picks.canonical_champion_id``, written to bridge
      Live Client display names to the engine's canonical-id registries, and
-     ``core/daemon_slayer_client._canon_champ_key`` (RM-95, :2103). Option A
-     would make a THIRD normalizer.
+     ``core/daemon_slayer_client._canon_champ_key`` (RM-95), which reuses
+     the first rather than carrying its own alias dict. Option A would make
+     a THIRD normalizer.
 
 The live-defect claim was refuted twice on the row and is not re-filed here.
 
