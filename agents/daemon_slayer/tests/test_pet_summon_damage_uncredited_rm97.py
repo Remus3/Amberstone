@@ -23,12 +23,13 @@ CONTRAST - the NON-damage axes already model summons explicitly, which is what
 makes the damage-lane silence a gap rather than a deliberate roster-wide
 policy:
 
-* ``agents/daemon_slayer/objdamage.py`` lines 79-83 / 92 - ``SUMMON_DPS``
-  weight 0.55, prose naming "Heimerdinger turrets / Yorick ghouls + Maiden /
-  Malzahar voidlings / Annie Tibbers / Elise spiders / Zyra plants /
-  Ivern Daisy".
-* ``agents/daemon_slayer/zonecontrol.py`` lines 73-77 - ``SUMMON`` weight
-  0.60, naming the same population.
+* ``agents/daemon_slayer/objdamage.py`` ``_OBJDAMAGE_KIND_WEIGHT`` -
+  ``SUMMON_DPS`` weight 0.55; the kind-weight comment above it names
+  "Heimerdinger turrets / Yorick ghouls + Maiden / Malzahar voidlings /
+  Annie Tibbers / Elise spiders / Zyra plants / Ivern Daisy".
+* ``agents/daemon_slayer/zonecontrol.py`` ``_ZONECONTROL_KIND_WEIGHT`` -
+  ``SUMMON`` weight 0.60; the comment above it names the same population
+  plus Illaoi tentacles and Azir soldiers.
 
 WHAT A RED HERE MEANS: a pet-damage lane LANDED. This file is expected to go
 red the day the engine starts crediting persistent-entity damage. Do NOT
