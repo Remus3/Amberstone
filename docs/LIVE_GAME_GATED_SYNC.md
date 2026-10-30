@@ -2952,6 +2952,81 @@ Ids `LX-nn` map to the RM rows in `BACKLOG.md` "External-lift intake".
   a press during the loading screen is dropped and logged; after the game the marks attach to that
   game and show as "you flagged" pins in Replay and PGR. Note: in the Practice Tool Shift+K spawns a
   drake, so the chord may also do that there.
+  **READY (s144 lane gated c34, 2026-10-30; PREP only, nothing ticked).** PRECONDITIONS measured
+  2026-10-30 at idle (read-only): (1) The row's "restart the RC-HotkeyListener task first" is ALREADY
+  MET on today's tree. The running listener (`pythonw`, started 2026-10-26 20:45:11) logged
+  `hotkey_listener starting (... Ctrl+Shift+K ...)` in `logs/hotkey_listener.log`, and the last
+  change to `tools/hotkey_listener.py` is `6e351117b` (2026-10-25), BEFORE that start. Re-check it at
+  drain time, because a later change to that file makes the restart owed again; restarting the task
+  is a main-session / operator act. `core/moment_marks.py` is imported lazily on the first press, so
+  the code on disk at that press is what runs. (2) No press has ever reached the listener.
+  `logs/hotkey_listener.log` (one file, about 220 KB, not yet rotated at 512 KB; first line
+  2026-06-27) holds ZERO `moment mark` lines, and neither `ops/runtime/moment_marks.jsonl` nor
+  `ops/runtime/moment_marks_by_game/` exists. So the first drain's rows are the file's first rows.
+  (3) The press ledger: `handle_moment_mark` logs exactly ONE outcome line per press that reaches the
+  dispatch worker: `moment mark: game_id=<id> game_time_s=<t>` (recorded) or
+  `moment mark dropped: <reason>`. (A game-id provider that RAISES adds a `game_id unknown` line
+  before the recorded one; the default provider never raises.) The hook itself logs nothing per key,
+  so a press the hook never saw leaves no trace; that is why the operator's own press count is an
+  input. A press in champ select or the lobby is dropped exactly like a load-screen press (:2999 is
+  down for both), so a load drop needs the first GameStart / InProgress time as its LOWER bound.
+  (4) The game id comes from the :8889 `/latest-lcu` relay `data.game_id`
+  (`core/live_session_recorder.default_game_id_provider`, 1 s timeout, '' on any miss). The LCU
+  agent sets it only in GameStart / InProgress / Reconnect (`lcu/snapshot_shape.py`), so a null id
+  is the relay-miss case. The collector then attaches it by wall window
+  (`core/moment_marks.ATTACH_SLACK_S` = 300 s). (5) The attach runs in the post-game collector
+  (`lcu/lcu_postgame_collector.py` `_attach_moment_marks`), keyed by the EOG `gameId`. Both routes
+  add `you_flagged` per request (`dashboard/routes_replay_events.py`,
+  `dashboard/routes_post_game_wpa.py`). The Replay rows and the PGR chart need the match in
+  `rewind_history.db`, so the RENDER half waits on the post-game Match-V5 ingest, as LX-01 does.
+  PROBE (a normal match or ARAM, NOT the Practice Tool (Shift+K spawns a drake there); from the main
+  checkout):
+  (a) Before the queue: `date +%s` (= SINCE), and start the LX-01 phase tape (`mkdir -p
+  ops/runtime/lx09; python tools/gated_lx01_draft_check.py tape --out
+  ops/runtime/lx09/phase_$(date +%s).jsonl`; one tape serves LX-01 and LX-09 in the same game). Its
+  first GameStart / InProgress row is the load window's lower bound. While the game is InProgress,
+  read the LCU game id once
+  (the :8889 `/latest-lcu` relay `data.game_id`, plain http with the `X-RC-Token` header; never paste
+  it into a tracked file).
+  (b) Press Ctrl+Shift+K ONCE on the loading screen, then 3 times in game at clock times you note,
+  each at least 30 s apart. That is 4 presses.
+  (c) After the game, once the post-game screen is up and the collector has run: `date +%s` (= UNTIL),
+  then `python tools/gated_lx09_mark_check.py --since SINCE --until UNTIL --game-id <id>
+  --expect-presses 4 --phase-tape ops/runtime/lx09/phase_<n>.jsonl --json >
+  ops/runtime/lx09/grade_<n>.json` (no tape: `--game-start <epoch>` of the first InProgress gives a
+  DIAGNOSTIC read only, since PASS-LOAD needs the tape; with neither, the load drop reads
+  `LOAD_DROP_UNBOUNDED`). The tool is read-only, never prints
+  a game id (every id prints as a role: match / other / null), and reads `logs/hotkey_listener.log*`
+  by default.
+  (d) Render half, after the ingest lands: `curl -sk
+  "https://127.0.0.1:8888/api/replay/events?match_id=<platform>_<id>"` and `/api/post-game-wpa?match_id=...`,
+  field `you_flagged` (list length and each `game_time_s`). Then open that match in the dashboard
+  Replay panel and the PGR win-prob card and read the DOM text-first:
+  `button.replay-events-row[data-kind="flag"]` rows whose `.replay-events-clock` reads M:SS of each
+  pin, and the PGR `g.pwp-flag-mark` markers with `<title>` `you flagged M:SS` plus the legend
+  `dashed marker = you flagged (N)`.
+  PREDICATES (stated before any game): PASS-WRITE iff `marks.verdict == REAL_ID`,
+  `marks.rows_in_window == 3`, `marks.offset_consistent` true, `marks.near_zero == 0`, `rows_vs_log ==
+  AGREE` and `presses.verdict == MATCH`. A `NULL_ONLY` / `MIXED` read is a finding against (4), not a
+  pass. PASS-LOAD iff `game_start_source == tape`, `log.load_drop == LOAD_DROP_SEEN` (a
+  `gamestats_unavailable` drop at or after the tape's first game phase AND before clock zero), and
+  that drop's `minus_clock_zero_s` < -2 (well clear of the clock-zero estimate, which `wall_ts` taken
+  before the :2999 GET can only make early). `LOAD_DROP_UNBOUNDED` never passes. A near-zero mark with no load drop REFUTES the "dropped" claim: :2999 answered on the
+  loading screen. PASS-ATTACH iff `attach.verdict == ATTACHED`, `pins == 3`, `labels_ok` and
+  `clock_s_ok` true, and `attached_after_last_mark_s` > 0. PASS-RENDER iff both route lists hold 3 pins
+  equal to the graded marks AND both panels draw 3 flags at those clocks. The route field alone
+  never passes it.
+  EVIDENCE: the grade JSON (path + mtime), the noted press clock times, the route bodies' `you_flagged`
+  and the DOM read (each with ts), the game's mode / queue, and the listener start line plus
+  `6e351117b`-or-later HEAD.
+  SUBSTITUTION CHECK: `tests/test_gated_lx09_mark_check.py` reaches every PASS verdict from rows the
+  real `build_mark` / `append_mark` / `attach_for_game` wrote from a hand-built gamestats body (and
+  `tests/test_moment_marks.py` / `tests/test_hotkey_moment_mark.py` drive the same writers
+  headless), so a PASS proves nothing unless (i) every recorded row has its own listener log line (`rows_vs_log == AGREE`; a hand-appended
+  row has none); (ii) `clock_zero` falls after that game's first InProgress phase (an LX-01 phase
+  tape run alongside) and before its end; and (iii) the pin file's `attached_at` follows the post-game trigger
+  of THAT game. A dashboard showing pins is the RENDER half only: it draws whatever the pin file
+  holds, so it never closes the write or load halves.
 - **LX-08** (RM-603, skill points) Capture whether `/allgamedata` `activePlayer.abilities` carries
   `abilityLevel` per slot; whether the free R rank of Jayce / Elise / Nidalee / Karma reads 1 at level 1;
   what Aphelios's slots report; whether ranks read the same in ARAM, Arena and URF.
