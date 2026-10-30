@@ -473,10 +473,10 @@ _ZAAHEN: dict[str, list[dict[str, Any]]] = {
                 # AD-FAMILY SPLIT: this is the only ability in either kit whose
                 # wiki row carries BOTH a total-AD and a bonus-AD ratio, and the
                 # repo enforces a machine guard that no single damage block may
-                # hold two fields of one stat family (``_AD_FIELDS`` in
-                # tests/test_cdragon_ratio_matcher.py:33 +
-                # tests/test_cdragon_surplus_ad_a29.py:83 - both sweep the WHOLE
-                # snapshot, not just the sidecar merge). The two ratios are
+                # hold two fields of one stat family (``_AD_FIELDS``, swept by
+                # ``test_cdragon_ratio_matcher.test_no_same_family_double_count_flag_on``
+                # + ``test_cdragon_surplus_ad_a29.test_no_ad_family_double_count_flag_on``
+                # - both sweep the WHOLE snapshot, not just the sidecar merge). The two ratios are
                 # therefore authored as adjacent blocks rather than folded:
                 # folding bonus AD into total AD would apply it to base AD too
                 # (an overstatement), and the reverse would understate badly.

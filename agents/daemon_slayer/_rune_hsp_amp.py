@@ -1,7 +1,7 @@
 """RUNE-side Heal/Shield Power (HSP) registry, keyed by rune id (R136-S2).
 
 The RUNE-SIDE lane of the item-keyed ``_hsp_amp.sum_wielder_hsp_pct``. That
-helper (``_hsp_amp.py:23``) sums ``heal_shield_amp_pct`` across EQUIPPED ITEMS
+helper sums ``heal_shield_amp_pct`` across EQUIPPED ITEMS
 ONLY - it reads the curated ``enchanter_items.json`` field through
 ``hps.load_default_formulas`` and looks each contribution up BY ITEM ID. A rune
 has no item id, so it can never reach that lookup no matter what it grants. 8453
@@ -26,13 +26,14 @@ midpoint and NO probability field, unlike ``_rune_resist_grants``.
 UNITS ARE A FRACTION, NOT A PERCENT: 5% is stored as 0.05, matching the
 ``heal_shield_amp_pct`` convention in ``enchanter_items.json`` (Redemption 10% ->
 0.10). This is what makes the two lanes DIRECTLY ADDITIVE per the real-LoL HSP
-model and the "(1 + hsp_pct)" convention documented at ``_hsp_amp.py:27-30``:
-Redemption 0.10 + Mikael 0.12 + Revitalize 0.05 = 0.27, never a compounded
+model and the "(1 + hsp_pct)" convention documented in the
+``_hsp_amp.sum_wielder_hsp_pct`` docstring: Redemption 0.10 + Mikael 0.12 + Revitalize 0.05 = 0.27, never a compounded
 1.22 * 1.05. Note this deliberately differs from ``_rune_resist_grants``, which
 stores percents (75.0 == 75%) because its consumers are resist magnitudes.
 
 HSP amplifies HEALS AND SHIELDS ONLY. It does NOT amplify vamp (lifesteal /
-omnivamp / spellvamp / drain) - the contract stated at ``_hsp_amp.py:5-7``. This
+omnivamp / spellvamp / drain) - the contract stated in the ``_hsp_amp`` module
+docstring. This
 module returns a bare fraction and takes no position on which pools a caller
 applies it to; the seam caller must keep the item lane's existing REGEN-only /
 ItemShield-only scoping and must not widen it to a vamp pool.
