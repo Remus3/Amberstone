@@ -2623,8 +2623,13 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     const fName = _ubEl("ub-sp-f-name");
     if (dName) dName.textContent = (dSp && dSp.name) || "-";
     if (fName) fName.textContent = (fSp && fSp.name) || "-";
-    _ubEl("ub-sp-slot-d").classList.toggle("active", _SP.active === "d");
-    _ubEl("ub-sp-slot-f").classList.toggle("active", _SP.active === "f");
+    // RM-1133: aria-pressed announces which slot the next pick fills; the
+    // .active border alone left a screen reader two identical buttons.
+    for (const s of ["d", "f"]) {
+      const slotEl = _ubEl(`ub-sp-slot-${s}`);
+      slotEl.classList.toggle("active", _SP.active === s);
+      slotEl.setAttribute("aria-pressed", _SP.active === s ? "true" : "false");
+    }
   }
   function _ubSpellRenderGrid() {
     const g = _ubEl("ub-sp-grid");

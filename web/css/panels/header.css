@@ -2811,6 +2811,13 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   transition: border-color 0.1s, background 0.1s;
 }
 .ub-sp-cell:hover { border-color: var(--clock); background: var(--surface-2); }
+/* RM-1133: the spell slots and cells are keyboard-operable buttons, so they
+   draw the one system focus ring (tokens.css --focus-ring), as the rune cells
+   and tree tabs do. */
+.ub-sp-slot:focus-visible, .ub-sp-cell:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
 .ub-sp-cell img {
   width: 36px; height: 36px; border-radius: var(--panel-radius-sm);
   background: var(--surface); object-fit: cover;

@@ -1465,7 +1465,19 @@ _WEB = _REPO_ROOT / "web"
 # MERGED 2026-10-28 by the session 144 L5 merger onto main (lane commit f9f786d71): main had moved
 # this pin since the lane base, so the superseded value above is main's and
 # the value below is recomputed over the merged tree.
-_LIVE_HALF_DIGEST = "c3f3b3bf1767ce77fcaeab8f1af2e57d5b3758a3390b54df8d1ec596f087969e"
+# superseded by the RM-1133 re-capture below: "c3f3b3bf1767ce77fcaeab8f1af2e57d5b3758a3390b54df8d1ec596f087969e"
+#
+# RE-CAPTURED 2026-10-30 at RM-1133 (s144 uiux cycle 61, provisional
+# until the merger lands it and maps the id). One change rides it: the
+# User Builds spell chooser - the D / F slots and the grid cells draw the
+# system focus ring and the slots carry aria-pressed (web/css/panels/
+# header.css, web/index.html, web/js/main.js _ubSpellRenderCurrent).
+# Ordinary case, no tokeniser change. ATTRIBUTED BY SUBSTITUTION: swapping
+# those three files back to their lane HEAD 491949dc3 blobs (in memory)
+# reproduces the superseded c3f3b3bf... value EXACTLY. Those three paths
+# are the whole change. No glyph change: the added lines carry 0 non-ASCII
+# bytes. If another slice re-captures in parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "80c1b8522089f13ad72543428c590f0604df98ce61293f3ca21c58ec1e00adfa"
 
 
 def _web_sources() -> list[Path]:
