@@ -251,4 +251,6 @@ class TestAuditApiSurfacePrunes:
 def test_root_is_a_module_level_path_constant(mod):
     """Guard the monkeypatch target: ROOT must stay a module attribute."""
     assert isinstance(mod.ROOT, Path)
-    assert mod.ROOT.name == "Riot Commander" or mod.ROOT.is_dir()
+    # The checkout folder name is per-host (a lane worktree differs), so pin
+    # what the walkers need: a real directory to walk (RM-722 (a)).
+    assert mod.ROOT.is_dir()
