@@ -1573,7 +1573,19 @@ _WEB = _REPO_ROOT / "web"
 # paths are the whole change. No glyph change: the added lines carry 0
 # non-ASCII bytes. If another slice re-captures in parallel, the merger
 # recomputes.
-_LIVE_HALF_DIGEST = "2fccc2e2f484333d57dd83d211bf9c3ef9cea8a0c86f327525aa9bb8c98a0c55"
+# superseded by the RM-1140 re-capture below: "2fccc2e2f484333d57dd83d211bf9c3ef9cea8a0c86f327525aa9bb8c98a0c55"
+#
+# RE-CAPTURED 2026-10-30 at RM-1140 (s144 uiux cycle 71, provisional
+# until the merger lands it and maps the id). One change rides it: the
+# Active Match combo timeline's action-queue input and keystone select
+# (.dscombo-input / .dscombo-keystone) take the --hit-min floor and draw the
+# system focus ring (web/css/panels/ds_combo.css). Ordinary case, no
+# tokeniser change. ATTRIBUTED BY SUBSTITUTION: swapping exactly
+# web/css/panels/ds_combo.css back to its lane HEAD ddab05792 blob (in
+# memory) reproduces the superseded 2fccc2e2... value EXACTLY. That path is
+# the whole change. No glyph change: the added lines carry 0 non-ASCII
+# bytes. If another slice re-captures in parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "c463b378f50e3074881e29afdf3b78922084947fccbcd3beb4c6ebcd4ff6ac69"
 
 
 def _web_sources() -> list[Path]:

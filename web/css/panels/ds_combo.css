@@ -65,11 +65,22 @@
   font-size: var(--fs-sm);
   font-family: inherit;
   letter-spacing: 0.04em;
+  /* RM-1140: the input and the keystone select measured 34px tall (under
+     --hit-min) and focus drew only a 1px border change. Both take the floor
+     (border-box, so the floor is the outer height) and the system ring.
+     Pinned by tests/snapshot_panels/test_ds_combo_controls_hit_floor.py. */
+  box-sizing: border-box;
+  min-height: var(--hit-min);
 }
 
 .dscombo-input:focus {
   outline: none;
   border-color: var(--signal-info, #5aa9e6);
+}
+
+.dscombo-input:focus-visible,
+.dscombo-keystone:focus-visible {
+  box-shadow: var(--focus-ring);
 }
 
 /* Keystone/rune selector - peer control to the action-queue input. Mirrors
@@ -86,6 +97,8 @@
   font-size: var(--fs-sm);
   font-family: inherit;
   cursor: pointer;
+  box-sizing: border-box;
+  min-height: var(--hit-min);
 }
 
 .dscombo-keystone:focus {
