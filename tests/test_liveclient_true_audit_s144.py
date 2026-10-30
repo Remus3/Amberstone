@@ -41,6 +41,7 @@ import pytest
 
 from core.liveclient_cache import Snapshot
 from dashboard import _liveclient
+from tests._module_view import bind_urlopen
 
 
 def _player(name, team, **kw):
@@ -443,8 +444,19 @@ class _Resp(io.BytesIO):
 
 def _lcu(body):
     raw = body if isinstance(body, bytes) else json.dumps(body).encode()
-    with mock.patch("urllib.request.urlopen", return_value=_Resp(raw)):
-        return _liveclient.lcu_summary()
+    calls = []
+
+    def _fake_urlopen(*a, **k):
+        calls.append(a)
+        return _Resp(raw)
+
+    # RM-801: fake urlopen inside dashboard._liveclient only, never the shared
+    # urllib.request attribute (a process-wide patch leaks into other threads).
+    with pytest.MonkeyPatch.context() as mp:
+        bind_urlopen(mp, _liveclient, _fake_urlopen)
+        out = _liveclient.lcu_summary()
+    assert calls, "lcu_summary never reached the faked urlopen - the test is vacuous"
+    return out
 
 
 @pytest.mark.parametrize("raw", [b'{"ts": NaN, "data": {"phase": "x"}}',

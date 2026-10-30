@@ -36,6 +36,11 @@ import pytest
 
 from core import http_head_deadline as hhd
 from core.http_head_deadline import HeadDeadlineMixin
+from tests._timing_budget import fleet_test_guard
+
+# Upper bounds are idle-box seconds scaled by fleet_test_guard.budget (U5).
+# No cap is needed: an unfixed (unbounded) head never closes inside wait_s,
+# so _time_to_close returns None and the `is not None` arm fails it.
 
 
 class _Handler(HeadDeadlineMixin, BaseHTTPRequestHandler):
@@ -130,7 +135,7 @@ def _get(sock: socket.socket, body: bytes = b"") -> bytes:
 def test_an_idle_client_is_closed_at_the_head_deadline():
     with _serve(_Handler) as (cli, outcome):
         elapsed = _time_to_close(cli, wait_s=4.0)
-    assert elapsed is not None and 0.3 <= elapsed < 3.0, elapsed
+    assert elapsed is not None and 0.3 <= elapsed < fleet_test_guard.budget(3.0), elapsed
     assert outcome["error"] is None
     assert any("timed out" in m for m in _Handler.seen.get("log", []))
 
@@ -152,7 +157,7 @@ def test_an_idle_keep_alive_client_is_closed_after_its_first_request():
         first = cli.recv(4096)
         assert first.startswith(b"HTTP/1.1 200"), first
         elapsed = _time_to_close(cli, wait_s=4.0)
-    assert elapsed is not None and elapsed < 3.0, elapsed
+    assert elapsed is not None and elapsed < fleet_test_guard.budget(3.0), elapsed
     assert outcome["error"] is None
 
 
@@ -208,7 +213,7 @@ def test_an_unusable_cap_falls_back_to_the_bounded_default(cap, monkeypatch):
     assert outcome["error"] is None, repr(outcome["error"])
     # Lower bound: the head got the default's time, not an already-spent
     # deadline (a negative cap used to refuse at once).
-    assert elapsed is not None and 0.3 <= elapsed < 3.0, elapsed
+    assert elapsed is not None and 0.3 <= elapsed < fleet_test_guard.budget(3.0), elapsed
 
 
 def test_effective_cap_table(monkeypatch):
@@ -254,7 +259,7 @@ def test_an_unbuffered_handler_is_bounded_too():
     with _serve(H) as (cli, outcome):
         elapsed = _time_to_close(cli, wait_s=3.0)
     assert outcome["error"] is None, repr(outcome["error"])
-    assert elapsed is not None and elapsed < 2.5, elapsed
+    assert elapsed is not None and elapsed < fleet_test_guard.budget(2.5), elapsed
 
 
 def test_an_unbuffered_handler_still_serves_a_request():
