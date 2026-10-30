@@ -1219,10 +1219,10 @@ class EhpResult:
     # RM-118 (2026-08-02): the resolved build's TOTAL maximum mana, the pool the
     # champion MANA -> DAMAGE coupling credit normalizes against. Already computed
     # inside ``compute_ehp`` for the Seraph's Embrace Lifeline shield
-    # (``ehp.py:1725``, ``float(stats.get("mp", 0.0))``) and merely forwarded here
-    # rather than recomputed. OBSERVABILITY ONLY - no EHP field reads it, so the
-    # value is byte-identical whatever the mana lever does. Appended at END per the
-    # dataclass field-append convention.
+    # (the ``max_mana = float(stats.get("mp", 0.0))`` line of ``compute_ehp``)
+    # and merely forwarded here rather than recomputed. OBSERVABILITY ONLY - no
+    # EHP field reads it, so the value is byte-identical whatever the mana lever
+    # does. Appended at END per the dataclass field-append convention.
     max_mana: float = 0.0
 
     def to_dict(self) -> dict:
@@ -1554,8 +1554,9 @@ def compute_ehp(
     # feed only; these two seams are both NUMERATOR-side and reuse the SAME
     # ``rune_ids`` transport R132 already plumbed, so no new ids parameter lands.
     #   * apply_rune_health_grants - Overgrowth 8451 permanent max-HP + Grasp 8437
-    #     self-side heal/permanent-HP (rune_procs.py:606 scores Grasp's DAMAGE and
-    #     admits verbatim "(heal + permanent-HP sides not modeled)").
+    #     self-side heal/permanent-HP (the ``RUNE_PROCS[8437]`` formula in
+    #     rune_procs.py scores Grasp's DAMAGE and admits verbatim "(heal +
+    #     permanent-HP sides not modeled)").
     #   * apply_rune_hsp_amp - Revitalize 8453's flat 5% Heal/Shield Power.
     # ENGINE 1.229.0 (R142) adds the RM-101 residual pair on the same transport,
     # each independently gated so every rune lane stays separately flippable:
@@ -1667,8 +1668,9 @@ def compute_ehp(
     ``enemy_shred_pct`` / ``enemy_magic_pen_flat`` / ``enemy_magic_pen_pct``)
     feed ``_effective_resist_after_pen`` BEFORE the ``_armor_factor`` curve.
     ALL FIVE default to 0.0 -> the pen step is an identity no-op ->
-    BYTE-IDENTICAL to the pre-seam Phase-1 behavior (closes the long-
-    standing ehp.py:30 deliberate omission). ARMOR order: % shred (clamped
+    BYTE-IDENTICAL to the pre-seam Phase-1 behavior (closes the
+    long-standing "Caster-side enemy pen/reduction" deliberate omission in
+    the module docstring). ARMOR order: % shred (clamped
     0..0.99) -> general %pen (multiplicative) -> lethality (flat, subtract
     LAST). MR order: %pen -> flat magic pen (subtract last). The reported
     ``EhpResult.armor`` / ``.mr`` stay the RESOLVED build stats; the post-
@@ -1911,7 +1913,8 @@ def compute_ehp(
     # 120 absorbed) and Grasp 8437's self-side (1.3% max-HP heal + 5 permanent HP,
     # both 40% effective on ranged). Grasp's coefficients are NOT re-derived here -
     # they are the same DDragon-cited magnitudes already carried on the ENEMY side
-    # at enemy_runes.py:213/:215/:216, restated so the two sides cannot drift.
+    # on the ``ENEMY_RUNE_THREATS[8437]`` entry in enemy_runes.py (poke_heal_pct /
+    # perm_hp / ranged_factor), restated so the two sides cannot drift.
     # permanent HP joins the per-type NUMERATORS next to passive_health_hp; the
     # heal joins the heal pool BEFORE heal_amp_mult (Grasp's heal is amplifiable
     # in game). OFF -> (0.0, 0.0) -> byte-identical; the gated lazy import keeps
@@ -2290,7 +2293,7 @@ def compute_ehp(
     # OPT-IN enemy-penetration seam. The five enemy_* kwargs default to 0.0
     # -> ``_effective_resist_after_pen`` is an identity no-op -> eff_armor /
     # eff_mr stay exactly the resist sum above -> BYTE-IDENTICAL to the
-    # pre-seam EHP math (closes the ehp.py:30 deliberate Phase-1 omission
+    # pre-seam EHP math (closes the module docstring's deliberate Phase-1 omission
     # "Caster-side enemy pen/reduction ... needs enemy build plumbing"; the
     # plumbing now arrives as caller-supplied scalars sourced from the enemy
     # build by core/defensive_picks.py). The pen bites the FULL resolved-

@@ -14,8 +14,8 @@ the credit lands on:
     term cannot reach it - a numerator term can).
 
 WHAT WAS MISSING. ``rune_procs.py`` registers Grasp of the Undying (8437) for its
-bonus magic DAMAGE alone, and its own formula string admits the gap verbatim at
-``rune_procs.py:606``: "(heal + permanent-HP sides not modeled)". Overgrowth
+bonus magic DAMAGE alone, and its own formula string admits the gap verbatim in the
+``RUNE_PROCS[8437]`` entry: "(heal + permanent-HP sides not modeled)". Overgrowth
 (8451) was modelled NOWHERE - ``_rune_resist_grants.py:52-57`` explicitly read and
 rejected it for the RESIST registry ("8451 Overgrowth max health") because max
 health is not a resist. This module is the lane that rejection pointed at. Both
@@ -37,12 +37,15 @@ quoted VERBATIM (re-read from raw source for this slice, not paraphrased):
 COEFFICIENT REUSE - NOT RE-DERIVED. Grasp's three magnitudes already exist,
 DDragon-cited, on the ENEMY side in ``enemy_runes.py``:
 
-  * ``enemy_runes.py:213``  ``poke_heal_pct=0.013``   -> ``_GRASP_HEAL_PCT_MAX_HP``
-  * ``enemy_runes.py:215``  ``perm_hp=5.0``           -> ``_GRASP_PERM_HP_PER_PROC``
-  * ``enemy_runes.py:216``  ``ranged_factor=0.40``    -> ``_GRASP_RANGED_FACTOR``
+  * ``ENEMY_RUNE_THREATS[8437].poke_heal_pct`` ``poke_heal_pct=0.013``
+    -> ``_GRASP_HEAL_PCT_MAX_HP``
+  * ``ENEMY_RUNE_THREATS[8437].perm_hp`` ``perm_hp=5.0``
+    -> ``_GRASP_PERM_HP_PER_PROC``
+  * ``ENEMY_RUNE_THREATS[8437].ranged_factor`` ``ranged_factor=0.40``
+    -> ``_GRASP_RANGED_FACTOR``
 
-(field declarations at ``enemy_runes.py:130-133``; the whole 8437 entry spans
-``enemy_runes.py:201-217``). They are RESTATED here rather than imported: an
+(fields declared on the ``EnemyRuneThreat`` dataclass; the whole entry is
+``ENEMY_RUNE_THREATS[8437]``). They are RESTATED here rather than imported: an
 import would create a cycle risk and couple a survivability registry to the
 enemy-threat seam, which is a different consumer with a different flip gate. The
 restatement is held safe by ``tests/test_rune_health_grants_r136.py``
@@ -140,15 +143,15 @@ from typing import Iterable
 
 # --- Grasp of the Undying (8437) - EXACT DDragon 16.14.1 magnitudes -----------
 # Restated from the enemy-side twin so the two lanes cannot drift; see the module
-# docstring for the enemy_runes.py line citations and the anti-drift test that
+# docstring for the enemy_runes.py field citations and the anti-drift test that
 # enforces the equality.
 
-# "Heal you for 1.3% of your max health" (enemy_runes.py:213 poke_heal_pct).
+# "Heal you for 1.3% of your max health" (ENEMY_RUNE_THREATS[8437].poke_heal_pct).
 _GRASP_HEAL_PCT_MAX_HP: float = 0.013
-# "Permanently increase your health by 5" (enemy_runes.py:215 perm_hp).
+# "Permanently increase your health by 5" (ENEMY_RUNE_THREATS[8437].perm_hp).
 _GRASP_PERM_HP_PER_PROC: float = 5.0
 # "Ranged Champions: Damage, healing, and permanent health gained are 40%
-# effective" (enemy_runes.py:216 ranged_factor).
+# effective" (ENEMY_RUNE_THREATS[8437].ranged_factor).
 _GRASP_RANGED_FACTOR: float = 0.40
 
 # --- Overgrowth (8451) - EXACT DDragon 16.14.1 magnitudes --------------------
@@ -258,10 +261,10 @@ _RUNE_HEALTH_GRANTS: dict[str, RuneHealthEntry] = {
     # your max health ... Permanently increase your health by 5 ... Ranged
     # Champions: Damage, healing, and permanent health gained are 40% effective."
     # ONLY the heal + permanent-HP sides are credited here. The bonus magic
-    # DAMAGE side (3.5% max health) is ALREADY scored by rune_procs.py:597-610
-    # and is not a survivability term - crediting it here would double-count it.
-    # This entry closes that module's own admission at rune_procs.py:606,
-    # "(heal + permanent-HP sides not modeled)".
+    # DAMAGE side (3.5% max health) is ALREADY scored by the RUNE_PROCS[8437]
+    # entry in rune_procs.py and is not a survivability term - crediting it here
+    # would double-count it. This entry closes that entry's own formula
+    # admission, "(heal + permanent-HP sides not modeled)".
     "8437": RuneHealthEntry(
         heal_pct_max_hp=_GRASP_HEAL_PCT_MAX_HP,
         perm_hp_per_proc=_GRASP_PERM_HP_PER_PROC,
