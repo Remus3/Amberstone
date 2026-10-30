@@ -30,19 +30,19 @@ IDENTICAL for SR and ARENA at fixed inputs. The argument is not dropped:
   module.
 
 Be precise about WHICH field is mode-blind. It is ``ResolvedChampion.stats``.
-``.notes`` differs on 173 of 173 ARENA calls, because ``engine.py:458`` appends
-"mode=ARENA - modifier table not plugged in for this mode". That is the language
-of unfinished work, so "default-OFF by DS doctrine" describes the status quo
-rather than justifying it.
+``.notes`` differs on 173 of 173 ARENA calls, because ``engine.build_champion``
+appends "mode=ARENA - modifier table not plugged in for this mode". That is the
+language of unfinished work, so "default-OFF by DS doctrine" describes the
+status quo rather than justifying it.
 
 RM-172 (2026-08-06) MEASURED that note and found it misleading in both
 directions - read it as a hint, never as evidence. ``build_champion`` has TWO
-mode lanes and the flag gates only one: ``_resolve_mode_addends``
-(engine.py:106) is the ARENA/Swiftplay stat-growth ADDEND lane and it is
-flag-gated, while ``_apply_mode_modifiers`` (engine.py:225) is the ARAM
-MULTIPLIER lane, is called UNCONDITIONALLY at engine.py:450, and early-returns
-for every non-ARAM mode. The ARENA ADDEND table EXISTS (wiki sidecar, 45 of 173
-champions, axes hp_base/hp_lvl/dam_lvl/arm_lvl/as_lvl), so :458 fires even on
+mode lanes and the flag gates only one: ``engine._resolve_mode_addends`` is the
+ARENA/Swiftplay stat-growth ADDEND lane and it is flag-gated, while
+``engine._apply_mode_modifiers`` is the ARAM MULTIPLIER lane, is called
+UNCONDITIONALLY in ``build_champion``, and early-returns for every non-ARAM
+mode. The ARENA ADDEND table EXISTS (wiki sidecar, 45 of 173 champions, axes
+hp_base/hp_lvl/dam_lvl/arm_lvl/as_lvl), so that note fires even on
 calls where that table was just applied - the two notes contradict each other in
 the same list. The ARENA MULTIPLIER table genuinely does not exist, and Riot
 publishes no such axis, so that half is not a closable gap. The seam is pinned

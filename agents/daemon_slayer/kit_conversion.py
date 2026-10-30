@@ -31,17 +31,18 @@ ratio it scales BY); crit appears in 6 ``attribute`` strings and on-hit in 11,
 out of 570 distinct attribute values of which 439 are singletons.
 
 The real signal is prose - 107 of 171 champions mention on-hit in
-``effects_descriptions`` - but the loader DROPS that field (``AbilityForm``
-declares 16 fields at ``abilities.py:220-235`` and ``from_dict`` at ``:237-263``
+``effects_descriptions`` - but the loader DROPS that field (the
+``abilities.AbilityForm`` dataclass declares 16 fields and its ``from_dict``
 parses exactly those, ``effects_descriptions`` not among them).
 
 So the vector is hand-seeded from verbatim prose, following the
 ``_passive_damage_overrides.py`` precedent ("Seeded 2026-05-31 against verbatim
-effects_descriptions", ``:379``) and its continuous-fraction contract
-(``conditional_probability: float = 1.0``, ``:375``). This is also FORCED by the
-operator constraint that five kits (Pantheon, Rek'Sai, Rengar, Olaf, Riven) HAVE
-the term and must still not be credited at face value: no data file carries
-cadence, so a boolean has-an-AS-term gate is the wrong shape.
+effects_descriptions", the comment above its ``_PASSIVE_DAMAGE_OVERRIDES``
+registry) and its continuous-fraction contract
+(``PassiveDamageEntry.conditional_probability: float = 1.0``). This is also
+FORCED by the operator constraint that five kits (Pantheon, Rek'Sai, Rengar,
+Olaf, Riven) HAVE the term and must still not be credited at face value: no
+data file carries cadence, so a boolean has-an-AS-term gate is the wrong shape.
 
 REACHABILITY (measured, main thread, live 16.14.1 deltas)
 ---------------------------------------------------------
@@ -56,7 +57,7 @@ objective contains a term) and Pantheon's Heartsteel leaving #3 (pure HP, which
 is ON-AXIS for the bruiser objective, so its exposure is zero on every channel).
 
 Self-contained: no ``core`` import, so the engine package stays standalone
-(the ``hybrid.py:69`` rule).
+(the same rule ``hybrid`` states above ``_damage_axis``).
 """
 
 from __future__ import annotations
@@ -277,9 +278,9 @@ def registry_champion_ids() -> frozenset[str]:
 # from memory: Amplifying Tome 400g/20 AP, Long Sword 350g/10 AD, Ruby Crystal
 # 400g/150 HP, Sapphire Crystal 300g/300 mana, Cloth Armor 300g/15 armor,
 # Null-Magic Mantle 400g/20 MR, Dagger 250g/0.10 AS, Cloak of Agility 600g/0.15
-# crit. FlatHPPoolMod matches ehp.py:2194 _GOLD_PER_HP exactly. NOTE ehp.py:2193
-# uses _GOLD_PER_MR = 18.0 where the 16.14.1 component tree derives 20.0; that
-# divergence is left alone rather than "fixed" here.
+# crit. FlatHPPoolMod matches ``ehp._GOLD_PER_HP`` exactly. NOTE
+# ``ehp._GOLD_PER_MR`` is 18.0 where the 16.14.1 component tree derives 20.0;
+# that divergence is left alone rather than "fixed" here.
 _GOLD_PER = {
     "FlatMagicDamageMod": 20.0,
     "FlatPhysicalDamageMod": 35.0,
@@ -305,8 +306,8 @@ _OFF_AXIS_KEYS = {
     # i.e. the INTERSECTION of the damage set and the "ehp" set above, not
     # either one alone. Health, armor and magic resist are therefore ON-axis
     # here even though the damage sets penalise them: for a bruiser they ARE
-    # the beta term. Reproduces the Olaf note at :128-129 ("nothing is off-axis
-    # for him except AP") exactly.
+    # the beta term. Reproduces the ``_KIT_CONVERSION["Olaf"]`` note ("nothing is
+    # off-axis for him except AP") exactly.
     #
     # Passing a bare "ad"/"ap" here instead would be inert for the four bruiser
     # entries (their off_axis_stat is 1.00, so the shortfall is 0 and the set is
@@ -326,10 +327,13 @@ _OFF_AXIS_MIN_GOLD = 300.0
 def damage_objective(snapshot, champion_id: str) -> str:
     """Return ``"ap"`` for a magic-primary champion, else ``"ad"``.
 
-    Same DDragon ``info.attack`` / ``info.magic`` split ``hybrid._damage_axis``
-    uses (``hybrid.py:73-79``), reimplemented locally rather than imported so
-    this module stays leaf-level and cannot create an import cycle with the
-    rankers that consume it.
+    The DDragon ``info.attack`` / ``info.magic`` rating split - only the
+    FALLBACK branch of ``hybrid._damage_axis`` - reimplemented locally rather
+    than imported so this module stays leaf-level and cannot create an import
+    cycle with the rankers that consume it. ``hybrid._damage_axis`` reads the
+    kit's ``lolmath.damage_distribution`` FIRST, so the two disagree wherever
+    that split is decisive and the ratings point the other way (13 of 173 at
+    patch 16.21.1). Aligning them moves scorer output, so it is left as is.
     """
     rec = snapshot.champions.get(str(champion_id)) or {}
     info = rec.get("info") or {}
