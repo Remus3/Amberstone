@@ -671,11 +671,12 @@ def _total_ability_haste(
     """Sum the total ability-haste applied to per-spell cooldowns.
 
     ENGINE 1.23.0 (2026-05-20): mode-gated read of the engine-exposed
-    ``aram_ability_haste`` delta (engine.py:270). SR + every
-    non-ARAM mode strip the delta defensively even if a caller
-    pre-populates the key (the engine's _apply_mode_modifiers gates
-    on mode == "ARAM"; this helper double-gates so a malformed
-    scaled-dict can't leak ARAM haste into SR rankings).
+    ``aram_ability_haste`` delta (``engine._apply_mode_modifiers``
+    writes it). SR + every non-ARAM mode strip the delta defensively
+    even if a caller pre-populates the key (the engine's
+    _apply_mode_modifiers gates on mode == "ARAM"; this helper
+    double-gates so a malformed scaled-dict can't leak ARAM haste
+    into SR rankings).
 
     ``base_ah`` is the caller-supplied baseline (defaults 0). ENGINE
     1.24.0 (2026-05-21) wired the item-AH lane via
@@ -807,11 +808,11 @@ class AbilitySpellDps:
     # Sum of ``total_ad_pct`` + ``bonus_ad_pct`` across this form's
     # ``attribute_kind == "damage"`` blocks - the exact mirror of
     # ``ap_pct_sum`` above, read the same way ``_classify_primary_scaling``
-    # reads those blocks (ability_dps.py:926-929). END-appended and defaulted
-    # per the repo dataclass rule, and NOT consumed by any DPS arithmetic.
-    # Its only consumer is the RM-36 dual-scaling SPLIT credit in
-    # ``_ad_axis_ability``: a row carrying BOTH sums is credited on the AD axis
-    # at ``ad_pct_sum / (ad_pct_sum + ap_pct_sum)`` of its dps instead of being
+    # reads those blocks. END-appended and defaulted per the repo dataclass
+    # rule, and NOT consumed by any DPS arithmetic. Its only consumer is the
+    # RM-36 dual-scaling SPLIT credit in ``_ad_axis_ability``: a row carrying
+    # BOTH sums is credited on the AD axis at
+    # ``ad_pct_sum / (ad_pct_sum + ap_pct_sum)`` of its dps instead of being
     # dropped whole. Ezreal Q Mystic Shot is the motivating row (650.0 AD
     # against 200.0 AP).
     ad_pct_sum: float = 0.0
@@ -1015,10 +1016,9 @@ def _form_ad_pct_sum(form: AbilityForm) -> float:
     """Sum ``total_ad_pct`` + ``bonus_ad_pct`` across a form's ``damage`` blocks.
 
     The exact mirror of ``_form_ap_pct_sum`` above, over the two AD ratio
-    columns ``_classify_primary_scaling`` already folds together
-    (ability_dps.py:926-929). Same ``damage``-blocks-only gate, and for the
-    same reason: an AD-scaling heal block does not make the spell's DAMAGE
-    AD-scaling.
+    columns ``_classify_primary_scaling`` already folds together. Same
+    ``damage``-blocks-only gate, and for the same reason: an AD-scaling heal
+    block does not make the spell's DAMAGE AD-scaling.
 
     Consumed ONLY by the RM-36 dual-scaling split credit, which needs both
     sides of a row's scaling ratio to decide what fraction of it belongs on
