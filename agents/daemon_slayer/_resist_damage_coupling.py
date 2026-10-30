@@ -4,10 +4,11 @@ WHY THIS REGISTRY EXISTS
 ------------------------
 Row A-18 was filed as "resists pay twice while the objective counts them once",
 i.e. a DOUBLE-COUNT in the tank objective. That is REFUTED by source: ``ehp.py``
-accumulates each resist EXACTLY ONCE into ``eff_armor`` / ``eff_mr``
-(``ehp.py:1926-1927``), divides by it exactly once in the three per-type
-numerators (``ehp.py:1984-1986``), and blends exactly once
-(``ehp.py:2095-2099``). No term is counted twice anywhere.
+accumulates each resist EXACTLY ONCE into ``eff_armor`` / ``eff_mr`` (the
+resist sum of ``compute_ehp``), divides by it exactly once in the
+``physical_ehp`` / ``magical_ehp`` expressions of ``compute_ehp`` (``true_ehp``
+reads no resist), and blends exactly once (the ``blended_ehp`` enemy-share
+sum). No term is counted twice anywhere.
 
 The real defect is the INVERSE - a single-count UNDER-credit. ``ehp.py`` imports
 no abilities module and reads zero ``damage_blocks``, so a champion whose OWN KIT
@@ -49,17 +50,20 @@ effects-text forms read verbatim below. In-repo source is
 
 DOCUMENTED REJECTS - deliberately NOT seeded
 --------------------------------------------
-  * ``KSante`` - K'Sante P "All Out Bonus" is an existing documented reject at
-    ``_passive_damage_overrides.py:839-843``: it is BILINEAR (caster bonus
-    resist * target max HP, a product, not a linear resist term) AND gated on
-    the R-empowered All Out state, so seeding it always-on over-models. The
+  * ``KSante`` - K'Sante P "All Out Bonus" is an existing documented reject in
+    the ``_passive_damage_overrides`` GAP-2 CASTER-DEFENSIVE-STAT header
+    comment: it is BILINEAR (caster bonus resist * target max HP, a product,
+    not a linear resist term) AND gated on the R-empowered All Out state, so
+    seeding it always-on over-models. It is modelled instead as its own
+    default-OFF bilinear seam,
+    ``_passive_damage_overrides._ALL_OUT_BONUS_OVERRIDES``. The
     sweep did also surface K'Sante Q "Ntofo Strikes" (bonus_armor_pct 40 /
     bonus_mr_pct 40, PHYSICAL) as a clean linear form, but K'Sante is held out
     of this seed pass in full per that same reject scope - promoting Q is an
     operator call, not a side effect of this slice.
   * ``Rammus`` W "Defensive Ball Curl" (15 + 10 percent total armor + 10 percent
-    total MR reflect) - already rejected at
-    ``_passive_damage_overrides.py:844-849`` as a reactive on-being-hit reflect,
+    total MR reflect) - already rejected in that same GAP-2 header comment
+    as a reactive on-being-hit reflect,
     the wrong cadence for a conversion term. Rammus is seeded on his P only.
   * ``Skarner`` - carries NO resist-scaling ability text or damage block at
     16.14.1. Nothing to source, so nothing is seeded.
@@ -160,8 +164,10 @@ _CHAMPION_RESIST_DAMAGE_COUPLING: dict[str, ResistDamageCouplingEntry] = {
     ),
     # champion_abilities.json 16.14.1, Taric E "Dazzle", damage_blocks[0]:
     # attribute "Magic Damage", damage_type MAGIC, bonus_armor_pct [50.0]*5.
-    # The already-modelled Taric P Bravado rider (bonus_armor_pct=15.0 at
-    # _passive_damage_overrides.py:852-861) is the WEAKER peer source and is
+    # The already-modelled Taric P Bravado rider (bonus_armor_pct=15.0 on
+    # the ``("Taric", "P", 0)`` row of
+    # ``_passive_damage_overrides._PASSIVE_DAMAGE_OVERRIDES``) is the WEAKER
+    # peer source and is
     # deliberately not summed - it is post-cast 2-basic-attack gated and is
     # metadata-only in the scorers.
     "Taric": ResistDamageCouplingEntry(
@@ -172,7 +178,9 @@ _CHAMPION_RESIST_DAMAGE_COUPLING: dict[str, ResistDamageCouplingEntry] = {
         attribute="Dazzle",
         note="E: 50% bonus armor as MAGIC damage (flat all ranks); amortized at the ability-cast midpoint; P Bravado's 15% peer source not summed",
     ),
-    # _passive_damage_overrides.py:867-874, Galio P "Colossal Smash":
+    # The ``("Galio", "P", 0)`` row of
+    # ``_passive_damage_overrides._PASSIVE_DAMAGE_OVERRIDES``, Galio P
+    # "Colossal Smash":
     # bonus_mr_pct=60.0, damage_type MAGIC, cadence "on_hit" - and that entry's
     # own note records it is NOT on the AA-routed allowlist because the gate is
     # PERIODIC, not every-attack, so it stays metadata-only / inert in every

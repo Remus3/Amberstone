@@ -328,8 +328,9 @@ class ComputeEhpSeamTests(unittest.TestCase):
         """Positional proof: the credit is indistinguishable from ext_armor/ext_mr.
 
         ``eff_armor`` / ``eff_mr`` are locals in ``compute_ehp``
-        (``ehp.py:1927-1928``: ``eff_armor = armor + bonus_armor + ext_armor +
-        item_resist_armor + rune_resist_armor``), not surfaced fields. The
+        (the resist sum of ``compute_ehp``: ``eff_armor = armor + bonus_armor +
+        ext_armor + item_resist_armor + rune_resist_armor``), not surfaced
+        fields. The
         equivalent observable assertion is that arming the seam produces the SAME
         EHP as feeding the identical magnitude through ``external_resist_armor`` /
         ``external_resist_mr`` - the sibling denominator term on that very line. A
