@@ -31,6 +31,11 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from core.polled_json import atomic_write_text  # noqa: E402
+
 MATCH_DB = ROOT / "data" / "match_history.db"
 DS_JSONL = ROOT / "data" / "ds_calibration.jsonl"
 
@@ -139,18 +144,23 @@ def prune_ds_calibration(dry_run: bool) -> dict:
     print(f"  ds_calibration.jsonl entries: {n_in}")
     print(f"    would drop: {len(drop)}")
 
-    if dry_run or not drop:
-        return {"in": n_in, "dropped": len(drop) if not dry_run else 0,
+    if dry_run:
+        return {"in": n_in, "would_drop": len(drop), "dropped": 0,
                 "kept": len(keep)}
+    if not drop:
+        return {"in": n_in, "dropped": 0, "kept": len(keep)}
 
     bak = backup_path(DS_JSONL, "prune-synthetic")
     if bak.exists():
         bak = bak.with_suffix(bak.suffix + f"-{int(time.time())}")
     print(f"  Backing up -> {bak.name}")
     shutil.copy2(DS_JSONL, bak)
-    tmp = DS_JSONL.with_suffix(".tmp")
-    tmp.write_text("\n".join(keep) + ("\n" if keep else ""), encoding="utf-8")
-    tmp.replace(DS_JSONL)
+    # RM-1124: core/ds_calibration.py log_ds_run appends to this file on
+    # every coaching tick, so a prune run while RC is up can meet a held
+    # handle. polled_json retries the rename, writes LF bytes and never
+    # leaves its scratch file. An append that lands between the read above
+    # and this rename is still lost: run the prune with RC stopped.
+    atomic_write_text(DS_JSONL, "\n".join(keep) + ("\n" if keep else ""))
     print(f"  Wrote {len(keep)} kept entries")
     return {"in": n_in, "dropped": len(drop), "kept": len(keep)}
 
