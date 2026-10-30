@@ -46,6 +46,16 @@
   border-color: var(--info);
 }
 
+/* RM-1141: focus drew only the 1px border tint above (outline none), so a
+   keyboard-focused knob had no ring. The strip sits flush on the
+   overflow: hidden Active Match pane edge, which cuts an outset ring off,
+   so the ring is inset (the RM-972 / RM-1137 rule; --focus-ring is
+   "0 0 0 2px <color>", so inset in front of it is one valid shadow).
+   Pinned by tests/snapshot_panels/test_ds_knob_inputs_focus_ring.py. */
+.dss-knob input:focus-visible {
+  box-shadow: inset var(--focus-ring);
+}
+
 .dss-dps {
   display: flex;
   align-items: baseline;

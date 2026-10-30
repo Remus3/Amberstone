@@ -1585,7 +1585,20 @@ _WEB = _REPO_ROOT / "web"
 # memory) reproduces the superseded 2fccc2e2... value EXACTLY. That path is
 # the whole change. No glyph change: the added lines carry 0 non-ASCII
 # bytes. If another slice re-captures in parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "c463b378f50e3074881e29afdf3b78922084947fccbcd3beb4c6ebcd4ff6ac69"
+# superseded by the RM-1141 re-capture below: "c463b378f50e3074881e29afdf3b78922084947fccbcd3beb4c6ebcd4ff6ac69"
+#
+# RE-CAPTURED 2026-10-30 at RM-1141 (s144 uiux cycle 72, provisional
+# until the merger lands it and maps the id). One change rides it: the
+# Active Match DS knob inputs (.dsk-knob > input / .dss-knob input) draw the
+# system focus ring on :focus-visible, inset on the flush Stat Sandbox strip
+# (web/css/panels/ds_knobs.css and
+# web/css/panels/ds_statcheck.css). Ordinary case, no tokeniser change.
+# ATTRIBUTED BY SUBSTITUTION: swapping exactly those two files back to their
+# lane HEAD 73f298473 blobs reproduces the superseded c463b378... value
+# EXACTLY. Those paths are the whole change. No glyph change: the added
+# lines carry 0 non-ASCII bytes. If another slice re-captures in parallel,
+# the merger recomputes.
+_LIVE_HALF_DIGEST = "49c4659148c2464c8db992e1cdf5234912205826ca1a1d3d0fa19b805e79d398"
 
 
 def _web_sources() -> list[Path]:

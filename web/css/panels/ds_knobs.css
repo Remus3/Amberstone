@@ -93,6 +93,14 @@
   border-color: var(--signal-info, #8a8cf0);
 }
 
+/* RM-1141: focus drew only the 1px border tint above (outline none), so a
+   keyboard-focused knob had no ring. Draw the one system ring, as the
+   RM-1140 .dscombo-input sibling in the same Builds pane does. Pinned by
+   tests/snapshot_panels/test_ds_knob_inputs_focus_ring.py. */
+.dsk-knob > input:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
 .dsk-knob > input::placeholder {
   color: var(--dim);
 }
