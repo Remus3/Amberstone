@@ -74,7 +74,9 @@ def main() -> int:
     )
     with csv_path.open("w", newline="", encoding="utf-8") as f:
         f.write(provenance + "\n")
-        w = csv.writer(f)
+        # The csv default terminator is "\r\n" on every OS; without this the
+        # file is one LF line then CRLF rows (RM-1121).
+        w = csv.writer(f, lineterminator="\n")
         w.writerow(["relpath", "bytes", "ext", "top"])
         w.writerows(rows)
 
