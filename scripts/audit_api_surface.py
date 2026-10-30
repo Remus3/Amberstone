@@ -14,7 +14,9 @@ source of truth for "which endpoints does RC actually call?" so we can:
 Output:
   * stdout - Markdown report grouped by surface (LCU / Web / LiveClient /
     internal :8888).
-  * --csv <path> - flat CSV with (surface, method, endpoint, file, line, snippet).
+  * --csv <path> - flat CSV with (surface, endpoint, file, line, snippet).
+  * --md <path> - the Markdown report to a file instead of stdout.
+  Both files are written with LF line endings on every OS.
 
 Heuristics: we grep for endpoint-path literals in source files only; we
 do NOT execute the HTTP layer. The grep patterns are conservative
@@ -201,8 +203,11 @@ def aggregate(rows: list[dict]) -> dict:
 
 def write_csv(rows: list[dict], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    # lineterminator: the csv default is "\r\n" on every OS, and the CSV is
+    # tracked (data/api_surface.csv, eol=lf). RM-481 residual.
     with path.open("w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=["surface", "endpoint", "file", "line", "snippet"])
+        w = csv.DictWriter(f, fieldnames=["surface", "endpoint", "file", "line", "snippet"],
+                           lineterminator="\n")
         w.writeheader()
         w.writerows(rows)
 
@@ -281,7 +286,8 @@ def main() -> int:
     if args.md:
         out = Path(args.md)
         out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(md, encoding="utf-8")
+        # Bytes, not write_text: text mode turns "\n" into CRLF on Windows.
+        out.write_bytes(md.encode("utf-8"))
         print(f"Wrote markdown report -> {out}", file=sys.stderr)
     else:
         sys.stdout.write(md + "\n")

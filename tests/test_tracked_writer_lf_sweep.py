@@ -13,6 +13,12 @@ to end. This module covers the wider sweep without a test per tool:
 3. A static AST guard over the swept regenerators: no ``.write_text(`` call,
    and no text-mode ``open`` / ``os.fdopen`` in write mode without an explicit
    ``newline=``. Append-mode log sinks are out of scope (never tracked).
+4. RM-481 residual (s144): ``csv.writer`` / ``csv.DictWriter`` without an
+   explicit ``lineterminator=``. The csv module's default terminator is
+   ``"\\r\\n"`` on EVERY OS, and the ``newline=""`` its docs prescribe for
+   the file only stops a second translation, so rule 3 passed a writer that
+   emitted CRLF (scripts/audit_api_surface.py into the tracked
+   data/api_surface.csv).
 """
 from __future__ import annotations
 
@@ -74,6 +80,10 @@ SWEPT_WRITERS = (
     # in data/meta/ beside tracked files; it is gitignored now (RM-846
     # residual), and its writer goes through core.polled_json either way.
     "scripts/fetch_external_tft_meta.py",
+    # RM-481 residual (s144): --csv regenerates the tracked
+    # data/api_surface.csv (csv default terminator CRLF), and --md writes the
+    # report with Path.write_text.
+    "scripts/audit_api_surface.py",
 )
 
 _PAYLOAD = json.dumps({"a": 1, "b": [1, 2], "c": {"d": None}}, indent=2) + "\n"
@@ -152,6 +162,11 @@ def _violations(source: str) -> list[str]:
         if name == "write_text":
             out.append(f"line {node.lineno}: write_text")
             continue
+        if (name in ("writer", "DictWriter") and isinstance(fn, ast.Attribute)
+                and getattr(fn.value, "id", None) == "csv"):
+            if not any(kw.arg == "lineterminator" for kw in node.keywords):
+                out.append(f"line {node.lineno}: csv.{name} without lineterminator=")
+            continue
         if name not in ("open", "fdopen"):
             continue
         # Path.open(mode) carries mode at 0; builtins/os.fdopen at 1.
@@ -182,6 +197,50 @@ def test_guard_detects_both_shapes():
         "open('x', 'rb')\n"
     )
     assert _violations(good) == []
+
+
+def test_guard_detects_csv_default_lineterminator():
+    bad = (
+        "import csv\n"
+        "csv.writer(f)\n"
+        "csv.DictWriter(f, fieldnames=['a'])\n"
+    )
+    assert len(_violations(bad)) == 2
+    good = (
+        "import csv\n"
+        "csv.writer(f, lineterminator='\\n')\n"
+        "csv.DictWriter(f, fieldnames=['a'], lineterminator='\\n')\n"
+        "writer(f)\n"
+    )
+    assert _violations(good) == []
+
+
+def test_positive_control_csv_default_terminator_is_crlf_on_any_os(tmp_path):
+    # No harness: the csv module itself writes "\r\n", so rule 4 is not an
+    # artefact of force_crlf and holds on the Linux CI runner too.
+    import csv
+    target = tmp_path / "control.csv"
+    with target.open("w", newline="", encoding="utf-8") as f:
+        csv.writer(f).writerows([["a", "b"], ["c", "d"]])
+    assert _crlf_count(target) == 2
+
+
+def test_audit_api_surface_writers_emit_lf(tmp_path, force_crlf, monkeypatch):
+    import sys
+
+    import scripts.audit_api_surface as aas
+    row = {"surface": "lcu", "endpoint": "/lol-x/v1", "file": "core/a.py",
+           "line": 1, "snippet": "s"}
+    csv_out = tmp_path / "api_surface.csv"
+    aas.write_csv([row, dict(row, line=2)], csv_out)
+    assert _crlf_count(csv_out) == 0
+
+    monkeypatch.setattr(aas, "iter_source_files", lambda: [])
+    monkeypatch.setattr(aas, "render_markdown", lambda grouped: "# t\n\nbody\n")
+    md_out = tmp_path / "API_SURFACE_AUDIT.md"
+    monkeypatch.setattr(sys, "argv", ["audit_api_surface.py", "--md", str(md_out)])
+    assert aas.main() == 0
+    assert _crlf_count(md_out) == 0
 
 
 @pytest.mark.parametrize("rel", SWEPT_WRITERS)
