@@ -41,6 +41,9 @@ import pytest
 
 from tests.snapshot_panels.conftest import _WS_STUB
 from tests.snapshot_panels.test_am_call_eyebrow_contrast import _EXPECT_LINES
+from tests.snapshot_panels.test_am_call_eyebrow_contrast import (
+    _THEMES as _EYEBROW_THEMES,
+)
 from tests.snapshot_panels.test_settings_checkbox_hit_targets import (
     _open as _settings_open,
 )
@@ -186,17 +189,20 @@ def test_settings_reads_are_settled(mock_server, pw_browser):
         _close(ctx, page)
 
 
+@pytest.mark.parametrize("theme", _EYEBROW_THEMES)
 @pytest.mark.parametrize("mode", sorted(_EXPECT_LINES))
-def test_am_call_eyebrow_reads_are_settled(mock_server, pw_browser, mode):
-    # test_am_call_eyebrow_contrast stamps the theme at BOOT (?theme=), so the
-    # boot sweep is the one it depends on; the swaps cover the other themes.
+def test_am_call_eyebrow_reads_are_settled(mock_server, pw_browser, mode, theme):
+    # test_am_call_eyebrow_contrast stamps the theme at BOOT (?theme=) and
+    # boots each of its six themes, so the boot sweep is the one it depends
+    # on: every boot theme it uses is booted here too (RM-1135; one boot
+    # theme left the other five boot paths unmeasured). The swaps still run.
     mock_server._store["data"] = {}
     ctx = pw_browser.new_context(viewport={"width": 1920, "height": 920})
     page = ctx.new_page()
     page.add_init_script(_WS_STUB)
     try:
         page.goto(
-            mock_server.url + f"/?ui_mock=1&mode={mode}&theme=ember#active-match",
+            mock_server.url + f"/?ui_mock=1&mode={mode}&theme={theme}#active-match",
             wait_until="domcontentloaded", timeout=15_000,
         )
         page.wait_for_function(
@@ -205,7 +211,15 @@ def test_am_call_eyebrow_reads_are_settled(mock_server, pw_browser, mode):
             arg=len(_EXPECT_LINES[mode]),
             timeout=10_000,
         )
-        _check(page, "#am-call-body > div[data-call-line] > span", False, mode)
+        # The boot really ran on this theme (a dropped ?theme= would boot
+        # the default for all six and still pass the sweep).
+        assert page.evaluate(
+            "document.documentElement.dataset.theme || 'hextech'"
+        ) == theme, f"{mode}: booted on the wrong theme, not {theme}"
+        _check(
+            page, "#am-call-body > div[data-call-line] > span", False,
+            f"{mode}/{theme}",
+        )
     finally:
         _close(ctx, page)
 
