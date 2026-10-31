@@ -130,10 +130,14 @@ def parse_when(s: Any) -> Optional[float]:
     ``date +%s`` epoch -> epoch s."""
     if not isinstance(s, str) or not s.strip():
         return None
-    if s.strip().isascii() and s.strip().isdigit() and len(s.strip()) <= 12:
-        return float(s.strip())
+    t = s.strip()
+    if t.isascii() and t.isdigit():
+        # An epoch is at most 12 digits. A longer all-digit string is neither
+        # an epoch nor ISO 8601: fromisoformat would take its ninth digit as
+        # the date / time separator (CI run 41218770716), so refuse it.
+        return float(t) if len(t) <= 12 else None
     try:
-        d = datetime.fromisoformat(s.strip().replace("Z", "+00:00"))
+        d = datetime.fromisoformat(t.replace("Z", "+00:00"))
         return d.timestamp() if d.tzinfo else d.astimezone().timestamp()
     except (ValueError, OSError, OverflowError):  # OSError: a year Windows cannot localise
         return None

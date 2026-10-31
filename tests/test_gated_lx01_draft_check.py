@@ -329,6 +329,26 @@ def test_parse_when():
     assert g.parse_when("1" * 40) is None
 
 
+def test_parse_when_refuses_a_long_all_digit_string_on_every_os():
+    """An all-digit string is a ``date +%s`` epoch only up to 12 digits.
+
+    A longer one used to fall through to ``datetime.fromisoformat``, which
+    takes its ninth digit as the date / time separator: "202601021030430"
+    reads as 2026-01-02 03:04:30 on every OS, and "1" * 40 as the year 1111,
+    which only Windows then refused (an ``astimezone`` OSError). So the
+    assertion above passed on Windows and failed on Linux (CI run
+    41218770716). The first case here parses on Windows too, so this test
+    does not lean on the platform error.
+    """
+    for s in ("202601021030430", "1" * 40, " 202601021030430 ",
+              "1793454633224"):  # the last: epoch MILLIseconds, not seconds
+        assert g.parse_when(s) is None, s
+    # The accepted forms are unchanged: a 12-digit epoch and basic ISO 8601.
+    assert g.parse_when("999999999999") == 999999999999.0
+    assert g.parse_when(" " + str(int(CAP_T)) + " ") == CAP_T
+    assert g.parse_when("20260102T030430Z") == CAP_T
+
+
 def test_grade_is_read_only(db):
     path, conn = db
     _add_match(conn)
