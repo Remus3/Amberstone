@@ -627,7 +627,7 @@ Cheapest gate in the file. Enter a lobby, capture, leave. Nothing here needs a m
   `renderChampSelectView` on the `?ui_mock=1&mode=sr` fixture: lock champion A, then a new select with
   no pick, then lock A again - BOTH the DS skill order and the personal build card stay HIDDEN with A's
   payload cached. Both renderers skip a repaint on an unchanged payload signature, and the champ-select
-  gates hide the card directly on "no champion yet" without clearing that signature (provisional RM-1162, s144 gated c38 report).
+  gates hide the card directly on "no champion yet" without clearing that signature (RM-1162, from the s144 gated c38 report).
   So on the operator's long-lived rc-shell page the SECOND champ select on the same champion is
   expected to FAIL; that is the defect, not a probe error. (The `_csvComputeSig` render gate is NOT a
   cause: `_csvScheduleRender` clears the section signature before every post-fetch re-render.)
@@ -667,7 +667,7 @@ Cheapest gate in the file. Enter a lobby, capture, leave. Nothing here needs a m
   payload cached yet; a payload with no content (`ok` false / no `max_order`; personal build below its
   sample threshold - hidden BY DESIGN, the confidence is printed); rendered text not equal to the
   payload (render lag); a strip still `loading` ("computing...") or `empty` - the `empty` state is
-  unreachable (provisional RM-1163, same report) and the page's build-order cache key needs the archetype, which the
+  unreachable (RM-1163, same report) and the page's build-order cache key needs the archetype, which the
   snippet cannot read, so a stuck strip is never graded FAIL.
   **IDLE SMOKE (2026-10-30, no game, read-only page loads in headless Chromium):** the live dashboard
   graded INCONCLUSIVE `NOT_IN_CHAMP_SELECT` (phase None). On the ui_mock SR fixture the snippet read all
