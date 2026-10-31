@@ -780,7 +780,37 @@ def build_engine_model(n: int, key: Any = None) -> dict:
     planner = recommend.planner_choices(catalogue, ms, setdata)
     return {"set_id": setdata.set_id, "key": key, "built_at": time.time(),
             "setdata": setdata, "catalogue": catalogue, "milestones": ms, "planner": planner,
-            "records": {r["match_id"]: r for r in records}}
+            "records": {r["match_id"]: r for r in records}, "pairs": _pair_tables(store, n)}
+
+
+class _FinishedMatches:
+    """A read view of the round store that lists finished matches only, so
+    lobby_rows never counts a match still in progress (RM-892: post-game only)."""
+
+    def __init__(self, store):
+        self._store = store
+
+    def list_matches(self, *args, **kwargs) -> list:
+        return [m for m in self._store.list_matches(*args, **kwargs)
+                if m.get("ended_at") is not None]
+
+    def get_match(self, *args, **kwargs):
+        return self._store.get_match(*args, **kwargs)
+
+
+def _pair_tables(store, n: int) -> dict:
+    """RM-1117: comps.pair_stats over the finished matches' lobby rows of set n,
+    once per answer the pairs route can give: None = pair_stats' default (the
+    DEFAULT_EXCLUDED_QUEUE_KINDS left out), then one table per QUEUE_KINDS
+    value. Built here, on the engine thread, so a request only looks one up."""
+    from tft.engine import comps
+    from tft.rounds import ground_truth as gt
+    from tft.rounds.schema import QUEUE_KINDS
+    rows = gt.lobby_rows(_FinishedMatches(store), set_id=n) if store is not None else []
+    tables = {None: comps.pair_stats(rows)}
+    for kind in QUEUE_KINDS:
+        tables[kind] = comps.pair_stats(rows, queue_kinds=(kind,))
+    return tables
 
 
 def _engine_refresh(n: int) -> None:
@@ -928,6 +958,43 @@ def build_engine_planner(qs: dict, now: Optional[float] = None) -> dict:
                                                 model["setdata"], lobby_boards=lobby)
     out["planner"] = planner
     return out
+
+
+_PAIR_KEYS = ("self", "partner", "count", "place", "delta", "delta2", "insufficient", "rank")
+
+
+def _pairs_view(table: dict) -> dict:
+    """The served projection of one pair_stats table: per-unit placement hist
+    and per ordered pair count / place / delta / delta2 / insufficient / rank."""
+    return {"rows": table["rows"], "min_count": table["min_count"],
+            "units": {api: dict(u, hist=list(u["hist"])) for api, u in table["units"].items()},
+            "pairs": [{k: p.get(k) for k in _PAIR_KEYS} for p in table["pairs"]]}
+
+
+def build_engine_pairs(qs: dict, now: Optional[float] = None) -> tuple[int, dict]:
+    """RM-1117: RM-893's ordered unit-pair placement deltas over the finished
+    matches' lobby rows (RM-1095). ?queue_kind= picks one QUEUE_KINDS value;
+    without it Double Up and Hyper Roll stay out (pair_stats' default). The
+    table is built on the engine thread (build_engine_model). Post-game only
+    (RM-892): withheld while a game is live, by the same B4 (RM-189) predicate
+    as the recommend route - the health flags or a still-fresh round."""
+    from tft.rounds.schema import QUEUE_KINDS
+    kind = _q(qs, "queue_kind")
+    if kind is not None and kind not in QUEUE_KINDS:
+        return 400, {"ok": False, "error": "bad_queue_kind"}
+    n = _engine_set(qs)
+    model = engine_model(n, now)
+    out = dict(_engine_meta(), ok=True, set_id=n, status="warming", queue_kind=kind,
+               suppressed=None, pairs=None)
+    if model is None:
+        return 200, out
+    table = (model.get("pairs") or {}).get(kind)
+    out["status"] = "ready" if table and table["rows"] else "no_history"
+    if _live_cached(now).get("fresh") or _live_game_now():
+        out["suppressed"] = "live_game"
+        return 200, out
+    out["pairs"] = _pairs_view(table) if table else None
+    return 200, out
 
 
 def engine_match_digest(summary: dict, now: Optional[float] = None) -> dict:
@@ -1167,6 +1234,12 @@ def _serve_engine(builder):
     return serve
 
 
+def _serve_pairs(h) -> None:
+    _path, qs = _split(h)
+    code, payload = build_engine_pairs(qs)
+    _send_json(h, code, payload)
+
+
 def _is_export_path(p: str) -> bool:
     return bool(_EXPORT_PATH_RE.match(urlsplit(p).path))
 
@@ -1190,6 +1263,7 @@ GET_ROUTES = [
      _guard("api/tft/engine/milestones", _serve_engine(build_engine_milestones))),
     (equals("/api/tft/engine/planner"),
      _guard("api/tft/engine/planner", _serve_engine(build_engine_planner))),
+    (equals("/api/tft/engine/pairs"), _guard("api/tft/engine/pairs", _serve_pairs)),
 ]
 POST_ROUTES = [
     (_is_export_path, _guard("api/tft/match/export", _serve_export)),

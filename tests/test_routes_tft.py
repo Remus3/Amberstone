@@ -32,9 +32,11 @@ from core import live_game_gate
 from dashboard import _dispatch
 from dashboard import routes_tft as rt
 from tft import engine as tft_engine
+from tft.engine import comps as tft_comps
 from tft import tft_placement as tp
 from tft import tft_scouting
 from tft.assets import icon_cache
+from tft.rounds import ground_truth as tft_gt
 from tft.rounds import store as st
 from tft.rounds.store import Env, RoundStore
 from tests._module_view import this_thread_only
@@ -584,7 +586,7 @@ def test_engine_build_never_runs_on_the_request_thread(env, monkeypatch):
     monkeypatch.setattr(rt, "build_engine_model", slow_build)
     t0 = time.monotonic()
     for path in ("/api/tft/engine/recommend", "/api/tft/engine/milestones",
-                 "/api/tft/engine/planner"):
+                 "/api/tft/engine/planner", "/api/tft/engine/pairs"):
         body = _get(path).json()
         assert body["status"] == "warming"
     assert time.monotonic() - t0 < fleet_test_guard.budget(2.0)  # nothing waited on the build
@@ -593,6 +595,128 @@ def test_engine_build_never_runs_on_the_request_thread(env, monkeypatch):
     assert seen["thread"] == "tft-engine-refresh"
     body = _get("/api/tft/engine/milestones").json()          # a failed build stays warming
     assert body["status"] == "warming" and "secret" not in json.dumps(body)
+
+
+# ------------------------------------------------------------------ engine pairs (RM-1117)
+# RM-893's ordered-pair delta over RM-1095's lobby rows, served post-game only.
+# Every id, key and unit name below is hand-written and synthetic (RM-906).
+
+PAIR_SALT = b"rm1117-synthetic-salt-0123456789"
+PAIR_UNITS = ("TFT18_Ahri", "TFT18_Brand", "TFT18_Corki", "TFT18_Diana",
+              "TFT18_Ekko", "TFT18_Fiora", "TFT18_Garen", "TFT18_Hecarim")
+ONE_GAME_UNIT = "TFT18_Zed"     # seat 1 of ONE ranked match only: its pairs are under the floor
+DOUBLE_UP_UNIT = "TFT18_Jinx"   # seat 1 of the Double Up match only
+
+
+def _pair_match(store, match_id, queue_id, *, ended=True, extra=None):
+    """Eight placed players (seat n = placement n), seat n holding units n-1
+    and n mod 8 of PAIR_UNITS (plus `extra` on seat 1), as lcu_eog ground truth."""
+    tag = match_id[-3:]
+    mid = store.begin_match({"match_id": match_id, "game_id": 4000 + int(tag[1:]), "set_id": 18,
+                             "queue_id": queue_id, "started_at": 1_767_000_000.0 + int(tag[1:])})
+    assert mid == match_id
+    boards, players = [], []
+    for n in range(1, 9):
+        key = st.player_key(f"rm1117-{tag}-{n}", PAIR_SALT)
+        apis = [PAIR_UNITS[n - 1], PAIR_UNITS[n % 8]] + ([extra] if extra and n == 1 else [])
+        boards += [{"player_key": key, "champion_api": a, "star": 1, "items": [], "cost": 1}
+                   for a in apis]
+        players.append({"player_key": key, "placement": n})
+    assert store.attach_ground_truth(mid, "lcu_eog", boards, players)
+    if ended:
+        assert store.end_match(mid, ended_at=1_767_000_000.0 + int(tag[1:]) + 1800.0)
+
+
+def _pair_store(env_root):
+    """3 finished ranked matches + 1 finished Double Up match; returns the
+    pair_stats answers over their lobby rows, computed BEFORE an unfinished
+    ranked match (a different seat-1 unit) is added, so the route must leave it out."""
+    s = RoundStore.open(env_root / "tft" / "tft_rounds.db")
+    try:
+        _pair_match(s, "20260101-000000-p01", 1100, extra=ONE_GAME_UNIT)
+        _pair_match(s, "20260101-000000-p02", 1100)
+        _pair_match(s, "20260101-000000-p03", 1100)
+        _pair_match(s, "20260101-000000-p04", 1160, extra=DOUBLE_UP_UNIT)
+        assert s.flush()
+        rows = tft_gt.lobby_rows(s, set_id=18)
+        expected = {None: tft_comps.pair_stats(rows),
+                    "double_up": tft_comps.pair_stats(rows, queue_kinds=("double_up",))}
+        _pair_match(s, "20260101-000000-p05", 1100, ended=False, extra="TFT18_Open")
+        assert s.flush()
+    finally:
+        s.close()
+    return expected
+
+
+def _ready_pairs(path="/api/tft/engine/pairs?set=18"):
+    _get(path)
+    rt._engine_join()
+    return _get(path)
+
+
+def test_engine_pairs_route_serves_pair_stats_over_finished_lobby_rows(env):
+    expected = _pair_store(env)
+    h = _ready_pairs()
+    assert h.status == 200
+    body = h.json()
+    assert body["ok"] is True and body["status"] == "ready" and body["set_id"] == 18
+    assert body["suppressed"] is None and body["queue_kind"] is None
+    assert body["engine"] == tft_engine.ENGINE_NAME
+    want = expected[None]
+    assert body["pairs"] == {"rows": want["rows"], "min_count": want["min_count"],
+                             "units": want["units"], "pairs": want["pairs"]}
+    assert want["rows"] == 24          # 3 ranked x 8 players; the Double Up rows stay apart
+    names = {p["self"] for p in body["pairs"]["pairs"]}
+    assert DOUBLE_UP_UNIT not in names and "TFT18_Open" not in names   # unfinished match left out
+    for pair in body["pairs"]["pairs"]:
+        assert set(pair) == {"self", "partner", "count", "place", "delta", "delta2",
+                             "insufficient", "rank"}
+    thin = [p for p in body["pairs"]["pairs"] if ONE_GAME_UNIT in (p["self"], p["partner"])]
+    assert thin and all(p["count"] < tft_comps.MIN_GAMES for p in thin)
+    assert all(p["insufficient"] is True and p["rank"] is None for p in thin)
+    ranked = [p for p in body["pairs"]["pairs"] if not p["insufficient"]]
+    assert ranked and [p["rank"] for p in ranked] == list(range(1, len(ranked) + 1))
+    for api, unit in body["pairs"]["units"].items():
+        assert len(unit["hist"]) == 8 and set(unit) >= {"count", "hist", "insufficient"}, api
+
+
+def test_engine_pairs_double_up_rows_appear_only_when_asked(env):
+    expected = _pair_store(env)
+    _ready_pairs()
+    body = _get("/api/tft/engine/pairs?set=18&queue_kind=double_up").json()
+    assert body["queue_kind"] == "double_up" and body["status"] == "ready"
+    want = expected["double_up"]
+    assert body["pairs"]["rows"] == want["rows"] == 8
+    assert body["pairs"]["pairs"] == want["pairs"] and body["pairs"]["units"] == want["units"]
+    assert DOUBLE_UP_UNIT in body["pairs"]["units"]
+    ranked = _get("/api/tft/engine/pairs?set=18&queue_kind=ranked").json()
+    assert ranked["pairs"]["rows"] == 24 and DOUBLE_UP_UNIT not in ranked["pairs"]["units"]
+    # a queue kind outside tft/rounds/schema.py QUEUE_KINDS is refused, never guessed
+    bad = _get("/api/tft/engine/pairs?set=18&queue_kind=turbo")
+    assert bad.status == 400 and bad.json() == {"ok": False, "error": "bad_queue_kind"}
+
+
+@pytest.mark.parametrize("flag", ["tft_mode", "has_game"])
+def test_engine_pairs_are_withheld_while_the_b4_gate_says_live(env, flag):
+    _pair_store(env)
+    assert _ready_pairs().json()["pairs"]["rows"] == 24
+    (env / "health.json").write_text(json.dumps({flag: True}), encoding="ascii")
+    body = _get("/api/tft/engine/pairs?set=18").json()
+    assert body["ok"] is True and body["status"] == "ready"
+    assert body["pairs"] is None and body["suppressed"] == "live_game"
+
+
+def test_engine_pairs_are_withheld_while_the_captured_round_is_fresh(env):
+    _store(env, fresh=True, finished=0)   # an open match whose last round is fresh
+    _pair_store(env)
+    body = _ready_pairs().json()
+    assert body["pairs"] is None and body["suppressed"] == "live_game"
+
+
+def test_engine_pairs_without_history(env):
+    body = _ready_pairs().json()
+    assert body["status"] == "no_history" and body["suppressed"] is None
+    assert body["pairs"]["rows"] == 0 and body["pairs"]["pairs"] == []
 
 
 # ------------------------------------------------------------------ cross-cutting
@@ -617,11 +741,11 @@ def test_no_route_opens_a_network_connection(env, monkeypatch):
     paths = ["/api/tft/live", "/api/tft/matches", "/api/tft/match/m-done-0",
              f"/api/tft/match/{FIXTURE_GAME_ID}", "/api/tft/icon/champion/DA_18_Yorick?set=18",
              "/api/tft/scouting", "/api/tft/engine/recommend", "/api/tft/engine/milestones",
-             "/api/tft/engine/planner"]
+             "/api/tft/engine/planner", "/api/tft/engine/pairs"]
     for path in paths:
         assert _get(path).status == 200, path
     rt._engine_join()
-    for path in paths[-3:]:
+    for path in paths[-4:]:
         assert _get(path).status == 200, path
 
 
