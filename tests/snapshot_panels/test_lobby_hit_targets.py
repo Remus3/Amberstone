@@ -4,7 +4,7 @@ RM-338 - an oversized hit-target overlay must not cover a neighbouring
 control.
 
 THE DEFECT. web/css/panels/header.css gives .lv-top8-reorder-btn a
-transparent ::before overlay so a visually tiny chevron still clears the
+transparent ::before overlay (the `.lv-top8-reorder-btn::before` rule) so a visually tiny chevron still clears the
 fingertip floor. The button is 26x14 and the overlay was 44x44, so it
 extended 15px past the button in BOTH vertical directions. The two
 reorder chevrons are stacked 1px apart inside .lv-top8-reorder, which
@@ -18,13 +18,17 @@ their sibling `down` button as the hit target, disabled or not. Keyboard
 activation still worked, which is exactly why this shipped - the panel
 looks and reads fine, and only a pointer finds it.
 
-THE FIX follows the in-repo precedent one ruleset up rather than
-inventing a second pattern: .lv-member-action (header.css:1489) already
+THE FIX follows an in-repo precedent in the same file rather than
+inventing a second pattern: .lv-member-action (its
+`.lv-member-action::before` rule in web/css/panels/header.css) already
 solved the same problem by bounding its overlay in the axis where a
 neighbour sits (30px wide, the button-plus-gap pitch) and expanding it
 only in the axis with room (44px tall). For the reorder pair the crowded
-axis is VERTICAL, so each chevron anchors its overlay to its own OUTER
-edge and claims only the slack on that side.
+axis is VERTICAL, so each chevron pins its overlay to its INNER edge
+(the 1px seam side) and extends it only into the slack on its OUTER
+side: `.lv-top8-reorder-btn:first-child::before` sets bottom 0 and grows
+upward, `.lv-top8-reorder-btn:last-child::before` sets top 0 and grows
+downward, so neither crosses the seam.
 
 Geometry MEASURED on the 1920x1080 baseline, not assumed:
   .lv-top8-row       y 424 h 39   (list gap 4px -> 43px row pitch)
@@ -50,7 +54,9 @@ than a list that goes stale the next time someone adds an overlay.
 
 Harness mirrors test_lobby_render_stability.py exactly (same opener,
 same /api/top8 seeding, same LCU envelope) - the reorder controls are
-server-backed, so they are driven through the real store rather than by
+server-backed (with no lcu.top8 in the envelope, _top8Load() falls back
+to the /api/top8 store that `function _top8Hydrate` in web/js/main.js
+fetches), so they are driven through the real store rather than by
 poking module-private state. The LCU envelope additionally carries
 main_champs so the YOUR MAINS list renders its own .lv-mc-copy overlays
 into the same sweep.
@@ -67,8 +73,8 @@ from tests.snapshot_panels.test_lobby_render_stability import (
 ROOT = Path(__file__).resolve().parent.parent.parent
 WEB = ROOT / "web"
 
-# YOUR MAINS rows. _renderMains reads state.latest.lcu.main_champs
-# directly (main.js:4278) - the ui_mock lobby fixture's `mains` key does
+# YOUR MAINS rows. _renderMains in main.js reads state.latest.lcu.main_champs
+# directly (its tab === "you" branch) - the ui_mock lobby fixture's `mains` key does
 # NOT reach it - so the mains overlays only enter the sweep when the
 # polled envelope carries them.
 _MAIN_CHAMPS = {

@@ -40,6 +40,16 @@ it too is now a symbol. It also called the view "8-tab";
 web/index.html carries nine data-bi-tab buttons (four WPA tables plus five
 chart panels).
 
+RM-1188 extended it to the two lobby stability tests. Their module
+docstrings cited panels/champ_select.js:704 (the csvSig render gate),
+header.css:1170 (the reorder overlay) and header.css:1489 (the
+.lv-member-action precedent), and their comments and test docstrings
+cited main.js:761 / 4278 / 4618 / 5280 / 5498. Every header.css and
+main.js cite had drifted onto unrelated code, and the champ_select.js one
+sits in a file an unlanded lane commit rewrites. Comments drift the same
+way docstrings do, so for these two files the whole source is held to
+the no-line-cite rule (WHOLE_FILE_NO_CITES), not just the docstring.
+
 The docstrings are read with ast, so this guard needs no browser and no
 mock server. test_replay_view.py carries its own guard of the same shape
 (RM-1183).
@@ -88,6 +98,24 @@ DOC_ANCHORS = {
         ("web/js/main.js", 'lobby.queue_name || ("queue "'),
         ("web/js/main.js", "function _renderPartyMembers"),
     ),
+    "test_lobby_render_stability.py": (
+        ("web/js/main.js", "setInterval(pollLcu, 2000)"),
+        ("web/js/main.js", "_maybeRefreshLobbyView"),
+        ("web/js/main.js", "_lobbyViewRefresh"),
+        ("web/js/main.js", "function _renderPartyMembers"),
+        ("web/js/main.js", "function _renderTop8"),
+        ("web/js/main.js", "ul.dataset.lvPartySig"),
+        ("web/js/main.js", "ul.dataset.lvTop8Sig === _t8Sig"),
+        ("web/js/panels/champ_select.js", "section.dataset.csvSig === sig"),
+        ("web/css/panels/header.css", ".lv-top8-reorder-btn::before"),
+    ),
+    "test_lobby_hit_targets.py": (
+        ("web/css/panels/header.css", ".lv-top8-reorder-btn::before"),
+        ("web/css/panels/header.css", ".lv-top8-reorder-btn:first-child::before"),
+        ("web/css/panels/header.css", ".lv-top8-reorder-btn:last-child::before"),
+        ("web/css/panels/header.css", ".lv-member-action::before"),
+        ("web/js/main.js", "function _top8Hydrate"),
+    ),
     "test_history_view.py": (
         _STICKY,
         ("web/js/main.js", 'if (viewId === "history")'),
@@ -114,6 +142,13 @@ DOC_ANCHORS = {
 }
 
 _LINE_CITE = re.compile(r"[\w./-]+\.(?:js|css|py):\d+")
+# Held to the no-line-cite rule over their whole source - comments and
+# test-function docstrings included, not only the module docstring
+# (RM-1188).
+WHOLE_FILE_NO_CITES = (
+    "test_lobby_hit_targets.py",
+    "test_lobby_render_stability.py",
+)
 _CALL = re.compile(r"\b([A-Za-z_$][\w$]*)\(\)")
 
 
@@ -164,3 +199,11 @@ def test_docstring_named_calls_are_defined_in_web_js(name):
     assert calls, f"{name} docstring names no calls; the guard would be vacuous"
     missing = [c for c in calls if not re.search(r"function\s+" + re.escape(c) + r"\s*\(", src)]
     assert not missing, f"{name} docstring names undefined calls: {missing}"
+
+
+@pytest.mark.parametrize("name", WHOLE_FILE_NO_CITES)
+def test_whole_file_has_no_line_citations(name):
+    src = (HERE / name).read_text(encoding="utf-8")
+    assert "def test_" in src, f"{name} is empty or not a test module"
+    cites = _LINE_CITE.findall(src)
+    assert not cites, f"{name} carries drifting file:line cites: {cites}"

@@ -8,9 +8,10 @@ operator is holding (keyboard focus, a mid-flight confirmation class) is
 destroyed underneath them.
 
 RM-326 - the 2 s poll rebuild.
-  main.js setInterval(pollLcu, 2000) -> handleLcuEnvelope ->
+  web/js/main.js setInterval(pollLcu, 2000) -> handleLcuEnvelope ->
   _maybeRefreshLobbyView -> _lobbyViewRefresh -> _renderPartyMembers +
-  _renderTop8. Both renderers cleared `ul.innerHTML` unconditionally and
+  _renderTop8. Both renderers (`function _renderPartyMembers` and
+  `function _renderTop8`) cleared `ul.innerHTML` unconditionally and
   re-created every row, including the <button> controls (copy / promote /
   kick on the party list; invite / up / down / remove on Top 8). Keyboard
   focus inside either list was therefore thrown to <body> every 2 s, which
@@ -18,10 +19,12 @@ RM-326 - the 2 s poll rebuild.
   truncated the 1200 ms `is-copied` confirmation class, which is the
   cheaper-to-see symptom of the identical cause.
 
-  The fix follows the in-repo precedent (panels/champ_select.js:704 - the
-  `section.dataset.csvSig === sig` idempotent render gate) rather than
-  inventing a fourth pattern: compute a signature over everything the
-  renderer reads and bail when nothing observable changed. A rebuild that
+  The fix follows the in-repo precedent (web/js/panels/champ_select.js -
+  the `section.dataset.csvSig === sig` idempotent render gate) rather
+  than inventing a fourth pattern: compute a signature over everything the
+  renderer reads and bail when nothing observable changed. The two gates
+  are `ul.dataset.lvPartySig` in _renderPartyMembers and
+  `ul.dataset.lvTop8Sig === _t8Sig` in _renderTop8. A rebuild that
   DOES have to happen carries focus across itself, keyed on the stable
   data-action / data-ign / data-idx the rows already carry.
 
@@ -50,10 +53,11 @@ RM-327 - the Top-8 reorder buttons destroyed themselves on click.
   (document.elementFromPoint at each reorder button's own centre): every
   `up` chevron in the Top-8 panel reports its sibling `down` button as the
   hit target, in all three rows, disabled or not. Cause is CSS, not JS -
-  web/css/panels/header.css:1170 gives .lv-top8-reorder-btn a 44x44
-  ::before hit-target overlay on a 26x14 button, so the two stacked
-  overlays overlap and `down` (later in DOM order, no z-index) wins. That
-  is a separate defect owned by web/css and NOT touched here. The mouse
+  web/css/panels/header.css gave the `.lv-top8-reorder-btn::before`
+  hit-target overlay 44x44 on a 26x14 button, so the two stacked
+  overlays overlapped and `down` (later in DOM order, no z-index) won.
+  That was a separate defect owned by web/css and NOT touched here; RM-338
+  (test_lobby_hit_targets.py) has since bounded each overlay. The mouse
   half of the acceptance therefore drives `down`, which is genuinely
   reachable; a sibling keyboard-only test covers the `up` handler.
 
@@ -72,7 +76,7 @@ from urllib.parse import urlsplit
 ROOT = Path(__file__).resolve().parent.parent.parent
 
 # Polled LCU envelope. phase "Lobby" keeps _viewAutoDerive on "lobby"
-# (main.js:761) so the poll chain reaches _maybeRefreshLobbyView instead of
+# (its `phase === "Lobby"` return in main.js) so the poll chain reaches _maybeRefreshLobbyView instead of
 # routing the page off the surface under test. Deliberately carries NO
 # `top8` key - _top8Load() short-circuits on state.latest.lcu.top8, which
 # would bypass the /api/top8 store the reorder tests drive.
@@ -116,8 +120,9 @@ _TOP8_ORDER_JS = (
 
 # Witness that _lobbyViewRefresh actually ran, independent of the two
 # renderers under test: the refresh re-assigns #lv-queue-name.textContent
-# on every pass (main.js:5280), and the textContent setter always replaces
-# the child text node, so childList fires once per refresh. Without this
+# on every pass (its `qName.textContent = lobby` line in main.js), and
+# the textContent setter always replaces the child text node, so
+# childList fires once per refresh. Without this
 # the "survives N ticks" assertions could pass vacuously by never ticking.
 _REFRESH_WITNESS_JS = """
 () => {
@@ -223,8 +228,9 @@ def test_party_rows_survive_poll_ticks(mock_server, pw_browser):
 
     The strong observable for RM-326: hold a reference to the first party
     <li>, let two lobby refreshes run, and assert the SAME node is still
-    mounted. At HEAD _renderPartyMembers clears innerHTML unconditionally
-    (main.js:4618), so the held node is detached on the first tick."""
+    mounted. Before RM-326, _renderPartyMembers in main.js cleared
+    innerHTML unconditionally, so the held node was detached on the first
+    tick."""
     ctx, page, errors, hits = _open_lobby_stability(
         pw_browser, mock_server, poll=True
     )
@@ -389,9 +395,9 @@ def test_party_focus_survives_a_real_rebuild(mock_server, pw_browser):
 
 
 def test_top8_rows_survive_poll_ticks(mock_server, pw_browser):
-    """Same rebuild, second render site: _renderTop8 (main.js:5498) clears
-    innerHTML on every refresh too, so the invite / reorder / remove
-    controls are destroyed on the same 2 s cadence."""
+    """Same rebuild, second render site: before RM-326, _renderTop8 in
+    main.js cleared innerHTML on every refresh too, so the invite /
+    reorder / remove controls were destroyed on the same 2 s cadence."""
     ctx, page, errors, _hits = _open_lobby_stability(
         pw_browser, mock_server, top8=_TOP8_SEED, poll=True
     )
