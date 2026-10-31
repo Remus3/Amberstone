@@ -1276,6 +1276,65 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   deterministic-coaching surface + overlay (live cs+level vs own per-champion percentile). The
   generator half is SHADOW-only today (`data/live_benchmark_band_shadow.jsonl`); this is the surface +
   flip. SOURCE: BACKLOG.md:162.
+  **READY (lane 9 PREP s144 cycle 42, source read at `033e96e6b`; NOT a tick).** Four measured facts
+  shape the check. (1) The EYEBALL half is NOT drainable as filed: no surface exists. The only
+  served-code files that name the bander are the shadow path (`core/live_benchmark_band_shadow.py`,
+  `dashboard/_deterministic_coaching.py` `shadow_log_live_benchmark_band`, called from the
+  deterministic block of `dashboard/_state_builder.py`); no `web/` or `rc-shell/` file, and not
+  `overlay.py`, reads a band (`live-bench` / `live_benchmark_band` appear in none; the test scans all
+  three and fails on purpose when a surface ships). Building the surface and the flip is headless
+  BUILD work; filed as a move proposal (RM-1169), NOT moved or struck here - a human moves it. Any
+  surface built later also meets B4 (RM-189): riding `coach.action` / `immediate`
+  (`LIVE_SUPPRESSED_FIELDS`) or the det envelope `callouts` (`LIVE_SUPPRESSED_ENVELOPE_FIELDS`) blanks
+  it live. The band line is descriptive, not imperative (`core/live_benchmark_band.py` `_line`: "CS at
+  10: below your <champion> median."), so whether B4 should admit it is an adjudication the build
+  owes before an eyeball can exist. (2) The SOURCE cite is stale: `BACKLOG.md` carries no LBAND1 / B27
+  text at this HEAD; the history is LEDGER 443 / 445 / 446 / 447. (3) The GRADEABLE live half is the
+  shadow writer. The live log holds 3495 rows, the last on 2026-08-02 (UTC), and every SR-family
+  shadow (`det_coach`, `objective_playbook`, `macro_response`) also stops on 2026-08-02, so no SR game
+  has run since: a gap in play, not a writer stall. The writer was rewritten after that last row
+  (`0ca196762`, 2026-10-30, s144 true-audit: one lock over the dedup check, the append and the sig
+  update; strict field vocabularies), so the rewritten writer has never been seen live. Positive
+  control on the real log: the grader reports `FAIL duplicates=1020` over all 3495 rows, exactly the
+  true-audit's pre-fix count, so its duplicate detector sees the real defect shape. It also reports
+  78 rows whose `ts` steps back, every one under 3 ms: the old writer stamped `ts` before taking any
+  lock, and the rewrite stamps it inside the lock, so on the new writer a backward step reopens F1 as
+  surely as a duplicate does. The same run raises no other reason, so the value and vocabulary checks
+  raise no false failure on 3495 real writer rows. (4) A row fires
+  only on an SR-family `mode_key` (`sr` / `client` / `game`) with `liveclient.champion` present, a
+  clock within 45 s of 10:00 (`cs_at_10`, `level_at_10`) or 15:00 (`cs_at_15`), and a champion with
+  at least 5 personal games (`core/live_benchmark_band.py` `_MIN_GAMES`); the log already covers 14
+  champions (Caitlyn, Kai'Sa, Jhin among them). ARAM / Arena / TFT never fire it.
+  PRECONDITION: RC runs code carrying `0ca196762` (`git merge-base --is-ancestor 0ca196762 HEAD` in the
+  main checkout, and `ops/runtime/health.json` `started_at` later than its landing; measured
+  2026-10-31: `started_at` 2026-10-31T06:32:32Z). Otherwise a row comes from the OLD writer and grades
+  nothing about this row.
+  PROBE (read-only; `tools/gated_g237_lband_shadow.py`, tests `tests/test_gated_g237_lband_shadow.py`):
+  note the local time with its UTC offset at game load; play one SR game (practice tool counts) past
+  15:45 on a champion with history; then run `python tools/gated_g237_lband_shadow.py shadow
+  data/live_benchmark_band_shadow.jsonl --since <load time ISO, with offset> --champion "<Live Client
+  display name>" --json`.
+  FIELD PATHS: shadow row -> `ts`, `mode`, `champion`, `game_time_s`, `cs`, `level`,
+  `bands[].checkpoint` / `metric` / `band` / `value` / `source_tag`.
+  PREDICATE (stated before any game): PASS = verdict `PASS`: at least one row since load, at least one
+  at checkpoint 10, every row strict JSON with SR-family mode, in-window clock, in-vocabulary band and
+  metric, `source_tag` `live-bench`, the named champion only, and ZERO consecutive duplicate rows
+  (same writer sig), every band `value` equal to the row's own `cs` / `level`, and, from the first
+  in-window row's preceding pre-`--since` row onward, no unparseable or ts-less line (a torn append)
+  and no `ts` that steps backward. FAIL = any violation, a duplicate first (it
+  reopens true-audit F1) UNLESS the pair straddles an RC restart (`health.json` `started_at` between
+  the two `ts`: the writer's dedup memory is per process, so that pair is a re-take, not F1; so is a
+  backward step that coincides with a system clock change, e.g. a time sync, in the window).
+  `NO_RESULT` = no row: if RC was up and the game passed 10:45 on a champion with 5+ games, that is a
+  FAIL of the writer, not a re-take; otherwise re-take. A checkpoint-15-only FAIL when RC was not up
+  at 10:00 is likewise a re-take.
+  EVIDENCE: the `--json` line; the game's mode, queue, champion and game time at the 10:00 and 15:00
+  windows from `/api/state` -> `liveclient.game_time_s`; `health.json` `pid` + `started_at`; main HEAD.
+  SUBSTITUTION CHECK: a PASS proves the band COMPUTED and was LOGGED by the rewritten writer. It does
+  NOT prove anything RENDERED - nothing can until the surface is built - so it never ticks the eyeball
+  half, and the row stays open on that half. The `--champion` filter and the `--since` time are what
+  stop a row from an earlier game being read as this one; grade without either and the result is not
+  evidence.
 - **G2-38** (was B28-DS) DS PD->Kraken cross-restart rank-stability - **PARTIAL 2026-07-18, the
   closest-to-closable row in GATE 2.** SETTLED HEADLESS: the corpus supplies exactly the shape the row
   asks for - a real level-up crossing two within-margin items - and the mechanism reproduces.
