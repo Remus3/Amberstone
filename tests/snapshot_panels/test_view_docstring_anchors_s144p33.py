@@ -71,6 +71,20 @@ call (`_modeStamped`). The lobby page reads None because only onHealth
 calls setMode("client"), and health reaches that stubbed page only
 through the slow HTTP fallback poll. The comment now says so.
 
+RM-1192 extended the rule to the slider hit-target cites.
+tests/test_overlay_slider_hit_target.py cited tokens.css:119,
+header.css:2902, overlay_ds_controls.css:231, overlay.css:866 and
+overlay_layout.js:734 / :745, and repeated the header.css and
+overlay_ds_controls.css pair in its failure message. A web/css/overlay.css
+comment repeated that pair, and two web/js/lib/overlay_layout.js comments
+cited overlay_ds_controls.js:367-378. Only the overlay_ds_controls.css and
+overlay_ds_controls.js cites still pointed at the right lines. The others
+had drifted: tokens.css:119 onto --fs-xs, header.css:2902 onto
+.ub-rp-section, overlay.css:866 onto the right-now stale badge, and
+overlay_layout.js:734 / :745 onto the comment above _installLauncher and
+into its body. Each now names its rule
+selector or function, and REPO_FILES_NO_CITES holds all four files.
+
 The docstrings are read with ast, so this guard needs no browser and no
 mock server. test_replay_view.py carries its own guard of the same shape
 (RM-1183).
@@ -176,10 +190,16 @@ WHOLE_FILE_NO_CITES = (
     "test_vision_calibrator_seed_warning.py",
 )
 # Repo-relative files outside this directory held to the same rule
-# (RM-1190); this test module carried the drifted tokens.css:119 cite.
-REPO_FILES_NO_CITES = (
-    "tests/test_panel_visibility_permode.py",
-)
+# (RM-1190: test_panel_visibility_permode.py carried the drifted
+# tokens.css:119 cite; RM-1192: the slider hit-target test, the overlay.css
+# slider comment and the overlay_layout.js menu comments). The value is text
+# each file must still contain, so a gutted file cannot pass vacuously.
+REPO_FILES_NO_CITES = {
+    "tests/test_panel_visibility_permode.py": "tokens.css",
+    "tests/test_overlay_slider_hit_target.py": "RANGE_MARKUP_CENSUS",
+    "web/css/overlay.css": ".ovx-menu-slider",
+    "web/js/lib/overlay_layout.js": "function _renderMenu",
+}
 # A comment in a source file citing its own line as "(see :NNN)" drifts the
 # same way (RM-1190: overlay.css's band-channel comment said "see :570").
 _BARE_SELF_CITE = re.compile(r"\(see :\d+")
@@ -192,6 +212,19 @@ BARE_SELF_CITE_FILES = ("web/css/overlay.css",)
 # tokens.css names --hit-min in comments above its definition).
 _DECLUTTER = ("web/css/overlay.css", "7. Combat declutter", "/* 7. Combat declutter")
 _HIT_MIN = ("web/css/tokens.css", "--hit-min", "--hit-min:")
+# RM-1192 precedent rules. The header.css source target includes the height
+# line: a combined `.settings-row select, .settings-row input[type="range"]`
+# rule sits above the real one and carries no height.
+_HDR_RANGE = (
+    "web/css/panels/header.css",
+    '.settings-row input[type="range"]',
+    '\n.settings-row input[type="range"] {\n  height: var(--hit-min)',
+)
+_OVSET_RANGE = (
+    "web/css/panels/overlay_ds_controls.css",
+    '.ovset-range > input[type="range"]',
+    '.ovset-range > input[type="range"] {',
+)
 _P39 = "tests/snapshot_panels/"
 SYMBOL_ANCHORS = {
     _P39 + "test_overlay_view.py": (
@@ -217,7 +250,26 @@ SYMBOL_ANCHORS = {
     "tests/test_panel_visibility_permode.py": (
         _HIT_MIN,
     ),
-    "web/css/overlay.css": (_DECLUTTER,),
+    "tests/test_overlay_slider_hit_target.py": (
+        _HIT_MIN,
+        _HDR_RANGE,
+        _OVSET_RANGE,
+        (
+            "web/css/overlay.css",
+            ".ovx-launcher-menu .ovx-menu-slider",
+            'body[data-shell="overlay"] .ovx-launcher-menu .ovx-menu-slider '
+            'input[type="range"] {',
+        ),
+        ("web/js/lib/overlay_layout.js", "_menuPanelRow", "function _menuPanelRow"),
+    ),
+    "web/css/overlay.css": (_DECLUTTER, _HDR_RANGE, _OVSET_RANGE),
+    "web/js/lib/overlay_layout.js": (
+        (
+            "web/js/panels/overlay_ds_controls.js",
+            "_applySettingsToDom",
+            "function _applySettingsToDom",
+        ),
+    ),
 }
 _CALL = re.compile(r"\b([A-Za-z_$][\w$]*)\(\)")
 
@@ -279,10 +331,11 @@ def test_whole_file_has_no_line_citations(name):
     assert not cites, f"{name} carries drifting file:line cites: {cites}"
 
 
-@pytest.mark.parametrize("rel", REPO_FILES_NO_CITES)
+@pytest.mark.parametrize("rel", sorted(REPO_FILES_NO_CITES))
 def test_repo_file_has_no_line_citations(rel):
     src = (ROOT / rel).read_text(encoding="utf-8")
-    assert "tokens.css" in src, f"{rel} no longer names tokens.css; re-check this entry"
+    must = REPO_FILES_NO_CITES[rel]
+    assert must in src, f"{rel} no longer contains {must!r}; re-check this entry"
     cites = _LINE_CITE.findall(src)
     assert not cites, f"{rel} carries drifting file:line cites: {cites}"
 

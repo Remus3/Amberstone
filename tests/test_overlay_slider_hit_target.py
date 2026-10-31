@@ -3,18 +3,26 @@ tests/test_overlay_slider_hit_target.py
 
 HIT-TARGETS class guard for range inputs (slider thumb drag targets).
 
-WHY: docs/UI_SCALE_SPEC_V2.md line 112 + 118 puts every slider thumb on the
---hit-min floor (tokens.css:119 = 42px). A wrapper row that reserves 42px does
+WHY: the "Interaction rules" section of docs/UI_SCALE_SPEC_V2.md (the --hit-min
+token row and the slider-thumb paragraph under it) puts every slider thumb on
+the --hit-min floor (the --hit-min token in tokens.css, 42px; _hit_min_px below
+reads it). A wrapper row that reserves 42px does
 NOT give the thumb a 42px drag target: Chromium's native input[type=range] box
 is ~21px tall and, centered by align-items, the pointer only lands on the
 control over half the reserved row. tests/test_overlay_launcher_hit_targets.py
 locks the WRAPPER (.ovx-menu-slider min-height); this file locks the CONTROL.
 
 The precedent fix is an explicit height ON the input:
-  web/css/panels/header.css:2902              height: var(--hit-min)
-  web/css/panels/overlay_ds_controls.css:231  height: var(--hit-min, 42px)
-web/css/overlay.css:866 (the launcher-menu op/sz sliders built by
-web/js/lib/overlay_layout.js:734 + :745) shipped without it.
+  web/css/panels/header.css, rule .settings-row input[type="range"]:
+    height: var(--hit-min)
+  web/css/panels/overlay_ds_controls.css, rule
+  .ovset-range > input[type="range"]:
+    height: var(--hit-min, 42px)
+The launcher-menu op/sz sliders (the `op` and `sc` range inputs that
+_menuPanelRow builds in web/js/lib/overlay_layout.js) shipped without it. R198
+gave their web/css/overlay.css rule (body[data-shell="overlay"]
+.ovx-launcher-menu .ovx-menu-slider input[type="range"]) the same height in
+the commit that added this file.
 
 This is a CLASS guard, not a one-off:
   1. every input[type=range] CSS rule repo-wide must resolve to a height or
@@ -264,8 +272,9 @@ def test_range_inputs_meet_hit_min():
     assert not failures, (
         f"range inputs below the --hit-min ({floor:g}px) drag-target floor:\n{joined}\n\n"
         "Fix: set `height: var(--hit-min)` ON the input (precedent: "
-        "web/css/panels/header.css:2902, "
-        "web/css/panels/overlay_ds_controls.css:231), or add an inline "
+        "the .settings-row input[type=\"range\"] rule in web/css/panels/header.css "
+        "and the .ovset-range > input[type=\"range\"] rule in "
+        "web/css/panels/overlay_ds_controls.css), or add an inline "
         f"/* {HIT_MIN_EXCEPTION}: why */ comment.\n\n"
         f"exempt (decorative) rules seen:\n{inventory}"
     )

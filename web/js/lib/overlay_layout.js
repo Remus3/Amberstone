@@ -836,8 +836,8 @@ function _setMenu(open) {
 // menu was effectively mouse-only. The node cannot be re-found by identity
 // (it is gone), so every control carries a STABLE key in data-ovx-ctl and the
 // focus is re-established by that key after the rebuild. Same law the sibling
-// half already follows in panels/overlay_ds_controls.js:367-378 ("never clobber
-// a control the operator is currently interacting with").
+// half already follows in _applySettingsToDom in panels/overlay_ds_controls.js
+// ("never clobber a control the operator is currently interacting with").
 //
 // Keys: "toggle:<widget id>" / "op:<widget id>" / "sz:<widget id>" for the
 // per-panel row controls, and the bare "reset" / "done" for the two singletons.
@@ -995,7 +995,7 @@ function _renderMenu(menu) {
   // only its stable data-ovx-ctl key survives (see _captureMenuFocus).
   const snap = _captureMenuFocus(menu);
   // Never repaint out from under a live range drag: it would kill the drag and
-  // discard the in-progress value (overlay_ds_controls.js:367-378, same law).
+  // discard the in-progress value (same law as _applySettingsToDom, above).
   if (snap && snap.busy) return;
   menu.innerHTML = "";
   const head = document.createElement("div");
