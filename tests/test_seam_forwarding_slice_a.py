@@ -11,7 +11,7 @@ reach ANY seam - the champ-select + in-game BUILD preview ranked with every
 seam at its client default no matter what the caller asked for.
 
 DEFECT 2 - ``coach_integration/archetype_dispatch.dispatch_for_coach``
-forwards seam flags to the flat ranking (lines 279-299) but the
+forwards seam flags to the flat ranking (its ``seams`` dict) but the
 ``with_build_order=True`` branch called ``core.build_order.plan_build_order``
 with NO ``rank_kwargs`` at all. ``plan_build_order`` has had a
 ``rank_kwargs`` param since 2026-05-17 that it splats into EVERY ranker
@@ -22,23 +22,30 @@ PLANNED the ordered build with it OFF - a silent divergence between the
 flat DS row list and the ordered build the operator actually follows.
 ``enemy_ad_share`` / ``enemy_ap_share`` were dropped on the planner side
 too (the planner only received the four target_* stats), which also
-neutered the AD/AP-aware boots pick at ``core/build_order.py:574``.
+neutered the AD/AP-aware boots pick (the ``_select_boots`` call inside
+``core.build_order.plan_build_order``).
 
 Assumptions (verified against source before writing):
   - Body key names for /api/ds-preview seams are EXACTLY the
     ``rank_for_primary_archetype`` parameter names
-    (core/daemon_slayer_client.py:1399-1411).
+    (its keyword-only seam flags in core/daemon_slayer_client.py).
   - ``score_by`` has two legal values: "blended" (default) and
-    "team_blended" (core/daemon_slayer_client.py:329-330).
+    "team_blended" (``_DS_PREVIEW_SCORE_BY_VALUES`` in
+    dashboard/routes_state.py). The engine's ``_route_rank_tank`` also
+    accepts "cc_blended" and "sustain" (R194); this route does not.
   - A flagless request must stay byte-identical, so a seam is forwarded
     only when non-default - the same ``if flag: kwargs[...] = True`` idiom
-    already used at coach_integration/archetype_dispatch.py:282-299.
+    already used by the ``seams`` dict in ``dispatch_for_coach``
+    (coach_integration/archetype_dispatch.py).
   - ``enemy_ad_share`` / ``enemy_ap_share`` at 0.5 / 0.5 IS the planner's
-    own default (core/build_order.py:574-575), so the neutral split is not
+    own default (the ``extra.get("enemy_ad_share", 0.5)`` /
+    ``extra.get("enemy_ap_share", 0.5)`` arguments of the ``_select_boots``
+    call in ``plan_build_order``), so the neutral split is not
     forwarded into ``rank_kwargs`` - that keeps the no-seam dispatch
     byte-identical while a real comp split gets through.
   - No new import of the in-process engine in routes_state.py (guard
-    tests/test_ds_preview_e2e_p1l21.py:191).
+    tests/test_ds_preview_e2e_p1l21.py
+    ``test_routes_state_has_no_in_process_engine_import``).
 """
 from __future__ import annotations
 
@@ -50,7 +57,7 @@ from dashboard.routes_state import _serve_ds_preview_post
 
 
 # --- fixtures -------------------------------------------------------------
-# Handler stub mirrors tests/test_routes_ds_preview_scorer.py:21.
+# Handler stub mirrors the ``_Handler`` of tests/test_routes_ds_preview_scorer.py.
 
 class _Handler:
     """Stub HTTP handler capturing the single ``_send`` the route makes."""
@@ -83,7 +90,7 @@ def _dispatcher_response() -> dict:
 
 
 class _Stats:
-    """Duck-typed EnemyStats stub - mirrors tests/test_build_order.py:419
+    """Duck-typed EnemyStats stub - mirrors ``_Stats`` in tests/test_build_order.py
     and adds the two damage-share fields the real dataclass carries."""
 
     def __init__(self, armor=80.0, mr=30.0, max_hp=2000.0, bonus_hp=500.0,
@@ -260,7 +267,8 @@ class DsPreviewSeamForwardingTests(unittest.TestCase):
 # Every other seam on the route is a default-FALSE boolean, so the universal
 # "forward only non-default values" idiom (`if flag: kwargs[key] = True`) can
 # express its whole range. apply_squishy_burst_target defaults TRUE in the
-# engine (core/daemon_slayer_client.py:1410), so that idiom physically cannot
+# client (the ``rank_for_primary_archetype`` default in
+# core/daemon_slayer_client.py), so that idiom physically cannot
 # express turning it OFF - which is exactly why the seam was left off
 # /api/ds-preview. The route therefore treats it as tri-state:
 #   absent / null -> kwarg OMITTED  (inherit the engine's True default)
@@ -523,7 +531,8 @@ class BuildOrderSeamThreadingTests(unittest.TestCase):
     @mock.patch("core.archetype_picks.get_archetype_for")
     def test_planner_no_double_unique_rule_survives_rank_kwargs(
             self, m_arch, m_rk):
-        """core/build_order.py:618 re-pins filter_shared_uniques=True AFTER
+        """``plan_build_order`` (core/build_order.py) re-pins
+        ``call_kwargs["filter_shared_uniques"] = True`` AFTER
         splatting caller rank_kwargs. Prove threading seams cannot weaken
         the no-double-unique rule."""
         from coach_integration.archetype_dispatch import dispatch_for_coach
