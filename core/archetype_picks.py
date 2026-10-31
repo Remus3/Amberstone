@@ -35,11 +35,26 @@ This module owns three things:
    merged view: explicit pick if set, otherwise DDragon-tag default,
    with ``source`` field telling the caller which one fired.
 
-Phase 3 deliberately ships only the data layer + REST endpoint + picker
-UI. Coach integration (each coach reading
-``state.cs_archetype_pick.primary`` and dispatching to the matching
-scorer) lands in a follow-up session - same shape as the s174 ``Phase 1
-deferrals`` pattern.
+Coach integration shipped: ``core.daemon_slayer_client``
+``rank_for_primary_archetype`` routes the resolved ``primary`` to its scorer,
+and the REST surface is ``dashboard/routes_archetype.py``.
+
+Store contract (s144 true-audit cycle 78):
+
+* ``save_archetype_pick`` takes a champion that is a string, already
+  stripped, 1..``MAX_CHAMPION_LEN`` characters, every one printable, and a
+  ``source`` from ``SAVEABLE_SOURCES`` (``default`` is resolver output, never
+  operator intent). At most ``MAX_PICKS`` distinct champions are stored; the
+  cap is checked under ``_PICKS_LOCK`` against the re-read file, and a new
+  champion past it raises ``PicksFullError`` (a ``ValueError``).
+* ``get_archetype_for`` never trusts the file's entry shape: a non-dict
+  entry or an unknown primary resolves to the DDragon default, a bad
+  secondary is re-derived, a bad source reads as ``default``; each bad key
+  warns once.
+* RC is the single writer process for the picks file. The in-process cache
+  is refreshed by this process's own writes only; a write by another
+  process is not seen until this one writes (each write re-reads the file
+  first, so it is merged, not lost).
 """
 from __future__ import annotations
 
@@ -58,8 +73,7 @@ from core.ds_support_route_overrides import load_support_route_overrides
 _log = logging.getLogger("rc.archetype_picks")
 
 # Canonical archetype names. Order matters: UI renders left->right in
-# this order. Keep stable - localStorage + the persisted JSON file key
-# off these strings.
+# this order. Keep stable - the persisted JSON file keys off these strings.
 ARCHETYPES: tuple[str, ...] = (
     "carry", "bruiser", "tank", "mage", "assassin", "enchanter",
 )
@@ -102,6 +116,24 @@ SOURCE_ARAM_WIN    = "aram_win"
 VALID_SOURCES: frozenset[str] = frozenset({
     SOURCE_DEFAULT, SOURCE_USER_CS, SOURCE_USER_INGAME, SOURCE_NUDGE,
 })
+# Sources save_archetype_pick accepts. SOURCE_DEFAULT stays a valid RESOLVER
+# label but is not saveable: a persisted override labelled "default" is
+# skipped by the nudge evaluator (core/archetype_mismatch.py) as
+# not-operator-intent while it still overrides the DDragon default. Use
+# clear_archetype_pick to go back to the default.
+SAVEABLE_SOURCES: frozenset[str] = VALID_SOURCES - {SOURCE_DEFAULT}
+
+# Archetypes a persisted entry may name for get_archetype_for to return it.
+# "onhit" is a dispatcher archetype (ds.onhit) the default path already
+# returns for the on-hit-AP roster, so a persisted one is routable too.
+_ROUTABLE_ARCHETYPES: frozenset[str] = ARCHETYPE_SET | {"onhit"}
+
+# Store-side champion key rule; mirrors dashboard/routes_archetype.py
+# _champion (which strips first; the store refuses an unstripped key).
+MAX_CHAMPION_LEN = 64
+# Distinct champions the store keeps. The roster is ~170, so this leaves room
+# for display-name and id spellings of every champion while bounding the file.
+MAX_PICKS = 512
 
 _DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 _PICKS_PATH = _DATA_DIR / "cs_archetype_picks.json"
@@ -124,10 +156,17 @@ _PICKS_GATE = FailedLoadGate()
 _AXIS_GATE = FailedLoadGate()
 _ARAM_OVERRIDE_GATE = FailedLoadGate()
 
-# Per-process cache for the persisted picks. Reloaded on every write
-# (atomic replace invalidates other readers).
+# Per-process cache for the persisted picks. Replaced by this process's own
+# writes only: RC is the single writer process, and another process's write
+# is not observed until this process writes (each write re-reads the file).
 _PICKS_CACHE: dict[str, dict] | None = None
 _PICKS_LOCK = threading.Lock()
+
+# Champion keys whose persisted entry was unusable and has already been
+# warned about (get_archetype_for runs per tick; warn once, not per read).
+# Bounded so a large hand-written file cannot grow it without limit.
+_WARNED_BAD_KEYS: set[str] = set()
+_MAX_WARNED_KEYS = 512
 
 
 # --------------------------------------------------------------------------- #
@@ -608,6 +647,24 @@ def _invalidate_picks_cache() -> None:
     with _PICKS_LOCK:
         _PICKS_CACHE = None
         _PICKS_GATE.reset()
+        _WARNED_BAD_KEYS.clear()
+
+
+def _champion_problem(champion) -> Optional[str]:
+    """Why ``champion`` cannot be a stored pick key, or None when it can.
+
+    The text never contains the value (it can be caller-chosen bytes)."""
+    if not isinstance(champion, str):
+        return f"champion must be a string, got {type(champion).__name__}"
+    if not champion.strip():
+        return "champion must be a non-empty string"
+    if champion != champion.strip():
+        return "champion must not carry leading or trailing whitespace"
+    if len(champion) > MAX_CHAMPION_LEN:
+        return f"champion must be at most {MAX_CHAMPION_LEN} characters"
+    if not champion.isprintable():
+        return "champion must contain printable characters only"
+    return None
 
 
 def _atomic_write_picks(picks: dict[str, dict]) -> None:
@@ -626,24 +683,29 @@ def save_archetype_pick(
 ) -> dict:
     """Persist an operator-chosen pick. Returns the stored entry.
 
-    Raises ``ValueError`` on invalid archetype/source. Caller is expected
-    to validate ``champion`` is non-empty before calling - we don't store
-    blank-key entries. Raises ``PicksReadError`` (nothing written) when the
-    existing picks file cannot be read - RM-444.
+    Raises ``ValueError`` (nothing written) on an unusable champion key
+    (``_champion_problem``), an invalid archetype, or a source outside
+    ``SAVEABLE_SOURCES``. Raises ``PicksFullError`` (a ``ValueError``,
+    nothing written) when ``champion`` is new and ``MAX_PICKS`` are already
+    stored - checked under ``_PICKS_LOCK`` against the re-read file, so
+    concurrent saves cannot overshoot it. Raises ``PicksReadError`` (nothing
+    written) when the existing picks file cannot be read - RM-444.
     """
-    if not champion or not champion.strip():
-        raise ValueError("champion must be a non-empty string")
-    if primary not in ARCHETYPE_SET:
+    problem = _champion_problem(champion)
+    if problem is not None:
+        raise ValueError(problem)
+    if not isinstance(primary, str) or primary not in ARCHETYPE_SET:
         raise ValueError(
             f"primary must be one of {sorted(ARCHETYPE_SET)}, got {primary!r}"
         )
-    if secondary is not None and secondary not in ARCHETYPE_SET:
+    if secondary is not None and (
+            not isinstance(secondary, str) or secondary not in ARCHETYPE_SET):
         raise ValueError(
             f"secondary must be one of {sorted(ARCHETYPE_SET)} or None, got {secondary!r}"
         )
-    if source not in VALID_SOURCES:
+    if not isinstance(source, str) or source not in SAVEABLE_SOURCES:
         raise ValueError(
-            f"source must be one of {sorted(VALID_SOURCES)}, got {source!r}"
+            f"source must be one of {sorted(SAVEABLE_SOURCES)}, got {source!r}"
         )
 
     # Resolve secondary if not provided - keep the default semantics.
@@ -662,11 +724,26 @@ def save_archetype_pick(
     with _PICKS_LOCK:
         # Reload to merge with any out-of-process updates.
         picks = _read_picks_locked()
+        if champion not in picks and len(picks) >= MAX_PICKS:
+            _log.warning(
+                "archetype_picks: %d picks stored (cap %d), new champion "
+                "refused", len(picks), MAX_PICKS)
+            raise PicksFullError(
+                f"{len(picks)} picks stored (cap {MAX_PICKS}); clear one first")
         picks[champion] = entry
         _atomic_write_picks(picks)
         global _PICKS_CACHE
         _PICKS_CACHE = picks
     return entry
+
+
+class PicksFullError(ValueError):
+    """A NEW champion was refused because ``MAX_PICKS`` are stored.
+
+    A ``ValueError`` so a caller that maps ValueError to a client error
+    still answers 4xx; ``dashboard/routes_archetype.py`` maps it to 409.
+    Re-saving or clearing an existing champion is never refused.
+    """
 
 
 class PicksReadError(RuntimeError):
@@ -739,7 +816,7 @@ def get_archetype_for(champion: str, prefer_aram_win_axis: bool = False) -> dict
     re-based - only the kit-tag default. The live default-ON flip is EXCLUDED
     (docs/LIVE_GAME_GATED_SYNC.md); do not flip blind.
     """
-    if not champion:
+    if not champion or not isinstance(champion, str):
         return {
             "champion":  "",
             "primary":   "carry",
@@ -748,10 +825,9 @@ def get_archetype_for(champion: str, prefer_aram_win_axis: bool = False) -> dict
         }
     picks = _load_picks()
     if champion in picks:
-        entry = dict(picks[champion])
-        entry.setdefault("champion", champion)
-        entry.setdefault("source", SOURCE_DEFAULT)
-        return entry
+        entry = _usable_entry(champion, picks[champion])
+        if entry is not None:
+            return entry
     primary, secondary = default_for_champion(champion)
     source = SOURCE_DEFAULT
     if prefer_aram_win_axis:
@@ -768,18 +844,67 @@ def get_archetype_for(champion: str, prefer_aram_win_axis: bool = False) -> dict
     }
 
 
+def _warn_bad_entry(champion: str, why: str) -> None:
+    """Warn once per champion key about an unusable persisted entry."""
+    if champion in _WARNED_BAD_KEYS:
+        return
+    if len(_WARNED_BAD_KEYS) >= _MAX_WARNED_KEYS:
+        # Full: stay quiet rather than warn per read for every further key.
+        return
+    _WARNED_BAD_KEYS.add(champion)
+    _log.warning("archetype_picks: unusable persisted pick for %r: %s",
+                 champion[:MAX_CHAMPION_LEN], why)
+
+
+def _usable_entry(champion: str, raw) -> Optional[dict]:
+    """Return a copy of the persisted ``raw`` entry fit to hand to a
+    consumer, or None when it cannot stand as an override.
+
+    None (the caller resolves the DDragon default) when ``raw`` is not a
+    dict or its primary is not a routable archetype. A bad or missing
+    secondary is re-derived the way ``save_archetype_pick`` derives it; a
+    bad source reads as ``default``; a missing champion is filled in. A
+    well-formed entry comes back equal to what is on disk."""
+    if not isinstance(raw, dict):
+        _warn_bad_entry(champion,
+                        f"entry is {type(raw).__name__} - using the default")
+        return None
+    primary = raw.get("primary")
+    if not isinstance(primary, str) or primary not in _ROUTABLE_ARCHETYPES:
+        _warn_bad_entry(champion, "primary is not an archetype - using the default")
+        return None
+    entry = dict(raw)
+    entry.setdefault("champion", champion)
+    secondary = entry.get("secondary")
+    if not isinstance(secondary, str) or secondary not in _ROUTABLE_ARCHETYPES:
+        _warn_bad_entry(champion, "secondary is not an archetype - re-derived")
+        _, default_secondary = default_for_champion(champion)
+        entry["secondary"] = (default_secondary if default_secondary != primary
+                              else _fallback_secondary(primary))
+    if "source" not in entry:
+        entry["source"] = SOURCE_DEFAULT
+    elif not isinstance(entry["source"], str) or entry["source"] not in VALID_SOURCES:
+        _warn_bad_entry(champion, "source is not a known source - read as default")
+        entry["source"] = SOURCE_DEFAULT
+    return entry
+
+
 def list_archetype_picks() -> dict[str, dict]:
-    """Return a copy of the full persisted map. Read-only - callers
-    that mutate this won't affect the persisted file (we re-read on save)."""
-    return dict(_load_picks())
+    """Return a copy of the full persisted map, entries copied too (as on
+    disk, unvalidated - ``get_archetype_for`` is the validating reader).
+    Read-only - mutating the result changes neither the file nor the cache
+    the resolver reads (we re-read on save)."""
+    return {k: (dict(v) if isinstance(v, dict) else v)
+            for k, v in _load_picks().items()}
 
 
 def clear_archetype_pick(champion: str) -> bool:
     """Delete the persisted pick for ``champion`` so the next read falls
-    back to the DDragon-tag default. Returns True if a pick was removed.
+    back to the DDragon-tag default. Returns True if a pick was removed;
+    False for a blank or non-string champion or one with no pick.
     Useful for the UI's "reset to default" button + tests. Raises
     ``PicksReadError`` (nothing written) when the file cannot be read."""
-    if not champion:
+    if not champion or not isinstance(champion, str):
         return False
     with _PICKS_LOCK:
         picks = _read_picks_locked()

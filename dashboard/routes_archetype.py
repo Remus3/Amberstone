@@ -52,6 +52,9 @@ validate these bodies - ``ArchetypeNudgeDismissRequest`` is not in its
   never saves a pick the caller did not ask for.
 * At most ``_MAX_PICKS`` distinct champions are saved; a NEW champion past
   that is ``409`` (re-saving or clearing an existing one always works).
+  That check here is an unlocked fast path over the cached list; the store
+  enforces ``core.archetype_picks.MAX_PICKS`` under its lock, and its
+  ``PicksFullError`` is the same ``409``.
 """
 import json
 import logging
@@ -67,6 +70,7 @@ from core.archetype_picks import (
     SOURCE_DEFAULT,
     SOURCE_USER_CS,
     VALID_SOURCES,
+    PicksFullError,
     PicksReadError,
     clear_archetype_pick,
     get_archetype_for,
@@ -275,6 +279,12 @@ def _serve_archetype_post(h, payload) -> None:
             secondary=secondary,
             source=source,
         )
+    except PicksFullError as exc:
+        # The store's own lock-held cap (the pre-check above is unlocked and
+        # reads the cached list, so a concurrent save can pass it).
+        log.warning("cs-archetype-pick: %s", exc)
+        _json_send(h, 409, {"error": "too many saved picks - clear one first"})
+        return
     except ValueError as exc:
         # RM-239 / RM-242: the raiser's text used to be serialized verbatim,
         # so the validator's message (and the operator's raw input) reached
