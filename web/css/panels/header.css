@@ -647,6 +647,16 @@ footer .prefs-chip:hover { color: var(--text); }
   background: var(--info-soft); color: var(--text);
   border-color: var(--info); font-weight: 700;
 }
+/* RM-1210: a keyboard-focused scope tab fell back to the UA ring
+ * (outline auto, 1px, 1.08:1 on #view-history). An outline, not the
+ * --focus-ring shadow: the arcane theme draws the selected tab's
+ * underline as an inset box-shadow (themes.css). Offset 1px keeps the
+ * 3px reach inside the 4px tab gap. Guard:
+ * tests/snapshot_panels/test_home_history_nav_focus_ring.py. */
+.view-tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
 
 /* When a non-default view is active, hide the 5 main panels + the
  * inline overlays that are mode-specific. Lobby/Home overlays show

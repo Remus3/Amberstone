@@ -1785,7 +1785,20 @@ _WEB = _REPO_ROOT / "web"
 # value EXACTLY. That path is the whole change. No glyph change: the added
 # lines carry 0 non-ASCII bytes. If another slice re-captures in parallel,
 # the merger recomputes.
-_LIVE_HALF_DIGEST = "506e723245df4f444e8fb0c997fdb9831fa29fb770d9eee1ea307037a5a37cc4"
+# superseded by the RM-1210 re-capture below: "506e723245df4f444e8fb0c997fdb9831fa29fb770d9eee1ea307037a5a37cc4"
+#
+# RE-CAPTURED 2026-10-31 at RM-1210 (s144 uiux cycle 88, provisional
+# until the merger lands it and maps the id). One change rides it: the
+# Home launcher tiles and the History scope tabs gain a keyboard focus
+# ring, `.home-action-tile:focus-visible` (web/css/panels/home.css) and
+# `.view-tab:focus-visible` (web/css/panels/header.css), each a 2px
+# --accent outline with its comment. Ordinary case, no tokeniser change.
+# ATTRIBUTED BY SUBSTITUTION: swapping exactly those two paths back to
+# their lane HEAD f4c339287 blobs reproduces the superseded 506e7232...
+# value EXACTLY; swapping either one alone does not. Those two paths are
+# the whole change. No glyph change: the added lines carry 0 non-ASCII
+# bytes. If another slice re-captures in parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "0f7eb637b5fd048af8f2ecda0d0f841aee9683d86d5b9d5e1fdb542fccbcf1b4"
 
 
 def _web_sources() -> list[Path]:

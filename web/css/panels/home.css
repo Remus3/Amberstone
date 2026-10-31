@@ -715,6 +715,14 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   transform: translateY(-2px);
 }
 .home-action-tile:active { transform: translateY(0); }
+/* RM-1210: a keyboard-focused tile fell back to the UA ring (outline
+ * auto, 1px, 1.08:1 on #home-overlay). The Lobby precedent (.lq-btn):
+ * a 2px --accent outline; the 8px grid gap holds its 4px reach. Guard:
+ * tests/snapshot_panels/test_home_history_nav_focus_ring.py. */
+.home-action-tile:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 .home-action-icon {
   width: 24px; height: 24px;
   margin-bottom: 0;
