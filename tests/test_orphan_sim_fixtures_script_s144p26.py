@@ -13,8 +13,9 @@ repo root. It was dead on two independent counts when it was removed:
    data/sim/ (agents/agent4_coach_mentor/ui_applier.py ALLOWED_PATHS; pinned
    by agents/agent3_testing/suite/test_round42.py), and data/sim/ did not
    exist in the main checkout. The one remaining reader,
-   scripts/audit_ddragon_items.py collect_from_fixtures, is another script
-   that audits only this script's own output, so it is not a consumer.
+   scripts/audit_ddragon_items.py collect_from_fixtures, was another script
+   that audited only this script's own output, so it was not a consumer; it
+   was removed in RM-1178 (tests/test_audit_ddragon_items_no_sim_leg_s144p27.py).
 
 The panel snapshot harness uses its own tests/snapshot_panels/fixtures/, and
 the in-page mock data is AM_MOCK_FIXTURES / CS_MOCK_FIXTURES in web/js. If you

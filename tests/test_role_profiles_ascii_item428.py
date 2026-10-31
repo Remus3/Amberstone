@@ -7,10 +7,10 @@ RAW non-ASCII bytes. Those were converted under the no-em-dash / ASCII-only repo
 rule: arrows U+2192 -> "->", leading list bullets U+2022 -> "- " (a list marker,
 NOT the GLYPH_MAP "*" = multiply), and the join separator -> " -> ".
 
-Split-on safety: the ONLY repo consumers that re.split on the U+2192 char are
-`coaches/aram_coach.py:147` (Haiku item_build wire) and
-`scripts/audit_ddragon_items.py:86` (golden sim fixtures) - neither reads these
-files, so converting the arrow here is non-load-bearing.
+Split-on safety: the ONLY repo consumers that re.split on the U+2192 char were
+`coaches/aram_coach.py:147` (Haiku item_build wire) and the golden sim fixtures
+leg of `scripts/audit_ddragon_items.py` (removed in RM-1178) - neither reads
+these files, so converting the arrow here is non-load-bearing.
 
 SCOPE = SOURCE BYTES only (the P3 byte-purge invariant). `_sr_prompt.py` and
 `role_profiles.aram_item_context` still hold `\\uXXXX` ESCAPES (em-dashes /

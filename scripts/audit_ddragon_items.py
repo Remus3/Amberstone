@@ -1,16 +1,17 @@
 """
 DDragon item icon coverage audit.
 
-Scans every item name that actually appears in:
-  - fixtures (data/sim/*.json): items_display, item_build
-  - history DB (rewind_history.db): participants.item0..item6
+Scans every item id that actually appears in the history DB
+(data/rewind_history.db: participants.item0..item6) and checks that
+web/data/ddragon/<version>/img/item/<id>.png exists, where <version> and the
+display names come from web/data/items_index.json. With no history DB there is
+nothing to check and the audit passes.
 
-For each, resolves to the numeric item id via web/data/items_index.json.
-Then checks web/data/ddragon/<version>/img/item/<id>.png existence.
+Reports the ids whose icon file is missing on disk.
 
-Reports:
-  - Items that COULDN'T resolve to an id (name not in items_index)
-  - Items that resolved but whose icon file is missing on disk
+The old "fixtures" leg (item names parsed out of the repo-root dev-preview
+sim fixtures) is gone: their only producer, scripts/rebuild_sim_fixtures.py,
+was deleted as dead (RM-1177), so the leg always found 0 names (RM-1178).
 
 Optionally downloads missing icons from the DDragon CDN when --download
 is passed. Without that flag the script is read-only (safe for headless).
@@ -24,7 +25,6 @@ from __future__ import annotations
 import json
 import sqlite3
 import sys
-import re
 from pathlib import Path
 from urllib.request import urlopen, Request
 from urllib.error import URLError, HTTPError
@@ -32,7 +32,6 @@ from urllib.error import URLError, HTTPError
 ROOT = Path(__file__).resolve().parent.parent
 INDEX_PATH = ROOT / "web" / "data" / "items_index.json"
 DB_PATH = ROOT / "data" / "rewind_history.db"
-SIM_DIR = ROOT / "data" / "sim"
 # Primary: DDragon standard catalog (covers most items).
 CDN_URL = "https://ddragon.leagueoflegends.com/cdn/{version}/img/item/{id}.png"
 # Fallback: CommunityDragon has every asset, including Ornn Forge 7xxx
@@ -43,53 +42,9 @@ CDN_CD_URL = "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-dat
 def load_index():
     idx = json.loads(INDEX_PATH.read_text(encoding="utf-8"))
     version = idx.get("version", "")
-    by_name = idx.get("byName", {})
     by_id = idx.get("byId", {})
     item_dir = ROOT / "web" / "data" / "ddragon" / version / "img" / "item"
-    return version, by_name, by_id, item_dir
-
-
-def norm(s: str) -> str:
-    return re.sub(r"[^a-z0-9]", "", s.lower())
-
-
-def resolve(name: str, by_name: dict) -> str | None:
-    """Look up a free-text item name against items_index.byName.
-    Tries exact normalized match then substring match both ways."""
-    if not name:
-        return None
-    n = norm(name)
-    if not n:
-        return None
-    if n in by_name:
-        return by_name[n]
-    # Substring - try shorter coach forms against longer official names
-    for k, v in by_name.items():
-        if n == k or n in k or k in n:
-            return v
-    return None
-
-
-def collect_from_fixtures() -> set[str]:
-    names: set[str] = set()
-    for p in SIM_DIR.glob("*.json"):
-        try:
-            d = json.loads(p.read_text(encoding="utf-8"))
-        except Exception:  # noqa: BLE001
-            continue
-        payload = (d.get("state", {}) or {}).get("payload", {}) or {}
-        for field in ("items_display", "item_build"):
-            val = payload.get(field, "")
-            if not val:
-                continue
-            # Split on comma, arrow, semicolon, and pipe
-            for token in re.split(r"[,\u2192|;]", val):
-                t = token.strip()
-                # Strip "+" prefix ("+ 7th item" convention)
-                t = t.lstrip("+").strip()
-                if t:
-                    names.add(t)
-    return names
+    return version, by_id, item_dir
 
 
 def collect_from_db() -> set[str]:
@@ -110,7 +65,7 @@ def collect_from_db() -> set[str]:
 
 def safe_icon_dest(item_dir: Path, iid: str) -> Path | None:
     """RM-379: `<iid>.png` under item_dir, or None when iid is not a plain
-    item id (ids reach here from fixtures / the DB, two hops from the wire)."""
+    item id (ids reach here from the history DB, two hops from the wire)."""
     iid = str(iid)
     if not iid.isdigit():
         return None
@@ -141,39 +96,19 @@ def download_icon(version: str, iid: str, dest: Path) -> str | None:
 
 
 def main(download: bool = False) -> int:
-    version, by_name, by_id, item_dir = load_index()
+    version, by_id, item_dir = load_index()
     print(f"DDragon version: {version}")
     print(f"Item dir: {item_dir}")
     print(f"Currently on disk: {sum(1 for _ in item_dir.glob('*.png'))} icons")
     print()
 
-    # 1) Fixture names -> ids
-    fix_names = collect_from_fixtures()
-    print(f"[fixtures] {len(fix_names)} unique item names")
-    fix_unresolved: list[str] = []
-    fix_ids: set[str] = set()
-    for n in sorted(fix_names):
-        iid = resolve(n, by_name)
-        if iid is None:
-            fix_unresolved.append(n)
-        else:
-            fix_ids.add(iid)
-    if fix_unresolved:
-        print(f"  \u26a0 {len(fix_unresolved)} name(s) didn't resolve to an id:")
-        for n in fix_unresolved:
-            print(f"    - {n}")
-    else:
-        print("  ok all fixture names resolve")
-
-    # 2) History DB ids (directly numeric)
+    # 1) History DB ids (directly numeric)
     db_ids = collect_from_db()
     print(f"[history] {len(db_ids)} unique item ids in rewind_history.db")
 
-    # 3) Check icon presence for the union
-    all_ids = fix_ids | db_ids
-    print(f"[union] {len(all_ids)} unique ids needing icons")
+    # 2) Check icon presence
     missing: list[str] = []
-    for iid in sorted(all_ids, key=lambda x: int(x) if x.isdigit() else 0):
+    for iid in sorted(db_ids, key=lambda x: int(x) if x.isdigit() else 0):
         png = item_dir / f"{iid}.png"
         if not png.is_file():
             missing.append(iid)
@@ -188,7 +123,7 @@ def main(download: bool = False) -> int:
     else:
         print("  ok every id we care about has a png on disk")
 
-    # 4) Optional download - tries DDragon then CommunityDragon fallback.
+    # 3) Optional download - tries DDragon then CommunityDragon fallback.
     if download and missing:
         print()
         print(f"Downloading {len(missing)} missing icons (DDragon -> CommunityDragon fallback)...")
@@ -213,7 +148,7 @@ def main(download: bool = False) -> int:
             print("  ok all pulled")
 
     # Exit 0 if nothing missing, 1 otherwise (so CI-style use is possible)
-    return 0 if not missing and not fix_unresolved else 1
+    return 0 if not missing else 1
 
 
 if __name__ == "__main__":
