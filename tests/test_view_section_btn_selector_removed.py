@@ -20,10 +20,11 @@ test_tab_bars_selected_state.py and test_view_menu_items.py.
 """
 import re
 from pathlib import Path
+from tests import _css_split
 
 REPO = Path(__file__).resolve().parent.parent
 WEB = REPO / "web"
-HEADER_CSS = WEB / "css" / "panels" / "header.css"
+HEADER_CSS = "web/css/panels/header.css"  # read via tests/_css_split (RM-726 rule 5)
 THEMES_CSS = WEB / "css" / "themes.css"
 
 _SUFFIXES = {".html", ".js", ".mjs", ".css"}
@@ -47,7 +48,8 @@ def test_web_sources_enumerated():
     # Anchor: an empty walk would pass the absence check vacuously.
     srcs = _web_sources()
     assert len(srcs) > 50, len(srcs)
-    assert HEADER_CSS in srcs and THEMES_CSS in srcs
+    assert set(_css_split.family_paths(HEADER_CSS)) <= set(srcs)
+    assert THEMES_CSS in srcs
 
 
 def test_no_web_source_names_view_section_btn():
@@ -60,7 +62,7 @@ def test_no_web_source_names_view_section_btn():
 
 
 def test_view_tab_base_and_hover_rules_survive():
-    sels = _selectors_of_rules(HEADER_CSS.read_text(encoding="utf-8"))
+    sels = _selectors_of_rules(_css_split.family_text(HEADER_CSS))
     assert ".view-tab" in sels, "History .view-tab base rule lost"
     assert ".view-tab:hover" in sels, "History .view-tab:hover rule lost"
     assert ".view-tab.active" in sels, "History .view-tab.active rule lost"

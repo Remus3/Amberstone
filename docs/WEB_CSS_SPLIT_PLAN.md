@@ -102,7 +102,24 @@ already covers new files: `dashboard/_static.py` `asset_fileset` walks
      `tests/test_csv_typography_v21_floor.py`,
      `tests/test_dark_values_ratchet_oq6.py`,
      `tests/test_personal_record_dom.py`.
-   Re-measure this list when the prep commit is cut. Each slice's Coupled
+   Re-measure this list when the prep commit is cut.
+   PREP STATUS. `header.css`: DONE (s144 queue cycle 70). The helper is
+   `tests/_css_split.py` (`family_paths` / `family_text`; it reads the
+   targets from this plan's slice blocks, and it fails loudly on a landed
+   target that `dashboard.css` does not import or imports before its
+   source). Re-measured at `fc123ec87`: six of the nine files above OPEN
+   the path, and all six now read the family:
+   `test_build_insights_panel_dom.py`, `test_history_session_wl_oq8.py`,
+   `test_mission_control_server.py`, `test_mode_flap_deferral_dom.py`,
+   `test_settings_force_scan_dom.py` and
+   `test_view_section_btn_selector_removed.py`. The other three
+   (`test_ascii_source_sweep.py`, `test_dark_values_ratchet_oq6.py`,
+   `test_motion_reduce_sweep_oq4.py`) key a ledger by file path and walk
+   every stylesheet, so they follow rule 6, not this helper. The ratchet
+   `tests/test_css_split_family_rm726.py` fails if a tracked test builds a
+   path to `header.css` again (the `/ "header.css"` form; a path built any
+   other way is its named blind spot). `champ_select_view.css`: NOT DONE;
+   its prep adds the name to that test's `PREPPED`. Each slice's Coupled
    line below was measured by co-mention: the file names the source and one
    of the slice's anchors. That is a superset of the readers. Most are
    browser snapshot tests that only cite the file in a docstring, and those

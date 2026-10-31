@@ -462,11 +462,14 @@ _MC_IDENTIFIERS = [
 def test_dashboard_carries_no_mission_control_residue():
     """Set-equality style so a PARTIAL deletion fails. A half-removed panel
     is worse than either end state: the card renders and does nothing."""
+    from tests import _css_split
+    # header.css is read as its whole split family (RM-726 rule 5), so a
+    # rule moved into a split piece is still checked for residue.
     targets = [
         ROOT / "web" / "js" / "panels" / "dev.js",
         ROOT / "web" / "js" / "main.js",
         ROOT / "web" / "index.html",
-        ROOT / "web" / "css" / "panels" / "header.css",
+        *_css_split.family_paths("web/css/panels/header.css"),
     ]
     found = {}
     for path in targets:

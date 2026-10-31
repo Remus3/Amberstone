@@ -20,10 +20,11 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from tests import _css_split
 
 ROOT = Path(__file__).resolve().parent.parent
 MAIN_JS = ROOT / "web" / "js" / "main.js"
-HEADER_CSS = ROOT / "web" / "css" / "panels" / "header.css"
+HEADER_CSS = "web/css/panels/header.css"  # read via tests/_css_split (RM-726 rule 5)
 
 
 def _js() -> str:
@@ -67,7 +68,7 @@ def test_detail_head_includes_wl():
 
 
 def test_header_css_styles_wl_with_tokens():
-    css = HEADER_CSS.read_text(encoding="utf-8")
+    css = _css_split.family_text(HEADER_CSS)
     assert ".hs-wl" in css, "header.css missing .hs-wl rules"
     block = css.split(".hs-wl", 1)[1]
     assert "var(--good" in block[:600], "W count must use the --good token"

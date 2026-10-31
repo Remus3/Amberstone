@@ -15,11 +15,12 @@ from __future__ import annotations
 
 import unittest
 from pathlib import Path
+from tests import _css_split
 
 WEB = Path(__file__).resolve().parent.parent / "web"
 INDEX = WEB / "index.html"
 DEV = WEB / "js" / "panels" / "dev.js"
-HEADER_CSS = WEB / "css" / "panels" / "header.css"
+HEADER_CSS = "web/css/panels/header.css"  # read via tests/_css_split (RM-726 rule 5)
 
 
 def _read(p: Path) -> str:
@@ -71,7 +72,7 @@ class DevJsWiringTests(unittest.TestCase):
 class HeaderCssTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.t = _read(HEADER_CSS)
+        cls.t = _css_split.family_text(HEADER_CSS)
 
     def test_action_button_style_present(self) -> None:
         self.assertIn(".set-action-btn", self.t)

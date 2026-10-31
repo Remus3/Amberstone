@@ -20,6 +20,7 @@ from __future__ import annotations
 import json
 import unittest
 from pathlib import Path
+from tests import _css_split
 
 ROOT = Path(__file__).resolve().parent.parent
 WEB = ROOT / "web"
@@ -30,7 +31,7 @@ STATE_JS = WEB / "js" / "lib" / "state.js"
 MAIN_JS = WEB / "js" / "main.js"
 INDEX_HTML = WEB / "index.html"
 DASHBOARD_CSS = WEB / "css" / "dashboard.css"
-HEADER_CSS = WEB / "css" / "panels" / "header.css"
+HEADER_CSS = "web/css/panels/header.css"  # read via tests/_css_split (RM-726 rule 5)
 
 VIEW_ID = "build-insights"
 MOUNT_ID = "bi-table-mount"
@@ -116,7 +117,7 @@ class HeaderCssViewVisibilityTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         # Collapse whitespace so a selector split across newlines still
         # matches (the rules are comma-chained over many lines).
-        cls.text = " ".join(_read(HEADER_CSS).split())
+        cls.text = " ".join(_css_split.family_text(HEADER_CSS).split())
 
     def test_show_section_rule_present(self) -> None:
         # body[data-view="build-insights"] #view-build-insights -> display:block
