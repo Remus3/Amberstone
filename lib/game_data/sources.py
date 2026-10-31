@@ -14,7 +14,10 @@ Preference order is official API first: Data Dragon is Riot's own static data
 only); the League wiki is read through ONE request for the raw
 ``Module:ChampionData/data`` table - never page scraping - with an identifying
 User-Agent, at most one request per run, and the shared client's per-host rate
-gate (1 request per second).
+gate (1 request per second). Since ruling 51 (``RM962-S146-R51``, RM-1227)
+``lib.game_data.fetch`` requests the wiki url only when ``lib.wiki_consent``
+finds a consent record; otherwise the wiki source is excluded and the refusal
+recorded. ``_wiki_parse`` itself is unchanged and still parses a supplied body.
 """
 from __future__ import annotations
 

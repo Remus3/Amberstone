@@ -128,6 +128,10 @@ from daemon_slayer_wiki_stats_extract import (  # noqa: E402
     _strip_lua_comments,
 )
 
+# RM-1227 (ruling 51, RM962-S146-R51): no automated wiki request without a
+# consent record. The sibling import above puts the repo root on sys.path.
+from lib.wiki_consent import WikiFetchRefused, refuse_unless_consented  # noqa: E402
+
 # The skill slots, in a stable order (i = passive/inherent, then q/w/e/r).
 _SKILL_SLOTS = ("i", "q", "w", "e", "r")
 
@@ -187,7 +191,12 @@ _LEVELING_PARAMS = (
 
 
 def _fetch(url: str, timeout: int = _HTTP_TIMEOUT) -> str:
-    """GET text with a NON-browser UA header (a browser UA trips Cloudflare)."""
+    """GET text with a NON-browser UA header (a browser UA trips Cloudflare).
+
+    A wiki url refuses (``WikiFetchRefused``) before any socket opens unless a
+    consent record exists (RM-1227).
+    """
+    refuse_unless_consented(url)
     req = urllib.request.Request(
         url, headers={"User-Agent": HEADER_UA, "Accept": "*/*"}
     )
@@ -681,6 +690,11 @@ def extract(patch: str, sleep_s: float, limit: Optional[int], verbose: bool,
     ``full_roster`` (A-26 / RM-95b, DEFAULT-OFF) sources the champion keyspace
     from ``champions.json`` (173) instead of ``champion_abilities.json`` (171),
     which is what lets Locke and Zaahen through. Off, output is unchanged.
+
+    RM-1227: a live wiki fetch without a consent record raises
+    ``WikiFetchRefused`` (no socket opens), and the per-batch fail-soft catch
+    re-raises it rather than folding it into an all-errors payload, so a
+    refused run returns nothing to write. Supplied seams need no consent.
     """
     keep = _resolve_keep_apinames(patch, full_roster)
 
@@ -714,6 +728,8 @@ def extract(patch: str, sleep_s: float, limit: Optional[int], verbose: bool,
     for bi, batch in enumerate(batches):
         try:
             doc = batch_fn(batch)
+        except WikiFetchRefused:
+            raise  # RM-1227: a refusal is not a transient batch failure
         except Exception as exc:  # noqa: BLE001 - fail-soft per batch
             errs.append(
                 f"batch {bi + 1}/{len(batches)} ({len(batch)} titles) failed: "

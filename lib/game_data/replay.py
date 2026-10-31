@@ -22,6 +22,11 @@ class ReplayMiss(LookupError):
 
 
 class ReplayClient:
+    # RM-1227: recorded bodies, no socket - so lib.game_data.fetch does not
+    # apply the wiki consent refusal to it (operator-supplied text keeps
+    # working). Only a client that truly never touches the network may say so.
+    offline = True
+
     def __init__(self, root: Path) -> None:
         self._root = Path(root)
         index = json.loads((self._root / "_index.json").read_text(encoding="utf-8"))

@@ -14,6 +14,14 @@ numbers.
 
 A required source that cannot be fetched or parsed fails the whole fetch with
 ``MissingSourceError``; nothing is built from a partial set.
+
+Wiki rule (RM-1227, ruling 51 ``RM962-S146-R51``): a source whose urls name the
+League wiki host is requested over the network only when ``lib.wiki_consent``
+finds a consent record. Without one, a wiki body not already in the cache is
+never requested: the source is EXCLUDED and the refusal recorded, exactly like
+the era rule, and the build runs from the other sources. A client that declares
+``offline = True`` (``lib.game_data.replay.ReplayClient``: recorded bodies,
+no socket) is operator-supplied text and is not refused.
 """
 from __future__ import annotations
 
@@ -28,6 +36,7 @@ from typing import Any, Iterable, Optional
 from core.polled_json import atomic_write_bytes as _atomic_write_bytes
 from lib.game_data.sources import DDRAGON_VERSIONS_URL, SOURCES, Source, SourceParseError, parse_versions
 from lib.http.client import HttpClient
+from lib.wiki_consent import consent_problem, is_wiki_url
 
 USER_AGENT_NOTE = "Amberstone game-data pipeline (one request per source per patch)"
 
@@ -90,12 +99,22 @@ def fetch(
             continue
         bodies: dict[str, bytes] = {}
         fresh: dict[Path, bytes] = {}
+        refused: str | None = None
         for name, url in src.urls(version).items():
             path = _cache_path(cache_dir, version, src.id, url)
             if path.is_file():
                 bodies[name] = path.read_bytes()
                 out.cache_hits += 1
                 continue
+            # RM-1227: decided before the request, so no socket opens.
+            if is_wiki_url(url) and getattr(client, "offline", False) is not True:
+                problem = consent_problem()
+                if problem is not None:
+                    refused = (
+                        f"refused: automated wiki request without consent ({problem}; "
+                        f"ruling RM962-S146-R51)"
+                    )
+                    break
             try:
                 body = _get(client, url)
             except MissingSourceError as exc:
@@ -105,6 +124,10 @@ def fetch(
             out.fetched += 1
             bodies[name] = body
             fresh[path] = body
+        if refused is not None:
+            # Nothing of a refused source is parsed or cached; the others run.
+            out.excluded[src.id] = refused
+            continue
         try:
             out.parsed[src.id] = src.parse(bodies)
         except SourceParseError as exc:

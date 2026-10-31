@@ -151,6 +151,9 @@ from lib.game_data.lua_text import (  # noqa: E402
     is_primary_record as _is_primary_record,
     strip_lua_comments as _strip_lua_comments,
 )
+# RM-1227 (ruling 51, RM962-S146-R51): no automated wiki request without a
+# consent record; CommunityDragon requests are unaffected.
+from lib.wiki_consent import WikiFetchRefused, refuse_unless_consented  # noqa: E402
 
 DATA_DIR = PROJECT_ROOT / "data" / "daemon_slayer"
 META_DDRAGON_DIR = PROJECT_ROOT / "data" / "meta_build" / "ddragon"
@@ -240,7 +243,12 @@ _WIKI_TABLE_CACHE: Optional[dict[str, dict[str, Any]]] = None
 
 
 def _fetch(url: str, timeout: int = _HTTP_TIMEOUT) -> str:
-    """GET text with a UA header (the wiki blocks UA-less)."""
+    """GET text with a UA header (the wiki blocks UA-less).
+
+    A wiki url refuses (``WikiFetchRefused``) before any socket opens unless a
+    consent record exists (RM-1227); a CommunityDragon url passes.
+    """
+    refuse_unless_consented(url)
     req = urllib.request.Request(
         url, headers={"User-Agent": HEADER_UA, "Accept": "*/*"}
     )
@@ -255,6 +263,8 @@ def _fetch_with_retry(url: str, retries: int = _CDRAGON_RETRIES,
     for attempt in range(max(1, retries)):
         try:
             return _fetch(url)
+        except WikiFetchRefused:
+            raise  # RM-1227: a refusal is not transient; never retried
         except Exception as exc:  # noqa: BLE001 - retry transient CDN 404/5xx
             last = exc
             if attempt + 1 < retries and backoff_s > 0:
@@ -977,6 +987,10 @@ def extract(patch: str, sleep_s: float, limit: Optional[int], verbose: bool,
     if use_wiki:
         try:
             table = _load_wiki_table()
+        except WikiFetchRefused:
+            # RM-1227: re-raised by every wiki-stage catch, so a refused run
+            # never degrades into a null-filled payload that main() writes.
+            raise
         except Exception as exc:  # noqa: BLE001 - degrade to per-champ getter
             table_err = f"raw module fetch failed: {type(exc).__name__}: {str(exc)[:140]}"
 
@@ -1007,6 +1021,8 @@ def extract(patch: str, sleep_s: float, limit: Optional[int], verbose: bool,
                 # champ entirely absent from the raw table -> try getter for ms too
                 w_ms = _fetch_field(wname, _FIELD_MISSILE_SPEED, stats_fallback=True)
                 did_net = True
+        except WikiFetchRefused:
+            raise  # RM-1227: see the raw-table catch above
         except Exception as exc:  # noqa: BLE001 - fail-soft per champ
             errs.append(f"{ddragon_id} wiki: {type(exc).__name__}: {str(exc)[:120]}")
             err_here = True

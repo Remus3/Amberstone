@@ -32,6 +32,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from lib.game_data.lua_text import champion_blocks  # noqa: E402
+from lib.wiki_consent import refuse_unless_consented  # noqa: E402
 
 WIKI_MODULE = (
     "https://wiki.leagueoflegends.com/en-us/Module:ChampionData/data?action=raw"
@@ -46,6 +47,9 @@ _PATCH_DIR_RE = re.compile(r"^\d+\.\d+\.\d+$")
 
 
 def _fetch_module(url: str = WIKI_MODULE) -> str:
+    # RM-1227 (ruling 51, RM962-S146-R51): refused before any socket opens
+    # unless a consent record exists; parse_module still parses supplied text.
+    refuse_unless_consented(url)
     req = urllib.request.Request(url, headers={"User-Agent": UA})
     with urllib.request.urlopen(req, timeout=60) as resp:
         return resp.read().decode("utf-8", "replace")
