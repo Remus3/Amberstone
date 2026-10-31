@@ -19,13 +19,15 @@ ACCEPTED is not proof a transport carries it; only a changed response is.
 WHAT THE FLAG ACTUALLY GATES (this is the finding that reframes the row).
 ``build_champion`` has TWO mode lanes and the flag gates only ONE of them:
 
-* ``engine._resolve_mode_addends`` (engine.py:106) - the ARENA/Swiftplay
+* ``engine._resolve_mode_addends`` - the ARENA/Swiftplay
   stat-growth ADDEND lane. Reads the wiki sidecar via
   ``DataSnapshot.mode_modifier(champ, mode)``. THIS is the 45-champion ``ar``
-  axis. It is called ONLY when ``apply_mode_modifiers`` is True (engine.py:329).
-* ``engine._apply_mode_modifiers`` (engine.py:225) - the ARAM MULTIPLIER lane
+  axis. It is called ONLY when ``apply_mode_modifiers`` is True (via
+  the ``if apply_mode_modifiers`` gate in ``engine.build_champion``).
+* ``engine._apply_mode_modifiers`` - the ARAM MULTIPLIER lane
   (aramAttackSpeed / aramAbilityHaste / aramTenacity). It is called
-  UNCONDITIONALLY at engine.py:450 and early-returns for any mode != "ARAM".
+  UNCONDITIONALLY from ``engine.build_champion`` and early-returns
+  for any mode != "ARAM".
 
 So the function named ``_apply_mode_modifiers`` and the flag named
 ``apply_mode_modifiers`` do NOT control each other. Do not read one as evidence
@@ -37,7 +39,8 @@ for 45 of 173 champions (``test_arena_addend_table_exists``). What does NOT
 exist for ARENA is a MULTIPLIER table - and Riot publishes no such axis for
 Arena, so there is nothing upstream to plug in there.
 
-THE ENGINE NOTE AT engine.py:458 IS MISLEADING, AND IT IS WHY THIS ROW EXISTS.
+THE NOT-PLUGGED-IN NOTE IN ``engine.build_champion`` IS MISLEADING, AND IT IS
+WHY THIS ROW EXISTS.
 It appends "mode=ARENA - modifier table not plugged in for this mode" whenever
 ``mode not in ("SR", "ARAM")`` - including on calls where the ARENA addend
 table WAS resolved and applied one line earlier. The two notes contradict each
@@ -572,7 +575,8 @@ class TestArenaTableExists(unittest.TestCase):
         )
 
     def test_arena_multiplier_lane_is_genuinely_absent(self):
-        """The OTHER half of engine.py:458 - no ARENA multiplier axis exists.
+        """The OTHER half of the build_champion not-plugged-in note - no ARENA
+        multiplier axis exists.
 
         _apply_mode_modifiers reads champ['lolmath']['aram_modifiers']. There is
         no arena_modifiers sibling, and Riot publishes no such axis for Arena,
@@ -586,7 +590,8 @@ class TestArenaTableExists(unittest.TestCase):
                 lolmath,
                 f"{cid} unexpectedly carries an arena multiplier block - if "
                 "this appears, engine._apply_mode_modifiers must grow an "
-                "ARENA branch and engine.py:458 becomes accurate",
+                "ARENA branch and the build_champion not-plugged-in note becomes "
+                "accurate",
             )
 
 
@@ -638,10 +643,10 @@ class TestCurrentBehaviourPinned(unittest.TestCase):
                 )
 
     def test_engine_note_contradicts_itself_when_addends_applied(self):
-        """engine.py:458 says the table is not plugged in on a call that just
-        plugged it in. Pinned so the wording is fixed deliberately, not by
-        accident - it is engine OUTPUT, so changing it needs an ENGINE_VERSION
-        bump on the same commit.
+        """The build_champion not-plugged-in note says the table is not
+        plugged in on a call that just plugged it in. Pinned so the wording
+        is fixed deliberately, not by accident - it is engine OUTPUT, so
+        changing it needs an ENGINE_VERSION bump on the same commit.
         """
         snap = _snapshot()
         movers = _arena_axis_champions(snap)
@@ -655,7 +660,8 @@ class TestCurrentBehaviourPinned(unittest.TestCase):
         self.assertTrue(
             denied,
             "expected the (contradictory) not-plugged-in note; if it is gone, "
-            "engine.py:458 was corrected - delete this test and confirm "
+            "the build_champion not-plugged-in note was corrected - delete "
+            "this test and confirm "
             "ENGINE_VERSION moved with it",
         )
 

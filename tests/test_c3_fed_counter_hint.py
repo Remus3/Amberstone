@@ -7,9 +7,10 @@ Route half: the fed/SURVIVE chip on counter_hints[], the axis-directed
 enrichment, and the load-bearing invariant that live[]/meta[] stay
 BYTE-IDENTICAL with vs without the fed inputs (loop.tick untouched).
 
-Self-contained: copies the tiny _Handler/_post harness from
-tests/test_build_plan_contract.py:46-124 so this slice touches no shared test
-file. Spec: docs/specs/2026-07-17-ds-c3-fed-counter-hint-design.md.
+Self-contained: copies the tiny _Handler/_post harness (``_Handler``,
+``_fake_seed_fn``, ``_post``) from tests/test_build_plan_contract.py so this
+slice touches no shared test file.
+Spec: docs/specs/2026-07-17-ds-c3-fed-counter-hint-design.md.
 
 ASCII only - use " - " for a clause break (repo hard rule).
 """
@@ -155,7 +156,8 @@ class AssessFedThreatTests(unittest.TestCase):
 
 
 # --------------------------------------------------------------------------- #
-# Route half - harness copied from tests/test_build_plan_contract.py:46-124.
+# Route half - harness copied from ``_Handler`` / ``_post`` in
+# tests/test_build_plan_contract.py.
 # --------------------------------------------------------------------------- #
 class _Handler:
     def __init__(self, path: str = "/api/build-plan") -> None:
@@ -311,7 +313,8 @@ class FedRouteContractTests(unittest.TestCase):
 
 
 # --------------------------------------------------------------------------- #
-# ASCII hygiene (repo hard rule) - mirrors tests/test_cc_threat.py:60.
+# ASCII hygiene (repo hard rule) - mirrors ``AsciiHygieneTests`` in
+# tests/test_cc_threat.py.
 # --------------------------------------------------------------------------- #
 class AsciiHygieneTests(unittest.TestCase):
     def _assert_ascii(self, rel: str) -> None:

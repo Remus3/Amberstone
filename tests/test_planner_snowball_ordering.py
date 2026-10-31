@@ -25,10 +25,11 @@ GoldTermSkipMechanismTests for why).
 CORRECTION vs the original task brief: Dark Seal's item id is 1082, NOT 2033.
 2033 is Corrupting Potion (a starting consumable) - confirmed against THREE
 independent sources in this repo: data/meta/ddragon_items.json (patch
-16.14.1), agents/daemon_slayer/_effects_data.py:5344-5345 ("1082":
-ItemEffect(item_id="1082", name="Dark Seal", ...)), and
-core/archetype_mismatch.py:109 (2033 listed in the curated Consumables
-bucket). This file (and the scoring.py fix) use the verified id 1082.
+16.14.1), the ``"1082"`` row of ``ITEM_EFFECTS`` in
+agents/daemon_slayer/_effects_data.py (ItemEffect(item_id="1082",
+name="Dark Seal", ...)), and the Consumables bucket of ``_NON_SIGNAL_ITEM_IDS`` in
+core/archetype_mismatch.py (2033 listed as Corrupting Potion). This file
+(and the scoring.py fix) use the verified id 1082.
 
 Fixture note: delta_dps / dps_per_1k_gold values below are a controlled,
 calibrated SEED FIXTURE (mirrors tests/test_planner_beam_search.py -
@@ -220,8 +221,9 @@ class PlannerFrontSlotTests(unittest.TestCase):
         # PRODUCTION FIDELITY: the earlier front-slot tests run depth=1, which
         # degenerates the beam to "single best item" and does NOT exercise the
         # depth the bug was actually observed at. The live re-plan loop drives
-        # the planner at beam_width=6, depth=6 (core/build_planner/replan.py:569
-        # ReplanLoop.tick defaults). This test pins the fix at those exact
+        # the planner at beam_width=6, depth=6
+        # (the ``ReplanLoop.tick`` defaults in core/build_planner/replan.py).
+        # This test pins the fix at those exact
         # production settings for every AP assassin - the front slot must not
         # be a snowball item, and (as a bonus assertion of the intended
         # behavior) the snowball ids must still appear LATER in the full 6-deep
