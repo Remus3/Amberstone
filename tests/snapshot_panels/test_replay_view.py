@@ -12,13 +12,16 @@ Mirrors test_session_view.py / test_history_view.py / test_lobby_view.py.
 
 Drive path: /?ui_mock=1#replay. main.js boot flips body.dataset.uiMock;
 with an empty SSE state the auto-derive lands on "home" (mode=client /
-!live), and #replay is a sticky non-game-state hash (main.js:958-959), so
-the replay view wins the router (applyView("replay") stamps
-body[data-view="replay"], which un-hides #view-replay via header.css:663).
-The viewId=="replay" branch fires _replayViewWireOnce() + _replayViewRefresh()
-(main.js:781); under ui_mock the matches fetch short-circuits to
-/data/ui_mock/replay.json (_replayMockLoad, dev.js:215) instead of the live
-/api/replay/matches feed.
+!live), and #replay is a sticky non-game-state hash (web/js/main.js
+_viewResolveAndApply: only a hash matching _hashIsStaleGameState is
+cleared), so the replay view wins the router (applyView("replay") stamps
+body[data-view="replay"], which un-hides #view-replay through the
+web/css/panels/header.css rule `body[data-view="replay"]
+#view-replay { display: block; }`, aligned in the view-section group).
+The `if (viewId === "replay")` branch of applyView in web/js/main.js fires
+_replayViewWireOnce() + _replayViewRefresh(); under ui_mock the matches
+fetch short-circuits to /data/ui_mock/replay.json (web/js/panels/dev.js
+`function _replayMockLoad`) instead of the live /api/replay/matches feed.
 
 The fixture's matches=4 paints one .replay-match-row per match into
 #replay-match-list (the RECENT MATCHES list). Waiting for that row to mount
@@ -142,3 +145,36 @@ def test_no_em_dashes_or_smart_quotes():
         raw = p.read_bytes()
         offenders = [b for b in raw if b > 0x7F]
         assert not offenders, f"non-ASCII byte(s) in {p}: {offenders[:5]}"
+
+
+# RM-1183: the module docstring cites the router, CSS and mock-loader
+# sites it describes by SYMBOL, never by file:line. Its line citations
+# (main.js:958-959, main.js:781, header.css:663) had all drifted - the
+# CSS one named a path that does not exist (web/css/header.css; the
+# file is web/css/panels/header.css) - and main.js line numbers move on
+# every edit above them. Each anchor below must appear verbatim in the
+# docstring AND in the source file it names, so a rename of the source
+# symbol turns this red instead of leaving the prose pointing at nothing.
+_DOC_ANCHORS = (
+    ("web/js/main.js", "_hashIsStaleGameState"),
+    ("web/js/main.js", 'if (viewId === "replay")'),
+    ("web/css/panels/header.css", 'body[data-view="replay"]'),
+    ("web/css/panels/header.css", "#view-replay { display: block; }"),
+    ("web/js/panels/dev.js", "function _replayMockLoad"),
+)
+
+
+def test_docstring_cites_sites_by_symbol_not_line():
+    import re
+    import sys
+
+    doc = sys.modules[__name__].__doc__ or ""
+    line_cites = re.findall(r"[\w./-]+\.(?:js|css|py):\d+", doc)
+    assert not line_cites, (
+        f"docstring carries file:line citations that drift: {line_cites}"
+    )
+    for rel, needle in _DOC_ANCHORS:
+        assert rel in doc, f"docstring does not name {rel}"
+        assert needle in doc, f"docstring does not cite {needle!r}"
+        src = (ROOT / rel).read_text(encoding="utf-8")
+        assert needle in src, f"{rel} no longer contains {needle!r}"
