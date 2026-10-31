@@ -1170,6 +1170,59 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   `RC_WAVE_CALLOUT=1` the "Cannon wave incoming" chip ETA counts down to the ACTUAL observed cannon
   arrivals (first cannon ~wave 3, then the every-2nd/every-1 tightening past 14/25 min). Correct the
   constants against reality if they miss, THEN flip the env on by default. SOURCE: ROADMAP RM-124.
+  **READY (lane 9 PREP s144 cycle 40, source read at `4672d4945`; NOT a tick).** Three measured
+  facts reshape the check. (1) The chip half of (b) CANNOT render in a live game, flag on or off:
+  B4 (RM-189) blanks the served `callouts` while a game is live (`dashboard/_state_builder.py:453`
+  `LIVE_SUPPRESSED_ENVELOPE_FIELDS`, applied at `:1053` `suppress_live_envelope`) and the client
+  gate `web/js/lib/live_directive_gate.js` hides the mount; the row's line "Cannon wave incoming -
+  match the push" is the kind of imperative B4 exists to stop. The only live record of the wave row
+  is the pre-suppression shadow log `data/det_coach_shadow.jsonl` (`core/det_coach_shadow.py:99`,
+  field `callouts`; deduped on a 5 s game-time bucket plus level and item count, so a bucket can
+  hold more than one record; `mode` is the RAW dashboard mode_key, and `client` / `game` are SR
+  for the callout generator, so the grader keeps all three), and only while the RC process
+  runs with `RC_WAVE_CALLOUT=1` (`dashboard/_deterministic_coaching.py:867`, read from the process
+  env, so turning it on is an RC restart: a main-session act, never a lane's). (2) Live Client
+  sends ONE MinionsSpawning event per game (`dashboard/_liveclient.py:517-527` keeps every one;
+  `core/event_callouts.py:595` `_wave_anchor_s` takes the earliest); no later wave or cannon is in
+  any feed, so the truth for (b) is an OBSERVATION: the game clock when a cannon wave LEAVES the
+  nexus. The clock predicts the SPAWN (`wave_callout` :616 walks spawn times), not the lane
+  arrival, so a lane-arrival read lags by the walk time from the nexus and is the wrong comparand. (3) The cadence
+  question needs no flag and no restart: `schedule --anchor <the (a) value>` calls the production
+  `wave_callout` itself, so the observed spawns can be graded against it from the anchor alone;
+  the flag only adds proof that the live wiring computed the same row.
+  PROBE (read-only; `tools/gated_g239_wave_clock.py`, tests `tests/test_gated_g239_wave_clock.py`):
+  (a) after game clock 1:10, save `curl -sk https://127.0.0.1:8888/api/state` to a gitignored file
+  and run `python tools/gated_g239_wave_clock.py state <file> --json`; (b) note the game clock at
+  which at least three cannon waves leave the nexus, one per bracket if the game is long enough
+  (`every3` before 14:00, `every2` 14:00-25:00, `every1` after), then run
+  `python tools/gated_g239_wave_clock.py schedule --anchor <anchor_s> --until 1800` and, if RC ran
+  with the flag, `python tools/gated_g239_wave_clock.py shadow data/det_coach_shadow.jsonl --since
+  <ISO game start WITH its UTC offset> --observed <m:ss,m:ss,...> --json` (a naive or date-only
+  `--since` is refused, exit 2: read as UTC it would let an earlier game's rows in). With anchor 65.0 the predicted cannon
+  spawns are 2:05, 3:35, 5:05 ... 12:35, then 14:30, 15:20 ... 24:30, then 25:20, 25:45 ...; the
+  14:00 step keeps the wave index parity from the anchor, so 14:05 is NOT a cannon under the
+  current constants - a provisional choice this game settles too.
+  FIELD PATHS: `/api/state` -> `liveclient.minion_events[].at_s`, `liveclient.game_time_s`,
+  `callouts[].kind`; shadow record `ts` / `mode` / `game_time_s` / `callouts[].kind == "wave"` /
+  `.eta_s` (implied spawn = `game_time_s + eta_s`).
+  PREDICATE (stated before any game): (a) PASS = `ANCHOR_OK` (exactly one event, `at_s` in
+  55-95 s); `ANCHOR_MULTI` / `ANCHOR_BAD` / `ANCHOR_MISSING` after 1:10 = FAIL, recorded with the
+  value. (b) PASS = every observed cannon spawn within 3 s of a predicted one (`MATCH`), per
+  bracket observed; a bracket the game never reached stays OPEN, not passed. `MISS` = correct the
+  constants for that bracket (a Tier-1 code change with the observed times as its test data), never
+  a flip. `served_wave_rows` must read 0 in game (B4); a non-zero count is its own B4 defect.
+  EVIDENCE: the anchor value + saved-state file mtime + game clock; each observed spawn as `m:ss`
+  with how it was read (operator glance or a `:8889/latest-frame` whose `meta.ts` was checked
+  against `liveclient.game_time_s`); mode + queue (Practice Tool or GATE 4); main HEAD.
+  SUBSTITUTION CHECK: the shadow `implied` set and the `schedule` output are both RC's OWN
+  arithmetic; agreement between them proves the row was COMPUTED live, never that the cadence is
+  right. Only observed spawns taken from the game itself can make (b) pass. A Practice Tool game
+  with minions toggled, or with any time skip / fast-forward, moves the clock off the anchor: use
+  default Practice Tool settings or a GATE 4 game, and say which. The "THEN flip the env on by
+  default" step is MOOT on screen while B4 stands (the row would still be blanked live); it would
+  change only the shadow record and the 3-row cap (`max_n=3`, so the wave row can push a sooner
+  row out of the record). Filed for a human as a hygiene proposal (lane report RM-1167); NOT
+  struck here. This id is also used twice in this gate (the QA6 / QA13 row below; RM-1166).
 - **G2-36** (was B1) Build-chooser pushes correct runes/items/spells MID-GAME to LCU (3-variant +
   Experimental row). RENDER + generic-build path confirmed 2026-07-04 (Zilean support); the mid-game
   LCU PUSH LOG LINE is still owed - no push line captured in any drain. SOURCE: LEDGER 779.
