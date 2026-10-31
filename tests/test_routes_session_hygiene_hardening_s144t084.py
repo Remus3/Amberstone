@@ -286,7 +286,7 @@ def test_f7_entry_within_ttl_is_served_from_cache(calls, monkeypatch):
 
 def test_f8_unexpected_failure_logs_a_traceback(monkeypatch, caplog):
     def boom(queue_ids=None):
-        raise RuntimeError("secret detail C:/x/y")
+        raise RuntimeError("secret detail <repo>/x/y")
 
     monkeypatch.setattr(route.session_hygiene, "compute_session_hygiene", boom)
     with caplog.at_level(logging.DEBUG, logger=_LOG):
