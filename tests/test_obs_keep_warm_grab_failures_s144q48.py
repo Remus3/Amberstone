@@ -26,6 +26,7 @@ import pytest
 
 from core import obs_publisher
 from core.obs_publisher import GRAB_FAILURES, OBSPublisher
+from tests._asyncio_isolation import run_coro
 
 
 class _FakeWS:
@@ -109,7 +110,10 @@ def _run_loop(monkeypatch, connections, ticks_per_conn, cfg_extra=None):
     cfg = {"frame_source": True, "frame_source_name": "Synthetic Capture",
            "interval_s": 0, "frame_timeout_s": 0.05}
     cfg.update(cfg_extra or {})
-    asyncio.run(asyncio.wait_for(pub._async_loop(cfg), timeout=20))
+    # Off the main thread (tests/_asyncio_isolation): a bare asyncio.run()
+    # raises "cannot be called from a running event loop" once a
+    # snapshot_panels Playwright session has run on the same worker.
+    run_coro(asyncio.wait_for(pub._async_loop(cfg), timeout=20), timeout=30)
     return pub
 
 

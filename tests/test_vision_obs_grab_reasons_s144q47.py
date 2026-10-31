@@ -42,6 +42,7 @@ from PIL import Image  # noqa: E402
 
 from core import obs_frame_source as ofs  # noqa: E402
 from core import obs_publisher as pub  # noqa: E402
+from tests._asyncio_isolation import run_coro  # noqa: E402
 from tools import gated_vision_pillow as gvp  # noqa: E402
 from vision_server import _frame  # noqa: E402
 from vision_server import _stats as stats_mod  # noqa: E402
@@ -90,7 +91,10 @@ def _jpeg_uri(raw=b"\xff\xd8\xff-fake"):
 
 
 def _run(coro):
-    return asyncio.run(coro)
+    # Off the main thread (tests/_asyncio_isolation): a bare asyncio.run()
+    # raises "cannot be called from a running event loop" once a
+    # snapshot_panels Playwright session has run on the same worker.
+    return run_coro(coro)
 
 
 def _grab(ws, timeout_s=2.0):
