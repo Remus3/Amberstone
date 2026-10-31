@@ -109,9 +109,21 @@ function fnSpan(name) {
   throw new Error(`unbalanced ${name}`);
 }
 
+// A top-level `const <name> = ...;` statement of champ_select.js, verbatim.
+function constLine(name) {
+  const i = CS_SRC.indexOf(`const ${name} = `);
+  assert.ok(i >= 0, `${name} not found in champ_select.js`);
+  return CS_SRC.slice(i, CS_SRC.indexOf(";\n", i) + 1);
+}
+
 function loadBuilders(byId) {
   const CHAMPS = { version: "testver", byId };
-  const body = [fnSpan("_csvBenchHtml"), fnSpan("_csvArenaPaneHtml"), fnSpan("_csvRenderEnemiesArena")].join("\n");
+  // RM-1202: the arena pane reads its round through _csvAugRoundTier and
+  // re-applies the stored pick from _CSV_ARENA_AUG_PICK, so both come from
+  // the source too.
+  const body = [constLine("_CSV_AUG_TIERS"), constLine("_CSV_ARENA_AUG_PICK"),
+    fnSpan("_csvAugRoundTier"), fnSpan("_csvBenchHtml"), fnSpan("_csvArenaPaneHtml"),
+    fnSpan("_csvRenderEnemiesArena")].join("\n");
   const factory = new Function(
     "escHtml", "CHAMPS", "_csChampName", "_csvCompVerdictHtml", "_CSV_COMPVERDICT",
     "_csvNormChampName", "document",
@@ -152,7 +164,11 @@ test("champ_select arena pane escapes names, augments and the round tier", () =>
   };
   const html = b._csvArenaPaneHtml(cs, 666, "me");
   assert.doesNotMatch(html, RAW, html);
-  assert.ok(html.includes("&lt;IMG SRC=X ONERROR=ALERT(2)&gt; round"), html);
+  // Since RM-1202 the round label is one of the three known tiers
+  // (_csvAugRoundTier), so a hostile current_round never reaches the markup:
+  // it reads as the first round.
+  assert.ok(html.includes("SILVER round . pick one"), html);
+  assert.ok(!html.includes("ONERROR=ALERT(2)"), html);
 });
 
 test("champ_select arena pane is unchanged for a real roster", () => {
