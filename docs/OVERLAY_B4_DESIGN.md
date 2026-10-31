@@ -292,6 +292,16 @@ blocker on the code.
 ## 8. Open questions for DevRel
 
 1. Build/shop recommendations during a live game - in or out? (section 3.)
+   INTERIM (ruling 43, s146, `docs/_archive/2026-10/s146_rulings_40-51.md`):
+   until DevRel answers IN, any build that goes to anyone other than the
+   operator treats build and shop recommendations as OUT during a live game,
+   withheld through the existing B4 live-game predicate
+   (`core/live_game_gate.py`), the way TFT engine recommendations already are
+   (`dashboard/routes_tft.py` `_live_game_now`, used by
+   `build_engine_recommend`). The operator's own box keeps today's behaviour.
+   It binds at distribution time only: a first-Release checklist item
+   (`docs/PACKAGING_PLAN.md`), not a code change now. An OUT answer applies
+   it to every build, the operator's included.
 2. Does a post-game replay of branch points RC computed live count as a live
    notification? Plain reading says no; 6c already flags that a reviewer sees
    the UI and not the design intent.
