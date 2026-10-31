@@ -1618,6 +1618,12 @@
   flex-direction: column;
   gap: 4px;
 }
+/* RM-1206: the bare display above beats the UA [hidden] rule. Without
+ * this rule a hidden TEAM ANALYSIS cluster (draft open, no pick yet) still
+ * painted a focusable head, and the ARAM / Arena counter-picks section
+ * stayed a 0-height flex item that added a phantom gap.
+ * Guard: tests/snapshot_panels/test_hidden_display_contract.py. */
+.csv-sugg-section[hidden] { display: none; }
 .csv-sugg-row-label {
   /* UI scale v2.1 (audit MUST FIX): 11 -> --fs-xs (16). */
   font-size: var(--fs-xs);

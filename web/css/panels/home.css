@@ -177,6 +177,11 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   visibility: hidden;
   min-height: calc(var(--fs-xs) * 1.2);
 }
+/* RM-1206: the display:flex above beats the UA [hidden] rule, so the
+ * no-data ALL-tab strip did NOT collapse as the note above says. It kept
+ * its margin-top as a phantom gap. Guard:
+ * tests/snapshot_panels/test_hidden_display_contract.py. */
+.home-rank-wl[hidden] { display: none; }
 .home-wl-pips {
   display: inline-flex; align-items: center; flex-wrap: wrap;
   gap: var(--space-1);

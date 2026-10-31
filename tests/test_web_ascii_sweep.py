@@ -1744,7 +1744,20 @@ _WEB = _REPO_ROOT / "web"
 # change: the added lines carry 0 non-ASCII bytes. The repo lane's
 # unlanded dev.js header edit (RM-1182) is not in this tree; the merger
 # recomputes on the merged tree.
-_LIVE_HALF_DIGEST = "675410e608e5c11d3c6ac5ea01a27d113726e23e20558afd1107d5c140b99ddd"
+# superseded by the RM-1206 re-capture below: "675410e608e5c11d3c6ac5ea01a27d113726e23e20558afd1107d5c140b99ddd"
+#
+# RE-CAPTURED 2026-10-31 at RM-1206 (s144 uiux cycle 84, provisional
+# until the merger lands it and maps the id). One change rides it: a hidden
+# champ-select .csv-sugg-section and a hidden Home .home-rank-wl strip now
+# compute display:none (a [hidden] rule each; the bare display:flex beat
+# the UA [hidden]) (web/css/panels/champ_select_view.css and
+# web/css/panels/home.css). Ordinary case, no tokeniser change. ATTRIBUTED
+# BY SUBSTITUTION: swapping exactly those two files back to their lane HEAD
+# b0da38c8c blobs reproduces the superseded 675410e6... value EXACTLY, and
+# either file alone gives a third value, so both contribute. Those paths
+# are the whole change. No glyph change: the added lines carry 0 non-ASCII
+# bytes. If another slice re-captures in parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "c6d3ea8663923f203c98a42b97abbd3ace71cf410286337b92b231897602df76"
 
 
 def _web_sources() -> list[Path]:
