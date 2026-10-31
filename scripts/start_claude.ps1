@@ -17,53 +17,36 @@ Set-Location $RepoRoot
 Write-Host ""
 Write-Host "=== RC Pre-flight ===" -ForegroundColor Cyan
 
-# 1. RC-Supervisor scheduled task (runs main.py via pythonw)
-$sup = Get-ScheduledTask -TaskName "RC-Supervisor" -ErrorAction SilentlyContinue
-if ($sup) {
-    if ($sup.State -ne "Running") {
-        Write-Host "  RC-Supervisor: starting..." -ForegroundColor Yellow
-        Start-ScheduledTask -TaskName "RC-Supervisor"
-        Start-Sleep -Seconds 2
-    } else {
-        Write-Host "  RC-Supervisor: running" -ForegroundColor Green
-    }
-} else {
-    Write-Host "  RC-Supervisor: TASK NOT FOUND -- check Task Scheduler" -ForegroundColor Red
+# 1. The rc-shell service host. Since the 2026-10-31 launcher cutover
+#    (docs/PACKAGING_PLAN.md section 5) NO scheduled task starts RC: rc-shell
+#    launched with --profile dev spawns ops/launcher/service_host.py, which
+#    runs the supervisor (main.py, vision :8889, DS :8860), the LCU agent,
+#    the Live Client relay, the hotkey listener and Phase 3 (:8890/:8891).
+#    Read-only here: this pre-flight starts nothing and must never re-register
+#    a moved task (tools/rc_facts.py flags one that is registered again).
+#    The host rewrites its status file at least every 5 s; 30 s = stale.
+$statusPath = Join-Path $RepoRoot "ops\runtime\launcher_status.json"
+$hostUp = $false
+if (Test-Path -LiteralPath $statusPath) {
+    try {
+        $st = Get-Content -LiteralPath $statusPath -Raw | ConvertFrom-Json
+        $upd = $st.updated
+        if ($upd -isnot [DateTime]) {
+            $upd = [DateTime]::Parse([string]$upd, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::RoundtripKind)
+        }
+        $age = ((Get-Date).ToUniversalTime() - $upd.ToUniversalTime()).TotalSeconds
+        if ($st.state -ne 'halted' -and $age -le 30) {
+            $hostUp = $true
+            Write-Host ("  Shell host: {0} (mode={1} pid={2})" -f $st.state, $st.mode, $st.host_pid) -ForegroundColor Green
+        }
+    } catch {}
+}
+if (-not $hostUp) {
+    Write-Host "  Shell host: NOT running -- launch the app: electron.exe . --profile dev from rc-shell" -ForegroundColor Yellow
 }
 
 # 2. Vision server has NO scheduled task (removed 2026-06-11, deep-audit P2):
 #    dashboard/server.py self-heals :8889 in-process; step 7 probes it.
-
-# 3. RC-DaemonSlayer (Daemon Slayer build engine :8860)
-$ds = Get-ScheduledTask -TaskName "RC-DaemonSlayer" -ErrorAction SilentlyContinue
-if ($ds) {
-    if ($ds.State -ne "Running") {
-        Write-Host "  RC-DaemonSlayer: starting..." -ForegroundColor Yellow
-        Start-ScheduledTask -TaskName "RC-DaemonSlayer"
-        Start-Sleep -Seconds 2
-    } else {
-        Write-Host "  RC-DaemonSlayer: running" -ForegroundColor Green
-    }
-} else {
-    Write-Host "  RC-DaemonSlayer: TASK NOT FOUND -- run tools\install_daemon_slayer_task.ps1" -ForegroundColor Red
-}
-
-# 4. RC-Phase3-Supervisor (agents framework :8890/:8891)
-$p3 = Get-ScheduledTask -TaskName "RC-Phase3-Supervisor" -ErrorAction SilentlyContinue
-if ($p3) {
-    if ($p3.State -ne "Running") {
-        Write-Host "  RC-Phase3-Supervisor: starting..." -ForegroundColor Yellow
-        Start-ScheduledTask -TaskName "RC-Phase3-Supervisor"
-        Start-Sleep -Seconds 2
-    } else {
-        Write-Host "  RC-Phase3-Supervisor: running" -ForegroundColor Green
-    }
-} else {
-    Write-Host "  RC-Phase3-Supervisor: TASK NOT FOUND -- run ops\phase3_install.ps1" -ForegroundColor Red
-}
-
-# 5. Wait briefly for HTTP endpoints to come up if just started
-Start-Sleep -Seconds 3
 
 # 7. Probe vision server :8889
 try {

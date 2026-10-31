@@ -2294,9 +2294,10 @@ Practice customs and Mayhem q2400 NEVER reach Match-V5. This batch is unreachabl
 ## GATE 5 - ARENA / CHERRY (queue 1750) - FLAG LOUDLY: every row here is Arena-only
 
 **ARENA IS STILL NEEDED.** Nothing below can be reached from SR or ARAM.
-**BEFORE PLAYING: restart RC-LCUAgent** (a separate ONLOGON process with no restart_trigger) so the
+**BEFORE PLAYING: restart the LCU agent** (a separate process with no restart_trigger) so the
 D6 force_scan-trigger fix (`8f651ca7`) + the round-based re-trigger (`9779296c`) are actually live:
-`taskkill /F /PID <agent pid>` then `Start-ScheduledTask RC-LCUAgent`.
+`taskkill /F /PID <agent pid>` - the rc-shell service host restarts its `lcu_agent` service at once
+(the `RC-LCUAgent` task and its `Start-ScheduledTask` step are gone since the 2026-10-31 launcher cutover).
 **STALE as an unconditional step (lane 9 PREP s133 cycle 5, 2026-10-25, NOT a tick):** both fixes are
 July code (the agent was restarted for them at LEDGER 780) and the running agent already serves HEAD:
 its `pythonw ... tools\lcu_agent.py` process was created 2026-10-25 00:27, after the newest commit to
@@ -3448,7 +3449,9 @@ Ids `LX-nn` map to the RM rows in `BACKLOG.md` "External-lift intake".
     code on fixture data.
   Only a bundle read on the :8888 origin with `ui_mock` off, from a stored REAL match, with
   `match_tie` true, can close it.
-- **LX-09** (RM-638, mark hotkey; restart the RC-HotkeyListener task first so it loads the new slot)
+- **LX-09** (RM-638, mark hotkey; restart the hotkey listener first so it loads the new slot -
+  `taskkill /F /PID` of it, and the service host restarts it; the RC-HotkeyListener task is gone
+  since the 2026-10-31 launcher cutover)
   In a real game press Ctrl+Shift+K: a row lands in `ops/runtime/moment_marks.jsonl` with a real game id;
   a press during the loading screen is dropped and logged; after the game the marks attach to that
   game and show as "you flagged" pins in Replay and PGR. Note: in the Practice Tool Shift+K spawns a

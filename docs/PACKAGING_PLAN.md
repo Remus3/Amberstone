@@ -266,6 +266,9 @@ install on natural quit, never mid-game (`rc-shell/src/main.js:267`).
 
 ## 2. Process model today (measured)
 
+Measured BEFORE the section-5 cutover; since 2026-10-31 the section 3.1
+launcher model is live on Legion and the tasks named here are gone.
+
 - `RC-Supervisor` (logon, HIGHEST) runs the frozen `ops/rc_supervisor.py
   --config ops/rc_config.json`, which owns `main.py` (dashboard :8888 + app
   loop), restarts it on `restart_trigger.txt`, accepts JSON requests in
@@ -873,6 +876,14 @@ Found by the PKG-6 builder and verifier; not fixed by PKG-6.
 
 Scheduled-task writes are operator territory; no lane, loop or slice runs
 any step here. The packaged app must have passed attach mode (3.3) first.
+
+STATUS (A45d, s146): stage 1 APPLIED 2026-10-31 18:07 (`-Apply` exit 0,
+six tasks unregistered and read back gone, `RC-DSKeepalive` never
+registered; backup `ops/runtime/launcher_cutover/cutover-20261031-180724`).
+Step 5 recorded in the same commit as this line (`docs/OPERATIONS.md`
+table + count 21, `tools/rc_facts.py` `LAUNCHER_OWNED_TASKS` and its shell
+host line). Stage 2 (the Windows restart proof) is the operator's next step.
+Section 2 below describes the pre-cutover process model.
 
 1. Stage 0, no system change: run the packaged app in attach mode beside
    the existing tasks and confirm the shell, the status view and the update

@@ -44,8 +44,8 @@ Safety:
     or -wal byte changes either). --dry-run is the default.
   * --apply refuses while a TFT game runs (TFTClient-Win64-Shipping.exe, or
     health.json has_game / tft_mode); while RC itself runs (health.json pid
-    alive) unless --allow-rc-running - stop RC and pause the RC-Supervisor
-    task first; unless --expect-quarantine equals the measured count; on
+    alive) unless --allow-rc-running - stop RC first by quitting the app (its
+    service host stops the supervisor; no task restarts it); unless --expect-quarantine equals the measured count; on
     unusable store inputs; and when a QA game has no store record.
   * --apply re-plans INSIDE its `BEGIN IMMEDIATE` write transaction on the
     live file and refuses (rollback, nothing written) when the plan changed
@@ -739,9 +739,10 @@ def run(root: Path, qa_path: Path, *, apply: bool = False, expect_quarantine=Non
             why = rc_running_reason(root)
             if why:
                 raise SystemExit(
-                    f"refused: {why} - stop RC and pause the RC-Supervisor scheduled task "
-                    "first (the supervisor restarts RC within about 5 s), then re-run; or "
-                    "pass --allow-rc-running to apply beside a running RC.")
+                    f"refused: {why} - stop RC first by quitting the app (rc-shell; its "
+                    "service host stops the supervisor, which would otherwise restart RC "
+                    "within about 5 s), then re-run; or pass --allow-rc-running to apply "
+                    "beside a running RC.")
     with _logfile(root):
         _log.info("apply: root %s, %d to quarantine, %d to stamp, games %s", root,
                   len(moves), len(p["stamp_rows"]), p["qa_games"])

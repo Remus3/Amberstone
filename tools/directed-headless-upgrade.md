@@ -71,7 +71,8 @@ proceed. Caveman ULTRA output default (compress ~90 percent; code/paths/numbers 
 - Probe live state: `ops/runtime/health.json`, `https://127.0.0.1:8888/api/state`,
   `http://127.0.0.1:8860/health` (DS engine_version; HTTP not HTTPS).
 - DS stale vs repo `agents/daemon_slayer/__init__.py` ENGINE_VERSION -> bounce DS:
-  `taskkill /F /PID <ds-pid>` then `schtasks /Run /TN RC-DaemonSlayer` (DS not supervisor-watched;
+  `taskkill /F /PID <ds-pid>`; RC's DsWatchdog relaunches it as its own child within ~30 s (no
+  `RC-DaemonSlayer` task since the 2026-10-31 launcher cutover; DS not supervisor-watched;
   NEVER Stop-Process).
 - Git hygiene: `gh run list --limit 6` green baseline (fix red FIRST); `gh pr list` reconcile;
   delete stale merged remote branches; clean stale local worktrees (verify 0 unmerged first,
@@ -105,7 +106,7 @@ proceed. Caveman ULTRA output default (compress ~90 percent; code/paths/numbers 
 2. Test gate green BEFORE commit, per the TIER TABLE in `tools/done.md`: Tier-1 = the touched modules' test files; Tier-2 = ONE gated parallel run by
    the merger over both trees (it covers `tests/snapshot_panels/`): `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- python -m pytest tests agents/daemon_slayer/tests -q -n 8 --dist loadfile --max-worker-restart=0 --timeout=300`.
 3. Restart-aware: routes -> `echo restart > restart_trigger.txt` + confirm health alive/last_reload_ok;
-   engine math -> taskkill DS + `schtasks /Run /TN RC-DaemonSlayer`; web/css|js/panels/* -> asset-hash
+   engine math -> taskkill DS (RC's DsWatchdog relaunches it within ~30 s); web/css|js/panels/* -> asset-hash
    auto-reload (ADR-008), no RC restart - say so.
 4. Commit + push - HARD PRE-COMMIT GATES (no push until ALL pass): (a) frontend slice -> 3b
    UI-audit RUN + every MUST-FIX resolved in-slice; (b) drift-guard set green THIS run

@@ -39,7 +39,7 @@ Docs, ledger entries and your memory of the last bump are all UNTRUSTWORTHY for 
 | engine constant | `agents/daemon_slayer/__init__.py` `ENGINE_VERSION` | READ IT LIVE - that file is the source of truth, and no literal is copied here on purpose |
 | live server | `curl -s http://127.0.0.1:8860/health` (HTTP, not HTTPS) | `engine_version` equals the repo constant **only before you bump, and only in main** - see the LANE-WORKTREE CAVEAT below; `patch 16.15.1, champions 173, items 706` |
 
-**LANE-WORKTREE CAVEAT - MEASURED 2026-09-01 (LEDGER 1317), and it INVERTS the row above.** The `RC-DaemonSlayer` task runs `pythonw.exe` against `<repo>\tools\start_daemon_slayer.py` - the MAIN checkout - so `:8860` serves MAIN's engine version no matter what this lane pins. Probed that run: task command line confirmed, listener PID's command line confirmed, main constant 1.278.1, lane constant 1.279.0, served 1.278.1. Consequences: (1) after you bump, served != repo is EXPECTED and is NOT evidence of a stale server; (2) `tests/phase8_smoke/test_sr_draft_profile_engine.py::TestLiveEngineIntegration::test_live_three_profiles` asserts served == imported constant and therefore goes RED on any lane DS bump - structural, not a defect, and it clears only on merge PLUS restart (a merge without the restart leaves it red); (3) the equality test in this table is only meaningful BEFORE your bump, as a check that the server is not stale relative to main.
+**LANE-WORKTREE CAVEAT - MEASURED 2026-09-01 (LEDGER 1317), and it INVERTS the row above.** DS runs `<repo>\tools\start_daemon_slayer.py` from the MAIN checkout (a child of RC's DsWatchdog since the 2026-10-31 launcher cutover; the `RC-DaemonSlayer` task before it), so `:8860` serves MAIN's engine version no matter what this lane pins. Probed that run: task command line confirmed, listener PID's command line confirmed, main constant 1.278.1, lane constant 1.279.0, served 1.278.1. Consequences: (1) after you bump, served != repo is EXPECTED and is NOT evidence of a stale server; (2) `tests/phase8_smoke/test_sr_draft_profile_engine.py::TestLiveEngineIntegration::test_live_three_profiles` asserts served == imported constant and therefore goes RED on any lane DS bump - structural, not a defect, and it clears only on merge PLUS restart (a merge without the restart leaves it red); (3) the equality test in this table is only meaningful BEFORE your bump, as a check that the server is not stale relative to main.
 
 
 If the served version lags the repo constant the server is stale - bounce it (section 8) BEFORE measuring anything. The build-order generators compute over live
@@ -192,10 +192,12 @@ changed`; after the bounce the same regen changed 82 of 173).
 
 ### 8. DS server restart - :8860 is NOT supervisor-watched
 
-DS runs under the `RC-DaemonSlayer` scheduled task (`pythonw.exe tools/start_daemon_slayer.py`; verified `Status: Running`). It ignores `restart_trigger.txt`
-and the RC supervisor does not bounce it.
+DS (`tools/start_daemon_slayer.py`) is a child of RC's DsWatchdog (`core/daemon_slayer_client.py`, inside main.py under the rc-shell service host); the
+`RC-DaemonSlayer` scheduled task that ran it was unregistered in the 2026-10-31 launcher cutover. It ignores `restart_trigger.txt` and the RC supervisor does
+not bounce it.
 
-**Restart: `taskkill /F /PID <ds-pid>` then `schtasks /Run /TN RC-DaemonSlayer`.** Find the pid via `Get-NetTCPConnection -LocalPort 8860 -State Listen`
+**Restart: `taskkill /F /PID <ds-pid>`; DsWatchdog relaunches it on its next 30 s tick (snapshot load ~35 s).** There is no task to `/Run` any more, and
+with RC down nothing restarts DS. Find the pid via `Get-NetTCPConnection -LocalPort 8860 -State Listen`
 (verified pid 16988 at authoring). **NEVER `Stop-Process`** - CLAUDE.md hard rule, it hangs the MCP pipe.
 
 **Trap (closed session 129): `schtasks /End` then an immediate `/Run` used to leave :8860 DEAD while every status signal said success.** `/End` returns

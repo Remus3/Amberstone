@@ -704,17 +704,20 @@ def test_empty_task_list_is_loud_too(tmp_path):
 def test_healthy_world_prints_no_per_task_roll_call(tmp_path):
     now = time.time()
     _fresh_world(tmp_path, now)
+    # A45d: long-lived services that are STILL tasks after the 2026-10-31
+    # launcher cutover (RC-Supervisor / RC-LCUAgent were unregistered then;
+    # a registered one is now an anomaly, tests/test_rc_facts_launcher_cutover_a45d.py).
     rows = _all_weekly_rows(now) + [
-        _row("RC-Supervisor", state="Running", last_result=rc_facts.TASK_RESULT_RUNNING,
+        _row("RC-MissionControl", state="Running", last_result=rc_facts.TASK_RESULT_RUNNING,
              last_run=_iso(now, 2 * _DAY), triggers="MSFT_TaskLogonTrigger"),
-        _row("RC-LCUAgent", state="Running", last_result=rc_facts.TASK_RESULT_RUNNING,
+        _row("RC-MoonSyncPoller", state="Running", last_result=rc_facts.TASK_RESULT_RUNNING,
              last_run=_iso(now, 2 * _DAY), triggers="MSFT_TaskLogonTrigger"),
     ]
     lines, anomalies = rc_facts.task_health_lines(rows, root=tmp_path, now=now)
     assert anomalies == []
     # One summary line, no per-task roll call - this prints at every session start.
     assert len(lines) == 1
-    assert "RC-Supervisor" not in lines[0]
+    assert "RC-MissionControl" not in lines[0]
     assert "6" in lines[0]
 
 
@@ -728,7 +731,7 @@ def test_unhealthy_world_names_only_the_bad_tasks(tmp_path):
     rows = [r for r in rows if r["name"] != "RC-WeeklyHygiene"] + [
         _row("RC-WeeklyHygiene", state="Disabled", last_result=0,
              triggers="MSFT_TaskWeeklyTrigger"),
-        _row("RC-Supervisor", state="Running", last_result=rc_facts.TASK_RESULT_RUNNING,
+        _row("RC-MissionControl", state="Running", last_result=rc_facts.TASK_RESULT_RUNNING,
              last_run=_iso(now, _DAY), triggers="MSFT_TaskLogonTrigger"),
         _row("RC-CleanupScratch", state="Ready", last_result=2147946720,
              last_run=_iso(now, _DAY), triggers="MSFT_TaskDailyTrigger"),
@@ -739,7 +742,7 @@ def test_unhealthy_world_names_only_the_bad_tasks(tmp_path):
     assert "RC-WeeklyHygiene" in blob and "DISARMED" in blob
     assert "RC-CleanupScratch" in blob
     # Healthy ones stay out of the banner.
-    assert "RC-Supervisor" not in blob
+    assert "RC-MissionControl" not in blob
     assert "RC-PostmortemAnalyze" not in blob
 
 

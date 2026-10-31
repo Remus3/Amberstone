@@ -80,7 +80,9 @@ headless-executable prep (consumer wiring, flip PRs, harness runs):
   Tier-2: full dual suite (DS dir + tests/) + DS `:8860` restart
   staged in the SAME commit (memory `feedback_ds_bump_run_tests_dir`).
   RC-side env flips route via Machine
-  env + RC-Supervisor task restart (memory `reference_scheduled_task_env_injection`).
+  env + an app relaunch (quit rc-shell, launch it with `--profile dev`; the
+  `RC-Supervisor` task is gone since the 2026-10-31 launcher cutover; memory
+  `reference_scheduled_task_env_injection`).
   NEVER flip blind (charter 4b) - flip only rows the doc marks LIVE-VALIDATED /
   FLIP-READY or that this session's eyeball just validated.
 - **LCU / champ-select rows:** practice tool lobby suffices (lock-in, rune/spell/

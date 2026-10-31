@@ -585,7 +585,10 @@ def test_rc_facts_main_reports_the_hold(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(rc_facts, "_port_listening", lambda *a, **k: True)
     monkeypatch.setattr(rc_facts, "_health_all", lambda: {})
     monkeypatch.setattr(rc_facts, "_http_get_json", lambda *a, **k: None)
-    monkeypatch.setattr(rc_facts, "_legion_tasks", lambda: [])
+    # A45d: the hold is reported only while RC-DSKeepalive is registered (a
+    # measured list without it means the flag holds nothing).
+    monkeypatch.setattr(rc_facts, "_legion_tasks", lambda: [
+        {"name": "RC-DSKeepalive", "state": "Running", "last_result": 267009}])
     monkeypatch.setattr(rc_facts, "_last_boot_iso", lambda: None)
     monkeypatch.setattr(rc_facts, "_inbox_section", lambda *a, **k: ([], [], set()))
     buf = io.StringIO()

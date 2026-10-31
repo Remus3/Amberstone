@@ -106,12 +106,12 @@ to check in. ASCII only, no em/en dashes or smart quotes in any authored byte.
 
 ## 5. Verify live (:8860 is NOT supervisor-watched)
 
-- The DS server runs under the `RC-DaemonSlayer` scheduled task
-  (`pythonw.exe tools/start_daemon_slayer.py`, :8860). It does not honor
-  restart_trigger.txt and the supervisor does not bounce it.
-- Restart it: `schtasks /End /TN RC-DaemonSlayer` then
-  `schtasks /Run /TN RC-DaemonSlayer` (hard fallback: `taskkill /F /PID <:8860 pid>`
-  then `schtasks /Run /TN RC-DaemonSlayer`). Never `Stop-Process`.
+- The DS server (`tools/start_daemon_slayer.py`, :8860) is a child of RC's
+  DsWatchdog (no `RC-DaemonSlayer` task since the 2026-10-31 launcher
+  cutover). It does not honor restart_trigger.txt and the supervisor does
+  not bounce it.
+- Restart it: `taskkill /F /PID <:8860 pid>`; DsWatchdog relaunches it on
+  its next 30 s tick (snapshot load ~35 s). Never `Stop-Process`.
 - Verify `curl -sk http://127.0.0.1:8860/health` reports the new engine_version
   and a known champion's DPS/EHP is unchanged where it should be.
 - If RC itself was touched: `echo restart > restart_trigger.txt`, then confirm

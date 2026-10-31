@@ -213,19 +213,27 @@ This restarts the RC process (:8888) only. The vision server (:8889), DS (:8860)
 (:8861) and the Phase 3 supervisor (:8890 / :8891) are SEPARATE processes that keep running their old
 code; each restarts its own way (below).
 
-**Hard fallback** (if supervisor is also dead):
+**Hard fallback** (if supervisor is also dead): since the 2026-10-31 launcher cutover there is no
+`RC-Supervisor` task. The rc-shell service host runs the supervisor and restarts it when it exits with
+an error (`restart: on-failure`, backoff from 1 s, `ops/launcher/services.json`), so a hung one is ended
+by pid and comes back by itself:
 ```powershell
-taskkill /F /PID <pid>        # never Stop-Process - hangs MCP pipe
-schtasks /Run /TN "RC-Supervisor"
+python -c "import json; [print(s['name'], s['state'], s['pid']) for s in json.load(open(r'ops/runtime/launcher_status.json'))['services']]"
+taskkill /F /PID <supervisor pid>        # never Stop-Process - hangs MCP pipe
 ```
+More than 5 exits in 300 s and the service reads `failed` until the app restarts. If the host itself is
+gone (`ops/runtime/launcher_status.json` older than 30 s, or `state` `halted`), quit the app and launch it
+again: from `rc-shell`, `node_modules\electron\dist\electron.exe . --profile dev`
+(`rc-shell\launch_overlay.bat` passes no profile, so it starts NO service).
 
-**Never** `Stop-Process` (hangs the MCP pipe) - use `taskkill /F /PID`. `scripts\restart.bat` is the
-documented hard fallback AFTER the taskkill (CLAUDE.md "Restart workflow"), not an interactive-shell
-first resort.
+**Never** `Stop-Process` (hangs the MCP pipe) - use `taskkill /F /PID`. `scripts\restart.bat` is a last
+resort only (CLAUDE.md "Restart workflow"): it ends EVERY `pythonw.exe` (the service host and its agents
+included) and starts `main.py` bare, outside the host and with no supervisor; relaunch the app after it.
 
 ### Restart the Phase 3 supervisor (:8890 / :8891) - it does NOT hot-reload
 
-`agents.supervisor` (scheduled task `RC-Phase3-Supervisor`) is its own process. RC's hot_reload and
+`agents.supervisor` is its own process: the service host's `phase3_supervisor` (dev profile only; the
+`RC-Phase3-Supervisor` task before the 2026-10-31 launcher cutover). RC's hot_reload and
 `restart_trigger.txt` restart only the :8888 dashboard, so a change to code the supervisor imports -
 `dashboard/_handler.py`, the shared HTTP gates `core/http_host_gate.py` and
 `core/http_head_deadline.py`, `agents/_supervisor_*.py`, `agents/agent2_backend/ws_server.py` - keeps
@@ -235,15 +243,19 @@ LEDGER 1743 / 1748). After merging such a change:
 ```powershell
 netstat -ano | findstr "LISTENING" | findstr ":8890"   # the last column is the pid
 taskkill /F /PID <pid>        # never Stop-Process
-schtasks /Run /TN "RC-Phase3-Supervisor"
 ```
-If `schtasks /Run` answers that the task is already running, it relaunched by itself (IgnoreNew) -
-that is fine. **Verify, do not trust the exit code:** a NEW pid listens on :8890 and :8891
+The service host starts it again (`restart: always`, backoff from 1 s). The frozen supervisor's Phase 3
+watcher still tries `schtasks /Run RC-Phase3-Supervisor` after its own stale-code kill and logs `FAILED`
+now that the task is gone (plan S9; frozen file, log noise only - the host does the relaunch).
+**Verify, do not trust the exit code:** a NEW pid listens on :8890 and :8891
 (127.0.0.1 only), `curl http://127.0.0.1:8890/api/queue` answers 200, and the change's own shape
 holds (for a Host-gate change: the same GET with `-H "Host: rebind.example"` answers 421).
 
-The other servers that import the shared gates restart their own way: DS :8860 through its task
-(`taskkill /F /PID` of the DS pid; RC's DsWatchdog relaunches `RC-DaemonSlayer`, LEDGER 1748),
+The other servers that import the shared gates restart their own way: DS :8860 by `taskkill /F /PID`
+of the :8860 pid - RC's DsWatchdog (`core/daemon_slayer_client.py`, inside main.py) finds nothing
+listening and no DS booting on its next 30 s tick and starts `tools/start_daemon_slayer.py` as its own
+child (no `RC-DaemonSlayer` task since the 2026-10-31 launcher cutover; snapshot load ~35 s; verify
+`curl http://127.0.0.1:8860/health` serves the new `engine_version`; with RC down nothing restarts DS),
 Mission Control :8895 through `RC-MissionControl` (see Mission Control below), the vision server
 :8889 by killing its own process (it is a separate `pythonw moon_vision_server.py`, NOT in RC, so an
 RC restart does not reload it; RC's VisionWatchdog respawns it - see Vision server below), and the
@@ -255,17 +267,11 @@ DS + match-DB MCP server :8861 through `RC-DS-MatchDB-MCP` (see Local DS + match
 
 | Task | Trigger | Context | Description |
 |---|---|---|---|
-| `RC-Supervisor` | At logon | operator account / HIGHEST | Runs `pythonw.exe ops/rc_supervisor.py` |
 | `RC-MissionControl` | At logon + a `-Once` trigger with a 1-min indefinite repeat (`tools/install_mission_control_task.ps1`) | operator account / Highest | Runs `pythonw.exe mission_control.py` - the :8895 control plane. Deliberately its OWN scheduled task, not an `rc_supervisor` entry: RestartCount 3 / RestartInterval 1 min gives self-restart on crash, and the repeat trigger makes Task Scheduler itself the watchdog (`MultipleInstances=IgnoreNew` no-ops while alive; process dead -> next tick starts it). An RC restart for a game-overlay change must never touch the control plane (S10, decoupled 2026-07-31) |
 | `RC-MoonSyncPoller` | At logon | operator account / HIGHEST | ONE machine-wide cross-repo channel poller for all five participants (`pythonw.exe tools/moon_sync_poller.py`). Named-mutex singleton - a second poller anywhere on the box is forbidden by the channel contract. Idle-tiered ladder; writes `%LOCALAPPDATA%\moonsync\status.md`. Read it with `--status` or the `/api/moon-sync-status` route; see the section below |
-| `RC-DaemonSlayer` | At boot (measured 2026-10-14; this row said "Manual / on demand") | SYSTEM / HighestAvailable, IgnoreNew, restart-on-failure PT1M x3 | DS engine server (`pythonw.exe tools/start_daemon_slayer.py`). The single owner of DS: RC's `DsWatchdog` relaunches through `schtasks /Run` on this task, and starts a direct child only where the task is not registered (RM-740 (e), LEDGER 1722). RestartOnFailure does NOT fire for a crash exit (exit 1 is logged as success; measured 2026-10-16, LEDGER 1731), so while RC is down the only restarter is `RC-DSKeepalive` (next row; RM-750) |
-| `RC-DSKeepalive` | At startup + a `-Once` trigger with a 1-min indefinite repeat (`tools/install_ds_keepalive_task.ps1`; NOT registered until the operator runs it, elevated) | SYSTEM / Highest, IgnoreNew, no time limit | DS restarter while RC is down (RM-750): `pythonw.exe tools/ds_keepalive.py` runs RC's own `DsWatchdog` (a real `GET /health` round trip, so a wedged DS holding the port is replaced) only while RC's watchdog heartbeat `ops/runtime/ds_watchdog_rc.json` is stale or its pid is gone, and relaunches ONLY through `schtasks /Run` on `RC-DaemonSlayer`, never a child. Hold: create `ops/runtime/DS_KEEPALIVE_STOP` (`tools/legion_off.ps1` does, `tools/legion_on.ps1` removes it). Read-only view: `python tools/ds_keepalive.py --status`. Log `logs/ds_keepalive.log` |
 | `RC-DS-MatchDB-MCP` | At logon (operator-gated) | operator account | Local DS + match-DB MCP (:8861) |
 | `RC-CostHealthWatchdog` | At startup + periodic | SYSTEM | Self-healing cost + health watchdog (`tools/cost_health_watchdog.py`) |
 | `RC-CIWatchdog` | At startup + periodic (PT2M) | operator account / armed, but State `Disabled` (measured 2026-09-20; last ran 2026-09-11) | Unattended headless-claude red-main CI auto-fixer; on the ci-fix PR's OWN green CI it lands the fix LOCALLY as one operator commit through fleet_gitlock and closes the PR - never a GitHub merge (`tools/ci_watchdog.py`, isolated worktree `<ci-watchdog-worktree>`; item 622; land-locally 2026-10-09). Kill: create `ops\runtime\ci_watchdog\HALT` or `Disable-ScheduledTask RC-CIWatchdog` |
-| `RC-HotkeyListener` | At logon | operator account | Global hotkey listener (`tools/hotkey_listener.py`) |
-| `RC-LCUAgent` | At logon | operator account | LCU relay agent (`tools/lcu_agent.py`) |
-| `RC-LiveClientRelay` | At logon | operator account | Live Client `:2999` relay agent (`tools/liveclient_relay.py`) |
 | `RC-LiveFlipWatcher` | At logon | operator account | DS live-flip seam watcher + toast (`tools/live_flip_watcher.py`) |
 | `RC-PostmortemAnalyze` | Weekly | operator account | Postmortem analyze + restart (`ops/run_postmortem_with_restart.ps1`) |
 | `RC-UpstreamDriftCheck` | Daily | operator account | Upstream content-drift detector, 5 signals: ddragon / meraki / cdragon / 101.qq duo-synergy shape (RM-131) / cdragon queue catalog (RM-128) (`tools/upstream_drift_check.py`); with `--spec-watch` also the P1-3 spec / patch watch (`tools/spec_watch.py`: new patch / champion / item / field keys posted once to `ops/runtime/spec_watch_events.jsonl`, exit 2 on an unreadable spec) - the installer passes it, the live task needs a re-install to pick it up |
@@ -278,12 +284,30 @@ DS + match-DB MCP server :8861 through `RC-DS-MatchDB-MCP` (see Local DS + match
 | `RC-WeeklyHygiene` | Weekly Sunday 04:17 | operator account; State `Disabled` (measured 2026-09-20; last ran 2026-09-06) | Unattended `/weekly-hygiene` pass via headless Claude (`tools/weekly_hygiene_run.ps1`; install `ops/install_RC_WeeklyHygiene.ps1`). **The `Disabled` state is INTENT, not a defect** - see "Why three headless-claude tasks are Disabled" just below this table for the reason and the re-arm precondition |
 | `RC-InboxResponder` | Every 5 min (`-Once` + 5-min indefinite repeat), S4U | Installing account / Highest | **Install-on-demand, NOT registered by default, and registered DISARMED.** Runs `pythonw.exe tools/inbox_responder_runner.py --cycle` to answer cross-repo inbox notes (install / probe / remove: `ops/install_RC_InboxResponder.ps1`). Registering it arms NOTHING - the runner answers only while the operator's hand-written `ops\runtime\inbox_responder_agreement.json` is present and valid; with no record every tick terminates `disarmed/no_agreement`, which is exactly how you prove the task fires. Kill switch is the flag `ops\runtime\INBOX_RESPONDER_STOP` (checked at the first gate AND again just before delivery, so a late STOP holds a finished draft), never `Disable-ScheduledTask` - that is maintenance-off only. One-shot dry run: write `ops\runtime\INBOX_RESPONDER_DRY` holding the scratch dir path; the runner consumes the flag before the cycle, so it beats a live agreement for that one tick and cannot repeat |
 | `RC-PatchRefresh` | Weekly Wednesday | operator account | `data_pipeline.py all` |
-| `RC-Phase3-Supervisor` | At logon | operator account | Phase 3 agent supervisor |
 | `RC-Phase3-PeriodicAudit` | Scheduled | operator account | Phase 3 periodic audit |
 | `RC-TeamClaudeProxy` | At logon | operator account / HIGHEST | Operator utility, NOT RC infra: headless `teamclaude` multi-account Claude-subscription failover proxy on `:3456`, launched hidden via `%USERPROFILE%\teamclaude_proxy_hidden.vbs`, which waits on the relaunch loop `teamclaude_proxy_loop.bat` (MAIN PROXY-1, 2026-10-11), so the task is long-lived by design: it stays Running (LastTaskResult 267009) and `tools/rc_facts.py` lists it in `LONG_LIVED_SERVICE_TASKS`. Inert until a client sets `ANTHROPIC_BASE_URL=http://localhost:3456` (`teamclaude run --no-mitm`); does not touch RC or the dashboard. Config + live OAuth tokens live in `%USERPROFILE%\.config\teamclaude.json` (non-repo, do NOT commit). Probes account-wide weekly quota hourly (`quotaProbeSeconds`, reads `/api/oauth/usage`, spends nothing). Activity log: same dir, `teamclaude_activity.log` |
 | `RC-ClaudeQuotaWatch` | Every 2h | operator account / HIGHEST | Operator utility: `pythonw <repo>\tools\claude_quota_watch.py` (MOVED into the repo 2026-08-01 from `%USERPROFILE%\`, and the task repointed, because out-of-repo means unguardable - it was the measured console flash and no test here could see it) reads acct A's weekly `unified7d` from teamclaude and fires ONE Windows toast (per weekly window) at >=90% telling the operator to switch the Claude GUI login from the primary account to the failover one. Both identities are read from the environment (`RC_CLAUDE_ACCT_A` / `RC_CLAUDE_ACCT_B`); unset, the watcher no-ops. Needed because the MSIX desktop GUI bypasses the proxy, so failover there is a MANUAL account switch. State: `~\.config\claude_quota_watch_state.json` |
 
 | `RiotCommander` | At logon | operator account / HIGHEST | **NOT RC infra - machine-local cruft, documented so the count reconciles.** A bare task at TaskPath `\` (no `RC-` prefix), running `pythonw.exe main.py` in `<repo>`. It carries a logon trigger, and while it was ENABLED that trigger started an unmanaged SECOND RC process on every logon which raced `RC-Supervisor` for `:8888` and lost - which is why it stayed invisible: it failed, RC worked, nothing surfaced. **Live re-probe 2026-09-15: `State=Disabled`, `NextRunTime` empty, `LastRunTime` 2026-09-06 19:50:50, `LastTaskResult=1` - so the trigger no longer fires and it starts nothing today.** (The superseded 2026-08-08 probe read `State=Ready`, LastRun 2026-08-05; the present-tense "starts a second process" wording belonged to that reading and was false by the time this row was next edited.) NO repo artifact creates it (`ops/install_startup.bat` makes a differently-named `RiotCommanderWatcher.lnk` shortcut - different mechanism, not this). Most likely hand-made before `RC-Supervisor` existed. **Deleting it is a system-settings change and is OPERATOR territory - no headless lane may remove it.** Before deleting, confirm it is not load-bearing: stop it, log out and back in, and confirm `ops/runtime/health.json` still reports a live pid |
+
+**Moved to the app - the launcher cutover (applied 2026-10-31, s146).** `tools/launcher_cutover.ps1 -Apply`
+UNREGISTERED `RC-Supervisor`, `RC-LCUAgent`, `RC-LiveClientRelay`, `RC-HotkeyListener`,
+`RC-Phase3-Supervisor` and `RC-DaemonSlayer` (`RC-DSKeepalive` was never registered); their XML backup
+is in gitignored `ops\runtime\launcher_cutover\cutover-<stamp>\` (section "Launcher cutover" below). The
+rc-shell service host (`ops/launcher/service_host.py`, manifest `ops/launcher/services.json`) now runs
+the supervisor (-> `main.py` -> vision :8889 and DS :8860 through RC's own watchdogs),
+`tools/lcu_agent.py`, `tools/liveclient_relay.py`, `tools/hotkey_listener.py` and, dev profile only,
+`agents.supervisor`, all in one job object; live state in `ops/runtime/launcher_status.json`. **No
+autostart, by design** (`docs/PACKAGING_PLAN.md` 3.2): after a Windows restart nothing RC runs until the
+operator launches rc-shell with `--profile dev` (`node_modules\electron\dist\electron.exe . --profile dev`
+from `rc-shell`), and quitting the app stops all of it. Post-restart check:
+`powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools\launcher_cutover.ps1` (no switch) exits 0
+with no listener on 8888 / 8889 / 8860 and all seven tasks not registered. `tools/rc_facts.py` reads the
+seven as absent-as-expected (`LAUNCHER_OWNED_TASKS`), flags any that is registered again (a second
+starter beside the host), prints the shell host line, and reports RC down as by-design while no host and
+no app task is up. Per-service restarts: "Restart RC" above. Never re-run `tools/install_daemon_slayer_task.ps1`,
+`tools/install_ds_keepalive_task.ps1` or `ops/phase3_install.ps1` - each re-registers a task the host
+now replaces.
 
 **Why three headless-claude tasks are Disabled - this is INTENT, not a defect.**
 `RC-CIWatchdog`, `RC-WeeklyHygiene` and `RC-InboxResponder` were all disabled by
@@ -306,10 +330,11 @@ every tick terminate `disarmed/no_agreement`).
 Re-probed live 2026-09-30: `ops/loop/control/STOP` present with the content
 quoted above, and `Get-ScheduledTask` reports State `Disabled` for all three.
 
-Live task count is **27**: 26 `RC-*` plus the bare `RiotCommander` above.
-`RC-InboxResponder` is install-on-demand and used to be excluded from this
-count; it IS registered now (State `Disabled`, measured 2026-09-15) and IS
-counted here, so removing it takes the count back to 26.
+Live task count is **21**: 20 `RC-*` plus the bare `RiotCommander` above
+(measured 2026-10-31 after the launcher cutover unregistered six `RC-*`; it
+was 27). `RC-InboxResponder` is install-on-demand and used to be excluded
+from this count; it IS registered and IS counted here, so removing it takes
+the count to 20.
 
 Check state (the `RC-*` glob alone MISSES `RiotCommander`, which is exactly how it went undocumented for so long - and note the name: the bare task was NEVER renamed by the product rename, so a filter spelled `Amberstone` matches nothing and silently returns the `RC-*` count alone):
 
@@ -370,9 +395,13 @@ Steps (run from the repo root; Windows PowerShell 5.1 or pwsh):
    password is reported for a hand import (Task Scheduler, Import Task). None of the seven needs
    one today (measured 2026-10-26: Interactive, S4U and ServiceAccount logons).
 6. Record, in the same commit as the cutover record: this table, its live count and the
-   `tools/rc_facts.py` expectations (plan section 5 step 5). After the cutover
-   `tools/legion_on.ps1` / `tools/legion_off.ps1` report the moved tasks as MISSING; start and
-   stop RC through the app instead.
+   `tools/rc_facts.py` expectations (plan section 5 step 5). DONE (A45d, s146): stage 1 ran
+   2026-10-31 18:07 (`-Apply` exit 0, backup `cutover-20261031-180724`, every task read back
+   gone); the table above, its count (21) and rc_facts were updated in the record commit. Stage
+   2 (the Windows restart proof) is the operator's next step. After the cutover
+   `tools/legion_on.ps1` / `tools/legion_off.ps1` report the moved tasks as MISSING and are not
+   yet reworked for the app (legion_on launches rc-shell with NO profile, so it starts no
+   service); start and stop RC through the app instead.
 
 The script never ships in a packaged build (`tools/build_portable.py`, operator-only task
 driver). Guard: `tests/test_launcher_cutover_ps1.py` (static gate checks everywhere; the 5.1
@@ -407,7 +436,8 @@ The shell runs ONE windowless child per cycle and acts on its one JSON line; not
   `RC_BACKEND_UPDATES=1` (a linked checkout is refused anyway: it updates through git +
   hot_reload). A NEW cycle and every restart wait for a fresh, idle `/api/state` (no live game
   signal and an LCU phase of none / Lobby: champ select, queue, loading and post-game are busy)
-  and a host in owned mode (attach mode = the scheduled tasks own the services). `resume` runs 30 s
+  and a host in owned mode (attach mode = something outside the host owns the services: the
+  pre-cutover task processes, or a manual start). `resume` runs 30 s
   after launch and every minute while a verify / pending / recovering record exists, whatever the
   state. A quit while a deploy runs waits for it (host 150 s, shell 165 s) instead of ending the
   job mid-copy.
@@ -420,8 +450,8 @@ The shell runs ONE windowless child per cycle and acts on its one JSON line; not
   `ops/runtime/launcher_status.json`. Then `resume --restarts-sent` checks every named service
   came back on a NEW process and stayed up 30 s with main.py ready; otherwise it recovers (offline,
   restoring the backup itself, when no supervisor runs; deferred while a game is live). A service
-  the host does not own (outcome refused:not-in-job / open-failed, e.g. DS from the
-  RC-DaemonSlayer task) is skipped, never a failure; the result is then `applied-unrestarted` and
+  the host does not own (outcome refused:not-in-job / open-failed, e.g. a DS started outside the
+  host's job, as the pre-cutover RC-DaemonSlayer task did) is skipped, never a failure; the result is then `applied-unrestarted` and
   the Shell menu names the service and says to restart it (or reboot); the notice is kept in
   `update_cycle.json` until that service is seen on a new process. `not-running` /
   `not-configured` raise no notice. A deploy that failed while the host was stopping

@@ -8,7 +8,9 @@ memory entries.
 
 Probes (measured ~0.6 s total on Legion 2026-10-22; capped at PROBE_BUDGET_S):
   - Legion: health.json (pid, alive, mode, rc_version), listener ports
-    8888/8889, RC scheduled tasks state, last boot.
+    8888/8889, RC scheduled tasks state, last boot, and the rc-shell service
+    host (ops/runtime/launcher_status.json) that owns the RC services since
+    the 2026-10-31 launcher cutover (docs/PACKAGING_PLAN.md section 5).
   - Legion-local agents: /api/state's lcu block freshness (proves the
     relocated LCU agent is posting) + the Live Client relay age.
   - Anomaly summary: anything unexpected, listed first.
@@ -329,6 +331,28 @@ LONG_LIVED_SERVICE_TASKS = frozenset({
     # MAIN PROXY-1 (2026-10-11): launcher waits on the proxy relaunch loop by design.
     "RC-TeamClaudeProxy",
 })
+
+# A45d: the ONLOGON-to-launcher cutover (docs/PACKAGING_PLAN.md section 5;
+# tools/launcher_cutover.ps1 -Apply, 2026-10-31) UNREGISTERED these, and the
+# rc-shell service host (ops/launcher/service_host.py) owns their services
+# now. ABSENT is the expected state and reads as such. A REGISTERED one is
+# the anomaly whatever its state: a live one is a second starter beside the
+# host (two LCU agents, two hotkey listeners), and a disabled RC-DaemonSlayer
+# makes DsWatchdog raise instead of starting DS (plan S9). Exactly the
+# script's $CoreTasks (pinned by tests/test_rc_facts_launcher_cutover_a45d.py);
+# a deliberate -Rollback empties this set in the same commit that records it.
+# The names stay in LONG_LIVED_SERVICE_TASKS so classify_task_result still
+# grades them for a direct caller; task_health_lines never reaches it.
+LAUNCHER_OWNED_TASKS = frozenset({
+    "RC-Supervisor",
+    "RC-LCUAgent",
+    "RC-LiveClientRelay",
+    "RC-HotkeyListener",
+    "RC-Phase3-Supervisor",
+    "RC-DaemonSlayer",
+    "RC-DSKeepalive",
+})
+LAUNCHER_CUTOVER_DATE = "2026-10-31"
 
 # A service whose RUNNING instance started this long ago is wedged, not
 # serving. Deliberately generous: this box has seen multi-week uptime, and a
@@ -969,6 +993,23 @@ def task_health_lines(
         disabled = state_s == "Disabled"
         since = _age_phrase(last_run_age)
 
+        if name in LAUNCHER_OWNED_TASKS:
+            # A45d: registered again after the cutover. Not graded further:
+            # whatever its state, the registration itself is the finding.
+            detail_lines.append(
+                f"  - {name}: REGISTERED after the {LAUNCHER_CUTOVER_DATE} launcher "
+                f"cutover state={state_s}, last run {since}"
+            )
+            anomalies.append(
+                f"Legion: scheduled task {name} is registered again (state={state_s}) "
+                f"after the {LAUNCHER_CUTOVER_DATE} launcher cutover - the rc-shell "
+                "shell host owns this service now, so the task is a second starter; "
+                "re-run tools/launcher_cutover.ps1 -Apply, or record a deliberate "
+                "-Rollback by emptying LAUNCHER_OWNED_TASKS in tools/rc_facts.py"
+            )
+            root_caused.add(name)
+            continue
+
         if name in DISARM_REQUIRED_TASKS:
             # Polarity inverted: Disabled is correct, armed is the finding.
             if disabled:
@@ -1060,6 +1101,11 @@ def task_health_lines(
         )
 
     head = f"- Scheduled tasks ({len(rows)} RC-*): {len(anomalies)} anomaly(s)"
+    n_moved = len(LAUNCHER_OWNED_TASKS - seen)
+    if n_moved:
+        # A45d: ONE clause for the expected-absent set, never a roll call.
+        head += (f", {n_moved} moved to the shell host (absent as expected since "
+                 f"the {LAUNCHER_CUTOVER_DATE} cutover)")
     n_armed = sum(1 for ln in ack_lines if ": ARMED by agreement" in ln)
     if len(ack_lines) - n_armed:
         head += f", {len(ack_lines) - n_armed} acknowledged disarm(s)"
@@ -1112,13 +1158,21 @@ def _lcu_phase_label(lcu: dict) -> str:
     return "-(phase-read-failed)" if lcu.get("lcu_port") else "-(client-closed)"
 
 
-def ds_keepalive_hold_anomalies(root: Path) -> list[str]:
+def ds_keepalive_hold_anomalies(root: Path, tasks: list[dict] | None = None) -> list[str]:
     """One anomaly while ops/runtime/DS_KEEPALIVE_STOP holds RC-DSKeepalive.
 
     legion_off.ps1 writes the flag and legion_on.ps1 removes it; it has no
     expiry, so after an off without an on the keepalive idles for good and a
     crashed or wedged DS stays down whenever RC is down (RM-750).
+
+    A45d: the flag holds nothing when the task probe MEASURED no
+    RC-DSKeepalive (never registered on Legion; launcher-owned since the
+    cutover), so it is not an anomaly then. An unmeasured probe (None) keeps
+    the anomaly: unknown is never read as safe.
     """
+    if isinstance(tasks, list) and not any(
+            isinstance(t, dict) and t.get("name") == "RC-DSKeepalive" for t in tasks):
+        return []
     try:
         held = (Path(root) / "ops" / "runtime" / "DS_KEEPALIVE_STOP").exists()
     except OSError:
@@ -1127,6 +1181,144 @@ def ds_keepalive_hold_anomalies(root: Path) -> list[str]:
         return []
     return ["Legion: DS keepalive HELD by ops/runtime/DS_KEEPALIVE_STOP - no DS "
             "restarter while RC is down (run tools/legion_on.ps1 or delete the flag)"]
+
+
+# ---------------------------------------------------------------------------
+# The rc-shell service host (A45d, docs/PACKAGING_PLAN.md sections 3.1 + 5).
+#
+# Since the 2026-10-31 cutover NO task starts RC: rc-shell launched with
+# --profile dev spawns ops/launcher/service_host.py, which runs the frozen
+# supervisor (-> main.py -> vision + DS through RC's own watchdogs), the LCU
+# agent, the Live Client relay, the hotkey listener and (dev) Phase 3 inside
+# one job object. Quitting the app stops all of it, and nothing starts it at
+# boot or logon, so "RC down" is the correct state whenever the app is not
+# running. The host's status file is the one place that says which it is.
+
+LAUNCHER_STATUS_REL = Path("ops") / "runtime" / "launcher_status.json"
+# The host rewrites the file at least every 5 s (service_host.py
+# STATUS_HEARTBEAT_S); the shell calls it stale past 30 s
+# (rc-shell/src/service_status.js DEFAULT_STALE_AFTER_MS). Same window here.
+LAUNCHER_STATUS_STALE_S = 30.0
+LAUNCHER_STATUS_SKEW_S = 120.0
+LAUNCH_HINT = "launch the app: electron.exe . --profile dev from rc-shell"
+
+HOST_LIVE = "live"
+HOST_DOWN = "down"
+HOST_CRASHED = "crashed"
+HOST_UNKNOWN = "unknown"
+
+_HOST_BAD_SERVICE_STATES = ("failed", "blocked", "stale")
+
+
+def _ascii_field(value, cap: int = 120) -> str:
+    """A status-file value as bounded printable ASCII (the file is data)."""
+    text = "-" if value is None else str(value)
+    text = "".join(ch if 32 <= ord(ch) < 127 else "?" for ch in text)
+    return text[:cap]
+
+
+def read_launcher_status(root) -> tuple[dict | None, str | None]:
+    """(doc, None) | (None, None) when there is no file | (None, error name).
+
+    NEVER RAISES. No file = the app was never launched on this checkout.
+    """
+    path = Path(root) / LAUNCHER_STATUS_REL
+    try:
+        raw = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return None, None
+    except OSError as exc:
+        return None, type(exc).__name__
+    try:
+        doc = json.loads(raw)
+    except ValueError as exc:
+        return None, type(exc).__name__
+    if not isinstance(doc, dict):
+        return None, "not a JSON object"
+    return doc, None
+
+
+def _host_services(doc: dict) -> list[dict]:
+    raw = doc.get("services")
+    if isinstance(raw, dict):   # the shell also accepts a name-keyed map
+        return [dict(v, name=k) for k, v in raw.items() if isinstance(v, dict)]
+    if isinstance(raw, list):
+        return [s for s in raw if isinstance(s, dict)]
+    return []
+
+
+def shell_host_lines(
+    doc: dict | None,
+    error: str | None = None,
+    *,
+    now: float,
+    last_boot_ts: float | None = None,
+) -> tuple[str, list[str], list[str]]:
+    """(HOST_LIVE | HOST_DOWN | HOST_CRASHED | HOST_UNKNOWN, lines, anomalies).
+
+    DOWN is by design and never an anomaly: no status file (never launched),
+    a clean quit (state halted), or a stale file older than the last boot.
+    CRASHED = stale since the last boot without ever writing halted. UNKNOWN
+    (unreadable file or stamp) is loud. LIVE grades the host and its services.
+    """
+    rel = LAUNCHER_STATUS_REL.as_posix()
+    if error is not None:
+        why = _ascii_field(error, 60)
+        return HOST_UNKNOWN, [f"- Shell host: {rel} unreadable ({why}) - UNMEASURED"], [
+            f"Legion: shell host status {rel} unreadable ({why}) - host state UNMEASURED"]
+    if doc is None:
+        return HOST_DOWN, [
+            f"- Shell host: never launched on this checkout (no {rel}); no autostart "
+            f"since the {LAUNCHER_CUTOVER_DATE} cutover - {LAUNCH_HINT}"], []
+
+    state = _ascii_field(doc.get("state") or "?", 20)
+    mode = _ascii_field(doc.get("mode"), 20)
+    reason = _ascii_field(doc.get("reason"), 80)
+    updated = _parse_ts(doc.get("updated"))
+    if updated is None:
+        return HOST_UNKNOWN, [f"- Shell host: {rel} has no readable 'updated' stamp - UNMEASURED"], [
+            f"Legion: shell host status {rel} has no readable 'updated' stamp - "
+            "host state UNMEASURED"]
+    age = now - updated
+    summary = (f"pid={_ascii_field(doc.get('host_pid'), 12)} mode={mode} state={state} "
+               f"profile={_ascii_field(doc.get('profile'), 20)}, status {age:.0f}s old")
+
+    if state == "halted":
+        return HOST_DOWN, [
+            f"- Shell host: stopped by a clean quit (reason={reason}; {summary}) - "
+            f"{LAUNCH_HINT}"], []
+    if not -LAUNCHER_STATUS_SKEW_S <= age <= LAUNCHER_STATUS_STALE_S:
+        if last_boot_ts is not None and updated < last_boot_ts:
+            return HOST_DOWN, [
+                f"- Shell host: not launched since the last boot (last status is from "
+                f"before it: {summary}) - {LAUNCH_HINT}"], []
+        return HOST_CRASHED, [f"- Shell host: GONE without a clean quit ({summary})"], [
+            f"Legion: shell host status stale ({summary}) - the host stopped without "
+            f"a clean quit; relaunch the app ({LAUNCH_HINT})"]
+
+    lines = [f"- Shell host: {summary}"]
+    anomalies: list[str] = []
+    bits = []
+    for svc in _host_services(doc):
+        name = _ascii_field(svc.get("name") or "?", 40)
+        sstate = _ascii_field(svc.get("state") or "?", 20)
+        pid = svc.get("pid")
+        bits.append(f"{name}={sstate}" + (f"({_ascii_field(pid, 12)})" if pid else ""))
+        if mode == "owned" and sstate in _HOST_BAD_SERVICE_STATES:
+            anomalies.append(
+                f"Legion: shell host service {name} {sstate.upper()} - "
+                f"{_ascii_field(svc.get('last_error') or 'no error recorded')}")
+    if bits:
+        lines.append("  - services: " + " ".join(bits))
+    if mode == "attach":
+        lines.append("  - attach mode: the host owns nothing - RC was already up outside "
+                     "it (the pre-cutover task processes until the next restart, or a "
+                     "manual start)")
+    if mode == "blocked" or state == "blocked":
+        anomalies.append(f"Legion: shell host BLOCKED - started nothing (reason={reason})")
+    elif state in ("failed", "stale") and not anomalies:
+        anomalies.append(f"Legion: shell host {state.upper()} (mode={mode}, reason={reason})")
+    return HOST_LIVE, lines, anomalies
 
 
 def main(session: str | None = None) -> int:
@@ -1152,10 +1344,14 @@ def main(session: str | None = None) -> int:
         f"- RC: pid={pid} alive={alive} mode={mode} version={rc_version} "
         f"last_reload_ok={last_reload_ok}"
     )
+    # A45d: the "RC is down" family is held here and graded once the shell
+    # host and the task list are known (see the decision after the agents).
+    rc_down: list[str] = []
     if not alive:
-        anomalies.append(f"Legion: RC not alive (pid={pid})")
+        rc_down.append(f"Legion: RC not alive (pid={pid})")
     if last_reload_ok is False:
         anomalies.append("Legion: last RC reload failed")
+    host_doc, host_err = read_launcher_status(_APP)
 
     # Every live probe, concurrently, under one deadline (MAIN 1254 #17). A
     # probe that did not finish is UNMEASURED: it raises no "down" anomaly of
@@ -1182,9 +1378,9 @@ def main(session: str | None = None) -> int:
     out.append(f"- Listeners: :8888 dashboard={_shown('port8888', p_dash)}  "
                f":8889 vision={_shown('port8889', p_vis)}")
     if "port8888" not in unmeasured and not p_dash:
-        anomalies.append("Legion: dashboard :8888 not listening")
+        rc_down.append("Legion: dashboard :8888 not listening")
     if "port8889" not in unmeasured and not p_vis:
-        anomalies.append("Legion: vision server :8889 not listening")
+        rc_down.append("Legion: vision server :8889 not listening")
 
     # Fetch /api/health/all once - used for DS health
     health_all = got.get("health_all") or {}
@@ -1199,8 +1395,9 @@ def main(session: str | None = None) -> int:
     # advance rather than only against its exit code.
     # An unmeasured task probe reaches task_health_lines as None, its own loud
     # "could not measure" path.
+    tasks = got.get("tasks")
     task_lines, task_anomalies = task_health_lines(
-        got.get("tasks"), root=_APP, now=time.time(), ds_alive=ds_alive
+        tasks, root=_APP, now=time.time(), ds_alive=ds_alive
     )
     out.extend(task_lines)
     anomalies.extend(task_anomalies)
@@ -1209,6 +1406,14 @@ def main(session: str | None = None) -> int:
     lb = got.get("last_boot")
     if lb:
         out.append(f"- Last boot: {lb}")
+
+    # A45d: the rc-shell service host that owns the RC services since the
+    # launcher cutover (the old app tasks are gone; see task_health_lines).
+    host, host_lines, host_anomalies = shell_host_lines(
+        host_doc, host_err, now=time.time(), last_boot_ts=_parse_ts(lb))
+    out.extend(host_lines)
+    anomalies.extend(host_anomalies)
+    host_note_at = len(out)
 
     # DS server health line (after tasks so it groups with the port listeners block)
     if ds_health:
@@ -1220,7 +1425,7 @@ def main(session: str | None = None) -> int:
 
     # RM-750: a forgotten DS keepalive hold (no expiry) silently leaves DS
     # without a restarter whenever RC is down.
-    anomalies.extend(ds_keepalive_hold_anomalies(_APP))
+    anomalies.extend(ds_keepalive_hold_anomalies(_APP, tasks))
 
     # -- Legion-local agents (relocated 2026-05-29, ADR-011) -------------
     out.append("\n## Legion-local agents (LCU + Live Client relay)\n")
@@ -1236,10 +1441,10 @@ def main(session: str | None = None) -> int:
     elif lcu_age is not None:
         out.append(f"- LCU agent: phase={lcu_phase} age={lcu_age}s")
         if lcu_age > 30:
-            anomalies.append(f"Legion: LCU agent stale ({lcu_age}s old)")
+            rc_down.append(f"Legion: LCU agent stale ({lcu_age}s old)")
     else:
         out.append("- LCU agent: NO RECENT POST")
-        anomalies.append("Legion: LCU agent not posting")
+        rc_down.append("Legion: LCU agent not posting")
 
     # Liveclient block from /api/state
     lc = state.get("liveclient") or {}
@@ -1251,6 +1456,30 @@ def main(session: str | None = None) -> int:
         out.append(f"- Liveclient relay: age={lc_age}s")
     else:
         out.append("- Liveclient relay: empty (no game in progress)")
+
+    # A45d: RC down is BY DESIGN when nothing is supposed to start it - no
+    # live shell host AND a measured task list with no launcher-owned task
+    # (no autostart since the cutover). Then the family is ONE line, every
+    # item kept verbatim. A live host, a registered app task, an unmeasured
+    # task probe or a crashed host keeps each item an anomaly.
+    rc_up = alive and bool(p_dash)
+    nothing_starts_rc = (
+        host == HOST_DOWN and isinstance(tasks, list)
+        and not any(isinstance(t, dict) and t.get("name") in LAUNCHER_OWNED_TASKS
+                    for t in tasks)
+    )
+    if rc_down and nothing_starts_rc and not rc_up:
+        out.insert(host_note_at, (
+            "- RC app: not running - expected, no autostart since the "
+            f"{LAUNCHER_CUTOVER_DATE} launcher cutover ({LAUNCH_HINT}). Down: "
+            + "; ".join(a.removeprefix("Legion: ") for a in rc_down)))
+    else:
+        anomalies.extend(rc_down)
+        if host == HOST_DOWN and p_dash:
+            out.insert(host_note_at, (
+                f"  - RC is up outside the shell host (pid={pid}): the pre-cutover "
+                "task processes until the next Windows restart, or a manual start - "
+                "nothing restarts its agents"))
 
     # -- Unread cross-repo inbox notes -----------------------------------
     #

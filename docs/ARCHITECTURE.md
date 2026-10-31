@@ -308,9 +308,9 @@ These run LEGION-LOCAL as ONLOGON scheduled tasks post-1-PC. The 2-PC-era
 
 | File | Status | Role |
 |---|---|---|
-| `lcu_agent.py` | RUNNING (RC-LCUAgent) | LCU auth + champ-select/lobby state + command drain; reads local lockfile |
-| `liveclient_relay.py` | RUNNING (RC-LiveClientRelay) | Live Client `:2999` -> `:8889/upload-liveclient`; the vision process reads `:2999` itself when stale + host local (item 267) |
-| `hotkey_listener.py` | RUNNING (RC-HotkeyListener) | In-game Ctrl+Shift hotkeys via a WH_KEYBOARD_LL low-level hook (observes, never swallows; RegisterHotKey was swallowed under League focus): 1/2 coach choice, A overlay ACTIVE, B panel cycle, K mark this moment (RM-638) |
+| `lcu_agent.py` | RUNNING (shell host service `lcu_agent`; the RC-LCUAgent task until the 2026-10-31 launcher cutover) | LCU auth + champ-select/lobby state + command drain; reads local lockfile |
+| `liveclient_relay.py` | RUNNING (shell host service `liveclient_relay`) | Live Client `:2999` -> `:8889/upload-liveclient`; the vision process reads `:2999` itself when stale + host local (item 267) |
+| `hotkey_listener.py` | RUNNING (shell host service `hotkey_listener`) | In-game Ctrl+Shift hotkeys via a WH_KEYBOARD_LL low-level hook (observes, never swallows; RegisterHotKey was swallowed under League focus): 1/2 coach choice, A overlay ACTIVE, B panel cycle, K mark this moment (RM-638) |
 | `screen_agent.py` | DISABLED (no task) | Continuous DXGI screen capture - retired in favor of the vision server's own self-grab (1-PC, ADR-011). Now non-integral: the frame relay self-grabs inside the vision process (single GDI BitBlt fallback, item 276). Deploy-allowlisted |
 | `phase_watcher.py` | DISABLED (no task) | LCU-phase DXGI capture - retired with the 1-PC consolidation (ADR-011). Patched item 209, has a test, deploy-allowlisted; kept as reference |
 | `keybind_listener.py` | OPTIONAL (unscheduled) | ADR-007 Alt+1/2/3 decision-respond keybinds; dashboard banner buttons are the live fallback. A working feature, not dead; safe to archive in a dedicated cleanup |

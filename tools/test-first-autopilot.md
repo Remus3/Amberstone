@@ -76,9 +76,10 @@ already have and proves it with derived tests before a line of impl exists.
   fully green.
 - Conventional commit naming the spec + ENGINE delta; push origin main.
   Confirm the pre-commit reports py_compile OK.
-- Verify live: `RC-DaemonSlayer` task is NOT supervisor-watched - restart it
-  (`schtasks /End /TN RC-DaemonSlayer` then `/Run`; hard fallback
-  `taskkill /F /PID <:8860 pid>` then `/Run`; never `Stop-Process`) and
+- Verify live: DS :8860 is NOT supervisor-watched - restart it
+  (`taskkill /F /PID <:8860 pid>`; RC's DsWatchdog relaunches it within
+  ~30 s, no `RC-DaemonSlayer` task since the 2026-10-31 launcher cutover;
+  never `Stop-Process`) and
   confirm `curl -sk http://127.0.0.1:8860/health` serves the new
   engine_version. If RC core changed: `echo restart > restart_trigger.txt`
   then verify `ops/runtime/health.json` (new pid, alive, last_reload_ok).
