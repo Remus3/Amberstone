@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 import unittest
 from unittest.mock import patch
 
@@ -111,8 +112,10 @@ class DegradedDbTests(unittest.TestCase):
         routes_ban_suggest._reset_caches()
 
     def test_db_failure_returns_503(self):
+        # Only a DB / filesystem failure is a 503 (s144 true-audit
+        # cycle 79); any other compute failure is a logged 500.
         with patch("dashboard.routes_ban_suggest._compute",
-                   side_effect=RuntimeError("db down")):
+                   side_effect=sqlite3.OperationalError("db down")):
             h = _Harness("ally=22&candidates=64")
             routes_ban_suggest._serve_ban_suggest(h)
         self.assertEqual(h.sent_status, 503)
