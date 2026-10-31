@@ -12,12 +12,15 @@ Proves the adaptive build PLANNER that sits ABOVE Daemon Slayer:
      dedupe-by-set + relative-threshold pruning both fire.
   3. The unique-passive no-double rule is INHERITED from the engine-supplied
      ``unique_passive_key`` on each seed row - no planner-side family map, no
-     family LITERAL anywhere in the source (an ast scan enforces this).
+     family LITERAL in the four planning modules (scoring, planner,
+     situational, replan; a source scan enforces this over every family the
+     engine defines).
   4. seed_fn=None yields a seedless (empty) plan, mirroring the
      ``core.build_order.plan_build_order`` None-contract.
-  5. build_planner imports NO ``agents.daemon_slayer`` symbol (the in-process
-     split-brain guard, mirrored from
-     tests/test_ds_preview_e2e_p1l21.py:191-205) - DS is reached only over the
+  5. No core/build_planner module imports an ``agents.daemon_slayer`` symbol
+     (the in-process split-brain guard, mirrored from
+     ``TestNoEngineSplitBrain.test_routes_state_has_no_in_process_engine_import``
+     in tests/test_ds_preview_e2e_p1l21.py) - DS is reached only over the
      injectable HTTP-boundary seed_fn.
 
 No live HTTP - ``seed_fn`` is injected with a deterministic fake that returns
@@ -49,9 +52,11 @@ _ROOT = Path(__file__).resolve().parent.parent
 # Fake seed_fn - mirrors the {ranked[], order[]} shape from
 # dashboard/routes_state.py (/api/ds-preview + /api/build-order). Each ranked
 # row carries the FULL RankedItem fields the in-process ranker emits
-# (rank.py:244-303) so the planner can exercise unique_passive_key inheritance;
-# the projection at routes_state.py:592-597 drops some of these, so a second
-# fake below returns the THIN projected shape to prove the planner tolerates it.
+# (``RankedItem`` in agents/daemon_slayer/rank.py) so the planner can exercise
+# unique_passive_key inheritance; the row projection in
+# ``_serve_ds_preview_post`` (dashboard/routes_state.py) drops some of these,
+# so a second fake below returns the THIN projected shape to prove the planner
+# tolerates it.
 # --------------------------------------------------------------------------- #
 # id: (name, delta_dps, gold, unique_passive_key, is_terminal)
 _FAKE_CATALOG: dict[str, tuple[str, float, int, str, bool]] = {
@@ -294,12 +299,39 @@ class StructuralGuardTests(unittest.TestCase):
         _ROOT / "core" / "build_planner" / "situational.py",
         _ROOT / "core" / "build_planner" / "replan.py",
     )
+    # Hand-typed when the scan had seven names; kept as a floor so a broken
+    # engine import can never shrink the ban below what shipped.
+    _FAMILY_FLOOR = (
+        "spellblade", "lifeline", "immolate", "hydra_cleave",
+        "fiendhunter_barrage", "hellfire_char", "innervating_fill",
+    )
+
+    @staticmethod
+    def _engine_families() -> frozenset[str]:
+        # The family set is the engine's: the distinct non-empty
+        # unique_passive_key values over ITEM_EFFECTS (the same derivation as
+        # tests/test_unique_passive_family_count_s144d36.py). The TEST imports
+        # the engine; the planner sources it scans must not.
+        from agents.daemon_slayer.effects import ITEM_EFFECTS
+        return frozenset(
+            k for k in (getattr(e, "unique_passive_key", "")
+                        for e in ITEM_EFFECTS.values()) if k)
+
+    def _banned_families(self) -> tuple[str, ...]:
+        return tuple(sorted(set(self._FAMILY_FLOOR) | self._engine_families()))
 
     def test_no_in_process_engine_import(self):
-        # Mirrors tests/test_ds_preview_e2e_p1l21.py:191-205 - build_planner
-        # must reach DS only over the injectable HTTP-boundary seed_fn, never
-        # by importing the in-process engine.
-        for src_path in self._SOURCES:
+        # Mirrors
+        # TestNoEngineSplitBrain.test_routes_state_has_no_in_process_engine_import
+        # in tests/test_ds_preview_e2e_p1l21.py - build_planner must reach DS
+        # only over the injectable HTTP-boundary seed_fn, never by importing
+        # the in-process engine. Every module of the package, not only the
+        # four planning modules: an engine import in a helper module is the
+        # same split-brain.
+        sources = sorted((_ROOT / "core" / "build_planner").glob("*.py"))
+        self.assertGreaterEqual(len(sources), len(self._SOURCES))
+        self.assertTrue(set(self._SOURCES) <= set(sources))
+        for src_path in sources:
             tree = ast.parse(src_path.read_text(encoding="utf-8"))
             offenders: list[str] = []
             for node in ast.walk(tree):
@@ -316,14 +348,15 @@ class StructuralGuardTests(unittest.TestCase):
                 "- build_planner must use the seed_fn HTTP boundary.")
 
     def test_no_unique_family_literal_in_source(self):
-        # The no-double rule is engine-authoritative (core/build_order.py:34-48,
-        # 6 families). The planner must INHERIT unique_passive_key from seed
-        # rows, never hardcode a family name - a guard against the s173
-        # anti-drift trap.
-        banned = (
-            "spellblade", "lifeline", "immolate", "hydra_cleave",
-            "fiendhunter_barrage", "hellfire_char", "innervating_fill",
-        )
+        # The no-double rule is engine-authoritative (the "No-double rule is
+        # engine-authoritative" paragraph of the core/build_order.py module
+        # docstring; the family count is re-derived by
+        # tests/test_unique_passive_family_count_s144d36.py). The planner must
+        # INHERIT unique_passive_key from seed rows, never hardcode a family
+        # name - a guard against the s173 anti-drift trap. The ban is every
+        # family the engine defines, so a new family is banned the day it
+        # lands.
+        banned = self._banned_families()
         for src_path in self._SOURCES:
             src = src_path.read_text(encoding="utf-8").lower()
             for fam in banned:
@@ -331,6 +364,15 @@ class StructuralGuardTests(unittest.TestCase):
                     fam, src,
                     f"{src_path.name} contains family literal {fam!r} - "
                     "inherit unique_passive_key from the seed instead.")
+
+    def test_family_ban_covers_every_engine_family(self):
+        # The hand-typed ban had seven names while the engine had nine
+        # (last_whisper and void_pen were never scanned for).
+        engine = self._engine_families()
+        self.assertGreaterEqual(len(engine), 6)
+        self.assertTrue(set(self._FAMILY_FLOOR) <= engine,
+                        sorted(set(self._FAMILY_FLOOR) - engine))
+        self.assertTrue(engine <= set(self._banned_families()))
 
 
 if __name__ == "__main__":

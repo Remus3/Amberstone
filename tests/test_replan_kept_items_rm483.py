@@ -1,19 +1,22 @@
 """RM-483 residue: ``ReplanLoop.tick`` honours the operator's KEPT items.
 
-``plan_build(forced_item_ids=...)`` (core/build_planner/planner.py:236-248,
-normalized by ``_resolve_forced`` :189-222) already plans AROUND a locked item
+``plan_build(forced_item_ids=...)`` (core/build_planner/planner.py,
+normalized by ``_resolve_forced``) already plans AROUND a locked item
 the player does not own yet. Before this fix ``ReplanLoop.tick`` called
-``plan_build`` without it (core/build_planner/replan.py:605-607 at a18bdb66a),
-and the override store's keep flag (``ItemOverrideStore.is_kept`` :298-300)
-was read only for the current incumbent, so a kept item outside the beam's
-plan never entered ``plan_tail``.
+``plan_build`` without it (its "re-plan the remaining build" call in
+core/build_planner/replan.py at a18bdb66a), and the override store's keep
+flag (``ItemOverrideStore.is_kept``) was read only for the current
+incumbent, so a kept item outside the beam's plan never entered
+``plan_tail``.
 
 The forced-item semantics are plan_build's, not re-implemented here: caller
 order is priority, owned ids are already satisfied, an id outside the
 candidate pool is noted and never invented, and a second forced id in an
 already-forced unique family is dropped. The owned-family conflict is the
 engine's: DS filters a candidate whose ``unique_passive_key`` an owned item
-already holds (``filter_shared_uniques``, core/build_order.py:34-48), so that
+already holds (``filter_shared_uniques``, the "No-double rule is
+engine-authoritative" paragraph of the core/build_order.py module
+docstring), so that
 kept id is out of the pool and plan_build notes it.
 
 Family names below are neutral test tokens - the no-family-literal guard

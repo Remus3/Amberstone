@@ -2,16 +2,19 @@
 2026-08-02).
 
 Measured finding: 765 of 823 WARNING lines (93.0 pct) in logs/2026-08-02.log
-came from ONE call site, routes_ds_relscore.py:253, rendering
+came from ONE call site, the ``log.warning("api/ds-relscore compute: %s",
+exc)`` in ``_serve_ds_relscore`` (dashboard/routes_ds_relscore.py), rendering
 "current_item_ids has {6,7} items; slot_count=6 leaves no room for a new item".
 
 Two distinct defects sit underneath that one message, and they pull in
 opposite directions - which is why the log level alone was NOT the fix:
 
-  1. REAL BUG (s156 class, documented core/daemon_slayer_resolver.py:144-151).
+  1. REAL BUG (s156 class, documented in the comment above
+     ``_NON_INVENTORY_BASE_IDS`` in core/daemon_slayer_resolver.py).
      The caller feeds the raw Live-Client inventory, which serializes the
-     trinket and consumables inline with shop items (dashboard/_liveclient.py:191
-     applies no filter). So 5 real items + a trinket counted as 6 and the route
+     trinket and consumables inline with shop items (the ``owned_item_ids``
+     list in ``dashboard._liveclient.liveclient_summary`` applied no filter
+     then). So 5 real items + a trinket counted as 6 and the route
      refused to rank - going dark in exactly the slot where last-item advice
      matters most. The 7-item variant in the log is the same cause with a full
      build. Demoting the log without fixing this would have BURIED the bug.

@@ -56,7 +56,8 @@ def require_shipped_table(path: Path, label: str) -> Path:
     tables - schema version, comp-archetype taxonomy, per-champion completeness,
     canonical-vs-display keyspace, the anti-tank pivot, ASCII hygiene - were all
     written as `if not load_...(): self.skipTest(...)`. That loader is fail-soft
-    to `{}` on ANY missing-or-parse error (core/build_order_precompute.py:472),
+    to `{}` on ANY missing-or-parse error (`load_build_order_precompute` in
+    core/build_order_precompute.py),
     so at the skip site an absent table and a CORRUPT one are the same value.
     Both reported green, and they reported green at exactly the moment the
     guards matter - a patch bump, when the table is regenerated. The tables feed

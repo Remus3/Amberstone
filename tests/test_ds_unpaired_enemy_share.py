@@ -2,8 +2,9 @@
 
 `core.daemon_slayer_client` exposes five ranking entry points that each default
 BOTH ``enemy_ad_share`` and ``enemy_ap_share`` to 0.5 independently. The engine
-requires the pair to sum to <= 1.0 (documented at
-``daemon_slayer_client.py:279``), so a caller that supplies only the side it
+requires the pair to sum to <= 1.0 (documented in the ``rank_tank_for``
+docstring and in ``_resolve_enemy_shares``, core/daemon_slayer_client.py),
+so a caller that supplies only the side it
 actually knows ships 0.77 + 0.5 = 1.27, the server rejects the body, and
 ``_post_json`` maps that to None. The caller sees "engine unreachable" and
 renders NO recommendation at all - a silent, total failure from a perfectly

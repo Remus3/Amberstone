@@ -141,7 +141,8 @@ class RelScoreMathTests(_Base):
         for r in rows:
             expect = round(float(r["delta_dps"]) / top * 100.0, 1)
             # The route computes score_pct from the UNROUNDED delta_dps
-            # (routes_ds_relscore.py:195) but stores delta_dps rounded to 1dp;
+            # (``_compute`` in dashboard/routes_ds_relscore.py) but stores
+            # delta_dps rounded to 1dp;
             # this recompute uses the rounded stored numerator AND denominator,
             # so the two paths can diverge by up to ~0.2 (independent 1dp
             # rounding of numerator, denominator, and the final percent), and a
