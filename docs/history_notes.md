@@ -41,6 +41,19 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-27 - session 143: PKG-6b built + verified but NOT merged (2 plausible highs, carried as PKG-6c), CLI re-pinned, memory split reconciled, Dependabot #28 declined; PUSHED
+
+- **Operator:** away all session ("Headless - Operator Is Away"); no steers or intents. Decisions self-adjudicated and recorded in LEDGER 1934 / 1936 / 1937.
+- **S1 (LEDGER 1933):** start checks clean; CLI pin `bc799b46a` (2.1.310 -> 2.1.311); Dependabot 0 open alerts, rc-shell npm audit 0.
+- **PKG-6b (LEDGER 1934):** branch `worktree-agent-ade3dd10ba7a548d1` tip `9819e60e7`, 6 commits, 5 review rounds; V6a PASS (smoke 60/60 over a real build); V6b found 2 plausible highs (H-A recover with no game gate, H-B readiness never reads /api/state), so by the adjudicated rule it is NOT merged.
+- **H1 (LEDGER 1935):** 21 memories reconciled; 11 landed branches deleted; ROADMAP 73169 -> 70220 B (`fbe3fb7ef`).
+- **A1 (LEDGER 1936):** PR #28 (anthropic 2.3.0) declined `a5c8d94ff`; the 2.x migration is row ANTHROPIC-2X, gated on RM-681.
+- **/done (LEDGER 1937):** pushed `e13219044..a5c8d94ff`; one full-suite dispatch ci 40456618221; board NON-final (P1 / V1 carried).
+- **Do NOT redo:** the S1 / H1 / A1 landings; PKG-6b's 5 review rounds (fix only H-A / H-B / J3 on top of `9819e60e7`).
+- **Next:** PKG-6c (ROADMAP row): fix H-A + H-B + the J3 guard in that worktree, verify, land by cherry-pick through fleet_gitlock; then the operator batch (ASKS 45, 39, 49).
+
+---
+
 # 2026-10-26d - session 142: PKG-6 (autonomous half) + PKG-7 (built, never run) landed, SF1 fixed, Dependabot #25 / #26 path B, js-yaml audit cleared; PUSHED
 
 - **Operator:** away; no steers or intents. Every landing was verifier-gated first, then landed by a separate agent.

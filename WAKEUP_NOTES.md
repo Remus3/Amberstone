@@ -6,6 +6,19 @@
 
 ---
 
+# 2026-10-31c - session 146: push CI reds fixed forward, CI step limits raised, CLI re-pinned 2.1.316, rulings 40-44 / 48 / 51 self-adjudicated, ASKS 50 / 52 done, launcher cutover APPLIED (Windows restart owed); PUSHED
+
+- **Operator (chat):** "self-adjudicate" (rulings), "yes if not needed" (ASKS 50), approved the RM-1223 frozen comment (ASKS 52), ordered the headless budget reset, re-logged the proxy's pinned account at 17:24; typed /done.
+- **N1 / C2 / C3 (LEDGER 1988 / 1989):** the 6 Linux-only push reds were test-side (4 commits); the full dispatch 41231173460 died at the 75-min step limit at 97 percent, so the full-suite step is 110 min / job 125 min and `DEFAULT_CI_WAIT_S` 7800.
+- **H1 / P6 / N2 (LEDGER 1990 / 1991):** budget 102 -> 0 (archive, backup); the "Pinned account is unavailable" 429 was the proxy's pinned second account with an expired OAuth refresh token (invalid_grant), not a usage limit; PINNED_CLI 2.1.314 -> 2.1.316, canary 4/4.
+- **ASKS 50 / 52 / rulings (LEDGER 1992-1995):** 12 local branches deleted (manifest `ops/runtime/branch_delete_s146.txt`, PKG-7 kept); RM-1223 comment `98e235a23`; rulings in `docs/_archive/2026-10/s146_rulings_40-51.md`; websockets 17.3 live.
+- **ASKS 45 / A45b-d (LEDGER 1996 / 1998):** packaged app + `npm ci` passed; the launcher picks the canonical Python, refuses a stale embed; cutover -Apply exit 0 at 18:07 (6 tasks gone), recorded in `4bf8f2227`, V3 PASS.
+- **/done (LEDGER 1999):** RM-750 live half SUPERSEDED (relocated); RM-1229..RM-1233 filed; pushed `baa0af524..12f2f3bb1` (25 commits, push ci mode=full = the full-suite cover).
+- **Do NOT redo:** the cutover apply (all 7 task names read back absent), the CLI re-pin, the budget reset, the rulings, ASKS 50 / 52, the websockets update.
+- **Next:** the operator restarts Windows, then the cutover re-run with no switch and the `--profile dev` shell launch read-back; land the rotator's lane commits (12 at /done, counted with `git cherry`).
+
+---
+
 # 2026-10-31b - session 145: docs-guards red fixed, L7 landed all 96 s144 lane commits (RM-1152..RM-1224), CodeQL 67-83 triaged and fixed / dismissed, RM-1222 + RM-1161 + RM-928 (a) shipped, inbox agreement renewed; PUSHED after a sweep fold
 
 - **Operator (chat):** "self-adjudicate them" for ASKS 31 and the CodeQL false-positive dismissals; typed /done.
@@ -32,16 +45,3 @@
 - **/done (LEDGER 1974):** pushed `a5c8d94ff..fc123ec87` (580 commits; push ci mode=full); reap removed the PKG-6b worktree; board rendered final.
 - **Do NOT redo:** L0-L6 (markers in `ops/loop/control/lanes/`), PKG-6b / PKG-6c, kit v25, alert 66, the G2 note.
 - **Next:** fix the docs-guards red on the push (the widened selector picks modules needing json5 / anthropic / portalocker, which that job does not install); then L7 - land `main..lane/<name>` (96 commits at /done) the L6 way and advance the S144_LANDED markers.
-
----
-
-# 2026-10-27 - session 143: PKG-6b built + verified but NOT merged (2 plausible highs, carried as PKG-6c), CLI re-pinned, memory split reconciled, Dependabot #28 declined; PUSHED
-
-- **Operator:** away all session ("Headless - Operator Is Away"); no steers or intents. Decisions self-adjudicated and recorded in LEDGER 1934 / 1936 / 1937.
-- **S1 (LEDGER 1933):** start checks clean; CLI pin `bc799b46a` (2.1.310 -> 2.1.311); Dependabot 0 open alerts, rc-shell npm audit 0.
-- **PKG-6b (LEDGER 1934):** branch `worktree-agent-ade3dd10ba7a548d1` tip `9819e60e7`, 6 commits, 5 review rounds; V6a PASS (smoke 60/60 over a real build); V6b found 2 plausible highs (H-A recover with no game gate, H-B readiness never reads /api/state), so by the adjudicated rule it is NOT merged.
-- **H1 (LEDGER 1935):** 21 memories reconciled; 11 landed branches deleted; ROADMAP 73169 -> 70220 B (`fbe3fb7ef`).
-- **A1 (LEDGER 1936):** PR #28 (anthropic 2.3.0) declined `a5c8d94ff`; the 2.x migration is row ANTHROPIC-2X, gated on RM-681.
-- **/done (LEDGER 1937):** pushed `e13219044..a5c8d94ff`; one full-suite dispatch ci 40456618221; board NON-final (P1 / V1 carried).
-- **Do NOT redo:** the S1 / H1 / A1 landings; PKG-6b's 5 review rounds (fix only H-A / H-B / J3 on top of `9819e60e7`).
-- **Next:** PKG-6c (ROADMAP row): fix H-A + H-B + the J3 guard in that worktree, verify, land by cherry-pick through fleet_gitlock; then the operator batch (ASKS 45, 39, 49).
