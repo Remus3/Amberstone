@@ -1226,6 +1226,52 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
 - **G2-36** (was B1) Build-chooser pushes correct runes/items/spells MID-GAME to LCU (3-variant +
   Experimental row). RENDER + generic-build path confirmed 2026-07-04 (Zilean support); the mid-game
   LCU PUSH LOG LINE is still owed - no push line captured in any drain. SOURCE: LEDGER 779.
+  **READY (lane 9 PREP s144 cycle 41, source read at `946280252`; NOT a tick).** Four measured facts
+  shape the check. (1) The mid-game push is ITEMS ONLY by design, so "runes/items/spells MID-GAME"
+  overstates the row: the in-game switcher (`web/js/panels/item_build.js` `_ibMaybeRenderBuilds` ->
+  row click `_ibOnRowClick` -> `_ibPushItems`) POSTs `/api/loadout/apply` with `push_runes: false,
+  push_summoners: false, push_items: true`, and the panel's own comment says runes + summoners are
+  locked at game start. The rune / spell pushes are champ-select acts (GATE 1), not this row; NOT
+  struck, narrowed here with the reason. (2) The route (`dashboard/routes_loadout.py`
+  `_serve_loadout_apply_post`) queues the resolved `apply_item_set` command on `:8889/lcu-cmd`;
+  `tools/lcu_agent.py` `drain_once` runs it and logs `  [cmd] apply_item_set -> {result}` (or
+  `[cmd-exc]`) to `logs/lcu_agent.log` (format `%(asctime)s %(levelname)s %(message)s`, local wall
+  clock); a good result is `{'ok': True, 'set_uid': 'RC-...', 'title': ...}`. The dashboard logs
+  only a FAILED enqueue, so the agent log is the one push record. (3) Measured 2026-10-31 over
+  `logs/lcu_agent.log` + `.log.1`: ZERO `apply_item_set ->` lines ever, and every
+  `apply_item_sets_batch` line (14, the champ-select batch, a DIFFERENT verb) reads
+  `no_lcu` - the owed line has never been written, so the drain is the first. (4) Neither B4 list
+  (`dashboard/_state_builder.py` `LIVE_SUPPRESSED_FIELDS`, `LIVE_SUPPRESSED_ENVELOPE_FIELDS`) names
+  the item build, so the switcher is not blanked live; it shows only with at least two build rows
+  for the champion (`_ibFetchAndRender`, `rows.length < 2` hides it) and mode `sr` / `aram` /
+  `brawl` (`_ibMaybeRenderBuilds`).
+  PROBE (read-only; `tools/gated_g236_loadout_push.py`, tests `tests/test_gated_g236_loadout_push.py`):
+  in game, save `curl -sk https://127.0.0.1:8888/api/state` to gitignored `s1.json`; click a build
+  row in ITEM BUILD (`_ibOnRowClick` clears the applied key, so any row click pushes, but a click
+  while the panel reads `pushing...` is dropped); wait 5 s (the agent drains every 0.5 s,
+  `CMD_INTERVAL`); save the state again to
+  `s2.json`; then run `python tools/gated_g236_loadout_push.py log logs/lcu_agent.log --before-state
+  s1.json --after-state s2.json --champion "<champion display name>" --json` (if the log rolled over in the
+  window, run it on `logs/lcu_agent.log.1` too).
+  FIELD PATHS: `/api/state` -> `lcu.phase`, `liveclient.game_time_s`, `mode_key`; agent log line
+  `<ts> INFO   [cmd] apply_item_set -> {...}` -> `ok`, `set_uid`, `title`.
+  PREDICATE (stated before any game): PASS = `PUSH_OK`: both state files grade IN_GAME (`lcu.phase`
+  InProgress or a non-empty `liveclient`; never `mode_key` alone) and at least one `apply_item_set`
+  line inside [mtime(s1), mtime(s2)] carries `ok: True` with a `set_uid` starting `RC-<norm>-`, where
+  `<norm>` is the champion name lowercased with every non-alphanumeric dropped
+  (`coaches/loadout_resolver.py` `_norm`, which both resolvers use: Kai'Sa -> `RC-kaisa-`).
+  `PUSH_FAILED` (a line, no good result: record the `err`, e.g. `no_lcu`) and `NO_PUSH` (no line: the
+  agent did not run or the click was deduped) are FAIL, recorded with the value; `NOT_MID_GAME` or
+  `BAD_WINDOW` = re-take, not a verdict on the row.
+  EVIDENCE: the push line's local time, `set_uid` and `title`; the two state file mtimes with
+  `liveclient.game_time_s` from each; mode + queue + champion; the status text the panel showed;
+  main HEAD.
+  SUBSTITUTION CHECK: the panel's green `check <label>` is NOT evidence: the route answers `ok`
+  when the command was QUEUED on `:8889`, before the agent ran it, so it proves the click COMPUTED
+  and SENT a command, not that the LCU took it. The agent line is the LCU's own answer to the PUT.
+  It still does not prove the in-game shop SHOWS the set mid-match (the agent's comment says it
+  does; nothing measured it): record a shop glance as an observation beside the evidence, never as
+  the pass.
 - **G2-37** (was B27) LBAND1 live wire-in eyeball: `core/live_benchmark_band` into the
   deterministic-coaching surface + overlay (live cs+level vs own per-champion percentile). The
   generator half is SHADOW-only today (`data/live_benchmark_band_shadow.jsonl`); this is the surface +
