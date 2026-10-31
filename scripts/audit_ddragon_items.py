@@ -124,6 +124,9 @@ def main(download: bool = False) -> int:
         print("  ok every id we care about has a png on disk")
 
     # 3) Optional download - tries DDragon then CommunityDragon fallback.
+    # still_missing = the icons absent after this step; without a download it
+    # is just `missing`.
+    still_missing = missing
     if download and missing:
         print()
         print(f"Downloading {len(missing)} missing icons (DDragon -> CommunityDragon fallback)...")
@@ -147,8 +150,10 @@ def main(download: bool = False) -> int:
         else:
             print("  ok all pulled")
 
-    # Exit 0 if nothing missing, 1 otherwise (so CI-style use is possible)
-    return 0 if not missing else 1
+    # Exit 0 if no icon is missing at the end of the run (after any download),
+    # 1 otherwise, so CI-style use is possible. RM-1179 (a): this used the
+    # pre-download list, so a --download run that pulled every icon exited 1.
+    return 0 if not still_missing else 1
 
 
 if __name__ == "__main__":
