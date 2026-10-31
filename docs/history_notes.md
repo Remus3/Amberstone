@@ -41,6 +41,20 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-26c - session 141: PKG phase 1 + wave A + PKG-1b landed, RM-909 root-caused, Dependabot #23 / #24 path B, CLAUDE.md back under budget; PUSHED
+
+- **Operator (chat):** "Continue" only; no steers. Decisions were the session's own (recorded in LEDGER 1921 / 1924 / 1925).
+- **PKG (LEDGER 1924):** spec `docs/PACKAGING_PLAN.md`; PKG-1 service host, PKG-2 signed game-deferred updater, PKG-3 shell modules, PKG-4 bundle builder (embedded 3.14.4), PKG-5 LAN control gate, PKG-8 tracked lock + notices, PKG-1b first-run secrets; each verifier-gated, several refuted then fixed.
+- **RM-909 (LEDGER 1923):** `4305752b7` - test_app_authority stubbed the delegate while the frozen lifecycle calls its own `on_game_start`; suite guard `tests/_lcu_poller_guard.py`.
+- **DEPBOT (LEDGER 1921):** #23 `5d2e8e71e`, #24 `e7175c3c3`; anthropic 2.1.0 declined (RM-681).
+- **CLAUDE-BUDGET (LEDGER 1922):** `a585c475b` 58273 -> 53445 B via `docs/FLEET_KIT_ADOPTION.md`; RM-809 SHIPPED.
+- **Suite (LEDGER 1925):** gated 45823 passed on `4486a09bb`; the final-main run's 3 reds (launcher test hygiene) fixed in `6e28127f3`; 1.12 GB free physical at its peak.
+- **/done:** pushed 2d3e1c85b..6e28127f3 (push ci mode=full = the full suite on HEAD); RM-909 row to ROADMAP_HISTORY; PKG residuals WA1-WA8 in the plan.
+- **Do NOT redo:** the landings above. The K branch `32381e158` is NOT byte-identical to main (comments only) - keep vs delete is open.
+- **Next:** PKG-6 shell launcher wiring per the PACKAGING_PLAN checklist, then PKG-7 (never run by a session); C7 + the MAIN note on the operator's yes.
+
+---
+
 # 2026-10-26b - session 140: MAIN 0300 (U5) + 0315 (alert 66 in-tree, suite peak) landed, kit v24 hardened, C9 flake isolated, one gated suite green; PUSHED
 
 - **Operator (chat):** "continue headlessly all lanes" - all seven rotation lanes were already live under rotator pid 24260; nothing launched (24 h budget 96/120). Lane "upgrade" NOT launched (its prompt pushes).
