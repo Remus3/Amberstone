@@ -407,8 +407,16 @@
 }
 .csv-enemy-wr-slot.is-good { color: var(--good); }
 .csv-enemy-wr-slot.is-mid  { color: var(--warn); }
-.csv-enemy-wr-slot.is-bad  { color: var(--bad); }
-.csv-enemy-wr-slot.is-new  { color: var(--text-faint); }
+/* RM-1198 (WCAG AA on the --surface-2 enemy cell, measured headless on
+ * all 6 themes): solid --bad read 3.89-4.45:1 there on 5 themes, so the
+ * losing-matchup band is mixed toward --text (it stays red), and the
+ * "--" no-games placeholder (--text-faint, 4.31-4.48:1 on 4 themes) is
+ * lifted only part-way to --text-dim, so it clears AA yet stays DIMMER
+ * than every real win-rate band and the enemy name (no data never
+ * outshines data). All three pinned by
+ * tests/snapshot_panels/test_champ_select_enemy_wr_slot_contrast.py. */
+.csv-enemy-wr-slot.is-bad  { color: color-mix(in oklab, var(--bad) 70%, var(--text)); }
+.csv-enemy-wr-slot.is-new  { color: color-mix(in oklab, var(--text-faint) 60%, var(--text-dim)); }
 /* RC2 B3/C5 (WCAG 1.4.1 - status never by HUE alone): the leading
  * win-rate-vs-this-enemy slot is colour-banded; prepend a shape glyph so
  * good/even/bad survives grayscale + colour-blind vision. Glyphs authored
