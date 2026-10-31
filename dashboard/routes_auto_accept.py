@@ -3,10 +3,12 @@
 
 Reads + writes the NON-frozen ``core.auto_accept_pref`` flag, which the frozen
 ``lcu/lcu_client.py`` ``_auto_accept_tick`` consults right before it calls
-``accept_queue()``. Its browser caller is the dashboard "Auto Accept" control
-(``web/js/main.js`` ``_setAutoAccept``), which posts here in the same click
-that sends the LCU agent a ``set_config``; the control DISPLAYS the agent's
-CONFIG, never this flag (see the "two gates" note in core/auto_accept_pref.py).
+``accept_queue()`` and which the LCU agent's CONFIG follows (RM-1222). Its
+browser caller is the dashboard "Auto Accept" control (``web/js/main.js``
+``_setAutoAccept``), which posts here FIRST and sends the agent a
+``set_config`` only after a 200; on any other answer it puts the control back
+and shows a notice. The control DISPLAYS the agent's CONFIG, which carries
+this flag's value (see the "two gates" note in core/auto_accept_pref.py).
 Nothing in the dashboard GETs this route today; it is the read-back for
 probes and tests. With no stored choice the flag is OFF (s144 true-audit
 cycle 83; it used to be ON).

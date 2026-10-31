@@ -6,13 +6,19 @@ logic. The frozen ``_auto_accept_tick`` consults ``is_enabled()`` right before
 it calls ``accept_queue()``; everything else in the tick (rune application,
 connect retry) is untouched.
 
-TWO GATES, ONE CONTROL. Ready checks can be accepted by two independent
-mechanisms: the LCU agent (``tools/lcu_agent.py`` ``auto_features``, gated by
-its in-memory ``CONFIG["auto_accept"]``) and RC's in-process loop (gated by
-this module). The dashboard "Auto Accept" control DISPLAYS the agent's CONFIG
-(``state.lcu.config.auto_accept``) and, on a click, sends the agent a
-``set_config`` AND posts the same bool to ``/api/lcu/auto-accept``
-(``dashboard/routes_auto_accept.py``), which writes here.
+TWO GATES, ONE SOURCE OF TRUTH (RM-1222, s145). Ready checks can be accepted
+by two independent mechanisms: the LCU agent (``tools/lcu_agent.py``
+``auto_features``, gated by its ``CONFIG["auto_accept"]``) and RC's in-process
+loop (gated by this module). This file is the truth for BOTH: the agent seeds
+its CONFIG from ``is_enabled()`` at boot and re-reads it every auto-features
+tick (``_sync_auto_accept_from_pref``), because that CONFIG alone was process
+memory and every agent restart showed Off while the saved choice said on. The
+dashboard "Auto Accept" control DISPLAYS the agent's CONFIG
+(``state.lcu.config.auto_accept``); on a click it posts the bool to
+``/api/lcu/auto-accept`` (``dashboard/routes_auto_accept.py``), which writes
+here, and only after that save lands sends the agent a ``set_config``. A
+failed save puts the control back and says so (``web/js/main.js``
+``_setAutoAccept``).
 
 Default is DISABLED (False) - s144 true-audit cycle 83. It used to be True
 ("preserve the historical always-on behavior"), but the agent's boot default
@@ -20,7 +26,7 @@ is False, so with no stored choice here the UI said Off while this gate kept
 accepting every ready check: the s171 "silently always on regardless of the UI
 state" class. The default is now drift-guarded against the agent's
 (``tests/test_auto_accept_pref_hardening_s144t083.py``). A stored choice
-always wins over the default.
+always wins over the default - in both gates, since RM-1222.
 
 Read failures, by kind:
   * absent file -> the default (no choice was ever stored; not a warning).

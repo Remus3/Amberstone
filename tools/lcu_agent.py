@@ -23,6 +23,13 @@ dashboard's Auto Accept toggle was visual-only and the agent silently
 accepted every queue pop regardless of the UI state. The toggle now
 pushes set_config + auto_accept on click.
 
+auto_accept FOLLOWS THE SAVED PREFERENCE (RM-1222, s145): the dashboard saves
+the choice to data/auto_accept_pref.json (core.auto_accept_pref), which RC's
+in-process ready-check loop also reads, and this agent seeds CONFIG from it at
+boot and re-reads it every auto-features tick (_sync_auto_accept_from_pref).
+CONFIG alone was process memory, so each agent restart showed Off on the
+dashboard while the saved choice - and RC's loop - kept accepting.
+
 # Threading (2026-04-25)
 
 Three independent loops run in daemon threads so a slow capture_state()
@@ -63,6 +70,7 @@ from lcu.snapshot_shape import (  # noqa: E402,F401
     shape_snapshot,
 )
 from lcu.lcu_rune_writer import is_rc_owned_page  # noqa: E402
+from core import auto_accept_pref  # noqa: E402
 from core.queue_modes import is_tft_context  # noqa: E402
 from core.log_rotation import (  # noqa: E402
     DEFAULT_BACKUP_COUNT,
@@ -211,12 +219,45 @@ LOCKFILE_PATHS = [
 ]
 
 # In-memory config; mutated by 'set_config' commands from dashboard.
+# auto_accept's literal is only the value before the first preference read:
+# _sync_auto_accept_from_pref replaces it at boot and on every auto tick.
 CONFIG = {
     "auto_accept":     False,
     "summoner_override": False,
     "summoner_d":      4,    # default Flash
     "summoner_f":      32,   # default Snowball (ARAM)
 }
+
+# Dedupe for the preference-read warning: True while the last read faulted.
+_pref_sync_state = {"faulted": False}
+
+
+def _sync_auto_accept_from_pref() -> None:
+    """RM-1222: CONFIG["auto_accept"] takes the SAVED auto-accept preference.
+
+    data/auto_accept_pref.json (core.auto_accept_pref) is the one source of
+    truth: RC's in-process ready-check loop reads it before every accept, and
+    the dashboard control DISPLAYS this CONFIG (state.lcu.config). Run at boot
+    (loop(), before the first state push) and on every auto-features tick, so
+    a set_config whose save never landed stands for at most one tick.
+    is_enabled() maps an absent or corrupt file to the OFF default and a
+    transient read error to its last good value; the guard here only keeps an
+    unexpected fault from killing the tick. It leaves CONFIG as it was and
+    warns once until a good read (the tick runs every AUTO_INTERVAL).
+    """
+    try:
+        enabled = auto_accept_pref.is_enabled()
+    except Exception as e:  # noqa: BLE001
+        if not _pref_sync_state["faulted"]:
+            _pref_sync_state["faulted"] = True
+            log.warning(f"[auto] auto-accept preference read failed "
+                        f"({type(e).__name__}); keeping auto_accept="
+                        f"{CONFIG.get('auto_accept')}")
+        return
+    _pref_sync_state["faulted"] = False
+    if CONFIG.get("auto_accept") is not enabled:
+        CONFIG["auto_accept"] = enabled
+        log.info(f"[auto] auto_accept -> {enabled} (saved preference)")
 
 _ssl_ctx = client_context_noverify()   # RM-752: the shared TLS floor
 try: _ssl_ctx.set_ciphers("ALL:@SECLEVEL=0")
@@ -1795,9 +1836,12 @@ def _auto_features_loop():
     """Ready-check + summoner-override poll. Stays at AUTO_INTERVAL cadence
     independent of state-push cycle so the 12s ready-check window never
     closes on us - auto_features makes its OWN /ready-check GET (cheap;
-    LCU responds in ~50ms during queue, even with League busy)."""
+    LCU responds in ~50ms during queue, even with League busy).
+    RM-1222: re-read the saved auto-accept preference first, ahead of the
+    connection, so the posted config is truthful with League closed too."""
     while True:
         try:
+            _sync_auto_accept_from_pref()
             ensure_lcu_conn()
             auto_features()
         except Exception as e:  # noqa: BLE001
@@ -1900,6 +1944,11 @@ def loop() -> None:
     _load_ingest_state()
     _recover_missed_ingest()
     _install_draft_log_sink()
+    # RM-1222: seed auto_accept from the saved preference BEFORE the first
+    # state push, so the dashboard never shows the in-memory boot default.
+    _sync_auto_accept_from_pref()
+    log.info(f"[auto] boot auto_accept={CONFIG.get('auto_accept')} "
+             f"(saved preference)")
     for fn in (_state_push_loop, _auto_features_loop, _cmd_poll_loop):
         threading.Thread(target=fn, daemon=True, name=fn.__name__).start()
     while True:

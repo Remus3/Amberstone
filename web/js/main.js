@@ -6064,14 +6064,16 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     if (_VIEW.current === "champ-select") renderChampSelectView(_csResolveLcu(lcu));  // s164
   }
 
-  // -- Auto Accept (agent-CONFIG-backed, lobby <-> settings synced) ------
-  // Source of truth is the LCU agent CONFIG - it's what actually
-  // accepts the ready-check - surfaced live at state.lcu.config.auto_accept
-  // and written via the set_config command. The lobby Auto Accept toggle
-  // and the Settings "Auto Accept" checkbox are two views of the same
-  // flag, so they stay in sync bidirectionally and persist (the agent
-  // persists its CONFIG). localStorage rc-lobby-auto-accept is only an
-  // instant-paint mirror for the gap before the first state envelope.
+  // -- Auto Accept (saved-preference-backed, lobby <-> settings synced) ---
+  // RM-1222: source of truth is the SAVED preference,
+  // data/auto_accept_pref.json, written by POST /api/lcu/auto-accept. RC's
+  // in-process ready-check loop reads it before every accept, and the LCU
+  // agent seeds its CONFIG from it at boot and re-reads it every tick, so
+  // state.lcu.config.auto_accept (what both controls render) shows the
+  // saved choice. The lobby Auto Accept toggle and the Settings "Auto
+  // Accept" checkbox are two views of the same flag, synced both ways.
+  // localStorage rc-lobby-auto-accept is only an instant-paint mirror for
+  // the gap before the first state envelope.
   function _syncAutoAcceptUI() {
     const on = !!_LV.autoAccept;
     const lt = document.getElementById("lv-auto-accept");
@@ -6093,34 +6095,76 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       _syncAutoAcceptUI();
     } catch (_) {}
   }
+  // RM-1222: SAVE FIRST. The click paints the new state under the inflight
+  // guard, then saves; only a landed save is mirrored and pushed to the
+  // agent (set_config, which only makes it take effect before the agent's
+  // next preference read). A failed or unreachable save puts the previous
+  // state back on both controls and says so - the control never shows a
+  // choice that was not stored. _LV.autoAcceptSeq drops the answer to an
+  // older click once a newer one is in flight.
   function _setAutoAccept(nextOn) {
     nextOn = !!nextOn;
+    const prevOn = !!_LV.autoAccept;
+    const seq = (_LV.autoAcceptSeq = (_LV.autoAcceptSeq || 0) + 1);
     _LV.autoAccept = nextOn;
-    _LV.autoAcceptInflight = true;   // guard the ~1-2s envelope round-trip
-    try { localStorage.setItem("rc-lobby-auto-accept", nextOn ? "1" : "0"); } catch (_) {}
+    _LV.autoAcceptInflight = true;   // guard the save + envelope round-trip
     _syncAutoAcceptUI();
+    _saveAutoAcceptPref(nextOn).then((saved) => {
+      if (seq !== _LV.autoAcceptSeq) return;
+      if (!saved) {
+        _LV.autoAccept = prevOn;
+        _LV.autoAcceptInflight = false;
+        _syncAutoAcceptUI();
+        _autoAcceptSaveFailed();
+        return;
+      }
+      try { localStorage.setItem("rc-lobby-auto-accept", nextOn ? "1" : "0"); } catch (_) {}
+      try {
+        Promise.resolve(lcuCmd({ cmd: "set_config", auto_accept: nextOn })).then((res) => {
+          if (typeof lcuPollResult === "function") {
+            lcuPollResult(res && res.id, () => { _LV.autoAcceptInflight = false; });
+          } else {
+            _LV.autoAcceptInflight = false;
+          }
+        }, () => { _LV.autoAcceptInflight = false; });
+      } catch (_) { _LV.autoAcceptInflight = false; }
+    });
+  }
+  // POST the choice to /api/lcu/auto-accept (core.auto_accept_pref).
+  // Resolves true only for a 200 whose body echoes the stored choice;
+  // never rejects. PKG-6 WA7: a gated control endpoint - send the token.
+  function _saveAutoAcceptPref(nextOn) {
     try {
-      Promise.resolve(lcuCmd({ cmd: "set_config", auto_accept: nextOn })).then((res) => {
-        if (typeof lcuPollResult === "function") {
-          lcuPollResult(res && res.id, () => { _LV.autoAcceptInflight = false; });
-        } else {
-          _LV.autoAcceptInflight = false;
-        }
-      }, () => { _LV.autoAcceptInflight = false; });
-    } catch (_) { _LV.autoAcceptInflight = false; }
-    // Also gate the frozen in-process auto-accept loop (core.auto_accept_pref,
-    // read by lcu_client _auto_accept_tick) so this single "Auto Accept"
-    // toggle controls BOTH mechanisms - the LCU-agent set_config above AND
-    // the in-process force-accept. Fail-soft, fire-and-forget; a failure here
-    // never disturbs the set_config path or the inflight guard.
-    try {
-      // PKG-6 WA7: auto-accept is a gated control endpoint - send the token.
-      fetch("/api/lcu/auto-accept", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...(localStorage.getItem("rc_dash_token") ? {"X-RC-Token": localStorage.getItem("rc_dash_token")} : {}) },
+      let tok = null;
+      try { tok = localStorage.getItem("rc_dash_token"); } catch (_) {}
+      return fetch("/api/lcu/auto-accept", {
+        method: "POST", cache: "no-store",
+        headers: { "Content-Type": "application/json", ...(tok ? { "X-RC-Token": tok } : {}) },
         body: JSON.stringify({ enabled: nextOn }),
-      }).catch(() => {});
+      }).then((r) => (r && r.ok ? r.json() : null))
+        .then((j) => !!(j && j.ok === true && j.enabled === nextOn))
+        .catch(() => false);
+    } catch (_) { return Promise.resolve(false); }
+  }
+  // Save-failure notice. A fixed toast, not the controls' own text: both
+  // controls re-render from _LV on every envelope and would overwrite it.
+  // role=status announces it politely; the raw error stays server-side.
+  function _autoAcceptSaveFailed() {
+    try {
+      let t = document.getElementById("auto-accept-save-toast");
+      if (!t) {
+        t = document.createElement("div");
+        t.id = "auto-accept-save-toast";
+        t.className = "rebuild-toast is-bad";
+        t.setAttribute("role", "status");
+        document.body.appendChild(t);
+      }
+      t.textContent = "Auto Accept not saved - try again";
+      t.classList.add("show");
+      clearTimeout(t._hideT);
+      t._hideT = setTimeout(() => t.classList.remove("show"), 5000);
     } catch (_) {}
+    console.warn("[lobby] auto-accept preference was not saved");
   }
   // Settings-page Auto Accept checkbox listener. Wired from the
   // settings-view show hook (guaranteed to run when the operator opens

@@ -65,6 +65,11 @@ the relay payload for those two keys:
     the ``/api/lcu-cmd`` POST at :350), so it could persist the config to
     ``data/`` exactly like ``core/auto_accept_pref.py`` does and own it
     outright - which is also what the eventual agent retirement requires.
+    RM-1222 (s145) did that for ``auto_accept`` only: the agent now seeds
+    and re-reads it from ``core.auto_accept_pref`` every tick, so the posted
+    ``config.auto_accept`` IS the saved preference (the 2026-07-20 mismatch
+    above is the restart reset it removed). This module still reads the
+    agent's posted copy, which keeps the other three keys truthful too.
 """
 from __future__ import annotations
 

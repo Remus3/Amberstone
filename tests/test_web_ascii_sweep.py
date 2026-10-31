@@ -1840,7 +1840,21 @@ _WEB = _REPO_ROOT / "web"
 # MERGED at the s145 L7 landing: the queue lane captured 2193a3cf... over
 # 24b1160f...; with the uiux chain above also applied, the merger
 # recomputed the value below on the merged tree.
-_LIVE_HALF_DIGEST = "35ecd22d2f1bc2b088a9f7359e1de853cb988713efa999d521e192d6bdd3b16c"
+# superseded by the RM-1222 re-capture below: "35ecd22d2f1bc2b088a9f7359e1de853cb988713efa999d521e192d6bdd3b16c"
+#
+# RE-CAPTURED 2026-10-31 at RM-1222 (s145 Q2). One change rides it: the
+# Auto Accept control saves first and never shows a choice it did not
+# store - web/js/main.js _setAutoAccept posts /api/lcu/auto-accept before
+# set_config and, on a failed save, restores the previous state and shows
+# the new _autoAcceptSaveFailed notice (#auto-accept-save-toast), styled by
+# the new `.rebuild-toast.is-bad` rule in web/css/panels/header.css; the
+# Settings checkbox tooltip in web/index.html now names the saved choice as
+# the source of truth. Ordinary case, no tokeniser change. ATTRIBUTED BY
+# SUBSTITUTION: swapping exactly those three files back to their HEAD
+# ddb4a5e20 blobs (in memory) reproduces the superseded 35ecd22d... value
+# EXACTLY; swapping any one alone does not. Those paths are the whole
+# change. No glyph change: the added lines carry 0 non-ASCII bytes.
+_LIVE_HALF_DIGEST = "3ee7bc5ffebf0add6de4a89b1f2ef36d7ab928887e22b899adcd3892792587e1"
 
 
 def _web_sources() -> list[Path]:

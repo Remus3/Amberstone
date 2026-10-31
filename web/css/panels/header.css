@@ -3539,6 +3539,17 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   pointer-events: none;
 }
 .rebuild-toast.show { opacity: 1; }
+/* RM-1222: the Auto Accept save-failure notice (web/js/main.js
+ * _autoAcceptSaveFailed). An opaque surface, not the translucent --good-soft
+ * pill: it floats over live content and must read at a glance. The text is
+ * the primary --text on --surface pair (red-on-surface measured 1.6-3.7:1 in
+ * four of the six themes); the --bad ring carries the error colour. */
+.rebuild-toast.is-bad {
+  background: var(--surface);
+  color: var(--text);
+  border: 2px solid var(--bad);
+  font-size: var(--fs-xs);
+}
 
 .keybinds-toast kbd {
   display: inline-block;
