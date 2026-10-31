@@ -26,7 +26,9 @@ The sweep found one more: `.home-rank-wl { display: flex }`
 The sweep below pins the contract for every element the page marks hidden,
 across the ?ui_mock=1 views. Two exceptions are deliberate and named in
 _EXCEPTIONS, each with the rule that makes it so. Anything else that keeps
-a display while hidden is a regression.
+a display while hidden is a regression. The in-game overlay shell
+(?overlay=1) is swept by test_overlay_hidden_display_contract.py (RM-1207),
+which reuses _SWEEP and _EXCEPTIONS from this file.
 """
 import json
 import re
