@@ -1795,15 +1795,34 @@ def _parse_form_index(body: dict) -> Optional[dict[str, int]]:
             for k, v in raw_form.items()}
 
 
-def _block_index_scalar_ok(x) -> bool:
-    """True iff ``x`` is a clean int or list[int] (bool rejected)."""
+def _block_index_int(x: Any) -> Optional[int]:
+    """One block index as an ``int``, or None when malformed (bool rejected).
+
+    RM-1238: JSON has one number type, so ``0.0`` is the block index 0 -
+    the reading RM-1236 gives a list id. It used to be skipped, and the
+    override silently fell back to the registry. A fractional or non-finite
+    float stays malformed (skipped, never a 400: the field's contract).
+    """
     if isinstance(x, bool):
-        return False
+        return None
     if isinstance(x, int):
-        return True
-    return isinstance(x, list) and all(
-        isinstance(e, int) and not isinstance(e, bool) for e in x
-    )
+        return x
+    if isinstance(x, float) and math.isfinite(x) and x.is_integer():
+        return int(x)
+    return None
+
+
+def _block_index_scalar(x: Any) -> "Optional[int | list[int]]":
+    """A clean int or list[int] block index (floats normalised), else None."""
+    if isinstance(x, list):
+        out = [_block_index_int(e) for e in x]
+        return None if any(e is None for e in out) else out  # type: ignore[return-value]
+    return _block_index_int(x)
+
+
+def _block_index_scalar_ok(x) -> bool:
+    """True iff ``x`` reads as an int or list[int] (integral floats too)."""
+    return _block_index_scalar(x) is not None
 
 
 def _parse_block_index(
@@ -1839,16 +1858,7 @@ def _parse_block_index(
     out: dict[str, int | list[int] | dict[str, int | list[int]]] = {}
     for k, v in raw.items():
         key = str(k).upper()
-        if isinstance(v, bool):
-            # bool is an int subtype in Python - reject explicitly.
-            continue
-        if isinstance(v, int):
-            out[key] = v
-        elif isinstance(v, list) and all(
-            isinstance(x, int) and not isinstance(x, bool) for x in v
-        ):
-            out[key] = list(v)
-        elif isinstance(v, dict):
+        if isinstance(v, dict):
             # Conditional schema (s228). Accept only if fully well-formed;
             # else skip (defensive - same stance as the scalar branches).
             if _BLOCK_INDEX_DEFAULT_KEY not in v:
@@ -1860,10 +1870,14 @@ def _parse_block_index(
             ):
                 continue
             out[key] = {
-                ck: (list(cv) if isinstance(cv, list) else cv)
+                ck: _block_index_scalar(cv)  # type: ignore[misc]
                 for ck, cv in v.items()
             }
-        # else: silently skip malformed entries (preserves pre-s207
+        else:
+            scalar = _block_index_scalar(v)
+            if scalar is not None:
+                out[key] = scalar
+        # A malformed entry is silently skipped (preserves pre-s207
         # behavior of accepting only well-formed values). Unlike
         # _parse_form_index, which 400s a non-object (RM-1234), this
         # field keeps the documented no-500 / fall-back-to-registry skip.
