@@ -32,8 +32,8 @@ from pathlib import Path
 # core/polled_json.py holds the repo's atomic-write contract - LANE 8 CYCLE 48,
 # RM-250 sibling sweep. Plain import first so a repo-root process shares one
 # module object; absolute-path bind as the fallback for the launcher context,
-# where this module is loaded BY FILE PATH (loop_controller.py:41) and the repo
-# root is not on sys.path.
+# where this module is loaded BY FILE PATH (loop_controller.py's _ADJ_MODNAME
+# spec_from_file_location bind) and the repo root is not on sys.path.
 try:
     from core.polled_json import atomic_write_bytes as _atomic_write_bytes
 except ModuleNotFoundError:
@@ -92,9 +92,10 @@ def _atomic_write(path, text):
     the destination open raises WinError 5 on Windows), a scratch name derived
     from the DESTINATION alone (shared by every writer of that file), and
     Path.write_text (LF rewritten as CRLF). It escaped cycle 48's first pass
-    because loop_controller.py:594 injects its own already-fixed `awrite` over
-    this function - but that injection is an override, so the DEFAULT path any
-    other caller takes was still the bare one. Delegating fixes the default.
+    because loop_controller.py _supervisor() injects its own already-fixed
+    `awrite` over this function - but that injection is an override, so the
+    DEFAULT path any other caller takes was still the bare one. Delegating
+    fixes the default.
     """
     _atomic_write_bytes(Path(path), text.encode("utf-8"))
 

@@ -4,14 +4,15 @@ LANE 8 CYCLE 48. Three SIBLING hand-rolled atomic writers carry the WinError 5
 exposure that cycle 21 closed in `dashboard/routes_loop_control.py`, and they
 write the SAME `ops/loop/control/` files:
 
-  * ops/loop/loop_controller.py  awrite   - writes STOP (:174) and cycle.txt
+  * ops/loop/loop_controller.py  awrite   - writes STOP (from stop()), cycle.txt
   * ops/loop/intents.py          _awrite  - rewrites the INTENT file consumed
   * ops/loop/steer.py            _awrite  - writes STEER.cursor
 
 All three did `tmp.write_*` + a BARE `os.replace` with no PermissionError
-retry. `STOP` is read from three poll loops - loop_controller.py:772/786 every
-5 s, ops/loop/claude_gui_bridge.ahk:299 every 1 s, and
-dashboard/routes_loop_status.py:450 `read_text()` on every browser poll of
+retry. `STOP` is read from three poll loops - loop_controller.py wait_for /
+wait_gone every 5 s, the main Loop's FileExist(STOPF) in
+ops/loop/claude_gui_bridge.ahk every 1 s, and dashboard/routes_loop_status.py
+build_loop_status `read_text()` on every browser poll of
 GET /api/loop-status. On Windows a reader holding the destination open
 share-locks it and a bare `os.replace` raises PermissionError (WinError 5), so
 the contention is routine rather than theoretical.
@@ -22,8 +23,9 @@ THREE defects, not the one RM-250 filed:
   W2 (NEW)    the scratch name is `str(path) + ".tmp"`, derived from the
               DESTINATION alone, so every writer of a given file opens the SAME
               scratch path. STOP has two independent writers - loop_controller
-              awrite(:174) and dashboard/routes_loop_control._awrite(:344,:587)
-              - so two of them interleave: B truncates and renames the scratch
+              awrite (from stop()) and dashboard/routes_loop_control._awrite
+              (from _queue_intent's halt_save and apply_action's stop) - so
+              two of them interleave: B truncates and renames the scratch
               while A is still filling it. This is the exact defect cycle 24
               fixed inside core/polled_json via `_scratch_path`; the siblings
               never got it, and RM-250 did not name it.
@@ -39,14 +41,15 @@ that is lane 8 cycle 26's finding, and this module is bound by it.
 
 THE sys.path CONSTRAINT, measured this cycle. RM-250's stated acceptance was
 "each writer routes through core.polled_json.atomic_write_bytes". Taken
-literally as a plain top-level import that is UNSHIPPABLE: loop_controller.py:36
-records that the controller "is loaded by absolute file path (launcher +
-tests), so ops/loop is never on sys.path", and the repo root is not on it
-either - `import core.polled_json` from that context raises
-ModuleNotFoundError: No module named 'core' (measured). The writers therefore
-resolve the primitive with the absolute-path bind idiom the modules already use
-for adjudicator / winmutex / slots, and test_absolute_path_load_still_resolves
-below is the guard that keeps that working.
+literally as a plain top-level import that is UNSHIPPABLE: the comment above
+loop_controller.py's _ADJ_MODNAME bind records that the controller "is loaded
+by absolute file path (launcher + tests), so ops/loop is never on sys.path",
+and the repo root is not on it either - `import core.polled_json` from that
+context raises ModuleNotFoundError: No module named 'core' (measured). The
+writers therefore resolve the primitive with the absolute-path bind idiom the
+modules already use for adjudicator / winmutex / slots, and
+test_absolute_path_load_still_resolves below is the guard that keeps that
+working.
 """
 from __future__ import annotations
 
@@ -274,14 +277,15 @@ def test_loop_controller_awrite_writes_lf_verbatim(tmp_path, controller):
 def test_absolute_path_load_still_resolves_the_atomic_writer(monkeypatch):
     """The fix must survive the context production actually loads these in.
 
-    loop_controller.py:36 - "loaded by absolute file path (launcher + tests),
-    so ops/loop is never on sys.path". The repo root is absent too, so a plain
-    `import core.polled_json` raises ModuleNotFoundError there. This test
-    removes the repo root from sys.path and evicts every cached `core` module,
-    then loads every swept writer in `_SWEPT_MODULES` (seven at cycle 48,
-    eight since repo_review joined 2026-10-09) by path and asserts each still
-    reached a working atomic writer. Without this guard the bind could regress to a bare
-    import and stay green here while crashing the controller on launch.
+    loop_controller.py, above its _ADJ_MODNAME bind - "loaded by absolute
+    file path (launcher + tests), so ops/loop is never on sys.path". The repo
+    root is absent too, so a plain `import core.polled_json` raises
+    ModuleNotFoundError there. This test removes the repo root from sys.path
+    and evicts every cached `core` module, then loads every swept writer in
+    `_SWEPT_MODULES` (seven at cycle 48, eight since repo_review joined
+    2026-10-09) by path and asserts each still reached a working atomic
+    writer. Without this guard the bind could regress to a bare import and
+    stay green here while crashing the controller on launch.
 
     Seven, not three: RM-250 named three siblings and cycle 48's adversarial
     pass refuted that count, so the loop below is driven by `_SWEPT_MODULES`

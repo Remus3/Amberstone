@@ -179,12 +179,14 @@ INFLIGHT_WAIT_S = 2.0
 def _awrite(path: Path, text: str) -> None:
     """Atomic write - and the contention here is ROUTINE, not theoretical.
 
-    STOP is read from three separate poll loops: loop_controller.py:772/786
-    every 5 s (ops/loop/config.json poll_sec), claude_gui_bridge.ahk:299 every
-    1 s, and routes_loop_status.py:450 read_text() on every browser poll of
-    GET /api/loop-status. On Windows a reader holding the destination open
+    STOP is read from three separate poll loops: loop_controller.py
+    wait_for / wait_gone every 5 s (ops/loop/config.json poll_sec), the main
+    Loop's FileExist(STOPF) in claude_gui_bridge.ahk every 1 s, and
+    routes_loop_status.py build_loop_status read_text() on every browser poll
+    of GET /api/loop-status. On Windows a reader holding the destination open
     share-locks it, so a bare os.replace raises PermissionError (WinError 5) -
-    measured, and already recorded in-tree at dashboard/_writers.py:29-36.
+    measured, and already recorded in-tree in the atomic_write_json comment
+    of dashboard/_writers.py.
 
     This used to hand-roll `tmp.write_text` + a bare `os.replace`, which meant
     the operator's emergency `stop` lost a coin-flip against the poller: the

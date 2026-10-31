@@ -83,10 +83,11 @@ def _bind_path(modname, path):
 # core/polled_json.py holds the repo's atomic-write contract - LANE 8 CYCLE 48,
 # RM-250. Two properties this module needs and cannot hand-roll correctly:
 # a PER-WRITER scratch name (STOP has a second independent writer in
-# dashboard/routes_loop_control.py:344,587, and a scratch derived from the
-# destination alone is shared, so the two interleave), and a bounded
-# PermissionError backoff (~275 ms) for the Windows share-lock a poller holding
-# the destination open produces.
+# dashboard/routes_loop_control.py - _queue_intent (halt_save) and
+# apply_action (stop) - and a scratch derived from the destination alone is
+# shared, so the two interleave), and a bounded PermissionError backoff
+# (~275 ms) for the Windows share-lock a poller holding the destination open
+# produces.
 #
 # It cannot be reached with a plain `from core.polled_json import ...`: this
 # module is loaded by ABSOLUTE FILE PATH (see the adjudicator comment above), so
@@ -190,21 +191,24 @@ def log(m):
         f.write(line + "\n")
 
 def awrite(path, text):
-    """Atomic write of a polled control file - STOP (:174), cycle.txt.
+    """Atomic write of a polled control file - STOP (from stop()), cycle.txt.
 
     LANE 8 CYCLE 48 (RM-250). This used to hand-roll `tmp.write_text` + a BARE
     `os.replace`, which carried three defects that cycle 21 had already closed
     in the dashboard's copy of this same writer:
 
       * No PermissionError retry. STOP is read from three poll loops - this
-        module at :772/:786 every 5 s, ops/loop/claude_gui_bridge.ahk:299 every
-        1 s, and dashboard/routes_loop_status.py:450 on every browser poll of
-        GET /api/loop-status. On Windows a reader holding the destination open
-        share-locks it and the replace raises WinError 5, so the controller's
-        own halt could lose a coin-flip against its own poller.
+        module's wait_for / wait_gone every 5 s, the main Loop's
+        FileExist(STOPF) in ops/loop/claude_gui_bridge.ahk every 1 s, and
+        dashboard/routes_loop_status.py build_loop_status on every browser
+        poll of GET /api/loop-status. On Windows a reader holding the
+        destination open share-locks it and the replace raises WinError 5, so
+        the controller's own halt could lose a coin-flip against its own
+        poller.
       * A scratch name of `str(path) + ".tmp"`, a function of the DESTINATION
-        alone. dashboard/routes_loop_control.py:344,587 also writes STOP, so
-        both writers opened the same scratch file and could interleave.
+        alone. dashboard/routes_loop_control.py also writes STOP
+        (_queue_intent's halt_save and apply_action's stop), so both writers
+        opened the same scratch file and could interleave.
       * `Path.write_text`, which rewrites LF as CRLF on Windows and makes every
         downstream byte count disagree with the file
         (reference_windows_write_text_crlf_byte_count).
