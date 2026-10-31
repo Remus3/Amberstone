@@ -18,20 +18,41 @@ This watchdog probes ``GET /health`` with a short timeout every
 * hung - timeout, reset or a non-200 from a listener: count it. At
   ``fail_threshold`` consecutive hung probes, dump the holder's stacks with
   py-spy when it is installed (evidence for the next wedge, written under
-  ``logs/``), ``taskkill /F`` the holder - only if its command line is a
-  vision server; a foreign holder is logged and left alone - then spawn a
-  fresh server. The fresh process reaps any other vision instance before it
-  binds (``vision_server/_reap.py``).
+  ``logs/``), ``taskkill /F`` the holder - only if its argv is a vision
+  server, asked again right before the kill; a foreign holder is logged and
+  left alone - then spawn a fresh server. The fresh process reaps any other
+  vision instance before it binds (``vision_server/_reap.py``).
 
 After every spawn a grace window (``grace_s``, doubling up to
 ``max_grace_s`` while nothing comes back ok) keeps a slow boot on a loaded
 box from being reaped by the next spawn. Every side effect is injectable for
 tests; the defaults pass ``CREATE_NO_WINDOW`` on every child.
+
+Hardening (s144 true-audit cycle 76):
+
+* "Is the holder a vision server" is the structural argv predicate
+  ``core.vision_server_argv.is_vision_server_argv``, the one
+  ``vision_server/_reap.py`` uses. The old test was a substring match over
+  the joined command line, so a foreign listener whose command line merely
+  mentioned ``moon_vision_server`` (an editor, a grep, a shell running a
+  launch string) or any ``python -m vision_server_<x>`` was taskkilled.
+* The verdict is taken again after the py-spy dump (up to 30 s) and right
+  before the kill: a holder that exited during the dump and whose pid was
+  reused is no longer killed blind.
+* A failed listener lookup (psutil missing, AccessDenied) WARNs once per
+  failure streak instead of DEBUG only: without it the watchdog reads every
+  hung holder as gone and respawns beside it.
+* Timing values are validated where they enter. A NaN or zero probe timeout
+  reported a healthy server as hung, a huge or non-number one made the
+  "never raises" probe raise, a huge interval raised OverflowError out of the
+  loop's wait and ended the thread, a zero interval was a busy loop and a
+  negative grace disabled the spawn back-off.
 """
 from __future__ import annotations
 
 import http.client
 import logging
+import math
 import os
 import shutil
 import subprocess
@@ -43,13 +64,11 @@ from typing import Callable, Optional
 
 from core.polled_json import atomic_write_bytes
 from core.ports import VISION
+from core.vision_server_argv import is_vision_server_argv
 
 _log = logging.getLogger("rc.web_dashboard")
 
 _NO_WINDOW = 0x08000000 if os.name == "nt" else 0  # CREATE_NO_WINDOW
-# Command-line markers of a vision-server process (same set as
-# vision_server/_reap.py): the file-path spawn and the module form.
-_MARKERS = ("moon_vision_server", "-m vision_server")
 
 OK, DOWN, HUNG = "ok", "down", "hung"
 
@@ -59,11 +78,53 @@ FAIL_THRESHOLD = 3
 GRACE_S = 90.0
 MAX_GRACE_S = 1800.0
 
+# Upper bounds. A finite value above one is clamped to it; a non-number, a
+# bool, NaN, infinity or a value at or below zero falls back to the default
+# (zero is a legal grace). Every bound is far inside what socket timeouts and
+# Event.wait accept on Windows (both raise OverflowError near 2**31 ms).
+MAX_TIMEOUT_S = 300.0
+MAX_INTERVAL_S = 3600.0
+MAX_GRACE_CAP_S = 86400.0
+
+
+def _bounded(value, hi: float, *, allow_zero: bool = False) -> Optional[float]:
+    """``value`` as a float in range (clamped to ``hi``), or None if unusable."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    if value < 0 or (value == 0 and not allow_zero):
+        return None
+    if value > hi:
+        return float(hi)
+    return float(value)
+
+
+def _short(value) -> str:
+    """A log-safe, bounded rendering of a caller-supplied value."""
+    try:
+        text = repr(value)
+    except Exception:  # noqa: BLE001 - e.g. an int too long to render
+        return f"<{type(value).__name__}>"
+    return text if len(text) <= 60 else text[:57] + "..."
+
+
+def effective_probe_timeout(timeout_s) -> float:
+    """The probe timeout actually used: a positive finite number, clamped to
+    ``MAX_TIMEOUT_S``; anything else is ``TIMEOUT_S``."""
+    v = _bounded(timeout_s, MAX_TIMEOUT_S)
+    return TIMEOUT_S if v is None else v
+
 
 # -- default side effects ------------------------------------------------------
 def probe_health(port: int, timeout_s: float) -> str:
-    """``GET /health`` on loopback -> OK / DOWN / HUNG. Never raises."""
-    conn = http.client.HTTPConnection("127.0.0.1", port, timeout=timeout_s)
+    """``GET /health`` on loopback -> OK / DOWN / HUNG. Never raises.
+
+    ``timeout_s`` goes through ``effective_probe_timeout`` first: a NaN or
+    zero timeout used to fail inside connect and report a HEALTHY server as
+    hung, and a huge or non-number one raised out of this function."""
+    conn = http.client.HTTPConnection(
+        "127.0.0.1", port, timeout=effective_probe_timeout(timeout_s))
     try:
         conn.request("GET", "/health")
         resp = conn.getresponse()
@@ -80,26 +141,68 @@ def probe_health(port: int, timeout_s: float) -> str:
             pass
 
 
+_LOOKUP_LOCK = threading.Lock()
+_lookup_failing = False
+
+
+def _reset_lookup_warning() -> None:
+    """Forget the current failure streak (tests)."""
+    global _lookup_failing
+    with _LOOKUP_LOCK:
+        _lookup_failing = False
+
+
+def _note_lookup(failure: Optional[str]) -> None:
+    """Record one lookup outcome; WARN on the first failure of a streak.
+
+    Shared by every caller of ``find_listener_pid`` (this watchdog and the
+    DS watchdog in ``core/daemon_slayer_client.py``), hence the lock."""
+    global _lookup_failing
+    with _LOOKUP_LOCK:
+        first = failure is not None and not _lookup_failing
+        _lookup_failing = failure is not None
+    if first:
+        _log.warning("listener lookup failed (%s) - a hung holder cannot be "
+                     "identified or killed until it works again", failure)
+    elif failure is not None:
+        _log.debug("listener lookup still failing (%s)", failure)
+
+
 def find_listener_pid(port: int) -> Optional[int]:
-    """PID listening on ``port`` (any local address), or None."""
+    """PID listening on ``port`` (any local address), or None.
+
+    None also when the lookup itself fails (psutil missing or denied): that
+    is WARNed once per failure streak, because the caller then reads a hung
+    holder as gone."""
     try:
         import psutil
+    except ImportError:
+        _note_lookup("psutil is not installed")
+        return None
+    try:
         for c in psutil.net_connections(kind="tcp"):
             if (c.status == psutil.CONN_LISTEN and c.laddr
                     and c.laddr.port == port and c.pid):
+                _note_lookup(None)
                 return int(c.pid)
-    except Exception as exc:  # noqa: BLE001
-        _log.debug("vision watchdog: listener lookup failed: %s", exc)
+    except Exception as exc:  # noqa: BLE001 - AccessDenied, OSError, a bad row
+        _note_lookup(f"{type(exc).__name__}: {_short(str(exc))}")
+        return None
+    _note_lookup(None)
     return None
 
 
 def is_vision_pid(pid: int) -> bool:
+    """Is ``pid`` a vision server? The structural argv predicate shared with
+    ``vision_server/_reap.py``; an unreadable process is not one."""
     try:
         import psutil
-        cmdline = " ".join(psutil.Process(pid).cmdline() or [])
-    except Exception:  # noqa: BLE001
+        argv = psutil.Process(pid).cmdline()
+    except Exception as exc:  # noqa: BLE001 - psutil missing, pid gone, denied
+        _log.debug("vision watchdog: cmdline of pid %s unreadable: %s",
+                   pid, type(exc).__name__)
         return False
-    return any(m in cmdline for m in _MARKERS)
+    return is_vision_server_argv(argv)
 
 
 def kill_pid(pid: int) -> bool:
@@ -149,6 +252,29 @@ def spawn_vision(app_dir: Path) -> int:
 
 
 # -- the watchdog ----------------------------------------------------------------
+def _setting(name: str, value, default: float, hi: float, *,
+             allow_zero: bool = False) -> float:
+    """A validated timing setting: in range (clamped to ``hi``) or, with one
+    WARNING, the default."""
+    v = _bounded(value, hi, allow_zero=allow_zero)
+    if v is None:
+        _log.warning("vision watchdog: %s=%s is not a usable value - using %s",
+                     name, _short(value), default)
+        return default
+    return v
+
+
+def _threshold(value) -> int:
+    """``fail_threshold``: an integral number, at least 1; else the default."""
+    if isinstance(value, float) and value.is_integer():
+        value = int(value)
+    if isinstance(value, bool) or not isinstance(value, int):
+        _log.warning("vision watchdog: fail_threshold=%s is not a usable "
+                     "value - using %d", _short(value), FAIL_THRESHOLD)
+        return FAIL_THRESHOLD
+    return max(1, value)
+
+
 class VisionWatchdog:
     def __init__(self, app_dir: Path, *, port: int = VISION,
                  interval_s: float = INTERVAL_S, timeout_s: float = TIMEOUT_S,
@@ -163,11 +289,16 @@ class VisionWatchdog:
                  clock: Callable[[], float] = time.monotonic) -> None:
         self.app_dir = Path(app_dir)
         self.port = port
-        self.interval_s = interval_s
-        self.timeout_s = timeout_s
-        self.fail_threshold = max(1, int(fail_threshold))
-        self.grace_s = grace_s
-        self.max_grace_s = max(grace_s, max_grace_s)
+        self.interval_s = _setting("interval_s", interval_s, INTERVAL_S,
+                                   MAX_INTERVAL_S)
+        self.timeout_s = _setting("timeout_s", timeout_s, TIMEOUT_S,
+                                  MAX_TIMEOUT_S)
+        self.fail_threshold = _threshold(fail_threshold)
+        self.grace_s = _setting("grace_s", grace_s, GRACE_S, MAX_GRACE_CAP_S,
+                                allow_zero=True)
+        self.max_grace_s = max(self.grace_s, _setting(
+            "max_grace_s", max_grace_s, MAX_GRACE_S, MAX_GRACE_CAP_S,
+            allow_zero=True))
         self._probe = probe
         self._find_holder = find_holder
         self._is_vision = is_vision
@@ -177,7 +308,7 @@ class VisionWatchdog:
         self._clock = clock
         self.failures = 0
         self.grace_until = 0.0
-        self.current_grace_s = grace_s
+        self.current_grace_s = self.grace_s
 
     def tick(self) -> str:
         """One probe and at most one action. Returns what it did."""
@@ -217,21 +348,37 @@ class VisionWatchdog:
             self.failures = 0
             self._start_grace(now)
             return "foreign"
-        killed = None
+        outcome = "gone"
         if holder is not None:
             dump = self._capture(holder, self.app_dir)
-            killed = self._kill(holder)
-            if not killed:
+            # The dump can take 30 s: ask again right before the kill, so a
+            # holder that exited meanwhile and whose pid was reused is never
+            # killed blind.
+            if not self._still_vision(holder):
+                outcome = "not killed: no longer a vision server"
+            elif self._kill(holder):
+                outcome = "ok"
+                if dump is not None:
+                    _log.info("vision watchdog: stack dump of pid %d at %s",
+                              holder, dump)
+            else:
+                outcome = "not killed"
                 _log.warning("vision watchdog could not kill hung pid %d", holder)
-            elif dump is not None:
-                _log.info("vision watchdog: stack dump of pid %d at %s",
-                          holder, dump)
         self._respawn(now)
         _log.warning("vision server hung (%d consecutive /health failures) - "
                      "killed pid %s (%s), spawned moon_vision_server.py",
-                     self.fail_threshold, holder,
-                     "ok" if killed else "not killed" if holder else "gone")
+                     self.fail_threshold, holder, outcome)
         return "replaced"
+
+    def _still_vision(self, pid: int) -> bool:
+        """The pre-kill re-check. A check that raises is a no (never kill on
+        an unknown)."""
+        try:
+            return bool(self._is_vision(pid))
+        except Exception as exc:  # noqa: BLE001 - an injected or psutil failure
+            _log.warning("vision watchdog: re-check of pid %d failed (%s) - "
+                         "not killed", pid, type(exc).__name__)
+            return False
 
     def _respawn(self, now: float) -> None:
         self.failures = 0
