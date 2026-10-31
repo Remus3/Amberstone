@@ -289,16 +289,24 @@ def _engine_reject(status: int, exc: BaseException) -> _ApiError:
 
 def _coerce_str_list(value: Any, field_name: str) -> list[str]:
     """Accept ``list[str|int]`` (from JSON) or comma-separated string (from
-    a query param). Returns canonicalised list of stripped non-empty strings."""
+    a query param). Returns canonicalised list of stripped non-empty strings.
+
+    RM-1235: a bool / object / array element is a 400 naming the index.
+    ``str(item)`` turned ``true`` into the id ``"True"``, so ``items`` blamed
+    an unknown item (404) and ``only: [true]`` answered an empty 200."""
     if value is None:
         return []
     if isinstance(value, str):
         return [s.strip() for s in value.split(",") if s.strip()]
     if isinstance(value, (list, tuple)):
         out: list[str] = []
-        for item in value:
+        for i, item in enumerate(value):
             if item is None:
                 continue
+            if isinstance(item, (bool, dict, list, tuple)):
+                raise _ApiError(
+                    400, f"{field_name}[{i}]: expected string or integer, "
+                         f"got {type(item).__name__}")
             s = str(item).strip()
             if s:
                 out.append(s)

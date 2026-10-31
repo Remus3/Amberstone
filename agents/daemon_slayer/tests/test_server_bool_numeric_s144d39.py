@@ -16,7 +16,8 @@ effect") and ``_block_index_scalar_ok`` ("bool rejected"). This guard
 extends that existing policy to the scalar helpers; it invents none.
 
 Out of scope on purpose: list fields (``items`` / ``runes`` / ``only``)
-stay fail-soft per ``_coerce_int_list``'s documented policy, and
+keep junk TOKENS fail-soft per ``_coerce_int_list``'s documented policy (a
+bool / object / array ELEMENT is a 400 since RM-1235), and
 ``_opt_bool`` already takes a boolean by design. ASCII only.
 """
 from __future__ import annotations
