@@ -338,10 +338,10 @@ class LcuClient(_PGMixin):
                 not_responded = ps in ("None", None, "")
                 if state.get("state") == "InProgress" and not_responded:
                     # LIFT 5: honor the dashboard auto-accept toggle. NON-frozen
-                    # pref module, default ON, so this is byte-identical to the
-                    # historical always-accept behavior until the operator turns
-                    # it off via POST /api/lcu/auto-accept. Lazy import keeps the
-                    # frozen top-level import block untouched.
+                    # pref module, default OFF (s144 true-audit cycle 83): with
+                    # no saved choice the ready check is not accepted; a choice
+                    # saved via POST /api/lcu/auto-accept always wins. Lazy
+                    # import keeps the frozen top-level import block untouched.
                     from core.auto_accept_pref import is_enabled as _aa_enabled
                     if _aa_enabled():
                         self.accept_queue()
