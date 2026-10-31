@@ -323,12 +323,17 @@ CI_UNKNOWN = "unknown"
 CI_STEPS = (CI_SUCCESS, CI_FAILURE, CI_CANCELLED, CI_SKIPPED, CI_TIMEOUT,
             CI_UNAVAILABLE, CI_UNKNOWN)
 
-# 90 minutes. MEASURED rather than picked: RM-370 timed a real wait at 67
-# minutes, so the 60 first written into the prose contract was under-set and a
-# worker obeying it would have abandoned a run that was about to pass. This is
-# the budget for ONE run; a cancelled run buys one re-dispatch and a second
-# budget, which is why DEFAULT_CYCLE_TIMEOUT_S is 4 hours and not 90 minutes.
-DEFAULT_CI_WAIT_S = 5400
+# 130 minutes (RAISED 2026-10-31, s146 C3, from 5400s / 90 min). The wait must
+# outlast the graded job's own ceiling: ci.yml's `check` job went 95 -> 125
+# minutes (its full dual suite step 75 -> 110), and a 90-minute wait would grade
+# a run CI may still pass as `timeout`. 130 = that 125-minute ceiling + 5 minutes
+# of runner-queue slack. tests/test_queue_loop.py reads the ceiling from ci.yml
+# and requires this to be at least it, so the next ceiling raise reds there.
+# History: RM-370 timed a real wait at 67 minutes, so the 60 first written into
+# the prose contract was under-set. NOTE: this is ONE budget for the whole
+# `wait_for_ci` call - the single re-dispatch after a `cancelled` run watches
+# against the same deadline, it does not get a second one.
+DEFAULT_CI_WAIT_S = 7800
 # A `ci` run is measured in tens of minutes. Polling faster than a minute buys
 # nothing and spends API quota that `gh` shares with everything else on the box.
 DEFAULT_CI_POLL_S = 60
@@ -866,8 +871,9 @@ def wait_for_ci(sha, *, budget_s: float = DEFAULT_CI_WAIT_S,
     `unavailable` with the reason in `detail`, because a CLI hiccup may not
     wedge or end an overnight loop. Only the VERDICT is allowed to be bad news.
 
-    `monotonic`, never `clock`: this can block for 90 minutes, and wall time is
-    not monotonic. The file already pays for that lesson once, in `run_cycle`.
+    `monotonic`, never `clock`: this can block for DEFAULT_CI_WAIT_S (over two
+    hours), and wall time is not monotonic. The file already pays for that
+    lesson once, in `run_cycle`.
     """
     started_m = monotonic()
     deadline = started_m + max(0.0, float(budget_s))

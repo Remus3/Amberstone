@@ -1561,7 +1561,30 @@ def test_every_step_value_is_one_of_the_seven_documented_words():
     assert qloop.CI_STEPS == ("success", "failure", "cancelled", "skipped",
                               "timeout", "unavailable", "unknown")
     assert qloop.CI_FAILURE == "failure"
-    assert qloop.DEFAULT_CI_WAIT_S == 5400
+
+
+def test_the_ci_wait_outlasts_the_graded_jobs_own_ceiling():
+    """The INVARIANT, not a bare number (s146 C3, 2026-10-31).
+
+    This used to pin `DEFAULT_CI_WAIT_S == 5400`, which stayed green when the
+    `check` job's ceiling went 95 -> 125: a 90-minute wait would then grade a
+    run CI may still pass as `timeout`. The wait is read against the job the
+    driver actually grades (CI_WORKFLOW / CI_JOB), off disk, so the next ceiling
+    raise in ci.yml reds this until the wait follows it.
+    """
+    from pathlib import Path
+
+    yaml = pytest.importorskip("yaml", reason="PyYAML absent - CI pins it")
+    wf = (Path(__file__).resolve().parent.parent / ".github" / "workflows"
+          / qloop.CI_WORKFLOW)
+    job = yaml.safe_load(wf.read_text(encoding="utf-8"))["jobs"][qloop.CI_JOB]
+    ceiling_min = job.get("timeout-minutes")
+    assert isinstance(ceiling_min, int) and ceiling_min > 0, (
+        f"{qloop.CI_WORKFLOW}:{qloop.CI_JOB} declares no job timeout-minutes")
+    assert qloop.DEFAULT_CI_WAIT_S >= ceiling_min * 60, (
+        f"DEFAULT_CI_WAIT_S={qloop.DEFAULT_CI_WAIT_S}s is under the "
+        f"{qloop.CI_JOB} job ceiling ({ceiling_min}m = {ceiling_min * 60}s), so "
+        "the driver abandons a run CI may still pass")
 
 
 def test_the_gh_seam_is_injectable_and_defaults_to_the_one_wrapper():
