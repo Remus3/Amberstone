@@ -12,10 +12,15 @@ Split out of moon_vision_server.py during Phase 2.4. Owns:
   ONE reason vocabulary (locked | not_foreground | blank) the frame path uses;
   a liveness/capability field can reuse it rather than mint a second one.
 - ``_obs_lane`` + ``_record_obs_lane_failure(reason)`` - RM-1054: why the OBS
-  frame lane yielded no frame although OBS answered (undecodable | error).
+  frame lane yielded no frame (undecodable | error), plus RM-1214's fetch
+  reasons from core.obs_frame_source (ws_error | auth | timeout).
   A SEPARATE block, not more capture-skip reasons: those are the Y-03
   REFUSAL vocabulary shared with tools/screen_agent.py, and an OBS failure
   refuses nothing (the GDI grab still runs).
+- ``_gdi_lane`` + ``_record_gdi_lane_failure(reason)`` - RM-1214: why the
+  GDI self-grab yielded no frame although it was due and not refused
+  (unavailable = PIL.ImageGrab will not import | error = grab or encode
+  raised). Separate from ``capture_skip`` for the same reason.
 
 Sibling modules (``_frame``, ``_relay``) directly mutate ``_stats[kind]["bytes"]``
 under ``_stats_lock`` to record upload byte totals. Keep that contract - moving
@@ -45,11 +50,21 @@ CAPTURE_SKIP_REASONS = ("locked", "not_foreground", "blank")
 _capture_skips: dict = {r: 0 for r in CAPTURE_SKIP_REASONS}
 _capture_skips.update({"last_reason": None, "last_ts": 0.0})
 # RM-1054: OBS bytes Pillow could not decode ("undecodable") or any other
-# failure inside the OBS lane, the JPEG re-encode included ("error"). Zero
+# failure inside the OBS lane, the JPEG re-encode included ("error").
+# RM-1214: the fetch itself failing, as reported by
+# core.obs_frame_source.get_obs_frame's on_failure callback - a websocket
+# error ("ws_error"), a failed identify ("auth") or an overrun one-shot
+# worker ("timeout"); its unexpected-exception reason maps to "error". Zero
 # here while frames serve as ``self_grab`` means OBS yielded nothing.
-OBS_LANE_FAILURES = ("undecodable", "error")
+OBS_LANE_FAILURES = ("undecodable", "error", "ws_error", "auth", "timeout")
 _obs_lane: dict = {r: 0 for r in OBS_LANE_FAILURES}
 _obs_lane.update({"last_reason": None, "last_ts": 0.0})
+# RM-1214: the GDI self-grab could not import PIL.ImageGrab
+# ("unavailable"), or the grab / downscale / JPEG encode raised ("error").
+# A refused grab (locked, not_foreground, blank) stays a capture_skip.
+GDI_LANE_FAILURES = ("unavailable", "error")
+_gdi_lane: dict = {r: 0 for r in GDI_LANE_FAILURES}
+_gdi_lane.update({"last_reason": None, "last_ts": 0.0})
 _log_ring = collections.deque(maxlen=80)
 _latency_ring = collections.deque(maxlen=60)
 
@@ -97,6 +112,25 @@ def _reset_obs_lane() -> None:
         _obs_lane["last_ts"] = 0.0
 
 
+def _record_gdi_lane_failure(reason: str) -> None:
+    """Count one GDI self-grab failure. ``reason`` must be in GDI_LANE_FAILURES."""
+    if reason not in GDI_LANE_FAILURES:
+        raise ValueError(f"unknown gdi lane failure: {reason!r}")
+    with _stats_lock:
+        _gdi_lane[reason] += 1
+        _gdi_lane["last_reason"] = reason
+        _gdi_lane["last_ts"] = time.time()
+
+
+def _reset_gdi_lane() -> None:
+    """Test helper: zero the RM-1214 GDI-lane counters."""
+    with _stats_lock:
+        for r in GDI_LANE_FAILURES:
+            _gdi_lane[r] = 0
+        _gdi_lane["last_reason"] = None
+        _gdi_lane["last_ts"] = 0.0
+
+
 def _reset_capture_skips() -> None:
     """Test helper: zero the Y-03 counters."""
     with _stats_lock:
@@ -142,6 +176,7 @@ def get_stats() -> dict:
         stats_copy = {k: dict(v) for k, v in _stats.items()}
         skip_copy = dict(_capture_skips)
         obs_copy = dict(_obs_lane)
+        gdi_copy = dict(_gdi_lane)
         log_copy = [dict(x) for x in list(_log_ring)[-30:]]
         lat_copy = [dict(x) for x in list(_latency_ring)]
         return {
@@ -149,6 +184,7 @@ def get_stats() -> dict:
             "stats":        stats_copy,
             "capture_skip": skip_copy,
             "obs_lane":     obs_copy,
+            "gdi_lane":     gdi_copy,
             "log":          log_copy,
             "latency_60":   lat_copy,
             "python":       sys.version.split()[0],

@@ -171,6 +171,24 @@ def test_stats_counters_keeps_obs_lane_failures():
 def test_stats_counters_omits_obs_lane_from_an_older_server():
     out = gvp.stats_counters({"stats": {}})
     assert "obs_lane" not in out
+    assert "gdi_lane" not in out
+
+
+def test_stats_counters_keeps_obs_fetch_and_gdi_failures():
+    """RM-1214: the OBS fetch reasons and the GDI self-grab counters reach
+    the readback."""
+    body = {"stats": {},
+            "obs_lane": {"undecodable": 0, "error": 0, "ws_error": 4,
+                         "auth": 1, "timeout": 2, "last_reason": "ws_error",
+                         "last_ts": 3.0},
+            "gdi_lane": {"unavailable": 0, "error": 5, "last_reason": "error",
+                         "last_ts": 3.0}}
+    out = gvp.stats_counters(body)
+    assert out["obs_lane"] == {"undecodable": 0, "error": 0, "ws_error": 4,
+                               "auth": 1, "timeout": 2,
+                               "last_reason": "ws_error"}
+    assert out["gdi_lane"] == {"unavailable": 0, "error": 5,
+                               "last_reason": "error"}
 
 
 def test_stats_counters_tolerates_junk():

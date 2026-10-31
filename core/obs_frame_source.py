@@ -31,6 +31,11 @@ keeps a frame warm every tick (core.obs_publisher keep-warm slot);
 `get_obs_frame` serves that slot when fresh and only pays a one-shot
 connect+identify+screenshot round-trip when the slot is cold.
 
+Failure split (RM-1214): None still means "no frame", but a caller that
+passes `on_failure=` learns WHY a flag-on fetch failed - one reason from
+`OBS_FETCH_FAILURES` - while an OBS reply that simply carries no frame
+reports nothing. Without the callback the contract is unchanged.
+
 ASCII only (repo hard rule). No em-dashes.
 """
 from __future__ import annotations
@@ -46,6 +51,42 @@ _DEFAULT_TIMEOUT_S = 1.5
 _DEFAULT_MAX_AGE_S = 3.0
 _JOIN_GRACE_S = 0.75      # extra headroom over timeout_s when joining the worker
 _CFG_TTL_S = 5.0          # config re-read cadence (disk JSON is cheap but not free)
+
+# RM-1214: why a flag-on get_obs_frame returned None. "ws_error" = the
+# websocket round trip raised (OBS down, refused, closed, identify timed
+# out); "auth" = OBS answered but the identify handshake failed; "timeout"
+# = the one-shot worker overran its join and was abandoned; "error" = any
+# other exception inside the facade. vision_server._stats.OBS_LANE_FAILURES
+# carries every one of these.
+OBS_FETCH_FAILURES = ("ws_error", "auth", "timeout", "error")
+
+
+class _FetchFailure:
+    """Falsy marker `_fetch_async` / `_fetch_once` return instead of None
+    when the fetch FAILED, so `get_obs_frame` can tell a failure from "OBS
+    had no frame". Never leaves this module: get_obs_frame turns it into None."""
+
+    __slots__ = ("reason",)
+
+    def __init__(self, reason: str) -> None:
+        self.reason = reason
+
+    def __bool__(self) -> bool:
+        return False
+
+    def __repr__(self) -> str:
+        return f"_FetchFailure({self.reason!r})"
+
+
+def _notify(on_failure, reason: str) -> None:
+    """Hand `reason` to the caller's hook; a raising hook is swallowed."""
+    if on_failure is None:
+        return
+    try:
+        on_failure(reason)
+    except Exception:  # noqa: BLE001 - the facade never raises
+        _log.debug("obs frame on_failure hook raised", exc_info=True)
+
 
 _cfg_lock = threading.Lock()
 _cfg_cache: dict = {"cfg": None, "mono": 0.0}
@@ -84,13 +125,19 @@ def obs_frame_source_enabled() -> bool:
         return False
 
 
-def get_obs_frame(timeout_s: "float | None" = None) -> "bytes | None":
+def get_obs_frame(timeout_s: "float | None" = None,
+                  on_failure=None) -> "bytes | None":
     """Return the latest OBS source frame as raw image bytes (JPEG), or None.
 
     None when: the `obs.frame_source` flag is off/absent (DEFAULT), OBS is
     down or not identified, the request times out, or anything else goes
     wrong. Never raises; never blocks much past `timeout_s` (default from
     config `frame_timeout_s`, else 1.5s).
+
+    `on_failure` (RM-1214, optional): called with one reason from
+    `OBS_FETCH_FAILURES` when the None is a FAILURE; never called for the
+    flag off, a served frame, or an OBS reply that carries no frame. A
+    raising hook is swallowed.
     """
     try:
         cfg = _get_obs_cfg()
@@ -109,23 +156,32 @@ def get_obs_frame(timeout_s: "float | None" = None) -> "bytes | None":
         data = _pub.peek_frame(max_age_s=max_age_s)
         if data:
             return data
-        return _fetch_once(cfg, timeout_s)
+        got = _fetch_once(cfg, timeout_s)
+        if isinstance(got, _FetchFailure):
+            _notify(on_failure, got.reason)
+            return None
+        return got
     except Exception:  # noqa: BLE001
+        _notify(on_failure, "error")
         return None
 
 
-def _fetch_once(cfg: dict, timeout_s: float) -> "bytes | None":
+def _fetch_once(cfg: dict, timeout_s: float) -> "bytes | _FetchFailure | None":
     """One-shot synchronous fetch: run the async round-trip on a private
     daemon thread with its own event loop so this works from ANY caller
     thread (including the AppLoop's own asyncio thread) and can never wedge
-    the caller - an overrunning worker is abandoned, not awaited."""
+    the caller - an overrunning worker is abandoned, not awaited.
+
+    Returns bytes, None (OBS answered with no frame) or a `_FetchFailure`
+    (RM-1214): "timeout" for an abandoned worker, "error" when the worker
+    or the thread machinery raised, else the round trip's own reason."""
     box: dict = {}
 
     def _worker() -> None:
         try:
             box["data"] = asyncio.run(_fetch_async(cfg, timeout_s))
         except Exception:  # noqa: BLE001
-            box["data"] = None
+            box["data"] = _FetchFailure("error")
 
     try:
         t = threading.Thread(target=_worker, name="obs-frame-oneshot",
@@ -133,14 +189,19 @@ def _fetch_once(cfg: dict, timeout_s: float) -> "bytes | None":
         t.start()
         t.join(timeout=max(0.05, float(timeout_s)) + _JOIN_GRACE_S)
     except Exception:  # noqa: BLE001
-        return None
-    return box.get("data")
+        return _FetchFailure("error")
+    if "data" not in box:
+        return _FetchFailure("timeout" if t.is_alive() else "error")
+    return box["data"]
 
 
-async def _fetch_async(cfg: dict, timeout_s: float) -> "bytes | None":
+async def _fetch_async(cfg: dict,
+                       timeout_s: float) -> "bytes | _FetchFailure | None":
     """Connect, identify (OBS-WS v5 handshake incl. auth), grab one
-    GetSourceScreenshot. Returns raw bytes or None; a success also warms
-    the keep-warm slot (inside grab_source_screenshot)."""
+    GetSourceScreenshot. Returns raw bytes, None when OBS answered with no
+    frame, or a `_FetchFailure` - "auth" for a failed identify, "ws_error"
+    when the round trip raised (RM-1214); a success also warms the
+    keep-warm slot (inside grab_source_screenshot)."""
     try:
         import websockets
 
@@ -161,9 +222,9 @@ async def _fetch_async(cfg: dict, timeout_s: float) -> "bytes | None":
                 timeout=max(0.05, float(timeout_s)))
             if not ok:
                 _log.debug("OBS frame fetch: identify failed")
-                return None
+                return _FetchFailure("auth")
             return await _pub.grab_source_screenshot(
                 ws, source, image_width=width, timeout_s=timeout_s)
     except Exception as exc:  # noqa: BLE001
         _log.debug("OBS frame fetch failed: %s", exc)
-        return None
+        return _FetchFailure("ws_error")

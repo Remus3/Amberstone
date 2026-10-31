@@ -59,9 +59,11 @@ from core.screen_grab import frame_is_blank, input_desktop_locked
 
 from ._config import log
 from ._stats import (
+    OBS_LANE_FAILURES,
     _capture_skips,
     _record,
     _record_capture_skip,
+    _record_gdi_lane_failure,
     _record_obs_lane_failure,
     _stats,
     _stats_lock,
@@ -195,12 +197,17 @@ def _maybe_obs_frame():
     any other failure in the lane (the re-encode included) as ``error``, in
     ``get_stats()["obs_lane"]``; the flag off, an empty OBS reply and a
     served frame count nothing, so a gated drain can tell "OBS yielded
-    nothing" from "the OBS bytes were bad"."""
+    nothing" from "the OBS bytes were bad".
+
+    RM-1214: the fetch's own failures (websocket error, failed identify,
+    overrun worker, unexpected exception) arrive through ``get_obs_frame``'s
+    ``on_failure`` callback and are counted in the same block; an OBS reply
+    with no frame still counts nothing."""
     try:
         from core.obs_frame_source import get_obs_frame, obs_frame_source_enabled
         if not obs_frame_source_enabled():
             return None
-        raw = get_obs_frame()
+        raw = get_obs_frame(on_failure=_note_obs_fetch_failure)
         if not raw:
             return None
         try:
@@ -236,6 +243,12 @@ def _maybe_obs_frame():
         return None
 
 
+def _note_obs_fetch_failure(reason) -> None:
+    """``get_obs_frame`` on_failure hook (RM-1214): count the fetch reason in
+    ``obs_lane``; a reason outside the vocabulary counts as ``error``."""
+    _record_obs_lane_failure(reason if reason in OBS_LANE_FAILURES else "error")
+
+
 def _downscaled(img):
     """``img`` resized to ``_SELF_GRAB_MAX_WIDTH`` wide, keeping its aspect,
     or ``img`` itself when it is already that narrow. The height is clamped
@@ -256,7 +269,13 @@ def _fetch_frame_direct():
     Spec O (2026-07-05): when config ``obs.frame_source`` is on, the OBS
     occlusion-proof frame is tried FIRST; ANY OBS failure falls back to the
     GDI BitBlt below. Flag off (the default) short-circuits to None inside
-    ``_maybe_obs_frame`` and this function behaves exactly as before."""
+    ``_maybe_obs_frame`` and this function behaves exactly as before.
+
+    RM-1214: a GDI grab that was due and not refused but failed is counted
+    in ``get_stats()["gdi_lane"]`` - ``unavailable`` when PIL.ImageGrab will
+    not import, ``error`` when the grab, downscale or encode raised. A refusal
+    (``not_foreground``, ``blank``) stays a capture_skip and counts nothing
+    there."""
     obs_frame = _maybe_obs_frame()
     if obs_frame is not None:
         return obs_frame
@@ -269,7 +288,9 @@ def _fetch_frame_direct():
         return None
     try:
         from PIL import ImageGrab
-    except Exception:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001
+        _record_gdi_lane_failure("unavailable")
+        log.debug("frame self-grab unavailable (PIL.ImageGrab): %s", exc)
         return None
     try:
         img = ImageGrab.grab()  # primary virtual screen, single GDI BitBlt
@@ -297,6 +318,7 @@ def _fetch_frame_direct():
                                 quality=_SELF_GRAB_JPEG_QUALITY, optimize=True)
         b64 = _b64.b64encode(buf.getvalue()).decode("ascii")
     except Exception as exc:  # noqa: BLE001
+        _record_gdi_lane_failure("error")
         log.debug("frame self-grab failed: %s", exc)
         return None
     return {

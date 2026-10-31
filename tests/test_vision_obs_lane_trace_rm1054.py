@@ -32,7 +32,9 @@ from PIL import Image  # noqa: E402
 from vision_server import _frame  # noqa: E402
 from vision_server import _stats as stats_mod  # noqa: E402
 
-OBS_KEYS = ("undecodable", "error")
+# RM-1214 extended the vocabulary with the fetch reasons; their tests
+# live in tests/test_vision_capture_lane_trace_s144q46.py.
+OBS_KEYS = ("undecodable", "error", "ws_error", "auth", "timeout")
 
 
 def _textured(w, h):
@@ -74,7 +76,7 @@ def _obs_lane():
 
 def _counts():
     lane = _obs_lane()
-    return {k: lane[k] for k in OBS_KEYS}
+    return {k: lane[k] for k in OBS_KEYS[:2]}  # RM-1054's own two reasons
 
 
 def _skips():
