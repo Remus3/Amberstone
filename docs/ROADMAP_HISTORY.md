@@ -1,5 +1,11 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-10-31b - size-budget relocation (session 146 /done), 1 line
+
+`ROADMAP.md` stood at 73587 of 81920 bytes on `4bf8f2227` (the `tools/drift_guard.py` warn line is 73728), and the session 146 /done index row for RM-1229..RM-1233 would cross it. The line below moves here VERBATIM as it stood at `4bf8f2227`: the RM-750 live half, now SUPERSEDED - the A45 launcher cutover (applied 2026-10-31 18:07, LEDGER 1998) unregistered the launcher tasks and RC's services start only under the rc-shell `--profile dev` host, so RC-DSKeepalive is never registered and ASKS 20 is retired (retiring the installers that re-register removed tasks is RM-1232). Open rows were not moved.
+
+- **[ ] RM-750 live half (shipped row archived, `docs/ROADMAP_HISTORY.md` `## 2026-10-25d`; OWED, operator machine act, ASKS 20): register RC-DSKeepalive with `tools/install_ds_keepalive_task.ps1` (elevated), then the RC-stopped kill-DS read-back.** Body in `BACKLOG.md` "Session 119 filings".
+
 ## 2026-10-31 - size-budget relocation (session 146 ADJ-F), 6 lines
 
 `ROADMAP.md` stood at 73642 of 81920 bytes on `b047d8fb1` (the `tools/drift_guard.py` warn line is 73728), and the s146 ruling 43 / 51 notes plus two new rows (RM-1226, RM-1227) would cross it. The closed / shipped lines below move here VERBATIM as they stood at `b047d8fb1`, in their ROADMAP order: the WAVE1 DRAIN pointer (its open residue keeps its own rows; RM-135, named only here, is PARTIAL in `BACKLOG.md`), the s128 .. s143 shipped-rows pointer line (replaced in `ROADMAP.md` by a shorter pointer naming this block), and the RM-861, RM-876, RM-880 and RM-886 rows (each SHIPPED 2026-10-27, LEDGER 1941 / 1942; their `BACKLOG.md` heads read SHIPPED; the RM-886 row also names RM-885, SHIPPED `4113b0039`, LEDGER 1862). Open rows were not moved.
