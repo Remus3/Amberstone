@@ -12,7 +12,6 @@ header values are separate keys because the API checks them, so pointing the
 endpoint elsewhere means pointing those elsewhere too.
 """
 import json
-import ssl
 import sys
 import urllib.request
 from pathlib import Path
@@ -23,15 +22,16 @@ if str(ROOT) not in sys.path:
 
 from core import external_sources  # noqa: E402
 from core.polled_json import atomic_write_text  # noqa: E402
+from core.tls_policy import client_context_verified  # noqa: E402
 
 PROJECT = ROOT
 # Raw, uncleared third-party payload for manual integration only: gitignored
 # (RM-846), and written LF through the shared atomic helper (RM-441 / RM-481).
 RAW_OUT = PROJECT / "data" / "meta" / "tft_set17_external_raw.json"
 
-ctx = ssl.create_default_context()
-ctx.check_hostname = False
-ctx.verify_mode = ssl.CERT_NONE
+# RM-1175: the configured source is a public HTTPS host, so its
+# certificate is verified (chain + hostname, RM-752 protocol floor).
+ctx = client_context_verified()
 
 
 def _headers() -> dict:

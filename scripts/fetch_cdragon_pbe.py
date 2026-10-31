@@ -5,7 +5,6 @@ PBE files and rewrites files under data/meta/, so nothing runs at import:
 main() does the work (RM-1174).
 """
 import json
-import ssl
 import sys
 import urllib.request
 from pathlib import Path
@@ -21,6 +20,7 @@ if str(PROJECT) not in sys.path:
 # (per-writer scratch, fsync, WinError 5 retry, no scratch left on a failed
 # rename) instead of an in-place write.
 from core.polled_json import atomic_write_bytes  # noqa: E402
+from core.tls_policy import client_context_verified  # noqa: E402
 
 META_DIR = PROJECT / "data" / "meta"
 TEAMPLANNER_URL = ("https://raw.communitydragon.org/pbe/plugins/"
@@ -34,12 +34,10 @@ HEADERS = {"User-Agent": "Mozilla/5.0"}
 
 
 def _ssl_context():
-    # Unchanged behaviour: certificate verification stays off (turning it
-    # on is filed separately as RM-1175).
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
-    return ctx
+    # RM-1175: raw.communitydragon.org is a public CDN with a CA-signed
+    # certificate and this download feeds a TRACKED file, so the peer is
+    # verified (chain + hostname, RM-752 protocol floor).
+    return client_context_verified()
 
 
 def fetch(url):

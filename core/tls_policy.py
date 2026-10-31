@@ -46,3 +46,17 @@ def client_context_noverify() -> ssl.SSLContext:
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
     return ctx
+
+
+def client_context_verified() -> ssl.SSLContext:
+    """A client context at the RC floor that VERIFIES the peer (RM-1175).
+
+    For public hosts with a CA-signed certificate (raw.communitydragon.org
+    and the like): the system trust store, chain and hostname checks on.
+    ``ssl.create_default_context`` loads the trust store; it builds no
+    ``ssl.SSLContext(...)`` call here, so the RM-752 construction census is
+    unchanged.
+    """
+    ctx = ssl.create_default_context()
+    ctx.minimum_version = TLS_MIN_VERSION
+    return ctx

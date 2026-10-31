@@ -897,7 +897,8 @@ Riot CA (browser-side only): `install-cert.cmd` (admin-elevated) on the game hos
 ### TLS protocol floor (RM-752, decided 2026-10-20, session 125)
 
 Every `ssl.SSLContext` RC constructs itself comes from `core/tls_policy.py`
-(`server_context()`, `client_context_noverify()`), whose one constant
+(`server_context()`, `client_context_noverify()`, and for a public host
+with a CA-signed certificate `client_context_verified()`, RM-1175), whose one constant
 `TLS_MIN_VERSION` is `TLSv1_2`. `tests/test_tls_floor_rm752.py` moves that
 constant to TLSv1_3 and asserts every routed site follows it, and AST-walks
 every tracked production `.py` so a new `SSLContext(...)` outside the helper
@@ -921,6 +922,8 @@ tree, which is why the test patches the constant instead.
 | `tools/lcu_agent.py` `_dash_ssl_ctx` | client to :8888 | default 1.2 | `client_context_noverify()` |
 | `tools/phase_watcher.py` `_ssl_ctx_lcu` | client to the LCU | default 1.2 | inline `TLSv1_2` (served to `C:\RC-Agent\` with no repo above it, so it cannot import `core/`; the test pins the match) |
 | `tools/liveclient_relay.py` `_ssl_ctx` | client to the :2999 Live Client | explicit TLSv1 + `SECLEVEL=0` | KEEP (below) |
+| `scripts/fetch_cdragon_pbe.py` `_ssl_context` | client to raw.communitydragon.org | verification OFF | `client_context_verified()` (RM-1175) |
+| `scripts/fetch_external_tft_meta.py` `ctx` | client to the configured public TFT meta source | verification OFF | `client_context_verified()` (RM-1175) |
 
 **Decision: floor = TLSv1_2 everywhere, not TLSv1_3-only.** Alternatives:
 (a) TLSv1_3-only servers - REJECTED: measured against a 1.3-only loopback
