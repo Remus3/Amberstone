@@ -14,9 +14,11 @@ bound that exists. The four sites are:
 
 RE-VERIFIED this run by an AST sweep over every tracked `.py` outside
 `tests/` and `docs/`: 20 production `messages.create` sites exist,
-14 carry `timeout` and 6 do not; the 6 are exactly these 4 plus
-`tft/tft_live_analysis.py:391` and `:457`, which are RM-302 and out of scope
-here. The same sweep found 17 `anthropic.Anthropic(...)` constructions, every
+14 carry `timeout` and 6 do not; the 6 are exactly these 4 plus the two
+`tft/tft_live_analysis.py` calls in `TftLiveAnalysis._run_analysis` and
+`TftLiveAnalysis._run_augment_select`, which are RM-302 and out of scope
+here (RM-302 has since bounded both with `_MODEL_TIMEOUT_S`). The same sweep
+found 17 `anthropic.Anthropic(...)` constructions, every
 one passing exactly `api_key` + `base_url` and none passing `timeout`. (The
 row body's "12" is understated; `BACKLOG.md` carries its own correction to 17,
 and `tests/test_anthropic_base_url_pin.py` already enumerates the 17.)
@@ -32,10 +34,12 @@ short-circuit, a bad-model rejection) reports a distinct failure message.
 
 WHY THESE VALUES, per site rather than one blanket constant. Evidence used:
   - The repo convention at the 14 already-timed sites: 20 s for a full coach
-    turn with a system prompt (`coaches/aram_coach.py:1105`,
-    `arena_coach.py:806`, `brawl_coach.py:503`, `replay_coach.py:225`,
-    `tft_coach_engine.py:605`, `tft_pbe_engine.py:353`), 15 s for a shorter
-    follow-up, 12 s for champ select, 10 s for the shortest arena call.
+    turn with a system prompt (`Coach._run_coach` in
+    `coaches/aram_coach.py`, `coaches/arena_coach.py` and
+    `coaches/brawl_coach.py`, `analyze_match` in `coaches/replay_coach.py`,
+    `TftCoachEngine.__init__` in `tft/tft_coach_engine.py`, and the TFT PBE
+    engine, deleted since by RM-292 (b)), 15 s for a shorter follow-up, 12 s
+    for champ select, 10 s for the shortest arena call.
   - The only measured latency distribution in the repo,
     `data/coach_trace.jsonl`, n=200 ARAM coach calls: p50 5972 ms,
     p90 7049 ms, p99 10950 ms, max 26000 ms. That site ships `timeout=20`.
@@ -43,22 +47,27 @@ WHY THESE VALUES, per site rather than one blanket constant. Evidence used:
     and holds ZERO vision and ZERO coach samples, so no per-site live
     percentile exists to cite and none is invented here.
   - Loop cadences, which bound how long a hung call may stall its caller:
-    ARAM 25.0 s (`coaches/aram_coach.py:571`, fast mode 6.0 s at `:583`),
-    Arena 20.0 s (`:426`), Brawl 18.0 s (`:206`), TFT 15.0 s
-    (`tft/tft_live_analysis.py:223`).
-  - `core/moon_proxy.py:28` `TIMEOUT_S = 8`. moon_proxy is the SOLE in-repo
-    client of `:8889/vision` and `:8889/coach` (`core/moon_proxy.py:108`
-    and `:151`), and it abandons the request at 8 s.
+    ARAM 25.0 s (`Coach._VISION_INTERVAL` in `coaches/aram_coach.py`, fast
+    mode 6.0 s in `Coach._FAST_VISION_INTERVAL`), Arena 20.0 s and Brawl
+    18.0 s (`Coach._VISION_INTERVAL` in `coaches/arena_coach.py` and
+    `coaches/brawl_coach.py`), TFT 15.0 s (`_vision_interval` in
+    `TftLiveAnalysis.__init__`, `tft/tft_live_analysis.py`).
+  - `core/moon_proxy.py` `TIMEOUT_S = 8`. moon_proxy is the SOLE in-repo
+    client of `:8889/vision` and `:8889/coach` (`MoonProxy.extract_vision`
+    and `MoonProxy.get_coaching`), and it abandons the request at 8 s.
 
-  Site 1, 20 s: Sonnet-4.6 (`modes/shared_vision.py:110`, `:273`) over a
-    full-screen frame. Slowest model of the four, and it is the LAST resort -
+  Site 1, 20 s: Sonnet (`SONNET_MODEL` in `modes/shared_vision.py`,
+    claude-sonnet-4-6 when RM-314 shipped, which `GameVisionReader.__init__`
+    sets as the reader's model) over a full-screen frame. Slowest model of the four, and it is the LAST resort -
     it only runs after the relay path already failed, so cutting it short
     means no vision at all for that cycle. 20 s keeps a hung call inside
     roughly one Arena/Brawl cycle (20.0 / 18.0 s) and matches the repo
     ceiling for Sonnet-class work. Worst case per cycle becomes 8 s relay
     plus 20 s direct = 28 s, against 8 + 600 = 608 s today.
-  Site 2, 15 s: Haiku (`tft/tft_live_analysis.py:220` forwards a model
-    defaulting to claude-haiku-4-5), over four stitched crops that
+  Site 2, 15 s: Haiku (`TftLiveAnalysis.__init__` in
+    `tft/tft_live_analysis.py` builds the reader with
+    `TftVisionReader(api_key,model)`, a model defaulting to
+    claude-haiku-4-5), over four stitched crops that
     `_CROP_REGIONS` documents as ~350 tiles against ~1400 for a full frame,
     i.e. a quarter of the image tokens. Cheaper model AND a much smaller
     payload than site 1, so it does not need site 1 headroom. 15 s equals the
@@ -74,7 +83,8 @@ WHY THESE VALUES, per site rather than one blanket constant. Evidence used:
     ThreadingHTTPServer worker that also serves the 1 Hz LCU upload path.
     10 s is that 8 s client budget plus margin, so the server never abandons
     a request its caller would still have accepted, and it is the value the
-    repo already uses for its shortest call (`coaches/arena_coach.py:1077`).
+    repo already uses for its shortest call (`Coach._handle_anvil` in
+    `coaches/arena_coach.py`).
 
 MUTATION: deleting the `timeout=` argument at any one site turns exactly its
 own test red on `assertIn`, and turns `test_no_untimed_messages_create_in
@@ -209,7 +219,8 @@ class TestSharedVisionTimeout(_TimeoutKwargCase):
         reader._client = client
         # USE_RELAY True short-circuits into core.moon_proxy and never reaches
         # the direct SDK call this row is about. The class documents the
-        # per-instance override at modes/shared_vision.py:252.
+        # per-instance override in the RM-144 comment above
+        # GameVisionReader.USE_RELAY (modes/shared_vision.py).
         reader.USE_RELAY = False
         return reader, client
 
@@ -245,7 +256,8 @@ class TestTftVisionReaderTimeout(_TimeoutKwargCase):
     def test_extract_local_passes_timeout_to_messages_create(self):
         reader, client = self._reader()
         # _extract_local is called directly: _extract tries core.moon_proxy
-        # first (tft/tft_vision_reader.py:174) and returns before the SDK call
+        # first (TftVisionReader._extract calls moon_proxy.extract_vision)
+        # and returns before the SDK call
         # whenever the relay answers.
         reader._extract_local("aGVsbG8=")
         self.assert_timeout_reached(

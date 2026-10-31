@@ -33,12 +33,13 @@ _FRAME_TIMEOUT = 3.0
 # Without it the request inherits the SDK default of 600s. This site is the
 # slowest of the vision path - SONNET_MODEL over a full-screen frame - and it
 # is the LAST resort, reached only after the moon_proxy relay already failed
-# (which itself costs up to core/moon_proxy.py:28 TIMEOUT_S = 8), so it needs
+# (which itself costs up to core/moon_proxy.py TIMEOUT_S = 8), so it needs
 # real headroom rather than the relay's tighter budget. 20s keeps a hung call
-# inside roughly one Arena/Brawl vision cycle (coaches/arena_coach.py:426
-# 20.0s, coaches/brawl_coach.py:206 18.0s) and matches the repo ceiling for
-# Sonnet-class work (coaches/aram_coach.py:1105, arena_coach.py:806,
-# brawl_coach.py:503, replay_coach.py:225, tft_coach_engine.py:605).
+# inside roughly one Arena/Brawl vision cycle (Coach._VISION_INTERVAL: 20.0s
+# in coaches/arena_coach.py, 18.0s in coaches/brawl_coach.py) and matches the
+# repo ceiling for Sonnet-class work (timeout=20 in Coach._run_coach of
+# coaches/aram_coach.py, arena_coach.py and brawl_coach.py, analyze_match in
+# coaches/replay_coach.py, TftCoachEngine.__init__ in tft/tft_coach_engine.py).
 _REQUEST_TIMEOUT_S = 20
 _FRAME_MAX_AGE_S = 8.0   # warn if cached frame older than this
 _FRAME_HARD_AGE_S = 90.0 # skip clearly stale frames so a wedged relay does not
@@ -451,7 +452,8 @@ class GameVisionReader:
     def _postprocess(self, d: dict) -> dict:
         # The live vision relay (vision_server/_inference.py) emits the
         # augment-select flag as `is_augment_select`; the ARAM/Arena/Brawl
-        # coaches gate on `augment_select` (e.g. aram_coach.py:614), and
+        # coaches gate on `augment_select` (e.g. Coach._run_vision in
+        # coaches/aram_coach.py), and
         # `augment_choices` already shares its name. Alias the flag here - the
         # single chokepoint every GameVisionReader read()/read_tiered() runs -
         # so the augment-select handler fires. 2026-07-12: live-verified the

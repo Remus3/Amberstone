@@ -41,7 +41,7 @@ Never output trait names as unit names. Spectating -> board_units=["SPECTATING"]
 
 # AUDIT 2026-08-30 (lane 8 cycle 20): the model id is caller-controlled on
 # both /vision and /coach. A membership allowlist was REJECTED as the guard -
-# `modes/shared_vision.py:273` legitimately sends SONNET_MODEL for escalation
+# `modes/shared_vision.py` legitimately sends SONNET_MODEL for escalation
 # and `tft/` sends its own, so pinning to VISION_MODEL/COACH_MODEL would break
 # the escalation path this server exists to serve. Validate SHAPE instead:
 # printable, bounded, no control characters, no path separators.
@@ -49,28 +49,31 @@ Never output trait names as unit names. Spectating -> board_units=["SPECTATING"]
 # (`anthropic.claude-...-v2:0`, colon) and OpenRouter-style
 # (`anthropic/claude-3.5-sonnet`, slash) ids. That is deliberate, and no live
 # caller is affected - every model literal in the repo today is a plain
-# `claude-*` (`_config.py:35-36`, `modes/shared_vision.py:110`,
-# `tft/tft_coach_engine.py:593`), all of which match. If RC ever routes
+# `claude-*` (`VISION_MODEL` / `COACH_MODEL` in `_config.py`, `HAIKU_MODEL` /
+# `SONNET_MODEL` in `modes/shared_vision.py`, `TftCoachEngine.__init__` in
+# `tft/tft_coach_engine.py`), all of which match. If RC ever routes
 # through Bedrock or a proxy, widen this REGEX rather than deleting the gate.
 _MODEL_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 
 # RM-314: per-request bound on both Anthropic calls below. Without it each
 # inherits the SDK default of 600s, and no client construction anywhere in the
-# repo sets one (`_config.py:75` passes only api_key + base_url), so the
+# repo sets one (`_get_client` in `_config.py` passes only api_key +
+# base_url), so the
 # per-call kwarg is the ONLY bound that exists.
 #
 # `handle_vision` and `handle_coach` are DIFFERENT call shapes - image plus a
 # cache_control system block at max_tokens=1400 versus text-only at
 # max_tokens=600 - and that was checked rather than assumed. It is not the
 # binding constraint. `core/moon_proxy.py` is the sole in-repo client of both
-# routes (`:108` /vision, `:151` /coach) and it abandons the request at
-# `core/moon_proxy.py:28` TIMEOUT_S = 8, so past ~10s either handler is
+# routes (`MoonProxy.extract_vision` /vision, `MoonProxy.get_coaching`
+# /coach) and it abandons the request at `core/moon_proxy.py`
+# TIMEOUT_S = 8, so past ~10s either handler is
 # producing a response nobody will read while occupying a ThreadingHTTPServer
 # worker that also serves the 1 Hz LCU upload path. 10s is that 8s client
 # budget plus margin - high enough that the server never abandons a request
 # its caller would still have accepted, low enough that orphaned work is
 # bounded. It is also the value the repo already uses for its shortest model
-# call (`coaches/arena_coach.py:1077`).
+# call (`Coach._handle_anvil` in `coaches/arena_coach.py`).
 #
 # Deliberately TIGHTER than the two reader-side sites (modes/shared_vision.py
 # 20s, tft/tft_vision_reader.py 15s): those are direct SDK calls with no
@@ -142,7 +145,8 @@ def _parse_json(raw: str) -> dict | None:
     # `dict | None`, but a model answering `[1,2,3]` / `123` / `"x"` / `true`
     # returned that value straight through, and handle_vision then counted it
     # ok=True. Both live consumers isinstance-gate the result
-    # (modes/shared_vision.py:383, dashboard/_screen_read.py:134), so the
+    # (GameVisionReader._extract in modes/shared_vision.py, run_screen_read
+    # in dashboard/_screen_read.py), so the
     # value was discarded downstream while the stats ring called it a
     # success. Enforce the documented contract here.
     # A non-dict parse falls THROUGH to the next candidate rather than
