@@ -398,7 +398,15 @@ def _opt_bool(body: dict, key: str, default: bool = False) -> bool:
             return default
         return bool(v)
     if isinstance(v, str):
-        return v.strip().lower() in ("1", "true", "yes", "on")
+        # RM-1156: only an explicit falsy word answers False. Any other
+        # string used to answer False too, which silently disarmed the
+        # DEFAULT-ON keys (filter_shared_uniques, enchanter_only, ...) on a
+        # typo; garbage now takes the default, as non-finite numbers do.
+        s = v.strip().lower()
+        if s in ("1", "true", "yes", "on"):
+            return True
+        if s in ("0", "false", "no", "off"):
+            return False
     return default
 
 
