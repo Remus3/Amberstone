@@ -12,7 +12,9 @@ With several sockets co-bound to 0.0.0.0:8889 the OS refuses every connect()
 
 Contract:
   - find_stale_vision_pids matches OTHER moon_vision_server.py / -m vision_server
-    processes and excludes the current pid + unrelated processes.
+    interpreter argv lists and excludes the current pid, its ancestors and
+    unrelated processes (the argv-structure rules and the other s144 cycle 75
+    guards are pinned in tests/test_vision_reap_hardening_s144t075.py).
   - reap_stale_vision_instances kills exactly those and returns their pids.
   - a killer that raises for one pid does not abort the sweep (best-effort).
   - an empty / unavailable process list reaps nothing and never raises.
@@ -28,20 +30,21 @@ from vision_server import _reap
 class FindStaleVisionPidsTests(unittest.TestCase):
     def _procs(self):
         return [
-            (100, r"C:\...\pythonw.exe C:\Example Repo\moon_vision_server.py"),
-            (200, r"C:\...\pythonw.exe C:\Example Repo\moon_vision_server.py"),
-            (300, r"C:\...\pythonw.exe main.py"),            # dashboard - keep
-            (400, r"C:\...\python.exe -m vision_server"),    # alt launch - stale
-            (500, r"C:\...\python.exe -m pytest tests"),     # unrelated - keep
+            (100, [r"C:\Program Files\Python\pythonw.exe", r"C:\Example Repo\moon_vision_server.py"]),
+            (200, [r"C:\Program Files\Python\pythonw.exe", r"C:\Example Repo\moon_vision_server.py"]),
+            (300, [r"C:\Program Files\Python\pythonw.exe", "main.py"]),            # dashboard - keep
+            (400, [r"C:\Program Files\Python\python.exe", "-m", "vision_server"]),  # alt launch - stale
+            (500, [r"C:\Program Files\Python\python.exe", "-m", "pytest", "tests"]),  # unrelated - keep
         ]
 
     def test_excludes_self_and_unrelated(self):
-        stale = _reap.find_stale_vision_pids(100, procs=self._procs())
+        stale = _reap.find_stale_vision_pids(100, procs=self._procs(), ancestors=())
         self.assertEqual(sorted(stale), [200, 400])
 
     def test_no_other_instances_returns_empty(self):
         stale = _reap.find_stale_vision_pids(
-            100, procs=[(100, "moon_vision_server.py"), (300, "main.py")]
+            100, procs=[(100, ["pythonw", "moon_vision_server.py"]),
+                        (300, ["pythonw", "main.py"])], ancestors=()
         )
         self.assertEqual(stale, [])
 
@@ -49,16 +52,17 @@ class FindStaleVisionPidsTests(unittest.TestCase):
 class ReapStaleVisionInstancesTests(unittest.TestCase):
     def _procs(self):
         return [
-            (100, "moon_vision_server.py"),    # self (excluded)
-            (200, "moon_vision_server.py"),    # orphan
-            (400, "python -m vision_server"),  # orphan
-            (300, "pythonw main.py"),          # keep
+            (100, ["pythonw", "moon_vision_server.py"]),     # self (excluded)
+            (200, ["pythonw", "moon_vision_server.py"]),     # orphan
+            (400, ["python", "-m", "vision_server"]),        # orphan
+            (300, ["pythonw", "main.py"]),                   # keep
         ]
 
     def test_reaps_only_stale(self):
         killed = []
         reaped = _reap.reap_stale_vision_instances(
-            exclude_pid=100, procs=self._procs(), killer=killed.append
+            exclude_pid=100, procs=self._procs(), killer=killed.append,
+            ancestors=(),
         )
         self.assertEqual(sorted(reaped), [200, 400])
         self.assertEqual(sorted(killed), [200, 400])
@@ -72,14 +76,15 @@ class ReapStaleVisionInstancesTests(unittest.TestCase):
             killed.append(pid)
 
         reaped = _reap.reap_stale_vision_instances(
-            exclude_pid=100, procs=self._procs(), killer=flaky
+            exclude_pid=100, procs=self._procs(), killer=flaky, ancestors=()
         )
         self.assertEqual(reaped, [400])   # 200 raised -> not counted as reaped
         self.assertEqual(killed, [400])   # sweep continued past the failure
 
     def test_empty_proc_list_is_noop(self):
         self.assertEqual(
-            _reap.reap_stale_vision_instances(exclude_pid=1, procs=[]), []
+            _reap.reap_stale_vision_instances(exclude_pid=1, procs=[],
+                                              ancestors=()), []
         )
 
 
