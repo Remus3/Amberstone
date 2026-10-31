@@ -85,17 +85,21 @@ class LaneDocFocusCitation(unittest.TestCase):
         )
 
     def test_refuted_dev_js_citation_does_not_return(self) -> None:
-        """dev.js has no focus code - it is an OPEN instance of the defect.
+        """dev.js is never the pattern to copy (it had no focus code at all).
 
         Measured 2026-09-01: a repo-wide grep for activeElement across web/js/
         returns only overlay_ds_controls.js and overlay_layout.js. If someone
         re-adds dev.js as the pattern to copy, this fails loudly.
+
+        RM-1204 (2026-10-31): dev.js renderSpendGates gained a focus carry,
+        so dev.js may now read activeElement, but only once the lane doc
+        records that update (and still names overlay_layout.js as the pattern).
         """
         dev = REPO / "web" / "js" / "panels" / "dev.js"
-        if dev.is_file():
-            self.assertNotIn(
-                "activeElement",
-                dev.read_text(encoding="utf-8"),
+        if dev.is_file() and "activeElement" in dev.read_text(encoding="utf-8"):
+            self.assertIn(
+                "RM-1204",
+                self.doc,
                 "dev.js gained focus-preservation code - update the lane doc, then this guard",
             )
         # The doc may DISCUSS dev.js as a counter-example (it does), but must not

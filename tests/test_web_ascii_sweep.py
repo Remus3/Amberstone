@@ -1714,7 +1714,21 @@ _WEB = _REPO_ROOT / "web"
 # superseded 8d8ea866... value EXACTLY. Those paths are the whole change.
 # No glyph change: the added lines carry 0 non-ASCII bytes. If another
 # slice re-captures in parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "5dc46fc1fa2c9cef5b1f34f1824fd2969c388e93de81ffc07d9b76296e4c157a"
+# superseded by the RM-1204 re-capture below: "5dc46fc1fa2c9cef5b1f34f1824fd2969c388e93de81ffc07d9b76296e4c157a"
+#
+# RE-CAPTURED 2026-10-31 at RM-1204 (s144 uiux cycle 82, provisional
+# until the merger lands it and maps the id). One change rides it: the
+# Settings API SPEND GATES rows carry keyboard focus across their
+# innerHTML rebuild by a data-gate key, repaint from the server after a
+# failed toggle POST, and drop a response older than the newest request
+# (web/js/panels/dev.js renderSpendGates). Ordinary case, no tokeniser
+# change. ATTRIBUTED BY SUBSTITUTION: swapping exactly that one file back
+# to its lane HEAD efbdf8eec blob reproduces the superseded 5dc46fc1...
+# value EXACTLY. That path is the whole change. No glyph change: the
+# added lines carry 0 non-ASCII bytes. The repo lane's unlanded dev.js
+# header edit (RM-1182) is not in this tree; the merger recomputes on
+# the merged tree.
+_LIVE_HALF_DIGEST = "729e10eb70847c1b2a2a10c6a89065c68f1b8940b44e5e36565f446081fa20eb"
 
 
 def _web_sources() -> list[Path]:

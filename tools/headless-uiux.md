@@ -188,6 +188,10 @@ Each is stated as a rule because each one passes the check you would naturally r
    four `overlay_ds_controls.js` hits above plus `overlay_layout.js`. `dev.js:510` is
    `tbody.innerHTML = ""` followed by an unguarded rebuild, i.e. `dev.js` is an OPEN INSTANCE of this
    defect, not the fix for it. Copying the named lines would have shipped nothing.
+   **UPDATED 2026-10-31 (RM-1204):** `dev.js` `renderSpendGates` now carries focus across its
+   `#spend-gates-list` rebuild by a `data-gate` key (`tests/snapshot_panels/test_settings_spend_gate_focus.py`).
+   It is a FIXED instance, still not the pattern to copy: the canonical pattern stays `overlay_layout.js`
+   above, and the rest of `dev.js` (the replay list and snapshot rebuilds) carries no focus code.
 3. **Contrast must be computed on RESOLVED colors.** `web/css/themes.css` defines several tokens as
    `oklch()` - e.g. `:145` `--text-faint: oklch(0.63 0.045 40)`, `:227` `--surface-alt: oklch(0.31 0.036
    25)` - usually as a second declaration overriding a hex sibling on the line above, so a check parsing the

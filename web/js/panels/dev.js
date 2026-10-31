@@ -151,14 +151,24 @@ function _settingsRefresh() {
 // rows. Called on each Settings view show + after every toggle so the cost
 // stays synced. A checked box = gate ENABLED (Anthropic spend allowed);
 // unchecking it persists the kill-switch server-side and applies live.
+// RM-1204: the rebuild below is an innerHTML repaint, so it carries
+// keyboard focus by the row's data-gate key (focus outside the list is
+// never moved), and a response older than the newest request is dropped
+// so two quick toggles cannot paint a stale state last.
+let _spendGatesSeq = 0;
 function renderSpendGates() {
   const host = document.getElementById("spend-gates-list");
   if (!host) return;
+  const seq = ++_spendGatesSeq;
   fetch("/api/spend/gates", { cache: "no-store" })
     .then((r) => (r && r.ok ? r.json() : null))
     .then((j) => {
+      if (seq !== _spendGatesSeq) return;
       if (!j || !j.gates) return;
       const pm = j.per_match || {};
+      const act = document.activeElement;
+      const focusGate = (act && host.contains(act) && act.dataset)
+        ? (act.dataset.gate || null) : null;
       host.innerHTML = "";
       const mk = (tag, cls) => {
         const n = document.createElement(tag);
@@ -172,12 +182,15 @@ function renderSpendGates() {
         const cbx = document.createElement("input");
         cbx.type = "checkbox";
         cbx.checked = !g.disabled;
+        cbx.dataset.gate = gate;
         cbx.addEventListener("change", () => {
+          // RM-1204: repaint from the server after a failed POST too, so
+          // the box never keeps a state the server did not store.
           fetch("/api/coach/toggle", {
             method: "POST",
             headers: { "Content-Type": "application/json", "X-Requested-With": "rc-dashboard" },
             body: JSON.stringify({ mode: gate, disabled: !cbx.checked }),
-          }).then(() => renderSpendGates()).catch(() => {});
+          }).catch(() => {}).then(() => renderSpendGates());
         });
         const txt = mk("span", "spend-gate-txt");
         const lab = mk("b"); lab.textContent = g.label || gate;
@@ -195,6 +208,14 @@ function renderSpendGates() {
         }
         row.append(cbx, txt, costEl);
         host.appendChild(row);
+      }
+      if (focusGate) {
+        for (const el of host.querySelectorAll("input[data-gate]")) {
+          if (el.dataset.gate === focusGate) {
+            el.focus({ preventScroll: true });
+            break;
+          }
+        }
       }
     })
     .catch(() => {});
