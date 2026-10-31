@@ -50,6 +50,27 @@ sits in a file an unlanded lane commit rewrites. Comments drift the same
 way docstrings do, so for these two files the whole source is held to
 the no-line-cite rule (WHOLE_FILE_NO_CITES), not just the docstring.
 
+RM-1190 extended the whole-file rule to the panel-file cites. Five
+snapshot tests and tests/test_panel_visibility_permode.py cited
+overlay.css:570, right_now.js:503-506, overlay_ds_controls.js:367-378,
+active_match.js:1062-1063, lib/state.js:5 and tokens.css:119. The
+overlay.css, active_match.js and tokens.css cites had drifted onto
+unrelated code, and right_now.js:503-506 onto the comment above the stamp
+rather than the stamp. The overlay_ds_controls.js and state.js cites
+still pointed at the right lines, but only until the next edit above
+them. A web/css/overlay.css comment pointed at its own line ":570",
+which is now mid-file build-widget CSS. (web/vision_calibrator.html
+repeats the tokens.css:119 cite, but in a <style> comment that
+tests/test_web_ascii_sweep.py counts in its pinned live-half digest, so it
+is left for a joint re-pin.) Each cite now names a symbol, and
+SYMBOL_ANCHORS fails when the symbol leaves either the prose or the
+source it names. The test_panel_snapshots.py comment also gave the wrong
+reason for its None-tolerant lobby assertion: it said setMode
+early-returns on an unchanged tag. setMode now always stamps on its first
+call (`_modeStamped`). The lobby page reads None because only onHealth
+calls setMode("client"), and health reaches that stubbed page only
+through the slow HTTP fallback poll. The comment now says so.
+
 The docstrings are read with ast, so this guard needs no browser and no
 mock server. test_replay_view.py carries its own guard of the same shape
 (RM-1183).
@@ -148,7 +169,56 @@ _LINE_CITE = re.compile(r"[\w./-]+\.(?:js|css|py):\d+")
 WHOLE_FILE_NO_CITES = (
     "test_lobby_hit_targets.py",
     "test_lobby_render_stability.py",
+    "test_overlay_launcher_menu.py",
+    "test_overlay_view.py",
+    "test_panel_snapshots.py",
+    "test_render_dedup_reshow.py",
+    "test_vision_calibrator_seed_warning.py",
 )
+# Repo-relative files outside this directory held to the same rule
+# (RM-1190); this test module carried the drifted tokens.css:119 cite.
+REPO_FILES_NO_CITES = (
+    "tests/test_panel_visibility_permode.py",
+)
+# A comment in a source file citing its own line as "(see :NNN)" drifts the
+# same way (RM-1190: overlay.css's band-channel comment said "see :570").
+_BARE_SELF_CITE = re.compile(r"\(see :\d+")
+BARE_SELF_CITE_FILES = ("web/css/overlay.css",)
+# Each symbol that replaced a RM-1190 line cite must stay in the citing
+# file AND in the source it names, so a rename turns this red instead of
+# leaving the prose pointing at nothing. An optional third item is the
+# text to find in the SOURCE when the cited name also appears in a mere
+# comment there (the overlay.css self-cite repeats "7. Combat declutter";
+# tokens.css names --hit-min in comments above its definition).
+_DECLUTTER = ("web/css/overlay.css", "7. Combat declutter", "/* 7. Combat declutter")
+_HIT_MIN = ("web/css/tokens.css", "--hit-min", "--hit-min:")
+_P39 = "tests/snapshot_panels/"
+SYMBOL_ANCHORS = {
+    _P39 + "test_overlay_view.py": (
+        _DECLUTTER,
+        ("web/js/panels/right_now.js", "RN.root.dataset.s0Pulse"),
+        ("web/js/panels/right_now.js", "function renderRightNow"),
+    ),
+    _P39 + "test_overlay_launcher_menu.py": (
+        ("web/js/panels/overlay_ds_controls.js", "function _applySettingsToDom"),
+    ),
+    _P39 + "test_render_dedup_reshow.py": (
+        ("web/js/panels/active_match.js", "function _renderSpikeMarkersFromCtx"),
+    ),
+    _P39 + "test_panel_snapshots.py": (
+        ("web/js/lib/state.js", "export const state"),
+        ("web/js/main.js", "_modeStamped"),
+        ("web/js/main.js", "onHealth", "function onHealth"),
+        ("web/js/main.js", "onState", "function onState"),
+    ),
+    _P39 + "test_vision_calibrator_seed_warning.py": (
+        _HIT_MIN,
+    ),
+    "tests/test_panel_visibility_permode.py": (
+        _HIT_MIN,
+    ),
+    "web/css/overlay.css": (_DECLUTTER,),
+}
 _CALL = re.compile(r"\b([A-Za-z_$][\w$]*)\(\)")
 
 
@@ -207,3 +277,29 @@ def test_whole_file_has_no_line_citations(name):
     assert "def test_" in src, f"{name} is empty or not a test module"
     cites = _LINE_CITE.findall(src)
     assert not cites, f"{name} carries drifting file:line cites: {cites}"
+
+
+@pytest.mark.parametrize("rel", REPO_FILES_NO_CITES)
+def test_repo_file_has_no_line_citations(rel):
+    src = (ROOT / rel).read_text(encoding="utf-8")
+    assert "tokens.css" in src, f"{rel} no longer names tokens.css; re-check this entry"
+    cites = _LINE_CITE.findall(src)
+    assert not cites, f"{rel} carries drifting file:line cites: {cites}"
+
+
+@pytest.mark.parametrize("rel", BARE_SELF_CITE_FILES)
+def test_source_has_no_bare_self_line_citations(rel):
+    src = (ROOT / rel).read_text(encoding="utf-8")
+    assert len(src) > 1000, f"{rel} is empty; the guard would be vacuous"
+    cites = _BARE_SELF_CITE.findall(src)
+    assert not cites, f"{rel} carries drifting self line cites: {cites}"
+
+
+@pytest.mark.parametrize("rel", sorted(SYMBOL_ANCHORS))
+def test_symbol_anchors_exist_in_citer_and_source(rel):
+    citer = (ROOT / rel).read_text(encoding="utf-8")
+    for src_rel, needle, *src_needle in SYMBOL_ANCHORS[rel]:
+        target = src_needle[0] if src_needle else needle
+        assert _has_anchor(citer, needle), f"{rel} does not cite {needle!r}"
+        src = (ROOT / src_rel).read_text(encoding="utf-8")
+        assert _has_anchor(src, target), f"{src_rel} no longer contains {target!r}"

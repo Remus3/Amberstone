@@ -311,7 +311,8 @@ def test_overlay_call_action_band_channel(mock_server, pw_browser):
     left border (urgent=red / fight=gold / good=green). The verb TEXT stays white
     (doctrine line 164 - the verb is not recolored; the glyph + bar carry the
     category so urgent vs good no longer read identically white). This is the
-    preattentive signal the combat-shed (section 6, overlay.css:570) leans on."""
+    preattentive signal the combat shed (doctrine section 6; the
+    "7. Combat declutter" block of web/css/overlay.css) leans on."""
     BAND_RGB = {
         "urgent": "232, 64, 87",   # --ovx-red, the reserved emergency pop-out
         "fight": "200, 170, 110",  # --ovx-gold, the single caution hue
@@ -816,7 +817,8 @@ def test_overlay_s0_pulse_rations_sustained_choices_via_producer(mock_server, pw
         # _s0PrevCue off "choices"; (2) choices appear -> fresh one-shot-urgent
         # cross ARMS the pulse; (3) the same choices SUSTAIN -> rationed, no
         # re-fire. We read #right-now[data-s0-pulse] each time - the stamp the
-        # production render writes (right_now.js:503-506), not a manual set.
+        # production render writes (`RN.root.dataset.s0Pulse` in right_now.js
+        # function renderRightNow), not a manual set.
         result = page.evaluate(
             "async () => {"
             "  const m = await import('/js/panels/right_now.js');"

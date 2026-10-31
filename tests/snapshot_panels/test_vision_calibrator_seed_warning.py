@@ -292,7 +292,7 @@ class TestRegionsAreLaidOutInProfileSpace:
 
 class TestHitTargets:
     """UI-fixture audit HIT-TARGETS phase: every clickable meets --hit-min
-    (web/css/tokens.css:119, 42px) and carries a :focus-visible affordance.
+    (the --hit-min token in web/css/tokens.css, 42px) and carries a :focus-visible affordance.
     This page ships its own inline <style> and does NOT load tokens.css, so
     the token has to be defined locally - an undefined CSS var fails silently
     and would inherit instead of erroring (memory

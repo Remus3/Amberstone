@@ -80,8 +80,10 @@ def test_launcher_menu_toggle_keyboard_activation_keeps_focus(mock_server, pw_br
     after EVERY one of the 10 toggles - i.e. the menu is mouse-only.
 
     Repo trap class: any repainting host preserves document.activeElement across
-    the repaint (see web/js/panels/overlay_ds_controls.js:367-378 for the sibling
-    "never clobber a control the operator is interacting with" half).
+    the repaint (see function _applySettingsToDom in
+    web/js/panels/overlay_ds_controls.js, whose `document.activeElement`
+    checks are the sibling "never clobber a control the operator is
+    interacting with" half).
     """
     ctx, page, errors = _open_menu(pw_browser, mock_server)
     try:

@@ -11,8 +11,9 @@ untouched. That is correct ONLY while the renderer is the sole authority over
 the mount's innerHTML.
 
 But active_match.js drives them through outer `_render*FromCtx` HIDE paths
-that clobber `mount.innerHTML = ""` directly (e.g. active_match.js:1062-1063
-for spike-markers) WITHOUT going through the renderer - so the renderer's
+that clobber `mount.innerHTML = ""` directly (e.g. the hidden branch of
+active_match.js function _renderSpikeMarkersFromCtx for spike-markers)
+WITHOUT going through the renderer - so the renderer's
 stamped sig no longer reflects the (now-empty) DOM. After a transient
 liveclient dropout (champion briefly absent -> hide path runs) followed by a
 re-show with IDENTICAL data, the sig-dedup early-returns and the cleared

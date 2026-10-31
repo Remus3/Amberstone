@@ -243,10 +243,14 @@ def test_mode_transition(mock_server, pw_browser):
     page.on("pageerror", lambda err: errors.append(str(err)))
 
     sequence = ["lobby", "sr", "aram", "tft", "lobby"]
-    # main.js initializes state.mode = "client" (web/js/lib/state.js:5) and
-    # setMode early-returns when tag === state.mode. So for a fixture whose
-    # mode_key is "client" loaded on a fresh page, body[data-mode] never gets
-    # stamped - it's either None (initial) or whatever the prior step left.
+    # web/js/lib/state.js seeds `export const state` with mode "client".
+    # main.js setMode stamps body[data-mode] on its FIRST call even when the
+    # tag agrees with that seed (the `_modeStamped` flag). But only onHealth
+    # ever calls setMode("client"): onState calls it for game modes only.
+    # With the WebSocket stubbed, health arrives here only through the HTTP
+    # fallback poll, which waits until frames have been stale for 4 s. So a
+    # lobby fixture (mode_key "client") normally still reads None at the
+    # 1 s read below; "client" is accepted too.
     # Game modes always stamp a definite attribute value.
     game_modes = {"sr", "aram", "tft"}
 
@@ -269,9 +273,9 @@ def test_mode_transition(mock_server, pw_browser):
                     f"body[data-mode]={actual!r} expected {fixture_name!r}"
                 )
             else:
-                # Lobby - main.js state.mode default is already "client"
-                # so setMode("client") short-circuits and the attribute may
-                # be None (fresh load) or stale from a prior step. Both OK.
+                # Lobby - no setMode("client") has run yet at the 1 s
+                # read (it comes only from onHealth via the slow fallback
+                # poll), so None is the usual value; "client" is OK too.
                 assert actual in (None, "client"), (
                     f"step {step} fixture={fixture_name}: "
                     f"body[data-mode]={actual!r} expected None or 'client'"

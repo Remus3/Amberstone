@@ -411,7 +411,8 @@ body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div
  * single primary action, never a flood) / fight=gold (the single caution hue) /
  * good=green. The verb text stays white (the rule above, doctrine line 164) - the
  * band is carried by the glyph + bar, never by recoloring the verb. This is the
- * preattentive channel the section-6 combat shed leans on (see :570). The band-
+ * preattentive channel the section-6 combat shed leans on (see the
+ * "7. Combat declutter" block below). The band-
  * specific rules trail the generic [data-call-band] rule so equal-specificity
  * source-order resolves to the band hue. */
 body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div[data-call-line="action"][data-call-band] {
