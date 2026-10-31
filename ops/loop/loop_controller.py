@@ -615,8 +615,9 @@ def cap_stdin(body, limit=None):
     return body[:head] + marker + body[len(body) - (keep - head):]
 
 # ---- directive-chain continuity (persisted; survives controller restarts) ---
-# director_prompt.md:16-18 mandates these as the directive's FIRST three lines
-# and ENGINE-IMPACT as a mandatory body line. They are machine-readable grounding
+# director_prompt.md's GROUNDING PREFIX rule mandates these as the directive's
+# FIRST three lines, and its ENGINE-IMPACT rule mandates ENGINE-IMPACT as a
+# mandatory body line. They are machine-readable grounding
 # metadata, never the name of a unit of work, so the first-non-empty-line
 # fallback titled 181 of the 199 live history records "GROUNDED-AGAINST: ..." -
 # a de-dup chain that named nothing and could not refute a duplicate directive.

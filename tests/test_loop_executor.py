@@ -1058,10 +1058,11 @@ def test_sdk_channel_records_the_deviation_too(tmp_path: Path):
 # `GROUNDED-AGAINST: HEAD=f173ce39 LEDGER-TOP=1074 CHAIN-LAST=cycle 4` while the
 # real HEAD was 9d836162.
 #
-# The three grounding fields director_prompt.md:14-18 mandates are 100 percent
-# self-reported: a grep for GROUNDED-AGAINST / NOT-A-DUPLICATE-OF / PREMISE-CHECK
-# across the .py tree returned ZERO hits, so nothing ever read the claim back and
-# the stale directive was handed to the executor verbatim.
+# The three grounding fields director_prompt.md's GROUNDING PREFIX rule mandates
+# are 100 percent self-reported: a grep for GROUNDED-AGAINST /
+# NOT-A-DUPLICATE-OF / PREMISE-CHECK across the .py tree returned ZERO hits, so
+# nothing ever read the claim back and the stale directive was handed to the
+# executor verbatim.
 
 _HEAD = ("9d836162" * 5)[:40]
 
@@ -1399,15 +1400,17 @@ def test_the_live_head_lookup_resolves_in_this_repo():
 #
 # MEASURED 2026-07-27, cycle 13 of this run. The guard above judged two of the
 # three mandated fields and abstained on PREMISE-CHECK as "free prose with no
-# machine-readable referent". The referent is the TAG: director_prompt.md:18
-# makes the director tag every claim [from-digest] or [UNVERIFIED], so an
-# [UNVERIFIED] premise is the director declaring its own claim an unknown. Cycle
-# 13 shipped two of them, both false on disk (`git diff --cached` was empty and
-# winmutex.py was already byte-identical to the inbox copy and already SHA-
-# pinned), zero findings fired, and the cycle was a full no-op - the 6th stale-
-# premise cycle in 7. Propagating a verdict the director already stamped is not
-# inventing one, and this file has pinned four times over that an unknown is
-# never a pass (executor.py:188, :213, :478, :558).
+# machine-readable referent". The referent is the TAG: the PREMISE-CHECK line of
+# director_prompt.md's GROUNDING PREFIX rule makes the director tag every claim
+# [from-digest] or [UNVERIFIED], so an [UNVERIFIED] premise is the director
+# declaring its own claim an unknown. Cycle 13 shipped two of them, both false
+# on disk (`git diff --cached` was empty and winmutex.py was already
+# byte-identical to the inbox copy and already SHA-pinned), zero findings
+# fired, and the cycle was a full no-op - the 6th stale-premise cycle in 7.
+# Propagating a verdict the director already stamped is not inventing one, and
+# this file has pinned four times over that an unknown is never a pass (in
+# executor.py: the ParallelPlan and parallel_plan docstrings, the
+# unreadable-HEAD branch of grounding_findings, the _git_out docstring).
 
 # The cycle-13 line, verbatim. The trailing backslash is a source-wrap only - the
 # value carries it as ONE line, which is the shape the field is bounded by.
@@ -1468,9 +1471,11 @@ def test_the_word_unverified_in_the_directive_body_is_not_a_finding():
 
 
 def test_the_prompt_templates_own_placeholder_is_not_a_premise():
-    """A directive about THIS loop quotes director_prompt.md:18 verbatim, template
-    angle brackets and all. `<... or [UNVERIFIED]>` carries no claim."""
-    body = ("Read ops/loop/director_prompt.md:18, which mandates:\n"
+    """A directive about THIS loop quotes the PREMISE-CHECK line of
+    director_prompt.md's GROUNDING PREFIX rule verbatim, template angle brackets
+    and all. `<... or [UNVERIFIED]>` carries no claim."""
+    body = ("Read the GROUNDING PREFIX rule in ops/loop/director_prompt.md, "
+            "which mandates:\n"
             "    PREMISE-CHECK: <each factual claim you rely on, tagged [from-digest] "
             "or [UNVERIFIED]>\n")
     assert executor.grounding_findings(body, **_Git().kwargs()) == []
@@ -1627,8 +1632,9 @@ def test_a_stale_head_still_wins_the_header_when_both_kinds_fire():
 
 
 def test_an_unverified_premise_is_not_bucketed_with_the_stale_head_findings():
-    """kind is matched exactly at executor.py:528. A prefix/substring bucket would
-    print 'the grounding prefix below is stale' over a perfectly current HEAD."""
+    """kind is matched exactly in executor.reground_directive. A prefix/substring
+    bucket would print 'the grounding prefix below is stale' over a perfectly
+    current HEAD."""
     found = executor.grounding_findings(_CYCLE13, **_Git().kwargs())
     out = executor.reground_directive(_CYCLE13, found)
     assert "grounding prefix below is stale" not in out
@@ -1656,17 +1662,17 @@ def test_a_premise_only_finding_reaches_the_director_through_the_stamp(
 
 # ---- the deviation stamp: what actually reaches the DIRECTOR -----------------
 #
-# MEASURED 2026-07-27, one layer above the two guards above. Both of them correct
-# a bad directive and then RECORD the correction - but the only thing either put
-# in front of the director was a sentence in the override header asking the
-# executing model to state the deviation in its summary line. controller.log is
-# not a director input: loop_controller.py:577 dumps the model-authored
-# claude.done payload as `=== LAST claude.done ===` and rec.raw is that payload,
-# so whether the director ever learned its directive was wrong depended on the
-# model volunteering it in prose. A model that silently complies teaches the
-# director nothing and it writes the same broken shape again next cycle - which
-# is the exact failure both guards' own comments say recording exists to prevent.
-# The stamp asks the model for nothing.
+# MEASURED 2026-07-27, one layer above the two guards above. Both of them
+# correct a bad directive and then RECORD the correction - but the only thing
+# either put in front of the director was a sentence in the override header
+# asking the executing model to state the deviation in its summary line.
+# controller.log is not a director input: loop_controller.build_director_context
+# dumps the model-authored claude.done payload as `=== LAST claude.done ===` and
+# rec.raw is that payload, so whether the director ever learned its directive
+# was wrong depended on the model volunteering it in prose. A model that
+# silently complies teaches the director nothing and it writes the same broken
+# shape again next cycle - which is the exact failure both guards' own comments
+# say recording exists to prevent. The stamp asks the model for nothing.
 
 
 def test_no_deviations_leaves_the_summary_byte_identical():

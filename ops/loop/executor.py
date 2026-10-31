@@ -335,14 +335,15 @@ _REPORT_IT = (
 # ---- the mechanical deviation stamp (both guards) ---------------------------
 #
 # MEASURED 2026-07-27. Both guards below correct a directive, log the correction
-# to control/controller.log, and then ASK the executing model to repeat it in its
-# summary line. controller.log is not a director input: loop_controller.py:577
-# feeds the model-authored claude.done payload forward as `=== LAST claude.done
-# ===` and that is all the director ever learns about the cycle. So whether the
-# correction reached the component that CAUSED it depended on the model
-# volunteering it in prose, and a model that silently complies teaches the
-# director nothing - the same failure the comment at the top of this section says
-# recording exists to prevent, one layer up.
+# to control/controller.log, and then ASK the executing model to repeat it in
+# its summary line. controller.log is not a director input: the loop
+# controller's build_director_context feeds the model-authored claude.done
+# payload forward as `=== LAST claude.done ===` and that is all the director
+# ever learns about the cycle. So whether the correction reached the component
+# that CAUSED it depended on the model volunteering it in prose, and a model
+# that silently complies teaches the director nothing - the same failure the
+# comment at the top of this section says recording exists to prevent, one layer
+# up.
 
 DEVIATION_STAMP = "executor: DEVIATIONS APPLIED"
 
@@ -467,14 +468,15 @@ def enforce_agent_disjointness(cycle, body, *, log=None, awrite=None, ctl=None,
 
 # ---- directive grounding guard ----------------------------------------------
 #
-# MEASURED 2026-07-27, on this loop. director_prompt.md:14-18 makes the director
-# open every directive with three grounding fields - GROUNDED-AGAINST,
-# NOT-A-DUPLICATE-OF and PREMISE-CHECK - and all three are claims the model makes
-# about ITSELF. Nothing read them back: a grep for those three tokens across the
-# .py tree returned zero hits. So the director emitted the same already-landed
-# unit of work twice (the f1-phase6 inbox apply, landed across four commits that
-# were every one an ancestor of HEAD) while self-reporting HEAD=f173ce39 against
-# a real HEAD of 9d836162, and the executor typed it verbatim both times.
+# MEASURED 2026-07-27, on this loop. director_prompt.md's GROUNDING PREFIX rule
+# makes the director open every directive with three grounding fields -
+# GROUNDED-AGAINST, NOT-A-DUPLICATE-OF and PREMISE-CHECK - and all three are
+# claims the model makes about ITSELF. Nothing read them back: a grep for those
+# three tokens across the .py tree returned zero hits. So the director emitted
+# the same already-landed unit of work twice (the f1-phase6 inbox apply, landed
+# across four commits that were every one an ancestor of HEAD) while
+# self-reporting HEAD=f173ce39 against a real HEAD of 9d836162, and the executor
+# typed it verbatim both times.
 #
 # Two of the three claims are CHECKABLE against the repo, so the executor checks
 # them: the HEAD it says it grounded against, and any commit it names that is
@@ -487,13 +489,15 @@ def enforce_agent_disjointness(cycle, body, *, log=None, awrite=None, ctl=None,
 # the inbox holds winmutex.py.from-lw), both false on disk - the index was empty
 # and winmutex.py was already byte-identical and already SHA-pinned - and the
 # cycle was a full no-op, the 6th stale-premise cycle in 7. The referent is the
-# TAG, not the prose: director_prompt.md:18 makes the director tag each claim
-# [from-digest] or [UNVERIFIED], so an [UNVERIFIED] premise is the director
-# stamping its OWN claim an unknown. Reporting that back is propagation, not the
-# invention the abstention was guarding against, and it is the same rule this
-# file already states four times over (:188, :213, :478, :558): an unknown is
-# never a pass. What the executor still does NOT do is judge whether a premise is
-# TRUE - that stays the session's job, on disk.
+# TAG, not the prose: the PREMISE-CHECK line of that same rule makes the
+# director tag each claim [from-digest] or [UNVERIFIED], so an [UNVERIFIED]
+# premise is the director stamping its OWN claim an unknown. Reporting that back
+# is propagation, not the invention the abstention was guarding against, and it
+# is the same rule this file already states four times over (the ParallelPlan
+# and parallel_plan docstrings, the unreadable-HEAD branch of grounding_findings,
+# the _git_out docstring): an unknown is never a pass. What the executor still
+# does NOT do is judge whether a premise is TRUE - that stays the session's job,
+# on disk.
 
 GROUNDING_MARKER = "executor: STALE-GROUNDING"
 GROUNDING_HEADER = "EXECUTOR OVERRIDE - RE-GROUND THIS DIRECTIVE AGAINST THE REAL HEAD"
@@ -529,25 +533,27 @@ _MAX_SHA_PROBES = 24
 # side. This repo's own LEDGER and ORCHESTRATION_PLAN rows carry [UNVERIFIED] in
 # their prose and the director quotes them into directive bodies constantly, so a
 # whole-body scan would fire on nearly every cycle and be ignored by the third.
-# One line, because that is how director_prompt.md:14-18 emits the field - a
-# wrapped premise loses its tail here, which is the safe direction to be wrong.
+# One line, because that is how director_prompt.md's GROUNDING PREFIX rule emits
+# the field - a wrapped premise loses its tail here, which is the safe direction
+# to be wrong.
 #
 # EVERY match, not the first. The line anchor already defeats mid-sentence
 # quoting, but these directives block-quote the PRIOR directive routinely and an
 # indented copy of its prefix sits ABOVE the live field - a first-match scan
 # reads the quote and goes silent on the real one. That is a false negative, the
-# failure this guard exists to close (:478, an unknown is never a pass), so it
-# scans them all. The door that re-opens is narrow and cheap: a quoted premise
-# fires too, costing one extra bullet, and since a re-quote repeats the SAME
-# claim the dedup below collapses the common case to nothing. _MAX_PREMISE_
-# FINDINGS bounds the rest.
+# failure this guard exists to close (an unknown is never a pass - see the
+# unreadable-HEAD branch of grounding_findings), so it scans them all. The door
+# that re-opens is narrow and cheap: a quoted premise fires too, costing one
+# extra bullet, and since a re-quote repeats the SAME claim the dedup below
+# collapses the common case to nothing. _MAX_PREMISE_FINDINGS bounds the rest.
 _PREMISE_LINE_RE = re.compile(r"^[ \t]*PREMISE-CHECK:[ \t]*(.*)$", re.MULTILINE)
 _PREMISE_TAG_RE = re.compile(r"\[(UNVERIFIED|from-digest)\]", re.IGNORECASE)
 
 # The sentence split is BACKWARD-ONLY, and that asymmetry is the whole point. The
-# tag's side is not fixed - director_prompt.md:18 fixes the vocabulary and nothing
-# else - so the live cycle-13 line tags each claim in front and the R200 incident
-# line tags it behind. Reading FORWARD, the next tag is a sufficient stop and a
+# tag's side is not fixed - the PREMISE-CHECK line of director_prompt.md's
+# GROUNDING PREFIX rule fixes the vocabulary and nothing else - so the live
+# cycle-13 line tags each claim in front and the R200 incident line tags it
+# behind. Reading FORWARD, the next tag is a sufficient stop and a
 # sentence rule there costs claims outright: "e.g. " / "i.e. " / "no. " end no
 # sentence, and a forward cut at the first dot-space leaves "e.g", which is not a
 # premise anyone can go and check - the claim then vanishes entirely. Reading
@@ -562,10 +568,10 @@ _PREMISE_SPLIT_RE = re.compile(r"[.;]\s+")
 # discriminator that never has to guess where a sentence ends.
 _PREMISE_CLOSES_RE = re.compile(r"^[ \t]*[.;]")
 # The prompt's own placeholder, which any directive ABOUT this loop quotes
-# verbatim off director_prompt.md:18. Rejected for what it IS - angle-bracketed
-# template text - and not by length, because a length floor silently drops real
-# terse claims like "[UNVERIFIED] CI" and that is the same dropped-claim failure
-# by another route.
+# verbatim off the PREMISE-CHECK line of director_prompt.md's GROUNDING PREFIX
+# rule. Rejected for what it IS - angle-bracketed template text - and not by
+# length, because a length floor silently drops real terse claims like
+# "[UNVERIFIED] CI" and that is the same dropped-claim failure by another route.
 _PREMISE_PLACEHOLDER_RE = re.compile(r"^<[^<>]*>$")
 _PREMISE_TRIM = " \t.;,:<>"
 

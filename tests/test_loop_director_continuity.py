@@ -110,9 +110,9 @@ def test_directive_title_extracts_theme_scope(lc):
 
 # --- the chain is only a de-dup input if its titles NAME WORK ---------------
 #
-# SECOND DEFECT (2026-07-27). ops/loop/director_prompt.md:16-18 mandates a
-# three-line GROUNDING PREFIX as the directive's FIRST lines, and never
-# requires THEME / SCOPE. directive_title fell through to "the first non-empty
+# SECOND DEFECT (2026-07-27). ops/loop/director_prompt.md's GROUNDING PREFIX
+# rule mandates the three grounding lines as the directive's FIRST lines, and
+# never requires THEME / SCOPE. directive_title fell through to "the first non-empty
 # line", so 181 of the 199 records in the live control/directive_history.jsonl
 # are titled "GROUNDED-AGAINST: HEAD=<sha> LEDGER-TOP=<n> CHAIN-LAST=<n>" -
 # which names no work at all. The chain was fed to the director and carried
