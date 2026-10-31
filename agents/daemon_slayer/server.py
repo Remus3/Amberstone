@@ -332,6 +332,22 @@ def _reject_non_str(value: Any, field_name: str) -> None:
             400, f"{field_name}: expected string, got {type(value).__name__}")
 
 
+def _opt_dict(body: dict, key: str) -> Optional[dict]:
+    """RM-1234: a non-object JSON value in a dict key is a 400.
+
+    ``form_index`` and ``granter_resists`` dropped a list or a string to
+    ``None``, so the override vanished and the route answered 200 with the
+    registry / default number. Same policy as ``_reject_non_str``: absent or
+    null is "no override", the wrong JSON type names the field.
+    """
+    v = body.get(key)
+    if v is None:
+        return None
+    if not isinstance(v, dict):
+        raise _ApiError(400, f"{key}: expected object, got {type(v).__name__}")
+    return v
+
+
 def _required_str(body: dict, key: str) -> str:
     v = body.get(key)
     if v is None or (isinstance(v, str) and not v.strip()):
@@ -1744,13 +1760,13 @@ def _parse_max_priority(body: dict) -> Optional[tuple[str, str, str]]:
 
 def _parse_form_index(body: dict) -> Optional[dict[str, int]]:
     """Decode the optional ``form_index`` body field - JSON dict only."""
-    raw_form = body.get("form_index")
-    if isinstance(raw_form, dict):
-        # RM-324 sibling: this bare int() had no _ApiError mapping at all, so
-        # it 500'd on every unparseable rank, not just the non-finite ones.
-        return {str(k).upper(): _to_int(v, f"form_index[{k}]")
-                for k, v in raw_form.items()}
-    return None
+    raw_form = _opt_dict(body, "form_index")
+    if raw_form is None:
+        return None
+    # RM-324 sibling: this bare int() had no _ApiError mapping at all, so
+    # it 500'd on every unparseable rank, not just the non-finite ones.
+    return {str(k).upper(): _to_int(v, f"form_index[{k}]")
+            for k, v in raw_form.items()}
 
 
 def _block_index_scalar_ok(x) -> bool:
@@ -1822,8 +1838,9 @@ def _parse_block_index(
                 for ck, cv in v.items()
             }
         # else: silently skip malformed entries (preserves pre-s207
-        # behavior of accepting only well-formed values; matches
-        # _parse_form_index / _parse_max_priority defensiveness).
+        # behavior of accepting only well-formed values). Unlike
+        # _parse_form_index, which 400s a non-object (RM-1234), this
+        # field keeps the documented no-500 / fall-back-to-registry skip.
     return out
 
 
@@ -2659,9 +2676,7 @@ def _route_ally_protected_ehp(body: dict) -> dict:
     item_ids = _coerce_str_list(body.get("item_ids"), "item_ids")
     allies = _coerce_str_list(body.get("ally_grant_champions"), "ally_grant_champions")
     enemies = _coerce_str_list(body.get("enemy_champions"), "enemy_champions")
-    granter_resists = body.get("granter_resists")
-    if not isinstance(granter_resists, dict):
-        granter_resists = None
+    granter_resists = _opt_dict(body, "granter_resists")
     # RM-172: ARENA/Swiftplay stat-growth addend lane, DEFAULT-OFF. See the
     # /stats docstring.
     apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)

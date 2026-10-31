@@ -102,7 +102,7 @@ _UPSTREAM_CONTRACT = (
 )
 
 _BODY_READERS = ("_opt_bool", "_opt_float", "_opt_int", "_opt_str",
-                 "_coerce_str_list", "_required_str", "get")
+                 "_opt_dict", "_coerce_str_list", "_required_str", "get")
 
 _SNAP = None
 
