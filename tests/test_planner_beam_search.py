@@ -14,7 +14,9 @@ Proves the adaptive build PLANNER that sits ABOVE Daemon Slayer:
      ``unique_passive_key`` on each seed row - no planner-side family map, no
      family LITERAL in the four planning modules (scoring, planner,
      situational, replan; a source scan enforces this over every family the
-     engine defines).
+     engine defines), and no family key as a string constant in ANY
+     core/build_planner module (a token-level AST scan with a measured,
+     self-checking exemption list).
   4. seed_fn=None yields a seedless (empty) plan, mirroring the
      ``core.build_order.plan_build_order`` None-contract.
   5. No core/build_planner module imports an ``agents.daemon_slayer`` symbol
@@ -373,6 +375,74 @@ class StructuralGuardTests(unittest.TestCase):
         self.assertTrue(set(self._FAMILY_FLOOR) <= engine,
                         sorted(set(self._FAMILY_FLOOR) - engine))
         self.assertTrue(engine <= set(self._banned_families()))
+
+    # The substring scan above cannot widen past the four planning modules:
+    # helper modules use "spellblade" as a mechanic word in prose and
+    # identifiers. The token-level scan below covers EVERY module instead.
+    # A module listed here may hold the named family tokens as string
+    # constants, for the measured reason given.
+    _TOKEN_EXEMPT: dict[str, frozenset[str]] = {
+        # "spellblade" is an item_effect_flags flag (curated _SPELLBLADE_IDS,
+        # read by the cadence and non-user gates), not a no-double family
+        # key: the module never reads unique_passive_key.
+        "kit_synergy.py": frozenset({"spellblade"}),
+    }
+
+    @staticmethod
+    def _family_constants(src: str, banned) -> list[tuple[int, str]]:
+        # A str constant whose WHOLE value (stripped, lower-cased) is a family
+        # key: a dict key, a set member, a comparison operand, a call
+        # argument. Comments, identifiers and prose sentences (a docstring
+        # that is more than the bare key) never match.
+        return [
+            (node.lineno, node.value) for node in ast.walk(ast.parse(src))
+            if isinstance(node, ast.Constant) and isinstance(node.value, str)
+            and node.value.strip().lower() in banned
+        ]
+
+    def test_no_family_key_constant_in_any_module(self):
+        banned = frozenset(self._banned_families())
+        sources = sorted((_ROOT / "core" / "build_planner").glob("*.py"))
+        self.assertTrue(set(self._SOURCES) <= set(sources))
+        for src_path in sources:
+            allowed = self._TOKEN_EXEMPT.get(src_path.name, frozenset())
+            hits = [
+                h for h in self._family_constants(
+                    src_path.read_text(encoding="utf-8"), banned)
+                if h[1].strip().lower() not in allowed
+            ]
+            self.assertEqual(
+                hits, [],
+                f"{src_path.name} holds family key constants {hits!r} - "
+                "inherit unique_passive_key from the seed instead.")
+
+    def test_token_exemptions_are_live_and_never_meet_the_family_key(self):
+        # A stale exemption (the token is gone) or one in a module that has
+        # started reading unique_passive_key fails, so the list cannot rot
+        # into a blanket pass.
+        banned = frozenset(self._banned_families())
+        pkg = _ROOT / "core" / "build_planner"
+        for name, tokens in self._TOKEN_EXEMPT.items():
+            src = (pkg / name).read_text(encoding="utf-8")
+            self.assertTrue(tokens <= banned, sorted(tokens - banned))
+            found = {v.strip().lower()
+                     for _, v in self._family_constants(src, banned)}
+            self.assertTrue(tokens <= found,
+                            f"stale exemption {sorted(tokens - found)} "
+                            f"in {name}")
+            self.assertNotIn("unique_passive_key", src,
+                             f"{name} reads unique_passive_key, so its "
+                             "family tokens are no longer exempt")
+
+    def test_family_constant_scan_has_teeth(self):
+        banned = frozenset(self._banned_families())
+        hit = self._family_constants(
+            'X = {"last_whisper": 1}\nif k == "void_pen":\n    pass\n', banned)
+        self.assertEqual(sorted(v for _, v in hit), ["last_whisper", "void_pen"])
+        miss = self._family_constants(
+            '"""last_whisper prose."""\nlast_whisper = 1\n# "void_pen"\n'
+            'Z = "spellblade cadence"\n', banned)
+        self.assertEqual(miss, [])
 
 
 if __name__ == "__main__":
