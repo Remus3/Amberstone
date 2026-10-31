@@ -1433,6 +1433,56 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   path (skip the downscale for OCR crops ONLY, keep it for the Sonnet/bandwidth `/latest-frame`), then
   validate OCR read accuracy vs a real in-game frame. Recalibration + native-crop WIRING is DONE
   (R94/R95/R96/R98); this is the last live-gated tail. SOURCE: LEDGER 793.
+  **READY (lane 9 PREP s144 cycle 45, source read at `cfa461dfb`; NOT a tick).** Four measured facts
+  reshape the check. (1) The premise still holds and the row is a BUILD-THEN-VALIDATE row, not a
+  validate-only one: `core/screen_grab.grab_native` (`:108`) has NO production caller (`git grep -w
+  grab_native -- '*.py'` outside `tests/` names only its own module and this row's tool). The coach
+  OCR path is `modes/shared_vision._capture_screen` (`:58`, GET `:8889/latest-frame`) ->
+  `core/vision_routing.read_or_escalate` (`:97`) -> `core/vision_tesseract.read_fast_fields`
+  (`:644`), and that frame is downscaled to `vision_server/_frame.py` `_SELF_GRAB_MAX_WIDTH` (1280,
+  `:85`; the OBS lane mirrors it), so the 2560 profile's boxes are cut at 0.5x (`_scale_bbox`; the R98
+  guard pins gold `[1463,1407,1549,1433]` -> `(731,703,774,716)`). The "WIRING is DONE" sentence above
+  is about the native PROFILE wiring (R94/R98), not about `grab_native`. (2) The wiring must NOT be
+  done blind, and the decision input is an A/B on ONE live game, not a post-wire eyeball: does OCR
+  read the HUD better off a native grab than off the halved frame? (3) `read_fast_fields` cannot run
+  that A/B in one process: `timer` is a slow field read on one call in `_SLOW_MODULO` (5) and
+  otherwise served from the module-global `_slow_cache`, so the second frame would report the
+  FIRST frame's clock; `_DROP_FIELDS` is module-global too (`dashboard/routes_diag.py` `/api/ocr`
+  saves and restores it for that reason). The tool runs the same per-field crop + parse
+  (`_regions` / `_decode_img` / `_scale_bbox` / `_crop` / `_parse_field`) on each frame directly.
+  (4) The calibrated profiles under `data/vision_profiles/` are gitignored and per machine: run from
+  a lane worktree the probe loads a seed or the legacy 1920 table, so the tool refuses a decisive
+  verdict unless `load_profile()` source is `profile`. PROBE (main checkout, game up, League in the
+  foreground, HUD visible - not the shop, not the scoreboard, not dead): `python
+  tools/gated_g241_ocr_native.py --samples 8 --interval 3 --json`. One sample = `:2999`
+  `/liveclientdata/allgamedata` truth read 0 (`activePlayer.currentGold` floored, `activePlayer.level`,
+  `gameData.gameTime`), the relay frame (its envelope `ts`, `source`, `width`, `height`), a native
+  grab (skipped when League is not the foreground window or the desktop is locked), truth read 1.
+  It refuses with exit 2 BEFORE any capture when `:2999` gives no `activePlayer`. PREDICATES (stated
+  now, in `grade_value`): level MATCH iff level0 == level1 == OCR (VOID if the level changed);
+  gold VOID if `|gold1 - gold0| > 3 g/s x span + 2` (a kill or a buy inside the sample), else MATCH
+  iff OCR lies in `[min(g0,g1) - 3 x lead - 2, max(g0,g1) + 2]` (lead = how far the frame predates
+  read 0); timer MATCH iff the `m:ss` OCR in seconds lies in `[floor(gt0 - lead) - 1, floor(gt1) +
+  1]`; a relay frame older than `--max-age` (2 s), with no envelope `ts`, or with a `ts` more than
+  0.5 s in the future is VOID for the halved path; a NONE (no read) counts as a miss. VERDICT over
+  fields with >= 3 valid samples on BOTH paths: `HALVED_BETTER` (any field) -> do NOT wire, look at
+  the native grab; `NATIVE_BETTER` (>= on all, higher on one by >= 2 samples' worth, because one buy
+  or kill between the relay frame and read 0 can cost the older halved frame a sample the VOID rules
+  cannot see) -> file the
+  wiring slice behind a default-OFF flag, then re-read THIS row with the flag on; `NO_GAIN` -> the
+  halved frame already reads these fields, wiring buys nothing measured - propose striking the tail
+  with the evidence; `NO_RESULT` (too few valid samples, zero matches on both paths, or regions not
+  a calibrated profile) -> re-take. EVIDENCE CONTRACT: the JSON verbatim per sample (values, both
+  frame sizes, relay `source` and `age_s`, `gt`, grades), the `regions` block (`source`, `base`,
+  `hud_color_installed`), the wall time, mode and queue. SUBSTITUTION CHECK: this answers whether
+  OCR READS the live HUD better at native resolution - a compute over REAL pixels against `:2999`
+  truth, which is the question the row asks before wiring; it does NOT answer whether a wired path
+  is better in production (the relay frame may be `source='obs'`, the probe's HUD colour layer is
+  its own `active_config_key()` install, and the probe bypasses the slow-field cadence the coach
+  path keeps). Only `gold` / `level` / `timer` have a `:2999` truth; every other OCR field stays
+  ungraded by this tool. A verdict from a fixture frame, a saved still or `data/vision_calib_reference/`
+  is not evidence. Tool tests: `tests/test_gated_g241_ocr_native.py` (no screen, relay or `:2999`
+  touched; pins the predicates, the refuse-before-capture gate, and the three source facts above).
 - **G2-42** (was H4) ZOI finalization do-not-flip-blind eyeball: before flipping `obs.frame_source`
   (done) / roster-wiring ON, verify in a practice SR game (a) macro callouts on >=2 enemies MIA near
   drake, (b) district vector on `/api/state.zoi.districts`, (c) OBS frames matching the GDI baseline,
