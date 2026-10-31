@@ -1348,6 +1348,81 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   the incumbent the UI last actually RENDERED. So in-game, on one level-up tick where the top two build
   items sit within ~3%, confirm the rendered top pick does not visibly flip PD <-> Kraken.
   ARAM-suitable. SOURCE: LEDGER 799.
+  **READY (lane 9 PREP s144 cycle 43, source read at `a84005f35`; NOT a tick).** Five measured facts
+  shape the check. (1) The surface is the in-game BUILD panel's "Meta Build" row (`bm-meta`,
+  `web/js/panels/active_match.js` `_maybeRefreshBuildOrder` -> `POST /api/build-order`); it is NOT a
+  coach field, so B4 (`LIVE_SUPPRESSED_FIELDS`, `dashboard/_state_builder.py`) does not blank it and
+  the row is drainable. The top pick is engine call 1 = the first UNOWNED item in that row (boots are
+  injected AFTER slot 1, `core/build_order.py` boots step, and dropped from the incumbent). The
+  "Ultimate Build" row is fixed at level 18 with no items, so a level-up never exercises it. (2) The
+  incumbent is CLIENT state, not server state: `_incumbentIds` echoes the order that client last
+  received, and the route only reads `payload.get("incumbent")`. A page reload, an ADR-008 asset hot
+  reload or an RC restart that reloads the overlay empties it, so the first plan after one is GREEDY -
+  that is what "cross-restart" means here, and a flip on that first plan is not a hysteresis failure.
+  (3) `/api/build-order` returns only the CHOSEN delta per slot (`BuildStep.to_dict`), never the
+  runner-up, so whether a tick is in band cannot be read off the route or the panel; it needs the
+  slot-1 ranked rows. `capture` reads the panel's inputs off `/api/state` (`_renderAmBuildBody`:
+  champion = coach payload `champion`, level = `parseInt(level) || 1`; in a live game the payload is
+  the coaching-file push or SSE frame, the HTTP poll's `st.coach` only a fallback, and the mode is
+  `main.js` `state.mode`, read here as `mode_key`). The panel's level-up is therefore a COACH-level
+  change (the header level pill), which can lag the Live Client level in the stats panel. Items:
+  `_amOwnedItemIds` uses `liveclient.owned_item_ids` when it is non-empty, else the player's
+  `allPlayers[].items`, else the coach payload's `items_display`; `capture` replicates only the first,
+  so a glance with an empty `owned_item_ids` (`items_source` `none`) is never graded. It posts that body (no incumbent; the ranked rows do not depend on it) to the
+  RUNNING route, takes the enemy target stats from the response's `target_stats` (in-game the route
+  resolves them from RC's warm Live Client cache, which a fresh process cannot see: its cache starts
+  empty and falls back to the mode/level curve), re-runs the production `plan_build_order` with them
+  and a recording `rank_fn`, and sets `rows_match` only when the re-run's greedy order equals the
+  route's AND `items_source` is `owned_item_ids`. (4) The rule is `_pick_top_safe`: keep the incumbent while
+  `inc_delta > 0` and `top_delta <= inc_delta * (1 + 0.03)`; the margin default now sits on
+  `plan_build_order` / `_pick_top_safe` (the row's `:405` cite is stale), and the row's `:249`
+  "Jhin-specific note" is the Jhin -> Swiftness BOOTS default, not a hysteresis note. The grader reuses
+  `_pick_top_safe` itself and pins the 0.03 default and the row's own arithmetic (58.709 * 1.03 <
+  61.695 -> flip allowed). (5) A held pick causes no visible repaint, and the panel paints a new plan
+  only after its POST returns (up to 5 engine calls at the route's 2.0 s timeout; an old-level POST
+  still in flight blocks the re-fire, so up to two such plans) and the next `onState` repaint (a
+  coaching-file push or SSE frame); so a glance soon after the level-up can show the OLD order and read
+  as HELD. The grader therefore grades no glance under `MIN_SETTLE_S` = 30 s after the HEADER level
+  pill changed (2 x 10 s plus a 10 s repaint allowance: a floor for the panel's own latency, not a
+  proven bound). The
+  2026-07-20 drain's tightest gap was 9.02 pct, three times the band, so the precondition is rare:
+  expect `NO_RESULT` more often than not.
+  PROBE (`tools/gated_g238_top_pick_flip.py`, tests `tests/test_gated_g238_top_pick_flip.py`): when
+  the overlay's HEADER level pill changes (not the stats panel), note the moment; wait at least 30 s
+  (and stay before the next level-up, item purchase or enemy purchase); glance at the overlay's Meta Build row; then at once run `python
+  tools/gated_g238_top_pick_flip.py capture --rendered <first unowned item id SEEN> --since-levelup-s
+  <seconds since the header level changed> >> <drain evidence dir>/g238_glances.jsonl` (GET `/api/state`,
+  one compute-only POST to the running route, then DS `:8860` rank calls; no RC state write, no LCU
+  call; drain session only, never PREP). Take one glance before the first graded level-up so the
+  incumbent is recorded. Add `"reload": true` by hand to a glance when the page, an asset or RC
+  reloaded since the previous one. After the game: `python tools/gated_g238_top_pick_flip.py grade
+  <drain evidence dir>/g238_glances.jsonl --json`; `band <saved rank json> --incumbent <id>` explains
+  one tick offline.
+  FIELD PATHS: glance -> `ts`, `level` (coach level), `items`, `items_source`, `game_time_s`,
+  `rendered_top`, `since_levelup_s`, `ranked[].item_id` / `delta` / `shares_dead_unique`,
+  `greedy_order`, `route_order`, `rows_match`, `target_source`; grade -> `verdict`,
+  `ticks[].in_band` / `outcome` / `gap_pct` / `skip`, `tightest_gap_pct`.
+  PREDICATE (stated before any game): a graded TICK = two consecutive glances with a level rise, the
+  same owned items, no reload, and on the later glance `rows_match` true and `since_levelup_s` at
+  least 30; the earlier glance's rendered top is the incumbent. IN BAND = the incumbent is eligible,
+  is not the greedy top, has a positive delta, and the greedy top beats it by no more than 3 pct. PASS
+  = at least one in-band tick and every in-band tick rendered the incumbent (HELD). FAIL = any in-band
+  tick rendered the challenger (FLIPPED) or an item that is neither (OTHER). `NO_RESULT` = no in-band
+  tick: re-take, and record `tightest_gap_pct` beside the 9.02 baseline.
+  EVIDENCE: the `grade --json` line, the glance file, the game's mode / queue / champion / game time
+  per tick from `/api/state` -> `liveclient`, `health.json` `pid` + `started_at`, main HEAD.
+  SUBSTITUTION CHECK: the ranked rows prove only that the band COMPUTED; the `rendered_top` field is
+  the only render evidence and must be what the operator SAW on the overlay, never a value copied
+  from `greedy_order`, `route_order`, `/api/build-order` or a second client. A headless browser or
+  second dashboard tab runs its OWN incumbent chain, so its DOM grades a different chain from the one
+  on screen. `rows_match` ties the rows to the route's plan for the panel's inputs, not to the
+  panel's own call: a glance across an enemy purchase (target stats move) can still pair the rendered
+  pick with rows the panel never saw, so re-take that tick; so can the route's 8 s Live Client cache
+  gate switching `target_source` between live stats and the curve, so a tick whose `target_source`
+  is not the live-items source is suspect. RESIDUAL (not closable by the tool): the
+  panel keeps its old order when its own POST fails (`j.ok` false), so a HELD on a tick where the
+  route was failing is stale; a `capture` that refuses ("route gave no plan") voids that tick, and an
+  intermittent DS error in the RC log during the window voids it too.
 - **G2-39** (was B29) QA6 fullscreen-detect "switch to Borderless" hint + QA13 UIPI elevation-parity
   detect final validation. Low-confidence inferred rows - **build headless first**.
 - **G2-40** (was B30) DS ratio-block spot verify vs target dummies (~174/577 flagged). DS-batch
