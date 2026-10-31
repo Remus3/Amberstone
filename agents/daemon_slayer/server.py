@@ -391,6 +391,11 @@ def _opt_bool(body: dict, key: str, default: bool = False) -> bool:
     if isinstance(v, bool):
         return v
     if isinstance(v, (int, float)):
+        # RM-1155: bool(nan) / bool(inf) is True, so a JSON NaN / Infinity
+        # token armed a DEFAULT-OFF seam. Non-finite is garbage, and garbage
+        # falls back to the default (the RM-118 pinned _opt_bool contract).
+        if isinstance(v, float) and not math.isfinite(v):
+            return default
         return bool(v)
     if isinstance(v, str):
         return v.strip().lower() in ("1", "true", "yes", "on")
