@@ -6,6 +6,20 @@
 
 ---
 
+# 2026-10-31b - session 145: docs-guards red fixed, L7 landed all 96 s144 lane commits (RM-1152..RM-1224), CodeQL 67-83 triaged and fixed / dismissed, RM-1222 + RM-1161 + RM-928 (a) shipped, inbox agreement renewed; PUSHED after a sweep fold
+
+- **Operator (chat):** "self-adjudicate them" for ASKS 31 and the CodeQL false-positive dismissals; typed /done.
+- **N1 (LEDGER 1982):** docs-guards installs json5 / anthropic / portalocker and declares every other runtime package (`50a1e8592`, pushed mid-session); the one Linux-only ci red fixed forward in the L7 wave (`3a8a49e36`).
+- **N2 (LEDGER 1975-1981):** L7 landed 96 lane commits + 8 merger commits; gated Tier-2 1 failed (CLI pin) / 56083 passed; verifier PASS; markers name `4a6d969c1`.
+- **N3 / T1 / T2 / A1 (LEDGER 1983 / 1984):** alert-66 REPLY to MAIN 1/1; alerts 67-83 = 10 test-only fixed (`3516ad23b`, `375ec6390`) + 7 dismissed false positive; RC-InboxResponder agreement renewed to 2026-12-01 (ASKS 31 closed).
+- **Q1 / Q2 / P1 (LEDGER 1985 / 1986):** TFT run snapshots in gitignored `ops/runtime/tft_qa/` (`a5f56f787`); RM-1222 ruling C (`baa0af524`); DS / RC / vision restarted and read back.
+- **R1 NOT DONE:** the CLI re-pin (RM-795) - the split-route proxy refused the canary 3 times; installed 2.1.316 vs pin 2.1.314, so `test_cli_version_still_matches_the_pin` stays red locally.
+- **/done (LEDGER 1987):** the first push halted on the sibling sweep (invented fixture drive roots in unpushed `bccdef5d3` / `686030c4f`); rebuilt 23 commits tree-equal with the fix folded in, then pushed `50a1e8592..baa0af524`; one full CI dispatch 41231173460. Old lineage kept on local `s145-prefold-main` (NEVER PUSH).
+- **Do NOT redo:** L7 (markers), the docs-guards fix, alerts 69-72 / 74-76 dismissals, the agreement renewal, RM-1222, the tft_qa snapshots.
+- **Next:** read back the push CI + dispatch and whether CodeQL closed 67, 68, 73, 77-83; retry the CLI re-pin when the proxy allows; land what the rotator commits after 2026-11-01 04:46 (count against the markers).
+
+---
+
 # 2026-10-31 - session 144: the s134 + s144 lanes landed in L0-L6 (RM-910..RM-1151), PKG-6b / PKG-6c landed, kit v25 adopted, alert 66 closed, the s144 lane rotator built and running; PUSHED
 
 - **Operator (chat):** approved the alert 66 reopen and the batched MAIN note (ASKS 39 / 49); ordered the run-budget resets and a 24 h 250-run lift (expired 2026-10-29 03:55); typed /done.
@@ -31,15 +45,3 @@
 - **/done (LEDGER 1937):** pushed `e13219044..a5c8d94ff`; one full-suite dispatch ci 40456618221; board NON-final (P1 / V1 carried).
 - **Do NOT redo:** the S1 / H1 / A1 landings; PKG-6b's 5 review rounds (fix only H-A / H-B / J3 on top of `9819e60e7`).
 - **Next:** PKG-6c (ROADMAP row): fix H-A + H-B + the J3 guard in that worktree, verify, land by cherry-pick through fleet_gitlock; then the operator batch (ASKS 45, 39, 49).
-
----
-
-# 2026-10-26d - session 142: PKG-6 (autonomous half) + PKG-7 (built, never run) landed, SF1 fixed, Dependabot #25 / #26 path B, js-yaml audit cleared; PUSHED
-
-- **Operator:** away; no steers or intents. Every landing was verifier-gated first, then landed by a separate agent.
-- **PKG-6 (LEDGER 1927):** `65cc65565` + `34990bcd6` + docs `cceec4798` - the Electron shell launches and stops the service host; packaged smoke 63/63. The packaged GPU process dies (error_code=18) only in the agent env; the operator's Explorer launch is the real check.
-- **PKG-7 (LEDGER 1928):** `acba657f3` + `21da946ed` - `tools/launcher_cutover.ps1`, dry run by default, XML backup read back before unregister. Never run by a session (ASKS 45).
-- **SF1 / DEP-26 / DEP-25 / JSY (LEDGER 1929 / 1926 / 1930 / 1931):** token header stripped off-origin `a0c20ea24`; certifi `2fc75b886` (anthropic 2.2.0 declined); electron 45.0.0 `72324c7b5`; js-yaml 4.3.2 `537b72710` + docs `e13219044`.
-- **/done (LEDGER 1932):** gated suite on `e13219044` 46668 passed, 1 failed (CLI pin 2.1.311 vs 2.1.310, environment); pushed `6e28127f3..e13219044` (push ci mode=full); both bot PRs closed by Dependabot; reap removed 3 worktrees (2 by long-path delete after git deregistered them).
-- **Do NOT redo:** the landings above; PR #22 is superseded by #25 (applied).
-- **Next:** PKG-6b (updater CLI + per-service restart); the CLI re-pin; the 38 lock-file Dependabot alerts re-read; then the operator batch (ASKS 45 packaged-app acts, 39, 49).

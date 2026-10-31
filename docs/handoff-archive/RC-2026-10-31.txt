@@ -348,3 +348,94 @@ Open: 1-7, 9-12 (unanswered s111-s143), 15, 17, 18, 20-24, 26, 28-33, 36, 38-49.
 47. Live check: a dashboard control POST from a second LAN device is refused (403, PKG-5).
 48. OK to update the live Python websockets 17.2 -> 17.3 (writes outside the repo)?
 49. Approve C7 (Next action 2) and the batched MAIN note (CARRIED FROM s133).
+
+# archived from RC-NEXT-SESSION.txt at 2026-10-31T18:57:23Z
+====================
+CLOSED - S144 HAND-OFF NEXT ACTIONS, FIRST LIST, ITEM TEXTS AND STATUS AS AT THE s145 START (s145 /done trim; record only - the s146 hand-off carries every item still due, tighter, and points here as A31 block 3; moved VERBATIM from 78376deb8:RC-NEXT-SESSION.txt, the line ranges named below)
+====================
+-- old lines 20-52: next actions 1-3 and the FIRST list (all acted on s145: N1, N2, N3, A1; the CLI pin carried as R1) --
+Next action 1 (FIRST - CI RED on the pushed fc123ec87, fix FORWARD on main): docs-guards 41216101159
+failed, 8 failed / 4530 passed: every failure is a module the s144-widened selector
+(tools/md_guard_selector.py; RM-1107 / RM-1145 / RM-1146 / RM-1147, LEDGER 1965 / 1972) now picks but
+whose imports the job's hashed .github/ci/requirements-docs-guards.txt does not install - json5
+(agents/daemon_slayer/tests/test_artifact_patch_marker_guard.py x2,
+tests/test_tracked_json_producers_emit_lf_bytes.py x4), anthropic (tests/test_tft_meta_provenance_rm846.py),
+and tests/test_dead_endpoint_cleanup_item186.py RemoteDisconnected (the same log shows portalocker
+missing). The s143 docs-guards run was green. Fix TDD: the selector skips modules whose imports the
+docs-guards requirements cannot satisfy, or those requirements gain the deps (regenerate from the .in,
+hashed); then the selector's tests + tests/test_ci_docs_guard_coverage.py; read back a green docs-guards.
+Next action 2 (L7 landing, autonomous): land every s144 lane commit made after L6. Count and land
+`main..lane/<name>`, NOT `<S144_LANDED marker>..lane/<name>`: the driver's sync rebased every lane onto
+main fc123ec87, so the marker shas are no longer ancestors and that range over-counts by about 94. At
+/done (2026-10-31 10:40 local): gated 6, queue 13, uiux 13, research 6, ds 22, repo 22, true-audit 14 =
+96 commits, every lane 0 behind main; markers ops/loop/control/lanes/S144_LANDED_<LANE> ("<full lane
+tip> s144 landed into local main <sha>"). Method = L6 (LEDGER 1967-1973): land while no lane worker runs
+(lane-<i>.json not running; the rotator need not stop); per commit `git cherry-pick --no-commit <sha>`
+then `fleet_gitlock.py run -- git commit -C <sha>` (gitlock refuses cherry-pick / rebase); provisional
+S144-* ids -> RM-1152 up (pin docs/DS_SWEEP_TRACKER.md), LEDGER 1975 up; merger fixes; touched tests +
+importers; the gated Tier-2 dual suite (TIER TABLE; output to a file, summary + exit code in the launch
+call); an independent verifier; py_compile + DS / RC / vision restarts as the touched code needs (no game
+up); THEN write each marker = the lane tip landed. Never push a lane branch.
+Next action 3 (ONE batched MAIN note when there is one to send; not a REPLY; 12 / day cap): the alert-66
+line "RC alert 66 reopened on operator yes (MAIN 0315 item 1); GitHub read back state=fixed
+(most_recent_instance fixed, refs/heads/main, commit b0c755499, fixed_at 2026-10-26T10:59:07Z), no
+further CodeQL run needed" (re-read at the s144 /done: fixed). The G2 batched FIX note (RM-831, RM-778,
+RM-798, board --final, reap long paths, gitlock coverage, route split, GH1, rollout, s144 facts) was
+DELIVERED s144, 1/1 (archive copy ff32d603f).
+FIRST: CPU / memory glance; the rotator (IN-FLIGHT); inbox_tick.py --pending; gh pr list; git fetch +
+origin/main still an ancestor of main; `gh run view` each run the Status block lists as pending; the CLI
+pin: the installed CLI read 2.1.316 at /done vs PINNED_CLI 2.1.314, so tests/test_subagent_prompt_flag.py
+fails locally until re-pinned (RM-795: tools/repin_subagent_cli.py, 4 canary headless runs from the run
+budget); ASKS 31 (the RC-InboxResponder agreement expires 2026-11-01 00:00).
+-- old lines 79-85: the PKG-6c item as written (carried tighter) --
+- PKG-6c (LEDGER 1945; ROADMAP row PKG-6c; PACKAGING_PLAN WA20): M2 LOW open - finish() clears pending in
+  update_state.json (updater.py:1815-1816 lost; :1901-1902 interrupted) before the cycle writes
+  recover_due to update_cycle.json; an OSError between them loses the rollback (fix needs a "handled"
+  marker, or a refused recover retries every cycle). LOW 1: two unreadable stretches up to 300 s apart are
+  stitched across an unsampled readable stretch (early release; wall-time bounded). LOW 2: a slow
+  crash-looping main.py (> 24 s per crash) counts as up, so the rollback waits out a game. Also owed:
+  WA14, WA17, the [H] shell-build smoke, the push CI read-back.
+-- old lines 90-100: the lane follow-ups item as written (RM-928 (a) SHIPPED s145; the rest carried) --
+- Lane follow-ups owed (L3-L6 merger notes): RM-925 decision / acceptance (research cycle 35: route (c)
+  has an unnamed _carousel consumer; route (a) 593 / 595); RM-928 (a) in the MAIN checkout before
+  2026-11-08 19:47 CST (research cycle 37; writes gitignored ops/runtime/tft_qa); re-word
+  rc-shell/src/rc_root.js:16 (names ops/launch_new_system.bat), then drop it from `_KEPT` in
+  tests/test_orphan_ops_legacy_bat_chain_rm721.py, and re-word docs/PACKAGING_PLAN.md:180 (cites the
+  archived launcher); BACKLOG RM-721 (c) and RM-730 (a) SHIPPED marks; decide whether CLAUDE.md names
+  `--max-worker-restart=0`; core/aram_deterministic_coach.py:295 + tests/test_aram_deterministic_coach.py:399
+  cite coaches/aram_coach.py:332 by line (Tier-0); RM-1053 residue lists (ds cycles 116 / 117); RM-1115
+  non-DS half; the RM-258 lib/ header re-flip (research); the uiux cut-off cycle S144-U-64 (stash
+  s144-preL5-uiux) never mapped; the ds lane specs for RM-848 / RM-847 / RM-871 / RM-843 live only in the
+  gitignored lane reports.
+-- old lines 114-118: the RC-LCUAgent / RC-HotkeyListener and Mission Control items (MC recovered and read back s144; the rest carried) --
+- RC-LCUAgent was restarted s144 (2026-10-30 09:53) but its legacy-state read is untested live (no legacy
+  file); RC-HotkeyListener was not restarted (docstring-only change).
+- Mission Control :8895 RECOVERED: relaunched by its task 2026-10-31 10:33 after the Tailscale login;
+  read back at /done listening, GET /api/loop-status 200 (the 2026-10-30 restart had failed on WinError
+  10049 while Tailscale was logged out). The new process holds the current lane worktree base.
+-- old lines 277-285: the s144 decisions and s143 DO NOT RE-LITIGATE entries (pointed to from the s146 hand-off) --
+- s144 decisions: lane work lands by cherry-pick + gitlock commit with the provisional ids mapped by the
+  merger (LEDGER 1938); after a lane rebase the landing range is `main..lane/<name>` (LEDGER 1967); the
+  board rendered --final at the s144 /done (no checklist task carried; LEDGER 1974). Reverses if, each:
+  the method loses a commit or an author; a lane is found NOT rebased onto main (then use `git cherry
+  main lane/<name>`); a /done carries a task while MAIN's RM-823 behaviour stands.
+- s143 (LEDGER 1933-1937): the landings bc799b46a / fbe3fb7ef / a5c8d94ff and the 11 branch deletes;
+  anthropic 2.3.0 declined (LEDGER 1936). Reverses if: a live re-check or CI reds one of them; RM-681
+  closes and ANTHROPIC-2X is scoped. (The s143 "PKG-6b NOT merged" and "board NON-final" decisions are
+  SUPERSEDED: PKG-6c landed, LEDGER 1945; --final, LEDGER 1974.)
+-- old lines 305-319: the s144 /done Status block (superseded by the s145 Status) --
+Status (s144 /done): PUSHED a5c8d94ff..fc123ec87 main -> main (580 commits; ls-remote == local). Range
+scan for game / match ids, PUUIDs, machine paths, tailnet / LAN addresses, e-mails: 0 new hits (the
+NA1 format example in dashboard/routes_coach.py is published since 2026-04-28, moved within the file);
+identity 0, sweep "ARMED" clean 1722 files / 580 messages, credential 0 over 123231 added lines.
+bot_merge_check clean (580); contributors = 1; 0 open PRs; 0 open Dependabot alerts. Then this /done
+commit (LEDGER 1974, WAKEUP + prune, ROADMAP PKG-6c row, A31, this hand-off; local until the next
+push). Gate: ruff clean; hygiene trio 14 passed; drift_guard 0; md + hand-off guards (192 modules, suite gate) 5007 passed, 4 skipped, exit 0; no local whole suite (the
+L6 gated Tier-2 over 9ee8acedb, 54286 passed, exit 0, covers HEAD). CI: push ci 41216101121 (mode=full: check + the full dual suite) PENDING at the /done: `gh run view 41216101121` first;
+sibling-sweep-tree success; codeql 41216101140 success; docs-guards 41216101159 FAILURE (Next action 1). Full suite (2c):
+covered by the push's own full run (41216101121, mode=full, 1066 paths) and the L6 Tier-2 (docs-only
+delta), no dispatch; the s143 dispatch 40456618221 read back success. Reap: 1 removed
+(agent-ade3dd10ba7a548d1), 1 listed (agent-ae4b613943b5ff34a), 7 lanes kept. RC: pid 13900 alive,
+last_reload_ok true, restart_trigger empty; DS 1.290.0 / 16.21.1 / 173; no game (mode client). Session
+file 5.2 MB. Inbox 0 pending; no steer / intent. perseus_sync --verify 2336 / 2336. Memory: 0 changed. Board: rendered
+--final after this commit.
