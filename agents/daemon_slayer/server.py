@@ -418,16 +418,38 @@ def _to_int(value: Any, field_name: str) -> int:
         raise _ApiError(400, f"{field_name}: expected integer, got {value!r}")
 
 
+def _is_blank(value: Any) -> bool:
+    """RM-1241: None or a whitespace-only string reads as "absent".
+
+    ``""`` already took the default in the scalar helpers, but ``"   "``
+    reached ``int()`` / ``float()`` and was a 400, and in ``only`` it became
+    an empty whitelist (an empty 200). Same blank policy as ``_opt_str`` and
+    RM-1239 / RM-1240.
+    """
+    return value is None or (isinstance(value, str) and not value.strip())
+
+
+def _opt_only(body: dict) -> Optional[list[str]]:
+    """The ``only`` item whitelist, or None (no filter) when absent / blank.
+
+    An explicit list, including ``[]``, is the caller's whitelist as given.
+    """
+    v = body.get("only")
+    if _is_blank(v):
+        return None
+    return _coerce_str_list(v, "only")
+
+
 def _opt_int(body: dict, key: str, default: Optional[int] = None) -> Optional[int]:
     v = body.get(key, default)
-    if v is None or v == "":
+    if _is_blank(v):
         return default
     return _to_int(v, key)
 
 
 def _opt_float(body: dict, key: str, default: float = 0.0) -> float:
     v = body.get(key, default)
-    if v is None or v == "":
+    if _is_blank(v):
         return default
     _reject_bool(v, key)
     try:
@@ -708,9 +730,7 @@ def _route_rank(body: dict) -> dict:
         raise _ApiError(400, f"sort: must be one of {list(SORT_KEYS)}, got {sort_by!r}")
     include_components = _opt_bool(body, "include_components", False)
     filter_shared_uniques = _opt_bool(body, "filter_shared_uniques", True)
-    only_ids: Optional[list[str]] = None
-    if "only" in body and body["only"] not in (None, ""):
-        only_ids = _coerce_str_list(body["only"], "only")
+    only_ids = _opt_only(body)
     apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)
     # /rank seam flags (DEFAULT-OFF -> byte-identical when the body omits them):
     #   exempt_offclass_by_win (DSP2) - un-strip the off-class items a caster-marksman
@@ -1143,9 +1163,7 @@ def _route_rank_tank(body: dict) -> dict:
         raise _ApiError(400, f"sort: must be one of {list(SORT_KEYS)}, got {sort_by!r}")
     include_components = _opt_bool(body, "include_components", False)
     filter_shared_uniques = _opt_bool(body, "filter_shared_uniques", True)
-    only_ids: Optional[list[str]] = None
-    if "only" in body and body["only"] not in (None, ""):
-        only_ids = _coerce_str_list(body["only"], "only")
+    only_ids = _opt_only(body)
     apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)
     # Item 236: CC-adjusted ranking. enemies + include_conditional feed the
     # cc_blended_ehp discount; score_by="cc_blended" ranks on it (tenacity-aware
@@ -1414,7 +1432,7 @@ def _route_rank_tank(body: dict) -> dict:
 def _opt_weight(body: dict, key: str) -> Optional[float]:
     """Optional alpha/beta override. Returns None when absent (engine
     falls back to the per-champion table)."""
-    if key not in body or body[key] in (None, ""):
+    if key not in body or _is_blank(body[key]):
         return None
     _reject_bool(body[key], key)
     try:
@@ -1608,9 +1626,7 @@ def _route_rank_bruiser(body: dict) -> dict:
     filter_shared_uniques = _opt_bool(body, "filter_shared_uniques", True)
     alpha = _opt_weight(body, "alpha")
     beta = _opt_weight(body, "beta")
-    only_ids: Optional[list[str]] = None
-    if "only" in body and body["only"] not in (None, ""):
-        only_ids = _coerce_str_list(body["only"], "only")
+    only_ids = _opt_only(body)
     include_conditional = _opt_bool(body, "include_conditional", False)
     apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)
     enemies = _coerce_str_list(body.get("enemies"), "enemies")
@@ -2046,9 +2062,7 @@ def _route_rank_mage(body: dict) -> dict:
     apply_ability_base_overrides = _opt_bool(
         body, "apply_ability_base_overrides", False
     )
-    only_ids: Optional[list[str]] = None
-    if "only" in body and body["only"] not in (None, ""):
-        only_ids = _coerce_str_list(body["only"], "only")
+    only_ids = _opt_only(body)
     # RM-172: ARENA/Swiftplay stat-growth addend lane, DEFAULT-OFF. Flows to
     # BOTH the baseline and every candidate inside rank_items_by_ability_dps,
     # which is what keeps the delta honest. See the /stats docstring.
@@ -2123,9 +2137,7 @@ def _route_rank_onhit(body: dict) -> dict:
     # candidate, but no route ever parsed it - a kwarg nobody can reach over
     # HTTP is inert. DEFAULT-OFF. See the /stats docstring.
     apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)
-    only_ids: Optional[list[str]] = None
-    if "only" in body and body["only"] not in (None, ""):
-        only_ids = _coerce_str_list(body["only"], "only")
+    only_ids = _opt_only(body)
     try:
         result = rank_items_by_onhit(
             snap,
@@ -2816,9 +2828,7 @@ def _route_rank_assassin(body: dict) -> dict:
         raise _ApiError(400, f"sort: must be one of {list(SORT_KEYS)}, got {sort_by!r}")
     include_components = _opt_bool(body, "include_components", False)
     filter_shared_uniques = _opt_bool(body, "filter_shared_uniques", True)
-    only_ids: Optional[list[str]] = None
-    if "only" in body and body["only"] not in (None, ""):
-        only_ids = _coerce_str_list(body["only"], "only")
+    only_ids = _opt_only(body)
     runes = [
         int(x)
         for x in _coerce_str_list(body.get("runes"), "runes")
@@ -2902,7 +2912,7 @@ def _route_rank_assassin(body: dict) -> dict:
 def _opt_targets_override(body: dict) -> Optional[float]:
     """Phase 6 - optional targets_per_proc_override (float). None when absent."""
     key = "targets_per_proc_override"
-    if key not in body or body[key] in (None, ""):
+    if key not in body or _is_blank(body[key]):
         return None
     _reject_bool(body[key], key)
     try:
@@ -2994,9 +3004,7 @@ def _route_rank_enchanter(body: dict) -> dict:
     include_components = _opt_bool(body, "include_components", False)
     filter_shared_uniques = _opt_bool(body, "filter_shared_uniques", True)
     enchanter_only = _opt_bool(body, "enchanter_only", True)
-    only_ids: Optional[list[str]] = None
-    if "only" in body and body["only"] not in (None, ""):
-        only_ids = _coerce_str_list(body["only"], "only")
+    only_ids = _opt_only(body)
     # /rank-enchanter seam flags (DEFAULT-OFF/0.0 -> byte-identical when omitted):
     #   prefer_survivability_by_win (RF2) - inject + float the WIN-anchored
     #     enchanter survivability set above the generic template.
@@ -3052,9 +3060,7 @@ def _route_beam(body: dict) -> dict:
     total_budget = _opt_int(body, "total_budget", None)
     include_components = _opt_bool(body, "include_components", False)
     boots_unique = _opt_bool(body, "boots_unique", True)
-    only_ids: Optional[list[str]] = None
-    if "only" in body and body["only"] not in (None, ""):
-        only_ids = _coerce_str_list(body["only"], "only")
+    only_ids = _opt_only(body)
     apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)
     try:
         result = beam_search_build(
