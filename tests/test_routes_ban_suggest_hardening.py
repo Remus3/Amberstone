@@ -4,7 +4,8 @@ One test (or test group) per audited weakness:
 
 F1 id tokens: only ASCII decimal digits, bounded length, positive
    champion ids; an over-long id is a 400, never a SQLite OverflowError
-   reported as a 503; a rejected token is clipped in the error body.
+   reported as a 503; a rejected token is never echoed in the error
+   body (RM-1233; it used to be clipped and echoed).
 F2 queue list: a comma-only ``queue=`` no longer silently drops the
    queue filter (and so no longer poisons the default-queue cache key);
    the queue count is capped.
@@ -99,6 +100,8 @@ class IdTokenValidationTests(unittest.TestCase):
         self._assert_400("ally=%2B22&candidates=64", "ally")
 
     def test_rejected_token_is_clipped_in_error(self):
+        # RM-1233: the token is no longer echoed at all; the bound on
+        # the body length still holds.
         body = self._assert_400("ally=" + "a" * 5000 + "&candidates=64")
         self.assertLess(len(body["error"]), 200)
 

@@ -25,8 +25,8 @@ Request shape:
   Validation (the trust boundary; any violation is a 400 naming the
   field): every id is 1-6 ASCII decimal digits (no sign, no
   underscore, no non-ASCII digit); champion ids are >= 1, queue ids
-  >= 0; no id repeats within one list. A rejected token is clipped in
-  the error body.
+  >= 0; no id repeats within one list. The 400 names the field and
+  the expected shape only, never the caller's token (RM-1233).
 
 Response shape:
   {
@@ -107,7 +107,14 @@ _CACHE_EVICT = 64
 # used to reach SQLite as an OverflowError and come back as a 503).
 _ID_RE = re.compile(r"[0-9]{1,6}")
 _MAX_QUEUE_IDS = 16
-_ERR_TOKEN_MAX = 24
+
+# 400 texts (RM-1233). Each names the expected shape and never the
+# caller's token or value; the route prefixes the parameter name. Was
+# ``invalid id '<clipped repr>'``, ``id <n> is below <m>`` and
+# ``duplicate id <n>``, the same echo the sibling /api/post-game-wpa 400
+# had dropped (its ``_MATCH_ID_ERROR``).
+_ERR_BAD_TOKEN = "each id must be 1-6 ASCII digits"
+_ERR_DUPLICATE = "duplicate ids are not allowed"
 
 
 def _cache_put(key: tuple, now: float, payload: dict) -> None:
@@ -120,13 +127,6 @@ def _cache_put(key: tuple, now: float, payload: dict) -> None:
                 _CACHE.pop(k, None)
 
 
-def _clip(token: str) -> str:
-    """Bound a rejected token before it is echoed in an error body."""
-    if len(token) > _ERR_TOKEN_MAX:
-        token = token[:_ERR_TOKEN_MAX] + "..."
-    return repr(token)
-
-
 def _parse_ids(raw: str, min_count: int, max_count: int, *,
                min_value: int) -> tuple[list[int], str | None]:
     """Parse a comma list of ids. Returns (ids, error-or-None).
@@ -134,20 +134,21 @@ def _parse_ids(raw: str, min_count: int, max_count: int, *,
     Order is preserved. Every token must match ``_ID_RE`` (ASCII digits
     only - ``int()`` alone accepts a sign, ``_`` separators and
     non-ASCII digits) and be >= ``min_value``; duplicates are refused.
+    An error names the expected shape only, never a token (RM-1233).
     """
     parts = [p.strip() for p in raw.split(",") if p.strip()]
     if len(parts) < min_count or len(parts) > max_count:
-        return ([], f"expected {min_count}-{max_count} ids, got {len(parts)}")
+        return ([], f"expected {min_count}-{max_count} comma-separated ids")
     ids: list[int] = []
     seen: set[int] = set()
     for p in parts:
         if not _ID_RE.fullmatch(p):
-            return ([], f"invalid id {_clip(p)}")
+            return ([], _ERR_BAD_TOKEN)
         value = int(p)
         if value < min_value:
-            return ([], f"id {value} is below {min_value}")
+            return ([], f"each id must be {min_value} or more")
         if value in seen:
-            return ([], f"duplicate id {value}")
+            return ([], _ERR_DUPLICATE)
         seen.add(value)
         ids.append(value)
     return (ids, None)
