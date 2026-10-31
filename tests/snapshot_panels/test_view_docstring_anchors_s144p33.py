@@ -31,6 +31,15 @@ Its "hash wins" sentence (and the Lobby "hash survives" one) now says why:
 `_midFlight` is false on the home auto-derive, so the clear gated on
 `_hashIsStaleGameState` never runs.
 
+RM-1186 extended it to the Build Insights view test. Its docstring cited
+main.js:573-574 / lib/state.js:40 (sticky hash), main.js:802 (the
+build-insights branch) and build_insights.js:280-290 (mock loader). The
+main.js and build_insights.js cites had drifted onto unrelated code; the
+state.js cite still fell inside VIEW_IDS, but only on its closing line, so
+it too is now a symbol. It also called the view "8-tab";
+web/index.html carries nine data-bi-tab buttons (four WPA tables plus five
+chart panels).
+
 The docstrings are read with ast, so this guard needs no browser and no
 mock server. test_replay_view.py carries its own guard of the same shape
 (RM-1183).
@@ -53,6 +62,17 @@ DOC_ANCHORS = {
         ("web/js/main.js", "function _amMockLoad"),
         ("web/js/panels/active_match.js", "const AM_MOCK_FIXTURES"),
         ("web/js/panels/active_match.js", "function _renderDraftEloFromCtx"),
+    ),
+    "test_build_insights_view.py": (
+        _STICKY,
+        ("web/js/main.js", "function _viewFromHash"),
+        ("web/js/lib/state.js", "export const VIEW_IDS"),
+        ("web/js/main.js", 'if (viewId === "build-insights")'),
+        ("web/js/panels/build_insights.js", "export function renderBuildInsights"),
+        ("web/js/panels/build_insights.js", "function _ensureFetched"),
+        ("web/js/panels/build_insights.js", "function _isMock"),
+        ("web/js/panels/build_insights.js", "function _mockLoad"),
+        ("web/js/panels/build_insights.js", "mockUrl: '/data/ui_mock/build_insights.json'"),
     ),
     "test_home_view.py": (
         ("web/js/main.js", "function _homeWireStartup"),

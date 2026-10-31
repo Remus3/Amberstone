@@ -3,7 +3,8 @@ tests/snapshot_panels/test_build_insights_view.py
 Build Insights VIEW snapshot coverage - RC2 redesign #10.
 
 Renders the full-page Build Insights view (#view-build-insights, the
-8-tab selection-bias-corrected WPA analytics view, gated visible by
+9-tab analytics view - four selection-bias-corrected WPA tables plus five
+chart panels - gated visible by
 body[data-view="build-insights"]) against the ui_mock build_insights
 fixture through the headless mock-server + Playwright harness. This is the
 reproducible stand-in for the live self-signed-HTTPS :8888 visual check:
@@ -13,15 +14,20 @@ runs here in CI. Mirrors test_user_builds_view.py and test_session_view.py.
 
 Drive path: /?ui_mock=1#build-insights. main.js boot flips
 body.dataset.uiMock; with an empty SSE state the auto-derive lands on
-"home" (mode=client / !live), and #build-insights is a sticky
-non-game-state hash (_viewFromHash returns it because it is in VIEW_IDS,
-main.js:573-574 / lib/state.js:40), so the build-insights view wins the
-router (applyView("build-insights") stamps body[data-view="build-insights"],
-which un-hides #view-build-insights). The viewId=="build-insights" branch
-fires renderBuildInsights() (main.js:802); the default Items tab flows
-through _ensureFetched(_ITEMS_TAB), and under ui_mock the live
-/api/item-wpa fetch is short-circuited to /data/ui_mock/build_insights.json
-(_isMock / _mockLoad, build_insights.js:280-290) instead of the live feed.
+"home" (mode=client / !live). `function _viewFromHash` in web/js/main.js
+returns "build-insights" because it is in `export const VIEW_IDS`
+(web/js/lib/state.js), and in `_viewResolveAndApply` the hash becomes the
+manual pick. It is not one of the game-state hashes that
+`_hashIsStaleGameState` clears, so it stays sticky and the build-insights
+view wins the router (applyView("build-insights") stamps
+body[data-view="build-insights"], which un-hides #view-build-insights).
+The `if (viewId === "build-insights")` branch of applyView fires
+renderBuildInsights() (`export function renderBuildInsights` in
+web/js/panels/build_insights.js). The default Items tab (_ITEMS_TAB) goes
+through `function _ensureFetched` into _fetch, and under ui_mock
+(`function _isMock`) `function _mockLoad` fetches the tab's
+`mockUrl: '/data/ui_mock/build_insights.json'` instead of the live
+/api/item-wpa feed.
 
 The fixture's items array (11 rows) paints a .bi-table into
 #bi-table-mount (a populated array skips the .bi-empty state). Waiting for
