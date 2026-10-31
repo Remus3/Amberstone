@@ -50,7 +50,12 @@ test("normalizeFingerprint: colon-hex, bare hex and sha256/base64 agree", () => 
 });
 
 test("normalizeFingerprint: SHA-1, truncated, ragged or garbage values are null", () => {
-  const sha1 = crypto.createHash("sha1").update(DER).digest("hex");
+  // A SHA-1-LENGTH value: 40 hex chars (20 bytes), a fixed literal rather than
+  // a SHA-1 computation (CodeQL alert 68). normalizeFingerprint rejects it on
+  // shape and length alone (src/tls_pin.js), so the literal covers the case.
+  const sha1 = "0123456789abcdef".repeat(2) + "01234567";
+  assert.match(sha1, /^[0-9a-f]{40}$/);
+  assert.strictEqual(Buffer.from(sha1, "hex").length, 20);
   const bad = [
     sha1,
     sha1.toUpperCase().match(/../g).join(":"),

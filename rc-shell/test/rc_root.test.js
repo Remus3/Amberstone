@@ -332,8 +332,38 @@ test("contract: the signal file names match the writer, tools/hotkey_listener.py
     "utf8"
   );
   for (const name of Object.values(rr.SIGNAL_FILES)) {
-    const re = new RegExp('"ops"\\s*/\\s*"runtime"\\s*/\\s*"' + name.replace(/\./g, "\\.") + '"');
-    assert.match(listener, re, name + " is written by the listener under ops/runtime");
+    assert.match(listener, signalPathRe(name), name + " is written by the listener under ops/runtime");
+  }
+});
+
+// Every RegExp metacharacter in `s`, backslash included, made literal.
+function escapeRegExp(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// The listener's `"ops" / "runtime" / "<name>"` path expression for one name.
+function signalPathRe(name) {
+  return new RegExp('"ops"\\s*/\\s*"runtime"\\s*/\\s*"' + escapeRegExp(name) + '"');
+}
+
+test("contract: a signal name's regex metacharacters are literal (CodeQL alert 67)", () => {
+  // Escaping only "." left every other metacharacter live: "+" or "*" in a
+  // name widened the pattern, "(" or "[" made it throw.
+  const name = "a.b*c+d?e^f$g{1}h(i)j|k[l]m\\n.flag";
+  const re = signalPathRe(name);
+  assert.match('"ops" / "runtime" / "' + name + '"', re);
+  const nearMisses = [
+    "aXb*c+d?e^f$g{1}h(i)j|k[l]m\\n.flag",
+    "a.bbbc+d?e^f$g{1}h(i)j|k[l]m\\n.flag",
+    "a.b*cccd?e^f$g{1}h(i)j|k[l]m\\n.flag",
+    "a.b*c+e^f$g{1}h(i)j|k[l]m\\n.flag",
+    "a.b*c+d?e^f$gh(i)j|k[l]m\\n.flag",
+    "a.b*c+d?e^f$g{1}hij|k[l]m\\n.flag",
+    "a.b*c+d?e^f$g{1}h(i)jkl]m\\n.flag",
+    "a.b*c+d?e^f$g{1}h(i)j|k[l]mn.flag",
+  ];
+  for (const near of nearMisses) {
+    assert.doesNotMatch('"ops" / "runtime" / "' + near + '"', re, near);
   }
 });
 

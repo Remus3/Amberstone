@@ -483,7 +483,44 @@ test("main.js: a starting view is shown until /api/health answers", () => {
   assert.ok(fs.existsSync(path.join(SRC, "starting.html")), "starting.html exists");
   const page = fs.readFileSync(path.join(SRC, "starting.html"), "utf8");
   assert.ok(page.includes("Content-Security-Policy"), "the starting page carries a CSP");
-  assert.ok(!/<script>/.test(page), "no inline script");
+  assert.ok(scriptTags(page).length > 0, "premise: the page loads its script by src");
+  assert.ok(!hasInlineScript(page), "no inline script");
+});
+
+// Every opening script tag in an HTML text.
+function scriptTags(html) {
+  return html.match(/<script\b[^>]*>/gi) || [];
+}
+
+// True when the HTML carries a script tag with no src attribute. A bare
+// /<script>/ missed <SCRIPT> and <script type=...> (CodeQL js/bad-tag-filter).
+function hasInlineScript(html) {
+  return scriptTags(html).some((tag) => !/\bsrc\s*=/i.test(tag));
+}
+
+test("hasInlineScript: any case, any attribute, src-less = inline (CodeQL alert 73)", () => {
+  const inline = [
+    "<script>x()</script>",
+    "<SCRIPT>x()</SCRIPT>",
+    "<Script>x()</Script>",
+    '<script type="module">x()</script>',
+    "<script type='text/javascript'>x()</script>",
+    "<script\n>x()</script>",
+    "<script defer>x()</script>",
+  ];
+  for (const html of inline) {
+    assert.ok(hasInlineScript(html), "must trip on " + JSON.stringify(html));
+  }
+  const external = [
+    '<script src="starting_page.js"></script>',
+    "<SCRIPT SRC='starting_page.js'></SCRIPT>",
+    '<script type="module" src = "a.js"></script>',
+    "<noscript>no script</noscript>",
+    "<p>a script tag is described here</p>",
+  ];
+  for (const html of external) {
+    assert.ok(!hasInlineScript(html), "must not trip on " + JSON.stringify(html));
+  }
 });
 
 test("main.js: shell updates relaunch only when idle, through the pure decision", () => {
