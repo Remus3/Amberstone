@@ -18,10 +18,10 @@ and `clear_directive` were one-click in the UI (`web/mc/mc.js:665,668,800,802`)
 because each is reversible by its own opposite. `steer` is one-click by an
 explicit in-tree finding - "GUIDANCE, NOT A COMMAND ... nothing here executes
 anything and nothing is signalled or killed"
-(`dashboard/routes_loop_control.py:353-357`). `interrupt_preview` kills nothing
-and writes nothing (`dashboard/routes_loop_control.py:415`), and gating it
-would make the fingerprint unobtainable without an arm, which would break the
-very confirm this module protects.
+(the `_steer` docstring in `dashboard/routes_loop_control.py`).
+`interrupt_preview` kills nothing and writes nothing (the `_interrupt_preview`
+docstring there), and gating it would make the fingerprint unobtainable
+without an arm, which would break the very confirm this module protects.
 
 WHAT CHANGED FROM THE JS, STATED RATHER THAN GLOSSED. The browser controller
 held a SINGLE armed slot, so arming a second button disarmed the first

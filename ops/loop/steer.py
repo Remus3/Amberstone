@@ -121,7 +121,7 @@ except ModuleNotFoundError:
     except OSError as _exc:
         # exec_module on a missing or unreadable file raises FileNotFoundError,
         # NOT ModuleNotFoundError, and this module is imported by NAME from
-        # dashboard/routes_loop_control.py:363, whose handler catches only
+        # dashboard/routes_loop_control.py _steer, whose handler catches only
         # ModuleNotFoundError. Letting an OSError through would turn the steer
         # route's designed 503 into a 500. Re-raise in the taxonomy the callers
         # already handle, and keep the cause attached.

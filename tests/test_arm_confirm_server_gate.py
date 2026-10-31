@@ -21,8 +21,8 @@ Plus one property the JS could not have, because a browser fetch retry and an
 operator's second click are indistinguishable in the DOM: a TRANSPORT-level
 re-send of the same confirm resolves to the same idempotency key and replays
 the stored answer rather than being refused. That is the seam where this gate
-meets `dashboard/routes_loop_control._apply_idempotent` (`:482-565`), and both
-halves are asserted here so neither can be "fixed" into breaking the other.
+meets `dashboard/routes_loop_control._apply_idempotent`, and both halves are
+asserted here so neither can be "fixed" into breaking the other.
 """
 from __future__ import annotations
 
@@ -273,8 +273,8 @@ def test_re_arming_after_a_fire_works(ctldir, irq):
 
 
 # ===================================================== the idempotency seam
-# Requirement: the replay protection at routes_loop_control.py:482-565 must
-# stay intact THROUGH the gate.
+# Requirement: the replay protection in routes_loop_control.py
+# _apply_idempotent must stay intact THROUGH the gate.
 
 def test_a_transport_retry_of_the_confirm_replays_and_does_not_fire_twice(ctldir, irq):
     _status, armed = _arm("interrupt")
@@ -327,7 +327,8 @@ def test_the_four_reversible_actions_need_no_arm(ctldir, body):
 
 
 def test_steer_needs_no_arm(ctldir, monkeypatch):
-    """GUIDANCE, NOT A COMMAND - routes_loop_control.py:353-357 says so."""
+    """GUIDANCE, NOT A COMMAND - the routes_loop_control.py _steer docstring
+    says so."""
     chan = types.SimpleNamespace(
         append=lambda text, tier="note", key=None: {"id": 1, "tier": tier},
         MAX_TEXT=4000, TIERS=("note", "steer"))
