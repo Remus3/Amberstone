@@ -228,9 +228,10 @@ def _vintage_write_sites(rel: str) -> list[tuple[str, int]]:
     so neither can satisfy this scan.
 
     That distinction is load-bearing here rather than theoretical. MEASURED:
-    tools/daemon_slayer_wiki_stats_extract.py:331 and
-    tools/daemon_slayer_cdragon_spell_extract.py:270 both discuss ``fetched_at``
-    in a docstring while writing no such key. A grep would call both generators
+    tools/daemon_slayer_wiki_stats_extract.py and
+    tools/daemon_slayer_cdragon_spell_extract.py both discuss ``fetched_at``
+    in a docstring (each one's ``_load_champion_ids``) while writing no such
+    key. A grep would call both generators
     fixed and red their exemptions; this scan returns zero sites for both.
     """
     tree = ast.parse((_ROOT / rel).read_text(encoding="utf-8"))
@@ -359,9 +360,9 @@ def _filename_write_sites(feed: str) -> list[str]:
     the near misses measured on this data. A comment never reaches the AST.
     A docstring or an argparse ``help=`` string mentioning the filename is a
     longer string and so never compares equal - MEASURED,
-    tools/daemon_slayer_cdragon_spell_extract.py:685 and
-    tools/daemon_slayer_wiki_stats_extract.py:957 both name their output file
-    inside a help= string and neither is returned here. Nor is a dict KEY, which
+    tools/daemon_slayer_cdragon_spell_extract.py and
+    tools/daemon_slayer_wiki_stats_extract.py both name their output file
+    inside a help= string (the ``--out`` argument in each one's ``main``) and neither is returned here. Nor is a dict KEY, which
     is what keeps tools/ds_feed_index.py - the registry under audit, where every
     exempted filename appears verbatim - from matching all seven of its own
     rows. A plain list element naming a feed is likewise excluded.

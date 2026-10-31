@@ -6,9 +6,10 @@ said so: a perfectly legal ``Content-Length: 1048575`` with zero body bytes
 sent pins a ``ThreadingHTTPServer`` handler thread just the same, released
 only when the client goes away. Measured against the FIXED handler on
 2026-08-03: no response after 4.01s, released 0.18s after the client's
-SHUT_WR. ``dashboard/server.py:35`` binds ``HOST = "::"``, so the reach is
+SHUT_WR. ``dashboard/server.py`` binds ``HOST = "::"``, so the reach is
 anywhere on the LAN or the tailnet, and the body read runs BEFORE the
-``RC_DASH_TOKEN`` check at ``_handler.py:342`` so a token would not gate it.
+``RC_DASH_TOKEN`` check in ``Handler.do_POST`` (``_handler.py``) so a token
+would not gate it.
 
 WHY THE DEADLINE IS SCOPED TO THE BODY READ AND NOT TO THE CONNECTION.
 A ``socket.settimeout`` held for the life of the connection is the obvious
@@ -17,9 +18,9 @@ and the difference is recorded here so the next reader does not inherit the
 wrong model.
 
 The filed expectation was truncation: ``/api/state-stream``
-(``routes_state.py:288``) is a 600-second SSE response writing on
-``h.connection`` with idle gaps up to 15s, and ``_proxy_to_supervisor``
-(``_handler.py:152``) writes an upstream payload back down the same socket.
+(``_serve_state_stream`` in ``routes_state.py``) is a 600-second SSE response
+writing on ``h.connection`` with idle gaps up to 15s, and
+``Handler._proxy_to_supervisor`` (``_handler.py``) writes an upstream payload back down the same socket.
 Both were expected to be cut mid-write by a lifetime deadline. MEASURED
 2026-08-04 with ``Handler.timeout = 0.75`` armed: neither breaks. An 8 MiB
 proxy payload arrived byte-complete even at a reader that stalled 3s
@@ -360,14 +361,15 @@ class TestLegitimateDashboardClientsSurvive:
 
 
 class TestDaemonSlayerBodyRead:
-    """agents/daemon_slayer/server.py:2836 _read_json_body had NO upper cap
+    """agents/daemon_slayer/server.py Handler._read_json_body had NO upper cap
     at all and no deadline - a strictly worse version of the same hole."""
 
     @staticmethod
     def _handler():
         """Every DS route reads the shared snapshot cache, so it has to be
         populated before the Handler will answer anything but a 500
-        ("snapshot not loaded yet", server.py:185). start_server does this
+        ("snapshot not loaded yet", _SnapshotCache.get in server.py).
+        start_server does this
         via _CACHE.set; we do the same without binding its socket."""
         from agents.daemon_slayer import server as ds
 

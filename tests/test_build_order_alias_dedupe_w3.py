@@ -227,14 +227,15 @@ class PlannerRejectsAliasDuplicatesTests(unittest.TestCase):
 # xdist root cause (MEASURED 2026-07-26) - the same pair of transport faults
 # documented at length in tests/test_ds_client_conversion_seam_plumb_w2.py.
 #
-# ``_post_json`` (``core/daemon_slayer_client.py:95-112``) maps every transport
-# failure to ``None``. ``core/build_order_precompute.py:330-335`` then turns
-# that into ``order=[]``, and ``core/build_order.py:727-731`` swallows a
+# ``_post_json`` (in ``core/daemon_slayer_client.py``) maps every transport
+# failure to ``None``. ``compute_cell`` in ``core/build_order_precompute.py``
+# then turns that into ``order=[]``, and the ``rank_fn`` try / ``out is None``
+# branch of ``plan_build_order`` in ``core/build_order.py`` swallows a
 # mid-plan failure into a SHORT order. Both are the right production shape - a
 # dead engine must not sink a whole sweep - so the fix does not belong in
 # ``core/`` and this file works around it at the transport seam instead.
 #
-#   1. DEADLINE. ``core/daemon_slayer_client.py:33`` sets
+#   1. DEADLINE. ``core/daemon_slayer_client.py`` sets
 #      ``DEFAULT_TIMEOUT = 0.5`` s. A solo POST /rank is 22 - 37 ms, but at
 #      8-way concurrency the tail reaches 513 ms and 3 of 24 calls return None.
 #      Reproduced deterministically by squeezing the deadline to 1 ms:
@@ -242,12 +243,15 @@ class PlannerRejectsAliasDuplicatesTests(unittest.TestCase):
 #      so ``_assert_distinct`` reported "expected 6 slots, got []" - an
 #      ALIAS-DEDUPE verdict manufactured entirely by a socket timeout.
 #
-#   2. LISTEN BACKLOG. ``agents/daemon_slayer/server.py:2630`` builds a stdlib
-#      ``ThreadingHTTPServer`` and never raises ``request_queue_size``, so the
-#      socketserver default of 5 applies and the OS refuses connects beyond it:
-#      MEASURED 3 of 500 sequential POSTs raising ``ConnectionRefusedError
-#      [WinError 10061]`` under a 12-way load at a 30 s deadline. No timeout
-#      can fix that one, so the CONNECT is retried.
+#   2. LISTEN BACKLOG. ``start_server`` in ``agents/daemon_slayer/server.py``
+#      built a stdlib ``ThreadingHTTPServer`` and never raised
+#      ``request_queue_size``, so the socketserver default of 5 applied and the
+#      OS refused connects beyond it: MEASURED 3 of 500 sequential POSTs raising
+#      ``ConnectionRefusedError [WinError 10061]`` under a 12-way load at a 30 s
+#      deadline. No timeout can fix that one, so the CONNECT is retried. (The
+#      server side was fixed the next day: ``start_server`` now builds
+#      ``_RcThreadingHTTPServer``, whose ``request_queue_size`` is 128. The
+#      retry stays as defense in depth.)
 #
 # What is NOT retried: any assertion. A retry happens only while the response
 # is ``None``, i.e. before any verdict exists. The engine is a pure function of
@@ -317,8 +321,8 @@ class LiveEngineBothKeyspacesTests(unittest.TestCase):
         # Rebind the single transport function every live caller below funnels
         # through - ``plan_build_order`` imports ``rank_for_primary_archetype``,
         # which resolves ``_post_json`` from its own module globals at call
-        # time. This is the same seam production uses at
-        # ``core/build_order_precompute.py:604-638``.
+        # time. This is the same seam production uses in
+        # ``_install_static_transport`` in ``core/build_order_precompute.py``.
         from unittest import mock
 
         from core import daemon_slayer_client as dsc

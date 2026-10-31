@@ -10,8 +10,10 @@ consumer. Ground truth verified before scaffolding:
               "PercentMovementSpeedMod": <unit-fraction>}}}}
     (1001 "Boots" flat 25, 3009 "Boots of Swiftness" flat 55,
      2065 "Shurelya's Battlesong" pct 0.04).
-  - MS stat vocabulary: agents/daemon_slayer/stats.py:107-108.
-  - SR map extent ~14800 game units: core/vision_tracker.py:55.
+  - MS stat vocabulary: the two movement-speed rows of ``ITEM_STAT_KEY_MAP``
+    in agents/daemon_slayer/stats.py.
+  - SR map extent ~14800 game units: the zone-labelling comment above
+    ``_sr_zone`` in core/vision_tracker.py.
 
 ASCII only (repo hard rule). No em-dashes.
 """
@@ -119,7 +121,8 @@ class TestItemMs:
         assert out["pct"] == pytest.approx(0.04)
 
     def test_liveclient_dict_forms(self):
-        # dashboard/_liveclient.py:131,135 - items carry itemID + displayName.
+        # dashboard/_liveclient.py (``_item_ids``, ``liveclient_summary``) -
+        # items carry itemID + displayName.
         assert cms.item_ms([{"itemID": 1001}])["flat"] == 25.0
         assert cms.item_ms([{"displayName": "Boots of Swiftness"}])["flat"] == 55.0
 
@@ -319,7 +322,7 @@ class TestRosterDistributionCharacterization:
 
 
 class TestFallbackConsistentWithTheRoster:
-    """_FALLBACK_MS is a live constant (core/mia_reachability.py:165 reaches it
+    """_FALLBACK_MS is a live constant (``_ring_for`` in core/mia_reachability.py reaches it
     whenever a track carries no champion). Every factual claim the module makes
     about it must be checkable against the mirror."""
 

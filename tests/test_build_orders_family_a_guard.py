@@ -44,10 +44,10 @@ DDragon key ("MissFortune" / "Kaisa") would silently match nothing and skip the
 assertion.
 
 LAYER-2 SHAPE - follows the CODE, not the loose prose. The generator does not
-take "the first three rows of one rank call": ``core/build_order.py:597-724``
-runs a GREEDY loop - slot 1 is the top legal row of a rank call at
-``item_ids=[]``, slot 2 is the injected boots id (``:704-724``, synthetic, never
-engine-ranked), slot 3 is the top legal row of a SECOND rank call that now sees
+take "the first three rows of one rank call": ``plan_build_order`` in
+``core/build_order.py`` runs a GREEDY loop - slot 1 is the top legal row of a
+rank call at ``item_ids=[]``, slot 2 is the injected boots id (the
+``boots_step`` appended after engine call 1, synthetic, never engine-ranked), slot 3 is the top legal row of a SECOND rank call that now sees
 slots 1 + 2 in ``item_ids``. Asserting one call's first three rows against the
 committed first three would compare unrelated quantities. So Layer 2 does both
 halves properly: a direct ``rank_for_primary_archetype`` call (dock ON) pinned to
@@ -355,7 +355,8 @@ def test_no_dock_artifact_in_first_three(
 def test_ranked_item_from_dict_parses_effective_score() -> None:
     """RankedItem.from_dict must keep round-tripping ``effective_score``.
 
-    If that parse is dropped (core/daemon_slayer_client.py:71), the coherence
+    If that parse is dropped (``RankedItem.from_dict`` in
+    core/daemon_slayer_client.py), the coherence
     dock's fight_length-engaged branch reads a missing / zero attribute and
     silently reverts to a target-BLIND kit-fit sort for exactly the crit-ADCs the
     dock targets. That regression does NOT crash and does NOT show a stamp diff,
@@ -408,9 +409,11 @@ def _require_live_engine() -> None:
 def _generator_cell_kwargs(comp_class: str, mode_key: str) -> dict:
     """The generator's EXACT first rank call for one cell.
 
-    Mirrors core/build_order.py:597-619 (the engine-call kwargs at
-    ``item_ids=[]``) fed with the generator's constants
-    (tools/daemon_slayer_build_orders_generate.py:107-128, :188-207).
+    Mirrors the ``call_kwargs`` that ``plan_build_order`` in
+    core/build_order.py builds for engine call 1 (at ``item_ids=[]``), fed
+    with the generator's module constants (``_COMP_SHARES``, ``_TARGET_*``,
+    ``_LEVEL``, ``_TIMEOUT``) and its ``build_order_for_class`` call site in
+    tools/daemon_slayer_build_orders_generate.py.
     """
     ad_share, ap_share = gen._COMP_SHARES[comp_class]
     return dict(
@@ -444,7 +447,8 @@ def test_live_dock_parity_slot_one(
 
     ``rank_for_primary_archetype`` hosts the client-side coherence dock, so its
     top legal row IS what the generator commits to slot 1
-    (core/build_order.py:622-696). Slot 2 is the synthetic injected boots id and
+    (the greedy ``for engine_call_i`` loop of ``plan_build_order`` in
+    core/build_order.py). Slot 2 is the synthetic injected boots id and
     slot 3 comes from a second rank call, so only slot 1 is comparable against a
     single call - see the module docstring.
     """

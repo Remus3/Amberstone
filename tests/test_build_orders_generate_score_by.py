@@ -9,10 +9,12 @@ with no ``score_by`` and exposed no CLI flag - so that keyspace could never emit
 the seam. Both keyspaces need it (reference_build_order_two_keyspaces_both_need_regen).
 
 Confirmed API surface before scaffolding:
-  * ``plan_build_order(..., score_by: str = SCORE_BY_DEFAULT)`` - core/build_order.py:516.
-  * ``SCORE_BY_DEFAULT = "blended"`` / ``SCORE_BY_VALUES`` - core/build_order.py:253-254.
-  * generator call site - tools/daemon_slayer_build_orders_generate.py:191-207.
-  * generator argparse - tools/daemon_slayer_build_orders_generate.py:291-301.
+  * ``plan_build_order(..., score_by: str = SCORE_BY_DEFAULT)`` - core/build_order.py.
+  * ``SCORE_BY_DEFAULT = "blended"`` / ``SCORE_BY_VALUES`` - core/build_order.py.
+  * generator call site - ``build_order_for_class`` in
+    tools/daemon_slayer_build_orders_generate.py.
+  * generator argparse - ``_build_arg_parser`` in
+    tools/daemon_slayer_build_orders_generate.py.
 
 DEFAULT-OFF: the default must not insert ``score_by`` into the call at all, so a
 run that does not ask for the seam is byte-identical to today's generator.

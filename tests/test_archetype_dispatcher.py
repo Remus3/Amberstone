@@ -563,10 +563,11 @@ class DispatchForCoachSquishyBurstTristateTests(unittest.TestCase):
 
     Every other dispatcher seam defaults FALSE, so `if flag: seams[k] = True`
     covers its whole range. This one defaults TRUE in the engine
-    (core/daemon_slayer_client.py:1410), so that idiom can only ever say
-    "on" - the OFF half was unreachable through the dispatcher, and
-    core/build_order_variants.py:333 had to build its rank_kwargs by hand to
-    get it. The parameter is therefore Optional[bool] with None = inherit.
+    (the ``apply_squishy_burst_target`` default of
+    ``rank_for_primary_archetype`` in core/daemon_slayer_client.py), so that
+    idiom can only ever say "on" - the OFF half was unreachable through the
+    dispatcher, and ``compute_variant_cell`` in core/build_order_variants.py
+    had to build its rank_kwargs by hand to get it. The parameter is therefore Optional[bool] with None = inherit.
     """
 
     class _Stats:

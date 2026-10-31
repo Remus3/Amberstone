@@ -36,7 +36,8 @@ The evidence for class A:
     for an environment reason.
   * A fresh clone, and any machine that is not Legion, is in the same
     position. The engine is opt-in infrastructure
-    (`core/daemon_slayer_client.py:1-6`, "never load-bearing").
+    (the `core/daemon_slayer_client.py` module docstring, "never
+    load-bearing").
 
 The evidence that a real hole remains anyway:
 
@@ -52,8 +53,9 @@ So the fix is NOT to convert the skips. Converting a capability skip into an
 assertion that cannot fail is strictly worse than the skip: it trades a
 visible SKIPPED for a silent green dot. The fix is the opt-in that this repo
 has already shipped twice for exactly this shape - `RC_REQUIRE_HOOK_GATE`
-(tests/test_drift_guard.py:34) and `RC_REQUIRE_BUILD_ORDER_TABLES`
-(tests/test_build_order_precompute.py:36). A third instance, same idiom:
+(`REQUIRE_GATE_ENV` in tests/test_drift_guard.py) and
+`RC_REQUIRE_BUILD_ORDER_TABLES` (`REQUIRE_TABLES_ENV` in
+tests/test_build_order_precompute.py). A third instance, same idiom:
 
     RC_REQUIRE_DS_ENGINE=1
 
@@ -113,7 +115,8 @@ def require_live_engine(label: str, timeout: float = 2.0,
     The AssertionError branch must NOT be a `unittest.SkipTest`. `SkipTest`
     subclasses `Exception`, which is how a guard in this repo once caught its
     own skip and reported it as an unrelated import failure
-    (tests/test_build_order_variants.py:243-250). The unit tests below assert
+    (`LiveEnginePivotTests.setUp` in tests/test_build_order_variants.py).
+    The unit tests below assert
     the non-subclass relationship directly rather than trusting the type name.
     """
     engine_up = dsc.is_engine_up(timeout=timeout) if up is None else up
@@ -210,9 +213,11 @@ _GATE_CALL = "require_live_engine"
 #: Matched against the skip construct's own source segment plus the nearest
 #: enclosing `if`/`while` test - never a surrounding LINE WINDOW. A window
 #: pulls in whatever prose happens to sit nearby: a bare `engine` matcher over
-#: a +/-12-line window fires on
-#: `agents/daemon_slayer/tests/test_changelog_tracks_engine_version.py:65`,
-#: whose skip is about the CHANGELOG and whose neighbouring docstring says
+#: a +/-12-line window fired on
+#: `agents/daemon_slayer/tests/test_changelog_tracks_engine_version.py`,
+#: whose skip was about the CHANGELOG (the Share-mirror skip, removed
+#: 2026-09-07 with Share/) and whose neighbouring `_engine_version` docstring
+#: says
 #: "daemon_slayer pulls the whole engine in". (An earlier draft of this
 #: comment claimed the SHIPPED matcher false-positived there. It does not, and
 #: never did - that file fails the prefilter on all six tokens and the hint
