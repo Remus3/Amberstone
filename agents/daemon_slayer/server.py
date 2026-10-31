@@ -293,7 +293,12 @@ def _coerce_str_list(value: Any, field_name: str) -> list[str]:
 
     RM-1235: a bool / object / array element is a 400 naming the index.
     ``str(item)`` turned ``true`` into the id ``"True"``, so ``items`` blamed
-    an unknown item (404) and ``only: [true]`` answered an empty 200."""
+    an unknown item (404) and ``only: [true]`` answered an empty 200.
+
+    RM-1236: JSON has one number type, so an integral finite float is the
+    integer id (``8005.0`` -> ``"8005"``, the reading ``_to_int`` gives a
+    scalar). ``"8005.0"`` was silently dropped by ``_coerce_int_list`` and
+    404'd as an item; a fractional or non-finite float is a 400."""
     if value is None:
         return []
     if isinstance(value, str):
@@ -307,6 +312,12 @@ def _coerce_str_list(value: Any, field_name: str) -> list[str]:
                 raise _ApiError(
                     400, f"{field_name}[{i}]: expected string or integer, "
                          f"got {type(item).__name__}")
+            if isinstance(item, float):
+                if not (math.isfinite(item) and item.is_integer()):
+                    raise _ApiError(
+                        400, f"{field_name}[{i}]: expected string or "
+                             f"integer, got float {item!r}")
+                item = int(item)
             s = str(item).strip()
             if s:
                 out.append(s)

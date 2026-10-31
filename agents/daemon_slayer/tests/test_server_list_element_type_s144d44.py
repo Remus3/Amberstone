@@ -19,8 +19,8 @@ Unchanged on purpose: a ``None`` element is still skipped; ``int`` elements
 still stringify (``3089`` -> ``"3089"``); a comma-separated query string still
 splits; a junk numeric TOKEN (``"abc"``) in ``_coerce_int_list`` stays
 fail-soft (dropped) per its documented policy - that is a bad value of the
-right type, not a wrong type. A float element is left as it was (``"3031.0"``):
-whether an integral float is an id needs its own policy call. ASCII only.
+right type, not a wrong type. A float element is RM-1236's policy
+(``test_server_list_float_element_s144d45.py``). ASCII only.
 """
 from __future__ import annotations
 
