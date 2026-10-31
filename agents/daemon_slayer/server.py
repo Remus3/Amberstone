@@ -1812,7 +1812,9 @@ def _parse_form_index(body: dict) -> Optional[dict[str, int]]:
         return None
     # RM-324 sibling: this bare int() had no _ApiError mapping at all, so
     # it 500'd on every unparseable rank, not just the non-finite ones.
-    return {str(k).upper(): _to_int(v, f"form_index[{k}]")
+    # RM-1242: strip the key first, as _opt_str does. " w " missed the
+    # engine's "W" lookup and was echoed back as a resolved override.
+    return {str(k).strip().upper(): _to_int(v, f"form_index[{k}]")
             for k, v in raw_form.items()}
 
 
@@ -1878,7 +1880,7 @@ def _parse_block_index(
         return None
     out: dict[str, int | list[int] | dict[str, int | list[int]]] = {}
     for k, v in raw.items():
-        key = str(k).upper()
+        key = str(k).strip().upper()  # RM-1242: as _parse_form_index
         if isinstance(v, dict):
             # Conditional schema (s228). Accept only if fully well-formed;
             # else skip (defensive - same stance as the scalar branches).
