@@ -12,12 +12,14 @@ That property is load-bearing and must not rot:
 
   * If the planner ever grew a hardcoded family list it could drift from
     effects.py (the s173 anti-drift trap) - Test A forbids that.
-  * effects.py defines SIX families today (spellblade/lifeline/immolate
-    + the single-item fiendhunter_barrage/hellfire_char/innervating_fill).
+  * effects.py defines 9 families (measured at ENGINE 1.290.0; the count
+    is re-derived by tests/test_unique_passive_family_count_s144d36.py):
+    spellblade/lifeline/immolate/hydra_cleave/last_whisper/void_pen + the
+    single-item fiendhunter_barrage/hellfire_char/innervating_fill.
     A family-agnostic planner covers all of them - and any future family
     added to effects.py - for free. Tests B/C prove that by deriving the
     family set from ITEM_EFFECTS at runtime and asserting no family is
-    ever doubled in a planned order. A 7th family added later is covered
+    ever doubled in a planned order. A family added later is covered
     automatically; a family tag accidentally dropped from effects.py
     trips Test C (s232-style saturation tripwire).
 """
@@ -172,8 +174,8 @@ class EveryEngineFamilyCoveredTests(unittest.TestCase):
             self.assertTrue(res.unique_passive_safe)
 
     def test_family_set_has_not_regressed(self):
-        # s232-style tripwire: the 6 known families must still be tagged
-        # in effects.py. A drop here means a unique-passive item lost its
+        # s232-style tripwire: the 3 named families must still be tagged
+        # in effects.py and the set must not fall below 6. A drop here means a unique-passive item lost its
         # tag (silent no-double regression) - investigate effects.py, do
         # not just lower this bound.
         fams = _engine_families()

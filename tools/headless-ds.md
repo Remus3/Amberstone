@@ -73,8 +73,8 @@ From the `CLAUDE.md` "Settled - do not re-litigate" section:
   `tools/ds_*_prefilter.py` + `tools/ds_block_scanner.py` pre-filters stay durable for patch re-extracts, but there is no uncovered-champion population left.
 - **Never `--force` a Meraki re-extract.** `tools/daemon_slayer_extract.py` carries the flag (`ap.add_argument("--force", ...)`) and its module docstring advertises it; the `latest`
   endpoint is MUTABLE, so a forced re-extract silently rebases the snapshot.
-- **`core/build_order.py` no-double-unique is engine-authoritative** - a guard test fails on any family literal. The engine has 6 unique-passive families, not
-  3.
+- **`core/build_order.py` no-double-unique is engine-authoritative** - a guard test fails on any family literal. The engine has 9 unique-passive families, not
+  3 (measured at ENGINE 1.290.0; `tests/test_unique_passive_family_count_s144d36.py` re-derives it).
 
 ### 3. Running the suite - ALWAYS from the REPO ROOT
 

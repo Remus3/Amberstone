@@ -33,12 +33,18 @@ Pure orchestration over the existing, tested engine - *no engine change*:
 
 2. **No-double rule is engine-authoritative.** ``rank_for_primary_
    archetype`` threads ``filter_shared_uniques=True`` (its default) to
-   the DS server, whose ``collect_effects`` / ``current_unique_keys``
-   dedup is the source of truth for the 7 unique-passive families:
-   spellblade, lifeline, immolate, hydra_cleave (Iter 3, 2026-05-19),
-   fiendhunter_barrage, hellfire_char, innervating_fill - each spans
-   SR + Arena (CHERRY) mirrors. Once slot 1 is e.g. Trinity Force and
-   it is in ``item_ids``, *every* later slot's ranking has
+   the DS server, whose ``collect_effects`` dedup plus each ranker's
+   ``current_unique_keys`` filter (``rank.rank_items`` and its archetype
+   siblings) is the source of truth for the 9 unique-passive families
+   (the distinct ``unique_passive_key`` values in ``ITEM_EFFECTS``,
+   measured at ENGINE 1.290.0): spellblade, lifeline, immolate,
+   hydra_cleave (Iter 3, 2026-05-19), last_whisper, void_pen,
+   fiendhunter_barrage, hellfire_char, innervating_fill. The first six
+   span SR + Arena (CHERRY) mirrors; fiendhunter_barrage, hellfire_char
+   and innervating_fill are one item each. The count is re-derived by
+   tests/test_unique_passive_family_count_s144d36.py. Once slot 1 is
+   e.g. Trinity Force and it is in ``item_ids``, *every* later slot's
+   ranking has
    ``spellblade`` locked - all other spellblade candidates are filtered
    server-side. Enforcing iteratively means we inherit that guarantee
    for the whole sequence without duplicating the family map here
