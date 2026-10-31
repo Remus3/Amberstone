@@ -49,11 +49,13 @@ kit_platform = _kit_platform.kit_platform  # fixture, registered by module attri
 
 def _bind_chain(monkeypatch, **fakes):
     """RM-801: FAKES (run= / Popen=) in the spawn chain's OWN `subprocess`
-    names only - the executor (ops/loop/executor.py:945/977 git), fleet_route
-    (the conftest launch forwarder calls fleet_route.subprocess.run) and the
-    kit (launch ops/fleet_kit/fleet_headless.py:1734 Popen, git :1613 and
-    taskkill :1703 run) - never on the shared subprocess module that every
-    other thread of the xdist worker also calls."""
+    names only - the executor (ops/loop/executor.py _git_out and
+    _git_is_ancestor, both git runs), fleet_route (the conftest launch
+    forwarder calls fleet_route.subprocess.run) and the kit (the launch Popen
+    in ops/fleet_kit/fleet_headless.py _run, the git run in _git and the
+    taskkill run in _kill_tree) - never on the shared subprocess module that
+    every other thread of the xdist worker also calls (RM-1247: cited by
+    symbol, guard tests/test_spawn_chain_cites_s144p48.py)."""
     for mod in (executor, fleet_route, fleet_route.kit()):
         bind_subprocess(monkeypatch, mod, **fakes)
 

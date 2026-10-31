@@ -42,13 +42,16 @@ _TRIP = "spawned with no route"
 
 def _chain():
     """Every module on this file's spawn paths whose own globals call
-    subprocess: the callers (executor ops/loop/executor.py:945/977, ci_watchdog
-    tools/ci_watchdog.py:459, drain ops/loop/drain_waves_2_3.py:180, the
-    supervisor facade + agents/_supervisor_ephemeral.py), fleet_route (the
-    conftest launch forwarder calls fleet_route.subprocess.run) and the kit
-    (its launch ops/fleet_kit/fleet_headless.py:1734 Popen, its git probe :1613
-    and taskkill :1703 run). A tripwire bound here is as strong for these paths
-    as the old process-wide one, and blind to every other thread's module."""
+    subprocess: the callers (executor ops/loop/executor.py _git_out and
+    _git_is_ancestor, ci_watchdog tools/ci_watchdog.py _run, drain
+    ops/loop/drain_waves_2_3.py _git, the supervisor facade +
+    agents/_supervisor_ephemeral.py), fleet_route (the conftest launch
+    forwarder calls fleet_route.subprocess.run) and the kit (its launch Popen
+    in ops/fleet_kit/fleet_headless.py _run, its git probe _git and its
+    taskkill run in _kill_tree). A tripwire bound here is as strong for these
+    paths as the old process-wide one, and blind to every other thread's
+    module (RM-1247: cited by symbol, guard
+    tests/test_spawn_chain_cites_s144p48.py)."""
     import agents._supervisor_ephemeral as sup_eph  # noqa: PLC0415
     import agents.supervisor as sup  # noqa: PLC0415
     from ops.loop import fleet_route as fr  # noqa: PLC0415

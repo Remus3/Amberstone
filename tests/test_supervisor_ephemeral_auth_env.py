@@ -58,8 +58,9 @@ def _spawn_run(fake):
     """FAKE as subprocess.run for the ephemeral spawn chain's OWN names only
     (RM-801): agents/_supervisor_ephemeral.py and its facade agents.supervisor,
     fleet_route (the conftest launch forwarder calls fleet_route.subprocess.run)
-    and the kit (its git probe ops/fleet_kit/fleet_headless.py:1613) - never
-    the shared subprocess module another thread of the worker also calls."""
+    and the kit (its git probe ops/fleet_kit/fleet_headless.py _git) - never
+    the shared subprocess module another thread of the worker also calls
+    (RM-1247: cited by symbol, guard tests/test_spawn_chain_cites_s144p48.py)."""
     with pytest.MonkeyPatch.context() as mp:
         for mod in (_sup_eph, _sup, fleet_route, fleet_route.kit()):
             bind_subprocess(mp, mod, run=fake)
