@@ -1902,6 +1902,11 @@ def _parse_combo_sequence(body: dict) -> Optional[tuple[str, ...]]:
     this helper just normalizes the list shape.
     """
     raw = body.get("combo_sequence")
+    # RM-1240: strip first, as _opt_str and _parse_max_priority do. ""
+    # read as absent but "   " was a 400 "empty after parse". A
+    # separator-only string or an empty list stays that 400.
+    if isinstance(raw, str):
+        raw = raw.strip()
     if raw is None or raw == "":
         return None
     if isinstance(raw, str):
