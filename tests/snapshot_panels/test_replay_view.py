@@ -17,7 +17,7 @@ the replay view wins the router (applyView("replay") stamps
 body[data-view="replay"], which un-hides #view-replay via header.css:663).
 The viewId=="replay" branch fires _replayViewWireOnce() + _replayViewRefresh()
 (main.js:781); under ui_mock the matches fetch short-circuits to
-/data/ui_mock/replay.json (_replayMockLoad, dev.js:457) instead of the live
+/data/ui_mock/replay.json (_replayMockLoad, dev.js:215) instead of the live
 /api/replay/matches feed.
 
 The fixture's matches=4 paints one .replay-match-row per match into

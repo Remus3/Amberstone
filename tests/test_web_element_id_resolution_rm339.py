@@ -135,13 +135,13 @@ ALLOWLIST: dict[str, str] = {
         "tests/test_settings_force_scan_dom.py:42-43 (asserts the id is ABSENT "
         "from web/index.html) and :56 (asserts the binder is PRESENT in "
         "web/js/panels/dev.js), so a restore AND a removal both go red there. "
-        "The guarded read is web/js/panels/dev.js:131."
+        "The guarded read is web/js/panels/dev.js:128."
     ),
     "set-force-scan-status": (
         "Same decision and the same both-directions pin as set-force-scan-btn: "
         "ee2db2ffb preserved the binder deliberately, and "
         "tests/test_settings_force_scan_dom.py:42-43,56 fails on either a "
-        "restore or a removal. The guarded write is web/js/panels/dev.js:132. "
+        "restore or a removal. The guarded write is web/js/panels/dev.js:129. "
         "Delete both entries together if that decision is reversed."
     ),
 }
