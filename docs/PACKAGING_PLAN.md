@@ -645,6 +645,38 @@ item binds the named slice.
 - LAN-refusal live check from a second device (a control POST from a LAN
   peer gets 403, PKG-5).
 
+#### First-Release checklist (ruling 42, s146)
+
+Ruling 42 (`docs/_archive/2026-10/s146_rulings_40-51.md`): NO first GitHub
+Release yet. Release 1 sets the upgrade contract for every later install, and
+a public binary cannot be recalled (halt boundary). Every box below is closed
+AND read back first; then the publish is re-asked as ONE fresh, attended
+operator go. Nothing here gives that go in advance.
+
+- [ ] WA9 decided and fixed: the NSIS upgrade must not replace per-install
+  state (`ops/runtime` secrets, logs, `data/` runtime files, a PKG-2 backend
+  update); seed a user-data backend root and pass `--rc-root`. Measure the
+  upgrade, do not assume it.
+- [ ] PKG-6c leftovers closed: M2 (WA20 "Open (M2)"), the two LOW review
+  notes (LEDGER 1945), WA14, WA17 and the [H] shell-build smoke; PKG-6b
+  waits on them.
+- [ ] ASKS 45 (a), attended: the Explorer launch of the packaged build (the
+  PKG-6 visual check plus the electron 45 shell check), and the PKG-6 GPU
+  error_code=18 decided.
+- [ ] Section 6 distribution gates, every one (a Release on a PUBLIC repo
+  gives the build to anyone):
+  - [ ] ADR-006 reopened (ruling 44; a shared build ships no Riot key).
+  - [ ] RM-189 gates (ruling 43), including the B4-f interim: until Riot
+    DevRel answers B4-f IN, the build withholds live build / shop
+    recommendations during a live game (the B4 live-game predicate).
+  - [ ] M10 notices shipped (ruling 40): a generated THIRD_PARTY_NOTICES
+    with STATUS: COMPLETE, the certifi -> truststore swap landed (RM-1226),
+    and C3: the source of the exact shipped ffmpeg build attached to the
+    SAME Release (an upstream link alone does not meet LGPL-2.1 section 4).
+  - [ ] S4 re-decided (ruling 41); a certificate lands with WA12.
+  - [ ] N8 asset provenance audit of everything in the bundle.
+- [ ] Attended operator go for the publish itself, given in chat at the time.
+
 ### Residuals (s141 /done)
 
 Found by the wave A builders and verifiers outside every landed slice's
