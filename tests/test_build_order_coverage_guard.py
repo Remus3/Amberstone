@@ -8,14 +8,16 @@ state is a precompute that is silently PARTIAL: every consumer of these tables
 in this repo fails SOFT, so an uncovered champion is indistinguishable from a
 covered one until a live game renders a blank NEXT BUY row.
 
-    core/precomputed_build_coach.py:172   `if not rec: return []`
-    core/next_buy_fallback.py:171         total, returns [] on any miss
-    dashboard/_deterministic_coaching.py:225  `_next_build_item` -> None
-    core/laning_verdicts.py:194           `return None`
+    core/precomputed_build_coach.py      ``build_choices``: `if not rec: return []`
+    core/next_buy_fallback.py           ``fallback_build_ids``: total, [] on any miss
+    dashboard/_deterministic_coaching.py ``_next_build_item`` -> None
+    core/laning_verdicts.py             ``_next_build_item`` -> `return None`
 
 Not one of them raises. Nothing in the suite asserted the tables were COMPLETE
-either: the pre-existing on-disk guards (tests/test_build_order_precompute.py:
-`for champ, variants in bo.items()`, tests/test_build_order_variants.py:445,
+either: the pre-existing on-disk guards (``SeedTableTests.
+test_committed_sr_seed_is_wellformed`` in tests/test_build_order_precompute.py,
+`for champ, classes in bo.items()`, and its namesake in
+tests/test_build_order_variants.py, `for champ, variants in bo.items()`, plus
 tests/test_hz_precompute_canonical_keyspace.py) iterate the artifact and check
 the shape of whatever they find. A table regenerated with 10 of 173 champions
 passes every one of them - the artifact defines its own universe, which is the
@@ -38,7 +40,8 @@ three modes. Full coverage IS today's state, so the floor is not a concession -
 there is no known gap to grandfather. Modes sr / aram / arena are the whole
 scope: ARAM Mayhem (raw gameMode KIWI) maps onto the aram tables via
 core.mode_capabilities.district_config and is not a fourth keyspace; TFT and
-brawl have no build tables by design (core/next_buy_fallback.py:66).
+brawl have no build tables by design (``_SUPPORTED_STEMS`` in
+core/next_buy_fallback.py).
 """
 import json
 import shutil

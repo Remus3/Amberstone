@@ -48,12 +48,14 @@ champions would define its own universe as 10 and report 100 percent. So:
 MODES IN SCOPE: sr / aram / arena only. ARAM Mayhem (raw gameMode ``KIWI``) maps
 onto the ``aram`` table via ``core.mode_capabilities.district_config``, so it is
 covered by the aram tables and is NOT a fourth keyspace. TFT and brawl have no
-build tables by design and are excluded (``core/next_buy_fallback.py:67``).
+build tables by design and are excluded (``_SUPPORTED_STEMS`` in
+core/next_buy_fallback.py).
 
 A cell counts as COVERED only when its ``order`` is a non-empty list. An empty
 order is exactly what every producer emits when the DS engine is down or has
-nothing to plan (``core/build_order_precompute.py:303``), so "the key exists"
-is not evidence of coverage.
+nothing to plan (the ``compute_cell`` docstring in
+core/build_order_precompute.py), so "the key exists" is not evidence of
+coverage.
 
 CLI::
 
