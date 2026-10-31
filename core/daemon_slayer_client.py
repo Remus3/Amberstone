@@ -1414,9 +1414,10 @@ def sustain_for(
     First, /sustain is not the shape of the two routes that ARE declined in that
     ledger. /v2/fight-report is declined because its compute has only test
     callers; ``compute_sustain`` has LIVE in-process consumers today
-    (``dashboard/routes_ds_profile.py:204`` and ``core/ds_capability_gap.py:164``),
-    so the metric already ships to the operator and this is only the
-    out-of-process door to it. /beam is declined because its live consumer holds
+    (``_compute_results`` in ``dashboard/routes_ds_profile.py`` and
+    ``_detect_sustain_gap`` in ``core/ds_capability_gap.py``), so the metric
+    already ships to the operator and this is only the out-of-process door to
+    it. /beam is declined because its live consumer holds
     a deliberately bespoke HTTP call (a 4.0s budget and an error STRING that
     ``_post_json``'s None collapses); /sustain has no such contract conflict.
 
@@ -1425,7 +1426,8 @@ def sustain_for(
     call sites and none of them are ledgered. This module is a probe surface as
     much as a consumer surface. (``matchup`` was named in this list when R197
     landed and that was wrong - it has two live callers,
-    ``core/laning_verdicts.py:295`` and ``dashboard/routes_ds_matchup.py:170``.
+    ``laning_choices`` in ``core/laning_verdicts.py`` and ``_compute`` in
+    ``dashboard/routes_ds_matchup.py``.
     The four above verify; the conclusion did not depend on the fifth.)
 
     Be honest about what that buys: this makes the seam EXPRESSIBLE, not live.

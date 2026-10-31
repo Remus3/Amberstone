@@ -236,11 +236,12 @@ _BOOTS_OVERRIDE_BY_CHAMP: dict[str, str] = {
 }
 
 # A-21 / RM-90 Slice S1 (2026-07-25): the ``score_by`` EHP-objective selector.
-# ``POST /rank-tank`` has parsed this since ENGINE 1.220.0 (server.py:639-643)
-# and ``rank_for_primary_archetype`` has forwarded it since the same bump, but
-# NO build-order caller could set it, so no shipped table could emit the Term A
-# ally-granted-EHP (``team_blended``) ranking. This is the missing client-side
-# half - there is no server change in the slice.
+# ``POST /rank-tank`` has parsed this since ENGINE 1.220.0
+# (``_route_rank_tank`` in server.py) and ``rank_for_primary_archetype`` has
+# forwarded it since the same bump, but NO build-order caller could set it, so
+# no shipped table could emit the Term A ally-granted-EHP (``team_blended``)
+# ranking. This is the missing client-side half - there is no server change in
+# the slice.
 #
 # TANK-ONLY by construction: ``rank_for_primary_archetype`` threads ``score_by``
 # into the ds.ehp branch and nowhere else, so a carry / mage / bruiser plan is

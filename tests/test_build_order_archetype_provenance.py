@@ -97,10 +97,11 @@ class CellRecordsItsArchetypeTests(unittest.TestCase):
         self.assertEqual(seen, len(champs) * len(bop.COMP_ARCHETYPES))
 
     def test_stamp_is_the_engine_resolved_value_not_the_request(self):
-        """The engine normalizes before it ranks (core/build_order.py:594) and
-        keeps the result on ``BuildOrderResult.archetype``. The stamp must be
-        THAT, not the raw request - otherwise the provenance records what was
-        asked instead of what happened.
+        """The engine normalizes before it ranks (``plan_build_order`` in
+        core/build_order.py) and keeps the result on
+        ``BuildOrderResult.archetype``. The stamp must be THAT, not the raw
+        request - otherwise the provenance records what was asked instead of
+        what happened.
 
         Each case below is one where the two genuinely differ.
         """

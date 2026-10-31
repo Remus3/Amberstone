@@ -1,8 +1,9 @@
 """A-21 / RM-90 Slice S1 - plumb ``score_by`` through the build-order layer.
 
 The Term A ally-granted-EHP seam (``score_by="team_blended"``) shipped at ENGINE
-1.220.0 and is parsed by ``POST /rank-tank`` (server.py:639-643) and forwarded by
-``core.daemon_slayer_client.rank_for_primary_archetype`` (:1458, :1540). But
+1.220.0 and is parsed by ``POST /rank-tank`` (``_route_rank_tank`` in server.py)
+and forwarded by ``core.daemon_slayer_client.rank_for_primary_archetype`` (its
+``score_by`` parameter, passed on to ``rank_tank_for``). But
 ``core/build_order.py`` and ``core/build_order_precompute.py`` carried ZERO
 ``score_by`` occurrences, so neither shipped build-order table could ever emit
 the seam - the plumb is purely client-side, no server change.

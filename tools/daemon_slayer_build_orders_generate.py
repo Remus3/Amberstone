@@ -225,9 +225,9 @@ def build_order_for_class(
     ds_mode = DS_MODE_BY_KEY.get(mode, "SR")
     # A-21 / RM-90 S1 tail: the EHP metric the ranker sorts by. The default is
     # never inserted into the call, so a run that does not ask for the seam is
-    # byte-identical to the pre-seam generator (core/build_order.py:571-576
-    # would resolve it to the same value anyway, but omitting it keeps an
-    # injected/older plan_build_order signature working).
+    # byte-identical to the pre-seam generator (plan_build_order's
+    # ``score_by_resolved`` fallback would resolve it to the same value anyway,
+    # but omitting it keeps an injected/older plan_build_order signature working).
     extra: dict = {}
     if score_by and score_by != SCORE_BY_DEFAULT:
         extra["score_by"] = score_by

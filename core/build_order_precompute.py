@@ -93,12 +93,13 @@ SCORER-ARCHETYPE PROVENANCE (RM-164)
     Each cell therefore carries ``archetype`` = the scorer it was ACTUALLY
     ranked under, read back off ``BuildOrderResult.archetype`` rather than off
     the request, because the planner NORMALIZES before it ranks
-    (``core/build_order.py:594``): a blank request ranks under ``carry`` and
-    ``"TANK "`` ranks under ``tank``, so stamping the request would record what
-    was asked instead of what happened. :func:`archetype_status` is the consumer-side
-    check over it, and it is deliberately THREE-valued: a table generated before
-    this field existed reads ``unknown``, never ``fresh`` (which would license a
-    consumer to trust it) and never ``stale`` (which would blank a good table).
+    (``plan_build_order`` in ``core/build_order.py``): a blank request ranks
+    under ``carry`` and ``"TANK "`` ranks under ``tank``, so stamping the
+    request would record what was asked instead of what happened.
+    :func:`archetype_status` is the consumer-side check over it, and it is
+    deliberately THREE-valued: a table generated before this field existed
+    reads ``unknown``, never ``fresh`` (which would license a consumer to trust
+    it) and never ``stale`` (which would blank a good table).
 
     The field is additive and inert: it is a RECORD of the scorer, never an
     input to it, so adding it reorders nothing (guarded by
@@ -304,8 +305,8 @@ def split_bias(bias: dict[str, float]) -> tuple[dict[str, float], dict[str, floa
 # --------------------------------------------------------------------------- #
 # A shipped build ORDER is a FULL 6-slot build. A starter item in one of those
 # slots is not a partial answer, it is a wrong one - and nothing upstream stops
-# it. The engine's candidate-pool filter (agents/daemon_slayer/rank.py:687
-# _filter_candidates) denies already-equipped / non-coachable / off-map /
+# it. The engine's candidate-pool filter (``_filter_candidates`` in
+# agents/daemon_slayer/rank.py) denies already-equipped / non-coachable / off-map /
 # non-terminal / over-budget ids, and a starter is NONE of those: Doran's Helm
 # (1120, 450g), Doran's Bow (1086, 400g), Cull (1083, 450g) and Guardian's Blade
 # (3177, 950g) are all purchasable, terminal (``into`` empty) and map-legal, so
@@ -437,12 +438,13 @@ KNOWN_ARCHETYPES: frozenset[str] = frozenset(archetype_picks.ARCHETYPES) | {
 def normalize_archetype(value: object) -> str:
     """Mirror of the engine's own archetype normalization.
 
-    ``core/build_order.py:594`` does ``(archetype or "carry").strip().lower() or
-    "carry"`` and stores THAT on ``BuildOrderResult.archetype`` - so an empty
-    request ranks under ``carry`` and ``"TANK "`` ranks under ``tank``. This is
-    the FALLBACK only: :func:`compute_cell` reads the engine's resolved value
-    when there is a result, and falls back here only when the planner returned
-    nothing (engine down), where there is no result to read.
+    ``plan_build_order`` (``core/build_order.py``) does
+    ``(archetype or "carry").strip().lower() or "carry"`` and stores THAT on
+    ``BuildOrderResult.archetype`` - so an empty request ranks under ``carry``
+    and ``"TANK "`` ranks under ``tank``. This is the FALLBACK only:
+    :func:`compute_cell` reads the engine's resolved value when there is a
+    result, and falls back here only when the planner returned nothing (engine
+    down), where there is no result to read.
     """
     text = value if isinstance(value, str) else ""
     return (text or "carry").strip().lower() or "carry"
@@ -576,7 +578,7 @@ def compute_cell(
     # without re-running the engine. Recorded, never fed back in.
     #
     # Read from the ENGINE'S resolved value, not from the request local `arch`.
-    # plan_build_order normalizes (core/build_order.py:594) before it ranks and
+    # plan_build_order (core/build_order.py) normalizes before it ranks and
     # stores the result on BuildOrderResult.archetype, so the two differ for a
     # blank / uppercase / padded request: `archetype=""` ranks under "carry" and
     # `archetype="TANK "` ranks under "tank". Stamping the request would record
