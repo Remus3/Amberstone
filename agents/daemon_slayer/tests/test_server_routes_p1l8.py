@@ -328,7 +328,9 @@ class IntCoercionUnitTests(unittest.TestCase):
     def test_ordinary_values_still_coerce(self) -> None:
         self.assertEqual(_to_int(11, "level"), 11)
         self.assertEqual(_to_int("11", "level"), 11)
-        self.assertEqual(_to_int(11.7, "level"), 11)
+        # RM-1237: an integral float is the integer; a fractional one
+        # (11.7) is a 400, pinned in test_server_int_key_fractional_s144d46.
+        self.assertEqual(_to_int(11.0, "level"), 11)
 
 
 class ConcurrencyTests(_Base):

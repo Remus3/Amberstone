@@ -400,11 +400,18 @@ def _to_int(value: Any, field_name: str) -> int:
     which is why rejecting the tokens at parse time would not have sufficed.
     The non-finite policy is not a new one: it is ``_opt_float``'s, reused
     verbatim so an int key and its float sibling answer alike.
+
+    RM-1237: ``int(11.5)`` floors to 11, so a fractional number answered a
+    question the caller never asked while the string ``"11.5"`` was already
+    a 400. A non-integral float is refused with the string arm's message; an
+    integral one (``11.0``) is the integer, as for a list id (RM-1236).
     """
     _reject_bool(value, field_name)
     if isinstance(value, float) and not math.isfinite(value):
         raise _ApiError(
             400, f"{field_name}: must be a finite number, got {value!r}")
+    if isinstance(value, float) and not value.is_integer():
+        raise _ApiError(400, f"{field_name}: expected integer, got {value!r}")
     try:
         return int(value)
     except (TypeError, ValueError, OverflowError):
