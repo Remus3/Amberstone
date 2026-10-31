@@ -1854,7 +1854,20 @@ _WEB = _REPO_ROOT / "web"
 # ddb4a5e20 blobs (in memory) reproduces the superseded 35ecd22d... value
 # EXACTLY; swapping any one alone does not. Those paths are the whole
 # change. No glyph change: the added lines carry 0 non-ASCII bytes.
-_LIVE_HALF_DIGEST = "3ee7bc5ffebf0add6de4a89b1f2ef36d7ab928887e22b899adcd3892792587e1"
+# superseded by the RM-1249 re-capture below: "3ee7bc5ffebf0add6de4a89b1f2ef36d7ab928887e22b899adcd3892792587e1"
+#
+# RE-CAPTURED 2026-10-31 at RM-1249 (s144 uiux cycle 89). One change
+# rides it: three :focus-visible rules (2px solid --accent outline) for
+# .lq-mode-trigger and .lv-member-action in web/css/panels/header.css and
+# .csv-rune-save-default in web/css/panels/champ_select_view.css, pinned by
+# tests/snapshot_panels/test_lobby_champ_select_control_focus_ring.py.
+# Ordinary case, no tokeniser change. ATTRIBUTED BY SUBSTITUTION: swapping
+# exactly those two files back to their lane HEAD 4dd2e7c62 blobs (in
+# memory) reproduces the superseded 3ee7bc5f... value EXACTLY; swapping
+# either one alone does not. Those paths are the whole change. No glyph
+# change: the added lines carry 0 non-ASCII bytes. If another slice
+# re-captures in parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "f8fcb898e6042f83f1e99df4b1343c7a94e9ef54f5a3818ececbd8ad9ed6f0e0"
 
 
 def _web_sources() -> list[Path]:

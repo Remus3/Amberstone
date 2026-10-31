@@ -1070,6 +1070,10 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   border-color: var(--info);
   background: var(--info-soft);
 }
+/* RM-1249: no rule here left the UA ring (1.08:1 on the queue card).
+ * Offset 1px keeps the 3px reach inside the 4px gap to the open menu.
+ * Pinned by tests/snapshot_panels/test_lobby_champ_select_control_focus_ring.py. */
+.lq-mode-trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .lq-mode-menu {
   position: absolute;
   z-index: 100;
@@ -1784,6 +1788,11 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 .lv-member-action[data-action="kick"]:hover    { color: var(--bad); border-color: var(--bad); }
 .lv-member-action[data-action="promote"]:hover { color: var(--clock); border-color: var(--clock); }
 .lv-member-action:disabled { opacity: 0.35; cursor: default; }
+/* RM-1249: party-row and Top 8 action buttons fell back to the UA ring
+ * (1.46:1 on the member row, 1.24:1 on the search strip). Offset 1px keeps
+ * the 3px reach inside the 4px .lobby-member-actions gap. Pinned by
+ * tests/snapshot_panels/test_lobby_champ_select_control_focus_ring.py. */
+.lv-member-action:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 /* s162 v6: invisible placeholder slot so all party rows have the
  * same actions-column width regardless of which buttons apply. */
 .lv-member-action-spacer {
