@@ -1224,8 +1224,11 @@ class _Parked:
             child = _Parked()
             t = threading.Thread(target=child.run, daemon=True,
                                  name="s144q09-grandchild")
-            self.children.append((child, t))
+            # Start BEFORE listing it: a waiter that sees `children` filled
+            # must find the child in threading.enumerate() (CI run
+            # 41231114850 caught the gap between the two on Linux).
             t.start()
+            self.children.append((child, t))
         self.released.wait(fleet_test_guard.budget(10))
 
     def stop(self):
@@ -1287,6 +1290,37 @@ def test_a_thread_the_test_starts_and_its_child_still_fail_the_test():
         assert "s144q09-own" in str(err.value)
         assert "s144q09-grandchild" in str(err.value)
         assert owner.released.is_set(), "a leaked thread was not stopped"
+    finally:
+        owner.stop()
+        t.join(fleet_test_guard.budget(5))
+        for _child, ct in owner.children:
+            ct.join(fleet_test_guard.budget(5))
+
+
+def test_a_parked_owner_publishes_its_child_only_once_the_child_runs(
+        monkeypatch):
+    """CI run 41231114850 (Linux): the test above waits for `owner.children`
+    and then reads `threading.enumerate()`. `_Parked.run` listed the child
+    BEFORE starting it, so the wait could end in that gap and the check
+    never saw the grandchild. A slow `Thread.start` for the grandchild holds
+    the gap open on any OS."""
+    real_start = threading.Thread.start
+
+    def slow_start(thread):
+        if thread.name == "s144q09-grandchild":
+            time.sleep(0.3)
+        real_start(thread)
+
+    monkeypatch.setattr(threading.Thread, "start", slow_start)
+    owner = _Parked(spawn_child=True)
+    t = _start(owner, "s144q09-publish")
+    try:
+        deadline = time.monotonic() + fleet_test_guard.budget(5)
+        while not owner.children and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert owner.children
+        assert all(ct.is_alive() for _child, ct in owner.children), (
+            "a child was published before it was started")
     finally:
         owner.stop()
         t.join(fleet_test_guard.budget(5))
