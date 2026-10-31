@@ -1,7 +1,10 @@
 /* Build Insights view (item 273 item-WPA + item 275 skill-WPA tab +
  * rune-WPA tab + summoner-spell-WPA tab, competitor-WPA lift).
  *
- * Four tabs share one render engine:
+ * Four WPA table tabs share one render engine (_TABLE_KEYS); the five
+ * chart tabs (Game Length, Snowball, Game Flow, OP Score, Benchmarks) are
+ * self-contained panels in their own modules, dispatched by _renderActive.
+ * The table tabs:
  *   Items  -> GET /api/item-wpa  (the shipped item table, default tab):
  *     Item (icon + name) | WPA (signed pp + confidence bar) | Buys (n) |
  *     Expected WP (%) | Win Rate (%)
@@ -556,10 +559,10 @@ function _tabByKey(key) {
 
 const _TABLE_KEYS = ['items', 'skills', 'runes', 'spells'];
 
-// The Min-N control only drives the four WPA tables; the four chart tabs
-// (duration / flow / opscore / bench) never read min_n. Relabel it to the
-// active tab's unit (Min buys / games / picks) and HIDE it on a chart tab
-// so it never reads as an inert no-op control.
+// The Min-N control only drives the four WPA tables; the five chart tabs
+// (duration / snowball / flow / opscore / bench) never read min_n. Relabel
+// it to the active tab's unit (Min buys / games / picks) and HIDE it on a
+// chart tab so it never reads as an inert no-op control.
 function _syncControls(key) {
   const controls = document.querySelector('.bi-controls');
   if (!controls) return;
@@ -578,9 +581,9 @@ function _ensureFetched(tab) {
   else _render(tab);
 }
 
-// The Game Length tab is a self-contained chart panel (duration_winrate.js),
-// not one of the sortable WPA tables - dispatch it directly; every other tab
-// flows through the shared table engine.
+// The five chart tabs (duration, snowball, bench, flow, opscore) are
+// self-contained panels, not sortable WPA tables - dispatch each to its own
+// module; the four table tabs flow through the shared table engine.
 function _renderActive() {
   if (_ST.active === 'duration') { renderDurationWinrate(); return; }
   if (_ST.active === 'snowball') { renderSnowballElasticity(); return; }
@@ -619,8 +622,8 @@ function _wireControlsOnce() {
     _ST.minN = v;
     if (_ST.debounceTimer) clearTimeout(_ST.debounceTimer);
     _ST.debounceTimer = setTimeout(() => {
-      // min_n changed: invalidate both caches + the loaded flags so the
-      // active tab re-fetches now + the other tab re-fetches on next switch.
+      // min_n changed: invalidate the four table caches + the loaded flags
+      // so the active table re-fetches now + the others on their next switch.
       _MOCK.items = null;
       _MOCK.skills = null;
       _MOCK.runes = null;

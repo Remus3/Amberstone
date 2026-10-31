@@ -16,7 +16,8 @@ picked the "full pass" enhancements:
        above the table at the companion width (headline-first). Answers the
        view's job question: "what do I build more / cut?".
   3.   The Min-N control relabels per active tab (Min buys / games / picks)
-       and HIDES on the four chart tabs (which never read min_n).
+       and HIDES on every chart tab (none reads min_n; five as of
+       RM-1187: duration, snowball, flow, opscore, bench).
 
 Drive path: /?ui_mock=1#build-insights -> the Items table mounts from the
 build_insights fixture; #bi-summary-items carries the takeaway.
