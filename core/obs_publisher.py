@@ -204,12 +204,39 @@ def _decode_image_data(image_data) -> "bytes | None":
         return None
 
 
+# RM-1215: why a GetSourceScreenshot round trip yielded no frame.
+# "no_reply" = no matching op:7 inside the timeout, or the connection failed
+# mid-request (request_response returned None); "source_missing" = OBS
+# refused with status 600 ResourceNotFound (for example a wrong
+# frame_source_name); "request_failed" = any other refusal (604 source not
+# active, 702 render failed, a missing code); "bad_payload" = a successful
+# reply whose imageData is absent or decodes to nothing.
+GRAB_FAILURES = ("no_reply", "source_missing", "request_failed",
+                 "bad_payload")
+_OBS_STATUS_RESOURCE_NOT_FOUND = 600
+
+
+def _notify_grab_failure(on_failure, reason: str) -> None:
+    """Hand `reason` to the caller's hook; a raising hook is swallowed."""
+    if on_failure is None:
+        return
+    try:
+        on_failure(reason)
+    except Exception:  # noqa: BLE001 - grab_source_screenshot never raises
+        _log.debug("OBS grab on_failure hook raised", exc_info=True)
+
+
 async def grab_source_screenshot(ws, source_name, image_width: int = 0,
-                                 timeout_s: float = _REQUEST_TIMEOUT_S):
+                                 timeout_s: float = _REQUEST_TIMEOUT_S,
+                                 on_failure=None):
     """GetSourceScreenshot over an already-identified OBS-WS connection.
     Returns raw JPEG bytes (decoded from the base64 payload) or None; a
     successful grab also warms the keep-warm slot. `image_width` <= 0 asks
-    OBS for the source's native resolution. Never raises."""
+    OBS for the source's native resolution. Never raises.
+
+    `on_failure` (RM-1215, optional): called with one reason from
+    `GRAB_FAILURES` whenever the return is None; never called for a frame.
+    A raising hook is swallowed."""
     data: dict = {"sourceName": str(source_name), "imageFormat": "jpg"}
     try:
         w = int(image_width or 0)
@@ -220,13 +247,25 @@ async def grab_source_screenshot(ws, source_name, image_width: int = 0,
     d = await request_response(ws, "GetSourceScreenshot", data,
                                timeout_s=timeout_s)
     if not isinstance(d, dict):
+        _notify_grab_failure(on_failure, "no_reply")
         return None
     status = d.get("requestStatus") or {}
+    if not isinstance(status, dict):
+        status = {}
     if status.get("result") is False:
+        code = status.get("code")
+        missing = (type(code) is int
+                   and code == _OBS_STATUS_RESOURCE_NOT_FOUND)
+        _notify_grab_failure(on_failure,
+                             "source_missing" if missing else "request_failed")
         return None
-    raw = _decode_image_data((d.get("responseData") or {}).get("imageData"))
+    body = d.get("responseData")
+    raw = _decode_image_data(
+        body.get("imageData") if isinstance(body, dict) else None)
     if raw:
         store_frame(raw)
+    else:
+        _notify_grab_failure(on_failure, "bad_payload")
     return raw
 
 

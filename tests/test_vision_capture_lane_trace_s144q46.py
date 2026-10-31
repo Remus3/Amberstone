@@ -38,7 +38,10 @@ from vision_server import _frame  # noqa: E402
 from vision_server import _stats as stats_mod  # noqa: E402
 
 GDI_KEYS = ("unavailable", "error")
-OBS_KEYS = ("undecodable", "error", "ws_error", "auth", "timeout")
+# RM-1215 appended the GetSourceScreenshot reasons; their tests live in
+# tests/test_vision_obs_grab_reasons_s144q47.py.
+OBS_KEYS = ("undecodable", "error", "ws_error", "auth", "timeout",
+            "no_reply", "source_missing", "request_failed", "bad_payload")
 
 
 def _textured(w=64, h=36):

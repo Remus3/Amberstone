@@ -158,12 +158,15 @@ def stats_counters(body: dict) -> dict:
                                ("not_foreground", "blank", "locked", "last_reason")}
     obs_lane = body.get("obs_lane") if isinstance(body, dict) else None
     if isinstance(obs_lane, dict):  # RM-1054; absent on an older vision server
-        # RM-1214 added the fetch reasons; a pre-RM-1214 server lacks them,
-        # so they are passed through only when present.
+        # RM-1214 added the fetch reasons and RM-1215 the GetSourceScreenshot
+        # reasons; an older server lacks them, so they pass through only when
+        # present.
         out["obs_lane"] = {k: obs_lane.get(k) for k in
                            ("undecodable", "error", "last_reason")}
         out["obs_lane"].update({k: obs_lane[k] for k in
-                                ("ws_error", "auth", "timeout")
+                                ("ws_error", "auth", "timeout", "no_reply",
+                                 "source_missing", "request_failed",
+                                 "bad_payload")
                                 if k in obs_lane})
     gdi_lane = body.get("gdi_lane") if isinstance(body, dict) else None
     if isinstance(gdi_lane, dict):  # RM-1214; absent on an older server

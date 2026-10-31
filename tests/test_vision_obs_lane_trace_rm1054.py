@@ -32,9 +32,11 @@ from PIL import Image  # noqa: E402
 from vision_server import _frame  # noqa: E402
 from vision_server import _stats as stats_mod  # noqa: E402
 
-# RM-1214 extended the vocabulary with the fetch reasons; their tests
-# live in tests/test_vision_capture_lane_trace_s144q46.py.
-OBS_KEYS = ("undecodable", "error", "ws_error", "auth", "timeout")
+# RM-1214 extended the vocabulary with the fetch reasons (tests in
+# tests/test_vision_capture_lane_trace_s144q46.py) and RM-1215 with the
+# GetSourceScreenshot reasons (tests/test_vision_obs_grab_reasons_s144q47.py).
+OBS_KEYS = ("undecodable", "error", "ws_error", "auth", "timeout",
+            "no_reply", "source_missing", "request_failed", "bad_payload")
 
 
 def _textured(w, h):

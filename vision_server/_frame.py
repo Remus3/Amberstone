@@ -195,14 +195,16 @@ def _maybe_obs_frame():
 
     RM-1054: a payload Pillow cannot decode counts as ``undecodable`` and
     any other failure in the lane (the re-encode included) as ``error``, in
-    ``get_stats()["obs_lane"]``; the flag off, an empty OBS reply and a
-    served frame count nothing, so a gated drain can tell "OBS yielded
-    nothing" from "the OBS bytes were bad".
+    ``get_stats()["obs_lane"]``; the flag off and a served frame count
+    nothing, so a gated drain can tell "OBS yielded nothing" from "the OBS
+    bytes were bad" (an empty OBS reply counted nothing here until
+    RM-1215, below, gave it a reason).
 
     RM-1214: the fetch's own failures (websocket error, failed identify,
     overrun worker, unexpected exception) arrive through ``get_obs_frame``'s
-    ``on_failure`` callback and are counted in the same block; an OBS reply
-    with no frame still counts nothing."""
+    ``on_failure`` callback and are counted in the same block. RM-1215: an
+    OBS reply with no frame names its reason there too (``no_reply``,
+    ``source_missing``, ``request_failed``, ``bad_payload``)."""
     try:
         from core.obs_frame_source import get_obs_frame, obs_frame_source_enabled
         if not obs_frame_source_enabled():
@@ -273,7 +275,8 @@ def _fetch_frame_direct():
 
     RM-1214: a GDI grab that was due and not refused but failed is counted
     in ``get_stats()["gdi_lane"]`` - ``unavailable`` when PIL.ImageGrab will
-    not import, ``error`` when the grab, downscale or encode raised. A refusal
+    not import, ``error`` when the grab, downscale or encode raised (or, since
+    RM-1215, when ``ImageGrab.grab()`` returned no image). A refusal
     (``not_foreground``, ``blank``) stays a capture_skip and counts nothing
     there."""
     obs_frame = _maybe_obs_frame()
@@ -295,6 +298,10 @@ def _fetch_frame_direct():
     try:
         img = ImageGrab.grab()  # primary virtual screen, single GDI BitBlt
         if img is None:
+            # RM-1215: Pillow documents no None return; a due, unrefused
+            # grab that yields no image is a failure, not "no frame".
+            _record_gdi_lane_failure("error")
+            log.debug("frame self-grab returned no image")
             return None
         # Y-03: a near-uniform frame (black / white / flat) carries no game
         # state; drop it BEFORE it can become a calibration still.

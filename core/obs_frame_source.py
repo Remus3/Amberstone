@@ -35,6 +35,9 @@ Failure split (RM-1214): None still means "no frame", but a caller that
 passes `on_failure=` learns WHY a flag-on fetch failed - one reason from
 `OBS_FETCH_FAILURES` - while an OBS reply that simply carries no frame
 reports nothing. Without the callback the contract is unchanged.
+RM-1215: an OBS reply with no frame now names its reason too (no reply,
+source missing, request refused, bad payload), so only a grab that names
+no reason at all still reports nothing.
 
 ASCII only (repo hard rule). No em-dashes.
 """
@@ -56,9 +59,13 @@ _CFG_TTL_S = 5.0          # config re-read cadence (disk JSON is cheap but not f
 # websocket round trip raised (OBS down, refused, closed, identify timed
 # out); "auth" = OBS answered but the identify handshake failed; "timeout"
 # = the one-shot worker overran its join and was abandoned; "error" = any
-# other exception inside the facade. vision_server._stats.OBS_LANE_FAILURES
-# carries every one of these.
-OBS_FETCH_FAILURES = ("ws_error", "auth", "timeout", "error")
+# other exception inside the facade. RM-1215 adds the GetSourceScreenshot
+# reasons from core.obs_publisher.GRAB_FAILURES (no_reply, source_missing,
+# request_failed, bad_payload), so an OBS reply with no frame says why.
+# vision_server._stats.OBS_LANE_FAILURES carries every one of these.
+OBS_FETCH_FAILURES = ("ws_error", "auth", "timeout", "error",
+                      "no_reply", "source_missing", "request_failed",
+                      "bad_payload")
 
 
 class _FetchFailure:
@@ -136,8 +143,9 @@ def get_obs_frame(timeout_s: "float | None" = None,
 
     `on_failure` (RM-1214, optional): called with one reason from
     `OBS_FETCH_FAILURES` when the None is a FAILURE; never called for the
-    flag off, a served frame, or an OBS reply that carries no frame. A
-    raising hook is swallowed.
+    flag off, a served frame, or a grab that returned nothing and named no
+    reason. An OBS reply without a frame is a failure since RM-1215 and
+    names its `GRAB_FAILURES` reason. A raising hook is swallowed.
     """
     try:
         cfg = _get_obs_cfg()
@@ -198,10 +206,12 @@ def _fetch_once(cfg: dict, timeout_s: float) -> "bytes | _FetchFailure | None":
 async def _fetch_async(cfg: dict,
                        timeout_s: float) -> "bytes | _FetchFailure | None":
     """Connect, identify (OBS-WS v5 handshake incl. auth), grab one
-    GetSourceScreenshot. Returns raw bytes, None when OBS answered with no
-    frame, or a `_FetchFailure` - "auth" for a failed identify, "ws_error"
-    when the round trip raised (RM-1214); a success also warms the
-    keep-warm slot (inside grab_source_screenshot)."""
+    GetSourceScreenshot. Returns raw bytes, None when the grab returned
+    nothing and named no reason, or a `_FetchFailure` - "auth" for a failed
+    identify, "ws_error" when the round trip raised (RM-1214), or the
+    grab's own `GRAB_FAILURES` reason (RM-1215: no_reply, source_missing,
+    request_failed, bad_payload); a success also warms the keep-warm slot
+    (inside grab_source_screenshot)."""
     try:
         import websockets
 
@@ -223,8 +233,13 @@ async def _fetch_async(cfg: dict,
             if not ok:
                 _log.debug("OBS frame fetch: identify failed")
                 return _FetchFailure("auth")
-            return await _pub.grab_source_screenshot(
-                ws, source, image_width=width, timeout_s=timeout_s)
+            reasons: list = []
+            raw = await _pub.grab_source_screenshot(
+                ws, source, image_width=width, timeout_s=timeout_s,
+                on_failure=reasons.append)
+            if not raw and reasons:
+                return _FetchFailure(str(reasons[0]))
+            return raw
     except Exception as exc:  # noqa: BLE001
         _log.debug("OBS frame fetch failed: %s", exc)
         return _FetchFailure("ws_error")

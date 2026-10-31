@@ -13,7 +13,9 @@ Split out of moon_vision_server.py during Phase 2.4. Owns:
   a liveness/capability field can reuse it rather than mint a second one.
 - ``_obs_lane`` + ``_record_obs_lane_failure(reason)`` - RM-1054: why the OBS
   frame lane yielded no frame (undecodable | error), plus RM-1214's fetch
-  reasons from core.obs_frame_source (ws_error | auth | timeout).
+  reasons from core.obs_frame_source (ws_error | auth | timeout) and
+  RM-1215's GetSourceScreenshot reasons (no_reply | source_missing |
+  request_failed | bad_payload).
   A SEPARATE block, not more capture-skip reasons: those are the Y-03
   REFUSAL vocabulary shared with tools/screen_agent.py, and an OBS failure
   refuses nothing (the GDI grab still runs).
@@ -54,9 +56,16 @@ _capture_skips.update({"last_reason": None, "last_ts": 0.0})
 # RM-1214: the fetch itself failing, as reported by
 # core.obs_frame_source.get_obs_frame's on_failure callback - a websocket
 # error ("ws_error"), a failed identify ("auth") or an overrun one-shot
-# worker ("timeout"); its unexpected-exception reason maps to "error". Zero
-# here while frames serve as ``self_grab`` means OBS yielded nothing.
-OBS_LANE_FAILURES = ("undecodable", "error", "ws_error", "auth", "timeout")
+# worker ("timeout"); its unexpected-exception reason maps to "error".
+# RM-1215: an OBS reply that carried no frame names why - no op:7 reply
+# ("no_reply"), the source name not found ("source_missing", for example a
+# wrong frame_source_name), any other refused request ("request_failed") or
+# a success with no usable imageData ("bad_payload"). All zero while frames
+# serve as ``self_grab`` means the OBS lane never ran (flag off) or never
+# failed; it no longer hides an OBS reply that carried no frame.
+OBS_LANE_FAILURES = ("undecodable", "error", "ws_error", "auth", "timeout",
+                     "no_reply", "source_missing", "request_failed",
+                     "bad_payload")
 _obs_lane: dict = {r: 0 for r in OBS_LANE_FAILURES}
 _obs_lane.update({"last_reason": None, "last_ts": 0.0})
 # RM-1214: the GDI self-grab could not import PIL.ImageGrab
