@@ -177,7 +177,11 @@ def test_read_lockfile_takes_the_first_existing_path_and_parses_it(
 
 def test_the_default_paths_are_unchanged(tps):
     assert tps.META_FILE == ROOT / "data" / "meta" / "tft_set17_meta.json"
-    assert [p.name for p in tps.LOCKFILES] == ["lockfile", "lockfile"]
+    # The defaults are Windows install paths. On Linux `Path` is a PosixPath
+    # that keeps the whole backslash string as one name (CI run 41231114850),
+    # so read them with Windows semantics on every OS.
+    names = [pathlib.PureWindowsPath(p).name for p in tps.LOCKFILES]
+    assert names == ["lockfile", "lockfile"]
     assert "(PBE)" in str(tps.LOCKFILES[0])
     assert tps.SET_ID == "TFTSet17"
 
