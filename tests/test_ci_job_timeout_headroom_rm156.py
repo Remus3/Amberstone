@@ -102,7 +102,17 @@ _DS_TREE = "agents/daemon_slayer/tests/"
 # ceilings raised in ci.yml: step 55 -> 75, job 75 -> 95. The floor below stays
 # conservative on purpose - it guards against an absurdly-LOW ceiling, not the
 # suite's actual size; the real headroom lives in the 75m step ceiling.
-_MIN_SUITE_STEP_CEILING_MIN = 40
+# 2026-10-31 UPDATE (s146 C3), which RETIRES the "floor stays conservative"
+# policy just above: a 40m floor let the live ceiling go stale with every guard
+# green. Dispatch run 41231173460 was killed by the 75m `full dual suite` step
+# ceiling with no hang - the suite grew about 18 percent (42.9k -> 54.4k tests,
+# 2026-10-25 .. 10-31) and hosted-runner speed varies about 1.5x on ONE sha
+# (a5c8d94ff: 55.1m dispatch vs 36.7m nightly), so a 52.5m full run x 1.5 is
+# about 79m, over 75 before any further growth. Both dual-suite steps (`check`
+# and `nightly-full-suite`) were raised 75 -> 110 and both jobs 95 -> 125. The
+# floor now pins that decision, so a regression to 75 is red here rather than
+# a killed run on the next dispatch. Re-measure before LOWERING it.
+_MIN_SUITE_STEP_CEILING_MIN = 110
 
 # MEASURED 2026-08-04: `Install Playwright Chromium` took 10m33s on run
 # 30820229244 (cache miss) against 27s on the runs either side. Everything a job
