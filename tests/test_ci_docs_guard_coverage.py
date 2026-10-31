@@ -403,3 +403,164 @@ def test_minute_saver_is_still_in_place():
         "needs its own measurement - do not delete the minute saver to make "
         "the docs-guard workflow easier."
     )
+
+
+# --------------------------------------------------------------------------- #
+# 5. the docs-guards install set is a DECISION about every runtime package
+# --------------------------------------------------------------------------- #
+# MEASURED 2026-10-31, docs-guards run 41216101159: 8 failed. The workflow's
+# install set was sized on a 2026-07-27 premise - "not one of the 48 selected
+# modules imports the runtime stack" - that nothing guarded. The s144 widening
+# of the selector (RM-1107 / RM-1145..RM-1147, index-walk readers) took the
+# selection to 184 modules, and four of them hold NON-md tests that execute
+# runtime packages the job never installed: json5 (tools/daemon_slayer_extract.py,
+# loaded by agents/daemon_slayer/tests/test_artifact_patch_marker_guard.py and
+# tests/test_tracked_json_producers_emit_lf_bytes.py), anthropic
+# (tft/tft_coach_engine.py, imported by tests/test_tft_meta_provenance_rm846.py)
+# and portalocker (core/decision_detector.py, imported lazily by the dashboard's
+# POST dispatch inside the in-process server that
+# tests/test_dead_endpoint_cleanup_item186.py starts on 127.0.0.1 - the handler
+# thread died on the import, so the CLIENT saw RemoteDisconnected; no network).
+#
+# Dropping those modules from the selection would trade a red job for a blind
+# one: the same modules hold md-fragile tests (test_no_import_of_deleted_handler
+# reads every tracked file, `.md` included). So the job installs what its
+# selection executes, and every OTHER package pinned in requirements.in is
+# declared NOT installed, with a reason, in requirements-docs-guards.in:
+#
+#     # docs-guards-not-installed: <name> - <reason>
+#
+# The universe is requirements.in (the producing side), not a list here, so a
+# new runtime dependency fails this guard until someone classifies it. Static
+# import tracing was measured and rejected as the mechanism: over the live
+# selection it flagged 26 modules (try/except-guarded and never-called imports)
+# and still missed the portalocker path, which only a POST reaches.
+_CI_DIR = _REPO / ".github" / "ci"
+_RUNTIME_IN = _REPO / "requirements.in"
+_DOCS_GUARDS_IN = _CI_DIR / "requirements-docs-guards.in"
+_DOCS_GUARDS_TXT = _CI_DIR / "requirements-docs-guards.txt"
+# Same pin shape as ci.yml's "hashed CI install sets agree with requirements.in".
+_PIN_LINE = re.compile(r"([A-Za-z0-9_.-]+)==([^\s;\\]+)")
+_NOT_INSTALLED_LINE = re.compile(
+    r"^#\s*docs-guards-not-installed:\s*(?P<name>[A-Za-z0-9_.-]+)\s+-\s+(?P<why>\S.*)$"
+)
+# The regression floor for 41216101159: what the selection was MEASURED to
+# execute. A declaration cannot excuse these, because the job is red without them.
+# Reverses if: no selected module reaches the named loader any more (re-measure
+# with an import-blocked run of the selection, then drop the entry).
+_MEASURED_SELECTION_NEEDS = {
+    "json5": "tools/daemon_slayer_extract.py (2 selected modules load it)",
+    "anthropic": "tft/tft_coach_engine.py (tests/test_tft_meta_provenance_rm846.py)",
+    "portalocker": "core/decision_detector.py (the dashboard POST dispatch)",
+}
+
+
+def _norm_dist(name: str) -> str:
+    return re.sub(r"[-_.]+", "-", name).lower()
+
+
+def _pinned_dists(path: Path) -> set:
+    """Distribution names pinned `name==ver` at line start; a comment pins nothing."""
+    out = set()
+    for line in path.read_text(encoding="utf-8").splitlines():
+        m = _PIN_LINE.match(line)
+        if m:
+            out.add(_norm_dist(m.group(1)))
+    return out
+
+
+def _declared_not_installed(path: Path) -> dict:
+    out = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        m = _NOT_INSTALLED_LINE.match(line.strip())
+        if m:
+            out[_norm_dist(m.group("name"))] = m.group("why").strip()
+    return out
+
+
+def _runtime_classification_gaps(runtime_in: Path, guards_in: Path, guards_txt: Path,
+                                 floor=()) -> list:
+    runtime = _pinned_dists(runtime_in)
+    if not runtime:
+        # The anchor: an empty universe would make every check below vacuous.
+        return [f"{runtime_in.name} yielded no `name==ver` pins - the parser is wrong, not the file"]
+    installed = _pinned_dists(guards_txt)
+    declared = _declared_not_installed(guards_in)
+    gaps = []
+    for name in sorted(runtime):
+        if name in installed and name in declared:
+            gaps.append(f"{name}: installed by {guards_txt.name} AND declared not installed "
+                        f"in {guards_in.name} - drop the stale declaration")
+        elif name not in installed and name not in declared:
+            gaps.append(f"{name}: pinned in {runtime_in.name} but neither installed by "
+                        f"{guards_txt.name} nor declared `# docs-guards-not-installed: "
+                        f"{name} - <reason>` in {guards_in.name}")
+    for name in sorted(set(declared) - runtime):
+        gaps.append(f"{name}: declared not installed in {guards_in.name} but "
+                    f"{runtime_in.name} pins no such package - drop the dead declaration")
+    for name in sorted(floor):
+        if _norm_dist(name) not in installed:
+            gaps.append(f"{name}: the selection executes it (docs-guards 41216101159) but "
+                        f"{guards_txt.name} does not install it")
+    return gaps
+
+
+_HASHED = " \\\n    --hash=sha256:00\n"
+
+
+@pytest.mark.parametrize(
+    ("runtime", "guards_in", "guards_txt", "floor", "expected_names"),
+    [
+        # Every runtime package classified, one each way: clean.
+        ("a==1\nb==2\n", "# docs-guards-not-installed: b - heavy\n", "a==1" + _HASHED, (), []),
+        # NEGATIVE CONTROL: an unclassified runtime package is a gap.
+        ("a==1\nb==2\n", "", "a==1" + _HASHED, (), ["b"]),
+        # A commented-out pin installs nothing.
+        ("a==1\n", "", "# a==1\n", (), ["a"]),
+        # A declaration with no reason is not a declaration.
+        ("a==1\n", "# docs-guards-not-installed: a\n", "", (), ["a"]),
+        # Installed AND declared: the declaration is stale.
+        ("a==1\n", "# docs-guards-not-installed: a - heavy\n", "a==1" + _HASHED, (), ["a"]),
+        # Declared for a package requirements.in does not pin: dead.
+        ("a==1\n", "# docs-guards-not-installed: zz - gone\n", "a==1" + _HASHED, (), ["zz"]),
+        # Names compare as pip normalizes them.
+        ("Pillow==1\nopencv_python==2\n",
+         "# docs-guards-not-installed: pillow - x\n# docs-guards-not-installed: opencv-python - y\n",
+         "", (), []),
+        # The floor: a measured need cannot be declared away.
+        ("a==1\n", "# docs-guards-not-installed: a - heavy\n", "", ("a",), ["a"]),
+        # ANCHOR: an empty universe is a failure, never a vacuous pass.
+        ("", "", "", (), ["requirements.in"]),
+    ],
+    ids=["clean", "unclassified", "commented-pin", "no-reason", "stale-declaration",
+         "dead-declaration", "normalized-names", "floor-not-declarable", "empty-universe"],
+)
+def test_runtime_classification_probe_has_teeth(tmp_path, runtime, guards_in, guards_txt,
+                                                floor, expected_names):
+    r = tmp_path / "requirements.in"
+    gi = tmp_path / "requirements-docs-guards.in"
+    gt = tmp_path / "requirements-docs-guards.txt"
+    r.write_text(runtime, encoding="utf-8")
+    gi.write_text(guards_in, encoding="utf-8")
+    gt.write_text(guards_txt, encoding="utf-8")
+    gaps = _runtime_classification_gaps(r, gi, gt, floor)
+    assert len(gaps) == len(expected_names), gaps
+    for gap, name in zip(gaps, expected_names):
+        assert gap.startswith(name), (gap, name)
+
+
+def test_docs_guards_install_set_classifies_every_runtime_package():
+    """Each package requirements.in pins is installed by the docs-guards job or
+    declared not installed with a reason, and the measured needs of the
+    selection are installed. Text-level, no yaml: it runs in both jobs."""
+    for path in (_RUNTIME_IN, _DOCS_GUARDS_IN, _DOCS_GUARDS_TXT):
+        assert path.is_file(), f"{path.relative_to(_REPO)} is missing"
+    gaps = _runtime_classification_gaps(_RUNTIME_IN, _DOCS_GUARDS_IN, _DOCS_GUARDS_TXT,
+                                        floor=tuple(_MEASURED_SELECTION_NEEDS))
+    assert not gaps, (
+        "docs-guards.yml installs .github/ci/requirements-docs-guards.txt and runs "
+        "every module tools/md_guard_selector.py picks; a runtime package it "
+        "neither installs nor deliberately declines is the 41216101159 failure "
+        "waiting for its module. Classify it in the .in, then regenerate the "
+        "hashed .txt with the command in its header:\n  " + "\n  ".join(gaps)
+    )

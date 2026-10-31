@@ -120,13 +120,18 @@ jobs:
 
       - name: Install minimal test deps (hash-pinned)
         run: |
-          # MEASURED 2026-07-27: not one of the 48 currently-selected modules
-          # imports the runtime stack (anthropic / PIL / cv2 / websockets /
-          # portalocker / json5 / psutil), so this stays deliberately small -
-          # this job runs on ~55% of commits. pyyaml is for the workflow-shape
-          # assertions in tests/test_ci_docs_guard_coverage.py; without it
-          # those degrade to skips, and a skipped test is a green tick - so the
-          # import below fails the step instead if the hashed set loses it.
+          # Deliberately small - this job runs on ~55% of commits - but sized
+          # to what the selection EXECUTES, not to a premise. The 2026-07-27
+          # premise ("not one of the 48 selected modules imports the runtime
+          # stack") went unguarded until run 41216101159 (2026-10-31): the s144
+          # selector widening picked modules whose non-md tests load json5,
+          # anthropic and portalocker, and 8 failed. Those three are installed
+          # now; every other requirements.in package is declared NOT installed,
+          # with a reason, in the .in, and tests/test_ci_docs_guard_coverage.py
+          # fails on one that is neither. pyyaml is for the workflow-shape
+          # assertions in that module; without it they degrade to skips, and a
+          # skipped test is a green tick - so the import below fails the step
+          # instead if the hashed set loses it (or a measured runtime need).
           #
           # HASH-PINNED (supply-chain order, 2026-10-05):
           # .github/ci/requirements-docs-guards.txt is generated from the .in
@@ -137,7 +142,7 @@ jobs:
           # the installer itself, and the runner's pip already supports
           # --require-hashes.
           pip install --require-hashes -r .github/ci/requirements-docs-guards.txt
-          python -c "import yaml, pytest, pytest_timeout, pytest_asyncio, pydantic"
+          python -c "import yaml, pytest, pytest_timeout, pytest_asyncio, pydantic, json5, anthropic, portalocker"
 
       - name: Derive the md-reading guard set
         id: select

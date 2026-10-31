@@ -1,7 +1,12 @@
 # Input for .github/ci/requirements-docs-guards.txt - the HASHED install set
-# of docs-guards.yml (the md-reading guards). Deliberately small: none of the
-# selected modules imports the runtime stack (measured 2026-07-27, see the
-# workflow), so this does NOT include the root requirements.in.
+# of docs-guards.yml (the md-reading guards). Deliberately small: it does NOT
+# include the root requirements.in. It installs the runtime packages the
+# selected modules are MEASURED to execute (below) and nothing else; every
+# other package requirements.in pins is declared NOT installed, with a reason,
+# on a `# docs-guards-not-installed: <name> - <reason>` line.
+# tests/test_ci_docs_guard_coverage.py fails on a requirements.in package that
+# is neither installed by the .txt nor declared here, so a new runtime
+# dependency is classified on purpose, never inherited by accident.
 #
 # CI installs the generated .txt with `pip install --require-hashes`. Never
 # hand-edit the .txt: change this file and regenerate, from the repo root,
@@ -25,3 +30,27 @@ pytest-timeout
 # Without it they degrade to skips, and a skipped test is a green tick.
 pyyaml
 pydantic
+
+# Runtime packages the selection EXECUTES. MEASURED 2026-10-31, docs-guards run
+# 41216101159 (8 failed): the s144 selector widening (RM-1107, RM-1145..RM-1147)
+# picks modules whose NON-md tests load them. Versions follow requirements.in
+# through the -c line above.
+#   json5       - tools/daemon_slayer_extract.py, loaded by
+#                 agents/daemon_slayer/tests/test_artifact_patch_marker_guard.py
+#                 and tests/test_tracked_json_producers_emit_lf_bytes.py
+#   anthropic   - tft/tft_coach_engine.py, tests/test_tft_meta_provenance_rm846.py
+#   portalocker - core/decision_detector.py, imported by the dashboard POST
+#                 dispatch inside tests/test_dead_endpoint_cleanup_item186.py's
+#                 in-process server (its absence read as RemoteDisconnected)
+json5
+anthropic
+portalocker
+
+# Pinned in requirements.in, NOT installed here (machine-read lines; the reason
+# is required). Move a name up into the list above, and drop its line here,
+# when a selected module is measured executing it.
+# docs-guards-not-installed: certifi - no selected module executes it (41216101159), and anthropic 1.11.0 does not pull it in (httpx2 + truststore)
+# docs-guards-not-installed: opencv-python - imaging stack (a ~60 MB wheel plus numpy); no selected module executes cv2 (41216101159)
+# docs-guards-not-installed: Pillow - imaging stack; no selected module executes PIL (41216101159)
+# docs-guards-not-installed: psutil - no selected module executes it (41216101159); left out so the job stays as small as its selection needs
+# docs-guards-not-installed: websockets - no selected module executes it (41216101159); left out so the job stays as small as its selection needs
