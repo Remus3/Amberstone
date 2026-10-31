@@ -378,6 +378,11 @@ All five monolith decompositions are done (Phases 2.1-2.4 + the s236
 `docs/history_notes.md` (mdclean C5). The old Desktop
 `RC_FUTUREPROOFING_PLAN.md` pointer is retired (file absent).
 
+Open, PLAN ONLY (RM-726 (d)): the two oversize dashboard scripts,
+`web/js/main.js` and `web/js/panels/champ_select.js`, have a slice-by-slice
+split plan with a 5-phase UI audit per slice in `docs/WEB_JS_SPLIT_PLAN.md`
+(guard `tests/test_web_js_split_plan_rm726.py`). No slice has landed.
+
 ---
 
 ## Key gotchas
