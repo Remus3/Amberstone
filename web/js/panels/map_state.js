@@ -792,4 +792,6 @@ export {
   _tickSpellCooldowns, _tickObjectiveCountdowns,
   _updateGameClock, _applyGamePhase,
   _snapshotSpells, _fmtMMSS, _renderMmStateLine,
+  // RM-1211: main.js calls both; unexported, each call threw a ReferenceError.
+  _spellKey, renderMinimapCanvases,
 };

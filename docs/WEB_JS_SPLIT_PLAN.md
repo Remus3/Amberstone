@@ -162,10 +162,10 @@ alignment helpers. That is roughly 1,300 lines.
 - File: `web/js/main.js`
 - Target: `web/js/panels/adaptation.js`
 - Anchors: `ADAPT`, `TRENDS`, `renderAdaptation`, `fetchAdaptation`, `maybeRefreshAdaptation`
-- Coupled: none measured (no tracked test or tool names `main.js` and one of these anchors)
+- Coupled: `tests/test_web_js_unimported_calls_s144q43.py`, `tests/snapshot_panels/test_champ_select_adaptation_fetch_s144q43.py`, `web/js/lib/cs_adaptation.test.mjs`
 - Views: `active-match`
 - UI audit: STRUCTURE / TYPOGRAPHY / HIT-TARGETS / ASCII / HIERARCHY on the views above, headless, before the commit. Focus: the ADAPTATION panel empty state and its notice line (HIERARCHY: the notice is not brighter than the data).
-- Notes: the `#adaptation` panel sits in the in-game grid, outside `#view-content`. `onState` calls `maybeRefreshAdaptation`. `handleChampSelect` in `web/js/panels/champ_select.js` also calls `fetchAdaptation`, but that file neither imports nor defines it, so the call most likely throws a ReferenceError (filed separately; fix it before this slice, then the slice exports `fetchAdaptation` and champ select imports it). `AD` is shared with the footer and `refreshEnv`, so it stays in `main.js` and is passed in. No test covers this region, so the slice adds one first (a node test that `renderAdaptation({ present: false })` paints the empty state).
+- Notes: the `#adaptation` panel sits in the in-game grid, outside `#view-content`. `onState` calls `maybeRefreshAdaptation`. The champ-select caller was fixed first (RM-1211): `handleChampSelect` no longer calls `fetchAdaptation` (the bare call threw a ReferenceError); `handleLcuEnvelope` in `main.js` calls it with the arguments from `web/js/lib/cs_adaptation.js` `csAdaptationRequest`. The slice exports `fetchAdaptation`, `main.js` imports it, and that call stays in `handleLcuEnvelope`. Re-point `tests/test_web_js_unimported_calls_s144q43.py`, whose anchor test expects `fetchAdaptation` declared in `web/js/main.js`. `AD` is shared with the footer and `refreshEnv`, so it stays in `main.js` and is passed in. No test covers this region, so the slice adds one first (a node test that `renderAdaptation({ present: false })` paints the empty state).
 
 ### MJ-9 - view router
 - File: `web/js/main.js`

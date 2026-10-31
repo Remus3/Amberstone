@@ -28,8 +28,13 @@ import { startPersonalContextPolling } from './panels/personal_context.js';
 import { NX, renderNext, arenaDetectPartner, arenaPartnerLine, arenaWaveLine } from './panels/next.js';
 import { IB, renderItemBuild, renderItemTiles, _updateItemBuildHeader, _ibPushItems, _ibMaybeRenderBuilds, _ibFetchAndRender, _ibSetStatus, _ibRenderRows, _ibMarkSelectedRow, _ibSaveChoice } from './panels/item_build.js';
 import { MM, renderMinimap, _tickSpellCooldowns, _tickObjectiveCountdowns, _updateGameClock, _applyGamePhase, _snapshotSpells, _fmtMMSS, _renderMmStateLine } from './panels/map_state.js';
+// RM-1211 siblings: both are called below (the self-spell cooldown key and the
+// foreground ZOI redraw) but were never exported or imported - each call threw
+// a ReferenceError. Guard: tests/test_web_js_unimported_calls_s144q43.py.
+import { _spellKey, renderMinimapCanvases } from './panels/map_state.js';
 import { renderAugmentReco } from './panels/augment_reco.js';
 import { handleChampSelect, renderChampSelectCoach, renderChampSelectView, csMockFixtureUrl } from './panels/champ_select.js';
+import { csAdaptationRequest } from './lib/cs_adaptation.js';
 import { renderTeamContext } from './panels/team_context.js';
 import { renderScreenRead } from './panels/screen_read.js';
 import { renderActiveMatch, activeMatchEnabled, amMockFixtureUrl } from './panels/active_match.js';
@@ -6046,6 +6051,12 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   // cutting renders ARE defined.
   function handleLcuEnvelope(lcu) {
     handleChampSelect(lcu);     // champ-select overlay + state.latest.lcu cache
+    // RM-1211: the pre-game ADAPTATION fetch. handleChampSelect used to
+    // call fetchAdaptation itself, which is out of its scope - a
+    // ReferenceError that skipped every line below once a champion was
+    // picked. fetchAdaptation is async and never throws synchronously.
+    const _adapt = csAdaptationRequest(lcu, CHAMPS);
+    if (_adapt) fetchAdaptation(_adapt.champion, _adapt.modeTag, _adapt.enemies);
     _syncAutoAcceptFromConfig(lcu);  // reflect agent CONFIG -> both controls
     renderHomePanel(lcu);       // home-view phase chip
     _viewResolveAndApply(lcu);  // re-derive view based on new phase

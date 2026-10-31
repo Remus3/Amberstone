@@ -110,6 +110,20 @@ function _csChampName(cid) {
 // the user's historical adaptation data BEFORE the game starts.
 // Resolves championId integers to names via the CHAMPS byId index.
 const _CS_LIVE = { lastKey: "", inflight: false, lastFetch: 0, lastResult: null };
+// RM-1211 / RM-1212: the live Haiku pick-advisor POST below is OFF.
+// Until RM-1211 the fetchAdaptation ReferenceError above it stopped this
+// function before the POST on every pick, so /api/champ-select-coach (a
+// PAID Haiku call, coaches/champ_select_coach.coach_pick) has not fired from
+// the dashboard since the Phase 3.1 ESM split (b278337e8). Fixing that throw
+// would have switched the spend back on as a side effect, and the reply
+// would still go nowhere: renderChampSelectCoach writes to the in-game Right
+// Now panel, which body[data-view="champ-select"] hides, and it reads RN /
+// _rnImmediate, which are not bound in this module. Adjudicated (s144 queue
+// cycle 68): keep the spend off behind this explicit flag; RM-1212 decides
+// whether to revive it with a visible, escaped surface, flip it to the
+// deterministic advise_pick, or delete the block. Pinned by
+// tests/snapshot_panels/test_champ_select_adaptation_fetch_s144q43.py.
+const _CS_LIVE_COACH_ENABLED = false;
 
 function handleChampSelect(lcu) {
   // s162: cache the LCU snapshot on state.latest so view-lobby's
@@ -140,20 +154,19 @@ function handleChampSelect(lcu) {
   const bench = (cs.bench || [])
     .map((id) => CHAMPS.byId[String(id)])
     .filter(Boolean);
-  // Map queue_id to adaptation mode. ARAM-family = 450 (Classic) /
-  // 920 (Poro King) / 2400 (Mayhem); Arena = 1750 live (1700/1710 legacy).
-  const modeMap = {
-    450: "aram", 920: "aram", 2400: "aram",   // ARAM Classic / Poro King / Mayhem
-    1750: "arena", 1700: "arena", 1710: "arena",    // Arena live + legacy aliases
-    400: "sr_draft", 420: "sr_ranked", 430: "sr_ranked", 440: "sr_ranked",
-    830: "sr_ranked", 840: "sr_ranked", 850: "sr_ranked",   // co-op vs AI
-  };
-  const adaptMode = modeMap[cs.queue_id] || "aram";
-  fetchAdaptation(myName, adaptMode === "sr_draft" ? "sr" : adaptMode, enemies);
+  // RM-1211: the ADAPTATION fetch is NOT made here. fetchAdaptation is
+  // module-local to main.js, so the bare call that used to sit here threw a
+  // ReferenceError once a champion was picked and cut handleLcuEnvelope
+  // short (the s162 class above). main.js handleLcuEnvelope now asks
+  // lib/cs_adaptation.js csAdaptationRequest for the arguments and makes
+  // the call itself.
 
   // Live Haiku coaching - debounced + key-deduped so we only fire when
   // the actual pick state changes (champion or team comp), not on every
   // 2 s state poll. ~1 Haiku call per ~10 s of active drafting.
+  // OFF (RM-1212): see _CS_LIVE_COACH_ENABLED. The early return comes
+  // before the dedup / debounce state so that state stays untouched.
+  if (!_CS_LIVE_COACH_ENABLED) return;
   const liveKey = [
     myName, cs.queue_id, allies.join("|"), enemies.join("|"), bench.join("|"),
   ].join("/");

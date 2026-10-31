@@ -1798,7 +1798,30 @@ _WEB = _REPO_ROOT / "web"
 # value EXACTLY; swapping either one alone does not. Those two paths are
 # the whole change. No glyph change: the added lines carry 0 non-ASCII
 # bytes. If another slice re-captures in parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "0f7eb637b5fd048af8f2ecda0d0f841aee9683d86d5b9d5e1fdb542fccbcf1b4"
+# superseded by the RM-1211 re-capture below: "0f7eb637b5fd048af8f2ecda0d0f841aee9683d86d5b9d5e1fdb542fccbcf1b4"
+#
+# RE-CAPTURED 2026-10-31 at RM-1211 (s144 queue cycle 68, provisional
+# until the merger lands it and maps the id). One change rides it: three
+# bare calls to another module's unexported function stop throwing a
+# ReferenceError - champ_select.js handleChampSelect no longer calls
+# main.js-local fetchAdaptation (main.js handleLcuEnvelope makes the call
+# from the new web/js/lib/cs_adaptation.js csAdaptationRequest), and
+# map_state.js exports _spellKey / renderMinimapCanvases, which main.js now
+# imports; and the live Haiku pick-advisor POST in handleChampSelect, which
+# that throw had kept from ever firing, stays off behind the new
+# _CS_LIVE_COACH_ENABLED = false (RM-1212 decides it). Ordinary case, no
+# tokeniser change. ATTRIBUTED BY SUBSTITUTION:
+# swapping web/js/main.js, web/js/panels/champ_select.js and
+# web/js/panels/map_state.js back to their lane HEAD 7bb89b9fa blobs and
+# dropping the new web/js/lib/cs_adaptation.js (in memory) reproduces the
+# superseded e14af6b4... value EXACTLY; leaving any one of the four out of
+# the swap does not. Those paths are the whole change. No glyph change: the
+# added lines carry 0 non-ASCII bytes. If another slice re-captures in
+# parallel, the merger recomputes.
+# MERGED at the s145 L7 landing: the queue lane captured 24b1160f... over
+# e14af6b4...; with the uiux chain above also applied, the merger
+# recomputed the value below on the merged tree.
+_LIVE_HALF_DIGEST = "f6cfc1970bc0cf32a55eac08ec3d968aa45ae88b5764d3ba3072f6ee6551811d"
 
 
 def _web_sources() -> list[Path]:
