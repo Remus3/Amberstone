@@ -383,6 +383,12 @@ Open, PLAN ONLY (RM-726 (d)): the two oversize dashboard scripts,
 split plan with a 5-phase UI audit per slice in `docs/WEB_JS_SPLIT_PLAN.md`
 (guard `tests/test_web_js_split_plan_rm726.py`). No slice has landed.
 
+Open, PLAN ONLY (RM-726 (c)): the two panel stylesheets over the 60 KB cap,
+`web/css/panels/header.css` and `web/css/panels/champ_select_view.css`, have
+a cascade-preserving split plan (contiguous cuts imported in order) with a
+5-phase UI audit per slice in `docs/WEB_CSS_SPLIT_PLAN.md` (guard
+`tests/test_web_css_split_plan_rm726.py`). No slice has landed.
+
 ---
 
 ## Key gotchas
