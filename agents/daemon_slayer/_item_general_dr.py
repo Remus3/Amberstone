@@ -13,8 +13,9 @@ DR lanes, which are all damage-TYPE-specific and PHYSICAL-ONLY:
   * R77 ``item_crit_dr_multiplier`` (Randuin's Omen - crit damage only),
   * R80 ``item_aa_dr_multiplier`` (Plated Steelcaps - basic-attack damage only),
   * R86 ``item_enemy_as_slow_multiplier`` (Frozen Heart - enemy AS rate only).
-Those three multiply ONLY the physical denominator (``ehp.py`` lines ~1688 /
-~1822). "Blessing" / "Safeguard" are UNTARGETED and reduce physical + magical +
+Those three multiply ONLY the physical denominator (``compute_ehp``'s
+``physical_ehp`` denominator and its nested ``_blend_with_heal`` mirror's
+``p``). "Blessing" / "Safeguard" are UNTARGETED and reduce physical + magical +
 TRUE, so this fold multiplies into ALL THREE per-type denominators - and the
 true-damage credit is what NO R77 / R80 / R86 fold performs. A live probe (Braum
 L13 with Celestial vs the same build without it, R108 / LEDGER) confirmed the

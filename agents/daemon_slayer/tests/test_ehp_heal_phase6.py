@@ -428,9 +428,9 @@ class SpiritVisageAmpTests(unittest.TestCase):
         # The ``shield_any`` / ``shield_phys`` / ``shield_mag`` /
         # ``shield_true`` fields stay PRE-amp for transparency (matching
         # the ``heal_item_total`` / ``heal_lifesteal`` pre-amp convention);
-        # ``shield_amp_mult`` exposes the multiplier; the EHP-math at
-        # ``compute_ehp`` line ~590 applies the amp at the top of the
-        # damage stack. The two amps (heal_amp_mult and shield_amp_mult)
+        # ``shield_amp_mult`` exposes the multiplier; ``compute_ehp``'s
+        # ``shield_*_amped = shield_* * shield_amp_mult`` block applies
+        # the amp at the top of the damage stack. The two amps (heal_amp_mult and shield_amp_mult)
         # are SIBLINGS, not nested - same multiplier value today but
         # conceptually independent fields.
         r_sterak = compute_ehp(

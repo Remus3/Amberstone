@@ -14,8 +14,8 @@ Design (don't re-litigate):
   EhpResult fields stay PRE-amp for transparency, matching the
   ``heal_item_total`` / ``heal_lifesteal`` pre-amp convention.
 * ``shield_amp_mult`` exposes the multiplier alongside ``heal_amp_mult``.
-* The EHP-math at ``compute_ehp`` line ~590 applies the amp at the
-  top of the damage stack:
+* ``compute_ehp``'s ``shield_*_amped = shield_* * shield_amp_mult``
+  block applies the amp at the top of the damage stack:
   ``physical_ehp = (hp + shield_any*amp + shield_phys*amp + heal_total) / ...``
 * The two amps (heal + shield) are SIBLINGS at the EHP-math top of
   the stack, NOT nested - heal_total is amped exactly once (via the
@@ -295,9 +295,11 @@ class EhpResultShieldAmpFieldsTests(unittest.TestCase):
 class NoDoubleAmpTests(unittest.TestCase):
     """Heal_total and shield_any are SIBLINGS at the EHP-math top of the
     stack, NOT nested. A BT + SV build has heal amped exactly once
-    (Phase 6 wire at line ~583) and shield amped exactly once (Phase
-    6.5 wire at line ~590) - neither contribution is amped 1.5625
-    (1.25 squared).
+    (the Phase 6 wire, ``compute_ehp``'s
+    ``heal_total = (...) * heal_amp_mult``) and shield amped exactly
+    once (the Phase 6.5 wire, its
+    ``shield_*_amped = shield_* * shield_amp_mult`` block) - neither
+    contribution is amped 1.5625 (1.25 squared).
     """
 
     def setUp(self) -> None:

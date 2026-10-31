@@ -4,8 +4,10 @@ Shadowflame's "Cinderbloom" passive amplifies the wielder's MAGIC and TRUE damag
 against a target below 40% health - "Magic and true damage Critically Strikes
 enemies below 40% Health, dealing 20% increased damage" (DDragon 16.13.1). The
 engine models Shadowflame's 15 flat magic pen but NOT this low-HP gate:
-``_effects_data.py`` self-documents the omission on both ids ("Cinderbloom magic
-crit <40% HP (low-HP gate not modeled)", lines ~1035 / ~3778), and no
+``_effects_data.py`` self-documents the omission on the SR id
+(``ITEM_EFFECTS["4645"]`` note: "Cinderbloom magic crit <40% HP (low-HP gate
+not modeled)"; the Arena ``ITEM_EFFECTS["224645"]`` note now records only its
+pen, 10 flat against the SR 15), and no
 magic-crit / can-crit path exists anywhere in ``agents/daemon_slayer/``. A live
 delta==0 probe (Xerath L11 + [4645], SR) confirmed ``total_burst_damage`` is
 byte-identical at target ``hp_pct`` 0.41 vs 0.39 today - the +20% never fires.
