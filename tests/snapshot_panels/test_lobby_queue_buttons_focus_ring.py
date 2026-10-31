@@ -147,6 +147,12 @@ def _open(pw_browser, mock_server, lcu):
         "  return b && !b.disabled; })()",
         timeout=15_000,
     )
+    # The queue buttons transition their colours, so an in-page theme flip
+    # followed by a ring / surface read would straddle it (RM-1132 audit,
+    # tests/snapshot_panels/test_theme_swap_reads_settled.py).
+    page.add_style_tag(
+        content="*, *::before, *::after { transition: none !important; }"
+    )
     return ctx, page, errors
 
 

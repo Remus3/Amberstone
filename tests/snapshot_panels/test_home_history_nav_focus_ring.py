@@ -163,6 +163,12 @@ def _open(pw_browser, mock_server, view):
         )
     page.evaluate("document.fonts.ready.then(() => true)")
     page.wait_for_timeout(300)
+    # The tiles and tabs transition their colours, so an in-page theme flip
+    # followed by a ring / surface read would straddle it (RM-1132 audit,
+    # tests/snapshot_panels/test_theme_swap_reads_settled.py).
+    page.add_style_tag(
+        content="*, *::before, *::after { transition: none !important; }"
+    )
     page.keyboard.press("Shift")  # keyboard modality for :focus-visible
     return ctx, page, errors
 

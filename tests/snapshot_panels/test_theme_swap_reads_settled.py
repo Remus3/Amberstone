@@ -38,13 +38,29 @@ plus the focus / blur its ring reads use; the in-page swaps run as well:
   - test_champ_select_lock_button_focus: #csv-lock-btn DOES transition
     box-shadow on focus ("transition: 0.15s", all properties); settled only
     because both of its reads await getAnimations().finished.
-This module pins all fifteen verdicts at runtime with each test's own opener,
+Audit (2026-10-31, s145 L7 merger, the same detector), the six s144 uiux
+modules landed in L7:
+  - test_champ_select_arena_pane_contrast, test_champ_select_enemy_wr_slot_
+    contrast, test_champ_select_enemy_wr_slot_stale_cue: boot-stamped
+    (?theme=), no sheet, and none needed - nothing they read transitions on
+    boot or swap.
+  - test_champ_select_arena_augment_options: boot-stamped, never swaps
+    in-page (an in-page swap DOES transition the rows' background and
+    border); the option rows DO transition box-shadow on focus; settled only
+    because its ring read awaits getAnimations().finished.
+  - test_home_history_nav_focus_ring, test_lobby_queue_buttons_focus_ring:
+    flip data-theme in-page, and the Home tiles, History tabs and Lobby
+    queue buttons DO transition their colours, so the ring / surface reads
+    straddled the swap; settled now because both openers add the sheet
+    (added by the L7 merger with this audit).
+This module pins all twenty-one verdicts at runtime with each test's own opener,
 so a new transition on a no-sheet surface, or the sheet dropped from a
 shared opener, fails HERE with the element and property named. The fix is
 the sheet in that test's opener, not a sleep. The inventory test keeps the
 list complete: a new snapshot test that swaps the theme and reads computed
 style must be added below.
 """
+import copy
 import re
 from pathlib import Path
 
@@ -54,6 +70,18 @@ from tests.snapshot_panels.conftest import _WS_STUB
 from tests.snapshot_panels.test_am_call_eyebrow_contrast import _EXPECT_LINES
 from tests.snapshot_panels.test_am_call_eyebrow_contrast import (
     _THEMES as _EYEBROW_THEMES,
+)
+from tests.snapshot_panels.test_champ_select_arena_augment_options import (
+    _OPT as _AUG_OPT,
+)
+from tests.snapshot_panels.test_champ_select_arena_augment_options import (
+    _SILVER as _AUG_SILVER,
+)
+from tests.snapshot_panels.test_champ_select_arena_augment_options import (
+    _fixture as _aug_fixture,
+)
+from tests.snapshot_panels.test_champ_select_arena_augment_options import (
+    _open as _aug_open,
 )
 from tests.snapshot_panels.test_champ_select_lock_button_focus import (
     _BTN as _LOCK_BTN,
@@ -80,9 +108,24 @@ from tests.snapshot_panels.test_ds_knob_inputs_focus_ring import _DSK, _DSS
 from tests.snapshot_panels.test_ds_knob_inputs_focus_ring import (
     _open as _knob_open,
 )
+from tests.snapshot_panels.test_home_history_nav_focus_ring import (
+    TABS as _HISTORY_TABS,
+)
+from tests.snapshot_panels.test_home_history_nav_focus_ring import (
+    TILES as _HOME_TILES,
+)
+from tests.snapshot_panels.test_home_history_nav_focus_ring import (
+    _open as _nav_open,
+)
 from tests.snapshot_panels.test_lm_hero_stats_disclosure import _SEL as _LM_SEL
 from tests.snapshot_panels.test_lm_hero_stats_disclosure import (
     _open as _lm_open,
+)
+from tests.snapshot_panels.test_lobby_queue_buttons_focus_ring import (
+    _POLL_LCU as _LQ_LCU,
+)
+from tests.snapshot_panels.test_lobby_queue_buttons_focus_ring import (
+    _open as _lq_open,
 )
 from tests.snapshot_panels.test_settings_checkbox_hit_targets import (
     _open as _settings_open,
@@ -98,16 +141,22 @@ from tests.snapshot_panels.test_user_builds_rune_tabs import _open as _ub_open
 
 _HERE = Path(__file__).resolve().parent
 
-# The fifteen modules audited above, keyed by file name.
+# The twenty-one modules audited above, keyed by file name.
 _COVERED = {
     "test_am_call_eyebrow_contrast.py",
+    "test_champ_select_arena_augment_options.py",
+    "test_champ_select_arena_pane_contrast.py",
+    "test_champ_select_enemy_wr_slot_contrast.py",
+    "test_champ_select_enemy_wr_slot_stale_cue.py",
     "test_champ_select_lock_button_focus.py",
     "test_ds_cards_muted_text_contrast.py",
     "test_ds_combo_controls_hit_floor.py",
     "test_ds_knob_inputs_focus_ring.py",
     "test_ds_matchup_text_contrast.py",
+    "test_home_history_nav_focus_ring.py",
     "test_lm_hero_stats_disclosure.py",
     "test_lobby_mains_tabs.py",
+    "test_lobby_queue_buttons_focus_ring.py",
     "test_panel_visibility_tab_selected_state.py",
     "test_settings_checkbox_hit_targets.py",
     "test_tab_bars_selected_state.py",
@@ -314,9 +363,48 @@ def _matchup_open(mock_server, pw_browser, theme):
     return ctx, page, []
 
 
+def _cs_boot_open(mode, ready):
+    # test_champ_select_arena_pane_contrast, test_champ_select_enemy_wr_slot_
+    # contrast and test_champ_select_enemy_wr_slot_stale_cue boot inline: the
+    # same URL, viewport and ready element, kept in step with them by hand.
+    def opener(mock_server, pw_browser, theme):
+        mock_server._store["data"] = {}
+        ctx = pw_browser.new_context(
+            ignore_https_errors=True, viewport={"width": 1920, "height": 1080}
+        )
+        page = ctx.new_page()
+        page.add_init_script(_WS_STUB)
+        page.goto(
+            mock_server.url + f"/?ui_mock=1&mode={mode}&theme={theme}#champ-select",
+            wait_until="domcontentloaded", timeout=15_000,
+        )
+        page.wait_for_function(ready, timeout=10_000)
+        return ctx, page, []
+    return opener
+
+
 # The boot-theme modules: (opener(mock_server, pw_browser, theme), the
 # elements they read, whether they read after focus()).
 _BOOT = {
+    "arena duo tag and augment title": (
+        _cs_boot_open(
+            "arena",
+            "!!(document.querySelector('#view-champ-select .csv-duo-row')"
+            " && document.querySelector("
+            "'#view-champ-select .csv-augment-options .csv-augments-title'))",
+        ),
+        "#view-champ-select .csv-duo-cell-tag,"
+        " #view-champ-select .csv-augment-options .csv-augments-title",
+        False,
+    ),
+    "sr enemy win-rate slot": (
+        _cs_boot_open(
+            "sr",
+            "!!document.querySelector("
+            "'#view-champ-select #csv-enemies-list .csv-enemy-wr-slot')",
+        ),
+        "#view-champ-select #csv-enemies-list .csv-enemy-wr-slot", False,
+    ),
     "ds combo controls": (
         lambda ms, pw, t: _combo_open(ms, pw, "sr", t),
         f"{_COMBO_INPUT}, {_COMBO_SELECT}", True,
@@ -386,6 +474,55 @@ def test_lock_button_reads_wait_out_its_transition(mock_server, pw_browser, them
     assert "await Promise.all(b.getAnimations().map((x) => x.finished));" in (
         _LOCK_READ_BTN
     ), "the pending-lock read no longer waits out the transition"
+
+
+@pytest.mark.parametrize("theme", _THEMES)
+def test_augment_option_reads_wait_out_their_transition(mock_server, pw_browser, theme):
+    # The Arena augment option rows are settled at boot and across swaps, but
+    # their box-shadow DOES transition on focus, so the focused-ring read in
+    # test_champ_select_arena_augment_options must await it.
+    ctx, page, _errors = _aug_open(mock_server, pw_browser, _aug_fixture(_AUG_SILVER), theme)
+    try:
+        assert page.evaluate(
+            "document.documentElement.dataset.theme || 'hextech'"
+        ) == theme, f"booted on the wrong theme, not {theme}"
+        page.keyboard.press("Shift")
+        # Only the boot this module depends on: it never swaps in-page (an
+        # in-page swap here does transition the rows' background and border).
+        _check(page, _AUG_OPT, False, f"augment options/{theme}", themes=[theme])
+        got = page.evaluate(_RUNNING, [_AUG_OPT, [theme], True])
+    finally:
+        _close(ctx, page)
+    assert got["n"] >= 1, got
+    assert any("box-shadow" in r for r in got["running"]), (
+        f"{theme}: the augment option focus transition is gone - re-audit "
+        f"test_champ_select_arena_augment_options and update the verdict: {got}"
+    )
+    src = (_HERE / "test_champ_select_arena_augment_options.py").read_text(
+        encoding="utf-8"
+    )
+    assert "await Promise.all(el.getAnimations().map((a) => a.finished));" in src, (
+        "the focused augment option read no longer waits out the box-shadow transition"
+    )
+
+
+@pytest.mark.parametrize("what", ["home tiles", "history tabs", "lobby queue buttons"])
+def test_nav_and_queue_ring_reads_are_settled(mock_server, pw_browser, what):
+    # test_home_history_nav_focus_ring and test_lobby_queue_buttons_focus_ring
+    # flip data-theme in-page and read each control's focus ring after a key
+    # press, with each module's own opener.
+    if what == "lobby queue buttons":
+        ctx, page, _errors = _lq_open(pw_browser, mock_server, copy.deepcopy(_LQ_LCU))
+        sel = ".lobby-view-queue-controls .lq-btn"
+    else:
+        view, sel = (("home", _HOME_TILES) if what == "home tiles"
+                     else ("history", _HISTORY_TABS))
+        ctx, page, _errors = _nav_open(pw_browser, mock_server, view)
+    try:
+        page.keyboard.press("Shift")  # keyboard modality, as the ring reads do
+        _check(page, sel, True, what)
+    finally:
+        _close(ctx, page)
 
 
 def test_positive_control_detects_a_real_transition(mock_server, pw_browser):
