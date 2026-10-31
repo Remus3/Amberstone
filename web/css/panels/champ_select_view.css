@@ -2392,10 +2392,14 @@
   /* Documented operator exception per item 178 ledger (s234): 11px ALLY/ME
    * tag stays below --fs-xs floor because the duo cell is a small
    * fixed-area badge - bumping to 16px wraps to 2 lines and breaks the
-   * compact me + 2 partners row. */
+   * compact me + 2 partners row.
+   * RM-1197: --text-dim, not --text-faint. --text-faint is AA on
+   * --surface only; on this --surface-2 cell "ALLY" measured 4.31-4.48:1
+   * on 4 themes (guard tests/snapshot_panels/
+   * test_champ_select_arena_pane_contrast.py). */
   font-size: 11px;
   font-weight: 700;
-  color: var(--text-faint);
+  color: var(--text-dim);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   margin-top: 2px;
@@ -2435,7 +2439,14 @@
   padding: 8px;
   box-shadow: 0 0 0 1px var(--glow);
 }
-.csv-augment-options .csv-augments-title { color: var(--accent-2); }
+/* RM-1197: the title keeps the box's accent hue but is mixed toward
+ * --text. On ember / bloodmoon / arcane --accent-2 is a deep red or violet
+ * (not the hextech teal) and measured 3.39-3.75:1 as text. The border above
+ * stays pure --accent-2. Guard:
+ * tests/snapshot_panels/test_champ_select_arena_pane_contrast.py. */
+.csv-augment-options .csv-augments-title {
+  color: color-mix(in oklab, var(--accent-2) 65%, var(--text));
+}
 .csv-augments-title {
   font-size: var(--fs-xs);
   font-weight: 700;
