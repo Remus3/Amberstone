@@ -76,8 +76,14 @@ if not "%RC_KEY_EC%"=="10" if not "%RC_KEY_EC%"=="11" (
 )
 set "RC_KEY_EC="
 
-:: Prefer embedded runtime (Option B); fall back to PATH (Option A)
-if exist "%EMBED_PYW%" (
+:: Prefer embedded runtime (Option B); fall back to PATH (Option A). A45b:
+:: only a runtime tools\build_python_embed.py stamped (EMBED_STAMP.json;
+:: every built bundle has one) - a hand-made python-embed can lack half the
+:: lock, so it is named and skipped, never launched.
+set "EMBED_OK="
+if exist "%EMBED_PYW%" if exist "%~dp0python-embed\EMBED_STAMP.json" set "EMBED_OK=1"
+if exist "%EMBED_PYW%" if not defined EMBED_OK echo python-embed has no EMBED_STAMP.json, so it was not built by tools\build_python_embed.py - using pythonw.exe from PATH
+if defined EMBED_OK (
     start "" "%EMBED_PYW%" main.py
 ) else (
     start "" pythonw.exe main.py

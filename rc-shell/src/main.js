@@ -2068,6 +2068,10 @@ function startServiceHost() {
     isPackaged: app.isPackaged,
     parentPid: process.pid,
   });
+  if (Array.isArray(plan.rejected) && plan.rejected.length) {
+    // A45b: {source, reason} only (e.g. embedded / no-stamp), never a path.
+    console.log("[rc-shell] interpreter candidates refused: " + JSON.stringify(plan.rejected));
+  }
   if (!plan.enabled) {
     console.log("[rc-shell] service host not started: " + plan.reason);
     return;

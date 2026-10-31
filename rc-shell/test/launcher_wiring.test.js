@@ -35,11 +35,36 @@ const LOCALAPPDATA = path.join(BASE, "localappdata");
 const DEV_PY = path.join(LOCALAPPDATA, "Programs", "Python", "Python314", "python.exe");
 const OVERRIDE_PY = path.join(BASE, "custom", "python.exe");
 const ORIGIN = "https://127.0.0.1:8888";
+// A45b: the embedded runtime is used only when its build stamp
+// (tools/build_python_embed.py STAMP_NAME) names this tree's lock.
+const STAMP = path.join(ROOT, "python-embed", "EMBED_STAMP.json");
+const LOCK = path.join(ROOT, "requirements.txt");
+const LOCK_TEXT = "anthropic==1.11.0 \\\r\n    --hash=sha256:0123\r\n";
 
 function fakeFs(files) {
   const set = new Set(files);
   return (p) => (set.has(p) ? "file" : null);
 }
+
+function sha256Hex(text) {
+  return require("crypto").createHash("sha256").update(Buffer.from(text, "utf8")).digest("hex");
+}
+
+function stampFor(lockText) {
+  return JSON.stringify({
+    tool: "tools/build_python_embed.py",
+    cpython: { version: "3.14.4" },
+    requirements_sha256: sha256Hex(lockText),
+  });
+}
+
+// path -> file bytes (Buffer) or null, like the module's default reader.
+function fakeRead(files) {
+  return (p) => (Object.prototype.hasOwnProperty.call(files, p) ? Buffer.from(files[p], "utf8") : null);
+}
+
+const FIT = fakeRead({ [STAMP]: stampFor(LOCK_TEXT), [LOCK]: LOCK_TEXT });
+const UNSTAMPED = fakeRead({ [LOCK]: LOCK_TEXT });
 
 // ---- profile + opt-out ---------------------------------------------------------
 
@@ -74,14 +99,24 @@ test("hostDisabled: --no-host or RC_SHELL_NO_HOST=1 turns the host off, nothing 
 
 // ---- interpreter ----------------------------------------------------------------
 
-test("resolvePython: RC_PYTHON override, then the embedded runtime, then (dev only) the canonical one", () => {
+test("resolvePython: RC_PYTHON, then a checkout takes the canonical interpreter BEFORE python-embed; packaged = embed only", () => {
   const all = fakeFs([OVERRIDE_PY, EMBED, DEV_PY]);
   const env = { RC_PYTHON: OVERRIDE_PY, LOCALAPPDATA };
-  assert.strictEqual(lch.resolvePython({ root: ROOT, env, isPackaged: true, probe: all }).source, "env");
+  assert.strictEqual(lch.resolvePython({ root: ROOT, env, isPackaged: true, probe: all, read: FIT }).source, "env");
+  assert.strictEqual(lch.resolvePython({ root: ROOT, env, isPackaged: false, probe: all, read: FIT }).source, "env");
   const noOverride = { LOCALAPPDATA };
-  const embedded = lch.resolvePython({ root: ROOT, env: noOverride, isPackaged: true, probe: all });
+  const embedded = lch.resolvePython({ root: ROOT, env: noOverride, isPackaged: true, probe: all, read: FIT });
   assert.strictEqual(embedded.python, EMBED);
   assert.strictEqual(embedded.source, "embedded");
+  // A45b: a checkout launch (dev profile) runs the checkout's canonical
+  // interpreter even when a python-embed (fit or not) sits in the checkout.
+  const checkout = lch.resolvePython({ root: ROOT, env: noOverride, isPackaged: false, probe: all, read: FIT });
+  assert.strictEqual(checkout.python, DEV_PY);
+  assert.strictEqual(checkout.source, "canonical");
+  assert.deepStrictEqual(checkout.rejected, []);
+  const checkoutEmbedOnly = lch.resolvePython({ root: ROOT, env: noOverride, isPackaged: false, probe: fakeFs([EMBED]), read: FIT });
+  assert.strictEqual(checkoutEmbedOnly.source, "embedded", "no canonical: a FIT embed is the checkout fallback");
+  assert.deepStrictEqual(checkoutEmbedOnly.rejected, [{ source: "canonical", reason: "missing" }]);
   const devOnly = fakeFs([DEV_PY]);
   assert.strictEqual(lch.resolvePython({ root: ROOT, env: noOverride, isPackaged: false, probe: devOnly }).python, DEV_PY);
   const packagedNone = lch.resolvePython({ root: ROOT, env: noOverride, isPackaged: true, probe: devOnly });
@@ -89,11 +124,67 @@ test("resolvePython: RC_PYTHON override, then the embedded runtime, then (dev on
   assert.strictEqual(packagedNone.reason, "no-interpreter");
 });
 
+test("resolvePython: an unstamped python-embed (the s146 stale 3.11 runtime) is refused by name, never picked", () => {
+  const noOverride = { LOCALAPPDATA };
+  const packaged = lch.resolvePython({ root: ROOT, env: noOverride, isPackaged: true, probe: fakeFs([EMBED]), read: UNSTAMPED });
+  assert.strictEqual(packaged.python, null);
+  assert.strictEqual(packaged.reason, "no-interpreter");
+  assert.deepStrictEqual(packaged.rejected, [{ source: "embedded", reason: "no-stamp" }]);
+  const checkout = lch.resolvePython({ root: ROOT, env: noOverride, isPackaged: false, probe: fakeFs([EMBED]), read: UNSTAMPED });
+  assert.strictEqual(checkout.python, null, "a checkout with no canonical interpreter does not fall to a stale embed");
+  assert.deepStrictEqual(checkout.rejected, [
+    { source: "canonical", reason: "missing" },
+    { source: "embedded", reason: "no-stamp" },
+  ]);
+});
+
+test("resolvePython: an embed built from another lock, a malformed stamp or a missing lock is refused", () => {
+  const env = { LOCALAPPDATA };
+  const probe = fakeFs([EMBED]);
+  const cases = [
+    [{ [STAMP]: stampFor("anthropic==0.94.1\n"), [LOCK]: LOCK_TEXT }, "stale-lock"],
+    [{ [STAMP]: stampFor(LOCK_TEXT.replace(/\r\n/g, "\n")), [LOCK]: LOCK_TEXT }, "stale-lock"],
+    [{ [STAMP]: "not json", [LOCK]: LOCK_TEXT }, "bad-stamp"],
+    [{ [STAMP]: JSON.stringify({ requirements_sha256: "abc" }), [LOCK]: LOCK_TEXT }, "bad-stamp"],
+    [{ [STAMP]: JSON.stringify([sha256Hex(LOCK_TEXT)]), [LOCK]: LOCK_TEXT }, "bad-stamp"],
+    [{ [STAMP]: stampFor(LOCK_TEXT) }, "no-lock"],
+  ];
+  for (const [files, reason] of cases) {
+    const r = lch.resolvePython({ root: ROOT, env, isPackaged: true, probe, read: fakeRead(files) });
+    assert.strictEqual(r.python, null, reason);
+    assert.deepStrictEqual(r.rejected, [{ source: "embedded", reason }]);
+  }
+});
+
+test("embedFitness: ok only for a python.exe whose stamp hashes this root's requirements.txt bytes", () => {
+  assert.deepStrictEqual(lch.embedFitness({ root: ROOT, probe: fakeFs([EMBED]), read: FIT }), { fit: true, reason: "ok" });
+  assert.deepStrictEqual(lch.embedFitness({ root: ROOT, probe: fakeFs([]), read: FIT }), { fit: false, reason: "missing" });
+  assert.deepStrictEqual(lch.embedFitness({ root: "relative", probe: fakeFs([EMBED]), read: FIT }), { fit: false, reason: "no-root" });
+  assert.strictEqual(lch.EMBED_STAMP_NAME, "EMBED_STAMP.json", "tools/build_python_embed.py STAMP_NAME");
+});
+
+test("embedFitness: the default reader hashes the real files byte-for-byte (CRLF kept)", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "rc-a45b-"));
+  try {
+    fs.mkdirSync(path.join(dir, "python-embed"));
+    fs.writeFileSync(path.join(dir, "python-embed", "python.exe"), "");
+    fs.writeFileSync(path.join(dir, "requirements.txt"), Buffer.from(LOCK_TEXT, "utf8"));
+    fs.writeFileSync(path.join(dir, "python-embed", "EMBED_STAMP.json"), stampFor(LOCK_TEXT));
+    assert.deepStrictEqual(lch.embedFitness({ root: dir }), { fit: true, reason: "ok" });
+    fs.writeFileSync(path.join(dir, "requirements.txt"), Buffer.from(LOCK_TEXT.replace(/\r\n/g, "\n"), "utf8"));
+    assert.deepStrictEqual(lch.embedFitness({ root: dir }), { fit: false, reason: "stale-lock" });
+    fs.unlinkSync(path.join(dir, "python-embed", "EMBED_STAMP.json"));
+    assert.deepStrictEqual(lch.embedFitness({ root: dir }), { fit: false, reason: "no-stamp" });
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("resolvePython: a relative or missing RC_PYTHON is refused, not trusted", () => {
-  const r = lch.resolvePython({ root: ROOT, env: { RC_PYTHON: "python.exe" }, isPackaged: true, probe: fakeFs([EMBED]) });
+  const r = lch.resolvePython({ root: ROOT, env: { RC_PYTHON: "python.exe" }, isPackaged: true, probe: fakeFs([EMBED]), read: FIT });
   assert.strictEqual(r.source, "embedded");
   assert.deepStrictEqual(r.rejected, [{ source: "env", reason: "not-absolute" }]);
-  const m = lch.resolvePython({ root: ROOT, env: { RC_PYTHON: OVERRIDE_PY }, isPackaged: true, probe: fakeFs([EMBED]) });
+  const m = lch.resolvePython({ root: ROOT, env: { RC_PYTHON: OVERRIDE_PY }, isPackaged: true, probe: fakeFs([EMBED]), read: FIT });
   assert.deepStrictEqual(m.rejected, [{ source: "env", reason: "missing" }]);
 });
 
@@ -101,7 +192,7 @@ test("resolvePython: a relative or missing RC_PYTHON is refused, not trusted", (
 
 test("hostLaunchPlan: the documented argv (-I, the host script, root, profile, parent pid)", () => {
   const plan = lch.hostLaunchPlan({
-    root: ROOT, isPackaged: true, env: {}, argv: [], parentPid: 4242, probe: fakeFs([HOST, EMBED]),
+    root: ROOT, isPackaged: true, env: {}, argv: [], parentPid: 4242, probe: fakeFs([HOST, EMBED]), read: FIT,
   });
   assert.strictEqual(plan.enabled, true);
   assert.strictEqual(plan.command, EMBED);
@@ -111,7 +202,7 @@ test("hostLaunchPlan: the documented argv (-I, the host script, root, profile, p
 });
 
 test("hostLaunchPlan: each missing piece disables the host with a reason (the shell then runs as before)", () => {
-  const base = { isPackaged: true, env: {}, argv: [], parentPid: 1 };
+  const base = { isPackaged: true, env: {}, argv: [], parentPid: 1, read: FIT };
   assert.strictEqual(lch.hostLaunchPlan(Object.assign({}, base, { root: null, probe: fakeFs([]) })).reason, "no-root");
   assert.strictEqual(lch.hostLaunchPlan(Object.assign({}, base, { root: ROOT, probe: fakeFs([EMBED]) })).reason, "no-host-script");
   assert.strictEqual(lch.hostLaunchPlan(Object.assign({}, base, { root: ROOT, probe: fakeFs([HOST]) })).reason, "no-interpreter");
@@ -140,8 +231,27 @@ test("hostLaunchPlan: a checkout launch starts the host only when a profile is n
 });
 
 test("hostLaunchPlan: a bogus parent pid is left out instead of passed through", () => {
-  const plan = lch.hostLaunchPlan({ root: ROOT, isPackaged: true, env: {}, argv: [], parentPid: -3, probe: fakeFs([HOST, EMBED]) });
+  const plan = lch.hostLaunchPlan({ root: ROOT, isPackaged: true, env: {}, argv: [], parentPid: -3, probe: fakeFs([HOST, EMBED]), read: FIT });
   assert.ok(!plan.args.includes("--parent-pid"));
+});
+
+test("hostLaunchPlan: a --profile dev checkout launch beside a stale python-embed runs the canonical interpreter (A45b)", () => {
+  const env = { LOCALAPPDATA };
+  const argv = ["electron", ".", "--profile", "dev"];
+  const dev = lch.hostLaunchPlan({ root: ROOT, isPackaged: false, env, argv, parentPid: 9, probe: fakeFs([HOST, EMBED, DEV_PY]), read: UNSTAMPED });
+  assert.strictEqual(dev.enabled, true);
+  assert.strictEqual(dev.command, DEV_PY);
+  assert.strictEqual(dev.pythonSource, "canonical");
+  assert.deepStrictEqual(dev.rejected, []);
+  const stale = lch.hostLaunchPlan({ root: ROOT, isPackaged: true, env: {}, argv: [], parentPid: 9, probe: fakeFs([HOST, EMBED]), read: UNSTAMPED });
+  assert.strictEqual(stale.enabled, false);
+  assert.strictEqual(stale.reason, "no-interpreter");
+  assert.deepStrictEqual(stale.rejected, [{ source: "embedded", reason: "no-stamp" }]);
+  const warned = lch.hostLaunchPlan({
+    root: ROOT, isPackaged: true, env: { RC_PYTHON: "python.exe" }, argv: [], parentPid: 9, probe: fakeFs([HOST, EMBED]), read: FIT,
+  });
+  assert.strictEqual(warned.enabled, true);
+  assert.deepStrictEqual(warned.rejected, [{ source: "env", reason: "not-absolute" }], "an enabled plan still carries its refusals");
 });
 
 test("bundledBackendDir: <resources>/backend, never inside an asar", () => {
@@ -409,6 +519,14 @@ test("main.js: the service host is spawned from the pure plan, windowless, with 
   assert.ok(body.includes("windowsHide: true"), "no console window");
   assert.ok(/stdio:\s*\[\s*"pipe"/.test(body), "stdin is the quit channel");
   assert.ok(MAIN_SRC.includes("startServiceHost();"), "called at launch");
+});
+
+test("main.js: every refused interpreter candidate is logged (source + reason only), started or not (A45b)", () => {
+  const body = fnBody("startServiceHost");
+  const logAt = body.indexOf("interpreter candidates refused");
+  assert.ok(logAt >= 0, "a named log line for the refusals");
+  assert.ok(logAt < body.indexOf("if (!plan.enabled)"), "logged before the disabled early return, so a stale embed is never silent");
+  assert.ok(/plan\.rejected/.test(body.slice(0, body.indexOf("if (!plan.enabled)"))), "the plan's own refusals are what is logged");
 });
 
 test("main.js: quit stops the host first (stop line, bounded grace, then kill)", () => {

@@ -15,13 +15,25 @@
 // Nothing here starts anything at login or boot (PACKAGING_PLAN intent 3).
 //
 // Backend root: rc_root.resolveRcRoot (argv --rc-root, env RC_ROOT, the
-// packaged resources/backend, the dev checkout). Interpreter precedence:
+// packaged resources/backend, the dev checkout). Interpreter precedence
+// (A45b, s146 - PACKAGING_PLAN 3.5 "linked-checkout mode may still point at
+// the canonical dev interpreter"; S12 the shipped runtime is built from the
+// hashed lock):
 //   1. RC_PYTHON           an absolute path to an existing interpreter
-//   2. embedded            <root>/python-embed/python.exe (PKG-4 bundle)
-//   3. canonical (dev)     %LOCALAPPDATA%/Programs/Python/Python314/python.exe,
-//                          ONLY for a checkout launch (isPackaged false): a
-//                          packaged build never falls back to whatever
-//                          interpreter the machine happens to have.
+//   checkout launch (isPackaged false):
+//   2. canonical           %LOCALAPPDATA%/Programs/Python/Python314/python.exe
+//                          (CLAUDE.md "Paths"), the interpreter the checkout's
+//                          tests and tasks run
+//   3. embedded            <root>/python-embed/python.exe, only when FIT
+//   packaged launch:
+//   2. embedded            <root>/python-embed/python.exe (PKG-4 bundle), only
+//                          when FIT; a packaged build never falls back to
+//                          whatever interpreter the machine happens to have.
+// FIT (embedFitness): python-embed/EMBED_STAMP.json, written by
+// tools/build_python_embed.py, names the SHA-256 of THIS root's
+// requirements.txt. An unstamped or other-lock runtime (s146: a hand-made
+// 3.11.9 embed from April, missing half the lock) is refused by name in
+// `rejected`, which main.js logs - never picked silently.
 // Profile: --profile=<p> > RC_LAUNCHER_PROFILE > packaged when packaged, dev
 // for a checkout launch (dev keeps the wildcard :8888 bind the tailnet view
 // needs, PACKAGING_PLAN V3). Opt-out: --no-host or RC_SHELL_NO_HOST=1 - the
@@ -40,6 +52,7 @@
 
 const path = require("path");
 const fs = require("fs");
+const crypto = require("crypto");
 const nav = require("./nav_guard");
 const svc = require("./service_status");
 
@@ -52,6 +65,12 @@ const PYTHON_ENV = "RC_PYTHON";
 
 const HOST_SCRIPT = Object.freeze(["ops", "launcher", "service_host.py"]);
 const EMBED_PYTHON = Object.freeze(["python-embed", "python.exe"]);
+// tools/build_python_embed.py STAMP_NAME; its requirements_sha256 is the
+// hex SHA-256 of the requirements.txt bytes the runtime was built from.
+const EMBED_STAMP_NAME = "EMBED_STAMP.json";
+const EMBED_STAMP = Object.freeze(["python-embed", EMBED_STAMP_NAME]);
+const EMBED_LOCK = Object.freeze(["requirements.txt"]);
+const MAX_EMBED_READ_BYTES = 8 * 1024 * 1024;
 // Under %LOCALAPPDATA%: the canonical dev interpreter (CLAUDE.md "Paths").
 const DEV_PYTHON = Object.freeze(["Programs", "Python", "Python314", "python.exe"]);
 // electron-builder.yml extraResources `to:` - resources/<this>.
@@ -164,7 +183,74 @@ function resolveProfile(opts) {
   return { profile: o.isPackaged === false ? "dev" : "packaged", source: "default", rejected };
 }
 
-// {python, source, reason, rejected}: source "env" | "embedded" | "canonical".
+// A regular file's bytes (Buffer), or null: missing, not a file, too big or
+// unreadable.
+function defaultRead(p) {
+  try {
+    const st = fs.statSync(p);
+    if (!st.isFile() || st.size > MAX_EMBED_READ_BYTES) {
+      return null;
+    }
+    return fs.readFileSync(p);
+  } catch (_e) {
+    return null;
+  }
+}
+
+function readerOf(read) {
+  const rd = typeof read === "function" ? read : defaultRead;
+  return (p) => {
+    try {
+      const v = rd(p);
+      if (Buffer.isBuffer(v)) {
+        return v;
+      }
+      return typeof v === "string" ? Buffer.from(v, "utf8") : null;
+    } catch (_e) {
+      return null;
+    }
+  };
+}
+
+// Is <root>/python-embed fit to run THIS root? {fit, reason}; reason "ok" |
+// "no-root" | "missing" (no python.exe) | "no-stamp" | "bad-stamp" |
+// "no-lock" | "stale-lock" (built from another requirements.txt). opts:
+// root, probe (path -> "file" | ...), read (path -> Buffer | null).
+function embedFitness(opts) {
+  const o = opts && typeof opts === "object" ? opts : {};
+  if (!isAbsLocal(o.root)) {
+    return { fit: false, reason: "no-root" };
+  }
+  const root = path.resolve(o.root.trim());
+  if (probeOf(o.probe)(path.join(root, ...EMBED_PYTHON)) !== "file") {
+    return { fit: false, reason: "missing" };
+  }
+  const read = readerOf(o.read);
+  const raw = read(path.join(root, ...EMBED_STAMP));
+  if (raw === null) {
+    return { fit: false, reason: "no-stamp" };
+  }
+  let stamp = null;
+  try {
+    stamp = JSON.parse(raw.toString("utf8"));
+  } catch (_e) {
+    stamp = null;
+  }
+  const want = stamp && typeof stamp === "object" && !Array.isArray(stamp) ? stamp.requirements_sha256 : null;
+  if (typeof want !== "string" || !/^[0-9a-f]{64}$/i.test(want)) {
+    return { fit: false, reason: "bad-stamp" };
+  }
+  const lock = read(path.join(root, ...EMBED_LOCK));
+  if (lock === null) {
+    return { fit: false, reason: "no-lock" };
+  }
+  const have = crypto.createHash("sha256").update(lock).digest("hex");
+  return have === want.toLowerCase() ? { fit: true, reason: "ok" } : { fit: false, reason: "stale-lock" };
+}
+
+// {python, source, reason, rejected}: source "env" | "canonical" | "embedded".
+// opts: root, env, isPackaged, probe, read. `rejected` holds {source, reason}
+// only - never a path (main.js logs it).
 function resolvePython(opts) {
   const o = opts && typeof opts === "object" ? opts : {};
   const env = o.env && typeof o.env === "object" ? o.env : {};
@@ -180,16 +266,20 @@ function resolvePython(opts) {
       return { python: path.resolve(override), source: "env", reason: "ok", rejected };
     }
   }
-  if (isAbsLocal(o.root)) {
-    const embedded = path.join(o.root, ...EMBED_PYTHON);
-    if (probe(embedded) === "file") {
-      return { python: embedded, source: "embedded", reason: "ok", rejected };
-    }
-  }
   if (o.isPackaged === false && isAbsLocal(env.LOCALAPPDATA)) {
     const canonical = path.join(env.LOCALAPPDATA.trim(), ...DEV_PYTHON);
     if (probe(canonical) === "file") {
       return { python: canonical, source: "canonical", reason: "ok", rejected };
+    }
+    rejected.push({ source: "canonical", reason: "missing" });
+  }
+  if (isAbsLocal(o.root)) {
+    const fit = embedFitness({ root: o.root, probe: o.probe, read: o.read });
+    if (fit.fit) {
+      return { python: path.join(path.resolve(o.root.trim()), ...EMBED_PYTHON), source: "embedded", reason: "ok", rejected };
+    }
+    if (fit.reason !== "missing") {
+      rejected.push({ source: "embedded", reason: fit.reason });
     }
   }
   return { python: null, source: null, reason: "no-interpreter", rejected };
@@ -201,7 +291,8 @@ function bundledBackendDir(resourcesPath) {
 }
 
 // The host spawn, or {enabled: false, reason}. opts: root, argv, env,
-// isPackaged, parentPid, probe.
+// isPackaged, parentPid, probe, read. Both shapes carry the interpreter
+// refusals in `rejected` once the interpreter was resolved.
 function hostLaunchPlan(opts) {
   const o = opts && typeof opts === "object" ? opts : {};
   const off = hostDisabled(o);
@@ -217,7 +308,7 @@ function hostLaunchPlan(opts) {
   if (probe(script) !== "file") {
     return { enabled: false, reason: "no-host-script" };
   }
-  const py = resolvePython({ root, env: o.env, isPackaged: o.isPackaged, probe: o.probe });
+  const py = resolvePython({ root, env: o.env, isPackaged: o.isPackaged, probe: o.probe, read: o.read });
   if (!py.python) {
     return { enabled: false, reason: py.reason, rejected: py.rejected };
   }
@@ -242,6 +333,7 @@ function hostLaunchPlan(opts) {
     profile: prof.profile,
     profileSource: prof.source,
     pythonSource: py.source,
+    rejected: py.rejected,
   };
 }
 
@@ -490,6 +582,9 @@ module.exports = {
   PYTHON_ENV,
   HOST_SCRIPT,
   EMBED_PYTHON,
+  EMBED_STAMP_NAME,
+  EMBED_STAMP,
+  EMBED_LOCK,
   DEV_PYTHON,
   BUNDLED_BACKEND_DIR,
   DASH_TOKEN_FILE,
@@ -506,6 +601,7 @@ module.exports = {
   argValue,
   hostDisabled,
   resolveProfile,
+  embedFitness,
   resolvePython,
   bundledBackendDir,
   hostLaunchPlan,

@@ -222,9 +222,16 @@ def main() -> int:
     embed_py  = _PROJECT_ROOT / "python-embed" / "python.exe"
     embed_pyw = _PROJECT_ROOT / "python-embed" / "pythonw.exe"
     embed_present = embed_py.exists() and embed_pyw.exists()
+    # A45b: start.bat, scripts/restart_clean.bat and the shell launcher use
+    # the runtime only when tools/build_python_embed.py stamped it.
+    embed_stamped = embed_present and (_PROJECT_ROOT / "python-embed" / "EMBED_STAMP.json").is_file()
     if embed_present:
         _ok("python-embed/python.exe present",  str(embed_py))
         _ok("python-embed/pythonw.exe present", str(embed_pyw))
+        if not embed_stamped:
+            _warn("python-embed/ has no EMBED_STAMP.json (not built by tools/build_python_embed.py)",
+                  "the launchers skip it and use PATH Python; rebuild it with "
+                  "tools/build_python_embed.py")
         try:
             import subprocess as _sp_emb
             r_emb = _sp_emb.run(
@@ -243,7 +250,7 @@ def main() -> int:
 
     # -- pythonw.exe availability (required for GUI launch) ------------------
     print("\n[GUI Launcher (pythonw.exe)]")
-    if embed_present:
+    if embed_stamped:
         # Option B: use embedded pythonw.exe for launch
         _ok("embedded pythonw.exe available (Option B)", str(embed_pyw))
         _info("start.bat will use python-embed/pythonw.exe (Option B path)")

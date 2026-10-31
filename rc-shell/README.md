@@ -71,8 +71,13 @@ applies them.
 - **Backend root**: `--rc-root <dir>` > `RC_ROOT` > the packaged
   `resources/backend` > this checkout (`src/rc_root.js`). The hotkey signal
   files (Ctrl+Shift+A / B / O) are read under `<root>/ops/runtime`.
-- **Interpreter**: `RC_PYTHON` (absolute) > `<root>/python-embed/python.exe` >
-  (checkout launch only) `%LOCALAPPDATA%\Programs\Python\Python314\python.exe`.
+- **Interpreter**: `RC_PYTHON` (absolute) first. A checkout launch then takes
+  `%LOCALAPPDATA%\Programs\Python\Python314\python.exe`, then a FIT
+  `<root>/python-embed/python.exe`; a packaged launch takes only a FIT
+  `python-embed` (never a machine interpreter). FIT = its `EMBED_STAMP.json`
+  (written by `tools/build_python_embed.py`) names the SHA-256 of
+  `<root>/requirements.txt`; an unstamped or other-lock runtime is refused and
+  logged as `interpreter candidates refused` (A45b, s146).
 - **TLS**: an https origin is trusted only when it presents the install's own
   leaf, `<root>/ops/tls/rc.pem` (SHA-256 pin, re-read on a miss so a renewed
   leaf needs no relaunch; expiry is not checked). With no pin file, normal

@@ -18,7 +18,12 @@ echo Killing old processes...
 "%SystemRoot%\System32\timeout.exe" /t 2 /nobreak >nul
 
 echo Starting Amberstone...
-if exist "%EMBED_PYW%" (
+:: A45b: the embedded runtime only when tools\build_python_embed.py stamped it
+:: (EMBED_STAMP.json); a hand-made python-embed is named and skipped.
+set "EMBED_OK="
+if exist "%EMBED_PYW%" if exist "%RC_ROOT%\python-embed\EMBED_STAMP.json" set "EMBED_OK=1"
+if exist "%EMBED_PYW%" if not defined EMBED_OK echo python-embed has no EMBED_STAMP.json, so it was not built by tools\build_python_embed.py - using pythonw.exe from PATH
+if defined EMBED_OK (
     start "" "%EMBED_PYW%" "%RC_ROOT%\main.py"
 ) else (
     start "" pythonw.exe "%RC_ROOT%\main.py"

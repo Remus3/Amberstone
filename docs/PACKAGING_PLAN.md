@@ -397,6 +397,15 @@ Rejected: "Python required". Asking a user to install 3.14, run pip against
 a hashed lock and fix PATH is exactly the wiring intent 1 removes.
 Linked-checkout mode may still point at the canonical dev interpreter.
 
+A45b (s146): a checkout launch (`--profile dev`) now takes the canonical dev
+interpreter BEFORE any `python-embed`, and every launch (shell, `start.bat`,
+`scripts/restart_clean.bat`) uses a `python-embed` only when
+`tools/build_python_embed.py` stamped it (`EMBED_STAMP.json`; the shell also
+checks the stamp's `requirements_sha256` against the root's lock). Found when
+the cutover's dev launch resolved the checkout's hand-made April 3.11.9 embed
+(no stamp, half the lock missing). `rc-shell/src/launcher.js`
+`embedFitness` / `resolvePython`.
+
 ### 3.6 First run on a fresh machine
 
 - Packaged profile binds the dashboard to loopback and serves plain HTTP
