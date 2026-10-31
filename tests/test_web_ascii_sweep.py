@@ -1821,7 +1821,26 @@ _WEB = _REPO_ROOT / "web"
 # MERGED at the s145 L7 landing: the queue lane captured 24b1160f... over
 # e14af6b4...; with the uiux chain above also applied, the merger
 # recomputed the value below on the merged tree.
-_LIVE_HALF_DIGEST = "f6cfc1970bc0cf32a55eac08ec3d968aa45ae88b5764d3ba3072f6ee6551811d"
+# superseded by the RM-967 re-capture below: "f6cfc1970bc0cf32a55eac08ec3d968aa45ae88b5764d3ba3072f6ee6551811d"
+#
+# RE-CAPTURED 2026-10-31 at RM-967 (s144 queue cycle 71). One change rides
+# it: the Post Game Review and historical PGR icon onerror fallback asks the
+# DDragon CDN for <id>.png instead of <id>.png.png - the four
+# _onErrCdnFallback callers in web/js/panels/last_match.js and
+# web/js/panels/historical_pgr.js pass the bare item id / spell key, and
+# each module gains a test-only `__test` export of _itemImgTag /
+# _summonerImgTag for web/js/panels/pgr_cdn_fallback.test.mjs (.mjs is not
+# in _web_sources, so the new test does not ride the digest). Ordinary case,
+# no tokeniser change. ATTRIBUTED BY SUBSTITUTION: swapping exactly those
+# two files back to their lane HEAD d3156e18e blobs (in memory) reproduces
+# the superseded 24b1160f... value EXACTLY; leaving either one out of the
+# swap does not. Those paths are the whole change. No glyph change: the
+# added lines carry 0 non-ASCII bytes. If another slice re-captures in
+# parallel, the merger recomputes.
+# MERGED at the s145 L7 landing: the queue lane captured 2193a3cf... over
+# 24b1160f...; with the uiux chain above also applied, the merger
+# recomputed the value below on the merged tree.
+_LIVE_HALF_DIGEST = "35ecd22d2f1bc2b088a9f7359e1de853cb988713efa999d521e192d6bdd3b16c"
 
 
 def _web_sources() -> list[Path]:

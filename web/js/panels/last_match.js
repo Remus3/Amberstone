@@ -89,7 +89,8 @@ function _ddragonVersion() {
 // the gap between a new patch on DDragon and the next RC-DDragonMirrorRefresh
 // run (daily 03:30).
 function _onErrCdnFallback(ver, kind, id) {
-  // kind = "item" | "spell" - only used to build the CDN url
+  // kind = "item" | "spell" - only used to build the CDN url.
+  // id is the BARE item id / spell key: this appends ".png" itself (RM-967).
   const cdnUrl = `https://ddragon.leagueoflegends.com/cdn/${ver}/img/${kind}/${id}.png`;
   return (
     `if(this.dataset.cdn){this.style.visibility='hidden';}` +
@@ -107,7 +108,7 @@ function _itemImgTag(iid, cls = "", title = "") {
   if (!iid) return "";
   const ver = _ddragonVersion();
   const localUrl = `/data/ddragon/${ver}/img/item/${iid}.png`;
-  const onErr = _onErrCdnFallback(ver, "item", `${iid}.png`);
+  const onErr = _onErrCdnFallback(ver, "item", iid);
   const safeTitle = title ? `title="${String(title).replace(/"/g, "&quot;")}"` : "";
   // Item C (s220): rich DDragon tooltip via the app-wide data-tt-html
   // plumbing (mirrors champ_select.js). itemTooltipHtml() returns ""
@@ -127,7 +128,7 @@ function _summonerImgTag(sid, cls = "") {
   if (!key) return "";
   const ver = _ddragonVersion();
   const localUrl = `/data/ddragon/${ver}/img/spell/${key}.png`;
-  const onErr = _onErrCdnFallback(ver, "spell", `${key}.png`);
+  const onErr = _onErrCdnFallback(ver, "spell", key);
   return `<img class="${cls}" src="${localUrl}" alt="spell ${sid}" loading="lazy" onerror="${onErr}">`;
 }
 
@@ -1800,3 +1801,7 @@ function _escHtml(s) {
 document.addEventListener("rc:lol-descriptions-ready", () => {
   if (_lastData) renderLastMatch(_lastData);
 });
+
+// RM-967: the icon tag builders, exposed for web/js/panels/pgr_cdn_fallback.test.mjs
+// (same shape as dev.js __test). Not a runtime API.
+export const __test = { _itemImgTag, _summonerImgTag };
