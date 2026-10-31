@@ -612,6 +612,83 @@ Cheapest gate in the file. Enter a lobby, capture, leave. Nothing here needs a m
   run the per-page UI-audit ritual. The same test file's `_NEW_STATIC_SELECTORS` "kept survivors" block
   (`#csv-sugg-ds-skill-order` / `#csv-personal-build` / `#csv-sugg-counter-picks`) pins that these ARE
   still champ-select mounts. SOURCE: LEDGER 715/717/623/635.
+  **READY (lane 9 PREP s144 cycles 37-38, source read at `20ad30c7b`, re-diffed at `fc123ec87`: only
+  the LOCK IN hold / focus carry moved, no card path; NOT a tick).** Three corrections to
+  the residual, measured in source before any game: (1) the "build-order B-card" is no longer a card -
+  B6 + B7 (QA 2026-07-03 slice A) merged it into the build chooser as the ORDERED SEQUENCE strip
+  `#csv-builds-seq` inside `.csv-builds` (`web/js/panels/champ_select.js` `_csvBuildSeqStripHtml`;
+  `tests/snapshot_panels/test_champ_select_view.py` `test_champ_select_merged_build_section`), and
+  `#csv-sugg-counter-picks` in `_NEW_STATIC_SELECTORS` is a different card; (2) the DS skill order and
+  personal build cards render on the SR path ONLY (`renderChampSelectView` calls `_csvRenderSuggestions`
+  only when the mode is `sr`; `_csvRenderSuggestionsNonSr` never touches them), so the residual needs
+  an SR DRAFT or blind select, not any lobby; (3) `my_champion` is the locked id OR the hover
+  (`lcu/champ_select_shape.py`) and every card draws for a hover too, so LOCKED is graded on
+  `my_completed` true. A fourth, REPRODUCED 2026-10-30 in headless Chromium through the page's own
+  `renderChampSelectView` on the `?ui_mock=1&mode=sr` fixture: lock champion A, then a new select with
+  no pick, then lock A again - BOTH the DS skill order and the personal build card stay HIDDEN with A's
+  payload cached. Both renderers skip a repaint on an unchanged payload signature, and the champ-select
+  gates hide the card directly on "no champion yet" without clearing that signature (provisional RM-1162, s144 gated c38 report).
+  So on the operator's long-lived rc-shell page the SECOND champ select on the same champion is
+  expected to FAIL; that is the defect, not a probe error. (The `_csvComputeSig` render gate is NOT a
+  cause: `_csvScheduleRender` clears the section signature before every post-fetch re-render.)
+  **PROBE (read-only):** `python tools/gated_g101_cs_cards.py snippet` prints an async expression; in
+  the real dashboard tab (operator Chrome DevTools console, or headless Chromium on
+  `https://127.0.0.1:8888`), with the champ-select view up and your champion LOCKED, run it and save the
+  JSON to `ops/runtime/g101/<n>.json` (gitignored). It reads `/api/state` itself (keeps only `lcu.phase`,
+  `queue_id`, `is_aram`, `my_champion`, `my_champion_locked`, `my_completed` - never a puuid, a player
+  name or another player's pick), maps the id to a slug through `/data/champions_index.json`, reads THE
+  PAGE'S OWN cached payloads by importing `/js/panels/ds_skill_order.js` and
+  `/js/panels/personal_build.js` (the same module instances the page loaded; only their getters run),
+  waits two animation frames plus 0.5 s, then reads the three mounts (rendered box, text, row / chip
+  counts), the host card box, page age, tab visibility, and when each route last answered (resource
+  timing). Then `python tools/gated_g101_cs_cards.py grade --evidence ops/runtime/g101/<n>.json` (exit 0
+  PASS, 1 FAIL, 3 INCONCLUSIVE, 2 bad input). Field paths: `/api/state` -> `lcu.champ_select.my_completed`
+  / `my_champion` / `queue_id`; DOM `#csv-sugg-ds-skill-order .dsso-max`, `#csv-personal-build .pbw-row`,
+  `#view-champ-select .csv-builds[data-champion]`, `#csv-builds-seq[data-bo-state]`.
+  **PREDICATE (stated now, per card; the row PASSes iff all three PASS, FAILs iff any FAILs):** common
+  gates first - origin `https://...:8888`, `ui_mock` off, `lcu.phase` == `ChampSelect`, `my_completed`
+  true with `my_champion` > 0 (and equal to `my_champion_locked` when sent), a queue the page's own
+  `_csvDetectMode` maps to `sr` (not an Arena or ARAM id, `is_aram` false; a custom SR lobby counts), page age >= 10 s,
+  `#view-champ-select` and the cards' host `.csv-card` with rendered boxes, tab visible; any miss is
+  INCONCLUSIVE. DS skill order PASS iff its box is rendered (w, h > 0; a box wins over a `hidden`
+  attribute), title `Skill order`, `Max: <Q|W|E|R>( > ...)*`, `Ult: <n>(/<n>)*`, and the champion / Max /
+  Ult text equal the page's cached payload for this champion. "Rendered" is a non-empty box; a card
+  below the fold still PASSes with a printed note (scroll it into view for the screenshot). Personal build PASS iff rendered, title
+  `Your best build`, a sub line `<champion>: items you win with ...` matching the page's payload and
+  `.pbw-row` count == the payload's item count >= 1. Strip PASS iff `.csv-builds` is for this champion
+  and mode, `#csv-builds-seq` `data-bo-state` `ready`, tag `ORDERED SEQUENCE`, 1 to 7 chips, rendered.
+  FAIL iff a mount is absent (`.csv-builds` absent for a locked champion; the strip absent inside it);
+  or shown but malformed; or a ready strip with no box; or a card HIDDEN while the page's own cache holds
+  a non-empty payload for this champion (DOM read after the cache read, or the page's own fetch answered
+  >= 5 s before, status 2xx or unrecorded) AND the build chooser already carries this champion's slug -
+  HIDDEN_WITH_DATA, the RM-1162 shape. The page renders from its pushed state (about every 2 s), not
+  from the snippet's own `/api/state` read, so a chooser still drawn for another pick is state lag,
+  INCONCLUSIVE (verifier c37). INCONCLUSIVE also: no
+  payload cached yet; a payload with no content (`ok` false / no `max_order`; personal build below its
+  sample threshold - hidden BY DESIGN, the confidence is printed); rendered text not equal to the
+  payload (render lag); a strip still `loading` ("computing...") or `empty` - the `empty` state is
+  unreachable (provisional RM-1163, same report) and the page's build-order cache key needs the archetype, which the
+  snippet cannot read, so a stuck strip is never graded FAIL.
+  **IDLE SMOKE (2026-10-30, no game, read-only page loads in headless Chromium):** the live dashboard
+  graded INCONCLUSIVE `NOT_IN_CHAMP_SELECT` (phase None). On the ui_mock SR fixture the snippet read all
+  three cards populated (skill order Q > W > E, 6 personal-build rows, 6 strip chips) and the module
+  import returned the page's own caches (one entry each). With `/api/state` stubbed to a locked copy of
+  the fixture and the provenance substituted in scratch (not committed), a fresh page graded PASS on all
+  three cards, and a page driven through lock / no-pick / lock graded FAIL HIDDEN_WITH_DATA on the skill
+  order and personal build cards (strip PASS). That proves the selectors, the cache read and both grade
+  paths only; ui_mock makes it NOT evidence.
+  **DRAIN STEPS (SR draft or blind, own champion LOCKED):** (a) wait about 5 s after the lock with no
+  pick change, then on the page as it is (no reload) run the snippet,
+  save, grade - a FAIL here on a second same-champion select is RM-1162 live evidence, keep it; (b)
+  press F5, wait about 15 s with no pick change, run the snippet, save, grade. The PASS bundle plus its
+  `captured_at`, queue id and per-card lines is the render evidence; no champion id goes into this file.
+  The per-page UI-audit ritual the residual also asks for stays an operator-present act (it needs a
+  screenshot; a lane takes none).
+  **SUBSTITUTION CHECK:** `tests/test_gated_g101_cs_cards.py` reaches PASS from hand-built bundles and
+  from the real renderers' markup drawn under node with a stub element - neither saw the dashboard. A
+  GET of `/api/ds-skill-order` / `/api/personal-build` or a POST of `/api/build-order` is compute only,
+  and the page-cache tie proves only that the drawn text is THIS champion's. Only a bundle from the real
+  tab, origin, lock and page age checked, ticks this.
 - **G1-02** `[CS-CAPTURE]` (was A5) rc-shell PRE-GAME LOBBY `lcu.lobby.members[]` render (YOUR MAINS /
   PARTY / MY TOP-8; if empty, capture the agent's live `/lol-lobby/v2/lobby` read + `_slim_lobby_member`
   output) + eyeball the overlay surface gate `bc4625d8` (companion in lobby/CS, lean HUD once
