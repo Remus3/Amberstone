@@ -9,9 +9,9 @@ with a HIGH/MED/LOW confidence tier. Computed entirely over owned data (no
 global / Riot / Claude dependency) - the Haiku-to-ZERO north star. The
 snapshot / champ-select card polls this thin HTTP surface.
 
-The damage-balance layer is wired to a DS kit-mix damage-class resolver; the
-scaling layer stays inert (no per-champ power-timing primitive yet - see the
-core module docstring). Both are cheap + fail-soft.
+The damage-balance layer is wired to a DS kit-mix damage-class resolver and
+the scaling layer to a DS spike-curve power-timing resolver
+(_SpikeScalingResolver, below). Both are cheap + fail-soft per champion.
 
 Request shape:
   GET /api/draft-score?ally=64,22,1,2,3[&enemy=42,67,69,55,12][&queue=420,440]
@@ -23,18 +23,36 @@ Request shape:
 Response is compute_draft_score(...)'s dict plus cached (bool) and elapsed_ms
 (int).
 
-Cache: 5min in-process keyed by (sorted ally, sorted enemy, queue tuple) -
-mirrors routes_draft_elo so a re-polling card does not turn the corpus scan
-into a DB hot loop.
+Cache: 5min in-process (monotonic clock) keyed by (sorted ally, sorted enemy,
+sorted queue set) - mirrors routes_draft_elo so a re-polling card does not turn
+the corpus scan into a DB hot loop. A cached payload is copied per request and
+echoes THAT request's ally / enemy / queue order; no response is written while
+the cache lock is held.
+
+Validation (the trust boundary - this module is the only gate between the
+query string and the SQLite binds in core.draft_elo_db):
+  - every id is 1-6 ASCII digits (int() alone accepted a sign, "_"
+    separators and non-ASCII digits, and an over-long id reached SQLite as an
+    OverflowError the scorer's sqlite3.Error catches miss, so every layer went
+    inert and a fake neutral 50 was answered 200 and cached);
+  - a champion id is >= 1. A repeated champion is legal within a team (One
+    for All, queue 1020, sends five identical ids: the champ-select card
+    classifies it as "sr") and across teams (blind pick allows a mirror);
+  - queue is 1-16 distinct ids when given; a value with no id ("queue=,") is
+    a 400, never a silent fall back to the default set;
+  - each parameter may appear once.
 
 Failure modes (a raw exception string is NEVER leaked to the client):
-  - bad / wrong-length ids -> 400 with a short clear error
-  - any other exception -> 500 structured error; the raw text is logged.
+  - bad / wrong-length ids or a duplicate queue id -> 400 with a short clear
+    error; a rejected token is clipped before it is echoed
+  - any other exception -> 500 structured error; the traceback is logged, and
+    a failed 500 send is logged instead of swallowed.
 """
 from __future__ import annotations
 
 import json
 import logging
+import re
 import threading
 import time
 from urllib.parse import parse_qs, urlparse
@@ -50,6 +68,14 @@ _CACHE_LOCK = threading.Lock()
 _CACHE_MAX = 256
 _CACHE_EVICT = 64
 
+# A Riot champion key or queue id: plain ASCII digits, bounded so it always
+# fits a SQLite INTEGER bind. re's [0-9] is ASCII-only for str patterns.
+_ID_RE = re.compile(r"[0-9]{1,6}")
+_TEAM_SIZE = 5
+_MAX_QUEUE_IDS = 16
+_ERR_TOKEN_MAX = 24
+_PARAMS = ("ally", "enemy", "queue")
+
 
 def _cache_put(key: tuple, now: float, payload: dict) -> None:
     with _CACHE_LOCK:
@@ -60,19 +86,43 @@ def _cache_put(key: tuple, now: float, payload: dict) -> None:
                 _CACHE.pop(k, None)
 
 
-def _parse_ids(raw: str, expected):
-    """Parse a comma-separated int list. expected=None allows any length
-    (>=0); an int enforces exactly that many. Returns (ids|None, err|None)."""
+def _clip(token: str) -> str:
+    """Bound a rejected token before it is echoed in an error body."""
+    if len(token) > _ERR_TOKEN_MAX:
+        token = token[:_ERR_TOKEN_MAX] + "..."
+    return repr(token)
+
+
+def _parse_ids(raw: str, expected, *, min_value: int = 1, unique: bool = False):
+    """Parse a comma-separated id list, in the caller's order. Blank parts
+    are skipped. expected=None allows 1.._MAX_QUEUE_IDS ids; an int enforces
+    exactly that many. Every id is 1-6 ASCII digits and >= min_value;
+    unique=True also refuses a repeated id. Returns (ids|None, err|None)."""
     parts = [p.strip() for p in raw.split(",") if p.strip()]
-    ids = []
+    if expected is None:
+        if not parts or len(parts) > _MAX_QUEUE_IDS:
+            return (None, f"expected 1-{_MAX_QUEUE_IDS} ids, got {len(parts)}")
+    elif len(parts) != expected:
+        return (None, f"expected {expected} ids, got {len(parts)}")
+    ids: list[int] = []
     for p in parts:
-        try:
-            ids.append(int(p))
-        except ValueError:
-            return (None, f"non-integer id {p!r}")
-    if expected is not None and len(ids) != expected:
-        return (None, f"expected {expected} ids, got {len(ids)}")
+        if not _ID_RE.fullmatch(p):
+            return (None, f"invalid id {_clip(p)}")
+        value = int(p)
+        if value < min_value:
+            return (None, f"invalid id {value}")
+        if unique and value in ids:
+            return (None, f"duplicate id {value}")
+        ids.append(value)
     return (ids, None)
+
+
+def _send_json(h, status: int, payload: dict) -> None:
+    h._send(status, json.dumps(payload).encode("utf-8"), "application/json")
+
+
+def _bad_request(h, error: str) -> None:
+    _send_json(h, 400, {"ok": False, "error": error})
 
 
 def _default_damage_resolver():
@@ -193,75 +243,82 @@ def _default_scaling_resolver():
 
 
 def _serve_draft_score(h) -> None:
-    t0 = time.time()
+    t0 = time.monotonic()
     try:
-        qs = parse_qs(urlparse(h.path).query or "")
-        ally_raw = (qs.get("ally") or [""])[0].strip()
-        enemy_raw = (qs.get("enemy") or [""])[0].strip()
-        queue_raw = (qs.get("queue") or [""])[0].strip()
+        qs = parse_qs(urlparse(h.path).query or "", keep_blank_values=True)
+        raw = {}
+        for name in _PARAMS:
+            values = qs.get(name) or [""]
+            if len(values) > 1:
+                _bad_request(h, f"{name}: given more than once")
+                return
+            raw[name] = values[0].strip()
 
-        if not ally_raw:
-            h._send(400, json.dumps({"ok": False, "error": "ally: 5 ids required"})
-                    .encode("utf-8"), "application/json")
+        if not raw["ally"]:
+            _bad_request(h, "ally: 5 ids required")
             return
-        ally, err = _parse_ids(ally_raw, 5)
+        ally, err = _parse_ids(raw["ally"], _TEAM_SIZE)
         if err:
-            h._send(400, json.dumps({"ok": False, "error": f"ally: {err}"})
-                    .encode("utf-8"), "application/json")
+            _bad_request(h, f"ally: {err}")
             return
         enemy = None
-        if enemy_raw:
-            enemy, err = _parse_ids(enemy_raw, 5)
+        if raw["enemy"]:
+            enemy, err = _parse_ids(raw["enemy"], _TEAM_SIZE)
             if err:
-                h._send(400, json.dumps({"ok": False, "error": f"enemy: {err}"})
-                        .encode("utf-8"), "application/json")
+                _bad_request(h, f"enemy: {err}")
                 return
         queue_ids = None
-        if queue_raw:
-            queue_ids, err = _parse_ids(queue_raw, None)
+        if raw["queue"]:
+            queue_ids, err = _parse_ids(raw["queue"], None, min_value=0,
+                                        unique=True)
             if err:
-                h._send(400, json.dumps({"ok": False, "error": f"queue: {err}"})
-                        .encode("utf-8"), "application/json")
+                _bad_request(h, f"queue: {err}")
                 return
 
         key = (tuple(sorted(ally)),
                tuple(sorted(enemy)) if enemy else None,
-               tuple(queue_ids) if queue_ids else None)
-        now = time.time()
+               tuple(sorted(queue_ids)) if queue_ids else None)
+        now = time.monotonic()
         with _CACHE_LOCK:
             cached = _CACHE.get(key)
-            if cached and (now - cached[0]) < _CACHE_TTL_S:
-                payload = dict(cached[1])
-                payload["cached"] = True
-                payload["elapsed_ms"] = int((time.time() - t0) * 1000)
-                h._send(200, json.dumps(payload).encode("utf-8"),
-                        "application/json")
-                return
+        if cached is not None and (now - cached[0]) < _CACHE_TTL_S:
+            _send_json(h, 200, _respond(cached[1], ally, enemy, queue_ids,
+                                        cached=True, t0=t0))
+            return
 
-        payload = draft_score.compute_draft_score(
+        stored = dict(draft_score.compute_draft_score(
             ally, enemy_ids=enemy, queue_ids=queue_ids,
             damage_class_resolver=_default_damage_resolver(),
             duo_synergy_lookup=_default_duo_lookup,
             champ_name_resolver=_default_name_resolver,
             scaling_resolver=_default_scaling_resolver(),
-        )
-        payload["cached"] = False
-        payload["elapsed_ms"] = int((time.time() - t0) * 1000)
-
-        cacheable = dict(payload)
-        cacheable.pop("cached", None)
-        cacheable.pop("elapsed_ms", None)
-        _cache_put(key, now, cacheable)
-
-        h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
-    except Exception as exc:  # noqa: BLE001
-        log.warning("api/draft-score: %s", exc)
+        ))
+        stored.pop("cached", None)
+        stored.pop("elapsed_ms", None)
+        if stored.get("ok") is True:
+            _cache_put(key, now, stored)
+        _send_json(h, 200, _respond(stored, ally, enemy, queue_ids,
+                                    cached=False, t0=t0))
+    except Exception:  # noqa: BLE001 - route boundary: never leak, always log
+        log.exception("api/draft-score: unexpected failure")
         try:
-            h._send(500, json.dumps(
-                {"ok": False, "error": "internal error - see logs"})
-                .encode("utf-8"), "application/json")
-        except Exception:  # noqa: BLE001
-            pass
+            _send_json(h, 500, {"ok": False, "error": "internal error - see logs"})
+        except Exception as send_exc:  # noqa: BLE001 - the client may be gone
+            log.warning("api/draft-score: failed to send the 500: %s",
+                        type(send_exc).__name__)
+
+
+def _respond(stored: dict, ally, enemy, queue_ids, *, cached: bool,
+             t0: float) -> dict:
+    """A per-request copy of a stored payload that echoes THIS request's ids
+    in its own order; the stored dict is never mutated."""
+    payload = dict(stored)
+    payload["ally"] = list(ally)
+    payload["enemy"] = list(enemy) if enemy else None
+    payload["queue_ids"] = list(queue_ids) if queue_ids else None
+    payload["cached"] = cached
+    payload["elapsed_ms"] = int((time.monotonic() - t0) * 1000)
+    return payload
 
 
 def _reset_caches() -> None:
