@@ -326,6 +326,18 @@ def _required_str(body: dict, key: str) -> str:
     return str(v).strip()
 
 
+def _reject_bool(value: Any, field_name: str) -> None:
+    """RM-1154: a JSON ``true`` / ``false`` in a numeric key is a 400.
+
+    ``bool`` subclasses ``int``, so ``int(True)`` / ``float(True)`` answer 1
+    silently and the request scores a question the caller never asked. This
+    is the policy ``_opt_augment_stacks`` and ``_block_index_scalar_ok``
+    already state, applied to the scalar helpers.
+    """
+    if isinstance(value, bool):
+        raise _ApiError(400, f"{field_name}: expected number, got {value!r}")
+
+
 def _to_int(value: Any, field_name: str) -> int:
     """Coerce one body value to ``int`` or raise a 400.
 
@@ -340,6 +352,7 @@ def _to_int(value: Any, field_name: str) -> int:
     The non-finite policy is not a new one: it is ``_opt_float``'s, reused
     verbatim so an int key and its float sibling answer alike.
     """
+    _reject_bool(value, field_name)
     if isinstance(value, float) and not math.isfinite(value):
         raise _ApiError(
             400, f"{field_name}: must be a finite number, got {value!r}")
@@ -360,6 +373,7 @@ def _opt_float(body: dict, key: str, default: float = 0.0) -> float:
     v = body.get(key, default)
     if v is None or v == "":
         return default
+    _reject_bool(v, key)
     try:
         f = float(v)
     except (TypeError, ValueError):
@@ -1332,6 +1346,7 @@ def _opt_weight(body: dict, key: str) -> Optional[float]:
     falls back to the per-champion table)."""
     if key not in body or body[key] in (None, ""):
         return None
+    _reject_bool(body[key], key)
     try:
         f = float(body[key])
     except (TypeError, ValueError):
@@ -2796,6 +2811,7 @@ def _opt_targets_override(body: dict) -> Optional[float]:
     key = "targets_per_proc_override"
     if key not in body or body[key] in (None, ""):
         return None
+    _reject_bool(body[key], key)
     try:
         f = float(body[key])
     except (TypeError, ValueError):
