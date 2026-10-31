@@ -1103,6 +1103,64 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   `allPlayers[].summonerName`. One capture answers it permanently. Also record a kill CREDITED TO
   A TURRET OR MINION if one occurs - that case yields a non-champion KillerName under EITHER reading
   and is the confirmed-live half. SOURCE: BACKLOG RM-307, LEDGER 1303.
+  **READY (lane 9 PREP s144 cycle 39, source read at `d043c33b1`; NOT a tick).** The row is
+  UNDERSTATED and its premise is imprecise. There are FIVE `KillerName` readers, not two, and they
+  read DIFFERENT event types, so "the same field, at most one can be right" holds only if
+  ChampionKill and the objective events carry the same form:
+  `dashboard/_liveclient.py` (objective events, raw `championName` only; feeds
+  `core/event_callouts.py` `epic_buff_callouts` :788, `dragon_soul_callout` :1006 and
+  `_dynamic_epic_callouts` :291 through `objective_events.killer_team`, dragon / baron takes only;
+  `voidgrub_callout` :861 and `core/macro_response.py` read the same `killer_team`);
+  `core/decision_detector.py` `_team_of` (ChampionKill only, `detect_postfight_objective`; compares
+  `summonerName` OR `riotIdGameName`, so a present `summonerName` shadows the bare game name);
+  `core/live_event_deriver.py` `_killer_team` (objective events; `championName` or raw
+  `summonerName` / `riotId` / `riotIdGameName`); `core/death_recap.py` `resolve_player`
+  (ChampionKill; folded player names, then a unique champion); `game_reader/snapshot_normalizer.py`
+  `_dragon_tally` (DragonKill, not Elder; folded player AND champion names, mirror keys dropped).
+  The RM-601 fixture is split the same way (ChampionKill killers are player names, objective
+  killers champion names), so a split wire would make the dashboard and the detector BOTH right.
+  The question is the RM-673 half of LX-02 (section `EXTERNAL-LIFT INTAKE live halves`), widened to ChampionKill:
+  ONE capture set answers both rows; G2-46 adds no separate capture step, only a wider window
+  (a champion kill, and a DRAKE or BARON take for `silent_features` - grubs alone leave it open).
+  PROBE: take the LX-02 relay captures exactly as that row says (from the main checkout, at least
+  two `curl -sf` captures of `http://127.0.0.1:8889/latest-liveclient` at least 60 s apart, the
+  last after a champion kill AND a grub or drake take, into gitignored
+  `ops/runtime/liveclient_captures/`), then run
+  `python tools/gated_g246_killer_readers.py ops/runtime/liveclient_captures/ --json` (read-only;
+  it never prints a name). Three readers are the REAL production functions called on the capture
+  (`_team_of`, `derive_events`, `resolve_player`); `dashboard/_liveclient.py` and
+  `snapshot_normalizer.py` cannot be imported without a vision token, so those two are MIRRORS,
+  pinned against their source by `tests/test_gated_g246_killer_readers.py`.
+  FIELD PATHS: `events.Events[].EventName` / `.KillerName` / `.EventID` / `.DragonType`;
+  `allPlayers[].championName` / `.summonerName` / `.riotIdGameName` / `.riotId` / `.team`;
+  `activePlayer.summonerName` / `.riotIdGameName` / `.riotId`; the relay wrapper `ts`.
+  PREDICATE (stated before any game): `g246.verdict` NO_RESULT unless `valid` (`synthetic=0`,
+  `duplicates=0`, `payloads>=2`, `relay_ts_span_s>=30`, `distinct_game_times>=2` - one relay body
+  re-stamped with a new `ts` is one read; a raw unwrapped file has no `ts` and is NO_RESULT); PARTIAL = ChampionKill or objective killers still have no `champion` / `player` form
+  (re-capture after the missing kind); MIXED = one class carries both forms (record
+  `forms_by_event`, file it, close nothing); SETTLED = each class is CHAMPION or PLAYER, recorded
+  as `championkill_form` + `objective_form`, with `row_premise` SAME_FORM or FORM_BY_EVENT
+  (FORM_BY_EVENT refutes the row's "at most one can be right"). Per reader, over killers in
+  roster-member form only (`no_self`, `ambiguous`, `both`, turret / minion / monster killers are
+  counted, never graded): RESOLVES / BLIND / PARTIAL / NO_DATA. `silent_features` is graded on
+  the dashboard reader over DragonKill / BaronKill roster-member killers ONLY
+  (`dashboard_epic_counts`): CONFIRMED (BLIND there: the three callouts above are unconditionally
+  silent live; file the reader fix) / REFUTED (it RESOLVES) / UNDETERMINED (incl. a grub-only
+  capture, which cannot decide them; a BLIND dashboard on HordeKill is a `voidgrub_callout`
+  filing instead). Every BLIND reader in `blind_readers` is a
+  filing on that reader, decided by THIS capture; a turret or minion kill shows up as
+  `forms_by_class.*.nonplayer` (the row's "confirmed-live half").
+  EVIDENCE CONTRACT: the tool's JSON (`g246`, `readers`, `dashboard_epic_counts`,
+  `forms_by_class`, `forms_by_event`, `self_identified`, `payloads`, `relay_ts_span_s`,
+  `distinct_game_times`, `game_modes`, `game_time_max`), each capture file's mtime, the queue, and the main checkout HEAD plus `ops/runtime/health.json` `pid` / `started_at`.
+  SUBSTITUTION CHECK: every verdict above comes out of hand-built payloads in the test file, and
+  the RM-601 fixture reads `synthetic=1` / NO_RESULT, so a verdict proves nothing unless the files
+  came off the live relay during the played game (the same three look-alikes as LX-02: a fixture
+  copy, a duplicate file, the stale relay cache with one `ts`; a fixture copy with its `_comment`
+  and `Synthetic` names edited away is NOT caught by the tool, only by the mtime and provenance). The tool answers the WIRE FORM and
+  how each reader RESOLVES it; whether a callout then RENDERS on screen is a separate on-screen
+  check this row does not close. The row's "verified headless" dragon-soul line stays a compute
+  fact, not evidence.
 - **G2-39** (RM-124, built 2026-07-29 `efbb34d0`, gated OFF) Validate the deterministic wave/cannon
   clock cadence before the flip. The code ships (`core.event_callouts.wave_callout` + `minion_events`
   transport) but `enable_wave` defaults False; the dashboard flips it only on env `RC_WAVE_CALLOUT=1`.
