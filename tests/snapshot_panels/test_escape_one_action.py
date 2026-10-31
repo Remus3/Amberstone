@@ -512,7 +512,10 @@ def test_every_escape_layer_registers_with_the_one_dispatcher(
         names[rel] = re.findall(r"registerEscapeLayer\(\{\s*name:\s*\"([^\"]+)\"",
                                 src)
     assert names == {
-        "main.js": ["task-modal", "view-menu", "find-match-picker"],
+        # RM-1251 added the Lobby mode menu
+        # (tests/snapshot_panels/test_lobby_mode_menu_escape.py).
+        "main.js": ["task-modal", "view-menu", "find-match-picker",
+                    "lobby-mode-menu"],
         "panels/right_now.js": ["digest-popover"],
         "panels/draft_elo.js": ["draft-elo-contributions"],
     }, names

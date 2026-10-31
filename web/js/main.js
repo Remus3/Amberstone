@@ -5456,6 +5456,22 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     const modeTrigger = document.getElementById("lv-mode-trigger");
     const modeMenu    = document.getElementById("lv-mode-menu");
     if (modeTrigger && modeMenu) {
+      // RM-1251: Escape closes the menu through the one dispatcher
+      // (escape_layers.js), which consumes the press so zen survives it.
+      // Focus inside the menu goes back to the trigger: hiding the menu
+      // would otherwise drop it to <body>.
+      registerEscapeLayer({
+        name: "lobby-mode-menu",
+        el: () => modeMenu,
+        isOpen: () => !modeMenu.classList.contains("hidden"),
+        close: () => {
+          const hadFocus = modeMenu.contains(document.activeElement);
+          modeMenu.classList.add("hidden");
+          modeMenu.setAttribute("aria-hidden", "true");
+          modeTrigger.setAttribute("aria-expanded", "false");
+          if (hadFocus) modeTrigger.focus();
+        },
+      });
       modeTrigger.addEventListener("click", (e) => {
         e.stopPropagation();
         const isOpen = !modeMenu.classList.contains("hidden");
