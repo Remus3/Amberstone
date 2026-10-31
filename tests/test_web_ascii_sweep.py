@@ -1728,7 +1728,23 @@ _WEB = _REPO_ROOT / "web"
 # added lines carry 0 non-ASCII bytes. The repo lane's unlanded dev.js
 # header edit (RM-1182) is not in this tree; the merger recomputes on
 # the merged tree.
-_LIVE_HALF_DIGEST = "729e10eb70847c1b2a2a10c6a89065c68f1b8940b44e5e36565f446081fa20eb"
+# superseded by the RM-1205 re-capture below: "729e10eb70847c1b2a2a10c6a89065c68f1b8940b44e5e36565f446081fa20eb"
+#
+# RE-CAPTURED 2026-10-31 at RM-1205 (s144 uiux cycle 83, provisional
+# until the merger lands it and maps the id). One change rides it: the
+# Settings API SPEND GATES list is not fetched or shown while Dev mode is
+# off (a #spend-gates-list[hidden] rule; the bare display:flex beat the UA
+# [hidden]), a failed refresh keeps the rows and shows a role=status hint,
+# a vanished focused gate hands focus to its neighbour row, and a toggle
+# drops a render already in flight (web/js/panels/dev.js renderSpendGates /
+# _spendGatesStale and web/css/panels/header.css). Ordinary case, no
+# tokeniser change. ATTRIBUTED BY SUBSTITUTION: swapping exactly those two
+# files back to their lane HEAD 0a186439b blobs reproduces the superseded
+# 729e10eb... value EXACTLY. Those paths are the whole change. No glyph
+# change: the added lines carry 0 non-ASCII bytes. The repo lane's
+# unlanded dev.js header edit (RM-1182) is not in this tree; the merger
+# recomputes on the merged tree.
+_LIVE_HALF_DIGEST = "675410e608e5c11d3c6ac5ea01a27d113726e23e20558afd1107d5c140b99ddd"
 
 
 def _web_sources() -> list[Path]:

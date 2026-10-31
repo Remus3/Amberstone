@@ -3127,6 +3127,12 @@ body[data-view="lobby"]          #home-overlay { display: none; }
    per-match cost right. align-items:flex-start so the 2-line text + cost
    top-align with the checkbox. */
 #spend-gates-list { display: flex; flex-direction: column; gap: var(--space-2); }
+/* RM-1205: the bare display above beats the UA [hidden] rule, so with Dev
+   mode off the kill-switch rows stayed on screen. */
+#spend-gates-list[hidden] { display: none; }
+/* RM-1205: failed-refresh hint (dev.js _spendGatesStale), amber like the
+   other degraded cues; --fs-sm (18px) clears the 16px --fs-xs floor. */
+.spend-gates-stale { margin: 0; font-size: var(--fs-sm); color: var(--warn); }
 .spend-gate-row { align-items: flex-start; }
 .spend-gate-txt { flex: 1; line-height: 1.3; }
 .spend-gate-txt .dim { font-size: var(--fs-sm); color: var(--text-dim); }  /* legibility: faint -> dim for the multi-line coach descriptions */

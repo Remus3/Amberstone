@@ -155,21 +155,43 @@ function _settingsRefresh() {
 // keyboard focus by the row's data-gate key (focus outside the list is
 // never moved), and a response older than the newest request is dropped
 // so two quick toggles cannot paint a stale state last.
+// RM-1205: a hidden list (Dev mode off) is not fetched or filled; a failed
+// refresh keeps the rows and says so (role=status hint, data-stale) instead of
+// failing silently; a vanished focused gate hands focus to its neighbour row,
+// or to the Dev mode toggle when no row is left; and a toggle bumps the
+// sequence so a render already in flight cannot repaint over the click.
 let _spendGatesSeq = 0;
+function _spendGatesStale(host, seq) {
+  if (seq !== _spendGatesSeq) return;
+  host.dataset.stale = "1";
+  let hint = host.querySelector(".spend-gates-stale");
+  if (!hint) {
+    hint = document.createElement("p");
+    hint.className = "spend-gates-stale";
+    hint.setAttribute("role", "status");
+    host.appendChild(hint);
+  }
+  hint.textContent = host.querySelector("input[data-gate]")
+    ? "Could not refresh from the server - the gate states shown may be out of date."
+    : "Spend gates unavailable - could not reach the server.";
+}
 function renderSpendGates() {
   const host = document.getElementById("spend-gates-list");
-  if (!host) return;
+  if (!host || host.hidden) return;
   const seq = ++_spendGatesSeq;
   fetch("/api/spend/gates", { cache: "no-store" })
     .then((r) => (r && r.ok ? r.json() : null))
     .then((j) => {
       if (seq !== _spendGatesSeq) return;
-      if (!j || !j.gates) return;
+      if (!j || !j.gates) { _spendGatesStale(host, seq); return; }
       const pm = j.per_match || {};
       const act = document.activeElement;
       const focusGate = (act && host.contains(act) && act.dataset)
         ? (act.dataset.gate || null) : null;
+      const focusIdx = focusGate
+        ? Array.from(host.querySelectorAll("input[data-gate]")).indexOf(act) : -1;
       host.innerHTML = "";
+      delete host.dataset.stale;
       const mk = (tag, cls) => {
         const n = document.createElement(tag);
         if (cls) n.className = cls;
@@ -186,6 +208,9 @@ function renderSpendGates() {
         cbx.addEventListener("change", () => {
           // RM-1204: repaint from the server after a failed POST too, so
           // the box never keeps a state the server did not store.
+          // RM-1205: drop any render already in flight (it predates the
+          // click), so it cannot repaint the old state before the POST lands.
+          _spendGatesSeq++;
           fetch("/api/coach/toggle", {
             method: "POST",
             headers: { "Content-Type": "application/json", "X-Requested-With": "rc-dashboard" },
@@ -210,15 +235,15 @@ function renderSpendGates() {
         host.appendChild(row);
       }
       if (focusGate) {
-        for (const el of host.querySelectorAll("input[data-gate]")) {
-          if (el.dataset.gate === focusGate) {
-            el.focus({ preventScroll: true });
-            break;
-          }
-        }
+        const boxes = Array.from(host.querySelectorAll("input[data-gate]"));
+        const same = boxes.find((el) => el.dataset.gate === focusGate);
+        const next = same
+          || (boxes.length ? boxes[Math.min(Math.max(focusIdx, 0), boxes.length - 1)]
+            : document.getElementById("set-dev-mode"));
+        if (next) next.focus({ preventScroll: true });
       }
     })
-    .catch(() => {});
+    .catch(() => _spendGatesStale(host, seq));
 }
 
 // -- Replay scrubber (audit suggestion 2.3, 2026-04-28) ------------
