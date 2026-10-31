@@ -252,6 +252,11 @@ test("hostLaunchPlan: a --profile dev checkout launch beside a stale python-embe
   });
   assert.strictEqual(warned.enabled, true);
   assert.deepStrictEqual(warned.rejected, [{ source: "env", reason: "not-absolute" }], "an enabled plan still carries its refusals");
+  const unnamed = lch.hostLaunchPlan({
+    root: ROOT, isPackaged: false, env: { LOCALAPPDATA, RC_PYTHON: "python.exe" }, argv: ["electron", "."], parentPid: 9, probe: fakeFs([HOST, DEV_PY]),
+  });
+  assert.strictEqual(unnamed.reason, "checkout-launch-needs-profile");
+  assert.deepStrictEqual(unnamed.rejected, [{ source: "env", reason: "not-absolute" }], "the no-profile refusal keeps them too");
 });
 
 test("bundledBackendDir: <resources>/backend, never inside an asar", () => {

@@ -318,7 +318,7 @@ function hostLaunchPlan(opts) {
     // when a profile is named: before the section-5 cutover the scheduled
     // tasks own the agents, and a host that found the supervisor down would
     // start second copies of them beside the task-run ones.
-    return { enabled: false, reason: "checkout-launch-needs-profile" };
+    return { enabled: false, reason: "checkout-launch-needs-profile", rejected: py.rejected };
   }
   const args = ["-I", script, "--root", root, "--profile", prof.profile];
   if (Number.isInteger(o.parentPid) && o.parentPid > 0) {
