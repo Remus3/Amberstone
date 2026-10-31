@@ -1,5 +1,21 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-10-31 - size-budget relocation (session 146 ADJ-F), 6 lines
+
+`ROADMAP.md` stood at 73642 of 81920 bytes on `b047d8fb1` (the `tools/drift_guard.py` warn line is 73728), and the s146 ruling 43 / 51 notes plus two new rows (RM-1226, RM-1227) would cross it. The closed / shipped lines below move here VERBATIM as they stood at `b047d8fb1`, in their ROADMAP order: the WAVE1 DRAIN pointer (its open residue keeps its own rows; RM-135, named only here, is PARTIAL in `BACKLOG.md`), the s128 .. s143 shipped-rows pointer line (replaced in `ROADMAP.md` by a shorter pointer naming this block), and the RM-861, RM-876, RM-880 and RM-886 rows (each SHIPPED 2026-10-27, LEDGER 1941 / 1942; their `BACKLOG.md` heads read SHIPPED; the RM-886 row also names RM-885, SHIPPED `4113b0039`, LEDGER 1862). Open rows were not moved.
+
+- **[x] WAVE1 DRAIN MERGED 2026-10-04 (LEDGER 1480-1559; ENGINE 1.284.0)** - full shipped list relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (`## 2026-10-04e` block). Still open: PARTIAL RM-513, RM-81, RM-240, RM-299a, RM-247, RM-488, RM-135, RM-294b, RM-483; HELD RM-239 / RM-242 (operator fence), RM-256 (redo RM-521), RM-297b (needs a distinct adjudicator); NEW rows RM-517 .. RM-525 in `BACKLOG.md`.
+
+- **[x] SHIPPED / CLOSED ROWS relocated VERBATIM to `docs/ROADMAP_HISTORY.md`, blocks `## 2026-10-23` .. `## 2026-10-26c`; the s128 .. s141 per-block id list is the first row of the `## 2026-10-26c` block (s143 H1), which also holds RM-835 / RM-836 / RM-837 (SHIPPED), the RM-310 SHIPPED row (its eleven sibling sites stay open in `BACKLOG.md`), LIFT-2 BAND 1 (RM-526 .. RM-537; Bands 2-4 stay open in `BACKLOG.md`), the NEXT-5 TRIAGE stub and the CLOSED-lane stubs (RM-100 .. RM-126; RM-99 / RM-102 / RM-104). READ the archived row before re-opening an id or citing a sha.**
+
+- **[ ] RM-861 (filed s133 by the queue lane; Tier-1, low; gated: none; the truth_gate site SHIPPED s135, LEDGER 1890): RM-830 residue - git path output outside tools/ still read quoted or locale-decoded (ops/audit, loop_controller, executor, truth_gate, inbox_responder).** Body in `BACKLOG.md` "Session 133 lane filings (queue lane)".
+
+- **[ ] RM-876 (filed s133 by the queue lane; Tier-1, low; gated: none): RM-813 residue - the sweep's config-free structural arm and the responder `_HOME_RE` scrub read only some spellings of a drive root.** Body in `BACKLOG.md` "Session 133 lane filings (queue lane)".
+
+- **[ ] RM-880 (s133 queue lane; Tier-1): RM-815 residue - widen the RM-801 guard's attribute set (25 sites) and scope its alias pass.** (a) SHIPPED by agent s133-a27 (LEDGER 1858: set widened, 25 offenders in 14 files -> 0, RM-411 helper ruled scoped by design); (b) SHIPPED s135 landing (LEDGER 1885); (c)-(d) open. Body in `BACKLOG.md` "Session 133 lane filings (queue lane)".
+
+- **[ ] RM-886 (s134 M1a; Tier-1 loop, low; gated: none): `ops/loop/queue_loop.py` `_ci_step_verdict` grades only the full-dual-suite step (skipped on push), so a red push impact slice reads "skipped".** Body in `BACKLOG.md` "Session 134 filings". RM-885 SHIPPED `4113b0039` (LEDGER 1862). SHIPPED s144 landing `3e5fd7c2e` (LEDGER 1941); close on review.
+
 ## 2026-10-26c - size-budget relocation (session 143 H1 housekeeping), 10 lines
 
 `ROADMAP.md` stood at 73169 of 81920 bytes on `04f0aeccf` (the `tools/drift_guard.py` warn line is 73728). The closed / shipped lines below move here VERBATIM as they stood at `04f0aeccf`, in their ROADMAP order: the s128 .. s141 shipped-rows pointer line (replaced in `ROADMAP.md` by a shorter pointer naming this block), the RM-835 .. RM-837 row (all three SHIPPED), the NEXT-5 TRIAGE stub, the RM-310 SHIPPED row, the LIFT-2 BAND 1 heading and row, and the two CLOSED-section stubs with their headings (`### CLOSED in this lane`, `### DS defensive-half sweep GAP specs (R132)`). Open rows were not moved; the residues these lines name (RM-310 sibling sites, lift-2 Bands 2-4, RM-106b, RM-125) keep their own rows.
