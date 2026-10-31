@@ -1488,6 +1488,56 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   drake, (b) district vector on `/api/state.zoi.districts`, (c) OBS frames matching the GDI baseline,
   (d) MIA rings + fluid DMZ + weighted bubbles render. Practice suffices (fog/presence/CV/OBS
   round-trip, no enemy-comp/rune dependency). SOURCE: ZOI_DISTRICT_ORCHESTRATION_PLAN.md:107-109.
+  **READY (lane 9 PREP s144 cycle 46, source read at `12f2f3bb1`; NOT a tick).** (b) and (c) already
+  carry recorded evidence (header, 2026-07-20: 13 districts, frame `source='obs'`; (c) was flipped
+  live in LEDGER 796), so the open halves are (a) and (d). Five measured facts reshape them.
+  (1) The SR fog feed is STILL DEAD, so (a) and the MIA-ring half of (d) are BLOCKED-BUILD, not
+  live-gated: `core/vision_tracker.py` `_compute_enemies` (`:301`) coerces a non-dict `position` to
+  `{}` (`:316`), so with the role string the client sends, `x == z == 0` and the first sighting
+  (`:345`) never happens - every enemy keeps `missing_for_s=None`. Nothing feeds the minimap identity
+  dots (`zoi.champion_dots`, `dashboard/_state_builder.py:912`) back into the tracker, and
+  `zoi.mia` (`:971`) reads that same tracker. The macro tree needs >= 2 enemies at `MIN_MIA_S` 8.0 s
+  (`core/macro_decision_tree.py:44`, `:93`). Measured on disk: the 9950 SR-equivalent records
+  (`mode` sr / client / game) in `data/det_coach_shadow.jsonl` since 2026-07-05T00:00:00-05:00
+  carry 0 `kind == "macro"` rows. The fence
+  `tests/test_macro_decision_tree.py::test_dead_fog_feed_never_fires_on_live_sr_shape` still pins it.
+  (2) The DMZ half of (d) is BLOCKED-BUILD too: `_state_builder.py:886` calls `compute_zoi` with no
+  roster, and `core/zoi_influence.compute_zoi` adds `dmz` (`:401`) only when a roster is passed - the
+  key is ABSENT, so no game can show it. (3) (a) can never be read on `/api/state.callouts` in a live
+  game: `LIVE_SUPPRESSED_ENVELOPE_FIELDS` (`_state_builder.py:453`) blanks `callouts` (applied at
+  `:1053`); the only record is the pre-suppression shadow log (`core/det_coach_shadow.py:99`).
+  (4) `zoi` is built only when `mode_key` is `sr` or `aram` (`_state_builder.py:882`) and minimap dots
+  exist (League focused); an SR game read under `client` serves no `zoi`. (5) `RC_ZOI_IDENTITY` now
+  defaults ON (`core/minimap_blob_detect.py:255`; its `:487` docstring and LEDGER 796 still say OFF),
+  and the CV over-detection LEDGER 796 named as the feed prerequisite was cut to <= 10 dots by
+  `e14bde6ef` (per that commit; not re-measured live here). DRAINABLE NOW: the bubble half of (d) and
+  a (b) re-check. PROBE (main checkout, practice SR, League focused, >= 3 saves across 2 minutes):
+  `curl -sk https://127.0.0.1:8888/api/state > g242_state_<n>.json`, copy `data/vision_state.json`
+  to `g242_vs_<n>.json` at the same moments, then `python tools/gated_g242_zoi_check.py state
+  g242_state_*.json --json`, `... fog g242_vs_*.json --json`, and after the game `... shadow
+  data/det_coach_shadow.jsonl --since <game start ISO with offset> --until <game end> --json`. Never
+  commit the saves (they hold summoner names; RM-906). `fog` counts only SR `game_mode` copies
+  (`CLASSIC` / `RANKED` / `PRACTICETOOL` / `JADE`, restating `core/sr_aram_worker.py:229`) and only
+  ALIVE enemies (an ARAM or dead enemy carries a numeric clock that says nothing about the SR feed);
+  `shadow` passes only the objective-danger tag `macro_objective_danger` (a gank-warning row is
+  counted apart). PREDICATES (stated now): (b) PASS iff `state` reports `B_OK` (`zoi.districts` and
+  `zoi.districts_fused` each carry all 13 SR ids) - a SHAPE check only, since `presence_payload`
+  emits all 13 rows whenever `zoi` is built; it re-checks (b), it does not prove the counts right.
+  (d-bubbles) the payload half
+  is `BUBBLES_PRESENT`; the RENDER half needs a timed overlay minimap frame (frame `ts` vs
+  `liveclient.game_time_s`) or the operator's confirm that the shaded bubbles sit on the dots - a
+  payload alone does NOT tick it. (a) and (d-MIA) stay OPEN while `fog` reports `FEED_DEAD`. Once a
+  feed is built: (a) PASS iff `fog` `mia_ge_min_max` >= 2 at a moment the drake is within 60 s AND
+  `shadow` reports `MACRO_SEEN` for that window; (d-MIA) needs `state` `MIA_RINGS` plus the render
+  read. (d-DMZ) stays OPEN while `state` reports `DMZ_NOT_WIRED`. EVIDENCE CONTRACT: the three JSON
+  outputs verbatim, the wall times of each save, mode, queue and `game_time_s`, and the overlay frame
+  path + `ts` for any render claim. SUBSTITUTION CHECK: `state` and `fog` answer whether the payload
+  was COMPUTED and SERVED; they do NOT answer whether the overlay RENDERED it (the row asks render
+  for (d)), and `shadow` answers whether a macro row was COMPUTED, never whether it reached the
+  screen (B4 blanks it live). A fixture state, a synthetic `vision_state.json` or a replayed snapshot
+  is not evidence. Tool tests: `tests/test_gated_g242_zoi_check.py` (hand-built inputs; pins the
+  verdicts and facts (1)-(3), with a coordinate-position positive control and a roster-wired `dmz`
+  control).
 - **G2-47** RM-42 `apply_passive_damage` **+ `apply_extra_shot_procs`** on the CARRY ranker (ENGINE 1.273.0 / 1.274.0). **THE TWO FLAGS MODEL TWO HALVES OF ONE EVENT AND MUST BE FLIPPED TOGETHER, NEVER SINGLY** - `apply_extra_shot_procs` alone credits the shot's PROCS while its damage stays uncredited, a coherent but partial model. Full model measured: Akshan 142.06 -> 257.05 (+80.9 pct). Original text follows. (ENGINE 1.273.0, `rank.rank_items` +
   `/rank` + `core/daemon_slayer_client.rank_for`). Route exposure is SHIPPED and default-OFF. Headless
   is DONE and is not the question: Akshan's weighted DPS goes 142.06 -> 212.19 at depth (+49.4 pct,
