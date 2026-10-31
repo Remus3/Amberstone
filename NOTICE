@@ -58,6 +58,11 @@ Source by source:
 * The Riot-aliased League of Legends wiki (MediaWiki) - ability and formula
   reference read by the Daemon Slayer sidecar extractor. Governed by that
   wiki's content licence and by Riot's terms for the underlying game data.
+  Its host's Terms of Use (Weird Gloop, weirdgloop.org/terms, "Updated on
+  31 January 2025", read 2026-10-27) list as misuse "Attempting to use our
+  Sites in an automated fashion without prior consent". RC makes no automated
+  requests to the wiki (ruling 51, s146); the numbers already taken from it
+  are game facts, kept without the page prose.
 
   `tests/fixtures/game_data_replay/` holds small trimmed captures (five
   champions, two items) from Data Dragon, Meraki Analytics and the wiki's raw
