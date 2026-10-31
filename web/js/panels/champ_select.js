@@ -472,6 +472,12 @@ function _csvHumanPhase(phase) {
 // re-render no longer re-requests the route every tick; and once any
 // answer has settled, a rebuilt slot paints it at once - also while an
 // expired entry is being refetched - so the slot never blinks empty.
+// RM-1200: a request that never answers settles as failed after
+// _CSV_WR_TIMEOUT_MS (aborted when AbortController exists; a late answer
+// from a superseded request is ignored), so the champion is retried
+// after the back-off instead of staying pending - and empty - forever.
+// A failed refetch keeps the last good answer (`stale`, the title says
+// the refresh failed) instead of overwriting it with "--".
 // QA 2026-07-03 slice A (A4): the deprecated YOUR RECORD block + its
 // aggregate lifetime-record fetch were removed; the enemy WR slot
 // (.csv-enemy-wr-slot, a DIFFERENT feature - KEEP) now rides the
@@ -479,9 +485,10 @@ function _csvHumanPhase(phase) {
 const _csvWrCache = new Map();
 const _CSV_WR_TTL_MS = 60 * 1000;
 const _CSV_WR_FAIL_TTL_MS = 15 * 1000;
+const _CSV_WR_TIMEOUT_MS = 8 * 1000;
 const _CSV_WR_DAYS = 30;
 
-function _csvWrSlotApply(el, payload, champNm) {
+function _csvWrSlotApply(el, payload, champNm, stale) {
   if (!el) return;
   const n = payload && payload.ok ? (payload.sample_n | 0) : 0;
   if (!payload || !payload.ok || n <= 0) {
@@ -496,7 +503,8 @@ function _csvWrSlotApply(el, payload, champNm) {
   el.className = "csv-enemy-wr-slot " + _csvPrTint(wr);
   el.title = "your record vs " + (payload.champ_name || champNm)
            + " - last " + (payload.days | 0) + "d ("
-           + (payload.wins | 0) + "W " + (payload.losses | 0) + "L)";
+           + (payload.wins | 0) + "W " + (payload.losses | 0) + "L)"
+           + (stale ? " - last known, refresh failed" : "");
 }
 
 function _csvWrSlotFetch(champId, champNm, el) {
@@ -506,7 +514,7 @@ function _csvWrSlotFetch(champId, champNm, el) {
   if (cached && cached.settled) {
     // Paint the last settled answer first (stale-while-revalidate): a
     // freshly built slot is never left empty when an answer exists.
-    _csvWrSlotApply(el, cached.payload, champNm);
+    _csvWrSlotApply(el, cached.payload, champNm, cached.stale);
     const ttl = cached.failed ? _CSV_WR_FAIL_TTL_MS : _CSV_WR_TTL_MS;
     if (!cached.pending && (now - cached.ts) < ttl) return;
   }
@@ -516,28 +524,52 @@ function _csvWrSlotFetch(champId, champNm, el) {
     // data-champ-id.
     return;
   }
+  // `req` identifies this request: only the request the cache entry
+  // still names may settle it, so a late answer after the timeout (or
+  // after a newer request) is dropped.
+  const req = {};
   _csvWrCache.set(champId, {
     ts: now,
     payload: cached ? cached.payload : null,
     failed: !!(cached && cached.failed),
+    stale: !!(cached && cached.stale),
     pending: true,
     settled: !!(cached && cached.settled),
+    req: req,
   });
   const url = "/api/personal-vs?champ_id=" + (champId | 0)
             + "&days=" + _CSV_WR_DAYS;
+  const ctl = (typeof AbortController === "function")
+            ? new AbortController() : null;
+  let timer = null;
   const settle = (data, failed) => {
+    const cur = _csvWrCache.get(champId);
+    if (!cur || cur.req !== req || !cur.pending) return;
+    if (timer !== null) { clearTimeout(timer); timer = null; }
+    // A failure keeps the last good answer (a failure stores a null
+    // payload, so a non-null one here is always a real answer).
+    const keep = failed && cur.payload ? cur.payload : null;
+    const payload = failed ? keep : data;
+    const stale = !!keep;
     _csvWrCache.set(champId, {
-      ts: Date.now(), payload: data, failed: failed,
-      pending: false, settled: true,
+      ts: Date.now(), payload: payload, failed: failed, stale: stale,
+      pending: false, settled: true, req: null,
     });
     // Paint every live slot for this champion. _csvRenderTeam may
     // have re-rendered the cell since the fetch fired, so query by
     // data-champ-id rather than holding a stale reference.
     document
       .querySelectorAll(".csv-enemy-wr-slot[data-champ-id='" + (champId | 0) + "']")
-      .forEach((node) => _csvWrSlotApply(node, data, champNm));
+      .forEach((node) => _csvWrSlotApply(node, payload, champNm, stale));
   };
-  fetch(url, { credentials: "same-origin", cache: "no-store" })
+  timer = setTimeout(() => {
+    timer = null;
+    settle(null, true);
+    if (ctl) ctl.abort();
+  }, _CSV_WR_TIMEOUT_MS);
+  const opts = { credentials: "same-origin", cache: "no-store" };
+  if (ctl) opts.signal = ctl.signal;
+  fetch(url, opts)
     .then((r) => r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status)))
     .then((data) => settle(data, false))
     .catch(() => settle(null, true));

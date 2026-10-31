@@ -1674,7 +1674,19 @@ _WEB = _REPO_ROOT / "web"
 # aa7662ce... value EXACTLY. That path is the whole change. No glyph
 # change: the added lines carry 0 non-ASCII bytes. If another slice
 # re-captures in parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "44bba1aa08ec13eab7d5b441f86cf82efe3e19735ce2265485410160c060f1aa"
+# superseded by the RM-1200 re-capture below: "44bba1aa08ec13eab7d5b441f86cf82efe3e19735ce2265485410160c060f1aa"
+#
+# RE-CAPTURED 2026-10-31 at RM-1200 (s144 uiux cycle 79, provisional
+# until the merger lands it and maps the id). One change rides it: the SR
+# champ-select enemy win-rate slot fetch times out a request that never
+# answers and keeps the last good win rate when a refetch fails
+# (web/js/panels/champ_select.js _csvWrSlotFetch / _csvWrSlotApply).
+# Ordinary case, no tokeniser change. ATTRIBUTED BY SUBSTITUTION:
+# swapping exactly that file back to its lane HEAD c7c9c726a blob
+# reproduces the superseded 44bba1aa... value EXACTLY. That path is the
+# whole change. No glyph change: the added lines carry 0 non-ASCII bytes.
+# If another slice re-captures in parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "8f66c0891659c5d9005e2e9be23bbd78672e24f601ea5f77d7a4c5de75781cf2"
 
 
 def _web_sources() -> list[Path]:
