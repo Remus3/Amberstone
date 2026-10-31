@@ -735,13 +735,19 @@ def _rm616_record(rec: dict) -> dict:
 
 
 def _engine_key(n: int) -> tuple:
+    """The cached model's change detector: per finished match its id, end
+    time, placement, gt_status and gt_sources, plus the RM-616 store marker.
+    gt_sources is in it because attach_ground_truth on an already-finished
+    match moves only that field when it passes no gt_status (RM-1213: the
+    pair tables, catalogue and milestones otherwise kept the old lobby until
+    another key field moved)."""
     store, _status = _open_store()
     ended = []
     if store is not None:
         for m in store.list_matches(set_id=n):
             if m.get("ended_at") is not None:
                 ended.append((m.get("match_id"), m.get("ended_at"), m.get("placement"),
-                              m.get("gt_status")))
+                              m.get("gt_status"), tuple(sorted(m.get("gt_sources") or ()))))
     try:
         rm616 = _rm616().store_marker()
     except Exception:  # noqa: BLE001

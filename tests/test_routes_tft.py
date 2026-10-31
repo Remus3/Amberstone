@@ -608,13 +608,10 @@ ONE_GAME_UNIT = "TFT18_Zed"     # seat 1 of ONE ranked match only: its pairs are
 DOUBLE_UP_UNIT = "TFT18_Jinx"   # seat 1 of the Double Up match only
 
 
-def _pair_match(store, match_id, queue_id, *, ended=True, extra=None):
+def _pair_gt(store, match_id, *, extra=None):
     """Eight placed players (seat n = placement n), seat n holding units n-1
     and n mod 8 of PAIR_UNITS (plus `extra` on seat 1), as lcu_eog ground truth."""
     tag = match_id[-3:]
-    mid = store.begin_match({"match_id": match_id, "game_id": 4000 + int(tag[1:]), "set_id": 18,
-                             "queue_id": queue_id, "started_at": 1_767_000_000.0 + int(tag[1:])})
-    assert mid == match_id
     boards, players = [], []
     for n in range(1, 9):
         key = st.player_key(f"rm1117-{tag}-{n}", PAIR_SALT)
@@ -622,7 +619,17 @@ def _pair_match(store, match_id, queue_id, *, ended=True, extra=None):
         boards += [{"player_key": key, "champion_api": a, "star": 1, "items": [], "cost": 1}
                    for a in apis]
         players.append({"player_key": key, "placement": n})
-    assert store.attach_ground_truth(mid, "lcu_eog", boards, players)
+    assert store.attach_ground_truth(match_id, "lcu_eog", boards, players)
+
+
+def _pair_match(store, match_id, queue_id, *, ended=True, extra=None, gt=True):
+    """One synthetic set-18 match; `gt` attaches _pair_gt's lobby before it ends."""
+    tag = match_id[-3:]
+    mid = store.begin_match({"match_id": match_id, "game_id": 4000 + int(tag[1:]), "set_id": 18,
+                             "queue_id": queue_id, "started_at": 1_767_000_000.0 + int(tag[1:])})
+    assert mid == match_id
+    if gt:
+        _pair_gt(store, mid, extra=extra)
     if ended:
         assert store.end_match(mid, ended_at=1_767_000_000.0 + int(tag[1:]) + 1800.0)
 
@@ -717,6 +724,31 @@ def test_engine_pairs_without_history(env):
     body = _ready_pairs().json()
     assert body["status"] == "no_history" and body["suppressed"] is None
     assert body["pairs"]["rows"] == 0 and body["pairs"]["pairs"] == []
+
+
+def test_engine_model_rebuilds_when_ground_truth_reaches_a_finished_match(env, monkeypatch):
+    """RM-1213: ground truth attached to an ALREADY-finished match, with no
+    gt_status change, still reaches the engine model after one recheck. The
+    model cache key (_engine_key) carried gt_status but not gt_sources, so the
+    second match's lobby stayed out (8 rows served where 16 were due)."""
+    s = RoundStore.open(env / "tft" / "tft_rounds.db")
+    try:
+        _pair_match(s, "20260101-000000-p01", 1100)
+        _pair_match(s, "20260101-000000-p02", 1100, gt=False)   # finished, no lobby yet
+        assert s.flush()
+    finally:
+        s.close()
+    assert _ready_pairs().json()["pairs"]["rows"] == 8
+    s = RoundStore.open(env / "tft" / "tft_rounds.db")
+    try:
+        _pair_gt(s, "20260101-000000-p02")      # no gt_status, no end_match: only gt_sources moves
+        assert s.flush()
+        assert s.get_match("20260101-000000-p02", rounds=False)["match"]["gt_status"] == "none"
+    finally:
+        s.close()
+    monkeypatch.setattr(rt, "ENGINE_RECHECK_S", 0.0)   # the next request is one recheck later
+    body = _ready_pairs().json()
+    assert body["status"] == "ready" and body["pairs"]["rows"] == 16
 
 
 # ------------------------------------------------------------------ cross-cutting
