@@ -16,28 +16,28 @@ import contextlib
 import json
 import sys
 import unittest
-import urllib.request
 from pathlib import Path
 from unittest import mock
+
+import pytest
 
 _PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
-from tests._module_view import this_thread_only  # noqa: E402
+from tests._module_view import bind_urlopen  # noqa: E402
 
 
 @contextlib.contextmanager
 def _patch_urlopen(urlopen_mock=None):
     """Fake urlopen for the apply handler's LCU-cmd enqueue.
 
-    The handler imports urllib.request INSIDE _serve_sr_draft_apply_post
-    (dashboard/routes_sr_draft.py `import urllib.request as _ur`), so there is
-    no module-global name to bind: the patch stays on the shared module but
-    thread-scoped (RM-801, tests/_module_view.py) - a foreign thread of the
-    xdist worker keeps the real urlopen and never lands in this mock."""
+    dashboard/routes_sr_draft.py imports urllib.request at module level
+    (lane 8 s144), so the fake binds to that module's own name only (RM-801,
+    tests/_module_view.py): no other module or thread sees it."""
+    from dashboard import routes_sr_draft
     urlopen_mock = mock.MagicMock() if urlopen_mock is None else urlopen_mock
-    with mock.patch("urllib.request.urlopen",
-                    this_thread_only(urlopen_mock, urllib.request.urlopen)):
+    with pytest.MonkeyPatch.context() as mp:
+        assert bind_urlopen(mp, routes_sr_draft, urlopen_mock) >= 1
         yield urlopen_mock
 
 
@@ -178,19 +178,21 @@ class TestApplyRoute(unittest.TestCase):
         body = json.loads(captured["body"])
         self.assertEqual(body["queued"], ["set_summoners"])
 
-    def test_invalid_summoner_spells_skips_summ(self):
+    def test_invalid_summoner_spells_is_a_400_with_nothing_queued(self):
+        # Lane 8 s144: an unreadable summoner_spells used to be skipped
+        # silently while runes and items were still pushed; it is now a 400
+        # naming the field, refused before anything is queued
+        # (tests/test_routes_sr_draft_lane8_s144.py has the full matrix).
         from dashboard import routes_sr_draft
         h, captured = self._handler()
         payload = self._full_payload()
         payload["summoner_spells"] = ["bogus"]
         with _patch_urlopen() as urlopen_mock:
-            urlopen_mock.return_value.__enter__ = mock.MagicMock(
-                return_value=mock.MagicMock(read=lambda: b'{"ok":true}')
-            )
-            urlopen_mock.return_value.__exit__ = mock.MagicMock(return_value=False)
             routes_sr_draft._serve_sr_draft_apply_post(h, payload)
+        self.assertEqual(captured["code"], 400)
         body = json.loads(captured["body"])
-        self.assertNotIn("set_summoners", body["queued"])
+        self.assertEqual(body["field"], "summoner_spells")
+        self.assertEqual(urlopen_mock.call_count, 0)
 
     def test_response_echoes_kind_and_label(self):
         from dashboard import routes_sr_draft

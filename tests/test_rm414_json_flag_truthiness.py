@@ -30,12 +30,11 @@ from __future__ import annotations
 import json
 import sys
 import types
-import urllib.request
 from unittest import mock
 
 import pytest
 
-from tests._module_view import this_thread_only
+from tests._module_view import bind_urlopen
 
 _ABSENT = object()
 
@@ -113,12 +112,10 @@ def _sr_apply(monkeypatch, payload):
         return _Resp()
 
     h = _Handler()
-    # _serve_sr_draft_apply_post imports urllib.request INSIDE the function
-    # (dashboard/routes_sr_draft.py:131), so no module-local name exists:
-    # this thread only, every thread already alive keeps the real (RM-801).
-    with mock.patch("urllib.request.urlopen",
-                    this_thread_only(_urlopen, urllib.request.urlopen)):
-        routes_sr_draft._serve_sr_draft_apply_post(h, payload)
+    # routes_sr_draft imports urllib.request at module level (lane 8 s144),
+    # so the fake binds to that module's own name only (RM-801).
+    assert bind_urlopen(monkeypatch, routes_sr_draft, _urlopen) >= 1
+    routes_sr_draft._serve_sr_draft_apply_post(h, payload)
     return h, sent_cmds
 
 

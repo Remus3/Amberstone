@@ -33,12 +33,11 @@ import json
 import logging
 import sys
 import types
-import urllib.request
 from pathlib import Path
 
 import pytest
 
-from tests._module_view import this_thread_only
+from tests._module_view import bind_urlopen
 from tests._reply_leak_ast import (ASSIGNMENT_SHAPES, SAFE_ASSIGNMENTS,
                                    call_name, reply_leaks)
 
@@ -319,8 +318,8 @@ def _drive_sr_draft(monkeypatch, marker: str):
 
     def _urlopen(*_a, **_k):
         raise _os_error(marker)
-    monkeypatch.setattr(urllib.request, "urlopen",
-                        this_thread_only(_urlopen, urllib.request.urlopen))
+    # The route's own module-level urllib.request only (RM-801).
+    assert bind_urlopen(monkeypatch, sr, _urlopen) >= 1
     h = _H("/api/sr-draft/apply")
     # Summoners only: one enqueue, so one note, and nothing else in `notes`.
     sr._serve_sr_draft_apply_post(h, {
@@ -336,7 +335,9 @@ def test_sr_draft_enqueue_fault_note_carries_no_exception_text(monkeypatch,
                                                                cap):
     status, raw, payload = _drive_sr_draft(monkeypatch, "RM835MARKA")
     assert status == 200, payload
-    assert payload["ok"] is True
+    # Lane 8 s144: "ok" is false once an enqueue failed (it used to say true
+    # with nothing queued); tests/test_routes_sr_draft_lane8_s144.py.
+    assert payload["ok"] is False
     assert payload["queued"] == []
     assert len(payload["notes"]) == 1, payload["notes"]
     note = payload["notes"][0]
