@@ -5359,7 +5359,8 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     // ---- Cancel Queue ----
     const cancel = document.getElementById("lv-cancel-match");
     if (cancel) cancel.addEventListener("click", () => {
-      if (cancel.disabled) return;
+      // RM-1208: aria-disabled = held during a queue pop; inert.
+      if (cancel.disabled || cancel.getAttribute("aria-disabled") === "true") return;
       lcuCmd({ cmd: "cancel_matchmaking" }).then((res) => {
         lcuPollResult(res && res.id, (r) => {
           if (r && r.ok === false) _lvQueueChangeError("Cancel: " + (r.err || "failed"));
@@ -5634,7 +5635,14 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       else find.removeAttribute("aria-disabled");
     }
     if (cancel) {
-      cancel.disabled = !searching;
+      // RM-1208: a queue pop (MatchFound / ReadyCheck) used to disable
+      // BOTH buttons, so the handoff below had no enabled partner and
+      // focus fell to <body>. During the pop Cancel Queue is held
+      // aria-disabled instead (focusable, inert, reads as disabled), so
+      // it keeps focus or takes it from Find Match.
+      cancel.disabled = !searching && !found;
+      if (found) cancel.setAttribute("aria-disabled", "true");
+      else cancel.removeAttribute("aria-disabled");
     }
     if (focusWasFind && find.disabled && cancel && !cancel.disabled) {
       cancel.focus({ preventScroll: true });

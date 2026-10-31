@@ -272,3 +272,141 @@ def test_search_flip_never_steals_focus_from_elsewhere(
         page.close()
         ctx.close()
     assert not errors, f"JS errors [no steal]: {errors[:3]}"
+
+
+# RM-1208: a queue pop (search_state MatchFound, phase ReadyCheck)
+# disabled BOTH buttons of the pair, so the RM-1139 handoff above had no
+# enabled partner and focus fell to <body>. During the pop Cancel Queue is
+# held aria-disabled (focusable, inert, reads as disabled), never disabled,
+# so the focused button keeps focus or hands it to Cancel.
+
+_PAIR_JS = (
+    "(() => { const f = document.getElementById('lv-find-match');"
+    "  const c = document.getElementById('lv-cancel-match');"
+    "  return { active: document.activeElement ? document.activeElement.id"
+    "      : '',"
+    "    find: [f.disabled, f.getAttribute('aria-disabled')],"
+    "    cancel: [c.disabled, c.getAttribute('aria-disabled')] }; })()"
+)
+
+
+def _pop(page, lcu):
+    lcu["phase"] = "ReadyCheck"
+    lcu["lobby"]["search_state"] = "MatchFound"
+    # Waits on "neither button can act", true before and after the fix,
+    # so a red run is the focus assertion, not this wait.
+    page.wait_for_function(
+        "(() => { const f = document.getElementById('lv-find-match');"
+        "  const c = document.getElementById('lv-cancel-match');"
+        "  return f.disabled && (c.disabled"
+        "    || c.getAttribute('aria-disabled') === 'true'); })()",
+        timeout=10_000,
+    )
+
+
+def _search(page, lcu, state):
+    lcu["phase"] = "Matchmaking" if state == "Searching" else "Lobby"
+    lcu["lobby"]["search_state"] = state
+    want = "false" if state == "Searching" else "true"
+    page.wait_for_function(
+        "(() => { const c = document.getElementById('lv-cancel-match');"
+        f"  return String(c.disabled) === '{want}'"
+        "    && !c.hasAttribute('aria-disabled'); })()",
+        timeout=10_000,
+    )
+
+
+def test_queue_pop_keeps_focus_on_cancel_and_cancel_stays_inert(
+    mock_server, pw_browser
+):
+    lcu = copy.deepcopy(_POLL_LCU)
+    ctx, page, errors = _open(pw_browser, mock_server, lcu)
+    posts = _count_lcu_posts(ctx)
+    try:
+        _search(page, lcu, "Searching")
+        page.focus("#lv-cancel-match")
+        _pop(page, lcu)
+        st = page.evaluate(_PAIR_JS)
+        assert st["active"] == "lv-cancel-match", (
+            "a queue pop disabled the focused Cancel Queue and dropped "
+            f"focus to {st['active'] or '<body>'!r}: {st!r}"
+        )
+        assert st["cancel"] == [False, "true"], st
+        assert st["find"][0] is True, st
+
+        # Inert while held: Enter and a forced click POST nothing.
+        page.keyboard.press("Enter")
+        page.click("#lv-cancel-match", force=True)
+        page.wait_for_timeout(150)
+        assert posts == [], f"a held Cancel Queue fired: {posts!r}"
+
+        # Held Cancel reads as disabled: same settled fill, opacity and
+        # cursor as a disabled clone, and no hover fill.
+        page.hover("#lv-cancel-match", force=True)
+        page.wait_for_timeout(250)
+        look = page.evaluate(
+            "(() => { const b = document.getElementById('lv-cancel-match');"
+            "  const c = b.cloneNode(true); c.id = ''; c.disabled = true;"
+            "  c.removeAttribute('aria-disabled');"
+            "  c.style.transition = 'none';"
+            "  b.parentNode.appendChild(c);"
+            "  const hs = getComputedStyle(b), cs = getComputedStyle(c);"
+            "  const r = { held: [hs.backgroundColor, hs.opacity, hs.cursor],"
+            "    disabled: [cs.backgroundColor, cs.opacity, cs.cursor] };"
+            "  c.remove(); return r; })()"
+        )
+        assert look["held"] == look["disabled"], (
+            f"held Cancel Queue does not read as disabled: {look!r}"
+        )
+
+        # Declined pop -> requeue: Cancel is live again, focus never moved.
+        _search(page, lcu, "Searching")
+        assert page.evaluate(_ACTIVE_ID) == "lv-cancel-match"
+        # Pop again, then the search ends: focus hands to Find Match.
+        _pop(page, lcu)
+        _search(page, lcu, "Idle")
+        active = page.evaluate(_ACTIVE_ID)
+        assert active == "lv-find-match", (
+            f"pop -> Idle dropped focus to {active or '<body>'!r}"
+        )
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [pop cancel focus]: {errors[:3]}"
+
+
+def test_queue_pop_straight_from_idle_hands_focus_to_cancel(
+    mock_server, pw_browser
+):
+    """A fast pop can land between two 2 s polls, so the refresh sees
+    Idle -> MatchFound with Find Match focused and never sees Searching."""
+    lcu = copy.deepcopy(_POLL_LCU)
+    ctx, page, errors = _open(pw_browser, mock_server, lcu)
+    try:
+        page.focus("#lv-find-match")
+        _pop(page, lcu)
+        st = page.evaluate(_PAIR_JS)
+        assert st["active"] == "lv-cancel-match", (
+            "an Idle -> MatchFound pop disabled the focused Find Match and "
+            f"dropped focus to {st['active'] or '<body>'!r}: {st!r}"
+        )
+        _search(page, lcu, "Idle")
+        assert page.evaluate(_ACTIVE_ID) == "lv-find-match"
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [pop find focus]: {errors[:3]}"
+
+
+def test_queue_pop_never_steals_focus_from_elsewhere(mock_server, pw_browser):
+    lcu = copy.deepcopy(_POLL_LCU)
+    ctx, page, errors = _open(pw_browser, mock_server, lcu)
+    try:
+        _search(page, lcu, "Searching")
+        page.focus("#lv-mode-trigger")
+        _pop(page, lcu)
+        assert page.evaluate(_ACTIVE_ID) == "lv-mode-trigger"
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [pop no steal]: {errors[:3]}"

@@ -925,7 +925,8 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 }
 .lq-cancel .lq-btn-line1,
 .lq-cancel .lq-btn-line2 { color: var(--canvas); }
-.lq-cancel:hover:not(:disabled) {
+/* RM-1208: held (aria-disabled) during a queue pop - no hover fill. */
+.lq-cancel:hover:not(:disabled):not([aria-disabled="true"]) {
   background: color-mix(in srgb, var(--bad) 80%, var(--canvas));
   border-color: var(--bad);
 }

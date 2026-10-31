@@ -1757,7 +1757,22 @@ _WEB = _REPO_ROOT / "web"
 # either file alone gives a third value, so both contribute. Those paths
 # are the whole change. No glyph change: the added lines carry 0 non-ASCII
 # bytes. If another slice re-captures in parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "c6d3ea8663923f203c98a42b97abbd3ace71cf410286337b92b231897602df76"
+# superseded by the RM-1208 re-capture below: "c6d3ea8663923f203c98a42b97abbd3ace71cf410286337b92b231897602df76"
+#
+# RE-CAPTURED 2026-10-31 at RM-1208 (s144 uiux cycle 86, provisional
+# until the merger lands it and maps the id). One change rides it: a queue
+# pop (MatchFound / ReadyCheck) holds Lobby Cancel Queue aria-disabled
+# instead of disabled, so the focused button of the Find / Cancel pair
+# keeps keyboard focus or hands it to Cancel, and the held Cancel is inert
+# with no hover fill (web/js/main.js the _lobbyViewRefresh cancel block
+# and the Cancel Queue click guard, web/css/panels/header.css the
+# .lq-cancel hover rule). Ordinary case, no tokeniser change. ATTRIBUTED
+# BY SUBSTITUTION: swapping exactly those two paths back to their lane
+# HEAD 3406e29d4 blobs (in memory) reproduces the superseded c6d3ea86...
+# value EXACTLY; swapping either one alone does not. Those two paths are
+# the whole change. No glyph change: the added lines carry 0 non-ASCII
+# bytes. If another slice re-captures in parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "60bc8b16fabba25f1da9debe946118bcb4c92ab07801506fe712ef11c2b59c84"
 
 
 def _web_sources() -> list[Path]:
