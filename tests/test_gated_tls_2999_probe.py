@@ -21,6 +21,7 @@ import threading
 
 import pytest
 
+from core import tls_policy
 from tests._module_view import bind_urlopen
 from tools import gated_tls_2999_probe as gtp
 
@@ -74,15 +75,21 @@ class _Gamestats(http.server.BaseHTTPRequestHandler):
         pass
 
 
-@contextlib.contextmanager
-def _served(tmp_path, max_version=None, ciphers=None):
+def _server_ctx(tmp_path, max_version=None, ciphers=None):
+    # CodeQL alert 77: the RC floor factory, never a bare SSLContext.
     cert_path, key_path = _self_signed(tmp_path)
-    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    ctx = tls_policy.server_context()
     ctx.load_cert_chain(certfile=str(cert_path), keyfile=str(key_path))
     if max_version is not None:
         ctx.maximum_version = max_version
     if ciphers is not None:
         ctx.set_ciphers(ciphers)
+    return ctx
+
+
+@contextlib.contextmanager
+def _served(tmp_path, max_version=None, ciphers=None):
+    ctx = _server_ctx(tmp_path, max_version=max_version, ciphers=ciphers)
     srv = http.server.ThreadingHTTPServer((_HOST, 0), _Gamestats)
     srv.daemon_threads = True
     srv.socket = ctx.wrap_socket(srv.socket, server_side=True)
@@ -130,6 +137,21 @@ def test_legacy_ciphers_widen_the_default_list():
 def test_floor12_is_the_rm752_factory_itself():
     from core import tls_policy
     assert gtp.client_context_noverify is tls_policy.client_context_noverify
+
+
+def test_the_loopback_test_server_sits_at_the_rc_floor(tmp_path, monkeypatch):
+    """CodeQL py/insecure-protocol (alert 77): the loopback server this file
+    starts came from a bare SSLContext with no floor of its own. It is built
+    by core.tls_policy.server_context(), so it follows TLS_MIN_VERSION.
+    Moving the floor to TLSv1_3 tells the two apart: a bare context keeps
+    CPython's TLSv1_2 default."""
+    assert _server_ctx(tmp_path).minimum_version == tls_policy.TLS_MIN_VERSION
+    # The capped server the probe tests use still caps at the floor.
+    capped = _server_ctx(tmp_path, max_version=ssl.TLSVersion.TLSv1_2)
+    assert capped.minimum_version == tls_policy.TLS_MIN_VERSION
+    assert capped.maximum_version == ssl.TLSVersion.TLSv1_2
+    monkeypatch.setattr(tls_policy, "TLS_MIN_VERSION", ssl.TLSVersion.TLSv1_3)
+    assert _server_ctx(tmp_path).minimum_version == ssl.TLSVersion.TLSv1_3
 
 
 # --- relay parity -----------------------------------------------------------
