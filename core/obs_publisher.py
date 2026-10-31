@@ -321,6 +321,34 @@ class OBSPublisher:
         # last-pushed text so we don't spam SetInputSettings when the
         # state hasn't changed (cheap to compute, saves OBS-side work)
         self._last_pushed: str = ""
+        # RM-1216: keep-warm grab failures per GRAB_FAILURES reason, so a
+        # wrong frame_source_name (a cold slot forever) is visible RC-side.
+        self._grab_failures_lock = threading.Lock()
+        self._grab_failures: dict = {r: 0 for r in GRAB_FAILURES}
+
+    def grab_failure_counts(self) -> dict:
+        """Copy of the keep-warm grab failure counters (RM-1216): one
+        key per `GRAB_FAILURES` reason, cumulative over the publisher's
+        life. Safe to call from any thread."""
+        with self._grab_failures_lock:
+            return dict(self._grab_failures)
+
+    def _record_grab_failure(self, reason: str, logged: set,
+                             source_name: str) -> None:
+        """`on_failure` hook body for the keep-warm grab: count `reason`
+        every time, and log it only the first time on this connection
+        (`logged` is the per-connection set), so a steady misconfiguration
+        costs one line per connection, not one per tick."""
+        reason = str(reason)
+        with self._grab_failures_lock:
+            self._grab_failures[reason] = (
+                self._grab_failures.get(reason, 0) + 1)
+        if reason in logged:
+            return
+        logged.add(reason)
+        _log.warning("OBS keep-warm grab of %r failed (%s); repeats on "
+                     "this connection are counted, not logged",
+                     source_name, reason)
 
     def start_background(self) -> None:
         """Launch the publisher if `obs.enabled` is true in config.
@@ -439,6 +467,13 @@ class OBSPublisher:
                     _log.info("OBS publisher connected; updating %r every %.1fs",
                               source_name, interval_s)
                     self._last_pushed = ""  # force first push after reconnect
+                    # RM-1216: reasons already logged on THIS connection.
+                    grab_logged: set = set()
+
+                    def _on_grab_failure(reason, _logged=grab_logged):
+                        self._record_grab_failure(reason, _logged,
+                                                  frame_source_name)
+
                     while not self._stop.is_set():
                         text = _render_state()
                         if text and text != self._last_pushed:
@@ -457,7 +492,8 @@ class OBSPublisher:
                                 await grab_source_screenshot(
                                     ws, frame_source_name,
                                     image_width=frame_width,
-                                    timeout_s=frame_timeout_s)
+                                    timeout_s=frame_timeout_s,
+                                    on_failure=_on_grab_failure)
                             except Exception:  # noqa: BLE001
                                 pass
                         await asyncio.sleep(interval_s)
