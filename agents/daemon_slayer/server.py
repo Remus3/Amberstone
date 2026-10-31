@@ -319,11 +319,25 @@ def _coerce_int_list(value: Any, field_name: str) -> list[int]:
     return out
 
 
+def _reject_non_str(value: Any, field_name: str) -> None:
+    """RM-1157: a non-string JSON value in a string key is a 400.
+
+    ``str(v)`` turned ``mode: ["ARAM"]`` into the mode ``"['ARAM']"``, which
+    no gate recognises, so the route scored an allow-all item pool and
+    answered 200. Same policy as ``_reject_bool`` for numeric keys: the
+    wrong JSON type names the field, never a silent coercion.
+    """
+    if not isinstance(value, str):
+        raise _ApiError(
+            400, f"{field_name}: expected string, got {type(value).__name__}")
+
+
 def _required_str(body: dict, key: str) -> str:
     v = body.get(key)
     if v is None or (isinstance(v, str) and not v.strip()):
         raise _ApiError(400, f"missing required field: {key}")
-    return str(v).strip()
+    _reject_non_str(v, key)
+    return v.strip()
 
 
 def _reject_bool(value: Any, field_name: str) -> None:
@@ -441,7 +455,8 @@ def _opt_str(body: dict, key: str, default: Optional[str] = None) -> Optional[st
     v = body.get(key, default)
     if v is None:
         return default
-    s = str(v).strip()
+    _reject_non_str(v, key)
+    s = v.strip()
     return s if s else default
 
 
