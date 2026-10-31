@@ -978,7 +978,29 @@ difference plus edge energy. Expected at least 99%.
 **Corpus.**
 - The recorded runs under gitignored `ops/runtime/tft_qa/`: 7 runs today, each with vision
   frames, `frames.jsonl`, `states.jsonl`, `events.jsonl` and the EoG file.
-- The TFT.log backups `TFT-backup-*.log` give one phase stamp list per match.
+- Stage truth for the two s136 runs is the run-local `tft_log_events.jsonl` in
+  `ops/runtime/tft_qa/20261025-153652/` (A) and `ops/runtime/tft_qa/20261025-162857/` (B),
+  extracted 2026-10-31 (RM-1161). Line 1 is a header (source file name, sha256, the
+  "Log file open" stamp, bytes); then one `{kind, ts, payload}` line per event that
+  `tft.sources.tft_log.parse_line` returns (allowlist only; the raw log is not copied).
+  - A: from `TFT-backup-2026.10.25-21.12.08.log` (3,224,824 B, opened 15:36:52), sha256
+    `3d2fd43d9c84cc29fc64489cfd903a7c9af2d5fbc12dc7882dfc013761867142`; 143 events,
+    35 CombatDeparture + DraftDeparture phase lines (30 + 5).
+  - B: from the then-live `TFT.log` (6,082,451 B, opened 16:28:57), sha256
+    `64a4eb7de7d9206d4cad132fdac01be28b76acd41108caf3271d2daba2df41c3`; 150 events,
+    32 such phase lines (27 + 5).
+- The client's own logs rotate out: it renames `TFT.log` to `TFT-backup-<utc>.log` at
+  each launch and prunes the backups by a rule RC has not measured, and RC keeps no
+  copy of them, so the run-local files above are the lasting stage-truth source. Never
+  commit them (Riot client output from real matches).
+- HUD-00's OCR input is the run-local `ocr_reads.jsonl` in the same two directories, not
+  the RC log, extracted 2026-10-31 (RM-928 (a)) from gitignored `logs/2026-10-25.log.1`
+  (3,145,635 B, sha256
+  `0617d7c68d473cd4b5bdc8fc93b2288a99fb0ae8b63223c31ece4adc08b0e629`), which the 14-day
+  log reaper deletes about 2026-11-08. Line 1 is a header (source, sha256, window); then
+  one `{ts, log_time, read}` line per `tft/tft_ocr_reader.py:386` "OCR read" line from
+  `MATCH_START.json` `start_ts` to the `MATCH_END.json` mtime, inclusive: 851 (A) and
+  844 (B), the 10.2 counts. Never commit them either.
 - The existing frames are 1280x720. HUD-00 adds a native-resolution ROI corpus, recorded
   at 8 Hz during live matches into gitignored `data/tft/hud_corpus/`.
 
