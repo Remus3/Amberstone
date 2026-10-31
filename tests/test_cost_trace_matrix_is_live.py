@@ -32,8 +32,9 @@ and any cited path under `tests/`.
 What DOES reproduce, and is the actual reason for the refusal, is the
 qualitative result: every sampled hit was CORRECT prose - a shadow-report tool,
 a deterministic substrate, a precompute module, or a sentence whose whole point
-is that the file does NOT call Anthropic (`docs/COST_TRACE.md:11` on
-`core/moon_proxy.py`, `BACKLOG.md:30` on `dashboard/_champ_select.py`). One
+is that the file does NOT call Anthropic (`docs/COST_TRACE.md`:
+"`core/moon_proxy.py` does NOT call Anthropic"; `BACKLOG.md`, the CLOSED-STALE
+"deterministic champ-select brief FLIP" row on `dashboard/_champ_select.py`). One
 independent sample of 12 was 12 for 12 correct prose, including a line that
 matched only because it mentions "Claude PreToolUse hooks". Precision is
 somewhere between terrible and very terrible regardless of corpus, and a guard

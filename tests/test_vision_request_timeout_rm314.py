@@ -1,15 +1,16 @@
 """RM-314 - the four untimed vision-path `messages.create` call sites.
 
-WHAT RM-314 SAYS (`BACKLOG.md:63`): four production `messages.create` call
-sites pass no `timeout=`, and no `anthropic.Anthropic(...)` construction
-anywhere in the repo passes one either, so each of the four inherits the
+WHAT RM-314 SAYS (the "**RM-314 SHIPPED" row in `BACKLOG.md`): four
+production `messages.create` call sites pass no `timeout=`, and no
+`anthropic.Anthropic(...)` construction anywhere in the repo passes one
+either, so each of the four inherits the
 Anthropic SDK default of 600 s. The per-call kwarg is therefore the only
 bound that exists. The four sites are:
 
-  1. `modes/shared_vision.py:389`      GameVisionReader._extract
-  2. `tft/tft_vision_reader.py:186`    TftVisionReader._extract_local
-  3. `vision_server/_inference.py:246` handle_vision
-  4. `vision_server/_inference.py:291` handle_coach
+  1. `modes/shared_vision.py`      GameVisionReader._extract
+  2. `tft/tft_vision_reader.py`    TftVisionReader._extract_local
+  3. `vision_server/_inference.py` handle_vision
+  4. `vision_server/_inference.py` handle_coach
 
 RE-VERIFIED this run by an AST sweep over every tracked `.py` outside
 `tests/` and `docs/`: 20 production `messages.create` sites exist,
@@ -262,7 +263,7 @@ class TestTftVisionReaderTimeout(_TimeoutKwargCase):
 
 
 class TestVisionServerRelayTimeouts(_TimeoutKwargCase):
-    """`vision_server/_inference.py` handle_vision (:246), handle_coach (:291)."""
+    """`vision_server/_inference.py` handle_vision and handle_coach."""
 
     def test_handle_vision_passes_timeout_to_messages_create(self):
         client = _Client()

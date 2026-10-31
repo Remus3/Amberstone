@@ -245,7 +245,10 @@ def test_resolve_enemy_empty_inputs():
 # --------------------------------------------------------------------------- #
 # RC2 WS1 step 1 - hold/farm verdict band + even relabel (calibration)
 #
-# Grounded in ops/audit/HZ_HAIKU_CALL_INVENTORY.md:49-108 and
+# Grounded in ops/audit/HZ_HAIKU_CALL_INVENTORY.md, the two sections "UPDATE
+# 2026-06-19 (run 2026-06-19-01) - laning bottleneck reclassified: CALIBRATION, not
+# volume" and "UPDATE 2026-06-19 (run 2026-06-19-02) - both measurement gaps
+# closed", and
 # docs/_archive/2026-07-28-research-consolidation/RC2_COACHING_SPEC.md WS1 1.3 / 1.3a. The precompute verdict
 # vocabulary had NO hold/farm band and was back_off-biased; Haiku said "hold"
 # on 28% of ticks. These tests pin the new 5-band classifier and the even->hold
@@ -314,7 +317,10 @@ def test_verdict_labels_has_hold_entry():
 def test_even_a_chip_relabeled_to_hold_bucket():
     # Before: even A-chip "Even trade on your cd window" classified as "even".
     # After the relabel it must classify as "hold" so it agrees with Haiku's
-    # dominant "hold" call (HZ_HAIKU_CALL_INVENTORY.md:97-99).
+    # dominant "hold" call (HZ_HAIKU_CALL_INVENTORY.md, the root-cause bullet
+    # "Haiku says `hold` on 114 of the 406 comparable ticks", and the
+    # "LANING `even` understatement QUANTIFIED" bullet: 57 `even` ticks faced
+    # Haiku `hold`).
     a_label, _b = plc._VERDICT_LABELS["even"]
     assert classify_verdict(a_label) == "hold"
 

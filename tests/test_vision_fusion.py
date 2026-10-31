@@ -1,8 +1,8 @@
 # arch: tests for core.vision_fusion confidence-weighted partial-read fusion | section=tests | frozen=no
 """Tests for core.vision_fusion - R126 Slice B partial-read fusion layer.
 
-Spec: docs/NO_LLM_PRECOMPUTE_PLAN.md:159-163 (confidence-weighted fusion /
-partial-read layer) - fuse Live Client API (high trust) + CV reads
+Spec: docs/NO_LLM_PRECOMPUTE_PLAN.md, the "CONFIDENCE-WEIGHTED FUSION" block
+(the partial-read layer) - fuse Live Client API (high trust) + CV reads
 (confidence-weighted) into one best-effort state; always emit something;
 never raise. Precedent: core/district_fusion.py (API-ground-truth-over-CV,
 fail-soft never-raises). CV reads carry no per-field score today

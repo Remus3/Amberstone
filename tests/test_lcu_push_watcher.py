@@ -1,6 +1,8 @@
 """RED-first tests for tools/lcu_push_watcher.py (gated item A1).
 
-A1 (docs/LIVE_GAME_GATED_SYNC.md line 90 / LEDGER item 779): after a mid-session
+A1 (LEDGER item 779; docs/LIVE_GAME_GATED_SYNC.md gated item A1, since closed -
+the doc records "A1 / A2 / A7 / A13 - closed rows finally dropped from the
+checklist body" with history in LEDGER 859 + 867): after a mid-session
 League restart, the LCU rune push must STILL fire on the FIRST champ-select enter
 (the 2026-07-04 regression was: no push after a restart).
 
