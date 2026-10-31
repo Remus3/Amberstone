@@ -44,17 +44,26 @@ Hardened by the s144 true-audit (``tests/test_vision_server_pool_true_audit_s144
   raised inside ``settimeout`` - on every request, a whole-server outage
   reported only as one warning per request.
 
-The deadline is per socket OPERATION: a peer that trickles a byte inside
-every window is not silent and can still hold a worker. The bind is loopback
-only (RM-150), so only a local process can do that.
+``request_timeout_s`` is per socket OPERATION, so a peer that trickles a byte
+inside every window is never silent. ``request_read_cap_s`` (RM-1150) is one
+wall-clock budget shared by every read of a connection: past it a read fails
+at once and the worker drops the peer, so a trickler holds a worker for the
+cap at most instead of for as long as it trickles (16 of them used to stall
+:8889 until the watchdog replaced the process; the bind is loopback only,
+RM-150, so only a local process could). Reads only: the handler's compute
+and its response writes keep the per-operation deadline, so a slow inference
+call is never cut off. The vision handler speaks HTTP/1.0, one request per
+connection, so the budget is per request.
 """
 from __future__ import annotations
 
 import logging
 import operator
 import queue
+import socket
 import sys
 import threading
+import time
 from http.server import HTTPServer
 
 _log = logging.getLogger("moon_vision")
@@ -73,6 +82,10 @@ DEFAULT_REQUEST_TIMEOUT_S = 60.0
 # client pinning a worker in any sense that matters, and far enough past it
 # ``settimeout`` itself overflows (OverflowError on every request).
 MAX_REQUEST_TIMEOUT_S = 3600.0
+# RM-1150: wall-clock budget for ALL the reads of one connection (request
+# line, headers and body). A loopback client sends its request at once, so
+# only a stalled or trickling peer comes near it.
+DEFAULT_REQUEST_READ_CAP_S = 60.0
 
 
 def _count(name: str, value: object) -> int:
@@ -89,9 +102,9 @@ def _count(name: str, value: object) -> int:
                      f"got {value!r}")
 
 
-def _deadline(value: object) -> float | None:
-    """The per-connection socket deadline: None (no deadline) or a finite
-    number of seconds in (0, MAX_REQUEST_TIMEOUT_S]."""
+def _deadline(value: object, name: str = "request_timeout_s") -> float | None:
+    """A per-connection deadline: None (no deadline) or a finite number of
+    seconds in (0, MAX_REQUEST_TIMEOUT_S]."""
     if value is None:
         return None
     if not isinstance(value, bool) and isinstance(value, (int, float)):
@@ -100,9 +113,84 @@ def _deadline(value: object) -> float | None:
         # check alone refuses them.
         if 0.0 < seconds <= MAX_REQUEST_TIMEOUT_S:
             return seconds
-    raise ValueError("PooledHTTPServer request_timeout_s must be None or "
+    raise ValueError(f"PooledHTTPServer {name} must be None or "
                      f"seconds in (0, {MAX_REQUEST_TIMEOUT_S:g}], "
                      f"got {value!r}")
+
+
+class _ReadCappedSocket(socket.socket):
+    """A connection whose reads share one wall-clock budget (RM-1150).
+
+    Before each read the socket deadline becomes what is left of the cap
+    (never more than the per-operation deadline); once the cap is spent a
+    read raises TimeoutError at once. A write first restores the
+    per-operation deadline, so the response is not under the cap."""
+
+    def _arm_read(self) -> None:
+        remaining = self._read_deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError("request read exceeded its wall-clock cap")
+        op = self._op_timeout
+        super().settimeout(remaining if op is None else min(op, remaining))
+
+    def _arm_write(self) -> None:
+        super().settimeout(self._op_timeout)
+
+    def settimeout(self, value) -> None:
+        super().settimeout(value)
+        self._op_timeout = super().gettimeout()
+
+    def gettimeout(self):
+        # The per-operation deadline, not the shrunken read one, so a caller
+        # that saves and restores it (``core/http_host_gate.py``
+        # ``_drain_small_body``) does not shrink it for good.
+        return self._op_timeout
+
+    def recv(self, *args):
+        self._arm_read()
+        return super().recv(*args)
+
+    def recv_into(self, *args):
+        self._arm_read()
+        return super().recv_into(*args)
+
+    def recvfrom(self, *args):
+        self._arm_read()
+        return super().recvfrom(*args)
+
+    def recvfrom_into(self, *args):
+        self._arm_read()
+        return super().recvfrom_into(*args)
+
+    def send(self, *args):
+        self._arm_write()
+        return super().send(*args)
+
+    def sendall(self, *args):
+        self._arm_write()
+        return super().sendall(*args)
+
+
+def _read_capped(request, cap_s: float | None):
+    """``request`` with its reads under a ``cap_s`` wall-clock budget, or
+    ``request`` itself when there is no cap or it is not a real socket.
+
+    The accepted socket is detached into a ``_ReadCappedSocket`` on the same
+    OS handle, keeping its per-operation deadline; the original object is
+    left closed and must not be used again."""
+    if cap_s is None or type(request) is not socket.socket:
+        return request
+    op_timeout = request.gettimeout()
+    family, kind, proto = request.family, request.type, request.proto
+    fd = request.detach()
+    try:
+        capped = _ReadCappedSocket(family, kind, proto, fileno=fd)
+    except BaseException:
+        socket.close(fd)
+        raise
+    capped._read_deadline = time.monotonic() + cap_s
+    capped.settimeout(op_timeout)
+    return capped
 
 
 class PooledHTTPServer(HTTPServer):
@@ -112,12 +200,14 @@ class PooledHTTPServer(HTTPServer):
                  workers: int = DEFAULT_WORKERS,
                  queue_size: int = DEFAULT_QUEUE_SIZE,
                  request_timeout_s: float | None = DEFAULT_REQUEST_TIMEOUT_S,
+                 request_read_cap_s: float | None = DEFAULT_REQUEST_READ_CAP_S,
                  bind_and_activate: bool = True) -> None:
         # Validated before any thread starts or the port is bound, so a bad
         # value leaves nothing half-built behind.
         workers = _count("workers", workers)
         queue_size = _count("queue_size", queue_size)
         self.request_timeout_s = _deadline(request_timeout_s)
+        self.request_read_cap_s = _deadline(request_read_cap_s, "request_read_cap_s")
         self.dropped = 0
         self._closing = False
         self._queue: queue.Queue = queue.Queue(maxsize=queue_size)
@@ -167,6 +257,9 @@ class PooledHTTPServer(HTTPServer):
             try:
                 if self.request_timeout_s is not None:
                     request.settimeout(self.request_timeout_s)
+                # RM-1150: the clock starts when a worker takes the
+                # connection, so time spent queued is not charged to it.
+                request = _read_capped(request, self.request_read_cap_s)
                 self.finish_request(request, client_address)
             except BaseException:  # noqa: BLE001 - a worker must outlive any request
                 # BaseException, not Exception: SystemExit from handler code
