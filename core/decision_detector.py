@@ -886,13 +886,24 @@ class DecisionStore:
 
     def record_coach_choice(self, *, choice_key: str, choice_label: str,
                             confidence: str, source_tag: str,
-                            game_context: dict | None = None) -> dict:
+                            game_context: dict | None = None) -> Optional[dict]:
         """Append a coach A/B tutoring choice to the decision log.
 
         Coach choices have no pending-state lifecycle (the user clicks one
         and it is logged immediately for post-game replay); they share the
         same JSONL ledger as objective-contest decisions, distinguished by
-        ``type="coach_choice"``. Returns the recorded entry."""
+        ``type="coach_choice"``. Returns the recorded entry, or None when
+        nothing was written.
+
+        s144 true-audit cycle 82: this swallowed every failure and returned
+        the entry anyway, so POST /api/coach-choice answered 200 {"ok": true}
+        for a click that never reached the log and its own error branch was
+        dead. It also appended OUTSIDE the critical section that
+        record_choice() appends to this same file under (a Windows O_APPEND
+        is seek-then-write, so unserialized appenders can interleave), and
+        json.dumps let NaN / Infinity through as a non-strict-JSON line.
+        The line is now serialized strictly BEFORE the file is opened, so a
+        refused value writes nothing, and the append runs under the lock."""
         entry = {
             "type": "coach_choice",
             "ts_unix": time.time(),
@@ -903,11 +914,21 @@ class DecisionStore:
             "game_context": game_context or {},
         }
         try:
-            self._log_path.parent.mkdir(parents=True, exist_ok=True)
-            with self._log_path.open("a", encoding="utf-8") as f:
-                f.write(json.dumps(entry) + "\n")
-        except Exception as exc:  # noqa: BLE001
-            _log.warning("coach_choice log append failed: %s", exc)
+            # TypeError: a non-serializable value; ValueError: NaN /
+            # Infinity (allow_nan=False) or a circular reference.
+            line = json.dumps(entry, allow_nan=False) + "\n"
+        except (TypeError, ValueError) as exc:
+            _log.warning("coach_choice not logged - unserializable entry: %s",
+                         exc)
+            return None
+        with _decisions_critical_section():
+            try:
+                self._log_path.parent.mkdir(parents=True, exist_ok=True)
+                with self._log_path.open("a", encoding="utf-8") as f:
+                    f.write(line)
+            except OSError as exc:
+                _log.warning("coach_choice log append failed: %s", exc)
+                return None
         return entry
 
     def record_choice(self, decision_id: str, choice: str,
