@@ -175,6 +175,11 @@ install on natural quit, never mid-game (`rc-shell/src/main.js:267`).
   signing config; electron-updater then checks only the sha512 in
   `latest.yml` over HTTPS, and SmartScreen warns on every install. Signing
   certificate = operator decision (cost); until then document unsigned.
+  Ruled s146: unsigned for now (S4-S146-R41, ruling 41); re-decide before
+  any build goes to anyone else (distribution); until then every published
+  asset's SHA-256 goes in the release notes and the SmartScreen warning is
+  documented. WA12 (the signing exclusion) binds the certificate change and
+  lands in the same commit as it.
 - S5 FIXED (PKG-6 65cc65565: RC-own `rc-shell/assets/icon.ico`). Was: no
   app icon: `rc-shell/electron-builder.yml` declared none, so the
   default Electron icon ships. N8 asset provenance wants an RC-own icon.
@@ -630,7 +635,9 @@ item binds the named slice.
 - M10 licence ruling: the two LGPL ffmpeg DLLs (Electron `ffmpeg.dll`; the
   opencv videoio DLL, stripped by default) and certifi (MPL-2.0). Ruled
   s146, M10-S146-R40 (M10 above).
-- Code-signing certificate (S4) and the first GitHub Release publish.
+- Code-signing certificate (S4) and the first GitHub Release publish. S4
+  ruled s146: unsigned (S4-S146-R41); re-decide before distribution; WA12
+  binds the certificate change.
 - RM-189 gates and the ADR-006 reopen (section 6).
 - The ONLOGON cutover with its XML backup (section 5).
 - Live hotkey check from the unelevated launcher, with an unelevated and
@@ -873,6 +880,8 @@ Giving it to anyone else needs all of them:
 - M10 licence ruling recorded (PKG-8) and a generated notices file shipped.
   Ruled s146, M10-S146-R40; still owed: the certifi swap (RM-1226) and the
   ffmpeg source on the same Release.
-- Code-signing decision (S4) and the first GitHub Release publish.
+- Code-signing decision (S4) and the first GitHub Release publish. S4 ruled
+  s146: unsigned (S4-S146-R41); re-decide before distribution; WA12 binds
+  the certificate change.
 - Asset provenance audit of everything in the bundle (OVERLAY_COMPLIANCE_PLAN
   N8; `NOTICE` already records the tracked third-party data).
