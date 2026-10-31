@@ -48,9 +48,22 @@ _ORDER = {"ok": True, "order": [
      "delta": 96.0, "unit": "dps", "gold": 2650},
 ]}
 
-_MEASURE = """async () => {
+_MEASURE = """async (want) => {
   await document.fonts.ready;
 """ + _HELPERS + """
+  // Read in the SAME task that sees the strip in `want`. The strip re-keys
+  // when the archetype pick lands after the first build order (ready ->
+  // loading -> ready), so a wait in a separate call can pass and the read
+  // still find "loading" (CI run 41231114850).
+  const settled = () => {
+    const s = document.getElementById('csv-builds-seq');
+    const v = document.querySelector('#view-champ-select .csv-ta-verdict');
+    return !!s && s.dataset.boState === want && !!v && !!v.textContent.trim();
+  };
+  const t0 = Date.now();
+  while (!settled() && Date.now() - t0 < 10000) {
+    await new Promise((r) => setTimeout(r, 25));
+  }
   const out = [];
   const seq = document.getElementById('csv-builds-seq');
   if (seq) out.push(...read(seq.dataset.boState, seq));
@@ -94,7 +107,7 @@ def _measure(mock_server, pw_browser, theme, ready):
         assert page.evaluate(
             "document.documentElement.dataset.theme || 'hextech'"
         ) == theme, f"booted on the wrong theme, not {theme}"
-        rows = page.evaluate(_MEASURE)
+        rows = page.evaluate(_MEASURE, state)
     finally:
         page.close()
         ctx.close()
@@ -147,3 +160,68 @@ def test_team_analysis_title_stays_dimmer_than_its_verdict(
     verdict = _by(rows, "ta", "csv-ta-verdict")[0]
     assert _lum(title[3]) < _lum(verdict[3]), (
         f"{theme}: TEAM ANALYSIS label is as bright as its verdict")
+
+
+# CI run 41231114850 (Linux): the strip landed "ready" on its first key (no
+# archetype yet), the wait in _measure saw it, then the archetype pick landed,
+# re-keyed the build order and put the strip back on "loading" before the read.
+# This holds the archetype pick and the archetype-keyed order to replay that.
+_HOLD_ARCHETYPE = """
+(() => {
+  const real = window.fetch.bind(window);
+  const gate = () => {
+    let open;
+    const p = new Promise((r) => { open = r; });
+    return {p, open};
+  };
+  const arch = gate();
+  const order = gate();
+  window.__rcHold = {arch: arch.open, order: order.open};
+  window.fetch = (url, init) => {
+    const u = String((url && url.url) || url);
+    if (u.includes('/api/cs-archetype-pick')) {
+      return arch.p.then(() => real(url, init));
+    }
+    if (u.includes('/api/build-order')
+        && String((init && init.body) || '').includes('"archetype"')) {
+      return order.p.then(() => real(url, init));
+    }
+    return real(url, init);
+  };
+})();
+"""
+
+
+def test_the_ready_read_survives_the_archetype_rekey(mock_server, pw_browser):
+    mock_server._store["data"] = {}
+    ctx = pw_browser.new_context(
+        ignore_https_errors=True, viewport={"width": 1920, "height": 1080}
+    )
+    page = ctx.new_page()
+    page.add_init_script(_WS_STUB)
+    page.add_init_script(_HOLD_ARCHETYPE)
+    page.route("**/api/build-order*", lambda r: r.fulfill(
+        status=200, content_type="application/json", body=json.dumps(_ORDER)))
+    errors: list[str] = []
+    page.on("pageerror", lambda err: errors.append(str(err)))
+    seq = "#view-champ-select #csv-builds-seq"
+    try:
+        page.goto(
+            mock_server.url + "/?ui_mock=1&mode=sr&theme=hextech#champ-select",
+            wait_until="domcontentloaded", timeout=15_000,
+        )
+        page.wait_for_function(
+            f"!!document.querySelector('{seq}[data-bo-state=\"ready\"]')",
+            timeout=10_000)
+        page.evaluate("window.__rcHold.arch()")
+        page.wait_for_function(
+            f"!!document.querySelector('{seq}[data-bo-state=\"loading\"]')",
+            timeout=10_000)
+        page.evaluate("setTimeout(window.__rcHold.order, 300)")
+        rows = page.evaluate(_MEASURE, "ready")
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, errors[:3]
+    assert _by(rows, "ready", "csv-boseq-tag"), [r[:3] for r in rows]
+    assert not _by(rows, "loading", "csv-boseq-tag"), [r[:3] for r in rows]
