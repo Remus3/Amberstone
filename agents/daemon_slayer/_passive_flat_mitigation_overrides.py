@@ -1,9 +1,10 @@
 """R9 (2026-06-21) - effects-text-only PER-INSTANCE FLAT-AMOUNT damage-reduction.
 
 The MISSING SIBLING of ``_passive_mitigation_overrides.py``. That percent
-registry deliberately EXCLUDED (its docstring lines 64-69) the survivability
-class that reduces a FLAT NUMBER per damage instance (optionally capped at a
-fraction of EACH instance), naming Fizz P, Amumu E, Leona W. R9 adds exactly
+registry deliberately EXCLUDED (the PER-INSTANCE FLAT-AMOUNT bullet under
+"Documented EXCLUSIONS" in its module docstring) the survivability class that
+reduces a FLAT NUMBER per damage instance (optionally capped at a fraction of
+EACH instance), naming Fizz P, Amumu E, Leona W. R9 adds exactly
 that excluded class as a NEW registry - it does NOT re-open or modify the
 percent registry (a distinct, separately-keyed sibling).
 

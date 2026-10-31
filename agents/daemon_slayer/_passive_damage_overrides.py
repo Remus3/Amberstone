@@ -987,8 +987,9 @@ _PASSIVE_DAMAGE_OVERRIDES: dict[tuple[str, str, int], PassiveDamageEntry] = {
     #    target's maximum health) magic damage every second ][ 0.625 (+ 3.75%
     #    AP) (+ 0.13% : 0.63% (based on level) of target's maximum health)
     #    magic damage every 0.125 seconds ]to nearby enemies."
-    # docs/DS_SWEEP_TRACKER.md:839 records the same numbers ("5 + 30% AP +
-    # 1-5% target max HP per second, 8 ticks/s"), so the two AGREE - the
+    # The Mordekaiser row of docs/DS_SWEEP_TRACKER.md records the same
+    # numbers (5 (+30% AP) (+1-5% of target MAXIMUM health) per second, as
+    # 8 ticks/sec at 0.125s), so the two AGREE - the
     # 0.125s bracket is the identical rate expressed per tick (0.625 x 8 = 5;
     # 3.75% x 8 = 30%). Doctrine B (credit the champion's OWN 16.14.1 line) is
     # therefore not load-bearing here; the per-SECOND bracket is authored

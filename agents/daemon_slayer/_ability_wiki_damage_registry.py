@@ -57,11 +57,12 @@ SOURCE. Every number below was transcribed from the LIVE wiki
 ``Template:Data <Champion>/<Ability>`` wikitext, fetched
 2026-07-25 via ``https://wiki.leagueoflegends.com/en-us/api.php``
 ``action=query&prop=revisions&rvslots=main&rvprop=content`` - the same host and
-endpoint ``tools/daemon_slayer_wiki_ability_extract.py`` uses
-(``:108-110``). The raw ``|leveling`` line is quoted verbatim beside every
-entry it produced. The key mapping was NOT guessed: the wiki's own ability
-redirects give it, e.g. ``Template:Data Locke/Q -> Template:Data Locke/Ritual
-Nails``, ``Template:Data Zaahen/R -> Template:Data Zaahen/Grim Deliverance``.
+endpoint ``tools/daemon_slayer_wiki_ability_extract.py`` builds as
+``WIKI_API`` from ``WIKI_HOST``. The raw ``|leveling`` line is quoted
+verbatim beside every entry it produced. The key mapping was NOT guessed:
+the wiki's own ability redirects give it, e.g.
+``Template:Data Locke/Q -> Template:Data Locke/Ritual Nails``,
+``Template:Data Zaahen/R -> Template:Data Zaahen/Grim Deliverance``.
 
 LINEAR EXPANSION IS AN ASSUMPTION. ``{{ap|X to Y}}`` names only the rank-1 and
 rank-max endpoints; ``_ramp`` expands it linearly across the ability's rank
