@@ -345,17 +345,22 @@ def test_copyleft_fails_loudly_without_a_ruling(tree: dict, capsys: pytest.Captu
     rc = tpn.main(_argv(tree, out))
     err = capsys.readouterr().err
     assert rc == 1
-    for cid in ("py:certifi", "py:opencv-python:cv2/opencv_videoio_ffmpeg500_64.dll",
-                "electron-runtime:ffmpeg.dll", "electron-runtime:chromium-credits"):
+    # Ruling 40 (M10-S146-R40) strips the opencv DLL and replaces certifi, so
+    # neither is ever cleared by the shipped RULINGS: both still fail closed.
+    for cid in ("py:certifi", "py:opencv-python:cv2/opencv_videoio_ffmpeg500_64.dll"):
         assert f"COPYLEFT WITHOUT RULING: {cid}" in err, (cid, err)
+    # ...while the two Electron runtime items it ships are cleared by it.
+    for cid in ("electron-runtime:ffmpeg.dll", "electron-runtime:chromium-credits"):
+        assert cid not in err, (cid, err)
     text = out.read_text(encoding="ascii")
     assert "STATUS: INCOMPLETE" in text and "NOT FOR DISTRIBUTION" in text
     assert "ruling: PENDING" in text
+    assert "ruling: M10-S146-R40" in text
     assert "1 of 2 Chromium products name a copyleft licence" in text
     assert "    - ffmpeg (LGPL)" in text
     assert "    - zlib" not in text, "a permissive Chromium product was flagged"
-    # Exactly the four M10 items, nothing else, are problems.
-    assert err.count("PROBLEM") == 4, err
+    # Exactly the two items ruling 40 does not ship, nothing else, are problems.
+    assert err.count("PROBLEM") == 2, err
 
 
 def test_recorded_rulings_clear_copyleft_and_are_written(tree: dict, capsys: pytest.CaptureFixture) -> None:
@@ -454,9 +459,26 @@ def test_bad_ruling_argument_is_a_usage_error(tree: dict) -> None:
 # --------------------------------------------------------------------------
 
 def test_shipped_rulings_are_recorded_ids_only() -> None:
-    """The M10 ruling is operator-gated: nothing may be cleared by an empty id."""
+    """Nothing may be cleared by an empty or malformed ruling id."""
     for pattern, rid in tpn.RULINGS.items():
         assert pattern.strip() and tpn.RULING_ID_RE.match(rid), (pattern, rid)
+
+
+def test_shipped_rulings_are_exactly_the_s146_m10_ruling() -> None:
+    """Ruling 40 (s146, `M10-S146-R40`, docs/_archive/2026-10/s146_rulings_40-51.md).
+
+    Electron's unmodified, dynamically loaded LGPL `ffmpeg.dll` and the
+    Chromium credits SHIP, so exactly those two component ids are cleared.
+    opencv's videoio ffmpeg DLL is STRIPPED and certifi is REPLACED, so no
+    shipped ruling may match either: a bundle that carries one fails closed.
+    """
+    assert tpn.RULINGS == {
+        "electron-runtime:ffmpeg.dll": "M10-S146-R40",
+        "electron-runtime:chromium-credits": "M10-S146-R40",
+    }
+    for cid in ("py:certifi", "py:opencv-python:cv2/opencv_videoio_ffmpeg500_64.dll",
+                "electron-runtime:avcodec-61.dll", "electron-runtime:electron"):
+        assert tpn.ruling_for(cid, tpn.RULINGS) is None, cid
 
 
 def test_generator_reads_local_metadata_only() -> None:

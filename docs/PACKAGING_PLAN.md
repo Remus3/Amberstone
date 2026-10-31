@@ -143,6 +143,14 @@ install on natural quit, never mid-game (`rc-shell/src/main.js:267`).
   DO-NOT-VENDOR line is about source in the repo. The ruling is
   operator-gated (section 4); the PKG-8 notices generator fails on each
   copyleft item until a recorded ruling id covers it.
+  Ruled s146, M10-S146-R40 (`docs/_archive/2026-10/s146_rulings_40-51.md`
+  ruling 40): Electron `ffmpeg.dll` + `LICENSES.chromium.html` SHIP,
+  unmodified and dynamically loaded, with the licence texts beside the
+  executable and the ffmpeg source attached to the same GitHub Release
+  (first-Release checklist, section 4); the opencv DLL is STRIPPED; certifi
+  is REPLACED by truststore (ROADMAP RM-1226), and until then a bundle that
+  carries it fails the generator. Recorded in
+  `tools/build_third_party_notices.py` `RULINGS` (the two Electron ids only).
 
 ### 1b. SHOULD
 
@@ -620,7 +628,8 @@ item binds the named slice.
 ### Operator-gated (no lane runs these)
 
 - M10 licence ruling: the two LGPL ffmpeg DLLs (Electron `ffmpeg.dll`; the
-  opencv videoio DLL, stripped by default) and certifi (MPL-2.0).
+  opencv videoio DLL, stripped by default) and certifi (MPL-2.0). Ruled
+  s146, M10-S146-R40 (M10 above).
 - Code-signing certificate (S4) and the first GitHub Release publish.
 - RM-189 gates and the ADR-006 reopen (section 6).
 - The ONLOGON cutover with its XML backup (section 5).
@@ -862,6 +871,8 @@ Giving it to anyone else needs all of them:
 - RM-189: Riot developer-portal registration, a public site, Terms of
   Service and Privacy Policy for a production key; B4-f live-advice ruling.
 - M10 licence ruling recorded (PKG-8) and a generated notices file shipped.
+  Ruled s146, M10-S146-R40; still owed: the certifi swap (RM-1226) and the
+  ffmpeg source on the same Release.
 - Code-signing decision (S4) and the first GitHub Release publish.
 - Asset provenance audit of everything in the bundle (OVERLAY_COMPLIANCE_PLAN
   N8; `NOTICE` already records the tracked third-party data).

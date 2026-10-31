@@ -20,9 +20,10 @@ what a packaged build SHIPS, read from local metadata only:
 It decides nothing about shipping. Every component is classified allowed /
 copyleft / restricted / unknown; anything but allowed FAILS unless a recorded
 ruling id covers it (`RULINGS` below or `--ruling GLOB=ID`). The M10 ruling
-(Electron's LGPL ffmpeg.dll, opencv's ffmpeg DLL, certifi MPL-2.0) is
-operator-gated, so `RULINGS` ships empty and those components are reported
-loudly until the ruling is recorded.
+is recorded (ruling 40, s146, `M10-S146-R40`): Electron's LGPL ffmpeg.dll and
+the Chromium credits ship and are cleared by `RULINGS`; opencv's ffmpeg DLL is
+stripped and certifi (MPL-2.0) is replaced, so both stay uncovered and are
+reported loudly if a bundle still carries them.
 
 Never fetches anything and never copies a third-party file into the tree: the
 one write is `--out` (default `dist/THIRD_PARTY_NOTICES.txt`, gitignored build
@@ -63,11 +64,27 @@ DEFAULT_OUT = ROOT / "dist" / "THIRD_PARTY_NOTICES.txt"
 DEFAULT_REQUIREMENTS = ROOT / "requirements.txt"
 DEFAULT_NODE_ROOT = ROOT / "rc-shell"
 
-# Recorded ruling ids, {component-id glob: ruling id}. EMPTY ON PURPOSE: the M10
-# ship ruling for the copyleft runtime payload is operator-gated
-# (docs/PACKAGING_PLAN.md M10). Record it here, with the ruling id the
-# adjudicator / operator gave, only once it exists.
-RULINGS: Dict[str, str] = {}
+# Recorded ruling ids, {component-id glob: ruling id}. The M10 ruling is
+# ruling 40, s146 (`M10-S146-R40`, docs/_archive/2026-10/s146_rulings_40-51.md;
+# docs/PACKAGING_PLAN.md M10):
+# - Electron's runtime ffmpeg.dll (LGPL-2.1) and LICENSES.chromium.html SHIP,
+#   unmodified and dynamically loaded (electron.exe delay-imports the DLL),
+#   on conditions: the dist LICENSE and LICENSES.chromium.html ship verbatim
+#   beside the executable; the notices name ffmpeg as LGPL-2.1 with its full
+#   licence text; any release that carries the DLL attaches the corresponding
+#   ffmpeg source to the SAME GitHub Release (an upstream link alone does not
+#   meet LGPL-2.1 section 4); a modified or proprietary-codec build needs a new
+#   ruling. These are the two exact ids below - never a wider glob.
+# - opencv's cv2/opencv_videoio_ffmpeg*.dll is STRIPPED (RC never calls cv2
+#   video I/O; tools/build_python_embed.py strips it by default), and certifi
+#   (MPL-2.0) is REPLACED by truststore. NEITHER is listed, ever, so a bundle
+#   that carries either one fails here (fail closed). A measured-infeasible
+#   truststore swap is the one recorded fallback: certifi then ships
+#   unmodified under this same id, recorded with that measurement.
+RULINGS: Dict[str, str] = {
+    "electron-runtime:ffmpeg.dll": "M10-S146-R40",
+    "electron-runtime:chromium-credits": "M10-S146-R40",
+}
 
 RULING_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
