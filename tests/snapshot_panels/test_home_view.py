@@ -13,10 +13,14 @@ Mirrors test_champ_select_view.py and test_last_match_view.py.
 Drive path: /?ui_mock=1#home. main.js boot flips body.dataset.uiMock; with
 an empty SSE state the auto-derive lands on "home" (mode=client / !live),
 and the #home hash agrees, so applyView("home") stamps
-body[data-view="home"] and the home-overlay CSS un-hides. _homeWireStartup
-fires _homeFetchAndRender() unconditionally at boot (main.js:3445); under
-ui_mock that short-circuits to /data/ui_mock/home.json (_homeMockLoad,
-main.js:3008) and paints the fixture instead of /api/home/summary.
+body[data-view="home"] and the home-overlay CSS un-hides. In web/js/main.js
+`function _homeWireStartup` fires _homeFetchAndRender() unconditionally at
+boot, which can run before the ui_mock flag is set and so hit the live
+endpoint; the router's `if (viewId === "home")` branch therefore clears the
+fetch guard when `function _homeIsMock` says ui_mock is on and fetches
+again. Under ui_mock that fetch short-circuits to /data/ui_mock/home.json
+(`function _homeMockLoad`) and paints the fixture instead of
+/api/home/summary.
 
 The fixture's tonight_pick.champion ("Jinx") populates #home-coach-pick-champ
 (its pre-render placeholder is "-") and unhides #home-combo + the

@@ -21,6 +21,16 @@ symbols, and this guard fails when:
   Settings docstring named renderLoopStatus(), which main.js no longer
   calls or imports).
 
+RM-1185 extended it to the Home, Lobby and Active Match view tests.
+Their docstrings cited main.js:3445 / 3008 (home startup fetch and mock
+loader), main.js:731 / 3542 / 4863 (lobby branch, mock loader, queue-name
+uppercase) and main.js:630 (active-match branch); all six had drifted onto
+unrelated code. The Active Match docstring also listed a `cooldowns` ctx
+key that none of the mock-path renderActiveMatch calls in main.js passes.
+Its "hash wins" sentence (and the Lobby "hash survives" one) now says why:
+`_midFlight` is false on the home auto-derive, so the clear gated on
+`_hashIsStaleGameState` never runs.
+
 The docstrings are read with ast, so this guard needs no browser and no
 mock server. test_replay_view.py carries its own guard of the same shape
 (RM-1183).
@@ -37,6 +47,27 @@ HERE = Path(__file__).parent
 _STICKY = ("web/js/main.js", "_hashIsStaleGameState")
 
 DOC_ANCHORS = {
+    "test_active_match_view.py": (
+        _STICKY,
+        ("web/js/main.js", 'if (viewId === "active-match" && _amIsMock() && _amMockUrl())'),
+        ("web/js/main.js", "function _amMockLoad"),
+        ("web/js/panels/active_match.js", "const AM_MOCK_FIXTURES"),
+        ("web/js/panels/active_match.js", "function _renderDraftEloFromCtx"),
+    ),
+    "test_home_view.py": (
+        ("web/js/main.js", "function _homeWireStartup"),
+        ("web/js/main.js", 'if (viewId === "home")'),
+        ("web/js/main.js", "function _homeIsMock"),
+        ("web/js/main.js", "function _homeMockLoad"),
+    ),
+    "test_lobby_view.py": (
+        _STICKY,
+        ("web/js/main.js", 'if (viewId === "lobby")'),
+        ("web/js/main.js", "function _lobbyResolveLcu"),
+        ("web/js/main.js", "function _lobbyMockLoad"),
+        ("web/js/main.js", 'lobby.queue_name || ("queue "'),
+        ("web/js/main.js", "function _renderPartyMembers"),
+    ),
     "test_history_view.py": (
         _STICKY,
         ("web/js/main.js", 'if (viewId === "history")'),
@@ -71,6 +102,15 @@ def _docstring(name):
     return ast.get_docstring(tree, clean=False) or ""
 
 
+def _has_anchor(text, needle):
+    # An anchor that starts or ends on an identifier character must match
+    # a whole identifier there: `function _homeIsMock` must not be satisfied
+    # by a renamed `function _homeIsMockX` (RM-1185 mutation finding).
+    head = r"(?<![\w$])" if re.match(r"[\w$]", needle[0]) else ""
+    tail = r"(?![\w$])" if re.match(r"[\w$]", needle[-1]) else ""
+    return re.search(head + re.escape(needle) + tail, text) is not None
+
+
 def _web_js_source():
     parts = []
     for p in sorted((ROOT / "web" / "js").rglob("*.js")):
@@ -91,9 +131,9 @@ def test_docstring_anchors_exist_in_doc_and_source(name):
     doc = _docstring(name)
     for rel, needle in DOC_ANCHORS[name]:
         assert rel in doc, f"{name} docstring does not name {rel}"
-        assert needle in doc, f"{name} docstring does not cite {needle!r}"
+        assert _has_anchor(doc, needle), f"{name} docstring does not cite {needle!r}"
         src = (ROOT / rel).read_text(encoding="utf-8")
-        assert needle in src, f"{rel} no longer contains {needle!r}"
+        assert _has_anchor(src, needle), f"{rel} no longer contains {needle!r}"
 
 
 @pytest.mark.parametrize("name", sorted(DOC_ANCHORS))

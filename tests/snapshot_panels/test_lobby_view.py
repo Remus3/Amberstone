@@ -11,20 +11,24 @@ machine MCP visual path, so the redesign visual validation runs here in CI.
 Mirrors test_home_view.py and test_champ_select_view.py.
 
 Drive path: /?ui_mock=1#lobby. main.js boot flips body.dataset.uiMock; with
-an empty SSE state the auto-derive lands on "home" (mode=client / !live), so
-the #lobby hash is NOT treated as a stale game-state surface and the lobby
-view wins the router (applyView("lobby") stamps body[data-view="lobby"],
-which un-hides #view-lobby). The viewId=="lobby" branch fires
-_lobbyViewWireOnce() + _lobbyViewRefresh() (main.js:731); under ui_mock the
-refresh short-circuits to /data/ui_mock/lobby.json (_lobbyMockLoad,
-main.js:3542) and paints the fixture's `lobby` block instead of the live
+an empty SSE state the auto-derive lands on "home" (mode=client / !live).
+That is not a mid-flight game surface (`_midFlight` is false), so the
+stale game-state clear gated on `_hashIsStaleGameState` in web/js/main.js
+never runs, the #lobby hash survives and the lobby view wins the router
+(applyView("lobby") stamps body[data-view="lobby"], which un-hides
+#view-lobby). The router's `if (viewId === "lobby")` branch fires
+_lobbyViewWireOnce() + _lobbyViewRefresh(); under ui_mock the refresh reads
+its lcu through `function _lobbyResolveLcu`, which loads
+/data/ui_mock/lobby.json (`function _lobbyMockLoad`) and returns an lcu
+envelope carrying the fixture's `lobby` block instead of the live
 state.latest.lcu feed.
 
 The fixture's lobby.queue_name ("Ranked Solo/Duo") populates #lv-queue-name
 (its pre-render placeholder is "-"); _lobbyViewRefresh uppercases it
-(main.js:4863). Waiting for that text to leave "-" is the async-render
-landing signal. The same refresh calls _renderPartyMembers(lobby), which
-paints one .lobby-member-row per fixture member into #lv-members-list, so
+(`lobby.queue_name || ("queue " + ...)`). Waiting for that text to leave
+"-" is the async-render landing signal. The same refresh calls _renderPartyMembers(lobby)
+(`function _renderPartyMembers`), which paints one .lobby-member-row per
+fixture member into #lv-members-list, so
 the party roster is the rendered-structure assertion. (Note: the fixture's
 top-level `mains` + `top8` keys do NOT flow through ui_mock - _renderMains
 / _renderTop8 read state.latest.lcu directly, which is empty here - so this

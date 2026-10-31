@@ -12,19 +12,24 @@ Mirrors test_champ_select_view.py (C1).
 
 Drive path: /?ui_mock=1&mode=<mode>#active-match. main.js boot flips
 body.dataset.uiMock; with an empty SSE state the auto-derive lands on
-"home" (no live mode -> not an in-game surface) so the #active-match hash
-wins the view router. The view-change branch (main.js:630) kicks
-_amMockLoad, which fetches /data/ui_mock/active_match_<mode>.json and
-re-fires renderActiveMatch(coach, {mode, lcuPhase: phase, liveclient,
-cooldowns}). phase=InProgress -> the isLive render fills the CALL pane and
-stamps "phase InProgress" into #am-sub. We wait on that text because the
+"home" (no live mode -> not an in-game surface). `_midFlight` is false,
+so the stale game-state clear gated on `_hashIsStaleGameState` in
+web/js/main.js never runs and the #active-match hash wins the view router.
+The router's view-change branch
+`if (viewId === "active-match" && _amIsMock() && _amMockUrl())` kicks
+_amMockLoad() (`function _amMockLoad`), which fetches the mode's fixture
+from `const AM_MOCK_FIXTURES` in web/js/panels/active_match.js (e.g.
+/data/ui_mock/active_match_sr.json) and re-fires renderActiveMatch(coach,
+{mode, lcuPhase: phase, liveclient}). phase=InProgress -> the isLive
+render fills the CALL pane and stamps "phase InProgress" into #am-sub. We wait on that text because the
 pre-fetch placeholder render carries an empty phase, so the signal only
 fires once the fixture's coach data has actually rendered.
 
 Asserts per mode: the view mounts, the live coach line renders in the CALL
 pane, the mode's static map mounts with the right alt (#am-map-img
 alt="<mode> map"), the Draft Elo chip is enabled for SR/ARAM and hidden in
-Arena (the _renderDraftEloFromCtx 5v5-only gate - the per-mode structural
+Arena (the `function _renderDraftEloFromCtx` 5v5-only gate in
+web/js/panels/active_match.js - the per-mode structural
 differentiator, mirroring C1's SR-only Pick & Ban hidden check), and no
 unhandled JS errors fire. Screenshots the view for the audit trail.
 """
