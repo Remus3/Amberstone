@@ -659,6 +659,19 @@ def _serve_health_all(h) -> None:
             log.warning("health/all liveclient-subresource probe: %s: %s",
                         type(e).__name__, e)
             rollup["liveclient_subresource_failures"] = {"error": GENERIC_ERROR}
+        # RM-1217: the OBS keep-warm grab failure counters (RM-1216), read
+        # IN-PROCESS from the publisher singleton dashboard/server.py starts,
+        # so a cold keep-warm slot (a wrong frame_source_name) is visible on a
+        # polled channel, not only in a once-per-connection WARNING.
+        # Informational; no status move.
+        try:
+            from core.obs_publisher import get_publisher as _obs_publisher
+            rollup["obs_keep_warm_grab_failures"] = (
+                _obs_publisher().grab_failure_counts())
+        except Exception as e:  # noqa: BLE001
+            log.warning("health/all obs keep-warm probe: %s: %s",
+                        type(e).__name__, e)
+            rollup["obs_keep_warm_grab_failures"] = {"error": GENERIC_ERROR}
         rc_stale = False
         _upd = (rollup.get("rc") or {}).get("updated_at")
         if _upd:

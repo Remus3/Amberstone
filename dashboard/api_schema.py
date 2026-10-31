@@ -100,6 +100,8 @@ class HealthAllResponse(_AllowExtra):
     coaching_data_lock: dict[str, Any] = {}
     # RM-235: per-game Live Client subresource failure counts.
     liveclient_subresource_failures: dict[str, Any] = {}
+    # RM-1217: core/obs_publisher keep-warm grab failures per reason.
+    obs_keep_warm_grab_failures: dict[str, Any] = {}
 
 
 # -- POST /api/input ------------------------------------------------------

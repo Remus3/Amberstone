@@ -184,6 +184,7 @@
  * @property {Array} why
  * @property {Object} coaching_data_lock
  * @property {Object} liveclient_subresource_failures
+ * @property {Object} obs_keep_warm_grab_failures
  */
 
 /**
