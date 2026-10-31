@@ -114,14 +114,15 @@ def _rows_for(scorer: str) -> list[dict]:
 
 # Mirrors the EXACT inline expression each coach uses to splice the
 # dispatch result into its constructed Haiku user prompt. Keeping this
-# next to the source line numbers is deliberate: if a coach changes how
+# next to the source symbols is deliberate: if a coach changes how
 # it injects picks, the matching builder here must change too, and the
 # assertion pins that the contract (picks land in the labeled slot, as
 # the dispatch output) still holds.
 
 def _sr_prompt_inject(base_user: str, picks_str: str, label: str) -> str:
-    """coach_integration/_coach.py:327-328 - conditional append, the
-    engine-down sentinel suppresses the whole line."""
+    """coach_integration._coach.CoachIntegration._run - conditional
+    append under ``if _ds_picks_str != "unavailable"``, so the engine-down
+    sentinel suppresses the whole line."""
     user = base_user
     if picks_str != _UNAVAILABLE:
         user += f"\nDS top items ({label} ranked, own-items-accounted): {picks_str}"
@@ -166,8 +167,9 @@ def _arena_prompt_inject(picks_str: str, label: str) -> str:
 
 
 def _brawl_prompt_inject(picks_str: str, label: str) -> str:
-    """coaches/brawl_coach.py:417-434 - inline f-string, the DS line is
-    unconditionally concatenated (sentinel shows verbatim)."""
+    """coaches.brawl_coach.Coach._run_coach - the ``user = (...)``
+    inline f-string, the DS line is unconditionally concatenated as its
+    last term (sentinel shows verbatim)."""
     return (
         "=== 0:00 | BRAWL ===\n"
         + f"\nDS top items ({label} ranked, own-items-accounted): {picks_str}"
