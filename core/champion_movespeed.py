@@ -12,7 +12,7 @@ Data sources (local mirrors, read lazily on first call, cached):
     "stats": {"movespeed": <int>}}}}. Champion lookup accepts the DDragon id
     ("MissFortune"), the display name ("Miss Fortune"), apostrophe/space/dot
     stripped variants and any casing - the same multi-key index pattern as
-    core/defensive_picks.py:83-88.
+    the name / id alias loop in ``_load_champ_info`` (core/defensive_picks.py).
   - data/meta/ddragon_items.json  {"data": {<id-str>: {"name", "stats": {...}}}}
     using the DS movement-speed stat vocabulary (``ITEM_STAT_KEY_MAP`` in agents/daemon_slayer/
     stats.py): FlatMovementSpeedMod (flat units) and
@@ -29,7 +29,8 @@ Fallbacks (documented, conservative):
     TestFallbackConsistentWithTheRoster, which reads the mirror off disk.
   - Unknown item / missing or corrupt data file -> zero MS contribution.
   - distance_frac_per_s on bad input -> 0.0 (an MIA ring that never grows is
-    the safe degrade; SR map extent ~14800 units per core/vision_tracker.py:55).
+    the safe degrade; SR map extent ~14800 units per the zone-labelling
+    comment above ``_sr_zone`` in core/vision_tracker.py).
 
 Design: 100% pure plain python, no DS-engine imports, no I/O at module import
 time (JSON mirrors load lazily inside the accessors, cached at module level).
@@ -54,7 +55,8 @@ _ITEMS_PATH = _META_DIR / "ddragon_items.json"
 # on it over-reaches rather than under-reaches. Not the roster mode (335).
 _FALLBACK_MS = 345.0
 
-# SR map extent in game units (core/vision_tracker.py:55).
+# SR map extent in game units (the zone-labelling comment above ``_sr_zone``
+# in core/vision_tracker.py).
 _SR_MAP_EXTENT = 14800.0
 
 # DS movement-speed stat vocabulary (``ITEM_STAT_KEY_MAP`` in agents/daemon_slayer/stats.py).
@@ -205,7 +207,8 @@ def base_ms(champion) -> float:
 def _item_key(item) -> str | None:
     """One item spec -> a lookup key string, or None if unusable. Accepts an
     id (int or str), a name (str), or a Live Client item dict carrying
-    itemID / displayName (dashboard/_liveclient.py:131,135)."""
+    itemID / displayName (``liveclient_summary`` and its
+    ``_item_ids`` helper in dashboard/_liveclient.py)."""
     if isinstance(item, bool):
         return None
     if isinstance(item, int):
@@ -276,9 +279,10 @@ def est_ms(champion, items=None, level=None) -> float:
 
 def distance_frac_per_s(ms, map_extent=_SR_MAP_EXTENT) -> float:
     """Convert movement speed (map-units/s) to box-fraction/s of a square
-    minimap covering ``map_extent`` game units (SR ~14800, see
-    core/vision_tracker.py:55). Bad ms or extent -> 0.0 (an MIA ring that
-    never grows is the safe degrade). Never raises."""
+    minimap covering ``map_extent`` game units (SR ~14800, see the
+    core/vision_tracker.py zone-labelling comment above ``_sr_zone``).
+    Bad ms or extent -> 0.0 (an MIA ring that never grows is the safe
+    degrade). Never raises."""
     try:
         speed = _num(ms)
         extent = _num(map_extent)
