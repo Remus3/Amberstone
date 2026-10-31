@@ -17,17 +17,20 @@ therefore "the champion's true total sustained DPS". Both claims are false.
 ``matches.game_duration_s``; ``compute_ability_dps`` sets each row's
 ``dps = post_mit * measured``), so the ability half is systematically
 under-weighted against the auto half.
-``docs/specs/SPEC_rm98_cast_rate_time_base.md:76-83`` adjudicates this and
-names THIS line as the shipped, DEFAULT-ON instance of the defect; the
-characteristic per-spell distortion is ~7x (SPEC:100-107).
+``docs/specs/SPEC_rm98_cast_rate_time_base.md`` (SPEC below; cited by
+section, not line) adjudicates this, and its correction 1 ("The defect is
+already shipped and DEFAULT-ON") names THIS sum as the shipped, DEFAULT-ON
+instance of the defect; the characteristic per-spell distortion is ~7x
+(SPEC correction 3, "The 27x headline overstates").
 
 Neither denominator replacement RM-39 named is available at the required
-fidelity (SPEC:116-133) - do not re-attempt either. The adjudicated repair is
-the cast-propensity prior in ``cast_propensity.py``; it is wired into
-``hybrid.py`` behind DEFAULT-OFF ``apply_cast_rate_propensity_prior`` and is
-deliberately NOT wired here yet (SPEC:109-114 - narrow first, widen on test
-evidence). This scorer's arithmetic is UNCHANGED; only the claim about it is
-corrected.
+fidelity (the SPEC section "Both fixes the RM-39 spec named are unavailable
+at the required fidelity") - do not re-attempt either. The adjudicated
+repair is the cast-propensity prior in ``cast_propensity.py``; it is wired
+into ``hybrid.py`` behind DEFAULT-OFF ``apply_cast_rate_propensity_prior``
+and is deliberately NOT wired here yet (SPEC correction 4, "RM-98 is
+under-scoped" - narrow first, widen on test evidence). This scorer's
+arithmetic is UNCHANGED; only the claim about it is corrected.
 
 ASCII only - use " - " for a clause break (repo hard rule).
 """

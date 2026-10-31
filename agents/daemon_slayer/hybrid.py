@@ -180,7 +180,8 @@ def _ability_damage(
     Expressed as a DELTA so the ability-amp multiplier and the always-on
     ``item_proc_dps`` fold inside ``total_ability_dps`` stay untouched - the
     proc fold is one of the consumers RM-98 is deliberately NOT wiring here
-    (SPEC:109-114). Default False never calls the helper, so this returns the
+    (``SPEC_rm98_cast_rate_time_base.md`` correction 4, "RM-98 is
+    under-scoped"). Default False never calls the helper, so this returns the
     same attribute read it always did (byte-identical).
     """
     result = compute_ability_dps(
@@ -532,7 +533,8 @@ def compute_hybrid(
     TIME-BASE of the ability half of the damage axis. The measured cast rate
     every ability row is multiplied by is a WHOLE-GAME rate being folded into a
     combat-window per-second term (``SPEC_rm98_cast_rate_time_base.md``); both
-    candidate denominator replacements are measured infeasible (SPEC:116-133),
+    candidate denominator replacements are measured infeasible (the spec's
+    "Both fixes the RM-39 spec named are unavailable" section),
     so the adjudicated repair demotes the measured rate to a dimensionless
     cast-propensity PRIOR and rebuilds the rate on cooldown-inverse
     availability. See ``cast_propensity`` for the math and the calibration.

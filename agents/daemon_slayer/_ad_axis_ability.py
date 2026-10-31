@@ -110,13 +110,15 @@ def physical_ability_damage(
     the cast rate is a WHOLE-GAME rate
     (``data/daemon_slayer/spell_cast_rates.json`` - casts divided by
     ``matches.game_duration_s``) while ``weighted_dps`` is a combat-window
-    per-second figure. ``docs/specs/SPEC_rm98_cast_rate_time_base.md:76-89``
-    adjudicates this and sizes the characteristic distortion at ~7x per spell.
-    The term is still LOAD-BEARING and must not be dropped - measured at 30.5
-    pct of Renekton's ON damage term, 29.2 pct cohort mean, 65.9 pct for Riven
-    (SPEC:91-99). ``apply_cast_rate_propensity_prior`` (below) is the
-    adjudicated repair; it is DEFAULT-OFF, so the sum this function returns at
-    the default is still the mixed-basis one.
+    per-second figure. ``docs/specs/SPEC_rm98_cast_rate_time_base.md``
+    adjudicates this in its correction 1 ("The defect is already shipped and
+    DEFAULT-ON") and sizes the characteristic distortion at ~7x per spell in
+    correction 3. The term is still LOAD-BEARING and must not be dropped -
+    measured at 30.5 pct of Renekton's ON damage term, 29.2 pct cohort mean,
+    65.9 pct for Riven (the spec's correction 2, "The term is NOT inert").
+    ``apply_cast_rate_propensity_prior`` (below) is the adjudicated repair;
+    it is DEFAULT-OFF, so the sum this function returns at the default is
+    still the mixed-basis one.
 
     ``apply_cast_rate_propensity_prior`` (RM-98, DEFAULT-OFF) re-bases the
     measured rows onto ``availability * propensity_prior`` before summing - see

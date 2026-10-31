@@ -1,7 +1,8 @@
 """RM-98 - cast-rate propensity prior (DEFAULT-OFF seam).
 
 Pins the adjudicated recommendation in
-``docs/specs/SPEC_rm98_cast_rate_time_base.md:135-147``: the measured
+``docs/specs/SPEC_rm98_cast_rate_time_base.md`` (SPEC below, cited by
+section, not line; its ``## Recommendation``): the measured
 whole-game cast rate is DEMOTED from a DPS multiplier to a dimensionless
 cast-propensity PRIOR, and the combat-basis rate is rebuilt on the
 cooldown-inverse (correct-units) availability rate modulated by that prior.
@@ -14,8 +15,8 @@ Three contracts:
   reference-normalisation factor, for every spell whose propensity sits
   below the full-availability reference).
 * (c) the Aatrox-W-style low-propensity signal SURVIVES. RM-39 flagged this
-  as must-not-discard (``SPEC:144-147``): Infernal Chains is genuinely cast
-  less often than available, and a pure cooldown-inverse model throws that
+  as must-not-discard (the SPEC Recommendation): Infernal Chains is genuinely
+  cast less often than available, and a pure cooldown-inverse model throws that
   away by handing every spell a prior of 1.0.
 """
 from __future__ import annotations
@@ -49,7 +50,8 @@ class PropensityMathTests(unittest.TestCase):
         self.assertEqual(theoretical_casts_per_sec(-1.0), 0.0)
 
     def test_propensity_is_measured_over_theoretical(self) -> None:
-        # SPEC:16-18 - Veigar Q, 4s cooldown, measured 0.098 casts/sec.
+        # SPEC ``## Verdict`` (the s178 quote) - Veigar Q, 4s cooldown,
+        # measured 0.098 casts/sec.
         self.assertAlmostEqual(cast_propensity(4.0, 0.098), 0.392, places=3)
         # Degenerate cooldown -> no theoretical -> no propensity.
         self.assertEqual(cast_propensity(0.0, 0.098), 0.0)
@@ -118,7 +120,8 @@ class PerSpellRowTests(unittest.TestCase):
 
     def test_non_measured_rows_are_untouched(self) -> None:
         # A row whose cast rate came from the 1/cooldown fallback is ALREADY on
-        # a combat basis (SPEC:109-112 names the mixed-basis sum as the defect);
+        # a combat basis (SPEC correction 4, "RM-98 is under-scoped", names
+        # the mixed-basis sum as the defect);
         # re-basing it would double-apply. Only "measured" rows move.
         rows = [r for r in self._rows("Aatrox")]
         fallback = [r for r in rows if r.casts_per_sec_source != "measured"]
@@ -126,7 +129,7 @@ class PerSpellRowTests(unittest.TestCase):
             self.assertEqual(propensity_adjusted_dps_delta(fallback), 0.0)
 
     def test_aatrox_w_low_propensity_signal_survives(self) -> None:
-        """(c) - the must-not-discard signal, SPEC:144-147."""
+        """(c) - the must-not-discard signal, SPEC Recommendation."""
         rows = {r.key: r for r in self._rows("Aatrox")}
         w, q = rows["W"], rows["Q"]
         self.assertEqual(w.casts_per_sec_source, "measured")

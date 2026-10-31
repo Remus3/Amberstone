@@ -1,7 +1,8 @@
 """RM-98 - cast-rate propensity prior (DEFAULT-OFF seam).
 
 Implements the ADJUDICATED recommendation of
-``docs/specs/SPEC_rm98_cast_rate_time_base.md:135-147``.
+``docs/specs/SPEC_rm98_cast_rate_time_base.md`` (its ``## Recommendation``
+section; the spec is cited by section, not line, below as SPEC).
 
 THE PROBLEM (adjudicated, not re-opened here)
 ---------------------------------------------
@@ -10,14 +11,15 @@ THE PROBLEM (adjudicated, not re-opened here)
 multiplies it into a per-second COMBAT term
 (``ability_dps.compute_ability_dps``: ``dps = post_mit * measured``), which
 is a units error - a whole-game denominator divided into a combat-window
-numerator. The spec sized the
-characteristic distortion at ~7x per spell (SPEC:100-107) and proved the
-term is NOT inert (SPEC:91-99).
+numerator. The spec sized the characteristic distortion at ~7x per spell
+(SPEC correction 3, "The 27x headline overstates") and proved the term is
+NOT inert (SPEC correction 2, "The term is NOT inert").
 
 WHY NOT FIX THE DENOMINATOR
 ---------------------------
-Both replacement denominators RM-39 named are MEASURED INFEASIBLE
-(SPEC:116-133) and must not be re-attempted:
+Both replacement denominators RM-39 named are MEASURED INFEASIBLE (the
+SPEC section "Both fixes the RM-39 spec named are unavailable at the
+required fidelity") and must not be re-attempted:
 
 * "casts per second alive" is directly computable from
   ``participants.time_spent_dead`` and lifts Renekton W by only 1.25x
@@ -86,7 +88,7 @@ Broken Wings is three casts per 13s cooldown; Ivern R Daisy issues repeated
 commands). For them ``availability * prior`` lands BELOW the measured rate,
 so the transform would be a CUT - measured Riven Q 0.19941 vs a rebased
 0.07692, which is a 2.6x reduction of the term Riven is 65.9 pct dependent on
-(SPEC:91-99). That would be a regression, not a repair.
+(SPEC correction 2). That would be a regression, not a repair.
 
 The floor that fixes it is not a fudge, it is a proof. Combat time is a
 subset of game time, so for any spell::
@@ -107,8 +109,8 @@ A direct consequence, and the seam's directional contract: the transform
 never lowers a row. Flag ON is a monotone non-decreasing move on every
 ability term it touches.
 
-WHAT THE PRIOR PROTECTS (RM-39's must-not-discard signal, SPEC:144-147)
-----------------------------------------------------------------------
+WHAT THE PRIOR PROTECTS (RM-39's must-not-discard signal, SPEC Recommendation)
+-----------------------------------------------------------------------------
 A pure cooldown-inverse model hands EVERY spell a prior of 1.0 and asserts
 every champion casts everything the instant it comes up. Measured Aatrox at
 level 13: Q propensity 0.6065 (prior 0.843), W 0.2556 (prior 0.355), E
@@ -118,8 +120,9 @@ verbatim from the measured table while fixing the units.
 
 SCOPE
 -----
-This module is pure math. RM-98 as filed is UNDER-SCOPED (SPEC:109-114); the
-only consumer wired at first landing is ``hybrid.py`` behind
+This module is pure math. RM-98 as filed is UNDER-SCOPED (SPEC correction 4,
+"RM-98 is under-scoped"); the only consumer wired at first landing is
+``hybrid.py`` behind
 ``apply_cast_rate_propensity_prior`` (DEFAULT-OFF). The remaining consumers
 named by the spec are deliberately NOT wired - see the docstring on
 ``propensity_adjusted_dps_delta``.
@@ -143,7 +146,7 @@ _DEFAULT_DAMAGE_TYPE = "MAGIC"
 # Only rows the engine sourced from the measured whole-game table are re-based.
 # A row whose ``casts_per_sec_source`` is the ``1 / cooldown * mana_uptime``
 # fallback is ALREADY on a combat basis; re-basing it would double-apply the
-# transform. This is also the half-fix SPEC:109-112 describes for the six
+# transform. This is also the half-fix SPEC correction 4 describes for the six
 # champions (Aphelios, Katarina, Kled, Teemo, Vayne, Vi) that sum a
 # combat-basis fallback and a whole-game measured rate in the same total.
 _MEASURED_SOURCE = "measured"
@@ -236,7 +239,7 @@ def propensity_adjusted_dps_delta(
     ``hybrid._physical_ability_damage``; None credits every row. The None
     damage_type falls back to MAGIC exactly as ``compute_ability_dps`` does.
 
-    NOT WIRED (SPEC:109-114, deliberate - narrow first, widen on evidence):
+    NOT WIRED (SPEC correction 4, deliberate - narrow first, widen on evidence):
     the measured ``get_spell_casts_per_sec`` lookup in
     ``compute_ability_dps`` itself, the ``item_proc_dps`` fold inside
     ``total_ability_dps``, the Malignance ult rate
