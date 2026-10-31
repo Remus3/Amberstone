@@ -295,7 +295,7 @@ def test_runtime_paths_are_not_excluded(rel):
 
 @pytest.mark.parametrize("rel", [
     "API-Key-Claude.txt", "api-key-claude.txt", "sub/API-Key-Claude.txt",
-    "API-Key-Riot.txt", "ops/local_hosts.json", "ops/moon_sync_repos.json",
+    "API-Key-Riot.txt", "API-Key-Riot-TFT.txt", "ops/local_hosts.json", "ops/moon_sync_repos.json",
     "ops/runtime/health.json", "ops/tls/rc.pem", "ops/tls/rc-key.pem",
     "logs/2026-10-26.log", "certs/x.pfx", "x/.env",
 ])
