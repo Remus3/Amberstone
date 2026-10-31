@@ -79,6 +79,19 @@ def _rect(page, selector):
     )
 
 
+def _rects(page, *selectors):
+    """Boxes for several selectors read in ONE call, so a geometric relation
+    between them compares one layout, not two. A reflow between two separate
+    reads split one row in the RM-1140 combo hit-floor test on CI run
+    41231114850 (s146 N1)."""
+    return page.evaluate(
+        "(sels) => sels.map((s) => { const el = document.querySelector(s);"
+        " if (!el) return null; const r = el.getBoundingClientRect();"
+        " return {w: r.width, h: r.height, x: r.x, y: r.y}; })",
+        list(selectors),
+    )
+
+
 def _rgb(css_color):
     """`rgb(r, g, b)` / `rgba(r, g, b, a)` -> (r, g, b) ints."""
     nums = re.findall(r"[\d.]+", css_color or "")
@@ -214,7 +227,9 @@ def test_overlay_draft_elo_chip_paints(mock_server, pw_browser):
             )
 
             # 8. The box lands INSIDE the w-build widget box (it rides it).
-            wb = _rect(page, BUILD_PANE)
+            # Both boxes from one call, so the containment is one layout.
+            box, wb = _rects(page, CHIP, BUILD_PANE)
+            assert box and wb, f"chip or w-build widget missing: {box} {wb}"
             assert wb["w"] > 0 and wb["h"] > 0, f"w-build widget has no box: {wb}"
             assert (
                 box["x"] >= wb["x"] - 1

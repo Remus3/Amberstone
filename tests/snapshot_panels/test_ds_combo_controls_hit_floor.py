@@ -57,6 +57,17 @@ _BOX = """(sel) => {
 }"""
 
 
+_ROW = "(sels) => sels.map((sel) => (" + _BOX + ")(sel))"
+
+
+def _row_boxes(page):
+    """(input box, select box), read in ONE call so both come from the same
+    layout: panels above the card still land after the input shows, and a
+    shift between two separate reads split the row (CI run 41231114850)."""
+    inp, sel = page.evaluate(_ROW, [_INPUT, _SELECT])
+    return inp, sel
+
+
 def _open(mock_server, pw_browser, mode, theme="hextech"):
     mock_server._store["data"] = {}
     ctx = pw_browser.new_context(
@@ -86,8 +97,7 @@ def test_combo_controls_clear_the_hit_floor(mock_server, pw_browser, mode):
     ctx, page, errors = _open(mock_server, pw_browser, mode)
     try:
         floor = page.evaluate(_FLOOR)
-        inp = page.evaluate(_BOX, _INPUT)
-        sel = page.evaluate(_BOX, _SELECT)
+        inp, sel = _row_boxes(page)
         overflow = page.evaluate(
             "document.documentElement.scrollWidth"
             " - document.documentElement.clientWidth"
@@ -109,6 +119,43 @@ def test_combo_controls_clear_the_hit_floor(mock_server, pw_browser, mode):
     assert abs(inp["top"] - sel["top"]) < 1, (inp, sel)
     assert abs(inp["h"] - sel["h"]) < 1, (inp, sel)
     assert overflow <= 0, f"{mode}: horizontal overflow {overflow}px"
+    assert not errors, errors[:3]
+
+
+# CI run 41231114850 (Linux): [aram] and [arena] read the input 27px above the
+# select. Panels above the combo card still land after the input shows (the
+# card moved ~19px about 170ms later, measured locally), and the two controls
+# were read in two calls, so a shift between them split one row in two. This
+# shifts the card right after the input is read: the pair must come from ONE
+# layout snapshot.
+_SHIFT_AFTER_INPUT_READ = """(sel) => {
+  const inp = document.querySelector(sel);
+  const card = document.getElementById('csv-sugg-ds-combo');
+  const real = inp.getBoundingClientRect.bind(inp);
+  inp.getBoundingClientRect = () => {
+    const r = real();
+    queueMicrotask(() => {
+      const pad = document.createElement('div');
+      pad.style.height = '27px';
+      card.parentNode.insertBefore(pad, card);
+    });
+    return r;
+  };
+}"""
+
+
+def test_the_row_is_read_from_one_layout_snapshot(mock_server, pw_browser):
+    ctx, page, errors = _open(mock_server, pw_browser, "sr")
+    try:
+        page.evaluate(_SHIFT_AFTER_INPUT_READ, _INPUT)
+        inp, sel = _row_boxes(page)
+        moved = page.evaluate(_BOX, _SELECT)
+    finally:
+        page.close()
+        ctx.close()
+    assert abs(inp["top"] - sel["top"]) < 1, (inp, sel)
+    # The probe really moved the row, so a two-call read would split it.
+    assert moved["top"] - sel["top"] >= 27, (sel, moved)
     assert not errors, errors[:3]
 
 
