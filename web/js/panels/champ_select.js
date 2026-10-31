@@ -478,6 +478,12 @@ function _csvHumanPhase(phase) {
 // after the back-off instead of staying pending - and empty - forever.
 // A failed refetch keeps the last good answer (`stale`, the title says
 // the refresh failed) instead of overwriting it with "--".
+// RM-1201: a kept answer also carries `is-stale` (italic + dotted
+// underline in champ_select_view.css - shape only, the band colour and
+// its AA pair are unchanged), so it no longer looks like a fresh one. A
+// 200 body with ok !== true is DEGRADED, not "no games" (the route only
+// sends ok:false with an error status), so it is settled as a failure;
+// an ok:true sample_n 0 answer is a real "no games" and still reads "--".
 // QA 2026-07-03 slice A (A4): the deprecated YOUR RECORD block + its
 // aggregate lifetime-record fetch were removed; the enemy WR slot
 // (.csv-enemy-wr-slot, a DIFFERENT feature - KEEP) now rides the
@@ -500,7 +506,8 @@ function _csvWrSlotApply(el, payload, champNm, stale) {
   }
   const wr = payload.wr_pct | 0;
   el.textContent = wr + "%";
-  el.className = "csv-enemy-wr-slot " + _csvPrTint(wr);
+  el.className = "csv-enemy-wr-slot " + _csvPrTint(wr)
+               + (stale ? " is-stale" : "");
   el.title = "your record vs " + (payload.champ_name || champNm)
            + " - last " + (payload.days | 0) + "d ("
            + (payload.wins | 0) + "W " + (payload.losses | 0) + "L)"
@@ -571,7 +578,7 @@ function _csvWrSlotFetch(champId, champNm, el) {
   if (ctl) opts.signal = ctl.signal;
   fetch(url, opts)
     .then((r) => r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status)))
-    .then((data) => settle(data, false))
+    .then((data) => settle(data, !(data && data.ok === true)))
     .catch(() => settle(null, true));
 }
 

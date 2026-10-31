@@ -1686,7 +1686,21 @@ _WEB = _REPO_ROOT / "web"
 # reproduces the superseded 44bba1aa... value EXACTLY. That path is the
 # whole change. No glyph change: the added lines carry 0 non-ASCII bytes.
 # If another slice re-captures in parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "8f66c0891659c5d9005e2e9be23bbd78672e24f601ea5f77d7a4c5de75781cf2"
+# superseded by the RM-1201 re-capture below: "8f66c0891659c5d9005e2e9be23bbd78672e24f601ea5f77d7a4c5de75781cf2"
+#
+# RE-CAPTURED 2026-10-31 at RM-1201 (s144 uiux cycle 80, provisional
+# until the merger lands it and maps the id). One change rides it: a win
+# rate the SR champ-select enemy slot KEEPS after a failed refresh carries
+# `is-stale` (italic + dotted underline, colour unchanged), and a 200
+# ok:false /api/personal-vs body is settled as a failure, not "no games"
+# (web/js/panels/champ_select.js _csvWrSlotApply / _csvWrSlotFetch and
+# web/css/panels/champ_select_view.css). Ordinary case, no tokeniser
+# change. ATTRIBUTED BY SUBSTITUTION: swapping exactly those two files
+# back to their lane HEAD 8dd974d76 blobs reproduces the superseded
+# 8f66c089... value EXACTLY. Those paths are the whole change. No glyph
+# change: the added lines carry 0 non-ASCII bytes. If another slice
+# re-captures in parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "8d8ea8667068c023a41d864878f7b9d90771b45883168acf5fcc1329f1864cbc"
 
 
 def _web_sources() -> list[Path]:

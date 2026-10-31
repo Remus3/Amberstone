@@ -417,6 +417,16 @@
  * tests/snapshot_panels/test_champ_select_enemy_wr_slot_contrast.py. */
 .csv-enemy-wr-slot.is-bad  { color: color-mix(in oklab, var(--bad) 70%, var(--text)); }
 .csv-enemy-wr-slot.is-new  { color: color-mix(in oklab, var(--text-faint) 60%, var(--text-dim)); }
+/* RM-1201: a win rate KEPT after its refresh failed (_csvWrSlotFetch
+ * keeps the last good answer) is marked by SHAPE only - italic with a
+ * dotted underline - so it reads as "last known" at a glance while its
+ * band colour, and so its AA pair on the --surface-2 cell, is untouched.
+ * Pinned by tests/snapshot_panels/test_champ_select_enemy_wr_slot_stale_cue.py. */
+.csv-enemy-wr-slot.is-stale {
+  font-style: italic;
+  text-decoration: underline dotted;
+  text-underline-offset: 0.2em;
+}
 /* RC2 B3/C5 (WCAG 1.4.1 - status never by HUE alone): the leading
  * win-rate-vs-this-enemy slot is colour-banded; prepend a shape glyph so
  * good/even/bad survives grayscale + colour-blind vision. Glyphs authored
