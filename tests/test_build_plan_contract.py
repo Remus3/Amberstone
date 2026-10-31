@@ -35,13 +35,16 @@ from dashboard import routes_build_plan
 
 _ROOT = Path(__file__).resolve().parent.parent
 
-# The 5-value state enum the contract locks (master plan WP-C5, line 220).
+# The 5-value state enum the contract locks (the WP-C5 "TDD test first"
+# row of docs/OVERLAY_BUILD_MASTER_PLAN.md as authored at b4aac5c49; the
+# plan has since condensed WP-C5 to its Section J status row).
 _STATES = {"owned", "next", "swap", "partial", "future"}
 
 
 # --------------------------------------------------------------------------- #
-# Test doubles - mirror tests/test_ds_preview_e2e_p1l21.py:108 (_Handler) and
-# tests/test_planner_beam_search.py:79 (the {ranked[], order[]} fake seed).
+# Test doubles - mirror ``_Handler`` in tests/test_ds_preview_e2e_p1l21.py
+# and ``make_seed_fn`` in tests/test_planner_beam_search.py (the
+# {ranked[], order[]} fake seed).
 # --------------------------------------------------------------------------- #
 class _Handler:
     """Stub HTTP handler capturing ``_send`` - the BaseHTTPRequestHandler

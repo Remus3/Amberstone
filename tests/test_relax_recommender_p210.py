@@ -13,11 +13,11 @@ core/build_planner_legality.py:
   * deterministic tie-break (equal scores -> ascending key, input-order free)
   * the constraint state string round-trips exactly (both directions)
   * the adapter's legality predicate is the DS rank.py pool filter:
-    ``_filter_candidates`` (agents/daemon_slayer/rank.py:730), which applies
-    ``_NON_COACHABLE_ITEM_IDS`` (rank.py:200), ``_is_purchasable``
-    (rank.py:658), ``_is_ornn_masterwork`` (rank.py:663) and
-    ``_is_legal_in_mode`` over ``MODE_MAP_ID`` (rank.py:47, :715);
-    ``canonical_mode`` is agents/daemon_slayer/data_loader.py:57.
+    ``agents.daemon_slayer.rank._filter_candidates``, which applies
+    ``rank._NON_COACHABLE_ITEM_IDS``, ``rank._is_purchasable``,
+    ``rank._is_ornn_masterwork`` and ``rank._is_legal_in_mode`` over
+    ``rank.MODE_MAP_ID``; ``canonical_mode`` is
+    ``agents.daemon_slayer.data_loader.canonical_mode``.
 
 ASCII only - use " - " for a clause break (repo hard rule).
 """
