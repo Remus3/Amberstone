@@ -1774,6 +1774,11 @@ def _parse_max_priority(body: dict) -> Optional[tuple[str, str, str]]:
     override identically.
     """
     raw_prio = body.get("max_priority")
+    # RM-1239: strip first, as _opt_str does. The compact test ran on the
+    # raw string, so " QWE" was a 400 quoting back ['QWE'] and "   " passed
+    # len == 3 and reached the engine as an opaque 422.
+    if isinstance(raw_prio, str):
+        raw_prio = raw_prio.strip()
     if raw_prio is None or raw_prio == "":
         return None
     if isinstance(raw_prio, str) and "," not in raw_prio and len(raw_prio) == 3:
