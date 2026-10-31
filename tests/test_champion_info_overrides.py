@@ -17,21 +17,23 @@ every mirror entry with a falsy info.attack or info.magic - never from
 CHAMPION_INFO_OVERRIDES.keys(), which would be circular and would catch
 nothing.
 
-Live consumer polarity rules (source-read 2026-07-28, file:line):
+Live consumer polarity rules (source-read 2026-07-28; cited by symbol since
+2026-10-31, guard tests/test_ds_file_line_cites_ap_s144d33.py):
 
-  * dashboard/routes_dictionary.py:101
+  * dashboard.routes_dictionary._damage_profile_tag, final return
         return "AD" if attack >= magic else "AP"
-    TIE -> "AD". Two things run BEFORE it: routes_dictionary.py:91-98
-    short-circuits to "CC" / "BURST" for hardcoded name sets, and
-    routes_dictionary.py:99-100 is a degraded fallback that discards the
-    ratings entirely when BOTH are 0 and reads the role tags instead
-    ("Marksman" -> AD, else AP).
+    TIE -> "AD". Two things run BEFORE it in the same function: the
+    _HARD_CC_NAMES / _BURST_NAMES checks short-circuit to "CC" / "BURST" for
+    hardcoded name sets, and the ``attack == 0 and magic == 0`` branch is a
+    degraded fallback that discards the ratings entirely when BOTH are 0 and
+    reads the role tags instead ("Marksman" -> AD, else AP).
 
-  * dashboard/routes_pickban.py:255-260
+  * dashboard.routes_pickban._compute_team_damage_mix, per-champ lean
         attack > magic -> "AD"; magic > attack -> "AP"; else "EVEN"
-    TIE -> "EVEN". Fed by routes_pickban.py:218, which merges first.
+    TIE -> "EVEN". Fed by routes_pickban._load_champ_id_to_info, which
+    merges first (its _cio.merged_info call).
 
-  * core/build_planner/fed_threat.py:147-151
+  * core.build_planner.fed_threat._champ_axis, final comparison
         attack > magic -> "ad"; magic > attack -> "ap"; else ""
     TIE -> "".
 
@@ -61,8 +63,9 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 _MIRROR_PATH = _REPO_ROOT / "data" / "meta" / "ddragon_champions.json"
 
 # A name deliberately absent from routes_dictionary's hardcoded _HARD_CC_NAMES /
-# _BURST_NAMES sets, so _damage_profile_tag falls through to the polarity branch
-# at routes_dictionary.py:99-101 instead of short-circuiting to "CC" / "BURST".
+# _BURST_NAMES sets, so _damage_profile_tag falls through to its polarity
+# branches (the ``attack == 0 and magic == 0`` fallback and the final
+# ``attack >= magic`` return) instead of short-circuiting to "CC" / "BURST".
 _POLARITY_PROBE_NAME = "__rc_polarity_probe__"
 
 # PINNED expectation for the DDragon-zeroed universe, measured off
@@ -125,8 +128,9 @@ def _zeroed_universe(entries: dict) -> dict[str, dict]:
 
 def _strict_axis(attack: object, magic: object) -> str:
     """"AD" / "AP" / "" using the STRICT rule - the intersection where all three
-    live consumers agree (routes_dictionary.py:101, routes_pickban.py:255-260,
-    fed_threat.py:147-151). "" means a tie, on which the three DIVERGE.
+    live consumers agree (routes_dictionary._damage_profile_tag,
+    routes_pickban._compute_team_damage_mix, fed_threat._champ_axis). ""
+    means a tie, on which the three DIVERGE.
 
     This is the CONSUMER polarity rule, not a re-implementation of
     merged_info's fill rule (which is about WHICH fields get written)."""
@@ -164,7 +168,7 @@ def _coverage_failures(universe: dict[str, dict],
             problems.append(
                 f"AMBIGUOUS zeroed champion {name!r} info={info!r} "
                 f"merged={merged!r} - post-merge attack == magic, so "
-                f"routes_dictionary.py:101 prints AD on the tie while "
+                f"routes_dictionary._damage_profile_tag prints AD on the tie while "
                 f"routes_pickban / fed_threat report EVEN / unknown. This is "
                 f"the 2026-06-30 Seraphine bug shape."
             )
@@ -270,9 +274,10 @@ class ZeroedChampionCoverageTests(unittest.TestCase):
     def test_every_zeroed_champion_resolves_unambiguously(self):
         """Post-merge attack != magic for every zeroed champion.
 
-        A tie is the 2026-06-30 bug shape: routes_dictionary.py:101 turns
-        0 >= 0 into a confident "AD" while routes_pickban.py:255-260 and
-        fed_threat.py:147-151 correctly report EVEN / unknown. Needs no pin, so
+        A tie is the 2026-06-30 bug shape: routes_dictionary._damage_profile_tag
+        turns 0 >= 0 into a confident "AD" while
+        routes_pickban._compute_team_damage_mix and fed_threat._champ_axis
+        correctly report EVEN / unknown. Needs no pin, so
         it fires even for a champion nobody has pinned yet."""
         for name, row in sorted(self.universe.items()):
             with self.subTest(champion=name):
@@ -283,8 +288,9 @@ class ZeroedChampionCoverageTests(unittest.TestCase):
 
     def test_dictionary_consumer_reports_pinned_axis(self):
         """Real dashboard.routes_dictionary._damage_profile_tag, polarity branch
-        (routes_dictionary.py:99-101). Probed under a sentinel name so the
-        hardcoded CC / BURST short-circuit at routes_dictionary.py:91-98 (which
+        (its ``attack == 0 and magic == 0`` fallback and final
+        ``attack >= magic`` return). Probed under a sentinel name so the
+        hardcoded _HARD_CC_NAMES / _BURST_NAMES short-circuit (which
         legitimately wins for Lillia / Naafiri / Rell / Vex) cannot mask the
         polarity decision under test."""
         for name, (expected_axis, _) in sorted(_EXPECTED_ZEROED_UNIVERSE.items()):
@@ -302,8 +308,9 @@ class ZeroedChampionCoverageTests(unittest.TestCase):
 
     def test_pickban_consumer_reports_pinned_axis(self):
         """Real dashboard.routes_pickban._compute_team_damage_mix end to end -
-        it does its own merged_info() call at routes_pickban.py:218 and applies
-        the lean rule at routes_pickban.py:255-260."""
+        its loader routes_pickban._load_champ_id_to_info does its own
+        merged_info() call, and the function itself applies the per-champ
+        lean rule."""
         for name, (expected_axis, _) in sorted(_EXPECTED_ZEROED_UNIVERSE.items()):
             entry = next((e for e in self.entries.values()
                           if isinstance(e, dict) and e.get("name") == name), None)
@@ -318,8 +325,7 @@ class ZeroedChampionCoverageTests(unittest.TestCase):
                     f"{name} leans {per_champ[0]['lean']} in the team damage mix")
 
     def test_fed_threat_consumer_reports_pinned_axis(self):
-        """Real core.build_planner.fed_threat._champ_axis end to end
-        (fed_threat.py:139-151)."""
+        """Real core.build_planner.fed_threat._champ_axis end to end."""
         for name, (expected_axis, _) in sorted(_EXPECTED_ZEROED_UNIVERSE.items()):
             if name not in self.universe:
                 continue
@@ -380,13 +386,13 @@ class ZeroedChampionCoverageTests(unittest.TestCase):
         module docstring gets corrected in the same slice."""
         self.assertEqual(
             _rd._damage_profile_tag(_POLARITY_PROBE_NAME, ["Mage"], 5, 5), "AD",
-            "routes_dictionary.py:101 no longer resolves a tie to AD")
+            "routes_dictionary._damage_profile_tag no longer resolves a tie to AD")
         prev = _rp._CHAMP_ID_TO_INFO
         try:
             _rp._CHAMP_ID_TO_INFO = {999001: (5, 5)}
             mix = _rp._compute_team_damage_mix((999001,))
             self.assertEqual(mix["per_champ"][0]["lean"], "EVEN",
-                             "routes_pickban.py:255-260 no longer reports EVEN on a tie")
+                             "routes_pickban._compute_team_damage_mix no longer reports EVEN on a tie")
         finally:
             _rp._CHAMP_ID_TO_INFO = prev
         prev_info = _dp._CHAMP_INFO
@@ -395,7 +401,7 @@ class ZeroedChampionCoverageTests(unittest.TestCase):
                                                     "defense": 0, "difficulty": 0,
                                                     "tags": []}}
             self.assertEqual(_ft._champ_axis("__rc_tie_probe__"), "",
-                             "fed_threat.py:147-151 no longer reports unknown on a tie")
+                             "fed_threat._champ_axis no longer reports unknown on a tie")
         finally:
             _dp._CHAMP_INFO = prev_info
 
