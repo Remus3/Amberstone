@@ -1700,7 +1700,21 @@ _WEB = _REPO_ROOT / "web"
 # 8f66c089... value EXACTLY. Those paths are the whole change. No glyph
 # change: the added lines carry 0 non-ASCII bytes. If another slice
 # re-captures in parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "8d8ea8667068c023a41d864878f7b9d90771b45883168acf5fcc1329f1864cbc"
+# superseded by the RM-1202 re-capture below: "8d8ea8667068c023a41d864878f7b9d90771b45883168acf5fcc1329f1864cbc"
+#
+# RE-CAPTURED 2026-10-31 at RM-1202 (s144 uiux cycle 81, provisional
+# until the merger lands it and maps the id). One change rides it: the
+# Arena champ-select "pick one" augment option rows are keyboard buttons
+# with the inset focus ring, keep their pick and focus across a pane
+# rebuild, re-render on a new offer, and read an int round index
+# (web/js/panels/champ_select.js _csvArenaPaneHtml / _csvWireArenaAugments
+# / _csvComputeSig and web/css/panels/champ_select_view.css). Ordinary
+# case, no tokeniser change. ATTRIBUTED BY SUBSTITUTION: swapping exactly
+# those two files back to their lane HEAD 6bde72f63 blobs reproduces the
+# superseded 8d8ea866... value EXACTLY. Those paths are the whole change.
+# No glyph change: the added lines carry 0 non-ASCII bytes. If another
+# slice re-captures in parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "5dc46fc1fa2c9cef5b1f34f1824fd2969c388e93de81ffc07d9b76296e4c157a"
 
 
 def _web_sources() -> list[Path]:

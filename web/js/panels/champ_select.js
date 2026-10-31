@@ -732,6 +732,8 @@ export function renderChampSelectView(lcu) {
     // item 1 Phase 6: left champ select - clear the rune-push latch so a fresh
     // enter re-asserts the followed page after the frozen auto RuneWriter.
     for (const k in _CSV_LAST_RUNE_PUSH) delete _CSV_LAST_RUNE_PUSH[k];
+    // RM-1202: a fresh champ select starts with no Arena augment pick.
+    _CSV_ARENA_AUG_PICK.value = "";
     // Swap-wipe latch (2026-07-17): clear on exit too so a fresh enter
     // re-fires the scoped wipe + re-push for the first hovered champ.
     _CSV_LAST_WIPE_KEY.value = "";
@@ -1571,6 +1573,9 @@ function _csvComputeSig(cs, mode, myCid, myName) {
       : "",
     cs.queue_id | 0,
     mode,
+    // RM-1202: the Arena pane renders cs.augments, so a new offer, a new
+    // round or a filled slot must clear the gate too.
+    _csvAugSig(cs.augments),
     `ds:${dsKey}|usr:${userKey}|arch:${archKey}|adapt:${adaptCount}|ccbe:${ccBlendedCount}|ccp:${ccCondCount}|pbw:${pbwCount}|cnt:${counterCount}`,
     verdictKey,
   ].join("|");
@@ -3719,6 +3724,9 @@ function _csvCaptureChooserFocus(host) {
   // RM-1137: the LOCK IN button rides the same carry (it was thrown to
   // <body> by every async land while focused).
   if (a.id === "csv-lock-btn") return { id: "csv-lock-btn" };
+  // RM-1202: the Arena "pick one" augment rows ride it too, keyed by id.
+  const opt = a.closest && a.closest(".csv-augment-option");
+  if (opt && host.contains(opt)) return { aug: opt.dataset.augmentId || "" };
   const row = a.closest && a.closest(".csv-build-path-row, .csv-build-row");
   if (!row || !host.contains(row)) return null;
   return {
@@ -3733,6 +3741,9 @@ function _csvRestoreChooserFocus(host, snap) {
   if (!host || !snap) return;
   const el = snap.id
     ? host.querySelector("#" + snap.id)
+    : snap.aug !== undefined
+    ? Array.from(host.querySelectorAll(".csv-augment-option")).find((r) =>
+      (r.dataset.augmentId || "") === snap.aug)
     : Array.from(host.querySelectorAll("." + snap.cls)).find((r) =>
       (r.dataset.variant || "") === snap.variant
       && (r.dataset.pathKey || "") === snap.path);
@@ -3781,7 +3792,7 @@ function _csvArenaPaneHtml(cs, myCid, myName) {
 
   const aug = cs.augments || {};
   const slots = Array.isArray(aug.my_slots) ? aug.my_slots : [];
-  const curTier = aug.current_round || "silver";
+  const curTier = _csvAugRoundTier(aug.current_round);
   const slotHtml = ["silver", "gold", "prismatic"].map((tier) => {
     const s = slots.find((x) => x && x.tier === tier);
     const filled = !!(s && s.id);
@@ -3792,13 +3803,22 @@ function _csvArenaPaneHtml(cs, myCid, myName) {
     </div>`;
   }).join("");
 
-  const options = Array.isArray(aug.options) ? aug.options : [];
+  // RM-1202: each option is a keyboard button (role + tabindex +
+  // aria-pressed, Enter / Space via _csvChooserKeyActivates), and the pick
+  // is re-applied from _CSV_ARENA_AUG_PICK so a pane rebuild keeps it.
+  const options = (Array.isArray(aug.options) ? aug.options : [])
+    .filter((o) => o && typeof o === "object");
+  const pick = _CSV_ARENA_AUG_PICK.value;
   const optionsHtml = options.length
-    ? options.map((o) => `
-        <div class="csv-augment-option is-clickable ${escHtml(o.tier || "")}" data-augment-id="${escHtml(o.id)}" data-augment-name="${escHtml(o.name)}">
-          <div class="csv-augment-option-name">${escHtml(o.name)}</div>
+    ? options.map((o) => {
+      const id = String(o.id == null ? "" : o.id);
+      const on = !!pick && id === pick;
+      return `
+        <div class="csv-augment-option is-clickable ${escHtml(o.tier || "")}${on ? " is-selected" : ""}" role="button" tabindex="0" aria-pressed="${on ? "true" : "false"}" data-augment-id="${escHtml(id)}" data-augment-name="${escHtml(o.name || "")}">
+          <div class="csv-augment-option-name">${escHtml(o.name || "")}</div>
           <div class="csv-augment-option-blurb">${escHtml(o.blurb || "")}</div>
-        </div>`).join("")
+        </div>`;
+    }).join("")
     : '<div class="csv-empty">no augment options yet</div>';
 
   return `
@@ -3823,11 +3843,46 @@ function _csvWireArenaAugments(scope, cs) {
       if (!id) return;
       // Mark selected (visual only - LCU push is Phase B once we have
       // the right LCU verb / payload schema for arena augments).
-      scope.querySelectorAll(".csv-augment-option").forEach((c) =>
-        c.classList.toggle("is-selected", c === cell));
+      // RM-1202: remembered so the next pane rebuild re-applies it.
+      _CSV_ARENA_AUG_PICK.value = cell.dataset.augmentId;
+      scope.querySelectorAll(".csv-augment-option").forEach((c) => {
+        c.classList.toggle("is-selected", c === cell);
+        c.setAttribute("aria-pressed", c === cell ? "true" : "false");
+      });
       lcuCmd({ cmd: "set_augment_intent", augment_id: id });
     });
+    cell.addEventListener("keydown", _csvChooserKeyActivates);
   });
+}
+
+// RM-1202: the Arena augment pick of THIS champ select (augment id as a
+// string, "" for none). Cleared when the view leaves champ select, so the
+// next game never shows a stale pick.
+const _CSV_ARENA_AUG_PICK = { value: "" };
+
+// The round as a tier. lcu/champ_select_shape.py emits current_round as an
+// int index (0 today), the ?ui_mock=1 fixture as a tier name; anything else
+// reads as the first round. Before, an int was upper-cased and any index
+// past 0 threw out of the whole render.
+const _CSV_AUG_TIERS = ["silver", "gold", "prismatic"];
+function _csvAugRoundTier(r) {
+  if (typeof r === "string" && _CSV_AUG_TIERS.includes(r.toLowerCase())) {
+    return r.toLowerCase();
+  }
+  if (Number.isInteger(r) && r >= 0 && r < _CSV_AUG_TIERS.length) {
+    return _CSV_AUG_TIERS[r];
+  }
+  return "silver";
+}
+
+// Render-gate slice for cs.augments: round, filled slots and offered ids.
+function _csvAugSig(aug) {
+  if (!aug || typeof aug !== "object") return "";
+  const slots = (Array.isArray(aug.my_slots) ? aug.my_slots : []).map((s) =>
+    (s && typeof s === "object") ? `${s.tier || ""}:${s.id || ""}` : String(s || ""));
+  const opts = (Array.isArray(aug.options) ? aug.options : []).map((o) =>
+    (o && typeof o === "object") ? String(o.id == null ? "" : o.id) : "");
+  return `aug:${_csvAugRoundTier(aug.current_round)}/${slots.join(",")}/${opts.join(",")}`;
 }
 
 // Arena enemies: the 5 other sub-team cards stacked vertically inside

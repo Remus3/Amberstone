@@ -2708,8 +2708,13 @@
 /* RM-1137: LOCK IN spans the same clipping card edge to edge, so its
    ring is inset too (the UA outline was cut off both sides). Pinned by
    tests/snapshot_panels/test_champ_select_lock_button_focus.py. */
+/* RM-1202: the Arena "pick one" augment rows are keyboard buttons too;
+   inset like the chooser rows, and declared after .csv-augment-option:hover
+   so the focus ring wins over the hover glow. Pinned by
+   tests/snapshot_panels/test_champ_select_arena_augment_options.py. */
 .csv-build-row:focus-visible,
 .csv-build-path-row:focus-visible,
+.csv-augment-option:focus-visible,
 .csv-lock-btn:focus-visible {
   outline: none;
   box-shadow: inset var(--focus-ring);
