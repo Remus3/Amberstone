@@ -12,14 +12,17 @@ module exposes:
 BaseHTTPRequestHandler (so it can use `self._send` etc.) and, for
 POST, the parsed JSON body (already validated upstream for size).
 
-Routes are tried in registration order; first match wins. Unmatched
-falls back to the legacy elif chains in web_dashboard while the
-migration is in progress.
+Routes are tried in registration order; first match wins. An unmatched
+path returns False and dashboard/_handler.py answers 404 (the legacy
+web_dashboard elif chains are gone; every route lives in a routes_* module).
 
 Phase 4.1 (s143): POST bodies for paths in _REQUEST_MODELS are
 validated against dashboard.api_schema before dispatch. Originally
 warnings-only; since RM-243 an invalid body is REJECTED with a 400 that
-names each field (see `_validate_request_body`).
+names each field (see `_validate_request_body`). Since s144 true-audit
+cycle 74 that 400 names at most _MAX_FIELD_ERRORS fields plus one summary
+entry, and one rejected request writes ONE log line, however many fields
+are wrong.
 """
 import json
 import logging
@@ -233,7 +236,7 @@ def dispatch_get(handler: BaseHTTPRequestHandler) -> bool:
     return False
 
 
-# -- soft-warn POST body validation -----------------------------------
+# -- POST body validation (rejecting since RM-243) ---------------------
 
 # Path -> pydantic Request model. Only paths listed here are validated;
 # unmapped paths pass through silently (no false-warning noise on
@@ -248,6 +251,26 @@ _REQUEST_MODELS = {
     "/api/team-context/refresh":    TeamContextRefreshRequest,
 }
 
+# s144 true-audit cycle 74: bounds on what one rejected body can produce.
+# Measured before them: the handler admits a 1 MiB body
+# (dashboard/_handler.py _MAX_POST_BYTES), and POST /api/ds-preview - not a
+# control endpoint, so any LAN peer reaches it - with `items` holding ~524k
+# integers produced 524268 pydantic errors. Each was logged as its own WARNING
+# line (one request evicted the day's logs: the file handler keeps 3 MB x 4
+# per day) and all of them went back in a 35.5 MB 400 body. A forbidden extra
+# key (InputRequest / CommandRequest forbid extras) was also echoed back as
+# the field label at full length. Twenty fields is far more than any real
+# sender's mistake; the summary entry keeps the total visible.
+_MAX_FIELD_ERRORS = 20
+_MAX_FIELD_CHARS = 128
+_MAX_MSG_CHARS = 200
+
+
+def _clip(text: str, limit: int) -> str:
+    if len(text) <= limit:
+        return text
+    return f"{text[:limit]}...(+{len(text) - limit} chars)"
+
 
 def _validate_request_body(path: str, body) -> "list[dict] | None":
     """Validate a POST body against api_schema.
@@ -255,7 +278,11 @@ def _validate_request_body(path: str, body) -> "list[dict] | None":
     Returns None when the body is acceptable (or the path is unmapped), else
     a list of ``{"field", "msg"}`` dicts - pydantic's location and generic
     message only, never the raw ValidationError text or the offending INPUT
-    (RM-134). Each error is also logged at WARNING.
+    (RM-134). At most ``_MAX_FIELD_ERRORS`` errors are listed, in pydantic's
+    order; when there are more, one last entry with an empty ``field`` says
+    how many were not shown. A field label (which can be a caller-chosen
+    extra KEY) is clipped to ``_MAX_FIELD_CHARS``. ONE summary line is logged
+    at WARNING per rejected body (s144 true-audit cycle 74).
 
     RM-243 (2026-10-03): this used to DETECT the defect, LOG it, return None,
     and let `dispatch_post` dispatch the bad body anyway. Flipped to reject
@@ -284,11 +311,22 @@ def _validate_request_body(path: str, body) -> "list[dict] | None":
     try:
         model_cls.model_validate(body)
     except ValidationError as exc:
+        total = exc.error_count()
         errors = []
-        for err in exc.errors():
+        for err in exc.errors(include_url=False, include_input=False,
+                              include_context=False)[:_MAX_FIELD_ERRORS]:
             loc = ".".join(str(x) for x in err["loc"])
-            log.warning("request_body[%s] %s: %s", base, loc, err["msg"])
-            errors.append({"field": loc, "msg": str(err["msg"])})
+            errors.append({"field": _clip(loc, _MAX_FIELD_CHARS),
+                           "msg": _clip(str(err["msg"]), _MAX_MSG_CHARS)})
+        hidden = total - len(errors)
+        log.warning("request_body[%s]: %d invalid field(s): %s%s",
+                    base, total,
+                    "; ".join(f"{e['field']}: {e['msg']}"
+                              for e in errors[:5]),
+                    f" (+{total - min(total, 5)} more)" if total > 5 else "")
+        if hidden > 0:
+            errors.append({"field": "",
+                           "msg": f"{hidden} more invalid field(s) not shown"})
         return errors
     return None
 
