@@ -24,8 +24,8 @@ interchangeable:
   * FLAT ``data/daemon_slayer/<patch>/build_orders_<mode>.json`` is
     DISPLAY-name keyed: "Miss Fortune", "Nunu & Willump", "Kha'Zix".
   * NEWER ``data/daemon_slayer/build_orders/<patch>/build_orders_<mode>.json``
-    (core/build_order_precompute.py:79) is canonical-id keyed: "MissFortune",
-    "Nunu", "Khazix".
+    (``generate_table`` in core/build_order_precompute.py) is canonical-id
+    keyed: "MissFortune", "Nunu", "Khazix".
 
 This module reads the FLAT table (the operator-specified source) but joins on
 ``core.archetype_picks.canonical_champion_id`` applied to BOTH sides, so the
@@ -81,8 +81,9 @@ FALLBACK_ENV = "RC_NEXTBUY_DS_FALLBACK"
 _SUPPORTED_STEMS = frozenset({"sr", "aram", "arena"})
 
 # Neutral build path inside a champion's bucket dict, and the terminal
-# fallback for every lean that does not resolve. Mirrors
-# core/laning_scenario_precompute.py:247 and core/laning_verdicts.py:197.
+# fallback for every lean that does not resolve. Mirrors ``_BUILD_BUCKET`` in
+# core/laning_scenario_precompute.py and the ``_next_build_item`` preference in
+# core/laning_verdicts.py.
 _PREFERRED_BUCKET = "balanced"
 
 # Damage-axis labels shape_from_factors can emit that name a real bucket. Its

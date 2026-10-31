@@ -5,7 +5,8 @@ PURPOSE
     Decide whether any single enemy is provably FED - a combat lead AND an
     estimated-economy lead over the active player - with NO LLM / network /
     engine. Feeds the situational ``EnemyProfile.fed`` bool (the C3 fed
-    counter-build hint fires on it, ``situational.py:407``), plus the fed
+    counter-build hint fires on it: the ``if ep.fed:`` branch of
+    ``counter_build_hints`` in situational.py), plus the fed
     threat's damage AXIS so the route can direct the hint (armor vs a fed
     AD threat, MR vs a fed AP threat). A sibling of core/cc_threat.py /
     core/heal_threat.py; lives under core.build_planner because the fed
@@ -16,7 +17,8 @@ PURPOSE
 WHY correct-by-construction (not a prediction)
     Every input is a hard public fact from the Live Client scoreboard:
     per-player scores (kills/deaths/assists), level, and owned items
-    (game_reader/snapshot_normalizer.py:300-304 reads the same fields).
+    (``_NormalizerMixin._process_game`` in
+    game_reader/snapshot_normalizer.py reads the same fields).
     Enemy GOLD is activePlayer-only over the API, so the economy lead is
     ESTIMATED from owned-item gold value + level - the one honest economy
     signal (client precedent: web/js/lib/item_value.js). Missing or junk
@@ -37,7 +39,8 @@ THE FED FORMULA (LEAP-08, both cuts must hold - conservative AND)
 DAMAGE AXIS (existing facts only)
     DDragon info.attack vs info.magic via defensive_picks._load_champ_info
     (the index compute_threat_profile classifies with; cross-module
-    private-helper import precedent: situational.py:39), overlaid with
+    private-helper import precedent: the ``_load_stat_index`` import in
+    situational.py), overlaid with
     champion_info_overrides.merged_info (the shipped fix for the zeroed
     Seraphine/Akshan/Rell/Vex/Qiyana blocks). Strict inequality picks
     "ad"/"ap"; tie or unknown -> "" and the hint keeps its generic

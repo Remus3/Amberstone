@@ -14,8 +14,9 @@ multipliers, so the dot product is a stat-linear fit score. Four hard gates
 penalty (crit on a 0-crit champ, AH overstack, lifesteal on a no-auto champ)
 correct the stat-linear baseline for non-linear kit interactions.
 
-Data is loaded by MIRRORING core/archetype_picks.py:174-220 - the active patch
-from data/daemon_slayer/current.txt, then that patch's items.json. We NEVER
+Data is loaded by MIRRORING ``_resolve_ds_patch`` / ``_load_damage_axes`` in
+core/archetype_picks.py - the active patch from
+data/daemon_slayer/current.txt, then that patch's items.json. We NEVER
 import the DS engine (agents/daemon_slayer/*) - the in-process split-brain guard
 (``test_routes_state_has_no_in_process_engine_import`` in
 tests/test_ds_preview_e2e_p1l21.py) forbids it. DS effect files were read
@@ -169,7 +170,8 @@ _SPELLBLADE_NONUSER_PENALTY = 2.0
 _HIGH_AS_WEIGHT = 0.6  # threshold above which a champ is "high-AS"
 
 # --------------------------------------------------------------------------- #
-# Item data loader - mirrors core/archetype_picks.py:174-220.
+# Item data loader - mirrors ``_resolve_ds_patch`` / ``_load_damage_axes`` in
+# core/archetype_picks.py.
 # --------------------------------------------------------------------------- #
 _ITEM_CACHE: Optional[dict[str, dict]] = None
 _ITEM_LOCK = threading.Lock()
