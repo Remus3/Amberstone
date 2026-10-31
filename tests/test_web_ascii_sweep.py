@@ -1772,7 +1772,20 @@ _WEB = _REPO_ROOT / "web"
 # value EXACTLY; swapping either one alone does not. Those two paths are
 # the whole change. No glyph change: the added lines carry 0 non-ASCII
 # bytes. If another slice re-captures in parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "60bc8b16fabba25f1da9debe946118bcb4c92ab07801506fe712ef11c2b59c84"
+# superseded by the RM-1209 re-capture below: "60bc8b16fabba25f1da9debe946118bcb4c92ab07801506fe712ef11c2b59c84"
+#
+# RE-CAPTURED 2026-10-31 at RM-1209 (s144 uiux cycle 87, provisional
+# until the merger lands it and maps the id). One change rides it: the
+# Lobby queue strip buttons gain a keyboard focus ring,
+# `.lq-btn:focus-visible { outline: 2px solid var(--accent); outline-offset:
+# 2px; }` and the same ring on `.lq-lane-pref.is-conflict:focus-visible`,
+# each with its comment (web/css/panels/header.css). Ordinary case, no
+# tokeniser change. ATTRIBUTED BY SUBSTITUTION: swapping exactly that path
+# back to its lane HEAD 58b7f926f blob reproduces the superseded 60bc8b16...
+# value EXACTLY. That path is the whole change. No glyph change: the added
+# lines carry 0 non-ASCII bytes. If another slice re-captures in parallel,
+# the merger recomputes.
+_LIVE_HALF_DIGEST = "506e723245df4f444e8fb0c997fdb9831fa29fb770d9eee1ea307037a5a37cc4"
 
 
 def _web_sources() -> list[Path]:

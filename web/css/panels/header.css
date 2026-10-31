@@ -831,6 +831,13 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 }
 .lq-btn:hover:not(:disabled):not([aria-disabled="true"]) { border-color: var(--info); }
 .lq-btn:active:not(:disabled):not([aria-disabled="true"]) { transform: scale(0.97); }
+/* RM-1209: keyboard focus ring, the lobby's solid 2px --accent ring
+ * (.lv-top8-tag precedent).
+ * Without it the UA ring computed 1px near-black on the queue card
+ * (1.08:1). An outline, not the --focus-ring shadow: .lq-find.is-searching
+ * animates box-shadow. The 2px offset paints it on the card surface, so
+ * it reads on the Find / Cancel fills too; the 8px strip gap fits it. */
+.lq-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* RM-1139: [aria-disabled="true"] is the Find Match click hold - held,
  * still focusable, so it reads exactly like disabled. */
 .lq-btn:disabled,
@@ -885,6 +892,12 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   outline: 1px solid var(--bad);
   position: relative;
   overflow: hidden;
+}
+/* RM-1209: same specificity as .lq-btn:focus-visible and later, so the
+ * 1px conflict outline would replace the focus ring; the red border and
+ * the CONFLICT overlay still carry the conflict while focused. */
+.lq-lane-pref.is-conflict:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
 }
 .lq-lane-pref.is-conflict::after {
   content: "CONFLICT";
