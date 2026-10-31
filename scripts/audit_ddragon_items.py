@@ -30,6 +30,16 @@ from urllib.request import urlopen, Request
 from urllib.error import URLError, HTTPError
 
 ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+# RM-1180: icons land in the tree the :8888 dashboard serves, so write via
+# scratch file + fsync + rename (the RM-1130 helper cache_ddragon_assets uses).
+from core.polled_json import atomic_write_bytes  # noqa: E402
+
+# RM-1180: same set as lib/icons/downloader.py _IMAGE_MAGIC (RM-373), kept
+# local so this script does not pull in lib.http; a test pins agreement.
+_IMAGE_MAGIC = (b"\x89PNG\r\n\x1a\n", b"\xff\xd8\xff")
+
 INDEX_PATH = ROOT / "web" / "data" / "items_index.json"
 DB_PATH = ROOT / "data" / "rewind_history.db"
 # Primary: DDragon standard catalog (covers most items).
@@ -74,7 +84,11 @@ def safe_icon_dest(item_dir: Path, iid: str) -> Path | None:
 
 def download_icon(version: str, iid: str, dest: Path) -> str | None:
     """Try DDragon first, then CommunityDragon. Returns the source name
-    on success (`ddragon` or `cdragon`), or None if both fail."""
+    on success (`ddragon` or `cdragon`), or None if both fail.
+
+    RM-1180: a 200 is not proof of an image (an error page or an
+    interstitial would land as `<id>.png`), so the body must start with PNG
+    or JPEG magic before anything is written, and the write is atomic."""
     for source, url in (
         ("ddragon", CDN_URL.format(version=version, id=iid)),
         ("cdragon", CDN_CD_URL.format(id=iid)),
@@ -85,10 +99,9 @@ def download_icon(version: str, iid: str, dest: Path) -> str | None:
                 if resp.status != 200:
                     continue
                 data = resp.read()
-            if not data or len(data) < 64:
+            if not data or len(data) < 64 or not data.startswith(_IMAGE_MAGIC):
                 continue
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            dest.write_bytes(data)
+            atomic_write_bytes(dest, data)  # creates dest.parent on demand
             return source
         except (URLError, HTTPError, TimeoutError, OSError):
             continue
