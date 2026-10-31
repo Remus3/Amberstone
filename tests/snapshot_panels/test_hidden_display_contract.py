@@ -34,6 +34,7 @@ import json
 import re
 from pathlib import Path
 
+from tests import _css_split
 from tests.snapshot_panels.conftest import _WS_STUB
 
 VP = {"width": 1920, "height": 920}
@@ -236,7 +237,9 @@ def test_exceptions_are_still_real():
     """Each named exception must still be backed by the rule it cites, so
     the allowance dies with the rule."""
     css = (_INDEX.parent / "css" / "panels")
-    header = (css / "header.css").read_text(encoding="utf-8")
+    # header.css is read as its whole split family (RM-726 (c) rule 5), so the
+    # routing rule is still found once a header.css slice lands.
+    header = _css_split.family_text("web/css/panels/header.css")
     home = (css / "home.css").read_text(encoding="utf-8")
     assert re.search(r'body\[data-view="settings"\]\s*#view-settings', header), \
         "view-section CSS routing rule gone; drop the class:view-section exception"
