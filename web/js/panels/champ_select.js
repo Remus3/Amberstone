@@ -465,14 +465,20 @@ function _csvHumanPhase(phase) {
 // random and the (guess) annotation is meaningless; Arena uses a
 // dedicated 2-cell ally renderer instead.
 // Personal-vs enemy win-rate cache. Keyed by champId; values are
-// {ts, payload|null|"pending"}. TTL matches the backend cache (60s)
-// so repeat renders inside a single champ-select tick are free.
+// {ts, payload, failed, pending, settled}. TTL matches the backend cache
+// (60s) so repeat renders inside a single champ-select tick are free.
+// RM-1199: a FAILED fetch (503 when rewind_history.db is missing, a
+// 500, a network error) is negative-cached for _CSV_WR_FAIL_TTL_MS, so a
+// re-render no longer re-requests the route every tick; and once any
+// answer has settled, a rebuilt slot paints it at once - also while an
+// expired entry is being refetched - so the slot never blinks empty.
 // QA 2026-07-03 slice A (A4): the deprecated YOUR RECORD block + its
 // aggregate lifetime-record fetch were removed; the enemy WR slot
 // (.csv-enemy-wr-slot, a DIFFERENT feature - KEEP) now rides the
 // per-champion /api/personal-vs route via this cache.
 const _csvWrCache = new Map();
 const _CSV_WR_TTL_MS = 60 * 1000;
+const _CSV_WR_FAIL_TTL_MS = 15 * 1000;
 const _CSV_WR_DAYS = 30;
 
 function _csvWrSlotApply(el, payload, champNm) {
@@ -497,37 +503,44 @@ function _csvWrSlotFetch(champId, champNm, el) {
   if (!champId || champId <= 0 || !el) return;
   const cached = _csvWrCache.get(champId);
   const now = Date.now();
-  if (cached && cached.payload && cached.payload !== "pending"
-      && (now - cached.ts) < _CSV_WR_TTL_MS) {
+  if (cached && cached.settled) {
+    // Paint the last settled answer first (stale-while-revalidate): a
+    // freshly built slot is never left empty when an answer exists.
     _csvWrSlotApply(el, cached.payload, champNm);
+    const ttl = cached.failed ? _CSV_WR_FAIL_TTL_MS : _CSV_WR_TTL_MS;
+    if (!cached.pending && (now - cached.ts) < ttl) return;
+  }
+  if (cached && cached.pending) {
+    // Already in flight - the in-flight resolver will paint this DOM
+    // node too because it stamps every live element with the matching
+    // data-champ-id.
     return;
   }
-  if (cached && cached.payload === "pending") {
-    // Already in flight - leave placeholder text; the in-flight resolver
-    // will paint this DOM node too because it stamps every live element
-    // with the matching data-champ-id.
-    return;
-  }
-  _csvWrCache.set(champId, { ts: now, payload: "pending" });
+  _csvWrCache.set(champId, {
+    ts: now,
+    payload: cached ? cached.payload : null,
+    failed: !!(cached && cached.failed),
+    pending: true,
+    settled: !!(cached && cached.settled),
+  });
   const url = "/api/personal-vs?champ_id=" + (champId | 0)
             + "&days=" + _CSV_WR_DAYS;
+  const settle = (data, failed) => {
+    _csvWrCache.set(champId, {
+      ts: Date.now(), payload: data, failed: failed,
+      pending: false, settled: true,
+    });
+    // Paint every live slot for this champion. _csvRenderTeam may
+    // have re-rendered the cell since the fetch fired, so query by
+    // data-champ-id rather than holding a stale reference.
+    document
+      .querySelectorAll(".csv-enemy-wr-slot[data-champ-id='" + (champId | 0) + "']")
+      .forEach((node) => _csvWrSlotApply(node, data, champNm));
+  };
   fetch(url, { credentials: "same-origin", cache: "no-store" })
     .then((r) => r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status)))
-    .then((data) => {
-      _csvWrCache.set(champId, { ts: Date.now(), payload: data });
-      // Paint every live slot for this champion. _csvRenderTeam may
-      // have re-rendered the cell since the fetch fired, so query by
-      // data-champ-id rather than holding a stale reference.
-      document
-        .querySelectorAll(".csv-enemy-wr-slot[data-champ-id='" + (champId | 0) + "']")
-        .forEach((node) => _csvWrSlotApply(node, data, champNm));
-    })
-    .catch(() => {
-      _csvWrCache.set(champId, { ts: Date.now(), payload: null });
-      document
-        .querySelectorAll(".csv-enemy-wr-slot[data-champ-id='" + (champId | 0) + "']")
-        .forEach((node) => _csvWrSlotApply(node, null, champNm));
-    });
+    .then((data) => settle(data, false))
+    .catch(() => settle(null, true));
 }
 
 function _csvRenderTeam(listId, team, myCid, timerEndMs, showPickOrder, opts) {

@@ -53,10 +53,10 @@ _ROUTED = {
 _MEASURE = """async () => {
   await document.fonts.ready;
 """ + _HELPERS + """
-  // Wait and read in ONE task: a failed fetch is not negative-cached, so a
-  // re-render can blank a "--" slot again between a Python-side wait and
-  // the read. Poll until all five slots carry text, then read
-  // synchronously so nothing repaints in between.
+  // Wait and read in ONE task. A failed fetch is negative-cached since
+  // RM-1199 (test_champ_select_enemy_wr_slot_negative_cache.py), but
+  // the single-task read stays: poll until all five slots carry text,
+  // then read synchronously so nothing repaints in between.
   const slots = () => [...document.querySelectorAll(
     '#view-champ-select #csv-enemies-list .csv-enemy-wr-slot')];
   const t0 = performance.now();
