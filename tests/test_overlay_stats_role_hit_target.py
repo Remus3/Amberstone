@@ -6,7 +6,7 @@ rank-tier + compare-role selectors now live in the DS Settings strip
 (web/js/panels/overlay_ds_controls.js, styled .ovset-sel > select in
 web/css/panels/overlay_ds_controls.css). The R38/R72 tap-floor + focus-ring
 guard follows them to their new home: each select reserves min-height
-var(--hit-min) (42px, docs/UI_SCALE_SPEC_V2.md line 112) and shows the spec
+var(--hit-min) (42px, docs/UI_SCALE_SPEC_V2.md "Interaction rules") and shows the spec
 var(--focus-ring) on keyboard focus.
 """
 import re
@@ -30,7 +30,7 @@ def test_stats_benchmark_select_meets_hit_min():
     assert "min-height" in body and "var(--hit-min" in body, (
         ".ovset-sel > select (the relocated stats-panel rank/role selectors) "
         "must reserve min-height: var(--hit-min) (42px) - HIT-TARGETS floor "
-        "(UI_SCALE_SPEC_V2 line 112)"
+        "(UI_SCALE_SPEC_V2 \"Interaction rules\")"
     )
 
 

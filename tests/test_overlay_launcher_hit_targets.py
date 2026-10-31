@@ -6,7 +6,7 @@ launcher control center (#w-launcher + its layout menu). The launcher widget +
 its popup menu were shipped in a live session (LEDGER 688) WITHOUT the 5-phase
 fixture audit; this is that audit's HIT-TARGETS MUST-FIX, locked as a guard.
 
-docs/UI_SCALE_SPEC_V2.md interaction rule (line 112 + 118): every button /
+docs/UI_SCALE_SPEC_V2.md "Interaction rules" (the --hit-min row): every button /
 toggle / slider-thumb is a clickable whose interactive target must meet the
 --hit-min floor (42px), even when the visible chrome is smaller. The launcher
 menu's action rows (the per-panel show/hide toggle, "Reset all panels",

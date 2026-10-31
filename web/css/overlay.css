@@ -972,7 +972,7 @@ body[data-shell="overlay"] .ovx-launcher-menu .ovx-menu-head {
 }
 body[data-shell="overlay"] .ovx-launcher-menu .ovx-menu-row {
   /* Action rows (per-panel toggle, reset, done) are clickables: reserve the
-   * --hit-min 42px tap target (spec UI_SCALE_SPEC_V2 line 112). flex + center
+   * --hit-min 42px tap target (UI_SCALE_SPEC_V2 "Interaction rules"). flex + center
    * so the single text line sits mid-button in the taller box, left-aligned. */
   display: flex;
   align-items: center;

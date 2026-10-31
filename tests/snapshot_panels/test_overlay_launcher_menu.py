@@ -8,7 +8,7 @@ launcher to open + render its layout menu, and measures the menu's action rows
 and slider rows in a real browser (the static CSS guard lives in
 tests/test_overlay_launcher_hit_targets.py; this proves the rendered pixels).
 
-HIT-TARGETS MUST-FIX (docs/UI_SCALE_SPEC_V2.md line 112): every menu action row
+HIT-TARGETS MUST-FIX (docs/UI_SCALE_SPEC_V2.md "Interaction rules"): every menu action row
 (per-panel toggle / reset / done) and every opacity/scale slider row reserves the
 --hit-min 42px tap target. A screenshot of the open menu is written for the
 operator's visual review (the launcher menu is only reachable by interaction, so

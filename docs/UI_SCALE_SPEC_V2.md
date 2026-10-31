@@ -116,7 +116,7 @@ NEW token group, opt-in. Values bumped +15% over v2 first-pass:
 | `--focus-ring`     | `0 0 0 2px var(--signal-info)` | unchanged | keyboard focus outline             |
 
 Checkbox / toggle / slider thumb minimums are 18-20px visual but the
-interactive target is `--hit-min` (36px) via padded `<label>` wrappers.
+interactive target is `--hit-min` (42px) via padded `<label>` wrappers.
 Tooltip data-tt attributes stay; only the hover-coverage CSS changes.
 
 ## Dummy data architecture
