@@ -156,6 +156,10 @@ def stats_counters(body: dict) -> dict:
     if isinstance(skip, dict):
         out["capture_skip"] = {k: skip.get(k) for k in
                                ("not_foreground", "blank", "locked", "last_reason")}
+    obs_lane = body.get("obs_lane") if isinstance(body, dict) else None
+    if isinstance(obs_lane, dict):  # RM-1054; absent on an older vision server
+        out["obs_lane"] = {k: obs_lane.get(k) for k in
+                           ("undecodable", "error", "last_reason")}
     if isinstance(body, dict) and "uptime_s" in body:
         out["uptime_s"] = body["uptime_s"]
     return out

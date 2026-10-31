@@ -62,6 +62,7 @@ from ._stats import (
     _capture_skips,
     _record,
     _record_capture_skip,
+    _record_obs_lane_failure,
     _stats,
     _stats_lock,
 )
@@ -184,11 +185,17 @@ def _maybe_obs_frame():
 
     s144 true-audit (RM-1108): only a payload PIL fully decodes is served
     (an undecodable, truncated or non-bytes one returns None, so GDI runs and
-    nothing is recorded; PIL absent counts as undecodable, and the GDI path
+    no frame is cached from it; PIL absent counts as undecodable, and the GDI path
     needs PIL too), every decoded frame goes through the Y-03 blank check, and the
     ``"jpeg"`` label always matches the bytes - a decoded JPEG at or under the
     coaching width passes through byte-identical, anything else is re-encoded
-    as JPEG."""
+    as JPEG.
+
+    RM-1054: a payload Pillow cannot decode counts as ``undecodable`` and
+    any other failure in the lane (the re-encode included) as ``error``, in
+    ``get_stats()["obs_lane"]``; the flag off, an empty OBS reply and a
+    served frame count nothing, so a gated drain can tell "OBS yielded
+    nothing" from "the OBS bytes were bad"."""
     try:
         from core.obs_frame_source import get_obs_frame, obs_frame_source_enabled
         if not obs_frame_source_enabled():
@@ -201,6 +208,7 @@ def _maybe_obs_frame():
             img = Image.open(io.BytesIO(raw))
             img.load()
         except Exception as exc:  # noqa: BLE001 - PIL absent/undecodable: fall to GDI
+            _record_obs_lane_failure("undecodable")
             log.debug("obs frame undecodable, falling back to GDI: %s", exc)
             return None
         if _frame_blank(img):  # Y-03: drop a flat scene, fall to GDI
@@ -223,6 +231,7 @@ def _maybe_obs_frame():
             "source": "obs",
         }
     except Exception as exc:  # noqa: BLE001 - never let the OBS lane break the grab
+        _record_obs_lane_failure("error")
         log.debug("obs frame lane failed, falling back to GDI: %s", exc)
         return None
 

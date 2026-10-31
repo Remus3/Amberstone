@@ -158,6 +158,21 @@ def test_stats_counters_keeps_decode_counters_and_skips():
     assert out["uptime_s"] == 5
 
 
+def test_stats_counters_keeps_obs_lane_failures():
+    """RM-1054: the OBS decode / encode failure counters reach the readback."""
+    body = {"stats": {}, "obs_lane": {"undecodable": 3, "error": 1,
+                                      "last_reason": "undecodable",
+                                      "last_ts": 2.0}}
+    out = gvp.stats_counters(body)
+    assert out["obs_lane"] == {"undecodable": 3, "error": 1,
+                               "last_reason": "undecodable"}
+
+
+def test_stats_counters_omits_obs_lane_from_an_older_server():
+    out = gvp.stats_counters({"stats": {}})
+    assert "obs_lane" not in out
+
+
 def test_stats_counters_tolerates_junk():
     assert gvp.stats_counters(["not", "a", "dict"]) == {}
     assert gvp.stats_counters({"stats": "x"}) == {}

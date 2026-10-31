@@ -11,6 +11,11 @@ Split out of moon_vision_server.py during Phase 2.4. Owns:
   reference K) fail-closed capture counters. ``CAPTURE_SKIP_REASONS`` is the
   ONE reason vocabulary (locked | not_foreground | blank) the frame path uses;
   a liveness/capability field can reuse it rather than mint a second one.
+- ``_obs_lane`` + ``_record_obs_lane_failure(reason)`` - RM-1054: why the OBS
+  frame lane yielded no frame although OBS answered (undecodable | error).
+  A SEPARATE block, not more capture-skip reasons: those are the Y-03
+  REFUSAL vocabulary shared with tools/screen_agent.py, and an OBS failure
+  refuses nothing (the GDI grab still runs).
 
 Sibling modules (``_frame``, ``_relay``) directly mutate ``_stats[kind]["bytes"]``
 under ``_stats_lock`` to record upload byte totals. Keep that contract - moving
@@ -39,6 +44,12 @@ _stats: dict = {
 CAPTURE_SKIP_REASONS = ("locked", "not_foreground", "blank")
 _capture_skips: dict = {r: 0 for r in CAPTURE_SKIP_REASONS}
 _capture_skips.update({"last_reason": None, "last_ts": 0.0})
+# RM-1054: OBS bytes Pillow could not decode ("undecodable") or any other
+# failure inside the OBS lane, the JPEG re-encode included ("error"). Zero
+# here while frames serve as ``self_grab`` means OBS yielded nothing.
+OBS_LANE_FAILURES = ("undecodable", "error")
+_obs_lane: dict = {r: 0 for r in OBS_LANE_FAILURES}
+_obs_lane.update({"last_reason": None, "last_ts": 0.0})
 _log_ring = collections.deque(maxlen=80)
 _latency_ring = collections.deque(maxlen=60)
 
@@ -65,6 +76,25 @@ def _record_capture_skip(reason: str) -> None:
         _capture_skips[reason] += 1
         _capture_skips["last_reason"] = reason
         _capture_skips["last_ts"] = time.time()
+
+
+def _record_obs_lane_failure(reason: str) -> None:
+    """Count one OBS-lane failure. ``reason`` must be in OBS_LANE_FAILURES."""
+    if reason not in OBS_LANE_FAILURES:
+        raise ValueError(f"unknown obs lane failure: {reason!r}")
+    with _stats_lock:
+        _obs_lane[reason] += 1
+        _obs_lane["last_reason"] = reason
+        _obs_lane["last_ts"] = time.time()
+
+
+def _reset_obs_lane() -> None:
+    """Test helper: zero the RM-1054 OBS-lane counters."""
+    with _stats_lock:
+        for r in OBS_LANE_FAILURES:
+            _obs_lane[r] = 0
+        _obs_lane["last_reason"] = None
+        _obs_lane["last_ts"] = 0.0
 
 
 def _reset_capture_skips() -> None:
@@ -111,12 +141,14 @@ def get_stats() -> dict:
     with _stats_lock:
         stats_copy = {k: dict(v) for k, v in _stats.items()}
         skip_copy = dict(_capture_skips)
+        obs_copy = dict(_obs_lane)
         log_copy = [dict(x) for x in list(_log_ring)[-30:]]
         lat_copy = [dict(x) for x in list(_latency_ring)]
         return {
             "uptime_s":     int(time.time() - _START_TIME),
             "stats":        stats_copy,
             "capture_skip": skip_copy,
+            "obs_lane":     obs_copy,
             "log":          log_copy,
             "latency_60":   lat_copy,
             "python":       sys.version.split()[0],
