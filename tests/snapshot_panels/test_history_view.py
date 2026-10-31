@@ -12,13 +12,16 @@ Mirrors test_lobby_view.py and test_home_view.py.
 
 Drive path: /?ui_mock=1#history. main.js boot flips body.dataset.uiMock;
 with an empty SSE state the auto-derive lands on "home" (mode=client /
-!live), and #history is a sticky non-game-state hash (main.js:958-959), so
-the history view wins the router (applyView("history") stamps
-body[data-view="history"], which un-hides #view-history). The
-viewId=="history" branch fires _historyWireOnce() + _historyFetchAndRender()
-(main.js:765); under ui_mock the fetch short-circuits to
-/data/ui_mock/history.json (_historyMockLoad, main.js:1856) and slices the
-"14d" scope (5 sessions) instead of the live /api/history feed.
+!live), and #history is a sticky non-game-state hash (web/js/main.js
+`_viewResolveAndApply` clears only a hash that `_hashIsStaleGameState`
+flags, and history is not one), so the history view wins the router
+(applyView("history") stamps body[data-view="history"], which un-hides
+#view-history). Its `if (viewId === "history")` branch in applyView fires
+_historyWireOnce() + _historyFetchAndRender(); under ui_mock the fetch
+short-circuits to /data/ui_mock/history.json (`function _historyMockLoad`)
+and `_historyMockSliceForScope` slices the "14d" scope (5 sessions)
+instead of the live /api/history feed. Cited by symbol, never by line:
+tests/snapshot_panels/test_view_docstring_anchors_s144p33.py guards it.
 
 The fixture's scopes["14d"] has 5 sessions, so _historyFetchAndRender sets
 #history-session-count to "5 sessions" (its pre-render placeholder is "-")

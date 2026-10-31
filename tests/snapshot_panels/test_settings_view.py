@@ -11,15 +11,19 @@ visual validation runs here in CI. Mirrors test_session_view.py.
 
 Drive path: /?ui_mock=1#settings. main.js boot flips body.dataset.uiMock;
 with an empty SSE state the auto-derive lands on "home" (mode=client /
-!live), and #settings is a sticky non-game-state hash (main.js:958-959 +
-_viewFromHash validates it against VIEW_IDS), so the settings view wins
+!live), and #settings is a sticky non-game-state hash (web/js/main.js
+`_viewResolveAndApply` clears only a hash that `_hashIsStaleGameState`
+flags, and `function _viewFromHash` validates it against
+`export const VIEW_IDS` in web/js/lib/state.js), so the settings view wins
 the router (applyView("settings") stamps body[data-view="settings"], which
-un-hides #view-settings).
+un-hides #view-settings). Cited by symbol, never by line:
+tests/snapshot_panels/test_view_docstring_anchors_s144p33.py guards it.
 
 Unlike session/history/lobby, Settings has NO async fixture feed: the view
 renders its STATIC config form from local state regardless of mock data
-(there is no settings.json ui_mock fixture). applyView("settings") fires
-_settingsRefresh() + renderSpendGates() + renderLoopStatus() to populate
+(there is no settings.json ui_mock fixture). Its `if (viewId === "settings")`
+branch in applyView fires _settingsRefresh() + renderSpendGates() (among
+other one-time wirings) to populate
 control values, but the .settings-card form scaffold is server-rendered in
 index.html. So the render landing signal is simply the view becoming
 visible with its first .settings-card mounted - no text-replaces-"-" wait.

@@ -13,15 +13,20 @@ test_session_view.py and test_history_view.py.
 
 Drive path: /?ui_mock=1#user-builds. main.js boot flips body.dataset.uiMock;
 with an empty SSE state the auto-derive lands on "home" (mode=client /
-!live), and #user-builds is a sticky non-game-state hash (main.js:958-959),
-so the user-builds view wins the router (applyView("user-builds") stamps
-body[data-view="user-builds"], which un-hides #view-user-builds). The
-viewId=="user-builds" branch fires _userBuildsWireOnce() +
-_userBuildsFetchAndRender() (main.js:782-784); under ui_mock with no champion
-typed, _userBuildsFetchAndRender does NOT early-return (uiMockOn is true),
-the live /api/sr-draft/user-builds fetch resolves null, and the render
-short-circuits to /data/ui_mock/user_builds.json (main.js:2208-2215) instead
-of the live feed.
+!live), and #user-builds is a sticky non-game-state hash (web/js/main.js
+`_viewResolveAndApply` clears only a hash that `_hashIsStaleGameState`
+flags, and user-builds is not one), so the user-builds view wins the
+router (applyView("user-builds") stamps body[data-view="user-builds"],
+which un-hides #view-user-builds). Its `if (viewId === "user-builds")`
+branch in applyView fires _userBuildsWireOnce() +
+_userBuildsFetchAndRender(); under ui_mock with no champion typed,
+`function _userBuildsFetchAndRender` does NOT early-return (uiMockOn is
+true), no live /api/sr-draft/user-builds fetch is sent (its liveFetch is
+Promise.resolve(null) without a champion), and its
+`if (!builds.length && uiMockOn)` fallback loads
+/data/ui_mock/user_builds.json instead of the live feed. Cited by symbol,
+never by line: tests/snapshot_panels/test_view_docstring_anchors_s144p33.py
+guards it.
 
 The fixture's builds array has 5 builds, so _userBuildsFetchAndRender sets
 #ub-count to "5 builds (mock)" (its pre-render placeholder is "-") and

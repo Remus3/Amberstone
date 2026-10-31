@@ -12,13 +12,15 @@ Mirrors test_history_view.py and test_lobby_view.py.
 
 Drive path: /?ui_mock=1#session. main.js boot flips body.dataset.uiMock;
 with an empty SSE state the auto-derive lands on "home" (mode=client /
-!live), and #session is a sticky non-game-state hash (main.js:958-959), so
-the session view wins the router (applyView("session") stamps
-body[data-view="session"], which un-hides #view-session). The
-viewId=="session" branch fires _sessionFetchAndRender() (main.js:764);
-under ui_mock the fetch short-circuits to /data/ui_mock/session.json
-(_sessionMockLoad, main.js:1781) instead of the live /api/session/summary
-feed.
+!live), and #session is a sticky non-game-state hash (web/js/main.js
+`_viewResolveAndApply` clears only a hash that `_hashIsStaleGameState`
+flags, and session is not one), so the session view wins the router
+(applyView("session") stamps body[data-view="session"], which un-hides
+#view-session). Its `if (viewId === "session")` branch in applyView fires
+_sessionFetchAndRender(); under ui_mock the fetch short-circuits to
+/data/ui_mock/session.json (`function _sessionMockLoad`) instead of the
+live /api/session/summary feed. Cited by symbol, never by line:
+tests/snapshot_panels/test_view_docstring_anchors_s144p33.py guards it.
 
 The fixture's games=6 populates #session-games (its pre-render placeholder
 is "-"). Waiting for that text to leave "-" is the async-render landing
