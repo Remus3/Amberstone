@@ -9,7 +9,7 @@ _send(status, body, ctype) - the loop_control / aram_balance idiom.
 The underlying pref IO is redirected at core.auto_accept_pref._PREF_PATH to
 a tmp file so the LIVE data/auto_accept_pref.json is never written. A final
 test asserts the live flag is still enabled (or absent) so a redirect
-regression can't leave auto-accept OFF on disk.
+regression can't rewrite the operator's stored choice.
 """
 from __future__ import annotations
 
@@ -77,10 +77,11 @@ def _post(body):
 
 
 # --------------------------------------------------------------------- GET
-def test_get_default_enabled(pref_file):
+def test_get_default_disabled(pref_file):
+    # s144 true-audit cycle 83: no stored choice = OFF (was ON).
     status, payload, ctype = _get()
     assert status == 200 and ctype == "application/json"
-    assert payload == {"ok": True, "enabled": True}
+    assert payload == {"ok": True, "enabled": False}
 
 
 def test_get_reflects_disabled(pref_file):
@@ -112,15 +113,15 @@ def test_post_missing_enabled_400(pref_file):
     status, payload, _ = _post({"other": 1})
     assert status == 400 and payload["ok"] is False
     assert "error" in payload
-    # Nothing persisted; default still True.
-    assert auto_accept_pref.is_enabled() is True
+    # Nothing persisted.
+    assert not pref_file.exists()
 
 
 def test_post_non_bool_enabled_400(pref_file):
     status, payload, _ = _post({"enabled": "yes"})
     assert status == 400 and payload["ok"] is False
     assert "error" in payload
-    assert auto_accept_pref.is_enabled() is True
+    assert not pref_file.exists()
 
 
 def test_post_non_dict_body_400(pref_file):

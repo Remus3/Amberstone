@@ -3,11 +3,13 @@
 The NON-frozen ready-check auto-accept flag the frozen lcu_client
 _auto_accept_tick reads. Contract:
 
-  - default is_enabled() -> True when the file is absent (historical
-    always-on behavior preserved).
+  - default is_enabled() -> False when the file is absent (s144 true-audit
+    cycle 83: it was True, which disagreed with the LCU agent's boot
+    default the dashboard control displays).
   - set_enabled(False) -> is_enabled() False; set_enabled(True) -> True.
-  - a corrupt / garbage file -> default True (fail-soft, the live 1 Hz
-    tick must never throw or silently disable itself on an FS hiccup).
+  - a corrupt / garbage file -> the default False (the live 1 Hz tick must
+    never throw; the transient-read-error memo is pinned in
+    tests/test_auto_accept_pref_hardening_s144t083.py).
   - the persisted shape is exactly {"enabled": bool}.
 
 All IO is redirected at the module-level _PREF_PATH constant so these
@@ -53,9 +55,9 @@ def _live_pref_bytes_untouched():
     )
 
 
-def test_default_enabled_when_absent(pref_file):
+def test_default_disabled_when_absent(pref_file):
     assert not pref_file.exists()
-    assert mod.is_enabled() is True
+    assert mod.is_enabled() is False
 
 
 def test_set_false_then_true(pref_file):
@@ -65,23 +67,28 @@ def test_set_false_then_true(pref_file):
     assert mod.is_enabled() is True
 
 
-def test_corrupt_file_falls_back_to_true(pref_file):
+def test_corrupt_file_falls_back_to_default_off(pref_file):
     pref_file.write_text("}{not json", encoding="utf-8")
-    assert mod.is_enabled() is True
+    assert mod.is_enabled() is False
 
 
-def test_non_dict_json_falls_back_to_true(pref_file):
-    pref_file.write_text("[1, 2, 3]", encoding="utf-8")
-    assert mod.is_enabled() is True
+def test_non_dict_json_falls_back_to_default_off(pref_file):
+    pref_file.write_text(json.dumps([1, 2, 3]), encoding="utf-8")
+    assert mod.is_enabled() is False
 
 
-def test_missing_enabled_key_falls_back_to_true(pref_file):
+def test_missing_enabled_key_falls_back_to_default_off(pref_file):
     pref_file.write_text(json.dumps({"other": "x"}), encoding="utf-8")
-    assert mod.is_enabled() is True
+    assert mod.is_enabled() is False
 
 
-def test_non_bool_enabled_falls_back_to_true(pref_file):
+def test_non_bool_enabled_falls_back_to_default_off(pref_file):
     pref_file.write_text(json.dumps({"enabled": "yes"}), encoding="utf-8")
+    assert mod.is_enabled() is False
+
+
+def test_stored_true_wins_over_the_default(pref_file):
+    pref_file.write_text(json.dumps({"enabled": True}), encoding="utf-8")
     assert mod.is_enabled() is True
 
 
@@ -94,12 +101,12 @@ def test_persisted_shape_is_enabled_bool(pref_file):
     assert data == {"enabled": True}
 
 
-def test_set_coerces_truthy_to_bool(pref_file):
-    # set_enabled(1) -> stored True (bool), not the int 1.
-    assert mod.set_enabled(1) is True
-    data = json.loads(pref_file.read_text(encoding="utf-8"))
-    assert data == {"enabled": True}
-    assert isinstance(data["enabled"], bool)
+def test_set_refuses_non_bool_instead_of_coercing(pref_file):
+    # s144 true-audit cycle 83: set_enabled(1) used to store True via bool(),
+    # and set_enabled("false") stored True as well. A non-bool is refused.
+    with pytest.raises(TypeError):
+        mod.set_enabled(1)
+    assert not pref_file.exists()
 
 
 def test_atomic_no_tmp_left(pref_file):

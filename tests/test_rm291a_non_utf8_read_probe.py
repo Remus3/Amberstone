@@ -366,7 +366,7 @@ PROBE_SITES = {
     "core/aram_item_interaction.py:115": _drive_aram_item_interaction_patch,
     "core/aram_tenacity_context.py:62": _drive_aram_tenacity_map,
     "core/arena_augment_playline.py:100": _drive_arena_augment_playline_patch,
-    "core/auto_accept_pref.py:44": _drive_auto_accept_pref,
+    "core/auto_accept_pref.py:105": _drive_auto_accept_pref,
     "core/config_validator.py:91": _drive_config_validator,
     "core/corpus_hygiene.py:66": _drive_corpus_hygiene,
     "core/daemon_slayer_resolver.py:93": _drive_ds_resolver_load_if_stale,

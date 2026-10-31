@@ -1,23 +1,31 @@
 # arch: GET/POST /api/lcu/auto-accept (ready-check auto-accept on/off) | section=dashboard | frozen=no
 """GET / POST /api/lcu/auto-accept - the LIFT 5 ready-check auto-accept switch.
 
-The dashboard lobby card carries an Auto-accept ready check toggle. It reads +
-writes the NON-frozen ``core.auto_accept_pref`` flag, which the frozen
+Reads + writes the NON-frozen ``core.auto_accept_pref`` flag, which the frozen
 ``lcu/lcu_client.py`` ``_auto_accept_tick`` consults right before it calls
-``accept_queue()``. Turning the flag OFF stops the auto-accept without touching
-the frozen loop's logic; the default is ON so the historical always-on behavior
-is preserved until the operator explicitly flips it.
+``accept_queue()``. Its browser caller is the dashboard "Auto Accept" control
+(``web/js/main.js`` ``_setAutoAccept``), which posts here in the same click
+that sends the LCU agent a ``set_config``; the control DISPLAYS the agent's
+CONFIG, never this flag (see the "two gates" note in core/auto_accept_pref.py).
+Nothing in the dashboard GETs this route today; it is the read-back for
+probes and tests. With no stored choice the flag is OFF (s144 true-audit
+cycle 83; it used to be ON).
 
 Routes:
-  GET  /api/lcu/auto-accept  -> {"ok": true, "enabled": <is_enabled()>}
-  POST /api/lcu/auto-accept   body {"enabled": <bool>}
-       -> {"ok": true, "enabled": <stored>} ; on a missing / non-bool "enabled"
-       field a 400 {"ok": false, "error": ...}. Never crashes; the raw
-       exception text stays in the log only (CLAUDE.md error rule).
+  GET  /api/lcu/auto-accept  -> 200 {"ok": true, "enabled": <is_enabled()>}
+  POST /api/lcu/auto-accept   body exactly {"enabled": <bool>}
+       -> 200 {"ok": true, "enabled": <stored>}
+       -> 400 {"ok": false, "error": ...} for a non-object body, a missing or
+          non-bool "enabled", or any other key (nothing is written)
+       -> 503 {"ok": false, "error": ...} when the save failed (an OSError
+          after the writer's bounded replace retry); safe to retry
+       -> 500 generic error for anything unexpected, traceback logged
+  Raw exception text stays in the log only (CLAUDE.md error rule).
 
-Trust model: same as every other dashboard POST (/api/command, /api/input)
-- the :8888 surface is local / Tailscale-tailnet only, single-operator. This
-route only flips a tiny preference flag; it never executes anything itself.
+Trust model: a control endpoint (``dashboard/_handler.py``
+``_CONTROL_ENDPOINTS``) behind the RC_DASH_TOKEN gate - it drives the client
+exactly like a queue writer, because the flag decides whether a ready check
+is accepted. The route itself only flips that flag; it executes nothing.
 """
 from __future__ import annotations
 
@@ -28,6 +36,9 @@ from core import auto_accept_pref
 
 log = logging.getLogger("rc.web_dashboard")
 
+_GENERIC_ERR = "internal error - see logs"
+_SAVE_ERR = "could not save the auto-accept preference - retry"
+
 
 def _send_json(h, code: int, payload: dict) -> None:
     """Send a JSON body with the standard content type + encoding."""
@@ -37,32 +48,42 @@ def _send_json(h, code: int, payload: dict) -> None:
 def _serve_get(h) -> None:
     """GET /api/lcu/auto-accept - report the current flag."""
     try:
-        _send_json(h, 200, {"ok": True, "enabled": auto_accept_pref.is_enabled()})
-    except Exception as exc:  # noqa: BLE001 - last-resort guard, never 500 the server
-        log.warning("api/lcu/auto-accept GET: %s", exc)
-        # Raw exception text stays in the log only (CLAUDE.md error rule).
-        _send_json(h, 500, {"ok": False, "error": "internal error - see logs"})
+        enabled = auto_accept_pref.is_enabled()
+    except Exception:  # noqa: BLE001 - is_enabled never raises; last resort
+        log.exception("api/lcu/auto-accept GET failed")
+        _send_json(h, 500, {"ok": False, "error": _GENERIC_ERR})
+        return
+    _send_json(h, 200, {"ok": True, "enabled": enabled})
 
 
 def _serve_post(h, body) -> None:
     """POST /api/lcu/auto-accept - body {"enabled": bool} -> persist + echo."""
+    if not isinstance(body, dict):
+        _send_json(h, 400, {"ok": False, "error": "expected a JSON object body"})
+        return
+    if "enabled" not in body:
+        _send_json(h, 400, {"ok": False, "error": "'enabled' (bool) required"})
+        return
+    if len(body) != 1:
+        # Caller-chosen key names are never echoed back.
+        _send_json(h, 400, {"ok": False,
+                            "error": "only the 'enabled' field is accepted"})
+        return
+    enabled = body["enabled"]
+    if not isinstance(enabled, bool):
+        _send_json(h, 400, {"ok": False, "error": "'enabled' must be a bool"})
+        return
     try:
-        if not isinstance(body, dict):
-            _send_json(h, 400, {"ok": False, "error": "expected a JSON object body"})
-            return
-        if "enabled" not in body:
-            _send_json(h, 400, {"ok": False, "error": "'enabled' (bool) required"})
-            return
-        enabled = body.get("enabled")
-        if not isinstance(enabled, bool):
-            _send_json(h, 400, {"ok": False, "error": "'enabled' must be a bool"})
-            return
         stored = auto_accept_pref.set_enabled(enabled)
-        _send_json(h, 200, {"ok": True, "enabled": stored})
-    except Exception as exc:  # noqa: BLE001 - last-resort guard, never 500 the server
-        log.warning("api/lcu/auto-accept POST: %s", exc)
-        # Raw exception text stays in the log only (CLAUDE.md error rule).
-        _send_json(h, 500, {"ok": False, "error": "internal error - see logs"})
+    except OSError:
+        log.warning("api/lcu/auto-accept POST: save failed", exc_info=True)
+        _send_json(h, 503, {"ok": False, "error": _SAVE_ERR})
+        return
+    except Exception:  # noqa: BLE001 - last-resort guard, never drop the reply
+        log.exception("api/lcu/auto-accept POST failed")
+        _send_json(h, 500, {"ok": False, "error": _GENERIC_ERR})
+        return
+    _send_json(h, 200, {"ok": True, "enabled": stored})
 
 
 def _equals(p: str):
