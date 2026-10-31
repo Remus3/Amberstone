@@ -354,7 +354,7 @@ class IngestRetryQueueTests(_IngestTestBase):
         }
         # Manually shove a stale entry so we don't have to wait 60s.
         routes_last_match._INGEST_RETRY_QUEUE.append(
-            (time.time() - 1, body)  # deadline already past
+            (time.monotonic() - 1, body)  # deadline already past
         )
         dropped = routes_last_match._drain_ingest_queue_once()
         self.assertEqual(dropped, 0)
