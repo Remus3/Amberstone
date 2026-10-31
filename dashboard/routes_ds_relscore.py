@@ -88,7 +88,7 @@ Don't-redo:
     those are still uncached so recovery is immediate rather than pinned for
     the TTL. Do not widen the demotion to cover it.
   * Trinkets + consumables are dropped from ``items`` before the cache key is
-    built (s156, core/daemon_slayer_resolver.py:144-151). Callers pass the raw
+    built (s156, ``NON_INVENTORY_IDS`` in core/daemon_slayer_resolver.py). Callers pass the raw
     Live-Client inventory, which lists them inline with shop items.
   * The DataSnapshot is loaded once + memoized at module scope (immutable
     per patch). A patch bump re-points current.txt; call _reset_caches()
@@ -157,7 +157,7 @@ def _drop_non_inventory(items: list[str]) -> list[str]:
     unfiltered they inflate the count past the six rankable slots, so a build
     of five items plus a ward trinket read as full and the panel went dark in
     the slot where last-item advice matters most. This is the s156 defect
-    documented at core/daemon_slayer_resolver.py:144-151; reuse that canonical
+    documented at ``NON_INVENTORY_IDS`` in core/daemon_slayer_resolver.py; reuse that canonical
     id set rather than forking a second copy of it.
     """
     from core.daemon_slayer_resolver import NON_INVENTORY_IDS

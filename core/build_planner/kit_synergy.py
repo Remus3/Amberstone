@@ -17,7 +17,8 @@ correct the stat-linear baseline for non-linear kit interactions.
 Data is loaded by MIRRORING core/archetype_picks.py:174-220 - the active patch
 from data/daemon_slayer/current.txt, then that patch's items.json. We NEVER
 import the DS engine (agents/daemon_slayer/*) - the in-process split-brain guard
-(dashboard/routes_state.py:548-549) forbids it. DS effect files were read
+(``test_routes_state_has_no_in_process_engine_import`` in
+tests/test_ds_preview_e2e_p1l21.py) forbids it. DS effect files were read
 REFERENCE-ONLY to pick the curated item-id tables below; nothing is imported.
 
 The kit_weights BASE is PER-CHAMPION: core.build_planner.champ_kit_data derives a

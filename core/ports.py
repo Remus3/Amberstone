@@ -169,7 +169,8 @@ control plane with it.
 DS_ENGINE = 8860
 """Daemon Slayer combat-math engine, HTTP (not HTTPS).
 
-Defined at `agents/daemon_slayer/server.py:98` and `core/daemon_slayer_client.py:32`.
+Defined as `DEFAULT_PORT` in `agents/daemon_slayer/server.py` and in
+`core/daemon_slayer_client.py`.
 """
 
 DS_MATCH_DB_MCP = 8861

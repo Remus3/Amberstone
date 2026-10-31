@@ -11,17 +11,21 @@ frozenset, width validation, builds_evaluated / depth_reached accounting) but
 does NOT import it: the DS-engine ``compute_dps`` call is swapped for the
 multi-term ``scoring.score_build`` (whose DPS term READS the seed deltas), and
 DS is reached only through an injectable ``seed_fn`` HTTP boundary - never the
-in-process engine (split-brain guard, dashboard/routes_state.py:548-549; the
-mirrored ast scan is in tests/test_planner_beam_search.py).
+in-process engine (split-brain guard
+``test_routes_state_has_no_in_process_engine_import`` in
+tests/test_ds_preview_e2e_p1l21.py; the mirrored ast scan is in
+tests/test_planner_beam_search.py).
 
-None-contract mirrors core/build_order.py:410-418 - ``seed_fn=None`` or a blank
+None-contract mirrors the early returns at the top of ``plan_build_order`` in
+core/build_order.py - ``seed_fn=None`` or a blank
 champion yields an empty, seedless BuildPlan (the caller falls back to
 "unavailable" without partial state).
 
 Candidate generation = top-K of the seed ``ranked[]`` UNION the build-order
 ``order[]`` warm-start (the same {ranked[], order[]} the dashboard routes
 expose). The unique-passive no-double rule is INHERITED from each row's
-engine-supplied ``unique_passive_key`` (core/build_order.py:34-48) - a candidate
+engine-supplied ``unique_passive_key`` (the no-double-rule item of the
+core/build_order.py module docstring) - a candidate
 whose family is already in the partial build is dropped, so the plan is
 unique-passive-safe by construction with no family literal here.
 

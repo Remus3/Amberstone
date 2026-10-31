@@ -6,8 +6,9 @@ champions; every other champion fell back to a FLAT per-archetype vector, so all
 kit-weight vector from champions.json ground truth, so the C2 scorer distinguishes
 each of the 173 champions, not just each archetype.
 
-Ground truth (read-only, NEVER the DS engine - the split-brain guard,
-dashboard/routes_state.py:548-549; we load the same DATA files DS reads):
+Ground truth (read-only, NEVER the DS engine - the split-brain guard
+``test_routes_state_has_no_in_process_engine_import`` in
+tests/test_ds_preview_e2e_p1l21.py; we load the same DATA files DS reads):
   * data/daemon_slayer/<patch>/champions.json - per champ:
       lolmath.damage_distribution {physical, magical, trued}  (the AD/AP/true axis)
       lolmath.roles                                            (MARKSMAN/MAGE/...)
@@ -50,7 +51,8 @@ _AXES: tuple[str, ...] = (
 )
 
 # --------------------------------------------------------------------------- #
-# Data loaders - mirror core/build_planner/kit_synergy.py:164-198.
+# Data loaders - mirror ``_resolve_ds_patch`` / ``_load_items`` in
+# core/build_planner/kit_synergy.py.
 # --------------------------------------------------------------------------- #
 _CHAMP_CACHE: Optional[dict[str, dict]] = None
 _RATIO_CACHE: Optional[dict[str, dict]] = None

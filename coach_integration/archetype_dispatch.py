@@ -231,9 +231,11 @@ def dispatch_for_coach(
     # TRI-STATE seam (Optional[bool], NOT a plain bool - the asymmetry with
     # every seam above is deliberate). Those all default FALSE in the engine,
     # so `if flag: seams[k] = True` covers their whole range. This one defaults
-    # TRUE (core/daemon_slayer_client.py:1410 - the L4 burst-carry target
-    # swap), so the same idiom could only ever say "on" and the OFF half was
-    # unreachable through this dispatcher; core/build_order_variants.py:333 had
+    # TRUE (the ``apply_squishy_burst_target`` default of
+    # ``rank_for_primary_archetype`` in core/daemon_slayer_client.py - the L4
+    # burst-carry target swap), so the same idiom could only ever say "on" and
+    # the OFF half was unreachable through this dispatcher;
+    # ``compute_variant_cell`` in core/build_order_variants.py had
     # to hand-build its rank_kwargs to get it. None = inherit the engine
     # default (kwarg omitted, byte-identical to every pre-existing caller),
     # True = force on, False = force off. Appended at the END per repo
@@ -357,7 +359,8 @@ def dispatch_for_coach(
         #
         # The damage-type split rides along too: plan_build_order reads
         # enemy_ad_share / enemy_ap_share out of rank_kwargs for its boots
-        # pick (core/build_order.py:574-575) and splats them into every
+        # pick (its ``_select_boots`` call in core/build_order.py) and
+        # splats them into every
         # ranker call. A neutral 0.5 / 0.5 split IS that function's own
         # default, so it is omitted - a seam-free dispatch keeps the exact
         # pre-fix planner call shape.
@@ -414,7 +417,8 @@ def dispatch_for_coach(
                 # into every planner ranker call. Empty dict -> None so the
                 # no-seam path is byte-identical to the pre-fix call.
                 # plan_build_order re-pins filter_shared_uniques=True AFTER
-                # this splat (core/build_order.py:618-619), so caller
+                # this splat (the ``call_kwargs["filter_shared_uniques"]``
+                # re-pin in core/build_order.py), so caller
                 # rank_kwargs can never weaken the no-double-unique rule.
                 rank_kwargs=plan_rank_kwargs or None,
                 rank_fn=_ds.rank_for_primary_archetype,

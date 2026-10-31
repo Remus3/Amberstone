@@ -136,7 +136,7 @@ def _clamp_level(raw: str) -> int:
     """Parse the champion level; clamp [1, 18]; fall to default 11.
 
     Mirrors routes_ds_knobs._parse_level. The engine's clamp_level RAISES
-    ValueError on out-of-range input (agents/daemon_slayer/stats.py:126),
+    ValueError on out-of-range input (``clamp_level`` in agents/daemon_slayer/stats.py),
     which the unknown-champion (KeyError, ValueError) handler would then
     mislabel as "unknown champion" - clamp before the engine sees it.
     """

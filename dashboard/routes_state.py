@@ -916,11 +916,13 @@ _DS_PREVIEW_MODE_ALIASES = {
 # so no caller could reach ANY of the dispatcher's seam flags - the champ
 # select + in-game BUILD preview always ranked at the client defaults. These
 # three tables name the seams the body may opt into; the key IS the
-# dispatcher parameter name (core/daemon_slayer_client.py:1399-1411), so the
+# dispatcher parameter name (the ``rank_for_primary_archetype`` signature in
+# core/daemon_slayer_client.py), so the
 # route stays a pass-through and never restates an engine default.
 #
 # Only NON-DEFAULT values are forwarded (the same `if flag: kwargs[...]`
-# idiom as coach_integration/archetype_dispatch.py:282-299), which keeps a
+# idiom as the ``seams`` block of ``dispatch_for_coach`` in
+# coach_integration/archetype_dispatch.py), which keeps a
 # flagless request byte-identical to the pre-fix call - a client that echoes
 # its whole state back with every seam off changes nothing.
 _DS_PREVIEW_SEAM_BOOLS = (
@@ -953,7 +955,8 @@ _DS_PREVIEW_SCORE_BY_DEFAULT = "blended"
 # Those eight all default FALSE in the engine, so the repo-wide "forward only
 # non-default values" idiom (`if flag: kwargs[key] = True`) can express their
 # entire range: absent == False == the default. apply_squishy_burst_target
-# defaults TRUE (core/daemon_slayer_client.py:1410 - the L4 burst-carry target
+# defaults TRUE (the ``rank_for_primary_archetype`` default in
+# core/daemon_slayer_client.py - the L4 burst-carry target
 # swap), so that same idiom can only ever say "on"; it physically cannot
 # express turning the seam OFF, which is why this seam was originally left
 # unexposed on /api/ds-preview entirely.

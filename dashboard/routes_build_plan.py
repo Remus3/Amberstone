@@ -7,7 +7,9 @@ target_stats + threat + defensive, and /api/build-order order[]) THROUGH the
 core.build_planner module (ReplanLoop.tick) into a single ordered ``live[]``
 the active_match Row1 panel renders directly.
 
-SPLIT-BRAIN (routes_state.py:548-549, planner.py:12-15): this route reaches DS
+SPLIT-BRAIN (``test_routes_state_has_no_in_process_engine_import`` in
+tests/test_ds_preview_e2e_p1l21.py, and the core/build_planner/planner.py
+module docstring): this route reaches DS
 ONLY over HTTP. It never imports ``agents.daemon_slayer``. The seed boundary is
 a ``seed_fn(champion, owned_ids, mode=...)`` that calls the EXISTING ds-preview
 + build-order route handlers in-process - those handlers are themselves the

@@ -14,8 +14,8 @@ Data sources (local mirrors, read lazily on first call, cached):
     stripped variants and any casing - the same multi-key index pattern as
     core/defensive_picks.py:83-88.
   - data/meta/ddragon_items.json  {"data": {<id-str>: {"name", "stats": {...}}}}
-    using the DS movement-speed stat vocabulary (agents/daemon_slayer/
-    stats.py:107-108): FlatMovementSpeedMod (flat units) and
+    using the DS movement-speed stat vocabulary (``ITEM_STAT_KEY_MAP`` in agents/daemon_slayer/
+    stats.py): FlatMovementSpeedMod (flat units) and
     PercentMovementSpeedMod (unit-fraction, 0.04 == +4%).
 
 Fallbacks (documented, conservative):
@@ -57,7 +57,7 @@ _FALLBACK_MS = 345.0
 # SR map extent in game units (core/vision_tracker.py:55).
 _SR_MAP_EXTENT = 14800.0
 
-# DS movement-speed stat vocabulary (agents/daemon_slayer/stats.py:107-108).
+# DS movement-speed stat vocabulary (``ITEM_STAT_KEY_MAP`` in agents/daemon_slayer/stats.py).
 _MS_FLAT_KEY = "FlatMovementSpeedMod"
 _MS_PCT_KEY = "PercentMovementSpeedMod"
 

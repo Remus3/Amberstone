@@ -16,19 +16,22 @@ per-build breakdown (the "scoring is explainable" acceptance criterion).
 CRITICAL boundaries (verified against THIS worktree):
 
   * DPS term READS the seed rows' ``delta_dps`` and NEVER recomputes DPS - the
-    in-process DS engine is off-limits (split-brain guard,
-    dashboard/routes_state.py:548-549; the mirrored ast scan lives in
+    in-process DS engine is off-limits (split-brain guard
+    ``test_routes_state_has_no_in_process_engine_import`` in
+    tests/test_ds_preview_e2e_p1l21.py; the mirrored ast scan lives in
     tests/test_planner_beam_search.py). The seed row shape is the
-    /api/ds-preview ``ranked[]`` projection (routes_state.py:592-597) which may
+    /api/ds-preview ``ranked[]`` projection (``_serve_ds_preview_post`` in
+    routes_state.py) which may
     DROP unique_passive_key / is_terminal / dps_per_1k_gold - every read here
     tolerates their absence.
 
   * cohesion REUSES the shipped C1 ``core.build_planner.kit_synergy.
-    synergy_score`` (kit_synergy.py:485) - WP-C1 is DONE; we do NOT reimplement
+    synergy_score`` - WP-C1 is DONE; we do NOT reimplement
     kit fit.
 
   * penalties = engine-supplied unique-collision only. The no-double rule is
-    engine-authoritative (core/build_order.py:34-48, 6 families); we INHERIT
+    engine-authoritative (the no-double-rule item of the core/build_order.py
+    module docstring); we INHERIT
     each row's ``unique_passive_key`` and never write a family literal (a guard
     test fails on any family literal).
 
@@ -163,7 +166,7 @@ def _seed_delta(row: dict) -> float:
     """delta_dps from a seed row - tolerant of the thin ds-preview projection.
 
     The projection emits ``delta_dps``; the raw RankedItem also carries it
-    (rank.py:248). Missing -> 0.0 (the item contributes no DPS signal).
+    (``RankedItem.delta_dps`` in rank.py). Missing -> 0.0 (the item contributes no DPS signal).
     """
     try:
         return float(row.get("delta_dps") or 0.0)
@@ -196,7 +199,7 @@ def _cohesion_term(build_ids, champ, rows_by_id) -> float:
     """Mean C1 kit-synergy over the build (reuses kit_synergy.synergy_score).
 
     Pass the SEED ROW DICT to synergy_score when available - kit_synergy
-    accepts either an id or an entry dict (kit_synergy.py:217-218); the live
+    accepts either an id or an entry dict (``_resolve_item`` in kit_synergy.py); the live
     items.json entry is resolved by id when the row is not itself an entry. The
     cohesion is the average per-item fit so build length does not inflate it.
     """
@@ -222,7 +225,8 @@ def _spike_term(build_ids, rows_by_id, stage: str) -> float:
     terminal AND carries above-median delta, scaled down as the game advances
     (spikes matter most early). is_terminal is read from the seed row when
     present; the thin projection drops it -> treated as terminal (a ds-preview
-    row is already terminal-filtered upstream, rank.py:476).
+    row is already terminal-filtered upstream, by the ``_is_terminal`` filter in
+    ``_filter_candidates``, rank.py).
     """
     if not build_ids:
         return 0.0
@@ -260,9 +264,10 @@ def _spike_term(build_ids, rows_by_id, stage: str) -> float:
 #
 # CORRECTION: the originating task brief named Dark Seal's id as 2033 - that
 # id is actually Corrupting Potion (a starting consumable), confirmed against
-# data/meta/ddragon_items.json (patch 16.14.1),
-# agents/daemon_slayer/_effects_data.py:5344-5345, and
-# core/archetype_mismatch.py:109's curated Consumables list. Dark Seal's real
+# data/meta/ddragon_items.json (patch 16.14.1) and the curated Consumables block
+# of ``_NON_SIGNAL_ITEM_IDS`` in core/archetype_mismatch.py. (The note once
+# also cited an agents/daemon_slayer/_effects_data.py line; that file carries
+# no 2033 row at ENGINE 1.290.0.) Dark Seal's real
 # id is 1082 - that is what is curated here.
 _SNOWBALL_ITEM_IDS = frozenset({"3041", "1082"})
 
@@ -270,7 +275,7 @@ _SNOWBALL_ITEM_IDS = frozenset({"3041", "1082"})
 def _gold_term(build_ids, rows_by_id) -> float:
     """Gold-efficiency proxy: delta_dps per 1k gold, averaged + normalized.
 
-    Uses the row's ``dps_per_1k_gold`` when present (rank.py:250); otherwise
+    Uses the row's ``dps_per_1k_gold`` when present (``RankedItem.dps_per_1k_gold`` in rank.py); otherwise
     derives it from delta_dps / gold. Normalized into the same ~0..1 band as
     the other terms. WHY a local heuristic (not a true gold-value table): the
     master plan defers the full EHP/pen gold formulas to WP-C3; here gold is
