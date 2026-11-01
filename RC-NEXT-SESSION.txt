@@ -37,11 +37,11 @@ deny). Then read ci 41349259636 on 9bfec373f (this /done's push; still running a
 here). docs-guards 41349259632 + codeql green there. ci on a52bc77ed was GREEN, run 41347159059, a slice: no whole-suite ci has run since kit v26 either; the nightly is the first. Earlier reds
 had no single cause (s148 items); test_lobby and arena Enter / Space watches below stand.
 Next action 2 (L9, autonomous): land the rotator's commits made after the L8 snapshot (LEDGER 2000,
-boundary 19:19:36; markers ops/loop/control/lanes/S144_LANDED_<LANE> name the rebased twins). At 20:50:
-main..lane at 14:31 on 2026-11-01: ds 13, gated 4, queue 15, repo 14, research 6,
-true-audit 9, uiux 12, after the driver rebased them (check against the twins with `git cherry`; nothing lands
-twice). Method = s147 L8 (LEDGER 2000-2006); ids from RM-1274 (pin docs/DS_SWEEP_TRACKER.md), LEDGER
-from 2012; fold any sweep-fixture fix into its introducing commit (memory
+boundary 19:19:36; markers ops/loop/control/lanes/S144_LANDED_<LANE> name the rebased twins). ORDER 1547 item 3.
+main..lane final at 17:55 on 2026-11-01: ds 16, gated 5, queue 17, repo 20, research 6,
+true-audit 11, uiux 14 (check against the twins with `git cherry`; nothing lands twice). Merger decides lane/uiux
+tip 5657fedc4, committed under the stop (its report; drop = 3d732c25f). Method = s147 L8 (LEDGER 2000-2006); ids from RM-1274 (pin docs/DS_SWEEP_TRACKER.md), LEDGER
+from 2014; fold any sweep-fixture fix into its introducing commit (memory
 feedback_prepush_sweep_scans_every_commit). Never push a lane. stash@{0}
 s144-leftover-s144q080-497994 (queue RM-1148, refuted 6 times, pass 7 never ran): KEPT.
 Next action 3 (OPERATOR ask, unanswered): should the rc-shell start at logon (autostart)? By spec none;
@@ -55,7 +55,7 @@ installers / XMLs / keepalive / legion_on lines / legacy text); RM-1226 (certifi
 filings"): RM-1243, -1244, -1245, -1250, -1254, -1255, -1258..-1262 OPEN, RM-1257 PARTIAL.
 Next action 6 (reads owed, s148 rows in BACKLOG "Session 148 filings"): RM-1267 first sonnet cycles read rc 0
 (research 14:30:02, repo 14:38:09, ds 15:03:12); week ends 2026-11-08, measure then. RM-1269 read 2026-11-08. RM-1268 swap the trimmed templates between cycles, read about
-2026-11-15. RM-1266 DST row. Rotator restart (the reboot does it) loads the 500 runs gate (reserve 100),
+2026-11-15. RM-1266 DST row. The next rotator launch (held, see IN-FLIGHT) loads the 500 runs gate (reserve 100),
 the RC-4 daily block and the lanes.py log. Delete tests/snapshot_panels/test_zz_drive_probe.py: slice 1's
 inert untracked probe, deletion denied in the drive; never stage it.
 Next action 7 (MAIN ORDER 2215 stays OPEN in inbox_tick.py --pending): items 5, 6 live half, 9, 10 =
@@ -67,18 +67,20 @@ FIRST: CPU / memory glance; the rotator (IN-FLIGHT); inbox_tick.py --pending; gh
 origin/main still an ancestor of main; the RC-InboxResponder agreement expires 2026-12-01 00:00 (read
 back s147 from ops/runtime/inbox_responder_agreement.json; renew before then).
 
-IN-FLIGHT (never stop, kill or edit it to look at it; read its files):
-- s144 lane rotator, pythonw pid 17772 (relaunched 2026-11-01 after the rewrite, below-normal), gitignored
+IN-FLIGHT: nothing. REBOOT HOLD, MAIN ORDER 1547 (LEDGER 2013; row open in inbox_tick.py --pending):
+- S144_LANES_STOP stays until the reboot: never clear it, never relaunch the rotator; answer the v28 restart
+  item "held by MAIN" (v28 not delivered yet). The first RC session after the reboot (last boot read 10-31
+  19:03) clears it; the row closes once L9 is landed too.
+- s144 lane rotator, EXITED 0 at 17:13 on 11-01, 33 cycles, gitignored
   driver ops/loop/control/lane_prompts/s144_lane_driver.py --spawn-detached; log s144_rotator.log, per
   lane s144_<lane>_cycles.jsonl / _driver.log, s144_rate_limit_state.json, status
   ops/loop/control/progress/s144-lanes.json + lane-<i>.json. 7 lanes (gated, queue, uiux, research, ds,
   repo, true-audit; upgrade excluded: it pushes); lane_cap() 7; local commits on lane/<name> only; push URL
-  rewritten to no-push://disabled. Read at this /done 20:45: running, "cycles done 56; running true-audit,
-  uiux"; budget 44/120 at launch. Reboot residue cleared s147 (LEDGER 2008): stale locks 3 / 4, and a
+  rewritten to no-push://disabled. Reboot residue cleared s147 (LEDGER 2008): stale locks 3 / 4, and a
   shutdown-time S144_LANES_STOP (Recycle-Binned after a clean --leak-scan, 0 lane/* on origin).
 - STOP IT GRACEFULLY: write ops/loop/control/lanes/S144_LANES_STOP (all lanes) or S144_<LANE>_STOP (one
   lane; queue also stops on S144_QUEUE_DRAINED): it starts nothing new, running cycles finish (workers check
-  the stops at start and before commit) and it exits. Immediate: taskkill /F /T /PID 17772. The global
+  the stops at start and before commit) and it exits. The global
   control/STOP (2026-09-11; gates loop_controller / queue_loop) and the s133 / s134 sentinels are NOT read.
   S144_<LANE>_PARKED = a git op it could not abort: clear that worktree, then delete the file.
 - Its lane-leak alarm (a lane ref on a remote, or a lane-only commit on a remote-tracking ref, writes
@@ -245,7 +247,7 @@ OPEN - WORK ITEMS (bodies + acceptance in BACKLOG; detail VERBATIM in A31 block 
 - RM-681 PARTIAL: one attended live call per path (truststore MET s133 c6). Origin
   c1/deps-pip-anthropic1-measure was deleted under MAIN 0909; 24c54ec39 stays in the kit bundle.
 - Rows: the s139 open-row index (100+ ids) is VERBATIM in A26, each row in BACKLOG / ROADMAP; next free
-  RM-1274 (pin docs/DS_SWEEP_TRACKER.md); next LEDGER 2012. ROADMAP top open: PKG (WA9-WA14, WA17), the
+  RM-1274 (pin docs/DS_SWEEP_TRACKER.md); next LEDGER 2014. ROADMAP top open: PKG (WA9-WA14, WA17), the
   PKG-6c residue, RM-488, RM-596, RM-597, the RM-681.. rows; EXTERNAL-LIFT Band 2 / 4 stay in BACKLOG.
 - Y-45 phone push needs ntfy (host local-only). Operator APPROVED Y-44 (frozen lcu_client.py) + Y-45
   2026-10-03 (Desktop EXTERNAL-LIFT-DIRECTIVE.md / -2.md; -2 ingested as RM-526..RM-594).
@@ -343,7 +345,7 @@ STATUS, CONTEXT, ACCEPTANCE
 ====================
 Status (s148, the MAIN headless DRIVE-RC; the old status VERBATIM in A1101 block 7): pushed a52bc77ed..this
 commit's push at /done, normal route; ORDER 1233 ANSWER HOP 2 sent, its archive copy is the one local commit
-after the push and rides the next one. Rotator left running: the reboot ends it. No RC restart needed by this
+after the push and rides the next one. Rotator stopped 17:13 (ORDER 1547). No RC restart needed by this
 work; the RC app is down (no autostart since the cutover). /done ran headless, slice 3; board not rendered
 (headless runs never render).
 
