@@ -149,7 +149,7 @@ def test_f3_bad_timing_is_refused_at_construction(kw):
 
 
 @pytest.mark.parametrize("base", [
-    "file:///C:/Windows", "ftp://127.0.0.1:2999", "127.0.0.1:2999", "",
+    "file:///replay/x.json", "ftp://127.0.0.1:2999", "127.0.0.1:2999", "",
     "https://", 2999,
 ], ids=["file", "ftp", "no-scheme", "empty", "no-host", "int"])
 def test_f3_a_non_http_base_is_refused(base):
