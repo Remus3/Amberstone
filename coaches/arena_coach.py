@@ -929,7 +929,8 @@ class Coach(BaseCoach):
                 from core.coaching_timestamps import write_coaching_ts as _wts
                 _wts("arena")
             except Exception:  # noqa: BLE001
-                # D-class: callee already swallows (core/coaching_timestamps.py:73-74
+                # D-class: callee already swallows (the except Exception in
+                # core.coaching_timestamps.write_coaching_ts logs at DEBUG and
                 # returns None), so narrowing this handler would be dead code.
                 pass
         except Exception as exc:
@@ -1012,8 +1013,10 @@ class Coach(BaseCoach):
                     reco_fields,
                 )
             except Exception:  # noqa: BLE001
-                # D-class: callee already swallows (core/augment_shadow.py:112-113),
-                # so narrowing this handler would be dead code.
+                # D-class: callee already swallows (one try / except Exception
+                # wraps the whole body of core.augment_shadow.log_augment_advice
+                # and returns None; "Never raises"), so narrowing this handler
+                # would be dead code.
                 pass
         except Exception as exc:  # noqa: BLE001
             logger.error("Arena augment select: %s", exc)

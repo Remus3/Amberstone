@@ -35,8 +35,9 @@ This guard pins:
 Other-family cites are out of scope on purpose: the three compensating
 sites' own cites into core/cost_tracker.py and core/polled_json.py, and the
 arena_coach / aram_coach cites. Their _base_coach.py family is pinned by
-tests/test_base_coach_dclass_cites_s144p51.py; coaching_timestamps.py:73-74,
-augment_shadow.py:112-113 and vision_server/_inference.py:36 are still open.
+tests/test_base_coach_dclass_cites_s144p51.py, their coaching_timestamps.py /
+augment_shadow.py family by tests/test_arena_coach_shadow_ts_cites_s144p51.py;
+vision_server/_inference.py:36 is still open.
 """
 
 from __future__ import annotations

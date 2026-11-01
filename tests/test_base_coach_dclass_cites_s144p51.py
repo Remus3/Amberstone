@@ -50,11 +50,13 @@ This guard pins:
 (d) at the writing parent every old cite landed inside the symbol named
     for it (skipped only when that commit is absent from the clone).
 
-Other-family cites in the same three files are out of scope on purpose
-and still open: core/coaching_timestamps.py:73-74,
-core/augment_shadow.py:112-113, vision_server/_inference.py:36,
-core/feature_policy.py:305-350, and the aram_coach.py self-cites :839 (in
-aram_coach.py) and :552 (in the fast-poll test).
+Other-family cites in the same three files are out of scope on purpose.
+The arena_coach cites into core/coaching_timestamps.py and
+core/augment_shadow.py are pinned by
+tests/test_arena_coach_shadow_ts_cites_s144p51.py; still open:
+vision_server/_inference.py:36, core/feature_policy.py:305-350, and the
+aram_coach.py self-cites :839 (in aram_coach.py) and :552 (in the fast-poll
+test).
 """
 
 from __future__ import annotations
