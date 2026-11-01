@@ -56,9 +56,9 @@ Failure modes (mirror routes_ds_profile):
   - 503  ImportError or any compute Exception (raw text logged; body carries
          a generic degraded-mode message, never the raw trace).
 
-5-min TTL in-process cache keyed (champion, mode). cached flag + elapsed_ms on
-every 200. _reset_caches() clears the response cache + the loaded snapshot
-cache.
+5-min TTL in-process cache keyed (champion, mode), bounded at ``_CACHE_MAX``
+entries (expired entries dropped on write). cached flag + elapsed_ms on every
+200. _reset_caches() clears the response cache + the loaded snapshot cache.
 """
 from __future__ import annotations
 
@@ -78,6 +78,10 @@ log = logging.getLogger("rc.web_dashboard")
 _CACHE_TTL_S = 300.0
 _CACHE: dict[tuple, tuple[float, dict]] = {}
 _CACHE_LOCK = threading.Lock()
+# RM-1329: the TTL was only checked on read and nothing bounded the size,
+# and the key carries the caller's champion and mode strings, so every
+# distinct request stayed resident for the process lifetime.
+_CACHE_MAX = 256
 
 # The three basic abilities, in the canonical Q/W/E order. A basic reaches
 # "max" at its 5th point; an ult (R) is excluded from max_order.
@@ -257,6 +261,20 @@ def _compute(champion: str, mode: str) -> dict:
     }
 
 
+def _cache_put(key: tuple, now: float, payload: dict) -> None:
+    """Store ``payload`` under ``key``, then bound the cache (RM-1329,
+    the routes_ds_sweep RM-1327 discipline): drop every expired entry,
+    and past ``_CACHE_MAX`` drop the oldest."""
+    with _CACHE_LOCK:
+        _CACHE[key] = (now, dict(payload))
+        for k in [k for k, (ts, _) in _CACHE.items()
+                  if (now - ts) >= _CACHE_TTL_S]:
+            _CACHE.pop(k, None)
+        while len(_CACHE) > _CACHE_MAX:
+            oldest = min(_CACHE, key=lambda k: _CACHE[k][0])
+            _CACHE.pop(oldest, None)
+
+
 def _serve_ds_skill_order(h) -> None:
     """GET /api/ds-skill-order handler."""
     t0 = time.time()
@@ -311,8 +329,7 @@ def _serve_ds_skill_order(h) -> None:
             }).encode("utf-8"), "application/json")
             return
 
-        with _CACHE_LOCK:
-            _CACHE[key] = (now, dict(payload))
+        _cache_put(key, now, payload)
 
         payload["cached"] = False
         payload["elapsed_ms"] = int((time.time() - t0) * 1000)

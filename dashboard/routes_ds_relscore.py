@@ -63,7 +63,8 @@ Failure modes:
          an error - it is cached like any success (see Don't-redo below).
   - 503  rank_items / DataSnapshot import or compute fails.
 
-5-min TTL in-process cache keyed on (champion, mode, sorted items, level).
+5-min TTL in-process cache keyed on (champion, mode, sorted items, level),
+bounded at ``_CACHE_MAX`` entries (expired entries dropped on write).
 Mirrors routes_ds_knobs cache discipline (minus the operator knobs).
 
 Don't-redo:
@@ -111,6 +112,10 @@ log = logging.getLogger("rc.web_dashboard")
 _CACHE_TTL_S = 300.0
 _CACHE: dict[tuple, tuple[float, dict]] = {}
 _CACHE_LOCK = threading.Lock()
+# RM-1329: the TTL was only checked on read and nothing bounded the size,
+# and the key carries the caller's champion, mode and item strings, so
+# every distinct request stayed resident for the process lifetime.
+_CACHE_MAX = 256
 
 # DataSnapshot is immutable per patch - load once + reuse across requests.
 _SNAPSHOT = None
@@ -271,6 +276,20 @@ def _compute(champion, mode, items, level) -> dict:
     }
 
 
+def _cache_put(key: tuple, now: float, payload: dict) -> None:
+    """Store ``payload`` under ``key``, then bound the cache (RM-1329,
+    the routes_ds_sweep RM-1327 discipline): drop every expired entry,
+    and past ``_CACHE_MAX`` drop the oldest."""
+    with _CACHE_LOCK:
+        _CACHE[key] = (now, dict(payload))
+        for k in [k for k, (ts, _) in _CACHE.items()
+                  if (now - ts) >= _CACHE_TTL_S]:
+            _CACHE.pop(k, None)
+        while len(_CACHE) > _CACHE_MAX:
+            oldest = min(_CACHE, key=lambda k: _CACHE[k][0])
+            _CACHE.pop(oldest, None)
+
+
 def _serve_ds_relscore(h) -> None:
     """GET /api/ds-relscore handler."""
     t0 = time.time()
@@ -318,8 +337,7 @@ def _serve_ds_relscore(h) -> None:
             }).encode("utf-8"), "application/json")
             return
 
-        with _CACHE_LOCK:
-            _CACHE[key] = (now, dict(payload))
+        _cache_put(key, now, payload)
 
         payload["cached"] = False
         payload["elapsed_ms"] = int((time.time() - t0) * 1000)
