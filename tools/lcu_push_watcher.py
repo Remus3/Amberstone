@@ -1,6 +1,6 @@
 """LCU push watcher - auto-validate gated item A1 while the operator plays.
 
-A1 (docs/LIVE_GAME_GATED_SYNC.md line 90 / LEDGER item 779): after a mid-session
+A1 (docs/LIVE_GAME_GATED_SYNC.md gated item A1 / LEDGER item 779): after a mid-session
 League restart, confirm the LCU rune push STILL fires on the FIRST champ-select
 enter. The 2026-07-04 regression was: NO push after a restart.
 
@@ -15,26 +15,35 @@ the push survived the restart.
 Run (background):   python tools/lcu_push_watcher.py
 Abort:              drop ops/runtime/LCU_PUSH_WATCHER_STOP   (or Ctrl-C)
 
-Log anchors VERIFIED in-repo (grep, 2026-07-11 - cite file:line):
-  lcu/lcu_client.py:77    'LCU connected: port %d (from %s)'
-  lcu/lcu_client.py:81    'LCU lockfile not found - client may not be running'
-  lcu/lcu_client.py:117   'LCU reconnected: port %d (lockfile rotated, from %s)'
-  lcu/lcu_rune_writer.py:624   'RuneWriter: champ select ended - re-armed for next pick'
-  lcu/lcu_rune_writer.py:639   'RuneWriter: champ select entered'
-  lcu/lcu_rune_writer.py:665   'RuneWriter: champion=%s mode=%s - applying runes'  (push FIRED)
-  lcu/lcu_rune_writer.py:1023  'RuneWriter: wrote [%s] id=%s  perks=%s'            (page-write SUCCESS)
-  lcu/lcu_rune_writer.py:671   'RuneWriter: rune write failed for %s/%s'           (FAIL)
-  lcu/lcu_rune_writer.py:1036  'RuneWriter: gave up after %d attempts for [%s]: %s' (FAIL)
+Log anchors (matched on the MESSAGE text, never on a file:line; the producing
+function is named so a rename is greppable, and
+tests/test_lcu_push_watcher.py::test_log_anchor_is_still_emitted_and_matched
+fails when a producer stops logging one):
+  lcu/lcu_client.py LcuClient.connect
+      'LCU connected: port %d (from %s)'
+      'LCU lockfile not found - client may not be running'
+  lcu/lcu_client.py LcuClient._refresh_conn_if_changed
+      'LCU reconnected: port %d (lockfile rotated, from %s)'
+  lcu/lcu_rune_writer.py RuneWriter._poll
+      'RuneWriter: champ select ended - re-armed for next pick'
+      'RuneWriter: champ select entered'
+      'RuneWriter: champion=%s mode=%s - applying runes'  (push FIRED)
+      'RuneWriter: rune write failed for %s/%s'           (FAIL)
+  lcu/lcu_rune_writer.py RuneWriter._write_page
+      'RuneWriter: wrote [%s] id=%s  perks=%s'            (page-write SUCCESS)
+      'RuneWriter: gave up after %d attempts for [%s]: %s' (FAIL)
 
-SCOPE = the RUNE push only. There is NO distinguishable champ-select SPELL-push
-or ITEM/loadout-push pass/fail log line to key on:
-  * SPELL push goes through lcu_client.set_summoner_spells(), which logs NOTHING
-    on success or failure (grep: no info/warning). The only spell log lines are
-    local-preference-save failures (lcu_rune_writer.py:363 save_spell_pref,
-    lcu_rune_writer.py:481 save_champ_spell_pref) and a manual-override-detected
-    info (lcu_rune_writer.py:838) - none is a champ-select spell PUSH signal.
-  * There is NO champ-select ITEM/loadout push; the only item log lines are
-    post-game item-event capture (lcu_postgame_collector.py:551/800).
+SCOPE = the RUNE push only. A1 covers the rune push, so the watcher keys on it:
+  * The SPELL push (lcu_pregame.set_summoner_spells, inherited by LcuClient)
+    DOES log a pass / fail pair - info 'set_summoner_spells: %d + %d' on a
+    PATCH that succeeded, warning 'set_summoner_spells: failed %d + %d' - but
+    it also logs 'refused' and a debug 'idempotent skip', and nothing here
+    ties it to a restart, so it is not an anchor. The local-preference saves
+    (lcu_rune_writer.save_spell_pref and save_champ_spell_pref) and the
+    manual-spell-change info (RuneWriter._sync_spells) are not push signals.
+  * There is NO champ-select ITEM/loadout push; the only item log line is the
+    post-game item-event capture (lcu_postgame_collector "postgame: saved %d
+    item events").
 So the A1 verdict is keyed on the rune push, which is exactly what A1 covers.
 """
 from __future__ import annotations

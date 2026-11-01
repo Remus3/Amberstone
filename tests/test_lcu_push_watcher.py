@@ -14,6 +14,8 @@ these tests never call.
 """
 from __future__ import annotations
 
+import pytest
+
 from tools.lcu_push_watcher import classify_events, render_verdict_md
 
 
@@ -229,3 +231,59 @@ def test_open_shared_missing_file_returns_none(tmp_path):
     # loop retries next poll), never raises.
     from tools.lcu_push_watcher import _open_shared
     assert _open_shared(tmp_path / "nope.log", seek_end=True) is None
+
+
+# --- RM-1311: the log anchors are cited by symbol, and still emitted -------
+# The module docstring cited its anchors as lcu_client.py:77 ... (13 file:line
+# cites, every one drifted). A line number goes stale on the next edit above it,
+# and nothing noticed. What the watcher really depends on is the MESSAGE TEXT,
+# so pin that instead: each regex still matches a message rendered from the
+# producer's format string, and the producer source still carries that format
+# string's static head.
+def _repo_text(rel: str) -> str:
+    import pathlib
+    root = pathlib.Path(__file__).resolve().parent.parent
+    return (root / rel).read_bytes().decode("utf-8")
+
+
+_ANCHORS = (
+    # (watcher regex attr, producer module, static head the producer logs, sample)
+    ("_RE_CONNECT", "lcu/lcu_client.py", "LCU connected: port %d (from %s)",
+     "LCU connected: port 53521 (from x)"),
+    ("_RE_RECONNECT_ROTATED", "lcu/lcu_client.py",
+     "LCU reconnected: port %d (lockfile rotated, from %s)",
+     "LCU reconnected: port 53522 (lockfile rotated, from x)"),
+    ("_RE_LOCKFILE_GAP", "lcu/lcu_client.py",
+     "LCU lockfile not found - client may not be running",
+     "LCU lockfile not found - client may not be running"),
+    ("_RE_CS_ENTER", "lcu/lcu_rune_writer.py", "RuneWriter: champ select entered",
+     "RuneWriter: champ select entered"),
+    ("_RE_CS_END", "lcu/lcu_rune_writer.py",
+     "RuneWriter: champ select ended - re-armed for next pick",
+     "RuneWriter: champ select ended - re-armed for next pick"),
+    ("_RE_APPLYING", "lcu/lcu_rune_writer.py",
+     "RuneWriter: champion=%s mode=%s - applying runes",
+     "RuneWriter: champion=Ahri mode=aram - applying runes"),
+    ("_RE_WROTE", "lcu/lcu_rune_writer.py", "RuneWriter: wrote [%s] id=%s",
+     "RuneWriter: wrote [page] id=1 perks=[]"),
+    ("_RE_FAIL", "lcu/lcu_rune_writer.py", "RuneWriter: rune write failed for %s/%s",
+     "RuneWriter: rune write failed for Ahri/aram (x)"),
+    ("_RE_GAVEUP", "lcu/lcu_rune_writer.py", "RuneWriter: gave up after %d attempts",
+     "RuneWriter: gave up after 3 attempts for [p]: x"),
+)
+
+
+@pytest.mark.parametrize("attr,producer,head,sample", _ANCHORS)
+def test_log_anchor_is_still_emitted_and_matched(attr, producer, head, sample):
+    import tools.lcu_push_watcher as w
+    assert head in _repo_text(producer), (
+        f"{producer} no longer logs {head!r}; {attr} in tools/lcu_push_watcher.py "
+        "would never fire - update both together")
+    assert getattr(w, attr).search(sample), f"{attr} no longer matches {sample!r}"
+
+
+def test_watcher_docstring_cites_no_source_line_numbers():
+    import re
+    import tools.lcu_push_watcher as w
+    cites = re.findall(r"[A-Za-z_/]+\.(?:py|md)[: ](?:line )?\d+", w.__doc__ or "")
+    assert not cites, f"docstring cites stale-prone line numbers: {cites}"
