@@ -308,3 +308,127 @@ def test_timing_budget_helper_is_the_kit_budget():
 
     assert _timing_budget.fleet_test_guard.budget.__module__ == "fleet_test_guard"
     assert _timing_budget.fleet_test_guard.budget(2.0) >= 2.0
+
+
+# ------------------------------------------------- wait-for-worker bounds (FLEET-9)
+#
+# The same idle-box bound spelled without a clock: `assert ev.wait(5)`,
+# `assertTrue(lock.acquire(timeout=5))`, and `t.join(5)` read back by a
+# not-alive assertion. A negated wait and a join read back by `assert
+# t.is_alive()` stay raw on purpose: those are lower bounds.
+
+# Raw on purpose, by file: another slice owned it when this guard landed.
+_WAIT_BOUND_PENDING = {"test_vision_server_pool_true_audit_s144.py"}
+
+
+def _is_seconds(node: ast.AST | None) -> bool:
+    if isinstance(node, ast.Constant):
+        return isinstance(node.value, (int, float)) and not isinstance(node.value, bool)
+    return isinstance(node, ast.Name) and node.id.isupper()
+
+
+def _timeout_of(call: ast.Call) -> ast.AST | None:
+    for kw in call.keywords:
+        if kw.arg == "timeout":
+            return kw.value
+    position = 1 if call.func.attr == "acquire" else 0
+    return call.args[position] if len(call.args) > position else None
+
+
+def _has_raw_wait(expr: ast.AST) -> bool:
+    if isinstance(expr, ast.UnaryOp) and isinstance(expr.op, ast.Not):
+        return False
+    return any(isinstance(sub, ast.Call) and isinstance(sub.func, ast.Attribute)
+               and sub.func.attr in {"wait", "acquire"} and _is_seconds(_timeout_of(sub))
+               for sub in ast.walk(expr))
+
+
+def _is_named_call(stmt: ast.stmt, attr: str) -> bool:
+    return (isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Call)
+            and isinstance(stmt.value.func, ast.Attribute)
+            and stmt.value.func.attr == attr)
+
+
+def _reads_back_not_alive(stmt: ast.stmt) -> bool:
+    if isinstance(stmt, ast.Assert):
+        negated = (sub.operand for sub in ast.walk(stmt.test)
+                   if isinstance(sub, ast.UnaryOp) and isinstance(sub.op, ast.Not))
+    elif _is_named_call(stmt, "assertFalse"):
+        negated = iter(stmt.value.args[:1])
+    else:
+        return False
+    return any(isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+               and n.func.attr == "is_alive" for n in negated)
+
+
+def raw_wait_bounds(source: str) -> list[int]:
+    """Line numbers of raw wait-for-worker upper bounds in one module's source."""
+    hits = set()
+    for scope in ast.walk(ast.parse(source)):
+        body = getattr(scope, "body", None)
+        if not isinstance(body, list):
+            continue
+        for i, stmt in enumerate(body):
+            if isinstance(stmt, ast.Assert) and _has_raw_wait(stmt.test):
+                hits.add(stmt.lineno)
+            elif _is_named_call(stmt, "assertTrue") and stmt.value.args \
+                    and _has_raw_wait(stmt.value.args[0]):
+                hits.add(stmt.lineno)
+            elif _is_named_call(stmt, "join") and _is_seconds(_timeout_of(stmt.value)) \
+                    and any(_reads_back_not_alive(s) for s in body[i + 1:i + 3]):
+                hits.add(stmt.lineno)
+    return sorted(hits)
+
+
+def test_no_raw_wait_for_worker_bound_left_in_tests():
+    offenders = []
+    parsed = 0
+    for path in _test_files():
+        src = path.read_text(encoding="utf-8")
+        if path.name in _WAIT_BOUND_PENDING or not re.search(r"\.(wait|acquire|join)\(", src):
+            continue
+        parsed += 1
+        offenders += [f"{path.relative_to(TESTS_DIR).as_posix()}:{line}"
+                      for line in raw_wait_bounds(src)]
+    assert parsed > 50, f"only {parsed} files carried a wait spelling - trigger broken?"
+    assert not offenders, (
+        "raw wait-for-worker bound(s) - wrap the idle-box seconds as "
+        "`ev.wait(fleet_test_guard.budget(<seconds>))`: " + ", ".join(offenders))
+
+
+_WAIT_FLAGGED = {
+    "assert_wait": "def t():\n    assert ev.wait(5)\n",
+    "assert_wait_kw": "def t():\n    assert ev.wait(timeout=5.0), 'never'\n",
+    "assert_wait_const": "def t():\n    assert ev.wait(_HOLD_S)\n",
+    "assert_true_wait": "def t(self):\n    self.assertTrue(ev.wait(5))\n",
+    "assert_acquire": "def t():\n    assert lock.acquire(timeout=10)\n",
+    "process_wait": "def t():\n    assert host.wait(60) == 0\n",
+    "join_assert_not": "def t():\n    th.join(5)\n    assert not th.is_alive()\n",
+    "join_assert_false": ("def t(self):\n    th.join(timeout=2.0)\n"
+                          "    self.assertFalse(th.is_alive())\n"),
+    "join_pair": ("def t():\n    a.join(5)\n    b.join(5)\n"
+                  "    assert not a.is_alive() and not b.is_alive()\n"),
+}
+
+_WAIT_CLEAN = {
+    "budget_wait": "def t():\n    assert ev.wait(fleet_test_guard.budget(5))\n",
+    "budget_join": ("def t():\n    th.join(fleet_test_guard.budget(5))\n"
+                    "    assert not th.is_alive()\n"),
+    "negated_wait": "def t():\n    assert not ev.wait(0.1)\n",
+    "still_alive_join": "def t():\n    th.join(timeout=0.5)\n    assert th.is_alive()\n",
+    "cleanup_join": "def t():\n    th.join(5)\n    assert out == 1\n",
+    "unbounded_wait": "def t():\n    assert ev.wait()\n",
+    "bare_wait": "def t():\n    ev.wait(5)\n",
+    "nonblocking_acquire": "def t():\n    assert lock.acquire(False)\n",
+}
+
+
+def test_wait_detector_fires_on_every_claimed_shape():
+    missed = [name for name, src in _WAIT_FLAGGED.items() if not raw_wait_bounds(src)]
+    assert not missed, f"detector blind to: {missed}"
+
+
+def test_wait_detector_passes_budget_forms_and_lower_bounds():
+    wrong = {name: raw_wait_bounds(src) for name, src in _WAIT_CLEAN.items()
+             if raw_wait_bounds(src)}
+    assert not wrong, f"false positives: {wrong}"
