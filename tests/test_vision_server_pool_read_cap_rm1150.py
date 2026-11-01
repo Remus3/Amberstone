@@ -200,7 +200,7 @@ class TheCapIsReadOnly(unittest.TestCase):
             capped.recv(16)
         with self.assertRaises(TimeoutError):
             capped.recv_into(bytearray(16))
-        self.assertLess(time.monotonic() - t0, 0.2)
+        self.assertLess(time.monotonic() - t0, fleet_test_guard.budget(0.2))
 
     def test_no_cap_leaves_the_connection_as_it_is(self) -> None:
         a, b = socket.socketpair()
