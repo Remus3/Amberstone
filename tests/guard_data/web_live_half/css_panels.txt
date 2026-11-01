@@ -1,0 +1,127 @@
+# Live-half digests for web/css/panels/ - one `<sha256>  <path>` row per source, a
+# blank line after each. Never hand-edit: re-capture as the note on
+# tests/test_web_ascii_sweep.py _LIVE_HALF_ROWS says.
+b7b7913bbe6463d637e3a9ba11229b7d6933e51b82f7f17284c595783d91b68c  web/css/panels/active_match.css
+
+89be8265266738cf3e8278d837d52f31ea3f49fbd29ec0952a200264f3eec266  web/css/panels/aram_balance.css
+
+db2ec7fc3c57c747dfe492fff2f2906e54de2dc2dd5dc9d3823b8939af1b99ce  web/css/panels/augment_reco.css
+
+6a3330380565a99a8bfe6815fb948b3868d1217018852ef7728cd435b7834683  web/css/panels/base.css
+
+a923d6de4797af53e3e3cdc90d985269bbfe6244c9e677348ee32f54fdc67234  web/css/panels/branch_review.css
+
+61528c22a50359e04691c659ce2c94099e0a2cfa99a34a347878a3a43dc2fb5f  web/css/panels/build_insights.css
+
+bd26d9196686efcec53dee244212e7b8e3176499981af94cfae268bcf745d607  web/css/panels/build_module.css
+
+c76dada2f4f9d6d9b458adafe00575cd9b1a62f3999748f88fc7f416d23e7fee  web/css/panels/build_order.css
+
+d4a12982752529c89259a39b2bc80cd5067f22e6683d5b6da2cf1e05ffc52713  web/css/panels/callouts.css
+
+a75bb08726b05f6fd7987d002ad80c64f19e9ce564ea208ff7dec9d06df7da84  web/css/panels/capability_gap.css
+
+f17a75edbf48a36b44fc4754ef9f68c95c2a3e5e987efb48f0a35c2f0344e2e8  web/css/panels/cc_blended_ehp_threat.css
+
+7d16b465b9bc89101c26a528382473e7686d3cfd1600ac9b338bd532ffb00228  web/css/panels/cc_conditional_pressure.css
+
+afa75643cedced5e98b9815ebf541deb1e4841d984120756cd825a3428ea5195  web/css/panels/champ_benchmarks.css
+
+4b6656bf0b091637cb0b1d42f5cfa844ecafa3831a7f812bc50c645d919f70bf  web/css/panels/coach_choices.css
+
+c066ee1d08c10367cdd254c3a108f29cf72ee566d87d790c4644655a6a2f6d79  web/css/panels/coach_decisions.css
+
+b392fbf15143a94c6cd8b9e3f2a9a5c6908db5c3c1d6107573882e76dd575118  web/css/panels/draft_elo.css
+
+13d55a81334ff83940c5901caa725e008eba7c42f6a902bf43248709e3b49a2e  web/css/panels/draft_score.css
+
+2e402cb2442a286fb61a29f29779bb7c1d38358ac6b430f4269b278d9f0ec7d5  web/css/panels/ds_combo.css
+
+e87930f12710ac236d301cb8b25c87d45dbb5597ac2a926fc1003a46d0de64e7  web/css/panels/ds_knobs.css
+
+76dd1e70b341df66a0642eabcaa292923936f4bc341384f899e887e687f1ef8a  web/css/panels/ds_matchup.css
+
+eeadcd295dbc4f939bfaf5d7ec512da71d46912eed7c236307829213b475ef79  web/css/panels/ds_profile.css
+
+62fee7335fbbb1b9a56a499f0b1ca401029e520603e382360b1119df435549a9  web/css/panels/ds_relscore.css
+
+fc94ba9c8e05c87aaca8d88abe7871573587d40d6a6a2bf4aa1ca1216c4fd1db  web/css/panels/ds_shaper.css
+
+eba52bbd85e885940d71506b0d1495f46d1cf63a87bb976863e78944e8f36da0  web/css/panels/ds_skill_order.css
+
+0f11f0ea7e2a03676f37a0f76d274d75c735f08622a578f62283f55cb67a7375  web/css/panels/ds_statcheck.css
+
+c821d26812fc587f8f7552032be97a5bcbf8341fa412db19659ef80c5d8f07e2  web/css/panels/ds_sweep.css
+
+16fe566671bcf4479156bd69984b03d7d192132a3fb52999b1e0450b67adbf4d  web/css/panels/duration_winrate.css
+
+b8c3d0090365363a16ae6fd974293a2fbc7c7755055cb48d80a987d400a39922  web/css/panels/grid.css
+
+985c33c80ada95e8054fca020ed470921480a05f188fdd2d2a83fd6a01694545  web/css/panels/home.css
+
+2ad2904149a02d87f06290d643513c6b4e425ec3cc1b5ae609ee597781008627  web/css/panels/input_activity.css
+
+ea7fba8356634592871a528a572a3e9cfa5197cc874c9d661bbd79f074174379  web/css/panels/item_build.css
+
+45c979fbe70dc7b04510472c98c259c477783d368f37e02a10c9421d59e5ced9  web/css/panels/last_match.css
+
+7f792391d7fdd7726e80ae988fb733d1c455f655fca606d2a4d7a46b7aec72d1  web/css/panels/map_state.css
+
+5b2ac2ccaf32b94c2616a9034118e8cded2c8dce8c250f71fbbc7efbb735dbb5  web/css/panels/next.css
+
+02eb1e47e58d52f648b6138c24572b08cbe4ffd27e52b6df05360377854b6705  web/css/panels/next_buy.css
+
+24cdd38b12144391d740832772320d0b8e2cc86481af092677c6e7617fe7e05f  web/css/panels/objective_chips.css
+
+93d4512916f085a4f72fa9c4a71d39e37d3143eba8fd7d3585eaeb4b2937179d  web/css/panels/objective_gauges.css
+
+bcf7b317c9749a7165c169993839f36b60dd2dac05b87d598fb2323c4218add4  web/css/panels/op_score.css
+
+e877e0599288812c82c7dcabd4d10ad4c8003d73a7b379608d79de2b3af5eeeb  web/css/panels/ops_panels.css
+
+1dc825fad45fe50dd585cc22dc2f54423cde79790f29230ed759e9c8cc367fe2  web/css/panels/overlay_ds_controls.css
+
+a5fbec21630c7e2d4d422f8e24e77e59a08af3450b8a609734ca98a87c5f0c24  web/css/panels/panel_visibility.css
+
+c75559a0d3af36d41849872deb4059c7b052631d0fb041cb4f0ce9960b6d9fc9  web/css/panels/patch_impact.css
+
+fd67aab6b396f029003e7375fe139de995089e1e85aa4b6f1238cc5ee27f15cd  web/css/panels/perf_curve.css
+
+cf050723dde73c50e405ab84c0148fa91a86854169b82d7471cb2f074bcea5ef  web/css/panels/personal_build.css
+
+605e2f7d0b0e631d125ae85b8842454e420e7f1c330c20347f45613815e140b4  web/css/panels/personal_context.css
+
+cba815085ce1ad071651f476620625ca6616a77b44b0e794a98af0015e49c31e  web/css/panels/pgr_build_wpa.css
+
+0e7b93c7e56a3edb2b6918dd60c7237361c9c2f3e7a2496810908d72e4e35775  web/css/panels/pgr_lane_compare.css
+
+ff9e0bff9756ae5df716a7ed1aae5d85ccf69ffcb0514331571dd3563216da63  web/css/panels/pgr_loadout.css
+
+76735ecd500d8caca47b722066bf2e782b024319644cc79c889d79b6a5774699  web/css/panels/pgr_winprob.css
+
+c2300909f54b4394e5ba2c61d94042b8eb0833b70e11d533482abf675355cb2d  web/css/panels/player_gpi.css
+
+90f3398cca578d6ae73239b6a2a9e5d15796efebacef470c4f19ec2b72ac1f7a  web/css/panels/player_snapshot.css
+
+ef16d5e1d85d05da4f8d056b34b17cc2f8d161767f168921c5a685475c0eaae0  web/css/panels/playstyle_labels.css
+
+c9817cdc6104de27406fa07e16a5dd1a49c24c4f34a5408449724a1f362622f4  web/css/panels/primitives.css
+
+8b207434c55819b4bffdc264c9417e026cf98eb39a6b5d036b47cc7426c3c37a  web/css/panels/replay_events.css
+
+665fa34e49038e5cb1650046ed1061ba7b7bd2680f979ba5a99f0c8ed56153b4  web/css/panels/review_player.css
+
+be0085f4552fabac1f772b510ddf636a3b1b974b2ed52b3ac6fc3c309d0e19ea  web/css/panels/right_now.css
+
+c94f37c307efd26cc43c9fd0afc643eb69bb164fb550886dae3b5a1d33099ca9  web/css/panels/session_hygiene.css
+
+48f9d07bcd347204e6ae868546ea2b1fbc9357fd86217fb6f80490f7a00fa14d  web/css/panels/snowball_elasticity.css
+
+67df835d80f7021bb0fde8ee9d44c91bcb11b1023533eb09ac7d2999b392ece1  web/css/panels/spike_curve.css
+
+860ab3563709822dd020aa99906f74b8008300dc1bfec0af3f1e99f128bffc52  web/css/panels/spike_markers.css
+
+bc1af3dba2070731780a4a440d01d3f81509ddf64e509a02800b08c4bb65a06f  web/css/panels/team_context.css
+
+465dce1ed0461aa7c2fec2d3e366dbaedd87594cc7603a41f7b581135b842e51  web/css/panels/ward_heat.css
+

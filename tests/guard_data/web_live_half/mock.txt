@@ -1,0 +1,13 @@
+# Live-half digests for web/mock/ - one `<sha256>  <path>` row per source, a
+# blank line after each. Never hand-edit: re-capture as the note on
+# tests/test_web_ascii_sweep.py _LIVE_HALF_ROWS says.
+30be7f95ec25d730546684ac6466555de97e1b58fe9fdeced1e4c01e27c29cd0  web/mock/addendum_a_concepts.html
+
+7f936a7a55e5e925640f067f5d07261c06c7909349418e2ec9f10a0565fe4215  web/mock/oq3_index.html
+
+a39fdd34e92942dfb7c1247a80e2d8e6afc1e99041e104619a7bc6e0d3faf655  web/mock/oq3_variant_a.html
+
+343cd0064422390fc662e5983729184517c84de222be9dcf765dc124f7c734f0  web/mock/oq3_variant_b.html
+
+55d2d51961007eee88da9d84385d384cae10ff9615350b747ad437d1eb86eb4d  web/mock/oq3_variant_c.html
+

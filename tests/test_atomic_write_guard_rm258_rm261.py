@@ -18,8 +18,9 @@ spellings of the rename and every destination-derived scratch name:
                     an f-string whose literal tail ends in `.tmp` with no
                     per-writer component (getpid / token / uuid) in it.
 
-Either fires ONLY inside a SANCTIONED implementation, listed below with the
-reason it may not import core.polled_json. Everything else routes through
+Either fires ONLY inside a SANCTIONED implementation, listed in
+tests/guard_data/atomic_write/sanctioned_*.py with the reason it may not
+import core.polled_json. Everything else routes through
 core.polled_json.atomic_write_json / _text / _bytes. A row is keyed on the
 enclosing function, never a line number: its bare name, or its dotted
 qualname (`HostLog.write`) when the bare name is too generic to key a file on.
@@ -51,112 +52,24 @@ from pathlib import Path
 import pytest
 
 from tests._repo_walk import REPO_ROOT, iter_repo_files, relative_posix, self_check
+from tests.guard_data import atomic_write
 
-_EXCLUDED_PREFIXES = (
-    "tests/",
-    "docs/",
-    "oss/",
-    "scripts/",
-    "ops/audit/",
-    "ops/fleet_kit/",
-    "Share/",
-)
+# Every allowlist lives in one area file per path prefix, so lanes edit
+# separate files (MAIN ORDER item RC-2); a missing or empty area fails at
+# collection: tests/guard_data/atomic_write/, pinned by
+# tests/test_guard_data_split_rc2.py.
+_DATA = atomic_write.load()
 
-# Long-running separate-process agents that live under tools/ (RM-258 names
-# both), plus each tools/ watcher converted onto core.polled_json since, so
-# the conversion stays pinned: never an extractor, never unclassified.
-_RUNTIME_TOOLS = frozenset({
-    "tools/lcu_agent.py",
-    "tools/hotkey_listener.py",
-    # RC-CostHealthWatchdog, every 15 min; --remediate rewrites
-    # config/coach_settings.json, which the running app reads.
-    "tools/cost_health_watchdog.py",
-    # RC-CIWatchdog: the run-id sentinel and the 2-strike attempt counters
-    # are read back on every poll, and a torn read parses as 0.
-    "tools/ci_watchdog.py",
-    # The progress watcher's own state file is its first-sight baseline;
-    # a torn read re-baselines every task and drops a pending alert.
-    "tools/progress_watch.py",
-    # The spec / patch watch state is the only record of what was already
-    # posted; a torn read re-baselines (drops a change) or reposts one.
-    "tools/spec_watch.py",
-    # One-shot per DS batch, but --record rewrites the live patch's
-    # manifest.json in place, which the running DS process reads
-    # (agents/daemon_slayer/data_loader.py), and --ack the tracked
-    # high-water file.
-    "tools/ds_feed_watch.py",
-    # The session counter in the hand-off (read by the SessionStart hook)
-    # and the headless progress fallback (read by the lane widget and the
-    # board): a torn read loses the counter or a checklist row.
-    "tools/session_checklist.py",
-    # The inbox responder's answered record, read back on every
-    # RC-InboxResponder tick: a torn read fails closed and the responder
-    # answers nothing until a human repairs the file.
-    "tools/inbox_responder.py",
-    # The SessionStart / UserPromptSubmit hook (and an import of the
-    # long-lived inbox poller and responder runner): the per-session
-    # reported record is read back on every fire, and a torn read fails
-    # open and re-prints the inbox block.
-    "tools/rc_facts.py",
-    # The RC-InboxResponder runner, fired every tick: its state records are
-    # read back on the next fire, and its bounce and reply land in a
-    # sibling's polled inbox under a hidden per-writer `_<file>.<pid>.<hex>.tmp`.
-    "tools/inbox_responder_runner.py",
-    # The LCU WAMP phase watcher (a long-running loop, installed as an
-    # at-logon task by tools/phase_watcher_install.ps1): one JSON sidecar per
-    # captured phase event under data/event_captures/, which
-    # core/data_retention.py prunes; a failed write used to leave a torn
-    # sidecar or a stray destination-derived .tmp.
-    "tools/phase_watcher.py",
-    # RC-MoonSyncPoller (at logon, a long-running loop) plus its --ping
-    # UserPromptSubmit hook: status.md and findings.json are read by
-    # --status and /api/moon-sync-status while the poller rewrites them,
-    # and poller_seen.json is read back on every poll.
-    "tools/moon_sync_poller.py",
-    # RC-UpstreamDriftCheck (a daily scheduled task): the sentinel is read
-    # back on every run, and the drift alerts are read by tools/rc_facts.py
-    # at session start while the task may be rewriting them (RM-514).
-    "tools/upstream_drift_check.py",
-    # The Claude Stop hook, fired on every main-session and sub-agent Stop:
-    # its report and seen set are read back by the next Stop (the seen set
-    # decides what is surfaced again), and parallel sub-agents of one session
-    # can stop in the same instant, so a shared `<dest>.tmp` could interleave.
-    "tools/stop_claim_gate.py",
-    # RC-DDragonMirrorRefresh (a daily scheduled task): assets are fetched
-    # on a thread pool into web/data/ddragon/<patch>/, which the dashboard
-    # serves while the task writes it, and _index.json / the manifest are
-    # read back on the next run.
-    "tools/ddragon_mirror_refresh.py",
-    # RC-RoflDedupe (a daily scheduled task, `--apply`): relinks replays in
-    # the archive RC-RoflArchive writes every 15 minutes and replay readers
-    # open, so the swap meets a held target.
-    "tools/rofl_dedupe.py",
-    # tools/timeline_ingest.py: a detached, hours-long Match-V5 ingest whose
-    # <corpus>/timelines/ directory the 15-minute RC-ReplayChainWatch task
-    # counts and tools/mine_event_patterns.py reads while it runs.
-    "tools/timeline_ingest.py",
-    # tools/replay_roster_pull.py: the hourly RC-ReplayRosterPull task, which
-    # rewrites ops/runtime/replay_roster_status.json unattended every run.
-    "tools/replay_roster_pull.py",
-    # tools/ladder_role_scout.py: a background bulk ingest (~50 Riot calls a
-    # minute) that RC-ReplayChainWatch treats as a busy ingest; its
-    # data/ladder_role_mains.json is tools/timeline_ingest.py's ladder input.
-    "tools/ladder_role_scout.py",
-})
+_EXCLUDED_PREFIXES = _DATA.excluded_prefixes
+
+# Long-running tools/ writers that stay pinned in scope: never an extractor,
+# never unclassified. Rows: tests/guard_data/atomic_write/runtime_tools.py.
+_RUNTIME_TOOLS = _DATA.runtime_tools
 
 # RM-258 residual (s144): tools/ is IN scope by default. Out of scope are the
-# one-shot extractors the row itself allowlists (`tools/*extract*`), tools/
-# test code, and the files below - every tools/ module that offended when the
-# blanket tools/ exemption was narrowed (measured 2026-10-27: 100 renames + 82
-# scratch names across 77 files, 6 of them extractors). Each entry is
-# UNCLASSIFIED, not proven one-shot: it leaves this set by converting onto
-# core.polled_json (then it joins _RUNTIME_TOOLS if it is long-running) or by
-# a named one-shot proof (no scheduled task, no poller, no reader racing it).
-# The set only shrinks: a new tools/ writer starts guarded, and an entry that
-# stops offending fails test_tools_baseline_is_exact until it is dropped.
-_TOOLS_UNCLASSIFIED = frozenset({
-    "tools/build_portable.py",
-})
+# one-shot extractors (`tools/*extract*`), tools/ test code and this baseline,
+# which only shrinks: tests/guard_data/atomic_write/tools_unclassified.py.
+_TOOLS_UNCLASSIFIED = _DATA.tools_unclassified
 
 # RM-258 residual (s144): lib/ was exempted wholesale as a "one-shot generator
 # tree", but app/_game_lifecycle.py and lcu/lcu_postgame_collector.py import
@@ -182,120 +95,8 @@ def _is_tools_extractor(rel: str) -> bool:
 # implementation may not import core.polled_json. Each must itself use a
 # per-writer scratch name, a bounded WinError 5 retry and fsync (asserted for
 # the ops trio in tests/test_ops_atomic_writers_rm261.py and for the launcher
-# below).
-SANCTIONED = {
-    ("core/polled_json.py", "_replace_with_retry"):
-        "the canonical implementation every other writer routes through",
-    ("ops/rc_supervisor.py", "_replace_with_retry"):
-        "FROZEN watchdog: stdlib-only by design so a broken app package "
-        "cannot take the process that restarts it down with it",
-    ("ops/rc_dev_runtime.py", "_atomic_write_json"):
-        "FROZEN runtime host: stdlib-only heartbeat writer with its own "
-        "measured retry budget (tests/test_rc_dev_runtime_atomic_write_retry.py)",
-    ("ops/rc_transactional_deploy.py", "_replace_with_retry"):
-        "deploy transaction runs while the app tree is being swapped, so it "
-        "must not import from the tree it is replacing",
-    ("tools/phase_watcher.py", "_replace_with_retry"):
-        "RC-PhaseWatcher is served standalone to its agent directory with no "
-        "repo above it (tools/phase_watcher_install.ps1), so it cannot import "
-        "core/ - the same constraint tests/test_tls_floor_rm752.py pins for "
-        "its TLS floor. Its write_sidecar meets the three requirements, "
-        "asserted by test_phase_watcher_writer_meets_the_sanction_contract "
-        "below: a <name>.<pid>.<token>.tmp scratch, flush + fsync before the "
-        "rename, a bounded PermissionError (WinError 5) retry, and the "
-        "scratch removed when the rename fails for good",
-    ("tools/moon_sync_poller.py", "_replace_with_retry"):
-        "RC-MoonSyncPoller is the only process watching the cross-repo "
-        "channel, so nothing from core/ may join its import path (an "
-        "import-time fault there would kill every poller restart; its own "
-        "comment above _replace_with_retry), and its --ping hook must run in "
-        "a copy without RC's modules (MAIN 1254 #17). Its _atomic_write meets "
-        "the three requirements, asserted by "
-        "test_moon_sync_poller_writer_meets_the_sanction_contract below: a "
-        "<name>.<pid>.<token>.tmp scratch, flush + fsync before the rename, a "
-        "bounded PermissionError (WinError 5) retry, and the scratch removed "
-        "when the rename fails for good",
-    ("tools/stop_claim_gate.py", "_replace_with_retry"):
-        "the Claude Stop hook is PORTABLE and stdlib-only on purpose: a copy "
-        "runs at any depth in another tree with no RC package above it (MAIN "
-        "1254 #9, tests/test_stop_claim_gate_portable_main1254.py), so it "
-        "cannot import core/. Its _atomic_write (the report, the history "
-        "roll and the seen set) meets the three requirements, asserted by "
-        "test_stop_claim_gate_writer_meets_the_sanction_contract below: a "
-        "<name>.<pid>.<token>.tmp scratch, flush + fsync before the rename, a "
-        "bounded PermissionError (WinError 5) retry, and the scratch removed "
-        "when the rename fails for good. prune_seen's move of a stale seen "
-        "file into pruned/ (a rename of an existing file, no payload) goes "
-        "through the same helper",
-    ("tools/shadow_archive_split.py", "_swap_in"):
-        "RM-859 data-fix SWAP, not a payload write: it renames an archive "
-        "scratch onto a new archive (never clobbering one) and a kept scratch "
-        "onto the live shadow jsonl, and on a refused live rename puts the "
-        "archive back. It may not use core.polled_json because that helper's "
-        "in-call WinError 5 retry would rename a STALE kept snapshot over any "
-        "row a shadow writer appended during the retry; here the bounded "
-        "retry is one level up - archive_split's round loop re-reads the live "
-        "file, grow-merges a pure append into the kept scratch and retries, "
-        "at most MAX_ROUNDS times with REPLACE_RETRY_S between. Checked "
-        "against the three requirements by "
-        "test_shadow_archive_split_swap_meets_the_sanction_contract below: a "
-        "<name>.split.<pid>.<token>.tmp scratch, flush + fsync before every "
-        "rename (_write_tmp), a bounded retry, and both scratch files removed "
-        "when the swap fails for good",
-    ("core/log_rotation.py", "try_rotate"):
-        "log ROTATION, not an atomic write (RM-718 a), checked against the "
-        "three requirements above. Per-writer scratch: yes - "
-        "<name>.rotating/.dropping.<pid>.<token>, and orphans from a crash are "
-        "recovered, never overwritten. WinError 5 retry: deliberately none in "
-        "the call - the refusal here is not a reader's millisecond poll but "
-        "another process holding the log open for its lifetime (measured "
-        "2026-10-25 as WinError 32, a sharing violation, RM-864 c), so an "
-        "in-call retry only stalls the logging call that triggered the "
-        "rollover; the bounded retry is one level up (the handler re-attempts "
-        "after _RETRY_AFTER_S, the one-shot writer on its next run), and a "
-        "refusal rolls the applied renames back, best effort and no-clobber (a "
-        "refused roll-back rename leaves its file one slot higher or under a "
-        "scratch name recover_orphans() preserves). fsync: nothing to "
-        "flush - it only renames existing files, it writes no payload. It "
-        "may not use core.polled_json because those helpers write a payload "
-        "to a destination; there is no payload here",
-    ("ops/launcher/service_host.py", "_replace_with_retry"):
-        "PKG-1 launcher service host: stdlib-only and run under `python -I` "
-        "with no RC module on sys.path, because it starts and stops the "
-        "backend core.polled_json belongs to (docs/PACKAGING_PLAN.md 3.1). "
-        "Its atomic_write_json meets the three requirements, asserted by "
-        "test_launcher_writer_meets_the_sanction_contract below: a "
-        "<dest>.<pid>.<token>.tmp scratch, flush + fsync before the rename, "
-        "a bounded PermissionError (WinError 5) retry, and the scratch "
-        "removed when the rename fails for good",
-    ("ops/launcher/service_host.py", "HostLog.write"):
-        "log ROTATION, not an atomic write (the core/log_rotation.py "
-        "try_rotate class), in the same stdlib-only launcher, checked against "
-        "the three requirements. fsync: nothing to flush - the rename moves "
-        "an existing file and writes no payload. WinError 5 retry: none in "
-        "the call - a refused rename (a reader holding the log or its `.1` "
-        "open) is swallowed, the line still appended, and the next write "
-        "re-checks the size and re-attempts, so the retry is one level up "
-        "and the log outgrows LOG_MAX_BYTES only while that holder stays. "
-        "Per-writer scratch: none - the target is the fixed `.1` slot. The "
-        "host is single-writer under HostLock except main()'s two pre-lock "
-        "lines (bad manifest, lock refused), so a second launch crossing the "
-        "size threshold in the same instant as the live host can replace "
-        "`.1` with a one-line file: one lost older generation, never torn "
-        "bytes (residual reported for the PKG-1b slice)",
-    ("ops/launcher/updater.py", "_replace_with_retry"):
-        "PKG-2 backend updater: stdlib-only and run under `python -I` with no "
-        "RC module on sys.path, because it replaces the backend tree "
-        "core.polled_json belongs to (docs/PACKAGING_PLAN.md 3.4) - the same "
-        "reason as the ops/rc_transactional_deploy.py row. Its _write_json / "
-        "_write_bytes_atomic meet the three requirements, asserted by "
-        "test_launcher_writer_meets_the_sanction_contract below: a "
-        "<dest>.<pid>.<token>.tmp scratch, flush + fsync before the rename, "
-        "a bounded PermissionError (WinError 5) retry, and the scratch "
-        "removed when the rename fails for good. The same helper also moves "
-        "the updater's own staging and quarantine entries (renames of whole "
-        "existing files and directories inside ops/runtime/, no payload)",
-}
+# below). Rows live in tests/guard_data/atomic_write/sanctioned_*.py.
+SANCTIONED = _DATA.sanctioned
 
 _PER_WRITER_HINTS = ("getpid", "token", "uuid", "pid")
 

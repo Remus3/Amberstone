@@ -1,0 +1,13 @@
+# Live-half digests for web/css/ - one `<sha256>  <path>` row per source, a
+# blank line after each. Never hand-edit: re-capture as the note on
+# tests/test_web_ascii_sweep.py _LIVE_HALF_ROWS says.
+68a09ff91242d41bcdf23ec6fcbe110f53e5c75fa795b2cad79dd5a404d40333  web/css/dashboard.css
+
+2a7c4c0e5636d75854b76ba6ab1a00a6402c083a562c3d1153be834107399fba  web/css/hextech.css
+
+22e8809e3c7805c73f7357ba30b39437879c2e6c68f04328ed0dacc944cb8867  web/css/overlay.css
+
+440287a31955dce0b4192c256bbd613a53b4531940cdefb0359a929ddbbe9193  web/css/themes.css
+
+352326d8e333e4ba65107e5c129924e816fe0d0702aff9a8fe439d755adf967e  web/css/tokens.css
+
