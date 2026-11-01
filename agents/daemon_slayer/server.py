@@ -511,7 +511,9 @@ def _opt_augment_stacks(body: dict) -> Optional[dict]:
             raise _ApiError(400, f"augment_stacks.{k}: expected number, got {raw!r}")
         if not math.isfinite(f):
             raise _ApiError(400, f"augment_stacks.{k}: must be a finite number, got {raw!r}")
-        out[str(k)] = f
+        # RM-1274: strip the apiName key, as the ``augments`` list entry
+        # is stripped; " TapDancer " missed the engine's exact lookup.
+        out[str(k).strip()] = f
     return out
 
 
@@ -1882,6 +1884,10 @@ def _parse_block_index(
     for k, v in raw.items():
         key = str(k).strip().upper()  # RM-1242: as _parse_form_index
         if isinstance(v, dict):
+            # RM-1274: strip the condition keys too (no case change: the
+            # condition names are case-sensitive). " default " failed the
+            # check below and the entry fell back to the registry silently.
+            v = {str(ck).strip(): cv for ck, cv in v.items()}
             # Conditional schema (s228). Accept only if fully well-formed;
             # else skip (defensive - same stance as the scalar branches).
             if _BLOCK_INDEX_DEFAULT_KEY not in v:
@@ -1905,6 +1911,22 @@ def _parse_block_index(
         # _parse_form_index, which 400s a non-object (RM-1234), this
         # field keeps the documented no-500 / fall-back-to-registry skip.
     return out
+
+
+def _strip_granter_keys(raw: Optional[dict]) -> Optional[dict]:
+    """Strip the champion-id keys of a decoded ``granter_resists`` dict.
+
+    RM-1274: the key is stripped, as ``_coerce_str_list`` strips the
+    ``ally_grant_champions`` entries it is matched against. A padded
+    " Taric " missed that lookup and Taric's percent-of-resist grant
+    silently read as absent. No case change: DDragon ids are case-sensitive
+    (RM-330 roster contract). Values pass through to the engine untouched.
+    The caller keeps the ``_opt_dict(body, "granter_resists")`` read in the
+    route itself, where the RM-330 AST derivation looks for it.
+    """
+    if raw is None:
+        return None
+    return {str(k).strip(): v for k, v in raw.items()}
 
 
 def _parse_combo_sequence(body: dict) -> Optional[tuple[str, ...]]:
@@ -2740,7 +2762,7 @@ def _route_ally_protected_ehp(body: dict) -> dict:
     item_ids = _coerce_str_list(body.get("item_ids"), "item_ids")
     allies = _coerce_str_list(body.get("ally_grant_champions"), "ally_grant_champions")
     enemies = _coerce_str_list(body.get("enemy_champions"), "enemy_champions")
-    granter_resists = _opt_dict(body, "granter_resists")
+    granter_resists = _strip_granter_keys(_opt_dict(body, "granter_resists"))
     # RM-172: ARENA/Swiftplay stat-growth addend lane, DEFAULT-OFF. See the
     # /stats docstring.
     apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)
