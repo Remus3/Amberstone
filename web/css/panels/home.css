@@ -580,11 +580,20 @@ body[data-view="home"] .home-overlay { display: flex !important; }
  * row briefly glows when the operator navigates from Home -> History
  * via clicking a Recent 5 card, so they can spot which row they
  * jumped to inside a long session. Class is added on scroll-into-view
- * and auto-removed ~3.5s later. */
+ * and auto-removed ~3.5s later.
+ * RM-1315: the cue is a 2px --info ring at a 1px offset on every
+ * deep-linked row (reach 3px, inside the 4px list gap), plus the --info
+ * tint, rail and pulse on a NEUTRAL row only. A win / loss row keeps its
+ * own --good / --bad rail and tint, and no row shifts its padding (the
+ * old `padding-left: 8px` moved the text 2px). Pinned by
+ * tests/snapshot_panels/test_match_row_focus_ring.py. */
 .history-match-row.is-focused {
+  outline: 2px solid var(--info);
+  outline-offset: 1px;
+}
+.history-match-row.is-focused:not(.result-win):not(.result-loss) {
   background: var(--info-soft);
-  border-left: 3px solid var(--info);
-  padding-left: 8px;
+  border-left-color: var(--info);
   transition: background 0.3s ease, border-color 0.3s ease;
   animation: rc-history-focus-pulse 0.6s ease-out 1;
 }
@@ -600,10 +609,13 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease;
 }
-.history-match-row-clickable:hover {
+/* RM-1315: the --info hover tint + rail is the cue for a NEUTRAL row
+ * only. A win / loss row keeps its result rail and tint; its hover cue is
+ * the --accent top / right / bottom border of the shared
+ * .history-match-row:hover rule (header.css). No padding shift. */
+.history-match-row-clickable:hover:not(.result-win):not(.result-loss) {
   background: var(--info-soft);
-  border-left: 3px solid var(--info);
-  padding-left: 8px;
+  border-left-color: var(--info);
 }
 /* RM-1314: the keyboard focus cue is a ring, not the hover tint. The
  * tint used to ride :focus-visible with `outline: none`, so a focused row
