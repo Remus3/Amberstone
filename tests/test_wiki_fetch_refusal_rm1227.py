@@ -32,6 +32,7 @@ from lib.game_data import build as gd_build
 from lib.game_data import fetch as gd_fetch
 from lib.game_data.replay import ReplayClient
 from lib.http import client as http_client
+from tests._module_view import this_thread_only
 
 _TOOLS = Path(__file__).resolve().parent.parent / "tools"
 if str(_TOOLS) not in sys.path:
@@ -69,11 +70,16 @@ def net(monkeypatch, tmp_path):
             raise _NetworkTouched(f"socket.{name}")
         return _f
 
-    monkeypatch.setattr(urllib.request, "urlopen", _urlopen)
-    monkeypatch.setattr(socket, "create_connection", _sock("create_connection"))
-    monkeypatch.setattr(socket, "getaddrinfo", _sock("getaddrinfo"))
-    monkeypatch.setattr(socket.socket, "connect", _sock("connect"))
-    monkeypatch.setattr(socket.socket, "connect_ex", _sock("connect_ex"))
+    # Thread-scoped (RM-801 / RM-880): the record-and-raise layer covers this
+    # test's thread and the threads it starts; a thread another test file
+    # left alive keeps the real network calls.
+    monkeypatch.setattr(urllib.request, "urlopen",
+                        this_thread_only(_urlopen, urllib.request.urlopen))
+    for name in ("create_connection", "getaddrinfo"):
+        monkeypatch.setattr(socket, name, this_thread_only(_sock(name), getattr(socket, name)))
+    for name in ("connect", "connect_ex"):
+        monkeypatch.setattr(socket.socket, name,
+                            this_thread_only(_sock(name), getattr(socket.socket, name)))
     consent_dir = tmp_path / "consent"
     consent_dir.mkdir()
     monkeypatch.setattr(wiki_consent, "CONSENT_PATH", consent_dir / "wiki_fetch_consent.json")
