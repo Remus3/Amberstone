@@ -239,7 +239,8 @@ def test_ring_holds_in_every_theme(mock_server, pw_browser):
 # result) only, with no padding change. A win / loss row keeps its own rail
 # and tint: on hover its other three borders turn --accent (the shared
 # .history-match-row:hover rule in header.css), and a deep-linked row of
-# any kind draws a 2px --info outline at a 1px offset.
+# any kind draws a 2px --info ring (inset since RM-1316, see the
+# adjacent-pair section at the end of this file).
 
 _PAINT_JS = r"""
 (el) => {
@@ -260,40 +261,6 @@ _TOKEN_JS = r"""
   const c = getComputedStyle(d).color;
   d.remove();
   return c;
-}
-"""
-
-_RING_CONTRAST_JS = r"""
-(el) => {
-  // Resolve any CSS colour syntax (oklch included) to sRGB bytes through a
-  // 1x1 canvas, as the shared _RING_JS helper does.
-  const cv = document.createElement('canvas');
-  cv.width = 1; cv.height = 1;
-  const c2 = cv.getContext('2d', { willReadFrequently: true });
-  const rgba = (col) => {
-    c2.clearRect(0, 0, 1, 1);
-    c2.fillStyle = '#000';
-    c2.fillStyle = col;
-    c2.fillRect(0, 0, 1, 1);
-    return Array.from(c2.getImageData(0, 0, 1, 1).data);
-  };
-  const lum = (p) => {
-    const ch = p.slice(0, 3).map((v) => {
-      v /= 255;
-      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
-    });
-    return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
-  };
-  // The offset ring paints on the first ancestor with an opaque background.
-  let surface = [0, 0, 0, 255], surfaceOf = '';
-  for (let a = el.parentElement; a; a = a.parentElement) {
-    const bg = rgba(getComputedStyle(a).backgroundColor);
-    if (bg[3] === 255) { surface = bg; surfaceOf = a.id || String(a.className); break; }
-  }
-  const ring = rgba(getComputedStyle(el).outlineColor);
-  const la = lum(ring), lb = lum(surface);
-  return { ratio: (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05),
-           ring, surface, surfaceOf };
 }
 """
 
@@ -356,21 +323,20 @@ def test_deep_link_glow_keeps_a_result_rows_rail_and_draws_a_ring(
     ctx, page, errors, sel, n = _open(pw_browser, mock_server, "history")
     try:
         rows = page.locator(sel)
-        info = page.evaluate(_TOKEN_JS, "--info")
+        info_b = _info_bytes(page)
         seen, bad = [], []
         for i in range(n):
             loc = rows.nth(i)
             before = _rest(page, loc)
             loc.evaluate("(el) => el.classList.add('is-focused')")
             after = loc.evaluate(_PAINT_JS)
-            pair = loc.evaluate(_RING_CONTRAST_JS)
+            pair = loc.evaluate(_DEEP_RING_JS)
             loc.evaluate("(el) => el.classList.remove('is-focused')")
             seen.append(before["result"])
             if any(before[k] != after[k] for k in ("bg", "rail", "railW", "pad")):
                 bad.append((i, "repainted", before, after))
-            if not (after["oStyle"] == "solid" and after["oWidth"] >= 2
-                    and after["oColor"] == info):
-                bad.append((i, "no --info ring", after))
+            if not (pair["ringW"] >= 2 and pair["ringRgba"][:3] == info_b[:3]):
+                bad.append((i, "no --info ring", pair))
             elif pair["ratio"] < 3.0:
                 bad.append((i, "ring below 3:1", pair))
         assert "win" in seen and "loss" in seen, seen
@@ -401,7 +367,9 @@ def test_deep_link_glow_on_a_neutral_row_keeps_the_info_tint(
         assert after["bg"] == info_soft, (before, after)
         assert after["rail"] == info, (before, after)
         assert after["pad"] == before["pad"], (before, after)
-        assert after["oStyle"] == "solid" and after["oColor"] == info, after
+        ring = loc.evaluate(_DEEP_RING_JS)
+        assert ring["ringW"] >= 2, ring
+        assert ring["ringRgba"][:3] == _info_bytes(page)[:3], ring
     finally:
         page.close()
         ctx.close()
@@ -410,7 +378,8 @@ def test_deep_link_glow_on_a_neutral_row_keeps_the_info_tint(
 
 def test_deep_link_ring_holds_in_every_theme(mock_server, pw_browser):
     """The --info deep-link ring is >= 3:1 on the surface it paints on
-    (PAIR: resolved --info vs the first opaque ancestor) in every
+    (PAIR: resolved --info vs the row's own background composited over
+    the first opaque ancestor, the inset ring's real surface) in every
     :root[data-theme] block, and a win / loss row keeps its rail there."""
     themes = _themes()
     assert len(themes) >= 5, f"theme scan anchor: {themes}"
@@ -428,10 +397,10 @@ def test_deep_link_ring_holds_in_every_theme(mock_server, pw_browser):
                 before = _rest(page, loc)
                 loc.evaluate("(el) => el.classList.add('is-focused')")
                 after = loc.evaluate(_PAINT_JS)
-                pair = loc.evaluate(_RING_CONTRAST_JS)
+                pair = loc.evaluate(_DEEP_RING_JS)
                 loc.evaluate("(el) => el.classList.remove('is-focused')")
                 seen += 1
-                rings.add(tuple(pair["ring"]))
+                rings.add(tuple(pair["ringRgba"]))
                 if before["rail"] != after["rail"] or pair["ratio"] < 3.0:
                     failures.append((t, i, before["result"], pair))
     finally:
@@ -441,3 +410,227 @@ def test_deep_link_ring_holds_in_every_theme(mock_server, pw_browser):
     assert seen == len(themes) * n, seen
     assert len(rings) >= 3, f"theme flip inert: {rings}"
     assert not failures, f"deep-link ring theme failures: {failures[:4]}"
+
+
+# ---------------------------------------------------------------------------
+# RM-1316 (s144 uiux) - adjacent deep-linked rows draw distinct cues.
+#
+# THE DEFECT. The History champion deep-link (web/js/main.js, the
+# `focusChamp` path) marks EVERY matching row .is-focused, and two picks of
+# one champion are often consecutive. Each row drew a 2px --info outline at
+# a 1px offset (reach 3px) into the 4px gap of the match list, so two
+# adjacent deep-linked rows painted rings that overlapped by 2px - one
+# merged band instead of two cues. A keyboard-focused row (accent ring,
+# reach 3px) beside a deep-linked one overlapped it by 2px too.
+#
+# THE FIX. The deep-link cue is an INSET 2px --info ring
+# (`box-shadow: inset 0 0 0 2px`), drawn inside the row's border box: it
+# has zero reach, so no neighbour, no keyboard ring and no overflow box can
+# meet it, and the row's own 3px result rail stays a border, untouched.
+#
+# WHAT IS MEASURED (headless Chromium, computed values):
+#   - two adjacent .is-focused rows: the sum of their outer reaches is
+#     strictly below the measured edge-to-edge gap, so both cues stay
+#     distinct; the same holds for a keyboard-focused row beside a
+#     deep-linked one;
+#   - each deep-linked row paints a >= 2px --info ring (outline or inset
+#     shadow), >= 3:1 against the colour it is painted on (PAIR: resolved
+#     --info vs the row's own background composited over the first opaque
+#     ancestor for an inset ring, vs that ancestor for an outline), and its
+#     reach stays inside the .history-card scroll box;
+#   - the ring holds in every :root[data-theme] block.
+
+_DEEP_RING_JS = r"""
+(el) => {
+  const cv = document.createElement('canvas');
+  cv.width = 1; cv.height = 1;
+  const c2 = cv.getContext('2d', { willReadFrequently: true });
+  const rgba = (col) => {
+    c2.clearRect(0, 0, 1, 1);
+    c2.fillStyle = '#000';
+    c2.fillStyle = col;
+    c2.fillRect(0, 0, 1, 1);
+    return Array.from(c2.getImageData(0, 0, 1, 1).data);
+  };
+  const lum = (p) => {
+    const ch = p.slice(0, 3).map((v) => {
+      v /= 255;
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
+  };
+  const ratio = (a, b) => {
+    const la = lum(a), lb = lum(b);
+    return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+  };
+  const cs = getComputedStyle(el);
+  // Outer reach: an outline paints outside the border box by
+  // offset + width; an outset box-shadow by its spread (no blur is used
+  // on these rows); an inset shadow by nothing.
+  let reach = 0, ring = null, ringW = 0, kind = 'none';
+  if (cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) > 0) {
+    reach = Math.max(reach,
+      parseFloat(cs.outlineOffset) + parseFloat(cs.outlineWidth));
+    ring = cs.outlineColor; ringW = parseFloat(cs.outlineWidth);
+    kind = 'outline';
+  }
+  const shadow = cs.boxShadow || 'none';
+  if (shadow !== 'none') {
+    // Chromium serialises "<color> <x> <y> <blur> <spread>[ inset]" per
+    // layer; the colour comes first and may itself contain commas.
+    const layers = shadow.split(/,(?![^(]*\))/);
+    for (const raw of layers) {
+      const s = raw.trim();
+      const m = s.match(/^(rgba?\([^)]*\)|oklch\([^)]*\)|#[0-9a-f]+|[a-z]+)\s+(.*)$/i);
+      if (!m) continue;
+      const nums = m[2].replace('inset', '').trim().split(/\s+/).map(parseFloat);
+      const spread = nums[3] || 0;
+      if (/inset/.test(s)) {
+        if (spread > ringW) { ring = m[1]; ringW = spread; kind = 'inset'; }
+      } else {
+        reach = Math.max(reach, spread);
+      }
+    }
+  }
+  // The surface the ring is painted on.
+  let base = [0, 0, 0, 255];
+  for (let a = el.parentElement; a; a = a.parentElement) {
+    const bg = rgba(getComputedStyle(a).backgroundColor);
+    if (bg[3] === 255) { base = bg; break; }
+  }
+  let surface = base;
+  if (kind === 'inset') {
+    const own = rgba(cs.backgroundColor), al = own[3] / 255;
+    surface = [0, 1, 2].map((i) => Math.round(own[i] * al + base[i] * (1 - al)));
+    surface.push(255);
+  }
+  const ringRgba = ring ? rgba(ring) : [0, 0, 0, 0];
+  const r = el.getBoundingClientRect();
+  const card = el.closest('.history-card');
+  let clipped = false;
+  if (card) {
+    const cr = card.getBoundingClientRect();
+    const left = cr.left + card.clientLeft;
+    const right = left + card.clientWidth;
+    if (r.left - reach < left - 0.5 || r.right + reach > right + 0.5) clipped = true;
+  }
+  return { kind, reach, ringW, ringRgba, surface,
+           ratio: ring ? ratio(ringRgba, surface) : 0,
+           top: r.top, bottom: r.bottom, clipped,
+           result: el.dataset.result || '' };
+}
+"""
+
+
+def _info_bytes(page):
+    return page.evaluate(
+        "() => { const cv = document.createElement('canvas');"
+        " cv.width = 1; cv.height = 1;"
+        " const c2 = cv.getContext('2d', { willReadFrequently: true });"
+        " const d = document.createElement('div');"
+        " d.style.color = 'var(--info)'; document.body.appendChild(d);"
+        " const col = getComputedStyle(d).color; d.remove();"
+        " c2.fillStyle = col; c2.fillRect(0, 0, 1, 1);"
+        " return Array.from(c2.getImageData(0, 0, 1, 1).data); }"
+    )
+
+
+def _deep_link_pair(page, rows, i):
+    a, b = rows.nth(i), rows.nth(i + 1)
+    a.evaluate("(el) => el.classList.add('is-focused')")
+    b.evaluate("(el) => el.classList.add('is-focused')")
+    ga, gb = a.evaluate(_DEEP_RING_JS), b.evaluate(_DEEP_RING_JS)
+    a.evaluate("(el) => el.classList.remove('is-focused')")
+    b.evaluate("(el) => el.classList.remove('is-focused')")
+    return ga, gb
+
+
+def _pair_failures(ga, gb, info, what):
+    out = []
+    gap = gb["top"] - ga["bottom"]
+    if gap <= 0:
+        out.append((what, "rows touch", gap))
+    elif ga["reach"] + gb["reach"] >= gap:
+        out.append((what, "rings meet in the gap", ga["reach"], gb["reach"], gap))
+    for g in (ga, gb):
+        if g["ringW"] < 2 or g["ringRgba"][:3] != info[:3]:
+            out.append((what, "no >= 2px --info ring", g))
+        elif g["ratio"] < 3.0:
+            out.append((what, "ring below 3:1", g))
+        if g["clipped"]:
+            out.append((what, "ring clipped by .history-card", g))
+    return out
+
+
+def test_adjacent_deep_linked_rows_draw_distinct_rings(mock_server, pw_browser):
+    ctx, page, errors, sel, n = _open(pw_browser, mock_server, "history")
+    try:
+        rows = page.locator(sel)
+        _rest(page, rows.first)
+        info = _info_bytes(page)
+        bad, results = [], set()
+        for i in range(n - 1):
+            ga, gb = _deep_link_pair(page, rows, i)
+            results.update((ga["result"], gb["result"]))
+            bad += _pair_failures(ga, gb, info, f"pair {i}/{i + 1}")
+        assert "win" in results and "loss" in results, results
+        assert not bad, f"adjacent deep-link rings: {bad}"
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors: {errors[:3]}"
+
+
+def test_keyboard_ring_beside_a_deep_linked_row_stays_distinct(
+    mock_server, pw_browser
+):
+    ctx, page, errors, sel, n = _open(pw_browser, mock_server, "history")
+    try:
+        rows = page.locator(sel)
+        _rest(page, rows.first)
+        bad = []
+        for i in range(n - 1):
+            a, b = rows.nth(i), rows.nth(i + 1)
+            b.evaluate("(el) => el.classList.add('is-focused')")
+            a.focus()
+            assert a.evaluate("(el) => el.matches(':focus-visible')")
+            ga, gb = a.evaluate(_DEEP_RING_JS), b.evaluate(_DEEP_RING_JS)
+            b.evaluate("(el) => el.classList.remove('is-focused')")
+            gap = gb["top"] - ga["bottom"]
+            if ga["reach"] <= 0:
+                bad.append((i, "keyboard ring absent", ga))
+            elif ga["reach"] + gb["reach"] >= gap:
+                bad.append((i, ga["reach"], gb["reach"], gap))
+        assert not bad, f"keyboard ring meets a deep-link ring: {bad}"
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors: {errors[:3]}"
+
+
+def test_adjacent_deep_link_rings_hold_in_every_theme(mock_server, pw_browser):
+    themes = _themes()
+    assert len(themes) >= 5, f"theme scan anchor: {themes}"
+    ctx, page, errors, sel, n = _open(pw_browser, mock_server, "history")
+    failures, rings, seen = [], set(), 0
+    try:
+        rows = page.locator(sel)
+        _rest(page, rows.first)
+        for t in themes:
+            page.evaluate(
+                "(t) => document.documentElement.setAttribute('data-theme', t)",
+                t,
+            )
+            info = _info_bytes(page)
+            rings.add(tuple(info))
+            for i in range(n - 1):
+                ga, gb = _deep_link_pair(page, rows, i)
+                seen += 1
+                failures += _pair_failures(ga, gb, info, f"{t} pair {i}")
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors: {errors[:3]}"
+    assert seen == len(themes) * (n - 1), seen
+    assert len(rings) >= 3, f"theme flip inert: {rings}"
+    assert not failures, f"deep-link pair theme failures: {failures[:4]}"

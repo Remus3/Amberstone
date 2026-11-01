@@ -581,15 +581,18 @@ body[data-view="home"] .home-overlay { display: flex !important; }
  * via clicking a Recent 5 card, so they can spot which row they
  * jumped to inside a long session. Class is added on scroll-into-view
  * and auto-removed ~3.5s later.
- * RM-1315: the cue is a 2px --info ring at a 1px offset on every
- * deep-linked row (reach 3px, inside the 4px list gap), plus the --info
- * tint, rail and pulse on a NEUTRAL row only. A win / loss row keeps its
- * own --good / --bad rail and tint, and no row shifts its padding (the
- * old `padding-left: 8px` moved the text 2px). Pinned by
- * tests/snapshot_panels/test_match_row_focus_ring.py. */
+ * RM-1315: the cue is a 2px --info ring on every deep-linked row, plus
+ * the --info tint, rail and pulse on a NEUTRAL row only. A win / loss row
+ * keeps its own --good / --bad rail and tint, and no row shifts its
+ * padding (the old `padding-left: 8px` moved the text 2px).
+ * RM-1316: the ring is INSET (drawn inside the border box, zero outer
+ * reach). The champion deep-link marks every matching row, often two
+ * consecutive ones, and the old 1px-offset outline (reach 3px each) made
+ * two adjacent rings overlap by 2px in the 4px list gap; a keyboard
+ * --accent ring beside a deep-linked row overlapped it the same way.
+ * Pinned by tests/snapshot_panels/test_match_row_focus_ring.py. */
 .history-match-row.is-focused {
-  outline: 2px solid var(--info);
-  outline-offset: 1px;
+  box-shadow: inset 0 0 0 2px var(--info);
 }
 .history-match-row.is-focused:not(.result-win):not(.result-loss) {
   background: var(--info-soft);
