@@ -5524,6 +5524,21 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
           closeModeMenu(true);
         });
       });
+      // RM-1253: keyboard focus leaving the trigger + menu pair (Tab past
+      // the last item, Shift+Tab off the trigger) closes the menu, so an
+      // open dropdown never hangs over the party rows while the keyboard
+      // user works elsewhere. Moving between the trigger and the items keeps
+      // it open. A focusout with no related target (window blur, a click on
+      // bare page) is left to the click / Escape closers. No refocus: focus
+      // stays where Tab put it. Guard:
+      // tests/snapshot_panels/test_lobby_mode_menu_focusout.py.
+      const onModeFocusOut = (e) => {
+        const next = e.relatedTarget;
+        if (!next || next === modeTrigger || modeMenu.contains(next)) return;
+        if (!modeMenu.classList.contains("hidden")) closeModeMenu(false);
+      };
+      modeTrigger.addEventListener("focusout", onModeFocusOut);
+      modeMenu.addEventListener("focusout", onModeFocusOut);
     }
     // ---- Mains tab toggle (YOUR MAINS / PARTY MAINS) ----
     const tabYou   = document.getElementById("lv-mc-tab-you");

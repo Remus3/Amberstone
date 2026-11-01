@@ -1893,7 +1893,21 @@ _WEB = _REPO_ROOT / "web"
 # path is the whole change. No glyph change: the added lines carry 0
 # non-ASCII bytes. If another slice re-captures in parallel, the merger
 # recomputes.
-_LIVE_HALF_DIGEST = "3afc1d62cfeeac585d58aeffb920af6f23d092ef8b56b3258d8fa28c4af88afc"
+# superseded by the RM-1253 re-capture below: "3afc1d62cfeeac585d58aeffb920af6f23d092ef8b56b3258d8fa28c4af88afc"
+#
+# RE-CAPTURED 2026-10-31 at RM-1253 (s144 uiux cycle 92). One change
+# rides it: web/js/main.js _lobbyViewWireOnce adds a focusout listener on
+# #lv-mode-trigger and #lv-mode-menu that closes the Lobby mode menu
+# through closeModeMenu(false) when keyboard focus leaves the pair (Tab
+# past the last item, Shift+Tab off the trigger). Pinned by
+# tests/snapshot_panels/test_lobby_mode_menu_focusout.py. Ordinary case,
+# no tokeniser change. ATTRIBUTED BY SUBSTITUTION: swapping exactly
+# web/js/main.js back to its lane HEAD b6cb32cb4 blob reproduces the
+# superseded 3afc1d62... value EXACTLY (restore proven by sha256). That
+# path is the whole change. No glyph change: the added lines carry 0
+# non-ASCII bytes. If another slice re-captures in parallel, the merger
+# recomputes.
+_LIVE_HALF_DIGEST = "02b8972121f80c989e1cb1aeffb8f97235a0637e15146146b38d59e87eeac81a"
 
 
 def _web_sources() -> list[Path]:
