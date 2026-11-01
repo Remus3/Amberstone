@@ -61,11 +61,16 @@ def _proc_modeled_rune_ids() -> frozenset:
     EMPIRICAL WPA lens here with the MECHANICAL proc model so a WPA row can
     flag whether the rune also has a modeled combat proc. Fail-soft: a
     missing/broken engine import degrades to an empty set -> every row
-    proc_modeled=False, so the rune-WPA panel never breaks on the cross-link."""
+    proc_modeled=False, so the rune-WPA panel never breaks on the cross-link.
+    The degrade is LOGGED: a silent empty set reads as "no rune has a
+    modeled proc", which is a wrong answer, not an absent one."""
     try:
         from agents.daemon_slayer.rune_procs import RUNE_PROCS  # noqa: PLC0415
         return frozenset(RUNE_PROCS.keys())
-    except Exception:  # noqa: BLE001 - the panel must survive any engine error
+    except Exception as exc:  # noqa: BLE001 - the panel must survive any engine error
+        log.warning("rune_wpa: agents.daemon_slayer.rune_procs unavailable, "
+                    "every proc_modeled flag is False -> %s: %s",
+                    type(exc).__name__, exc)
         return frozenset()
 
 
@@ -123,6 +128,31 @@ _SHRINK_K = 5.0
 _KEYSTONE = "keystone"
 _MINOR = "minor"
 
+# What a malformed MATCH (bad frame / participant values) can raise inside
+# the per-match sweep. Deliberately narrow, mirroring core.item_wpa:
+# sqlite3.Error is not here (it must propagate - a locked DB is not a bad
+# row), and neither is any other class (a defect must surface, not be
+# logged once per match and answered ok=True).
+_MATCH_DATA_ERRORS = (TypeError, ValueError, ArithmeticError)
+
+
+def _opt_int(value: object) -> int | None:
+    """``int(value)``, or ``None`` when it is missing, a bool or not a
+    number."""
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+
+
+def _dicts(value: object) -> list[dict]:
+    """The dict entries of ``value`` when it is a list, else ``[]``."""
+    if not isinstance(value, list):
+        return []
+    return [v for v in value if isinstance(v, dict)]
+
 
 def load_rune_catalog(
     runes_json: Path | None = None,
@@ -133,7 +163,10 @@ def load_rune_catalog(
     ``perk-images/Styles/Domination/Electrocute/Electrocute.png``). Stat
     shards are NOT in this file, so they are naturally absent.
 
-    Fail-soft: a missing or unparseable catalog returns ``{}``.
+    Fail-soft: a missing, unparseable or wrong-shape catalog returns
+    ``{}``. A tree / slot / rune entry that is not an object, a ``slots``
+    or ``runes`` field that is not a list, and a rune whose id is missing,
+    a bool or not a number are each skipped; the rest is kept.
     """
     path = Path(runes_json) if runes_json is not None else _default_runes_json()
     try:
@@ -142,13 +175,15 @@ def load_rune_catalog(
     except (OSError, ValueError) as exc:
         log.warning("load_rune_catalog: %s -> %s", path, exc)
         return {}
+    if not isinstance(raw, list):
+        log.warning("load_rune_catalog: %s -> not a list of rune trees", path)
+        return {}
     out: dict[int, tuple[str, str]] = {}
-    for tree in raw if isinstance(raw, list) else []:
-        for slot in tree.get("slots", []) or []:
-            for rune in slot.get("runes", []) or []:
-                try:
-                    rid = int(rune.get("id"))
-                except (TypeError, ValueError):
+    for tree in _dicts(raw):
+        for slot in _dicts(tree.get("slots")):
+            for rune in _dicts(slot.get("runes")):
+                rid = _opt_int(rune.get("id"))
+                if rid is None:
                     continue
                 out[rid] = (str(rune.get("name") or rid),
                             str(rune.get("icon") or ""))
@@ -170,7 +205,10 @@ def _participant_runes(
     The first id in the rune list is the keystone (``rune_keystone_id``,
     which mirrors ``rune_p0``); the rest are the minor selections
     (``rune_p1..p3`` + ``rune_s0..s1``). Authoritative from the
-    ``participants`` table. A participant with no rune columns is absent.
+    ``participants`` table. A participant whose id / team / win is not a
+    number is absent. A rune column that is NULL or not a number reads as
+    0 (an empty slot the caller skips), so one malformed rune drops that
+    rune only - never the participant, never the rest of the match.
     """
     cur = conn.execute(
         "SELECT participant_id, team_id, win, rune_keystone_id, "
@@ -186,9 +224,8 @@ def _participant_runes(
             win = int(row[2] or 0)
         except (TypeError, ValueError):
             continue
-        keystone = int(row[3] or 0)
-        minors = [int(v or 0) for v in row[4:9]]
-        out[pid] = (team_id, win, [keystone, *minors])
+        rune_ids = [_opt_int(v) or 0 for v in row[3:9]]
+        out[pid] = (team_id, win, rune_ids)
     return out
 
 
@@ -223,10 +260,28 @@ def compute_rune_wpa(
     each row is ``{rune_id, name, slot_kind, n, observed_winrate,
     expected_winrate, wpa, wpa_shrunk}`` sorted by ``wpa_shrunk`` desc.
 
-    Fail-soft: a match with no frames is skipped; each match is wrapped so
-    one bad row cannot abort the sweep.
+    A participant contributes at most ONE sample per ``(rune_id,
+    slot_kind)``: a rune repeated across a corrupt row's minor slots is
+    counted once.
+
+    ``min_n`` must be an ``int >= 0`` (``bool`` refused); anything else is
+    a ``ValueError`` raised before the sweep.
+
+    Fail-soft on DATA, fail-loud on everything else (the core.item_wpa
+    contract):
+      * a match with no frames or no participants is skipped, and a
+        malformed rune column skips that rune only;
+      * a match whose frames are malformed (``TypeError`` / ``ValueError``
+        / ``ArithmeticError``) is skipped WHOLE: its contribution is rolled
+        back, so a skipped match is never half-counted;
+      * ``sqlite3.Error`` (for example "database is locked") PROPAGATES - a
+        partial sweep must not be served, or cached, as a complete corpus
+        (/api/rune-wpa maps it to a 503);
+      * any other exception is a defect and propagates too.
     """
-    t0 = time.time()
+    if isinstance(min_n, bool) or not isinstance(min_n, int) or min_n < 0:
+        raise ValueError("min_n must be an int >= 0")
+    t0 = time.perf_counter()
     catalog = load_rune_catalog(runes_json)
 
     where = ["has_timeline=1"]
@@ -246,6 +301,9 @@ def compute_rune_wpa(
     sum_exp: dict[tuple[int, str], float] = {}
 
     for mid in match_ids:
+        # Per-match observations, merged only when the whole match is read
+        # cleanly, so a match skipped half-way contributes nothing.
+        obs: list[tuple[tuple[int, str], float, float]] = []
         try:
             frames = _load_frames(conn, mid)
             if not frames:
@@ -255,23 +313,29 @@ def compute_rune_wpa(
             runes = _participant_runes(conn, mid)
             if not runes:
                 continue
+            base_t_s = float(base_ts_ms or 0) / 1000.0
             for _pid, (team_id, win, rune_ids) in runes.items():
-                exp = _expected_win_for_team(
-                    base_rows, float(base_ts_ms or 0) / 1000.0, team_id, model
-                )
+                exp = _expected_win_for_team(base_rows, base_t_s, team_id,
+                                             model)
                 if exp is None:
                     continue
+                seen: set[tuple[int, str]] = set()
                 for idx, rid in enumerate(rune_ids):
                     if rid <= 0 or rid not in catalog:
                         continue
-                    slot_kind = _KEYSTONE if idx == 0 else _MINOR
-                    key = (rid, slot_kind)
-                    n_obs[key] = n_obs.get(key, 0) + 1
-                    sum_obs[key] = sum_obs.get(key, 0.0) + float(win)
-                    sum_exp[key] = sum_exp.get(key, 0.0) + exp
-        except Exception as exc:  # noqa: BLE001 - one bad match cannot abort
-            log.warning("compute_rune_wpa: match %s -> %s", mid, exc)
+                    key = (rid, _KEYSTONE if idx == 0 else _MINOR)
+                    if key in seen:  # one sample per participant per key
+                        continue
+                    seen.add(key)
+                    obs.append((key, float(win), float(exp)))
+        except _MATCH_DATA_ERRORS as exc:
+            log.warning("compute_rune_wpa: match %s skipped -> %s: %s",
+                        mid, type(exc).__name__, exc)
             continue
+        for key, win_f, exp_f in obs:
+            n_obs[key] = n_obs.get(key, 0) + 1
+            sum_obs[key] = sum_obs.get(key, 0.0) + win_f
+            sum_exp[key] = sum_exp.get(key, 0.0) + exp_f
 
     items_out: list[dict] = []
     for (rid, slot_kind), n in n_obs.items():
@@ -303,7 +367,7 @@ def compute_rune_wpa(
         "queue_id": queue_id,
         "min_n": min_n,
         "items": items_out,
-        "elapsed_ms": int((time.time() - t0) * 1000),
+        "elapsed_ms": int((time.perf_counter() - t0) * 1000),
     }
 
 
@@ -319,13 +383,20 @@ def compute_rune_wpa_from_db(
     persisted WPA model (or fall back), compute, close.
 
     Returns ``{"ok": False, "error": "rewind_history.db missing"}`` when
-    the DB is absent.
+    the DB is absent (or the path is not a regular file). ``sqlite3.Error``
+    from the sweep propagates (see ``compute_rune_wpa``).
+
+    The read-only URI goes through ``Path.as_uri``, which percent-encodes
+    the path: an f-string ``file:{path}?mode=ro`` let a '#' in the checkout
+    path cut the URI short, so SQLite opened (and, with ``?mode=ro`` lost
+    in the fragment, CREATED) a different file.
     """
     src = Path(db_path) if db_path is not None else _REWIND_DB
-    if not src.exists():
+    if not src.is_file():
         return {"ok": False, "error": "rewind_history.db missing"}
     model = load_model(model_path)
-    conn = sqlite3.connect(f"file:{src}?mode=ro", uri=True, timeout=5.0)
+    uri = src.absolute().as_uri() + "?mode=ro"
+    conn = sqlite3.connect(uri, uri=True, timeout=5.0)
     try:
         return compute_rune_wpa(
             conn, min_n=min_n, queue_id=queue_id, patch=patch, model=model
