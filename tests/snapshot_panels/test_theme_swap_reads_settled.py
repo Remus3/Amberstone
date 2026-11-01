@@ -468,10 +468,10 @@ def test_lock_button_reads_wait_out_its_transition(mock_server, pw_browser, them
     src = (_HERE / "test_champ_select_lock_button_focus.py").read_text(
         encoding="utf-8"
     )
-    assert "await Promise.all(el.getAnimations().map((a) => a.finished));" in src, (
+    assert "await Promise.allSettled(as.map((a) => a.finished));" in src, (
         "the focused-ring read no longer waits out the box-shadow transition"
     )
-    assert "await Promise.all(b.getAnimations().map((x) => x.finished));" in (
+    assert "await Promise.allSettled(as.map((x) => x.finished));" in (
         _LOCK_READ_BTN
     ), "the pending-lock read no longer waits out the transition"
 
@@ -501,7 +501,7 @@ def test_augment_option_reads_wait_out_their_transition(mock_server, pw_browser,
     src = (_HERE / "test_champ_select_arena_augment_options.py").read_text(
         encoding="utf-8"
     )
-    assert "await Promise.all(el.getAnimations().map((a) => a.finished));" in src, (
+    assert "await Promise.allSettled(as.map((a) => a.finished));" in src, (
         "the focused augment option read no longer waits out the box-shadow transition"
     )
 

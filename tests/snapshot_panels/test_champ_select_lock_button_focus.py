@@ -102,7 +102,10 @@ def test_lock_button_draws_the_inset_system_ring(mock_server, pw_browser, theme)
         # the ring fades in: read the SETTLED value, after its transitions.
         got = page.evaluate(
             "async (sel) => { const el = document.querySelector(sel);"
-            " await Promise.all(el.getAnimations().map((a) => a.finished));"
+            # A cancelled transition REJECTS .finished with AbortError.
+            " for (let as; (as = el.getAnimations().filter("
+            "(a) => a.playState !== 'finished')).length;)"
+            " await Promise.allSettled(as.map((a) => a.finished));"
             " const cs = getComputedStyle(el);"
             " return {text: el.textContent.trim(),"
             " focused: document.activeElement === el,"
@@ -209,7 +212,8 @@ _STUB_LOCK_POST = """() => {
 # Opacity is read SETTLED: .csv-lock-btn carries "transition: 0.15s".
 _READ_BTN = """async (sel) => {
   const b = document.querySelector(sel);
-  await Promise.all(b.getAnimations().map((x) => x.finished));
+  for (let as; (as = b.getAnimations().filter((x) => x.playState !== 'finished')).length;)
+    await Promise.allSettled(as.map((x) => x.finished));
   const a = document.activeElement;
   return {aria: b.getAttribute('aria-disabled'), disabled: b.disabled,
     opacity: getComputedStyle(b).opacity,

@@ -237,7 +237,11 @@ def test_focused_option_draws_the_inset_system_ring(mock_server, pw_browser,
         _focus_by_keyboard(page, _sel(308))
         got = page.evaluate(
             "async (sel) => { const el = document.querySelector(sel);"
-            " await Promise.all(el.getAnimations().map((a) => a.finished));"
+            # A cancelled transition REJECTS .finished with AbortError (CI
+            # nightly 41287693946), so settle, and re-read for its replacement.
+            " for (let as; (as = el.getAnimations().filter("
+            "(a) => a.playState !== 'finished')).length;)"
+            " await Promise.allSettled(as.map((a) => a.finished));"
             " const cs = getComputedStyle(el);"
             " return {focused: document.activeElement === el,"
             " visible: el.matches(':focus-visible'),"
@@ -402,8 +406,9 @@ def test_option_text_reaches_aa_picked_or_not(mock_server, pw_browser, theme):
         page.click(_sel(308))
         page.mouse.move(0, 0)
         page.evaluate(
-            "async () => { for (const a of document.getAnimations())"
-            " await a.finished; }")
+            "async () => { for (let as; (as = document.getAnimations().filter("
+            "(a) => a.playState !== 'finished')).length;)"
+            " await Promise.allSettled(as.map((a) => a.finished)); }")
         rows = page.evaluate(_MEASURE)
     finally:
         _close(ctx, page)

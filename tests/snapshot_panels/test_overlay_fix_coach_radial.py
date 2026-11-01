@@ -17,15 +17,44 @@ three defects from live in-game screenshots):
 Harness: the shared conftest mock_server + pw_browser, driven through the overlay
 route (/?ui_mock=1&mode=sr&overlay=1) exactly like test_overlay_view.py.
 """
+import json
+from pathlib import Path
+
+import pytest
 
 
-def _open_overlay(pw_browser, mock_server, query="?ui_mock=1&mode=sr&overlay=1"):
+_REPO = Path(__file__).resolve().parents[2]
+_SR_FIXTURE = _REPO / "web" / "data" / "ui_mock" / "active_match_sr.json"
+
+
+def _open_overlay(pw_browser, mock_server, query="?ui_mock=1&mode=sr&overlay=1",
+                  picks=None, hide_ddragon=False):
+    """``picks`` replaces the page's own mock fixture picks: main.js re-renders
+    the ui_mock fixture (5 picks) on its own timers, so a render the test made
+    by hand can be painted over before it is read (RC-1: CI run 41253461425,
+    "got 5"; the absent ddragon mirror was measured NOT to be the cause, the
+    image fallback keeps every cell). ``hide_ddragon`` gives any box the
+    image-less state the CI runner has."""
     from tests.snapshot_panels.conftest import _WS_STUB
 
     mock_server._store["data"] = {}
     ctx = pw_browser.new_context(
         ignore_https_errors=True, viewport={"width": 1920, "height": 1080}
     )
+    if picks is not None:
+        fx = json.loads(_SR_FIXTURE.read_text(encoding="utf-8"))
+        fx["coach"]["daemon_slayer_picks"] = picks
+        body = json.dumps(fx)
+        ctx.route(
+            "**/data/ui_mock/active_match_sr.json",
+            lambda route: route.fulfill(
+                status=200, content_type="application/json", body=body),
+        )
+    if hide_ddragon:
+        ctx.route("**/data/ddragon/**",
+                  lambda route: route.fulfill(status=404, body="absent"))
+        ctx.route("https://ddragon.leagueoflegends.com/**",
+                  lambda route: route.abort())
     page = ctx.new_page()
     page.add_init_script(_WS_STUB)
     errors: list[str] = []
@@ -226,11 +255,16 @@ _PICKS7 = [
 ]
 
 
-def test_build_seven_icon_row_has_no_horizontal_overflow(mock_server, pw_browser):
+@pytest.mark.parametrize("hide_ddragon", [False, True],
+                         ids=["local_images", "ddragon_hidden"])
+def test_build_seven_icon_row_has_no_horizontal_overflow(mock_server, pw_browser,
+                                                         hide_ddragon):
     """The in-game BUILD widget must fit a full 7-icon LIVE row on one line: the
     strip's scrollWidth <= clientWidth (no clipped 7th icon / overflow scrollbar),
-    and the widget is the widened 412px that actually holds 7 cells."""
-    ctx, page, errors = _open_overlay(pw_browser, mock_server)
+    and the widget is the widened 412px that actually holds 7 cells. It holds with
+    the gitignored image mirror hidden too, on any box (RC-1)."""
+    ctx, page, errors = _open_overlay(pw_browser, mock_server, picks=_PICKS7,
+                                      hide_ddragon=hide_ddragon)
     try:
         page.evaluate(
             """async ({picks}) => {
@@ -274,7 +308,7 @@ def test_build_panel_sits_flush_at_bottom(mock_server, pw_browser):
     """#4: dragged into the lower half the tall BUILD widget bottom-anchors and
     hugs its content (no overflow dead-space) so it can sit flush at the bottom -
     the 7-icon width fix removes the overflow that stopped this."""
-    ctx, page, errors = _open_overlay(pw_browser, mock_server)
+    ctx, page, errors = _open_overlay(pw_browser, mock_server, picks=_PICKS7)
     try:
         page.evaluate(
             """async ({picks}) => {

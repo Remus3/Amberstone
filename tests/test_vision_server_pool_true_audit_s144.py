@@ -127,15 +127,18 @@ class F1CloseStopsBusyWorkers(unittest.TestCase):
         serve = _serve(srv)
         clients = []
         try:
+            # One at a time: with queue_size=1, a second connection accepted
+            # before a loaded worker drained the first is DROPPED, and only
+            # one worker ever enters (CI nightly 41287693946, 2 vCPU).
             for _ in range(2):
                 c = threading.Thread(
                     target=lambda: _get(port, "/block", timeout=10),
                     daemon=True)
                 c.start()
                 clients.append(c)
-            for _ in range(2):
-                self.assertTrue(entered.acquire(timeout=3),
-                                "both workers must be inside a request")
+                self.assertTrue(
+                    entered.acquire(timeout=fleet_test_guard.budget(10)),
+                    "both workers must be inside a request")
             _stop_serving(srv, serve)
             t0 = time.monotonic()
             srv.server_close()
@@ -255,7 +258,7 @@ class F4NoConnectionIsQueuedAfterClose(unittest.TestCase):
             target=lambda: _get(port, "/block", timeout=10), daemon=True)
         try:
             client.start()
-            self.assertTrue(entered.acquire(timeout=3))
+            self.assertTrue(entered.acquire(timeout=fleet_test_guard.budget(10)))
             srv._queue.put_nowait((a, ("127.0.0.1", 1)))
             srv._closing = True              # closing began after the enqueue
             gate.set()
