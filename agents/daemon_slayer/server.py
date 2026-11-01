@@ -168,6 +168,8 @@ _INDEX_HTML = """<!doctype html>
 <tr><td>POST</td><td>/rank-assassin</td><td>rank items by total-burst-damage delta (Phase 5)</td></tr>
 <tr><td>POST</td><td>/hps</td><td>total healing+shielding+buff throughput for an enchanter build (Phase 6)</td></tr>
 <tr><td>POST</td><td>/rank-enchanter</td><td>rank items by total-throughput delta (Phase 6)</td></tr>
+<tr><td>POST</td><td>/v2/fight-report</td><td>unified V2 fight report - mana sim, rune procs, heal/shield, self-shred and scenario matrix over one rotation (DS V2 S2)</td></tr>
+<tr><td>POST</td><td>/v2/matchup</td><td>1v1 head-to-head trade verdict (champ_a vs champ_b at their levels + items; DS V2 Lane A)</td></tr>
 <tr><td>POST</td><td>/cc-output</td><td>offensive crowd-control (lockdown) score for a champion (item 294)</td></tr>
 <tr><td>POST</td><td>/mobility</td><td>self-mobility (gap-close / kiting) score for a champion (item 297)</td></tr>
 <tr><td>POST</td><td>/sustain</td><td>sustain / vamp-throughput (damage-conversion + regen) score for a champion (item 298)</td></tr>
