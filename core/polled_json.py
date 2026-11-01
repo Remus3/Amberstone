@@ -103,9 +103,11 @@ def _scratch_path(path: Path) -> Path:
     stays a SIBLING of the destination because os.replace is only atomic
     within one filesystem.
 
-    coaches/sr_user_builds.py:513 already carries this same fix, applied to a
-    single consumer in cycle 22 while the contract module kept the defect -
-    feedback_resolver_fix_is_not_a_consumer_fix.
+    coaches/sr_user_builds.py `_save` carried this same fix first (its W6
+    per-writer scratch name, lane 8 cycle 22), applied to a single consumer
+    while the contract module kept the defect -
+    feedback_resolver_fix_is_not_a_consumer_fix. RM-258 has since moved
+    `_save` onto atomic_write_json here.
     """
     return path.with_name(f"{path.name}.{os.getpid()}.{secrets.token_hex(4)}.tmp")
 
@@ -204,8 +206,11 @@ def read_json_dict(path: Path, default: Optional[dict] = None) -> dict:
         # file, so a corrupt polled file crashed the caller instead of
         # yielding the default this docstring promises. Three downstream sites
         # had already widened their own handlers to absorb it rather than
-        # fixing it here - core/cost_tracker.py:490 and
-        # coaches/_base_coach.py:502 / :539 all name it in prose.
+        # fixing it here - the raise-surface comment in core/cost_tracker.py
+        # CostTracker.note_match_boundary and the LEFT BROAD comments on the
+        # two gates in coaches/_base_coach.py (BaseCoach._vision_loop's
+        # gate_disabled("vision"), BaseCoach._maybe_coach's allow_call())
+        # all named it in prose.
         _log.warning("polled_json: %s decode failed (not utf-8): %s", path, exc)
         return fallback
     try:

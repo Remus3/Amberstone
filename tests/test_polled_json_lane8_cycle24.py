@@ -11,8 +11,10 @@ Both promises were measurably false before this slice:
   W1  read_json_dict raised UnicodeDecodeError on a file with undecodable
       bytes, against a docstring promising the default for an unreadable
       file. THREE downstream sites had already widened their own handlers to
-      compensate rather than fixing the resolver (core/cost_tracker.py:490,
-      coaches/_base_coach.py:502 and :539 all name it in prose).
+      compensate rather than fixing the resolver (core/cost_tracker.py
+      CostTracker.note_match_boundary's raise-surface comment, and
+      coaches/_base_coach.py BaseCoach._vision_loop's vision gate and
+      BaseCoach._maybe_coach's budget gate, all named it in prose).
   W2  read_json_dict shallow-copied `default`, so a nested mutable was shared
       with the caller's own default object and with every later call.
   W3  PolledJsonFile had the same shallow copy in __init__ and handed the

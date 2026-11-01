@@ -43,9 +43,12 @@ holders on 2026-10-03), and "_coach.py still hand-rolls its scratch name"
     silently again;
 (d) each citer names its symbols in a COMMENT or STRING token.
 
-Other-family cites in the same files (core/cost_tracker.py:490,
-coaches/_base_coach.py:502 / :539 / :66-68, coaches/sr_user_builds.py:513)
-are out of this guard's scope on purpose.
+Other-family cites in the same files are out of this guard's scope on
+purpose. The polled_json resolver cites (core/cost_tracker.py:490,
+coaches/_base_coach.py:502 / :539, coaches/sr_user_builds.py:513, as
+written at 8bf931e29) are now pinned by
+tests/test_polled_json_resolver_cites_s144p51.py; the arena_coach /
+aram_coach D-class cite coaches/_base_coach.py:66-68 is still open.
 """
 
 from __future__ import annotations
