@@ -111,7 +111,7 @@ cbf54d38530c10d1022b898ac3b059c0ee150b0a3432cf9eb41d33bec2d71a75  web/js/panels/
 
 4376b53463ac26cafc489fb8fbffe350cbe015e985be0f1d9bddc9d0d51c57e4  web/js/panels/replay_minimap.js
 
-e53f320493018e1bcb21d9fdf64e052c27d2b9fa5ef08d6efb8425c37540fb93  web/js/panels/review_player.js
+34b822fa67c0fd94c9993b52e354b28b463ae080a81771fbd3e420997ae6ac75  web/js/panels/review_player.js
 
 640d1138d1ef4c9aca38f7375e3f8d3f3813b19f0927e44addd4955ae00be4aa  web/js/panels/review_player_model.js
 
