@@ -278,6 +278,100 @@ def _legion_tasks() -> list[dict] | None:
         return None
 
 
+_SAFE_TASK_NAME_RE = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
+
+
+def _task_events_ps(names: list[str], since_ts: float) -> str:
+    """One Get-WinEvent over the Operational log, filtered IN the query (by
+    id, time and TaskName) so it reads a handful of records, not the log:
+    measured 0.12 s on Legion 2026-10-31 against 0.86 s for an id+time filter
+    over 8 days. "No events" is an empty list; any other error exits 3."""
+    since = time.strftime("%Y-%m-%dT%H:%M:%S.000Z", time.gmtime(since_ts))
+    ids = " or ".join(f"EventID={i}" for i in TASK_EVENT_IDS)
+    who = " or ".join(f"Data[@Name='TaskName']='\\{n}'" for n in names)
+    xpath = (f"*[System[({ids}) and TimeCreated[@SystemTime>='{since}']]]"
+             f" and *[EventData[{who}]]")
+    return (
+        f"$x = '{xpath.replace(chr(39), chr(39) * 2)}'; "
+        f"try {{ $ev = @(Get-WinEvent -LogName '{TASK_EVENT_LOG}' -FilterXPath $x "
+        "-MaxEvents 500 -ErrorAction Stop) } catch { "
+        "if ($_.FullyQualifiedErrorId -like 'NoMatchingEventsFound*') { $ev = @() } "
+        "else { exit 3 } }; "
+        "ConvertTo-Json -Compress -InputObject @($ev | ForEach-Object { "
+        "@{ task = [string]$_.Properties[0].Value; id = $_.Id; "
+        "time = $_.TimeCreated.ToString('o'); "
+        f"rc = $(if ($_.Id -eq {TS_EVENT_ACTION_COMPLETED} -and $_.Version -ge 1) "
+        "{ [int64]$_.Properties[3].Value }) } })"
+    )
+
+
+def _task_events(names, since_ts: float) -> dict[str, list[dict]] | None:
+    """{task name: [{"id", "time", "rc"}]} from the Task Scheduler
+    Operational log since SINCE_TS, or None when the log could not be read.
+
+    Windowless (CREATE_NO_WINDOW) and clamped to the probe deadline like every
+    other probe. A name outside [A-Za-z0-9._-] is never spliced into the
+    query; when no name is safe nothing is spawned. Fail soft: None leaves
+    every 0x800710E0 row on its old label.
+    """
+    safe = sorted({n for n in names if isinstance(n, str) and _SAFE_TASK_NAME_RE.match(n)})
+    if not safe:
+        return {}
+    try:
+        p = subprocess.run(
+            ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
+             _task_events_ps(safe, since_ts)],
+            capture_output=True, timeout=_probe_timeout(4.0), text=True,
+            encoding="utf-8", errors="replace", creationflags=_NO_WINDOW,
+        )
+        if p.returncode != 0 or not p.stdout.strip():
+            return None
+        data = json.loads(p.stdout)
+    except Exception:  # noqa: BLE001 - an unreadable log is "no evidence", never a crash
+        return None
+    if isinstance(data, dict):
+        data = [data]
+    if not isinstance(data, list):
+        return None
+    out: dict[str, list[dict]] = {n: [] for n in safe}
+    for rec in data:
+        if not isinstance(rec, dict):
+            continue
+        task = str(rec.get("task") or "").rsplit("\\", 1)[-1]
+        eid = _as_int(rec.get("id"))
+        if task not in out or eid is None:
+            continue
+        out[task].append({"id": eid, "time": rec.get("time"), "rc": _as_int(rec.get("rc"))})
+    return out
+
+
+def _legion_tasks_with_events() -> list[dict] | None:
+    """_legion_tasks(), plus each 0x800710E0 row's recent Task Scheduler
+    events under "events" (s147 F1). The event log is read only when some
+    row carries that code and a parseable last_run, so a clean box pays
+    nothing; when it cannot be read the rows go out unchanged."""
+    tasks = _legion_tasks()
+    if not tasks:
+        return tasks
+    want: dict[str, float] = {}
+    for t in tasks:
+        if _as_int(t.get("last_result")) != TASK_RESULT_TIMEOUT_KILL:
+            continue
+        ts = _parse_ts(t.get("last_run"))
+        if ts is not None:
+            want[str(t.get("name"))] = ts
+    if not want or _probe_expired():
+        return tasks
+    events = _task_events(list(want), min(want.values()) - TASK_INFO_TIME_SLACK_S)
+    if events is None:
+        return tasks
+    for t in tasks:
+        name = str(t.get("name"))
+        if name in want and name in events:
+            t["events"] = events[name]
+    return tasks
+
+
 # ---------------------------------------------------------------------------
 # Scheduled-task health
 #
@@ -293,11 +387,19 @@ def _legion_tasks() -> list[dict] | None:
 #   267014 = 0x00041306 SCHED_S_TASK_TERMINATED, the shutdown-terminated code
 #     the in-process VisionServer popen exit produces. Expected here.
 #   2147946720 = 0x800710E0, Win32 4320, "the operator or administrator has
-#     refused the request". This is the ExecutionTimeLimit-kill signature and
-#     is a FAILURE. The ONE suppression kept is a currently-Running singleton
-#     daemon, where Task Scheduler is correctly refusing a DUPLICATE launch
-#     while the boot instance is alive - state==Running is what proves that
-#     reading, so a NOT-running task carrying this code is a real kill.
+#     refused the request". Read as an ExecutionTimeLimit kill and a FAILURE
+#     unless the event log says otherwise. The ONE suppression kept is a
+#     currently-Running singleton daemon, where Task Scheduler is correctly
+#     refusing a DUPLICATE launch while the boot instance is alive.
+#     s147 F1: the code is ALSO what a missed-schedule skip leaves behind.
+#     Measured 2026-10-31: after the 19:03:56 reboot three tasks carried it,
+#     and the Operational log had event 153 ("did not launch ... missed its
+#     schedule") for exactly those three at 19:07:34, two of them under the
+#     default PT72H limit that no run came near. StartWhenAvailable off means
+#     the scheduler skips the catch-up run. So a NOT-running task with this
+#     code is graded from its own attempt's events (timeout_code_verdict):
+#     event 111/329, or a run at the limit, is the kill; event 153, or a later
+#     clean run, is a MISSED skip; no readable evidence keeps the kill label.
 
 TASK_RESULT_SUCCESS = 0
 TASK_RESULT_RUNNING = 267009
@@ -309,6 +411,41 @@ VERDICT_OK = "OK"
 VERDICT_STUCK = "STUCK"
 VERDICT_FAILURE = "FAILURE"
 VERDICT_UNKNOWN = "UNKNOWN"
+# s147 F1: a scheduled run the scheduler skipped (event 153). Still printed,
+# because the run did not happen, but never called a kill.
+VERDICT_MISSED = "MISSED"
+
+TIMEOUT_KILL_DETAIL = "0x800710E0 (Win32 4320, request refused) - ExecutionTimeLimit kill"
+MISSED_RUN_DETAIL = "0x800710E0 (Win32 4320, request refused) - missed-run skip"
+
+# Task Scheduler Operational-log event ids. Source: the
+# Microsoft-Windows-TaskScheduler provider manifest, read on Legion
+# 2026-10-31 with `(Get-WinEvent -ListProvider Microsoft-Windows-TaskScheduler).Events`:
+#   100 "Task Scheduler started "%3" instance of the "%1" task"
+#   111 "Task Scheduler terminated "%2" instance of the "%1" task"
+#   153 "Task Scheduler did not launch task "%1" as it missed its schedule"
+#   201 "Task Scheduler successfully completed task "%1", instance "%2",
+#       action "%3" with return code %4" (v1/v2; v0 carries no return code)
+#   329 "Task Scheduler terminated "%2" instance of the "%1" task due to
+#       exceeding the time allocated for execution"
+# Every template's first datum is TaskName, as "\<name>" for a root-folder
+# task (all 20 RC-* tasks are in "\", measured the same day).
+TASK_EVENT_LOG = "Microsoft-Windows-TaskScheduler/Operational"
+TS_EVENT_STARTED = 100
+TS_EVENT_TERMINATED = 111
+TS_EVENT_MISSED_SCHEDULE = 153
+TS_EVENT_ACTION_COMPLETED = 201
+TS_EVENT_TIME_LIMIT_TERMINATED = 329
+TASK_EVENT_IDS = (
+    TS_EVENT_STARTED, TS_EVENT_TERMINATED, TS_EVENT_MISSED_SCHEDULE,
+    TS_EVENT_ACTION_COMPLETED, TS_EVENT_TIME_LIMIT_TERMINATED,
+)
+# Get-ScheduledTaskInfo's LastRunTime / NextRunTime are good to the MINUTE
+# only: their seconds field echoes the minutes (measured 2026-10-31: 19:07:07
+# for a 19:07:34 event 153; 20:15:15, 20:30:30, 20:54:54). Nothing here shows
+# those times finer than _age_phrase's tenth of a day, and an event belongs to
+# the reported attempt when it is no older than the run plus this slack.
+TASK_INFO_TIME_SLACK_S = 120.0
 
 # Tasks that are SUPPOSED to sit in SCHED_S_TASK_RUNNING forever. Measured on
 # Legion 2026-09-29: every one of these is a persistent service, so RUNNING is
@@ -865,8 +1002,13 @@ def classify_task_result(
     last_run_age_s: float | None = None,
     time_limit_s: float | None = None,
     repetition_s: float | None = None,
+    events: list[dict] | None = None,
 ) -> tuple[str, str]:
-    """(verdict, detail) for one task's LastTaskResult. See the code table above."""
+    """(verdict, detail) for one task's LastTaskResult. See the code table above.
+
+    EVENTS (s147 F1) is the task's Task Scheduler log as [{"id", "age_s",
+    "rc"}], or None when it was not read; only a 0x800710E0 consults it.
+    """
     code = _as_int(last_result)
     if code is None:
         return VERDICT_UNKNOWN, "no last_result reported"
@@ -906,9 +1048,7 @@ def classify_task_result(
     if code == TASK_RESULT_TIMEOUT_KILL:
         if running_now and is_service:
             return VERDICT_OK, "duplicate launch refused while the daemon is up"
-        return VERDICT_FAILURE, (
-            "0x800710E0 (Win32 4320, request refused) - ExecutionTimeLimit kill"
-        )
+        return timeout_code_verdict(events, last_run_age_s, time_limit_s)
 
     if name == "RC-DaemonSlayer" and code == 1 and ds_alive:
         return VERDICT_OK, "exit 1 but /api/health/all confirms DS alive"
@@ -916,6 +1056,78 @@ def classify_task_result(
         return VERDICT_OK, "exit 1 on a detected cost/health breach, by design"
 
     return VERDICT_FAILURE, f"last_result={code}"
+
+
+def timeout_code_verdict(
+    events: list[dict] | None,
+    last_run_age_s: float | None,
+    time_limit_s: float | None,
+) -> tuple[str, str]:
+    """(verdict, detail) for a NOT-running task whose last result is 0x800710E0.
+
+    Only the events of the reported attempt count: those no older than
+    LastRunTime plus TASK_INFO_TIME_SLACK_S (all of them when LastRunTime is
+    unknown). In that attempt, in this order:
+      1. event 111 or 329 (terminated)                -> FAILURE, kill;
+      2. ExecutionTimeLimit set and the newest run (event 100 to the next
+         event 201) lasted at least that long          -> FAILURE, kill;
+      3. event 153 or a clean event 201 (rc 0), the newer of the two
+                                                       -> MISSED, skip;
+      4. nothing                                       -> FAILURE, kill.
+    A kill always wins, so this never launders a real termination. Events
+    None (log unread) or [] is step 4: the old label, fail soft.
+    """
+    kill = (VERDICT_FAILURE, TIMEOUT_KILL_DETAIL)
+    if not events:
+        return kill
+    attempt = []
+    for e in events:
+        if not isinstance(e, dict):
+            continue
+        age, eid = e.get("age_s"), _as_int(e.get("id"))
+        if eid is None or isinstance(age, bool) or not isinstance(age, (int, float)):
+            continue
+        if last_run_age_s is not None and age > last_run_age_s + TASK_INFO_TIME_SLACK_S:
+            continue  # an earlier attempt: it explains nothing about this result
+        attempt.append((float(age), eid, _as_int(e.get("rc"))))
+    if any(eid in (TS_EVENT_TERMINATED, TS_EVENT_TIME_LIMIT_TERMINATED)
+           for _age, eid, _rc in attempt):
+        return kill
+    starts = [age for age, eid, _rc in attempt if eid == TS_EVENT_STARTED]
+    if time_limit_s and starts:
+        start = min(starts)  # the newest run
+        ends = [age for age, eid, _rc in attempt
+                if eid == TS_EVENT_ACTION_COMPLETED and age <= start]
+        if ends and start - max(ends) >= time_limit_s:
+            return kill
+    skips = [(age, eid) for age, eid, rc in attempt
+             if eid == TS_EVENT_MISSED_SCHEDULE
+             or (eid == TS_EVENT_ACTION_COMPLETED and rc == 0)]
+    if not skips:
+        return kill
+    age, eid = min(skips)
+    if eid == TS_EVENT_MISSED_SCHEDULE:
+        why = f"event 153, missed its schedule, {_age_phrase(age)}"
+    else:
+        why = f"no termination; a later run completed OK, event 201 rc=0, {_age_phrase(age)}"
+    return VERDICT_MISSED, f"{MISSED_RUN_DETAIL} ({why})"
+
+
+def _event_ages(events, now: float) -> list[dict] | None:
+    """A row's raw "events" ({"id", "time", "rc"}) as {"id", "age_s", "rc"}.
+    None when the row carries no event data (the log was never read)."""
+    if not isinstance(events, list):
+        return None
+    out = []
+    for e in events:
+        if not isinstance(e, dict):
+            continue
+        ts = _parse_ts(e.get("time"))
+        eid = _as_int(e.get("id"))
+        if ts is None or eid is None:
+            continue
+        out.append({"id": eid, "age_s": now - ts, "rc": _as_int(e.get("rc"))})
+    return out
 
 
 def _is_periodic_task(name: str, triggers) -> bool:
@@ -1075,6 +1287,7 @@ def task_health_lines(
             ds_alive=ds_alive, last_run_age_s=last_run_age,
             time_limit_s=_parse_iso_duration_s(t.get("time_limit")),
             repetition_s=_min_duration_s(t.get("repetition")),
+            events=_event_ages(t.get("events"), now),
         )
         if verdict == VERDICT_OK:
             continue
@@ -1360,7 +1573,7 @@ def main(session: str | None = None) -> int:
         "port8888": lambda: _port_listening(8888),
         "port8889": lambda: _port_listening(8889),
         "health_all": _health_all,
-        "tasks": _legion_tasks,
+        "tasks": _legion_tasks_with_events,
         "last_boot": _last_boot_iso,
         "state": lambda: _http_get_json(f"{_LEGION_BASE}/api/state"),
     }, PROBE_BUDGET_S)

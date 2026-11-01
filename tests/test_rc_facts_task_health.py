@@ -46,8 +46,10 @@ file:
      finding it ENABLED is the anomaly.
 
 Also pinned: 2147946720 (0x800710E0, Win32 4320 "the operator or
-administrator has refused the request") is the signature of an
-ExecutionTimeLimit kill and is a FAILURE. The ONE narrow suppression kept
+administrator has refused the request") with no event-log evidence reads as
+an ExecutionTimeLimit kill and is a FAILURE (s147 F1: with event 153 or a
+later clean run it is a MISSED skip instead, pinned in
+tests/test_rc_facts_missed_run_skip_s147.py). The ONE narrow suppression kept
 from the old code is a currently-Running singleton daemon, where the code is
 Task Scheduler correctly refusing a DUPLICATE launch while the boot instance
 is alive.
