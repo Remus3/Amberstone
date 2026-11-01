@@ -80,9 +80,32 @@ set "RC_KEY_EC="
 :: only a runtime tools\build_python_embed.py stamped (EMBED_STAMP.json;
 :: every built bundle has one) - a hand-made python-embed can lack half the
 :: lock, so it is named and skipped, never launched.
+:: RM-1229: and only when the stamp's requirements_sha256 is the SHA-256 of
+:: THIS tree's requirements.txt - the predicate of the A45b launcher
+:: (embedFitness in rc-shell\src\launcher.js), so an embed built from another
+:: lock (its stale-lock), a stamp without a readable hash (bad-stamp) and a
+:: missing lock (no-lock) are named and skipped too. certutil hashes the lock;
+:: findstr /i matches the "requirements_sha256": "<hex>" line that
+:: build_python_embed.py writes with json.dumps(indent=2) - a compact stamp
+:: would be refused here, never wrongly taken (pinned by
+:: tests\test_batch_embed_stamp_gate_a45b.py). Accepted gap: a line match,
+:: not a JSON parse, so a HAND-FORGED stamp holding that exact line inside
+:: invalid JSON or a nested object passes here while embedFitness refuses
+:: it; the builder never writes one. Reverses if: a stamp writer other than
+:: tools\build_python_embed.py appears.
 set "EMBED_OK="
-if exist "%EMBED_PYW%" if exist "%~dp0python-embed\EMBED_STAMP.json" set "EMBED_OK=1"
-if exist "%EMBED_PYW%" if not defined EMBED_OK echo python-embed has no EMBED_STAMP.json, so it was not built by tools\build_python_embed.py - using pythonw.exe from PATH
+set "EMBED_WHY="
+set "EMBED_WANT="
+if exist "%EMBED_PYW%" if not exist "%~dp0python-embed\EMBED_STAMP.json" set "EMBED_WHY=python-embed has no EMBED_STAMP.json, so it was not built by tools\build_python_embed.py"
+if exist "%EMBED_PYW%" if not defined EMBED_WHY if not exist "%~dp0requirements.txt" set "EMBED_WHY=there is no requirements.txt to check python-embed\EMBED_STAMP.json against"
+if exist "%EMBED_PYW%" if not defined EMBED_WHY for /f "skip=1 delims=" %%H in ('%SystemRoot%\System32\certutil.exe -hashfile "%~dp0requirements.txt" SHA256 2^>nul') do if not defined EMBED_WANT set "EMBED_WANT=%%H"
+if defined EMBED_WANT set "EMBED_WANT=%EMBED_WANT: =%"
+if exist "%EMBED_PYW%" if not defined EMBED_WHY if not defined EMBED_WANT set "EMBED_WHY=certutil could not hash requirements.txt to check python-embed\EMBED_STAMP.json"
+if exist "%EMBED_PYW%" if not defined EMBED_WHY if "%EMBED_WANT:~63,1%"=="" set "EMBED_WHY=certutil could not hash requirements.txt to check python-embed\EMBED_STAMP.json"
+if exist "%EMBED_PYW%" if not defined EMBED_WHY if not "%EMBED_WANT:~64%"=="" set "EMBED_WHY=certutil could not hash requirements.txt to check python-embed\EMBED_STAMP.json"
+if exist "%EMBED_PYW%" if not defined EMBED_WHY "%SystemRoot%\System32\findstr.exe" /i /l /c:"\"requirements_sha256\": \"%EMBED_WANT%\"" "%~dp0python-embed\EMBED_STAMP.json" >nul 2>&1 && set "EMBED_OK=1"
+if exist "%EMBED_PYW%" if not defined EMBED_OK if not defined EMBED_WHY set "EMBED_WHY=python-embed\EMBED_STAMP.json does not name the SHA-256 of this tree's requirements.txt, so it was built from another lock or the stamp is unreadable"
+if defined EMBED_WHY echo %EMBED_WHY% - using pythonw.exe from PATH
 if defined EMBED_OK (
     start "" "%EMBED_PYW%" main.py
 ) else (
