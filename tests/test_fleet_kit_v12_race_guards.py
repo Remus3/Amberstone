@@ -244,5 +244,8 @@ def test_precommit_gate_sees_a_commit_run_through_the_git_lock():
 
 def test_claude_md_names_the_claims_hook_wiring():
     text = _text("CLAUDE.md")
-    assert 'python "$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_claims.py" hook' in text
+    # Kit v26 (MAIN 2026-10-31 2200): the PreToolUse claims hook runs through
+    # the nonce-checked launcher; the SubagentStop release-hook is unchanged.
+    assert 'bash "$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_hook.sh" fleet_claims.py hook' in text
+    assert 'python "$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_claims.py" hook' not in text
     assert 'python "$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_claims.py" release-hook' in text

@@ -70,19 +70,25 @@ edit. Tree-specific rules go BELOW this block, never inside it.
    say the method before running it; check for a consumer before deleting.
 10. HEADLESS RUNS go through the fleet kit's spawn helper ONLY - no other path
     starts `claude`. The kit enforces: an explicit route from
-    ~/.fleet/headless_route.json - split = the second-account proxy from the user
-    variable CLAUDE_HEADLESS_BASE_URL (registry first), single = the named
-    main-account config dir, no proxy - with that variable required in both modes
-    as the one kill switch; fail closed (a missing or invalid route or variable
-    refuses; no fallback and no automatic mode change, ever, except one: when the
-    route file arms a fallback, a 7-day usage-limit refusal moves the next spawns
-    to the other route until that limit resets - never on a proxy, auth or network
-    failure, a 5-hour limit or a usage percentage, one hop only, logged and
-    shown), no visible console, at most 120 runs per rolling 24 h, never spawn on
-    this tree's own notes or on TERMINAL/no-reply notes, lean flags (strict MCP,
-    project settings only, or bare where no floor lives in hooks), sonnet unless
-    the note orders code changes, effort low for acknowledgements, a usage line
-    per run, and the live status file `ops/loop/control/inbox_status.json`.
+    ~/.fleet/headless_route.json - an ordered list of 1 to 3 accounts, any the
+    operator picks (the interactive one included), each a proxy pin through
+    the user variable CLAUDE_HEADLESS_BASE_URL (registry first) or a named
+    account config dir (no proxy); runs use the first - with that variable
+    required for every route as the one kill switch; fail closed (a missing or
+    invalid route, entry or variable refuses; no default and no automatic
+    account change, ever, except one: when the route file arms the fallback, a
+    7-day usage-limit refusal moves the next spawns to the next listed account
+    until that limit resets - never on a proxy, auth or network failure, a
+    5-hour limit or a usage percentage, back to an account only at its reset,
+    halting at the end of the list, logged and shown), no visible console, at
+    most 120 runs per rolling 24 h per tree (a higher cap, at most 500, only
+    from the machine config ~/.fleet/lanes.json set by MAIN; a cap hit refuses
+    and is logged; a reset only on the operator's word, recorded, never
+    automatic), never spawn on this tree's own notes or on TERMINAL/no-reply
+    notes, lean flags (strict MCP, project settings only, or bare where no
+    floor lives in hooks), sonnet unless the note orders code changes, effort
+    low for acknowledgements, a usage line per run, and the live status file
+    `ops/loop/control/inbox_status.json`.
 11. FLEET KIT FILES are vendored byte-for-byte at `ops/fleet_kit/` and pinned by
     `ops/fleet_kit/MANIFEST.json`. Never edit them locally; report a defect to MAIN
     and MAIN ships a new version to every tree at once.
@@ -208,9 +214,9 @@ RC channel code: `RC`. Kit conformance: `tests/test_fleet_kit_conformance.py`. L
 
 **Session checklist (FLEET-COMMON item 13, kit v7).** Counter = the `SESSION: <n>` line in `RC-NEXT-SESSION.txt` (owner `tools/session_checklist.py`). Printers: SessionStart hook `tools/rc_facts.py` (block FIRST; the session prints it as its first chat output); `/done` (writes `SESSION: <n+1>`, runs unprompted when none remain); inbox responder `tools/inbox_responder_runner.py fire_checklist`; lane runner + loop controller write `progress/lane-<i>.json`. Source stays ASCII: emit U+2610 as `chr(0x2610)`. Console printing goes through the kit's `fleet_checklist.emit()`, never `print()`.
 
-**SUBAGENT-FIRST hook (kit v10; v11 ruling R3).** A PreToolUse hook only in the gitignored project `.claude/settings.json` (never an account settings file), matcher `Bash|PowerShell|Read|Edit|Write|Grep|Glob|NotebookEdit|MultiEdit`, timeout 10, ANCHORED command `python "$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_subagent_first.py" || true` (a cwd-relative form is drift); it refuses those tools in the interactive main thread only. Mode = first word of gitignored `ops/loop/control/subagent_first.mode` (`log`; `deny` after 3 interactive sessions with no would-deny row for undispatchable work). Headless runs are exempt only through the kit's `spawn()`, so `deny` waits until the lane workers are on it. `/done` and every slash command carry the DISPATCH block (guard `tests/test_skill_dispatch_v10.py`): the whole skill runs in ONE sub-agent and main relays only its final line.
+**SUBAGENT-FIRST hook (kit v10; v11 ruling R3).** A PreToolUse hook only in the gitignored project `.claude/settings.json` (never an account settings file), matcher `Bash|PowerShell|Read|Edit|Write|Grep|Glob|NotebookEdit|MultiEdit`, timeout 15, ANCHORED command `bash "$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_hook.sh" fleet_subagent_first.py` (kit v26 nonce-checked launcher, fails closed, no ` || true`; a cwd-relative or plain `python` form is drift); it refuses those tools in the interactive main thread only. Mode = first word of gitignored `ops/loop/control/subagent_first.mode` (`log`; `deny` after 3 interactive sessions with no would-deny row for undispatchable work). Headless runs are exempt only through the kit's `spawn()`, so `deny` waits until the lane workers are on it. `/done` and every slash command carry the DISPATCH block (guard `tests/test_skill_dispatch_v10.py`): the whole skill runs in ONE sub-agent and main relays only its final line.
 
-**RACE GUARDS (kit v12, FLEET-COMMON item 16).** Same gitignored project `.claude/settings.json`: PreToolUse matcher `Edit|Write|NotebookEdit|MultiEdit|Bash|PowerShell`, timeout 10, `python "$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_claims.py" hook || true`; SubagentStop, timeout 10, `python "$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_claims.py" release-hook || true`; mode = kit default `deny`. Every commit / push = `python ops/fleet_kit/fleet_gitlock.py run --owner <id> -- git ...`; every WHOLE suite = `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- <cmd>`; `<id>` = `<session_id>.<agent_id>`, named by the deny reason. Every slash command and loop prompt carries the RACE GUARDS block (the only guard in lane / watchdog worktrees, which carry no gitignored settings); `tests/conftest.py` installs `fleet_test_guard`. Guard `tests/test_fleet_kit_v12_race_guards.py`.
+**RACE GUARDS (kit v12, FLEET-COMMON item 16).** Same gitignored project `.claude/settings.json`: PreToolUse matcher `Edit|Write|NotebookEdit|MultiEdit|Bash|PowerShell`, timeout 15, `bash "$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_hook.sh" fleet_claims.py hook` (kit v26 launcher); SubagentStop, timeout 10, `python "$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_claims.py" release-hook || true`; mode = kit default `deny`. Every commit / push = `python ops/fleet_kit/fleet_gitlock.py run --owner <id> -- git ...`; every WHOLE suite = `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- <cmd>`; `<id>` = `<session_id>.<agent_id>`, named by the deny reason. Every slash command and loop prompt carries the RACE GUARDS block (the only guard in lane / watchdog worktrees, which carry no gitignored settings); `tests/conftest.py` installs `fleet_test_guard`. Guard `tests/test_fleet_kit_v12_race_guards.py`.
 
 **NO AI OR BOT ATTRIBUTION (kit v13, FLEET-COMMON item 17).** Tracked `.githooks/commit-msg` runs `python "ops/fleet_kit/fleet_identity.py" commit-msg "$1" || true` after RC's own Co-Authored-By strip (strips, never rejects); `.githooks/pre-push` runs `printf '%s\n' "$REFS" | python "ops/fleet_kit/fleet_identity.py" pre-push "$@" || exit 1` FIRST. The operator set is `fleet.operatorIdent` in LOCAL git config only (never a tracked file, a note or a log); no value = every push refused, so a fresh clone sets it before its first push. Commit messages carry no `Claude-Session:` or co-author line. Guard `tests/test_fleet_kit_v13_identity.py`.
 
@@ -229,6 +235,8 @@ RC channel code: `RC`. Kit conformance: `tests/test_fleet_kit_conformance.py`. L
 **KIT v24 (MAIN 2026-10-26 0315, cumulative, FLEET-COMMON item 19).** No width-dependent layout in chat (item 19). `fleet_claims` resolves a relative target against the command's EFFECTIVE cwd and claims absolute paths only; no kit line spells the sidecar root drive-rooted, so the v23 "Sidecars" allow segment left `tools/sibling_name_sweep.py`. Guard `tests/test_fleet_kit_v24.py`.
 
 **KIT v25 (MAIN 2026-10-27 2136, cumulative, LANE-CAP).** Machine config `~/.fleet/lanes.json` is MAIN's; RC never writes it. RC's lane cap is the live `lanes.lane_cap()` (kit `cap=None`), never a hard-coded 3; `queue_loop.run_loop` asks `lanes.should_yield()` between cycles and on True ends the lane (`fair_yield`), never kills; an `admission` refusal is handled like `lanes_full`. The executor slot count (`ops/loop/slots.py`, `SHARED_SHA256`) is a joint act, not raised here. Guard `tests/test_fleet_kit_v25.py`.
+
+**KIT v26 (MAIN 2026-10-31 2200, cumulative).** Run cap per tree: 120 runs per rolling 24 h unless MAIN sets `runs_cap` for RC in `~/.fleet/lanes.json`; the ONLY reset is `python ops/fleet_kit/fleet_headless.py budget reset --code RC --reason "<operator words>"`, interactive, on the operator's word - never hand-edit `headless_budget.json`, never reset automatically. The headless route may be a version-2 ordered list of 1-3 accounts; the kit is its only writer (RC never writes `~/.fleet/*`). The two kit PreToolUse hooks run through the nonce-checked launcher `ops/fleet_kit/fleet_hook.sh` (timeout 15, no ` || true`, fails closed exit 2), in the gitignored `.claude/settings.json` and the tracked template `ops/claude_settings.example.json`; SubagentStop and Stop lines unchanged. Guard `tests/test_fleet_kit_v26.py`.
 
 **PYTEST BASETEMP (MAIN FIX TEMP-1, 2026-10-09).** Never pass `--basetemp` inside a session scratchpad: use the default tmp_path (`pytest.ini`: retention `failed`, count `1`), or, if a run truly needs one, the ONE fixed `<scratchpad>/pytest-basetemp`. Every session, lane and loop prompt follows this; the rootdir `conftest.py` refuses any other scratchpad basetemp. Guard `tests/test_pytest_basetemp_scratchpad_temp1.py`.
 

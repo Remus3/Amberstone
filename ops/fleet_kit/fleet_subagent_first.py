@@ -16,7 +16,12 @@ never the account settings: PreToolUse, matcher
 Bash|PowerShell|Read|Edit|Write|Grep|Glob|NotebookEdit|MultiEdit, timeout 10,
 command ANCHORED to the project dir so a session cd cannot break it:
     python "$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_subagent_first.py"
-The same string followed by ` || true` is also conformant. The v10
+The same string followed by ` || true` is also conformant.
+v26 (ruling CS-815): the canonical form is the launcher, timeout 15, no
+` || true`:
+    bash "$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_hook.sh" fleet_subagent_first.py
+which appends `--fleet-nonce N`; this script then prints `FLEET-NONCE N` as
+its last stdout line on every exit path. The v10
 cwd-relative form exits 2 from any other cwd, which blocks every tool.
 
 Reads the PreToolUse input on stdin. The Claude Code hooks reference
@@ -131,14 +136,30 @@ def run(stdin_text, env=None, clock=None):
     return ""
 
 
-def main():
+def take_nonce(argv):
+    """v26 (CS-815): (argv without `--fleet-nonce N`, N or None)."""
+    argv = list(argv)
+    if "--fleet-nonce" in argv:
+        k = argv.index("--fleet-nonce")
+        if k + 1 < len(argv):
+            return argv[:k] + argv[k + 2:], argv[k + 1]
+    return argv, None
+
+
+def main(argv=None):
+    _rest, nonce = take_nonce(sys.argv[1:] if argv is None else argv)
     try:
-        out = run(sys.stdin.read())
-    except Exception:  # never fail closed
+        try:
+            out = run(sys.stdin.read())
+        except Exception:  # never fail closed in-process; the launcher proves life
+            return 0
+        if out:
+            sys.stdout.write(out + "\n")
         return 0
-    if out:
-        sys.stdout.write(out + "\n")
-    return 0
+    finally:
+        if nonce is not None:  # v26: the launcher's proof line, on every exit path
+            sys.stdout.write(f"FLEET-NONCE {nonce}\n")
+            sys.stdout.flush()
 
 
 if __name__ == "__main__":

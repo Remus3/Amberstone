@@ -39,8 +39,10 @@ KIT = ROOT / "ops" / "fleet_kit"
 # f5d82861...11ba527c, block 5e8fa06f...bbc663).
 # Kit v25 (MAIN 2026-10-27 2136 ORDER, LANE-CAP) superseded v24 (manifest
 # a41ff08e...c8804a7d); FLEET-COMMON block unchanged.
-V15_MANIFEST_SHA256 = "fa04c87ceca7c1e08f853d0447a439143f317fa21b6434c1dcefe1e5d25c1bea"
-COMMON_BLOCK_SHA256 = "886c5f8b1a86928f91412d2800e9dfef3dd8e5b9158d14a06e65d06c22964800"
+# Kit v26 (MAIN 2026-10-31 2200 ORDER, cumulative) superseded v25 (manifest
+# fa04c87c...25c1bea); the pins below now hold the v26 bytes.
+V15_MANIFEST_SHA256 = "45b5088e202a0c0c453fb1dc4ca8969783563d60d3b7b02e8d2c5c547fe4edae"
+COMMON_BLOCK_SHA256 = "cacc3ca30125d184e07612d232c2ba3f76338d5ea987d23e7e2addcb74e77dd0"
 BG_OFF = "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS"
 FAKE_URL = "http://127.0.0.1:9"
 
@@ -78,8 +80,8 @@ def test_the_vendored_manifest_is_the_v15_order_bytes():
     raw = (KIT / "MANIFEST.json").read_bytes()
     assert hashlib.sha256(raw).hexdigest() == V15_MANIFEST_SHA256
     man = json.loads(raw.decode("ascii"))
-    assert man["version"] == 25
-    assert _load("fleet_headless").KIT_VERSION == 25
+    assert man["version"] == 26
+    assert _load("fleet_headless").KIT_VERSION == 26
     for name, want in man["files"].items():
         assert hashlib.sha256((KIT / name).read_bytes()).hexdigest() == want, name
 

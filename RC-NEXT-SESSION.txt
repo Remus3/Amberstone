@@ -77,7 +77,9 @@ IN-FLIGHT (never stop, kill or edit it to look at it; read its files):
 - Its lane-leak alarm (a lane ref on a remote, or a lane-only commit on a remote-tracking ref, writes
   S144_LANES_STOP): re-read its log after this /done's push.
 - Budget: per tree ops/loop/control/headless_budget.json, cap 120 / 24 h; the reset archives and the
-  restore recipe are VERBATIM in A31 block 4.
+  restore recipe are VERBATIM in A31 block 4. Since kit v26 the ONLY reset is
+  `python ops/fleet_kit/fleet_headless.py budget reset --code RC --reason "<operator words>"`
+  (interactive, on the operator's word); never hand-edit the budget file again.
 - The RC app: electron pid 9480 -> service host pid 4796 (all 5 services); RC pid 18724 after the L8
   restart. Quitting the app stops all of it: do not quit it.
 

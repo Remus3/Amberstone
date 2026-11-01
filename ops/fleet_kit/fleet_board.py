@@ -36,7 +36,19 @@ to push)`. `pushed` and `account` are kept as no-ops that print one line.
 ops/status_board.json is no longer read except its optional "code" (the
 page title); a tree may leave the file or delete it.
 
-Standalone: imports nothing from the rest of the kit. ASCII source.
+v26: task IDs up to ID_MAX (48) chars, shared with fleet_checklist (VW FIX
+0612: a 17+ char ID was silently dropped); a box line that is not a task row
+and not the /done box FAILS LOUDLY (exit 2, nothing written); a non-empty
+checklist that parses to no task and no /done box is refused and leaves
+state.json untouched (KIT-BOARD-EMPTY - stdin is read as UTF-8 bytes, so a
+cp1252 console no longer turns the box into mojibake); `--final` moves only
+the rows passed as done (state done) to done and keeps every carried row
+open (RC 2128 item 4); the page gains a Lanes card from fleet_lanes status
+(holders + queue, local board only; KIT-BOARD-LANES).
+
+Standalone: imports nothing from the rest of the kit at import time (the
+Lanes card loads the sibling fleet_lanes.py by path, and a failure there only
+drops the card). ASCII source.
 """
 
 import argparse
@@ -56,7 +68,12 @@ GROUPS = ("running", "operator", "next", "done")
 DONE_KEEP = 30
 PROGRESS_MAX_AGE_S = 6 * 3600
 TEXT_MAX = 160
-_LINE = re.compile(r"^(?:\u2610|\[ \])\s+\+?([A-Za-z0-9][A-Za-z0-9._-]{0,15}):\s+(.+?)\s*$")
+ID_MAX = 48  # v26: = fleet_checklist.ID_MAX (VW FIX 0612)
+_LINE = re.compile(r"^(?:\u2610|\[ \])\s+\+?([A-Za-z0-9][A-Za-z0-9._-]{0,"
+                   + str(ID_MAX - 1) + r"}):\s+(.+?)\s*$")
+_BOX = re.compile(r"^(?:\u2610|\[ \])")
+_DONE_BOX = re.compile(r"^(?:\u2610|\[ \])\s+/done\b")
+_DONE_STATES = ("done", "complete", "completed")
 _TAIL = re.compile(r"^(.*?)\s+\(([^()]*)\)$")
 _HEAD = re.compile(r"^Session\s+(\d+)\s+checklist")
 # v20 (CHECKLIST-ETA-CLOCK): `38% ~20m of 32m [2:27PM]` is the ETA part too.
@@ -105,18 +122,31 @@ def fmt_eta(eta_s):
     return f"~{round(s / 3600)}h"
 
 
-def parse_checklist(text):
+class ChecklistError(ValueError):
+    """v26: a checklist the board cannot trust - nothing is written."""
+
+
+def parse_checklist(text, strict=False):
     """(session or None, rows) from a printed item-13 checklist. The /done box,
-    the header and the trailing note line are not rows."""
-    session, rows = None, []
+    the header and the trailing note line are not rows. v26 strict=True (the
+    CLI): a box line that is neither a task row nor the /done box raises
+    ChecklistError, and so does non-empty text with no task row and no /done
+    box (a mis-decoded checklist must never mark every open task done)."""
+    session, rows, done_box = None, [], False
     for raw in str(text).splitlines():
         s = raw.strip()
         m = _HEAD.match(s)
         if m:
             session = int(m.group(1))
             continue
+        if _DONE_BOX.match(s):
+            done_box = True
+            continue
         m = _LINE.match(s)
         if not m:
+            if strict and _BOX.match(s):
+                raise ChecklistError(f"checklist line is not `<box> <ID>: <task>` (ID 1-{ID_MAX}"
+                                     f" of [A-Za-z0-9._-]): {_clip(s)[:80]}")
             continue
         rid, rest = m.group(1), m.group(2)
         state = eta = None
@@ -129,6 +159,9 @@ def parse_checklist(text):
                 parts = parts[:-1]
             state = ", ".join(parts) or None
         rows.append({"id": rid, "task": rest, "state": state, "eta": eta})
+    if strict and not rows and not done_box and str(text).strip():
+        raise ChecklistError("checklist has no task row and no /done box - refused, "
+                             "nothing written (pipe it as UTF-8 with the U+2610 box)")
     return session, rows
 
 
@@ -222,12 +255,13 @@ def build(session, rows, state, final=False, progress=()):
         if rid not in now_ids and rid not in done_ids:
             done.append({"id": rid, "task": task, "detail": ""})
             done_ids.add(rid)
-    if final:
-        for r in rows:
-            if r["id"] not in done_ids:
-                done.append({"id": r["id"], "task": _clip(r["task"]), "detail": ""})
-                done_ids.add(r["id"])
-        rows = []
+    # v26 (RC 2128 item 4): only a row passed as done moves to done - with or
+    # without --final; a carried, not-acted row stays open on the final board.
+    for r in rows:
+        if str(r.get("state") or "").strip().lower() in _DONE_STATES \
+                and r["id"] not in done_ids:
+            done.append({"id": r["id"], "task": _clip(r["task"]), "detail": ""})
+            done_ids.add(r["id"])
     done = done[-DONE_KEEP:]
     out = []
     seqs = {g: 0 for g in GROUPS}
@@ -312,7 +346,27 @@ def _esc(text):
             .replace(">", "&gt;").replace('"', "&quot;"))
 
 
-def page_html(title, rows, updated):
+def lane_lines(environ=None):
+    """v26 KIT-BOARD-LANES: the machine lane holders + queue as one-line items
+    from the sibling fleet_lanes.py (status_lines), or [] when it cannot be
+    read. Never under pytest unless a test injects lanes= into render()."""
+    env = os.environ if environ is None else environ
+    if env.get("PYTEST_CURRENT_TEST"):
+        return []
+    try:
+        import importlib.util
+        here = Path(__file__).resolve().with_name("fleet_lanes.py")
+        spec = importlib.util.spec_from_file_location("_board_lanes_card", str(here))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        doc = mod.status(admit=lambda: {"free_ram_mb": None, "cpu_pct": None})
+        return [ln for ln in mod.status_lines(doc)
+                if ln.startswith(("free slots:", "- slot ", "- waiting:"))]
+    except Exception:  # noqa: BLE001 - the card is optional; the board still renders
+        return []
+
+
+def page_html(title, rows, updated, lanes=()):
     """board.html text: static, self-contained, ASCII (rows as build() made them)."""
     t = _esc(_clip(title))
     counts = {g: 0 for g in GROUPS}
@@ -346,11 +400,18 @@ def page_html(title, rows, updated):
                        + _esc(r["state"]) + "</span></td><td class=\"detail\">"
                        + _esc(r["detail"]) + "</td></tr>")
         out.append("</tbody></table></div></article>")
-    out.extend(("</section>", "</main>", "</body>", "</html>"))
+    out.append("</section>")
+    if lanes:
+        out.append("<section class=\"card\" aria-label=\"Lanes\"><h2>Lanes</h2>"
+                   "<p class=\"note\">Machine lane slots and the queue (fleet_lanes status)."
+                   "</p><ul>")
+        out.extend("<li class=\"detail\">" + _esc(_clip(ln)) + "</li>" for ln in lanes)
+        out.append("</ul></section>")
+    out.extend(("</main>", "</body>", "</html>"))
     return "\n".join(out) + "\n"
 
 
-def render(root, session, rows, final=False, environ=None, clock=time.time):
+def render(root, session, rows, final=False, environ=None, clock=time.time, lanes=None):
     """Write status.json, state.json and board.html locally; return a summary
     dict. Nothing is pushed anywhere (v23)."""
     if is_headless(environ):
@@ -369,9 +430,10 @@ def render(root, session, rows, final=False, environ=None, clock=time.time):
         f" - session {int(session)}"
     _write(sdir / "status.json", dumps_rows(out))
     _write(sdir / "state.json", json.dumps(new_state, indent=1, sort_keys=True) + "\n")
-    _write(sdir / HTML_NAME, page_html(title, out, at))
+    lns = list(lane_lines(environ) if lanes is None else lanes)
+    _write(sdir / HTML_NAME, page_html(title, out, at, lns))
     return {"rendered": True, "file": str(sdir / "status.json"),
-            "html": str(sdir / HTML_NAME), "rows": len(out)}
+            "html": str(sdir / HTML_NAME), "rows": len(out), "lanes": len(lns)}
 
 
 NL = chr(10)
@@ -394,7 +456,8 @@ def main(argv=None):
         r.add_argument("--session", type=int)
         r.add_argument("--checklist", help="checklist text file (default stdin)")
         r.add_argument("--progress", help="a progress file whose 'checklist' rows to use")
-        r.add_argument("--final", action="store_true", help="/done: every task done")
+        r.add_argument("--final", action="store_true",
+                       help="/done render (v26: only rows passed as done move to done)")
     p = sub.add_parser("pushed", help="v23 no-op (the board is local only)")
     p.add_argument("--root", default=".")
     p.add_argument("--version", type=int)
@@ -406,12 +469,25 @@ def main(argv=None):
     if a.cmd in ("pushed", "account"):
         print("v23: the status board is local only; nothing to record")
         return 0
+    if is_headless():  # v26: a headless run renders nothing, before any parse
+        plan = {"rendered": False, "reason": "headless"}
+        if a.cmd == "calls":
+            sys.stdout.write(calls_text(plan))
+        else:
+            print(json.dumps(plan, sort_keys=True))
+        return 0
     if a.progress:
         d = _load(a.progress, {})
         session, rows = a.session, rows_from_progress_checklist(d.get("checklist"))
     else:
-        text = Path(a.checklist).read_text(encoding="utf-8") if a.checklist else sys.stdin.read()
-        session, rows = parse_checklist(text)
+        # v26 KIT-BOARD-EMPTY: bytes decoded as UTF-8, never the console code page.
+        raw = Path(a.checklist).read_bytes() if a.checklist else sys.stdin.buffer.read()
+        text = raw.decode("utf-8", errors="replace").lstrip("\ufeff")
+        try:
+            session, rows = parse_checklist(text, strict=True)
+        except ChecklistError as exc:
+            print(json.dumps({"rendered": False, "reason": str(exc)}))
+            return 2
         session = a.session if a.session is not None else session
     if session is None:
         print(json.dumps({"rendered": False, "reason": "no session number"}))

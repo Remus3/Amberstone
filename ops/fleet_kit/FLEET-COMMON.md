@@ -63,19 +63,25 @@ edit. Tree-specific rules go BELOW this block, never inside it.
    say the method before running it; check for a consumer before deleting.
 10. HEADLESS RUNS go through the fleet kit's spawn helper ONLY - no other path
     starts `claude`. The kit enforces: an explicit route from
-    ~/.fleet/headless_route.json - split = the second-account proxy from the user
-    variable CLAUDE_HEADLESS_BASE_URL (registry first), single = the named
-    main-account config dir, no proxy - with that variable required in both modes
-    as the one kill switch; fail closed (a missing or invalid route or variable
-    refuses; no fallback and no automatic mode change, ever, except one: when the
-    route file arms a fallback, a 7-day usage-limit refusal moves the next spawns
-    to the other route until that limit resets - never on a proxy, auth or network
-    failure, a 5-hour limit or a usage percentage, one hop only, logged and
-    shown), no visible console, at most 120 runs per rolling 24 h, never spawn on
-    this tree's own notes or on TERMINAL/no-reply notes, lean flags (strict MCP,
-    project settings only, or bare where no floor lives in hooks), sonnet unless
-    the note orders code changes, effort low for acknowledgements, a usage line
-    per run, and the live status file `ops/loop/control/inbox_status.json`.
+    ~/.fleet/headless_route.json - an ordered list of 1 to 3 accounts, any the
+    operator picks (the interactive one included), each a proxy pin through
+    the user variable CLAUDE_HEADLESS_BASE_URL (registry first) or a named
+    account config dir (no proxy); runs use the first - with that variable
+    required for every route as the one kill switch; fail closed (a missing or
+    invalid route, entry or variable refuses; no default and no automatic
+    account change, ever, except one: when the route file arms the fallback, a
+    7-day usage-limit refusal moves the next spawns to the next listed account
+    until that limit resets - never on a proxy, auth or network failure, a
+    5-hour limit or a usage percentage, back to an account only at its reset,
+    halting at the end of the list, logged and shown), no visible console, at
+    most 120 runs per rolling 24 h per tree (a higher cap, at most 500, only
+    from the machine config ~/.fleet/lanes.json set by MAIN; a cap hit refuses
+    and is logged; a reset only on the operator's word, recorded, never
+    automatic), never spawn on this tree's own notes or on TERMINAL/no-reply
+    notes, lean flags (strict MCP, project settings only, or bare where no
+    floor lives in hooks), sonnet unless the note orders code changes, effort
+    low for acknowledgements, a usage line per run, and the live status file
+    `ops/loop/control/inbox_status.json`.
 11. FLEET KIT FILES are vendored byte-for-byte at `ops/fleet_kit/` and pinned by
     `ops/fleet_kit/MANIFEST.json`. Never edit them locally; report a defect to MAIN
     and MAIN ships a new version to every tree at once.

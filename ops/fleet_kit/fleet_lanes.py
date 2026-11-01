@@ -85,6 +85,10 @@ memory or above cpu_ceiling_pct machine CPU (CpuMeter from fleet_suite_gate);
 an unreadable reading admits (like the suite gate); skipped under pytest
 unless admit= is passed. CLI `status` (and status()/status_lines()) lists
 slot holders, the queue, the config and the admission readings.
+RUNS CAP (v26, ruling 2026-10-31 KIT-VW-RUNCAP): key runs_cap in the same
+file, {tree code: int}, is each tree's headless run cap per rolling 24 h
+(runs_cap(code); fleet_headless reads it on every spawn). No entry or a bad
+value = 120, logged; hard ceiling 500. `status` prints every effective cap.
 
 Pure stdlib (psutil used only if present). No machine path, account id or repo
 name appears in this file; the governor root derives from %ProgramData%.
@@ -93,6 +97,7 @@ name appears in this file; the governor root derives from %ProgramData%.
 import contextlib
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -137,6 +142,15 @@ CONFIG_BOUNDS = {"governor_width": (int, 1, 32), "lane_cap_max": (int, 1, 32),
 RECOMMENDED_CONFIG = {"governor_width": 7, "lane_cap_max": 7, "ram_floor_mb": 4096,
                       "cpu_ceiling_pct": 90.0}
 _LOGGED = {}
+# v26 KIT-VW-RUNCAP (ruling docs/rulings/2026-10-31-kit-vw-runcap.md): the
+# per-tree headless run cap. Key "runs_cap" = {tree code: int}; a tree without
+# an entry, or with a value that is not an int in 1..RUNS_CAP_MAX, gets
+# RUNS_CAP_DEFAULT (a bad value is logged and never raises a cap). Only MAIN
+# writes the file; a tree never sets its own cap.
+RUNS_CAP_KEY = "runs_cap"
+RUNS_CAP_DEFAULT = 120
+RUNS_CAP_MAX = 500
+_CODE_RE = re.compile(r"^[A-Z][A-Z0-9]{0,7}$")
 
 
 def config_path(environ=None):
@@ -183,6 +197,7 @@ def load_config(path=False, environ=None):
     if path is False:
         path = config_path(environ)
     cfg = dict(CONFIG_DEFAULTS, source="defaults", errors=[])
+    cfg[RUNS_CAP_KEY] = {}
     if path is None:
         return cfg
     path = Path(path)
@@ -204,6 +219,9 @@ def load_config(path=False, environ=None):
         return cfg
     errors = []
     for key, value in doc.items():
+        if key == RUNS_CAP_KEY:
+            cfg[RUNS_CAP_KEY] = _runs_cap_map(value, errors)
+            continue
         if key not in CONFIG_DEFAULTS:
             errors.append(f"unknown key {str(key)[:40]!r} ignored")
             continue
@@ -216,6 +234,39 @@ def load_config(path=False, environ=None):
     if errors:
         _log_config(path, errors)
     return cfg
+
+
+def _runs_cap_map(value, errors):
+    """The valid {CODE: cap} entries of a runs_cap value; every bad entry is
+    one error (that tree then gets RUNS_CAP_DEFAULT)."""
+    if not isinstance(value, dict):
+        errors.append(f"runs_cap={str(value)[:40]!r} not an object, default "
+                      f"{RUNS_CAP_DEFAULT} for every tree")
+        return {}
+    out = {}
+    for code, cap in value.items():
+        good = (isinstance(cap, int) and not isinstance(cap, bool)
+                and 1 <= cap <= RUNS_CAP_MAX)
+        if not isinstance(code, str) or not _CODE_RE.match(code) or not good:
+            errors.append(f"runs_cap {str(code)[:12]!r}={str(cap)[:20]!r} invalid, "
+                          f"default {RUNS_CAP_DEFAULT}")
+            continue
+        out[code] = cap
+    return out
+
+
+def runs_cap(code, config=None):
+    """v26: the effective headless run cap per rolling 24 h for tree `code`:
+    its machine-config entry (1..RUNS_CAP_MAX), else RUNS_CAP_DEFAULT. Never
+    raises; never above RUNS_CAP_MAX."""
+    try:
+        cfg = load_config() if config is None else config
+        cap = (cfg.get(RUNS_CAP_KEY) or {}).get(str(code or "").upper())
+    except Exception:  # noqa: BLE001 - the floor never fails open
+        return RUNS_CAP_DEFAULT
+    if isinstance(cap, int) and not isinstance(cap, bool) and 1 <= cap <= RUNS_CAP_MAX:
+        return cap
+    return RUNS_CAP_DEFAULT
 
 
 def _cfg(config):
@@ -1178,7 +1229,12 @@ def status(root=None, trees=None, admit=None, config=None, now=None):
                       "pid": rec.get("pid"), "since": _iso(ts), "cap": rec.get("cap"),
                       "waited_s": round(now - ts, 1) if isinstance(ts, (int, float)) else None})
     running = sum(1 for h in holders if h["state"] == RUNNING)
+    caps = dict(cfg.get(RUNS_CAP_KEY) or {})
+    for code in (trees or {}):
+        caps.setdefault(str(code), runs_cap(code, cfg))
     out = {"config": {k: cfg[k] for k in (*CONFIG_DEFAULTS, "source", "errors")},
+           "runs_cap": {"default": RUNS_CAP_DEFAULT, "max": RUNS_CAP_MAX,
+                        "trees": {c: caps[c] for c in sorted(caps)}},
            "recommended": dict(RECOMMENDED_CONFIG),
            "free_slots": max(0, cfg["governor_width"] - running),
            "holders": holders, "queue": queue,
@@ -1206,6 +1262,9 @@ def status_lines(doc):
     cpu = "?" if a["cpu_pct"] is None else f"{a['cpu_pct']:.0f} percent"
     lines.append(f"admission: {'admit' if a['admit'] else 'refuse - ' + a['reason']}, "
                  f"free ram {ram}, cpu {cpu}")
+    rc = doc.get("runs_cap") or {"default": RUNS_CAP_DEFAULT, "trees": {}}
+    lines.append(f"runs cap: default {rc['default']} per 24 h, max {rc.get('max', RUNS_CAP_MAX)}")
+    lines += [f"- {c} runs cap: {n}" for c, n in rc["trees"].items()]
     lines.append(f"free slots: {doc['free_slots']}")
     for h in doc["holders"]:
         lane = "" if h["lane_index"] is None else f" lane {h['lane_index']}"

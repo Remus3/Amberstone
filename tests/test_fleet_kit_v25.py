@@ -36,8 +36,11 @@ import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 KIT = ROOT / "ops" / "fleet_kit"
-V25_MANIFEST_SHA256 = "fa04c87ceca7c1e08f853d0447a439143f317fa21b6434c1dcefe1e5d25c1bea"
-V25_COMMON_BLOCK_SHA256 = "886c5f8b1a86928f91412d2800e9dfef3dd8e5b9158d14a06e65d06c22964800"
+# Kit v26 (MAIN 2026-10-31 2200 ORDER, cumulative) superseded the v25 bytes
+# (manifest fa04c87c...25c1bea, 23 files); step 1 now pins the v26 bytes, the
+# v25 behaviours below still hold. tests/test_fleet_kit_v26.py pins what v26 adds.
+V25_MANIFEST_SHA256 = "45b5088e202a0c0c453fb1dc4ca8969783563d60d3b7b02e8d2c5c547fe4edae"
+V25_COMMON_BLOCK_SHA256 = "cacc3ca30125d184e07612d232c2ba3f76338d5ea987d23e7e2addcb74e77dd0"
 END = "<!-- FLEET-COMMON END -->"
 
 lanes = importlib.import_module("ops.loop.lanes")
@@ -86,10 +89,10 @@ def test_the_vendored_kit_is_the_v25_order_bytes_and_conforms():
     raw = (KIT / "MANIFEST.json").read_bytes()
     assert hashlib.sha256(raw).hexdigest() == V25_MANIFEST_SHA256
     man = json.loads(raw.decode("ascii"))
-    assert man["version"] == 25 and len(man["files"]) == 23
+    assert man["version"] == 26 and len(man["files"]) == 24
     assert man["common_block_sha256"] == V25_COMMON_BLOCK_SHA256
     fh = _load("fleet_headless")
-    assert (fh.KIT_VERSION, fh.KIT_PATCH) == (25, 0)
+    assert (fh.KIT_VERSION, fh.KIT_PATCH) == (26, 0)
     for name, want in man["files"].items():
         assert hashlib.sha256((KIT / name).read_bytes()).hexdigest() == want, name
     assert fh.conformance(ROOT) == []

@@ -63,16 +63,18 @@ def test_the_helpers_are_the_vendored_kit():
     # Kit v23 (MAIN 2026-10-25 1926): same 23-file set, write_progress unchanged.
     # Kit v24 (MAIN 2026-10-26 0315): same 23-file set, write_progress unchanged.
     # Kit v25 (MAIN 2026-10-27 2136): same 23-file set, write_progress unchanged.
-    assert lp.fleet_headless.KIT_VERSION == 25
+    # Kit v26 (MAIN 2026-10-31 2200): adds fleet_hook.sh (24 files),
+    # write_progress unchanged.
+    assert lp.fleet_headless.KIT_VERSION == 26
 
 
 def test_the_vendored_kit_is_v15_with_its_twenty_two_file_set():
     man = json.loads((ROOT / "ops/fleet_kit/MANIFEST.json").read_text(encoding="ascii"))
-    assert man["version"] == 25
+    assert man["version"] == 26
     assert sorted(man["files"]) == sorted([
         "FLEET-COMMON.md", "LICENSE", "NOTICE", "cli_display.json", "fleet_board.py",
         "fleet_checklist.py", "fleet_claims.py", "fleet_done.py",
-        "fleet_gitlock.py", "fleet_headless.py", "fleet_identity.py",
+        "fleet_gitlock.py", "fleet_headless.py", "fleet_hook.sh", "fleet_identity.py",
         "fleet_inbox.py", "fleet_lanes.py", "fleet_rewrite.py", "fleet_secrets.py",
         "fleet_statusline.js", "fleet_subagent_first.py",
         "fleet_subagent_status.js", "fleet_suite_gate.py",

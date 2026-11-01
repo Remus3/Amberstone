@@ -59,7 +59,8 @@ TASK_MAX = 120
 STATE_MAX = 40
 ROWS_MAX = 20
 PENDING = "pending"
-_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,15}$")
+ID_MAX = 48  # v26 (VW FIX 0612): = fleet_board.ID_MAX, was 16
+_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0," + str(ID_MAX - 1) + r"}$")
 
 
 def lane_task(index):
@@ -161,7 +162,7 @@ def item(id, task, state=None, eta_s=None, pct=None, started=None):  # noqa: A00
     """One validated checklist row {id, task, state, eta_s}, plus "pct" and
     "started" (epoch seconds) when given (v20)."""
     if not isinstance(id, str) or not _ID.match(id):
-        raise ValueError(f"checklist id {id!r} must be 1-16 chars [A-Za-z0-9._-]")
+        raise ValueError(f"checklist id {id!r} must be 1-{ID_MAX} chars [A-Za-z0-9._-]")
     if not isinstance(task, str) or not task.strip() or "\n" in task or "\r" in task:
         raise ValueError(f"task for {id} must be one non-empty line")
     task = task.strip()

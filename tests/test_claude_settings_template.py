@@ -8,8 +8,9 @@ gitignored per-host files, so the hook wiring could not be reproduced from git
 RC hook lines run `"$CLAUDE_PROJECT_DIR/tools/<hook>.py"` under ONE documented
 interpreter (`$LOCALAPPDATA/Programs/Python/Python314/`, the canonical
 interpreter of docs/OPERATIONS.md); the fleet-kit lines stay in the exact form
-CLAUDE.md prescribes (kit v11 ruling R3 / kit v12), which is why item 16 is
-DECLINED rather than fixed here.
+CLAUDE.md prescribes (kit v11 ruling R3 / kit v12; since kit v26 the two
+PreToolUse lines run through the fail-closed launcher fleet_hook.sh), which is
+why item 16 was DECLINED here and closed by the kit instead.
 
 The last two tests read the live gitignored files when they exist (skip in a
 fresh clone, a worktree or CI) and hold them to the same no-inert-key rule.
@@ -54,7 +55,7 @@ _RC_LINE = re.compile(
     r'^"\$LOCALAPPDATA/Programs/Python/Python314/pythonw?\.exe" '
     r'"\$CLAUDE_PROJECT_DIR/(tools|ops/fleet_kit)/[A-Za-z0-9_]+\.py"( .*)?$'
 )
-_SCRIPT = re.compile(r'\$CLAUDE_PROJECT_DIR/([A-Za-z0-9_./-]+\.py)')
+_SCRIPT = re.compile(r'\$CLAUDE_PROJECT_DIR/([A-Za-z0-9_./-]+\.(?:py|sh))')
 _EDIT_TOOLS = "Edit|Write|MultiEdit|NotebookEdit"
 
 
@@ -83,10 +84,11 @@ def _all_keys(node) -> set[str]:
 
 
 def _r3_kit_lines() -> set[str]:
-    """The kit hook commands CLAUDE.md quotes verbatim (ruling R3 form)."""
+    """The kit hook commands CLAUDE.md quotes verbatim (ruling R3 form, and
+    since kit v26 the `bash .../fleet_hook.sh <script>` launcher form)."""
     text = CLAUDE_MD.read_text(encoding="utf-8")
     return set(re.findall(
-        r'`(python "\$CLAUDE_PROJECT_DIR/ops/fleet_kit/[^`]+)`', text))
+        r'`((?:python|bash) "\$CLAUDE_PROJECT_DIR/ops/fleet_kit/[^`]+)`', text))
 
 
 # --------------------------------------------------------------- the template
@@ -185,15 +187,17 @@ CONTEXT_EVENTS = {"PreToolUse", "PostToolUse", "SessionStart", "UserPromptSubmit
 
 #: Measured with a broken interpreter path (2026-10-23, Git Bash and POSIX
 #: sh): (exit code, stdout) of every hook line this tail does NOT cover.
-#: Kit lines: item 16 DECLINED - the kit owns that `|| true` form (CLAUDE.md
-#: ruling R3 / kit v12) and its silence is the known cost docs/OPERATIONS.md
-#: records; a change ships only as a kit version. Reverses if: MAIN ships one.
+#: Kit lines: the kit owns their form. Kit v26 (MAIN 2026-10-31 2200) moved
+#: the two PreToolUse lines to the nonce-checked launcher fleet_hook.sh with no
+#: `|| true`; the SubagentStop release-hook keeps the ruling R3 / kit v12
+#: `|| true` form. Measured with `python` off PATH (Git Bash, 2026-10-31):
+#: the launcher prints one stderr line and exits 2 = block, fail CLOSED,
+#: where the old form exited 0 in silence (tests/test_fleet_kit_v26.py).
 #: The Stop claim gate exits 127 (a non-blocking "Stop hook error" row, never
 #: a context line, see CONTEXT_EVENTS); fleet_done's stop-hook keeps the kit
 #: contract "silent, never additionalContext or systemMessage".
 UNCOVERED_OUTCOME = {
-    ("PreToolUse", "ops/fleet_kit/fleet_subagent_first.py"): (0, ""),
-    ("PreToolUse", "ops/fleet_kit/fleet_claims.py"): (0, ""),
+    ("PreToolUse", "ops/fleet_kit/fleet_hook.sh"): (2, ""),
     ("SubagentStop", "ops/fleet_kit/fleet_claims.py"): (0, ""),
     ("Stop", "tools/stop_claim_gate.py"): (127, ""),
     ("Stop", "ops/fleet_kit/fleet_done.py"): (0, ""),

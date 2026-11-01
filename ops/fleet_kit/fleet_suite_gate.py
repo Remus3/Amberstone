@@ -95,6 +95,9 @@ v18 RM737-GATE (ruling MAIN docs/rulings/2026-10-10-rc-rm737-memory-gate.md):
      names "commit" and the shortfall. The
      WAIT_S fail-closed timeout still applies. Where commit cannot be read
      (POSIX, an API error) admission is a no-op.
+     v26 KIT-GATE-CMD-SPLIT: a (tree, cmd) with fewer than COMMIT_MIN_RUNS
+     sampled runs takes the median of the TREE's last COMMIT_WINDOW sampled
+     regular runs (any command) before the default.
 KIT-GATE-HOL (FIX, train-exempt; MAIN ROADMAP S49): head-of-line. A waiter
 short of commit used to block the whole FIFO even with a slot free (2026-10-18:
 lane-eligible LW and MAIN runs waited 827-1477 s behind an RC -n 8 suite at
@@ -942,11 +945,17 @@ def commit_margin_mb(env=None, limit=None):
 def required_commit_mb(d, tree, chash, window=COMMIT_WINDOW, min_runs=COMMIT_MIN_RUNS,
                        limit=None):
     """Median peak_commit_mb of the (tree, cmd)'s last `window` sampled runs
-    (at least min_runs), else COMMIT_DEFAULT_MB capped at limit /
+    (at least min_runs); v26 KIT-GATE-CMD-SPLIT: else the median of the same
+    TREE's last `window` sampled regular (non-lane) runs of any command, so a
+    re-spelled command is not admitted at the default when the tree's suites
+    are known to peak higher; else COMMIT_DEFAULT_MB capped at limit /
     COMMIT_DEFAULT_DIV (v21 KIT-COMMIT-SCALE)."""
-    peaks = [float(r["peak_commit_mb"]) for r in read_durations(d)
-             if r.get("tree") == tree and r.get("cmd") == chash
-             and isinstance(r.get("peak_commit_mb"), (int, float))][-window:]
+    rows = [r for r in read_durations(d)
+            if r.get("tree") == tree and isinstance(r.get("peak_commit_mb"), (int, float))
+            and not isinstance(r.get("peak_commit_mb"), bool)]
+    peaks = [float(r["peak_commit_mb"]) for r in rows if r.get("cmd") == chash][-window:]
+    if len(peaks) < min_runs:
+        peaks = [float(r["peak_commit_mb"]) for r in rows if not r.get("lane")][-window:]
     if len(peaks) < min_runs:
         return float(_scaled(COMMIT_DEFAULT_MB, limit, COMMIT_DEFAULT_DIV))
     peaks.sort()

@@ -32,8 +32,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python \"$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_subagent_first.py\" || true",
-            "timeout": 10
+            "command": "bash \"$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_hook.sh\" fleet_subagent_first.py",
+            "timeout": 15
           }
         ]
       },
@@ -42,8 +42,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python \"$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_claims.py\" hook || true",
-            "timeout": 10
+            "command": "bash \"$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_hook.sh\" fleet_claims.py hook",
+            "timeout": 15
           }
         ]
       }

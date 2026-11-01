@@ -152,7 +152,11 @@ def test_budget_exhausted_refuses(rec, tmp_path):
         fleet_route.spawn("T", caller="t", root=tmp_path)
     assert "budget exhausted" in str(ei.value)
     assert rec.calls == []
-    assert _status(tmp_path)["state"] == "limit"
+    # Kit v26 (MAIN 2026-10-31 2200 section 4): a full run budget is status
+    # "refused" with reason "run cap N/N, next free <time>", no longer "limit".
+    st = _status(tmp_path)
+    assert st["state"] == "refused"
+    assert "run cap" in json.dumps(st)
 
 
 def test_timeout_leaves_status_idle_and_reraises(tmp_path, monkeypatch):

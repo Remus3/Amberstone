@@ -1136,14 +1136,21 @@ permission keys); C1b-3 S5, 2026-10-22. Guard:
   `skipDangerousModePermissionPrompt` and `autoUpdates` are real keys and stay.
   The account-level files are MAIN's side (MAIN removed the same keys there
   2026-10-21).
-- **Item 16 DECLINED: the kit lines keep bare `python`.** The fleet-kit hook
-  lines stay exactly `python "$CLAUDE_PROJECT_DIR/ops/fleet_kit/<file>.py" ... || true`
-  because CLAUDE.md prescribes that anchored form (kit v11 ruling R3 for
+- **Item 16 closed by kit v26: the kit PreToolUse lines run through a
+  fail-closed launcher.** The fleet-kit hook lines were exactly
+  `python "$CLAUDE_PROJECT_DIR/ops/fleet_kit/<file>.py" ... || true` because
+  CLAUDE.md prescribed that anchored form (kit v11 ruling R3 for
   `fleet_subagent_first.py`, kit v12 for `fleet_claims.py` hook and
   release-hook), and a kit wiring change ships only as a new kit version
   (FLEET-COMMON item 11). Known cost, as MAIN reported: a dependency-less
-  `python` on PATH would fail behind `|| true` without a word. Reverses if:
-  MAIN ships a kit version that prescribes another form for those lines.
+  `python` on PATH failed behind `|| true` without a word. Kit v26 (MAIN
+  2026-10-31 2200, ruling CS-815) shipped the reversal: the two PreToolUse
+  lines are now `bash "$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_hook.sh" fleet_subagent_first.py`
+  and `bash "$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_hook.sh" fleet_claims.py hook`,
+  timeout 15, no `|| true`; the launcher appends a per-run nonce, requires it
+  back as the last stdout line, and on a stub, a missing interpreter or a
+  crash prints one stderr line and exits 2 (block). The SubagentStop
+  release-hook keeps the R3 form.
   `fleet_done.py stop-hook` is RC's own wiring of a kit script and uses the RC
   interpreter.
 - **Perseus Vault is machine-only (item 19).** A ~57 MB binary and an ~85 MB

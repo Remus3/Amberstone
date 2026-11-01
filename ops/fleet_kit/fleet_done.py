@@ -160,8 +160,11 @@ def _git(root, *args):
     if not exe:
         return None
     try:
+        # v26 RM-831: decode as UTF-8 with replacement, like _gitr - a cp1252
+        # locale raised an uncaught UnicodeDecodeError on bytes 0x81 / 0x8D ...
         r = subprocess.run([exe, "-C", str(root), *args], capture_output=True,
-                           text=True, timeout=GIT_TIMEOUT, creationflags=_NO_WINDOW)
+                           text=True, encoding="utf-8", errors="replace",
+                           timeout=GIT_TIMEOUT, creationflags=_NO_WINDOW)
     except (OSError, subprocess.SubprocessError):
         return None
     return r.stdout.strip() if r.returncode == 0 else None
@@ -673,6 +676,18 @@ def classify_worktree(row, base, run, alive=pid_alive, lanes=(), here=None, clai
     return "remove", "clean, every commit on {} by patch".format(base)
 
 
+def _orphaned(main, path, run):
+    """True when path is no longer a registered worktree but its folder is
+    still on disk (v26, RC 2128: `git worktree remove` deregisters first, then
+    a "Filename too long" delete leaves the folder outside every list)."""
+    if not os.path.isdir(path):
+        return False
+    rc, out, _e = run(main, "worktree", "list", "--porcelain")
+    if rc != 0:
+        return False
+    return _norm(path) not in {_norm(r["path"]) for r in parse_worktrees(out)}
+
+
 def reap(root, apply=False, run=None, alive=pid_alive, cwd=None):
     """Classify every linked worktree of the tree at root; with apply, remove
     the 'remove' ones (`git worktree unlock` when locked by a dead owner, then
@@ -705,8 +720,14 @@ def reap(root, apply=False, run=None, alive=pid_alive, cwd=None):
         elif apply and verdict == "remove":
             if row.get("locked") is not None:
                 run(main, "worktree", "unlock", row["path"])
-            rc, _o, e = run(main, "worktree", "remove", row["path"])
-            if rc != 0:
+            # v26 (RC 2128): long-path form, so a deep tree is not left behind.
+            rc, _o, e = run(main, "-c", "core.longpaths=true", "worktree", "remove",
+                            row["path"])
+            if rc != 0 and _orphaned(main, row["path"], run):
+                rec.update(verdict="listed", orphaned=True, why=(
+                    "ORPHANED: git deregistered it but the folder is left (remove failed: "
+                    "{}); delete it with the long-path form".format(_one_line(e)[:100])))
+            elif rc != 0:
                 rec.update(verdict="listed", why="remove failed: {}".format(_one_line(e)[:120]))
             else:
                 rec["done"] = "removed"
@@ -779,7 +800,7 @@ def main(argv=None, stdin=None, stdout=None):
                     "kept": "kept", "listed": "listed"}[x["verdict"]]
             stdout.write("  {}: {} ({}{})\n".format(
                 word, x["name"], x["why"], "; " + x["done"] if x["done"] else ""))
-        return 0
+        return 1 if any(x.get("orphaned") for x in rows) else 0
     if args.cmd == "archive":
         try:
             doc = archive(root, apply=args.apply, keep=max(0, args.keep))

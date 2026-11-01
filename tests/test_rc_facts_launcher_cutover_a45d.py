@@ -220,6 +220,12 @@ def _world(tmp_path, monkeypatch, *, tasks, port_up, status=None, alive=False):
     monkeypatch.setattr(rc_facts, "_legion_tasks", lambda: tasks)
     monkeypatch.setattr(rc_facts, "_last_boot_iso", lambda: None)
     monkeypatch.setattr(rc_facts, "_inbox_section", lambda *a, **k: ([], [], set()))
+    # The machine-wide slot bucket and the drift-alert channel are LIVE state
+    # (a stale lane slot lock read "pid ... not alive" into the anomaly block
+    # during the kit v26 suite); this world is synthetic, so both read empty.
+    from tools import slot_bucket_audit, upstream_drift_check
+    monkeypatch.setattr(slot_bucket_audit, "anomaly_lines", lambda *a, **k: [])
+    monkeypatch.setattr(upstream_drift_check, "unacked_alert_lines", lambda *a, **k: [])
     buf = io.StringIO()
     monkeypatch.setattr(sys, "stdout", buf)
     assert rc_facts.main(session=None) == 0

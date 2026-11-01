@@ -530,6 +530,13 @@ _GITLOCK = "fleet_gitlock.py"
 _GATE = "fleet_suite_gate.py"
 
 
+def names_helper(seg, helper, win=None):
+    """v26 RM-778: True when a segment names a kit helper script. Case-folded
+    on Windows, where an upper-case spelling of the gate runs the same file."""
+    win = WIN if win is None else win
+    return helper.lower() in seg.lower() if win else helper in seg
+
+
 def _unquote(s):
     return s[1:-1] if len(s) >= 2 and s[0] == s[-1] and s[0] in "\"'" else s
 
@@ -807,7 +814,7 @@ def add_then_gitlock(command):
     gitlock call fails, the staged paths stay in the shared index."""
     seen_add = False
     for seg in _segments(command):
-        if _GITLOCK in seg:
+        if names_helper(seg, _GITLOCK):
             if seen_add:
                 return True
             continue
@@ -831,7 +838,7 @@ def _bare_git(command, cwd, project, verbs):
             if cd is not None:
                 here = _abs(_msys(cd), here)
                 continue
-        if _GITLOCK in seg:
+        if names_helper(seg, _GITLOCK):
             continue
         if read_only_search(words):
             continue
@@ -865,7 +872,7 @@ def _pytest_at(words):
 def bare_whole_suite(command):
     """True when a segment runs pytest naming no test FILE, not via the gate."""
     for seg in _segments(command):
-        if _GATE in seg:
+        if names_helper(seg, _GATE):
             continue
         words = _words(seg)
         if read_only_search(words):
@@ -886,13 +893,14 @@ def owner_flag_missing(command, me):
     """The helper name when a gitlock/gate `run` lacks `--owner <me>`."""
     for seg in _segments(command):
         for helper in (_GITLOCK, _GATE):
-            if helper not in seg:
+            if not names_helper(seg, helper):
                 continue
             words = _words(seg)
             if read_only_search(words):
                 continue
             at = [j for j, w in enumerate(words[:4])
-                  if w.replace("\\", "/").endswith(helper)]
+                  if (w.replace("\\", "/").lower().endswith(helper.lower()) if WIN
+                      else w.replace("\\", "/").endswith(helper))]
             if at and at[0] + 1 < len(words) and words[at[0] + 1] == "run":
                 given = None
                 for k, w in enumerate(words):
@@ -1237,18 +1245,33 @@ def _cli(argv):
     return 2
 
 
+def take_nonce(argv):
+    """v26 (CS-815): (argv without `--fleet-nonce N`, N or None)."""
+    argv = list(argv)
+    if "--fleet-nonce" in argv:
+        k = argv.index("--fleet-nonce")
+        if k + 1 < len(argv):
+            return argv[:k] + argv[k + 2:], argv[k + 1]
+    return argv, None
+
+
 def main(argv=None):
-    argv = sys.argv[1:] if argv is None else argv
-    if argv[:1] in (["hook"], ["release-hook"]):
-        try:
-            text = sys.stdin.read()
-            out = run_hook(text) if argv[0] == "hook" else run_release_hook(text)
-        except Exception:  # never fail closed
+    argv, nonce = take_nonce(sys.argv[1:] if argv is None else argv)
+    try:
+        if argv[:1] in (["hook"], ["release-hook"]):
+            try:
+                text = sys.stdin.read()
+                out = run_hook(text) if argv[0] == "hook" else run_release_hook(text)
+            except Exception:  # never fail closed in-process; the launcher proves life
+                return 0
+            if out:
+                sys.stdout.write(out + "\n")
             return 0
-        if out:
-            sys.stdout.write(out + "\n")
-        return 0
-    return _cli(argv)
+        return _cli(argv)
+    finally:
+        if nonce is not None:  # v26 fleet_hook.sh proof line, on every exit path
+            sys.stdout.write(f"FLEET-NONCE {nonce}\n")
+            sys.stdout.flush()
 
 
 if __name__ == "__main__":

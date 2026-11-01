@@ -34,8 +34,10 @@ KIT = ROOT / "ops" / "fleet_kit"
 # Kit v25 (MAIN 2026-10-27 2136 ORDER) superseded v24 (manifest
 # a41ff08e...c8804a7d); step 1 now pins the v25 bytes
 # (tests/test_fleet_kit_v25.py pins what v25 adds).
-V23_MANIFEST_SHA256 = "fa04c87ceca7c1e08f853d0447a439143f317fa21b6434c1dcefe1e5d25c1bea"
-V23_COMMON_BLOCK_SHA256 = "886c5f8b1a86928f91412d2800e9dfef3dd8e5b9158d14a06e65d06c22964800"
+# Kit v26 (MAIN 2026-10-31 2200 ORDER) superseded v25 (manifest
+# fa04c87c...25c1bea); step 1 now pins the v26 bytes.
+V23_MANIFEST_SHA256 = "45b5088e202a0c0c453fb1dc4ca8969783563d60d3b7b02e8d2c5c547fe4edae"
+V23_COMMON_BLOCK_SHA256 = "cacc3ca30125d184e07612d232c2ba3f76338d5ea987d23e7e2addcb74e77dd0"
 BOARD_FILES = ("ops/loop/control/board/status.json", "ops/loop/control/board/state.json",
                "ops/loop/control/board/board.html")
 # Every RC surface that once told a session to push the board.
@@ -65,10 +67,10 @@ def test_the_vendored_kit_is_the_v23_order_bytes():
     raw = (KIT / "MANIFEST.json").read_bytes()
     assert hashlib.sha256(raw).hexdigest() == V23_MANIFEST_SHA256
     man = json.loads(raw.decode("ascii"))
-    assert man["version"] == 25 and len(man["files"]) == 23
+    assert man["version"] == 26 and len(man["files"]) == 24
     assert man["common_block_sha256"] == V23_COMMON_BLOCK_SHA256
     fh = _load("fleet_headless")
-    assert (fh.KIT_VERSION, fh.KIT_PATCH) == (25, 0)
+    assert (fh.KIT_VERSION, fh.KIT_PATCH) == (26, 0)
     for name, want in man["files"].items():
         assert hashlib.sha256((KIT / name).read_bytes()).hexdigest() == want, name
 
