@@ -487,7 +487,8 @@ def _serve_spike_curve(h) -> None:
         mode_raw = (qs.get("mode") or ["SR"])[0].upper().strip() or "SR"
         if mode_raw not in _MODE_PROFILE:
             h._send(400, json.dumps({
-                "ok": False, "error": f"unsupported mode {mode_raw!r}",
+                # RM-1255: a fixed line, never the caller's value.
+                "ok": False, "error": "unsupported mode",
                 "supported": sorted(_MODE_PROFILE.keys()),
             }).encode(), "application/json")
             return

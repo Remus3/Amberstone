@@ -325,7 +325,8 @@ def _serve_ds_sweep(h) -> None:
         if axis is None:
             h._send(400, json.dumps({
                 "ok":        False,
-                "error":     f"unsupported axis {axis_raw!r}",
+                # RM-1255: a fixed line, never the caller's value.
+                "error":     "unsupported axis",
                 "supported": ["armor", "mr", "level"],
             }).encode("utf-8"), "application/json")
             return
