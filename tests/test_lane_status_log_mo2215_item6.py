@@ -35,9 +35,7 @@ LINE_RE = re.compile(
 def root(tmp_path):
     lanes_dir = tmp_path / "ops" / "loop" / "control" / "lanes"
     lanes_dir.mkdir(parents=True)
-    lanes._STOPPED.clear()
-    yield lanes_dir
-    lanes._STOPPED.clear()
+    return lanes_dir
 
 
 def _log(root) -> list:
@@ -94,13 +92,13 @@ def test_a_log_fault_never_raises(root, monkeypatch):
 
 
 def test_a_cap_refusal_logs_once_then_resume_on_the_next_acquire(root, tmp_path, monkeypatch):
-    monkeypatch.setattr(lanes.fleet_lanes, "try_acquire_lane",
-                        lambda *a, **k: {"ok": False, "refused": "lanes_full", "holders": []})
-    for _ in range(3):
-        assert lanes.try_acquire_lane("ds", run_id="r", worktree=_worktree(tmp_path, "a"),
-                                      root=root)["refused"] == "lanes_full"
+    with monkeypatch.context() as patch:
+        patch.setattr(lanes.fleet_lanes, "try_acquire_lane",
+                      lambda *a, **k: {"ok": False, "refused": "lanes_full", "holders": []})
+        for _ in range(3):
+            assert lanes.try_acquire_lane("ds", run_id="r", worktree=_worktree(tmp_path, "a"),
+                                          root=root)["refused"] == "lanes_full"
     assert [line.split()[1:] for line in _log(root)] == [["ds", "stop", "cap"]]
-    monkeypatch.undo()
     got = lanes.try_acquire_lane("ds", run_id="r", worktree=_worktree(tmp_path, "b"), root=root)
     assert got["ok"] is True
     lanes.release_lane(got["token"], root=root)
@@ -113,6 +111,53 @@ def test_an_admission_refusal_is_a_cap_stop(root, tmp_path, monkeypatch):
                         lambda *a, **k: {"ok": False, "refused": "admission", "reason": "ram"})
     lanes.try_acquire_lane("ds", run_id="r", worktree=_worktree(tmp_path, "a"), root=root)
     assert [line.split()[1:] for line in _log(root)] == [["ds", "stop", "cap"]]
+
+
+def test_a_usd_ceiling_refusal_is_a_limit_stop(root, tmp_path, monkeypatch):
+    monkeypatch.setattr(lanes.fleet_lanes, "try_acquire_lane",
+                        lambda *a, **k: {"ok": False, "refused": "usd_ceiling"})
+    lanes.try_acquire_lane("ds", run_id="r", worktree=_worktree(tmp_path, "a"), root=root)
+    assert [line.split()[1:] for line in _log(root)] == [["ds", "stop", "limit"]]
+
+
+def test_the_open_stop_survives_a_new_process(root):
+    """The stop and the resume can come from two processes: state is the log."""
+    fresh = _load("rc_loop_lanes_status_log_fresh", ROOT / "ops" / "loop" / "lanes.py")
+    assert lanes.mark_lane_stopped("ds", "cap", root=root) is True
+    assert fresh.mark_lane_stopped("ds", "cap", root=root) is False
+    assert fresh.mark_lane_resumed("ds", root=root) is True
+    assert [line.split()[1:] for line in _log(root)] == [
+        ["ds", "stop", "cap"], ["ds", "resume", "cap"]]
+
+
+def test_a_stop_whose_append_failed_is_retried(root, monkeypatch):
+    with monkeypatch.context() as patch:
+        def boom(_path, _data):
+            raise OSError("disk gone")
+        patch.setattr(lanes, "_append_status_line", boom)
+        assert lanes.mark_lane_stopped("ds", "cap", root=root) is False
+    assert _log(root) == []
+    assert lanes.mark_lane_stopped("ds", "cap", root=root) is True
+    assert lanes.mark_lane_resumed("ds", root=root) is True
+    assert [line.split()[1:] for line in _log(root)] == [
+        ["ds", "stop", "cap"], ["ds", "resume", "cap"]]
+
+
+def test_a_second_reason_replaces_the_open_stop_and_one_resume_closes_it(root):
+    lanes.mark_lane_stopped("ds", "cap", root=root)
+    lanes.mark_lane_stopped("ds", "STOP", root=root)
+    assert lanes.mark_lane_resumed("ds", root=root) is True
+    assert lanes.mark_lane_resumed("ds", root=root) is False
+    assert [line.split()[1:] for line in _log(root)] == [
+        ["ds", "stop", "cap"], ["ds", "stop", "STOP"], ["ds", "resume", "STOP"]]
+
+
+def test_one_lanes_lines_do_not_read_as_anothers_state(root):
+    lanes.mark_lane_stopped("ds", "cap", root=root)
+    lanes.mark_lane_stopped("repo", "limit", root=root)
+    assert lanes.mark_lane_resumed("repo", root=root) is True
+    assert lanes.mark_lane_stopped("ds", "cap", root=root) is False
+    assert lanes.mark_lane_resumed("uiux", root=root) is False
 
 
 def test_a_held_name_is_not_a_stop(root, tmp_path):

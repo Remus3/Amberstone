@@ -346,9 +346,10 @@ def lane_state(root=None, now=None) -> dict:
 LANE_STATUS_LOG = "lane_status.log"
 LANE_EVENT_ACTIONS = ("stop", "resume")
 LANE_EVENT_REASONS = ("limit", "STOP", "operator", "cap")
-# Lane name -> the reason it stopped, in this process. One line per transition,
-# not one per poll: a driver retries a refused acquire every tick.
-_STOPPED: dict = {}
+# A kit refusal that means this lane stopped, and why. lane_held is not a stop:
+# the lane is running, just not again.
+_REFUSED_STOP_REASON = {"lanes_full": "cap", "admission": "cap", "usd_ceiling": "limit"}
+_STATUS_TAIL_BYTES = 64 * 1024
 
 
 def _append_status_line(path: Path, data: bytes) -> None:
@@ -383,18 +384,40 @@ def log_lane_event(lane, action, reason, root=None) -> bool:
     return True
 
 
+def _open_stop(lane, root=None):
+    """The reason of `lane`'s latest line when that line is a stop, else None.
+
+    Read from the log, not from memory: the driver that stops a lane and the
+    one that resumes it can be different processes, and a stop whose append
+    failed must be retried. The newest stop is the open one, so a second stop
+    with another reason replaces the first, and one resume closes the lane."""
+    path = _resolve_root(root).parent / LANE_STATUS_LOG
+    try:
+        with open(path, "rb") as fh:
+            fh.seek(0, os.SEEK_END)
+            fh.seek(max(0, fh.tell() - _STATUS_TAIL_BYTES))
+            tail = fh.read().decode("ascii", "replace")
+    except OSError:
+        return None
+    for line in reversed(tail.splitlines()):
+        parts = line.split()
+        if len(parts) == 4 and parts[1] == str(lane):
+            return parts[3] if parts[2] == "stop" else None
+    return None
+
+
 def mark_lane_stopped(lane, reason, root=None) -> bool:
-    """Record a stop once per transition. True when this call wrote the line."""
-    if _STOPPED.get(lane) == reason:
+    """Record a stop once per transition, not once per poll: a driver retries
+    a refused acquire every tick. True when this call wrote the line."""
+    if _open_stop(lane, root) == reason:
         return False
-    _STOPPED[lane] = reason
     return log_lane_event(lane, "stop", reason, root=root)
 
 
 def mark_lane_resumed(lane, root=None) -> bool:
-    """Close a recorded stop with its own reason; a lane never stopped logs
-    nothing. True when this call wrote the line."""
-    reason = _STOPPED.pop(lane, None)
+    """Close the open stop with its own reason; a lane not stopped logs nothing.
+    True when this call wrote the line."""
+    reason = _open_stop(lane, root)
     if reason is None:
         return False
     return log_lane_event(lane, "resume", reason, root=root)
@@ -464,8 +487,8 @@ def try_acquire_lane(lane, *, run_id, worktree, root=None) -> dict:
                "holders": holders}
         if refused == "admission":
             out["reason"] = str(claim.get("reason") or "")[:200]
-        if refused in ("lanes_full", "admission"):
-            mark_lane_stopped(lane, "cap", root=root)
+        if refused in _REFUSED_STOP_REASON:
+            mark_lane_stopped(lane, _REFUSED_STOP_REASON[refused], root=root)
         return out
 
     token = claim["token"]

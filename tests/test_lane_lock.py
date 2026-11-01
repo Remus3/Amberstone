@@ -247,6 +247,14 @@ def test_a_fire_with_every_index_held_is_refused_and_mutates_nothing(root, tmp_p
     wt = tmp_path / "wt-cap-ds"
     wt.mkdir()
     res = lanes.try_acquire_lane("ds", run_id="r9", worktree=str(wt), root=root)
+
+    # MAIN ORDER 2026-10-31 2215 item 6: the one permitted write is the status
+    # log's own stop line, which queues nothing. Pin it, then take it away so
+    # the snapshot still catches every other write.
+    status_log = root.parent / lanes.LANE_STATUS_LOG
+    lines = status_log.read_text(encoding="ascii").splitlines()
+    assert [line.split()[1:] for line in lines] == [["ds", "stop", "cap"]]
+    status_log.unlink()
     after = _snapshot(root)
 
     assert res["ok"] is False and res["refused"] == "lanes_full"
