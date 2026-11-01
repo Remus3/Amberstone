@@ -222,7 +222,6 @@ def _mk(tmpdir, messages):
     obj._force_flag = False
     obj._round_start_time = 0.0
     obj._scanned_planning = False
-    obj._ai_bar = None
     return obj
 
 

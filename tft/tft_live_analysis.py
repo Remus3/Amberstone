@@ -423,26 +423,10 @@ class TftLiveAnalysis:
         self._last_round=(0,0); self._last_vision=0.0; self._last_write={}; self._coach_state={}
         self._debug=False; self._known_augments=[]
         self._force_flag=False; self._round_start_time=0.0; self._scanned_planning=False
-        self._ai_bar = None   # TftAiStatusBar reference, set via set_ai_bar()
     def start(self) -> None:
         self._running=True; self._thread=threading.Thread(target=self._loop,daemon=True,name="TftLiveAnalysis")
         self._thread.start(); logger.info("TftLiveAnalysis started")
     def shutdown(self) -> None: self._running=False
-    def set_ai_bar(self, bar: object) -> None:
-        """Wire a TftAiStatusBar for scan progress notifications."""
-        self._ai_bar = bar
-    def _notify_scanning(self, pct=0):
-        try:
-            if self._ai_bar: self._ai_bar.set_scanning(pct)
-        except Exception: pass  # noqa: BLE001
-    def _notify_done(self):
-        try:
-            if self._ai_bar: self._ai_bar.set_done()
-        except Exception: pass  # noqa: BLE001
-    def _notify_next_scan(self, at_mono):
-        try:
-            if self._ai_bar: self._ai_bar.notify_scan_scheduled(at_mono)
-        except Exception: pass  # noqa: BLE001
     def force_scan(self) -> None:
         # arch: phase 7 P2-C - clear stale choices on augment-select force scan
         # so the fresh vision read produces new advice
@@ -600,26 +584,17 @@ class TftLiveAnalysis:
                     scan=True; self._scanned_planning=True; logger.debug("Vision: planning scan (%.1fs)",ra)
                 # Mid-round scan removed - 1 scan/round is sufficient and halves sonnet cost
                 if scan: self._last_vision=now; self._run_cycle()
-                # Notify AI bar when next scan is expected (do after scan check)
-                if self._ai_bar:
-                    _next = self._round_start_time + (1.5 if not self._scanned_planning else 12.0)
-                    self._notify_next_scan(_next)
             except Exception as e:  # noqa: BLE001
                 logger.error("LiveAnalysis loop: %s", _safe_err(e))
             time.sleep(1.5)
     def _run_cycle(self):
         if not self._lock.acquire(blocking=False): return
-        self._notify_scanning(10)
-        # LANE 8 CYCLE 43: _notify_done() used to sit on two of the four exit
-        # paths. The SPECTATING early return and any exception out of
-        # self._vision.read() both left the bar reading "scanning" forever.
-        # LATENT, not live - TftAiStatusBar is defined nowhere in the repo and
-        # wire_ai_bar() has no production caller, so _ai_bar is always None
-        # today. Structural so it cannot resurface if a bar is ever wired.
+        # RM-1308: the AI status bar chain (set_ai_bar and the _notify_*
+        # helpers) was removed - TftAiStatusBar is defined nowhere in the repo
+        # and nothing ever wired one. The lock is still released on every exit.
         try:
             vs=self._vision.read()
             if not vs: return
-            self._notify_scanning(60)
             if vs.get("augments"): vs["augments"]=[a for a in vs["augments"] if a and not _FAKE_AUGMENT_RE.match(str(a))]
             na=[a for a in (vs.get("augments") or []) if a and a not in self._known_augments]
             if na: self._known_augments.extend(na)
@@ -634,10 +609,8 @@ class TftLiveAnalysis:
             bu=vs.get("board_units") or []
             if bu and any(str(u).upper()=="SPECTATING" for u in bu):
                 logger.debug("SPECTATING detected - skipping"); return
-            self._notify_scanning(90)
             self._run_analysis(vs)
         finally:
-            self._notify_done()
             self._lock.release()
     @staticmethod
     def _clean_units(units,trait_names):

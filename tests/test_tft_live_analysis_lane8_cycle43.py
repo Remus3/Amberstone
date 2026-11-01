@@ -104,7 +104,6 @@ def _mk(tmpdir, resp):
     obj._force_flag = False
     obj._round_start_time = 0.0
     obj._scanned_planning = False
-    obj._ai_bar = None
     return obj
 
 
@@ -409,28 +408,13 @@ class TftLiveAnalysisAuditTest(unittest.TestCase):
         self.assertEqual(json.loads(raw.decode("utf-8"))["comp"],
                          name + " reroll")
 
-    # ---- W6: the scanning-state leak (LATENT - see the ledger) -----------
+    # ---- W6: the scan lock is released on every exit path ----------------
+    # (RM-1308: this test once guarded a LATENT status-bar leak; the bar
+    # chain was removed as dead, the lock-release half of it is what stays.)
 
-    def test_w6_scan_state_is_released_on_every_exit_path(self):
-        """_notify_done() sat on two of four exits, so the SPECTATING return
-        and any vision exception left the bar mid-scan forever.
-
-        LATENT, not live: TftAiStatusBar is defined NOWHERE in the repo and
-        wire_ai_bar() has zero production callers, so _ai_bar is permanently
-        None today. Fixed structurally so it cannot resurface if a bar is
-        ever wired.
-        """
-        calls = []
-
-        class _Bar:
-            def set_scanning(self, pct=0):
-                calls.append(("scanning", pct))
-
-            def set_done(self):
-                calls.append(("done", None))
-
-            def notify_scan_scheduled(self, at):
-                pass
+    def test_w6_scan_lock_is_released_on_every_exit_path(self):
+        """The SPECTATING return and any vision exception must both leave
+        _run_cycle's non-blocking lock free, or every later scan is skipped."""
 
         class _Vision:
             @staticmethod
@@ -439,12 +423,10 @@ class TftLiveAnalysisAuditTest(unittest.TestCase):
 
         obj = _mk(self.tmp, _FakeResp([_TextBlock(_GOOD_RAW)]))
         obj._vision = _Vision()
-        obj._ai_bar = _Bar()
         obj._run_cycle()
-        self.assertIn(("done", None), calls,
-                      "SPECTATING exit never cleared the scanning state")
-
-        calls.clear()
+        self.assertTrue(obj._lock.acquire(blocking=False),
+                        "SPECTATING exit left the scan lock held")
+        obj._lock.release()
 
         class _Boom:
             @staticmethod
@@ -456,8 +438,9 @@ class TftLiveAnalysisAuditTest(unittest.TestCase):
             obj._run_cycle()
         except RuntimeError:
             pass
-        self.assertIn(("done", None), calls,
-                      "a vision exception left the bar mid-scan")
+        self.assertTrue(obj._lock.acquire(blocking=False),
+                        "a vision exception left the scan lock held")
+        obj._lock.release()
 
 
 if __name__ == "__main__":

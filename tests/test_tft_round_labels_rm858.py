@@ -25,7 +25,7 @@ Every name used here, cited at the fix tree:
   tft/tft_live_analysis.py  `TftLiveAnalysis` :401, `_AUGMENT_ROUNDS` :415,
       `_CAROUSEL_EVENTS` :416, `_is_god_round` :490, `_loop` :500 and the
       attributes it reads (`_running`, `_force_flag`, `_last_round`,
-      `_last_vision`, `_round_start_time`, `_scanned_planning`, `_ai_bar`,
+      `_last_vision`, `_round_start_time`, `_scanned_planning`,
       all set in `__init__` :417-426; `_coach_state` via
       `_is_carousel_or_spectate` :487), the god / augment branch :507, the
       module-level `time` import :10, and `_run_cycle` :525.
@@ -146,7 +146,6 @@ def _cycles_at(monkeypatch, sr) -> int:
     la._last_vision = 0.0
     la._round_start_time = 0.0   # -> ra = 999: outside the 1.5-3.5 s planning window
     la._scanned_planning = False
-    la._ai_bar = None
     la._coach_state = {}
     ran: list = []
     la._run_cycle = lambda: ran.append(sr)
