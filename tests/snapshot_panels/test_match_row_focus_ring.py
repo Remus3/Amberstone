@@ -634,3 +634,176 @@ def test_adjacent_deep_link_rings_hold_in_every_theme(mock_server, pw_browser):
     assert seen == len(themes) * (n - 1), seen
     assert len(rings) >= 3, f"theme flip inert: {rings}"
     assert not failures, f"deep-link pair theme failures: {failures[:4]}"
+
+
+# ---------------------------------------------------------------------------
+# RM-1317 (s144 uiux) - the neutral-row deep-link pulse keeps the ring
+# legible for its whole run. A GUARD, not a fix.
+#
+# THE HYPOTHESIS (filed by cycle 97). A deep-linked NEUTRAL row also runs
+# `rc-history-focus-pulse` (web/css/panels/home.css), a 0.6s background
+# pulse that starts from color-mix(in srgb, var(--info) 35%, transparent),
+# about twice the steady --info-soft (18%) tint. The inset 2px --info ring
+# of RM-1316 is drawn on that animated background, so the filing held
+# that the ring's contrast falls below 3:1 at the pulse start.
+#
+# REFUTED BY MEASUREMENT (headless Chromium, /?ui_mock=1 #session at
+# 1920x920, transitions off, pulse paused at 0 / 25 / 50 / 75 / 100
+# percent): the PAIR resolved --info vs the animated row background
+# composited over the first opaque ancestor measured, at the pulse START,
+# arcane 3.71:1, bloodmoon 3.88:1, ember 3.77:1, moonlit 3.91:1, terminal
+# 4.23:1, rising to 5.4-6.3:1 at its end. No CSS changed. The headroom at
+# the start is under 0.75, so these tests pin it: a stronger pulse tint
+# or a lighter --info / surface pair that drops the ring under 3:1 at ANY
+# sampled point fails here.
+#
+# WHAT IS MEASURED: the pair above is >= 3:1 at every sampled point in
+# every :root[data-theme] block. The pulse must still run (an anchor, so
+# removing the cue cannot pass this vacuously) and its start must still
+# differ from the steady tint (the cue still pulses).
+
+_PULSE_FRACTIONS = (0.0, 0.25, 0.5, 0.75, 1.0)
+
+_PULSE_JS = r"""
+(args) => {
+  const [el, fractions] = args;
+  const anims = el.getAnimations().filter(
+    (a) => a.animationName === 'rc-history-focus-pulse');
+  if (!anims.length) return null;
+  const a = anims[0];
+  a.pause();
+  const dur = a.effect.getComputedTiming().duration;
+  const out = [];
+  for (const f of fractions) {
+    // The end point itself is past the active interval (fill none), so
+    // sample a hair before it.
+    a.currentTime = Math.min(dur * f, dur - 0.01);
+    out.push({ f, bg: getComputedStyle(el).backgroundColor });
+  }
+  a.cancel();
+  return { dur, samples: out };
+}
+"""
+
+_PAIR_JS = r"""
+(args) => {
+  const [el, bgCol] = args;
+  const cv = document.createElement('canvas');
+  cv.width = 1; cv.height = 1;
+  const c2 = cv.getContext('2d', { willReadFrequently: true });
+  const rgba = (col) => {
+    c2.clearRect(0, 0, 1, 1);
+    c2.fillStyle = '#000';
+    c2.fillStyle = col;
+    c2.fillRect(0, 0, 1, 1);
+    return Array.from(c2.getImageData(0, 0, 1, 1).data);
+  };
+  const lum = (p) => {
+    const ch = p.slice(0, 3).map((v) => {
+      v /= 255;
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
+  };
+  let base = [0, 0, 0, 255];
+  for (let p = el.parentElement; p; p = p.parentElement) {
+    const b = rgba(getComputedStyle(p).backgroundColor);
+    if (b[3] === 255) { base = b; break; }
+  }
+  const own = rgba(bgCol), al = own[3] / 255;
+  const surf = [0, 1, 2].map((i) => Math.round(own[i] * al + base[i] * (1 - al)));
+  const d = document.createElement('div');
+  d.style.color = 'var(--info)';
+  document.body.appendChild(d);
+  const info = rgba(getComputedStyle(d).color);
+  d.remove();
+  const la = lum(info), lb = lum(surf);
+  return { surf, info,
+           ratio: (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05) };
+}
+"""
+
+
+def _open_with_pulse(pw_browser, mock_server):
+    """#session (neutral rows) with transitions still off but animations
+    allowed again, so the pulse can be paused and sampled."""
+    ctx, page, errors, sel, n = _open(pw_browser, mock_server, "session")
+    page.evaluate(
+        "() => { for (const s of document.querySelectorAll('style')) {"
+        " if (s.textContent.includes('animation: none !important')) {"
+        " s.remove(); } } }"
+    )
+    page.add_style_tag(
+        content="*, *::before, *::after { transition: none !important; }"
+    )
+    return ctx, page, errors, sel, n
+
+
+def _pulse_failures(page, loc, label):
+    loc.evaluate("(el) => el.classList.remove('is-focused')")
+    loc.evaluate("(el) => void el.offsetWidth")
+    loc.evaluate("(el) => el.classList.add('is-focused')")
+    res = page.evaluate(
+        "([el, fr]) => (" + _PULSE_JS + ")([el, fr])",
+        [loc.element_handle(), list(_PULSE_FRACTIONS)],
+    )
+    steady = loc.evaluate("(el) => getComputedStyle(el).backgroundColor")
+    loc.evaluate("(el) => el.classList.remove('is-focused')")
+    if res is None:
+        return [(label, "pulse animation not running")], None
+    out = []
+    for s in res["samples"]:
+        pair = page.evaluate(
+            "([el, c]) => (" + _PAIR_JS + ")([el, c])",
+            [loc.element_handle(), s["bg"]],
+        )
+        if pair["ratio"] < 3.0:
+            out.append((label, s["f"], round(pair["ratio"], 2), s["bg"],
+                        pair["surf"]))
+    if res["samples"][0]["bg"] == steady:
+        out.append((label, "pulse start equals the steady tint", steady))
+    return out, res
+
+
+def test_deep_link_pulse_keeps_the_ring_legible(mock_server, pw_browser):
+    ctx, page, errors, sel, n = _open_with_pulse(pw_browser, mock_server)
+    try:
+        loc = page.locator(sel).first
+        _rest(page, loc)
+        failures, res = _pulse_failures(page, loc, "default")
+        assert res is not None, failures
+        assert len(res["samples"]) == len(_PULSE_FRACTIONS), res
+        assert not failures, f"pulse ring contrast: {failures}"
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors: {errors[:3]}"
+
+
+def test_deep_link_pulse_keeps_the_ring_legible_in_every_theme(
+    mock_server, pw_browser
+):
+    themes = _themes()
+    assert len(themes) >= 5, f"theme scan anchor: {themes}"
+    ctx, page, errors, sel, n = _open_with_pulse(pw_browser, mock_server)
+    failures, starts, seen = [], set(), 0
+    try:
+        loc = page.locator(sel).first
+        _rest(page, loc)
+        for t in themes:
+            page.evaluate(
+                "(t) => document.documentElement.setAttribute('data-theme', t)",
+                t,
+            )
+            f, res = _pulse_failures(page, loc, t)
+            failures += f
+            if res is not None:
+                seen += 1
+                starts.add(res["samples"][0]["bg"])
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors: {errors[:3]}"
+    assert seen == len(themes), (seen, failures[:3])
+    assert len(starts) >= 3, f"theme flip inert: {starts}"
+    assert not failures, f"pulse ring theme failures: {failures[:6]}"
