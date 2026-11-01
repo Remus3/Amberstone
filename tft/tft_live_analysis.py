@@ -421,8 +421,8 @@ class TftLiveAnalysis:
         self._vision=TftVisionReader(api_key,model)
         self._lock=threading.Lock(); self._running=False; self._thread=None
         self._last_round=(0,0); self._last_vision=0.0; self._last_write={}; self._coach_state={}
-        self._debug=False; self._known_augments=[]; self._last_placement=""
-        self._force_flag=False; self._round_start_time=0.0; self._scanned_planning=False; self._scanned_mid=False
+        self._debug=False; self._known_augments=[]
+        self._force_flag=False; self._round_start_time=0.0; self._scanned_planning=False
         self._ai_bar = None   # TftAiStatusBar reference, set via set_ai_bar()
     def start(self) -> None:
         self._running=True; self._thread=threading.Thread(target=self._loop,daemon=True,name="TftLiveAnalysis")
@@ -519,7 +519,7 @@ class TftLiveAnalysis:
         gate = self._gate(); gate.set_queue(state.get("variant"))
         v = gate.observe(state.get("stage"), state.get("round"), state.get("game_time_s"))
         if v.kind == NEW_GAME:
-            self._known_augments=[]; self._last_placement=""
+            self._known_augments=[]
             gate.set_pace(self._reader_pace())   # the new game may run another set's table
             logger.info("New game detected (%s, read %s) - augments cleared", v.reason, state.get("stage_round"))
         view = state
@@ -546,12 +546,12 @@ class TftLiveAnalysis:
         if sr == self._last_round: return
         before = getattr(self, "_round_before", None)
         if revert and before and before[0] == sr:
-            self._last_round, self._round_start_time, self._scanned_planning, self._scanned_mid = before
+            self._last_round, self._round_start_time, self._scanned_planning = before
             self._round_before = None
             return
-        self._round_before = (self._last_round, self._round_start_time, self._scanned_planning, self._scanned_mid)
+        self._round_before = (self._last_round, self._round_start_time, self._scanned_planning)
         self._last_round=sr; self._round_start_time=time.time()
-        self._scanned_planning=False; self._scanned_mid=False
+        self._scanned_planning=False
     @staticmethod
     def _held_view(state, accepted):
         """A copy of state carrying the accepted round (none yet = 0-0 / "")
@@ -710,8 +710,6 @@ class TftLiveAnalysis:
             f=_parse_analysis(raw)
             if f.get("comp","").upper().startswith("SPECTATING"): logger.debug("Spectating - skip"); return
             if self._debug or not f: logger.debug("Raw:\n%s",raw[:600])
-            up=f.get("unitplacement","")
-            if up: self._last_placement=up
             self._write(vs,f,cs)
         except Exception as e:  # noqa: BLE001
             # CLAUDE.md "Error Handling": the raw string goes to logs/ ONLY.

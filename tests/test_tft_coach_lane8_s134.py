@@ -10,8 +10,8 @@ S1  `reset_state` carried a worker branch that poked SIX private attributes
     It is unreachable in production: the only callers are `__init__` (before
     app/_game_lifecycle.py wires the worker) and `shutdown` (which drops the
     worker first). When a caller did reach it, it reset only part of the live
-    analysis - not `_last_placement`, `_round_before`, the scan flags or the
-    stage gate - so a REVERT could restore a round from the previous game.
+    analysis - not `_round_before`, the scan flag or the stage gate - so a
+    REVERT could restore a round from the previous game.
     The worker is built fresh per game, so the facade has no state of it to
     reset; the branch is gone and this test pins that a wired worker is left
     alone.
@@ -60,7 +60,6 @@ class _WorkerStub:
             _known_augments=["Augment A"],
             _last_write={"stage_round": "3-2"},
             _last_round=(3, 2),
-            _last_placement="Jinx D7",
         )
         self.shutdowns = 0
         self.scans = 0
@@ -89,7 +88,6 @@ def test_reset_state_leaves_a_wired_workers_state_alone(tmp_path):
     assert worker._live._known_augments == ["Augment A"]
     assert worker._live._last_write == {"stage_round": "3-2"}
     assert worker._live._last_round == (3, 2)
-    assert worker._live._last_placement == "Jinx D7"
     assert worker.shutdowns == 0
     assert worker.scans == 0
 

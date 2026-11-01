@@ -29,8 +29,8 @@ Names used, cited at the fix tree:
   tft/tft_live_analysis.py  TftLiveAnalysis, notify_round, notify_coach_state,
       _is_carousel_or_spectate, _stage_gate (lazy via _gate), _gated,
       _apply_round, _reader_pace, _AUGMENT_ROUNDS, the module-level `time`
-      import, _known_augments, _last_placement, _last_round,
-      _round_start_time, _scanned_planning, _scanned_mid, _coach_state.
+      import, _known_augments, _last_round, _round_start_time,
+      _scanned_planning, _coach_state.
   core/tft_stage_gate.py  QUEUE_TIMINGS, UNMEASURED, WINDOW_READS,
       SWITCH_MIN_READS, SWITCH_MARGIN, PACE_SAFETY, pace_floor_from_table.
   tft/tft_state_reader.py  `time_table` (the set-aware accessor _reader_pace
@@ -58,10 +58,8 @@ def _mk():
     la._last_round = (0, 0)
     la._coach_state = {}
     la._known_augments = ["Pandora's Items", "Cybernetic Uplink"]
-    la._last_placement = "Jinx D7"
     la._round_start_time = 0.0
     la._scanned_planning = False
-    la._scanned_mid = False
     return la
 
 
@@ -112,7 +110,6 @@ def test_ocr_backward_glitch_is_not_a_new_game():
     la._scanned_planning = True
     _poll(la, _st(2, 1, 822.0))             # OCR misread mid game
     assert la._known_augments == ["Pandora's Items", "Cybernetic Uplink"]
-    assert la._last_placement == "Jinx D7"
     assert la._last_round == (4, 2)
     assert la._round_start_time == started
     assert la._scanned_planning is True     # no re-armed planning scan
@@ -137,11 +134,10 @@ def test_real_advance_resets_the_round_timer(clock):
     _poll(la, _st(3, 2, 500.0))
     before = la._round_start_time
     la._scanned_planning = True
-    la._scanned_mid = True
     _poll(la, _st(3, 3, 545.0))
     assert la._last_round == (3, 3)
     assert la._round_start_time > before
-    assert la._scanned_planning is False and la._scanned_mid is False
+    assert la._scanned_planning is False
     assert la._coach_state["stage_round"] == "3-3"
     assert la._known_augments                # an advance clears nothing
 
@@ -152,7 +148,6 @@ def test_genuine_new_game_bypasses_the_gate():
     _poll(la, _st(1, 2, 40.0))              # the game clock restarted ...
     _poll(la, _st(1, 2, 41.5))              # ... and stayed restarted
     assert la._known_augments == []
-    assert la._last_placement == ""
     assert la._last_round == (1, 2)
     assert la._coach_state["stage_round"] == "1-2"
 
@@ -165,7 +160,6 @@ def test_new_game_after_a_game_left_at_stage_2_is_detected():
     _poll(la, _st(1, 1, 5.0))
     _poll(la, _st(1, 1, 6.5))
     assert la._known_augments == []
-    assert la._last_placement == ""
 
 
 def test_new_game_reset_runs_on_the_coach_state_poll_alone():

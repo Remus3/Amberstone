@@ -101,11 +101,9 @@ def _mk(tmpdir, resp):
     obj._coach_state = {"stage_round": "3-2", "level": 7}
     obj._debug = False
     obj._known_augments = []
-    obj._last_placement = ""
     obj._force_flag = False
     obj._round_start_time = 0.0
     obj._scanned_planning = False
-    obj._scanned_mid = False
     obj._ai_bar = None
     return obj
 

@@ -192,9 +192,9 @@ class Coach:
         silenced excepts, but no production caller could reach it - the only
         callers are `__init__` (before set_worker) and `shutdown` (after it
         drops the worker) - and when reached it reset only part of the live
-        analysis (not `_last_placement`, `_round_before`, the scan flags or
-        the stage gate). The worker is built fresh per game, so there is no
-        previous-game state of it for the facade to clear.
+        analysis (not `_round_before`, the scan flag or the stage gate). The
+        worker is built fresh per game, so there is no previous-game state of
+        it for the facade to clear.
         """
         # Clear data files (atomic - the dashboard polls these mid-write).
         # mkdir first: this path used to assume the directory existed, which
