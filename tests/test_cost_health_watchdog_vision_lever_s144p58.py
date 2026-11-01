@@ -147,7 +147,7 @@ def test_the_knob_really_has_no_production_reader():
 def test_no_proposal_names_an_inert_knob(name):
     proposal = chw.classify({name: {"usd": 9.0}})["proposal"]
     assert "vision_calls_per_min" not in proposal, proposal
-    # Stored by TftLiveAnalysis.__init__ and read by nothing (RM-1303).
+    # TftLiveAnalysis stored it and nothing read it; removed (RM-1303).
     assert "_vision_interval" not in proposal, proposal
 
 

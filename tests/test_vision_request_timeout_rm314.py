@@ -50,8 +50,9 @@ WHY THESE VALUES, per site rather than one blanket constant. Evidence used:
     ARAM 25.0 s (`Coach._VISION_INTERVAL` in `coaches/aram_coach.py`, fast
     mode 6.0 s in `Coach._FAST_VISION_INTERVAL`), Arena 20.0 s and Brawl
     18.0 s (`Coach._VISION_INTERVAL` in `coaches/arena_coach.py` and
-    `coaches/brawl_coach.py`), TFT 15.0 s (`_vision_interval` in
-    `TftLiveAnalysis.__init__`, `tft/tft_live_analysis.py`).
+    `coaches/brawl_coach.py`), TFT one planning scan a round and a 20.0 s
+    floor on augment and god rounds (`TftLiveAnalysis._loop`,
+    `tft/tft_live_analysis.py`).
   - `core/moon_proxy.py` `TIMEOUT_S = 8`. moon_proxy is the SOLE in-repo
     client of `:8889/vision` and `:8889/coach` (`MoonProxy.extract_vision`
     and `MoonProxy.get_coaching`), and it abandons the request at 8 s.
@@ -70,10 +71,9 @@ WHY THESE VALUES, per site rather than one blanket constant. Evidence used:
     claude-haiku-4-5), over four stitched crops that
     `_CROP_REGIONS` documents as ~350 tiles against ~1400 for a full frame,
     i.e. a quarter of the image tokens. Cheaper model AND a much smaller
-    payload than site 1, so it does not need site 1 headroom. 15 s equals the
-    TFT scan cadence exactly, so a hung local extract cannot outlive the
-    round it was scanning, and it still clears the p99 of the one measured
-    distribution (10.95 s).
+    payload than site 1, so it does not need site 1 headroom. 15 s clears the
+    p99 of the one measured distribution (10.95 s). It is per attempt, and this
+    client keeps the SDK default of 2 retries (RM-1303).
   Sites 3 and 4, 10 s EACH. These two ARE different call shapes - site 3
     sends an image plus a cache_control system block at max_tokens=1400,
     site 4 is text-only at max_tokens=600 - and that difference was checked

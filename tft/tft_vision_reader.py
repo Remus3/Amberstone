@@ -34,10 +34,16 @@ logger = logging.getLogger("rc.tft.vision")
 # (TftLiveAnalysis.__init__ in tft/tft_live_analysis.py forwards a model
 # defaulting to claude-haiku-4-5) and `_CROP_REGIONS` cuts the payload to a
 # fraction of the image tiles of a full frame, so it does not need their
-# headroom. 15s equals the TFT scan cadence (_vision_interval = 15.0 in the
-# same TftLiveAnalysis.__init__) so a hung extract cannot outlive the round
-# it was scanning, and it still clears the p99 (10.95s) of the one measured latency
-# distribution in the repo (data/coach_trace.jsonl, n=200).
+# headroom. 15s clears the p99 (10.95s) of the one measured latency
+# distribution in the repo (data/coach_trace.jsonl, n=200). It is not tied to a
+# scan cadence: TftLiveAnalysis._loop runs one planning scan a round and keeps a
+# 20.0s floor between scans on augment and god rounds; a forced scan bypasses
+# both. The bound is per attempt (and per HTTP phase within one), and this
+# client keeps the SDK default of 2 retries (the _MODEL_TIMEOUT_S note in
+# tft/tft_live_analysis.py has the same caveat), so a hung extract can hold
+# _loop's thread for 45s of attempts, plus the backoff and the relay try before
+# them. A planning scan whose window passes during that hold is skipped, not
+# run late; a forced scan or one on the floor path starts late.
 _REQUEST_TIMEOUT_S = 15
 
 # Size the crop regions are authored at: the relay frame size. A native

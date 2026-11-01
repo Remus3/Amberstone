@@ -22,7 +22,7 @@ Each cite now names its symbol. This guard pins two things:
 (b) every symbol the rationale now names still exists in its module AND
     still holds the value the rationale quotes for it. For example
     `Coach._run_coach` in coaches/aram_coach.py still passes `timeout = 20`,
-    and `TftLiveAnalysis.__init__` still sets `_vision_interval = 15.0`.
+    and `TftLiveAnalysis._loop` still keeps its 20.0 s scan floor.
     A rename or a value change names the stale sentence.
 
 Port references such as `:8889/vision` and slices such as `raw[:200]` are not
@@ -77,8 +77,8 @@ CLAIMS = (
      r"=\s*20\.0\b"),
     (RM314_TEST, "coaches/brawl_coach.py", "Coach._VISION_INTERVAL",
      r"=\s*18\.0\b"),
-    (RM314_TEST, "tft/tft_live_analysis.py", "TftLiveAnalysis.__init__",
-     r"_vision_interval\s*=\s*15\.0\b"),
+    (RM314_TEST, "tft/tft_live_analysis.py", "TftLiveAnalysis._loop",
+     r">=\s*20\.0\b"),
     # The TFT reader's construction and its Haiku default.
     (RM314_TEST, "tft/tft_live_analysis.py", "TftLiveAnalysis.__init__",
      r"TftVisionReader\(api_key,\s*model\)"),
@@ -118,8 +118,8 @@ CLAIMS = (
     (SHARED_VISION, "coaches/aram_coach.py", "Coach._run_vision",
      r"get\(\"augment_select\"\)"),
     # tft/tft_vision_reader.py header and cost-tracker comment.
-    (TFT_READER, "tft/tft_live_analysis.py", "TftLiveAnalysis.__init__",
-     r"_vision_interval\s*=\s*15\.0\b"),
+    (TFT_READER, "tft/tft_live_analysis.py", "TftLiveAnalysis._loop",
+     r">=\s*20\.0\b"),
     (TFT_READER, "tft/tft_live_analysis.py", "TftLiveAnalysis.__init__",
      r'model:\s*str\s*=\s*"claude-haiku-4-5'),
     # vision_server/_inference.py model-shape and RM-314 blocks.

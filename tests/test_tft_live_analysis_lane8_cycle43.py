@@ -99,7 +99,6 @@ def _mk(tmpdir, resp):
     obj._last_vision = 0.0
     obj._last_write = {}
     obj._coach_state = {"stage_round": "3-2", "level": 7}
-    obj._vision_interval = 15.0
     obj._debug = False
     obj._known_augments = []
     obj._last_placement = ""

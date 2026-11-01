@@ -421,7 +421,7 @@ class TftLiveAnalysis:
         self._vision=TftVisionReader(api_key,model)
         self._lock=threading.Lock(); self._running=False; self._thread=None
         self._last_round=(0,0); self._last_vision=0.0; self._last_write={}; self._coach_state={}
-        self._vision_interval=15.0; self._debug=False; self._known_augments=[]; self._last_placement=""
+        self._debug=False; self._known_augments=[]; self._last_placement=""
         self._force_flag=False; self._round_start_time=0.0; self._scanned_planning=False; self._scanned_mid=False
         self._ai_bar = None   # TftAiStatusBar reference, set via set_ai_bar()
     def start(self) -> None:
