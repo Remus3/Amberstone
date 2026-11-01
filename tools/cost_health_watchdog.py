@@ -72,32 +72,32 @@ P95_MIN_CALLS = 20            # need this many calls today for a stable p95
 # rather than \d: \d also matches non-ASCII decimal digits.
 _DAY_STEM_RE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
 
-# purpose -> (tier, primary caller file) from docs/COST_TRACE.md. Every
-# `purpose="..."` literal in production code must have a row here, or the hot
-# purpose of a breach classifies as "unmapped" and the proposal sends the
-# reader to wire a call that is already wired (MAIN FIX 2026-10-25: tft_coach).
-# Guard: tests/test_cost_health_watchdog_purposes_baseline.py.
+# purpose -> (tier, primary caller file: grep `purpose="<name>"` there, a line
+# number here drifted). Every `purpose="..."` production literal needs a row, or
+# a hot purpose classifies as "unmapped" and the proposal sends the reader to
+# wire a call that is already wired (MAIN FIX 2026-10-25: tft_coach). Tiers per
+# docs/COST_TRACE.md. Guard: tests/test_cost_health_watchdog_purposes_baseline.py.
 PURPOSE_MAP = {
-    "vision_relay":   ("SONNET", "vision_server/_inference.py:141"),
-    "vision_direct":  ("SONNET", "modes/shared_vision.py:251"),
-    "coach_relay":    ("HAIKU",  "vision_server/_inference.py:176"),
-    "sr_coach":       ("HAIKU",  "coach_integration/_coach.py:354"),
-    "aram_coach":     ("HAIKU",  "coaches/aram_coach.py:743"),
-    "arena_coach":    ("HAIKU",  "coaches/arena_coach.py:587"),
-    "arena_aug_select": ("HAIKU", "coaches/arena_coach.py:973"),
-    "arena_anvil":    ("HAIKU",  "coaches/arena_coach.py:1115"),
-    "brawl_coach":    ("HAIKU",  "coaches/brawl_coach.py:439"),
-    "aram_team_analyzer": ("HAIKU", "coaches/aram_team_analyzer.py:213"),
-    "champ_select_coach": ("HAIKU", "coaches/champ_select_coach.py:150"),
-    "experimental_builder": ("HAIKU", "coaches/experimental_builder.py:225"),
-    "replay_coach":   ("HAIKU",  "coaches/replay_coach.py:230"),
-    "tft_coach":      ("HAIKU",  "tft/tft_coach_engine.py:972"),
-    "tft_live_analysis": ("HAIKU", "tft/tft_live_analysis.py:703"),
-    "tft_live_aug_select": ("HAIKU", "tft/tft_live_analysis.py:776"),
+    "vision_relay":   ("SONNET", "vision_server/_inference.py"),
+    "vision_direct":  ("SONNET", "modes/shared_vision.py"),
+    "coach_relay":    ("HAIKU",  "vision_server/_inference.py"),
+    "sr_coach":       ("HAIKU",  "coach_integration/_coach.py"),
+    "aram_coach":     ("HAIKU",  "coaches/aram_coach.py"),
+    "arena_coach":    ("HAIKU",  "coaches/arena_coach.py"),
+    "arena_aug_select": ("HAIKU", "coaches/arena_coach.py"),
+    "arena_anvil":    ("HAIKU",  "coaches/arena_coach.py"),
+    "brawl_coach":    ("HAIKU",  "coaches/brawl_coach.py"),
+    "aram_team_analyzer": ("HAIKU", "coaches/aram_team_analyzer.py"),
+    "champ_select_coach": ("HAIKU", "coaches/champ_select_coach.py"),
+    "experimental_builder": ("HAIKU", "coaches/experimental_builder.py"),
+    "replay_coach":   ("HAIKU",  "coaches/replay_coach.py"),
+    "tft_coach":      ("HAIKU",  "tft/tft_coach_engine.py"),
+    "tft_live_analysis": ("HAIKU", "tft/tft_live_analysis.py"),
+    "tft_live_aug_select": ("HAIKU", "tft/tft_live_analysis.py"),
     # HAIKU, not SONNET: the reader's only construction site forwards a model
     # defaulting to claude-haiku-4-5 (tft/tft_vision_reader.py tier note).
-    "tft_vision":     ("HAIKU",  "tft/tft_vision_reader.py:350"),
-    "agent7_warm":    ("HAIKU",  "agents/agent7_context/warm_session.py:284"),
+    "tft_vision":     ("HAIKU",  "tft/tft_vision_reader.py"),
+    "agent7_warm":    ("HAIKU",  "agents/agent7_context/warm_session.py"),
 }
 
 

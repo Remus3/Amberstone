@@ -74,7 +74,7 @@ class CaseInsensitiveGlobDir:
 
     Rather than skip the assertion on Linux, the case-insensitive filesystem
     is supplied. `iter_day_ledgers` touches its argument in exactly ONE way,
-    `spend_dir.glob("*.json")` (tools/cost_health_watchdog.py:168), so this is
+    `spend_dir.glob("*.json")` (tools/cost_health_watchdog.py), so this is
     a complete stand-in and not a partial mock. The candidate set comes from
     `iterdir()` on a REAL directory holding REAL files, so `is_file()` and
     every downstream clause still sees the truth; only the case-folding of the

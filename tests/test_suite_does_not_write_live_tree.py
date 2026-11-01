@@ -100,7 +100,7 @@ _CENSUS = (
      "agents/_supervisor_common.py:224 builds the logger at IMPORT and tees "
      "the 'rc' logger into it, so every rc.* record in the worker landed here"),
     ("logs/cost_health_watchdog.log", 2035, 3, _FIXED, "spec-loaded-tool-logs",
-     "tools/cost_health_watchdog.py:363 writes with plain file I/O, and the "
+     "tools/cost_health_watchdog.py _log_line writes with plain file I/O, and the "
      "tests load the tool by file path so it is absent from sys.modules"),
     ("logs/hotkey_listener.log", 267, 2, _FIXED, "logging-handler-ctor",
      "tools/hotkey_listener.py:95 resolves its log from __file__ inside the "

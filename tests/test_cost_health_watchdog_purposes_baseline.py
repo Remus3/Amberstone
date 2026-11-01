@@ -75,15 +75,37 @@ def test_every_production_purpose_literal_is_mapped():
     assert missing == [], missing
 
 
-@pytest.mark.parametrize("name", sorted(
-    ("sr_coach", "aram_coach", "arena_coach", "brawl_coach", "coach_relay",
-     "vision_relay", "vision_direct", "tft_coach", "tft_live_analysis",
-     "tft_live_aug_select", "tft_vision", "agent7_warm")))
+def test_purpose_map_sweep_is_not_empty():
+    # Anchor: the parametrized row test below passes vacuously on an empty map.
+    assert len(chw.PURPOSE_MAP) >= 15, sorted(chw.PURPOSE_MAP)
+
+
+@pytest.mark.parametrize("name", sorted(chw.PURPOSE_MAP))
 def test_every_mapped_tier_is_a_known_tier(name):
     tier, fil = chw.PURPOSE_MAP[name]
     assert tier in ("HAIKU", "SONNET")
-    assert re.fullmatch(r"[A-Za-z0-9_/]+\.py:[0-9]+", fil), fil
-    assert (_ROOT / fil.split(":", 1)[0]).is_file(), fil
+    # RM-1299: the path alone. 10 of the 18 rows carried a `:<line>` that had
+    # drifted (aram_coach said :743, the literal was at :1252), and the value
+    # goes straight into the breach proposal an operator is sent to follow.
+    assert re.fullmatch(r"[A-Za-z0-9_/]+\.py", fil), fil
+    assert (_ROOT / fil).is_file(), fil
+
+
+@pytest.mark.parametrize("name", sorted(chw.PURPOSE_MAP))
+def test_every_mapped_file_really_holds_that_purpose_literal(name):
+    """The row's claim is "this file is the caller"; the proposal's reader
+    greps `purpose="<name>"` there, so a moved call site must fail here."""
+    _tier, fil = chw.PURPOSE_MAP[name]
+    text = (_ROOT / fil).read_text(encoding="utf-8")
+    assert name in _PURPOSE_LITERAL.findall(text), (name, fil)
+
+
+def test_a_breach_proposal_names_the_file_without_a_line_number():
+    for purpose in ("aram_coach", "vision_relay"):
+        r = chw.classify({purpose: {"usd": 9.0}})
+        assert r["file"] == chw.PURPOSE_MAP[purpose][1]
+        assert f"({r['file']})" in r["proposal"]
+        assert not re.search(r"\.py:[0-9]", r["proposal"]), r["proposal"]
 
 
 # --------------------------------------------------------------- baseline

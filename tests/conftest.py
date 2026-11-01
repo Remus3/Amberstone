@@ -297,7 +297,7 @@ def _hermetic_file_handler_init(self, filename, *args, **kwargs):
     with the base file.
 
     What this CANNOT catch: a module that writes a log with plain file I/O
-    instead of the logging package (`tools/cost_health_watchdog.py:363` does
+    instead of the logging package (`tools/cost_health_watchdog.py` `_log_line` does
     exactly that - see `redirect_spec_loaded_tool_logs_to_tmp`), a handler
     constructed before this conftest is imported (swept below), and anything
     written by a SUBPROCESS, which has its own interpreter and never sees
@@ -875,9 +875,9 @@ def redirect_performance_tracker_ratings_to_tmp(monkeypatch, _live_state_base):
 # and that write a live log with plain file I/O instead of the logging
 # package. Both halves matter, and each defeats a different fix:
 #   - plain file I/O walks straight past `_hermetic_file_handler_init`
-#     (tools/cost_health_watchdog.py:363 does `_LOG.open("a")`);
-#   - `importlib.util.spec_from_file_location` (tests/test_cost_health_watchdog.py:15
-#     and tests/test_cost_health_watchdog_glob_rm165.py:33) mints a module
+#     (tools/cost_health_watchdog.py `_log_line` does `_LOG.open("a")`);
+#   - `importlib.util.spec_from_file_location` (tests/test_cost_health_watchdog.py
+#     and tests/test_cost_health_watchdog_glob_rm165.py `_SPEC`) mints a module
 #     object that is NOT registered under its dotted name, so
 #     `importlib.import_module("tools.cost_health_watchdog")` returns a
 #     DIFFERENT object and patching that one reaches nothing.
