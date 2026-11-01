@@ -31,6 +31,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from tools import moon_sync_poller as P  # noqa: E402
 from tests._replace_faults import scoped_fs_fault  # noqa: E402
 from tests._sleep_probe import thread_scoped  # noqa: E402
+from tests._timing_budget import fleet_test_guard  # noqa: E402
 
 
 @pytest.fixture()
@@ -809,7 +810,7 @@ def _assert_clock_delegates_off_thread(fake_now: float) -> None:
 
     t = threading.Thread(target=_read)
     t.start()
-    t.join(5.0)
+    t.join(fleet_test_guard.budget(5.0))
     assert not t.is_alive(), "the control thread never finished"
     got = box.get("t")
     assert got is not None and got != fake_now and got > 1_600_000_000.0, (

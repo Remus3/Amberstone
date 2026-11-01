@@ -36,6 +36,7 @@ import pytest
 from dashboard import _arm_confirm as armgate
 from dashboard import _idempotency as idem
 from dashboard import routes_loop_control as mod
+from tests._timing_budget import fleet_test_guard
 
 LANES = ("upgrade", "uiux", "research", "ds", "repo", "true-audit", "gated",
          "queue")
@@ -810,7 +811,7 @@ def test_concurrent_duplicate_key_fires_the_side_effect_exactly_once(
 
     a = threading.Thread(target=run, args=("a",), name="idem-a")
     a.start()
-    assert entered.acquire(timeout=10), "thread A never entered the side effect"
+    assert entered.acquire(timeout=fleet_test_guard.budget(10)), "thread A never entered the side effect"
 
     b = threading.Thread(target=run, args=("b",), name="idem-b")
     b.start()
@@ -864,7 +865,7 @@ def test_a_waiter_acts_when_the_owner_abandons_a_non_200(ctldir, monkeypatch):
 
     a = threading.Thread(target=run, args=("a",), name="abandon-a")
     a.start()
-    assert entered.acquire(timeout=10)
+    assert entered.acquire(timeout=fleet_test_guard.budget(10))
     b = threading.Thread(target=run, args=("b",), name="abandon-b")
     b.start()
     # B must WAIT for A rather than act alongside it. Without this assertion the
@@ -912,7 +913,7 @@ def test_an_in_flight_duplicate_is_refused_in_a_shape_every_panel_renders(
     a = threading.Thread(target=lambda: out.setdefault(
         "a", mod.apply_action("queue_intent", dict(body))), name="slow-a")
     a.start()
-    assert entered.acquire(timeout=10), "the owner never entered the side effect"
+    assert entered.acquire(timeout=fleet_test_guard.budget(10)), "the owner never entered the side effect"
 
     status, payload = mod.apply_action("queue_intent", dict(body))
     release.set()

@@ -34,6 +34,7 @@ from unittest import mock
 import pytest
 
 import core.daemon_slayer_client as dsc
+from tests._timing_budget import fleet_test_guard
 
 ROOT = Path(__file__).resolve().parent.parent
 INSTALLER = ROOT / "tools" / "install_ds_keepalive_task.ps1"
@@ -147,7 +148,7 @@ class RcWatchdogHeartbeat(unittest.TestCase):
         with mock.patch.object(dsc, "_WATCHDOG", None), \
                 mock.patch.object(dsc, "DsWatchdog", FakeWatchdog):
             dsc.ensure_running()
-            self.assertTrue(ran.wait(5), "the watchdog thread never ran")
+            self.assertTrue(ran.wait(fleet_test_guard.budget(5)), "the watchdog thread never ran")
         self.assertEqual(len(seen), 1)
         self.assertIs(seen[0].get("heartbeat"), dsc.write_rc_watchdog_heartbeat)
 

@@ -35,6 +35,7 @@ from unittest import mock
 from core import riot_api as RA
 from core import riot_api_cache as RIC
 from dashboard import routes_team_context as RTC
+from tests._timing_budget import fleet_test_guard
 
 _CHAMP_IDS = {"camille": 164, "jax": 24, "yasuo": 157, "fiora": 114,
               "annie": 1}
@@ -438,11 +439,11 @@ class TestSettledWorkerDoesNotBlock(_Base):
             RTC._default_dispatch_fanout([], [], 400)
             first = RTC._WORKER
             try:
-                self.assertTrue(settled.wait(5.0))
+                self.assertTrue(settled.wait(fleet_test_guard.budget(5.0)))
                 with mock.patch.object(RTC, "_fanout_worker",
                                        lambda *_a, **_k: spawned.set()):
                     RTC._default_dispatch_fanout([], [], 400)
-                    self.assertTrue(spawned.wait(5.0))
+                    self.assertTrue(spawned.wait(fleet_test_guard.budget(5.0)))
             finally:
                 release.set()
                 if first is not None:

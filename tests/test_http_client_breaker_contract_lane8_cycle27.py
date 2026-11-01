@@ -148,6 +148,7 @@ from lib.http.client import (
     HttpClient,
     HttpError,
 )
+from tests._timing_budget import fleet_test_guard
 
 # Hosts used below. None of them ends in a suffix from the real blocklist
 # (.ru/.cn/.tk/.top/.xyz), and every client here is built against a tempfile
@@ -890,7 +891,7 @@ class RateGateLockTests(_BreakerTestBase):
         t_book = threading.Thread(target=bookkeeper, name="lane8c27-bookkeeper")
         try:
             t_sleep.start()
-            self.assertTrue(in_sleep.wait(10.0), "the rate gate never entered its sleep")
+            self.assertTrue(in_sleep.wait(fleet_test_guard.budget(10.0)), "the rate gate never entered its sleep")
             t_book.start()
             blocked = not bookkeeping_done.wait(0.75)
         finally:

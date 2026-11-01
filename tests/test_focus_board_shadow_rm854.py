@@ -204,7 +204,7 @@ def test_warming_then_ready_records_the_board_exactly_once(
     fbl._join_warm_for_tests(_HOLD_S)
     # Engine up, board not computed yet: the read only queues it (pending).
     assert _log(target, lc) is None
-    assert fbl._wait_worker_idle_for_tests(_HOLD_S)
+    assert fbl._wait_worker_idle_for_tests(fleet_test_guard.budget(_HOLD_S))
 
     relog = _log(target, lc)
     assert relog is not None
@@ -262,12 +262,12 @@ def test_dedup_ticks_feed_the_worker_so_the_next_row_is_ready(
                               inline_worker=False)
     target = tmp_path / "s.jsonl"
     _log(target, _lc(12), round_label=4)               # pending (queued)
-    assert fbl._wait_worker_idle_for_tests(_HOLD_S)
+    assert fbl._wait_worker_idle_for_tests(fleet_test_guard.budget(_HOLD_S))
     assert _log(target, _lc(12), round_label=4)["focus_board_relog"] is True
     # The roster changes inside the same tick key: no row, but the board for
     # the new roster is computed off-thread from the dedup tick ...
     assert _log(target, _lc(13), round_label=4) is None
-    assert fbl._wait_worker_idle_for_tests(_HOLD_S)
+    assert fbl._wait_worker_idle_for_tests(fleet_test_guard.budget(_HOLD_S))
     # ... so the next round's row is ready on its first write (no re-log).
     nxt = _log(target, _lc(13), round_label=5)
     assert nxt["focus_board"]["status"] == fbl.STATUS_OK
@@ -306,7 +306,7 @@ def test_state_builder_hook_never_waits_on_the_compute(
         [row] = _rows(target)
         assert row["focus_board"]["status"] == fbl.STATUS_PENDING
         # The compute really is running, and not on this (caller) thread.
-        assert started.wait(_HOLD_S)
+        assert started.wait(fleet_test_guard.budget(_HOLD_S))
         assert compute_threads == [fbl.WORKER_THREAD_NAME]
         # A tick while the compute is still held open does not wait either.
         t1 = time.perf_counter()
@@ -316,7 +316,7 @@ def test_state_builder_hook_never_waits_on_the_compute(
         assert len(_rows(target)) == 1
     finally:
         release.set()
-    assert fbl._wait_worker_idle_for_tests(_HOLD_S)
+    assert fbl._wait_worker_idle_for_tests(fleet_test_guard.budget(_HOLD_S))
     shadow_log_arena_coach(_coach(), _lc(), "arena", path=target,
                            live_path=missing)
     rows = _rows(target)
@@ -340,13 +340,13 @@ def test_worker_queue_is_bounded_latest_roster_wins(monkeypatch, snapshot):
 
     assert fbl.board_for_lc(_lc(12), "arena", background=True)["status"] \
         == fbl.STATUS_PENDING
-    assert started.wait(_HOLD_S)            # level 12 is in flight
+    assert started.wait(fleet_test_guard.budget(_HOLD_S))            # level 12 is in flight
     for lvl in (13, 14, 15):                # each replaces the queued one
         out = fbl.board_for_lc(_lc(lvl), "arena", background=True)
         assert out["status"] == fbl.STATUS_PENDING
         assert out["top_kill"] is None
     release.set()
-    assert fbl._wait_worker_idle_for_tests(_HOLD_S)
+    assert fbl._wait_worker_idle_for_tests(fleet_test_guard.budget(_HOLD_S))
     assert seen == [12, 15]
     assert fbl.board_for_lc(_lc(15), "arena", background=True)["status"] \
         == fbl.STATUS_OK
@@ -360,12 +360,12 @@ def test_worker_waits_out_the_throttle_instead_of_dropping(monkeypatch,
     fbl._set_engine_for_tests((snapshot, compute_focus_board),
                               inline_worker=False)
     fbl.board_for_lc(_lc(12), "arena", background=True)
-    assert fbl._wait_worker_idle_for_tests(_HOLD_S)
+    assert fbl._wait_worker_idle_for_tests(fleet_test_guard.budget(_HOLD_S))
     # Inside the window: the read never says throttled, the worker holds the
     # job and computes it once the window has passed.
     out = fbl.board_for_lc(_lc(13), "arena", background=True)
     assert out["status"] == fbl.STATUS_PENDING
-    assert fbl._wait_worker_idle_for_tests(_HOLD_S)
+    assert fbl._wait_worker_idle_for_tests(fleet_test_guard.budget(_HOLD_S))
     assert fbl.board_for_lc(_lc(13), "arena", background=True)["status"] \
         == fbl.STATUS_OK
 
@@ -379,7 +379,7 @@ def test_worker_failure_never_raises_and_settles(monkeypatch, snapshot):
     monkeypatch.setattr(fbl, "_compute", broken)
     assert fbl.board_for_lc(_lc(12), "arena", background=True)["status"] \
         == fbl.STATUS_PENDING
-    assert fbl._wait_worker_idle_for_tests(_HOLD_S)
+    assert fbl._wait_worker_idle_for_tests(fleet_test_guard.budget(_HOLD_S))
     out = fbl.board_for_lc(_lc(12), "arena", background=True)
     assert out["status"] == fbl.STATUS_ERROR     # settled, not retried per tick
     assert "SECRET-LEAK-MARKER" not in json.dumps(out)
@@ -387,7 +387,7 @@ def test_worker_failure_never_raises_and_settles(monkeypatch, snapshot):
     monkeypatch.setattr(fbl, "_compute", real_compute)
     monkeypatch.setattr(fbl, "MIN_COMPUTE_INTERVAL_S", 0.0)
     fbl.board_for_lc(_lc(13), "arena", background=True)
-    assert fbl._wait_worker_idle_for_tests(_HOLD_S)
+    assert fbl._wait_worker_idle_for_tests(fleet_test_guard.budget(_HOLD_S))
     assert fbl.board_for_lc(_lc(13), "arena", background=True)["status"] \
         == fbl.STATUS_OK
 
@@ -449,11 +449,11 @@ def test_kill_switch_drops_a_job_already_queued(monkeypatch, snapshot):
     monkeypatch.setattr(fbl, "MIN_COMPUTE_INTERVAL_S", 0.0)
     fbl._set_engine_for_tests((snapshot, gated), inline_worker=False)
     fbl.board_for_lc(_lc(12), "arena", background=True)
-    assert started.wait(_HOLD_S)
+    assert started.wait(fleet_test_guard.budget(_HOLD_S))
     fbl.board_for_lc(_lc(13), "arena", background=True)     # queued
     monkeypatch.setenv(fbl.KILL_SWITCH_ENV, "0")
     release.set()
-    assert fbl._wait_worker_idle_for_tests(_HOLD_S)
+    assert fbl._wait_worker_idle_for_tests(fleet_test_guard.budget(_HOLD_S))
     assert seen == [12]
 
 
@@ -470,7 +470,7 @@ def test_coach_output_byte_identical_with_and_without_the_shadow(
 
     on = tmp_path / "on.jsonl"
     shadow_log_arena_coach(coach, lc, "arena", path=on, live_path=missing)
-    assert fbl._wait_worker_idle_for_tests(_HOLD_S)
+    assert fbl._wait_worker_idle_for_tests(fleet_test_guard.budget(_HOLD_S))
     shadow_log_arena_coach(coach, lc, "arena", path=on, live_path=missing)
     shadow_log_arena_coach(coach, lc, "arena", path=on, live_path=missing)
     assert json.dumps(coach, sort_keys=True) == coach_before

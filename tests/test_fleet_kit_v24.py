@@ -33,6 +33,8 @@ import time
 import types
 from pathlib import Path
 
+from tests._timing_budget import fleet_test_guard
+
 ROOT = Path(__file__).resolve().parent.parent
 KIT = ROOT / "ops" / "fleet_kit"
 # Kit v25 (MAIN 2026-10-27 2136 ORDER, LANE-CAP) superseded the v24 bytes
@@ -162,7 +164,7 @@ def test_a_concurrent_lanes_caller_never_sees_a_half_loaded_module(tmp_path, mon
 
     a = threading.Thread(target=call, args=("a",))
     a.start()
-    assert gate.entered.wait(10), "thread A never reached exec_module"
+    assert gate.entered.wait(fleet_test_guard.budget(10)), "thread A never reached exec_module"
     b = threading.Thread(target=call, args=("b",))
     b.start()
     time.sleep(0.3)  # B is either blocked on the loader lock or already returned

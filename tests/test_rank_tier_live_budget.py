@@ -131,7 +131,7 @@ def test_defect_a_bench_lock_is_not_held_across_the_live_fetch(monkeypatch):
     worker = threading.Thread(target=RTB.source, name="rtb-probe", daemon=True)
     worker.start()
     try:
-        assert started.wait(10.0), "the live sweep never started"
+        assert started.wait(fleet_test_guard.budget(10.0)), "the live sweep never started"
         # _LOCK is an RLock: this probe is only meaningful from a thread that is
         # NOT the one inside the sweep, because a same-thread acquire always
         # succeeds and would pass even against the defect.
@@ -175,7 +175,7 @@ def test_defect_a_stale_grid_is_served_without_waiting_for_the_sweep(monkeypatch
     gate.set()
 
     assert grid["all"]["early"]["cs"]["avg"] == 140, "stale grid was not served"
-    assert started.wait(10.0), "the refresh never ran at all"
+    assert started.wait(fleet_test_guard.budget(10.0)), "the refresh never ran at all"
     # Capped under the 2.0 s parked sweep, so a read that waits on it fails.
     assert elapsed < min(fleet_test_guard.budget(1.0), 1.8), (
         f"a stale read blocked {elapsed:.2f}s behind the live sweep"

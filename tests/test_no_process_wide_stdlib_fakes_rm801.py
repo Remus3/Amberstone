@@ -84,6 +84,7 @@ from tests._module_view import (
     this_thread_only,
 )
 from tests._repo_walk import iter_repo_files, self_check
+from tests._timing_budget import fleet_test_guard
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SCAN_DIRS = ("tests", "agents/daemon_slayer/tests")
@@ -1411,7 +1412,7 @@ def test_this_thread_only_spares_threads_alive_at_install():
     t.start()
     box["scoped"] = scoped = this_thread_only(lambda: "fake", lambda: "real")
     go.set()
-    assert done.wait(5)
+    assert done.wait(fleet_test_guard.budget(5))
     assert seen["leftover"] == "real"
     assert scoped() == "fake"
     late = []
@@ -1467,7 +1468,7 @@ def _leftover_children(monkeypatch=None):
     _start(threading.Thread(target=leftover, daemon=True), monkeypatch)
     box["scoped"] = scoped = this_thread_only(lambda: "fake", lambda: "real")
     go.set()
-    assert done.wait(5)
+    assert done.wait(fleet_test_guard.budget(5))
     assert scoped() == "fake"
     return seen
 

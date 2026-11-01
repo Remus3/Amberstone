@@ -24,6 +24,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from core import log_retention
 from tests._replace_faults import scoped_path_fault
+from tests._timing_budget import fleet_test_guard
 
 
 def _write(path: Path, size: int, age_days: float) -> Path:
@@ -412,7 +413,7 @@ def test_stop_keeps_a_thread_that_failed_to_join_and_start_refuses_a_second(
 
     try:
         log_retention.start(tmp_path, interval_s=3600)
-        assert entered.wait(5), "worker never entered prune"
+        assert entered.wait(fleet_test_guard.budget(5)), "worker never entered prune"
 
         with caplog.at_level(logging.WARNING, logger="rc.log_retention"):
             log_retention.stop()

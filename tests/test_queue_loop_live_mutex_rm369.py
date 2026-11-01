@@ -18,6 +18,8 @@ import threading
 
 import pytest
 
+from tests._timing_budget import fleet_test_guard
+
 qloop = importlib.import_module("ops.loop.queue_loop")
 
 pytestmark = pytest.mark.skipif(sys.platform != "win32",
@@ -43,7 +45,7 @@ def _driver_mutex_held():
 
     t = threading.Thread(target=_holder, daemon=True)
     t.start()
-    assert acquired.wait(10), "holder thread never reported"
+    assert acquired.wait(fleet_test_guard.budget(10)), "holder thread never reported"
     try:
         yield state
     finally:

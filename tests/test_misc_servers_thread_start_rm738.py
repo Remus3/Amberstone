@@ -53,6 +53,8 @@ from unittest import mock
 
 import pytest
 
+from tests._timing_budget import fleet_test_guard
+
 # The simulated fault kills a thread in bootstrap, outside run(); CPython
 # reports that through sys.unraisablehook, which pytest turns into a warning.
 # That death is the scenario under test, not a defect of the test.
@@ -227,7 +229,7 @@ def test_a_thread_that_starts_after_the_cap_never_touches_the_dropped_socket(ser
 
     with _bootstrap_fault(srv, slow_bootstrap):
         outcome = _request(port, path, timeout=3)
-        assert woke.wait(5), "the slow thread never finished bootstrapping"
+        assert woke.wait(fleet_test_guard.budget(5)), "the slow thread never finished bootstrapping"
     time.sleep(0.3)                          # let it reach run()
     assert outcome == ("closed", None), "past the cap the connection is dropped"
     assert handled == [], "an abandoned thread ran the request anyway"

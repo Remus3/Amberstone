@@ -21,6 +21,7 @@ import threading
 import pytest
 
 from tests._module_view import ProcessStartTripped, no_process_start
+from tests._timing_budget import fleet_test_guard
 
 _NO_WINDOW = {"creationflags": getattr(subprocess, "CREATE_NO_WINDOW", 0)}
 _HARMLESS = [sys.executable, "-c", "pass"]
@@ -84,7 +85,7 @@ def test_a_thread_alive_before_arming_keeps_real_starts():
     t.start()
     with no_process_start() as hits:
         go.set()
-        assert done.wait(60)
+        assert done.wait(fleet_test_guard.budget(60))
     t.join(60)
     assert rc == [0] and hits == []
 
@@ -105,7 +106,7 @@ def test_a_thread_the_leftover_starts_keeps_real_starts_too():
     t.start()
     with no_process_start() as hits:
         go.set()
-        assert done.wait(60)
+        assert done.wait(fleet_test_guard.budget(60))
     assert rc == [0] and hits == []
 
 

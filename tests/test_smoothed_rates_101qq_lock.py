@@ -188,7 +188,7 @@ class ServeStaleWhileRefreshingTests(LockBase):
 
         ta = threading.Thread(target=_reader_a, daemon=True)
         ta.start()
-        self.assertTrue(entered.wait(_JOIN_S), "the refresh fetch never started")
+        self.assertTrue(entered.wait(fleet_test_guard.budget(_JOIN_S)), "the refresh fetch never started")
 
         # Reader B arrives with the refresh genuinely in flight.
         t0 = time.perf_counter()
@@ -242,7 +242,7 @@ class ServeStaleWhileRefreshingTests(LockBase):
 
         # Stale read while the refresh is provably still parked in the fetch.
         stale = S101.pair_synergy("Ashe", "Seraphine")
-        self.assertTrue(entered.wait(_JOIN_S),
+        self.assertTrue(entered.wait(fleet_test_guard.budget(_JOIN_S)),
                         "the refresh fetch never started - the assertions "
                         "below would pass vacuously")
         self.assertIsNotNone(stale)
@@ -280,18 +280,18 @@ class SingleFlightTests(LockBase):
         first = threading.Thread(
             target=lambda: S101.top_duos_for_bot("Ashe", top_n=1), daemon=True)
         first.start()
-        self.assertTrue(started.wait(_JOIN_S), "the cold-start fetch never ran")
+        self.assertTrue(started.wait(fleet_test_guard.budget(_JOIN_S)), "the cold-start fetch never ran")
 
         rest = [threading.Thread(target=_reader, args=(i,), daemon=True)
                 for i in range(5)]
         for t in rest:
             t.start()
         for ev in ready:
-            self.assertTrue(ev.wait(_JOIN_S))
+            self.assertTrue(ev.wait(fleet_test_guard.budget(_JOIN_S)))
 
         hold.set()
         for t in [first, *rest]:
-            t.join(_JOIN_S)
+            t.join(fleet_test_guard.budget(_JOIN_S))
             self.assertFalse(t.is_alive(), "a reader never returned")
 
         self.assertEqual(
@@ -316,7 +316,7 @@ class SingleFlightTests(LockBase):
         S101._live_data_rows = _counted
 
         S101.source()
-        self.assertTrue(entered.wait(_JOIN_S), "the refresh fetch never started")
+        self.assertTrue(entered.wait(fleet_test_guard.budget(_JOIN_S)), "the refresh fetch never started")
         # Six more stale readers while the first refresh is parked.
         for _ in range(6):
             S101.coverage()
@@ -343,7 +343,7 @@ class SingleFlightTests(LockBase):
 
         S101._live_data_rows = _parked
         S101.source()
-        self.assertTrue(entered.wait(_JOIN_S), "the refresh fetch never started")
+        self.assertTrue(entered.wait(fleet_test_guard.budget(_JOIN_S)), "the refresh fetch never started")
 
         # A reset lands while the refresh is still out on the network; the
         # late publish must be dropped, not resurrect the dropped snapshot.

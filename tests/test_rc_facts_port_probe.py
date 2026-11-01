@@ -13,6 +13,7 @@ import threading
 
 import tools.rc_facts as rc_facts
 from tests._module_view import bind_socket_class
+from tests._timing_budget import fleet_test_guard
 
 _REAL_SOCKET = socket.socket
 
@@ -104,7 +105,7 @@ def test_another_threads_socket_does_not_consume_the_fake_sequence(monkeypatch) 
     worker.start()
     bind_socket_class(monkeypatch, rc_facts, _factory(["refused"]))
     go.set()
-    assert done.wait(5)
+    assert done.wait(fleet_test_guard.budget(5))
     worker.join(5)
     assert seen == [_REAL_SOCKET], seen
     assert rc_facts._port_listening(9999) is False

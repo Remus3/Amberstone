@@ -28,6 +28,8 @@ import time
 
 import pytest
 
+from tests._timing_budget import fleet_test_guard
+
 
 # =============================================================================
 # 1. lcu/lcu_postgame_collector.py
@@ -277,7 +279,7 @@ def test_save_spell_pref_serialized_and_atomic(tmp_path, monkeypatch):
         time.sleep(0.25)
         before = json.loads(prefs.read_text(encoding="utf-8"))
         assert "aram_mode" not in before, "writer must block on the lock"
-    assert done.wait(timeout=5.0)
+    assert done.wait(timeout=fleet_test_guard.budget(5.0))
     t.join(timeout=5.0)
 
     after = json.loads(prefs.read_text(encoding="utf-8"))
@@ -365,7 +367,7 @@ def test_reset_state_holds_coaching_data_lock(tmp_path):
         )
     finally:
         cdl._LOCK.release()
-    assert done.wait(timeout=5.0)
+    assert done.wait(timeout=fleet_test_guard.budget(5.0))
     t.join(timeout=5.0)
 
     blank = json.loads(c.data_file.read_text(encoding="utf-8"))

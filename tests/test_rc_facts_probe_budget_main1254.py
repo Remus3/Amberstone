@@ -178,7 +178,7 @@ def test_another_threads_run_and_urlopen_reach_the_real_functions(monkeypatch):
     run_seen = _record_run_timeouts(monkeypatch)
     url_seen = _record_urlopen_timeouts(monkeypatch)
     go.set()
-    assert done.wait(60)
+    assert done.wait(fleet_test_guard.budget(60))
     worker.join(5)
     assert run_seen == [] and url_seen == [], (run_seen, url_seen)
     assert errors == [], errors

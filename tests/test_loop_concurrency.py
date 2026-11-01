@@ -24,6 +24,8 @@ from pathlib import Path
 
 import pytest
 
+from tests._timing_budget import fleet_test_guard
+
 ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -361,7 +363,7 @@ def test_mutex_timeout_raises_when_held_elsewhere():
 
     t = threading.Thread(target=holder)
     t.start()
-    assert got.wait(timeout=10)
+    assert got.wait(timeout=fleet_test_guard.budget(10))
     try:
         with pytest.raises(winmutex.MutexTimeout):
             with winmutex.hold("Global\\LWRC_TEST_RC_TIMEOUT", timeout=0.2):
@@ -449,7 +451,7 @@ def test_posix_no_op_lets_a_second_caller_in_while_the_first_holds(monkeypatch):
     t = threading.Thread(target=holder)
     t.start()
     try:
-        assert inside.wait(timeout=10), "the first caller never entered its block"
+        assert inside.wait(timeout=fleet_test_guard.budget(10)), "the first caller never entered its block"
         with winmutex.hold(name, timeout=0.2, log=lines.append) as h:
             assert h is None, "the POSIX branch holds no handle"
             assert not release.is_set(), \

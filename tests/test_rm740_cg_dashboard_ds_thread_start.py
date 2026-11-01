@@ -402,7 +402,7 @@ def test_s144q10_a_foreign_thread_started_mid_request_does_not_hold_the_wait(
     def get_then_foreign_start(*a, **kw):
         status = real_get(*a, **kw)
         go.set()
-        assert child_up.wait(5), "the foreign child never started"
+        assert child_up.wait(fleet_test_guard.budget(5)), "the foreign child never started"
         return status
 
     monkeypatch.setattr(sys.modules[__name__], "_get", get_then_foreign_start)

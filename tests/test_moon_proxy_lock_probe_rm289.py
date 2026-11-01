@@ -28,7 +28,7 @@ def _slow_proxy(result: bool, entered: threading.Event, release: threading.Event
 
     def _ping() -> bool:
         entered.set()
-        assert release.wait(5.0), "test harness: release never set"
+        assert release.wait(fleet_test_guard.budget(5.0)), "test harness: release never set"
         return result
 
     proxy._ping = _ping  # type: ignore[method-assign]
@@ -41,7 +41,7 @@ def test_lock_not_held_during_slow_ping():
     worker = threading.Thread(target=proxy.is_available, daemon=True)
     worker.start()
     try:
-        assert entered.wait(5.0), "probe never started"
+        assert entered.wait(fleet_test_guard.budget(5.0)), "probe never started"
         got = []
         prober = threading.Thread(
             target=lambda: got.append(proxy._lock.acquire(timeout=1.0)),
@@ -65,7 +65,7 @@ def test_concurrent_caller_served_last_known_without_waiting():
     worker = threading.Thread(target=proxy.is_available, daemon=True)
     worker.start()
     try:
-        assert entered.wait(5.0)
+        assert entered.wait(fleet_test_guard.budget(5.0))
         t0 = time.monotonic()
         assert proxy.is_available() is True   # last known, not blocked
         assert time.monotonic() - t0 < fleet_test_guard.budget(1.0)

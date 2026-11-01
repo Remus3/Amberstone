@@ -40,6 +40,7 @@ from pathlib import Path
 import pytest
 
 from ops.launcher import service_host as sh
+from tests._timing_budget import fleet_test_guard
 
 ROOT = Path(__file__).resolve().parent.parent
 HOST_PY = ROOT / "ops" / "launcher" / "service_host.py"
@@ -1495,7 +1496,7 @@ def test_real_parent_death_kills_every_service_and_grandchild(tmp_path):
         procs = run.up()
         run.parent.kill()
         run.parent.wait(10)
-        assert run.host.wait(60) == 0
+        assert run.host.wait(fleet_test_guard.budget(60)) == 0
         assert _wait_for(lambda: not procs.alive(), 15), procs.alive()
         doc = read_status(run.root)
         assert doc["state"] == "halted" and doc["reason"] == "parent_exit"
@@ -1524,7 +1525,7 @@ def test_real_stdin_stop_is_graceful(tmp_path):
         procs = run.up()
         run.host.stdin.write(b"stop\n")
         run.host.stdin.flush()
-        assert run.host.wait(60) == 0
+        assert run.host.wait(fleet_test_guard.budget(60)) == 0
         assert (run.root / "got_shutdown").is_file()
         assert _wait_for(lambda: not procs.alive(), 15), procs.alive()
         doc = read_status(run.root)

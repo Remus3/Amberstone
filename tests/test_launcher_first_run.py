@@ -42,6 +42,7 @@ import pytest
 from ops.launcher import first_run as fr
 from ops.launcher import service_host as sh
 from tests._module_view import this_thread_only
+from tests._timing_budget import fleet_test_guard
 
 ROOT = Path(__file__).resolve().parent.parent
 FIRST_RUN_PY = ROOT / "ops" / "launcher" / "first_run.py"
@@ -1264,7 +1265,7 @@ def test_real_isolated_host_provisions_a_fresh_root(tmp_path):
         env=env, creationflags=NO_WINDOW)
     try:
         parent.wait(30)
-        assert host.wait(60) == 0
+        assert host.wait(fleet_test_guard.budget(60)) == 0
     finally:
         for proc in (host, parent):
             if proc.poll() is None:
