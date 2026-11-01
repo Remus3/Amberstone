@@ -27,7 +27,8 @@ Request shape:
              resolves the champion's canonical archetype build (mirrors
              routes_spike_curve._ARCHETYPE_BUILDS) so the curve is not zeroed
              by an itemless body.
-  mode     : SR | ARAM | ARENA | BRAWL. Defaults SR.
+  mode     : SR | ARAM | ARENA | BRAWL (any case). Defaults SR. Any other
+             mode -> 400 (RM-1327).
   level    : fixed champion level for the resist axes (default 11). Ignored by
              the level axis (it sweeps level). Clamped [1, 18].
   max      : resist-axis sweep ceiling (default 300). Clamped [step, 1000].
@@ -54,14 +55,16 @@ Response shape:
   }
 
 Failure modes:
-  - 400  champion param missing/blank, or axis not in {armor, mr, level}.
+  - 400  champion param missing/blank, axis not in {armor, mr, level}, or
+         mode not in {SR, ARAM, ARENA, BRAWL} (fixed text + supported list).
   - 200  ok=false reason=no_points when the sweep resolves zero points
          (unknown champion / degenerate build - compute_dps_sweep fail-softs).
   - 503  dps_sweep import fails or the DS snapshot is unloadable.
 
 5-min TTL in-process cache keyed on
 (champion, axis, sorted_item_ids, mode, level, max, step). Mirrors
-routes_cooldown_watch cache discipline exactly. The level axis ignores
+routes_cooldown_watch cache discipline, bounded at ``_CACHE_MAX`` entries
+with expired entries dropped on write (RM-1327). The level axis ignores
 max/step in the sweep but they still participate in the key (a no-op vary).
 
 Don't-redo:
@@ -90,6 +93,16 @@ log = logging.getLogger("rc.web_dashboard")
 _CACHE_TTL_S = 300.0
 _CACHE: dict[tuple, tuple[float, dict]] = {}
 _CACHE_LOCK = threading.Lock()
+# RM-1327: the key carries caller-chosen champion / item_ids strings, so an
+# unbounded dict grows for the process lifetime. Expired entries are dropped
+# on write and the oldest go once the cap is passed (the routes_ban_suggest /
+# _deterministic_coaching discipline).
+_CACHE_MAX = 256
+
+# RM-1327: the modes the route serves. The DS engine scores any OTHER mode
+# string as SR (measured: mode="ZZQ" returned the SR points), so an unknown
+# mode is refused rather than answered with SR numbers under a made-up label.
+_SUPPORTED_MODES: tuple[str, ...] = ("SR", "ARAM", "ARENA", "BRAWL")
 
 # Axis shorthand -> canonical compute_dps_sweep axis name.
 _AXIS_ALIASES: dict[str, str] = {
@@ -247,6 +260,19 @@ def _cache_key(
     return (champion, axis, tuple(sorted(item_ids)), mode, level, max_v, step)
 
 
+def _cache_put(key: tuple, now: float, payload: dict) -> None:
+    """Store ``payload`` under ``key``, then bound the cache (RM-1327):
+    drop every expired entry, and past ``_CACHE_MAX`` drop the oldest."""
+    with _CACHE_LOCK:
+        _CACHE[key] = (now, dict(payload))
+        for k in [k for k, (ts, _) in _CACHE.items()
+                  if (now - ts) >= _CACHE_TTL_S]:
+            _CACHE.pop(k, None)
+        while len(_CACHE) > _CACHE_MAX:
+            oldest = min(_CACHE, key=lambda k: _CACHE[k][0])
+            _CACHE.pop(oldest, None)
+
+
 def _compute(
     champion: str, axis: str, item_ids: list[str], mode: str,
     level: int, max_v: int, step: int,
@@ -332,6 +358,14 @@ def _serve_ds_sweep(h) -> None:
             return
 
         mode = (qs.get("mode") or ["SR"])[0].upper().strip() or "SR"
+        if mode not in _SUPPORTED_MODES:
+            h._send(400, json.dumps({
+                "ok":        False,
+                # RM-1327: a fixed line, never the caller's value.
+                "error":     "unsupported mode",
+                "supported": list(_SUPPORTED_MODES),
+            }).encode("utf-8"), "application/json")
+            return
         item_ids = _parse_item_ids((qs.get("item_ids") or [""])[0].strip())
         level = _parse_int((qs.get("level") or [""])[0].strip(),
                            _DEFAULT_LEVEL, 1, 18)
@@ -370,8 +404,7 @@ def _serve_ds_sweep(h) -> None:
             }).encode("utf-8"), "application/json")
             return
 
-        with _CACHE_LOCK:
-            _CACHE[key] = (now, dict(payload))
+        _cache_put(key, now, payload)
 
         payload["cached"] = False
         payload["elapsed_ms"] = int((time.time() - t0) * 1000)
