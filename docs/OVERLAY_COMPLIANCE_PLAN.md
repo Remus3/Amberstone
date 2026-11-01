@@ -113,6 +113,10 @@ Tebex), and acceptance of Developer Terms + Monetization Terms.
 7. Land the Haiku-to-ZERO precompute far enough that residual LLM cost fits ad revenue.
 8. Submit the proposal form.
 
+## 6a. External confirmation: Riot's game-memory block (added 2026-11-01, MAIN ORDER 2026-10-31 2215 item 11)
+
+Riot's support article "Game Memory Access Removed for Third Party Apps" (posted 2026-09-29; https://support.riotgames.com/en-us/riot/performance/game-memory-access-removed-for-third-party-apps) states that from 2026-10-06 Riot blocks game-memory access by default for all unknown third-party applications in League, TFT and VALORANT, and that known, already-approved tools keep an extended grace period until April 2027, after which they must use the official APIs. This is external confirmation of RC's official-API-only stance: RC reads only the LCU and the Live Client Data API (`:2999`) plus its own screen capture, never game memory, so the block and the April 2027 grace end require no change here.
+
 ## 6b. Riot-side blockers found 2026-08-11 (NEW - not in the Overlay Platform M list)
 
 Sourced from developer.riotgames.com/policies/general + the Legal Jibber Jabber policy.
