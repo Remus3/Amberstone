@@ -24,8 +24,8 @@ THE PASS (kit `fleet_inbox`, consumed, never edited):
         non-bare: RC's floors live in hooks, kit v11 R1); parse_verdict()
         gives NOREPLY / ACK / ANSWER and the note is marked seen either way. A
         FAILED run (rc, error, is_error on its usage line) has no verdict: it is
-        a summary error and the note stays unseen, until MAX_TRIAGE_FAILURES
-        failed runs of that note close it with verdict TRIAGE_FAILED
+        a summary error and the note stays unseen; after MAX_TRIAGE_FAILURES
+        failed runs of that note it is held, unseen, and spends no further run
   ANSWER parts -> ONE batched note per destination (batch_note, HOP line), only
         when may_reply() holds, the sender is a counterparty, and
         OutboundCap(root).allow("ANSWER"); delivery is the pre-authorised
@@ -152,7 +152,6 @@ HELD_REL = Path("ops/loop/control/inbox_held")
 DELIVERIES_REL = Path("ops/loop/control/inbox_deliveries.jsonl")
 MAX_TRIAGE_PER_TICK = 1
 MAX_TRIAGE_FAILURES = 3
-TRIAGE_FAILED = "TRIAGE_FAILED"
 # The RC-InboxResponder task repeats every 5 minutes
 # (ops/install_RC_InboxResponder.ps1); the CLI's idle status names that tick.
 TICK_S = 300
@@ -471,19 +470,6 @@ def _failed_triages(root: Path, name: str) -> int:
                and _triage_failure(r) is not None)
 
 
-def _triage_failed(root, path, d, why, s) -> None:
-    """A failed run stays unseen for the next fire (the refusal path's contract),
-    until MAX_TRIAGE_FAILURES: then the ledger closes it as TRIAGE_FAILED, so one
-    poison note cannot spend a run every fire and starve the notes behind it."""
-    name = path.name
-    if _failed_triages(root, name) >= MAX_TRIAGE_FAILURES:
-        fleet_inbox.mark_seen(root, path, d, verdict=TRIAGE_FAILED)
-        s["errors"].append(f"{name}: triage failed, giving up: {why}"[:200])
-    else:
-        s["errors"].append(f"{name}: triage failed: {why}"[:200])
-        s["deferred"] += 1
-
-
 def _process(root, rows, s, *, code, agreement, participants, spawn, spawn_kw,
              verify, deliver, max_triage, emit):
     counterparties = set((agreement or {}).get("counterparties") or ())
@@ -520,6 +506,14 @@ def _process(root, rows, s, *, code, agreement, participants, spawn, spawn_kw,
             if agreement is None or triaged >= max_triage:
                 s["deferred"] += 1
                 continue
+            # A note that keeps failing stops spending runs, and stays UNSEEN:
+            # a rate limit is the usual failure, so closing it here would lose a
+            # note nobody read. rc_facts keeps naming it for an attended session.
+            if _failed_triages(root, name) >= MAX_TRIAGE_FAILURES:
+                s["errors"].append(f"{name}: triage held after "
+                                   f"{MAX_TRIAGE_FAILURES} failed runs, unread"[:200])
+                s["deferred"] += 1
+                continue
             try:
                 body = path.read_text(encoding="utf-8", errors="replace")
             except OSError as exc:
@@ -540,7 +534,8 @@ def _process(root, rows, s, *, code, agreement, participants, spawn, spawn_kw,
                 continue
             why = _triage_failure(line)
             if why is not None:
-                _triage_failed(root, path, d, why, s)
+                s["errors"].append(f"{name}: triage failed: {why}"[:200])
+                s["deferred"] += 1
                 continue
             verdict, text = fleet_inbox.parse_verdict(line.get("result"))
             fleet_inbox.mark_seen(root, path, d, verdict=verdict)

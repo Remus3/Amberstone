@@ -331,18 +331,19 @@ def test_a_note_that_keeps_failing_stops_spending_runs(tmp_path):
     _note(inbox, name, "# x\n", 1)
     _usage_rows(tmp_path, name, tick_mod.MAX_TRIAGE_FAILURES)
     spy = _LineSpy({"rc": 1, "result": None, "error": "x"})
-    s = _tick(tmp_path, inbox, spawn=spy)
-    assert s["triaged"] == 0 and s["deferred"] == 0
-    assert "giving up" in s["errors"][0]
-    assert _seen_rows(tmp_path)[0]["verdict"] == tick_mod.TRIAGE_FAILED
-    assert _tick(tmp_path, inbox, spawn=spy)["unseen"] == 0
-    assert len(spy.calls) == 1
+    for _ in range(2):
+        s = _tick(tmp_path, inbox, spawn=spy)
+        assert s["triaged"] == 0 and s["deferred"] == 1 and s["unseen"] == 1
+        assert "held" in s["errors"][0]
+    # Held, never closed: nobody read it, and the failure is usually a rate limit.
+    assert _seen_rows(tmp_path) == []
+    assert spy.calls == []
 
 
 @pytest.mark.parametrize("over", [
     {"note": "another-note.md"}, {"kind": "build"}, {"rc": 0, "error": None},
 ])
-def test_only_this_notes_failed_triage_rows_count_toward_giving_up(tmp_path, over):
+def test_only_this_notes_failed_triage_rows_count_toward_the_hold(tmp_path, over):
     inbox = tmp_path / "inbox"
     name = "2026-10-07-1000-from-SS-QUESTION-to-RC-a.md"
     _note(inbox, name, "# x\n", 1)
@@ -368,13 +369,13 @@ def test_a_failed_run_through_the_real_kit_is_read_from_its_usage_line(tmp_path)
     seams = {"run": run, "url_source": lambda: "http://127.0.0.1:18080",
              "connect": lambda addr, timeout=2.0: _C(),
              "exe_source": lambda: "claude-fake.exe"}
-    for want in range(1, tick_mod.MAX_TRIAGE_FAILURES):
+    for want in range(1, tick_mod.MAX_TRIAGE_FAILURES + 1):
         s = _tick(tmp_path, inbox, spawn_kw=seams)
         assert s["deferred"] == 1 and _seen_rows(tmp_path) == [] and len(runs) == want
         assert "it broke" in s["errors"][0]
     s = _tick(tmp_path, inbox, spawn_kw=seams)
-    assert "giving up" in s["errors"][0]
-    assert _seen_rows(tmp_path)[0]["verdict"] == tick_mod.TRIAGE_FAILED
+    assert "held" in s["errors"][0]
+    assert _seen_rows(tmp_path) == []
     assert len(runs) == tick_mod.MAX_TRIAGE_FAILURES
 
 
