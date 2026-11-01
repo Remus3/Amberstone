@@ -97,6 +97,24 @@ def _emit_ehp_family_seams(body: dict, **seams: bool) -> None:
             body[name] = True
 
 
+def _finite_opt_float(value) -> Optional[float]:
+    """RM-1328: an OPTIONAL float seam, or None when it must not be sent.
+
+    The engine's ``_opt_float`` / ``_opt_targets_override`` answer 400 to a
+    non-finite value, ``_post_json`` maps that to None, and the caller reads
+    it as "engine unavailable" - one bad optional seam darkened the whole
+    ranking. A non-finite or unparseable value is therefore dropped, so the
+    engine default applies, exactly as if the caller had not passed it.
+    """
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        f = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return f if math.isfinite(f) else None
+
+
 def _post_json(path: str, body: dict, timeout: float = DEFAULT_TIMEOUT) -> Optional[dict]:
     url = f"http://{DEFAULT_HOST}:{DEFAULT_PORT}{path}"
     try:
@@ -2369,8 +2387,9 @@ def rank_enchanter_for(
         "enchanter_only": bool(enchanter_only),
         "filter_shared_uniques": bool(filter_shared_uniques),
     }
-    if targets_per_proc_override is not None:
-        body["targets_per_proc_override"] = float(targets_per_proc_override)
+    tpo = _finite_opt_float(targets_per_proc_override)  # RM-1328
+    if tpo is not None:
+        body["targets_per_proc_override"] = tpo
     if only_item_ids is not None:
         body["only"] = [str(i) for i in only_item_ids if i]
     if augments:
@@ -2379,8 +2398,9 @@ def rank_enchanter_for(
         body["prefer_survivability_by_win"] = True
     if assume_missing_hp_heal_amp:
         body["assume_missing_hp_heal_amp"] = True
-    if caster_missing_hp_pct:
-        body["caster_missing_hp_pct"] = float(caster_missing_hp_pct)
+    cmh = _finite_opt_float(caster_missing_hp_pct)  # RM-1328: NaN is truthy
+    if cmh:
+        body["caster_missing_hp_pct"] = cmh
     # RM-172: bool seam, engine default False - emit only when ON.
     if apply_mode_modifiers:
         body["apply_mode_modifiers"] = True
@@ -2429,8 +2449,9 @@ def hps_for(
         "items": [str(i) for i in item_ids if i],
         "mode": mode,
     }
-    if targets_per_proc_override is not None:
-        body["targets_per_proc_override"] = float(targets_per_proc_override)
+    tpo = _finite_opt_float(targets_per_proc_override)  # RM-1328
+    if tpo is not None:
+        body["targets_per_proc_override"] = tpo
     if augments:
         body["augments"] = [str(a) for a in augments if a]
     if apply_ability_hsp_amp:

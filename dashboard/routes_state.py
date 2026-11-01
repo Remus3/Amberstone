@@ -174,6 +174,34 @@ def _as_list(value: object) -> list:
     return value if isinstance(value, list) else []
 
 
+def _payload_int(payload: dict, key: str, default: int,
+                 lo: int | None = None, hi: int | None = None) -> int:
+    """RM-1328: an integer field of a JSON POST body, never a 500.
+
+    The bare ``int(payload.get(key) or default)`` form raised OverflowError
+    on ``Infinity`` / ``1e400`` (json.loads accepts both), ValueError on
+    ``NaN`` and on a non-numeric string, and TypeError on a list or object;
+    every route here let that fall to its outer ``except`` and answered 500.
+    Anything that is not an integer-like value takes ``default``, as a
+    missing or falsey value always did. A JSON boolean is not an integer
+    either (``int(True)`` read as 1), so it takes the default too. The result
+    is clamped to ``[lo, hi]`` when given.
+    """
+    raw = payload.get(key)
+    if not raw or isinstance(raw, bool):
+        n = default
+    else:
+        try:
+            n = int(raw)
+        except (TypeError, ValueError, OverflowError):
+            n = default
+    if lo is not None:
+        n = max(lo, n)
+    if hi is not None:
+        n = min(hi, n)
+    return n
+
+
 def _as_str(value: object) -> str:
     """RM-456 sibling of ``_as_list``: ``value`` when it is a str, else ``""``.
 
@@ -1114,8 +1142,7 @@ def _serve_ds_preview_post(h, payload) -> None:
         # CHERRY -> ARENA) to canonical so the per-mode item filter +
         # ARAM/Arena modifiers apply instead of falling to allow-all.
         mode = _DS_PREVIEW_MODE_ALIASES.get(mode, mode)
-        level = int(payload.get("level") or 6)
-        level = max(1, min(18, level))
+        level = _payload_int(payload, "level", 6, 1, 18)  # RM-1328
         items = [str(i) for i in (payload.get("items") or []) if i]
 
         # s182: caller override wins; otherwise resolve from the persisted
@@ -1491,8 +1518,8 @@ def _serve_console_error_post(h, payload) -> None:
         kind  = _scrub_log(str(payload.get("kind") or "error"))[:30]
         msg   = _scrub_log(str(payload.get("message") or ""))[:600]
         src   = _scrub_log(str(payload.get("source") or ""))[:200]
-        line  = int(payload.get("lineno") or 0)
-        col   = int(payload.get("colno") or 0)
+        line  = _payload_int(payload, "lineno", 0)  # RM-1328
+        col   = _payload_int(payload, "colno", 0)
         stack = _scrub_log(str(payload.get("stack") or ""))[:1500]
         url   = _scrub_log(str(payload.get("url") or ""))[:300]
         ua    = _scrub_log(str(h.headers.get("User-Agent", "")))[:80]
@@ -1537,9 +1564,9 @@ def _serve_build_order_post(h, payload) -> None:
         # already canonicalizes (parity); canonical ids pass through unchanged.
         champion = canonical_champion_id(champion) or champion
         mode = str(payload.get("mode") or "SR").upper()
-        level = max(1, min(18, int(payload.get("level") or 11)))
+        level = _payload_int(payload, "level", 11, 1, 18)  # RM-1328
         items = [str(i) for i in (payload.get("items") or []) if i]
-        slots = max(1, min(6, int(payload.get("slots") or 6)))
+        slots = _payload_int(payload, "slots", 6, 1, 6)
         # Incumbent-hysteresis opt-in (2026-07-06): the panel may echo the build
         # it is CURRENTLY displaying (item_ids in order) so the planner keeps a
         # shown pick unless a challenger beats it by the margin - damps the

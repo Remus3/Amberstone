@@ -403,18 +403,24 @@ class TestResponseContractRobustness(unittest.TestCase):
         self.assertEqual(h.json().get("error"), "champion required")
 
     def test_garbage_level_is_clean_json_not_raw_traceback(self):
-        """level="abc" makes int() raise. The outer except must return
-        a parseable JSON error - never a non-JSON 500 body or an
-        unhandled exception escaping the handler."""
-        p1, p2, p3 = self._patched()
+        """level="abc" must answer parseable JSON - never a non-JSON body
+        or an unhandled exception escaping the handler.
+
+        RM-1328: the route used to let int("abc") raise to its outer
+        except and answer 500; a garbage level now falls to the default
+        level 6, as a missing one always did, and the preview answers 200
+        (tests/test_ds_route_level_parse_s144q58.py covers every token)."""
+        captured: dict = {}
+        p1, p2, p3 = self._patched(captured)
         with p1, p2, p3:
             h = _Handler()
             _serve_ds_preview_post(
                 h, {"champion": "Ashe", "mode": "SR", "level": "abc"})
-        self.assertEqual(h.status, 500)
+        self.assertEqual(h.status, 200)
         self.assertEqual(h.content_type, "application/json")
         body = h.json()  # must not raise
-        self.assertIn("error", body)
+        self.assertTrue(body["ok"])
+        self.assertEqual(captured.get("level"), 6)
 
     def test_garbage_items_type_does_not_500(self):
         """items as a non-list scalar must be coerced/handled, not crash
