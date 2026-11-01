@@ -1,38 +1,64 @@
 """Phase 3 - local HTTP server for the Daemon Slayer engine.
 
-Wraps `stats`, `dps`, `rank` (and snapshot metadata) in plain-HTTP routes
-on `:8860`. Stdlib ``ThreadingHTTPServer`` to match the rest of RC; no
-FastAPI/aiohttp dependency. Snapshot is loaded once at startup and held
-in memory - patch hot-reload lands in Phase 7 alongside the supervisor
-entry.
+Wraps the engine (stats, DPS, the archetype rankers, the scored axes and
+snapshot metadata) in plain-HTTP routes on `:8860`. Stdlib
+``ThreadingHTTPServer`` to match the rest of RC; no FastAPI/aiohttp
+dependency. Snapshot is loaded once at startup and held in memory - patch
+hot-reload lands in Phase 7 alongside the supervisor entry.
 
-Routes (all accept GET with query params for read-only sanity checking;
-POST + JSON body is the contract for production callers):
+Routes. Every POST route also accepts GET with query params for read-only
+sanity checking; POST + JSON body is the contract for production callers.
+Each route's body keys are parsed in its ``_route_*`` handler, and the GET /
+index page carries usage examples; this list is pinned to ``_POST_ROUTES``
+and ``do_GET`` by ``tests/test_server_module_docstring_routes_s144d62.py``.
 
-  GET  /                  - index page with usage examples
-  GET  /health            - engine + snapshot health
-  GET  /snapshot          - patch + counts + manifest excerpt
-  POST /stats             - body: {champion, level, items?, mode?}
-  POST /dps               - body: {champion, level, items?, mode?,
-                                    target_armor?, target_mr?,
-                                    target_max_hp?, phase?}
-  POST /rank              - body: {champion, level, items?, mode?,
-                                    target_armor?, target_mr?,
-                                    target_max_hp?, phase?,
-                                    budget?, slots?, top?, sort?,
-                                    include_components?, only?}
-  POST /beam              - body: {champion, level, items?, mode?,
-                                    target_armor?, target_mr?,
-                                    target_max_hp?, phase?,
-                                    slots?, beam_width?, top?,
-                                    total_budget?, include_components?,
-                                    only?, boots_unique?}
+  GET  /                    - index page with usage examples
+  GET  /health              - engine + snapshot health
+  GET  /snapshot            - patch + counts + manifest excerpt
+  GET  /modifier-summary    - ability modifier-block taxonomy (diagnostic)
+  POST /stats               - champion stats at level + items
+  POST /dps                 - auto-attack DPS over rotation scenarios
+  POST /rank                - rank items by DPS delta (the CARRY scorer)
+  POST /beam                - full-build beam search
+  POST /ehp                 - effective HP under an enemy damage profile
+  POST /rank-tank           - rank items by EHP delta
+  POST /hybrid              - bruiser combined DPS + EHP score
+  POST /rank-bruiser        - rank items by weighted DPS + EHP delta
+  POST /ability-dps         - per-spell ability DPS for a caster build
+  POST /rank-mage           - rank items by total ability-DPS delta
+  POST /rank-onhit          - rank items by on-hit AP DPS delta
+  POST /burst               - single-combo burst damage
+  POST /rank-assassin       - rank items by burst-damage delta
+  POST /hps                 - healing + shielding + buff throughput
+  POST /rank-enchanter      - rank items by throughput delta
+  POST /v2/fight-report     - unified DS V2 fight report over one rotation
+  POST /v2/matchup          - 1v1 head-to-head trade verdict
+  POST /cc-output           - offensive crowd-control score
+  POST /mobility            - self-mobility score
+  POST /sustain             - sustain / vamp-throughput score
+  POST /scaling             - early / mid / late power curve
+  POST /waveclear           - wave-clear / AoE-shove score
+  POST /threat-range        - effective threat-range score
+  POST /zone-control        - zone-control / area-denial score
+  POST /objective-damage    - objective / structure-damage score
+  POST /ally-amp            - ally-amplification score
+  POST /anti-tank           - anti-tank (%HP damage + resist shred) score
+  POST /summoner-fight-adj  - live summoner-spell combat adjustments
+  POST /enemy-rune-threat   - enemy-rune incoming-threat fold
+  POST /ally-protected-ehp  - an ally's EHP with teammate grants folded in
+  POST /extended-duel       - extended 1v1 sustained-fight score
 
-Errors map to:
-  400 - body parse failure, missing required field, bad enum value
-  404 - unknown champion or item id (KeyError from engine)
+Errors this module and its Host gate raise map to (engine 404 / 422 bodies
+are a fixed line; the exception text goes to the log only, RM-838 (d); the
+stdlib handler's own 414 / 431 / 501 / 505 are not listed):
+  400 - body or header-block parse failure, missing required field, bad
+        enum value, non-finite or fractional number, non-origin-form target
+  404 - no such route, or unknown champion / item / augment (engine KeyError)
+  408 - request body read timed out
+  413 - request body too large
+  421 - a Host this machine does not answer to (RM-759 Host gate)
   422 - value-out-of-range / engine ValueError
-  500 - anything unexpected
+  500 - anything unexpected (traceback logged, scrubbed and clipped)
 """
 
 from __future__ import annotations
