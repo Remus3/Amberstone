@@ -4055,12 +4055,24 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
               });
             } catch (_) {}
           }
+          const hadFocus = pickerEl.contains(document.activeElement);
           _homeFindMatchPickerHide();
           // Route to Pre-Game Lobby after the LCU command is dispatched.
           if (typeof _viewSaveManual === "function") _viewSaveManual("lobby");
           try { location.hash = "#lobby"; } catch (_) {}
           if (typeof _viewResolveAndApply === "function") _viewResolveAndApply();
           else if (typeof applyView === "function") applyView("lobby");
+          // RM-1313: hiding the picker leaves focus on a display:none
+          // item, so it dropped to <body> on the Lobby view. Focus that was
+          // in the picker moves to the Lobby "Change Lobby Mode" trigger
+          // (the RM-1252 item-pick rule), only once the route applied and
+          // the trigger is rendered. A pointer pick does not match
+          // :focus-visible there, so no ring is painted for a mouse user.
+          // Guard: tests/snapshot_panels/test_home_find_match_pick_focus.py.
+          if (hadFocus && document.body.dataset.view === "lobby") {
+            const trig = document.getElementById("lv-mode-trigger");
+            if (trig && trig.getClientRects().length > 0) trig.focus();
+          }
         });
       });
     }
