@@ -19,6 +19,8 @@ _SPEC = importlib.util.spec_from_file_location(
 chw = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(chw)
 
+_COACH_CFG = Path(__file__).parent.parent / "config" / "coach_settings.json"
+
 
 def _write(p: Path, total_usd, by_purpose=None):
     p.write_text(json.dumps({
@@ -133,12 +135,17 @@ class FlapTests(unittest.TestCase):
 
 
 class ClassifyTests(unittest.TestCase):
-    def test_sonnet_purpose(self):
+    def test_vision_purpose(self):
         r = chw.classify({"vision_relay": {"usd": 5.0},
                           "aram_coach": {"usd": 1.0}})
         self.assertEqual(r["hot_purpose"], "vision_relay")
+        self.assertEqual(r["tier"], "HAIKU")
+        self.assertIn("TftLiveAnalysis._loop", r["proposal"])
+
+    def test_sonnet_purpose(self):
+        r = chw.classify({"vision_direct": {"usd": 5.0}})
         self.assertEqual(r["tier"], "SONNET")
-        self.assertIn("vision_calls_per_min", r["proposal"])
+        self.assertIn("_VISION_INTERVAL", r["proposal"])
 
     def test_haiku_purpose(self):
         r = chw.classify({"aram_coach": {"usd": 9.0}})
@@ -165,19 +172,18 @@ class CronModeInvariantTests(unittest.TestCase):
         _write(d / (chw.date.today().isoformat() + ".json"), 99.0,
                {"vision_relay": {"usd": 99.0}})
         state = d / "state.json"
-        cfg_before = (chw._COACH_CFG.read_bytes()
-                      if chw._COACH_CFG.exists() else None)
+        cfg_before = (_COACH_CFG.read_bytes()
+                      if _COACH_CFG.exists() else None)
         src_before = Path(chw.__file__).read_bytes()
         rc = chw.main(["--spend-dir", str(d), "--state", str(state)])
-        cfg_after = (chw._COACH_CFG.read_bytes()
-                     if chw._COACH_CFG.exists() else None)
+        cfg_after = (_COACH_CFG.read_bytes()
+                     if _COACH_CFG.exists() else None)
         src_after = Path(chw.__file__).read_bytes()
         self.assertEqual(rc, 1)                       # breach detected
         self.assertEqual(cfg_before, cfg_after)       # config untouched
         self.assertEqual(src_before, src_after)       # code untouched
         st = json.loads(state.read_text(encoding="utf-8"))
         self.assertTrue(st["breached"])
-        self.assertEqual(st["incidents"][-1]["remediated"], False)
 
 
 class PercentileTests(unittest.TestCase):
@@ -290,12 +296,12 @@ class P95BreachCronInvariantTests(unittest.TestCase):
         _write(d / (today + ".json"), 1.0,
                {"vision_relay": _lane(3.0, 100)})
         state = d / "state.json"
-        cfg_before = (chw._COACH_CFG.read_bytes()
-                      if chw._COACH_CFG.exists() else None)
+        cfg_before = (_COACH_CFG.read_bytes()
+                      if _COACH_CFG.exists() else None)
         src_before = Path(chw.__file__).read_bytes()
         rc = chw.main(["--spend-dir", str(d), "--state", str(state)])
-        cfg_after = (chw._COACH_CFG.read_bytes()
-                     if chw._COACH_CFG.exists() else None)
+        cfg_after = (_COACH_CFG.read_bytes()
+                     if _COACH_CFG.exists() else None)
         src_after = Path(chw.__file__).read_bytes()
         self.assertEqual(rc, 1)                       # breach via p95 only
         self.assertEqual(cfg_before, cfg_after)       # config untouched
@@ -306,40 +312,15 @@ class P95BreachCronInvariantTests(unittest.TestCase):
         inc = st["incidents"][-1]
         self.assertTrue(inc["p95_doubled"])
         self.assertIn("vision_relay", inc["p95_flagged_lanes"])
-        self.assertEqual(inc["remediated"], False)
         self.assertIn("p95_proposal", inc["classification"])
         self.assertIn("vision_relay",
                       inc["classification"]["p95_proposal"])
 
-    def test_remediate_not_triggered_by_p95_only(self):
-        """--remediate only debounces on a SONNET daily-cost breach; a
-        p95-only signal must NOT mutate config even with --remediate."""
-        import tempfile
-        d = Path(tempfile.mkdtemp())
-        today = chw.date.today().isoformat()
-        for v in ("01", "02", "03"):
-            _write(d / f"2026-05-{v}.json", 1.0,
-                   {"vision_relay": _lane(1.0, 100)})
-        _write(d / (today + ".json"), 1.0,
-               {"vision_relay": _lane(3.0, 100)})
-        state = d / "state.json"
-        cfg_before = (chw._COACH_CFG.read_bytes()
-                      if chw._COACH_CFG.exists() else None)
-        rc = chw.main(["--remediate", "--spend-dir", str(d),
-                       "--state", str(state)])
-        cfg_after = (chw._COACH_CFG.read_bytes()
-                     if chw._COACH_CFG.exists() else None)
-        self.assertEqual(rc, 1)
-        self.assertEqual(cfg_before, cfg_after)       # p95-only != remediable
-        st = json.loads(state.read_text(encoding="utf-8"))
-        self.assertEqual(st["incidents"][-1]["remediated"], False)
-
 
 class AtomicWriterTests(unittest.TestCase):
-    """RM-258: both writers (the state file and the --remediate edit of
-    config/coach_settings.json, which the running app reads) route through
-    core.polled_json - a per-writer scratch name and a bounded WinError 5
-    retry - instead of a bare rename of a shared `<dest>.tmp`."""
+    """RM-258: the state writer routes through core.polled_json - a per-writer
+    scratch name and a bounded WinError 5 retry - instead of a bare rename of a
+    shared `<dest>.tmp`."""
 
     def test_writer_routes_through_core_polled_json(self):
         import core.polled_json as pj
@@ -375,7 +356,7 @@ class AtomicWriterTests(unittest.TestCase):
         import core.polled_json as pj
         import tempfile
         d = Path(tempfile.mkdtemp())
-        dest = d / "coach_settings.json"
+        dest = d / "state.json"
         real = pj.os.replace
         refusals = [2]
 
@@ -388,12 +369,11 @@ class AtomicWriterTests(unittest.TestCase):
         orig_replace, orig_sleep = pj.os.replace, pj.time.sleep
         pj.os.replace, pj.time.sleep = flaky, (lambda _s: None)
         try:
-            chw._atomic_write_json(dest, {"vision_calls_per_min": 3.96})
+            chw._atomic_write_json(dest, {"breached": True})
         finally:
             pj.os.replace, pj.time.sleep = orig_replace, orig_sleep
-        self.assertEqual(json.loads(dest.read_bytes()),
-                         {"vision_calls_per_min": 3.96})
-        self.assertEqual([p.name for p in d.iterdir()], ["coach_settings.json"])
+        self.assertEqual(json.loads(dest.read_bytes()), {"breached": True})
+        self.assertEqual([p.name for p in d.iterdir()], ["state.json"])
 
 
 if __name__ == "__main__":

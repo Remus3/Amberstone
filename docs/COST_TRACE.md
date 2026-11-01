@@ -23,7 +23,7 @@ records there. moon_proxy only does the 2s vision dedupe accounting.
 | coaches/aram_coach.py:743 | HAIKU | YES (cache_control ephemeral) | POLLING (game tick) | aram_coach |
 | ~~coaches/aram_coach.py:910~~ | RETIRED 2026-10-25 (RM-877) | n/a | n/a | ~~aram_aug_select~~ |
 | coaches/brawl_coach.py:439 | HAIKU | YES (cache_control ephemeral) | POLLING (game tick) | brawl_coach |
-| vision_server/_inference.py:141 | SONNET | YES (_record_to_cost_tracker) | ON-DEMAND (/vision relay) | vision_relay |
+| vision_server/_inference.py:141 | HAIKU | YES (_record_to_cost_tracker) | ON-DEMAND (/vision relay) | vision_relay |
 | vision_server/_inference.py:176 | HAIKU | YES (_record_to_cost_tracker) | ON-DEMAND (/coach relay) | coach_relay |
 | modes/shared_vision.py:251 | SONNET | YES (record_call :274) | POLLING (vision fallback) | vision_direct |
 | coaches/aram_team_analyzer.py:161 | HAIKU | YES (record_anthropic_response) | ON-DEMAND (team comp) | aram_team_analyzer |
@@ -36,6 +36,17 @@ records there. moon_proxy only does the 2s vision dedupe accounting.
 | tft/tft_live_analysis.py:316 | HAIKU | YES (record_anthropic_response) | POLLING (aug select) | tft_live_aug_select |
 | tft/tft_vision_reader.py:186 | HAIKU | YES (record_anthropic_response) | POLLING (vision local fallback) | tft_vision |
 | agents/agent7_context/warm_session.py:154 | HAIKU | YES (record_anthropic_response) | WARM (persistent session) | agent7_warm |
+
+**CORRECTION 2026-11-01 - `vision_relay` is HAIKU, not SONNET.** The relay bills
+whichever model its caller sends. Since RM-868 / RM-869 (2026-10-25) the coach
+readers go direct (`USE_RELAY = False`), so the TFT reader, with its Haiku default,
+is the only live sender. Measured from the day ledgers: every relay day through
+2026-08-02 shows Sonnet spend, which is the old coach traffic; on 2026-10-25, the
+one relay day since, `by_model` holds Haiku alone across 914 calls, 167 of them
+relay. That day had no coach-reader traffic, so it shows the TFT model and does not
+by itself prove the coach routing; the `USE_RELAY` sites do. `tools/cost_health_watchdog.py`
+`PURPOSE_MAP` must agree with this table
+(`tests/test_cost_health_watchdog_vision_lever_s144p58.py`).
 
 **CORRECTION 2026-08-06 - the `champ_select_brief` row above is RETIRED, not
 stale-by-line-number.** It was accurate when this matrix was audited

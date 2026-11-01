@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""tools/cost_health_watchdog.py - self-healing cost + health watchdog.
+"""tools/cost_health_watchdog.py - detect-and-propose cost + health watchdog.
 
 Runs every 15 minutes (RC-CostHealthWatchdog scheduled task). Probes:
 
@@ -16,14 +16,14 @@ per-lane cost escalation (a purpose lane whose mean USD/call >= 2x its
 trailing-baseline cost/call week-over-week - the disk proxy for the
 rc_coach_cost_usd_per_call p95 doubling), or a daemon flap (>=3 pid changes
 inside the rolling window, or alive=false, or last_reload_ok=false). On any of
-these it CLASSIFIES the hot spend purpose to the Sonnet/Haiku caller file (from
+these it CLASSIFIES the hot spend purpose to its tier and caller file (from
 docs/COST_TRACE.md) and emits a concrete remediation proposal (debounce /
 interval / pythonw / prompt-size+cache review).
 
-It NEVER silently restarts or edits code. Cron mode only detects + logs +
-proposes. --remediate (opt-in, never used by the cron) may apply ONE bounded,
-fully-logged config debounce (lower vision_calls_per_min toward a floor); it
-still never touches code and never restarts a process.
+It only detects + logs + proposes: it never restarts a process and never edits
+code or config. RM-1302 removed the old opt-in config write. It lowered a
+vision rate key that nothing has read since b3f7939d5 dropped the token bucket
+on the operator's directive, and it logged that as a remediation.
 
 Exit 0 = healthy, 1 = breach/flap detected (so a wrapper can alert).
 """
@@ -50,7 +50,6 @@ _HEALTH = _APP / "ops" / "runtime" / "health.json"
 _SPEND_DIR = _APP / "data" / "spend"
 _STATE = _APP / "ops" / "runtime" / "cost_health_watchdog_state.json"
 _LOG = _APP / "logs" / "cost_health_watchdog.log"
-_COACH_CFG = _APP / "config" / "coach_settings.json"
 
 BREACH_MULT = 1.5
 FLOOR_ABS_USD = 0.50          # below this, never call it a breach (idle noise)
@@ -63,7 +62,6 @@ FLAP_PID_CHANGES = 3          # >=3 pid changes in window == flap. Two clean
                               # more than two changes/hour. alive=false /
                               # last_reload_ok=false still flap immediately,
                               # independent of count.
-VISION_RATE_FLOOR = 3.0       # --remediate will not push below this
 P95_DOUBLE_MULT = 2.0         # per-lane p95-cost >= 2x trailing baseline == signal
 P95_FLOOR_USD = 0.002         # ignore lanes whose p95 is below this (sub-cent noise)
 P95_MIN_CALLS = 20            # need this many calls today for a stable p95
@@ -76,9 +74,13 @@ _DAY_STEM_RE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
 # number here drifted). Every `purpose="..."` production literal needs a row, or
 # a hot purpose classifies as "unmapped" and the proposal sends the reader to
 # wire a call that is already wired (MAIN FIX 2026-10-25: tft_coach). Tiers per
-# docs/COST_TRACE.md. Guard: tests/test_cost_health_watchdog_purposes_baseline.py.
+# docs/COST_TRACE.md. Guards: tests/test_cost_health_watchdog_purposes_baseline.py,
+# tests/test_cost_health_watchdog_vision_lever_s144p58.py.
 PURPOSE_MAP = {
-    "vision_relay":   ("SONNET", "vision_server/_inference.py"),
+    # HAIKU, not SONNET: the relay bills the model its caller sends, and since
+    # RM-868 / RM-869 the coach readers go direct, so the TFT reader and its
+    # Haiku default are the only live sender.
+    "vision_relay":   ("HAIKU",  "vision_server/_inference.py"),
     "vision_direct":  ("SONNET", "modes/shared_vision.py"),
     "coach_relay":    ("HAIKU",  "vision_server/_inference.py"),
     "sr_coach":       ("HAIKU",  "coach_integration/_coach.py"),
@@ -98,6 +100,19 @@ PURPOSE_MAP = {
     # defaulting to claude-haiku-4-5 (tft/tft_vision_reader.py tier note).
     "tft_vision":     ("HAIKU",  "tft/tft_vision_reader.py"),
     "agent7_warm":    ("HAIKU",  "agents/agent7_context/warm_session.py"),
+}
+
+# Frame extraction is paced by its reader, not by a coach poll, so a hot vision
+# purpose gets the lever that really paces that purpose.
+_VISION_ADVICE = {
+    "vision_relay": (
+        "its only live sender is the TFT reader, so widen the "
+        "TftLiveAnalysis._loop cadence in tft/tft_live_analysis.py (one "
+        "planning scan a round, 20s on augment and god rounds)"),
+    "vision_direct": (
+        "widen the calling coach's _VISION_INTERVAL (coaches/aram_coach.py, "
+        "coaches/arena_coach.py, coaches/brawl_coach.py; forced scans and "
+        "ARAM's fast window bypass it)"),
 }
 
 
@@ -130,8 +145,7 @@ def _finite(val, default: float = 0.0) -> float:
 
 def _atomic_write_json(p: Path, obj) -> None:
     """RM-258: through core.polled_json (per-writer scratch name, bounded
-    WinError 5 retry, LF bytes) - --remediate rewrites coach_settings.json
-    while the running app reads it."""
+    WinError 5 retry, LF bytes)."""
     atomic_write_text(p, json.dumps(obj, indent=2, sort_keys=True))
 
 
@@ -374,12 +388,9 @@ def classify(by_purpose: dict) -> dict:
               key=lambda kv: float(kv[1].get("usd", 0.0) or 0.0))
     name = hot[0]
     tier, fil = PURPOSE_MAP.get(name, ("UNKNOWN", "unmapped"))
-    if tier == "SONNET":
-        prop = ("hot SONNET purpose '" + name + "' (" + fil + "); debounce "
-                "vision: lower vision_calls_per_min in "
-                "config/coach_settings.json toward "
-                + str(VISION_RATE_FLOOR) + "/min, verify the 2s frame dedupe "
-                "is hitting (core/cost_tracker.vision_dedupe_*)")
+    if name in _VISION_ADVICE:
+        prop = ("hot " + tier + " vision purpose '" + name + "' (" + fil + "); "
+                + _VISION_ADVICE[name])
     elif tier == "HAIKU":
         prop = ("hot HAIKU purpose '" + name + "' (" + fil + "); widen the "
                 "coach poll interval / add a same-state debounce so identical "
@@ -402,9 +413,6 @@ def _log_line(text: str) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--remediate", action="store_true",
-                    help="apply ONE bounded, logged config debounce "
-                         "(never used by the cron; never edits code)")
     ap.add_argument("--spend-dir", default=str(_SPEND_DIR))
     ap.add_argument("--state", default=str(_STATE))
     args = ap.parse_args(argv)
@@ -452,20 +460,7 @@ def main(argv: list[str] | None = None) -> int:
             "health_alive": health["alive"],
             "last_reload_ok": health["last_reload_ok"],
             "classification": cls,
-            "remediated": False,
         }
-        if args.remediate and spend["breach"] and cls["tier"] == "SONNET":
-            cfg = _read_json(_COACH_CFG, {})
-            cur = float(cfg.get("vision_calls_per_min", 6.0) or 6.0)
-            new = max(VISION_RATE_FLOOR, round(cur * 0.66, 2))
-            if new < cur:
-                cfg["vision_calls_per_min"] = new
-                _atomic_write_json(_COACH_CFG, cfg)
-                incident["remediated"] = True
-                incident["remediation"] = (
-                    "vision_calls_per_min " + str(cur) + " -> " + str(new)
-                    + " (logged, bounded; no restart, no code edit)")
-                _log_line("REMEDIATE " + incident["remediation"])
         incidents.append(incident)
         _log_line("BREACH " + json.dumps({
             "cost": spend["breach"], "flap": flap["flap"],

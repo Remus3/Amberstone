@@ -5,8 +5,8 @@
 ROWS = {
     "tools/lcu_agent.py",
     "tools/hotkey_listener.py",
-    # RC-CostHealthWatchdog, every 15 min; --remediate rewrites
-    # config/coach_settings.json, which the running app reads.
+    # RC-CostHealthWatchdog, every 15 min; each run reads back the state file
+    # the last run wrote.
     "tools/cost_health_watchdog.py",
     # RC-CIWatchdog: the run-id sentinel and the 2-strike attempt counters
     # are read back on every poll, and a torn read parses as 0.
