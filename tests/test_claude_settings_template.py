@@ -291,6 +291,12 @@ def test_each_hook_line_with_a_broken_interpreter(event, cmd, tmp_path):
     ($LOCALAPPDATA for RC lines, `python` off PATH for the kit lines)."""
     empty = tmp_path / "empty-bin"
     empty.mkdir()
+    # Only `python` goes missing. The launcher line starts with `bash`, and sh on
+    # Linux finds it through PATH alone (127, docs-guards run 41347159041), where
+    # Git Bash also searches its own default path. The launcher needs no other tool.
+    bash = shutil.which("bash") if os.name != "nt" else None
+    if bash:
+        (empty / "bash").symlink_to(bash)
     proc = _run_line(cmd, {"LOCALAPPDATA": str(tmp_path / "no-python"),
                            "PATH": str(empty)})
     script = _SCRIPT.findall(cmd)[0]
