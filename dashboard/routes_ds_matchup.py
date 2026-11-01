@@ -49,9 +49,9 @@ Failure modes (mirror routes_ds_profile):
   - 500  any unexpected top-level exception: {ok:false, error:<fixed line
          ending "see logs">}; the cause is logged, never sent (RM-835).
 
-5-min TTL in-process cache keyed (champ_a, champ_b, level_a, level_b, mode).
-cached flag + elapsed_ms on every 200. _reset_caches() clears the response
-cache.
+5-min TTL in-process cache keyed (champ_a, champ_b, level_a, level_b, mode),
+bounded at ``_CACHE_MAX`` entries (expired entries dropped on write). cached
+flag + elapsed_ms on every 200. _reset_caches() clears the response cache.
 """
 from __future__ import annotations
 
@@ -71,6 +71,10 @@ log = logging.getLogger("rc.web_dashboard")
 _CACHE_TTL_S = 300.0
 _CACHE: dict[tuple, tuple[float, dict]] = {}
 _CACHE_LOCK = threading.Lock()
+# RM-1329: the TTL was only checked on read and nothing bounded the size,
+# and the key carries the caller's champion and mode strings, so every
+# distinct request stayed resident for the process lifetime.
+_CACHE_MAX = 256
 
 # Level clamp bounds.
 _LEVEL_MIN = 1
@@ -207,6 +211,20 @@ def _compute(champ_a: str, champ_b: str, level_a: int,
     }
 
 
+def _cache_put(key: tuple, now: float, payload: dict) -> None:
+    """Store ``payload`` under ``key``, then bound the cache (RM-1329,
+    the routes_ds_sweep RM-1327 discipline): drop every expired entry,
+    and past ``_CACHE_MAX`` drop the oldest."""
+    with _CACHE_LOCK:
+        _CACHE[key] = (now, dict(payload))
+        for k in [k for k, (ts, _) in _CACHE.items()
+                  if (now - ts) >= _CACHE_TTL_S]:
+            _CACHE.pop(k, None)
+        while len(_CACHE) > _CACHE_MAX:
+            oldest = min(_CACHE, key=lambda k: _CACHE[k][0])
+            _CACHE.pop(oldest, None)
+
+
 def _serve_ds_matchup(h) -> None:
     """GET /api/ds-matchup handler."""
     t0 = time.time()
@@ -259,8 +277,7 @@ def _serve_ds_matchup(h) -> None:
             }).encode("utf-8"), "application/json")
             return
 
-        with _CACHE_LOCK:
-            _CACHE[key] = (now, dict(payload))
+        _cache_put(key, now, payload)
 
         payload["cached"] = False
         payload["elapsed_ms"] = int((time.time() - t0) * 1000)
