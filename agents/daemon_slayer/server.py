@@ -62,6 +62,7 @@ from core.http_head_deadline import HeadDeadlineMixin
 from core.http_host_gate import HostAllowlistMixin
 from core.log_scrub import MAX_LINE_CHARS as _LOG_MAX_CHARS
 from core.log_scrub import scrub_log as _scrub_log
+from core.log_scrub import install_scrub_filter as _install_scrub_filter
 
 from . import ENGINE_VERSION
 from .abilities import AbilitiesSnapshot
@@ -110,6 +111,12 @@ from .rank import SORT_KEYS, rank_items
 from .stats import clamp_level
 
 _log = logging.getLogger("daemon_slayer.server")
+# RM-1279: the RM-811 backstop. The 500 catch-all logs tracebacks with
+# _log.exception, and the stdlib formatter wrote the exception text raw: a
+# newline in it forged a log line, an ESC reached the console, a 100k text
+# was one 100k line. The filter renders it through scrub_traceback (one
+# scrubbed line, every line capped at MAX_LINE_CHARS).
+_install_scrub_filter(_log)
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8860
