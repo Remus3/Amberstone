@@ -108,7 +108,7 @@ alignment helpers. That is roughly 1,300 lines.
 - File: `web/js/main.js`
 - Target: `web/js/lib/mock_fixtures.js`
 - Anchors: `_lobbyResolveLcu`, `_csResolveLcu`, `_amIsMock`, `_amMockLoad`, `_amMockUrl`
-- Coupled: `tests/test_active_match_mock_fixtures.py`, `tests/snapshot_panels/test_active_match_view.py`, `tests/snapshot_panels/test_aram_balance_view.py`, `tests/snapshot_panels/test_champ_select_view.py`, `tests/snapshot_panels/test_overlay_view.py`, `tests/snapshot_panels/test_tft_ui_mock_active_match.py`, `tests/snapshot_panels/test_ui_mock_active_match_brawl.py`, `tests/test_overlay_minimap_clear_on_exit.py`, `tests/test_web_ascii_sweep.py`, `tools/pseudo_screen_overlay.py`
+- Coupled: `tests/test_active_match_mock_fixtures.py`, `tests/snapshot_panels/test_active_match_view.py`, `tests/snapshot_panels/test_aram_balance_view.py`, `tests/snapshot_panels/test_champ_select_view.py`, `tests/snapshot_panels/test_overlay_view.py`, `tests/snapshot_panels/test_tft_ui_mock_active_match.py`, `tests/snapshot_panels/test_ui_mock_active_match_brawl.py`, `tests/test_overlay_minimap_clear_on_exit.py`, `tools/pseudo_screen_overlay.py`
 - Views: `lobby`, `champ-select`, `active-match`
 - UI audit: STRUCTURE / TYPOGRAPHY / HIT-TARGETS / ASCII / HIERARCHY on the views above, headless, before the commit. Focus: every ?ui_mock=1 page still paints its mock (STRUCTURE: no empty pane), on each mode fixture.
 - Notes: the mock caches (`_amMockData`, `_amMockPromise`, `_csMockData`, `_lobbyMockData`) move with them, and the router, `onState` and `setupMinimapPoller` import the resolvers. Every `?ui_mock=1` snapshot depends on this slice, so run the whole Coupled list.
@@ -144,7 +144,7 @@ alignment helpers. That is roughly 1,300 lines.
 - File: `web/js/main.js`
 - Target: `web/js/panels/lobby_view.js`
 - Anchors: `_LV`, `LANE_LABELS`, `SR_QUEUE_IDS`, `_lvQueueChangeError`, `_mainsFetch`, `_renderMainChamps`, `_renderPartyMembers`, `_setLanePref`, `_lobbyViewWireOnce`, `_lobbyViewRefresh`
-- Coupled: `tests/test_web_element_id_resolution_rm339.py`, `tests/snapshot_panels/test_lobby_view.py`, `tests/snapshot_panels/test_lobby_render_stability.py`, `tests/snapshot_panels/test_lobby_duo_synergy_rm881.py`, `tests/phase_b_champ_select/test_lcu_lobby_members.py`, `tests/test_web_ascii_sweep.py`, `tools/gated_rm881_duo_lobby.py`, `tools/lcu_agent.py`
+- Coupled: `tests/test_web_element_id_resolution_rm339.py`, `tests/snapshot_panels/test_lobby_view.py`, `tests/snapshot_panels/test_lobby_render_stability.py`, `tests/snapshot_panels/test_lobby_duo_synergy_rm881.py`, `tests/phase_b_champ_select/test_lcu_lobby_members.py`, `tools/gated_rm881_duo_lobby.py`, `tools/lcu_agent.py`
 - Views: `lobby`
 - UI audit: STRUCTURE / TYPOGRAPHY / HIT-TARGETS / ASCII / HIERARCHY on the views above, headless, before the commit. Focus: the queue picker, lane-pref buttons and party rows (HIT-TARGETS), the mains tabs (STRUCTURE), and the duo synergy card at party size 2.
 - Notes: depends on MJ-1 and MJ-2. `tools/gated_rm881_duo_lobby.py` parses the `SR_QUEUE_IDS` literal out of `main.js`, so that tool is re-pointed in the same commit. `_syncAutoAcceptFromConfig` (called from `handleLcuEnvelope`) and `_setAutoAccept` write `_LV` and stay in `main.js` with the auto-accept code, so they import `_LV` (an object, safe to share).
@@ -209,7 +209,7 @@ alignment helpers. That is roughly 1,300 lines.
 - File: `web/js/panels/champ_select.js`
 - Target: `web/js/panels/cs_mock_fixture.js`
 - Anchors: `CS_MOCK_FIXTURES`, `csMockFixtureUrl`, `_csvMockFixtureUrl`
-- Coupled: `tests/snapshot_panels/test_ui_mock_champ_select_fixture_per_mode.py`, `tests/test_web_ascii_sweep.py`
+- Coupled: `tests/snapshot_panels/test_ui_mock_champ_select_fixture_per_mode.py`
 - Views: `champ-select`
 - UI audit: STRUCTURE / TYPOGRAPHY / HIT-TARGETS / ASCII / HIERARCHY on the views above, headless, before the commit. Focus: each mode's mock fixture still loads (STRUCTURE: SR, ARAM and Arena panes all paint).
 - Notes: `main.js` imports `csMockFixtureUrl` from `champ_select.js`. Re-export it there, or re-point that import in the same commit.

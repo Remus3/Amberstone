@@ -207,7 +207,7 @@ status rules.
 - Target: `lobby_panels.css`
 - Start: `/* ---- s162 v4: Friends / Recently Played panel ---- */`
 - Anchors: `lv-fr-row`, `lv-top8-list`, `lv-top8-name`, `lv-top8-tag`, `lv-top8-reorder-btn`, `lv-top8-search-input`, `lv-member-action`, `lv-mainchamps-tabs`, `lv-mc-tab`, `lv-duosyn-row`
-- Coupled: `tests/snapshot_panels/test_lobby_hit_targets.py`, `tests/snapshot_panels/test_lobby_mains_tabs.py`, `tests/snapshot_panels/test_lobby_render_stability.py`, `tests/snapshot_panels/test_lobby_top8_search_input.py`, `tests/snapshot_panels/test_lobby_top8_tag_control.py`, `tests/snapshot_panels/test_user_builds_row_actions_hit.py`, `tests/test_web_ascii_sweep.py`
+- Coupled: `tests/snapshot_panels/test_lobby_hit_targets.py`, `tests/snapshot_panels/test_lobby_mains_tabs.py`, `tests/snapshot_panels/test_lobby_render_stability.py`, `tests/snapshot_panels/test_lobby_top8_search_input.py`, `tests/snapshot_panels/test_lobby_top8_tag_control.py`, `tests/snapshot_panels/test_user_builds_row_actions_hit.py`
 - Views: `lobby`
 - UI audit: STRUCTURE / TYPOGRAPHY / HIT-TARGETS / ASCII / HIERARCHY on the views above, headless, before the commit. Focus: the Friends, My Top 8, Party and Mains cards at both widths (STRUCTURE, no reflow), the Top 8 reorder and tag controls and the party member actions (HIT-TARGETS), and the rank and KP color bands (HIERARCHY).
 - Notes: the largest piece, 37,208 bytes at writing. It runs to the end of the lobby tips and recent list, just before the Session view block.
@@ -237,7 +237,7 @@ status rules.
 - Target: `user_builds_view.css`
 - Start: `/* User Builds view (Phase 8 step 6 - 2026-05-04, UI scale v2.1 page #2`
 - Anchors: `ub-list-pane`, `ub-form-pane`, `ub-build-list`, `ub-build-row`, `ub-count`, `ub-field`, `ub-btn`, `ub-btn-tiny`, `ub-rp-rune`
-- Coupled: `tests/snapshot_panels/test_user_builds_fit.py`, `tests/snapshot_panels/test_user_builds_row_actions_hit.py`, `tests/snapshot_panels/test_user_builds_rune_cells_focus_ring.py`, `tests/snapshot_panels/test_user_builds_view.py`, `tests/test_web_ascii_sweep.py`
+- Coupled: `tests/snapshot_panels/test_user_builds_fit.py`, `tests/snapshot_panels/test_user_builds_row_actions_hit.py`, `tests/snapshot_panels/test_user_builds_rune_cells_focus_ring.py`, `tests/snapshot_panels/test_user_builds_view.py`
 - Views: `user-builds`
 - UI audit: STRUCTURE / TYPOGRAPHY / HIT-TARGETS / ASCII / HIERARCHY on the views above, headless, before the commit. Focus: the list and form panes fit (STRUCTURE at both widths), the row Edit / Delete (the RM-1007 ring and --hit-min floor) and the spell and rune cells (HIT-TARGETS and the RM-1133 / RM-1084 / RM-1087 keyboard paths and focus rings).
 - Notes: 19,857 bytes at writing.
@@ -247,7 +247,7 @@ status rules.
 - Target: `settings_view.css`
 - Start: `/* Settings view layout (UI scale v2.1, 2026-05-23 - worked-example`
 - Anchors: `settings-body`, `settings-card`, `settings-row`, `settings-filter-input`, `set-action-btn`, `spend-gate-row`
-- Coupled: `tests/snapshot_panels/test_companion_reflow.py`, `tests/snapshot_panels/test_settings_checkbox_hit_targets.py`, `tests/snapshot_panels/test_settings_view.py`, `tests/snapshot_panels/test_user_builds_row_actions_hit.py`, `tests/test_overlay_slider_hit_target.py`, `tests/test_settings_force_scan_dom.py`, `tests/test_web_ascii_sweep.py`
+- Coupled: `tests/snapshot_panels/test_companion_reflow.py`, `tests/snapshot_panels/test_settings_checkbox_hit_targets.py`, `tests/snapshot_panels/test_settings_view.py`, `tests/snapshot_panels/test_user_builds_row_actions_hit.py`, `tests/test_overlay_slider_hit_target.py`, `tests/test_settings_force_scan_dom.py`
 - Views: `settings`, `lobby`, `user-builds`, `history`, `active-match`
 - UI audit: STRUCTURE / TYPOGRAPHY / HIT-TARGETS / ASCII / HIERARCHY on the views above, headless, before the commit. Focus: the checkbox wrappers and sliders (HIT-TARGETS, the RM-1061 ring), the coaching-action buttons and spend gates, and the companion single-column reflow (STRUCTURE at 923x1280).
 - Notes: 10,761 bytes at writing. The range carries the shared `@media (max-width: 1200px)` block. It also collapses the lobby grid, the User Builds layout, the History grid, the header row and the heartbeat. So the audit covers those views at 923x1280 too.
