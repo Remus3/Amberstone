@@ -228,23 +228,27 @@ def test_runs_needed_follows_selection(dw):
     assert dw.runs_needed(dw.select_waves("3", None)) == 3
 
 
-def _drive_run(dw, monkeypatch, waves_sel, wave_results):
+def _drive_run(dw, monkeypatch, waves_sel, wave_results, used=0, cap=500):
     ran = []
 
     def fake_run_wave(wave, state):
         ran.append((wave["tag"], [k for k, _ in wave["slices"]]))
         return dict(wave_results[wave["tag"]])
 
+    class Budget:
+        def __init__(self):
+            self.cap = cap
+
+        def used(self):
+            return used
+
     class K:
-        RUNS_CAP = 120
-        BUDGET_REL = "x"
+        RUNS_CAP = 120  # the kit's default: the launcher must not read it
 
-        class RunBudget:
-            def __init__(self, p):
-                pass
-
-            def used(self):
-                return 0
+        @staticmethod
+        def tree_budget(root, code):
+            assert code == "RC"
+            return Budget()
 
     class HE:
         class HeadlessRouteRefused(Exception):
@@ -270,6 +274,29 @@ def _drive_run(dw, monkeypatch, waves_sel, wave_results):
     monkeypatch.setattr(dw, "run_wave", fake_run_wave)
     rc = dw.run(waves_sel)
     return rc, ran
+
+
+def test_run_budget_reads_the_budget_cap_not_runs_cap(dw, monkeypatch):
+    """RUNS-CAP: 200 used is past the kit's 120 constant but inside this tree's 500."""
+    res = {"Wave3": {"pushed": True}}
+    rc, ran = _drive_run(dw, monkeypatch, dw.select_waves("3", None), res, used=200, cap=500)
+    assert rc == 0 and ran == [("Wave3", ["ascii"])]
+
+
+def test_the_vendored_kit_has_the_budget_the_launcher_reads(dw):
+    kit = dw._fleet_route().kit()
+    assert callable(kit.tree_budget)
+    assert kit.RunBudget("unused-path", cap=7).cap == 7
+
+
+def test_run_budget_refuses_inside_the_reserve(dw, monkeypatch):
+    res = {"Wave3": {"pushed": True}}
+    waves = dw.select_waves("3", None)
+    used = 500 - dw.RUNS_RESERVE - dw.runs_needed(waves) + 1
+    rc, ran = _drive_run(dw, monkeypatch, waves, res, used=used, cap=500)
+    assert rc == 3 and ran == []
+    rc, ran = _drive_run(dw, monkeypatch, waves, res, used=used - 1, cap=500)
+    assert rc == 0 and ran == [("Wave3", ["ascii"])]
 
 
 def test_wave3_gated_on_wave2_push_when_both_selected(dw, monkeypatch):

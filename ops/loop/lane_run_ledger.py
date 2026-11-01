@@ -294,6 +294,13 @@ def lane_model(lane: str, today=None):
     return None
 
 
+def runs_reserve(cap: int) -> int:
+    """Runs a lane rotator leaves free for everything else in the tree: 20 percent of
+    the live cap. 500 -> 100, above the measured 99 non-lane runs in a rolling 24 h
+    (peak_rolling_runs, 2026-11-01); a config fault's 120 -> 24, the old fixed value."""
+    return int(cap) // 5
+
+
 def trial_measure(usage, cycles, *, start=MODEL_TRIAL_START, end=MODEL_TRIAL_END,
                   before_days: int = 7) -> dict:
     """{lane: {"before": ..., "during": ...}} from the rows on disk. "during" on a

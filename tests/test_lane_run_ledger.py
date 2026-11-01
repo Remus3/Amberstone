@@ -155,6 +155,11 @@ def test_peak_rolling_runs_uses_a_24h_window_and_splits_lane_rows():
     assert RL.peak_rolling_runs(usage, lanes=False) == 1
 
 
+def test_runs_reserve_is_twenty_percent_of_the_live_cap():
+    assert RL.runs_reserve(500) == 100
+    assert RL.runs_reserve(120) == 24  # a config fault's cap keeps the old fixed reserve
+
+
 # ------------------------------------------------------------------ FLEET-1b
 
 def test_model_trial_lanes_are_exactly_the_ordered_three():

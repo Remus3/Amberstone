@@ -99,6 +99,8 @@ VERIFY_TIMEOUT_S = 3600
 MERGE_TIMEOUT_S = 5400
 MAX_PARALLEL = 3
 RUNS_NEEDED = 10  # full plan: 3 build + 3 verify + 1 merge + 1 build + 1 verify + 1 merge
+KIT_CODE = "RC"  # the tree's run cap is the kit's tree_budget(root, code).cap, never RUNS_CAP
+RUNS_RESERVE = 24  # runs this launcher leaves free in the window for the inbox tick
 WT_ADD_TRIES = 5
 WT_ADD_BACKOFF_S = (0.5, 1.0, 2.0, 4.0)
 _LOCK_MARKERS = ("could not lock", "index.lock", "unable to create",
@@ -585,9 +587,11 @@ def run(waves=None) -> int:
              "selection": {w["tag"]: [k for k, _ in w["slices"]] for w in waves}}
     try:
         k = _fleet_route().kit()
-        used = k.RunBudget(ROOT / k.BUDGET_REL).used()
-        if used + needed > k.RUNS_CAP:
-            _say(f"run budget {used}/{k.RUNS_CAP} leaves no room for {needed} runs")
+        budget = k.tree_budget(ROOT, KIT_CODE)
+        used = budget.used()
+        if used + needed > budget.cap - RUNS_RESERVE:
+            _say(f"run budget {used}/{budget.cap} (reserve {RUNS_RESERVE}) leaves no room "
+                 f"for {needed} runs")
             state["error"] = "run budget"
             return _finish(state, "refused", 3)
         fr = _fleet_route()
@@ -646,10 +650,10 @@ def dry_run(waves=None) -> int:
         print(f"REFUSED by kit (fail closed): {exc}")
         return 3
     print("proxy: set, loopback, listening (URL not printed)")
-    budget = k.RunBudget(ROOT / k.BUDGET_REL)
+    budget = k.tree_budget(ROOT, KIT_CODE)
     waves = list(WAVES) if waves is None else list(waves)
-    print(f"budget: {budget.used()}/{k.RUNS_CAP} used in window; this launcher needs "
-          f"{runs_needed(waves)}")
+    print(f"budget: {budget.used()}/{budget.cap} used in window (reserve {RUNS_RESERVE}); "
+          f"this launcher needs {runs_needed(waves)}")
     base_sha = _git("rev-parse", "origin/main").stdout.strip() or "<origin/main>"
     plan = []
     for wave in waves:
