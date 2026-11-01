@@ -33,9 +33,8 @@ the call); run tools/rc_facts.py with empty stdin (it hangs on an open one).
 Next action 1 (FIRST): the gated whole suite, once, as soon as commit allows (after the reboot): it has not
 run on this code; ORDER 1233 asked for it before the push, the gate refused 15.6 GB short with 7 lanes up
 (LEDGER 2010-2011). ops/runtime/drive_rc/run_suite.py <tag> launches it detached (set OWNER from the claims
-deny). Then read `gh run list --branch main` for this /done's push: ci (slice), docs-guards (its fix for the
-red on a52bc77ed, run 41347159041, could not run on Windows) and codeql. ci on a52bc77ed was GREEN, run
-41347159059, a slice: no whole-suite ci has run since kit v26 either; the nightly is the first. Earlier reds
+deny). Then read ci 41349259636 on 9bfec373f (this /done's push; still running at the ANSWER; a red is first
+here). docs-guards 41349259632 + codeql green there. ci on a52bc77ed was GREEN, run 41347159059, a slice: no whole-suite ci has run since kit v26 either; the nightly is the first. Earlier reds
 had no single cause (s148 items); test_lobby and arena Enter / Space watches below stand.
 Next action 2 (L9, autonomous): land the rotator's commits made after the L8 snapshot (LEDGER 2000,
 boundary 19:19:36; markers ops/loop/control/lanes/S144_LANDED_<LANE> name the rebased twins). At 20:50:
@@ -54,9 +53,8 @@ hash, rc-shell no-interpreter window, live Python314 vs the lock on 7 pins, reti
 installers / XMLs / keepalive / legion_on lines / legacy text); RM-1226 (certifi -> truststore); RM-1228
 (updater ships requirements without its embed); the L8 filings (BACKLOG "Session 147 L8 landing
 filings"): RM-1243, -1244, -1245, -1250, -1254, -1255, -1258..-1262 OPEN, RM-1257 PARTIAL.
-Next action 6 (reads owed, s148 rows in BACKLOG "Session 148 filings"): RM-1267 first sonnet cycle on ds
-(research 14:30:02 and repo 14:38:09 read rc 0; ds 14:51:58 still opus, launched before the trial?), a
-rejected id fails the run and 3 in a row park the lane; week ends 2026-11-08. RM-1269 read 2026-11-08. RM-1268 swap the trimmed templates between cycles, read about
+Next action 6 (reads owed, s148 rows in BACKLOG "Session 148 filings"): RM-1267 first sonnet cycles read rc 0
+(research 14:30:02, repo 14:38:09, ds 15:03:12); week ends 2026-11-08, measure then. RM-1269 read 2026-11-08. RM-1268 swap the trimmed templates between cycles, read about
 2026-11-15. RM-1266 DST row. Rotator restart (the reboot does it) loads the 500 runs gate (reserve 100),
 the RC-4 daily block and the lanes.py log. Delete tests/snapshot_panels/test_zz_drive_probe.py: slice 1's
 inert untracked probe, deletion denied in the drive; never stage it.
