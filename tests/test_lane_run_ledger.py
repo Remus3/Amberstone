@@ -4,8 +4,13 @@ tracked module and the tracked runner are pinned here."""
 from __future__ import annotations
 
 import json
+import os
 import re
+import subprocess
+import sys
 from pathlib import Path
+
+import pytest
 
 from ops.loop import lane_run_ledger as RL
 
@@ -133,6 +138,76 @@ def test_stamp_daily_merges_into_the_status_file_and_reads_back(tmp_path):
     assert RL.read_daily(tmp_path) == fig == doc["daily"]
     assert fig["line"].startswith(DAY)
     assert sorted(p.name for p in status.parent.iterdir()) == [status.name]  # no tmp left
+
+
+def _status_doc(root):
+    status = root / RL.STATUS_REL
+    status.parent.mkdir(parents=True)
+    status.write_text(json.dumps({"task": "s144-lanes", "status": "running", "pct": 5}))
+    return status
+
+
+def test_stamp_daily_survives_a_refused_rename_on_a_per_writer_scratch(tmp_path, monkeypatch):
+    """RM-258 / RM-261: the status file is polled by the lane widget while the kit's
+    write_progress rewrites it, so a held target is a normal Windows state. The first
+    version used a bare `<dest>.daily.tmp` + Path.replace: one refusal lost the stamp."""
+    _daily_tree(tmp_path)
+    status = _status_doc(tmp_path)
+    real_replace = os.replace
+    scratch: list[str] = []
+
+    def refuse_once(src, dst):
+        scratch.append(Path(src).name)
+        if len(scratch) == 1:
+            raise PermissionError(13, "Access is denied")
+        return real_replace(src, dst)
+
+    monkeypatch.setattr(os, "replace", refuse_once)
+    fig = RL.stamp_daily(tmp_path, DAY)
+    assert RL.read_daily(tmp_path) == fig
+    assert len(scratch) == 2, scratch
+    assert scratch[0].startswith(status.name + ".") and scratch[0].endswith(".tmp"), scratch
+    assert f".{os.getpid()}." in scratch[0], scratch
+    assert sorted(p.name for p in status.parent.iterdir()) == [status.name]
+
+
+def test_stamp_daily_writes_ascii_lf_bytes_and_cleans_up_on_a_lasting_refusal(tmp_path, monkeypatch):
+    _daily_tree(tmp_path)
+    status = _status_doc(tmp_path)
+    RL.stamp_daily(tmp_path, DAY)
+    raw = status.read_bytes()
+    assert b"\r" not in raw and raw.isascii()
+
+    def refused(src, dst):
+        raise PermissionError(13, "Access is denied")
+
+    monkeypatch.setattr(os, "replace", refused)
+    with pytest.raises(OSError):
+        RL.stamp_daily(tmp_path, DAY)
+    assert status.read_bytes() == raw
+    assert sorted(p.name for p in status.parent.iterdir()) == [status.name]
+
+
+def test_module_still_loads_by_file_path_with_no_repo_on_sys_path(tmp_path):
+    """The module doc promises it. `-I` drops the cwd and PYTHON* from the child, so
+    `core` is not importable and the writer has to come from the absolute-path bind."""
+    _daily_tree(tmp_path)
+    status = _status_doc(tmp_path)
+    code = (
+        "import importlib.util, sys\n"
+        "spec = importlib.util.spec_from_file_location('rl_by_path', sys.argv[1])\n"
+        "mod = importlib.util.module_from_spec(spec)\n"
+        "spec.loader.exec_module(mod)\n"
+        "assert 'core' not in sys.modules and 'core.polled_json' not in sys.modules\n"
+        "mod.stamp_daily(sys.argv[2], sys.argv[3])\n"
+    )
+    done = subprocess.run(
+        [sys.executable, "-I", "-c", code, str(REPO_ROOT / "ops/loop/lane_run_ledger.py"),
+         str(tmp_path), DAY],
+        cwd=tmp_path, capture_output=True, text=True, timeout=120,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    assert done.returncode == 0, done.stderr
+    assert json.loads(status.read_bytes())["daily"]["day"] == DAY
 
 
 def test_week_usd_peak_and_median(tmp_path):

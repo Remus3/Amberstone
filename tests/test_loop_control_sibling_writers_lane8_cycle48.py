@@ -150,9 +150,11 @@ _DIRECT_WRITERS = ["loop_controller.awrite", "intents._awrite",
 # other four were found by the cycle's own adversarial refutation pass, which
 # REFUTED the claim that three was the complete sibling set. repo_review runs
 # as `python ops/loop/repo_review.py` (sys.path[0] is ops/loop), so its bind
-# must survive the same repo-root-off-sys.path context.
+# must survive the same repo-root-off-sys.path context. lane_run_ledger joined
+# for the same reason: its module doc promises a file-path load.
 _SWEPT_MODULES = ("loop_controller", "intents", "steer", "adjudicator",
-                  "lanes", "done_sentinel", "claude_stub", "repo_review")
+                  "lanes", "done_sentinel", "claude_stub", "repo_review",
+                  "lane_run_ledger")
 
 
 def _scratches(dest: Path):
