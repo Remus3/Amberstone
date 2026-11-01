@@ -1031,11 +1031,17 @@ def _ds_preview_seam_kwargs(payload: dict) -> dict:
         if parsed is not None:
             seams[key] = parsed
 
+    # RM-1326: json.loads hands this function NaN / inf for the bare
+    # NaN / Infinity tokens and for 1e400, and an int a 400-digit literal
+    # that float() cannot convert (OverflowError). Every such value is
+    # dropped like any other unparseable seam: a non-finite share used to
+    # reach the engine as a NaN token and darken the preview, and an
+    # OverflowError used to escape and 500 it.
     ceiling = payload.get("cost_ceiling")
     if ceiling is not None:
         try:
             seams["cost_ceiling"] = int(ceiling)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             pass
 
     for key in _DS_PREVIEW_SEAM_FLOATS:
@@ -1043,9 +1049,11 @@ def _ds_preview_seam_kwargs(payload: dict) -> dict:
         if raw is None:
             continue
         try:
-            seams[key] = float(raw)
-        except (TypeError, ValueError):
+            val = float(raw)
+        except (TypeError, ValueError, OverflowError):
             continue
+        if math.isfinite(val):
+            seams[key] = val
 
     score_by = payload.get("score_by")
     if isinstance(score_by, str):

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import socket
 import subprocess
@@ -2643,14 +2644,21 @@ def _resolve_enemy_shares(
         than rejected, for the same degrade-to-usable reason.
 
     Inputs are clamped to [0, 1] first, so no caller can produce a body the
-    engine will refuse.
+    engine will refuse. A non-finite share (NaN / inf) counts as NOT
+    supplied (RM-1326): NaN slips both comparisons in the clamp, was
+    forwarded as a NaN token, and the engine's range check refused the body.
     """
 
     def _clamp(x: float) -> float:
         return 0.0 if x < 0.0 else (1.0 if x > 1.0 else float(x))
 
-    ad = None if enemy_ad_share is None else _clamp(enemy_ad_share)
-    ap = None if enemy_ap_share is None else _clamp(enemy_ap_share)
+    def _share(x: Optional[float]) -> Optional[float]:
+        if x is None or not math.isfinite(x):
+            return None
+        return _clamp(x)
+
+    ad = _share(enemy_ad_share)
+    ap = _share(enemy_ap_share)
 
     if ad is None and ap is None:
         return (0.5, 0.5)
