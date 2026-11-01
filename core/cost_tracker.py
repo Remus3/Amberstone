@@ -1,13 +1,12 @@
 """
 core/cost_tracker.py - central cost tracking + cost-control gates.
 
-AUDIT 2026-04-28 (proposals 5.1, 5.4, 5.5, 5.7, 5.8 + 2.1, 2.2):
+AUDIT 2026-04-28 (proposals 5.4, 5.5, 5.7, 5.8 + 2.1, 2.2):
 
   - record_call(model, input_tokens, output_tokens, cache_read, cache_write):
     daily spend ledger at data/spend/YYYY-MM-DD.json (atomic-written).
   - allow_call(): hard daily cap from rc_config.json / coach_settings.json.
   - banner_state(): ok / warn (>= 75%) / over (>= 100%) for dashboard.
-  - acquire_vision_token(): token-bucket rate limit (default 6/min, burst 3).
   - vision_dedupe_get/put(): 2-second TTL cache keyed by frame_ts + prompt
     hash so the same frame doesn't re-pay across two coach loops.
   - coach_disabled(mode): reads `disabled_coaches` from config; the
@@ -33,8 +32,7 @@ _log = logging.getLogger("rc.cost_tracker")
 
 # Prometheus instrumentation (T3 #12, 2026-05-01). Counters bumped from
 # the singleton's chokepoints - every Anthropic API call lands at
-# `record_call`, every vision-rate-limit decision lands at
-# `acquire_vision_token`, every dedup lookup at `vision_dedupe_get`.
+# `record_call`, every dedup lookup at `vision_dedupe_get`.
 _M_COACH_CALLS = Counter(
     "rc_coach_calls_total",
     "Anthropic API calls recorded by the cost tracker.",
@@ -64,14 +62,6 @@ _M_COACH_COST_PER_CALL = Histogram(
     "Per-call estimated USD cost distribution, by model and purpose lane.",
     buckets=COST_PER_CALL_BUCKETS,
     labelnames=("model", "purpose"),
-)
-_M_VISION_TOKEN_GRANTED = Counter(
-    "rc_vision_token_granted_total",
-    "Vision rate-limit tokens granted (acquire_vision_token returned True).",
-)
-_M_VISION_TOKEN_DENIED = Counter(
-    "rc_vision_token_denied_total",
-    "Vision rate-limit tokens denied (acquire_vision_token returned False).",
 )
 _M_VISION_DEDUPE_HITS = Counter(
     "rc_vision_dedupe_hits_total",
@@ -119,13 +109,9 @@ DEFAULT_PRICING = {
 # Config keys (looked up first in rc_config.json, then coach_settings.json).
 CFG_DAILY_BUDGET_USD     = "daily_budget_usd"        # None / 0 = unlimited
 CFG_WARN_FRAC            = "warn_at_fraction"        # default 0.75
-CFG_VISION_RATE_PER_MIN  = "vision_calls_per_min"    # default 6
-CFG_VISION_BURST         = "vision_burst"            # default 3
 CFG_COACH_DISABLED_MODES = "disabled_coaches"        # list[str], lowercase
 
 DEFAULT_WARN_FRAC    = 0.75
-DEFAULT_VISION_RATE  = 6.0
-DEFAULT_VISION_BURST = 3.0
 DEFAULT_DEDUPE_TTL_S = 2.0
 
 _APP_DIR    = Path(__file__).parent.parent
@@ -229,10 +215,6 @@ class CostTracker:
         self._spend_dir = Path(spend_dir) if spend_dir else _SPEND_DIR
         self._spend_dir.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
-        # Vision token-bucket
-        self._vb_lock = threading.Lock()
-        self._vb_tokens = float(self._cfg().get(CFG_VISION_BURST, DEFAULT_VISION_BURST))
-        self._vb_last = time.monotonic()
         # Frame-dedup cache: key -> (result, expires_monotonic_s)
         self._dedupe: Dict[str, tuple] = {}
 
@@ -370,32 +352,6 @@ class CostTracker:
             return "warn"
         return "ok"
 
-    # --- Vision rate limit (5.1) ------------------------------------------
-
-    def acquire_vision_token(self) -> bool:
-        """Token bucket: refills at `vision_calls_per_min`/60 per second up
-        to `vision_burst`. Returns True if the call is permitted."""
-        cfg = self._cfg()
-        rate_per_min = float(cfg.get(CFG_VISION_RATE_PER_MIN, DEFAULT_VISION_RATE))
-        burst        = float(cfg.get(CFG_VISION_BURST, DEFAULT_VISION_BURST))
-        per_sec      = max(0.0, rate_per_min / 60.0)
-        with self._vb_lock:
-            now = time.monotonic()
-            elapsed = now - self._vb_last
-            self._vb_last = now
-            self._vb_tokens = min(burst, self._vb_tokens + elapsed * per_sec)
-            if self._vb_tokens >= 1.0:
-                self._vb_tokens -= 1.0
-                granted = True
-            else:
-                granted = False
-        try:
-            (_M_VISION_TOKEN_GRANTED if granted
-             else _M_VISION_TOKEN_DENIED).inc()
-        except Exception as exc:  # noqa: BLE001
-            _log.debug("prom_metrics vision_token: %s", exc)
-        return granted
-
     # --- Frame dedupe (5.5) -----------------------------------------------
 
     def vision_dedupe_get(self, key: str) -> Any:
@@ -514,9 +470,9 @@ class CostTracker:
         #     ledger stored a list where a dict/list was expected.
         # _purpose_to_gate is pure str/dict work over the GATE_META literal
         # (every entry has "purposes"), so it cannot raise.
-        # CostTracker.__init__ does raise OSError/TypeError/ValueError
-        # via mkdir + float(cfg), but construction has already completed before
-        # this instance method is enterable, so that path is not reachable here.
+        # CostTracker.__init__ does raise OSError via mkdir, but construction
+        # has already completed before this instance method is enterable, so
+        # that path is not reachable here.
         # COUPLING: this narrowing depends on the current internals of
         # core/polled_json.read_json_dict / atomic_write_json. If either grows a
         # new raise type, widen this handler with it.

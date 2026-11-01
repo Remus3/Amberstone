@@ -506,8 +506,8 @@ class BaseCoach(abc.ABC):
                         _vision_off = _gt().gate_disabled("vision")
                     # LEFT BROAD (silent-except triage, C-class declined): the
                     # import is NOT the only raising statement. get_tracker()
-                    # constructs CostTracker on first call (mkdir -> OSError;
-                    # float(vision_burst) -> TypeError/ValueError, both in
+                    # constructs CostTracker on first call (spend_dir mkdir ->
+                    # OSError, the only raise left in
                     # core.cost_tracker.CostTracker.__init__) and gate_disabled
                     # -> CostTracker.coach_disabled builds a set over a
                     # disk-sourced config value (TypeError if not iterable).

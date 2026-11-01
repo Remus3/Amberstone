@@ -22,8 +22,9 @@ interval / pythonw / prompt-size+cache review).
 
 It only detects + logs + proposes: it never restarts a process and never edits
 code or config. RM-1302 removed the old opt-in config write. It lowered a
-vision rate key that nothing has read since b3f7939d5 dropped the token bucket
-on the operator's directive, and it logged that as a remediation.
+vision rate key that nothing acted on since b3f7939d5 dropped the token bucket's
+last caller on the operator's directive, and it logged that as a remediation.
+RM-1305 then removed the bucket and the key.
 
 Exit 0 = healthy, 1 = breach/flap detected (so a wrapper can alert).
 """

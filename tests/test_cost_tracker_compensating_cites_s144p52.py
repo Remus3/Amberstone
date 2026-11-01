@@ -33,9 +33,10 @@ What the cites meant, in the tree each was written against:
   Both were STALE ON LANDING by exactly 9 lines: read_json_dict starts at
   148 and atomic_write_json at 113 in that commit's tree.
 
-At HEAD every cost_tracker cite had drifted 12 lines (the __init__ mkdir is
-230, coach_disabled 435, allow_call 348, _purpose_to_gate 177, GATE_META
-146), and the polled_json ones sat 39 / 39 lines off.
+When this guard was written every cost_tracker cite had drifted 12 lines (the
+__init__ mkdir was 230, coach_disabled 435, allow_call 348, _purpose_to_gate
+177, GATE_META 146), and the polled_json ones sat 39 / 39 lines off. RM-1305
+has since removed the float(vision_burst) half of the __init__ raise surface.
 
 This guard pins:
 
@@ -96,8 +97,6 @@ BANNED = re.compile(r"\b(?:cost_tracker|polled_json)\.py:\d|\(:\d+(?:-\d+)?[),]"
 HOLDS = (
     (TRACKER, "CostTracker.__init__",
      "self._spend_dir.mkdir(parents=True, exist_ok=True)"),
-    (TRACKER, "CostTracker.__init__",
-     "float(self._cfg().get(CFG_VISION_BURST, DEFAULT_VISION_BURST))"),
     (TRACKER, "CostTracker.coach_disabled", "{str(m).lower() for m in modes}"),
     (TRACKER, "CostTracker.gate_disabled", "return self.coach_disabled(gate)"),
     (TRACKER, "CostTracker.allow_call",

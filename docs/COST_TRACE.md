@@ -55,7 +55,7 @@ stale-by-line-number.** It was accurate when this matrix was audited
 whose `brief_via_coach` is a pure delegation to
 `dashboard/_champ_select_deterministic.brief_deterministic`, with ZERO Anthropic
 call and no `record_anthropic_response`. The `champ_select_brief` purpose key
-survives in `core/cost_tracker.py:151` (a purpose-map entry, not a producer) and
+survives in `core/cost_tracker.py` `GATE_META` (a purpose-map entry, not a producer) and
 can no longer accrue spend. The row is struck rather than deleted so the
 `champ_select_brief` key in old `data/spend/*.json` ledgers stays explainable.
 The `champ_select_coach` row above it is a DIFFERENT surface
@@ -106,7 +106,7 @@ cache-read hits, not a plumbing gap.
 No `def advisor(` and no Opus `messages.create` exist at runtime. `claude-opus-4-7`
 appears ONLY in config/role tables: `ops/phase3_setup.py:77,80` (Agent-4 model_deep,
 Agent-6 auditor), `agents/_supervisor_common.py:46` (AGENT_MODELS["6"]),
-`core/cost_tracker.py:82` (pricing). Agent-6 (Opus auditor) is the budget-limited
+`core/cost_tracker.py` `MODEL_PRICING`. Agent-6 (Opus auditor) is the budget-limited
 Phase-3 cron; its spend would land in `record_call` only if the Phase-3 agent runtime
 issues the call with model=claude-opus-4-7. Every recent ledger shows ZERO opus -
 Opus is not a live billed path in the captured window.

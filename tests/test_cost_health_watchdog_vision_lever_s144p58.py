@@ -2,11 +2,12 @@
 
 RM-1302: `--remediate` lowered `vision_calls_per_min` and logged
 `remediated: true`, and every vision proposal told the reader to do the same.
-Nothing acts on that key: its only reader is CostTracker.acquire_vision_token,
+Nothing acted on that key: its only reader was CostTracker.acquire_vision_token,
 whose last production caller was removed on purpose by b3f7939d5 (operator
 directive 2026-06-03, "stop throttling vision capture"). The advice could not
 change spend, so a logged remediation was a false claim. The flag is gone, and
-each vision purpose now names a lever that really paces it.
+each vision purpose now names a lever that really paces it. RM-1305 then
+removed the bucket itself (tests/test_cost_tracker_vision_bucket_removed_s144p61.py).
 
 RM-1301: vision_relay said SONNET, but the relay bills whichever model its
 caller sends, and since RM-868 / RM-869 every coach reader goes direct. The TFT
@@ -35,7 +36,6 @@ _SPEC.loader.exec_module(chw)
 
 _DOC = _ROOT / "docs" / "COST_TRACE.md"
 _SITE_CELL = re.compile(r"[^\s|~`]+\.py:[0-9]+")
-_RATE_READER = "core/cost_tracker.py"
 _SOURCE_GLOBS = ("*.py", "*.js", "*.mjs", "*.html", "*.ps1", "*.bat", "*.yml")
 
 
@@ -128,8 +128,8 @@ def test_the_tool_no_longer_writes_or_names_the_inert_knob():
 
 
 def test_the_knob_really_has_no_production_reader():
-    """The reason for the removal. Any mention outside the bucket's own module
-    goes red: rewiring the bucket reverses b3f7939d5, and the watchdog's advice
+    """The reason for the removal. Any mention goes red, the bucket's old module
+    included: rewiring the bucket reverses b3f7939d5, and the watchdog's advice
     has to be re-decided with it. A name match, so getattr and a bound method
     cannot escape it, and every source surface, not only .py."""
     names = ("acquire_vision_token", "vision_calls_per_min",
@@ -138,9 +138,6 @@ def test_the_knob_really_has_no_production_reader():
     scanned = 0
     for rel, text in _production_files(_SOURCE_GLOBS):
         scanned += 1
-        if rel == _RATE_READER:
-            assert all(n in text for n in names), rel
-            continue
         hits.extend((rel, n) for n in names if n in text)
     assert scanned > 100, scanned
     assert hits == []

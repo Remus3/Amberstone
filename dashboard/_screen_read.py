@@ -12,8 +12,8 @@ Why this is low-risk:
     capture loop (that was the *continuous* PIL all-screens agent,
     retired s221; this never captures, it only reads the buffer).
   - NO new Sonnet/cost code. ScreenReadVision subclasses the audited
-    GameVisionReader - the moon_proxy -> direct-SDK fallback + the
-    cost_tracker daily-cap + token-bucket gating in _extract() apply
+    GameVisionReader - its direct-SDK path (USE_RELAY is False, RM-144) +
+    the cost_tracker daily-cap gating in _extract() apply
     verbatim (s173 anti-drift: one Sonnet path, not a second copy).
   - ADR-006 compliant: vision + LiveClient self-coaching only (no Riot
     Web API). The prompt yields strategic judgement, never input
