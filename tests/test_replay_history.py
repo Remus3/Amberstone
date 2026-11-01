@@ -47,11 +47,12 @@ _SCHEMA = """
 CREATE TABLE matches (
     match_id TEXT PRIMARY KEY, queue_id INTEGER, game_mode TEXT,
     game_duration_s INTEGER, game_creation_ts INTEGER, patch TEXT,
-    tracked_champion_id INTEGER);
+    tracked_champion_id INTEGER, tracked_champion_name TEXT,
+    tracked_team_id INTEGER, tracked_win INTEGER);
 CREATE TABLE participants (
     match_id TEXT, participant_id INTEGER, team_id INTEGER,
     champion_id INTEGER, champion_name TEXT, riot_id_game_name TEXT,
-    summoner_name TEXT, summoner_level INTEGER);
+    summoner_name TEXT, summoner_level INTEGER, win INTEGER);
 CREATE TABLE teams (match_id TEXT, team_id INTEGER, win INTEGER);
 CREATE TABLE timeline_frames (
     match_id TEXT, timestamp_ms INTEGER, participant_id INTEGER,
@@ -70,8 +71,14 @@ CREATE TABLE timeline_events (
 def _build_db(path, *, matches, events=(), frames=(), parts=(), teams=()):
     c = sqlite3.connect(str(path))
     c.executescript(_SCHEMA)
-    c.executemany("INSERT INTO matches VALUES (?,?,?,?,?,?,?)", matches)
-    c.executemany("INSERT INTO participants VALUES (?,?,?,?,?,?,?,?)", parts)
+    c.executemany(
+        "INSERT INTO matches (match_id, queue_id, game_mode, game_duration_s,"
+        " game_creation_ts, patch, tracked_champion_id) VALUES (?,?,?,?,?,?,?)",
+        matches)
+    c.executemany(
+        "INSERT INTO participants (match_id, participant_id, team_id,"
+        " champion_id, champion_name, riot_id_game_name, summoner_name,"
+        " summoner_level) VALUES (?,?,?,?,?,?,?,?)", parts)
     c.executemany("INSERT INTO teams VALUES (?,?,?)", teams)
     c.executemany("INSERT INTO timeline_frames VALUES (?,?,?,?,?,?,?,?,?,?,?)", frames)
     for ts, et, pid, item, raw in events:
@@ -89,12 +96,7 @@ def _item_events(db_path, match_id="M1"):
     c = sqlite3.connect(str(db_path))
     c.row_factory = sqlite3.Row
     try:
-        return c.execute(
-            "SELECT timestamp_ms, event_type, participant_id, item_id, raw_json"
-            " FROM timeline_events WHERE match_id = ?"
-            "   AND event_type IN ('ITEM_PURCHASED','ITEM_SOLD',"
-            "                      'ITEM_DESTROYED','ITEM_UNDO')"
-            " ORDER BY timestamp_ms, id", (match_id,)).fetchall()
+        return c.execute(X._ITEM_EVENTS_SQL, (match_id,)).fetchall()
     finally:
         c.close()
 

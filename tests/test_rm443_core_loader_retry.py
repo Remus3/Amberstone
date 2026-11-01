@@ -785,11 +785,12 @@ _REWIND_SCHEMA = """
 CREATE TABLE matches (
     match_id TEXT PRIMARY KEY, queue_id INTEGER, game_mode TEXT,
     game_duration_s INTEGER, game_creation_ts INTEGER, patch TEXT,
-    tracked_champion_id INTEGER);
+    tracked_champion_id INTEGER, tracked_champion_name TEXT,
+    tracked_team_id INTEGER, tracked_win INTEGER);
 CREATE TABLE participants (
     match_id TEXT, participant_id INTEGER, team_id INTEGER,
     champion_id INTEGER, champion_name TEXT, riot_id_game_name TEXT,
-    summoner_name TEXT, summoner_level INTEGER);
+    summoner_name TEXT, summoner_level INTEGER, win INTEGER);
 CREATE TABLE teams (match_id TEXT, team_id INTEGER, win INTEGER);
 CREATE TABLE timeline_frames (
     match_id TEXT, timestamp_ms INTEGER, participant_id INTEGER,
@@ -810,8 +811,9 @@ def _point_rewind(tmp_path: Path, mp: pytest.MonkeyPatch) -> Path:
     db = tmp_path / "rewind_history.db"
     c = sqlite3.connect(str(db))
     c.executescript(_REWIND_SCHEMA)
-    c.execute("INSERT INTO matches VALUES ('M1', 2400, 'KIWI', 1200, 0, "
-              "'16.15', 103)")
+    c.execute("INSERT INTO matches (match_id, queue_id, game_mode,"
+              " game_duration_s, game_creation_ts, patch, tracked_champion_id)"
+              " VALUES ('M1', 2400, 'KIWI', 1200, 0, '16.15', 103)")
     c.commit()
     c.close()
     mp.setattr(rh, "_REWIND_DB", db)
