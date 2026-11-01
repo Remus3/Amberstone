@@ -74,7 +74,9 @@ Response shape:
   }
 
 Failure modes:
-  - 400  champion param literally missing OR present-but-blank.
+  - 400  champion param literally missing OR present-but-blank, or a mode
+         outside the supported set (fixed text plus the supported list,
+         RM-1330).
   - 200  ok=false reason=no_rows when the ranker returns zero candidates
          (e.g. budget so low nothing qualifies, or a Yunara-in-ARAM
          zero-multiplier build).
@@ -114,6 +116,11 @@ from dashboard._dispatch import equals
 from dashboard._errors import send_error
 
 log = logging.getLogger("rc.web_dashboard")
+
+# RM-1330: rank_items applies no per-mode item filter to any other mode, so
+# the route ranked map-illegal items on the SR resist curve and answered ok=true.
+# Same set as routes_ds_sweep (RM-1327).
+_SUPPORTED_MODES: tuple[str, ...] = ("SR", "ARAM", "ARENA", "BRAWL")
 
 # 5-min response TTL mirrors routes_cooldown_watch exactly.
 _CACHE_TTL_S = 300.0
@@ -343,6 +350,14 @@ def _serve_ds_knobs(h) -> None:
             return
 
         mode = (qs.get("mode") or ["SR"])[0].strip().upper() or "SR"
+        if mode not in _SUPPORTED_MODES:
+            h._send(400, json.dumps({
+                "ok":        False,
+                # RM-1330: a fixed line, never the caller's value.
+                "error":     "unsupported mode",
+                "supported": list(_SUPPORTED_MODES),
+            }).encode("utf-8"), "application/json")
+            return
         items = _parse_item_list((qs.get("items") or [""])[0].strip())
         armor_override = _parse_float((qs.get("target_armor") or [""])[0])
         mr_override = _parse_float((qs.get("target_mr") or [""])[0])

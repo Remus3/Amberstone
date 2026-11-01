@@ -30,7 +30,8 @@ Request shape:
   target_mr     : target magic resist (default 0).
   target_max_hp : target max HP (default 0; %-HP scaling blocks).
   target_bonus_hp: target bonus HP (default 0; LDR / giant-slayer amps).
-  mode          : SR | ARAM | ... (default SR; only affects mode multiplier).
+  mode          : SR | ARAM | ARENA | BRAWL, any case (default SR; only affects
+                  mode multiplier). Anything else is a 400.
   runes         : comma-separated rune ids (default none); fed to the
                   rune_procs proc/amp layer. Omitted / blank / unknown-only
                   is byte-identical to the no-runes path.
@@ -63,7 +64,8 @@ Response shape:
   }
 
 Failure modes:
-  - 400  champion OR seq param literally missing / blank.
+  - 400  champion OR seq param literally missing / blank, or a mode outside
+         the supported set (fixed text plus the supported list, RM-1330).
   - 200  ok=false reason=empty_sequence when seq resolves to zero usable
          tokens (blanks only).
   - 503  combo import fails (DS engine module unreachable) or compute
@@ -102,6 +104,10 @@ from dashboard._get_caps import reject_oversized
 # RM-299b: one engine cast per seq element; a real combo is ~4-12 casts.
 _MAX_SEQ_STEPS = 32
 log = logging.getLogger("rc.web_dashboard")
+
+# RM-1330: the engine scores any other mode as SR, and the route echoed the
+# label as if it had applied. Same set as routes_ds_sweep (RM-1327).
+_SUPPORTED_MODES: tuple[str, ...] = ("SR", "ARAM", "ARENA", "BRAWL")
 
 # 5-min response TTL mirrors routes_cooldown_watch exactly.
 _CACHE_TTL_S = 300.0
@@ -413,6 +419,14 @@ def _serve_ds_combo(h) -> None:
         # compute_burst_damage), so this keeps the cache key and the
         # echoed "mode" field to one spelling.
         mode = (qs.get("mode") or ["SR"])[0].strip().upper() or "SR"
+        if mode not in _SUPPORTED_MODES:
+            h._send(400, json.dumps({
+                "ok":        False,
+                # RM-1330: a fixed line, never the caller's value.
+                "error":     "unsupported mode",
+                "supported": list(_SUPPORTED_MODES),
+            }).encode("utf-8"), "application/json")
+            return
         # runes= is the canonical comma-separated id list; keystone= is a
         # convenience single-id alias. Both feed the same rune_procs path;
         # malformed tokens are dropped (never a 500) and an empty result is

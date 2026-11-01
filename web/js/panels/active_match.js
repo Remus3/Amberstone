@@ -2018,12 +2018,23 @@ function _amRenderCapabilityGap(p, ctx, isLive) {
 // _csvRenderDsCombo). Reads the LIVE champion slug, parses the live input,
 // fetches the per-hit timeline, repaints. The input listener is wired once so
 // the panel never repaints the input (the operator's caret survives).
+//
+// RM-1330: /api/ds-combo answers 400 to any other mode, and state.mode also
+// holds "classic" / "client" / "tft" / "jade" / "unsupported". The engine already
+// scored those as SR, so folding them here keeps the numbers the card showed.
+const _AM_DS_COMBO_MODES = new Set(["SR", "ARAM", "ARENA", "BRAWL"]);
+
+function _amDsComboMode(ctx) {
+  const m = String((ctx && ctx.mode) || "SR").toUpperCase();
+  return _AM_DS_COMBO_MODES.has(m) ? m : "SR";
+}
+
 function _amRenderDsCombo(block, p, ctx) {
   if (!block) return;
   const champion = (p && p.champion) || "";
   if (!champion) { block.hidden = true; return; }
   block.hidden = false;
-  const modeUp = String((ctx && ctx.mode) || "SR").toUpperCase();
+  const modeUp = _amDsComboMode(ctx);
   const input = document.getElementById("csv-sugg-ds-combo-input");
   if (!input) {
     // First paint: panel builds the (defaulted) input row. Wire it + replay
@@ -3010,4 +3021,5 @@ function _dsIconFallback(name, id, delta) {
 export const __test = {
   _champNumericKey,
   _amDsSyntheticCs,
+  _amDsComboMode,
 };
