@@ -146,7 +146,7 @@ server-side TFT context authority: `{"active": bool, "phase": "lobby" | "match" 
 | `/api/command` | `CommandRequest` | Dashboard command: `force_vision` \| `refresh` \| `clear_pregame` |
 | `/api/console-error` | `{kind, message, source, lineno, colno, stack, url}` | Relay browser JS errors to RC log (10 Hz server-side throttle) |
 | `/api/analyze` | `{}` | Trigger Phase 3 supervisor analysis at `:8890` (synchronous, 30 s timeout) |
-| `/api/ds-preview` | `DsPreviewRequest` | DS rank_for() top-8 items for a champion (champ-select overlay) |
+| `/api/ds-preview` | `DsPreviewRequest` | Top-8 items for a champion from `rank_for_primary_archetype()` (the champion's archetype scorer; the `archetype` body field overrides the stored pick). Posted by `active_match.js` and `champ_select.js`. Past the server's POST-wide gates: a full build is 200 with `ranked: []` and `reason` = `build_complete`; 400 = a body the schema rejects (`bad_request_body`), an empty `champion` or an ambiguous seam flag; 503 = the engine call failed, for example down, timed out or an engine error status; 500 = an uncaught handler failure |
 | `/api/build-order` | `BuildOrderRequest` | Contextual DS-backed build-order plan |
 | `/api/build-plan` | - | Build-plan panel payload (`routes_build_plan`) |
 | `/api/aram-comp-verdict` | - | Deterministic ARAM comp-balance verdict |
@@ -215,6 +215,20 @@ six actions are not gated.
 
 (`/api/loop-monitor` + `/loop-monitor` ARE on `:8888` - different module,
 `dashboard/routes_loop_monitor.py`, registered in `_dispatch.py`.)
+
+---
+
+## NOT on `:8888` - Daemon Slayer (`:8860`)
+
+The engine is its own server, `agents/daemon_slayer/server.py`: 34 routes plus
+the `GET /` index page, bound to `127.0.0.1` by default, plain HTTP, not HTTPS,
+with no auth token. Its Host gate answers 421 to a name this machine does not
+answer to. This file does not list those routes: the docs list is the
+`server.py` row of the module map in `docs/DAEMON_SLAYER.md`, and each POST
+route's body keys are parsed in its `_route_*` handler. `/api/ds-preview` above
+makes its ranking call over HTTP through `core/daemon_slayer_client.py`, but
+computes its `capability_gap` field in the RC process
+(`core/ds_capability_gap.py`), so an `:8860` restart does not reload that code.
 
 ---
 
