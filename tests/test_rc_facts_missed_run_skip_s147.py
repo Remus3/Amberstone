@@ -109,6 +109,30 @@ def test_a_termination_wins_over_a_success_logged_after_it():
     assert detail == KILL
 
 
+def test_event_153_does_not_hide_event_111_in_the_same_attempt():
+    """A kill always wins: a 153 in the same attempt must not mask event 111.
+    A 153-first ordering passed every other test (verifier mutant, s147)."""
+    events = [_ev(100, 1000.0), _ev(153, 950.0), _ev(111, 700.0)]
+    verdict, detail = _classify(events, last_run_age_s=1000.0, time_limit_s=300.0)
+    assert verdict == rc_facts.VERDICT_FAILURE
+    assert detail == KILL
+
+
+def test_event_153_does_not_hide_event_329_in_the_same_attempt():
+    events = [_ev(100, 1000.0), _ev(153, 950.0), _ev(329, 700.0)]
+    verdict, detail = _classify(events, last_run_age_s=1000.0, time_limit_s=300.0)
+    assert verdict == rc_facts.VERDICT_FAILURE
+    assert detail == KILL
+
+
+def test_event_153_does_not_hide_a_run_at_the_time_limit():
+    # A 300 s run under a PT5M limit, no 111/329 logged, then a 153.
+    events = [_ev(100, 1000.0), _ev(201, 700.0, rc=0), _ev(153, 650.0)]
+    verdict, detail = _classify(events, last_run_age_s=1000.0, time_limit_s=300.0)
+    assert verdict == rc_facts.VERDICT_FAILURE
+    assert detail == KILL
+
+
 def test_a_run_at_the_time_limit_reads_as_a_kill_without_event_111():
     events = [_ev(100, 1000.0), _ev(201, 700.0, rc=0)]  # 300 s run, PT5M limit
     verdict, detail = _classify(events, last_run_age_s=1000.0, time_limit_s=300.0)
