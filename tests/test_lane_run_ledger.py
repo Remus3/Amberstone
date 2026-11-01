@@ -81,3 +81,74 @@ def test_exit_marker_reads_the_last_marker_of_a_bom_crlf_log(tmp_path):
     assert RL.exit_marker(log) == "lane exit b code=1"
     assert RL.exit_marker(tmp_path / "absent.log") == ""
     assert RL.exit_marker(None) == ""
+
+
+# ------------------------------------------------------------------ RC-4
+
+def _daily_tree(root):
+    usage = [_row(cost=2.5), _row(note="lane-s144-repo", cost=1.5, rc=1, is_error=True),
+             _row(note="inbox tick", cost=10.0),
+             _row(cost=99.0, ts="2026-10-31T23:00:00-05:00"), _row(cost=None)]
+    cycles = {"ds": [{"lane": "ds", "ended": f"{DAY}T10:01:00-06:00", "own_commits": 3},
+                     {"lane": "ds", "ended": "2026-10-31T23:01:00-05:00", "own_commits": 50}],
+              "repo": [{"lane": "repo", "ended": f"{DAY}T11:01:00-06:00", "own_commits": 1},
+                       {"lane": "repo", "ended": f"{DAY}T12:01:00-06:00"}]}
+    _write_tree(root, usage, cycles)
+
+
+def test_daily_figures_count_today_only_and_lane_rows_apart_from_the_tree(tmp_path):
+    _daily_tree(tmp_path)
+    fig = RL.today_daily(tmp_path, DAY)
+    assert fig["lane_runs"] == 3 and fig["lane_usd"] == 4.0
+    assert fig["tree_runs"] == 4 and fig["tree_usd"] == 14.0
+    assert fig["lane_commits"] == 4 and fig["usd_per_lane_commit"] == 1.0
+    assert fig["exits"][RL.FAILED_REPORTS_SUCCESS] == 1 and fig["exits"][RL.CRASH] == 0
+
+
+def test_daily_line_labels_commits_lane_local_never_landed(tmp_path):
+    _daily_tree(tmp_path)
+    line = RL.today_daily(tmp_path, DAY)["line"]
+    assert line.startswith(f"{DAY}: lane runs 3, lane USD 4.00, lane-local commits 4 ")
+    assert "(not landed on main)" in line
+    assert "failed-reports-success 1, crashes 0" in line
+    assert line.isascii()
+
+
+def test_a_day_with_no_commits_has_no_cost_per_commit():
+    fig = RL.daily_figures([_row()], [], DAY)
+    assert fig["usd_per_lane_commit"] is None
+    assert "USD per lane-local commit n/a" in RL.daily_line(fig)
+
+
+def test_stamp_daily_merges_into_the_status_file_and_reads_back(tmp_path):
+    _daily_tree(tmp_path)
+    status = tmp_path / RL.STATUS_REL
+    status.parent.mkdir(parents=True)
+    status.write_text(json.dumps({"task": "s144-lanes", "status": "running", "pct": 5}))
+    assert RL.read_daily(tmp_path) is None
+    fig = RL.stamp_daily(tmp_path, DAY)
+    doc = json.loads(status.read_text())
+    assert doc["task"] == "s144-lanes" and doc["pct"] == 5
+    assert RL.read_daily(tmp_path) == fig == doc["daily"]
+    assert fig["line"].startswith(DAY)
+    assert sorted(p.name for p in status.parent.iterdir()) == [status.name]  # no tmp left
+
+
+def test_week_usd_peak_and_median(tmp_path):
+    usage = [_row(cost=100.0, ts="2026-10-28T01:00:00-05:00"),
+             _row(cost=40.0, ts="2026-10-28T02:00:00-05:00"),
+             _row(cost=10.0, ts="2026-10-30T01:00:00-05:00"),
+             _row(cost=500.0, ts="2026-10-01T01:00:00-05:00"),  # outside the week
+             _row(cost=999.0, ts=f"{DAY}T01:00:00-06:00")]  # partial today
+    week = RL.week_usd(usage, today=DAY)
+    assert len(week["days"]) == 7 and week["days"]["2026-10-28"] == 140.0
+    assert week["peak"] == 999.0 and week["peak_complete_days"] == 140.0
+    assert week["median_complete_days"] == 0.0
+
+
+def test_peak_rolling_runs_uses_a_24h_window_and_splits_lane_rows():
+    usage = [_row(ts="2026-10-30T01:00:00-05:00"), _row(ts="2026-10-30T02:00:00-05:00"),
+             _row(ts="2026-10-31T01:30:00-05:00"), _row(note="x", ts="2026-10-31T01:40:00-05:00")]
+    assert RL.peak_rolling_runs(usage) == 3
+    assert RL.peak_rolling_runs(usage, lanes=True) == 2
+    assert RL.peak_rolling_runs(usage, lanes=False) == 1

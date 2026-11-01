@@ -31,6 +31,11 @@ Stdlib only, ASCII only; importable by file path or as ops.loop.lane_run_ledger.
 """
 from __future__ import annotations
 
+import argparse
+import datetime
+import json
+import statistics
+import sys
 from pathlib import Path
 
 USAGE_REL = Path("ops/loop/control/headless_usage.jsonl")
@@ -123,3 +128,182 @@ def exit_counts(rows) -> dict:
         if tag in out:
             out[tag] += 1
     return out
+
+
+# ------------------------------------------------------------------ readers
+
+def read_jsonl(path, tail_bytes: int = USAGE_TAIL_BYTES) -> list:
+    """Dict rows of a JSONL file; a bad line is skipped, a missing file is []."""
+    try:
+        path = Path(path)
+        with open(path, "rb") as fh:
+            if path.stat().st_size > tail_bytes:
+                fh.seek(-tail_bytes, 2)
+            text = fh.read().decode("utf-8", "replace")
+    except OSError:
+        return []
+    rows = []
+    for line in text.splitlines():
+        try:
+            row = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(row, dict):
+            rows.append(row)
+    return rows
+
+
+def usage_rows(root) -> list:
+    return read_jsonl(Path(root) / USAGE_REL)
+
+
+def cycle_rows(root) -> list:
+    rows = []
+    for path in sorted((Path(root) / CYCLES_REL).glob("s144_*_cycles.jsonl")):
+        rows.extend(read_jsonl(path))
+    return rows
+
+
+def _is_lane(row) -> bool:
+    return str(row.get("note") or "").startswith(LANE_NOTE_PREFIX)
+
+
+def _usd(row) -> float:
+    cost = row.get("cost_usd")
+    return float(cost) if isinstance(cost, (int, float)) and not isinstance(cost, bool) else 0.0
+
+
+def _day(value) -> str:
+    return value[:10] if isinstance(value, str) else ""
+
+
+def _today() -> str:
+    return datetime.date.today().isoformat()
+
+
+# ------------------------------------------------------------------ RC-4 daily line
+
+def daily_figures(usage, cycles, day: str) -> dict:
+    """One local day: lane runs and USD, the whole tree's USD, lane-local commits."""
+    rows = [r for r in usage if _day(r.get("ts")) == day]
+    lane = [r for r in rows if _is_lane(r)]
+    commits = sum(int(c.get("own_commits") or 0) for c in cycles
+                  if _day(c.get("ended")) == day)
+    usd = sum(_usd(r) for r in lane)
+    return {
+        "day": day, "lane_runs": len(lane), "lane_usd": round(usd, 2),
+        "tree_runs": len(rows), "tree_usd": round(sum(_usd(r) for r in rows), 2),
+        "lane_commits": commits,
+        "usd_per_lane_commit": round(usd / commits, 2) if commits else None,
+        "exits": exit_counts(lane),
+    }
+
+
+def daily_line(fig: dict) -> str:
+    each = fig["usd_per_lane_commit"]
+    return (f"{fig['day']}: lane runs {fig['lane_runs']}, lane USD {fig['lane_usd']:.2f}, "
+            f"lane-local commits {fig['lane_commits']} (not landed on main), USD per "
+            f"lane-local commit {'n/a' if each is None else format(each, '.2f')}; tree "
+            f"runs {fig['tree_runs']}, tree USD {fig['tree_usd']:.2f}; failed-reports-success "
+            f"{fig['exits'][FAILED_REPORTS_SUCCESS]}, crashes {fig['exits'][CRASH]}")
+
+
+def today_daily(root, day=None) -> dict:
+    fig = daily_figures(usage_rows(root), cycle_rows(root), day or _today())
+    return dict(fig, line=daily_line(fig))
+
+
+def stamp_daily(root, day=None, status_path=None) -> dict:
+    """Merge today's figures into the lane status file as "daily", atomically. The
+    kit's write_progress rewrites that file whole and has no extra-key door, so the
+    rotator calls this right after each write_progress. Raises OSError / ValueError;
+    the driver's caller swallows them. Returns the figures."""
+    path = Path(status_path) if status_path else Path(root) / STATUS_REL
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(doc, dict):
+        raise ValueError(f"status file is not an object: {path}")
+    fig = today_daily(root, day)
+    doc["daily"] = fig
+    tmp = path.with_name(path.name + ".daily.tmp")
+    tmp.write_bytes(json.dumps(doc).encode("ascii"))
+    tmp.replace(path)
+    return fig
+
+
+def read_daily(root, status_path=None):
+    """The "daily" block as the status file holds it now, or None."""
+    path = Path(status_path) if status_path else Path(root) / STATUS_REL
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return doc.get("daily") if isinstance(doc, dict) else None
+
+
+def usd_by_day(usage) -> dict:
+    out: dict = {}
+    for row in usage:
+        day = _day(row.get("ts"))
+        if day:
+            out[day] = out.get(day, 0.0) + _usd(row)
+    return out
+
+
+def week_usd(usage, today=None, days: int = 7) -> dict:
+    """Tree USD per day over the last `days` local days, today included, with the peak
+    and the median (the two figures a daily USD ceiling is set from). Today is partial,
+    so the peak and median are given both with it and over complete days only."""
+    end = datetime.date.fromisoformat(today or _today())
+    span = [(end - datetime.timedelta(days=n)).isoformat() for n in range(days)][::-1]
+    per = usd_by_day(usage)
+    vals = {d: round(per.get(d, 0.0), 2) for d in span}
+    full = [vals[d] for d in span[:-1]]
+    return {"days": vals, "peak": max(vals.values()),
+            "median": round(statistics.median(vals.values()), 2),
+            "peak_complete_days": max(full) if full else None,
+            "median_complete_days": round(statistics.median(full), 2) if full else None}
+
+
+def peak_rolling_runs(usage, *, lanes=None) -> int:
+    """The most kit runs in any rolling 24 h. lanes=False counts non-lane rows only
+    (what a lane reserve has to leave room for), True lane rows, None every row."""
+    stamps = []
+    for row in usage:
+        if lanes is not None and _is_lane(row) != lanes:
+            continue
+        try:
+            stamps.append(datetime.datetime.fromisoformat(str(row.get("ts"))).timestamp())
+        except ValueError:
+            continue
+    stamps.sort()
+    best = start = 0
+    for i, stamp in enumerate(stamps):
+        while stamp - stamps[start] > 86400:
+            start += 1
+        best = max(best, i - start + 1)
+    return best
+
+
+# ------------------------------------------------------------------ CLI
+
+def main(argv=None) -> int:
+    ap = argparse.ArgumentParser(description="Read-only lane ledger figures.")
+    ap.add_argument("what", choices=("daily", "read-daily", "week", "runs"))
+    ap.add_argument("--root", default=str(Path(__file__).resolve().parents[2]))
+    args = ap.parse_args(argv)
+    usage = usage_rows(args.root)
+    if args.what == "daily":
+        doc = today_daily(args.root)
+    elif args.what == "read-daily":
+        doc = read_daily(args.root)
+    elif args.what == "week":
+        doc = week_usd(usage)
+    else:
+        doc = {"all": peak_rolling_runs(usage), "lane": peak_rolling_runs(usage, lanes=True),
+               "non_lane": peak_rolling_runs(usage, lanes=False)}
+    sys.stdout.write(json.dumps(doc, indent=1) + "\n")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
