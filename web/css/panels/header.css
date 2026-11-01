@@ -1134,6 +1134,12 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   border-color: var(--clock);
   color: var(--clock);
 }
+/* RM-1312: no rule here left the UA `auto` ring on the queue items of
+ * both the Lobby mode menu and the Home Find Match picker, and the Home
+ * picker now puts focus on its first item when opened from the keyboard.
+ * Offset 1px keeps the 3px reach inside the 4px gap to the next item.
+ * Pinned by tests/snapshot_panels/test_home_find_match_picker_focus.py. */
+.lq-mode-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 .lobby-view-leader-tag {
   /* UI scale v2.1: 12 -> --fs-xs (16). */

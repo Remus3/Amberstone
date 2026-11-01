@@ -3906,6 +3906,8 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     overlay.setAttribute("aria-hidden", "false");
     if (!_HOME.lastFetchAt) _homeFetchAndRender();
   }
+  // RM-1312: the control that opened the Home Find Match picker.
+  let _HFM_OPENER = null;
   // s218 v5: Home-unique Find Match picker show/hide. Lazily creates
   // a backdrop dimmer on first show; both close on outside-click +
   // Escape. Wired once on first call.
@@ -3928,21 +3930,51 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         name: "find-match-picker",
         el: () => picker,
         isOpen: () => !picker.classList.contains("hidden"),
-        close: _homeFindMatchPickerHide,
+        close: () => _homeFindMatchPickerHide(true),
+      });
+      // RM-1312: keyboard focus leaving the picker (Tab past the last
+      // item, Shift+Tab off the first) closes it, so the popover and its
+      // scrim never hang over the page while the keyboard user works
+      // behind them. Moving between items keeps it open. A focusout with
+      // no related target (window blur, a click on the scrim) is left to
+      // the click / Escape closers. No refocus: focus stays where Tab put
+      // it. Guard: tests/snapshot_panels/test_home_find_match_picker_focus.py.
+      picker.addEventListener("focusout", (e) => {
+        const next = e.relatedTarget;
+        if (!next || picker.contains(next)) return;
+        if (!picker.classList.contains("hidden")) _homeFindMatchPickerHide(false);
       });
     }
+    const wasOpen = !picker.classList.contains("hidden");
     backdrop.classList.remove("hidden");
     picker.classList.remove("hidden");
     picker.setAttribute("aria-hidden", "false");
+    // RM-1312: opening moves focus to the first queue item (role="menu")
+    // so the next Tab walks the picker, not the controls behind the scrim.
+    // The opener is remembered so Escape can hand focus back to it.
+    if (!wasOpen) {
+      const ae = document.activeElement;
+      _HFM_OPENER = (ae && ae !== document.body && !picker.contains(ae)) ? ae : null;
+      const first = picker.querySelector(".lq-mode-item");
+      if (first) first.focus();
+    }
   }
-  function _homeFindMatchPickerHide() {
+  // refocus (Escape): focus that was inside the picker goes back to the
+  // control that opened it, since hiding the picker would otherwise leave
+  // it on a display:none item or drop it to <body>. The scrim, focusout and
+  // item-pick closers pass no refocus.
+  function _homeFindMatchPickerHide(refocus) {
     const picker = document.getElementById("home-find-match-picker");
     const backdrop = document.getElementById("home-find-match-backdrop");
+    const hadFocus = !!picker && picker.contains(document.activeElement);
     if (picker) {
       picker.classList.add("hidden");
       picker.setAttribute("aria-hidden", "true");
     }
     if (backdrop) backdrop.classList.add("hidden");
+    const opener = _HFM_OPENER;
+    _HFM_OPENER = null;
+    if (refocus === true && hadFocus && opener && opener.isConnected) opener.focus();
   }
   // V3 (2026-04-29): unconditional startup wiring + fetch tick. Click
   // handlers and the data poll now run regardless of whether
