@@ -92,9 +92,9 @@ SWEPT_WRITERS = (
 # (measured 2026-11-01: their outputs sit on the Desktop, under ops/runtime,
 # or in gitignored report directories), but each rewrites a whole file that a
 # diff, a reader or a sibling writer compares byte-for-byte, so they emit LF on
-# Windows too. ops/rc_incident_log.py is deliberately NOT here: its
-# incident_log.jsonl is APPENDED in text mode (CRLF on Windows), so converting
-# only its trim rewrite would leave a mixed-EOL file.
+# Windows too. ops/rc_incident_log.py is not in this list: its append sink and
+# trim rewrite are pinned together by test_incident_log_append_and_trim_emit_lf
+# (converting only one of them would leave a mixed-EOL jsonl).
 SWEPT_REPORT_WRITERS = (
     "ops/audit/lolmath_ds_sweep/gen_md.py",
     "scripts/repair_tft_match_rows.py",
@@ -274,3 +274,29 @@ def test_swept_regenerator_has_no_text_mode_write(rel):
     path = _ROOT / rel
     assert path.is_file(), f"{rel} missing - update SWEPT_WRITERS"
     assert _violations(path.read_text(encoding="utf-8")) == []
+
+
+def test_incident_log_append_and_trim_emit_lf(tmp_path, force_crlf):
+    """RM-481 residual (s144): ops/rc_incident_log.py appends one JSON line per
+    incident and trims by rewriting the file. Both used text mode, so on
+    Windows the jsonl was CRLF, and a trim over an LF-appended file would have
+    mixed endings. Both paths now pass newline=LF; force_crlf reproduces the
+    Windows translation on any OS, so this fails on the unconverted code."""
+    from datetime import datetime, timedelta, timezone
+
+    from ops.rc_incident_log import IncidentLog
+
+    log = IncidentLog(runtime_dir=tmp_path, retention_days=7)
+    old = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+    log.log_file.write_bytes(
+        (json.dumps({"ts": old, "trigger": "stale"}) + "\n").encode("utf-8"))
+    log.record("INFO", "app", "first")
+    log.record("INFO", "app", "second")
+    raw = log.log_file.read_bytes()
+    assert raw.count(b"\n") == 3
+    assert b"\r" not in raw, "append emitted CRLF"
+
+    assert log.purge_old() == 1
+    raw = log.log_file.read_bytes()
+    assert raw.count(b"\n") == 2
+    assert b"\r" not in raw, "trim rewrite emitted CRLF"

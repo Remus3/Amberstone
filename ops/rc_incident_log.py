@@ -222,7 +222,9 @@ class IncidentLog:
         """Append one JSON line to the log file. Caller must hold self._lock."""
         try:
             self.log_file.parent.mkdir(parents=True, exist_ok=True)
-            with self.log_file.open("a", encoding="utf-8") as f:
+            # RM-481: newline="\n" keeps the jsonl LF on Windows (text mode
+            # would write CRLF and a trim over it would mix the endings).
+            with self.log_file.open("a", encoding="utf-8", newline="\n") as f:
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")
         except Exception:  # noqa: BLE001
             pass  # never let logging crash the monitor
@@ -268,7 +270,8 @@ class IncidentLog:
                 except Exception:  # noqa: BLE001
                     kept.append(line)  # keep malformed lines
             if removed:
-                self.log_file.write_text("\n".join(kept) + "\n", encoding="utf-8")
+                self.log_file.write_text("\n".join(kept) + "\n", encoding="utf-8",
+                                         newline="\n")
         except Exception:  # noqa: BLE001
             pass
         return removed
