@@ -67,6 +67,10 @@ _DPS_FN: Callable[..., Any] | None = None
 _CACHE: dict[tuple, tuple[float, dict]] = {}
 _CACHE_TTL_S = 300.0
 _CACHE_LOCK = threading.Lock()
+# RM-1329: the TTL was only checked on read and nothing bounded the size,
+# and the key carries the caller's champion and mode strings plus four caller
+# floats, so every distinct request stayed resident for the process lifetime.
+_CACHE_MAX = 256
 
 _DEFAULT_LEVEL = 11
 _MIN_LEVEL = 1
@@ -80,6 +84,20 @@ def _reset_caches() -> None:
     _DPS_FN = None
     with _CACHE_LOCK:
         _CACHE.clear()
+
+
+def _cache_put(key: tuple, now: float, payload: dict) -> None:
+    """Store ``payload`` under ``key``, then bound the cache (RM-1329,
+    the routes_ds_sweep RM-1327 discipline): drop every expired entry,
+    and past ``_CACHE_MAX`` drop the oldest."""
+    with _CACHE_LOCK:
+        _CACHE[key] = (now, dict(payload))
+        for k in [k for k, (ts, _) in _CACHE.items()
+                  if (now - ts) >= _CACHE_TTL_S]:
+            _CACHE.pop(k, None)
+        while len(_CACHE) > _CACHE_MAX:
+            oldest = min(_CACHE, key=lambda k: _CACHE[k][0])
+            _CACHE.pop(oldest, None)
 
 
 def _load_engine() -> tuple[Any, Callable[..., Any]]:
@@ -333,8 +351,7 @@ def _serve_ds_statcheck(handler: Any) -> None:
             "cached": False,
         }
 
-        with _CACHE_LOCK:
-            _CACHE[ckey] = (now, payload)
+        _cache_put(ckey, now, payload)
         _send(handler, 200, payload)
     except Exception as exc:  # noqa: BLE001
         # Outer guard mirrors the sibling routes: a handler exception must

@@ -57,7 +57,8 @@ Failure modes:
   - 503  spike_markers import / compute fails (DS engine unreachable).
 
 5-min TTL in-process cache keyed on (champion, level, sorted items, mode,
-item_count, minor). Mirrors routes_cooldown_watch cache discipline.
+item_count, minor). Mirrors routes_cooldown_watch cache discipline, and is
+bounded at ``_CACHE_MAX`` entries (expired entries dropped on write).
 
 Don't-redo:
   * The LIVE-clock cursor (a "now" line at game_time on the strip) is the
@@ -86,6 +87,11 @@ log = logging.getLogger("rc.web_dashboard")
 _CACHE_TTL_S = 300.0
 _CACHE: dict[tuple, tuple[float, dict]] = {}
 _CACHE_LOCK = threading.Lock()
+# RM-1329: the TTL was only checked on read and nothing bounded the size,
+# and the key carries the caller's champion and mode strings plus unclamped
+# level / item_count ints, so every distinct request stayed resident for the
+# process lifetime.
+_CACHE_MAX = 256
 
 
 def _parse_item_list(raw: str) -> list[str]:
@@ -122,6 +128,20 @@ def _parse_item_count(raw: str):
         return int(raw)
     except (TypeError, ValueError):
         return None
+
+
+def _cache_put(key: tuple, now: float, payload: dict) -> None:
+    """Store ``payload`` under ``key``, then bound the cache (RM-1329,
+    the routes_ds_sweep RM-1327 discipline): drop every expired entry,
+    and past ``_CACHE_MAX`` drop the oldest."""
+    with _CACHE_LOCK:
+        _CACHE[key] = (now, dict(payload))
+        for k in [k for k, (ts, _) in _CACHE.items()
+                  if (now - ts) >= _CACHE_TTL_S]:
+            _CACHE.pop(k, None)
+        while len(_CACHE) > _CACHE_MAX:
+            oldest = min(_CACHE, key=lambda k: _CACHE[k][0])
+            _CACHE.pop(oldest, None)
 
 
 def _cache_key(champion: str, level: int, items: list[str], mode: str,
@@ -238,8 +258,7 @@ def _serve_spike_markers(h) -> None:
             }).encode("utf-8"), "application/json")
             return
 
-        with _CACHE_LOCK:
-            _CACHE[key] = (now, dict(payload))
+        _cache_put(key, now, payload)
 
         payload["cached"] = False
         payload["elapsed_ms"] = int((time.time() - t0) * 1000)
