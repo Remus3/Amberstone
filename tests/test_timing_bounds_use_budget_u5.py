@@ -317,9 +317,6 @@ def test_timing_budget_helper_is_the_kit_budget():
 # not-alive assertion. A negated wait and a join read back by `assert
 # t.is_alive()` stay raw on purpose: those are lower bounds.
 
-# Raw on purpose, by file: another slice owned it when this guard landed.
-_WAIT_BOUND_PENDING = {"test_vision_server_pool_true_audit_s144.py"}
-
 
 def _is_seconds(node: ast.AST | None) -> bool:
     if isinstance(node, ast.Constant):
@@ -385,7 +382,7 @@ def test_no_raw_wait_for_worker_bound_left_in_tests():
     parsed = 0
     for path in _test_files():
         src = path.read_text(encoding="utf-8")
-        if path.name in _WAIT_BOUND_PENDING or not re.search(r"\.(wait|acquire|join)\(", src):
+        if not re.search(r"\.(wait|acquire|join)\(", src):
             continue
         parsed += 1
         offenders += [f"{path.relative_to(TESTS_DIR).as_posix()}:{line}"

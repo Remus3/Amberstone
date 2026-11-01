@@ -28,8 +28,10 @@ def load_rows(path: Path, since: str, until: str | None) -> list[dict]:
             row = json.loads(line)
         except ValueError:
             continue
+        if not isinstance(row, dict):
+            continue
         day = str(row.get("ts", ""))[:10]
-        if not isinstance(row, dict) or day < since or (until and day > until):
+        if day < since or (until and day > until):
             continue
         if isinstance(row.get("cache_creation"), (int, float)):
             rows.append(row)
