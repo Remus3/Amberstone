@@ -9,9 +9,9 @@ Inputs (query string):
                     returns 400 ``items_required`` (kit-only baseline
                     is not exposed - the whole point of the surface is
                     "items have flipped damage").
-  - ``level``     : optional, default 11. Clamped to [1, 18].
-  - ``mode``      : optional, default "SR". Affects ARAM
-                    ``aramDamageDealt`` if "ARAM".
+  - ``level``     : optional, default 11. Outside [1, 18] is a 400.
+  - ``mode``      : optional, default "SR". SR / ARAM / ARENA / BRAWL in any
+                    case. Affects ARAM ``aramDamageDealt`` if "ARAM".
 
 Output (JSON 200):
 
@@ -40,6 +40,8 @@ Errors (JSON 400):
   - unknown item id in the list
   - more than 6 items
   - level out of range
+  - mode outside the four above, with a fixed text and the supported list
+    (RM-1330); the snapshot is not loaded and the engine is not called
 """
 from __future__ import annotations
 
@@ -52,6 +54,12 @@ from dashboard._dispatch import equals
 from dashboard._errors import send_error
 
 log = logging.getLogger("rc.web_dashboard")
+
+# RM-1330: an unknown mode returned other numbers under the caller's label with
+# ok=true (measured: ZZQ, CLASSIC, URF, KIWI, CHERRY and TFT each differed from SR
+# in mix on 117 of 173 champions and in total_dps on 147). Same set as
+# routes_ds_sweep (RM-1327).
+_SUPPORTED_MODES: tuple[str, ...] = ("SR", "ARAM", "ARENA", "BRAWL")
 
 # DataSnapshot is immutable per patch - load once + reuse across requests
 # (mirrors routes_ds_knobs._get_snapshot). Pre-fix the route re-parsed the
@@ -112,7 +120,15 @@ def _serve_damage_mix(h) -> None:
             _bad(h, f"level_out_of_range:{level}")
             return
 
-        mode = (qs.get("mode") or ["SR"])[0].strip() or "SR"
+        mode = (qs.get("mode") or ["SR"])[0].strip().upper() or "SR"
+        if mode not in _SUPPORTED_MODES:
+            h._send(400, json.dumps({
+                "ok": False,
+                # RM-1330: a fixed line, never the caller's value.
+                "error": "unsupported mode",
+                "supported": list(_SUPPORTED_MODES),
+            }).encode("utf-8"), "application/json")
+            return
 
         # Lazy import keeps a malformed snapshot from crashing the
         # whole dashboard at boot - same pattern as routes_lessons.

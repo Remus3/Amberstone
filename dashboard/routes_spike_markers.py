@@ -52,6 +52,8 @@ Response shape:
 
 Failure modes:
   - 400  champion param literally missing / blank.
+  - 400  mode outside the four above, with a fixed text and the supported list
+         (RM-1330); the engine is not called and nothing is cached.
   - 200  ok=false reason=no_markers when the engine returns no markers
          (blank champion that slipped the 400 guard - defensive).
   - 503  spike_markers import / compute fails (DS engine unreachable).
@@ -88,10 +90,15 @@ _CACHE_TTL_S = 300.0
 _CACHE: dict[tuple, tuple[float, dict]] = {}
 _CACHE_LOCK = threading.Lock()
 # RM-1329: the TTL was only checked on read and nothing bounded the size,
-# and the key carries the caller's champion and mode strings plus unclamped
-# level / item_count ints, so every distinct request stayed resident for the
-# process lifetime.
+# and the key carries the caller's champion string plus unclamped level /
+# item_count ints, so every distinct request stayed resident for the process
+# lifetime.
 _CACHE_MAX = 256
+
+# RM-1330: an unknown mode reached the engine and the cache key and answered
+# ok=true (measured: ZZQ and CLASSIC equalled SR on all 173 champions). Same set
+# as routes_ds_sweep (RM-1327).
+_SUPPORTED_MODES: tuple[str, ...] = ("SR", "ARAM", "ARENA", "BRAWL")
 
 
 def _parse_item_list(raw: str) -> list[str]:
@@ -194,6 +201,16 @@ def _serve_spike_markers(h) -> None:
             }).encode("utf-8"), "application/json")
             return
 
+        mode = (qs.get("mode") or ["SR"])[0].strip().upper() or "SR"
+        if mode not in _SUPPORTED_MODES:
+            h._send(400, json.dumps({
+                "ok":    False,
+                # RM-1330: a fixed line, never the caller's value.
+                "error": "unsupported mode",
+                "supported": list(_SUPPORTED_MODES),
+            }).encode("utf-8"), "application/json")
+            return
+
         # 2026-06-10: the active-match panel sends the coach payload's
         # champion verbatim - a Live Client DISPLAY name ("Tahm Kench").
         # The DS curve keys canonical DDragon ids, so the dps_at
@@ -206,7 +223,6 @@ def _serve_spike_markers(h) -> None:
             pass
 
         level = _parse_int((qs.get("level") or [""])[0].strip(), 1)
-        mode = ((qs.get("mode") or ["SR"])[0].strip() or "SR").upper()
         items = _parse_item_list((qs.get("items") or [""])[0].strip())
         item_count = _parse_item_count((qs.get("item_count") or [""])[0].strip())
         minor = (qs.get("minor") or [""])[0].strip() in ("1", "true", "yes")

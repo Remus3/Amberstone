@@ -72,8 +72,11 @@ const _AM = {
 };
 
 // Mode -> spike-curve backend mode. The backend supports SR/ARAM/ARENA/BRAWL;
-// any other mode (TFT, KIWI variants, etc.) is skipped silently.
+// the spike panels skip any other mode (TFT, KIWI variants, etc.) silently, and
+// _amThreatMode folds it to SR.
+// No prototype: a mode of "constructor" must miss here, not read Object's member.
 const _SPK_MODE_MAP = {
+  __proto__: null,
   sr:    "SR",
   classic: "SR",
   aram:  "ARAM",
@@ -2632,6 +2635,14 @@ function _resolveMyTeam(lc) {
   return null;
 }
 
+// RM-1330: /api/damage-mix answers 400 to any mode but SR / ARAM / ARENA / BRAWL
+// and the donut draws a "?" tile for that. Those four pass through unchanged. This
+// fold is a guard for any other value _threatRow is handed: it asks for the mapped
+// mode, else SR, so the row keeps its donut.
+function _amThreatMode(mode) {
+  return _SPK_MODE_MAP[String(mode || "").toLowerCase()] || "SR";
+}
+
 // UX-2 (2026-05-20): one enemy row = portrait + donut + champ name. The
 // donut is appended via renderThreatDonut so the cache + fetch lifecycle
 // is owned by the donut module. Item ids exclude slot >= 6 (trinket)
@@ -2676,7 +2687,7 @@ function _threatRow(pl, mode, level) {
     if (iid) itemIds.push(String(iid));
   }
 
-  renderThreatDonut(row, champId, itemIds, { level: level | 0 || 11, mode: String(mode || "SR").toUpperCase() });
+  renderThreatDonut(row, champId, itemIds, { level: level | 0 || 11, mode: _amThreatMode(mode) });
   return row;
 }
 
@@ -3022,4 +3033,7 @@ export const __test = {
   _champNumericKey,
   _amDsSyntheticCs,
   _amDsComboMode,
+  _amThreatMode,
+  _threatRow,
+  _renderSpikeMarkersFromCtx,
 };
