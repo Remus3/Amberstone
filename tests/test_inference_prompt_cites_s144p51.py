@@ -38,10 +38,9 @@ This guard pins:
     symbol named for it (skipped only when that commit is absent from the
     clone).
 
-Out of scope on purpose, still open under RM-1295: the
-core/feature_policy.py:305-350 cite and the two line cites into
-aram_coach.py itself (:839 in aram_coach.py, :552 in
-tests/test_aram_vision_cadence_fastpoll.py).
+Out of scope on purpose: the last three RM-1295 cites (core/feature_policy.py
+is_allowed and the two into aram_coach.py itself) are pinned by
+tests/test_aram_coach_cites_s144p51.py.
 """
 
 from __future__ import annotations

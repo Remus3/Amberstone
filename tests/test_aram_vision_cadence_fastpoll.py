@@ -1,7 +1,8 @@
 """ARAM Mayhem augment-reco cadence: bounded early-game fast vision poll.
 
 Root cause (live-eyeballed 2026-07-12, offline-confirmed): the ARAM coach polls
-vision every `_VISION_INTERVAL` = 25.0s (coaches/aram_coach.py:552) but the
+vision every `_VISION_INTERVAL` = 25.0s (coaches/aram_coach.py
+Coach._VISION_INTERVAL) but the
 Mayhem augment panel is on screen for only ~10-15s at game start. The single
 early tick usually lands outside that window and the next is 25s later, by
 which time the augment is already picked. Detection, the `is_augment_select` ->

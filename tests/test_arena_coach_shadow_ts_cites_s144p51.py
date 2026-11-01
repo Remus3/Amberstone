@@ -41,9 +41,8 @@ This guard pins:
 
 Out of scope on purpose: the vision_server/_inference.py cites (arena_coach
 and aram_coach) are pinned by tests/test_inference_prompt_cites_s144p51.py;
-still open under RM-1295: the core/feature_policy.py:305-350 cite and the two line cites into
-aram_coach.py itself (:839 in aram_coach.py, :552 in
-tests/test_aram_vision_cadence_fastpoll.py).
+the last three RM-1295 cites (core/feature_policy.py is_allowed and the two
+into aram_coach.py itself) are pinned by tests/test_aram_coach_cites_s144p51.py.
 """
 
 from __future__ import annotations

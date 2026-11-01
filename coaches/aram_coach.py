@@ -878,7 +878,7 @@ class Coach(BaseCoach):
             from core.feature_policy import is_allowed as _fp_ok
             if not _fp_ok("aram", "live_coaching"):
                 return
-        # is_allowed (core/feature_policy.py:305-350) is total by construction:
+        # core.feature_policy.is_allowed is total by construction:
         # _check_reload is already guarded internally, every branch returns a
         # bool, the mode/feature literals here are str, and _matrix is only ever
         # assigned a validated dict. The import is the only raising statement.
@@ -1363,7 +1363,8 @@ class Coach(BaseCoach):
                 # rendered tile name as item_build_reasons. Fail-soft: the
                 # helper never raises, degrading to {} / "".
                 # enemy roster source: state["enemy_comp"] (also consumed at
-                # the _USER_TMPL fill site, coaches/aram_coach.py:839).
+                # the _USER_TMPL.format fill in Coach._run_coach, the
+                # `enemies` field).
                 **_item_interaction_block(
                     _item_build_str,
                     state.get("enemy_comp", []),

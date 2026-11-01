@@ -55,10 +55,10 @@ The arena_coach cites into core/coaching_timestamps.py and
 core/augment_shadow.py are pinned by
 tests/test_arena_coach_shadow_ts_cites_s144p51.py and the
 vision_server/_inference.py cites by
-tests/test_inference_prompt_cites_s144p51.py; still open:
-core/feature_policy.py:305-350, and the
-aram_coach.py self-cites :839 (in aram_coach.py) and :552 (in the fast-poll
-test).
+tests/test_inference_prompt_cites_s144p51.py, and the last three (the
+core/feature_policy.py is_allowed cite, the aram_coach.py self-cite into its
+_USER_TMPL fill and the fast-poll test's cite into aram_coach.py) by
+tests/test_aram_coach_cites_s144p51.py.
 """
 
 from __future__ import annotations
