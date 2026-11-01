@@ -60,6 +60,7 @@ from urllib.parse import parse_qs, urlsplit
 # ``core.log_scrub`` directly for ``log_message`` (the same stdlib-only module).
 from core.http_head_deadline import HeadDeadlineMixin
 from core.http_host_gate import HostAllowlistMixin
+from core.log_scrub import MAX_LINE_CHARS as _LOG_MAX_CHARS
 from core.log_scrub import scrub_log as _scrub_log
 
 from . import ENGINE_VERSION
@@ -280,10 +281,24 @@ _ENGINE_REJECT_MSG = {
 }
 
 
+def _clip_log_text(text: str) -> str:
+    """RM-1277: cap a scrubbed log fragment at ``MAX_LINE_CHARS``.
+
+    The engine's exception text echoes the client's value (an unknown
+    champion id, a 401-digit level), and a 1 MiB body made it one ~1M
+    character WARNING line. Clipped AFTER the scrub, because the scrub can
+    grow a character to six; the marker is RM-825 (d)'s traceback one."""
+    if len(text) <= _LOG_MAX_CHARS:
+        return text
+    return (f"{text[:_LOG_MAX_CHARS]} [... "
+            f"{len(text) - _LOG_MAX_CHARS} chars cut]")
+
+
 def _engine_reject(status: int, exc: BaseException) -> _ApiError:
-    """Log ``exc`` once, scrubbed, and return the fixed-line ``_ApiError``."""
+    """Log ``exc`` once, scrubbed and clipped, and return the fixed-line
+    ``_ApiError``."""
     _log.warning("engine rejected request (%d): %s: %s", status,
-                 type(exc).__name__, _scrub_log(str(exc)))
+                 type(exc).__name__, _clip_log_text(_scrub_log(str(exc))))
     return _ApiError(status, _ENGINE_REJECT_MSG[status])
 
 
