@@ -7194,18 +7194,32 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   })();
 
   // -- Keyboard shortcuts -------------------------------------------
+  // RM-1323: a letter shortcut belongs to the page, never to a control that
+  // reads the letter keys itself (text entry, a <select>'s type-ahead), and it
+  // must not act behind an open menu, wherever focus is: on a row, on the
+  // trigger, or on the body after a click on a menu's label. Rendered is what
+  // counts, not the class: a Lobby menu left open by a view change is not
+  // displayed, and must not kill the shortcuts in the next view.
+  function _letterShortcutsYield(tgt) {
+    if (tgt) {
+      const tag = tgt.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
+      if (tgt.isContentEditable) return true;
+    }
+    return Array.from(document.querySelectorAll('[role="menu"]'))
+      .some((m) => m.getClientRects().length > 0);
+  }
   document.addEventListener("keydown", (e) => {
     // RM-1322: a held key is one press. Each single-shot shortcut below (a
-    // reload, a kickoff, a toggle) skips its ACTION on an autorepeat but keeps
-    // its preventDefault, or a held Z or F would reach the type-ahead of a
-    // focused <select>. The autorepeat Escape never gets here unconsumed
-    // (escape_layers.js); Ctrl+K and the keybind toast are safe to repeat.
+    // reload, a kickoff, a toggle) skips its ACTION on an autorepeat; the
+    // branches that call preventDefault still call it. The autorepeat Escape
+    // never gets here unconsumed (escape_layers.js); Ctrl+K and the keybind
+    // toast are safe to repeat.
     // Shift+R resets saved preferences (zen) + reloads. The zoom key
     // was retired in UI scale v2 (2026-05-23); body { zoom } is gone
     // from base.css and no code path writes rc-zoom anymore.
     if (e.shiftKey && (e.key === "R" || e.key === "r")) {
-      const tgt = e.target;
-      if (tgt && (tgt.tagName === "INPUT" || tgt.tagName === "TEXTAREA")) return;
+      if (_letterShortcutsYield(e.target)) return;
       if (e.repeat) return;
       try {
         localStorage.removeItem("rc-zen");
@@ -7216,8 +7230,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     }
     // A triggers the ANALYZE NOW footer button - quick kickoff.
     if ((e.key === "a" || e.key === "A") && !e.ctrlKey && !e.metaKey && !e.altKey) {
-      const tgt = e.target;
-      if (tgt && (tgt.tagName === "INPUT" || tgt.tagName === "TEXTAREA")) return;
+      if (_letterShortcutsYield(e.target)) return;
       const btn = el("analyze-now");
       if (btn && !btn.disabled) {
         if (!e.repeat) btn.click();
@@ -7227,8 +7240,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     }
     // F toggles browser fullscreen (monitor-2 use case).
     if ((e.key === "f" || e.key === "F") && !e.ctrlKey && !e.metaKey && !e.altKey) {
-      const tgt = e.target;
-      if (tgt && (tgt.tagName === "INPUT" || tgt.tagName === "TEXTAREA")) return;
+      if (_letterShortcutsYield(e.target)) return;
       if (!e.repeat) {
         if (document.fullscreenElement) document.exitFullscreen();
         else document.documentElement.requestFullscreen().catch(() => {});
@@ -7241,8 +7253,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     // attribute so CSS does the rest. Zen is the default view, so we
     // persist "0" on opt-out (not "" - restorePrefs treats null as on).
     if ((e.key === "z" || e.key === "Z") && !e.ctrlKey && !e.metaKey && !e.altKey) {
-      const tgt = e.target;
-      if (tgt && (tgt.tagName === "INPUT" || tgt.tagName === "TEXTAREA")) return;
+      if (_letterShortcutsYield(e.target)) return;
       if (!e.repeat) {
         const turningOn = document.body.dataset.zen !== "1";
         document.body.dataset.zen = turningOn ? "1" : "";
@@ -7282,8 +7293,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     }
     // "?" or "H" shows a brief keybind hint toast.
     if ((e.key === "?" || e.key === "h" || e.key === "H") && !e.ctrlKey && !e.metaKey && !e.altKey) {
-      const tgt = e.target;
-      if (tgt && (tgt.tagName === "INPUT" || tgt.tagName === "TEXTAREA")) return;
+      if (_letterShortcutsYield(e.target)) return;
       showKeybindsToast();
     }
   });

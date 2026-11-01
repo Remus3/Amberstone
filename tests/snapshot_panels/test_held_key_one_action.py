@@ -27,8 +27,11 @@ point), and a held Space still does not scroll the page.
 The first cut returned from the hotkey handler on any autorepeat, which also
 skipped the preventDefault of the Z and F branches, so a held Z typed into a
 focused <select> through its type-ahead. The verifier measured that, hence the
-per-branch guard and test_a_held_hotkey_stays_out_of_a_focused_select. Held H
-is left alone on purpose: it only re-arms the keybind toast's hide timer.
+per-branch guard. RM-1323 then gave a focused select its letters outright
+(tests/snapshot_panels/test_hotkey_letter_owners.py), so
+test_a_held_hotkey_stays_out_of_a_focused_select now pins that a hold changes
+the select and fires no shortcut. Held H is left alone on purpose: it only
+re-arms the keybind toast's hide timer.
 """
 import pytest
 
@@ -274,14 +277,18 @@ def test_a_held_ctrl_k_stays_on_the_prompt_input(mock_server, pw_browser):
 
 @pytest.mark.parametrize("key", ["z", "f", "a"])
 def test_a_held_hotkey_stays_out_of_a_focused_select(mock_server, pw_browser, key):
+    """RM-1323 gave a focused select its letters, so a hold now reaches the
+    type-ahead and fires no shortcut."""
     ctx, page, errors = _open_home(pw_browser, mock_server)
     try:
-        # The one option past the first starts with the held key, so an
-        # autorepeat that reaches the type-ahead changes the value.
+        # The one option past the first starts with the held key.
         page.evaluate(
             """(k) => {
+              window.__analyze = 0;
               document.getElementById('analyze-now').addEventListener(
-                'click', (e) => e.stopImmediatePropagation(), true);
+                'click',
+                (e) => { window.__analyze += 1; e.stopImmediatePropagation(); },
+                true);
               const s = document.createElement('select');
               s.id = 'held-select';
               for (const v of ['x', k + 'ed']) {
@@ -294,10 +301,14 @@ def test_a_held_hotkey_stays_out_of_a_focused_select(mock_server, pw_browser, ke
             }""",
             key,
         )
+        zen_before = _zen(page)
         _hold(page, key)
-        assert page.input_value("#held-select") == "x", (
-            f"a held {key!r} changed the focused select through type-ahead"
+        assert page.input_value("#held-select") == key + "ed", (
+            f"a held {key!r} did not reach the focused select's type-ahead"
         )
+        assert page.evaluate("() => window.__analyze") == 0
+        assert page.evaluate("() => window.__fsCalls.enter") == 0
+        assert _zen(page) == zen_before
     finally:
         page.close()
         ctx.close()
