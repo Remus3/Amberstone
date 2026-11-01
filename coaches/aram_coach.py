@@ -660,10 +660,10 @@ class Coach(BaseCoach):
         "wave_pct", "hp_packs", "fight_state",
         "augments", "augment_select", "augment_choices",
         # B-01b re-home: the live relay answers every mode with the TFT prompt
-        # (vision_server/_inference.py:36), which emits the augment flag as
-        # `is_augment_select`. modes/shared_vision._postprocess aliases it into
-        # the consumed `augment_select`, so it IS a requested field for this
-        # mode - declaring it here stops RC_VISION_MERGE_STRICT filtering it out
+        # (vision_server/_inference.py _VISION_PROMPT), which emits the augment
+        # flag as `is_augment_select`. modes/shared_vision._postprocess aliases
+        # it into the consumed `augment_select`, so it IS a requested field for
+        # this mode - declaring it here stops RC_VISION_MERGE_STRICT filtering it out
         # before the alias runs. ARAM Mayhem has augments (live-verified
         # 2026-07-12), so this coach owns the flag. RM-869: the reader now
         # goes direct (_build_vision_reader) and _VISION_PROMPT asks for

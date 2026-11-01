@@ -39,9 +39,9 @@ This guard pins:
 (d) at 7797264e2^ every old cite landed inside the symbol named for it
     (skipped only when that commit is absent from the clone).
 
-Out of scope on purpose, still open under RM-1295: the
-vision_server/_inference.py:36 cites (arena_coach and aram_coach), the
-core/feature_policy.py:305-350 cite and the two line cites into
+Out of scope on purpose: the vision_server/_inference.py cites (arena_coach
+and aram_coach) are pinned by tests/test_inference_prompt_cites_s144p51.py;
+still open under RM-1295: the core/feature_policy.py:305-350 cite and the two line cites into
 aram_coach.py itself (:839 in aram_coach.py, :552 in
 tests/test_aram_vision_cadence_fastpoll.py).
 """

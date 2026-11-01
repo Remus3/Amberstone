@@ -36,8 +36,9 @@ Other-family cites are out of scope on purpose: the three compensating
 sites' own cites into core/cost_tracker.py and core/polled_json.py, and the
 arena_coach / aram_coach cites. Their _base_coach.py family is pinned by
 tests/test_base_coach_dclass_cites_s144p51.py, their coaching_timestamps.py /
-augment_shadow.py family by tests/test_arena_coach_shadow_ts_cites_s144p51.py;
-vision_server/_inference.py:36 is still open.
+augment_shadow.py family by tests/test_arena_coach_shadow_ts_cites_s144p51.py,
+their vision_server/_inference.py family by
+tests/test_inference_prompt_cites_s144p51.py.
 """
 
 from __future__ import annotations

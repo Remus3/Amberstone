@@ -53,8 +53,10 @@ This guard pins:
 Other-family cites in the same three files are out of scope on purpose.
 The arena_coach cites into core/coaching_timestamps.py and
 core/augment_shadow.py are pinned by
-tests/test_arena_coach_shadow_ts_cites_s144p51.py; still open:
-vision_server/_inference.py:36, core/feature_policy.py:305-350, and the
+tests/test_arena_coach_shadow_ts_cites_s144p51.py and the
+vision_server/_inference.py cites by
+tests/test_inference_prompt_cites_s144p51.py; still open:
+core/feature_policy.py:305-350, and the
 aram_coach.py self-cites :839 (in aram_coach.py) and :552 (in the fast-poll
 test).
 """
