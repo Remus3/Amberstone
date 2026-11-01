@@ -234,9 +234,69 @@ computes its `capability_gap` field in the RC process
 
 ## Authentication
 
-- **Dashboard endpoints**: no auth (local HTTPS, Legion-local only)
+`dashboard/server.py` binds `::` unless `RC_DASH_BIND` names another address. The
+`dev` launcher profile leaves it unset, so `:8888` listens on every address of this
+machine, the LAN and the tailnet included; the `packaged` profile sets `127.0.0.1`
+(`ops/launcher/services.json`). The Host gate below refuses a name this machine does not
+answer to, but it is not a credential: the server's own gates ask no credential of
+a GET or of a POST outside the control list. One route module adds its own check:
+`dashboard/routes_recordings.py` asks for the same token when `RC_DASH_TOKEN` is set.
+
+The control list (`is_control_endpoint`, `dashboard/_handler.py`) is `/api/command`,
+`/api/input`, `/api/analyze`, `/api/lcu-cmd`, `/api/loadout/apply`,
+`/api/sr-draft/apply`, `/api/lcu/auto-accept`, `/api/vision-reference`,
+`/api/coach-choice`, and every POST under `/api/decisions/`. Each of those is gated
+one of two ways:
+
+- With `RC_DASH_TOKEN` set, every peer, loopback included, must send it as
+  `X-RC-Token`, or the answer is 401.
+- With none set, the peer decides (`control_peer_allowed`, `dashboard/server.py`).
+  Loopback, this machine's own address, the tailnet and any CIDR in
+  `RC_DASH_CONTROL_NETS` pass; anything else, a LAN host included, gets 403. A local
+  reverse proxy or tunnel connects from loopback, so everyone it forwards passes:
+  run none in front of `:8888`, or set the token.
 
 ## Error shapes
 
-All error responses: `{"error": "<message>"}` with an appropriate HTTP status code.
-Success responses without a body: `{"ok": true}`.
+Refusals the server sends before a route answers. The first three rows run on every
+method, before any route. The 404 answers a POST that no route matches, and a GET that
+neither a route nor a proxy path matches. The others are POST only (`do_POST`,
+`dashboard/_handler.py`; `dispatch_post`, `dashboard/_dispatch.py`, for
+`bad_request_body`). All are JSON with the token under `error`, except the 404, which
+is `text/plain`; a refused HEAD gets the headers alone.
+
+| Status | Token | When |
+|---|---|---|
+| 400 | `bad_header_block` | The header parse lost lines of the block, so a `Host` could be hidden |
+| 400 | `bad_request_target` | The target is not `/...` (or `*` with `OPTIONS`) |
+| 421 | `misdirected_host` | A `Host` line has a name this machine does not answer to, or an IPv6 zone id; a plain IP literal passes |
+| 403 | `cross_origin` | `Origin` or `Referer` is present and fails the same-origin rule (`_same_origin_ok`) |
+| 411 | `length_required` | The body is chunked |
+| 400 | `bad_body` | `Content-Length` is negative or not an integer, or the body is not a JSON object |
+| 413 | `payload_too_large` | `Content-Length` is over 1 MiB |
+| 408 | `body_read_timeout` | The declared body did not arrive within 10 s |
+| 401 | `unauthorized` | Control POST, token set, `X-RC-Token` missing or wrong |
+| 403 | `control_peer_refused` | Control POST, no token set, peer not admitted |
+| 400 | `bad_request_body` | The body fails the route's request model; the reply adds a `fields` list |
+| 404 | `not found` | No route matches, and for a GET no proxy path either |
+
+A GET under `SUPERVISOR_PROXY_PATHS` (`dashboard/_handler.py`) that no route claims goes
+to the `:8890` supervisor. Nothing answering there is 502 JSON
+`supervisor_unreachable`; an upstream error keeps its status with a fixed JSON `error`
+line, never the upstream body. `/api/minimap-crop` answers 204 in both cases.
+
+The stdlib `http.server` answers some requests itself, with an HTML body, not JSON (a
+HEAD gets the headers alone): 501 for a method with no handler (`PUT`, `DELETE`,
+`OPTIONS`, `HEAD`; only GET and POST are served), 414 or 431 for a request line or
+header line over its 64 KiB limit, 431 for 100 or more header lines, and 400 or 505
+for a request line or HTTP version it cannot parse, which can arrive as bare HTML with
+no status line. An HTTP/0.9 GET is closed with no reply. With the TLS pair (`ops/tls/rc.pem`, `ops/tls/rc-key.pem`) a
+plain-HTTP connection to `:8888` gets a 301 to HTTPS (`dashboard/server.py`) and reaches
+none of the above; without the pair the server speaks plain HTTP and all of it applies.
+
+Past those gates a route answers for itself. A JSON failure usually carries an
+`error` string, and some routes add keys beside it (`{"ok": false, "error": ...}`).
+A failure sent through `send_error` (`dashboard/_errors.py`) is status 500 by default
+with the line `internal error - see logs` unless the route passes its own, and the
+exception itself is never in the body. An exception nothing catches gets no reply:
+the connection closes. A success with nothing to report is usually `{"ok": true}`.
