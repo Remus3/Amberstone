@@ -79,11 +79,14 @@ _RING_JS = r"""
   });
   const out = [];
   for (const el of all) {
-    const r = el.getBoundingClientRect();
     if (document.activeElement && document.activeElement.blur) {
       document.activeElement.blur();
     }
     el.focus();
+    // Read the rect AFTER focus: focusing a control below the fold
+    // scrolls its scroll box, and a pre-focus rect would report the ring
+    // clipped where it never paints (RM-1314, the #view-session rows).
+    const r = el.getBoundingClientRect();
     const cs = getComputedStyle(el);
     const ring = rgba(cs.outlineColor);
     // The offset ring sits outside the border box: it is painted on the

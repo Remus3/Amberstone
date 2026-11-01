@@ -53,7 +53,12 @@ modules landed in L7:
     queue buttons DO transition their colours, so the ring / surface reads
     straddled the swap; settled now because both openers add the sheet
     (added by the L7 merger with this audit).
-This module pins all twenty-one verdicts at runtime with each test's own opener,
+Audit (2026-10-31, s144 uiux cycle 95, RM-1314, the same detector):
+  - test_match_row_focus_ring: flips data-theme in-page and reads the
+    Session / History match rows' focus ring; the rows DO transition
+    background and border colour, so its opener adds a transitions-off
+    (and animations-off, for the deep-link pulse) sheet.
+This module pins all twenty-two verdicts at runtime with each test's own opener,
 so a new transition on a no-sheet surface, or the sheet dropped from a
 shared opener, fails HERE with the element and property named. The fix is
 the sheet in that test's opener, not a sleep. The inventory test keeps the
@@ -127,6 +132,7 @@ from tests.snapshot_panels.test_lobby_queue_buttons_focus_ring import (
 from tests.snapshot_panels.test_lobby_queue_buttons_focus_ring import (
     _open as _lq_open,
 )
+from tests.snapshot_panels.test_match_row_focus_ring import _open as _mr_open
 from tests.snapshot_panels.test_settings_checkbox_hit_targets import (
     _open as _settings_open,
 )
@@ -141,7 +147,7 @@ from tests.snapshot_panels.test_user_builds_rune_tabs import _open as _ub_open
 
 _HERE = Path(__file__).resolve().parent
 
-# The twenty-one modules audited above, keyed by file name.
+# The twenty-two modules audited above, keyed by file name.
 _COVERED = {
     "test_am_call_eyebrow_contrast.py",
     "test_champ_select_arena_augment_options.py",
@@ -157,6 +163,7 @@ _COVERED = {
     "test_lm_hero_stats_disclosure.py",
     "test_lobby_mains_tabs.py",
     "test_lobby_queue_buttons_focus_ring.py",
+    "test_match_row_focus_ring.py",
     "test_panel_visibility_tab_selected_state.py",
     "test_settings_checkbox_hit_targets.py",
     "test_tab_bars_selected_state.py",
@@ -521,6 +528,18 @@ def test_nav_and_queue_ring_reads_are_settled(mock_server, pw_browser, what):
     try:
         page.keyboard.press("Shift")  # keyboard modality, as the ring reads do
         _check(page, sel, True, what)
+    finally:
+        _close(ctx, page)
+
+
+@pytest.mark.parametrize("view", ["session", "history"])
+def test_match_row_ring_reads_are_settled(mock_server, pw_browser, view):
+    # test_match_row_focus_ring flips data-theme in-page and reads each
+    # focused Session / History match row's ring, with its own opener.
+    ctx, page, _errors, sel, _n = _mr_open(pw_browser, mock_server, view)
+    try:
+        page.keyboard.press("Shift")  # keyboard modality, as the ring reads do
+        _check(page, sel, True, f"{view} match rows")
     finally:
         _close(ctx, page)
 

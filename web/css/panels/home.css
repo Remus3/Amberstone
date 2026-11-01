@@ -600,12 +600,20 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease;
 }
-.history-match-row-clickable:hover,
-.history-match-row-clickable:focus-visible {
+.history-match-row-clickable:hover {
   background: var(--info-soft);
   border-left: 3px solid var(--info);
   padding-left: 8px;
-  outline: none;
+}
+/* RM-1314: the keyboard focus cue is a ring, not the hover tint. The
+ * tint used to ride :focus-visible with `outline: none`, so a focused row
+ * showed no ring and lost its own --good / --bad result rail. A 2px
+ * --accent outline (the .home-action-tile / .view-tab precedent) at a
+ * 1px offset reaches 3px, inside the 4px gap of the match list. Pinned by
+ * tests/snapshot_panels/test_match_row_focus_ring.py. */
+.history-match-row-clickable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 /* HIST2: detached historical PGR view chrome. The body reuses the
