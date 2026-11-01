@@ -897,13 +897,28 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       else b.removeAttribute("aria-current");
     });
   }
-  function _viewMenuClose() {
+  // RM-1321: with refocus set (Escape, a keyboard row pick) focus that was
+  // inside the menu goes back to the trigger: hiding the menu would otherwise
+  // leave it on a display:none row or drop it to <body>. The outside-click and
+  // focusout closers pass no refocus, so they never pull focus back, and
+  // neither does a pointer pick: focus parked on the trigger would take the
+  // next Space from the Replay player and reopen the menu.
+  function _viewMenuClose(refocus) {
     const m = document.getElementById("view-menu");
     const t = document.getElementById("view-trigger");
+    const hadFocus = !!m && m.contains(document.activeElement);
     if (m) { m.classList.add("hidden"); m.setAttribute("aria-hidden", "true"); }
     if (t) t.setAttribute("aria-expanded", "false");
+    if (refocus === true && hadFocus && t) t.focus();
   }
-  function _viewMenuToggle() {
+  // RM-1321: the current view's row, the first row when none is current.
+  function _viewMenuFocusCurrent() {
+    const m = document.getElementById("view-menu");
+    if (!m) return;
+    const row = m.querySelector(".view-menu-item.active") || m.querySelector(".view-menu-item");
+    if (row) row.focus();
+  }
+  function _viewMenuToggle(viaKeyboard) {
     const m = document.getElementById("view-menu");
     const t = document.getElementById("view-trigger");
     if (!m || !t) return;
@@ -918,6 +933,11 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       // getBoundingClientRect. Clear any stale inline coords from
       // earlier v3/v4 fixed-positioning attempts so they don't stick.
       m.style.top = ""; m.style.left = "";
+      // RM-1321: the menu is appended at the end of <body>, so Tab from
+      // the trigger never reached it. A keyboard open moves into it; a pointer
+      // open leaves focus on the trigger, and the trigger's keydown below
+      // takes Tab / ArrowDown from there.
+      if (viaKeyboard === true) _viewMenuFocusCurrent();
     } else {
       _viewMenuClose();
     }
@@ -934,7 +954,70 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     if (menu && menu.parentElement !== document.body) {
       document.body.appendChild(menu);
     }
-    if (trig) trig.addEventListener("click", (e) => { e.stopPropagation(); _viewMenuToggle(); });
+    // A click with detail 0 is a keyboard activation (Enter / Space).
+    if (trig) trig.addEventListener("click", (e) => { e.stopPropagation(); _viewMenuToggle(e.detail === 0); });
+    if (trig && menu) {
+      const noMods = (e) => !(e.ctrlKey || e.altKey || e.metaKey);
+      // A held Enter must not repeat across the focus moves below: it would
+      // open the menu and then pick the row focus just landed on, which pins
+      // a manual view, and then reopen from the refocused trigger.
+      const heldActivation = (e) => {
+        if (!e.repeat || (e.key !== "Enter" && e.key !== " ")) return false;
+        e.preventDefault();
+        return true;
+      };
+      trig.addEventListener("keydown", (e) => {
+        if (!noMods(e) || heldActivation(e)) return;
+        const isOpen = !menu.classList.contains("hidden");
+        if (e.key === "ArrowDown" && !e.shiftKey) {
+          e.preventDefault();
+          if (isOpen) _viewMenuFocusCurrent();
+          else _viewMenuToggle(true);
+        } else if (e.key === "Tab" && isOpen) {
+          // Shift+Tab leaves the pair. The trigger can be the first control
+          // on the page, when no focusout related target would close it.
+          if (e.shiftKey) { _viewMenuClose(false); return; }
+          e.preventDefault();
+          _viewMenuFocusCurrent();
+        }
+      });
+      menu.addEventListener("keydown", (e) => {
+        if (!noMods(e) || heldActivation(e)) return;
+        const rows = Array.from(menu.querySelectorAll(".view-menu-item"));
+        const i = rows.indexOf(document.activeElement);
+        if (i < 0) return;
+        let next = -1;
+        if (e.key === "ArrowDown") next = (i + 1) % rows.length;
+        else if (e.key === "ArrowUp") next = (i - 1 + rows.length) % rows.length;
+        else if (e.key === "Home") next = 0;
+        else if (e.key === "End") next = rows.length - 1;
+        else if (e.key === "Tab" && e.shiftKey && i === 0) {
+          // Tab order reads as if the menu sat under its trigger.
+          e.preventDefault();
+          trig.focus();
+          return;
+        } else if (e.key === "Tab" && !e.shiftKey && i === rows.length - 1) {
+          // Not prevented: the browser's Tab runs from the refocused
+          // trigger, landing on the control after it.
+          _viewMenuClose(true);
+          return;
+        }
+        if (next < 0) return;
+        e.preventDefault();
+        rows[next].focus();
+      });
+      // RM-1321: focus leaving the trigger + menu pair closes the menu;
+      // moving between them keeps it open. A focusout with no related target
+      // (window blur, a click on bare page) is left to the click / Escape
+      // closers. No refocus: focus stays where it went.
+      const onViewMenuFocusOut = (e) => {
+        const next = e.relatedTarget;
+        if (!next || next === trig || menu.contains(next)) return;
+        if (!menu.classList.contains("hidden")) _viewMenuClose(false);
+      };
+      trig.addEventListener("focusout", onViewMenuFocusOut);
+      menu.addEventListener("focusout", onViewMenuFocusOut);
+    }
     document.addEventListener("click", (e) => {
       if (menu && !menu.contains(e.target) && e.target !== trig) _viewMenuClose();
     });
@@ -946,12 +1029,13 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       name: "view-menu",
       el: () => menu,
       isOpen: () => !!menu && !menu.classList.contains("hidden"),
-      close: _viewMenuClose,
+      close: () => _viewMenuClose(true),
     });
     document.querySelectorAll(".view-menu-item").forEach((btn) => {
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", (e) => {
         const v = btn.dataset.view;
-        _viewMenuClose();
+        // detail 0 is a keyboard activation; see _viewMenuClose.
+        _viewMenuClose(e.detail === 0);
         if (v === "auto") {
           _viewSaveManual(null);
           location.hash = "";

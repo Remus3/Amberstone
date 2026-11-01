@@ -58,7 +58,15 @@ Audit (2026-10-31, s144 uiux cycle 95, RM-1314, the same detector):
     Session / History match rows' focus ring; the rows DO transition
     background and border colour, so its opener adds a transitions-off
     (and animations-off, for the deep-link pulse) sheet.
-This module pins all twenty-two verdicts at runtime with each test's own opener,
+Audit (2026-11-01, s144 uiux cycle 102, RM-1321, the same detector), the
+four s144 uiux modules added since:
+  - test_lobby_lane_popup_keyboard, test_view_menu_keyboard: flip data-theme
+    in-page and read the focused lane cells and the view trigger's ring; both
+    pages add the transitions-off sheet before those reads.
+  - test_theme_soft_token_hue, test_theme_signal_prim_hue: flip data-theme
+    in-page but read only a bare probe div each read creates, with an explicit
+    inline color. No sheet, and none needed: no transition applies to it.
+This module pins all twenty-six verdicts at runtime with each test's own opener,
 so a new transition on a no-sheet surface, or the sheet dropped from a
 shared opener, fails HERE with the element and property named. The fix is
 the sheet in that test's opener, not a sleep. The inventory test keeps the
@@ -147,7 +155,7 @@ from tests.snapshot_panels.test_user_builds_rune_tabs import _open as _ub_open
 
 _HERE = Path(__file__).resolve().parent
 
-# The twenty-two modules audited above, keyed by file name.
+# The twenty-six modules audited above, keyed by file name.
 _COVERED = {
     "test_am_call_eyebrow_contrast.py",
     "test_champ_select_arena_augment_options.py",
@@ -161,16 +169,20 @@ _COVERED = {
     "test_ds_matchup_text_contrast.py",
     "test_home_history_nav_focus_ring.py",
     "test_lm_hero_stats_disclosure.py",
+    "test_lobby_lane_popup_keyboard.py",
     "test_lobby_mains_tabs.py",
     "test_lobby_queue_buttons_focus_ring.py",
     "test_match_row_focus_ring.py",
     "test_panel_visibility_tab_selected_state.py",
     "test_settings_checkbox_hit_targets.py",
     "test_tab_bars_selected_state.py",
+    "test_theme_signal_prim_hue.py",
+    "test_theme_soft_token_hue.py",
     "test_user_builds_rune_cells_focus_ring.py",
     "test_user_builds_rune_tabs.py",
     "test_user_builds_spell_chooser_keyboard.py",
     "test_view_menu_items.py",
+    "test_view_menu_keyboard.py",
 }
 
 _SHEET = "*, *::before, *::after { transition: none !important; }"
@@ -540,6 +552,76 @@ def test_match_row_ring_reads_are_settled(mock_server, pw_browser, view):
     try:
         page.keyboard.press("Shift")  # keyboard modality, as the ring reads do
         _check(page, sel, True, f"{view} match rows")
+    finally:
+        _close(ctx, page)
+
+
+def test_view_trigger_ring_reads_are_settled(mock_server, pw_browser):
+    # test_view_menu_keyboard flips data-theme in-page and reads the focused
+    # trigger's outline over its header, with its own opener.
+    from tests.snapshot_panels.test_view_menu_keyboard import _open_view
+
+    ctx, page, _errors = _open_view(pw_browser, mock_server)
+    try:
+        page.keyboard.press("Shift")  # keyboard modality, as the ring read does
+        _check(page, "#view-trigger", True, "view trigger")
+    finally:
+        _close(ctx, page)
+
+
+def test_lane_cell_ring_reads_are_settled(mock_server, pw_browser):
+    # test_lobby_lane_popup_keyboard adds the sheet in its ring test, not in
+    # its opener, so the pin holds the sheet there by source and the verdict
+    # with the sheet on.
+    from tests.snapshot_panels.test_lobby_lane_popup_keyboard import (
+        _CELLS,
+        _NO_TRANSITIONS,
+        _keyboard_open,
+        _open_lobby,
+    )
+
+    assert _NO_TRANSITIONS == _SHEET
+    src = (_HERE / "test_lobby_lane_popup_keyboard.py").read_text(encoding="utf-8")
+    assert "page.add_style_tag(content=_NO_TRANSITIONS)" in src, (
+        "the lane cell ring test no longer adds the transitions-off sheet"
+    )
+    ctx, page, _errors, _posts = _open_lobby(
+        pw_browser, mock_server, (1920, 920),
+    )
+    try:
+        page.add_style_tag(content=_SHEET)
+        _keyboard_open(page)
+        page.keyboard.press("Shift")  # keyboard modality, as the ring read does
+        _check(page, _CELLS, True, "lobby lane cells")
+    finally:
+        _close(ctx, page)
+
+
+@pytest.mark.parametrize(
+    "module", ["test_theme_soft_token_hue.py", "test_theme_signal_prim_hue.py"],
+)
+def test_token_probe_reads_are_settled(mock_server, pw_browser, module):
+    # Both modules read tokens only through a bare div each read creates, so
+    # the source pin keeps that shape and the runtime read proves no
+    # transition applies to such a div under the same swaps. Both load the
+    # same /?ui_mock=1#home page; the signal module opens it inline, so the
+    # soft-token module's opener stands in for both.
+    from tests.snapshot_panels.test_theme_soft_token_hue import _open as _hue_open
+
+    src = (_HERE / module).read_text(encoding="utf-8")
+    assert "const d = document.createElement('div');" in src, module
+    assert "return getComputedStyle(d).color;" in src, module
+    assert src.count("getComputedStyle") == 1, module
+    ctx, page, _errors = _hue_open(pw_browser, mock_server)
+    try:
+        page.evaluate(
+            """() => {
+              const d = document.createElement('div');
+              d.id = 'probe-u105';
+              document.body.appendChild(d);
+            }"""
+        )
+        _check(page, "#probe-u105", False, module)
     finally:
         _close(ctx, page)
 
