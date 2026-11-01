@@ -141,6 +141,28 @@ class _Opened(Exception):
     pass
 
 
+def _connect_target_path(database: str) -> str:
+    """Filesystem path named by a ``sqlite3.connect`` target.
+
+    Handles a plain path, the legacy ``file:<path>?mode=ro`` f-string form
+    and a percent-encoded ``Path.as_uri()`` form (``file:///<drive>/a%20b/x.db``,
+    s144 true-audit: core/item_wpa.py builds its URI that way).
+    """
+    from urllib.parse import urlsplit
+    from urllib.request import url2pathname
+
+    if database.startswith("file://"):
+        return url2pathname(urlsplit(database).path)  # it unquotes
+    return database.removeprefix("file:").split("?", 1)[0]
+
+
+def test_connect_target_path_reads_both_uri_forms(tmp_path):
+    p = (tmp_path / "a b" / "rh.db").absolute()
+    assert Path(_connect_target_path(p.as_uri() + "?mode=ro")) == p
+    assert Path(_connect_target_path(f"file:{p}?mode=ro")) == p
+    assert Path(_connect_target_path(str(p))) == p
+
+
 _FROM_DB = [
     (item_wpa.compute_item_wpa_from_db, True),
     (rune_wpa.compute_rune_wpa_from_db, True),
@@ -172,7 +194,7 @@ def test_from_db_default_never_opens_a_cwd_decoy(foreign_cwd, fn, checks_exists)
         assert opened == [], opened
         return
     assert len(opened) == 1, opened
-    path = opened[0].removeprefix("file:").split("?", 1)[0]
+    path = _connect_target_path(opened[0])
     assert Path(path).is_absolute(), path
     assert Path(path).resolve() == real.resolve()
 

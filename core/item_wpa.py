@@ -109,6 +109,22 @@ _LEGENDARY_MIN_GOLD = 2200
 # corpus where most items have tens-to-low-hundreds of observations.
 _SHRINK_K = 5.0
 
+# What a malformed MATCH (bad frame / participant values) can raise inside
+# the per-match sweep. Deliberately narrow: sqlite3.Error is not here (it
+# must propagate - a locked DB is not a bad row), and neither is any other
+# exception class (a defect must surface, not be logged once per match).
+_MATCH_DATA_ERRORS = (TypeError, ValueError, ArithmeticError)
+
+
+def _opt_int(value: object) -> int | None:
+    """``int(value)``, or ``None`` when it is missing or not a number."""
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+
 
 def load_legendary_ids(items_json: Path | None = None,
                        map_id: int = 11) -> dict[int, str]:
@@ -124,7 +140,9 @@ def load_legendary_ids(items_json: Path | None = None,
     Golden Spatula (ARAM-only joke item). ``core.aram_item_interaction`` passes
     12 for the ARAM-legal set.
 
-    Fail-soft: a missing or unparseable catalog returns ``{}``.
+    Fail-soft: a missing, unparseable or wrong-shape catalog (a top level or
+    ``data`` that is not an object) returns ``{}``; a single malformed item
+    entry is skipped and the rest of the catalog is kept.
     """
     path = Path(items_json) if items_json is not None else _default_items_json()
     try:
@@ -133,7 +151,10 @@ def load_legendary_ids(items_json: Path | None = None,
     except (OSError, ValueError) as exc:
         log.warning("load_legendary_ids: %s -> %s", path, exc)
         return {}
-    data = raw.get("data", raw)
+    data = raw.get("data", raw) if isinstance(raw, dict) else None
+    if not isinstance(data, dict):
+        log.warning("load_legendary_ids: %s -> not an item object", path)
+        return {}
     out: dict[int, str] = {}
     for iid_str, item in data.items():
         if not _is_completed_legendary(item, map_id):
@@ -145,24 +166,49 @@ def load_legendary_ids(items_json: Path | None = None,
     return out
 
 
-def _is_completed_legendary(item: dict, map_id: int = 11) -> bool:
-    """Heuristic gate for a completed legendary item dict legal on ``map_id``."""
-    gold = item.get("gold") or {}
-    if not gold.get("purchasable"):
+def _tag_set(tags: object) -> frozenset | None:
+    """``tags`` as a set of names, or ``None`` when the field is malformed.
+
+    A bare string is ONE tag, never its characters (``set("Boots")`` would
+    dodge the exclusion gate). Absent / null tags are the empty set; any
+    other type cannot be proven free of Boots/Consumable/Trinket.
+    """
+    if tags is None:
+        return frozenset()
+    if isinstance(tags, str):
+        return frozenset((tags,))
+    if isinstance(tags, (list, tuple)):
+        return frozenset(t for t in tags if isinstance(t, str))
+    return None
+
+
+def _is_completed_legendary(item: object, map_id: int = 11) -> bool:
+    """Heuristic gate for a completed legendary item dict legal on ``map_id``.
+
+    Wrong-shape input (a non-dict entry, ``gold`` / ``maps`` not objects, a
+    non-numeric ``gold.total``) is NOT a legendary - never an exception.
+    """
+    if not isinstance(item, dict):
+        return False
+    gold = item.get("gold")
+    if not isinstance(gold, dict) or not gold.get("purchasable"):
         return False
     if item.get("into"):  # builds into something -> a component
         return False
-    if (gold.get("total") or 0) < _LEGENDARY_MIN_GOLD:
+    total = gold.get("total")
+    if not isinstance(total, (int, float)):
         return False
-    tags = set(item.get("tags") or ())
-    if tags & _EXCLUDE_TAGS:
+    if not total >= _LEGENDARY_MIN_GOLD:  # also rejects NaN
+        return False
+    tags = _tag_set(item.get("tags"))
+    if tags is None or tags & _EXCLUDE_TAGS:
         return False
     # Must be a built item, not a raw stat-stick / joke anvil.
     if item.get("depth") is None and not item.get("from"):
         return False
-    maps = item.get("maps") or {}
-    if not maps.get(str(map_id)):  # legal on the requested map only
-        return False
+    maps = item.get("maps")
+    if not isinstance(maps, dict) or not maps.get(str(map_id)):
+        return False  # legal on the requested map only
     return True
 
 
@@ -171,7 +217,11 @@ def _load_frames(conn: sqlite3.Connection, match_id: str) -> list[tuple[int, lis
 
     Each entry is ``(timestamp_ms, [(participant_id, total_gold, xp), ...])``
     matching the shape ``update_state_from_frame`` consumes. Returns ``[]``
-    when the match has no frames.
+    when the match has no frames. A NULL timestamp reads as 0; rows are
+    grouped on the NORMALISED timestamp, so NULL (or a numeric string)
+    rows join their frame instead of each becoming a duplicate frame. A
+    non-numeric timestamp raises ``ValueError`` (a data error the caller
+    skips the match for).
     """
     cur = conn.execute(
         "SELECT timestamp_ms, participant_id, total_gold, xp "
@@ -183,10 +233,11 @@ def _load_frames(conn: sqlite3.Connection, match_id: str) -> list[tuple[int, lis
     current_ts: int | None = None
     current_rows: list[tuple] = []
     for ts, pid, gold, xp in cur:
-        if current_ts is None or ts != current_ts:
+        ts_norm = int(ts or 0)
+        if current_ts is None or ts_norm != current_ts:
             if current_ts is not None and current_rows:
                 frames.append((current_ts, current_rows))
-            current_ts = int(ts or 0)
+            current_ts = ts_norm
             current_rows = []
         current_rows.append((pid, gold, xp))
     if current_ts is not None and current_rows:
@@ -267,11 +318,23 @@ def compute_item_wpa(
           "elapsed_ms": ...
         }
 
-    Fail-soft: a match with no frames, or a purchase before any frame, is
-    skipped (never crashes); each match is wrapped so one bad row cannot
-    abort the whole sweep.
+    ``min_n`` must be an ``int >= 0`` (``bool`` refused); anything else is
+    a ``ValueError`` raised before the sweep.
+
+    Fail-soft on DATA, fail-loud on everything else:
+      * a match with no frames, a purchase before any frame, and a purchase
+        row with a missing / non-numeric timestamp, participant or item id
+        are skipped - that row only, never the rest of its match;
+      * a match whose frames are malformed (``TypeError`` / ``ValueError``
+        / ``ArithmeticError``) is skipped WHOLE: its contribution is rolled
+        back, so a skipped match is never half-counted;
+      * ``sqlite3.Error`` (for example "database is locked") PROPAGATES - a
+        partial sweep must not be served, or cached, as a complete corpus;
+      * any other exception is a defect and propagates too.
     """
-    t0 = time.time()
+    if isinstance(min_n, bool) or not isinstance(min_n, int) or min_n < 0:
+        raise ValueError("min_n must be an int >= 0")
+    t0 = time.perf_counter()
     legendary = load_legendary_ids(items_json)
 
     # Select qualifying matches with timeline data.
@@ -293,6 +356,9 @@ def compute_item_wpa(
     sum_ts: dict[int, float] = {}
 
     for mid in match_ids:
+        # Per-match observations, merged only when the whole match is read
+        # cleanly, so a match skipped half-way contributes nothing.
+        obs: list[tuple[int, float, float, float]] = []
         try:
             frames = _load_frames(conn, mid)
             if not frames:
@@ -307,29 +373,35 @@ def compute_item_wpa(
                 "ORDER BY timestamp_ms ASC, id ASC",
                 (mid,),
             )
-            for ts_ms, pid, item_id in ev_cur:
-                if item_id is None or int(item_id) not in legendary:
+            for ts_raw, pid_raw, item_raw in ev_cur:
+                iid = _opt_int(item_raw)
+                if iid is None or iid not in legendary:
                     continue
-                meta = pt.get(int(pid)) if pid is not None else None
+                pid = _opt_int(pid_raw)
+                meta = pt.get(pid) if pid is not None else None
                 if meta is None:
                     continue
+                ts_ms = _opt_int(ts_raw)
+                if ts_ms is None:  # unknown time: cannot place the purchase
+                    continue
                 team_id, win = meta
-                rows = _interpolate_frame_for_event(frames, int(ts_ms or 0))
+                rows = _interpolate_frame_for_event(frames, ts_ms)
                 if rows is None:  # purchase before any frame
                     continue
-                exp = _expected_win_for_team(
-                    rows, float(ts_ms or 0) / 1000.0, team_id, model
-                )
+                t_s = ts_ms / 1000.0
+                exp = _expected_win_for_team(rows, t_s, team_id, model)
                 if exp is None:
                     continue
-                iid = int(item_id)
-                n_obs[iid] = n_obs.get(iid, 0) + 1
-                sum_obs[iid] = sum_obs.get(iid, 0.0) + float(win)
-                sum_exp[iid] = sum_exp.get(iid, 0.0) + exp
-                sum_ts[iid] = sum_ts.get(iid, 0.0) + float(ts_ms or 0) / 1000.0
-        except Exception as exc:  # noqa: BLE001 - one bad match cannot abort
-            log.warning("compute_item_wpa: match %s -> %s", mid, exc)
+                obs.append((iid, float(win), float(exp), t_s))
+        except _MATCH_DATA_ERRORS as exc:
+            log.warning("compute_item_wpa: match %s skipped -> %s: %s",
+                        mid, type(exc).__name__, exc)
             continue
+        for iid, win_f, exp_f, t_s in obs:
+            n_obs[iid] = n_obs.get(iid, 0) + 1
+            sum_obs[iid] = sum_obs.get(iid, 0.0) + win_f
+            sum_exp[iid] = sum_exp.get(iid, 0.0) + exp_f
+            sum_ts[iid] = sum_ts.get(iid, 0.0) + t_s
 
     items_out: list[dict] = []
     for iid, n in n_obs.items():
@@ -358,7 +430,7 @@ def compute_item_wpa(
         "queue_id": queue_id,
         "min_n": min_n,
         "items": items_out,
-        "elapsed_ms": int((time.time() - t0) * 1000),
+        "elapsed_ms": int((time.perf_counter() - t0) * 1000),
     }
 
 
@@ -374,13 +446,19 @@ def compute_item_wpa_from_db(
     persisted WPA model (or fall back), compute, close.
 
     Returns ``{"ok": False, "error": "rewind_history.db missing"}`` when
-    the DB is absent.
+    the DB is absent (or the path is not a regular file). ``sqlite3.Error``
+    from the sweep propagates (see ``compute_item_wpa``).
+
+    The read-only URI goes through ``Path.as_uri``, which percent-encodes
+    the path: an f-string ``file:{path}?mode=ro`` let a '#', '%' or '?' in
+    the checkout path truncate the URI or open a different file.
     """
     src = Path(db_path) if db_path is not None else _REWIND_DB
-    if not src.exists():
+    if not src.is_file():
         return {"ok": False, "error": "rewind_history.db missing"}
     model = load_model(model_path)
-    conn = sqlite3.connect(f"file:{src}?mode=ro", uri=True, timeout=5.0)
+    uri = src.absolute().as_uri() + "?mode=ro"
+    conn = sqlite3.connect(uri, uri=True, timeout=5.0)
     try:
         return compute_item_wpa(
             conn, min_n=min_n, queue_id=queue_id, patch=patch, model=model
