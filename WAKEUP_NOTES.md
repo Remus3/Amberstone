@@ -6,6 +6,17 @@
 
 ---
 
+# 2026-11-01 - session 148: MAIN headless DRIVE-RC, ORDER 1233 worked in 3 slices; ci green on the slice push a52bc77ed; docs-guards red on kit v26, fixed forward; PUSHED
+
+- **Driver:** MAIN (no operator in chat), ORDER 2026-11-01-1233, slices 1-3; state `ops/loop/control/progress/drive-rc.json`; LEDGER 2010-2011.
+- **Shipped:** the CI race fixes + RC-1 to RC-5, FLEET-1b / 3b tools / 9, runs cap, OWES f (LEDGER 2010); README Status, the lanes.py stop / resume log (LEDGER 2011).
+- **Deviation:** no gated whole suite before either push: commit stayed about 15 GB short with 7 lanes up, and the rotator is fenced.
+- **Caught late, by luck of which job ran what:** a green `ci` slice sat beside a red docs-guards from kit v26; the item 6 first cut was red in the impact selection and wrong under a refutation pass.
+- **Do NOT redo:** the 3 worktree removals, v26 + v27 inbox rows closed, FLEET-5a answered 700 USD.
+- **Next:** the gated whole suite once commit allows; read ci + docs-guards on the /done push; RM-1267 first cycles; L9 landing; ORDER 2215 residue RM-1270..RM-1272.
+
+---
+
 # 2026-10-31d - session 147: lanes relaunched headless after the reboot, cutover stage 2 read back, L8 landed 30 lane commits (RM-1234..RM-1262), rc_facts 0x800710E0 fix, alert 144 declined; the s146 push CI read back RED; PUSHED
 
 - **Operator (chat):** "Continue"; "headlessly - all lanes ; headless driver"; "operator is away - computer was restarted" (box rebooted 19:03:56; operator items batched in the hand-off).
@@ -30,17 +41,3 @@
 - **/done (LEDGER 1999):** RM-750 live half SUPERSEDED (relocated); RM-1229..RM-1233 filed; pushed `baa0af524..12f2f3bb1` (25 commits, push ci mode=full = the full-suite cover).
 - **Do NOT redo:** the cutover apply (all 7 task names read back absent), the CLI re-pin, the budget reset, the rulings, ASKS 50 / 52, the websockets update.
 - **Next:** the operator restarts Windows, then the cutover re-run with no switch and the `--profile dev` shell launch read-back; land the rotator's lane commits (12 at /done, counted with `git cherry`).
-
----
-
-# 2026-10-31b - session 145: docs-guards red fixed, L7 landed all 96 s144 lane commits (RM-1152..RM-1224), CodeQL 67-83 triaged and fixed / dismissed, RM-1222 + RM-1161 + RM-928 (a) shipped, inbox agreement renewed; PUSHED after a sweep fold
-
-- **Operator (chat):** "self-adjudicate them" for ASKS 31 and the CodeQL false-positive dismissals; typed /done.
-- **N1 (LEDGER 1982):** docs-guards installs json5 / anthropic / portalocker and declares every other runtime package (`50a1e8592`, pushed mid-session); the one Linux-only ci red fixed forward in the L7 wave (`3a8a49e36`).
-- **N2 (LEDGER 1975-1981):** L7 landed 96 lane commits + 8 merger commits; gated Tier-2 1 failed (CLI pin) / 56083 passed; verifier PASS; markers name `4a6d969c1`.
-- **N3 / T1 / T2 / A1 (LEDGER 1983 / 1984):** alert-66 REPLY to MAIN 1/1; alerts 67-83 = 10 test-only fixed (`3516ad23b`, `375ec6390`) + 7 dismissed false positive; RC-InboxResponder agreement renewed to 2026-12-01 (ASKS 31 closed).
-- **Q1 / Q2 / P1 (LEDGER 1985 / 1986):** TFT run snapshots in gitignored `ops/runtime/tft_qa/` (`a5f56f787`); RM-1222 ruling C (`baa0af524`); DS / RC / vision restarted and read back.
-- **R1 NOT DONE:** the CLI re-pin (RM-795) - the split-route proxy refused the canary 3 times; installed 2.1.316 vs pin 2.1.314, so `test_cli_version_still_matches_the_pin` stays red locally.
-- **/done (LEDGER 1987):** the first push halted on the sibling sweep (invented fixture drive roots in unpushed `bccdef5d3` / `686030c4f`); rebuilt 23 commits tree-equal with the fix folded in, then pushed `50a1e8592..baa0af524`; one full CI dispatch 41231173460. Old lineage kept on local `s145-prefold-main` (NEVER PUSH).
-- **Do NOT redo:** L7 (markers), the docs-guards fix, alerts 69-72 / 74-76 dismissals, the agreement renewal, RM-1222, the tft_qa snapshots.
-- **Next:** read back the push CI + dispatch and whether CodeQL closed 67, 68, 73, 77-83; retry the CLI re-pin when the proxy allows; land what the rotator commits after 2026-11-01 04:46 (count against the markers).

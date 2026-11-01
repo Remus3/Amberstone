@@ -1,6 +1,6 @@
 NEXT SESSION
 ------------
-SESSION: 148
+SESSION: 149
 REWRITE LANDED 2026-11-01 (LEDGER 2009; A1101 = docs/handoff-archive/RC-2026-11-01.txt): origin main
 8d8c321b7, forced once from c77c7c8df under MAIN ORDER 1027; protection restored, the grant SPENT; a second
 force push of any kind goes back to the operator. EVERY hash below and in the docs is PRE-REWRITE: map it
@@ -8,8 +8,7 @@ through .git/filter-repo/commit-map (copy in the sidecar backup dir; c77c7c8df -
 bundles (kit f762e532dc7484ef, stash-keep 91c867414a7ae8a3). .git/fleet-rewrite/s68/ is the run record.
 No gc / prune / reflog expire: stash@{1..11} live only in the reflog (12 entries; {0} = the rewritten
 duplicate of {1}). 10 sha-named files in .git/ are filter-repo's stash pseudo-refs, left in place.
-PUSH: main only, normal route; the local hand-off commit rides the next push (tier: /done + 1 per hour).
-NEVER delete riot.txt from origin. /done NOT run in the rewrite drive: this file was edited by hand.
+PUSH: main only, normal route (tier: /done + 1 per hour). NEVER delete riot.txt from origin.
 VERBATIM archives in docs/handoff-archive/: A25 = RC-2026-10-25.txt (block 3 s133 records + procedure;
 block 6 s135 push record, procedure, status; block 7 rewrite SHA maps); A26 = RC-2026-10-26.txt (block 1
 s136-s139; block 2 s140 incl. the operator's verbatim PKG intent; block 3 s141; block 4 standing notes);
@@ -31,22 +30,19 @@ LEDGER 1987 maps old -> new (e.g. ddb4a5e20 -> 4a6d969c1); the old lineage is on
 LAUNCH (s147): from an agent shell, start a GUI app via WMI Win32_Process Create (Start-Process dies with
 the call); run tools/rc_facts.py with empty stdin (it hangs on an open one).
 
-Next action 1 (FIRST - CI RED, fix FORWARD on main): push run ci 41253461425 on 12f2f3bb1 (mode=full)
-FAILED 1 of 55698: tests/snapshot_panels/test_overlay_fix_coach_radial.py::
-test_build_seven_icon_row_has_no_horizontal_overflow "expected the 7-pick LIVE row, got 5" (Linux, py
-3.12.15); it passes locally at HEAD (5 passed) and in the s147 gated Tier-2, and passed every nightly on
-a5c8d94ff. The push runs since (41218770716, 41231114850) each went red on a DIFFERENT snapshot / time
-test: flake under load vs a Linux-only regression in a5c8d94ff..12f2f3bb1 (e.g. de596a266 RM-1093) is
-undetermined. CI has no web/data/ddragon (gitignored; the log shows FileNotFoundError for 3036.png /
-3072.png, two of the 7 picks). Re-run under py 3.12 with the ddragon dir hidden; fix TDD. Then read back
-this /done's runs on c77c7c8df: push ci 41263633599 (mode=slice), docs-guards 41263633557,
-codeql 41263633555, and the 2c full dispatch 41263649711.
+Next action 1 (FIRST): the gated whole suite, once, as soon as commit allows (after the reboot): it has not
+run on this code; ORDER 1233 asked for it before the push, the gate refused 15.6 GB short with 7 lanes up
+(LEDGER 2010-2011). ops/runtime/drive_rc/run_suite.py <tag> launches it detached (set OWNER from the claims
+deny). Then read `gh run list --branch main` for this /done's push: ci (slice), docs-guards (its fix for the
+red on a52bc77ed, run 41347159041, could not run on Windows) and codeql. ci on a52bc77ed was GREEN, run
+41347159059, a slice: no whole-suite ci has run since kit v26 either; the nightly is the first. Earlier reds
+had no single cause (s148 items); test_lobby and arena Enter / Space watches below stand.
 Next action 2 (L9, autonomous): land the rotator's commits made after the L8 snapshot (LEDGER 2000,
 boundary 19:19:36; markers ops/loop/control/lanes/S144_LANDED_<LANE> name the rebased twins). At 20:50:
-gated 3 / research 2 after their twins (still on 489d6e71f); main..lane ds 12, queue 13, uiux 8, repo 9,
-true-audit 6 after the driver rebased them (check against the twins with `git cherry`; nothing lands
-twice). Method = s147 L8 (LEDGER 2000-2006); ids from RM-1267 (pin docs/DS_SWEEP_TRACKER.md), LEDGER
-from 2010; fold any sweep-fixture fix into its introducing commit (memory
+main..lane at 14:31 on 2026-11-01: ds 13, gated 4, queue 15, repo 14, research 6,
+true-audit 9, uiux 12, after the driver rebased them (check against the twins with `git cherry`; nothing lands
+twice). Method = s147 L8 (LEDGER 2000-2006); ids from RM-1274 (pin docs/DS_SWEEP_TRACKER.md), LEDGER
+from 2012; fold any sweep-fixture fix into its introducing commit (memory
 feedback_prepush_sweep_scans_every_commit). Never push a lane. stash@{0}
 s144-leftover-s144q080-497994 (queue RM-1148, refuted 6 times, pass 7 never ran): KEPT.
 Next action 3 (OPERATOR ask, unanswered): should the rc-shell start at logon (autostart)? By spec none;
@@ -58,8 +54,15 @@ hash, rc-shell no-interpreter window, live Python314 vs the lock on 7 pins, reti
 installers / XMLs / keepalive / legion_on lines / legacy text); RM-1226 (certifi -> truststore); RM-1228
 (updater ships requirements without its embed); the L8 filings (BACKLOG "Session 147 L8 landing
 filings"): RM-1243, -1244, -1245, -1250, -1254, -1255, -1258..-1262 OPEN, RM-1257 PARTIAL.
-Next action 6: read back the CI runs the forced push started on 8d8c321b7; RM-1266 DST row. Pending
-inbox rows v26 / v27 / public-view: inbox_tick.py --pending (not worked in the rewrite drive).
+Next action 6 (reads owed, s148 rows in BACKLOG "Session 148 filings"): RM-1267 first sonnet cycle on ds
+(research 14:30:02 and repo 14:38:09 read rc 0; ds 14:51:58 still opus, launched before the trial?), a
+rejected id fails the run and 3 in a row park the lane; week ends 2026-11-08. RM-1269 read 2026-11-08. RM-1268 swap the trimmed templates between cycles, read about
+2026-11-15. RM-1266 DST row. Rotator restart (the reboot does it) loads the 500 runs gate (reserve 100),
+the RC-4 daily block and the lanes.py log. Delete tests/snapshot_panels/test_zz_drive_probe.py: slice 1's
+inert untracked probe, deletion denied in the drive; never stage it.
+Next action 7 (MAIN ORDER 2215 stays OPEN in inbox_tick.py --pending): items 5, 6 live half, 9, 10 =
+RM-1271, RM-1270, RM-1272; done 2, 3, 8, 11, 6 code half; 1 + 4 went into ORDER 1233; 7 = MAIN writes the
+700 USD ceiling from FLEET-5a. RM-1273 CLAUDE.md at 92 percent of its budget (drift_guard, a /done breach).
 Optional, for the operator or MAIN: RC-PatchRefresh StartWhenAvailable on (machine-level, D1); dismiss
 Dependabot alert 144 as tolerable_risk (remote; docs/_archive/2026-10/s147-npm-audit-triage.md).
 FIRST: CPU / memory glance; the rotator (IN-FLIGHT); inbox_tick.py --pending; gh pr list; git fetch +
@@ -90,12 +93,23 @@ IN-FLIGHT (never stop, kill or edit it to look at it; read its files):
   restart. Quitting the app stops all of it: do not quit it.
 
 ====================
+SESSION 148 ITEMS (DRIVE-RC, LEDGER 2010-2011; WAKEUP_NOTES 2026-11-01)
+====================
+- DEVIATION: the push a52bc77ed went without the gated whole suite ORDER 1233 asks for (commit short 10 to
+  19 GB with 7 lanes up; adjudicated B, LEDGER 2010). Run it first when commit allows (after the reboot).
+- FLEET-3b: the author models 4 to 4.5 percent per run, so the 25 percent accept is unlikely; said to MAIN.
+- RC-5: MAIN's failed count reads kit rc; it must exempt the -designed-negative-rc1 suffix.
+- Dependabot 144 (minimatch) is the same declined alert; `gh api` on the alerts route denied in the drive.
+- CI cause as far as known: no single cause; separate low-probability races on the 2-worker runner plus
+  defects already fixed. The radial row's 5 picks are from code reading and elimination, not reproduced.
+
+====================
 SESSION 147 ITEMS (LEDGER 2000-2008; WAKEUP_NOTES 2026-10-31d)
 ====================
 - Reap at /done: 0 removed, 7 kept (lanes), 3 listed: agent-aad42dcb1fbdf23a3 (ADJ-F, 3 commits not on
   main by patch; NOT contained - a ROADMAP pointer-line conflict with 12f2f3bb1; KEEP; in bundle
   ops/runtime/branch_bundles/s147-s146a-slices.bundle with the 4 s146 slices deleted s147),
-  agent-adab0817dc62d7f94 (s145-l7-land2), agent-ae4b613943b5ff34a (PKG-7).
+  agent-adab0817dc62d7f94 (s145-l7-land2), agent-ae4b613943b5ff34a (PKG-7). All 3 removed s148, branches kept.
 - Watch: test_lobby_duo_synergy_rm881.py 15 s Page.goto timeout under suite load (L8; passed alone).
 - rc-shell npm audit: 15 moderate stay (all GHSA-g3hv-75wg-m249, minimatch, dev-only via electron-builder;
   the fix 11.0.1 fits no parent range; forcing it breaks @electron/asar); alert 144 declined,
@@ -122,7 +136,7 @@ SESSION 145 ITEMS (LEDGER 1975-1987; WAKEUP_NOTES 2026-10-31b)
 - Watch: tests/snapshot_panels/test_champ_select_arena_augment_options.py::
   test_enter_and_space_pick_exactly_one_option failed once under `-n 4 --dist load` (passed alone and in
   every loadfile run).
-- s145-l7-land2 (locked worktree agent-adab0817dc62d7f94) and s145-prefold-main (pre-fold head eef5d6ff1):
+- s145-l7-land2 (branch; its worktree removed s148) and s145-prefold-main (pre-fold head eef5d6ff1):
   keep. (s145-l7-land deleted s146 under ASKS 50, bundle ops/runtime/branch_bundles/s146-l7land.bundle.)
 - RM-1222 shipped as ruling C (LEDGER 1986); its legacy-state read is still untested live (no legacy file).
 
@@ -165,7 +179,7 @@ SESSION 144 ITEMS (LEDGER 1938-1974; WAKEUP_NOTES 2026-10-31)
 CARRIED FROM s133-s143 (detail VERBATIM in A31 block 2 unless another archive is named)
 ====================
 - s143: every anthropic 2.x bump is declined until ROADMAP ANTHROPIC-2X (gated on RM-681) runs; ignore
-  ">1.11.0,<=2.3.0". PKG-7 worktree-agent-ae4b613943b5ff34a (fc6a44b39, worktree kept, 1 unique commit
+  ">1.11.0,<=2.3.0". PKG-7 worktree-agent-ae4b613943b5ff34a (fc6a44b39, worktree removed s148, 1 unique commit
   of older PACKAGING_PLAN prose; PKG-7 is on main as acba657f3 + 21da946ed) RETIRED, kept under ASKS 50.
   (B1 a5c8ab05 / af942e93 and PKG-6b deleted s146, manifest ops/runtime/branch_delete_s146.txt.)
 - s142: PKG residuals WA9-WA12 (PACKAGING_PLAN section 4; WA9: an installer upgrade may wipe per-install
@@ -226,13 +240,14 @@ OPEN - WORK ITEMS (bodies + acceptance in BACKLOG; detail VERBATIM in A31 block 
 - Channel and MAIN: the route reads split again (G2, 2026-10-27; RC never edits the route file and arms no
   fallback); the s130 board finding (RM-823); B3 read-back of MAIN 2237 (the next pane shows the acct2
   status line, no [Legion] line); the old lane folder + junction are MAIN's to release.
-- Worktrees after s147: main + 7 lanes + agent-ae4b613943b5ff34a (PKG-7) + agent-adab0817dc62d7f94
-  (s145-l7-land2, locked) + agent-aad42dcb1fbdf23a3 (ADJ-F); branches kept: K, T13,
-  drain/wave2-tail-backlog, s145-prefold-main, s145-l7-land2, worktree-agent-aad42dcb1fbdf23a3.
+- Worktrees after s148: main + 7 lanes of the rotator (git worktree remove only); branches kept: K, T13,
+  drain/wave2-tail-backlog, s145-prefold-main, s145-l7-land2, worktree-agent-aad42dcb1fbdf23a3, PKG-7 and 5
+  cherry-picked worktree-agent-a0ea7b0a2617e5846, -af189a7c1ace30bb8, -aa128be2bc35fe467,
+  -ab5f3ec39b65d9dfc, -ab53f4941ce22be94.
 - RM-681 PARTIAL: one attended live call per path (truststore MET s133 c6). Origin
   c1/deps-pip-anthropic1-measure was deleted under MAIN 0909; 24c54ec39 stays in the kit bundle.
 - Rows: the s139 open-row index (100+ ids) is VERBATIM in A26, each row in BACKLOG / ROADMAP; next free
-  RM-1267 (pin docs/DS_SWEEP_TRACKER.md); next LEDGER 2010. ROADMAP top open: PKG (WA9-WA14, WA17), the
+  RM-1274 (pin docs/DS_SWEEP_TRACKER.md); next LEDGER 2012. ROADMAP top open: PKG (WA9-WA14, WA17), the
   PKG-6c residue, RM-488, RM-596, RM-597, the RM-681.. rows; EXTERNAL-LIFT Band 2 / 4 stay in BACKLOG.
 - Y-45 phone push needs ntfy (host local-only). Operator APPROVED Y-44 (frozen lcu_client.py) + Y-45
   2026-10-03 (Desktop EXTERNAL-LIFT-DIRECTIVE.md / -2.md; -2 ingested as RM-526..RM-594).
@@ -294,29 +309,16 @@ OPEN - WATCH AND DATA (act only when seen; detail VERBATIM in A27 block 2)
 ====================
 DO NOT RE-LITIGATE (each with Reverses if:)
 ====================
+- s148 (LEDGER 2010-2011): ORDER 1233 items as answered, the adjudicated push without the whole suite, the
+  3 worktree removals. Reverses if: a live re-check or CI reds one of them, or a gated whole suite goes red.
 - s147 (LEDGER 2000-2008): the L8 landing (30 lane + 4 merger commits, RM-1234..RM-1262, gated Tier-2 run
   2 green over 2ddb1b72f, verifier V1 FF-SAFE), F1 (0x800710E0 + event 153 = MISSED, V2 CONFIRM), the
   alert 144 decline (489d6e71f), the S144_LANES_STOP removal after the reboot, the s146 slice deletions
   (bundle first), the cutover stage 2 read-back, the agreement expiry 2026-12-01 in CLAUDE.md, the push
   12f2f3bb1..c77c7c8df. Reverses if: a live re-check or CI reds one of them; (alert 144) a minimatch release
   fits a parent range; (F1) an event 153 is found beside a real kill the grader calls MISSED.
-- s146 (LEDGER 1988-1999): the N1 test-side fixes, the C2 / C3 CI limits (step 110 / job 125 min,
-  DEFAULT_CI_WAIT_S 7800), the H1 budget reset, the P6 root cause (expired OAuth refresh token, fixed by
-  the operator's re-login 17:24), PINNED_CLI 2.1.316, the ASKS 50 deletions (manifest + bundles), RM-1223,
-  rulings 40-44 / 48 / 51 (each with its own reversal in the rulings doc), websockets 17.3, A45b, the
-  cutover apply + record 4bf8f2227, the RM-750 live half SUPERSEDED, the push baa0af524..12f2f3bb1.
-  Reverses if: a live re-check or CI reds one of them, or (cutover) the operator orders the tasks back
-  (re-register from the cutover backup; path in A31 block 4).
-- s145 (LEDGER 1975-1987): the L7 landing (96 lane + 8 merger commits), the docs-guards fix, the CodeQL
-  67-83 fixes, the alert-66 REPLY, the tft_qa snapshots, RM-1222 C, the push 50a1e8592..baa0af524.
-  Reverses if: a live re-check or CI reds one of them.
-- s145 decisions: D1 renew the inbox agreement 30 days, same scope (Reverses if: the operator or MAIN
-  narrows / ends it, or a responder act outside the scope is measured); D2 alerts 69-72, 74-76 are false
-  positives (Reverses if: a flow is found to carry a secret value, or the code at the cited lines changes);
-  RM-1222 C, the saved pref is the single source of truth (Reverses if: the operator wants a non-persisted
-  per-session toggle); the /done tree-equal rebuild of unpushed commits to clear a sweep halt (Reverses
-  if: a rebuilt commit's tree differs from its original outside the folded lines, or MAIN rules that
-  unpushed lane-landing commits must keep their hashes).
+- s146 and s145 (LEDGER 1975-1999), incl. decisions D1, D2, RM-1222 C, the tree-equal rebuild: VERBATIM with
+  their Reverses if: in docs/handoff-archive/RC-2026-11-01.txt block 6.
 - s144 (LEDGER 1938-1974): the L0-L6 landings, PKG-6b / PKG-6c (re-review LAND), kit v25, the CLI
   re-pins, the alert 66 reopen, the G2 note, the B1 bundles + the PKG-7 retirement, the push
   a5c8d94ff..fc123ec87. Reverses if: a live re-check or CI reds one of them.
@@ -341,10 +343,11 @@ feedback_new_test_files_meet_repo_hygiene_guards.md).
 ====================
 STATUS, CONTEXT, ACCEPTANCE
 ====================
-Status (the s68-2 rewrite drive; the s147 status is VERBATIM in A1101 block 1): origin main 8d8c321b7 =
-local tip before the hand-off commit; v0.1.0 on GitHub 071e03cd3; 28 refs/pull/*; allow_force_pushes off,
-enforce_admins on; push protection enabled, 0 alerts; 7500 API commits all operator, contributors 1, 0
-open PRs, 1 branch, 1 fork. 11 worktrees clean; rotator relaunched pid 17772; both stop files removed.
+Status (s148, the MAIN headless DRIVE-RC; the old status VERBATIM in A1101 block 7): pushed a52bc77ed..this
+commit's push at /done, normal route; ORDER 1233 ANSWER HOP 2 sent, its archive copy is the one local commit
+after the push and rides the next one. Rotator left running: the reboot ends it. No RC restart needed by this
+work; the RC app is down (no autostart since the cutover). /done ran headless, slice 3; board not rendered
+(headless runs never render).
 
 Context: ops/launcher/ (service_host.py), rc-shell/src/launcher.js, tools/launcher_cutover.ps1,
 docs/PACKAGING_PLAN.md section 5 + WA20, docs/OPERATIONS.md (task table, launcher cutover);
@@ -353,8 +356,8 @@ ops/loop/control/lanes/ (markers, stops); the BACKLOG "Session 144-147 ... filin
 tools/rc_facts.py (timeout_code_verdict); docs/LIVE_GAME_GATED_SYNC.md; docs/TFT_PROGRAM.md 10.7;
 tft/engine (Augur); ops/runtime/tft_qa/ (A26).
 
-Acceptance: the CI red read back green or fixed forward (radial 7-pick row on Linux); this /done's push run
-and any 2c dispatch read back; L9 landed if the rotator produced commits (counted against the twins, gated
-Tier-2 + verifier, sweep dry run on the range); the operator batch re-asked in one line.
+Acceptance: the gated whole suite run once and its result on the hand-off; ci on main read green or the red
+named; RM-1267 first cycles read; L9 landed if the rotator produced commits (counted against the twins,
+gated Tier-2 + verifier, sweep dry run on the range); the operator batch re-asked in one line.
 
 Start with: read this file first, then CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.

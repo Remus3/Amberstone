@@ -41,6 +41,20 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-31b - session 145: docs-guards red fixed, L7 landed all 96 s144 lane commits (RM-1152..RM-1224), CodeQL 67-83 triaged and fixed / dismissed, RM-1222 + RM-1161 + RM-928 (a) shipped, inbox agreement renewed; PUSHED after a sweep fold
+
+- **Operator (chat):** "self-adjudicate them" for ASKS 31 and the CodeQL false-positive dismissals; typed /done.
+- **N1 (LEDGER 1982):** docs-guards installs json5 / anthropic / portalocker and declares every other runtime package (`50a1e8592`, pushed mid-session); the one Linux-only ci red fixed forward in the L7 wave (`3a8a49e36`).
+- **N2 (LEDGER 1975-1981):** L7 landed 96 lane commits + 8 merger commits; gated Tier-2 1 failed (CLI pin) / 56083 passed; verifier PASS; markers name `4a6d969c1`.
+- **N3 / T1 / T2 / A1 (LEDGER 1983 / 1984):** alert-66 REPLY to MAIN 1/1; alerts 67-83 = 10 test-only fixed (`3516ad23b`, `375ec6390`) + 7 dismissed false positive; RC-InboxResponder agreement renewed to 2026-12-01 (ASKS 31 closed).
+- **Q1 / Q2 / P1 (LEDGER 1985 / 1986):** TFT run snapshots in gitignored `ops/runtime/tft_qa/` (`a5f56f787`); RM-1222 ruling C (`baa0af524`); DS / RC / vision restarted and read back.
+- **R1 NOT DONE:** the CLI re-pin (RM-795) - the split-route proxy refused the canary 3 times; installed 2.1.316 vs pin 2.1.314, so `test_cli_version_still_matches_the_pin` stays red locally.
+- **/done (LEDGER 1987):** the first push halted on the sibling sweep (invented fixture drive roots in unpushed `bccdef5d3` / `686030c4f`); rebuilt 23 commits tree-equal with the fix folded in, then pushed `50a1e8592..baa0af524`; one full CI dispatch 41231173460. Old lineage kept on local `s145-prefold-main` (NEVER PUSH).
+- **Do NOT redo:** L7 (markers), the docs-guards fix, alerts 69-72 / 74-76 dismissals, the agreement renewal, RM-1222, the tft_qa snapshots.
+- **Next:** read back the push CI + dispatch and whether CodeQL closed 67, 68, 73, 77-83; retry the CLI re-pin when the proxy allows; land what the rotator commits after 2026-11-01 04:46 (count against the markers).
+
+---
+
 # 2026-10-31 - session 144: the s134 + s144 lanes landed in L0-L6 (RM-910..RM-1151), PKG-6b / PKG-6c landed, kit v25 adopted, alert 66 closed, the s144 lane rotator built and running; PUSHED
 
 - **Operator (chat):** approved the alert 66 reopen and the batched MAIN note (ASKS 39 / 49); ordered the run-budget resets and a 24 h 250-run lift (expired 2026-10-29 03:55); typed /done.

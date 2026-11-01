@@ -27,3 +27,60 @@ hand-off commit is local and rides the next push. Push tier: once at /done + at 
 per hour. NEVER delete riot.txt from origin.
 Next action 6 (MAIN ruling owed): GH-IDENT-REWRITE BLOCKED s148, no ref moved; BACKLOG RM-1265 (recipe).
 main cannot push until it lands (identity gate). RM-1266 DST row.
+====================
+BLOCK 3 - THE s148 START HAND-OFF'S NEXT ACTION 1, VERBATIM
+====================
+Next action 1 (FIRST - CI RED, fix FORWARD on main): push run ci 41253461425 on 12f2f3bb1 (mode=full)
+FAILED 1 of 55698: tests/snapshot_panels/test_overlay_fix_coach_radial.py::
+test_build_seven_icon_row_has_no_horizontal_overflow "expected the 7-pick LIVE row, got 5" (Linux, py
+3.12.15); it passes locally at HEAD (5 passed) and in the s147 gated Tier-2, and passed every nightly on
+a5c8d94ff. The push runs since (41218770716, 41231114850) each went red on a DIFFERENT snapshot / time
+test: flake under load vs a Linux-only regression in a5c8d94ff..12f2f3bb1 (e.g. de596a266 RM-1093) is
+undetermined. CI has no web/data/ddragon (gitignored; the log shows FileNotFoundError for 3036.png /
+3072.png, two of the 7 picks). Re-run under py 3.12 with the ddragon dir hidden; fix TDD. Then read back
+this /done's runs on c77c7c8df: push ci 41263633599 (mode=slice), docs-guards 41263633557,
+codeql 41263633555, and the 2c full dispatch 41263649711.
+====================
+BLOCK 4 - THE s148 START HAND-OFF'S NEXT ACTION 6, VERBATIM
+====================
+Next action 6: read back the CI runs the forced push started on 8d8c321b7; RM-1266 DST row. Pending
+inbox rows v26 / v27 / public-view: inbox_tick.py --pending (not worked in the rewrite drive).
+====================
+BLOCK 5 - THE s148 START HAND-OFF'S WORKTREES LINE, VERBATIM
+====================
+- Worktrees after s147: main + 7 lanes + agent-ae4b613943b5ff34a (PKG-7) + agent-adab0817dc62d7f94
+  (s145-l7-land2, locked) + agent-aad42dcb1fbdf23a3 (ADJ-F); branches kept: K, T13,
+  drain/wave2-tail-backlog, s145-prefold-main, s145-l7-land2, worktree-agent-aad42dcb1fbdf23a3.
+====================
+BLOCK 6 - THE s146 AND s145 DO-NOT-RE-LITIGATE LINES WITH THEIR Reverses if:, VERBATIM
+====================
+- s146 (LEDGER 1988-1999): the N1 test-side fixes, the C2 / C3 CI limits (step 110 / job 125 min,
+  DEFAULT_CI_WAIT_S 7800), the H1 budget reset, the P6 root cause (expired OAuth refresh token, fixed by
+  the operator's re-login 17:24), PINNED_CLI 2.1.316, the ASKS 50 deletions (manifest + bundles), RM-1223,
+  rulings 40-44 / 48 / 51 (each with its own reversal in the rulings doc), websockets 17.3, A45b, the
+  cutover apply + record 4bf8f2227, the RM-750 live half SUPERSEDED, the push baa0af524..12f2f3bb1.
+  Reverses if: a live re-check or CI reds one of them, or (cutover) the operator orders the tasks back
+  (re-register from the cutover backup; path in A31 block 4).
+- s145 (LEDGER 1975-1987): the L7 landing (96 lane + 8 merger commits), the docs-guards fix, the CodeQL
+  67-83 fixes, the alert-66 REPLY, the tft_qa snapshots, RM-1222 C, the push 50a1e8592..baa0af524.
+  Reverses if: a live re-check or CI reds one of them.
+- s145 decisions: D1 renew the inbox agreement 30 days, same scope (Reverses if: the operator or MAIN
+  narrows / ends it, or a responder act outside the scope is measured); D2 alerts 69-72, 74-76 are false
+  positives (Reverses if: a flow is found to carry a secret value, or the code at the cited lines changes);
+  RM-1222 C, the saved pref is the single source of truth (Reverses if: the operator wants a non-persisted
+  per-session toggle); the /done tree-equal rebuild of unpushed commits to clear a sweep halt (Reverses
+  if: a rebuilt commit's tree differs from its original outside the folded lines, or MAIN rules that
+  unpushed lane-landing commits must keep their hashes).
+====================
+BLOCK 7 - THE s148 START HAND-OFF'S STATUS PARAGRAPH, VERBATIM
+====================
+Status (the s68-2 rewrite drive; the s147 status is VERBATIM in A1101 block 1): origin main 8d8c321b7 =
+local tip before the hand-off commit; v0.1.0 on GitHub 071e03cd3; 28 refs/pull/*; allow_force_pushes off,
+enforce_admins on; push protection enabled, 0 alerts; 7500 API commits all operator, contributors 1, 0
+open PRs, 1 branch, 1 fork. 11 worktrees clean; rotator relaunched pid 17772; both stop files removed.
+====================
+BLOCK 8 - THE s148 START HAND-OFF'S ACCEPTANCE, VERBATIM
+====================
+Acceptance: the CI red read back green or fixed forward (radial 7-pick row on Linux); this /done's push run
+and any 2c dispatch read back; L9 landed if the rotator produced commits (counted against the twins, gated
+Tier-2 + verifier, sweep dry run on the range); the operator batch re-asked in one line.
