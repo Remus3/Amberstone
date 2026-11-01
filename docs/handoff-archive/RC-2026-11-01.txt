@@ -1,0 +1,29 @@
+# archived from RC-NEXT-SESSION.txt on 2026-11-01 (GH-IDENT-REWRITE s68-2 run; the 30720 B cap)
+# Every hash below is PRE-REWRITE: map it through .git/filter-repo/commit-map (old -> new).
+====================
+BLOCK 1 - THE s147 /done STATUS PARAGRAPH, VERBATIM (superseded by the rewrite header in the hand-off)
+====================
+Status (s147 /done): PUSHED 12f2f3bb1..c77c7c8df main -> main (40 commits: f9e6a7c25, 489d6e71f, the 34
+L8 commits, F1 f2f94581f + 813d728a0, the guard fix d01ed80a4, the docs c77c7c8df; ls-remote == local; 0
+lane/* on origin). Pre-push dry runs + the real hook: sweep clean (118 files / 40 messages; not proof),
+credential 0 over 10135 added lines, identity clean; all 40 operator author + committer, 0
+Co-authored-by; bot_merge_check clean (40); contributors 1; 0 open PRs. Gate: ruff clean; hygiene trio +
+6 rc_facts files 150 passed; 200 md guard modules + hygiene + registry / checklist guards 4948 passed, 4
+skipped, exit 0 after the d01ed80a4 fix (LEDGER 2008); drift_guard 0. CI on c77c7c8df (all in_progress at
+21:04): push ci 41263633599 (mode=slice, 79 paths), docs-guards 41263633557, codeql 41263633555. Full
+suite (2c): no candidate covers HEAD (2ddb1b72f differs by 5 non-md paths), so ONE dispatch 41263649711
+(headSha c77c7c8df), pending. Earlier: ci 41253461425 on 12f2f3bb1 RED (Next action 1); docs-guards
+41253461428 + codeql 41253461462 success. Reap: 0 removed, 7 kept, 3 listed. RC pid 18724 alive,
+last_reload_ok true, restart_trigger empty; DS 1.290.0 / 16.21.1 / 173; no game (mode_key client).
+Session file 1.6 MB. Inbox: none newer than f9e6a7c25 (newest 2026-10-27-2150, an SS ANSWER); no steer /
+intent. perseus_sync --verify 2378 / 2378. Memory: 1 new (reference_agent_shell_start_process_dies_use_wmi),
+2 updated (anomaly triage, shared scratchpad), indexed in INDEX_ops. Board: rendered --final after this
+commit.
+====================
+BLOCK 2 - THE s147 PUSH HEADER AND NEXT ACTION 6, VERBATIM
+====================
+PUSH: the s147 /done PUSHED 12f2f3bb1..c77c7c8df (40 commits, main only; ls-remote == local); the
+hand-off commit is local and rides the next push. Push tier: once at /done + at most one mid-session push
+per hour. NEVER delete riot.txt from origin.
+Next action 6 (MAIN ruling owed): GH-IDENT-REWRITE BLOCKED s148, no ref moved; BACKLOG RM-1265 (recipe).
+main cannot push until it lands (identity gate). RM-1266 DST row.
