@@ -50,13 +50,15 @@ Event source status:
   contract above.
 
 Failure modes:
-  - window_s not numeric or out of range -> 400 with a clear error
+  - window_s not numeric, not finite (nan / inf) or out of range -> 400
+    with a clear error
   - any unexpected exception -> 500 + structured error, never raises
 """
 from __future__ import annotations
 
 import json
 import logging
+import math
 import threading
 import time
 from urllib.parse import parse_qs, urlparse
@@ -93,7 +95,11 @@ def _parse_window(qs: dict) -> tuple[float, str | None]:
         val = float(raw)
     except ValueError:
         return 0.0, "window_s must be numeric"
-    if val < _WINDOW_MIN_S or val > _WINDOW_MAX_S:
+    # NaN compares False against both bounds, so it must be refused
+    # explicitly (RM-1325): it would echo as a bare NaN token the
+    # browser's JSON.parse rejects, and as a cache key it never equals
+    # itself, so every request would insert a fresh entry.
+    if not math.isfinite(val) or val < _WINDOW_MIN_S or val > _WINDOW_MAX_S:
         return 0.0, (
             f"window_s must be in [{_WINDOW_MIN_S:.0f}, {_WINDOW_MAX_S:.0f}]"
         )
