@@ -226,7 +226,7 @@ class TestOneShapeAuthority(_Tmp):
             self.assertIsNot(fn(), fn(), fn.__name__)
 
     def test_facade_seed_equals_the_advice_payload(self):
-        """coaches/tft_coach.py:249 `_default_payloads` (the fourth site, not
+        """coaches/tft_coach.py `Coach._default_payloads` (the fourth site, not
         edited by RM-292 d) must stay identical to the advice shape."""
         from types import SimpleNamespace
 

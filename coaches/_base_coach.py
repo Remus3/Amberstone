@@ -379,7 +379,7 @@ class BaseCoach(abc.ABC):
         try:
             from core.hotkeys import register_coach as _hk_reg
             _hk_reg(self)
-        # register_coach (core/hotkeys.py:24-28) is an identity `not in` test
+        # register_coach (core.hotkeys) is an identity `not in` test
         # plus list.append on a module global - it cannot raise. The import is
         # therefore the only raising statement here.
         except ImportError:
@@ -777,7 +777,7 @@ class BaseCoach(abc.ABC):
                 )
             # LEFT BROAD (silent-except triage, C-class declined): the import
             # is not the only raising statement - coach_trace.append
-            # (core/coach_trace.py:65-77) runs int() / _truncate over
+            # (its rec literal in core.coach_trace) runs int() / _truncate over
             # caller-supplied values, so TypeError, ValueError and OSError are
             # all reachable and no complete set is provable.
             except Exception as exc:  # noqa: BLE001

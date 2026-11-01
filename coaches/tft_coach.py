@@ -246,9 +246,9 @@ class Coach:
         `_ensure_data_files` and `reset_state` each carried their own literal
         and the two had drifted: the live-data default was 9 keys here against
         19 in reset_state. The 19-key spelling is the canonical one, corroborated
-        by core/feature_policy.py:102 `_TFT_LIVE_DISABLED_PAYLOAD` and by the
-        live producer tft/tft_live_analysis.py:477 - so the short copy was the
-        outlier and is NOT what the two were reconciled onto.
+        by core.feature_policy._TFT_LIVE_DISABLED_PAYLOAD and the live producer
+        tft.tft_live_analysis.TftLiveAnalysis._write (its `out` literal holds those 19
+        plus last_round_result), so the short copy was the outlier, not the target.
         """
         return [
             (self._tft_data_file, {
