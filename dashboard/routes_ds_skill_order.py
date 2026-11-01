@@ -50,6 +50,8 @@ Response shape (ok):
 
 Failure modes (mirror routes_ds_profile):
   - 400  champion param missing / blank.
+  - 400  mode outside the four above, with a fixed text and the supported list
+         (RM-1330); nothing is computed or cached.
   - 200  ok=false reason=no_skill_order skill_order=[] when the resolved
          champion is unknown or has no 18-element array. Unknown champion lands
          here.
@@ -82,6 +84,11 @@ _CACHE_LOCK = threading.Lock()
 # and the key carries the caller's champion and mode strings, so every
 # distinct request stayed resident for the process lifetime.
 _CACHE_MAX = 256
+
+# RM-1330: skill order is mode-independent and _compute only carries the
+# label, so an unknown mode came back ok=true under the caller's label. Same
+# set as routes_ds_sweep (RM-1327).
+_SUPPORTED_MODES: tuple[str, ...] = ("SR", "ARAM", "ARENA", "BRAWL")
 
 # The three basic abilities, in the canonical Q/W/E order. A basic reaches
 # "max" at its 5th point; an ult (R) is excluded from max_order.
@@ -297,6 +304,14 @@ def _serve_ds_skill_order(h) -> None:
             return
 
         mode = (qs.get("mode") or ["SR"])[0].upper().strip() or "SR"
+        if mode not in _SUPPORTED_MODES:
+            h._send(400, json.dumps({
+                "ok": False,
+                # RM-1330: a fixed line, never the caller's value.
+                "error": "unsupported mode",
+                "supported": list(_SUPPORTED_MODES),
+            }).encode("utf-8"), "application/json")
+            return
 
         key = (champion, mode)
         now = time.time()

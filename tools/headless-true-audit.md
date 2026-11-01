@@ -141,7 +141,7 @@ rate-limit, a thinking-block error - in the coach UI or any user-facing dashboar
 
 The pattern already exists; imitate it. Verified: `coaches/champ_select_coach.py:149` renders the literal `"(coaching paused - retrying)"`;
 `coaches/replay_coach.py:236` documents the same choice; `dashboard/routes_ds_profile.py:74` states it in the module docstring ("a generic degraded-mode
-message, never the raw trace") and `:467` implements it; siblings at `dashboard/routes_ds_skill_order.py:57` and `:305`, `dashboard/routes_archetype.py:122`,
+message, never the raw trace") and `:467` implements it; siblings at `dashboard/routes_ds_skill_order.py:59` and `:341`, `dashboard/routes_archetype.py:122`,
 `dashboard/routes_ds_matchup.py:279`, `dashboard/routes_spike_curve.py:535`. Audit questions: does every user-facing return path have a degraded branch; is the
 degraded text actionable; is the raw error actually LOGGED or swallowed entirely (the silent catch is the other failure, and the more common one); and does the
 panel still RENDER when degraded rather than collapsing (`feedback_no_reflow_on_data_absence`).

@@ -57,6 +57,8 @@ Response shape:
 
 Failure modes:
   - 400  champion param literally missing OR present-but-blank.
+  - 400  mode outside the four above, with a fixed text and the supported list
+         (RM-1330); the ranker is not called and nothing is cached.
   - 200  ok=false reason=no_rows when the ranker returns zero candidates.
   - 200  ok=false reason=build_full when six inventory slots are occupied,
          so there is no next slot to rank. An expected terminal state, NOT
@@ -116,6 +118,12 @@ _CACHE_LOCK = threading.Lock()
 # and the key carries the caller's champion, mode and item strings, so
 # every distinct request stayed resident for the process lifetime.
 _CACHE_MAX = 256
+
+# RM-1330: rank._is_legal_in_mode allows every item for a mode it does not
+# know, so an unknown mode ranked map-illegal items under the caller's label
+# with ok=true (measured: ZZQ, CLASSIC, URF, KIWI, CHERRY, TFT each differed
+# from SR on all 173 champions). Same set as routes_ds_sweep (RM-1327).
+_SUPPORTED_MODES: tuple[str, ...] = ("SR", "ARAM", "ARENA", "BRAWL")
 
 # DataSnapshot is immutable per patch - load once + reuse across requests.
 _SNAPSHOT = None
@@ -304,6 +312,15 @@ def _serve_ds_relscore(h) -> None:
             return
 
         mode = (qs.get("mode") or ["SR"])[0].strip().upper() or "SR"
+        if mode not in _SUPPORTED_MODES:
+            h._send(400, json.dumps({
+                "ok":    False,
+                # RM-1330: a fixed line, never the caller's value.
+                "error": "unsupported mode",
+                "supported": list(_SUPPORTED_MODES),
+            }).encode("utf-8"), "application/json")
+            return
+
         items = _drop_non_inventory(
             _parse_item_list((qs.get("items") or [""])[0].strip()))
         level = _parse_level((qs.get("level") or [""])[0].strip())
