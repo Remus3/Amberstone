@@ -22,7 +22,10 @@ THE PASS (kit `fleet_inbox`, consumed, never edited):
   TRIAGE anything else            -> ONE kit spawn, kind="triage",
         fleet_inbox.triage_spawn_kwargs(FLOORS_IN_HOOKS) (sonnet, effort low,
         non-bare: RC's floors live in hooks, kit v11 R1); parse_verdict()
-        gives NOREPLY / ACK / ANSWER and the note is marked seen either way
+        gives NOREPLY / ACK / ANSWER and the note is marked seen either way. A
+        FAILED run (rc, error, is_error on its usage line) has no verdict: it is
+        a summary error and the note stays unseen, until MAX_TRIAGE_FAILURES
+        failed runs of that note close it with verdict TRIAGE_FAILED
   ANSWER parts -> ONE batched note per destination (batch_note, HOP line), only
         when may_reply() holds, the sender is a counterparty, and
         OutboundCap(root).allow("ANSWER"); delivery is the pre-authorised
@@ -148,6 +151,8 @@ LAST_REL = Path("ops/loop/control/inbox_tick_last.json")
 HELD_REL = Path("ops/loop/control/inbox_held")
 DELIVERIES_REL = Path("ops/loop/control/inbox_deliveries.jsonl")
 MAX_TRIAGE_PER_TICK = 1
+MAX_TRIAGE_FAILURES = 3
+TRIAGE_FAILED = "TRIAGE_FAILED"
 # The RC-InboxResponder task repeats every 5 minutes
 # (ops/install_RC_InboxResponder.ps1); the CLI's idle status names that tick.
 TICK_S = 300
@@ -446,6 +451,39 @@ def tick(root, *, inbox=None, code=CODE, agreement=_UNSET, participants=None,
     return s
 
 
+def _triage_failure(line) -> str | None:
+    """Why this kit usage line is a failed run, or None. A failed run's result
+    text is never a verdict (parse_verdict would call it ACK and close the note)."""
+    if not isinstance(line, dict):
+        return "no usage line"
+    rc, error = line.get("rc"), line.get("error")
+    if rc in (0, None) and not error and line.get("is_error") is not True:
+        return None
+    return " ".join(f"rc={rc} is_error={line.get('is_error')} {error or ''}".split())
+
+
+def _failed_triages(root: Path, name: str) -> int:
+    """This note's failed triage runs, from the kit's usage rows (the current run
+    included: the kit writes its row before spawn returns). By name, so re-sent
+    bytes under a name that already failed get one more try, not a fresh count."""
+    return sum(1 for r in _jsonl(root / fleet_headless.USAGE_REL)
+               if r.get("note") == name and r.get("kind") == "triage"
+               and _triage_failure(r) is not None)
+
+
+def _triage_failed(root, path, d, why, s) -> None:
+    """A failed run stays unseen for the next fire (the refusal path's contract),
+    until MAX_TRIAGE_FAILURES: then the ledger closes it as TRIAGE_FAILED, so one
+    poison note cannot spend a run every fire and starve the notes behind it."""
+    name = path.name
+    if _failed_triages(root, name) >= MAX_TRIAGE_FAILURES:
+        fleet_inbox.mark_seen(root, path, d, verdict=TRIAGE_FAILED)
+        s["errors"].append(f"{name}: triage failed, giving up: {why}"[:200])
+    else:
+        s["errors"].append(f"{name}: triage failed: {why}"[:200])
+        s["deferred"] += 1
+
+
 def _process(root, rows, s, *, code, agreement, participants, spawn, spawn_kw,
              verify, deliver, max_triage, emit):
     counterparties = set((agreement or {}).get("counterparties") or ())
@@ -500,7 +538,11 @@ def _process(root, rows, s, *, code, agreement, participants, spawn, spawn_kw,
                 s["errors"].append(f"{name}: triage refused: {exc}"[:200])
                 s["deferred"] += 1
                 continue
-            verdict, text = fleet_inbox.parse_verdict((line or {}).get("result"))
+            why = _triage_failure(line)
+            if why is not None:
+                _triage_failed(root, path, d, why, s)
+                continue
+            verdict, text = fleet_inbox.parse_verdict(line.get("result"))
             fleet_inbox.mark_seen(root, path, d, verdict=verdict)
             s["triaged"] += 1
             if verdict == "ANSWER":

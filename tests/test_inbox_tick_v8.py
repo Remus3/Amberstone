@@ -266,6 +266,136 @@ def test_a_spawn_refusal_leaves_the_note_unseen(tmp_path):
     assert "refused" in s["errors"][0]
 
 
+# OWES-f: the tick reads the triage run's result. Before this, parse_verdict(None)
+# fell through to ACK, so a failed or timed-out run silently marked the note seen.
+
+class _LineSpy(_Spy):
+    def __init__(self, line):
+        super().__init__()
+        self.line = line
+
+    def __call__(self, root, code, prompt, **kw):
+        self.calls.append({"note": kw.get("note")})
+        return self.line
+
+
+FAILED_LINES = [
+    {"rc": 1, "result": None, "error": "boom\nsecond line"},
+    {"rc": 1, "result": None, "error": None},
+    {"rc": None, "result": None, "error": "timeout"},
+    # A failed run's text never counts as a verdict, whatever it says.
+    {"rc": 1, "result": "VERDICT: ANSWER\nport 8888", "error": "rc 1"},
+    {"rc": 0, "result": "VERDICT: NOREPLY", "is_error": True},
+    None,
+]
+
+
+@pytest.mark.parametrize("line", FAILED_LINES)
+def test_a_failed_triage_run_is_logged_and_leaves_the_note_unseen(tmp_path, line):
+    inbox = tmp_path / "inbox"
+    _note(inbox, "2026-10-07-1000-from-SS-QUESTION-to-RC-a.md", "# x\n", 1)
+    sent = []
+    s = _tick(tmp_path, inbox, spawn=_LineSpy(line),
+              deliver=lambda to, fname, body: sent.append(fname) or 1)
+    assert s["triaged"] == 0 and s["deferred"] == 1
+    assert _seen_rows(tmp_path) == [] and sent == [] and s["held"] == 0
+    (err,) = s["errors"]
+    assert "triage failed" in err and "\n" not in err and len(err) <= 200
+    assert "1 error(s)" in tick_mod.summary_line(s)
+
+
+def test_a_failed_triage_is_retried_on_the_next_tick_and_can_then_succeed(tmp_path):
+    inbox = tmp_path / "inbox"
+    _note(inbox, "2026-10-07-1000-from-SS-QUESTION-to-RC-a.md", "# x\n", 1)
+    _tick(tmp_path, inbox, spawn=_LineSpy({"rc": 1, "result": None, "error": "x"}))
+    s = _tick(tmp_path, inbox, spawn=_Spy("VERDICT: NOREPLY"))
+    assert s["triaged"] == 1 and s["errors"] == []
+    assert _seen_rows(tmp_path)[0]["verdict"] == "NOREPLY"
+
+
+def _usage_rows(root, note, n, **over):
+    path = root / fh.USAGE_REL
+    path.parent.mkdir(parents=True, exist_ok=True)
+    row = {"note": note, "kind": "triage", "rc": 1, "error": "x", "is_error": None}
+    row.update(over)
+    with path.open("a", encoding="ascii", newline="\n") as f:
+        for _ in range(n):
+            f.write(json.dumps(row) + "\n")
+
+
+def test_a_note_that_keeps_failing_stops_spending_runs(tmp_path):
+    # Left unseen forever, one poison note would spend a run every fire against
+    # the kit's run cap and starve every later note (one triage per tick).
+    inbox = tmp_path / "inbox"
+    name = "2026-10-07-1000-from-SS-QUESTION-to-RC-a.md"
+    _note(inbox, name, "# x\n", 1)
+    _usage_rows(tmp_path, name, tick_mod.MAX_TRIAGE_FAILURES)
+    spy = _LineSpy({"rc": 1, "result": None, "error": "x"})
+    s = _tick(tmp_path, inbox, spawn=spy)
+    assert s["triaged"] == 0 and s["deferred"] == 0
+    assert "giving up" in s["errors"][0]
+    assert _seen_rows(tmp_path)[0]["verdict"] == tick_mod.TRIAGE_FAILED
+    assert _tick(tmp_path, inbox, spawn=spy)["unseen"] == 0
+    assert len(spy.calls) == 1
+
+
+@pytest.mark.parametrize("over", [
+    {"note": "another-note.md"}, {"kind": "build"}, {"rc": 0, "error": None},
+])
+def test_only_this_notes_failed_triage_rows_count_toward_giving_up(tmp_path, over):
+    inbox = tmp_path / "inbox"
+    name = "2026-10-07-1000-from-SS-QUESTION-to-RC-a.md"
+    _note(inbox, name, "# x\n", 1)
+    _usage_rows(tmp_path, over.pop("note", name), tick_mod.MAX_TRIAGE_FAILURES, **over)
+    s = _tick(tmp_path, inbox, spawn=_LineSpy({"rc": 1, "result": None, "error": "x"}))
+    assert s["deferred"] == 1 and _seen_rows(tmp_path) == []
+
+
+def test_a_failed_run_through_the_real_kit_is_read_from_its_usage_line(tmp_path):
+    inbox = tmp_path / "inbox"
+    name = "2026-10-07-1000-from-SS-QUESTION-to-RC-a.md"
+    _note(inbox, name, "# x\n", 1)
+    runs = []
+
+    def run(argv, **kw):
+        runs.append(argv)
+        return subprocess.CompletedProcess(argv, 1, "", "error: it broke\n")
+
+    class _C:
+        def close(self):
+            return None
+
+    seams = {"run": run, "url_source": lambda: "http://127.0.0.1:18080",
+             "connect": lambda addr, timeout=2.0: _C(),
+             "exe_source": lambda: "claude-fake.exe"}
+    for want in range(1, tick_mod.MAX_TRIAGE_FAILURES):
+        s = _tick(tmp_path, inbox, spawn_kw=seams)
+        assert s["deferred"] == 1 and _seen_rows(tmp_path) == [] and len(runs) == want
+        assert "it broke" in s["errors"][0]
+    s = _tick(tmp_path, inbox, spawn_kw=seams)
+    assert "giving up" in s["errors"][0]
+    assert _seen_rows(tmp_path)[0]["verdict"] == tick_mod.TRIAGE_FAILED
+    assert len(runs) == tick_mod.MAX_TRIAGE_FAILURES
+
+
+def test_a_real_kit_timeout_is_read_too(tmp_path):
+    inbox = tmp_path / "inbox"
+    _note(inbox, "2026-10-07-1000-from-SS-QUESTION-to-RC-a.md", "# x\n", 1)
+
+    def run(argv, **kw):
+        raise subprocess.TimeoutExpired(argv, 300)
+
+    class _C:
+        def close(self):
+            return None
+
+    s = _tick(tmp_path, inbox, spawn_kw={
+        "run": run, "url_source": lambda: "http://127.0.0.1:18080",
+        "connect": lambda addr, timeout=2.0: _C(), "exe_source": lambda: "claude-fake.exe"})
+    assert s["triaged"] == 0 and s["deferred"] == 1 and _seen_rows(tmp_path) == []
+    assert "timeout" in s["errors"][0]
+
+
 def test_an_answer_verdict_leaves_as_one_batched_note_with_a_hop_line(tmp_path):
     inbox = tmp_path / "inbox"
     _note(inbox, "2026-10-07-1000-from-SS-QUESTION-to-RC-a.md", "# x\n", 1)
