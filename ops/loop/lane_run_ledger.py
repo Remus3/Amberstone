@@ -27,16 +27,34 @@ MODEL_TRIAL lanes run sonnet; afterwards lane_model returns None and the config 
 is back with no edit. MODEL_TRIAL_MEASURE names what the trial is judged on. The "before"
 baseline is the 7 days ending the day before MODEL_TRIAL_START.
 
-Stdlib only, ASCII only; importable by file path or as ops.loop.lane_run_ledger.
+Stdlib plus core/polled_json.py (the repo's atomic-write contract), ASCII only;
+importable by file path or as ops.loop.lane_run_ledger.
 """
 from __future__ import annotations
 
 import argparse
 import datetime
+import importlib.util
 import json
 import statistics
 import sys
 from pathlib import Path
+
+# Plain import first, absolute-path bind as the fallback for a load by file path, where
+# the repo root is not on sys.path (same shape as ops/loop/inbox_tick.py).
+try:
+    from core.polled_json import atomic_write_bytes as _atomic_write_bytes
+except ModuleNotFoundError:
+    _PJ_NAME = "rc_core_polled_json"
+    if _PJ_NAME in sys.modules:
+        _atomic_write_bytes = sys.modules[_PJ_NAME].atomic_write_bytes
+    else:
+        _pj_spec = importlib.util.spec_from_file_location(
+            _PJ_NAME, Path(__file__).resolve().parents[2] / "core" / "polled_json.py")
+        _pj = importlib.util.module_from_spec(_pj_spec)
+        sys.modules[_PJ_NAME] = _pj
+        _pj_spec.loader.exec_module(_pj)
+        _atomic_write_bytes = _pj.atomic_write_bytes
 
 USAGE_REL = Path("ops/loop/control/headless_usage.jsonl")
 CYCLES_REL = Path("ops/loop/control/lane_prompts")
@@ -224,9 +242,7 @@ def stamp_daily(root, day=None, status_path=None) -> dict:
         raise ValueError(f"status file is not an object: {path}")
     fig = today_daily(root, day)
     doc["daily"] = fig
-    tmp = path.with_name(path.name + ".daily.tmp")
-    tmp.write_bytes(json.dumps(doc).encode("ascii"))
-    tmp.replace(path)
+    _atomic_write_bytes(path, json.dumps(doc).encode("ascii"))
     return fig
 
 
