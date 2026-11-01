@@ -3,11 +3,15 @@ core/coaching_data_lock.py - combined process-local + cross-process
 lock for coaching_data.json read-modify-write cycles.
 
 MEASURED HOLDERS (2026-08-30, lane 8 cycle 28 - grep for `coaching_data_lock`
-outside tests/ and you get exactly these four, all THREADS OF ONE PROCESS):
-  - coach_integration/_coach.py:117   (reset_state)
-  - coach_integration/_coach.py:678   (_write_fields read-modify-write)
-  - dashboard/_writers.py:73          (set_pregame)
-  - dashboard/routes_state.py:637     (/api/command "refresh")
+outside tests/ and you got exactly these four, all THREADS OF ONE PROCESS):
+  - coach_integration/_coach.py  CoachIntegration.reset_state
+  - coach_integration/_coach.py  CoachIntegration._write_fields
+                                 (read-modify-write)
+  - dashboard/_writers.py        set_pregame
+  - dashboard/routes_state.py    _serve_command_post (/api/command "refresh")
+Since RM-277 (2026-10-03) there are six: add OverlayApp._init_data_file and
+OverlayApp._write_data (app/__init__.py, SCOPE 2 below), threads of the same
+process. tests/test_writer_inventory_cites_s144p49.py pins the set.
 
 The pattern each writer SHOULD follow:
 
@@ -23,10 +27,10 @@ critical section so concurrent writers can't lose each other's updates.
 SCOPE - READ THIS BEFORE TRUSTING THE LOCK (measured, cycle 28):
   1. There is currently NO cross-process WRITER of coaching_data.json.
      RC runs as a single process (`pythonw.exe main.py`) with the dashboard
-     in-process, so all four holders above are threads inside it. A second
+     in-process, so all the holders above are threads inside it. A second
      process, `agents.supervisor`, only READS the file
-     (agents/supervisor.py:774) and is protected by atomic replace, not by
-     this lock. The file-lock half is therefore defence in depth today,
+     (Supervisor._file_post_game_summary) and is protected by atomic replace,
+     not by this lock. The file-lock half is therefore defence in depth today,
      not an active serializer. Do not delete it on that basis - it is the
      only thing that would work if a writer ever moves out of process -
      but do not assume it is carrying load either.
@@ -44,7 +48,7 @@ ways and is recorded here so it is not reintroduced: core/aftergame_summary.py
 has ZERO production importers (it is reachable only through its own
 `if __name__ == "__main__"` block), it never calls this lock, and it targets
 `data/coaching_data.json` while the SR file is root `coaching_data.json`
-(app/__init__.py:42).
+(app/__init__.py `DATA_FILE`).
 
 Locking strategy:
   1. Acquire the in-process `threading.Lock` first, bounded by
@@ -80,15 +84,17 @@ TWO HONEST LIMITS ON THIS FIX, both measured rather than assumed:
      30-second one. On a sub-second coach poll cadence a 30 s block is
      still a visibly dead coach. "The unbounded acquire is fixed" must not
      be read as "the coach can no longer stall".
-  2. The fail-open path is not purely lossy in the worst case.
-     `coach_integration/_coach.py:713` derives its scratch name from the
-     destination (`.tmp`), so two coach writers proceeding concurrently
-     could collide on one scratch file and tear it, rather than merely
-     losing an update. Reaching that needs a holder wedged past
-     `_TL_TIMEOUT_S`, where the previous behaviour was a permanently dead
-     coach thread with no diagnostic at all - so the trade still favours
-     this design - but the worst case is recorded here rather than hidden.
-     The scratch-name half belongs to RM-261.
+  2. The fail-open path was not purely lossy in the worst case when this
+     was written: CoachIntegration._write_fields derived its scratch name
+     from the destination (`.tmp`), so two coach writers proceeding
+     concurrently could collide on one scratch file and tear it, rather
+     than merely losing an update. Reaching that needed a holder wedged
+     past `_TL_TIMEOUT_S`, where the previous behaviour was a permanently
+     dead coach thread with no diagnostic at all - so the trade still
+     favoured this design. The scratch-name half was RM-261: RM-258
+     (7a45bb921) moved _write_fields onto core.polled_json.atomic_write_text,
+     whose scratch name is unique per write (_scratch_path), so the worst
+     case is now a lost update, not a torn file.
 """
 import inspect
 import logging
@@ -109,14 +115,14 @@ _LOCK_TIMEOUT_S = 2.0
 # snug: a legitimate holder can occupy the critical section for seconds,
 # not milliseconds. Measured worst case is roughly 6.2s - portalocker polls
 # for up to _LOCK_TIMEOUT_S (2.0s) while holding this lock, and
-# coach_integration/_coach.py:675-734 wraps its whole `with` block in a
-# 3-attempt retry with sleeps. A snug timeout would therefore fire during
-# ordinary contention and make the fail-open path routine, which would
-# trade a rare hang for frequent lost updates - a strictly worse deal. At
-# 30s this fires only when a holder is genuinely wedged, and at that point
-# proceeding without mutual exclusion beats a permanently dead coach
-# thread. tests/test_p2w1_app_b.py:359 holds this lock for 0.25s (in
-# test_reset_state_holds_coaching_data_lock, which starts at :338) and
+# CoachIntegration._write_fields (coach_integration/_coach.py) wraps its
+# whole `with` block in a 3-attempt retry with sleeps. A snug timeout would
+# therefore fire during ordinary contention and make the fail-open path
+# routine, which would trade a rare hang for frequent lost updates - a
+# strictly worse deal. At 30s this fires only when a holder is genuinely
+# wedged, and at that point proceeding without mutual exclusion beats a
+# permanently dead coach thread. tests/test_p2w1_app_b.py
+# test_reset_state_holds_coaching_data_lock holds this lock for 0.25s and
 # asserts the writer still blocks, so any value at or below 0.25 breaks it.
 _TL_TIMEOUT_S = 30.0
 

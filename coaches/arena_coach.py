@@ -485,11 +485,12 @@ class Coach(BaseCoach):
                 from pathlib import Path as _Path_d6
                 # Lane 8 cycle 24: was a hand-rolled tmp+replace whose scratch
                 # name came from the destination alone. data/force_scan.json
-                # has FOUR writers (core/hotkeys.py:103,
-                # dashboard/_writers.py:68, tools/lcu_agent.py:1372 in its own
-                # process, and this one), so that shared scratch name was a
-                # real collision, and the bare replace had none of the
-                # WinError 5 retry the polled helper carries.
+                # has FOUR writers (core/hotkeys.py _trigger_force_scan,
+                # dashboard/_writers.py force_vision_scan, tools/lcu_agent.py
+                # _write_force_scan_marker in its own process, and this one),
+                # so that shared scratch name was a real collision, and the
+                # bare replace had none of the WinError 5 retry the polled
+                # helper carries.
                 from core.polled_json import atomic_write_json as _awj_d6
                 _fp = _Path_d6(__file__).parent.parent / "data" / "force_scan.json"
                 _awj_d6(_fp, {"force": _time_d6.time()})

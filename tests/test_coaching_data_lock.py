@@ -1,9 +1,13 @@
 """Lane 8 - deep audit of core/coaching_data_lock.py.
 
-`core.coaching_data_lock` is the serialization point for the four measured
-holders of `coaching_data.json` - coach_integration/_coach.py:117 and :678,
-dashboard/_writers.py:60 and dashboard/routes_state.py:637 - all threads of
-the single RC `pythonw.exe main.py` process.
+`core.coaching_data_lock` is the serialization point for the measured
+holders of `coaching_data.json` - CoachIntegration.reset_state and
+CoachIntegration._write_fields (coach_integration/_coach.py), set_pregame
+(dashboard/_writers.py) and _serve_command_post (dashboard/routes_state.py),
+the four this audit measured, plus OverlayApp._init_data_file and
+OverlayApp._write_data (app/__init__.py, added by RM-277) - all threads of
+the single RC `pythonw.exe main.py` process. The holder set is pinned by
+tests/test_writer_inventory_cites_s144p49.py.
 
 Sections:
 
@@ -469,13 +473,14 @@ class TestD2UnboundedProcessLockAcquire(_HeldLockContentionMixin, _CombinedLockT
             "no _TL_TIMEOUT_S - __enter__ acquires the in-process lock unbounded")
         self.assertIsInstance(timeout, float)
         self.assertGreater(timeout, 0)
-        # Cross-file constraint: tests/test_p2w1_app_b.py:338
-        # (test_reset_state_holds_coaching_data_lock) holds _LOCK for 0.25s and
+        # Cross-file constraint: tests/test_p2w1_app_b.py
+        # test_reset_state_holds_coaching_data_lock holds _LOCK for 0.25s and
         # asserts the writer is still BLOCKED. A timeout at or under that turns
         # that test red, so keep a wide margin.
         self.assertGreaterEqual(
             timeout, 1.0,
-            "too short: tests/test_p2w1_app_b.py:338 blocks a writer for 0.25s")
+            "too short: test_reset_state_holds_coaching_data_lock "
+            "(tests/test_p2w1_app_b.py) blocks a writer for 0.25s")
 
     def test_enter_gives_up_on_a_held_process_lock_and_runs_the_body(self):
         with mock.patch.object(cdl, "_TL_TIMEOUT_S", 0.2):

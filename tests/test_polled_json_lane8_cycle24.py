@@ -25,12 +25,17 @@ Both promises were measurably false before this slice:
       readers saw torn, unparseable destination content.
 
 W5 reachability is not hypothetical. data/force_scan.json has FOUR independent
-writers (core/hotkeys.py:103, dashboard/_writers.py:68,
-coaches/arena_coach.py:481, and tools/lcu_agent.py:1372 in its OWN PROCESS, the
-RC-LCUAgent ONLOGON task) with a live reader at coaches/_base_coach.py:465;
-coaching_data.json has at least THREE (app/__init__.py:253 and :272,
-dashboard/_writers.py:63, and coach_integration/_coach.py:713, which still
-hand-rolls its scratch name and is NOT converted - RM-261).
+writers (core/hotkeys.py _trigger_force_scan, dashboard/_writers.py
+force_vision_scan, coaches/arena_coach.py Coach._on_state_received, and
+tools/lcu_agent.py _write_force_scan_marker in its OWN PROCESS - the
+RC-LCUAgent ONLOGON task when this was measured, the rc-shell service host's
+LCU agent child since the 2026-10-31 launcher cutover) with a live reader in
+coaches/_base_coach.py BaseCoach._vision_loop; coaching_data.json has at least
+THREE (app/__init__.py OverlayApp._init_data_file and OverlayApp._write_data,
+dashboard/_writers.py set_pregame, and coach_integration/_coach.py
+CoachIntegration._write_fields, which hand-rolled its scratch name until
+RM-258 / RM-261 moved it onto core.polled_json). The symbols are pinned by
+tests/test_writer_inventory_cites_s144p49.py.
 
 W2/W3 SEVERITY, stated honestly: no current production caller passes a default
 containing a nested mutable - every one passes {} or a freshly-built dict - and

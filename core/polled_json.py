@@ -82,19 +82,26 @@ def _scratch_path(path: Path) -> Path:
     tests rather than guards.
 
     Reachability is not hypothetical: data/force_scan.json has FOUR
-    independent writers - core/hotkeys.py:103, dashboard/_writers.py:68,
-    coaches/arena_coach.py:481, and tools/lcu_agent.py:1372, which runs in its
-    OWN PROCESS (the RC-LCUAgent ONLOGON task) and is the motivating case for
-    the pid below. coaching_data.json has at least THREE: app/__init__.py:253
-    and :272, dashboard/_writers.py:63 (set_pregame), and
-    coach_integration/_coach.py, which hand-rolled
+    independent writers - core/hotkeys.py _trigger_force_scan,
+    dashboard/_writers.py force_vision_scan, coaches/arena_coach.py
+    Coach._on_state_received, and tools/lcu_agent.py _write_force_scan_marker,
+    which runs in its OWN PROCESS (the RC-LCUAgent ONLOGON task when this was
+    measured; a child of the rc-shell service host since the 2026-10-31
+    launcher cutover) and is the motivating case for the pid below.
+    coaching_data.json has at least THREE: app/__init__.py
+    OverlayApp._init_data_file and OverlayApp._write_data,
+    dashboard/_writers.py set_pregame, and coach_integration/_coach.py
+    CoachIntegration._write_fields, which hand-rolled
     `data_file.with_suffix(".tmp")` until RM-258/RM-261 routed it through here
-    (repo-wide guard: tests/test_atomic_write_guard_rm258_rm261.py).
+    (repo-wide guard: tests/test_atomic_write_guard_rm258_rm261.py). The
+    symbols are pinned by tests/test_writer_inventory_cites_s144p49.py.
 
     The pid is part of the name because the writers can be separate processes
-    (RC-HotkeyListener and RC-LCUAgent are their own ONLOGON tasks), which is
-    exactly the case no in-process lock can serialize. It stays a SIBLING of
-    the destination because os.replace is only atomic within one filesystem.
+    (the hotkey listener and the LCU agent each run as their own process -
+    ONLOGON tasks when this was written, service-host children since the
+    cutover), which is exactly the case no in-process lock can serialize. It
+    stays a SIBLING of the destination because os.replace is only atomic
+    within one filesystem.
 
     coaches/sr_user_builds.py:513 already carries this same fix, applied to a
     single consumer in cycle 22 while the contract module kept the defect -
