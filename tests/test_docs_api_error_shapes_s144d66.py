@@ -109,7 +109,11 @@ _ERROR_CLAUSES = (
     "A failure sent through `send_error` (`dashboard/_errors.py`) is status 500 "
     "by default",
     "the exception itself is never in the body",
-    "An exception nothing catches gets no reply: the connection closes",
+    "An exception nothing catches (one that leaves the route and its dispatcher) is "
+    "answered by the handler itself, GET or POST: the same 500 with the same line, "
+    "and the connection is closed",
+    "If the route had already begun its reply, nothing more is written and the "
+    "connection closes",
 )
 
 
@@ -556,12 +560,17 @@ def test_the_minimap_crop_is_204_on_an_upstream_error(served, failing_supervisor
     assert _exchange(served, _proxied_get(b"/api/minimap-crop"))[0] == 204
 
 
-def test_an_exception_nothing_catches_gets_no_reply(served, monkeypatch):
+def test_an_exception_nothing_catches_gets_the_generic_500(served, monkeypatch):
+    # RM-1288: this used to pin "no reply". The full contract (GET, a reply
+    # already begun, a client that went away) is
+    # tests/test_dashboard_uncaught_route_s144d68.py.
     def _boom(*_a, **_k):
         raise RuntimeError("synthetic route failure")
 
     monkeypatch.setattr(handler_mod._dispatch, "dispatch_post", _boom)
-    assert _reply(served, _post()) == b""
+    status, ctype, body = _exchange(served, _post())
+    assert (status, ctype) == (500, "application/json")
+    assert json.loads(body) == {"error": GENERIC_ERROR}
 
 
 def test_send_error_answers_500_with_the_line_and_never_the_exception():

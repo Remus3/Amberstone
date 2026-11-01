@@ -17,6 +17,10 @@ Tier 2 helper-shake (2026-05-01): extracted from web_dashboard.py.
                 Then 1-MiB body cap, read deadline, JSON decode,
                 dict-or-400, then delegates to
                 `dashboard._dispatch.dispatch_post`, else 404
+  * `_guarded_dispatch` - both dispatch calls run through it (RM-1288):
+                an exception no route catches is the fixed 500 line, or
+                nothing more if the route's reply had begun, then the
+                connection closes; never a silent drop
   * request head - one total deadline for the request line + headers
                 (RM-744, `core.http_head_deadline.HeadDeadlineMixin`),
                 removed once the head is parsed
@@ -78,7 +82,7 @@ from core.log_scrub import CONTROL_CHAR_TABLE as _core_control_char_table
 from core.log_scrub import SCRUB_RANGES as _core_scrub_ranges
 from core.log_scrub import scrub_log as _core_scrub_log
 from dashboard import _dispatch
-from dashboard._errors import forward_upstream_error
+from dashboard._errors import forward_upstream_error, send_error
 from dashboard.server import control_peer_allowed
 
 log = logging.getLogger("rc.web_dashboard")
@@ -363,6 +367,46 @@ class Handler(HostAllowlistMixin, HeadDeadlineMixin, BaseHTTPRequestHandler):
     # then sent nothing held its thread and socket with no limit. NOT a
     # class-level ``timeout`` - see _read_body_deadlined for why.
 
+    # RM-1288: set by send_response, so the dispatch guard can tell a route
+    # that failed BEFORE it replied (answer 500) from one that failed after its
+    # status line went out (write nothing: a second status line would corrupt
+    # the first reply). Reset at the start of every guarded dispatch because a
+    # keep-alive connection reuses this instance.
+    _reply_started = False
+
+    def send_response(self, code, message=None):
+        self._reply_started = True
+        super().send_response(code, message)
+
+    def _guarded_dispatch(self, dispatch, *args) -> bool:
+        """Run a dispatcher; an exception it lets out never closes the socket
+        with no reply (RM-1288, measured: do_GET / do_POST had no try, so the
+        stdlib dropped the connection and a browser saw a network failure).
+
+        Returns True once the request is dealt with, so the caller never also
+        writes its 404. The reply is the fixed 500 line of
+        ``dashboard._errors.send_error`` (the exception text stays in the log,
+        scrubbed). The connection is closed after any failure: a route that
+        died part-way leaves the request stream in an unknown state.
+        """
+        self._reply_started = False
+        try:
+            return dispatch(self, *args)
+        except Exception as exc:  # noqa: BLE001
+            self.close_connection = True
+            path = _scrub_log(self.path.split("?", 1)[0])
+            if isinstance(exc, ConnectionError):
+                log.debug("route %s: client went away: %s", path, type(exc).__name__)
+                return True
+            log.warning("uncaught route failure: peer=%s path=%s started=%s",
+                        self._peer(), path, self._reply_started)
+            if not self._reply_started:
+                try:
+                    send_error(self, exc)
+                except Exception:  # noqa: BLE001
+                    pass
+            return True
+
     def _peer(self) -> str:
         """Client address for a log line, never raising.
 
@@ -563,7 +607,7 @@ class Handler(HostAllowlistMixin, HeadDeadlineMixin, BaseHTTPRequestHandler):
         # Anything that doesn't match a registered route either falls
         # through to the agents-supervisor proxy (:8890) for routes that
         # only exist there, or returns 404.
-        if _dispatch.dispatch_get(self):
+        if self._guarded_dispatch(_dispatch.dispatch_get):
             return
         if any(self.path == p or self.path.startswith(p + "?") or self.path.startswith(p + "/")
                for p in SUPERVISOR_PROXY_PATHS):
@@ -731,6 +775,6 @@ class Handler(HostAllowlistMixin, HeadDeadlineMixin, BaseHTTPRequestHandler):
 
         # Slice 2C-7d (2026-05-01): every POST route lives in
         # dashboard/routes_*. Dispatcher handled or it's a 404.
-        if _dispatch.dispatch_post(self, payload):
+        if self._guarded_dispatch(_dispatch.dispatch_post, payload):
             return
         self._send(404, b"not found", "text/plain")

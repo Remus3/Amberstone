@@ -298,5 +298,7 @@ Past those gates a route answers for itself. A JSON failure usually carries an
 `error` string, and some routes add keys beside it (`{"ok": false, "error": ...}`).
 A failure sent through `send_error` (`dashboard/_errors.py`) is status 500 by default
 with the line `internal error - see logs` unless the route passes its own, and the
-exception itself is never in the body. An exception nothing catches gets no reply:
-the connection closes. A success with nothing to report is usually `{"ok": true}`.
+exception itself is never in the body. An exception nothing catches (one that
+leaves the route and its dispatcher) is answered by the handler itself, GET or POST: the
+same 500 with the same line, and the connection is closed. If the route had already begun
+its reply, nothing more is written and the connection closes. A success with nothing to report is usually `{"ok": true}`.
