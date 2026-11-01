@@ -81,6 +81,7 @@ launcher re-points it at the worker via `repoint_lane_pid`.
 """
 from __future__ import annotations
 
+import datetime
 import importlib.util
 import json
 import logging
@@ -340,6 +341,65 @@ def lane_state(root=None, now=None) -> dict:
     return out
 
 
+# ---- lane status log (MAIN ORDER 2026-10-31 2215 item 6) -------------------
+
+LANE_STATUS_LOG = "lane_status.log"
+LANE_EVENT_ACTIONS = ("stop", "resume")
+LANE_EVENT_REASONS = ("limit", "STOP", "operator", "cap")
+# Lane name -> the reason it stopped, in this process. One line per transition,
+# not one per poll: a driver retries a refused acquire every tick.
+_STOPPED: dict = {}
+
+
+def _append_status_line(path: Path, data: bytes) -> None:
+    """Windows O_APPEND is not atomic, so the shared FILE_APPEND_DATA helper."""
+    notify = _bind_core("operator_notify")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if notify._on_windows():
+        notify._win32_append(path, data)
+    else:
+        notify._portable_append(path, data)
+
+
+def log_lane_event(lane, action, reason, root=None) -> bool:
+    """Append `<ts> <lane> <stop|resume> <limit|STOP|operator|cap>` to
+    ops/loop/control/lane_status.log. A bad argument is a ValueError; a log
+    fault is logged and returns False, so it can never fail a lane."""
+    name = str(lane)
+    if not name or len(name.split()) != 1:
+        raise ValueError(f"bad lane name {lane!r}")
+    if action not in LANE_EVENT_ACTIONS:
+        raise ValueError(f"bad lane action {action!r}")
+    if reason not in LANE_EVENT_REASONS:
+        raise ValueError(f"bad lane reason {reason!r}")
+    ts = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
+    line = f"{ts} {name} {action} {reason}\n".encode("ascii", "replace")
+    try:
+        _append_status_line(_resolve_root(root).parent / LANE_STATUS_LOG, line)
+    except (OSError, ImportError) as exc:
+        log.warning("lane %s: status log append failed: %s: %s",
+                    name, type(exc).__name__, _scrub_log(str(exc)))
+        return False
+    return True
+
+
+def mark_lane_stopped(lane, reason, root=None) -> bool:
+    """Record a stop once per transition. True when this call wrote the line."""
+    if _STOPPED.get(lane) == reason:
+        return False
+    _STOPPED[lane] = reason
+    return log_lane_event(lane, "stop", reason, root=root)
+
+
+def mark_lane_resumed(lane, root=None) -> bool:
+    """Close a recorded stop with its own reason; a lane never stopped logs
+    nothing. True when this call wrote the line."""
+    reason = _STOPPED.pop(lane, None)
+    if reason is None:
+        return False
+    return log_lane_event(lane, "resume", reason, root=root)
+
+
 # ---- acquire / release -----------------------------------------------------
 
 def _require_worktree(worktree) -> Path:
@@ -404,6 +464,8 @@ def try_acquire_lane(lane, *, run_id, worktree, root=None) -> dict:
                "holders": holders}
         if refused == "admission":
             out["reason"] = str(claim.get("reason") or "")[:200]
+        if refused in ("lanes_full", "admission"):
+            mark_lane_stopped(lane, "cap", root=root)
         return out
 
     token = claim["token"]
@@ -425,6 +487,7 @@ def try_acquire_lane(lane, *, run_id, worktree, root=None) -> dict:
         return {"ok": False, "refused": "lane_lock_unwritable", "holder": None,
                 "pid": None, "holders": [], "detail": LOCK_UNWRITABLE_DETAIL}
     _OWNED[_key(token)] = claim
+    mark_lane_resumed(lane, root=root)
     return {"ok": True, "lane": lane, "run_id": str(run_id),
             "worktree": str(wt), "token": str(token), "index": claim["index"]}
 
