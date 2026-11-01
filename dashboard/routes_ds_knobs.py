@@ -82,7 +82,9 @@ Failure modes:
 
 5-min TTL in-process cache keyed on (champion, mode, sorted items,
 target_armor, target_mr, budget, fight_length, level). Mirrors
-routes_cooldown_watch cache discipline.
+routes_cooldown_watch cache discipline, bounded at ``_CACHE_MAX`` entries
+with expired entries dropped on write (RM-1329: the key carries
+free-form floats, so it is not a closed set).
 
 Don't-redo:
   * This route uses ``rank_items`` (in-process DPS scorer) NOT
@@ -117,6 +119,9 @@ log = logging.getLogger("rc.web_dashboard")
 _CACHE_TTL_S = 300.0
 _CACHE: dict[tuple, tuple[float, dict]] = {}
 _CACHE_LOCK = threading.Lock()
+# RM-1329: the TTL was only checked on read and nothing bounded the size,
+# so every distinct request stayed resident for the process lifetime.
+_CACHE_MAX = 256
 
 # DataSnapshot is immutable per patch - load once + reuse across requests.
 _SNAPSHOT = None
@@ -220,6 +225,20 @@ def _cache_key(champion, mode, items, armor, mr, budget, level,
         level,
         fight_length,
     )
+
+
+def _cache_put(key: tuple, now: float, payload: dict) -> None:
+    """Store ``payload`` under ``key``, then bound the cache (RM-1329,
+    the routes_ds_sweep RM-1327 discipline): drop every expired entry,
+    and past ``_CACHE_MAX`` drop the oldest."""
+    with _CACHE_LOCK:
+        _CACHE[key] = (now, dict(payload))
+        for k in [k for k, (ts, _) in _CACHE.items()
+                  if (now - ts) >= _CACHE_TTL_S]:
+            _CACHE.pop(k, None)
+        while len(_CACHE) > _CACHE_MAX:
+            oldest = min(_CACHE, key=lambda k: _CACHE[k][0])
+            _CACHE.pop(oldest, None)
 
 
 def _resolve_knobs(mode, level, armor_override, mr_override) -> dict:
@@ -386,8 +405,7 @@ def _serve_ds_knobs(h) -> None:
             }).encode("utf-8"), "application/json")
             return
 
-        with _CACHE_LOCK:
-            _CACHE[key] = (now, dict(payload))
+        _cache_put(key, now, payload)
 
         payload["cached"] = False
         payload["elapsed_ms"] = int((time.time() - t0) * 1000)
