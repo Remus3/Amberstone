@@ -25,6 +25,7 @@ state needs Layer-2 (see docs/REPLAY_FRAME_ANALYSIS_SPEC.md).
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 
 # Summoner's Rift landmarks, from measured event coordinates rather than a wiki.
@@ -86,6 +87,25 @@ DEFAULT_LEAD_S = 30
 SIGNAL_DECAY = {0: 0.692, 30: 0.688, 60: 0.568, 90: 0.529, 120: 0.516}
 SUPPORTED_LEAD_MAX_S = 30
 
+# Fallback pit for an objective event that carries no position. Rift Herald
+# and the Void Grubs (HORDE) spawn in the baron pit. A monster not named here
+# has no fixed pit, so an unpositioned kill of it yields no approach at all
+# rather than a distance measured from the wrong landmark.
+_FALLBACK_PIT = {
+    "DRAGON": DRAGON_PIT,
+    "BARON_NASHOR": BARON_PIT,
+    "RIFTHERALD": BARON_PIT,
+    "HORDE": BARON_PIT,
+}
+
+# Event keys naming the acting participant, in priority order. Match-V5 puts
+# the actor of a kill in killerId, of a ward placement in creatorId (measured
+# 2026-10-31: 593706 of 593706 WARD_PLACED events carry creatorId and neither
+# other key) and of an item / skill / level event in participantId. The FIRST
+# key present wins: killerId 0 (an execute, a minion kill) means "no champion
+# killer", never "read another field instead".
+_ACTOR_KEYS = ("killerId", "creatorId", "participantId")
+
 
 @dataclass(frozen=True)
 class FrameSample:
@@ -101,6 +121,10 @@ class FrameSample:
     cs: int = 0
     jungle_cs: int = 0
     item_ids: list = field(default_factory=list)
+    # False when the source frame carried no valid position. x and y are then
+    # 0, which is a real map coordinate, so position_at skips the sample
+    # rather than measure from the map origin. Economy fields still count.
+    has_position: bool = True
 
 
 @dataclass(frozen=True)
@@ -166,38 +190,146 @@ def team_of(participant_id: int) -> int:
 
     Verified, not assumed: 460 of 460 participants across all 46 corpus
     matches agree, 0 exceptions.
+
+    Raises ValueError for anything that is not a seat 1-10 (0, 11, a bool,
+    a string, a fraction). The old answer put every such id on a team - 0 on
+    100, 11 on 200 - so a caller's bad id read as a real team.
     """
-    return 100 if participant_id <= 5 else 200
+    seat = _int(participant_id)
+    if seat is None or not 1 <= seat <= 10:
+        raise ValueError(
+            f"participant_id {participant_id!r} is not a Summoner's Rift "
+            f"seat 1-10")
+    return 100 if seat <= 5 else 200
+
+
+def _int(v):
+    """A real integer, or None.
+
+    Accepts an int or an integral finite float (JSON may carry 60000.0).
+    Refuses a bool (True would read as seat 1), a string, a fraction (never
+    truncated into a different value), NaN and infinity.
+    """
+    if isinstance(v, bool):
+        return None
+    if isinstance(v, int):
+        return v
+    if isinstance(v, float) and math.isfinite(v) and v.is_integer():
+        return int(v)
+    return None
+
+
+def _nonneg(v):
+    """`_int` restricted to >= 0 (a time, an amount, an id), or None."""
+    n = _int(v)
+    return n if n is not None and n >= 0 else None
+
+
+def _count(v) -> int:
+    """An amount or id field: missing or malformed reads as 0, as before."""
+    n = _nonneg(v)
+    return n if n is not None else 0
+
+
+def _text(v) -> str:
+    """A string field; anything else reads as empty, never as its repr."""
+    return v if isinstance(v, str) else ""
+
+
+def _dict(v) -> dict:
+    return v if isinstance(v, dict) else {}
+
+
+def _list(v) -> list:
+    return v if isinstance(v, list) else []
+
+
+def _is_real(v) -> bool:
+    """An int or float that is not a bool (NaN and infinity included)."""
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
+def _frame_sample(t_ms: int, pf: dict):
+    """One participantFrames entry, or None when it names no participant."""
+    pid = _int(pf.get("participantId"))
+    if pid is None or pid < 1:
+        return None
+    pos = pf.get("position")
+    x = y = None
+    if isinstance(pos, dict):
+        x, y = _nonneg(pos.get("x")), _nonneg(pos.get("y"))
+    has_position = x is not None and y is not None
+    return FrameSample(
+        t_ms=t_ms, participant_id=pid,
+        x=x if has_position else 0, y=y if has_position else 0,
+        total_gold=_count(pf.get("totalGold")),
+        xp=_count(pf.get("xp")), level=_count(pf.get("level")),
+        cs=_count(pf.get("minionsKilled")),
+        jungle_cs=_count(pf.get("jungleMinionsKilled")),
+        has_position=has_position)
+
+
+def _event(ev: dict):
+    """One event, or None when it carries no valid time of its own."""
+    t_ms = _nonneg(ev.get("timestamp"))
+    if t_ms is None:
+        return None
+    actor = 0
+    for key in _ACTOR_KEYS:
+        if key in ev:
+            actor = _count(ev.get(key))
+            break
+    pos = _dict(ev.get("position"))
+    return TimelineEvent(
+        t_ms=t_ms,
+        type=_text(ev.get("type")),
+        actor_id=actor,
+        victim_id=_count(ev.get("victimId")),
+        x=_count(pos.get("x")), y=_count(pos.get("y")),
+        item_id=_count(ev.get("itemId")),
+        monster_type=_text(ev.get("monsterType")),
+        ward_type=_text(ev.get("wardType")),
+        killer_team_id=_count(ev.get("killerTeamId")))
 
 
 def normalize_timeline(raw) -> Timeline:
-    """Match-V5 timeline blob -> the neutral shape every derivation consumes."""
-    info = (raw or {}).get("info") or {}
-    tl = Timeline(frame_interval_ms=int(info.get("frameInterval") or 60000),
-                  positions_available=True)
-    for frame in info.get("frames") or []:
-        for pf in (frame.get("participantFrames") or {}).values():
-            pos = pf.get("position") or {}
-            tl.frames.append(FrameSample(
-                t_ms=int(frame.get("timestamp") or 0),
-                participant_id=int(pf.get("participantId") or 0),
-                x=int(pos.get("x") or 0), y=int(pos.get("y") or 0),
-                total_gold=int(pf.get("totalGold") or 0),
-                xp=int(pf.get("xp") or 0), level=int(pf.get("level") or 0),
-                cs=int(pf.get("minionsKilled") or 0),
-                jungle_cs=int(pf.get("jungleMinionsKilled") or 0)))
-        for ev in frame.get("events") or []:
-            pos = ev.get("position") or {}
-            tl.events.append(TimelineEvent(
-                t_ms=int(ev.get("timestamp") or 0),
-                type=str(ev.get("type") or ""),
-                actor_id=int(ev.get("killerId") or ev.get("participantId") or 0),
-                victim_id=int(ev.get("victimId") or 0),
-                x=int(pos.get("x") or 0), y=int(pos.get("y") or 0),
-                item_id=int(ev.get("itemId") or 0),
-                monster_type=str(ev.get("monsterType") or ""),
-                ward_type=str(ev.get("wardType") or ""),
-                killer_team_id=int(ev.get("killerTeamId") or 0)))
+    """Match-V5 timeline blob -> the neutral shape every derivation consumes.
+
+    Untrusted input, so it never raises on shape. A wrong-shape container
+    reads as empty, and a record is skipped rather than invented:
+      - a frame without a valid timestamp contributes no samples (they would
+        otherwise all be dated 0 ms); its events keep their own timestamps;
+      - an event without a valid timestamp is skipped (a 0 ms objective);
+      - a participant frame without a valid participantId is skipped (seat 0
+        is nobody);
+      - a participant frame without a valid position keeps its economy but is
+        marked has_position=False, so no distance is measured from (0, 0).
+    A malformed amount or id reads as 0; a non-positive or malformed
+    frameInterval reads as the measured 60000.
+    """
+    info = _dict(_dict(raw).get("info"))
+    interval = _int(info.get("frameInterval"))
+    tl = Timeline(
+        frame_interval_ms=interval if interval is not None and interval > 0
+        else 60000,
+        positions_available=True)
+    for frame in _list(info.get("frames")):
+        if not isinstance(frame, dict):
+            continue
+        t_ms = _nonneg(frame.get("timestamp"))
+        if t_ms is not None:
+            for pf in _dict(frame.get("participantFrames")).values():
+                if not isinstance(pf, dict):
+                    continue
+                sample = _frame_sample(t_ms, pf)
+                if sample is not None:
+                    tl.frames.append(sample)
+        for ev in _list(frame.get("events")):
+            if not isinstance(ev, dict):
+                continue
+            event = _event(ev)
+            if event is not None:
+                tl.events.append(event)
     return tl
 
 
@@ -217,7 +349,10 @@ def position_at(tl: Timeline, participant_id: int, t_ms: int):
             "this timeline has no position data (produced by a source that "
             "exposes no map coordinates); a distance derivation cannot run "
             "on it")
-    mine = [f for f in tl.frames if f.participant_id == participant_id]
+    if not _is_real(t_ms) or not math.isfinite(t_ms):
+        raise ValueError(f"t_ms {t_ms!r} is not a finite time in ms")
+    mine = [f for f in tl.frames
+            if f.participant_id == participant_id and f.has_position]
     if not mine:
         return None
     best = min(mine, key=lambda f: abs(f.t_ms - t_ms))
@@ -230,12 +365,38 @@ def _distance(a, b) -> float:
     return ((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) ** 0.5
 
 
+def _check_lead(lead):
+    """A lead in seconds: a finite real number >= 0, else ValueError.
+
+    A negative lead samples AFTER the objective fell; NaN used to slip past
+    every comparison and fail later inside int().
+    """
+    if not _is_real(lead) or not math.isfinite(lead) or lead < 0:
+        raise ValueError(
+            f"lead {lead!r} is not a finite number of seconds >= 0")
+    return lead
+
+
 def objective_approach(tl: Timeline, participant_id: int, event: TimelineEvent,
                        leads_s=(30, 60, 90), pit=None) -> list:
-    """Where the player was at each lead time before an objective fell."""
-    target = pit or ((event.x, event.y) if event.x or event.y else DRAGON_PIT)
+    """Where the player was at each lead time before an objective fell.
+
+    The target is *pit* when given, else the event's own position, else the
+    fixed pit of its monster (`_FALLBACK_PIT`). An unpositioned event of a
+    monster with no fixed pit yields [] - it used to be measured from the
+    DRAGON pit whatever the monster was.
+    """
+    leads = [_check_lead(lead) for lead in leads_s]
+    if pit:
+        target = pit
+    elif event.x or event.y:
+        target = (event.x, event.y)
+    else:
+        target = _FALLBACK_PIT.get(event.monster_type)
+        if target is None:
+            return []
     out = []
-    for lead in leads_s:
+    for lead in leads:
         sample = position_at(tl, participant_id, event.t_ms - int(lead * 1000))
         if sample is None:
             continue
@@ -264,8 +425,17 @@ def drake_pathing_verdict(tl: Timeline, participant_id: int,
 
     Raises on a lead beyond SUPPORTED_LEAD_MAX_S. That is not defensiveness -
     the calibration measured the signal decaying to 0.516 by 120 s, so a
-    long-lead verdict would be a confident statement about noise.
+    long-lead verdict would be a confident statement about noise. Also
+    raises on a lead that is not a real number, is NaN or is negative, and
+    on a participant that is not a seat 1-10 (`team_of`).
+
+    A drake whose killer team is not 100 or 200 (missing, malformed, 300)
+    gets no verdict: this module cannot name its owner, and the old answer
+    was "the enemy took it".
     """
+    if (not _is_real(lead_s) or math.isnan(lead_s)) or lead_s < 0:
+        raise ValueError(
+            f"lead_s {lead_s!r} is not a number of seconds >= 0")
     if lead_s > SUPPORTED_LEAD_MAX_S:
         raise ValueError(
             f"lead_s={lead_s} exceeds the calibrated support of "
@@ -279,6 +449,8 @@ def drake_pathing_verdict(tl: Timeline, participant_id: int,
     my_team = team_of(participant_id)
     out = []
     for ev in objective_events(tl, "DRAGON"):
+        if ev.killer_team_id not in (100, 200):
+            continue
         ap = objective_approach(tl, participant_id, ev, leads_s=(lead_s,))
         if not ap:
             continue
