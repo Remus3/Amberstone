@@ -42,6 +42,7 @@ from __future__ import annotations
 import logging
 import sqlite3
 import time
+from pathlib import Path
 
 from core.archetype_picks import champion_name_by_key
 from core.item_wpa import _expected_win_for_team, _load_frames
@@ -60,11 +61,39 @@ _MAX_RANK = 5
 # Shrink constant; same rationale as item_wpa (personal corpus).
 _SHRINK_K = 5.0
 
+# What a malformed MATCH (bad frame / participant values) can raise inside
+# the per-match sweep. Deliberately narrow, mirroring core.item_wpa:
+# sqlite3.Error is not here (it must propagate - a locked DB is not a bad
+# row), and neither is any other class (a defect must surface, not be
+# logged once per match and answered ok=True).
+_MATCH_DATA_ERRORS = (TypeError, ValueError, ArithmeticError)
+
+# Anchored to the repo root, never the CWD (RM-1022).
+_REWIND_DB = Path(__file__).resolve().parent.parent / "data" / "rewind_history.db"
+
+
+def _opt_int(value: object) -> int | None:
+    """``int(value)``, or ``None`` when it is missing, a bool or not a
+    number."""
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+
 
 def _participant_meta(
     conn: sqlite3.Connection, match_id: str
 ) -> dict[int, tuple[int, int, int]]:
-    """Return ``{participant_id: (team_id, win, champion_id)}`` for a match."""
+    """Return ``{participant_id: (team_id, win, champion_id)}`` for a match.
+
+    ``win`` is always 0 or 1. A participant whose outcome is unknown (a
+    NULL, out-of-range or non-numeric ``win``) is ABSENT: reading an
+    unknown outcome as a loss would bias observed_winrate down. A
+    participant whose id is not a number is absent too; a NULL or
+    non-numeric team / champion reads as 0, which the caller skips.
+    """
     cur = conn.execute(
         "SELECT participant_id, team_id, win, champion_id "
         "FROM participants WHERE match_id=?",
@@ -72,15 +101,27 @@ def _participant_meta(
     )
     out: dict[int, tuple[int, int, int]] = {}
     for pid, team_id, win, champ_id in cur:
-        try:
-            out[int(pid)] = (int(team_id or 0), int(win or 0), int(champ_id or 0))
-        except (TypeError, ValueError):
+        pid_i = _opt_int(pid)
+        win_i = _opt_int(win)
+        if pid_i is None or win_i not in (0, 1):
             continue
+        out[pid_i] = (_opt_int(team_id) or 0, win_i, _opt_int(champ_id) or 0)
     return out
 
 
+def _has_level_up_type(conn: sqlite3.Connection) -> bool:
+    """Whether ``timeline_events`` carries the ``level_up_type`` column.
+
+    The real corpus does (scripts/rewind_scraper.py stores Riot's
+    ``levelUpType``); a minimal fixture or an older DB may not.
+    """
+    cols = conn.execute("PRAGMA table_info(timeline_events)").fetchall()
+    return any(len(c) > 1 and c[1] == "level_up_type" for c in cols)
+
+
 def _first_maxed_basics(
-    conn: sqlite3.Connection, match_id: str
+    conn: sqlite3.Connection, match_id: str, *,
+    skip_evolve: bool | None = None,
 ) -> dict[int, tuple[int, int]]:
     """For each participant, the ``(skill_slot, timestamp_ms)`` of the first
     BASIC ability (slot 1/2/3) to reach rank ``_MAX_RANK``.
@@ -89,9 +130,22 @@ def _first_maxed_basics(
     the first slot to hit 5 wins (and locks the participant out). Returns
     ``{participant_id: (slot, ts_ms)}``; a participant whose game ended
     before any basic hit 5 is absent.
+
+    Only NORMAL skill-ups are rank points. An ``EVOLVE`` skill-up (Kha'Zix
+    evolutions, Kai'Sa and Viktor upgrades) is a separate event Riot logs
+    on the same slot, so counting it dated maxes early, moved them to the
+    wrong slot or invented them. A NULL ``level_up_type`` reads as NORMAL.
+    ``skip_evolve`` defaults to whether the column exists.
+
+    A participant with a basic-slot skill-up whose timestamp is NULL or not
+    a number is ABSENT: the order of their points is unknowable. Other
+    participants of the match are unaffected.
     """
+    if skip_evolve is None:
+        skip_evolve = _has_level_up_type(conn)
+    lut_col = "level_up_type" if skip_evolve else "NULL"
     cur = conn.execute(
-        "SELECT timestamp_ms, participant_id, skill_slot "
+        f"SELECT timestamp_ms, participant_id, skill_slot, {lut_col} "
         "FROM timeline_events WHERE match_id=? "
         "AND event_type='SKILL_LEVEL_UP' "
         "ORDER BY timestamp_ms ASC, id ASC",
@@ -99,20 +153,26 @@ def _first_maxed_basics(
     )
     ranks: dict[int, dict[int, int]] = {}
     maxed: dict[int, tuple[int, int]] = {}
-    for ts_ms, pid, slot in cur:
-        if pid is None or slot is None:
+    unordered: set[int] = set()
+    for ts_ms, pid, slot, lut in cur:
+        pid_i = _opt_int(pid)
+        slot_i = _opt_int(slot)
+        if pid_i is None or slot_i not in _BASIC_SLOTS:
             continue
-        try:
-            pid_i = int(pid)
-            slot_i = int(slot)
-        except (TypeError, ValueError):
+        if lut is not None and str(lut) != "NORMAL":
             continue
-        if slot_i not in _BASIC_SLOTS or pid_i in maxed:
+        ts_i = _opt_int(ts_ms)
+        if ts_i is None:
+            unordered.add(pid_i)
+            continue
+        if pid_i in maxed:
             continue
         per = ranks.setdefault(pid_i, {})
         per[slot_i] = per.get(slot_i, 0) + 1
         if per[slot_i] >= _MAX_RANK:
-            maxed[pid_i] = (slot_i, int(ts_ms or 0))
+            maxed[pid_i] = (slot_i, ts_i)
+    for pid_i in unordered:
+        maxed.pop(pid_i, None)
     return maxed
 
 
@@ -145,10 +205,26 @@ def compute_skill_wpa(
     observed_winrate, expected_winrate, wpa, wpa_shrunk, avg_max_time_s}``
     sorted by ``wpa_shrunk`` desc.
 
-    Fail-soft: a match with no frames, or a max before any frame, is skipped;
-    each match is wrapped so one bad row cannot abort the sweep.
+    ``min_n`` must be an ``int >= 0`` (``bool`` refused); anything else is
+    a ``ValueError`` raised before the sweep.
+
+    Fail-soft on DATA, fail-loud on everything else (the core.item_wpa
+    contract):
+      * a match with no frames or no participants, a max before any frame,
+        a participant with an unknown outcome and a participant whose
+        skill-up order is unreadable are each skipped (see
+        ``_participant_meta`` / ``_first_maxed_basics``);
+      * a match whose frames are malformed (``TypeError`` / ``ValueError``
+        / ``ArithmeticError``) is skipped WHOLE: its contribution is rolled
+        back, so a skipped match is never half-counted;
+      * ``sqlite3.Error`` (for example "database is locked") PROPAGATES - a
+        partial sweep must not be served, or cached, as a complete corpus
+        (/api/skill-wpa maps it to a 503);
+      * any other exception is a defect and propagates too.
     """
-    t0 = time.time()
+    if isinstance(min_n, bool) or not isinstance(min_n, int) or min_n < 0:
+        raise ValueError("min_n must be an int >= 0")
+    t0 = time.perf_counter()
 
     where = ["has_timeline=1"]
     params: list = []
@@ -167,7 +243,12 @@ def compute_skill_wpa(
     sum_exp: dict[tuple[int, int], float] = {}
     sum_ts: dict[tuple[int, int], float] = {}
 
+    skip_evolve = _has_level_up_type(conn)
+
     for mid in match_ids:
+        # Per-match observations, merged only when the whole match is read
+        # cleanly, so a match skipped half-way contributes nothing.
+        obs: list[tuple[tuple[int, int], float, float, float]] = []
         try:
             frames = _load_frames(conn, mid)
             if not frames:
@@ -175,7 +256,7 @@ def compute_skill_wpa(
             meta = _participant_meta(conn, mid)
             if not meta:
                 continue
-            maxed = _first_maxed_basics(conn, mid)
+            maxed = _first_maxed_basics(conn, mid, skip_evolve=skip_evolve)
             for pid, (slot, ts_ms) in maxed.items():
                 pm = meta.get(pid)
                 if pm is None:
@@ -183,22 +264,23 @@ def compute_skill_wpa(
                 team_id, win, champ_id = pm
                 if champ_id <= 0:
                     continue
-                rows = _interpolate_frame_for_event(frames, int(ts_ms or 0))
+                rows = _interpolate_frame_for_event(frames, ts_ms)
                 if rows is None:  # max before any frame
                     continue
-                exp = _expected_win_for_team(
-                    rows, float(ts_ms or 0) / 1000.0, team_id, model
-                )
+                t_s = float(ts_ms) / 1000.0
+                exp = _expected_win_for_team(rows, t_s, team_id, model)
                 if exp is None:
                     continue
-                key = (champ_id, slot)
-                n_obs[key] = n_obs.get(key, 0) + 1
-                sum_obs[key] = sum_obs.get(key, 0.0) + float(win)
-                sum_exp[key] = sum_exp.get(key, 0.0) + exp
-                sum_ts[key] = sum_ts.get(key, 0.0) + float(ts_ms or 0) / 1000.0
-        except Exception as exc:  # noqa: BLE001 - one bad match cannot abort
-            log.warning("compute_skill_wpa: match %s -> %s", mid, exc)
+                obs.append(((champ_id, slot), float(win), float(exp), t_s))
+        except _MATCH_DATA_ERRORS as exc:
+            log.warning("compute_skill_wpa: match %s skipped -> %s: %s",
+                        mid, type(exc).__name__, exc)
             continue
+        for key, win_f, exp_f, t_s in obs:
+            n_obs[key] = n_obs.get(key, 0) + 1
+            sum_obs[key] = sum_obs.get(key, 0.0) + win_f
+            sum_exp[key] = sum_exp.get(key, 0.0) + exp_f
+            sum_ts[key] = sum_ts.get(key, 0.0) + t_s
 
     items_out: list[dict] = []
     for (champ_id, slot), n in n_obs.items():
@@ -229,7 +311,7 @@ def compute_skill_wpa(
         "queue_id": queue_id,
         "min_n": min_n,
         "items": items_out,
-        "elapsed_ms": int((time.time() - t0) * 1000),
+        "elapsed_ms": int((time.perf_counter() - t0) * 1000),
     }
 
 
@@ -243,16 +325,22 @@ def compute_skill_wpa_from_db(
 ) -> dict:
     """Convenience wrapper: open ``rewind_history.db`` read-only, load the
     persisted WPA model (or fall back), compute, close.
-    """
-    from pathlib import Path
 
-    # Anchored to the repo root, never the CWD (RM-1022).
-    default = Path(__file__).resolve().parent.parent / "data" / "rewind_history.db"
-    src = Path(db_path) if db_path is not None else default
-    if not src.exists():
+    Returns ``{"ok": False, "error": "rewind_history.db missing"}`` when
+    the DB is absent (or the path is not a regular file). ``sqlite3.Error``
+    from the sweep propagates (see ``compute_skill_wpa``).
+
+    The read-only URI goes through ``Path.as_uri``, which percent-encodes
+    the path: an f-string ``file:{path}?mode=ro`` let a '#' in the checkout
+    path cut the URI short, so SQLite opened (and, with ``?mode=ro`` lost
+    in the fragment, CREATED) a different file.
+    """
+    src = Path(db_path) if db_path is not None else _REWIND_DB
+    if not src.is_file():
         return {"ok": False, "error": "rewind_history.db missing"}
     model = load_model(model_path)
-    conn = sqlite3.connect(f"file:{src}?mode=ro", uri=True, timeout=5.0)
+    uri = src.absolute().as_uri() + "?mode=ro"
+    conn = sqlite3.connect(uri, uri=True, timeout=5.0)
     try:
         return compute_skill_wpa(
             conn, min_n=min_n, queue_id=queue_id, patch=patch, model=model
