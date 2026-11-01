@@ -68,7 +68,8 @@ def main() -> int:
 def _write(record: dict, ts: float) -> None:
     fname = _OUT_DIR / f"{int(ts)}.jsonl"
     try:
-        fname.write_text(json.dumps(record, default=str) + "\n", encoding="utf-8")
+        fname.write_text(json.dumps(record, default=str) + "\n", encoding="utf-8",
+                         newline="\n")
     except OSError as exc:
         # Best-effort. Nothing else listens to stderr from a scheduled task.
         sys.stderr.write(f"could not write {fname}: {exc}\n")

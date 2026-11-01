@@ -873,7 +873,7 @@ def main(argv=None):
         "canvas": [CANVAS_W, CANVAS_H],
         "ovscale": OVSCALE,
         "cells": results,
-    }, indent=2), encoding="utf-8")
+    }, indent=2), encoding="utf-8", newline="\n")
 
     print("=" * 78)
     print("MANIFEST")

@@ -277,7 +277,8 @@ def _emit(record: dict) -> None:
     try:
         with _VERDICT_JSONL.open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(record) + "\n")
-        _VERDICT_MD.write_text(render_verdict_md(record), encoding="utf-8")
+        _VERDICT_MD.write_text(render_verdict_md(record), encoding="utf-8",
+                               newline="\n")
     except Exception as exc:  # noqa: BLE001
         print(f"[lcu-push-watcher] verdict-file write failed: {exc}")
     print(f"[lcu-push-watcher] {v}: champ={champ} "

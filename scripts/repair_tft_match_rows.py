@@ -303,7 +303,8 @@ def backup(root: Path, stamp: str) -> Path:
             files[p.name] = _sha(p)
     manifest = {"created": datetime.now().isoformat(timespec="seconds"),
                 "matches_rows": n_src, "files": files}
-    (dest / "manifest.json").write_text(json.dumps(manifest, indent=1) + "\n", encoding="utf-8")
+    (dest / "manifest.json").write_text(json.dumps(manifest, indent=1) + "\n",
+                                        encoding="utf-8", newline="\n")
     return dest
 
 

@@ -238,7 +238,7 @@ def run_suite_fresh(cmd, out_path, owner=None):
         reason = (f"truth_gate: refused {head!r}: on Windows only a resolved .exe "
                   "head is launched (a .bat/.cmd runs under cmd.exe, which re-parses "
                   "its arguments)")
-        out_path.write_text(reason + "\n", encoding="utf-8")
+        out_path.write_text(reason + "\n", encoding="utf-8", newline="\n")
         obs = parse_pytest_summary("")
         obs.update({"exit_code": None, "cmd": cmd, "argv": argv, "gated": False,
                     "gate_refused": False, "head_refused": True,
@@ -246,7 +246,7 @@ def run_suite_fresh(cmd, out_path, owner=None):
         return obs
     run_argv = gate_argv(argv, owner)
     gated = run_argv != argv
-    with open(out_path, "w", encoding="utf-8", errors="replace") as fh:
+    with open(out_path, "w", encoding="utf-8", errors="replace", newline="\n") as fh:
         try:
             rc = subprocess.run(run_argv, cwd=str(ROOT),
                                 stdout=fh, stderr=subprocess.STDOUT).returncode

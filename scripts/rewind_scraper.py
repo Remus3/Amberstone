@@ -662,7 +662,7 @@ def main():
         if not history:
             print("ERROR: Could not fetch history. Exiting.")
             sys.exit(1)
-        hist_cache.write_text(json.dumps(history), encoding="utf-8")
+        hist_cache.write_text(json.dumps(history), encoding="utf-8", newline="\n")
         print(f"Cached {len(history)} matches ({hist_cache.stat().st_size//1024//1024}MB)")
 
     total = len(history)

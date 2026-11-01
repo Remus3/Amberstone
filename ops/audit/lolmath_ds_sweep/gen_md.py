@@ -153,7 +153,7 @@ for cid, kit, nb, ub, dsm, lmd, dsd, ov, fl, gc in rows:
         normal_disp = nb if len(nb) >= 5 else cur
         L.append(f"| {cid} | {sh(normal_disp)} | {sh(ub)} |")
 
-open(OUT, "w", encoding="utf-8").write("\n".join(L) + "\n")
+open(OUT, "w", encoding="utf-8", newline="\n").write("\n".join(L) + "\n")
 print("WROTE", OUT, "| rows", len(rows), "covered", covered)
 print("G1", len(mism), mism)
 print("ult!=normal", len(ult_diff), ult_diff[:20])

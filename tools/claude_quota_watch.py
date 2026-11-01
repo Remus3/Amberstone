@@ -99,7 +99,7 @@ def main() -> None:
         )
         state["alerted_reset"] = reset
         STATE.parent.mkdir(parents=True, exist_ok=True)
-        STATE.write_text(json.dumps(state), encoding="utf-8")
+        STATE.write_text(json.dumps(state), encoding="utf-8", newline="\n")
 
 
 if __name__ == "__main__":

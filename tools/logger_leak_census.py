@@ -222,9 +222,9 @@ class _Census:
         text = "\n".join(lines)
         try:
             os.makedirs(_REPORT_DIR, exist_ok=True)
-            with open(_REPORT_JSON, "w", encoding="utf-8") as fh:
+            with open(_REPORT_JSON, "w", encoding="utf-8", newline="\n") as fh:
                 json.dump(payload, fh, indent=2)
-            with open(_REPORT_TXT, "w", encoding="utf-8") as fh:
+            with open(_REPORT_TXT, "w", encoding="utf-8", newline="\n") as fh:
                 fh.write(text + "\n")
         except Exception as exc:  # noqa: BLE001 - never break the run over a report
             text += f"\n(could not write the report files: {exc})\n"

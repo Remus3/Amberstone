@@ -10,8 +10,9 @@ to end. This module covers the wider sweep without a test per tool:
 2. The LF helpers the sweep routes through - ``core.polled_json
    .atomic_write_text`` and ``scripts.data_pipeline._atomic_write_text`` -
    stay LF under that harness (they write bytes).
-3. A static AST guard over the swept regenerators: no ``.write_text(`` call,
-   and no text-mode ``open`` / ``os.fdopen`` in write mode without an explicit
+3. A static AST guard over the swept regenerators: no ``.write_text(`` call
+   without an explicit ``newline=`` (RM-481 closing sweep, s144: a
+   ``write_text(..., newline="\\n")`` is LF-safe), and no text-mode ``open`` / ``os.fdopen`` in write mode without an explicit
    ``newline=``. Append-mode log sinks are out of scope (never tracked).
 4. RM-481 residual (s144): ``csv.writer`` / ``csv.DictWriter`` without an
    explicit ``lineterminator=``. The csv module's default terminator is
@@ -84,6 +85,27 @@ SWEPT_WRITERS = (
     # data/api_surface.csv (csv default terminator CRLF), and --md writes the
     # report with Path.write_text.
     "scripts/audit_api_surface.py",
+)
+
+# RM-481 closing sweep (s144): the remaining one-file report / manifest / state
+# writers outside the lists above. None of them regenerates a TRACKED file
+# (measured 2026-11-01: their outputs sit on the Desktop, under ops/runtime,
+# or in gitignored report directories), but each rewrites a whole file that a
+# diff, a reader or a sibling writer compares byte-for-byte, so they emit LF on
+# Windows too. ops/rc_incident_log.py is deliberately NOT here: its
+# incident_log.jsonl is APPENDED in text mode (CRLF on Windows), so converting
+# only its trim rewrite would leave a mixed-EOL file.
+SWEPT_REPORT_WRITERS = (
+    "ops/audit/lolmath_ds_sweep/gen_md.py",
+    "scripts/repair_tft_match_rows.py",
+    "scripts/rewind_scraper.py",
+    "tools/claude_quota_watch.py",
+    "tools/lcu_push_watcher.py",
+    "tools/live_flip_watcher.py",
+    "tools/logger_leak_census.py",
+    "tools/overlay_legibility_preview.py",
+    "tools/scheduled_boot_verify.py",
+    "tools/truth_gate.py",
 )
 
 _PAYLOAD = json.dumps({"a": 1, "b": [1, 2], "c": {"d": None}}, indent=2) + "\n"
@@ -160,7 +182,10 @@ def _violations(source: str) -> list[str]:
         fn = node.func
         name = fn.attr if isinstance(fn, ast.Attribute) else getattr(fn, "id", "")
         if name == "write_text":
-            out.append(f"line {node.lineno}: write_text")
+            # Path.write_text(newline=) is LF-safe (Python 3.10+; the repo
+            # runs 3.14), so only the bare form is a violation.
+            if not any(kw.arg == "newline" for kw in node.keywords):
+                out.append(f"line {node.lineno}: write_text without newline=")
             continue
         if (name in ("writer", "DictWriter") and isinstance(fn, ast.Attribute)
                 and getattr(fn.value, "id", None) == "csv"):
@@ -192,6 +217,7 @@ def test_guard_detects_both_shapes():
     good = (
         "import os\nfrom pathlib import Path\n"
         "Path('x').write_bytes(b'a')\n"
+        "Path('x').write_text('a', encoding='utf-8', newline='\\n')\n"
         "open('x', 'w', encoding='utf-8', newline='\\n')\n"
         "open('x', 'a', encoding='utf-8')\n"
         "open('x', 'rb')\n"
@@ -243,7 +269,7 @@ def test_audit_api_surface_writers_emit_lf(tmp_path, force_crlf, monkeypatch):
     assert _crlf_count(md_out) == 0
 
 
-@pytest.mark.parametrize("rel", SWEPT_WRITERS)
+@pytest.mark.parametrize("rel", SWEPT_WRITERS + SWEPT_REPORT_WRITERS)
 def test_swept_regenerator_has_no_text_mode_write(rel):
     path = _ROOT / rel
     assert path.is_file(), f"{rel} missing - update SWEPT_WRITERS"
