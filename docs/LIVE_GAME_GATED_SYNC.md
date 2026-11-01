@@ -1554,6 +1554,8 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   them have ever been eyeballed. **Separately, this row does NOT close RM-42:** its ordering claim
   needs the second shot's on-hit APPLICATION + independent crit, which is a different build, and
   `test_rm42_ordering_claim_is_NOT_closed_by_this_slice` holds that open.
+  **READY (lane 9 PREP s144 cycle 48; NOT a tick):** see the shared DS-flag eyeball READY block
+  under G2-44 (one tool, `tools/gated_ds_flag_eyeball.py --row G2-47`).
 
 - **G2-46** RM-36 / RM-38 `apply_ad_axis_ability_damage` on the CARRY ranker (ENGINE 1.272.0,
   `rank.rank_items` + `/rank` + `core/daemon_slayer_client.rank_for`). Route exposure is SHIPPED and
@@ -1570,6 +1572,8 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   an ON list that over-weights ability items is the EXPECTED failure, not a surprise. A default-ON
   flip stays blocked on RM-98 exactly as it does for the bruiser scorer; do not read this row as
   proposing one.
+  **READY (lane 9 PREP s144 cycle 48; NOT a tick):** see the shared DS-flag eyeball READY block
+  under G2-44 (one tool, `tools/gated_ds_flag_eyeball.py --row G2-46`).
 
 - **G2-43** RM-41 `exclude_off_axis_items` default-ON flip (ENGINE 1.240.0, `ds.burst`). The seam
   strips a burst candidate whose offense sits entirely on the champion's OFF damage axis. Headless
@@ -1581,6 +1585,8 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   no legitimate hybrid or defensive buy disappeared. **Do NOT flip blind** - a strip is invisible in
   the UI (the item simply is not there), so a wrong exclusion cannot be caught by looking at what IS
   shown. SOURCE: agents/daemon_slayer/CHANGELOG.md 1.240.0 + ROADMAP RM-41.
+  **READY (lane 9 PREP s144 cycle 48; NOT a tick):** see the shared DS-flag eyeball READY block
+  under G2-44 (one tool, `tools/gated_ds_flag_eyeball.py --row G2-43`).
 - **G2-44** RM-35 clause 2 `exclude_off_axis_items` on the CARRY route default-ON flip (ENGINE
   1.247.0, `rank.rank_items` + `/rank`). Same seam and same gate as G2-43, now extended from
   `ds.burst` to the carry scorer. Headless is DONE: Miss Fortune Lich Bane #6 and Rabadon's #14
@@ -1592,6 +1598,57 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   question as G2-43 - play a crit ADC with a short fight_length mapped (Jhin / Jinx / Caitlyn /
   Twitch) and confirm no legitimate hybrid or defensive buy vanished from the served list. **Do NOT
   flip blind** - a strip is invisible in the UI. SOURCE: ROADMAP RM-35 + CHANGELOG 1.247.0.
+  **READY - shared DS-flag eyeball block for G2-43 / G2-44 / G2-46 (RM-36) / G2-47 (lane 9 PREP s144
+  cycle 48, source read at `6b36d2dd8`; NOT a tick, and NOT a default-flip request).** Four measured
+  facts shape all four rows. (1) The flags never reach the screen today: `_route_rank` parses
+  `exclude_off_axis_items`, `apply_ad_axis_ability_damage`, `apply_passive_damage` and
+  `apply_extra_shot_procs` off the body with default False, `_route_rank_assassin` parses
+  `exclude_off_axis_items` the same way (`agents/daemon_slayer/server.py`), and `rank_for` /
+  `rank_assassin_for` (`core/daemon_slayer_client.py`) default every one of them False and emit it
+  only when set. So the ON list is something the drain COMPUTES in the live context and the
+  operator READS; no glance at the panel can show it. (2) A strip is invisible, so the useful
+  output for G2-43 / G2-44 is what LEFT the top-8 and what left the whole pool. The route does not
+  cap `top`, so the tool asks for 200 rows and the pool is complete when fewer come back; a strip
+  seam that ADDS a candidate to a complete pool is an ANOMALY, not a judgement call. (3) The carry
+  chokepoint `rank_for_primary_archetype` forwards `champion_fight_length` (Twitch / Jhin / Jinx /
+  Caitlyn 0.5, `core/ds_champion_fight_length.py`), so the tool sends the same value on `/rank`;
+  it does NOT replay the chokepoint's squishy-target swap or its post-call window filter, so the
+  OFF list need not equal the rendered Meta Build row (that function also re-ranks over a wider
+  coherence window and drops ranged off-class rows after the call) - the rows grade the flag's DELTA in a live
+  context, never the panel. (4) G2-47's two flags are paired by construction: a pair whose ON body
+  lacks either one is rejected as malformed. PROBE (main checkout, any SR game, the champion on the
+  row, once at or after level 11): `python tools/gated_ds_flag_eyeball.py capture --row <ROW> >>
+  <evidence dir>/ds_flag_pairs.jsonl` (inputs off `/api/state` the way the Meta Build panel reads
+  them: `coach.champion`, `coach.level`, `liveclient.owned_item_ids`, `mode_key`; two compute-only
+  POSTs to DS `:8860`, no state write), then after the game `python tools/gated_ds_flag_eyeball.py
+  grade <evidence dir>/ds_flag_pairs.jsonl --row <ROW> --json`. COVERAGE (machine-checked, one live
+  pair from each group): G2-43 one of Akali / Katarina / Fizz AND one of Zed / Talon; G2-44 one of
+  Jhin / Jinx / Caitlyn / Twitch; G2-46 Corki (Ezreal optional, and when present it MUST come back
+  with an identical top-8, the null control); G2-47 Akshan AND one of Warwick / Gwen / Kog'Maw.
+  PREDICATES (stated now, before any game): the tool's `NEEDS_EYEBALL` is the precondition, never
+  the tick (it has no PASS verdict). G2-43 / G2-44 PASS iff, for every graded pair, the operator
+  reads `left top` plus the stripped-pool list and names NO item in them they would actually buy on
+  that champion in that game (a hybrid or defensive buy); FAIL iff they name one (record which). For
+  Twitch, Lich Bane leaving the top-8 is the measured headless expectation, not a FAIL. G2-46 PASS
+  iff no item in Corki's `entered top` is an ability item a marksman never buys; an ON list that
+  over-weights ability items is the EXPECTED failure (RM-98 mixed time base) and is a FAIL, not a
+  surprise. G2-47 PASS iff the ON top-8 is not dominated by raw attack speed, defined now as: fewer
+  than 5 of the 8 are attack-speed-primary items by the operator's classification, for Akshan and
+  for the second champion. `INCOMPLETE` leaves the row open; `ANOMALY` leaves it open and is filed
+  as its own finding. EVIDENCE CONTRACT: the pairs file and the `grade --json` output verbatim, the
+  wall time of each capture inside the recorded game window, mode, queue, champion, level and
+  `game_time_s`, and the operator's one-line verdict per champion naming the items they judged. The
+  pairs hold champion names and item ids only, but stay in the evidence dir, never committed.
+  SUBSTITUTION CHECK: the pair answers what the engine COMPUTES with the flag ON in a live context;
+  the row asks whether that list READS SANE to a player, and only the operator's read answers it.
+  A pair captured with `--champion/--level/--items` carries no `game_time_s` and is rejected as not
+  live, and a PARTIAL override is refused (it would mix a hand-given champion with the live game's
+  level and items); a pair whose `ts` falls outside the recorded game window is not evidence either (the tool
+  cannot see a hand-edited `game_time_s`, the window check can). None of the four rows proposes a
+  default flip; G2-47 in particular arms every kit-passive registry entry at once. Tool tests:
+  `tests/test_gated_ds_flag_eyeball.py` (hand-built rows; pins the bodies, the G2-47 pairing, the
+  strip anomaly, the null control, coverage, the partial-override refusal, and against source the
+  four route flag defaults, the route's uncapped `top`, and the chokepoint's `fight_length` forward).
 - **G2-45** (filed R221 2026-07-28) `MinionsSpawning` live payload + the cannon-cadence table.
   R221 shipped the extract (`dashboard/_liveclient.py:387-402` -> `minion_spawn_events`) and the pure
   clock (`dashboard/_wave_timing.py`), both green against fixtures. TWO things fixtures cannot settle,
