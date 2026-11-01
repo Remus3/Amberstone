@@ -376,9 +376,13 @@
   --hextech-border: oklch(0.82 0.110 195 / .26);
 
   /* Status left at base semantic green/amber/red; aqua + gold do not collide.
-   * info shifts to an aqua-blue to sit inside the theme. */
+   * info shifts to an aqua-blue to sit inside the theme; its -soft tint
+   * shifts with it, or base.css's hextech-blue --info-soft would paint
+   * beside the aqua --info rail (RM-1318). */
   --info:          #49bfd9;
   --info:          oklch(0.75 0.110 215);
+  --info-soft:     rgba(73,191,217,.18);
+  --info-soft:     oklch(0.75 0.110 215 / .18);
 
   --radius:        14px;
   --radius-sm:     9px;
