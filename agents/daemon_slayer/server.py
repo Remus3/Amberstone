@@ -65,6 +65,7 @@ from core.log_scrub import scrub_log as _scrub_log
 from core.log_scrub import install_scrub_filter as _install_scrub_filter
 
 from . import ENGINE_VERSION
+from ._log_names import LOGGER_NAMES as _ENGINE_LOGGER_NAMES
 from .abilities import AbilitiesSnapshot
 from .ability_dps import (
     _BLOCK_INDEX_CONDITIONS,
@@ -116,7 +117,9 @@ _log = logging.getLogger("daemon_slayer.server")
 # newline in it forged a log line, an ESC reached the console, a 100k text
 # was one 100k line. The filter renders it through scrub_traceback (one
 # scrubbed line, every line capped at MAX_LINE_CHARS).
-_install_scrub_filter(_log)
+# RM-1280: a logger filter sees only its own records, so every engine
+# module's logger gets one too (the names: agents/daemon_slayer/_log_names).
+_install_scrub_filter(_log, *_ENGINE_LOGGER_NAMES)
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8860

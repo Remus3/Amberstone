@@ -15,6 +15,7 @@ every future one. LOGGER_NAMES is enumerated from source by
 tests/test_log_scrub_residuals_rm811b.py, so a module that adds a new
 logger name fails that guard until it is listed.
 """
+from agents.daemon_slayer._log_names import LOGGER_NAMES as _DS_LOGGER_NAMES
 from core.log_scrub import install_scrub_filter as _install_scrub_filter
 
 LOGGER_NAMES = (
@@ -32,3 +33,6 @@ LOGGER_NAMES = (
 )
 
 _install_scrub_filter(*LOGGER_NAMES)
+# RM-1280: the dashboard routes call the DS engine in-process, and the
+# engine stays core-free, so its loggers get the backstop here as well.
+_install_scrub_filter(*_DS_LOGGER_NAMES)
