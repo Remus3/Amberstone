@@ -383,6 +383,11 @@
   --info:          oklch(0.75 0.110 215);
   --info-soft:     rgba(73,191,217,.18);
   --info-soft:     oklch(0.75 0.110 215 / .18);
+  /* --prim-* re-tinted to match --info and --gold above so the derived
+   * --signal-info / --signal-info-soft / --signal-gold layer (tokens.css)
+   * follows them instead of keeping hextech blue + gold (RM-1319). */
+  --prim-blue:  73, 191, 217;    /* #49bfd9 */
+  --prim-gold:  231, 191, 87;    /* #e7bf57 */
 
   --radius:        14px;
   --radius-sm:     9px;
@@ -442,6 +447,9 @@
   --clock:         oklch(0.72 0.045 305);
   --gold-soft:     rgba(173,157,189,.18);
   --gold-soft:     oklch(0.72 0.045 305 / .18);
+  /* --prim-gold follows --gold so the derived --signal-gold (tokens.css)
+   * paints the lavender-silver hero metal, not hextech gold (RM-1319). */
+  --prim-gold:  173, 157, 189;   /* #ad9dbd */
   --border:        rgba(173,157,189,.30);
   --border:        oklch(0.72 0.045 305 / .30);
   --border-soft:   rgba(173,157,189,.18);
