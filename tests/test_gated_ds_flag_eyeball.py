@@ -29,7 +29,8 @@ def _pair(row, champion, off_ids, on_ids, *, gt=600.0, top=eb.POOL_TOP, on_flags
         on_body = dict(off_body)
         on_body.update({f: True for f in on_flags})
     return {"ts": "2026-10-31T00:00:00+00:00", "row": row, "champion": champion,
-            "level": 11, "game_time_s": gt, "body_off": off_body, "body_on": on_body,
+            "level": 11, "game_time_s": gt, "items_source": "owned_item_ids",
+            "body_off": off_body, "body_on": on_body,
             "off": _rows(off_ids), "on": _rows(on_ids)}
 
 
@@ -134,7 +135,7 @@ def test_capture_reads_panel_inputs_and_posts_two_bodies():
     rec = eb.capture("G2-47", state_fn=lambda: state, post_fn=post, now="T")
     assert rec["ok"] is True and rec["source"] == "api_state"
     assert rec["champion"] == "Akshan" and rec["level"] == 12 and rec["mode"] == "SR"
-    assert rec["game_time_s"] == 812.5
+    assert rec["game_time_s"] == 812.5 and rec["items_source"] == "owned_item_ids"
     assert [c[0] for c in calls] == ["/rank", "/rank"]
     assert eb.check_pair(rec) is None
     assert calls[1][1]["apply_passive_damage"] is True
@@ -142,14 +143,14 @@ def test_capture_reads_panel_inputs_and_posts_two_bodies():
 
 
 def test_capture_with_args_has_no_game_time_so_it_never_grades():
-    rec = eb.capture("G2-43", champion="Akali", level=11, items=[],
+    rec = eb.capture("G2-43", champion="Akali", level=11, items=[], mode="SR",
                      post_fn=lambda p, b: _rows(["a"]), now="T")
     assert rec["source"] == "args" and rec["game_time_s"] is None
     assert eb.grade([rec], "G2-43")["verdict"] == "INCOMPLETE"
 
 
 def test_capture_engine_down_is_not_ok():
-    rec = eb.capture("G2-46", champion="Corki", level=11, items=[],
+    rec = eb.capture("G2-46", champion="Corki", level=11, items=[], mode="SR",
                      post_fn=lambda p, b: None, now="T")
     assert rec["ok"] is False
     assert "missing off / on" in eb.check_pair(rec)
@@ -222,3 +223,87 @@ def test_source_facts_rankers_slice_only_by_top_n():
     for rel in (("agents", "daemon_slayer", "rank.py"), ("agents", "daemon_slayer", "burst.py")):
         text = (ROOT.joinpath(*rel)).read_text(encoding="utf-8")
         assert "ranked = ranked[:top_n]" in text
+
+
+# RM-1290 (s144 lane gated c49): the pass-2 verifier NITs on c48's tool.
+
+_LIVE = {"mode_key": "sr", "coach": {"champion": "Akali", "level": 11},
+         "liveclient": {"owned_item_ids": ["s1"], "game_time_s": 700.0}}
+
+
+def test_mode_alone_is_a_partial_override_and_is_refused():
+    import pytest
+    with pytest.raises(ValueError):
+        eb.capture("G2-43", mode="SR", state_fn=lambda: _LIVE,
+                   post_fn=lambda p, b: _rows(["a"]), now="T")
+    with pytest.raises(ValueError):
+        eb.capture("G2-43", champion="Zed", level=11, items=["s1"],
+                   state_fn=lambda: _LIVE, post_fn=lambda p, b: _rows(["a"]), now="T")
+
+
+def test_full_override_is_stamped_args_items_source():
+    rec = eb.capture("G2-43", champion="Zed", level=11, items=["s1"], mode="SR",
+                     post_fn=lambda p, b: _rows(["a"]), now="T")
+    assert rec["source"] == "args" and rec["items_source"] == "args"
+
+
+def test_live_non_sr_pair_is_rejected_not_graded_and_not_an_anomaly():
+    state = dict(_LIVE, mode_key="aram")
+    rec = eb.capture("G2-43", state_fn=lambda: state, post_fn=lambda p, b: _rows(["a"]), now="T")
+    assert rec["source"] == "api_state" and rec["body_off"]["mode"] == "ARAM"
+    res = eb.grade([rec], "G2-43")
+    assert res["graded"] == [] and res["verdict"] == "INCOMPLETE"
+    assert res["rejected"][0]["why"].startswith("not SR")
+
+
+def test_live_pair_without_owned_item_ids_is_rejected():
+    state = {"mode_key": "sr", "coach": {"champion": "Akali", "level": 11},
+             "liveclient": {"owned_item_ids": [], "game_time_s": 700.0}}
+    rec = eb.capture("G2-43", state_fn=lambda: state, post_fn=lambda p, b: _rows(["a"]), now="T")
+    assert rec["items_source"] == "none"
+    res = eb.grade([rec], "G2-43")
+    assert res["graded"] == [] and res["verdict"] == "INCOMPLETE"
+    assert res["rejected"][0]["why"].startswith("not panel items")
+
+
+def test_pair_missing_items_source_is_not_evidence():
+    p = _pair("G2-44", "Jhin", ["a", "b"], ["a"])
+    del p["items_source"]
+    res = eb.grade([p], "G2-44")
+    assert res["verdict"] == "INCOMPLETE" and res["graded"] == []
+    assert res["rejected"][0]["why"] == "not panel items (items_source None)"
+
+
+def test_live_sr_pair_with_panel_items_grades():
+    zed = dict(_LIVE, coach={"champion": "Zed", "level": 11})
+    a = eb.capture("G2-43", state_fn=lambda: _LIVE, post_fn=lambda p, b: _rows(["a"]), now="T")
+    z = eb.capture("G2-43", state_fn=lambda: zed, post_fn=lambda p, b: _rows(["a"]), now="T")
+    assert eb.grade([a, z], "G2-43")["verdict"] == "NEEDS_EYEBALL"
+
+
+def test_rows_carry_no_dead_keys():
+    for spec in eb.ROWS.values():
+        assert set(spec) == {"route", "flags", "kind", "need", "null_control"}
+
+
+def test_source_facts_no_clamp_on_top_in_routes_or_rankers():
+    """The route reads ``top`` with default 20 and passes it straight through;
+    the rankers only slice by it. A min() / max() clamp anywhere on that path
+    would make POOL_TOP=200 silently truncate and a full pool look complete."""
+    import re
+    src = (ROOT / "agents" / "daemon_slayer" / "server.py").read_text(encoding="utf-8")
+    for name in ("_route_rank", "_route_rank_assassin"):
+        body = src[src.index(f"def {name}(body"):]
+        body = body[:body.index("\ndef ", 10)]
+        lines = [ln.strip() for ln in body.splitlines()
+                 if re.search(r"\btop_n\b", ln) and not ln.strip().startswith("#")]
+        assert lines == ['top_n = _opt_int(body, "top", 20)', "if top_n is None:",
+                         "top_n = 20", "budget=budget, slot_count=slot_count, top_n=top_n,"], name
+    # In the rankers top_n is only a parameter and a slice bound: no
+    # reassignment (a bare ``top_n =`` statement) and no min() / max() over it.
+    assign = re.compile(r"^\s*top_n\s*=(?!=)")
+    clamp = re.compile(r"\b(?:min|max)\([^)]*\btop_n\b")
+    for rel in (("agents", "daemon_slayer", "rank.py"), ("agents", "daemon_slayer", "burst.py")):
+        text = (ROOT.joinpath(*rel)).read_text(encoding="utf-8")
+        hits = [ln.strip() for ln in text.splitlines() if assign.search(ln) or clamp.search(ln)]
+        assert hits == [], (rel, hits)

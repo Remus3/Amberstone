@@ -38,8 +38,9 @@ Facts that shape the check (measured at source, s144 lane gated c48):
 Sub-commands:
 
   capture --row ROW [--champion C --level N --items a,b --mode SR]
-      NETWORK, compute only (GET /api/state on :8888 unless every input is
-      given, then two POSTs to the DS :8860 route with the same body, flag(s)
+      NETWORK, compute only (GET /api/state on :8888 unless all four inputs
+      are given - a partial override, --mode alone included, is refused -
+      then two POSTs to the DS :8860 route with the same body, flag(s)
       OFF and ON; no RC or DS state write, no LCU call). Prints ONE pair line
       (JSON) on stdout; the caller redirects it to its own evidence file. The
       tool writes no file. For the drain session only, never PREP.
@@ -51,6 +52,12 @@ Sub-commands:
       anomaly: the lists are ready for the operator's read, which is the
       tick), INCOMPLETE (a required champion is missing, or no live pair),
       ANOMALY (a strip seam added a candidate, or a pair is malformed).
+      A well-formed pair that is not evidence is rejected without being
+      graded: no ``game_time_s`` (not live), a body mode other than SR (the
+      rows are SR rows), or owned items not read off
+      ``liveclient.owned_item_ids`` (``items_source`` other than
+      "owned_item_ids": the panel then falls back to sources this tool does
+      not replicate, ``tools/gated_g238_top_pick_flip.py`` ``panel_inputs``).
       There is no PASS verdict: the tool never ticks the row.
 
 Exit 0 = NEEDS_EYEBALL (grade) or success (capture); 3 = INCOMPLETE / ANOMALY;
@@ -75,26 +82,45 @@ if str(_REPO) not in sys.path:
 # PHYSICAL row carries ap_pct_sum 200.0 and the term drops it).
 ROWS: dict[str, dict[str, Any]] = {
     "G2-43": {"route": "/rank-assassin", "flags": ("exclude_off_axis_items",),
-              "kind": "strip", "score": "delta_burst",
+              "kind": "strip",
               "need": (("akali", "katarina", "fizz"), ("zed", "talon")),
               "null_control": ()},
     "G2-44": {"route": "/rank", "flags": ("exclude_off_axis_items",),
-              "kind": "strip", "score": "effective_score",
+              "kind": "strip",
               "need": (("jhin", "jinx", "caitlyn", "twitch"),),
               "null_control": ()},
     "G2-46": {"route": "/rank", "flags": ("apply_ad_axis_ability_damage",),
-              "kind": "reorder", "score": "effective_score",
+              "kind": "reorder",
               "need": (("corki",),),
               "null_control": ("ezreal",)},
     "G2-47": {"route": "/rank",
               "flags": ("apply_passive_damage", "apply_extra_shot_procs"),
-              "kind": "reorder", "score": "effective_score",
+              "kind": "reorder",
               "need": (("akshan",), ("warwick", "gwen", "kogmaw")),
               "null_control": ()},
 }
 
 POOL_TOP = 200     # ask for the whole pool so a strip anomaly is decidable
 DEFAULT_TOP = 8    # the served list length the panel shows
+LIVE_ITEMS_SOURCE = "owned_item_ids"   # panel_inputs' only graded items source
+
+
+def not_evidence(pair: dict) -> Optional[str]:
+    """None when a well-formed pair is live SR panel-input evidence, else why.
+
+    Checked after ``check_pair``. Every reason starts with "not " so the grade
+    keeps these apart from malformed pairs (ANOMALY): a non-evidence pair
+    leaves the row INCOMPLETE, it never raises a finding."""
+    gt = pair.get("game_time_s")
+    if not isinstance(gt, (int, float)) or isinstance(gt, bool):
+        return "not live (no game_time_s)"
+    mode = str((pair.get("body_off") or {}).get("mode") or "")
+    if mode != "SR":
+        return f"not SR (body mode {mode!r})"
+    src = pair.get("items_source")
+    if src != LIVE_ITEMS_SOURCE:
+        return f"not panel items (items_source {src!r})"
+    return None
 
 
 def _norm(name: Any) -> str:
@@ -206,9 +232,9 @@ def grade(pairs: list[dict], row: str, *, top: int = DEFAULT_TOP) -> dict:
         if why:
             rejected.append({"ts": p.get("ts"), "champion": p.get("champion"), "why": why})
             continue
-        if not isinstance(p.get("game_time_s"), (int, float)) or isinstance(p.get("game_time_s"), bool):
-            rejected.append({"ts": p.get("ts"), "champion": p.get("champion"),
-                             "why": "not live (no game_time_s)"})
+        why = not_evidence(p)
+        if why:
+            rejected.append({"ts": p.get("ts"), "champion": p.get("champion"), "why": why})
             continue
         d = diff_pair(p, top=top)
         if _norm(p.get("champion")) in spec["null_control"] and not d["identical_top"]:
@@ -217,7 +243,7 @@ def grade(pairs: list[dict], row: str, *, top: int = DEFAULT_TOP) -> dict:
         graded.append(d)
     seen = {_norm(d["champion"]) for d in graded}
     missing = [list(g) for g in spec["need"] if not seen.intersection(g)]
-    malformed = [r for r in rejected if not r["why"].startswith("not live")]
+    malformed = [r for r in rejected if not r["why"].startswith("not ")]
     if anomalies or malformed:
         verdict = "ANOMALY"
     elif missing or not graded:
@@ -235,22 +261,23 @@ def capture(row: str, *, champion: Optional[str] = None, level: Optional[int] = 
             post_fn: Optional[Callable[[str, dict], Optional[dict]]] = None,
             now: Optional[str] = None) -> dict:
     """One OFF/ON pair in the live context. Compute only."""
-    overrides = [v is not None for v in (champion, level, items)]
+    overrides = [v is not None for v in (champion, level, items, mode)]
     if any(overrides):
         # Any hand-given input means the pair is NOT the live context: it is
         # stamped "args" with no game_time_s, so grade rejects it as not live.
         # A partial override is refused outright rather than mixed with the
         # live state (a Zed pair built from an Akali game's level and items
-        # would otherwise pose as live coverage).
+        # would otherwise pose as live coverage; a hand-given --mode SR would
+        # dress a live ARAM pair up as an SR one).
         if not all(overrides):
-            raise ValueError("give all of --champion --level --items, or none")
-        source, game_time = "args", None
+            raise ValueError("give all of --champion --level --items --mode, or none")
+        source, game_time, items_source = "args", None, "args"
     else:
         from tools.gated_g238_top_pick_flip import _get_state, panel_inputs
         inp = panel_inputs((state_fn or _get_state)())
         source, game_time = "api_state", inp.get("game_time_s")
         champion, level, items = inp["champion"], inp["level"], inp["items"]
-        mode = mode or inp["mode"]
+        mode, items_source = inp["mode"], inp["items_source"]
     inputs = {"champion": champion, "level": level, "items": items, "mode": mode or "SR"}
     off_body, on_body = build_bodies(row, inputs)
     if post_fn is None:
@@ -263,6 +290,7 @@ def capture(row: str, *, champion: Optional[str] = None, level: Optional[int] = 
     return {"ts": now or datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "row": row, "route": path, "source": source, "champion": champion,
             "level": level, "items": list(items), "mode": inputs["mode"],
+            "items_source": items_source,
             "game_time_s": game_time, "body_off": off_body, "body_on": on_body,
             "off": off, "on": on, "ok": off is not None and on is not None}
 

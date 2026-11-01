@@ -1621,7 +1621,11 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   <evidence dir>/ds_flag_pairs.jsonl` (inputs off `/api/state` the way the Meta Build panel reads
   them: `coach.champion`, `coach.level`, `liveclient.owned_item_ids`, `mode_key`; two compute-only
   POSTs to DS `:8860`, no state write), then after the game `python tools/gated_ds_flag_eyeball.py
-  grade <evidence dir>/ds_flag_pairs.jsonl --row <ROW> --json`. COVERAGE (machine-checked, one live
+  grade <evidence dir>/ds_flag_pairs.jsonl --row <ROW> --json`. Grade rejects, without grading and
+  without an ANOMALY, a pair whose body mode is not `SR` and a pair whose `items_source` is not
+  `owned_item_ids` (an empty `liveclient.owned_item_ids`: the panel then falls back to item sources
+  the tool does not replicate), so a capture taken in an ARAM game or before the item read is up
+  never counts toward coverage (s144 c49, RM-1290). COVERAGE (machine-checked, one live
   pair from each group): G2-43 one of Akali / Katarina / Fizz AND one of Zed / Talon; G2-44 one of
   Jhin / Jinx / Caitlyn / Twitch; G2-46 Corki (Ezreal optional, and when present it MUST come back
   with an identical top-8, the null control); G2-47 Akshan AND one of Warwick / Gwen / Kog'Maw.
@@ -1641,14 +1645,17 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   pairs hold champion names and item ids only, but stay in the evidence dir, never committed.
   SUBSTITUTION CHECK: the pair answers what the engine COMPUTES with the flag ON in a live context;
   the row asks whether that list READS SANE to a player, and only the operator's read answers it.
-  A pair captured with `--champion/--level/--items` carries no `game_time_s` and is rejected as not
-  live, and a PARTIAL override is refused (it would mix a hand-given champion with the live game's
-  level and items); a pair whose `ts` falls outside the recorded game window is not evidence either (the tool
+  A pair captured with `--champion/--level/--items/--mode` carries no `game_time_s` and is rejected
+  as not live, and a PARTIAL override is refused, `--mode` alone included (it would mix a hand-given
+  champion or mode with the live game's own inputs); a pair whose `ts` falls outside the recorded game window is not evidence either (the tool
   cannot see a hand-edited `game_time_s`, the window check can). None of the four rows proposes a
   default flip; G2-47 in particular arms every kit-passive registry entry at once. Tool tests:
   `tests/test_gated_ds_flag_eyeball.py` (hand-built rows; pins the bodies, the G2-47 pairing, the
-  strip anomaly, the null control, coverage, the partial-override refusal, and against source the
-  four route flag defaults, the route's uncapped `top`, and the chokepoint's `fight_length` forward).
+  strip anomaly, the null control, coverage, the partial-override refusal, the SR and
+  `items_source` rejections, and against source the four route flag defaults, the route's
+  default-20 `top` read passed straight through with no reassignment or min/max clamp in the route
+  or in the `rank.py` / `burst.py` rankers, the rankers' `ranked[:top_n]` cut, and the chokepoint's
+  `fight_length` forward).
 - **G2-45** (filed R221 2026-07-28) `MinionsSpawning` live payload + the cannon-cadence table.
   R221 shipped the extract (`dashboard/_liveclient.py:387-402` -> `minion_spawn_events`) and the pure
   clock (`dashboard/_wave_timing.py`), both green against fixtures. TWO things fixtures cannot settle,
