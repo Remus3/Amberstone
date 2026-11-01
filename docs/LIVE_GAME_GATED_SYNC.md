@@ -1428,6 +1428,73 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   intermittent DS error in the RC log during the window voids it too.
 - **G2-39** (was B29) QA6 fullscreen-detect "switch to Borderless" hint + QA13 UIPI elevation-parity
   detect final validation. Low-confidence inferred rows - **build headless first**.
+  **READY, BLOCKED ON BUILD (lane 9 PREP s144 cycle 53, source read at `c85a76ae0`; NOT a tick).** No
+  game can drain this row today, because neither feature exists. Three facts measured at idle on
+  2026-11-01; (2) and (3) change the build.
+  (1) NOT BUILT. `docs/RC2_QA_CONSOLIDATED.md` still has QA6 and QA13 OPEN, and a grep of tracked
+  source finds no reader of `WindowMode`, no `GWL_STYLE` / `WS_POPUP` read and no `TokenElevation`
+  read (`build` below, with positive controls in its test; an empty grep is a claim about those
+  patterns only). The filed "final validation" has no subject.
+  (2) THE QA13 PREMISE LOOKS STALE. `docs/RC2_QA_CONSOLIDATED.md` says "neither process elevated
+  today". Measured: the shell's token is ELEVATED, as is this tool's process, with `EnableLUA` 1,
+  `ConsentPromptBehaviorAdmin` 0 and no `FilterAdministratorToken`. The rc-shell overlay was down and
+  the game was not running, so NEITHER process QA13 names is measured. QA13's concern is the OVERLAY
+  matching the game (`docs/_archive/RC2_TODO_QA.md` item 13), so the tool grades the overlay, not RC's
+  Python process. UIPI blocks lower integrity from higher, so an elevated overlay cannot be blocked by
+  a user-launched game. PRUNE CANDIDATE for a human once `uipi` below reads `NO_BLOCK_POSSIBLE`; not
+  struck here. RESIDUAL the tool does not read: the hotkey listener (a Python child of the service
+  host, not told apart by image name) and the integrity level itself (`TokenElevation` is the proxy).
+  (3) THE ON-DISK VALUE IS FULLSCREEN, AND THE QA6 SIGNAL IS UNPROVEN. game.cfg `[General]` holds
+  `WindowMode=0` today (mtime 2026-10-25, no `Width` / `Height`), and PersistedSettings.json carries
+  no `WindowMode`. The operator-corrected encoding is 0 = Fullscreen, 1 = Windowed, 2 = Borderless
+  (`docs/history_notes.md`, the RM-147 close). So the file says the next game may start in the mode
+  `rc-shell/README.md` says hides the overlay; whether the file is current is unmeasured. CONFIRM THE
+  WINDOW MODE DROPDOWN IN THE CLIENT BEFORE THE NEXT LIVE SESSION (memory
+  `feedback_gamepc_league_fullscreen_lockup`: League resets it on some patches and driver updates; the
+  memory's lockup story is scope-fenced to the retired Game-PC, its Borderless rule is not). Never edit
+  game.cfg from a lane. As for the signal: the QA row proposes an HWND read, but a borderless window
+  and a fullscreen one under flip-model optimizations can show the same `WS_POPUP` + full-monitor bits
+  (a hypothesis, untested), and a game.cfg read is the other candidate, needing no window call at all.
+  CHECK (any game, any mode, game FOREGROUND, rc-shell up, from the main checkout):
+  `python tools/gated_b29_window_parity.py > <evidence>/b29_ingame.json`, then once more after the game
+  to `<evidence>/b29_after.json`. Read-only. A process handle opens only for an allowlisted image
+  (`OPENABLE_IMAGES`: the shell and the rc-shell overlay, on a pid `tasklist` just listed under it), and
+  the tool takes no pid argument, so it never targets a League, Riot or Vanguard image and the game's
+  own token stays unread on purpose (one gap: a listed pid recycled in the moment before the open would
+  get a limited-query handle). Field paths: `build.qa6.state`, `build.qa13.state`,
+  `cfg.window_mode`, `cfg.mtime`, `window.style`, `window.covers_monitor`, `window.foreground`,
+  `window.quns`, `window_grade.verdict`, `elevation.overlay`, `elevation.uipi`.
+  PREDICATES, stated before any game. These are DESIGN verdicts for the build and none closes the row.
+  SIGNAL: `window_grade.verdict` AGREE = game.cfg was consistent with the window in this one state: it
+  says nothing about the arm not played, and mode 2 + popup_full cannot exclude a flip-model fullscreen,
+  so pair it with the operator's statement of the dropdown. DISAGREE = game.cfg is not a usable signal
+  alone; the hint must not be built on it without a second source. AMBIGUOUS (mode 0, popup + full
+  monitor) = a stale cfg and a flip-model fullscreen look alike; add the operator's statement. NO_RESULT
+  = no evidence (no game window, not foreground, unlabelled mode, unknown state), never a pass. `cfg`
+  differing between the in-game and after-game reads means the file moved during the game: the in-game
+  read is void as a predictor, so record both. UIPI: `NO_BLOCK_POSSIBLE` = every overlay process is
+  elevated, so QA13 has nothing to detect in that run. `GAME_TOKEN_NEEDED` = an overlay process is not
+  elevated, QA13 stays live and needs a separate decision on reading the game's token. CAVEAT, unmeasured
+  (no Electron was up): Chromium's sandboxed children may read non-elevated or unreadable under an
+  elevated main process, which would give `GAME_TOKEN_NEEDED` or `UNKNOWN`. That errs away from a pass,
+  so read the `elevation.overlay` rows before acting on either verdict. `OVERLAY_DOWN` / `UNKNOWN` = no
+  evidence.
+  AFTER THE BUILD (RM-1292 in the cycle report; the builder writes the selector here). QA6 PASS iff
+  BOTH arms are recorded, each with the sample above and a timestamped frame: the hint renders in a game
+  the operator states is Fullscreen, and is absent in one stated Borderless. The Borderless arm alone is
+  PARTIAL, never a pass: a hint that never renders satisfies it. The Fullscreen arm is the operator's
+  choice alone; no lane or drain asks for it, so the row can stay PARTIAL indefinitely. QA13 PASS iff
+  the hint renders with an elevated game and a non-elevated overlay, stated and sampled, and is absent
+  with both elevated. On this box that pairing would need a deliberately different launch, also the
+  operator's choice alone; if nobody makes it, QA13 stays OPEN or is pruned by a human, never passed by
+  a `NO_BLOCK_POSSIBLE` read. Until a build lands, `build.*` reads NOT_BUILT or CANDIDATE, and CANDIDATE
+  is only a pointer for a human to read.
+  EVIDENCE CONTRACT: both JSON files, the UTC timestamp, mode, queue and `liveclient.game_time_s` from
+  one `/api/state` read beside the first sample, plus the predicate line above.
+  SUBSTITUTION CHECK: does this answer whether the HINT RENDERED, or only whether a signal exists? Only
+  the second: every verdict above is design evidence, so no sample ticks this row. A fixture, the
+  idle sample and a dashboard-computed value are not evidence that a hint rendered. `self` and `shell`
+  are not the overlay's token: `elevation.uipi` reads only `elevation.overlay`.
 - **G2-40** (was B30) DS ratio-block spot verify vs target dummies (~174/577 flagged). DS-batch
   scoped: sample a handful per session, never a bulk pass. SOURCE: docs/DS_COMPLETENESS_GAP.md:90.
   **READY (lane 9 PREP s144 cycle 50, source read at `ad30d3adb`; NOT a tick).** Three measured facts
