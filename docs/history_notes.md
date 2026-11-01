@@ -41,6 +41,21 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-31 - session 144: the s134 + s144 lanes landed in L0-L6 (RM-910..RM-1151), PKG-6b / PKG-6c landed, kit v25 adopted, alert 66 closed, the s144 lane rotator built and running; PUSHED
+
+- **Operator (chat):** approved the alert 66 reopen and the batched MAIN note (ASKS 39 / 49); ordered the run-budget resets and a 24 h 250-run lift (expired 2026-10-29 03:55); typed /done.
+- **Landings (LEDGER 1938-1973):** L0-L6 brought the s134 and s144 lane commits onto main (cherry-pick plus a `fleet_gitlock` commit, provisional ids mapped to RM-910..RM-1151), each wave with merger fixes, touched tests, a gated Tier-2 dual suite and an independent verifier; L6 Tier-2 over `9ee8acedb`: 54286 passed, exit 0.
+- **P2 (LEDGER 1945):** PKG-6b + PKG-6c on main (`7dea4ee66..1019e8405`); the re-review said LAND; M2 and two LOW notes stay open (PACKAGING_PLAN WA20).
+- **K1:** kit v25 adopted (`881cea6a3`, `66da29d80`, `5ce33dba1`); CLI re-pinned 2.1.312 (`edaaa9c8e`) and 2.1.314 (`491949dc3`); the CLI read 2.1.316 at /done (re-pin owed).
+- **G1 / G2 / C2 / B1:** alert 66 reopened, read back fixed (no CodeQL run needed); batched FIX note to MAIN delivered 1/1 (`ff32d603f`); the agent6 report committed (`f1d765cde`); 3 squash-merged branches bundled, `git branch -d` refused (`-D` is an operator ask).
+- **Rotator:** gitignored s144 driver (7 lanes, local commits only, push block, lane-leak alarm, rate-limit backoff, live kit lane cap); pid 19324 still running at /done, in its budget wait.
+- **Restarts:** DS, RC, vision and RC-LCUAgent read back healthy; Mission Control failed on 10-30 (Tailscale logged out) and came back by its task on 10-31 after the login.
+- **/done (LEDGER 1974):** pushed `a5c8d94ff..fc123ec87` (580 commits; push ci mode=full); reap removed the PKG-6b worktree; board rendered final.
+- **Do NOT redo:** L0-L6 (markers in `ops/loop/control/lanes/`), PKG-6b / PKG-6c, kit v25, alert 66, the G2 note.
+- **Next:** fix the docs-guards red on the push (the widened selector picks modules needing json5 / anthropic / portalocker, which that job does not install); then L7 - land `main..lane/<name>` (96 commits at /done) the L6 way and advance the S144_LANDED markers.
+
+---
+
 # 2026-10-27 - session 143: PKG-6b built + verified but NOT merged (2 plausible highs, carried as PKG-6c), CLI re-pinned, memory split reconciled, Dependabot #28 declined; PUSHED
 
 - **Operator:** away all session ("Headless - Operator Is Away"); no steers or intents. Decisions self-adjudicated and recorded in LEDGER 1934 / 1936 / 1937.

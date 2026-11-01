@@ -6,6 +6,20 @@
 
 ---
 
+# 2026-10-31d - session 147: lanes relaunched headless after the reboot, cutover stage 2 read back, L8 landed 30 lane commits (RM-1234..RM-1262), rc_facts 0x800710E0 fix, alert 144 declined; the s146 push CI read back RED; PUSHED
+
+- **Operator (chat):** "Continue"; "headlessly - all lanes ; headless driver"; "operator is away - computer was restarted" (box rebooted 19:03:56; operator items batched in the hand-off).
+- **L1 / NA1 / NA4 (LEDGER 2008):** rotator pid 17100 (`--spawn-detached`, 7 lanes, no push); stale S144_LANES_STOP from a shutdown-time leak scan Recycle-Binned after a clean re-scan; cutover dry run exit 0, rc-shell relaunched via WMI (Start-Process died with the agent shell), health green.
+- **NA7 (LEDGER 2008, `489d6e71f`):** alert 144 declined (minimatch dev-only, no fitting fix); npm audit 15 moderate unchanged.
+- **NA3 / L8 (LEDGER 2000-2006):** main ff to `6cd6779fa` (30 lane + 4 merger commits), gated Tier-2 run 2 green (56861 passed), verifier FF-SAFE, restarts read back; RM-1150 / RM-1227 / RM-1233 shipped; markers `S144_LANDED_<LANE>` name the twins.
+- **D1 / F1 (LEDGER 2007, `f2f94581f` + `813d728a0`):** 0x800710E0 after the reboot was event 153 (missed run), not a kill; rc_facts now grades it from the attempt's events; V2 CONFIRM after 3 added tests.
+- **s146-a / F2 / F1b:** 4 s146 slice branches deleted after a squash check (bundle first); ADJ-F `aad42dcb1fbdf23a3` kept (not contained).
+- **CI:** the s146 push run ci 41253461425 FAILED 1 test (radial 7-pick row got 5 on Linux; passes locally) - FIRST next action.
+- **Do NOT redo:** L8 (markers), F1, the alert 144 decline, the slice deletions, the cutover stage 2 read-back.
+- **Next:** fix the radial CI red forward; read back this /done's CI; L9 landing of the rotator's new commits (counted against the twins).
+
+---
+
 # 2026-10-31c - session 146: push CI reds fixed forward, CI step limits raised, CLI re-pinned 2.1.316, rulings 40-44 / 48 / 51 self-adjudicated, ASKS 50 / 52 done, launcher cutover APPLIED (Windows restart owed); PUSHED
 
 - **Operator (chat):** "self-adjudicate" (rulings), "yes if not needed" (ASKS 50), approved the RM-1223 frozen comment (ASKS 52), ordered the headless budget reset, re-logged the proxy's pinned account at 17:24; typed /done.
@@ -30,18 +44,3 @@
 - **/done (LEDGER 1987):** the first push halted on the sibling sweep (invented fixture drive roots in unpushed `bccdef5d3` / `686030c4f`); rebuilt 23 commits tree-equal with the fix folded in, then pushed `50a1e8592..baa0af524`; one full CI dispatch 41231173460. Old lineage kept on local `s145-prefold-main` (NEVER PUSH).
 - **Do NOT redo:** L7 (markers), the docs-guards fix, alerts 69-72 / 74-76 dismissals, the agreement renewal, RM-1222, the tft_qa snapshots.
 - **Next:** read back the push CI + dispatch and whether CodeQL closed 67, 68, 73, 77-83; retry the CLI re-pin when the proxy allows; land what the rotator commits after 2026-11-01 04:46 (count against the markers).
-
----
-
-# 2026-10-31 - session 144: the s134 + s144 lanes landed in L0-L6 (RM-910..RM-1151), PKG-6b / PKG-6c landed, kit v25 adopted, alert 66 closed, the s144 lane rotator built and running; PUSHED
-
-- **Operator (chat):** approved the alert 66 reopen and the batched MAIN note (ASKS 39 / 49); ordered the run-budget resets and a 24 h 250-run lift (expired 2026-10-29 03:55); typed /done.
-- **Landings (LEDGER 1938-1973):** L0-L6 brought the s134 and s144 lane commits onto main (cherry-pick plus a `fleet_gitlock` commit, provisional ids mapped to RM-910..RM-1151), each wave with merger fixes, touched tests, a gated Tier-2 dual suite and an independent verifier; L6 Tier-2 over `9ee8acedb`: 54286 passed, exit 0.
-- **P2 (LEDGER 1945):** PKG-6b + PKG-6c on main (`7dea4ee66..1019e8405`); the re-review said LAND; M2 and two LOW notes stay open (PACKAGING_PLAN WA20).
-- **K1:** kit v25 adopted (`881cea6a3`, `66da29d80`, `5ce33dba1`); CLI re-pinned 2.1.312 (`edaaa9c8e`) and 2.1.314 (`491949dc3`); the CLI read 2.1.316 at /done (re-pin owed).
-- **G1 / G2 / C2 / B1:** alert 66 reopened, read back fixed (no CodeQL run needed); batched FIX note to MAIN delivered 1/1 (`ff32d603f`); the agent6 report committed (`f1d765cde`); 3 squash-merged branches bundled, `git branch -d` refused (`-D` is an operator ask).
-- **Rotator:** gitignored s144 driver (7 lanes, local commits only, push block, lane-leak alarm, rate-limit backoff, live kit lane cap); pid 19324 still running at /done, in its budget wait.
-- **Restarts:** DS, RC, vision and RC-LCUAgent read back healthy; Mission Control failed on 10-30 (Tailscale logged out) and came back by its task on 10-31 after the login.
-- **/done (LEDGER 1974):** pushed `a5c8d94ff..fc123ec87` (580 commits; push ci mode=full); reap removed the PKG-6b worktree; board rendered final.
-- **Do NOT redo:** L0-L6 (markers in `ops/loop/control/lanes/`), PKG-6b / PKG-6c, kit v25, alert 66, the G2 note.
-- **Next:** fix the docs-guards red on the push (the widened selector picks modules needing json5 / anthropic / portalocker, which that job does not install); then L7 - land `main..lane/<name>` (96 commits at /done) the L6 way and advance the S144_LANDED markers.
