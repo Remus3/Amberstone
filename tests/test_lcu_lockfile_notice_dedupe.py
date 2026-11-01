@@ -414,8 +414,8 @@ class FilterUnitTests(unittest.TestCase):
                 "filter() reached the throttle decision while the lock was "
                 "held, so concurrent callers can both pass it",
             )
-        self.assertTrue(reached.wait(5), "filter() never completed")
-        worker.join(timeout=5)
+        self.assertTrue(reached.wait(fleet_test_guard.budget(5)), "filter() never completed")
+        worker.join(timeout=fleet_test_guard.budget(5))
         self.assertFalse(worker.is_alive())
 
     def test_install_is_idempotent_and_attached_to_the_client_logger(self):

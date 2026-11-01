@@ -34,6 +34,7 @@ import types
 import pytest
 
 from coaches._base_coach import BaseCoach, finite, safe_write
+from tests._timing_budget import fleet_test_guard
 
 
 # -- shared stubs --------------------------------------------------------------
@@ -141,7 +142,7 @@ def test_fast_path_fires_on_hp_drop_between_polls(tmp_path, monkeypatch):
 
     c._last_coach = time.time() - 6.0  # 6s ago: > FAST_PATH_MIN_S, < DEBOUNCE_S
     c._poll_tick()
-    assert ran.wait(2.0), "fast path did not dispatch on 40% HP drop"
+    assert ran.wait(fleet_test_guard.budget(2.0)), "fast path did not dispatch on 40% HP drop"
 
 
 def test_fast_path_new_kill_between_polls(tmp_path, monkeypatch):
@@ -160,7 +161,7 @@ def test_fast_path_new_kill_between_polls(tmp_path, monkeypatch):
     assert not ran.is_set()
     c._last_coach = time.time() - 6.0
     c._poll_tick()
-    assert ran.wait(2.0), "fast path did not dispatch on new enemy death"
+    assert ran.wait(fleet_test_guard.budget(2.0)), "fast path did not dispatch on new enemy death"
 
 
 def test_poll_tick_noop_without_data(tmp_path, monkeypatch):

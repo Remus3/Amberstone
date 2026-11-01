@@ -31,6 +31,7 @@ sys.path.insert(0, str(_PROJECT_ROOT))
 from core import riot_api as RA            # noqa: E402
 from core import riot_api_cache as RIC     # noqa: E402
 from dashboard import routes_team_context as RTC   # noqa: E402
+from tests._timing_budget import fleet_test_guard  # noqa: E402
 
 
 def _h(headers=None):
@@ -303,7 +304,7 @@ class TestDefaultDispatchGate(_BaseFanoutCase):
         self.assertIsNotNone(t)
         assert t is not None
         self.assertTrue(t.daemon)
-        t.join(timeout=2.0)
+        t.join(timeout=fleet_test_guard.budget(2.0))
         self.assertFalse(t.is_alive())
 
 

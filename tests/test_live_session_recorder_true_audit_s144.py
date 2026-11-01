@@ -297,7 +297,7 @@ def test_flush_and_close_honour_their_timeout_when_the_queue_is_full(tmp_path, m
     rec._vision_provider = stalled_vision
     try:
         assert rec.record(_snap(0.0)) is True
-        assert entered.wait(5)
+        assert entered.wait(fleet_test_guard.budget(5))
         assert rec.record(_snap(1.0)) and rec.record(_snap(2.0))   # queue full
         t0 = time.perf_counter()
         assert rec.flush(timeout=0.2) is False

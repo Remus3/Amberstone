@@ -102,7 +102,7 @@ def test_background_true_serves_last_good_while_revalidating(monkeypatch):
                         lambda r, ro: (fired.set(), [])[1])
     out = mbd.current_minimap_dots(_RECT, background=True)
     assert out == last_good
-    assert fired.wait(2.0)
+    assert fired.wait(fleet_test_guard.budget(2.0))
 
 
 def test_default_path_is_synchronous(monkeypatch):

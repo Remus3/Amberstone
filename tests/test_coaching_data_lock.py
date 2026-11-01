@@ -283,7 +283,7 @@ class TestCombinedLockCharacterization(_CombinedLockTestBase):
 
         t1 = threading.Thread(target=_first, daemon=True)
         t1.start()
-        self.assertTrue(inside.wait(timeout=10.0), "the first thread never entered")
+        self.assertTrue(inside.wait(timeout=fleet_test_guard.budget(10.0)), "the first thread never entered")
         t2 = threading.Thread(target=_second, daemon=True)
         t2.start()
         try:
@@ -438,7 +438,7 @@ class _HeldLockContentionMixin:
 
         ht = threading.Thread(target=_holder, daemon=True)
         ht.start()
-        self.assertTrue(holder_ready.wait(timeout=10.0),
+        self.assertTrue(holder_ready.wait(timeout=fleet_test_guard.budget(10.0)),
                         "the holder thread never took the lock")
         ct = threading.Thread(target=_contender, daemon=True)
         ct.start()
@@ -599,7 +599,7 @@ class TestD3BaseExceptionOrphansTheProcessLock(_CombinedLockTestBase):
             except RuntimeError:
                 pass
             entered.wait(timeout=10.0)
-        t.join(timeout=10.0)
+        t.join(timeout=fleet_test_guard.budget(10.0))
         self.assertFalse(t.is_alive(), "the probe writer thread leaked")
         self.assertTrue(got_in, "a later writer deadlocked on the orphaned lock")
 
@@ -951,7 +951,7 @@ class TestImplicatesLockDir(unittest.TestCase):
         t = threading.Thread(target=lambda: out.append(cdl._implicates_lock_dir(a)),
                              daemon=True)
         t.start()
-        t.join(timeout=5.0)
+        t.join(timeout=fleet_test_guard.budget(5.0))
         self.assertFalse(t.is_alive(), "the cause-chain walk never terminated")
         self.assertEqual(out, [False])
 

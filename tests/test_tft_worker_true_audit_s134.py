@@ -36,6 +36,7 @@ import types
 
 from core import tft_worker
 from core.tft_worker import TftWorker
+from tests._timing_budget import fleet_test_guard
 
 _LOGGER = "rc.tft_worker"
 
@@ -152,11 +153,11 @@ def test_w1_shutdown_during_slow_init_never_leaves_vision_running(monkeypatch, t
     w = _worker(tmp_path)
     w._shutdown_join_timeout_s = 0.05
     w.start()
-    assert entered.wait(5.0)
+    assert entered.wait(fleet_test_guard.budget(5.0))
     thread = w._thread
     w.shutdown()  # the join times out: init is still blocked
     release.set()
-    thread.join(5.0)
+    thread.join(fleet_test_guard.budget(5.0))
     assert not thread.is_alive()
     assert len(fakes.lives) == 1
     live = fakes.lives[0]
@@ -179,7 +180,7 @@ def test_w1_shutdown_logs_a_thread_that_outlived_its_join(monkeypatch, tmp_path,
     w = _worker(tmp_path)
     w._shutdown_join_timeout_s = 0.05
     w.start()
-    assert entered.wait(5.0)
+    assert entered.wait(fleet_test_guard.budget(5.0))
     thread = w._thread
     with caplog.at_level(logging.WARNING, logger=_LOGGER):
         w.shutdown()
@@ -235,7 +236,7 @@ def test_w2_read_returning_after_shutdown_publishes_nothing(tmp_path):
 
     w._reader, w._engine, w._live = _BlockingReader(), None, None
     w.start()
-    assert in_read.wait(5.0)
+    assert in_read.wait(fleet_test_guard.budget(5.0))
     thread = w._thread
     w.shutdown()
     release.set()

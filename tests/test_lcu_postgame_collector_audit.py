@@ -45,6 +45,8 @@ import time
 
 import pytest
 
+from tests._timing_budget import fleet_test_guard
+
 
 def _rows(db, table):
     conn = sqlite3.connect(str(db))
@@ -222,5 +224,5 @@ class TestRunLoopSurvivesCaptureFailure:
         t.start()
         c._stop.set()
         c._trigger.set()
-        t.join(timeout=5)
+        t.join(timeout=fleet_test_guard.budget(5))
         assert not t.is_alive(), "stop() must still terminate the loop"

@@ -70,7 +70,7 @@ class LockScope(unittest.TestCase):
                 box["err"] = e
         t = threading.Thread(target=run, daemon=True)
         t.start()
-        self.assertTrue(c.entered.wait(5))
+        self.assertTrue(c.entered.wait(fleet_test_guard.budget(5)))
         return t
 
     def test_close_returns_while_send_blocked(self):
@@ -97,7 +97,7 @@ class LockScope(unittest.TestCase):
         out = {}
         reader = threading.Thread(target=lambda: out.update(s.stats()), daemon=True)
         reader.start()
-        reader.join(2.0)
+        reader.join(fleet_test_guard.budget(2.0))
         self.assertFalse(reader.is_alive(), "stats() waited on the in-flight send")
         self.assertEqual(out["history_len"], 1)
         c.release.set()

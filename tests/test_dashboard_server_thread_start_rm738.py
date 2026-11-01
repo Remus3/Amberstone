@@ -210,7 +210,7 @@ class GuardedStartDetails(unittest.TestCase):
                  self.assertLogs("rc.web_dashboard", level="WARNING"):
                 got = _raw_request(port, timeout=3)
             self.assertEqual(got, b"")
-            self.assertTrue(late.wait(3), "the slow thread never started")
+            self.assertTrue(late.wait(fleet_test_guard.budget(3)), "the slow thread never started")
             time.sleep(0.2)                       # let it reach its claim
             self.assertEqual(served, [], "a late thread served a dropped request")
             self.assertEqual(srv.start_failures, 1)

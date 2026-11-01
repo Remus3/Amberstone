@@ -60,6 +60,7 @@ if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
 import dashboard._lcu_inprocess as inp  # noqa: E402
+from tests._timing_budget import fleet_test_guard  # noqa: E402
 
 _LOGGER = "rc.web_dashboard"
 
@@ -275,10 +276,10 @@ class TestF3ConfigOrdering(unittest.TestCase):
                 target=lambda: out.setdefault("a", inp._agent_config()),
                 name="s144-cfg-a", daemon=True)
             t.start()
-            self.assertTrue(a_in.wait(5))
+            self.assertTrue(a_in.wait(fleet_test_guard.budget(5)))
             b = inp._agent_config()
             release_a.set()
-            t.join(5)
+            t.join(fleet_test_guard.budget(5))
             self.assertFalse(t.is_alive())
             after = inp._agent_config()      # inside TTL: served from cache
         self.assertEqual(b, {"auto_accept": True})
@@ -332,7 +333,7 @@ class TestF4ConnectSerialized(unittest.TestCase):
             t1 = threading.Thread(target=inp._get_client,
                                   name="s144-conn-1", daemon=True)
             t1.start()
-            self.assertTrue(first_in.wait(5))
+            self.assertTrue(first_in.wait(fleet_test_guard.budget(5)))
             t2 = threading.Thread(target=inp._get_client,
                                   name="s144-conn-2", daemon=True)
             t2.start()

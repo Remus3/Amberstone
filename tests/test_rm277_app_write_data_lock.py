@@ -22,6 +22,7 @@ import pytest
 
 import app as app_mod
 from coach_integration import _coach as coach_mod
+from tests._timing_budget import fleet_test_guard
 
 
 class _PausingJson:
@@ -33,7 +34,7 @@ class _PausingJson:
     def loads(self, s, *a, **k):
         out = json.loads(s, *a, **k)
         self.read_done.set()
-        assert self.go.wait(10.0), "harness: go never set"
+        assert self.go.wait(fleet_test_guard.budget(10.0)), "harness: go never set"
         return out
 
     def dumps(self, *a, **k):
@@ -76,15 +77,15 @@ def test_app_blank_is_not_lost_to_a_straddling_coach_write(data_file, monkeypatc
     t_coach = threading.Thread(
         target=lambda: coach._write_fields("raw", update_ts=False), daemon=True)
     t_coach.start()
-    assert read_done.wait(10.0), "coach never read the file"
+    assert read_done.wait(fleet_test_guard.budget(10.0)), "coach never read the file"
 
     blank = {"action": "", "immediate": "", "log": []}
     t_app = threading.Thread(target=lambda: a._write_data(blank), daemon=True)
     t_app.start()
     t_app.join(0.5)          # with the lock it must still be waiting here
     go.set()
-    t_coach.join(10.0)
-    t_app.join(10.0)
+    t_coach.join(fleet_test_guard.budget(10.0))
+    t_app.join(fleet_test_guard.budget(10.0))
     assert not t_coach.is_alive() and not t_app.is_alive()
 
     final = json.loads(data_file.read_text(encoding="utf-8"))

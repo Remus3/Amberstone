@@ -39,6 +39,7 @@ import pytest
 
 from core import liveclient_cache as lc
 from tests._asyncio_isolation import run_coro
+from tests._timing_budget import fleet_test_guard
 
 _LOGGER = "rc.liveclient_cache"
 
@@ -247,7 +248,7 @@ def test_stop_then_start_never_leaves_two_thread_pollers(monkeypatch):
     lc.add_listener(lambda s: seen.append(s.data["who"]))
 
     lc.start(poll_s=0.01)
-    assert entered.wait(5)
+    assert entered.wait(fleet_test_guard.budget(5))
     old = lc._thread
     lc.stop()                      # join times out: old is inside the fetch
     assert old.is_alive()
@@ -255,7 +256,7 @@ def test_stop_then_start_never_leaves_two_thread_pollers(monkeypatch):
     new = lc._thread
     assert new is not old and new.is_alive()
     gate.set()
-    old.join(5)
+    old.join(fleet_test_guard.budget(5))
     assert not old.is_alive(), "superseded poller kept running"
     assert "stale" not in seen, "superseded poller published its snapshot"
     time.sleep(0.1)
@@ -290,12 +291,12 @@ def test_stop_with_a_fetch_in_flight_publishes_nothing(monkeypatch):
     lc.add_listener(lambda s: seen.append(s.data["who"]))
     before = lc._snapshot
     lc.start(poll_s=0.01)
-    assert entered.wait(5)
+    assert entered.wait(fleet_test_guard.budget(5))
     old = lc._thread
     lc.stop()
     assert old.is_alive()
     gate.set()
-    old.join(5)
+    old.join(fleet_test_guard.budget(5))
     assert not old.is_alive()
     assert seen == []
     assert lc._snapshot is before
@@ -310,13 +311,13 @@ def test_start_supersedes_a_poller_whose_handle_was_lost(monkeypatch):
     seen = []
     lc.add_listener(lambda s: seen.append(s.data["who"]))
     lc.start(poll_s=0.01)
-    assert entered.wait(5)
+    assert entered.wait(fleet_test_guard.budget(5))
     old = lc._thread
     lc._thread = None               # handle lost; no stop() call
     lc.start(poll_s=0.01)
     assert lc._thread is not old
     gate.set()
-    old.join(5)
+    old.join(fleet_test_guard.budget(5))
     assert not old.is_alive()
     assert "stale" not in seen
 
@@ -345,4 +346,4 @@ def test_listeners_fire_on_a_failed_fetch(monkeypatch):
     got = threading.Event()
     lc.add_listener(lambda s: got.set() if s.failure == "transport" else None)
     lc.start(poll_s=0.01)
-    assert got.wait(5)
+    assert got.wait(fleet_test_guard.budget(5))

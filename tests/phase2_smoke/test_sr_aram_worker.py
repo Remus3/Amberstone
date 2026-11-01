@@ -12,6 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from core.sr_aram_worker import SrAramWorker, WorkerResult
 import core.feature_policy as fp
+from tests._timing_budget import fleet_test_guard
 
 
 class FakeReader:
@@ -58,7 +59,7 @@ class TestSrAramWorkerContract(unittest.TestCase):
         w.start()
         self.assertTrue(w.is_alive())
         w.stop()
-        w.join(timeout=3.0)
+        w.join(timeout=fleet_test_guard.budget(3.0))
         self.assertFalse(w.is_alive())
 
     def test_worker_result_is_workerresult(self):

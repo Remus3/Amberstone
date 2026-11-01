@@ -28,6 +28,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from core import riot_api as RA  # noqa: E402
+from tests._timing_budget import fleet_test_guard  # noqa: E402
 
 
 class ThreadIsolationTests(unittest.TestCase):
@@ -48,10 +49,10 @@ class ThreadIsolationTests(unittest.TestCase):
         with RA.track_outcomes() as scope:
             t = threading.Thread(target=_other)
             t.start()
-            self.assertTrue(ready.wait(5))
+            self.assertTrue(ready.wait(fleet_test_guard.budget(5)))
             RA._record_outcome("ok")
             release.set()
-            t.join(5)
+            t.join(fleet_test_guard.budget(5))
             self.assertFalse(t.is_alive())
 
         self.assertEqual(scope.outcomes, ["ok"])
@@ -71,7 +72,7 @@ class ThreadIsolationTests(unittest.TestCase):
 
         t = threading.Thread(target=_holder)
         t.start()
-        self.assertTrue(opened.wait(5))
+        self.assertTrue(opened.wait(fleet_test_guard.budget(5)))
         try:
             # No scope open on THIS thread: must be a clean no-op, and must
             # not reach the other thread's open scope either.

@@ -30,6 +30,7 @@ import unittest
 
 from dashboard import _cs_retention
 from dashboard._cs_retention import apply_cs_retention, reset_cs_retention
+from tests._timing_budget import fleet_test_guard
 
 
 def _cs(**extra):
@@ -181,7 +182,7 @@ class F6LockTests(_Base):
             a = threading.Thread(target=_seed, kwargs={"now": 1000.0},
                                  name="cs-retention-test-a", daemon=True)
             a.start()
-            self.assertTrue(entered.wait(5.0))
+            self.assertTrue(entered.wait(fleet_test_guard.budget(5.0)))
             _cs_retention._copy = real_copy
 
             def second():

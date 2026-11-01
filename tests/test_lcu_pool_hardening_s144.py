@@ -39,6 +39,7 @@ import unittest
 import pytest
 
 from core import lcu_pool
+from tests._timing_budget import fleet_test_guard
 
 _OK = b'{"ok": true}'
 
@@ -375,7 +376,7 @@ def test_h7_close_all_waits_for_an_in_flight_request():
     t1 = threading.Thread(target=lambda: result.update(r=pool.request("h", 1, "GET", "/slow")),
                           name="lcu-pool-test-req", daemon=True)
     t1.start()
-    assert conn.in_flight.wait(5.0)
+    assert conn.in_flight.wait(fleet_test_guard.budget(5.0))
     t2 = threading.Thread(target=pool.close_all, name="lcu-pool-test-close", daemon=True)
     t2.start()
     time.sleep(0.2)

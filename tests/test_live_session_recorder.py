@@ -317,7 +317,7 @@ def test_record_never_blocks_and_drops_when_queue_full(tmp_path, monkeypatch):
     rec._vision_provider = stalled_vision
     try:
         assert rec.record(_snap(0.0)) is True
-        assert entered.wait(5)              # writer is now stuck holding frame 0
+        assert entered.wait(fleet_test_guard.budget(5))  # writer is now stuck holding frame 0
         accepted = [rec.record(_snap(1.0 + i)) for i in range(4)]
         assert accepted == [True] * 4       # queue now full (maxsize 4)
         import time as _t

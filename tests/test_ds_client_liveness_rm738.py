@@ -22,6 +22,7 @@ import unittest
 from unittest import mock
 
 import core.daemon_slayer_client as dsc
+from tests._timing_budget import fleet_test_guard
 
 OK, DOWN, HUNG = dsc.OK, dsc.DOWN, dsc.HUNG
 
@@ -393,7 +394,7 @@ class EnsureRunningStartsTheWatchdogOnce(unittest.TestCase):
                 mock.patch.object(dsc, "DsWatchdog", FakeWatchdog):
             self.assertIsNone(dsc.ensure_running())
             self.assertIsNone(dsc.ensure_running())
-            self.assertTrue(ran.wait(5), "the watchdog thread never ran")
+            self.assertTrue(ran.wait(fleet_test_guard.budget(5)), "the watchdog thread never ran")
         self.assertEqual(len(made), 1, "a second call started a second loop")
 
     def test_the_watchdog_cadence_is_rate_limited(self) -> None:
