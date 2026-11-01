@@ -42,6 +42,8 @@ Response shape (ok):
 
 Failure modes (mirror routes_ds_profile):
   - 400  champ_a or champ_b param missing / blank.
+  - 400  mode outside the four above, with a fixed text and the supported list
+         (RM-1330); the engine is not called and nothing is cached.
   - 503  the engine is unreachable (the client returned None); logged warning.
   - 200  ok=false reason=no_matchup when the engine responded with a non-dict
          or a dict lacking the "verdict" key (defensive - never leaks a partial
@@ -72,9 +74,15 @@ _CACHE_TTL_S = 300.0
 _CACHE: dict[tuple, tuple[float, dict]] = {}
 _CACHE_LOCK = threading.Lock()
 # RM-1329: the TTL was only checked on read and nothing bounded the size,
-# and the key carries the caller's champion and mode strings, so every
-# distinct request stayed resident for the process lifetime.
+# and the key carries the caller's champion strings, so every distinct request
+# stayed resident for the process lifetime.
 _CACHE_MAX = 256
+
+# RM-1330: without apply_mode_modifiers, which this route never sends, the
+# engine scored other modes exactly as SR (measured: ZZQ, URF, CLASSIC, CHERRY,
+# KIWI, TFT, CLIENT), so the route echoed a label it never applied. Same set as
+# routes_ds_sweep (RM-1327).
+_SUPPORTED_MODES: tuple[str, ...] = ("SR", "ARAM", "ARENA", "BRAWL")
 
 # Level clamp bounds.
 _LEVEL_MIN = 1
@@ -243,6 +251,14 @@ def _serve_ds_matchup(h) -> None:
         level_a = _clamp_level((qs.get("level_a") or ["1"])[0])
         level_b = _clamp_level((qs.get("level_b") or ["1"])[0])
         mode = (qs.get("mode") or ["SR"])[0].upper().strip() or "SR"
+        if mode not in _SUPPORTED_MODES:
+            h._send(400, json.dumps({
+                "ok": False,
+                # RM-1330: a fixed line, never the caller's value.
+                "error": "unsupported mode",
+                "supported": list(_SUPPORTED_MODES),
+            }).encode("utf-8"), "application/json")
+            return
 
         key = (champ_a, champ_b, level_a, level_b, mode)
         now = time.time()

@@ -65,6 +65,8 @@ Response shape (ok):
 
 Failure modes (mirror routes_ds_sweep):
   - 400  champion param missing / blank.
+  - 400  mode outside the four above, with a fixed text and the supported list
+         (RM-1330); the scorers are not called and nothing is cached.
   - 200  ok=false reason=no_profile axes=[] when the resolved champion has ZERO
          entries across ALL eight scorers (every headline == 0 AND every result
          carries empty spells/sources). Unknown champion lands here.
@@ -95,9 +97,13 @@ _CACHE_TTL_S = 300.0
 _CACHE: dict[tuple, tuple[float, dict]] = {}
 _CACHE_LOCK = threading.Lock()
 # RM-1329: the TTL was only checked on read and nothing bounded the size,
-# and the key carries the caller's champion and mode strings, so every
-# distinct request stayed resident for the process lifetime.
+# and the key carries the caller's champion strings, so every distinct request
+# stayed resident for the process lifetime.
 _CACHE_MAX = 256
+
+# RM-1330: the scorers only carry the mode on the result, so the route echoed
+# any label with ok=true. Same set as routes_ds_sweep (RM-1327).
+_SUPPORTED_MODES: tuple[str, ...] = ("SR", "ARAM", "ARENA", "BRAWL")
 
 # Floor for a per-axis maximum so the pct normalisation never divides by zero
 # on a degenerate / all-empty axis.
@@ -424,6 +430,14 @@ def _serve_ds_profile(h) -> None:
             return
 
         mode = (qs.get("mode") or ["SR"])[0].upper().strip() or "SR"
+        if mode not in _SUPPORTED_MODES:
+            h._send(400, json.dumps({
+                "ok": False,
+                # RM-1330: a fixed line, never the caller's value.
+                "error": "unsupported mode",
+                "supported": list(_SUPPORTED_MODES),
+            }).encode("utf-8"), "application/json")
+            return
 
         key = (champion, mode)
         now = time.time()
