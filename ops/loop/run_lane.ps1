@@ -66,6 +66,10 @@ try {
 } catch {
   # any read or parse fault keeps the fallbacks set above
 }
+# FLEET-1b per-lane model (ops/loop/lane_run_ledger.py MODEL_TRIAL): the s144 driver
+# sets RC_LANE_MODEL to an exact id for this one run, and it wins over the config. Any
+# other shape is ignored, so the lane keeps the config model and still spawns.
+if ($env:RC_LANE_MODEL -cmatch '^claude-[a-z0-9][a-z0-9.-]*$') { $model = $env:RC_LANE_MODEL }
 
 $pyC = "$env:LOCALAPPDATA\Programs\Python\Python314\python.exe"
 if (-not (Test-Path $pyC)) { $pyC = "python" }

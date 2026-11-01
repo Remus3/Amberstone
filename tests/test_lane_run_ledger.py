@@ -4,6 +4,7 @@ tracked module and the tracked runner are pinned here."""
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from ops.loop import lane_run_ledger as RL
@@ -152,3 +153,65 @@ def test_peak_rolling_runs_uses_a_24h_window_and_splits_lane_rows():
     assert RL.peak_rolling_runs(usage) == 3
     assert RL.peak_rolling_runs(usage, lanes=True) == 2
     assert RL.peak_rolling_runs(usage, lanes=False) == 1
+
+
+# ------------------------------------------------------------------ FLEET-1b
+
+def test_model_trial_lanes_are_exactly_the_ordered_three():
+    assert set(RL.MODEL_TRIAL) == {"ds", "repo", "research"}
+    assert set(RL.MODEL_TRIAL.values()) == {"claude-sonnet-5-5"}
+    assert RL.MODEL_TRIAL_END == "2026-11-08"
+
+
+def test_lane_model_holds_through_the_end_date_then_falls_back():
+    assert RL.lane_model("ds", "2026-11-01") == "claude-sonnet-5-5"
+    assert RL.lane_model("repo", "2026-11-08") == "claude-sonnet-5-5"
+    assert RL.lane_model("research", "2026-11-09") is None
+
+
+def test_opus_lanes_get_no_override():
+    for lane in ("true-audit", "queue", "uiux", "gated"):
+        assert RL.lane_model(lane, "2026-11-02") is None
+
+
+def test_trial_ids_are_in_the_current_model_guard_set():
+    from tests.test_rm511_model_pins_current import CURRENT_MODEL_IDS
+    assert set(RL.MODEL_TRIAL.values()) <= CURRENT_MODEL_IDS
+
+
+def test_trial_measure_splits_before_during_and_ignores_the_default_model_during():
+    usage = [_row(cost=4.0, ts="2026-10-30T01:00:00-05:00"),
+             _row(cost=8.0, ts=f"{DAY}T01:00:00-06:00"),  # first day, still on opus
+             _row(cost=1.0, ts=f"{DAY}T05:00:00-06:00", model="claude-sonnet-5-5"),
+             _row(cost=1.0, ts="2026-11-09T05:00:00-06:00", model="claude-sonnet-5-5"),
+             _row(note="lane-s144-queue", cost=6.0, ts=f"{DAY}T05:00:00-06:00")]
+    cycles = [{"lane": "ds", "ended": "2026-10-30T01:00:00-05:00", "own_commits": 2},
+              {"lane": "ds", "ended": f"{DAY}T01:00:00-06:00", "own_commits": 9},
+              {"lane": "ds", "ended": f"{DAY}T05:00:00-06:00", "own_commits": 1,
+               "model": "claude-sonnet-5-5"}]
+    out = RL.trial_measure(usage, cycles)
+    assert out["ds"]["before"]["usd_per_lane_commit"] == 2.0
+    assert out["ds"]["during"]["runs"] == 1 and out["ds"]["during"]["usd"] == 1.0
+    assert out["ds"]["during"]["lane_commits"] == 1
+    assert out["ds"]["during"]["models"] == ["claude-sonnet-5-5"]
+    assert out["queue"]["during"]["runs"] == 1  # a non-trial lane is not model-filtered
+
+
+def _runner_text():
+    return (REPO_ROOT / "ops" / "loop" / "run_lane.ps1").read_text(encoding="utf-8")
+
+
+def test_runner_lets_the_lane_model_win_after_the_config_and_before_the_route():
+    text = _runner_text()
+    config = text.index("$cfg.executor_model")
+    override = text.index("$env:RC_LANE_MODEL")
+    route = text.index('"--model", $model')
+    assert config < override < route
+
+
+def test_runner_override_shape_matches_only_exact_ids():
+    m = re.search(r"-cmatch '([^']+)'\) \{ \$model = \$env:RC_LANE_MODEL \}", _runner_text())
+    assert m, "the runner's RC_LANE_MODEL override line changed shape"
+    pat = re.compile(m.group(1))
+    assert pat.match("claude-sonnet-5-5")
+    assert not pat.match("sonnet") and not pat.match("") and not pat.match("--evil")

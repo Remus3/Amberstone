@@ -284,11 +284,56 @@ def peak_rolling_runs(usage, *, lanes=None) -> int:
     return best
 
 
+# ------------------------------------------------------------------ FLEET-1b model trial
+
+def lane_model(lane: str, today=None):
+    """The trial's exact model id for this lane today, or None: not a trial lane, or
+    past MODEL_TRIAL_END (the config default then applies, with no edit)."""
+    if (today or _today()) <= MODEL_TRIAL_END:
+        return MODEL_TRIAL.get(lane)
+    return None
+
+
+def trial_measure(usage, cycles, *, start=MODEL_TRIAL_START, end=MODEL_TRIAL_END,
+                  before_days: int = 7) -> dict:
+    """{lane: {"before": ..., "during": ...}} from the rows on disk. "during" on a
+    trial lane counts only runs on the trial model, because the trial's first day also
+    holds that lane's earlier runs on the default. The verifier-rejected and reverted
+    half of MODEL_TRIAL_MEASURE is the merger's, not here."""
+    first = datetime.date.fromisoformat(start)
+    before_from = (first - datetime.timedelta(days=before_days)).isoformat()
+
+    def window(lane, lo, hi_exclusive, want=None):
+        rows = [r for r in usage if r.get("note") == LANE_NOTE_PREFIX + lane
+                and lo <= _day(r.get("ts")) < hi_exclusive
+                and (want is None or r.get("model") == want)]
+        cyc = [c for c in cycles if c.get("lane") == lane
+               and lo <= _day(c.get("ended")) < hi_exclusive
+               and (want is None or c.get("model") == want)]
+        usd = sum(_usd(r) for r in rows)
+        commits = sum(int(c.get("own_commits") or 0) for c in cyc)
+        return {
+            "runs": len(rows), "usd": round(usd, 2),
+            "usd_per_run": round(usd / len(rows), 2) if rows else None,
+            "lane_commits": commits,
+            "commits_per_run": round(commits / len(rows), 2) if rows else None,
+            "usd_per_lane_commit": round(usd / commits, 2) if commits else None,
+            "zero_commit_cycles": sum(1 for c in cyc if not c.get("own_commits")),
+            "models": sorted({str(r.get("model")) for r in rows}),
+        }
+
+    after_end = (datetime.date.fromisoformat(end) + datetime.timedelta(days=1)).isoformat()
+    lanes = sorted({str(r["note"])[len(LANE_NOTE_PREFIX):] for r in usage if _is_lane(r)})
+    return {lane: {"before": window(lane, before_from, start),
+                   "during": window(lane, start, after_end, MODEL_TRIAL.get(lane))}
+            for lane in lanes}
+
+
 # ------------------------------------------------------------------ CLI
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="Read-only lane ledger figures.")
-    ap.add_argument("what", choices=("daily", "read-daily", "week", "runs"))
+    ap.add_argument("what", choices=("daily", "read-daily", "week", "measure", "runs"))
     ap.add_argument("--root", default=str(Path(__file__).resolve().parents[2]))
     args = ap.parse_args(argv)
     usage = usage_rows(args.root)
@@ -298,6 +343,8 @@ def main(argv=None) -> int:
         doc = read_daily(args.root)
     elif args.what == "week":
         doc = week_usd(usage)
+    elif args.what == "measure":
+        doc = trial_measure(usage, cycle_rows(args.root))
     else:
         doc = {"all": peak_rolling_runs(usage), "lane": peak_rolling_runs(usage, lanes=True),
                "non_lane": peak_rolling_runs(usage, lanes=False)}
