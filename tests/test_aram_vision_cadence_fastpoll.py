@@ -12,9 +12,9 @@ These tests pin the SCHEDULE, not a constant. A test that asserted
 `_FAST_VISION_INTERVAL == 6.0` would be worthless: the bug is that no scan
 lands inside a brief window, which is a property of the emitted scan
 TIMESTAMPS. So `_simulate_scans` below replays the real vision-loop gate
-(`coaches/_base_coach.py:462` `if forced or now - self._last_vision >=
+(`BaseCoach._vision_loop` `if forced or now - self._last_vision >=
 self._VISION_INTERVAL`) at the real loop granularity
-(`coaches/_base_coach.py:491` `await asyncio.sleep(3.0)`) and asserts over the
+(`BaseCoach._vision_loop` `await asyncio.sleep(3.0)`) and asserts over the
 resulting timestamps.
 
 The regression that would actually cost money is the short interval LEAKING
@@ -36,7 +36,7 @@ if str(_PROJECT_ROOT) not in sys.path:
 
 from coaches import aram_coach  # noqa: E402
 
-# coaches/_base_coach.py:491 - the vision loop's per-iteration sleep. The gate
+# BaseCoach._vision_loop - the vision loop's per-iteration sleep. The gate
 # can therefore only ever fire on a multiple of this, which is what makes the
 # achievable inter-scan gap (not the nominal interval) the thing under test.
 _LOOP_SLEEP_S = 3.0
@@ -52,7 +52,7 @@ def _make_coach() -> aram_coach.Coach:
     """Build a Coach without BaseCoach.__init__ (no loops / SDK / AppLoop).
 
     Mirrors tests/test_aram_state_debounce.py::_make_coach. `_init_extra` is
-    the real hook the live lifecycle calls at coaches/_base_coach.py:312, so
+    the real hook the live lifecycle calls in BaseCoach.__init__, so
     calling it here is what seeds the fast-poll counters.
     """
     c = aram_coach.Coach.__new__(aram_coach.Coach)
@@ -87,7 +87,7 @@ def _simulate_scans(
 
     Reproduces exactly three live behaviours:
       - `_last_vision` starts at 0.0 while `now` is a real epoch
-        (coaches/_base_coach.py:306), so the first tick always scans.
+        (BaseCoach.__init__), so the first tick always scans.
       - the poll loop runs every ~1.5s, i.e. at least once between two 3.0s
         vision ticks, so the cadence setter has always run before the gate.
       - the fast-scan counter is bumped inside `_run_vision`, i.e. only when a
@@ -265,7 +265,7 @@ class FastCadenceBoundedTests(unittest.TestCase):
 
 
 class LatchLifecycleTests(unittest.TestCase):
-    """Per-game latch/counter reset (coaches/_base_coach.py:312 / :361)."""
+    """Per-game latch/counter reset (BaseCoach.__init__ / reset_state)."""
 
     def test_init_extra_seeds_the_counters(self) -> None:
         c = _make_coach()

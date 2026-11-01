@@ -1030,8 +1030,8 @@ class Coach(BaseCoach):
                     })
                     safe_write(self._out, current)
                 except Exception as exc2:  # noqa: BLE001
-                    # D-class: callees already swallow (coaches/_base_coach.py:66-68
-                    # load_json -> {}, :100-102 safe_write returns).
+                    # D-class: callees already swallow (coaches/_base_coach.py
+                    # load_json -> {}, safe_write logs and returns False).
                     logger.debug("Arena augment reco persist: %s", exc2)
 
     def _reconcile_augment_hud(self, vision_state: dict) -> None:
@@ -1069,8 +1069,8 @@ class Coach(BaseCoach):
                     current["augments_picked"] = list(self._picked_augments)
                     safe_write(self._out, current)
             except Exception as exc:  # noqa: BLE001
-                # D-class: callees already swallow (coaches/_base_coach.py:66-68
-                # load_json -> {}, :100-102 safe_write returns).
+                # D-class: callees already swallow (coaches/_base_coach.py
+                # load_json -> {}, safe_write logs and returns False).
                 logger.debug("HUD reconcile (confirm) write: %s", exc)
             return
         logger.info(
@@ -1084,8 +1084,8 @@ class Coach(BaseCoach):
             current["augments_source"] = "vision_hud"
             safe_write(self._out, current)
         except Exception as exc:  # noqa: BLE001
-            # D-class: callees already swallow (coaches/_base_coach.py:66-68
-            # load_json -> {}, :100-102 safe_write returns).
+            # D-class: callees already swallow (coaches/_base_coach.py
+            # load_json -> {}, safe_write logs and returns False).
             logger.debug("HUD reconcile write: %s", exc)
 
     def _handle_anvil(self, vision_state: dict) -> None:

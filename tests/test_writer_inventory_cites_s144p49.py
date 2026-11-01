@@ -47,8 +47,9 @@ Other-family cites in the same files are out of this guard's scope on
 purpose. The polled_json resolver cites (core/cost_tracker.py:490,
 coaches/_base_coach.py:502 / :539, coaches/sr_user_builds.py:513, as
 written at 8bf931e29) are now pinned by
-tests/test_polled_json_resolver_cites_s144p51.py; the arena_coach /
-aram_coach D-class cite coaches/_base_coach.py:66-68 is still open.
+tests/test_polled_json_resolver_cites_s144p51.py, and the arena_coach /
+aram_coach cites into coaches/_base_coach.py (66-68 among them) by
+tests/test_base_coach_dclass_cites_s144p51.py.
 """
 
 from __future__ import annotations

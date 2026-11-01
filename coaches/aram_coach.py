@@ -742,7 +742,7 @@ class Coach(BaseCoach):
         return None
 
     def _reset_extra(self) -> None:
-        # Fires per new game (coaches/_base_coach.py:361). The interval is reset
+        # Fires per new game (BaseCoach.reset_state). The interval is reset
         # alongside the counters because it is an INSTANCE attr the vision loop
         # reads every tick - leaving a previous game's fast value on the
         # instance would fast-poll the whole next game.
@@ -781,7 +781,7 @@ class Coach(BaseCoach):
         """Publish the effective interval to the vision loop.
 
         The loop re-reads `self._VISION_INTERVAL` on every 3s iteration
-        (coaches/_base_coach.py:462), so a plain float assignment from the poll
+        (BaseCoach._vision_loop), so a plain float assignment from the poll
         thread is the whole mechanism - GIL-atomic, no lock, identical to the
         already-shipped `self._DEBOUNCE_S` mutation.
         """
@@ -814,8 +814,8 @@ class Coach(BaseCoach):
                 if cur.get("my_team") != mt:
                     cur["my_team"] = mt
                     safe_write(self._out, cur)
-        # D-CLASS: callee already swallows. load_json (_base_coach.py:66-68)
-        # returns {} on any error and safe_write (:100-102) returns after
+        # D-CLASS: callee already swallows. load_json (coaches/_base_coach.py)
+        # returns {} on any error and safe_write returns False after
         # logging, so no exception from either can reach this handler. It is
         # mechanically unreachable and cannot be narrowed.
         except Exception:  # noqa: BLE001
@@ -890,8 +890,8 @@ class Coach(BaseCoach):
             try:
                 _ai.set_scanning(0)
             # LEFT BROAD (silent-except triage, C-class declined): _ai comes
-            # from self._overlay, which BaseCoach initialises to {} at
-            # coaches/_base_coach.py:297 and nothing in the coach package ever
+            # from self._overlay, which BaseCoach initialises to {} in
+            # BaseCoach.__init__ and nothing in the coach package ever
             # populates. set_scanning has no implementation in this repo (only
             # test stubs), so the callee is an unconstrained duck-typed object
             # and no exception set is provable from the source.
