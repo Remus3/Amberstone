@@ -35,6 +35,8 @@ from pathlib import Path
 
 import pytest
 
+from tests._repo_walk import repo_files
+
 ROOT = Path(__file__).resolve().parent.parent
 SELF = Path(__file__).resolve()
 
@@ -123,8 +125,12 @@ def _symbol_source(module: str, qualname: str) -> str | None:
 
 
 def _scanned_py() -> list[Path]:
-    files = sorted((ROOT / "ops").rglob("*.py")) + sorted(
-        (ROOT / "tests").rglob("*.py"))
+    # TRACKED .py under ops/ and tests/ only (ADR-015, tests/_repo_walk). A raw
+    # rglob also walked the gitignored ops/runtime/responder_export/<sha>/ repo
+    # copies in a main checkout, whose stale executor.py still carries the old
+    # cites, so the guard went red there and green in every worktree and on CI.
+    files = [p for p in repo_files(ROOT, ("*.py",))
+             if p.relative_to(ROOT).parts[0] in ("ops", "tests")]
     return [p for p in files if p.resolve() != SELF]
 
 
