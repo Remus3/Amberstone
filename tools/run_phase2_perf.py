@@ -114,17 +114,12 @@ class _FakeEngine:
     def shutdown(self): pass
 
 class _FakeLive:
-    def set_ai_bar(self, b): pass
+    # Exactly the methods core/tft_worker.py calls on its `live` object
+    # (tests/test_run_phase2_perf_fakes_s144p69.py pins the match).
     def start(self): pass
     def shutdown(self): pass
     def notify_coach_state(self, s): pass
     def notify_round(self, s): pass
-
-class _FakeProxy:
-    def set_scanning(self, pct=0): pass
-    def set_done(self): pass
-    def set_interval(self, s): pass
-    def notify_scan_scheduled(self, t): pass
 
 # -- Fixtures ---------------------------------------------------------------
 
