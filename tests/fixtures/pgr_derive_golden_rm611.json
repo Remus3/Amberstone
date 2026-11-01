@@ -2,7 +2,7 @@
  "_note": "RM-611 golden: synthetic name-scrubbed raw docs -> PGR extractor output, keyed by DERIVE_VERSION. Regenerate only together with a DERIVE_VERSION bump: python tests/test_pgr_derive_golden_rm611.py --regen",
  "extractors": {
   "pgr_event_report": {
-   "derive_version": 1,
+   "derive_version": 2,
    "output": {
     "2": {
      "cohort": {

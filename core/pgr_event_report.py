@@ -53,7 +53,10 @@ DECISION_CRITERIA = ("skill_order", "objective_participation",
 # whenever render()'s output for the same match + timeline changes;
 # tests/test_pgr_derive_golden_rm611.py fails until the bump lands with a
 # regenerated golden. render() is computed on demand and not stored.
-DERIVE_VERSION = 1
+# v2 (s144 lane 8): core.event_patterns.skill_order skips EVOLVE skill-ups,
+# so a Viktor / Kha'Zix / Kai'Sa build signature changes (94 of 30050
+# corpus players, all Viktor); the synthetic golden output is unchanged.
+DERIVE_VERSION = 2
 
 PROMOTION_NOTE = ("observed, not validated - promotion to a coaching rule "
                   "requires a measured win-vs-loss rate difference across the "
