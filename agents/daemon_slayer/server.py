@@ -502,7 +502,12 @@ def _opt_augment_stacks(body: dict) -> Optional[dict]:
         raise _ApiError(
             400, f"augment_stacks: expected object, got {type(v).__name__}")
     out: dict[str, float] = {}
-    for k, raw in v.items():
+    for raw_k, raw in v.items():
+        # RM-1274: strip the apiName key, as the ``augments`` list entry
+        # is stripped; " TapDancer " missed the engine's exact lookup.
+        # RM-1275: a 400 names that stripped key, the one the engine
+        # matches. A padded duplicate is last-wins, as for the spell keys.
+        k = str(raw_k).strip()
         if isinstance(raw, bool):
             raise _ApiError(400, f"augment_stacks.{k}: expected number, got {raw!r}")
         try:
@@ -511,9 +516,7 @@ def _opt_augment_stacks(body: dict) -> Optional[dict]:
             raise _ApiError(400, f"augment_stacks.{k}: expected number, got {raw!r}")
         if not math.isfinite(f):
             raise _ApiError(400, f"augment_stacks.{k}: must be a finite number, got {raw!r}")
-        # RM-1274: strip the apiName key, as the ``augments`` list entry
-        # is stripped; " TapDancer " missed the engine's exact lookup.
-        out[str(k).strip()] = f
+        out[k] = f
     return out
 
 
@@ -1816,7 +1819,10 @@ def _parse_form_index(body: dict) -> Optional[dict[str, int]]:
     # it 500'd on every unparseable rank, not just the non-finite ones.
     # RM-1242: strip the key first, as _opt_str does. " w " missed the
     # engine's "W" lookup and was echoed back as a resolved override.
-    return {str(k).strip().upper(): _to_int(v, f"form_index[{k}]")
+    # RM-1275: the 400 names the stripped key (strip only, so the
+    # caller's case survives in the message); a padded duplicate of a key
+    # already present is last-wins, as json.loads is for exact duplicates.
+    return {str(k).strip().upper(): _to_int(v, f"form_index[{str(k).strip()}]")
             for k, v in raw_form.items()}
 
 
