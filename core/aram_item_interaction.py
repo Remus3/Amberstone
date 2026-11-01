@@ -21,8 +21,9 @@ HARD FIREWALL
 REUSE, NOT REINVENTION
     * ``core.item_wpa.load_legendary_ids`` - the completed-legendary catalog
       gate (called with ``map_id=12`` for the ARAM-legal set).
-    * ``core.item_wpa._load_frames`` / ``_participant_team_win`` - per-match
-      frame grouping + participant->team/win resolution.
+    * ``core.item_wpa._load_frames`` - per-match frame grouping. The
+      participant -> team / win / champion roster is read here, strictly
+      (a NULL or out-of-range win is unknown, never a loss).
     * ``core.post_game_score._interpolate_frame_for_event`` / ``predict_prob``
       - the shipped WPA logistic model, used here for the same selection-bias
       correction ``item_wpa`` applies (a player far ahead buys luxury items and
@@ -51,20 +52,34 @@ PRESSURE METRIC
     available on this schema.
 
 Read-only, connection-injected (tests pass an in-memory sqlite fixture; the db
-is gitignored so the suite stays clean-checkout safe). Never raises - one bad
-match is logged and skipped.
+is gitignored so the suite stays clean-checkout safe).
+
+FAIL-SOFT ON DATA, FAIL-LOUD ON EVERYTHING ELSE (s144 true-audit cycle 96)
+    The only producer, ``tools/aram_item_interaction_precompute.py``, writes
+    the result over the TRACKED snapshot the live coach reads, so a partial or
+    garbage result must never come back as ``ok=True``:
+      * a malformed purchase row is skipped (that row only); a match whose
+        frames or roster are malformed is skipped WHOLE and rolled back;
+      * ``sqlite3.Error`` (for example "database is locked") PROPAGATES, and
+        so does any exception that is not a data error;
+      * an empty champion or item catalog is ``{"ok": False, "error": ...}``
+        - an empty catalog would bucket every purchase as one fabricated
+        shape, or drop every purchase.
 """
 from __future__ import annotations
 
 import json
 import logging
+import math
 import sqlite3
+import threading
 import time
 from pathlib import Path
 from typing import Optional, Sequence
 
 from core.aram_comp_verdict import compute_factors
-from core.item_wpa import _load_frames, _participant_team_win, load_legendary_ids
+from core.failed_load_gate import FailedLoadGate
+from core.item_wpa import _load_frames, load_legendary_ids
 from core.post_game_score import (
     MatchState,
     WpaModel,
@@ -106,8 +121,40 @@ _DMG_HEAVY_MIN = 4
 # Enemy frontline-count bucket boundaries.
 _FRONTLINE_LIGHT_MAX = 2  # 1..2 = light; 0 = none; 3+ = heavy
 
-_champ_names_by_id: dict[int, str] = {}
-_champ_names_loaded = False
+# What a malformed MATCH (bad frame / roster values) can raise inside the
+# per-match sweep. Deliberately narrow: sqlite3.Error is not here (a locked DB
+# is not a bad row) and neither is any other class (a defect must surface).
+_MATCH_DATA_ERRORS = (TypeError, ValueError, ArithmeticError)
+
+# Champion-name memo. Published only after a SUCCESSFUL load, under the lock,
+# so a concurrent caller never sees a half-filled catalog, and a failed load
+# is never cached (RM-439): it is retried after the gate's backoff.
+_CHAMP_NAMES: Optional[dict[int, str]] = None
+_CHAMP_NAMES_LOCK = threading.Lock()
+_CHAMP_NAMES_GATE = FailedLoadGate()
+
+
+def _strict_int(value: object) -> Optional[int]:
+    """``value`` as an int, or ``None`` when it is not exactly an integer.
+
+    Accepts an int, an integral finite float and a numeric string; refuses
+    ``bool`` (``True`` would read as id 1), a fractional float (never
+    truncated onto a real id), bytes and anything else.
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        if math.isfinite(value) and value.is_integer():
+            return int(value)
+        return None
+    if isinstance(value, str):
+        try:
+            return int(value.strip())
+        except ValueError:
+            return None
+    return None
 
 
 def _resolve_patch() -> Optional[str]:
@@ -118,36 +165,68 @@ def _resolve_patch() -> Optional[str]:
         return None
 
 
+def _load_champion_names() -> tuple[Optional[dict[int, str]], str]:
+    """Read the catalog: ``(names, "")`` or ``(None, why)`` on any failure.
+
+    A catalog with no usable entry is a failure too - no real champion
+    catalog is empty.
+    """
+    patch = _resolve_patch()
+    if not patch:
+        return None, "no current patch"
+    path = _DS_DIR / patch / "champions.json"
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        return None, f"{path.name}: {type(exc).__name__}: {exc}"
+    data = raw.get("data") if isinstance(raw, dict) else None
+    if not isinstance(data, dict):
+        return None, f"{path.name}: no champion object"
+    names: dict[int, str] = {}
+    for champ in data.values():
+        if not isinstance(champ, dict):
+            continue
+        cid = _strict_int(champ.get("key"))
+        name = champ.get("name")
+        if cid is None or not isinstance(name, str) or not name.strip():
+            continue
+        names[cid] = name
+    if not names:
+        return None, f"{path.name}: no usable champion entry"
+    return names, ""
+
+
 def champion_names_by_id() -> dict[int, str]:
     """``{riot_champion_id: display_name}`` from the patch-current catalog.
 
     Resolves by the numeric ``key`` field, NOT by champion_name string, because
     the stored ``participants.champion_name`` is the DDragon id ("MonkeyKing")
-    while the comp-fact extractor keys on the display name ("Wukong"). Memoised;
-    ``{}`` fail-soft on a missing / unparseable catalog.
+    while the comp-fact extractor keys on the display name ("Wukong").
+
+    Memoised after a SUCCESSFUL load only. A missing, unparseable, wrong-shape
+    or empty catalog returns ``{}`` WITHOUT caching it; the load is retried
+    after the ``FailedLoadGate`` backoff and warns once per failure streak.
+    An entry with a bool / fractional / non-numeric ``key`` or an empty name
+    is skipped. The returned dict is shared: callers must not mutate it.
     """
-    global _champ_names_loaded
-    if _champ_names_loaded:
-        return _champ_names_by_id
-    _champ_names_loaded = True
-    patch = _resolve_patch()
-    if not patch:
-        return _champ_names_by_id
-    try:
-        data = json.loads(
-            (_DS_DIR / patch / "champions.json").read_text(encoding="utf-8")
-        ).get("data") or {}
-    except (OSError, ValueError) as exc:
-        log.warning("champion_names_by_id: %s", exc)
-        return _champ_names_by_id
-    for champ in data.values():
-        if not isinstance(champ, dict):
-            continue
-        try:
-            _champ_names_by_id[int(champ.get("key"))] = str(champ.get("name") or "")
-        except (TypeError, ValueError):
-            continue
-    return _champ_names_by_id
+    global _CHAMP_NAMES
+    cached = _CHAMP_NAMES
+    if cached is not None:
+        return cached
+    with _CHAMP_NAMES_LOCK:
+        if _CHAMP_NAMES is not None:
+            return _CHAMP_NAMES
+        if not _CHAMP_NAMES_GATE.should_attempt():
+            return {}
+        names, why = _load_champion_names()
+        if names is None:
+            if _CHAMP_NAMES_GATE.record_failure():
+                log.warning("champion_names_by_id: catalog unavailable (%s)"
+                            " - will retry", why)
+            return {}
+        _CHAMP_NAMES_GATE.record_success()
+        _CHAMP_NAMES = names
+        return names
 
 
 def shape_from_factors(factors: dict) -> str:
@@ -174,11 +253,24 @@ def shape_from_factors(factors: dict) -> str:
     return f"{dmg}/{front}"
 
 
-def comp_shape(champion_ids: Sequence[int]) -> str:
-    """Comp shape for a team given Riot champion ids (unknown ids skipped)."""
+def _team_names(champion_ids: Sequence[object]) -> list[str]:
+    """Display names for the ids the catalog knows (others skipped)."""
     names = champion_names_by_id()
-    team = [names[int(cid)] for cid in (champion_ids or []) if int(cid) in names]
-    return shape_from_factors(compute_factors(team))
+    out: list[str] = []
+    for raw in champion_ids or ():
+        cid = _strict_int(raw)
+        if cid is not None and cid in names:
+            out.append(names[cid])
+    return out
+
+
+def comp_shape(champion_ids: Sequence[int]) -> str:
+    """Comp shape for a team given Riot champion ids.
+
+    Unknown or unparseable ids (``None``, a bool, a fractional float, a
+    non-numeric string) are skipped, never raised on.
+    """
+    return shape_from_factors(compute_factors(_team_names(champion_ids)))
 
 
 def _timing_bucket(ts_s: float, buckets) -> Optional[str]:
@@ -212,7 +304,8 @@ def _gold_swing(frames, ts_ms: int, own: set[int], enemy: set[int],
     """Own-minus-enemy team gold delta across the window after ``ts_ms``.
 
     ``None`` when the window is not fully covered by frames (game ended first)
-    so a truncated window never masquerades as a full-window reading.
+    so a truncated window never masquerades as a full-window reading. ``None``
+    too when a gold value is non-finite, so inf / NaN never reach the payload.
     """
     end_ms = int(ts_ms) + window_s * 1000
     if _last_frame_ts(frames) < end_ms:
@@ -223,7 +316,8 @@ def _gold_swing(frames, ts_ms: int, own: set[int], enemy: set[int],
         return None
     own_delta = _team_gold(end_rows, own) - _team_gold(start_rows, own)
     enemy_delta = _team_gold(end_rows, enemy) - _team_gold(start_rows, enemy)
-    return own_delta - enemy_delta
+    swing = own_delta - enemy_delta
+    return swing if math.isfinite(swing) else None
 
 
 def _expected_win_for_team(frame_rows: Sequence[tuple], game_time_s: float,
@@ -249,6 +343,115 @@ class _Cell:
         self.sum_swing = 0.0
         self.n_swing = 0
         self.sum_ts = 0.0
+
+
+def _read_roster(conn: sqlite3.Connection, mid: str
+                 ) -> tuple[dict[int, set[int]], dict[int, int], dict[int, int]]:
+    """``(teams, champ_of, win_of)`` for one match, read strictly.
+
+    A row whose participant id is not an integer, or whose team is not 100 /
+    200, is skipped. A NULL / non-integer champion id is absent from
+    ``champ_of``; a win other than 0 / 1 is absent from ``win_of`` (unknown,
+    never a loss). A participant id listed twice raises ``ValueError``: the
+    roster is ambiguous, so the caller skips the whole match.
+    """
+    teams: dict[int, set[int]] = {}
+    champ_of: dict[int, int] = {}
+    win_of: dict[int, int] = {}
+    seen: set[int] = set()
+    rows = conn.execute(
+        "SELECT participant_id, team_id, champion_id, win FROM participants "
+        "WHERE match_id=?",
+        (mid,),
+    ).fetchall()
+    for pid_raw, team_raw, cid_raw, win_raw in rows:
+        pid = _strict_int(pid_raw)
+        team = _strict_int(team_raw)
+        if pid is None or team not in (100, 200):
+            continue
+        if pid in seen:
+            raise ValueError(f"participant {pid} listed twice")
+        seen.add(pid)
+        teams.setdefault(team, set()).add(pid)
+        cid = _strict_int(cid_raw)
+        if cid is not None:
+            champ_of[pid] = cid
+        win = _strict_int(win_raw)
+        if win in (0, 1):
+            win_of[pid] = win
+    return teams, champ_of, win_of
+
+
+def _match_observations(
+    conn: sqlite3.Connection,
+    mid: str,
+    *,
+    legendary: dict[int, str],
+    champion_id: Optional[int],
+    model: WpaModel | None,
+    timing_buckets,
+    pressure_window_s: int,
+) -> list[tuple[tuple[str, int, str], float, float, float, Optional[float]]]:
+    """Every counted purchase of one match as ``(cell_key, win, expected,
+    purchase_time_s, gold_swing)``. Raises a ``_MATCH_DATA_ERRORS`` class on
+    malformed frames / roster; the caller then drops the whole match."""
+    frames = _load_frames(conn, mid)
+    if not frames:
+        return []
+    teams, champ_of, win_of = _read_roster(conn, mid)
+    if len(teams) != 2:
+        return []
+    # Enemy comp shape is a per-TEAM fact: for a member of team T the enemy
+    # comp is the other team's champion list. None when no enemy champion
+    # resolves - an invented "mixed/fl_none" bucket is not a shape.
+    shape_for_team: dict[int, Optional[str]] = {}
+    for t in teams:
+        enemy_ids = [champ_of[p] for tt, pids in teams.items() if tt != t
+                     for p in sorted(pids) if p in champ_of]
+        names = _team_names(enemy_ids)
+        shape_for_team[t] = (shape_from_factors(compute_factors(names))
+                             if names else None)
+    team_of = {p: t for t, pids in teams.items() for p in pids}
+    events = conn.execute(
+        "SELECT timestamp_ms, participant_id, item_id FROM timeline_events "
+        "WHERE match_id=? AND event_type='ITEM_PURCHASED' "
+        "ORDER BY timestamp_ms ASC, id ASC",
+        (mid,),
+    ).fetchall()
+    obs: list = []
+    for ts_raw, pid_raw, item_raw in events:
+        iid = _strict_int(item_raw)
+        if iid is None or iid not in legendary:
+            continue
+        pid = _strict_int(pid_raw)
+        team_id = team_of.get(pid) if pid is not None else None
+        win = win_of.get(pid) if pid is not None else None
+        if team_id is None or win is None:
+            continue
+        if champion_id is not None and champ_of.get(pid) != champion_id:
+            continue
+        shape = shape_for_team.get(team_id)
+        if shape is None:
+            continue
+        ts_ms = _strict_int(ts_raw)
+        if ts_ms is None:  # unknown time: cannot place the purchase
+            continue
+        t_s = ts_ms / 1000.0
+        bucket = _timing_bucket(t_s, timing_buckets)
+        if bucket is None:
+            continue
+        rows = _interpolate_frame_for_event(frames, ts_ms)
+        if rows is None:  # purchase before any frame
+            continue
+        expected = _expected_win_for_team(rows, t_s, team_id, model)
+        if expected is None or not math.isfinite(expected):
+            continue
+        enemy = set().union(*(p for t, p in teams.items() if t != team_id))
+        swing = _gold_swing(frames, ts_ms, teams[team_id], enemy,
+                            pressure_window_s)
+        obs.append(((shape, iid, bucket), float(win), float(expected), t_s,
+                    swing))
+    return obs
 
 
 def compute_aram_item_interaction(
@@ -281,10 +484,36 @@ def compute_aram_item_interaction(
     champion (the axis is OFF by default - see the module docstring's cell
     granularity note). Cells with ``n < min_n`` are DROPPED.
 
-    Never raises: one unreadable match is logged and skipped.
+    Arguments are validated before the sweep (``ValueError``): ``min_n`` an
+    ``int >= 0``, ``champion_id`` ``None`` or an ``int > 0``,
+    ``pressure_window_s`` an ``int > 0`` (``bool`` refused for all three).
+
+    Fail-soft on DATA, fail-loud on everything else:
+      * a purchase row with a missing / non-integer time, participant or item
+        id, a participant whose win is not 0 / 1, and a purchaser whose enemy
+        team has no champion the catalog knows (its shape would be invented)
+        are skipped - that row only;
+      * a match with malformed frames or roster (a participant listed twice)
+        is skipped WHOLE and rolled back - never half-counted;
+      * ``sqlite3.Error`` and any non-data exception PROPAGATE;
+      * an empty champion or item catalog returns
+        ``{"ok": False, "error": ...}`` before the sweep.
     """
-    t0 = time.time()
+    if isinstance(min_n, bool) or not isinstance(min_n, int) or min_n < 0:
+        raise ValueError("min_n must be an int >= 0")
+    if champion_id is not None and (
+            isinstance(champion_id, bool) or not isinstance(champion_id, int)
+            or champion_id <= 0):
+        raise ValueError("champion_id must be None or an int > 0")
+    if (isinstance(pressure_window_s, bool)
+            or not isinstance(pressure_window_s, int) or pressure_window_s <= 0):
+        raise ValueError("pressure_window_s must be an int > 0")
+    t0 = time.perf_counter()
     legendary = load_legendary_ids(items_json, map_id=ARAM_MAP_ID)
+    if not legendary:
+        return {"ok": False, "error": "item catalog unavailable"}
+    if not champion_names_by_id():
+        return {"ok": False, "error": "champion catalog unavailable"}
 
     where = ["has_timeline=1", "map_id=?"]
     params: list = [ARAM_MAP_ID]
@@ -292,98 +521,36 @@ def compute_aram_item_interaction(
         where.append("patch=?")
         params.append(str(patch))
     sql = "SELECT match_id FROM matches WHERE " + " AND ".join(where)
-    try:
-        match_ids = [r[0] for r in conn.execute(sql, params).fetchall()]
-    except sqlite3.Error as exc:
-        log.warning("compute_aram_item_interaction: match select -> %s", exc)
-        match_ids = []
+    # sqlite3.Error propagates: an empty corpus from a locked DB must not be
+    # written over the snapshot as if it were real.
+    match_ids = [r[0] for r in conn.execute(sql, params).fetchall()]
 
     cells: dict[tuple[str, int, str], _Cell] = {}
     matches_used = 0
 
     for mid in match_ids:
         try:
-            frames = _load_frames(conn, mid)
-            if not frames:
-                continue
-            roster = conn.execute(
-                "SELECT participant_id, team_id, champion_id FROM participants "
-                "WHERE match_id=?",
-                (mid,),
-            ).fetchall()
-            teams: dict[int, set[int]] = {}
-            champ_of: dict[int, int] = {}
-            for pid, team_id, cid in roster:
-                if pid is None or team_id is None:
-                    continue
-                teams.setdefault(int(team_id), set()).add(int(pid))
-                if cid is not None:
-                    champ_of[int(pid)] = int(cid)
-            if len(teams) != 2:
-                continue
-            pt = _participant_team_win(conn, mid)
-            if not pt:
-                continue
-            # Enemy comp shape is a per-TEAM fact: for a member of team T the
-            # enemy comp is the other team's champion list.
-            shape_for_team: dict[int, str] = {}
-            for t in teams:
-                enemy_pids = [p for tt, pids in teams.items() if tt != t
-                              for p in pids]
-                shape_for_team[t] = comp_shape(
-                    [champ_of[p] for p in sorted(enemy_pids) if p in champ_of]
-                )
-            events = conn.execute(
-                "SELECT timestamp_ms, participant_id, item_id FROM timeline_events "
-                "WHERE match_id=? AND event_type='ITEM_PURCHASED' "
-                "ORDER BY timestamp_ms ASC, id ASC",
-                (mid,),
-            ).fetchall()
-            used = False
-            for ts_ms, pid, item_id in events:
-                if item_id is None or pid is None:
-                    continue
-                iid = int(item_id)
-                if iid not in legendary:
-                    continue
-                pid = int(pid)
-                if champion_id is not None and champ_of.get(pid) != int(champion_id):
-                    continue
-                meta = pt.get(pid)
-                if meta is None:
-                    continue
-                team_id, win = meta
-                ts_ms = int(ts_ms or 0)
-                bucket = _timing_bucket(ts_ms / 1000.0, timing_buckets)
-                if bucket is None:
-                    continue
-                rows = _interpolate_frame_for_event(frames, ts_ms)
-                if rows is None:  # purchase before any frame
-                    continue
-                expected = _expected_win_for_team(rows, ts_ms / 1000.0, team_id, model)
-                if expected is None:
-                    continue
-                own = teams.get(team_id) or set()
-                enemy = set().union(*(p for t, p in teams.items() if t != team_id))
-                swing = _gold_swing(frames, ts_ms, own, enemy, pressure_window_s)
-
-                cell = cells.setdefault(
-                    (shape_for_team.get(team_id, "mixed/fl_light"), iid, bucket),
-                    _Cell(),
-                )
-                cell.n += 1
-                cell.wins += float(win)
-                cell.sum_expected += expected
-                cell.sum_ts += ts_ms / 1000.0
-                if swing is not None:
-                    cell.sum_swing += swing
-                    cell.n_swing += 1
-                used = True
-            if used:
-                matches_used += 1
-        except Exception as exc:  # noqa: BLE001 - one bad match cannot abort
-            log.warning("compute_aram_item_interaction: match %s -> %s", mid, exc)
+            obs = _match_observations(
+                conn, mid, legendary=legendary, champion_id=champion_id,
+                model=model, timing_buckets=timing_buckets,
+                pressure_window_s=pressure_window_s,
+            )
+        except _MATCH_DATA_ERRORS as exc:
+            log.warning("compute_aram_item_interaction: match %s skipped -> %s: %s",
+                        mid, type(exc).__name__, exc)
             continue
+        # Merged only after the whole match read cleanly (rollback by design).
+        for key, win, expected, t_s, swing in obs:
+            cell = cells.setdefault(key, _Cell())
+            cell.n += 1
+            cell.wins += win
+            cell.sum_expected += expected
+            cell.sum_ts += t_s
+            if swing is not None:
+                cell.sum_swing += swing
+                cell.n_swing += 1
+        if obs:
+            matches_used += 1
 
     out: list[dict] = []
     dropped = 0
@@ -423,7 +590,7 @@ def compute_aram_item_interaction(
         "matches": matches_used,
         "cells": out,
         "cells_dropped_below_min_n": dropped,
-        "elapsed_ms": int((time.time() - t0) * 1000),
+        "elapsed_ms": int((time.perf_counter() - t0) * 1000),
     }
 
 
@@ -437,14 +604,21 @@ def compute_aram_item_interaction_from_db(
 ) -> dict:
     """Open ``rewind_history.db`` read-only, aggregate, close.
 
-    ``{"ok": False, "error": "rewind_history.db missing"}`` when absent.
+    ``{"ok": False, "error": "rewind_history.db missing"}`` when absent (or
+    the path is not a regular file). ``sqlite3.Error`` and a ``ValueError``
+    for a bad argument propagate (see ``compute_aram_item_interaction``).
+
+    The read-only URI goes through ``Path.as_uri``, which percent-encodes the
+    path: an f-string ``file:{path}?mode=ro`` let a '#' or '%' in the checkout
+    path truncate the URI or open a different file.
     """
     src = Path(db_path) if db_path is not None else (
         _PROJECT_ROOT / "data" / "rewind_history.db")
-    if not Path(src).exists():
+    if not src.is_file():
         return {"ok": False, "error": "rewind_history.db missing"}
     model = load_model(model_path)
-    conn = sqlite3.connect(f"file:{src}?mode=ro", uri=True, timeout=5.0)
+    uri = src.absolute().as_uri() + "?mode=ro"
+    conn = sqlite3.connect(uri, uri=True, timeout=5.0)
     try:
         return compute_aram_item_interaction(
             conn, min_n=min_n, champion_id=champion_id, patch=patch, model=model
