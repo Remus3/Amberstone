@@ -2,22 +2,28 @@
 """One irreversible act equals one ARM plus one CONFIRM.
 
 WHY THIS IS SERVER SIDE. The original arm-then-confirm lived in
-`web/mc/arm_confirm.js:45`, a browser module wired at `web/mc/mc.js:133`. That
-made the guard a property of ONE CLIENT: curl, a script, a second tab or a
-wedged phone reached `interrupt` - a taskkill over a named victim set - in a
-single HTTP call, because a browser module cannot defend a route it does not
-sit in front of. Retiring the Mission Control web UI would have deleted the
-guard silently while every control endpoint stayed live. Deleting a client
-cannot make a server safer, so the state machine moved here.
+`web/mc/arm_confirm.js` (`createArmController`), a browser module wired into
+`web/mc/mc.js` as `const _mcArm = createArmController(...)`. Both files were
+deleted by f9b4a07c1 (the Mission Control web UI retirement); every web/mc
+symbol named in this module reads at f9b4a07c1^. That made the guard a
+property of ONE CLIENT: curl, a script, a second tab or a wedged phone
+reached `interrupt` - a taskkill over a named victim set - in a single HTTP
+call, because a browser module cannot defend a route it does not sit in front
+of. Retiring the Mission Control web UI would have deleted the guard silently
+while every control endpoint stayed live. Deleting a client cannot make a
+server safer, so the state machine moved here.
 
 WHAT IS GATED, AND WHY ONLY THREE ACTIONS. The gated set is exactly the set the
 UI armed, derived from the client rather than invented here:
-`web/mc/mc.js:285` armed a lane (fire_lane), `:483` armed a shortcut
-(queue_intent), `:338` armed the interrupt. `stop`, `resume`, `set_directive`
-and `clear_directive` were one-click in the UI (`web/mc/mc.js:665,668,800,802`)
-because each is reversible by its own opposite. `steer` is one-click by an
-explicit in-tree finding - "GUIDANCE, NOT A COMMAND ... nothing here executes
-anything and nothing is signalled or killed"
+`web/mc/mc.js` armed a lane (fire_lane, the `_mcArm.arm(id)` in the
+`_mcPaintLanes` button handler), a shortcut (queue_intent, `_mcArm.arm(sc.id)`
+in the `_MC_SHORTCUTS.forEach` button handler) and the interrupt
+(`_mcArm.arm(_MC_IRQ_ID)`). `stop`, `resume`, `set_directive` and
+`clear_directive` were one-click in the UI (each button called
+`_loopControl(...)` directly, with no `_mcArm` step) because each is
+reversible by its own opposite. `steer` is one-click by an explicit in-tree
+finding - "GUIDANCE, NOT A COMMAND ... nothing here executes anything and
+nothing is signalled or killed"
 (the `_steer` docstring in `dashboard/routes_loop_control.py`).
 `interrupt_preview` kills nothing and writes nothing (the `_interrupt_preview`
 docstring there), and gating it would make the fingerprint unobtainable
@@ -25,10 +31,11 @@ without an arm, which would break the very confirm this module protects.
 
 WHAT CHANGED FROM THE JS, STATED RATHER THAN GLOSSED. The browser controller
 held a SINGLE armed slot, so arming a second button disarmed the first
-(`web/mc/arm_confirm.js:89-100`). That was a rendering affordance: two lit
-buttons on one screen are an operator trap. It is NOT the safety property, and
-reproducing it here would be actively wrong, because the server is a
-ThreadingHTTPServer and two concurrent requests are not two confused clicks.
+(`arm()` in `createArmController` called `disarm(true)` first). That was a
+rendering affordance: two lit buttons on one screen are an operator trap. It
+is NOT the safety property, and reproducing it here would be actively wrong,
+because the server is a ThreadingHTTPServer and two concurrent requests are
+not two confused clicks.
 This module keeps a BOUNDED TABLE of tokens instead, and recovers the safety
 half a different way: a token is BOUND to one action and one target, so a token
 armed for lane `ds` cannot fire lane `repo` and a token armed for `fire_lane`
@@ -80,10 +87,12 @@ resurrect the intent), it is RELEASED outright when the confirm does not settle
 body (so a retry must be the same request). `settle()` is how the route reports
 the outcome and MUST be called on every path.
 
-Deliberately in-process and non-durable, for the same reason
-`dashboard/_idempotency.py:12-15` gives: an arm is a single operator's intent
-over seconds, on a single-operator local surface. A restart clearing the table
-is CORRECT - it fails CLOSED, since a lost arm refuses rather than fires.
+Deliberately in-process and non-durable, for the same reason the
+"Deliberately in-process and non-durable" paragraph of the
+`dashboard/_idempotency.py` module docstring gives: an arm is a single
+operator's intent over seconds, on a single-operator local surface. A restart
+clearing the table is CORRECT - it fails CLOSED, since a lost arm refuses
+rather than fires.
 """
 from __future__ import annotations
 
@@ -205,8 +214,9 @@ def _mint() -> str:
 def target_of(action: str, body: dict) -> str:
     """The sub-identity an arm is bound to, mirroring the UI's armed id.
 
-    `web/mc/mc.js` armed a lane by its lane name (`:255`), a shortcut by its
-    intent id (`:467`) and the interrupt by the constant `_MC_IRQ_ID` (`:304`).
+    `web/mc/mc.js` (deleted, read at f9b4a07c1^) armed a lane by its lane
+    name (`"lane:" + lane` in `_mcPaintLanes`), a shortcut by its intent id
+    (`sc.id`) and the interrupt by the constant `_MC_IRQ_ID`.
     A missing field returns "" rather than raising: the action-level 400 in
     routes_loop_control is what reports a malformed body, and an arm that
     refused first would mask it.

@@ -134,12 +134,14 @@ def _awrite(path: Path, data: bytes) -> None:
     Windows and every byte count downstream then lies (measured, S3).
 
     LANE 8 CYCLE 48 (RM-250): the byte-mode write was already right, but the
-    replace was BARE. STEER.cursor (:243) is polled, and on Windows a reader
-    holding it open share-locks it, so `os.replace` raises WinError 5 and the
-    cursor advance is lost. The scratch name was also `str(path) + ".tmp"`,
-    derived from the DESTINATION alone and so shared by every writer of that
-    file. core/polled_json supplies the bounded ~275 ms PermissionError backoff
-    and a per-writer scratch name; this delegates rather than re-deriving them.
+    replace was BARE. STEER.cursor (`STEER_CURSOR`, advanced by `drain()`,
+    read by `cursor()` on every `pending()` poll) is polled, and on Windows a
+    reader holding it open share-locks it, so `os.replace` raises WinError 5
+    and the cursor advance is lost. The scratch name was also
+    `str(path) + ".tmp"`, derived from the DESTINATION alone and so shared by
+    every writer of that file. core/polled_json supplies the bounded ~275 ms
+    PermissionError backoff and a per-writer scratch name; this delegates
+    rather than re-deriving them.
     """
     _atomic_write_bytes(path, data)
 
