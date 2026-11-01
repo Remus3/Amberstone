@@ -1202,6 +1202,9 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   spawns are 2:05, 3:35, 5:05 ... 12:35, then 14:30, 15:20 ... 24:30, then 25:20, 25:45 ...; the
   14:00 step keeps the wave index parity from the anchor, so 14:05 is NOT a cannon under the
   current constants - a provisional choice this game settles too.
+  CONTESTED (s144 cycle 47): fact (2) rests on a code comment that the same function contradicts
+  for the R221 extract ("emits it once per wave"); see the G2-45 READY block, whose `stream`
+  verdict decides it - grade (a) only after it.
   FIELD PATHS: `/api/state` -> `liveclient.minion_events[].at_s`, `liveclient.game_time_s`,
   `callouts[].kind`; shadow record `ts` / `mode` / `game_time_s` / `callouts[].kind == "wave"` /
   `.eta_s` (implied spawn = `game_time_s + eta_s`).
@@ -1603,6 +1606,60 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   arrival 2:05 -> 2:35. Watch one game to ~16:00, log every spawn time and which waves carried a
   cannon, and pin the real breakpoint. **Do NOT wire the panel before this row closes** - the
   consuming panel slice is deliberately deferred for exactly this reason. SOURCE: ROADMAP RM-124 F1.
+  **READY (lane 9 PREP s144 cycle 47, source read at `1ae5a0918`; NOT a tick).** Four measured
+  facts reshape the row. (1) The repo states BOTH answers to question (1), inside one function:
+  `dashboard/_liveclient.py` `liveclient_summary` builds two extracts from the same `events.Events`
+  stream - `minion_events` (RM-124; comment "emits a single MinionsSpawning event at first-wave
+  spawn") and `minion_spawn_events` (R221; comment "emits it once per wave") - and both reach
+  `/api/state` -> `liveclient` whole (`dashboard/_state_builder.py` envelope key `"liveclient": lc`).
+  Neither comment cites a capture. G2-39's READY block and `tools/gated_g239_wave_clock.py` took
+  the ONCE reading as measured (`ANCHOR_MULTI` = FAIL); this row's capture decides it for BOTH rows,
+  so grade G2-39 (a) only after this verdict. (2) The two clocks part after 14:00 even from the same
+  anchor: `core.event_callouts` walks a piecewise 30 / 25 / 20 s interval, `dashboard/_wave_timing.py`
+  takes the median observed gap, else the constant `_DEFAULT_WAVE_INTERVAL_S` 30 s. Under ONCE the
+  R221 clock therefore projects 30 s waves all game: from anchor 1:05 both put cannons at 2:05, 3:35
+  ... 12:35, then `event_callouts` says 14:30, 15:20, 16:10 and `_wave_timing` says 14:35, 15:35,
+  16:35 (first divergence = the 9th cannon). That is a MODEL comparison, not evidence for either; a
+  game shorter than ~14:40 cannot tell them apart. (3) The cadence table the row grades is
+  `_CANNON_CADENCE = ((0.0, 3), (840.0, 2), (1500.0, 1))` - the same 14:00 / 25:00 breaks and parity
+  as `event_callouts`, so question (2) for both modules is one observation. (4) `wave_timing` has
+  NO production caller (only `tests/test_wave_timing.py`), so nothing on screen can show the R221
+  clock; the row is answered from the feed and an observation, never from a render.
+  PROBE (read-only; `tools/gated_g245_spawn_stream.py`, tests `tests/test_gated_g245_spawn_stream.py`):
+  (1) save `curl -sk https://127.0.0.1:8888/api/state` to a gitignored file at least twice in one
+  SR game, the last one at game clock 3:00 or later, and run
+  `python tools/gated_g245_spawn_stream.py stream <file1> <file2> ... --json`; (2) note the game
+  clock at which each cannon wave LEAVES the nexus (one per bracket if the game runs long:
+  before 14:00, 14:00-25:00, after 25:00; the clocks predict the SPAWN, so a lane-arrival read is
+  the wrong comparand), then run `python tools/gated_g245_spawn_stream.py clocks --anchor <first
+  spawn> [--spawns <the captured spawn times, REPEATS only>] --observed <m:ss,...> --json`.
+  FIELD PATHS: `/api/state` -> `liveclient.minion_spawn_events[].spawn_at_s`,
+  `liveclient.minion_events[].at_s`, `liveclient.game_time_s`.
+  PREDICATE (stated before any game): (1) `ONCE` = exactly one distinct spawn time and the newest
+  snapshot is at least 75 s past it (two later waves are due under any interval of 30 s or less);
+  `REPEATS` = two or more distinct times, with the median gap reported; either is a PASS of the
+  QUESTION and is recorded with its value. `EXTRACTS_DISAGREE` (the two extracts hold different
+  times) voids the capture and is its own defect; `FIELDS_MISSING` = the RC build lacks the extracts;
+  `TOO_EARLY` / `NO_EVENT` / `NOT_IN_GAME` = re-take. The tool does not check that every snapshot
+  is from ONE game; the file mtimes do.
+  Consequence: ONCE = the R221 module's "once per wave" premise is false, its `wave_number` past
+  14:00 rides the 30 s constant, and the panel stays unwired until it gets a gameTime projection
+  (a Tier-1 follow-up, not a flip); REPEATS = G2-39 (a) `ANCHOR_MULTI` is the expected shape and its
+  grader needs the earliest-event reading it already uses in production (`_wave_anchor_s`). (2)
+  `BOTH_MATCH` / `CALLOUTS_ONLY` / `TIMING_ONLY` / `NEITHER`, each observed cannon within 3 s of a
+  predicted SPAWN; a bracket the game never reached stays OPEN. A miss in a bracket = correct that
+  module's constants with the observed times as test data (Tier-1), never a flip.
+  EVIDENCE: the verdict + spawn times + each file's mtime and game clock; each observed cannon as
+  `m:ss` with how it was read (operator glance or a `:8889/latest-frame` whose `meta.ts` was
+  checked against `liveclient.game_time_s`).
+  SUBSTITUTION CHECK: a passing `tests/test_wave_timing.py`, the `clocks` schedule without
+  `--observed`, or a hand-built `/api/state` answers what the code COMPUTES, not what the Live Client
+  SENDS; only a saved state from a real game (file mtime inside the game window, `game_time_s`
+  advancing across the snapshots) answers (1), and only observed nexus-leave clocks answer (2). A
+  synthetic file with the right shape is NOT caught by the tool, only by the mtime and provenance.
+  Tool tests: `tests/test_gated_g245_spawn_stream.py` (hand-built inputs; pins the verdicts, that
+  each schedule is the production function walked forward, the 14:30 / 14:35 divergence, and the
+  source facts (1), (3) and (4)).
 
 ---
 
