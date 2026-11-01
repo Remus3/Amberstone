@@ -62,10 +62,10 @@ def read_api_key(app_dir: Path | None = None) -> str:
 
 
 def load_json(path: Path) -> dict:
-    """Load a JSON file safely. Returns {} on any error."""
+    """Load a JSON object safely. Returns {} on any error or a non-object document."""
     try:
-        if path.exists():
-            return json.loads(path.read_text(encoding="utf-8"))
+        data = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+        return data if isinstance(data, dict) else {}
     except Exception as exc:  # noqa: BLE001
         _log.debug("load_json %s: %s", path.name, exc)
     return {}
