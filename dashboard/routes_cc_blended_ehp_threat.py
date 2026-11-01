@@ -74,7 +74,9 @@ Tier bands:
   ratio < 0.95       -> "bad"   (enemy CC erodes us more)
 
 5-min TTL in-process cache keyed on (sorted_ally_tuple,
-sorted_enemy_tuple, mode). Mirrors routes_post_game_rubric +
+sorted_enemy_tuple, mode), bounded at ``_CACHE_MAX``
+entries (expired entries dropped on write, RM-1329). Mirrors
+routes_post_game_rubric +
 routes_ban_suggest 5-min TTL discipline.
 
 Don't-redo:
@@ -114,6 +116,8 @@ log = logging.getLogger("rc.web_dashboard")
 _CACHE_TTL_S = 300.0
 _CACHE: dict[tuple, tuple[float, dict]] = {}
 _CACHE_LOCK = threading.Lock()
+# RM-1329: the key carries caller champion strings, so bound the cache.
+_CACHE_MAX = 256
 
 # Lazy DS snapshot (mirrors routes_spike_curve._load_snapshot pattern).
 _SNAPSHOT = None
@@ -183,6 +187,20 @@ def _cache_key(ally: list[str], enemy: list[str], mode: str) -> tuple:
         tuple(sorted(enemy)),
         mode,
     )
+
+
+def _cache_put(key: tuple, now: float, payload: dict) -> None:
+    """Store ``payload`` under ``key``, then bound the cache (RM-1329,
+    the routes_ds_sweep RM-1327 discipline): drop every expired entry,
+    and past ``_CACHE_MAX`` drop the oldest."""
+    with _CACHE_LOCK:
+        _CACHE[key] = (now, dict(payload))
+        for k in [k for k, (ts, _) in _CACHE.items()
+                  if (now - ts) >= _CACHE_TTL_S]:
+            _CACHE.pop(k, None)
+        while len(_CACHE) > _CACHE_MAX:
+            oldest = min(_CACHE, key=lambda k: _CACHE[k][0])
+            _CACHE.pop(oldest, None)
 
 
 def _compute_side_avg(snapshot, allies: list[str], enemies: list[str],
@@ -366,9 +384,7 @@ def _serve_cc_blended_ehp_threat(h) -> None:
             return
 
         if payload.get("ok"):
-            with _CACHE_LOCK:
-                cacheable = dict(payload)
-                _CACHE[key] = (now, cacheable)
+            _cache_put(key, now, payload)
 
         payload["cached"] = False
         payload["elapsed_ms"] = int((time.time() - t0) * 1000)
