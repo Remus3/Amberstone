@@ -5263,25 +5263,53 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       if (empty) { empty.textContent = "-"; empty.hidden = false; }
     }
   }
+  // RM-1320: the lane trigger button for a slot ("primary" / "secondary").
+  function _laneTrigger(slot) {
+    return document.getElementById(slot === "secondary" ? "lv-lane-secondary" : "lv-lane-primary");
+  }
   function _openLanePopup(slot) {
     const popup = document.getElementById("lv-lane-popup");
     if (!popup) return;
     _LV.activeSlot = slot;
     const cur = (slot === "primary") ? _LV.prefPrimary : _LV.prefSecondary;
+    let curCell = null;
     popup.querySelectorAll(".lobby-lane-popup-cell").forEach((c) => {
-      c.classList.toggle("is-current", c.dataset.pref === cur);
+      const isCur = c.dataset.pref === cur;
+      c.classList.toggle("is-current", isCur);
+      if (isCur) curCell = c;
     });
     const lbl = document.getElementById("lv-lane-popup-label");
     if (lbl) lbl.innerHTML = "&nbsp;";
     popup.classList.remove("hidden");
     popup.setAttribute("aria-hidden", "false");
+    ["primary", "secondary"].forEach((s) => {
+      const t = _laneTrigger(s);
+      if (t) t.setAttribute("aria-expanded", s === slot ? "true" : "false");
+    });
+    // RM-1320: the popup sits BEFORE the triggers in DOM order, so Tab
+    // from a trigger never reached it. Opening moves focus to the slot's
+    // current lane (the first cell when it has none); a pointer open lands
+    // there without matching :focus-visible, so no ring is painted.
+    const target = curCell || popup.querySelector(".lobby-lane-popup-cell");
+    if (target) target.focus();
   }
-  function _closeLanePopup() {
+  // refocus (Escape, a lane pick): focus that was inside the popup goes back
+  // to the slot's trigger, since hiding the popup would otherwise leave it on
+  // a display:none cell or drop it to <body>. The outside-click and focusout
+  // closers pass no refocus, so they never pull focus back.
+  function _closeLanePopup(refocus) {
     const popup = document.getElementById("lv-lane-popup");
     if (!popup) return;
+    const hadFocus = popup.contains(document.activeElement);
+    const opener = _laneTrigger(_LV.activeSlot);
     popup.classList.add("hidden");
     popup.setAttribute("aria-hidden", "true");
     _LV.activeSlot = null;
+    ["primary", "secondary"].forEach((s) => {
+      const t = _laneTrigger(s);
+      if (t) t.setAttribute("aria-expanded", "false");
+    });
+    if (refocus === true && hadFocus && opener && !opener.disabled) opener.focus();
   }
   function _setLanePref(slot, pref) {
     // s162 v8: Primary and Secondary cannot share the same role. If
@@ -5337,7 +5365,8 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     });
     _renderLanePref("primary",   _LV.prefPrimary,   false);
     _renderLanePref("secondary", _LV.prefSecondary, false);
-    _closeLanePopup();
+    // RM-1320: a pick hands focus back to the slot's trigger.
+    _closeLanePopup(true);
     // s162 v15: re-render the PARTY panel so the self-row mirror
     // updates AND the conflict-detection pre-pass re-runs against
     // the new self primary.
@@ -5481,13 +5510,22 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     const popup = document.getElementById("lv-lane-popup");
     if (popup) {
       const lbl = document.getElementById("lv-lane-popup-label");
+      // RM-1320: the label names the hovered lane, else the focused one,
+      // so a keyboard user reads the lane name too, not only a mouse user.
+      const showLabel = (cell) => {
+        if (!lbl) return;
+        if (cell) lbl.textContent = LANE_LABELS[cell.dataset.pref] || "-";
+        else lbl.innerHTML = "&nbsp;";
+      };
+      const focusedCell = () => {
+        const ae = document.activeElement;
+        return (ae && popup.contains(ae) && ae.classList.contains("lobby-lane-popup-cell")) ? ae : null;
+      };
       popup.querySelectorAll(".lobby-lane-popup-cell").forEach((cell) => {
-        cell.addEventListener("mouseenter", () => {
-          if (lbl) lbl.textContent = LANE_LABELS[cell.dataset.pref] || "-";
-        });
-        cell.addEventListener("mouseleave", () => {
-          if (lbl) lbl.innerHTML = "&nbsp;";
-        });
+        cell.addEventListener("mouseenter", () => showLabel(cell));
+        cell.addEventListener("mouseleave", () => showLabel(focusedCell()));
+        cell.addEventListener("focus", () => showLabel(cell));
+        cell.addEventListener("blur", () => showLabel(null));
         cell.addEventListener("click", (e) => {
           e.stopPropagation();
           if (!_LV.activeSlot) return;
@@ -5495,6 +5533,24 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         });
       });
       popup.addEventListener("click", (e) => e.stopPropagation());
+      // RM-1320: Escape closes the popup through the one dispatcher
+      // (escape_layers.js) and hands focus back to the slot's trigger.
+      registerEscapeLayer({
+        name: "lobby-lane-popup",
+        el: () => popup,
+        isOpen: () => !popup.classList.contains("hidden"),
+        close: () => _closeLanePopup(true),
+      });
+      // RM-1320: keyboard focus leaving the popup (Tab past the last
+      // cell, Shift+Tab off the first) closes it; moving between cells keeps
+      // it open. A focusout with no related target (window blur, a click on
+      // a non-focusable spot) is left to the outside-click / Escape closers.
+      // No refocus: focus stays where Tab put it.
+      popup.addEventListener("focusout", (e) => {
+        const next = e.relatedTarget;
+        if (!next || popup.contains(next)) return;
+        if (!popup.classList.contains("hidden")) _closeLanePopup(false);
+      });
     }
     // ---- Change Lobby Mode dropdown (Row 4) ----
     const modeTrigger = document.getElementById("lv-mode-trigger");

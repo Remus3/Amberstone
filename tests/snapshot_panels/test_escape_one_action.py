@@ -514,8 +514,10 @@ def test_every_escape_layer_registers_with_the_one_dispatcher(
     assert names == {
         # RM-1251 added the Lobby mode menu
         # (tests/snapshot_panels/test_lobby_mode_menu_escape.py).
+        # RM-1320 added the Lobby lane popup
+        # (tests/snapshot_panels/test_lobby_lane_popup_keyboard.py).
         "main.js": ["task-modal", "view-menu", "find-match-picker",
-                    "lobby-mode-menu"],
+                    "lobby-lane-popup", "lobby-mode-menu"],
         "panels/right_now.js": ["digest-popover"],
         "panels/draft_elo.js": ["draft-elo-contributions"],
     }, names

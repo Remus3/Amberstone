@@ -1005,7 +1005,9 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 }
 .lobby-lane-popup.hidden { display: none; }
 .lobby-lane-popup-hover-label {
-  font-size: 13px; font-weight: 800; letter-spacing: 0.16em;
+  /* RM-1320: 13 -> --fs-xs (16), the v2.1 floor. The label now names
+   * the keyboard-focused lane too, not only the hovered one. */
+  font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.16em;
   text-transform: uppercase; color: var(--text);
   text-align: center;
   min-height: 16px;
@@ -1033,6 +1035,12 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   border-color: var(--clock);
   background: var(--gold-soft);
 }
+/* RM-1320: no rule here left the UA `auto` ring (measured 1px near-black
+ * on the popup surface), and opening the popup now moves focus onto a
+ * cell. Same 2px --accent outline as .lq-mode-item; offset 1px keeps the
+ * 3px reach inside the 8px gap between cells.
+ * Pinned by tests/snapshot_panels/test_lobby_lane_popup_keyboard.py. */
+.lobby-lane-popup-cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 /* ---- Row 4: Change Lobby Mode dropdown ---- */
 .lobby-view-mode-switcher {

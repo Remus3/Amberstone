@@ -846,27 +846,28 @@
                   <div class="lobby-lane-popup hidden" id="lv-lane-popup" role="menu" aria-hidden="true">
                     <div class="lobby-lane-popup-hover-label" id="lv-lane-popup-label">&nbsp;</div>
                     <div class="lobby-lane-popup-grid">
-                      <button type="button" class="lobby-lane-popup-cell" data-pref="TOP">
+                      <button type="button" class="lobby-lane-popup-cell" role="menuitem" data-pref="TOP">
                         <img src="/icons/positions/top.png" alt="Top" />
                       </button>
-                      <button type="button" class="lobby-lane-popup-cell" data-pref="JUNGLE">
+                      <button type="button" class="lobby-lane-popup-cell" role="menuitem" data-pref="JUNGLE">
                         <img src="/icons/positions/jungle.png" alt="Jungle" />
                       </button>
-                      <button type="button" class="lobby-lane-popup-cell" data-pref="MIDDLE">
+                      <button type="button" class="lobby-lane-popup-cell" role="menuitem" data-pref="MIDDLE">
                         <img src="/icons/positions/middle.png" alt="Middle" />
                       </button>
-                      <button type="button" class="lobby-lane-popup-cell" data-pref="BOTTOM">
+                      <button type="button" class="lobby-lane-popup-cell" role="menuitem" data-pref="BOTTOM">
                         <img src="/icons/positions/bottom.png" alt="Bottom" />
                       </button>
-                      <button type="button" class="lobby-lane-popup-cell" data-pref="UTILITY">
+                      <button type="button" class="lobby-lane-popup-cell" role="menuitem" data-pref="UTILITY">
                         <img src="/icons/positions/utility.png" alt="Support" />
                       </button>
-                      <button type="button" class="lobby-lane-popup-cell" data-pref="FILL">
+                      <button type="button" class="lobby-lane-popup-cell" role="menuitem" data-pref="FILL">
                         <img src="/icons/positions/fill.png" alt="Fill" />
                       </button>
                     </div>
                   </div>
                   <button type="button" class="lq-btn lq-lane-pref" id="lv-lane-primary"
+                          aria-haspopup="menu" aria-expanded="false"
                           data-slot="primary" data-pref="UNSELECTED" data-tt="Primary lane preference">
                     <span class="lq-btn-line2-icon">
                       <img class="lq-lane-icon" alt="" src="" hidden />
@@ -874,6 +875,7 @@
                     </span>
                   </button>
                   <button type="button" class="lq-btn lq-lane-pref" id="lv-lane-secondary"
+                          aria-haspopup="menu" aria-expanded="false"
                           data-slot="secondary" data-pref="UNSELECTED" data-tt="Secondary lane preference">
                     <span class="lq-btn-line2-icon">
                       <img class="lq-lane-icon" alt="" src="" hidden />
