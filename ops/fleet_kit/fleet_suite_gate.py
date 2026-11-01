@@ -1392,6 +1392,25 @@ def median_hold(d, tree, chash, window=LANE_WINDOW, min_runs=LANE_MIN_RUNS):
     return holds[m] if len(holds) % 2 else (holds[m - 1] + holds[m]) / 2.0
 
 
+TREE_HOLD_WINDOW = 10  # v27 KIT-DRIFT-HOLD
+
+
+def tree_median_hold(d, tree, window=TREE_HOLD_WINDOW):
+    """v27 KIT-DRIFT-HOLD: (median hold_s, runs counted) of the last `window`
+    runs of `tree` (any command; tree names compared case-folded), or (None, 0)."""
+    want = str(tree).casefold()
+    holds = [float(r["hold_s"]) for r in read_durations(d)
+             if str(r.get("tree") or "").casefold() == want
+             and isinstance(r.get("hold_s"), (int, float))
+             and not isinstance(r.get("hold_s"), bool)][-window:]
+    if not holds:
+        return None, 0
+    holds.sort()
+    m = len(holds) // 2
+    med = holds[m] if len(holds) % 2 else (holds[m - 1] + holds[m]) / 2.0
+    return med, len(holds)
+
+
 def lane_eligible(d, tree, chash):
     m = median_hold(d, tree, chash)
     return m is not None and m <= LANE_MAX_S

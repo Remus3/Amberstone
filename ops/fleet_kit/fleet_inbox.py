@@ -64,6 +64,13 @@ OutboundCap.record's check-then-append run under an OS byte-range lock on
 <ledger>.lock (ledger_lock; never unlinked, freed by the OS when a holder
 dies), so two senders at cap-1 cannot both pass and lines cannot interleave.
 
+v27 (KIT-INBOX-PENDING-ORDER, W44 RSC-1: an ORDER sat 5 days behind an
+auto-reply): mark_seen of a WORK note (ORDER / FIX / RULING) also queues it,
+so an ack can never retire an order; every queue change rewrites the marker
+ops/loop/control/inbox_pending_orders.json (pending rows, oldest first) and
+session_start() / `python fleet_inbox.py pending <root> [--inbox D --code C]`
+list every pending ORDER FIRST, then the unseen notes, WORK before the rest.
+
 Pure stdlib. No machine path, account id or repo name appears in this file.
 """
 
@@ -92,6 +99,7 @@ SEEN_REL = Path("ops/loop/control/inbox_seen.jsonl")
 OUTBOUND_REL = Path("ops/loop/control/outbound_notes.jsonl")
 USAGE_REL = Path("ops/loop/control/headless_usage.jsonl")
 WORK_REL = Path("ops/loop/control/inbox_work.jsonl")
+PENDING_REL = Path("ops/loop/control/inbox_pending_orders.json")  # v27
 HEAD_BYTES = 4096
 
 
@@ -391,6 +399,8 @@ def mark_seen(root, note, decision, verdict=None, clock=time.time):
     if digest:
         doc["sha256"] = digest
     _append(Path(root) / SEEN_REL, doc)
+    if decision.action == WORK and digest:
+        enqueue_work(root, note, decision, clock)  # v27: an ack never retires an ORDER
     return doc
 
 
@@ -482,6 +492,7 @@ def enqueue_work(root, note, decision, clock=time.time):
     doc = {"ts": _iso(clock()), "op": "queued", **key, "cls": decision.cls,
            "sender": decision.sender, "hop": decision.hop}
     _append(Path(root) / WORK_REL, doc)
+    write_pending_marker(root, clock)
     return doc
 
 
@@ -508,7 +519,55 @@ def mark_work_done(root, row, outcome="done", clock=time.time):
     doc = {"ts": _iso(clock()), "op": "done", "note": row.get("note"),
            "sha256": row.get("sha256"), "outcome": str(outcome)[:200]}
     _append(Path(root) / WORK_REL, doc)
+    write_pending_marker(root, clock)
     return doc
+
+
+def write_pending_marker(root, clock=time.time):
+    """v27: rewrite inbox_pending_orders.json from the work queue (atomic
+    replace). Never raises; returns the pending rows."""
+    rows = [{"note": d.get("note"), "cls": d.get("cls"), "sender": d.get("sender"),
+             "queued": d.get("ts")} for d in pending_work(root)]
+    path = Path(root) / PENDING_REL
+    with contextlib.suppress(OSError):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_name(path.name + ".tmp")
+        tmp.write_text(json.dumps({"updated": _iso(clock()), "pending": rows}, indent=1)
+                       + chr(10), encoding="ascii", newline=chr(10))
+        os.replace(tmp, path)
+    return rows
+
+
+def session_start(root, inbox_dir, own_code):
+    """v27: what a session reads first. Every pending (queued, not done) WORK
+    row first, oldest first, "pending": True; then the unseen notes (scan),
+    WORK before the rest, each group by mtime. One dict per row: note, cls,
+    sender, action, pending, queued."""
+    out, names = [], set()
+    for d in pending_work(root):
+        names.add(d.get("note"))
+        out.append({"note": d.get("note"), "cls": d.get("cls"), "sender": d.get("sender"),
+                    "action": WORK, "pending": True, "queued": d.get("ts")})
+    fresh = [(p, d) for p, d in scan(root, inbox_dir, own_code) if p.name not in names]
+    ordered = ([x for x in fresh if x[1].action == WORK]
+               + [x for x in fresh if x[1].action != WORK])
+    for p, d in ordered:
+        out.append({"note": p.name, "cls": d.cls, "sender": d.sender, "action": d.action,
+                    "pending": False, "queued": None})
+    return out
+
+
+def session_start_lines(rows):
+    """One line per row (FLEET-COMMON 19): pending orders read PENDING <CLS>."""
+    lines = []
+    for r in rows:
+        cls = r.get("cls") or "NOTE"
+        if r.get("pending"):
+            lines.append(f"PENDING {cls}: {r['note']} (from {r.get('sender') or '?'}, "
+                         f"queued {r.get('queued') or '?'})")
+        else:
+            lines.append(f"- {r['note']}: {cls} {r.get('action')}")
+    return lines
 
 
 class OutboundCap:
@@ -624,7 +683,36 @@ def repo_split(root, days=7, now=None):
     return doc
 
 
-if __name__ == "__main__":  # python fleet_inbox.py <root> [days]
-    import sys
-    r = sys.argv[1] if len(sys.argv) > 1 else os.getcwd()
-    print(json.dumps(repo_split(r, int(sys.argv[2]) if len(sys.argv) > 2 else 7), indent=1))
+def main(argv=None):
+    """`python fleet_inbox.py <root> [days]` prints the cost split (JSON);
+    v27 `python fleet_inbox.py pending <root> [--inbox DIR --code CODE]` prints
+    the pending ORDERs first, then (with --inbox and --code) the unseen notes."""
+    argv = sys.argv[1:] if argv is None else list(argv)
+    if argv[:1] == ["pending"]:
+        rest = argv[1:]
+        opts = {}
+        for flag in ("--inbox", "--code"):
+            if flag in rest:
+                k = rest.index(flag)
+                if k + 1 >= len(rest):
+                    print(f"{flag} takes a value")
+                    return 2
+                opts[flag] = rest[k + 1]
+                del rest[k:k + 2]
+        root = rest[0] if rest else os.getcwd()
+        if "--inbox" in opts and "--code" in opts:
+            rows = session_start(root, opts["--inbox"], opts["--code"])
+        else:
+            rows = [{"note": d.get("note"), "cls": d.get("cls"), "sender": d.get("sender"),
+                     "action": WORK, "pending": True, "queued": d.get("ts")}
+                    for d in pending_work(root)]
+        for line in session_start_lines(rows) or ["no pending orders"]:
+            print(line)
+        return 0
+    r = argv[0] if argv else os.getcwd()
+    print(json.dumps(repo_split(r, int(argv[1]) if len(argv) > 1 else 7), indent=1))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

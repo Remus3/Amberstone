@@ -315,6 +315,17 @@ v26 (daily kit train; cumulative: a tree on v24 or v25 adopts v26 at once):
 - New kit file fleet_hook.sh (ruling CS-815): the deny hooks run through a
   nonce-checking launcher and fail closed on a stub or missing interpreter.
 
+v27 (daily kit train 2026-11-01; cumulative: a tree on v24-v26 adopts v27 at once):
+- KIT-HEADLESS-STDERR: a run that ends rc != 0 logs error = the last 20
+  non-empty lines of its stderr (at most 4000 chars), else "rc N"; a timeout
+  stays "timeout"; limit classification is unchanged.
+- KIT-USAGE-UNPRICED: every usage line carries "priced" (cost_usd is a
+  number); a timed-out run logs cost_usd null, priced false.
+- KIT-USAGE-SESSIONID: the usage line carries the child's session_id.
+- Kit file changes elsewhere: fleet_lanes daily_usd_ceiling, fleet_inbox
+  pending-ORDER marker, fleet_suite_gate tree_median_hold, fleet_rewrite
+  --range, fleet_hook.sh fast path, fleet_claims lazy subprocess import.
+
 Pure stdlib. No machine path, account id or repo name appears in this file.
 """
 
@@ -333,7 +344,7 @@ import time
 from pathlib import Path
 from urllib.parse import urlsplit
 
-KIT_VERSION = 26
+KIT_VERSION = 27
 KIT_PATCH = 0
 TMPDIR_ENV = "CLAUDE_CODE_TMPDIR"  # v22: headless child temp root (sidecar)
 VAR = "CLAUDE_HEADLESS_BASE_URL"
@@ -1883,6 +1894,29 @@ def run_kind(note, kind=None, head=""):
     return "inbox" if _NOTE_SENDER.search(base) else "build"
 
 
+def _cost(r):
+    """v27: the result's total_cost_usd as a number, else None."""
+    c = r.get("total_cost_usd")
+    return c if isinstance(c, (int, float)) and not isinstance(c, bool) else None
+
+
+STDERR_TAIL_LINES = 20  # v27 KIT-HEADLESS-STDERR
+STDERR_TAIL_CHARS = 4000
+
+
+def stderr_tail(text, lines=STDERR_TAIL_LINES, cap=STDERR_TAIL_CHARS):
+    """v27 KIT-HEADLESS-STDERR: the last `lines` non-empty lines of a failed
+    child's stderr, ASCII-escaped by the ledger's JSON, at most `cap` chars
+    (the end kept). None when there is nothing."""
+    if isinstance(text, bytes):
+        text = text.decode("utf-8", "replace")
+    if not isinstance(text, str):
+        return None
+    rows = [x.rstrip() for x in text.splitlines() if x.strip()]
+    tail = "\n".join(rows[-lines:])
+    return tail[-cap:] or None
+
+
 def usage_line(result, code, note, model, effort, bare, rc, duration_s, error=None,
                kind=None, slot=None, route=None, fallback=False, unit=None):
     r = result if isinstance(result, dict) else {}
@@ -1895,7 +1929,12 @@ def usage_line(result, code, note, model, effort, bare, rc, duration_s, error=No
         "cache_creation": u.get("cache_creation_input_tokens"),
         "cache_read": u.get("cache_read_input_tokens"),
         "output_tokens": u.get("output_tokens"),
-        "cost_usd": r.get("total_cost_usd"),
+        # v27 KIT-USAGE-UNPRICED: a timed-out run has no price (null, priced false).
+        "cost_usd": None if error == "timeout" else _cost(r),
+        "priced": error != "timeout" and _cost(r) is not None,
+        # v27 KIT-USAGE-SESSIONID: the child's session id from its result.
+        "session_id": (r.get("session_id")[:64] if isinstance(r.get("session_id"), str)
+                       and r.get("session_id") else None),
         "num_turns": r.get("num_turns"),
         "is_error": r.get("is_error") if isinstance(r.get("is_error"), bool) else None,
         "subtype": r.get("subtype") if isinstance(r.get("subtype"), str) else None,
@@ -2642,6 +2681,10 @@ def _spawn_body(root, code, note, bare, budget, run, argv, model, effort, log_pa
     else:
         result = _json_or_none(getattr(proc, "stdout", None))
     rc = getattr(proc, "returncode", None) if proc is not None else None
+    run_error = error  # None, or the run never finished ("timeout")
+    if run_error is None and rc not in (0, None):
+        # v27 KIT-HEADLESS-STDERR: a failed run's row names why (stderr tail).
+        error = stderr_tail(getattr(proc, "stderr", None)) or f"rc {rc}"
     line = usage_line(result, code, note, model, effort, bare, rc,
                       time.time() - started, error, kind, slot_name, route, fb[1], unit_id)
     line["governor_slot"] = Path(slot).name if slot else None
@@ -2652,7 +2695,7 @@ def _spawn_body(root, code, note, bare, budget, run, argv, model, effort, log_pa
         line["tmpdir"] = kw["env"][TMPDIR_ENV]  # v22: the child's temp root
     line["child_marked"] = marked["ok"]
     cls = None
-    if error is None and proc is not None and (rc not in (0, None) or line["is_error"]):
+    if run_error is None and proc is not None and (rc not in (0, None) or line["is_error"]):
         # v20: the child's OWN limit message (result text, then stderr) - only of
         # a failed run; a timeout or a successful run's text is never read.
         res = result.get("result") if isinstance(result, dict) else None

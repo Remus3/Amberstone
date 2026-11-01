@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 the operator - the kit's owner and sole copyright holder. See NOTICE.
-"""Fleet kit v14 - the OPERATOR-GATED history rewrite helper (GH-HYGIENE,
+"""Fleet kit v14 (range v27) - the OPERATOR-GATED history rewrite helper (GH-HYGIENE,
 docs: the GH-HYGIENE ruling and approval of 2026-10-08).
 
 Vendored byte-for-byte at ops/fleet_kit/ and pinned by MANIFEST.json. Do NOT
@@ -52,6 +52,13 @@ The replace file is filter-repo's --replace-text format (`literal`,
 `#` comments. It holds the leaked values, so it must be a LOCAL file that git
 does not track and that is ignored or outside the worktree; default
 ops/loop/control/rewrite-replace.txt. No value from it is ever printed.
+v27 (KIT-REWRITE-RANGE, RC 2128 item 7): `plan` and `run` take
+--range BASE..BRANCH (BRANCH a local branch, BASE an ancestor of it), so a
+scoped identity fix stays on the kit. The plan then counts only the commits
+in the range, its PLAN_ID covers the range, the mailmap names only the
+identities seen in it, and filter-repo runs with `--refs BASE..BRANCH`;
+`run` refuses a --range that differs from the plan's. Every other gate
+(bundle of every ref, clean tree, no linked worktree, the approval) holds.
 Pure stdlib plus the sibling kit file fleet_identity.py.
 """
 
@@ -205,22 +212,49 @@ def operator_ident(root):
     return idents, full
 
 
-def plan_id(tips, rfile, full):
+def plan_id(tips, rfile, full, rng=None):
     h = hashlib.sha256()
     for ref in sorted(tips):
         h.update(("{} {}\n".format(ref, tips[ref])).encode("ascii"))
     h.update((_sha_file(rfile) if rfile else "-").encode("ascii"))
     h.update(repr(full).lower().encode("utf-8"))
+    if rng:  # v27: a range plan never matches a whole-history id
+        h.update(("range " + rng).encode("utf-8"))
     return h.hexdigest()[:12]
 
 
-def sha_change(root, flagged, graph=None):
+_RANGE = re.compile(r"^([A-Za-z0-9_][^\s:]*?)\.\.([A-Za-z0-9_][^\s:]*)$")
+
+
+def check_range(root, rng):
+    """v27: None, or a valid BASE..BRANCH range (BRANCH a local branch, BASE
+    resolving to an ancestor of it); Refused otherwise."""
+    if rng is None:
+        return None
+    m = _RANGE.match(str(rng))
+    if not m or "..." in str(rng) or ".." in m.group(2):
+        raise Refused("REWRITE: --range takes BASE..BRANCH (two dots)")
+    base, tip = m.group(1), m.group(2)
+    for rev in (base, tip):
+        if git(root, "rev-parse", "--verify", "--quiet", rev + "^{commit}",
+               check=False)[0] != 0:
+            raise Refused("REWRITE: --range {} does not resolve".format(rev))
+    if git(root, "show-ref", "--verify", "--quiet", "refs/heads/" + tip,
+           check=False)[0] != 0:
+        raise Refused("REWRITE: --range end must be a local branch")
+    if git(root, "merge-base", "--is-ancestor", base, tip, check=False)[0] != 0:
+        raise Refused("REWRITE: --range base is not an ancestor of the branch")
+    return "{}..{}".format(base, tip)
+
+
+def sha_change(root, flagged, graph=None, rng=None):
     """Commits a rewrite of the `flagged` shas changes: each flagged commit and
-    every descendant of one, over every branch and tag."""
+    every descendant of one, over every branch and tag (v27: inside rng)."""
     if not flagged:
         return 0
+    revs = [rng] if rng else list(REFS)
     out = graph if graph is not None else git(
-        root, "rev-list", "--topo-order", "--reverse", "--parents", *REFS, check=False)[1]
+        root, "rev-list", "--topo-order", "--reverse", "--parents", *revs, check=False)[1]
     changed = set()
     for ln in out.splitlines():
         parts = ln.split()
@@ -231,8 +265,9 @@ def sha_change(root, flagged, graph=None):
     return len(changed)
 
 
-def count(root, rfile, idents):
-    rows = identity.commits(root, ["--topo-order", *REFS]) or []
+def count(root, rfile, idents, rng=None):
+    revs = [rng] if rng else list(REFS)
+    rows = identity.commits(root, ["--topo-order", *revs]) or []
     bad = identity.violations(rows, idents)
     tiers = identity.tier_summary(rows, idents)
     flagged = {r["sha"] for r in rows if identity.violations([r], idents)}
@@ -245,7 +280,7 @@ def count(root, rfile, idents):
             needles.append({"entry": i, "kind": kind, "commits": None, "head_hits": None})
             continue
         flag = ["-G" + needle] if kind == "regex" else ["-S" + needle]
-        commits = git(root, "log", "--format=%H", *flag, *REFS, check=False)[1]
+        commits = git(root, "log", "--format=%H", *flag, *revs, check=False)[1]
         grep = ["-E" if kind == "regex" else "-F", "-e", needle]
         code, hits = git(root, "grep", "-c", *grep, "HEAD", check=False)
         n = sum(int(x.rsplit(":", 1)[1]) for x in hits.splitlines()
@@ -257,20 +292,21 @@ def count(root, rfile, idents):
             "classes": classes, "replace": needles,
             "trigger": tiers["distinct_trigger"],
             "ride_along_only": tiers["distinct_ride_along_only"],
-            "sha_change": sha_change(root, flagged),
+            "sha_change": sha_change(root, flagged, rng=rng),
             "oldest_depth": tiers["oldest_depth"]}
 
 
-def plan(root, given=None, clock=_now):
+def plan(root, given=None, clock=_now, rng=None):
+    rng = check_range(root, rng)
     rfile = replace_file(root, given)
     idents, full = operator_ident(root)
     if not idents:
         raise Refused("REWRITE: set the operator identity in LOCAL git config first: "
                       "git config --local --add {} \"Name <address>\"".format(identity.CONFIG_KEY))
     tips = ref_tips(root)
-    doc = {"at": clock(), "plan_id": plan_id(tips, rfile, full), "tips": tips,
-           "replace_sha256": _sha_file(rfile) if rfile else None,
-           "counts": count(root, rfile, idents)}
+    doc = {"at": clock(), "plan_id": plan_id(tips, rfile, full, rng), "tips": tips,
+           "replace_sha256": _sha_file(rfile) if rfile else None, "range": rng,
+           "counts": count(root, rfile, idents, rng)}
     (state_dir(root) / "plan.json").write_text(json.dumps(doc, indent=1, sort_keys=True),
                                                encoding="ascii", newline="\n")
     return doc
@@ -318,7 +354,7 @@ def kit_version(root):
     return 0
 
 
-def preflight(root, confirm, given=None, clock=_now, have_filter_repo=None):
+def preflight(root, confirm, given=None, clock=_now, have_filter_repo=None, rng=None):
     """Every refusal of `run`; returns (plan doc, backup doc, rfile, full ident)."""
     if kit_version(root) < MIN_KIT:
         raise Refused(f"REWRITE: vendor kit v{MIN_KIT} first (the hooks must land "
@@ -328,6 +364,10 @@ def preflight(root, confirm, given=None, clock=_now, have_filter_repo=None):
         raise Refused("REWRITE: no plan - run `plan` (the dry-run count) first")
     if confirm != pl.get("plan_id"):
         raise Refused("REWRITE: --confirm does not match the plan id")
+    rng = check_range(root, rng)
+    if (pl.get("range") or None) != rng:
+        raise Refused("REWRITE: --range differs from the plan's - give the plan's range "
+                      "or run `plan` again")
     if clock() - float(pl.get("at", 0)) > PLAN_MAX_H * 3600:
         raise Refused(f"REWRITE: the plan is older than {int(PLAN_MAX_H)} h - "
                       "run `plan` again")
@@ -336,7 +376,7 @@ def preflight(root, confirm, given=None, clock=_now, have_filter_repo=None):
     if full is None:
         raise Refused("REWRITE: {} needs a `Name <address>` value for the mailmap".format(identity.CONFIG_KEY))
     tips = ref_tips(root)
-    if plan_id(tips, rfile, full) != pl["plan_id"]:
+    if plan_id(tips, rfile, full, rng) != pl["plan_id"]:
         raise Refused("REWRITE: refs or the replace file changed since the plan - "
                       "run `plan` again")
     bk = _load(root, "backup.json")
@@ -365,10 +405,11 @@ def preflight(root, confirm, given=None, clock=_now, have_filter_repo=None):
     return pl, bk, rfile, full
 
 
-def mailmap_text(root, full, idents):
-    """One mailmap line per non-operator identity seen on any branch or tag."""
+def mailmap_text(root, full, idents, rng=None):
+    """One mailmap line per non-operator identity seen on any branch or tag
+    (v27: only inside rng when given)."""
     lines, seen = [], set()
-    for r in identity.commits(root, list(REFS)) or []:
+    for r in identity.commits(root, [rng] if rng else list(REFS)) or []:
         for n, a in ((r["an"], r["ae"]), (r["cn"], r["ce"])):
             if identity.is_operator(n, a, idents) or (n, a) in seen:
                 continue
@@ -411,22 +452,26 @@ def remotes(root):
     return out
 
 
-def filter_argv(mailmap, rfile):
+def filter_argv(mailmap, rfile, rng=None):
     argv = ["git", "filter-repo", "--force", "--mailmap", str(mailmap),
             "--message-callback", message_callback()]
     if rfile is not None:
         argv += ["--replace-text", str(rfile)]
+    if rng:  # v27: filter-repo rewrites only BASE..BRANCH
+        argv += ["--refs", rng]
     return argv
 
 
-def run(root, confirm, given=None, clock=_now, runner=None, have_filter_repo=None):
-    pl, _bk, rfile, full = preflight(root, confirm, given, clock, have_filter_repo)
+def run(root, confirm, given=None, clock=_now, runner=None, have_filter_repo=None,
+        rng=None):
+    pl, _bk, rfile, full = preflight(root, confirm, given, clock, have_filter_repo, rng)
+    rng = pl.get("range") or None
     idents, _ = operator_ident(root)
     sd = state_dir(root)
     mm = sd / "mailmap"
-    mm.write_text(mailmap_text(root, full, idents), encoding="utf-8", newline="\n")
+    mm.write_text(mailmap_text(root, full, idents, rng), encoding="utf-8", newline="\n")
     saved = remotes(root)
-    argv = filter_argv(mm, rfile)
+    argv = filter_argv(mm, rfile, rng)
     top = top_of(root)
     runner = runner or (lambda a: subprocess.run(a, cwd=str(top),
                                                  creationflags=_NO_WINDOW).returncode)
@@ -438,8 +483,9 @@ def run(root, confirm, given=None, clock=_now, runner=None, have_filter_repo=Non
     for name, url in saved.items():
         if name not in have:
             git(root, "remote", "add", name, url)
-    after = count(root, rfile, idents)
-    doc = {"at": clock(), "plan_id": pl["plan_id"], "before": pl["counts"], "after": after}
+    after = count(root, rfile, idents, rng)
+    doc = {"at": clock(), "plan_id": pl["plan_id"], "before": pl["counts"], "after": after,
+           "range": rng}
     (sd / "result.json").write_text(json.dumps(doc, indent=1, sort_keys=True),
                                     encoding="ascii", newline="\n")
     return doc
@@ -474,6 +520,7 @@ def main(argv=None):
         sp.add_argument("--root", default=".")
         if name != "bundle":
             sp.add_argument("--replace-file")
+            sp.add_argument("--range", dest="rng")  # v27: BASE..BRANCH
         if name == "bundle":
             sp.add_argument("--out", required=True)
         if name == "run":
@@ -484,13 +531,14 @@ def main(argv=None):
         return 2
     try:
         if args.cmd == "plan":
-            doc = plan(args.root, args.replace_file)
-            print("PLAN {}: {}".format(doc["plan_id"], _summary(doc["counts"])))
+            doc = plan(args.root, args.replace_file, rng=args.rng)
+            scope = "; range {}".format(doc["range"]) if doc.get("range") else ""
+            print("PLAN {}: {}{}".format(doc["plan_id"], _summary(doc["counts"]), scope))
         elif args.cmd == "bundle":
             doc = bundle(args.root, args.out)
             print(f"BUNDLE ok: {len(doc['heads'])} refs, sha256 {doc['sha256'][:16]}")
         else:
-            doc = run(args.root, args.confirm, args.replace_file)
+            doc = run(args.root, args.confirm, args.replace_file, rng=args.rng)
             print("REWRITE done: before {} | after {} - NOT pushed".format(_summary(doc["before"]), _summary(doc["after"])))
             return 0 if doc["after"]["commits_to_rewrite"] == 0 else 1
     except Refused as exc:

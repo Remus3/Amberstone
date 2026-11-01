@@ -98,6 +98,9 @@ denies. Non-allow decisions append one JSONL line to
 <project>/ops/loop/control/claims.jsonl. Stdout carries only the JSON decision.
 Never fails closed: any exception -> exit 0, no output.
 
+v27 (KIT-HOOK-FAST): subprocess is imported only by porcelain_paths (the one
+git call), not at hook start.
+
 Pure stdlib. No machine path, account id or repo name appears in this file.
 """
 
@@ -107,7 +110,6 @@ import json
 import os
 import re
 import shlex
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -1003,6 +1005,7 @@ def porcelain_paths(top, specs, runner=None):
     """Absolute paths `git status --porcelain` reports under the pathspecs
     (v17, `git add -A` / `.` / a directory or glob). ONE git call; any git
     error or timeout returns [] (claim nothing, never deny)."""
+    import subprocess  # noqa: PLC0415 - v27 KIT-HOOK-FAST: lazy, ~4-28 ms per hook start
     runner = runner or subprocess.run
     git = os.environ.get("FLEET_GIT") or "git"
     flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) if WIN else 0

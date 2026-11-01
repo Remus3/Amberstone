@@ -89,6 +89,12 @@ RUNS CAP (v26, ruling 2026-10-31 KIT-VW-RUNCAP): key runs_cap in the same
 file, {tree code: int}, is each tree's headless run cap per rolling 24 h
 (runs_cap(code); fleet_headless reads it on every spawn). No entry or a bad
 value = 120, logged; hard ceiling 500. `status` prints every effective cap.
+USD CEILING (v27 KIT-LANES-USD-CEIL): key daily_usd_ceiling in the same file,
+{tree code: dollars > 0}. A lane acquire for that tree sums today's (local
+day) cost_usd in its headless_usage.jsonl and refuses ("usd_ceiling", one
+JSONL line in ops/loop/control/lanes/usd_ceiling.jsonl) at or above it. No
+entry = no ceiling; a bad value is logged and means no ceiling. Only MAIN
+writes the file; a tree names its value in a note.
 
 Pure stdlib (psutil used only if present). No machine path, account id or repo
 name appears in this file; the governor root derives from %ProgramData%.
@@ -151,6 +157,10 @@ RUNS_CAP_KEY = "runs_cap"
 RUNS_CAP_DEFAULT = 120
 RUNS_CAP_MAX = 500
 _CODE_RE = re.compile(r"^[A-Z][A-Z0-9]{0,7}$")
+# v27 KIT-LANES-USD-CEIL: per-tree daily spend ceiling for new lanes.
+USD_CEIL_KEY = "daily_usd_ceiling"
+USAGE_REL = Path("ops/loop/control/headless_usage.jsonl")
+USD_LOG_REL = Path("ops/loop/control/lanes/usd_ceiling.jsonl")
 
 
 def config_path(environ=None):
@@ -198,6 +208,7 @@ def load_config(path=False, environ=None):
         path = config_path(environ)
     cfg = dict(CONFIG_DEFAULTS, source="defaults", errors=[])
     cfg[RUNS_CAP_KEY] = {}
+    cfg[USD_CEIL_KEY] = {}
     if path is None:
         return cfg
     path = Path(path)
@@ -221,6 +232,9 @@ def load_config(path=False, environ=None):
     for key, value in doc.items():
         if key == RUNS_CAP_KEY:
             cfg[RUNS_CAP_KEY] = _runs_cap_map(value, errors)
+            continue
+        if key == USD_CEIL_KEY:
+            cfg[USD_CEIL_KEY] = _usd_map(value, errors)
             continue
         if key not in CONFIG_DEFAULTS:
             errors.append(f"unknown key {str(key)[:40]!r} ignored")
@@ -253,6 +267,69 @@ def _runs_cap_map(value, errors):
             continue
         out[code] = cap
     return out
+
+
+def _usd_map(value, errors):
+    """v27: the valid {CODE: dollars} entries of a daily_usd_ceiling value."""
+    if not isinstance(value, dict):
+        errors.append(f"daily_usd_ceiling={str(value)[:40]!r} not an object, no ceiling")
+        return {}
+    out = {}
+    for code, usd in value.items():
+        good = (isinstance(usd, (int, float)) and not isinstance(usd, bool)
+                and 0 < usd < 1e7)
+        if not isinstance(code, str) or not _CODE_RE.match(code) or not good:
+            errors.append(f"daily_usd_ceiling {str(code)[:12]!r}={str(usd)[:20]!r} "
+                          "invalid, no ceiling")
+            continue
+        out[code] = usd
+    return out
+
+
+def usd_ceiling(code, config=None):
+    """v27: tree `code`'s daily USD ceiling for new lanes, or None. Never raises."""
+    try:
+        cfg = load_config() if config is None else config
+        usd = (cfg.get(USD_CEIL_KEY) or {}).get(str(code or "").upper())
+    except Exception:  # noqa: BLE001
+        return None
+    if isinstance(usd, (int, float)) and not isinstance(usd, bool) and usd > 0:
+        return usd
+    return None
+
+
+def spent_today(repo_root, now=None):
+    """v27: the sum of today's (local day) priced cost_usd rows in the tree's
+    headless_usage.jsonl. Unreadable file or row = 0 for it. Never raises."""
+    now = time.time() if now is None else now
+    day = time.strftime("%Y-%m-%d", time.localtime(now))
+    total = 0.0
+    try:
+        with (Path(repo_root) / USAGE_REL).open("r", encoding="ascii",
+                                                errors="replace") as fh:
+            for raw in fh:
+                if day not in raw:
+                    continue
+                try:
+                    row = json.loads(raw)
+                except ValueError:
+                    continue
+                c = row.get("cost_usd") if isinstance(row, dict) else None
+                ts = row.get("ts") if isinstance(row, dict) else None
+                if (isinstance(ts, str) and ts[:10] == day and isinstance(c, (int, float))
+                        and not isinstance(c, bool)):
+                    total += c
+    except OSError:
+        return 0.0
+    return total
+
+
+def _usd_log(root, rec):
+    with contextlib.suppress(OSError):
+        p = Path(root) / USD_LOG_REL
+        p.parent.mkdir(parents=True, exist_ok=True)
+        with p.open("a", encoding="ascii", newline="\n") as fh:
+            fh.write(json.dumps(rec, sort_keys=True) + "\n")
 
 
 def runs_cap(code, config=None):
@@ -971,6 +1048,16 @@ def try_acquire_lane(repo_root, code, lane, run_id, cap=None, exclusive=True, ad
         return {"ok": False, "refused": "admission", "reason": adm["reason"],
                 "admission": adm, "holders": []}
     root = main_tree(repo_root)
+    ceil = usd_ceiling(code, cfg)
+    if ceil is not None:  # v27 KIT-LANES-USD-CEIL
+        spent = spent_today(root)
+        if spent >= ceil:
+            reason = f"usd ceiling {spent:.2f} of {ceil:.2f} today"
+            _usd_log(root, {"event": "usd-ceiling", "tree": str(code), "lane": str(lane),
+                            "spent": round(spent, 2), "ceiling": ceil,
+                            "at": time.strftime("%Y-%m-%dT%H:%M:%S")})
+            return {"ok": False, "refused": "usd_ceiling", "reason": reason,
+                    "holders": []}
     d = root / LANES_REL
     d.mkdir(parents=True, exist_ok=True)
     with _acquire_mutex(d):
@@ -1235,6 +1322,10 @@ def status(root=None, trees=None, admit=None, config=None, now=None):
     out = {"config": {k: cfg[k] for k in (*CONFIG_DEFAULTS, "source", "errors")},
            "runs_cap": {"default": RUNS_CAP_DEFAULT, "max": RUNS_CAP_MAX,
                         "trees": {c: caps[c] for c in sorted(caps)}},
+           "usd_ceiling": {"trees": {
+               c: {"ceiling": usd, "today": round(spent_today((trees or {}).get(c) or ""), 2)
+                   if (trees or {}).get(c) else None}
+               for c, usd in sorted((cfg.get(USD_CEIL_KEY) or {}).items())}},
            "recommended": dict(RECOMMENDED_CONFIG),
            "free_slots": max(0, cfg["governor_width"] - running),
            "holders": holders, "queue": queue,
@@ -1265,6 +1356,9 @@ def status_lines(doc):
     rc = doc.get("runs_cap") or {"default": RUNS_CAP_DEFAULT, "trees": {}}
     lines.append(f"runs cap: default {rc['default']} per 24 h, max {rc.get('max', RUNS_CAP_MAX)}")
     lines += [f"- {c} runs cap: {n}" for c, n in rc["trees"].items()]
+    for code, u in ((doc.get("usd_ceiling") or {}).get("trees") or {}).items():
+        today = "?" if u.get("today") is None else f"{u['today']:.2f}"
+        lines.append(f"- {code} usd ceiling: {u['ceiling']:.2f}, today {today}")
     lines.append(f"free slots: {doc['free_slots']}")
     for h in doc["holders"]:
         lane = "" if h["lane_index"] is None else f" lane {h['lane_index']}"

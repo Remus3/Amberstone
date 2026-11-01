@@ -528,7 +528,10 @@ def test_close_takes_and_releases_the_lock_on_success(tmp_path, monkeypatch):
     in_done = _lock_seen_by(monkeypatch, "mark_work_done")
     done = tick_mod.close(tmp_path, ORDER, outcome="answered", sleep=_never_sleep)
     assert len(done) == 1
-    assert in_pending == [os.getpid()], "pending_work is read under the lock"
+    # Kit v27: mark_work_done rewrites inbox_pending_orders.json, which reads
+    # pending_work again - every read must still sit under the lock.
+    assert in_pending and set(in_pending) == {os.getpid()}, \
+        "pending_work is read under the lock"
     assert in_done == [os.getpid()], "mark_work_done appends under the lock"
     assert not (tmp_path / tick_mod.LOCK_REL).exists()
 
