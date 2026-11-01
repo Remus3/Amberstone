@@ -63,6 +63,8 @@ and importable with no repo root on sys.path (siblings load by file path).
 from __future__ import annotations
 
 import importlib.util
+import json
+import re
 import subprocess
 import sys
 import time
@@ -77,6 +79,10 @@ EXIT_TIMEOUT = 4  # the kit CLI's own code for a run its timeout killed
 # The responder's scheduled task fires every 5 minutes (POLL_INTERVAL_S in
 # tools/inbox_responder_runner.py); the idle status names the next tick.
 DEFAULT_TICK_S = 300
+# RC-5: the repin tool's unknown-option control (tools/repin_subagent_cli.py
+# UNKNOWN_NOTE), plus every older label of that control in the usage ledger.
+_DESIGNED_NEGATIVE_NOTE = re.compile(
+    r"-designed-negative-rc1$|^(?:repin-subagent-cli|[a-z0-9]+-canary)-unknown$")
 
 
 def _load(name: str, path: Path):
@@ -275,6 +281,57 @@ def spawn(prompt: str, *, caller: str, note: str = "", writes_code: bool = False
     return line, seen.get("proc")
 
 
+def is_designed_negative(row: dict) -> bool:
+    """True for a usage row that failed exactly as a designed negative must.
+
+    The kit logs a child's real rc and owns the row's shape, so a run that
+    SHOULD exit 1 can only say so in its note label. Only that exit counts: a
+    labelled run that exited otherwise, or exited 1 for any other named reason,
+    is a real failure. A pre-kit-v27 row has error null; v27 has the stderr tail.
+    """
+    if not _DESIGNED_NEGATIVE_NOTE.search(str(row.get("note") or "")):
+        return False
+    error = row.get("error")
+    return (row.get("rc") == 1 and row.get("is_error") is not True and not row.get("limit")
+            and (error is None or "unknown option" in str(error).lower()))
+
+
+def row_failed(row: dict) -> bool:
+    """RC's one definition of a failed usage row: a non-zero exit, a named error
+    (a timeout has rc null) or a child-reported error, less designed negatives."""
+    if _DESIGNED_NEGATIVE_NOTE.search(str(row.get("note") or "")):
+        return not is_designed_negative(row)
+    return (row.get("rc") not in (0, None) or bool(row.get("error"))
+            or row.get("is_error") is True)
+
+
+def usage_failures(root=None, last: int = 300) -> dict:
+    """Read-only count over the last `last` rows of the kit's usage ledger."""
+    k = kit()
+    path = (Path(root) if root is not None else _kit_root(k)) / k.USAGE_REL
+    try:
+        raw = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        raw = ""
+    rows = []
+    for text in raw.splitlines():
+        try:
+            doc = json.loads(text)
+        except ValueError:
+            continue
+        if isinstance(doc, dict):
+            rows.append(doc)
+    rows = rows[-last:] if last > 0 else []
+    failed: dict = {}
+    for row in rows:
+        if row_failed(row):
+            note = str(row.get("note") or "")
+            failed[note] = failed.get(note, 0) + 1
+    return {"rows": len(rows), "failed": sum(failed.values()),
+            "designed_negative": sum(1 for r in rows if is_designed_negative(r)),
+            "failed_notes": failed}
+
+
 def _idle(k, root, next_tick=None) -> None:
     try:
         k.write_status(root, CODE, "idle", "Idle", time.time(),
@@ -300,6 +357,7 @@ def main(argv=None) -> int:
                    [--writes-code] [--note NAME] [--timeout S]
                    [--kind build|inbox|triage] [--model M] [--effort E]
                    [--cwd DIR] [--prompt-stdin] [-- EXTRA...]
+           fleet_route.py --usage-failures [--root DIR] [--last N]
 
     `--model` / `--effort` are the kit's own parameters, passed through only
     when given. `--cwd` is the child's working directory (the budget, status
@@ -325,6 +383,11 @@ def main(argv=None) -> int:
                 return args[j + 1]
         return default
 
+    if "--usage-failures" in args:
+        # Read-only (RC-5): the failure count; starts nothing, needs no route.
+        doc = usage_failures(root=_opt("--root"), last=int(_opt("--last", "300")))
+        sys.stdout.write(json.dumps(doc, indent=1, sort_keys=True) + "\n")
+        return 0
     caller = _opt("--caller")
     prompt = _opt("--prompt")
     pfile = _opt("--prompt-file")

@@ -9,8 +9,11 @@ through the fleet kit's spawn() (FLEET item 10) via `ops/loop/fleet_route.spawn`
 stream-json into the evidence directory), with a FRESH random codeword placed
 only in the flag value:
 
-  0. unknown   `--definitely-not-a-flag` -> non-zero exit, "unknown option"
-  1. canary    flag ON, one real Agent spawn: the codeword is absent from the
+  0. unknown   `--definitely-not-a-flag` -> exit 1, "unknown option". A DESIGNED
+               NEGATIVE: the kit logs the real rc 1 in the usage row, so the
+               run's note label says so (UNKNOWN_NOTE) and
+               `ops/loop/fleet_route.row_failed` does not count it as a failure
+  1. canary   flag ON, one real Agent spawn: the codeword is absent from the
                Agent input, the subagent uses no tool, the codeword's FIRST
                appearance in the stream is the subagent's completion, and the
                final result is CANARY=<codeword>
@@ -19,7 +22,9 @@ only in the flag value:
   3. leak      flag ON, NO spawn, the top level reads its OWN prompt ->
                NO-CANARY, codeword count 0
 
-It stops at the first failed control (every further run is spend). The pin is
+It stops at the first failed control (every further run is spend); a control
+the kit's timeout killed records its cause (control, elapsed, last stream line)
+as facts.timeout_cause in the evidence dir's summary.json. The pin is
 written ONLY when all four ran and passed in THIS invocation, and the version
 written is the `claude_code_version` that the stream-json init of runs 1-3
 reported (all three identical) - never a version given on the command line
@@ -50,6 +55,7 @@ import re
 import secrets
 import subprocess
 import sys
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -66,7 +72,11 @@ UNKNOWN_FLAG = "--definitely-not-a-flag"
 CONTROLS = ("unknown", "canary", "neg", "leak")
 MODEL_RUNS = ("canary", "neg", "leak")
 CALLER = "repin-subagent-cli"
+# fleet_route.is_designed_negative reads this suffix; a test pins the two together.
+UNKNOWN_NOTE = f"{CALLER}-unknown-designed-negative-rc1"
+UNKNOWN_EXPECTED_RC = 1
 SPAWN_TIMEOUT_S = 240
+LAST_LINE_CAP = 400
 CANARY_KEY = "CANARY-CODEWORD:"
 NO_CANARY = "NO-CANARY"
 EXIT_PASS, EXIT_FAILED, EXIT_USAGE, EXIT_REFUSED = 0, 1, 2, 3
@@ -125,6 +135,11 @@ def new_codeword() -> str:
 
 def flag_value(codeword: str) -> str:
     return f"RM-795 re-pin canary marker. {CANARY_KEY} {codeword}"
+
+
+def control_note(name: str) -> str:
+    """The usage-row label of one control's run."""
+    return UNKNOWN_NOTE if name == "unknown" else f"{CALLER}-{name}"
 
 
 def spawn_plan(name: str, codeword: str):
@@ -243,8 +258,8 @@ def grade(name, codeword, rc, stderr, log_path) -> ControlResult:
     f = _facts(rows, codeword)
     version = None
     if name == "unknown":
-        if rc in (0, None):
-            reasons.append(f"an unknown option must exit non-zero, saw {rc!r}")
+        if rc != UNKNOWN_EXPECTED_RC:
+            reasons.append(f"an unknown option must exit {UNKNOWN_EXPECTED_RC}, saw {rc!r}")
         if "unknown option" not in (stderr or "").lower():
             reasons.append("stderr must name the unknown option")
     else:
@@ -307,6 +322,14 @@ def _stderr_of(log_path) -> str:
         return ""
 
 
+def _timeout_cause(name, log_path, elapsed_s, timeout_s) -> dict:
+    """Which control timed out, after how long, and how far its stream got."""
+    rows = _read_log(log_path)
+    return {"control": name, "elapsed_s": round(elapsed_s, 1), "timeout_s": timeout_s,
+            "stream_rows": len(rows),
+            "last_stream_line": rows[-1][0][-LAST_LINE_CAP:] if rows else None}
+
+
 def measure(out_dir, controls=CONTROLS, spawn_fn=None, codeword=None) -> Measurement:
     """Run the controls in order into a FRESH evidence dir; stop at the first
     failure or refusal. Raises RepinRefused, before any spawn, if out_dir
@@ -325,11 +348,14 @@ def measure(out_dir, controls=CONTROLS, spawn_fn=None, codeword=None) -> Measure
     for name in controls:
         prompt, extra = spawn_plan(name, m.codeword)
         log = out_dir / f"{name}.stream.jsonl"
+        started = time.monotonic()
         try:
-            line, proc = spawn_fn(prompt, note=f"{CALLER}-{name}", extra=extra, log_path=log)
-        except subprocess.TimeoutExpired:
+            line, proc = spawn_fn(prompt, note=control_note(name), extra=extra, log_path=log)
+        except subprocess.TimeoutExpired as exc:
             # the kit killed the process tree and logged the run; a pass needs an end
-            m.results.append(ControlResult(name, False, ["timeout"], log_path=str(log)))
+            cause = _timeout_cause(name, log, time.monotonic() - started, exc.timeout)
+            m.results.append(ControlResult(name, False, ["timeout"], log_path=str(log),
+                                           facts={"timeout_cause": cause}))
             break
         except RuntimeError as exc:
             code = getattr(exc, "code", None)  # fleet_route.RouteRefused carries one
