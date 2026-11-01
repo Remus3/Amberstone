@@ -60,6 +60,11 @@
 //    which _stackPath never walks, so a :fullscreen check would rank
 //    nothing. A layer inside a fullscreened non-root element would also
 //    need a fullscreenchange stamp to order it against open popovers.
+//
+// RM-1322: a HELD Escape is still one press. Its autorepeat keydowns
+// (event.repeat) close nothing and are consumed here, ahead of every
+// bubble-phase handler, so the main.js chain and the Replay player stand down
+// on them too and a hold cannot walk the layer stack and then exit zen.
 
 const _layers = [];
 let _bound = false;
@@ -190,6 +195,7 @@ function _follows(a, b) {
 function _onEscape(e) {
   if (e.key !== "Escape" && e.code !== "Escape") return;
   if (e.defaultPrevented) return;
+  if (e.repeat) { e.preventDefault(); return; }
   const open = [];
   for (const layer of _layers) {
     let isOpen = false;

@@ -7195,12 +7195,18 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
 
   // -- Keyboard shortcuts -------------------------------------------
   document.addEventListener("keydown", (e) => {
+    // RM-1322: a held key is one press. Each single-shot shortcut below (a
+    // reload, a kickoff, a toggle) skips its ACTION on an autorepeat but keeps
+    // its preventDefault, or a held Z or F would reach the type-ahead of a
+    // focused <select>. The autorepeat Escape never gets here unconsumed
+    // (escape_layers.js); Ctrl+K and the keybind toast are safe to repeat.
     // Shift+R resets saved preferences (zen) + reloads. The zoom key
     // was retired in UI scale v2 (2026-05-23); body { zoom } is gone
     // from base.css and no code path writes rc-zoom anymore.
     if (e.shiftKey && (e.key === "R" || e.key === "r")) {
       const tgt = e.target;
       if (tgt && (tgt.tagName === "INPUT" || tgt.tagName === "TEXTAREA")) return;
+      if (e.repeat) return;
       try {
         localStorage.removeItem("rc-zen");
         localStorage.removeItem("rc-header-lock");
@@ -7213,14 +7219,20 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       const tgt = e.target;
       if (tgt && (tgt.tagName === "INPUT" || tgt.tagName === "TEXTAREA")) return;
       const btn = el("analyze-now");
-      if (btn && !btn.disabled) { btn.click(); e.preventDefault(); return; }
+      if (btn && !btn.disabled) {
+        if (!e.repeat) btn.click();
+        e.preventDefault();
+        return;
+      }
     }
     // F toggles browser fullscreen (monitor-2 use case).
     if ((e.key === "f" || e.key === "F") && !e.ctrlKey && !e.metaKey && !e.altKey) {
       const tgt = e.target;
       if (tgt && (tgt.tagName === "INPUT" || tgt.tagName === "TEXTAREA")) return;
-      if (document.fullscreenElement) document.exitFullscreen();
-      else document.documentElement.requestFullscreen().catch(() => {});
+      if (!e.repeat) {
+        if (document.fullscreenElement) document.exitFullscreen();
+        else document.documentElement.requestFullscreen().catch(() => {});
+      }
       e.preventDefault();
       return;
     }
@@ -7231,10 +7243,12 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     if ((e.key === "z" || e.key === "Z") && !e.ctrlKey && !e.metaKey && !e.altKey) {
       const tgt = e.target;
       if (tgt && (tgt.tagName === "INPUT" || tgt.tagName === "TEXTAREA")) return;
-      const turningOn = document.body.dataset.zen !== "1";
-      document.body.dataset.zen = turningOn ? "1" : "";
-      try { localStorage.setItem("rc-zen", turningOn ? "1" : "0"); } catch (_) {}
-      _refreshPrefsChip();
+      if (!e.repeat) {
+        const turningOn = document.body.dataset.zen !== "1";
+        document.body.dataset.zen = turningOn ? "1" : "";
+        try { localStorage.setItem("rc-zen", turningOn ? "1" : "0"); } catch (_) {}
+        _refreshPrefsChip();
+      }
       e.preventDefault();
       return;
     }

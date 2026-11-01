@@ -183,6 +183,9 @@ function _onKeydown(ev) {
   }
   ev.preventDefault();
   if (action.type === "toggle-play") {
+    // RM-1322: a held Space is one press (prevented above so it still does
+    // not scroll). The seek keys below keep walking on autorepeat.
+    if (ev.repeat) return;
     if (v.paused) { const p = v.play(); if (p && p.catch) p.catch(() => {}); } else { v.pause(); }
     return;
   }
