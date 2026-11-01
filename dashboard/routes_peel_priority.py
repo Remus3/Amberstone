@@ -54,8 +54,9 @@ Failure / empty modes:
         selfish carries / assassins - the sparse-axis correct answer).
   - 503 allyamp import fails (DS engine unreachable).
 
-5-min TTL in-process cache keyed on (sorted_ally_tuple, mode), mirroring the
-cc-route discipline. The live roster is static within a game so the first
+5-min TTL in-process cache keyed on (sorted_ally_tuple, mode), bounded at
+``_CACHE_MAX`` entries (expired entries dropped on write, RM-1329),
+mirroring the cc-route discipline. The live roster is static within a game so the first
 in-game call warms the slot for the rest of the game.
 
 Don't-redo:
@@ -88,6 +89,8 @@ log = logging.getLogger("rc.web_dashboard")
 _CACHE_TTL_S = 300.0
 _CACHE: dict[tuple, tuple[float, dict]] = {}
 _CACHE_LOCK = threading.Lock()
+# RM-1329: the key carries caller champion strings, so bound the cache.
+_CACHE_MAX = 256
 
 _DEFAULT_MODE = "SR"
 _VALID_MODES = frozenset(("SR", "ARAM", "KIWI", "ARENA", "BRAWL"))
@@ -136,6 +139,20 @@ def _live_ally_roster() -> list[str]:
 
 def _cache_key(ally: list[str], mode: str) -> tuple:
     return (tuple(sorted(ally)), mode)
+
+
+def _cache_put(key: tuple, now: float, payload: dict) -> None:
+    """Store ``payload`` under ``key``, then bound the cache (RM-1329,
+    the routes_ds_sweep RM-1327 discipline): drop every expired entry,
+    and past ``_CACHE_MAX`` drop the oldest."""
+    with _CACHE_LOCK:
+        _CACHE[key] = (now, dict(payload))
+        for k in [k for k, (ts, _) in _CACHE.items()
+                  if (now - ts) >= _CACHE_TTL_S]:
+            _CACHE.pop(k, None)
+        while len(_CACHE) > _CACHE_MAX:
+            oldest = min(_CACHE, key=lambda k: _CACHE[k][0])
+            _CACHE.pop(oldest, None)
 
 
 def _score_ally(champ: str, mode: str) -> dict:
@@ -302,8 +319,7 @@ def _serve_peel_priority(h) -> None:
             }).encode("utf-8"), "application/json")
             return
 
-        with _CACHE_LOCK:
-            _CACHE[key] = (now, dict(payload))
+        _cache_put(key, now, payload)
 
         payload["cached"] = False
         payload["elapsed_ms"] = int((time.time() - t0) * 1000)

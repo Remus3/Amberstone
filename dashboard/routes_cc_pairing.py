@@ -55,8 +55,9 @@ Failure modes:
          champions (blanks / empty input).
   - 503  cc_pairing import fails (DS engine module unreachable).
 
-5-min TTL in-process cache keyed on (sorted_ally_tuple, top_n). Mirrors
-routes_cooldown_watch cache discipline.
+5-min TTL in-process cache keyed on (sorted_ally_tuple, top_n), bounded
+at ``_CACHE_MAX`` entries (expired entries dropped on write, RM-1329).
+Mirrors routes_cooldown_watch cache discipline.
 
 Don't-redo:
   * This route takes NO mode param: the pairing fact (which condition an
@@ -87,6 +88,8 @@ log = logging.getLogger("rc.web_dashboard")
 _CACHE_TTL_S = 300.0
 _CACHE: dict[tuple, tuple[float, dict]] = {}
 _CACHE_LOCK = threading.Lock()
+# RM-1329: the key carries caller champion strings, so bound the cache.
+_CACHE_MAX = 256
 
 _DEFAULT_TOP_N = 6
 _MAX_TOP_N = 12
@@ -119,6 +122,20 @@ def _parse_top_n(raw: str) -> int:
 
 def _cache_key(ally: list[str], top_n: int) -> tuple:
     return (tuple(sorted(ally)), top_n)
+
+
+def _cache_put(key: tuple, now: float, payload: dict) -> None:
+    """Store ``payload`` under ``key``, then bound the cache (RM-1329,
+    the routes_ds_sweep RM-1327 discipline): drop every expired entry,
+    and past ``_CACHE_MAX`` drop the oldest."""
+    with _CACHE_LOCK:
+        _CACHE[key] = (now, dict(payload))
+        for k in [k for k, (ts, _) in _CACHE.items()
+                  if (now - ts) >= _CACHE_TTL_S]:
+            _CACHE.pop(k, None)
+        while len(_CACHE) > _CACHE_MAX:
+            oldest = min(_CACHE, key=lambda k: _CACHE[k][0])
+            _CACHE.pop(oldest, None)
 
 
 def _card_to_dict(card) -> dict:
@@ -211,8 +228,7 @@ def _serve_cc_pairing(h) -> None:
             }).encode("utf-8"), "application/json")
             return
 
-        with _CACHE_LOCK:
-            _CACHE[key] = (now, dict(payload))
+        _cache_put(key, now, payload)
 
         payload["cached"] = False
         payload["elapsed_ms"] = int((time.time() - t0) * 1000)
