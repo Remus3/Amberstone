@@ -447,21 +447,43 @@ def _opt_int(body: dict, key: str, default: Optional[int] = None) -> Optional[in
     return _to_int(v, key)
 
 
-def _opt_float(body: dict, key: str, default: float = 0.0) -> float:
-    v = body.get(key, default)
-    if _is_blank(v):
-        return default
-    _reject_bool(v, key)
+def _finite_float(value: Any, field_name: str) -> float:
+    """Coerce one body value to a finite ``float`` or raise a 400.
+
+    The one float coercion behind ``_opt_float``, ``_opt_weight``,
+    ``_opt_targets_override`` and ``_opt_augment_stacks``, and the ``level``
+    of /summoner-fight-adj and /enemy-rune-threat, which the engine takes
+    as a float.
+
+    RM-1276: json.loads parses an integer literal as an exact ``int``, and
+    ``float(10 ** 400)`` raises OverflowError, which the TypeError /
+    ValueError catch missed, so the request was a 500. ``1e400`` overflows
+    to inf while parsing and was already the finite-number 400; an integer
+    of the same size now answers alike. That message does not echo the
+    digits.
+    """
+    _reject_bool(value, field_name)
     try:
-        f = float(v)
+        f = float(value)
     except (TypeError, ValueError):
-        raise _ApiError(400, f"{key}: expected number, got {v!r}")
+        raise _ApiError(400, f"{field_name}: expected number, got {value!r}")
+    except OverflowError:
+        raise _ApiError(400, f"{field_name}: must be a finite number, "
+                             "got an integer too large for a float")
     # Reject NaN / +-inf: a non-finite stat input is never legitimate and
     # json.dumps would emit a bare NaN/Infinity token, which is invalid JSON
     # that breaks the dashboard's JSON.parse downstream (finding class 1).
     if not math.isfinite(f):
-        raise _ApiError(400, f"{key}: must be a finite number, got {v!r}")
+        raise _ApiError(
+            400, f"{field_name}: must be a finite number, got {value!r}")
     return f
+
+
+def _opt_float(body: dict, key: str, default: float = 0.0) -> float:
+    v = body.get(key, default)
+    if _is_blank(v):
+        return default
+    return _finite_float(v, key)
 
 
 def _opt_bool(body: dict, key: str, default: bool = False) -> bool:
@@ -508,15 +530,7 @@ def _opt_augment_stacks(body: dict) -> Optional[dict]:
         # RM-1275: a 400 names that stripped key, the one the engine
         # matches. A padded duplicate is last-wins, as for the spell keys.
         k = str(raw_k).strip()
-        if isinstance(raw, bool):
-            raise _ApiError(400, f"augment_stacks.{k}: expected number, got {raw!r}")
-        try:
-            f = float(raw)
-        except (TypeError, ValueError):
-            raise _ApiError(400, f"augment_stacks.{k}: expected number, got {raw!r}")
-        if not math.isfinite(f):
-            raise _ApiError(400, f"augment_stacks.{k}: must be a finite number, got {raw!r}")
-        out[k] = f
+        out[k] = _finite_float(raw, f"augment_stacks.{k}")
     return out
 
 
@@ -1439,14 +1453,7 @@ def _opt_weight(body: dict, key: str) -> Optional[float]:
     falls back to the per-champion table)."""
     if key not in body or _is_blank(body[key]):
         return None
-    _reject_bool(body[key], key)
-    try:
-        f = float(body[key])
-    except (TypeError, ValueError):
-        raise _ApiError(400, f"{key}: expected number, got {body[key]!r}")
-    if not math.isfinite(f):
-        raise _ApiError(400, f"{key}: must be a finite number, got {body[key]!r}")
-    return f
+    return _finite_float(body[key], key)
 
 
 def _route_hybrid(body: dict) -> dict:
@@ -2700,7 +2707,7 @@ def _route_summoner_fight_adj(body: dict) -> dict:
     """
     self_ids = _coerce_int_list(body.get("self_spell_ids"), "self_spell_ids")
     enemy_ids = _coerce_int_list(body.get("enemy_spell_ids"), "enemy_spell_ids")
-    level = float(_opt_int(body, "level", 1) or 1)
+    level = _finite_float(_opt_int(body, "level", 1) or 1, "level")
     return asdict(summoner_fight_adjustments(self_ids, enemy_ids, level))
 
 
@@ -2719,7 +2726,7 @@ def _route_enemy_rune_threat(body: dict) -> dict:
     EMPTY set + defaults -> amp 0.0, divisor 1.0 (no-op). Additive read-only.
     """
     rune_ids = _coerce_int_list(body.get("enemy_rune_ids"), "enemy_rune_ids")
-    level = float(_opt_int(body, "level", 1) or 1)
+    level = _finite_float(_opt_int(body, "level", 1) or 1, "level")
     return asdict(enemy_rune_threat(
         rune_ids,
         level,
@@ -2944,14 +2951,7 @@ def _opt_targets_override(body: dict) -> Optional[float]:
     key = "targets_per_proc_override"
     if key not in body or _is_blank(body[key]):
         return None
-    _reject_bool(body[key], key)
-    try:
-        f = float(body[key])
-    except (TypeError, ValueError):
-        raise _ApiError(400, f"{key}: expected number, got {body[key]!r}")
-    if not math.isfinite(f):
-        raise _ApiError(400, f"{key}: must be a finite number, got {body[key]!r}")
-    return f
+    return _finite_float(body[key], key)
 
 
 def _route_hps(body: dict) -> dict:
