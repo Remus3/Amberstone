@@ -1,5 +1,11 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-10-31c - size-budget relocation (session 147 L8 merger), 1 line
+
+`ROADMAP.md` stood at 73678 of 81920 bytes on `489d6e71f` (the `tools/drift_guard.py` warn line is 73728), and the session 147 L8 landing index would cross it. The line below moves here VERBATIM as it stood at `489d6e71f`: the RM-1227 row, SHIPPED by the s144 queue lane cycle 81 commit landed in session 147 (LEDGER 2005; `lib/wiki_consent.py`, the consent record `ops/wiki_fetch_consent.json` with the keys `ruling`, `granted`, `scope` and an optional `expires`; `tests/test_wiki_fetch_refusal_rm1227.py`).
+
+- **[ ] RM-1227 (s146, provisional id; Tier-1, ~40 min queue slice; gated: none): wiki fetch-refusal guard (ruling 51 (b), `RM962-S146-R51`).** Every wiki request path (the five fetchers in `BACKLOG.md` RM-962, and so `upstream_drift_check --staleness-recent`) refuses before any socket opens unless a consent record exists; parsers fed operator-supplied text keep working (refuse, never delete); a test patches the network layer and asserts zero requests. Body: the same rulings doc, ruling 51.
+
 ## 2026-10-31b - size-budget relocation (session 146 /done), 1 line
 
 `ROADMAP.md` stood at 73587 of 81920 bytes on `4bf8f2227` (the `tools/drift_guard.py` warn line is 73728), and the session 146 /done index row for RM-1229..RM-1233 would cross it. The line below moves here VERBATIM as it stood at `4bf8f2227`: the RM-750 live half, now SUPERSEDED - the A45 launcher cutover (applied 2026-10-31 18:07, LEDGER 1998) unregistered the launcher tasks and RC's services start only under the rc-shell `--profile dev` host, so RC-DSKeepalive is never registered and ASKS 20 is retired (retiring the installers that re-register removed tasks is RM-1232). Open rows were not moved.
