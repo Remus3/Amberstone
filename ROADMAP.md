@@ -25,7 +25,7 @@ machine-read each cycle), `docs/RC2_PLAN.md` (RC 2.0 program only),
 
 _NOW / NEXT / LATER buckets with stable `RM-NN` item ids (assigned 2026-07-17, mdclean C2; ids never renumber - new items take the next free id). Shipped/closed entries relocate verbatim to `docs/ROADMAP_HISTORY.md` (append-only); per-item ledger in `docs/LEDGER.md`; aspirational work in `BACKLOG.md`; live-gated drains in `docs/LIVE_GAME_GATED_SYNC.md`._
 
-> **Size-budget relocation passes (2026-07-18, 2026-07-25, 2026-07-26, 2026-07-29, 2026-07-30, 2026-08-30, 2026-09-01, 2026-09-20, 2026-09-20b, 2026-10-01, 2026-10-02, 2026-10-03, 2026-10-04e, 2026-10-08, 2026-10-09b, 2026-10-10, 2026-10-12, 2026-10-15, 2026-10-16, 2026-10-17, 2026-10-20).** Shipped/closed narrative and BLOCKED rows' measurement evidence move VERBATIM to the dated blocks in `docs/ROADMAP_HISTORY.md`; purely live-gated rows reroute to `docs/LIVE_GAME_GATED_SYNC.md`. Each surviving row keeps its verdict, its named prerequisite or residual, and a pointer. **No RM id has ever been deleted and no open work dropped** - every id below is still reachable, as a bullet or as a routed row in the tables. Per-pass rationale + per-bullet evidence: the same dated blocks.
+> **Size-budget passes move shipped narrative VERBATIM to the dated blocks in `docs/ROADMAP_HISTORY.md`; no RM id has been deleted** (full note: its `## 2026-11-01` block).
 
 > **Decommissioned 2026-06-24 (operator-directed, ADR-012): the RC<->Peer cross-Claude bridge + lessons cross-project sync were fully REMOVED - do NOT re-pitch either.** Notice relocated verbatim to `docs/ROADMAP_HISTORY.md` (2026-09-07e block).
 

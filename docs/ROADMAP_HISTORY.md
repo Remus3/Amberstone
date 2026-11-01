@@ -1,5 +1,11 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-11-01 - size-budget relocation (session 148 /done, DRIVE-RC), 1 line
+
+`ROADMAP.md` stood at 74207 of 81920 bytes on `a52bc77ed` (the `tools/drift_guard.py` warn line is 73728). The header note below moves here VERBATIM; a one-line pointer stays. No row moved.
+
+> **Size-budget relocation passes (2026-07-18, 2026-07-25, 2026-07-26, 2026-07-29, 2026-07-30, 2026-08-30, 2026-09-01, 2026-09-20, 2026-09-20b, 2026-10-01, 2026-10-02, 2026-10-03, 2026-10-04e, 2026-10-08, 2026-10-09b, 2026-10-10, 2026-10-12, 2026-10-15, 2026-10-16, 2026-10-17, 2026-10-20).** Shipped/closed narrative and BLOCKED rows' measurement evidence move VERBATIM to the dated blocks in `docs/ROADMAP_HISTORY.md`; purely live-gated rows reroute to `docs/LIVE_GAME_GATED_SYNC.md`. Each surviving row keeps its verdict, its named prerequisite or residual, and a pointer. **No RM id has ever been deleted and no open work dropped** - every id below is still reachable, as a bullet or as a routed row in the tables. Per-pass rationale + per-bullet evidence: the same dated blocks.
+
 ## 2026-10-31c - size-budget relocation (session 147 L8 merger), 1 line
 
 `ROADMAP.md` stood at 73678 of 81920 bytes on `489d6e71f` (the `tools/drift_guard.py` warn line is 73728), and the session 147 L8 landing index would cross it. The line below moves here VERBATIM as it stood at `489d6e71f`: the RM-1227 row, SHIPPED by the s144 queue lane cycle 81 commit landed in session 147 (LEDGER 2005; `lib/wiki_consent.py`, the consent record `ops/wiki_fetch_consent.json` with the keys `ruling`, `granted`, `scope` and an optional `expires`; `tests/test_wiki_fetch_refusal_rm1227.py`).

@@ -235,7 +235,7 @@ approved Riot product; see the disclaimer at the end of this page.
 
 ## Status
 
-As of 2026-10-09. This is a summary; [`ROADMAP.md`](./ROADMAP.md) is the live
+As of 2026-11-01. This is a summary; [`ROADMAP.md`](./ROADMAP.md) is the live
 list of open work.
 
 **Working now.** The full loop runs end to end: the live reader, the build
@@ -249,7 +249,8 @@ precompute the common coaching decisions as plain engine lookups so live LLM
 calls trend toward zero, leaving the language model for what genuinely needs
 judgement. Alongside it run a UI redesign, a standing per-file hardening audit
 that files each finding as its own tracked item, and counter-build hints that
-are code-complete and waiting on a live game to confirm.
+are code-complete and waiting on a live game to confirm. The Electron shell now
+starts and stops the whole service stack; nothing starts on its own at logon.
 
 **Blocked on a real game.** Render cadence, overlay timing and event ordering can
 only be settled while a match is running, so those items are tracked apart in
@@ -261,7 +262,7 @@ machine-learned win predictor - the engine exists so neither is needed. No repla
 shipping feature, since the format is re-obfuscated each patch. No replacement
 for the in-game HUD: the Live Client API exposes no cooldowns, buffs, wards or
 XP, so the overlay augments the HUD and cannot stand in for it. No hosted
-service, no installer.
+service. An installer is being packaged, with no release of it yet.
 
 Open work lives in [`ROADMAP.md`](./ROADMAP.md), the longer-horizon queue in
 [`BACKLOG.md`](./BACKLOG.md), and the completion record in
