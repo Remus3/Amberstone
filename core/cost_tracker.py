@@ -500,7 +500,7 @@ class CostTracker:
                                   {"by_purpose": now_bp, "ts": time.time()})
         # Narrowed 2026-07-19; re-checked lane 8 cycle 24. Enumerated raise
         # surface of the block above:
-        #   read_json_dict / daily_spend (core/polled_json.py:139-174) swallows
+        #   core.polled_json.read_json_dict / daily_spend swallows
         #     OSError + JSONDecodeError, and since cycle 24 UnicodeDecodeError
         #     too - a non-UTF-8 ledger now yields the default instead of
         #     raising. ValueError stays in the handler below on its own merits
@@ -508,13 +508,13 @@ class CostTracker:
         #   float()/int() over ledger values -> ValueError / TypeError;
         #   matches.append(...) -> AttributeError when a corrupt file stored a
         #     non-list under "matches";
-        #   atomic_write_json (core/polled_json.py:104-116) -> OSError from
+        #   core.polled_json.atomic_write_json -> OSError from
         #     mkdir/write_bytes/os.replace, TypeError/ValueError from json.dumps.
         #   now_bp.items() / matches.append -> AttributeError when a corrupt
         #     ledger stored a list where a dict/list was expected.
-        # _purpose_to_gate (:165) is pure str/dict work over the GATE_META
-        # literal (:134-158, every entry has "purposes"), so it cannot raise.
-        # CostTracker.__init__ (:218-222) does raise OSError/TypeError/ValueError
+        # _purpose_to_gate is pure str/dict work over the GATE_META literal
+        # (every entry has "purposes"), so it cannot raise.
+        # CostTracker.__init__ does raise OSError/TypeError/ValueError
         # via mkdir + float(cfg), but construction has already completed before
         # this instance method is enterable, so that path is not reachable here.
         # COUPLING: this narrowing depends on the current internals of

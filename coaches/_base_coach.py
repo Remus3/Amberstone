@@ -507,9 +507,9 @@ class BaseCoach(abc.ABC):
                     # LEFT BROAD (silent-except triage, C-class declined): the
                     # import is NOT the only raising statement. get_tracker()
                     # constructs CostTracker on first call (mkdir -> OSError;
-                    # float(vision_burst) -> TypeError/ValueError,
-                    # core/cost_tracker.py:218-222) and gate_disabled ->
-                    # coach_disabled (:423-425) builds a set over a
+                    # float(vision_burst) -> TypeError/ValueError, both in
+                    # core.cost_tracker.CostTracker.__init__) and gate_disabled
+                    # -> CostTracker.coach_disabled builds a set over a
                     # disk-sourced config value (TypeError if not iterable).
                     # read_json_dict no longer contributes UnicodeDecodeError
                     # to that set - lane 8 cycle 24 made a non-UTF-8 file yield
@@ -546,8 +546,8 @@ class BaseCoach(abc.ABC):
             from core.cost_tracker import get_tracker as _gt
             if not _gt().allow_call():
                 return
-        # LEFT BROAD (silent-except triage, C-class declined): allow_call
-        # (core/cost_tracker.py:336-340) compares a disk-sourced
+        # LEFT BROAD (silent-except triage, C-class declined):
+        # core.cost_tracker.CostTracker.allow_call compares a disk-sourced
         # daily_spend()["total_usd"] against the budget - a non-numeric ledger
         # value raises TypeError. daily_spend -> read_json_dict no longer
         # raises UnicodeDecodeError (lane 8 cycle 24: a non-UTF-8 ledger yields
