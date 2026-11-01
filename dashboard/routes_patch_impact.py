@@ -72,9 +72,9 @@ def _parse_int(raw: str, name: str, default: int, hi: int) -> tuple[int, str | N
     try:
         value = int(raw)
     except ValueError:
-        return (0, f"{name} must be an integer, got {raw!r}")
+        return (0, f"{name} must be an integer")
     if not (1 <= value <= hi):
-        return (0, f"{name} must be between 1 and {hi}, got {value}")
+        return (0, f"{name} must be between 1 and {hi}")
     return (value, None)
 
 

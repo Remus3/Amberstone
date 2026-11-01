@@ -66,7 +66,7 @@ def _parse_champion(raw: str) -> tuple[int | None, str | None]:
     try:
         return (int(raw), None)
     except ValueError:
-        return (None, f"champion must be an integer, got {raw!r}")
+        return (None, "champion must be an integer")
 
 
 def _serve_duration_winrate(h) -> None:

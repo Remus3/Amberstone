@@ -81,9 +81,9 @@ def _parse_window(raw: str) -> tuple[int, str | None]:
     try:
         w = int(raw)
     except ValueError:
-        return (0, f"window must be an integer, got {raw!r}")
+        return (0, "window must be an integer")
     if w < _WINDOW_MIN or w > _WINDOW_MAX:
-        return (0, f"window must be {_WINDOW_MIN}..{_WINDOW_MAX}, got {w}")
+        return (0, f"window must be {_WINDOW_MIN}..{_WINDOW_MAX}")
     return (w, None)
 
 
@@ -93,7 +93,7 @@ def _parse_champion(raw: str) -> tuple[int | None, str | None]:
     try:
         return (int(raw), None)
     except ValueError:
-        return (None, f"champion must be an integer, got {raw!r}")
+        return (None, "champion must be an integer")
 
 
 def _compute(mode: str, window: int, champion: int | None) -> dict:

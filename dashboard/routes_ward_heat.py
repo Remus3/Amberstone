@@ -92,11 +92,10 @@ def _parse_window(qs: dict) -> tuple[float, str | None]:
     try:
         val = float(raw)
     except ValueError:
-        return 0.0, f"window_s must be numeric, got {raw!r}"
+        return 0.0, "window_s must be numeric"
     if val < _WINDOW_MIN_S or val > _WINDOW_MAX_S:
         return 0.0, (
-            f"window_s must be in [{_WINDOW_MIN_S:.0f}, {_WINDOW_MAX_S:.0f}], "
-            f"got {val}"
+            f"window_s must be in [{_WINDOW_MIN_S:.0f}, {_WINDOW_MAX_S:.0f}]"
         )
     return val, None
 

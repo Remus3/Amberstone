@@ -66,7 +66,7 @@ def _parse_queue(raw: str):
         try:
             ids.append(int(tok))
         except ValueError:
-            return (None, f"queue must be integers, got {tok!r}")
+            return (None, "queue must be comma-separated integers")
     return (tuple(ids), None)
 
 
@@ -76,7 +76,7 @@ def _parse_min_games(raw: str):
     try:
         val = int(raw)
     except ValueError:
-        return (None, f"min_games must be an integer, got {raw!r}")
+        return (None, "min_games must be an integer")
     if val < 1:
         return (None, "min_games must be >= 1")
     return (val, None)
