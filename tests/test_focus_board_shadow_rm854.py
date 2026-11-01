@@ -152,7 +152,7 @@ def _log(target, lc, round_label=4, det=None):
 
 
 def _wait_until(pred, timeout=10.0):
-    end = time.monotonic() + timeout
+    end = time.monotonic() + fleet_test_guard.budget(timeout)
     while time.monotonic() < end:
         if pred():
             return True

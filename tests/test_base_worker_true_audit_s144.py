@@ -26,6 +26,7 @@ import threading
 import time
 
 from core.base_worker import BaseCoachWorker
+from tests._timing_budget import fleet_test_guard
 
 
 class _Wedged(BaseCoachWorker):
@@ -161,7 +162,7 @@ class _SelfRestarting(BaseCoachWorker):
 def test_restart_from_inside_the_worker_starts_the_next_generation():
     w = _SelfRestarting()
     w.start()
-    deadline = time.monotonic() + 3.0
+    deadline = time.monotonic() + fleet_test_guard.budget(3.0)
     while 2 not in w.ran and time.monotonic() < deadline:
         time.sleep(0.01)
     try:

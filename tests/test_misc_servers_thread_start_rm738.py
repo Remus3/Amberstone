@@ -156,7 +156,7 @@ def _matchdb(tmp_path, monkeypatch):
     with mock.patch.object(mod._MatchDBHTTPServer, "serve_forever", recording):
         threading.Thread(target=mod.serve_forever, args=("127.0.0.1", port),
                          daemon=True, name="rm738-matchdb").start()
-        deadline = time.monotonic() + 5
+        deadline = time.monotonic() + fleet_test_guard.budget(5)
         while not captured and time.monotonic() < deadline:
             time.sleep(0.01)
     assert captured, "ds_matchdb_mcp_server.serve_forever never served"

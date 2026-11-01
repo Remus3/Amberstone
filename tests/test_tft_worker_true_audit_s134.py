@@ -130,7 +130,7 @@ def _worker(tmp_path):
 
 
 def _wait(pred, timeout=5.0):
-    deadline = time.monotonic() + timeout
+    deadline = time.monotonic() + fleet_test_guard.budget(timeout)
     while time.monotonic() < deadline:
         if pred():
             return True

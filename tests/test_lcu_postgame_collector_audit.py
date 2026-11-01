@@ -198,13 +198,13 @@ class TestRunLoopSurvivesCaptureFailure:
         t.start()
         try:
             c._trigger.set()
-            deadline = time.time() + 5.0
+            deadline = time.time() + fleet_test_guard.budget(5.0)
             while len(calls) < 1 and time.time() < deadline:
                 time.sleep(0.02)
             assert calls == ["CLASSIC"], "first trigger never reached capture"
 
             c._trigger.set()
-            deadline = time.time() + 5.0
+            deadline = time.time() + fleet_test_guard.budget(5.0)
             while len(calls) < 2 and time.time() < deadline:
                 time.sleep(0.02)
             assert len(calls) == 2, (

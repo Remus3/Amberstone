@@ -38,7 +38,7 @@ def _reset_dots_state():
 
 
 def _wait_until(pred, timeout=3.0, step=0.02):
-    deadline = time.time() + timeout
+    deadline = time.time() + fleet_test_guard.budget(timeout)
     while time.time() < deadline:
         if pred():
             return True

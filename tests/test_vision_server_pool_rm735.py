@@ -174,7 +174,7 @@ class WorkerPoolBehaviour(unittest.TestCase):
                 pass                             # a reset is a drop too
             finally:
                 dropped.close()
-            deadline = time.monotonic() + 2
+            deadline = time.monotonic() + fleet_test_guard.budget(2)
             while srv.dropped < 1 and time.monotonic() < deadline:
                 time.sleep(0.02)
             self.assertEqual(srv.dropped, 1)
@@ -206,7 +206,7 @@ class WorkerPoolBehaviour(unittest.TestCase):
                 with self.assertRaises((urllib.error.URLError, OSError,
                                         ConnectionError)):
                     _get(port, "/boom")
-                deadline = time.monotonic() + 2
+                deadline = time.monotonic() + fleet_test_guard.budget(2)
                 while not logs.records and time.monotonic() < deadline:
                     time.sleep(0.02)
             self.assertTrue(any(r.exc_info for r in logs.records), logs.output)
@@ -261,7 +261,7 @@ class WorkerPoolBehaviour(unittest.TestCase):
         srv, port, serve = self._pool(_handler(), workers=3)
         self.assertEqual(srv.workers_alive, 3)
         _close(srv, serve)
-        deadline = time.monotonic() + 3
+        deadline = time.monotonic() + fleet_test_guard.budget(3)
         while srv.workers_alive and time.monotonic() < deadline:
             time.sleep(0.02)
         self.assertEqual(srv.workers_alive, 0)

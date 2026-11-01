@@ -71,7 +71,7 @@ class TestTftWorkerContract(unittest.TestCase):
         w, rq = self._make_worker(states=[dict(TFT_STATE)])
         w.start()
         result = None
-        deadline = time.monotonic() + 3.0
+        deadline = time.monotonic() + fleet_test_guard.budget(3.0)
         while time.monotonic() < deadline:
             try: result = rq.get_nowait(); break
             except queue.Empty: time.sleep(0.05)

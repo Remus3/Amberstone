@@ -227,7 +227,7 @@ def test_c_a_thread_dead_in_bootstrap_no_longer_pins_the_dropped_socket(served):
             finally:
                 del srv.shutdown_request
                 del srv.thread_start_timeout_s
-            deadline = time.monotonic() + 2
+            deadline = time.monotonic() + fleet_test_guard.budget(2)
             while not died and time.monotonic() < deadline:
                 time.sleep(0.02)
         dead = [t for t in list(threading._limbo)
@@ -240,7 +240,7 @@ def test_c_a_thread_dead_in_bootstrap_no_longer_pins_the_dropped_socket(served):
             f"expected the bootstrap-dead thread left in threading._limbo: {dead!r}")
         assert len(dropped) == 1, dropped
         ref = dropped[0]
-        deadline = time.monotonic() + 2
+        deadline = time.monotonic() + fleet_test_guard.budget(2)
         while ref() is not None and time.monotonic() < deadline:
             gc.collect()
             time.sleep(0.02)

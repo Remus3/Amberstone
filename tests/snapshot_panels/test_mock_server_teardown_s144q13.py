@@ -147,7 +147,7 @@ def test_stop_joins_a_handler_that_is_still_finishing():
 def _wait_for_handler(srv: _MockServer, before: set) -> list:
     """Poll until `srv` has started a handler thread for an accepted
     connection, so a test knows the handler is parked before it stops."""
-    deadline = time.monotonic() + 5.0
+    deadline = time.monotonic() + fleet_test_guard.budget(5.0)
     while time.monotonic() < deadline:
         held = _server_threads(srv, before)
         if held:

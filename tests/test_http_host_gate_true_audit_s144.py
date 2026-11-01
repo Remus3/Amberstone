@@ -39,6 +39,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import pytest
 
 from core import http_host_gate as gate
+from tests._timing_budget import fleet_test_guard
 
 _HOST = "127.0.0.1"
 
@@ -126,7 +127,7 @@ def _exchange(port, head: bytes, timeout=5.0) -> bytes:
 
 
 def _wait_for(pred, timeout=3.0):
-    end = time.monotonic() + timeout
+    end = time.monotonic() + fleet_test_guard.budget(timeout)
     while time.monotonic() < end:
         if pred():
             return True

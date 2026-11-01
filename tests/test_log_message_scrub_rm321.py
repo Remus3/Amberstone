@@ -16,6 +16,8 @@ import time
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 
+from tests._timing_budget import fleet_test_guard
+
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -55,7 +57,7 @@ def _drive(handler_cls, logger_name: str) -> list[str]:
                 pass
         finally:
             s.close()
-        deadline = time.time() + 3
+        deadline = time.time() + fleet_test_guard.budget(3)
         while time.time() < deadline and not any("FAKE-ADMIN-OK" in m for m in grab.msgs):
             time.sleep(0.05)
     finally:

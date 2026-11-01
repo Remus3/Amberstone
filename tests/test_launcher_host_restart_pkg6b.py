@@ -49,6 +49,7 @@ import pytest
 from core import ports
 from ops.launcher import service_host as sh
 from ops.launcher import updater as up
+from tests._timing_budget import fleet_test_guard
 from tests.test_launcher_service_host import (
     WINDOWS_ONLY,
     FakeClock,
@@ -380,7 +381,7 @@ def test_h7_a_json_line_alone_never_stops_the_host():
 
     t = threading.Thread(target=sh._watch_stdin, args=(h, event, _Stream()), daemon=True)
     t.start()
-    deadline = time.monotonic() + 5
+    deadline = time.monotonic() + fleet_test_guard.budget(5)
     while not h.got and time.monotonic() < deadline:
         time.sleep(0.01)
     assert h.got and not event.is_set()
@@ -443,7 +444,7 @@ def _start_listener(tmp_path: Path, port: int, *, suspended: bool):
 
 
 def _wait(pred, timeout=30.0) -> bool:
-    end = time.monotonic() + timeout
+    end = time.monotonic() + fleet_test_guard.budget(timeout)
     while time.monotonic() < end:
         if pred():
             return True

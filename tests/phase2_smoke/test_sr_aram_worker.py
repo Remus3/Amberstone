@@ -70,7 +70,7 @@ class TestSrAramWorkerContract(unittest.TestCase):
         w.start()
         # Wait up to 3s for one result
         result = None
-        deadline = time.monotonic() + 3.0
+        deadline = time.monotonic() + fleet_test_guard.budget(3.0)
         while time.monotonic() < deadline:
             try:
                 result = rq.get_nowait()

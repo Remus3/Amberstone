@@ -1420,7 +1420,7 @@ class _Handles:
 
 
 def _wait_for(pred, timeout: float) -> bool:
-    end = time.monotonic() + timeout
+    end = time.monotonic() + fleet_test_guard.budget(timeout)
     while time.monotonic() < end:
         if pred():
             return True

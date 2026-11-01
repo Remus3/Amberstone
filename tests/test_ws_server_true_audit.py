@@ -99,7 +99,7 @@ async def _recv_json(ws, timeout=2.0):
 
 
 async def _wait_for(pred, timeout=5.0, step=0.01):
-    deadline = time.monotonic() + timeout
+    deadline = time.monotonic() + fleet_test_guard.budget(timeout)
     while time.monotonic() < deadline:
         if pred():
             return True

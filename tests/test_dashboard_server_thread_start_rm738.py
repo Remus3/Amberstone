@@ -149,7 +149,7 @@ class AcceptLoopSurvivesABootstrapDeath(unittest.TestCase):
                         "the request hung once its thread died in bootstrap - "
                         "the :8888 accept loop is parked in Thread.start() "
                         f"(RM-738 wedge), socket left open: {exc!r}")
-                deadline = time.monotonic() + 2
+                deadline = time.monotonic() + fleet_test_guard.budget(2)
                 while not died and time.monotonic() < deadline:
                     time.sleep(0.02)
             self.assertTrue(any(MemoryError in _chain(e) for e in died),
@@ -265,7 +265,7 @@ class StillOneThreadPerRequest(unittest.TestCase):
                     s.sendall(b"GET /block HTTP/1.0\r\n\r\n")
                     held.append(s)
                     time.sleep(0.01)
-                deadline = time.monotonic() + 3
+                deadline = time.monotonic() + fleet_test_guard.budget(3)
                 while len(started) < 24 and time.monotonic() < deadline:
                     time.sleep(0.02)
                 t0 = time.monotonic()
