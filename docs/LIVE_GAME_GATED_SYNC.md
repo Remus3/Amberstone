@@ -1429,7 +1429,81 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
 - **G2-39** (was B29) QA6 fullscreen-detect "switch to Borderless" hint + QA13 UIPI elevation-parity
   detect final validation. Low-confidence inferred rows - **build headless first**.
 - **G2-40** (was B30) DS ratio-block spot verify vs target dummies (~174/577 flagged). DS-batch
-  scoped: sample a handful per session, never a bulk pass. SOURCE: docs/DS_COMPLETENESS_GAP.md:85.
+  scoped: sample a handful per session, never a bulk pass. SOURCE: docs/DS_COMPLETENESS_GAP.md:90.
+  **READY (lane 9 PREP s144 cycle 50, source read at `ad30d3adb`; NOT a tick).** Three measured facts
+  reshape the check. (1) The filed "~174/577" is the item 351 census of 2026-06-08 and cannot be
+  re-derived: the sidecar `cdragon_ability_ratios.json` persists `resolution` and `calc_type` per block,
+  not the fallback reason. At 16.21.1 it holds 550 fallback and 865 mechanical blocks, which is 262
+  fallback abilities and 143 clean control abilities. Do not quote 174 as a live count. (2) A fallback
+  block carries no ratios and its `name` does not pair to an engine block, so the sample unit is the
+  ABILITY and the number under test is the engine's own damage block, from the bare
+  `AbilitiesSnapshot.load()` the routes default to (the ability-base-overrides flag is not modelled).
+  (3) No reader in the repo takes a damage-dealt field from the Live Client payload, so the deciding
+  number is combat text only.
+  PROBE (`tools/gated_g240_ratio_spot.py`, read-only: GETs the relay `/latest-liveclient`, and writes
+  only a new `--out` path it is given). In Practice Tool, on a full-HP target dummy, with no stacks built:
+  1. Play a champion whose `plan` has a non-empty `sample_order` (85 fallback-holding champions have
+     none at 16.21.1: no gradeable block under a same-type control; `python
+     tools/gated_g240_ratio_spot.py plan --champion <id>` works before the game). Read the dummy's armor, MR and max HP in game; a value you cannot read voids
+     the sample. A resist above 0 is refused unless penetration is proven absent: no real item owned,
+     flat fields 0, percent fields 0.0 or 1.0 (which of those means "none" is unmeasured, and how the
+     client reports a self-granted penetration is unmeasured too). So at a resist above 0 an AP-ratio
+     block has no item AP behind it and may grade `BASE_ONLY`: read `weakest_ratio_part` before casting. Name
+     the block a full-HP dummy will really show; a `Maximum` block usually is not one.
+  2. BEFORE each cast, lock the prediction, one new file per block, naming the block one combat-text
+     number will show: `python tools/gated_g240_ratio_spot.py capture --key Q --block "<block>"
+     --target-armor A --target-mr M --target-max-hp H --out <evidence-dir>/q.json` (the directory must
+     exist). Take a same-type `control` ability whose `predicted` reads at least 67, levelling or raising
+     the stat first if it does not, then the fallback abilities in `plan`'s `sample_order`, skipping none
+     for looking wrong. `--snapshot FILE` is a rehearsal only: its record says
+     `source: file` and `grade` voids it.
+  3. Cast, read the number, and after the session run `python tools/gated_g240_ratio_spot.py grade
+     <evidence-dir>/q.json=<observed> ...` with EVERY captured sample. `grade` re-derives each record's
+     role, type, prediction and ratio part from the engine and refuses a mismatch or another DS patch,
+     but it cannot see a sample left off its command line, so dropping a missed control is the
+     operator's to avoid.
+  FIELD PATHS: `data.activePlayer.championStats` (`attackDamage`, `abilityPower`, `maxHealth`, `armor`,
+  `magicResist`, `resourceMax`, `moveSpeed`, `physicalLethality`, `magicPenetrationFlat`,
+  `armorPenetrationPercent`, `magicPenetrationPercent`), `data.activePlayer.level`,
+  `data.activePlayer.abilities.<K>.abilityLevel`, `data.allPlayers[].rawChampionName` and `items`,
+  `data.gameData.gameMode` (must be `PRACTICETOOL`), `data.gameData.gameTime`. The stat names are the ones
+  `game_reader/snapshot_normalizer.py` reads and `rawChampionName` is the one `core/focus_board_live.py`
+  reads. A missing stat, level or game time refuses and never reads as 0; penetration fields and `items`
+  are needed only at a resist above 0.
+  PREDICATE (stated before any game): a sample MATCHes when |observed - predicted| <= max(2, 3 percent
+  of predicted), with predicted = engine `_evaluate_block` at the live rank and stats, times the engine
+  `dps._armor_factor` of the resist. A control checks only the resist of its own damage type, so a MAGIC
+  or PHYSICAL sample needs a control of that type (TRUE has no resist; any control serves), and it must
+  predict at least 66.7 (2 / 0.03): below that the absolute floor is wider than 3 percent, so a wrong
+  resist would pass the control and miss on a bigger sample, and such a control grades `WEAK`. A MATCH whose
+  `weakest_ratio_part` is within that same tolerance is `BASE_ONLY` and does not count: a ratio times zero
+  tests nothing, and another ratio on the block cannot cover for it. A miss inside twice the tolerance is `NEAR_MISS`, neither a pass nor a finding, because a
+  control that just passes can still hide that much resist error and rounding. `SAMPLE_OK` = at least
+  one fallback MATCH, no fallback MISMATCH, NEAR_MISS or VOID, under a clean passing same-type control for the
+  same champion, target and patch whose implied game start is within 120 s (a heuristic for "same game").
+  `FINDING` = a fallback miss past that band under such a control, base-only samples included.
+  `INCOMPLETE` = anything else: a missing or missed same-type control voids that sample, match and miss
+  alike, and a rehearsal is void. An `UNPREDICTABLE` sample (engine marks the block unparsed, the type is
+  MIXED or unknown, it or a form sibling scales on target state, which no control proves, or its name
+  repeats in the form, so the name cannot say which number it is) says nothing with or without a control:
+  it cannot pass or find, and it does not block a clean pass beside it. Over 5 fallback samples
+  in one `grade` run is refused as a bulk pass. `FINDING` is a CANDIDATE, not a verdict on DS: the tool models one block on
+  a clean dummy, not every floor, proc or stack, so read the ability's in-game text first, then file a DS
+  data defect on that one ability if it stands. It does not re-pitch a calc-graph resolver (closed,
+  DS_COMPLETENESS_GAP b1).
+  EVIDENCE CONTRACT: per sample the observed combat-text value, the capture record (predicted, `weakest_ratio_part`,
+  rank, stats, target, `ds_patch`, `source`, `game_time_s`, wall-clock `captured_at`), plus the client patch,
+  read by hand because the tool cannot see it (a client ahead of `ds_patch` voids a MISMATCH until DS
+  catches up). `SAMPLE_OK` does not close the row: it is DS-batch scoped, so record which abilities were
+  sampled and leave it open.
+  SUBSTITUTION CHECK: `capture`, `plan` and `census` are compute; none of their output is evidence, and
+  the tests only pin the arithmetic and refusals. The only live fact is a number the GAME drew, read
+  from combat text by the operator, on screen or off a frame whose wall-clock `ts` is after the record's
+  `captured_at` (`tools/gated_frame_readback.py` reports a frame's image facts and relay metadata and
+  saves nothing; it extracts no text, so it cannot read the number). Any figure DS or the
+  dashboard shows is compute or an end-of-game total, so reading one instead of combat text is the
+  substitution kill. The record is a local JSON file: hand-editing `source`, `captured_at` or `game_time_s` would pass
+  `grade`, so the tool stops mistakes, not a forger.
 - **G2-41** (was B48) Vision-OCR native-res crop path: the live OCR read path still consumes the
   1280-HALVED `/latest-frame` (`vision_server/_frame.py` `_SELF_GRAB_MAX_WIDTH=1280`), so native-2560
   OCR boxes get scaled DOWN 0.5x at crop time. WIRE `core/screen_grab.grab_native()` into the OCR crop
