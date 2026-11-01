@@ -52,8 +52,8 @@ hash, rc-shell no-interpreter window, live Python314 vs the lock on 7 pins, reti
 installers / XMLs / keepalive / legion_on lines / legacy text); RM-1226 (certifi -> truststore); RM-1228
 (updater ships requirements without its embed); the L8 filings (BACKLOG "Session 147 L8 landing
 filings"): RM-1243, -1244, -1245, -1250, -1254, -1255, -1258..-1262 OPEN, RM-1257 PARTIAL.
-Next action 6 (housekeeping): stale "running" progress files kit-rollout-v25.json (2026-10-27) and
-s145-n1.json (s145 pushed) in ops/loop/control/progress/: no live owner - close them or archive.
+Next action 6 (MAIN ruling owed): GH-IDENT-REWRITE BLOCKED s148, no ref moved; BACKLOG RM-1265 (recipe).
+main cannot push until it lands (identity gate). RM-1266 DST row.
 Optional, for the operator or MAIN: RC-PatchRefresh StartWhenAvailable on (machine-level, D1); dismiss
 Dependabot alert 144 as tolerable_risk (remote; docs/_archive/2026-10/s147-npm-audit-triage.md).
 FIRST: CPU / memory glance; the rotator (IN-FLIGHT); inbox_tick.py --pending; gh pr list; git fetch +
