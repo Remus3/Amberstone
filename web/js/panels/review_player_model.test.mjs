@@ -210,6 +210,42 @@ test("plain Space stays with the control it activates; modifier+Space still play
                          { type: "next-marker" });
 });
 
+test("an open menu takes the plain keys; the chord and Escape stay (RM-1324)", () => {
+  const open = { menuOpen: true };
+  for (const key of ["]", "[", "d", "D"]) {
+    for (const t of [BODY, MARKER, { tag: "BUTTON" }, null]) {
+      assert.strictEqual(hotkeyAction(k(key, t, open)), null,
+                         `${key} on ${JSON.stringify(t)}`);
+    }
+  }
+  // Space that activates a control stays that control's.
+  for (const t of [{ tag: "BUTTON" }, { tag: "DIV", role: "menuitem" }]) {
+    assert.strictEqual(hotkeyAction(k(" ", t, open)), null, JSON.stringify(t));
+  }
+  // Space that would scroll a pane behind the menu is held, and plays nothing.
+  for (const t of [BODY, MARKER, { tag: "DIV" }, null]) {
+    const a = hotkeyAction(k(" ", t, open));
+    assert.deepStrictEqual(a, { type: "hold-space" }, JSON.stringify(t));
+    assert.strictEqual(seekTarget(a, { markers: [5, 10], deaths: [1], current: 0 }), null);
+  }
+  // Typing stays typing.
+  for (const key of ["]", "d", " "]) {
+    assert.strictEqual(hotkeyAction(k(key, FIELD, open)), null, `key ${JSON.stringify(key)}`);
+  }
+  assert.deepStrictEqual(hotkeyAction(k(" ", BODY, { ...open, ctrlKey: true })),
+                         { type: "toggle-play" });
+  assert.deepStrictEqual(hotkeyAction(k(" ", BODY, { ...open, altKey: true })),
+                         { type: "toggle-play" });
+  assert.deepStrictEqual(hotkeyAction(k("Escape", BODY, open)), { type: "release-focus" });
+  // A closer handler's claim still wins over everything.
+  assert.strictEqual(hotkeyAction(k(" ", BODY, { ...open, defaultPrevented: true })), null);
+  // menuOpen false is the ordinary map.
+  assert.deepStrictEqual(hotkeyAction(k("]", BODY, { menuOpen: false })),
+                         { type: "next-marker" });
+  assert.deepStrictEqual(hotkeyAction(k(" ", BODY, { menuOpen: false })),
+                         { type: "toggle-play" });
+});
+
 test("Escape hands focus back, from a field or from a marker", () => {
   assert.deepStrictEqual(hotkeyAction(k("Escape", FIELD)), { type: "release-focus" });
   assert.deepStrictEqual(hotkeyAction(k("Escape", MARKER)), { type: "release-focus" });

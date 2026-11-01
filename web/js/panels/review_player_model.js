@@ -148,10 +148,17 @@ export function isSpaceActivated(target) {
   return _SPACE_ROLES.has(String(target.role || "").trim().toLowerCase().split(/\s+/)[0]);
 }
 
-// ev: {key, ctrlKey, altKey, metaKey, shiftKey, target, defaultPrevented}.
-// Returns an action or null (null = not ours, let the browser have it).
-// A key a closer handler already consumed (defaultPrevented, e.g. Space on a
-// Replay row that seeks or loads) is never ours too (RM-1062).
+// ev: {key, ctrlKey, altKey, metaKey, shiftKey, target, defaultPrevented,
+// menuOpen}. Returns an action or null (null = not ours, let the browser have
+// it). A key a closer handler already consumed (defaultPrevented, e.g. Space on
+// a Replay row that seeks or loads) is never ours too (RM-1062).
+// RM-1324: with a menu rendered (menuOpen) the plain keys do nothing behind
+// it. A Space the focus does not activate returns hold-space, which the render
+// layer prevents and does nothing else with: a right-click on a spot that takes
+// no focus leaves a menu open with focus on the body, and the browser would then
+// scroll the pane behind it.
+// Escape and modifier+Space sit above that check on purpose: the dispatcher
+// consumes an Escape that closes a menu, and no menu reads a modified Space.
 export function hotkeyAction(ev) {
   if (!ev || ev.defaultPrevented) return null;
   const key = ev.key;
@@ -161,6 +168,9 @@ export function hotkeyAction(ev) {
   if (isSpace && mod) return { type: "toggle-play" };
   if (mod) return null;
   if (isTypingTarget(ev.target)) return null;
+  if (ev.menuOpen) {
+    return isSpace && !isSpaceActivated(ev.target) ? { type: "hold-space" } : null;
+  }
   // Space toggles play and never seeks, even when a marker button has focus
   // (the render layer preventDefaults so the button does not activate).
   if (isSpace) return isSpaceActivated(ev.target) ? null : { type: "toggle-play" };

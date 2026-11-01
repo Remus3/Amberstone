@@ -162,6 +162,14 @@ function _syncPlayhead() {
   }
 }
 
+// RM-1324: the same test main.js _letterShortcutsYield uses. Rendered is what
+// counts, not the class: a Lobby menu left open by a view change is not displayed
+// and is over nothing here.
+function _menuOpen() {
+  return Array.from(document.querySelectorAll('[role="menu"]'))
+    .some((m) => m.getClientRects().length > 0);
+}
+
 function _onKeydown(ev) {
   if (!_visible()) return;
   const target = _describe(document.activeElement);
@@ -169,6 +177,7 @@ function _onKeydown(ev) {
   const action = hotkeyAction({
     key: ev.key, ctrlKey: ev.ctrlKey, altKey: ev.altKey, metaKey: ev.metaKey,
     shiftKey: ev.shiftKey, target, defaultPrevented: ev.defaultPrevented,
+    menuOpen: _menuOpen(),
   });
   if (!action) return;
   const v = _el("replay-video");
@@ -182,6 +191,7 @@ function _onKeydown(ev) {
     return;
   }
   ev.preventDefault();
+  if (action.type === "hold-space") return;
   if (action.type === "toggle-play") {
     // RM-1322: a held Space is one press (prevented above so it still does
     // not scroll). The seek keys below keep walking on autorepeat.

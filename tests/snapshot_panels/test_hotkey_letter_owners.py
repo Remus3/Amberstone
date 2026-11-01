@@ -22,7 +22,8 @@ whose menu has closed, and in another view with a Lobby menu left open behind a
 view change (it is not displayed there), every shortcut still acts.
 
 Out of scope: web/js/panels/review_player.js has its own Replay keys (Space, d,
-D, ], [) and does not consult this rule, so they still act behind an open menu.
+D, ], [) with their own check for an open menu; RM-1324 pins those in
+test_replay_keys_behind_menu.py.
 """
 import pytest
 
