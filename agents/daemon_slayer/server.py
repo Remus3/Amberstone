@@ -3251,7 +3251,9 @@ class Handler(HostAllowlistMixin, HeadDeadlineMixin, BaseHTTPRequestHandler):
         # gone; it uses the shared ``core.log_scrub`` one, which also escapes
         # U+2028 / U+2029 and the bidi controls. That module is stdlib-only
         # and already loaded here through ``core.http_host_gate`` (RM-819).
-        _log.debug("%s - %s", self.address_string(), _scrub_log(format % args))
+        # RM-1278: clipped too - the request line carries the path.
+        _log.debug("%s - %s", self.address_string(),
+                   _clip_log_text(_scrub_log(format % args)))
 
     # ----- helpers
 
@@ -3465,7 +3467,10 @@ class Handler(HostAllowlistMixin, HeadDeadlineMixin, BaseHTTPRequestHandler):
             # Never leak the raw exception text into the HTTP body (a stack /
             # exc string is an information-disclosure + breaks the friendly
             # degraded-mode contract). The full traceback is logged above.
-            _log.exception("unhandled error in GET %s", path)
+            # RM-1278: the client types the path (up to a 64 KiB
+            # request line), so it is scrubbed and clipped here.
+            _log.exception("unhandled error in GET %s",
+                           _clip_log_text(_scrub_log(path)))
             self._send_error(500, "internal engine error - see daemon_slayer logs")
 
     def do_POST(self) -> None:
@@ -3494,7 +3499,10 @@ class Handler(HostAllowlistMixin, HeadDeadlineMixin, BaseHTTPRequestHandler):
             # Never leak the raw exception text into the HTTP body (a stack /
             # exc string is an information-disclosure + breaks the friendly
             # degraded-mode contract). The full traceback is logged above.
-            _log.exception("unhandled error in POST %s", path)
+            # RM-1278: the client types the path (up to a 64 KiB
+            # request line), so it is scrubbed and clipped here.
+            _log.exception("unhandled error in POST %s",
+                           _clip_log_text(_scrub_log(path)))
             self._send_error(500, "internal engine error - see daemon_slayer logs")
 
 
