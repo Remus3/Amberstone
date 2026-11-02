@@ -13,6 +13,7 @@ import pytest
 
 from core import replay_analysis as ra
 from core import replay_seek as rs
+from tests._module_view import bind_urlopen
 
 
 def _player(champ="Vi", **kw) -> dict:
@@ -76,7 +77,7 @@ def fake_urlopen(monkeypatch):
             resp = _Resp(body)
             made.append((req, timeout, resp))
             return resp
-        monkeypatch.setattr(rs.urllib.request, "urlopen", _urlopen)
+        bind_urlopen(monkeypatch, rs, _urlopen)
         monkeypatch.setattr(rs.time, "sleep", lambda s: None)
         return made
     return install

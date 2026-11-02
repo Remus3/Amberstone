@@ -25,6 +25,7 @@ import urllib.request
 import pytest
 
 from core import replay_camera as rc
+from tests._module_view import bind_urlopen
 
 GOOD_RENDER = {
     "cameraPosition": {"x": 9000.0, "y": 1900.0, "z": 800.0},
@@ -96,7 +97,7 @@ def wire(monkeypatch):
 
     def install(*results) -> _Wire:
         fake = _Wire(*results)
-        monkeypatch.setattr(urllib.request, "urlopen", fake.open)
+        bind_urlopen(monkeypatch, rc, fake.open)
         monkeypatch.setattr(rc, "_OPENER", fake, raising=False)
         return fake
 
