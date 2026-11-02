@@ -39,30 +39,24 @@ Next action 1 (FIRST, the inbox): `python ops/loop/inbox_tick.py --pending` read
 and 2215. 1547: item 1 done, item 2 holding, items 3 (L9) + 4 (the clear) open, the v28 answer carried; no
 mark_work_done until 3 and 4 are done; TERMINAL, no reply owed, send no note. 2215: Next action 7. Then read
 the full dispatch 41365246123 on 55f9cb8c7 (Status); a red comes first.
-Next action 2 (L9, ORDER 1547 item 3; NOT run s149, operator line above): land the rotator's commits made after
-the L8 snapshot (LEDGER 2000, boundary 19:19:36; markers ops/loop/control/lanes/S144_LANDED_<LANE> name the rebased
-twins). WHEN: note 1547 gives L9 no time; "after the reboot" covers only item 4, the clear. The ruling it cites does
-(MAIN's tree, docs/rulings/2026-11-01-quiesce.md, sha256 9a18de4ea0670c95, read s149), Decision 6: "Order: drain,
-v28, L9 finished, CLEAN census, console stage, reboot. Stage is LAST." L9 is unfinished and precedes the reboot in
-that order. HOW: MAIN launches it as kit chains: `L9 chain A` (step 3: RC-LANES first=4, cap=5, exited lanes only,
-no push until RC's gated suite has run, never clear the stop) and `L9 chain B` (steps 7-8: after RC's `readback RC:
-OK v28`, RC-LANES first=6, cap=12). Section (d): no drop line; if silent L9 runs on and stage and reboot move later.
-Reversal: an operator word, incl. "skip L9". RC's usage log has no L9-named row at /done. Step 5 gates v28 on "RC
-main clean": the untracked probe (Next action 6) was not measured against that read.
-COUNT read at /done: main..lane ds 16, gated 5, queue 17, repo 20, research 6, true-audit 11, uiux 14 = 89, all 89
-`git cherry` +, 0 subject twins on main. The only commit after the stop: lane/uiux tip 5657fedc4, 17:11:36, 54m34s
-after S144_LANES_STOP (16:17:02); the merger decides keep or drop (its report; drop = 3d732c25f). Method = s147 L8
-(LEDGER 2000-2006); ids from RM-1274 (pin docs/DS_SWEEP_TRACKER.md), LEDGER from 2014; fold any sweep-fixture fix
-into its introducing commit (memory feedback_prepush_sweep_scans_every_commit). Never push a lane. stash@{0}
-s144-leftover-s144q080-497994 (queue RM-1148, refuted 6 times, pass 7 never ran): KEPT.
-SUITE, owed with 0 reds (ruling step 3: that suite first): LEDGER 2012 ran it once on 54cc8b78e, exit 1, `2 failed,
-57033 passed, 207 skipped ... in 749.27s` (log + rc re-read: ops/runtime/drive_rc/suite_v28pre.log). Both reds
-`Page.goto` 15 s timeouts (test_ds_card_text_reaches_aa[ember], test_tft_ui_mock_states_share_one_geometry); LEDGER
-names them load flakes, cause inferred, files alone 13 passed. ops/runtime/drive_rc/run_suite.py <tag> launches it
-detached (set OWNER from the claims deny). test_lobby and arena Enter / Space watches below stand.
+Next action 2 (L9, ORDER 1547 item 3): LANDED on main (LEDGER 2014-2021): 89 of 89, ds 16, research 6, gated 5, repo
+20, uiux 14, queue 17, true-audit 11, 0 left; old->new ops/runtime/drive_rc/l9/map.json; 5657fedc4 KEPT as d21c1db2c
+(RM-1324, LEDGER 2018; reverses if a suite or CI reds it). Filings RM-1274..RM-1337 (BACKLOG). Push, CI and worktree
+removal read back: ops/loop/control/progress/l9-rc-lanes.json. Owed at the next launch: DS + RC read-backs,
+ops/runtime/drive_rc/l9/followups.md section 3. Quiesce ruling (MAIN's docs/rulings/2026-11-01-quiesce.md, sha256
+9a18de4ea0670c95) Decision 6: "Order: drain, v28, L9 finished, CLEAN census, console stage, reboot. Stage is LAST."
+Never push a lane. stash@{0} s144-leftover-s144q080-497994 (queue RM-1148, refuted 6 times, pass 7 never ran): KEPT.
+SUITE record: LEDGER 2012 on 54cc8b78e 2 reds, both Page.goto 15 s timeouts (test_ds_card_text_reaches_aa[ember],
+test_tft_ui_mock_states_share_one_geometry), named load flakes, cause inferred; LEDGER 2021 on ac31727f0 1 red, same
+shape, test_ub_buttons_show_accent_focus_ring. A rerun that reds the same test twice or any other shape is real.
+ops/runtime/drive_rc/run_suite.py <tag> launches it detached (set OWNER from the claims deny). test_lobby and arena
+Enter / Space watches below stand.
+CARRIED from the landing: g051 the :8889 token in a verifier's tool output (rotation is the main session's call; a
+restart does not rotate it); g053 League WindowMode=0 hides the overlay, unverified live; memory
+reference_prom_metrics.md names the removed acquire_vision_token.
 Next action 3 (OPERATOR ask 45): the rc-shell autostart at logon, yes or no? Next action 4 (OPERATOR ask 53, frozen):
 ops/rc_supervisor.py:393 `schtasks /Run RC-Phase3-Supervisor`, log noise only: approve the edit? A1101 block 9.
-Next action 5 (autonomous rows): RM-1229..RM-1232 (BACKLOG "Session 146 /done filings": bat EMBED_STAMP
+Next action 5 (autonomous rows): RM-1230..RM-1232 (RM-1229 SHIPPED, LEDGER 2019; BACKLOG "Session 146 /done filings": bat EMBED_STAMP
 hash, rc-shell no-interpreter window, live Python314 vs the lock on 7 pins, retire the task-re-registering
 installers / XMLs / keepalive / legion_on lines / legacy text); RM-1226 (certifi -> truststore); RM-1228
 (updater ships requirements without its embed); the L8 filings (BACKLOG "Session 147 L8 landing
@@ -70,8 +64,7 @@ filings"): RM-1243, -1244, -1245, -1250, -1254, -1255, -1258..-1262 OPEN, RM-125
 Next action 6 (reads owed, s148 rows in BACKLOG "Session 148 filings"): RM-1267 first sonnet cycles read rc 0
 (research 14:30:02, repo 14:38:09, ds 15:03:12); week ends 2026-11-08, measure then. RM-1269 read 2026-11-08. RM-1268 swap the trimmed templates between cycles, read about
 2026-11-15. RM-1266 DST row. The next rotator launch (held, see IN-FLIGHT) loads the 500 runs gate (reserve 100),
-the RC-4 daily block and the lanes.py log. Delete tests/snapshot_panels/test_zz_drive_probe.py: slice 1's
-inert untracked probe, deletion denied in the drive; never stage it.
+the RC-4 daily block and the lanes.py log.
 Next action 7 (MAIN ORDER 2215 stays OPEN in inbox_tick.py --pending): items 5, 6 live half, 9, 10 =
 RM-1271, RM-1270, RM-1272; done 2, 3, 8, 11, 6 code half; 1 + 4 went into ORDER 1233; 7 = MAIN writes the
 700 USD ceiling from FLEET-5a. RM-1273 CLAUDE.md at 92 percent of its budget (drift_guard, a /done breach).
@@ -238,14 +231,14 @@ OPEN - WORK ITEMS (bodies + acceptance in BACKLOG; detail VERBATIM in A31 block 
 - Channel and MAIN: the route reads split again (G2, 2026-10-27; RC never edits the route file and arms no
   fallback); the s130 board finding (RM-823); B3 read-back of MAIN 2237 (the next pane shows the acct2
   status line, no [Legion] line); the old lane folder + junction are MAIN's to release.
-- Worktrees after s148: main + 7 lanes of the rotator (git worktree remove only); branches kept: K, T13,
+- Worktrees: the 7 lanes go by plain git worktree remove after the L9 push, read the L9 progress file; branches kept: lane/*, K, T13,
   drain/wave2-tail-backlog, s145-prefold-main, s145-l7-land2, worktree-agent-aad42dcb1fbdf23a3, PKG-7 and 5
   cherry-picked worktree-agent-a0ea7b0a2617e5846, -af189a7c1ace30bb8, -aa128be2bc35fe467,
   -ab5f3ec39b65d9dfc, -ab53f4941ce22be94.
 - RM-681 PARTIAL: one attended live call per path (truststore MET s133 c6). Origin
   c1/deps-pip-anthropic1-measure was deleted under MAIN 0909; 24c54ec39 stays in the kit bundle.
 - Rows: the s139 open-row index (100+ ids) is VERBATIM in A26, each row in BACKLOG / ROADMAP; next free
-  RM-1274 (pin docs/DS_SWEEP_TRACKER.md); next LEDGER 2014. ROADMAP top open: PKG (WA9-WA14, WA17), the
+  RM-1338 (pin docs/DS_SWEEP_TRACKER.md); next LEDGER 2022. ROADMAP top open: PKG (WA9-WA14, WA17), the
   PKG-6c residue, RM-488, RM-596, RM-597, the RM-681.. rows; EXTERNAL-LIFT Band 2 / 4 stay in BACKLOG.
 - Y-45 phone push needs ntfy (host local-only). Operator APPROVED Y-44 (frozen lcu_client.py) + Y-45
   2026-10-03 (Desktop EXTERNAL-LIFT-DIRECTIVE.md / -2.md; -2 ingested as RM-526..RM-594).
@@ -354,7 +347,6 @@ Inbox: moon_sync_inbox/2026-11-01-1547-*, ops/loop/inbox_tick.py --pending; MAIN
 
 Acceptance: the operator's scope line honoured or changed by the operator; rows 1547 + 2215 read; the stop file
 present until the reboot; the full dispatch on 55f9cb8c7 read green or the red named; a gated whole
-suite with 0 reds on the hand-off; RM-1267 week read 2026-11-08; L9, when in scope, landed (counted against the twins,
-gated Tier-2 + verifier, sweep dry run on the range); the operator batch re-asked in one line.
+suite with 0 reds on the hand-off; RM-1267 week read 2026-11-08; the operator batch re-asked in one line.
 
 Start with: read this file first, then CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
