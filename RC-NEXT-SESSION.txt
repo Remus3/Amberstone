@@ -39,7 +39,7 @@ Next action 1 (FIRST, the inbox): `python ops/loop/inbox_tick.py --pending` read
 and 2215. 1547: item 1 done, item 2 holding, items 3 (L9) + 4 (the clear) open, the v28 answer carried; no
 mark_work_done until 3 and 4 are done; TERMINAL, no reply owed, send no note. 2215: Next action 7. Then read
 the full dispatch 41365246123 on 55f9cb8c7 (Status); a red comes first.
-Next action 2 (L9, ORDER 1547 item 3): LANDED on main (LEDGER 2014-2021): 89 of 89, ds 16, research 6, gated 5, repo
+Next action 2 (L9, ORDER 1547 item 3): LANDED, PUSHED 43f6d2e9d (gated suite rc 0, LEDGER 2022), lanes removed: 89 of 89, ds 16, research 6, gated 5, repo
 20, uiux 14, queue 17, true-audit 11, 0 left; old->new ops/runtime/drive_rc/l9/map.json; 5657fedc4 KEPT as d21c1db2c
 (RM-1324, LEDGER 2018; reverses if a suite or CI reds it). Filings RM-1274..RM-1337 (BACKLOG). Push, CI and worktree
 removal read back: ops/loop/control/progress/l9-rc-lanes.json. Owed at the next launch: DS + RC read-backs,
@@ -62,11 +62,12 @@ installers / XMLs / keepalive / legion_on lines / legacy text); RM-1226 (certifi
 (updater ships requirements without its embed); the L8 filings (BACKLOG "Session 147 L8 landing
 filings"): RM-1243, -1244, -1245, -1250, -1254, -1255, -1258..-1262 OPEN, RM-1257 PARTIAL.
 Next action 6 (reads owed, s148 rows in BACKLOG "Session 148 filings"): RM-1267 first sonnet cycles read rc 0
-(research 14:30:02, repo 14:38:09, ds 15:03:12); week ends 2026-11-08, measure then. RM-1269 read 2026-11-08. RM-1268 swap the trimmed templates between cycles, read about
-2026-11-15. RM-1266 DST row. The next rotator launch (held, see IN-FLIGHT) loads the 500 runs gate (reserve 100),
+(research 14:30:02, repo 14:38:09, ds 15:03:12); week ends 2026-11-08, measure then. RM-1269 read 2026-11-08. RM-1268 SWAPPED (LEDGER 2022), median read about 14 days after the next rotator start. RM-1266 DST row. The next rotator launch (held, see IN-FLIGHT) loads the 500 runs gate (reserve 100),
 the RC-4 daily block and the lanes.py log.
 Next action 7 (MAIN ORDER 2215 stays OPEN in inbox_tick.py --pending): items 5, 6 live half, 9, 10 =
-RM-1271, RM-1270, RM-1272; done 2, 3, 8, 11, 6 code half; 1 + 4 went into ORDER 1233; 7 = MAIN writes the
+RM-1271 (instruction in, share read owed), RM-1270 (code in, one live stop line and the named residue owed; both reads
+at the first rotator run), RM-1272 (not started); operator's "Yes, all" covers them. Kit v30 lines: no v30 text here, unjudged;
+RC-OWES d: `gh api` alerts route denied in the drive, push line reads alert 144, package unread; done 2, 3, 8, 11, 6 code half; 1 + 4 went into ORDER 1233; 7 = MAIN writes the
 700 USD ceiling from FLEET-5a. RM-1273 CLAUDE.md at 92 percent of its budget (drift_guard, a /done breach).
 FIRST: CPU / memory glance; the rotator (IN-FLIGHT); inbox_tick.py --pending; gh pr list; git fetch +
 origin/main still an ancestor of main; the RC-InboxResponder agreement expires 2026-12-01 00:00 (read
@@ -231,14 +232,14 @@ OPEN - WORK ITEMS (bodies + acceptance in BACKLOG; detail VERBATIM in A31 block 
 - Channel and MAIN: the route reads split again (G2, 2026-10-27; RC never edits the route file and arms no
   fallback); the s130 board finding (RM-823); B3 read-back of MAIN 2237 (the next pane shows the acct2
   status line, no [Legion] line); the old lane folder + junction are MAIN's to release.
-- Worktrees: the 7 lanes go by plain git worktree remove after the L9 push, read the L9 progress file; branches kept: lane/*, K, T13,
+- Worktrees: main only (7 lanes removed, LEDGER 2022); the driver's next live cycle re-adds each; branches kept: lane/*, K, T13,
   drain/wave2-tail-backlog, s145-prefold-main, s145-l7-land2, worktree-agent-aad42dcb1fbdf23a3, PKG-7 and 5
   cherry-picked worktree-agent-a0ea7b0a2617e5846, -af189a7c1ace30bb8, -aa128be2bc35fe467,
   -ab5f3ec39b65d9dfc, -ab53f4941ce22be94.
 - RM-681 PARTIAL: one attended live call per path (truststore MET s133 c6). Origin
   c1/deps-pip-anthropic1-measure was deleted under MAIN 0909; 24c54ec39 stays in the kit bundle.
 - Rows: the s139 open-row index (100+ ids) is VERBATIM in A26, each row in BACKLOG / ROADMAP; next free
-  RM-1338 (pin docs/DS_SWEEP_TRACKER.md); next LEDGER 2022. ROADMAP top open: PKG (WA9-WA14, WA17), the
+  RM-1338 (pin docs/DS_SWEEP_TRACKER.md); next LEDGER 2023. ROADMAP top open: PKG (WA9-WA14, WA17), the
   PKG-6c residue, RM-488, RM-596, RM-597, the RM-681.. rows; EXTERNAL-LIFT Band 2 / 4 stay in BACKLOG.
 - Y-45 phone push needs ntfy (host local-only). Operator APPROVED Y-44 (frozen lcu_client.py) + Y-45
   2026-10-03 (Desktop EXTERNAL-LIFT-DIRECTIVE.md / -2.md; -2 ingested as RM-526..RM-594).

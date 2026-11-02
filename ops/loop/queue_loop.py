@@ -1117,6 +1117,23 @@ def run_cycle(cycle: int, *, lane: str = LANE, worktree=None, run_id=None,
     return _record(outcome, outcome == OUTCOME_COMPLETED, pid, clock(), detail)
 
 
+def _lane_status_stop(lane, reason, *, root, emit) -> None:
+    """Write the lane_status.log stop line, only under an injected root (RM-1270).
+
+    None is off, not "the default log": every direct run_loop caller stays away
+    from the live file, and main() is the one place that names it. A fault is
+    said and swallowed, because a status line never ends a lane. There is no
+    resume here on purpose: the next real claim writes it (lanes.try_acquire_lane),
+    and a resume before the claim would be false on a refused acquire.
+    """
+    if root is None:
+        return
+    try:
+        lanes.mark_lane_stopped(lane, reason, root=root)
+    except Exception as exc:  # noqa: BLE001 - see the docstring
+        emit(f"queue-loop lane status line not written: {type(exc).__name__}: {exc}")
+
+
 def run_loop(*, max_cycles: int = DEFAULT_MAX_CYCLES,
              settle_s: float = DEFAULT_SETTLE_S,
              poll_s: float = DEFAULT_POLL_S,
@@ -1127,7 +1144,7 @@ def run_loop(*, max_cycles: int = DEFAULT_MAX_CYCLES,
              ci_wait_s: float = DEFAULT_CI_WAIT_S,
              ci_poll_s: float = DEFAULT_CI_POLL_S,
              lane: str = LANE, worktree=None,
-             control_dir=None, cycle_log=None,
+             control_dir=None, cycle_log=None, status_root=None,
              acquire_retries: int = ACQUIRE_RETRIES,
              acquire_wait_s: float = ACQUIRE_WAIT_S,
              acquire=lanes.try_acquire_lane,
@@ -1185,6 +1202,8 @@ def run_loop(*, max_cycles: int = DEFAULT_MAX_CYCLES,
         if reason:
             stopped_by = reason
             emit(f"queue-loop stop: {reason} present - {len(records)} cycle(s) run")
+            _lane_status_stop(lane, "operator" if reason == "QUEUE_STOP" else "STOP",
+                              root=status_root, emit=emit)
             break
         # Kit v25 FAIR RELEASE, at the cycle BOUNDARY only (never before cycle
         # 1, never mid-cycle): on True the lane is simply not started again.
@@ -1193,6 +1212,7 @@ def run_loop(*, max_cycles: int = DEFAULT_MAX_CYCLES,
             stopped_by = STOPPED_BY_FAIR_YIELD
             emit(f"queue-loop stop: fair_yield (another tree waits for a slot) "
                  f"- {len(records)} cycle(s) run")
+            _lane_status_stop(lane, "cap", root=status_root, emit=emit)
             break
         # Minted HERE, not inside run_cycle, so the error record below can name
         # the SAME run as the claim and the worker log. A cycle that faulted
@@ -1380,7 +1400,8 @@ def main(argv=None, *, singleton=None) -> int:
                                ci_gate=not args.no_ci_gate,
                                ci_wait_s=args.ci_wait,
                                lane=args.lane, control_dir=control_dir,
-                               cycle_log=cycle_log)
+                               cycle_log=cycle_log,
+                               status_root=(control_dir or CONTROL) / "lanes")
     except winmutex.MutexTimeout:
         # Not an error condition, a REFUSAL - and it must be loud, because the
         # symptom of two drivers is invisible at a glance: both survive, both
