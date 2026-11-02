@@ -240,6 +240,8 @@ RC channel code: `RC`. Kit conformance: `tests/test_fleet_kit_conformance.py`. L
 
 **KIT v27 (MAIN 2026-10-31 2347, cumulative).** No settings or FLEET-COMMON change. A lane acquire refuses `usd_ceiling` once today's cost_usd reaches MAIN's `daily_usd_ceiling` for RC in `~/.fleet/lanes.json` (RC named $700; RC never writes it). Pending ORDER / FIX / RULING rows (`fleet_inbox.py pending`; inbox_tick's work queue) are worked first and closed with `mark_work_done`; a kit `mark_seen` of an ORDER also queues it. A rewrite takes `--range BASE..BRANCH`, still only on a MAIN ORDER. Guard `tests/test_fleet_kit_v27.py`.
 
+**KIT v28 (MAIN 2026-11-01 0825, cumulative).** No settings or FLEET-COMMON change. Pre-push scans a push whose remote old tip is absent from this clone like a NEW ref (a rewrite's force-push no longer needs the old tip fetched back); never looser: a bad identity in that range still refuses, and `git ls-remote` failing with an absent old tip refuses. Guard `tests/test_fleet_kit_v28.py`.
+
 **PYTEST BASETEMP (MAIN FIX TEMP-1, 2026-10-09).** Never pass `--basetemp` inside a session scratchpad: use the default tmp_path (`pytest.ini`: retention `failed`, count `1`), or, if a run truly needs one, the ONE fixed `<scratchpad>/pytest-basetemp`. Every session, lane and loop prompt follows this; the rootdir `conftest.py` refuses any other scratchpad basetemp. Guard `tests/test_pytest_basetemp_scratchpad_temp1.py`.
 
 **Known overlaps with the FLEET-COMMON block, kept as RC gates until MAIN rules on them (reported to MAIN at adoption; not silently weakened):**

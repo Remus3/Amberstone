@@ -344,7 +344,7 @@ import time
 from pathlib import Path
 from urllib.parse import urlsplit
 
-KIT_VERSION = 27
+KIT_VERSION = 28
 KIT_PATCH = 0
 TMPDIR_ENV = "CLAUDE_CODE_TMPDIR"  # v22: headless child temp root (sidecar)
 VAR = "CLAUDE_HEADLESS_BASE_URL"
