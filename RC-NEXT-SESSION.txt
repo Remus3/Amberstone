@@ -36,9 +36,10 @@ LAUNCH (s147): from an agent shell, start a GUI app via WMI Win32_Process Create
 the call); run tools/rc_facts.py with empty stdin (it hangs on an open one).
 
 Next action 1 (FIRST, the inbox): `python ops/loop/inbox_tick.py --pending` read 2 open ORDER rows at /done, 1547
-and 2215. 1547: item 1 done, item 2 holding, items 3 (L9) + 4 (the clear) open, the v28 answer carried; no
-mark_work_done until 3 and 4 are done; TERMINAL, no reply owed, send no note. 2215: Next action 7. Then read
-the full dispatch 41365246123 on 55f9cb8c7 (Status); a red comes first.
+and 2215. 1547: item 1 done, item 2 holding, item 3 (L9) DONE and answered (docs/_archive/2026-11/2026-11-01-2330-from-RC-ANSWER-to-MAIN-1547-*,
+1/1, re-hashed), item 4 (the clear) open; no mark_work_done until 4 is done; TERMINAL, no reply owed, send no note. 2215: Next action 7.
+CI read: ci 41383908012 SUCCESS on 43f6d2e9d (push-escalated full dual suite). Newest dispatch/schedule full: 41365246123 success on 55f9cb8c7, pre-landing;
+read the next nightly, a red comes first. The commits after 43f6d2e9d (RM-1270 code half 0099eb471, the answer copy) are UNPUSHED, touched tests only: gated whole suite, then push per tier.
 Next action 2 (L9, ORDER 1547 item 3): LANDED, PUSHED 43f6d2e9d (gated suite rc 0, LEDGER 2022), lanes removed: 89 of 89, ds 16, research 6, gated 5, repo
 20, uiux 14, queue 17, true-audit 11, 0 left; old->new ops/runtime/drive_rc/l9/map.json; 5657fedc4 KEPT as d21c1db2c
 (RM-1324, LEDGER 2018; reverses if a suite or CI reds it). Filings RM-1274..RM-1337 (BACKLOG). Push, CI and worktree
