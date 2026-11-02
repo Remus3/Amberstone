@@ -41,6 +41,19 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-31c - session 146: push CI reds fixed forward, CI step limits raised, CLI re-pinned 2.1.316, rulings 40-44 / 48 / 51 self-adjudicated, ASKS 50 / 52 done, launcher cutover APPLIED (Windows restart owed); PUSHED
+
+- **Operator (chat):** "self-adjudicate" (rulings), "yes if not needed" (ASKS 50), approved the RM-1223 frozen comment (ASKS 52), ordered the headless budget reset, re-logged the proxy's pinned account at 17:24; typed /done.
+- **N1 / C2 / C3 (LEDGER 1988 / 1989):** the 6 Linux-only push reds were test-side (4 commits); the full dispatch 41231173460 died at the 75-min step limit at 97 percent, so the full-suite step is 110 min / job 125 min and `DEFAULT_CI_WAIT_S` 7800.
+- **H1 / P6 / N2 (LEDGER 1990 / 1991):** budget 102 -> 0 (archive, backup); the "Pinned account is unavailable" 429 was the proxy's pinned second account with an expired OAuth refresh token (invalid_grant), not a usage limit; PINNED_CLI 2.1.314 -> 2.1.316, canary 4/4.
+- **ASKS 50 / 52 / rulings (LEDGER 1992-1995):** 12 local branches deleted (manifest `ops/runtime/branch_delete_s146.txt`, PKG-7 kept); RM-1223 comment `98e235a23`; rulings in `docs/_archive/2026-10/s146_rulings_40-51.md`; websockets 17.3 live.
+- **ASKS 45 / A45b-d (LEDGER 1996 / 1998):** packaged app + `npm ci` passed; the launcher picks the canonical Python, refuses a stale embed; cutover -Apply exit 0 at 18:07 (6 tasks gone), recorded in `4bf8f2227`, V3 PASS.
+- **/done (LEDGER 1999):** RM-750 live half SUPERSEDED (relocated); RM-1229..RM-1233 filed; pushed `baa0af524..12f2f3bb1` (25 commits, push ci mode=full = the full-suite cover).
+- **Do NOT redo:** the cutover apply (all 7 task names read back absent), the CLI re-pin, the budget reset, the rulings, ASKS 50 / 52, the websockets update.
+- **Next:** the operator restarts Windows, then the cutover re-run with no switch and the `--profile dev` shell launch read-back; land the rotator's lane commits (12 at /done, counted with `git cherry`).
+
+---
+
 # 2026-10-31b - session 145: docs-guards red fixed, L7 landed all 96 s144 lane commits (RM-1152..RM-1224), CodeQL 67-83 triaged and fixed / dismissed, RM-1222 + RM-1161 + RM-928 (a) shipped, inbox agreement renewed; PUSHED after a sweep fold
 
 - **Operator (chat):** "self-adjudicate them" for ASKS 31 and the CodeQL false-positive dismissals; typed /done.

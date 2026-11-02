@@ -6,6 +6,18 @@
 
 ---
 
+# 2026-11-01b - session 149: inbox only; MAIN ORDER 1547 reboot hold read back, L9 NOT run, C1 verified 9 of 9; PUSHED
+
+- **Operator (chat):** "just the inbox- not roadmap work at this time."; typed /done. No lane landed, no roadmap item started, no channel note sent.
+- **ORDER 1547 (LEDGER 2013, `55f9cb8c7`):** S144_LANES_STOP in place (usage row `drive rc lanes hold`, 16:17:15), rotator exit 0 at 17:13:00, 33 cycles. Row 1547 stays open: items 3 (L9) + 4 (the clear) and the v28 answer are owed.
+- **Gated suite (LEDGER 2012, `3ee5d9c8b`, MAIN's task):** ran once on 54cc8b78e, exit 1, 2 failed, 57033 passed; both `Page.goto` timeouts, named load flakes, cause inferred. A run with 0 reds is still owed.
+- **Verifier:** an independent read-only pass confirmed the inbox agent's 9 claims and found the gap the hand-off lacked: MAIN's quiesce ruling, Decision 6, puts L9 BEFORE the reboot, by MAIN-launched kit chains `L9 chain A` / `B`. Recorded, not run.
+- **/done:** pushed `9bfec373f..55f9cb8c7`; ci push run 41365235200 success (a slice), docs-guards 41365235161 success; one full dispatch 41365246123, in progress at the write.
+- **Do NOT redo:** the stop-file write, the C1 read-backs. Do NOT clear the stop or relaunch the rotator before the reboot.
+- **Next:** the operator's scope line first; rows 1547 + 2215; read the dispatch; L9 only when in scope.
+
+---
+
 # 2026-11-01 - session 148: MAIN headless DRIVE-RC, ORDER 1233 worked in 3 slices; ci green on the slice push a52bc77ed; docs-guards red on kit v26, fixed forward; PUSHED
 
 - **Driver:** MAIN (no operator in chat), ORDER 2026-11-01-1233, slices 1-3; state `ops/loop/control/progress/drive-rc.json`; LEDGER 2010-2011.
@@ -28,16 +40,3 @@
 - **CI:** the s146 push run ci 41253461425 FAILED 1 test (radial 7-pick row got 5 on Linux; passes locally) - FIRST next action.
 - **Do NOT redo:** L8 (markers), F1, the alert 144 decline, the slice deletions, the cutover stage 2 read-back.
 - **Next:** fix the radial CI red forward; read back this /done's CI; L9 landing of the rotator's new commits (counted against the twins).
-
----
-
-# 2026-10-31c - session 146: push CI reds fixed forward, CI step limits raised, CLI re-pinned 2.1.316, rulings 40-44 / 48 / 51 self-adjudicated, ASKS 50 / 52 done, launcher cutover APPLIED (Windows restart owed); PUSHED
-
-- **Operator (chat):** "self-adjudicate" (rulings), "yes if not needed" (ASKS 50), approved the RM-1223 frozen comment (ASKS 52), ordered the headless budget reset, re-logged the proxy's pinned account at 17:24; typed /done.
-- **N1 / C2 / C3 (LEDGER 1988 / 1989):** the 6 Linux-only push reds were test-side (4 commits); the full dispatch 41231173460 died at the 75-min step limit at 97 percent, so the full-suite step is 110 min / job 125 min and `DEFAULT_CI_WAIT_S` 7800.
-- **H1 / P6 / N2 (LEDGER 1990 / 1991):** budget 102 -> 0 (archive, backup); the "Pinned account is unavailable" 429 was the proxy's pinned second account with an expired OAuth refresh token (invalid_grant), not a usage limit; PINNED_CLI 2.1.314 -> 2.1.316, canary 4/4.
-- **ASKS 50 / 52 / rulings (LEDGER 1992-1995):** 12 local branches deleted (manifest `ops/runtime/branch_delete_s146.txt`, PKG-7 kept); RM-1223 comment `98e235a23`; rulings in `docs/_archive/2026-10/s146_rulings_40-51.md`; websockets 17.3 live.
-- **ASKS 45 / A45b-d (LEDGER 1996 / 1998):** packaged app + `npm ci` passed; the launcher picks the canonical Python, refuses a stale embed; cutover -Apply exit 0 at 18:07 (6 tasks gone), recorded in `4bf8f2227`, V3 PASS.
-- **/done (LEDGER 1999):** RM-750 live half SUPERSEDED (relocated); RM-1229..RM-1233 filed; pushed `baa0af524..12f2f3bb1` (25 commits, push ci mode=full = the full-suite cover).
-- **Do NOT redo:** the cutover apply (all 7 task names read back absent), the CLI re-pin, the budget reset, the rulings, ASKS 50 / 52, the websockets update.
-- **Next:** the operator restarts Windows, then the cutover re-run with no switch and the `--profile dev` shell launch read-back; land the rotator's lane commits (12 at /done, counted with `git cherry`).
