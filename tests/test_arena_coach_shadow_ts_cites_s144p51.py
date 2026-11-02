@@ -11,8 +11,8 @@ already makes unreachable) explained themselves by line:
   the augment-select shadow row in _handle_augment_select
       "callee already swallows (core/augment_shadow.py:112-113)"
 
-Both were written by 7797264e2 (the silent no-op handler program). What they
-meant at 7797264e2^:
+Both were written by 649c35d4d (the silent no-op handler program). What they
+meant at 649c35d4d^:
 
   core/coaching_timestamps.py:73-74 -> write_coaching_ts, the last line of
       its try body (ts_tmp.replace) and its `except Exception` handler,
@@ -36,8 +36,9 @@ This guard pins:
     (so nothing it runs sits outside the handler) whose handler returns
     None;
 (c) each D-class comment block names its callee by dotted symbol;
-(d) at 7797264e2^ every old cite landed inside the symbol named for it
-    (skipped only when that commit is absent from the clone).
+(d) at 649c35d4d^ every old cite landed inside the symbol named for it
+    (a commit absent from the clone FAILS: tests/test_ci_checkout_history_depth.py
+    keeps these on full clones, and a shallow skip would hide on every CI run).
 
 Out of scope on purpose: the vision_server/_inference.py cites (arena_coach
 and aram_coach) are pinned by tests/test_inference_prompt_cites_s144p51.py;
@@ -58,7 +59,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 CITER = "coaches/arena_coach.py"
-WRITING_PARENT = "7797264e2^"
+WRITING_PARENT = "649c35d4d^"
 
 TS = "core/coaching_timestamps.py"
 SHADOW = "core/augment_shadow.py"
@@ -193,8 +194,7 @@ def test_banned_pattern_still_bites():
                          ids=[f"{r.rsplit('/', 1)[-1]}:{n}"
                               for r, n, _, _ in OLD_CITES])
 def test_old_cite_meant_the_named_symbol(rel, line, func, text):
-    if not _have(WRITING_PARENT):
-        pytest.skip(f"{WRITING_PARENT} absent from this clone (shallow)")
+    assert _have(WRITING_PARENT), f"{WRITING_PARENT} absent from this clone"
     src = _git_show(f"{WRITING_PARENT}:{rel}")
     node = _func(src, func)
     assert node.lineno <= line <= node.end_lineno, (

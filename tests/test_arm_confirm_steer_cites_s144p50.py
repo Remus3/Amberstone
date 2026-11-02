@@ -7,7 +7,7 @@ Two files explained a behaviour by citing it by line:
 
 What the cites meant, in the tree each was written against:
 
-  _arm_confirm.py, written by f9b4a07c1 against f9b4a07c1^ (the commit that
+  _arm_confirm.py, written by fbcf8474d against fbcf8474d^ (the commit that
   DELETED web/mc/, so every web/mc cite reads at its parent):
     `web/mc/arm_confirm.js:45`       -> export function createArmController
     `web/mc/mc.js:133`               -> const _mcArm = createArmController(...)
@@ -35,8 +35,9 @@ pins:
     rationale says it does;
 (c) each citer names its symbols in a COMMENT or STRING token, so a code
     reference to the same name cannot satisfy the check;
-(d) the web/mc symbols exist at f9b4a07c1^ (skipped only if that commit is
-    absent from a shallow clone; (a)-(c) never skip).
+(d) the web/mc symbols exist at fbcf8474d^ (a commit absent from the clone
+    FAILS: tests/test_ci_checkout_history_depth.py keeps these on full clones,
+    and a shallow skip would hide on every CI run).
 """
 
 from __future__ import annotations
@@ -55,7 +56,7 @@ ROOT = Path(__file__).resolve().parent.parent
 ARM = "dashboard/_arm_confirm.py"
 STEER = "ops/loop/steer.py"
 IDEM = "dashboard/_idempotency.py"
-MC_PARENT = "f9b4a07c1^"
+MC_PARENT = "fbcf8474d^"
 
 CITERS = {
     ARM: (
@@ -66,7 +67,7 @@ CITERS = {
         "_MC_IRQ_ID",
         "_loopControl",
         "disarm(true)",
-        "f9b4a07c1^",
+        "fbcf8474d^",
         "Deliberately in-process and non-durable",
         "`dashboard/_idempotency.py` module docstring",
     ),
@@ -145,7 +146,7 @@ def test_cursor_is_read_on_the_pending_poll():
 
 
 def test_web_mc_is_still_deleted():
-    """The cites read web/mc at f9b4a07c1^ BECAUSE the tree has none."""
+    """The cites read web/mc at fbcf8474d^ BECAUSE the tree has none."""
     assert not (ROOT / "web" / "mc").exists()
 
 
@@ -156,10 +157,10 @@ def _git(*args: str) -> subprocess.CompletedProcess:
 
 
 def _at_parent(path: str) -> str:
-    """`path` at f9b4a07c1^. Skips ONLY when that commit is absent (a shallow
-    clone); a commit that is present but lacks `path` is a failure."""
-    if _git("cat-file", "-e", f"{MC_PARENT}^{{commit}}").returncode != 0:
-        pytest.skip(f"{MC_PARENT} not in this clone")
+    """`path` at fbcf8474d^. An absent commit and a commit that lacks `path`
+    are both failures."""
+    probe = _git("cat-file", "-e", f"{MC_PARENT}^{{commit}}")
+    assert probe.returncode == 0, f"{MC_PARENT} not in this clone"
     proc = _git("show", f"{MC_PARENT}:{path}")
     assert proc.returncode == 0, f"{path}@{MC_PARENT}: {proc.stderr.strip()}"
     return proc.stdout

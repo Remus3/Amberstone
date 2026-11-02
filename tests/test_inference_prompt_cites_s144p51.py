@@ -3,13 +3,13 @@ cite the relay prompt and the arena consumer by symbol, not by line.
 
 Both coaches declare `is_augment_select` in their tiered field list and
 explain why in a "B-01b re-home" comment block. Both blocks were written by
-d6894db3d and both cited by line:
+dbfe693c7 and both cited by line:
 
   coaches/arena_coach.py   "(vision_server/_inference.py:36)" and
                            "the consumed `augment_select` at :606"
   coaches/aram_coach.py    "(vision_server/_inference.py:36)"
 
-What they meant at d6894db3d (the writing commit; the cites name the tree
+What they meant at dbfe693c7 (the writing commit; the cites name the tree
 they were written into):
 
   vision_server/_inference.py:36 -> the `"is_augment_select":false` line of
@@ -34,9 +34,10 @@ This guard pins:
     module-level string that emits `"is_augment_select"`, _postprocess
     aliases it into `augment_select`, and arena Coach._run_vision gates on
     `state.get("augment_select")`;
-(d) at d6894db3d each old cite landed on the text named for it inside the
-    symbol named for it (skipped only when that commit is absent from the
-    clone).
+(d) at dbfe693c7 each old cite landed on the text named for it inside the
+    symbol named for it (a commit absent from the clone FAILS:
+    tests/test_ci_checkout_history_depth.py keeps these on full clones, and a
+    shallow skip would hide on every CI run).
 
 Out of scope on purpose: the last three RM-1295 cites (core/feature_policy.py
 is_allowed and the two into aram_coach.py itself) are pinned by
@@ -55,7 +56,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-WRITING = "d6894db3d"
+WRITING = "dbfe693c7"
 
 ARENA = "coaches/arena_coach.py"
 ARAM = "coaches/aram_coach.py"
@@ -192,8 +193,7 @@ def test_banned_patterns_still_bite():
                          ids=[f"{r.rsplit('/', 1)[-1]}:{n}"
                               for r, n, _, _, _ in OLD_CITES])
 def test_old_cite_meant_the_named_symbol(rel, line, cls, name, text):
-    if not _have(WRITING):
-        pytest.skip(f"{WRITING} absent from this clone (shallow)")
+    assert _have(WRITING), f"{WRITING} absent from this clone"
     src = _git_show(f"{WRITING}:{rel}")
     node = _symbol(src, cls, name)
     assert node.lineno <= line <= node.end_lineno, (

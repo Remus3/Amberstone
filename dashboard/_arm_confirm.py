@@ -4,8 +4,8 @@
 WHY THIS IS SERVER SIDE. The original arm-then-confirm lived in
 `web/mc/arm_confirm.js` (`createArmController`), a browser module wired into
 `web/mc/mc.js` as `const _mcArm = createArmController(...)`. Both files were
-deleted by f9b4a07c1 (the Mission Control web UI retirement); every web/mc
-symbol named in this module reads at f9b4a07c1^. That made the guard a
+deleted by fbcf8474d (the Mission Control web UI retirement); every web/mc
+symbol named in this module reads at fbcf8474d^. That made the guard a
 property of ONE CLIENT: curl, a script, a second tab or a wedged phone
 reached `interrupt` - a taskkill over a named victim set - in a single HTTP
 call, because a browser module cannot defend a route it does not sit in front
@@ -214,7 +214,7 @@ def _mint() -> str:
 def target_of(action: str, body: dict) -> str:
     """The sub-identity an arm is bound to, mirroring the UI's armed id.
 
-    `web/mc/mc.js` (deleted, read at f9b4a07c1^) armed a lane by its lane
+    `web/mc/mc.js` (deleted, read at fbcf8474d^) armed a lane by its lane
     name (`"lane:" + lane` in `_mcPaintLanes`), a shortcut by its intent id
     (`sc.id`) and the interrupt by the constant `_MC_IRQ_ID`.
     A missing field returns "" rather than raising: the action-level 400 in

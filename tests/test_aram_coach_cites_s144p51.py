@@ -4,25 +4,25 @@ name the symbol, not the line.
 Three cites were left after the first four families:
 
   coaches/aram_coach.py, the Coach._run_vision feature-policy note:
-      "is_allowed (core/feature_policy.py:305-350)"    written by 7797264e2
+      "is_allowed (core/feature_policy.py:305-350)"    written by 649c35d4d
   coaches/aram_coach.py, the item-interaction note in Coach._run_coach (a
       self-cite): "the _USER_TMPL fill site, coaches/aram_coach.py:839"
-                                                        written by 32c72cdc7
+                                                        written by 179721af8
   tests/test_aram_vision_cadence_fastpoll.py docstring (a cite INTO
       aram_coach.py, not a self-cite):
       "`_VISION_INTERVAL` = 25.0s (coaches/aram_coach.py:552)"
-                                                        written by 29d39c2fc
+                                                        written by b34b99b53
 
 What they meant:
 
   core/feature_policy.py:305-350 -> exactly the span of def is_allowed at
-      7797264e2 (that commit did not touch core/feature_policy.py)
+      649c35d4d (that commit did not touch core/feature_policy.py)
   aram_coach.py:839 -> the `enemies` field of the _USER_TMPL.format call in
-      Coach._run_coach, which reads state["enemy_comp"], at 32c72cdc7^ (the
+      Coach._run_coach, which reads state["enemy_comp"], at 179721af8^ (the
       commit itself added 57 lines above it, so the cite was already stale
       when it landed)
   aram_coach.py:552 -> the class attribute Coach._VISION_INTERVAL = 25.0 at
-      29d39c2fc^ (the commit added two lines above it)
+      b34b99b53^ (the commit added two lines above it)
 
 At HEAD all three are stale (is_allowed is ~32 lines lower, the fill site
 ~300, the interval ~86). The prose now names core.feature_policy.is_allowed,
@@ -38,7 +38,8 @@ This guard pins:
     _USER_TMPL with `enemies` from state["enemy_comp"], and
     Coach._VISION_INTERVAL is still 25.0;
 (d) at the writing tree each old cite landed inside the symbol named for it
-    (skipped only when that commit is absent from the clone).
+    (a commit absent from the clone FAILS: tests/test_ci_checkout_history_depth.py
+    keeps these on full clones, and a shallow skip would hide on every CI run).
 
 Other cite families in aram_coach.py (BACKLOG.md, web/js item_build.js and
 items_index.js) are not RM-1295 and are out of scope on purpose.
@@ -74,10 +75,10 @@ NOTES = (
 # (module, writing tree, old first line, old last line, class or None, symbol,
 #  text on the first line or None)
 OLD_CITES = (
-    (POLICY, "7797264e2", 305, 350, None, "is_allowed", "def is_allowed("),
-    (ARAM, "32c72cdc7^", 839, 839, "Coach", "_run_coach",
+    (POLICY, "649c35d4d", 305, 350, None, "is_allowed", "def is_allowed("),
+    (ARAM, "179721af8^", 839, 839, "Coach", "_run_coach",
      'enemies     = ", ".join(state.get("enemy_comp", []))'),
-    (ARAM, "29d39c2fc^", 552, 552, "Coach", "_VISION_INTERVAL",
+    (ARAM, "b34b99b53^", 552, 552, "Coach", "_VISION_INTERVAL",
      "_VISION_INTERVAL    = 25.0"),
 )
 
@@ -195,8 +196,7 @@ def test_banned_pattern_still_bites():
                          ids=[f"{r.rsplit('/', 1)[-1]}:{lo}"
                               for r, _, lo, _, _, _, _ in OLD_CITES])
 def test_old_cite_meant_the_named_symbol(rel, rev, lo, hi, cls, name, text):
-    if not _have(rev):
-        pytest.skip(f"{rev} absent from this clone (shallow)")
+    assert _have(rev), f"{rev} absent from this clone"
     src = _git_show(f"{rev}:{rel}")
     node = _symbol(src, cls, name)
     assert node.lineno <= lo <= hi <= node.end_lineno, (

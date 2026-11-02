@@ -151,8 +151,8 @@ def test_the_named_commit_really_removed_the_last_caller():
     have = subprocess.run(
         ["git", "cat-file", "-e", f"{_LAST_CALLER_REMOVED}^{{commit}}"],
         cwd=_ROOT, capture_output=True)
-    if have.returncode != 0:
-        pytest.skip(f"{_LAST_CALLER_REMOVED} absent from this clone (shallow)")
+    # Fails, never skips, on a shallow clone: tests/test_ci_checkout_history_depth.py.
+    assert have.returncode == 0, f"{_LAST_CALLER_REMOVED} absent from this clone"
     diff = subprocess.run(
         ["git", "show", "--format=", _LAST_CALLER_REMOVED, "--",
          "modes/shared_vision.py"],

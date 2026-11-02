@@ -8,7 +8,7 @@ fix by pointing at the sites that had compensated, by line:
                                             read_json_dict W1 comment)
   tests/test_polled_json_lane8_cycle24.py  (module docstring, W1)
 
-What the cites meant, in the tree they were written against (8bf931e29^,
+What the cites meant, in the tree they were written against (e5ec9ee24^,
 the parent of the cycle 24 commit that wrote them):
 
   core/cost_tracker.py:490     -> CostTracker.note_match_boundary, its
@@ -29,8 +29,9 @@ This guard pins:
 (a) no line cite into those three modules in the two citers;
 (b) every named symbol still exists and still carries what the prose says;
 (c) each citer names its symbols in a COMMENT or STRING token;
-(d) at 8bf931e29^ every old cite landed inside the symbol named for it
-    (skipped only when that commit is absent from the clone).
+(d) at e5ec9ee24^ every old cite landed inside the symbol named for it
+    (a commit absent from the clone FAILS: tests/test_ci_checkout_history_depth.py
+    keeps these on full clones, and a shallow skip would hide on every CI run).
 
 Other-family cites are out of scope on purpose. The compensating sites' own
 cites into core/cost_tracker.py and core/polled_json.py are pinned by
@@ -54,7 +55,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-WRITING_PARENT = "8bf931e29^"
+WRITING_PARENT = "e5ec9ee24^"
 
 _GATES = ("note_match_boundary", "_vision_loop", "_maybe_coach")
 
@@ -85,7 +86,7 @@ HOLDS = (
     ("core/polled_json.py", "read_json_dict", "except UnicodeDecodeError"),
 )
 
-# (file, old line, qualified symbol it sat in at 8bf931e29^, text on it)
+# (file, old line, qualified symbol it sat in at e5ec9ee24^, text on it)
 OLD_CITES = (
     ("core/cost_tracker.py", 490, "CostTracker.note_match_boundary",
      "read_json_dict"),
@@ -175,8 +176,7 @@ def test_banned_pattern_still_bites():
                          ids=[f"{r.split('/')[-1]}:{n}" for r, n, _, _
                               in OLD_CITES])
 def test_old_cite_meant_the_named_symbol(rel, line, qual, text):
-    if not _have_parent():
-        pytest.skip(f"{WRITING_PARENT} absent from this clone (shallow)")
+    assert _have_parent(), f"{WRITING_PARENT} absent from this clone"
     src = _git_show(f"{WRITING_PARENT}:{rel}")
     node = _node(src, rel, qual)
     assert node.lineno <= line <= node.end_lineno, (

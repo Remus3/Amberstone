@@ -12,7 +12,7 @@ type set, by pointing at the callee's raise surface by line:
 
 What the cites meant, in the tree each was written against:
 
-  at 7797264e2^ (parent of the silent no-op handler program, which wrote
+  at 649c35d4d^ (parent of the silent no-op handler program, which wrote
   the LEFT BROAD and "Narrowed 2026-07-19" comments; it changed no line of
   core/cost_tracker.py above the comment it wrote):
     core/cost_tracker.py:218-222 -> CostTracker.__init__, its spend_dir
@@ -22,7 +22,7 @@ What the cites meant, in the tree each was written against:
     _purpose_to_gate (:165)      -> the module-level def _purpose_to_gate
     GATE_META literal (:134-158) -> the GATE_META dict literal, open to close
     CostTracker.__init__ (:218-222) -> as the first row above
-  at 8bf931e29 (lane 8 cycle 24, which rewrote the two polled_json cites in
+  at e5ec9ee24 (lane 8 cycle 24, which rewrote the two polled_json cites in
   the note_match_boundary comment while it grew core/polled_json.py):
     core/polled_json.py:139-174  -> meant read_json_dict, but that commit's
                                     own tree puts line 139 inside the
@@ -46,10 +46,11 @@ This guard pins:
     _purpose_to_gate holds no raise statement and every GATE_META entry
     still has "purposes";
 (c) each citer names its symbols in a COMMENT or STRING token;
-(d) at 7797264e2^ every old cost_tracker cite landed inside the symbol
-    named for it, and at 8bf931e29 both old polled_json cites missed theirs
-    by exactly 9 lines (each history check skips only when that commit is
-    absent from the clone).
+(d) at 649c35d4d^ every old cost_tracker cite landed inside the symbol
+    named for it, and at e5ec9ee24 both old polled_json cites missed theirs
+    by exactly 9 lines (a commit absent from the clone FAILS:
+    tests/test_ci_checkout_history_depth.py keeps these on full clones, and a
+    shallow skip would hide on every CI run).
 
 Other-family cites in the same two files are out of scope on purpose: the
 _base_coach.py cites into core/hotkeys.py (register_coach) and
@@ -70,8 +71,8 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 TRACKER = "core/cost_tracker.py"
 POLLED = "core/polled_json.py"
-DCLASS_PARENT = "7797264e2^"
-CYCLE24 = "8bf931e29"
+DCLASS_PARENT = "649c35d4d^"
+CYCLE24 = "e5ec9ee24"
 STALE_BY = 9
 
 # Each citer and the symbol names its prose must carry.
@@ -235,8 +236,7 @@ def test_banned_pattern_still_bites():
 @pytest.mark.parametrize(("line", "qual", "text"), OLD_TRACKER_CITES,
                          ids=[f"{TRACKER}:{n}" for n, _, _ in OLD_TRACKER_CITES])
 def test_old_tracker_cite_meant_the_named_symbol(line, qual, text):
-    if not _have(DCLASS_PARENT):
-        pytest.skip(f"{DCLASS_PARENT} absent from this clone (shallow)")
+    assert _have(DCLASS_PARENT), f"{DCLASS_PARENT} absent from this clone"
     src = _git_show(f"{DCLASS_PARENT}:{TRACKER}")
     node = _node(src, TRACKER, qual)
     assert node.lineno <= line <= node.end_lineno, (
@@ -249,8 +249,7 @@ def test_old_tracker_cite_meant_the_named_symbol(line, qual, text):
 @pytest.mark.parametrize(("line", "meant", "really"), OLD_POLLED_CITES,
                          ids=[f"{POLLED}:{n}" for n, _, _ in OLD_POLLED_CITES])
 def test_old_polled_cite_was_stale_on_landing(line, meant, really):
-    if not _have(CYCLE24):
-        pytest.skip(f"{CYCLE24} absent from this clone (shallow)")
+    assert _have(CYCLE24), f"{CYCLE24} absent from this clone"
     src = _git_show(f"{CYCLE24}:{POLLED}")
     hit = _node(src, POLLED, really)
     assert hit.lineno <= line <= hit.end_lineno, (

@@ -16,12 +16,12 @@ coaches/_base_coach.py by line:
 
 What the cites meant, in the tree each was written against:
 
-  at 7797264e2^ (parent of the silent no-op handler program, which wrote
+  at 649c35d4d^ (parent of the silent no-op handler program, which wrote
   the D-class and LEFT BROAD comments):
     coaches/_base_coach.py:66-68   -> load_json, its except + return {}
     coaches/_base_coach.py:100-102 -> safe_write, its except + return
     coaches/_base_coach.py:297     -> BaseCoach.__init__, self._overlay = {}
-  at 29d39c2fc5^ (that commit, the bounded fast vision poll, wrote the
+  at b34b99b53^ (that commit, the bounded fast vision poll, wrote the
   aram cadence comments and the fast-poll test and did not touch
   _base_coach.py):
     coaches/_base_coach.py:306     -> BaseCoach.__init__, self._last_vision
@@ -48,7 +48,9 @@ This guard pins:
     and load_json / safe_write hold no raise statement;
 (c) each citer names its symbols in a COMMENT or STRING token;
 (d) at the writing parent every old cite landed inside the symbol named
-    for it (skipped only when that commit is absent from the clone).
+    for it (a commit absent from the clone FAILS:
+    tests/test_ci_checkout_history_depth.py keeps these on full clones, and a
+    shallow skip would hide on every CI run).
 
 Other-family cites in the same three files are out of scope on purpose.
 The arena_coach cites into core/coaching_timestamps.py and
@@ -74,8 +76,8 @@ import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 BASE = "coaches/_base_coach.py"
-DCLASS_PARENT = "7797264e2^"
-CADENCE_PARENT = "29d39c2fc5^"
+DCLASS_PARENT = "649c35d4d^"
+CADENCE_PARENT = "b34b99b53^"
 
 # Each citer and the symbol names its prose must carry.
 CITERS = {
@@ -216,8 +218,7 @@ def test_banned_pattern_still_bites():
 @pytest.mark.parametrize(("rev", "line", "qual", "text"), OLD_CITES,
                          ids=[f"{r}:{n}" for r, n, _, _ in OLD_CITES])
 def test_old_cite_meant_the_named_symbol(rev, line, qual, text):
-    if not _have(rev):
-        pytest.skip(f"{rev} absent from this clone (shallow)")
+    assert _have(rev), f"{rev} absent from this clone"
     src = _git_show(f"{rev}:{BASE}")
     node = _node(src, qual)
     assert node.lineno <= line <= node.end_lineno, (
