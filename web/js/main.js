@@ -903,13 +903,19 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   // focusout closers pass no refocus, so they never pull focus back, and
   // neither does a pointer pick: focus parked on the trigger would take the
   // next Space from the Replay player and reopen the menu.
+  // Without refocus, focus still inside the menu is dropped here rather than
+  // left to the browser's fixup at the next frame: a Space landing before that
+  // frame went to the hidden row, played nothing, and its keyup clicked the row
+  // again, re-picking the view and parking focus on the trigger.
   function _viewMenuClose(refocus) {
     const m = document.getElementById("view-menu");
     const t = document.getElementById("view-trigger");
     const hadFocus = !!m && m.contains(document.activeElement);
     if (m) { m.classList.add("hidden"); m.setAttribute("aria-hidden", "true"); }
     if (t) t.setAttribute("aria-expanded", "false");
-    if (refocus === true && hadFocus && t) t.focus();
+    if (!hadFocus) return;
+    if (refocus === true && t) t.focus();
+    else document.activeElement.blur();
   }
   // RM-1321: the current view's row, the first row when none is current.
   function _viewMenuFocusCurrent() {

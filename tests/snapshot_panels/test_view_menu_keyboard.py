@@ -289,6 +289,39 @@ def test_space_after_a_pointer_pick_of_replay_still_plays(mock_server, pw_browse
     assert not errors, f"JS errors: {errors[:3]}"
 
 
+def test_pointer_pick_leaves_no_focus_on_the_hidden_row(mock_server, pw_browser):
+    # The nightly red on the test above. A pointer pick hid the row and left it
+    # document.activeElement until the browser's focus fixup at the next frame.
+    # A Space landing in that window went to the display:none row: no play, and
+    # its keyup clicked the row again, which re-picked the view and parked focus
+    # on the trigger. Read in the click's own task, so no frame can intervene
+    # and this does not depend on the timing that made the red intermittent.
+    ctx, page, errors = _open_view(pw_browser, mock_server)
+    try:
+        page.click("#view-trigger")
+        got = page.evaluate(
+            """(sel) => {
+              const row = document.querySelector(sel);
+              row.focus();
+              const held = document.activeElement === row;
+              row.dispatchEvent(new MouseEvent('click', {bubbles: true, detail: 1}));
+              return {
+                held,
+                onRow: document.activeElement === row,
+                rects: row.getClientRects().length,
+              };
+            }""",
+            _ROWS + '[data-view="session"]')
+        assert got["held"], f"positive control, the row never took focus: {got}"
+        assert got["rects"] == 0, f"the pick did not hide the row: {got}"
+        assert not got["onRow"], f"focus stayed on the hidden row: {got}"
+        _assert_closed(_state(page))
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors: {errors[:3]}"
+
+
 def test_held_enter_on_the_trigger_opens_and_picks_nothing(mock_server, pw_browser):
     # A real autorepeat is a keydown with repeat=true, which is what a second
     # keyboard.down of a held key sends.
