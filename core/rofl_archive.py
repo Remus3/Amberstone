@@ -58,7 +58,6 @@ import shutil
 import time
 import urllib.error
 import urllib.parse
-import urllib.request
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -76,6 +75,7 @@ from core.polled_json import (
     atomic_write_bytes,
     atomic_write_json,
 )
+from lib.wiki_consent import WikiFetchRefused, open_consented
 
 logger = logging.getLogger("rc.rofl_archive")
 
@@ -631,7 +631,15 @@ def _maybe_gunzip(body: bytes, max_bytes: int = MAX_REPLAY_BYTES) -> bytes:
 
 
 def _http_get_bytes(url: str, max_bytes: int = MAX_REPLAY_BYTES) -> bytes:
-    with urllib.request.urlopen(url, timeout=120) as resp:
+    """GET one pre-signed replay url, bounded by *max_bytes*.
+
+    Opens through ``lib.wiki_consent.open_consented`` (RM-1564, RM-1441
+    shape): the url and every redirect hop are checked, so a replay url
+    answering 302 into the League wiki host raises ``WikiFetchRefused``
+    before a wiki socket opens (ruling 51). The default verifying TLS context
+    is kept.
+    """
+    with open_consented(url, timeout=120) as resp:
         body, over_cap = _read_bounded(resp, max_bytes)
     if over_cap:
         raise ReplayTooLarge(f"replay body ran past {max_bytes} bytes: {url}")
@@ -701,6 +709,12 @@ def download_replays(urls, archive_dir, index_path=None, fetcher=None,
         except ReplayTooLarge as exc:
             logger.warning("download for %s exceeded the size ceiling: %s",
                            match_id, exc)
+            res.failed.append(match_id)
+            continue
+        except WikiFetchRefused as exc:
+            # A RuntimeError, not an OSError: without this arm one refused url
+            # aborted the whole sweep and the index was never written.
+            logger.warning("download refused for %s: %s", match_id, exc)
             res.failed.append(match_id)
             continue
         except OSError as exc:
