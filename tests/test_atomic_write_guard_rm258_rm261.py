@@ -28,7 +28,8 @@ There is no directory or package sanction on purpose - it would let every new
 writer in that tree start bare, the RM-258 failure itself.
 
 SCOPE: every tracked .py via tests/_repo_walk (ADR-015) EXCEPT the one-shot
-generator trees the rows themselves allowlist (`ops/audit/`, `Share/`), plus
+generator tree the row itself allowlists (`ops/audit/`; the `Share/` mirror
+was removed 2026-09-07 and its prefix dropped), plus
 `tests/`, `docs/`, `oss/` (the extracted package IS
 an implementation and is drift-pinned to core/polled_json by
 tests/test_oss_win32_atomic_io_drift.py) and `ops/fleet_kit/` (vendored
@@ -51,7 +52,8 @@ from pathlib import Path
 
 import pytest
 
-from tests._repo_walk import REPO_ROOT, iter_repo_files, relative_posix, self_check
+from tests._repo_walk import (REPO_ROOT, iter_repo_files, relative_posix,
+                              self_check, tracked_relpaths)
 from tests.guard_data import atomic_write
 
 # Every allowlist lives in one area file per path prefix, so lanes edit
@@ -750,3 +752,17 @@ def test_every_lib_module_is_in_scope():
     scanned = {rel for rel, _ in _runtime_files()}
     assert sorted(set(lib_files) - scanned) == []
     assert "_LIB_UNCLASSIFIED" not in globals()
+
+
+def test_every_excluded_prefix_still_matches_a_tracked_file():
+    """An excluded prefix is a tree the guard never scans. One that matches no
+    tracked file is a dead row: a tree of that name added later would start
+    exempt (the retired `Share/` mirror was one - removed 2026-09-07,
+    7c0ff1624, yet its prefix stayed in the list). Anchored on the real index
+    so an empty listing cannot pass."""
+    tracked = tracked_relpaths()
+    assert tracked, "git index unavailable"
+    assert "core/polled_json.py" in tracked
+    dead = [p for p in _EXCLUDED_PREFIXES
+            if not any(t.startswith(p) for t in tracked)]
+    assert dead == [], f"excluded prefixes with no tracked file: {dead}"
