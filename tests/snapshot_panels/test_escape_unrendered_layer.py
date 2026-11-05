@@ -26,6 +26,12 @@ view itself the same layer still closes on Escape with zen kept
 (test_lobby_mode_menu_escape.py and test_lobby_lane_popup_keyboard.py pin the
 rest of that half). The stranded layer is left with its class as it was; what
 it shows when the operator returns to Lobby is a separate row.
+
+UPDATED RM-1368: that separate row shipped. A view change now dismisses
+every layer it leaves with no box, so the hash change / Back no longer strands
+the layer by itself. _strand asserts that, then puts the open class back on
+the unrendered layer, so the dispatcher's no-box filter (still the rule for any
+other way a layer loses its box) stays pinned end to end.
 """
 import pytest
 
@@ -78,6 +84,15 @@ def _strand(pw_browser, mock_server, layer, route):
         page.evaluate("() => { location.hash = '#replay'; }")
     page.wait_for_function("() => document.body.dataset.view === 'replay'",
                            timeout=10_000)
+    st = page.evaluate(_STATE, layer)
+    # RM-1368: the view change itself now dismisses the layer
+    # (test_view_change_closes_layers.py). The dispatcher's no-box filter is
+    # still the rule for any other way a layer loses its box, so the
+    # stranded state is rebuilt by class to keep that filter pinned.
+    assert not st["open"], f"the view change left {layer} open: {st}"
+    page.evaluate(
+        "(id) => document.getElementById(id).classList.remove('hidden')", layer
+    )
     st = page.evaluate(_STATE, layer)
     # The fixture this row is about: still open by class, rendered nowhere.
     assert st["open"] and st["rects"] == 0, f"{layer} not stranded: {st}"

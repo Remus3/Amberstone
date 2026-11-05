@@ -18,7 +18,7 @@ import { state, CADENCE, VIEW_IDS, VIEW_LABELS, _VIEW } from './lib/state.js';
 import { ITEMS, ITEM_COSTS, CHAMPS, SPELLS, DDRAGON_FALLBACK_VERSION, _itemResolveCache, _normItemName, _resolveItemId, _splitItemList, _resolveChampId, _resolveSpell } from './lib/items_index.js';
 import { idempotentRender, makeSig, makeStreamGate } from './lib/idempotent_render.js';
 import { applyTheme, resolveBootTheme } from './lib/theme.js';
-import { registerEscapeLayer } from './lib/escape_layers.js';
+import { dismissStrandedLayers, registerEscapeLayer } from './lib/escape_layers.js';
 
 // -- Panel modules ---------------------------------------------------------
 import { RN, renderRightNow, renderWhatWent, renderDigest, renderGameSense, renderStats } from './panels/right_now.js';
@@ -799,6 +799,12 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       { manual: !!_VIEW.manual, mode: state.mode });
     _VIEW.current = viewId;
     document.body.dataset.view = viewId;
+    // RM-1368: close the transient layers the old view left open with no
+    // box (the Home Find Match picker and its <body> scrim, the Lobby mode
+    // menu and lane popup). Their dismiss() never moves focus; the stranded
+    // focus is dropped next. Guard:
+    // tests/snapshot_panels/test_view_change_closes_layers.py.
+    try { dismissStrandedLayers(); } catch (_) {}
     _viewDropStrandedFocus();
     _viewUpdateTitleLabel(viewId);
     _viewUpdateMenuActive(viewId);
@@ -4035,6 +4041,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         el: () => picker,
         isOpen: () => !picker.classList.contains("hidden"),
         close: () => _homeFindMatchPickerHide(true),
+        dismiss: () => _homeFindMatchPickerHide(false),
       });
       // RM-1312: keyboard focus leaving the picker (Tab past the last
       // item, Shift+Tab off the first) closes it, so the popover and its
@@ -5644,6 +5651,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         el: () => popup,
         isOpen: () => !popup.classList.contains("hidden"),
         close: () => _closeLanePopup(true),
+        dismiss: () => _closeLanePopup(false),
       });
       // RM-1320: keyboard focus leaving the popup (Tab past the last
       // cell, Shift+Tab off the first) closes it; moving between cells keeps
@@ -5680,6 +5688,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         el: () => modeMenu,
         isOpen: () => !modeMenu.classList.contains("hidden"),
         close: () => closeModeMenu(true),
+        dismiss: () => closeModeMenu(false),
       });
       modeTrigger.addEventListener("click", (e) => {
         e.stopPropagation();

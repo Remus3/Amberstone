@@ -10,7 +10,8 @@ import test from "node:test";
 import assert from "node:assert";
 
 import {
-  compareStacking, openEntries, pickTopmost, registerEscapeLayer, stackingZ,
+  compareStacking, dismissStrandedLayers, openEntries, pickTopmost,
+  registerEscapeLayer, stackingZ, strandedLayers,
 } from "./escape_layers.js";
 
 // Nodes are tree positions; `follows(a, b)` = a comes after b.
@@ -224,6 +225,36 @@ test("openEntries: an isOpen that throws reads as closed", () => {
 test("openEntries: only stranded layers open leaves nothing to pick", () => {
   const got = openEntries([lay("stranded", true, "n")], () => false);
   assert.strictEqual(pickTopmost(got.map((x) => ({ ...x, path: [] })), (a, b) => a > b), null);
+});
+
+// RM-1368: a view change dismisses the layers it left open with no box.
+test("strandedLayers: only an open layer with an unrendered element", () => {
+  const boxes = new Set(["shown"]);
+  const got = strandedLayers(
+    [
+      lay("stranded", true, "hidden-node"),
+      lay("rendered", true, "shown"),
+      lay("closed", false, "hidden-node"),
+      lay("bare", true, null),
+    ],
+    (n) => boxes.has(n),
+  );
+  assert.deepStrictEqual(got.map((l) => l.name), ["stranded"]);
+});
+
+test("strandedLayers: an isOpen that throws reads as closed", () => {
+  const bad = { name: "bad", el: () => "x", isOpen: () => { throw new Error("x"); } };
+  assert.deepStrictEqual(strandedLayers([bad], () => false), []);
+});
+
+test("strandedLayers: no element means hasBox is never asked", () => {
+  let asked = 0;
+  strandedLayers([lay("bare", true, null)], () => { asked += 1; return false; });
+  assert.strictEqual(asked, 0);
+});
+
+test("dismissStrandedLayers: no document (node) dismisses nothing and never throws", () => {
+  assert.deepStrictEqual(dismissStrandedLayers(), []);
 });
 
 test("registerEscapeLayer: no document (node) binds nothing and never throws", () => {

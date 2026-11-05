@@ -19,7 +19,9 @@ only for INPUT and TEXTAREA. Measured in headless Chromium before the fix:
 
 Positive controls: with focus on the body or on an ordinary button, on a trigger
 whose menu has closed, and in another view with a Lobby menu left open behind a
-view change (it is not displayed there), every shortcut still acts.
+view change (it is not displayed there), every shortcut still acts. Since
+RM-1368 a view change closes that menu itself; the test re-opens it by class
+in the other view so the rendered test stays pinned.
 
 Out of scope: web/js/panels/review_player.js has its own Replay keys (Space, d,
 D, ], [) with their own check for an open menu; RM-1324 pins those in
@@ -304,9 +306,21 @@ def test_a_lobby_menu_left_open_by_a_view_change_does_not_kill_the_shortcuts(
         assert page.evaluate(
             "(sel) => document.querySelector(sel).getClientRects().length", panel
         ) == 0, f"{menu} is still displayed in the next view"
-        assert _menu_is_open(page, panel), (
-            f"the premise moved: a view change now closes {menu}"
+        # RM-1368: the premise moved on purpose. A view change now closes
+        # the layer it leaves with no box (test_view_change_closes_layers.py).
+        # The yield's rendered test is still the rule for any other way a
+        # menu loses its box, so the open class is put back on the
+        # unrendered menu to keep that half pinned.
+        assert not _menu_is_open(page, panel), (
+            f"the view change left {menu} open"
         )
+        page.evaluate(
+            "(sel) => document.querySelector(sel).classList.remove('hidden')", panel
+        )
+        assert _menu_is_open(page, panel), f"{menu} not re-opened by class"
+        assert page.evaluate(
+            "(sel) => document.querySelector(sel).getClientRects().length", panel
+        ) == 0, f"{menu} is displayed in the next view"
         page.evaluate("() => document.activeElement && document.activeElement.blur()")
         _press_and_assert_fired(page, key)
     finally:

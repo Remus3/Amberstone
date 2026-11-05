@@ -12,7 +12,9 @@
 // press already consumed upstream is left alone (RM-1069); with nothing
 // open the press passes through untouched.
 //
-// A layer: { name, el: () => Element|null, isOpen: () => bool, close() }.
+// A layer: { name, el: () => Element|null, isOpen: () => bool, close(),
+// dismiss()? }. The optional dismiss() closes without moving focus; a view
+// change uses it (RM-1368, dismissStrandedLayers below).
 // "Topmost" is paint order. Each open layer's element gets its stacking
 // path: every ancestor-or-self that creates a stacking context, outermost
 // first, with the z it paints at inside its parent context, then the
@@ -196,11 +198,13 @@ function _follows(a, b) {
 // order. A layer takes part when isOpen() says so (a throw reads as closed)
 // and, RM-1365, when its element is rendered: `hasBox(node)` false drops
 // it. The Lobby layers' isOpen() answers from a class, and a view change
-// does not close a layer, so a Lobby menu or lane popup left open by a hash
-// change or Back keeps its class inside the display:none Lobby view; it
+// did not close a layer, so a Lobby menu or lane popup left open by a hash
+// change or Back kept its class inside the display:none Lobby view; it
 // used to win the press, close unseen and consume the Escape, so zen stayed
-// on and nothing visible changed. A layer whose el() gives no element keeps
-// taking part, ranked at z 0, as before.
+// on and nothing visible changed. (A view change now dismisses such layers,
+// RM-1368; this filter stays for any other way a layer loses its box.)
+// A layer whose el() gives no element keeps taking part, ranked at z 0, as
+// before.
 export function openEntries(layers, hasBox) {
   const out = [];
   for (const layer of layers) {
@@ -212,6 +216,43 @@ export function openEntries(layers, hasBox) {
     out.push({ layer, node });
   }
   return out;
+}
+
+// Pure: the layers a view change stranded, in registration order: open
+// (isOpen() true; a throw reads as closed) with an element that has no box.
+// A layer whose el() gives no element is never stranded: nothing says it
+// is unrendered, so it is left alone.
+export function strandedLayers(layers, hasBox) {
+  const out = [];
+  for (const layer of layers) {
+    let isOpen = false;
+    try { isOpen = !!layer.isOpen(); } catch (_) { isOpen = false; }
+    if (!isOpen) continue;
+    const node = layer.el();
+    if (node && !hasBox(node)) out.push(layer);
+  }
+  return out;
+}
+
+// RM-1368: applyView (main.js) calls this right after a view change.
+// The Home Find Match picker's scrim lives on <body>, so a hash change or
+// Back with the picker open left it dimming the new view and taking its
+// first click, and Escape could not clear it (an unrendered layer takes no
+// press, RM-1365); the Lobby menus stayed open behind the view and were
+// still open on return. Every stranded layer is dismissed with its
+// `dismiss()` (a closer that never moves focus), else its `close()`. A
+// layer that throws does not stop the others. Returns the dismissed names.
+export function dismissStrandedLayers() {
+  if (typeof document === "undefined") return [];
+  const done = [];
+  for (const layer of strandedLayers(_layers, _hasBox)) {
+    try {
+      if (typeof layer.dismiss === "function") layer.dismiss();
+      else layer.close();
+      done.push(layer.name);
+    } catch (_) { /* the next layer is still dismissed */ }
+  }
+  return done;
 }
 
 // Rendered is what counts, the test main.js _letterShortcutsYield and
