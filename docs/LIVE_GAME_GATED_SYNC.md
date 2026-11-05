@@ -2378,7 +2378,7 @@ survivability flips below cannot roll otherwise.
   untouched since that minute too, so the silence is "no ARAM game", not a dead writer.
   **CHECK (next ARAM Mayhem game; predicate stated first).** Sample every 25-30 s while in game:
   `data/aram_coaching_data.json` (main checkout) `my_tower_hp` / `enemy_tower_hp` / `my_team`, and
-  `/api/state` -> `liveclient.turret_events` (`[{down_at_s, name}]`, `dashboard/_liveclient.py:422-433`)
+  `/api/state` -> `liveclient.turret_events` (`[{down_at_s, name}]`, `dashboard/_liveclient.py` `out["turret_events"]` block; it sat at `:422-433` when this was read)
   with `liveclient.game_time_s`. WRITER ALIVE: `data/aram_coach_shadow.jsonl` gains rows with `ts` after
   the game start, `mode` `aram`, a 5-name `enemy_comp` (else FAIL: writer dead; note the line count
   before queueing). TOWER INPUT: on the first `TurretKilled`, read its `name` and decide the side from
@@ -2393,10 +2393,37 @@ survivability flips below cannot roll otherwise.
   Any other outcome, a turret that never falls, a dead or tabbed-out player, or a stale frame is NO
   RESULT. Also RECORD (not a predicate): after the kill, "nearest tower"
   (`coaches/aram_coach.py:534-535`) may be the next tower at full HP, so `enemy_tower_hp` may never reach 0
-  (`_TOWER_DEAD`, `core/aram_deterministic_coach.py:268`) on most kills, though the 18 rows of
+  (`_TOWER_DEAD`, `core/aram_deterministic_coach.py`, `:268` when read) on most kills, though the 18 rows of
   2026-07-11/12 show it has - note which value vision reports after the kill. A FAIL files a row against the vision
   tower read; it does not touch `item_extra`. The `item_extra` half still accrues and still needs the
   operator's OK.
+  **TOWER CHECK TOOL - READY (lane 9 PREP s144 cycle 56, source read at `6cc21b236`; NOT a tick; it
+  grades the CHECK above, so no count moves).** ONE COMMAND, read-only (it writes nothing, prints no
+  path, token, game id or champion name), started once the game is past the load screen: `python
+  tools/gated_g314_tower_input.py --samples 80 --interval 25 > _scratch/g314.jsonl` (about 33 min;
+  Ctrl-C after the first `TurretKilled` plus 60 s ends sampling and grades what was taken; from a
+  worktree the relay token comes from the main checkout's config, so the frame age is still read), then `python
+  tools/gated_g314_tower_input.py --grade _scratch/g314.jsonl`. Each sample joins `/api/state` ->
+  `liveclient.game_time_s` / `hp` / `turret_events`, the main checkout's `data/aram_coaching_data.json`
+  (`mode`, `my_team`, `my_tower_hp`, `enemy_tower_hp`, mtime), the LAST row of
+  `data/aram_coach_shadow.jsonl` (`ts`, `mode`, `enemy_comp` size) and `:8889/latest-frame/meta` `ts`.
+  The grade states the CHECK's predicates as code: `writer` PASS / FAIL (no fresh 5-name ARAM shadow
+  row over at least 180 s of sampled game time) / INCOMPLETE; `tower` PASS / HELD_100 / NO_RESULT.
+  HELD_100 = both fields exactly 100 at every window sample, the window reaching 60 s before and 30 s
+  after the kill with no sample gap over 35 s, the player alive and the frame at most 10 s old at each
+  one; it is the CHECK's FAIL only once the operator confirms the turret was on screen below full HP
+  in a sampled frame (the tool cannot see pixels, so it never exits FAIL on the tower half; exit 2 is
+  writer FAIL only). It reports the side mapping as ASSUMED (`_T1_` ORDER, `_T2_` CHAOS) on every
+  result, so the drain still confirms it on that first event, and it RECORDS the field's after-kill
+  values and whether it read 0 (`_TOWER_DEAD`, `core/aram_deterministic_coach.py`). IDLE READ
+  (2026-11-04 21:14 local, one sample): `/api/state` did not answer (state_ok false), the artifact
+  still reads `mode` aram, `my_team` ORDER, 100 / 100, and the shadow tail row is dated 2026-08-02 -
+  the 2026-08-02 game, which the tool's game-start cutoff excludes. SUBSTITUTION CHECK: (a) the 25
+  synthetic cases in `tests/test_gated_g314_tower_input.py` prove the grader, never a tower read; (b)
+  the deterministic `objective` text ("Poke the enemy tower") is DOWNSTREAM of these fields, so
+  reading it instead is the compute half; (c) a moved value in the artifact proves the field
+  ARRIVED, not that it is the right tower or the right HP - that is the eyeball half; (d) the
+  `turret_events` list is the Live Client's, not RC's, so it is the independent clock for the window.
   **RM-869 LIVE HALF - READY (lane 9 PREP s144 cycle 10, source read at `f073b1ca1`; NOT a tick; a
   sub-check of this row, NOT a new row, so no count moves).** RM-869 (`bfa4bbfbe`, LEDGER 1833) moved
   the ARAM and Brawl vision readers off the promptless TFT relay (`USE_RELAY = False`:
