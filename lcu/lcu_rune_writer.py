@@ -563,8 +563,9 @@ def save_champ_spell_pref(champion: str, mode: str,
 #                  instantly (2000 waits in 0.0011s). The poll loop became an
 #                  unbounded spin issuing LCU HTTP requests as fast as the
 #                  League client could answer them.
-#   "abc"       -> ValueError at MODULE IMPORT. main.py:254 catches that as
-#                  "RuneWriter init failed" (rune auto-apply silently off), and
+#   "abc"       -> ValueError at MODULE IMPORT. main.py's RuneWriter start
+#                  block catches that as "RuneWriter init failed" (rune
+#                  auto-apply silently off), and
 #                  the same failure breaks every other importer of this module:
 #                  coaches/rune_pages.py, coaches/loadout_resolver.py,
 #                  dashboard/routes_loadout.py, dashboard/routes_sr_draft.py.
@@ -767,7 +768,7 @@ class RuneWriter:
     def _poll(self) -> None:
         # Self-heal the shared LcuClient off a dead pre-restart port BEFORE
         # reading champ select. Mirrors the frozen _auto_accept_tick pattern
-        # (lcu/lcu_client.py:224-226). WHY: after a mid-session League client
+        # (LCUClient._auto_accept_tick in lcu/lcu_client.py). WHY: after a mid-session League client
         # restart the sibling spawn_task auto-accept coroutine was observed to
         # stop ticking (2026-07-04, pid 6440); that tick is what normally
         # refreshes/reconnects the ONE shared _lcu, so once it went silent the
@@ -1154,10 +1155,10 @@ class RuneWriter:
                 self._cached_lobby_mode = gc.get("gameMode", "CLASSIC").upper()
                 return self._cached_lobby_mode
         # D-CLASS, narrowing is mechanically impossible: the callee already
-        # swallows. LCUClient._request (lcu/lcu_client.py:173-183) returns None
-        # on URLError / OSError / TimeoutError / JSONDecodeError /
-        # UnicodeDecodeError / ValueError, and returns None on any non-2xx at
-        # :160 - so no transport or JSON exception ever reaches this handler.
+        # swallows. LCUClient._request (lcu/lcu_client.py) returns None on
+        # URLError / OSError / TimeoutError / JSONDecodeError /
+        # UnicodeDecodeError / ValueError, and returns None on any non-2xx
+        # status - so no transport or JSON exception ever reaches this handler.
         # lcu/lcu_client.py is on the CLAUDE.md frozen list; do not edit it.
         except Exception:  # noqa: BLE001
             pass
@@ -1194,8 +1195,8 @@ class RuneWriter:
         # Narrowed 2026-07-19: session.get raises AttributeError when a caller
         # hands in a non-dict session; iterating my_team and comparing
         # champ_id > 0 raise TypeError on a non-iterable / non-numeric shape.
-        # _id_to_name (:924) cannot raise - build_champ_id_map (:249) swallows
-        # everything and returns {} at :264-266. Those are every raising
+        # RuneWriter._id_to_name cannot raise - build_champ_id_map swallows
+        # everything and returns {} on failure. Those are every raising
         # statement in the try.
         except (AttributeError, TypeError) as exc:
             _log.debug("_detect_my_champion: %s", exc)
@@ -1277,11 +1278,11 @@ class RuneWriter:
                         self._lcu._request("DELETE", f"/lol-perks/v1/pages/{page_id}")
                         _log.debug("Deleted old RC page: %s (id=%s)", p.get("name"), page_id)
         # D-CLASS, narrowing is mechanically impossible: both callees already
-        # swallow. get_all_rune_pages (lcu/lcu_client.py:384) returns a list or
-        # None after pure isinstance/.get work, and _request
-        # (lcu/lcu_client.py:173-183) returns None on every transport and JSON
-        # error plus any non-2xx at :160 - so no exception from the LCU round
-        # trip ever reaches this handler. lcu/lcu_client.py is frozen; do not
+        # swallow. LCUClient.get_all_rune_pages (lcu/lcu_client.py) returns a list
+        # or None after pure isinstance/.get work, and LCUClient._request
+        # returns None on every transport and JSON error plus any non-2xx
+        # status - so no exception from the LCU round trip ever reaches this
+        # handler. lcu/lcu_client.py is frozen; do not
         # edit it.
         except Exception as exc:  # noqa: BLE001
             _log.debug("_write_page delete step: %s", exc)

@@ -1,4 +1,4 @@
-"""Same-state Haiku-skip debounce on the live Arena coach (BACKLOG.md:59).
+"""Same-state Haiku-skip debounce on the live Arena coach (LEDGER item 507).
 
 Arena sibling of tests/test_aram_state_debounce.py. DEFAULT-OFF, fidelity-gated.
 The coach relaxes POLL RATE on stable state but, pre-this-change, still paid a

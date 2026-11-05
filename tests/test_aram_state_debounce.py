@@ -1,4 +1,4 @@
-"""Same-state Haiku-skip debounce on the live ARAM coach (BACKLOG.md:59).
+"""Same-state Haiku-skip debounce on the live ARAM coach (LEDGER item 506).
 
 DEFAULT-OFF, fidelity-gated. The coach relaxes POLL RATE on stable state
 (`_on_state_received`) but, pre-this-change, still paid a Haiku
