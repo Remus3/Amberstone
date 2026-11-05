@@ -563,8 +563,8 @@ class Coach(BaseCoach):
                 _wts("brawl")
             except Exception:  # noqa: BLE001
                 pass
-        except Exception as exc:
-            raise exc
+        except Exception:
+            raise
 
 
 # -- Vision reader -------------------------------------------------------------

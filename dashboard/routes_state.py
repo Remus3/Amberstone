@@ -1174,14 +1174,14 @@ def _serve_ds_preview_post(h, payload) -> None:
         # explicit target_* fields in body (used by champ-select preview).
         tgt = _resolve_ds_target_stats(payload, mode=mode, level=level)
 
-        rank_kwargs: dict = dict(
-            champion=champion, archetype=archetype, level=level,
-            item_ids=items, mode=mode, top=8, sort_by="delta", timeout=2.0,
-            target_armor=tgt["target_armor"],
-            target_mr=tgt["target_mr"],
-            target_max_hp=tgt["target_max_hp"],
-            target_bonus_hp=tgt["target_bonus_hp"],
-        )
+        rank_kwargs: dict = {
+            "champion": champion, "archetype": archetype, "level": level,
+            "item_ids": items, "mode": mode, "top": 8, "sort_by": "delta", "timeout": 2.0,
+            "target_armor": tgt["target_armor"],
+            "target_mr": tgt["target_mr"],
+            "target_max_hp": tgt["target_max_hp"],
+            "target_bonus_hp": tgt["target_bonus_hp"],
+        }
         rank_kwargs.update(_ds_preview_seam_kwargs(payload))
 
         out = rank_for_primary_archetype(**rank_kwargs)

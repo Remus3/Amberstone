@@ -704,21 +704,21 @@ def plan_build_order(
         incumbent_ids = [i for i in incumbent_ids if i not in _owned_set]
 
     for engine_call_i in range(1, engine_picks_count + 1):
-        call_kwargs = dict(
-            level=int(level),
-            item_ids=list(accumulated),
-            mode=str(mode),
-            target_armor=float(target_armor),
-            target_mr=float(target_mr),
-            target_max_hp=float(target_max_hp),
-            target_bonus_hp=float(target_bonus_hp),
-            sort_by=str(sort_by),
+        call_kwargs = {
+            "level": int(level),
+            "item_ids": list(accumulated),
+            "mode": str(mode),
+            "target_armor": float(target_armor),
+            "target_mr": float(target_mr),
+            "target_max_hp": float(target_max_hp),
+            "target_bonus_hp": float(target_bonus_hp),
+            "sort_by": str(sort_by),
             # Hard rule lives here: the engine's source-of-truth dedup
             # excludes any candidate whose unique-passive family is
             # already in ``accumulated``. Iterating means it holds for
             # the whole sequence. Never flip this off in the planner.
-            filter_shared_uniques=True,
-        )
+            "filter_shared_uniques": True,
+        }
         if augments:
             call_kwargs["augments"] = list(augments)
         if timeout is not None:

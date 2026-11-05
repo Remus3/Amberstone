@@ -148,9 +148,8 @@ def build_row(result: dict[str, Any], *, scheduled_at: Any = None,
 
 def _append_line(path: Path, line: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    with _APPEND_LOCK:
-        with open(path, "a", encoding="ascii", newline="\n") as fh:
-            fh.write(line)
+    with _APPEND_LOCK, open(path, "a", encoding="ascii", newline="\n") as fh:
+        fh.write(line)
 
 
 def append_receipt(result: Any, *, scheduled_at: Any = None, attempt: Any = 0,

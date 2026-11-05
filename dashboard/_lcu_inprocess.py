@@ -244,7 +244,7 @@ def _make_request(client, deadline=None):
     passed; nothing in shape_snapshot catches it, so the read aborts."""
     def _req(method, path, body=None):
         if deadline is not None and _clock() >= deadline:
-            raise _SnapshotBudgetExceeded()
+            raise _SnapshotBudgetExceeded
         return client._request(method, path, data=body), None
     return _req
 

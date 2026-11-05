@@ -932,8 +932,8 @@ class Coach(BaseCoach):
                 # core.coaching_timestamps.write_coaching_ts logs at DEBUG and
                 # returns None), so narrowing this handler would be dead code.
                 pass
-        except Exception as exc:
-            raise exc
+        except Exception:
+            raise
 
     def _handle_augment_select(self, vision_state: dict) -> None:
         if not self._client:

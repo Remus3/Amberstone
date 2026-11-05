@@ -121,7 +121,7 @@ def retrofill_match(src_conn, match: dict) -> int:
     team_dmg = team_dmg or 0
 
     # Common kwargs for every record() call on this match
-    base = dict(match_id=mid, session_id=None, champion=champ, mode=mode)
+    base = {"match_id": mid, "session_id": None, "champion": champ, "mode": mode}
 
     # --- Final-state metrics (milestone=game_end) ------------------
     def rec(key, value, mtype="text", milestone="game_end", game_time_s=None):
@@ -260,9 +260,11 @@ def retrofill_match(src_conn, match: dict) -> int:
 
 
 def iter_matches(conn, limit: int | None, match_id: str | None):
-    q = "SELECT match_id, tracked_champion_name, tracked_team_id, game_duration_s, queue_id " \
-        "FROM matches WHERE has_stats=1 AND has_timeline=1 " \
+    q = (
+        "SELECT match_id, tracked_champion_name, tracked_team_id, game_duration_s, queue_id "
+        "FROM matches WHERE has_stats=1 AND has_timeline=1 "
         "AND tracked_champion_name IS NOT NULL AND tracked_team_id IS NOT NULL"
+    )
     params: list = []
     if match_id:
         q += " AND match_id=?"

@@ -1281,8 +1281,7 @@ class PostgameCollector:
         events = []
         for frame in frames:
             if isinstance(frame, dict):
-                for ev in (frame.get("events") or []):
-                    events.append(ev)
+                events.extend(frame.get("events") or [])
 
         item_events = [
             ev for ev in events

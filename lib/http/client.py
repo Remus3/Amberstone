@@ -614,7 +614,7 @@ class HttpClient:
                         raise ResponseTooLarge(
                             f"response body exceeded max_bytes={max_bytes} for {url}"
                         )
-                    hdrs = {k: v for k, v in resp.getheaders()}
+                    hdrs = dict(resp.getheaders())
                     r = Response(resp.status, hdrs, body, resp.url)
             except Blocked:
                 # Raised by the redirect handler. Not a network failure, so it
@@ -639,7 +639,7 @@ class HttpClient:
                         )
                 else:
                     body = b""
-                hdrs = {k: v for k, v in (e.headers.items() if e.headers else [])}
+                hdrs = dict(e.headers.items() if e.headers else [])
                 r = Response(e.code, hdrs, body, url)
                 if 500 <= e.code < 600:
                     self._on_failure(host, e)

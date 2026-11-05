@@ -254,8 +254,8 @@ def _axis_maxima() -> dict[str, float]:
         maxima = {key: _AXIS_MAX_EPSILON for key, _ in _AXIS_ORDER}
         for slug in _all_slugs():
             heads = _headlines(_compute_results(slug, "SR"))
-            for key in maxima:
-                maxima[key] = max(maxima[key], heads[key])
+            for key, cur in maxima.items():
+                maxima[key] = max(cur, heads[key])
         _AXIS_MAX = maxima
         return maxima
 

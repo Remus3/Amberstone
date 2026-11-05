@@ -1409,8 +1409,8 @@ class Coach(BaseCoach):
                 _wts("aram")
             except Exception:  # noqa: BLE001
                 pass
-        except Exception as exc:
-            raise exc
+        except Exception:
+            raise
 
     @safe_coach_output("ARAM")
     def _handle_augment_select(self, vs: dict) -> None:
