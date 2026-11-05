@@ -523,7 +523,8 @@ re-send the real action carrying that `arm_token`. An unarmed gated call
 returns **HTTP 409** `{"ok":false,"refused":"arm_required"}`, which is a
 refusal working as designed, not an outage. `{"action":"disarm",
 "arm_token":"..."}` throws the token away. The window is 60 s by default and
-is overridable with env `RC_MC_ARM_WINDOW_S`. `stop`, `resume`,
+is overridable with env `RC_MC_ARM_WINDOW_S` (non-finite or non-positive
+takes the default; capped at 3600 s, `MAX_WINDOW_S`). `stop`, `resume`,
 `set_directive`, `clear_directive`, `steer` and `interrupt_preview` are NOT
 gated. Gate: `dashboard/_arm_confirm.py`, enforced by
 `dashboard/routes_loop_control.route_action`.

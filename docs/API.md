@@ -210,7 +210,9 @@ Re-send the real action with that `arm_token` inside the window. An unarmed
 gated call returns **HTTP 409** with `{"ok": false, "refused": "arm_required"}`
 (409 is a state conflict, not a malformed body and not an outage - the 409
 branch of `route_action` in `dashboard/routes_loop_control.py`). The window
-defaults to 60 s and is overridable with env `RC_MC_ARM_WINDOW_S`. The other
+defaults to 60 s and is overridable with env `RC_MC_ARM_WINDOW_S` (a
+non-finite or non-positive value takes the default; above 3600 s it is clamped
+to 3600 s, `MAX_WINDOW_S` in `dashboard/_arm_confirm.py`). The other
 six actions are not gated.
 
 (`/api/loop-monitor` + `/loop-monitor` ARE on `:8888` - different module,

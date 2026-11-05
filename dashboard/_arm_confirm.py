@@ -99,6 +99,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import math
 import os
 import threading
 import time
@@ -119,6 +120,15 @@ ROUTE_ACTIONS = ("arm", "disarm")
 
 DEFAULT_WINDOW_S = 60.0
 
+# The loosest perimeter `RC_MC_ARM_WINDOW_S` may set (RM-1369). The window
+# exists to bound how long an unattended arm sits live, so "inf" - or a huge
+# finite value such as 1e300, the same defect in another spelling - would arm
+# a token that never expires. A value above the cap CLAMPS to it (the operator
+# asked for a looser window and gets the loosest one allowed); a non-finite
+# value is garbage and falls to the default. Same rule as
+# `dashboard/routes_state._state_cadence_s` (RM-244(c)).
+MAX_WINDOW_S = 3600.0
+
 
 def window_s() -> float:
     """The live arm window, READ AT CALL TIME.
@@ -135,10 +145,17 @@ def window_s() -> float:
         val = float(raw)
     except ValueError:
         return DEFAULT_WINDOW_S
+    # "inf", "1e400" and "nan" all parse; none is a window. nan also fails the
+    # `> 0` test below, but inf passed it and armed a token that never expired
+    # (and put the non-JSON token `Infinity` in the arm response).
+    if not math.isfinite(val):
+        return DEFAULT_WINDOW_S
     # A non-positive window would arm and expire in the same instant, which is
     # a gate that refuses everything - fail to the documented default instead
     # of to a surface that looks armed and never fires.
-    return val if val > 0 else DEFAULT_WINDOW_S
+    if val <= 0:
+        return DEFAULT_WINDOW_S
+    return min(val, MAX_WINDOW_S)
 
 
 # Kept as a module attribute for readers that want the default at a glance.
