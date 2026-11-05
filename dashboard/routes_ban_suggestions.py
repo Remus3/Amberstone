@@ -30,11 +30,34 @@ meta ``top_bans`` list - the honest why-banned signal for the suggestion
 card label ("meta ban #N"). It is NOT re-numbered after exclusion
 filtering, so a card can honestly read "meta ban #3" even when ranks 1-2
 were already banned. Additive field, appended at END of dict.
+
+True-audit s144 cycle 111 (RM-1446) contract, each line pinned by
+tests/test_routes_ban_suggestions_true_audit.py:
+
+* ``icon`` names the DDragon slug PNG (``Wukong`` -> ``MonkeyKing.png``,
+  ``Kha'Zix`` -> ``Khazix.png``), the file name data/icons/champions/
+  actually carries. A display-name-derived slug is only the fallback for a
+  champion the DDragon index does not know.
+* A failed DDragon load is NOT cached: the next request retries, so one
+  transient read error cannot blank the panel until a restart.
+* A malformed bans document (not an object, ``top_bans`` not a list,
+  non-string entries, non-string ``patch``) degrades to fewer / no
+  suggestions and ``patch: "unknown"``, never a 500.
+* A champion listed twice (spelling variants) yields ONE card, at its
+  first rank.
+* ``exclude`` counts only positive decimal ids; Python-literal forms
+  (``1_000``, ``+5``) and non-positive ids are ignored.
+* The loaders swallow only I/O and JSON errors (``RecursionError``
+  included: a pathologically nested file is a malformed file); anything
+  else reaches the route's generic 500 (raw text stays in the log).
+* A DDragon ``key`` counts only as a positive decimal string or a plain
+  int; floats, bools, ``Infinity`` and Python-literal forms skip the row.
 """
 from __future__ import annotations
 
 import json
 import logging
+import threading
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
@@ -43,57 +66,132 @@ log = logging.getLogger("rc.web_dashboard")
 _BANS_PATH = Path(__file__).resolve().parent.parent / "data" / "meta" / "global_top_bans.json"
 _CHAMPS_PATH = Path(__file__).resolve().parent.parent / "data" / "meta" / "ddragon_champions.json"
 
-# Module-level resolver cache. ddragon_champions.json doesn't change
-# across requests; the bans file is small enough to re-read each call
-# (~1KB, sub-ms) so we always pick up operator edits without a restart.
-_NAME_TO_ID: dict[str, int] | None = None
+_TOP_DEFAULT = 4
+_TOP_MIN = 1
+_TOP_MAX = 10
+_EMPTY_BANS = {"top_bans": [], "patch": "unknown"}
+_ID_MAX_DIGITS = 9
+# What a file read + json.loads may legitimately raise on bad bytes:
+# OSError (I/O), ValueError (JSONDecodeError, UnicodeDecodeError) and
+# RecursionError (nesting deeper than the parser's stack).
+_LOAD_ERRORS = (OSError, ValueError, RecursionError)
+
+# Module-level champion index: (display-name/slug variant -> id,
+# id -> DDragon slug). ddragon_champions.json does not change across
+# requests, so a SUCCESSFUL load is cached for the process lifetime; a
+# failed or empty load is not, so the next request retries. The bans file
+# is small enough to re-read each call (~1KB, sub-ms) so operator edits are
+# picked up without a restart.
+_CHAMP_INDEX: tuple[dict[str, int], dict[int, str]] | None = None
+_INDEX_LOCK = threading.Lock()
+
+
+def _name_variants(name: str) -> tuple[str, ...]:
+    """Spelling variants a bans-file author may use for one display name:
+    as written, without apostrophes, without spaces, without both."""
+    no_apos = name.replace("'", "")
+    return (name, no_apos, name.replace(" ", ""), no_apos.replace(" ", ""))
+
+
+def _champ_key(key: object) -> int | None:
+    """A DDragon champion ``key`` ("266") as a positive int, else None."""
+    if isinstance(key, bool):
+        return None
+    if isinstance(key, int):
+        return key if key > 0 else None
+    if isinstance(key, str):
+        return _positive_id(key.strip())
+    return None
+
+
+def _positive_id(token: str) -> int | None:
+    """A positive ASCII-decimal id of at most _ID_MAX_DIGITS digits, else
+    None. The length cap keeps int() far below Python's 4300-digit
+    string-conversion limit; no champion id comes close to 9 digits."""
+    if not (token.isascii() and token.isdigit()) or len(token) > _ID_MAX_DIGITS:
+        return None
+    value = int(token)
+    return value if value > 0 else None
+
+
+def _build_champ_index() -> tuple[dict[str, int], dict[int, str]] | None:
+    """Read ddragon_champions.json into the two lookup maps. Returns None
+    when the file cannot be read or is not the expected shape; skips (does
+    not abort on) an individual malformed champion row."""
+    try:
+        raw = json.loads(_CHAMPS_PATH.read_text(encoding="utf-8"))
+    except _LOAD_ERRORS as exc:
+        log.warning("ban-suggestions: ddragon_champions load failed: %s", exc)
+        return None
+    data = raw.get("data", raw) if isinstance(raw, dict) else None
+    if not isinstance(data, dict):
+        log.warning("ban-suggestions: ddragon_champions has no champion map")
+        return None
+    name_to_id: dict[str, int] = {}
+    id_to_slug: dict[int, str] = {}
+    for entry in data.values():
+        if not isinstance(entry, dict):
+            continue
+        key = entry.get("key")
+        name = entry.get("name")
+        slug = entry.get("id")
+        if not isinstance(name, str) or not name:
+            continue
+        cid = _champ_key(key)
+        if cid is None:
+            continue
+        for variant in _name_variants(name):
+            name_to_id[variant] = cid
+        if isinstance(slug, str) and slug:
+            name_to_id[slug] = cid                     # DDragon slug ("KaiSa")
+            id_to_slug[cid] = slug
+    if not name_to_id:
+        log.warning("ban-suggestions: ddragon_champions yielded no champions")
+        return None
+    return name_to_id, id_to_slug
+
+
+def _load_champ_index() -> tuple[dict[str, int], dict[int, str]]:
+    global _CHAMP_INDEX
+    cached = _CHAMP_INDEX
+    if cached is not None:
+        return cached
+    with _INDEX_LOCK:
+        if _CHAMP_INDEX is None:
+            built = _build_champ_index()
+            if built is None:
+                return {}, {}                          # not cached: retry next call
+            _CHAMP_INDEX = built
+        return _CHAMP_INDEX
 
 
 def _load_name_to_id() -> dict[str, int]:
-    """Build display-name -> numeric-id index. Stores apostrophe + space
+    """Display-name -> numeric-id index. Stores apostrophe + space
     variants under the same id so 'Kai'Sa' and 'KaiSa' both resolve."""
-    global _NAME_TO_ID
-    if _NAME_TO_ID is not None:
-        return _NAME_TO_ID
-    out: dict[str, int] = {}
-    try:
-        raw = json.loads(_CHAMPS_PATH.read_text(encoding="utf-8"))
-        data = raw.get("data", raw)
-        for entry in data.values():
-            if not isinstance(entry, dict):
-                continue
-            key = entry.get("key")
-            name = entry.get("name")
-            slug = entry.get("id")
-            if not (key and name):
-                continue
-            try:
-                cid = int(key)
-            except (TypeError, ValueError):
-                continue
-            out[name] = cid
-            out[name.replace("'", "")] = cid           # Kai'Sa -> KaiSa
-            out[name.replace(" ", "")] = cid           # Miss Fortune -> MissFortune
-            out[name.replace("'", "").replace(" ", "")] = cid
-            if slug:
-                out[slug] = cid                        # DDragon slug ("KaiSa")
-    except Exception as exc:  # noqa: BLE001
-        log.warning("ban-suggestions: ddragon_champions load failed: %s", exc)
-    _NAME_TO_ID = out
-    return out
+    return _load_champ_index()[0]
+
+
+def _load_id_to_slug() -> dict[int, str]:
+    """Numeric-id -> DDragon slug, the champion icon file name."""
+    return _load_champ_index()[1]
 
 
 def _parse_int_csv(raw: str) -> set[int]:
+    """Positive decimal champion ids from a comma list; anything else
+    (signs, underscores, decimals, words, zero) is ignored."""
     out: set[int] = set()
     for chunk in (raw or "").split(","):
-        chunk = chunk.strip()
-        if not chunk:
-            continue
-        try:
-            out.add(int(chunk))
-        except ValueError:
-            continue
+        value = _positive_id(chunk.strip())
+        if value is not None:
+            out.add(value)
     return out
+
+
+def _parse_top(raw: str) -> int:
+    try:
+        return max(_TOP_MIN, min(_TOP_MAX, int(raw)))
+    except ValueError:
+        return _TOP_DEFAULT
 
 
 def _load_bans_file() -> dict:
@@ -101,49 +199,67 @@ def _load_bans_file() -> dict:
         return json.loads(_BANS_PATH.read_text(encoding="utf-8"))
     except FileNotFoundError:
         log.warning("ban-suggestions: %s missing", _BANS_PATH)
-        return {"top_bans": [], "patch": "unknown"}
-    except Exception as exc:  # noqa: BLE001
+    except _LOAD_ERRORS as exc:
         log.warning("ban-suggestions: load failed: %s", exc)
-        return {"top_bans": [], "patch": "unknown"}
+    return dict(_EMPTY_BANS)
+
+
+def _icon_slug(cid: int, name: str, id_to_slug: dict[int, str]) -> str:
+    slug = id_to_slug.get(cid)
+    if slug:
+        return slug
+    # Fallback for a champion the DDragon index does not carry.
+    return name.replace(" ", "").replace("'", "").replace(".", "")
+
+
+def _resolve(name: str, idx: dict[str, int]) -> int | None:
+    for variant in _name_variants(name):
+        cid = idx.get(variant)
+        if cid is not None:
+            return cid
+    return None
 
 
 def _serve_ban_suggestions(h) -> None:
     try:
         qs = parse_qs(urlparse(h.path).query)
-        exclude_raw = (qs.get("exclude") or [""])[0]
-        excluded = _parse_int_csv(exclude_raw)
-        top_raw = (qs.get("top") or ["4"])[0]
-        try:
-            top = max(1, min(10, int(top_raw)))
-        except ValueError:
-            top = 4
+        excluded = _parse_int_csv((qs.get("exclude") or [""])[0])
+        top = _parse_top((qs.get("top") or [str(_TOP_DEFAULT)])[0])
 
         bans_doc = _load_bans_file()
+        if not isinstance(bans_doc, dict):
+            log.warning("ban-suggestions: bans file is not a JSON object")
+            bans_doc = {}
+        top_bans = bans_doc.get("top_bans")
+        if not isinstance(top_bans, list):
+            if top_bans is not None:
+                log.warning("ban-suggestions: top_bans is not a list")
+            top_bans = []
+        patch = bans_doc.get("patch")
+        if not isinstance(patch, str) or not patch:
+            patch = "unknown"
+
         idx = _load_name_to_id()
+        id_to_slug = _load_id_to_slug()
 
         suggestions: list[dict] = []
-        for rank, name in enumerate(bans_doc.get("top_bans", []), start=1):
+        seen: set[int] = set()
+        for rank, name in enumerate(top_bans, start=1):
             if len(suggestions) >= top:
                 break
-            cid = idx.get(name)
-            if cid is None:
-                # Try a few slug variants before giving up.
-                cid = (idx.get(name.replace("'", ""))
-                       or idx.get(name.replace(" ", ""))
-                       or idx.get(name.replace("'", "").replace(" ", "")))
+            if not isinstance(name, str) or not name:
+                continue
+            cid = _resolve(name, idx)
             if cid is None:
                 log.debug("ban-suggestions: unresolved name %r", name)
                 continue
-            if cid in excluded:
+            if cid in excluded or cid in seen:
                 continue
-            # Use the DDragon slug for the icon URL - name_to_id includes
-            # slug->cid mappings, so reverse-find via the icon path is
-            # safest by always sanitizing the display name.
-            slug = name.replace(" ", "").replace("'", "").replace(".", "")
+            seen.add(cid)
             suggestions.append({
                 "champId": cid,
                 "name":    name,
-                "icon":    f"/icons/champions/{slug}.png",
+                "icon":    f"/icons/champions/{_icon_slug(cid, name, id_to_slug)}.png",
                 # OQ9 (QA26 remainder): 1-based meta-list rank - the
                 # why-banned label source. Kept TRUE to the source list
                 # (not re-numbered post-filter). Additive, END of dict.
@@ -152,7 +268,7 @@ def _serve_ban_suggestions(h) -> None:
 
         h._send(200, json.dumps({
             "ok": True,
-            "patch": bans_doc.get("patch", "unknown"),
+            "patch": patch,
             "suggestions": suggestions,
             "excluded_count": len(excluded),
             "fell_back": len(suggestions) < top,
