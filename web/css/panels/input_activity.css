@@ -522,6 +522,17 @@ footer .voice-picker { min-width: 0; }
 @media (max-width: 720px) {
   footer { padding: 0 12px; gap: 10px; }
 }
+/* RM-1438: at 480px and under (400% zoom of the baseline) there is no
+ * room for both the connection label and the voice picker: with voice on
+ * the label was cut to 39px at 480 ("RC |" and an ellipsis) and to 0px at
+ * 400 and 320, where it still cost a gap and its title was unreachable,
+ * and the picker shrank to 59px at 320. The picker is the control; the
+ * label is a diagnostic (the health dot keeps the connection state), so it
+ * steps out while voice is on. Keyed on the toggle's .active, which main.js
+ * paint() sets exactly when it shows the picker. Voice off, it stays. */
+@media (max-width: 480px) {
+  footer:has(> .voice-toggle.active) .footer-conn { display: none; }
+}
 footer .prefs-chip {
   font-size: var(--fs-xs);
   color: var(--gold);

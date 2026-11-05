@@ -236,3 +236,78 @@ def test_the_authored_chrome_is_unchanged(mock_server, pw_browser, vp, view):
         page.close()
         ctx.close()
     assert not errors, f"JS errors: {errors[:3]}"
+
+
+# RM-1438 (s144 uiux): with voice on in a window 480 px wide or less, the
+# connection label gives its room to the voice picker. MEASURED at HEAD with
+# the real VOICE toggle clicked (headless Chromium has speechSynthesis): the
+# label was cut to 39 px at 480 ("RC |" and an ellipsis), and to 0 px at 400
+# and 320, where it still cost a 10 px gap and its title could not be reached;
+# the picker was 139 px at 400 and 59 px at 320. The picker is the control,
+# the label is a diagnostic (the health dot beside CLIENT keeps the connection
+# state), so under 480 with voice on the label is not rendered. Above 480, or
+# with voice off, the label stays (at 320 with voice off it is 73 px).
+_VOICE_JS = """
+() => {
+  const vis = (el) => el.getClientRects().length > 0;
+  const c = document.querySelector('footer .footer-conn');
+  const p = document.getElementById('voice-picker');
+  return {
+    conn: vis(c) ? Math.round(c.getBoundingClientRect().width) : null,
+    picker: vis(p) ? Math.round(p.getBoundingClientRect().width) : 0,
+    on: document.getElementById('voice-toggle').classList.contains('active'),
+  };
+}
+"""
+_LONG_VOICE = """
+() => {
+  const p = document.getElementById('voice-picker');
+  const o = document.createElement('option');
+  o.value = 'long';
+  o.textContent = 'Microsoft Zira - English (United States) - en-US';
+  p.appendChild(o);
+  p.value = 'long';
+}
+"""
+
+# (window, label width voice on, picker width floor voice on)
+_VOICE_ON = [
+    ((640, 307), "shown", 180),
+    ((560, 300), "shown", 180),
+    ((480, 230), "hidden", 180),
+    ((400, 300), "hidden", 145),
+    ((320, 256), "hidden", 65),
+]
+
+
+@pytest.mark.parametrize("vp,conn,floor", _VOICE_ON,
+                         ids=[f"{v[0][0]}x{v[0][1]}" for v in _VOICE_ON])
+def test_the_label_gives_way_to_the_voice_picker(mock_server, pw_browser, vp,
+                                                 conn, floor):
+    ctx, page, errors = _open(pw_browser, mock_server, vp, "home")
+    try:
+        off = page.evaluate(_VOICE_JS)
+        assert not off["on"] and off["picker"] == 0, f"anchor: voice is on at load: {off}"
+        assert off["conn"], f"{vp}: voice off, the label is not shown: {off}"
+        page.evaluate(_LONG_VOICE)
+        page.click("#voice-toggle")
+        page.wait_for_timeout(150)
+        on = page.evaluate(_VOICE_JS)
+        assert on["on"], f"anchor: the VOICE toggle did not turn on: {on}"
+        if conn == "shown":
+            assert on["conn"], f"{vp}: voice on, the label left above 480: {on}"
+        else:
+            # Not rendered at all: a 0 px label still costs the row a gap.
+            assert on["conn"] is None, (
+                f"{vp}: voice on, the label is still rendered ({on['conn']} px)")
+        assert on["picker"] >= floor, (
+            f"{vp}: voice on, the picker is {on['picker']} px (floor {floor})")
+        _check(page.evaluate(_PROBE), f"voice on (real toggle) {vp}")
+        page.click("#voice-toggle")
+        page.wait_for_timeout(150)
+        back = page.evaluate(_VOICE_JS)
+        assert back == off, f"{vp}: voice off again, the footer did not return: {back} != {off}"
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors: {errors[:3]}"
