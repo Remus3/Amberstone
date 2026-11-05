@@ -26,8 +26,9 @@ from pathlib import Path
 import pytest
 
 import core.objective_playbook_shadow as ops
+from tests._timing_budget import fleet_test_guard
 
-_PLAY = {"tag": "playbook_dragon", "line": "Drake in 20s: group bot", "kind": "playbook"}
+_PLAY ={"tag": "playbook_dragon", "line": "Drake in 20s: group bot", "kind": "playbook"}
 
 
 @pytest.fixture(autouse=True)
@@ -171,13 +172,13 @@ def test_s144_t222_concurrent_same_tick_writes_one_row(tmp_path):
 
     t1 = threading.Thread(target=_call, name="s144-t222-a")
     t1.start()
-    assert entered.wait(5)
+    assert entered.wait(fleet_test_guard.budget(5))
     t2 = threading.Thread(target=_call, name="s144-t222-b")
     t2.start()
     t2.join(0.5)
     release.set()
-    t1.join(5)
-    t2.join(5)
+    t1.join(fleet_test_guard.budget(5))
+    t2.join(fleet_test_guard.budget(5))
     assert not t1.is_alive() and not t2.is_alive()
     assert errors == []
     assert len(_strict_rows(Path(p))) == 1

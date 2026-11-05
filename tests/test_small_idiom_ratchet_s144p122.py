@@ -55,9 +55,6 @@ _FIXED = (
 # file -> number of findings still there. Only shrinks.
 _BASELINE = {
     "agents/daemon_slayer/engine.py": 1,
-    "agents/daemon_slayer/tests/test_cc_conditional_wave10.py": 1,
-    "agents/daemon_slayer/tests/test_cc_conditional_wave22.py": 1,
-    "tests/test_champion_loadout_autogen.py": 9,
     "tests/test_gated_lx09_mark_check.py": 1,
     "tests/test_overlay_default_layout_collision.py": 1,
     "tests/test_repin_subagent_cli_rm795.py": 1,

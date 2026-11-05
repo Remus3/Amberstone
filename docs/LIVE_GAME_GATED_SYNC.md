@@ -1039,7 +1039,7 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   DATA path is live-proven TWICE (LEDGER 769 + LEDGER 820 2026-07-08, 5 enemies x 2 spells); LEDGER
   820 explicitly records "CSS visual verify PENDING (overlay hidden)". Best read vs real enemies
   (GATE 3 or 4) but the widget renders at any gate.~~ **MIS-FILED, CLASS 1: the subject is gone from
-  the tree (lane 9 PREP s144 c65, RM-1511, source read at `3443217b0`, 2026-11-05; NOT a tick, no
+  the tree (lane 9 PREP s144 c65, RM-1511, source read at `cf2b410bb`, 2026-11-05; NOT a tick, no
   game involved).** C13 was "R38 enemy_spells tap-tracker + stats_panel populated in-game capture",
   both born in `c2d2fe453` (2026-06-28). Neither half is capturable as filed: (1) the enemy_spells
   tap-tracker was DELETED for Riot compliance in `538c61e4b` (2026-08-11: panel
@@ -1065,7 +1065,7 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   so on FIRST run the coach call paints over the provenance badge before the operator repositions.~~
   Tuning the default anchors needs an in-game eyeball. SOURCE: LEDGER 873; RM-04.
   **(b) STALE BY AGE, the filed collision is gone (lane 9 PREP s144 c66, RM-1512, source read at
-  `e365f8f32`, 2026-11-05; NOT a tick, no game).** The 2026-07-27 collision sweep `edf32faa9` (R198)
+  `f81f7d463`, 2026-11-05; NOT a tick, no game).** The 2026-07-27 collision sweep `edf32faa9` (R198)
   moved `w-stats` from (40,250) to (1670,220) in the `WIDGETS` array of `web/js/lib/overlay_layout.js`
   (its own comment: the 240px panel "cannot clear w-call (180..390 x) on either side inside the 482px
   left gutter"), and the same commit added `tests/test_overlay_default_layout_collision.py`, which
@@ -1113,7 +1113,7 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   in-game, gated on a WS push that never fires)~~ + the minimap_rect trim calibration (18px left, 14px
   top) at 2560x1440. CONFIRMED-OK already: `am-mmrect` ZOI markings DO show in-game.
   **MIS-FILED BY AGE, CLASS 1: the behaviour it asks to see was REVERSED for Riot compliance (lane 9
-  PREP s144 c67, RM-1513, source read at `f9b410d40`, 2026-11-05; NOT a tick, no game).** The row
+  PREP s144 c67, RM-1513, source read at `a9b178c27`, 2026-11-05; NOT a tick, no game).** The row
   wants the four mounts POPULATED in a live game; two compliance commits since filing make a populated
   mount in a live game a defect. (1) `w-spike` is gone: `538c61e4b` (B3, 2026-08-11) deleted the
   power-spike cue mount (`web/index.html` am-grid comment "Do not reinstate";
@@ -1181,7 +1181,7 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   flip/wedge clicks landing mid-game, D3 override survives a re-plan + Defer-Once re-entry + reset
   (plus the cross-tick LIVE-route Defer-Once per-match store gap - code work), settings-slider drag
   mid-game, B2/B3/C5 module captures. SOURCE: docs/OVERLAY_BUILD_MASTER_PLAN.md:806-816.
-  **AGE CHECK + PARTIAL READY (lane 9 PREP s144 c69, RM-1514, source read at `b77743c55`, 2026-11-05;
+  **AGE CHECK + PARTIAL READY (lane 9 PREP s144 c69, RM-1514, source read at `1748d5494`, 2026-11-05;
   NOT a tick, no game involved).** The SOURCE cite is stale: that file is now 351 lines; D1-D3 sit in
   its Section J table (`docs/OVERLAY_BUILD_MASTER_PLAN.md` "D1 item tooltip" / "D2 right-click
   radial" / "D3 override state + reset", all DONE). Per sub-item:
@@ -1228,7 +1228,7 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   `14a5ccc5`; `web/js/lib/overlay_layout.js` - `_effectiveXY` drag origin + window-level pointer
   capture + handle-only border hit-test, `_clampXY` semantics preserved). Verify EACH panel, including
   the ACTIVE empty-backing "press now inert" behavior call.
-  **AGE CHECK + READY (lane 9 PREP s144 c70, RM-1516, source read at `549f2c6c4`, 2026-11-05; NOT a
+  **AGE CHECK + READY (lane 9 PREP s144 c70, RM-1516, source read at `b27fc4c34`, 2026-11-05; NOT a
   tick, no game up: :8888 and :2999 both refused at 04:30 local).** The row's `14a5ccc5` is the
   pre-rewrite twin of merge `54e4a93c0` (same subject, not reachable from HEAD), whose fix commit is
   `2d23c012e` (2026-07-17). NOT STALE: all three fixes stand at HEAD
@@ -1281,7 +1281,7 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
 - **G2-33** `[NEW ROW 2026-07-18]` ~~PR enemy-spell chip cooldown timer live-verify (LEDGER 914 S3,
   `b827f782`; `web/js/panels/enemy_spells.js` - upgraded-Smite displayNames + cd=0 sticky "USED" chip).~~
   **MIS-FILED, CLASS 1: the code under test was deleted (lane 9 PREP s144 c65, RM-1511, source read at
-  `3443217b0`, 2026-11-05; NOT a tick, no game involved).** Both files the S3 fix changed (`941653494`
+  `cf2b410bb`, 2026-11-05; NOT a tick, no game involved).** Both files the S3 fix changed (`941653494`
   on HEAD; the row's `b827f782` is its pre-rewrite twin, not reachable from HEAD),
   `web/js/panels/enemy_spells.js` and `web/js/panels/enemy_spells_timer.test.mjs`, were removed by the
   Riot-compliance commit `538c61e4b` (2026-08-11) and no commit since re-adds them (`git log

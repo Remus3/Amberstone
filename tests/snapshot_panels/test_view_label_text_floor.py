@@ -32,6 +32,8 @@ and at 1280x720:
 - on #historical-pgr in auto mode the prefix gives way to the whole name;
 - where the Segoe UI fallback is installed, every label set in it fits.
 """
+import sys
+
 import pytest
 
 from tests.snapshot_panels.test_focus_ring_token_sites import _new_page
@@ -183,6 +185,7 @@ def test_archive_label_drops_the_prefix_not_the_name(mock_server, pw_browser):
         f"the AUTO prefix should give way to the archive name: {st}")
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="Segoe UI ships with Windows only")
 def test_every_label_fits_in_the_segoe_ui_fallback(mock_server, pw_browser):
     labels = []
     for name in _VIEWS.values():
@@ -195,7 +198,6 @@ def test_every_label_fits_in_the_segoe_ui_fallback(mock_server, pw_browser):
     finally:
         page.close()
         ctx.close()
-    if cut is None:
-        pytest.skip("Segoe UI is not installed on this host")
+    assert cut is not None, "Segoe UI is missing on a Windows host"
     assert not errors, f"JS errors: {errors[:3]}"
     assert cut == [], f"labels cut in Segoe UI bold at the pinned width: {cut}"

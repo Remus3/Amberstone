@@ -15,6 +15,6 @@ dashboard/__init__). Guarded by tests/test_log_scrub_residuals_rm811b.py.
 """
 from core.log_scrub import install_scrub_filter as _install_scrub_filter
 
-LOGGER_NAMES = ("rc.mc.handler", "rc.mc.server")
+LOGGER_NAMES = ("rc.mc.auth", "rc.mc.handler", "rc.mc.server")
 
 _install_scrub_filter(*LOGGER_NAMES)

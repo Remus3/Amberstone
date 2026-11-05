@@ -50,7 +50,7 @@ _OUT_OF_SCOPE = (
 _BASELINE = {
     "ops/fleet_kit/fleet_claims.py": 1,
     "tools/daemon_slayer_wiki_ability_extract.py": 1,
-    "tools/ddragon_mirror_refresh.py": 3,
+    "tools/ddragon_mirror_refresh.py": 2,
 }
 _FIXED = (
     "core/data_retention.py",

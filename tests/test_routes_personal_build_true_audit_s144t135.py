@@ -28,6 +28,7 @@ import threading
 import pytest
 
 from dashboard import routes_personal_build as rpb
+from tests._timing_budget import fleet_test_guard
 
 
 def _strict_loads(raw: bytes):
@@ -119,7 +120,7 @@ def test_a_stalled_cache_hit_write_does_not_block_another_request(compute_calls)
         daemon=True)
     t.start()
     try:
-        assert entered.wait(5)
+        assert entered.wait(fleet_test_guard.budget(5))
         other = _H("champion=Vayne")
         done = threading.Event()
 
@@ -128,7 +129,7 @@ def test_a_stalled_cache_hit_write_does_not_block_another_request(compute_calls)
             done.set()
 
         threading.Thread(target=run_other, daemon=True).start()
-        assert done.wait(2), "second request blocked behind a stalled write"
+        assert done.wait(fleet_test_guard.budget(2)), "second request blocked behind a stalled write"
         assert other.json()["cached"] is True
     finally:
         release.set()
