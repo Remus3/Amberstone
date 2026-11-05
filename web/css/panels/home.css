@@ -579,6 +579,23 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   /* s218 v7: clickable - routes to History filtered by this champion. */
   cursor: pointer;
   transition: color 0.12s;
+  /* RM-1545: a <button> now (keyboard-reachable). Reset the UA button
+   * look, hug the name (as a stretched flex child the click box was the
+   * whole meta column, 543px for "Vi" at 1920) and hold the --hit-min
+   * floor (was 35px). The negative block margin hands the extra height
+   * back, so the layout box stays one line tall and nothing around the
+   * name moves (no reflow). Guard: tests/snapshot_panels/test_home_pick_champ_link.py. */
+  font-family: inherit; line-height: inherit; text-align: left;
+  appearance: none;
+  background: none; border: 0; padding: 0;
+  margin: min(0px, (1lh - var(--hit-min)) / 2) 0;
+  align-self: flex-start; max-width: 100%;
+  min-height: var(--hit-min);
+  border-radius: var(--radius-sm);
+}
+.home-coach-pick-champ:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
 }
 .home-coach-pick-champ:hover {
   color: var(--good);

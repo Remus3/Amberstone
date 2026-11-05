@@ -3969,18 +3969,26 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       }
       if (champ) {
         champ.textContent = pick.champion;
+        champ.dataset.champion = pick.champion;
+        champ.setAttribute("aria-label", `${pick.champion}, open in History`);
         // s218 v7: clicking the champion name jumps to History filtered
-        // by this champion. Wired idempotently - re-renders replace the
-        // listener via cloneNode-and-replace to avoid stacking handlers.
-        const fresh = champ.cloneNode(true);
-        fresh.addEventListener("click", () => {
-          try { sessionStorage.setItem("rc-history-focus-champion", pick.champion); } catch (_) {}
-          if (typeof _viewSaveManual === "function") _viewSaveManual("history");
-          try { location.hash = "#history"; } catch (_) {}
-          if (typeof _viewResolveAndApply === "function") _viewResolveAndApply();
-          else if (typeof applyView === "function") applyView("history");
-        });
-        champ.parentNode.replaceChild(fresh, champ);
+        // by this champion. RM-1545: the name is a <button>, wired ONCE
+        // and reading the champion off data-champion, so the 20 s Home
+        // tick only rewrites its text: the old cloneNode-and-replace
+        // destroyed the node on every render and threw a keyboard user's
+        // focus to <body>.
+        if (!champ.dataset.wired) {
+          champ.dataset.wired = "1";
+          champ.addEventListener("click", () => {
+            const name = champ.dataset.champion || "";
+            if (!name) return;
+            try { sessionStorage.setItem("rc-history-focus-champion", name); } catch (_) {}
+            if (typeof _viewSaveManual === "function") _viewSaveManual("history");
+            try { location.hash = "#history"; } catch (_) {}
+            if (typeof _viewResolveAndApply === "function") _viewResolveAndApply();
+            else if (typeof applyView === "function") applyView("history");
+          });
+        }
       }
       if (reason) {
         const modeStr = (pick.modes || []).join("/");
