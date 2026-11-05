@@ -23,7 +23,6 @@ CTRL_TAB_COOLDOWN = 3.0   # seconds between consecutive force scans
 
 def register_coach(coach: object) -> None:
     """Register a coach for forced-scan triggering. Call from app.py when coach starts."""
-    global _coaches
     if coach not in _coaches:
         _coaches.append(coach)
 
@@ -106,7 +105,7 @@ def _trigger_force_scan() -> None:
         pass
 
     # Direct signal to each registered coach's AI status bar
-    for coach in list(_coaches):
+    for coach in tuple(_coaches):
         try:
             # Signal the AI status bar if it exists
             ai_bar = getattr(coach, "_overlay", {}).get("ai_bar")

@@ -206,7 +206,7 @@ def _update_entry(team: str, puuid: str,
     """
     if not fields:
         return
-    global _CACHE, _CACHE_TS
+    global _CACHE_TS
     with _LOCK:
         if only_if_champion is not None and "mastery_on_locked" in fields:
             _MASTERY_SEEN[(puuid, only_if_champion)] = \
@@ -231,7 +231,7 @@ def _mark_complete() -> None:
     """Flip partial=False once the fan-out worker drains. Caller is
     responsible for ensuring this is only called when ALL priority tiers
     have completed (or been skipped)."""
-    global _CACHE, _CACHE_TS
+    global _CACHE_TS
     with _LOCK:
         if _CACHE is None:
             return

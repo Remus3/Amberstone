@@ -203,7 +203,7 @@ class _QuietHandler(HostAllowlistMixin, HeadDeadlineMixin,
     def do_GET(self) -> None:
         if self._is_forbidden(self.path):
             self.send_error(403, "Forbidden")
-            return
+            return None
         if self.path == "/api/queue":
             return self._handle_queue_snapshot()
         if self.path.startswith("/api/adaptation"):
@@ -241,7 +241,7 @@ class _QuietHandler(HostAllowlistMixin, HeadDeadlineMixin,
     def do_HEAD(self) -> None:
         if self._is_forbidden(self.path):
             self.send_error(403, "Forbidden")
-            return
+            return None
         # Route /api/* HEAD through do_GET. Handlers check
         # ``self.command == "HEAD"`` and skip body writes per RFC 7231.
         if self.path.startswith("/api/"):
@@ -286,10 +286,10 @@ class _QuietHandler(HostAllowlistMixin, HeadDeadlineMixin,
             # reset instead of this 403 (the DS _drain_request_body note).
             self._read_body()
             self._send_json(403, {"error": "cross_origin"})
-            return
+            return None
         if self._rejects_chunked():
             self._send_error(411, "chunked request bodies are not supported")
-            return
+            return None
         if self.path == "/api/input":
             return self._handle_input()
         if self.path == "/api/analyze":
