@@ -864,13 +864,16 @@ def _retaint(stmt, tainted, late=frozenset()) -> None:
         return
     found = _is_tainted(value, tainted, late)
     plain = not isinstance(stmt, ast.AugAssign)
-    is_alias = plain and _is_log_callable(value, tainted)
-    is_obj = plain and _is_logger_expr(value, tainted)
+    # Every target is judged against the state BEFORE any of them is bound,
+    # as Python evaluates the value once: `p, q = q, p` swaps the aliases.
+    aliases = ([b for t in targets for b in _alias_bindings(t, value, tainted)]
+               if plain else [])
     for target in targets:
         # `m += "!"` keeps whatever `m` already carried (RM-1443): only a
         # plain re-binding to a clean value clears a name.
         _bind_names(target, found, tainted, clear=plain)
-        _bind_log_alias(target, is_alias, tainted, is_obj)
+    for name, is_alias, is_obj in aliases:
+        _bind_log_alias(name, is_alias, tainted, is_obj)
 
 
 def _is_tainted(expr, tainted, late=frozenset()) -> bool:
@@ -1060,14 +1063,88 @@ def _bind_log_alias(target, is_alias, tainted, is_obj=False) -> None:
     when it is called; RM-1563: one bound to a logger object (`is_obj`)
     makes a level call off it a sink. Both are judged BEFORE the binding
     clears the name (`p = p` keeps it). Add-only here; a plain `=` to
-    anything else clears them through `_bind_names`. A tuple, element or
-    attribute target is not tracked (residual)."""
+    anything else clears them through `_bind_names`. A tuple target is
+    split into its names by `_alias_bindings`; an element or attribute
+    target is not tracked (residual)."""
     if not isinstance(target, ast.Name):
         return
     if is_alias:
         tainted.add(_LOGFN + target.id)
     if is_obj:
         tainted.add(_LOGOBJ + target.id)
+
+
+def _target_names(target):
+    """The plain names a binding target may bind a logging function or logger
+    object to: a bare name, or one inside a tuple / list target. A starred
+    name always binds a LIST, and an element or attribute is not tracked."""
+    if isinstance(target, ast.Name):
+        return [target]
+    if isinstance(target, (ast.Tuple, ast.List)):
+        return [n for elt in target.elts for n in _target_names(elt)]
+    return []
+
+
+def _literal_elts(value):
+    """The leaf elements of a literal tuple / list / set, nested literals and
+    starred literals flattened: `(a, (b, *[c]))` gives a, b, c. A starred
+    non-literal (`*xs`) contributes nothing. None if `value` is no literal."""
+    if not isinstance(value, (ast.Tuple, ast.List, ast.Set)):
+        return None
+    out = []
+    for elt in value.elts:
+        inner = elt.value if isinstance(elt, ast.Starred) else elt
+        nested = _literal_elts(inner)
+        if nested is not None:
+            out.extend(nested)
+        elif not isinstance(elt, ast.Starred):
+            out.append(elt)
+    return out
+
+
+def _alias_bindings(target, value, tainted):
+    """RM-1563 tuple aliases: (name, is_alias, is_obj) for every plain name
+    `target` binds from `value`, judged with `tainted` as it stands.
+
+    A bare name is judged by the whole value. A tuple / list target is paired
+    BY POSITION with a tuple / list value of the same length and no starred
+    element on either side (`p, q = log.info, fetch` makes only `p` an
+    alias). Any other split of a literal value - a starred side or a length
+    mismatch - marks EVERY name in the target if ANY leaf of the value is a
+    logging function or logger object: the safe side. A non-literal value
+    (`p, q = pair()`) is not tracked (residual)."""
+    if isinstance(target, ast.Name):
+        return [(target, _is_log_callable(value, tainted),
+                 _is_logger_expr(value, tainted))]
+    if (isinstance(target, (ast.Tuple, ast.List))
+            and isinstance(value, (ast.Tuple, ast.List))
+            and len(target.elts) == len(value.elts)
+            and not any(isinstance(e, ast.Starred)
+                        for e in target.elts + value.elts)):
+        return [b for t, v in zip(target.elts, value.elts)
+                for b in _alias_bindings(t, v, tainted)]
+    leaves = _literal_elts(value)
+    if not leaves:
+        return []
+    is_alias = any(_is_log_callable(e, tainted) for e in leaves)
+    is_obj = any(_is_logger_expr(e, tainted) for e in leaves)
+    return [(n, is_alias, is_obj) for n in _target_names(target)]
+
+
+def _iter_alias_bindings(target, iterable, tainted):
+    """RM-1563: what a `for` target binds from each item of a literal
+    tuple / list / set iterable (`for p in (log.info,)`), unioned over the
+    items: the loop may stop at any of them. A non-literal iterable is not
+    tracked (residual)."""
+    if not isinstance(iterable, (ast.Tuple, ast.List, ast.Set)):
+        return []
+    items = []
+    for elt in iterable.elts:
+        if isinstance(elt, ast.Starred):
+            items.extend(_literal_elts(elt.value) or [])
+        else:
+            items.append(elt)
+    return [b for item in items for b in _alias_bindings(target, item, tainted)]
 
 
 def _log_args(call, tainted=frozenset()):
@@ -1369,12 +1446,16 @@ class _Flow:
         # The iterable is evaluated once, before the first pass.
         state = self._expr_step([stmt.iter], stmt, state)
         found = _is_tainted(stmt.iter, state, self.ever)
+        aliases = _iter_alias_bindings(stmt.target, stmt.iter, state)
 
         def run_pass(entry):
             # The target is assigned once per item, so a sink in it
             # (`for d[log.info(m)] in xs`) sees what the last pass bound.
             body_in = self._expr_step([stmt.target], stmt, entry)
             _bind_names(stmt.target, found, body_in, clear=False)
+            # RM-1563: add-only, like the value binding above.
+            for name, is_alias, is_obj in aliases:
+                _bind_log_alias(name, is_alias, body_in, is_obj)
             return entry, self.block(stmt.body, body_in)
 
         exhausted, breaks = self._loop(state, run_pass)
@@ -1999,6 +2080,64 @@ _CHECKER_SAMPLES = (
      "def f(self, url):\n    self.catalog.info(url)\n", False),
     ("a conditional of two non-log functions is not a log alias",
      "def f(url, x):\n    p = fetch if x else send\n    p(url)\n", False),
+    # RM-1563 tuple aliases: a tuple / list target paired by position with
+    # a tuple / list value, and a `for` over a literal tuple / list / set,
+    # bind a logging function or a logger object as a plain name does.
+    ("tuple alias of a log function",
+     "def f(url):\n    p, q = log.info, fetch\n    p(url)\n", True),
+    ("tuple alias in the second position",
+     "def f(url):\n    p, q = fetch, log.warning\n    q('%s', url)\n", True),
+    ("list target alias of a log function",
+     "def f(url):\n    [p, q] = [log.info, fetch]\n    p(url)\n", True),
+    ("tuple logger object",
+     "import logging\ndef f(url):\n    lg, n = logging.getLogger(), 0\n"
+     "    lg.info(url)\n", True),
+    ("nested tuple alias",
+     "def f(url):\n    p, (q, r) = fetch, (send, log.info)\n    r(url)\n", True),
+    ("tuple swap moves the alias",
+     "def f(url):\n    p, q = log.info, fetch\n    p, q = q, p\n    q(url)\n", True),
+    ("starred tuple target",
+     "def f(url):\n    p, *rest = log.info, fetch, send\n    p(url)\n", True),
+    ("chained tuple targets",
+     "def f(url):\n    p, q = r, s = log.info, fetch\n    r(url)\n", True),
+    ("for over a tuple of log functions",
+     "def f(url):\n    for p in (log.info,):\n        p(url)\n", True),
+    ("for over a list with a log function second",
+     "def f(url):\n    for p in [fetch, log.warning]:\n        p(url)\n", True),
+    ("for over a tuple of logger objects",
+     "import logging\ndef f(url):\n    for lg in (logging.getLogger('a'),):\n"
+     "        lg.info(url)\n", True),
+    ("for with a tuple target over pairs",
+     "def f(url):\n    for p, q in ((fetch, log.info),):\n        q(url)\n", True),
+    ("starred target over a nested literal",
+     "def f(url):\n    p, *rest = fetch, (send, log.info)\n    p(url)\n", True),
+    ("starred value element pairs nothing by position",
+     "def f(url):\n    p, *q = *(log.info,), fetch\n    p(url)\n", True),
+    ("starred tuple logger object",
+     "import logging\ndef f(url):\n    lg, *rest = logging.getLogger(), 0, 1\n"
+     "    lg.info(url)\n", True),
+    ("for over a starred literal",
+     "def f(url):\n    for p in (fetch, *[log.info]):\n        p(url)\n", True),
+    ("for over a tuple holding an earlier alias",
+     "def f(url):\n    p = log.info\n    for q in (p,):\n        q(url)\n", True),
+    ("tuple alias of an earlier logger object",
+     "import logging\ndef f(url):\n    lg = logging.getLogger()\n"
+     "    a, b = 0, lg\n    b.info(url)\n", True),
+    # RM-1563 tuple-alias keep-greens.
+    ("tuple alias pairs by position",
+     "def f(url):\n    p, q = log.info, fetch\n    q(url)\n", False),
+    ("tuple re-binding clears an alias",
+     "def f(url):\n    p = log.info\n    p, q = fetch, send\n    p(url)\n", False),
+    ("tuple swap moves the alias away",
+     "def f(url):\n    p, q = log.info, fetch\n    p, q = q, p\n    p(url)\n", False),
+    ("for over non-log functions",
+     "def f(url):\n    for p in (fetch, send):\n        p(url)\n", False),
+    ("tuple alias called with a clean value",
+     "def f(url):\n    p, q = log.info, fetch\n    p('x')\n", False),
+    ("for over log functions called with a sanitized value",
+     "def f(url):\n    for p in (log.info,):\n        p(_safe_url(url))\n", False),
+    ("a starred target binds a list, not a log function",
+     "def f(url):\n    p, *rest = fetch, log.info\n    rest(url)\n", False),
 )
 
 
