@@ -758,26 +758,12 @@ class _TaintScan(ast.NodeVisitor):
             self.found.append(f"config key {node.value!r}")
 
 
-def _walk_stmts(node):
-    """Statements under `node` in source order (body, then handlers, then
-    orelse / finalbody), so an assignment is seen before the raise below it."""
-    for child in ast.iter_child_nodes(node):
-        if isinstance(child, (ast.stmt, ast.excepthandler)):
-            yield child
-            yield from _walk_stmts(child)
-
-
 def _retaint(stmt, tainted) -> None:
     """Propagate taint across one binding statement. Scope is deliberately
-    small - assignments and except-as names - because that is what carries a
-    URL into a message; reaching a URL off an object is caught by the attribute
-    rule (`.full_url`, `.geturl`) instead of by over-tainting the object."""
-    if isinstance(stmt, ast.ExceptHandler):
-        if stmt.name:
-            # A third-party exception can quote the URL it was handed back at
-            # us, so it is untrusted text until it goes through a sanitizer.
-            tainted.add(stmt.name)
-        return
+    small - assignments (except-as names are bound at handler entry in
+    `_flow_block`) - because that is what carries a URL into a message;
+    reaching a URL off an object is caught by the attribute rule (`.full_url`,
+    `.geturl`) instead of by over-tainting the object."""
     if isinstance(stmt, ast.Assign):
         targets, value = stmt.targets, stmt.value
     elif isinstance(stmt, (ast.AugAssign, ast.AnnAssign)):
@@ -793,8 +779,136 @@ def _retaint(stmt, tainted) -> None:
             if isinstance(sub, ast.Name):
                 if scan.found:
                     tainted.add(sub.id)
-                else:
+                elif not isinstance(stmt, ast.AugAssign):
+                    # `m += "!"` keeps whatever `m` already carried (RM-1443):
+                    # only a plain re-binding to a clean value clears a name.
                     tainted.discard(sub.id)
+
+
+# Statement fields that hold nested statement lists. Everything else on a
+# statement (an `if` test, a `for` iterable, a `with` item, a `match` subject,
+# a decorator or a default) is evaluated where the statement stands.
+_BLOCK_FIELDS = frozenset({"body", "orelse", "finalbody", "handlers", "cases"})
+_TRY_TYPES = (ast.Try,) + ((ast.TryStar,) if hasattr(ast, "TryStar") else ())
+
+
+def _own_nodes(stmt):
+    """The expression-level parts of `stmt`, without its nested blocks."""
+    for field, value in ast.iter_fields(stmt):
+        if field in _BLOCK_FIELDS:
+            continue
+        for item in value if isinstance(value, list) else [value]:
+            if isinstance(item, ast.AST):
+                yield item
+
+
+def _check_sinks(nodes, stmt, tainted, report) -> None:
+    """Flag a raise or logging call among `nodes` whose message is tainted."""
+    exprs = []
+    if isinstance(stmt, ast.Raise):
+        exprs = [e for e in (stmt.exc, stmt.cause) if e is not None]
+    for node in nodes:
+        for call in [n for n in ast.walk(node) if isinstance(n, ast.Call)]:
+            if _is_log_call(call):
+                exprs.extend(call.args)
+                exprs.extend(kw.value for kw in call.keywords)
+    for expr in exprs:
+        scan = _TaintScan(tainted)
+        scan.visit(expr)
+        if scan.found:
+            report(expr, scan.found)
+
+
+def _flow_block(stmts, tainted, report):
+    """Run the taint state through `stmts`; return the state after them.
+
+    RM-1443: branches are ALTERNATIVE paths, so each arm starts from a copy
+    of the state before it and the arms are JOINED by union afterwards. The
+    sequential walk this replaced visited sibling except handlers and if /
+    else arms top to bottom, so a sanitized re-binding in a later arm cleared
+    a raw binding made in an earlier one. The result is a may-taint state:
+    a name is tainted after a branch if ANY path into the join taints it."""
+    state = set(tainted)
+    for stmt in stmts:
+        state = _flow_stmt(stmt, state, report)
+    return state
+
+
+def _flow_loop(stmt, state, report):
+    """A loop body runs zero or more times: iterate it to a fixed point so a
+    binding made late in one pass reaches a sink early in the next."""
+    entry = set(state)
+    while True:
+        after = entry | _flow_block(stmt.body, entry, report)
+        if after == entry:
+            break
+        entry = after
+    # Checked with the converged state: a `while` test is re-evaluated after
+    # every pass, so it sees what the body bound (a `for` iterable sees a
+    # superset of its real state, which can only over-report).
+    _check_sinks(_own_nodes(stmt), stmt, entry, report)
+    # `else` runs when the loop ends without `break`; a `break` skips it.
+    return entry | _flow_block(stmt.orelse, entry, report)
+
+
+def _flow_try(stmt, state, report):
+    """try / except / else / finally with each handler as its own path."""
+    body_states = [set(state)]
+    cur = set(state)
+    for sub in stmt.body:
+        cur = _flow_stmt(sub, cur, report)
+        body_states.append(set(cur))
+    # A handler can be entered after ANY statement of the body raised.
+    handler_entry = set().union(*body_states)
+    exits = [_flow_block(stmt.orelse, cur, report)]
+    for handler in stmt.handlers:
+        _check_sinks([handler.type] if handler.type else [], handler,
+                     handler_entry, report)
+        entry = set(handler_entry)
+        if handler.name:
+            # A third-party exception can quote the URL it was handed back at
+            # us, so it is untrusted text until it goes through a sanitizer.
+            entry.add(handler.name)
+        exits.append(_flow_block(handler.body, entry, report))
+    joined = set().union(*exits)
+    # `finally` runs on every path, the raising ones included.
+    return _flow_block(stmt.finalbody, joined | handler_entry, report)
+
+
+def _flow_stmt(stmt, state, report):
+    """Run the taint state through one statement; return the state after it."""
+    if isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+        # Decorators, defaults and bases run here. The body is ALSO walked with
+        # the enclosing state, as the walk this replaced did, and what it binds
+        # flows OUT by union (the body may or may not have run by the time a
+        # later statement does): a `global` or `self.x` set from a URL in one
+        # method must still taint a sink in the next. Each function is walked
+        # again as its own scope in `_message_leak_sites`.
+        _check_sinks(_own_nodes(stmt), stmt, state, report)
+        return state | _flow_block(stmt.body, state, report)
+    if isinstance(stmt, ast.If):
+        _check_sinks(_own_nodes(stmt), stmt, state, report)
+        return (_flow_block(stmt.body, state, report)
+                | _flow_block(stmt.orelse, state, report))
+    if isinstance(stmt, (ast.For, ast.AsyncFor, ast.While)):
+        return _flow_loop(stmt, state, report)
+    if isinstance(stmt, _TRY_TYPES):
+        return _flow_try(stmt, state, report)
+    if isinstance(stmt, ast.Match):
+        _check_sinks(_own_nodes(stmt), stmt, state, report)
+        exits = [set(state)]  # no case matched
+        for case in stmt.cases:
+            if case.guard is not None:
+                _check_sinks([case.guard], stmt, state, report)
+            exits.append(_flow_block(case.body, state, report))
+        return set().union(*exits)
+    if isinstance(stmt, (ast.With, ast.AsyncWith)):
+        _check_sinks(_own_nodes(stmt), stmt, state, report)
+        return _flow_block(stmt.body, state, report)
+    _check_sinks([stmt], stmt, state, report)
+    state = set(state)
+    _retaint(stmt, state)
+    return state
 
 
 def _message_leak_sites(path):
@@ -804,23 +918,12 @@ def _message_leak_sites(path):
     scopes = [tree] + [n for n in ast.walk(tree)
                        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]
     leaks = set()
+
+    def report(expr, found):
+        leaks.add(f"{Path(path).name}:{expr.lineno}: {sorted(set(found))}")
+
     for scope in scopes:
-        tainted = set()
-        for stmt in _walk_stmts(scope):
-            exprs = []
-            if isinstance(stmt, ast.Raise):
-                exprs = [e for e in (stmt.exc, stmt.cause) if e is not None]
-            for call in [n for n in ast.walk(stmt) if isinstance(n, ast.Call)]:
-                if _is_log_call(call):
-                    exprs.extend(call.args)
-                    exprs.extend(kw.value for kw in call.keywords)
-            for expr in exprs:
-                scan = _TaintScan(tainted)
-                scan.visit(expr)
-                if scan.found:
-                    leaks.add(
-                        f"{Path(path).name}:{expr.lineno}: {sorted(set(scan.found))}")
-            _retaint(stmt, tainted)
+        _flow_block(scope.body, set(), report)
     return sorted(leaks)
 
 
@@ -844,6 +947,51 @@ _CHECKER_SAMPLES = (
      "        d = _redact(f'{exc}', url)\n    raise E(f'{_safe_url(url)}: {d}')\n",
      False),
     ("clean literal", "def f(url):\n    raise E('boom')\n", False),
+    # RM-1443: sibling except handlers and if / else arms are ALTERNATIVE
+    # paths, so a sanitized re-binding in a later arm must not clear a raw
+    # binding made in an earlier one. The sequential walk this replaced read
+    # the arms top to bottom and let the last one win.
+    ("raw first handler, redacted second",
+     "def f(url):\n    detail = ''\n    try:\n        g()\n"
+     "    except KeyError as exc:\n        detail = f'{exc}'\n"
+     "    except OSError as exc:\n        detail = _redact(f'{exc}', url)\n"
+     "    raise E(f'{_safe_url(url)}: {detail}')\n", True),
+    ("raw if arm, sanitized else arm",
+     "def f(url, c):\n    if c:\n        m = 'at ' + url\n"
+     "    else:\n        m = _safe_url(url)\n    raise E(m)\n", True),
+    ("raw try body, sanitized handler",
+     "def f(url):\n    try:\n        m = url\n    except OSError:\n"
+     "        m = _safe_url(url)\n    raise E(m)\n", True),
+    ("handler entered mid-body",
+     "def f(url):\n    try:\n        m = url\n        m = g()\n"
+     "    except OSError:\n        pass\n    raise E(m)\n", True),
+    ("raw match case, sanitized later case",
+     "def f(url, c):\n    match c:\n        case 1:\n            m = url\n"
+     "        case _:\n            m = _safe_url(url)\n    raise E(m)\n", True),
+    ("raw loop-carried binding",
+     "def f(url, xs):\n    m = 'x'\n    for x in xs:\n        if x:\n"
+     "            raise E(m)\n        m = url\n", True),
+    ("augmented assignment keeps taint",
+     "def f(url):\n    m = url\n    m += '!'\n    raise E(m)\n", True),
+    ("global set in one function, logged in another",
+     "_last = ''\ndef a(url):\n    global _last\n    _last = url\n"
+     "def b():\n    log.info(_last)\n", True),
+    ("attribute set in one method, logged in another",
+     "class C:\n    def a(self, url):\n        self.last = url\n"
+     "    def b(self):\n        log.info(self.last)\n", True),
+    ("while test sees the body's binding",
+     "def f(url):\n    m = 'x'\n    while log.info(m):\n        m = url\n", True),
+    ("every handler redacted",
+     "def f(url):\n    detail = ''\n    try:\n        g()\n"
+     "    except KeyError as exc:\n        detail = _redact(f'{exc}', url)\n"
+     "    except OSError as exc:\n        detail = _redact(f'{exc}', url)\n"
+     "    raise E(f'{_safe_url(url)}: {detail}')\n", False),
+    ("sanitized on both arms",
+     "def f(url, c):\n    if c:\n        m = _safe_url(url)\n"
+     "    else:\n        m = 'none'\n    raise E(m)\n", False),
+    ("rebound clean after the branch",
+     "def f(url, c):\n    if c:\n        m = url\n    m = 'clean'\n"
+     "    raise E(m)\n", False),
 )
 
 
