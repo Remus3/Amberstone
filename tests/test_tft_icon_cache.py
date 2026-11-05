@@ -7,7 +7,8 @@ no tracked file under `data/tft/` and no new tracked png under `tft/`; NOTICE
 line added.
 
 NO NETWORK. Every source here is a fake, or the module's own sources with
-`urllib.request.urlopen` replaced by a recorder. Icon bytes are tiny
+the module's opener (`open_consented`, RM-1441; `urlopen` before) replaced
+by a recorder. Icon bytes are tiny
 synthetic PNG / JPEG headers, never Riot art.
 
 Measured shapes the fakes mirror (passive LCU GET-only, live Set 18 client,
@@ -47,13 +48,11 @@ import json
 import re
 import subprocess
 import urllib.error
-import urllib.request
 from pathlib import Path
 
 import pytest
 
 from tests import _repo_walk
-from tests._module_view import bind_urlopen
 from tft.assets import icon_cache as ic
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -577,7 +576,7 @@ class _Resp:
 
 @pytest.fixture
 def recorder(monkeypatch):
-    """Replaces urlopen: exact-URL bodies, everything else answers 400."""
+    """Replaces the module's opener: exact-URL bodies, everything else answers 400."""
     seen: list = []
     bodies: dict = {}
 
@@ -588,9 +587,12 @@ def recorder(monkeypatch):
             return _Resp(bodies[url])
         raise urllib.error.HTTPError(url, 400, "bad", {}, None)
 
-    # The module's OWN urllib.request name only, never the shared module
-    # (RM-801; tests/_module_view.py:178 bind_urlopen).
-    assert bind_urlopen(monkeypatch, ic, fake_urlopen) >= 1
+    # The module's OWN opener name only (the `with open_consented(...)` in
+    # _http_get, RM-1441; it was `urllib_request.urlopen` before), never the
+    # shared urllib.request (RM-801). setattr refuses a missing name, so a
+    # rename of the module's opener fails here instead of reaching the network.
+    assert callable(getattr(ic, "open_consented", None)), "ic has no open_consented"
+    monkeypatch.setattr(ic, "open_consented", fake_urlopen)
     return seen, bodies
 
 

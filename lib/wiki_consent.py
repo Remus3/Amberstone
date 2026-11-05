@@ -20,8 +20,9 @@ with a redirect into the wiki host is refused the same way. The non-wiki
 fetcher ``tools/upstream_drift_check.py`` ``_http_get`` (Data Dragon, Meraki,
 CommunityDragon) opens through ``open_consented`` too (RM-1440), and so does
 the live duo-synergy fetch ``core/synergy_external_source.py``
-``_http_get_json`` and the live rank-tier aggregate fetch
-``core/rank_tier_source.py`` ``_http_get_json`` (RM-1441).
+``_http_get_json``, the live rank-tier aggregate fetch
+``core/rank_tier_source.py`` ``_http_get_json`` and the TFT icon cache
+``tft/assets/icon_cache.py`` ``_http_get`` (RM-1441).
 
 A request is allowed only when a CONSENT RECORD exists: the tracked JSON file
 ``ops/wiki_fetch_consent.json`` (absent today), holding an object with
@@ -170,14 +171,22 @@ class WikiConsentRedirectHandler(urllib.request.HTTPRedirectHandler):
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
-def open_consented(req: Any, timeout: float):
+def open_consented(req: Any, timeout: float, context: Any = None):
     """``urllib.request.urlopen`` with the consent check on EVERY hop.
 
     The url passed and each redirect target are checked; a wiki url without a
     consent record raises ``WikiFetchRefused`` before its socket opens. For the
     stdlib urllib fetchers; ``lib.http.client.HttpClient`` carries the same
     check in its own redirect handler.
+
+    ``context`` is an ``ssl.SSLContext`` for https hops, as ``urlopen``'s own
+    ``context=`` (the TFT icon cache passes the RC no-verify context for the
+    LCU's self-signed loopback certificate; RM-1441). None keeps the default
+    verifying context.
     """
     refuse_unless_consented(getattr(req, "full_url", req))
-    opener = urllib.request.build_opener(WikiConsentRedirectHandler())
+    handlers: list = [WikiConsentRedirectHandler()]
+    if context is not None:
+        handlers.append(urllib.request.HTTPSHandler(context=context))
+    opener = urllib.request.build_opener(*handlers)
     return opener.open(req, timeout=timeout)

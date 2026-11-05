@@ -77,6 +77,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from core import polled_json, tls_policy
+# Every hop of a GET, redirects included, asks the wiki consent gate (ruling
+# 51; RM-1441). Bound as a module name so tests fake THIS module's opener
+# only (RM-801), never the shared urllib.request.
+from lib.wiki_consent import WikiFetchRefused, open_consented
 from tft import tft_set
 
 logger = logging.getLogger("rc.tft.icons")
@@ -351,14 +355,21 @@ def _http_get(url, *, headers=None, private_headers=None, context=None,
 
     private_headers are attached as urllib UNREDIRECTED headers: the redirect
     handler never copies them onto a redirected request, so a credential sent
-    to one host cannot follow a redirect to another."""
+    to one host cannot follow a redirect to another.
+
+    Opens through ``lib.wiki_consent.open_consented`` (RM-1441): a url naming
+    the League wiki host, or one answering with a redirect into it, is refused
+    before any wiki socket opens unless a consent record exists, and the
+    refusal is one more None. The bare urlopen this replaced followed that 3xx.
+    ``context`` (the LCU's no-verify TLS context) is passed on unchanged."""
     req = urllib_request.Request(url, headers=dict(headers or {}), method="GET")
     for key, value in (private_headers or {}).items():
         req.add_unredirected_header(key, value)
     try:
-        with urllib_request.urlopen(req, context=context, timeout=timeout) as resp:
+        with open_consented(req, timeout=timeout, context=context) as resp:
             body = resp.read(max_bytes + 1)
-    except (urllib.error.URLError, OSError, ValueError, http.client.HTTPException) as exc:
+    except (WikiFetchRefused, urllib.error.URLError, OSError, ValueError,
+            http.client.HTTPException) as exc:
         logger.debug("GET %s failed: %s", url.split("?")[0], type(exc).__name__)
         return None
     if not isinstance(body, (bytes, bytearray)) or len(body) > max_bytes:
