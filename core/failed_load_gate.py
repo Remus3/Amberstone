@@ -40,9 +40,25 @@ Usage (always under the loader's own lock, when it has one)::
 
 Any existing ``_invalidate_*`` helper must call ``reset()`` as well, or an
 invalidate issued inside a backoff window is served the empty value.
+
+The window must always END, or the gate re-creates the very defect it exists
+to remove (a failure cached for the process lifetime). Two guards keep it
+finite (s144 true-audit cycle 130):
+
+  * ``retry_after_s`` is validated on construction AND on assignment: a real
+    number, finite, not negative, not a bool. ``nan`` made ``elapsed >= nan``
+    False forever; ``inf`` likewise; a negative value disabled the backoff;
+    ``True`` read as 1 s and the string ``"5"`` as 5 s. Each is now a
+    ``TypeError`` / ``ValueError`` at the call site that wrote it.
+  * A clock reading EARLIER than the recorded failure (a patched test clock
+    restored to the real one, a stepped clock) or a non-finite reading counts
+    as an expired window: the cost of a wrong guess is one extra load attempt,
+    the cost of the other guess is a loader shut until the clock catches up.
 """
 from __future__ import annotations
 
+import math
+import numbers
 import threading
 import time
 from typing import Optional
@@ -54,16 +70,49 @@ from typing import Optional
 DEFAULT_RETRY_AFTER_S = 5.0
 
 
+def _validated_window(value: object) -> float:
+    """``value`` as a finite, non-negative float, or raise.
+
+    TypeError for anything that is not a real number (bool, str, bytes, None,
+    complex, containers); ValueError for a real that is NaN, infinite,
+    negative or too large to be a float.
+    """
+    if isinstance(value, bool) or not isinstance(value, numbers.Real):
+        raise TypeError(
+            "retry_after_s must be a real number of seconds, not "
+            f"{type(value).__name__}"
+        )
+    try:
+        out = float(value)
+    except OverflowError:
+        raise ValueError("retry_after_s is too large to be a float") from None
+    if not math.isfinite(out) or out < 0.0:
+        raise ValueError(
+            f"retry_after_s must be finite and >= 0, got {out!r}"
+        )
+    return out
+
+
 class FailedLoadGate:
     """Per-loader failure streak: backoff window + first-failure flag."""
 
-    __slots__ = ("retry_after_s", "_lock", "_failed_at", "_in_streak")
+    __slots__ = ("_retry_after_s", "_lock", "_failed_at", "_in_streak")
 
     def __init__(self, retry_after_s: float = DEFAULT_RETRY_AFTER_S) -> None:
-        self.retry_after_s = float(retry_after_s)
+        self._retry_after_s = _validated_window(retry_after_s)
         self._lock = threading.Lock()
         self._failed_at: Optional[float] = None
         self._in_streak = False
+
+    @property
+    def retry_after_s(self) -> float:
+        """Backoff window in seconds; finite and non-negative by construction."""
+        return self._retry_after_s
+
+    @retry_after_s.setter
+    def retry_after_s(self, value: float) -> None:
+        # Validated before the store: a refused value leaves the old window.
+        self._retry_after_s = _validated_window(value)
 
     def should_attempt(self) -> bool:
         """False while inside the backoff window that follows a failure."""
@@ -71,7 +120,12 @@ class FailedLoadGate:
             if self._failed_at is None:
                 return True
             # time.monotonic is looked up per call so tests can patch it.
-            return (time.monotonic() - self._failed_at) >= self.retry_after_s
+            elapsed = time.monotonic() - self._failed_at
+            # A clock behind the failure (negative) or a NaN reading is not
+            # evidence the window is still open: retry rather than wedge.
+            if not elapsed >= 0.0:
+                return True
+            return elapsed >= self._retry_after_s
 
     def record_failure(self) -> bool:
         """Start (or extend) a failure streak. True only for the FIRST failure
