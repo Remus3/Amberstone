@@ -324,7 +324,7 @@ class OBSPublisher:
         # RM-1216: keep-warm grab failures per GRAB_FAILURES reason, so a
         # wrong frame_source_name (a cold slot forever) is visible RC-side.
         self._grab_failures_lock = threading.Lock()
-        self._grab_failures: dict = {r: 0 for r in GRAB_FAILURES}
+        self._grab_failures: dict = dict.fromkeys(GRAB_FAILURES, 0)
 
     def grab_failure_counts(self) -> dict:
         """Copy of the keep-warm grab failure counters (RM-1216): one

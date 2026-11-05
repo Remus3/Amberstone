@@ -204,8 +204,8 @@ def check(loaded: list[tuple[dict, Optional[float], str]]) -> dict:
     out["valid"] = valid
     tally = {r: {} for r in READERS}
     epic: dict = {}
-    selfs = {r: 0 for r in ("dashboard_liveclient", "decision_detector",
-                            "live_event_deriver")}
+    selfs = dict.fromkeys(("dashboard_liveclient", "decision_detector",
+                           "live_event_deriver"), 0)
     forms_by_class: dict = {"ChampionKill": {}, "objective": {}}
     forms_by_event: dict = {}
     for p in payloads:

@@ -358,7 +358,7 @@ def compute_damage_mix(
             "on_hit": on_hit_dps / total,
         }
     else:
-        mix = {c: 0.0 for c in CHANNELS}
+        mix = dict.fromkeys(CHANNELS, 0.0)
 
     # numeric key for the donut UI - already validated upstream.
     key_to_id = _key_to_id_map(snapshot)

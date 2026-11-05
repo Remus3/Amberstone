@@ -149,7 +149,7 @@ def replay_one(rec: RawRecord) -> CoachOutput:
 def replay(records) -> ReplayReport:
     """Replay every record and bucket the outcomes."""
     rep = ReplayReport()
-    rep.field_yield = {k: 0 for k in ARAM_KEYS}
+    rep.field_yield = dict.fromkeys(ARAM_KEYS, 0)
     for rec in records:
         rep.total += 1
         if rec.truncated:

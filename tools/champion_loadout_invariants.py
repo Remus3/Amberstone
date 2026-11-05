@@ -121,7 +121,7 @@ def load_item_facts() -> dict[str, ItemFacts]:
             continue
         st = it.get("stats") or {}
         tg = set(it.get("tags") or [])
-        f = acc.setdefault(n, {k: False for k in ItemFacts._fields})
+        f = acc.setdefault(n, dict.fromkeys(ItemFacts._fields, False))
         f["ad"] |= st.get("FlatPhysicalDamageMod", 0) > 0
         f["ap"] |= st.get("FlatMagicDamageMod", 0) > 0
         f["crit"] |= st.get("FlatCritChanceMod", 0) > 0

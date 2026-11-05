@@ -170,7 +170,7 @@ def scan_log(paths: list, since: float, until: float, game_id: Optional[str],
     files = []
     recorded: list = []
     drops: list = []
-    other = {k: 0 for k in OTHER_FRAGS}
+    other = dict.fromkeys(OTHER_FRAGS, 0)
     starts_before: list = []
     starts_in = 0
     for p in paths:

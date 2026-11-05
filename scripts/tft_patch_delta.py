@@ -242,7 +242,7 @@ def _skeleton(mutator, old_label, new_label, old_version, new_version) -> dict:
         "_note": _NOTE,
         "ability_values": ABILITY_NOT_CARRIED,
         "reason": None,
-        "_counts": {k: 0 for k in SECTIONS + ("added", "removed")},
+        "_counts": dict.fromkeys(SECTIONS + ("added", "removed"), 0),
         **{k: {} for k in SECTIONS},
         "added": {k: [] for k in SECTIONS},
         "removed": {k: [] for k in SECTIONS},

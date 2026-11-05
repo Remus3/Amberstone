@@ -271,8 +271,8 @@ def counts_by_lane(now_s: Optional[float] = None,
     frontend can render the grid without null-guards.
     """
     out: dict[str, dict[str, int]] = {
-        "ally":  {lane: 0 for lane in LANES},
-        "enemy": {lane: 0 for lane in LANES},
+        "ally":  dict.fromkeys(LANES, 0),
+        "enemy": dict.fromkeys(LANES, 0),
     }
     for ev in recent_wards(now_s=now_s, window_s=window_s):
         side = ev.get("side")

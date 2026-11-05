@@ -207,7 +207,7 @@ def reading_from_allgamedata(data: Any) -> Optional[Reading]:
                 if isinstance(ab, dict) else None
             ranks[slot] = lvl if lvl is not None else 0
     else:
-        ranks = {s: 0 for s in SLOTS}
+        ranks = dict.fromkeys(SLOTS, 0)
     return Reading(t=t, value=value, maximum=maximum, rtype=rtype, ranks=ranks)
 
 
@@ -602,7 +602,7 @@ def per_slot_totals(evs: Iterable[Mapping[str, Any]],
     skipped; a confidence that is not a finite number reads 0.0 (so a NaN no
     longer passes every min_confidence); a junk min_confidence is 0.0; a
     slot_guess outside Q/W/E/R is unattributed."""
-    out = {s: 0 for s in SLOTS}
+    out = dict.fromkeys(SLOTS, 0)
     out["unattributed"] = 0
     floor = _num(min_confidence)
     floor = 0.0 if floor is None else floor

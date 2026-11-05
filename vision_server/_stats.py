@@ -49,7 +49,7 @@ _stats: dict = {
 # Y-03: why a capture was refused. Kept OUT of ``_stats`` (whose entries all
 # share the calls/errors/total_ms shape) and exposed as its own top-level key.
 CAPTURE_SKIP_REASONS = ("locked", "not_foreground", "blank")
-_capture_skips: dict = {r: 0 for r in CAPTURE_SKIP_REASONS}
+_capture_skips: dict = dict.fromkeys(CAPTURE_SKIP_REASONS, 0)
 _capture_skips.update({"last_reason": None, "last_ts": 0.0})
 # RM-1054: OBS bytes Pillow could not decode ("undecodable") or any other
 # failure inside the OBS lane, the JPEG re-encode included ("error").
@@ -66,13 +66,13 @@ _capture_skips.update({"last_reason": None, "last_ts": 0.0})
 OBS_LANE_FAILURES = ("undecodable", "error", "ws_error", "auth", "timeout",
                      "no_reply", "source_missing", "request_failed",
                      "bad_payload")
-_obs_lane: dict = {r: 0 for r in OBS_LANE_FAILURES}
+_obs_lane: dict = dict.fromkeys(OBS_LANE_FAILURES, 0)
 _obs_lane.update({"last_reason": None, "last_ts": 0.0})
 # RM-1214: the GDI self-grab could not import PIL.ImageGrab
 # ("unavailable"), or the grab / downscale / JPEG encode raised ("error").
 # A refused grab (locked, not_foreground, blank) stays a capture_skip.
 GDI_LANE_FAILURES = ("unavailable", "error")
-_gdi_lane: dict = {r: 0 for r in GDI_LANE_FAILURES}
+_gdi_lane: dict = dict.fromkeys(GDI_LANE_FAILURES, 0)
 _gdi_lane.update({"last_reason": None, "last_ts": 0.0})
 _log_ring = collections.deque(maxlen=80)
 _latency_ring = collections.deque(maxlen=60)

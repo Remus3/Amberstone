@@ -111,7 +111,7 @@ def _present_counts(row):
             return {t: _int0(tp.get(t)) for t in _TEAMS}
     if any(k in row for k in _TEAMS):
         return {t: _int0(row.get(t)) for t in _TEAMS}
-    return {t: 0 for t in _TEAMS}
+    return dict.fromkeys(_TEAMS, 0)
 
 
 def _row_is_dead(row):
@@ -148,7 +148,7 @@ def _alive_counts(lc_events):
     side-less (cap then only trims impossible >5 blob counts). Never
     raises.
     """
-    alive = {t: _DEFAULT_TEAM_SIZE for t in _TEAMS}
+    alive = dict.fromkeys(_TEAMS, _DEFAULT_TEAM_SIZE)
     try:
         players = lc_events.get("players")
         if not isinstance(players, list):
@@ -170,7 +170,7 @@ def _alive_counts(lc_events):
             dead = sum(1 for r in mine if _row_is_dead(r))
             alive[team] = max(0, len(mine) - dead)
     except Exception:  # noqa: BLE001 - fail-soft contract: never raises
-        return {t: _DEFAULT_TEAM_SIZE for t in _TEAMS}
+        return dict.fromkeys(_TEAMS, _DEFAULT_TEAM_SIZE)
     return alive
 
 

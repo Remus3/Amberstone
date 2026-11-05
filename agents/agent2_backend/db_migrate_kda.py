@@ -35,7 +35,7 @@ def ensure_kda_columns(path: Path) -> dict[str, bool]:
     already present. Never raises on the duplicate-column path.
     """
     if not path.exists():
-        return {c: False for c in KDA_COLUMNS}
+        return dict.fromkeys(KDA_COLUMNS, False)
     added: dict[str, bool] = {}
     with sqlite3.connect(path) as conn:
         existing = _existing_columns(conn, "matches")

@@ -178,8 +178,8 @@ def main(patch: str = "16.12.1") -> None:
     # hostage to one classification: if 'mixed' (neutral) maximizes overlap, the
     # residual is the cost-model axis (G6), not comp-awareness.
     variants = DS_COMP_ARCHETYPES
-    sum_ult = {v: 0 for v in variants}
-    sum_norm = {v: 0 for v in variants}
+    sum_ult = dict.fromkeys(variants, 0)
+    sum_norm = dict.fromkeys(variants, 0)
     covered = 0
     rows = []
     for cid in sorted(dsbo):

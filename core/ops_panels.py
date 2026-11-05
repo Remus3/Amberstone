@@ -523,9 +523,9 @@ def compute_ingest_freshness(
     receipts = ir.read_receipts(rp, limit=INGEST_TALLY_WINDOW)
 
     by_status: dict[str, int] = {}
-    by_class = {c: 0 for c in (ir.CLASS_INGESTED, ir.CLASS_EXCLUDED,
-                               ir.CLASS_DEFERRED, ir.CLASS_FAILED,
-                               ir.CLASS_UNKNOWN)}
+    by_class = dict.fromkeys((ir.CLASS_INGESTED, ir.CLASS_EXCLUDED,
+                              ir.CLASS_DEFERRED, ir.CLASS_FAILED,
+                              ir.CLASS_UNKNOWN), 0)
     for r in receipts:
         st = r["status"]
         by_status[st] = by_status.get(st, 0) + 1

@@ -327,7 +327,7 @@ _TIER_ORDER = ("S+", "S", "A", "B", "C", "D")
 
 
 def _empty_tier_distribution() -> dict[str, int]:
-    return {tier: 0 for tier in _TIER_ORDER}
+    return dict.fromkeys(_TIER_ORDER, 0)
 
 
 def _median(values: list[float]) -> float:

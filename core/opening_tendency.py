@@ -275,7 +275,7 @@ def _distribution(values, buckets, min_games):
     n = len(values)
     if n < min_games:
         return SENTINEL
-    counts = {b: 0 for b in buckets}
+    counts = dict.fromkeys(buckets, 0)
     for v in values:
         counts[v if v in counts else "other"] += 1
     mode = max(buckets, key=lambda b: (counts[b], -buckets.index(b)))

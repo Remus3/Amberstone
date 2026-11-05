@@ -75,7 +75,7 @@ def classify(img, prof: Profile) -> Layout:
     panels: dict = {}
     scores: dict = {}
     if not prof.fits(img.width, img.height):
-        return Layout({name: False for name in prof.panels}, {})
+        return Layout(dict.fromkeys(prof.panels, False), {})
     for name, spec in prof.panels.items():
         vis, score = panel_state(img, spec, prof)
         panels[name] = vis

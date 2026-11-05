@@ -184,7 +184,7 @@ def cmd_resume(args: argparse.Namespace) -> int:
 
 def cmd_summary(args: argparse.Namespace) -> int:
     data = load_manifest(Path(args.manifest))
-    counts = {st: 0 for st in STATUSES}
+    counts = dict.fromkeys(STATUSES, 0)
     for s in data.get("slices", []):
         st = s.get("status")
         if st in counts:

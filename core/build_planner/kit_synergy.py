@@ -523,7 +523,7 @@ def item_vector(item) -> dict[str, float]:
     as ``_lifesteal`` (not a vector axis - consumed by the anti-synergy only).
     """
     entry = _resolve_item(item)
-    vec: dict[str, float] = {axis: 0.0 for axis in AXES}
+    vec: dict[str, float] = dict.fromkeys(AXES, 0.0)
     stats = entry.get("stats") or {}
     for field, (axis, divisor) in _STAT_AXIS_DIVISOR.items():
         try:

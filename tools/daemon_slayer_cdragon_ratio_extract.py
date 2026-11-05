@@ -531,7 +531,7 @@ def _resolve_modified(part: dict[str, Any], calcs: dict[str, Any],
 
 # --------------------------------------------------------------------------- block resolver (the testable core)
 def _empty_ratio_fields() -> dict[str, Optional[list[float]]]:
-    return {f: None for f in _RATIO_FIELDS}
+    return dict.fromkeys(_RATIO_FIELDS)
 
 
 def resolve_calc_block(calc_name: str, calc: dict[str, Any],

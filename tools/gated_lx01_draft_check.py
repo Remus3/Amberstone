@@ -394,11 +394,11 @@ def scan_logs(paths: list, since: Optional[float], until: Optional[float]) -> di
     from the file name. A line with neither is not counted. Each file is
     reported on its own (``files[]``, by file NAME only) beside the totals, so
     a log with no line in the window cannot hide behind another's count."""
-    counts = {k: 0 for k in LOG_PATTERNS}
+    counts = dict.fromkeys(LOG_PATTERNS, 0)
     files = []
     for p in paths:
         day = Path(p).name[:10] if _DAY_NAME.match(Path(p).name) else None
-        own = {k: 0 for k in LOG_PATTERNS}
+        own = dict.fromkeys(LOG_PATTERNS, 0)
         lines = 0
         if not Path(p).is_file():  # e.g. no rotated lcu_agent.log.1 yet
             files.append({"name": Path(p).name, "missing": True, "lines_in_window": 0,
