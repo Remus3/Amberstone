@@ -10,7 +10,8 @@ call both functions from their block builders, which
 
 GROUNDED INPUT SHAPE: the enemy CC/threat ranking produced by
 ``core.enemy_cc_threat_context.enemy_cc_threat_line`` (contract read
-from ``core/enemy_cc_threat_context.py:149-231``). That helper ranks
+from ``enemy_cc_threat_line`` and its ``_kind`` fallback in
+``core/enemy_cc_threat_context.py``). That helper ranks
 enemies DESCENDING by ``total_cc_seconds`` (alphabetical tiebreak), and
 for each picks the highest-duration spell, rendering one chunk per enemy
 as ``{champion} {duration:.1f}s {kind} ({spell_key})`` joined with ", "

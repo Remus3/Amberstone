@@ -71,7 +71,7 @@ SENTINEL = "-"
 #: Below 3 games a single game decides the mode; we report '-' instead.
 MIN_GAMES = 3
 #: SR playable extent in Match-V5 units - same value RC already uses in
-#: core/mia_reachability.py:66 and core/champion_movespeed.py:58.
+#: ``_SR_MAP_EXTENT`` in core/mia_reachability.py and core/champion_movespeed.py.
 SR_MAP_EXTENT = 14800.0
 SR_MAP_ID = 11
 EVENT_QUEUE_ID = 2400

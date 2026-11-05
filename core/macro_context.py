@@ -5,7 +5,8 @@ ZOI Wave-2 agent-macro (docs/ZOI_DISTRICT_ORCHESTRATION_PLAN.md, spec D,
 fog-only decision-tree v0). ``MacroContext`` is the ONE input shape the
 rule registry in ``core.macro_decision_tree`` evaluates: a frozen snapshot
 of the enemy fog/MIA state (the ``core.vision_tracker`` per-enemy track
-shape - vision_tracker.py:376-388), the SR objective schedule (imported
+shape - the ``out[key]`` rows of ``_compute_enemies`` in
+core/vision_tracker.py), the SR objective schedule (imported
 from ``core.event_callouts`` so the served callout path, the vision-gated
 decision detector, and this macro tree can never drift on spawn math),
 the lead-projection state, and the game clock/phase.
@@ -24,12 +25,13 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional
 
-# ONE cited source for SR epic spawn timings (core/event_callouts.py:67-70).
+# ONE cited source for SR epic spawn timings (the ``SR_*_S`` constants in core/event_callouts.py).
 # _last_kill_t is the same events-shape reader the served dynamic-ETA path
 # uses ({name, killer_team, down_at_s[, dragon_type]} rows from
 # dashboard/_liveclient.py) - importing it keeps the respawn anchor math
 # identical to the served callouts (same precedent as the private
-# _sort_key import in dashboard/_deterministic_coaching.py:50).
+# ``_sort_key as _callout_sort_key`` import in
+# dashboard/_deterministic_coaching.py).
 from core.event_callouts import (
     SR_BARON_FIRST_S,
     SR_BARON_RESPAWN_S,

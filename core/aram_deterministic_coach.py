@@ -292,7 +292,8 @@ def _safe_item_extra(owned_item_count: object) -> str:
     """The ARAM "7th-item else omit" filler, deterministically resolved.
 
     The live Haiku emits "omit" when a 7th legendary already fills the slot,
-    else a "Pot: X" / "Shard: X" consumable pick (coaches/aram_coach.py:332).
+    else a "Pot: X" / "Shard: X" consumable pick (the ``Item extra:`` line of the
+    coaches/aram_coach.py output template).
     Our deterministic build path caps at _MAX_BUILD_ITEMS (6) and never emits a
     7th item, and picking a SPECIFIC consumable is a judgment call we DECLINE
     rather than fabricate (do-not-flip-blind: a wrong precompute is worse than a
@@ -314,8 +315,9 @@ _TOWER_DEAD = 0.0
 _TOWER_DANGER = 25.0
 
 # The deterministic ARAM objective lines, one per tower-HP state. Faithful to
-# the coaches/aram_coach.py:295-298 OBJECTIVE prompt (defend your T1 / push once
-# enemy T1 falls / force the Nexus once the inhibitor is open). ARAM exposes one
+# the ``=== OBJECTIVE ===`` section of the coaches/aram_coach.py prompt (defend
+# your T1 / push once enemy T1 falls / force the Nexus once the inhibitor is
+# open). ARAM exposes one
 # nearest-tower HP per side, so these key on my_tower_hp + enemy_tower_hp only.
 _OBJ_ENEMY_DEAD = (
     "Enemy tower down - push to their base; group only with a numbers lead."

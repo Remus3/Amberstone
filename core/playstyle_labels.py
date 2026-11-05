@@ -12,7 +12,7 @@ not rank against other players and we do not assert causation ("you play
 worse on X"). We report what the stored record shows.
 
 Sibling of core.session_hygiene: same read-only _open_ro() seam (mirrors
-core/duration_winrate.py:57-64), same laplace/shrink/blend primitives
+``_open_ro`` in core/duration_winrate.py), same laplace/shrink/blend primitives
 (core.smoothed_rates), same never-raises contract. The operator corpus is
 ARAM-dominant (tracked_lane is 0 for ~all games) so we key on CHAMPION, not
 lane; a lane/role split would degenerate to a single bucket. tracked_kp is

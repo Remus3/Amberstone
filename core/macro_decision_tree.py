@@ -3,14 +3,15 @@
 
 ZOI Wave-2 agent-macro (docs/ZOI_DISTRICT_ORCHESTRATION_PLAN.md, spec D,
 operator decision 3: fog-only v0). Mirrors the DECISION_REGISTRY
-registry-of-pure-predicates doctrine (core/decision_detector.py:133-142):
+registry-of-pure-predicates doctrine (``DECISION_REGISTRY`` / ``register_detector`` in
+core/decision_detector.py):
 an ORDERED registry of pure rules per mode, each rule a
 ``(predicate(ctx) -> bool, emit(ctx) -> callout)`` pair. ``evaluate``
 walks the mode's rules first-match-wins and returns at most ONE callout
 in the canonical ``{tag, line, eta_s, kind}`` schema
-(core/event_callouts.py:265-274) with ``kind="macro"`` - deliberately
+(the callout rows core/event_callouts.py returns) with ``kind="macro"`` - deliberately
 distinct from the WS4 ``kind="macro_response"`` row
-(core/macro_response.py:267), no naming collision.
+(``macro_response_callout`` in core/macro_response.py), no naming collision.
 
 MODE REGISTRY: SR carries the v0 rules. ARAM and ARENA are registered as
 EMPTY-but-present modes (shared vision / no fog - no rule can ever apply)
@@ -40,13 +41,13 @@ from core.mode_capabilities import has_capability
 # MIA floors (seconds). A blip of fog is not a macro signal: the objective
 # rule wants a real rotation (>= MIN_MIA_S), the gank warning wants the
 # longer lane-roam-grade absence the decision detector also uses
-# (core/decision_detector.py:362 uses >= 12s).
+# (``detect_lane_roam_window`` in core/decision_detector.py uses >= 12s).
 MIN_MIA_S = 8.0
 GANK_MIN_MIA_S = 12.0
 
 # Objective-danger window: the spawn is "live" from OBJECTIVE_WINDOW_S out
 # down to a short post-spawn grace (same -5..60 shape as
-# core/decision_detector.py:209).
+# ``detect_objective_contest_with_missing`` in core/decision_detector.py).
 OBJECTIVE_WINDOW_S = 60.0
 OBJECTIVE_GRACE_S = 5.0
 
