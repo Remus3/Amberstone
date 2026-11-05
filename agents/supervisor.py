@@ -282,6 +282,8 @@ class Supervisor:
         self._input_latency_lock = threading.Lock()
         # Pending post-game analyzer run (Agent 4 charter idle trigger).
         self._auto_analyze_task: asyncio.Task | None = None
+        # Strong references to the loops start() spawns (see start()).
+        self._bg_tasks: list[asyncio.Task] = []
         self._auto_analyze_scheduled_at: float | None = None     # monotonic
         self._auto_analyze_running_since: float | None = None    # monotonic
         self._auto_analyze_last_done_at: float | None = None     # monotonic
@@ -387,11 +389,15 @@ class Supervisor:
             except Exception as e:  # noqa: BLE001
                 log.warning("boot gate-limbo reaper raised: %s", e)
 
-        # Bootstrap tasks.
-        asyncio.create_task(self._heartbeat_loop())
-        asyncio.create_task(self._dispatch_loop())
-        asyncio.create_task(self._warm_ui_watchdog())
-        asyncio.create_task(self._task_queue_reconciler_loop())  # Audit8 H-02
+        # Bootstrap tasks. The event loop holds only a weak reference to a
+        # task, so each is kept in self._bg_tasks or it can be collected
+        # mid-run and its loop silently stops.
+        self._bg_tasks.extend((
+            asyncio.create_task(self._heartbeat_loop()),
+            asyncio.create_task(self._dispatch_loop()),
+            asyncio.create_task(self._warm_ui_watchdog()),
+            asyncio.create_task(self._task_queue_reconciler_loop()),  # Audit8 H-02
+        ))
 
         # Decision detector loop (T3 #15, 2026-05-01) - relocated from
         # dashboard/server.py. Polls the Live Client relay + vision_state
