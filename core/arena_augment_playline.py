@@ -2,7 +2,8 @@
 """Deterministic "play your current augment this way" line for Arena.
 
 PURPOSE
-    ``coaches/arena_coach.py:171`` asks the live Haiku call for two things
+    The ``Augment advice:`` output-format line of ``_SYSTEM_PROMPT``
+    in ``coaches/arena_coach.py`` asks the live Haiku call for two things
     under one field:
 
         Augment advice: <if augment select: take X - why.
@@ -13,8 +14,9 @@ PURPOSE
     ``core/arena_deterministic_coach.py`` hardcoded ``augment_advice`` to ""
     as a documented v1 degrade. That degrade is now closed: the augments the
     player actually owns arrive on every tick as apiNames in
-    ``state["augments"]`` (set at ``coaches/arena_coach.py:459``, persisted
-    apiName-mapped at ``:943``), and Riot's own effect text for all 225 of
+    ``state["augments"]`` (set from ``_picked_augments`` in ``coaches/arena_coach.py``,
+    persisted apiName-mapped as ``augments_picked``), and Riot's own effect
+    text for all 225 of
     them ships on disk in ``data/daemon_slayer/<patch>/arena_augments.json``.
 
     Naming an owned augment and restating its real effect is a lookup, not a

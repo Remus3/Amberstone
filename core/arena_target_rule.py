@@ -1,8 +1,9 @@
 """Deterministic Arena target-priority line (Stage 1, Tier-1, no live wiring).
 
 Pure projection of the Arena coach's documented kill order into one
-short string: the prompt's own rule at ``coaches/arena_coach.py:148`` is
-carry first (lowest HP, highest threat), CC holder next, tank last. The
+short string: the ``Target priority:`` rule of ``_SYSTEM_PROMPT`` in
+``coaches/arena_coach.py`` is carry first (lowest HP, highest threat), CC
+holder next, tank last. The
 frontline/backline CLASSIFICATION needs champion data and therefore
 happens in the wiring layer, NOT here - this module only applies the
 ordering rule to already-classified names.

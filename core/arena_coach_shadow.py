@@ -78,7 +78,8 @@ _LAST_FB_STATUS: dict[str, str] = {}
 _TRANSIENT_FB = frozenset({"warming", "throttled", "pending"})
 
 # The live Arena artifact fields captured per side, in artifact order
-# (coaches/arena_coach.py:781-788). Used to normalize BOTH blocks so a partial
+# (the ``current.update({...})`` block in coaches/arena_coach.py). Used to
+# normalize BOTH blocks so a partial
 # dict still records every column (missing -> "" / [] for choices). ``choices``
 # (the deterministic + native A/B array) was added so the shadow row carries the
 # WHOLE coach block for the operator to eyeball before a live flip - mirroring

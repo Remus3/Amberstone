@@ -6,8 +6,9 @@ PURPOSE
     seven fields the live Arena Haiku call writes to
     ``data/arena_coaching_data.json`` (``action`` / ``round_strategy`` /
     ``fight_rule`` / ``augment_advice`` / ``anvil_advice`` /
-    ``target_priority`` / ``risk``; artifact keys read from
-    ``coaches/arena_coach.py:781-787``) - from the Stage 1 pure rules plus
+    ``target_priority`` / ``risk``; artifact keys read from the
+    ``current.update({...})`` block in ``coaches/arena_coach.py``) - from the
+    Stage 1 pure rules plus
     the shared CC-threat parsers. This is the assembler the operator can
     later eyeball, shadow-logged side-by-side with the live Haiku block;
     the live coach FLIP is a separate, operator-gated stage. This module
@@ -59,7 +60,7 @@ from core.coach_choices import CoachChoice, synthesize_simple_choices, to_jsonab
 # Action label -> the approach clause the round_strategy template ends
 # with. 1:1 with the decide_action vocabulary; ALL IN shares the
 # standard-fight approach because the prompt's own high-HP-opponent line
-# is "trade efficiently and kite" (coaches/arena_coach.py:138).
+# is "trade efficiently and kite" (``_SYSTEM_PROMPT`` in coaches/arena_coach.py).
 _APPROACH = {
     "BUY ITEMS": "spend gold, heal at campfire",
     "KITE BACK": "kite, disengage, survive",
