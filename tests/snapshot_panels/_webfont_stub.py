@@ -22,14 +22,18 @@ height) and a text-face advance keep a swap close to the real one. Every
 glyph sharing one advance is the stub's signature: STUB_APPLIED is true
 only while an element set in 'Lato' is drawn by the stub, not a fallback.
 
-Every route here matches a Google Fonts host with url_has_host, an EXACT
-hostname match (CodeQL py/incomplete-url-substring, alerts 78-81): a
+Every route here matches a Google Fonts host with _route_match.on_host, an
+EXACT hostname match (CodeQL py/incomplete-url-substring, alerts 78-81): a
 substring test also answered look-alikes such as
 `https://x.example/?q=fonts.gstatic.com` or
-`https://fonts.gstatic.com.evil.example/`.
+`https://fonts.gstatic.com.evil.example/`. RM-1506: it is a compiled regex,
+never a function, because one callable matcher sends every request of the
+context through Python (_route_match.py).
 """
 import struct
 from urllib.parse import urlsplit
+
+from tests.snapshot_panels._route_match import on_host
 
 CSS_HOST = "fonts.googleapis.com"
 FACE_HOST = "fonts.gstatic.com"
@@ -45,10 +49,6 @@ def url_has_host(url, host):
     except ValueError:
         return False
 
-
-def _on_host(host):
-    """A Playwright URL matcher for one exact hostname."""
-    return lambda url: url_has_host(url, host)
 
 STUB_CSS = (
     "@font-face {\n"
@@ -189,11 +189,11 @@ def route_stub_webfont(page, hold):
     to `hold(route)`. Call before the page navigates. Playwright tags each
     handler with an attribute, so `hold` must be a Python function or
     lambda, not a bound builtin such as `list.append`."""
-    page.route(_on_host(CSS_HOST),
+    page.route(on_host(CSS_HOST),
                lambda route: route.fulfill(
                    status=200, body=STUB_CSS, content_type="text/css",
                    headers={"Access-Control-Allow-Origin": "*"}))
-    page.route(_on_host(FACE_HOST), hold)
+    page.route(on_host(FACE_HOST), hold)
 
 
 def route_offline_webfont(ctx):
@@ -206,11 +206,11 @@ def route_offline_webfont(ctx):
     if getattr(ctx, "_rc_offline_webfont", False):
         return
     ctx._rc_offline_webfont = True
-    ctx.route(_on_host(CSS_HOST),
+    ctx.route(on_host(CSS_HOST),
               lambda route: route.fulfill(
                   status=200, body=STUB_CSS, content_type="text/css",
                   headers={"Access-Control-Allow-Origin": "*"}))
-    ctx.route(_on_host(FACE_HOST),
+    ctx.route(on_host(FACE_HOST),
               lambda route: fulfill_stub_font(route))
 
 

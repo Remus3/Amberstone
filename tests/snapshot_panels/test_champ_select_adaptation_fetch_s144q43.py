@@ -37,6 +37,8 @@ import json
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
+from tests.snapshot_panels._route_match import on_path
+
 ROOT = Path(__file__).resolve().parent.parent.parent
 _INDEX = json.loads(
     (ROOT / "web" / "data" / "champions_index.json").read_text(encoding="utf-8"))
@@ -82,14 +84,14 @@ def test_a_pick_fetches_adaptation_and_finishes_the_envelope(
         route.fulfill(status=200, content_type="application/json",
                       body=json.dumps({"present": False}))
 
-    ctx.route(lambda u: urlsplit(u).path == "/api/state", _state)
+    ctx.route(on_path("/api/state"), _state)
     def _coach(route, request):
         coach_posts.append(request.post_data or "")
         route.fulfill(status=200, content_type="application/json",
                       body=json.dumps({"ok": False}))
 
-    ctx.route(lambda u: urlsplit(u).path == "/api/adaptation", _adaptation)
-    ctx.route(lambda u: urlsplit(u).path == "/api/champ-select-coach", _coach)
+    ctx.route(on_path("/api/adaptation"), _adaptation)
+    ctx.route(on_path("/api/champ-select-coach"), _coach)
     page = ctx.new_page()
     page.add_init_script(_WS_STUB)
     errors: list = []

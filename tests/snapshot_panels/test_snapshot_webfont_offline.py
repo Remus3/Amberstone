@@ -35,7 +35,9 @@ here and in _webfont_stub was a substring test, so a look-alike URL
 `https://fonts.googleapis.com.evil.example/`) counted as Google Fonts. They
 all go through _webfont_stub.url_has_host, an exact hostname match; the
 browser-free tests at the end pin it on the helper, on the routes the stub
-installs and on _watch_font_traffic.
+installs and on _watch_font_traffic. RM-1506: the routes match with
+_route_match.on_host, a compiled regex with the same answers, because a
+callable matcher sent every request of the context through Python.
 """
 import pytest
 
@@ -221,11 +223,14 @@ class _RouteRecorder:
 def _assert_css_then_face(routes):
     assert len(routes) == 2, routes
     (css, _), (face, _) = routes
-    assert css(_CSS_URL) and not css(STUB_FONT_URL)
-    assert face(STUB_FONT_URL) and not face(_CSS_URL)
+    assert css.search(_CSS_URL) and not css.search(STUB_FONT_URL)
+    assert face.search(STUB_FONT_URL) and not face.search(_CSS_URL)
+    # The hostname is case-insensitive, as url_has_host's is.
+    assert css.search(_CSS_URL.replace(CSS_HOST, CSS_HOST.upper()))
+    assert face.search(STUB_FONT_URL.replace(FACE_HOST, FACE_HOST.upper()))
     for url in _LOOKALIKES:
-        assert not css(url), url
-        assert not face(url), url
+        assert not css.search(url), url
+        assert not face.search(url), url
 
 
 def test_the_stub_routes_match_the_font_hosts_exactly():

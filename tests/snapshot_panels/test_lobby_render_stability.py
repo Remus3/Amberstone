@@ -71,7 +71,8 @@ server-backed store) rather than by poking module-private state.
 """
 import copy
 from pathlib import Path
-from urllib.parse import urlsplit
+
+from tests.snapshot_panels._route_match import on_path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -184,9 +185,9 @@ def _open_lobby_stability(
         )
 
     if poll:
-        ctx.route(lambda u: urlsplit(u).path == "/api/state", _handle_state)
+        ctx.route(on_path("/api/state"), _handle_state)
     if top8 is not None:
-        ctx.route(lambda u: urlsplit(u).path == "/api/top8", _handle_top8)
+        ctx.route(on_path("/api/top8"), _handle_top8)
 
     page = ctx.new_page()
     page.add_init_script(_WS_STUB)

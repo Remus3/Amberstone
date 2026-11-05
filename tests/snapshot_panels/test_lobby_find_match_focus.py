@@ -32,8 +32,8 @@ is the only thing between two clicks and two start_matchmaking commands.
 import copy
 import json
 import time
-from urllib.parse import urlsplit
 
+from tests.snapshot_panels._route_match import on_path
 from tests.snapshot_panels.test_lobby_render_stability import (
     _POLL_LCU,
     _open_lobby_stability,
@@ -65,7 +65,7 @@ def _count_lcu_posts(ctx):
                 posts.append({})
         # Never fulfilled: the command stays in flight for the whole test.
 
-    ctx.route(lambda u: urlsplit(u).path == "/api/lcu-cmd", _handle)
+    ctx.route(on_path("/api/lcu-cmd"), _handle)
     return posts
 
 

@@ -16,7 +16,8 @@ agent. Drives the real page in headless Chromium with the routes stubbed.
 import json
 import time
 from pathlib import Path
-from urllib.parse import urlsplit
+
+from tests.snapshot_panels._route_match import on_path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -72,7 +73,7 @@ def _open(pw_browser, mock_server, pref_mode):
         route.fulfill(status=200, content_type="application/json",
                       body=json.dumps({"result": {"ok": True}}))
 
-    ctx.route(lambda u: urlsplit(u).path == "/api/state", _state)
+    ctx.route(on_path("/api/state"), _state)
     ctx.route("**/api/lcu/auto-accept", _pref)
     ctx.route("**/api/lcu-cmd", _cmd)
     ctx.route("**/api/lcu-cmd-result*", _cmd_result)

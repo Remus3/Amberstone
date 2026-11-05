@@ -115,6 +115,17 @@ def _open(pw_browser, mock_server, vp):
             status=200, content_type="application/json", body=json.dumps(_GATES)
         ),
     )
+    # RM-1222: the auto-accept control keeps a click only once the save echoes
+    # the choice. The mock server's `{}` is a failed save, so the control went
+    # back, and the read right after the click raced that revert (RM-1506: the
+    # race went red once a request stopped costing a trip through Python).
+    page.route(
+        "**/api/lcu/auto-accept",
+        lambda route: route.fulfill(
+            status=200, content_type="application/json",
+            body=json.dumps({"ok": True, "enabled": json.loads(route.request.post_data)["enabled"]}),
+        ),
+    )
     page.goto(
         mock_server.url + "/?ui_mock=1#settings",
         wait_until="domcontentloaded", timeout=15_000,
