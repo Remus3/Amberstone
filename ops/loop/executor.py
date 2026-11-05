@@ -584,7 +584,7 @@ _MAX_PREMISE_FINDINGS = 8
 # [from-digest] claim outright, which is exactly right as an R208 matter - the
 # director stamped those KNOWN and the executor does not judge whether a semantic
 # claim is true. Cycle 15's entire directive then rested on one of them, verbatim
-# off control/directive.md:3:
+# off the PREMISE-CHECK line of control/directive.md:
 #
 #   PREMISE-CHECK: [from-digest] LAST AUDIT reports VERDICT: REGRESS for
 #   corrupted uses refs in docs-guards.yml.

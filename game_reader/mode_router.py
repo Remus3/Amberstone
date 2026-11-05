@@ -23,7 +23,8 @@ def _coerce_int(value, default: int = 0) -> int:
 
     RM-344. Deliberately a LOCAL copy of
     `snapshot_normalizer._coerce_int` / `_coerce_num` rather than an import:
-    `snapshot_normalizer` imports THIS module at its own line 22, so importing
+    `snapshot_normalizer` imports THIS module at module level (its
+    `from .mode_router import is_tft_mode, ...` line), so importing
     back is a hard circular ImportError ("cannot import name '_coerce_int'
     from partially initialized module") - measured, not assumed.
 

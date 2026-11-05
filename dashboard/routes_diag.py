@@ -129,8 +129,9 @@ def _serve_decisions_log(h) -> None:
     first. N caps at 50. Tolerates a torn final line (mid-write append)."""
     try:
         # Lane 8 cycle 18: dropped a function-local re-import that shadowed the
-        # module-level one on line 20 (ruff cannot see it - ruff.toml:27 turns
-        # F401 off globally, so neither import was ever flagged).
+        # module-level `diagnostics_cached` import (ruff cannot see it - the
+        # F401 entry in ruff.toml turns that rule off globally, so
+        # neither import was ever flagged).
         qs = parse_qs(urlparse(h.path).query)
         try:
             limit = max(1, min(50, int((qs.get("limit") or ["20"])[0])))

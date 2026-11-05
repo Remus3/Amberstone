@@ -129,7 +129,7 @@ clear it deliberately, do not special-case it here.
 
 THE CI WAIT IS THE DRIVER'S, NOT THE PROMPT'S. The lane's acceptance is CI
 green - specifically the `full dual suite` step of the `check` job, read out of
-`jobs[].steps[]`. `.github/workflows/ci.yml:38-40` sets
+`jobs[].steps[]`. The `concurrency:` block of `.github/workflows/ci.yml` sets
 `cancel-in-progress: true` on the group
 `${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}`; a run takes
 45 to 67 minutes and a cycle takes 25 to 45, so cycle N+1's run cancels cycle

@@ -27,9 +27,10 @@ An id occurrence means one of three things, and only the first two matter:
 
 THREE RULES, EACH PAID FOR BY A REAL LINE IN THIS REPO
 -------------------------------------------------------
-1. **Per-occurrence, never per-line.** `ROADMAP.md:55` carries `RM-378 OPEN`
-   and `Next free id RM-380` in one sentence. A line-scoped predicate grades
-   `RM-380` allocated there and the guard is red on arrival over nothing.
+1. **Per-occurrence, never per-line.** One ROADMAP.md bullet carried
+   `RM-378 OPEN` and `Next free id RM-380` in one sentence. A line-scoped
+   predicate grades `RM-380` allocated there and the guard is red on arrival
+   over nothing.
 
 2. **A pointer cue is cancelled by an intervening id.** `Next free id RM-380.
    RM-379 was minted by` - the cue belongs to `RM-380` only. Without this rule
@@ -66,9 +67,9 @@ PIN_DOC = "docs/DS_SWEEP_TRACKER.md"
 #: Named by the RM-360 acceptance.
 ACCEPTANCE_DOCS = ("ROADMAP.md", "BACKLOG.md", "docs/LEDGER.md")
 
-#: Where an allocation record goes when a row CLOSES. `ROADMAP.md:28` relocates
-#: shipped rows VERBATIM into `docs/ROADMAP_HISTORY.md`, heading and all, and
-#: `docs/history_notes.md` is the deeper archive of the same. Measured AT THE
+#: Where an allocation record goes when a row CLOSES. The ROADMAP.md header note
+#: relocates shipped rows VERBATIM into `docs/ROADMAP_HISTORY.md`, heading and
+#: all, and `docs/history_notes.md` is the deeper archive of the same. Measured AT THE
 #: COMMIT THIS LANDED IN: `RM-188` is `REFUTED` in `docs/ROADMAP_HISTORY.md`
 #: (the row reading "DO NOT RE-FILE THIS") with 8 allocated occurrences across
 #: the two archives, and appeared ZERO times in the three acceptance docs, so a

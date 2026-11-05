@@ -271,7 +271,7 @@ def check_version_anchors(
         forever.
 
     A third marker is BLOCK-scoped, added 2026-08-12 after the 1.277.0 bump
-    reported ``docs/OVERLAY_COMPLIANCE_PLAN.md:35``. That line reads "in sync
+    reported a line of ``docs/OVERLAY_COMPLIANCE_PLAN.md``. It reads "in sync
     at engine 1.277.0, 533 files" - no transition, no closure keyword, so
     line-level context could not see it - but it sits under the heading
     ``## 1b. STATUS as of 2026-08-11``. It is a DATED SNAPSHOT: 1.277.0 was the
