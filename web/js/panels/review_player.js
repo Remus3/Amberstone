@@ -27,6 +27,7 @@ import {
   clusterMarkers, markersFromSidecar, openTimeS, videoTimeFor,
   hotkeyAction, seekTarget, costMoments,
 } from './review_player_model.js';
+import { modalLayerRendered } from '../lib/escape_layers.js';
 
 const _RP = {
   matchId: null,      // id the current load was issued for
@@ -178,6 +179,8 @@ function _onKeydown(ev) {
     key: ev.key, ctrlKey: ev.ctrlKey, altKey: ev.altKey, metaKey: ev.metaKey,
     shiftKey: ev.shiftKey, target, defaultPrevented: ev.defaultPrevented,
     menuOpen: _menuOpen(),
+    // RM-1364: the same answer main.js's letter shortcuts read.
+    modalOpen: modalLayerRendered(),
   });
   if (!action) return;
   const v = _el("replay-video");

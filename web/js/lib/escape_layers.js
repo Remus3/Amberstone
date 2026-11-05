@@ -13,8 +13,10 @@
 // open the press passes through untouched.
 //
 // A layer: { name, el: () => Element|null, isOpen: () => bool, close(),
-// dismiss()? }. The optional dismiss() closes without moving focus; a view
-// change uses it (RM-1368, dismissStrandedLayers below).
+// dismiss()?, modal? }. The optional dismiss() closes without moving focus; a
+// view change uses it (RM-1368, dismissStrandedLayers below). `modal: true`
+// marks a full-page scrim the page's shortcuts stand down behind (RM-1364,
+// modalLayerRendered below).
 // "Topmost" is paint order. Each open layer's element gets its stacking
 // path: every ancestor-or-self that creates a stacking context, outermost
 // first, with the z it paints at inside its parent context, then the
@@ -253,6 +255,21 @@ export function dismissStrandedLayers() {
     } catch (_) { /* the next layer is still dismissed */ }
   }
   return done;
+}
+
+// RM-1364: a layer registered with `modal: true` (the task modal, the
+// digest popout: each a position:fixed scrim over the whole page) owns the
+// page's shortcuts while it is open and rendered, as a role="menu" does.
+// main.js _letterShortcutsYield and the Replay player (hotkeyAction's
+// modalOpen) both ask modalLayerRendered(), so the two cannot drift apart.
+// Pure: true when a modal layer takes part by the openEntries rule above.
+export function modalShowing(layers, hasBox) {
+  return openEntries(layers.filter((l) => l && l.modal === true), hasBox).length > 0;
+}
+
+export function modalLayerRendered() {
+  if (typeof document === "undefined") return false;
+  return modalShowing(_layers, _hasBox);
 }
 
 // Rendered is what counts, the test main.js _letterShortcutsYield and

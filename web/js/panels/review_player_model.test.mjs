@@ -246,6 +246,28 @@ test("an open menu takes the plain keys; the chord and Escape stay (RM-1324)", (
                          { type: "toggle-play" });
 });
 
+test("a rendered modal takes the plain keys and leaves Space to the browser (RM-1364)", () => {
+  const open = { modalOpen: true };
+  for (const key of ["]", "[", "d", "D", " "]) {
+    for (const t of [BODY, MARKER, { tag: "BUTTON" }, { tag: "DIV" }, null]) {
+      assert.strictEqual(hotkeyAction(k(key, t, open)), null,
+                         `${JSON.stringify(key)} on ${JSON.stringify(t)}`);
+    }
+  }
+  // The play-from-anywhere chord and Escape sit above the check, as for a menu.
+  assert.deepStrictEqual(hotkeyAction(k(" ", BODY, { ...open, ctrlKey: true })),
+                         { type: "toggle-play" });
+  assert.deepStrictEqual(hotkeyAction(k("Escape", BODY, open)), { type: "release-focus" });
+  // A menu painted over the modal still holds the Space that would scroll.
+  assert.deepStrictEqual(hotkeyAction(k(" ", BODY, { ...open, menuOpen: true })),
+                         { type: "hold-space" });
+  // modalOpen false is the ordinary map.
+  assert.deepStrictEqual(hotkeyAction(k("]", BODY, { modalOpen: false })),
+                         { type: "next-marker" });
+  assert.deepStrictEqual(hotkeyAction(k(" ", BODY, { modalOpen: false })),
+                         { type: "toggle-play" });
+});
+
 test("Escape hands focus back, from a field or from a marker", () => {
   assert.deepStrictEqual(hotkeyAction(k("Escape", FIELD)), { type: "release-focus" });
   assert.deepStrictEqual(hotkeyAction(k("Escape", MARKER)), { type: "release-focus" });

@@ -10,8 +10,8 @@ import test from "node:test";
 import assert from "node:assert";
 
 import {
-  compareStacking, dismissStrandedLayers, openEntries, pickTopmost,
-  registerEscapeLayer, stackingZ, strandedLayers,
+  compareStacking, dismissStrandedLayers, modalLayerRendered, modalShowing,
+  openEntries, pickTopmost, registerEscapeLayer, stackingZ, strandedLayers,
 } from "./escape_layers.js";
 
 // Nodes are tree positions; `follows(a, b)` = a comes after b.
@@ -261,4 +261,34 @@ test("registerEscapeLayer: no document (node) binds nothing and never throws", (
   assert.doesNotThrow(() => registerEscapeLayer({
     name: "t", el: () => null, isOpen: () => false, close: () => {},
   }));
+});
+
+// RM-1364: a page shortcut stands down behind a modal (main.js
+// _letterShortcutsYield, review_player.js modalOpen). Rendered is what counts,
+// as for the Escape: a modal with no box is over nothing.
+const modal = (name, open, node) => ({ ...lay(name, open, node), modal: true });
+
+test("modalShowing: an open, rendered modal layer", () => {
+  const boxes = new Set(["shown"]);
+  const has = (n) => boxes.has(n);
+  assert.strictEqual(modalShowing([modal("task-modal", true, "shown")], has), true);
+  assert.strictEqual(modalShowing([modal("task-modal", false, "shown")], has), false);
+  assert.strictEqual(modalShowing([modal("task-modal", true, "hidden-node")], has), false);
+  // A menu or popover is not a modal: its own rule (role="menu") covers it.
+  assert.strictEqual(modalShowing([lay("view-menu", true, "shown")], has), false);
+  assert.strictEqual(modalShowing([], has), false);
+  assert.strictEqual(modalShowing(
+    [lay("view-menu", true, "shown"), modal("digest-popover", true, "shown")], has,
+  ), true);
+});
+
+test("modalShowing: only modal === true counts, and a throw reads as closed", () => {
+  const has = () => true;
+  assert.strictEqual(modalShowing([{ ...lay("x", true, "n"), modal: "yes" }], has), false);
+  const bad = { ...modal("bad", true, "n"), isOpen: () => { throw new Error("x"); } };
+  assert.strictEqual(modalShowing([bad], has), false);
+});
+
+test("modalLayerRendered: no document (node) is false and never throws", () => {
+  assert.strictEqual(modalLayerRendered(), false);
 });

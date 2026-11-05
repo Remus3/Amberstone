@@ -149,7 +149,7 @@ export function isSpaceActivated(target) {
 }
 
 // ev: {key, ctrlKey, altKey, metaKey, shiftKey, target, defaultPrevented,
-// menuOpen}. Returns an action or null (null = not ours, let the browser have
+// menuOpen, modalOpen}. Returns an action or null (null = not ours, let the browser have
 // it). A key a closer handler already consumed (defaultPrevented, e.g. Space on
 // a Replay row that seeks or loads) is never ours too (RM-1062).
 // RM-1324: with a menu rendered (menuOpen) the plain keys do nothing behind
@@ -159,6 +159,11 @@ export function isSpaceActivated(target) {
 // scroll the pane behind it.
 // Escape and modifier+Space sit above that check on purpose: the dispatcher
 // consumes an Escape that closes a menu, and no menu reads a modified Space.
+// RM-1364: with a modal rendered (modalOpen: the task modal, the digest
+// popout) the plain keys do nothing either, and Space is not held: it is left
+// to the browser, which with focus on the body scrolled nothing behind the
+// modal (measured on five views) and may scroll the modal's own content. A menu
+// painted over the modal is checked first, so its hold still applies.
 export function hotkeyAction(ev) {
   if (!ev || ev.defaultPrevented) return null;
   const key = ev.key;
@@ -171,6 +176,7 @@ export function hotkeyAction(ev) {
   if (ev.menuOpen) {
     return isSpace && !isSpaceActivated(ev.target) ? { type: "hold-space" } : null;
   }
+  if (ev.modalOpen) return null;
   // Space toggles play and never seeks, even when a marker button has focus
   // (the render layer preventDefaults so the button does not activate).
   if (isSpace) return isSpaceActivated(ev.target) ? null : { type: "toggle-play" };

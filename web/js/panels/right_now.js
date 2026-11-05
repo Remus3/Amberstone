@@ -181,6 +181,8 @@ function renderDigest(p) {
     el: () => pop,
     isOpen: () => !pop.classList.contains("hidden"),
     close: hide,
+    // RM-1364: a full-page scrim; the page's shortcuts stand down behind it.
+    modal: true,
   });
 })();
 

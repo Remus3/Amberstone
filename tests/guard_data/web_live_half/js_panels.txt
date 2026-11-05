@@ -111,11 +111,11 @@ cbf54d38530c10d1022b898ac3b059c0ee150b0a3432cf9eb41d33bec2d71a75  web/js/panels/
 
 4376b53463ac26cafc489fb8fbffe350cbe015e985be0f1d9bddc9d0d51c57e4  web/js/panels/replay_minimap.js
 
-65e4635a82ffb37248865378f2c3df48fc1e2f4cc76f8629718a49954b0136c4  web/js/panels/review_player.js
+f3587a627ebe71a69cf0cedd646c91da5de8441fa6820eccb59ab15f8828a3cb  web/js/panels/review_player.js
 
-9d29229b294d4c26b3ea46c52110d67935f681e17c11c8bc9bb0cb56f6ea53d9  web/js/panels/review_player_model.js
+39c791ee5589d59710e88889571b66f2c052a798becdee117ba580abb9183fb9  web/js/panels/review_player_model.js
 
-0e474a1618b2ba2cf85c1f5ecf70115fe3a8674aefe7f48b3fa97b182fdb8c78  web/js/panels/right_now.js
+632365ea02d4598b6eaa10586e2599a089547cb49a9be907f572e211c565b6f5  web/js/panels/right_now.js
 
 00214afbcdae737517478920a9c19e1bc858ac6a09cd2fc7ccf2d2d095e879c6  web/js/panels/screen_read.js
 

@@ -18,7 +18,9 @@ import { state, CADENCE, VIEW_IDS, VIEW_LABELS, _VIEW } from './lib/state.js';
 import { ITEMS, ITEM_COSTS, CHAMPS, SPELLS, DDRAGON_FALLBACK_VERSION, _itemResolveCache, _normItemName, _resolveItemId, _splitItemList, _resolveChampId, _resolveSpell } from './lib/items_index.js';
 import { idempotentRender, makeSig, makeStreamGate } from './lib/idempotent_render.js';
 import { applyTheme, resolveBootTheme } from './lib/theme.js';
-import { dismissStrandedLayers, registerEscapeLayer } from './lib/escape_layers.js';
+import {
+  dismissStrandedLayers, modalLayerRendered, registerEscapeLayer,
+} from './lib/escape_layers.js';
 import { isSpaceActivated, isTypingTarget } from './panels/review_player_model.js';
 
 // -- Panel modules ---------------------------------------------------------
@@ -384,6 +386,8 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     el: () => TMODAL.root,
     isOpen: () => !!TMODAL.root && !TMODAL.root.classList.contains("hidden"),
     close: closeTaskModal,
+    // RM-1364: the page's shortcuts stand down behind it.
+    modal: true,
   });
 
   // -- Insight-card COPY button ----------------------------------------
@@ -7230,6 +7234,9 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   // trigger, or on the body after a click on a menu's label. Rendered is what
   // counts, not the class: a Lobby menu left open by a view change is not
   // displayed, and must not kill the shortcuts in the next view.
+  // RM-1364: the same holds behind an open modal (the task modal, the
+  // digest popout): A clicked ANALYZE NOW, Z flipped zen and Shift+R reloaded
+  // the page out from under it. escape_layers.js modalLayerRendered().
   function _menuRendered() {
     return Array.from(document.querySelectorAll('[role="menu"]'))
       .some((m) => m.getClientRects().length > 0);
@@ -7240,7 +7247,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
       if (tgt.isContentEditable) return true;
     }
-    return _menuRendered();
+    return _menuRendered() || modalLayerRendered();
   }
   // RM-1366: the open menu owns a plain (or Shift+) Space on every view. A
   // right-click on a bare spot fires no click, so the menu stays open with focus
