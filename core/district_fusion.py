@@ -94,7 +94,7 @@ def _int0(value):
         n = int(value)
     except (TypeError, ValueError):
         return 0
-    return n if n > 0 else 0
+    return max(0, n)
 
 
 def _present_counts(row):

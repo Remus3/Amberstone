@@ -59,7 +59,7 @@ def real_id(v: Any) -> int:
     if isinstance(v, bool):
         return 0
     if isinstance(v, int):
-        return v if v > 0 else 0
+        return max(0, v)
     if isinstance(v, float):
         return int(v) if v.is_integer() and v > 0 else 0
     if isinstance(v, str):

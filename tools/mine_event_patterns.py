@@ -196,7 +196,7 @@ def verdict(win_values, loss_values, min_sample, min_sep, min_effect) -> dict:
     if n_w < min_sample or n_l < min_sample:
         name = "INSUFFICIENT"
     else:
-        denom = abs(lm) if abs(lm) > 1e-9 else 1e-9
+        denom = max(1e-9, abs(lm))
         name = ("SEPARATES"
                 if abs(wm - lm) / denom >= min_sep and abs(effect) >= min_effect
                 else "NO SEPARATION")

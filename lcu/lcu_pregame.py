@@ -101,7 +101,7 @@ def _as_int(value) -> int:
         n = int(value)
     except (TypeError, ValueError, OverflowError):
         return 0
-    return n if n > 0 else 0
+    return max(0, n)
 
 
 def _valid_id(value) -> Optional[int]:

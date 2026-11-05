@@ -152,7 +152,7 @@ def _count(summary: object, key: str) -> int:
     if isinstance(val, bool) or not isinstance(val, (int, float)):
         return 0
     n = int(val)
-    return n if n > 0 else 0
+    return max(0, n)
 
 
 def playbook_callout(

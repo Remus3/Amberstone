@@ -452,7 +452,7 @@ class MinIntervalGuard:
             if last is None:
                 return 0.0
             remaining = self._min - (now - last)
-            return remaining if remaining > 0.0 else 0.0
+            return max(0.0, remaining)
 
 
 _shared_pool: Optional[HttpsConnectionPool] = None

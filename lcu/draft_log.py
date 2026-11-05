@@ -129,7 +129,7 @@ def is_finalized(sess) -> bool:
 def session_game_id(sess) -> int:
     """The session's gameId, or 0 when absent / unusable."""
     gid = _as_int(_as_dict(sess).get("gameId"), 0)
-    return gid if gid > 0 else 0
+    return max(0, gid)
 
 
 def session_queue_id(sess) -> int:

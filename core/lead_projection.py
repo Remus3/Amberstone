@@ -594,7 +594,7 @@ def level_benchmark(minutes: float, mode: str = "SR") -> float:
     if m < 0.0:
         m = 0.0
     bench = base + (rate * m)
-    return bench if bench < MAX_CHAMPION_LEVEL else MAX_CHAMPION_LEVEL
+    return min(MAX_CHAMPION_LEVEL, bench)
 
 
 def minutes_for_level(level: float, mode: str = "SR") -> float:
@@ -617,7 +617,7 @@ def minutes_for_level(level: float, mode: str = "SR") -> float:
     if lvl > MAX_CHAMPION_LEVEL:
         lvl = MAX_CHAMPION_LEVEL
     m = (lvl - base) / rate
-    return m if m > 0.0 else 0.0
+    return max(0.0, m)
 
 
 def gold_income_per_min(mode: str = "SR") -> float:

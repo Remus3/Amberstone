@@ -119,7 +119,7 @@ def _reset_cache():
 # --- parsing -------------------------------------------------------------------
 
 def _clamp01(v):
-    return 0.0 if v < 0.0 else (1.0 if v > 1.0 else v)
+    return 0.0 if v < 0.0 else min(v, 1.0)
 
 
 def _district_from_dict(entry):
