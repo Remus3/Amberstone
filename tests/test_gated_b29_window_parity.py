@@ -216,6 +216,133 @@ def test_no_windows_api_is_reached_off_windows(monkeypatch):
     assert gbw._flags() == 0
 
 
+class _Dll:
+    """A stand-in DLL: plain functions, so ``fn.restype = ...`` assignments land."""
+
+    def __init__(self, **fns):
+        self.__dict__.update(fns)
+
+
+def _fake_win32(monkeypatch, *, rows, foreground, styles, monitor=(0, 0, 2560, 1440),
+                quns=(0, 5)):
+    """Win32 user32 / shell32 fakes for ``game_window_facts``; returns the call log.
+
+    ``rows`` holds (owner pid, visible, hwnd, box) as ``pick_window`` reads them.
+    """
+    import ctypes
+    wintypes = pytest.importorskip("ctypes.wintypes")
+    assert wintypes.RECT  # the function under test builds its structures from it
+    by_hwnd = {row[2]: row for row in rows}
+    calls: dict = {"style": [], "monitor": [], "info": []}
+
+    def enum_windows(visit, _param):
+        for hwnd in by_hwnd:
+            visit(hwnd, 0)
+        return 1
+
+    def thread_pid(hwnd, ref):
+        ref._obj.value = by_hwnd[hwnd][0]
+        return 1
+
+    def window_rect(hwnd, ref):
+        ref._obj.left, ref._obj.top, ref._obj.right, ref._obj.bottom = by_hwnd[hwnd][3]
+        return 1
+
+    def window_long(hwnd, index):
+        calls["style"].append((hwnd, index))
+        return styles[hwnd]
+
+    def monitor_from(hwnd, flag):
+        calls["monitor"].append((hwnd, flag))
+        return 77
+
+    def monitor_info(handle, ref):
+        calls["info"].append((handle, ref._obj.cbSize == ctypes.sizeof(ref._obj)))
+        if monitor is None:
+            return 0
+        mon = ref._obj.rcMonitor
+        mon.left, mon.top, mon.right, mon.bottom = monitor
+        return 1
+
+    def notification_state(ref):
+        ref._obj.value = quns[1]
+        return quns[0]
+
+    user32 = _Dll(GetForegroundWindow=lambda: foreground, MonitorFromWindow=monitor_from,
+                  GetWindowLongW=window_long, GetWindowThreadProcessId=thread_pid,
+                  IsWindowVisible=lambda hwnd: by_hwnd[hwnd][1], GetWindowRect=window_rect,
+                  GetMonitorInfoW=monitor_info, EnumWindows=enum_windows)
+    shell32 = _Dll(SHQueryUserNotificationState=notification_state)
+    dlls = {"user32": user32, "shell32": shell32}
+    monkeypatch.setattr(ctypes, "WinDLL", lambda name, use_last_error=False: dlls[name],
+                        raising=False)
+    if not hasattr(ctypes, "WINFUNCTYPE"):
+        monkeypatch.setattr(ctypes, "WINFUNCTYPE", ctypes.CFUNCTYPE, raising=False)
+    monkeypatch.setattr(gbw.sys, "platform", "win32")
+    return calls
+
+
+_GAME_ROWS = [
+    (7, True, 11, (0, 0, 5000, 5000)),   # another process, larger
+    (9, False, 12, (0, 0, 4000, 4000)),  # the game's hidden window
+    (9, True, 13, (0, 0, 2560, 1440)),   # the game's window
+    (9, True, 14, (0, 0, 10, 10)),
+]
+_SIGNED_POPUP = POPUP - (1 << 32)  # GetWindowLongW returns a signed LONG
+
+
+def test_game_window_facts_reads_the_picked_window_of_that_pid(monkeypatch):
+    calls = _fake_win32(monkeypatch, rows=_GAME_ROWS, foreground=13,
+                        styles={11: 0, 12: 0, 13: _SIGNED_POPUP, 14: 0})
+    facts = gbw.game_window_facts(9)
+    assert facts == {"style": POPUP, "rect": (0, 0, 2560, 1440),
+                     "monitor": (0, 0, 2560, 1440), "covers_monitor": True,
+                     "foreground": True, "quns": 5}
+    assert calls["style"] == [(13, gbw._GWL_STYLE)]
+    assert calls["monitor"] == [(13, gbw._MONITOR_DEFAULTTONEAREST)]
+    assert calls["info"] == [(77, True)]
+    assert gbw.grade_window("2", facts)["verdict"] == "AGREE"
+
+
+def test_game_window_facts_another_foreground_window_is_not_foreground(monkeypatch):
+    _fake_win32(monkeypatch, rows=_GAME_ROWS, foreground=11,
+                styles={11: 0, 12: 0, 13: _SIGNED_POPUP, 14: 0})
+    facts = gbw.game_window_facts(9)
+    assert facts["foreground"] is False and facts["rect"] == (0, 0, 2560, 1440)
+    assert gbw.grade_window("2", facts) == {"verdict": "NO_RESULT",
+                                            "why": "game not foreground"}
+
+
+def test_game_window_facts_failed_reads_are_none_not_a_guess(monkeypatch):
+    _fake_win32(monkeypatch, rows=_GAME_ROWS, foreground=13, monitor=None,
+                quns=(-2147467259, 3), styles={11: 0, 12: 0, 13: _SIGNED_POPUP, 14: 0})
+    facts = gbw.game_window_facts(9)
+    assert facts["monitor"] is None and facts["covers_monitor"] is False
+    assert facts["quns"] is None
+
+
+def test_game_window_facts_without_a_visible_window_of_that_pid_is_none(monkeypatch):
+    _fake_win32(monkeypatch, rows=_GAME_ROWS, foreground=11,
+                styles={11: 0, 12: 0, 13: 0, 14: 0})
+    assert gbw.game_window_facts(8) is None
+
+
+def test_read_cfg_mtime_is_local_time_not_utc(tmp_path, monkeypatch):
+    # A gmtime mutant survives the strftime comparison on a UTC runner; this does not.
+    cfg = tmp_path / "game.cfg"
+    cfg.write_text("[General]\nWindowMode=2\n", encoding="utf-8")
+    os.utime(cfg, (1_700_000_000, 1_700_000_000))
+    seen = []
+
+    def fake_localtime(stamp=None):
+        seen.append(stamp)
+        return time.struct_time((2001, 2, 3, 4, 5, 6, 5, 34, 0))
+
+    monkeypatch.setattr(gbw.time, "localtime", fake_localtime)
+    assert gbw.read_cfg(cfg)["mtime"] == "2001-02-03T04:05:06"
+    assert seen == [1_700_000_000]
+
+
 def test_read_cfg_reads_general_only(tmp_path):
     cfg = tmp_path / "game.cfg"
     cfg.write_text("[HUD]\nWindowMode=1\nWidth=9\n[General]\nWindowMode=2\nWidth=2560\n",

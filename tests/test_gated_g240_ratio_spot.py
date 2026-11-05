@@ -387,6 +387,20 @@ def test_read_snapshot_envelope_freshness():
             g240.read_snapshot(bad)
 
 
+@pytest.mark.parametrize("age, fresh", [
+    (0.0, True), (14.5, True), (15.0, True), (15.5, False), (60.0, False)])
+def test_the_relay_age_limit_is_a_fixed_fifteen_seconds(age, fresh):
+    # Literal ages, not the constant read back by name: a changed limit must fail here.
+    assert g240.MAX_SNAPSHOT_AGE_S == 15.0
+    data = _snap()
+    envelope = {"data": data, "ts": 1000.0 - age}
+    if fresh:
+        assert g240.read_snapshot(envelope, now=1000.0) is data
+    else:
+        with pytest.raises(g240.Refused, match="stale"):
+            g240.read_snapshot(envelope, now=1000.0)
+
+
 def test_fetch_live_reads_the_relay_with_the_token(monkeypatch):
     calls = []
 
