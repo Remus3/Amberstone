@@ -15,7 +15,7 @@ CONTRACT (zoi.dmz):
 DEGENERATE (one team absent, < 2 crossings, all-zero field) -> None, so the
 render falls back to the byte-identical legacy straight "demarcation" line.
 
-INPUT bubble shape (grep-confirmed core/zoi_influence.py:290-296):
+INPUT bubble shape (the ``cx`` / ``cy`` / ``r_frac`` / ``weight`` bubble rows ``compute_zoi`` builds in core/zoi_influence.py):
     {"team": "blue"|"red", "cx": float, "cy": float, "r_frac": float,
      "weight": float}
 This module SIGNS it: blue (ally) -> +weight source, red (enemy) -> -weight.

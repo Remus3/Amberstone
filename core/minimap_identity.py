@@ -10,7 +10,7 @@ Contract (identify_dots):
   - ADDITIVE ONLY: never removes, reorders, or restructures dots; unmatched
     dots pass through unchanged; the SAME list object is returned.
   - roster-scoped: only the champions passed in (live: the 10 championName
-    display strings from Live Client allPlayers, core/vision_tracker.py:307)
+    display strings from Live Client allPlayers, as ``VisionTracker._compute_enemies`` in core/vision_tracker.py reads them)
     are ever considered - NEVER the full 173-icon catalog.
   - fail-soft, NEVER raises: cv2/numpy absent, corrupt icon, malformed dots,
     bad numerics -> the input dots come back unchanged.
@@ -29,7 +29,7 @@ Templates come from data/icons/champions/<DDragonId>.png (173 on disk) and
 are cached resized + circle-masked, keyed (icon stem, size). Display-name
 variants ("Miss Fortune", "Kha'Zix", "Wukong") resolve through the DDragon
 mirror (data/meta/ddragon_champions.json) - same multi-key index pattern as
-core/champion_movespeed.py:81-92.
+``_name_keys`` in core/champion_movespeed.py.
 
 Live template-match quality is LIVE-GATED (a real game verifies before any
 flip); the synthetic tests prove correct, gated, fail-soft plumbing.
@@ -90,7 +90,7 @@ _TPL_GATES: dict = {}
 
 
 def _reset_caches() -> None:
-    """Test seam: drop the lazy caches (mirrors core/champion_movespeed.py:61)."""
+    """Test seam: drop the lazy caches (mirrors ``_reset_caches`` in core/champion_movespeed.py)."""
     global _ICON_INDEX, _PARTIAL_ICON_INDEX
     _ICON_INDEX = None
     _PARTIAL_ICON_INDEX = {}
@@ -114,7 +114,7 @@ def _num(v):
 def _name_keys(raw: str):
     """All lookup keys for one champion string: casefolded exact plus
     apostrophe / space / dot / ampersand stripped variants (the
-    core/champion_movespeed.py:81-92 pattern)."""
+    ``_name_keys`` pattern of core/champion_movespeed.py)."""
     base = raw.casefold().strip()
     if not base:
         return

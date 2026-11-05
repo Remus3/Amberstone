@@ -10,7 +10,8 @@ hard fact. Four fusion steps, applied in order:
 1. DEAD-CHAMP WEIGHT CAP - a dead champion cannot be present anywhere, so
    the per-team per-district presence is capped at (team_size - dead).
    Death is read fail-soft from the scoreboard player rows
-   (``lc["players"]``, dashboard/_liveclient.py:176-185). NOTE verified
+   (``lc["players"]`` is the ``players`` slice of ``liveclient_summary`` in
+   dashboard/_liveclient.py). NOTE verified
    2026-07-05: today those rows carry only {position, team, creep_score,
    is_active} - NO isDead/respawnTimer - so the cap is INERT until the
    summary surfaces a death field. The reader accepts is_dead / isDead
@@ -21,7 +22,7 @@ hard fact. Four fusion steps, applied in order:
    implies the killing team was present at that structure: pinned to the
    lane district (SR, lane parsed from the structure name - inhib
    ``Barracks_T2_L1``, turret ``Turret_T2_L_03_A``; token L/C/R ->
-   top/mid/bot as in core/event_callouts.py:105,603-617) or to the one
+   top/mid/bot as in ``_INHIB_LANE_BY_TOKEN`` / ``_inhib_lane`` in core/event_callouts.py) or to the one
    bridge (ARAM). The killer team is inferred from the owner token
    (T1=ORDER / T2=CHAOS) vs the active player's side; when the side
    cannot be determined the kill is annotated but never forces a count
@@ -29,7 +30,7 @@ hard fact. Four fusion steps, applied in order:
 3. OBJECTIVE CONFIRM - a dragon/baron/herald kill with a known
    killer_team within OBJ_FUSE_WINDOW_S forces that team's presence in
    dragon_pit / baron_pit (herald lives in the baron pit). Event shape:
-   dashboard/_liveclient.py:265-301.
+   the ``inhib_events`` / ``turret_events`` blocks of ``liveclient_summary`` in dashboard/_liveclient.py.
 4. WARD INFERENCE (v0 hook) - SR-ONLY and has_capability(mode,
    "has_wards")-gated (core/mode_capabilities.py, fail-CLOSED). If wards
    are impossible in the mode there is NO ward-derived inference of any
@@ -37,7 +38,7 @@ hard fact. Four fusion steps, applied in order:
    ward model.
 
 Mode scope: fusion applies only where the zoi gate can reach it
-(``sr`` / ``aram`` - dashboard/_state_builder.py:469). ARAM keeps
+(``sr`` / ``aram`` - the zoi gate in dashboard/_state_builder.py). ARAM keeps
 MIA semantics inert by construction (shared vision; nothing here reads
 fog) while dead-cap + structure-reclassify still apply. Arena / Brawl /
 TFT / unknown modes are never invoked live, but calling anyway is a
@@ -65,7 +66,7 @@ OBJ_FUSE_WINDOW_S = 8.0
 _TEAMS = ("ally", "enemy")
 _DEFAULT_TEAM_SIZE = 5
 
-# Structure-name lane token -> lane (core/event_callouts.py:105 convention).
+# Structure-name lane token -> lane (``_INHIB_LANE_BY_TOKEN`` in core/event_callouts.py).
 _LANE_BY_TOKEN = {"L": "top", "C": "mid", "R": "bot"}
 
 # Lane -> SR district id (config/minimap_grids/sr.json).
@@ -190,7 +191,7 @@ def _structure_lane(name):
     Handles both the inhib token (``Barracks_T2_L1`` - letter+digits) and
     the turret token (``Turret_T2_L_03_A`` - a bare L/C/R part). An
     unrecognized name yields "" so a naming change can never produce a
-    WRONG lane (mirrors core/event_callouts.py:603-617).
+    WRONG lane (mirrors ``_inhib_lane`` in core/event_callouts.py).
     """
     if not isinstance(name, str):
         return ""
@@ -291,7 +292,7 @@ def fuse_districts(districts, lc_events, mode, game_time_s):
         districts: the ``zoi["districts"]`` presence vector (list of
             per-district dict rows, agent-presence spec B shape).
         lc_events: the lc summary dict in scope at the splice site
-            (dashboard/_state_builder.py builds it at :338-342); only
+            (``lc`` from ``liveclient_summary`` in dashboard/_state_builder.py); only
             ``players`` / ``turret_events`` / ``inhib_events`` /
             ``objective_events`` are read, all fail-soft.
         mode: mode string in any spelling core.mode_capabilities accepts

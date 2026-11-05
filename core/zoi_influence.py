@@ -12,7 +12,7 @@ Design notes:
   - Coords are BOX-FRACTION [0,1], origin top-left, x right, y down - the same
     basis as minimap_dots.x_frac / y_frac (see core/minimap_blob_detect.py).
 
-HONEST SCOPE (mirror core/minimap_blob_detect.py:16-19): the Live Client API
+HONEST SCOPE (mirror the team-PRESENCE note in core/minimap_blob_detect.py): the Live Client API
 exposes ONLY my own data - my level / gold / game_time. It does NOT expose
 enemy levels, enemy/ally alive-dead, or enemy gold (the team lists are champion
 NAMES only). So per-team STRENGTH here is grounded ONLY in (a) per-team on-map

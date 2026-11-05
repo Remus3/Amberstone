@@ -2,10 +2,10 @@
 
 Consumes the ``core.minimap_blob_detect.current_minimap_dots`` shape
 (``[{team: "blue"|"red", x_frac, y_frac, px, confidence}]``, box-fraction
-``[0, 1]`` within the minimap crop - minimap_blob_detect.py:109-115) and
+``[0, 1]`` within the minimap crop - ``detect_team_dots`` in minimap_blob_detect.py) and
 buckets each dot into the mode's district grid via
 ``core.minimap_districts.district_of``. Blue = ally, red = enemy (League
-default minimap colors, same convention as core/zoi_influence.py:263).
+default minimap colors, same convention as ``compute_zoi`` in core/zoi_influence.py).
 
 ``MinimapPresenceTracker.update`` emits ONE row per district in the mode's
 grid EVERY tick - the FULL label set, zero-presence included, so the
@@ -49,7 +49,7 @@ NEW_GAME_REGRESS_S = 5.0
 #: resume counters across a relay/vision outage or a missed match boundary.
 STALE_GAP_S = 30.0
 
-#: blob team color -> presence side (core/zoi_influence.py:263 convention).
+#: blob team color -> presence side (the ``compute_zoi`` blue = ally convention).
 _TEAM_SIDE = {"blue": "ally", "red": "enemy"}
 
 _SIDES = ("ally", "enemy")

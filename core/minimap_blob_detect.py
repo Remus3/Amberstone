@@ -258,7 +258,7 @@ def _identity_enabled() -> bool:
 
 def _live_roster() -> list:
     """The <=10 champion display names from the Live Client allPlayers list
-    (core/vision_tracker.py:307 naming), via the shared liveclient_cache.
+    (the ``championName`` naming of ``VisionTracker._compute_enemies`` in core/vision_tracker.py), via the shared liveclient_cache.
     Fail-soft: no game / relay down / malformed payload -> []."""
     try:
         from core.liveclient_cache import get as _lc_get

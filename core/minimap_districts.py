@@ -9,7 +9,7 @@ Coordinate frame: box-fraction ``[0, 1]`` within the minimap crop, y-down
 image convention, UNFLIPPED (blue base bottom-left) - the same frame as
 ``core.minimap_blob_detect.detect_team_dots`` dots and the legacy
 ``core.zoi_influence._action_quadrant`` prototype. A flipped HUD anchors
-the minimap left (core/minimap_geometry.py:152-155); ``district_of``
+the minimap left (the ``want_flip`` branch of ``compute_minimap_rect`` in core/minimap_geometry.py); ``district_of``
 de-flips by mirroring x -> 1 - x BEFORE any lookup.
 
 Configs live in ``config/minimap_grids/<mode>.json`` (mode lowercased).
@@ -20,7 +20,7 @@ follows the fail-soft contract of ``core.zoi_influence``: never raises on
 any input - degrade to a fallback id / ``[]`` / ``set()`` / ``None``.
 
 SR grid note: the operator-approved 13-district SR grid keeps the LEGACY
-convention of ``_action_quadrant`` (core/zoi_influence.py:177-203) where
+convention of ``_action_quadrant`` (core/zoi_influence.py) where
 the base-to-base anti-diagonal corridor is labelled "river" (top_river
 y < 0.5, bot_river y >= 0.5). The 9 legacy readable labels are each
 covered by at least one district's ``legacy_label`` (parity oracle in

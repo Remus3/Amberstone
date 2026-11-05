@@ -8,8 +8,8 @@ pressure at the current game state. It is the capability source Phase-3 folds
 into ``core.zoi_influence.compute_zoi`` per-dot radius when a roster is provided.
 
 WHY archetype-relative scaling:
-  The Live Client API exposes only MY level / gold / game_time (mirror
-  core/zoi_influence.py:15-23) - never enemy power. So bubble strength cannot
+  The Live Client API exposes only MY level / gold / game_time (mirror the
+  HONEST SCOPE paragraph of core/zoi_influence.py) - never enemy power. So bubble strength cannot
   be grounded in real gold. What we DO know per champion is its archetype (from
   core.archetype_picks.get_archetype_for), and archetypes have well-understood
   power curves: an assassin or hyper-carry is weak early and snowballs late; a
