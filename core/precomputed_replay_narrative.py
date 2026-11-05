@@ -14,15 +14,15 @@ deterministic narrative alongside the live coach output for offline validation,
 mirroring ``core/det_coach_shadow.py`` / ``core/champ_select_shadow.py``.
 
 Reused upstream (grounded, cited):
-  * ``coaches/replay_coach._load_match`` (replay_coach.py:55-74) returns
+  * ``coaches/replay_coach._load_match`` returns
     ``{"match": dict, "participants": [dict], "events": [dict]}``; this is the
     exact blob shape ``build_narrative`` consumes.
-  * ``core.post_game_rubric.compute_role_grade`` (post_game_rubric.py:378) for
+  * ``core.post_game_rubric.compute_role_grade`` for
     the numeric per-component scores feeding LESSONS. We do NOT re-derive the
     rubric math.
-  * ``core.obj_participation`` column model (obj_participation.py:63-83) for the
+  * ``core.obj_participation`` column model (``_OBJ_COLUMNS`` / ``_ROW_SUM_SQL``) for the
     objective-participation ratio. ``compute_obj_participation`` needs a live
-    sqlite connection (obj_participation.py:157), which the blob does not carry,
+    sqlite connection, which the blob does not carry,
     so we apply the SAME column model directly to the in-blob participant rows
     (``_obj_participation_from_rows``). This keeps ``build_narrative`` a pure
     function over the blob with no DB re-open.
@@ -42,7 +42,7 @@ log = logging.getLogger("rc.precomputed_replay_narrative")
 
 # Objective columns summed per participant row to approximate
 # objective-participation. Same set as core.obj_participation._OBJ_COLUMNS
-# (obj_participation.py:63-70) so the deterministic narrative scores the same
+# so the deterministic narrative scores the same
 # axis the live rubric route does.
 _OBJ_COLUMNS = (
     "dragon_kills",
@@ -188,8 +188,8 @@ def _obj_participation_from_rows(
 ) -> float:
     """Objective-participation ratio for the operator over their team total.
 
-    Applies the core.obj_participation column model (obj_participation.py:63-83)
-    to the in-blob participant rows so no live DB connection is needed. Returns
+    Applies the core.obj_participation column model (``_OBJ_COLUMNS`` /
+    ``_ROW_SUM_SQL``) to the in-blob participant rows so no live DB connection is needed. Returns
     a float in [0.0, 1.0]; 0.0 when the team took no objectives (the rubric
     correctly under-scores a zero-objective game) or on any degenerate input.
     """
@@ -509,7 +509,7 @@ def _lessons_from_grade(grade: dict[str, Any]) -> list[str]:
     """Turn the rubric component scores into deterministic LESSONS.
 
     Reuses the numeric components from core.post_game_rubric.compute_role_grade
-    (post_game_rubric.py:422-436). We do NOT re-derive the rubric math; we only
+    (its returned ``components``). We do NOT re-derive the rubric math; we only
     interpret the per-component contribution as a low/high lesson. The two
     weakest components yield improvement lessons; the single strongest yields a
     reinforcement lesson, so the operator always gets at least one positive.
@@ -574,7 +574,7 @@ def build_narrative(blob: dict[str, Any] | None) -> dict[str, Any]:
 
     Args:
         blob: the dict returned by ``coaches/replay_coach._load_match``
-            (replay_coach.py:55-74) - ``{"match": dict, "participants": [dict],
+            - ``{"match": dict, "participants": [dict],
             "events": [dict]}``. ``None`` or any malformed shape is fail-soft.
 
     Returns:
@@ -614,7 +614,7 @@ def build_narrative(blob: dict[str, Any] | None) -> dict[str, Any]:
 
         # Build rubric stats from the operator row (preferred) or the matches
         # tracked_* fields (fallback). Reuses the exact stats keys
-        # compute_role_grade expects (post_game_rubric.py:403-410).
+        # compute_role_grade expects (its ``stats`` argument).
         if operator_row is not None:
             cs = _as_int(operator_row.get("total_minions_killed")) + _as_int(
                 operator_row.get("neutral_minions_killed")
