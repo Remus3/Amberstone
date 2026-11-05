@@ -6,7 +6,8 @@
   POST   /api/sr-draft/user-builds
        body: {"champion": "Tristana", "build": {label, items, runes, ...}}
        -> 200 {"ok": true, "id": "<8hex>"}
-       -> 400 if champion or build.label missing
+       -> 400 if champion or build.label missing, or if action /
+          champion / id is sent as a non-string ("<field>: must be a string")
        -> 422 if engine rejects shape
 
   DELETE /api/sr-draft/user-builds?champion=Tristana&id=abc123ef
@@ -38,6 +39,32 @@ log = logging.getLogger("rc.web_dashboard")
 _GENERIC_BAD_REQUEST = "invalid request - see logs"
 # The unknown-action 400 (RM-1376): fixed text, never the caller's token.
 _UNKNOWN_ACTION = "action: must be list, add, update or delete"
+
+
+def _text_field(payload: dict, field: str) -> str | None:
+    """Read a string body field WITHOUT assuming the client sent a string.
+
+    RM-1377: the handler read `(payload.get(k) or "").strip()`, so a
+    truthy non-string (`{"action": 5}`) raised AttributeError and the
+    blanket handler answered 500 for a client error. An absent key or JSON
+    null is "not sent" and yields "" (the caller's default / "required"
+    branch answers it); any other non-string yields None, which the caller
+    answers with `_send_not_a_string`.
+    """
+    raw = payload.get(field)
+    if raw is None:
+        return ""
+    if not isinstance(raw, str):
+        return None
+    return raw.strip()
+
+
+def _send_not_a_string(h, field: str) -> None:
+    """The fixed 400 for a non-string field: names the server-chosen field,
+    never the caller's value, and logs nothing (a client error, not a
+    server fault)."""
+    h._send(400, json.dumps({"error": f"{field}: must be a string"}).encode(),
+            "application/json")
 
 
 def _send_validation_error(h, exc: Exception, context: str) -> None:
@@ -90,11 +117,18 @@ def _serve_user_builds_post(h, payload) -> None:
             h._send(400, b'{"error":"JSON object body required"}',
                     "application/json")
             return
-        action = (payload.get("action") or "").strip().lower()
+        action = _text_field(payload, "action")
+        if action is None:
+            _send_not_a_string(h, "action")
+            return
+        action = action.lower()
         # Default action: if a build is included, treat as add.
         if not action:
             action = "add" if payload.get("build") else "list"
-        champion = (payload.get("champion") or "").strip()
+        champion = _text_field(payload, "champion")
+        if champion is None:
+            _send_not_a_string(h, "champion")
+            return
         if not champion:
             h._send(400, b'{"error":"champion required"}', "application/json")
             return
@@ -126,7 +160,10 @@ def _serve_user_builds_post(h, payload) -> None:
             return
 
         if action == "update":
-            build_id = (payload.get("id") or "").strip()
+            build_id = _text_field(payload, "id")
+            if build_id is None:
+                _send_not_a_string(h, "id")
+                return
             patch    = payload.get("patch") or payload.get("build")
             if not build_id or not isinstance(patch, dict):
                 h._send(400, b'{"error":"id + patch required"}', "application/json")
@@ -139,7 +176,10 @@ def _serve_user_builds_post(h, payload) -> None:
             return
 
         if action == "delete":
-            build_id = (payload.get("id") or "").strip()
+            build_id = _text_field(payload, "id")
+            if build_id is None:
+                _send_not_a_string(h, "id")
+                return
             if not build_id:
                 h._send(400, b'{"error":"id required"}', "application/json")
                 return
