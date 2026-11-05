@@ -298,9 +298,9 @@ body[data-shell="overlay"] .ovx-widget .rc-co-row {
 
 /* 4a. lead / choices / callouts are widgets too - keep their flex inner layout
  * (column/gap from their own base rules) while the .ovx-widget frame wraps them. */
-body[data-shell="overlay"] #rn-lead:not([hidden]),
-body[data-shell="overlay"] #rn-choices:not([hidden]),
-body[data-shell="overlay"] #rn-callouts:not([hidden]) {
+body[data-shell="overlay"] #rn-lead:not([hidden]):not(.ovx-hidden),
+body[data-shell="overlay"] #rn-choices:not([hidden]):not(.ovx-hidden),
+body[data-shell="overlay"] #rn-callouts:not([hidden]):not(.ovx-hidden) {
   display: flex !important;
 }
 /* Lead pill direction accent (good/bad left border) survives the Hextech frame. */

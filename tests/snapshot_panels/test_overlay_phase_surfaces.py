@@ -247,6 +247,59 @@ def test_phase_gate_layers_under_the_operator_hidden_flag(mock_server, pw_browse
     assert not errors, f"JS errors [layering]: {errors[:3]}"
 
 
+def test_the_hidden_gate_beats_every_widget_display_rule(mock_server, pw_browser):
+    """The .ovx-hidden gate has to win over each widget's own display rule, with
+    the mount populated. `#rn-lead / #rn-choices / #rn-callouts:not([hidden])`
+    carries display:flex !important at id specificity, so until its selector
+    excluded .ovx-hidden those three kept painting through the phase gate, through
+    the game-family gate AND through the operator's own per-widget hide. Every
+    other test here saw them `hidden` by the data gate and could not tell. Found by
+    the hint audit: a populated w-choices painted on the TFT field."""
+    ctx, page, errors = _open_phase(pw_browser, mock_server, _STATE["lobby"])
+    try:
+        painted = page.evaluate(
+            """async () => {
+                const L = await import('/js/lib/overlay_layout.js');
+                const out = {};
+                for (const w of L._internals._registry()) {
+                    const el = document.querySelector(w.sel);
+                    if (!el) continue;
+                    el.hidden = false;
+                    const d = getComputedStyle(el).display;
+                    if (d !== 'none') out[w.id] = d;
+                }
+                return out;
+            }"""
+        )
+        assert painted == {}, f"painting through the lobby gate: {painted}"
+        # And the operator's hide, in-game, populated: the pre-existing half.
+        result = page.evaluate(
+            """async (st) => {
+                const L = await import('/js/lib/overlay_layout.js');
+                const T = await import('/js/lib/overlay_tft.js');
+                T.renderTftOverlay(st);
+                const out = {};
+                for (const id of ['w-lead', 'w-choices', 'w-callouts']) {
+                    const w = L._internals._registry().find((x) => x.id === id);
+                    const el = document.querySelector(w.sel);
+                    el.hidden = false;
+                    const shown = getComputedStyle(el).display;
+                    L._internals._setHidden(w, true);
+                    out[id] = [shown, getComputedStyle(el).display];
+                }
+                return out;
+            }""",
+            _STATE["in-game"],
+        )
+        for wid, (shown, hidden) in result.items():
+            assert shown == "flex", f"{wid} must paint in-game when populated: {shown}"
+            assert hidden == "none", f"{wid} ignores the operator's hide: {hidden}"
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [hidden gate]: {errors[:3]}"
+
+
 def test_tft_loading_then_in_game_gates_the_tft_set(mock_server, pw_browser):
     """TFT has nothing on :2999: GameStart is loading (launcher only, the League
     set is off by game family), InProgress is in-game, and the TFT set paints."""
