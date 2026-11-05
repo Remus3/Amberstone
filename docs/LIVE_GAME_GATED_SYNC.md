@@ -2664,6 +2664,62 @@ of these clears every GATE 2 row plus this section. Make it ranked q420 so it al
 - **G4-18** Jhin AS-lock full lethality eyeball (`c904ddae`) - the Boots of Swiftness half was
   live-confirmed; the lethality core eyeball remains.
 - **G4-19** Overlay `liveclient_cache` self-heal live re-verify (`03868b03`).
+  **READY (lane 9, s144 cycle 63, RM-1509, PREP only, no game up: RC :8888 refused, re-probed
+  2026-11-05 about 00:50-00:53 -06:00; NOT ticked).** Source facts (pinned in
+  `tests/test_gated_g419_cache_freeze.py`): `/api/state.liveclient` IS
+  `liveclient_summary()` (`dashboard/_state_builder.py` `"liveclient": lc`), which returns `{}`
+  when `snap.data is None or snap.age_s > 5` (`dashboard/_liveclient.py`); `Snapshot.age_s` is
+  measured from the RELAY's `ts` (`core/liveclient_cache.py` `observation_age(self.ts, ...)`), not
+  from the cache's last fetch. **Three traps the probe closes (two found by the c63 verifiers):**
+  (1) an empty `liveclient` has FOUR causes: a frozen cache (THIS row); a stale relay (the separate
+  "5s TTL vs 8-11s capture" bug at the head of this doc); `liveclient_summary()` raising, which its
+  outer `except` turns into `{}` with nothing logged (end of `liveclient_summary`); and RC's own
+  relay fetch failing (401, 2 s timeout, parse, error body: `_fetch_once` publishes `data=None`).
+  The probe reads the relay itself, which excludes the stale relay only; the other three stay
+  listed in the verdict (`causes_not_excluded`), so it says FREEZE_CANDIDATE, never "frozen". In TFT
+  an empty summary is replaced by the `tft_standalone` fill-in (`dashboard/_state_builder.py`,
+  `mode_key == "tft"`), which would mask a freeze; the probe counts that source as empty.
+  (2) **The commit's own "live-verified: after an RC restart /api/state.liveclient repopulated (29
+  keys)" is a SUBSTITUTION:** a supervisor restart is a new process with fresh module state
+  (`_task` None), so it never runs `_task_alive()` / `_on_task_done`; the fix path runs only when
+  the poll task ends INSIDE a live process. (3) a dev-runtime module reload
+  (`ops/rc_dev_runtime.py` `_reload_modules`) also resets `_task` and logs a start with no line of
+  its own, so `respawns` voids its read when a result file under `ops/runtime/control/results`
+  names `core.liveclient_cache` since the process start (today that module is NOT on the
+  dev runtime's safe-reload list, so such a request is refused, and the refusal file still voids
+  the read: the guard can only over-void); it counts only the async-task start line (the thread
+  fallback is not the fix path).
+  PROBE (read-only, any time during the game): `python tools/gated_g419_cache_freeze.py sample
+  --samples 60 --interval 2 [--json]` (GETs :8889 `/latest-liveclient` with the token and :8888
+  `/api/state`; per sample: relay age, `liveclient` key count, gameMode, gameTime; prints no id).
+  Classes: OK (relay age <= 5 s, `liveclient` non-empty), EMPTY_WHILE_FRESH (relay age <= 2.5 s,
+  `liveclient` `{}`), RELAY_STALE (relay age > 5 s: not this row), AMBIGUOUS (2.5-5 s or untimed),
+  NO_GAME / RELAY_DOWN / DASH_DOWN. Then `python tools/gated_g419_cache_freeze.py respawns`
+  (reads the main checkout's `ops/runtime/health.json` `started_at`, that day's log and the
+  dev-runtime result files; an async `liveclient_cache started` line more than 90 s after the
+  process start, with no module reload since, is an in-process respawn; pass `--log` for a game
+  after midnight). Idle smoke this cycle: `sample` = NO_EVIDENCE (RELAY_DOWN x2, RC down);
+  `respawns` (final version) = 1 boot start, 0 respawns, 0 module reloads, exit 4.
+  PREDICATE (stated before any game): **FAIL CANDIDATE** = `sample` verdict FREEZE_CANDIDATE (3+
+  consecutive EMPTY_WHILE_FRESH spanning >= 10 s; since `03868b03` the next `get()`, about 2/s from
+  `/api/state`, respawns a dead task, so a healed freeze lasts about a second, and 10 s outlasts a
+  few 2 s fetch timeouts) in a real game. It NEVER re-opens `03868b03` by itself: the main session
+  triages the three causes (logs/ `rc.liveclient_cache` warnings in the window; whether a fresh
+  process clears it, which a freeze or a transient fetch failure would and a summary exception on
+  that frame shape would not) and files what it finds.
+  **PASS needs all three:** (a) `sample` HEALTHY (>= 10 OK, no candidate streak) over a window that
+  covers the moment after any mid-game RC restart (the restart is the main session's or the
+  operator's act, never a lane's); (b) `respawns` exit 0 (`self_heal_exercised: true`) in that same
+  process, or the row records "self-heal NOT EXERCISED this game" and stays open, because HEALTHY
+  alone proves only that nothing froze; (c) the operator's eyeball that the in-game overlay left the
+  dashboard (the RENDER half: the Electron overlay is agent-blind, and `health.overlay_visible` is
+  known to read FALSE while visible, bug 7 at the head of this doc).
+  EVIDENCE CONTRACT: the `sample` JSON verdict + counts + first/last gameTime + gameMode, the
+  `respawns` JSON, the local time of any restart, and the operator's one-line overlay statement.
+  SUBSTITUTION CHECK: does the evidence show the cache recovered from a task that ended INSIDE a
+  live process and the overlay then RENDERED, or only that a fresh process polled? A fresh boot,
+  a unit test (`tests/test_liveclient_cache_task_respawn.py`) or a HEALTHY window with no respawn
+  line answers the compute half only.
 
 ### `[BATCH CV/OBS]` - needs rendered in-game pixels
 
