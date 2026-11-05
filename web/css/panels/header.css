@@ -381,7 +381,22 @@ footer .prefs-chip:hover { color: var(--text); }
    * adjacent pair is exactly `gap` apart. Don't add margins on items
    * or dividers; they'll compound and break uniformity. */
   display: flex; flex-direction: column; gap: 6px;
+  /* RM-1435: a fixed box does not scroll with the page, so the 616 px
+   * menu lost its lower rows under any window shorter than 686 px (1024x600,
+   * and the 1920x920 baseline at 200% zoom and up). It is capped at the
+   * window less its 70 px top and an 8 px bottom margin and scrolls its own
+   * rows; where it fits it keeps its authored height and never scrolls.
+   * Guard: tests/snapshot_panels/test_view_menu_fits_window.py. */
+  max-height: calc(100vh - 78px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* A row focused below the fold scrolls in a padding's depth clear of the
+   * clip edge, so its 2px --focus-ring is not cut off on that side. */
+  scroll-padding-block: 8px;
 }
+/* A capped menu scrolls instead of squashing its rows, or a 1 px divider
+ * (no content, so no min-content floor) down to nothing. */
+.view-menu > * { flex: none; }
 .view-menu.hidden { display: none; }
 .view-menu-item {
   /* Pill-row aesthetic - rounded rectangles inside the menu container,
