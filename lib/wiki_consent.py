@@ -21,8 +21,9 @@ fetcher ``tools/upstream_drift_check.py`` ``_http_get`` (Data Dragon, Meraki,
 CommunityDragon) opens through ``open_consented`` too (RM-1440), and so does
 the live duo-synergy fetch ``core/synergy_external_source.py``
 ``_http_get_json``, the live rank-tier aggregate fetch
-``core/rank_tier_source.py`` ``_http_get_json`` and the TFT icon cache
-``tft/assets/icon_cache.py`` ``_http_get`` (RM-1441).
+``core/rank_tier_source.py`` ``_http_get_json``, the TFT icon cache
+``tft/assets/icon_cache.py`` ``_http_get`` and the augment prior and
+metadata fetch ``core/augment_external_source.py`` ``_http_get`` (RM-1441).
 
 A request is allowed only when a CONSENT RECORD exists: the tracked JSON file
 ``ops/wiki_fetch_consent.json`` (absent today), holding an object with

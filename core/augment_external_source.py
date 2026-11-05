@@ -46,6 +46,7 @@ from typing import Optional
 
 from core.failed_load_gate import FailedLoadGate
 from core.polled_json import atomic_write_json, read_json_dict
+from lib.wiki_consent import WikiFetchRefused, open_consented
 
 _log = logging.getLogger("rc.augment_external_source")
 
@@ -219,14 +220,19 @@ def _cache_path(mode: str, patch: str) -> Path:
 def _http_get(url: str, timeout_s: float):
     """One-shot HTTPS GET -> parsed JSON (dict or list). Encapsulated so
     tests can monkey-patch this rather than urllib internals (riot_api
-    pattern). Raises AugmentSourceError on any failure."""
+    pattern). Raises AugmentSourceError on any failure.
+
+    Opens through ``lib.wiki_consent.open_consented`` (RM-1441): a url
+    naming the League wiki host, or an endpoint answering with a redirect
+    into it, is refused before any wiki socket opens unless a consent record
+    exists. The bare urllib opener this replaced followed that 3xx."""
     req = urllib.request.Request(
         url,
         headers={"Accept": "application/json", "User-Agent": _USER_AGENT},
         method="GET",
     )
     try:
-        with urllib.request.urlopen(req, timeout=timeout_s) as r:
+        with open_consented(req, timeout=timeout_s) as r:
             if r.status != 200:
                 raise AugmentSourceError(f"{url} -> HTTP {r.status}")
             # LANE 8 CYCLE 33: bounded. This is a third-party host RC does
@@ -241,6 +247,10 @@ def _http_get(url: str, timeout_s: float):
                 )
     except AugmentSourceError:
         raise
+    except WikiFetchRefused as exc:
+        # A RuntimeError, so without this it escaped get_priors' and
+        # get_augment_meta's never-raises boundary (AugmentSourceError only).
+        raise AugmentSourceError(f"{url} refused: {exc}") from exc
     except (urllib.error.URLError, OSError, TimeoutError) as exc:
         raise AugmentSourceError(f"{url} fetch failed: {exc}") from exc
     try:

@@ -45,7 +45,14 @@ _PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
 from core import augment_external_source as X
-from tests._module_view import bind_urlopen
+
+
+def _bind_opener(mp, fake) -> None:
+    """X's OWN opener name only (``open_consented`` since RM-1441, the
+    module's bare urllib opener before): no other module, and no foreign
+    thread outside X, can reach the stub."""
+    assert callable(getattr(X, "open_consented", None)), "X has no open_consented"
+    mp.setattr(X, "open_consented", fake)
 
 
 def _payload(stats: dict) -> dict:
@@ -170,8 +177,9 @@ class ResponseSizeCapTest(unittest.TestCase):
         gets a benign non-recording response, so `seen` holds this test's read
         alone and the exact-list assertion - which is what catches an
         unbounded-read mutant - stays sound. RM-801: the stub is now bound to
-        X's own `urllib` only (tests/_module_view.py), so no foreign thread
-        reaches it at all; the URL filter stays as defence in depth."""
+        X's own opener name only (`open_consented` since RM-1441), so no
+        foreign thread reaches it at all; the URL filter stays as defence in
+        depth."""
         seen = []
         test_url = "https://example.invalid/x"
 
@@ -209,9 +217,9 @@ class ResponseSizeCapTest(unittest.TestCase):
             url = getattr(req, "full_url", req)
             return _Resp() if url == test_url else _Benign()
 
-        # X's own urllib only (tests/_module_view.py, RM-801).
+        # X's own opener name only (RM-801, RM-1441).
         with pytest.MonkeyPatch.context() as mp:
-            bind_urlopen(mp, X, _urlopen)
+            _bind_opener(mp, _urlopen)
             with self.assertRaises(X.AugmentSourceError) as ctx:
                 X._http_get(test_url, 1.0)
         self.assertIn("too large", str(ctx.exception).lower())
@@ -264,7 +272,7 @@ class NonFiniteTest(unittest.TestCase):
                 return False
 
         with pytest.MonkeyPatch.context() as mp:
-            bind_urlopen(mp, X, lambda *a, **k: _Resp())
+            _bind_opener(mp, lambda *a, **k: _Resp())
             with self.assertRaises(X.AugmentSourceError):
                 X._http_get("https://example.invalid/x", 1.0)
 
@@ -283,7 +291,7 @@ class NonFiniteTest(unittest.TestCase):
                 return False
 
         with pytest.MonkeyPatch.context() as mp:
-            bind_urlopen(mp, X, lambda *a, **k: _Resp())
+            _bind_opener(mp, lambda *a, **k: _Resp())
             self.assertEqual(
                 X._http_get("https://example.invalid/x", 1.0),
                 {"data": [], "meta": {"count": 0}})
