@@ -267,8 +267,7 @@ def _apply_overrides(
             if not isinstance(value, (int, float)):
                 continue
             numeric = float(value)
-            if numeric < 0.0:
-                numeric = 0.0
+            numeric = max(numeric, 0.0)
             fields[axis] = numeric
         if fields:
             result[role] = dataclasses.replace(base, **fields)

@@ -591,8 +591,7 @@ def level_benchmark(minutes: float, mode: str = "SR") -> float:
     share of games in each mode that run past their own crossing."""
     base, rate = level_curve(mode)
     m = float(minutes)
-    if m < 0.0:
-        m = 0.0
+    m = max(m, 0.0)
     bench = base + (rate * m)
     return min(MAX_CHAMPION_LEVEL, bench)
 
@@ -614,8 +613,7 @@ def minutes_for_level(level: float, mode: str = "SR") -> float:
     if rate <= 0:
         return 0.0
     lvl = float(level)
-    if lvl > MAX_CHAMPION_LEVEL:
-        lvl = MAX_CHAMPION_LEVEL
+    lvl = min(lvl, MAX_CHAMPION_LEVEL)
     m = (lvl - base) / rate
     return max(0.0, m)
 
@@ -643,8 +641,7 @@ def expected_gold_earned(minutes: float, mode: str = "SR") -> float:
     """Cumulative gross gold earned by ``minutes`` at the benchmark income rate.
     Negative minutes clamp to 0.0."""
     m = float(minutes)
-    if m < 0.0:
-        m = 0.0
+    m = max(m, 0.0)
     return gold_income_per_min(mode) * m
 
 

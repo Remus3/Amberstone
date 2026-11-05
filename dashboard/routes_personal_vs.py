@@ -259,10 +259,8 @@ def _serve_personal_vs(h) -> None:
             days = int(raw_days)
         except ValueError:
             days = 30
-        if days < 0:
-            days = 0
-        if days > 3650:
-            days = 3650
+        days = max(days, 0)
+        days = min(days, 3650)
 
         queue_ids = _parse_queue_filter((qs.get("queue") or [""])[0])
 

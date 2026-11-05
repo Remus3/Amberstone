@@ -528,8 +528,7 @@ def loop(interval: float, monitor_index: int | None,
         # being served from the server's cache.
         if consecutive_fail == 6:
             log.critical("vision stream down for 6 consecutive uploads - Legion unreachable?")
-        if consecutive_fail > 8:
-            consecutive_fail = 8  # cap exponent so backoff stays at 30s ceiling
+        consecutive_fail = min(consecutive_fail, 8)  # cap exponent so backoff stays at 30s ceiling
         sleep_for = interval if consecutive_fail < 3 else min(30.0, interval * (2 ** (consecutive_fail - 2)))
         elapsed = time.time() - t0
         time.sleep(max(0.0, sleep_for - elapsed))

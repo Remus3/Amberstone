@@ -324,8 +324,7 @@ class Coach(BaseCoach):
                 continue
             ids = _ds_res.resolve_many(items, mode=resolver_mode)
             hp = _ds_res.total_bonus_hp(ids)
-            if hp > best:
-                best = hp
+            best = max(best, hp)
         return min(1500.0, best) if best > 0 else 0.0
 
     # -- Coach -----------------------------------------------------------------

@@ -191,8 +191,7 @@ def hex64(h, hash_size=_HASH_SIZE):
         hs = _HASH_SIZE
     nbits = hs * hs
     width = nbits // 4
-    if width < 1:
-        width = 1
+    width = max(width, 1)
     try:
         return format(int(h) & ((1 << nbits) - 1), "0" + str(width) + "x")
     except Exception:  # noqa: BLE001 - fail-soft contract
@@ -299,8 +298,7 @@ def nearest(query_hash, icons, top_k=5):
             k = int(top_k)
         except Exception:  # noqa: BLE001 - fail-soft contract
             k = 5
-        if k < 0:
-            k = 0
+        k = max(k, 0)
         results = []
         for stem, stored in table.items():
             dist = hamming(q, stored)

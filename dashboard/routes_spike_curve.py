@@ -384,8 +384,7 @@ def _peak_minute(curve: list[dict]) -> int:
     max_p = 0.0
     for entry in curve:
         v = float(entry.get("power", 0.0))
-        if v > max_p:
-            max_p = v
+        max_p = max(max_p, v)
     if max_p <= 0.0:
         return 0
     threshold = max_p * _PEAK_THRESHOLD

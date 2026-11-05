@@ -770,8 +770,7 @@ def _compose_cleanse_advisory(enemy_cids: tuple[int, ...],
             # durations may be list-of-floats (per-rank); take the max.
             try:
                 m = max(float(d) for d in durations if d is not None)
-                if m > max_cc:
-                    max_cc = m
+                max_cc = max(max_cc, m)
             # ValueError: empty after the None filter, or float("x").
             # TypeError: durations not iterable, or a non-coercible element.
             except (TypeError, ValueError, AttributeError):
@@ -783,8 +782,7 @@ def _compose_cleanse_advisory(enemy_cids: tuple[int, ...],
                 durs = getattr(entry, "durations_s", ()) or ()
                 d = max((float(x) for x in durs if x is not None),
                         default=0.0)
-                if d > max_cc:
-                    max_cc = d
+                max_cc = max(max_cc, d)
             # AttributeError: a ``durations_s`` property that itself raises.
             # TypeError / ValueError: non-iterable or non-coercible values.
             except (TypeError, ValueError, AttributeError):

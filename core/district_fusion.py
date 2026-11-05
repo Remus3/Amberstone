@@ -352,8 +352,7 @@ def fuse_districts(districts, lc_events, mode, game_time_s):
             if out is None:
                 return  # district not in this mode's vector: skip quietly
             if team in _TEAMS and alive[team] > 0:
-                if out["fused_present"][team] < 1:
-                    out["fused_present"][team] = 1
+                out["fused_present"][team] = max(out["fused_present"][team], 1)
             if note not in out["fusion_notes"]:
                 out["fusion_notes"].append(note)
 

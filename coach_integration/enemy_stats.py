@@ -262,10 +262,8 @@ def compute_enemy_stats(
         avg_level = _estimate_level_from_game_time(game_seconds)
 
     # Clamp to valid champion-level range.
-    if avg_level < 1.0:
-        avg_level = 1.0
-    if avg_level > 18.0:
-        avg_level = 18.0
+    avg_level = max(avg_level, 1.0)
+    avg_level = min(avg_level, 18.0)
 
     armor   = armor_base + armor_per_lv * avg_level
     mr      = mr_base + mr_per_lv * avg_level
@@ -278,21 +276,16 @@ def compute_enemy_stats(
     max_hp *= hp_scale
 
     # Apply caps.
-    if armor > _ARMOR_CAP:
-        armor = _ARMOR_CAP
-    if mr > _MR_CAP:
-        mr = _MR_CAP
-    if max_hp > _MAX_HP_CAP:
-        max_hp = _MAX_HP_CAP
+    armor = min(armor, _ARMOR_CAP)
+    mr = min(mr, _MR_CAP)
+    max_hp = min(max_hp, _MAX_HP_CAP)
 
     if bonus_hp_override is not None and bonus_hp_override > 0:
         bonus_hp = float(bonus_hp_override)
     else:
         bonus_hp = max_hp - _CHAMP_BASE_HP_AVG
-    if bonus_hp < _BONUS_HP_FLOOR:
-        bonus_hp = _BONUS_HP_FLOOR
-    if bonus_hp > _BONUS_HP_CAP:
-        bonus_hp = _BONUS_HP_CAP
+    bonus_hp = max(bonus_hp, _BONUS_HP_FLOOR)
+    bonus_hp = min(bonus_hp, _BONUS_HP_CAP)
 
     # Enemy damage-type split from the comp (the EHP-side signal). DDragon
     # info.attack/info.magic leans via core.aram_comp_verdict.compute_factors;

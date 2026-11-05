@@ -556,8 +556,7 @@ class DeathRecapTap:
                     continue
                 if is_self_death(e, data):
                     new.append(e)
-            if max_id > self._hw:
-                self._hw = max_id
+            self._hw = max(self._hw, max_id)
         for e in new:
             try:
                 self._dispatch(e, data)

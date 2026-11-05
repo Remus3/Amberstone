@@ -156,8 +156,7 @@ def _as_int(value: Any) -> int:
 def _fmt_clock(ms: Any) -> str:
     """Format a timestamp_ms as M:SS. Fail-soft to 0:00."""
     seconds = _as_int(ms) // 1000
-    if seconds < 0:
-        seconds = 0
+    seconds = max(seconds, 0)
     return f"{seconds // 60}:{seconds % 60:02d}"
 
 

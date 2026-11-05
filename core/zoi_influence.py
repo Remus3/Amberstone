@@ -127,11 +127,9 @@ def _clip_line_to_box(px, py, dx, dy):
             continue
         t = qi / pi
         if pi < 0.0:
-            if t > t_min:
-                t_min = t
+            t_min = max(t_min, t)
         else:
-            if t < t_max:
-                t_max = t
+            t_max = min(t_max, t)
     if t_min > t_max:
         return None
     x1 = _clamp(px + t_min * dx, 0.0, 1.0)
@@ -243,8 +241,7 @@ def _valid_dot(d):
     if x is None or y is None or px is None or conf is None:
         return None
     W = px * conf
-    if W < 0.0:
-        W = 0.0
+    W = max(W, 0.0)
     return {
         "team": team,
         "x_frac": _clamp(x, 0.0, 1.0),

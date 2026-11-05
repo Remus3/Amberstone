@@ -255,8 +255,7 @@ def _axis_maxima() -> dict[str, float]:
         for slug in _all_slugs():
             heads = _headlines(_compute_results(slug, "SR"))
             for key in maxima:
-                if heads[key] > maxima[key]:
-                    maxima[key] = heads[key]
+                maxima[key] = max(maxima[key], heads[key])
         _AXIS_MAX = maxima
         return maxima
 

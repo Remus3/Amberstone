@@ -593,8 +593,7 @@ class Coach(BaseCoach):
                     continue
                 ids = _ds_res.resolve_many(items, mode="arena")
                 hp = _ds_res.total_bonus_hp(ids)
-                if hp > best:
-                    best = hp
+                best = max(best, hp)
             if best > 0:
                 return min(1500.0, best)
 
