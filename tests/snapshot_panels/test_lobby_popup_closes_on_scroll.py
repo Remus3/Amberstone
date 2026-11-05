@@ -170,19 +170,25 @@ def test_no_scroll_no_close_at_the_baseline(mock_server, pw_browser):
 
 def test_mode_menu_stays_open_while_revealed_and_closes_when_scrolled_away(
         mock_server, pw_browser):
-    """At 1280x720 the mode menu opens with its bottom cut off by the view.
-    Scrolling down reveals it: it stays open. Scrolling back up hides what it
-    showed: it closes, and focus (on the trigger) is left where it is."""
+    """At 1280x720 the mode menu's bottom would sit past the view, so the
+    open scrolls it whole into view (RM-1429; before that it opened cut
+    off). Scrolling further down keeps it whole: it stays open. Scrolling
+    back to the top hides what it showed: it closes, and focus (on the
+    trigger) is left where it is."""
     ctx, page, errors, posts = _open_lobby(pw_browser, mock_server, (1280, 720))
     try:
         page.click("#lv-mode-trigger")
         st = page.evaluate(_STATE)
         assert st["mode"] and st["modeExpanded"] == "true", st
         assert st["focus"] == "lv-mode-trigger", st
-        _wheel(page, 120, "() => document.getElementById('view-lobby').scrollTop > 0")
+        opened_at = st["scroll"]
+        assert 0 < opened_at < st["maxScroll"], (
+            f"anchor: the open's own scroll (RM-1429) moved: {st}")
+        _wheel(page, 120, "() => document.getElementById('view-lobby').scrollTop"
+                          f" > {opened_at}")
         st = page.evaluate(_STATE)
-        assert st["scroll"] > 0, st
-        assert st["mode"], f"a scroll that revealed the menu closed it: {st}"
+        assert st["scroll"] > opened_at, st
+        assert st["mode"], f"a scroll that kept the menu whole closed it: {st}"
         _wheel(page, -600, "() => document.getElementById('view-lobby').scrollTop === 0")
         st = page.evaluate(_STATE)
         assert not st["mode"], f"the mode menu stayed open scrolled away: {st}"
@@ -204,8 +210,9 @@ def test_mode_menu_with_focus_inside_hands_it_back_in_place(mock_server, pw_brow
         assert page.evaluate(_STATE)["mode"]
         _wheel(page, 600, "() => document.getElementById('view-lobby').scrollTop > 0")
         st = page.evaluate(_STATE)
-        # Scrolling down 200 px moves the whole menu up inside the view, so
-        # it shows more, not less: it stays open, focus still inside it.
+        # Scrolling to the view's end moves the menu up inside the view, so
+        # it shows no less (the open already scrolled it whole, RM-1429):
+        # it stays open, focus still inside it.
         assert st["mode"] and st["focus"] != "lv-mode-trigger", st
         _wheel(page, -600,
                "() => document.getElementById('view-lobby').scrollTop === 0")

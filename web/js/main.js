@@ -5749,6 +5749,12 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
           modeMenu.classList.remove("hidden");
           modeMenu.setAttribute("aria-hidden", "false");
           modeTrigger.setAttribute("aria-expanded", "true");
+          // RM-1429: the menu hangs under its trigger, which at 1280x720
+          // sits low enough that the menu's bottom 28 px (Ranked Flex among
+          // them) opened past the view's bottom edge. Nearest scrolls only
+          // as far as the menu needs, and runs before the RM-1422 arm so
+          // the open's own scroll is part of the open.
+          modeMenu.scrollIntoView({ block: "nearest", inline: "nearest" });
           armScrollAway("lobby-mode-menu");
         }
       });
