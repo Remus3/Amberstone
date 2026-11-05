@@ -47,8 +47,16 @@
   letter-spacing: 1px;
 }
 .ops-cap { color: var(--text-faint); margin: 12px 0 0; font-size: var(--fs-xs, 16px); }
+/* RM-1554: every --bad TEXT on this page (this card, the inert seam row,
+ * the NO cell, the red drift pill and the ingest fail word + basis) was
+ * var(--bad) measured 3.01 to 4.48:1 on its own fill in all six themes
+ * (the --bad-soft tints composited over --surface, and the fail word on
+ * --surface in arcane / moonlit), under AA 4.5:1 for 16px text. It takes
+ * the RM-1550 History lift: --bad mixed 30 percent toward --text in
+ * oklab, the same red, lighter. Borders and tints stay --bad / --bad-soft.
+ * Guard: tests/snapshot_panels/test_ops_page_state_text_contrast.py. */
 .ops-fail {
-  color: var(--bad);
+  color: color-mix(in oklab, var(--bad) 70%, var(--text));
   background: var(--bad-soft);
   border: 1px solid var(--bad);
   border-radius: 8px;
@@ -76,9 +84,9 @@ table.seams th.gate,
 table.seams td.gate { text-align: center; width: 160px; font-weight: 600; }
 table.seams td.seam { font-family: Consolas, "Cascadia Mono", monospace; color: var(--text); }
 table.seams tr.inert { background: var(--bad-soft); }
-table.seams tr.inert td.seam { color: var(--bad); }
+table.seams tr.inert td.seam { color: color-mix(in oklab, var(--bad) 70%, var(--text)); }
 .g-yes { color: var(--good); }
-.g-no  { color: var(--bad); }
+.g-no  { color: color-mix(in oklab, var(--bad) 70%, var(--text)); }
 .g-na  { color: var(--text-faint); }
 
 /* --- 4. Drift strip ---------------------------------------------------- */
@@ -95,10 +103,16 @@ table.seams tr.inert td.seam { color: var(--bad); }
   background: var(--good-soft);
   color: var(--good);
 }
-.strip .pill .k { font-size: var(--fs-xs, 16px); letter-spacing: .5px; opacity: .85; }
+/* RM-1554: the label no longer sets opacity .85 - on the red pill that
+ * blend left it 4.33:1 in arcane even after the --bad lift above. The
+ * label / value order is carried by weight (400 vs 600), not by fading. */
+.strip .pill .k { font-size: var(--fs-xs, 16px); letter-spacing: .5px; }
 .strip .pill .v { font-size: var(--fs-xs, 16px); font-weight: 600; font-variant-numeric: tabular-nums; }
 .strip .pill.amber   { border-color: var(--warn); background: var(--warn-soft); color: var(--warn); }
-.strip .pill.red     { border-color: var(--bad);  background: var(--bad-soft);  color: var(--bad); }
+.strip .pill.red     {
+  border-color: var(--bad); background: var(--bad-soft);
+  color: color-mix(in oklab, var(--bad) 70%, var(--text));
+}
 .strip .pill.unknown { border-color: var(--border); background: var(--surface-2); color: var(--text-dim); }
 
 /* --- 5. Gated queue ---------------------------------------------------- */
@@ -167,6 +181,6 @@ table.seams tr.inert td.seam { color: var(--bad); }
 }
 .ing-s.s-ok      { color: var(--good); }
 .ing-s.s-amber   { color: var(--warn); }
-.ing-s.s-red     { color: var(--bad); }
+.ing-s.s-red     { color: color-mix(in oklab, var(--bad) 70%, var(--text)); }
 .ing-s.s-unknown { color: var(--text-dim); }
-.ing-basis.ing-fail { color: var(--bad); }
+.ing-basis.ing-fail { color: color-mix(in oklab, var(--bad) 70%, var(--text)); }

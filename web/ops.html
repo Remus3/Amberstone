@@ -13,12 +13,40 @@
   existing web/ static handler, so it needs no new route.
 
   Reached at https://127.0.0.1:8888/ops.html
+
+  RM-1554: the page follows the dashboard theme. The pre-paint script
+  below is the index.html FOUC guard, copied (it must run before any module
+  loads, so it cannot import web/js/lib/theme.js; the whitelist, default
+  and storage key are pinned against theme.js by
+  tests/snapshot_panels/test_ops_page_state_text_contrast.py). And
+  panels/base.css is linked: the default "hextech" palette (--canvas,
+  --surface, --text, --bad, ...) lives at its :root, so without it every
+  token on this page was undefined - black text on a white page with no
+  state colour at all whenever the palette was hextech or a theme block left
+  a token to it. The inline body rule then undoes base.css's dashboard-shell
+  body (a fixed-height, overflow-hidden flex column) so this page scrolls.
 -->
+<script>
+  (function () {
+    var T = ["hextech","terminal","ember","bloodmoon","moonlit","arcane"];
+    var m = String(location.search || "").match(/[?&]theme=([A-Za-z]+)/);
+    var t = (m && T.indexOf(m[1]) >= 0) ? m[1] : null;
+    if (!t) { try { var s = localStorage.getItem("rc-theme"); if (T.indexOf(s) >= 0) t = s; } catch (e) {} }
+    if (!t) t = "arcane";
+    if (t !== "hextech") document.documentElement.setAttribute("data-theme", t);
+  })();
+</script>
 <link rel="stylesheet" href="/css/tokens.css">
+<link rel="stylesheet" href="/css/panels/base.css">
 <link rel="stylesheet" href="/css/themes.css">
 <link rel="stylesheet" href="/css/panels/ops_panels.css">
 <style>
   body {
+    display: block;
+    height: auto;
+    overflow: auto;
+    user-select: text;
+    letter-spacing: normal;
     margin: 0;
     padding: 28px;
     background: var(--canvas);

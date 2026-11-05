@@ -77,7 +77,7 @@ ea7fba8356634592871a528a572a3e9cfa5197cc874c9d661bbd79f074174379  web/css/panels
 
 bcf7b317c9749a7165c169993839f36b60dd2dac05b87d598fb2323c4218add4  web/css/panels/op_score.css
 
-e877e0599288812c82c7dcabd4d10ad4c8003d73a7b379608d79de2b3af5eeeb  web/css/panels/ops_panels.css
+d76c3062504d3d09a25a845373a5cf86b102e4bbf85d9405719a171706008271  web/css/panels/ops_panels.css
 
 1dc825fad45fe50dd585cc22dc2f54423cde79790f29230ed759e9c8cc367fe2  web/css/panels/overlay_ds_controls.css
 
