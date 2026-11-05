@@ -10,9 +10,10 @@ import test from "node:test";
 import assert from "node:assert";
 
 import {
-  compareStacking, dismissStrandedLayers, modalClosing, modalLayerRendered,
-  modalOpened, modalShowing, openEntries, pickTopmost, registerEscapeLayer,
-  stackingZ, strandedLayers, trapIndex,
+  armScrollAway, compareStacking, dismissStrandedLayers, modalClosing,
+  modalLayerRendered, modalOpened, modalShowing, openEntries, pickTopmost,
+  registerEscapeLayer, scrolledAway, stackingZ, strandedLayers, trapIndex,
+  visibleArea,
 } from "./escape_layers.js";
 
 // Nodes are tree positions; `follows(a, b)` = a comes after b.
@@ -323,4 +324,47 @@ test("modalOpened / modalClosing: no root or no document never throws", () => {
   assert.doesNotThrow(() => modalClosing(null, true));
   assert.doesNotThrow(() => modalOpened({ contains: () => false }, null));
   assert.doesNotThrow(() => modalClosing({ contains: () => false }, true));
+});
+
+// RM-1422: the scroll-away rule. The DOM half (the capture listener, the
+// clip rects, the Lobby openers) is pinned in headless Chromium by
+// tests/snapshot_panels/test_lobby_popup_closes_on_scroll.py.
+const box = (left, top, right, bottom) => ({ left, top, right, bottom });
+
+test("visibleArea: a rect inside every clip keeps its whole area", () => {
+  assert.strictEqual(visibleArea(box(10, 20, 110, 70), []), 5000);
+  assert.strictEqual(visibleArea(box(10, 20, 110, 70), [box(0, 0, 1280, 720)]), 5000);
+});
+
+test("visibleArea: every clip cuts, on both axes", () => {
+  // The measured 1280x720 case: popup -90..8 under a view whose top is 57.
+  const popup = box(480, -90, 800, 8);
+  assert.strictEqual(visibleArea(popup, [box(0, 0, 1280, 720)]), 320 * 8);
+  assert.strictEqual(visibleArea(popup, [box(0, 0, 1280, 720), box(18, 57, 1262, 676)]), 0);
+  assert.strictEqual(visibleArea(box(0, 0, 100, 100), [box(50, 0, 1000, 1000)]), 5000);
+});
+
+test("visibleArea: a rect wholly outside a clip shows nothing, never negative", () => {
+  assert.strictEqual(visibleArea(box(0, 800, 100, 900), [box(0, 0, 1280, 720)]), 0);
+  assert.strictEqual(visibleArea(box(2000, 0, 2100, 50), [box(0, 0, 1280, 720)]), 0);
+});
+
+test("scrolledAway: showing less than the most shown closes", () => {
+  assert.strictEqual(scrolledAway(31000, 0), true);
+  assert.strictEqual(scrolledAway(31000, 30000), true);
+});
+
+test("scrolledAway: showing as much or more stays open, with 1 px^2 of slack", () => {
+  assert.strictEqual(scrolledAway(31000, 31000), false);
+  assert.strictEqual(scrolledAway(31000, 40000), false);
+  assert.strictEqual(scrolledAway(31000, 30999.5), false);
+});
+
+test("scrolledAway: nothing measured yet never closes", () => {
+  assert.strictEqual(scrolledAway(undefined, 0), false);
+  assert.strictEqual(scrolledAway(null, 0), false);
+});
+
+test("armScrollAway: no document or an unknown layer never throws", () => {
+  assert.doesNotThrow(() => armScrollAway("no-such-layer"));
 });

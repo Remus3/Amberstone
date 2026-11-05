@@ -19,8 +19,8 @@ import { ITEMS, ITEM_COSTS, CHAMPS, SPELLS, DDRAGON_FALLBACK_VERSION, _itemResol
 import { idempotentRender, makeSig, makeStreamGate } from './lib/idempotent_render.js';
 import { applyTheme, resolveBootTheme } from './lib/theme.js';
 import {
-  dismissStrandedLayers, modalClosing, modalLayerRendered, modalOpened,
-  registerEscapeLayer,
+  armScrollAway, dismissStrandedLayers, modalClosing, modalLayerRendered,
+  modalOpened, registerEscapeLayer,
 } from './lib/escape_layers.js';
 import { isSpaceActivated, isTypingTarget } from './panels/review_player_model.js';
 
@@ -5418,11 +5418,16 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     // there without matching :focus-visible, so no ring is painted.
     const target = curCell || popup.querySelector(".lobby-lane-popup-cell");
     if (target) target.focus();
+    // RM-1422: measured after the focus above, so a focus that scrolled
+    // the cell into view is part of the open, not a scroll away from it.
+    armScrollAway("lobby-lane-popup");
   }
   // refocus (Escape, a lane pick): focus that was inside the popup goes back
   // to the slot's trigger, since hiding the popup would otherwise leave it on
   // a display:none cell or drop it to <body>. The outside-click and focusout
-  // closers pass no refocus, so they never pull focus back.
+  // closers pass no refocus, so they never pull focus back. "in-place" (a
+  // scroll carried the popup out of sight, RM-1422) hands focus back the
+  // same way without scrolling the trigger into view.
   function _closeLanePopup(refocus) {
     const popup = document.getElementById("lv-lane-popup");
     if (!popup) return;
@@ -5435,7 +5440,10 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       const t = _laneTrigger(s);
       if (t) t.setAttribute("aria-expanded", "false");
     });
-    if (refocus === true && hadFocus && opener && !opener.disabled) opener.focus();
+    if ((refocus === true || refocus === "in-place") && hadFocus && opener
+        && !opener.disabled) {
+      opener.focus(refocus === "in-place" ? { preventScroll: true } : undefined);
+    }
   }
   function _setLanePref(slot, pref) {
     // s162 v8: Primary and Secondary cannot share the same role. If
@@ -5667,6 +5675,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         isOpen: () => !popup.classList.contains("hidden"),
         close: () => _closeLanePopup(true),
         dismiss: () => _closeLanePopup(false),
+        scrollAway: () => _closeLanePopup("in-place"),
       });
       // RM-1320: keyboard focus leaving the popup (Tab past the last
       // cell, Shift+Tab off the first) closes it; moving between cells keeps
@@ -5688,13 +5697,16 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       // goes back to the trigger: hiding the menu would otherwise leave it
       // on a display:none item or drop it to <body>. The outside-click
       // closer passes no refocus, so it never steals focus from where the
-      // click put it.
+      // click put it. "in-place" (a scroll carried the menu out of sight,
+      // RM-1422) refocuses without scrolling the trigger into view.
       const closeModeMenu = (refocus) => {
         const hadFocus = modeMenu.contains(document.activeElement);
         modeMenu.classList.add("hidden");
         modeMenu.setAttribute("aria-hidden", "true");
         modeTrigger.setAttribute("aria-expanded", "false");
-        if (refocus && hadFocus) modeTrigger.focus();
+        if (refocus && hadFocus) {
+          modeTrigger.focus(refocus === "in-place" ? { preventScroll: true } : undefined);
+        }
       };
       // Escape closes the menu through the one dispatcher (escape_layers.js),
       // which consumes the press so zen survives it.
@@ -5704,6 +5716,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         isOpen: () => !modeMenu.classList.contains("hidden"),
         close: () => closeModeMenu(true),
         dismiss: () => closeModeMenu(false),
+        scrollAway: () => closeModeMenu("in-place"),
       });
       modeTrigger.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -5721,6 +5734,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
           modeMenu.classList.remove("hidden");
           modeMenu.setAttribute("aria-hidden", "false");
           modeTrigger.setAttribute("aria-expanded", "true");
+          armScrollAway("lobby-mode-menu");
         }
       });
       modeMenu.querySelectorAll(".lq-mode-item").forEach((item) => {

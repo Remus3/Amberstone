@@ -16,7 +16,8 @@
 // dismiss()?, modal? }. The optional dismiss() closes without moving focus; a
 // view change uses it (RM-1368, dismissStrandedLayers below). `modal: true`
 // marks a full-page scrim the page's shortcuts stand down behind (RM-1364,
-// modalLayerRendered below).
+// modalLayerRendered below). The optional scrollAway() closes a layer that a
+// scroll carried out of sight (RM-1422, armScrollAway below).
 // "Topmost" is paint order. Each open layer's element gets its stacking
 // path: every ancestor-or-self that creates a stacking context, outermost
 // first, with the z it paints at inside its parent context, then the
@@ -82,6 +83,7 @@ export function registerEscapeLayer(layer) {
     document.addEventListener("keydown", _onEscape, true);
     document.addEventListener("keydown", _onModalTab, true);
     document.addEventListener("beforetoggle", _onBeforeToggle, true);
+    document.addEventListener("scroll", _onScroll, { capture: true, passive: true });
   }
 }
 
@@ -333,6 +335,97 @@ export function modalClosing(root, refocus) {
     return;
   }
   if (inside && typeof ae.blur === "function") ae.blur();
+}
+
+// RM-1422: a layer scrolled out of sight closes. The Lobby lane popup and
+// mode menu are position:absolute inside #view-lobby, which scrolls
+// (overflow-y auto) whenever the view is shorter than its content: 200 px at
+// 1280x720, 30 px at 923x1280. A wheel scroll carried an open popup to y -90
+// to 8 (measured, 1280x720): still open, still rendered, so every letter
+// shortcut stayed dead (main.js _menuRendered) and focus sat on a cell nobody
+// could see, until an Escape or a click outside it.
+// A layer registered with `scrollAway()` takes part: one capture listener
+// sees every scroll, and when a scroll of an element (or the page) that holds
+// the layer leaves it showing less than the most it has shown since it was
+// opened, scrollAway() is called (a closer that keeps the page where the
+// scroll put it). A scroll that reveals more of it keeps it open, so a menu
+// that opened partly cut off can still be scrolled into view. The opener
+// calls armScrollAway(name) right after showing the layer, once focus has
+// moved (a focus that scrolls the layer into view is part of the open, not a
+// scroll away from it); a layer never armed is measured at its first scroll.
+// The clip rects are the viewport plus the padding box of every ancestor
+// whose overflow is not visible. That over-clips an absolute layer whose
+// containing block sits outside such an ancestor; no registered layer is in
+// that case. Guard: tests/snapshot_panels/test_lobby_popup_closes_on_scroll.py.
+const _shown = new WeakMap();
+
+// Pure: the area of `rect` left inside every rect in `clips` (0 when none).
+export function visibleArea(rect, clips) {
+  let l = rect.left, t = rect.top, r = rect.right, b = rect.bottom;
+  for (const c of clips) {
+    l = Math.max(l, c.left);
+    t = Math.max(t, c.top);
+    r = Math.min(r, c.right);
+    b = Math.min(b, c.bottom);
+  }
+  return Math.max(0, r - l) * Math.max(0, b - t);
+}
+
+// Pure: true when a layer that has shown `best` px^2 now shows less (1 px^2
+// of slack for sub-pixel layout). No `best` yet means nothing to compare.
+export function scrolledAway(best, now) {
+  return typeof best === "number" && now < best - 1;
+}
+
+function _clipRects(node) {
+  const de = document.documentElement;
+  const out = [{ left: 0, top: 0, right: de.clientWidth, bottom: de.clientHeight }];
+  for (let a = node.parentElement; a && a !== de && a !== document.body; a = a.parentElement) {
+    const cs = getComputedStyle(a);
+    if (cs.overflowX === "visible" && cs.overflowY === "visible") continue;
+    const r = a.getBoundingClientRect();
+    const left = r.left + a.clientLeft;
+    const top = r.top + a.clientTop;
+    out.push({ left, top, right: left + a.clientWidth, bottom: top + a.clientHeight });
+  }
+  return out;
+}
+
+function _shownArea(node) {
+  return visibleArea(node.getBoundingClientRect(), _clipRects(node));
+}
+
+export function armScrollAway(name) {
+  if (typeof document === "undefined") return;
+  const layer = _layers.find((l) => l && l.name === name);
+  if (!layer) return;
+  const node = layer.el();
+  if (node && _hasBox(node)) _shown.set(layer, _shownArea(node));
+  else _shown.delete(layer);
+}
+
+function _onScroll(e) {
+  const t = e.target;
+  const scroller = (t && t.nodeType === 1) ? t : document.documentElement;
+  for (const layer of _layers) {
+    if (!layer || typeof layer.scrollAway !== "function") continue;
+    let isOpen = false;
+    try { isOpen = !!layer.isOpen(); } catch (_) { isOpen = false; }
+    if (!isOpen) { _shown.delete(layer); continue; }
+    let now = 0;
+    try {
+      const node = layer.el();
+      if (!node || !_hasBox(node) || !scroller.contains(node)) continue;
+      now = _shownArea(node);
+    } catch (_) { continue; /* the next layer still runs */ }
+    const best = _shown.get(layer);
+    if (scrolledAway(best, now)) {
+      _shown.delete(layer);
+      try { layer.scrollAway(); } catch (_) { /* the next layer still runs */ }
+      continue;
+    }
+    _shown.set(layer, typeof best === "number" ? Math.max(best, now) : now);
+  }
 }
 
 // Pure: the index Tab (or Shift+Tab, `back`) moves to among `n` controls
