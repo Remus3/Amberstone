@@ -1181,6 +1181,49 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   flip/wedge clicks landing mid-game, D3 override survives a re-plan + Defer-Once re-entry + reset
   (plus the cross-tick LIVE-route Defer-Once per-match store gap - code work), settings-slider drag
   mid-game, B2/B3/C5 module captures. SOURCE: docs/OVERLAY_BUILD_MASTER_PLAN.md:806-816.
+  **AGE CHECK + PARTIAL READY (lane 9 PREP s144 c69, RM-1514, source read at `b77743c55`, 2026-11-05;
+  NOT a tick, no game involved).** The SOURCE cite is stale: that file is now 351 lines; D1-D3 sit in
+  its Section J table (`docs/OVERLAY_BUILD_MASTER_PLAN.md` "D1 item tooltip" / "D2 right-click
+  radial" / "D3 override state + reset", all DONE). Per sub-item:
+  (D1) STALE BY AGE, the "fix pending" half: LEDGER 781 (the next item after 780, same day) shipped the
+  rune hover titles, reachable as `8e90bfd5a` (`web/js/panels/build_insights.js` `_runeTitle`, used
+  in the rune tab row; user-builds `web/js/main.js` near :2836). Those are DASHBOARD surfaces, and the
+  LEDGER 780 sighting was the dashboard user-builds section, so it was never an overlay build-module
+  item. The overlay D1 is the ITEM tooltip (LEDGER 675): READY below.
+  (D2, D3) OPERATOR CALL FIRST, not struck: RM-05's live-recon disposition (2026-07-17,
+  `docs/ROADMAP_HISTORY.md` RM-05 entry, restated in G2-30 above) reads "item right-click 5-choice
+  radial dead", and the removal never landed: `web/js/panels/active_match.js` still passes
+  `onOverride` on the LIVE row and `installItemRadial` is still called for it (both in
+  active_match.js; `web/js/lib/overlay_item_radial.js` `_WEDGES` = EARLY / LATE / DEFER / KEEP / MUTE).
+  The radial is the only writer of the override store (`web/js/lib/item_overrides.js` header), so D3
+  stands or falls with it. Live-verifying D2 / D3 would grade a surface the operator ruled dead. The
+  operator picks: remove the radial (then D2 + D3 strike as a human edit) or keep it (then the checks
+  below stand).
+  (D3 Defer-Once re-entry) CANNOT PASS TODAY, by construction (Class 1, the answer is on disk): the
+  client `deferItem` only sets `deferred` and `applyItemOverrides` sinks it with a fixed bias, with no
+  owned-count baseline (`item_overrides.js`); the server route builds a fresh `ReplanLoop()` per
+  request and its own comment says cross-tick Defer-Once re-entry is OWED ("this per-request loop only
+  sinks a deferred item that tick", `dashboard/routes_build_plan.py`, WP-D3 block). Only
+  `core/build_planner/replan.py` `ItemOverrideStore.reconcile` re-enters, and no live route keeps one
+  across ticks. That is code work (filed as RM-1515 in the s144 c69 report), so the re-entry check
+  waits on it; override-survives-a-re-plan and the reset control are still checkable.
+  READY, the live-checkable rest (one overlay-up pass, operator present; a lane never clicks or
+  captures). Precondition: a live SR or ARAM game (P1 below LIVE), rc-shell overlay up, `w-build`
+  visible with a non-empty LIVE row. P1 `curl -sk https://127.0.0.1:8888/api/state` -> `mode_key`,
+  `liveclient.gameData.gameTime`, fetch time. CHECK D1: hover one LIVE-row item icon and hold;
+  PASS iff `#rc-item-tip` paints the item's name within about 0.5 s (`overlay_tooltip.js`
+  `SHOW_DELAY` 350 ms) and hides after the cursor leaves; FAIL = no tip, a tip for a different item,
+  or a tip clipped by the widget edge. CHECK D2/D3 (only if the operator keeps the radial): right-click
+  an icon; PASS iff `#rc-item-radial` opens over the icon with the five labels, a LATE click moves
+  that icon one slot later in the row on the next repaint and it holds through at least two 4 s re-rank ticks
+  (an override surviving a re-plan), MUTE removes it, and the reset control in the DS controls
+  (`overlay_ds_controls.js`, `clearItemOverrides`) restores the canonical order; FAIL = no radial, the
+  click also dismisses the overlay, or the order snaps back on the next tick. EVIDENCE CONTRACT: the P1
+  body with fetch time, mode, game_time, and for each check the item name, the slot before and after,
+  and the sighting time. SUBSTITUTION: `tests/test_overlay_d2_item_radial.py` and
+  `tests/test_item_overrides_persist.py` prove the store and the reorder on fixtures; only an
+  over-the-HUD sighting answers whether the click LANDED in the click-through overlay and the order
+  SURVIVED a live re-rank. Settings-slider drag and the B2/B3/C5 captures stay as filed.
 - **G2-32** `[NEW ROW 2026-07-18]` RM-05 round-2 drag/move system live-verify (LEDGER 914 S2,
   `14a5ccc5`; `web/js/lib/overlay_layout.js` - `_effectiveXY` drag origin + window-level pointer
   capture + handle-only border hit-test, `_clampXY` semantics preserved). Verify EACH panel, including
