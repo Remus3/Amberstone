@@ -463,7 +463,7 @@ def _ll_keyboard_proc(nCode, wParam, lParam):
                     _dispatch_queue.put_nowait(slot)
             elif wParam in (_WM_KEYUP, _WM_SYSKEYUP):
                 _decoder.on_keyup(kb.vkCode)
-    except Exception:  # noqa: BLE001 - a raise here would drop the hook
+    except Exception:  # a raise here would drop the hook
         log.exception("low-level hook proc error")
     return _user32.CallNextHookEx(None, nCode, wParam, lParam)
 
@@ -496,7 +496,7 @@ def _dispatch_loop(cache: DecisionCache, stop: threading.Event) -> None:
             continue
         try:
             _dispatch_one(cache, slot)
-        except Exception:  # noqa: BLE001
+        except Exception:
             log.exception("dispatch slot=%s crashed", slot)
 
 
@@ -573,7 +573,7 @@ def _entrypoint() -> int:
     file first, then return 1 so the task's RestartOnFailure can recover."""
     try:
         return main()
-    except Exception:  # noqa: BLE001
+    except Exception:
         log.exception("hotkey_listener crashed")
         return 1
 

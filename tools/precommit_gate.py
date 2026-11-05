@@ -177,7 +177,7 @@ def _ascii_rule():
             spec = importlib.util.spec_from_file_location("rc_ascii_rule", here)
             mod = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(mod)
-        except Exception as exc:  # noqa: BLE001 - re-raised, typed, below
+        except Exception as exc:  # re-raised, typed, below
             raise RuleUnavailable(
                 f"tools/{here.name} is unimportable: it raised "
                 f"{type(exc).__name__} while loading (ImportError)") from exc

@@ -86,7 +86,7 @@ def fetch(
     cache_dir = Path(cache_dir)
     try:
         versions = parse_versions(_get(client, DDRAGON_VERSIONS_URL))
-    except Exception as exc:  # noqa: BLE001 - every failure here is "no version feed"
+    except Exception as exc:  # every failure here is "no version feed"
         raise MissingSourceError(f"version feed: {exc}") from exc
     latest = versions[0]
     version = patch or latest
@@ -119,7 +119,7 @@ def fetch(
                 body = _get(client, url)
             except MissingSourceError as exc:
                 raise MissingSourceError(f"{src.id}: {exc}") from exc
-            except Exception as exc:  # noqa: BLE001 - any transport failure fails the source
+            except Exception as exc:  # any transport failure fails the source
                 raise MissingSourceError(f"{src.id}: fetch failed for {url}: {exc}") from exc
             out.fetched += 1
             bodies[name] = body

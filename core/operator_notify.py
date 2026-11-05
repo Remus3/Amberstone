@@ -119,7 +119,7 @@ class Notifier:
                 return False, f"held: {HOLD_ENV}=1, {self.name} sent nothing"
             ok, detail = self._send(n)
             return bool(ok), str(detail)
-        except BaseException as exc:  # noqa: BLE001 - contract: never raises
+        except BaseException as exc:  # contract: never raises
             if isinstance(exc, (KeyboardInterrupt, SystemExit)):
                 raise
             return False, f"{type(exc).__name__}: {exc}"
@@ -276,7 +276,7 @@ class FirstThatWorks(Notifier):
             label = getattr(member, "name", type(member).__name__)
             try:
                 ok, detail = member.notify(n)
-            except BaseException as exc:  # noqa: BLE001 - a member broke its contract
+            except BaseException as exc:  # a member broke its contract
                 if isinstance(exc, (KeyboardInterrupt, SystemExit)):
                     raise
                 ok, detail = False, f"{type(exc).__name__}: {exc}"
@@ -315,7 +315,7 @@ def notify(title: str, body: str, priority: str = "default",
         target = notifier if notifier is not None else default_chain(app_id)
         ok, detail = target.notify(n)
         return bool(ok), str(detail)
-    except BaseException as exc:  # noqa: BLE001 - contract: never raises
+    except BaseException as exc:  # contract: never raises
         if isinstance(exc, (KeyboardInterrupt, SystemExit)):
             raise
         return False, f"{type(exc).__name__}: {exc}"

@@ -510,7 +510,7 @@ def pytest_configure(config):
         io.open = traced_open
         os.replace = _make_mover(tracer, tracer.orig_replace)
         os.rename = _make_mover(tracer, tracer.orig_rename)
-    except Exception:  # noqa: BLE001 - never leave the process half-patched
+    except Exception:  # never leave the process half-patched
         pytest_unconfigure(config)
         raise
 

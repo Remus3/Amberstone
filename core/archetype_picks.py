@@ -770,13 +770,13 @@ def _read_picks_locked() -> dict[str, dict]:
         raw = _PICKS_PATH.read_text(encoding="utf-8")
     except FileNotFoundError:
         return {}
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         _log.warning(
             "archetype_picks: re-read failed, refusing to write: %s", exc)
         raise PicksReadError(f"picks file unreadable: {exc}") from exc
     try:
         data = json.loads(raw)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         _log.warning(
             "archetype_picks: re-read undecodable, refusing to write: %s", exc)
         raise PicksReadError(f"picks file undecodable: {exc}") from exc

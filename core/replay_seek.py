@@ -295,11 +295,11 @@ def sample_at(client, t_s: float) -> SeekSample:
     t_s = _valid_time(t_s)
     try:
         client.post_playback(t_s)
-    except Exception as exc:  # noqa: BLE001 - transport-agnostic by design
+    except Exception as exc:  # transport-agnostic by design
         raise SeekError(f"seek to {t_s}s failed: {exc}") from exc
     try:
         blob = client.get_allgamedata()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise SeekError(f"read at {t_s}s failed: {exc}") from exc
     if not isinstance(blob, dict):
         # A non-object frame is a failed READ, not a degradable field: raise

@@ -345,7 +345,7 @@ class TftStateReader:
         try:
             req=urllib.request.Request(TFT_API)
             with urllib.request.urlopen(req,context=self._ssl,timeout=3) as r: return json.loads(r.read().decode("utf-8"))
-        except Exception:  # noqa: BLE001
+        except Exception:
             # S134 P0: the standalone Unreal TFT client has no :2999 listener;
             # fall back to the synthesized standalone source (process + LCU
             # phase + per-round stats file). None there re-raises the :2999

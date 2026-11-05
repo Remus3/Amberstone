@@ -61,7 +61,7 @@ class SpecUnavailable(RuntimeError):
 def _get_json(client: Any, url: str) -> Any:
     try:
         resp = client.get(url)
-    except Exception as exc:  # noqa: BLE001 - any transport failure is "unavailable"
+    except Exception as exc:  # any transport failure is "unavailable"
         raise SpecUnavailable(f"fetch failed: {url}: {exc.__class__.__name__}") from exc
     if getattr(resp, "status", 200) != 200:
         raise SpecUnavailable(f"HTTP {resp.status}: {url}")
@@ -94,7 +94,7 @@ def take_snapshot(client: Any) -> dict:
         raise SpecUnavailable(str(exc)) from exc
     except SpecUnavailable:
         raise
-    except Exception as exc:  # noqa: BLE001 - transport failure
+    except Exception as exc:  # transport failure
         raise SpecUnavailable(f"fetch failed: {DDRAGON_VERSIONS_URL}: {exc.__class__.__name__}") from exc
     snap: dict[str, Any] = {"version": version, "fields": {}}
     for kind, name in (("champion", "champion"), ("item", "item")):

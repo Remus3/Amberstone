@@ -820,7 +820,7 @@ def full_roster() -> list[str]:
     path = _DS_DIR / resolve_patch() / "champions.json"
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
-    except Exception as exc:  # noqa: BLE001 - re-raised as the loud domain error
+    except Exception as exc:  # re-raised as the loud domain error
         raise RosterUnavailableError(
             f"champion registry {path} is missing or unreadable ({exc}); "
             "refusing to substitute the SEED sample for a full-roster request"
