@@ -26,7 +26,7 @@ import json
 import sqlite3
 import sys
 from pathlib import Path
-from urllib.request import urlopen, Request
+from urllib.request import Request
 from urllib.error import URLError, HTTPError
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -35,6 +35,11 @@ if str(ROOT) not in sys.path:
 # RM-1180: icons land in the tree the :8888 dashboard serves, so write via
 # scratch file + fsync + rename (the RM-1130 helper cache_ddragon_assets uses).
 from core.polled_json import atomic_write_bytes  # noqa: E402
+# RM-1441 (ruling 51): the icon GET opens through the consent opener, so a
+# Data Dragon or CommunityDragon url answering 3xx into the League wiki host
+# is refused before a wiki socket opens (the stdlib default opener followed it
+# with no consent record).
+from lib.wiki_consent import WikiFetchRefused, open_consented  # noqa: E402
 
 # RM-1180: same set as lib/icons/downloader.py _IMAGE_MAGIC (RM-373), kept
 # local so this script does not pull in lib.http; a test pins agreement.
@@ -88,14 +93,19 @@ def download_icon(version: str, iid: str, dest: Path) -> str | None:
 
     RM-1180: a 200 is not proof of an image (an error page or an
     interstitial would land as `<id>.png`), so the body must start with PNG
-    or JPEG magic before anything is written, and the write is atomic."""
+    or JPEG magic before anything is written, and the write is atomic.
+
+    RM-1441: a source whose url, or any redirect hop, names the League wiki
+    host without a consent record is refused before its socket opens (stderr
+    "refused <url>: ..."), writes nothing, and is skipped like any other
+    per-source failure, so the CommunityDragon fallback still runs."""
     for source, url in (
         ("ddragon", CDN_URL.format(version=version, id=iid)),
         ("cdragon", CDN_CD_URL.format(id=iid)),
     ):
         req = Request(url, headers={"User-Agent": "RC-Audit/1.0"})
         try:
-            with urlopen(req, timeout=10) as resp:
+            with open_consented(req, timeout=10) as resp:
                 if resp.status != 200:
                     continue
                 data = resp.read()
@@ -103,6 +113,11 @@ def download_icon(version: str, iid: str, dest: Path) -> str | None:
                 continue
             atomic_write_bytes(dest, data)  # creates dest.parent on demand
             return source
+        except WikiFetchRefused as e:
+            # A RuntimeError, outside the transport tuple below: caught here
+            # so a refusal never aborts the run; not retried, nothing written.
+            sys.stderr.write(f"refused {url}: {e}\n")
+            continue
         except (URLError, HTTPError, TimeoutError, OSError):
             continue
     return None

@@ -9,7 +9,8 @@ interstitial of 64+ bytes landed as `<id>.png`. The sibling icon writer
 write, and scripts/cache_ddragon_assets.py (RM-1130) already routes through
 core.polled_json.atomic_write_bytes. This pins both on download_icon.
 
-urlopen is stubbed: no test here touches the network.
+The opener (open_consented since RM-1441) is stubbed: no test here touches
+the network.
 """
 from __future__ import annotations
 
@@ -52,7 +53,7 @@ def _stub_urlopen(mod, monkeypatch, bodies: dict[str, bytes]) -> list[str]:
     the 200 body that source serves."""
     seen: list[str] = []
 
-    def fake(req, timeout=None):
+    def fake(req, timeout=None, context=None):
         url = req.full_url
         seen.append(url)
         for key, body in bodies.items():
@@ -60,7 +61,9 @@ def _stub_urlopen(mod, monkeypatch, bodies: dict[str, bytes]) -> list[str]:
                 return _Resp(body)
         raise mod.URLError("no stub")
 
-    monkeypatch.setattr(mod, "urlopen", fake)
+    # RM-1441: the icon GET opens through the module's own open_consented
+    # name (setattr raises if it is gone, so this fake cannot go inert).
+    monkeypatch.setattr(mod, "open_consented", fake)
     return seen
 
 
