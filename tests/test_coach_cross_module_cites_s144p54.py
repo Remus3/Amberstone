@@ -110,6 +110,9 @@ def test_register_coach_claim_holds():
                and getattr(n.target, "id", None) == "_coaches" for n in tree.body)
     assert not [n for n in nodes if isinstance(n, ast.Name) and n.id == "_coaches"
                 and isinstance(n.ctx, ast.Store)]
+    assert not [n for n in nodes if isinstance(n, ast.arg) and n.arg == "_coaches"]
+    assert not [a for n in nodes if isinstance(n, (ast.Import, ast.ImportFrom))
+                for a in n.names if (a.asname or a.name) == "_coaches"]
 
 
 def test_coach_trace_append_claim_holds():
