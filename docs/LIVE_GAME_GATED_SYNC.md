@@ -1228,6 +1228,56 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   `14a5ccc5`; `web/js/lib/overlay_layout.js` - `_effectiveXY` drag origin + window-level pointer
   capture + handle-only border hit-test, `_clampXY` semantics preserved). Verify EACH panel, including
   the ACTIVE empty-backing "press now inert" behavior call.
+  **AGE CHECK + READY (lane 9 PREP s144 c70, RM-1516, source read at `549f2c6c4`, 2026-11-05; NOT a
+  tick, no game up: :8888 and :2999 both refused at 04:30 local).** The row's `14a5ccc5` is the
+  pre-rewrite twin of merge `54e4a93c0` (same subject, not reachable from HEAD), whose fix commit is
+  `2d23c012e` (2026-07-17). NOT STALE: all three fixes stand at HEAD
+  in `web/js/lib/overlay_layout.js` - (a) `_installDrag` `begin` anchors at `_effectiveXY` (clamp plus
+  the tall-widget bottom anchor); (b) `begin` binds window-level `pointermove` / `pointerup` /
+  `pointercancel` and marks the widget `data-rc-zone` for the drag, `end` unbinds and restores; (c)
+  the ACTIVE body `pointerdown` returns on `t === el` (edge press = handle-only) and on a press whose
+  nearest `.ovx-widget` is another widget. Later edits to the file do not reopen it: `fd2c31ff3`
+  (RM-126) latched the binds per element without changing the drag law; `577118dbc`, `16b9f1de9` and
+  the RM-1272 commits touch the menu, TFT widgets and hotkey hints. The G6-02 close (2026-07-20) saw
+  ACTIVE body-drag ENABLE; it did not drag panels, so nothing here is evidenced yet.
+  PER-PANEL SCOPE, measured: in a feed mode the in-game phase paints every game-family widget
+  (`web/js/lib/overlay_phase.js` `PHASE_WIDGETS` has no in-game list), but B4 hides `#rn-lead`,
+  `#rn-callouts` and `#rn-choices` in a live game (see the struck G2-28), and neither out-of-game
+  list names `w-lead` or `w-callouts`. So `w-lead` and `w-callouts` cannot be dragged in any live
+  phase (scope note, not a strike; moving them off this row is a human edit), and `w-choices` only
+  in champ-select / loading. The live set is: `w-call`, `w-build` (tall), `w-ovds`, `w-stats`,
+  `w-nextbuy`, `w-objgauges` (SR only), `w-arambalance` (ARAM only), `w-launcher` (its own
+  tap-vs-drag path, `_installLauncher`, 4 px threshold), plus `w-choices` in champ-select.
+  ONE-COMMAND PERSIST READ (NEW `tools/gated_g232_layout_diff.py`, read-only; tests
+  `tests/test_gated_g232_layout_diff.py`). A drop persists after a 400 ms debounce (`_persist`) to
+  `localStorage` and through `rc-shell:overlay-layout:set` (`rc-shell/src/main.js`) to
+  `overlay.widgetLayout` in `<userData>/rc-shell-state.json`, `<userData>` = `<appData>/<productName>`.
+  Before the pass: `python tools/gated_g232_layout_diff.py snap > <scratch>/g232_before.json`; after:
+  `python tools/gated_g232_layout_diff.py diff <scratch>/g232_before.json` (add `--width W --height H`
+  in design px, i.e. the overlay window size over its `ovscale`, to check the upper clamp bound).
+  Verdicts: PERSISTED (exit 0), CLAMP_BREACH (exit 3, any stored x or y below 0, or a MOVED panel
+  past W/H minus 48), NO_EVIDENCE (exit 4). Idle smoke this cycle: NO_EVIDENCE, 11 league-scope widgets UNMOVED,
+  stale saved ids `w-enemyspells` / `w-spike` reported and ignored.
+  CHECKS (precondition: P1 `curl -sk https://127.0.0.1:8888/api/state` shows a live SR or ARAM game,
+  rc-shell overlay up; record `mode_key`, `liveclient.gameData.gameTime`, fetch time; operator
+  present - a lane never drags). Per panel in the live set, after the snap:
+  (A, symptom a) PASSIVE, grab the small handle; PASS iff the panel does not jump on the first
+  move and tracks the cursor 1:1 (also once at a panel scale other than 1, and for `w-build` once
+  after it has been dropped in the lower half, i.e. bottom-anchored). (B, symptom b) mid-drag, sweep
+  the cursor well off the handle and across League; PASS iff the drag continues and the overlay
+  does not go click-through until the release. (C, symptom c) ACTIVE (Ctrl+Shift+A), press the
+  panel's empty border / backing and move; PASS iff NOTHING moves (the "press now inert" call), and
+  a content press drags only that panel, never an overlapping one. THE BEHAVIOUR CALL is the
+  operator's: an inert border press is the shipped design; if it reads as broken, file it, do not
+  tick. (D) the launcher: a tap toggles the menu, a drag past 4 px moves it, and a press on a menu
+  row gap does not move the launcher. Then run the diff: PASS for the persist half iff every
+  dragged panel reads MOVED, none CLAMP_BREACH, and the undragged ones read UNMOVED.
+  EVIDENCE CONTRACT: the P1 body with fetch time, mode, game_time; per panel the A-D sighting with
+  time; the diff output with both `state_mtime` values. SUBSTITUTION: `web/js/lib/overlay_layout.drag.test.mjs`
+  and `rc-shell/test/overlay_layout_drag.test.js` prove the law on a DOM stub, and a PERSISTED diff
+  only proves a drop reached disk through the live IPC; neither shows the panel FOLLOWED the cursor,
+  that the window stayed interactive mid-drag, or that a border press stayed inert over a live HUD.
+  Those are the eyeball halves, and the row does not close without them.
 - **G2-33** `[NEW ROW 2026-07-18]` ~~PR enemy-spell chip cooldown timer live-verify (LEDGER 914 S3,
   `b827f782`; `web/js/panels/enemy_spells.js` - upgraded-Smite displayNames + cd=0 sticky "USED" chip).~~
   **MIS-FILED, CLASS 1: the code under test was deleted (lane 9 PREP s144 c65, RM-1511, source read at
