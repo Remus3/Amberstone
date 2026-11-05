@@ -364,7 +364,7 @@ def _measure(fn) -> float:
 def _inconsistent(results: dict) -> list[str]:
     """Builders whose WR is not exactly EXPECTED_WR (NaN included)."""
     return [f"{k}={v}" for k, v in results.items()
-            if not (v == v) or abs(v - EXPECTED_WR) > 1e-9]
+            if v != v or abs(v - EXPECTED_WR) > 1e-9]
 
 
 def _total_games_variant(rows):

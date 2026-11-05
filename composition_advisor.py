@@ -168,7 +168,7 @@ def validate_item(item_name: str, champion: str,
     # (Not a flag but a reminder - handled in suggestions)
 
     # -- ARAM: mana items double-check ----------------------------------
-    if is_aram and any(m.lower() in item_lower for m in {"Tear of the Goddess", "Manamune", "Archangel's Staff"}):
+    if is_aram and any(m.lower() in item_lower for m in ("Tear of the Goddess", "Manamune", "Archangel's Staff")):
         needs_mana = champ_data.get("mana", True)
         if not needs_mana:
             return False, (

@@ -162,9 +162,7 @@ class AbilityHpsWireTests(unittest.TestCase):
 
 class AbilityHpsAsciiHygieneTests(unittest.TestCase):
     def test_module_is_ascii(self) -> None:
-        import agents.daemon_slayer.tests.test_hps_ability_wire as mod
-
-        with open(mod.__file__, "rb") as fh:
+        with open(__file__, "rb") as fh:
             raw = fh.read()
         for i, b in enumerate(raw):
             self.assertLess(

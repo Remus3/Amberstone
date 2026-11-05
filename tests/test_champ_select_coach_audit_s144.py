@@ -619,9 +619,12 @@ class _BadStr(Exception):
         raise ValueError("no text for you")
 
 
+_NOT_A_STR = 5  # a name, so the deliberate non-str __str__ below is not a literal
+
+
 class _NotStr(Exception):
     def __str__(self):
-        return 5
+        return _NOT_A_STR
 
 
 @pytest.mark.parametrize("exc_type", [_BadStr, _NotStr])

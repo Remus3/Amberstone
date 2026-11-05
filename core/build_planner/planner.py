@@ -289,7 +289,7 @@ def plan_build(
         logger.debug("plan_build: seed_fn raised: %s", exc)
         plan.notes.append("seedless - seed_fn raised")
         return plan
-    if not seed or not seed.get("ranked") and not seed.get("order"):
+    if not seed or (not seed.get("ranked") and not seed.get("order")):
         plan.notes.append("seedless - seed_fn returned no candidates")
         return plan
 

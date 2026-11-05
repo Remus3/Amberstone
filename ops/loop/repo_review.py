@@ -614,7 +614,7 @@ def class_facts(cid: str, rows: list[dict], root: Path = ROOT) -> list[str]:
         lines.append(f"computed: {len(exports)} export folders: "
                      + ", ".join(f"{e}={c}" for e, c in sorted(exports.items())[:40]))
     elif cid in ("ddragon-web", "meta-build"):
-        depth = 4 if cid == "ddragon-web" else 4
+        depth = 4
         vers = collections.Counter("/".join(p.split("/")[:depth]) for p in paths)
         lines.append("computed versions: " + ", ".join(f"{v}={c}" for v, c in sorted(vers.items())))
     elif cid == "inbox":

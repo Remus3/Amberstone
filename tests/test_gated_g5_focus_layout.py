@@ -103,7 +103,7 @@ def test_two_sided_team_values_fail_the_one_partner_premise():
 
 def test_trio_subteams_with_matching_team_values_pass():
     groups = [["ChampA", "ChampB", "ChampC"], ["ChampD", "ChampE", "ChampF"]]
-    lc = _lc([(c, "T1" if i < 3 else "T2") for i, c in enumerate(sum(groups, []))])
+    lc = _lc([(c, "T1" if i < 3 else "T2") for i, c in enumerate(c for g in groups for c in g)])
     rep = _rep(_cs(groups), lc)
     assert rep["checks"]["subteams"]["sizes"] == [3, 3]
     assert rep["checks"]["subteams"]["partners"] == ["ChampB", "ChampC"]

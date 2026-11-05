@@ -281,7 +281,8 @@ def test_patch_sort_key_is_numeric_not_lexical():
     # THE bug a lexical sort introduces: "15.9" > "15.13" as text, but 15.9
     # is the OLDER patch and must sort first.
     assert precompute._patch_sort_key("15.9") < precompute._patch_sort_key("15.13")
-    assert "15.9" > "15.13"  # the lexical comparison this guards against
+    older, newer = "15.9", "15.13"
+    assert older > newer  # the lexical comparison this guards against
     assert precompute._patch_sort_key("13.16") < precompute._patch_sort_key("15.17")
     assert precompute._patch_sort_key("9.24") < precompute._patch_sort_key("10.1")
 

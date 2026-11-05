@@ -373,8 +373,7 @@ class Scheduler:
                             tid = task_dict.get("id") if task_dict else None
                             if not tid:
                                 continue
-                            if tid in latest:
-                                del latest[tid]
+                            latest.pop(tid, None)  # re-insert: the newest line goes last
                             latest[tid] = line
 
                         if len(latest) >= non_empty:

@@ -31,7 +31,7 @@ def test_writes_record(tmp_path):
     assert r["my_champion"] == "Ahri"
     assert r["native"]["advice"] == "Stay Ahri"
     assert r["deterministic"]["summoners"] == "Flash + Barrier"
-    assert "engine_version" in r and r["engine_version"]
+    assert r.get("engine_version")
 
 
 def test_native_and_deterministic_normalized(tmp_path):

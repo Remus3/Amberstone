@@ -725,7 +725,7 @@ def test_cli_exits_inconclusive_on_an_empty_universe(tmp_path, capsys):
     rc = orc.main([
         "--root", str(local),
         "--self-code", SELF,
-        *sum((["--repo", str(s)] for s in sibs), []),
+        *(arg for s in sibs for arg in ("--repo", str(s))),
     ])
     assert rc == orc.EXIT_INCONCLUSIVE
     assert "0 undelivered out of 0 checked" in capsys.readouterr().out
@@ -737,7 +737,7 @@ def test_cli_exits_undelivered_when_a_note_reached_nobody(tmp_path, capsys):
     rc = orc.main([
         "--root", str(local),
         "--self-code", SELF,
-        *sum((["--repo", str(s)] for s in sibs), []),
+        *(arg for s in sibs for arg in ("--repo", str(s))),
     ])
     assert rc == orc.EXIT_UNDELIVERED
     assert "UNDELIVERED" in capsys.readouterr().out
@@ -751,7 +751,7 @@ def test_cli_json_output_is_machine_readable(tmp_path, capsys):
         _note(s / orc.INBOX_DIRNAME, "2026-09-12-0800", SELF, "ok", body)
     rc = orc.main([
         "--root", str(local), "--self-code", SELF, "--json",
-        *sum((["--repo", str(s)] for s in sibs), []),
+        *(arg for s in sibs for arg in ("--repo", str(s))),
     ])
     blob = json.loads(capsys.readouterr().out)
     assert rc == orc.EXIT_CLEAN
