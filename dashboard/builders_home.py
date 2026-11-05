@@ -66,7 +66,7 @@ def _lcu_build_items(raw_data: str | None) -> list[int]:
 # lcu_match_detail blob (probed 2026-07-04: present on every LCU-ingested
 # row - 98 Mayhem / 47 Ranked / 2 Draft / 1 event in the live DB), so no
 # queue_id column / schema migration is needed. Canonical id list:
-# tools/lcu_agent.py:194-234.
+# lcu/snapshot_shape.py `_LOBBY_QUEUE_NAMES`.
 _QUEUE_SUBTYPE = {
     450: "Classic",
     2400: "Mayhem",

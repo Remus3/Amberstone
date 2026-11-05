@@ -212,7 +212,7 @@ def _legendary_catalog() -> tuple[frozenset[str], frozenset[str]]:
     """(item ids, lowercased display names) of every completed legendary.
 
     WHY not core.item_wpa.load_legendary_ids, which IS the repo's existing
-    completed-legendary classifier (core/item_wpa.py:109): it gates on DDragon
+    completed-legendary classifier (core.item_wpa.load_legendary_ids): it gates on DDragon
     ``maps["<map_id>"]`` and additionally demands a component list or a depth.
     Arena's purchasable ids are flat 22-/44-prefixed aliases (223031 Infinity
     Edge, 226655 Luden's Echo, 443069 Hamstringer) that carry neither, so
@@ -1407,7 +1407,7 @@ def shadow_log_aram_coach(coach: dict, lc: dict | None, mode_key: str,
         # Per-item build reasons. The deterministic source is the ARAM
         # item-interaction cue corpus - the SAME comp-shape + purchase-timing
         # snapshot the live coach folds in as additive context
-        # (coaches/aram_coach.py:281), so reading it here is non-circular: it is
+        # (coaches/aram_coach.py `_item_interaction_block`), so reading it here is non-circular: it is
         # a precomputed corpus, not a Haiku output. Without this the ONLY reason
         # source was the anti-tank / anti-heal hints, which is why the shadow
         # report showed an empty deterministic item_build_reasons on ~1050 ticks
@@ -1757,7 +1757,7 @@ def shadow_log_precomputed_choices(coach: dict, lc: dict | None, mode_key: str,
     validation signal). ``path`` overrides the jsonl target (test seam).
 
     ``lcu_snapshot`` supplies the canonical Riot ``game_id`` (captured from the
-    gameflow session at lcu/snapshot_shape.py:431-439) so a branch series can
+    gameflow session in lcu/snapshot_shape.py `shape_snapshot`) so a branch series can
     be bound to one match for the B4 post-game review. Keyword-only with a
     default because a dozen existing call sites pass three positional args."""
     try:

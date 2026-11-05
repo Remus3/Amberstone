@@ -361,7 +361,7 @@ def parse_status_header(text: str) -> dict:
 def _pid_alive(pid: int) -> bool | None:
     """Tri-state pid probe: True alive, False PROVABLY gone, None unprobeable.
 
-    Same OpenProcess idiom as ops/loop/slots.py:49-82, with one deliberate
+    Same OpenProcess idiom as ops/loop/slots.py `pid_alive`, with one deliberate
     difference: that helper answers a boolean because a lock holder it cannot
     see must be treated as alive. Here "I could not look" is its own answer -
     reporting DEAD on an access-denied handle would be a fabricated verdict.

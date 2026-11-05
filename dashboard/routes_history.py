@@ -119,9 +119,9 @@ def _parse_home_mode(path: str) -> str | None:
 
 
 # Route TTL cache - the established _CACHE / _CACHE_TTL_S / _CACHE_LOCK
-# triple used by 44 sibling route modules (see routes_op_score.py:41-45).
+# triple used by 44 sibling route modules (see routes_op_score.py).
 #
-# 25s sits just above the 20s client poll (web/js/main.js:3106 _HOME
+# 25s sits just above the 20s client poll (web/js/main.js `_HOME`
 # intervalMs) so a tab's consecutive polls coalesce onto one build instead
 # of straddling the window, and every extra open tab or reload becomes free.
 # Fidelity-neutral: match_history.db only changes when a game completes, and

@@ -93,7 +93,7 @@ MODE_FILES: tuple[str, ...] = tuple(dict.fromkeys(MODE_TO_FILE.values()))
 # Swallowed silently, either one means RC pays the :8889 relay hop that lever
 # L3 exists to REMOVE, forever, with nothing in logs/ saying why - the exact
 # failure RM-312 closed, one frame up. Same shape as the fix it mirrors
-# (dashboard/_lcu_inprocess.py:138-196): WARN on CHANGE of the fault
+# (dashboard/_lcu_inprocess.py `_log_degrade`): WARN on CHANGE of the fault
 # signature, then at most once per throttle window, built from the exception
 # TYPE plus the innermost raising frame and NEVER from str(exc) - an LCU
 # payload carries PUUIDs and this repo is public.
@@ -414,7 +414,7 @@ def apply_preflip_mirror(health: dict, mode_key: str, preflip_active: bool) -> d
 #
 # Suppression lives at the PRODUCER, not the renderer, for two reasons the
 # design records: the overlay's current boundary is a single CSS :not() chain
-# (web/css/overlay.css:127) which fails silently, and a payload that reaches
+# (the `#right-now .panel-body` rule in web/css/overlay.css) which fails silently, and a payload that reaches
 # the client is one DevTools panel away from a reviewer. Same doctrine as B5
 # ("obfuscate at the producer ... so every consumer inherits it").
 #
@@ -439,13 +439,14 @@ _LIVE_SUPPRESSED_EMPTY = {"choices": []}
 # B4-b: the deterministic siblings. These are TOP-LEVEL keys on /api/state, NOT
 # inside `coach`, which is why the B4-a coach-field sweep did not reach them -
 # and they feed two of the only three mounts the overlay shell keeps visible
-# (web/css/overlay.css:127). Both are imperative at the source:
-#   core/event_callouts.py:120  "Your lvl-6 spike - look for all-in"
-#   core/event_callouts.py:128  "2-item spike - force fights now"
-#   core/event_callouts.py:108  "Drake spawns 5:00 - set up vision"
-#   core/lead_projection.py:211 "Big lead: dive or roam, snowball it now."
-# lead_projection's own source calls _LINES_BY_MODE a "per-mode directive
-# table" (core/lead_projection.py:321).
+# (the wrapper-collapse block of web/css/overlay.css). Both are imperative at
+# the source:
+#   core/event_callouts.py `_SPIKE_LEVEL_LINES`  "Your lvl-6 spike - look for all-in"
+#   core/event_callouts.py `_SPIKE_ITEM_LINES`   "2-item spike - force fights now"
+#   core/event_callouts.py `_SR_OBJECTIVES`      "Drake spawns 5:00 - set up vision"
+#   core/lead_projection.py `_LINES`             "Big lead: dive or roam, snowball it now."
+# lead_projection's own source calls `_LINES_BY_MODE` a "per-mode directive
+# table".
 #
 # The two spike lines are additionally the B3 artefact ("notifications that
 # alert players when a power spike hits"). B3 deleted web/js/panels/spike_cue.js

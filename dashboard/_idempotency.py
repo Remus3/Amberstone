@@ -23,7 +23,7 @@ echo it into a filename or a log line.
 
 Atomic by CLAIM, not by check-then-act. `seen` and `remember` are each locked
 individually, but the sequence "seen -> perform the side effect -> remember" is
-not, and the dashboard is a ThreadingHTTPServer (dashboard/server.py:54). Two
+not, and the dashboard is a ThreadingHTTPServer (dashboard/server.py `_DualStackHTTPServer`). Two
 requests carrying the same key therefore ran on two threads, both saw an empty
 table, and both acted. That is precisely the shape this module exists to stop:
 a wedged client's retry storm is CONCURRENT, not sequential, so the defended

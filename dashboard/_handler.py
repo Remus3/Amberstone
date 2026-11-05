@@ -91,7 +91,7 @@ log = logging.getLogger("rc.web_dashboard")
 # to opt out of by accident. `BaseHTTPRequestHandler.log_message` translates
 # C0 controls, DEL and the C1 range to `\xHH` before writing - OVERRIDING the
 # method silently drops that, and the request target is attacker-controlled
-# from anywhere the `HOST = "::"` bind reaches (dashboard/server.py:35).
+# from anywhere the `HOST = "::"` bind reaches (dashboard/server.py `HOST`).
 # Measured: `GET /api/<ESC>[31m...` put a raw 0x1b into the record, and the
 # sink is logs/YYYY-MM-DD.log, which the operator reads in a terminal.
 #
@@ -723,7 +723,7 @@ class Handler(HostAllowlistMixin, HeadDeadlineMixin, BaseHTTPRequestHandler):
         # Lane 8, 2026-08-03: a syntactically valid but NON-DICT body (`[1,2,3]`,
         # `"hello"`, `7`) reached the routes, which all call `payload.get(...)`.
         # Measured on the real handler: POST /api/command with `[1,2,3]` raised
-        # an UNCAUGHT AttributeError at routes_state.py:516 - traceback to
+        # an UNCAUGHT AttributeError in routes_state._serve_command_post - traceback to
         # stderr and the connection closed with NO HTTP RESPONSE AT ALL. Same
         # for /api/input; ds-preview, build-order and speak turned it into a
         # 500. `_dispatch._validate_request_body` already NOTICES this ("expected

@@ -2,7 +2,7 @@
 
 Provides GET /api/champ-select/pickban-recs?role=BOT[&queue=420] which
 returns the "performance" row that the champ-select view's P&B panel
-needs. Currently the panel (web/js/panels/champ_select.js:2060) renders
+needs. Currently the panel (web/js/panels/champ_select.js) renders
 hardcoded `_PB_PLACEHOLDERS`; this endpoint replaces the performance
 row with real per-champion WR + ban suggestions computed from
 ``data/rewind_history.db``.

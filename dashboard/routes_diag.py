@@ -24,7 +24,7 @@ and `_serve_decisions_respond_active_post` both take the parsed body. (The
 the three corrections above were made; found by the adversarial pass, not by
 the pass that wrote them.) All of them use `h._send(code, body, ctype)`.
 GET_ROUTES and POST_ROUTES are consumed by `dashboard._dispatch`
-(`dashboard/_dispatch.py:114` and `:198`).
+(`dashboard._dispatch._gather_get` and `_gather_post`).
 
 ERROR ENVELOPE, stated as narrowly as it is actually enforced: every
 EXCEPTION path in this module goes through `dashboard._errors.send_error`,
@@ -186,7 +186,7 @@ def _serve_diagnostics(h) -> None:
         log.warning("api/diagnostics: %s", exc)
         # Lane 8 cycle 18: was json.dumps({"error": str(exc)}). This endpoint
         # reaches the widest surface of the three that hand-rolled the envelope
-        # (dashboard/server.py:35 binds "::"), and diagnostics_cached() raises
+        # (dashboard/server.py `HOST` is "::"), and diagnostics_cached() raises
         # with absolute paths in the message. send_error keeps the raw cause in
         # logs/ and puts only the generic line on the wire.
         send_error(h, exc)
@@ -220,9 +220,9 @@ def _serve_ocr(h) -> None:
             log.debug("api/ocr: liveclient relay probe failed (%s: %s) - "
                       "dropping no fields", type(exc).__name__, exc)
         # Lane 8 cycle 18: `_DROP_FIELDS` is a MODULE GLOBAL
-        # (core/vision_tesseract.py:539), rebound by configure_drop_fields
-        # (:552) and honoured by read_fast_fields at :650 REGARDLESS of an
-        # explicit fields= argument. core/vision_routing.py:97 calls
+        # (core/vision_tesseract.py `_DROP_FIELDS`), rebound by
+        # configure_drop_fields and honoured by read_fast_fields REGARDLESS of
+        # an explicit fields= argument. core/vision_routing.py calls
         # read_fast_fields in this same process, so this diagnostic endpoint
         # was silently disabling up to 9 fields for the COACH's OCR path until
         # the next /api/ocr call happened to reset them. Save and restore, so a
@@ -334,8 +334,8 @@ def _serve_decisions_heartbeat(h) -> None:
 
     NO CURRENT UI CONSUMER. This docstring used to say "the dashboard
     #trigger-pill polls this at ~2 Hz"; that pill was deleted with the
-    header second row in `dee9cc94`, and `web/css/panels/map_state.css:119`
-    records the removal while noting the backend was deliberately kept.
+    header second row in `dee9cc94`, and `web/css/panels/map_state.css`
+    (its trigger-pill comment) records the removal while noting the backend was deliberately kept.
     Corrected 2026-08-30 (lane 8 cycle 12) after the stale line was used as
     evidence that an operator would see a heartbeat change. Grep before
     trusting it again: `#trigger-pill` and `/api/decisions/heartbeat` both

@@ -396,7 +396,7 @@ async function load(){
 // THE /api/loop-status FETCH THAT USED TO LIVE HERE IS GONE, AND ITS ABSENCE
 // IS THE FIX. This page fetched /api/loop-status from THIS port, which has not
 // served that route since Mission Control S10 moved the loop routes onto the
-// standalone :8895 control plane (dashboard/_dispatch.py:143 registers only
+// standalone :8895 control plane (dashboard/_dispatch.py `_gather_get` registers only
 // routes_loop_monitor). Every load therefore issued a request that 404'd and
 // rendered "loop-status unavailable" - a panel that had been permanently empty
 // and a request that could never succeed, failing soft enough that nobody
