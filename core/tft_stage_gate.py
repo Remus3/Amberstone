@@ -4,7 +4,7 @@ gate for TFT stage reads.
 A TFT stage read ("3-2") reaches the live analysis from OCR or from the
 reader's time table (tft/tft_state_reader.py `_parse`). OCR misreads a digit
 now and then, and the reader's own guard lets a read go up to one stage
-BACKWARD (`going_backward`, tft/tft_state_reader.py:181). Downstream that one
+BACKWARD (`going_backward` in tft/tft_state_reader.py `_parse`). Downstream that one
 bad read used to cost real work: tft/tft_live_analysis.py `notify_round`
 treated any stage > 2 -> stage <= 2 read as a NEW GAME (augments cleared,
 placement dropped), reset the round timer (one extra planning vision scan,
@@ -70,8 +70,8 @@ unknown queue is UNMEASURED the same way. No pace (unreadable table) means
 no rate, never a guessed one.
 
 WINDOW CONSTANTS are sized on the read cadence: the worker polls every
-1.5 s (core/tft_worker.py:44) and the reader's OCR cache refreshes about
-every 2 s (tft/tft_state_reader.py:84), so two polls can see one OCR
+1.5 s (core/tft_worker.py `POLL_INTERVAL_S`) and the reader's OCR cache refreshes
+about every 2 s (tft/tft_state_reader.py `_ocr_loop`), so two polls can see one OCR
 refresh; WINDOW_READS = 7 polls (about 10.5 s) span about five refreshes and
 SWITCH_MIN_READS = 4 needs a majority of them. SWITCH_MARGIN = 2 is the
 hysteresis that keeps a 50/50 flicker from flipping the gate (a margin of 1
@@ -115,7 +115,8 @@ from collections import deque
 from typing import NamedTuple, Optional, Tuple
 
 # -- round structure ---------------------------------------------------------
-# The reader's OCR sanity bounds (tft/tft_state_reader.py:172-174): stage 1-7,
+# The reader's OCR sanity bounds (the "Sanity bounds" check in
+# tft/tft_state_reader.py `_parse`): stage 1-7,
 # round <= 4 in stage 1 and <= 7 after. A superset of every set's schedule,
 # not a schedule: a stage may end before its cap.
 STAGE_MIN = 1
@@ -169,7 +170,7 @@ QUEUE_TIMINGS = {
 }
 UNMEASURED = QueueTiming("unknown", False, "unmeasured: unknown queue")
 
-# LCU queue ids (names: lcu/snapshot_shape.py:74-78) -> the state's "variant"
+# LCU queue ids (names: lcu/snapshot_shape.py `_LOBBY_QUEUE_NAMES`) -> the state's "variant"
 # (tft/tft_state_reader.py detect_variant).
 QUEUE_VARIANT = {1090: "standard", 1100: "standard", 1130: "hyper_roll", 1160: "double_up"}
 
@@ -276,7 +277,7 @@ def pace_floor_from_table(table: object) -> Optional[float]:
 
 def _clock(t: object) -> Optional[float]:
     """A usable game clock, else None. The reader defaults a missing gameTime
-    to 0 (tft/tft_state_reader.py:145), so 0 means "no clock", never "the
+    to 0 (tft/tft_state_reader.py `_parse`), so 0 means "no clock", never "the
     game restarted"; past MAX_GAME_S is no clock either."""
     if isinstance(t, bool) or not isinstance(t, (int, float)):
         return None
