@@ -142,34 +142,38 @@ def validate_regions(obj):
     accepts NaN, Infinity and 1e400 (= inf), and each is a refusal here, not
     a ValueError / OverflowError out of ``int()``. The range is checked on the
     RAW value, before ``int()`` truncates -0.5 to 0 or 10000.5 to 10000. A
-    name is at most ``_NAME_MAX`` printable characters and is checked before
-    any message quotes it, so an error never echoes a control character or a
-    huge name."""
+    name is at most ``_NAME_MAX`` printable characters. No message quotes a
+    name (RM-1376): a box refusal names the region by its 1-based position
+    in the submitted object ("region 2: ..."), so an error never echoes the
+    caller's text."""
     if not isinstance(obj, dict) or not obj:
         return (False, "regions must be a non-empty object", {})
     if len(obj) > _REGIONS_MAX:
         return (False, f"at most {_REGIONS_MAX} regions", {})
     clean = {}
-    for name, box in obj.items():
+    # RM-1376: a box refusal names the region by its 1-based position in
+    # the submitted object, never by the caller's name string.
+    for pos, (name, box) in enumerate(obj.items(), start=1):
         if not isinstance(name, str) or not name.strip():
             return (False, "region name must be a non-empty string", {})
         if len(name) > _NAME_MAX or not name.isprintable():
             return (False, f"region names must be at most {_NAME_MAX} "
                            "printable characters", {})
+        where = f"region {pos}"
         if not isinstance(box, (list, tuple)) or len(box) != 4:
-            return (False, f"{name}: expected [x1,y1,x2,y2]", {})
+            return (False, f"{where}: expected [x1,y1,x2,y2]", {})
         coords = []
         for c in box:
             if isinstance(c, bool) or not isinstance(c, (int, float)):
-                return (False, f"{name}: coordinates must be numbers", {})
+                return (False, f"{where}: coordinates must be numbers", {})
             if isinstance(c, float) and not math.isfinite(c):
-                return (False, f"{name}: coordinates must be finite", {})
+                return (False, f"{where}: coordinates must be finite", {})
             if c < 0 or c > _COORD_MAX:
-                return (False, f"{name}: coordinates out of range", {})
+                return (False, f"{where}: coordinates out of range", {})
             coords.append(int(c))
         x1, y1, x2, y2 = coords
         if x2 <= x1 or y2 <= y1:
-            return (False, f"{name}: x2>x1 and y2>y1 required (non-empty box)", {})
+            return (False, f"{where}: x2>x1 and y2>y1 required (non-empty box)", {})
         clean[name] = [x1, y1, x2, y2]
     return (True, None, clean)
 

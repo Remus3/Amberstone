@@ -88,7 +88,8 @@ def test_f1_validate_regions_refuses_non_finite_without_raising(tok):
     regions = _loads_with('{"hp": [TOK, 0, 10, 10]}', tok)
     ok, err, clean = vc.validate_regions(regions)
     assert ok is False
-    assert err and "hp" in err
+    # RM-1376: the refusal names the region by position, not by name.
+    assert err == "region 1: coordinates must be finite"
     assert clean == {}
 
 
@@ -214,8 +215,8 @@ def test_f3_control_characters_in_a_name_are_refused(name):
 
 
 def test_f3_a_bad_box_error_never_echoes_a_raw_control_name():
-    # The name check runs first, so a control name can never reach the
-    # f"{name}: ..." box messages.
+    # The name check runs first, and since RM-1376 no box message quotes
+    # a name at all (it names the region by position).
     ok, err, _ = vc.validate_regions({"evil\nFORGED": [1, 2]})
     assert ok is False
     assert "\n" not in err

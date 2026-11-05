@@ -36,6 +36,8 @@ log = logging.getLogger("rc.web_dashboard")
 # kept identical to dashboard/_errors.GENERIC_ERROR so the UI never shows two
 # dialects of "it broke".
 _GENERIC_BAD_REQUEST = "invalid request - see logs"
+# The unknown-action 400 (RM-1376): fixed text, never the caller's token.
+_UNKNOWN_ACTION = "action: must be list, add, update or delete"
 
 
 def _send_validation_error(h, exc: Exception, context: str) -> None:
@@ -148,11 +150,9 @@ def _serve_user_builds_post(h, payload) -> None:
             h._send(200, json.dumps({"ok": True}).encode(), "application/json")
             return
 
-        # W5: the unknown action is reflected back, so bound it. json.dumps
-        # already escapes control characters, but nothing capped the LENGTH of
-        # a caller-supplied string being echoed into a response.
-        h._send(400,
-                json.dumps({"error": f"unknown action: {action[:32]}"}).encode(),
+        # RM-1376: a fixed text naming the parameter and the allowed values.
+        # The caller's token is never echoed (W5 only clipped it to 32 chars).
+        h._send(400, json.dumps({"error": _UNKNOWN_ACTION}).encode(),
                 "application/json")
     except Exception as exc:  # noqa: BLE001
         log.warning("api/sr-draft/user-builds POST: %s", exc)
