@@ -709,22 +709,65 @@ def _call_name(node) -> str:
     return ""
 
 
-def _is_log_call(node) -> bool:
-    """print(...), or a <level>(...) call rooted at a log-ish name.
+_LOG_ROOTS = frozenset({"logging", "logger", "sys", "warnings", "traceback"})
 
-    RM-1562: the root walk goes through calls as well as attributes, so
-    `logging.getLogger(__name__).info(...)` is rooted at `logging`."""
+
+def _is_log_name(name) -> bool:
+    """A log-ish name: `log`, `_log`, `logging`, `self._logger`'s
+    `_logger`, `get_logger`, `getLogger`, `sys`. `catalog` is not."""
+    low = name.lower()
+    return (low.lstrip("_").startswith("log") or low in _LOG_ROOTS
+            or "logger" in low)
+
+
+def _chain_names(expr):
+    """Every name along an attribute / call chain, outermost first, and the
+    chain's root: `a.b().c` gives ([c, b, a], Name a)."""
+    names = []
+    while isinstance(expr, (ast.Attribute, ast.Call)):
+        if isinstance(expr, ast.Attribute):
+            names.append(expr.attr)
+            expr = expr.value
+        else:
+            expr = expr.func
+    if isinstance(expr, ast.Name):
+        names.append(expr.id)
+    return names, expr
+
+
+def _is_logger_expr(expr, tainted=frozenset()) -> bool:
+    """`expr` may evaluate to a logger OBJECT (RM-1563): a log-ish name
+    anywhere along its chain (`log`, `self.log`, `get_logger()`,
+    `logging.getLogger(n)`), a chain rooted at a name bound to one
+    (`_LOGOBJ`), or a conditional either arm of which is one."""
+    if isinstance(expr, ast.IfExp):
+        return (_is_logger_expr(expr.body, tainted)
+                or _is_logger_expr(expr.orelse, tainted))
+    names, root = _chain_names(expr)
+    if isinstance(root, ast.Name) and _LOGOBJ + root.id in tainted:
+        return True
+    return any(_is_log_name(n) for n in names)
+
+
+def _is_log_call(node, tainted=frozenset()) -> bool:
+    """print(...), or a <level>(...) call on a logger object.
+
+    RM-1562: the chain walk goes through calls as well as attributes, so
+    `logging.getLogger(__name__).info(...)` is a log call.
+    RM-1563: the receiver is judged by `_is_logger_expr`, so every name
+    along its chain counts, not only the root (`self.log.info`,
+    `get_logger().info`), and so does a name bound to a logger object
+    (`lg = logging.getLogger(); lg.info`). The called method's own name is
+    not part of the receiver: `client.log(...)` is not a log call."""
     name = _call_name(node)
     if name == "print":
         return True
     if name not in _LOG_FUNCS:
         return False
-    root = node.func
-    while isinstance(root, (ast.Attribute, ast.Call)):
-        root = root.value if isinstance(root, ast.Attribute) else root.func
-    base = root.id.lower() if isinstance(root, ast.Name) else ""
-    return (base.lstrip("_").startswith("log")
-            or base in {"logging", "logger", "sys", "warnings", "traceback"})
+    f = node.func
+    if isinstance(f, ast.Name):
+        return _is_log_name(f.id)
+    return isinstance(f, ast.Attribute) and _is_logger_expr(f.value, tainted)
 
 
 class _TaintScan(ast.NodeVisitor):
@@ -793,6 +836,10 @@ _OBJ = "obj:"
 # It carries no value (a bare reference to it is clean); a CALL through it is
 # a sink (`_log_args`).
 _LOGFN = "logfn:"
+# RM-1563: a name bound to a logger OBJECT (`lg = logging.getLogger()`,
+# `p = log`, `lg = self.log`) is held as `_LOGOBJ + name`. Like `_LOGFN` it
+# carries no value; a level call off it (`lg.info(m)`) is a sink.
+_LOGOBJ = "logobj:"
 
 
 def _object_only(name, tainted) -> bool:
@@ -816,14 +863,14 @@ def _retaint(stmt, tainted, late=frozenset()) -> None:
     if value is None:
         return
     found = _is_tainted(value, tainted, late)
-    is_alias = (not isinstance(stmt, ast.AugAssign)
-                and _is_log_callable(value, tainted))
+    plain = not isinstance(stmt, ast.AugAssign)
+    is_alias = plain and _is_log_callable(value, tainted)
+    is_obj = plain and _is_logger_expr(value, tainted)
     for target in targets:
         # `m += "!"` keeps whatever `m` already carried (RM-1443): only a
         # plain re-binding to a clean value clears a name.
-        _bind_names(target, found, tainted,
-                    clear=not isinstance(stmt, ast.AugAssign))
-        _bind_log_alias(target, is_alias, tainted)
+        _bind_names(target, found, tainted, clear=plain)
+        _bind_log_alias(target, is_alias, tainted, is_obj)
 
 
 def _is_tainted(expr, tainted, late=frozenset()) -> bool:
@@ -855,9 +902,11 @@ def _bind_names(target, found, tainted, *, clear=True) -> None:
             tainted.discard(target.id)
             tainted.discard(_OBJ + target.id)
         if clear:
-            # A plain re-binding replaces a logging-function alias whatever
-            # the new value is (RM-1562); `_bind_log_alias` re-adds it.
+            # A plain re-binding replaces a logging-function alias or a
+            # logger object whatever the new value is (RM-1562 / -77);
+            # `_bind_log_alias` re-adds it.
             tainted.discard(_LOGFN + target.id)
+            tainted.discard(_LOGOBJ + target.id)
         return
     if found:
         for sub in ast.walk(target):
@@ -904,9 +953,10 @@ def _bind_walrus(nodes, tainted, late=frozenset()) -> None:
         for sub in ast.walk(node):
             if isinstance(sub, ast.NamedExpr):
                 is_alias = _is_log_callable(sub.value, tainted)
+                is_obj = _is_logger_expr(sub.value, tainted)
                 _bind_names(sub.target, _is_tainted(sub.value, tainted, late),
                             tainted, clear=False)
-                _bind_log_alias(sub.target, is_alias, tainted)
+                _bind_log_alias(sub.target, is_alias, tainted, is_obj)
 
 
 # Context managers whose __enter__ hands back the object they were given.
@@ -992,22 +1042,32 @@ _DEFERRED = (ast.Lambda, ast.GeneratorExp)
 def _is_log_callable(expr, tainted=frozenset()) -> bool:
     """`expr` evaluates to a logging function (RM-1562): a log function
     reference (`log.info`, `print`), a name bound to one (`_LOGFN`), or a
-    `partial` over one, nested partials included."""
+    `partial` over one, nested partials included. RM-1563: a conditional
+    either arm of which is one, and a level method off a logger object
+    (`lg.info` after `lg = logging.getLogger()`)."""
     if isinstance(expr, ast.Name) and _LOGFN + expr.id in tainted:
         return True
+    if isinstance(expr, ast.IfExp):
+        return (_is_log_callable(expr.body, tainted)
+                or _is_log_callable(expr.orelse, tainted))
     if isinstance(expr, ast.Call) and _call_name(expr) == "partial" and expr.args:
         return _is_log_callable(expr.args[0], tainted)
-    return _is_log_call(ast.Call(func=expr, args=[], keywords=[]))
+    return _is_log_call(ast.Call(func=expr, args=[], keywords=[]), tainted)
 
 
-def _bind_log_alias(target, is_alias, tainted) -> None:
+def _bind_log_alias(target, is_alias, tainted, is_obj=False) -> None:
     """RM-1562: a plain name bound to a logging function becomes a sink
-    when it is called. `is_alias` is judged BEFORE the binding clears the
-    name (`p = p` keeps it). Add-only here; a plain `=` to anything else
-    clears it through `_bind_names`. A tuple, element or attribute target is
-    not tracked (residual)."""
-    if is_alias and isinstance(target, ast.Name):
+    when it is called; RM-1563: one bound to a logger object (`is_obj`)
+    makes a level call off it a sink. Both are judged BEFORE the binding
+    clears the name (`p = p` keeps it). Add-only here; a plain `=` to
+    anything else clears them through `_bind_names`. A tuple, element or
+    attribute target is not tracked (residual)."""
+    if not isinstance(target, ast.Name):
+        return
+    if is_alias:
         tainted.add(_LOGFN + target.id)
+    if is_obj:
+        tainted.add(_LOGOBJ + target.id)
 
 
 def _log_args(call, tainted=frozenset()):
@@ -1043,6 +1103,8 @@ def _default_bindings(fn, state, late=frozenset()):
             bound.add(arg.arg)
         if _is_log_callable(default, state):
             bound.add(_LOGFN + arg.arg)
+        if _is_logger_expr(default, state):
+            bound.add(_LOGOBJ + arg.arg)
     return bound
 
 
@@ -1882,6 +1944,61 @@ _CHECKER_SAMPLES = (
     ("a tainted default does not flow out of the def",
      "def f(url):\n    m = 'x'\n    def g(m=url):\n        pass\n    log.info(m)\n",
      False),
+    # RM-1563: a logger OBJECT bound to a name (or a parameter default), a
+    # logger reached through an attribute or a call anywhere along the chain,
+    # and a conditional alias are sinks too.
+    ("logger object bound to a name",
+     "import logging\ndef f(url):\n    lg = logging.getLogger('x')\n    lg.info(url)\n",
+     True),
+    ("logger object bound by a walrus",
+     "import logging\ndef f(url):\n"
+     "    if (lg := logging.getLogger()):\n        lg.warning('%s', url)\n", True),
+    ("logger object passed through a second name",
+     "import logging\ndef f(url):\n    lg = logging.getLogger()\n    q = lg\n"
+     "    q.error(url)\n", True),
+    ("alias of the logger module",
+     "def f(url):\n    p = log\n    p.info(url)\n", True),
+    ("alias of sys reaching stderr",
+     "import sys\ndef f(url):\n    out = sys\n    out.stderr.write(url)\n", True),
+    ("attribute logger off self",
+     "def f(self, url):\n    self.log.info(url)\n", True),
+    ("private attribute logger off self",
+     "def f(self, url):\n    self._logger.warning('%s', url)\n", True),
+    ("private attribute log off self",
+     "def f(self, url):\n    self._log.error(url)\n", True),
+    ("logger handed back by a get_logger call",
+     "def f(url):\n    get_logger().info(url)\n", True),
+    ("conditional alias of two log functions",
+     "def f(url, x):\n    p = log.info if x else log.warning\n    p(url)\n", True),
+    ("conditional logger object",
+     "def f(url, x):\n    lg = other if x else log\n    lg.info(url)\n", True),
+    ("alias of a method off a logger object",
+     "import logging\ndef f(url):\n    lg = logging.getLogger()\n    p = lg.info\n"
+     "    p(url)\n", True),
+    ("logger object read late by a lambda",
+     "import logging\ndef f(url):\n    lg = fetch\n    h = lambda: lg.info(url)\n"
+     "    lg = logging.getLogger()\n    h()\n", True),
+    ("logger object read by a nested def",
+     "import logging\ndef f(url):\n    lg = logging.getLogger()\n    def g():\n"
+     "        lg.info(url)\n", True),
+    ("logger object as a parameter default",
+     "import logging\ndef f(url):\n    def g(lg=logging.getLogger()):\n"
+     "        lg.info(url)\n", True),
+    # RM-1563 keep-greens.
+    ("logger object re-bound to a non-logger before the call",
+     "import logging\ndef f(url):\n    lg = logging.getLogger()\n    lg = fetch\n"
+     "    lg.info(url)\n", False),
+    ("logger object called with a clean message",
+     "import logging\ndef f(url):\n    lg = logging.getLogger()\n    lg.info('ok')\n",
+     False),
+    ("attribute logger called with a sanitized value",
+     "def f(self, url):\n    self.log.info(_safe_url(url))\n", False),
+    ("a method named log off a non-log object is not a sink",
+     "def f(url):\n    client.log(url)\n", False),
+    ("an attribute ending in log is not a logger",
+     "def f(self, url):\n    self.catalog.info(url)\n", False),
+    ("a conditional of two non-log functions is not a log alias",
+     "def f(url, x):\n    p = fetch if x else send\n    p(url)\n", False),
 )
 
 
