@@ -234,7 +234,7 @@ class Handler(HostAllowlistMixin, BaseHTTPRequestHandler):
             # since narrowed that to loopback). TWO distinct escapes:
             # ".." walks out, and an ABSOLUTE component replaces the base
             # entirely under pathlib semantics, which a ".." filter alone does
-            # NOT catch. Containment copied from dashboard/routes_static.py:64-67
+            # NOT catch. Containment copied from ``_serve_web_asset`` in dashboard/routes_static.py
             # (resolve root, resolve candidate, assert relative_to) - that
             # comment records a bypassable str.startswith PREFIX check being
             # deliberately replaced by relative_to, with its ".." filter

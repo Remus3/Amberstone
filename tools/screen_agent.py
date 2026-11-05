@@ -168,7 +168,7 @@ STALL_WARN_S   = 2.5
 # and the RC-ScreenAgent-* tasks run this under pythonw.exe where stderr is
 # None - so every record this module emitted, including the upload errors,
 # went nowhere. Pass explicit handlers so there is a channel that survives.
-# Precedent: tools/liveclient_relay.py:41-51.
+# Precedent: the FileHandler setup in tools/liveclient_relay.py.
 _LOG_FILE = _Path_tok(__file__).resolve().parent.parent / "logs" / "screen_agent.log"
 _LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
 logging.basicConfig(

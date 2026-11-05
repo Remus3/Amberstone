@@ -3,8 +3,8 @@
 """RM-158 DATA HALF - regenerate ``laning_scenarios_arena.json`` for a PINNED patch.
 
 THE GENERATOR IS core/laning_scenario_precompute.py - identified by what WRITES
-the path, not by filename: ``atomic_write`` at ``core/laning_scenario_precompute.py:909``,
-the output path built at ``:922`` / ``:943``, driven from ``main`` at ``:1133``.
+the path, not by filename: ``atomic_write`` in ``core/laning_scenario_precompute.py``,
+the output path built per mode in ``main`` (``laning_scenarios_<mode>.json``), which drives it.
 (``core/build_order_precompute.py`` writes the BUILD-ORDER artifact and is the
 name-alike decoy; it never touches ``laning_scenarios_*.json``.)
 

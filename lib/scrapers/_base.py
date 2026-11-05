@@ -54,7 +54,8 @@ class UnacceptableBody(RuntimeError):
     """A 2xx response whose body is not the document that was requested.
 
     Deliberately a ``RuntimeError`` subclass. The one production caller,
-    ``agents/agent2_backend/pipeline/orchestrator.py:149`` and ``:162``,
+    ``_scrape_one`` in agents/agent2_backend/pipeline/orchestrator.py (both of its
+    ``fetch`` call sites),
     already catches ``RuntimeError`` from ``fetch``, so an interstitial now
     takes the same per-source degradation path an HTTP 500 always did with
     no caller change.

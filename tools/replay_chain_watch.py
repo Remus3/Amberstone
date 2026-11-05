@@ -39,7 +39,7 @@ BUSY_PATTERNS = ("timeline_ingest", "build_rank_baselines",
 # (RC-ReplayChainWatch, every 15 min). pythonw suppresses ITS OWN console but not
 # a child's, so without this each powershell child allocates a console that
 # flashes onscreen - three per run, since _ps() has three call sites. Same guard
-# and same reason as tools/ci_watchdog.py:315-317.
+# and same reason as ``_run`` in tools/ci_watchdog.py.
 _NO_WINDOW = 0x08000000 if os.name == "nt" else 0
 
 

@@ -50,7 +50,7 @@ THE PINNED DETECTABLE SIGNATURE (content-level, positive proof)
         L6    two_item   / first_item      recall_now / back_soon
         L11   three_item / three_item      back_soon  / recall_now
         L16   not generated - reads the L11 cell (item-370 descend-only
-              fallback, core/precomputed_laning_coach.py:511)
+              fallback, ``_resolve_cell_ctx`` in core/precomputed_laning_coach.py)
 
     That table is NOT hand-maintained - ``economy_expectation`` calls the
     generator's own ``economy_cell``, so it tracks the model. It moved once, on

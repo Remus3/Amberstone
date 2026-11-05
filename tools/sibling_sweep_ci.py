@@ -18,9 +18,9 @@ is exactly what a CI runner has:
     exit 0
 
 ``load_config`` returns MODE_DEGRADED when ``ops/moon_sync_repos.json`` is
-absent (sibling_name_sweep.py:344). ``_run_scan`` builds needles only under
+absent (``load_config`` in sibling_name_sweep.py). ``_run_scan`` builds needles only under
 MODE_ARMED, and ``assert_non_vacuous`` is called only in that same branch
-(sibling_name_sweep.py:1098-1100). So the needle arm runs with zero needles,
+(the ``assert_non_vacuous`` call in ``_run_scan``). So the needle arm runs with zero needles,
 silently, and the step exits 0. A green tick that proves nothing is this
 repository's single most-recorded failure mode, so the job gets a gate that
 cannot produce one.

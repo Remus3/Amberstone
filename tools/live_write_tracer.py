@@ -115,7 +115,7 @@ _WATCH_SUBTREES = ("ops/runtime", "logs", "data", "moon_sync_inbox")
 # the operator's running stack as a side effect.
 _WATCH_ROOT_FILES = ("restart_trigger.txt",)
 
-# The cross-repo slot namespace (ops/loop/slots.py:39 DEFAULT_ROOT's parent).
+# The cross-repo slot namespace (``DEFAULT_ROOT``'s parent in ops/loop/slots.py).
 # It is outside every participating repository on purpose, which is exactly why
 # a repo-relative watch set would miss writes that throttle sibling projects.
 _EXTRA_WATCH_ROOTS = (r"C:\ProgramData\lw-loop",)

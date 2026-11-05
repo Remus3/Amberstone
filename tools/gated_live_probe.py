@@ -56,8 +56,8 @@ _DASH_BASE = "https://127.0.0.1:8888"
 # `docs/LIVE_GAME_GATED_SYNC.md` as a PRECONDITION and blocked G3-13.
 # Measured 2026-08-02 mid-game: this method returned 0 bytes while an
 # authenticated HTTP GET to the same endpoint returned 243396 bytes aged
-# 0.9s. Ground truth for both facts is `modes/shared_vision.py:25` +
-# `_capture_screen`. Pinned by tests/test_gated_live_probe_relay_auth.py.
+# 0.9s. Ground truth for both facts is `_VISION_SERVER` and
+# `_capture_screen` in modes/shared_vision.py. Pinned by tests/test_gated_live_probe_relay_auth.py.
 _RELAY_BASE = "http://127.0.0.1:8889"
 
 

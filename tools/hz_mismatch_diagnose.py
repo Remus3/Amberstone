@@ -732,13 +732,13 @@ def render_markdown(report: dict) -> str:
     lines.append("")
     lines.append(
         "- CALIBRATION classes justify INVESTIGATING a _BACK_OFF / _HOLD_LOW / "
-        "_TRADE nudge in core/precomputed_laning_coach.py:79-81 ONLY WITH "
+        "_TRADE nudge in core/precomputed_laning_coach.py ONLY WITH "
         "ground-truth corroboration (rewind-db trade outcomes or a live "
         "side-by-side), never to chase this number."
     )
     lines.append(
         "- MODEL-ERROR classes point at the structural sequence_b=_FULL_COMBO "
-        "assumption (core/laning_scenario_precompute.py:355): the precompute "
+        "assumption (_FULL_COMBO in core/laning_scenario_precompute.py): the precompute "
         "scores the enemy landing their FULL combo, so it over-states "
         "incoming damage. A threshold tune cannot fix a structural-input "
         "error - the enemy-sequence model itself is the lever."
