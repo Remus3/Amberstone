@@ -351,7 +351,7 @@ def recommend(
     used_external = False
 
     scored: list[AugmentScore] = []
-    for idx, a in enumerate(offered):
+    for a in offered:
         n = hist.n_own(a)
         own = _own_wr(hist, a, alpha)
 

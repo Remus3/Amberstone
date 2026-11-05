@@ -348,7 +348,7 @@ def generate_for_champion(
             if k not in wanted_keys:
                 del out[k]
 
-        for key, slot, arch in wanted:
+        for key, _slot, arch in wanted:
             v = build_variant(champion, arch, mode, level=level)
             if v is None:
                 unfilled += 1

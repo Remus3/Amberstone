@@ -160,8 +160,7 @@ def _empirical(db: sqlite3.Connection, db_name: str, names: dict) -> dict:
             # item winrate: each completed item slot, n>=5
             items = []
             if n >= 1:
-                for slot in range(6):  # item0..item5 (exclude trinket item6)
-                    pass
+                # item0..item5 (the SELECT below excludes trinket item6);
                 # single pass via UNION-like python aggregation
                 rows = c.execute(
                     "SELECT p.item0,p.item1,p.item2,p.item3,p.item4,p.item5,p.win "

@@ -686,7 +686,7 @@ def detect_jungler_gank_likely(
     jg = enemies.get(enemy_jg_name)
     if not jg:
         # Try a champion-keyed fallback for short-form keys.
-        for nm, e in enemies.items():
+        for e in enemies.values():
             if e.get("summoner_name") == enemy_jg_name:
                 jg = e
                 break

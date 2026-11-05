@@ -270,7 +270,7 @@ def _build_home_summary(mode_filter: str | None = None) -> dict:
         grades: dict[str, int] = {}
         modes:  dict[str, int] = {}
         tk = td = ta = 0
-        for mode, champ, g, k, d, a in rows:
+        for mode, _champ, g, k, d, a in rows:
             grades[g or "-"] = grades.get(g or "-", 0) + 1
             modes[mode or "?"] = modes.get(mode or "?", 0) + 1
             tk += int(k or 0); td += int(d or 0); ta += int(a or 0)
@@ -295,7 +295,7 @@ def _build_home_summary(mode_filter: str | None = None) -> dict:
             (week_cutoff, *mode_args)
         )
         champ_agg: dict[str, dict] = {}
-        for champ, mode, g, k, d, a, cs, cspm, dur in cur:
+        for champ, mode, g, k, d, a, cs, _cspm, dur in cur:
             row = champ_agg.setdefault(champ, {
                 "games": 0, "k": 0, "d": 0, "a": 0,
                 "cs_total": 0, "time_total_s": 0.0,

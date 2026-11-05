@@ -1151,7 +1151,7 @@ def render(rows, problems: Sequence[str], sources: Sequence[str], chromium_count
     out.append("")
     out.append("Component index")
     out.append("-" * 15)
-    for comp, klass, ruling in rows:
+    for comp, klass, _ruling in rows:
         out.append(f"- {_label(comp)} | {comp.licence} | {klass} ({comp.source})")
     out.append("")
     if chromium_count:

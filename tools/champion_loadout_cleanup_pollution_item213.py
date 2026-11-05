@@ -870,7 +870,7 @@ class Cleaner:
                 )
                 self.clean_variant(cn, vk, mode, v)
         # recount golden spatula after
-        for cn, c in (loadouts.get("champions") or {}).items():
+        for _cn, c in (loadouts.get("champions") or {}).items():
             for vk, v in (c.get("variants") or {}).items():
                 if not v.get("_collapsed"):
                     continue

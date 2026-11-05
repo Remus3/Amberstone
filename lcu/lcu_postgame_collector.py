@@ -292,7 +292,7 @@ def _ensure_schema() -> None:
     with _db_lock:
         conn = _get_conn()
         try:
-            for mode, sql in _MODES_SQL.items():
+            for sql in _MODES_SQL.values():
                 for stmt in sql.split(";"):
                     stmt = stmt.strip()
                     if stmt:

@@ -283,7 +283,7 @@ def check(conn: sqlite3.Connection, match_id: str, cat: lit.ItemCatalog,
     excluded = lit.build_exclusions(cat)
     by_type = Counter(r[1] for r in rows)
     bad_combines = []
-    for ts, etype, _pid, iid, _team, raw in rows:
+    for _ts, etype, _pid, iid, _team, raw in rows:
         if etype != lit.EV_COMBINED:
             continue
         try:

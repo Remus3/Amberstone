@@ -1005,7 +1005,7 @@ def read_scoreboard(ctx: _Ctx, boxes: list) -> FieldValue:
     base = FIELD_CONF["scoreboard"] * ctx.factor
     confs = [base if i in keep else 0.0 for i in range(len(vals))]
     final = [v if i in keep else None for i, v in enumerate(vals)]
-    for i, c in enumerate(crops):
+    for i, _crop in enumerate(crops):
         if final[i] is not None or not signal[i]:
             continue
         above = [final[j] for j in range(i) if final[j] is not None]

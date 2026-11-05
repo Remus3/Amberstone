@@ -764,7 +764,7 @@ def _compose_cleanse_advisory(enemy_cids: tuple[int, ...],
         cond_entries = _cc_cond.get_conditional_entries(canon) if hasattr(
             _cc_cond, "get_conditional_entries") else []
         max_cc = 0.0
-        for spell_key, durations in per_spell.items():
+        for durations in per_spell.values():
             if not durations:
                 continue
             # durations may be list-of-floats (per-rank); take the max.

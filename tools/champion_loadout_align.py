@@ -153,7 +153,7 @@ def _build_name_to_family_map() -> dict[str, str]:
     map cleanly."""
     from agents.daemon_slayer._effects_data import ITEM_EFFECTS
     out: dict[str, str] = {}
-    for iid, eff in ITEM_EFFECTS.items():
+    for eff in ITEM_EFFECTS.values():
         upk = getattr(eff, "unique_passive_key", None)
         nm = getattr(eff, "name", None)
         if upk and nm:

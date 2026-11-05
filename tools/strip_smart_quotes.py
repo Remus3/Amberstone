@@ -296,7 +296,7 @@ def main() -> int:
         file_repl = 0
         file_moji = 0
         per_cp_counts: dict[str, int] = {}
-        for cp_char, src_bytes, dst_bytes, label in _BYTE_RULES:
+        for _cp_char, src_bytes, dst_bytes, label in _BYTE_RULES:
             if src_bytes not in new:
                 continue
             if label == "U+201D":
