@@ -56,8 +56,8 @@ re-research):
   Karma W in cc_conditional wave 1).
 * Seraphine E Beat Drop: stun OR root duration 1.1/1.2/1.3/1.4/1.5
   across 5 ranks. Already REJECTED in waves 4 + 8 - target state
-  determines which CC fires (still target gets root, moving/slowed
-  target gets stun). Conditional axis per item 138 rule.
+  decides it (slowed target rooted, immobilized or grounded one
+  stunned). Conditional axis per item 138 rule.
 * Volibear R Stormbringer: 2/3/4s Turret Disable Duration - the
   disable is on STRUCTURES (turrets), not champion CC. Carryover
   REJECT from items 138 + 142 + 146.

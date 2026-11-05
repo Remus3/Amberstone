@@ -662,9 +662,9 @@ def _build_per_spell_cc_durations() -> dict[str, dict[str, tuple[float, ...]]]:
     #   channel-completion-conditional axis; REJECT - belongs in
     #   cc_conditional if added later (parallel to Karma W).
     # * Seraphine E Beat Drop: stun OR root duration is the same value
-    #   but which CC fires is conditional on target state (still target
-    #   gets root, moving/slowed target gets stun); REJECT per item 138
-    #   conditional-CC rule (target state is a conditional axis).
+    #   but which CC fires is conditional on target state (an already
+    #   slowed target is rooted, an immobilized or grounded one is
+    #   stunned); REJECT per item 138 conditional-CC rule.
     # * TwistedFate W Pick a Card: already in cc_conditional wave 1
     #   (gold-card selection conditional stun).
     # * Volibear R Stormbringer: 2/3/4s Turret Disable Duration - the
@@ -748,8 +748,8 @@ def _build_per_spell_cc_durations() -> dict[str, dict[str, tuple[float, ...]]]:
     #   cc_conditional if added later (parallel to Karma W).
     # * Seraphine E Beat Drop: stun OR root duration 1.1/1.2/1.3/1.4/1.5
     #   across 5 ranks. Already REJECTED in waves 4 + 8 - target state
-    #   determines which CC fires (still target gets root, moving/slowed
-    #   target gets stun). Conditional axis per item 138 rule.
+    #   decides it (slowed target rooted, immobilized or grounded one
+    #   stunned). Conditional axis per item 138 rule.
     # * Volibear R Stormbringer: 2/3/4s Turret Disable Duration - the
     #   disable is on STRUCTURES (turrets), not on champion CC.
     #   Carryover REJECT from items 138 + 142 + 146.
