@@ -327,9 +327,7 @@ def _worker_alive() -> bool:
     """Whether a sweep worker - thread or scheduled task - is still running."""
     if _thread is not None and _thread.is_alive():
         return True
-    if _task is not None and not _task_finished(_task):
-        return True
-    return False
+    return _task is not None and not _task_finished(_task)
 
 
 def is_running() -> bool:

@@ -119,9 +119,8 @@ class MinimapPresenceTracker:
             return False
         if t < self._last_t - NEW_GAME_REGRESS_S:
             return True  # game clock regressed = new game
-        if t - self._last_t > STALE_GAP_S:
-            return True  # stale gap = do not resume old counters
-        return False
+        # stale gap = do not resume old counters
+        return t - self._last_t > STALE_GAP_S
 
     def _rows(self, grid, counts, t):
         rows = []

@@ -67,9 +67,7 @@ def _is_path_allowed(rel_path: str) -> bool:
             stem = remainder[: -len(suffix)]
             if not stem or len(stem) > 64:
                 return False
-            if not all(c.isalnum() or c in "-_" for c in stem):
-                return False
-            return True
+            return all(c.isalnum() or c in "-_" for c in stem)
     return False
 
 

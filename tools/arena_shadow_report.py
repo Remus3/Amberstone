@@ -337,9 +337,7 @@ def is_dead_state(rec: dict) -> bool:
     if _says_player_dead(_norm_lower(haiku.get("round_strategy"))):
         return True
     det_strategy = _norm_lower(det.get("round_strategy"))
-    if any(m in det_strategy for m in _DET_DEAD_MARKERS):
-        return True
-    return False
+    return any(m in det_strategy for m in _DET_DEAD_MARKERS)
 
 
 def record_agreement(rec: dict) -> Optional[dict]:

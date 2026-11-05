@@ -307,11 +307,9 @@ def _is_non_laning_native_state(rec: dict) -> bool:
     norm = _normalize_verdict_text(action)
     if any(marker in norm for marker in _NON_LANING_STATE_MARKERS):
         return True
-    if classify_verdict(action) is None and any(
+    return classify_verdict(action) is None and any(
         marker in norm for marker in _NON_LANING_ACTION_MARKERS
-    ):
-        return True
-    return False
+    )
 
 
 def _native_choice_label(rec: dict) -> Optional[str]:

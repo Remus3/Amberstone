@@ -139,12 +139,8 @@ class Evaluator:
         """
         norm = remote_path.replace("/", "\\").lower()
         parts = [p for p in norm.split("\\") if p]
-        if ".." in parts:
-            return True
-        if any("%2e%2e" in p for p in parts):
-            return True
         # Also reject embedded trailing dots that Windows may treat as "..".
-        return False
+        return ".." in parts or any("%2e%2e" in p for p in parts)
 
     def _payload_ok(self, op_spec: dict[str, Any], payload_ext: str) -> bool:
         allowed = [e.lower() for e in op_spec.get("payload_extensions", [])]
@@ -172,9 +168,7 @@ class Evaluator:
             return False
         # Everything after the share root must start with this subdir.
         share_end = rp.find("\\rcclient\\")
-        if share_end < 0 or idx != share_end:
-            return False
-        return True
+        return not (share_end < 0 or idx != share_end)
 
     def _protected_window_blocks(self, task: Task) -> bool:
         # Only ``tag`` values that contain "restart-forwarder" are sensitive

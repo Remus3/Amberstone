@@ -36,9 +36,7 @@ def excluded(rel):
         return True
     if '/_phase3_html/' in fl or fl.endswith('.log') or '.log.' in fl:
         return True
-    if fl.endswith('api_surface.csv'):
-        return True
-    return False
+    return fl.endswith('api_surface.csv')
 
 
 def tracked():

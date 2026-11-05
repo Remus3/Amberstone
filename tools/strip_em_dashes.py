@@ -116,9 +116,7 @@ def _skip(path: Path) -> bool:
         return True
     if name.endswith((".db-shm", ".db-wal")):
         return True
-    if path.suffix.lower() in _SKIP_EXT:
-        return True
-    return False
+    return path.suffix.lower() in _SKIP_EXT
 
 
 def strip_dashes(text: str) -> tuple[str, int]:

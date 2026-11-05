@@ -481,10 +481,8 @@ def eog_matches_game(eog, current_game_id, game_start=None) -> bool:
     if not gid or not isinstance(eog, dict) or str(eog.get("gameId") or "") != gid:
         return False
     mtime = eog.get("_mtime")
-    if (game_start is not None and isinstance(mtime, (int, float))
-            and not isinstance(mtime, bool) and mtime < game_start):
-        return False
-    return True
+    return not (game_start is not None and isinstance(mtime, (int, float))
+                and not isinstance(mtime, bool) and mtime < game_start)
 
 
 def _note_live_game(game_id: str, now: float) -> None:

@@ -542,10 +542,8 @@ def is_strong_event(event_type: str | None, killer_id: int | None, monster_type:
         return False
     if event_type not in _STRONG_EVENT_TYPES:
         return False
-    if event_type == "ELITE_MONSTER_KILL" and (killer_id is None or killer_id == 0):
-        # Minion-killed wall jungler etc; LoLytics skips these.
-        return False
-    return True
+    # Minion-killed wall jungler etc; LoLytics skips these.
+    return not (event_type == "ELITE_MONSTER_KILL" and (killer_id is None or killer_id == 0))
 
 
 # ---------------------------------------------------------------------
