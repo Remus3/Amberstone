@@ -296,7 +296,8 @@ class Scheduler:
         clearing the task list - the protection the pre-sidecar lock gave.
         POSIX flock is advisory, so there the gap stays as it always was.
         """
-        with self._queue_log.open("r+", encoding="utf-8") as f:
+        # newline="\n": the rewrite goes out as LF on Windows too (RM-481).
+        with self._queue_log.open("r+", encoding="utf-8", newline="\n") as f:
             if not self._lock_file_exclusive(f):
                 yield None
                 return
@@ -323,7 +324,9 @@ class Scheduler:
         # rather than dropping the event. That fallback is NOT atomic across
         # processes on Windows (the CRT's O_APPEND is seek-then-write), so it
         # can still interleave under contention; the locked path is the fix.
-        with self._queue_lock(), self._queue_log.open("a", encoding="utf-8") as f:
+        with self._queue_lock(), self._queue_log.open(
+            "a", encoding="utf-8", newline="\n",
+        ) as f:
             f.write(line)
             f.flush()
 

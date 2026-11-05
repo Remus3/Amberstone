@@ -210,7 +210,11 @@ def _violations(source: str) -> list[str]:
         idx = 0 if (name == "open" and isinstance(fn, ast.Attribute)
                     and getattr(fn.value, "id", None) != "io") else 1
         mode = _write_mode(node, idx)
-        if not mode or "b" in mode or "w" not in mode:
+        # Write modes: truncate ("w"), exclusive create ("x") and read-write
+        # ("r+"). Append stays out of scope (module docstring).
+        if not mode or "b" in mode:
+            continue
+        if not ("w" in mode or "x" in mode or ("r" in mode and "+" in mode)):
             continue
         if not any(kw.arg == "newline" for kw in node.keywords):
             out.append(f"line {node.lineno}: {name}({mode!r}) without newline=")
