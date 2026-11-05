@@ -535,7 +535,7 @@ class CoachIntegration:
         import json as _json
 
         _stripped = (text or "").strip()
-        if _stripped.startswith("```") or _stripped.startswith("{"):
+        if _stripped.startswith(("```", "{")):
             _s = _stripped
             if _s.startswith("```"):
                 _nl = _s.find("\n")

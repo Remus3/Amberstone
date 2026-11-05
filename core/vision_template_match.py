@@ -193,7 +193,7 @@ def _index(category):
         return cached
     out: dict = {}
     try:
-        for stem in _atlas(category).keys():
+        for stem in _atlas(category):
             for k in _name_keys(stem):
                 out.setdefault(k, stem)
     except Exception as exc:  # noqa: BLE001 - fail-soft contract

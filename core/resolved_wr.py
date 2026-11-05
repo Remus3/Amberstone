@@ -51,7 +51,10 @@ def _get(row: Any, key: str) -> Any:
     if isinstance(row, dict):
         return row.get(key)
     try:
-        if key in row.keys():
+        # sqlite3.Row: `key in row` tests the VALUES, so the column names
+        # must be asked for explicitly (SIM118 does not apply here).
+        names = row.keys()
+        if key in names:
             return row[key]
     except (AttributeError, TypeError):
         pass

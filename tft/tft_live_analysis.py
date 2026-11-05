@@ -250,7 +250,7 @@ def _collision_free(traits, champs_lower):
     out = set()
     for t in traits:
         tl = str(t).lower().strip()
-        if not tl or any(c == tl or c.startswith(tl + " ") or c.startswith(tl + "/")
+        if not tl or any(c == tl or c.startswith((tl + " ", tl + "/"))
                          for c in champs_lower):
             continue
         out.add(tl)
@@ -266,7 +266,7 @@ def _is_trait_label(ul):
     """True when a lowercased unit string is a trait name (incl. "A/B" and
     the "unknown Trait/Trait" vision format)."""
     def _hit(s):
-        if any(s == t or s.startswith(t + " ") or s.startswith(t + "/") for t in _TRAIT_NAMES):
+        if any(s == t or s.startswith((t + " ", t + "/")) for t in _TRAIT_NAMES):
             return True
         return "/" in s and all(p.strip() in _TRAIT_NAMES for p in s.split("/"))
     if _hit(ul):

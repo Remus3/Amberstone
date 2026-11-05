@@ -1111,7 +1111,7 @@ def _apply_cdragon_ratio_preference(form: AbilityForm, cd_blocks: list) -> Abili
         m_counts = Counter(msig)
         if m_counts != Counter(csig) or any(v > 1 for v in m_counts.values()):
             return form  # ambiguous structure - whole-form fall back to Meraki
-        by_sig = {s: c for s, c in zip(csig, mech)}
+        by_sig = dict(zip(csig, mech))
         for i, s in zip(dmg_idx, msig):
             pairs[i] = by_sig[s]
 

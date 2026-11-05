@@ -120,7 +120,7 @@ def find_pro_matches(
             "WHERE lower(riot_id_game_name) = ?",
             (OPERATOR_GAME_NAME.lower(),),
         )
-        operator_team: dict[str, int] = {mid: tid for mid, tid in rows}
+        operator_team: dict[str, int] = dict(rows)
 
         found: dict[str, list[dict]] = {}
         for pro in roster:

@@ -43,7 +43,7 @@ def _safe_basename(img: str) -> str | None:
         return None
     if "/" in img or "\\" in img:
         return None
-    if img in (".", "..") or img.startswith(".") or img.startswith("..."):
+    if img in (".", "..") or img.startswith((".", "...")):
         return None
     # Strip control chars + null bytes; reject if anything was stripped.
     cleaned = "".join(ch for ch in img if ch.isprintable() and ch != "\x00")

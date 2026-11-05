@@ -212,7 +212,7 @@ _DB_SIDECAR_SUFFIXES = ("-wal", "-shm", "-journal")
 
 
 def _is_append_log(name: str) -> bool:
-    return name.endswith("_shadow.jsonl") or name.endswith("_trace.jsonl")
+    return name.endswith(("_shadow.jsonl", "_trace.jsonl"))
 
 
 def _version_key(name: str) -> tuple[int, ...]:

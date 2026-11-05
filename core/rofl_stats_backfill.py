@@ -313,7 +313,7 @@ def _champion_id_map(conn) -> dict:
         "SELECT DISTINCT champion_name, champion_id FROM participants "
         "WHERE champion_name IS NOT NULL AND champion_id IS NOT NULL"
     ).fetchall()
-    return {name: cid for name, cid in rows}
+    return dict(rows)
 
 
 def _find_rofl(archive_dir, match_id):

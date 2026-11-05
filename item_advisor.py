@@ -684,7 +684,7 @@ def get_purchase_advice(champion, current_items, gold, enemy_champs,
         for name, cost in buyable:
             if name not in seen or cost > seen[name]:
                 seen[name] = cost
-        buyable = [(n, c) for n, c in seen.items()]
+        buyable = list(seen.items())
         buyable.sort(key=lambda x: x[1], reverse=True)
         spent = 0
         for name, cost in buyable:

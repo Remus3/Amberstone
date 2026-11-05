@@ -245,7 +245,7 @@ def _latest_rating_file(sd):
     return newest
 def is_valid_match(gs):
     gm = (gs.get("game_mode","") or "").upper()
-    if gm in _EXCLUDED_MODES or gm.startswith("TUTORIAL") or gm.startswith("PRACTICE"): return False
+    if gm in _EXCLUDED_MODES or gm.startswith(("TUTORIAL", "PRACTICE")): return False
     # _num, not a bare .get: a present-but-null game_seconds used to raise
     # TypeError comparing None >= 180 on the FIRST line of save_rating.
     return _num(gs.get("game_seconds", 0)) >= 180

@@ -43,7 +43,7 @@ def _serve_index(h) -> None:
 
 def _index_matcher(path: str) -> bool:
     return (path == "/" or path == "/index.html"
-            or path.startswith("/?") or path.startswith("/index.html?"))
+            or path.startswith(("/?", "/index.html?")))
 
 
 def _serve_web_asset(h) -> None:
@@ -155,7 +155,7 @@ def _serve_agent_file(h) -> None:
             body = _f.read(_AGENT_FILE_CAP)
         if name.endswith(".md"):
             ctype = "text/markdown; charset=utf-8"
-        elif name.endswith(".pem") or name.endswith(".crt"):
+        elif name.endswith((".pem", ".crt")):
             ctype = "application/x-pem-file"
         elif name.endswith(".ps1"):
             ctype = "text/plain; charset=utf-8"
