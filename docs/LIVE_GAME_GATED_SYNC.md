@@ -1067,6 +1067,7 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
 
 ### `[BATCH OVERLAY-INTERACT]` - overlay up, one pass of click / drag / hover
 
+- **RM-1272** `[NEW ROW 2026-11-05]` phase surfaces and hotkey reminders, live half; the build read a mock capture only (`?ui_mock=1`, LEDGER 2031). CHECK in a real game after an rc-shell relaunch: reminders show Ctrl+Shift+A on `w-launcher` and `w-build`; the read-only IPC returns the shell's binding map; the field strips to the launcher over the end-of-game screen; hidden `w-lead` and `w-callouts` stay hidden. Not counted in the OPEN figure above.
 - **G2-31** (was B25) Overlay build-module interaction round-trips: D1 tooltip hover (LEDGER 780
   flagged rune icons render with NO hover tooltip - fix pending), D2 right-click radial + zone
   flip/wedge clicks landing mid-game, D3 override survives a re-plan + Defer-Once re-entry + reset
