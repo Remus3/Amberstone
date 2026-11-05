@@ -7,7 +7,8 @@
 // Resurrected from the s209-deleted loading.js panel; live at
 // `web/js/lib/summoner_spells.js` so callers don't reach across panels.
 // Local files live at data/icons/spells/<slug>.png (served by
-// dashboard/routes_static.py:191 -> /icons/spells/<slug>.png).
+// the `/icons/spells/` entry of GET_ROUTES in dashboard/routes_static.py
+// -> /icons/spells/<slug>.png).
 
 export const SUM_SPELLS = {
   1:  "SummonerBoost",        // Cleanse

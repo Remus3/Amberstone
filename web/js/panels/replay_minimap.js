@@ -21,7 +21,7 @@
 // No DOM access in this file: it is imported by dev.js for drawing and by
 // replay_minimap.test.mjs under `node --test`.
 
-// --- death timer (port of core/post_game_score.py:76-112) ---------------------
+// --- death timer (port of `calculate_death_timer` in core/post_game_score.py) -
 // Base respawn wait by level, index 0 = level 1. Same table as
 // core.post_game_score.DEATH_BRW_SECONDS; the cross-check test pins equality.
 const DEATH_BRW_SECONDS = Object.freeze([

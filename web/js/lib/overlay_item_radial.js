@@ -1,6 +1,6 @@
 // WP-D2 (OVERLAY_BUILD_MASTER_PLAN Section D): right-click radial 5-action menu
 // for build-module item icons. A singleton ring lives on <html> (dodging the
-// dashboard body `zoom`, the champ_select.js:303 trick) with five data-action
+// dashboard body `zoom`, the <html>-mount trick in champ_select.js) with five data-action
 // wedges on the Kurtenbach layout: N=Build-Earlier, E=Build-Later, S=Defer-Once,
 // W=Keep on the high-accuracy cardinal axes, center=Silence (so a sloppy flick
 // cannot mute by accident). Each wedge writes the per-item override store
@@ -8,7 +8,7 @@
 // reorder shows immediately. D3 makes the server replan honor the overrides.
 //
 // Coexistence: the icon contextmenu preventDefault + stopPropagation so the
-// radial neither dismisses the overlay (overlay_layout.js:241 ACTIVE hide-menu)
+// radial neither dismisses the overlay (the ACTIVE hide-menu in overlay_layout.js)
 // nor cycles the META archetype (active_match.js _cycleMeta on the META strip).
 
 import {

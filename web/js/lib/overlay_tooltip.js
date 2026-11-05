@@ -1,6 +1,6 @@
 // WP-D1 (OVERLAY_BUILD_MASTER_PLAN Section D): hover tooltip for build-module
 // item icons. A single tip element lives on <html> (dodging the dashboard body
-// `zoom`, mirroring the champ_select trade popup at champ_select.js:303). It
+// `zoom`, mirroring the <html>-mount trick in champ_select.js). It
 // shows an item's name + stats + passive - pulled from the /api/dictionary/items
 // dict already loaded by items_index.js (ITEM_DETAILS) - after the cursor
 // settles, anchored toward the screen edge so it never covers the play area.

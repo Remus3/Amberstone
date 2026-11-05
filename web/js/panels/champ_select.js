@@ -385,7 +385,8 @@ function _csvDetectMode(cs) {
 }
 
 // s209: queue_id -> human label for the CS sub-line. Mirrors the agent's
-// `_LOBBY_QUEUE_NAMES` map in tools/lcu_agent.py:220 - the agent
+// `_LOBBY_QUEUE_NAMES` map in lcu/snapshot_shape.py (tools/lcu_agent.py
+// re-exports it) - the agent
 // forwards `queue_name` on the lobby envelope but not the champ-select
 // envelope, so the dashboard needs its own local mapping. Unknown IDs
 // fall through to "queue <N>" for visibility.
@@ -907,7 +908,7 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
   // s171: lock button - shown only when a champion is hovered but not
   // yet locked. Click fires the LCU lock_pick command and surfaces the
   // result inline via lcuPollResult, mirroring the legacy overlay's
-  // #cs-lock-btn (champ_select.js:818). Hidden after lock since there's
+  // #cs-lock-btn (the `lockBtnHtml` template below). Hidden after lock since there's
   // nothing left to do; LCU re-emits `my_completed=true` and the next
   // render re-renders without the button.
   const lockBtnHtml = (myCid && !locked)
@@ -1095,7 +1096,7 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
 // LCU ground truth (tools/lcu_agent.py): cs.phase = sess.timer.phase
 // (PLANNING -> BAN_PICK -> FINALIZATION); cs.active_round.type is "ban"
 // while a ban round is on the clock and flips to "pick" once picks begin
-// (lcu_agent.py:491 _active_round). So ban phase is DONE when the
+// (`active_round` in lcu/champ_select_shape.py). So ban phase is DONE when the
 // active round is a pick round, OR the phase has advanced past BAN_PICK /
 // PLANNING (e.g. FINALIZATION). No-bans draft modes (Blind 430 / Quickplay
 // 490) never enter a ban round, so they read as complete the moment picks

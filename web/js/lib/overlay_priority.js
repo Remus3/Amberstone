@@ -33,7 +33,7 @@
 // now wired (signalFromState derives low-HP-at-fight), so a low-HP combat tick
 // promotes from the urgent headline (85) to the lethal rung (100).
 
-// classifyAction band -> tier (spec section 1). right_now.js:472 produces
+// classifyAction band -> tier (spec section 1). right_now.js `renderRightNow` produces
 // the band; this is the single source for the band->tier mapping the
 // consumers share.
 const BAND_TIER = {
@@ -154,7 +154,7 @@ function _isLethalAtFight(band, hpPct) {
  * @param {object|null} p - the coach payload (state.coach). null/garbage is
  *   safe (reads as empty).
  * @param {string} band - the classifyAction band already computed by the
- *   caller (right_now.js:472). Non-strings fall back to "empty".
+ *   caller (right_now.js `renderRightNow`). Non-strings fall back to "empty".
  * @returns {{band:string, hasChoices:boolean, spikeCrossed:boolean,
  *   objectiveStealNow:boolean, lethal:boolean}} the selectPrimary input.
  */

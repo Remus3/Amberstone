@@ -8,9 +8,10 @@
 // on the enemy roster (index zero), which is the operator's actual laner only
 // by coincidence. It now matches on ROLE. Role is already client-side on both
 // feeds this panel is driven from - champ-select cells carry
-// `assignedPosition` (web/js/panels/champ_select.js:540 renders the role pip
+// `assignedPosition` (the role pip in web/js/panels/champ_select.js renders
 // off it) and the live roster carries `liveclient.players[].position`, an LCU
-// ROLE STRING built by dashboard/_liveclient.py:225 from the same allPlayers
+// ROLE STRING built by `liveclient_summary()` in dashboard/_liveclient.py
+// from the same allPlayers
 // array. No new route and no new backend field.
 //
 // BACKLOG F1 (2026-07-20): the same per-pair cached /api/ds-matchup call is

@@ -9,31 +9,36 @@
 //
 //   gold    - gold remaining to the NEXT Daemon-Slayer-recommended item. The
 //             next item is the first liveclient.sr_items[] row with
-//             next===true (dashboard/_liveclient.py:389-396, built from
-//             item_advisor.resolve_build at :376). Gold is the activePlayer
-//             currentGold surfaced at dashboard/_liveclient.py:148. Cost +
-//             recipe are injected (web/js/lib/items_index.js ITEM_COSTS:14 /
-//             ITEM_RECIPES:16 / _resolveItemId:32). Already-owned DIRECT
-//             components are credited against the total - the same one-level
-//             `from` walk componentProgress uses (items_index.js:189), not a
+//             next===true (`sr_items` built by `liveclient_summary()` in
+//             dashboard/_liveclient.py from item_advisor.resolve_build). Gold
+//             is the activePlayer currentGold, surfaced as `out["gold"]` in
+//             the same function. Cost + recipe are injected (web/js/lib/
+//             items_index.js `ITEM_COSTS` / `ITEM_RECIPES` / `_resolveItemId`).
+//             Already-owned DIRECT components are credited against the total -
+//             the same one-level `from` walk `componentProgress` uses
+//             (items_index.js), not a
 //             full recursive closure, so the figure is a truthful UNDER-credit
 //             rather than a fabricated one.
 //
 //   trinket - the free yellow-trinket upgrade nudge. MIRRORS the server rule
-//             core/build_planner/replan.py:684-689 (kind "upgrade_trinket",
-//             3340 Stealth Ward -> 3363 Farsight Alteration, gated stage >=
-//             mid) with the stage function core/build_planner/scoring.py:
-//             106-123 and its constants :57-60. Nothing new is invented; this
+//             the `upgrade_trinket` action in core/build_planner/replan.py
+//             (3340 Stealth Ward -> 3363 Farsight Alteration, gated stage >=
+//             mid) with the stage function `stage_for` in
+//             core/build_planner/scoring.py and its `_EARLY_CLOCK_S` /
+//             `_LATE_CLOCK_S` /
+//             `_MID_OWNED` / `_LATE_OWNED` constants. Nothing new is invented; this
 //             is that server-side action rendered as a rule line, which no
 //             surface did before. It is NOT a ward-cooldown cue: the Live
 //             Client API exposes no cooldowns, which is exactly why the
 //             w-trinket / Ward Cue widget was removed 2026-07-05
-//             (overlay_layout.js:61). A pure inventory + clock rule cannot go
+//             (see the w-trinket removal note in overlay_layout.js). A pure
+//             inventory + clock rule cannot go
 //             stale that way.
 //
 // ASCII only.
 
-// Stage mirror - core/build_planner/scoring.py:57-60 + :106-123. The stage
+// Stage mirror - `stage_for` and its clock / owned-count constants in
+// core/build_planner/scoring.py. The stage
 // advances on EITHER the clock OR the completed-item count, whichever is
 // further along. tests/test_next_buy_overlay.py pins these copies against the
 // Python constants so drift fails CI.
@@ -45,13 +50,15 @@ export const NB_STAGE = {
 };
 export const NB_STAGE_ORDER = { early: 0, mid: 1, late: 2 };
 
-// Trinket mirror - core/build_planner/replan.py:72-73 + :371 + :684-689.
+// Trinket mirror - `_STAGE_ORDER`, `_STEALTH_WARD_ID`, `_FARSIGHT_ID` and the
+// `upgrade_trinket` action in core/build_planner/replan.py.
 export const NB_TRINKET_FROM = ["stealth ward", "warding totem"];
 export const NB_TRINKET_TO = "Farsight Alteration";
 export const NB_TRINKET_MIN_STAGE = "mid";
 
 // Every name the build view already treats as a non-sellable trinket
-// (dashboard/_liveclient.py:383-385). Used so trinkets never count as
+// (the owned-items skip set in `liveclient_summary()`, dashboard/
+// _liveclient.py). Used so trinkets never count as
 // completed items in the stage arithmetic.
 export const NB_TRINKETS = new Set([
   "farsight alteration", "stealth ward", "oracle lens",

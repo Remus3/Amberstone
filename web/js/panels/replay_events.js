@@ -25,8 +25,9 @@ import { CHAMPS, DDRAGON_FALLBACK_VERSION } from '../lib/items_index.js';
 
 const _LS_INCLUDE_KEY = "rc-replay-events-include";
 
-// Resolve DDragon champion portrait URL. Mirrors cd_ledger.js:74-79
-// alphanum-strip pattern - load-bearing for punctuation in display
+// Resolve DDragon champion portrait URL. Mirrors the
+// alphanumeric-strip normalisation of web/js/lib/items_index.js
+// (a deleted panel carried the original) - load-bearing for punctuation in display
 // names (Kai'Sa -> KaiSa, Cho'Gath -> Chogath). CHAMPS.version is
 // async-hydrated from /data/champions_index.json; default 16.10.1.
 function _portraitUrl(champName) {

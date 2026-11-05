@@ -11,28 +11,31 @@
 //
 // Data (all EXISTING /api/state fields - nothing added server-side):
 //   - mode (mode_key)                      -> the SR-only gate.
-//   - liveclient.game_time_s               -> dashboard/_liveclient.py:97.
-//   - liveclient.objective_events          -> dashboard/_liveclient.py:265-301
-//     ({name, killer_team, down_at_s, dragon_type?}).
+//   - liveclient.game_time_s               -> `out["game_time_s"]` in
+//     `liveclient_summary()` (dashboard/_liveclient.py).
+//   - liveclient.objective_events          -> `out["objective_events"]` in the
+//     same function ({name, killer_team, down_at_s, dragon_type?}).
 //
 // The objective schedule MIRRORS core/event_callouts.py exactly - no timer
 // is fabricated beyond that canonical schedule + game_time arithmetic:
 //   SR_DRAGON_FIRST_S/RESPAWN_S 300/300, SR_BARON_FIRST_S/RESPAWN_S 1200/360
-//   (:66-69), _SR_ELDER_NOMINAL_S 2100 (:77), _OBJ_ACTIVE_WINDOW_S 30 (:193),
-//   _SOUL_SECURED_STACKS 4 (:623). tests/test_objective_gauges_oq16.py pins
+//   (same block), _SR_ELDER_NOMINAL_S 2100, _OBJ_ACTIVE_WINDOW_S 30,
+//   _SOUL_SECURED_STACKS 4. tests/test_objective_gauges_oq16.py pins
 //   these copies against the Python constants so drift fails CI.
-// Path mirror (core/event_callouts.py:231-336):
+// Path mirror (`_dynamic_epic_callouts` / `_objective_callouts` in
+// core/event_callouts.py):
 //   - drake: soul secured (>= 4 elemental drakes one side) -> the pit is
 //     Elder, elemental row suppressed -> "-"; else a real elemental take
 //     anchors last_kill + 300; else the static 300s cadence (UP inside the
 //     30s active window).
 //   - baron: a real take anchors last_kill + 360; else the static one-shot
-//     at 1200 (UP inside the 30s window, then dropped -> "-", :334-335).
+//     at 1200 (UP inside the 30s window, then dropped -> "-").
 //   - elder: the canonical source encodes ONLY the nominal 2100 late marker
 //     (one-shot) and NO post-kill elder respawn - so after an Elder take,
 //     or once the nominal marker is long past, the dial is honestly "-".
 //   - kill-anchored respawns keep UP until the next kill event lands (the
-//     objective really is up - same convention as objective_chips.js:66-67).
+//     objective really is up - same convention as `up: eta <= 0` in
+//     objective_chips.js).
 //
 // DOUBLE-ALERT CADENCE (BACKLOG "Overlay HUD micro-lifts"): each counting-down
 // dial also carries an alert tier - "soon" at eta <= 90s, "imminent" at
@@ -155,7 +158,7 @@ function _dial(key, state, etaS, windowS) {
 function _drakeDial(events, gt) {
   const counts = _elementalCounts(events);
   if (Math.max(counts.ally, counts.enemy) >= OG_SCHED.soulSecuredStacks) {
-    return _dial("drake", "none"); // soul locked: pit is Elder (ec.py:254-255)
+    return _dial("drake", "none"); // soul locked: pit is Elder (`_soul_secured_at`)
   }
   const last = _lastKillT(events, _isElementalDrake);
   if (last !== null) {
@@ -176,7 +179,7 @@ function _baronDial(events, gt) {
       ? _dial("baron", "eta", eta, OG_SCHED.baronRespawnS)
       : _dial("baron", "up");
   }
-  // Static one-shot (ec.py:318-335): UP inside the active window, "-" after.
+  // Static one-shot (`_objective_callouts`): UP inside the active window, "-" after.
   const eta = OG_SCHED.baronFirstS - gt;
   if (eta > 0) return _dial("baron", "eta", eta, OG_SCHED.baronFirstS);
   if (eta >= -OG_SCHED.activeWindowS) return _dial("baron", "up");
@@ -189,7 +192,7 @@ function _elderDial(events, gt) {
   const lastElder = _lastKillT(events, (ev) =>
     ev.name === "dragon" && !_isElementalDrake(ev));
   if (lastElder !== null) return _dial("elder", "none");
-  const eta = OG_SCHED.elderNominalS - gt; // nominal late marker (ec.py:77,111)
+  const eta = OG_SCHED.elderNominalS - gt; // nominal late marker (`_SR_ELDER_NOMINAL_S`)
   if (eta > 0) return _dial("elder", "eta", eta, OG_SCHED.elderNominalS);
   if (eta >= -OG_SCHED.activeWindowS) return _dial("elder", "up");
   return _dial("elder", "none");

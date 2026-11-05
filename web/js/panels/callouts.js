@@ -127,7 +127,7 @@ export function renderLead(state) {
   const mount = document.getElementById(LEAD_MOUNT_ID);
   if (!mount) return;
   // B4 (RM-189): lead_projection's own source calls its table a "per-mode
-  // directive table" (core/lead_projection.py:321) and emits lines like
+  // directive table" (the `# Per-mode directive table` block of core/lead_projection.py) and emits lines like
   // "Big lead: dive or roam, snowball it now." Empty object -> _leadSig ""
   // -> the existing clear-and-hide branch below.
   const lead = directivesAllowed(state)
