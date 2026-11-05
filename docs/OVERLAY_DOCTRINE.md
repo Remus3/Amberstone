@@ -343,3 +343,35 @@ What this means today, plainly:
   (`#csv-sugg-ds-matchup`) and the draft-elo chip, but both read the live `:2999`
   roster (`active_match.js _amDsSyntheticCs`, `_renderDraftEloFromCtx`), so on the
   loading screen the card has nothing to paint on either surface yet.
+
+--------------------------------------------------------------------------------
+## 11. HOTKEY REMINDERS (MAIN ORDER 2026-10-31 2215 item 10)
+--------------------------------------------------------------------------------
+
+Every interactive widget shows its hotkey. Interactive means it accepts input beyond
+its drag handle; `tests/snapshot_panels/test_overlay_hotkey_hints.py` reads that off
+the rendered field rather than off a list, so a widget that grows a control without a
+reminder fails it.
+
+| Widget       | Shows                                                       | Where                                    |
+|--------------|-------------------------------------------------------------|------------------------------------------|
+| `w-launcher` | `Ctrl+Shift+A`, and every key in the open menu's foot block | under the square, above the ON/OFF icon  |
+| `w-choices`  | `Ctrl+Shift+A`, plus `Alt+1/2/3` on each chip               | a line under the chips                   |
+| `w-build`    | `Ctrl+Shift+A`                                              | top right, beside the drag handle        |
+| `w-ovds`     | `Ctrl+Shift+A`                                              | top right, beside the drag handle        |
+| ON/OFF icon  | `Ctrl+Shift+O`                                              | tooltip and the launcher menu (see below)|
+
+- `Ctrl+Shift+A` is the reminder because PASSIVE is click-through until the ACTIVE
+  flip. It is the Win32-listener key, the one that delivers while the game holds focus.
+- The ON/OFF icon is its own window sized to the icon, so a visible line does not fit;
+  its key rides the tooltip and the launcher menu. Display-only widgets carry nothing
+  (rule 8).
+- The reminder reads the live binding: `web/js/lib/overlay_hotkeys.js` hydrates from
+  `window.rcShell.getOverlayHotkeys` (`overlay_state.overlayHotkeyMap`) and falls back
+  to a map pinned equal to it when there is no bridge. **No binding is rebindable
+  today.** They are constants in rc-shell and `tools/hotkey_listener.py`; a rebind
+  feature is a separate decision, and the reminder will follow one with no change.
+- Rule tiers: neutral ink at the OBJECTIVE footer's alpha, the overlay's smallest type
+  token, no hue, no motion, no layout of its own. `pointer-events:none`, so it is never
+  a hit target or a click-through zone. It sheds in combat (`body[data-fight="1"]`, rule
+  3 and section 6); the per-chip pick keys stay, as section 6 says.

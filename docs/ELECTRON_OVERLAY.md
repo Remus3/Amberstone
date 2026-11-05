@@ -203,8 +203,11 @@ Hotkeys override auto-behavior:
   DOES deliver in-game; it stamps a signal file under `ops/runtime/` that the
   rc-shell main process polls (`startActiveToggleWatch` / `startPanelCycleWatch`).
   Use `Ctrl+Shift+B` in-game to reach the build panel (B not C: Ctrl+Shift+C is
-  commonly bound by other apps - Discord / Overlay Platform M / DevTools). (Alt binds
-  rebindable in companion Settings.)
+  commonly bound by other apps - Discord / Overlay Platform M / DevTools). No bind
+  is rebindable today: all of them are constants (`overlay_state.js OVERLAY_DEFAULTS`,
+  `overlay_toggle.js TOGGLE_DEFAULTS.hotkey`, `tools/hotkey_listener.py _HOTKEYS`) and
+  no Settings row writes them. The widget reminders read this map live
+  (`docs/OVERLAY_DOCTRINE.md` section 11).
 
 The auto-hide of the companion when a match starts keeps everything to one
 screen: companion for idle, overlay for the match.

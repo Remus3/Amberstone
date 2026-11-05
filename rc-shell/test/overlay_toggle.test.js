@@ -386,7 +386,7 @@ test("render reflects ON / OFF on aria-pressed + the off class, label fixed", ()
   assert.strictEqual(btn.attrs["aria-pressed"], "true");
   assert.strictEqual(btn.classes.has("off"), false);
   assert.strictEqual(btn.attrs["aria-label"], "Overlay on/off");
-  assert.strictEqual(btn.title, "Overlay on/off");
+  assert.strictEqual(btn.title, "Overlay on/off (Ctrl+Shift+O)"); // RC-HOTKEY-HINTS
   page.render(btn, false);
   assert.strictEqual(btn.attrs["aria-pressed"], "false");
   assert.strictEqual(btn.classes.has("off"), true);

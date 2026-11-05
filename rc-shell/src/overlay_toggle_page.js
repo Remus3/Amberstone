@@ -23,6 +23,10 @@
   }
 })(typeof window !== "undefined" ? window : null, function () {
   const LABEL = "Overlay on/off";
+  // RC-HOTKEY-HINTS: this window is sized to the icon, so there is no room for a
+  // visible reminder; the tooltip carries the key (and the overlay menu lists it).
+  // Pinned equal to overlay_toggle.TOGGLE_DEFAULTS.hotkey by overlay_hotkeys.test.js.
+  const HOTKEY = "Ctrl+Shift+O";
 
   // Anything but a strict false renders ON (the default).
   function render(btn, visible) {
@@ -32,7 +36,7 @@
     const on = visible !== false;
     btn.setAttribute("aria-pressed", on ? "true" : "false");
     btn.setAttribute("aria-label", LABEL);
-    btn.title = LABEL;
+    btn.title = LABEL + " (" + HOTKEY + ")";
     btn.classList.toggle("off", !on);
   }
 

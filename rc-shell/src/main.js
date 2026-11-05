@@ -1368,6 +1368,14 @@ function registerIpc() {
     overlaySettings = ov.overlaySettingsFrom(store.load(statePath(), {}));
     return overlaySettings;
   });
+  // RC-HOTKEY-HINTS (doctrine section 11): read-only, the bindings the overlay
+  // page's widget reminders show.
+  ipcMain.handle("rc-shell:overlay-hotkeys:get", (event) => {
+    if (!trustedSender(event)) {
+      return null;
+    }
+    return ov.overlayHotkeyMap(tog.TOGGLE_DEFAULTS.hotkey);
+  });
   // RC Overlay Doctrine section 3: the durable widget-field layout mirror. get
   // seeds the field when localStorage is empty (across a wipe / fresh profile);
   // set persists a drag / scale / reset through the pure merger so the sibling

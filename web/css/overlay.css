@@ -690,6 +690,47 @@ body[data-shell="overlay"] .ovx-widget.ovx-dragging .ovx-handle {
 body[data-shell="overlay"] .ovx-hidden {
   display: none !important;
 }
+/* RC-HOTKEY-HINTS (doctrine section 11): the small reminder inside an interactive
+ * widget. Neutral ink at the OBJECTIVE footer's alpha on the overlay's smallest type
+ * token: never a status hue, never moving, never a hit target (pointer-events:none,
+ * so it is not a click-through zone either). Absolute beside the drag handle, so it
+ * takes no layout and a widget's box does not change for it. */
+body[data-shell="overlay"] .ovx-hotkey-hint {
+  position: absolute;
+  top: 6px;
+  right: 30px;
+  z-index: 1;
+  font-size: var(--fs-ov-sigil);
+  line-height: 1;
+  color: rgba(var(--ovx-text), 0.55);
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+}
+/* The chips fill #rn-choices edge to edge, so there the reminder is a line under
+ * them; it exists only while chips do. */
+body[data-shell="overlay"] #rn-choices > .ovx-hotkey-hint {
+  position: static;
+  align-self: flex-end;
+}
+/* w-build has no head on the overlay (its pane head is hidden, data-ink), so its
+ * first content row starts at the top: reserve the strip the reminder and the drag
+ * handle share, or a long row runs under the reminder (measured on the ARAM fixture). */
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-build"] {
+  padding-top: 18px;
+}
+/* The launcher square has no room inside: under it, in the gap above the rc-shell
+ * ON/OFF icon (design 24,72), reaching left so it clears the TFT vitals (x 70). */
+body[data-shell="overlay"] .ovx-launcher > .ovx-hotkey-hint {
+  top: 35px;
+  left: -24px;
+  right: auto;
+  letter-spacing: -0.03em;
+}
+/* No text to read in a fight (rule 3, section 6). */
+body[data-shell="overlay"][data-fight="1"] .ovx-hotkey-hint {
+  display: none !important;
+}
 /* RC-PHASE-SURFACES (doctrine section 10): the phase gate is .ovx-hidden for every
  * registry widget. w-mmrect is settings-pinned and off the registry, so it carries
  * its row of the table here: the minimap outline is in-game only. */
@@ -1007,6 +1048,16 @@ body[data-shell="overlay"] .ovx-launcher-menu .ovx-menu-reset {
 body[data-shell="overlay"] .ovx-launcher-menu .ovx-menu-done {
   color: rgba(var(--ovx-cyan), 0.95);
   margin-top: 4px;
+}
+/* RC-HOTKEY-HINTS: the key reference at the foot of the menu. Text, not controls. */
+body[data-shell="overlay"] .ovx-launcher-menu .ovx-menu-hotkeys {
+  margin-top: 6px;
+  padding: 5px 4px 2px;
+  border-top: 1px solid rgba(var(--ovx-gold), 0.28);
+  color: rgba(var(--ovx-text), 0.55);
+  font-size: var(--fs-ov-sigil);
+  line-height: 1.5;
+  white-space: nowrap;
 }
 /* Per-panel control row: the show/hide toggle on top, an opacity + a scale slider
  * underneath (operator 2026-06-28 - each panel tunes independently). */

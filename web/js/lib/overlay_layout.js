@@ -25,6 +25,13 @@
 // which already survives a reload since the overlay shares the dashboard origin.
 
 import { widgetAllowedInPhase } from "./overlay_phase.js";
+import {
+  HOTKEY_DEFAULTS,
+  HOTKEY_REFERENCE,
+  hotkeyActionFor,
+  hotkeyFor,
+  hydrateOverlayHotkeys,
+} from "./overlay_hotkeys.js";
 
 const LS_KEY = "rc-overlay-layout";
 
@@ -694,6 +701,29 @@ function _makeHandle(el, w) {
   });
 }
 
+// RC-HOTKEY-HINTS (doctrine section 11): the small reminder inside an interactive
+// widget, showing the live binding. Same idempotent contract as _makeHandle: a
+// renderer rebuild drops the child, the next place pass adds exactly one back.
+// overlay.css makes it pointer-events:none, so it is never a hit target and never
+// a click-through zone, and sheds it in combat.
+function _makeHotkeyHint(el, w) {
+  try {
+    const action = hotkeyActionFor(w);
+    if (!action) return;
+    let h = el.querySelector(":scope > .ovx-hotkey-hint");
+    if (!h) {
+      h = document.createElement("span");
+      h.className = "ovx-hotkey-hint";
+      h.dataset.ovxHotkey = action;
+      el.appendChild(h);
+    }
+    const text = hotkeyFor(action);
+    if (h.textContent !== text) h.textContent = text;
+  } catch (_e) {
+    // additive reminder; a locked-down node must not break the place pass.
+  }
+}
+
 // Attach the right-click hide listener once per mount. Idempotent: a dataset
 // flag survives re-renders that keep the same node, and _placeAll re-runs the
 // whole pass after a renderer rebuilds a mount (a fresh node has no flag, so the
@@ -735,6 +765,7 @@ function _placeAll() {
     _applyPos(el, _posFor(w));
     _makeHandle(el, w);
     _makeHideMenu(el, w);
+    _makeHotkeyHint(el, w);
   }
 }
 
@@ -1053,6 +1084,18 @@ function _renderMenu(menu) {
   });
   menu.appendChild(done);
 
+  // RC-HOTKEY-HINTS: every key, live, in the one surface opened on purpose. The
+  // rc-shell ON/OFF icon is its own window sized to the icon, so its key is here
+  // and in its tooltip. Text only, no control: never a focus or hit-target stop.
+  const keys = document.createElement("div");
+  keys.className = "ovx-menu-hotkeys";
+  for (const [action, verb] of HOTKEY_REFERENCE) {
+    const row = document.createElement("div");
+    row.textContent = hotkeyFor(action) + " " + verb;
+    keys.appendChild(row);
+  }
+  menu.appendChild(keys);
+
   // Re-establish focus on the SAME control (by key, not node identity) so a
   // keyboard operator keeps their place across the rebuild. No-op when focus
   // was outside the menu, so this never steals it.
@@ -1070,6 +1113,7 @@ function _ensureLauncher() {
     if (el) {
       _menuEl = (el.querySelector && el.querySelector(".ovx-launcher-menu")) || _menuEl;
       _applyPos(el, _posFor(LAUNCHER));
+      _makeHotkeyHint(el, LAUNCHER);
       return el;
     }
     const host = document.querySelector("#am-grid") || document.body;
@@ -1101,6 +1145,7 @@ function _ensureLauncher() {
 
     host.appendChild(el);
     _applyPos(el, _posFor(LAUNCHER));
+    _makeHotkeyHint(el, LAUNCHER);
     _installLauncher(el, LAUNCHER, () => _setMenu(!menu.classList.contains("ovx-menu-open")));
     return el;
   } catch (_e) {
@@ -1145,6 +1190,9 @@ export function registerOverlayWidget(entry) {
   };
   if (Number.isFinite(e.w) && e.w > 0) clean.w = Math.round(e.w);
   if (e.game === "tft" || e.game === "*") clean.game = e.game;
+  // RC-HOTKEY-HINTS: a registered widget with controls (the TFT-14 planner) names
+  // the binding its reminder shows; an unknown action is dropped, no reminder.
+  if (Object.prototype.hasOwnProperty.call(HOTKEY_DEFAULTS, e.hotkey)) clean.hotkey = e.hotkey;
   const i = _extraWidgets.findIndex((w) => w.id === clean.id);
   if (i >= 0) _extraWidgets[i] = clean;
   else _extraWidgets.push(clean);
@@ -1166,6 +1214,14 @@ export function initOverlayLayout() {
   } catch (_e) {
     // window may be locked down in a headless context; the export still works.
   }
+
+  // RC-HOTKEY-HINTS: the shell is the binding authority. The fallback map paints
+  // first; a reply re-places so the hints and an open menu show the live keys.
+  hydrateOverlayHotkeys().then((took) => {
+    if (!took) return;
+    placeOverlayField();
+    if (_menuEl && _menuEl.classList.contains("ovx-menu-open")) _renderMenu(_menuEl);
+  });
 
   // Seed from the rc-shell on-disk mirror when localStorage is empty + the
   // bridge is present (durable across a localStorage wipe), then place.
@@ -1293,6 +1349,7 @@ export const _internals = {
   _restoreMenuFocus,
   _installHideMenu,
   _makeHandle,
+  _makeHotkeyHint,
   _persist,
   _applyPos,
   _getLayout: () => _layout,

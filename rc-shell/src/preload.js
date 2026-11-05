@@ -42,6 +42,9 @@ contextBridge.exposeInMainWorld("rcShell", {
   // layout: the full { <id>: {x,y,hidden,scale} } blob -> Promise<sanitized layout>
   setWidgetLayout: (layout) =>
     ipcRenderer.invoke("rc-shell:overlay-layout:set", layout),
+  // RC-HOTKEY-HINTS: the live overlay bindings the widget reminders show.
+  // -> Promise<{ active, cycle, visible, hide, reset }>
+  getOverlayHotkeys: () => ipcRenderer.invoke("rc-shell:overlay-hotkeys:get"),
   // Companion titlebar window controls. The companion is frameless, so the
   // injected top-right strip (window_controls.js) drives these. minimize/close
   // are one-way sends; the always-on-top toggle/get return the new/current
