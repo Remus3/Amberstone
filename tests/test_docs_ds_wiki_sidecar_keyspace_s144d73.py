@@ -4,20 +4,20 @@
 (``"Vel'Koz/Void Rift"``) while ``DataSnapshot.ability_static_cd`` and
 ``ability_recharge`` look it up as ``"<DDragon id>/<ability>"`` (``Velkoz``). The
 two spellings agree for most champions and differ for 22 of 171 (measured at
-patch 16.21.1), so those champions' wiki records are unreachable through the
-accessors. ``docs/DAEMON_SLAYER.md`` records this ("wiki_ability_stats keyspace").
+patch 16.21.1); before RM-1341 those champions' wiki records were unreachable
+through the accessors. ``docs/DAEMON_SLAYER.md`` records this ("wiki_ability_stats keyspace").
 
-This is a CHARACTERIZATION of a known, Tier-2 defect, not a license for it. It
-pins, derived from the committed sidecar (no hand-kept champion list):
+Originally a CHARACTERIZATION of the defect; RM-1341 landed the apiname alias
+(byte-identical, no ENGINE bump) and flipped the reachability half. It pins,
+derived from the committed sidecar (no hand-kept champion list):
 
   * the doc states the measured prefix counts, so a patch refresh that moves them
     forces a doc edit;
-  * a mismatched-prefix record IS reachable under its wiki title and NOT under
-    its DDragon id (the defect itself);
+  * a mismatched-prefix record is reachable under its wiki title AND under its
+    DDragon id (the alias; tests/test_wiki_ability_apiname_alias_s144d74.py);
   * a matching-prefix record is reachable under its id (the control).
 
-When the alias index lands (ENGINE bump), the "not reachable under id" half
-flips: update the doc row and this test in the same commit. ASCII only.
+ASCII only.
 """
 from __future__ import annotations
 
@@ -68,8 +68,8 @@ def test_doc_row_states_the_measured_counts() -> None:
         for rec in abilities.values()
         if rec.get("static") is not None or rec.get("recharge_ranks")
     )
-    m = re.search(r"For the (\d+) champions .*?\((\d+) of (\d+) title prefixes", row)
-    assert m, "the row no longer states 'For the N champions ... (N of M title prefixes'"
+    m = re.search(r"reach the records of the (\d+) champions .*?\((\d+) of (\d+) title prefixes", row)
+    assert m, "the row no longer states 'the records of the N champions ... (N of M title prefixes'"
     assert (int(m.group(1)), int(m.group(2)), int(m.group(3))) == (
         len(mism),
         len(mism),
@@ -79,21 +79,22 @@ def test_doc_row_states_the_measured_counts() -> None:
     assert m5 and int(m5.group(1)) == carrying
 
 
-def test_mismatched_record_is_reachable_by_title_not_by_id() -> None:
+def test_mismatched_record_is_reachable_by_title_and_by_id() -> None:
+    """RM-1341 flipped the old 'not by id' half: the apiname alias landed."""
     snap = DataSnapshot.load()
     mism = _mismatched()
-    assert mism, "no mismatched prefix left: the alias fix landed, retire this guard"
+    assert mism, "no mismatched prefix left: the wiki names now equal the ids, retire this guard"
     checked = 0
     for prefix, abilities in mism.items():
         for ability, rec in abilities.items():
             api = rec["apiname"]
             if rec.get("static") is not None:
                 assert snap.ability_static_cd(prefix, ability) is not None
-                assert snap.ability_static_cd(api, ability) is None, (api, ability)
+                assert snap.ability_static_cd(api, ability) == snap.ability_static_cd(prefix, ability), (api, ability)
                 checked += 1
             if rec.get("recharge_ranks"):
                 assert snap.ability_recharge(prefix, ability)
-                assert snap.ability_recharge(api, ability) is None, (api, ability)
+                assert snap.ability_recharge(api, ability) == snap.ability_recharge(prefix, ability), (api, ability)
                 checked += 1
     assert checked >= 1
 

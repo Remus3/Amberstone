@@ -151,6 +151,32 @@ class DataSnapshot:
     # Default empty dict so an absent wiki_ability_stats.json is byte-identical
     # to pre-sidecar behavior.
     wiki_ability_stats: dict = field(default_factory=dict)
+    # Derived index (RM-1341): "<apiname>/<ability>" -> the wiki record, for the
+    # records whose Template:Data title prefix differs from the DDragon id
+    # (Vel'Koz -> Velkoz). Built in __post_init__ from wiki_ability_stats, never
+    # passed in; a title-keyed hit always wins over it. Empty when the overlay is
+    # absent, so the no-sidecar path stays byte-identical.
+    _wiki_ability_alias: dict = field(default_factory=dict, repr=False, compare=False)
+
+    def __post_init__(self) -> None:
+        alias: dict = {}
+        stats = self.wiki_ability_stats if isinstance(self.wiki_ability_stats, dict) else {}
+        for key, rec in stats.items():
+            if not isinstance(rec, dict) or not isinstance(key, str) or "/" not in key:
+                continue
+            api = rec.get("apiname")
+            prefix, ability = key.split("/", 1)
+            if isinstance(api, str) and api and api != prefix:
+                alias.setdefault(f"{api}/{ability}", rec)
+        object.__setattr__(self, "_wiki_ability_alias", alias)
+
+    def _wiki_ability_record(self, champ_id: str, ability_name: str) -> Any:
+        """Wiki record for an ability: the title key first, then the apiname alias."""
+        key = f"{champ_id}/{ability_name}"
+        rec = self.wiki_ability_stats.get(key)
+        if rec is None:
+            rec = self._wiki_ability_alias.get(key)
+        return rec
 
     @classmethod
     def load(cls, patch: str | None = None, data_root: Path | None = None) -> "DataSnapshot":
@@ -530,14 +556,15 @@ class DataSnapshot:
     def ability_static_cd(self, champ_id: str, ability_name: str) -> str | None:
         """Per-ability static (haste-immune) cooldown from the optional wiki sidecar (item 233).
 
-        The wiki overlay is keyed by ``"<Champion>/<AbilityName>"``. Returns the
+        The wiki overlay is keyed by ``"<Champion>/<AbilityName>"`` (the wiki
+        title; the DDragon id also resolves via the apiname alias). Returns the
         raw ``static`` value (a MIX: a plain number string like ``"3"`` / ``"240"``,
         a toggle marker ``"True"``, or a wiki formula string) or None when absent.
         DATA-STAGED: the live cooldown model carries no ability-haste layer to
         gate against, so this is a reachable cross-source, not yet a behavioral
         consumer (an honest no-consumer per the item 233 brief).
         """
-        rec = self.wiki_ability_stats.get(f"{champ_id}/{ability_name}")
+        rec = self._wiki_ability_record(champ_id, ability_name)
         if not isinstance(rec, dict):
             return None
         v = rec.get("static")
@@ -554,7 +581,7 @@ class DataSnapshot:
         name-keyed bucket is the supplementary wiki cross-source for abilities
         CDragon misses.
         """
-        rec = self.wiki_ability_stats.get(f"{champ_id}/{ability_name}")
+        rec = self._wiki_ability_record(champ_id, ability_name)
         if not isinstance(rec, dict):
             return None
         rr = rec.get("recharge_ranks")
