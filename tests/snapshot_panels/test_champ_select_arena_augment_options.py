@@ -102,6 +102,42 @@ _REBUILD = """async (sel) => {
   return {rebuilt: false, active: null};
 }"""
 
+# Settled read of the focused row. _open returns at the first rendered row, but
+# the pane rebuilds through innerHTML as each load-time fetch lands, so a rebuild
+# can land inside the 0.12s ring transition. A node held across that wait is then
+# detached: its cancelled transition rejects .finished with AbortError (CI nightly
+# 41287693946) and its computed style reads every property as "" (CI nightly
+# 41863120477), while the page has the rebuilt row focused with the ring. So
+# re-resolve the row on every pass, and read it in the task that saw it settled.
+_READ_FOCUSED = """async (sel) => {
+  let el;
+  for (;;) {
+    el = document.querySelector(sel);
+    const as = el.getAnimations().filter((a) => a.playState !== 'finished');
+    if (!as.length) break;
+    await Promise.allSettled(as.map((a) => a.finished));
+  }
+  const cs = getComputedStyle(el);
+  return {focused: document.activeElement === el,
+          visible: el.matches(':focus-visible'),
+          outline: cs.outlineStyle, shadow: cs.boxShadow};
+}"""
+
+# The rebuild pinned inside that read, with no race: everything up to the
+# read's first await runs in ONE task, and the ring transition is paused so it
+# cannot finish before the scheduled rAF render lands.
+_READ_ACROSS_A_REBUILD = """async (sel) => {
+  const old = document.querySelector(sel);
+  old.focus();
+  const held = old.getAnimations();
+  held.forEach((a) => a.pause());
+  const stop = setTimeout(() => held.forEach((a) => a.finish()), 5000);
+  document.dispatchEvent(new Event('rc:lol-descriptions-ready'));
+  const got = await (""" + _READ_FOCUSED + """)(sel);
+  clearTimeout(stop);
+  return Object.assign(got, {held: held.length, rebuilt: !old.isConnected});
+}"""
+
 _RECORD_LCU_POSTS = """() => {
   window.__lcuPosts = [];
   const orig = window.fetch;
@@ -111,6 +147,13 @@ _RECORD_LCU_POSTS = """() => {
     return orig(u, o);
   };
 }"""
+
+# A load-time render also pushes the build variants (_csvMaybePushBuildsToLCU),
+# so that POST can land inside a recording whenever its fetch lands (measured:
+# 16 of 60 runs of the Enter / Space test before it filtered by cmd). Sent on
+# purpose, so the race is pinned instead of left to timing.
+_AUTO_PUSH = """() => { fetch('/api/lcu-cmd', {method: 'POST',
+  body: JSON.stringify({cmd: 'apply_item_sets_batch', sets: []})}); }"""
 
 _ROWS = """(sel) => [...document.querySelectorAll(sel)].map((e) => ({
   id: e.dataset.augmentId,
@@ -203,6 +246,7 @@ def test_enter_and_space_pick_exactly_one_option(mock_server, pw_browser):
     ctx, page, errors = _open(mock_server, pw_browser, _fixture(_SILVER))
     try:
         page.evaluate(_RECORD_LCU_POSTS)
+        page.evaluate(_AUTO_PUSH)
         _focus_by_keyboard(page, _sel(120))
         page.keyboard.press("Enter")
         after_enter = page.evaluate(_ROWS, _OPT)
@@ -219,7 +263,8 @@ def test_enter_and_space_pick_exactly_one_option(mock_server, pw_browser):
     assert [r["pressed"] for r in after_space] == ["false", "false", "true"]
     assert [r["selected"] for r in after_space] == [False, False, True]
     assert y1 == y0, "Space scrolled the page instead of picking"
-    assert [(p.get("cmd"), p.get("augment_id")) for p in posts] == [
+    assert [(p.get("cmd"), p.get("augment_id")) for p in posts
+            if p.get("cmd") == "set_augment_intent"] == [
         ("set_augment_intent", 120), ("set_augment_intent", 51)], posts
     assert not errors, errors[:3]
 
@@ -235,25 +280,29 @@ def test_focused_option_draws_the_inset_system_ring(mock_server, pw_browser,
         ) == theme, f"booted on the wrong theme, not {theme}"
         ring = page.evaluate(_INSET_RING)
         _focus_by_keyboard(page, _sel(308))
-        got = page.evaluate(
-            "async (sel) => { const el = document.querySelector(sel);"
-            # A cancelled transition REJECTS .finished with AbortError (CI
-            # nightly 41287693946), so settle, and re-read for its replacement.
-            " for (let as; (as = el.getAnimations().filter("
-            "(a) => a.playState !== 'finished')).length;)"
-            " await Promise.allSettled(as.map((a) => a.finished));"
-            " const cs = getComputedStyle(el);"
-            " return {focused: document.activeElement === el,"
-            " visible: el.matches(':focus-visible'),"
-            " outline: cs.outlineStyle, shadow: cs.boxShadow}; }",
-            _sel(308),
-        )
+        got = page.evaluate(_READ_FOCUSED, _sel(308))
     finally:
         _close(ctx, page)
     assert "inset" in ring, f"inset --focus-ring resolved {ring!r}"
     assert got["focused"] and got["visible"], got
     assert got["shadow"] == ring, (
         f"{theme}: focused option box-shadow {got['shadow']!r}, ring {ring!r}")
+    assert got["outline"] == "none", got
+    assert not errors, errors[:3]
+
+
+def test_the_ring_read_follows_the_row_across_a_rebuild(mock_server, pw_browser):
+    ctx, page, errors = _open(mock_server, pw_browser, _fixture(_SILVER))
+    try:
+        ring = page.evaluate(_INSET_RING)
+        page.keyboard.press("Shift")
+        got = page.evaluate(_READ_ACROSS_A_REBUILD, _sel(308))
+    finally:
+        _close(ctx, page)
+    assert got["held"] >= 1, f"no ring transition to hold, proved nothing: {got}"
+    assert got["rebuilt"], f"the pane never rebuilt inside the read: {got}"
+    assert got["focused"] and got["visible"], got
+    assert got["shadow"] == ring, got
     assert got["outline"] == "none", got
     assert not errors, errors[:3]
 

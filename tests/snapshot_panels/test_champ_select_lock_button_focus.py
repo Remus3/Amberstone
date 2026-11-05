@@ -61,6 +61,46 @@ _REBUILD = """async (sel) => {
 }"""
 
 
+# .csv-lock-btn carries "transition: 0.15s" (all properties), so the ring
+# fades in: read the SETTLED value, after its transitions. The pane rebuilds
+# through innerHTML on every async land, and a node held across that wait can
+# be detached, with every computed property "" (the Arena row read in
+# test_champ_select_arena_augment_options red that way on CI). So re-resolve
+# the button on every pass, and read it in the task that saw it settled.
+_READ_RING = """async (sel) => {
+  let el;
+  for (;;) {
+    el = document.querySelector(sel);
+    const as = el.getAnimations().filter((a) => a.playState !== 'finished');
+    if (!as.length) break;
+    await Promise.allSettled(as.map((a) => a.finished));
+  }
+  const cs = getComputedStyle(el);
+  return {text: el.textContent.trim(),
+          focused: document.activeElement === el,
+          visible: el.matches(':focus-visible'),
+          outline: cs.outlineStyle, shadow: cs.boxShadow};
+}"""
+
+
+def _across_a_rebuild(act: str, read: str) -> str:
+    # A rebuild pinned inside a settled read, with no race: `act` starts the
+    # transition, and everything up to the read's first await runs in ONE
+    # task, with the transition paused so it cannot finish before the
+    # scheduled rAF render lands.
+    return """async (sel) => {
+  const old = document.querySelector(sel);
+  """ + act + """
+  const held = old.getAnimations();
+  held.forEach((a) => a.pause());
+  const stop = setTimeout(() => held.forEach((a) => a.finish()), 5000);
+  document.dispatchEvent(new Event('rc:lol-descriptions-ready'));
+  const got = await (""" + read + """)(sel);
+  clearTimeout(stop);
+  return Object.assign(got, {held: held.length, rebuilt: !old.isConnected});
+}"""
+
+
 def _open(mock_server, pw_browser, mode, theme="hextech"):
     mock_server._store["data"] = {}
     ctx = pw_browser.new_context(
@@ -98,21 +138,7 @@ def test_lock_button_draws_the_inset_system_ring(mock_server, pw_browser, theme)
         ) == theme, f"booted on the wrong theme, not {theme}"
         ring = page.evaluate(_INSET_RING)
         _focus_by_keyboard(page)
-        # .csv-lock-btn carries "transition: 0.15s" (all properties), so
-        # the ring fades in: read the SETTLED value, after its transitions.
-        got = page.evaluate(
-            "async (sel) => { const el = document.querySelector(sel);"
-            # A cancelled transition REJECTS .finished with AbortError.
-            " for (let as; (as = el.getAnimations().filter("
-            "(a) => a.playState !== 'finished')).length;)"
-            " await Promise.allSettled(as.map((a) => a.finished));"
-            " const cs = getComputedStyle(el);"
-            " return {text: el.textContent.trim(),"
-            " focused: document.activeElement === el,"
-            " visible: el.matches(':focus-visible'),"
-            " outline: cs.outlineStyle, shadow: cs.boxShadow}; }",
-            _BTN,
-        )
+        got = page.evaluate(_READ_RING, _BTN)
     finally:
         page.close()
         ctx.close()
@@ -127,6 +153,24 @@ def test_lock_button_draws_the_inset_system_ring(mock_server, pw_browser, theme)
     assert got["outline"] == "none", (
         f"{theme}: focused LOCK IN still draws the UA outline ({got['outline']})"
     )
+    assert not errors, errors[:3]
+
+
+def test_the_ring_read_follows_the_button_across_a_rebuild(mock_server, pw_browser):
+    ctx, page, errors = _open(mock_server, pw_browser, "sr")
+    try:
+        ring = page.evaluate(_INSET_RING)
+        page.keyboard.press("Shift")
+        got = page.evaluate(_across_a_rebuild("old.focus();", _READ_RING), _BTN)
+    finally:
+        page.close()
+        ctx.close()
+    assert got["held"] >= 1, f"no ring transition to hold, proved nothing: {got}"
+    assert got["rebuilt"], f"the pane never rebuilt inside the read: {got}"
+    assert got["text"].startswith("LOCK IN "), got
+    assert got["focused"] and got["visible"], got
+    assert got["shadow"] == ring, got
+    assert got["outline"] == "none", got
     assert not errors, errors[:3]
 
 
@@ -201,7 +245,8 @@ _STUB_LOCK_POST = """() => {
   window.__lockPosts = 0;
   const orig = window.fetch;
   window.fetch = (u, o) => {
-    if (String(u).includes('/api/lcu-cmd') && !String(u).includes('result')) {
+    if (String(u).includes('/api/lcu-cmd') && o && o.body
+        && JSON.parse(o.body).cmd === 'lock_pick') {
       window.__lockPosts += 1;
       return new Promise(() => {});
     }
@@ -209,11 +254,22 @@ _STUB_LOCK_POST = """() => {
   };
 }"""
 
-# Opacity is read SETTLED: .csv-lock-btn carries "transition: 0.15s".
+# A load-time render also pushes the build variants (_csvMaybePushBuildsToLCU),
+# so that POST can land after the stub goes in, whenever its fetch lands. Sent
+# on purpose, so a lock count cannot go back to counting every POST.
+_AUTO_PUSH = """() => { fetch('/api/lcu-cmd', {method: 'POST',
+  body: JSON.stringify({cmd: 'apply_item_sets_batch', sets: []})}); }"""
+
+# Opacity is read SETTLED: .csv-lock-btn carries "transition: 0.15s". Same
+# re-resolve as _READ_RING: a detached button reads its opacity as "".
 _READ_BTN = """async (sel) => {
-  const b = document.querySelector(sel);
-  for (let as; (as = b.getAnimations().filter((x) => x.playState !== 'finished')).length;)
+  let b;
+  for (;;) {
+    b = document.querySelector(sel);
+    const as = b.getAnimations().filter((x) => x.playState !== 'finished');
+    if (!as.length) break;
     await Promise.allSettled(as.map((x) => x.finished));
+  }
   const a = document.activeElement;
   return {aria: b.getAttribute('aria-disabled'), disabled: b.disabled,
     opacity: getComputedStyle(b).opacity,
@@ -226,6 +282,7 @@ def test_a_pending_lock_survives_a_rebuild(mock_server, pw_browser, mode):
     ctx, page, errors = _open(mock_server, pw_browser, mode)
     try:
         page.evaluate(_STUB_LOCK_POST)
+        page.evaluate(_AUTO_PUSH)
         _focus_by_keyboard(page)
         page.keyboard.press("Enter")
         held = page.evaluate(_READ_BTN, _BTN)
@@ -253,6 +310,25 @@ def test_a_pending_lock_survives_a_rebuild(mock_server, pw_browser, mode):
         f"{mode}: the held button is not dimmed: {held} / {rebuilt}"
     )
     assert posts == 1, f"{mode}: a click after the rebuild fired lock_pick #{posts}"
+    assert not errors, errors[:3]
+
+
+def test_the_held_read_follows_the_button_across_a_rebuild(mock_server, pw_browser):
+    ctx, page, errors = _open(mock_server, pw_browser, "sr")
+    try:
+        page.evaluate(_STUB_LOCK_POST)
+        page.keyboard.press("Shift")
+        got = page.evaluate(
+            _across_a_rebuild("old.focus(); old.click();", _READ_BTN), _BTN)
+    finally:
+        page.close()
+        ctx.close()
+    assert got["held"] >= 1, f"no opacity transition to hold, proved nothing: {got}"
+    assert got["rebuilt"], f"the pane never rebuilt inside the read: {got}"
+    assert got["aria"] == "true", got
+    assert got["opacity"] == "0.5", got
+    assert got["active"] == "csv-lock-btn", got
+    assert got["posts"] == 1, got
     assert not errors, errors[:3]
 
 
