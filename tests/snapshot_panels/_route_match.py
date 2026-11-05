@@ -5,8 +5,8 @@ RM-1506: Playwright route matchers that stay on the driver side.
 A route matcher must be a string glob or a compiled regex, never a function.
 Playwright Python cannot send a function to the driver, so one callable matcher
 widens its whole context to the glob **/* and every request of every page then
-makes a round trip through the Python process (test_route_matcher_no_wide_
-interception_rm1506.py has the measurement and the guard).
+makes a round trip through the Python process. The measurement and the guard:
+test_route_matcher_no_wide_interception_rm1506.py.
 
 Both patterns here also compile under JavaScript, because the driver is what
 evaluates them: no inline flag, no named group, no lookbehind.
