@@ -350,7 +350,11 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   background: var(--surface-3);
   box-shadow: inset 0 -2px 0 0 var(--accent);
 }
-.home-mode-tab:focus-visible { outline: 2px solid var(--accent-2); }
+/* RM-1546: the ring is --accent, the Home / Lobby ring convention. In
+ * --accent-2 it fell to 2.56:1 (bloodmoon) on the active tab's own
+ * --surface-3 fill. Guard:
+ * tests/snapshot_panels/test_home_accent2_focus_ring.py. */
+.home-mode-tab:focus-visible { outline: 2px solid var(--accent); }
 
 /* -- V1 body: 2-column row (recent cards | week list) --------------- */
 .home-body {
@@ -593,8 +597,10 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   min-height: var(--hit-min);
   border-radius: var(--radius-sm);
 }
+/* RM-1546: --accent, not the --accent-2 name colour (3.00:1 on the
+ * bloodmoon card --surface-2). */
 .home-coach-pick-champ:focus-visible {
-  outline: 2px solid var(--accent-2);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 .home-coach-pick-champ:hover {

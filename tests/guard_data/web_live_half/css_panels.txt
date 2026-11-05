@@ -57,7 +57,7 @@ c821d26812fc587f8f7552032be97a5bcbf8341fa412db19659ef80c5d8f07e2  web/css/panels
 
 b8c3d0090365363a16ae6fd974293a2fbc7c7755055cb48d80a987d400a39922  web/css/panels/grid.css
 
-b95fcc73d7c540d2b1d11e6f45e1c6561974d1282d4e8ef36716c9582e5575df  web/css/panels/home.css
+06687609123fab20e9d04f2dc5b665365febfba2bcaf9b51aa44b25ee619126d  web/css/panels/home.css
 
 86c03a86f8b3993524dc308b492e18b90884da0fd44a7fbe8bf4d8d9b44b0a7a  web/css/panels/input_activity.css
 
