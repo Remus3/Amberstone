@@ -407,9 +407,9 @@ def _load_presets() -> dict[str, Any]:
         mt = _PRESETS_PATH.stat().st_mtime_ns
     except OSError:
         return _FALLBACK_PRESETS
-    if _PRESETS_CACHE is not None and _PRESETS_MTIME == mt:
+    if _PRESETS_CACHE is not None and mt == _PRESETS_MTIME:
         return _PRESETS_CACHE
-    if _PRESETS_BAD_MTIME == mt:
+    if mt == _PRESETS_BAD_MTIME:
         return _FALLBACK_PRESETS
     try:
         raw = json.loads(_PRESETS_PATH.read_bytes().decode("utf-8-sig"))

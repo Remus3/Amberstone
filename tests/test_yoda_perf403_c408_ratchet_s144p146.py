@@ -15,7 +15,8 @@ None of the four rules is selected by ruff.toml. Measured 2026-11-05 with ``ruff
 
 The baseline is the findings that stay, each for a named reason:
 
-- ``coaches/sr_draft_profile.py``: held by another lane branch (lane/true-audit) at the time of this slice.
+- (``coaches/sr_draft_profile.py`` left this list in RM-1536: the true-audit landing put two yoda
+  comparisons of module globals back; they now read ``mt == _PRESETS_MTIME``.)
 - ``ops/launcher/update_cycle.py`` and ``tools/build_portable.py``: the packaged-app tree is owned by the
   main session (lane exclusions).
 - ``tools/daemon_slayer_abilities_extract.py``: a conditional-assign loop in an extractor; its PERF403
@@ -56,14 +57,15 @@ _OUT_OF_SCOPE = (
 )
 # file -> finding count (all four rules) that stays (reasons in the module docstring). Only shrinks.
 _BASELINE = {
-    "coaches/sr_draft_profile.py": 1,
     "ops/launcher/update_cycle.py": 3,
     "tools/build_portable.py": 1,
     "tools/daemon_slayer_abilities_extract.py": 1,
 }
 _FIXED = (
     "agents/_supervisor_common.py",
+    "coaches/sr_draft_profile.py",
     "coaches/sr_user_builds.py",
+    "core/aram_balance_context.py",
     "core/build_planner/kit_synergy.py",
     "core/minimap_blob_detect.py",
     "core/minimap_identity.py",

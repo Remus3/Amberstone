@@ -245,9 +245,7 @@ def _aliases_from(data: Dict[str, Any]) -> Dict[str, str]:
         name = champ.get("name") if isinstance(champ, dict) else None
         if isinstance(name, str) and name.strip():
             exact.setdefault(name.strip(), cid)
-    for cid in data:
-        if isinstance(cid, str) and cid:
-            exact[cid] = cid
+    exact.update({cid: cid for cid in data if isinstance(cid, str) and cid})
     owners: Dict[str, set] = {}
     for key, cid in exact.items():
         n = _norm(key)

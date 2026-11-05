@@ -64,7 +64,7 @@ def set17_codes(data):
                 cid = entry.get("character_id", "")
                 name = entry.get("display_name", "")
                 code = entry.get("team_planner_code")
-                if cid.startswith("TFT17_") or cid.startswith("TFT_Set17_"):
+                if cid.startswith(("TFT17_", "TFT_Set17_")):
                     if name and code is not None:
                         codes[name] = code
     return codes
