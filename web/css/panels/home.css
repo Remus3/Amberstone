@@ -1106,6 +1106,12 @@ body[data-view="home"] .home-overlay { display: flex !important; }
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
   }
   .home-action-tile { min-width: 0; }
+  /* RM-1434: a Tonight's Pick value wraps instead of ending in "...":
+   * at 480 the 296px value box cut the small-sample caveat (382px). */
+  .home-pick-tip-value {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
 }
 /* RM-1431 audit: under ~340px the KDA column (90px) out-grew the
  * champion name (66px at 320). Below 440px the KDA takes its own row under
@@ -1115,6 +1121,20 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   .home-recent-stripe { grid-row: 1 / span 3; }
   .home-recent-kda    { grid-column: 2 / span 3; grid-row: 2; justify-self: start; }
   .home-recent-items  { grid-column: 2 / span 3; grid-row: 3; }
+  /* RM-1434: the Good / Bad / Ugly label sits above its value, so the
+   * value gets the card width (136px beside the 96px label at 320), and the
+   * champion name and reason sit under the portrait: beside it the name had
+   * 162px at 320, under "Nunu & Willump" (207px) and "Heimerdinger" (177px),
+   * so it ellipsized; under it the name has the card width (248px). */
+  .home-pick-tip-row {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 0;
+  }
+  .home-pick-section-1 {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .home-coach-pick-meta { align-self: stretch; }
 }
 
 .cs-card {
