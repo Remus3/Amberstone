@@ -10,7 +10,7 @@ import test from "node:test";
 import assert from "node:assert";
 
 import {
-  compareStacking, pickTopmost, registerEscapeLayer, stackingZ,
+  compareStacking, openEntries, pickTopmost, registerEscapeLayer, stackingZ,
 } from "./escape_layers.js";
 
 // Nodes are tree positions; `follows(a, b)` = a comes after b.
@@ -183,6 +183,47 @@ test("pickTopmost: picks by stacking path, not by the deepest z-index", () => {
   assert.strictEqual(pickTopmost(open, follows).layer.name, "sibling");
   open.reverse();
   assert.strictEqual(pickTopmost(open, follows).layer.name, "sibling");
+});
+
+// RM-1365: a layer open by class but rendered nowhere takes no press.
+const lay = (name, open, node) => ({
+  name, el: () => node, isOpen: () => open, close: () => {},
+});
+const names = (entries) => entries.map((x) => x.layer.name);
+
+test("openEntries: an open layer with no box takes no press", () => {
+  const boxes = new Set(["shown"]);
+  const got = openEntries(
+    [lay("stranded", true, "hidden-node"), lay("view", true, "shown")],
+    (n) => boxes.has(n),
+  );
+  assert.deepStrictEqual(names(got), ["view"]);
+});
+
+test("openEntries: a rendered open layer still takes part, a closed one never", () => {
+  const got = openEntries(
+    [lay("closed", false, "a"), lay("open", true, "b")],
+    () => true,
+  );
+  assert.deepStrictEqual(names(got), ["open"]);
+  assert.strictEqual(got[0].node, "b");
+});
+
+test("openEntries: no element keeps the old z 0 entry; hasBox is not asked", () => {
+  let asked = 0;
+  const got = openEntries([lay("bare", true, null)], () => { asked += 1; return false; });
+  assert.deepStrictEqual(names(got), ["bare"]);
+  assert.strictEqual(asked, 0);
+});
+
+test("openEntries: an isOpen that throws reads as closed", () => {
+  const bad = { name: "bad", el: () => "x", isOpen: () => { throw new Error("x"); } };
+  assert.deepStrictEqual(names(openEntries([bad], () => true)), []);
+});
+
+test("openEntries: only stranded layers open leaves nothing to pick", () => {
+  const got = openEntries([lay("stranded", true, "n")], () => false);
+  assert.strictEqual(pickTopmost(got.map((x) => ({ ...x, path: [] })), (a, b) => a > b), null);
 });
 
 test("registerEscapeLayer: no document (node) binds nothing and never throws", () => {

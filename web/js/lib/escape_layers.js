@@ -192,18 +192,43 @@ function _follows(a, b) {
   return !!(a && b && (b.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING));
 }
 
-function _onEscape(e) {
-  if (e.key !== "Escape" && e.code !== "Escape") return;
-  if (e.defaultPrevented) return;
-  if (e.repeat) { e.preventDefault(); return; }
-  const open = [];
-  for (const layer of _layers) {
+// Pure: the [{ layer, node }] that may take an Escape, in registration
+// order. A layer takes part when isOpen() says so (a throw reads as closed)
+// and, RM-1365, when its element is rendered: `hasBox(node)` false drops
+// it. The Lobby layers' isOpen() answers from a class, and a view change
+// does not close a layer, so a Lobby menu or lane popup left open by a hash
+// change or Back keeps its class inside the display:none Lobby view; it
+// used to win the press, close unseen and consume the Escape, so zen stayed
+// on and nothing visible changed. A layer whose el() gives no element keeps
+// taking part, ranked at z 0, as before.
+export function openEntries(layers, hasBox) {
+  const out = [];
+  for (const layer of layers) {
     let isOpen = false;
     try { isOpen = !!layer.isOpen(); } catch (_) { isOpen = false; }
     if (!isOpen) continue;
     const node = layer.el();
-    open.push({ layer, node, path: _stackPath(node) });
+    if (node && !hasBox(node)) continue;
+    out.push({ layer, node });
   }
+  return out;
+}
+
+// Rendered is what counts, the test main.js _letterShortcutsYield and
+// review_player.js _menuOpen use: no box under display:none, itself or on an
+// ancestor. A visibility:hidden or opacity 0 layer still has a box and still
+// takes part (a grep of web/css finds no layer here hidden that way; not
+// measured in a browser).
+function _hasBox(node) {
+  return node.getClientRects().length > 0;
+}
+
+function _onEscape(e) {
+  if (e.key !== "Escape" && e.code !== "Escape") return;
+  if (e.defaultPrevented) return;
+  if (e.repeat) { e.preventDefault(); return; }
+  const open = openEntries(_layers, _hasBox)
+    .map(({ layer, node }) => ({ layer, node, path: _stackPath(node) }));
   const top = pickTopmost(open, _follows);
   if (!top) return;
   // Consume first: a close() that throws must not leak the press to the

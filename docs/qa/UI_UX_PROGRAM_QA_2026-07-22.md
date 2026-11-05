@@ -154,3 +154,10 @@ All figures below were measured in real headless Chromium, not read off source.
 Queue lines 86-88 record G2-34 and G2-35 as "RULED", while `LIVE_GAME_GATED_SYNC.md:538-541` still
 carries both as OPEN live-gated DECISIONS the operator makes after seeing them in-game. The gated
 doc is the later, narrower authority; treat both as NOT closable headless.
+
+## 2026-11-04 - lane 4 headless, s144 cycle 106 (RM-1365)
+
+### RULING
+- **Escape belongs to what the operator can see.** The one Escape dispatcher (`web/js/lib/escape_layers.js`) skips an open layer whose element has no box (`getClientRects()` empty), the same rendered test `main.js` `_letterShortcutsYield` and `review_player.js` `_menuOpen` already apply to a menu left open by a view change. Measured before the fix, headless Chromium 1920x920: the Lobby mode menu or lane popup opened from the keyboard and stranded by a hash change or Back took the first Escape on Replay unseen, so zen stayed on. Guard: `tests/snapshot_panels/test_escape_unrendered_layer.py`, plus `openEntries` in `escape_layers.test.mjs`.
+- A visibility:hidden or opacity 0 layer still has a box and still takes the press; a grep of `web/css` finds no layer hidden that way (not measured in a browser).
+- The stranded layer keeps its open class; what it shows when the operator returns to Lobby is a separate row.
