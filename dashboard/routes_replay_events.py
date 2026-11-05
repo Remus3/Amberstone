@@ -42,14 +42,32 @@ when the operator opts into items + wards. The default ribbon for a
 35-minute SR match returns ~80-160 strong events; an items+skills
 opt-in lands closer to ~800-1200 events.
 
+A repeated ``include`` parameter is the union of its values, so
+``include=items&include=wards`` and ``include=items,wards`` are one
+request (and one cache entry).
+
 Failures:
 
-    400 - match_id missing/empty
+    400 - match_id missing, empty, given more than once, or not 1-64
+          characters of A-Z, a-z, 0-9, _ or - (starting with a letter
+          or digit; never stripped - a padded id is malformed)
     404 - match not in matches table
-    503 - rewind_history.db not present on disk
+    503 - rewind_history.db not present on disk, or a SQLite read
+          failed (corrupt file, missing table, locked): retryable
+    500 - anything else; the traceback goes to the log, never the body
 
-Caching: 5 minute TTL keyed on (match_id, include_set). Same shape
-+ size bound as ``routes_post_game_wpa``.
+Rows are read fail-soft: a participant row whose id is not an integer
+is ignored, a non-numeric or infinite kill position reads ``pos: null``,
+and an event whose timestamp is present but not a finite number is
+dropped (counted in one warning per request) - one bad row never takes
+the whole ribbon down. A NULL timestamp keeps its historical clock 0.
+
+Caching: 5 minute monotonic TTL keyed on (match_id, include_set,
+schema). Reads and writes hold ``_CACHE_LOCK`` (ThreadingHTTPServer).
+Same shape + size bound as ``routes_post_game_wpa``.
+
+s144 true-audit cycle 109 hardened the lines above; the tests are
+tests/test_routes_replay_events_audit_s144.py.
 
 Architecture / cleanroom boundary: see `docs/adr/ADR-009-replay-events-cleanroom.md`.
 Short version: `league_record` (GPLv3) is the methodology reference
@@ -62,7 +80,10 @@ from __future__ import annotations
 
 import json
 import logging
+import math
+import re
 import sqlite3
+import threading
 import time
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -74,14 +95,30 @@ log = logging.getLogger("rc.web_dashboard")
 
 _REWIND_DB = _APP_DIR / "data" / "rewind_history.db"
 
-# Cache: {(match_id, include_set_frozen, schema): (timestamp, payload)}
+# Same id contract as routes_post_game_wpa: Riot ids are
+# "<PLATFORM>_<gameId>"; bare gameIds and test ids ("TEST-M1") pass.
+_MATCH_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}")
+_MATCH_ID_ERROR = ("match_id must be 1-64 characters of A-Z, a-z, 0-9, "
+                   "_ or -, starting with a letter or digit")
+
+# Cache: {(match_id, include_set_frozen, schema): (monotonic_ts, payload)}
 # The schema sentinel bumps when the event-dict shape changes so old
 # entries (e.g. cached pre-participant-join payloads) evict on first hit
 # without waiting out the 5-min TTL.
 _CACHE_SCHEMA = "v2-participant-join"
 _CACHE: dict[tuple, tuple[float, dict]] = {}
+_CACHE_LOCK = threading.Lock()
 _CACHE_TTL_S = 300.0
 _CACHE_MAX = 128
+_CACHE_EVICT = 32
+
+# Only the columns the ribbon reads. ``SELECT *`` also dragged every
+# CHAMPION_KILL's victim_damage_json blob (and raw_json) out of SQLite.
+_EVENT_COLUMNS = (
+    "timestamp_ms, event_type, participant_id, killer_id, victim_id, "
+    "assisting_ids_json, kill_pos_x, kill_pos_y, building_type, lane_type, "
+    "tower_type, team_id, monster_type, monster_subtype, ward_type"
+)
 
 _STRONG_TYPES = (
     "CHAMPION_KILL",
@@ -118,23 +155,74 @@ def _event_types_for(include: frozenset[str]) -> tuple[str, ...] | None:
     return tuple(out)
 
 
+def _parse_query(path: str) -> tuple[str | None, frozenset[str], str | None]:
+    """(match_id, include_set, None) or (None, frozenset(), 400 message)."""
+    qs = parse_qs(urlparse(path).query, keep_blank_values=True)
+    values = qs.get("match_id") or []
+    if len(values) > 1:
+        return None, frozenset(), "match_id given more than once"
+    # Not stripped: a padded or newline-terminated id is malformed.
+    match_id = values[0] if values else ""
+    if not match_id:
+        return None, frozenset(), "match_id required"
+    if not _MATCH_ID_RE.fullmatch(match_id):
+        return None, frozenset(), _MATCH_ID_ERROR
+    include = _parse_include(",".join(qs.get("include") or []))
+    return match_id, include, None
+
+
+def _as_int(value: object) -> int | None:
+    """An integer read from a row column, or None when the column does not
+    hold one: an int, an integral finite float, or an ASCII digit string.
+    bool, a fractional / infinite / NaN float and anything else is None."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        if math.isfinite(value) and value.is_integer():
+            return int(value)
+        return None
+    if isinstance(value, str) and value.isascii() and value.isdigit():
+        return int(value)
+    return None
+
+
+def _pid(value: object) -> int | None:
+    """A participant id (positive integer); 0 / negative / junk is None."""
+    n = _as_int(value)
+    return n if n is not None and n > 0 else None
+
+
 def _cache_get(key: tuple) -> dict | None:
-    entry = _CACHE.get(key)
-    if not entry:
-        return None
-    ts, payload = entry
-    if (time.time() - ts) > _CACHE_TTL_S:
-        _CACHE.pop(key, None)
-        return None
-    return payload
+    now = time.monotonic()
+    with _CACHE_LOCK:
+        entry = _CACHE.get(key)
+        if entry is None:
+            return None
+        ts, payload = entry
+        if (now - ts) > _CACHE_TTL_S:
+            _CACHE.pop(key, None)
+            return None
+        return payload
 
 
 def _cache_put(key: tuple, payload: dict) -> None:
-    _CACHE[key] = (time.time(), payload)
-    if len(_CACHE) > _CACHE_MAX:
-        victims = sorted(_CACHE.items(), key=lambda kv: kv[1][0])[:32]
-        for k, _ in victims:
-            _CACHE.pop(k, None)
+    now = time.monotonic()
+    with _CACHE_LOCK:
+        _CACHE[key] = (now, payload)
+        if len(_CACHE) > _CACHE_MAX:
+            victims = sorted(_CACHE.items(), key=lambda kv: kv[1][0])
+            for k, _ in victims[:_CACHE_EVICT]:
+                _CACHE.pop(k, None)
+
+
+def _open_rewind_db_ro() -> sqlite3.Connection:
+    """Read-only connection. ``Path.as_uri`` percent-encodes the path, so
+    a '#', '%' or '?' in the checkout path no longer truncates the URI
+    (an f-string ``file:{path}?mode=ro`` opened the wrong file)."""
+    uri = Path(_REWIND_DB).absolute().as_uri() + "?mode=ro"
+    return sqlite3.connect(uri, uri=True, timeout=2.0)
 
 
 def _match_exists(conn: sqlite3.Connection, match_id: str) -> bool:
@@ -146,15 +234,17 @@ def _match_exists(conn: sqlite3.Connection, match_id: str) -> bool:
 
 def _team_by_participant(conn: sqlite3.Connection, match_id: str) -> dict[int, int]:
     """Return {participant_id: team_id}. Cheap join used to surface
-    team-tinted rows in the events ribbon."""
+    team-tinted rows in the events ribbon. A row whose id or team is not
+    an integer is ignored, never a 500."""
     out: dict[int, int] = {}
     cur = conn.execute(
         "SELECT participant_id, team_id FROM participants WHERE match_id=?",
         (match_id,),
     )
-    for pid, tid in cur.fetchall():
+    for raw_pid, raw_tid in cur.fetchall():
+        pid, tid = _pid(raw_pid), _as_int(raw_tid)
         if pid is not None and tid is not None:
-            out[int(pid)] = int(tid)
+            out[pid] = tid
     return out
 
 
@@ -170,30 +260,36 @@ def _participant_meta(conn: sqlite3.Connection, match_id: str) -> dict[int, tupl
         "FROM participants WHERE match_id=?",
         (match_id,),
     )
-    for pid, sn, cn in cur.fetchall():
+    for raw_pid, sn, cn in cur.fetchall():
+        pid = _pid(raw_pid)
         if pid is None:
             continue
-        out[int(pid)] = (
+        out[pid] = (
             (sn if isinstance(sn, str) and sn else None),
             (cn if isinstance(cn, str) and cn else None),
         )
     return out
 
 
-def _row_team(row: sqlite3.Row, team_by_pid: dict[int, int]) -> int | None:
+def _row_actor(row: sqlite3.Row) -> int | None:
+    """The acting participant: the killer when there is one, else the
+    event's participant (purchases, wards, level-ups). 0 = no participant
+    (a minion / turret kill) and junk both read as None."""
+    killer = _pid(row["killer_id"])
+    return killer if killer is not None else _pid(row["participant_id"])
+
+
+def _row_team(row: sqlite3.Row, team_by_pid: dict[int, int],
+              actor: int | None) -> int | None:
     """Best-effort team resolution. BUILDING_KILL carries team_id
     directly (it is the team that LOST the building - we flip to the
     team that DESTROYED it so the ribbon paints by destroyer-side).
-    Other events derive from killer/participant -> team."""
-    et = row["event_type"]
-    if et == "BUILDING_KILL":
+    Other events derive from the actor -> team."""
+    if row["event_type"] == "BUILDING_KILL":
         # team_id field = team that owned the building. Flip.
-        owner = row["team_id"]
+        owner = _as_int(row["team_id"])
         return (100 if owner == 200 else 200) if owner in (100, 200) else None
-    actor = row["killer_id"] if row["killer_id"] not in (None, 0) else row["participant_id"]
-    if actor and actor in team_by_pid:
-        return team_by_pid[actor]
-    return None
+    return team_by_pid.get(actor) if actor is not None else None
 
 
 def _row_subtype(row: sqlite3.Row) -> str | None:
@@ -210,21 +306,55 @@ def _row_subtype(row: sqlite3.Row) -> str | None:
 
 
 def _assists(row: sqlite3.Row) -> list[int]:
+    """Assisting participant ids from the row's JSON list. Anything but a
+    list is no assists (a JSON STRING '"12"' used to iterate into [1, 2]);
+    inside the list only positive integers or ASCII digit strings count
+    (JSON true is not participant 1, a float is not an id)."""
     raw = row["assisting_ids_json"]
     if not raw:
         return []
     try:
         v = json.loads(raw)
-        return [int(x) for x in v if isinstance(x, int) or (isinstance(x, str) and x.isdigit())]
-    except (TypeError, ValueError, json.JSONDecodeError):
+    except (TypeError, ValueError, RecursionError):
         return []
+    if not isinstance(v, list):
+        return []
+    out: list[int] = []
+    for x in v:
+        if isinstance(x, float):
+            continue
+        pid = _pid(x)
+        if pid is not None:
+            out.append(pid)
+    return out
 
 
 def _pos(row: sqlite3.Row) -> list[int] | None:
+    """[x, y] map position, or None when either axis is absent or not a
+    finite number (a junk value used to 500 the whole ribbon)."""
     x, y = row["kill_pos_x"], row["kill_pos_y"]
-    if x is None or y is None:
-        return None
-    return [int(x), int(y)]
+    out = []
+    for v in (x, y):
+        if isinstance(v, bool) or not isinstance(v, (int, float)):
+            return None
+        if isinstance(v, float) and not math.isfinite(v):
+            return None
+        out.append(int(v))
+    return out
+
+
+def _clock_s(row: sqlite3.Row) -> tuple[int | None, bool]:
+    """(clock seconds, usable). NULL keeps its historical clock 0; a value
+    that is present but not a finite number is unusable (the row is
+    dropped - SQLite also sorts such a value out of chronological order)."""
+    ts = row["timestamp_ms"]
+    if ts is None:
+        return 0, True
+    if isinstance(ts, bool) or not isinstance(ts, (int, float)):
+        return None, False
+    if isinstance(ts, float) and not math.isfinite(ts):
+        return None, False
+    return int(ts // 1000), True
 
 
 def _you_flagged(match_id: str) -> list[dict]:
@@ -239,102 +369,120 @@ def _you_flagged(match_id: str) -> list[dict]:
         return []
 
 
+def _send_json(h, status: int, obj: dict) -> None:
+    h._send(status, json.dumps(obj).encode("utf-8"), "application/json")
+
+
+def _read_events(conn: sqlite3.Connection, match_id: str,
+                 include: frozenset[str]) -> list[dict] | None:
+    """The event ribbon for ``match_id``, or None when the match is not in
+    the matches table. Raises sqlite3.Error on a read failure."""
+    conn.row_factory = sqlite3.Row
+    if not _match_exists(conn, match_id):
+        return None
+    team_by_pid = _team_by_participant(conn, match_id)
+    meta_by_pid = _participant_meta(conn, match_id)
+    types = _event_types_for(include)
+    if types is None:
+        cur = conn.execute(
+            f"SELECT {_EVENT_COLUMNS} FROM timeline_events "
+            "WHERE match_id=? ORDER BY timestamp_ms ASC",
+            (match_id,),
+        )
+    else:
+        placeholders = ",".join("?" * len(types))
+        cur = conn.execute(
+            f"SELECT {_EVENT_COLUMNS} FROM timeline_events "
+            f"WHERE match_id=? AND event_type IN ({placeholders}) "
+            "ORDER BY timestamp_ms ASC",
+            (match_id, *types),
+        )
+    events: list[dict] = []
+    skipped = 0
+    for row in cur.fetchall():
+        clock_s, usable = _clock_s(row)
+        if not usable:
+            skipped += 1
+            continue
+        actor = _row_actor(row)
+        victim = _pid(row["victim_id"])
+        assists = _assists(row)
+        actor_name, actor_champion = meta_by_pid.get(actor, (None, None))
+        victim_name, victim_champion = meta_by_pid.get(victim, (None, None))
+        assists_names: list[str | None] = []
+        assists_champs: list[str | None] = []
+        for aid in assists:
+            sn, cn = meta_by_pid.get(aid, (None, None))
+            assists_names.append(sn)
+            assists_champs.append(cn)
+        events.append({
+            "clock_s":         clock_s,
+            "type":            row["event_type"],
+            "team":            _row_team(row, team_by_pid, actor),
+            "actor":           actor,
+            "actor_name":      actor_name,
+            "actor_champion":  actor_champion,
+            "victim":          victim,
+            "victim_name":     victim_name,
+            "victim_champion": victim_champion,
+            "assists":         assists,
+            "assists_names":   assists_names,
+            "assists_champs":  assists_champs,
+            "subtype":         _row_subtype(row),
+            "lane":            row["lane_type"] or None,
+            "pos":             _pos(row),
+        })
+    if skipped:
+        log.warning("api/replay/events: %s: skipped %d event row(s) with an "
+                    "unusable timestamp", match_id, skipped)
+    return events
+
+
 def _serve_replay_events(h) -> None:
     """GET /api/replay/events?match_id=<id>[&include=items,skills,...]"""
     try:
-        qs = parse_qs(urlparse(h.path).query)
-        match_id = (qs.get("match_id") or [""])[0].strip()
-        include = _parse_include((qs.get("include") or [""])[0])
-        if not match_id:
-            h._send(400, json.dumps({
-                "ok": False, "error": "match_id required",
-            }).encode(), "application/json")
+        match_id, include, err = _parse_query(h.path)
+        if err is not None:
+            _send_json(h, 400, {"ok": False, "error": err})
             return
 
         if not _REWIND_DB.exists():
-            h._send(503, json.dumps({
-                "ok": False, "error": "rewind_history.db missing",
-            }).encode(), "application/json")
+            _send_json(h, 503, {"ok": False,
+                                "error": "rewind_history.db missing"})
             return
 
-        t0 = time.time()
+        t0 = time.perf_counter()
         cache_key = (match_id, include, _CACHE_SCHEMA)
         cached = _cache_get(cache_key)
         if cached is not None:
             payload = dict(cached)
-            payload["elapsed_ms"] = int((time.time() - t0) * 1000)
+            payload["elapsed_ms"] = int((time.perf_counter() - t0) * 1000)
             payload["cached"] = True
             payload["you_flagged"] = _you_flagged(match_id)
-            h._send(200, json.dumps(payload).encode("utf-8"),
-                    "application/json")
+            _send_json(h, 200, payload)
             return
 
-        conn = sqlite3.connect(
-            f"file:{_REWIND_DB}?mode=ro", uri=True, timeout=2.0
-        )
         try:
-            conn.row_factory = sqlite3.Row
-            if not _match_exists(conn, match_id):
-                h._send(404, json.dumps({
-                    "ok": False, "error": "match_id not found",
-                    "match_id": match_id,
-                }).encode(), "application/json")
-                return
+            conn = _open_rewind_db_ro()
+            try:
+                events = _read_events(conn, match_id, include)
+            finally:
+                conn.close()
+        except sqlite3.Error as exc:
+            # Corrupt file, missing table, locked DB, or the file vanished
+            # after the exists() check: retryable, not an internal error.
+            log.warning("api/replay/events: rewind_history.db read failed "
+                        "for %s: %s: %s", match_id, type(exc).__name__, exc)
+            _send_json(h, 503, {
+                "ok": False,
+                "error": "rewind history unavailable - retry shortly",
+            })
+            return
 
-            team_by_pid = _team_by_participant(conn, match_id)
-            meta_by_pid = _participant_meta(conn, match_id)
-            types = _event_types_for(include)
-            if types is None:
-                cur = conn.execute(
-                    "SELECT * FROM timeline_events "
-                    "WHERE match_id=? ORDER BY timestamp_ms ASC",
-                    (match_id,),
-                )
-            else:
-                placeholders = ",".join("?" * len(types))
-                cur = conn.execute(
-                    f"SELECT * FROM timeline_events "
-                    f"WHERE match_id=? AND event_type IN ({placeholders}) "
-                    f"ORDER BY timestamp_ms ASC",
-                    (match_id, *types),
-                )
-            events: list[dict] = []
-            for row in cur.fetchall():
-                actor = (row["killer_id"]
-                         if row["killer_id"] not in (None, 0)
-                         else (row["participant_id"]
-                               if row["participant_id"] not in (None, 0) else None))
-                victim = row["victim_id"] if row["victim_id"] not in (None, 0) else None
-                assists = _assists(row)
-                actor_name, actor_champion = (meta_by_pid.get(actor, (None, None))
-                                              if actor is not None else (None, None))
-                victim_name, victim_champion = (meta_by_pid.get(victim, (None, None))
-                                                if victim is not None else (None, None))
-                assists_names: list[str] = []
-                assists_champs: list[str] = []
-                for aid in assists:
-                    sn, cn = meta_by_pid.get(aid, (None, None))
-                    assists_names.append(sn)
-                    assists_champs.append(cn)
-                events.append({
-                    "clock_s":         int((row["timestamp_ms"] or 0) // 1000),
-                    "type":            row["event_type"],
-                    "team":            _row_team(row, team_by_pid),
-                    "actor":           actor,
-                    "actor_name":      actor_name,
-                    "actor_champion":  actor_champion,
-                    "victim":          victim,
-                    "victim_name":     victim_name,
-                    "victim_champion": victim_champion,
-                    "assists":         assists,
-                    "assists_names":   assists_names,
-                    "assists_champs":  assists_champs,
-                    "subtype":         _row_subtype(row),
-                    "lane":            row["lane_type"] or None,
-                    "pos":             _pos(row),
-                })
-        finally:
-            conn.close()
+        if events is None:
+            _send_json(h, 404, {"ok": False, "error": "match_id not found",
+                                "match_id": match_id})
+            return
 
         payload = {
             "ok":         True,
@@ -342,22 +490,22 @@ def _serve_replay_events(h) -> None:
             "events":     events,
             "count":      len(events),
             "include":    sorted(include),
-            "elapsed_ms": int((time.time() - t0) * 1000),
+            "elapsed_ms": int((time.perf_counter() - t0) * 1000),
             "cached":     False,
         }
         _cache_put(cache_key, dict(payload))
         payload["you_flagged"] = _you_flagged(match_id)
-        h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
-    except Exception as exc:  # noqa: BLE001 - generic 500 wrapper
-        log.warning("api/replay/events: %s", exc)
+        _send_json(h, 200, payload)
+    except Exception:  # noqa: BLE001 - generic 500 wrapper
+        log.exception("api/replay/events: unexpected failure")
         try:
             # Raw exception text can leak file paths - log it, never
             # render it (same policy as dashboard/_handler.do_POST).
-            h._send(500, json.dumps({
-                "ok": False, "error": "internal error - see logs",
-            }).encode(), "application/json")
-        except Exception:  # noqa: BLE001
-            pass
+            _send_json(h, 500, {"ok": False,
+                                "error": "internal error - see logs"})
+        except OSError as send_exc:
+            log.warning("api/replay/events: could not send the 500: %s: %s",
+                        type(send_exc).__name__, send_exc)
 
 
 GET_ROUTES = [
