@@ -2705,9 +2705,27 @@ Practice customs and Mayhem q2400 NEVER reach Match-V5. This batch is unreachabl
 - **G4-27** (was F6) R47 PGR child-panel capture - UNCLEAR / likely moot (the entry itself says the
   baseline render is byte-identical, so there is no pixel delta to capture). **Operator call to
   discharge as a no-op.** SOURCE: LEDGER 702.
-- **G4-28** (was F7) Home "Tonight's Pick" hardcoded dummy (`web/js/main.js:3080`,
+- **G4-28** (was F7) ~~Home "Tonight's Pick" hardcoded dummy (`web/js/main.js:3080`,
   `dashboard/builders_home.py:148,105`): wire to real post-game `queue_id` ingest. DEFER until
-  queue_id ingest ships; gated on real post-game Match-V5 rows.
+  queue_id ingest ships; gated on real post-game Match-V5 rows.~~ **MIS-FILED, CLASS 1: the answer is
+  on disk (lane 9 PREP s144 c62, RM-1392, source read at `f775fd561`, 2026-11-05; NOT a tick, no game
+  involved).** The row is copied from the dummy-data table `docs/OVERLAY_BUILD_MASTER_PLAN.md:165`
+  (added `b07498ab1`, 2026-06-28, from the s218 `TODO(s218-dummy-data)` tags of `3626bb00d`,
+  2026-05-15). Its cited lines were the Recent-row `items` / `mode_subtype` TODOs, not Tonight's Pick
+  code, so the row is mis-labelled as well as stale. Both of its premises are refuted at HEAD:
+  (1) Tonight's Pick is NOT a dummy and never read a queue_id. `out["tonight_pick"] =
+  _home_tonight_pick(week_rows)` (`dashboard/builders_home.py:339`) takes the top 7-day
+  `match_history.db` aggregate by avg KDA (`:441-460`, since `77c5b7297` 2026-04-30); the FE renders
+  that payload (`web/js/main.js:3796` -> `_homeRenderCoach` `:3914`). The backend pick is pinned by
+  `tests/test_home_tonight_pick_tips.py`; `tests/snapshot_panels/test_home_view.py:127` pins only the
+  card's render on mock data.
+  (2) The queue_id ingest the row waits on HAS SHIPPED, and needs no Match-V5 row: the s218 dummy
+  fields on the Recent rows, `items` (`5f448a789`, 2026-05-16) and `mode_subtype` (A6 `3df627d6e`,
+  2026-07-04), read the LCU-ingest `lcu_match_detail` blob (`builders_home.py:254-255`, ARAM Classic
+  q450 / Mayhem q2400 split), pinned by `tests/test_home_recent_mode_subtype.py`. Nothing here needs a
+  game, so no live half is left. Residue (NOT gated, filed for a repo / uiux lane): two stale
+  `TODO(s218-dummy-data)` comments still say the ingest has not shipped (`builders_home.py:232`,
+  `web/js/main.js:3336`). Moving the row to "Not actually live-gated" is a human doc edit.
 - **G4-29** `[RE-FILED 2026-07-18]` (was F8) item-211 residual orphan-row Match-V5 recovery -
   **RE-FILE source: GATE 4; destination: OPERATOR-DECISION task. The row was MIS-GATED - no game and no
   new Match-V5 ingest is required.** SETTLED HEADLESS: the per-row champion list (the input the row said
