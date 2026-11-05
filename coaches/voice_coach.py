@@ -35,7 +35,6 @@ import os
 import subprocess
 import threading
 import time
-from typing import Optional
 
 from core import live_game_gate
 

@@ -51,7 +51,7 @@ import sqlite3
 import threading
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 from core.failed_load_gate import FailedLoadGate
 

@@ -358,7 +358,7 @@ _Inline `# arch: phase <id> [(YYYY-MM-DD)] - <note>` markers across the tree, su
 | 7 | 2026-05-09 | `scripts/wakeup_prune.py:4` | automate /done section 6c WAKEUP_NOTES archival |
 | 0.13 | - | `ops/rc_self_monitor.py:198` | bounded bootstrap window. |
 | 0.3 | - | `ops/rc_self_monitor.py:237` | monotonic timestamp when worker first seen dead (fix 3) |
-| 0.7 | - | `core/metrics_cache.py:440` | supervisor_state added to status.json; tolerate absence in older files |
+| 0.7 | - | `core/metrics_cache.py:439` | supervisor_state added to status.json; tolerate absence in older files |
 | 0.9 | - | `ops/rc_self_monitor.py:339` | _check_health() returns a (state, detail) tuple |
 | 0.9 | - | `ops/rc_self_monitor.py:547` | _check_health() returns 3-value state string instead of plain bool |
 | 1 step 3 | - | `game_reader/snapshot_normalizer.py:1516` | snapshot factory helpers (to_rift_snapshot, to_aram_snapshot) |

@@ -28,7 +28,6 @@ Exit codes:
   1  One or more MISSING or ERROR items (non-writable dirs, absent files)
 """
 import sys
-import os
 import shutil
 import tempfile
 from pathlib import Path

@@ -20,7 +20,6 @@ Abort:              drop ops/audit/ds_perm_swarm/report/WATCHER_STOP  (or Ctrl-C
 from __future__ import annotations
 
 import json
-import os
 import ssl
 import sys
 import time

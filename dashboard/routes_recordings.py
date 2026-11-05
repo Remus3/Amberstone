@@ -40,7 +40,6 @@ import os
 import re
 import stat
 import sys
-from pathlib import Path
 
 from dashboard._context import APP_DIR as _APP_DIR
 from dashboard._dispatch import prefix

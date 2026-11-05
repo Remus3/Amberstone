@@ -27,7 +27,6 @@ if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
 import datetime
-import logging
 import traceback
 from typing import Callable, Optional
 

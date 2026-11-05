@@ -12,6 +12,10 @@ imports the name from it (``supervisor`` alone held ten, among them
 assumes the module still needs ``socket`` or ``uuid``. Those twelve are cleaned
 (FIXED).
 
+RM-1409 cleans twelve more stdlib leftovers (one each, in coaches, core,
+dashboard, game_reader, ops and tools; none re-exported, none patched by name in
+a test) and moves them from _BASELINE to FIXED.
+
 The rest are in the shrinking _BASELINE (rel path -> count): frozen files, files
 another lane branch changed, the DS engine (lane ds), deliberate facades
 (``coaches/adaptation_hint.py`` re-exports its split modules, ``effects.py`` its
@@ -50,11 +54,23 @@ FIXED = (
     "coaches/experimental_builder.py",
     "coaches/loadout_resolver.py",
     "coaches/replay_coach.py",
+    "coaches/voice_coach.py",
     "core/benchmarks.py",
     "core/decision_detector.py",
     "core/feature_policy.py",
+    "core/metrics_cache.py",
+    "core/replay_history.py",
     "dashboard/_state_builder.py",
+    "dashboard/routes_duo_synergy.py",
+    "dashboard/routes_recordings.py",
+    "game_reader/poller.py",
     "modes/shared_vision.py",
+    "ops/loop/claude_stub.py",
+    "ops/loop/done_sentinel.py",
+    "ops/rc_incident_log.py",
+    "tools/bootstrap_env_check.py",
+    "tools/live_flip_watcher.py",
+    "tools/start_daemon_slayer.py",
 )
 
 # Out of scope: test code, audit probes, the byte-pinned vendored kit and package
@@ -79,30 +95,20 @@ _BASELINE = {
     "coaches/_adaptation_common.py": 1,
     "coaches/adaptation_hint.py": 33,
     "coaches/adaptation_hint_cli.py": 1,
-    "coaches/voice_coach.py": 1,
     "composition_advisor.py": 7,
     "core/build_order_variants.py": 1,
     "core/log_setup.py": 2,
-    "core/metrics_cache.py": 1,
-    "core/replay_history.py": 1,
     "core/rofl_stats_backfill.py": 2,
     "dashboard/_dispatch.py": 1,
     "dashboard/_writers.py": 1,
-    "dashboard/routes_duo_synergy.py": 1,
     "dashboard/routes_loadout.py": 1,
     "dashboard/routes_lobby_aux.py": 1,
-    "dashboard/routes_recordings.py": 1,
     "dashboard/routes_replay_events.py": 1,
-    "game_reader/poller.py": 1,
-    "ops/loop/claude_stub.py": 1,
-    "ops/loop/done_sentinel.py": 1,
     "ops/loop/lanes.py": 1,
-    "ops/rc_incident_log.py": 1,
     "scripts/build_carry_benchmarks.py": 1,
     "scripts/build_champion_benchmarks.py": 2,
     "scripts/install_hooks.py": 1,
     "scripts/merge_refresh_builds.py": 2,
-    "tools/bootstrap_env_check.py": 1,
     "tools/build_portable.py": 1,
     "tools/champion_loadout_align.py": 1,
     "tools/dev_cli.py": 1,
@@ -110,11 +116,9 @@ _BASELINE = {
     "tools/gated_lx01_draft_check.py": 1,
     "tools/inbox_responder_runner.py": 1,
     "tools/lcu_agent.py": 1,
-    "tools/live_flip_watcher.py": 1,
     "tools/replay_session.py": 1,
     "tools/run_phase2_perf.py": 1,
     "tools/session_steer.py": 1,
-    "tools/start_daemon_slayer.py": 1,
     "tools/validate_loadouts.py": 1,
     "web_dashboard.py": 18,
 }

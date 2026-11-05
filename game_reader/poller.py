@@ -17,7 +17,6 @@ import base64
 import json
 import logging
 import re
-import ssl
 import subprocess
 import urllib.error
 import urllib.request

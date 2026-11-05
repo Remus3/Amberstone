@@ -8,7 +8,6 @@ cycle is read from control/cycle.txt; sha is the live git HEAD.
 import argparse
 import importlib.util
 import json
-import os
 import subprocess
 import sys
 import time

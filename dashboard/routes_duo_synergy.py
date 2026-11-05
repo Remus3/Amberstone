@@ -67,7 +67,6 @@ import logging
 import threading
 import time
 from pathlib import Path
-from typing import Iterable
 from urllib.parse import parse_qs, urlparse
 
 from core import smoothed_rates_101qq as _ssq
