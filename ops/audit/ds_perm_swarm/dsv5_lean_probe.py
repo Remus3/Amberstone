@@ -27,7 +27,7 @@ LEVEL = 11.0
 
 def row(label, enemy, lean):
     es = compute_enemy_stats("sr", level=LEVEL, enemy_champions=enemy, comp_hp_lean=lean)
-    print(f"  {label:<34} lean={str(lean):<5} -> max_hp={es.max_hp:>7}  "
+    print(f"  {label:<34} lean={lean!s:<5} -> max_hp={es.max_hp:>7}  "
           f"hp_scale={es.hp_scale:<6} tanky_count={es.tanky_count}")
     return es
 

@@ -82,7 +82,7 @@ def test_new_non_ascii_md_reddens_a_walker_the_selector_now_selects(tmp_path):
         "s144q38_ascii_walk", repo / "tests" / "test_ascii_walk.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    with pytest.raises(AssertionError, match="new_note.md"):
+    with pytest.raises(AssertionError, match=r"new_note\.md"):
         module.test_every_tracked_file_is_ascii()
 
     # The defect: a docs-only push ran nothing that could see that red.

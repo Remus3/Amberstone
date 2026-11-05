@@ -95,7 +95,7 @@ def test_landed_targets_join_in_import_order(tmp_path):
 def test_landed_target_not_imported_fails_loudly(tmp_path):
     root = _tree(tmp_path, ["src.css"],
                  {"src.css": ".s{}\n", "src_a.css": ".a{}\n"})
-    with pytest.raises(AssertionError, match="src_a.css"):
+    with pytest.raises(AssertionError, match=r"src_a\.css"):
         _css_split.family_paths("web/css/panels/src.css", root=root)
 
 
@@ -108,7 +108,7 @@ def test_landed_target_imported_before_source_fails_loudly(tmp_path):
 
 def test_missing_source_or_plan_fails_loudly(tmp_path):
     root = _tree(tmp_path, ["src.css"], {})
-    with pytest.raises(AssertionError, match="src.css"):
+    with pytest.raises(AssertionError, match=r"src\.css"):
         _css_split.family_paths("web/css/panels/src.css", root=root)
     (root / "docs" / "WEB_CSS_SPLIT_PLAN.md").unlink()
     (root / "web" / "css" / "panels" / "src.css").write_text(

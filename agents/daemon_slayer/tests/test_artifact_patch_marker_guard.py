@@ -241,7 +241,7 @@ def test_guard_enforcement_is_default_off(tmp_path):
     """
     _write(tmp_path, "99.9.9", "a.json", {"patch": "99.6.6"})
     assert check_artifact_patch(tmp_path, "99.9.9", "a.json") is False
-    with pytest.raises(ValueError, match="99.6.6"):
+    with pytest.raises(ValueError, match=r"99\.6\.6"):
         check_artifact_patch(tmp_path, "99.9.9", "a.json", strict=True)
 
 

@@ -212,7 +212,7 @@ class Histogram(_Metric):
                 f'{k}="{_escape_label(v)}"' for k, v in bl) + "}"
             out.append(f"{self.name}_bucket{lstr} {n}")
             blstr = _format_labels(self.labelnames, lv)
-            out.append(f"{self.name}_sum{blstr} {repr(total)}")
+            out.append(f"{self.name}_sum{blstr} {total!r}")
             out.append(f"{self.name}_count{blstr} {n}")
         return out
 

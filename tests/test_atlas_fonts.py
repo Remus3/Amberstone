@@ -316,7 +316,7 @@ def test_corrupt_woff_is_refused(ab, faces) -> None:
         pytest.fail("no glyf table in the first face")
     assert comp < orig, "glyf should be stored compressed"
     data[off + comp // 2] ^= 0xFF
-    with pytest.raises(ab.BuildError, match="inflate|checksum|length"):
+    with pytest.raises(ab.BuildError, match=r"inflate|checksum|length"):
         ab.read_font(bytes(data))
 
 

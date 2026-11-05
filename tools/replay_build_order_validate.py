@@ -639,7 +639,7 @@ def print_summary(report: dict) -> None:
             lo = d["wald_95_lo"]
             ci = f"[{lo * 100:+5.1f},{d['wald_95_hi'] * 100:+5.1f}]" if lo is not None else ""
             print(
-                f"   {tag} {d['lean']:<12} {str(d['item_id']):>6} {nm[:18]:<18} "
+                f"   {tag} {d['lean']:<12} {d['item_id']!s:>6} {nm[:18]:<18} "
                 f"bought n={d['bought']['n']:>5} wr={_fmt_pct(d['bought']['winrate'])} "
                 f"diff={_fmt_pct(d['diff_bought_minus_not'])} {ci}"
             )

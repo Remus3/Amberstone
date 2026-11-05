@@ -34,6 +34,7 @@ empty "pageerror" list, mirroring test_settings_view.py.
 import json
 import re
 from pathlib import Path
+from typing import Optional
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 THEMES_CSS = ROOT / "web" / "css" / "themes.css"
@@ -72,7 +73,7 @@ def _seed_script(items: dict) -> str:
     return "(function () {\n" + "\n".join(lines) + "\n})();"
 
 
-def _open_settings(pw_browser, mock_server, query: str = "", storage: dict = None):
+def _open_settings(pw_browser, mock_server, query: str = "", storage: Optional[dict] = None):
     """Boot the dashboard on the Settings view.
 
     Mirrors test_settings_view.py._open_settings, plus two knobs this slice

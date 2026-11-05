@@ -80,7 +80,7 @@ def eog_path(tmp_path, monkeypatch):
     return p
 
 
-def _put(path: Path, doc, mtime: float, raw: bytes = None):
+def _put(path: Path, doc, mtime: float, raw: bytes | None = None):
     tmp = path.with_suffix(".tmp")
     tmp.write_bytes(raw if raw is not None else json.dumps(doc, indent=1).encode("ascii"))
     tmp.replace(path)

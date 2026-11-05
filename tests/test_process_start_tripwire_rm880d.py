@@ -39,7 +39,7 @@ def test_a_start_through_an_unbound_module_trips():
 
 
 def test_a_swallowed_trip_still_fails_when_the_block_ends():
-    with pytest.raises(ProcessStartTripped, match="subprocess.Popen"):
+    with pytest.raises(ProcessStartTripped, match=r"subprocess\.Popen"):
         with no_process_start():
             try:
                 _real_run()

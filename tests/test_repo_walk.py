@@ -179,7 +179,7 @@ def test_self_check_passes_on_the_real_checkout():
 def test_self_check_raises_on_a_vacuous_tree(tmp_path):
     """The anti-vacuity guard must actually fire, not just exist."""
     (tmp_path / "lonely.py").write_text("x = 1\n", encoding="utf-8")
-    with pytest.raises(AssertionError, match="collapsed|missing anchor"):
+    with pytest.raises(AssertionError, match=r"collapsed|missing anchor"):
         rw.self_check(tmp_path)
 
 
