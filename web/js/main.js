@@ -799,6 +799,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       { manual: !!_VIEW.manual, mode: state.mode });
     _VIEW.current = viewId;
     document.body.dataset.view = viewId;
+    _viewDropStrandedFocus();
     _viewUpdateTitleLabel(viewId);
     _viewUpdateMenuActive(viewId);
     // Lazy-fetch view content (wire-once + fetch on first activate)
@@ -880,6 +881,19 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     }
     if (viewId === "build-insights") { renderBuildInsights(); }
     if (viewId === "settings")    { _settingsRefresh(); _settingsLobbyWireOnce(); _syncAutoAcceptUI(); renderSpendGates(); _settingsFilterWireOnce(); }
+  }
+  // RM-1367: the old view is now display:none, so focus inside it sits on
+  // a control with no box. Chromium drops it only at the next frame; until
+  // then the hidden control owns the keyboard (an Enter right after Back
+  // clicked the Lobby mode trigger and opened its menu on Replay). Blur only,
+  // in the same task: focus is never pulled anywhere, and a rendered control
+  // (the header view trigger) keeps it. Activation code below that focuses a
+  // control on the new view still does so.
+  // Guard: tests/snapshot_panels/test_view_change_stranded_focus.py.
+  function _viewDropStrandedFocus() {
+    const a = document.activeElement;
+    if (!a || a === document.body || typeof a.blur !== "function") return;
+    if (a.getClientRects().length === 0) a.blur();
   }
   function _viewUpdateTitleLabel(viewId) {
     const el = document.getElementById("view-current-label");
