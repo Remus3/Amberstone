@@ -24,16 +24,30 @@ Storage:
     metric_type column carries a hint ("numeric" | "pct" | "duration_s"
     | "text" | "pair") for downstream analytics.
 
-This module is IMPORT-ONLY safe - calling init_db() is idempotent.
-The `recorder` module-level singleton buffers writes in memory and
-flushes on demand (every ~5s or at milestone boundaries - caller's choice).
+Importing this module opens NO database connection (s144 true-audit,
+RM-1448): the schema is created lazily by the first flush() for the
+current DB_PATH, and init_db() stays idempotent for callers that want it
+up front. The `recorder` module-level singleton buffers writes in memory
+and flushes on demand (every ~5s or at milestone boundaries - caller's
+choice).
+
+Row hygiene (RM-1449 / RM-1451): record() refuses a row without a
+usable match_id or metric key (ValueError) and coerces every other column
+to a bindable shape, so one malformed row can never fail the whole
+executemany batch and wedge the buffer behind it. A flush whose schema
+has vanished (DB file or data dir deleted under a running process)
+re-creates it and retries once (RM-1450).
 """
 from __future__ import annotations
+import logging
+import math
 import sqlite3
 import threading
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Any, Optional
+
+logger = logging.getLogger("rc.match_metrics")
 
 DB_PATH = Path(__file__).resolve().parent.parent / "data" / "match_metrics.db"
 
@@ -123,17 +137,30 @@ def init_db() -> None:
 def integrity_check() -> tuple[bool, str]:
     """PRAGMA integrity_check - returns (ok, message). Caller should run
     this before every retro-fill batch so a corrupt DB doesn't mask bad
-    writes silently."""
-    conn = sqlite3.connect(DB_PATH)
+    writes silently.
+
+    A MISSING database is initialised first (a first-run retrofill must
+    pass its own pre-flight now that import no longer creates the file).
+    A file that is not a database at all reports (False, <error>) instead
+    of raising, so the caller's clean abort branch runs (RM-1452).
+    """
+    if not DB_PATH.exists():
+        init_db()
     try:
-        row = conn.execute("PRAGMA integrity_check").fetchone()
-        msg = row[0] if row else "no result"
-        return (msg == "ok", msg)
-    finally:
-        conn.close()
+        conn = sqlite3.connect(DB_PATH)
+        try:
+            row = conn.execute("PRAGMA integrity_check").fetchone()
+        finally:
+            conn.close()
+    except sqlite3.DatabaseError as exc:
+        return (False, f"{type(exc).__name__}: {exc}")
+    msg = str(row[0]) if row else "no result"
+    return (msg == "ok", msg)
 
 
 def row_count() -> int:
+    """Row count of match_metrics (the schema is created when absent)."""
+    init_db()
     conn = sqlite3.connect(DB_PATH)
     try:
         return conn.execute("SELECT COUNT(*) FROM match_metrics").fetchone()[0]
@@ -141,14 +168,63 @@ def row_count() -> int:
         conn.close()
 
 
+# --- row coercion (RM-1449 / RM-1451) -----------------------------
+# Every bound parameter must be str / int / None: anything else makes
+# sqlite3 raise ProgrammingError for the WHOLE executemany batch.
+
+def _text_or_none(value: Any) -> Optional[str]:
+    """A bindable optional TEXT column: str kept, int / finite float
+    stringified, anything else (dict, list, bool, NaN, objects) -> None."""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, float) and math.isfinite(value):
+        return str(value)
+    return None
+
+
+def _required_text(value: Any, what: str) -> str:
+    """A NOT NULL identifier column: non-empty str, or a (non-bool) int."""
+    if isinstance(value, int) and not isinstance(value, bool):
+        return str(value)
+    if isinstance(value, str) and value:
+        return value
+    raise ValueError(f"match_metrics: {what} must be a non-empty str or int, "
+                     f"got {type(value).__name__}")
+
+
+def _game_time_or_none(value: Any) -> Optional[int]:
+    """Game clock in whole seconds: a non-negative finite number, else None
+    (a bool, string, NaN, infinity or negative clock is not a game time)."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    if value < 0:
+        return None
+    return int(value)
+
+
+def _is_missing_schema(exc: sqlite3.OperationalError) -> bool:
+    """True when the error means the DB file / table is gone (heal + retry),
+    not a transient lock (re-queue + raise)."""
+    msg = str(exc).lower()
+    return "no such table" in msg or "unable to open database file" in msg
+
+
 class Recorder:
     """Thread-safe buffered recorder. Call record(...) to queue a row;
     flush() commits in a single transaction."""
 
     def __init__(self) -> None:
-        init_db()
+        # No DB I/O here (RM-1448): the schema is created by the first
+        # flush for whichever DB_PATH is current at that moment.
         self._buf: list[tuple] = []
         self._lock = threading.Lock()
+        self._schema_ready_for: Optional[Path] = None
 
     def record(
         self,
@@ -167,17 +243,73 @@ class Recorder:
         """Buffer one metric row. `provenance` must be one of
         PROVENANCE_TIERS - defaults to source_truth (direct data read);
         callers deriving values with math should pass 'inferred_tight'
-        (small-margin) or 'inferred_wide' (notable uncertainty)."""
+        (small-margin) or 'inferred_wide' (notable uncertainty).
+
+        Raises ValueError when `match_id` or `key` is not a non-empty str
+        (an int match_id is kept as its text). Every other column is
+        coerced to a bindable shape: an unusable champion / mode /
+        session_id / milestone_tag becomes NULL, an unusable metric_type
+        falls back to "text", and a game clock that is not a non-negative
+        finite number becomes NULL (floats truncate to whole seconds).
+        """
+        mid = _required_text(match_id, "match_id")
+        if not isinstance(key, str) or not key:
+            raise ValueError("match_metrics: key must be a non-empty str, "
+                             f"got {type(key).__name__}")
         if provenance not in PROVENANCE_TIERS:
             provenance = "inferred_wide"  # unknown tier -> treat as widest
+        mtype = metric_type if isinstance(metric_type, str) and metric_type else "text"
         wall = datetime.now(timezone.utc).isoformat()
         row = (
-            match_id, session_id, champion, mode,
-            key, "" if value is None else str(value), metric_type,
-            game_time_s, wall, milestone_tag, provenance,
+            mid, _text_or_none(session_id), _text_or_none(champion),
+            _text_or_none(mode),
+            key, "" if value is None else str(value), mtype,
+            _game_time_or_none(game_time_s), wall,
+            _text_or_none(milestone_tag), provenance,
         )
         with self._lock:
             self._buf.append(row)
+
+    def _write(self, rows: list[tuple]) -> None:
+        """One transaction for `rows`; creates the schema for the current
+        DB_PATH on first use and heals a vanished schema once."""
+        path = DB_PATH
+        if self._schema_ready_for != path:
+            init_db()
+            self._schema_ready_for = path
+        try:
+            self._insert(rows)
+        except sqlite3.OperationalError as exc:
+            if not _is_missing_schema(exc):
+                raise
+            # The DB file or its directory vanished under a running process;
+            # a bare connect would just create an empty DB and fail again
+            # on every flush. Re-create the schema and retry ONCE.
+            logger.warning("match_metrics: schema missing at flush (%s); "
+                           "re-initialising", exc)
+            self._schema_ready_for = None
+            init_db()
+            self._schema_ready_for = path
+            self._insert(rows)
+
+    @staticmethod
+    def _insert(rows: list[tuple]) -> None:
+        conn = sqlite3.connect(DB_PATH)
+        try:
+            conn.executemany(
+                """
+                INSERT INTO match_metrics
+                  (match_id, session_id, champion, mode,
+                   metric_key, metric_value, metric_type,
+                   recorded_at_game_time_s, recorded_at_wall_time, milestone_tag,
+                   provenance)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?)
+                """,
+                rows,
+            )
+            conn.commit()
+        finally:
+            conn.close()
 
     def flush(self) -> int:
         """Commit buffered rows. Returns number of rows written.
@@ -189,35 +321,29 @@ class Recorder:
         propagates (callers - metric_streamer via live_metrics.stream -
         already contain it). Re-queue is capped at _REQUEUE_MAX rows
         (oldest dropped) so a permanently failing DB cannot grow the
-        buffer without bound.
+        buffer without bound. A cap drop is logged at WARNING with the
+        number of rows lost (RM-1452) - it is never silent.
         """
         with self._lock:
             if not self._buf:
                 return 0
             rows, self._buf = self._buf, []
         try:
-            conn = sqlite3.connect(DB_PATH)
-            try:
-                conn.executemany(
-                    """
-                    INSERT INTO match_metrics
-                      (match_id, session_id, champion, mode,
-                       metric_key, metric_value, metric_type,
-                       recorded_at_game_time_s, recorded_at_wall_time, milestone_tag,
-                       provenance)
-                    VALUES (?,?,?,?,?,?,?,?,?,?,?)
-                    """,
-                    rows,
-                )
-                conn.commit()
-            finally:
-                conn.close()
+            self._write(rows)
         except Exception:
+            # Broad on purpose: whatever failed, the rows go back on the
+            # buffer and the error still propagates to the caller.
+            dropped = 0
             with self._lock:
                 requeued = rows + self._buf
                 if len(requeued) > _REQUEUE_MAX:
+                    dropped = len(requeued) - _REQUEUE_MAX
                     requeued = requeued[-_REQUEUE_MAX:]
                 self._buf = requeued
+            if dropped:
+                logger.warning("match_metrics: flush failed; re-queue cap %d "
+                               "reached, dropped %d oldest row(s)",
+                               _REQUEUE_MAX, dropped)
             raise
         return len(rows)
 
@@ -387,6 +513,11 @@ class Recorder:
         game_time_s=gt, milestone_tag="10min_mark"|None). Periodic
         60-second flushes + milestone-specific calls are the intended
         cadence.
+
+        A payload clock that is not a non-negative finite number is
+        recorded as NULL (never raised), a non-finite float metric value
+        (NaN / infinity) is skipped like a missing one - it is not a
+        measurement - and a non-dict `provenance_overrides` is ignored.
         """
         n = 0
         if not isinstance(payload, dict) or not match_id:
@@ -396,13 +527,13 @@ class Recorder:
         if mode is None:
             mode = payload.get("game_mode") or payload.get("mode") or ""
         if game_time_s is None:
-            gt = payload.get("game_time_s")
-            if isinstance(gt, (int, float)):
-                game_time_s = int(gt)
-        overrides = provenance_overrides or {}
+            game_time_s = _game_time_or_none(payload.get("game_time_s"))
+        overrides = provenance_overrides if isinstance(provenance_overrides, dict) else {}
         for pkey, (mkey, mtype) in self._PAYLOAD_METRIC_MAP.items():
             val = payload.get(pkey)
             if val is None or val == "" or val == "-":
+                continue
+            if isinstance(val, float) and not math.isfinite(val):
                 continue
             prov = overrides.get(mkey) or overrides.get(pkey) or provenance
             self.record(
