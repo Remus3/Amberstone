@@ -16,7 +16,7 @@ Symbols used (file:line at time of writing):
     :91 solo_winrate, :122 pair_winrate
   core/patch_impact.py:41 _REWIND_DB, :54 _open_ro, :113 _played_champions,
     :202 compute_patch_impact, :313 _empty
-  scripts/rewind_scraper.py:86 SCHEMA (the production rewind_history.db DDL)
+  scripts/rewind_scraper.py:104 SCHEMA (the production rewind_history.db DDL)
 """
 from __future__ import annotations
 

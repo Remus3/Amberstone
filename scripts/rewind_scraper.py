@@ -29,6 +29,14 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+# Run as `python scripts/rewind_scraper.py`, sys.path[0] is scripts/; the repo
+# root makes `lib` importable (same as fetch_cdragon_pbe.py).
+_PROJECT = Path(__file__).resolve().parent.parent
+if str(_PROJECT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT))
+
+from lib.wiki_consent import WikiFetchRefused, open_consented  # noqa: E402
+
 # No handler is configured for this CLI; a WARNING still reaches stderr via
 # logging's last-resort handler.
 _log = logging.getLogger("rc.scripts.rewind_scraper")
@@ -55,12 +63,22 @@ HDR = {
 # -- HTTP -----------------------------------------------------------------------
 
 def fetch_json(url: str, retries: int = MAX_RETRIES) -> dict | list | None:
-    """Fetch JSON from URL with retry/backoff. Returns None on persistent failure."""
+    """Fetch JSON from URL with retry/backoff. Returns None on persistent failure.
+
+    Opens through ``lib.wiki_consent.open_consented`` (RM-1441): a url naming
+    the League wiki host, or a rewind.lol reply redirecting into it, is
+    refused before any wiki socket opens unless a consent record exists. The
+    bare urllib opener this replaced followed that 3xx. A refusal returns None
+    at once: it is deterministic, so a retry would only re-ask the origin.
+    """
     for attempt in range(retries):
         try:
             req = urllib.request.Request(url, headers=HDR)
-            with urllib.request.urlopen(req, timeout=30) as r:
+            with open_consented(req, timeout=30) as r:
                 return json.loads(r.read().decode("utf-8"))
+        except WikiFetchRefused as e:
+            print(f"    Refused ({url}): {e}")
+            return None
         except urllib.error.HTTPError as e:
             if e.code == 404:
                 return None                      # not found - not an error
