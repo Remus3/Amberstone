@@ -43,7 +43,8 @@ proven + leak-free control, calibration REJECTED by operator - see below), G2-17
 a shielded comp; practice bots carry no shields), G2-26 (pixel capture done: 5 enemies x 2 spells),
 G2-28 (3 of 4 verified live: rn-lead 298 chars / rn-choices 2205 / rn-callouts 701 all VISIBLE;
 am-spike-cue is documented data-gated so HIDDEN at a non-spike moment is honest, positive confirm still
-owed), G2-41 (premise confirmed: `/latest-frame` measured 1280x720 vs a 2560x1440 display),
+owed; superseded 2026-08-12 by B4, which hides all three in a live game by design, and w-spike was
+deleted 2026-08-11 - see the struck G2-28), G2-41 (premise confirmed: `/latest-frame` measured 1280x720 vs a 2560x1440 display),
 G2-42 (b: 13 live districts with occupancy + last_seen; c: frame `source='obs'`, GDI baseline ok at
 2560x1440), G3-01 (bench swap propagated inside ONE 0.5s sample; the subjective "visibly faster" half
 deferred to the operator's next swap), G4-16 (three of five chips seen lit: C3 fed-enemy "SURVIVE fed
@@ -1101,7 +1102,7 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   renderer and the geometry against fixtures. Only P3, matched cell by cell to P1/P2 from the same
   window, answers whether the panel RENDERED the live values over a live HUD. A `:8889/latest-frame`
   is NOT P3 unless the drain first shows that frame carries the overlay layer.
-- **G2-28** `[NEW ROW 2026-07-18]` RM-05 round-1 shipped-fix live-verify (LEDGER 914 S4+S7,
+- **G2-28** `[NEW ROW 2026-07-18]` ~~RM-05 round-1 shipped-fix live-verify (LEDGER 914 S4+S7,
   `a486142b`): the MISSING-IN-GAME cluster (`rn-lead` / `rn-choices` / `rn-callouts` / `w-spike`) was
   ROOT-CAUSED - the panelset-gating hypothesis is DISPROVEN (panelset gating is retired/dead, pinned
   by `test_overlay_route_smoke.py`); the mounts are DATA-gated and their only reliable in-game feed is
@@ -1109,11 +1110,58 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   arena/tft. SR/ARAM/brawl needed no code change and needs only the live-verify; the arena/tft fix
   needs its own. ALSO folds the LEDGER 809 E6 fix: lead_projection / callouts / coach.choices /
   liveclient now refresh from the unconditional 2s `/api/state` poll in `main.js` (they were dark
-  in-game, gated on a WS push that never fires) + the minimap_rect trim calibration (18px left, 14px
+  in-game, gated on a WS push that never fires)~~ + the minimap_rect trim calibration (18px left, 14px
   top) at 2560x1440. CONFIRMED-OK already: `am-mmrect` ZOI markings DO show in-game.
+  **MIS-FILED BY AGE, CLASS 1: the behaviour it asks to see was REVERSED for Riot compliance (lane 9
+  PREP s144 c67, RM-1513, source read at `f9b410d40`, 2026-11-05; NOT a tick, no game).** The row
+  wants the four mounts POPULATED in a live game; two compliance commits since filing make a populated
+  mount in a live game a defect. (1) `w-spike` is gone: `538c61e4b` (B3, 2026-08-11) deleted the
+  power-spike cue mount (`web/index.html` am-grid comment "Do not reinstate";
+  `docs/OVERLAY_COMPLIANCE_PLAN.md`). (2) `f2b7c4bae` (B4-b / RM-189, 2026-08-12) blanks all three
+  remaining feeds while a game is live, server-side and client-side: `dashboard/_state_builder.py`
+  `LIVE_SUPPRESSED_ENVELOPE_FIELDS = ("callouts", "lead_projection")` via `suppress_live_envelope`
+  and `"choices"` in `LIVE_SUPPRESSED_FIELDS` via `suppress_live_directives` (both gated on
+  `core/live_game_gate.py` `is_live_game`, any of `LIVE_GAME_FLAGS` = has_game / aram_mode /
+  arena_mode / tft_mode / brawl_mode), and `web/js/lib/live_directive_gate.js` `directivesAllowed`
+  gates `renderLead` / `renderCallouts` (`web/js/panels/callouts.js`) and `renderCoachChoices`
+  (`web/js/panels/coach_choices.js`) to the clear-and-hide branch. The S7 split itself (reachable as
+  `e6ac21b0e` + merge `a87e6ef11`; the row's `a486142b` is its pre-rewrite twin, not reachable from
+  HEAD) still stands in `web/js/main.js` `pollMinimap`, so the arena/tft poll now feeds those
+  renderers only for them to hide. The 2026-07-18 "3 of 4 verified live" at the head of this doc
+  predates B4 and stands as history only. Re-run this cycle: `tests/test_b4_client_directive_gate.py`
+  + `tests/test_b4_live_directive_suppression.py` 46 passed, 82 subtests, exit 0. The minimap_rect
+  trim calibration half is NOT struck: `minimap_rect` is in neither B4 list, so it stays owed as filed.
+  **RESIDUAL READY, the INVERSE check (same cycle; NOT a tick).** What no fixture can show is that a
+  REAL live tick is blanked, and TFT is the mode where it already failed once (S134 T1, 2026-10-25:
+  SR callouts painted through a live TFT match with `liveclient` {}). Precondition: a live game in any
+  mode, overlay shell up; Arena and TFT are the windows this row was filed for and are worth the most.
+  Probes, all read-only: P1 `curl -sk https://127.0.0.1:8888/api/state` -> `mode_key`, `liveclient`
+  (empty or not), `lcu.phase`, `callouts`, `lead_projection`, `coach.choices`, with its fetch time;
+  P2 `ops/runtime/health.json` -> `has_game`, `aram_mode`, `arena_mode`, `tft_mode`, `brawl_mode`,
+  INFORMATIONAL ONLY, never graded: the server gate reads a SERVED copy, not this file -
+  `apply_standalone_tft_mirror` sets `tft_mode` on the served copy only (standalone-client TFT), and
+  `_gate_health` adds `has_game` when `unidentified_live` (both `dashboard/_state_builder.py`), so a
+  correctly blanked TFT or unresolved-mode game can show all five disk flags false;
+  P3 the rendered overlay, seen by the operator or an attended drain capture of the overlay window
+  (a lane never captures), timestamped against P1. LIVE = P1 `mode_key` in sr / aram / arena / tft /
+  brawl with a non-empty `liveclient`, or a non-feed mode (tft, unresolved) with `lcu.phase`
+  `InProgress` (the `isLiveGame` predicate). CHECK PASS iff, in one LIVE window: P1 `callouts` is
+  `[]`, `lead_projection` is `{}` and `coach.choices` is `[]` (keys present, blanked), and P3 shows
+  none of `#rn-lead` / `#rn-callouts` / `#rn-choices`.
+  FAIL (a compliance defect, not a polish item): any of the three feeds non-empty in a LIVE window
+  (the server leaked even if the client gate hid the mount - the content is on the wire; record P2
+  beside it as a diagnostic), or a mount visible. Champ select (`lcu.phase`
+  `ChampSelect`, `liveclient` {}) is NOT live and may legitimately show all three; it is no evidence
+  either way. EVIDENCE CONTRACT: P1 and P2 bodies with fetch times, mode, queue, `game_time_s` (or
+  the TFT stage), and the P3 sighting with its time. SUBSTITUTION: the B4 tests prove the predicate
+  and the blanking on fixtures, and a `?ui_mock=1` render proves the renderer; only a P1 body from a
+  real live tick answers whether the SERVED feed was blanked, and only P3 answers whether the mount
+  stayed hidden over a live HUD. Moving the struck half to "Not actually live-gated" is a human edit.
 - **G2-29** (was B26) ZOI shading alpha/blur live tune (MAX_ALPHA 0.55 / ZOI_BLUR_PX 12 shipped,
   pending operator verify) + `#rn-choices` live DOM inspect (has data + renderer runs, absent in DOM).
   Native-res grab (`ac50f1af`) is the foundation. The ARAM flood-tint question re-checks at GATE 3.
+  (s144 c67, RM-1513: the `#rn-choices` live DOM inspect is moot in a live game: B4 blanks
+  `coach.choices` and hides the mount by design, so "absent in DOM" in-game is the PASS; see G2-28.)
 - **G2-30** (was E6) OVERLAY headless-polish LIVE-RECON punch-list (operator LIVE-GATED the WHOLE
   remaining set 2026-07-05): build-META knob-steppers + item right-click radial, drag/move system,
   context-menu item tooltip crop/position, PR enemy-spell chip cooldown timer, gauges 1-line layout.
