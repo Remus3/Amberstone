@@ -2420,7 +2420,18 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   white-space: nowrap;
 }
 .history-session-row .hs-wl .hs-w { color: var(--good); font-weight: 700; }
-.history-session-row .hs-wl .hs-l { color: var(--bad); font-weight: 700; }
+/* RM-1550: the loss marks of the History view (this count, the loss row
+ * glyph and the active L toggle below) were var(--bad) text measured 3.19 to
+ * 4.48:1 on their own fills in five themes, under AA 4.5:1 for 16-18px
+ * text (the count on a SELECTED session row is the tightest pair). They take
+ * the champ select .csv-enemy-wr-slot.is-bad lift: --bad mixed 30 percent
+ * toward --text in oklab, the same red, lighter (25 percent, the RM-1549
+ * zone pill mix, left arcane's selected-row count at 4.49:1). Rails, borders
+ * and tints stay --bad.
+ * Guard: tests/snapshot_panels/test_history_result_marks_contrast.py. */
+.history-session-row .hs-wl .hs-l {
+  color: color-mix(in oklab, var(--bad) 70%, var(--text)); font-weight: 700;
+}
 
 /* Result-first tint (item-77 WIN-CAPTURE: main.js stamps .result-win /
  * .result-loss when win is known; null-win rows stay neutral). The left
@@ -2443,7 +2454,9 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   margin-right: var(--space-1); flex: 0 0 auto;
 }
 .history-match-row.result-win::before  { content: "\25B2"; color: var(--good); }
-.history-match-row.result-loss::before { content: "\25BC"; color: var(--bad); }
+.history-match-row.result-loss::before {
+  content: "\25BC"; color: color-mix(in oklab, var(--bad) 70%, var(--text));
+}
 
 /* Last-20 formstrip (deferred lift P2 - rendered once the W/L backfill
  * lands; styled now so the markup drops in clean). Each pip carries a
@@ -2508,7 +2521,7 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   background: var(--good-soft); outline-color: var(--good);
 }
 .history-filter-rbtn[data-result="loss"].active {
-  color: var(--bad); border-color: var(--bad);
+  color: color-mix(in oklab, var(--bad) 70%, var(--text)); border-color: var(--bad);
   background: var(--bad-soft); outline-color: var(--bad);
 }
 
