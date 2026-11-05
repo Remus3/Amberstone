@@ -28,6 +28,8 @@ Reachability is checked the way a keyboard user meets it: every row is
 focused in turn and must then sit fully inside both the window and the
 menu's own visible box, which the menu's scroll provides.
 """
+import sys
+
 import pytest
 
 from tests.snapshot_panels.test_view_menu_keyboard import (
@@ -173,6 +175,9 @@ def test_end_key_scrolls_the_last_row_into_a_short_menu(mock_server, pw_browser)
 # The authored layout where it already fit: the box at its measured pre-fix
 # size, no internal scroll.
 _AUTHORED = {(1920, 920): 616.0, (923, 1280): 616.0}
+# RM-1657: the height holds a line of text, so the fallback font moves it: 614
+# on the Linux CI runner (run 42003344193), 616 on Windows.
+_HEIGHT_SLACK = 1 if sys.platform == "win32" else 2
 
 
 @pytest.mark.parametrize("vp", list(_AUTHORED), ids=lambda v: f"{v[0]}x{v[1]}")
@@ -181,7 +186,7 @@ def test_a_menu_that_fit_keeps_its_authored_layout(mock_server, pw_browser, vp):
     try:
         _keyboard_open(page)
         st = page.evaluate(_GEO)
-        assert abs(st["menu"]["h"] - _AUTHORED[vp]) <= 1, (
+        assert abs(st["menu"]["h"] - _AUTHORED[vp]) <= _HEIGHT_SLACK, (
             f"{vp}: the menu changed height where it already fit: {st}")
         assert abs(st["menu"]["top"] - 70) <= _SLACK, (
             f"{vp}: the menu moved off its 70 px anchor: {st}")

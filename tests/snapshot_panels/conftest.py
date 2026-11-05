@@ -17,7 +17,14 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import pytest
-from playwright.sync_api import sync_playwright
+
+try:
+    from playwright.sync_api import sync_playwright
+except ImportError:
+    # RM-1657: the docs-guards job selects the modules here that read a tracked doc
+    # and does not install a browser. A collection error here killed that whole job
+    # (run 42003344148); now only a test that asks for pw_browser skips.
+    sync_playwright = None
 
 from tests.snapshot_panels._webfont_stub import OfflineWebfontBrowser
 
@@ -414,6 +421,8 @@ _WS_STUB = """
 
 @pytest.fixture(scope="session")
 def pw_browser():
+    if sync_playwright is None:
+        pytest.skip("playwright is not installed in this job")
     with sync_playwright() as pw:
         b = pw.chromium.launch(
             headless=True,

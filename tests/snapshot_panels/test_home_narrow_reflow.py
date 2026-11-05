@@ -35,6 +35,8 @@ shared header / footer chrome still runs wider (filed separately, RM-1432),
 so there the check is the view's own panel. At 1920x920 and 923x1280 the
 authored layout is pinned by its computed values.
 """
+import sys
+
 import pytest
 
 from tests.snapshot_panels.test_home_find_match_picker_focus import _open_home
@@ -185,13 +187,24 @@ _AUTHORED = {
 }
 
 
+def _comparable(st: dict) -> dict:
+    """RM-1657: the hero row follows its text's height, so the fallback font decides
+    it: the Linux CI runner read "525 1050 157" and "614 157" where Windows read
+    "526 1052 155" and "616 155" (run 42003344193). Only Windows pins that field;
+    every other value is the same on both."""
+    if sys.platform == "win32":
+        return st
+    return {k: v for k, v in st.items() if k != "hero"}
+
+
 @pytest.mark.parametrize("vp", list(_AUTHORED), ids=lambda v: f"{v[0]}x{v[1]}")
 def test_the_authored_layout_is_unchanged(mock_server, pw_browser, vp):
     ctx, page, errors, posts = _open_home(pw_browser, mock_server, vp)
     try:
         _settle(page)
         st = page.evaluate(_AUTHORED_JS)
-        assert st == _AUTHORED[vp], f"{vp}: the authored Home layout moved: {st}"
+        assert _comparable(st) == _comparable(_AUTHORED[vp]), (
+            f"{vp}: the authored Home layout moved: {st}")
     finally:
         page.close()
         ctx.close()

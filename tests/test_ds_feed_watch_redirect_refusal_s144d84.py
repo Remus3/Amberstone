@@ -187,8 +187,11 @@ def test_a_redirect_to_a_non_wiki_target_still_lands(net, origin):
     assert fw.UrllibHttp().head(f"{base}/x/to-local.js") == 200
     assert fw.UrllibHttp().get(f"{base}/x/to-local.js") == (200, OK_BODY)
     assert net == []
-    assert hits == ["HEAD /x/to-local.js", "HEAD /x/ok.js",
-                    "GET /x/to-local.js", "GET /x/ok.js"]
+    # RM-1657: urllib keeps HEAD across a redirect on 3.14.4 and re-sends GET on
+    # the CI's 3.12, so the second verb is the interpreter's.
+    assert hits[0] == "HEAD /x/to-local.js"
+    assert hits[1] in ("HEAD /x/ok.js", "GET /x/ok.js")
+    assert hits[2:] == ["GET /x/to-local.js", "GET /x/ok.js"]
 
 
 def test_a_missing_chunk_is_still_a_status_not_a_raise(net, origin):

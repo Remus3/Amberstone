@@ -211,7 +211,9 @@ def test_a_head_to_a_non_wiki_target_still_resolves(net, origin):
     res = ddr.http_head(f"{base}/to-local")
     assert (res.status, res.body) == (200, b"")
     assert res.headers.get("content-length") == str(len(PNG))
-    assert hits == ["HEAD /to-local", "HEAD /ok.png"]
+    # RM-1657: urllib keeps HEAD across a redirect on 3.14.4 and re-sends GET on
+    # the CI's 3.12, so the second verb is the interpreter's.
+    assert hits in (["HEAD /to-local", "HEAD /ok.png"], ["HEAD /to-local", "GET /ok.png"])
 
 
 # -- the callers ---------------------------------------------------------------------
