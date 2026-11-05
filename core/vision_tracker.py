@@ -340,27 +340,26 @@ class VisionTracker:
                 visible = True
                 tracked["last_seen_t"] = game_time
                 tracked["last_seen_zone"] = "on_bridge"
+            elif tracked["last_pos"] is None:
+                # First sighting of this champion
+                if x != 0.0 or z != 0.0:
+                    tracked["last_pos"] = (x, z)
+                    tracked["last_seen_t"] = game_time
+                    tracked["last_seen_zone"] = _zone_for(game_mode, x, z)
+                    visible = True
             else:
-                if tracked["last_pos"] is None:
-                    # First sighting of this champion
-                    if x != 0.0 or z != 0.0:
-                        tracked["last_pos"] = (x, z)
-                        tracked["last_seen_t"] = game_time
-                        tracked["last_seen_zone"] = _zone_for(game_mode, x, z)
-                        visible = True
+                lx, lz = tracked["last_pos"]
+                moved = ((x - lx) ** 2 + (z - lz) ** 2) ** 0.5 >= _POS_EPSILON
+                if moved:
+                    tracked["last_pos"] = (x, z)
+                    tracked["last_seen_t"] = game_time
+                    tracked["last_seen_zone"] = _zone_for(game_mode, x, z)
+                    visible = True
                 else:
-                    lx, lz = tracked["last_pos"]
-                    moved = ((x - lx) ** 2 + (z - lz) ** 2) ** 0.5 >= _POS_EPSILON
-                    if moved:
-                        tracked["last_pos"] = (x, z)
-                        tracked["last_seen_t"] = game_time
-                        tracked["last_seen_zone"] = _zone_for(game_mode, x, z)
-                        visible = True
-                    else:
-                        # Position frozen - if recent, still call it visible;
-                        # if stale, fog of war.
-                        elapsed = game_time - (tracked["last_seen_t"] or game_time)
-                        visible = elapsed < _VISIBILITY_STALL_S
+                    # Position frozen - if recent, still call it visible;
+                    # if stale, fog of war.
+                    elapsed = game_time - (tracked["last_seen_t"] or game_time)
+                    visible = elapsed < _VISIBILITY_STALL_S
 
             tracked["last_visible"] = visible
 

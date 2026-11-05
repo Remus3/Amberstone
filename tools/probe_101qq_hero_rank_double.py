@@ -286,9 +286,8 @@ def cross_reference_ddragon(payload_keys: list, ddragon_map: dict) -> dict:
             out["matched_as_numeric_ddragon_key"] += 1
         elif s.lower() in ddragon_names_lower:
             out["matched_as_ddragon_name"] += 1
-        else:
-            if len(out["unmatched_sample"]) < 8:
-                out["unmatched_sample"].append(s)
+        elif len(out["unmatched_sample"]) < 8:
+            out["unmatched_sample"].append(s)
     return out
 
 

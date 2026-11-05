@@ -138,29 +138,28 @@ def _scan_drift(loadouts: dict) -> list[dict]:
                             if i not in boots_positions
                         ]
                         drift.append(rec_base)
-                else:
-                    # SR / ARAM non-bootsless: boots required at items[1]
-                    if not boots_positions:
-                        rec_base["kind"] = "NO_BOOTS"
-                        rec_base["items_after"] = list(items)  # cannot auto-add
-                        drift.append(rec_base)
-                    elif boots_positions[0] != 1:
-                        bp = boots_positions[0]
-                        new_items = list(items)
-                        new_items[1], new_items[bp] = new_items[bp], new_items[1]
-                        rec_base["kind"] = f"BOOTS_AT_INDEX_{bp}"
-                        rec_base["items_after"] = new_items
-                        drift.append(rec_base)
-                    elif len(boots_positions) > 1:
-                        rec_base["kind"] = "MULTIPLE_BOOTS"
-                        # Keep only first boots
-                        new_items = [
-                            it for i, it in enumerate(items)
-                            if i == boots_positions[0]
-                            or i not in boots_positions
-                        ]
-                        rec_base["items_after"] = new_items
-                        drift.append(rec_base)
+                # SR / ARAM non-bootsless: boots required at items[1]
+                elif not boots_positions:
+                    rec_base["kind"] = "NO_BOOTS"
+                    rec_base["items_after"] = list(items)  # cannot auto-add
+                    drift.append(rec_base)
+                elif boots_positions[0] != 1:
+                    bp = boots_positions[0]
+                    new_items = list(items)
+                    new_items[1], new_items[bp] = new_items[bp], new_items[1]
+                    rec_base["kind"] = f"BOOTS_AT_INDEX_{bp}"
+                    rec_base["items_after"] = new_items
+                    drift.append(rec_base)
+                elif len(boots_positions) > 1:
+                    rec_base["kind"] = "MULTIPLE_BOOTS"
+                    # Keep only first boots
+                    new_items = [
+                        it for i, it in enumerate(items)
+                        if i == boots_positions[0]
+                        or i not in boots_positions
+                    ]
+                    rec_base["items_after"] = new_items
+                    drift.append(rec_base)
     return drift
 
 

@@ -60,14 +60,13 @@ def main() -> int:
                     ok = False
                 elif th.string != tw.string:
                     str_subbed += 1
+            elif th.exact_type != tw.exact_type or th.string != tw.string:
+                print(f"FAIL {rel}:{th.start[0]} non-string token diverged")
+                print(f"   HEAD={th.string!r} ({tokenize.tok_name[th.exact_type]})")
+                print(f"   WORK={tw.string!r} ({tokenize.tok_name[tw.exact_type]})")
+                ok = False
             else:
-                if th.exact_type != tw.exact_type or th.string != tw.string:
-                    print(f"FAIL {rel}:{th.start[0]} non-string token diverged")
-                    print(f"   HEAD={th.string!r} ({tokenize.tok_name[th.exact_type]})")
-                    print(f"   WORK={tw.string!r} ({tokenize.tok_name[tw.exact_type]})")
-                    ok = False
-                else:
-                    nonstr_ident += 1
+                nonstr_ident += 1
         print(f"  {rel}: {nonstr_ident} non-string tokens byte-identical, "
               f"{str_subbed} string tokens glyph-subbed")
     print("PROVED" if ok else "PROOF FAILED")

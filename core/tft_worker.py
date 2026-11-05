@@ -472,16 +472,15 @@ class TftWorker(BaseCoachWorker):
                         last_success=self.last_success_ts,
                     ))
 
-                else:
-                    if was_in_game:
-                        # Still poll; game end is declared by app.py via SrAramWorker
-                        # end_signal or via absence of TFT mode - not by this worker.
-                        # Emit None result so app.py can observe the gap.
-                        self._enqueue(TftWorkerResult(
-                            state=None,
-                            pulse_ts=self.pulse_ts,
-                            last_success=self.last_success_ts,
-                        ))
+                elif was_in_game:
+                    # Still poll; game end is declared by app.py via SrAramWorker
+                    # end_signal or via absence of TFT mode - not by this worker.
+                    # Emit None result so app.py can observe the gap.
+                    self._enqueue(TftWorkerResult(
+                        state=None,
+                        pulse_ts=self.pulse_ts,
+                        last_success=self.last_success_ts,
+                    ))
 
             except Exception:  # noqa: BLE001
                 self._log_failure("read", "read error")

@@ -374,7 +374,7 @@ def test_pin_normalizer_side_keys_and_shared_drop():
             '                      "riotId", "championName"):') in s
     assert "_shared = _ally_keys & _enemy_keys" in s
     assert 'if isinstance(dtype, str) and dtype.strip().lower() == "elder":' in s
-    assert 'return name.split("#")[0].strip().lower()' in s
+    assert 'return name.split("#", 1)[0].strip().lower()' in s
 
 
 def test_pin_decision_detector_scope_and_rule():

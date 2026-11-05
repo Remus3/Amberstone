@@ -576,9 +576,8 @@ class ReplanLoop:
         if action.kind == "sell_boots":
             if surplus_gold < cfg.boots_sell_min_surplus_gold:
                 return None
-        else:
-            if surplus_gold < cfg.sell_min_surplus_gold:
-                return None
+        elif surplus_gold < cfg.sell_min_surplus_gold:
+            return None
         self._sells_this_stage += 1
         return action
 

@@ -150,15 +150,14 @@ def main() -> int:
     if args.json:
         print(json.dumps({"alerts": alerts, "generated_at": datetime.now().isoformat()},
                          indent=2))
+    elif not alerts:
+        print(f"No drift detected in last {args.days} day(s).")
     else:
-        if not alerts:
-            print(f"No drift detected in last {args.days} day(s).")
-        else:
-            print(f"Found {len(alerts)} drift(s) (>{args.drop_pct}% below benchmark p50):")
-            for a in alerts:
-                print(f"  {a['champion']:<14} {a['metric']:<13} "
-                      f"recent={a['recent_p50']:>7.2f}  bench={a['benchmark_p50']:>7.2f}  "
-                      f"-{a['pct_below']}%  ({a['samples']} games)")
+        print(f"Found {len(alerts)} drift(s) (>{args.drop_pct}% below benchmark p50):")
+        for a in alerts:
+            print(f"  {a['champion']:<14} {a['metric']:<13} "
+                  f"recent={a['recent_p50']:>7.2f}  bench={a['benchmark_p50']:>7.2f}  "
+                  f"-{a['pct_below']}%  ({a['samples']} games)")
 
     if not args.no_write:
         try:

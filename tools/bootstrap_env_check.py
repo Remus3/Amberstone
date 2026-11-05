@@ -315,13 +315,12 @@ def main() -> int:
             _ok("python on PATH  (advisory -- frozen ops/.ps1 need this)", python_on_path)
         else:
             _ok("python on PATH", python_on_path)
+    elif embed_present:
+        _warn("python NOT on PATH",
+              "advisory: frozen ops/.ps1 scripts call python by name; ops supervisor may fail")
     else:
-        if embed_present:
-            _warn("python NOT on PATH",
-                  "advisory: frozen ops/.ps1 scripts call python by name; ops supervisor may fail")
-        else:
-            _err("python NOT found on PATH",
-                 "required: install.bat and frozen ops/.ps1 scripts depend on PATH python")
+        _err("python NOT found on PATH",
+             "required: install.bat and frozen ops/.ps1 scripts depend on PATH python")
 
     # -- Packaging readiness ------------------------------------------------
     print("\n[Packaging Readiness]")

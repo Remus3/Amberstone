@@ -97,14 +97,6 @@ _BASELINE = {
     "tests/test_skip_condition_hygiene.py": 1,
     "tests/test_tft_cv_accuracy_harness.py": 1,
     "tools/build_portable.py": 1,
-    "tools/champion_loadout_collapse_to_paths.py": 1,
-    "tools/ci_watchdog.py": 1,
-    "tools/compare_101qq_vs_ddragon.py": 1,
-    "tools/gated_live_probe.py": 1,
-    "tools/inbox_responder_exec.py": 1,
-    "tools/p3_ascii_census.py": 1,
-    "tools/probe_101qq_hero_rank_double.py": 1,
-    "tools/run_phase2_perf.py": 1,
     "tools/sibling_name_sweep.py": 2,
 }
 

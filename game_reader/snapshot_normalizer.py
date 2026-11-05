@@ -1273,11 +1273,10 @@ class _NormalizerMixin:
                         friendly = f"{aname} @ {zone} ~{dist}s away"
                 else:
                     friendly = f"{aname} @ {zone}"
+            elif game_time < 300:
+                friendly = f"{aname} likely at first camps (not yet visible)"
             else:
-                if game_time < 300:
-                    friendly = f"{aname} likely at first camps (not yet visible)"
-                else:
-                    friendly = f"{aname} position unknown - ward river for gank setup"
+                friendly = f"{aname} position unknown - ward river for gank setup"
         else:
             friendly = "Jungler not identified"
 
@@ -1297,11 +1296,10 @@ class _NormalizerMixin:
                 issues.append("OVEREXTENDED past enemy T1 - extreme gank risk")
             elif x > 9000:
                 issues.append("Deep in enemy territory - ward before advancing further")
-        else:
-            if x < 4000 or (x < 5500 and z < 4000):
-                issues.append("OVEREXTENDED past enemy T1 - extreme gank risk")
-            elif x < 5500:
-                issues.append("Deep in enemy territory - ward before advancing further")
+        elif x < 4000 or (x < 5500 and z < 4000):
+            issues.append("OVEREXTENDED past enemy T1 - extreme gank risk")
+        elif x < 5500:
+            issues.append("Deep in enemy territory - ward before advancing further")
 
         my_champ = me.get("championName", "") if me else ""
         support = None

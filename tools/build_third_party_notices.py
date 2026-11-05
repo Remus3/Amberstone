@@ -817,15 +817,14 @@ def satisfies(version: str, rng: str) -> bool:
                 ok = ver >= base and ver < upper
             elif op in (">=", ">", "<=", "<"):
                 ok = _cmp_ok(ver, op, base)
+            elif n == 3:
+                ok = ver == base and pre == bpre
+            elif n == 2:
+                ok = ver[:2] == base[:2]
+            elif n == 1:
+                ok = ver[0] == base[0]
             else:
-                if n == 3:
-                    ok = ver == base and pre == bpre
-                elif n == 2:
-                    ok = ver[:2] == base[:2]
-                elif n == 1:
-                    ok = ver[0] == base[0]
-                else:
-                    ok = True
+                ok = True
             if not ok:
                 break
         if ok:
