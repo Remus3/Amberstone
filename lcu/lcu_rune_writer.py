@@ -455,11 +455,16 @@ def save_spell_pref(mode_key: str, value: str) -> None:
 
 # LCU/dashboard mode string -> collector mode tag. Mirrors
 # lcu.lcu_postgame_collector._MODE_MAP + dashboard.routes_adaptive_summoners.
+# SR, ARENA and BRAWL are extra keys (BRAWL scopes a pref only). RM-1330:
+# ONEFORALL and ULTBOOK were missing, so a pair picked in those modes was
+# remembered under SR. Parity guard:
+# tests/test_spell_winrates_mode_table_parity_s144q60.py.
 _MODE_TAGS = {
     "CLASSIC": "SR", "SR": "SR",
     "ARAM": "ARAM", "KIWI": "ARAM", "ARAM_5V5": "ARAM", "ARAM_MAYHEM": "ARAM",
     "CHERRY": "ARENA", "ARENA": "ARENA",
     "NEXUSBLITZ": "BRAWL", "URF": "BRAWL", "BRAWL": "BRAWL",
+    "ONEFORALL": "BRAWL", "ULTBOOK": "BRAWL",
     "TFT": "TFT",
 }
 

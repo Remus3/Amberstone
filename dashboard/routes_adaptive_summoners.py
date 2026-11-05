@@ -232,7 +232,12 @@ def _recommend(base: list[int], role: str, threat: dict) -> dict:
 
 # Maps an LCU game-mode string (CLASSIC / KIWI / CHERRY / ...) to the
 # postgame DB table prefix. Mirrors lcu.lcu_postgame_collector._MODE_MAP so
-# the WR lookup keys the same table the collector writes.
+# the WR lookup keys the same table the collector writes; a mode the
+# collector does not map is written to the SR tables, so it reads "sr" here
+# too. SR and ARENA are extra dashboard spellings. RM-1330: ONEFORALL and
+# ULTBOOK were missing, so their lookups read sr while the collector filed
+# those games under brawl. Parity guard:
+# tests/test_spell_winrates_mode_table_parity_s144q60.py.
 _MODE_TO_TBL: dict[str, str] = {
     "CLASSIC": "sr", "SR": "sr",
     "ARAM": "aram", "KIWI": "aram", "ARAM_5V5": "aram", "ARAM_MAYHEM": "aram",
@@ -243,6 +248,7 @@ _MODE_TO_TBL: dict[str, str] = {
     # The rotating modes below are RC's MODE_BRAWL (a name collision, not Riot
     # Brawl) and are unaffected. See docs/OVERLAY_COMPLIANCE_PLAN.md.
     "NEXUSBLITZ": "brawl", "URF": "brawl",
+    "ONEFORALL": "brawl", "ULTBOOK": "brawl",
     "TFT": "tft",
 }
 
