@@ -436,6 +436,13 @@ class _FakeCv2:
         cls.reads += 1
         return None if cls.fail else "img:" + Path(path).stem
 
+    @classmethod
+    def imdecode(cls, buf, flag):
+        # s144 cycle 132 (RM-1624): vision_template_match decodes the file
+        # BYTES; the fixture icon's bytes are its stem.
+        cls.reads += 1
+        return None if cls.fail else "img:" + bytes(buf).decode("ascii")
+
     @staticmethod
     def cvtColor(img, code):
         return img
@@ -480,6 +487,10 @@ class _FakeNp:
     def ascontiguousarray(x):
         return x
 
+    @staticmethod
+    def frombuffer(data, dtype=None):
+        return data
+
 
 @pytest.fixture
 def fake_cv(monkeypatch):
@@ -506,7 +517,7 @@ def test_missing_category_folder_is_not_cached_and_recovers(
     assert "items" not in vtm._INDEX_CACHE
 
     folder.mkdir(exist_ok=True)
-    (folder / "Thornmail.png").write_bytes(b"")
+    (folder / "Thornmail.png").write_bytes(b"Thornmail")
     assert vtm._atlas("items") == {}, "inside the backoff: no rescan"
 
     clock.advance(_PAST_BACKOFF)

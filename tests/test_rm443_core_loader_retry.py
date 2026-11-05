@@ -587,6 +587,12 @@ class _FakeCv2:
         return "img:" + Path(path).stem
 
     @staticmethod
+    def imdecode(buf, flag):
+        # s144 cycle 132 (RM-1624): the atlas decodes the file BYTES; the
+        # fixture icon's bytes are its stem.
+        return "img:" + bytes(buf).decode("ascii")
+
+    @staticmethod
     def cvtColor(img, code):
         return img
 
@@ -612,7 +618,7 @@ class _FlakyDir:
 def _flaky_items_dir(tmp_path, monkeypatch) -> _FlakyDir:
     real = tmp_path / "items"
     real.mkdir()
-    (real / "Thornmail.png").write_bytes(b"")
+    (real / "Thornmail.png").write_bytes(b"Thornmail")
     flaky = _FlakyDir(real)
     monkeypatch.setitem(sys.modules, "cv2", _FakeCv2)
     monkeypatch.setitem(vtm._CATEGORY_DIRS, "items", flaky)
