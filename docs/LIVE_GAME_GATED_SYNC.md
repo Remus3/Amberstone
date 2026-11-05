@@ -2126,6 +2126,85 @@ survivability flips below cannot roll otherwise.
   error, budget-gate or kill-switch log line in its window; with one, the sample is INCONCLUSIVE.
   The coherence half stays an operator eyeball. (Adversarial pass 2026-10-24 corrected a first draft
   that bounded the lag on the 45 s ceiling.)
+  **TOOL 2026-11-04 (lane 9 s144 cycle 54, source read at `d3bc4ce4c`; NOT a tick).** The CHECK above
+  is now one command per half: NEW read-only `tools/gated_g312_aram_debounce_lag.py` (tests
+  `tests/test_gated_g312_aram_debounce_lag.py`), the ARAM twin of the G5-06 tool
+  `tools/gated_g506_debounce_lag.py`. It imports that tool's mode-neutral pieces and differs only in
+  the mode (`mode_key` and trace `mode` both `aram`), the coach file, the three log strings and the
+  90 s bound. The G5-06 tool-side preconditions apply unchanged, and each can only turn a PASS into
+  INCONCLUSIVE: the required `--since` / `--until` window holds the WHOLE game (first known
+  `liveclient.game_time_s` at most 60 s, a clean game-over poll within 35 s of the last known
+  sample); known samples (alive, or dead: `hp == 0` with `hp_max > 0`) tile it with no gap over
+  35 s; a dead run over 120 s, or a coach file AHEAD of the live clock by over 30 s (another game's
+  file), is INCONCLUSIVE.
+  (1) CITE DRIFT, line numbers only, behaviour unchanged, `coaches/aram_coach.py` at `d3bc4ce4c`:
+  flag read `:61` (was `:62`), the 30 s band `time_band` `:116` (was `:117`), the
+  `@safe_coach_output("ARAM")` decorator `:1004` with the `aram.live_coaching` gate `:1008` (was
+  `:870`), the debounce log call `:1219-1223` (was `:1082`), the Haiku `timeout=20` `:1246`, the
+  `ARAM Haiku raw` log `:1257` (was `:1119`), the `ARAM: no fields parsed` return `:1268`, the
+  `game_time_s` write `:1344` (was `:1206`, the DISPATCH state's `game_seconds`), the `safe_write`
+  `:1383`, the ceiling stamp `:1390-1393` (was `:1254`). `tools/gated_live_probe.py:210` and
+  `core/log_setup.py:161` hold. The test pins the strings and the bound's premises (30 s band,
+  25 s `_STABLE_DEBOUNCE_S`, 45 s ceiling, `timeout = 20`, the `aram` trace mode) against the
+  source, not line numbers.
+  (2) THE 90 s BOUND RE-DERIVED: it holds, but NARROWLY, with about 2 s of margin in the worst
+  case (verifier pass 1 of this cycle refuted a first draft that claimed 16 s by ignoring the 5 s
+  fast path, the 12 s reactive debounce and the 12 s snapshot age). The file's `game_time_s` is
+  the DISPATCH state's game time g0. Once the game clock leaves g0's band (at most g0 + 30 s), the
+  next dispatch re-calls whatever the ceiling says. A stable board dispatches every 25 s
+  (`_last_coach` is set at dispatch even for a run that then skips, `coaches/_base_coach.py:579`),
+  the poll ticks every 1.5 s (`:426`), a Haiku attempt times out at 20 s, and the coach accepts a
+  Live Client snapshot up to 12 s old (`:703`), so a dispatch can still read the old band. Worst
+  case with single-attempt calls and no slow tick: a call landing at about g0 + 88 s. So every
+  delay outside that budget EXCUSES a lag over 90 s instead of failing it: a
+  `data/coach_tick_trace.jsonl` `mode=aram` `phase=coach` record over 20000 `dur_ms` (an SDK
+  retry, which logs nothing; `coaches/_base_coach.py:669`, always traced, `ts` is the record's
+  END), any other `aram` trace phase (`parse` / `on_state` / `tick` / `shadow`, `:446-474` and
+  `:587-588`, written over 150 ms) over 2000 `dur_ms`, or a failed coach-file write (`safe_write
+  aram_coaching_data.json: ...`, `:100` / `:117`; the ceiling stamp at `:1390` is taken anyway, so
+  the next same-band dispatch skips). The 2000 ms threshold is this cycle's default, chosen to sit
+  at the measured margin; it can only turn a FAIL into an INCONCLUSIVE.
+  SAMPLING RESOLUTION: only the sampled points are graded, so with 25 s polls a true peak up to
+  about one interval above 90 s can fall between two samples. A PASS means "no SAMPLED lag over
+  90 s", not "the lag never crossed 90 s".
+  KNOWN FALSE-FAIL RESIDUALS (verifier pass 2 of this cycle; filed RM-1345, not fixed here): the
+  poll period is the tick time PLUS the 1.5 s sleep (`coaches/_base_coach.py:421-426`), so an
+  untraced-as-excuse tick under 2000 ms can push the worst case to about 90.5 s; and the sampler's
+  `/api/state` GET (8 s timeout) runs after the coach-file read, so a slow GET adds straight to the
+  measured lag. Until RM-1345 lands, read any FAIL whose worst lag is within 10 s of 90 s as
+  INCONCLUSIVE.
+  (3) CORRECTION TO THE CHECK's FAIL CLAUSE. It names a "budget-gate or kill-switch log line", but
+  both gates (`coaches/_base_coach.py:535` / `:547`) and the feature-policy gate (`coaches/aram_coach.py:1008`) return
+  SILENTLY, so no such line can exist and a budget-exhausted game would grade FAIL. The tool
+  therefore grades an unexcused lag over 90 s FAIL only with `--budget-ok` (the operator asserts the
+  daily budget was not exhausted, `aram` was not kill-switched and `aram.live_coaching` was allowed)
+  AND a readable `--trace` file; otherwise INCONCLUSIVE. The feature-policy gate also writes a
+  disabled placeholder with no `game_time_s`, so its samples read as unknown (a coverage hole), and
+  a missing Anthropic client (`coaches/aram_coach.py:1013`, silent) returns before the debounce
+  block, so no proof line exists and the game grades INCONCLUSIVE. Log excuses in the `lag_s`
+  seconds before the sample: `ARAM coach error` (`core/safe_coach_output.py:35`), `ARAM: no fields
+  parsed`, and the failed-write line in (2).
+  (4) LIVE HALF, during the ARAM / Mayhem game, from the main checkout, RC started with
+  `RC_ARAM_STATE_DEBOUNCE=1` (still unset at User and Machine scope, read 2026-11-04; the
+  precondition stays a merger / operator act):
+  `python tools/gated_g312_aram_debounce_lag.py sample --interval 25 > <scratch>/g312.jsonl`,
+  started before the game clock starts, stopped with Ctrl-C after the game ends. Each poll reads
+  `data/aram_coaching_data.json` -> `game_time_s` FIRST, then `/api/state` -> `mode_key`,
+  `liveclient.game_time_s`, `liveclient.hp`, `liveclient.hp_max` (`dashboard/_liveclient.py:308`,
+  `:327-328`), so a slow GET can only make the measured lag larger.
+  (5) GRADE HALF, after the game: `python tools/gated_g312_aram_debounce_lag.py grade --samples
+  <scratch>/g312.jsonl --log logs/<date>.log --since <clock-start HH:MM:SS> --until <end HH:MM:SS>`
+  plus `--budget-ok` only on the operator's assertion. Exit 0 PASS, 1 INCONCLUSIVE / NO_RESULT,
+  2 FAIL.
+  (6) EVIDENCE CONTRACT for the tick: the grade output's max lag (value), the sample file plus the
+  field paths above (source), the sample wall times with mode ARAM or Mayhem (queue 2400, KIWI) and
+  the game time span (timestamp + context), and the predicate in the CHECK above as corrected in (3).
+  SUBSTITUTION CHECK: `tests/test_aram_state_debounce.py` proves the skip FIRES on an unchanged
+  signature (compute); only the sampled pair says whether the SERVED file kept pace with the game
+  clock. Samples taken with the flag OFF are caught by the zero-proof-line rule (INCONCLUSIVE), and
+  an Arena game's samples, proof lines or trace rows are not counted. Idle smoke 2026-11-04 20:19
+  local: the dashboard was down, so `sample` read a `URLError` poll (the coach file still held an
+  older game's `game_time_s`), and `grade` returned NO_RESULT, exit 1.
 - **G3-13** `[UNBLOCKED 2026-10-27 by RM-860 + RM-877; was BLOCKED ON WIRING 2026-10-24]` (was
   C15+C16) Augment OCR rank-vs-pick + live on-screen render validation.
   **READY (lane 9 PREP s144 cycle 8, source read at `f073b1ca1`; NOT a tick). The blocker below is
