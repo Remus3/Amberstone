@@ -13,7 +13,9 @@ Two halves, so the in-game pass is copy-paste:
   sample   LIVE, during an Arena game: every ``--interval`` seconds (fixed rate)
            read the coach file's ``game_time_s``, THEN GET ``/api/state``
            (``mode_key``, ``liveclient.game_time_s`` / ``hp`` / ``hp_max``), so a
-           slow GET can only make the measured lag LARGER, never hide one. One
+           slow GET can only make the measured lag LARGER, never hide one. Each
+           line records ``get_s``, the span from the coach-file read to the end
+           of the GET (RM-1345), so grade can discount it. One
            JSON line per poll goes to STDOUT (redirect it to a scratch file; a
            PowerShell 5.1 UTF-16 redirect is read back fine). It writes nothing
            itself. Start it before the game clock starts; Ctrl-C after the game
@@ -59,8 +61,11 @@ PREDICATES (stated in the G5-06 row before any game):
            the operator asserts both clear with ``--budget-ok``; without it the
            lag stays INCONCLUSIVE. A missing ``--trace`` file cannot rule a slow
            call out (trace writes are best-effort), so it also keeps an
-           unexcused lag INCONCLUSIVE. A vision-read failure is off the coach
-           write path and excuses nothing.
+           unexcused lag INCONCLUSIVE. The measured lag over-states the lag at
+           the coach-file read by up to the sample's ``get_s``, so an unexcused
+           lag is also INCONCLUSIVE when ``lag_s - get_s`` is within the bound,
+           or when the sample carries no ``get_s`` (RM-1345). A vision-read
+           failure is off the coach write path and excuses nothing.
 
 The coherence half (does reused text still fit the board?) stays an operator
 eyeball and is not graded here.
@@ -108,12 +113,18 @@ def _num(v: Any) -> float | None:
     return float(v)
 
 
-def make_sample(state: Any, coach: Any, wall: datetime) -> dict[str, Any]:
-    """One sample row from an /api/state document and the coach file document."""
+def make_sample(state: Any, coach: Any, wall: datetime, get_s: float | None = None) -> dict[str, Any]:
+    """One sample row from an /api/state document and the coach file document.
+
+    ``get_s`` is the sampler's own span from the coach-file read to the end of
+    the ``/api/state`` GET (RM-1345): the measured lag can exceed the true lag
+    at the read by at most that much.
+    """
     state = state if isinstance(state, dict) else {}
     lc = state.get("liveclient") if isinstance(state.get("liveclient"), dict) else {}
     coach = coach if isinstance(coach, dict) else {}
     lc_gt, co_gt = _num(lc.get("game_time_s")), _num(coach.get("game_time_s"))
+    span = _num(get_s)
     return {
         "wall": wall.isoformat(timespec="seconds"),
         "error": state.get("error"),
@@ -123,7 +134,23 @@ def make_sample(state: Any, coach: Any, wall: datetime) -> dict[str, Any]:
         "hp": _num(lc.get("hp")),
         "hp_max": _num(lc.get("hp_max")),
         "lag_s": round(lc_gt - co_gt, 1) if lc_gt is not None and co_gt is not None else None,
+        "get_s": round(span, 3) if span is not None and span >= 0 else None,
     }
+
+
+def get_slack(s: dict, lag: float, bound: float) -> str | None:
+    """Why an otherwise unexcused over-bound lag is not a FAIL on the sampler's own timing, or None.
+
+    The sampler reads the coach file FIRST and the live clock at the end of the
+    GET, so the measured lag over-states the lag at the read by up to ``get_s``.
+    A sample without a recorded span (an older sampler) cannot rule that out.
+    """
+    span = _num(s.get("get_s"))
+    if span is None or span < 0:
+        return "no get_s on the sample: the sampler's GET time cannot be ruled out"
+    if lag - span <= bound:
+        return f"lag minus the {span:.1f} s read-to-GET span is within the {bound:.0f} s bound"
+    return None
 
 
 def _wall(s: Any) -> datetime | None:
@@ -239,6 +266,8 @@ def grade(samples: list[dict], log: list[tuple[datetime, str]], slow: list[tuple
             v, note = "INCONCLUSIVE", "budget / kill-switch not asserted (--budget-ok)"
         elif not trace_ok:
             v, note = "INCONCLUSIVE", "no --trace file: a slow coach call cannot be ruled out"
+        elif slack := get_slack(s, lag, LAG_BOUND_S):
+            v, note = "INCONCLUSIVE", slack
         else:
             v, note = "FAIL", ""
         over.append({"wall": s["wall"], "lag_s": lag, "verdict": v, "excuses": excuses[:5], "note": note})
@@ -338,12 +367,14 @@ def main(argv: list[str] | None = None) -> int:
         t0 = time.monotonic()  # fixed-rate schedule: a slow GET does not stretch the cadence
         try:
             for i in range(max(a.count, 0)):
+                r0 = time.monotonic()
                 coach = _read_json(a.coach_file)  # coach file FIRST: GET delay can only enlarge the lag
                 try:
                     state = _get_state(a.base)
                 except (OSError, ValueError) as e:
                     state = {"error": type(e).__name__}
-                print(json.dumps(make_sample(state, coach, datetime.now())), flush=True)
+                span = time.monotonic() - r0  # recorded so grade can discount it (RM-1345)
+                print(json.dumps(make_sample(state, coach, datetime.now(), span)), flush=True)
                 if i + 1 < a.count:
                     time.sleep(max(0.0, t0 + (i + 1) * a.interval - time.monotonic()))
         except KeyboardInterrupt:

@@ -19,11 +19,11 @@ PROOF = ("20:01:05.120 DEBUG    rc.aram              [aram_coach.py:1219] ARAM s
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def sample(wall, lc_gt, co_gt, hp=900, mode="aram", hp_max=1000):
+def sample(wall, lc_gt, co_gt, hp=900, mode="aram", hp_max=1000, get_s=0.2):
     if isinstance(wall, str):
         wall = datetime.fromisoformat(wall)
     return g.make_sample({"mode_key": mode, "liveclient": {"game_time_s": lc_gt, "hp": hp, "hp_max": hp_max}},
-                         {"game_time_s": co_gt}, wall)
+                         {"game_time_s": co_gt}, wall, get_s)
 
 
 def ended(wall):
@@ -127,13 +127,37 @@ def test_slow_calls_filters_mode_phase_and_duration():
     assert g.slow_calls(rows) == [(end - timedelta(seconds=25), end)]
 
 
-def test_slow_non_coach_phases_count_over_2s():
+def test_slow_non_coach_phases_count_over_1s():
+    """RM-1345: a 1.9 s tick (uncounted at the old 2000 ms) pushed the worst case past 90 s."""
+    assert g.SLOW_OTHER_MS == 1000.0
     t = datetime(2026, 11, 4, 20, 0).timestamp()
     end = datetime.fromtimestamp(t)
     rows = [{"ts": t, "mode": "aram", "phase": "shadow", "dur_ms": 2500},
             {"ts": t, "mode": "aram", "phase": "tick", "dur_ms": 1900},
+            {"ts": t, "mode": "aram", "phase": "parse", "dur_ms": 1000},
+            {"ts": t, "mode": "aram", "phase": "on_state", "dur_ms": 900},
             {"ts": t, "mode": "aram", "phase": None, "dur_ms": 9000}]
-    assert g.slow_calls(rows) == [(end - timedelta(milliseconds=2500), end)]
+    assert g.slow_calls(rows) == [(end - timedelta(milliseconds=2500), end),
+                                  (end - timedelta(milliseconds=1900), end)]
+
+
+def test_a_sub_2s_tick_in_the_lag_window_excuses_it():
+    rows = run(spikes={10: 92})  # sample at 20:04:10, window 20:02:38 .. 20:04:10
+    tick_end = datetime(2026, 11, 4, 20, 3, 30)
+    trace = [{"ts": tick_end.timestamp(), "mode": "aram", "phase": "tick", "dur_ms": 1500}]
+    assert grade(rows, slow=g.slow_calls(trace), budget_ok=True)["verdict"] == "INCONCLUSIVE"
+    assert grade(rows, budget_ok=True)["verdict"] == "FAIL"
+
+
+def test_get_span_turns_a_near_bound_fail_inconclusive():
+    rows = run(spikes={10: 95})
+    rows[10]["get_s"] = 6.0  # 95 - 6 = 89: within 90 s once the sampler's GET is discounted
+    rep = grade(rows, budget_ok=True)
+    assert rep["verdict"] == "INCONCLUSIVE" and "read-to-GET span" in rep["over_bound"][0]["note"]
+    rows[10]["get_s"] = 4.0  # 95 - 4 = 91: still over
+    assert grade(rows, budget_ok=True)["verdict"] == "FAIL"
+    rows[10]["get_s"] = None  # an older sampler's line: the GET time cannot be ruled out
+    assert grade(rows, budget_ok=True)["verdict"] == "INCONCLUSIVE"
 
 
 def test_failed_coach_file_write_excuses_a_lag():
@@ -199,8 +223,28 @@ def test_sampler_reads_the_aram_coach_file_before_the_state(monkeypatch, capsys)
     monkeypatch.setattr(g, "_get_state", lambda base: order.append("state") or
                         {"mode_key": "aram", "liveclient": {"game_time_s": 130, "hp": 1, "hp_max": 2}})
     assert g.main(["sample", "--count", "1"]) == 0
-    assert order == ["coach", "state"] and json.loads(capsys.readouterr().out)["lag_s"] == 30.0
+    out = json.loads(capsys.readouterr().out)
+    assert order == ["coach", "state"] and out["lag_s"] == 30.0
     assert paths[0].name == "aram_coaching_data.json"
+    assert isinstance(out["get_s"], float) and out["get_s"] >= 0  # RM-1345: span recorded
+
+
+def test_sampler_span_covers_the_coach_read_and_the_get(monkeypatch, capsys):
+    clock = [10.0]  # the read takes 1.0 s and the GET 2.25 s: the span must hold BOTH
+
+    def read(p):
+        clock[0] += 1.0
+        return {"game_time_s": 100}
+
+    def get(base):
+        clock[0] += 2.25
+        return {"mode_key": "aram", "liveclient": {"game_time_s": 130}}
+
+    monkeypatch.setattr(g.time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(g, "_read_json", read)
+    monkeypatch.setattr(g, "_get_state", get)
+    assert g.main(["sample", "--count", "1"]) == 0
+    assert json.loads(capsys.readouterr().out)["get_s"] == 3.25
 
 
 def test_marks_and_bound_premises_match_the_coach_source():

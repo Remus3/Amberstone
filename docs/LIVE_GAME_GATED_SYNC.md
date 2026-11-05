@@ -2160,19 +2160,25 @@ survivability flips below cannot roll otherwise.
   `data/coach_tick_trace.jsonl` `mode=aram` `phase=coach` record over 20000 `dur_ms` (an SDK
   retry, which logs nothing; `coaches/_base_coach.py:669`, always traced, `ts` is the record's
   END), any other `aram` trace phase (`parse` / `on_state` / `tick` / `shadow`, `:446-474` and
-  `:587-588`, written over 150 ms) over 2000 `dur_ms`, or a failed coach-file write (`safe_write
+  `:587-588`, written over 150 ms) over 1000 `dur_ms` (2000 in cycle 54; lowered by RM-1345,
+  below), or a failed coach-file write (`safe_write
   aram_coaching_data.json: ...`, `:100` / `:117`; the ceiling stamp at `:1390` is taken anyway, so
-  the next same-band dispatch skips). The 2000 ms threshold is this cycle's default, chosen to sit
-  at the measured margin; it can only turn a FAIL into an INCONCLUSIVE.
+  the next same-band dispatch skips). The non-coach threshold can only turn a FAIL into an
+  INCONCLUSIVE.
   SAMPLING RESOLUTION: only the sampled points are graded, so with 25 s polls a true peak up to
   about one interval above 90 s can fall between two samples. A PASS means "no SAMPLED lag over
   90 s", not "the lag never crossed 90 s".
-  KNOWN FALSE-FAIL RESIDUALS (verifier pass 2 of this cycle; filed RM-1345, not fixed here): the
-  poll period is the tick time PLUS the 1.5 s sleep (`coaches/_base_coach.py:421-426`), so an
-  untraced-as-excuse tick under 2000 ms can push the worst case to about 90.5 s; and the sampler's
-  `/api/state` GET (8 s timeout) runs after the coach-file read, so a slow GET adds straight to the
-  measured lag. Until RM-1345 lands, read any FAIL whose worst lag is within 10 s of 90 s as
-  INCONCLUSIVE.
+  FALSE-FAIL RESIDUALS, FIXED 2026-11-04 (lane 9 s144 cycle 55, RM-1345, read at `c69f5c9d2`; NOT
+  a tick). Verifier pass 2 of cycle 54 found two: the poll period is the tick time PLUS the 1.5 s
+  sleep (`coaches/_base_coach.py:421-426`), so an unexcused tick under the old 2000 ms threshold
+  could push the worst case to about 90.5 s; and the sampler's `/api/state` GET (8 s timeout) runs
+  after the coach-file read, so a slow GET adds straight to the measured lag. Fix, in both this
+  tool and its G5-06 twin: (a) the non-coach `aram` phase threshold `SLOW_OTHER_MS` is now 1000 ms
+  (worst case near 89.5 s); (b) every sample line records `get_s`, the sampler's own monotonic span
+  from the coach-file read to the end of the GET; (c) grade keeps an otherwise unexcused lag over
+  the bound INCONCLUSIVE, never FAIL, when `lag_s - get_s` is within the bound or the line carries
+  no `get_s` (a sample file from the cycle 54 sampler). The 10 s read-as-INCONCLUSIVE rule of
+  cycle 54 is retired; a FAIL now means the lag stayed over 90 s after the GET span is discounted.
   (3) CORRECTION TO THE CHECK's FAIL CLAUSE. It names a "budget-gate or kill-switch log line", but
   both gates (`coaches/_base_coach.py:535` / `:547`) and the feature-policy gate (`coaches/aram_coach.py:1008`) return
   SILENTLY, so no such line can exist and a budget-exhausted game would grade FAIL. The tool
@@ -2191,7 +2197,8 @@ survivability flips below cannot roll otherwise.
   started before the game clock starts, stopped with Ctrl-C after the game ends. Each poll reads
   `data/aram_coaching_data.json` -> `game_time_s` FIRST, then `/api/state` -> `mode_key`,
   `liveclient.game_time_s`, `liveclient.hp`, `liveclient.hp_max` (`dashboard/_liveclient.py:308`,
-  `:327-328`), so a slow GET can only make the measured lag larger.
+  `:327-328`), so a slow GET can only make the measured lag larger; each line also records that
+  read-to-GET span as `get_s` (RM-1345), which grade discounts.
   (5) GRADE HALF, after the game: `python tools/gated_g312_aram_debounce_lag.py grade --samples
   <scratch>/g312.jsonl --log logs/<date>.log --since <clock-start HH:MM:SS> --until <end HH:MM:SS>`
   plus `--budget-ok` only on the operator's assertion. Exit 0 PASS, 1 INCONCLUSIVE / NO_RESULT,
@@ -3018,7 +3025,12 @@ waits on the RM-875 wiring.)
   150 s stays INCONCLUSIVE, never FAIL). The excuse window of an over-bound sample is the `lag_s`
   seconds before it; excuses are the two log strings above and an overlapping slow call (d). A
   missing `--trace` file cannot rule a slow call out (trace writes are best-effort), so it keeps an
-  unexcused lag INCONCLUSIVE, never FAIL (cycle 14 verifier find).
+  unexcused lag INCONCLUSIVE, never FAIL (cycle 14 verifier find). AMENDED 2026-11-04 (cycle 55,
+  RM-1345; NOT a tick): every sample line now records `get_s`, the sampler's span from the
+  coach-file read to the end of the `/api/state` GET, because the live clock is read at the GET's
+  end and so the measured lag over-states the lag at the read by up to that span. An otherwise
+  unexcused lag over 150 s is INCONCLUSIVE, never FAIL, when `lag_s - get_s` is within 150 s or
+  the line carries no `get_s` (a sample file from the cycle 13-14 sampler).
   Exit 0 PASS, 1 INCONCLUSIVE / NO_RESULT, 2 FAIL.
   (4) EVIDENCE CONTRACT for the tick: the grade output's max lag (value), the sample file plus the
   `/api/state` and coach-file field paths above (source), the sample wall times with mode Arena,

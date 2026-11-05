@@ -19,11 +19,11 @@ PROOF = ("20:01:05.120 DEBUG    rc.arena             [arena_coach.py:816] Arena 
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def sample(wall, lc_gt, co_gt, hp=900, mode="arena", hp_max=1000):
+def sample(wall, lc_gt, co_gt, hp=900, mode="arena", hp_max=1000, get_s=0.2):
     if isinstance(wall, str):
         wall = datetime.fromisoformat(wall)
     return g.make_sample({"mode_key": mode, "liveclient": {"game_time_s": lc_gt, "hp": hp, "hp_max": hp_max}},
-                         {"game_time_s": co_gt}, wall)
+                         {"game_time_s": co_gt}, wall, get_s)
 
 
 def ended(wall):
@@ -247,6 +247,54 @@ def test_sampler_reads_the_coach_file_before_the_state(monkeypatch, capsys):
                         {"mode_key": "arena", "liveclient": {"game_time_s": 130, "hp": 1, "hp_max": 2}})
     assert g.main(["sample", "--count", "1"]) == 0
     assert order == ["coach", "state"] and json.loads(capsys.readouterr().out)["lag_s"] == 30.0
+
+
+def test_make_sample_records_the_read_to_get_span():
+    wall = datetime(2026, 10, 27, 20, 0)
+    assert sample(wall, 300, 260, get_s=1.23456)["get_s"] == 1.235
+    for bad in (None, -0.5, float("nan"), float("inf"), True, "2"):
+        assert sample(wall, 300, 260, get_s=bad)["get_s"] is None
+    assert g.make_sample(None, None, wall)["get_s"] is None  # the old three-argument call
+
+
+def test_get_span_turns_a_near_bound_fail_inconclusive():
+    """RM-1345: the live clock is read at the END of the GET, the coach file before it."""
+    rows = run(spikes={20: 152})
+    rows[20]["get_s"] = 3.0  # 152 - 3 = 149: within the 150 s bound once the GET is discounted
+    rep = grade(rows, budget_ok=True)
+    assert rep["verdict"] == "INCONCLUSIVE" and "read-to-GET span" in rep["over_bound"][0]["note"]
+    rows[20]["get_s"] = 1.5  # 152 - 1.5 = 150.5: still over, so still a FAIL
+    assert grade(rows, budget_ok=True)["verdict"] == "FAIL"
+    rows[20]["get_s"] = 2.0  # exactly the bound is inside, as for lag_s itself
+    assert grade(rows, budget_ok=True)["verdict"] == "INCONCLUSIVE"
+
+
+def test_sample_without_a_get_span_is_never_a_fail():
+    rows = run(spikes={20: 200})
+    rows[20]["get_s"] = None  # a sample from a sampler that did not record the span
+    rep = grade(rows, budget_ok=True)
+    assert rep["verdict"] == "INCONCLUSIVE" and "get_s" in rep["over_bound"][0]["note"]
+    del rows[20]["get_s"]
+    assert grade(rows, budget_ok=True)["verdict"] == "INCONCLUSIVE"
+    assert grade(run(), budget_ok=True)["verdict"] == "PASS"  # no over-bound sample: span unused
+
+
+def test_sampler_records_the_span_from_coach_read_to_get_end(monkeypatch, capsys):
+    clock = [10.0]  # the read takes 1.0 s and the GET 2.25 s: the span must hold BOTH
+
+    def read(p):
+        clock[0] += 1.0
+        return {"game_time_s": 100}
+
+    def get(base):
+        clock[0] += 2.25
+        return {"mode_key": "arena", "liveclient": {"game_time_s": 130}}
+
+    monkeypatch.setattr(g.time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(g, "_read_json", read)
+    monkeypatch.setattr(g, "_get_state", get)
+    assert g.main(["sample", "--count", "1"]) == 0
+    assert json.loads(capsys.readouterr().out)["get_s"] == 3.25
 
 
 def test_marks_match_the_coach_source_strings():

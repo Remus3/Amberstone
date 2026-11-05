@@ -26,7 +26,10 @@ at 20 s. The coach also reads a Live Client snapshot up to 12 s old
 with single-attempt calls and no slow tick: about 88 s, a margin of about 2 s.
 So any delay outside that budget excuses: a ``coach_tick_trace`` ``coach``
 record over 20000 ms (an SDK retry logs nothing), any other ARAM trace phase
-over 2000 ms, or a failed coach-file write.
+over 1000 ms (2000 ms before RM-1345), or a failed coach-file write. The
+sampler's own read-to-GET span (``get_s``) is discounted too: an unexcused lag
+is INCONCLUSIVE when ``lag_s - get_s`` is within 90 s or no ``get_s`` was
+recorded.
 
 SAMPLING RESOLUTION. Only the sampled points are graded: with 25 s polls a true
 peak up to about one interval above the bound can fall between two samples, so
@@ -71,7 +74,7 @@ PREDICATES (stated in the G3-12 row before any game):
            (returns before the write), a ``safe_write aram_coaching_data.json``
            line (a failed write), or overlaps a ``coach_tick_trace`` record with
            ``mode == "aram"`` and ``phase == "coach"`` over 20000 ms or any other
-           phase over 2000 ms (the record's ``ts`` is its END). A missing
+           phase over 1000 ms (the record's ``ts`` is its END). A missing
            Anthropic client returns silently too, but then no proof line can
            exist, so it grades INCONCLUSIVE on its own. The kill-switch, budget and
            feature-policy gates return SILENTLY, so an unexcused lag is FAIL
@@ -117,6 +120,7 @@ from tools.gated_g506_debounce_lag import (  # noqa: E402
     _read_json,
     _read_jsonl,
     _wall,
+    get_slack,
     log_date,
     make_sample,
     parse_log,
@@ -125,8 +129,11 @@ from tools.gated_g506_debounce_lag import (  # noqa: E402
 MODE = "aram"
 LAG_BOUND_S = 90.0
 # A non-coach ARAM trace phase (parse / on_state / tick / shadow) over this delays
-# the next dispatch; the worst-case margin under the 90 s bound is about 2 s.
-SLOW_OTHER_MS = 2000.0
+# the next dispatch. The worst case is about 88 s with no slow phase, and the poll
+# period is the tick time PLUS the 1.5 s sleep, so an unexcused tick adds straight
+# to it: 2000 ms let one push it to about 90.5 s; 1000 ms keeps it near 89.5 s
+# (RM-1345).
+SLOW_OTHER_MS = 1000.0
 PROOF_MARK = "ARAM state-debounce: signature unchanged"
 # safe_write logs "safe_write <name>: ..." on a failed write, and the debounce
 # stamp is still taken after it, so the next same-band dispatch skips.
@@ -232,6 +239,8 @@ def grade(samples: list[dict], log: list[tuple[datetime, str]], slow: list[tuple
             v, note = "INCONCLUSIVE", "budget / kill-switch / feature policy not asserted (--budget-ok)"
         elif not trace_ok:
             v, note = "INCONCLUSIVE", "no --trace file: a slow coach call cannot be ruled out"
+        elif slack := get_slack(s, lag, LAG_BOUND_S):
+            v, note = "INCONCLUSIVE", slack
         else:
             v, note = "FAIL", ""
         over.append({"wall": s["wall"], "lag_s": lag, "verdict": v, "excuses": excuses[:5], "note": note})
@@ -296,12 +305,14 @@ def main(argv: list[str] | None = None) -> int:
         t0 = time.monotonic()  # fixed-rate schedule: a slow GET does not stretch the cadence
         try:
             for i in range(max(a.count, 0)):
+                r0 = time.monotonic()
                 coach = _read_json(a.coach_file)  # coach file FIRST: GET delay can only enlarge the lag
                 try:
                     state = _get_state(a.base)
                 except (OSError, ValueError) as e:
                     state = {"error": type(e).__name__}
-                print(json.dumps(make_sample(state, coach, datetime.now())), flush=True)
+                span = time.monotonic() - r0  # recorded so grade can discount it (RM-1345)
+                print(json.dumps(make_sample(state, coach, datetime.now(), span)), flush=True)
                 if i + 1 < a.count:
                     time.sleep(max(0.0, t0 + (i + 1) * a.interval - time.monotonic()))
         except KeyboardInterrupt:
