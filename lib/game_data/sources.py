@@ -156,7 +156,7 @@ _WIKI_CHAMP = {
     "attack_speed": "as_base", "as_per_level": "as_lvl", "as_ratio": "as_ratio",
     "move_speed": "ms", "attack_range": "range",
 }
-_SCALAR = re.compile(r'^\s*\["([a-z0-9_]+)"\]\s*=\s*(-?\d+(?:\.\d+)?)\s*,?\s*$', re.M)
+_SCALAR = re.compile(r'^\s*\["([a-z0-9_]+)"\]\s*=\s*(-?\d+(?:\.\d+)?)\s*,?\s*$', re.MULTILINE)
 
 
 def _block(text: str, open_idx: int) -> str:

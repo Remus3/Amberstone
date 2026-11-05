@@ -167,20 +167,20 @@ _CLASSIFIER_FAMILIES = (
 # Keyword scan for a long licence TEXT (METADATA body-in-header, Chromium
 # credits). Copyleft markers first; any hit marks the text copyleft.
 _COPYLEFT_TEXT_MARKERS = (
-    (re.compile(r"GNU\s+AFFERO\s+GENERAL\s+PUBLIC\s+LICEN[CS]E", re.I), "AGPL"),
-    (re.compile(r"GNU\s+(?:LESSER|LIBRARY)\s+GENERAL\s+PUBLIC\s+LICEN[CS]E", re.I), "LGPL"),
-    (re.compile(r"GNU\s+GENERAL\s+PUBLIC\s+LICEN[CS]E", re.I), "GPL"),
-    (re.compile(r"\bLGPL", re.I), "LGPL"),
-    (re.compile(r"(?<![A-Za-z])GPL", re.I), "GPL"),
-    (re.compile(r"Mozilla\s+Public\s+License", re.I), "MPL"),
-    (re.compile(r"Common\s+Development\s+and\s+Distribution\s+License", re.I), "CDDL"),
-    (re.compile(r"Eclipse\s+Public\s+License", re.I), "EPL"),
+    (re.compile(r"GNU\s+AFFERO\s+GENERAL\s+PUBLIC\s+LICEN[CS]E", re.IGNORECASE), "AGPL"),
+    (re.compile(r"GNU\s+(?:LESSER|LIBRARY)\s+GENERAL\s+PUBLIC\s+LICEN[CS]E", re.IGNORECASE), "LGPL"),
+    (re.compile(r"GNU\s+GENERAL\s+PUBLIC\s+LICEN[CS]E", re.IGNORECASE), "GPL"),
+    (re.compile(r"\bLGPL", re.IGNORECASE), "LGPL"),
+    (re.compile(r"(?<![A-Za-z])GPL", re.IGNORECASE), "GPL"),
+    (re.compile(r"Mozilla\s+Public\s+License", re.IGNORECASE), "MPL"),
+    (re.compile(r"Common\s+Development\s+and\s+Distribution\s+License", re.IGNORECASE), "CDDL"),
+    (re.compile(r"Eclipse\s+Public\s+License", re.IGNORECASE), "EPL"),
 )
 _PERMISSIVE_TEXT_MARKERS = (
-    (re.compile(r"Permission is hereby granted, free of charge", re.I), "MIT"),
-    (re.compile(r"Apache License,?\s+Version 2\.0", re.I), "Apache-2.0"),
-    (re.compile(r"Redistribution and use in source and binary forms", re.I), "LicenseRef-BSD"),
-    (re.compile(r"Permission to use, copy, modify, and(?:/or)? distribute this software", re.I), "ISC"),
+    (re.compile(r"Permission is hereby granted, free of charge", re.IGNORECASE), "MIT"),
+    (re.compile(r"Apache License,?\s+Version 2\.0", re.IGNORECASE), "Apache-2.0"),
+    (re.compile(r"Redistribution and use in source and binary forms", re.IGNORECASE), "LicenseRef-BSD"),
+    (re.compile(r"Permission to use, copy, modify, and(?:/or)? distribute this software", re.IGNORECASE), "ISC"),
 )
 
 # Bundled native binaries that carry their own (copyleft) licence whatever
@@ -194,7 +194,7 @@ BINARY_FLAGS: Tuple[Tuple[str, str, str], ...] = (
     ("swresample*.dll", "LGPL-2.1-or-later", "FFmpeg libswresample"),
 )
 
-_LICENCE_FILE_RE = re.compile(r"^(?:licen[cs]e|copying|notice)(?:[-._].*)?$", re.I)
+_LICENCE_FILE_RE = re.compile(r"^(?:licen[cs]e|copying|notice)(?:[-._].*)?$", re.IGNORECASE)
 
 MIT_TEMPLATE = """MIT License
 
@@ -993,8 +993,8 @@ def parse_chromium_credits(text: str) -> List[Tuple[str, str]]:
     """(title, licence text) per product in LICENSES.chromium.html."""
     out: List[Tuple[str, str]] = []
     for chunk in text.split('<div class="product">')[1:]:
-        tm = re.search(r'<span class="title">(.*?)</span>', chunk, re.S)
-        lm = re.search(r'<div class="license">\s*<pre>(.*?)</pre>', chunk, re.S)
+        tm = re.search(r'<span class="title">(.*?)</span>', chunk, re.DOTALL)
+        lm = re.search(r'<div class="license">\s*<pre>(.*?)</pre>', chunk, re.DOTALL)
         if not tm:
             continue
         title = html.unescape(re.sub(r"<[^>]+>", "", tm.group(1))).strip()
@@ -1068,7 +1068,7 @@ def collect_cpython(embed: Optional[Path]) -> Tuple[List[Component], List[str]]:
         return [], ["cpython: embedded runtime not given (--python-embed) - CPython payload NOT AUDITED"]
     version = ""
     for dll in sorted(embed.glob("python3*.dll")):
-        m = re.match(r"python3(\d+)\.dll$", dll.name, re.I)
+        m = re.match(r"python3(\d+)\.dll$", dll.name, re.IGNORECASE)
         if m:
             version = "3." + m.group(1)
     comp = Component("cpython:python", "CPython", version, "PSF-2.0", "CPython LICENSE.txt")

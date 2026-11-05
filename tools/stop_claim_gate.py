@@ -109,8 +109,8 @@ PRUNED_DIRNAME = "pruned"
 # because the first wrong flag is what gets the hook turned off.
 CLAIM_TESTS_PASS = re.compile(
     r"\b(?:suite|tests?)\b[^.\n]{0,40}?\b(?:pass(?:es|ed|ing)?|green)\b"
-    r"|\bgreen\b[^.\n]{0,20}?\b(?:suite|tests?)\b", re.I)
-CLAIM_COUNT = re.compile(r"(?:\b(\w+)\s+)?\b(\d[\d,]{0,9})\s+passed\b", re.I)
+    r"|\bgreen\b[^.\n]{0,20}?\b(?:suite|tests?)\b", re.IGNORECASE)
+CLAIM_COUNT = re.compile(r"(?:\b(\w+)\s+)?\b(\d[\d,]{0,9})\s+passed\b", re.IGNORECASE)
 # The `\b` before the prefix is a BOUND, not a change of meaning (RM-1090):
 # without it every char of a word was a start whose `(\w+)\s+` re-read the rest
 # of the word (2.91 s on a 20k digit run). Same findall, because (1) a start
@@ -166,7 +166,7 @@ CLAIM_COUNT_ORDINAL = frozenset({
 CLAIM_COUNT_GROUPED = re.compile(r"^\d{1,3}$")
 CLAIM_FILE = re.compile(
     r"\b(?:updated|edited|created|added|wrote|written|modified|fixed|patched)\b"
-    r"[^.\n]{0,40}?([\w./\\-]+\.(?:py|md|js|css|json|html|ps1|txt|ya?ml))\b", re.I)
+    r"[^.\n]{0,40}?([\w./\\-]+\.(?:py|md|js|css|json|html|ps1|txt|ya?ml))\b", re.IGNORECASE)
 # A file "claim" in a COUNTERFACTUAL is not a claim. CLAIM_FILE matches a
 # claim-verb within 40 chars of a filename, which cannot tell the indicative
 # ("added a line to CLAUDE.md") from the conditional ("an entry ADDED to
@@ -181,10 +181,10 @@ CLAIM_FILE = re.compile(
 # while a pure hypothetical does not.
 CLAIM_HYPOTHETICAL = re.compile(
     r"\b(?:would|could|might|should|if|unless|whenever|were\s+\w+\s+to|"
-    r"hypothetical(?:ly)?|suppose|imagine)\b", re.I)
+    r"hypothetical(?:ly)?|suppose|imagine)\b", re.IGNORECASE)
 CLAIM_FIRST_PERSON_DID = re.compile(
     r"\b(?:I|we)\s+(?:have\s+|just\s+|already\s+)*"
-    r"(?:updated|edited|created|added|wrote|written|modified|fixed|patched)\b", re.I)
+    r"(?:updated|edited|created|added|wrote|written|modified|fixed|patched)\b", re.IGNORECASE)
 # SECOND false-positive shape in the same family, measured 2026-08-03 (lane 8):
 # naming the file you COPIED FROM. "Fixed with the in-tree precedent at
 # dashboard/routes_static.py:64-67" is a POINTER for the reader, not a claim to
@@ -200,7 +200,7 @@ CLAIM_FIRST_PERSON_DID = re.compile(
 CLAIM_CITATION = re.compile(
     r"\b(?:precedent|per|see|cite[sd]?|citation|as in|example|documented|"
     r"described|modell?ed on|copied from|following|reference[sd]?|"
-    r"pattern (?:at|in|from))\b", re.I)
+    r"pattern (?:at|in|from))\b", re.IGNORECASE)
 # THIRD shape, same blindness, different check: a NEGATED claim. "Nothing is
 # committed yet" asserts the opposite of having committed, and reporting that
 # honestly was itself flagged as an unbacked commit claim (measured 2026-08-03,
@@ -215,8 +215,8 @@ CLAIM_CITATION = re.compile(
 # this file stays 7-bit ASCII.
 CLAIM_NEGATION = re.compile(
     r"\b(?:nothing|not|no|never|none|neither|without|cannot)\b"
-    r"|\b\w+n['\u2019]t\b", re.I)
-CLAIM_CI = re.compile(r"\bCI\b[^.\n]{0,30}?\b(?:green|passing|passed|clean)\b", re.I)
+    r"|\b\w+n['\u2019]t\b", re.IGNORECASE)
+CLAIM_CI = re.compile(r"\bCI\b[^.\n]{0,30}?\b(?:green|passing|passed|clean)\b", re.IGNORECASE)
 # A CI claim in the FUTURE or as an INTENT ("I'll confirm CI is green", "will
 # check CI passing", "need to verify CI is green") reports a plan, not CI state.
 # Measured flagging 2026-10-04. The marker must stand in the 40 chars BEFORE
@@ -226,9 +226,9 @@ CLAIM_CI_FUTURE = re.compile(
     r"\b(?:will|shall|going\s+to|about\s+to|plan(?:ning)?\s+to|intend\s+to)\b"
     r"|\b\w+['\u2019]ll\b"
     r"|\b(?:need|needs|have|has|want|wants|yet)\s+to\s+"
-    r"(?:check|confirm|verify|probe|watch|see|re-?check)\b", re.I)
-CLAIM_COMMIT = re.compile(r"\bcommitted\b|\bcommit(?:ted)?\s+(?:and pushed|is in|landed)\b", re.I)
-CLAIM_PUSH = re.compile(r"\bpushed\b", re.I)
+    r"(?:check|confirm|verify|probe|watch|see|re-?check)\b", re.IGNORECASE)
+CLAIM_COMMIT = re.compile(r"\bcommitted\b|\bcommit(?:ted)?\s+(?:and pushed|is in|landed)\b", re.IGNORECASE)
+CLAIM_PUSH = re.compile(r"\bpushed\b", re.IGNORECASE)
 # FOURTH shape in the same family, measured 2026-09-20: ATTRIBUTED speech.
 # `CLAIM_PUSH` is a bare `\bpushed\b`, so it cannot tell the speaker's OWN
 # assertion of a completed upload from a relay of what some DOCUMENT asserts,
@@ -291,17 +291,17 @@ CLAIM_ATTRIBUTION = re.compile(
     r"|\bper\s+(?:the\s+|its\s+|their\s+|my\s+|our\s+)?(?:" + _SOURCE_NOUN + r")\b"
     r"|\b(?:" + _SOURCE_NOUN + r")\b(?:'s)?[^.\n]{0,20}?\b(?:" + _REPORTING_VERB + r")\b"
     r"|'s\s+(?:claim|assertion|statement|report|note|word)\b"
-    r"|\bclaims?\s+(?:that|to)\b|\bclaimed\s+(?:that|to)\b", re.I)
-CLAIM_RELAY_HEAD = re.compile(r"\b(?:" + _RELAY_NOUN + r")\b[^.\n(]{0,15}\(", re.I)
+    r"|\bclaims?\s+(?:that|to)\b|\bclaimed\s+(?:that|to)\b", re.IGNORECASE)
+CLAIM_RELAY_HEAD = re.compile(r"\b(?:" + _RELAY_NOUN + r")\b[^.\n(]{0,15}\(", re.IGNORECASE)
 CLAIM_OWN_ACTION = re.compile(
     r"\b(?:I|we|my|our|us)\b"
     r"|\b(?:wrote|writes|writing|write|written|updated|update|created|create|"
     r"added|add|made|make|left|leave|ran|run|committed|commit|pushed|push|"
     r"landed|shipped|finished|completed|done|did|verified|measured|confirmed)\b",
-    re.I)
+    re.IGNORECASE)
 CLAIM_FIRST_PERSON_PUSHED = re.compile(
     r"\b(?:I|we)\s+(?:have\s+|has\s+|had\s+|just\s+|already\s+|then\s+|also\s+|"
-    r"finally\s+|since\s+|therefore\s+)*push(?:ed)?\b", re.I)
+    r"finally\s+|since\s+|therefore\s+)*push(?:ed)?\b", re.IGNORECASE)
 # Check 6 (commit) carries the same blindness as check 9, measured 2026-09-20:
 # three correct sentences from one session flagged commit_claim_without_commit
 # while none claimed the SPEAKER committed anything -
@@ -341,7 +341,7 @@ CLAIM_FIRST_PERSON_COMMITTED = re.compile(
     r"rebased|amended|shipped)\b"
     # Passive first person ("merged by me") - round 2 of the refutation.
     r"|\b(?:commit(?:ted)?|push(?:ed)?|merged|landed|cherry-?picked|rebased|"
-    r"amended|shipped)\s+by\s+(?:me|us)\b", re.I)
+    r"amended|shipped)\s+by\s+(?:me|us)\b", re.IGNORECASE)
 # Round 2 also widened the landed-state tails. "at HEAD" is deliberately NOT
 # here: it is a READ locator ("I checked the committed tables at HEAD"), while
 # "in/into HEAD" asserts the change landed. Any "origin" counts.
@@ -349,11 +349,11 @@ CLAIM_COMMIT_LANDED_STATE = re.compile(
     r"\b(?:is|are|was|were|now|went)\s+live\b"
     r"|\b(?:in|on|into|onto)\s+(?:main|master)\b|\borigin\b"
     r"|\b(?:in|into)\s+HEAD\b|\bdeployed\b|\bproduction\b"
-    r"|\blanded\b|\bsits?\s+on\b|\bpushed\b|\bmerged\b|\bshipped\b", re.I)
+    r"|\blanded\b|\bsits?\s+on\b|\bpushed\b|\bmerged\b|\bshipped\b", re.IGNORECASE)
 CLAIM_COMMIT_DETERMINER_LEAD = re.compile(
-    r"\b(?:the|a|an|this|that|these|those|its|their|his|her)\s+$", re.I)
+    r"\b(?:the|a|an|this|that|these|those|its|their|his|her)\s+$", re.IGNORECASE)
 CLAIM_COMMIT_ADJECTIVE_TAIL = re.compile(
-    r"\s+(?!(?:and|or|to|by|in|on|at|as)\b)[A-Za-z]", re.I)
+    r"\s+(?!(?:and|or|to|by|in|on|at|as)\b)[A-Za-z]", re.IGNORECASE)
 # 2026-10-04 widening, each shape measured flagging:
 #   - an agent noun carrying an IDENTIFIER ("Agent-a3", "Slice 2", "Agent B");
 #   - a POSSESSIVE subject ("The slice's commit landed in its worktree");
@@ -368,7 +368,7 @@ _AGENT_NOUN = r"(?:agents?|subagents?|slices?|workers?|verifier|lanes?|sibling)"
 _AGENT_ID = r"(?:[-_]\w{1,16}|\s+(?:[A-Z]|\d+|[a-z]*\d\w*))?"
 CLAIM_COMMIT_THIRD_PARTY_LEAD = re.compile(
     r"\b(?:" + _AGENT_NOUN + _AGENT_ID + r"|they|he|she)(?:'s|s')?"
-    + _THIRD_PARTY_AUX, re.I)
+    + _THIRD_PARTY_AUX, re.IGNORECASE)
 # Shouted prose is not a channel code: "THE COMMITTED FIX IS IN MAIN" must keep
 # flagging, so English function words in capitals are refused too.
 _NOT_A_CODE_WORDS = ("CI", "PR", "HEAD", "WIP", "TODO", "API", "URL", "OK", "LF",
@@ -385,7 +385,7 @@ DEFAULT_OWN_CODES = ("RC", "DS")
 _CODE_SHAPE = re.compile(r"[A-Z]{2,4}")
 CLAIM_COMMIT_THIRD_PARTY_BY = re.compile(
     r"\s+by\s+(?:(?:the|a|an|its|each|that|this)\s+)?(?:\w+\s+)?"
-    r"(?:" + _AGENT_NOUN + r")\b", re.I)
+    r"(?:" + _AGENT_NOUN + r")\b", re.IGNORECASE)
 
 
 def set_own_codes(codes):
@@ -421,8 +421,8 @@ set_own_codes(DEFAULT_OWN_CODES)
 # - all vetoed by a first-person git action anywhere on the line.
 CLAIM_MERGE = re.compile(
     r"\bmerged\s+(?:[\w./'-]+\s+){0,3}?(?:to|into|onto|on)\s+"
-    r"(?:the\s+)?(?:origin/)?(?:main|master)\b", re.I)
-CLAIM_FULL_SUITE = re.compile(r"\b(?:full suite|all tests|entire suite|whole suite)\b", re.I)
+    r"(?:the\s+)?(?:origin/)?(?:main|master)\b", re.IGNORECASE)
+CLAIM_FULL_SUITE = re.compile(r"\b(?:full suite|all tests|entire suite|whole suite)\b", re.IGNORECASE)
 
 # RM-814 (2026-10-23): EV_COMMIT, EV_CI and EV_NODE_TEST are `HEAD [^STOP]* TAIL`
 # (EV_CI's span lazy), and search re-tries them at EVERY head word; a failed
@@ -567,7 +567,7 @@ class _AltScan:
 
 
 # Evidence patterns.
-EV_PYTEST = re.compile(r"(?:^|\s|-m\s)pytest\b", re.I)
+EV_PYTEST = re.compile(r"(?:^|\s|-m\s)pytest\b", re.IGNORECASE)
 # A CI-log fetch. ADDED 2026-09-06: this gate indexed only LOCAL pytest
 # invocations, so a suite count read out of a CI log was never in
 # observed_counts and every ACCURATE report of one scored as count_mismatch.
@@ -597,13 +597,13 @@ EV_PYTEST = re.compile(r"(?:^|\s|-m\s)pytest\b", re.I)
 # EV_SUMMARY_LINE, so a stale count echoed from a workflow comment is no more
 # believable through this spelling than through the old one.
 EV_CI_LOG = re.compile(r"\bgh(?:\.exe)?\s+run\s+view\b[^\n]*--log(?:-failed)?\b",
-                       re.I)
+                       re.IGNORECASE)
 # Node's built-in runner is the SECOND suite in this repo (rc-shell). Until
 # 2026-08-11 the gate could not see it at all: it parsed only pytest's
 # "N passed", so an accurate "rc-shell 328 passed" scored as count_mismatch -
 # and, more seriously, a FALSE rc-shell claim could never have been caught
 # either. Widening the evidence here is what makes the guard cover both suites.
-EV_NODE_TEST = _SpanScan(re.compile(r"\bnpm\s+(?:run\s+)?test\b|\bnode\b[^|;&\n]*--test\b", re.I),
+EV_NODE_TEST = _SpanScan(re.compile(r"\bnpm\s+(?:run\s+)?test\b|\bnode\b[^|;&\n]*--test\b", re.IGNORECASE),
                          head=r"\bnode\b", stop=r"|;&\n", free=r"\bnpm\s+(?:run\s+)?test\b")
 # Node prints "<marker> pass 328", not "328 passed" - keyword first, no trailing
 # "in X.Ys". Anchored to a WHOLE line whose only content is the marker, the
@@ -615,16 +615,16 @@ EV_NODE_TEST = _SpanScan(re.compile(r"\bnpm\s+(?:run\s+)?test\b|\bnode\b[^|;&\n]
 # \w treats it as a WORD character, so \W* never matched it and the whole
 # widening was silently inert. Measured, not assumed. The glyph is matched by
 # class rather than written out because this file is 7-bit ASCII by repo rule.
-EV_NODE_PASS = re.compile(r"^[^a-zA-Z\n]{0,4}pass\s+(\d[\d,]{0,9})\s*$", re.M)
+EV_NODE_PASS = re.compile(r"^[^a-zA-Z\n]{0,4}pass\s+(\d[\d,]{0,9})\s*$", re.MULTILINE)
 EV_FILTERED = _AltScan(re.compile(r"\s-k\s|::|\btests?[\w/\\.-]*\.py\b"
                                   # `node --test <one file>` is as filtered as `-k`.
-                                  r"|[\w/\\.-]+\.test\.[cm]?js\b", re.I),
+                                  r"|[\w/\\.-]+\.test\.[cm]?js\b", re.IGNORECASE),
                        [(r"\s-k\s", None, None), ("::", None, None),
                         (r"\btests?[\w/\\.-]*\.py\b", r"\btest", r"\w/\\.-"),
                         (r"[\w/\\.-]+\.test\.[cm]?js\b", r"[\w/\\.-]+", r"\w/\\.-")])
 # (?<!-): `--no-commit` (cherry-pick / revert / merge) is the OPPOSITE of
 # committing, and \b alone let it count as evidence.
-EV_COMMIT = _SpanScan(re.compile(r"\bgit\b[^|;&]*(?<!-)\bcommit\b", re.I),
+EV_COMMIT = _SpanScan(re.compile(r"\bgit\b[^|;&]*(?<!-)\bcommit\b", re.IGNORECASE),
                       head=r"\bgit\b", stop="|;&")
 # Commit-CREATING subcommands other than `git commit` (measured 2026-10-04: a
 # merger cherry-picked slices onto main, said "X is committed in <sha>", and was
@@ -732,7 +732,7 @@ class _OptionScan:
 
 EV_COMMIT_CREATING = _OptionScan(re.compile(
     r"\bgit\b" + _GIT_OPTIONS + r"\s+"
-    r"(cherry-pick|revert|merge)\b([^|;&\n]*)", re.I))
+    r"(cherry-pick|revert|merge)\b([^|;&\n]*)", re.IGNORECASE))
 _NO_COMMIT_FLAG = re.compile(
     r"(?:^|\s)(?:--abort|--quit|--skip|--no-commit|--squash|--ff-only)(?=\s|$)")
 _PICK_NO_COMMIT_SHORT = re.compile(r"(?:^|\s)-n(?=\s|$)")
@@ -765,7 +765,7 @@ def _creates_commit(command):
 # The `git -c -c -c ...` exponential backtracking the round-4 verifier measured
 # here (2026-10-08, 6.1 s at ~20 repeats) is closed by _GIT_OPTIONS (above).
 _GIT_LEAD = r"\bgit(?:\.exe)?" + _GIT_OPTIONS + r"\s+"
-_EV_PUSH = _OptionScan(re.compile(_GIT_LEAD + r"push(?![\w.-])([^|;&\n]*)", re.I))
+_EV_PUSH = _OptionScan(re.compile(_GIT_LEAD + r"push(?![\w.-])([^|;&\n]*)", re.IGNORECASE))
 # The dry-run test is spelling-aware (RM-687 verifier, 2026-10-08: `-nv` and
 # `--dry` were credited as real pushes). git accepts a short-option BUNDLE
 # (`-nv`, `-vn`, `-fn`) and any unambiguous prefix of a long option (`--dr` up;
@@ -775,11 +775,11 @@ _EV_PUSH = _OptionScan(re.compile(_GIT_LEAD + r"push(?![\w.-])([^|;&\n]*)", re.I
 # quoted -o value is already blanked by strip_command_noise and the next token
 # may be the real flag. `--no-verify` is a long option and never reads as -n.
 _PUSH_DRY_LONG = re.compile(r"--dr(?:y(?:-(?:r(?:u(?:n)?)?)?)?)?")
-_EV_GIT_MERGE = _OptionScan(re.compile(_GIT_LEAD + r"merge(?![\w.-])([^|;&\n]*)", re.I))
+_EV_GIT_MERGE = _OptionScan(re.compile(_GIT_LEAD + r"merge(?![\w.-])([^|;&\n]*)", re.IGNORECASE))
 _MERGE_NO_OP = re.compile(r"(?:^|\s)(?:--abort|--quit)(?=\s|$)")
 # `pr merge` is matched without the binary because RC invokes gh through a
 # variable ("$GH" pr merge) - see EV_CI below.
-_EV_PR_MERGE = re.compile(r"\bpr\s+merge\b", re.I)
+_EV_PR_MERGE = re.compile(r"\bpr\s+merge\b", re.IGNORECASE)
 
 
 def _push_is_dry(args):
@@ -814,7 +814,7 @@ def _did_merge(command):
 # span stops at | and & so a pipeline into an unrelated command cannot borrow
 # the match, and a bare `run` with no gh binary anywhere still proves nothing.
 EV_CI = _SpanScan(re.compile(r"\bgh(?:\.exe)?\b[^|&\n]*?\b(?:run|pr|api|workflow)\b"
-                             r"|actions/runs", re.I),
+                             r"|actions/runs", re.IGNORECASE),
                   head=r"\bgh(?:\.exe)?\b", stop=r"|&\n", free="actions/runs")
 # FOURTH transport, same family, measured 2026-08-01: the span above is
 # single-line and &-terminated by construction, so it cannot see a probe whose
@@ -906,9 +906,9 @@ class _BoundNameScan:
         return None
 
 
-EV_CI_VAR = _BoundNameScan(_CI_VAR_BIND, _CI_VAR_USE, re.I)
-EV_BYPASS = re.compile(r"--no-verify\b|--no-gpg-sign\b|core\.hooksPath\s*=", re.I)
-EV_PASSED = re.compile(r"\b(\d[\d,]{0,9})\s+passed\b", re.I)
+EV_CI_VAR = _BoundNameScan(_CI_VAR_BIND, _CI_VAR_USE, re.IGNORECASE)
+EV_BYPASS = re.compile(r"--no-verify\b|--no-gpg-sign\b|core\.hooksPath\s*=", re.IGNORECASE)
+EV_PASSED = re.compile(r"\b(\d[\d,]{0,9})\s+passed\b", re.IGNORECASE)
 # RM-490: a run that died with pytest's own `INTERNALERROR>` marker is vacuous
 # too - it produced no trustworthy verdict, even when it printed a count on the
 # way down (LEDGER precedent: an xdist worker crash that misreported "22 failed",
@@ -916,13 +916,13 @@ EV_PASSED = re.compile(r"\b(\d[\d,]{0,9})\s+passed\b", re.I)
 # Anchored on the line-leading marker pytest prints, so prose that merely NAMES
 # the word does not poison a real run.
 EV_VACUOUS = _AltScan(re.compile(r"no tests ran|collected 0 items|^\s*INTERNALERROR>",
-                                 re.I | re.M),
+                                 re.IGNORECASE | re.MULTILINE),
                       [("no tests ran", None, None), ("collected 0 items", None, None),
                        (r"^\s*INTERNALERROR>", "^", r"\s")])
 # A backgrounded run answers with a launcher handoff, not a summary. The real
 # output lands later, when the output file is read by some unrelated command.
 EV_BACKGROUND = re.compile(r"running in background with ID|Output is being written to",
-                           re.I)
+                           re.IGNORECASE)
 # RM-498: summary-bearing reads one backgrounded launch may be credited with.
 # Two, because the largest legitimate single job is the dual suite (DS then RC);
 # a bound, so one launch does not credit every summary-shaped line read for the
@@ -1009,7 +1009,7 @@ EV_SUMMARY_LINE = _SummaryLineScan(re.compile(
     # block. Same intent - a SUMMARY shape, never a floating count. Prefix class
     # is [^a-zA-Z] for the same measured reason as EV_NODE_PASS: node's U+2139
     # marker is a WORD character to Python's Unicode \w, so \W* never matches it.
-    r"|^[^a-zA-Z\n]{0,4}duration_ms\s+[\d.]+\s*$", re.I | re.M),
+    r"|^[^a-zA-Z\n]{0,4}duration_ms\s+[\d.]+\s*$", re.IGNORECASE | re.MULTILINE),
     head=r"\d[\d,]*\s+(?:passed|failed|error)\b",
     free=r"^[^a-zA-Z\n]{0,4}duration_ms\s+[\d.]+\s*$")
 
@@ -1081,7 +1081,7 @@ class _HeredocScan:
             raise ValueError("not a <<WORD ... WORD heredoc pattern")
         self.regex = regex
         self._head = re.compile(_HEREDOC_HEAD, regex.flags)
-        self._lines = re.compile(r"^(\w+)[^\S\n]*$", re.M)
+        self._lines = re.compile(r"^(\w+)[^\S\n]*$", re.MULTILINE)
         self._pinned = {}
 
     def __getattr__(self, name):
@@ -1152,9 +1152,9 @@ class _HeredocScan:
         return "".join(pieces)
 
 
-_HEREDOC = _HeredocScan(re.compile(r"<<-?\s*'?(\w+)'?.*?^\1\s*$", re.S | re.M))
-_QUOTED = re.compile(r"'[^']*'|\"[^\"]*\"", re.S)
-_FENCED = re.compile(r"```.*?```", re.S)
+_HEREDOC = _HeredocScan(re.compile(r"<<-?\s*'?(\w+)'?.*?^\1\s*$", re.DOTALL | re.MULTILINE))
+_QUOTED = re.compile(r"'[^']*'|\"[^\"]*\"", re.DOTALL)
+_FENCED = re.compile(r"```.*?```", re.DOTALL)
 _INLINE_CODE = re.compile(r"`[^`]*`")
 
 # SIXTH shape in the false-reading family, and the FIRST that makes the gate
@@ -1186,7 +1186,7 @@ _INLINE_CODE = re.compile(r"`[^`]*`")
 # and 0.72 ms at 10000, i.e. linear, not exponential.
 _QUOTED_PROSE = re.compile(
     r"(?<![A-Za-z0-9])'(?:[^']|(?<=[A-Za-z0-9])'(?=[A-Za-z0-9]))*'(?![A-Za-z0-9])"
-    r"|\"[^\"]*\"", re.S)
+    r"|\"[^\"]*\"", re.DOTALL)
 
 
 # A quoted token that is an EXECUTABLE PATH is the command, not data. Windows
@@ -1243,7 +1243,7 @@ _QUOTED_PROSE = re.compile(
 # output: `audit` still keeps CI counts to lines matching EV_SUMMARY_LINE, so a
 # stale count echoed from a workflow comment is no more creditable through this
 # spelling than through the old one. Pinned by a test, not by this sentence.
-_QUOTED_EXE = re.compile(r"""["']([^"']*?[\\/])?([\w.-]+\.exe)["']""", re.I)
+_QUOTED_EXE = re.compile(r"""["']([^"']*?[\\/])?([\w.-]+\.exe)["']""", re.IGNORECASE)
 
 
 def strip_command_noise(command, literal=" "):
@@ -1296,7 +1296,7 @@ def _result_text(block):
 # _count_groups): a foreground Agent / Task call's tool_result, or the
 # <result> body of a background agent's <task-notification> user row.
 AGENT_TOOLS = frozenset({"agent", "task"})
-_NOTIFICATION_RESULT = re.compile(r"<result>(.*?)</result>", re.S)
+_NOTIFICATION_RESULT = re.compile(r"<result>(.*?)</result>", re.DOTALL)
 
 
 def _notification_results(text):
@@ -1838,7 +1838,7 @@ _PUSH_UP_TO_DATE = re.compile(r"^Everything up-to-date[ \t]*$")
 # remote name - a deliberate superset of "the first non-option argument", so a
 # separate option value (`--depth 3 upstream`) cannot hide the real remote.
 _EV_FETCH = _OptionScan(re.compile(
-    _GIT_LEAD + r"(fetch|pull|remote[ \t]+update)(?![\w.-])([^|;&\n]*)", re.I))
+    _GIT_LEAD + r"(fetch|pull|remote[ \t]+update)(?![\w.-])([^|;&\n]*)", re.IGNORECASE))
 
 # Kind "ancestry": `git merge-base --is-ancestor <rev> <ref>` where <ref> is a
 # REMOTE-TRACKING ref, matched on a quote-MASKED copy of the command (same
@@ -1849,7 +1849,7 @@ _EV_FETCH = _OptionScan(re.compile(
 # literal prefix followed by 0.
 _EV_ANCESTRY = _OptionScan(re.compile(
     _GIT_LEAD + r"merge-base(?![\w.-])[ \t]+--is-ancestor[ \t]+"
-    r"(?P<rev>[^\s;&|<>()]+)[ \t]+(?P<ref>[^\s;&|<>()]+)", re.I))
+    r"(?P<rev>[^\s;&|<>()]+)[ \t]+(?P<ref>[^\s;&|<>()]+)", re.IGNORECASE))
 # The tail after the probe is walked by hand (_ancestry_tail), one redirection
 # token at a time: the old single regex put `[ \t]*` beside `\s*` and went
 # quadratic on a run of spaces (re-verifier, 2026-10-08).
@@ -1857,14 +1857,14 @@ _REDIRECT = re.compile(r"(?:[0-9]+|&|\*)?>>?(?:&[0-9-]|[ \t]*[^\s;&|<>]+)|<[ \t]
 # After `&&`, a `;`, newline, `||` or background `&` would let a LATER statement
 # decide is_error, so the probe's exit status would no longer be observable.
 _CHAIN_BREAK = re.compile(r"[;\n]|\|\||(?<![&>])&(?![&>])")
-_STATUS_ECHO = re.compile(r"(?:echo|write-output|printf)[ \t]+(?P<arg>[^;\n&|]*)", re.I)
-_STATUS_VAR = re.compile(r"\$\?|\$LASTEXITCODE\b", re.I)
+_STATUS_ECHO = re.compile(r"(?:echo|write-output|printf)[ \t]+(?P<arg>[^;\n&|]*)", re.IGNORECASE)
+_STATUS_VAR = re.compile(r"\$\?|\$LASTEXITCODE\b", re.IGNORECASE)
 _HAS_LETTER = re.compile(r"[A-Za-z]")
 
 # Kind "reflog": `git reflog` or `git log -g/--walk-reflogs` whose output dates
 # an `update by push` at or after the session start. Undated `@{N}` lines and
 # lines without a timezone never credit.
-_EV_REFLOG = _OptionScan(re.compile(_GIT_LEAD + r"(reflog|log)(?![\w.-])([^|;&\n]*)", re.I))
+_EV_REFLOG = _OptionScan(re.compile(_GIT_LEAD + r"(reflog|log)(?![\w.-])([^|;&\n]*)", re.IGNORECASE))
 _REFLOG_WALK = re.compile(r"(?:^|\s)(?:-g|--walk-reflogs)(?=\s|$)")
 _REFLOG_PUSH = re.compile(
     r"@\{(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})[ \t]*([+-]\d{2}:?\d{2}|Z)\}: update by push")
@@ -2091,7 +2091,7 @@ def _pair_credit(command, output, errored, session_start):
 _COMMIT_LINE = re.compile(r"^\[[^\]\n]+ [0-9a-f]{7,40}\] ")
 _MERGE_OK = re.compile(r"^Updating [0-9a-f]{7,}\.\.[0-9a-f]{7,}|^Fast-forward"
                        r"|Merge made by|Already up[ -]to[ -]date")
-_MERGE_BAD = re.compile(r"CONFLICT|Automatic merge failed|^fatal:|^error:", re.M)
+_MERGE_BAD = re.compile(r"CONFLICT|Automatic merge failed|^fatal:|^error:", re.MULTILINE)
 
 
 def _commit_output_ok(stripped, output):
@@ -2123,7 +2123,7 @@ def _merge_output_ok(stripped, output, errored):
 # strict: a conflicted merge later resolved and committed, and a `merge
 # --continue`. As in checks 6 and 10 the commit's repo is not placed.
 _MERGE_STAGED = re.compile(r"Automatic merge went well; stopped before committing as requested")
-_EV_GIT_RESET = _OptionScan(re.compile(_GIT_LEAD + r"reset(?![\w.-])", re.I))
+_EV_GIT_RESET = _OptionScan(re.compile(_GIT_LEAD + r"reset(?![\w.-])", re.IGNORECASE))
 # DECISION (orchestrator, s117, after the verifier refuted the fifth narrowing
 # 6ca81b47c): `git reset` is deny-all, as before (f): ANY reset in a call
 # un-stages a staged merge, including the forms git measurably keeps
@@ -2152,10 +2152,10 @@ _EV_GIT_RESET = _OptionScan(re.compile(_GIT_LEAD + r"reset(?![\w.-])", re.I))
 # is ignored, and one after it denies credit unless the call's only
 # commit-creating command sits between the merge and that drop.
 _LITERAL_SLOT = "_quoted_"
-_EV_GIT_CHECKOUT = _OptionScan(re.compile(_GIT_LEAD + r"checkout(?![\w.-])([^|;&\n]*)", re.I))
-_EV_GIT_STASH = _OptionScan(re.compile(_GIT_LEAD + r"stash(?![\w.-])([^|;&\n]*)", re.I))
+_EV_GIT_CHECKOUT = _OptionScan(re.compile(_GIT_LEAD + r"checkout(?![\w.-])([^|;&\n]*)", re.IGNORECASE))
+_EV_GIT_STASH = _OptionScan(re.compile(_GIT_LEAD + r"stash(?![\w.-])([^|;&\n]*)", re.IGNORECASE))
 _EV_GIT_COMMIT_MAKER = _OptionScan(re.compile(
-    _GIT_LEAD + r"(?:commit|cherry-pick|revert)(?![\w.-])", re.I))
+    _GIT_LEAD + r"(?:commit|cherry-pick|revert)(?![\w.-])", re.IGNORECASE))
 # A redirection: `>`, `2>`, `2>&1` and PowerShell's `*>` (see _keep_shape).
 _ARG_REDIRECT = re.compile(r"[\d*]?[<>]")
 # Shell word separators: a space or a tab only, so any other whitespace stays
@@ -2181,8 +2181,8 @@ _KEEP_LEAD = re.compile(r"(?i:git(?:\.exe)?)[ \t]+(checkout|stash)\Z")
 _SHELL_LAUNCHER = re.compile(
     r"(?<![\w.-])(?:bash|sh|zsh|dash|ksh|pwsh|powershell|cmd|eval|source|xargs|env|nohup"
     r"|time|command|exec|sudo|timeout|iex|invoke-expression|start-process)(?:\.exe)?(?![\w.-])",
-    re.I)
-_HIDDEN_GIT = re.compile(r"(?<![\w.-])git(?:\.exe)?(?![\w.-])", re.I)
+    re.IGNORECASE)
+_HIDDEN_GIT = re.compile(r"(?<![\w.-])git(?:\.exe)?(?![\w.-])", re.IGNORECASE)
 _HIDDEN_MARK = "\ngit $hidden\n"
 # A shell function or alias named git (bash `git() {..}`, `function git`,
 # `alias git=`, PowerShell Set-Alias / New-Alias / sal / nal) runs something
@@ -2190,7 +2190,7 @@ _HIDDEN_MARK = "\ngit $hidden\n"
 _GIT_SHADOW = re.compile(
     r"(?<![\w.-])(?:function[ \t]+git(?:\.exe)?(?![\w.-])|git(?:\.exe)?[ \t]*\([ \t]*\)"
     r"|alias[ \t]+git(?:\.exe)?=|(?:set-alias|new-alias|sal|nal)(?:[ \t]+-\w+)*[ \t]+git"
-    r"(?:\.exe)?(?![\w.-]))", re.I)
+    r"(?:\.exe)?(?![\w.-]))", re.IGNORECASE)
 # s117 verifier REFUTE of 463d166c8 (all measured, git 2.53.0): reading a
 # quoted literal as a word let a quoted OPTION or SUBCOMMAND count as a path or
 # a second argument (`git checkout "-b" newb`, `git reset "--hard" HEAD`, `git
@@ -2213,7 +2213,7 @@ _GIT_SHADOW = re.compile(
 # tests/test_stop_claim_gate_subagent_evidence_rm687.py.
 _WORD_ALLOW = re.compile(r"[A-Za-z0-9_./][A-Za-z0-9_./-]*\Z")
 _VALUE_ALLOW = re.compile(r"[A-Za-z0-9_./-]+\Z")
-_GIT_WORD = re.compile(r"(?<![\w.-])git(?:\.exe)?(?=\s)", re.I)
+_GIT_WORD = re.compile(r"(?<![\w.-])git(?:\.exe)?(?=\s)", re.IGNORECASE)
 
 
 def _slot_literal(match):
@@ -2635,11 +2635,11 @@ def _refused(row, text, errored):
 
 _UNSET = "\x00unset\x00"
 _STATEMENT_BREAK = re.compile(r"&&|\|\||[;\n|]|(?<![<>&])&(?![>&])")
-_VAR_REF = re.compile(r"'[^']*'|\$\{(\w+)\}|\$(?:env:)?(\w+)", re.I)
+_VAR_REF = re.compile(r"'[^']*'|\$\{(\w+)\}|\$(?:env:)?(\w+)", re.IGNORECASE)
 _TOKEN = re.compile(r"""(?:'[^']*'|"[^"]*"|[^\s'"])+""")
 _QUOTE_PART = re.compile(r"""'([^']*)'|"([^"]*)\"""")
-_BASH_ASSIGN = re.compile(r"([A-Za-z_]\w*)=(.*)", re.S)
-_PS_ASSIGN = re.compile(r"\$(?:env:)?(\w+)(?:=(.*))?", re.S | re.I)
+_BASH_ASSIGN = re.compile(r"([A-Za-z_]\w*)=(.*)", re.DOTALL)
+_PS_ASSIGN = re.compile(r"\$(?:env:)?(\w+)(?:=(.*))?", re.DOTALL | re.IGNORECASE)
 _CD_WORDS = frozenset({"cd", "chdir", "pushd", "set-location", "sl", "push-location"})
 _GIT_PATH_OPTS = frozenset({"-C", "--git-dir", "--work-tree"})
 _GIT_VALUE_OPTS = frozenset({"-c", "--namespace", "--config-env", "--exec-path"})

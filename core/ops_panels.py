@@ -221,7 +221,7 @@ def compute_drift_strip() -> dict:
 # 5. Gated queue
 # ---------------------------------------------------------------------------
 
-_GATE_RE = re.compile(r"^##\s+GATE\s+(\d+)\s*-\s*(.+?)\s*$", re.M)
+_GATE_RE = re.compile(r"^##\s+GATE\s+(\d+)\s*-\s*(.+?)\s*$", re.MULTILINE)
 
 # Rows are `- **G2-01** ...`, NOT markdown checkboxes. Measured 2026-08-01:
 # the doc carries 135 of these and ZERO `- [ ]` items, so a checkbox regex

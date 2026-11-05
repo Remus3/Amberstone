@@ -217,7 +217,7 @@ def conformance_sample(rows, per_chunk=6):
 AGENT_WORDS = re.compile(
     r"\b(subagent|sub-agent|verifier|slice agent|slice's|agent's report|"
     r"parallel agent|parallel agents|adjudicator|auditor|scorer)\b",
-    re.I,
+    re.IGNORECASE,
 )
 
 
@@ -241,7 +241,7 @@ def v13_clause_deltas(rows):
     gate_fired_words = re.compile(
         r"\b(pre-commit gate|precommit gate|the gate|standing gate|adversarial gate|"
         r"pre-push|hook|CI run|the verifier|verifier pass|verifier gate)\b",
-        re.I,
+        re.IGNORECASE,
     )
     cands = [
         r

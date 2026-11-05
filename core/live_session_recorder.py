@@ -145,7 +145,7 @@ def _engine_version() -> Optional[str]:
         text = _DS_INIT_PATH.read_text(encoding="utf-8", errors="ignore")
     except Exception:  # noqa: BLE001
         return None
-    m = re.search(r'^ENGINE_VERSION\s*=\s*["\']([^"\']+)["\']', text, re.M)
+    m = re.search(r'^ENGINE_VERSION\s*=\s*["\']([^"\']+)["\']', text, re.MULTILINE)
     return m.group(1) if m else None
 
 

@@ -1299,17 +1299,17 @@ class Coach(BaseCoach):
             if not _has_cheater:
                 # Strip leading "FOUNTAIN" tokens from action label.
                 import re as _re
-                _action_raw = _re.sub(r'\bFOUNTAIN\s*', '', _action_raw, flags=_re.I).strip()
+                _action_raw = _re.sub(r'\bFOUNTAIN\s*', '', _action_raw, flags=_re.IGNORECASE).strip()
                 if not _action_raw or _action_raw.upper() == "FALL BACK":
                     _action_raw = "FALL BACK"
                 # Soften "go to fountain" / "return to fountain" in Immediate.
                 _imm_raw = _re.sub(
                     r'\b(go|return|sprint|head|walk|run)\s+to\s+(the\s+)?fountain\b',
                     r'fall back to your tower',
-                    _imm_raw, flags=_re.I,
+                    _imm_raw, flags=_re.IGNORECASE,
                 )
                 _imm_raw = _re.sub(
-                    r'\bfountain\s+now\b', 'fall back', _imm_raw, flags=_re.I,
+                    r'\bfountain\s+now\b', 'fall back', _imm_raw, flags=_re.IGNORECASE,
                 )
             # Passthrough for the optional native-emit `choices` JSON array.
             # The model returns a single-line JSON list (per the OUTPUT FORMAT

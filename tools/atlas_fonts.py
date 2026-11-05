@@ -264,7 +264,7 @@ _QUOTED = re.compile(
 _QUOTE_CHARS = "\"'" + _LQ + _RQ + _LSQ + _RSQ
 _RFN_CLAUSE = re.compile(
     r"Reserved\s+Font\s+Names?\s*:?\s*"
-    rf"((?:(?:{_QUOTED.pattern})(?:\s*(?:,|and|&)\s*)?)+|[^.,;{_QUOTE_CHARS}]+)", re.I)
+    rf"((?:(?:{_QUOTED.pattern})(?:\s*(?:,|and|&)\s*)?)+|[^.,;{_QUOTE_CHARS}]+)", re.IGNORECASE)
 
 # RFNs known from the upstream OFL.txt headers of the fonts this page has
 # carried. A face is checked against these as well as against what its own

@@ -62,7 +62,7 @@ SESSION_RE = re.compile(
     r"s\d+(?:\.\d+)*(?:-s\d+(?:\.\d+)*)? wrap\b"
     r"|\d{4}-\d{2}-\d{2}"
     r")",
-    re.M,
+    re.MULTILINE,
 )
 
 ARCHIVE_HEADER = (

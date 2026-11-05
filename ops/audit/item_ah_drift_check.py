@@ -54,7 +54,7 @@ def _default_item_json() -> Path:
     return ROOT / "data" / "meta_build" / "ddragon" / patch / "item.json"
 
 
-_STATS_BLOCK = re.compile(r"<stats>(.*?)</stats>", re.S)
+_STATS_BLOCK = re.compile(r"<stats>(.*?)</stats>", re.DOTALL)
 _AH = re.compile(r"<attention>([0-9.]+)</attention>\s*Ability Haste")
 _AH_ORNN = re.compile(r"<(?:ornnBonus|attention)>([0-9.]+)</(?:ornnBonus|attention)>\s*Ability Haste")
 _AH_ANY = re.compile(r"Ability Haste")

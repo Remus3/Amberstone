@@ -281,7 +281,7 @@ def load_profile(resolution=None, ui_scale: float = 1.0, *,
     return None
 
 
-_INI_KEY = re.compile(r"^\s*(ResolutionSizeX|ResolutionSizeY)\s*=\s*(\d+)\s*$", re.M)
+_INI_KEY = re.compile(r"^\s*(ResolutionSizeX|ResolutionSizeY)\s*=\s*(\d+)\s*$", re.MULTILINE)
 
 
 def resolution_from_ini(text: str) -> tuple[int, int] | None:

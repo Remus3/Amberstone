@@ -80,8 +80,8 @@ REDUCTION_AXES = (
 # Engine fields compared; armor_pen_flat has no DDragon axis.
 ENGINE_FIELDS = AXES + ("armor_pen_flat",) + REDUCTION_AXES
 
-_STATS_BLOCK = re.compile(r"<stats>(.*?)</stats>", re.S)
-_LINE_SPLIT = re.compile(r"<br\s*/?>", re.I)
+_STATS_BLOCK = re.compile(r"<stats>(.*?)</stats>", re.DOTALL)
+_LINE_SPLIT = re.compile(r"<br\s*/?>", re.IGNORECASE)
 _PEN_ANY = re.compile(r"Lethality|Penetration")
 _ORNN_MARKER = "<ornnBonus>"
 _TAG = r"(?:attention|ornnBonus)"

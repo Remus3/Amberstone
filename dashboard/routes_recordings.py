@@ -72,7 +72,7 @@ UNSATISFIABLE = "unsatisfiable"
 
 # re.ASCII: a str-pattern \d also matches non-ASCII decimal digits (and int()
 # accepts them); the Range grammar is ASCII.
-_BYTES_RE = re.compile(r"^\s*bytes\s*=\s*(.*)$", re.I | re.ASCII)
+_BYTES_RE = re.compile(r"^\s*bytes\s*=\s*(.*)$", re.IGNORECASE | re.ASCII)
 _SPEC_RE = re.compile(r"^\s*(\d*)\s*-\s*(\d*)\s*$", re.ASCII)
 # s144 true-audit F1: int() refuses a digit run past sys.int_info's str limit
 # (4300) with ValueError, which surfaced as a 500. 18 significant digits is

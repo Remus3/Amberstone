@@ -129,13 +129,13 @@ _LEDGER_ITEM = re.compile(
 # real, grep-able signal of where cycles went sideways (not an invented category).
 _FRICTION_PATTERNS = {
     "Test-ordering / stale-pipe (SEQUENCING artifact, LiveFresh)":
-        re.compile(r"sequencing artifact|livefresh|stale[- ]tool|replay", re.I),
+        re.compile(r"sequencing artifact|livefresh|stale[- ]tool|replay", re.IGNORECASE),
     "Stale or falsified directive premise (verify-before-redo)":
-        re.compile(r"verify-before-redo|premise\b.*\b(stale|falsified)|already shipped|red herring", re.I),
+        re.compile(r"verify-before-redo|premise\b.*\b(stale|falsified)|already shipped|red herring", re.IGNORECASE),
     "Directive intent vs literal (audit-proposals-are-intent)":
-        re.compile(r"key deviation|feedback_audit_proposals_are_intent|deviation from the directive", re.I),
+        re.compile(r"key deviation|feedback_audit_proposals_are_intent|deviation from the directive", re.IGNORECASE),
     "No-op / clean-no-commit closeouts":
-        re.compile(r"clean no-commit|byte-identical|no-op\b|premise falsified", re.I),
+        re.compile(r"clean no-commit|byte-identical|no-op\b|premise falsified", re.IGNORECASE),
 }
 
 

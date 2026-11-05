@@ -165,7 +165,7 @@ def dur_str(seconds: int) -> str:
 def canvas_size(index_html: Path = INDEX_HTML) -> tuple[int, int]:
     text = index_html.read_text(encoding="utf-8")
     m = re.search(r'<canvas id="replay-map-canvas"[^>]*?width="(\d+)"[^>]*?height="(\d+)"',
-                  text, re.S)
+                  text, re.DOTALL)
     if not m:
         raise InputError("replay-map-canvas width/height not found in web/index.html")
     return int(m.group(1)), int(m.group(2))

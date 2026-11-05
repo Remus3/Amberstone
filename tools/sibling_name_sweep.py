@@ -293,25 +293,25 @@ _ALLOW_SEGMENTS = frozenset(
 # was MEASURED as a live structural hit on this tree, so this is the
 # negative-control set the spec calls for, not a guess at one.
 _ALLOW_PATTERNS = (
-    re.compile(r"^sibling-[a-z0-9]+$", re.I),
-    re.compile(r"^(some|another|example|your|my|fake|dummy|test|placeholder)\b", re.I),
+    re.compile(r"^sibling-[a-z0-9]+$", re.IGNORECASE),
+    re.compile(r"^(some|another|example|your|my|fake|dummy|test|placeholder)\b", re.IGNORECASE),
     re.compile(r"^<.*>$"),
     re.compile(r"^\{+.*\}+$"),
     re.compile(r"^\.{1,2}$"),
-    re.compile(r"^[a-z]$", re.I),
+    re.compile(r"^[a-z]$", re.IGNORECASE),
     # RC's own machine-local scaffolding: rc-*, Claude*, and the fu04 evidence
     # scratch. Each was measured as a live hit here and each is RC's own.
-    re.compile(r"^rc[-_]", re.I),
-    re.compile(r"^claude[a-z]*[-_]?[0-9]*$", re.I),
-    re.compile(r"^fu[0-9]+[-_]", re.I),
+    re.compile(r"^rc[-_]", re.IGNORECASE),
+    re.compile(r"^claude[a-z]*[-_]?[0-9]*$", re.IGNORECASE),
+    re.compile(r"^fu[0-9]+[-_]", re.IGNORECASE),
     # Single-letter fixture filenames used as throwaway paths in tests.
-    re.compile(r"^[a-z]\.[a-z0-9]{1,5}$", re.I),
+    re.compile(r"^[a-z]\.[a-z0-9]{1,5}$", re.IGNORECASE),
     # Generic fixture roots used by tests and prose in this tree.
     re.compile(
         r"^(wt|bin|secret|logs?|fixtures?|nonexistent|evil|elsewhere|repo|private"
         r"|main|work|out|build|dist|data|project|user|riot|lockfile|leak\.[a-z]+"
         r"|definitely-not-.*|this-binary-does-not-exist.*)$",
-        re.I,
+        re.IGNORECASE,
     ),
 )
 
@@ -970,7 +970,7 @@ _STRUCTURAL_HEAD_PARTS = tuple(p for p in _DRIVE_HEAD_PARTS if p != _POSIX_DRIVE
 _STRUCTURAL_RES = tuple(
     re.compile(
         r"(?<![A-Za-z0-9_])(?:" + part + r")(?P<seg>[A-Za-z0-9 ()+._\-]{1,80})",
-        0 if index == 0 else re.I | re.A,
+        0 if index == 0 else re.IGNORECASE | re.ASCII,
     )
     for index, part in enumerate(_STRUCTURAL_HEAD_PARTS)
 )
@@ -995,7 +995,7 @@ def build_needles(cfg: SweepConfig) -> list:
                 CompiledShape(
                     f"{SHAPE_DRIVE}/{family}",
                     VIEW_SPACE,
-                    re.compile(_DRIVE_HEAD + frag + _RIGHT_EDGE, re.I),
+                    re.compile(_DRIVE_HEAD + frag + _RIGHT_EDGE, re.IGNORECASE),
                 )
             )
             # S7: github.com/<owner>/<spelling>
@@ -1004,7 +1004,7 @@ def build_needles(cfg: SweepConfig) -> list:
                     f"{SHAPE_URL}/{family}",
                     VIEW_SPACE,
                     re.compile(
-                        r"github\.com/[A-Za-z0-9_.\-]+/" + frag + _RIGHT_EDGE, re.I
+                        r"github\.com/[A-Za-z0-9_.\-]+/" + frag + _RIGHT_EDGE, re.IGNORECASE
                     ),
                 )
             )
@@ -1015,7 +1015,7 @@ def build_needles(cfg: SweepConfig) -> list:
                     CompiledShape(
                         f"{SHAPE_BARE}/{family}",
                         VIEW_SPACE,
-                        re.compile(_LEFT_EDGE + frag + _RIGHT_EDGE, re.I),
+                        re.compile(_LEFT_EDGE + frag + _RIGHT_EDGE, re.IGNORECASE),
                     )
                 )
         # S6 tight view: the name reassembled after ALL whitespace and comment
@@ -1034,14 +1034,14 @@ def build_needles(cfg: SweepConfig) -> list:
         if not narrowed:
             shapes.append(
                 CompiledShape(
-                    f"{SHAPE_BARE}/CONCAT", VIEW_TIGHT, re.compile(tight, re.I)
+                    f"{SHAPE_BARE}/CONCAT", VIEW_TIGHT, re.compile(tight, re.IGNORECASE)
                 )
             )
         shapes.append(
             CompiledShape(
                 f"{SHAPE_DRIVE}/CONCAT",
                 VIEW_TIGHT,
-                re.compile(_DRIVE_HEAD + tight, re.I),
+                re.compile(_DRIVE_HEAD + tight, re.IGNORECASE),
             )
         )
         needles.append(
@@ -1159,7 +1159,7 @@ def build_prefilter(name: str, variants: Mapping[str, str]):
     if not literals:
         return None
     ordered = sorted(literals, key=lambda s: (-len(s), s))
-    return re.compile("|".join(re.escape(s) for s in ordered), re.I)
+    return re.compile("|".join(re.escape(s) for s in ordered), re.IGNORECASE)
 
 
 def _strip_continuations(text: str, at_blob_start: bool = True):
@@ -1498,7 +1498,7 @@ def _slot_head_re(slot_names: Sequence[str]):
     ]
     if not frags:
         return None
-    return re.compile(r"\s*(?:" + "|".join(frags) + ")" + _RIGHT_EDGE, re.I)
+    return re.compile(r"\s*(?:" + "|".join(frags) + ")" + _RIGHT_EDGE, re.IGNORECASE)
 
 
 def structural_findings(

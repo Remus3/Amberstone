@@ -63,7 +63,7 @@ KIT_DIR = ROOT / "ops" / "fleet_kit"
 STATE_REL = Path("ops/loop/control/bot_merge_check.json")
 LOG_REL = Path("ops/loop/control/bot_merge_check.jsonl")
 DEFAULT_REF = "origin/main"
-CO_AUTHOR = re.compile(r"^\s*co-authored-by\s*:", re.I)
+CO_AUTHOR = re.compile(r"^\s*co-authored-by\s*:", re.IGNORECASE)
 SHOW_MAX = 20
 FIX_HINT = ("fix ONLY with ops/fleet_kit/fleet_rewrite.py (plan, bundle, run) under "
             "MAIN 2026-10-18-2312 scope; a rewrite force-pushes, so it waits for the "

@@ -79,7 +79,7 @@ MEMORY_UNINDEXED_OK = ("project_ds_sweep_", "_")
 
 DOC_GLOBS = ("*.md", "docs/*.md", "docs/**/*.md", "docs/**/*.html")
 # Files that legitimately name OLD versions forever.
-HISTORICAL = re.compile(r"CHANGELOG|HISTORY|LEDGER|WAKEUP|_archive|ROADMAP_HISTORY", re.I)
+HISTORICAL = re.compile(r"CHANGELOG|HISTORY|LEDGER|WAKEUP|_archive|ROADMAP_HISTORY", re.IGNORECASE)
 EXCLUDE_PATH = ("_archive", "node_modules", ".git")
 # ---------------------------------------------------------------------------
 
@@ -226,7 +226,7 @@ def check_memory_index(
 # two flags genuinely shipped at 1.273.0 and 1.274.0 respectively.
 VERSION_TRANSITION = re.compile(r"\d+\.\d+\.\d+\s*(?:->|to|/)\s*\d+\.\d+\.\d+")
 CLOSURE_MARKER = re.compile(
-    r"~~|\b(?:shipped|closed|fixed|refuted|done|reverted|superseded)\b", re.I
+    r"~~|\b(?:shipped|closed|fixed|refuted|done|reverted|superseded)\b", re.IGNORECASE
 )
 # A markdown ATX heading, capturing its depth so a section's scope can be
 # closed by the next heading at the same or a shallower level.
@@ -234,7 +234,7 @@ HEADING = re.compile(r"^(#{1,6})\s")
 # A heading that DATES ITSELF, e.g. "## 1b. STATUS as of 2026-08-11". The ISO
 # date is required: a bare "as of" is too easy to write by accident, and this
 # exemption covers a whole section rather than one line.
-DATED_STATUS_HEADING = re.compile(r"\bas of\b\s*:?\s*\d{4}-\d{2}-\d{2}", re.I)
+DATED_STATUS_HEADING = re.compile(r"\bas of\b\s*:?\s*\d{4}-\d{2}-\d{2}", re.IGNORECASE)
 
 
 def _line_is_version_history(line: str) -> bool:
@@ -351,7 +351,7 @@ def check_counted_claims(root: pathlib.Path) -> list[Finding]:
         claimed = _COUNT_WORDS.get(m.group(1).lower())
         if claimed is None:
             continue
-        actual = len(re.findall(r"^- \d+\.\d+\.\d+ ->", text[m.end():], re.M))
+        actual = len(re.findall(r"^- \d+\.\d+\.\d+ ->", text[m.end():], re.MULTILINE))
         if actual and actual != claimed:
             out.append(Finding(
                 "count-claim",

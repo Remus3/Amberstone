@@ -151,7 +151,7 @@ def read_text(path: str) -> str:
 def settled_blocks(claude_md: str) -> list[str]:
     """Top-level bullets of the CLAUDE.md Settled section, continuations attached."""
     match = re.search(
-        r"^### Settled[^\n]*\n(.*?)(?=\n^#{1,3} |\Z)", claude_md, re.S | re.M
+        r"^### Settled[^\n]*\n(.*?)(?=\n^#{1,3} |\Z)", claude_md, re.DOTALL | re.MULTILINE
     )
     if not match:
         return []
@@ -174,12 +174,12 @@ def parse_memory_file(path: str) -> tuple[str, str, str, str]:
     raw = read_text(path)
     name = os.path.basename(path)[:-3]
     description, mtype, body = "", "reference", raw
-    front = re.match(r"^---\n(.*?)\n---\n(.*)$", raw, re.S)
+    front = re.match(r"^---\n(.*?)\n---\n(.*)$", raw, re.DOTALL)
     if front:
         head, body = front.group(1), front.group(2)
-        m_name = re.search(r"^name:\s*(.+)$", head, re.M)
-        m_desc = re.search(r"^description:\s*(.+)$", head, re.M)
-        m_type = re.search(r"^\s*type:\s*(\w+)\s*$", head, re.M)
+        m_name = re.search(r"^name:\s*(.+)$", head, re.MULTILINE)
+        m_desc = re.search(r"^description:\s*(.+)$", head, re.MULTILINE)
+        m_type = re.search(r"^\s*type:\s*(\w+)\s*$", head, re.MULTILINE)
         if m_name:
             name = m_name.group(1).strip().strip('"')
         if m_desc:
@@ -259,7 +259,7 @@ def sync(vault: Vault) -> dict:
     # 3. LEDGER items.
     ledger_path = os.path.join(REPO, "docs", "LEDGER.md")
     if os.path.exists(ledger_path):
-        for match in re.finditer(r"^(\d{1,5})\.\s+(.+)$", read_text(ledger_path), re.M):
+        for match in re.finditer(r"^(\d{1,5})\.\s+(.+)$", read_text(ledger_path), re.MULTILINE):
             number, text = match.group(1), match.group(2).strip()
             if len(text) < 30:
                 continue
@@ -274,7 +274,7 @@ def sync(vault: Vault) -> dict:
         path = os.path.join(REPO, filename)
         if not os.path.exists(path):
             continue
-        parts = re.split(r"^(#{2,4} .+)$", read_text(path), flags=re.M)
+        parts = re.split(r"^(#{2,4} .+)$", read_text(path), flags=re.MULTILINE)
         for index in range(1, len(parts), 2):
             heading = parts[index].lstrip("# ").strip()
             chunk = (parts[index + 1] if index + 1 < len(parts) else "").strip()

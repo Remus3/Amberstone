@@ -124,8 +124,8 @@ FIELD_ORDER = ("screen", "shop_open", "occluders", "stage", "timer", "level", "x
 EXTRA_SHOP_CARDS = frozenset({"Flood"})
 
 IDENTITY_KEY = re.compile(r"puuid|riotid|gamename|tagline|summoner|playerid|displayname|"
-                          r"companion|accountid", re.I)
-UUID_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.I)
+                          r"companion|accountid", re.IGNORECASE)
+UUID_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.IGNORECASE)
 STAGE_RE = re.compile(r"\d-\d")
 SHA_RE = re.compile(r"[0-9a-f]{64}")
 META_KEYS = frozenset({"schema", "match", "set", "frame_size", "source_size", "privacy",
