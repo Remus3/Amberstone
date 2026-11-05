@@ -327,8 +327,8 @@ def _build_per_spell_cc_durations() -> dict[str, dict[str, tuple[float, ...]]]:
     # ~1s travel delay - the timer is universal not conditional,
     # mirrors the Nautilus Q / Caitlyn W expiry-root pattern).
     registry.setdefault("Senna", {})["W"] = (1.25, 1.5, 1.75, 2.0, 2.25)
-    # Seraphine R - Encore: stun 1.25/1.5/1.75 across 3 ranks
-    # (Disable Duration block from data; primary AOE wave stuns
+    # Seraphine R - Encore: charm 1.25/1.5/1.75 across 3 ranks
+    # (Disable Duration block from data; primary AOE wave charms
     # enemies hit; bounce-back extension is universal).
     registry.setdefault("Seraphine", {})["R"] = (1.25, 1.5, 1.75)
     # Shaco W - Jack in the Box: fear 0.5/0.75/1.0/1.25/1.5 across

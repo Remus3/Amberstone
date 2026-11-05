@@ -244,8 +244,8 @@ class WaveFourValuePinsTests(unittest.TestCase):
             (1.25, 1.5, 1.75, 2.0, 2.25),
         )
 
-    def test_seraphine_r_encore_stun(self) -> None:
-        # Encore primary AOE stun 1.25/1.5/1.75 across 3 ranks
+    def test_seraphine_r_encore_charm(self) -> None:
+        # Encore primary AOE charm 1.25/1.5/1.75 across 3 ranks
         # (canonical Disable Duration block from data).
         self.assertEqual(
             _per_spell_cc_for("Seraphine", "R"),

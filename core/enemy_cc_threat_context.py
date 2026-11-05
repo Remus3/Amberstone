@@ -199,7 +199,7 @@ _CC_KIND_HINTS: Dict[Tuple[str, str], str] = {
     ("Ryze", "W"): "root",
     ("Sejuani", "Q"): "stun",
     ("Senna", "W"): "root",
-    ("Seraphine", "R"): "stun",
+    ("Seraphine", "R"): "charm",
     ("Shaco", "W"): "fear",
     ("Shen", "E"): "taunt",
     ("Shyvana", "R"): "knockback",
