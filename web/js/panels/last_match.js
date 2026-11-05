@@ -1009,7 +1009,8 @@ function _emptyPgrSnapshotModel() {
 // renderPlayerSnapshot model from the last-match `m` (already in scope
 // at the call site) + the /api/post-game-rubric `rubric` payload
 // _setHeroRoleGrade just fetched. No new fetch - both objects are
-// already in hand at the call site (last_match.js:863-877 origin).
+// already in hand at the call site (the success branch of the rubric fetch in
+// `_setHeroRoleGrade`, where `_setRubricComponents(data)` runs).
 //
 // bars (spec 4.4 PGR): INCOME = cs_per_min saturation; COMBAT = mean of
 // kda + dpm saturation; OBJECTIVES = obj_participation saturation;

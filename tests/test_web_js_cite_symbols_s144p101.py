@@ -11,6 +11,9 @@ This pins (a) none of the eleven cites by line again, (b) each still carries its
 replacement prose, (c) a ratchet: any other tracked non-test web/js .js that
 cites `<file>.<ext>:<n>` fails unless it is in the shrinking _BASELINE with a
 reason, and a baseline entry that stops citing fails until it is dropped.
+
+RM-1402 moved last_match.js, build_insights.js and active_match.js (one cite
+each) out of the baseline into FIXED; only the two other-lane files remain.
 """
 from __future__ import annotations
 
@@ -32,6 +35,10 @@ FIXED = (
     "web/js/panels/callouts.js",
     "web/js/lib/summoner_spells.js",
     "web/js/lib/overlay_tooltip.js",
+    # RM-1402: the next slice out of the baseline.
+    "web/js/panels/last_match.js",
+    "web/js/panels/build_insights.js",
+    "web/js/panels/active_match.js",
 )
 
 # (module, prose it must still carry)
@@ -53,6 +60,9 @@ NEW_PROSE = (
     ("web/js/panels/callouts.js", "`# Per-mode directive table` block of core/lead_projection.py"),
     ("web/js/lib/overlay_tooltip.js", "the <html>-mount trick in champ_select.js"),
     ("web/js/lib/summoner_spells.js", "the `/icons/spells/` entry of GET_ROUTES in dashboard/routes_static.py"),
+    ("web/js/panels/last_match.js", "the success branch of the rubric fetch in `_setHeroRoleGrade`"),
+    ("web/js/panels/build_insights.js", "the CHAMPS.byId slug lookup in `_renderTcRow` of web/js/panels/last_match.js"),
+    ("web/js/panels/active_match.js", "the `out[\"players\"]` block of `liveclient_summary()` in dashboard/_liveclient.py"),
 )
 
 # (file the anchor must be IN, anchor text) - the replacement still resolves.
@@ -72,6 +82,9 @@ ANCHORS = (
     ("web/js/panels/right_now.js", "function renderRightNow"),
     ("web/js/lib/items_index.js", "replace(/[^a-z0-9]/g"),
     ("web/js/panels/champ_select.js", "assignedPosition"),
+    ("web/js/panels/last_match.js", "function _setHeroRoleGrade"),
+    ("web/js/panels/last_match.js", "function _renderTcRow"),
+    ("dashboard/_liveclient.py", 'out["players"] = ['),
 )
 
 # A file cited by position: "x.py:12", "x.js:7506+", "x.toml:27", "x.py:12-15".
@@ -81,9 +94,6 @@ _LINE_CITE = re.compile(r"[\w./\\-]+\.(?:py|md|js|css|ps1|html|toml|ya?ml|json):
 _BASELINE = {
     "web/js/main.js": "another lane branch changed it",
     "web/js/panels/review_player_model.js": "another lane branch changed it",
-    "web/js/panels/last_match.js": "next slice (cites its own and a sibling's lines)",
-    "web/js/panels/build_insights.js": "next slice (mirrors last_match.js)",
-    "web/js/panels/active_match.js": "next slice (one cite of _liveclient.py)",
 }
 
 

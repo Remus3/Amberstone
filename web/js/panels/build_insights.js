@@ -136,7 +136,8 @@ function _itemImgTag(iid) {
 
 // Champion-square URL: resolve championId -> DDragon slug via CHAMPS.byId
 // (async-hydrated from /data/champions_index.json by items_index.js).
-// Mirrors last_match.js:692-693. When the index is not yet loaded the
+// Mirrors the CHAMPS.byId slug lookup in `_renderTcRow` of
+// web/js/panels/last_match.js. When the index is not yet loaded the
 // slug is empty -> name-only render (documented fallback). Same local-then
 // -CDN onerror chain as the item icon.
 function _champImgTag(cid) {

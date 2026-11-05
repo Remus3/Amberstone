@@ -1678,7 +1678,8 @@ function _amDsSyntheticCs(p, ctx) {
   // BACKLOG F5/F1 (2026-07-20): this used to break after the first enemy, so
   // the matchup card read whoever happened to lead the roster rather than the
   // operator's actual laner. Roles come from the summarized `liveclient.players`
-  // list (dashboard/_liveclient.py:225), which is built from the SAME
+  // list (the `out["players"]` block of `liveclient_summary()` in
+  // dashboard/_liveclient.py), which is built from the SAME
   // allPlayers array under the same isinstance filter and is therefore
   // index-aligned; `position` there is an LCU ROLE STRING, never map
   // coordinates (memory reference_liveclient_no_positions). Role-less modes
