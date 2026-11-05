@@ -108,7 +108,7 @@ class FileIngest:
         while not self._stop.is_set():
             try:
                 await self._tick()
-            except Exception as e:           # noqa: BLE001
+            except Exception as e:
                 logger.exception("file_ingest tick raised: %s", e)
             try:
                 await asyncio.wait_for(self._stop.wait(), timeout=POLL_SEC)

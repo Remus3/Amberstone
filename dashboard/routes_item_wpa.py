@@ -323,7 +323,7 @@ def _serve_item_wpa(h) -> None:
         if cacheable is not None:
             _cache_put(cache_key, cacheable)
         h._send(200, raw, "application/json")
-    except Exception:  # noqa: BLE001 - generic 500 wrapper
+    except Exception:  # generic 500 wrapper
         log.exception("api/item-wpa: unexpected failure")
         try:
             # Raw exception text can leak file paths - log it, never

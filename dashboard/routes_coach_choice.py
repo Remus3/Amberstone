@@ -161,7 +161,7 @@ def _serve_coach_choice(h, body) -> None:
             source_tag=source,
             game_context=_context(body.get("game_context")),
         )
-    except Exception:  # noqa: BLE001 - last-resort 500, traceback logged
+    except Exception:  # last-resort 500, traceback logged
         log.exception("coach-choice POST failed")
         h._send(500, b'{"ok":false,"error":"log_append_failed"}',
                 "application/json")

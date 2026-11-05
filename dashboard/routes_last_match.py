@@ -561,7 +561,7 @@ def _serve_last_match(h) -> None:
     except (sqlite3.Error, OSError):
         log.warning("api/last-match: match store unavailable", exc_info=True)
         status, payload = 503, _json(_STORE_UNAVAILABLE)
-    except Exception:  # noqa: BLE001
+    except Exception:
         log.exception("api/last-match: unexpected failure")
         status, payload = 500, _json(_INTERNAL_ERROR)
     h._send(status, payload, "application/json")
@@ -595,7 +595,7 @@ def _serve_last_match_ingest(h, body) -> None:
         log.warning("api/last-match/ingest: match store unavailable",
                     exc_info=True)
         status, out = 503, _json(_STORE_UNAVAILABLE)
-    except Exception:  # noqa: BLE001
+    except Exception:
         log.exception("api/last-match/ingest: unexpected failure")
         status, out = 500, _json(_INTERNAL_ERROR)
     h._send(status, out, "application/json")

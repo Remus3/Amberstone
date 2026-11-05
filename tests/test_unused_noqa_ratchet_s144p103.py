@@ -8,7 +8,7 @@ A stale suppression hides the day somebody edits that handler to swallow the
 error: the marker still says "blind except is deliberate here" when nobody
 decided that.
 
-Ten modules are cleaned in this slice (FIXED). The rest are in the shrinking
+Ten modules were cleaned in RM-1403 and fourteen more in RM-1404 (FIXED). The rest are in the shrinking
 _BASELINE (rel path -> why it is not in this slice). The ratchet:
 
 - a FIXED module carries no unused noqa again;
@@ -37,10 +37,24 @@ pytestmark = pytest.mark.skipif(
 )
 
 FIXED = (
+    "agents/agent2_backend/file_ingest.py",
+    "agents/agent2_backend/pipeline/orchestrator.py",
+    "agents/agent7_context/warm_session.py",
     "core/archetype_picks.py",
     "core/build_order_precompute.py",
     "core/operator_notify.py",
     "core/replay_seek.py",
+    "dashboard/routes_archetype.py",
+    "dashboard/routes_auto_accept.py",
+    "dashboard/routes_ban_suggest.py",
+    "dashboard/routes_coach_choice.py",
+    "dashboard/routes_item_wpa.py",
+    "dashboard/routes_last_match.py",
+    "dashboard/routes_ops_panels.py",
+    "dashboard/routes_post_game_wpa.py",
+    "dashboard/routes_rune_wpa.py",
+    "dashboard/routes_skill_wpa.py",
+    "dashboard/routes_summspell_wpa.py",
     "lib/game_data/fetch.py",
     "tft/tft_state_reader.py",
     "tools/hotkey_listener.py",
@@ -51,22 +65,8 @@ FIXED = (
 
 # rel path -> why it may keep an unused noqa. Only shrinks.
 _BASELINE = {
-    "agents/agent2_backend/file_ingest.py": "later slice",
-    "agents/agent2_backend/pipeline/orchestrator.py": "later slice",
-    "agents/agent7_context/warm_session.py": "later slice",
-    "dashboard/routes_archetype.py": "later slice",
-    "dashboard/routes_auto_accept.py": "later slice",
-    "dashboard/routes_ban_suggest.py": "later slice",
-    "dashboard/routes_coach_choice.py": "later slice",
     "dashboard/routes_draft_score.py": "another lane branch changed it",
-    "dashboard/routes_item_wpa.py": "later slice",
-    "dashboard/routes_last_match.py": "later slice",
-    "dashboard/routes_ops_panels.py": "later slice",
-    "dashboard/routes_post_game_wpa.py": "later slice",
-    "dashboard/routes_rune_wpa.py": "later slice",
     "dashboard/routes_session_hygiene.py": "another lane branch changed it",
-    "dashboard/routes_skill_wpa.py": "later slice",
-    "dashboard/routes_summspell_wpa.py": "later slice",
     "ops/loop/lane_launcher.py": "later slice",
     "tests/snapshot_panels/test_settings_spend_gate_focus.py": "later slice",
     "tests/snapshot_panels/test_settings_spend_gate_residue.py": "later slice",

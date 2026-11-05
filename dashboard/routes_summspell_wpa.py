@@ -324,7 +324,7 @@ def _serve_summspell_wpa(h) -> None:
         if cacheable is not None:
             _cache_put(cache_key, cacheable)
         h._send(200, raw, "application/json")
-    except Exception:  # noqa: BLE001 - generic 500 wrapper
+    except Exception:  # generic 500 wrapper
         log.exception("api/summspell-wpa: unexpected failure")
         try:
             # Raw exception text can leak file paths - log it, never

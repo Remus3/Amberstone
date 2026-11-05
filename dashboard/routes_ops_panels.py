@@ -49,7 +49,7 @@ def _serve(h, key: str, fn) -> None:
     t0 = time.time()
     try:
         payload = _cached(key, fn)
-    except Exception:                      # noqa: BLE001 - never 500 a panel
+    except Exception:  # never 500 a panel
         log.exception("ops panel %s failed", key)
         payload = {"ok": False, "reason": "panel computation failed"}
     payload["elapsed_ms"] = int((time.time() - t0) * 1000)

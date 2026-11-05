@@ -240,7 +240,7 @@ class WarmAgent7Session:
                 messages=snapshot,
                 timeout=30,
             )
-        except Exception as e:               # noqa: BLE001
+        except Exception as e:
             # Roll back the user message so a retry doesn't duplicate it
             # into the conversation. Popping the TAIL cannot change the
             # head, so _trim_history's user-first alignment still holds.

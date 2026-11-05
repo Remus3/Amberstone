@@ -366,7 +366,7 @@ def _serve_ban_suggest(h) -> None:
         _cache_put(key, now, payload)
         _send_json(h, 200, _respond(payload, ally_ids, enemy_ids, cand_ids,
                                     cached=False, t0=t0))
-    except Exception:  # noqa: BLE001 - route boundary: always answer
+    except Exception:  # route boundary: always answer
         log.exception("api/ban-suggest: unexpected failure")
         try:
             # Raw exception text stays in the log only.

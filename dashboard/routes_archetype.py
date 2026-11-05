@@ -172,7 +172,7 @@ def _store_call(h, arm: str, fn, **kwargs):
         return fn(**kwargs), True
     except (PicksReadError, OSError) as exc:
         log.warning("cs-archetype-pick %s: %s", arm, exc)
-    except Exception:  # noqa: BLE001 - a route must answer; traceback logged
+    except Exception:  # a route must answer; traceback logged
         log.exception("cs-archetype-pick %s: unexpected failure", arm)
     _json_send(h, 500, {"error": f"{arm} failed - see logs"})
     return None, False
@@ -297,7 +297,7 @@ def _serve_archetype_post(h, payload) -> None:
         log.warning("cs-archetype-pick save: %s", exc)
         _json_send(h, 500, {"error": "save failed - see logs"})
         return
-    except Exception:  # noqa: BLE001 - a route must answer; traceback logged
+    except Exception:  # a route must answer; traceback logged
         log.exception("cs-archetype-pick save: unexpected failure")
         _json_send(h, 500, {"error": "save failed - see logs"})
         return

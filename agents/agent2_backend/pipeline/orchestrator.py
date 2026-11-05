@@ -214,7 +214,7 @@ class PipelineOrchestrator:
         for mode in SUPPORTED_MODES:
             try:
                 results[mode] = self.refresh_mode(mode, limit=limit)
-            except Exception as e:       # noqa: BLE001
+            except Exception as e:
                 logger.exception("pipeline %s failed: %s", mode, e)
                 results[mode] = {"error": str(e)}
         return results

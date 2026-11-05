@@ -51,7 +51,7 @@ def _serve_get(h) -> None:
     """GET /api/lcu/auto-accept - report the current flag."""
     try:
         enabled = auto_accept_pref.is_enabled()
-    except Exception:  # noqa: BLE001 - is_enabled never raises; last resort
+    except Exception:  # is_enabled never raises; last resort
         log.exception("api/lcu/auto-accept GET failed")
         _send_json(h, 500, {"ok": False, "error": _GENERIC_ERR})
         return
@@ -81,7 +81,7 @@ def _serve_post(h, body) -> None:
         log.warning("api/lcu/auto-accept POST: save failed", exc_info=True)
         _send_json(h, 503, {"ok": False, "error": _SAVE_ERR})
         return
-    except Exception:  # noqa: BLE001 - last-resort guard, never drop the reply
+    except Exception:  # last-resort guard, never drop the reply
         log.exception("api/lcu/auto-accept POST failed")
         _send_json(h, 500, {"ok": False, "error": _GENERIC_ERR})
         return
