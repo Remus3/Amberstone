@@ -16,7 +16,9 @@ the one place every wiki request path asks before it opens a socket:
 The url a caller passes is checked, and so is every REDIRECT target (RM-1254):
 the three tools open through ``open_consented`` and ``lib/http/client.py``
 ``HttpClient`` re-checks in its redirect handler, so a non-wiki url answering
-with a redirect into the wiki host is refused the same way.
+with a redirect into the wiki host is refused the same way. The non-wiki
+fetcher ``tools/upstream_drift_check.py`` ``_http_get`` (Data Dragon, Meraki,
+CommunityDragon) opens through ``open_consented`` too (RM-1440).
 
 A request is allowed only when a CONSENT RECORD exists: the tracked JSON file
 ``ops/wiki_fetch_consent.json`` (absent today), holding an object with

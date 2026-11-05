@@ -127,13 +127,24 @@ def _http_get(url: str, *, timeout: float = DEFAULT_TIMEOUT) -> bytes:
 
     Retries on URLError / timeout / HTTP 429+5xx with the RETRY_BACKOFFS
     schedule. Raises on a non-transient HTTP error or after exhausting retries.
+
+    Opens through ``lib.wiki_consent.open_consented`` (RM-1440, ruling 51):
+    a url naming the League wiki host, or a Data Dragon / Meraki /
+    CommunityDragon url answering with a redirect into it, raises
+    ``WikiFetchRefused`` (a RuntimeError, so never retried) unless a consent
+    record exists. The probes' fail-soft catch records it as the field error.
     """
+    root = str(ROOT)
+    if root not in sys.path:
+        sys.path.insert(0, root)
+    from lib.wiki_consent import open_consented
+
     headers = {"User-Agent": USER_AGENT}
     last_url_err: urllib_error.URLError | None = None
     for attempt in range(len(RETRY_BACKOFFS) + 1):
         req = urllib_request.Request(url, headers=headers, method="GET")
         try:
-            with urllib_request.urlopen(req, timeout=timeout) as r:
+            with open_consented(req, timeout=timeout) as r:
                 return r.read()
         except urllib_error.HTTPError as e:
             if e.code in TRANSIENT_HTTP_CODES and attempt < len(RETRY_BACKOFFS):
