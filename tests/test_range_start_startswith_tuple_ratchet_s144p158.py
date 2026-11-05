@@ -3,7 +3,7 @@
 Neither rule is in ruff.toml's ``select``. The earlier ratchets (RM-1518 for ``range(0, n)``,
 RM-1536 for ``startswith`` / ``endswith`` joined by ``or``) scoped out ``tests/``, ``docs/`` and
 ``agents/daemon_slayer``. Measured 2026-11-05 with ``ruff check --isolated --select PIE808,PIE810``
-(target py39): 49 findings in 38 files, all in test modules and dated docs scripts, plus the one frozen
+(target py39): 49 findings in 38 files (one more stays: a PKG-owned launcher test), all in test modules and dated docs scripts, plus the one frozen
 supervisor row.
 
 - PIE808: ``range(0, n)`` - the start argument defaults to 0, ``range(n)`` is the same sequence.
@@ -33,6 +33,7 @@ _RULES = "PIE808,PIE810"
 # file -> finding count that stays because another owner holds the file. Only shrinks.
 _BASELINE: dict[str, int] = {
     "ops/rc_supervisor.py": 1,  # FROZEN (ASKS 24): the baseline row stays until the operator approves an edit
+    "tests/test_launcher_key_read_rm810.py": 1,  # blocked: main session owns the launcher tests (PKG)
 }
 _FIXED = (
     "tests/test_pickban_systems_p1l2.py",

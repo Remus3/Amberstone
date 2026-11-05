@@ -84,7 +84,6 @@ _FIXED = (
     "tests/test_inbox_responder_runner.py",
     "tests/test_install_bat_embedded_pins_rm764.py",
     "tests/test_install_bat_key_stage_rm779.py",
-    "tests/test_launcher_key_read_rm810.py",
     "tests/test_p2w4_hw2_h.py",
     "tests/test_repo_walk.py",
     "tests/test_routes_metrics_riot_cache.py",
@@ -96,6 +95,7 @@ _FIXED = (
 _BASELINE = {
     "ops/rc_supervisor.py": 1,
     "tests/test_launcher_first_run.py": 1,
+    "tests/test_launcher_key_read_rm810.py": 1,
     "tools/build_portable.py": 1,
 }
 
