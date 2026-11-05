@@ -74,11 +74,12 @@ at the first rotator run), RM-1272 (not started); operator's "Yes, all" covers t
 RC-OWES d: `gh api` alerts route denied in the drive, push line reads alert 144, package unread; done 2, 3, 8, 11, 6 code half; 1 + 4 went into ORDER 1233; 7 = MAIN writes the
 700 USD ceiling from FLEET-5a. RM-1273 CLAUDE.md at 92 percent of its budget (drift_guard, a /done breach).
 Next action 8 (CI read owed, LEDGER 2024): read the next scheduled nightly for test_focused_option_draws_the_inset_system_ring on a sha at or past 63e7c76cd and name the sha; 63e7c76cd was unpushed at this write, so no nightly carries it before the next push.
+Next action 9 (s150 landing, LEDGER 2025-2030): ds and repo HELD on suite reds, 26 lane commits at the 21:49:10 snapshot, ids RM-1339..-1343 and RM-1346..-1363 reserved. They land with the 3 merger folds named in LEDGER 2030 before the gated suite; lane reports use S144-* ids. Fold a fake-key pragma when the credential dry run halts, before the suite. Land first, a ds lane with nothing landed idles at cost.
 FIRST: CPU / memory glance; the rotator (IN-FLIGHT); inbox_tick.py --pending; gh pr list; git fetch +
 origin/main still an ancestor of main; the RC-InboxResponder agreement expires 2026-12-01 00:00 (read
 back s147 from ops/runtime/inbox_responder_agreement.json; renew before then).
 
-IN-FLIGHT: nothing. The s149 verifier ended before this write, so --bg counts 0; the CI runs above are remote.
+IN-FLIGHT: the s144 rotator, pythonw pid 6176, launched 2026-11-04 20:11:32 under the s150 order (the REBOOT HOLD lines below are history for it: S144_LANES_STOP was gone at the launch).
 C1 (ORDER 1547, LEDGER 2013) INDEPENDENTLY VERIFIED: a read-only verifier confirmed the inbox agent's claims, 9 of 9
 (its report, via main). Re-read at /done: note sha256 1034993fcd9fcad9... equal in the inbox, MAIN's outbox and the
 blob at ae4109b; open rows 1547 + 2215; v28 = MAIN's outbox note 2026-11-01-0825 (ALL-SEVEN), not in RC's inbox, and
