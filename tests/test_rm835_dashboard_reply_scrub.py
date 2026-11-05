@@ -287,12 +287,12 @@ def test_statcheck_lookup_miss_detail_carries_no_exception_text(
         exc_type, statcheck, monkeypatch, cap):
     status, raw, payload = _drive_statcheck(statcheck, monkeypatch, exc_type,
                                             "RM835MARKA")
-    # The fail-soft contract: 200, ok=false, the same four keys.
+    # The fail-soft contract: 200, ok=false, three fixed keys. RM-1370
+    # dropped the `champion` echo and the name from `error`.
     assert status == 200, payload
-    assert set(payload) == {"ok", "error", "champion", "detail"}, payload
+    assert set(payload) == {"ok", "error", "detail"}, payload
     assert payload["ok"] is False
-    assert payload["error"] == "unknown champion: Caitlyn"
-    assert payload["champion"] == "Caitlyn"
+    assert payload["error"] == "unknown champion"
     assert "see logs" in payload["detail"], payload["detail"]
     _assert_clean(raw, payload, "RM835MARKA")
     _assert_logged(cap, "RM835MARKA", exc_type.__name__, level=logging.INFO)

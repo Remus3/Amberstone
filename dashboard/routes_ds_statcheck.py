@@ -311,13 +311,16 @@ def _serve_ds_statcheck(handler: Any) -> None:
             # unknown champion name (engine lookup miss) - fail soft, not 503.
             # RM-835: `detail` was str(exc)[:120] and nothing was logged; it
             # is a fixed line now and the cause goes to the log, scrubbed.
+            # RM-1370: `error` interpolated, and a `champion` field echoed,
+            # the raw unclipped query value. Both are gone: the error is a
+            # fixed line, and there is no resolved name to give on a miss
+            # (the panel reads only `ok` here).
             log.info("api/ds-statcheck lookup miss: %s: %s",
                      type(exc).__name__, scrub_log(str(exc)))
             _send(
                 handler,
                 200,
-                {"ok": False, "error": f"unknown champion: {champion}",
-                 "champion": champion,
+                {"ok": False, "error": "unknown champion",
                  "detail": "engine lookup failed - see logs"},
             )
             return
