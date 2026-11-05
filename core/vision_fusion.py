@@ -3,7 +3,7 @@
 
 Merges Live-Client :2999 exact state (high trust) with vision/OCR reads
 (confidence-weighted) into one best-effort game-state estimate, per
-docs/NO_LLM_PRECOMPUTE_PLAN.md:159-163 ("Fuse Live Client API (high trust) +
+docs/NO_LLM_PRECOMPUTE_PLAN.md ("Fuse Live Client API (high trust) +
 CV reads (confidence-weighted) into a single ... partial-read layer";
 "Confidence thresholds for the fusion layer - when to trust CV over a stale
 API read"). This is the DISTINCT general HUD-STATE partial-read fusion;

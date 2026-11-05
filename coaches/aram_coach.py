@@ -46,7 +46,7 @@ from core.mayhem_detect import is_mayhem
 logger = logging.getLogger("rc.coaches.aram")
 _APP_DIR = Path(__file__).parent.parent
 
-# -- Same-state Haiku-skip debounce (BACKLOG.md:59) ----------------------------
+# -- Same-state Haiku-skip debounce (LEDGER item 506) --------------------------
 # DEFAULT-OFF, fidelity-gated. When OFF (default) behavior is byte-identical to
 # the always-call-Haiku path. When ON (RC_ARAM_STATE_DEBOUNCE=1), the coach
 # computes a COARSE signature of only the coaching-relevant snapshot fields

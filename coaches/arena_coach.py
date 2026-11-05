@@ -49,7 +49,7 @@ _APP_DIR = Path(__file__).parent.parent
 if str(_APP_DIR) not in sys.path:
     sys.path.insert(0, str(_APP_DIR))
 
-# -- Same-state Haiku-skip debounce (BACKLOG.md:59) ----------------------------
+# -- Same-state Haiku-skip debounce (LEDGER item 507) --------------------------
 # Arena sibling of the ARAM seam (aram_coach.py). DEFAULT-OFF, fidelity-gated.
 # When OFF (default) behavior is byte-identical to the always-call-Haiku path.
 # When ON (RC_ARENA_STATE_DEBOUNCE=1), _run_coach computes a COARSE signature of

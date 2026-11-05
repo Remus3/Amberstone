@@ -629,7 +629,8 @@ def source() -> str:
       * provenance and freshness are different questions and want different
         fields. `health()` answers freshness - `degraded`, `age_s`,
         `stale_for_s`, `last_refresh_ok`, `failed_refreshes`;
-      * the fence in BACKLOG.md:126 gave a reason that is FALSE at HEAD (it
+      * the fence the RM-295a BACKLOG row records gave a reason that is
+        FALSE at HEAD (it
         claimed the duo-synergy route and a UI badge read these values; the
         route has zero `source()` calls and no such badge exists). That kills
         the reason, not the fence - and the fence was only ever crossed

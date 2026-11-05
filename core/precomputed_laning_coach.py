@@ -56,7 +56,8 @@ SOURCE_TAG: str = "ds-precompute"
 # IS the recommendation (A); B is the safer alternative. Economy may override B
 # with a recall directive (see _build_choices).
 #
-# RC2 WS1 step 1 (2026-06-20, ops/audit/HZ_HAIKU_CALL_INVENTORY.md:49-108):
+# RC2 WS1 step 1 (2026-06-20, the "UPDATE 2026-06-19 (run 2026-06-19-01)"
+# section of ops/audit/HZ_HAIKU_CALL_INVENTORY.md):
 # added the "hold" band + relabeled the dominant "even" A-chip so it buckets as
 # "hold" in tools/hz_shadow_report.classify_verdict (the +57-tick agreement win,
 # 39% -> ~53%). That classifier matches A-label TEXT by ordered phrase (first
@@ -279,7 +280,8 @@ def laning_band(cell: dict) -> str:
     one of ``all_in`` / ``trade`` / ``even`` / ``hold`` / ``back_off`` - NO
     engine call, NO table re-sweep. It adds the ``hold`` band (the mild-negative
     swing zone that the engine's binary _classify collapsed into ``back_off``,
-    the back_off-bias measured in HZ_HAIKU_CALL_INVENTORY.md:92-95).
+    the back_off-bias measured in the "Root cause (confusion matrix" bullet
+    of HZ_HAIKU_CALL_INVENTORY.md).
 
     Precedence (first match wins, mirrors agents.daemon_slayer.matchup._classify
     for the shared bands): enemy fully removed and I survive -> all_in; I am the

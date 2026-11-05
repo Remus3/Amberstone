@@ -2,7 +2,8 @@
 """RM-108 - detect unresolved template tokens in the vendored JSON feeds.
 
 WHAT THE HARM ACTUALLY IS (measured 2026-07-19, and it is NOT what the
-ROADMAP entry assumes). ROADMAP.md:305 frames the risk as "a naive parser
+ROADMAP entry assumes; LEDGER item 966 records the premise measured
+false). That entry framed the risk as "a naive parser
 reads 0.0 and ships it silently". A full walk of the three vendored roots
 found 56,896 token occurrences across 874 files, and EVERY one lands in a
 display-prose key - ``desc`` / ``tooltip`` / ``longDesc`` / ``description`` /
