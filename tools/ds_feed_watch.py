@@ -62,6 +62,7 @@ for _p in (_TOOLS, _TOOLS.parent):
 
 from core.polled_json import atomic_write_bytes  # noqa: E402
 from ds_feed_index import _DATA, body_md5, live_patch  # noqa: E402
+from lib.wiki_consent import open_consented  # noqa: E402
 
 # The pre-existing manifest key written by tools/daemon_slayer_extract.py is
 # found by its suffix, so this file never spells the external source's name
@@ -112,20 +113,19 @@ class UrllibHttp:
 
     def head(self, url: str) -> int:
         import urllib.error
-        import urllib.request
         try:
-            with urllib.request.urlopen(self._req(url, "HEAD"),
-                                        timeout=TIMEOUT_S) as r:
+            # A wiki url, or a redirect INTO the wiki host, raises
+            # WikiFetchRefused unless a consent record exists (RM-1508 /
+            # RM-1441); the callers report it as a missing status.
+            with open_consented(self._req(url, "HEAD"), timeout=TIMEOUT_S) as r:
                 return int(r.status)
         except urllib.error.HTTPError as e:
             return int(e.code)
 
     def get(self, url: str):
         import urllib.error
-        import urllib.request
         try:
-            with urllib.request.urlopen(self._req(url, "GET"),
-                                        timeout=TIMEOUT_S) as r:
+            with open_consented(self._req(url, "GET"), timeout=TIMEOUT_S) as r:
                 return int(r.status), r.read()
         except urllib.error.HTTPError as e:
             return int(e.code), b""
