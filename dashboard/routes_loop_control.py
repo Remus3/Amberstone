@@ -700,8 +700,11 @@ def _handle_arm(body: dict) -> tuple[int, dict]:
     # body; otherwise it is read from the same fields the confirm will carry.
     target = (str(body["target"]).strip() if body.get("target") is not None
               else armgate.target_of(target_action, body))
-    rec = armgate.arm(target_action, target)
+    # Read the window ONCE and hand it to arm(): window_s() is read at call
+    # time, so a second read could advertise a window the record did not use
+    # (RM-1373).
     window = armgate.window_s()
+    rec = armgate.arm(target_action, target, window)
     return 200, {
         "ok": True, "action": "arm", "state": _state(),
         "target_action": target_action, "target": target,
