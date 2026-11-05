@@ -27,20 +27,51 @@ DATA (all already present, Meraki/DDragon)
 
 FAIL-SOFT
     Every path swallows exceptions and degrades to a STAY verdict; it never
-    raises. A team with < 3 resolvable champs returns ok=False so the caller
-    may fall back to its Haiku path for the degenerate case.
+    raises. A team with < 3 RESOLVABLE champs (not merely < 3 names) returns
+    ok=False so the caller may fall back to its Haiku path for the degenerate
+    case.
+
+TRUST BOUNDARY (lane 8 s144 cycle 117)
+    comp_verdict's ``state`` is the POST /api/aram-comp-verdict body verbatim
+    (dashboard/routes_coach.py), so every list is read only when it is a real
+    list / tuple, entries only when they are strings no longer than
+    _MAX_NAME, and the team / bench / variant lists are capped. champions.json
+    and current.txt are read fail-soft: a junk shape, a BOM, a path-segment
+    patch token or a transient read failure never raises, and a failed load is
+    NOT cached (core/failed_load_gate.py backoff, warned once per streak).
 """
 from __future__ import annotations
 
 import json
 import logging
+import math
+import threading
 from pathlib import Path
 from typing import Optional
+
+from core.failed_load_gate import FailedLoadGate
 
 logger = logging.getLogger("rc.core.aram_comp_verdict")
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 _DS_DATA_DIR = _PROJECT_ROOT / "data" / "daemon_slayer"
+
+# A current.txt token holding any of these would leave the DS data dir.
+_PATCH_FORBIDDEN = ("/", "\\", ":", "..")
+
+# Request-body bounds. An ARAM team is 5 and the bench at most 10; the caps
+# leave room for that and stop a hostile body from buying unbounded lookups
+# (the bench search re-scores a trial team per candidate). The longest
+# champion display name is 14 characters ("Nunu & Willump").
+_MAX_TEAM = 10
+_MAX_BENCH = 20
+_MAX_VARIANTS = 20
+_MAX_NAME = 64
+_MAX_LABEL = 48
+_LIST_KINDS = (list, tuple)
+# compute_factors is also called with sets by internal callers; order is
+# irrelevant to a count.
+_TEAM_KINDS = (list, tuple, set, frozenset)
 
 # attackrange >= this is "ranged" for the range-mix factor. 500 is the standard
 # ranged-carry threshold; the 8 mid-range casters (Karthus/Vladimir/Thresh/...)
@@ -72,7 +103,21 @@ _AD_VARIANT_KW = ("ad", "on-hit", "on hit", "onhit", "crit", "lethality",
 _SUSTAIN_VARIANT_KW = ("sustain", "lifesteal", "life steal", "heal", "drain",
                        "omnivamp", "vamp", "bruiser")
 
+_ENGAGE_NORM = frozenset("".join(ch for ch in e.lower() if ch.isalnum())
+                         for e in _ENGAGE)
+_SUSTAIN_NORM = frozenset("".join(ch for ch in s.lower() if ch.isalnum())
+                          for s in _SUSTAIN)
+
+# Champion index. Published whole under _lock (a concurrent caller never sees
+# a half-built index) and cached only on success: a failed load returns {}
+# and _GATE keeps the loader off the disk for its backoff window.
+_lock = threading.Lock()
+_GATE = FailedLoadGate()
 _champ_index: dict[str, dict] = {}
+# norm(DDragon id / data key) -> champion, only for ids that differ from every
+# display name ("MonkeyKing" -> Wukong, "Nunu", "Renata"). Kept apart from
+# _champ_index so its values stay one entry per champion.
+_alias_index: dict[str, dict] = {}
 _index_loaded = False
 
 
@@ -81,60 +126,150 @@ def _norm(name: object) -> str:
     return "".join(ch for ch in str(name).lower() if ch.isalnum())
 
 
+def _reset_cache() -> None:
+    """Test seam: drop the cached index and the failure backoff."""
+    global _champ_index, _alias_index, _index_loaded
+    with _lock:
+        _champ_index = {}
+        _alias_index = {}
+        _index_loaded = False
+        _GATE.reset()
+
+
 def _resolve_patch() -> Optional[str]:
+    """The current DS patch token, or None.
+
+    utf-8-sig: a PowerShell 5.1 ``-Encoding UTF8`` write leaves a BOM that a
+    plain utf-8 read keeps inside the token, so champions.json went "missing".
+    A token carrying a path separator, a drive colon or ``..`` is refused: it
+    would read a champions.json outside the DS data dir.
+    """
     try:
-        return _DS_DATA_DIR.joinpath("current.txt").read_text(encoding="utf-8").strip() or None
+        patch = _DS_DATA_DIR.joinpath("current.txt").read_text(
+            encoding="utf-8-sig").strip()
     # RM-291A: UnicodeDecodeError is a ValueError, not an OSError.
     except (OSError, UnicodeDecodeError):
         return None
+    if not patch or any(bad in patch for bad in _PATCH_FORBIDDEN):
+        return None
+    return patch
+
+
+def _read_champions(path: Path) -> dict:
+    """champions.json ['data'] as a dict; raises ValueError on a junk shape."""
+    doc = json.loads(path.read_text(encoding="utf-8-sig"))
+    data = doc.get("data") if isinstance(doc, dict) else None
+    if not isinstance(data, dict):
+        raise ValueError("champions.json carries no 'data' object")
+    return data
+
+
+def _build_index(data: dict) -> tuple[dict, dict]:
+    names: dict[str, dict] = {}
+    for champ in data.values():
+        if isinstance(champ, dict):
+            name = champ.get("name")
+            key = _norm(name) if isinstance(name, str) else ""
+            if key:
+                names.setdefault(key, champ)
+    aliases: dict[str, dict] = {}
+    for data_key, champ in data.items():
+        if not isinstance(champ, dict) or not isinstance(champ.get("name"), str):
+            continue
+        for form in (data_key, champ.get("id")):
+            key = _norm(form) if isinstance(form, str) else ""
+            # A display name always wins over a colliding id.
+            if key and key not in names:
+                aliases.setdefault(key, champ)
+    return names, aliases
 
 
 def _load_index() -> dict[str, dict]:
-    """norm(name) -> champion dict. Memoised; {} fail-soft.
+    """norm(name) -> champion dict. Cached on success; {} fail-soft.
 
     Indexes by the DISPLAY name field (c['name']) not the data key, because the
     caller passes display names ("Lee Sin", "Dr. Mundo"), while the JSON key is
-    the DDragon id ("LeeSin", "DrMundo").
+    the DDragon id ("LeeSin", "DrMundo"); ids that differ from every name are
+    resolved through _alias_index by _lookup.
     """
-    global _index_loaded
+    global _champ_index, _alias_index, _index_loaded
     if _index_loaded:
         return _champ_index
-    _index_loaded = True
-    patch = _resolve_patch()
-    if not patch:
-        return _champ_index
-    path = _DS_DATA_DIR / patch / "champions.json"
-    try:
-        data = json.loads(path.read_text(encoding="utf-8")).get("data") or {}
-    except (OSError, ValueError):
-        return _champ_index
-    for champ in data.values():
-        if isinstance(champ, dict) and champ.get("name"):
-            _champ_index[_norm(champ["name"])] = champ
-    return _champ_index
+    with _lock:
+        if _index_loaded:
+            return _champ_index
+        if not _GATE.should_attempt():
+            return {}
+        try:
+            patch = _resolve_patch()
+            if not patch:
+                raise ValueError("current.txt missing, empty, unreadable or refused")
+            names, aliases = _build_index(
+                _read_champions(_DS_DATA_DIR / patch / "champions.json"))
+            if not names:
+                raise ValueError("champions.json names no champion")
+        # RecursionError: json.loads on a too-deep document.
+        except (OSError, ValueError, RecursionError) as exc:
+            if _GATE.record_failure():
+                logger.warning("aram_comp_verdict: champion index load failed "
+                               "(%s): %s", type(exc).__name__, exc)
+            return {}
+        _GATE.record_success()
+        _champ_index, _alias_index = names, aliases
+        _index_loaded = True
+        return names
+
+
+def _clean_name(name: object) -> str:
+    """A stripped champion-name string, or "" for a non-str / over-long one."""
+    if not isinstance(name, str):
+        return ""
+    name = name.strip()
+    return name if len(name) <= _MAX_NAME else ""
 
 
 def _lookup(name: object) -> Optional[dict]:
-    return _load_index().get(_norm(name)) if name else None
+    key = _norm(_clean_name(name))
+    if not key:
+        return None
+    return _load_index().get(key) or _alias_index.get(key)
+
+
+def _num(value: object) -> Optional[float]:
+    """A finite float, or None (bool, junk, NaN and inf are not numbers)."""
+    if isinstance(value, bool):
+        return None
+    try:
+        out = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return out if math.isfinite(out) else None
 
 
 def _stat_range(champ: dict) -> float:
     stats = champ.get("stats") if isinstance(champ, dict) else None
-    try:
-        return float((stats or {}).get("attackrange") or 0.0)
-    except (TypeError, ValueError):
+    if not isinstance(stats, dict):
         return 0.0
+    rng = _num(stats.get("attackrange"))
+    return rng if rng is not None and rng > 0.0 else 0.0
 
 
 def _damage_lean(champ: dict) -> str:
-    """'ad' | 'ap' | 'hybrid' from DDragon's info.attack vs info.magic."""
+    """'ad' | 'ap' | 'hybrid' from DDragon's info.attack vs info.magic.
+
+    A missing rating reads 0; a present but junk or non-finite one makes the
+    lean undecidable, so 'hybrid'."""
     info = champ.get("info") if isinstance(champ, dict) else None
-    info = info or {}
-    try:
-        a = float(info.get("attack") or 0.0)
-        m = float(info.get("magic") or 0.0)
-    except (TypeError, ValueError):
+    if not isinstance(info, dict):
         return "hybrid"
+    ratings = []
+    for field in ("attack", "magic"):
+        raw = info.get(field)
+        val = 0.0 if raw is None else _num(raw)
+        if val is None:
+            return "hybrid"
+        ratings.append(val)
+    a, m = ratings
     if a > m:
         return "ad"
     if m > a:
@@ -144,25 +279,45 @@ def _damage_lean(champ: dict) -> str:
 
 def _is_frontline(champ: dict) -> bool:
     tags = champ.get("tags") if isinstance(champ, dict) else None
-    tags = tags or []
+    if not isinstance(tags, _LIST_KINDS):
+        return False  # a str would match "Tank" as a substring
     if "Tank" in tags:
         return True
     return "Fighter" in tags and _stat_range(champ) < RANGED_MIN_RANGE
+
+
+def _names(seq: object, kinds: tuple = _LIST_KINDS,
+           cap: Optional[int] = None) -> list:
+    """Cleaned non-empty name strings from a real list (a str, a dict or any
+    other junk reads as empty), optionally capped."""
+    if not isinstance(seq, kinds):
+        return []
+    out = []
+    for raw in seq:
+        name = _clean_name(raw)
+        if name:
+            out.append(name)
+            if cap is not None and len(out) >= cap:
+                break
+    return out
 
 
 def compute_factors(team: list) -> dict:
     """Comp-balance facts over a list of champion display names.
 
     Unknown names are skipped (not counted), so a partially-resolved team still
-    yields honest counts over what resolved.
+    yields honest counts over what resolved. A DDragon id ("MonkeyKing")
+    resolves too. Anything but a list / tuple / set of strings reads as empty.
     """
-    champs = [c for c in (_lookup(n) for n in (team or [])) if c]
+    resolved = [(n, _lookup(n)) for n in _names(team, _TEAM_KINDS)]
+    champs = [c for _, c in resolved if c]
     leans = [_damage_lean(c) for c in champs]
     ad = sum(1 for l in leans if l == "ad")
     ap = sum(1 for l in leans if l == "ap")
     hybrid = sum(1 for l in leans if l == "hybrid")
     ranged = sum(1 for c in champs if _stat_range(c) >= RANGED_MIN_RANGE)
-    names_norm = {_norm(n) for n in (team or []) if n}
+    # Curated sets match the resolved DISPLAY name, so an id alias counts.
+    names_norm = {_norm(c.get("name")) if c else _norm(n) for n, c in resolved}
     return {
         "n": len(champs),
         "ranged_count": ranged,
@@ -171,8 +326,8 @@ def compute_factors(team: list) -> dict:
         "ap_count": ap,
         "hybrid_count": hybrid,
         "frontline_count": sum(1 for c in champs if _is_frontline(c)),
-        "engage_count": sum(1 for e in _ENGAGE if _norm(e) in names_norm),
-        "sustain_count": sum(1 for s in _SUSTAIN if _norm(s) in names_norm),
+        "engage_count": len(_ENGAGE_NORM & names_norm),
+        "sustain_count": len(_SUSTAIN_NORM & names_norm),
     }
 
 
@@ -224,10 +379,11 @@ def _bench_addresses(champ_name: str, gap: str, detail, f: dict) -> bool:
         return _damage_lean(c) == detail
     if gap == "frontline":
         return _is_frontline(c)
+    # The resolved display name, so a bench id alias still matches.
     if gap == "engage":
-        return _norm(champ_name) in {_norm(e) for e in _ENGAGE}
+        return _norm(c.get("name")) in _ENGAGE_NORM
     if gap == "sustain":
-        return _norm(champ_name) in {_norm(s) for s in _SUSTAIN}
+        return _norm(c.get("name")) in _SUSTAIN_NORM
     return False
 
 
@@ -326,8 +482,31 @@ def _key_phrase(key: str) -> str:
 
 
 def _variant_addresses(variant: dict, keywords: tuple) -> bool:
-    text = " ".join(str(variant.get(k) or "") for k in ("key", "label", "summary")).lower()
+    text = " ".join(str(variant.get(k) or "")[:256]
+                    for k in ("key", "label", "summary")).lower()
     return any(kw in text for kw in keywords)
+
+
+def _variant_label(variant: dict) -> str:
+    """The label echoed into a reason: a bounded string, else the key."""
+    label = variant.get("label")
+    label = label.strip() if isinstance(label, str) else ""
+    if not label:
+        return variant["key"]
+    return label if len(label) <= _MAX_LABEL else label[:_MAX_LABEL - 3] + "..."
+
+
+def _variants(raw: object) -> list:
+    """Variant dicts with a bounded non-empty str key; junk reads as none."""
+    if not isinstance(raw, _LIST_KINDS):
+        return []
+    out = []
+    for v in raw:
+        if isinstance(v, dict) and _clean_name(v.get("key")):
+            out.append({**v, "key": v["key"].strip()})
+            if len(out) >= _MAX_VARIANTS:
+                break
+    return out
 
 
 def _find_variant(variants: list, current: str, keywords: tuple) -> Optional[dict]:
@@ -373,16 +552,19 @@ def comp_verdict(state: dict) -> dict:
     try:
         if not isinstance(state, dict):
             return _stay_unknown()
-        team = [str(c).strip() for c in (state.get("my_team") or []) if c and str(c).strip()]
+        # state is the POST body verbatim: real lists of bounded strings only.
+        team = _names(state.get("my_team"), cap=_MAX_TEAM)
         if len(team) < 3:
             return _stay_unknown()
-        my_champ = str(state.get("my_champion") or "").strip()
-        bench = [str(c).strip() for c in (state.get("bench") or []) if c and str(c).strip()]
-        variants = [v for v in (state.get("variants") or [])
-                    if isinstance(v, dict) and v.get("key")]
-        current_variant = str(state.get("current_variant") or "").strip()
+        my_champ = _clean_name(state.get("my_champion"))
+        bench = _names(state.get("bench"), cap=_MAX_BENCH)
+        variants = _variants(state.get("variants"))
+        current_variant = _clean_name(state.get("current_variant"))
 
         f = compute_factors(team)
+        if f["n"] < 3:
+            # Docstring contract: judged only over >= 3 RESOLVABLE champs.
+            return _stay_unknown()
         gaps = _ordered_gaps(f)
         before = _gap_keys(gaps)
         if not gaps:
@@ -401,14 +583,14 @@ def comp_verdict(state: dict) -> dict:
                     # is its opposite. Label the comp by the excess it has, not
                     # the type it lacks (LGS2/OQ22 inverted-label fix).
                     excess = "AD" if detail == "ap" else "AP"
-                    reason = (f"All-{excess} comp - the {v.get('label') or v['key']} "
+                    reason = (f"All-{excess} comp - the {_variant_label(v)} "
                               f"variant adds {'magic' if detail == 'ap' else 'physical'} damage.")
                     return _result(True, "variant", "", v["key"], reason, "medium",
                                    f, before)
             if gap == "sustain":
                 v = _find_variant(variants, current_variant, _SUSTAIN_VARIANT_KW)
                 if v:
-                    reason = (f"Comp lacks sustain - the {v.get('label') or v['key']} "
+                    reason = (f"Comp lacks sustain - the {_variant_label(v)} "
                               f"variant adds healing/lifesteal.")
                     return _result(True, "variant", "", v["key"], reason, "medium",
                                    f, before)
@@ -431,7 +613,9 @@ def comp_verdict(state: dict) -> dict:
         return _result(True, "stay", "", "", reason, "low", f, before,
                        None, rejected_caveat)
     except Exception as exc:  # never raise into the coach path  # noqa: BLE001
-        logger.debug("comp_verdict failed: %s", exc)
+        # WARNING, not DEBUG: with the inputs validated above this backstop is
+        # a real bug, and a DEBUG line never reaches logs/.
+        logger.warning("comp_verdict failed (%s): %s", type(exc).__name__, exc)
         return _stay_unknown()
 
 
