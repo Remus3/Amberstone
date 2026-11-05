@@ -81,8 +81,9 @@ RM-1549, RM-1550, RM-1551, RM-1554 and RM-1555, landed with no row here:
     transition colour and border colour; settled only because its opener
     adds the sheet.
   - test_ops_page_state_text_contrast: flips data-theme in-page on
-    /ops.html; nothing it reads transitions even with its sheet removed,
-    so the sheet it adds is not needed.
+    /ops.html; nothing it reads transitioned with its sheet removed
+    (measured once, not pinned: its pin runs with the opener's sheet), so
+    the sheet it adds is belt and braces today.
   - test_zone_pill_contrast: boot-stamped (?theme=), never swaps in-page,
     no sheet; it re-classes the zone pill through its four states and reads
     colour and background. No transition runs on a re-class; ENEMY ZONE and
@@ -769,6 +770,7 @@ _ZONE_RECLASS = """
   }
   const skip = new Set(['offset', 'computedOffset', 'easing', 'composite']);
   const out = {};
+  const prev = [p.className, b.textContent];
   for (const [key, [text, cls]] of Object.entries(labels)) {
     p.className = cls;
     b.textContent = text;
@@ -790,6 +792,9 @@ _ZONE_RECLASS = """
     }
     out[key] = rows;
   }
+  // Back to the boot state, so the boot / swap sweeps after this see it.
+  [p.className, b.textContent] = prev;
+  getComputedStyle(p).backgroundColor;
   return out;
 }
 """
@@ -804,31 +809,37 @@ def test_zone_pill_reads_are_settled(mock_server, pw_browser, theme):
     from tests.snapshot_panels.test_zone_pill_contrast import _open as _zone_open
 
     ctx, page, _errors = _zone_open(pw_browser, mock_server, theme)
+    booted = "document.documentElement.dataset.theme || 'hextech'"
     try:
-        assert page.evaluate(
-            "document.documentElement.dataset.theme || 'hextech'"
-        ) == theme, f"zone pill: booted on the wrong theme, not {theme}"
+        assert page.evaluate(booted) == theme, (
+            f"zone pill: booted on the wrong theme, not {theme}"
+        )
+        # The re-class first, on the booted theme: _check ends by removing
+        # data-theme, so a re-class after it would run on hextech only.
+        got = page.evaluate(_ZONE_RECLASS, _LABELS)
+        assert page.evaluate(booted) == theme, (
+            f"zone pill: the re-class ran off the booted theme {theme}"
+        )
+        assert sorted(got) == sorted(_LABELS), got
+        # No transition on any re-class, and every animation leaves the read
+        # properties (colour, background) alone.
+        bad = [(k, r) for k, rows in got.items() for r in rows
+               if r["kind"] == "transition" or r["props"] != ["boxShadow"]]
+        assert not bad, (
+            f"{theme}: a zone pill re-class read would straddle a transition"
+            f" or a colour animation (add the transitions-off sheet): {bad}"
+        )
+        # The detector is not blind: the box-shadow pulse it tolerates is seen.
+        pulsing = sorted(k for k, rows in got.items()
+                         if any(r["name"] == "zoneWarn" for r in rows))
+        assert pulsing == ["deep", "enemy"], (
+            f"{theme}: the zoneWarn pulse moved - re-audit"
+            f" test_zone_pill_contrast and update the verdict: {got}"
+        )
         _check(page, _ZONE_SEL, False, f"zone pill/{theme}", themes=[theme])
         _check(page, _ZONE_SEL, False, f"zone pill/{theme} swaps")
-        got = page.evaluate(_ZONE_RECLASS, _LABELS)
     finally:
         _close(ctx, page)
-    assert sorted(got) == sorted(_LABELS), got
-    # No transition on any re-class, and every animation leaves the read
-    # properties (colour, background) alone.
-    bad = [(k, r) for k, rows in got.items() for r in rows
-           if r["kind"] == "transition" or r["props"] != ["boxShadow"]]
-    assert not bad, (
-        f"{theme}: a zone pill re-class read would straddle a transition or"
-        f" a colour animation (add the transitions-off sheet): {bad}"
-    )
-    # The detector is not blind: the box-shadow pulse it tolerates is seen.
-    pulsing = sorted(k for k, rows in got.items()
-                     if any(r["name"] == "zoneWarn" for r in rows))
-    assert pulsing == ["deep", "enemy"], (
-        f"{theme}: the zoneWarn pulse moved - re-audit test_zone_pill_contrast"
-        f" and update the verdict: {got}"
-    )
 
 
 def test_positive_control_detects_a_real_transition(mock_server, pw_browser):
