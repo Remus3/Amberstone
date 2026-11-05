@@ -91,7 +91,7 @@ mis-classed BENIGN - the helper swallowing the failure was one call away.
   core/personal_build_wr.py:60 | _item_meta | DEFECT-FIXED | gate (was silent)
   core/pickban_targets.py:73 | load_pickban_targets | DEFECT-FIXED | OSError under unchanged mtime no longer cached
   core/rank_tier_bench.py:200 | _refresh_now | BENIGN | keeps the prior grid; TTL retry
-  core/rank_tier_source.py:345 | fetch_rows | BENIGN | negative cache expires
+  core/rank_tier_source.py:371 | fetch_rows | BENIGN | negative cache expires
   core/replay_history.py:284 | match_detail | DEFECT-FIXED | cached a result built after _load_champ_index swallowed a read failure; per-path gate; RM-450 non-object / empty index is a failure
   core/replay_narrative_shadow.py:37 | log_replay_narrative | NOT-A-LOADER | dedupe signature
   core/riot_api.py:73 | _get_api_key | BENIGN | failures return uncached (not a scan hit)

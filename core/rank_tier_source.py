@@ -65,6 +65,11 @@ from json import JSONDecodeError, loads
 from pathlib import Path
 from typing import Callable, Optional
 
+# Every hop of the fetch, redirects included, asks the wiki consent gate
+# (ruling 51; RM-1441). Bound as a module name so tests fake THIS module's
+# opener only (RM-801), never the shared urllib.request.
+from lib.wiki_consent import WikiFetchRefused, open_consented
+
 _ROOT = Path(__file__).resolve().parent.parent
 # Real config is gitignored; the committed template is the *.example.json.
 _CONFIG_PATH = _ROOT / "config" / "rank_tier_source.json"
@@ -97,6 +102,13 @@ _UNSET = object()
 
 class RankTierSourceError(RuntimeError):
     """Any fetch/parse failure - caught at the fetch_rows boundary."""
+
+
+class RankTierSourceRefused(RankTierSourceError):
+    """The wiki consent gate refused a hop (RM-1441, ruling 51): the
+    configured endpoint, or a redirect target, names the League wiki host and
+    no consent record exists. A RankTierSourceError, so fetch_rows stays
+    fail-soft and negative-caches it like any other failure."""
 
 
 # in-memory caches keyed (tier, mode, config_identity):
@@ -254,7 +266,12 @@ def _http_get_json(url: str, timeout_s: float = _TIMEOUT_S) -> dict:
     which would put a credential in a log by the back door on any Python
     release where urllib decides to quote the URL back at us. The failure's
     TYPE and its redacted message are carried in our own message instead, so
-    nothing diagnosable is lost."""
+    nothing diagnosable is lost.
+
+    Opens through ``lib.wiki_consent.open_consented`` (RM-1441): an
+    endpoint naming the League wiki host, or one answering with a redirect
+    into it, raises RankTierSourceRefused before any wiki socket opens unless
+    a consent record exists. The bare urlopen this replaced followed that 3xx."""
     req = None
     detail = ""
     try:
@@ -274,8 +291,9 @@ def _http_get_json(url: str, timeout_s: float = _TIMEOUT_S) -> dict:
 
     body = None
     detail = ""
+    refused = False
     try:
-        with urllib.request.urlopen(req, timeout=timeout_s) as r:
+        with open_consented(req, timeout=timeout_s) as r:
             if r.status != 200:
                 raise RankTierSourceError(f"{_safe_url(url)} -> HTTP {r.status}")
             # Bounded read: this is untrusted third-party input from an
@@ -295,8 +313,16 @@ def _http_get_json(url: str, timeout_s: float = _TIMEOUT_S) -> dict:
             body = b"".join(chunks)
     except RankTierSourceError:
         raise
+    except WikiFetchRefused as exc:
+        # A RuntimeError, so without this it escaped fetch_rows' fail-soft
+        # boundary (which catches RankTierSourceError / OSError / ValueError).
+        # Raised after the block like the others, so no __context__.
+        refused = True
+        detail = _redact(f"{type(exc).__name__}: {exc}", url)
     except (urllib.error.URLError, OSError, TimeoutError) as exc:
         detail = _redact(f"{type(exc).__name__}: {exc}", url)
+    if refused:
+        raise RankTierSourceRefused(f"{_safe_url(url)} refused: {detail}")
     if body is None:                    # not `not body`: b"" is a valid read
         raise RankTierSourceError(f"{_safe_url(url)} fetch failed: {detail}")
 
