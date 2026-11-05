@@ -13,7 +13,6 @@ from unittest import mock
 
 import pytest
 
-from tests._module_view import bind_urlopen
 from tests._sleep_probe import record_sleeps
 from tools import ddragon_mirror_refresh as ddr
 
@@ -478,6 +477,14 @@ def test_main_keeps_index_on_flip_with_mass_failure(monkeypatch, capsys):
 # ---------------------------------------------------------------------------
 # _http retry-with-backoff (transient errors should not flake the cron)
 
+def _fake_opener(monkeypatch, fake) -> None:
+    """Fake the module's OWN opener name (``open_consented``, RM-1441;
+    ``urlopen`` before). A fake bound to ``urllib.request.urlopen`` would now
+    be inert and let ``_http`` reach the network, so assert the name exists."""
+    assert callable(getattr(ddr, "open_consented", None)), "ddr has no open_consented"
+    monkeypatch.setattr(ddr, "open_consented", fake)
+
+
 def test_http_retries_on_url_error_then_succeeds(monkeypatch):
     import urllib.error as ue
     from io import BytesIO
@@ -496,7 +503,7 @@ def test_http_retries_on_url_error_then_succeeds(monkeypatch):
             raise ue.URLError("timed out")
         return _FakeResp()
 
-    bind_urlopen(monkeypatch, ddr, fake_open)
+    _fake_opener(monkeypatch, fake_open)
 
     # record_sleeps, not a raw setattr on ddr.time: ddr.time IS the global time
     # module, so the patch is process-wide and any other thread's sleep would
@@ -518,7 +525,7 @@ def test_http_gives_up_after_max_retries(monkeypatch):
         calls.append(req.full_url)
         raise ue.URLError("timed out")
 
-    bind_urlopen(monkeypatch, ddr, always_fail)
+    _fake_opener(monkeypatch, always_fail)
 
     with record_sleeps():
         with pytest.raises(ue.URLError):
@@ -543,7 +550,7 @@ def test_http_retries_on_5xx_then_succeeds(monkeypatch):
             raise ue.HTTPError(req.full_url, 503, "down", {}, None)
         return _FakeResp()
 
-    bind_urlopen(monkeypatch, ddr, flaky)
+    _fake_opener(monkeypatch, flaky)
 
     with record_sleeps() as sleeps:
         res = ddr._http("GET", "https://example/asset.png")
@@ -562,7 +569,7 @@ def test_http_does_not_retry_on_404(monkeypatch):
         calls.append(req.full_url)
         raise ue.HTTPError(req.full_url, 404, "gone", {}, None)
 
-    bind_urlopen(monkeypatch, ddr, four_oh_four)
+    _fake_opener(monkeypatch, four_oh_four)
 
     # `sleeps == []` is the most contamination-prone assertion in the file:
     # ANY background thread sleeping during the window would break it.

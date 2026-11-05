@@ -63,6 +63,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from core import polled_json  # noqa: E402
+from lib.wiki_consent import open_consented  # noqa: E402
 
 META_DIR = ROOT / "data" / "meta_build" / "ddragon"
 WEB_DIR = ROOT / "web" / "data" / "ddragon"
@@ -156,7 +157,13 @@ def _http(method: str, url: str, *, headers: dict[str, str] | None = None,
     for attempt in range(len(RETRY_BACKOFFS) + 1):
         req = urllib_request.Request(url, headers=h, method=method)
         try:
-            with urllib_request.urlopen(req, timeout=timeout) as r:
+            # RM-1441: open_consented, not urlopen - the default opener
+            # follows a 3xx, so a Data Dragon url redirecting to the League
+            # wiki host would open a wiki socket with no consent record
+            # (ruling 51). Its WikiFetchRefused is a RuntimeError, not a
+            # URLError, so it is never retried: the versions / bundle pulls
+            # fail loud and an asset worker counts one failed asset.
+            with open_consented(req, timeout=timeout) as r:
                 body = b"" if method == "HEAD" else r.read()
                 return HttpResult(r.status, {k.lower(): v for k, v in r.headers.items()}, body)
         except urllib_error.HTTPError as e:
