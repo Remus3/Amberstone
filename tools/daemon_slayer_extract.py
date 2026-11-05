@@ -90,6 +90,7 @@ from agents.daemon_slayer.mode_variants import (  # noqa: E402
     canonical_champions,
     canonical_items,
 )
+from lib.wiki_consent import WikiFetchRefused, open_consented  # noqa: E402
 
 DATA_ROOT = ROOT / "data" / "daemon_slayer"
 LOG_FILE = ROOT / "logs" / "daemon_slayer_extract.log"
@@ -162,7 +163,9 @@ def _configure_logging() -> None:
 
 def _fetch_text(url: str, timeout: int = 30) -> str:
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
+    # A wiki url, or a redirect INTO the wiki host, raises WikiFetchRefused
+    # unless a consent record exists (RM-1507 / RM-1441).
+    with open_consented(req, timeout=timeout) as r:
         return r.read().decode("utf-8", errors="replace")
 
 
@@ -1415,9 +1418,12 @@ def _fetch_meraki_champion(cid: str) -> dict | None:
             f"{MERAKI_BASE}/{cid}.json",
             headers={"User-Agent": USER_AGENT},
         )
-        with urllib.request.urlopen(req, timeout=10) as r:
+        with open_consented(req, timeout=10) as r:
             return json.loads(r.read())
-    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError) as e:
+    # WikiFetchRefused (a RuntimeError) is a refusal, not a transport error:
+    # this per-champion fetch stays fail-soft on it like on any other miss.
+    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError,
+            WikiFetchRefused) as e:
         log.warning("meraki fetch failed for %s: %s", cid, e)
         return None
 

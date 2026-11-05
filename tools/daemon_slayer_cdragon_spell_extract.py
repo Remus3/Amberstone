@@ -105,6 +105,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from agents.daemon_slayer.mode_variants import canonical_champions  # noqa: E402
+from lib.wiki_consent import WikiFetchRefused, open_consented  # noqa: E402
 
 # CommunityDragon character-bin source. Filename is <slug>.bin.json (the bare
 # <slug>.json 404s). The patch segment is 2-part (16.11, NOT 16.11.1).
@@ -201,7 +202,9 @@ def _fetch(url: str, timeout: int = _HTTP_TIMEOUT) -> str:
     req = urllib.request.Request(
         url, headers={"User-Agent": HEADER_UA, "Accept": "*/*"}
     )
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
+    # A wiki url, or a redirect INTO the wiki host, raises WikiFetchRefused
+    # unless a consent record exists (RM-1507 / RM-1441).
+    with open_consented(req, timeout=timeout) as resp:
         return resp.read().decode("utf-8", "replace")
 
 
@@ -212,6 +215,8 @@ def _fetch_with_retry(url: str, retries: int = _CDRAGON_RETRIES,
     for attempt in range(max(1, retries)):
         try:
             return _fetch(url)
+        except WikiFetchRefused:
+            raise  # a consent refusal is final, never a transient to retry
         except Exception as exc:  # noqa: BLE001 - retry transient CDN 404/5xx
             last = exc
             if attempt + 1 < retries and backoff_s > 0:

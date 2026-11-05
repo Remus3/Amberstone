@@ -125,6 +125,8 @@ if _spell is not None:
 else:  # pragma: no cover - exercised only when the sibling import is unavailable
     import urllib.request
 
+    from lib.wiki_consent import WikiFetchRefused, open_consented
+
     CDRAGON_CHAR_URL = (
         "https://raw.communitydragon.org/{patch}/game/data/characters/"
         "{slug}/{slug}.bin.json"
@@ -139,8 +141,10 @@ else:  # pragma: no cover - exercised only when the sibling import is unavailabl
                 req = urllib.request.Request(
                     url, headers={"User-Agent": _HEADER_UA, "Accept": "*/*"}
                 )
-                with urllib.request.urlopen(req, timeout=40) as resp:
+                with open_consented(req, timeout=40) as resp:
                     return resp.read().decode("utf-8", "replace")
+            except WikiFetchRefused:
+                raise  # a consent refusal is final, never a transient to retry
             except Exception as exc:  # noqa: BLE001 - retry transient CDN 404/5xx
                 last = exc
                 if attempt + 1 < retries and backoff_s > 0:

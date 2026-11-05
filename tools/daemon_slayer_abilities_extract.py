@@ -107,6 +107,11 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from lib.wiki_consent import open_consented  # noqa: E402
+
 DATA_ROOT = ROOT / "data" / "daemon_slayer"
 LOG_FILE = ROOT / "logs" / "daemon_slayer_abilities_extract.log"
 
@@ -284,7 +289,9 @@ _NON_DAMAGE_HINTS = re.compile(
 
 def _fetch_text(url: str, timeout: int = 60) -> str:
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
+    # A wiki url, or a redirect INTO the wiki host, raises WikiFetchRefused
+    # unless a consent record exists (RM-1507 / RM-1441).
+    with open_consented(req, timeout=timeout) as r:
         return r.read().decode("utf-8", errors="replace")
 
 
