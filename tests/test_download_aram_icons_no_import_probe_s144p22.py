@@ -19,9 +19,10 @@ builds the slug from an item NAME. Three defects, fixed together:
    dashboard serves; it now goes through core.polled_json.atomic_write_bytes.
 
 No test touches the network: the import is proved call-free in a CHILD
-process whose ``urllib.request.urlopen`` refuses, and in this process every
-test binds the script's OWN ``urllib.request.urlopen`` (``bind_urlopen``,
-never the process-wide stdlib attribute, RM-801).
+process whose ``urllib.request.urlopen`` and ``lib.wiki_consent.open_consented``
+refuse, and in this process every test fakes the script's OWN
+``open_consented`` name (its one network seam since RM-1441; a module
+attribute, never the process-wide stdlib attribute, RM-801).
 """
 from __future__ import annotations
 
@@ -35,8 +36,6 @@ import subprocess
 import sys
 
 import pytest
-
-from tests._module_view import bind_urlopen
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
@@ -95,6 +94,8 @@ _CHILD_IMPORT = (
     "    raise RuntimeError('test refuses network access')\n"
     "urllib.request.urlopen = refuse\n"
     "sys.path.insert(0, sys.argv[1])\n"
+    "import lib.wiki_consent\n"
+    "lib.wiki_consent.open_consented = refuse\n"
     "import scripts.download_aram_icons\n"
     "print('urlopen calls at import:', len(calls))\n"
 )
@@ -120,10 +121,22 @@ class _Resp:
     def read(self) -> bytes:
         return self._body
 
+    def __enter__(self) -> "_Resp":
+        return self
+
+    def __exit__(self, *exc) -> None:
+        return None
+
+
+def _fake_opener(monkeypatch, mod, fake) -> None:
+    """Fake the script's own ``open_consented`` name (RM-1441 seam)."""
+    assert hasattr(mod, "open_consented")
+    monkeypatch.setattr(mod, "open_consented", fake)
+
 
 @pytest.fixture
 def dai(monkeypatch):
-    """Import the script with its own urlopen refusing by default."""
+    """Import the script with its own opener refusing by default."""
     test_the_module_body_runs_no_download()
     sys.modules.pop(_MOD, None)
     mod = importlib.import_module(_MOD)
@@ -133,8 +146,8 @@ def dai(monkeypatch):
         calls.append(url)
         raise RuntimeError("test refuses network access")
 
-    # Scoped to the script's own urllib.request.urlopen (RM-801).
-    assert bind_urlopen(monkeypatch, mod, refuse) >= 1
+    # Scoped to the script's own open_consented name (RM-801).
+    _fake_opener(monkeypatch, mod, refuse)
     monkeypatch.setattr(mod.time, "sleep", lambda _s: None)
     mod._test_calls = calls
     yield mod
@@ -223,7 +236,7 @@ def test_download_icons_writes_atomically_skips_cached_and_counts_failures(
             raise OSError("synthetic failure")
         return _Resp(b"PNG:" + url.rsplit("/", 1)[-1].encode("ascii"))
 
-    bind_urlopen(monkeypatch, dai, fake)
+    _fake_opener(monkeypatch, dai, fake)
     written: list[pathlib.Path] = []
     real = dai.atomic_write_bytes
 
@@ -279,7 +292,7 @@ def test_main_runs_the_whole_download_on_fake_ddragon(
             return _Resp(b"PNG")
         raise AssertionError(f"unexpected url {url}")
 
-    bind_urlopen(monkeypatch, dai, fake)
+    _fake_opener(monkeypatch, dai, fake)
     assert dai.main() == 0
     assert (out_dir / "jaksho-the-protean.png").read_bytes() == b"PNG"
     text = capsys.readouterr().out

@@ -9,19 +9,25 @@ and web/legacy_index.html `itemSlug` builds the slug from the item NAME, so
 the download is `main()` (RM-1173). Each icon is written through
 core.polled_json.atomic_write_bytes, because the dashboard serves the
 directory while it fills.
+
+Every request (the version list, the item data, each icon) opens through
+lib.wiki_consent.open_consented, so a url that is, or redirects into, the
+League wiki host is refused before its socket opens (ruling 51, RM-1441).
+A refused icon counts as one failed icon; a refused version list or item data
+fetch ends the run with exit 1, like any other fetch failure.
 """
 import json
 import re
 import pathlib
 import sys
 import time
-import urllib.request
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from core.polled_json import atomic_write_bytes  # noqa: E402
+from lib.wiki_consent import open_consented  # noqa: E402
 
 OUT_DIR = ROOT / "data" / "icons" / "aram_items"
 DDRAGON = "https://ddragon.leagueoflegends.com"
@@ -39,7 +45,8 @@ COMMON = [
 
 
 def fetch_json(url: str, timeout: float):
-    return json.loads(urllib.request.urlopen(url, timeout=timeout).read())
+    with open_consented(url, timeout=timeout) as resp:
+        return json.loads(resp.read())
 
 
 def slugify(name: str) -> str:
@@ -96,7 +103,8 @@ def download_icons(aram_items: dict, version: str,
 
         url = f"{DDRAGON}/cdn/{version}/img/item/{img_file}"
         try:
-            data = urllib.request.urlopen(url, timeout=15).read()
+            with open_consented(url, timeout=15) as resp:
+                data = resp.read()
             atomic_write_bytes(out_path, data)
             downloaded += 1
             if downloaded % 25 == 0:
