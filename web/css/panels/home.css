@@ -1036,6 +1036,73 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   .home-actions { grid-template-columns: repeat(3, 1fr); }
 }
 
+/* RM-1431: narrow windows and high zoom (300% of the 1920x920 baseline is
+ * 640 wide, 400% is 480; WCAG 1.4.10 reflows at 320). Below 720px the
+ * 1200px block above still ran the document sideways: the RECENT / THIS
+ * WEEK rows' fixed desktop columns held .home-body at 613px (scrollWidth 662
+ * at 640 / 480 / 320), the 3-up launcher needed 426px at 320, and the
+ * hero's two columns squeezed the greeting and Find Match column to 13px.
+ * Here every Home row folds inside its own card instead. 1920x920 and the
+ * 923x1280 companion never reach this block. Guard:
+ * tests/snapshot_panels/test_home_narrow_reflow.py. */
+@media (max-width: 720px) {
+  .home-overlay {
+    margin: var(--space-2) var(--space-2) 0;
+    padding: var(--panel-padding-comp) var(--space-3);
+  }
+  /* Hero: one column; the stat chips drop under the greeting and CTA. */
+  .home-hero {
+    grid-template-columns: minmax(0, 1fr);
+    padding: var(--panel-padding-comp);
+  }
+  .home-hero-chips {
+    grid-column: 1;
+    grid-row: auto;
+    flex-direction: row;
+    justify-content: flex-start;
+  }
+  .home-hero-bg { right: 0; }
+  /* RECENT card, two rows: stripe | portrait | name + meta | grade, then
+   * the item strip under the portrait and name, the KDA under the grade. */
+  .home-recent-card {
+    grid-template-columns: 6px 44px minmax(0, 1fr) auto;
+    column-gap: var(--space-2);
+    row-gap: var(--space-1);
+  }
+  .home-recent-stripe { grid-column: 1; grid-row: 1 / span 2; }
+  .home-recent-img    { grid-column: 2; grid-row: 1; }
+  .home-recent-main   { grid-column: 3; grid-row: 1; }
+  .home-recent-card > .home-recent-grade-badge {
+    grid-column: 4; grid-row: 1; justify-self: end;
+  }
+  .home-recent-items  {
+    grid-column: 2 / span 2; grid-row: 2;
+    flex-wrap: wrap; min-width: 0;
+  }
+  .home-recent-kda    { grid-column: 4; grid-row: 2; justify-self: end; }
+  /* THIS WEEK row: the cells wrap onto a second line instead of holding
+   * five fixed columns; name keeps the free width on the first line. */
+  .home-week-bar-row {
+    display: flex; flex-wrap: wrap; align-items: center;
+    gap: var(--space-1) var(--panel-gap-tight);
+  }
+  .home-week-bar-name { flex: 1 1 100px; min-width: 0; }
+  /* Launcher: 3 / 2 / 1 even columns as the width allows. */
+  .home-actions {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+  }
+  .home-action-tile { min-width: 0; }
+}
+/* RM-1431 audit: under ~340px the KDA column (90px) out-grew the
+ * champion name (66px at 320). Below 440px the KDA takes its own row under
+ * the name, so the name column keeps the free width (a 124px column, the name 120px
+ * wide, at 320). */
+@media (max-width: 440px) {
+  .home-recent-stripe { grid-row: 1 / span 3; }
+  .home-recent-kda    { grid-column: 2 / span 3; grid-row: 2; justify-self: start; }
+  .home-recent-items  { grid-column: 2 / span 3; grid-row: 3; }
+}
+
 .cs-card {
   width: min(1400px, 96vw);
   display: flex; flex-direction: column; gap: 18px;
