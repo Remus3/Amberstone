@@ -280,7 +280,7 @@ def _tracked_feeds() -> set[str]:
 
 def build_index() -> dict:
     sys.path.insert(0, str(ROOT / "tests"))
-    from test_ds_fixture_policy import RETIRED_FIXTURES  # type: ignore
+    from test_ds_fixture_policy import RETIRED_FIXTURES  # type: ignore[import]
 
     tracked = _tracked_feeds()
     dirs: dict[str, dict] = {}

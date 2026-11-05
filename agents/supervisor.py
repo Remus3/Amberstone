@@ -835,7 +835,7 @@ class Supervisor:
         # _latest_rating_file used to be swallowed here, silently stripping
         # rating / label / stats from the filed summary with no signal.
         try:
-            from performance_tracker import _latest_rating_file as _lrf  # type: ignore
+            from performance_tracker import _latest_rating_file as _lrf  # type: ignore[import]
         except ImportError as e:
             log.debug("rating-file locator import failed: %s", e)
             _lrf = None

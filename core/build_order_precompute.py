@@ -400,7 +400,7 @@ def engine_version() -> str:
     """The shipped DS engine version stamped into the table (fail-soft to ""
     so a missing engine package never sinks a dry-run)."""
     try:
-        from agents.daemon_slayer import ENGINE_VERSION  # type: ignore
+        from agents.daemon_slayer import ENGINE_VERSION  # type: ignore[import]
         return str(ENGINE_VERSION)
     except Exception:  # noqa: BLE001 - stamp is informational, never fatal
         return ""

@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 
 # Optional import  -  OCR only if installed and enabled
 try:
-    from tft.tft_ocr_reader import TftOcrReader as _TftOcrReader  # type: ignore
+    from tft.tft_ocr_reader import TftOcrReader as _TftOcrReader  # type: ignore[import]
     _HAS_OCR = True
 except Exception:  # noqa: BLE001
     _HAS_OCR = False

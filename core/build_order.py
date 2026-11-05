@@ -593,7 +593,7 @@ def plan_build_order(
 
     if rank_fn is None:
         try:
-            from core.daemon_slayer_client import rank_for_primary_archetype as rank_fn  # type: ignore
+            from core.daemon_slayer_client import rank_for_primary_archetype as rank_fn  # type: ignore[import]
         except Exception as exc:  # noqa: BLE001
             logger.debug("build_order: cannot import rank_for_primary_archetype: %s", exc)
             return None

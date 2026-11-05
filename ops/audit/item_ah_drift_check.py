@@ -100,7 +100,7 @@ def derive_from_ddragon(item_json: Path) -> dict[str, float]:
 
 def _load_pin() -> dict[str, float]:
     sys.path.insert(0, str(ROOT / "agents" / "daemon_slayer"))
-    from _item_ability_haste import _ITEM_ABILITY_HASTE  # type: ignore
+    from _item_ability_haste import _ITEM_ABILITY_HASTE  # type: ignore[import]
 
     return dict(_ITEM_ABILITY_HASTE)
 

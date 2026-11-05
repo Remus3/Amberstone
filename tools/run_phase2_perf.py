@@ -142,7 +142,7 @@ def _bench_feature_policy(td: Path):
 
     fp._reload()
     results.append(_bench("get_policy_state() cached (no reload)",
-                           lambda: get_policy_state()))
+                           get_policy_state))
 
     cfg = td / "fp_valid.json"
     cfg.write_text(json.dumps({"sr": {"live_coaching": "allow"}}), newline="\n")
@@ -204,11 +204,11 @@ def _bench_metrics_cache(td: Path):
     mc._refresh()
 
     results.append(_bench("MetricsCache._refresh() (full cycle)",
-                           lambda: mc._refresh(), reps=REPS_IO, warmup=3))
+                           mc._refresh, reps=REPS_IO, warmup=3))
     results.append(_bench("MetricsCache.get_summary() (snapshot copy)",
-                           lambda: mc.get_summary()))
+                           mc.get_summary))
     results.append(_bench("MetricsCache._read_incident_tail()",
-                           lambda: mc._read_incident_tail(), reps=REPS_IO, warmup=3))
+                           mc._read_incident_tail, reps=REPS_IO, warmup=3))
 
     from core.metrics_cache import MetricsSummary
     def _pol_only():
@@ -234,7 +234,7 @@ def _bench_snapshots():
                            lambda: TftStateReader.to_tft_snapshot(TFT_STATE)))
     from core.game_snapshot import GameEnvelope
     results.append(_bench("GameEnvelope.client()",
-                           lambda: GameEnvelope.client()))
+                           GameEnvelope.client))
     return results
 
 # -- Section D: disabled placeholder writes ---------------------------------
