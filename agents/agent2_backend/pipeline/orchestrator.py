@@ -214,7 +214,7 @@ class PipelineOrchestrator:
             try:
                 results[mode] = self.refresh_mode(mode, limit=limit)
             except Exception as e:
-                logger.exception("pipeline %s failed: %s", mode, e)
+                logger.exception("pipeline %s failed", mode)
                 results[mode] = {"error": str(e)}
         return results
 

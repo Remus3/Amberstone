@@ -244,7 +244,7 @@ def probe(champion: str) -> dict:
         "target_resist": target_resist_resp,
     }
 
-    rune_relevant = scorer_name in ("burst",) or primary == "assassin"
+    rune_relevant = scorer_name == "burst" or primary == "assassin"
 
     return {
         "champion": canon,

@@ -63,7 +63,6 @@ _BASELINE = {
     "tests/test_repin_subagent_cli_rm795.py": 1,
     "tests/test_rm876_structural_mount_spellings.py": 1,
     "tests/test_routes_state_health_scrub.py": 1,
-    "tools/ds_cross_eval/probe_champion.py": 1,
 }
 
 

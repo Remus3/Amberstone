@@ -108,8 +108,8 @@ class FileIngest:
         while not self._stop.is_set():
             try:
                 await self._tick()
-            except Exception as e:
-                logger.exception("file_ingest tick raised: %s", e)
+            except Exception:
+                logger.exception("file_ingest tick raised")
             try:
                 await asyncio.wait_for(self._stop.wait(), timeout=POLL_SEC)
             except asyncio.TimeoutError:

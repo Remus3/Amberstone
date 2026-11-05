@@ -2819,10 +2819,10 @@ def _bypass_hits_rc(command, cwd, rc_common):
     cannot be placed (fail closed), or RC's own common dir is unknown."""
     if rc_common is None:
         return True
-    for target in _bypass_targets(command, cwd):
-        if target is None or _git_common_dir(target) == rc_common:
-            return True
-    return False
+    return any(
+        target is None or _git_common_dir(target) == rc_common
+        for target in _bypass_targets(command, cwd)
+    )
 
 
 def _absorb_result(found, runs, deferred, use, text, errored, session_start):

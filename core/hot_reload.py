@@ -256,10 +256,10 @@ def _should_watch(rel: str) -> bool:
     if not r.endswith(".py"):
         return False
     # Only watch files in the approved subtrees.
-    for wd in _WATCH_DIRS:
-        if r == wd or r.startswith(wd + "/") or (wd == "" and "/" not in r):
-            return True
-    return False
+    return any(
+        r == wd or r.startswith(wd + "/") or (wd == "" and "/" not in r)
+        for wd in _WATCH_DIRS
+    )
 
 
 def _scan_py_files(root: Path) -> dict[str, float]:

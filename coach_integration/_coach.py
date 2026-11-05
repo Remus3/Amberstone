@@ -203,11 +203,11 @@ class CoachIntegration:
             return
         try:
             self._run(game_state)
-        except Exception as e:
+        except Exception:
             # Audit cycle 10 (P2-W1-app-B): never surface raw exception
             # text in the dashboard status field (CLAUDE.md Error
             # Handling rule) - log the full detail, render friendly.
-            logger.exception("Coach error: %s", e)
+            logger.exception("Coach error")
             self._write_status_field("(coach paused - internal error)")
         finally:
             self._lock.release()
