@@ -208,3 +208,65 @@ def test_footer_button_shows_accent_focus_ring(mock_server, pw_browser):
         f"focus ring {ring['color']} is not --accent {tok['accent']}"
     )
     assert not errors, f"JS errors: {errors[:3]}"
+
+
+# RM-1547: the voice picker is the footer's one other keyboard stop. It
+# carried its own `.voice-picker:focus` rule (web/css/panels/header.css): a
+# 1px --info outline at offset 1px, unlike the 2px --accent :focus-visible
+# convention every other footer control uses. Its box is --hit-min tall in a
+# --hit-min footer that sits on the viewport bottom, so an outline drawn
+# OUTSIDE the box loses its bottom edge off-screen: the ring has to sit inside
+# the box to show all four sides.
+_PICKER_RING = """
+() => {
+  const p = document.getElementById('voice-picker');
+  p.style.display = '';
+  p.focus();
+  const cs = getComputedStyle(p);
+  const r = p.getBoundingClientRect();
+  const fr = document.querySelector('footer').getBoundingClientRect();
+  const w = parseFloat(cs.outlineWidth);
+  const off = parseFloat(cs.outlineOffset);
+  // the outline's outer edge sits (offset + width) beyond the border box.
+  const reach = off + w;
+  const out = {focused: document.activeElement === p,
+               visible: p.matches(':focus-visible'),
+               style: cs.outlineStyle, width: w, offset: off,
+               color: cs.outlineColor,
+               ringTop: r.top - reach, ringBottom: r.bottom + reach,
+               ringLeft: r.left - reach, ringRight: r.right + reach,
+               footTop: fr.top, footBottom: fr.bottom,
+               vw: document.documentElement.clientWidth,
+               vh: document.documentElement.clientHeight};
+  p.blur();
+  p.style.display = 'none';
+  return out;
+}
+"""
+
+
+@pytest.mark.parametrize("width,height", VIEWPORTS)
+def test_voice_picker_shows_whole_accent_focus_ring(
+    mock_server, pw_browser, width, height
+):
+    ctx, page, errors = _open(pw_browser, mock_server, "home", width, height)
+    try:
+        tok = page.evaluate(_TOKENS)
+        page.keyboard.press("Shift")
+        ring = page.evaluate(_PICKER_RING)
+    finally:
+        page.close()
+        ctx.close()
+    assert ring["focused"] and ring["visible"], ring
+    assert ring["style"] == "solid", f"picker focus outline style {ring['style']!r}"
+    assert ring["width"] >= 2, f"picker focus outline {ring['width']}px"
+    assert ring["color"] == tok["accent"], (
+        f"picker focus ring {ring['color']} is not --accent {tok['accent']}"
+    )
+    # all four sides of the ring are painted inside the footer bar and the
+    # viewport, so none of it is cut off at the window bottom.
+    assert ring["ringTop"] >= ring["footTop"] - 0.5, ring
+    assert ring["ringBottom"] <= ring["footBottom"] + 0.5, ring
+    assert ring["ringBottom"] <= ring["vh"] + 0.5, ring
+    assert ring["ringLeft"] >= -0.5 and ring["ringRight"] <= ring["vw"] + 0.5, ring
+    assert not errors, f"JS errors: {errors[:3]}"

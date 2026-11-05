@@ -17,10 +17,9 @@
   max-width: 180px;
   margin-left: 4px;
 }
-.voice-picker:focus {
-  outline: 1px solid var(--info);
-  outline-offset: 1px;
-}
+/* RM-1547: the picker's focus ring is `footer .voice-picker:focus-visible`
+ * below, on the footer's 2px --accent convention (was a 1px --info `:focus`
+ * outline here, half off-screen under the window edge). */
 /* ----- Header bar ----------------------------------------------- */
 /* 2-row layout is permanent: row 1 = identity + instantaneous state, row 2
  * = bars + session-level info. Explicit rows (flex-column with row flex
@@ -224,6 +223,14 @@ footer .voice-picker { min-height: var(--hit-min); }
 footer .footer-btn:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+/* RM-1547: the picker box is the full --hit-min footer height and the
+ * footer sits on the viewport bottom, so an outline outside the box lost its
+ * bottom edge off-screen; the same 2px --accent ring is drawn INSIDE the box
+ * (negative offset) so all four sides show. */
+footer .voice-picker:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 /* prefs-chip ("ZEN:OFF") sits between voice-picker and mode-pill in
  * the footer (insertion point set by the dashboard JS prefs-chip renderer).
