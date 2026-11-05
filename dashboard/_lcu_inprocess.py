@@ -25,20 +25,22 @@ public-ish surface (``connect`` / ``_refresh_conn_if_changed`` / ``_request``
 # config + lcu_port (G1-00 CHECK 2 follow-up, 2026-07-20)
 
 ``shape_snapshot`` deliberately emits NEITHER key - both are caller/transport
-owned (``lcu/snapshot_shape.py:337-340``) - so the agent adds them itself in
-``tools/lcu_agent.capture_state`` (``config`` at :293, ``lcu_port`` at :298).
+owned (``shape_snapshot`` in ``lcu/snapshot_shape.py`` documents the split) - so
+the agent adds them itself in ``tools/lcu_agent.capture_state`` (the
+``state["config"]`` seed and the ``state["lcu_port"]`` stamp).
 This module now does the same, so the flag-ON ``state.lcu`` payload matches
 the relay payload for those two keys:
 
   * ``lcu_port`` - the dashboard-owned ``LcuClient`` already parsed it from
     the SAME lockfile the agent reads, so it is derived locally. Stringified
     because the agent stores ``read_lockfile()`` field 2 verbatim and never
-    int-casts it (``tools/lcu_agent.py:141-151`` + :165), while
-    ``LcuClient.connect`` does (``lcu/lcu_client.py:69``).
+    int-casts it (``read_lockfile`` returns the port field as a string, and
+    ``ensure_lcu_conn`` stores it verbatim), while ``LcuClient.connect`` does
+    (``_parse_lockfile_fields`` returns ``int(port_s)``).
 
-  * ``config`` - the agent's ``CONFIG`` (``tools/lcu_agent.py:120-125``) is
+  * ``config`` - the agent's module-level ``CONFIG`` (``tools/lcu_agent.py``) is
     PROCESS-MEMORY ONLY. Nothing persists it: the sole writer is the
-    ``set_config`` branch of ``execute_command`` (:388-393) and there is no
+    ``set_config`` branch of ``execute_command`` and there is no
     read-back or file write anywhere, so an agent restart silently resets it
     to the boot defaults. There is therefore no shared file to read. The two
     near-miss candidates are both wrong:
@@ -61,8 +63,8 @@ the relay payload for those two keys:
     drift guard in ``tests/rc2_l3/test_lcu_inprocess_config_port_l3.py`` pins
     them to ``tools/lcu_agent.CONFIG``.
     DURABLE FIX (proposed, out of this module's scope): the dashboard is the
-    SOLE origin of every ``set_config`` (``dashboard/routes_loadout.py:31`` +
-    the ``/api/lcu-cmd`` POST at :350), so it could persist the config to
+    SOLE origin of every ``set_config`` (``_serve_lcu_cmd_post`` in
+    ``dashboard/routes_loadout.py``, behind the ``/api/lcu-cmd`` allowlist), so it could persist the config to
     ``data/`` exactly like ``core/auto_accept_pref.py`` does and own it
     outright - which is also what the eventual agent retirement requires.
     RM-1222 (s145) did that for ``auto_accept`` only: the agent now seeds
@@ -88,7 +90,7 @@ _client_lock = threading.Lock()
 # Patchable monotonic seam for the TTL, the snapshot budget and its cooldown.
 _clock = time.monotonic
 
-# Last-resort mirror of the agent's boot CONFIG (tools/lcu_agent.py:120-125),
+# Last-resort mirror of the agent's boot CONFIG (``CONFIG`` in tools/lcu_agent.py),
 # used ONLY when the agent has never posted a snapshot this process has seen.
 # Drift-guarded by test_lcu_inprocess_config_port_l3.
 _AGENT_CONFIG_DEFAULTS = {
@@ -151,15 +153,18 @@ class _SnapshotBudgetExceeded(Exception):
 # The path is HOT when flipped: build_state() is the /api/state assembler and
 # runs on the shared TTL / SSE cadence _STATE_CADENCE_S, which is
 # RC_STATE_CADENCE_SEC and defaults to 0.5s with a 0.1 floor
-# (dashboard/routes_state.py:167-178) - about 2 Hz, NOT the 1 Hz earlier prose
-# here claimed. It is also DARK today: dashboard/_state_builder.py:173 gates the
-# call on RC_LCU_INPROCESS == "1" and that variable is unset, so 2 Hz is the
+# (``_state_cadence_s`` in dashboard/routes_state.py) - about 2 Hz, NOT the
+# 1 Hz earlier prose here claimed. It is also DARK today: the
+# ``RC_LCU_INPROCESS`` check in dashboard/_state_builder.py gates the call on
+# RC_LCU_INPROCESS == "1" and that variable is unset, so 2 Hz is the
 # cadence this path ASSUMES once flipped, not traffic it carries now. At that
 # cadence an unconditional WARN would write ~7200 lines an hour for ONE fault -
-# the exact failure mode lcu/lcu_client.py:68-77 already documents (20144 of
-# 21082 log lines on a day League never launched). So: log on CHANGE of the
+# the exact failure mode the ``_lockfile_missing_logged`` note in
+# LcuClient.__init__ (lcu/lcu_client.py) already documents (20144 of 21082
+# log lines on a day League never launched). So: log on CHANGE of the
 # fault signature, then at most once per _DEGRADE_LOG_THROTTLE_S. Same shape as
-# core/decision_detector.py:1015-1025.
+# the ``_last_logged_error_sig`` throttle in DecisionLoop._loop
+# (core/decision_detector.py).
 #
 # The line is built from the exception TYPE plus the innermost raising frame,
 # never str(exc) and never the payload: an LCU snapshot carries PUUIDs and this
