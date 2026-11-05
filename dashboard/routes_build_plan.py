@@ -350,8 +350,13 @@ def _serve_build_plan(h, payload) -> None:
             return
 
         mode = str(payload.get("mode") or "SR").upper()
+        # RM-1372: a JSON boolean is not a level (int(True) read as 1); it
+        # takes the default, the rule routes_state._payload_int applies to
+        # ds-preview / build-order (RM-1328).
+        raw_level = payload.get("level")
         try:
-            level = max(1, min(18, int(payload.get("level") or 11)))
+            level = (11 if isinstance(raw_level, bool)
+                     else max(1, min(18, int(raw_level or 11))))
         except (TypeError, ValueError, OverflowError):  # JSON Infinity
             level = 11
         # s144 true-audit: a non-list is [] - a str used to be iterated per

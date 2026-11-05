@@ -1143,7 +1143,9 @@ def _serve_ds_preview_post(h, payload) -> None:
         # ARAM/Arena modifiers apply instead of falling to allow-all.
         mode = _DS_PREVIEW_MODE_ALIASES.get(mode, mode)
         level = _payload_int(payload, "level", 6, 1, 18)  # RM-1328
-        items = [str(i) for i in (payload.get("items") or []) if i]
+        # RM-1372: a non-list is [] - a scalar raised TypeError (500) and a
+        # str was iterated per character ("3031" -> "3", "0", "3", "1").
+        items = [str(i) for i in _as_list(payload.get("items")) if i]
 
         # s182: caller override wins; otherwise resolve from the persisted
         # pick (or DDragon-tag default). Empty string -> falls through to
@@ -1565,13 +1567,14 @@ def _serve_build_order_post(h, payload) -> None:
         champion = canonical_champion_id(champion) or champion
         mode = str(payload.get("mode") or "SR").upper()
         level = _payload_int(payload, "level", 11, 1, 18)  # RM-1328
-        items = [str(i) for i in (payload.get("items") or []) if i]
+        items = [str(i) for i in _as_list(payload.get("items")) if i]  # RM-1372
         slots = _payload_int(payload, "slots", 6, 1, 6)
         # Incumbent-hysteresis opt-in (2026-07-06): the panel may echo the build
         # it is CURRENTLY displaying (item_ids in order) so the planner keeps a
         # shown pick unless a challenger beats it by the margin - damps the
         # PD -> Kraken flip on a level tick. Absent -> byte-identical greedy plan.
-        incumbent = [str(i) for i in (payload.get("incumbent") or []) if str(i).strip()]
+        incumbent = [str(i) for i in _as_list(payload.get("incumbent"))
+                     if str(i).strip()]
 
         archetype = str(payload.get("archetype") or "").strip().lower()
         if not archetype:
