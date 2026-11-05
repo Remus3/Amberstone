@@ -85,7 +85,7 @@ from core.tls_policy import client_context_noverify  # noqa: E402
 # used to emit - the 401s, the command results, the ingest-recovery trail -
 # went nowhere, and the only symptom was a champ-select UI that stopped
 # updating. Explicit handlers give it a channel that survives.
-# Precedent: tools/liveclient_relay.py:41-51.
+# Precedent: the ``logging.FileHandler`` setup in tools/liveclient_relay.py.
 _LOG_FILE = Path(__file__).resolve().parent.parent / "logs" / "lcu_agent.log"
 _LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
 # RM-718 (a). A plain FileHandler here grew lcu_agent.log to 27.3 MB by

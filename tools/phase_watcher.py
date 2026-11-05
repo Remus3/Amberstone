@@ -150,7 +150,8 @@ STABLE_SESSION_SECONDS = 30.0
 # RM-154. basicConfig without handlers= installs a StreamHandler on stderr,
 # and the RC-PhaseWatcher task runs this under pythonw.exe where stderr is
 # None - so every record this module emitted went nowhere. Pass explicit
-# handlers. Precedent: tools/liveclient_relay.py:41-51.
+# handlers. Precedent: the ``logging.FileHandler``
+# setup in tools/liveclient_relay.py.
 _LOG_FILE = Path(__file__).resolve().parent.parent / "logs" / "phase_watcher.log"
 _LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
 logging.basicConfig(

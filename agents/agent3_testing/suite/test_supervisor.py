@@ -117,7 +117,8 @@ def test_supervisor_starts_and_binds_ports(tmp_path: Path) -> None:
     RM-170 (2026-08-06) made this hermetic. It previously spawned the child on
     the HARDCODED :8890/:8891 and read the SHARED ``agents/state/lockfile``, so
     whenever the live RC-Phase3-Supervisor scheduled task was up (its normal
-    state on Legion) the child died at ``agents/supervisor.py:275`` with
+    state on Legion) the child died in the port preflight of
+    ``agents/supervisor.py`` (the ``_port_available`` loop) with
     "port 8890 (web) is already in use" - and worse, ``_port_open`` then
     answered TRUE against the LIVE supervisor's listeners, so both port
     assertions passed against the wrong process and only the heartbeat check

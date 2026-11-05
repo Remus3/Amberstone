@@ -262,9 +262,9 @@ def _dedup_build_vs_owned(item_build: str, items_display: str) -> str:
 def _split_item_build_like_ui(item_build: str) -> list:
     """Split a coach item_build string EXACTLY the way the dashboard strip does.
 
-    Copied from web/js/lib/items_index.js:60-64 (_splitItemList with
-    splitArrow=true), which item_build.js:209 uses to build the Recommended
-    tile name list:
+    Copied from ``_splitItemList`` in web/js/lib/items_index.js (with
+    splitArrow=true), which ``_splitItemList(p.item_build, true)`` in
+    web/js/panels/item_build.js uses to build the Recommended tile name list:
         const sep = /\\s*(?:,|<U+2192>|->)\\s*/;
         String(str).split(sep).map(s => s.trim()).filter(Boolean);
     Keeping the separator set identical is what makes the cue keys match the
@@ -272,7 +272,8 @@ def _split_item_build_like_ui(item_build: str) -> list:
     chr(0x2192) so this source file stays 7-bit ASCII.
 
     NOTE: the frontend applies one further owned-item dedup pass
-    (item_build.js:222-226) before rendering. It is a defensive no-op here
+    (the ``pathDedup`` filter in web/js/panels/item_build.js) before
+    rendering. It is a defensive no-op here
     because the artifact's item_build has already been through the
     server-side _dedup_build_vs_owned, so the name sets agree.
     """

@@ -4,8 +4,8 @@ Closes defect D1/D2 of
 `docs/specs/2026-09-20-shared-git-root-bucket-rc-share-scan.md`, which measured
 that RC evaluates NO credential pattern against ANY file population: not the
 staged set, not the push range, not the working tree. This module supplies the
-patterns; `tools/edit_lint_check.py` (PostToolUse `Edit|Write`, registered at
-`.claude/settings.json:32`) supplies the only RC population that already
+patterns; `tools/edit_lint_check.py` (PostToolUse `Edit|Write`, registered as
+the ``edit_lint_check`` entry of `.claude/settings.json`) supplies the only RC population that already
 includes UNTRACKED files - the exact file an agent just wrote.
 
 THE CONTRACT, in order of importance:

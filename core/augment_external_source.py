@@ -252,8 +252,9 @@ def _http_get(url: str, timeout_s: float):
         # the recommender's ranking degrades SILENTLY rather than failing,
         # and json.dumps re-emits it as a bare NaN token (allow_nan
         # defaults True) which makes the written cache file invalid JSON.
-        # core/synergy_external_source.py:135-147 is the twin that already
-        # guards this; found by grepping this root cause, not by reading.
+        # the ``parse_constant=_reject_non_finite`` call in
+        # core/synergy_external_source.py is the twin that already guards
+        # this; found by grepping this root cause, not by reading.
         return json.loads(body, parse_constant=_reject_non_finite)
     except (json.JSONDecodeError, ValueError) as exc:
         raise AugmentSourceError(f"{url} bad JSON: {exc}") from exc

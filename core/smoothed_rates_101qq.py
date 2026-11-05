@@ -621,7 +621,8 @@ def source() -> str:
     justification:
 
       * shipping it required WIDENING `test_source_stays_in_the_declared_domain`
-        (tests/test_smoothed_rates_101qq_lock.py:375), a guard pinning this
+        (``test_source_stays_in_the_declared_domain`` in
+        tests/test_smoothed_rates_101qq_lock.py), a guard pinning this
         domain to exactly ("live", "static", "none"), so that the change
         could pass. Editing a guard to admit your own change is the
         anti-pattern, not a migration;

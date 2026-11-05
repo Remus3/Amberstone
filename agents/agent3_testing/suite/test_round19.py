@@ -127,7 +127,8 @@ def test_post_game_summary_survives_missing_json(tmp_path: Path, monkeypatch) ->
 
     Behaviour CHANGED 2026-07-28 (M-02): it used to file a minimal
     champion-less payload, which the ingester refuses outright at
-    ``game_ingest.py:203-216``. 170 of the 583 game-summary rows in
+    ``ingest_game_summary`` in agents/agent2_backend/game_ingest.py (its
+    ``Unknown`` champion branch). 170 of the 583 game-summary rows in
     ``agents/state/task_queue.jsonl`` were exactly that no-op. The
     emit-side guard now suppresses it, so the assertion here inverts:
     no crash, and no task.

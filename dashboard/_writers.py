@@ -53,8 +53,9 @@ def atomic_write_json(rel: str, data: dict) -> None:
     # Lane 8 cycle 24: the tmp+rename itself now IS delegated, via
     # atomic_write_bytes. The hand-rolled version derived its scratch name from
     # the destination alone, so two writers of one file opened the same scratch
-    # file - and coaching_data.json does have a second writer at
-    # app/__init__.py:253. Cycle 28 correction: that writer is in the SAME
+    # file - and coaching_data.json does have a second writer in
+    # ``_write_data`` in app/__init__.py. Cycle 28 correction: that writer is
+    # in the SAME
     # process, not "another process" as this comment used to claim (RC runs as
     # one `pythonw.exe main.py` with the dashboard in-process). The fix is
     # unaffected - two threads racing one scratch name tear the file exactly as
