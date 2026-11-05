@@ -70,7 +70,7 @@ def test_build_drops_when_no_mastery(monkeypatch):
 
 def _seed_fresh(members, data):
     PM._cache.update(key=PM._member_key(members), data=data,
-                     fetched_at=time.time(), ttl=PM._TTL_S)
+                     fetched_at=time.monotonic(), ttl=PM._TTL_S)
 
 
 def test_enrich_injects_cached():
