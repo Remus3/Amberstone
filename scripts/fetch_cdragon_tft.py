@@ -32,6 +32,13 @@ extract - comps and tier lists from third-party sites stay out of the repo.
 
 Writes go through core.polled_json (per-writer scratch, fsync, WinError 5
 retry; RM-1126), 7-bit ASCII (non-ASCII escaped) and LF-only.
+
+Every GET opens through lib.wiki_consent.open_consented, so a url to the
+League wiki host, or a CommunityDragon redirect into it, is refused before a
+wiki socket opens unless a consent record exists (ruling 51, RM-1441). A
+refusal is never retried: a refused payload is main's error line and exit 1
+with nothing written; a refused content-metadata hop leaves
+`_content_version` None, like any other metadata failure.
 Superseded one-off: scripts/fetch_cdragon_pbe.py (Set 17 only).
 """
 from __future__ import annotations
@@ -53,6 +60,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from core.polled_json import atomic_write_bytes  # noqa: E402
+from lib.wiki_consent import WikiFetchRefused, open_consented  # noqa: E402
 
 CDRAGON_BASE = "https://raw.communitydragon.org"
 BRANCHES = ("latest", "pbe")
@@ -82,7 +90,9 @@ def _http_get(url: str, *, timeout: float = DEFAULT_TIMEOUT) -> bytes:
     for attempt in range(len(RETRY_BACKOFFS) + 1):
         req = urllib_request.Request(url, headers=headers, method="GET")
         try:
-            with urllib_request.urlopen(req, timeout=timeout) as r:
+            # RM-1441: every hop is consent-checked; a WikiFetchRefused is a
+            # RuntimeError, so neither handler below retries it.
+            with open_consented(req, timeout=timeout) as r:
                 return r.read()
         except urllib_error.HTTPError as e:
             if e.code in TRANSIENT_HTTP_CODES and attempt < len(RETRY_BACKOFFS):
@@ -399,7 +409,7 @@ def fetch_set(set_number: int, *, branch: str = "latest", out: Path | None = Non
         try:
             meta = json.loads(_http_get(metadata_url(branch)).decode("utf-8"))
             version = meta.get("version") if isinstance(meta, dict) else None
-        except (OSError, ValueError):
+        except (OSError, ValueError, WikiFetchRefused):
             version = None
     fetched = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%d")
     extract = build_extract(raw, set_number, branch=branch,
@@ -420,7 +430,7 @@ def main(argv=None) -> int:
     try:
         target = fetch_set(args.set_number, branch=args.branch, out=args.out,
                            source=args.source)
-    except (OSError, ValueError) as exc:
+    except (OSError, ValueError, WikiFetchRefused) as exc:
         print(f"fetch_cdragon_tft: {exc}", file=sys.stderr)
         return 1
     ex = json.loads(target.read_bytes())
