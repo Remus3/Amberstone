@@ -307,8 +307,11 @@ def _fire_lane(body: dict) -> tuple[int, dict]:
     lane = str(body.get("lane") or "").strip()
     known = tuple(getattr(lanes, "LANES", ()))
     if lane not in known:
+        # RM-1371: every name refusal in this module is FIXED text plus the
+        # accepted set - the caller's value is never echoed back (it was an
+        # unclipped repr, so any length or markup came straight back).
         return 400, {"ok": False, "action": "fire_lane",
-                     "error": f"unknown lane: {lane!r}", "valid": list(known)}
+                     "error": "unknown lane", "valid": list(known)}
     if not str(body.get("run_id") or "").strip():
         return 400, {"ok": False, "action": "fire_lane",
                      "error": "fire_lane requires non-empty 'run_id'"}
@@ -390,7 +393,7 @@ def _queue_intent(body: dict, key: str) -> tuple[int, dict]:
     intent = str(body.get("intent") or "").strip()
     if intent not in _INTENT_FILES:
         return 400, {"ok": False, "action": "queue_intent",
-                     "error": f"unknown intent: {intent!r}",
+                     "error": "unknown intent",
                      "valid": list(_INTENT_FILES)}
     name = _INTENT_FILES[intent]
     doc = {"intent": intent, "key": key, "ts": time.time(), "consumed": False,
@@ -429,7 +432,7 @@ def _steer(body: dict, key: str) -> tuple[int, dict]:
     tier = str(body.get("tier") or "note").strip().lower()
     if tier not in getattr(steer, "TIERS", ("note", "steer")):
         return 400, {"ok": False, "action": "steer",
-                     "error": f"unknown tier: {tier!r}",
+                     "error": "unknown tier",
                      "valid": list(getattr(steer, "TIERS", ()))}
     try:
         rec = steer.append(body.get("text"), tier=tier, key=key)
@@ -643,7 +646,7 @@ def apply_action(action: str, body: dict) -> tuple[int, dict]:
     Split from the handler so tests drive it directly against a tmp CONTROL_DIR.
     """
     if action not in _VALID_ACTIONS:
-        return 400, {"ok": False, "error": f"unknown action: {action!r}",
+        return 400, {"ok": False, "error": "unknown action",
                      "valid": list(_VALID_ACTIONS)}
     if action == "interrupt_preview":
         # BEFORE the mkdir: this action is documented read-only ("Kills
@@ -690,9 +693,8 @@ def _handle_arm(body: dict) -> tuple[int, dict]:
                      "gated": list(armgate.GATED_ACTIONS)}
     if target_action not in armgate.GATED_ACTIONS:
         return 400, {"ok": False, "action": "arm",
-                     "error": f"{target_action!r} is not a gated action - only "
-                              "irreversible acts are armed, the rest fire "
-                              "directly",
+                     "error": "not a gated action - only irreversible acts "
+                              "are armed, the rest fire directly",
                      "gated": list(armgate.GATED_ACTIONS)}
     # An explicit 'target' wins so a caller can arm without restating the whole
     # body; otherwise it is read from the same fields the confirm will carry.
@@ -735,7 +737,7 @@ def route_action(action: str, body: dict) -> tuple[int, dict]:
     if action == "disarm":
         return _handle_disarm(body)
     if action not in _VALID_ACTIONS:
-        return 400, {"ok": False, "error": f"unknown action: {action!r}",
+        return 400, {"ok": False, "error": "unknown action",
                      "valid": list(armgate.ROUTE_ACTIONS) + list(_VALID_ACTIONS)}
     if action in armgate.GATED_ACTIONS:
         token = body.get("arm_token")

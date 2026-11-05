@@ -256,7 +256,10 @@ def test_the_steer_action_still_refuses_the_interrupt_tier(ctldir):
                          "tier": "interrupt", "text": "stop everything"})
 
     assert status == 400
-    assert "interrupt" in out["error"]
+    # RM-1371: the refusal is fixed text and no longer echoes the tier; the
+    # accepted set it carries must still leave "interrupt" out.
+    assert out["error"] == "unknown tier"
+    assert "interrupt" not in out["valid"]
 
 
 def test_interrupt_is_a_distinct_action_from_steer():

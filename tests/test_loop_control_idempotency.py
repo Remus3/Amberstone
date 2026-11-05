@@ -455,7 +455,10 @@ def test_an_unknown_steer_tier_is_400(ctldir, steerchan):
                                 "text": "stop everything",
                                 "idempotency_key": KEY_A})
     assert status == 400
-    assert "interrupt" in payload["error"]
+    # RM-1371: fixed text, no echo of the caller's tier; the accepted set
+    # still leaves "interrupt" out.
+    assert payload["error"] == "unknown tier"
+    assert "interrupt" not in payload["valid"]
     assert steerchan.pending() == []
     assert idem.seen(KEY_A) is None
 
