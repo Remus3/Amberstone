@@ -408,7 +408,8 @@ def main() -> int:
         "results":          all_results,
     }
     json_path = proof_dir / "perf_baseline.json"
-    json_path.write_text(json.dumps(baseline, indent=2), encoding="utf-8")
+    json_path.write_text(json.dumps(baseline, indent=2), encoding="utf-8",
+                         newline="\n")
     print(f"\nJSON baseline written: {json_path}")
 
     # Markdown summary
@@ -447,7 +448,7 @@ def main() -> int:
         lines.append("")
 
     md_path = proof_dir / "perf_baseline.md"
-    md_path.write_text("\n".join(lines), encoding="utf-8")
+    md_path.write_text("\n".join(lines), encoding="utf-8", newline="\n")
     print(f"Markdown baseline written: {md_path}")
 
     print("\n" + "=" * 72)

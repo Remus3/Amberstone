@@ -409,9 +409,11 @@ def build_reel(sidecar_path: Any, *, ffmpeg: Optional[str] = None,
             final = segs[0]
         else:
             listfile = tmp / "list.txt"
+            # newline="\n": the concat demuxer reads this list; a Windows
+            # text-mode write would end every line in CRLF (RM-481).
             listfile.write_text("".join(
                 "file '" + s.as_posix().replace("'", "'\\''") + "'\n" for s in segs),
-                encoding="utf-8")
+                encoding="utf-8", newline="\n")
             final = tmp / "concat.mp4"
             res = _run(runner, _concat_cmd(ff, listfile, final), CUT_TIMEOUT_S)
             if res.returncode != 0 or not final.is_file():

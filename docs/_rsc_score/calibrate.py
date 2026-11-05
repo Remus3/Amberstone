@@ -224,7 +224,7 @@ def cmd_blind(args):
     text = "\n".join(out) + "\n"
     path = Path(args.out)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(text, encoding="utf-8")
+    path.write_text(text, encoding="utf-8", newline="\n")
     print(f"wrote {path} - {len(rows)} blinded rows, {len(text)} chars")
     return 0
 

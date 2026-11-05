@@ -96,6 +96,18 @@ SWEPT_WRITERS = (
 # trim rewrite are pinned together by test_incident_log_append_and_trim_emit_lf
 # (converting only one of them would leave a mixed-EOL jsonl).
 SWEPT_REPORT_WRITERS = (
+    # RM-481 residual (s144 cycle 168): a tree-wide AST measurement found 23
+    # more files with a bare write_text / text-mode open outside every list
+    # here. These five emit multi-line content that is read back or diffed:
+    # the ffmpeg concat list, the per-machine deploy key, the per-task
+    # supervisor log and the two blinded calibration reports. The rest were
+    # newline-free payloads (a lock pid, "x", "paused"), frozen or excluded
+    # files, or test fixtures, so they stay out of this list.
+    "agents/_supervisor_ephemeral.py",
+    "core/highlight_reel.py",
+    "docs/_rsc_score/calibrate.py",
+    "docs/_rsc_score/calibrate_rep.py",
+    "ops/rc_transactional_deploy.py",
     "ops/audit/lolmath_ds_sweep/gen_md.py",
     "scripts/repair_tft_match_rows.py",
     "scripts/rewind_scraper.py",
@@ -300,3 +312,17 @@ def test_incident_log_append_and_trim_emit_lf(tmp_path, force_crlf):
     raw = log.log_file.read_bytes()
     assert raw.count(b"\n") == 2
     assert b"\r" not in raw, "trim rewrite emitted CRLF"
+
+
+def test_deploy_key_is_written_with_lf(tmp_path, force_crlf):
+    """RM-481 residual (s144 cycle 168): ensure_key wrote the key file in text
+    mode, so on Windows it ended in CRLF while ops/launcher/first_run.py
+    writes the same file with LF. _read_key strips either, but the two
+    producers of one file now agree byte for byte."""
+    from ops.rc_transactional_deploy import _read_key, ensure_key
+
+    key_path = ensure_key(tmp_path / "deploy_request.key")
+    raw = key_path.read_bytes()
+    assert raw.endswith(b"\n") and b"\r" not in raw
+    assert len(raw.strip()) == 64
+    assert _read_key(key_path) == raw.strip()

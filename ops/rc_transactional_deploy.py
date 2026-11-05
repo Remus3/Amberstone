@@ -158,7 +158,7 @@ def ensure_key(key_path: Path = DEFAULT_KEY_PATH) -> Path:
         return key_path
     key_path.parent.mkdir(parents=True, exist_ok=True)
     tmp = key_path.with_name(key_path.name + f".{uuid.uuid4().hex}.tmp")
-    tmp.write_text(secrets.token_hex(32) + "\n", encoding="ascii")
+    tmp.write_text(secrets.token_hex(32) + "\n", encoding="ascii", newline="\n")
     try:
         os.link(tmp, key_path)  # fails if another producer won the race
     except FileExistsError:

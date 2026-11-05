@@ -402,7 +402,7 @@ def spawn_ephemeral_llm(agent: str, task_id: str, op: str, payload: dict) -> dic
             f"exit_code: {proc.returncode}\n\n"
             f"--- stdout ---\n{_redact_secrets(proc.stdout)}\n\n"
             f"--- stderr ---\n{_redact_secrets(proc.stderr)}\n",
-            encoding="utf-8",
+            encoding="utf-8", newline="\n",
         )
     except OSError as e:
         log.warning("per-task log write failed: %s", e)
