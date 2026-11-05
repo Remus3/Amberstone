@@ -127,3 +127,166 @@ def test_summarize_curve_handles_thin_null_series():
     out = oss.summarize_curve(payload)
     assert out["win"] is not None
     assert out["loss"] is None
+
+
+# ---------------------------------------------------------------------------
+# s144 true-audit cycle 131 (RM-1617..RM-1623). Each test below was RED
+# against the pre-hardening module. The classifier's docstring promises
+# "Pure - never raises", and its output dict lands in a JSON HTTP response, so
+# every number it returns must be finite (json.dumps writes a bare NaN /
+# Infinity token that the browser's JSON.parse rejects).
+# ---------------------------------------------------------------------------
+
+import json  # noqa: E402
+import math  # noqa: E402
+
+import pytest  # noqa: E402
+
+_NUM_KEYS = ("start", "end", "trend", "volatility")
+
+
+def _strict_json_ok(arc):
+    """The arc must serialize as strict JSON (no NaN / Infinity tokens)."""
+    json.dumps(arc, allow_nan=False)
+    for k in _NUM_KEYS:
+        assert math.isfinite(arc[k]), (k, arc[k])
+
+
+@pytest.mark.parametrize("bad", [float("nan"), float("inf"), float("-inf")])
+def test_non_finite_points_are_dropped_not_propagated(bad):
+    # RM-1617: NaN / +-inf passed the float() guard and poisoned every
+    # mean - NaN numbers in the payload, and a label decided by NaN
+    # comparisons (inf read as Volatile).
+    arc = oss.classify_arc([50, bad, 50, 50, 50])
+    assert arc is not None
+    _strict_json_ok(arc)
+    assert arc["label"] == "Steady"
+    assert arc["volatility"] == 0.0
+
+
+def test_only_non_finite_points_is_unreadable():
+    nan = float("nan")
+    assert oss.classify_arc([nan, nan, nan, nan, nan]) is None
+
+
+def test_bools_are_not_scores():
+    # RM-1618: True read as 1.0 and False as 0.0, inventing a collapse.
+    assert oss.classify_arc([True, False, True, False]) is None
+    arc = oss.classify_arc([50, False, 50, 50, 50])
+    assert arc is not None
+    assert arc["label"] == "Steady"
+    assert arc["volatility"] == 0.0
+
+
+@pytest.mark.parametrize("text", ["55", " 60 ", "1e2", b"55", bytearray(b"55")])
+def test_text_and_bytes_points_are_not_scores(text):
+    # RM-1618: the existing "x" test pinned non-numeric text as ignored,
+    # but numeric-looking text (and bytes, which float() also parses) was
+    # silently admitted as a score.
+    assert oss.classify_arc([text, text, text, text]) is None
+
+
+def test_huge_int_point_does_not_raise():
+    # RM-1619: float(10**400) raised OverflowError, which the
+    # (TypeError, ValueError) guard missed - the "never raises" promise broke.
+    arc = oss.classify_arc([50, 10 ** 400, 50, 50, 50])
+    assert arc is not None
+    _strict_json_ok(arc)
+    assert arc["label"] == "Steady"
+
+
+class _FloatNan(float):
+    def __float__(self):
+        return float("nan")
+
+
+class _IntInf(int):
+    def __float__(self):
+        return float("inf")
+
+
+@pytest.mark.parametrize("sneaky", [_FloatNan(50.0), _IntInf(50)])
+def test_subclass_overriding_float_cannot_smuggle_non_finite(sneaky):
+    # RM-1617 (verifier follow-up): an int / float subclass passed the
+    # range check on its own value, then float() handed back NaN / inf.
+    arc = oss.classify_arc([50, sneaky, 50, 50, 50])
+    assert arc is not None
+    _strict_json_ok(arc)
+    assert arc["label"] == "Steady"
+
+
+@pytest.mark.parametrize("off_scale", [-5, 100.5, 1e308, -1e308])
+def test_off_scale_points_are_dropped(off_scale):
+    # RM-1620: every threshold lives on the 0-100 composite scale; a value
+    # off that scale is not a composite score. Two 1e308 points also
+    # overflowed the mean to inf and the trend to NaN.
+    arc = oss.classify_arc([50, off_scale, off_scale, 50, 50, 50])
+    assert arc is not None
+    _strict_json_ok(arc)
+    assert arc["label"] == "Steady"
+
+
+def test_scale_bounds_are_inclusive():
+    arc = oss.classify_arc([0, 0, 100, 100])
+    assert arc is not None
+    assert arc["start"] == 0.0
+    assert arc["end"] == 100.0
+
+
+@pytest.mark.parametrize("series", ["5555", b"\x32\x32\x32\x32", {50: 1, 60: 2, 70: 3, 80: 4}, 5, 5.0, object()])
+def test_non_sequence_series_is_unreadable_not_iterated(series):
+    # RM-1621: a str was iterated character by character, bytes yielded
+    # ints (b"2222" read as four 50s), a dict iterated its keys, and a bare
+    # number raised TypeError ("never raises").
+    assert oss.classify_arc(series) is None
+
+
+def test_tuple_and_generator_series_still_classify():
+    assert oss.classify_arc((50, 51, 49, 50, 51, 49))["label"] == "Steady"
+    assert oss.classify_arc(v for v in (50, 51, 49, 50, 51, 49))["label"] == "Steady"
+
+
+def test_label_agrees_with_the_reported_trend():
+    # RM-1622: the label was decided on the UNROUNDED trend while the
+    # payload reports it rounded to 0.1, so a trend of 5.96 was reported as
+    # 6.0 (>= TREND_FLAT, the documented rise rule) under the label Steady.
+    arc = oss.classify_arc([50, 50, 50, 50, 55.96, 55.96])
+    assert arc["trend"] == 6.0
+    assert arc["label"] == "Ramping"
+
+
+def test_label_agrees_with_the_reported_start():
+    # RM-1622: start 59.96 was reported 60.0 (>= LEVEL_HIGH) yet labelled
+    # Ramping, the not-strong-start branch.
+    arc = oss.classify_arc([59.96, 59.96, 63, 63, 70, 70])
+    assert arc["start"] == 60.0
+    assert arc["trend"] >= oss.TREND_FLAT
+    assert arc["label"] == "Snowball"
+
+
+def test_label_agrees_with_the_reported_volatility():
+    # RM-1622: mean jump 10.96 reported as 11.0 (>= VOL_HIGH) but not
+    # labelled Volatile.
+    arc = oss.classify_arc([50, 60.96, 50, 60.96, 50, 60.96, 50, 60.96, 50, 60.96, 50])
+    assert arc["volatility"] == 11.0
+    assert arc["label"] == "Volatile"
+
+
+@pytest.mark.parametrize("payload", [[1, 2], "minutes", 7, {"minutes": "abc"}, {"minutes": {"a": 1}}, {"minutes": 5}])
+def test_summarize_curve_malformed_payload_is_safe(payload):
+    # RM-1623: a non-dict payload or a non-list "minutes" raised
+    # AttributeError / TypeError despite the "Safe" docstring.
+    assert oss.summarize_curve(payload) == {"win": None, "loss": None}
+
+
+def test_summarize_curve_skips_non_dict_rows():
+    # RM-1623: one non-dict row (None, a list, a str) raised
+    # AttributeError and lost BOTH arcs; it now reads as a gap.
+    rows = [{"minute": m, "win_avg": 50 + m, "loss_avg": 40} for m in range(6)]
+    rows.insert(2, None)
+    rows.insert(4, [1, 2])
+    rows.insert(5, "row")
+    out = oss.summarize_curve({"minutes": rows})
+    assert out["win"] is not None
+    assert out["win"]["label"] == "Steady"
+    assert out["loss"]["label"] == "Behind"
