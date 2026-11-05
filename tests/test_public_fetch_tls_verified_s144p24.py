@@ -26,8 +26,6 @@ from pathlib import Path
 
 import pytest
 
-from tests._module_view import bind_urlopen
-
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -121,7 +119,9 @@ def test_fetch_external_tft_meta_fetches_with_a_verified_context(
         seen: list = []
         monkeypatch.setattr(mod, "external_sources", _Sources)
         monkeypatch.setattr(mod, "RAW_OUT", tmp_path / "raw.json")
-        assert bind_urlopen(monkeypatch, mod, _recording_urlopen(seen)) >= 1
+        # The fetch opens through the consent opener (RM-1564, the RM-1441
+        # shape), which takes the context as `context=`: record it there.
+        monkeypatch.setattr(mod, "open_consented", _recording_urlopen(seen))
         assert mod.main() == 1  # every fetch failed, nothing written
         assert len(seen) == 1
         _assert_verified(seen[0])

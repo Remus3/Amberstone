@@ -10,6 +10,11 @@ Every target is operator configuration, read from config/external_sources.json
 import, so this module is import-safe on an install that has none. The two
 header values are separate keys because the API checks them, so pointing the
 endpoint elsewhere means pointing those elsewhere too.
+
+Every fetch opens through ``lib.wiki_consent.open_consented`` (RM-1564,
+the RM-1441 shape): a configured url naming the League wiki host, or a reply
+redirecting into it, is refused without a consent record (ruling 51) before
+its socket opens. A refused url prints a REFUSED line and the sweep moves on.
 """
 import json
 import sys
@@ -23,6 +28,7 @@ if str(ROOT) not in sys.path:
 from core import external_sources  # noqa: E402
 from core.polled_json import atomic_write_text  # noqa: E402
 from core.tls_policy import client_context_verified  # noqa: E402
+from lib.wiki_consent import WikiFetchRefused, open_consented  # noqa: E402
 
 PROJECT = ROOT
 # Raw, uncleared third-party payload for manual integration only: gitignored
@@ -75,10 +81,12 @@ def main() -> int:
     for q in _queries(graphql_url) if graphql_url else []:
         try:
             req = urllib.request.Request(q["url"], data=q["body"], headers=hdrs, method="POST")
-            with urllib.request.urlopen(req, context=ctx, timeout=15) as r:
+            with open_consented(req, timeout=15, context=ctx) as r:
                 data = json.loads(r.read().decode())
                 print(f"SUCCESS {q['url']}: {str(data)[:500]}")
                 results[q["url"]] = data
+        except WikiFetchRefused as e:
+            print(f"REFUSED {q['url']}: {e}")
         except Exception as e:  # noqa: BLE001
             print(f"FAILED {q['url']}: {e}")
 
@@ -86,10 +94,12 @@ def main() -> int:
     for url in external_sources.values("tft_meta_data_urls"):
         try:
             req = urllib.request.Request(url, headers=hdrs)
-            with urllib.request.urlopen(req, context=ctx, timeout=10) as r:
+            with open_consented(req, timeout=10, context=ctx) as r:
                 data = json.loads(r.read().decode())
                 print(f"DATA SUCCESS {url}: {str(data)[:500]}")
                 results[url] = data
+        except WikiFetchRefused as e:
+            print(f"REFUSED {url}: {e}")
         except Exception as e:  # noqa: BLE001
             print(f"DATA FAILED {url}: {e}")
 
