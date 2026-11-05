@@ -153,7 +153,7 @@ from lib.game_data.lua_text import (  # noqa: E402
 )
 # RM-1227 (ruling 51, RM962-S146-R51): no automated wiki request without a
 # consent record; CommunityDragon requests are unaffected.
-from lib.wiki_consent import WikiFetchRefused, refuse_unless_consented  # noqa: E402
+from lib.wiki_consent import WikiFetchRefused, open_consented, refuse_unless_consented  # noqa: E402
 
 DATA_DIR = PROJECT_ROOT / "data" / "daemon_slayer"
 META_DDRAGON_DIR = PROJECT_ROOT / "data" / "meta_build" / "ddragon"
@@ -246,13 +246,14 @@ def _fetch(url: str, timeout: int = _HTTP_TIMEOUT) -> str:
     """GET text with a UA header (the wiki blocks UA-less).
 
     A wiki url refuses (``WikiFetchRefused``) before any socket opens unless a
-    consent record exists (RM-1227); a CommunityDragon url passes.
+    consent record exists (RM-1227); a CommunityDragon url passes unless it
+    redirects into the wiki (RM-1254).
     """
     refuse_unless_consented(url)
     req = urllib.request.Request(
         url, headers={"User-Agent": HEADER_UA, "Accept": "*/*"}
     )
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
+    with open_consented(req, timeout=timeout) as resp:
         return resp.read().decode("utf-8", "replace")
 
 

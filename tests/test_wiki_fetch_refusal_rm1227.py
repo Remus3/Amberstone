@@ -7,8 +7,9 @@ The five paths named by the ruling: the ``wiki`` Source fetched by
 (and so ``tools/upstream_drift_check.py --staleness-recent``) and
 ``tools/ds_windup_offset_compare.py``.
 
-The network layer is patched for every test (``urllib.request.urlopen`` and the
-socket connect / resolve calls record and raise), and the consent record path
+The network layer is patched for every test (``urllib.request.urlopen``,
+``OpenerDirector.open`` and the socket connect / resolve calls record and
+raise), and the consent record path
 points at an empty tmp dir, so a refusal is proven by ZERO recorded requests,
 not by an exception alone. With a valid record the same calls DO reach the
 network layer, so the refusal is conditional, not a blanket off switch.
@@ -75,6 +76,14 @@ def net(monkeypatch, tmp_path):
     # left alive keeps the real network calls.
     monkeypatch.setattr(urllib.request, "urlopen",
                         this_thread_only(_urlopen, urllib.request.urlopen))
+    # RM-1254: the tools open through lib.wiki_consent.open_consented, an
+    # OpenerDirector carrying the consent redirect handler, not urlopen.
+
+    def _opener_open(_self, req, *a, **k):
+        return _urlopen(req)
+
+    monkeypatch.setattr(urllib.request.OpenerDirector, "open",
+                        this_thread_only(_opener_open, urllib.request.OpenerDirector.open))
     for name in ("create_connection", "getaddrinfo"):
         monkeypatch.setattr(socket, name, this_thread_only(_sock(name), getattr(socket, name)))
     for name in ("connect", "connect_ex"):

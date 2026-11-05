@@ -130,7 +130,7 @@ from daemon_slayer_wiki_stats_extract import (  # noqa: E402
 
 # RM-1227 (ruling 51, RM962-S146-R51): no automated wiki request without a
 # consent record. The sibling import above puts the repo root on sys.path.
-from lib.wiki_consent import WikiFetchRefused, refuse_unless_consented  # noqa: E402
+from lib.wiki_consent import WikiFetchRefused, open_consented, refuse_unless_consented  # noqa: E402
 
 # The skill slots, in a stable order (i = passive/inherent, then q/w/e/r).
 _SKILL_SLOTS = ("i", "q", "w", "e", "r")
@@ -194,13 +194,13 @@ def _fetch(url: str, timeout: int = _HTTP_TIMEOUT) -> str:
     """GET text with a NON-browser UA header (a browser UA trips Cloudflare).
 
     A wiki url refuses (``WikiFetchRefused``) before any socket opens unless a
-    consent record exists (RM-1227).
+    consent record exists (RM-1227); so does a redirect into the wiki (RM-1254).
     """
     refuse_unless_consented(url)
     req = urllib.request.Request(
         url, headers={"User-Agent": HEADER_UA, "Accept": "*/*"}
     )
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
+    with open_consented(req, timeout=timeout) as resp:
         return resp.read().decode("utf-8", "replace")
 
 

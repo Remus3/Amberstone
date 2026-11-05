@@ -59,6 +59,8 @@ from urllib import error as urllib_error
 from urllib import request as urllib_request
 from urllib.parse import urlparse
 
+from lib.wiki_consent import WikiFetchRefused, refuse_unless_consented
+
 USER_AGENT = "Amberstone/3.0 (+https://local)"
 DEFAULT_TIMEOUT = 15.0
 MIN_INTERVAL_SEC = 1.0
@@ -248,6 +250,12 @@ class _BlocklistRedirectHandler(urllib_request.HTTPRedirectHandler):
     The blocklist used to be consulted only on the url the caller passed.
     The default opener follows redirects, so an allowed host could 302
     straight to a blocked one and the fetch went through.
+
+    It also re-checks ``lib.wiki_consent`` (RM-1254, ruling 51): a redirect
+    into the League wiki host without a consent record raises
+    ``WikiFetchRefused`` before that hop's socket opens. The refusal is a
+    policy act, so ``request`` neither counts it against the breaker nor
+    wraps it as a network error.
     """
 
     def __init__(self, client: HttpClient) -> None:
@@ -256,6 +264,12 @@ class _BlocklistRedirectHandler(urllib_request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         if self._client.is_blocked(newurl):
             raise Blocked(f"redirect target blocked by lib/http/blocklist.json: {newurl}")
+        try:
+            refuse_unless_consented(newurl)
+        except WikiFetchRefused:
+            if fp is not None:
+                fp.close()
+            raise
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 

@@ -13,6 +13,11 @@ the one place every wiki request path asks before it opens a socket:
 - ``tools/daemon_slayer_wiki_stats_extract.py`` ``_fetch``
 - ``tools/ds_windup_offset_compare.py`` ``_fetch_module``
 
+The url a caller passes is checked, and so is every REDIRECT target (RM-1254):
+the three tools open through ``open_consented`` and ``lib/http/client.py``
+``HttpClient`` re-checks in its redirect handler, so a non-wiki url answering
+with a redirect into the wiki host is refused the same way.
+
 A request is allowed only when a CONSENT RECORD exists: the tracked JSON file
 ``ops/wiki_fetch_consent.json`` (absent today), holding an object with
 
@@ -31,6 +36,7 @@ from __future__ import annotations
 
 import datetime as _dt
 import json
+import urllib.request
 from pathlib import Path
 from typing import Any, Optional
 from urllib.parse import urlsplit
@@ -136,3 +142,37 @@ def refuse_unless_consented(url: str, path: Optional[Path] = None) -> None:
     """
     if is_wiki_url(url):
         require_consent("an automated request to the League wiki host", path)
+
+
+class WikiConsentRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Re-checks consent on every redirect hop (RM-1254).
+
+    ``refuse_unless_consented`` on the url a caller passes is not enough: the
+    default opener follows a 3xx, so a CommunityDragon, Data Dragon or Meraki
+    url answering with a redirect to the wiki host would open a socket to the
+    wiki. ``newurl`` is already absolute here (urllib joins it before calling
+    ``redirect_request``). The refused hop's response is closed, then the
+    refusal propagates out of ``open``.
+    """
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        try:
+            refuse_unless_consented(newurl)
+        except WikiFetchRefused:
+            if fp is not None:
+                fp.close()
+            raise
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+def open_consented(req: Any, timeout: float):
+    """``urllib.request.urlopen`` with the consent check on EVERY hop.
+
+    The url passed and each redirect target are checked; a wiki url without a
+    consent record raises ``WikiFetchRefused`` before its socket opens. For the
+    stdlib urllib fetchers; ``lib.http.client.HttpClient`` carries the same
+    check in its own redirect handler.
+    """
+    refuse_unless_consented(getattr(req, "full_url", req))
+    opener = urllib.request.build_opener(WikiConsentRedirectHandler())
+    return opener.open(req, timeout=timeout)
