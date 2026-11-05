@@ -1242,8 +1242,6 @@ class RuneWriter:
         mode_tag = "ARAM" if is_aram else "SR"
         page_name = f"{self.PAGE_PREFIX}{champion} {mode_tag}"
 
-        success = self._write_page(page_name, pri_id, sec_id, perk_ids)
-
         # Summoner spells are owned by _sync_spells (CS2, 2026-06-08), which
         # runs every _poll BEFORE this rune write and is self-correcting +
         # idempotent. The previous "push spells iff the rune write succeeded"
@@ -1251,8 +1249,7 @@ class RuneWriter:
         # account cap) skipped the spell push entirely, leaving the client's
         # randomised Flash+Heal / Flash+TP default in place. No spell write
         # here anymore - it would be a redundant unconditional double-PATCH.
-
-        return success
+        return self._write_page(page_name, pri_id, sec_id, perk_ids)
 
     def _write_page(
         self,

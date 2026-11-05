@@ -508,7 +508,7 @@ def run_validation(
     finally:
         conn.close()
 
-    report = {
+    return {
         "generated_at": _dt.datetime.now(_dt.timezone.utc).isoformat(),
         "db": str(db_path),
         "game_mode": _SR_GAME_MODE,
@@ -529,7 +529,6 @@ def run_validation(
             "an honest lower-fidelity signal, not a pure 1v1 oracle."
         ),
     }
-    return report
 
 
 def run_trade_validation(

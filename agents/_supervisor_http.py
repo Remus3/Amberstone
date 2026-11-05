@@ -236,7 +236,7 @@ class _QuietHandler(HostAllowlistMixin, HeadDeadlineMixin,
             return self._handle_digest()
         if self.path.startswith("/api/locked-champion"):
             return self._handle_locked_champion()
-        super().do_GET()
+        return super().do_GET()
 
     def do_HEAD(self) -> None:
         if self._is_forbidden(self.path):
@@ -246,7 +246,7 @@ class _QuietHandler(HostAllowlistMixin, HeadDeadlineMixin,
         # ``self.command == "HEAD"`` and skip body writes per RFC 7231.
         if self.path.startswith("/api/"):
             return self.do_GET()
-        super().do_HEAD()
+        return super().do_HEAD()
 
     def _rejects_chunked(self) -> bool:
         """Reject a body RC cannot read, instead of silently dispatching {}.
@@ -298,7 +298,7 @@ class _QuietHandler(HostAllowlistMixin, HeadDeadlineMixin,
             return self._handle_file_task()
         if self.path.startswith("/api/task/") and self.path.endswith("/dismiss"):
             return self._handle_task_dismiss()
-        self.send_error(404, "Not Found")
+        return self.send_error(404, "Not Found")
 
     # ------ API handlers --------------------------------------------
     def _read_body(self) -> bytes:

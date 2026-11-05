@@ -95,12 +95,11 @@ def _already_migrated(conn: sqlite3.Connection, source_ref: str) -> int | None:
 
 
 def _participants_for_match(rewind: sqlite3.Connection, match_id: str) -> list[sqlite3.Row]:
-    rows = rewind.execute(
+    return rewind.execute(
         "SELECT participant_id, team_id, champion_name, puuid "
         "FROM participants WHERE match_id = ? ORDER BY participant_id",
         (match_id,),
     ).fetchall()
-    return rows
 
 
 def _split_comp(participants: list[sqlite3.Row], tracked_team_id: int) -> tuple[list[str], list[str]]:

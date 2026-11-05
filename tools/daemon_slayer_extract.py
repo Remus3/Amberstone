@@ -684,8 +684,7 @@ def _resolve_text(rec_text: str,
         rec_text,
     )
     rec_text = re.sub(r",\s*,+", ",", rec_text)
-    rec_text = re.sub(r"([{\[])\s*,", r"\1", rec_text)
-    return rec_text
+    return re.sub(r"([{\[])\s*,", r"\1", rec_text)
 
 
 def _parse_top_level(bindings: list[TopLevelBinding]) -> dict[str, Any]:

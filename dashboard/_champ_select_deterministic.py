@@ -113,13 +113,12 @@ def _runes_from_cmd(rune_cmd: dict) -> dict:
     for sid in perks[-3:] if len(perks) >= 3 else []:
         if isinstance(sid, int) and 5000 <= sid < 6000:
             shards.append(_SHARD_ID_TO_LABEL.get(sid, ""))
-    out = {
+    return {
         "keystone": keystone,
         "primary_tree": _TREE_ID_TO_NAME.get(primary_id, ""),
         "secondary_tree": _TREE_ID_TO_NAME.get(sub_id, ""),
         "shards": shards,
     }
-    return out
 
 
 def _ally_notes(champ: str, allies: list) -> str:

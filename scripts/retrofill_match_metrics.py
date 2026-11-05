@@ -52,7 +52,7 @@ def _nearest_frame(conn, match_id: str, participant_id: int, target_ms: int):
     participant. None if no frames exist near the target."""
     # Frames are minute-granular (typically 60000ms intervals). Find the
     # one within +/-90s of target.
-    row = conn.execute("""
+    return conn.execute("""
         SELECT timestamp_ms, current_gold, total_gold, xp, level,
                minions_killed, jungle_minions, total_dmg_done, total_dmg_taken,
                pos_x, pos_y, time_enemy_cc
@@ -62,7 +62,6 @@ def _nearest_frame(conn, match_id: str, participant_id: int, target_ms: int):
         ORDER BY ABS(timestamp_ms - ?) ASC
         LIMIT 1
     """, (match_id, participant_id, target_ms - 90000, target_ms + 90000, target_ms)).fetchone()
-    return row
 
 
 def _find_tracked_pid(conn, match_id: str, champ: str, team_id: int):

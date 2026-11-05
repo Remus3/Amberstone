@@ -1500,9 +1500,7 @@ def prelude_row(cycle_id: str, ts: str, pid: int, stage: str, cls: str, dry: boo
 
 
 def _stripped_detail(detail: str) -> str:
-    base = detail.split(";", 1)[0]
-    base = base.removesuffix(":attempt-cap")
-    return base
+    return detail.split(";", 1)[0].removesuffix(":attempt-cap")
 
 
 def metrics_row_ok(row: Mapping[str, Any], *, delivered: Optional[int] = None,
