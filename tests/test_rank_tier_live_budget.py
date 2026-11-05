@@ -744,18 +744,40 @@ class _TaintScan(ast.NodeVisitor):
 
     def visit_Name(self, node):
         low = node.id.lower()
-        if node.id in self._tainted or any(p in low for p in _TAINTED_NAME_PARTS):
+        if (node.id in self._tainted or _OBJ + node.id in self._tainted
+                or any(p in low for p in _TAINTED_NAME_PARTS)):
             self.found.append(node.id)
 
     def visit_Attribute(self, node):
         if any(p in node.attr.lower() for p in ("url", "endpoint")):
             self.found.append(f".{node.attr}")
+        if isinstance(node.value, ast.Name) and _object_only(node.value.id,
+                                                             self._tainted):
+            # `r.status` off a with-as object is clean; the url attributes
+            # were judged above (RM-1558).
+            return
         self.generic_visit(node)
 
     def visit_Constant(self, node):
         if (isinstance(node.value, str)
                 and node.value.strip().lower() in _CONFIG_SECRET_KEYS):
             self.found.append(f"config key {node.value!r}")
+
+
+# RM-1558: a with-as target built from a credential-bearing value is an
+# OBJECT, held in the state as `_OBJ + name`. Its repr may quote what it was
+# built from (a file object quotes its path), so a BARE reference to it is a
+# leak, while an attribute read or method call off it (`r.status`,
+# `r.read(n)`) is not - the url attributes (`.geturl`, `.full_url`) are caught
+# by the attribute rule. Residual: a non-url attribute that still carries the
+# value (a file object's `.name`) is not seen.
+_OBJ = "obj:"
+
+
+def _object_only(name, tainted) -> bool:
+    low = name.lower()
+    return (_OBJ + name in tainted and name not in tainted
+            and not any(p in low for p in _TAINTED_NAME_PARTS))
 
 
 def _retaint(stmt, tainted) -> None:
@@ -795,6 +817,27 @@ def _bind_names(target, found, tainted, *, clear=True) -> None:
                 tainted.add(sub.id)
             elif clear:
                 tainted.discard(sub.id)
+                tainted.discard(_OBJ + sub.id)
+
+
+# RM-1558: methods that put their arguments INTO the receiver. A tainted
+# argument taints the receiver's names (add-only, as an assignment target
+# would: `self.seen.append(url)` taints `self` like `self.last = url` does).
+# `write` is not here: it is a sink (`_LOG_FUNCS`).
+_MUTATORS = frozenset({"append", "appendleft", "extend", "extendleft", "insert",
+                       "add", "update", "setdefault", "put", "put_nowait"})
+
+
+def _bind_mutators(nodes, tainted) -> None:
+    """`q.append(url)` leaves `q` carrying the url for the rest of the scope.
+    Applied with the walrus bindings, before the statement's sinks."""
+    for node in nodes:
+        for sub in ast.walk(node):
+            if (isinstance(sub, ast.Call) and isinstance(sub.func, ast.Attribute)
+                    and sub.func.attr in _MUTATORS):
+                args = list(sub.args) + [kw.value for kw in sub.keywords]
+                if any(_is_tainted(a, tainted) for a in args):
+                    _bind_names(sub.func.value, True, tainted, clear=False)
 
 
 # RM-1557: the binding forms this walk added - `for` targets, `with ... as`
@@ -826,8 +869,9 @@ _PASSTHROUGH_CMS = frozenset({"nullcontext", "closing"})
 def _with_target_found(item, tainted) -> bool:
     """RM-1557: a `with ... as m` target is the context manager's __enter__
     result, usually an OBJECT (`with open_consented(req) as r:` must leave
-    `r.status` clean), so it is not tainted by the call's arguments - the
-    attribute rule covers `.url` / `.geturl` on it. The passthroughs
+    `r.status` clean), so it is not tainted as a VALUE by the call's
+    arguments - it is bound as an object instead (`_bind_objects`,
+    RM-1558), and the attribute rule covers `.url` / `.geturl` on it. The passthroughs
     (`nullcontext(x)`, `closing(x)`) hand `x` itself back, so they taint it.
     The binding only ever ADDS taint (see the `with` arm of `_Flow.stmt`)."""
     expr = item.context_expr
@@ -835,6 +879,26 @@ def _with_target_found(item, tainted) -> bool:
         return False
     args = list(expr.args) + [kw.value for kw in expr.keywords]
     return any(_is_tainted(a, tainted) for a in args)
+
+
+def _bind_objects(target, tainted) -> None:
+    """RM-1558: every other `with ... as` target whose context expression
+    carries the value is bound as an OBJECT (`_OBJ`): a bare reference to it
+    is a leak, `r.status` is not. Add-only, like every with binding. A target
+    that is not a plain name (`as self.conn`, `as d[k]`) taints its names as
+    VALUES, as `self.conn = Opn(url)` would: as an object, `self.conn` would
+    read as a clean attribute of `self` though it IS the object."""
+    if isinstance(target, (ast.Tuple, ast.List)):
+        for elt in target.elts:
+            _bind_objects(elt, tainted)
+        return
+    if isinstance(target, ast.Starred):
+        _bind_objects(target.value, tainted)
+        return
+    if not isinstance(target, ast.Name):
+        _bind_names(target, True, tainted, clear=False)
+        return
+    tainted.add(_OBJ + target.id)
 
 
 def _join(*states):
@@ -927,7 +991,17 @@ class _Flow:
     def _expr_step(self, nodes, stmt, state):
         """Check the sinks in `nodes` and apply their walrus bindings."""
         state = set(state)
-        _bind_walrus(nodes, state)
+        nodes = list(nodes)
+        # Both binding kinds only ADD taint, so they are run to a fixed point:
+        # within one statement a walrus may read a container a later mutator
+        # fills (`g(q.append(url), m := q[0])`), or one mutator a container
+        # another fills after it (RM-1558).
+        while True:
+            before = len(state)
+            _bind_walrus(nodes, state)
+            _bind_mutators(nodes, state)
+            if len(state) == before:
+                break
         _check_sinks(nodes, stmt, state, self.report)
         return state
 
@@ -985,6 +1059,8 @@ class _Flow:
                     _bind_names(item.optional_vars,
                                 _with_target_found(item, state), state,
                                 clear=False)
+                    if _is_tainted(item.context_expr, state):
+                        _bind_objects(item.optional_vars, state)
             # Any context manager may SUPPRESS an exception from its body
             # (`contextlib.suppress`), so every state seen inside the body can
             # resume after the `with` - even when the body ends in a return,
@@ -1312,6 +1388,86 @@ _CHECKER_SAMPLES = (
     ("dead try else is still scanned",
      "def f(url):\n    try:\n        return g()\n    except OSError:\n        pass\n"
      "    else:\n        raise E(url)\n", True),
+    # RM-1558: the three RM-1557 known gaps, promoted. The RM-1443 walk
+    # flagged them only by accident (through code after a `break` / `return`
+    # it treated as reachable); the RM-1557 walk lost them.
+    ("with-as object from a tainted call, behind a break",
+     "def f(url, xs):\n    n = 'x'\n    for x in xs:\n        with Opn(url) as n:\n"
+     "            log.info('%s', n)\n        n = url\n        break\n", True),
+    ("with-as object from a tainted call, after a returning arm",
+     "def f(url, c):\n    m = 'x'\n    if c:\n        m = url\n        return\n"
+     "    with Opn(url) as m:\n        log.info('%s', m)\n", True),
+    ("container filled by append, dead binding after a break",
+     "def f(url):\n    q = []\n    q.append(url)\n    n = 'x'\n    for x in [1]:\n"
+     "        break\n        n = url\n    n = n + q[0]\n    raise E(n)\n", True),
+    # RM-1558 (a): a with-as target built from a tainted value is an OBJECT
+    # that may quote it in its repr (a file object quotes its path). A bare
+    # reference to it is a leak; reading an attribute off it is not.
+    ("with-as object from a tainted call, bare reference",
+     "def f(url):\n    with Opn(url) as r:\n        raise E(f'{r}')\n", True),
+    ("with-as over a tainted object name binds a fresh name",
+     "def f(url):\n    m = open(url)\n    with m as n:\n        log.info('%s', n)\n",
+     True),
+    ("with-as object passed on by plain assignment",
+     "def f(url):\n    with Opn(url) as r:\n        s = r\n    raise E(f'{s}')\n", True),
+    ("with-as object attribute set in one method, logged in another",
+     "class C:\n    def a(self, url):\n        with Opn(url) as self.conn:\n"
+     "            pass\n    def b(self):\n        log.info('%s', self)\n", True),
+    ("with-as object url attribute is still a leak",
+     "def f(url):\n    with Opn(url) as r:\n        raise E(r.geturl())\n", True),
+    ("with-as object status read is clean",
+     "def f(url):\n    with Opn(url) as r:\n        if r.status != 200:\n"
+     "            raise E(f'{_safe_url(url)} -> HTTP {r.status}')\n", False),
+    ("with-as object method result is clean",
+     "def f(url):\n    with Opn(url) as r:\n        n = r.read(8)\n"
+     "        log.info('%d bytes', len(n))\n", False),
+    ("with-as object rebound clean",
+     "def f(url):\n    with Opn(url) as r:\n        pass\n    r = 'done'\n"
+     "    log.info('%s', r)\n", False),
+    ("with-as target from a clean call stays clean",
+     "def f(url):\n    with g() as r:\n        log.info('%s', r)\n", False),
+    # RM-1558 (b): a container filled by a mutating method call carries
+    # whatever was put in it.
+    ("container filled by append, read back",
+     "def f(url):\n    q = []\n    q.append(url)\n    raise E(q[0])\n", True),
+    ("container filled by extend, joined",
+     "def f(url):\n    q = []\n    q.extend([url])\n    log.info(', '.join(q))\n", True),
+    ("container filled by insert",
+     "def f(url):\n    q = []\n    q.insert(0, 'at ' + url)\n    raise E(str(q))\n",
+     True),
+    ("dict filled by update",
+     "def f(url):\n    d = {}\n    d.update(src=url)\n    raise E(f'{d}')\n", True),
+    ("dict filled by setdefault",
+     "def f(url):\n    d = {}\n    d.setdefault('k', url)\n    raise E(d['k'])\n", True),
+    ("set filled by add",
+     "def f(url):\n    s = set()\n    s.add(url)\n    log.info('%s', s)\n", True),
+    ("attribute container filled in one method, logged in another",
+     "class C:\n    def a(self, url):\n        self.seen.append(url)\n"
+     "    def b(self):\n        log.info('%s', self.seen)\n", True),
+    ("mutator inside an expression still fills the container",
+     "def f(url, c):\n    q = []\n    if c and q.append(url) is None:\n        pass\n"
+     "    raise E(q[0])\n", True),
+    ("container filled with clean values stays clean",
+     "def f(url):\n    q = []\n    q.append(_safe_url(url))\n    q.extend(['x'])\n"
+     "    raise E(', '.join(q))\n", False),
+    # Found by the cycle 129 verifier.
+    ("with-as object bound to an attribute, logged bare",
+     "class C:\n    def a(self, url):\n        with Opn(url) as self.conn:\n"
+     "            log.info('%s', self.conn)\n", True),
+    ("with-as object in a tuple target, bare element",
+     "def f(url):\n    with Opn(url) as (a, b):\n        raise E(f'{a}')\n", True),
+    ("with-as object in a tuple target, element status read is clean",
+     "def f(url):\n    with Opn(url) as (a, b):\n        log.info('%s', b.status)\n",
+     False),
+    ("walrus reads a container a later mutator in the statement fills",
+     "def f(url):\n    q = []\n    g(q.append(url), m := q[0])\n    raise E(m)\n",
+     True),
+    ("mutator fills from a container a later mutator in the statement fills",
+     "def f(url):\n    a, b = [], []\n    g(b.extend(a), a.append(url))\n"
+     "    raise E(str(b))\n", True),
+    ("container filled by a clean mutator call stays clean",
+     "def f(url):\n    q = []\n    q.append(len(_safe_url(url)))\n    raise E(str(q))\n",
+     False),
 )
 
 
@@ -1324,33 +1480,6 @@ def test_defect_f_leak_checker_is_not_vacuous(tmp_path, label, sample, expect_le
     p.write_text(sample, encoding="utf-8")
     found = _message_leak_sites(p)
     assert bool(found) is expect_leak, (label, found)
-
-
-# RM-1557 known gaps, shared with the RM-1443 walk: a with-as object built
-# by a non-passthrough call from the url, and a container filled by a method
-# call (`q.append(url)`), carry no taint. The RM-1443 walk flagged these
-# three only BY ACCIDENT, through code after a `break` / `return` it treated
-# as reachable. Adjudicated cycle 128 (option A): that class is not a
-# regression; the gap is filed (RM-1558). Strict, so closing it turns red.
-_KNOWN_GAP_SAMPLES = (
-    ("with-as object from a tainted call, behind a break",
-     "def f(url, xs):\n    n = 'x'\n    for x in xs:\n        with Opn(url) as n:\n"
-     "            log.info('%s', n)\n        n = url\n        break\n"),
-    ("with-as object from a tainted call, after a returning arm",
-     "def f(url, c):\n    m = 'x'\n    if c:\n        m = url\n        return\n"
-     "    with Opn(url) as m:\n        log.info('%s', m)\n"),
-    ("container filled by append, dead binding after a break",
-     "def f(url):\n    q = []\n    q.append(url)\n    n = 'x'\n    for x in [1]:\n"
-     "        break\n        n = url\n    n = n + q[0]\n    raise E(n)\n"),
-)
-
-
-@pytest.mark.xfail(strict=True, reason="RM-1558: with-as object / container taint")
-@pytest.mark.parametrize("label,sample", _KNOWN_GAP_SAMPLES)
-def test_defect_f_leak_checker_known_gaps(tmp_path, label, sample):
-    p = tmp_path / "sample.py"
-    p.write_text(sample, encoding="utf-8")
-    assert _message_leak_sites(p), label
 
 
 def test_defect_f_no_message_site_in_the_module_carries_the_raw_endpoint():
