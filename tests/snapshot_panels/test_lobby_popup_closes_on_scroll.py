@@ -92,7 +92,12 @@ def _open_lane(page, how):
     return st
 
 
-@pytest.mark.parametrize("vp", [(1280, 720), (923, 1280)],
+# RM-1428: the second viewport was 923x1280 until the stacked layout's
+# popup moved below the lane pair; there the view scrolls only 30 px, which
+# leaves the popup whole, so it now stays open (pinned as a control in
+# test_lobby_lane_popup_fits_at_open.py). 1024x600 is the same stacked
+# layout with 710 px of scroll, which does carry it out of sight.
+@pytest.mark.parametrize("vp", [(1280, 720), (1024, 600)],
                          ids=lambda v: f"{v[0]}x{v[1]}")
 @pytest.mark.parametrize("how", ["pointer", "keyboard"])
 def test_a_wheel_scroll_away_closes_the_lane_popup(mock_server, pw_browser, vp, how):
@@ -109,7 +114,7 @@ def test_a_wheel_scroll_away_closes_the_lane_popup(mock_server, pw_browser, vp, 
         # Focus that was on the hidden cell goes back to the trigger, and the
         # page stays where the wheel put it (no jump back to the trigger).
         assert st["focus"] == "lv-lane-primary", st
-        assert st["scroll"] == st["maxScroll"], st
+        assert st["scroll"] == min(600, st["maxScroll"]), st
         # The shortcuts are the page's again.
         page.keyboard.press("z")
         assert page.evaluate(_STATE)["zen"] == "1", "Z stayed dead after the scroll"

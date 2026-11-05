@@ -1004,6 +1004,11 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   min-width: 320px;
 }
 .lobby-lane-popup.hidden { display: none; }
+/* RM-1428: where the pair sits too close to the view's top for the
+ * popup to fit above its scroll origin (the stacked one-column layout),
+ * _openLanePopup in main.js flips it below the pair instead.
+ * Pinned by tests/snapshot_panels/test_lobby_lane_popup_fits_at_open.py. */
+.lobby-lane-popup.is-below { bottom: auto; top: calc(100% + 8px); }
 .lobby-lane-popup-hover-label {
   /* RM-1320: 13 -> --fs-xs (16), the v2.1 floor. The label now names
    * the keyboard-focused lane too, not only the hovered one. */

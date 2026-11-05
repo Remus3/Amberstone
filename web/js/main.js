@@ -5406,8 +5406,20 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     });
     const lbl = document.getElementById("lv-lane-popup-label");
     if (lbl) lbl.innerHTML = "&nbsp;";
+    popup.classList.remove("is-below");
     popup.classList.remove("hidden");
     popup.setAttribute("aria-hidden", "false");
+    // RM-1428: the popup opens above the lane pair, but where the view
+    // stacks to one column the pair sits 79 px under the view's top and the
+    // popup needs 105, so its top fell ABOVE the view's scroll origin, cut
+    // off where no scroll could reach. Measured in content space, so a view
+    // merely scrolled down still opens above and scrolls back to it.
+    const view = document.getElementById("view-lobby");
+    if (view && view.contains(popup)) {
+      const contentTop = popup.getBoundingClientRect().top
+        - (view.getBoundingClientRect().top + view.clientTop) + view.scrollTop;
+      if (contentTop < 0) popup.classList.add("is-below");
+    }
     ["primary", "secondary"].forEach((s) => {
       const t = _laneTrigger(s);
       if (t) t.setAttribute("aria-expanded", s === slot ? "true" : "false");
@@ -5418,6 +5430,9 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     // there without matching :focus-visible, so no ring is painted.
     const target = curCell || popup.querySelector(".lobby-lane-popup-cell");
     if (target) target.focus();
+    // RM-1428: the focus scroll shows the cell only; the label row above
+    // it can still sit past the view's edge, so the whole popup comes in.
+    popup.scrollIntoView({ block: "nearest", inline: "nearest" });
     // RM-1422: measured after the focus above, so a focus that scrolled
     // the cell into view is part of the open, not a scroll away from it.
     armScrollAway("lobby-lane-popup");
