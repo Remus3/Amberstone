@@ -1034,10 +1034,29 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   lands fixed to the minimap) + the BATCH C gauge-row / enemy-chip-wrap render. STATUS: NOT drained
   2026-07-04 (frame endpoint probed http + X-RC-Token, game ended before a clean grab). SOURCE:
   LEDGER 662 + 735 + 799.
-- **G2-26** (was the pixel half of C13) R38 enemy_spells `stats_panel` RENDERED PIXEL capture. The
+- **G2-26** (was the pixel half of C13) ~~R38 enemy_spells `stats_panel` RENDERED PIXEL capture. The
   DATA path is live-proven TWICE (LEDGER 769 + LEDGER 820 2026-07-08, 5 enemies x 2 spells); LEDGER
   820 explicitly records "CSS visual verify PENDING (overlay hidden)". Best read vs real enemies
-  (GATE 3 or 4) but the widget renders at any gate.
+  (GATE 3 or 4) but the widget renders at any gate.~~ **MIS-FILED, CLASS 1: the subject is gone from
+  the tree (lane 9 PREP s144 c65, RM-1511, source read at `3443217b0`, 2026-11-05; NOT a tick, no
+  game involved).** C13 was "R38 enemy_spells tap-tracker + stats_panel populated in-game capture",
+  both born in `c2d2fe453` (2026-06-28). Neither half is capturable as filed: (1) the enemy_spells
+  tap-tracker was DELETED for Riot compliance in `538c61e4b` (2026-08-11: panel
+  `web/js/panels/enemy_spells.js`, the `enemy_spells` producer in `dashboard/_liveclient.py`, the
+  `#am-enemyspells` mount, CSS and its tests), because Riot's third-party rules ban "Tracking of enemy
+  summoner spells cooldowns" (`docs/OVERLAY_COMPLIANCE_PLAN.md`, row B1 "DONE - deleted"). The removal
+  is guarded INVERTED: `tests/snapshot_panels/test_overlay_view.py`
+  `test_overlay_has_no_banned_cue_mounts` fails if `#am-enemyspells` renders,
+  `tests/test_am_grid_child_placement.py` `EXPECTED_DIRECT_CHILDREN` was re-baselined 13 -> 10 for it,
+  and the producer comment in `dashboard/_liveclient.py` reads "Do not reinstate the enemy_spells key".
+  A capture of it would need the banned surface back. (2) The `stats_panel` half was REWORKED, chiefly
+  by `ee3d6c90f` (WP-A4b, 2026-06-28) and then item-8 `a553450be` (2026-07-12; the row's `f9996bc8` is
+  its pre-rewrite twin, not reachable from HEAD),
+  into the "You vs rank average" panel (`web/js/panels/stats_panel.js` header), whose live render
+  eyeball is already owed as **G2-27 (a)**; it is not a separate row. The
+  2026-07-20 drain's "G2-26 pixel capture done" (head of doc) predates the removal and stands as
+  history only. No live half is left here. Moving the row to "Not actually live-gated" is a human doc
+  edit.
 - **G2-27** `[NEW ROW 2026-07-18]` Overlay item-8 rank-tier stats panel: (a) the live render eyeball
   (`f9996bc8`), and (b) the LEDGER 873 (C) deferred finding - the `w-stats` default position
   (`web/js/lib/overlay_layout.js:67`, x40) COLLIDES with the primary `w-call` coach panel (180,130),
@@ -1061,6 +1080,8 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   context-menu item tooltip crop/position, PR enemy-spell chip cooldown timer, gauges 1-line layout.
   Each fix needs the operator's live Ctrl+Alt+A verify before it lands - root-cause allowed, shipping
   blind FORBIDDEN. Several sub-items now have shipped fixes owed a verify: see G2-28 / G2-32 / G2-33.
+  (s144 c65, RM-1511: the "PR enemy-spell chip cooldown timer" sub-item is DEAD, not owed: the
+  tracker was deleted for Riot compliance in `538c61e4b`; see the struck G2-33.)
   DISPOSITION NOTES from RM-05: build META row should stay STATIC; DMG/SURV/UTIL knob steppers dead;
   item right-click 5-choice radial dead; ward_cue teardown is a deliberate live-session job (live
   serializer + test + overlay DOM contract), never a blind headless delete.
@@ -1077,8 +1098,21 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   `14a5ccc5`; `web/js/lib/overlay_layout.js` - `_effectiveXY` drag origin + window-level pointer
   capture + handle-only border hit-test, `_clampXY` semantics preserved). Verify EACH panel, including
   the ACTIVE empty-backing "press now inert" behavior call.
-- **G2-33** `[NEW ROW 2026-07-18]` PR enemy-spell chip cooldown timer live-verify (LEDGER 914 S3,
-  `b827f782`; `web/js/panels/enemy_spells.js` - upgraded-Smite displayNames + cd=0 sticky "USED" chip).
+- **G2-33** `[NEW ROW 2026-07-18]` ~~PR enemy-spell chip cooldown timer live-verify (LEDGER 914 S3,
+  `b827f782`; `web/js/panels/enemy_spells.js` - upgraded-Smite displayNames + cd=0 sticky "USED" chip).~~
+  **MIS-FILED, CLASS 1: the code under test was deleted (lane 9 PREP s144 c65, RM-1511, source read at
+  `3443217b0`, 2026-11-05; NOT a tick, no game involved).** Both files the S3 fix changed (`941653494`
+  on HEAD; the row's `b827f782` is its pre-rewrite twin, not reachable from HEAD),
+  `web/js/panels/enemy_spells.js` and `web/js/panels/enemy_spells_timer.test.mjs`, were removed by the
+  Riot-compliance commit `538c61e4b` (2026-08-11) and no commit since re-adds them (`git log
+  538c61e4b..HEAD -- web/js/panels/enemy_spells.js` is empty). The chip timer is the banned surface
+  itself: `docs/OVERLAY_COMPLIANCE_PLAN.md` row B1 names `enemy_spells_timer.test.mjs` under "Tracking of
+  enemy summoner spells cooldowns" and rules "DELETE the enemy-side tracker entirely. No manual-click
+  carve-out is documented; do not assume one.", and the producer comment in `dashboard/_liveclient.py`
+  adds "a manual tap-to-count-down tracker is still an enemy cooldown timer". Same inverted guards as
+  G2-26. Verifying this row live would mean reinstating a banned
+  surface, so it can never drain; the matching G2-30 sub-item is dead for the same reason. Moving the
+  row to "Not actually live-gated" is a human doc edit.
 - **G2-34** `[NEW ROW 2026-07-18 - LIVE-GATED DECISION]` Objective gauges 1-line collapse: the
   operator picks horizontal vs vertical after seeing them in-game. SOURCE: RM-05.
 - **G2-35** `[NEW ROW 2026-07-18 - LIVE-GATED DECISION]` `am-statspanel` intent: CLARIFY with the
