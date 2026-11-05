@@ -33,7 +33,7 @@ from pathlib import Path
 import pytest
 
 from tests._repo_walk import REPO_ROOT, relative_posix, repo_files
-from tests._ruff_version import MEASURED_RUFF, ruff_minor
+from tests._ruff_version import MEASURED_RUFF, fail_if_the_landing_box_moved, ruff_minor
 
 pytestmark = pytest.mark.skipif(
     importlib.util.find_spec("ruff") is None,
@@ -98,9 +98,11 @@ def test_no_new_findings(tree_counts):
 
 def test_baseline_is_exact(tree_counts):
     """A baseline row that no longer offends (or offends less) must shrink or go."""
-    if ruff_minor() != MEASURED_RUFF:
-        pytest.skip(f"ruff {ruff_minor()} differs from the measured {MEASURED_RUFF} (RM-1657)")
-    stale ={f: n for f, n in _BASELINE.items() if tree_counts.get(f, 0) != n}
+    minor = ruff_minor()
+    if minor != MEASURED_RUFF:
+        fail_if_the_landing_box_moved(minor)
+        pytest.skip(f"ruff {minor} differs from the measured {MEASURED_RUFF} (RM-1657)")
+    stale = {f: n for f, n in _BASELINE.items() if tree_counts.get(f, 0) != n}
     assert not stale, f"baseline rows to shrink or drop (file: recorded): {stale}"
 
 

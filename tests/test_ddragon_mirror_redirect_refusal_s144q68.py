@@ -212,8 +212,9 @@ def test_a_head_to_a_non_wiki_target_still_resolves(net, origin):
     assert (res.status, res.body) == (200, b"")
     assert res.headers.get("content-length") == str(len(PNG))
     # RM-1657: urllib keeps HEAD across a redirect on 3.14.4 and re-sends GET on
-    # the CI's 3.12, so the second verb is the interpreter's.
-    assert hits in (["HEAD /to-local", "HEAD /ok.png"], ["HEAD /to-local", "GET /ok.png"])
+    # the CI's 3.12, so before 3.14 the second verb is the interpreter's.
+    verbs = ("HEAD",) if sys.version_info >= (3, 14) else ("HEAD", "GET")
+    assert hits in [["HEAD /to-local", f"{v} /ok.png"] for v in verbs]
 
 
 # -- the callers ---------------------------------------------------------------------

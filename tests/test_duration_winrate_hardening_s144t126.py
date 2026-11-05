@@ -1,6 +1,6 @@
 """True-audit s144 cycle 126 - core.duration_winrate hardening regressions.
 
-One test per finding (RM-1603..247). Every db is synthetic: an in-memory
+One test per finding (RM-1603..RM-1607). Every db is synthetic: an in-memory
 ``matches`` table, or a tmp_path file when the own-connection path is under
 test. No real rewind_history.db is read. ASCII-only authored content.
 """

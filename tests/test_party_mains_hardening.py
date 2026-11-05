@@ -1,6 +1,6 @@
 """True-audit hardening of dashboard/_party_mains.py (s144 cycle 120).
 
-One test (or a small group) per finding, RM-1565..192:
+One test (or a small group) per finding, RM-1565..RM-1572:
 
 - 185 member-set key: built from the riot_id field, so two different lobbies
   whose members carry no riot_id collapsed onto one key ("",) and served each

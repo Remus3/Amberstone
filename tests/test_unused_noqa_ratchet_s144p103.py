@@ -30,7 +30,7 @@ from pathlib import Path
 import pytest
 
 from tests._repo_walk import REPO_ROOT, relative_posix, repo_files
-from tests._ruff_version import MEASURED_RUFF, ruff_minor
+from tests._ruff_version import MEASURED_RUFF, fail_if_the_landing_box_moved, ruff_minor
 
 pytestmark = pytest.mark.skipif(
     importlib.util.find_spec("ruff") is None,
@@ -107,8 +107,10 @@ def _unused_noqa_by_file() -> dict[str, list[int]]:
 def found() -> dict[str, list[int]]:
     # RM-1657: which directive is "unused" is a fact about one ruff, not the tree.
     # The ASCII + LF half below needs no ruff and runs everywhere.
-    if ruff_minor() != MEASURED_RUFF:
-        pytest.skip(f"ruff {ruff_minor()} differs from the measured {MEASURED_RUFF} (RM-1657)")
+    minor = ruff_minor()
+    if minor != MEASURED_RUFF:
+        fail_if_the_landing_box_moved(minor)
+        pytest.skip(f"ruff {minor} differs from the measured {MEASURED_RUFF} (RM-1657)")
     return _unused_noqa_by_file()
 
 

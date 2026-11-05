@@ -1,6 +1,6 @@
 """s144 true-audit cycle 132: core/vision_template_match.py hardening.
 
-One test group per finding (RM-1624..270), each written RED first against
+One test group per finding (RM-1624..RM-1630), each written RED first against
 the pre-fix module:
 
   RM-1624  cv2.imread cannot open a non-ASCII path on Windows, so a checkout

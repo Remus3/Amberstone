@@ -1,7 +1,7 @@
 # arch: mc/auth.py true-audit regression pins (s144 cycle 129) | section=tests | frozen=no
 """mc/auth.py - the :8895 bearer gate never raises and fails closed visibly.
 
-Findings this file pins (s144 true-audit cycle 129, RM-1608..252):
+Findings this file pins (s144 true-audit cycle 129, RM-1608..RM-1612):
 
   RM-1608  A non-ASCII Authorization header (the stdlib decodes header
               bytes as iso-8859-1, so b"\\xe9" arrives as "\\u00e9") made

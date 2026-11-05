@@ -1,6 +1,6 @@
 """s144 true-audit cycle 123 - core/objective_playbook_shadow.py hardening.
 
-Each test is named for the weakness it pins (RM-1583..224):
+Each test is named for the weakness it pins (RM-1583..RM-1588):
 
 - 219: a non-finite, non-numeric or bool game clock was written verbatim (a NaN
   clock made the row non-strict JSON, an infinite one fell to an uncaught
@@ -28,7 +28,7 @@ import pytest
 import core.objective_playbook_shadow as ops
 from tests._timing_budget import fleet_test_guard
 
-_PLAY ={"tag": "playbook_dragon", "line": "Drake in 20s: group bot", "kind": "playbook"}
+_PLAY = {"tag": "playbook_dragon", "line": "Drake in 20s: group bot", "kind": "playbook"}
 
 
 @pytest.fixture(autouse=True)

@@ -1,6 +1,6 @@
 """True-audit s144 cycle 118: coaches/sr_draft_profile.py hardening.
 
-One test (or small group) per finding RM-1481..174. Every engine call is
+One test (or small group) per finding RM-1481..RM-1494. Every engine call is
 faked through the module's OWN urlopen (tests/_module_view.bind_urlopen) or
 by replacing `_call_beam`, so nothing here reaches a real :8860.
 """

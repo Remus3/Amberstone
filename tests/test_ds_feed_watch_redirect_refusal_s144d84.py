@@ -188,9 +188,10 @@ def test_a_redirect_to_a_non_wiki_target_still_lands(net, origin):
     assert fw.UrllibHttp().get(f"{base}/x/to-local.js") == (200, OK_BODY)
     assert net == []
     # RM-1657: urllib keeps HEAD across a redirect on 3.14.4 and re-sends GET on
-    # the CI's 3.12, so the second verb is the interpreter's.
+    # the CI's 3.12, so before 3.14 the second verb is the interpreter's.
+    verbs = ("HEAD",) if sys.version_info >= (3, 14) else ("HEAD", "GET")
     assert hits[0] == "HEAD /x/to-local.js"
-    assert hits[1] in ("HEAD /x/ok.js", "GET /x/ok.js")
+    assert hits[1] in [f"{v} /x/ok.js" for v in verbs]
     assert hits[2:] == ["GET /x/to-local.js", "GET /x/ok.js"]
 
 

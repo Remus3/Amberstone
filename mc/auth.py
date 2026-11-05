@@ -19,7 +19,7 @@ with a WARNING at most once a minute per problem that names the source and
 the problem, never the token and never a decode error (its text quotes a byte
 of the secret).
 
-``check`` never raises (s144 true-audit, RM-1608..252): a non-ASCII or
+``check`` never raises (s144 true-audit, RM-1608..RM-1612): a non-ASCII or
 non-str Authorization value is the plain 401, so "no header", "wrong token"
 and "garbage token" stay byte-identical. The compare runs on bytes because
 ``hmac.compare_digest`` raises TypeError on a str holding any non-ASCII.

@@ -1,4 +1,4 @@
-"""s144 true-audit cycle 124 - core.hz_build_shadow hardening (RM-1589..233).
+"""s144 true-audit cycle 124 - core.hz_build_shadow hardening (RM-1589..RM-1596).
 
 Every test writes to a tmp path (the module's test seam), never the live
 data/hz_build_shadow.jsonl. Each test names the finding it pins.

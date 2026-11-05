@@ -1,6 +1,6 @@
 """s144 true-audit cycle 122: modules/cache_engine.py, the SR auto-coach
 decision cache that ``coach_integration/_coach.py`` reads before every Haiku
-call and writes after every paid response (RM-1582..215).
+call and writes after every paid response (RM-1582 and the provisional S144-T-205..-215).
 
 The cache is an OPTIMISATION. Every finding below is a way it could instead
 take the coach down, throw away a response already paid for, or keep paying

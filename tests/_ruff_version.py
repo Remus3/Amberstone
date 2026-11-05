@@ -26,3 +26,11 @@ def ruff_minor() -> tuple[int, int]:
     m = re.search(r"(\d+)\.(\d+)\.", proc.stdout)
     assert m, f"no version in {proc.stdout!r} {proc.stderr[-200:]!r}"
     return int(m.group(1)), int(m.group(2))
+
+
+def fail_if_the_landing_box_moved(minor: tuple[int, int]) -> None:
+    """The caller is about to skip for ``minor``. Off Windows that is the CI's newer ruff;
+    on the box that lands code it means the local ruff moved, and a silent skip would
+    retire these ratchets, so re-measure and move MEASURED_RUFF instead."""
+    assert sys.platform != "win32", (
+        f"the local ruff is {minor}, not the measured {MEASURED_RUFF}: re-measure (RM-1657)")

@@ -1,6 +1,6 @@
 """s144 true-audit (cycle 125) of core/math_core.py.
 
-Each test is named for the weakness it pins (RM-1597..242). The golden
+Each test is named for the weakness it pins (RM-1597..RM-1602 and the provisional S144-T-239, -240, -242). The golden
 parity file (tests/test_math_core_golden.py) proves the formulas against
 external sources; this file proves the helpers are TOTAL and fail CLOSED on
 input the goldens never feed them, and that the JavaScript ports agree with

@@ -9,6 +9,7 @@ Architecture:
   fallback (which kicks in only after 4 s).
 """
 import json
+import os
 import socket
 import sys
 import threading
@@ -422,7 +423,11 @@ _WS_STUB = """
 @pytest.fixture(scope="session")
 def pw_browser():
     if sync_playwright is None:
-        pytest.skip("playwright is not installed in this job")
+        # Only that one job may go without: anywhere else a missing playwright must
+        # stay loud, not turn every browser test here into a green skip.
+        if os.environ.get("GITHUB_JOB") != "md-guards":
+            raise RuntimeError("playwright is not installed")
+        pytest.skip("playwright is not installed in the docs-guards job")
     with sync_playwright() as pw:
         b = pw.chromium.launch(
             headless=True,
