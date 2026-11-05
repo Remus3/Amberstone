@@ -13,7 +13,7 @@
 //     dial: { value: 0..100, band: "good"|"ok"|"poor", label },
 //     minis: [ {key, value, provenance} ],           // KDA, Win-Rate, K-P
 //     bars: [ {key, label, score: 0..100, provenance} ],  // 4 composites
-//     tags: [ {label, tone: "strong"|"neutral"|"weak"} ], // exactly 3
+//     tags: [ {label, tone: "strong"|"neutral"|"weak"} ], // 3; a slot is omitted, never invented
 //     profile_ref: { mode, window|match_id },
 //     confidence: "high"|"low"|"insufficient",
 //     sample_n,

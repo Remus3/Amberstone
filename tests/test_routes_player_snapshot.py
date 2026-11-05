@@ -54,7 +54,10 @@ def test_build_model_shape_and_bands():
     assert set(model) >= {"header", "dial", "minis", "bars", "tags",
                           "profile_ref", "confidence", "sample_n", "empty"}
     assert model["empty"] is False
-    assert len(model["tags"]) == 3
+    # This seed's 24 h window holds the whole history, so every relative axis
+    # reads exactly 50 (a flat profile): only the neutral shape tag is honest
+    # (s144 true-audit cycle 110; it was "Aggressive" AND "Passive" before).
+    assert [t["tone"] for t in model["tags"]] == ["neutral"]
     assert {b["key"] for b in model["bars"]} == {"income", "combat", "objectives", "vision"}
     assert {m["key"] for m in model["minis"]} == {"kda", "winrate", "kp"}
     kp = next(m for m in model["minis"] if m["key"] == "kp")
