@@ -981,6 +981,24 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     if (refocus === true && t) t.focus();
     else document.activeElement.blur();
   }
+  // RM-1555: a press on a menu's non-focusable chrome (a divider, a
+  // section heading, the lane label, the padding between rows) keeps focus
+  // where it was. The browser's mousedown default dropped it to <body>; the
+  // focusout closers ignore a null related target, so the menu stayed open,
+  // and the Escape that then closed it found no focus inside to hand back to
+  // the opener. A press on a focusable control inside the menu is left alone.
+  // Used by the view menu, the Lobby mode menu, the Home Find Match picker
+  // and the Lobby lane popup. Guard:
+  // tests/snapshot_panels/test_menu_chrome_click_keeps_focus.py.
+  const _MENU_FOCUSABLE = "button, a[href], input, select, textarea, [tabindex]";
+  function _holdFocusOnMenuChrome(menu) {
+    if (!menu) return;
+    menu.addEventListener("mousedown", (e) => {
+      const f = e.target instanceof Element ? e.target.closest(_MENU_FOCUSABLE) : null;
+      if (f && menu.contains(f)) return;
+      e.preventDefault();
+    });
+  }
   // RM-1321: the current view's row, the first row when none is current.
   function _viewMenuFocusCurrent() {
     const m = document.getElementById("view-menu");
@@ -1024,6 +1042,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     if (menu && menu.parentElement !== document.body) {
       document.body.appendChild(menu);
     }
+    _holdFocusOnMenuChrome(menu);
     // A click with detail 0 is a keyboard activation (Enter / Space).
     if (trig) trig.addEventListener("click", (e) => { e.stopPropagation(); _viewMenuToggle(e.detail === 0); });
     if (trig && menu) {
@@ -4107,6 +4126,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         if (!next || picker.contains(next)) return;
         if (!picker.classList.contains("hidden")) _homeFindMatchPickerHide(false);
       });
+      _holdFocusOnMenuChrome(picker);
     }
     const wasOpen = !picker.classList.contains("hidden");
     backdrop.classList.remove("hidden");
@@ -5719,6 +5739,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         });
       });
       popup.addEventListener("click", (e) => e.stopPropagation());
+      _holdFocusOnMenuChrome(popup);
       // RM-1320: Escape closes the popup through the one dispatcher
       // (escape_layers.js) and hands focus back to the slot's trigger.
       registerEscapeLayer({
@@ -5839,6 +5860,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       };
       modeTrigger.addEventListener("focusout", onModeFocusOut);
       modeMenu.addEventListener("focusout", onModeFocusOut);
+      _holdFocusOnMenuChrome(modeMenu);
     }
     // ---- Mains tab toggle (YOUR MAINS / PARTY MAINS) ----
     const tabYou   = document.getElementById("lv-mc-tab-you");
@@ -5852,9 +5874,13 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       _renderMains();
     });
     // ---- Document click closes any open popup/dropdown ----
-    document.addEventListener("click", () => {
+    // RM-1555: a click inside the mode menu (a section heading) is not an
+    // outside click; the menu stays open, as the view menu and the lane popup
+    // (which stops its own clicks) do. An item click stops propagation.
+    document.addEventListener("click", (e) => {
       if (_LV.activeSlot) _closeLanePopup();
-      if (modeMenu && !modeMenu.classList.contains("hidden")) {
+      if (modeMenu && !modeMenu.classList.contains("hidden")
+          && !modeMenu.contains(e.target)) {
         modeMenu.classList.add("hidden");
         modeMenu.setAttribute("aria-hidden", "true");
         if (modeTrigger) modeTrigger.setAttribute("aria-expanded", "false");

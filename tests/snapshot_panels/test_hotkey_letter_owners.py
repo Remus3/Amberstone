@@ -13,7 +13,9 @@ only for INPUT and TEXTAREA. Measured in headless Chromium before the fix:
   focus on a menu row (the view menu, the Home Find Match picker, the Lobby lane
   popup), with focus still on the trigger of an open menu (the Lobby mode menu
   on open, the view menu after a pointer open), and with focus on the body after
-  a click on a menu's non-interactive part, which leaves the menu open.
+  a click on a menu's non-interactive part, which leaves the menu open. (Since
+  RM-1555 that click keeps focus where it was; the body state is now reached
+  by a right-click on a bare spot outside the menu.)
 - A contenteditable host had the same hole; none ships today, the rule covers
   it so that the first one does not reopen this.
 
@@ -77,13 +79,30 @@ _MENUS = {
     "lobby_lane": ("lobby", "#lv-lane-primary", "#lv-lane-popup"),
     "lobby_mode": ("lobby", "#lv-mode-trigger", "#lv-mode-menu"),
 }
-# A click here leaves the menu open with focus on the body. The Lobby mode menu
-# has no entry: a click on its non-interactive part closes it.
-_MENU_GAPS = {
-    "view": ".view-menu-divider",
-    "find_match": ".lq-mode-section",
-    "lobby_lane": "#lv-lane-popup-label",
+# RM-1555: a click on a menu's non-interactive part (a divider, a heading,
+# the lane label) used to leave the menu open with focus on the body; it now
+# keeps focus where it was (test_menu_chrome_click_keeps_focus.py). The body
+# state is still reachable: a right-click on a bare spot outside the menu fires
+# no click (no outside-click close) and moves focus to nothing. This finds such
+# a spot: not in the menu, not on its trigger, not on or in a focusable control.
+_BARE_SPOT = """
+(args) => {
+  const [panelSel, trigSel] = args;
+  const panel = document.querySelector(panelSel);
+  const trig = document.querySelector(trigSel);
+  const F = 'button, a[href], input, select, textarea, label, summary,'
+    + ' [tabindex], [contenteditable]';
+  for (let y = innerHeight - 20; y > 60; y -= 40) {
+    for (let x = innerWidth - 20; x > 20; x -= 60) {
+      const hit = document.elementFromPoint(x, y);
+      if (!hit || panel.contains(hit) || trig.contains(hit)) continue;
+      if (hit.closest(F)) continue;
+      return {x: x, y: y};
+    }
+  }
+  return null;
 }
+"""
 
 
 def _open(pw_browser, mock_server, view):
@@ -260,12 +279,12 @@ def test_a_shortcut_does_not_fire_from_the_trigger_of_a_pointer_opened_menu(
     assert not errors, f"JS errors: {errors[:3]}"
 
 
-@pytest.mark.parametrize("menu", sorted(_MENU_GAPS))
+@pytest.mark.parametrize("menu", sorted(_MENUS))
 @pytest.mark.parametrize("key", _KEYS)
-def test_a_shortcut_does_not_fire_after_a_click_on_a_menus_label(
+def test_a_shortcut_does_not_fire_with_focus_on_the_body_behind_an_open_menu(
     mock_server, pw_browser, menu, key
 ):
-    """The click drops focus to the body with the menu still open."""
+    """A right-click on a bare spot drops focus to the body, menu still open."""
     view, trigger, panel = _MENUS[menu]
     ctx, page, errors = _open(pw_browser, mock_server, view)
     try:
@@ -273,11 +292,13 @@ def test_a_shortcut_does_not_fire_after_a_click_on_a_menus_label(
         page.focus(trigger)
         page.keyboard.press("Enter")
         assert _menu_is_open(page, panel), f"{menu} did not open"
-        page.click(f"{panel} {_MENU_GAPS[menu]}")
-        assert _menu_is_open(page, panel), f"the click closed {menu}"
+        spot = page.evaluate(_BARE_SPOT, [panel, trigger])
+        assert spot, f"no bare spot outside {menu} to right-click"
+        page.mouse.click(spot["x"], spot["y"], button="right")
+        assert _menu_is_open(page, panel), f"the right-click closed {menu}"
         assert page.evaluate(
             "() => document.activeElement === document.body"
-        ), "the premise moved: the click no longer drops focus to the body"
+        ), "the premise moved: the right-click no longer drops focus to the body"
         before = _baseline(page)
         page.keyboard.press(key)
         _assert_nothing_fired(page, before, key)

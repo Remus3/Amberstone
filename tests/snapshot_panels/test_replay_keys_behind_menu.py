@@ -7,8 +7,9 @@ web/js/panels/review_player.js has its own document keydown handler and did not
 consult the rule RM-1323 gave the global letter shortcuts in web/js/main.js.
 With the view menu open over a showing recording, ], [, d and D seeked the video
 behind the menu, whether focus was on a menu row, on the trigger (a pointer open
-leaves it there) or on the body (a click on the menu's divider leaves it there),
-and with focus on the body a plain Space toggled play.
+leaves it there) or on the body (a click on the menu's divider left it there
+until RM-1555; a right-click on a bare spot of the pane still does), and with
+focus on the body a plain Space toggled play.
 
 What stays as it was, each pinned below:
 - Space on a focused trigger or row is that control's: it closes the menu or
@@ -25,10 +26,10 @@ A plain Space with focus on the body stays prevented while it stands down, as it
 is with no menu open. A right-click on a bare part of the Replay pane fires no
 click and moves focus to nothing, so the menu stays open with focus on the body,
 and an unprevented Space then scrolled .replay-main-pane behind it (pinned below at
-1920x920). A right-click on a control takes focus, which closes the menu. On the
-divider-click route an unprevented Space moved nothing at any viewport measured
-(800x600 up to 2560x1440), so that route's test pins the preventDefault rather
-than a scroll.
+1920x920). A right-click on a control takes focus, which closes the menu. The
+body-focus tests below reach the body by that same right-click (the divider
+click they used before RM-1555 now keeps focus on the trigger); the Space
+test there still pins the preventDefault as well as the play count.
 
 ui_mock never fetches a sidecar, so the player's private state is exposed through
 the same response rewrite test_held_key_one_action.py uses, and play / pause are
@@ -125,7 +126,11 @@ def _open_menu(page, focus):
     else:
         page.click("#view-trigger")
         if focus == "body":
-            page.click("#view-menu .view-menu-divider")
+            # RM-1555: a click on the divider now keeps focus on the
+            # trigger; a right-click on a bare spot of the pane is the route
+            # that still leaves the menu open with focus on the body.
+            spot = _bare_pane_spot(page)
+            page.mouse.click(spot["x"], spot["y"], button="right")
     assert _menu_open(page), "the view menu did not open"
     assert _focus(page) == focus, f"focus is on {_focus(page)}, wanted {focus}"
 
@@ -182,16 +187,20 @@ def test_space_on_the_body_behind_an_open_menu_plays_nothing_and_stays_prevented
     assert not errors, f"JS errors: {errors[:3]}"
 
 
-def _right_click_the_pane_with_the_menu_open(page):
-    """A right-click fires no click, so the menu stays open, focus on the body."""
-    page.click("#view-trigger")
-    box = page.evaluate(
+def _bare_pane_spot(page):
+    return page.evaluate(
         """() => {
           const r = document.querySelector('.replay-main-pane')
             .getBoundingClientRect();
           return { x: r.x + r.width - 30, y: r.y + 12 };
         }"""
     )
+
+
+def _right_click_the_pane_with_the_menu_open(page):
+    """A right-click fires no click, so the menu stays open, focus on the body."""
+    page.click("#view-trigger")
+    box = _bare_pane_spot(page)
     page.mouse.click(box["x"], box["y"], button="right")
     assert _menu_open(page), "the right-click closed the menu"
     assert _focus(page) == "body", f"focus is on {_focus(page)}"
