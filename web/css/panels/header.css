@@ -3138,6 +3138,30 @@ body[data-view="lobby"]          #home-overlay { display: none; }
     white-space: pre;
   }
 }
+/* RM-1437: on Active Match the in-game pills wrap under the view trigger
+ * below 1200px, and each kept its desktop slot (43px tall, sized with spare
+ * room for the 1920 row). MEASURED with live values before: the header was
+ * 157px at 640x307 and 480x230 (29px left for the view at 480) and 259px at
+ * 320x256, where the footer ended 55px below the window. Below 720px each
+ * pill is a compact slot instead: 34px tall (the row's own min-height),
+ * 8px side padding, and a min-width that holds its widest usual value
+ * (100%, DEEP ENEMY, 59:59, 3-digit CS and vision, a 2-digit-hour
+ * heartbeat), so a value arriving or changing does not move the row; a
+ * rarer longer value only grows its own pill. The text keeps its size. */
+@media (max-width: 720px) {
+  .header-row-1 > :is(.win-pill, .zone-pill, .game-time, .cs-pill, .vis-pill, .hb) {
+    width: auto;
+    height: 34px;
+    padding-block: 0;
+    padding-inline: var(--space-2);
+  }
+  .header-row-1 > .win-pill  { min-width: 105px; }
+  .header-row-1 > .zone-pill { min-width: 118px; }
+  .header-row-1 > .game-time { min-width: 70px; }
+  .header-row-1 > .cs-pill   { min-width: 75px; }
+  .header-row-1 > .vis-pill  { min-width: 72px; }
+  .header-row-1 > .hb        { min-width: 158px; }
+}
 /* RC2 Hextech reskin (redesign #12, the last page). Each settings card
  * adopts the hx-card frame: a plain bordered --surface body with the two
  * gold corner brackets (::before top-left L + ::after bottom-right L)
