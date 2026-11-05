@@ -404,8 +404,8 @@ _RC_CONFIG_SPEC = _ConfigSpec(
         is_optional_file=False,
         # RM-363, the RM-161 shape in a second config file. Two frozen-or-not
         # readers slice `backups[retention:]` and rmtree the remainder:
-        # `ops/rc_supervisor.py:1339` (FROZEN, fired at the tail of
-        # `_do_rollback`) and `prune_backups` in
+        # the backup prune at the tail of `_do_rollback` in
+        # `ops/rc_supervisor.py` (FROZEN) and `prune_backups` in
         # `ops/rc_transactional_deploy.py` (cited by name, not line - this
         # commit adds lines above it). At 0 that
         # slice is EVERY backup, so the knob that bounds the backup corpus
@@ -465,7 +465,8 @@ _SELF_MONITOR_SPEC = _ConfigSpec(
             "allowed_panel_rebuild_keys": "array",
         },
         is_optional_file=False,
-        # RM-161. `ops/rc_supervisor.py:1442` (FROZEN) reads this key straight
+        # RM-161. The `IncidentLog(...)` construction in `ops/rc_supervisor.py`
+        # (FROZEN) reads this key straight
         # into `ops/rc_incident_log.IncidentLog`, whose purge keeps only
         # entries newer than `now - timedelta(days=retention_days)`. At 0 or
         # less that window is empty or inverted and the purge erases the whole

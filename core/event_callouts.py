@@ -187,19 +187,21 @@ def _finite(value: object) -> Optional[float]:
         ``int(elapsed_since_first // cadence_s)`` raised ValueError on NaN,
         and ``int(level)`` raised OverflowError on Infinity, which the
         ``(TypeError, ValueError)`` handler does not catch either. Both
-        callers in ``dashboard/_deterministic_coaching.py`` (:929 inline,
-        :959 background) swallow that with a bare ``except Exception`` and no
+        callers in ``dashboard/_deterministic_coaching.py`` (the inline and
+        the background build) swallow that with a bare ``except Exception`` and no
         log line, so the whole deterministic coaching result blanked
         silently and the warm path served the last good value indefinitely.
 
       - a non-finite ``down_at_s`` on ONE event produced ``eta_s: nan``, and
-        ``dashboard/routes_state.py:226`` dumps the state at the default
+        the ``json.dumps(_timed_build_state())`` in dashboard/routes_state.py
+        dumps the state at the default
         ``allow_nan=True``, emitting a bare ``NaN`` token. That is not valid
         JSON and browser ``JSON.parse`` throws on it, so one bad event field
         blanked the ENTIRE dashboard, not just the callout panel. This repo
         already rejects that token with ``allow_nan=False`` in five modules
-        (``agents/_supervisor_http.py:190``, ``performance_tracker.py:55``
-        and three more); this module was manufacturing it.
+        (``_send_json`` in agents/_supervisor_http.py, ``_atomic_write_json``
+        in performance_tracker.py and three more); this module was
+        manufacturing it.
 
     Booleans are rejected on purpose. ``float(True)`` is 1.0, which would let
     a bool masquerade as a one-second clock; two sites here already excluded
@@ -1069,8 +1071,8 @@ def _sort_key(c: dict) -> tuple[int, float]:
     in bucket 1, where list.sort() then produced an order that depends on the
     input permutation - the exact opposite of the "deterministically" this
     docstring promises. This function is also imported by
-    ``dashboard/_deterministic_coaching.py:50`` to sort rows merged from OTHER
-    producers, so it hardens against a non-finite eta this module can no
+    ``dashboard/_deterministic_coaching.py`` (as ``_callout_sort_key``) to
+    sort rows merged from OTHER producers, so it hardens against a non-finite eta this module can no
     longer originate but a future sibling still could.
     """
     eta = _finite(c.get("eta_s"))
@@ -1205,8 +1207,8 @@ def next_callouts(
     # ("'>=' not supported between 'str' and 'int'") straight out of it, and
     # max_n=True silently returned exactly one row because bool is an int.
     # An uncoercible cap joins None and -1, which ALREADY mean "no cap" and
-    # are pinned that way by tests/test_event_callouts.py:276 - so this adds
-    # no third behaviour.
+    # are pinned that way by test_negative_max_n_returns_full_list in
+    # tests/test_event_callouts.py - so this adds no third behaviour.
     cap = max_n if isinstance(max_n, int) and not isinstance(max_n, bool) else None
     if cap is not None and cap >= 0:
         return callouts[:cap]

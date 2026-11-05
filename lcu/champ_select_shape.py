@@ -68,20 +68,21 @@ ARENA_QUEUE_IDS = (1700, 1710, 1750)
 # This module is called from two places that both swallow exceptions, so a
 # raise here still costs the whole champ-select payload:
 #
-#   dashboard/_lcu_inprocess.py:340-342  catches Exception and returns None,
-#       and the in-process L3 path falls back to the :8889 relay hop that L3
+#   dashboard/_lcu_inprocess.py lcu_summary_inprocess  catches Exception and
+#       returns None, and the in-process L3 path falls back to the :8889 relay hop that L3
 #       exists to remove. RM-312 (2026-09-11) made that degrade VISIBLE - it
 #       now WARNs once per distinct fault signature - so the fault is no
 #       longer invisible, but the payload for that build is still gone.
-#   tools/lcu_agent.py:1612              calls capture_state() inside the
+#   tools/lcu_agent.py _state_push_loop  calls capture_state() inside the
 #       state push loop, so the whole snapshot for that tick is lost, and
 #       that half is still silent.
 #
 # The module already fails soft nearly everywhere (isinstance guards on
 # trades, bench entries, action groups, team entries). These readers exist so
 # that decision is applied UNIFORMLY - the sites below were the ones it had
-# been missed at. lcu/snapshot_shape.py:509-517 records the identical defect
-# found in its own gameflow read, eleven lines after it calls into here.
+# been missed at. lcu/snapshot_shape.py records the identical defect found in
+# its own gameflow-session read (the game_id capture in shape_snapshot), a few
+# lines after it calls into here.
 
 def _as_dict(value) -> dict:
     """``value`` when it is a dict, else an empty dict.
@@ -274,8 +275,9 @@ def _team_picks(team_arr, local_cell=None) -> list[dict]:
         # ``championId`` falls back to the intent so legacy renderers that
         # read only championId still see the hover.
         # RM-313: coerce through the module's own _as_int, exactly as
-        # localPlayerCellId / cellId already are at :346 and :349. s155
-        # (tools/lcu_agent.py:919-921) measured that some LCU builds emit
+        # localPlayerCellId / cellId already are in shape_champ_select. s155
+        # (the lock_pick branch of tools/lcu_agent.py execute_command)
+        # measured that some LCU builds emit
         # champ-select ids as JSON STRINGS depending on the patch, and
         # these three were emitted VERBATIM, so "67" reached every
         # consumer of my_team / their_team. The damage is not merely a
@@ -383,8 +385,8 @@ def shape_champ_select(
     }
     cs_debug["bench_len"] = len(_as_list(sess.get("benchChampions")))
 
-    # s155 (tools/lcu_agent.py:919-921): some LCU builds emit
-    # localPlayerCellId / cellId as JSON strings depending on the patch.
+    # s155 (the lock_pick branch of tools/lcu_agent.py execute_command): some
+    # LCU builds emit localPlayerCellId / cellId as JSON strings depending on the patch.
     # A bare == then silently missed on any MIXED pairing, so my_champion
     # read 0 and the dashboard lock button never activated. That cast was
     # applied to the agent's lock_pick handler and never to the shaper.

@@ -124,7 +124,8 @@ def _coerce_int(value, default: int = 0) -> int:
     OverflowError is caught alongside TypeError/ValueError and is NOT
     theoretical: ``json.loads`` accepts the non-standard ``Infinity``
     literal unless a ``parse_constant`` is supplied, and neither transport
-    supplies one (``tools/lcu_agent.py:222``, ``lcu/lcu_client.py:197``).
+    supplies one (``lcu_request`` in tools/lcu_agent.py, ``LcuClient._request``
+    in lcu/lcu_client.py).
     ``int(float("inf"))`` raises OverflowError, which is an ArithmeticError
     and so is caught by neither of the other two arms.
     """
@@ -442,10 +443,10 @@ def shape_snapshot(request: Callable[..., tuple], config,
     # it is reported as None - a falsy no-phase joining the path the consumers
     # already handle - and never as the "" it used to land as. NOT "Unknown":
     # that value is TRUTHY, and both arms of the runtime view router that
-    # branch on a falsy phase (web/js/main.js:711 s209 sticky-guard, :728
-    # item-281 in-game promotion, off `const phase = lcu && lcu.phase` at
-    # :629) would be silently disarmed by it. None keeps them firing exactly
-    # as "" did, and dashboard/_cs_retention.py:114 already treats both as
+    # branch on a falsy phase (the s209 sticky-guard and the item-281 in-game
+    # promotion in web/js/main.js, both off `const phase = lcu && lcu.phase`)
+    # would be silently disarmed by it. None keeps them firing exactly
+    # as "" did, and dashboard/_cs_retention.py already treats both as
     # "unknown, do not act on it" - its _CLEAR_PHASES holds the *string*
     # "None", a REAL idle phase, which is why that one must survive intact.
     # The predicate is RM-347's, deliberately imported rather than copied.

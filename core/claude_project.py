@@ -37,9 +37,10 @@ def main_checkout(root: Optional[PathLike] = None) -> Path:
     A linked worktree has a ``.git`` FILE reading ``gitdir: <main>/.git/worktrees/<name>``;
     anything else (a main checkout, an unreadable or unexpected link) is
     returned unchanged. Never raises: every caller resolves at import time
-    with no handler of its own (dashboard/routes_loop_monitor.py:55,
-    tools/drift_guard.py:79, tools/perseus_sync.py:62) or as a config default
-    (ops/loop/loop_controller.py:175).
+    with no handler of its own (``DEFAULT_TRANSCRIPT_DIR`` in
+    dashboard/routes_loop_monitor.py, the ``_claude_project_dir`` import of
+    tools/drift_guard.py, ``MEMDIR`` in tools/perseus_sync.py) or as a config
+    default (the ``transcript_dir`` default in ops/loop/loop_controller.py).
     """
     base = Path(root) if root is not None else REPO_ROOT
     dotgit = base / ".git"

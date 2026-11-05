@@ -187,11 +187,13 @@ def _load_sidecar(path):
     Encoding is pinned because read_text() with no encoding resolves to the
     locale codepage (cp1252 here) while the writer declares utf-8. This is
     DEFENCE IN DEPTH, not a live bug, and the honest reason is worth stating:
-    core/rofl_archive.py:811 serializes at the default ensure_ascii=True, so
-    every sidecar it writes is pure ASCII (measured: 0 non-ASCII bytes across
-    all 17 live sidecars) and cp1252 decodes that identically to utf-8. The
-    pin matters the day that writer passes ensure_ascii=False, or a sidecar
-    arrives from anywhere else.
+    the sidecar write in core/rofl_archive.py ``extract_archive`` goes through
+    ``_atomic_write_json`` and so ``atomic_write_json`` in core/polled_json.py,
+    which serializes with ensure_ascii=False and encodes utf-8, so a sidecar
+    CAN hold non-ASCII. When this was written all 17 live sidecars measured 0
+    non-ASCII bytes, and cp1252 decodes ASCII identically to utf-8. The pin
+    matters the day a sidecar does carry a non-ASCII string, or one arrives
+    from anywhere else.
     """
     import json
 
@@ -321,7 +323,8 @@ def _find_rofl(archive_dir, match_id):
     file RC did not author: a match_id of "../x" used to resolve OUTSIDE the
     archive and hand back a container from anywhere on disk, whose header then
     became this match's game_version. Uses the same resolve-then-relative_to
-    shape as dashboard/routes_static.py:64-67, whose own comment records that a
+    shape as ``_serve_web_asset`` in dashboard/routes_static.py, whose own
+    comment records that a
     prefix check plus a ".." filter was deliberately replaced by this, both
     being bypassable.
     """
@@ -408,8 +411,8 @@ def backfill_tracked_summary(
     A sidecar that cannot be read or is the wrong shape is reported in
     `failed` as (path, reason) and SKIPPED, never raised: the loop runs inside
     an open transaction, so an escaping exception used to discard every update
-    the sweep had already made (see core/rofl_archive.py:655-665 for the same
-    class, fixed there as item-1176).
+    the sweep had already made (see ``download_replays`` in core/rofl_archive.py
+    for the same class, fixed there as item-1176).
 
     Idempotent: a row that already carries a tracked_champion_name is reported
     in `skipped_already_filled` and left alone. A sidecar whose match is not in
