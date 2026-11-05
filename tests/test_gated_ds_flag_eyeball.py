@@ -307,3 +307,110 @@ def test_source_facts_no_clamp_on_top_in_routes_or_rankers():
         text = (ROOT.joinpath(*rel)).read_text(encoding="utf-8")
         hits = [ln.strip() for ln in text.splitlines() if assign.search(ln) or clamp.search(ln)]
         assert hits == [], (rel, hits)
+
+
+# RM-1388 (s144 lane gated c61): the line-regex pin above misses a
+# multi-line clamp, a chained slice (``ranked[:top_n][:50]``) and a clamp
+# inside ``_to_int`` / ``_opt_int``. The AST pins below close all three.
+
+_DS = ROOT / "agents" / "daemon_slayer"
+
+
+def _ds_fn(filename, name):
+    import ast
+    tree = ast.parse((_DS / filename).read_text(encoding="utf-8"))
+    found = [n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == name]
+    assert len(found) == 1, (filename, name, len(found))
+    return found[0]
+
+
+def _names(fn, ident, ctx):
+    import ast
+    return [n for n in ast.walk(fn) if isinstance(n, ast.Name) and n.id == ident
+            and isinstance(n.ctx, ctx)]
+
+
+def test_s144g42_rankers_cut_ranked_once_by_top_n_and_never_after():
+    """Each ranker reads ``top_n`` only inside ``if top_n is not None and
+    top_n > 0: ranked = ranked[:top_n]``; that is the function's only slice,
+    and after it ``ranked`` is not re-bound, item-assigned, deleted from, or
+    shrunk by pop / remove / clear. Not covered: a cut in the return
+    expression or inside a helper that is passed ``ranked``."""
+    import ast
+    for filename, name in (("rank.py", "rank_items"), ("burst.py", "rank_items_by_burst")):
+        fn = _ds_fn(filename, name)
+        assert "top_n" in [a.arg for a in fn.args.args + fn.args.kwonlyargs], name
+        assert _names(fn, "top_n", (ast.Store, ast.Del)) == [], name
+        slices = [n for n in ast.walk(fn) if isinstance(n, ast.Subscript)
+                  and isinstance(n.slice, ast.Slice)]
+        assert [ast.unparse(n) for n in slices] == ["ranked[:top_n]"], name
+        cut = [n for n in ast.walk(fn) if isinstance(n, ast.If)
+               and any(isinstance(s, ast.Assign) and s.value is slices[0] for s in n.body)]
+        assert len(cut) == 1, name
+        assert ast.unparse(cut[0].test) == "top_n is not None and top_n > 0", name
+        assert [ast.unparse(s) for s in cut[0].body] == ["ranked = ranked[:top_n]"], name
+        assert cut[0].orelse == [], name
+        inside = {id(n) for n in ast.walk(cut[0])}
+        loads = _names(fn, "top_n", ast.Load)
+        assert len(loads) == 3 and all(id(n) in inside for n in loads), (name, len(loads))
+        line = slices[0].lineno
+        later = [n.lineno for n in _names(fn, "ranked", (ast.Store, ast.Del)) if n.lineno > line]
+        assert later == [], (name, later)
+        shrink = [n.lineno for n in ast.walk(fn) if isinstance(n, ast.Call)
+                  and n.lineno > line and isinstance(n.func, ast.Attribute)
+                  and isinstance(n.func.value, ast.Name) and n.func.value.id == "ranked"
+                  and n.func.attr in {"pop", "remove", "clear", "__delitem__"}]
+        assert shrink == [], (name, shrink)
+        writes = [n.lineno for n in ast.walk(fn) if isinstance(n, ast.Subscript)
+                  and isinstance(n.value, ast.Name) and n.value.id == "ranked"
+                  and isinstance(n.ctx, (ast.Store, ast.Del))]
+        assert writes == [], (name, writes)
+
+
+def test_s144g42_routes_pass_top_through_unclamped_and_never_slice():
+    """Both routes bind ``top_n`` only from ``_opt_int(body, 'top', 20)`` and
+    the None fallback 20, read it only in that ``is None`` test and in the one
+    ``top_n=top_n`` keyword to the ranker, and contain no slice, so the route
+    body does not cut the ranker's answer by slicing (other cuts are not
+    covered)."""
+    import ast
+    for name, ranker in (("_route_rank", "rank_items"),
+                         ("_route_rank_assassin", "rank_items_by_burst")):
+        fn = _ds_fn("server.py", name)
+        stores = [n for n in ast.walk(fn) if isinstance(n, ast.Assign)
+                  and any(isinstance(t, ast.Name) and t.id == "top_n" for t in n.targets)]
+        assert [ast.unparse(s) for s in stores] == [
+            "top_n = _opt_int(body, 'top', 20)", "top_n = 20"], name
+        assert len(_names(fn, "top_n", (ast.Store, ast.Del))) == 2, name
+        checks = [n for n in ast.walk(fn) if isinstance(n, ast.If)
+                  and ast.unparse(n.test) == "top_n is None"]
+        assert len(checks) == 1 and checks[0].body == [stores[1]], name
+        kws = [(c, k) for c in ast.walk(fn) if isinstance(c, ast.Call)
+               for k in c.keywords if k.arg == "top_n"]
+        assert len(kws) == 1, name
+        call, kw = kws[0]
+        assert ast.unparse(call.func) == ranker, name
+        assert ast.unparse(kw.value) == "top_n", name
+        assert len(_names(fn, "top_n", ast.Load)) == 2, name
+        slices = [ast.unparse(n) for n in ast.walk(fn) if isinstance(n, ast.Subscript)
+                  and isinstance(n.slice, ast.Slice)]
+        assert slices == [], (name, slices)
+
+
+def test_s144g42_to_int_and_opt_int_return_top_unclamped():
+    """``top`` values up to 10**6 come back exactly as given, and neither
+    coercion helper calls min() or max()."""
+    import ast
+
+    from agents.daemon_slayer import server as ds
+    for v in (1, 20, 21, eb.POOL_TOP, 500, 10 ** 6):
+        assert ds._to_int(v, "top") == v
+        assert ds._opt_int({"top": v}, "top", 20) == v
+    assert ds._to_int(float(eb.POOL_TOP), "top") == eb.POOL_TOP
+    assert ds._opt_int({}, "top", 20) == 20
+    assert ds._opt_int({"top": None}, "top", 20) == 20
+    for name in ("_to_int", "_opt_int"):
+        fn = _ds_fn("server.py", name)
+        calls = [ast.unparse(n.func) for n in ast.walk(fn) if isinstance(n, ast.Call)
+                 and isinstance(n.func, ast.Name) and n.func.id in {"min", "max"}]
+        assert calls == [], (name, calls)
