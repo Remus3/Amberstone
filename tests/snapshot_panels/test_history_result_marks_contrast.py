@@ -126,15 +126,23 @@ def _ratio(a, b) -> float:
     return (hi + 0.05) / (lo + 0.05)
 
 
-@pytest.fixture(scope="module")
-def measured(mock_server, pw_browser):
+# Theme flips below must not straddle a colour transition (RM-1132).
+_CALM = ("*, *::before, *::after { transition: none !important;"
+         " animation: none !important; }")
+# Every element _MEASURE_JS reads (test_theme_swap_reads_settled pins them).
+_READS = ("#history-match-list .history-match-row,"
+          " #history-session-list .history-session-row .hs-w,"
+          " #history-session-list .history-session-row .hs-l,"
+          " #history-filter-result .history-filter-rbtn")
+
+
+def _open(pw_browser, mock_server):
     mock_server._store["data"] = {}
     ctx = pw_browser.new_context(viewport={"width": 1920, "height": 920})
     page = ctx.new_page()
     page.add_init_script(_WS_STUB)
     errors: list[str] = []
     page.on("pageerror", lambda err: errors.append(str(err)))
-    out = {}
     try:
         page.goto(mock_server.url + "/?ui_mock=1#history",
                   wait_until="domcontentloaded", timeout=15_000)
@@ -147,10 +155,20 @@ def measured(mock_server, pw_browser):
             "document.querySelectorAll('#history-match-list"
             " .history-match-row[data-result]').length >= 2",
             timeout=10_000)
-        page.add_style_tag(
-            content="*, *::before, *::after { transition: none !important;"
-            " animation: none !important; }")
+        page.add_style_tag(content=_CALM)
         page.mouse.move(0, 0)
+    except Exception:
+        page.close()
+        ctx.close()
+        raise
+    return ctx, page, errors
+
+
+@pytest.fixture(scope="module")
+def measured(mock_server, pw_browser):
+    ctx, page, errors = _open(pw_browser, mock_server)
+    out = {}
+    try:
         for t in _THEMES:
             page.evaluate(
                 "(t) => document.documentElement.setAttribute('data-theme', t)",

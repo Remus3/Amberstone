@@ -125,6 +125,32 @@ def _open(page, url, view, ready):
     page.wait_for_function(ready, timeout=10_000)
 
 
+# Theme flips below must not straddle a colour transition (RM-1132).
+_CALM = ("*, *::before, *::after { transition: none !important;"
+         " animation: none !important; }")
+# view: the match list _MEASURE_JS walks (its rows' chips are re-classed).
+_LISTS = {"history": "#history-match-list", "session": "#session-matches"}
+
+
+def _open_view(page, mock_server, view):
+    """Open #history (first session chosen) or #session, transitions off,
+    pointer parked, as the measured fixture does."""
+    if view == "history":
+        _open(page, mock_server.url + "/?ui_mock=1#history", "history",
+              "document.querySelector('#history-session-list"
+              " .history-session-row')")
+        page.click("#history-session-list .history-session-row")
+        page.wait_for_function(
+            "document.querySelectorAll('#history-match-list"
+            " .history-match-row .home-recent-grade').length >= 2",
+            timeout=10_000)
+    else:
+        _open(page, mock_server.url + "/?ui_mock=1#session", "session",
+              "document.querySelector('#session-matches .home-recent-grade')")
+    page.add_style_tag(content=_CALM)
+    page.mouse.move(0, 0)
+
+
 @pytest.fixture(scope="module")
 def measured(mock_server, pw_browser):
     mock_server._store["data"] = {}
@@ -134,35 +160,15 @@ def measured(mock_server, pw_browser):
     errors: list[str] = []
     page.on("pageerror", lambda err: errors.append(str(err)))
     out = {}
-    calm = ("*, *::before, *::after { transition: none !important;"
-            " animation: none !important; }")
     try:
-        _open(page, mock_server.url + "/?ui_mock=1#history", "history",
-              "document.querySelector('#history-session-list"
-              " .history-session-row')")
-        page.click("#history-session-list .history-session-row")
-        page.wait_for_function(
-            "document.querySelectorAll('#history-match-list"
-            " .history-match-row .home-recent-grade').length >= 2",
-            timeout=10_000)
-        page.add_style_tag(content=calm)
-        page.mouse.move(0, 0)
-        for t in _THEMES:
-            page.evaluate(
-                "(t) => document.documentElement.setAttribute('data-theme', t)",
-                t)
-            out[("history", t)] = page.evaluate(
-                _MEASURE_JS, ["#history-match-list", list(_GRADES)])
-        _open(page, mock_server.url + "/?ui_mock=1#session", "session",
-              "document.querySelector('#session-matches .home-recent-grade')")
-        page.add_style_tag(content=calm)
-        page.mouse.move(0, 0)
-        for t in _THEMES:
-            page.evaluate(
-                "(t) => document.documentElement.setAttribute('data-theme', t)",
-                t)
-            out[("session", t)] = page.evaluate(
-                _MEASURE_JS, ["#session-matches", list(_GRADES)])
+        for view in ("history", "session"):
+            _open_view(page, mock_server, view)
+            for t in _THEMES:
+                page.evaluate(
+                    "(t) => document.documentElement.setAttribute('data-theme', t)",
+                    t)
+                out[(view, t)] = page.evaluate(
+                    _MEASURE_JS, [_LISTS[view], list(_GRADES)])
     finally:
         page.close()
         ctx.close()

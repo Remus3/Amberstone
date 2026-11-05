@@ -66,7 +66,29 @@ four s144 uiux modules added since:
   - test_theme_soft_token_hue, test_theme_signal_prim_hue: flip data-theme
     in-page but read only a bare probe div each read creates, with an explicit
     inline color. No sheet, and none needed: no transition applies to it.
-This module pins all twenty-six verdicts at runtime with each test's own opener,
+Audit (2026-11-05, s150 landing fix, the same detector, each module's own
+opener with and without its sheet), the six s144 uiux modules of RM-1546,
+RM-1549, RM-1550, RM-1551, RM-1554 and RM-1555, landed with no row here:
+  - test_history_result_marks_contrast, test_match_row_grade_chip_contrast,
+    test_history_row_hover_marks_contrast: flip data-theme in-page (the
+    hover module with each row under the real mouse) and read the History /
+    Session rows, W / L counts, filter toggles and grade chips, which DO
+    transition background and border colours on swap and hover; settled
+    only because each opener adds a transitions-off (and animations-off)
+    sheet.
+  - test_home_accent2_focus_ring: flips data-theme in-page and reads the
+    Home mode tabs' and champion name's focus ring; the mode tabs DO
+    transition colour and border colour; settled only because its opener
+    adds the sheet.
+  - test_ops_page_state_text_contrast: flips data-theme in-page on
+    /ops.html; nothing it reads transitions even with its sheet removed,
+    so the sheet it adds is not needed.
+  - test_zone_pill_contrast: boot-stamped (?theme=), never swaps in-page,
+    no sheet; it re-classes the zone pill through its four states and reads
+    colour and background. No transition runs on a re-class; ENEMY ZONE and
+    DEEP ENEMY DO run the zoneWarn animation, on box-shadow only, which no
+    read touches, so none is needed.
+This module pins all thirty-two verdicts at runtime with each test's own opener,
 so a new transition on a no-sheet surface, or the sheet dropped from a
 shared opener, fails HERE with the element and property named. The fix is
 the sheet in that test's opener, not a sleep. The inventory test keeps the
@@ -155,7 +177,7 @@ from tests.snapshot_panels.test_user_builds_rune_tabs import _open as _ub_open
 
 _HERE = Path(__file__).resolve().parent
 
-# The twenty-six modules audited above, keyed by file name.
+# The thirty-two modules audited above, keyed by file name.
 _COVERED = {
     "test_am_call_eyebrow_contrast.py",
     "test_champ_select_arena_augment_options.py",
@@ -167,12 +189,17 @@ _COVERED = {
     "test_ds_combo_controls_hit_floor.py",
     "test_ds_knob_inputs_focus_ring.py",
     "test_ds_matchup_text_contrast.py",
+    "test_history_result_marks_contrast.py",
+    "test_history_row_hover_marks_contrast.py",
+    "test_home_accent2_focus_ring.py",
     "test_home_history_nav_focus_ring.py",
     "test_lm_hero_stats_disclosure.py",
     "test_lobby_lane_popup_keyboard.py",
     "test_lobby_mains_tabs.py",
     "test_lobby_queue_buttons_focus_ring.py",
     "test_match_row_focus_ring.py",
+    "test_match_row_grade_chip_contrast.py",
+    "test_ops_page_state_text_contrast.py",
     "test_panel_visibility_tab_selected_state.py",
     "test_settings_checkbox_hit_targets.py",
     "test_tab_bars_selected_state.py",
@@ -183,6 +210,7 @@ _COVERED = {
     "test_user_builds_spell_chooser_keyboard.py",
     "test_view_menu_items.py",
     "test_view_menu_keyboard.py",
+    "test_zone_pill_contrast.py",
 }
 
 _SHEET = "*, *::before, *::after { transition: none !important; }"
@@ -624,6 +652,183 @@ def test_token_probe_reads_are_settled(mock_server, pw_browser, module):
         _check(page, "#probe-u105", False, module)
     finally:
         _close(ctx, page)
+
+
+def _plain_page(pw_browser, mock_server):
+    # The context the History / Session contrast fixtures make for their
+    # own _open_view pages.
+    mock_server._store["data"] = {}
+    ctx = pw_browser.new_context(viewport={"width": 1920, "height": 920})
+    page = ctx.new_page()
+    page.add_init_script(_WS_STUB)
+    return ctx, page
+
+
+def test_history_result_mark_reads_are_settled(mock_server, pw_browser):
+    # test_history_result_marks_contrast flips data-theme in-page over the
+    # match rows (their ::before glyph and tint), the session W / L counts
+    # and the filter toggles, with its own opener.
+    from tests.snapshot_panels.test_history_result_marks_contrast import (
+        _READS,
+        _open,
+    )
+
+    ctx, page, _errors = _open(pw_browser, mock_server)
+    try:
+        _check(page, _READS, False, "history result marks")
+    finally:
+        _close(ctx, page)
+
+
+@pytest.mark.parametrize("scan", ["session-rows", "history", "session"])
+def test_history_row_hover_reads_are_settled(mock_server, pw_browser, scan):
+    # test_history_row_hover_marks_contrast reads each row's marks with that
+    # row under the real mouse, after each data-theme flip, on its own
+    # _open_view page: every row is hovered here, then swept.
+    from tests.snapshot_panels.test_history_row_hover_marks_contrast import (
+        _SCANS,
+        _open_view,
+    )
+
+    ctx, page = _plain_page(pw_browser, mock_server)
+    try:
+        _open_view(page, mock_server, "session" if scan == "session" else "history")
+        rows, _grades = _SCANS[scan]
+        sel = f"{rows}, {rows} .hs-w, {rows} .hs-l, {rows} > .home-recent-grade"
+        n = page.evaluate("(s) => document.querySelectorAll(s).length", rows)
+        assert n >= 2, f"{scan}: only {n} rows to hover"
+        for i in range(n):
+            page.locator(rows).nth(i).hover()
+            _check(page, sel, False, f"{scan} row {i} hovered")
+    finally:
+        _close(ctx, page)
+
+
+@pytest.mark.parametrize("view", ["history", "session"])
+def test_grade_chip_reads_are_settled(mock_server, pw_browser, view):
+    # test_match_row_grade_chip_contrast flips data-theme in-page and
+    # re-classes each match row's grade chip, on its own _open_view page.
+    from tests.snapshot_panels.test_match_row_grade_chip_contrast import (
+        _LISTS,
+        _open_view,
+    )
+
+    ctx, page = _plain_page(pw_browser, mock_server)
+    try:
+        _open_view(page, mock_server, view)
+        lst = _LISTS[view]
+        _check(page, f"{lst} > li, {lst} > li > .home-recent-grade", False,
+               f"{view} grade chips")
+    finally:
+        _close(ctx, page)
+
+
+def test_home_accent_ring_reads_are_settled(mock_server, pw_browser):
+    # test_home_accent2_focus_ring flips data-theme in-page and reads each
+    # focused mode tab's and the champion name's ring, with its own opener.
+    from tests.snapshot_panels.test_home_accent2_focus_ring import (
+        CHAMP,
+        TABS,
+        _open,
+    )
+
+    ctx, page, _errors = _open(pw_browser, mock_server)
+    try:
+        _check(page, f"{TABS}, {CHAMP}", True, "home accent rings")
+    finally:
+        _close(ctx, page)
+
+
+def test_ops_page_state_text_reads_are_settled(mock_server, pw_browser):
+    # test_ops_page_state_text_contrast flips data-theme in-page on /ops.html
+    # and reads every state-coloured text, with its own opener.
+    from tests.snapshot_panels.test_ops_page_state_text_contrast import (
+        _READS,
+        _open,
+    )
+
+    ctx, page, _errors = _open(pw_browser, mock_server)
+    try:
+        _check(page, _READS, False, "ops page state text")
+    finally:
+        _close(ctx, page)
+
+
+_ZONE_SEL = "#zone-pill, #zone-label"
+
+# Re-class the zone pill through each state, as test_zone_pill_contrast's
+# _MEASURE_JS does, and list every transition / animation then running on
+# the pill, its label or an ancestor, with the properties it animates.
+_ZONE_RECLASS = """
+(labels) => {
+  const p = document.getElementById('zone-pill');
+  const b = document.getElementById('zone-label');
+  const watched = new Set();
+  for (const el of [p, b]) {
+    for (let n = el; n; n = n.parentElement) watched.add(n);
+  }
+  const skip = new Set(['offset', 'computedOffset', 'easing', 'composite']);
+  const out = {};
+  for (const [key, [text, cls]] of Object.entries(labels)) {
+    p.className = cls;
+    b.textContent = text;
+    for (const n of watched) {
+      const cs = getComputedStyle(n);
+      void (cs.color + cs.backgroundColor + cs.boxShadow);
+    }
+    const rows = [];
+    for (const a of document.getAnimations()) {
+      const tg = a.effect && a.effect.target;
+      if (!tg || !watched.has(tg)) continue;
+      const props = new Set();
+      for (const kf of a.effect.getKeyframes()) {
+        for (const k of Object.keys(kf)) if (!skip.has(k)) props.add(k);
+      }
+      rows.push({kind: a.transitionProperty ? 'transition' : 'animation',
+                 name: a.transitionProperty || a.animationName || '',
+                 props: Array.from(props).sort()});
+    }
+    out[key] = rows;
+  }
+  return out;
+}
+"""
+
+
+@pytest.mark.parametrize("theme", _THEMES)
+def test_zone_pill_reads_are_settled(mock_server, pw_browser, theme):
+    # test_zone_pill_contrast boots each theme (?theme=), never swaps
+    # in-page, and re-classes the pill through its four states, reading the
+    # label's colour and the pill's (and ancestors') background.
+    from tests.snapshot_panels.test_zone_pill_contrast import _LABELS
+    from tests.snapshot_panels.test_zone_pill_contrast import _open as _zone_open
+
+    ctx, page, _errors = _zone_open(pw_browser, mock_server, theme)
+    try:
+        assert page.evaluate(
+            "document.documentElement.dataset.theme || 'hextech'"
+        ) == theme, f"zone pill: booted on the wrong theme, not {theme}"
+        _check(page, _ZONE_SEL, False, f"zone pill/{theme}", themes=[theme])
+        _check(page, _ZONE_SEL, False, f"zone pill/{theme} swaps")
+        got = page.evaluate(_ZONE_RECLASS, _LABELS)
+    finally:
+        _close(ctx, page)
+    assert sorted(got) == sorted(_LABELS), got
+    # No transition on any re-class, and every animation leaves the read
+    # properties (colour, background) alone.
+    bad = [(k, r) for k, rows in got.items() for r in rows
+           if r["kind"] == "transition" or r["props"] != ["boxShadow"]]
+    assert not bad, (
+        f"{theme}: a zone pill re-class read would straddle a transition or"
+        f" a colour animation (add the transitions-off sheet): {bad}"
+    )
+    # The detector is not blind: the box-shadow pulse it tolerates is seen.
+    pulsing = sorted(k for k, rows in got.items()
+                     if any(r["name"] == "zoneWarn" for r in rows))
+    assert pulsing == ["deep", "enemy"], (
+        f"{theme}: the zoneWarn pulse moved - re-audit test_zone_pill_contrast"
+        f" and update the verdict: {got}"
+    )
 
 
 def test_positive_control_detects_a_real_transition(mock_server, pw_browser):

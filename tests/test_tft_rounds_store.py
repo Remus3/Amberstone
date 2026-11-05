@@ -989,15 +989,29 @@ HOP_ALLOWED = frozenset({"core.polled_json", "core.queue_modes", "tft.local_play
 LEAF_MODULES = ("tft/local_player.py",)
 
 
+def _is_repo_module(dotted: str) -> bool:
+    """A module or package file of this repo. Stdlib and third-party names
+    resolve outside ROOT, so they stay their package name below."""
+    p = ROOT.joinpath(*dotted.split("."))
+    return p.with_suffix(".py").is_file() or (p / "__init__.py").is_file()
+
+
 def _imported_modules(src: str) -> list:
     """Every absolute module an import statement names (function-level
-    imports included, relative imports skipped)."""
+    imports included, relative imports skipped). `from P import n` names
+    the submodule P.n when P.n is a repo module - it loads P and P.n, the
+    same two modules `import P.n` loads (RM-1522 folded `import
+    tft.tft_set as tft_set` into `from tft import tft_set`) - and names P
+    when n is only an attribute of P (or `*`)."""
     mods = []
     for node in ast.walk(ast.parse(src)):
         if isinstance(node, ast.Import):
             mods.extend(a.name for a in node.names)
         elif isinstance(node, ast.ImportFrom) and node.level == 0:
-            mods.append(node.module or "")
+            base = node.module or ""
+            for a in node.names:
+                sub = f"{base}.{a.name}"
+                mods.append(sub if _is_repo_module(sub) else base)
     return mods
 
 
@@ -1037,7 +1051,8 @@ def test_import_guard_flags_a_planted_non_stdlib_import():
         for plant, want in (("import requests\n", "requests"),
                             ("from anthropic import Anthropic\n", "anthropic"),
                             ("def f():\n    from coaches import base_coach\n", "coaches"),
-                            ("from tft import tft_data\n", "tft"),
+                            ("from tft import tft_data\n", "tft.tft_data"),
+                            ("from tft import not_a_module\n", "tft"),
                             ("import tft.tft_placement\n", "tft.tft_placement")):
             assert _disallowed(src + plant, HOP_ALLOWED) == [want], (rel, plant)
     pkg_src = (PKG / "ground_truth.py").read_text(encoding="ascii")
@@ -1046,3 +1061,25 @@ def test_import_guard_flags_a_planted_non_stdlib_import():
                        "tft.rounds") == ["agents.daemon_slayer"]
     assert _disallowed(pkg_src + "import tft.tft_coach_engine\n", PKG_ALLOWED,
                        "tft.rounds") == ["tft.tft_coach_engine"]
+    # The from-form of a disallowed submodule is caught as that submodule,
+    # alone or beside an allowed one, and an attribute import as its package.
+    for plant, want in (("from tft import tft_coach_engine\n", ["tft.tft_coach_engine"]),
+                        ("from tft import tft_set, tft_data\n", ["tft.tft_data"]),
+                        ("from agents import daemon_slayer\n", ["agents.daemon_slayer"]),
+                        ("from tft import not_a_module\n", ["tft"])):
+        assert _disallowed(pkg_src + plant, PKG_ALLOWED, "tft.rounds") == want, plant
+
+
+def test_import_guard_reads_both_submodule_forms_the_same():
+    """`from tft import tft_set` and `import tft.tft_set as tft_set` load the
+    same two modules (tft, tft.tft_set) and bind the same object, so the
+    guard names the same module for both; the real ground_truth.py uses the
+    from-form (RM-1522), so the package check above exercises it."""
+    forms = ("from tft import tft_set\n", "import tft.tft_set as tft_set\n",
+             "import tft.tft_set\n")
+    assert [_imported_modules(f) for f in forms] == [["tft.tft_set"]] * 3
+    src = (PKG / "ground_truth.py").read_text(encoding="ascii")
+    assert "\nfrom tft import tft_set\n" in src
+    assert _disallowed(src.replace("\nfrom tft import tft_set\n",
+                                   "\nimport tft.tft_set as tft_set\n"),
+                       PKG_ALLOWED, "tft.rounds") == []

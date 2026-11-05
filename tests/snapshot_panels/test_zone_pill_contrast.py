@@ -100,7 +100,7 @@ def _ratio(a, b) -> float:
     return (hi + 0.05) / (lo + 0.05)
 
 
-def _measure(pw_browser, mock_server, theme: str):
+def _open(pw_browser, mock_server, theme: str):
     mock_server._store["data"] = {}
     ctx = pw_browser.new_context(viewport={"width": 1920, "height": 920})
     page = ctx.new_page()
@@ -117,6 +117,16 @@ def _measure(pw_browser, mock_server, theme: str):
             "() => document.body.dataset.view === 'active-match'",
             timeout=10_000)
         page.wait_for_selector("#zone-pill", state="attached", timeout=10_000)
+    except Exception:
+        page.close()
+        ctx.close()
+        raise
+    return ctx, page, errors
+
+
+def _measure(pw_browser, mock_server, theme: str):
+    ctx, page, errors = _open(pw_browser, mock_server, theme)
+    try:
         assert page.evaluate(
             "document.documentElement.dataset.theme || 'hextech'"
         ) == theme

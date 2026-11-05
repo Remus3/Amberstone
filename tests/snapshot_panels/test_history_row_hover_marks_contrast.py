@@ -126,6 +126,35 @@ def _open(page, url, view, ready):
     page.wait_for_function(ready, timeout=10_000)
 
 
+# Hover and theme flips below must not straddle a transition (RM-1132).
+_CALM = ("*, *::before, *::after { transition: none !important;"
+         " animation: none !important; }")
+# view: (row selector the scan hovers, grade letters it re-classes through).
+_SCANS = {
+    "session-rows": ("#history-session-list .history-session-row", ()),
+    "history": ("#history-match-list > li.history-match-row", _GRADES),
+    "session": ("#session-matches > li.history-match-row", _GRADES),
+}
+
+
+def _open_view(page, mock_server, page_view):
+    """Open #history (session rows + the first session's match rows) or
+    #session, transitions off, as the measured fixture does."""
+    if page_view == "history":
+        _open(page, mock_server.url + "/?ui_mock=1#history", "history",
+              "document.querySelector('#history-session-list"
+              " .history-session-row')")
+        page.click("#history-session-list .history-session-row")
+        page.wait_for_function(
+            "document.querySelectorAll('#history-match-list"
+            " .history-match-row .home-recent-grade').length >= 2",
+            timeout=10_000)
+    else:
+        _open(page, mock_server.url + "/?ui_mock=1#session", "session",
+              "document.querySelector('#session-matches .home-recent-grade')")
+    page.add_style_tag(content=_CALM)
+
+
 def _hover_scan(page, out, view, sel, grades):
     n = page.evaluate("(s) => document.querySelectorAll(s).length", sel)
     for t in _THEMES:
@@ -148,28 +177,14 @@ def measured(mock_server, pw_browser):
     errors: list[str] = []
     page.on("pageerror", lambda err: errors.append(str(err)))
     out = {}
-    calm = ("*, *::before, *::after { transition: none !important;"
-            " animation: none !important; }")
     try:
-        _open(page, mock_server.url + "/?ui_mock=1#history", "history",
-              "document.querySelector('#history-session-list"
-              " .history-session-row')")
-        page.click("#history-session-list .history-session-row")
-        page.wait_for_function(
-            "document.querySelectorAll('#history-match-list"
-            " .history-match-row .home-recent-grade').length >= 2",
-            timeout=10_000)
-        page.add_style_tag(content=calm)
-        _hover_scan(page, out, "session-rows",
-                    "#history-session-list .history-session-row", [])
-        _hover_scan(page, out, "history",
-                    "#history-match-list > li.history-match-row",
-                    list(_GRADES))
-        _open(page, mock_server.url + "/?ui_mock=1#session", "session",
-              "document.querySelector('#session-matches .home-recent-grade')")
-        page.add_style_tag(content=calm)
-        _hover_scan(page, out, "session",
-                    "#session-matches > li.history-match-row", list(_GRADES))
+        _open_view(page, mock_server, "history")
+        for view in ("session-rows", "history"):
+            sel, grades = _SCANS[view]
+            _hover_scan(page, out, view, sel, list(grades))
+        _open_view(page, mock_server, "session")
+        sel, grades = _SCANS["session"]
+        _hover_scan(page, out, "session", sel, list(grades))
     finally:
         page.close()
         ctx.close()
