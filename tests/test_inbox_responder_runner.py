@@ -1586,7 +1586,7 @@ def test_real_spawner_named_once_outside_docstring_and_imports():
     import ast
     src = RUNNER_SRC
     doc = ast.get_docstring(ast.parse(src))
-    assert doc is not None and "REAL-SPAWN RULE" not in doc or True
+    assert doc is not None
     assert "No test creates a process through `real_spawner`." in doc
     stripped = src.replace(doc, "", 1)
     lines = [line.split("#")[0] for line in stripped.splitlines()]
@@ -3611,7 +3611,7 @@ def test_cycle_ids_are_distinct_within_one_injected_second(world):
         assert re.fullmatch(r"^\d{8}T\d{6}-\d+-[0-9a-f]{6}$", cid)
     armed(world)
     result = world.drive(cycle_id=first)
-    assert world.held(result.cycle_id).name == first or True
+    assert result.cycle_id == first
     assert world.one_row(result)["cycle_id"] == first
 
 
