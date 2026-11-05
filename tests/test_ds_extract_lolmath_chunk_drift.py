@@ -286,7 +286,7 @@ def test_roles_factory_header_parameter_names_are_not_pinned():
     # `(e,a,t)=>{a.exports=`; the pinned `a.exports` matched nothing.
     chunk = (
         ",26080,(a,i,e)=>{i.exports={Aatrox:\"General\",Ahri:\"General\"}}"
-        + ",34919,(a,i,e)=>{i.exports={Aatrox:[\"FIGHTER\"],Ahri:[\"MAGE\"]}}"
+        ",34919,(a,i,e)=>{i.exports={Aatrox:[\"FIGHTER\"],Ahri:[\"MAGE\"]}}"
     )
     assert dse._extract_roles(chunk) == {"Aatrox": ["FIGHTER"], "Ahri": ["MAGE"]}
 
@@ -323,10 +323,10 @@ def _split_bodies() -> dict[str, str]:
         # root chunk: roles + ratings + lanes, plus a lane-token decoy list
         "u/root_meta.js": (
             ',2,(a,i,e)=>{i.exports={Aatrox:"General",Ahri:"Squishy"}}'
-            + ',3,(a,i,e)=>{i.exports={Aatrox:["FIGHTER"],Ahri:["MAGE"]}}'
-            + ',4,a=>{"use strict";let i={Aatrox:{ratings:{healing:10,shielding:0}},'
-            + "Ahri:{ratings:{healing:4,shielding:0}}};"
-            + 'let z=["top","Aatrox","mid","x"];let u=' + _LANES + ";}"
+            ',3,(a,i,e)=>{i.exports={Aatrox:["FIGHTER"],Ahri:["MAGE"]}}'
+            ',4,a=>{"use strict";let i={Aatrox:{ratings:{healing:10,shielding:0}},'
+            "Ahri:{ratings:{healing:4,shielding:0}}};"
+            'let z=["top","Aatrox","mid","x"];let u=' + _LANES + ";}"
         ),
         # lazily loaded chunk: every other champion's scenario
         "u/lazy_scen.js": _scen("e", "ahri"),

@@ -160,7 +160,7 @@ class ParserPassthroughTests(unittest.TestCase):
         # ALSO carry server-derived fields (RC2 5.3 trigger + 5.4 rebranch) the
         # model is not asked to emit; those are excluded from the prompt-schema mirror.
         # Imported here so a rename of the dataclass breaks the test loudly.
-        from core.coach_choices import CoachChoice  # noqa: WPS433
+        from core.coach_choices import CoachChoice
         from dataclasses import fields
         SERVER_DERIVED = {"trigger", "rebranch_when", "rebranch_to"}
         emitted = {f.name for f in fields(CoachChoice)} - SERVER_DERIVED

@@ -172,7 +172,7 @@ def _brawl_prompt_inject(picks_str: str, label: str) -> str:
     last term (sentinel shows verbatim)."""
     return (
         "=== 0:00 | BRAWL ===\n"
-        + f"\nDS top items ({label} ranked, own-items-accounted): {picks_str}"
+        f"\nDS top items ({label} ranked, own-items-accounted): {picks_str}"
     )
 
 

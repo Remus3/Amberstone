@@ -113,7 +113,7 @@ def test_empty_but_ok_payload_is_a_success_not_a_failure():
         "let calls=0,landed=0;"
         "globalThis.fetch=()=>{calls++;return Promise.resolve({ok:true,"
         "json:()=>Promise.resolve({ok:true,patch:'',champions:{}})});};"
-        + "_abEnsureFetched(()=>{landed++;});" + _SETTLE
+        "_abEnsureFetched(()=>{landed++;});" + _SETTLE
         + "_abEnsureFetched(()=>{landed++;});" + _SETTLE + _REPORT
     )
     assert out["champions"] == {}

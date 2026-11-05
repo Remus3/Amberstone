@@ -99,7 +99,7 @@ class TestMaxAgeFailsClosed:
 
     def test_int_and_numeric_max_age_types_are_accepted(self):
         assert relay_age.is_stale(100.0, 12, now=105.0) is False
-        assert relay_age.is_stale(100.0, decimal.Decimal("12"), now=105.0) is False
+        assert relay_age.is_stale(100.0, decimal.Decimal(12), now=105.0) is False
         assert relay_age.is_stale(100.0, fractions.Fraction(12), now=105.0) is False
 
 
