@@ -3,7 +3,7 @@ tests/snapshot_panels/test_spike_markers_view.py
 Power-spike markers strip VISUAL snapshot + grid-compliance coverage (R28,
 2026-06-23).
 
-The spike-markers strip (competitor lift #4, docs/COMPETITOR_LIFT_2026-05-30.md)
+The spike-markers strip (competitor lift #4, docs/_archive/COMPETITOR_LIFT_2026-05-30.md)
 shipped as web/js/panels/spike_markers.js (#am-spike-markers, in the Active
 Match BUILD pane) with backend (dashboard/routes_spike_markers.py) +
 panel-smoke (tests/test_spike_markers_panel_dom.py) coverage, but NO dedicated

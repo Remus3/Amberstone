@@ -5,7 +5,7 @@ rewind_history.db. Surfaces which completed items the operator actually WINS
 with on a champion (confidence-weighted lift vs their own baseline), an additive
 "your best build" read alongside the DS engine recommendation - no Riot API, no
 Claude. Closes the personal-WR-build-override local-data half from
-docs/COMPETITOR_LIFT_2026-06-16.md.
+docs/_archive/COMPETITOR_LIFT_2026-06-16.md.
 
 Request shape:
   GET /api/personal-build?champion=Vayne[&mode=sr|aram|arena]

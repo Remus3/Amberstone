@@ -1,5 +1,5 @@
 // Personal best-build card (Overlay App E personal-WR build override, local-data
-// half; docs/COMPETITOR_LIFT_2026-06-16.md). A READ-ONLY ranked list for
+// half; docs/_archive/COMPETITOR_LIFT_2026-06-16.md). A READ-ONLY ranked list for
 // the operator's LOCKED champion: the completed items they actually WIN with
 // on that champion, computed from their OWN rewind_history.db - a "your best
 // build" read ALONGSIDE the DS engine recommendation, never a change to the

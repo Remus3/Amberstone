@@ -1,5 +1,5 @@
 """Tests for dashboard/routes_spike_markers.py - live power-spike markers
-(competitor lift #4, docs/COMPETITOR_LIFT_2026-05-30.md).
+(competitor lift #4, docs/_archive/COMPETITOR_LIFT_2026-05-30.md).
 
 Sibling of test_routes_cooldown_watch.py; mirrors its StubHandler pattern.
 The route is a thin wire over

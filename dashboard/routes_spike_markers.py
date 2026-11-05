@@ -2,7 +2,7 @@
 """GET /api/spike-markers - discrete level + item-completion spike markers.
 
 Competitor lift #4 (Aggregator C power-spike timeline; DEPTH spec
-``docs/COMPETITOR_LIFT_2026-05-30.md`` "Lift 4"). Thin dashboard wire over
+``docs/_archive/COMPETITOR_LIFT_2026-05-30.md`` "Lift 4"). Thin dashboard wire over
 ``agents.daemon_slayer.spike_markers.compute_spike_markers`` - the marker
 MATH (which level / item-completion spike is crossed, which is next) keyed
 on the operator's LIVE champion + level + owned items. NO new ENGINE math,

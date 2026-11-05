@@ -1,5 +1,5 @@
 """Tests for dashboard/routes_ds_sweep.py - DS stat-sweep graph (competitor
-lift #3, docs/COMPETITOR_LIFT_2026-05-30.md).
+lift #3, docs/_archive/COMPETITOR_LIFT_2026-05-30.md).
 
 Sibling of test_routes_cooldown_watch.py; mirrors its StubHandler pattern.
 The route is a thin wire over

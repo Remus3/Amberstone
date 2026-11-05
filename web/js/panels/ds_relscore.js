@@ -1,5 +1,5 @@
 // DS relative-score bar panel (competitor lift #3,
-// docs/COMPETITOR_LIFT_2026-05-30.md "Lift 3", Aggregator P relative-score
+// docs/_archive/COMPETITOR_LIFT_2026-05-30.md "Lift 3", Aggregator P relative-score
 // bars). A READ-ONLY ranked bar list for the LOCKED champion: each row is
 // an item name + a horizontal bar filled to that item's DPS delta as a
 // percent of the best item, with the percent label. NO control inputs -

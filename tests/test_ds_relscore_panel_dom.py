@@ -1,5 +1,5 @@
 """Regression guards for the DS relative-score bar panel (competitor lift
-#3, docs/COMPETITOR_LIFT_2026-05-30.md "Lift 3").
+#3, docs/_archive/COMPETITOR_LIFT_2026-05-30.md "Lift 3").
 
 Backend dashboard/routes_ds_relscore.py ships with its own HTTP-contract
 suite (tests/test_routes_ds_relscore.py). This file pins the NEW frontend

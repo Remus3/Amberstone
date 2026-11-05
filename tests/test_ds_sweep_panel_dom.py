@@ -1,5 +1,5 @@
 """Regression guards for the DS stat-sweep panel (competitor lift #3,
-docs/COMPETITOR_LIFT_2026-05-30.md).
+docs/_archive/COMPETITOR_LIFT_2026-05-30.md).
 
 Backend dashboard/routes_ds_sweep.py + its engine module
 agents/daemon_slayer/dps_sweep.py ship with their own suites

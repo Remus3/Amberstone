@@ -1,8 +1,8 @@
 # arch: ds relative-score bar backend | section=dashboard | frozen=no
 """GET /api/ds-relscore - relative-power bar over the DS DPS ranking.
 
-Competitor lift #3 (DEPTH spec docs/COMPETITOR_LIFT_2026-05-30.md "Lift 3",
-Aggregator P relative-score bars). Thin READ-ONLY dashboard wire over
+Competitor lift #3 (DEPTH spec docs/_archive/COMPETITOR_LIFT_2026-05-30.md
+"Lift 3", Aggregator P relative-score bars). Thin READ-ONLY dashboard wire over
 ``agents.daemon_slayer.rank.rank_items`` - the carry/DPS-scorer ranker. NO
 new compute, NO ENGINE math change, NO schema lift; this route READS the
 existing ranker and re-expresses each row's ``delta_dps`` as a percent of

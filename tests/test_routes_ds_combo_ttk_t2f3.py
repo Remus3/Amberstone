@@ -1,4 +1,4 @@
-"""T2-F3 (docs/COMPETITOR_LIFT_2026-06-08.md lines 114-121) - headline
+"""T2-F3 (docs/_archive/COMPETITOR_LIFT_2026-06-08.md T2-F3) - headline
 time-to-kill line on the ds_combo totals.
 
 simulator tool R surfaces a sustained DPS + time-to-kill headline against a

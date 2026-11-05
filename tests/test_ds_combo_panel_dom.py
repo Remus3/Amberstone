@@ -1,5 +1,5 @@
 """Regression guards for the DS action-queue combo panel (competitor
-lift #2, docs/COMPETITOR_LIFT_2026-05-30.md).
+lift #2, docs/_archive/COMPETITOR_LIFT_2026-05-30.md).
 
 Backend dashboard/routes_ds_combo.py + its engine module
 agents/daemon_slayer/combo.py ship with their own suites

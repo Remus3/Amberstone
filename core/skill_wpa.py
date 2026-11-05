@@ -6,7 +6,7 @@ to rank 5 first (max-Q-Ahri vs max-W-Ahri). The unit is therefore
 ``(champion_id, first_maxed_basic_slot)``, NOT a per-skill-point row
 (every champion levels all three basics, so per-point is degenerate).
 
-Lifted from the competitor teardown (docs/COMPETITOR_LIFT_2026-06-02.md):
+Lifted from the competitor teardown (docs/_archive/COMPETITOR_LIFT_2026-06-02.md):
 the competitor applies its WPA decomposition to Skills as well as Items. A
 raw "max-Q winrate" conflates the skill choice with WHO maxes Q and the
 state when the max locks in. We decompose it into an expected baseline

@@ -1,5 +1,5 @@
 """Regression guards for the live power-spike markers panel (competitor
-lift #4, docs/COMPETITOR_LIFT_2026-05-30.md).
+lift #4, docs/_archive/COMPETITOR_LIFT_2026-05-30.md).
 
 Backend dashboard/routes_spike_markers.py + its engine module
 agents/daemon_slayer/spike_markers.py ship with their own suites

@@ -1,4 +1,4 @@
-"""T2-F3 frontend guard (docs/COMPETITOR_LIFT_2026-06-08.md lines 114-121)
+"""T2-F3 frontend guard (docs/_archive/COMPETITOR_LIFT_2026-06-08.md T2-F3)
 - the headline time-to-kill line on web/js/panels/ds_combo.js.
 
 The combo panel renders the per-hit timeline + a totals foot; this slice

@@ -2,7 +2,7 @@
 """GET /api/ds-sweep - 1-variable DPS stat-sweep curve for one champion.
 
 Competitor lift #3 (calc.gg stat-sweep graphs; DEPTH spec
-``docs/COMPETITOR_LIFT_2026-05-30.md`` "Lift 3"). Thin dashboard wire over
+``docs/_archive/COMPETITOR_LIFT_2026-05-30.md`` "Lift 3"). Thin dashboard wire over
 ``agents.daemon_slayer.dps_sweep.compute_dps_sweep`` - a read-only loop over
 the EXISTING DS auto-attack DPS engine with ONE input swept and everything
 else held fixed. NO new compute, NO ENGINE math change, NO schema lift, NO

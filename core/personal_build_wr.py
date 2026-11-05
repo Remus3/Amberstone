@@ -2,8 +2,8 @@
 LOCAL rewind_history.db.
 
 Closes the "personal-WR build override (local-data half)" FUTURE item from
-docs/COMPETITOR_LIFT_2026-06-16.md (the Overlay App E personal-WR build override). The DS
-engine recommends a default build order; this surfaces which items the OPERATOR
+docs/_archive/COMPETITOR_LIFT_2026-06-16.md (the Overlay App E personal-WR build
+override). The DS engine recommends a default build order; this surfaces which items the OPERATOR
 actually wins with on a given champion, computed from their OWN match history -
 no Riot API, no Claude, no DS schema lift. Mirrors core/player_gpi's local-DB,
 self-relative, fail-soft design and reuses core/smoothed_rates so a 2-0 item does

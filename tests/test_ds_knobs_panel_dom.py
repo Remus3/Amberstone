@@ -1,5 +1,5 @@
 """Regression guards for the DS engine-knobs control panel (competitor
-lift #1, docs/COMPETITOR_LIFT_2026-05-30.md "Lift 1").
+lift #1, docs/_archive/COMPETITOR_LIFT_2026-05-30.md "Lift 1").
 
 Backend dashboard/routes_ds_knobs.py ships with its own HTTP-contract suite
 (tests/test_routes_ds_knobs.py). This file pins the NEW frontend artifacts

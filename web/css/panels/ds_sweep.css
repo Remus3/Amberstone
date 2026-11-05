@@ -1,5 +1,5 @@
 /* DS stat-sweep graph (competitor lift #3,
- * docs/COMPETITOR_LIFT_2026-05-30.md). Plots the LOCKED champion's
+ * docs/_archive/COMPETITOR_LIFT_2026-05-30.md). Plots the LOCKED champion's
  * auto-attack DPS against a swept enemy-stat axis (default target armor
  * 0..300) - a single labelled sparkline. Mounts inside the Suggestions card
  * (.csv-card-suggestions) during champ-select, a sibling of the

@@ -1,5 +1,5 @@
 """Regression guards for the Build Insights view (item 273, the competitor site
-lift, docs/COMPETITOR_LIFT_2026-06-02.md section 7b).
+lift, docs/_archive/COMPETITOR_LIFT_2026-06-02.md section 7b).
 
 The view consumes the shipped GET /api/item-wpa as a sortable WPA table.
 This file pins the frontend artifacts + the cross-file view wiring:

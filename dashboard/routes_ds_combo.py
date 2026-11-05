@@ -1,8 +1,8 @@
 # arch: action-queue combo simulator backend | section=dashboard | frozen=no
 """GET /api/ds-combo - per-hit timeline for an ordered cast/attack list.
 
-Competitor lift #2 (DEPTH spec docs/COMPETITOR_LIFT_2026-05-30.md "Lift
-2"). Thin dashboard wire over
+Competitor lift #2 (DEPTH spec docs/_archive/COMPETITOR_LIFT_2026-05-30.md
+"Lift 2"). Thin dashboard wire over
 ``agents.daemon_slayer.combo.compute_combo`` - the action-queue duel-sim
 that walks a clock over a SEQUENTIAL action list (``Q, AA, W, R``),
 applying each hit through the existing burst-walker mitigation pipeline
@@ -241,8 +241,8 @@ def _cache_put(key: tuple, now: float, payload: dict) -> None:
 
 
 def _compute_ttk(total_mitigated: float, duration_s: float, target_hp: float) -> dict:
-    """T2-F3 headline time-to-kill block (docs/COMPETITOR_LIFT_2026-06-08.md
-    lines 114-121).
+    """T2-F3 headline time-to-kill block (docs/_archive/COMPETITOR_LIFT_2026-06-08.md
+    section T2-F3).
 
     Derives a sustained DPS + time-to-kill / rotations-to-kill headline from
     the combo's mitigated total against the target's effective HP. PURELY

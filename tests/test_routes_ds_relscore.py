@@ -1,5 +1,5 @@
 """Tests for dashboard/routes_ds_relscore.py - DS relative-score bar
-(competitor lift #3, docs/COMPETITOR_LIFT_2026-05-30.md "Lift 3").
+(competitor lift #3, docs/_archive/COMPETITOR_LIFT_2026-05-30.md "Lift 3").
 
 Sibling of test_routes_ds_knobs.py; mirrors its StubHandler pattern. The
 route is a READ-ONLY wire over agents.daemon_slayer.rank.rank_items (the

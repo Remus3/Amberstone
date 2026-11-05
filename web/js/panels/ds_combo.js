@@ -1,5 +1,5 @@
 // DS action-queue combo simulator (competitor lift #2,
-// docs/COMPETITOR_LIFT_2026-05-30.md). Sibling of the cooldown-watch card -
+// docs/_archive/COMPETITOR_LIFT_2026-05-30.md). Sibling of the cooldown-watch card -
 // surfaces a per-hit damage TIMELINE for an ordered cast/attack list the
 // operator types ("Q, AA, W, R"). Turns RC's single aggregate burst into a
 // calc.gg-style Action Queue: each row is one action with its clock time,
@@ -229,7 +229,7 @@ function _rowHtml(hit) {
 }
 
 // Build the headline time-to-kill line from payload.ttk (T2-F3,
-// docs/COMPETITOR_LIFT_2026-06-08.md lines 114-121). Renders nothing when
+// docs/_archive/COMPETITOR_LIFT_2026-06-08.md section T2-F3). Renders nothing when
 // the TTK is unavailable (no target HP / zero-damage combo) so the foot is
 // unchanged in that case. A lethal one-combo reads "LETHAL"; otherwise it
 // shows seconds-to-kill + whole rotations needed, plus the sustained DPS.

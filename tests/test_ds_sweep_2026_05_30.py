@@ -3,7 +3,7 @@
 Engine-layer loop over the EXISTING DS auto-attack DPS engine
 (agents.daemon_slayer.dps.compute_dps) with ONE input swept and everything
 else held fixed. NO new compute / NO ENGINE math change. Spec:
-docs/COMPETITOR_LIFT_2026-05-30.md "Lift 3".
+docs/_archive/COMPETITOR_LIFT_2026-05-30.md "Lift 3".
 
 Grounding (live snapshot at write time, Caitlyn marksman with a crit core):
   * target_armor axis: DPS is monotonic NON-increasing as armor rises

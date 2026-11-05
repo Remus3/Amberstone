@@ -1,5 +1,5 @@
 // Live power-spike markers strip (competitor lift #4,
-// docs/COMPETITOR_LIFT_2026-05-30.md). Mounts on the ACTIVE-MATCH surface
+// docs/_archive/COMPETITOR_LIFT_2026-05-30.md). Mounts on the ACTIVE-MATCH surface
 // (not champ-select). Renders the operator's discrete power spikes as a
 // horizontal threshold strip:
 //   - level spikes 6 / 11 / 16 (R unlock + ranks 2/3)

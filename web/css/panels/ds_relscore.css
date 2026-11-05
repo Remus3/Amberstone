@@ -1,5 +1,5 @@
 /* DS relative-score bar panel (competitor lift #3,
- * docs/COMPETITOR_LIFT_2026-05-30.md "Lift 3", Aggregator P relative-score
+ * docs/_archive/COMPETITOR_LIFT_2026-05-30.md "Lift 3", Aggregator P relative-score
  * bars). Mounts inside the champ-select Suggestions area: a READ-ONLY ranked
  * bar list for the LOCKED champion. Each row is item name | a horizontal bar
  * filled to the item's DPS delta as a percent of the best item | the percent

@@ -1,5 +1,5 @@
 // DS stat-sweep graph (competitor lift #3,
-// docs/COMPETITOR_LIFT_2026-05-30.md). Plots the LOCKED champion's
+// docs/_archive/COMPETITOR_LIFT_2026-05-30.md). Plots the LOCKED champion's
 // auto-attack DPS against a swept enemy-stat axis (default target armor
 // 0..300) - the calc.gg "how does my damage scale vs their armor" read.
 // A single labelled sparkline over the EXISTING DS DPS engine: pure

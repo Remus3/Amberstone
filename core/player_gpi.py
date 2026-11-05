@@ -1,6 +1,6 @@
 """core/player_gpi.py - longitudinal 8-axis player skill profile (GPI radar).
 
-Closes competitor-lift #1 from docs/COMPETITOR_LIFT_2026-06-16.md (the
+Closes competitor-lift #1 from docs/_archive/COMPETITOR_LIFT_2026-06-16.md (the
 Aggregator C GPI radar, "best BACKLOG pickup"). RC already grades a SINGLE
 match (Post Game Review) and labels per-champion metrics post-game
 (core/benchmarks), but nothing aggregates a LONGITUDINAL multi-axis skill

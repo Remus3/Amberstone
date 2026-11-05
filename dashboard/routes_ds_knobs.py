@@ -1,8 +1,8 @@
 # arch: ds-engine-knobs control panel backend | section=dashboard | frozen=no
 """GET /api/ds-knobs - re-rank DS items for an operator-chosen fight model.
 
-Competitor lift #1 (DEPTH spec docs/COMPETITOR_LIFT_2026-05-30.md "Lift 1",
-lolsolved.gg engine-knobs UX). Thin dashboard wire over
+Competitor lift #1 (DEPTH spec docs/_archive/COMPETITOR_LIFT_2026-05-30.md
+"Lift 1", lolsolved.gg engine-knobs UX). Thin dashboard wire over
 ``agents.daemon_slayer.rank.rank_items`` - the carry/DPS-scorer ranker that
 already accepts ``target_armor`` / ``target_mr`` / ``budget`` as first-class
 args. NO new compute, NO ENGINE math change, NO schema lift; every knob maps

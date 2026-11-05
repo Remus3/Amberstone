@@ -4,7 +4,7 @@
 total gold. Pure + DISPLAY-only: it reads the enriched last-match roster
 (`is_me` / `team_id` / `gold` per `dashboard.builders_lcu_enrich`) and never
 touches the persisted `match_metrics` grade. Fills the gap flagged in the
-R2 competitor-lift triage (`docs/COMPETITOR_LIFT_2026-06-18_R2.md`): gold
+R2 competitor-lift triage (`docs/_archive/COMPETITOR_LIFT_2026-06-18_R2.md`): gold
 share had no producer repo-wide while kill-participation already existed.
 """
 from __future__ import annotations

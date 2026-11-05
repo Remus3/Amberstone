@@ -1,5 +1,5 @@
 """Tests for dashboard/routes_ds_knobs.py - DS engine-knobs control panel
-(competitor lift #1, docs/COMPETITOR_LIFT_2026-05-30.md "Lift 1").
+(competitor lift #1, docs/_archive/COMPETITOR_LIFT_2026-05-30.md "Lift 1").
 
 Sibling of test_routes_cooldown_watch.py; mirrors its StubHandler pattern.
 The route is a thin wire over agents.daemon_slayer.rank.rank_items (the

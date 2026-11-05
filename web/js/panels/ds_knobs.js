@@ -1,5 +1,5 @@
 // DS engine-knobs control panel (competitor lift #1,
-// docs/COMPETITOR_LIFT_2026-05-30.md "Lift 1", lolsolved.gg engine-knobs
+// docs/_archive/COMPETITOR_LIFT_2026-05-30.md "Lift 1", lolsolved.gg engine-knobs
 // UX). A control strip above a compact ranked-rows list for the LOCKED
 // champion: the operator overrides enemy armor / enemy MR / gold cap and
 // the DS DPS ranking re-ranks for that chosen fight model, instead of

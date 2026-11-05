@@ -1,8 +1,8 @@
 """Regression guards for the personal best-build champ-select card.
 
 Surfaces the operator's OWN winning items on their LOCKED champion (the
-Overlay App E personal-WR build override, local-data half; docs/COMPETITOR_LIFT_
-2026-06-16.md). The backend already ships + has its own suites
+Overlay App E personal-WR build override, local-data half;
+docs/_archive/COMPETITOR_LIFT_2026-06-16.md). The backend already ships + has its own suites
 (core/personal_build_wr.py -> tests/test_personal_build_wr.py;
 dashboard/routes_personal_build.py -> tests/test_routes_personal_build.py).
 This file pins the five-file FRONTEND wiring that hooks the card into the

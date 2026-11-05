@@ -2,7 +2,7 @@
 
 A selection-bias-corrected residual for each completed-legendary item,
 computed entirely over the local ``data/rewind_history.db`` timelines.
-Lifted from competitor teardown (docs/COMPETITOR_LIFT_2026-06-02.md,
+Lifted from competitor teardown (docs/_archive/COMPETITOR_LIFT_2026-06-02.md,
 finding 1): a raw item winrate conflates the item's effect with WHO buys
 it and WHEN. A player far ahead buys luxury crit and then wins anyway;
 the win was already coming. The competitor decomposes each item winrate into
