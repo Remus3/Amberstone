@@ -2473,6 +2473,45 @@ survivability flips below cannot roll otherwise.
 - **G3-15** ARAM re-checks of GATE 2 rows (no separate work, just look while you are here): G2-12 R49
   reflect ranking-vs-real-comp (the stricter read), G2-29 the ARAM flood-tint question, G2-38 PD->Kraken
   level-tick stability (ARAM-suitable, no enemy-comp dependency).
+  **PREP AUDIT (lane 9 PREP s144 cycle 57, source read at `412042dc8`; NOT a tick).** The three legs
+  are in three different states, so "just look while you are here" applies to ONE of them.
+  (1) **G2-29 leg: ANSWERED, nothing to look at.** The 2026-07-20 ARAM Mayhem game answered it (no
+  flood; ZOI drew the bridge as a diagonal band with districts `blue_base` / `red_base` /
+  `aram_bridge` / `brush_north` / `brush_south`): the drain block at the top of this file, LEDGER 987.
+  Re-looking is not a check; only a reversal (a flood seen in a later ARAM game) re-opens it, and then
+  as a new observation with a timed frame.
+  (2) **G2-38 leg: READY, use the G2-38 row's block (cycle 43) unchanged.** Its tool
+  `tools/gated_g238_top_pick_flip.py` takes the mode from `/api/state` `mode_key`, upper-cased
+  (`:283`), with no SR gate, and the build panel's `_maybeRefreshBuildOrder`
+  (`web/js/panels/active_match.js:444`) has no mode gate (its early returns are a missing champion or
+  mode, and the stale / in-flight debounce that hands back the cached order). The
+  2026-07-20 drain already rode this panel through an ARAM game (levels 1-14, a real top-1 flip at
+  6:51 / level 9), so the surface is measured to render in ARAM. Same PROBE, PREDICATE, EVIDENCE and
+  SUBSTITUTION CHECK as that row; add mode ARAM and queue 2400 to the evidence, and record
+  `tightest_gap_pct` beside the 9.02 baseline on a `NO_RESULT`.
+  (3) **G2-12 leg: NOT LIVE-OBSERVABLE at HEAD, so an ARAM game cannot exercise it.** grep at
+  `412042dc8`: `assume_passive_reflect` is a Python keyword only - `agents/daemon_slayer/dps.py`
+  (`:792`, fold `:1697`), `agents/daemon_slayer/burst.py` (`:535`, fold `:1292`) and the registry
+  `agents/daemon_slayer/_passive_reflect_overrides.py` - with ZERO hits in
+  `agents/daemon_slayer/server.py` and no RC caller, and `tests/test_ds_parity_map.py:88-89` pins it
+  in `_UNREACHABLE_OK` for both `/burst` and `/dps` (an equality ratchet: wiring it turns that test
+  red). No `/rank*` route forwards it either, so no panel, coach field or overlay row carries a
+  reflect credit, and "ranking vs the real comp" has no rendered ranking to read. The engine also
+  never reads the comp: the incoming cadence is the constant `reflect_cadence_s=1.0`
+  (`_passive_reflect_overrides.py:123`) and the shipped ranged factor `_REFLECT_RANGED_EXPOSURE = 0.35`
+  (`:81`, applied at `:100`) keys on the WIELDER being ranged, not on the enemies. What the leg
+  needs first is the R49 flip-ledger OWED item (1) below: a code slice that wires a live rank
+  consumer for the flag (route parse plus an RC caller, with the parity-map line deleted in the same
+  slice). Only then does a live read exist: PREDICATE for that later read (stated now): with a
+  thorn-carrier build (Rammus, or Thornmail 3075 / Bramble Vest 3076 on a melee tank) the reflect-ON
+  rank moves the carrier up by no more than the operator judges the reflect actually paid against
+  the auto-attack share of the REAL enemy five (count of enemies whose damage is mainly basic
+  attacks, from `/api/state` `liveclient` allPlayers), and a no-carrier control build ranks
+  byte-identical OFF vs ON. SUBSTITUTION CHECK: the 2026-07-20 Python-API delta (+8.963 pct, the
+  pre-factor figure) or any probe that calls `compute_dps` / `compute_burst_damage` directly with the
+  flag set is the compute half and never this read; a reflect number on a route a fresh test client
+  hits is not what the operator's panel rendered. Filed RM-1391 (wire-the-consumer code slice,
+  Tier-2: engine route); until it lands, G3-15 drains on its G2-38 leg alone.
 
 ---
 
