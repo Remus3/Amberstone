@@ -332,22 +332,48 @@ footer .prefs-chip:hover { color: var(--text); }
 }
 .title-label { white-space: nowrap; }
 .title-current {
-  font-size: 13px; color: var(--info); letter-spacing: 0.16em;
+  /* RM-1553: 16px (--fs-xs, the text floor), was 13px; tracking 0.08em,
+   * was 0.16em, so the widest label still fits a modest width. */
+  font-size: var(--fs-xs); color: var(--info); letter-spacing: 0.08em;
   text-transform: uppercase; font-weight: 700;
   border-left: 1px solid var(--border-soft); padding-left: 10px;
   /* s218: pinned width so the title-dropdown is STATIC across all views
-   * (operator hard rule). Sized to fit the widest realistic label -
-   * "AUTO - PRE-GAME LOBBY" (21 chars at 13px / 0.16em letter-spacing).
-   * Any manual pick is shorter and comfortably fits. */
-  display: inline-block;
-  width: 230px;
+   * (operator hard rule). RM-1553: 290px holds the widest manual label,
+   * "POST GAME REVIEW (ARCHIVE)" (284px in Segoe UI bold at 16px / 0.08em),
+   * and every "AUTO - <VIEW>" label (widest 252px). The one longer label,
+   * the archive view in auto mode, drops its prefix (the wrap below).
+   * RM-1436 (was max-width 720px only): the label is a one-line wrapping
+   * flex row whose FIRST line holds the name (order -1, row-reverse, packed
+   * to the left so it still reads "AUTO - NAME"). When both do not fit, the
+   * whole prefix wraps to the clipped second line, never a partial "AU". The
+   * line height is set (not "normal") because the middle dot comes from a
+   * fallback font whose normal line is 2px taller, which made the clip box
+   * shorter than the line it has to show. */
+  display: flex;
+  flex-flow: row-reverse wrap;
+  justify-content: flex-end;
+  align-content: flex-start;
+  line-height: 1.2;
+  height: 1.2em;
+  width: 290px;
   text-align: left;
   white-space: nowrap;
   overflow: hidden;
 }
+.title-current-name {
+  order: -1;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.title-current-auto {
+  flex: 0 0 auto;
+  white-space: pre;
+}
 .title-current:empty { display: none; }
 .title-caret {
-  font-size: 14px; color: var(--text-faint);
+  font-size: var(--fs-xs); color: var(--text-faint);
   transition: transform 0.12s, color 0.12s;
 }
 .title-dropdown[aria-expanded="true"] .title-caret {
@@ -3119,9 +3145,10 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 }
 /* RM-1432: below 720px (300% zoom of the 1920x920 baseline is 640, the
  * WCAG reflow reference is 320) the view trigger may be narrower than its
- * 403px. Its current-view label is pinned to 230px so the trigger is the
+ * 465px (403px before RM-1553). Its current-view label is pinned to
+ * 290px so the trigger is the
  * same size on every view (s218); here that label alone gives way. It keeps
- * its 230px width (so the trigger's own size is still 403px whatever the
+ * its 290px width (so the trigger's own size is still 465px whatever the
  * label says) and may shrink below it only when the row is narrower, so
  * at a given window size the trigger is one width on every view. Measured
  * before: at 320 the trigger ran 131px past its 288px row and the caret sat
@@ -3136,33 +3163,9 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   /* RM-1436: at 320 the label is cut to about 115px and "AUTO - " took
    * half of it, so PRE-GAME LOBBY / ACTIVE MATCH / POST GAME REVIEW lost
    * their name. web/js/main.js writes the prefix and the name as two spans;
-   * here the label is a one-line wrapping flex row whose FIRST line holds
-   * the name (order -1, row-reverse, packed to the left so it still reads
-   * "AUTO - NAME"). When both do not fit, the whole prefix wraps to the
-   * clipped second line, never a partial "AU"; a name wider than the label
-   * alone ellipsizes. Where both fit nothing moves. The line height is set
-   * (not "normal") because the middle dot comes from a fallback font whose
-   * normal line is 2px taller, which made the clip box shorter than the
-   * line it has to show. */
-  #view-trigger .title-current {
-    display: flex;
-    flex-flow: row-reverse wrap;
-    justify-content: flex-end;
-    align-content: flex-start;
-    line-height: 1.2;
-    height: 1.2em;
-  }
-  #view-trigger .title-current-name {
-    order: -1;
-    flex: 0 1 auto;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  #view-trigger .title-current-auto {
-    flex: 0 0 auto;
-    white-space: pre;
-  }
+   * the wrapping flex row that drops the whole prefix first now lives on
+   * the base .title-current rule (RM-1553), so it also covers the one
+   * label wider than the pinned 290px at full size. */
 }
 /* RM-1437: on Active Match the in-game pills wrap under the view trigger
  * below 1200px, and each kept its desktop slot (43px tall, sized with spare

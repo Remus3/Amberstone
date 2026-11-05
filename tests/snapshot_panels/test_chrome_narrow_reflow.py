@@ -216,11 +216,13 @@ _AUTHORED_JS = """
 
 # Trigger, label and footer values computed at HEAD before the fix
 # (RM-1432); connCut is new with .footer-conn. The narrow rules must not
-# reach these sizes.
+# reach these sizes. RM-1553: the label reads at 16px in a 290px box
+# (was 13px in 230px) and the caret at 16px (was 14px), so the trigger is
+# 465 (was 403); tests/snapshot_panels/test_view_label_text_floor.py.
 _AUTHORED = {
-    (1920, 920): {"trigger": 403, "current": 230, "footPad": ["22px", "22px"],
+    (1920, 920): {"trigger": 465, "current": 290, "footPad": ["22px", "22px"],
                   "footGap": "18px", "footH": 42, "connCut": False},
-    (923, 1280): {"trigger": 403, "current": 230, "footPad": ["22px", "22px"],
+    (923, 1280): {"trigger": 465, "current": 290, "footPad": ["22px", "22px"],
                   "footGap": "18px", "footH": 42, "connCut": False},
 }
 
