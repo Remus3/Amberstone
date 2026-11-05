@@ -1058,10 +1058,49 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   history only. No live half is left here. Moving the row to "Not actually live-gated" is a human doc
   edit.
 - **G2-27** `[NEW ROW 2026-07-18]` Overlay item-8 rank-tier stats panel: (a) the live render eyeball
-  (`f9996bc8`), and (b) the LEDGER 873 (C) deferred finding - the `w-stats` default position
+  (`a553450be`; the row's original `f9996bc8` is its pre-rewrite twin, not reachable from HEAD), and
+  (b) ~~the LEDGER 873 (C) deferred finding - the `w-stats` default position
   (`web/js/lib/overlay_layout.js:67`, x40) COLLIDES with the primary `w-call` coach panel (180,130),
-  so on FIRST run the coach call paints over the provenance badge before the operator repositions.
+  so on FIRST run the coach call paints over the provenance badge before the operator repositions.~~
   Tuning the default anchors needs an in-game eyeball. SOURCE: LEDGER 873; RM-04.
+  **(b) STALE BY AGE, the filed collision is gone (lane 9 PREP s144 c66, RM-1512, source read at
+  `e365f8f32`, 2026-11-05; NOT a tick, no game).** The 2026-07-27 collision sweep `edf32faa9` (R198)
+  moved `w-stats` from (40,250) to (1670,220) in the `WIDGETS` array of `web/js/lib/overlay_layout.js`
+  (its own comment: the 240px panel "cannot clear w-call (180..390 x) on either side inside the 482px
+  left gutter"), and the same commit added `tests/test_overlay_default_layout_collision.py`, which
+  crosses that array with the `overlay.css` `--ovx-w` map and fails on ANY overlapping or off-screen
+  default pair (only w-arambalance vs w-objgauges is exempt). Re-run this cycle: 4 passed, exit 0. So
+  the default-vs-default half of (b) is machine-guarded and closed; what that guard cannot see is the
+  League HUD under the overlay. The residual eyeball folds into (a) as CHECK (a2) below.
+  **(a) READY (same cycle; NOT a tick).** Precondition: a live SR or ARAM game, overlay shell up,
+  rank tier set in DS Settings (`rc-pgr-rank-tier`), and the field at DEFAULTS (Alt+Shift+R once, or
+  confirm `localStorage["rc-overlay-layout"]` holds no `w-stats` entry), else the box is wherever the
+  operator dragged it and (a2) measures nothing. Probes, all read-only:
+  P1 `curl -sk https://127.0.0.1:8888/api/state` -> `liveclient.level`, `liveclient.cs`,
+  `liveclient.kda`, `liveclient.kill_participation_pct`, `liveclient.game_time_s`, `mode_key` (the
+  panel's You column and bracket read the liveclient keys through `renderStatsPanel(lc, opts)` in
+  `web/js/panels/stats_panel.js`, its mode comes from the poll's `state.mode`, and it hides unless
+  `liveclient.hp_max` is non-zero);
+  P2 `curl -sk "https://127.0.0.1:8888/api/rank-tier-bench?tier=<tier>&mode=<SR|ARAM>&bracket=<early|mid>"`
+  -> `ok`, `source`, `n`, `stats.cs.avg`, `stats.kda.avg`, `stats.kp.avg` (bracket = early under
+  14 min of `game_time_s`, else mid);
+  P3 the rendered overlay itself, seen by the operator or an attended drain capture of the overlay
+  window, timestamped against P1's `game_time_s` (a lane never captures).
+  CHECK (a1) PASS iff, in one P1 window: `#am-statspanel` is visible; its You cells show LVL =
+  `liveclient.level` and CS = `liveclient.cs` (within one `/api/state` poll of `main.js`); the
+  badge reads `<Tier> estimate` when P2 `source` is `static`, `<Tier> live avg` when it is `live`,
+  or `<Tier> -` when P2 `n` is 0 (`no benchmark` is PASS only in Arena); and each Avg cell equals
+  the matching P2 `stats.*.avg` or shows `-` exactly where that avg is null. FAIL = hidden with `hp_max` non-zero, a You cell that disagrees with P1, or
+  a badge or Avg that disagrees with P2. CHECK (a2) PASS iff, at defaults, the panel box at design
+  (1670,220), 240 wide, paints over no League HUD element the operator must read (the right-edge
+  kill feed / announcement column and the top-right score strip are the candidates); FAIL names the
+  covered element, and the fix is a new default anchor plus a re-run of the collision guard.
+  EVIDENCE CONTRACT: the cell values, P1 and P2 bodies with their fetch times, the game mode, queue and
+  `game_time_s`, and the overlay sighting with its time. SUBSTITUTION: P1 and P2 prove only that the
+  inputs COMPUTED; a `?ui_mock=1` render, a `node --test` pass or the collision guard proves the
+  renderer and the geometry against fixtures. Only P3, matched cell by cell to P1/P2 from the same
+  window, answers whether the panel RENDERED the live values over a live HUD. A `:8889/latest-frame`
+  is NOT P3 unless the drain first shows that frame carries the overlay layer.
 - **G2-28** `[NEW ROW 2026-07-18]` RM-05 round-1 shipped-fix live-verify (LEDGER 914 S4+S7,
   `a486142b`): the MISSING-IN-GAME cluster (`rn-lead` / `rn-choices` / `rn-callouts` / `w-spike`) was
   ROOT-CAUSED - the panelset-gating hypothesis is DISPROVEN (panelset gating is retired/dead, pinned
