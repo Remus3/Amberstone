@@ -58,10 +58,66 @@ def _open_ro() -> Optional[sqlite3.Connection]:
     if not _REWIND_DB.exists():
         return None
     try:
-        return sqlite3.connect(f"file:{_REWIND_DB}?mode=ro", uri=True)
+        return sqlite3.connect(_REWIND_DB.resolve().as_uri() + "?mode=ro", uri=True)
     except sqlite3.Error as exc:
         log.warning("duration_winrate open: %s", exc)
         return None
+
+
+# SQLite binds a signed 64-bit INTEGER; a larger Python int raises
+# OverflowError (not sqlite3.Error) at execute time.
+_SQLITE_INT_MIN = -(2 ** 63)
+_SQLITE_INT_MAX = 2 ** 63 - 1
+_SQLITE_INT_DIGITS = len(str(_SQLITE_INT_MAX))
+
+
+def _coerce_champion(value) -> Optional[int]:
+    """An integral champion id, or None for anything that is not one.
+
+    Accepts an int (never a bool), an integral finite float and a str of
+    an optionally signed decimal integer (surrounding whitespace ignored).
+    Everything else - bool, text, bytes, NaN, inf, a fractional float, a
+    container - is None, and so is any id outside SQLite's signed 64-bit
+    range (no stored row can carry it, and binding it raises OverflowError).
+    A digit string longer than that range is refused BEFORE int(), which
+    would otherwise raise past Python's 4300-digit conversion limit.
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        number = value
+    elif isinstance(value, float):
+        # is_integer() is False for NaN and +-inf, so this one test also
+        # refuses the two values int() would raise on.
+        if not value.is_integer():
+            return None
+        number = int(value)
+    elif isinstance(value, str):
+        text = value.strip()
+        body = text[1:] if text[:1] in ("+", "-") else text
+        if not body or not body.isascii() or not body.isdigit():
+            return None
+        # Python's digit limit counts leading zeros too, so parse the
+        # zero-stripped digits, never the raw text.
+        digits = body.lstrip("0") or "0"
+        if len(digits) > _SQLITE_INT_DIGITS:
+            return None
+        number = -int(digits) if text[:1] == "-" else int(digits)
+    else:
+        return None
+    if not _SQLITE_INT_MIN <= number <= _SQLITE_INT_MAX:
+        return None
+    return number
+
+
+def _as_result(value) -> Optional[bool]:
+    """tracked_win 1 -> True, 0 -> False, anything else (NULL, 2, text) ->
+    None: an unknown result, which never enters a bucket (RM-610)."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        return {1: True, 0: False}.get(value)
+    return None
 
 
 def _bucket_index(dur_s: int, buckets) -> Optional[int]:
@@ -77,29 +133,41 @@ def compute_duration_winrate(mode: str = DEFAULT_MODE,
                              buckets=DEFAULT_BUCKETS) -> dict:
     """Win % per duration bucket for the tracked player.
 
-    ``mode`` in VALID_MODES (else falls back to DEFAULT_MODE). ``champion`` is
-    an optional Riot integer champion id (filters tracked_champion_id).
+    ``mode`` in VALID_MODES (else - including a non-string - falls back to
+    DEFAULT_MODE). ``champion`` is an optional Riot integer champion id
+    (filters tracked_champion_id): an int, an integral float or a decimal
+    string, echoed back as an int. Anything else (a bool, text, NaN, a
+    fractional float, an id outside SQLite's 64-bit range) is a filter
+    nothing satisfies - zero games, champion echoed as None, no query run -
+    never a silent widening to every champion.
     ``conn`` injects a db connection for tests; when None a read-only handle to
-    the local rewind db is opened + closed. Never raises - an unavailable db or
-    empty corpus returns an ok payload with every bucket present and
-    winrate None.
+    the local rewind db is opened + closed. Only a resolved result
+    (tracked_win 0 or 1) is counted; an unknown one is skipped, never read as
+    a loss. Never raises - an unavailable db or empty corpus returns an ok
+    payload with every bucket present and winrate None.
     """
-    if mode not in MODE_MAPS:
+    if not isinstance(mode, str) or mode not in MODE_MAPS:
         mode = DEFAULT_MODE
     map_id = MODE_MAPS[mode]
 
+    champ_id: Optional[int] = None
+    matchable = True
+    if champion is not None:
+        champ_id = _coerce_champion(champion)
+        matchable = champ_id is not None
+
     own = conn is None
-    if own:
+    if own and matchable:
         conn = _open_ro()
 
     rows: list = []
-    if conn is not None:
+    if conn is not None and matchable:
         try:
             where = ["map_id = ?", "game_duration_s >= ?", "game_duration_s < ?"]
             params: list = [map_id, MIN_DURATION_S, MAX_DURATION_S]
-            if champion is not None:
+            if champ_id is not None:
                 where.append("tracked_champion_id = ?")
-                params.append(int(champion))
+                params.append(champ_id)
             sql = ("SELECT game_duration_s, tracked_win FROM matches WHERE "
                    + " AND ".join(where))
             rows = conn.execute(sql, params).fetchall()
@@ -117,11 +185,14 @@ def compute_duration_winrate(mode: str = DEFAULT_MODE,
     for dur_s, win in rows:
         if dur_s is None:
             continue
+        result = _as_result(win)
+        if result is None:
+            continue
         bi = _bucket_index(int(dur_s), buckets)
         if bi is None:
             continue
         tally[bi][1] += 1
-        if win:
+        if result:
             tally[bi][0] += 1
 
     out_buckets = []
@@ -141,7 +212,7 @@ def compute_duration_winrate(mode: str = DEFAULT_MODE,
     return {
         "ok": True,
         "mode": mode,
-        "champion": champion,
+        "champion": champ_id,
         "n": total,
         "min_bucket_n": MIN_BUCKET_N,
         "buckets": out_buckets,
