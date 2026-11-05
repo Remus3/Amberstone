@@ -730,9 +730,23 @@ class _TaintScan(ast.NodeVisitor):
     Calls to the module's own sanitizers are PRUNED rather than descended into,
     so `_safe_url(url)` is clean while a bare `url` is not."""
 
-    def __init__(self, tainted_locals):
+    def __init__(self, tainted_locals, late=frozenset()):
         self._tainted = tainted_locals
+        self._late = late
         self.found = []
+
+    def _visit_deferred(self, node):
+        # RM-1560 (a): a lambda or generator body runs later, so it reads
+        # every name the scope may EVER bind (`late`), not only the current
+        # state: `h = lambda: m` before `m = url` makes `h()` carry the url.
+        saved = self._tainted
+        self._tainted = set(saved) | set(self._late)
+        try:
+            self.generic_visit(node)
+        finally:
+            self._tainted = saved
+
+    visit_Lambda = visit_GeneratorExp = _visit_deferred
 
     def visit_Call(self, node):
         name = _call_name(node)
@@ -780,7 +794,7 @@ def _object_only(name, tainted) -> bool:
             and not any(p in low for p in _TAINTED_NAME_PARTS))
 
 
-def _retaint(stmt, tainted) -> None:
+def _retaint(stmt, tainted, late=frozenset()) -> None:
     """Propagate taint across one binding statement. Scope is deliberately
     small - assignments (except-as names are bound at handler entry in
     `_flow_block`) - because that is what carries a URL into a message;
@@ -794,7 +808,7 @@ def _retaint(stmt, tainted) -> None:
         return
     if value is None:
         return
-    found = _is_tainted(value, tainted)
+    found = _is_tainted(value, tainted, late)
     for target in targets:
         # `m += "!"` keeps whatever `m` already carried (RM-1443): only a
         # plain re-binding to a clean value clears a name.
@@ -802,8 +816,8 @@ def _retaint(stmt, tainted) -> None:
                     clear=not isinstance(stmt, ast.AugAssign))
 
 
-def _is_tainted(expr, tainted) -> bool:
-    scan = _TaintScan(tainted)
+def _is_tainted(expr, tainted, late=frozenset()) -> bool:
+    scan = _TaintScan(tainted, late)
     scan.visit(expr)
     return bool(scan.found)
 
@@ -845,7 +859,7 @@ _MUTATORS = frozenset({"append", "appendleft", "extend", "extendleft", "insert",
                        "add", "update", "setdefault", "put", "put_nowait"})
 
 
-def _bind_mutators(nodes, tainted) -> None:
+def _bind_mutators(nodes, tainted, late=frozenset()) -> None:
     """`q.append(url)` leaves `q` carrying the url for the rest of the scope.
     Applied with the walrus bindings, before the statement's sinks."""
     for node in nodes:
@@ -853,7 +867,7 @@ def _bind_mutators(nodes, tainted) -> None:
             if (isinstance(sub, ast.Call) and isinstance(sub.func, ast.Attribute)
                     and sub.func.attr in _MUTATORS):
                 args = list(sub.args) + [kw.value for kw in sub.keywords]
-                if any(_is_tainted(a, tainted) for a in args):
+                if any(_is_tainted(a, tainted, late) for a in args):
                     _bind_names(sub.func.value, True, tainted, clear=False)
 
 
@@ -868,14 +882,14 @@ def _bind_mutators(nodes, tainted) -> None:
 # on the side of a miss, so the precision is given up. Plain `=` keeps its
 # RM-1443 clearing rule (`_retaint`).
 
-def _bind_walrus(nodes, tainted) -> None:
+def _bind_walrus(nodes, tainted, late=frozenset()) -> None:
     """`(m := url)` binds `m` for the rest of the scope. Applied BEFORE a
     statement's sinks are checked: a sink in the same expression may run
     after the walrus (`log.info(m) if (m := url) else None`)."""
     for node in nodes:
         for sub in ast.walk(node):
             if isinstance(sub, ast.NamedExpr):
-                _bind_names(sub.target, _is_tainted(sub.value, tainted),
+                _bind_names(sub.target, _is_tainted(sub.value, tainted, late),
                             tainted, clear=False)
 
 
@@ -883,7 +897,7 @@ def _bind_walrus(nodes, tainted) -> None:
 _PASSTHROUGH_CMS = frozenset({"nullcontext", "closing"})
 
 
-def _with_target_found(item, tainted) -> bool:
+def _with_target_found(item, tainted, late=frozenset()) -> bool:
     """RM-1557: a `with ... as m` target is the context manager's __enter__
     result, usually an OBJECT (`with open_consented(req) as r:` must leave
     `r.status` clean), so it is not tainted as a VALUE by the call's
@@ -895,7 +909,7 @@ def _with_target_found(item, tainted) -> bool:
     if not (isinstance(expr, ast.Call) and _call_name(expr) in _PASSTHROUGH_CMS):
         return False
     args = list(expr.args) + [kw.value for kw in expr.keywords]
-    return any(_is_tainted(a, tainted) for a in args)
+    return any(_is_tainted(a, tainted, late) for a in args)
 
 
 def _bind_objects(target, tainted) -> None:
@@ -954,21 +968,52 @@ def _own_nodes(stmt):
                 yield item
 
 
-def _check_sinks(nodes, stmt, tainted, report) -> None:
-    """Flag a raise or logging call among `nodes` whose message is tainted."""
+# RM-1560 (a): expressions whose body runs later than it is written. An
+# eager comprehension (list / set / dict) runs where it stands and is not here.
+_DEFERRED = (ast.Lambda, ast.GeneratorExp)
+
+
+def _check_sinks(nodes, stmt, tainted, report, late=frozenset()) -> None:
+    """Flag a raise or logging call among `nodes` whose message is tainted.
+    A logging call inside a lambda or generator body is judged with the late
+    view (`tainted | late`): it runs after the statement, maybe after a
+    re-binding."""
     exprs = []
     if isinstance(stmt, ast.Raise):
-        exprs = [e for e in (stmt.exc, stmt.cause) if e is not None]
+        exprs = [(e, tainted) for e in (stmt.exc, stmt.cause) if e is not None]
     for node in nodes:
+        deferred = {id(c) for d in ast.walk(node) if isinstance(d, _DEFERRED)
+                    for c in ast.walk(d) if isinstance(c, ast.Call)}
         for call in [n for n in ast.walk(node) if isinstance(n, ast.Call)]:
             if _is_log_call(call):
-                exprs.extend(call.args)
-                exprs.extend(kw.value for kw in call.keywords)
-    for expr in exprs:
-        scan = _TaintScan(tainted)
+                seen = (set(tainted) | set(late) if id(call) in deferred
+                        else tainted)
+                exprs.extend((a, seen) for a in call.args)
+                exprs.extend((kw.value, seen) for kw in call.keywords)
+    for expr, seen in exprs:
+        scan = _TaintScan(seen, late)
         scan.visit(expr)
         if scan.found:
             report(expr, scan.found)
+
+
+def _walk_scope(body, entry, report, late=frozenset()):
+    """RM-1560 (a): walk one scope's body to a fixed point of its may-taint
+    set `ever` - every name tainted in ANY state anywhere in the scope, plus
+    the enclosing scopes' `late`. `ever` is the late view a nested def,
+    lambda or generator in this scope reads with, since it may run after any
+    of the scope's bindings (`m = 'x'; def g(): log.info(m)` then `m = url`).
+    Returns (fall-through state, `return` states, every state seen inside)."""
+    ever = set(entry) | set(late)
+    while True:
+        flow = _Flow(report, ever)
+        inside = []
+        flow.watchers.append(inside)
+        out = flow.block(body, entry)
+        seen = _join(out, *flow.returns, *inside) or set()
+        if seen <= ever:
+            return out, flow.returns, inside
+        ever |= seen
 
 
 class _Flow:
@@ -988,10 +1033,13 @@ class _Flow:
     try body (nested blocks included) reaches its handlers, as every state in
     the body, `else` and handlers reaches `finally`. `raise` is NOT treated as
     ending a path: a suppressing context manager can resume after it, and
-    over-reporting is the safe side of a guard."""
+    over-reporting is the safe side of a guard.
 
-    def __init__(self, report):
+    RM-1560 (a): `ever` is this scope's late view (see `_walk_scope`)."""
+
+    def __init__(self, report, ever=frozenset()):
         self.report = report
+        self.ever = frozenset(ever)
         self.loops = []     # innermost last: {"breaks": [...], "conts": [...]}
         self.watchers = []  # per open try: every state seen inside it
         self.returns = []   # states at `return` in this function body
@@ -1008,7 +1056,7 @@ class _Flow:
                 # The rest of the block is unreachable, but every raise and
                 # logging site is still scanned, with the last live state, by
                 # a throwaway walk that feeds no loop, try or flow-out.
-                _Flow(self.report).block(stmts[i + 1:], state)
+                _Flow(self.report, self.ever).block(stmts[i + 1:], state)
                 return None
             state = after
             self._watch(state)
@@ -1028,11 +1076,11 @@ class _Flow:
         # another fills after it (RM-1558).
         while True:
             before = len(state)
-            _bind_walrus(nodes, state)
-            _bind_mutators(nodes, state)
+            _bind_walrus(nodes, state, self.ever)
+            _bind_mutators(nodes, state, self.ever)
             if len(state) == before:
                 break
-        _check_sinks(nodes, stmt, state, self.report)
+        _check_sinks(nodes, stmt, state, self.report, self.ever)
         return state
 
     def stmt(self, stmt, state):
@@ -1048,12 +1096,19 @@ class _Flow:
             # state seen inside it flows out too, not only the fall-through
             # and `return` states: `G = url; g(); G = 'clean'` leaves `G`
             # tainted on the path where `g()` raises.
-            _check_sinks(_own_nodes(stmt), stmt, state, self.report)
-            inner = _Flow(self.report)
-            inside = []
-            inner.watchers.append(inside)
-            out = inner.block(stmt.body, state)
-            return state | (_join(out, *inner.returns, *inside) or set())
+            # RM-1560 (a): a def body runs LATER, so its sinks are judged a
+            # second time from the late view (`state | self.ever`). Only the
+            # def-time walk feeds the flow-out: the late view is what the body
+            # may READ, not what it binds. A class body runs where it stands,
+            # so it gets no late walk; its methods still read `self.ever`
+            # through the class scope's own late view.
+            _check_sinks(_own_nodes(stmt), stmt, state, self.report, self.ever)
+            out, returns, inside = _walk_scope(stmt.body, state, self.report,
+                                               self.ever)
+            if (not isinstance(stmt, ast.ClassDef)
+                    and not self.ever <= state):
+                _walk_scope(stmt.body, state | self.ever, self.report, self.ever)
+            return state | (_join(out, *returns, *inside) or set())
         if isinstance(stmt, ast.Return):
             # `return (m := url)` binds before leaving, and a `finally` or a
             # handler can still see that state.
@@ -1086,9 +1141,9 @@ class _Flow:
                 state = self._expr_step([item], stmt, state)
                 if item.optional_vars is not None:
                     _bind_names(item.optional_vars,
-                                _with_target_found(item, state), state,
-                                clear=False)
-                    if _is_tainted(item.context_expr, state):
+                                _with_target_found(item, state, self.ever),
+                                state, clear=False)
+                    if _is_tainted(item.context_expr, state, self.ever):
                         _bind_objects(item.optional_vars, state)
             # Any context manager may SUPPRESS an exception from its body
             # (`contextlib.suppress`), so every state seen inside the body can
@@ -1102,7 +1157,7 @@ class _Flow:
                 self.watchers.pop()
             return _join(out, *inside)
         state = self._expr_step([stmt], stmt, state)
-        _retaint(stmt, state)
+        _retaint(stmt, state, self.ever)
         return state
 
     def _match(self, stmt, state):
@@ -1114,7 +1169,7 @@ class _Flow:
         and guard walrus still bound, so they reach every later case and the
         no-match exit."""
         state = self._expr_step([stmt.subject], stmt, state)
-        found = _is_tainted(stmt.subject, state)
+        found = _is_tainted(stmt.subject, state, self.ever)
         exits = []
         tried = set(state)
         for case in stmt.cases:
@@ -1150,7 +1205,7 @@ class _Flow:
     def _for(self, stmt, state):
         # The iterable is evaluated once, before the first pass.
         state = self._expr_step([stmt.iter], stmt, state)
-        found = _is_tainted(stmt.iter, state)
+        found = _is_tainted(stmt.iter, state, self.ever)
 
         def run_pass(entry):
             # The target is assigned once per item, so a sink in it
@@ -1194,11 +1249,11 @@ class _Flow:
             if body_out is None and stmt.orelse:
                 # An `else` after a body that never falls through is dead,
                 # but its sites are still scanned (see `block`).
-                _Flow(self.report).block(stmt.orelse, handler_entry)
+                _Flow(self.report, self.ever).block(stmt.orelse, handler_entry)
             exits = [self.block(stmt.orelse, body_out)]
             for handler in stmt.handlers:
                 _check_sinks([handler.type] if handler.type else [], handler,
-                             handler_entry, self.report)
+                             handler_entry, self.report, self.ever)
                 entry = set(handler_entry)
                 if handler.name:
                     # A third-party exception can quote the URL it was handed
@@ -1236,7 +1291,7 @@ def _message_leak_sites(path):
         leaks.add(f"{Path(path).name}:{expr.lineno}: {sorted(set(found))}")
 
     for scope in scopes:
-        _Flow(report).block(scope.body, set())
+        _walk_scope(scope.body, set(), report)
     return sorted(leaks)
 
 
@@ -1578,6 +1633,50 @@ _CHECKER_SAMPLES = (
      "def f(url):\n    m = url\n    *m, n = 'x', 'y'\n    raise E(str(m))\n", False),
     ("element store into a clean list stays clean",
      "def f(url):\n    m = []\n    m[0] = 'x'\n    raise E(str(m))\n", False),
+    # RM-1560 (a): a nested def, a lambda or a generator expression runs
+    # LATER than it is written, so a free name it reads may hold any value the
+    # enclosing scope ever binds - not only the value at the def.
+    ("closure reads a name bound after its def",
+     "def f(url):\n    m = 'x'\n    def g():\n        log.info(m)\n    m = url\n"
+     "    g()\n", True),
+    ("module-level closure reads a name bound after its def",
+     "m = 'x'\ndef g():\n    log.info(m)\nm = _build_url(c, 't', 'i', 'SR')\n", True),
+    ("closure two defs deep reads a name bound after its def",
+     "def f(url):\n    m = 'x'\n    def g():\n        def k():\n"
+     "            log.info(m)\n        return k\n    m = url\n", True),
+    ("method of a class in a function reads a name bound after it",
+     "def f(url):\n    m = 'x'\n    class C:\n        def g(self):\n"
+     "            log.info(m)\n    m = url\n", True),
+    ("lambda body sink reads a name bound after the lambda",
+     "def f(url):\n    m = 'x'\n    h = lambda: log.info(m)\n    m = url\n    h()\n",
+     True),
+    ("generator expression sink reads a name bound after it",
+     "def f(url, xs):\n    m = 'x'\n    gen = (log.info(m) for _ in xs)\n    m = url\n"
+     "    list(gen)\n", True),
+    ("lambda returning a name bound after the lambda",
+     "def f(url):\n    m = 'x'\n    h = lambda: m\n    m = url\n    raise E(h())\n",
+     True),
+    ("closure late read inside a loop body",
+     "def f(url, xs):\n    m = 'x'\n    for x in xs:\n        def g():\n"
+     "            log.info(m)\n    m = url\n", True),
+    ("lambda in dead code after a return still reads late",
+     "def f(url, c):\n    m = 'x'\n    if c:\n        return\n"
+     "        h = lambda: log.info(m)\n    m = url\n", True),
+    # RM-1560 (a) keep-greens: only what runs later gets the late view.
+    ("closure over a name only ever bound clean",
+     "def f(url):\n    m = 'x'\n    def g():\n        log.info(m)\n"
+     "    m = _safe_url(url)\n", False),
+    ("class body reads the name at its definition",
+     "def f(url):\n    m = 'x'\n    class C:\n        log.info(m)\n    m = url\n",
+     False),
+    ("eager comprehension reads the name now",
+     "def f(url, xs):\n    m = 'x'\n    [log.info(m) for _ in xs]\n    m = url\n",
+     False),
+    ("the late view does not flow out of a def",
+     "def f(url):\n    m = 'x'\n    def g():\n        pass\n    log.info(m)\n"
+     "    m = url\n", False),
+    ("lambda over a name never tainted",
+     "def f(url):\n    m = 'x'\n    h = lambda: log.info(m)\n    h()\n", False),
 )
 
 
