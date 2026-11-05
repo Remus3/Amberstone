@@ -283,7 +283,7 @@ footer .prefs-chip:hover { color: var(--text); }
 .mode-pill      { width: 128px; }
 .champion-pill  { width: 222px; }
 .vis-pill       { width: 72px;  }
-.zone-pill      { width: 142px; }
+.zone-pill      { width: auto; min-width: 142px; }
 .game-time      { width: 107px; text-align: center; white-space: nowrap; overflow: hidden; }
 .kda            { width: 125px; text-align: center; }
 .cs-pill        { width: 185px; }
@@ -3154,7 +3154,8 @@ body[data-view="lobby"]          #home-overlay { display: none; }
  * 8px side padding, and a min-width that holds its widest usual value
  * (100%, DEEP ENEMY, 59:59, 3-digit CS and vision, a 2-digit-hour
  * heartbeat), so a value arriving or changing does not move the row; a
- * rarer longer value only grows its own pill. The text keeps its size. */
+ * rarer longer value only grows its own pill. The text keeps its size.
+ * (RM-1548: zone 118 -> 132px, "DEEP ENEMY" at the 16px floor.) */
 @media (max-width: 720px) {
   .header-row-1 > :is(.win-pill, .zone-pill, .game-time, .cs-pill, .vis-pill, .hb) {
     width: auto;
@@ -3163,7 +3164,7 @@ body[data-view="lobby"]          #home-overlay { display: none; }
     padding-inline: var(--space-2);
   }
   .header-row-1 > .win-pill  { min-width: 105px; }
-  .header-row-1 > .zone-pill { min-width: 118px; }
+  .header-row-1 > .zone-pill { min-width: 132px; }
   .header-row-1 > .game-time { min-width: 70px; }
   .header-row-1 > .cs-pill   { min-width: 75px; }
   .header-row-1 > .vis-pill  { min-width: 72px; }
@@ -3538,13 +3539,19 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 }
 .ult-pill.ult-ready b { color: var(--good); }
 
+/* RM-1548: the zone call reads at the --fs-xs floor (was 12px, the
+ * smallest text in the header). 0.04em spacing (the .mode-pill / .title
+ * spacing) keeps "DEEP ENEMY" inside the 142px slot; nowrap plus width
+ * auto over a 142px min-width means a wider face grows this pill rather
+ * than wrapping it inside the 43px box. */
 .zone-pill {
   display: inline-flex;
   align-items: center;
   padding: 3px 11px;
   border-radius: 999px;
-  font-size: 12px;
-  letter-spacing: 0.14em;
+  font-size: var(--fs-xs);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
   font-weight: 900;
   background: var(--surface);
   color: var(--text-dim);
