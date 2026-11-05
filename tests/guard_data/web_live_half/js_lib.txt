@@ -27,7 +27,7 @@ bb22e7bbc4f32eac2405229a868ae3c5e5e85757799f3cbca58c9a4808b43246  web/js/lib/liv
 
 9a7d3e5682053e5ee5718ea6e06b5385e4b8a1c4adb80b732facc5da50389576  web/js/lib/lol_descriptions.js
 
-b325067d13075d881ff0ac827de40de896f79499523c8af031444bb4e33a8dcc  web/js/lib/next_buy_model.js
+6d71b67adc993f2c10e0483e20e887ab62f4e3684d49f2f47b537a3e5dd856a9  web/js/lib/next_buy_model.js
 
 ef3eb959549dcbb92370d17fb72ffd8c5d84ced9d5874ec4430668ceabe77cff  web/js/lib/overlay_hotkeys.js
 
@@ -55,7 +55,7 @@ c6d23f59c404d63d5f784eed7e2bee3c8ce7b3fc61946c9f87139c7bf0b6e393  web/js/lib/sta
 
 58f8c4fe363b134fe4bb96148e8b59dfdc2328138653d1cffeb616b3b6ff3d13  web/js/lib/status.js
 
-df25c51ad5abb9562471915ccec1723274ddd1624f8c13c881c9de161b59dac4  web/js/lib/summoner_spells.js
+431807e2d51c92b0660459cc72e214332541a4e32ee2167c0a8f43d9f3d24b97  web/js/lib/summoner_spells.js
 
 726d9122532432421e7c911e4e02c57e99c0dfb2c8c37784bd7650717d8939d6  web/js/lib/theme.js
 

@@ -835,7 +835,7 @@ The chain from a HUD change to `/api/state` today:
    - the write is SKIPPED when the advice text did not change (`:995-1001`).
    So gold, level and stage wait for an LLM round trip, and most gold changes never land.
    `coach.health` is a snapshot from the last write. `coach.hp` is refilled from the EoG
-   file, and the fill only replaces blanks (`dashboard/_state_builder.py:298`, `:336`), so
+   file, and the fill only replaces blanks (`dashboard/_state_builder.py:297`, `:335`), so
    a stale `health` survives next to a fresh `hp`.
 5. **State cadence.** `/api/state` is rebuilt every 0.5 s (`RC_STATE_CADENCE_SEC`,
    `dashboard/routes_state.py:207`).

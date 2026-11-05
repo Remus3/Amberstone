@@ -103,7 +103,6 @@ _BASELINE = {
     "dashboard/_writers.py": 1,
     "dashboard/routes_loadout.py": 1,
     "dashboard/routes_lobby_aux.py": 1,
-    "dashboard/routes_replay_events.py": 1,
     "ops/loop/lanes.py": 1,
     "scripts/build_carry_benchmarks.py": 1,
     "scripts/build_champion_benchmarks.py": 2,

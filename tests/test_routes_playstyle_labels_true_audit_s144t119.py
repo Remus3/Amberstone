@@ -36,6 +36,7 @@ import unittest
 from unittest.mock import patch
 
 from dashboard import routes_playstyle_labels as rpl
+from tests._timing_budget import fleet_test_guard
 
 _COMPUTE = "dashboard.routes_playstyle_labels.playstyle_labels." \
            "compute_playstyle_labels"
@@ -129,7 +130,7 @@ class LockTests(_Base):
                              args=(stalled,), daemon=True)
         with patch(_COMPUTE, return_value=_payload()):
             t.start()
-            self.assertTrue(entered.wait(5))
+            self.assertTrue(entered.wait(fleet_test_guard.budget(5)))
             got = rpl._CACHE_LOCK.acquire(timeout=1)
             if got:
                 rpl._CACHE_LOCK.release()

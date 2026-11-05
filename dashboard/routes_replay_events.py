@@ -496,7 +496,7 @@ def _serve_replay_events(h) -> None:
         _cache_put(cache_key, dict(payload))
         payload["you_flagged"] = _you_flagged(match_id)
         _send_json(h, 200, payload)
-    except Exception:  # noqa: BLE001 - generic 500 wrapper
+    except Exception:  # generic 500 wrapper
         log.exception("api/replay/events: unexpected failure")
         try:
             # Raw exception text can leak file paths - log it, never

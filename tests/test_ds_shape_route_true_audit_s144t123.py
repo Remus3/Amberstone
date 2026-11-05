@@ -34,6 +34,7 @@ import unittest
 from agents.daemon_slayer import hybrid
 from core import shaper
 from dashboard import routes_ds_shape as rt
+from tests._timing_budget import fleet_test_guard
 
 
 class _H:
@@ -273,7 +274,7 @@ class ElapsedClockTests(unittest.TestCase):
         # Both ends must read the same monotonic clock: a wall-clock read at
         # either end makes the difference meaningless (negative or huge).
         self.assertGreaterEqual(body["elapsed_ms"], 0)
-        self.assertLess(body["elapsed_ms"], 60_000)
+        self.assertLess(body["elapsed_ms"], fleet_test_guard.budget(60) * 1000)
 
 
 class NestedErrorTests(unittest.TestCase):

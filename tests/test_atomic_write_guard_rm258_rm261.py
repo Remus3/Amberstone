@@ -758,7 +758,7 @@ def test_every_excluded_prefix_still_matches_a_tracked_file():
     """An excluded prefix is a tree the guard never scans. One that matches no
     tracked file is a dead row: a tree of that name added later would start
     exempt (the retired `Share/` mirror was one - removed 2026-09-07,
-    7c0ff1624, yet its prefix stayed in the list). Anchored on the real index
+    86f124a6f, yet its prefix stayed in the list). Anchored on the real index
     so an empty listing cannot pass."""
     tracked = tracked_relpaths()
     assert tracked, "git index unavailable"

@@ -1,7 +1,7 @@
 # Live-half digests for web/js/panels/ - one `<sha256>  <path>` row per source, a
 # blank line after each. Never hand-edit: re-capture as the note on
 # tests/test_web_ascii_sweep.py _LIVE_HALF_ROWS says.
-562850abdc3b32fcd6a345a7555737f9381a3f50f02adfe3c1ba90588a640a49  web/js/panels/active_match.js
+8708834a9c752de1f26cf36ae183b1e54bc2858c07eb664c2c8ec9de282cd6bd  web/js/panels/active_match.js
 
 b6eb81ecc296b6388abb6481800ea54e7ad05b8bb5eb6918c9dd0e4654dab13d  web/js/panels/aram_balance.js
 
@@ -11,7 +11,7 @@ b6eb81ecc296b6388abb6481800ea54e7ad05b8bb5eb6918c9dd0e4654dab13d  web/js/panels/
 
 0a19074904b4c19e1d580c4cdcd369b427266453058ef5121a856541c52b008c  web/js/panels/branch_review.js
 
-8c9b9bd636f597c123bf2102bc9fc0dfc2b1d6b746a2e9f488dfa9c0722870ad  web/js/panels/build_insights.js
+a9f27cb93a7c35849acfcbec6d06ff8c00f2db55ff5f64994cc36904a61bc8c8  web/js/panels/build_insights.js
 
 736286f8f5bdb3e5363a98972644eca2e60a8a6d0a913afc158e5a31cc30bd78  web/js/panels/build_order.js
 
@@ -37,13 +37,13 @@ c21af6f23602105fa0ff3e1dbe0aff2d6be8fcebaf5f87309af5a3a1003944fa  web/js/panels/
 
 13b920a86b52b5108ca602511c572ff8c4d7d110c847815913f30d2225810614  web/js/panels/ds_knobs.js
 
-43f87e4da9bfb2a9e70bb5bff7761896b2202f2412c25af3df7de70f97577b8f  web/js/panels/ds_matchup.js
+1e1dbf3a12234adec6dc589c802c637919f590cdf844d652e069ee1728b94ded  web/js/panels/ds_matchup.js
 
 289ce11ce208804d5099839176ac274c985691db7c572ff710d0c43bf28e063c  web/js/panels/ds_profile.js
 
 bedaa1d91e30f1a8ac136dbb4fd83b36fc2bd46935702c4255434e3ec550f5da  web/js/panels/ds_relscore.js
 
-a2046ca361278f03225285b05eab850c08117919adc531d0173046965ed17ea8  web/js/panels/ds_shaper.js
+ad0390d4983671dd088884d830cb9d7e2eb688457f2449be0381d4f4aa2a4b09  web/js/panels/ds_shaper.js
 
 0873a264788deb313e9038e96ad6c43d9e11f72036d9089563f0f38f366796c3  web/js/panels/ds_skill_order.js
 
@@ -57,7 +57,7 @@ fd11a5fce98b2e3c10733a0a167cc80769a9d860aa3d3705bddfb89aa2f16ece  web/js/panels/
 
 41074b6955340a12804a06e35296360767ba0af7ec7aba25f024287a2ddf55b3  web/js/panels/item_build.js
 
-72b58a7eb90b77f7e1908ab73ac150b897cfe7af58875aaeb00d9ee69c9b0419  web/js/panels/last_match.js
+0400592f999febbb3d03718a94ac255539cf3d52c39f33820003ae421e186fc9  web/js/panels/last_match.js
 
 0bb7ed5f80c5996f8cabccfa5e78317d8b5393cccbfe896ad01bb3193063ea40  web/js/panels/lobby_duo_synergy.js
 
@@ -73,7 +73,7 @@ f0b07a4950435d18f5ec5542512870c024a8deb231731b26617c83c2d9b7d8cc  web/js/panels/
 
 1beefa164e0ff1ea5c0c5316b35ce179358119c83b442abadb2930d892c87208  web/js/panels/objective_chips.js
 
-1d602c46e8f8ca868216387464b759e7473e2ca0b182ed225aeefa6d186da732  web/js/panels/objective_gauges.js
+1135b94b175fa73fadf5b89c233f7f5b10eee26e29a4cd5eea0a6e06e959f6dc  web/js/panels/objective_gauges.js
 
 6a837f54d40776eadb7bc1ccb8864389dbc6ec0a7a6572cbdb24f119c5183c41  web/js/panels/op_score.js
 
@@ -107,7 +107,7 @@ cbf54d38530c10d1022b898ac3b059c0ee150b0a3432cf9eb41d33bec2d71a75  web/js/panels/
 
 228ee686c3f9f705c8342cec7ab351b11d31edb7beba00fe46f96a1dfb52cb38  web/js/panels/post_game_phases.js
 
-71f8f5d354fb18233dd5cc7561a317566710e39af75eff458de1801d53bfe6eb  web/js/panels/replay_events.js
+db3c3e54cb6d2c14df3ba782df896f19eeb12c8113ff439ff4548e6f78276f45  web/js/panels/replay_events.js
 
 4376b53463ac26cafc489fb8fbffe350cbe015e985be0f1d9bddc9d0d51c57e4  web/js/panels/replay_minimap.js
 

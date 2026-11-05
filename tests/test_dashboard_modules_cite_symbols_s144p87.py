@@ -4,7 +4,7 @@ _state_builder, routes_diag, _handler, _idempotency, _deterministic_coaching,
 builders_home, routes_history, routes_moon_sync, routes_loop_monitor and
 routes_pickban carried `<file>.py:<line>` anchors into server.py, _dispatch.py,
 event_callouts.py, lead_projection.py, vision_tesseract.py, snapshot_shape.py,
-slots.py and the web panels. Nearly all had drifted (`server.py:35` is a
+slots.py and the web panels. Nearly all had drifted (`dashboard/server.py:35` is a
 comment about the dual-stack bind, `_dispatch.py:143` is inside the WPA route
 list, `tools/lcu_agent.py:194-234` is a block of cadence constants, not a queue
 id list, `champ_select.js:2060` is inside a CC-deficit line). The prose now
@@ -33,7 +33,7 @@ MODULES = (
     "dashboard/routes_pickban.py",
 )
 
-# `server.py:35`, `slots.py:49-82`, `file.py:105,603-617`, `main.js:3106`,
+# `dashboard/server.py:35`, `slots.py:49-82`, `file.py:105,603-617`, `main.js:3106`,
 # `overlay.css:127`. A bare `(:8890)` port is deliberately NOT matched.
 _LINE_CITE = re.compile(r"[A-Za-z0-9_/.]+\.(?:py|js|css|json):\d+")
 

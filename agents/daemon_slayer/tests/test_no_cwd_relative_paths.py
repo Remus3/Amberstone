@@ -103,7 +103,7 @@ def _is_repo_root_relative(value: str | bytes) -> bool:
         except UnicodeDecodeError:
             return False
     text = value.replace("\\", "/")
-    while text.startswith("./") or text.startswith("../"):
+    while text.startswith(("./", "../")):
         text = text[2:] if text.startswith("./") else text[3:]
     return text.lower().startswith(_TOP_PACKAGE + "/")
 
@@ -363,7 +363,7 @@ def _base_path_offenders_in_source(
             except UnicodeDecodeError:
                 continue
         text = value.replace("\\", "/")
-        while text.startswith("./") or text.startswith("../"):
+        while text.startswith(("./", "../")):
             text = text[2:] if text.startswith("./") else text[3:]
         if text.split("/", 1)[0].lower() in top_dirs:
             out.append(f"{label}:{node.lineno}: {first.value!r}")

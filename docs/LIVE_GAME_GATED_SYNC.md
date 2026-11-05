@@ -2708,7 +2708,7 @@ Practice customs and Mayhem q2400 NEVER reach Match-V5. This batch is unreachabl
 - **G4-28** (was F7) ~~Home "Tonight's Pick" hardcoded dummy (`web/js/main.js:3080`,
   `dashboard/builders_home.py:148,105`): wire to real post-game `queue_id` ingest. DEFER until
   queue_id ingest ships; gated on real post-game Match-V5 rows.~~ **MIS-FILED, CLASS 1: the answer is
-  on disk (lane 9 PREP s144 c62, RM-1392, source read at `f775fd561`, 2026-11-05; NOT a tick, no game
+  on disk (lane 9 PREP s144 c62, RM-1392, source read at `c091668ca`, 2026-11-05; NOT a tick, no game
   involved).** The row is copied from the dummy-data table `docs/OVERLAY_BUILD_MASTER_PLAN.md:165`
   (added `b07498ab1`, 2026-06-28, from the s218 `TODO(s218-dummy-data)` tags of `3626bb00d`,
   2026-05-15). Its cited lines were the Recent-row `items` / `mode_subtype` TODOs, not Tonight's Pick

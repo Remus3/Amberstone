@@ -72,7 +72,6 @@ _BASELINE = {
     "agents/daemon_slayer/tests/test_gold_efficiency_p1l13.py": 1,
     "agents/daemon_slayer/tests/test_kit_axis_ap_scaling_guard.py": 1,
     "agents/daemon_slayer/tests/test_meraki_ingest_p1l7.py": 1,
-    "agents/daemon_slayer/tests/test_no_cwd_relative_paths.py": 1,
     "docs/_rescore/tally.py": 1,
     "docs/_rsc_score/calibrate.py": 1,
     "docs/_rsc_score/calibrate_rep.py": 1,
