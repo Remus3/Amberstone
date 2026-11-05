@@ -221,7 +221,7 @@ def test_accuracy_rows_match_the_store_table_columns():
 # ---------------------------------------------------------------------------
 
 def _write_extractor(tmp_path, monkeypatch, name="rc_tft06_fake_extractor"):
-    preds = {k: v for k, v in _noisy().items()}
+    preds = dict(_noisy().items())
     mod = tmp_path / f"{name}.py"
     mod.write_text(textwrap.dedent(f"""
         import json

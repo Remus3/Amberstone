@@ -152,7 +152,7 @@ def test_gauges_double_alert_cadence_paints(mock_server, pw_browser):
     BARON dial's static first spawn (1200s), and the escalation must NOT move
     any geometry (no-reflow law)."""
     def _baron_at(clock_s):
-        d = {k: v for k, v in _SR_STATE.items()}
+        d = dict(_SR_STATE.items())
         d["liveclient"] = {"level": 6, "game_time_s": clock_s,
                            "objective_events": []}
         return d

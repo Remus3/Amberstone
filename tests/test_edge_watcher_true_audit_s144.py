@@ -149,7 +149,7 @@ def test_on_appear_exception_with_raising_str_does_not_escape(caplog):
     caplog.set_level(logging.DEBUG, logger=_LOGGER)
 
     def boom(_t):
-        raise _BadStr()
+        raise _BadStr
 
     w = EdgeWatcher(_Seq([ABSENT, PRESENT]), boom)
     w.poll("g")

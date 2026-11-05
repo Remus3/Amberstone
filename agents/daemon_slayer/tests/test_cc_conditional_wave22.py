@@ -508,7 +508,7 @@ class Wave22FourthMultiFormCoexistsTests(unittest.TestCase):
         multi_form_champs = set()
         for champ, forms in cc._PER_SPELL_CC_CONDITIONAL_FORMS.items():
             slots_count: dict[str, int] = {}
-            for (spell, _form_index) in forms.keys():
+            for (spell, _form_index) in forms:
                 slots_count[spell] = slots_count.get(spell, 0) + 1
             for spell, count in slots_count.items():
                 if count >= 2:

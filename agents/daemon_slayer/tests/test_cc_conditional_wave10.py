@@ -104,7 +104,7 @@ class WaveTenSidecarRegistryShapeTests(unittest.TestCase):
 
     def test_sidecar_inner_keys_are_spell_form_tuples(self) -> None:
         for champ, inner in _PER_SPELL_CC_CONDITIONAL_FORMS.items():
-            for key in inner.keys():
+            for key in inner:
                 with self.subTest(champion=champ, key=key):
                     self.assertIsInstance(key, tuple)
                     self.assertEqual(len(key), 2)

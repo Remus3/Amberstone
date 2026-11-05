@@ -172,7 +172,7 @@ def test_plan_dispatch_step_order_and_branch():
         "land_fetch", "land_head", "land_branch", "land_squash", "land_commit",
         "land_verify", "land_push", "pr_close",
     ]
-    by = {label: argv for label, argv in steps}
+    by = dict(steps)
     assert cw.branch_name(555) == "ci-fix/555"
     # worktree-scoped git everywhere it runs git
     for label in ("fetch", "reset", "branch", "gather_diff", "diff_names", "push"):

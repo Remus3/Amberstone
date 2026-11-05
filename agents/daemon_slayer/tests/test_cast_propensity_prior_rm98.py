@@ -123,7 +123,7 @@ class PerSpellRowTests(unittest.TestCase):
         # a combat basis (SPEC correction 4, "RM-98 is under-scoped", names
         # the mixed-basis sum as the defect);
         # re-basing it would double-apply. Only "measured" rows move.
-        rows = [r for r in self._rows("Aatrox")]
+        rows = list(self._rows("Aatrox"))
         fallback = [r for r in rows if r.casts_per_sec_source != "measured"]
         if fallback:
             self.assertEqual(propensity_adjusted_dps_delta(fallback), 0.0)

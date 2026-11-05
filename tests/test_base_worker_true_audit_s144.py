@@ -227,7 +227,7 @@ class _Unprintable(Exception):
 
 class _CrashesUnprintably(BaseCoachWorker):
     def _run(self, my_gen):
-        raise _Unprintable()
+        raise _Unprintable
 
 
 def test_unprintable_exception_still_records_the_crash(caplog):

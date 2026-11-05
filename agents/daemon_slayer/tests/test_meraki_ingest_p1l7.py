@@ -208,7 +208,7 @@ class ScorerReachableCoverage(unittest.TestCase):
         cls.snap = DataSnapshot.load()
 
     def _reachable(self):
-        wired_modes = [m for m in MODE_MAP_ID]  # SR, ARAM, ARENA
+        wired_modes = list(MODE_MAP_ID)  # SR, ARAM, ARENA
         for item_id, rec in self.snap.items.items():
             if not _is_purchasable(rec):
                 continue

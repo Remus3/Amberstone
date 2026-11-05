@@ -224,7 +224,7 @@ class _SteppedClock:
     def sleep(self, s):
         self.sleeps += 1
         if self.sleeps > self.max_sleeps:
-            raise _Runaway()
+            raise _Runaway
         self.mono += s
 
 

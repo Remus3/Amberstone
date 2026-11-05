@@ -172,7 +172,7 @@ class GenerateForChampionTests(unittest.TestCase):
         self.assertEqual(stats["sr"]["curated"], 0)
         self.assertEqual(stats["sr"]["auto"], 3)
         self.assertEqual(stats["sr"]["unfilled"], 0)
-        auto_keys = [k for k in new_vars.keys() if k.startswith("auto-")]
+        auto_keys = [k for k in new_vars if k.startswith("auto-")]
         self.assertEqual(len(auto_keys), 3)
 
     def test_three_curated_skips_auto(self):
@@ -191,7 +191,7 @@ class GenerateForChampionTests(unittest.TestCase):
         self.assertEqual(stats["sr"]["curated"], 3)
         self.assertEqual(stats["sr"]["auto"], 0)
         # No auto-* keys for SR
-        self.assertFalse(any(k.startswith("auto-sr-") for k in new_vars.keys()))
+        self.assertFalse(any(k.startswith("auto-sr-") for k in new_vars))
         # Curated all preserved
         self.assertIn("bruiser", new_vars)
         self.assertIn("tank", new_vars)
@@ -208,7 +208,7 @@ class GenerateForChampionTests(unittest.TestCase):
             )
         self.assertEqual(stats["sr"]["curated"], 1)
         self.assertEqual(stats["sr"]["auto"], 2)
-        auto_keys = [k for k in new_vars.keys() if k.startswith("auto-sr-")]
+        auto_keys = [k for k in new_vars if k.startswith("auto-sr-")]
         self.assertEqual(len(auto_keys), 2)
         self.assertIn("bruiser", new_vars)  # curated preserved
 
@@ -225,8 +225,8 @@ class GenerateForChampionTests(unittest.TestCase):
             )
         self.assertEqual(stats["sr"]["auto"], 0)
         self.assertEqual(stats["aram"]["auto"], 3)
-        self.assertFalse(any(k.startswith("auto-sr-") for k in new_vars.keys()))
-        self.assertTrue(any(k.startswith("auto-aram-") for k in new_vars.keys()))
+        self.assertFalse(any(k.startswith("auto-sr-") for k in new_vars))
+        self.assertTrue(any(k.startswith("auto-aram-") for k in new_vars))
 
     def test_curated_entry_with_two_modes_counts_for_both(self):
         # A single curated variant with modes=[sr, aram] fills BOTH slots.
@@ -253,7 +253,7 @@ class GenerateForChampionTests(unittest.TestCase):
             )
         self.assertEqual(stats["sr"]["auto"], 0)
         self.assertEqual(stats["sr"]["unfilled"], 3)
-        self.assertFalse(any(k.startswith("auto-") for k in new_vars.keys()))
+        self.assertFalse(any(k.startswith("auto-") for k in new_vars))
 
     def test_rerun_refreshes_auto_entries_in_place(self):
         """A second run with different DS items should overwrite, not bloat."""
@@ -261,12 +261,12 @@ class GenerateForChampionTests(unittest.TestCase):
             first, _ = autogen.generate_for_champion(
                 "Aatrox", {}, modes=("sr",), level=11,
             )
-        first_auto_keys = {k for k in first.keys() if k.startswith("auto-")}
+        first_auto_keys = {k for k in first if k.startswith("auto-")}
         with self._patch_ds(["Refreshed X", "Y", "Z"]):
             second, _ = autogen.generate_for_champion(
                 "Aatrox", first, modes=("sr",), level=11,
             )
-        second_auto_keys = {k for k in second.keys() if k.startswith("auto-")}
+        second_auto_keys = {k for k in second if k.startswith("auto-")}
         self.assertEqual(first_auto_keys, second_auto_keys)
         # Items refreshed
         for k in second_auto_keys:
@@ -401,7 +401,7 @@ class ResetAutoEntriesTests(unittest.TestCase):
         autogen.reset_auto_entries(payload)
         variants = payload["champions"]["Aatrox"]["variants"]
         self.assertIn("bruiser", variants)
-        self.assertFalse(any(k.startswith("auto-") for k in variants.keys()))
+        self.assertFalse(any(k.startswith("auto-") for k in variants))
 
 
 class AtomicWriteLoadoutsTests(unittest.TestCase):

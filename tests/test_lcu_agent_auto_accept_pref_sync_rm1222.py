@@ -90,7 +90,7 @@ def _boot(agent, monkeypatch):
             seen.append((self.name, agent.CONFIG.get("auto_accept")))
 
     def _sleep(_s):
-        raise _Stop()
+        raise _Stop
 
     monkeypatch.setattr(agent, "threading",
                         types.SimpleNamespace(Thread=_FakeThread))
@@ -188,7 +188,7 @@ def _one_tick(agent, monkeypatch):
     seen: list = []
 
     def _sleep(_s):
-        raise _Stop()
+        raise _Stop
 
     monkeypatch.setattr(agent, "ensure_lcu_conn", lambda: True)
     monkeypatch.setattr(agent, "auto_features",
@@ -226,7 +226,7 @@ def test_tick_syncs_even_with_league_closed(agent, pref_file, monkeypatch):
     seen: list = []
 
     def _sleep(_s):
-        raise _Stop()
+        raise _Stop
 
     monkeypatch.setattr(agent, "ensure_lcu_conn", lambda: False)
     monkeypatch.setattr(agent, "time", types.SimpleNamespace(sleep=_sleep))

@@ -246,7 +246,7 @@ def test_lcu_cmd_result_closes_the_upstream_error_response(monkeypatch):
             closed.append(True)
 
     def _boom(req, timeout=None):
-        raise FakeHTTPError()
+        raise FakeHTTPError
 
     monkeypatch.setattr(mod, "_urlopen", _boom)
     h = FakeHandler("/api/lcu-cmd-result?id=7")

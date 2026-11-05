@@ -241,7 +241,7 @@ class ApPctSumFieldTests(unittest.TestCase):
         """
         import dataclasses
 
-        fields = [f for f in dataclasses.fields(AbilitySpellDps)]
+        fields = list(dataclasses.fields(AbilitySpellDps))
         names = [f.name for f in fields]
         self.assertIn("ap_pct_sum", names)
         idx = names.index("ap_pct_sum")

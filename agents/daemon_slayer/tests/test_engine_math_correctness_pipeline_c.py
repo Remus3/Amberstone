@@ -508,7 +508,7 @@ class AbilityProcLambdaLinearityTests(unittest.TestCase):
                 # 2) Shape is a single ramp (+ optional cap tail): at
                 #    most two distinct delta values. Genuine curvature
                 #    yields many distinct deltas.
-                distinct = sorted({d for d in deltas})
+                distinct = sorted(set(deltas))
                 self.assertLessEqual(
                     len(distinct), 2,
                     msg=f"{eff.name}/{proc.name}: >2 distinct per-level "
