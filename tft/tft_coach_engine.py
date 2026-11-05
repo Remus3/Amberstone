@@ -410,7 +410,7 @@ def _build_prompt(state: dict) -> str:
     level_display = level if _level_known else "unknown"
 
     # Resolve partner HP for Double Up
-    _partner_hp = _ld.get("partner_hp", state.get("partner_hp", None))
+    _partner_hp = _ld.get("partner_hp", state.get("partner_hp"))
 
     lines = [
         f"=== Stage {stage}-{rnd} | Level {level_display} | Round type: {round_type} ===",
@@ -1029,7 +1029,7 @@ class TftCoachEngine:
             "bench_str":    state.get("bench_str",     ""),
             "shop_str":     state.get("shop_str",      ""),
             "variant":      state.get("variant",       "standard"),
-            "partner_hp":   state.get("partner_hp",    None),
+            "partner_hp":   state.get("partner_hp"),
             "action":       fields.get("action",       ""),
             "board":        fields.get("board",        ""),
             "econ":         fields.get("econ",         ""),

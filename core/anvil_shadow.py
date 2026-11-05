@@ -161,9 +161,9 @@ def _note_failure(path: object, exc: BaseException) -> None:
             _WARNED.add(tkey)
         if first:
             log.warning("anvil shadow write to %s failed: %s",
-                        tkey, type(exc).__name__, exc_info=True)
+                        tkey, type(exc).__name__, exc_info=exc)
         else:
-            log.debug("anvil_shadow.log_anvil_advice failed", exc_info=True)
+            log.debug("anvil_shadow.log_anvil_advice failed", exc_info=exc)
     except Exception:  # noqa: BLE001 - logging must not break the coach path
         pass
 

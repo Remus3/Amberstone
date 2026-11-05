@@ -573,12 +573,9 @@ class HpsRouteTests(unittest.TestCase):
             with urlopen(req, timeout=10) as resp:
                 return resp.status, json.loads(resp.read().decode("utf-8"))
         except Exception as e:  # noqa: BLE001
-            try:
-                code = getattr(e, "code", None)
-                body_resp = json.loads(e.read().decode("utf-8"))  # type: ignore[attr-defined]
-                return code, body_resp
-            except Exception:
-                raise
+            code = getattr(e, "code", None)
+            body_resp = json.loads(e.read().decode("utf-8"))  # type: ignore[attr-defined]
+            return code, body_resp
 
     def test_post_hps_returns_200(self) -> None:
         status, payload = self._post("/hps", {

@@ -198,20 +198,18 @@ def _awrite(path: Path, text: str) -> None:
     `N chars queued` detail disagreed with the file and MAX_DIRECTIVE was not
     a byte cap (reference_windows_write_text_crlf_byte_count).
     """
-    try:
-        atomic_write_bytes(path, text.encode("utf-8"))
-    except PermissionError:
-        # The bounded backoff (~275 ms) is sized for the routine case, a reader
-        # that holds the file for a few ms. If it still loses, the caller
-        # renders an actionable 503 - "internal error - see logs" tells the
-        # operator nothing about a halt that did not land.
-        #
-        # LANE 8 CYCLE 24: the scratch file is no longer cleaned up here.
-        # atomic_write_bytes now removes its own scratch file on every failure
-        # path (core/polled_json._write_then_replace), and the name it uses is
-        # per-writer, so this mirror of the old shared "<dest>.tmp" name would
-        # be a silent no-op rather than the cleanup it looks like.
-        raise
+    # The bounded backoff (~275 ms) is sized for the routine case, a reader
+    # that holds the file for a few ms. If it still loses, the PermissionError
+    # propagates on purpose and the caller renders an actionable 503 -
+    # "internal error - see logs" tells the operator nothing about a halt that
+    # did not land.
+    #
+    # LANE 8 CYCLE 24: the scratch file is no longer cleaned up here.
+    # atomic_write_bytes now removes its own scratch file on every failure
+    # path (core/polled_json._write_then_replace), and the name it uses is
+    # per-writer, so this mirror of the old shared "<dest>.tmp" name would
+    # be a silent no-op rather than the cleanup it looks like.
+    atomic_write_bytes(path, text.encode("utf-8"))
 
 
 def _fault(status: int, action: str, exc: BaseException, error: str, *,
