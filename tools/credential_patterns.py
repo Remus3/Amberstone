@@ -5,8 +5,10 @@ Closes defect D1/D2 of
 that RC evaluates NO credential pattern against ANY file population: not the
 staged set, not the push range, not the working tree. This module supplies the
 patterns; `tools/edit_lint_check.py` (PostToolUse `Edit|Write`, registered as
-the ``edit_lint_check`` entry of `.claude/settings.json`) supplies the only RC population that already
-includes UNTRACKED files - the exact file an agent just wrote.
+the ``edit_lint_check`` entry of the gitignored `.claude/settings.json`, whose
+tracked template is `ops/claude_settings.example.json`) supplies the only RC
+population that already includes UNTRACKED files - the exact file an agent just
+wrote.
 
 THE CONTRACT, in order of importance:
 

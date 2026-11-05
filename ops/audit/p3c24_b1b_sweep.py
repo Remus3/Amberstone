@@ -4,9 +4,10 @@ Completes the DS-engine tree ASCII retro-sweep that B1a (cycle 23) started:
 B1a swept comment + docstring tokens; B1b sweeps the residual STRING-token
 glyphs (emit-notes / f-string display text / HTML help) plus the 4 registry
 JSON _meta metadata fields. Per-hit judgement already done (every glyph is
-display-only; sole structural consumer = a test in
-agents/daemon_slayer/tests/test_effects_expansion.py,
-updated in lockstep). Application is the same conservative GLYPH_MAP the cycle
+display-only; sole structural consumer =
+``test_lethality_is_level_invariant_post_v14_1`` in
+agents/daemon_slayer/tests/test_effects_expansion.py, a regex on the
+"effective target armor X -> Y" emit-note, updated in lockstep). Application is the same conservative GLYPH_MAP the cycle
 19-23 sweeps used, with ONE per-hit override: beam.py's item-name list
 separator " . " (U+00B7 middot) becomes " / " not "*" (middot-as-separator,
 not middot-as-multiply).
