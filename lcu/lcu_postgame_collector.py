@@ -853,7 +853,7 @@ class PostgameCollector:
             # WOULD build a fresh thread (its guard is .is_alive(), not mere
             # existence - measured), but nothing calls it a second time.
             # init_collector is one-shot behind `if _collector is None`, and
-            # the per-game path at app/_game_lifecycle.py:146 only calls
+            # the per-game path in app/_game_lifecycle.py (the `_pgc.trigger` call) only calls
             # trigger(). One bad payload must cost one game, not the collector.
             try:
                 self._capture_after_trigger(self._game_mode_hint)

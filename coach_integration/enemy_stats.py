@@ -73,7 +73,7 @@ class EnemyStats:
 #
 # SR: classic 5v5, gradual scaling. Armor anchors at lvl 11 -> 95
 # (matches the prior ``target_armor=80`` ballpark and the SR draft
-# preset table at coaches/sr_draft_profile.py:71).
+# preset table `_FALLBACK_PRESETS` in coaches/sr_draft_profile.py).
 # ARAM: faster gold + healing reduction. Items come ~30% faster.
 # Arena: 2v2v2v2, rounds compress build time. Higher armor at peak.
 # Brawl: similar to SR but compressed teamfights.

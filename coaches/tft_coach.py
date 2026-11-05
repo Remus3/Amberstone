@@ -48,7 +48,7 @@ if TYPE_CHECKING:
 # getattr, no string dispatch, no __all__ and no star import (checked in both
 # directions). The private duplicate that lived in the twin PBE coach was
 # deleted with it by RM-292 (b) (2026-10-25). The live TFT key path is a different
-# symbol entirely: app/_game_lifecycle.py:315 `_try_read_api_key`, which
+# symbol entirely: `_try_read_api_key` in app/_game_lifecycle.py, which
 # reaches the worker without passing through this facade. A dead function
 # that loads a secret is a latent secret path with no offsetting benefit,
 # so it is gone rather than hardened.

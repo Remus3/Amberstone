@@ -310,8 +310,8 @@ class LcuPregame:
 
         NOT on the spell auto-push path, despite what the RM-346 row
         claimed - that path reads the same wire fields inline at
-        `lcu/lcu_rune_writer.py:879` with its own `or 0` guard and
-        never calls this method. Measured 2026-09-05: this reader has
+        `RuneWriter._sync_spells` in lcu/lcu_rune_writer.py (through its
+        own `_spell_id` guard) and never calls this method. Measured 2026-09-05: this reader has
         zero in-repo callers. It is public surface on the LcuClient
         mixin, so the total contract still has to hold, but the defect
         this docstring describes was latent, not a live crash.

@@ -6,8 +6,8 @@ dependency - stdlib only.
 WHY THIS EXISTS
 ---------------
 "Should I roll?" is currently answered by formatting the tier-odds table into
-prompt TEXT (tft/tft_coach_engine.py:442-452) and letting Haiku read it out
-loud. The table alone cannot answer the question: the number a player needs is
+prompt TEXT (the "Roll odds at Lv.." lines of tft_coach_engine._build_prompt)
+and letting Haiku read it out loud. The table alone cannot answer the question: the number a player needs is
 not "3-cost odds are 33 percent", it is "what are the odds I see my unit in
 this shop, given how contested it is". That is arithmetic, so it belongs here
 and not in a token budget.

@@ -1,6 +1,6 @@
 """core.build_planner.situational - WP-C3 counter-build situational fit.
 
-Fills the WP-C3 stub at core/build_planner/scoring.py:321. Given an enemy
+Fills the WP-C3 stub in core/build_planner/scoring.py (`score_build`). Given an enemy
 threat profile + the current build, scores how well the build COUNTERS the
 enemy composition (resist-vs-damage-split, antiheal de-dup, fed-enemy resist
 override, HP+resist vs penetration, pen TYPE from the kill-target armor/MR,

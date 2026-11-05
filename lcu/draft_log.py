@@ -24,7 +24,7 @@ per action, in GLOBAL action order (the flattened ``session.actions`` groups):
   is_local           1 for the local player's cell
 
 Storage: a NEW sibling table ``draft_log`` in rewind_history.db, the DB the
-post-game Match-V5 ingest already writes (lib/rewind_live_writer.py:85 DB_PATH
+post-game Match-V5 ingest already writes (lib/rewind_live_writer.py DB_PATH
 -> scripts/rewind_catchup.record_hydrated). Additive only; no existing table is
 altered. Keyed by the numeric Riot gameId, which is the suffix of the Match-V5
 match_id ("NA1_<gameId>"), so the ingest join is on game_id.

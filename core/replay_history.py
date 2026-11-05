@@ -27,7 +27,7 @@ AUDIT 2026-08-31 (lane 8 cycle 32): ITEM_UNDO is read from `raw_json`,
 NOT from the `item_id` column. Riot does not send `itemId` on an
 ITEM_UNDO event - it sends `beforeId` (the item the player had before
 the undo) and `afterId` (the item they have after it), and
-`scripts/rewind_scraper.py:567` maps only `itemId`. So `item_id` is
+`parse_event` in scripts/rewind_scraper.py maps only `itemId`. So `item_id` is
 NULL for every ITEM_UNDO row: MEASURED 28405 of 28405 in the live
 database. The previous fold guarded on that column, so its undo branch
 was structurally dead and had never once fired, while this docstring

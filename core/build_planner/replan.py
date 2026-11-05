@@ -520,7 +520,7 @@ class ReplanLoop:
                         owned_count, stage):
         """Counter-build pressure for the Schmitt pivot (DIRECT score_build).
 
-        plan_build cannot thread enemy_profile into its scorer (scoring.py:324
+        plan_build cannot thread enemy_profile into its scorer (scoring.score_build
         forces the situational term to 0.0 when enemy_profile is None), so the
         pivot pressure is a direct score_build call that DOES pass enemy_profile.
         pressure = best counter total (resist/health/antiheal item) / best dps

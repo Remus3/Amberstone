@@ -11,7 +11,7 @@ capability that must fail closed outside SR).
 Normalization accepts canonical constants ("SR"), lowercase keys ("sr"),
 and raw Riot game_mode strings ("CLASSIC" / "KIWI" / "CHERRY" / ...) via
 core.game_snapshot.mode_from_game_mode_string. That helper defaults ANY
-unrecognized string to MODE_SR (core/game_snapshot.py:80), which would
+unrecognized string to MODE_SR (mode_from_game_mode_string in core/game_snapshot.py), which would
 be fail-OPEN here - so _normalize only trusts its SR answer for raw
 strings explicitly known to mean Summoner's Rift ("CLASSIC"). Everything
 else that falls through to the SR default is rejected (PRACTICETOOL,

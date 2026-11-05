@@ -516,7 +516,7 @@ class TftLiveAnalysis:
                          view.get("stage_round") or "none")
         self._gate_seen = state; self._gate_view = view
         # The round bookkeeping moves HERE, on the first sight of each state:
-        # core/tft_worker.py:310-312 and coaches/tft_pbe_coach.py:149-151 call
+        # the TftWorker poll loop in core/tft_worker.py calls
         # notify_round only when the RAW read changed, so a round the gate
         # accepts on a poll with no raw change (a confirmation) reaches only
         # notify_coach_state.
