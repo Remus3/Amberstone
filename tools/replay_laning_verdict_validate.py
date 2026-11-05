@@ -578,7 +578,7 @@ def _fmt_pct(x: Optional[float]) -> str:
 
 def print_summary(report: dict) -> None:
     """Concise human-readable summary on stdout (ASCII only)."""
-    print("")
+    print()
     print("=== Replay HZ-A laning-VERDICT validation (RETIRED gate - ADR-013) ===")
     dec = report.get("decision") or {}
     if dec.get("status"):
@@ -594,7 +594,7 @@ def print_summary(report: dict) -> None:
         f"coverage={cov['covered']}/{cov['covered'] + cov['uncovered']}"
     )
     for label, key in (("GOLD@frame", "levels_gold"), ("SOLO-KILL DUEL", "levels_duel")):
-        print("")
+        print()
         print(f"  -- {label} --")
         print(f"  {'level':>5}  {'n':>6}  {'agree':>6}  {'95% Wilson':>16}")
         print("  " + "-" * 44)
@@ -608,13 +608,13 @@ def print_summary(report: dict) -> None:
             )
     for label, key in (("ACTION vs GOLD", "action_breakdown_gold"),
                        ("ACTION vs DUEL", "action_breakdown_duel")):
-        print("")
+        print()
         print(f"  -- {label} (per-verdict agreement) --")
         for verdict, slot in report[key].items():
             print(f"    {verdict:<9} n={slot['n']:>5}  agree={_fmt_pct(slot['agreement'])}")
     br = report.get("label_base_rate_gold") or {}
     if br.get("n"):
-        print("")
+        print()
         print("  -- BALANCE CENSUS (is 0.50 the verdict, or the harness?) --")
         print(f"    scored pairs          n={br['n']}")
         print(f"    predictor favors a    {_fmt_pct(br['predictor_favors_a_rate'])}")
@@ -623,16 +623,16 @@ def print_summary(report: dict) -> None:
         print("    Both near 50% + agreement near 50% = zero mutual information,")
         print("    i.e. the VERDICT is uninformative (not a broken label).")
     for entry in report.get("axis_sweep") or []:
-        print("")
+        print()
         print(f"  -- AXIS SWEEP cd_state={entry['cd_state']} "
               f"item_state={entry['item_state']} --")
         for lv in entry["levels_gold"]:
             print(f"    gold L{lv['level']:<3} n={lv['n_decisive']:>6}  "
                   f"agree={_fmt_pct(lv['agreement'])}")
-    print("")
+    print()
     print("interpretation:")
     print("  " + report["interpretation"])
-    print("")
+    print()
 
 
 # ----------------------------------------------------------------------------- loaders

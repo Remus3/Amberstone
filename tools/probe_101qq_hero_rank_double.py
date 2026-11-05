@@ -379,7 +379,7 @@ def _first_pair_from_payload(payload: object, ddragon_map: dict) -> dict:
 
 
 def _print_section(title: str, data: object) -> None:
-    print("")
+    print()
     print(f"== {title} ==")
     print(json.dumps(data, ensure_ascii=True, indent=2, sort_keys=True))
 
@@ -423,7 +423,7 @@ def main(argv: list | None = None) -> int:
         rw = cross_check_rewind(payload, ddragon_map)
         _print_section("rewind_history_cross_check", rw)
 
-    print("")
+    print()
     print("Done. Submit findings via the bridge for Legion-side integration.")
     return 0
 

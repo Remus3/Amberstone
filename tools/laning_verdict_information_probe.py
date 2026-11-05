@@ -428,11 +428,11 @@ def _fmt(x: object, nd: int = 4) -> str:
 
 
 def print_summary(report: Dict[str, object]) -> None:
-    print("")
+    print()
     print("=== HZ-A laning-verdict INFORMATION probe (ADR-013 evidence) ===")
     print(f"db={report['db']}  mode={report['mode']}  "
           f"pairs={report['pairs_collected']} over {report['matches_collected']} matches")
-    print("")
+    print()
     print("  -- VERDICT vs GOLD: mutual information --")
     print(f"  {'slice':16s} {'n':>6s} {'agree':>8s} {'MI bits':>10s} {'MI corr':>11s} "
           f"{'MI/H':>8s} {'phi':>8s} {'chi2':>7s}")
@@ -453,7 +453,7 @@ def print_summary(report: Dict[str, object]) -> None:
               f"{_fmt(blk['mutual_information_bits_miller_madow'], 6):>11s} "
               f"{(_fmt(frac * 100, 3) + '%') if frac is not None else 'n/a':>8s} "
               f"{_fmt(blk['phi']):>8s} {_fmt(blk['chi2_yates'], 2):>7s}")
-    print("")
+    print()
     print("  -- CONTROL: is the LABEL learnable at all? --")
     ctl = report["label_learnability_control"]
     for tag, key in (("fit A -> score B", "fit_a_score_b"),
@@ -468,10 +468,10 @@ def print_summary(report: Dict[str, object]) -> None:
     print(f"    solo-kill duel -> gold winner       n={duel['n']:5d} "
           f"agree={_fmt(duel['agreement'])} "
           f"[{_fmt(duel['wilson_95_lo'])}, {_fmt(duel['wilson_95_hi'])}]")
-    print("")
+    print()
     print(f"  finding: {report['finding']}")
     print(f"  {report['reading']}")
-    print("")
+    print()
 
 
 def _write_report(report: Dict[str, object], out_path: Path) -> None:

@@ -440,7 +440,7 @@ def _fmt_pct(x: Optional[float]) -> str:
 
 
 def print_summary(report: dict) -> None:
-    print("")
+    print()
     print("=== Replay pickban-DB counter-quality gate ===")
     print(f"db={report['db']}  verdict={report['verdict']}  "
           f"matches_used={report['matches_used']}  pairs={report['pairs_total']}")
@@ -453,10 +453,10 @@ def print_summary(report: dict) -> None:
         exc = b["excluded"]
         print(f"          excluded no_claim={exc['no_claim']} conflict={exc['conflict']} "
               f"tie={exc['tie']} no_duel={exc['no_duel']}")
-    print("")
+    print()
     print("interpretation:")
     print("  " + report["interpretation"])
-    print("")
+    print()
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:

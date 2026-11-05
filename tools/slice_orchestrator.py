@@ -171,7 +171,7 @@ def cmd_next(args: argparse.Namespace) -> int:
             if s.get("status") == status:
                 print(s["id"])
                 return 0
-    print("")  # nothing left to work
+    print()  # nothing left to work
     return 0
 
 

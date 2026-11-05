@@ -579,7 +579,7 @@ def _fmt_pct(x: Optional[float]) -> str:
 
 def print_summary(report: dict) -> None:
     """Concise human-readable summary on stdout (ASCII only)."""
-    print("")
+    print()
     print("=== Replay BUILD-ORDER validation (build-coach Haiku-flip gate) ===")
     print(f"db={report['db']}  gate={report['gate']}  truth={report['ground_truth']}")
     sc = report["status_counts"]
@@ -591,7 +591,7 @@ def print_summary(report: dict) -> None:
         f"status: decisive={sc['decisive']} ambiguous={sc['ambiguous']} "
         f"uncovered_comp={sc['uncovered_comp']} uncovered_champ={sc['uncovered_champ']}"
     )
-    print("")
+    print()
     for label, key in (("FOLLOWED recommendation", "followed"),
                        ("NOT followed", "not_followed")):
         b = report[key]
@@ -601,13 +601,13 @@ def print_summary(report: dict) -> None:
         print(f"  {label:<24} n={b['n']:>5}  winrate={_fmt_pct(b['winrate'])}  {ci}")
     d = report["difference"]
     if d["followed_minus_not"] is not None:
-        print("")
+        print()
         print(
             f"  difference (followed - not) = {d['followed_minus_not'] * 100:+5.1f}%  "
             f"95%=[{d['wald_95_lo'] * 100:+5.1f}, {d['wald_95_hi'] * 100:+5.1f}]  "
             f"flip_ready={d['flip_ready']}"
         )
-    print("")
+    print()
     print("  -- per recommended-variant (followed winrate) --")
     for v in _VARIANTS:
         f = report["by_variant"][v]["followed"]
@@ -617,7 +617,7 @@ def print_summary(report: dict) -> None:
             f"not n={nf['n']:>5} wr={_fmt_pct(nf['winrate'])}"
         )
     t = report["timing"]
-    print("")
+    print()
     print(f"  -- completion-timing (followed rows, median={t['median_min']}min) --")
     print(
         f"    fast(<=med) n={t['fast']['n']:>5} wr={_fmt_pct(t['fast']['winrate'])}   "
@@ -627,7 +627,7 @@ def print_summary(report: dict) -> None:
     items = pi.get("items") or []
     if items:
         names = _load_item_names()
-        print("")
+        print()
         print(
             f"  -- per-ITEM carriers (bought-vs-not win-diff, min_n={pi.get('min_n')}, "
             f"{pi.get('n_carriers', 0)}/{pi.get('n_items', 0)} carriers) --"
@@ -643,10 +643,10 @@ def print_summary(report: dict) -> None:
                 f"bought n={d['bought']['n']:>5} wr={_fmt_pct(d['bought']['winrate'])} "
                 f"diff={_fmt_pct(d['diff_bought_minus_not'])} {ci}"
             )
-    print("")
+    print()
     print("interpretation:")
     print("  " + report["interpretation"])
-    print("")
+    print()
 
 
 # ----------------------------------------------------------------------------- loaders

@@ -642,7 +642,7 @@ def _fmt_pct(x: Optional[float]) -> str:
 
 def print_summary(report: dict) -> None:
     """Concise human-readable summary table on stdout (ASCII only)."""
-    print("")
+    print()
     print("=== Replay matchup validation (Haiku-flip gate) ===")
     print(
         f"db={report['db']}  mode={report['game_mode']}  "
@@ -652,7 +652,7 @@ def print_summary(report: dict) -> None:
         f"matches: selected={report['matches_selected']} used={report['matches_used']} "
         f"skipped={report['matches_skipped']}  pairs={report['pairs_total']}"
     )
-    print("")
+    print()
     print(f"{'level':>5}  {'n':>6}  {'agree':>6}  {'95% Wilson':>16}  excluded(even/tie/none)")
     print("-" * 72)
     for lv in report["levels"]:
@@ -668,19 +668,19 @@ def print_summary(report: dict) -> None:
     for lv in report["levels"]:
         if not lv["per_role"]:
             continue
-        print("")
+        print()
         print(f"  level {lv['level']} per-role:")
         for role, slot in lv["per_role"].items():
             print(f"    {role:<8} n={slot['n']:>4}  agree={_fmt_pct(slot['agreement'])}")
-    print("")
+    print()
     print("interpretation:")
     print("  " + report["interpretation"])
-    print("")
+    print()
 
 
 def print_trade_summary(report: dict) -> None:
     """Concise human-readable summary for the solo-kill trade report (ASCII)."""
-    print("")
+    print()
     print("=== Replay matchup validation - SOLO-KILL TRADE ground truth ===")
     print(
         f"db={report['db']}  mode={report['game_mode']}  even_band={report['even_band']}"
@@ -691,7 +691,7 @@ def print_trade_summary(report: dict) -> None:
         f"pairs_with_duel solo={report['pairs_with_solo_duel']} any={report['pairs_with_any_duel']}"
     )
     for label, key in (("SOLO (1v1)", "levels_solo"), ("ANY (incl gank)", "levels_any")):
-        print("")
+        print()
         print(f"  -- {label} --")
         print(f"  {'level':>5}  {'n':>6}  {'agree':>6}  {'95% Wilson':>16}")
         print("  " + "-" * 44)
@@ -703,10 +703,10 @@ def print_trade_summary(report: dict) -> None:
                 f"  {lv['level']:>5}  {lv['n_decisive']:>6}  {_fmt_pct(lv['agreement'])}  "
                 f"{ci:>16}"
             )
-    print("")
+    print()
     print("interpretation:")
     print("  " + report["interpretation"])
-    print("")
+    print()
 
 
 # ----------------------------------------------------------------------------- loaders
