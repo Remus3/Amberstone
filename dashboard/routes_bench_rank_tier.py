@@ -34,7 +34,20 @@ cell) returns ok:true, n:0, and the three metric keys with avg:null - the panel
 renders "-" / "no benchmark" rather than erroring.
 
 Cache: 5min in-process keyed by (tier, mode, bracket) - mirrors
-routes_bench_role_bracket so a re-polling panel does not re-scan the grid.
+routes_bench_role_bracket so a re-polling panel does not re-scan the grid. The
+TTL and elapsed_ms run on time.monotonic (a wall-clock step back must neither
+freeze an entry past its TTL nor report a negative elapsed_ms), and the socket
+write happens AFTER _CACHE_LOCK is released (one stalled client must not block
+every other request on this route).
+
+Value boundary: this route is the last stop before the browser, and the static
+seed reaches it unvalidated (core.rank_tier_bench checks only live rows). A cell
+avg is forwarded only when it is a real, finite, non-negative int / float; a
+bool (Number(true) renders "1"), a string, a container, NaN / Infinity (a bare
+NaN token makes JSON.parse reject the WHOLE body) or a negative value reads as
+avg:null and is not counted in `n`. A malformed grid (non-dict grid, "all"
+bucket or bracket cell) degrades to the same soft empty, never a 500. The body
+is serialised with allow_nan=False as the belt to that brace.
 
 Failure modes (a raw exception string is NEVER leaked to the client):
   - non-empty unknown tier -> 400 with a short clear error
@@ -44,6 +57,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import threading
 import time
 from urllib.parse import parse_qs, urlparse
@@ -52,6 +66,8 @@ from core import rank_tier_bench as bench
 from dashboard._dispatch import equals
 
 log = logging.getLogger("rc.web_dashboard")
+
+_clock = time.monotonic
 
 _CACHE_TTL_S = 300.0
 _CACHE: dict[tuple, tuple[float, dict]] = {}
@@ -103,18 +119,46 @@ def _parse_bracket(raw: str) -> str:
     return b if b in VALID_BRACKETS else DEFAULT_BRACKET
 
 
+def _clean_avg(raw):
+    """The avg when it is a real measured average, else None.
+
+    bool is rejected before the number check because it subclasses int; a
+    non-finite float would serialise as a bare NaN / Infinity token; a negative
+    cs / kda / kp average is not a measurement."""
+    if isinstance(raw, bool) or not isinstance(raw, (int, float)):
+        return None
+    if isinstance(raw, float) and not math.isfinite(raw):
+        return None
+    if raw < 0:
+        return None
+    return raw
+
+
+def _cell(grid, bracket: str) -> dict:
+    """The laneless 'all' bucket's bracket cell, or {} when any level of the
+    grid is not the documented dict shape."""
+    if not isinstance(grid, dict):
+        return {}
+    role = grid.get("all")
+    if not isinstance(role, dict):
+        return {}
+    cell = role.get(bracket)
+    return cell if isinstance(cell, dict) else {}
+
+
 def _build_payload(tier: str, mode: str, bracket: str) -> dict:
     """Assemble the metric cell for (tier, mode, bracket) from the rank-tier
     grid's laneless 'all' bucket. tier '' or mode '' -> empty (null) stats."""
     src = bench.source()
     stats = {k: dict(_EMPTY_STAT) for k in _METRIC_KEYS}
     if tier and mode:
-        grid = bench.rank_tier_grid(tier, mode)      # {role: {bracket: {metric: {avg}}}}
-        cell = ((grid.get("all", {}) or {}).get(bracket) or {})
+        cell = _cell(bench.rank_tier_grid(tier, mode), bracket)
         for k in _METRIC_KEYS:
             mv = cell.get(k)
-            if isinstance(mv, dict) and mv.get("avg") is not None:
-                stats[k] = {"avg": mv["avg"]}
+            if isinstance(mv, dict):
+                avg = _clean_avg(mv.get("avg"))
+                if avg is not None:
+                    stats[k] = {"avg": avg}
     n = sum(1 for k in _METRIC_KEYS if stats[k].get("avg") is not None)
     return {
         "ok": True,
@@ -128,8 +172,16 @@ def _build_payload(tier: str, mode: str, bracket: str) -> dict:
     }
 
 
+def _elapsed_ms(t0: float) -> int:
+    return max(0, int((_clock() - t0) * 1000))
+
+
+def _body(payload: dict) -> bytes:
+    return json.dumps(payload, allow_nan=False).encode("utf-8")
+
+
 def _serve_rank_tier_bench(h) -> None:
-    t0 = time.time()
+    t0 = _clock()
     try:
         qs = parse_qs(urlparse(h.path).query or "")
         tier_raw = (qs.get("tier") or [""])[0].strip()
@@ -138,40 +190,36 @@ def _serve_rank_tier_bench(h) -> None:
 
         tier, err = _parse_tier(tier_raw)
         if err:
-            h._send(400, json.dumps({"ok": False, "error": err})
-                    .encode("utf-8"), "application/json")
+            h._send(400, _body({"ok": False, "error": err}), "application/json")
             return
         mode = _parse_mode(mode_raw)
         bracket = _parse_bracket(bracket_raw)
 
         key = (tier, mode, bracket)
-        now = time.time()
+        now = _clock()
+        hit = None
         with _CACHE_LOCK:
             cached = _CACHE.get(key)
-            if cached and (now - cached[0]) < _CACHE_TTL_S:
-                payload = dict(cached[1])
-                payload["cached"] = True
-                payload["elapsed_ms"] = int((time.time() - t0) * 1000)
-                h._send(200, json.dumps(payload).encode("utf-8"),
-                        "application/json")
-                return
+            if cached and 0.0 <= (now - cached[0]) < _CACHE_TTL_S:
+                hit = dict(cached[1])
+        if hit is not None:
+            hit["cached"] = True
+            hit["elapsed_ms"] = _elapsed_ms(t0)
+            h._send(200, _body(hit), "application/json")
+            return
 
         payload = _build_payload(tier, mode, bracket)
+        _cache_put(key, now, dict(payload))
         payload["cached"] = False
-        payload["elapsed_ms"] = int((time.time() - t0) * 1000)
+        payload["elapsed_ms"] = _elapsed_ms(t0)
 
-        cacheable = dict(payload)
-        cacheable.pop("cached", None)
-        cacheable.pop("elapsed_ms", None)
-        _cache_put(key, now, cacheable)
-
-        h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
+        h._send(200, _body(payload), "application/json")
     except Exception as exc:  # noqa: BLE001
         log.warning("api/rank-tier-bench: %s", exc)
         try:
-            h._send(500, json.dumps(
-                {"ok": False, "error": "internal error - see logs"})
-                .encode("utf-8"), "application/json")
+            h._send(500, _body(
+                {"ok": False, "error": "internal error - see logs"}),
+                "application/json")
         except Exception:  # noqa: BLE001
             pass
 
