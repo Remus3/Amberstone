@@ -8,11 +8,11 @@ last-seen map position, radius = how far the champion could have walked
 since (missing time x estimated movespeed), confidence decaying the
 longer they stay unseen.
 
-INPUT - the ``core.vision_tracker`` per-enemy rows (vision_tracker.py:376-388):
+INPUT - the ``core.vision_tracker`` per-enemy rows (the row dict built in core/vision_tracker.py):
     {champion, team, level, is_dead, respawn_in_s, visible, missing_for_s,
      last_seen_pos: {x, z}, last_seen_t, last_seen_zone}
 accepted as either the tracker's ``state()["enemies"]`` dict (champion ->
-row, vision_tracker.py:177-184) or a plain list of rows.
+row, ``VisionTracker.state``) or a plain list of rows.
 
 OUTPUT - the fixed cross-agent contract payload, or ``None``:
     {"rings": [{"champion": str|None, "cx": float, "cy": float,
@@ -23,27 +23,27 @@ Coordinates are box-fraction [0, 1] within the minimap crop, the same
 convention as ``zoi.bubbles`` (core/zoi_influence.py).
 
 AXIS CONVENTION (grep-verified): League map units put the Blue/Order base
-at LOW x, LOW z (core/vision_tracker.py:55-61 ``_sr_zone`` blue_base is
+at LOW x, LOW z (core/vision_tracker.py ``_sr_zone``: blue_base is
 ``x < 3500 and z < 3500``), while the box-fraction minimap frame is
-y-DOWN with blue base bottom-LEFT (config/minimap_grids/sr.json:4 -
-blue_base poly y in [0.82, 1.0]). So:
+y-DOWN with blue base bottom-LEFT (config/minimap_grids/sr.json -
+the ``blue_base`` poly has y in [0.82, 1.0]). So:
     cx = x / extent
     cy = 1 - z / extent          (z axis INVERTED to minimap y)
-A flipped HUD mirrors the crop on X (core/minimap_districts.py:11-13);
-``minimap_rect["flip"]`` (core/league_settings.py:142) applies the same
+A flipped HUD mirrors the crop on X (core/minimap_districts.py ``district_of``);
+``minimap_rect["flip"]`` (core/league_settings.py ``minimap_rect_payload``) applies the same
 mirror here so rings line up with the flipped crop: cx -> 1 - cx.
 
 MODE GATE (fail-CLOSED, mirrors core/mode_capabilities._normalize):
 SR only. ``mode`` accepts the _state_builder mode_key ``"sr"``
-(dashboard/_state_builder.py:119), the canonical ``"SR"``
-(core/game_snapshot.py:64) and the raw Riot ``"CLASSIC"``. ARAM/KIWI,
+(dashboard/_state_builder.py ``resolve_mode_key``), the canonical ``"SR"``
+(core/game_snapshot.py ``MODE_SR``) and the raw Riot ``"CLASSIC"``. ARAM/KIWI,
 ARENA/CHERRY, brawl, tft, garbage, None -> ``None`` (shared vision or no
 fog - no rings ever).
 
 DOCUMENTED CONSTANTS:
   - MIN_MISSING_S = 3.0: an enemy must be fogged STRICTLY longer than
     this before a ring appears (mirrors the laning MISS threshold,
-    core/laning_cv_overrides.py:50 - shorter gaps are brush/clip noise).
+    core/laning_cv_overrides.py ``MISS_THRESHOLD_S`` - shorter gaps are brush/clip noise).
   - R_MIN_FRAC = 0.02: floor so a just-fogged enemy still renders a
     visible pin-prick ring (2% of the minimap side).
   - R_MAX_FRAC = 0.6: cap - beyond this the ring covers most of the map
@@ -62,7 +62,7 @@ from __future__ import annotations
 
 from core.champion_movespeed import distance_frac_per_s, est_ms
 
-#: SR map extent in game units (core/vision_tracker.py:55).
+#: SR map extent in game units (core/vision_tracker.py zone-labelling note).
 _SR_MAP_EXTENT = 14800.0
 
 #: Fog floor (s) before a ring appears - see module docstring.
@@ -129,7 +129,7 @@ def _ring_for(track, game_time_s, flip):
     raw_missing = track.get("missing_for_s")
     if raw_missing is None:
         # Absent stamp: derive from the game clock the same way the
-        # tracker itself does (vision_tracker.py:365-367).
+        # tracker itself does (``missing_for_s`` in core/vision_tracker.py).
         missing = None
         last_seen_t = _num(track.get("last_seen_t"))
         now = _num(game_time_s)
