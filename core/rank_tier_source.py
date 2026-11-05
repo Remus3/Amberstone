@@ -55,6 +55,7 @@ each row is a metric-average record
 from __future__ import annotations
 
 import hashlib
+import http.client
 import json
 import threading
 import time
@@ -319,7 +320,13 @@ def _http_get_json(url: str, timeout_s: float = _TIMEOUT_S) -> dict:
         # Raised after the block like the others, so no __context__.
         refused = True
         detail = _redact(f"{type(exc).__name__}: {exc}", url)
-    except (urllib.error.URLError, OSError, TimeoutError) as exc:
+    except (urllib.error.URLError, http.client.HTTPException, OSError,
+            TimeoutError, ValueError) as exc:
+        # RM-1442: BadStatusLine / LineTooLong / IncompleteRead are
+        # HTTPException, NOT OSError, and urllib lets them through unwrapped,
+        # so they escaped fetch_rows' (RankTierSourceError, OSError,
+        # ValueError) boundary. ValueError is mapped here too so it gets the
+        # same redaction and no-chain treatment as every other failure.
         detail = _redact(f"{type(exc).__name__}: {exc}", url)
     if refused:
         raise RankTierSourceRefused(f"{_safe_url(url)} refused: {detail}")

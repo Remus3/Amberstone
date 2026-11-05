@@ -22,6 +22,7 @@ is the only on-disk copy). Fail-soft: any failure returns None.
 """
 from __future__ import annotations
 
+import http.client
 import math
 import threading
 import time
@@ -153,7 +154,12 @@ def _http_get_json(url: str, timeout_s: float = _TIMEOUT_S) -> dict:
         # A RuntimeError, so without this it escaped fetch_rows' fail-soft
         # boundary (which catches SynergyError only).
         raise SynergyRefused(f"{url} refused: {exc}") from exc
-    except (urllib.error.URLError, OSError, TimeoutError) as exc:
+    except (urllib.error.URLError, http.client.HTTPException, OSError,
+            TimeoutError, ValueError) as exc:
+        # RM-1442: urllib lets getresponse() and read() errors through
+        # unwrapped, and BadStatusLine / LineTooLong / IncompleteRead are
+        # HTTPException, NOT OSError; a read on a closed response raises
+        # ValueError. Either escaped fetch_rows' SynergyError-only boundary.
         raise SynergyError(f"{url} fetch failed: {exc}") from exc
     try:
         # parse_constant fires on exactly the three NON-STANDARD literals
