@@ -380,7 +380,7 @@ def main() -> int:
                             f"[TEST HOOK] Forced failure in section '{key}'"
                         )
                     pairs = fn()
-                    all_results[key] = {label: st for label, st in pairs}
+                    all_results[key] = dict(pairs)
                 except Exception as exc:  # noqa: BLE001
                     err_str = str(exc)
                     print(f"\n  SECTION FAILED [{key}]: {err_str}")

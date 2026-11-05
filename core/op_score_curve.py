@@ -230,7 +230,7 @@ def compute_op_score_curve(mode: str = DEFAULT_MODE,
             last_minute = max(last_minute, minute)
 
     minutes = []
-    for minute in range(0, last_minute + 1):
+    for minute in range(last_minute + 1):
         wc = win_cnt.get(minute, 0)
         lc = loss_cnt.get(minute, 0)
         win_avg = round(win_sum[minute] / wc, 1) if wc >= MIN_GAMES_N else None

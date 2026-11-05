@@ -648,7 +648,7 @@ def execute_dispatch(run_id: int, head_sha: str, *, arm: bool,
         return {"mode": "dry_run", "run_id": run_id, "head_sha": head_sha,
                 "branch": branch_name(run_id), "steps": plan}
 
-    steps = {label: argv for label, argv in plan}
+    steps = dict(plan)
     if runner is None:
         runner = _default_runner(worktree)
 

@@ -165,7 +165,7 @@ def _scan_keys(obj: object, pred, path: str = "") -> list[str]:
 
 def _is_adapt_key(key: str) -> bool:
     k = str(key).lower()
-    return k.startswith("st_") or k.startswith("st-") or "adapt" in k
+    return k.startswith(("st_", "st-")) or "adapt" in k
 
 
 def collect(dash_base: str, relay_base: str) -> dict:

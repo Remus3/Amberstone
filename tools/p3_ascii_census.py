@@ -52,7 +52,7 @@ def bucket_of(rel):
     fl = rel.lower()
     if fl.startswith('agents/daemon_slayer/') and '/tests/' not in fl:
         return 'ZZ_ds_engine(load-bearing-arrows)'
-    if fl.startswith('agents/daemon_slayer/tests/') or fl.startswith('tests/'):
+    if fl.startswith(('agents/daemon_slayer/tests/', 'tests/')):
         return 'ZZ_tests(swept_c16_c17)'
     return fl.split('/')[0] if '/' in fl else 'ROOT'
 

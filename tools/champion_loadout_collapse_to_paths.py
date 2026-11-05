@@ -252,7 +252,7 @@ def short_label_for(variant_key: str, archetype: str, label: str) -> str:
             return _ARCH_FALLBACK_LABEL[archetype]
         return label.replace("(auto)", "").strip() or "Variant"
     # auto-sr-* / auto-aram-* - arch base only (no slot disambiguator).
-    if vk.startswith("auto-sr-") or vk.startswith("auto-aram-"):
+    if vk.startswith(("auto-sr-", "auto-aram-")):
         parts = vk.split("-")
         if len(parts) >= 4:
             arch = parts[3]

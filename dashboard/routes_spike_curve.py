@@ -317,7 +317,7 @@ def _build_champ_curve(slug: str, archetype: str, mode: str) -> tuple[float, ...
         reference = 1.0
 
     curve: list[float] = []
-    for minute in range(0, 41):
+    for minute in range(41):
         level = _level_at_minute(minute)
         n_items = _items_at_minute(minute)
         used = tuple(build[:n_items])

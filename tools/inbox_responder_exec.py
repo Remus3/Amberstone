@@ -257,7 +257,7 @@ def _split_argv(argv: Sequence[str]) -> Tuple[Optional[str], list, Optional[str]
 def _positional_rule(verb: str, value: str) -> Optional[str]:
     if ".." in value:
         return "executor:positional"
-    if _DRIVE_RE.match(value) or value.startswith("/") or value.startswith("\\"):
+    if _DRIVE_RE.match(value) or value.startswith(("/", "\\")):
         return "executor:positional"
     if not _POSITIONAL_RE.match(value):
         return "executor:positional"
