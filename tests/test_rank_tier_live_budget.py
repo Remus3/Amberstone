@@ -868,12 +868,19 @@ def _retaint(stmt, tainted, late=frozenset()) -> None:
     # as Python evaluates the value once: `p, q = q, p` swaps the aliases.
     aliases = ([b for t in targets for b in _alias_bindings(t, value, tainted)]
                if plain else [])
+    # RM-1563: `p = lambda m: log.info(m)` makes `p` a wrapper. Only a bare
+    # name target is tracked (residual: tuple targets, walrus, for).
+    wrapper = (_sink_specs(value, tainted, late)
+               if plain and isinstance(value, ast.Lambda) else set())
     for target in targets:
         # `m += "!"` keeps whatever `m` already carried (RM-1443): only a
         # plain re-binding to a clean value clears a name.
         _bind_names(target, found, tainted, clear=plain)
     for name, is_alias, is_obj in aliases:
         _bind_log_alias(name, is_alias, tainted, is_obj)
+    for target in targets:
+        if isinstance(target, ast.Name):
+            _bind_wrapper(target.id, wrapper, tainted)
 
 
 def _is_tainted(expr, tainted, late=frozenset()) -> bool:
@@ -910,6 +917,7 @@ def _bind_names(target, found, tainted, *, clear=True) -> None:
             # `_bind_log_alias` re-adds it.
             tainted.discard(_LOGFN + target.id)
             tainted.discard(_LOGOBJ + target.id)
+            _drop_wrapper(target.id, tainted)
         return
     if found:
         for sub in ast.walk(target):
@@ -1155,13 +1163,14 @@ def _log_args(call, tainted=frozenset()):
     later re-binding of `m` changes nothing the partial holds).
     RM-1562: a call THROUGH a logging function - an alias `p(m)`, a
     partial called later `p = partial(log.info, '%s'); p(m)` or in place
-    `partial(log.info, '%s')(m)` - is a sink for its own arguments too."""
+    `partial(log.info, '%s')(m)` - is a sink for its own arguments too.
+    RM-1563: so is a call through a local wrapper (`_wrapper_args`)."""
     if _is_log_callable(call.func, tainted):
         return list(call.args) + [kw.value for kw in call.keywords]
     if (_call_name(call) == "partial" and call.args
             and _is_log_callable(call.args[0], tainted)):
         return list(call.args[1:]) + [kw.value for kw in call.keywords]
-    return None
+    return _wrapper_args(call, tainted)
 
 
 def _default_bindings(fn, state, late=frozenset()):
@@ -1183,6 +1192,125 @@ def _default_bindings(fn, state, late=frozenset()):
         if _is_logger_expr(default, state):
             bound.add(_LOGOBJ + arg.arg)
     return bound
+
+
+# RM-1563 wrappers: a name bound to a local def or lambda whose parameter
+# reaches a raise or logging sink is held as `_SINKFN + name + " " + spec`,
+# one entry per sink parameter: `pos:<i>` (positional index), `kw:<name>`
+# (keyword), `star:<n>` (a `*args` parameter, every positional index from n
+# on) and `dstar` (a `**kwargs` parameter, every keyword). Like `_LOGFN` the
+# entries carry no value; a call through the name is a sink for the
+# arguments those parameters bind (`_wrapper_args`).
+_SINKFN = "sinkfn:"
+
+
+def _drop_wrapper(name, tainted) -> None:
+    """A re-binding of `name` replaces whatever wrapper it named."""
+    prefix = _SINKFN + name + " "
+    for entry in [e for e in tainted if e.startswith(prefix)]:
+        tainted.discard(entry)
+
+
+def _param_specs(fn):
+    """(parameter name, its `_SINKFN` specs) for every parameter of `fn`."""
+    a = fn.args
+    pos = a.posonlyargs + a.args
+    out = [(p.arg, {f"pos:{i}"} | ({f"kw:{p.arg}"} if p in a.args else set()))
+           for i, p in enumerate(pos)]
+    out += [(p.arg, {f"kw:{p.arg}"}) for p in a.kwonlyargs]
+    if a.vararg is not None:
+        out.append((a.vararg.arg, {f"star:{len(pos)}"}))
+    if a.kwarg is not None:
+        out.append((a.kwarg.arg, {"dstar"}))
+    return out
+
+
+def _sink_specs(fn, state, late=frozenset()):
+    """RM-1563: the `_SINKFN` specs of the parameters of def or lambda `fn`
+    that reach a raise or logging sink in its body.
+
+    The body is walked as its own scope, from what the scope around it may
+    hold when the body runs (`state | late`, the parameters' own names
+    removed: a parameter shadows them), once as it is and once more with
+    the parameters carrying the value. A parameter is a sink parameter if
+    tainting it adds a sink site, or changes what a site carries; each one
+    is then judged alone so `def g(m, n): log.info(n)` marks only `n`. The
+    walks report into throwaway sets, never into the real report."""
+    params = _param_specs(fn)
+    if not params:
+        return set()
+    names = {n for n, _ in params}
+    marks = (_OBJ, _LOGFN, _LOGOBJ)
+
+    def shadowed(entry):
+        return (entry in names or any(entry == m + n for m in marks for n in names)
+                or any(entry.startswith(_SINKFN + n + " ") for n in names))
+
+    base = {e for e in set(state) | set(late) if not shadowed(e)}
+    # The answer depends only on `fn` and `base`, and a nested def is judged
+    # again on every pass of every walk around it, so it is memoised for one
+    # `_message_leak_sites` call (the tree, so every `id`, outlives it).
+    key = (id(fn), frozenset(base))
+    if key not in _SPEC_CACHE:
+        _SPEC_CACHE[key] = frozenset(_judge_params(fn, params, names, base))
+    return _SPEC_CACHE[key]
+
+
+_SPEC_CACHE = {}
+
+
+def _judge_params(fn, params, names, base):
+    """The uncached body of `_sink_specs`."""
+    if isinstance(fn, ast.Lambda):
+        body = [ast.Expr(value=fn.body)]
+    else:
+        body = fn.body
+
+    def sites(extra):
+        got = set()
+        _walk_scope(body, base | extra,
+                    lambda expr, found: got.add((id(expr), frozenset(found))))
+        return got
+
+    baseline = sites(set())
+    if sites(names) <= baseline:
+        return set()
+    return {s for n, specs in params if not sites({n}) <= baseline for s in specs}
+
+
+def _bind_wrapper(name, specs, tainted) -> None:
+    for spec in specs:
+        tainted.add(f"{_SINKFN}{name} {spec}")
+
+
+def _wrapper_args(call, tainted=frozenset()):
+    """RM-1563: the arguments a call through a wrapper (`_SINKFN`) binds
+    to its sink parameters, or None if `call` is not through one. A lambda
+    called in place is judged where it stands. After a starred positional
+    argument every later position is unknown, so every one counts, and a
+    starred argument or a `**` mapping counts whole: the safe side."""
+    f = call.func
+    if isinstance(f, ast.Name):
+        prefix = _SINKFN + f.id + " "
+        specs = {e[len(prefix):] for e in tainted if e.startswith(prefix)}
+    elif isinstance(f, ast.Lambda):
+        specs = _sink_specs(f, tainted)
+    else:
+        return None
+    if not specs:
+        return None
+    stars = [int(s[5:]) for s in specs if s.startswith("star:")]
+    out, shifted = [], False
+    for i, arg in enumerate(call.args):
+        if isinstance(arg, ast.Starred):
+            shifted = True
+            out.append(arg.value)
+        elif shifted or f"pos:{i}" in specs or any(i >= n for n in stars):
+            out.append(arg)
+    for kw in call.keywords:
+        if kw.arg is None or "dstar" in specs or f"kw:{kw.arg}" in specs:
+            out.append(kw.value)
+    return out
 
 
 def _call_views(node, view, late, out) -> None:
@@ -1376,6 +1504,13 @@ class _Flow:
             state = state | (_join(out, *returns, *inside) or set())
             if hands_back and not isinstance(stmt, ast.ClassDef):
                 state.add(stmt.name)
+            # RM-1563: the def re-binds its name, so it names this wrapper
+            # (or none) from here on; the body is judged from the def-time
+            # state plus the late view, as a later call may run it.
+            _drop_wrapper(stmt.name, state)
+            if not isinstance(stmt, ast.ClassDef):
+                _bind_wrapper(stmt.name, _sink_specs(stmt, state, self.ever),
+                              state)
             return state
         if isinstance(stmt, ast.Return):
             # `return (m := url)` binds before leaving, and a `finally` or a
@@ -1562,8 +1697,12 @@ def _message_leak_sites(path):
     def report(expr, found):
         leaks.add(f"{Path(path).name}:{expr.lineno}: {sorted(set(found))}")
 
-    for scope in scopes:
-        _walk_scope(scope.body, set(), report)
+    _SPEC_CACHE.clear()
+    try:
+        for scope in scopes:
+            _walk_scope(scope.body, set(), report)
+    finally:
+        _SPEC_CACHE.clear()
     return sorted(leaks)
 
 
@@ -2206,6 +2345,67 @@ _CHECKER_SAMPLES = (
      False),
     ("a lambda default does not flow out of the lambda",
      "def f(url):\n    m = 'x'\n    h = lambda m=url: 0\n    log.info(m)\n", False),
+    # RM-1563 wrappers: a local def or lambda whose parameter reaches a
+    # raise or logging sink makes a call through it a sink for the arguments
+    # bound to that parameter.
+    ("nested def logs its parameter",
+     "def f(url):\n    def g(m):\n        log.info(m)\n    g(url)\n", True),
+    ("lambda bound to a name logs its parameter",
+     "def f(url):\n    p = lambda m: log.info(m)\n    p(url)\n", True),
+    ("lambda called in place logs its parameter",
+     "def f(url):\n    (lambda m: log.info(m))(url)\n", True),
+    ("wrapper parameter passed by keyword",
+     "def f(url):\n    def g(a, m):\n        log.info(m)\n    g('x', m=url)\n", True),
+    ("wrapper carries its parameter through a local",
+     "def f(url):\n    def g(m):\n        n = 'at ' + m\n        log.warning(n)\n"
+     "    g(url)\n", True),
+    ("wrapper of a wrapper",
+     "def f(url):\n    def g(m):\n        log.info(m)\n    def h(k):\n        g(k)\n"
+     "    h(url)\n", True),
+    ("module-level wrapper called from a function",
+     "def g(m):\n    log.info(m)\ndef f(url):\n    g(url)\n", True),
+    ("wrapper defined after its caller",
+     "def f(url):\n    g(url)\ndef g(m):\n    log.info(m)\n", True),
+    ("wrapper logs its varargs",
+     "def f(url):\n    def g(fmt, *a):\n        log.info(fmt, *a)\n    g('%s', url)\n",
+     True),
+    ("wrapper logs its kwargs",
+     "def f(url):\n    def g(**kw):\n        log.info(kw)\n    g(m=url)\n", True),
+    ("wrapper raises its parameter",
+     "def f(url):\n    def g(m):\n        raise E(m)\n    g(url)\n", True),
+    ("starred call to a wrapper",
+     "def f(url):\n    def g(m):\n        log.info(m)\n    g(*[url])\n", True),
+    ("async wrapper logs its parameter",
+     "async def f(url):\n    async def g(m):\n        log.info(m)\n    await g(url)\n",
+     True),
+    ("wrapper with a positional-only parameter",
+     "def f(url):\n    def g(a, m, /):\n        log.info(m)\n    g(0, url)\n", True),
+    ("positional argument after a starred one",
+     "def f(url, xs):\n    def g(m, a):\n        log.info(m)\n    g(*xs, url)\n", True),
+    ("wrapper of a wrapper defined after it",
+     "def f(url):\n    def h(k):\n        g(k)\n    def g(m):\n        log.info(m)\n"
+     "    h(url)\n", True),
+    ("module-level wrapper of a wrapper defined after it",
+     "def h(k):\n    g(k)\ndef g(m):\n    log.info(m)\ndef f(url):\n    h(url)\n", True),
+    # RM-1563 wrapper keep-greens.
+    ("wrapper sanitizes its parameter",
+     "def f(url):\n    def g(m):\n        log.info(_safe_url(m))\n    g(url)\n", False),
+    ("wrapper called with a sanitized value",
+     "def f(url):\n    def g(m):\n        log.info(m)\n    g(_safe_url(url))\n", False),
+    ("wrapper logs only its other parameter",
+     "def f(url):\n    def g(m, n):\n        log.info(n)\n    g(url, 'x')\n", False),
+    ("keyword to the wrapper parameter that is not logged",
+     "def f(url):\n    def g(m, n):\n        log.info(n)\n    g(n='x', m=url)\n", False),
+    ("wrapper name re-bound to a non-log function",
+     "def f(url):\n    def g(m):\n        log.info(m)\n    g = fetch\n    g(url)\n", False),
+    ("wrapper re-defined without the log call",
+     "def f(url):\n    def g(m):\n        log.info(m)\n    def g(m):\n        return 0\n"
+     "    g(url)\n", False),
+    ("lambda that does not log its parameter",
+     "def f(url):\n    p = lambda m: fetch(m)\n    p(url)\n", False),
+    ("a parameter shadows an outer wrapper",
+     "def g(m):\n    log.info(m)\ndef k(g, n):\n    g(n)\ndef f(url):\n    k(fetch, url)\n",
+     False),
 )
 
 
