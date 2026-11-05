@@ -112,7 +112,11 @@ class UserBuildFold(unittest.TestCase):
 
     def _ub(self, uid, keystone, primary, secondary,
             minor_primary=None, minor_secondary=None):
-        return {"id": uid, "runes": {
+        # s144 true-audit cycle 103 (F6): a record carries a label and items,
+        # because a build format_for_display rejects is not offered by
+        # /api/loadout/list and is now left out of the model too.
+        return {"id": uid, "label": "test build", "items": ["Infinity Edge"],
+                "runes": {
             "keystone": keystone, "primary": primary, "secondary": secondary,
             "minor_primary": minor_primary or [],
             "minor_secondary": minor_secondary or []}}
@@ -154,18 +158,18 @@ class UserBuildFold(unittest.TestCase):
     def test_user_build_subrune_delta_mints_distinct_page(self):
         # Two user builds identical except for minor primary runes resolve to
         # different perk_ids -> two distinct pages (1-subrune delta = new page).
-        # Patch _perk_by_name so the override resolves without depending on the
-        # ddragon_runes.json data file.
-        fake = {"A": 101, "B": 102, "C": 103, "D": 104, "E": 105, "F": 106}
+        # s144 true-audit cycle 103 (F2): real rune names, one per Precision
+        # row. The old fake ids (101-106 via a patched _perk_by_name) form no
+        # legal page, and an illegal page no longer enters the model.
         ubs = [
             self._ub("u1", "Lethal Tempo", "Precision", "Domination",
-                     minor_primary=["A", "B", "C"]),
+                     minor_primary=["Absorb Life", "Legend: Haste", "Cut Down"]),
             self._ub("u2", "Lethal Tempo", "Precision", "Domination",
-                     minor_primary=["D", "E", "F"]),
+                     minor_primary=["Presence of Mind", "Legend: Bloodline",
+                                    "Last Stand"]),
         ]
         with mock.patch.object(rune_pages, "list_variants", return_value=[]), \
-             mock.patch.object(rune_pages, "_user_builds_for", return_value=ubs), \
-             mock.patch("lcu.lcu_rune_writer._perk_by_name", return_value=fake):
+             mock.patch.object(rune_pages, "_user_builds_for", return_value=ubs):
             out = rune_pages.enumerate_pages("Jinx", "SR")
         builds = {b["buildId"]: b["recommendedPageId"] for b in out["builds"]}
         self.assertNotEqual(builds["userbuild_u1"], builds["userbuild_u2"])
@@ -228,6 +232,7 @@ class PushPageId(unittest.TestCase):
              mock.patch.object(rune_pages, "_user_builds_for", return_value=[]):
             out = rune_pages.enumerate_pages("Jinx", "SR")
         b = self._by_id(out)["crit"]
+        self.assertIsNotNone(b["pushPageId"])  # cycle 103: None == None
         self.assertEqual(b["pushPageId"], b["recommendedPageId"])
 
     def test_build_path_pushpage_equals_recommended(self):
@@ -247,28 +252,33 @@ class PushPageId(unittest.TestCase):
         self.assertEqual(b["pushPageId"], rune_pages.resolve_page(*_ELEC)["pageId"])
 
     def test_userbuild_pushpage_equals_recommended(self):
-        ubs = [{"id": "abc123", "runes": {
+        ubs = [{"id": "abc123", "label": "test build", "items": ["Infinity Edge"],
+                "runes": {
             "keystone": "Electrocute", "primary": "Domination",
             "secondary": "Precision", "minor_primary": [], "minor_secondary": []}}]
         with mock.patch.object(rune_pages, "list_variants", return_value=[]), \
              mock.patch.object(rune_pages, "_user_builds_for", return_value=ubs):
             out = rune_pages.enumerate_pages("Jinx", "SR")
         b = self._by_id(out)["userbuild_abc123"]
+        self.assertIsNotNone(b["pushPageId"])  # cycle 103: None == None
         self.assertEqual(b["pushPageId"], b["recommendedPageId"])
 
     def test_userbuild_subrune_delta_pushpage_equals_own_recommended(self):
         # With a minor-rune delta the user page still resolves to its OWN
         # recommendedPageId (the resolver honors minor_primary/secondary).
-        fake = {"A": 101, "B": 102, "C": 103}
-        ubs = [{"id": "u1", "runes": {
+        # Cycle 103: real rune names and a full record (see _ub above).
+        ubs = [{"id": "u1", "label": "test build", "items": ["Infinity Edge"],
+                "runes": {
             "keystone": "Lethal Tempo", "primary": "Precision",
             "secondary": "Domination",
-            "minor_primary": ["A", "B", "C"], "minor_secondary": []}}]
+            "minor_primary": ["Absorb Life", "Legend: Haste", "Cut Down"],
+            "minor_secondary": []}}]
         with mock.patch.object(rune_pages, "list_variants", return_value=[]), \
-             mock.patch.object(rune_pages, "_user_builds_for", return_value=ubs), \
-             mock.patch("lcu.lcu_rune_writer._perk_by_name", return_value=fake):
+             mock.patch.object(rune_pages, "_user_builds_for", return_value=ubs):
             out = rune_pages.enumerate_pages("Jinx", "SR")
         b = self._by_id(out)["userbuild_u1"]
+        # Cycle 103: validation can now drop a page, and None == None.
+        self.assertIsNotNone(b["pushPageId"])
         self.assertEqual(b["pushPageId"], b["recommendedPageId"])
 
     def test_pushpage_when_set_is_always_a_known_page(self):
