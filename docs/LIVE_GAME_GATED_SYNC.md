@@ -2758,6 +2758,68 @@ Practice customs and Mayhem q2400 NEVER reach Match-V5. This batch is unreachabl
 - **G4-26** (was F3) PGR auto-show on game-end live confirm (`a2fdf448`): DID NOT FIRE 2026-07-04
   (companion was on the HOME view post-game; manual-open works). **Put the companion on the correct
   view BEFORE the game ends**, then recheck.
+  **READY (lane 9, s144 cycle 64, RM-1510, PREP only, no game up: RC :8888 and :2999 refused,
+  probed 2026-11-05 about 01:20 -06:00; NOT ticked).** AGE: the 2026-07-04 miss PREDATES the fix.
+  The 2026-07-20 drain root-caused it (item 3 at the head of this doc) and `51dfc0cef` landed it:
+  the item-281 null-phase in-game promotion now ARMS the sticky (`web/js/main.js`
+  `_viewAutoDerive`, the `else if (!phase && live && inGame)` arm; mirror
+  `dashboard/view_router_state.py` `update_game_started(..., mode=)`; pinned by
+  `tests/test_view_router_postgame_pgr_arm.py`). What is still owed is a live game end AFTER that
+  fix. Source facts that shape the check: (1) the arm (`_viewSaveManual("last-match")` +
+  `fetchAndRenderLastMatch()`) fires only when an `/api/state.lcu.phase` in EndOfGame /
+  PreEndOfGame / WaitingForStats / TerminatedInError / Lobby reaches the page while the sticky is
+  `in-progress` (mirror `is_postgame_pgr_edge`); the page reads `state.latest.lcu` and
+  `state.mode` (`_viewResolveAndApply`). (2) `/api/state.lcu` is `{}` whenever the relayed LCU
+  snapshot is older than 5 s, and the in-game capture runs 8-11 s behind (the "broader unfixed
+  bug" in item 3), so a game end whose post-game phase never survives that TTL still misses the
+  arm. (3) The overlay shell (`body[data-shell=overlay]`) returns before any derive, so the arm
+  can only fire in the COMPANION window. (4) The arm is mode-agnostic (`inGame` covers sr / aram /
+  arena / brawl / tft) and the view switch reads no Match-V5 row; only the PGR CONTENT does
+  (`/api/last-match`). Whether that lets the row ride a GATE 3 / GATE 5 game end is a human
+  re-gating call; the lane did not move it.
+  PROBE (read-only; start it with about 2 minutes of game left, it must span the end):
+  `python tools/gated_g426_pgr_edge.py sample --samples 240 --interval 1 [--json]` (GETs :8888
+  `/api/state` only; per sample: `lcu.phase`, `mode_key`, `liveclient` non-empty; replays the
+  stream through the mirror from a `None` sticky, the mid-game-open case the fix targets, with and
+  without the fix; prints no id). The game counts as ENDED only when the window runs on 15 s past
+  the last live sample with no live data coming back, so keep sampling at least 15 s into the
+  stats screen; a post-game phase alone is not an end (a stale one shows up mid-game), nor is a
+  liveclient blip that recovers. The END RUN is the final unbroken run of samples that are
+  non-live or carry a post-game phase (the cached `liveclient` stays non-empty up to 5 s after
+  :2999 stops, so the real post-game phase can land on live samples); the last in-game sample is
+  the one just before it. Verdicts: EDGE_DELIVERED (exit 0: ended, and the edge fired inside the
+  end run; `fix_path_exercised` is true only when the pre-fix replay did not fire there),
+  EDGE_MISSED (exit 3: ended, no end edge; `miss_cause` = `no_postgame_phase` when the page was
+  armed at the last in-game sample and no post-game phase fired it, or `not_armed_at_end` when it
+  was not armed there, so no phase could fire it), NO_EVIDENCE (exit 4). An edge BEFORE the end
+  run fired on a stale mid-game phase, or ended an earlier game in a window that spans two (one
+  game per window: only the last is graded); it never counts and is reported as
+  `mid_game_edges`. Also read `null_phase_live_samples` (how much of the game ran phase-blind, a
+  live measure of the TTL gap) and `last_in_game_to_edge_s`. Model limits: the replay keeps the
+  last in-game `mode_key` (`onState` calls `setMode` only for an in-game tag) and cannot see a
+  health-envelope change of the page mode. Idle smoke this cycle: NO_EVIDENCE, 3/3 DASH_DOWN (RC
+  down).
+  PREDICATE (stated before any game): **PASS needs both:** (a) `sample` EDGE_DELIVERED over a
+  window that spans the real game end; (b) the operator's eyeball, with the COMPANION (not the
+  overlay) left on its auto view (no `#` hash, no manual pick) through the game, that within about
+  15 s of the stats screen the companion shows the Post Game Review, and that its match is the one
+  just played (champion + result), not the prior match. (a) without (b) leaves the row open.
+  **FAIL** = EDGE_MISSED with `no_postgame_phase` (file it against the 5 s TTL, not the arm), or
+  EDGE_MISSED with `not_armed_at_end` (file it against the arm / mode signal, not the TTL: the
+  page held no in-game mode with live data at the end, or a stale phase reset its sticky), or
+  EDGE_DELIVERED and the companion still on Home (the page did not act on a delivered end edge:
+  triage the JS arm against its mirror, and the page-mode limit above, before filing), or the PGR
+  of the PRIOR match (the 10 s retry did not cover the ingest lag). `mid_game_edges` > 0 in a
+  one-game window is a separate finding (the page pinned the PGR mid-game on a stale phase),
+  filed on its own and never read as a pass.
+  EVIDENCE CONTRACT: the `sample` JSON verdict + `miss_cause` + `edge_phase` +
+  `last_in_game_to_edge_s` + `null_phase_live_samples` + `mid_game_edges` + `modes`, the local
+  time of the stats screen, the queue, and the operator's one-line statement of the view and
+  match the companion showed.
+  SUBSTITUTION CHECK: does the evidence show the companion RENDERED the just-played PGR, or only
+  that `/api/state` carried a post-game phase the mirror would act on? EDGE_DELIVERED, the mirror
+  tests, a manual open (the 2026-07-04 entry already shows manual-open works) or a page reload
+  after the game (a fresh page never holds an armed sticky) answer the compute half only.
 - **G4-27** (was F6) R47 PGR child-panel capture - UNCLEAR / likely moot (the entry itself says the
   baseline render is byte-identical, so there is no pixel delta to capture). **Operator call to
   discharge as a no-op.** SOURCE: LEDGER 702.
